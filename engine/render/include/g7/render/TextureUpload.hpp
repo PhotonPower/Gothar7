@@ -5,6 +5,8 @@
 #include <g7/core/Result.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
+#include <span>
+
 namespace g7::render
 {
 class Device;
@@ -26,6 +28,18 @@ struct TextureUpload
 /// - BC7 (cooked colour): sRGB as recorded in the data, every level uploaded;
 /// - BC5 (cooked two-channel normal map): linear, every level uploaded.
 [[nodiscard]] Result<rhi::Texture> createTexture(Device& device, const asset::TextureData& data, bool colour);
+
+enum class TextureArrayUsage : u8
+{
+    Colour, ///< albedo: RGBA8 as sRGB, BC7 as recorded
+    Data,   ///< weights, masks: always linear (the bytes are the values)
+};
+
+/// A 2D array texture from equally sized layers of the same format and mip count; differences are
+/// errors that name the layer. Single RGBA8 levels get a generated mip chain.
+[[nodiscard]] Result<rhi::Texture> createTextureArray(Device& device,
+                                                      std::span<const asset::TextureData* const> layers,
+                                                      TextureArrayUsage usage);
 
 /// 1x1 texture of one colour (fallback when a material has no texture, or it failed to load).
 [[nodiscard]] Result<rhi::Texture> createSolidTexture(Device& device, u8 r, u8 g, u8 b, u8 a,

@@ -10,6 +10,7 @@
 #include <g7/asset/Vfs.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
+#include <g7/world/WorldFile.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -259,12 +260,20 @@ private:
 
     void cookKtx2(const std::string& relative, const asset::ImageData& image)
     {
-        if (m_normalImages.contains(relative) && m_colorImages.contains(relative))
+        const bool normal = m_normalImages.contains(relative);
+        const bool color = m_colorImages.contains(relative);
+        const bool data = m_dataImages.contains(relative);
+        if (normal && color)
         {
             fail(relative, "used both as colour texture and as normal map");
             return;
         }
-        const auto usage = m_normalImages.contains(relative) ? TextureUsage::Normal : TextureUsage::Color;
+        if (data && (normal || color))
+        {
+            fail(relative, "used both as terrain splat map (data) and as colour texture or normal map");
+            return;
+        }
+        const auto usage = normal ? TextureUsage::Normal : data ? TextureUsage::Data : TextureUsage::Color;
         auto ktx = encodeKtx2(image, usage, m_options.uastcLevel);
         if (!ktx)
         {
@@ -371,12 +380,18 @@ private:
         return vfsPath;
     }
 
-    /// KTX2 needs to know before encoding whether an image is a normal map: collect how the meshes
-    /// use their external textures (and keep the parsed meshes for cookMesh).
+    /// KTX2 needs to know before encoding how an image is used: collect how the meshes use their
+    /// external textures (and keep the parsed meshes for cookMesh) and what the terrain blocks of
+    /// worlds name (splat maps are data, layer albedos colour, layer normals normal maps).
     void scanTextureUsage(const std::map<std::string, fs::Path>& sources)
     {
         for (const auto& [relative, location] : sources)
         {
+            if (!isHidden(relative) && extensionOf(relative) == ".g7world")
+            {
+                scanWorld(relative, location);
+                continue;
+            }
             if (isHidden(relative) || !contains(kMeshExtensions, extensionOf(relative)))
             {
                 continue;
@@ -393,6 +408,32 @@ private:
                 }
             }
             m_meshes.emplace(relative, std::move(loaded));
+        }
+    }
+
+    void scanWorld(const std::string& relative, const fs::Path& location)
+    {
+        auto text = fs::readText(location);
+        auto world =
+            text ? world::parseWorldFile(text.value(), relative) : Result<world::WorldFile>(text.error());
+        if (!world)
+        {
+            // Copied anyway; the engine reports the same problem when it loads the world.
+            G7_LOG_WARN("cook", "{}: {} (texture usage not taken from it)", relative, world.error().message);
+            return;
+        }
+        if (const auto& terrain = world.value().terrain)
+        {
+            // Terrain paths are VFS paths, i.e. relative to the source root.
+            m_dataImages.insert(terrain->splatMaps.begin(), terrain->splatMaps.end());
+            for (const world::TerrainLayerRef& layer : terrain->layers)
+            {
+                m_colorImages.insert(layer.albedo);
+                if (!layer.normal.empty())
+                {
+                    m_normalImages.insert(layer.normal);
+                }
+            }
         }
     }
 
@@ -531,7 +572,7 @@ private:
         return out;
     }
 
-    /// For KTX2 the output of an image depends on how meshes use it.
+    /// For KTX2 the output of an image depends on how meshes and worlds use it.
     std::string textureUsageTag(const std::string& relative, const std::string& ext) const
     {
         if (m_options.textures != TextureMode::Ktx2 || !contains(kImageExtensions, ext))
@@ -540,7 +581,8 @@ private:
         }
         const bool normal = m_normalImages.contains(relative);
         const bool color = m_colorImages.contains(relative);
-        return normal && color ? "both" : normal ? "normal" : "color";
+        const bool data = m_dataImages.contains(relative);
+        return std::string(normal ? "normal" : "") + (color ? "color" : "") + (data ? "data" : "");
     }
 
     u64 sourceKey(const std::string& relative, std::span<const u8> bytes,
@@ -698,6 +740,7 @@ private:
     std::map<std::string, Result<asset::MeshData>> m_meshes; // parsed in scanTextureUsage (KTX2 mode)
     std::set<std::string> m_normalImages;                    // VFS paths used as normal maps
     std::set<std::string> m_colorImages;                     // VFS paths used as colour textures
+    std::set<std::string> m_dataImages;                      // VFS paths used as terrain splat maps
     std::map<std::string, std::string> m_keys;               // lower-case path -> path (collisions)
     CookReport m_report;
 };

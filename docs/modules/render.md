@@ -286,7 +286,10 @@ class DebugDrawRenderer { static Result<DebugDrawRenderer> create(Device&, Shade
 ### Gelände – `Terrain.hpp`, `terrain.vert/.frag` (M4)
 ```cpp
 struct HeightfieldDesc { u32 width, height; f32 cellSize; Vec2 firstSample; f32 minY, maxY; std::span<const u16> samples; };
+struct TerrainSurfaceDesc { std::vector<const asset::TextureData*> splatMaps; std::vector<Layer{albedo, tile}> layers;
+                             std::span<const u8> holes; };   // max. 8 Schichten, Löcher je Zelle
 class TerrainRenderer { static Result<TerrainRenderer> create(Device&, ShaderLibrary&, const HeightfieldDesc&, const ShadowSettings&);
+    Result<void> setSurface(Device&, const TerrainSurfaceDesc&); u32 layerCount(); bool hasHoles();
     void drawShadow(Device&, const Cascade&); void draw(Device&, const Camera&, const LightList*);
     static u32 lodFor(f32 distance, f32 lodDistance); f32 lodDistance = 96; u32 drawnChunks(); };
 // MeshRenderer::bindLighting(Device&): Licht-Block + Schatten-Atlas für andere Renderer
@@ -298,7 +301,16 @@ class TerrainRenderer { static Result<TerrainRenderer> create(Device&, ShaderLib
   Entfernung zur Kachel (`lodFor`: volle Auflösung bis `lodDistance`, dann eine Stufe je Verdopplung). **Schürzen**
   am Kachelrand verdecken Risse zwischen Stufen. Frustum-Culling je Kachel, Punktlichter je Kachel.
 - Schatten: Gelände wirft und empfängt; im Schattenpass mit der gröbsten Stufe. Licht und Nebel wie Meshes;
-  Einfärbung nach Hangneigung und Höhe bis zur Splatmap (Teil B).
+  ohne Splat-Schichten Einfärbung nach Hangneigung und Höhe.
+- **Splat** (Teil B): bis zu 8 Schichten. Gewichte aus 1–2 RGBA-Karten (2D-Array, linear, Pixel-Mitten auf Samples),
+  Albedos als 2D-Array (sRGB, Kachelung `tile` über Welt-xz, anisotrop). Im Shader werden alle Schichten gelesen
+  (gleichförmiger Kontrollfluss) und nach normierten Gewichten gemischt. `setSurface` prüft Anzahl, Größen und
+  Formate und meldet Fehler mit Text; die bisherige Oberfläche bleibt dann.
+- **Löcher**: R8-Textur je Zelle, `discard` im Haupt- und Schattenpass (der Schattenpass nutzt `terrain.frag` mit
+  `SHADOW`). Texture-Units: 4 Höhen, 5 Splat, 6 Schichten, 7 Löcher; ohne Splat/Löcher 1×1-Platzhalter.
+- RHI: `TextureDesc::layers`/`array` für 2D-Array-Texturen, `Texture::upload(level, data, layer)`;
+  `createTextureArray(device, layers, TextureArrayUsage::Colour|Data)` (TextureUpload.hpp) prüft gleiche Größe,
+  Format und Mip-Zahl mit klarer Meldung; `ShaderProgram::setUniform(name, span<const f32>)`.
 
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →

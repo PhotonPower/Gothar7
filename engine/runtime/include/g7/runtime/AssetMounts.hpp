@@ -46,8 +46,9 @@ inline constexpr i32 kDevCookedArchivePriority = 11;
 /// Turns an image URI of a mesh into the VFS paths to try, in order: the URI as a path from the
 /// VFS root (cooked .g7mesh files store those), then relative to the mesh's folder (glTF).
 [[nodiscard]] std::vector<std::string> imageCandidates(std::string_view meshPath, std::string_view uri);
-/// The model to load for `path`: a glTF path (.glb/.gltf) is replaced by its cooked counterpart
-/// (same path, .g7mesh) when the VFS has one - cooked data wins, so scenes may name source files.
+/// The asset to load for `path`: a glTF path (.glb/.gltf) is replaced by its cooked counterpart (same
+/// path, .g7mesh), an image (.png, .jpg, ...) by its .ktx2 when the VFS has one - cooked data wins,
+/// so scenes and worlds may name source files.
 [[nodiscard]] std::string preferCooked(const asset::Vfs& vfs, std::string_view path);
 /// Path of `relative` next to the VFS file `base` ("scenes/a.toml" + "models/b.glb").
 [[nodiscard]] std::string vfsSibling(std::string_view base, std::string_view relative);

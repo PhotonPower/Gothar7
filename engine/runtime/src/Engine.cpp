@@ -852,6 +852,7 @@ Result<void> Engine::initWorld()
         m_hasTerrain = true;
         G7_LOG_INFO("engine", "terrain {} ({} x {} samples, {} m cells, {} chunks)", ref->heightmap,
                     ref->width, ref->height, ref->cellSize, m_terrain.chunkCount());
+        loadTerrainSurface(*ref);
     }
     if (auto instantiated = instantiateScene(); !instantiated)
     {
@@ -895,6 +896,58 @@ Result<void> Engine::initWorld()
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights", path.value(),
                 m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size());
     return {};
+}
+
+void Engine::loadTerrainSurface(const world::TerrainRef& ref)
+{
+    render::TerrainSurfaceDesc surface;
+    surface.holes = m_heightfield.holes();
+    std::vector<asset::Handle<asset::TextureData>> maps;
+    std::vector<asset::Handle<asset::TextureData>> albedos;
+    for (const std::string& path : ref.splatMaps)
+    {
+        maps.push_back(m_assets->load<asset::TextureData>(preferCooked(m_vfs, path)));
+    }
+    for (const world::TerrainLayerRef& layer : ref.layers)
+    {
+        albedos.push_back(m_assets->load<asset::TextureData>(preferCooked(m_vfs, layer.albedo)));
+    }
+    m_assets->waitAll();
+    std::string problem;
+    const auto check = [&](const asset::Handle<asset::TextureData>& handle, std::string_view path)
+    {
+        if (!handle.isReady() && problem.empty())
+        {
+            problem = std::format("'{}': {}", path, handle.error());
+        }
+        return handle.get();
+    };
+    for (usize i = 0; i < maps.size(); ++i)
+    {
+        surface.splatMaps.push_back(check(maps[i], ref.splatMaps[i]));
+    }
+    for (usize i = 0; i < albedos.size(); ++i)
+    {
+        surface.layers.push_back({check(albedos[i], ref.layers[i].albedo), ref.layers[i].tile});
+    }
+    auto applied = problem.empty() ? m_terrain.setSurface(*m_device, surface) : Result<void>(Error{problem});
+    if (!applied)
+    {
+        G7_LOG_WARN("engine", "terrain surface: {} - slope colours instead", applied.error().message);
+        surface.splatMaps.clear();
+        surface.layers.clear();
+        applied = m_terrain.setSurface(*m_device, surface); // the holes alone
+    }
+    if (!applied)
+    {
+        G7_LOG_WARN("engine", "terrain holes: {}", applied.error().message);
+        return;
+    }
+    if (m_terrain.layerCount() > 0 || m_terrain.hasHoles())
+    {
+        G7_LOG_INFO("engine", "terrain surface: {} layers, {}", m_terrain.layerCount(),
+                    m_terrain.hasHoles() ? "with holes" : "no holes");
+    }
 }
 
 Result<void> Engine::saveWorld(const fs::Path& path) const

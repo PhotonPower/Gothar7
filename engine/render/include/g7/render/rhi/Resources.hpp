@@ -45,15 +45,21 @@ struct TextureDesc
     u32 height = 0;
     Format format = Format::RGBA8;
     u32 mipLevels = 1; ///< 0 = full chain.
+    /// > 1: a 2D array texture (sampler2DArray), all layers the same size and format.
+    u32 layers = 1;
+    /// A 2D array texture even with a single layer (implied by layers > 1).
+    bool array = false;
+
+    [[nodiscard]] bool isArray() const noexcept { return array || layers > 1; }
 };
 
 class Texture
 {
 public:
     Texture() = default;
-    /// Uploads a whole mip level; `data` must hold exactly imageSize(format, level width, level
-    /// height) bytes - pixels, or 4x4 blocks for compressed formats.
-    [[nodiscard]] Result<void> upload(u32 level, std::span<const u8> data);
+    /// Uploads a whole mip level (of one layer of an array); `data` must hold exactly imageSize(format,
+    /// level width, level height) bytes - pixels, or 4x4 blocks for compressed formats.
+    [[nodiscard]] Result<void> upload(u32 level, std::span<const u8> data, u32 layer = 0);
     /// Fills levels 1.. from level 0. Not for compressed formats (their mip levels are uploaded).
     [[nodiscard]] Result<void> generateMipmaps();
     [[nodiscard]] const TextureDesc& desc() const noexcept { return m_desc; }
@@ -106,6 +112,8 @@ public:
     void setUniform(std::string_view name, const Mat4& value);
     /// Integer array uniform (`uniform int name[N]`), starting at element 0.
     void setUniform(std::string_view name, std::span<const i32> values);
+    /// Float array uniform (`uniform float name[N]`), starting at element 0.
+    void setUniform(std::string_view name, std::span<const f32> values);
     [[nodiscard]] const std::string& name() const noexcept { return m_name; }
 
 private:

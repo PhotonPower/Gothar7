@@ -101,8 +101,8 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 - [x] Weltformat `.g7world` als Text/JSON (v1, ADR 0017, `--world`, `--save-world`, Testwelt `testworld/camp.g7world`)
 - [ ] Gekochte Binärvariante von `.g7world` – verschoben bis zum Bedarf (große Welten), **kein Teil der M4-DoD**
 - [ ] Statisches Welt-Mesh (Gelände + Architektur) mit Kollisionsgeometrie
-- [ ] **Heightmap-Terrain** (Kacheln, LOD, Splatmap mit 4–8 Schichten, Löcher) – Grundlage für W2 (Leonberg-Gelände)
-  - Stand: Teil A fertig – `terrain`-Block in `.g7world` (Vertrag mit welt), `world::Heightfield`, `render::TerrainRenderer` (64er-Kacheln, 4 LOD-Stufen mit Schürzen, Culling, Schatten); Leonberg 2000×2000 mit 619 FPS (RTX 3080). Offen: Splatmap, Löcher (Teil B)
+- [x] **Heightmap-Terrain** (Kacheln, LOD, Splatmap mit 4–8 Schichten, Löcher) – Grundlage für W2 (Leonberg-Gelände)
+  - Teil A: `terrain`-Block in `.g7world` (Vertrag mit welt), `world::Heightfield`, `render::TerrainRenderer` (64er-Kacheln, 4 LOD-Stufen mit Schürzen, Culling, Schatten); Leonberg 2000×2000 mit 619 FPS (RTX 3080). Teil B: `splat` (bis 8 Schichten, Texture-Arrays) und `holes` (je Zelle) im `terrain`-Block, Cooker erkennt Splat-Karten als lineare Daten, `Heightfield::isHole`
 - [ ] Vob-Typen: Mesh, Licht, Sound-Emitter, Trigger, Startpunkt, Mob (Platzhalter)
 - [ ] Spielzeit & **Tag/Nacht-Zyklus**: Sonnenstand, Himmelsfarben (Verlauf je Uhrzeit), Sterne, Mond
 - [ ] Sichtbarkeit: Frustum-Culling, Distanz-Culling/LOD für Vobs; Innenräume über Portale/Zonen (später)
