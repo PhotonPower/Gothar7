@@ -6,7 +6,7 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | Nr. | Titel | Status | Phase |
 |---|---|---|---|
 | [0001](0001-cpp20-cmake-vcpkg.md) | C++20, CMake und vcpkg | Akzeptiert | M0 |
-| [0002](0002-math-glm.md) | Mathe-Bibliothek: glm | Vorgeschlagen | M0 |
+| [0002](0002-math-glm.md) | Mathe-Bibliothek: glm | Akzeptiert | M0 |
 | [0003](0003-renderer-opengl.md) | OpenGL 4.6 hinter einer RHI | Vorgeschlagen | M2 |
 | [0004](0004-physics-jolt.md) | Physik: Jolt Physics | Vorgeschlagen | M5 |
 | [0005](0005-ecs-entt.md) | Szenenmodell: EnTT mit Vob-Konzept | Vorgeschlagen | M4 |
