@@ -49,5 +49,6 @@ void main()
 #endif
     vec3 color = base.rgb * incomingLight(vWorldPosition, surfaceNormal());
     color += uEmissive * texture(uEmissiveTexture, vUv).rgb;
+    color *= shadowDebugTint(vWorldPosition);
     fragColor = vec4(linearToSrgb(color), base.a);
 }

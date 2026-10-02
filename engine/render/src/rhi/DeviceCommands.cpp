@@ -12,6 +12,7 @@ using namespace rhi;
 void Device::bindFramebuffer(const Framebuffer* framebuffer)
 {
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer ? framebuffer->m_handle.id() : 0);
+    m_framebufferHasStencil = framebuffer == nullptr || framebuffer->m_hasStencil;
 }
 
 void Device::setViewport(i32 x, i32 y, u32 width, u32 height)
@@ -36,10 +37,14 @@ void Device::clear(std::optional<Vec4> color, std::optional<f32> depth)
             m_cache.depthWrite = true;
             m_cache.pipeline = 0; // the next bindPipeline restores the pipeline's mask
         }
-        glStencilMask(0xFF);
         glClearDepth(static_cast<GLdouble>(*depth));
-        glClearStencil(0);
-        mask |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+        mask |= GL_DEPTH_BUFFER_BIT;
+        if (m_framebufferHasStencil)
+        {
+            glStencilMask(0xFF);
+            glClearStencil(0);
+            mask |= GL_STENCIL_BUFFER_BIT;
+        }
     }
     if (mask != 0)
     {
@@ -113,6 +118,20 @@ void Device::bindPipeline(const Pipeline& pipeline)
             break;
         }
         m_cache.blend = pipeline.m_blend;
+    }
+    const DepthBias& bias = pipeline.m_depthBias;
+    if (all || m_cache.depthBias.constant != bias.constant || m_cache.depthBias.slope != bias.slope)
+    {
+        if (bias.constant != 0.0f || bias.slope != 0.0f)
+        {
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(bias.slope, bias.constant);
+        }
+        else
+        {
+            glDisable(GL_POLYGON_OFFSET_FILL);
+        }
+        m_cache.depthBias = bias;
     }
     m_cache.topology = pipeline.m_topology;
     m_cache.pipeline = uid;

@@ -11,6 +11,14 @@ layout(std140, binding = 0) uniform Lighting
     vec4 ambientSky;
     vec4 ambientGround;
     ivec4 counts;       // x = point lights this frame
+    mat4 cascadeViewProjection[4];
+    vec4 cascadeSplits;     // view depth where cascade i ends
+    vec4 cascadeRects[4];   // atlas tile: uv offset xy, size zw
+    vec4 cascadeTexelSize;  // world size of a shadow texel per cascade
+    vec4 shadowParams;      // x enabled, y cascades, z distance, w normal offset (texels)
+    vec4 shadowExtra;       // x debug colours, y atlas texel size (uv)
+    vec4 cameraPosition;
+    vec4 cameraForward;
     vec4 pointPositionRadius[kMaxPointLights];
     vec4 pointColor[kMaxPointLights];
 } uLighting;
@@ -26,11 +34,78 @@ float pointLightAttenuation(float distance, float radius)
     return window * window / (distance * distance + 1.0);
 }
 
+layout(binding = 3) uniform sampler2DShadow uShadowAtlas; // cascades in 2x2 tiles, compare LessEqual
+
+int shadowCascade(vec3 worldPosition)
+{
+    const float viewDepth = dot(worldPosition - uLighting.cameraPosition.xyz, uLighting.cameraForward.xyz);
+    const int count = int(uLighting.shadowParams.y);
+    for (int i = 0; i < count; ++i)
+    {
+        if (viewDepth < uLighting.cascadeSplits[i])
+        {
+            return i;
+        }
+    }
+    return -1; // beyond the shadow distance
+}
+
+// Sun visibility 0 (shadowed) .. 1 (lit): cascade by view depth, normal offset against acne,
+// 3x3 PCF on top of the hardware 2x2 comparison, faded out over the last 10 % of the distance.
+float sunShadow(vec3 worldPosition, vec3 n)
+{
+    if (uLighting.shadowParams.x < 0.5)
+    {
+        return 1.0;
+    }
+    const int cascade = shadowCascade(worldPosition);
+    if (cascade < 0)
+    {
+        return 1.0;
+    }
+    const vec3 offsetPosition = worldPosition + n * uLighting.cascadeTexelSize[cascade] * uLighting.shadowParams.w;
+    const vec4 clip = uLighting.cascadeViewProjection[cascade] * vec4(offsetPosition, 1.0);
+    const vec3 ndc = clip.xyz / clip.w;
+    const vec2 uv = ndc.xy * 0.5 + 0.5;
+    if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0))) || ndc.z > 1.0)
+    {
+        return 1.0;
+    }
+    const vec4 rect = uLighting.cascadeRects[cascade];
+    const float texel = uLighting.shadowExtra.y;
+    // Keep the kernel inside the tile so neighbouring cascades never bleed in.
+    const vec2 atlasUv = clamp(rect.xy + uv * rect.zw, rect.xy + 1.5 * texel, rect.xy + rect.zw - 1.5 * texel);
+    float lit = 0.0;
+    for (int y = -1; y <= 1; ++y)
+    {
+        for (int x = -1; x <= 1; ++x)
+        {
+            lit += texture(uShadowAtlas, vec3(atlasUv + vec2(x, y) * texel, ndc.z));
+        }
+    }
+    lit /= 9.0;
+    const float viewDepth = dot(worldPosition - uLighting.cameraPosition.xyz, uLighting.cameraForward.xyz);
+    const float fade = smoothstep(uLighting.shadowParams.z * 0.9, uLighting.shadowParams.z, viewDepth);
+    return mix(lit, 1.0, fade);
+}
+
+// Debug colour per cascade (shadow_debug), white outside the shadow distance.
+vec3 shadowDebugTint(vec3 worldPosition)
+{
+    if (uLighting.shadowExtra.x < 0.5 || uLighting.shadowParams.x < 0.5)
+    {
+        return vec3(1.0);
+    }
+    const vec3 colours[4] = vec3[4](vec3(1.0, 0.4, 0.4), vec3(0.4, 1.0, 0.4), vec3(0.4, 0.4, 1.0), vec3(1.0, 1.0, 0.4));
+    const int cascade = shadowCascade(worldPosition);
+    return cascade < 0 ? vec3(1.0) : colours[cascade];
+}
+
 // Incoming light (to be multiplied by the albedo) at a surface point with normal n.
 vec3 incomingLight(vec3 worldPosition, vec3 n)
 {
     vec3 light = mix(uLighting.ambientGround.rgb, uLighting.ambientSky.rgb, n.y * 0.5 + 0.5);
-    light += uLighting.sunColor.rgb * max(dot(n, uLighting.sunDirection.xyz), 0.0);
+    light += uLighting.sunColor.rgb * max(dot(n, uLighting.sunDirection.xyz), 0.0) * sunShadow(worldPosition, n);
     for (int i = 0; i < uLightCount; ++i)
     {
         const int index = uLightIndices[i];

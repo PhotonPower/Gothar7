@@ -220,6 +220,7 @@ Result<Pipeline> Device::createPipeline(const PipelineDesc& desc)
     pipeline.m_depthWrite = desc.depthWrite;
     pipeline.m_depthCompare = desc.depthCompare;
     pipeline.m_blend = desc.blend;
+    pipeline.m_depthBias = desc.depthBias;
     return pipeline;
 }
 
@@ -284,6 +285,7 @@ Result<Framebuffer> Device::createFramebuffer(const FramebufferDesc& desc)
     {
         return Error{"framebuffer incomplete (status 0x" + std::format("{:04X}", status) + ")"};
     }
+    framebuffer.m_hasStencil = desc.depth && hasStencil(desc.depth->desc().format);
     framebuffer.m_width = width;
     framebuffer.m_height = height;
     return framebuffer;

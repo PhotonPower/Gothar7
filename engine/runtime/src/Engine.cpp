@@ -1,6 +1,7 @@
 #include <g7/ai/Ai.hpp>
 #include <g7/animation/Animation.hpp>
 #include <g7/asset/Asset.hpp>
+#include <g7/asset/Procedural.hpp>
 #include <g7/audio/Audio.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Log.hpp>
@@ -16,6 +17,8 @@
 #include <g7/script/Script.hpp>
 #include <g7/ui/Ui.hpp>
 #include <g7/world/World.hpp>
+
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <algorithm>
 #include <array>
@@ -239,7 +242,7 @@ bool Engine::runFrame()
             m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
             m_device->bindPipeline(m_backgroundPipeline);
             m_device->draw(3); // fullscreen triangle from gl_VertexID
-            drawViewMesh();
+            drawViewMesh(size.width, size.height);
             m_glContext->swapBuffers();
         }
     }
@@ -314,8 +317,23 @@ Result<void> Engine::initViewMesh()
     }
     m_viewMaterials = std::move(materials).value();
 
+    // Sun shadows (render.md): [render] shadow_* with the defaults 4 x 2048², 150 m.
+    render::ShadowSettings shadows;
+    shadows.cascades =
+        static_cast<u32>(std::clamp<i64>(m_config.settings.get<i64>("render.shadow_cascades", 4), 1, 4));
+    shadows.resolution = static_cast<u32>(
+        std::clamp<i64>(m_config.settings.get<i64>("render.shadow_resolution", 2048), 256, 8192));
+    shadows.distance = static_cast<f32>(m_config.settings.get<f64>("render.shadow_distance", 150.0));
+    m_shadowDebug = m_config.settings.get<bool>("render.shadow_debug", false);
+    auto shadowMap = render::ShadowMap::create(*m_device, shadows);
+    if (!shadowMap)
+    {
+        return Error{"cannot create shadow map: " + shadowMap.error().message};
+    }
+    m_shadowMap = std::move(shadowMap).value();
+
     const auto anisotropy = static_cast<f32>(m_config.settings.get<f64>("render.anisotropy", 8.0));
-    auto renderer = render::MeshRenderer::create(*m_device, *m_shaders, anisotropy);
+    auto renderer = render::MeshRenderer::create(*m_device, *m_shaders, anisotropy, shadows);
     if (!renderer)
     {
         return Error{"cannot create mesh renderer: " + renderer.error().message};
@@ -325,6 +343,21 @@ Result<void> Engine::initViewMesh()
     // Frame the model: look at its centre from the front-right, at 2.5x its radius.
     const AABB& bounds = m_viewMesh.bounds();
     const f32 radius = std::max(glm::length(bounds.extents()), 0.5f);
+
+    if (m_config.ground)
+    {
+        // Ground plate under the model (it receives the shadows), 1 m texture tiles.
+        const asset::MeshData plane =
+            asset::makePlane(std::max(radius * 8.0f, 20.0f), 1.0f, Vec4(0.45f, 0.42f, 0.36f, 1.0f));
+        auto ground = render::Mesh::create(*m_device, plane);
+        auto groundMaterials = render::MaterialSet::create(*m_device, plane, {});
+        if (!ground || !groundMaterials)
+        {
+            return Error{"cannot create ground plate"};
+        }
+        m_ground = std::move(ground).value();
+        m_groundMaterials = std::move(groundMaterials).value();
+    }
 
     // Low warm evening sun and cool ambient, matching the dusk background until the sky (M4). A
     // warm "torch" above the front-right of the model shows the point lights.
@@ -348,13 +381,36 @@ Result<void> Engine::initViewMesh()
     return {};
 }
 
-void Engine::drawViewMesh()
+void Engine::drawViewMesh(u32 width, u32 height)
 {
     if (m_viewMesh.submeshes().empty())
     {
         return;
     }
-    m_meshRenderer.setLighting(*m_device, m_environment, m_lights);
+    // The ground plate sits at the model's lowest point.
+    const Mat4 groundModel = glm::translate(Mat4(1.0f), Vec3(0.0f, m_viewMesh.bounds().min.y, 0.0f));
+
+    // Shadow pass: the model into every cascade (the flat ground cannot shadow anything above it).
+    render::ShadowFrame shadowFrame;
+    if (m_environment.sunIntensity > 0.0f)
+    {
+        m_cascades = render::computeCascades(m_camera, m_environment.sunDirection, m_shadowMap.settings());
+        m_shadowMap.begin(*m_device);
+        for (u32 i = 0; i < m_cascades.size(); ++i)
+        {
+            m_shadowMap.beginCascade(*m_device, i);
+            m_meshRenderer.drawShadow(*m_device, m_viewMesh, m_viewMaterials, Mat4(1.0f), m_cascades[i]);
+        }
+        shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
+        m_device->bindFramebuffer(nullptr);
+        m_device->setViewport(0, 0, width, height);
+    }
+
+    m_meshRenderer.setLighting(*m_device, m_environment, m_lights, shadowFrame.map ? &shadowFrame : nullptr);
+    if (!m_ground.submeshes().empty())
+    {
+        m_meshRenderer.draw(*m_device, m_ground, m_groundMaterials, groundModel, m_camera);
+    }
     m_meshRenderer.draw(*m_device, m_viewMesh, m_viewMaterials, Mat4(1.0f), m_camera);
 }
 
@@ -411,6 +467,9 @@ void Engine::shutdown()
     // Shutdown in reverse init order.
     G7_LOG_INFO("engine", "shutdown");
     m_meshRenderer = {};
+    m_shadowMap = {};
+    m_groundMaterials = {};
+    m_ground = {};
     m_viewMaterials = {};
     m_viewMesh = {};
     m_backgroundPipeline = {};

@@ -125,6 +125,7 @@ private:
         bool depthWrite = true;
         rhi::CompareOp depthCompare = rhi::CompareOp::Less;
         rhi::BlendMode blend = rhi::BlendMode::Opaque;
+        rhi::DepthBias depthBias{};
         rhi::Topology topology = rhi::Topology::Triangles;
         rhi::IndexType indexType = rhi::IndexType::U32;
         std::array<BoundTexture, kMaxTextureUnits> textures{};
@@ -136,5 +137,6 @@ private:
     u32 m_debugErrors = 0;
     FrameStats m_stats;
     StateCache m_cache;
+    bool m_framebufferHasStencil = true; // the window framebuffer has 8 stencil bits
 };
 } // namespace g7::render

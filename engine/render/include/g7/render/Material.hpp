@@ -4,6 +4,7 @@
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/render/Lighting.hpp>
+#include <g7/render/Shadows.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
 #include <array>
@@ -49,6 +50,15 @@ private:
     std::vector<Material> m_materials;
 };
 
+/// Shadows of the current frame, handed to MeshRenderer::setLighting.
+struct ShadowFrame
+{
+    const ShadowMap* map = nullptr;
+    std::span<const Cascade> cascades;
+    const Camera* camera = nullptr; ///< the camera the cascades were computed for
+    bool debugColours = false;
+};
+
 /// Draws meshes with their materials: opaque and alpha-tested submeshes first, then translucent
 /// ones (alpha blend, no depth writes; not yet sorted – that comes with the render scene).
 class MeshRenderer
@@ -56,11 +66,19 @@ class MeshRenderer
 public:
     MeshRenderer() = default;
     /// Loads "mesh" and "mesh_alpha_test" from the library; `anisotropy` for the material sampler.
-    [[nodiscard]] static Result<MeshRenderer> create(Device& device, ShaderLibrary& shaders, f32 anisotropy);
+    /// Also loads "shadow" and "shadow_alpha_test" for the shadow pass (depth bias from `shadows`).
+    [[nodiscard]] static Result<MeshRenderer> create(Device& device, ShaderLibrary& shaders, f32 anisotropy,
+                                                     const ShadowSettings& shadows = {});
 
     /// Uploads the frame's lighting (environment + all point lights). Call once per frame before
     /// draw(); `lights` must stay alive until the frame's draws are done.
-    void setLighting(Device& device, const Environment& environment, const LightList& lights);
+    void setLighting(Device& device, const Environment& environment, const LightList& lights,
+                     const ShadowFrame* shadows = nullptr);
+
+    /// Renders a mesh's depth into the current shadow cascade (after ShadowMap::beginCascade).
+    /// Translucent submeshes cast no shadow; alpha-tested ones cast holed shadows.
+    void drawShadow(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
+                    const Cascade& cascade);
 
     /// Draws with the lighting set by setLighting(); each object gets the (at most 8) point lights
     /// that reach its world bounds.
@@ -84,6 +102,10 @@ private:
     std::array<rhi::Pipeline, VariantCount * 2> m_pipelines; // [variant][culled, double-sided]
     rhi::Sampler m_sampler;
     rhi::Buffer m_lightingBuffer; // GpuLighting, uniform block binding 0
+    rhi::ShaderProgram* m_shadowProgram = nullptr;
+    rhi::ShaderProgram* m_shadowAlphaTestProgram = nullptr;
+    std::array<rhi::Pipeline, 2> m_shadowPipelines; // [opaque, alpha test]
+    const ShadowMap* m_shadowMap = nullptr;
     const LightList* m_lights = nullptr;
     std::vector<u32> m_selected;
 };

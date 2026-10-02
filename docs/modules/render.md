@@ -181,6 +181,31 @@ struct GpuLighting; GpuLighting packLighting(const Environment&, const LightList
 - Flackern von Fackeln ist Welt-/Spiellogik (ändert Lichtwerte pro Frame), kommt mit den Vobs (M4).
 - Ohne `setLighting` gilt neutrales Licht (weißes Ambient, keine Sonne).
 
+### Schatten – `Shadows.hpp`, `shadow.vert/.frag`
+```cpp
+struct ShadowSettings { u32 cascades = 4, resolution = 2048; f32 distance = 150, splitLambda = 0.75f,
+                        casterExtension = 200, depthBias = 1, slopeBias = 2, normalOffset = 1.5f; };
+struct Cascade { Mat4 viewProjection; f32 splitNear, splitFar, texelWorldSize; Vec4 atlasRect; };
+std::vector<f32> cascadeSplits(near, distance, cascades, lambda);
+std::vector<Cascade> computeCascades(const Camera&, const Vec3& sunDirection, const ShadowSettings&);
+class ShadowMap { static Result<ShadowMap> create(Device&, const ShadowSettings&);
+                  void begin(Device&); void beginCascade(Device&, u32 index) const; };
+// MeshRenderer: drawShadow(Device&, mesh, materials, model, cascade); setLighting(..., const ShadowFrame*)
+```
+- **Cascaded Shadow Maps für die Sonne**, alle Kaskaden in **einem Tiefen-Atlas** (2×2 Kacheln, `Depth32F`,
+  Standard 4 × 2048² = 64 MB), Schattentiefe nicht umgekehrt (0 = zur Sonne hin).
+- **Aufteilung** praktisches Schema (λ = 0,75 zwischen logarithmisch und gleichmäßig) bis `distance`
+  (Standard 150 m), Ausblenden über die letzten 10 %.
+- **Kein Flimmern:** jede Kaskade umschließt ihren Frustum-Abschnitt mit einer Kugel (Größe unabhängig von der
+  Kameradrehung), die Lichtmatrix ist auf ganze Texel ausgerichtet; die Lichtbox reicht `casterExtension` Meter
+  zur Sonne, damit auch Werfer hinter der Kamera Schatten ins Bild werfen.
+- **Gegen Akne:** Polygon-Offset im Schattenpass (`rhi::PipelineDesc::depthBias`, konstant + neigungsabhängig) und
+  Normal-Offset beim Abtasten (in Schatten-Texeln der Kaskade); 3×3-PCF über Hardware-Vergleich
+  (`sampler2DShadow`, Einheit 3), Kernel bleibt in seiner Kachel.
+- Alpha-getestete Materialien werfen löchrige Schatten (gleiche Alpha-Test-Variante); transparente werfen keine.
+- Konfiguration `[render] shadow_cascades`, `shadow_resolution`, `shadow_distance`, `shadow_debug` (Kaskaden einfärben).
+- Schatten von Punktlichtern: nicht vorgesehen (Stil: Fackeln ohne Schatten), bei Bedarf später.
+
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →
 `ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf nach
@@ -189,6 +214,7 @@ Platzhalter für den Himmel in M4), dann Puffertausch. `--no-render` startet ein
 **Modell ansehen:** `--view-mesh=<pfad.gltf>` lädt ein glTF samt Materialien (`MaterialSet` + `MeshRenderer`),
 zeigt es am Ursprung und richtet die Debug-Kamera so aus, dass das Modell im Bild ist (Fluggeschwindigkeit nach
 Modellgröße).
+Das Modell steht auf einer Bodenplatte (`asset::makePlane`, `--no-ground` lässt sie weg), die seine Schatten zeigt.
 Beleuchtung dabei: tiefe warme Abendsonne, kühles Ambient und eine warme Test-„Fackel“ über dem Modell;
 `--no-sun` schaltet die Sonne ab, um das Punktlicht allein zu beurteilen.
 **Debug-Kamera:** `engine.camera()`, gesteuert über die Aktionen (Lauf-/Dreh-Aktionen, `jump`/`sneak` hoch/runter,
