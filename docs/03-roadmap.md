@@ -90,9 +90,9 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 - [x] Asset-Handles (typisiert, referenzgezählt), Cache, asynchrones Laden auf Worker-Threads – `AssetManager` im Modul asset
 - [x] Engine-Anbindung: `Vfs` + `AssetManager` in `Engine`, Mounts aus `engine.toml`, Meshes/Bilder über Handles bzw. VFS (`[assets]`, `G7_DEV_ASSETS`, `local/` für Dateien außerhalb)
 - [x] Hot-Reload für Texturen, Shader, Skripte im Entwicklungsmodus (Texturen/Modelle über `AssetManager::checkForChanges`, `[assets] hot_reload`; Shader seit M2; Skripte nutzen ab M7 dieselben Handles)
-- [ ] `g7-cook`: glTF → Laufzeit-Mesh/Skelett/Animation, PNG → KTX2 (BC7/BC5), OGG bleibt, Archiv packen; Laufzeit lädt KTX2 (libktx, aus M2 verschoben – ADR 0014)
-  - Stand: ADR 0016 (KTX2/UASTC, zstd, `.g7mesh`) akzeptiert; `g7-cook` kocht glTF → `.g7mesh`, Bilder mit `--textures ktx2` → KTX2 (UASTC + zstd, Mips, Normal-Maps erkannt) und packt `.g7pak` v2 mit zstd pro Eintrag; `asset` liest KTX2 als `TextureData` (BC7/BC5). Offen: Upload von BC7/BC5 in `render` (dann KTX2 als Vorgabe), Skelett/Animation (M6)
-- [ ] Asset-Manifest mit Abhängigkeiten und Hashes (inkrementelles Kochen)
+- [x] `g7-cook`: glTF → Laufzeit-Mesh/Skelett/Animation, PNG → KTX2 (BC7/BC5), OGG bleibt, Archiv packen; Laufzeit lädt KTX2 (libktx, aus M2 verschoben – ADR 0014)
+  - ADR 0016: glTF → `.g7mesh`, Bilder → KTX2 (UASTC + zstd, Mips, Normal-Maps erkannt; Vorgabe von `g7-cook`), `.g7pak` v2 mit zstd; `asset` liest KTX2 als `TextureData`, `render` lädt BC7/BC5 hoch. Skelett/Animation folgen mit M6 (Spur F/M6)
+- [x] Asset-Manifest mit Abhängigkeiten und Hashes (inkrementelles Kochen) – `<out>/.g7cook/manifest.txt`, `--full`
 
 **DoD:** Spiel lädt ausschließlich aus `assets/cooked`, Änderung einer Textur wird ohne Neustart sichtbar.
 
