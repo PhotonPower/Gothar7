@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M0** abgeschlossen (CI grün auf Windows + Linux, core-Testabdeckung 89 %). Nächste Phase: **M1** (Plattform & Hauptschleife).
+**Aktueller Stand:** Phase **M1** (Plattform & Hauptschleife) – SDL3-Fenster (Größe, Vollbild, Schließen) steht; Eingabe, Aktions-Mapping, VSync/Frame-Limit, Zeitskalierung offen. M0 abgeschlossen (core-Testabdeckung 89 %).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -48,7 +48,7 @@ Windows und Linux grün; core hat > 80 % Testabdeckung seiner Logik.
 ✅ Erfüllt: CI grün auf Windows + Linux; core-Zeilenabdeckung 89 % (CI-Job `coverage`, gcovr).
 
 ## M1 – Plattform & Hauptschleife
-- [ ] SDL3 einbinden (vcpkg), Fenster erzeugen, Größenänderung, Vollbild
+- [x] SDL3 einbinden (vcpkg), Fenster erzeugen, Größenänderung, Vollbild
 - [ ] Eingabe: Tastatur, Maus (relativ für Kamera), Gamepad
 - [ ] **Aktions-Mapping** (Aktion „Vorwärts“, „Aktion“, „Waffe ziehen“ … → Tasten), aus Konfiguration
 - [ ] Hauptschleife in `Engine::run` mit Event-Polling, Fenster-Schließen, VSync/Frame-Limit

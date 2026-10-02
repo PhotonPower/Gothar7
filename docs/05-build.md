@@ -5,6 +5,9 @@
 - Compiler: **Windows**: Visual Studio 2022 (MSVC 19.38+) · **Linux**: GCC 13+ oder Clang 17+
 - **vcpkg** (Manifest-Modus) mit gesetzter Umgebungsvariable `VCPKG_ROOT`
 - Grafiktreiber mit OpenGL 4.6 (ab M2)
+- **Linux**: Entwicklungspakete für SDL3 (X11/Wayland), z. B. unter Ubuntu:
+  `sudo apt install pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev`
+  (dieselbe Liste wie in `.github/workflows/ci.yml`)
 
 ### vcpkg einrichten (einmalig)
 ```bash
@@ -57,6 +60,8 @@ Ohne vcpkg (nur Kern, ohne Tests): `cmake --preset nodeps && cmake --build --pre
 |---|---|
 | `--verbose` | Log-Level Debug |
 | `--smoke-test` | 10 Frames headless, dann Ende (CI) |
+| `--frames=N` | nach N Frames beenden (auch mit Fenster; CI mit `SDL_VIDEO_DRIVER=offscreen`) |
+| `--fullscreen` | randloses Vollbild in Desktop-Auflösung |
 | `--editor` | Editor-Modus (ab M4) |
 | `--world=<name>` | Startwelt (ab M4) |
 

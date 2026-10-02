@@ -52,6 +52,20 @@ Result<void> Engine::init()
         G7_LOG_DEBUG("engine", "module '{}' registered (stub)", name);
     }
 
+    if (!m_config.headless)
+    {
+        auto window = platform::Window::create(m_config.window);
+        if (!window)
+        {
+            return Error{"cannot create window: " + window.error().message};
+        }
+        m_window = std::move(window).value();
+    }
+    else
+    {
+        G7_LOG_INFO("engine", "headless mode (no window)");
+    }
+
     m_initialized = true;
     return {};
 }
@@ -74,7 +88,21 @@ int Engine::run()
         const f64 frameSeconds = frameTimer.elapsedSeconds();
         frameTimer.reset();
 
-        // TODO(M1): platform.pollEvents() -> input actions, window close -> requestQuit()
+        // TODO(M1): input actions from events
+        if (m_window)
+        {
+            if (!m_window->pollEvents())
+            {
+                G7_LOG_INFO("engine", "quit requested by window");
+                requestQuit();
+            }
+            else if (m_window->resizedSinceLastPoll())
+            {
+                const auto size = m_window->pixelSize();
+                G7_LOG_DEBUG("engine", "window resized to {}x{} px", size.width, size.height);
+            }
+        }
+
         const u32 steps = fixedStep.advance(frameSeconds);
         for (u32 i = 0; i < steps; ++i)
         {
@@ -106,6 +134,7 @@ void Engine::shutdown()
     }
     // Shutdown in reverse init order.
     G7_LOG_INFO("engine", "shutdown");
+    m_window.reset();
     m_initialized = false;
 }
 } // namespace g7

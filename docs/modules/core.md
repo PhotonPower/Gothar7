@@ -17,8 +17,9 @@
   - `fromUtf8`/`toUtf8`: Pfade an der API sind UTF-8 (unter Windows sonst ANSI-Codepage)
   - `BaseDirectories{gameDir, userDir}` als dokumentiertes Subsystem-Singleton (`setBaseDirectories`
     beim Start), `gamePath("assets/...")`, `userPath("saves/...")`.
-    In M0 setzt `game/src/main.cpp` `gameDir` = Verzeichnis der Executable, `userDir` = `gameDir/userdata`.
-    Ab M1 setzt `platform` das Benutzerverzeichnis über `SDL_GetPrefPath`, weil OS-Aufrufe nicht in core gehören.
+    `game/src/main.cpp` setzt `gameDir` = Verzeichnis der Executable und `userDir` =
+    `platform::userDataDirectory("Gothar", "Gothar")` (SDL_GetPrefPath; Rückfall `gameDir/userdata`) –
+    OS-Aufrufe gehören nicht in core.
   - Fehler als `Result` mit Pfad und Ursache in der Meldung; keine Exceptions.
 - `Math.hpp` – glm (ADR 0002, öffentliche Abhängigkeit) hinter Aliassen:
   - `Vec2/3/4`, `IVec2/3`, `Quat`, `Mat3`, `Mat4`; Standardkonstruktion = 0 bzw. Identität (`GLM_FORCE_CTOR_INIT`)

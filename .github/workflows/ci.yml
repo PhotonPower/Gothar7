@@ -35,9 +35,10 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Install Ninja (Linux)
+      # SDL3 (ADR 0011) needs X11/Wayland development packages to build on Linux.
+      - name: Install Ninja and SDL3 build dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build
+        run: sudo apt-get update && sudo apt-get install -y ninja-build pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev
 
       - name: Configure
         run: cmake --preset debug
@@ -51,6 +52,12 @@ jobs:
       - name: Smoke test
         shell: bash
         run: ./build/debug/game/gothar --smoke-test
+
+      - name: Smoke test with window (offscreen video driver)
+        shell: bash
+        env:
+          SDL_VIDEO_DRIVER: offscreen
+        run: ./build/debug/game/gothar --frames=10
 
   # Test coverage of core (M0 DoD: > 80 % lines). Fails below the threshold.
   coverage:
@@ -73,9 +80,9 @@ jobs:
           git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
           "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
 
-      - name: Install Ninja and gcovr
+      - name: Install Ninja, SDL3 build dependencies and gcovr
         run: |
-          sudo apt-get update && sudo apt-get install -y ninja-build
+          sudo apt-get update && sudo apt-get install -y ninja-build pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev
           pipx install gcovr
 
       - name: Configure

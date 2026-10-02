@@ -10,3 +10,7 @@ endfunction()
 
 g7_add_test_suite(core)
 g7_add_test_suite(runtime)
+g7_add_test_suite(platform)
+
+# Window tests run without a display (CI, headless machines): SDL's offscreen video driver.
+set_tests_properties(platform runtime PROPERTIES ENVIRONMENT "SDL_VIDEO_DRIVER=offscreen")
