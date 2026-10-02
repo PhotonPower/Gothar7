@@ -54,7 +54,7 @@ gothar-chargen export figur.blend --out figur.glb  & REM danach Kanäle bereinig
 gothar-chargen build-placeholder --sources C:\GotharData\characters\quaternius
                                               & REM Platzhalterfigur neu erzeugen
 gothar-chargen build-set all --sources C:\GotharData\characters\quaternius
-                                              & REM Animations-Sets aus data/clips/<set>.toml (none, swim, dive)
+                                              & REM Animations-Sets aus data/clips/<set>.toml (none, swim, dive, fist, 1h, 2h, bow, cbow, mag)
 gothar-chargen report                         & REM Prio-A-Fortschritt: animation-list.md ↔ anims/
 ```
 Exit-Code 0 = alles in Ordnung, 1 = Fehler.
@@ -68,7 +68,7 @@ Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 | `skin.*` | Knoten stehen in der Bind-Pose (inverse Bind-Matrizen), ≤ 4 Gewichte je Vertex, Summe 1, Sockets ohne Gewichte |
 | `mesh.*` | Größe 1,50–2,10 m (Warnung außerhalb 1,65–1,95 m), Füße auf dem Boden |
 | `morph.name` | nur Morph-Target-Namen aus characters-pipeline.md §6 |
-| `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung |
+| `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung; `anim.jump`: kein Sprung zwischen zwei Frames (Fehler ab 120°/0,5 m, Warnung ab 90°); `anim.loop`: Schleifen `s_*` geschlossen (Warnung ab 5°) |
 | `events.*` | `<set>.events.toml` neben der `.glb`: Format, Clips vorhanden, Frames im Clip (Schleifen `s_*`: vor dem letzten Frame) |
 
 ## Keyframe-Platzhalter
@@ -77,6 +77,12 @@ Clips ohne passende CC0-Quelle entstehen aus Rezepten in `blender/keyframes.py` 
 −Y = vorn, Z = oben), z. B. `"upperarm_l": [("Z", -90), ("X", -80)]` = Arm nach vorn, dann hoch. Sie sind bewusst
 grob und stehen in `animation-list.md` als `platzhalter-K`; F4 ersetzt sie durch Mocap. Hilfs-Clips
 (`helper = true`) werden nur zum Bauen benutzt und nicht exportiert.
+
+## Schichtung (Waffenmodi)
+`layer = ["none/s_walk", "1h/s_idle"]` nimmt Beine, Becken und Wirbelsäule aus dem ersten Clip und die Teilbäume
+von `from_bone` (Vorgabe `spine_02`; Waffenmodi: `["clavicle_l", "clavicle_r", "neck"]`) aus dem zweiten. Bei
+Schleifen wird die Haltung auf ganze Zyklen der Basis gestreckt, damit die Schleife nahtlos bleibt.
+`depends = ["none"]` macht die Clips eines anderen Sets verfügbar (sie werden im Speicher mitgebaut).
 
 ## Quaternius-Quellen (für `build-placeholder`/`build-set`)
 Die „Standard“-Pakete der Universal Animation Library 1 und 2 (CC0) liegen als ZIP direkt auf opengameart.org

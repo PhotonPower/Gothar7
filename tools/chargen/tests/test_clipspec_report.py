@@ -25,7 +25,7 @@ SOURCES = {"ual1": {"file": "a.glb", "mapping": "quaternius_ual1"}}
 
 
 def test_packaged_sets_are_valid():
-    assert packaged_sets() == ["dive", "none", "swim"]
+    assert packaged_sets() == ["1h", "2h", "bow", "cbow", "dive", "fist", "mag", "none", "swim"]
     for name in packaged_sets():
         spec = load_set_spec(name)
         assert spec.set == name
@@ -101,6 +101,55 @@ def test_keyframe_and_helper():
     assert (strafe.op, strafe.recipe, strafe.clips) == ("keyframe", "strafe", ("none/s_walk",))
     assert strafe.param == {"base": "none/s_walk", "side": "l", "yaw": 70}
     assert spec.clips[0].helper and not strafe.helper
+
+
+def test_layer_and_depends():
+    spec = parse_set_spec(
+        _spec(
+            {"name": "1h/s_idle", "from": "ual1:Sword_Idle"},
+            {"name": "1h/s_walk", "layer": ["none/s_walk", "1h/s_idle"]},
+            {
+                "name": "1h/s_run",
+                "layer": ["none/s_run", "1h/s_idle"],
+                "from_bone": ["clavicle_l", "clavicle_r", "neck"],
+            },
+            depends=["none"],
+        ),
+        external=frozenset({"none/s_walk", "none/s_run"}),
+    )
+    assert spec.depends == ("none",)
+    walk, run = spec.clips[1], spec.clips[2]
+    assert walk.op == "layer" and walk.bones == ("spine_02",)
+    assert run.bones == ("clavicle_l", "clavicle_r", "neck")
+    with pytest.raises(ClipSpecError, match="depends"):
+        parse_set_spec(_spec({"name": "1h/s_walk", "layer": ["none/s_walk", "none/s_walk"]}))
+    with pytest.raises(ClipSpecError, match="from_bone"):
+        parse_set_spec(
+            _spec({"name": "1h/s_a", "layer": ["none/s_x", "none/s_x"], "from_bone": []}),
+            external=frozenset({"none/s_x"}),
+        )
+
+
+def test_weapon_sets_depend_on_none():
+    for mode in ("fist", "1h", "2h", "bow", "cbow", "mag"):
+        spec = load_set_spec(mode)
+        assert spec.depends == ("none",)
+        assert len(spec.names) == 8
+        layered = [c for c in spec.clips if c.op == "layer" and not c.name.endswith("/s_idle")]
+        assert len(layered) == 7
+        assert all(c.bones == ("clavicle_l", "clavicle_r", "neck") for c in layered)
+
+
+def test_circular_depends(tmp_path, monkeypatch):
+    import gothar_chargen.clipspec as cs
+
+    data = {
+        "a": {"set": "a", "depends": ["b"], "clip": [{"name": "none/s_a", "keyframe": "slide"}]},
+        "b": {"set": "b", "depends": ["a"], "clip": [{"name": "none/s_b", "keyframe": "slide"}]},
+    }
+    monkeypatch.setattr(cs, "_read_spec_data", lambda name: data[str(name)])
+    with pytest.raises(ClipSpecError, match="circular"):
+        cs.load_set_spec("a")
 
 
 def test_recipes_match_blender_module():
@@ -211,7 +260,9 @@ def test_real_list_is_consistent_with_files():
     result = progress(ANIMATION_LIST.read_text(encoding="utf-8"), ANIMS)
     assert result.stale == []
     assert result.extra == []
-    assert len(result.listed) - len(result.missing) >= 18
+    assert result.missing == []
+    counts = list(result.section_counts().values())
+    assert counts == [(48, 48)]  # Prio-B locomotion per weapon mode
 
 
 LIST = """# Liste
@@ -224,9 +275,14 @@ LIST = """# Liste
 | `none/s_idle` | Stehen | offen |
 
 ## Prio B
+| Bereich | Muster |
+|---|---|
+| Kampf | `1h/t_attack…` |
+
+### Prio B – Fortbewegung
 | Name | Status |
 |---|---|
-| `none/s_ignored` | offen |
+| `1h/s_idle`, `s_walk` | platzhalter |
 """
 
 
@@ -234,15 +290,19 @@ def test_progress_with_synthetic_files(tmp_path, figure):
     add_clip(figure, "none/s_run", ["pelvis"])
     add_clip(figure, "none/t_run_stop", ["pelvis"])
     add_clip(figure, "none/s_extra", ["pelvis"])
+    add_clip(figure, "1h/s_idle", ["pelvis"])
     (tmp_path / "human").mkdir()
     (tmp_path / "human" / "none.glb").write_bytes(figure.to_bytes())
     (tmp_path / "human" / "broken.glb").write_bytes(b"nope")
     result = progress(LIST, tmp_path)
     assert result.missing == ["none/s_walk", "none/s_idle"]
-    assert len(result.stale) == 2  # walk: placeholder but missing; run row: offen but present
+    # stale: walk (placeholder, missing), run row (offen, present), 1h row (s_walk missing)
+    assert len(result.stale) == 3
     assert result.extra == ["none/s_extra"]
+    assert result.section_counts() == {"Prio B – Fortbewegung": (1, 2)}
     d = result.to_dict()
     assert d["prio_a"] == {"listed": 4, "present": 2}
+    assert d["sections"]["Prio B – Fortbewegung"] == {"present": 1, "listed": 2}
 
 
 @pytest.mark.parametrize(

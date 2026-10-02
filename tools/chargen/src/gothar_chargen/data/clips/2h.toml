@@ -1,0 +1,73 @@
+# Set "2h" -> assets/source/characters/anims/human/2h.glb (Prio B, placeholders)
+# Two-handed weapon: no CC0 source -> keyframe stance (platzhalter-K), hands together at the right hip.
+# Locomotion: arms and head from the stance, legs, pelvis and spine from the none clips
+# (keeps the spine counter-rotation of strafe/turn; the stance's spine posture is dropped).
+
+set = "2h"
+depends = ["none"]
+
+[sources.ual1]
+file = "AnimationLibrary_Godot_Standard.glb"
+mapping = "quaternius_ual1"
+
+[[clip]]
+name = "2h/s_stance"
+keyframe = "pose"
+helper = true
+
+[clip.params]
+frames = 60
+
+[clip.params.rotations]
+upperarm_r = [["Y", -70], ["Z", 30]]
+lowerarm_r = [["Z", 70]]
+upperarm_l = [["Y", 70], ["Z", -50]]
+lowerarm_l = [["Z", -80]]
+spine_02 = [["Z", 15]]
+head = [["Z", -10]]
+
+[[clip]]
+name = "2h/s_idle"
+layer = ["none/s_idle", "2h/s_stance"]
+
+[[clip]]
+name = "2h/s_walk"
+layer = ["none/s_walk", "2h/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "2h/s_run"
+layer = ["none/s_run", "2h/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "2h/s_walk_back"
+layer = ["none/s_walk_back", "2h/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "2h/s_strafe_l"
+layer = ["none/s_strafe_l", "2h/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "2h/s_strafe_r"
+layer = ["none/s_strafe_r", "2h/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "2h/t_turn_l"
+layer = ["none/t_turn_l", "2h/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "2h/t_turn_r"
+layer = ["none/t_turn_r", "2h/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"

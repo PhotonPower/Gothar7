@@ -208,6 +208,8 @@ def _cmd_report(args: argparse.Namespace, out: TextIO) -> int:
         print(f"Prio A: {listed - len(result.missing)}/{listed} clips present", file=out)
         if result.missing:
             print(f"  missing ({len(result.missing)}): {', '.join(result.missing)}", file=out)
+        for heading, (present, total) in result.section_counts().items():
+            print(f"{heading}: {present}/{total} clips present", file=out)
         for s in result.stale:
             print(f"  list out of date: {s}", file=out)
         if result.extra:
@@ -267,7 +269,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None, out: TextIO | None = None) -> int:
-    out = out or sys.stdout
+    if out is None:
+        out = sys.stdout
+        if hasattr(out, "reconfigure"):  # Windows consoles default to a legacy code page
+            out.reconfigure(encoding="utf-8", errors="replace")
     args = build_parser().parse_args(argv)
     try:
         return int(args.func(args, out))

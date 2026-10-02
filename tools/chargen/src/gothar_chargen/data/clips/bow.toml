@@ -1,0 +1,71 @@
+# Set "bow" -> assets/source/characters/anims/human/bow.glb (Prio B, placeholders)
+# Bow: no CC0 source -> keyframe stance (platzhalter-K), bow held low in the left hand.
+# Locomotion: arms and head from the stance, legs, pelvis and spine from the none clips
+# (keeps the spine counter-rotation of strafe/turn; the stance's spine posture is dropped).
+
+set = "bow"
+depends = ["none"]
+
+[sources.ual1]
+file = "AnimationLibrary_Godot_Standard.glb"
+mapping = "quaternius_ual1"
+
+[[clip]]
+name = "bow/s_stance"
+keyframe = "pose"
+helper = true
+
+[clip.params]
+frames = 60
+
+[clip.params.rotations]
+upperarm_l = [["Y", 60], ["Z", -35]]
+lowerarm_l = [["Z", -15]]
+upperarm_r = [["Y", -75]]
+lowerarm_r = [["Z", 15]]
+
+[[clip]]
+name = "bow/s_idle"
+layer = ["none/s_idle", "bow/s_stance"]
+
+[[clip]]
+name = "bow/s_walk"
+layer = ["none/s_walk", "bow/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "bow/s_run"
+layer = ["none/s_run", "bow/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "bow/s_walk_back"
+layer = ["none/s_walk_back", "bow/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "bow/s_strafe_l"
+layer = ["none/s_strafe_l", "bow/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "bow/s_strafe_r"
+layer = ["none/s_strafe_r", "bow/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "bow/t_turn_l"
+layer = ["none/t_turn_l", "bow/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "bow/t_turn_r"
+layer = ["none/t_turn_r", "bow/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"

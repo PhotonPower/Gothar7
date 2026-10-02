@@ -84,6 +84,22 @@ def test_compact_preserves_mesh_and_skin_data(figure):
     assert figure.doc["buffers"][0]["byteLength"] == len(figure.bin)
 
 
+def test_weapon_layers_have_no_seam_jumps():
+    """Layered clips: arms/head (from the stance) and the spine (from the base) move smoothly."""
+    seam = {"spine_01", "spine_02", "spine_03", "clavicle_l", "clavicle_r", "neck", "head"}
+    for mode in ("fist", "1h", "2h", "bow", "cbow", "mag"):
+        g = Gltf.load(ANIM_SET.parent / f"{mode}.glb")
+        for anim in g.doc["animations"]:
+            for ch in anim["channels"]:
+                name = g.doc["nodes"][ch["target"]["node"]]["name"]
+                if ch["target"]["path"] != "rotation" or name not in seam:
+                    continue
+                v = g.accessor(anim["samplers"][ch["sampler"]]["output"]).astype(float)
+                dots = np.abs(np.sum(v[1:] * v[:-1], axis=1)).clip(0, 1)
+                step = float(np.degrees(2 * np.arccos(dots)).max())
+                assert step < 15.0, f"{anim['name']} {name}: {step:.1f}° per frame"
+
+
 def test_committed_anim_sets_are_clean(rig, reference):
     for glb in sorted(ANIM_SET.parent.glob("*.glb")):
         g = Gltf.load(glb)

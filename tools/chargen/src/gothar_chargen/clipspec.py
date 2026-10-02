@@ -3,6 +3,7 @@
 Format::
 
     set = "none"                                  # -> anims/human/none.glb
+    depends = []                                  # other sets whose clips may be used here
 
     [sources.ual1]                                # source libraries (file name + bone mapping)
     file = "AnimationLibrary_Godot_Standard.glb"
@@ -36,6 +37,12 @@ Format::
     from = "ual1:Swim_Fwd_Loop"
     helper = true                                 # only used to build other clips, not exported
 
+    [[clip]]
+    name = "1h/s_walk"
+    layer = ["none/s_walk", "1h/s_idle"]          # legs from the first, upper body from the second
+    from_bone = ["clavicle_l", "clavicle_r", "neck"]  # optional: bone(s) whose subtrees come
+                                                      # from the second clip (default spine_02)
+
 Pure Python: parsed and checked here, executed by blender/build_set.py.
 """
 
@@ -63,7 +70,9 @@ RECIPES: dict[str, tuple[str, ...]] = {
     "yaw_wave": ("base",),
     "pitch": ("base",),
     "slide": (),
+    "pose": (),
 }
+DEFAULT_LAYER_BONE = "spine_02"
 _SOURCE_REF = re.compile(
     r"^(?P<lib>[a-z0-9_]+):(?P<action>[^\[\]]+)(?:\[(?P<a>\d+):(?P<b>\d+)\])?$"
 )
@@ -95,6 +104,7 @@ class ClipSpec:
     clips: tuple[str, ...] = ()  # for "reverse" / "blend": earlier clips of the set
     frames: int = 0  # for "blend"
     events: str | None = None
+    bones: tuple[str, ...] = ()  # for "layer": bones whose subtrees come from the second clip
     recipe: str = ""  # for "keyframe"
     params: tuple[tuple[str, object], ...] = ()  # for "keyframe" (sorted key/value pairs)
     helper: bool = False  # built for other clips only, not exported
@@ -109,6 +119,7 @@ class SetSpec:
     set: str
     sources: dict[str, Source]
     clips: tuple[ClipSpec, ...]
+    depends: tuple[str, ...] = ()
 
     @property
     def names(self) -> list[str]:
@@ -129,7 +140,8 @@ def parse_source_ref(text: str, libraries: dict[str, Source]) -> SourceRef:
     return SourceRef(m["lib"], m["action"], start, end)
 
 
-def parse_set_spec(data: dict) -> SetSpec:
+def parse_set_spec(data: dict, external: frozenset[str] = frozenset()) -> SetSpec:
+    """Parses a clip list; `external` are clip names provided by the sets in `depends`."""
     set_name = data.get("set")
     if not isinstance(set_name, str) or not set_name:
         raise ClipSpecError("missing 'set'")
@@ -139,6 +151,9 @@ def parse_set_spec(data: dict) -> SetSpec:
             raise ClipSpecError(f"source '{key}': needs 'file' and 'mapping'")
         sources[key] = Source(str(value["file"]), str(value["mapping"]))
 
+    depends = data.get("depends", [])
+    if not isinstance(depends, list) or not all(isinstance(d, str) for d in depends):
+        raise ClipSpecError("depends must be a list of set names")
     clips: list[ClipSpec] = []
     seen: set[str] = set()
     for i, raw in enumerate(data.get("clip", [])):
@@ -148,17 +163,21 @@ def parse_set_spec(data: dict) -> SetSpec:
             raise ClipSpecError(f"{where}: invalid clip name")
         if name in seen:
             raise ClipSpecError(f"{where}: duplicate")
-        ops = [k for k in ("from", "reverse", "blend", "concat", "keyframe") if k in raw]
+        ops = [k for k in ("from", "reverse", "blend", "concat", "keyframe", "layer") if k in raw]
         if len(ops) != 1:
-            raise ClipSpecError(f"{where}: needs exactly one of from/reverse/blend/concat/keyframe")
+            raise ClipSpecError(
+                f"{where}: needs exactly one of from/reverse/blend/concat/keyframe/layer"
+            )
         op = ops[0]
         events = raw.get("events")
         if events is not None and events not in EVENT_KINDS:
             raise ClipSpecError(f"{where}: events must be one of {EVENT_KINDS}")
 
         def earlier(ref: object, where: str = where) -> str:
-            if not isinstance(ref, str) or ref not in seen:
-                raise ClipSpecError(f"{where}: '{ref}' is not an earlier clip of this set")
+            if not isinstance(ref, str) or (ref not in seen and ref not in external):
+                raise ClipSpecError(
+                    f"{where}: '{ref}' is neither an earlier clip of this set nor in 'depends'"
+                )
             return ref
 
         if op == "from":
@@ -170,6 +189,21 @@ def parse_set_spec(data: dict) -> SetSpec:
             spec = ClipSpec(name, op, sources=tuple(parse_source_ref(r, sources) for r in refs))
         elif op == "reverse":
             spec = ClipSpec(name, op, clips=(earlier(raw["reverse"]),))
+        elif op == "layer":
+            pair = raw["layer"]
+            if not isinstance(pair, list) or len(pair) != 2:
+                raise ClipSpecError(f"{where}: layer needs [base_clip, upper_clip]")
+            bones = raw.get("from_bone", DEFAULT_LAYER_BONE)
+            bones = [bones] if isinstance(bones, str) else bones
+            if (
+                not isinstance(bones, list)
+                or not bones
+                or not all(isinstance(b, str) for b in bones)
+            ):
+                raise ClipSpecError(f"{where}: from_bone must be a bone name or a list of them")
+            spec = ClipSpec(
+                name, op, clips=(earlier(pair[0]), earlier(pair[1])), bones=tuple(bones)
+            )
         elif op == "keyframe":
             recipe = raw["keyframe"]
             if recipe not in RECIPES:
@@ -196,11 +230,10 @@ def parse_set_spec(data: dict) -> SetSpec:
         seen.add(name)
     if not clips:
         raise ClipSpecError("no clips")
-    return SetSpec(set_name, sources, tuple(clips))
+    return SetSpec(set_name, sources, tuple(clips), tuple(depends))
 
 
-def load_set_spec(name_or_path: str | Path) -> SetSpec:
-    """Loads a packaged clip list by set name (e.g. ``none``) or a .toml file."""
+def _read_spec_data(name_or_path: str | Path) -> dict:
     path = Path(name_or_path)
     if path.suffix == ".toml":
         text = path.read_text(encoding="utf-8")
@@ -210,9 +243,33 @@ def load_set_spec(name_or_path: str | Path) -> SetSpec:
             raise ClipSpecError(f"unknown clip list '{name_or_path}'")
         text = res.read_text(encoding="utf-8")
     try:
-        return parse_set_spec(tomllib.loads(text))
+        return tomllib.loads(text)
     except tomllib.TOMLDecodeError as e:
         raise ClipSpecError(str(e)) from e
+
+
+def load_set_spec(name_or_path: str | Path, _chain: tuple[str, ...] = ()) -> SetSpec:
+    """Loads a packaged clip list by set name (e.g. ``none``) or a .toml file.
+
+    Sets in ``depends`` are loaded too (packaged lists only) so their clip names can be used.
+    """
+    data = _read_spec_data(name_or_path)
+    external: set[str] = set()
+    for dep in data.get("depends", []) if isinstance(data.get("depends"), list) else []:
+        if dep in _chain or dep == data.get("set"):
+            raise ClipSpecError(f"circular depends: {' -> '.join((*_chain, dep))}")
+        dep_spec = load_set_spec(dep, (*_chain, str(data.get("set"))))
+        external |= {c.name for c in dep_spec.clips} | dependency_names(dep_spec)
+    return parse_set_spec(data, frozenset(external))
+
+
+def dependency_names(spec: SetSpec) -> set[str]:
+    """All clip names (incl. helpers) of the sets a spec depends on, recursively."""
+    names: set[str] = set()
+    for dep in spec.depends:
+        dep_spec = load_set_spec(dep)
+        names |= {c.name for c in dep_spec.clips} | dependency_names(dep_spec)
+    return names
 
 
 def packaged_sets() -> list[str]:

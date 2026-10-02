@@ -269,6 +269,54 @@ def test_badly_named_and_duplicate_clips(figure, rig, reference):
     assert any("duplicate" in m for m in messages)
 
 
+def _set_rotation_keys(g: Gltf, clip: str, keys: list[list[float]]) -> None:
+    """Replaces the rotation keys of the clip's first channel (and its times) with `keys`."""
+    from conftest import append_accessor
+
+    anim = next(a for a in g.doc["animations"] if a["name"] == clip)
+    sampler = anim["samplers"][anim["channels"][0]["sampler"]]
+    sampler["input"] = append_accessor(g, np.arange(len(keys), dtype=np.float32) / 30.0, "SCALAR")
+    sampler["output"] = append_accessor(g, np.array(keys, dtype=np.float32), "VEC4")
+
+
+def _quat_z(degrees: float) -> list[float]:
+    h = np.radians(degrees) / 2
+    return [0.0, 0.0, float(np.sin(h)), float(np.cos(h))]
+
+
+@pytest.mark.parametrize(
+    ("clip", "angles", "error", "warning"),
+    [
+        ("none/t_jump_start", [0, 10, 20, 30], set(), set()),
+        ("none/t_jump_start", [0, 10, 150, 160], {"anim.jump"}, set()),  # 130° in one frame
+        ("none/t_jump_start", [0, 100, 110], set(), {"anim.jump"}),  # 100°: very fast
+        ("none/s_walk", [0, 10, 20, 10, 0], set(), set()),  # closed loop
+        ("none/s_walk", [0, 10, 20, 30], set(), {"anim.loop"}),  # 30° open
+        ("none/t_walk_2_run", [0, 10, 20, 30], set(), set()),  # not a loop
+    ],
+)
+def test_motion_checks(figure, rig, reference, clip, angles, error, warning):
+    add_clip(figure, clip, ["pelvis"])
+    _set_rotation_keys(figure, clip, [_quat_z(a) for a in angles])
+    report = check(figure, rig, reference)
+    assert codes(report) == error
+    assert codes(report, "warning") == warning
+
+
+def test_translation_jump(figure, rig, reference):
+    from conftest import append_accessor
+
+    add_clip(figure, "none/s_walk", ["pelvis"])
+    anim = figure.doc["animations"][0]
+    times = append_accessor(figure, np.array([0.0, 1 / 30, 2 / 30]), "SCALAR")
+    values = append_accessor(figure, np.array([[0, 0.9, 0], [0, 0.9, 0], [0, 1.9, 0]]), "VEC3")
+    anim["samplers"].append({"input": times, "output": values})
+    anim["channels"].append(
+        {"sampler": 1, "target": {"node": node_index(figure, "pelvis"), "path": "translation"}}
+    )
+    assert "anim.jump" in codes(check(figure, rig, reference))
+
+
 def test_clip_animating_foreign_node(figure, rig, reference):
     add_clip(figure, "none/s_idle", ["mannequin"])
     assert codes(check(figure, rig, reference)) == {"anim.target"}

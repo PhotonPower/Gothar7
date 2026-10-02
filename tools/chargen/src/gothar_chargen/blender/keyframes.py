@@ -29,6 +29,13 @@ class RigInfo:
     def __init__(self, arm: bpy.types.Object) -> None:
         self.bones = [b.name for b in arm.data.bones]
         self.rest = {b.name: b.matrix_local.to_quaternion() for b in arm.data.bones}
+        self._children = {b.name: [c.name for c in b.children_recursive] for b in arm.data.bones}
+
+    def subtree(self, bone: str) -> set[str]:
+        """`bone` and all bones below it."""
+        if bone not in self._children:
+            raise ValueError(f"unknown bone '{bone}'")
+        return {bone, *self._children[bone]}
 
     def offset(self, bone: str, axis: str, degrees: float) -> Quaternion:
         """World-axis rotation (at rest) as a pose-channel offset of `bone`."""
@@ -289,6 +296,32 @@ def slide(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
     return to_curves(poses)
 
 
+# --- static poses from data ---------------------------------------------------------------------
+
+
+def pose(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
+    """Static pose from `rotations` (bone -> [[axis, degrees], ...]) with slight breathing.
+
+    Meant as the upper body of a weapon stance, layered over idle legs.
+    """
+    raw = params.get("rotations")
+    if not isinstance(raw, dict):
+        raise ValueError("pose needs a 'rotations' table")
+    rotations: Rotations = {}
+    for bone, rots in raw.items():
+        if bone not in rig.rest:
+            raise ValueError(f"pose: unknown bone '{bone}'")
+        rotations[bone] = [(str(a), float(d)) for a, d in rots]
+    frames = int(params.get("frames", 60))
+    breathe = float(params.get("breathe", 1.5))
+    poses = []
+    for frame in range(frames + 1):
+        current = rig.pose_from(rotations)
+        rig.rotate(current, "spine_02", [("X", breathe * math.sin(2 * math.pi * frame / frames))])
+        poses.append(current)
+    return to_curves(poses)
+
+
 RECIPES: dict[str, Callable[[RigInfo, dict, dict[str, Curves]], Curves]] = {
     "strafe": strafe,
     "turn": turn,
@@ -299,4 +332,5 @@ RECIPES: dict[str, Callable[[RigInfo, dict, dict[str, Curves]], Curves]] = {
     "yaw_wave": yaw_wave,
     "pitch": pitch,
     "slide": slide,
+    "pose": pose,
 }
