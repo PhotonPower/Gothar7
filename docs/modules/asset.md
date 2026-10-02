@@ -4,14 +4,24 @@
 
 ## Bestand (M2)
 
+### `ImageData.hpp` – Bilder (ADR 0014, stb_image privat)
+```cpp
+struct ImageData { u32 width, height; std::vector<u8> rgba8; };   // immer RGBA8, erste Zeile = oben
+Result<ImageData> decodeImage(std::span<const u8> bytes, std::string_view debugName = "<memory>");  // PNG/JPEG/TGA/BMP
+Result<ImageData> loadImage(const fs::Path&);
+```
+- Grau/RGB werden zu RGBA erweitert; Zeilen in Dateireihenfolge (passt zur glTF-UV-Konvention v = 0 oben).
+- KTX2 (vorkomprimiert, BC7/BC5) kommt mit dem Cooker in M3.
+
 ### `MeshData.hpp` – glTF-Import (ADR 0013, fastgltf privat)
 ```cpp
 namespace g7::asset {
 struct Vertex { Vec3 position; Vec3 normal; Vec2 uv; Vec4 tangent; };          // 48 Byte, so lädt render hoch
-struct MaterialInfo { std::string name; Vec4 baseColor; std::string baseColorTexture; };
+struct ImageSource { std::string uri; std::vector<u8> encoded; std::string mimeType; };   // Datei oder eingebettet
+struct MaterialInfo { std::string name; Vec4 baseColor; i32 baseColorImage = -1; };      // Index in images
 struct Submesh { u32 firstIndex, indexCount, material; };
 struct MeshData { std::vector<Vertex> vertices; std::vector<u32> indices; std::vector<Submesh> submeshes;
-                  std::vector<MaterialInfo> materials; AABB bounds; };
+                  std::vector<MaterialInfo> materials; std::vector<ImageSource> images; AABB bounds; };
 Result<MeshData> loadGltf(const fs::Path&);                                    // .gltf (+ .bin / data:) oder .glb
 Result<MeshData> loadGltf(std::span<const u8>, const fs::Path& baseDir, std::string_view debugName);
 }
@@ -23,7 +33,8 @@ Result<MeshData> loadGltf(std::span<const u8>, const fs::Path& baseDir, std::str
 - Koordinaten unverändert (glTF: +Y oben, rechtshändig, Meter; Modelle schauen nach +Z).
 - Fehlende Normalen werden flächengewichtet berechnet; fehlende Tangenten bleiben 0 (MikkTSpace mit dem
   Material-Modell). Indizes immer u32; nur Dreiecke, andere Primitive werden mit Warnung übersprungen.
-- Materialien vorerst: Name, `baseColorFactor`, URI der Basisfarb-Textur (eingebettete Bilder folgen mit den Texturen).
+- Materialien vorerst: Name, `baseColorFactor` (linear), Basisfarb-Bild (sRGB). Bilder als `ImageSource`: URI relativ
+  zur Modelldatei oder eingebettete Bytes (`.glb`-bufferView, data:-URI) – Dekodieren mit `decodeImage`/`loadImage`.
 - Skins/Animationen: M6. Ab M3 kocht `g7-cook` glTF in ein Laufzeitformat, das dieselbe `MeshData` liefert.
 
 ## Bestandteile

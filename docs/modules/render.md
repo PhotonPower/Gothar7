@@ -126,16 +126,31 @@ class Mesh { static Result<Mesh> create(Device&, const asset::MeshData&);
              std::span<const asset::Submesh> submeshes() const; const AABB& bounds() const; };
 ```
 - Ein Vertex-Buffer (`asset::Vertex`, Attribute 0–3: Position, Normale, UV, Tangente), ein u32-Index-Buffer.
-- Vorläufiger Shader `mesh.vert/.frag`: Basisfarbe mit Half-Lambert aus fester Richtung, bis Material- und
-  Licht-Aufgaben folgen.
+- Vorläufiger Shader `mesh.vert/.frag`: Basisfarbe (Faktor × sRGB-Textur, Einheit 0) mit Half-Lambert aus fester
+  Richtung, bis Material- und Licht-Aufgaben folgen.
+
+### Texturen – `TextureUpload.hpp`
+```cpp
+struct TextureUpload { bool srgb = true; bool mipmaps = true; };
+Result<rhi::Texture> createTexture(Device&, const asset::ImageData&, TextureUpload = {});   // RGBA8(_SRGB), volle Mip-Kette
+Result<rhi::Texture> createSolidTexture(Device&, u8 r, u8 g, u8 b, u8 a, bool srgb = true);  // 1x1, Ersatz
+std::vector<u8> Device::readTexture(const rhi::Texture&, u32 level) const;                 // RGBA8, Tests/Debug
+```
+- Zeilen in Dateireihenfolge hochgeladen: UV (0,0) liest das Texel oben links – wie glTF, ohne Spiegeln.
+- Farbtexturen sind sRGB (Hardware dekodiert beim Sampeln), Datentexturen (Normalen, Masken) linear.
+- Mipmaps auf der GPU erzeugt; Materialsampler mit anisotroper Filterung aus `[render] anisotropy` (Standard 8).
+- **Farbraum bis zum Tonemapping:** Der Mesh-Shader rechnet linear und kodiert am Ende selbst nach sRGB
+  (`linearToSrgb` in `common/color.glsl`); der Hintergrund liefert noch Anzeigewerte. Beides übernimmt der
+  Tonemapping-Pass (Aufgabe „Gamma/Tonemapping“).
 
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →
 `ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf nach
 Blickrichtung** als Hintergrund (Vollbild-Dreieck aus `gl_VertexID`, inverse View-Projection als Uniform;
 Platzhalter für den Himmel in M4), dann Puffertausch. `--no-render` startet ein Fenster ohne OpenGL.
-**Modell ansehen:** `--view-mesh=<pfad.gltf>` lädt ein glTF, zeigt es am Ursprung und richtet die
-Debug-Kamera so aus, dass das Modell im Bild ist (Fluggeschwindigkeit nach Modellgröße).
+**Modell ansehen:** `--view-mesh=<pfad.gltf>` lädt ein glTF samt Basisfarb-Texturen (fehlende → weiß + Warnung),
+zeigt es am Ursprung und richtet die Debug-Kamera so aus, dass das Modell im Bild ist (Fluggeschwindigkeit nach
+Modellgröße).
 **Debug-Kamera:** `engine.camera()`, gesteuert über die Aktionen (Lauf-/Dreh-Aktionen, `jump`/`sneak` hoch/runter,
 `run` schnell) und gehaltene rechte Maustaste (relativer Mausmodus); läuft in Echtzeit, auch bei Pause.
 Werte aus `[camera]` (`fov`, `near`, `far`, `mouse_sensitivity`, `fly_speed`). Tests mit echter GPU: Suite

@@ -6,6 +6,7 @@
 #include <g7/render/Camera.hpp>
 #include <g7/render/Mesh.hpp>
 #include <g7/render/ShaderLibrary.hpp>
+#include <g7/render/TextureUpload.hpp>
 #include <g7/runtime/Engine.hpp>
 
 #include <chrono>
@@ -31,7 +32,7 @@ asset::MeshData quad(const Vec4& color)
                      {Vec3(-1, 1, 0), n, Vec2(0, 1), Vec4(0)}};
     data.indices = {0, 1, 2, 0, 2, 3};
     data.submeshes = {{0, 6, 0}};
-    data.materials = {{"test", color, {}}};
+    data.materials = {{"test", color, -1}};
     data.bounds = AABB{Vec3(-1, -1, 0), Vec3(1, 1, 0)};
     return data;
 }
@@ -68,13 +69,16 @@ TEST_CASE("Mesh: upload and draw with the mesh shader")
     gl.device->clear(Vec4(0, 0, 0, 1), 0.0f);
     gl.device->bindPipeline(pipeline);
     mesh.bind(*gl.device);
+    Texture white = require(createSolidTexture(*gl.device, 255, 255, 255, 255));
+    Sampler sampler = require(gl.device->createSampler({}));
+    gl.device->bindTexture(0, white, sampler);
     mesh.draw(*gl.device, 0);
 
     const auto centre = gl.device->readPixels(8, 8, 1, 1, &target);
     REQUIRE(centre.size() == 4);
-    // Half-Lambert with the fixed light: about 55 % of the base colour.
-    CHECK(centre[0] > 110);
-    CHECK(centre[0] < 170);
+    // Half-Lambert with the fixed light: about 55 % of the linear base colour, sRGB-encoded ~ 196.
+    CHECK(centre[0] > 175);
+    CHECK(centre[0] < 215);
     CHECK(centre[1] == 0);
     CHECK(centre[2] == 0);
     const auto corner = gl.device->readPixels(0, 0, 1, 1, &target); // outside the quad
@@ -119,6 +123,37 @@ TEST_CASE("Engine: --view-mesh loads and draws a glTF model")
     REQUIRE_FALSE(result.ok());
     CHECK(result.error().message.find("missing.gltf") != std::string::npos);
 
+    std::error_code ignored;
+    std::filesystem::remove_all(dir, ignored);
+}
+
+TEST_CASE("Engine: a missing texture falls back to white instead of failing")
+{
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const fs::Path dir =
+        std::filesystem::temp_directory_path() / ("g7_view_mesh_tex_" + std::to_string(stamp));
+    REQUIRE(fs::createDirectories(dir).ok());
+    const std::string gltf =
+        R"({"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"mesh":0}],)"
+        R"("meshes":[{"primitives":[{"attributes":{"POSITION":0},"material":0}]}],)"
+        R"("materials":[{"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}],)"
+        R"("textures":[{"source":0}],"images":[{"uri":"missing.png"}],)"
+        R"("accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,0],"max":[1,1,0]}],)"
+        R"("bufferViews":[{"buffer":0,"byteLength":36}],)"
+        R"("buffers":[{"byteLength":36,"uri":"data:application/octet-stream;base64,AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAA"}]})";
+    REQUIRE(fs::writeText(dir / "tex.gltf", gltf).ok());
+
+    EngineConfig config;
+    config.window.size = {320, 240};
+    config.maxFrames = 2;
+    config.shaderDirectory = fs::fromUtf8(G7_SHADER_DIR);
+    config.viewMesh = dir / "tex.gltf";
+    {
+        Engine engine(config);
+        REQUIRE(engine.init().ok());
+        CHECK(engine.run() == 0);
+        CHECK(engine.renderDevice()->debugErrorCount() == 0);
+    }
     std::error_code ignored;
     std::filesystem::remove_all(dir, ignored);
 }

@@ -17,6 +17,7 @@
 #include <g7/render/Device.hpp>
 #include <g7/render/Mesh.hpp>
 #include <g7/render/ShaderLibrary.hpp>
+#include <g7/render/TextureUpload.hpp>
 
 #include <memory>
 #include <string>
@@ -113,8 +114,11 @@ private:
     std::unique_ptr<render::ShaderLibrary> m_shaders; // destroyed before the device
     render::rhi::Pipeline m_backgroundPipeline;
     render::rhi::ShaderProgram* m_backgroundProgram = nullptr;
-    render::Mesh m_viewMesh; // empty unless --view-mesh
-    std::vector<Vec4> m_viewMeshColors;
+    render::Mesh m_viewMesh;                              // empty unless --view-mesh
+    std::vector<Vec4> m_viewMeshColors;                   // per submesh
+    std::vector<u32> m_viewMeshTextureIndex;              // per submesh, into m_viewMeshTextures
+    std::vector<render::rhi::Texture> m_viewMeshTextures; // per image, last = white fallback
+    render::rhi::Sampler m_materialSampler;
     render::rhi::ShaderProgram* m_meshProgram = nullptr;
     render::rhi::Pipeline m_meshPipeline;
     render::Camera m_camera;

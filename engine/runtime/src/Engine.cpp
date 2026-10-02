@@ -305,10 +305,49 @@ Result<void> Engine::initViewMesh()
         return Error{"cannot upload mesh: " + mesh.error().message};
     }
     m_viewMesh = std::move(mesh).value();
+
+    // Textures: one per image of the model, plus a white fallback for materials without (or with a
+    // broken) texture. A missing texture is a warning, not a reason to refuse the model.
+    const fs::Path modelDirectory = m_config.viewMesh.parent_path();
+    for (const asset::ImageSource& source : data.value().images)
+    {
+        auto image = source.encoded.empty() ? asset::loadImage(modelDirectory / fs::fromUtf8(source.uri))
+                                            : asset::decodeImage(source.encoded, "embedded image");
+        auto texture = image ? render::createTexture(*m_device, image.value())
+                             : Result<render::rhi::Texture>(image.error());
+        if (!texture)
+        {
+            G7_LOG_WARN("engine", "texture skipped: {}", texture.error().message);
+            m_viewMeshTextures.emplace_back(); // placeholder, replaced by the fallback below
+            continue;
+        }
+        m_viewMeshTextures.push_back(std::move(texture).value());
+    }
+    auto white = render::createSolidTexture(*m_device, 255, 255, 255, 255);
+    if (!white)
+    {
+        return white.error();
+    }
+    const auto fallback = static_cast<u32>(m_viewMeshTextures.size());
+    m_viewMeshTextures.push_back(std::move(white).value());
     for (const asset::Submesh& submesh : m_viewMesh.submeshes())
     {
-        m_viewMeshColors.push_back(data.value().materials[submesh.material].baseColor);
+        const asset::MaterialInfo& material = data.value().materials[submesh.material];
+        m_viewMeshColors.push_back(material.baseColor);
+        const bool usable = material.baseColorImage >= 0 &&
+                            static_cast<usize>(material.baseColorImage) < fallback &&
+                            m_viewMeshTextures[static_cast<usize>(material.baseColorImage)].desc().width > 0;
+        m_viewMeshTextureIndex.push_back(usable ? static_cast<u32>(material.baseColorImage) : fallback);
     }
+
+    render::rhi::SamplerDesc samplerDesc;
+    samplerDesc.maxAnisotropy = static_cast<f32>(m_config.settings.get<f64>("render.anisotropy", 8.0));
+    auto sampler = m_device->createSampler(samplerDesc);
+    if (!sampler)
+    {
+        return sampler.error();
+    }
+    m_materialSampler = std::move(sampler).value();
 
     auto program = m_shaders->load("mesh", {"mesh.vert", "mesh.frag", {}});
     if (!program)
@@ -353,6 +392,7 @@ void Engine::drawViewMesh()
     for (usize i = 0; i < m_viewMesh.submeshes().size(); ++i)
     {
         m_meshProgram->setUniform("uBaseColor", m_viewMeshColors[i]);
+        m_device->bindTexture(0, m_viewMeshTextures[m_viewMeshTextureIndex[i]], m_materialSampler);
         m_viewMesh.draw(*m_device, i);
     }
 }
@@ -411,6 +451,8 @@ void Engine::shutdown()
     G7_LOG_INFO("engine", "shutdown");
     m_meshPipeline = {};
     m_viewMesh = {};
+    m_viewMeshTextures.clear();
+    m_materialSampler = {};
     m_meshProgram = nullptr;
     m_backgroundPipeline = {};
     m_backgroundProgram = nullptr;

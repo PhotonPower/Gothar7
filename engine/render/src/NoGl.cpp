@@ -72,6 +72,10 @@ std::vector<u8> Device::readBuffer(const rhi::Buffer&, usize, usize) const
 {
     return {};
 }
+std::vector<u8> Device::readTexture(const rhi::Texture&, u32) const
+{
+    return {};
+}
 } // namespace g7::render
 
 namespace g7::render::rhi
