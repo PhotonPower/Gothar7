@@ -9,6 +9,8 @@
 
 namespace g7::platform
 {
+class Input;
+
 struct Extent
 {
     u32 width = 0;
@@ -42,8 +44,11 @@ public:
     Window(const Window&) = delete;
     Window& operator=(const Window&) = delete;
 
-    /// Processes pending OS events. Returns false once quitting was requested (close button,
-    /// OS shutdown, requestClose()); stays false afterwards.
+    /// Processes pending OS events and feeds keyboard, mouse and gamepad state into `input`
+    /// (call input.beginFrame() first). Returns false once quitting was requested (close button,
+    /// OS shutdown, requestClose()); stays false afterwards. Focus loss releases all inputs.
+    [[nodiscard]] bool pollEvents(Input& input);
+    /// Same, discarding input (tools, tests).
     [[nodiscard]] bool pollEvents();
 
     /// Size in screen coordinates.
@@ -58,6 +63,11 @@ public:
     [[nodiscard]] WindowMode mode() const noexcept;
     void setTitle(std::string_view title);
     [[nodiscard]] std::string title() const;
+
+    /// Relative mouse mode for the camera: hidden, captured cursor with unbounded motion.
+    /// Returns false if the platform refuses it (logged).
+    bool setRelativeMouse(bool enabled);
+    [[nodiscard]] bool relativeMouse() const noexcept;
 
     /// Asks the window to close; the next pollEvents() returns false.
     void requestClose();

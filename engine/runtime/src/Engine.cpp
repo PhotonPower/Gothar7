@@ -22,6 +22,39 @@
 
 namespace g7
 {
+namespace
+{
+/// Debug aid until the action mapping exists: shows which inputs arrive (--verbose).
+void logPressedInputs(const platform::Input& input)
+{
+    if (log::minLevel() > log::Level::Debug)
+    {
+        return;
+    }
+    for (usize i = 1; i < static_cast<usize>(platform::Key::Count); ++i)
+    {
+        if (input.pressed(static_cast<platform::Key>(i)))
+        {
+            G7_LOG_DEBUG("engine", "pressed {}", platform::name(static_cast<platform::Key>(i)));
+        }
+    }
+    for (usize i = 0; i < static_cast<usize>(platform::MouseButton::Count); ++i)
+    {
+        if (input.pressed(static_cast<platform::MouseButton>(i)))
+        {
+            G7_LOG_DEBUG("engine", "pressed {}", platform::name(static_cast<platform::MouseButton>(i)));
+        }
+    }
+    for (usize i = 0; i < static_cast<usize>(platform::GamepadButton::Count); ++i)
+    {
+        if (input.pressed(static_cast<platform::GamepadButton>(i)))
+        {
+            G7_LOG_DEBUG("engine", "pressed {}", platform::name(static_cast<platform::GamepadButton>(i)));
+        }
+    }
+}
+} // namespace
+
 Engine::Engine(EngineConfig config) : m_config(std::move(config))
 {
 }
@@ -88,10 +121,11 @@ int Engine::run()
         const f64 frameSeconds = frameTimer.elapsedSeconds();
         frameTimer.reset();
 
-        // TODO(M1): input actions from events
+        // TODO(M1): map input to actions
+        m_input.beginFrame();
         if (m_window)
         {
-            if (!m_window->pollEvents())
+            if (!m_window->pollEvents(m_input))
             {
                 G7_LOG_INFO("engine", "quit requested by window");
                 requestQuit();
@@ -101,6 +135,7 @@ int Engine::run()
                 const auto size = m_window->pixelSize();
                 G7_LOG_DEBUG("engine", "window resized to {}x{} px", size.width, size.height);
             }
+            logPressedInputs(m_input);
         }
 
         const u32 steps = fixedStep.advance(frameSeconds);
