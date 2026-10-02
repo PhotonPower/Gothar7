@@ -5,6 +5,7 @@
 #include <g7/core/Types.hpp>
 
 #include <array>
+#include <span>
 #include <vector>
 
 namespace g7::render
@@ -62,10 +63,27 @@ struct GpuLighting
     Vec4 ambientSky;             ///< rgb
     Vec4 ambientGround;          ///< rgb
     std::array<i32, 4> counts{}; ///< x = number of point lights
+    std::array<Mat4, 4> cascadeViewProjection;
+    Vec4 cascadeSplits;               ///< view depth where cascade i ends
+    std::array<Vec4, 4> cascadeRects; ///< atlas tile per cascade
+    Vec4 cascadeTexelSize;            ///< world size of a shadow texel per cascade
+    Vec4 shadowParams;                ///< x enabled, y cascades, z distance, w normal offset (texels)
+    Vec4 shadowExtra;                 ///< x debug colours, y atlas texel size (uv)
+    Vec4 cameraPosition;
+    Vec4 cameraForward;
     std::array<Vec4, LightList::kMaxPerFrame> pointPositionRadius;
     std::array<Vec4, LightList::kMaxPerFrame> pointColor; ///< rgb * intensity
 };
-static_assert(sizeof(GpuLighting) == 5 * 16 + 2 * 16 * LightList::kMaxPerFrame, "must match std140");
+static_assert(sizeof(GpuLighting) ==
+                  5 * 16 + 4 * 64 + 16 + 4 * 16 + 5 * 16 + 2 * 16 * LightList::kMaxPerFrame,
+              "must match std140 (common/lighting.glsl)");
 
 [[nodiscard]] GpuLighting packLighting(const Environment& environment, const LightList& lights) noexcept;
+
+struct Cascade;
+struct ShadowSettings;
+struct Camera;
+/// Adds the sun's shadow cascades (and the camera they were computed for) to packed lighting.
+void packShadows(GpuLighting& gpu, std::span<const Cascade> cascades, const ShadowSettings& settings,
+                 const Camera& camera, bool debugColours) noexcept;
 } // namespace g7::render

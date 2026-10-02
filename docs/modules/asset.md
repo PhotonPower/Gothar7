@@ -13,6 +13,10 @@ Result<ImageData> loadImage(const fs::Path&);
 - Grau/RGB werden zu RGBA erweitert; Zeilen in Dateireihenfolge (passt zur glTF-UV-Konvention v = 0 oben).
 - KTX2 (vorkomprimiert, BC7/BC5) kommt mit dem Cooker in M3.
 
+### `Procedural.hpp`
+- `makePlane(size, uvTileSize, color)` – Platte in XZ (Normale +Y), `makeBox(halfExtents, color)` – Quader mit
+  flachen Flächen; beide mit UVs, Tangenten und einem Material. Für Vorschau-Boden und Tests.
+
 ### `MeshData.hpp` – glTF-Import (ADR 0013, fastgltf privat)
 ```cpp
 namespace g7::asset {

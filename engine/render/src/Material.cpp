@@ -92,7 +92,8 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
     return set;
 }
 
-Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders, f32 anisotropy)
+Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders, f32 anisotropy,
+                                          const ShadowSettings& shadows)
 {
     MeshRenderer renderer;
     auto program = shaders.load("mesh", {"mesh.vert", "mesh.frag", {}});
@@ -140,6 +141,31 @@ Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders
     }
     renderer.m_sampler = std::move(sampler).value();
 
+    auto shadow = shaders.load("shadow", {"shadow.vert", "shadow.frag", {}});
+    auto shadowAlpha = shaders.load("shadow_alpha_test", {"shadow.vert", "shadow.frag", {"ALPHA_TEST"}});
+    if (!shadow || !shadowAlpha)
+    {
+        return !shadow ? shadow.error() : shadowAlpha.error();
+    }
+    renderer.m_shadowProgram = shadow.value();
+    renderer.m_shadowAlphaTestProgram = shadowAlpha.value();
+    for (usize i = 0; i < renderer.m_shadowPipelines.size(); ++i)
+    {
+        rhi::PipelineDesc desc;
+        desc.program = i == 0 ? renderer.m_shadowProgram : renderer.m_shadowAlphaTestProgram;
+        desc.attributes = Mesh::vertexLayout();
+        desc.vertexStride = Mesh::kVertexStride;
+        desc.cull = rhi::CullMode::None;               // thin and double-sided geometry must still cast
+        desc.depthCompare = rhi::CompareOp::LessEqual; // shadow depth is not reversed
+        desc.depthBias = {shadows.depthBias, shadows.slopeBias};
+        auto pipeline = device.createPipeline(desc);
+        if (!pipeline)
+        {
+            return pipeline.error();
+        }
+        renderer.m_shadowPipelines[i] = std::move(pipeline).value();
+    }
+
     auto lighting = device.createBuffer({sizeof(GpuLighting), rhi::BufferUsage::Dynamic, {}});
     if (!lighting)
     {
@@ -154,9 +180,17 @@ Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders
     return renderer;
 }
 
-void MeshRenderer::setLighting(Device&, const Environment& environment, const LightList& lights)
+void MeshRenderer::setLighting(Device&, const Environment& environment, const LightList& lights,
+                               const ShadowFrame* shadows)
 {
-    const GpuLighting gpu = packLighting(environment, lights);
+    GpuLighting gpu = packLighting(environment, lights);
+    m_shadowMap = nullptr;
+    if (shadows && shadows->map && shadows->camera && !shadows->cascades.empty())
+    {
+        packShadows(gpu, shadows->cascades, shadows->map->settings(), *shadows->camera,
+                    shadows->debugColours);
+        m_shadowMap = shadows->map;
+    }
     // Only the used part of the point arrays changes; the block is small enough to upload whole.
     (void)m_lightingBuffer.update(0, std::span(reinterpret_cast<const u8*>(&gpu), sizeof(gpu)));
     m_lights = &lights;
@@ -190,6 +224,10 @@ void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& mat
 {
     const Mat4 viewProjection = camera.viewProjection();
     device.bindUniformBuffer(0, m_lightingBuffer);
+    if (m_shadowMap)
+    {
+        device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
+    }
     m_selected.clear();
     if (m_lights)
     {
@@ -219,6 +257,34 @@ void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& mat
                 drawSubmesh(device, mesh, i, material);
             }
         }
+    }
+}
+void MeshRenderer::drawShadow(Device& device, const Mesh& mesh, const MaterialSet& materials,
+                              const Mat4& model, const Cascade& cascade)
+{
+    for (rhi::ShaderProgram* program : {m_shadowProgram, m_shadowAlphaTestProgram})
+    {
+        program->setUniform("uViewProjection", cascade.viewProjection);
+        program->setUniform("uModel", model);
+    }
+    const auto submeshes = mesh.submeshes();
+    for (usize i = 0; i < submeshes.size(); ++i)
+    {
+        const Material& material = materials[submeshes[i].material];
+        if (material.alphaMode == asset::AlphaMode::Blend)
+        {
+            continue;
+        }
+        const bool alphaTest = material.alphaMode == asset::AlphaMode::Mask;
+        device.bindPipeline(m_shadowPipelines[alphaTest ? 1 : 0]);
+        mesh.bind(device);
+        if (alphaTest)
+        {
+            m_shadowAlphaTestProgram->setUniform("uBaseColor", material.baseColorFactor);
+            m_shadowAlphaTestProgram->setUniform("uAlphaCutoff", material.alphaCutoff);
+            device.bindTexture(0, *material.baseColor, m_sampler);
+        }
+        mesh.draw(device, i);
     }
 }
 } // namespace g7::render

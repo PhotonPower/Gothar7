@@ -123,6 +123,14 @@ struct VertexAttribute
     u32 offset = 0;
 };
 
+/// Depth bias (glPolygonOffset): constant units plus a slope-scaled part. Used by shadow passes
+/// against self-shadowing ("acne").
+struct DepthBias
+{
+    f32 constant = 0.0f;
+    f32 slope = 0.0f;
+};
+
 struct PipelineDesc
 {
     const ShaderProgram* program = nullptr; ///< Must outlive the pipeline.
@@ -134,6 +142,7 @@ struct PipelineDesc
     bool depthWrite = true;
     CompareOp depthCompare = CompareOp::GreaterEqual; ///< Reverse-Z: larger depth = nearer.
     BlendMode blend = BlendMode::Opaque;
+    DepthBias depthBias;
 };
 
 class Pipeline
@@ -154,6 +163,7 @@ private:
     bool m_depthWrite = true;
     CompareOp m_depthCompare = CompareOp::GreaterEqual;
     BlendMode m_blend = BlendMode::Opaque;
+    DepthBias m_depthBias;
 };
 
 struct FramebufferDesc
@@ -174,5 +184,6 @@ private:
     Handle m_handle;
     u32 m_width = 0;
     u32 m_height = 0;
+    bool m_hasStencil = false;
 };
 } // namespace g7::render::rhi

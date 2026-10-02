@@ -25,6 +25,7 @@ struct CommandLine
     bool fullscreen = false;
     bool noRender = false;
     bool noSun = false;
+    bool noGround = false;
     std::string viewMesh;
     std::optional<g7::u64> frames;
     std::optional<g7::u64> maxFps;
@@ -43,6 +44,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--smoke-test")
         {
             cli.smokeTest = true;
+        }
+        else if (arg == "--no-ground")
+        {
+            cli.noGround = true;
         }
         else if (arg == "--no-sun")
         {
@@ -186,6 +191,10 @@ int main(int argc, char** argv)
     if (!cli->viewMesh.empty())
     {
         config.viewMesh = g7::fs::fromUtf8(cli->viewMesh);
+    }
+    if (cli->noGround)
+    {
+        config.ground = false;
     }
     if (cli->noSun)
     {

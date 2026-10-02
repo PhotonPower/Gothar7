@@ -1,5 +1,7 @@
 #include <g7/core/Log.hpp>
+#include <g7/render/Camera.hpp>
 #include <g7/render/Lighting.hpp>
+#include <g7/render/Shadows.hpp>
 
 #include <algorithm>
 
@@ -81,5 +83,23 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
         gpu.pointColor[i] = Vec4(points[i].color * points[i].intensity, 0.0f);
     }
     return gpu;
+}
+void packShadows(GpuLighting& gpu, std::span<const Cascade> cascades, const ShadowSettings& settings,
+                 const Camera& camera, bool debugColours) noexcept
+{
+    const usize count = std::min<usize>(cascades.size(), 4);
+    for (usize i = 0; i < count; ++i)
+    {
+        gpu.cascadeViewProjection[i] = cascades[i].viewProjection;
+        gpu.cascadeSplits[static_cast<glm::length_t>(i)] = cascades[i].splitFar;
+        gpu.cascadeRects[i] = cascades[i].atlasRect;
+        gpu.cascadeTexelSize[static_cast<glm::length_t>(i)] = cascades[i].texelWorldSize;
+    }
+    gpu.shadowParams = Vec4(count > 0 ? 1.0f : 0.0f, static_cast<f32>(count),
+                            count > 0 ? cascades[count - 1].splitFar : 0.0f, settings.normalOffset);
+    gpu.shadowExtra =
+        Vec4(debugColours ? 1.0f : 0.0f, 1.0f / static_cast<f32>(settings.resolution * 2), 0.0f, 0.0f);
+    gpu.cameraPosition = Vec4(camera.transform.position, 1.0f);
+    gpu.cameraForward = Vec4(camera.transform.forward(), 0.0f);
 }
 } // namespace g7::render

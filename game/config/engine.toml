@@ -24,6 +24,13 @@ fly_speed = 10.0         # m/s
 # shader_hot_reload = true
 # Anisotrope Filterung für Materialtexturen (1 = aus; wird auf den Treiberwert begrenzt).
 anisotropy = 8
+# Sonnenschatten (Cascaded Shadow Maps): Kaskaden 1–4, Auflösung je Kaskade, Reichweite in Metern.
+# 4 x 2048² belegen 64 MB Grafikspeicher; auf schwächeren GPUs shadow_resolution = 1024.
+shadow_cascades = 4
+shadow_resolution = 2048
+shadow_distance = 150.0
+# Kaskaden einfärben (rot, grün, blau, gelb) zum Einstellen.
+shadow_debug = false
 # Shader-Verzeichnis, Standard: "shaders" neben der Executable. Zum Live-Bearbeiten der Quellen z. B.
 # shader_dir = "C:/dev/Gothar7/engine/render/shaders"
 
