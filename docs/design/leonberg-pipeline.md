@@ -39,6 +39,7 @@ Umgebungsvariable `GOTHAR_DATA_ROOT` den Pfad (z. B. in CI).
   geo/SOURCES.md                 Herkunft und Download-Datum
   capture/insta360/<datum>/      .insv/.mp4 + GPS
   work/<ort>/                    Zwischenstände der Werkzeuge
+  work/<ort>/captures/<name>/    Einzelbilder (frames/*.jpg) + frames.json je Aufnahme (facade frames)
 ```
 `gothar-worldgen download leonberg` füllt `geo/`, `gothar-worldgen info leonberg` zeigt, welche Ordner fehlen.
 
@@ -227,7 +228,8 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
 - Jedes Haus bleibt in Blender von Hand nachbearbeitbar; erneutes Generieren überschreibt nur Häuser ohne `"locked": true`.
 
 ### W-D Fassaden-Werkzeug (Python + Web-UI)
-1. Insta360-Material exportieren (equirektangulär, mit GPS); Einzelbilder in festen Abständen extrahieren.
+1. Insta360-Material exportieren: in Insta360 Studio als equirektanguläres 360°-MP4 (2:1) und den GPS-Track als GPX.
+   Dann Einzelbilder in festen Abständen extrahieren (ffmpeg, siehe unten).
 2. Kamera-Position pro Bild aus GPS; optional verfeinert über Structure-from-Motion (COLMAP) für Genauigkeit < 1 m.
 3. Für ein Gebäude wird die Fassade direkt aus dem 360°-Bild **auf ihre Ebene projiziert**. Jeder Pixel der
    frontalen Ansicht ist ein Punkt auf der Fassade: Grundriss-Kante plus Boden- bis Traufhöhe aus `buildings.json`.
@@ -260,8 +262,31 @@ unabhängig von der Oberfläche:
 - **Tests:** Eine per Raycasting gerenderte Schachbrett-Fassade wird zu über 99 % pixelgenau zurückgewonnen,
   bei jeder Kamerarichtung. Auch schräge Ansichten mit 50° lassen sich entzerren, bekommen aber einen niedrigeren
   Qualitätswert. GPX, Ranking und Schema sind ebenfalls abgedeckt.
+- **Einzelbilder und Zeitabgleich (W4 Schritt 2)**, `frames.py`, `sync.py`, `capture.py`:
+  - CLI `gothar-worldgen facade frames <ort> <video.mp4> --gpx <track.gpx> [--every 2] [--start <ISO-Zeit>]
+    [--heading-offset <grad>]`.
+  - Extrahiert alle `--every` Sekunden ein JPEG nach `<work>/<ort>/captures/<name>/frames/`. Schon vorhandene
+    Bilder werden wiederverwendet, ein erneuter Lauf mit anderem Zeitversatz ist daher schnell.
+  - Schreibt `frames.json` mit Videozeit, UTC-Zeit, Position (x, y, z) und Blickrichtung je Bild.
+    Diese Posen nutzen `rank_views` und die Web-UI.
+  - **Zeitabgleich:** Die Erstellungszeit im Video ist unzuverlässig: Sie kann die Exportzeit sein, und die
+    Kamerauhr kann abweichen. Deshalb wird die Startzeit geschätzt.
+    - Grundlage ist die Bildänderung zwischen aufeinanderfolgenden Bildern. Gemessen wird im Horizontband,
+      weil Zenit und Nadir mit Stab und Träger sich beim Gehen kaum ändern.
+    - Diese Bildänderung wird mit der GPS-Geschwindigkeit korreliert, denn Stehenbleiben ist in beiden zu sehen.
+      Die Startzeit mit der besten Korrelation gewinnt.
+    - Als zuverlässig gilt die Schätzung bei einer Korrelation ≥ 0,5 und einem Abstand ≥ 0,1 zum besten Wert,
+      der mehr als 10 s entfernt liegt.
+    - Ist die Schätzung unzuverlässig, wird die Video-Metadatenzeit genommen, sofern sie im Track liegt,
+      sonst die Schätzung mit Warnung. `--start` hat immer Vorrang.
+    - Für einen sauberen Abgleich: zu Beginn der Aufnahme 10–20 s stehen bleiben, dann losgehen (§6).
+  - **Blickrichtung:** Gehrichtung aus dem Track plus `--heading-offset`. Das gilt für Exporte, deren Bildmitte
+    der Kamerafront folgt, also die übliche Einstellung beim Gehen.
+  - Kamerahöhe: Gelände aus `terrain.r16`, falls `import` gelaufen ist, plus 2,7 m.
+  - **ffmpeg:** externes Programm, siehe `docs/05-build.md` (Version, Installation, Suche).
+  - Getestet mit einem synthetischen 360°-Video, das ffmpeg selbst erzeugt: Die Startzeit wird auf ±1 s genau
+    wiedergefunden. Die Logik ist ohne ffmpeg getestet; die ffmpeg-Tests werden übersprungen, wenn es fehlt.
 - **Noch offen:**
-  - Einzelbilder aus Insta360-Videos extrahieren (ffmpeg) und den Zeitversatz zum GPS-Track bestimmen.
   - SfM-Verfeinerung.
   - Web-Oberfläche.
   - Prüfung mit echten Aufnahmen.
@@ -289,6 +314,8 @@ Material Maker / Substance für Trim-Sheets, QGIS zum Sichten der Geodaten.
 - Früh morgens (Sonntag), bedeckter Himmel ideal (weiche Schatten, wenig Leute/Autos).
 - Kamera am Selfie-Stick **über Kopfhöhe** (ca. 2,5–3 m) – weniger Verdeckung durch Autos, bessere Sicht auf Obergeschosse.
 - GPS aktiv (App bzw. GPS-Fernbedienung), Videomodus mit höchster Auflösung oder Intervall-Fotos alle 1–2 m.
+- Zu Beginn jeder Aufnahme **10–20 s stehen bleiben**, dann losgehen. Zwischendurch an Ecken kurz anhalten.
+  Das hilft dem automatischen Zeitabgleich zwischen Video und GPS (`facade frames`).
 - Langsam und gleichmäßig gehen, jede Gasse in beide Richtungen, Plätze im Raster ablaufen.
 - Zusätzlich normale Fotos von Details (Fachwerk-Knoten, Türen, Pflaster, Brunnen).
 - Protokoll: Datum, Route, Besonderheiten → `capture/<datum>/notes.md`.
