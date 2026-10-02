@@ -9,6 +9,7 @@
 
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <filesystem>
 #include <ostream> // doctest needs it to print std::string_view operands
 #include <string>
@@ -214,25 +215,29 @@ TEST_CASE("Background shader follows the view direction")
     Pipeline pipeline = makePipeline(*gl.device, program);
     Target target = makeTarget(*gl.device);
 
+    const Vec3 horizon(0.0844f, 0.0395f, 0.0331f);
     const auto centreFor = [&](f32 pitchDegrees)
     {
         render::Camera camera;
         camera.aspect = 1.0f;
         camera.transform.rotation = quatFromEuler(toRadians(pitchDegrees), 0.0f, 0.0f);
         program->setUniform("uInverseViewProjection", glm::inverse(camera.viewProjection()));
-        program->setUniform("uHorizonColor", Vec3(0.0844f, 0.0395f, 0.0331f));
+        program->setUniform("uHorizonColor", horizon);
         program->setUniform("uCameraPosition", camera.transform.position);
         return drawAndSample(*gl.device, pipeline, target);
     };
     const auto up = centreFor(80.0f);
     const auto level = centreFor(0.0f);
     const auto down = centreFor(-80.0f);
-    // Horizon is warm (red > blue), zenith cool (blue > red); below the horizon the fog colour stays.
+    // Horizon is warm (red > blue), zenith cool (blue > red); below the horizon the fog colour stays
+    // exactly (the level view's centre pixel lies a hair above the horizon, so compare with the
+    // uniform itself; the target stores the linear value).
     CHECK(level[0] > level[2]);
     CHECK(up[2] > up[0]);
     for (usize i = 0; i < 3; ++i)
     {
-        CHECK(std::abs(int(down[i]) - int(level[i])) <= 1);
+        CHECK(std::abs(int(down[i]) - static_cast<int>(std::lround(horizon[static_cast<int>(i)] * 255.0f))) <=
+              1);
     }
     CHECK(gl.device->debugErrorCount() == 0);
 }
