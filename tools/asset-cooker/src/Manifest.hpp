@@ -60,6 +60,8 @@ struct Manifest
 ///     out<TAB><hash hex><TAB><size><TAB><path>
 ///
 /// Paths come last, so they may contain spaces (VFS paths contain no tabs or control characters).
+/// parseManifest only accepts normalised relative VFS paths (see asset::normalizeVfsPath); anything
+/// else ("..", absolute or drive paths) makes the manifest invalid, so the cooker cooks everything.
 [[nodiscard]] std::string serializeManifest(const Manifest& manifest);
 [[nodiscard]] Result<Manifest> parseManifest(std::string_view text);
 

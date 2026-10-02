@@ -120,6 +120,18 @@ TEST_CASE("manifest: serialise and parse round trip, paths with spaces")
     CHECK_FALSE(cook::parseManifest("something else\n"));
     CHECK_FALSE(cook::parseManifest("g7cook-manifest\t1\nsource\tzz\tx\n"));
     CHECK_FALSE(cook::parseManifest("g7cook-manifest\t1\nbogus\n"));
+
+    // Only normalised relative VFS paths: the cooker reads and deletes these below <out>.
+    const std::string head = "g7cook-manifest\t1\ncooker\t1\noptions\tx\nsource\t1\ta.txt\n";
+    for (const char* bad :
+         {"../outside.txt", "/abs/file.txt", "C:/Windows/file.txt", "a/./b.txt", "a\\b.txt", ""})
+    {
+        CAPTURE(bad);
+        CHECK_FALSE(cook::parseManifest(head + "out\t2\t1\t" + bad + "\n"));
+        CHECK_FALSE(cook::parseManifest(head + "dep\t2\t" + bad + "\n"));
+    }
+    CHECK_FALSE(cook::parseManifest("g7cook-manifest\t1\nsource\t1\t../x\n"));
+    CHECK(cook::parseManifest(head + "out\t2\t1\tmodels/my house.g7mesh\n"));
 }
 
 TEST_CASE("gltfExternalUris: buffers and images, data URIs skipped, percent-decoded")
@@ -205,6 +217,29 @@ TEST_CASE("outputs of deleted sources are removed, unknown files stay")
     CHECK(std::filesystem::exists(t.out / "notes.txt"));
     const auto manifest = fs::readText(t.out / ".g7cook" / "manifest.txt").value();
     CHECK(manifest.find("init.lua") == std::string::npos);
+}
+
+TEST_CASE("a manipulated manifest cannot delete or read files outside the output")
+{
+    Tree t;
+    t.run();
+    const fs::Path victim = t.dir.path() / "victim.txt";
+    writeText(victim, "keep me");
+
+    // Make the manifest claim an output outside <out>, then delete the source it belongs to.
+    std::string text = fs::readText(t.out / ".g7cook" / "manifest.txt").value();
+    const auto pos = text.find("out\t", text.find("scripts/init.lua"));
+    REQUIRE(pos != std::string::npos);
+    const auto lineEnd = text.find('\n', pos);
+    std::string line = text.substr(pos, lineEnd - pos);
+    line.replace(line.rfind('\t') + 1, std::string::npos, "../victim.txt");
+    text.replace(pos, lineEnd - pos, line);
+    writeText(t.out / ".g7cook" / "manifest.txt", text);
+    std::filesystem::remove(t.source / "scripts" / "init.lua");
+
+    const auto r = t.run();
+    CHECK(r.reused == 0); // manifest rejected -> everything cooked
+    CHECK(fs::readText(victim).value() == "keep me");
 }
 
 TEST_CASE("broken or foreign manifest: everything is cooked")

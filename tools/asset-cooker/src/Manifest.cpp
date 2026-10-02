@@ -1,5 +1,7 @@
 #include "Manifest.hpp"
 
+#include <g7/asset/Vfs.hpp>
+
 #include <charconv>
 #include <cstring>
 
@@ -83,6 +85,15 @@ std::string percentDecode(std::string_view s)
         }
     }
     return out;
+}
+
+/// Manifest paths must be normalised relative VFS paths: no "..", no absolute or drive paths.
+/// A manifest is data from disk; without this check it could make the cooker read or delete
+/// files outside the output directory.
+bool isSafePath(std::string_view path)
+{
+    auto normalised = asset::normalizeVfsPath(path);
+    return normalised && normalised.value() == path;
 }
 
 /// JSON text of a .gltf, or of the JSON chunk of a .glb.
@@ -194,7 +205,7 @@ Result<Manifest> parseManifest(std::string_view text)
         {
             const auto f = fields(line, 3);
             u64 key = 0;
-            if (f.size() != 3 || !parseHex(f[1], key) || f[2].empty())
+            if (f.size() != 3 || !parseHex(f[1], key) || !isSafePath(f[2]))
             {
                 return bad();
             }
@@ -205,7 +216,7 @@ Result<Manifest> parseManifest(std::string_view text)
         {
             const auto f = fields(line, 3);
             u64 hash = 0;
-            if (f.size() != 3 || !parseHex(f[1], hash) || f[2].empty())
+            if (f.size() != 3 || !parseHex(f[1], hash) || !isSafePath(f[2]))
             {
                 return bad();
             }
@@ -216,7 +227,7 @@ Result<Manifest> parseManifest(std::string_view text)
             const auto f = fields(line, 4);
             u64 hash = 0;
             u64 size = 0;
-            if (f.size() != 4 || !parseHex(f[1], hash) || f[3].empty())
+            if (f.size() != 4 || !parseHex(f[1], hash) || !isSafePath(f[3]))
             {
                 return bad();
             }

@@ -611,7 +611,12 @@ private:
             auto data = m_previousPak->read(path);
             return data ? std::optional(std::move(data).value()) : std::nullopt;
         }
-        auto data = fs::readFile(m_options.out / fs::fromUtf8(path));
+        const fs::Path target = (m_options.out / fs::fromUtf8(path)).lexically_normal();
+        if (!isWithin(target, m_options.out))
+        {
+            return std::nullopt; // never reuse files from outside <out>
+        }
+        auto data = fs::readFile(target);
         return data ? std::optional(std::move(data).value()) : std::nullopt;
     }
 
@@ -642,8 +647,16 @@ private:
                 {
                     continue; // still produced (possibly in another spelling)
                 }
+                // Second line of defence besides parseManifest: never delete outside <out>.
+                const fs::Path target = (m_options.out / fs::fromUtf8(out.path)).lexically_normal();
+                if (!isWithin(target, m_options.out))
+                {
+                    G7_LOG_WARN("cook", "manifest output '{}' lies outside the output directory, not removed",
+                                out.path);
+                    continue;
+                }
                 std::error_code ec;
-                if (std::filesystem::remove(m_options.out / fs::fromUtf8(out.path), ec))
+                if (std::filesystem::remove(target, ec))
                 {
                     G7_LOG_INFO("cook", "removed stale output {}", out.path);
                 }

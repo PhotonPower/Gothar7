@@ -15,7 +15,8 @@ namespace g7::cook
 enum class TextureMode : u8
 {
     Copy, ///< images unchanged (library default; builds without libktx, development)
-    Ktx2, ///< images -> .ktx2 (UASTC + zstd, mips); normal maps detected from mesh materials (g7-cook default)
+    Ktx2, ///< images -> .ktx2 (UASTC + zstd, mips); normal maps detected from mesh materials (g7-cook
+          ///< default)
 };
 
 struct CookOptions
