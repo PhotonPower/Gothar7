@@ -22,12 +22,21 @@ struct Vertex
 };
 static_assert(sizeof(Vertex) == 48);
 
+/// Where an image of a model comes from: a file next to the model, or encoded bytes embedded in
+/// it (.glb buffer view or data: URI). Decode with decodeImage()/loadImage().
+struct ImageSource
+{
+    std::string uri;         ///< Relative to the model file; empty if embedded.
+    std::vector<u8> encoded; ///< Embedded PNG/JPEG bytes; empty if `uri` is set.
+    std::string mimeType;    ///< "image/png", "image/jpeg" or empty if unknown.
+};
+
 /// Material parameters as far as known in M2 (the material model follows later).
 struct MaterialInfo
 {
     std::string name;
-    Vec4 baseColor{1.0f};
-    std::string baseColorTexture; ///< Image URI relative to the model file; empty if none/embedded.
+    Vec4 baseColor{1.0f};    ///< Linear factor (glTF baseColorFactor).
+    i32 baseColorImage = -1; ///< Index into MeshData::images (sRGB), -1 = none.
 };
 
 /// Range of the index buffer drawn with one material.
@@ -45,6 +54,7 @@ struct MeshData
     std::vector<u32> indices;
     std::vector<Submesh> submeshes;
     std::vector<MaterialInfo> materials;
+    std::vector<ImageSource> images;
     AABB bounds;
 };
 

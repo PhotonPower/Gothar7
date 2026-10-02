@@ -42,16 +42,85 @@ std::vector<MaterialInfo> readMaterials(const fastgltf::Asset& asset)
                 asset.textures[material.pbrData.baseColorTexture->textureIndex];
             if (texture.imageIndex)
             {
-                const auto& image = asset.images[*texture.imageIndex];
-                if (const auto* uri = std::get_if<fastgltf::sources::URI>(&image.data))
-                {
-                    info.baseColorTexture = std::string(uri->uri.path());
-                }
+                info.baseColorImage = static_cast<i32>(*texture.imageIndex);
             }
         }
         materials.push_back(std::move(info));
     }
     return materials;
+}
+
+std::string mimeTypeName(fastgltf::MimeType type)
+{
+    switch (type)
+    {
+    case fastgltf::MimeType::PNG:
+        return "image/png";
+    case fastgltf::MimeType::JPEG:
+        return "image/jpeg";
+    default:
+        return {};
+    }
+}
+
+std::vector<u8> copyBytes(const std::byte* data, usize size)
+{
+    std::vector<u8> bytes(size);
+    if (size > 0)
+    {
+        std::memcpy(bytes.data(), data, size);
+    }
+    return bytes;
+}
+
+/// Bytes of a loaded buffer (buffers are loaded into memory, see LoadExternalBuffers).
+std::span<const std::byte> bufferBytes(const fastgltf::Buffer& buffer)
+{
+    if (const auto* array = std::get_if<fastgltf::sources::Array>(&buffer.data))
+    {
+        return {array->bytes.data(), array->bytes.size()};
+    }
+    if (const auto* vector = std::get_if<fastgltf::sources::Vector>(&buffer.data))
+    {
+        return {vector->bytes.data(), vector->bytes.size()};
+    }
+    return {};
+}
+
+std::vector<ImageSource> readImages(const fastgltf::Asset& asset, std::string_view debugName)
+{
+    std::vector<ImageSource> images;
+    images.reserve(asset.images.size());
+    for (const fastgltf::Image& image : asset.images)
+    {
+        ImageSource source;
+        if (const auto* uri = std::get_if<fastgltf::sources::URI>(&image.data))
+        {
+            source.uri = std::string(uri->uri.path());
+            source.mimeType = mimeTypeName(uri->mimeType);
+        }
+        else if (const auto* array = std::get_if<fastgltf::sources::Array>(&image.data))
+        {
+            source.encoded = copyBytes(array->bytes.data(), array->bytes.size()); // data: URI
+            source.mimeType = mimeTypeName(array->mimeType);
+        }
+        else if (const auto* view = std::get_if<fastgltf::sources::BufferView>(&image.data))
+        {
+            const fastgltf::BufferView& bufferView = asset.bufferViews[view->bufferViewIndex];
+            const auto bytes = bufferBytes(asset.buffers[bufferView.bufferIndex]);
+            if (bufferView.byteOffset + bufferView.byteLength <= bytes.size())
+            {
+                source.encoded = copyBytes(bytes.data() + bufferView.byteOffset, bufferView.byteLength);
+            }
+            source.mimeType = mimeTypeName(view->mimeType);
+        }
+        if (source.uri.empty() && source.encoded.empty())
+        {
+            G7_LOG_WARN("asset", "{}: image '{}' has an unsupported source", debugName, image.name);
+        }
+        images.push_back(std::move(source));
+    }
+    return images;
 }
 
 void computeFlatNormals(std::vector<Vertex>& vertices, std::span<const u32> indices, usize firstVertex)
@@ -173,6 +242,7 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
 {
     MeshData mesh;
     mesh.materials = readMaterials(asset);
+    mesh.images = readImages(asset, debugName);
     const u32 defaultMaterial = static_cast<u32>(mesh.materials.size()); // added only if used
     IndicesByMaterial indicesByMaterial;
     Result<void> failure;
@@ -219,7 +289,7 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
     }
     if (indicesByMaterial.contains(defaultMaterial))
     {
-        mesh.materials.push_back(MaterialInfo{"default", Vec4(1.0f), {}});
+        mesh.materials.push_back(MaterialInfo{"default", Vec4(1.0f), -1});
     }
 
     for (auto& [material, indices] : indicesByMaterial)

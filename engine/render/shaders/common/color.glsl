@@ -10,3 +10,12 @@ float ditherNoise(vec2 pixel)
 {
     return fract(52.9829189 * fract(dot(pixel, vec2(0.06711056, 0.00583715))));
 }
+
+// Exact sRGB transfer function (the hardware applies the inverse when sampling *_SRGB textures).
+// Used until the tonemapping pass exists, which will then own the final encoding.
+vec3 linearToSrgb(vec3 linear)
+{
+    const vec3 low = linear * 12.92;
+    const vec3 high = 1.055 * pow(max(linear, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055;
+    return mix(high, low, lessThanEqual(linear, vec3(0.0031308)));
+}

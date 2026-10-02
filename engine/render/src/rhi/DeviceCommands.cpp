@@ -181,6 +181,20 @@ void Device::drawIndexed(u32 indexCount, u32 firstIndex)
     }
 }
 
+std::vector<u8> Device::readTexture(const Texture& texture, u32 level) const
+{
+    const TextureDesc& desc = texture.desc();
+    if (level >= desc.mipLevels || (desc.format != Format::RGBA8 && desc.format != Format::RGBA8_SRGB))
+    {
+        return {};
+    }
+    std::vector<u8> pixels(static_cast<usize>(mipSize(desc.width, level)) * mipSize(desc.height, level) * 4);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glGetTextureImage(texture.m_handle.id(), static_cast<GLint>(level), GL_RGBA, GL_UNSIGNED_BYTE,
+                      static_cast<GLsizei>(pixels.size()), pixels.data());
+    return pixels;
+}
+
 std::vector<u8> Device::readBuffer(const Buffer& buffer, usize offset, usize size) const
 {
     if (offset > buffer.size() || size > buffer.size() - offset)
