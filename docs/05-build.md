@@ -40,6 +40,7 @@ Ohne vcpkg (nur Kern, ohne Tests): `cmake --preset nodeps && cmake --build --pre
 |---|---|
 | `debug` | Entwicklung, Assertions an |
 | `release` | `RelWithDebInfo`, Profiling/Performance |
+| `coverage` | Debug + `G7_COVERAGE` (nur GCC/Clang), für die Abdeckungsmessung |
 | `nodeps` | Schnelltest ohne vcpkg |
 
 ## CMake-Optionen
@@ -49,6 +50,7 @@ Ohne vcpkg (nur Kern, ohne Tests): `cmake --preset nodeps && cmake --build --pre
 | `G7_BUILD_TOOLS` | ON | g7-cook, Editor |
 | `G7_WARNINGS_AS_ERRORS` | OFF | in CI empfohlen ON |
 | `G7_PROFILING` | OFF | aktiviert die `G7_PROFILE_*`-Zonen (eingebauter Sammler, ab M17 Tracy) |
+| `G7_COVERAGE` | OFF | Testabdeckung (`--coverage`, nur GCC/Clang); Auswertung mit gcovr |
 
 ## Kommandozeile des Spiels
 | Schalter | Wirkung |
