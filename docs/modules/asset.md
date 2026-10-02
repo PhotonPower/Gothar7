@@ -188,10 +188,31 @@ public:
   Lader laufen auf Workern und nutzen nur ihren `LoadContext`. Hochladen auf die Grafikkarte bleibt in `render`
   (Hauptthread mit GL-Kontext). Das `Vfs` muss den Manager überleben.
 
+### Engine-Anbindung (umgesetzt) – `runtime/AssetMounts.hpp`, `Engine`
+```cpp
+struct MountSpec { fs::Path source; i32 priority; std::string mountPoint; };
+Result<std::vector<MountSpec>> assetMounts(const Config&, const fs::Path& gameDir, const fs::Path& devRoot);
+std::vector<std::string> imageCandidates(std::string_view meshPath, std::string_view uri);  // Wurzel, dann relativ
+std::string vfsSibling(std::string_view base, std::string_view relative);                   // löst . und .. auf
+// Engine: asset::Vfs& vfs(); asset::AssetManager& assets(); const LoadedModel* model(std::string_view vfsPath) const;
+```
+- `Engine` besitzt `Vfs` und `AssetManager` (der Manager wird vor dem VFS zerstört) und ruft `update()` einmal pro
+  Frame im Hauptthread.
+- **Mounts** aus `[assets]` in `engine.toml`: `dev_mounts = true` mountet in Entwicklungs-Builds (CMake-Option
+  `G7_DEV_ASSETS`, Standard an) `<repo>/assets/source` (Priorität 0) und, falls vorhanden, `<repo>/assets/cooked`
+  (Priorität 10 – Gekochtes gewinnt). Dazu beliebige `[[assets.mount]]` mit `path` (relativ zum Spielordner),
+  `priority` und `mount_point`; `path = "data/*.g7pak"` mountet alle Archive des Ordners in Namensreihenfolge.
+  Fehlende Ordner werden mit Warnung übersprungen.
+- **`--scene`/`--view-mesh`** nehmen einen VFS-Pfad (`testscene/scene.toml`). Liegt die Datei nur auf der Festplatte,
+  wird ihr Ordner mit Priorität 1000 unter `local/` gemountet (`local/Lantern.glb`). Modellpfade einer Szene sind
+  relativ zur Szenendatei.
+- **Laden** in einem Durchgang: alle Meshes parallel auf den Workern (`Handle<MeshData>`), dann deren externe Bilder
+  (`Handle<ImageData>`; gleiche Pfade teilt der Cache), dann Upload im Hauptthread. Bild-URIs werden zuerst als Pfad
+  ab der VFS-Wurzel versucht (gekochte `.g7mesh`), dann relativ zum Mesh (glTF). `MaterialSet::create` bekommt dafür
+  eine `ImageLookup`-Funktion; nicht gefundene Bilder ergeben neutrale Ersatztexturen mit Warnung.
+- `LoadedModel` behält seine Handles (Grundlage für Hot-Reload).
+
 ## Bestandteile (geplant)
-- **Engine-Anbindung** (nächster Schritt): `Engine` besitzt `Vfs` und `AssetManager` und ruft `update()` einmal pro
-  Frame. Mounts kommen aus `engine.toml` (z. B. `assets/cooked/*.g7pak`, im Entwicklungsmodus zusätzlich
-  `assets/source`). `--view-mesh` und die Testszene laden über Handles, `MaterialSet` liest Bilder über das VFS.
 - **Weitere Loader** pro Typ (`Texture`, `Skeleton`, `AnimationClip`, `Sound`, `WorldData`, `Material`) mit den
   jeweiligen Modulen. Eingetragen werden sie vom höheren Modul über `registerLoader`, `asset` kennt sie nicht.
 - **Hot-Reload**: Dateiüberwachung im Entwicklungsmodus (über `Vfs::diskPath`/`rescan`) → Lader lädt neu,

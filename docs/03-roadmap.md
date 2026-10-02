@@ -86,7 +86,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 ## M3 – Asset-System & Pipeline
 - [x] Virtuelles Dateisystem: Mount-Punkte (Ordner, `.g7pak`), Priorität (Mods überschreiben) – `.g7pak` v1 ohne Kompression, Engine-Anbindung mit den Asset-Handles
 - [x] Asset-Handles (typisiert, referenzgezählt), Cache, asynchrones Laden auf Worker-Threads – `AssetManager` im Modul asset
-- [ ] Engine-Anbindung: `Vfs` + `AssetManager` in `Engine`, Mounts aus `engine.toml`, Meshes/Bilder über Handles bzw. VFS
+- [x] Engine-Anbindung: `Vfs` + `AssetManager` in `Engine`, Mounts aus `engine.toml`, Meshes/Bilder über Handles bzw. VFS (`[assets]`, `G7_DEV_ASSETS`, `local/` für Dateien außerhalb)
 - [ ] Hot-Reload für Texturen, Shader, Skripte im Entwicklungsmodus
 - [ ] `g7-cook`: glTF → Laufzeit-Mesh/Skelett/Animation, PNG → KTX2 (BC7/BC5), OGG bleibt, Archiv packen; Laufzeit lädt KTX2 (libktx, aus M2 verschoben – ADR 0014)
   - Stand: ADR 0016 (KTX2/UASTC, zstd, `.g7mesh`) akzeptiert; `g7-cook` kocht glTF → `.g7mesh`, Bilder mit `--textures ktx2` → KTX2 (UASTC + zstd, Mips, Normal-Maps erkannt) und packt `.g7pak` v2 mit zstd pro Eintrag; `asset` liest KTX2 als `TextureData` (BC7/BC5). Offen: Upload von BC7/BC5 in `render` (dann KTX2 als Vorgabe), Skelett/Animation (M6)

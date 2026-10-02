@@ -8,12 +8,35 @@
 #include <g7/render/TextureUpload.hpp>
 
 #include <map>
+#include <string>
 #include <utility>
 
 namespace g7::render
 {
 Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& mesh,
                                         const fs::Path& modelDirectory)
+{
+    // Decoded files stay alive until the set is built (the lookup hands out pointers).
+    std::map<std::string, asset::ImageData, std::less<>> files;
+    return create(device, mesh,
+                  [&](const asset::ImageSource& source) -> const asset::ImageData*
+                  {
+                      if (const auto it = files.find(source.uri); it != files.end())
+                      {
+                          return &it->second;
+                      }
+                      auto image = asset::loadImage(modelDirectory / fs::fromUtf8(source.uri));
+                      if (!image)
+                      {
+                          G7_LOG_WARN("render", "texture skipped: {}", image.error().message);
+                          return nullptr;
+                      }
+                      return &files.emplace(source.uri, std::move(image).value()).first->second;
+                  });
+}
+
+Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& mesh,
+                                        const ImageLookup& lookup)
 {
     MaterialSet set;
     // Every texture lives in m_textures; indices first, pointers only once the vector is final.
@@ -47,13 +70,20 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
             return it->second;
         }
         const asset::ImageSource& source = mesh.images[static_cast<usize>(image)];
-        auto decoded = source.encoded.empty() ? asset::loadImage(modelDirectory / fs::fromUtf8(source.uri))
-                                              : asset::decodeImage(source.encoded, "embedded image");
-        auto texture = decoded ? createTexture(device, decoded.value(), {srgb, true})
-                               : Result<rhi::Texture>(decoded.error());
+        Result<rhi::Texture> texture = Error{"image '" + source.uri + "' not available"};
+        if (!source.encoded.empty())
+        {
+            auto decoded = asset::decodeImage(source.encoded, "embedded image");
+            texture = decoded ? createTexture(device, decoded.value(), {srgb, true})
+                              : Result<rhi::Texture>(decoded.error());
+        }
+        else if (const asset::ImageData* external = lookup ? lookup(source) : nullptr)
+        {
+            texture = createTexture(device, *external, {srgb, true});
+        }
         if (!texture)
         {
-            G7_LOG_WARN("render", "texture skipped: {}", texture.error().message);
+            G7_LOG_DEBUG("render", "texture fallback: {}", texture.error().message);
             uploaded.emplace(key, fallbackIndex);
             return fallbackIndex;
         }

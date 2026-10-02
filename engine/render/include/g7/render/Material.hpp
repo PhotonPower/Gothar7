@@ -1,5 +1,6 @@
 #pragma once
 
+#include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Result.hpp>
@@ -8,6 +9,7 @@
 #include <g7/render/rhi/Resources.hpp>
 
 #include <array>
+#include <functional>
 #include <vector>
 
 namespace g7::render
@@ -38,7 +40,13 @@ class MaterialSet
 {
 public:
     MaterialSet() = default;
-    /// External image URIs are resolved relative to `modelDirectory`.
+    /// Supplies the decoded image for an external `ImageSource` (uri set), or nullptr if it is
+    /// missing (the material then uses a neutral fallback). Embedded images are decoded here.
+    using ImageLookup = std::function<const asset::ImageData*(const asset::ImageSource&)>;
+
+    [[nodiscard]] static Result<MaterialSet> create(Device& device, const asset::MeshData& mesh,
+                                                    const ImageLookup& lookup);
+    /// Convenience for tools and tests: external image URIs are files relative to `modelDirectory`.
     [[nodiscard]] static Result<MaterialSet> create(Device& device, const asset::MeshData& mesh,
                                                     const fs::Path& modelDirectory);
 

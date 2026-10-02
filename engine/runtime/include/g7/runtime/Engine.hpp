@@ -5,6 +5,10 @@
 // Hauptschleife (fester Simulationsschritt + interpoliertes Rendern), Shutdown.
 // Spezifikation: docs/02-architecture.md ("Hauptschleife", "Initialisierung")
 
+#include <g7/asset/AssetManager.hpp>
+#include <g7/asset/ImageData.hpp>
+#include <g7/asset/MeshData.hpp>
+#include <g7/asset/Vfs.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Config.hpp>
 #include <g7/core/Result.hpp>
@@ -31,12 +35,14 @@
 
 namespace g7
 {
-/// A glTF model on the GPU, shared by all its instances.
+/// A model on the GPU, shared by all its instances, with the asset handles it was built from.
 struct LoadedModel
 {
     render::Mesh mesh;
     render::MaterialSet materials;
-    std::string name;
+    std::string name; ///< VFS path
+    asset::Handle<asset::MeshData> source;
+    std::vector<asset::Handle<asset::ImageData>> images; ///< parallel to MeshData::images (external ones)
 };
 
 /// One placed model with its world bounds (for culling).
@@ -61,10 +67,12 @@ struct EngineConfig
     /// Engine shaders; empty = gamePath("shaders"). Point it at engine/render/shaders to edit the
     /// sources live with hot-reload ([render] shader_dir).
     fs::Path shaderDirectory;
-    /// Optional glTF model shown at the origin (--view-mesh); the debug camera frames it.
+    /// Optional model shown at the origin (--view-mesh, glTF or .g7mesh); the debug camera frames it.
+    /// A VFS path, or a file on disk whose folder is then mounted under "local/".
     fs::Path viewMesh;
     bool sun = true; ///< false: no sunlight (--no-sun), to judge point lights alone.
-    /// Optional test scene (--scene, format in SceneFile.hpp); replaces --view-mesh.
+    /// Optional test scene (--scene, format in SceneFile.hpp); replaces --view-mesh. VFS path or file
+    /// on disk like viewMesh.
     fs::Path scene;
     u32 viewpoint = 0;  ///< Start viewpoint of the scene (--viewpoint=N).
     bool ground = true; ///< Ground plate under the --view-mesh model (--no-ground).
@@ -120,6 +128,12 @@ public:
     [[nodiscard]] bool paused() const noexcept { return m_paused; }
     static constexpr f64 kMaxTimeScale = 10.0;
 
+    /// Virtual file system with the mounts of [assets] (docs/modules/asset.md).
+    [[nodiscard]] asset::Vfs& vfs() noexcept { return m_vfs; }
+    /// Asset loading through the VFS; update() runs once per frame.
+    [[nodiscard]] asset::AssetManager& assets() noexcept { return *m_assets; }
+    /// A loaded model by its VFS path (as first requested), or nullptr.
+    [[nodiscard]] const LoadedModel* model(std::string_view path) const;
     /// Render device, or nullptr without rendering.
     [[nodiscard]] render::Device* renderDevice() noexcept { return m_device.get(); }
     /// Placed objects of the scene (--scene / --view-mesh, ground included) and how many were drawn in
@@ -150,8 +164,12 @@ private:
     [[nodiscard]] Result<void> initSceneRendering();
     [[nodiscard]] Result<void> initViewMesh();
     [[nodiscard]] Result<void> initScene();
-    /// Loads a glTF model once; later calls with the same path return the cached one.
-    [[nodiscard]] Result<const LoadedModel*> loadModel(const fs::Path& path);
+    [[nodiscard]] Result<void> initAssets();
+    /// VFS path for a --scene/--view-mesh argument (mounting the folder of a disk file under local/).
+    [[nodiscard]] Result<std::string> resolveAssetArgument(const fs::Path& argument);
+    /// Loads models (meshes and their images) through the asset manager in one batch and uploads
+    /// them; models already loaded are kept.
+    [[nodiscard]] Result<void> loadModels(const std::vector<std::string>& paths);
     [[nodiscard]] Result<void> addGround(f32 size, const Vec3& color, f32 height);
     void addInstance(const LoadedModel& model, const Mat4& transform);
     void setViewpoint(const SceneViewpoint& viewpoint);
@@ -166,6 +184,9 @@ private:
     void runDebugUi(f64 realSeconds);
 
     EngineConfig m_config;
+    // Assets: the manager is destroyed before the VFS it reads from (member order).
+    asset::Vfs m_vfs;
+    std::unique_ptr<asset::AssetManager> m_assets;
     std::unique_ptr<platform::Window> m_window;
     std::unique_ptr<platform::GlContext> m_glContext; // must outlive m_device
     std::unique_ptr<render::Device> m_device;
@@ -184,7 +205,7 @@ private:
     f64 m_frameSeconds = 0.0;         // real duration of the last frame
     f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
     // Scene: --view-mesh (one model) or --scene (test scene); models are shared by instances.
-    std::map<fs::Path, std::unique_ptr<LoadedModel>> m_models;
+    std::map<std::string, std::unique_ptr<LoadedModel>, std::less<>> m_models; // by VFS path
     std::unique_ptr<LoadedModel> m_groundModel;
     std::vector<SceneInstance> m_instances;
     std::string m_sceneName;
