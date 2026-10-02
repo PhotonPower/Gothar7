@@ -109,6 +109,13 @@ Result<void> Engine::init()
             {
                 return result;
             }
+            if (!m_config.viewMesh.empty())
+            {
+                if (auto result = initViewMesh(); !result)
+                {
+                    return result;
+                }
+            }
         }
         else
         {
@@ -232,6 +239,7 @@ bool Engine::runFrame()
             m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
             m_device->bindPipeline(m_backgroundPipeline);
             m_device->draw(3); // fullscreen triangle from gl_VertexID
+            drawViewMesh();
             m_glContext->swapBuffers();
         }
     }
@@ -282,6 +290,71 @@ Result<void> Engine::initShaders()
     }
     m_backgroundPipeline = std::move(pipeline).value();
     return {};
+}
+
+Result<void> Engine::initViewMesh()
+{
+    auto data = asset::loadGltf(m_config.viewMesh);
+    if (!data)
+    {
+        return Error{"cannot load mesh: " + data.error().message};
+    }
+    auto mesh = render::Mesh::create(*m_device, data.value());
+    if (!mesh)
+    {
+        return Error{"cannot upload mesh: " + mesh.error().message};
+    }
+    m_viewMesh = std::move(mesh).value();
+    for (const asset::Submesh& submesh : m_viewMesh.submeshes())
+    {
+        m_viewMeshColors.push_back(data.value().materials[submesh.material].baseColor);
+    }
+
+    auto program = m_shaders->load("mesh", {"mesh.vert", "mesh.frag", {}});
+    if (!program)
+    {
+        return Error{"cannot load shaders: " + program.error().message};
+    }
+    m_meshProgram = program.value();
+    render::rhi::PipelineDesc desc;
+    desc.program = m_meshProgram;
+    desc.attributes = render::Mesh::vertexLayout();
+    desc.vertexStride = render::Mesh::kVertexStride;
+    auto pipeline = m_device->createPipeline(desc);
+    if (!pipeline)
+    {
+        return Error{"cannot create mesh pipeline: " + pipeline.error().message};
+    }
+    m_meshPipeline = std::move(pipeline).value();
+
+    // Frame the model: look at its centre from the front-right, at 2.5x its radius.
+    const AABB& bounds = m_viewMesh.bounds();
+    const f32 radius = std::max(glm::length(bounds.extents()), 0.5f);
+    m_camera.transform.position = bounds.center() + glm::normalize(Vec3(0.6f, 0.4f, 1.0f)) * radius * 2.5f;
+    m_camera.transform.rotation = lookRotation(bounds.center() - m_camera.transform.position);
+    m_flyCamera.speed = std::max(radius, 1.0f);
+    m_flyCamera.attach(m_camera);
+    G7_LOG_INFO("engine", "viewing {} ({} vertices, {} submeshes, {:.1f} m across)",
+                fs::toUtf8(m_config.viewMesh), data.value().vertices.size(), m_viewMesh.submeshes().size(),
+                radius * 2.0f);
+    return {};
+}
+
+void Engine::drawViewMesh()
+{
+    if (m_viewMesh.submeshes().empty())
+    {
+        return;
+    }
+    m_meshProgram->setUniform("uViewProjection", m_camera.viewProjection());
+    m_meshProgram->setUniform("uModel", Mat4(1.0f));
+    m_device->bindPipeline(m_meshPipeline);
+    m_viewMesh.bind(*m_device);
+    for (usize i = 0; i < m_viewMesh.submeshes().size(); ++i)
+    {
+        m_meshProgram->setUniform("uBaseColor", m_viewMeshColors[i]);
+        m_viewMesh.draw(*m_device, i);
+    }
 }
 
 void Engine::updateDebugCamera(f64 realSeconds)
@@ -336,6 +409,9 @@ void Engine::shutdown()
     }
     // Shutdown in reverse init order.
     G7_LOG_INFO("engine", "shutdown");
+    m_meshPipeline = {};
+    m_viewMesh = {};
+    m_meshProgram = nullptr;
     m_backgroundPipeline = {};
     m_backgroundProgram = nullptr;
     m_shaders.reset();

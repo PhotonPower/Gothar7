@@ -17,3 +17,4 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | [0010](0010-config-toml.md) | Konfigurationsformat: TOML mit toml++ | Akzeptiert | M0 |
 | [0011](0011-platform-sdl3.md) | Plattformschicht: SDL3 | Akzeptiert | M1 |
 | [0012](0012-geodata-sources.md) | Geodaten: LGL Open GeoData + OSM statt Google | Akzeptiert | W1 |
+| [0013](0013-gltf-fastgltf.md) | glTF-Import: fastgltf | Akzeptiert | M2 |

@@ -24,6 +24,7 @@ struct CommandLine
     bool smokeTest = false;
     bool fullscreen = false;
     bool noRender = false;
+    std::string viewMesh;
     std::optional<g7::u64> frames;
     std::optional<g7::u64> maxFps;
 };
@@ -45,6 +46,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--no-render")
         {
             cli.noRender = true;
+        }
+        else if (arg.starts_with("--view-mesh="))
+        {
+            cli.viewMesh = std::string(arg.substr(12));
         }
         else if (arg == "--fullscreen")
         {
@@ -172,6 +177,10 @@ int main(int argc, char** argv)
     if (cli->fullscreen)
     {
         config.window.mode = g7::platform::WindowMode::Fullscreen;
+    }
+    if (!cli->viewMesh.empty())
+    {
+        config.viewMesh = g7::fs::fromUtf8(cli->viewMesh);
     }
     if (cli->noRender)
     {

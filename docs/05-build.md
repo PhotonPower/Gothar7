@@ -78,6 +78,7 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | `--frames=N` | nach N Frames beenden (auch mit Fenster; CI mit `SDL_VIDEO_DRIVER=offscreen`) |
 | `--max-fps=N` | Bildrate begrenzen (überschreibt `[window] max_fps`; 0 = unbegrenzt) |
 | `--fullscreen` | randloses Vollbild in Desktop-Auflösung |
+| `--view-mesh=<pfad>` | glTF-Modell (`.gltf`/`.glb`) am Ursprung anzeigen, Debug-Kamera richtet sich danach aus |
 | `--no-render` | Fenster ohne OpenGL (Systeme ohne GL-Treiber, Windows-CI, `nodeps`-Build) |
 | `--editor` | Editor-Modus (ab M4) |
 | `--world=<name>` | Startwelt (ab M4) |
