@@ -32,15 +32,15 @@ Umgebungsvariable `GOTHAR_DATA_ROOT` den Pfad (z. B. in CI).
 
 ```
 <DATA_ROOT>/                     z. B. D:\GotharData
-  geo/lgl/dgm1/                  LGL-Downloads (Kacheln, GeoTIFF oder XYZ)
-  geo/lgl/lod2/*.gml
-  geo/lgl/dop/
+  geo/lgl/dgm1/<kachel>/*.xyz    LGL-Downloads (2-km-Kacheln, je 4 Dateien à 1 km²)
+  geo/lgl/lod2/<kachel>/*.gml
+  geo/lgl/dop/<kachel>/
   geo/osm/*.osm.pbf              Geofabrik-Extrakt, Zuschnitt macht geo-import
   geo/SOURCES.md                 Herkunft und Download-Datum
   capture/insta360/<datum>/      .insv/.mp4 + GPS
   work/<ort>/                    Zwischenstände der Werkzeuge
 ```
-`gothar-worldgen info leonberg` zeigt, welche Ordner fehlen.
+`gothar-worldgen download leonberg` füllt `geo/`, `gothar-worldgen info leonberg` zeigt, welche Ordner fehlen.
 
 Im Repo landen nur **abgeleitete, geprüfte Ergebnisse** (`assets/source/worlds/leonberg/…`) und
 die Annotationen (`tools/worldgen/data/leonberg/…`, kleine JSON-Dateien).

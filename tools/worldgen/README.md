@@ -11,7 +11,8 @@ tools/worldgen/
   config/leonberg.toml        Gebiet, Ursprung, Maßstab (versioniert)
   config/local.toml           DATA_ROOT usw. (lokal, NICHT versioniert; Vorlage: local.example.toml)
   src/gothar_worldgen/
-    cli.py                    Befehle info / tiles / import
+    cli.py                    Befehle info / tiles / download / import
+    download.py               LGL-Kacheln + OSM-Extrakt nach DATA_ROOT laden
     config.py                 Laden + Prüfen von <ort>.toml und local.toml, Datenpfade
     geo/                      Gebiete, Kachelraster; DGM1, CityGML LoD2, OSM → Zwischenformate (W1)
     facade/                   Insta360 → Fassadenansichten, Annotations-UI     (geplant, W4)
@@ -36,7 +37,8 @@ GDAL unter Windows: über die Wheels von `rasterio`/`pyogrio` (bringen GDAL mit)
 ## Befehle
 ```cmd
 gothar-worldgen info leonberg              REM Konfiguration, Gebiet, vorhandene/fehlende Rohdaten-Ordner
-gothar-worldgen tiles leonberg             REM benötigte Kacheln (Download-Hilfe), --area core, --size 2000
+gothar-worldgen tiles leonberg             REM benötigte LGL-Kacheln (2-km-Raster), --area core, --size 1000
+gothar-worldgen download leonberg          REM LGL-Kacheln + OSM laden/entpacken, --only dgm1,osm, --force
 gothar-worldgen import leonberg            REM Rohdaten → Zwischenformate (im Aufbau)
 ```
 `--config-dir` bzw. `GOTHAR_WORLDGEN_CONFIG` wählen einen anderen Konfigurationsordner;
