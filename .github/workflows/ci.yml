@@ -226,3 +226,6 @@ jobs:
 
       - name: Validate character assets
         run: gothar-chargen validate --strict
+
+      - name: Animation list in sync with clips
+        run: gothar-chargen report --fail-stale

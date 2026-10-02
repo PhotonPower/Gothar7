@@ -15,10 +15,13 @@ from gothar_chargen.blender_run import (
     BlenderError,
     build_placeholder,
     build_reference_rig,
+    build_set,
     export_glb,
     find_blender,
 )
+from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
 from gothar_chargen.gltf import Gltf, GltfError
+from gothar_chargen.report import ReportError, progress
 from gothar_chargen.skeleton import SkeletonError, load_rig
 from gothar_chargen.validate import Report, reference_pose, validate_file
 
@@ -27,6 +30,7 @@ EXIT_ERROR = 1
 
 CHARACTERS_DIR = Path("assets/source/characters")
 REFERENCE_GLB = CHARACTERS_DIR / "rig/human_reference.glb"
+ANIMATION_LIST = Path("docs/design/animation-list.md")
 
 
 def find_repo_root(start: Path | None = None) -> Path | None:
@@ -140,23 +144,21 @@ def _find_one(folder: Path, pattern: str) -> Path:
     return found[0]
 
 
-def _cmd_build_placeholder(args: argparse.Namespace, out: TextIO) -> int:
+def _characters_dir(args: argparse.Namespace) -> Path:
     root = find_repo_root()
     out_dir = args.out_dir or (root / CHARACTERS_DIR if root else None)
     if out_dir is None:
-        print("error: repository not found; pass --out-dir", file=out)
-        return EXIT_ERROR
-    ual1 = _find_one(args.quaternius, "AnimationLibrary_Godot_Standard.glb")
-    ual2 = _find_one(args.quaternius, "UAL2_Standard.glb")
-    blender = find_blender(args.blender)
-    build_placeholder(blender, ual1, ual2, out_dir, args.clips)
+        raise FileNotFoundError("repository not found; pass --out-dir")
+    return out_dir
+
+
+def _export_and_check(
+    blender: Path, blends: list[Path], out_dir: Path, args: argparse.Namespace, out: TextIO
+) -> int:
     rig = load_rig(args.rig)
     reference = reference_pose(Gltf.load(out_dir / REFERENCE_GLB.relative_to(CHARACTERS_DIR)))
     ok = True
-    for blend in (
-        out_dir / "figures/placeholder_mannequin.blend",
-        out_dir / "anims/human/none.blend",
-    ):
+    for blend in blends:
         glb = blend.with_suffix(".glb")
         export_glb(blender, blend, glb)
         blend.with_suffix(".blend1").unlink(missing_ok=True)
@@ -164,6 +166,54 @@ def _cmd_build_placeholder(args: argparse.Namespace, out: TextIO) -> int:
         _print_report(report, out)
         ok = ok and report.ok(strict=True)
     return EXIT_OK if ok else EXIT_ERROR
+
+
+def _cmd_build_placeholder(args: argparse.Namespace, out: TextIO) -> int:
+    out_dir = _characters_dir(args)
+    ual2 = _find_one(args.sources, "UAL2_Standard.glb")
+    blender = find_blender(args.blender)
+    build_placeholder(blender, ual2, out_dir)
+    blends = [out_dir / "figures/placeholder_mannequin.blend"]
+    return _export_and_check(blender, blends, out_dir, args, out)
+
+
+def _cmd_build_set(args: argparse.Namespace, out: TextIO) -> int:
+    out_dir = _characters_dir(args)
+    names = packaged_sets() if args.set == ["all"] else args.set
+    specs = [load_set_spec(n) for n in names]  # fail early on a bad list
+    blender = find_blender(args.blender)
+    blends = []
+    for spec in specs:
+        log = build_set(blender, spec.set, args.sources, out_dir)
+        for line in log.splitlines():
+            if line.startswith("[chargen] clip"):
+                print(line[10:], file=out)
+        blends.append(out_dir / "anims/human" / f"{spec.set}.blend")
+    return _export_and_check(blender, blends, out_dir, args, out)
+
+
+def _cmd_report(args: argparse.Namespace, out: TextIO) -> int:
+    root = find_repo_root()
+    list_path = args.list or (root / ANIMATION_LIST if root else None)
+    anims = args.anims or (root / CHARACTERS_DIR / "anims" if root else None)
+    if list_path is None or anims is None:
+        print("error: repository not found; pass --list and --anims", file=out)
+        return EXIT_ERROR
+    result = progress(list_path.read_text(encoding="utf-8"), anims)
+    if args.json:
+        json.dump(result.to_dict(), out, indent=2)
+        print(file=out)
+    else:
+        listed = len(result.listed)
+        print(f"Prio A: {listed - len(result.missing)}/{listed} clips present", file=out)
+        if result.missing:
+            print(f"  missing ({len(result.missing)}): {', '.join(result.missing)}", file=out)
+        for s in result.stale:
+            print(f"  list out of date: {s}", file=out)
+        if result.extra:
+            print(f"Other clips ({len(result.extra)}): {', '.join(result.extra)}", file=out)
+    failed = (args.fail_missing and result.missing) or (args.fail_stale and result.stale)
+    return EXIT_ERROR if failed else EXIT_OK
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -194,19 +244,25 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", type=Path, help="default: next to the .blend")
     p.set_defaults(func=_cmd_export)
 
-    p = sub.add_parser(
-        "build-placeholder",
-        help="F1 placeholder figure + test clips from the Quaternius libraries (CC0)",
-    )
-    p.add_argument(
-        "--quaternius",
-        type=Path,
-        required=True,
-        help="folder with the unpacked UAL1/UAL2 [Standard] zips (opengameart.org)",
-    )
-    p.add_argument("--clips", default="f1_placeholder", help="clip list in data/clips/")
+    sources_help = "folder with the unpacked Quaternius UAL1/UAL2 [Standard] zips (CC0)"
+    p = sub.add_parser("build-placeholder", help="placeholder figure from the Quaternius mannequin")
+    p.add_argument("--sources", type=Path, required=True, help=sources_help)
     p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
     p.set_defaults(func=_cmd_build_placeholder)
+
+    p = sub.add_parser("report", help="animation-list.md (Prio A) vs. clips in anims/")
+    p.add_argument("--list", type=Path, help="default: docs/design/animation-list.md")
+    p.add_argument("--anims", type=Path, help="default: assets/source/characters/anims")
+    p.add_argument("--json", action="store_true", help="machine-readable output")
+    p.add_argument("--fail-missing", action="store_true", help="exit 1 if Prio-A clips are missing")
+    p.add_argument("--fail-stale", action="store_true", help="exit 1 if a list status is outdated")
+    p.set_defaults(func=_cmd_report)
+
+    p = sub.add_parser("build-set", help="animation sets from data/clips/<set>.toml")
+    p.add_argument("set", nargs="+", help="set names (none, swim, ...) or 'all'")
+    p.add_argument("--sources", type=Path, required=True, help=sources_help)
+    p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
+    p.set_defaults(func=_cmd_build_set)
     return parser
 
 
@@ -215,7 +271,7 @@ def main(argv: Sequence[str] | None = None, out: TextIO | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return int(args.func(args, out))
-    except (BlenderError, GltfError, SkeletonError, OSError) as e:
+    except (BlenderError, ClipSpecError, GltfError, ReportError, SkeletonError, OSError) as e:
         print(f"error: {e}", file=out)
         return EXIT_ERROR
 

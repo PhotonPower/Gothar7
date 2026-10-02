@@ -1,0 +1,20 @@
+# Set "swim" -> assets/source/characters/anims/human/swim.glb
+# Sources: Quaternius Universal Animation Library [Standard], CC0 1.0. Placeholders.
+
+set = "swim"
+
+[sources.ual1]
+file = "AnimationLibrary_Godot_Standard.glb"
+mapping = "quaternius_ual1"
+
+[[clip]]
+name = "swim/s_idle"
+from = "ual1:Swim_Idle_Loop"
+
+[[clip]]
+name = "swim/s_forward"
+from = "ual1:Swim_Fwd_Loop"
+
+[[clip]]
+name = "swim/s_back"
+reverse = "swim/s_forward"

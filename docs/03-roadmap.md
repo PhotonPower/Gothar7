@@ -336,9 +336,9 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 Spezifikation: `docs/design/characters-pipeline.md`, Liste: `docs/design/animation-list.md`.
 Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source/characters/`.
 
-**Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört): Referenz-Rig (T-Pose, 60 Knochen,
-Geometrie aus dem Quaternius-Rig, CC0), Export-Einstellungen, `tools/chargen` mit Rig-Validator (CI-Job `chargen`), Platzhalterfigur +
-3 Test-Clips mit Events; Verträge mit engine abgestimmt. Nächste Phase: F2 (Basis-Animationsset).
+**Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört). F2 läuft: `build-set`,
+`report` und Pose-Marker-Events stehen, 18/36 Prio-A-Clips liegen als Platzhalter vor (Quaternius CC0); als Nächstes die übrigen 18 als
+Keyframe-Platzhalter, danach Prio-B-Fortbewegung. Kein Mixamo (öffentliches Repo).
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
@@ -352,10 +352,11 @@ Geometrie aus dem Quaternius-Rig, CC0), Export-Einstellungen, `tools/chargen` mi
 ✅ Erfüllt, soweit ohne M6 möglich: Figur und Clips bestehen `gothar-chargen validate --strict` (CI); die Figur kocht als `.g7mesh`. Skin und Clips kocht `g7-cook` mit M6, dann ist nur noch die Prüfung nötig.
 
 ## F2 – Basis-Animationsset  (benötigt F1)
-- [ ] Retargeting-Mappings (Quaternius, Mixamo) und Stapel-Retargeting in Blender
-- [ ] Animations-Export: Sets nach Konvention, Timeline-Marker → `events.toml`, Root-Motion/In-Place
-- [ ] Abgleich-Werkzeug Animationsliste ↔ vorhandene Clips (Fortschrittsbericht)
+- [x] Bone-Mappings Quaternius UAL1/UAL2 (CC0) und Stapel-Übertragung in Blender (`gothar-chargen build-set`, Clip-Listen `data/clips/<set>.toml`) – **kein Mixamo** (öffentliches Repo, Entscheidung 2026-10-03); Mocap-Retargeting folgt in F4
+- [x] Animations-Export: Sets nach Konvention, Pose-Marker → `events.toml` (dazu automatische Fußkontakt-/Lande-Events), Root Motion (z. B. `t_climb_low`) bzw. In-Place
+- [x] Abgleich-Werkzeug Animationsliste ↔ vorhandene Clips (`gothar-chargen report`)
 - [ ] Alle **Prio-A**-Animationen (mindestens als Platzhalter-Qualität)
+  - Stand: 18/36 aus Quaternius bzw. abgeleitet (Sets `none`, `swim`); die übrigen 18 (Strafe, Drehen, Klettern mittel/hoch, Leiter, Schwimm-Drehungen, Tauchen, Rutschen) folgen als Keyframe-Platzhalter (`platzhalter-K`, Ersatz durch Mocap in F4)
 - [ ] Prio-B-Fortbewegung je Waffenmodus
 
 **DoD:** Meilenstein A ist mit diesen Animationen erreichbar; Bericht zeigt 0 fehlende Prio-A-Clips.
