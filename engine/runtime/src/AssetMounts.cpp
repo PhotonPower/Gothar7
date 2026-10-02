@@ -47,6 +47,11 @@ Result<std::vector<MountSpec>> assetMounts(const Config& settings, const fs::Pat
                 mounts.push_back({path, priority, {}});
             }
         }
+        // A folder mount shows an archive only as a file: mount the cooked archives themselves too.
+        for (const fs::Path& archive : archivesIn((devRoot / "cooked").make_preferred()))
+        {
+            mounts.push_back({archive.lexically_normal(), kDevCookedArchivePriority, {}});
+        }
     }
 
     for (usize i = 0, n = settings.arraySize("assets.mount"); i < n; ++i)

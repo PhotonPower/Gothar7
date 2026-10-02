@@ -22,6 +22,10 @@ u32 bytesPerPixel(Format format) noexcept
         return 4;
     case Format::RGBA16F:
         return 8;
+    case Format::BC7:
+    case Format::BC7_SRGB:
+    case Format::BC5:
+        return 0; // block-compressed: see imageSize
     }
     return 0;
 }
@@ -34,6 +38,21 @@ bool isDepthFormat(Format format) noexcept
 bool hasStencil(Format format) noexcept
 {
     return format == Format::Depth24Stencil8;
+}
+
+bool isCompressed(Format format) noexcept
+{
+    return format == Format::BC7 || format == Format::BC7_SRGB || format == Format::BC5;
+}
+
+usize imageSize(Format format, u32 width, u32 height) noexcept
+{
+    if (isCompressed(format))
+    {
+        constexpr usize kBlockBytes = 16; // BC5 and BC7 alike
+        return static_cast<usize>((width + 3) / 4) * ((height + 3) / 4) * kBlockBytes;
+    }
+    return static_cast<usize>(width) * height * bytesPerPixel(format);
 }
 
 u32 vertexFormatSize(VertexFormat format) noexcept

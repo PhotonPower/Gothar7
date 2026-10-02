@@ -21,7 +21,10 @@ Result<rhi::Texture> createTexture(Device& device, const asset::ImageData& image
     {
         return upload.error();
     }
-    texture.value().generateMipmaps();
+    if (auto mips = texture.value().generateMipmaps(); !mips)
+    {
+        return mips.error();
+    }
     return texture;
 }
 

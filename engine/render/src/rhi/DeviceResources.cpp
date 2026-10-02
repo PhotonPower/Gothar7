@@ -239,7 +239,7 @@ Result<Framebuffer> Device::createFramebuffer(const FramebufferDesc& desc)
     };
     for (const Texture* color : desc.colors)
     {
-        if (!color || isDepthFormat(color->desc().format))
+        if (!color || isDepthFormat(color->desc().format) || isCompressed(color->desc().format))
         {
             return Error{"framebuffer colour attachment must be a colour texture"};
         }

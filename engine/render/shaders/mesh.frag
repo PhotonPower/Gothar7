@@ -13,6 +13,7 @@ layout(binding = 2) uniform sampler2D uEmissiveTexture;  // sRGB; white if none 
 uniform vec4 uBaseColor;    // linear factor
 uniform vec3 uEmissive;     // linear factor
 uniform float uNormalScale;
+uniform int uNormalTwoChannel; // 1: BC5 normal map, only X and Y stored
 uniform float uAlphaCutoff;
 uniform vec3 uCameraPosition; // for the fog distance
 
@@ -36,6 +37,11 @@ vec3 surfaceNormal()
     const vec3 t = normalize(vTangent.xyz - n * dot(n, vTangent.xyz));
     const vec3 b = cross(n, t) * vTangent.w;
     vec3 mapped = texture(uNormalTexture, vUv).xyz * 2.0 - 1.0;
+    if (uNormalTwoChannel != 0)
+    {
+        // Two-channel normal maps (BC5) store X and Y; the unit normal's Z follows from them.
+        mapped.z = sqrt(max(0.0, 1.0 - dot(mapped.xy, mapped.xy)));
+    }
     mapped.xy *= uNormalScale;
     return normalize(t * mapped.x + b * mapped.y + n * mapped.z);
 }
