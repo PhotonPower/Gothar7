@@ -337,8 +337,8 @@ Spezifikation: `docs/design/characters-pipeline.md`, Liste: `docs/design/animati
 Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source/characters/`.
 
 **Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört). F2 läuft: `build-set`,
-`report` und Pose-Marker-Events stehen, 18/36 Prio-A-Clips liegen als Platzhalter vor (Quaternius CC0); als Nächstes die übrigen 18 als
-Keyframe-Platzhalter, danach Prio-B-Fortbewegung. Kein Mixamo (öffentliches Repo).
+`report` und Pose-Marker-Events stehen, alle 36 Prio-A-Clips liegen als Platzhalter vor (18 Quaternius CC0, 18 Keyframe-Platzhalter);
+als Nächstes die Prio-B-Fortbewegung je Waffenmodus. Kein Mixamo (öffentliches Repo).
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
@@ -355,11 +355,11 @@ Keyframe-Platzhalter, danach Prio-B-Fortbewegung. Kein Mixamo (öffentliches Rep
 - [x] Bone-Mappings Quaternius UAL1/UAL2 (CC0) und Stapel-Übertragung in Blender (`gothar-chargen build-set`, Clip-Listen `data/clips/<set>.toml`) – **kein Mixamo** (öffentliches Repo, Entscheidung 2026-10-03); Mocap-Retargeting folgt in F4
 - [x] Animations-Export: Sets nach Konvention, Pose-Marker → `events.toml` (dazu automatische Fußkontakt-/Lande-Events), Root Motion (z. B. `t_climb_low`) bzw. In-Place
 - [x] Abgleich-Werkzeug Animationsliste ↔ vorhandene Clips (`gothar-chargen report`)
-- [ ] Alle **Prio-A**-Animationen (mindestens als Platzhalter-Qualität)
-  - Stand: 18/36 aus Quaternius bzw. abgeleitet (Sets `none`, `swim`); die übrigen 18 (Strafe, Drehen, Klettern mittel/hoch, Leiter, Schwimm-Drehungen, Tauchen, Rutschen) folgen als Keyframe-Platzhalter (`platzhalter-K`, Ersatz durch Mocap in F4)
+- [x] Alle **Prio-A**-Animationen (mindestens als Platzhalter-Qualität) – 36/36 (`gothar-chargen report`): 18 aus Quaternius bzw. abgeleitet, 18 als Keyframe-Platzhalter (`platzhalter-K`, Rezepte in `blender/keyframes.py`; Ersatz durch Mocap in F4); Sets `none`, `swim`, `dive`
 - [ ] Prio-B-Fortbewegung je Waffenmodus
 
 **DoD:** Meilenstein A ist mit diesen Animationen erreichbar; Bericht zeigt 0 fehlende Prio-A-Clips.
+Stand: Bericht zeigt 0 fehlende Prio-A-Clips (CI prüft es). Offen ist nur noch die Prio-B-Fortbewegung je Waffenmodus.
 
 ## F3 – Figuren-Baukasten  (benötigt F1)
 - [ ] 2 Grundkörper × 3 Staturen (MPFB2, stilisiert), Köpfe als separate Meshes mit Morph-Targets

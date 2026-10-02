@@ -28,7 +28,9 @@ tools/chargen/
       common.py                   gemeinsame Helfer (Import, Referenz-Armatur, Speichern)
       build_placeholder.py        Platzhalterfigur: Quaternius-Mannequin aufs Referenz-Rig
       build_set.py                Animations-Set aus data/clips/<set>.toml (Bibliothek, rückwärts, Überblendung,
-                                  Verkettung; Fußkontakt-/Lande-Events als Pose-Marker)
+                                  Verkettung, Keyframe-Rezept; Fußkontakt-/Lande-Events als Pose-Marker)
+      curves.py                   Clip-Daten im Speicher, Posen, Überblenden/Verketten
+      keyframes.py                Keyframe-Platzhalter-Rezepte (strafe, turn, ladder, slide, ...; „platzhalter-K“)
   tests/                          pytest (synthetische Fehlerfälle auf Basis der Referenz-.glb)
 ```
 
@@ -52,7 +54,7 @@ gothar-chargen export figur.blend --out figur.glb  & REM danach Kanäle bereinig
 gothar-chargen build-placeholder --sources C:\GotharData\characters\quaternius
                                               & REM Platzhalterfigur neu erzeugen
 gothar-chargen build-set all --sources C:\GotharData\characters\quaternius
-                                              & REM Animations-Sets aus data/clips/<set>.toml (none, swim)
+                                              & REM Animations-Sets aus data/clips/<set>.toml (none, swim, dive)
 gothar-chargen report                         & REM Prio-A-Fortschritt: animation-list.md ↔ anims/
 ```
 Exit-Code 0 = alles in Ordnung, 1 = Fehler.
@@ -68,6 +70,13 @@ Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 | `morph.name` | nur Morph-Target-Namen aus characters-pipeline.md §6 |
 | `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung |
 | `events.*` | `<set>.events.toml` neben der `.glb`: Format, Clips vorhanden, Frames im Clip (Schleifen `s_*`: vor dem letzten Frame) |
+
+## Keyframe-Platzhalter
+Clips ohne passende CC0-Quelle entstehen aus Rezepten in `blender/keyframes.py` (`keyframe = "<rezept>"` plus
+`params` in der Clip-Liste). Posen werden als Drehungen um Weltachsen der T-Pose geschrieben (X = links der Figur,
+−Y = vorn, Z = oben), z. B. `"upperarm_l": [("Z", -90), ("X", -80)]` = Arm nach vorn, dann hoch. Sie sind bewusst
+grob und stehen in `animation-list.md` als `platzhalter-K`; F4 ersetzt sie durch Mocap. Hilfs-Clips
+(`helper = true`) werden nur zum Bauen benutzt und nicht exportiert.
 
 ## Quaternius-Quellen (für `build-placeholder`/`build-set`)
 Die „Standard“-Pakete der Universal Animation Library 1 und 2 (CC0) liegen als ZIP direkt auf opengameart.org

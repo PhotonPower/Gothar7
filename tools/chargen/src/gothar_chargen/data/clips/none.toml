@@ -90,3 +90,69 @@ events = "land"
 [[clip]]
 name = "none/t_climb_low"
 from = "ual2:ClimbUp_1m_RM"
+
+# --- keyframe placeholders (animation-list.md: platzhalter-K, replace with mocap in F4) ---
+
+[[clip]]
+name = "none/s_strafe_l"
+keyframe = "strafe"
+params = { base = "none/s_walk", side = "l", yaw = 70 }
+events = "footsteps"
+
+[[clip]]
+name = "none/s_strafe_r"
+keyframe = "strafe"
+params = { base = "none/s_walk", side = "r", yaw = 70 }
+events = "footsteps"
+
+[[clip]]
+name = "none/t_turn_l"
+keyframe = "turn"
+params = { idle = "none/s_idle", walk = "none/s_walk", side = "l", frames = 30 }
+events = "footsteps"
+
+[[clip]]
+name = "none/t_turn_r"
+keyframe = "turn"
+params = { idle = "none/s_idle", walk = "none/s_walk", side = "r", frames = 30 }
+events = "footsteps"
+
+[[clip]]
+name = "none/t_climb_mid"
+keyframe = "scale_root"
+params = { base = "none/t_climb_low", base_height = 1.0, height = 1.4, time = 1.3 }
+
+[[clip]]
+name = "none/t_climb_high"
+keyframe = "scale_root"
+params = { base = "none/t_climb_low", base_height = 1.0, height = 2.0, time = 1.6 }
+
+[[clip]]
+name = "none/t_ladder_on"
+keyframe = "ladder_on"
+params = { idle = "none/s_idle", frames = 20, forward = 0.3, up = 0.2 }
+
+[[clip]]
+name = "none/s_ladder_up"
+keyframe = "ladder"
+params = { direction = "up", frames = 40, rise = 0.6 }
+
+[[clip]]
+name = "none/s_ladder_down"
+keyframe = "ladder"
+params = { direction = "down", frames = 40, rise = 0.6 }
+
+[[clip]]
+name = "none/t_ladder_off"
+keyframe = "ladder_off"
+params = { idle = "none/s_idle", frames = 30, forward = 0.4, up = 0.9 }
+
+[[clip]]
+name = "none/s_slide"
+keyframe = "slide"
+params = { frames = 40 }
+
+[[clip]]
+name = "none/t_slide"
+blend = ["none/s_run", "none/s_slide"]
+frames = 12
