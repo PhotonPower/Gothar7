@@ -12,7 +12,7 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | [0005](0005-ecs-entt.md) | Szenenmodell: EnTT mit Vob-Konzept (VobId-Vertrag, API-Grenze) | Akzeptiert | M4 |
 | [0006](0006-scripting-lua.md) | Skriptsprache: Lua 5.4 + sol2 | Vorgeschlagen | M7 |
 | [0007](0007-audio-miniaudio.md) | Audio: miniaudio | Vorgeschlagen | M13 |
-| [0008](0008-no-original-formats.md) | Keine Original-Gothic-Formate im Spiel | Vorgeschlagen | – |
+| [0008](0008-no-original-formats.md) | Keine Original-Gothic-Formate im Spiel | Akzeptiert | – |
 | [0009](0009-game-ui.md) | Spiel-UI: eigenes System | Vorgeschlagen | M14 |
 | [0010](0010-config-toml.md) | Konfigurationsformat: TOML mit toml++ | Akzeptiert | M0 |
 | [0011](0011-platform-sdl3.md) | Plattformschicht: SDL3 | Akzeptiert | M1 |

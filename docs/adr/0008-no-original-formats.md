@@ -1,6 +1,6 @@
 # 0008 – Keine Unterstützung von Original-Gothic-Dateiformaten im Spiel
 
-- **Status:** Vorgeschlagen
+- **Status:** Akzeptiert (2026-10-03, Entscheidung des Projektinhabers)
 - **Datum:** 2026-10-02
 - **Phase:** –
 
@@ -15,3 +15,11 @@ eine Neuimplementierung, die Originaldaten lädt, möglich ist.
 ## Entscheidung
 Option 1. Ein optionales, separates Import-Werkzeug (z. B. `tools/zen-import` mit ZenKit) kann
 später für Forschung entstehen – es ist kein Teil des Spiels, und importierte Daten werden nie committet.
+
+## Konsequenzen
+- Engine und Spiel lesen nur eigene Formate (`.g7pak`, `.g7mesh`, `.g7world`, glTF, KTX2 …); kein ZenGin-Format
+  im Laufzeitcode, keine Abhängigkeit von ZenKit in `engine/` oder `game/`.
+- Keine Original-Gothic-Assets, -Skripte, -Texte, -Sprachaufnahmen oder daraus abgeleitete Daten im Repo
+  (das Repo ist öffentlich); siehe `CLAUDE.md` („Verboten“) und `assets/README.md`.
+- „Wie in Gothic 1“ heißt: Verhalten und Spielgefühl nachbilden (`docs/01-vision.md`, Modul-Docs), nicht Daten übernehmen.
+- Ein späteres Forschungs-Importwerkzeug braucht eine eigene ADR und bleibt außerhalb von Engine und Spiel.
