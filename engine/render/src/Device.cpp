@@ -191,6 +191,7 @@ void Device::beginFrame(u32 width, u32 height, const Vec4& clearColor)
 {
     m_stats = {};
     bindFramebuffer(nullptr);
+    setScissor(std::nullopt);
     setViewport(0, 0, width, height);
     clear(clearColor, 0.0f); // reverse-Z: 0 = far
 }

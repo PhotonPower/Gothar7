@@ -40,6 +40,8 @@ fog_start = 30.0
 fog_density = 0.00562
 # Debug-Overlay (Achsen, Raster, Bounds, Lichtradien, FPS) beim Start zeigen; umschalten mit der Aktion debug_draw (F2).
 debug_draw = false
+# ImGui-Debugfenster (Leistung, Kamera, Render-Einstellungen live) beim Start zeigen; umschalten mit debug_ui (F1).
+debug_ui = false
 # Shader-Verzeichnis, Standard: "shaders" neben der Executable. Zum Live-Bearbeiten der Quellen z. B.
 # shader_dir = "C:/dev/Gothar7/engine/render/shaders"
 
@@ -78,6 +80,7 @@ quick_load = ["F9"]
 console = ["Grave"]
 pause = ["Escape", "PadStart"]
 debug_draw = ["F2"]
+debug_ui = ["F1"]
 
 [bindings.modern]
 move_forward = ["W", "PadDpadUp"]
@@ -103,3 +106,4 @@ quick_load = ["F9"]
 console = ["Grave"]
 pause = ["Escape", "PadStart"]
 debug_draw = ["F2"]
+debug_ui = ["F1"]

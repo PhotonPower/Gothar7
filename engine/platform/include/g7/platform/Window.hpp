@@ -64,6 +64,8 @@ public:
     [[nodiscard]] Extent size() const noexcept;
     /// Framebuffer size in pixels (differs from size() on HiDPI displays).
     [[nodiscard]] Extent pixelSize() const noexcept;
+    /// Content scale of the window's display (1 = 100 %, 1.5 on a 150 % scaled screen); for UI sizes.
+    [[nodiscard]] f32 displayScale() const noexcept;
     /// True if the size changed during the last pollEvents().
     [[nodiscard]] bool resizedSinceLastPoll() const noexcept;
 
@@ -77,6 +79,11 @@ public:
     /// Returns false if the platform refuses it (logged).
     bool setRelativeMouse(bool enabled);
     [[nodiscard]] bool relativeMouse() const noexcept;
+
+    /// Text input (Input::text, on-screen keyboard/IME where the platform has one). Off by default:
+    /// the engine turns it on while a text field has focus.
+    void setTextInput(bool enabled);
+    [[nodiscard]] bool textInput() const noexcept;
 
     /// Asks the window to close; the next pollEvents() returns false.
     void requestClose();

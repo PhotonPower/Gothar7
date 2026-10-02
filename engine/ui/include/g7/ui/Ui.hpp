@@ -4,7 +4,7 @@
 // Spiel-UI (HUD, Menues, Inventar, Dialogauswahl), Lokalisierung, Debug-UI (ImGui).
 // Spezifikation: docs/modules/ui.md   |   Roadmap: M14
 //
-// Status: Platzhalter. Die oeffentliche API wird in der genannten Phase entworfen.
+// Status: Debug-UI umgesetzt (DebugUi.hpp, M2); die Spiel-UI folgt in M14.
 
 #include <string_view>
 

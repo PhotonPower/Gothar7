@@ -32,6 +32,8 @@ namespace
 {
 /// Dusk colour until there is a sky (M4).
 const Vec4 kClearColor{0.10f, 0.11f, 0.14f, 1.0f};
+/// Evening sun of the interim environment (until the time of day, M4).
+constexpr f32 kSunIntensity = 1.6f;
 
 /// Shows which actions fire (--verbose); fulfils the M1 check "log output of the actions".
 void logPressedActions(const platform::ActionMap& actions, const platform::Input& input)
@@ -208,16 +210,28 @@ bool Engine::runFrame()
             G7_LOG_DEBUG("engine", "window resized to {}x{} px", size.width, size.height);
         }
         logPressedActions(m_actions, m_input);
-        updateDebugCamera(realSeconds);
-
-        // Interim until the menu exists (M14): the pause action toggles the pause directly.
-        if (m_actions.pressed(m_input, platform::Action::Pause))
+        if (m_actions.pressed(m_input, platform::Action::DebugUi))
         {
-            setPaused(!m_paused);
+            setDebugUiVisible(!m_debugUiVisible);
         }
-        if (m_actions.pressed(m_input, platform::Action::DebugDraw))
+        // The debug UI sees the input first: what it uses (hovered window, focused text field) the
+        // game ignores.
+        runDebugUi(realSeconds);
+        const bool uiMouse = m_debugUiFrame && m_debugUi.wantsMouse();
+        const bool uiKeyboard = m_debugUiFrame && m_debugUi.wantsKeyboard();
+        updateDebugCamera(realSeconds, !uiMouse, !uiKeyboard);
+
+        if (!uiKeyboard)
         {
-            setDebugOverlay(!m_debugOverlay);
+            // Interim until the menu exists (M14): the pause action toggles the pause directly.
+            if (m_actions.pressed(m_input, platform::Action::Pause))
+            {
+                setPaused(!m_paused);
+            }
+            if (m_actions.pressed(m_input, platform::Action::DebugDraw))
+            {
+                setDebugOverlay(!m_debugOverlay);
+            }
         }
     }
 
@@ -308,6 +322,14 @@ Result<void> Engine::initShaders()
     }
     m_debugRenderer = std::move(debugRenderer).value();
     m_debugOverlay = m_config.settings.get<bool>("render.debug_draw", false);
+
+    auto debugUi = ui::DebugUi::create(m_device.get(), m_shaders.get(), m_window->displayScale());
+    if (!debugUi)
+    {
+        return Error{"cannot create debug UI: " + debugUi.error().message};
+    }
+    m_debugUi = std::move(debugUi).value();
+    m_debugUiVisible = m_config.settings.get<bool>("render.debug_ui", false);
     const auto size = m_window->pixelSize();
     auto target = render::SceneTarget::create(*m_device, size.width, size.height);
     if (!target)
@@ -408,7 +430,7 @@ void Engine::initEnvironment()
     // the sky and time of day (M4) drive these.
     m_environment.sunDirection = Vec3(0.6f, 0.25f, 0.4f);
     m_environment.sunColor = Vec3(1.0f, 0.72f, 0.5f);
-    m_environment.sunIntensity = m_config.sun ? 1.6f : 0.0f;
+    m_environment.sunIntensity = m_config.sun ? kSunIntensity : 0.0f;
     m_environment.ambientSky = Vec3(0.16f, 0.18f, 0.26f);
     m_environment.ambientGround = Vec3(0.07f, 0.06f, 0.05f);
     m_environment.fogColor = Vec3(0.0844f, 0.0395f, 0.0331f); // sRGB (0.32, 0.22, 0.20), the dusk horizon
@@ -449,6 +471,12 @@ void Engine::renderScene(u32 width, u32 height)
         addDebugOverlay(width, height);
         m_debugRenderer.render(*m_device, m_debugDraw, m_camera, &m_sceneTarget.depth(), width, height);
     }
+    // ImGui last, on top of everything.
+    if (m_debugUiFrame)
+    {
+        m_debugUi.endFrame(m_device.get());
+        m_debugUiFrame = false;
+    }
 }
 
 void Engine::drawViewMesh(u32 width, u32 height)
@@ -484,17 +512,22 @@ void Engine::drawViewMesh(u32 width, u32 height)
     m_meshRenderer.draw(*m_device, m_viewMesh, m_viewMaterials, Mat4(1.0f), m_camera);
 }
 
-void Engine::updateDebugCamera(f64 realSeconds)
+void Engine::updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard)
 {
     using platform::Action;
     const auto axis = [&](Action positive, Action negative)
     {
+        if (!allowKeyboard)
+        {
+            return 0.0f;
+        }
         return (m_actions.isDown(m_input, positive) ? 1.0f : 0.0f) -
                (m_actions.isDown(m_input, negative) ? 1.0f : 0.0f);
     };
 
     // Mouse look while the right mouse button is held (relative mode hides and captures the cursor).
-    if (m_input.pressed(platform::MouseButton::Right))
+    // It starts only outside the debug UI but, once started, continues over it.
+    if (allowMouse && m_input.pressed(platform::MouseButton::Right))
     {
         m_mouseLook = m_window->setRelativeMouse(true);
     }
@@ -526,6 +559,62 @@ void Engine::setPaused(bool paused) noexcept
         m_paused = paused;
         G7_LOG_INFO("engine", "{}", paused ? "paused" : "resumed");
     }
+}
+
+void Engine::setDebugUiVisible(bool visible) noexcept
+{
+    if (visible != m_debugUiVisible)
+    {
+        m_debugUiVisible = visible;
+        G7_LOG_INFO("engine", "debug UI {}", visible ? "on" : "off");
+    }
+}
+
+void Engine::runDebugUi(f64 realSeconds)
+{
+    m_debugUiFrame = m_debugUiVisible && m_debugUi.valid();
+    m_window->setTextInput(m_debugUiFrame && m_debugUi.wantsText());
+    if (!m_debugUiFrame)
+    {
+        return;
+    }
+    const auto size = m_window->size();
+    const auto pixels = m_window->pixelSize();
+    m_debugUi.beginFrame(m_input, Vec2(static_cast<f32>(size.width), static_cast<f32>(size.height)),
+                         Vec2(static_cast<f32>(pixels.width), static_cast<f32>(pixels.height)),
+                         static_cast<f32>(realSeconds));
+
+    // Statistics are from the previous frame (this one is not rendered yet).
+    ui::EnginePanel panel;
+    panel.frame = m_device->stats();
+    panel.cameraPosition = m_camera.transform.position;
+    panel.width = pixels.width;
+    panel.height = pixels.height;
+    panel.simulationTicks = m_simTicks;
+    panel.fovDegrees = toDegrees(m_camera.fovY);
+    panel.flySpeed = m_flyCamera.speed;
+    panel.tonemapper = m_postSettings.tonemapper;
+    panel.exposure = m_postSettings.exposure;
+    panel.fogStart = m_environment.fogStart;
+    panel.fogDensity = m_environment.fogDensity;
+    panel.sun = m_environment.sunIntensity > 0.0f;
+    panel.shadowDebug = m_shadowDebug;
+    panel.debugDraw = m_debugOverlay;
+    panel.paused = m_paused;
+    panel.timeScale = static_cast<f32>(m_timeScale);
+    m_debugUi.enginePanel(panel);
+
+    m_camera.fovY = toRadians(panel.fovDegrees);
+    m_flyCamera.speed = panel.flySpeed;
+    m_postSettings.tonemapper = panel.tonemapper;
+    m_postSettings.exposure = panel.exposure;
+    m_environment.fogStart = panel.fogStart;
+    m_environment.fogDensity = panel.fogDensity;
+    m_environment.sunIntensity = panel.sun ? kSunIntensity : 0.0f;
+    m_shadowDebug = panel.shadowDebug;
+    setDebugOverlay(panel.debugDraw);
+    setPaused(panel.paused);
+    setTimeScale(panel.timeScale);
 }
 
 void Engine::setDebugOverlay(bool enabled) noexcept
@@ -581,6 +670,7 @@ void Engine::shutdown()
     }
     // Shutdown in reverse init order.
     G7_LOG_INFO("engine", "shutdown");
+    m_debugUi = {}; // releases its GL textures
     m_debugRenderer = {};
     m_debugDraw.clear();
     m_meshRenderer = {};

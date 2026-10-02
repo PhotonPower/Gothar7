@@ -8,6 +8,7 @@
 #include <doctest/doctest.h>
 
 #include <memory>
+#include <ostream>
 #include <string>
 
 using namespace g7;
@@ -177,4 +178,33 @@ TEST_CASE("SDL input: relative mouse mode")
             "relative mouse mode unsupported by video driver '" + std::string(driver ? driver : "none") + "'";
         MESSAGE(note);
     }
+}
+
+TEST_CASE("SDL input: text input")
+{
+    auto window = makeWindow();
+    Input input;
+    poll(*window, input);
+
+    CHECK_FALSE(window->textInput()); // off by default
+    window->setTextInput(true);
+    CHECK(window->textInput());
+
+    SDL_Event event{};
+    event.type = SDL_EVENT_TEXT_INPUT;
+    event.text.windowID = SDL_GetWindowID(SDL_GetKeyboardFocus());
+    event.text.text = "Gr\xC3\xBC\xC3\x9F";
+    REQUIRE(SDL_PushEvent(&event)); // SDL copies the text
+    SDL_Event second = event;
+    second.text.text = "e!";
+    REQUIRE(SDL_PushEvent(&second));
+    CHECK(poll(*window, input));
+    CHECK(input.text() == "Gr\xC3\xBC\xC3\x9F"
+                          "e!"); // UTF-8, several events concatenated
+    CHECK(poll(*window, input));
+    CHECK(input.text().empty()); // per frame
+
+    window->setTextInput(false);
+    CHECK_FALSE(window->textInput());
+    CHECK(window->displayScale() > 0.0f);
 }

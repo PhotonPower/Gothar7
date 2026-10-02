@@ -48,10 +48,11 @@ class Framebuffer   { u32 width(), height(); };  // FramebufferDesc{colors, dept
 // Device:
 Result<Buffer|Texture|Sampler|ShaderProgram|Pipeline|Framebuffer> create…(desc);
 void bindFramebuffer(const Framebuffer*);  /* nullptr = Fenster */  void setViewport(x, y, w, h);
+void setScissor(optional<PixelRect>);       // Pixel, Ursprung unten links; gilt auch für clear; beginFrame schaltet ab
 void clear(optional<Vec4> color, optional<f32> depth);
 void bindPipeline(const Pipeline&);  void bindVertexBuffer(const Buffer&, offset);  void bindIndexBuffer(const Buffer&, IndexType);
 void bindTexture(unit, const Texture&, const Sampler&);  void bindUniformBuffer(slot, const Buffer&);
-void draw(count, first);  void drawIndexed(count, first);
+void draw(count, first);  void drawIndexed(count, first, baseVertex = 0);   // baseVertex: mehrere Meshes, 16-Bit-Indizes
 std::vector<u8> readPixels(x, y, w, h, const Framebuffer* = nullptr);  std::vector<u8> readBuffer(const Buffer&, offset, size);
 const FrameStats& stats();   // drawCalls, triangles, pipelineChanges, textureBinds – Reset in beginFrame
 ```

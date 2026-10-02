@@ -25,7 +25,9 @@ public:
     void setSize(Extent);                 // ungültige Größen werden ignoriert (Warnung)
     void setMode(WindowMode); WindowMode mode() const;
     void setTitle(std::string_view); std::string title() const;
+    f32 displayScale() const;             // Inhaltsskalierung des Bildschirms (1,5 bei 150 %), für UI-Größen
     bool setRelativeMouse(bool); bool relativeMouse() const;  // Kamera; false, wenn nicht verfügbar
+    void setTextInput(bool); bool textInput() const;  // Texteingabe (IME) an/aus, Standard aus
     void requestClose();                  // z. B. Menüpunkt „Beenden“
 };
 }
@@ -56,10 +58,12 @@ public:
     void beginFrame();                                   // Flanken + Deltas zurücksetzen
     bool isDown(X) const; bool pressed(X) const; bool released(X) const;  // X = Key/MouseButton/GamepadButton
     Vec2 mousePosition() const; Vec2 mouseDelta() const; f32 wheelDelta() const;
+    std::string_view text() const;                       // in diesem Frame getippter Text (UTF-8), nur bei setTextInput(true)
     bool gamepadConnected() const; f32 axis(GamepadAxis) const;
     void setStickDeadzone(f32); f32 stickDeadzone() const;
     // Einspeisen (Window::pollEvents, Tests):
     void onKey(Key, bool); void onMouseButton(MouseButton, bool); void onMouseMotion(Vec2 pos, Vec2 delta);
+    void onText(std::string_view utf8);
     void onWheel(f32); void onGamepadButton(GamepadButton, bool); void onGamepadAxis(GamepadAxis, f32);
     void onGamepadConnected(bool); void releaseAll();
 };
@@ -120,7 +124,7 @@ der Test meldet das und prüft ihn nur mit echtem Treiber.
 namespace g7::platform {
 enum class Action : u16 { MoveForward, MoveBack, StrafeLeft, StrafeRight, TurnLeft, TurnRight,
     Run /*Umschalter*/, Sneak, Jump, Action /*Gothic-Aktionstaste*/, Attack, Use, DrawWeapon, DrawMagic,
-    Inventory, Log, Status, Map, QuickSave, QuickLoad, Console, Pause, DebugDraw /*Entwicklung, F2*/, Count };
+    Inventory, Log, Status, Map, QuickSave, QuickLoad, Console, Pause, DebugDraw /*Entwicklung, F2*/, DebugUi /*Entwicklung, F1*/, Count };
 std::string_view name(Action);  std::optional<Action> actionFromName(sv);      // "move_forward" …
 using InputBinding = std::variant<Key, MouseButton, GamepadButton>;
 std::optional<InputBinding> bindingFromName(sv);  std::string_view name(const InputBinding&);

@@ -13,7 +13,7 @@ constexpr std::array<std::string_view, static_cast<usize>(Action::Count)> kActio
     "move_forward", "move_back",  "strafe_left", "strafe_right", "turn_left",  "turn_right",
     "run",          "sneak",      "jump",        "action",       "attack",     "use",
     "draw_weapon",  "draw_magic", "inventory",   "log",          "status",     "map",
-    "quick_save",   "quick_load", "console",     "pause",        "debug_draw",
+    "quick_save",   "quick_load", "console",     "pause",        "debug_draw", "debug_ui",
 };
 
 std::string tablePath(std::string_view scheme)

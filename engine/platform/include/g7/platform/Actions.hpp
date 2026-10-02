@@ -41,6 +41,7 @@ enum class Action : u16
     Console,
     Pause,
     DebugDraw, ///< Development: toggles the debug-draw overlay.
+    DebugUi,   ///< Development: toggles the ImGui debug panels.
     Count
 };
 
