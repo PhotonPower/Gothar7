@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M1** (Plattform & Hauptschleife) – alle Aufgaben umgesetzt (SDL3-Fenster, Eingabe, Aktions-Mapping, Frame-Limit, Zeitskalierung/Pause). Offen für die DoD: manuelle Prüfung am echten Fenster (Aktionen im Log mit `--verbose`). M0 abgeschlossen (core-Testabdeckung 89 %).
+**Aktueller Stand:** Phase **M2** (Renderer-Grundlagen) – M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -60,6 +60,7 @@ Windows und Linux grün; core hat > 80 % Testabdeckung seiner Logik.
 - [x] Zeitskalierung/Pause
 
 **DoD:** Fenster öffnet sich, reagiert auf Eingaben (Log-Ausgabe der Aktionen), schließt sauber.
+✅ Erfüllt: manuell am echten Fenster (Windows) geprüft – `--verbose` loggt `action move_forward`, `action action`, `action draw_weapon`, `action pause` (paused/resumed), Schließen beendet sauber; CI grün auf Windows + Linux.
 
 ## M2 – Renderer-Grundlagen
 - [ ] OpenGL 4.6 Core Context (ADR 0003), Loader (glad), Debug-Callback

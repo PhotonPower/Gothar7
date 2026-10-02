@@ -12,8 +12,10 @@ u32 FixedStep::advance(f64 frameSeconds) noexcept
         ++steps;
     }
     // Spiral-of-death protection: drop time we could not simulate.
+    m_droppedSeconds = 0.0;
     if (steps == m_maxSteps && m_accumulator >= m_step)
     {
+        m_droppedSeconds = m_accumulator;
         m_accumulator = 0.0;
     }
     return steps;
