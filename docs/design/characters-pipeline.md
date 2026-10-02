@@ -24,7 +24,7 @@ Umsetzung als Roadmap-Spur **F1–F5** (`docs/03-roadmap.md`), Animationsliste: 
 - Maßstab 1 Einheit = 1 m, Standardgröße ca. 1,80 m, Y oben, Ausrichtung nach glTF-Konvention:
   Figur blickt nach **+Z**, ihre linke Seite (`*_l`) liegt bei **+X** (in Blender: Z oben, Blick nach −Y).
 - **Bind-Pose: T-Pose** (Arme waagerecht, Handflächen nach unten, Daumen nach vorn) – Entscheidung
-  des Projektinhabers vom 2026-10-03 (passt zu Quaternius/Mixamo, einfacheres Retargeting in F2).
+  des Projektinhabers vom 2026-10-03 (passt zu Quaternius und den meisten Mocap-Werkzeugen, einfacheres Retargeting).
 - **Geometrie aus dem Quaternius-Rig** (Entscheidung 2026-10-03): Gelenkpositionen und Knochenachsen
   (Blender-„Roll“) der Körperknochen sind 1:1 vom Mannequin der *Universal Animation Library 2*
   (Quaternius, CC0) übernommen, Größe ca. 1,83 m. Damit laufen Quaternius-Clips (UAL1/UAL2, ~300) und
@@ -80,7 +80,9 @@ Beispiele: `none/s_walk`, `1h/s_run`, `1h/t_attack_combo1_t2`, `none/t_stand_2_s
 
 Dateien: ein `.glb` pro **Set** (z. B. `anims/human/1h.glb`) mit allen Clips des Modus als glTF-Animationen.
 **Events** stehen in einer Begleitdatei `<set>.events.toml` (Clipname → Liste `{frame, event}`),
-weil glTF keine Standard-Events kennt; das Werkzeug in F2 erzeugt sie aus Blender-Timeline-Markern.
+weil glTF keine Standard-Events kennt. Quelle der Wahrheit sind **Pose-Marker** an den Blender-Actions
+(Action Editor → „Show Pose Markers“, Marker-Name = Event-Name); `gothar-chargen export` schreibt daraus
+`<set>.events.toml` (Frames relativ zum Action-Anfang). Ohne Marker bleibt eine vorhandene Datei unverändert.
 
 Format `<set>.events.toml` (Version 1, Vertrag mit engine/M6; geprüft von `gothar-chargen validate`):
 ```toml
@@ -128,7 +130,7 @@ oder `mob/<mobtyp>`).
 | Quelle | Wofür | Lizenz / Hinweis |
 |---|---|---|
 | **Quaternius** (u. a. Universal Animation Library 1+2, Tiere, Platzhalter-Figuren) | Rig-Geometrie, Basis-Bewegungen, Platzhalterfigur (`figures/placeholder_mannequin`), F1-Test-Clips | CC0; UAL1/UAL2 „Standard“ direkt von opengameart.org (itch.io blockt automatische Downloads) |
-| **Mixamo** | ergänzende Basis-Bewegungen | kostenlos, Nutzung in Spielen erlaubt; Bedingungen vor Nutzung prüfen, Rohdateien nicht weitergeben |
+| ~~Mixamo~~ | **wird nicht verwendet** (Entscheidung 2026-10-03) | Das Repo ist öffentlich; Adobe erlaubt die Nutzung in Spielen, aber keine Weitergabe der Animationsdateien – übertragene Clips im Repo wären genau das |
 | **MPFB2** (MakeHuman für Blender) | Ausgangskörper für eigene Figuren | Ergebnis-Modelle frei nutzbar (vor Nutzung Lizenzhinweise prüfen) |
 | **Video-Mocap** (z. B. Rokoko Vision, Move.ai) | Gothic-spezifische Bewegungen, selbst vorgespielt | eigene Aufnahmen; Dienst-Bedingungen beachten |
 | **Keyframe in Blender** | Kampf-Feinschliff, Mob-Interaktionen, Monster | eigene Arbeit |
@@ -142,11 +144,13 @@ Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pyte
 1. **Rig-Validator** (F1, `gothar-chargen validate`, umgesetzt): prüft `.glb`/`.blend` gegen das Referenz-Rig – Knochennamen, Hierarchie,
    Bind-Pose, Maßstab, Ausrichtung, Sockets, Gewichte ≤ 4 je Vertex, Morph-Target-Namen. Läuft auch in CI
    für alles unter `assets/source/characters/`.
-2. **Retargeting-Hilfe** (F2): Mapping-Dateien Quell-Rig → Referenz-Rig (Quaternius, Mixamo, Mocap-Exporte),
+2. **Retargeting-Hilfe** (F2/F4): Mapping-Dateien Quell-Rig → Referenz-Rig (`data/mappings/`: Quaternius UAL1/UAL2;
+   Mocap-Exporte ab F4),
    Stapel-Retargeting in Blender, Korrektur-Offsets, Fußkontakt-Prüfung.
-3. **Animations-Export** (F2): Clips nach Namenskonvention in Sets packen, Timeline-Marker → `events.toml`,
+3. **Animations-Export** (F2, `gothar-chargen build-set`/`export`, umgesetzt): Clips nach Namenskonvention in Sets packen
+   (Herkunft je Clip in `data/clips/<set>.toml`: Bibliothek, rückwärts, Überblendung, Verkettung), Pose-Marker → `events.toml`,
    Root-Motion-Extraktion bzw. In-Place-Bereinigung je Clip-Einstellung.
-4. **Animationslisten-Abgleich** (F2): vergleicht `animation-list.md` mit den vorhandenen Clips →
+4. **Animationslisten-Abgleich** (F2, `gothar-chargen report`, umgesetzt): vergleicht `animation-list.md` mit den vorhandenen Clips →
    Fortschrittsbericht (fehlend / Platzhalter / fertig).
 5. **Figuren-Baukasten** (F3): setzt Körper + Kopf + Haare + Kleidung/Rüstung zusammen, prüft Passform,
    erzeugt LODs; Varianten über Seeds und Farbpaletten.

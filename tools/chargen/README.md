@@ -12,7 +12,9 @@ tools/chargen/
     data/human_reference.toml     Referenz-Skelett: Namen, Eltern, Sockets, Bind-Pose (T-Pose), Morph-Target-Namen;
                                   Körpergeometrie aus dem Quaternius-Rig (CC0)
     data/mappings/*.toml          Knochen-Zuordnung Quell-Rig → Referenz-Rig (quaternius_ual1, quaternius_ual2)
+    data/clips/<set>.toml         Herkunft je Clip eines Animations-Sets (Format: clipspec.py)
     skeleton.py, mapping.py       Laden der Skelett-Definition (spiegelt *_l → *_r) bzw. der Zuordnungen
+    clipspec.py, report.py        Clip-Listen lesen/prüfen; Abgleich animation-list.md ↔ Clips
     gltf.py                       kleiner .glb-Leser/-Schreiber (Accessoren, Knoten-Transformationen)
     validate.py                   Rig-Validator (Prüfungen siehe unten)
     events.py, naming.py          <set>.events.toml und Namenskonvention der Clips
@@ -23,7 +25,10 @@ tools/chargen/
       build_reference_rig.py      erzeugt human_reference.blend (Rig + Gliederpuppe mit Test-Morph-Targets)
       export_glb.py               .blend → .glb mit settings.py
       extract_rig.py              Ruhe-Geometrie eines Quell-Rigs als [[bone]]-Tabellen (Herkunft der Referenz)
-      build_placeholder.py        F1: Quaternius-Mannequin + Clips (data/clips/f1_placeholder.toml) aufs Referenz-Rig
+      common.py                   gemeinsame Helfer (Import, Referenz-Armatur, Speichern)
+      build_placeholder.py        Platzhalterfigur: Quaternius-Mannequin aufs Referenz-Rig
+      build_set.py                Animations-Set aus data/clips/<set>.toml (Bibliothek, rückwärts, Überblendung,
+                                  Verkettung; Fußkontakt-/Lande-Events als Pose-Marker)
   tests/                          pytest (synthetische Fehlerfälle auf Basis der Referenz-.glb)
 ```
 
@@ -44,8 +49,11 @@ gothar-chargen validate figur.glb anims\      & REM einzelne Dateien/Ordner; .bl
 gothar-chargen validate --json --strict x.glb & REM maschinenlesbar, Warnungen = Fehler
 gothar-chargen build-rig                      & REM human_reference.blend/.glb neu erzeugen + prüfen
 gothar-chargen export figur.blend --out figur.glb  & REM danach Kanäle bereinigt (nur root/pelvis verschoben)
-gothar-chargen build-placeholder --quaternius C:\GotharData\characters\quaternius
-                                              & REM F1-Platzhalterfigur + Test-Clips neu erzeugen
+gothar-chargen build-placeholder --sources C:\GotharData\characters\quaternius
+                                              & REM Platzhalterfigur neu erzeugen
+gothar-chargen build-set all --sources C:\GotharData\characters\quaternius
+                                              & REM Animations-Sets aus data/clips/<set>.toml (none, swim)
+gothar-chargen report                         & REM Prio-A-Fortschritt: animation-list.md ↔ anims/
 ```
 Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 
@@ -61,7 +69,7 @@ Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 | `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung |
 | `events.*` | `<set>.events.toml` neben der `.glb`: Format, Clips vorhanden, Frames im Clip (Schleifen `s_*`: vor dem letzten Frame) |
 
-## Quaternius-Quellen (für `build-placeholder`)
+## Quaternius-Quellen (für `build-placeholder`/`build-set`)
 Die „Standard“-Pakete der Universal Animation Library 1 und 2 (CC0) liegen als ZIP direkt auf opengameart.org
 (itch.io blockt automatische Downloads). Entpackt nach `DATA_ROOT\characters\quaternius\` (nicht ins Repo):
 - https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip (UAL1, Rigify-Namen)
