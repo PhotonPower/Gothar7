@@ -11,7 +11,8 @@
 | [glossary.md](glossary.md) | Begriffe (Vob, Mob, Wegnetz, Routine, Info …) |
 | [modules/](modules/) | Spezifikation je Engine-Modul |
 | [adr/](adr/) | Architekturentscheidungen |
-| [design/](design/) | Spiel-Design (Welt, Story, Inhalte) – füllt sich ab M10 |
+| [design/](design/) | Spiel-Design (Welt, Story, Inhalte) |
+| [design/leonberg-pipeline.md](design/leonberg-pipeline.md) | Welt-Pipeline: Leonberger Altstadt → Spielort (Welt-Spur W1–W7) |
 
 Pflege-Regel: Wer Code ändert, der eine hier beschriebene API oder ein Verhalten ändert,
 aktualisiert im selben Commit die zugehörige Doku.

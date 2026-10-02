@@ -25,6 +25,10 @@ eine `builtin-baseline` enthält. Wer das eigene vcpkg nutzen will: `set VCPKG_R
 `builtin-baseline` in `vcpkg.json` legt die Port-Versionen fest (reproduzierbare Builds).
 Aktualisieren: `%VCPKG_ROOT%\vcpkg x-update-baseline` im Repo-Ordner, danach neu konfigurieren.
 
+### Python (Welt-Spur)
+Für `tools/worldgen/` wird Python ≥ 3.11 benötigt (`winget install Python.Python.3.12`) sowie
+Blender ≥ 4.2 für das Gebäude-Add-on. Einrichtung: `tools/worldgen/README.md`.
+
 ## Bauen
 ```bash
 cmake --preset debug            # konfiguriert, installiert Abhängigkeiten aus vcpkg.json

@@ -31,6 +31,7 @@ engine/<modul>/src/                  Implementierung + interne Header
 engine/runtime/                      Engine-Klasse, Hauptschleife, verbindet alle Module
 game/src/                            Spiel-Executable (gothar)
 game/scripts/                        Spielinhalt in Lua (ab M7)
+tools/worldgen/                      Python-Werkzeuge der Welt-Spur (Leonberg → Spielort)
 tools/asset-cooker/                  g7-cook (ab M3)      tools/editor/  Editor-Modus (ab M4)
 tests/<modul>/                       doctest-Suiten, eine pro Modul
 assets/source/  assets/cooked/       Quell- bzw. gekochte Assets (cooked nicht versioniert)
@@ -75,6 +76,15 @@ Hilfreiche Befehle: `/naechster-schritt` (nächste Roadmap-Aufgabe planen), `/ad
 - Plattform-/GL-Aufrufe außerhalb von `platform` bzw. der RHI in `render`.
 - Build-Artefakte, `assets/cooked/` committen.
 - Tests deaktivieren, um CI grün zu bekommen.
+
+## Welt-Spur (Leonberg)
+Neben den Engine-Phasen M0–M17 gibt es die **Welt-Spur W1–W7** (`docs/03-roadmap.md`, Spezifikation
+`docs/design/leonberg-pipeline.md`): Python-Werkzeuge in `tools/worldgen/` (Python ≥ 3.11, ruff, pytest),
+die aus LGL-Geodaten, OSM und Insta360-Aufnahmen den Spielort erzeugen.
+- Python-Code: Typ-Annotationen, `ruff format`/`ruff check`, Tests mit pytest; Paketname `gothar_worldgen`.
+- **Rohdaten nie ins Repo** (`DATA_ROOT` aus `config/local.toml`); nur Annotationen und geprüfte Ergebnisse.
+- **Keine Daten aus Google Maps/Earth** verwenden (ADR 0012). Credits für LGL/OSM in `assets/LICENSES.md`.
+- Wenn ich „nächster Schritt Welt“ sage, ist die Welt-Spur gemeint, sonst die Engine-Phasen.
 
 ## Gothic-Referenzwissen (für Verhaltensfragen)
 Wenn unklar ist, wie sich etwas „wie in Gothic 1“ verhalten soll: `docs/01-vision.md` (Feature-Katalog)
