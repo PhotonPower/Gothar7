@@ -1,16 +1,21 @@
 # Human reference skeleton (contract: docs/modules/animation.md -> "Referenz-Skelett").
 #
 # Names, parents and the socket flag are the contract between the figuren and engine tracks.
-# head/tail/up describe the bind pose used by the Blender generator (build_reference_rig.py);
+# head/tail/roll describe the bind pose used by the Blender generator (build_reference_rig.py);
 # the validator compares other files against the exported human_reference.glb, not against these numbers.
 #
 # Coordinates: Blender space, metres, Z up, character faces -Y (glTF export: Y up, faces +Z),
 # character's left side is +X. Bind pose: T-pose (decision 2026-10-03), palms down.
-# up = direction the bone's local Z axis is aligned to (Blender "align roll").
+#
+# Body bones (head/tail/roll) are taken 1:1 from the Quaternius rig (Universal Animation Library 2,
+# CC0 1.0, decision 2026-10-03) with blender/extract_rig.py and mappings/quaternius_ual2.toml, so
+# Quaternius clips and figures fit without retargeting. Sockets are our own.
+# roll = Blender bone roll in radians; alternatively up = direction the bone's local Z axis is aligned to.
+# mirror = true (name ending in _l) generates the _r counterpart (x negated, roll negated).
 
 [rig]
 name = "human_reference"
-height = 1.80
+height = 1.83
 bind_pose = "T"
 max_bones = 128
 max_influences = 4
@@ -22,230 +27,397 @@ morph_targets = [
     "expr_angry", "expr_friendly", "expr_fear", "expr_pain", "expr_sleep",
 ]
 
-# Bones in hierarchy order (parent before child). Left side only for paired bones whose
-# name ends in "_l"; mirror = true generates the "_r" counterpart (x negated, parent suffix swapped).
+# --- body (Quaternius rig geometry) ---
 
 [[bone]]
 name = "root"
-head = [0.0, 0.0, 0.0]
-tail = [0.0, -0.20, 0.0]
-up = [0.0, 0.0, 1.0]
+head = [0, 0, 0]
+tail = [0, 0.918068, 0]
+roll = 0.000000
 
 [[bone]]
 name = "pelvis"
 parent = "root"
-head = [0.0, 0.0, 0.98]
-tail = [0.0, 0.0, 1.05]
-up = [0.0, -1.0, 0.0]
+head = [0, 0.050100, 0.916700]
+tail = [0, 0.024140, 1.017380]
+roll = 0.000000
 
 [[bone]]
 name = "spine_01"
 parent = "pelvis"
-head = [0.0, 0.0, 1.05]
-tail = [0.0, 0.0, 1.18]
-up = [0.0, -1.0, 0.0]
+head = [0, 0.015600, 1.050500]
+tail = [0, 0.000400, 1.173600]
+roll = 0.000000
 
 [[bone]]
 name = "spine_02"
 parent = "spine_01"
-head = [0.0, 0.0, 1.18]
-tail = [0.0, 0.0, 1.32]
-up = [0.0, -1.0, 0.0]
+head = [0, 0.000400, 1.173600]
+tail = [0, 0.004900, 1.314800]
+roll = 0.000000
 
 [[bone]]
 name = "spine_03"
 parent = "spine_02"
-head = [0.0, 0.0, 1.32]
-tail = [0.0, 0.0, 1.50]
-up = [0.0, -1.0, 0.0]
+head = [0, 0.004900, 1.314800]
+tail = [0, 0.010188, 1.477971]
+roll = 0.000000
 
 [[bone]]
 name = "neck"
 parent = "spine_03"
-head = [0.0, 0.0, 1.50]
-tail = [0.0, -0.01, 1.61]
-up = [0.0, -1.0, 0.0]
+head = [0, 0.010500, 1.487600]
+tail = [0, -0.005100, 1.568700]
+roll = 0.000000
 
 [[bone]]
 name = "head"
 parent = "neck"
-head = [0.0, -0.01, 1.61]
-tail = [0.0, -0.01, 1.80]
-up = [0.0, -1.0, 0.0]
+head = [0, -0.005100, 1.568700]
+tail = [0, -0.007785, 1.651243]
+roll = 0.000000
+
+[[bone]]
+name = "clavicle_l"
+parent = "spine_03"
+head = [0.018800, -0.071400, 1.457900]
+tail = [0.209501, 0.040865, 1.457766]
+roll = 0.000400
+
+[[bone]]
+name = "upperarm_l"
+parent = "clavicle_l"
+head = [0.191900, 0.065400, 1.440801]
+tail = [0.466300, 0.070100, 1.440801]
+roll = 1.570837
+
+[[bone]]
+name = "lowerarm_l"
+parent = "upperarm_l"
+head = [0.466300, 0.070100, 1.440801]
+tail = [0.738900, 0.065400, 1.440801]
+roll = 1.570796
+
+[[bone]]
+name = "hand_l"
+parent = "lowerarm_l"
+head = [0.738900, 0.065400, 1.440801]
+tail = [0.787829, 0.065400, 1.440801]
+roll = 1.570795
+
+[[bone]]
+name = "thumb_01_l"
+parent = "hand_l"
+head = [0.766200, 0.031800, 1.418001]
+tail = [0.800400, 0.014100, 1.398801]
+roll = -1.059999
+
+[[bone]]
+name = "thumb_02_l"
+parent = "thumb_01_l"
+head = [0.800400, 0.014100, 1.398801]
+tail = [0.839400, -0.006100, 1.376901]
+roll = -1.059999
+
+[[bone]]
+name = "thumb_03_l"
+parent = "thumb_02_l"
+head = [0.839400, -0.006100, 1.376901]
+tail = [0.871900, -0.022900, 1.358701]
+roll = -1.061496
+
+[[bone]]
+name = "index_01_l"
+parent = "hand_l"
+head = [0.858800, 0.034500, 1.438801]
+tail = [0.899500, 0.034500, 1.438801]
+roll = -3.141586
+
+[[bone]]
+name = "index_02_l"
+parent = "index_01_l"
+head = [0.899500, 0.034500, 1.438801]
+tail = [0.934300, 0.034500, 1.438801]
+roll = -3.141586
+
+[[bone]]
+name = "index_03_l"
+parent = "index_02_l"
+head = [0.934300, 0.034500, 1.438801]
+tail = [0.964400, 0.034500, 1.438801]
+roll = -3.141586
+
+[[bone]]
+name = "middle_01_l"
+parent = "hand_l"
+head = [0.860500, 0.060200, 1.441201]
+tail = [0.902800, 0.062200, 1.441201]
+roll = -3.141586
+
+[[bone]]
+name = "middle_02_l"
+parent = "middle_01_l"
+head = [0.902800, 0.062200, 1.441201]
+tail = [0.936700, 0.063700, 1.441201]
+roll = -3.141586
+
+[[bone]]
+name = "middle_03_l"
+parent = "middle_02_l"
+head = [0.936700, 0.063700, 1.441201]
+tail = [0.971100, 0.065300, 1.441201]
+roll = -3.141586
+
+[[bone]]
+name = "ring_01_l"
+parent = "hand_l"
+head = [0.858000, 0.082500, 1.440901]
+tail = [0.897300, 0.083900, 1.440901]
+roll = -3.141586
+
+[[bone]]
+name = "ring_02_l"
+parent = "ring_01_l"
+head = [0.897300, 0.083900, 1.440901]
+tail = [0.928200, 0.085000, 1.440901]
+roll = -3.141586
+
+[[bone]]
+name = "ring_03_l"
+parent = "ring_02_l"
+head = [0.928200, 0.085000, 1.440901]
+tail = [0.960000, 0.086200, 1.440901]
+roll = -3.141586
+
+[[bone]]
+name = "pinky_01_l"
+parent = "hand_l"
+head = [0.846600, 0.106200, 1.439201]
+tail = [0.886800, 0.108900, 1.439201]
+roll = -3.141586
+
+[[bone]]
+name = "pinky_02_l"
+parent = "pinky_01_l"
+head = [0.886800, 0.108900, 1.439201]
+tail = [0.914400, 0.110800, 1.439201]
+roll = -3.141586
+
+[[bone]]
+name = "pinky_03_l"
+parent = "pinky_02_l"
+head = [0.914400, 0.110800, 1.439201]
+tail = [0.942500, 0.112700, 1.439201]
+roll = -3.141586
+
+[[bone]]
+name = "thigh_l"
+parent = "pelvis"
+head = [0.089000, -0.001400, 0.932100]
+tail = [0.089000, 0.001400, 0.531800]
+roll = 0.000000
+
+[[bone]]
+name = "calf_l"
+parent = "thigh_l"
+head = [0.089000, 0.001400, 0.531800]
+tail = [0.089000, 0.035800, 0.103700]
+roll = -0.000263
+
+[[bone]]
+name = "foot_l"
+parent = "calf_l"
+head = [0.089000, 0.035800, 0.103700]
+tail = [0.089000, -0.113200, 0.015200]
+roll = -0.001036
+
+[[bone]]
+name = "ball_l"
+parent = "foot_l"
+head = [0.089000, -0.113200, 0.015200]
+tail = [0.089000, -0.192100, 0.015200]
+roll = 0.000000
+
+[[bone]]
+name = "clavicle_r"
+parent = "spine_03"
+head = [-0.018800, -0.071400, 1.457900]
+tail = [-0.209501, 0.040865, 1.457766]
+roll = -0.000400
+
+[[bone]]
+name = "upperarm_r"
+parent = "clavicle_r"
+head = [-0.191900, 0.065400, 1.440801]
+tail = [-0.466300, 0.070100, 1.440801]
+roll = -1.570837
+
+[[bone]]
+name = "lowerarm_r"
+parent = "upperarm_r"
+head = [-0.466300, 0.070100, 1.440801]
+tail = [-0.738900, 0.065400, 1.440801]
+roll = -1.570796
+
+[[bone]]
+name = "hand_r"
+parent = "lowerarm_r"
+head = [-0.738900, 0.065400, 1.440800]
+tail = [-0.787829, 0.065400, 1.440800]
+roll = -1.570795
+
+[[bone]]
+name = "thumb_01_r"
+parent = "hand_r"
+head = [-0.766200, 0.031800, 1.418001]
+tail = [-0.800400, 0.014100, 1.398801]
+roll = 1.060001
+
+[[bone]]
+name = "thumb_02_r"
+parent = "thumb_01_r"
+head = [-0.800400, 0.014100, 1.398800]
+tail = [-0.839400, -0.006100, 1.376901]
+roll = 1.060001
+
+[[bone]]
+name = "thumb_03_r"
+parent = "thumb_02_r"
+head = [-0.839400, -0.006100, 1.376901]
+tail = [-0.871900, -0.022900, 1.358701]
+roll = 1.061496
+
+[[bone]]
+name = "index_01_r"
+parent = "hand_r"
+head = [-0.858800, 0.034500, 1.438801]
+tail = [-0.899500, 0.034500, 1.438801]
+roll = 3.141586
+
+[[bone]]
+name = "index_02_r"
+parent = "index_01_r"
+head = [-0.899500, 0.034500, 1.438801]
+tail = [-0.934300, 0.034500, 1.438801]
+roll = 3.141586
+
+[[bone]]
+name = "index_03_r"
+parent = "index_02_r"
+head = [-0.934300, 0.034500, 1.438801]
+tail = [-0.964400, 0.034500, 1.438801]
+roll = 3.141586
+
+[[bone]]
+name = "middle_01_r"
+parent = "hand_r"
+head = [-0.860500, 0.060200, 1.441201]
+tail = [-0.902800, 0.062200, 1.441201]
+roll = 3.141586
+
+[[bone]]
+name = "middle_02_r"
+parent = "middle_01_r"
+head = [-0.902800, 0.062200, 1.441201]
+tail = [-0.936700, 0.063700, 1.441201]
+roll = 3.141586
+
+[[bone]]
+name = "middle_03_r"
+parent = "middle_02_r"
+head = [-0.936700, 0.063700, 1.441201]
+tail = [-0.971100, 0.065300, 1.441201]
+roll = 3.141586
+
+[[bone]]
+name = "ring_01_r"
+parent = "hand_r"
+head = [-0.858000, 0.082500, 1.440900]
+tail = [-0.897300, 0.083900, 1.440900]
+roll = 3.141586
+
+[[bone]]
+name = "ring_02_r"
+parent = "ring_01_r"
+head = [-0.897300, 0.083900, 1.440900]
+tail = [-0.928200, 0.085000, 1.440900]
+roll = 3.141586
+
+[[bone]]
+name = "ring_03_r"
+parent = "ring_02_r"
+head = [-0.928200, 0.085000, 1.440901]
+tail = [-0.960000, 0.086200, 1.440901]
+roll = 3.141586
+
+[[bone]]
+name = "pinky_01_r"
+parent = "hand_r"
+head = [-0.846600, 0.106200, 1.439201]
+tail = [-0.886800, 0.108900, 1.439201]
+roll = 3.141586
+
+[[bone]]
+name = "pinky_02_r"
+parent = "pinky_01_r"
+head = [-0.886800, 0.108900, 1.439201]
+tail = [-0.914400, 0.110800, 1.439201]
+roll = 3.141586
+
+[[bone]]
+name = "pinky_03_r"
+parent = "pinky_02_r"
+head = [-0.914400, 0.110800, 1.439201]
+tail = [-0.942500, 0.112700, 1.439201]
+roll = 3.141586
+
+[[bone]]
+name = "thigh_r"
+parent = "pelvis"
+head = [-0.089000, -0.001400, 0.932100]
+tail = [-0.089000, 0.001400, 0.531800]
+roll = 0.000000
+
+[[bone]]
+name = "calf_r"
+parent = "thigh_r"
+head = [-0.089000, 0.001400, 0.531800]
+tail = [-0.089000, 0.035800, 0.103700]
+roll = -0.000263
+
+[[bone]]
+name = "foot_r"
+parent = "calf_r"
+head = [-0.089000, 0.035800, 0.103700]
+tail = [-0.089000, -0.113200, 0.015200]
+roll = -0.001036
+
+[[bone]]
+name = "ball_r"
+parent = "foot_r"
+head = [-0.089000, -0.113200, 0.015200]
+tail = [-0.089000, -0.192100, 0.015200]
+roll = 0.000000
+
+# --- sockets (no weights; bone Y axis = grip axis towards blade/tip) ---
 
 [[bone]]
 name = "socket_helmet"
 parent = "head"
 socket = true
-head = [0.0, -0.01, 1.61]
-tail = [0.0, -0.01, 1.71]
+head = [0.0, -0.005, 1.569]
+tail = [0.0, -0.005, 1.669]
 up = [0.0, -1.0, 0.0]
 
-# --- arms (T-pose, palms down) ---
-
-[[bone]]
-name = "clavicle_l"
-parent = "spine_03"
-mirror = true
-head = [0.02, -0.02, 1.45]
-tail = [0.18, 0.0, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "upperarm_l"
-parent = "clavicle_l"
-mirror = true
-head = [0.18, 0.0, 1.46]
-tail = [0.48, 0.0, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "lowerarm_l"
-parent = "upperarm_l"
-mirror = true
-head = [0.48, 0.0, 1.46]
-tail = [0.74, 0.0, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "hand_l"
-parent = "lowerarm_l"
-mirror = true
-head = [0.74, 0.0, 1.46]
-tail = [0.82, 0.0, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "thumb_01_l"
-parent = "hand_l"
-mirror = true
-head = [0.755, -0.025, 1.45]
-tail = [0.785, -0.06, 1.44]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "thumb_02_l"
-parent = "thumb_01_l"
-mirror = true
-head = [0.785, -0.06, 1.44]
-tail = [0.805, -0.085, 1.435]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "thumb_03_l"
-parent = "thumb_02_l"
-mirror = true
-head = [0.805, -0.085, 1.435]
-tail = [0.82, -0.105, 1.43]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "index_01_l"
-parent = "hand_l"
-mirror = true
-head = [0.83, -0.03, 1.46]
-tail = [0.875, -0.032, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "index_02_l"
-parent = "index_01_l"
-mirror = true
-head = [0.875, -0.032, 1.46]
-tail = [0.90, -0.033, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "index_03_l"
-parent = "index_02_l"
-mirror = true
-head = [0.90, -0.033, 1.46]
-tail = [0.922, -0.034, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "middle_01_l"
-parent = "hand_l"
-mirror = true
-head = [0.835, -0.01, 1.46]
-tail = [0.885, -0.01, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "middle_02_l"
-parent = "middle_01_l"
-mirror = true
-head = [0.885, -0.01, 1.46]
-tail = [0.915, -0.01, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "middle_03_l"
-parent = "middle_02_l"
-mirror = true
-head = [0.915, -0.01, 1.46]
-tail = [0.939, -0.01, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "ring_01_l"
-parent = "hand_l"
-mirror = true
-head = [0.83, 0.01, 1.46]
-tail = [0.875, 0.011, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "ring_02_l"
-parent = "ring_01_l"
-mirror = true
-head = [0.875, 0.011, 1.46]
-tail = [0.903, 0.012, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "ring_03_l"
-parent = "ring_02_l"
-mirror = true
-head = [0.903, 0.012, 1.46]
-tail = [0.925, 0.013, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "pinky_01_l"
-parent = "hand_l"
-mirror = true
-head = [0.82, 0.03, 1.46]
-tail = [0.855, 0.032, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "pinky_02_l"
-parent = "pinky_01_l"
-mirror = true
-head = [0.855, 0.032, 1.46]
-tail = [0.875, 0.033, 1.46]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "pinky_03_l"
-parent = "pinky_02_l"
-mirror = true
-head = [0.875, 0.033, 1.46]
-tail = [0.893, 0.034, 1.46]
-up = [0.0, 0.0, 1.0]
-
-# Grip point below the palm; bone Y axis = grip axis towards blade/tip (points forward).
+# Grip point below the palm, pointing forward.
 [[bone]]
 name = "socket_hand_l"
 parent = "hand_l"
 socket = true
 mirror = true
-head = [0.79, 0.0, 1.43]
-tail = [0.79, -0.10, 1.43]
+head = [0.80, 0.065, 1.41]
+tail = [0.80, -0.035, 1.41]
 up = [0.0, 0.0, 1.0]
-
-# --- equipment sockets on the torso ---
 
 [[bone]]
 name = "socket_back_2h"
@@ -276,40 +448,6 @@ up = [0.0, 1.0, 0.0]
 name = "socket_hip_1h"
 parent = "pelvis"
 socket = true
-head = [0.15, 0.0, 0.95]
-tail = [0.15, 0.0, 0.85]
+head = [0.15, 0.03, 0.95]
+tail = [0.15, 0.03, 0.85]
 up = [0.0, -1.0, 0.0]
-
-# --- legs ---
-
-[[bone]]
-name = "thigh_l"
-parent = "pelvis"
-mirror = true
-head = [0.09, 0.0, 0.93]
-tail = [0.09, -0.01, 0.50]
-up = [0.0, -1.0, 0.0]
-
-[[bone]]
-name = "calf_l"
-parent = "thigh_l"
-mirror = true
-head = [0.09, -0.01, 0.50]
-tail = [0.09, 0.02, 0.08]
-up = [0.0, -1.0, 0.0]
-
-[[bone]]
-name = "foot_l"
-parent = "calf_l"
-mirror = true
-head = [0.09, 0.02, 0.08]
-tail = [0.09, -0.11, 0.02]
-up = [0.0, 0.0, 1.0]
-
-[[bone]]
-name = "ball_l"
-parent = "foot_l"
-mirror = true
-head = [0.09, -0.11, 0.02]
-tail = [0.09, -0.18, 0.02]
-up = [0.0, 0.0, 1.0]

@@ -24,7 +24,8 @@ class BoneSpec:
     socket: bool
     head: Vec3
     tail: Vec3
-    up: Vec3
+    up: Vec3 | None = None  # align the bone's local Z axis to this direction ...
+    roll: float | None = None  # ... or set the Blender bone roll (radians) directly
 
 
 @dataclass(frozen=True)
@@ -82,13 +83,16 @@ def parse_rig(data: dict) -> RigSpec:
         if not isinstance(name, str) or not name:
             raise SkeletonError(f"{where}: missing name")
         where = f"bone '{name}'"
+        if ("up" in raw) == ("roll" in raw):
+            raise SkeletonError(f"{where}: needs exactly one of 'up' or 'roll'")
         spec = BoneSpec(
             name=name,
             parent=raw.get("parent"),
             socket=bool(raw.get("socket", False)),
             head=_vec(raw.get("head"), where + " head"),
             tail=_vec(raw.get("tail"), where + " tail"),
-            up=_vec(raw.get("up"), where + " up"),
+            up=_vec(raw["up"], where + " up") if "up" in raw else None,
+            roll=float(raw["roll"]) if "roll" in raw else None,
         )
         bones.append(spec)
         if raw.get("mirror", False):
@@ -101,7 +105,8 @@ def parse_rig(data: dict) -> RigSpec:
                     socket=spec.socket,
                     head=(-spec.head[0], spec.head[1], spec.head[2]),
                     tail=(-spec.tail[0], spec.tail[1], spec.tail[2]),
-                    up=(-spec.up[0], spec.up[1], spec.up[2]),
+                    up=(-spec.up[0], spec.up[1], spec.up[2]) if spec.up else None,
+                    roll=-spec.roll if spec.roll is not None else None,
                 )
             )
     # Mirrored bones go after all explicit ones: parents still precede children.

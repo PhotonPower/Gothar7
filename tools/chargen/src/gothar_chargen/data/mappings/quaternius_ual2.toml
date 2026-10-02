@@ -1,0 +1,17 @@
+# Bone mapping: Quaternius rig (UAL2 naming, also Universal Base Characters, Modular Outfits) -> reference rig.
+# Source: Universal Animation Library 2 [Standard], quaternius.com / opengameart.org, CC0 1.0.
+# Rest pose and bone axes are identical to the reference rig (the reference geometry was taken from
+# this rig), so clips transfer by renaming only.
+
+[source]
+name = "Quaternius Universal Animation Library 2"
+license = "CC0 1.0"
+
+# Source bones with the same name as a reference bone map to it implicitly.
+[bones]
+neck_01 = "neck"
+Head = "head"
+
+# Source bones that are dropped (glob patterns): Blender leaf bones without weights.
+[ignore]
+patterns = ["*_leaf_*"]

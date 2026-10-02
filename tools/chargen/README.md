@@ -9,8 +9,10 @@ Spezifikation: `docs/design/characters-pipeline.md` · Skelett-Vertrag: `docs/mo
 tools/chargen/
   pyproject.toml                  Paket "gothar-chargen", CLI "gothar-chargen"
   src/gothar_chargen/
-    data/human_reference.toml     Referenz-Skelett: Namen, Eltern, Sockets, Bind-Pose (T-Pose), Morph-Target-Namen
-    skeleton.py                   Laden der Skelett-Definition (spiegelt *_l → *_r)
+    data/human_reference.toml     Referenz-Skelett: Namen, Eltern, Sockets, Bind-Pose (T-Pose), Morph-Target-Namen;
+                                  Körpergeometrie aus dem Quaternius-Rig (CC0)
+    data/mappings/*.toml          Knochen-Zuordnung Quell-Rig → Referenz-Rig (quaternius_ual1, quaternius_ual2)
+    skeleton.py, mapping.py       Laden der Skelett-Definition (spiegelt *_l → *_r) bzw. der Zuordnungen
     gltf.py                       kleiner .glb-Leser/-Schreiber (Accessoren, Knoten-Transformationen)
     validate.py                   Rig-Validator (Prüfungen siehe unten)
     events.py, naming.py          <set>.events.toml und Namenskonvention der Clips
@@ -19,6 +21,7 @@ tools/chargen/
       settings.py                 glTF-Export-Einstellungen (verbindlich, siehe characters-pipeline.md)
       build_reference_rig.py      erzeugt human_reference.blend (Rig + Gliederpuppe mit Test-Morph-Targets)
       export_glb.py               .blend → .glb mit settings.py
+      extract_rig.py              Ruhe-Geometrie eines Quell-Rigs als [[bone]]-Tabellen (Herkunft der Referenz)
   tests/                          pytest (synthetische Fehlerfälle auf Basis der Referenz-.glb)
 ```
 

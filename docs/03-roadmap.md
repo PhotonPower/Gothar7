@@ -336,7 +336,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 Spezifikation: `docs/design/characters-pipeline.md`, Liste: `docs/design/animation-list.md`.
 Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source/characters/`.
 
-**Aktueller Stand Figuren-Spur:** F1 läuft – Referenz-Rig (T-Pose, 60 Knochen), Export-Einstellungen und
+**Aktueller Stand Figuren-Spur:** F1 läuft – Referenz-Rig (T-Pose, 60 Knochen, Geometrie aus dem Quaternius-Rig, CC0), Export-Einstellungen und
 `tools/chargen` mit Rig-Validator (CI-Job `chargen`) stehen; `events.toml`-Format vorgeschlagen (wartet auf
 Bestätigung durch engine). Offen: CC0-Platzhalterfigur + 3 Test-Clips (PR `feature/f1-placeholder`).
 

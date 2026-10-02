@@ -20,7 +20,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from gothar_chargen.skeleton import RigSpec, load_rig  # noqa: E402
 
-# Mannequin box size per deform bone: (width along bone X, depth along bone Z), metres.
+# Mannequin box size per deform bone, metres: (a, b) across the bone. a runs along world X for
+# vertical/forward bones (torso, legs, feet) and along world Y for sideways bones (arms, hands);
+# b along the remaining axis (depth or thickness).
 # Paired bones are listed without side suffix. Bones not listed get no geometry.
 _BOX_SIZE: dict[str, tuple[float, float]] = {
     "pelvis": (0.30, 0.18),
@@ -91,7 +93,10 @@ def _build_armature(rig: RigSpec) -> bpy.types.Object:
         eb = edit_bones.new(spec.name)
         eb.head = Vector(spec.head)
         eb.tail = Vector(spec.tail)
-        eb.align_roll(Vector(spec.up))
+        if spec.roll is not None:
+            eb.roll = spec.roll
+        else:
+            eb.align_roll(Vector(spec.up))
         eb.use_deform = not spec.socket and spec.parent is not None
         if spec.parent is not None:
             eb.parent = edit_bones[spec.parent]
@@ -106,6 +111,16 @@ def _build_armature(rig: RigSpec) -> bpy.types.Object:
     return arm_obj
 
 
+def _box_extents(bone: bpy.types.Bone, size: tuple[float, float]) -> tuple[float, float]:
+    """Half extents along the bone's local X and Z axes for a (a, b) box size (see _BOX_SIZE)."""
+    rot = bone.matrix_local.to_3x3()
+    direction = rot @ Vector((0.0, 1.0, 0.0))
+    ref = Vector((1.0, 0.0, 0.0)) if abs(direction.x) < 0.7 else Vector((0.0, 1.0, 0.0))
+    x_axis, z_axis = rot @ Vector((1.0, 0.0, 0.0)), rot @ Vector((0.0, 0.0, 1.0))
+    a, b = size[0] / 2.0, size[1] / 2.0
+    return (a, b) if abs(x_axis.dot(ref)) >= abs(z_axis.dot(ref)) else (b, a)
+
+
 def _build_mannequin(rig: RigSpec, arm_obj: bpy.types.Object) -> bpy.types.Object:
     verts: list[Vector] = []
     faces: list[tuple[int, ...]] = []
@@ -116,8 +131,10 @@ def _build_mannequin(rig: RigSpec, arm_obj: bpy.types.Object) -> bpy.types.Objec
         size = _BOX_SIZE.get(_box_key(bone.name))
         if size is None or not bone.use_deform:
             continue
-        wx, wz = size[0] / 2.0, size[1] / 2.0
+        wx, wz = _box_extents(bone, size)
         length = bone.length
+        if bone.name == "head":  # head box up to the top of the skull (rig height)
+            length = max(length, rig.height - bone.head_local.z)
         # head box reaches below the head joint (jaw), pelvis box down to the hip joints
         y0 = {"head": -0.05, "pelvis": -0.08}.get(bone.name, 0.0)
         base = len(verts)
@@ -166,7 +183,7 @@ def _add_face_shape_keys(rig: RigSpec, obj: bpy.types.Object, head_verts: list[i
     if not head_verts:
         return
     head_bone = obj.parent.data.bones["head"]
-    forward = head_bone.matrix_local.to_3x3() @ Vector((0.0, 0.0, 1.0))  # bone Z = forward
+    forward = Vector((0.0, -1.0, 0.0))  # character faces -Y in Blender
     front = [
         i for i in head_verts if (obj.data.vertices[i].co - head_bone.head_local).dot(forward) > 0
     ]

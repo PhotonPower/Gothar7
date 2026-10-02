@@ -25,6 +25,11 @@ Umsetzung als Roadmap-Spur **F1–F5** (`docs/03-roadmap.md`), Animationsliste: 
   Figur blickt nach **+Z**, ihre linke Seite (`*_l`) liegt bei **+X** (in Blender: Z oben, Blick nach −Y).
 - **Bind-Pose: T-Pose** (Arme waagerecht, Handflächen nach unten, Daumen nach vorn) – Entscheidung
   des Projektinhabers vom 2026-10-03 (passt zu Quaternius/Mixamo, einfacheres Retargeting in F2).
+- **Geometrie aus dem Quaternius-Rig** (Entscheidung 2026-10-03): Gelenkpositionen und Knochenachsen
+  (Blender-„Roll“) der Körperknochen sind 1:1 vom Mannequin der *Universal Animation Library 2*
+  (Quaternius, CC0) übernommen, Größe ca. 1,83 m. Damit laufen Quaternius-Clips (UAL1/UAL2, ~300) und
+  -Figuren nach reiner Umbenennung der Knochen (`tools/chargen/.../data/mappings/quaternius_ual*.toml`).
+  Namen, Hierarchie und Sockets sind unsere eigenen (Vertrag animation.md).
 - `root` auf Bodenhöhe zwischen den Füßen (trägt Root Motion), darunter `pelvis`.
 - Knochennamen in `lower_snake_case` mit Seitensuffix `_l`/`_r`.
 - **Sockets** (Knochen ohne Gewichte) für Ausrüstung mit Präfix `socket_` – siehe animation.md.
@@ -34,9 +39,8 @@ Umsetzung als Roadmap-Spur **F1–F5** (`docs/03-roadmap.md`), Animationsliste: 
   und enthält neben dem Rig eine einfache Gliederpuppe (eigene Geometrie, starre Gewichte, alle
   Morph-Targets aus §6 als Test-Shape-Keys). Daneben liegt der Export `human_reference.glb`: gegen
   ihn vergleicht der Validator die Bind-Pose anderer Dateien; die Engine kann ihn als Testfigur nutzen.
-- Knochen-Achsen (Blender „Roll“): lokale Z-Achse zeigt bei Rumpf, Kopf und Beinen nach vorn,
-  bei Armen, Händen, Fingern und Füßen nach oben. Socket-Knochen: Y-Achse = Griffachse Richtung
-  Klinge/Spitze (`socket_hand_*` nach vorn, `socket_hip_1h` nach unten).
+- Knochen-Achsen: wie im Quaternius-Rig (in der TOML-Datei als `roll` je Knochen). Socket-Knochen:
+  Y-Achse = Griffachse Richtung Klinge/Spitze (`socket_hand_*` nach vorn, `socket_hip_1h` nach unten).
 
 ### 2.1 glTF-Export (verbindlich für alle Figuren- und Animationsdateien)
 
@@ -108,7 +112,7 @@ oder `mob/<mobtyp>`).
 
 | Quelle | Wofür | Lizenz / Hinweis |
 |---|---|---|
-| **Quaternius** (u. a. Universal Animation Library, Tiere, Platzhalter-Figuren) | Basis-Bewegungen, Platzhalter | CC0 |
+| **Quaternius** (u. a. Universal Animation Library 1+2, Tiere, Platzhalter-Figuren) | Rig-Geometrie, Basis-Bewegungen, Platzhalter | CC0; UAL1/UAL2 „Standard“ direkt von opengameart.org (itch.io blockt automatische Downloads) |
 | **Mixamo** | ergänzende Basis-Bewegungen | kostenlos, Nutzung in Spielen erlaubt; Bedingungen vor Nutzung prüfen, Rohdateien nicht weitergeben |
 | **MPFB2** (MakeHuman für Blender) | Ausgangskörper für eigene Figuren | Ergebnis-Modelle frei nutzbar (vor Nutzung Lizenzhinweise prüfen) |
 | **Video-Mocap** (z. B. Rokoko Vision, Move.ai) | Gothic-spezifische Bewegungen, selbst vorgespielt | eigene Aufnahmen; Dienst-Bedingungen beachten |

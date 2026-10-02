@@ -75,10 +75,30 @@ def test_morph_targets_match_docs():
 
 def test_mirrored_bones_are_symmetric():
     rig = load_rig()
-    left, right = rig.bone("hand_l"), rig.bone("hand_r")
+    left, right = rig.bone("socket_hand_l"), rig.bone("socket_hand_r")
     assert right.head == (-left.head[0], left.head[1], left.head[2])
-    assert right.up == (-left.up[0], left.up[1], left.up[2])
-    assert right.parent == "lowerarm_r"
+    assert left.up is not None and right.up == (-left.up[0], left.up[1], left.up[2])
+    assert right.parent == "hand_r"
+    assert right.socket
+
+
+def test_mirror_negates_roll():
+    rig = parse_rig({"rig": {}, "bone": [_bone("a"), _bone("arm_l", "a", roll=0.5, mirror=True)]})
+    assert rig.bone("arm_l").roll == 0.5
+    assert rig.bone("arm_r").roll == -0.5
+    assert rig.bone("arm_r").up is None
+
+
+def test_body_geometry_from_quaternius():
+    """Body bones carry an explicit roll (taken from the Quaternius rig), sockets an up vector."""
+    rig = load_rig()
+    for b in rig.bones:
+        if b.socket:
+            assert b.up is not None and b.roll is None, b.name
+        else:
+            assert b.roll is not None and b.up is None, b.name
+    assert rig.bone("upperarm_l").head[0] > 0.15  # left = +X
+    assert abs(rig.height - 1.83) < 1e-9
 
 
 def test_parents_precede_children():
@@ -96,7 +116,9 @@ def test_load_from_path(tmp_path: Path):
 
 
 def _bone(name: str, parent: str | None = None, **extra) -> dict:
-    b = {"name": name, "head": [0, 0, 0], "tail": [0, 0, 1], "up": [0, 1, 0], **extra}
+    b = {"name": name, "head": [0, 0, 0], "tail": [0, 0, 1], **extra}
+    if "roll" not in extra:
+        b["up"] = [0, 1, 0]
     if parent:
         b["parent"] = parent
     return b
@@ -118,6 +140,8 @@ def _bone(name: str, parent: str | None = None, **extra) -> dict:
             "3 numbers",
         ),
         ({"rig": {}, "bone": [{"head": [0, 0, 0]}]}, "missing name"),
+        ({"rig": {}, "bone": [_bone("a", up=[0, 1, 0], roll=0.0)]}, "exactly one"),
+        ({"rig": {}, "bone": [{"name": "a", "head": [0, 0, 0], "tail": [0, 0, 1]}]}, "exactly one"),
     ],
 )
 def test_invalid_definitions(data, message):
