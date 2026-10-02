@@ -95,6 +95,36 @@ struct KtxTree
     }
 };
 
+/// Decodes the first texel of a BC4 block (8 bytes: two endpoints, 16 x 3-bit indices), as used
+/// twice per BC5 block (R, then G).
+u8 bc4FirstTexel(const u8* block)
+{
+    const u32 r0 = block[0];
+    const u32 r1 = block[1];
+    const u32 index = block[2] & 0x7; // texel 0 = lowest three index bits
+    if (index == 0)
+    {
+        return static_cast<u8>(r0);
+    }
+    if (index == 1)
+    {
+        return static_cast<u8>(r1);
+    }
+    if (r0 > r1)
+    {
+        return static_cast<u8>(((8 - index) * r0 + (index - 1) * r1) / 7);
+    }
+    if (index == 6)
+    {
+        return 0;
+    }
+    if (index == 7)
+    {
+        return 255;
+    }
+    return static_cast<u8>(((6 - index) * r0 + (index - 1) * r1) / 5);
+}
+
 #if G7_HAS_KTX
 /// Decodes a .ktx2 to RGBA8 pixels of level 0 through libktx (independent of the BC formats).
 std::vector<u8> toRgba(const std::vector<u8>& ktx2)
@@ -162,15 +192,25 @@ TEST_CASE("KTX2 colour texture: BC7 sRGB with full mip chain and the right colou
     CHECK(rgba[3] == 255);
 }
 
-TEST_CASE("KTX2 normal map: two channels, linear, BC5")
+TEST_CASE("KTX2 normal map: two channels, linear, BC5 with X in R and Y in G")
 {
-    auto ktx = cook::encodeKtx2(solid(16, 16, 128, 128, 255), cook::TextureUsage::Normal);
+    // X = 200, Y = 60 (Z is dropped): BC5 must carry X in the first (R) and Y in the second (G) half.
+    auto ktx = cook::encodeKtx2(solid(16, 12, 200, 60, 230), cook::TextureUsage::Normal);
     REQUIRE(ktx);
     auto tex = asset::decodeKtx2(ktx.value());
     REQUIRE(tex);
     CHECK(tex.value().format == asset::TextureFormat::BC5);
     CHECK_FALSE(tex.value().srgb);
-    CHECK(tex.value().levels.size() == 5);
+    REQUIRE(tex.value().levels.size() == 5); // 16x12, 8x6, 4x3, 2x1, 1x1
+
+    // Every level holds whole 4 x 4 blocks of 16 bytes: ceil(w/4) * ceil(h/4) * 16.
+    for (const auto& level : tex.value().levels)
+    {
+        CHECK(level.data.size() == ((level.width + 3) / 4) * ((level.height + 3) / 4) * 16u);
+    }
+    const u8* block = tex.value().levels[0].data.data();
+    CHECK(std::abs(int(bc4FirstTexel(block)) - 200) <= 2);    // R = X
+    CHECK(std::abs(int(bc4FirstTexel(block + 8)) - 60) <= 2); // G = Y
 }
 
 TEST_CASE("cook --textures ktx2: normal maps detected, mesh refers to .ktx2, deterministic")
