@@ -65,7 +65,9 @@ asset::ImageData halve(const asset::ImageData& src, TextureUsage usage)
                     const u8* p = &src.rgba8[(usize(sy) * src.width + sx) * 4];
                     for (int c = 0; c < 3; ++c)
                     {
-                        sum[c] += usage == TextureUsage::Color ? lin[p[c]] : p[c] / 255.0f * 2.0f - 1.0f;
+                        sum[c] += usage == TextureUsage::Color  ? lin[p[c]]
+                                  : usage == TextureUsage::Data ? p[c] / 255.0f
+                                                                : p[c] / 255.0f * 2.0f - 1.0f;
                     }
                     sum[3] += p[3] / 255.0f;
                 }
@@ -76,6 +78,13 @@ asset::ImageData halve(const asset::ImageData& src, TextureUsage usage)
                 for (int c = 0; c < 3; ++c)
                 {
                     out[c] = toByte(linearToSrgb(sum[c] / 4.0f));
+                }
+            }
+            else if (usage == TextureUsage::Data)
+            {
+                for (int c = 0; c < 3; ++c)
+                {
+                    out[c] = toByte(sum[c] / 4.0f);
                 }
             }
             else
@@ -109,6 +118,7 @@ std::vector<asset::ImageData> buildMipChain(const asset::ImageData& image, Textu
 namespace
 {
 constexpr ktx_uint32_t kVkR8G8Unorm = 16;
+constexpr ktx_uint32_t kVkR8G8B8A8Unorm = 37;
 constexpr ktx_uint32_t kVkR8G8B8A8Srgb = 43;
 constexpr ktx_uint32_t kZstdLevel = 18;
 
@@ -145,7 +155,7 @@ Result<std::vector<u8>> encodeKtx2(const asset::ImageData& image, TextureUsage u
     const bool normal = usage == TextureUsage::Normal;
 
     ktxTextureCreateInfo info{};
-    info.vkFormat = normal ? kVkR8G8Unorm : kVkR8G8B8A8Srgb;
+    info.vkFormat = normal ? kVkR8G8Unorm : usage == TextureUsage::Data ? kVkR8G8B8A8Unorm : kVkR8G8B8A8Srgb;
     info.baseWidth = image.width;
     info.baseHeight = image.height;
     info.baseDepth = 1;

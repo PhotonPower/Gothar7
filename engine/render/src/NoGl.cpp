@@ -91,7 +91,7 @@ Result<void> Buffer::update(usize, std::span<const u8>)
 {
     return Error{"render module was built without OpenGL"};
 }
-Result<void> Texture::upload(u32, std::span<const u8>)
+Result<void> Texture::upload(u32, std::span<const u8>, u32)
 {
     return Error{"render module was built without OpenGL"};
 }
@@ -118,6 +118,9 @@ void ShaderProgram::setUniform(std::string_view, const Mat4&)
 {
 }
 void ShaderProgram::setUniform(std::string_view, std::span<const i32>)
+{
+}
+void ShaderProgram::setUniform(std::string_view, std::span<const f32>)
 {
 }
 } // namespace g7::render::rhi

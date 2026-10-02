@@ -1,19 +1,20 @@
 #version 450 core
 // Heightmap terrain (render::TerrainRenderer): a chunk grid whose heights come from an R16 texture.
-// With SHADOW defined only the position is computed (depth pass into a cascade).
+// With SHADOW defined only what the depth pass needs is computed (position, holes).
 
 layout(location = 0) in vec3 aGrid; // x, z in samples from the chunk origin; y = 1 on the skirt
 
 layout(binding = 4) uniform sampler2D uHeights; // R16, read with texelFetch
 
 uniform vec2 uSize;        // samples per row, rows
-uniform vec2 uFirstSample; // x, z of cell (0, 0)
+uniform vec2 uFirstSample; // x, z of sample (0, 0)
 uniform float uCellSize;
 uniform vec2 uHeightRange; // minY, maxY
 uniform float uSkirtDepth;
-uniform vec2 uChunkOrigin; // first cell of the chunk
+uniform vec2 uChunkOrigin; // first sample of the chunk
 uniform mat4 uViewProjection;
 
+out vec2 vSample; // position in samples (column, row) - for splat weights and holes
 #ifndef SHADOW
 out vec3 vWorldPosition;
 out vec3 vNormal;
@@ -31,6 +32,7 @@ void main()
     const float height = heightAt(cell) - aGrid.y * uSkirtDepth;
     const vec3 world = vec3(uFirstSample.x + float(cell.x) * uCellSize, height,
                             uFirstSample.y + float(cell.y) * uCellSize);
+    vSample = vec2(cell);
 #ifndef SHADOW
     // Central differences: n ~ (-dh/dx, 1, -dh/dz).
     const float left = heightAt(cell - ivec2(1, 0));

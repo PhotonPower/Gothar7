@@ -113,13 +113,17 @@ mount_point = "worlds"
           "[assets] mount 0: 'priority' must be an integer");
 }
 
-TEST_CASE("Asset mounts: cooked meshes replace their glTF sources")
+TEST_CASE("Asset mounts: cooked meshes and textures replace their sources")
 {
     TempTree tree;
     tree.dir("models");
     tree.file("models/hut.glb");
     tree.file("models/hut.g7mesh");
     tree.file("models/tree.gltf");
+    tree.dir("worlds");
+    tree.file("worlds/splat0.png");
+    tree.file("worlds/splat0.ktx2");
+    tree.file("worlds/rock.jpg");
     asset::Vfs vfs;
     REQUIRE(vfs.mount(tree.root, 0).ok());
     CHECK(preferCooked(vfs, "models/hut.glb") == "models/hut.g7mesh");
@@ -127,4 +131,6 @@ TEST_CASE("Asset mounts: cooked meshes replace their glTF sources")
     CHECK(preferCooked(vfs, "models/tree.gltf") == "models/tree.gltf"); // not cooked yet
     CHECK(preferCooked(vfs, "models/hut.g7mesh") == "models/hut.g7mesh");
     CHECK(preferCooked(vfs, "textures/wood.png") == "textures/wood.png");
+    CHECK(preferCooked(vfs, "worlds/splat0.png") == "worlds/splat0.ktx2"); // terrain blocks name the PNG
+    CHECK(preferCooked(vfs, "worlds/rock.jpg") == "worlds/rock.jpg");
 }

@@ -48,6 +48,13 @@ Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_
   - **Normal-Maps** erkennt der Cooker an `normalImage` in den Materialien aller Meshes; sie werden zweikanalig
     (X, Y, linear) für BC5 gespeichert. Alles andere ist sRGB-Farbe. Wird ein Bild als Farbe **und** als Normal-Map
     benutzt, ist das ein Fehler.
+  - **Gelände** (M4): Der Cooker liest den `terrain`-Block jeder `.g7world` unter der Quelle. `splat.maps` sind
+    **Daten**: lineares RGBA (KTX2 `R8G8B8A8_UNORM` → BC7 linear), Mips je Kanal unabhängig gemittelt, Alpha ist
+    Gewicht der 4. Schicht (kein Premultiply, RGB bleibt auch bei Alpha 0). UASTC ist leicht verlustbehaftet
+    (wenige Stufen von 255), für Gewichte unkritisch. `layers[].albedo` ist Farbe, `layers[].normal` Normal-Map.
+    Bild als Splat **und** als Farbe/Normal-Map: Fehler. Die Löchermaske (`.r8`) und die Heightmap (`.r16`) werden
+    unverändert kopiert (verlustfrei, im `.g7pak` zstd). Zur Laufzeit nimmt die Engine `x.ktx2` statt `x.png`, wenn
+    vorhanden (`preferCooked`), die `.g7world` darf also die Quell-PNGs nennen.
   - Bildverweise in `.g7mesh` zeigen dann auf `.ktx2` (`mimeType` `image/ktx2`), auch für herausgelöste
     eingebettete Bilder.
   - Benötigt libktx (vcpkg); ein Build ohne libktx lehnt `--textures ktx2` ab.
@@ -64,7 +71,7 @@ Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_
 `tools/asset-cooker/src/Manifest.hpp`) hält je Quelle einen **Schlüssel** und ihre Ausgaben mit Hash und Größe fest.
 - Der Schlüssel ist ein 64-Bit-FNV-1a-Hash über die Bytes der Quelle, ihre Abhängigkeiten, die Cooker-Version
   (`kCookerVersion`, wird bei Formatänderungen erhöht) und die Optionen, die die Ausgabe beeinflussen. Bei Bildern im
-  KTX2-Modus zählt zusätzlich die Verwendung (Farbe oder Normal-Map) dazu.
+  KTX2-Modus zählt zusätzlich die Verwendung (Farbe, Normal-Map oder Gelände-Daten) dazu.
 - Abhängigkeiten eines glTF sind die `uri`-Einträge im JSON (bei `.glb` im JSON-Chunk), also externe `.bin` und Bilder.
   `data:`-URIs zählen nicht.
 - **Unveränderter Schlüssel:** Die alten Ausgaben werden wiederverwendet; lose Dateien werden per Hash geprüft,

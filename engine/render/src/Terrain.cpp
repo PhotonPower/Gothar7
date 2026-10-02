@@ -3,6 +3,7 @@
 #include <g7/render/Lighting.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/Terrain.hpp>
+#include <g7/render/TextureUpload.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -12,7 +13,10 @@ namespace g7::render
 {
 namespace
 {
-constexpr u32 kHeightUnit = 4; // texture unit of the heightmap (0-2 materials, 3 shadow atlas)
+constexpr u32 kHeightUnit = 4; // texture units: 0-2 materials, 3 shadow atlas, 4-7 terrain
+constexpr u32 kSplatUnit = 5;
+constexpr u32 kLayerUnit = 6;
+constexpr u32 kHoleUnit = 7;
 
 /// Grid vertex: x, z in samples relative to the chunk origin; y = 1 for skirt vertices.
 struct GridVertex
@@ -95,7 +99,7 @@ Result<TerrainRenderer> TerrainRenderer::create(Device& device, ShaderLibrary& s
     terrain.m_desc.samples = {};
 
     auto program = shaders.load("terrain", {"terrain.vert", "terrain.frag", {}});
-    auto shadowProgram = shaders.load("terrain_shadow", {"terrain.vert", "shadow.frag", {"SHADOW"}});
+    auto shadowProgram = shaders.load("terrain_shadow", {"terrain.vert", "terrain.frag", {"SHADOW"}});
     if (!program || !shadowProgram)
     {
         return !program ? program.error() : shadowProgram.error();
@@ -142,6 +146,35 @@ Result<TerrainRenderer> TerrainRenderer::create(Device& device, ShaderLibrary& s
         return sampler.error();
     }
     terrain.m_nearest = std::move(sampler).value();
+    rhi::SamplerDesc clamp;
+    clamp.wrapU = clamp.wrapV = rhi::Wrap::Clamp;
+    rhi::SamplerDesc repeat;
+    repeat.maxAnisotropy = 8.0f; // layers are seen at grazing angles
+    auto linearClamp = device.createSampler(clamp);
+    auto linearRepeat = device.createSampler(repeat);
+    if (!linearClamp || !linearRepeat)
+    {
+        return !linearClamp ? linearClamp.error() : linearRepeat.error();
+    }
+    terrain.m_linearClamp = std::move(linearClamp).value();
+    terrain.m_linearRepeat = std::move(linearRepeat).value();
+    auto noLayers = device.createTexture({1, 1, rhi::Format::RGBA8, 1, 1, true});
+    auto noHoles = device.createTexture({1, 1, rhi::Format::R8, 1});
+    if (!noLayers || !noHoles)
+    {
+        return !noLayers ? noLayers.error() : noHoles.error();
+    }
+    const std::array<u8, 4> white{255, 255, 255, 255};
+    if (auto a = noLayers.value().upload(0, white); !a)
+    {
+        return a.error();
+    }
+    if (auto b = noHoles.value().upload(0, std::span<const u8>(white).first(1)); !b)
+    {
+        return b.error();
+    }
+    terrain.m_noLayers = std::move(noLayers).value();
+    terrain.m_noHoles = std::move(noHoles).value();
 
     std::vector<GridVertex> vertices;
     std::vector<u32> indices;
@@ -199,6 +232,91 @@ Result<TerrainRenderer> TerrainRenderer::create(Device& device, ShaderLibrary& s
     return terrain;
 }
 
+Result<void> TerrainRenderer::setSurface(Device& device, const TerrainSurfaceDesc& surface)
+{
+    using Desc = TerrainSurfaceDesc;
+    const usize layerCount = surface.layers.size();
+    if (layerCount > Desc::kMaxLayers)
+    {
+        return Error{"terrain surface: " + std::to_string(layerCount) + " layers, at most " +
+                     std::to_string(Desc::kMaxLayers)};
+    }
+    const usize mapsNeeded = (layerCount + 3) / 4;
+    if (surface.splatMaps.size() != mapsNeeded)
+    {
+        return Error{"terrain surface: " + std::to_string(layerCount) + " layers need " +
+                     std::to_string(mapsNeeded) + " splat map(s), got " +
+                     std::to_string(surface.splatMaps.size())};
+    }
+    const usize cells = static_cast<usize>(m_desc.width - 1) * (m_desc.height - 1);
+    if (!surface.holes.empty() && surface.holes.size() != cells)
+    {
+        return Error{"terrain surface: hole mask has " + std::to_string(surface.holes.size()) + " bytes, " +
+                     std::to_string(m_desc.width - 1) + " x " + std::to_string(m_desc.height - 1) + " = " +
+                     std::to_string(cells) + " expected (one per cell)"};
+    }
+    std::array<f32, Desc::kMaxLayers> tiles{};
+    std::vector<const asset::TextureData*> albedos;
+    for (usize i = 0; i < layerCount; ++i)
+    {
+        const Desc::Layer& layer = surface.layers[i];
+        if (!(layer.tile > 0.0f))
+        {
+            return Error{"terrain surface: layer " + std::to_string(i) + " needs a positive tile size"};
+        }
+        tiles[i] = layer.tile;
+        albedos.push_back(layer.albedo);
+    }
+
+    // Everything is built first; the previous surface stays if anything fails.
+    rhi::Texture splat;
+    rhi::Texture layers;
+    if (layerCount > 0)
+    {
+        auto weights = createTextureArray(device, surface.splatMaps, TextureArrayUsage::Data);
+        if (!weights)
+        {
+            return Error{"terrain splat maps: " + weights.error().message};
+        }
+        auto colours = createTextureArray(device, albedos, TextureArrayUsage::Colour);
+        if (!colours)
+        {
+            return Error{"terrain layers: " + colours.error().message};
+        }
+        splat = std::move(weights).value();
+        layers = std::move(colours).value();
+    }
+    rhi::Texture holes;
+    if (!surface.holes.empty())
+    {
+        auto mask = device.createTexture({m_desc.width - 1, m_desc.height - 1, rhi::Format::R8, 1});
+        if (!mask)
+        {
+            return mask.error();
+        }
+        if (auto uploaded = mask.value().upload(0, surface.holes); !uploaded)
+        {
+            return uploaded.error();
+        }
+        holes = std::move(mask).value();
+    }
+    m_splat = std::move(splat);
+    m_layers = std::move(layers);
+    m_holes = std::move(holes);
+    m_tiles = tiles;
+    m_layerCount = static_cast<u32>(layerCount);
+    m_hasHoles = !surface.holes.empty();
+    if (m_layerCount > 0)
+    {
+        // Pixel centres on samples: uv = 0.5 / W + sample * (W - 1) / (W * (width - 1)).
+        const auto w = static_cast<f32>(m_splat.desc().width);
+        const auto h = static_cast<f32>(m_splat.desc().height);
+        m_splatTransform = Vec4((w - 1.0f) / (w * static_cast<f32>(m_desc.width - 1)),
+                                (h - 1.0f) / (h * static_cast<f32>(m_desc.height - 1)), 0.5f / w, 0.5f / h);
+    }
+    return {};
+}
+
 void TerrainRenderer::bindCommon(rhi::ShaderProgram& program, Device& device)
 {
     program.setUniform("uSize", Vec2(static_cast<f32>(m_desc.width), static_cast<f32>(m_desc.height)));
@@ -207,6 +325,8 @@ void TerrainRenderer::bindCommon(rhi::ShaderProgram& program, Device& device)
     program.setUniform("uHeightRange", Vec2(m_desc.minY, m_desc.maxY));
     program.setUniform("uSkirtDepth", m_skirtDepth);
     device.bindTexture(kHeightUnit, m_heights, m_nearest);
+    program.setUniform("uHasHoles", m_hasHoles ? 1 : 0);
+    device.bindTexture(kHoleUnit, m_hasHoles ? m_holes : m_noHoles, m_nearest);
 }
 
 void TerrainRenderer::drawShadow(Device& device, const Cascade& cascade)
@@ -241,10 +361,16 @@ void TerrainRenderer::draw(Device& device, const Camera& camera, const LightList
         return;
     }
     const Frustum view = camera.frustum();
+    // Textures before the program: the driver checks the samplers when the program is bound.
+    device.bindTexture(kSplatUnit, m_layerCount > 0 ? m_splat : m_noLayers, m_linearClamp);
+    device.bindTexture(kLayerUnit, m_layerCount > 0 ? m_layers : m_noLayers, m_linearRepeat);
     device.bindPipeline(m_pipeline);
     bindCommon(*m_program, device);
     m_program->setUniform("uViewProjection", camera.viewProjection());
     m_program->setUniform("uCameraPosition", camera.transform.position);
+    m_program->setUniform("uLayerCount", static_cast<i32>(m_layerCount));
+    m_program->setUniform("uTiles", std::span<const f32>(m_tiles));
+    m_program->setUniform("uSplatTransform", m_splatTransform);
     u32 boundLevel = kLodLevels; // none
     std::array<i32, LightList::kMaxPerObject> indices{};
     for (const Chunk& chunk : m_chunks)

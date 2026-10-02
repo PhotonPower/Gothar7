@@ -168,6 +168,19 @@ TEST_CASE("mip chain: sizes down to 1x1, colour averaged in linear light, normal
     CHECK(std::abs(int(n[1].rgba8[2]) - 218) <= 1);
 }
 
+TEST_CASE("mip chain of data maps: every channel averaged on its own, alpha is a weight")
+{
+    // Splat weights: no sRGB curve, no premultiplying, RGB kept where alpha is 0.
+    asset::ImageData img{2, 1, {}};
+    img.rgba8 = {0, 200, 255, 0, 255, 100, 255, 255};
+    const auto chain = cook::buildMipChain(img, cook::TextureUsage::Data);
+    REQUIRE(chain.size() == 2);
+    CHECK(int(chain[1].rgba8[0]) == 128); // (0 + 255) / 2, not the sRGB mean 188
+    CHECK(int(chain[1].rgba8[1]) == 150);
+    CHECK(int(chain[1].rgba8[2]) == 255);
+    CHECK(int(chain[1].rgba8[3]) == 128);
+}
+
 #if G7_HAS_KTX
 TEST_CASE("KTX2 colour texture: BC7 sRGB with full mip chain and the right colour")
 {
@@ -290,3 +303,64 @@ TEST_CASE("textureFromImage and decodeKtx2 errors")
     REQUIRE_FALSE(bad);
     CHECK(bad.error().message.find("bad.ktx2") != std::string::npos);
 }
+
+#if G7_HAS_KTX
+namespace
+{
+std::string terrainWorld(std::string_view splat, std::string_view albedo)
+{
+    return std::string(
+               R"({"version": 1, "name": "hills", "terrain": {"version": 1, "heightmap": "worlds/hills/terrain.r16",
+        "width": 2, "height": 2, "cellSize": 1, "firstSample": [0, 0], "minY": 0, "maxY": 1,
+        "splat": {"maps": [")") +
+           std::string(splat) + R"("], "layers": [{"name": "grass", "albedo": ")" + std::string(albedo) +
+           R"("}]}, "holes": "worlds/hills/holes.r8"}})";
+}
+} // namespace
+
+TEST_CASE("cook --textures ktx2: terrain splat maps are data, layer albedos colour, holes copied")
+{
+    KtxTree t;
+    write(t.source / "worlds" / "hills" / "splat0.png", png(solid(8, 8, 255, 0, 0, 0)));
+    write(t.source / "worlds" / "hills" / "grass.png", png(solid(8, 8, 70, 100, 40)));
+    const std::vector<u8> holes{255, 0, 255, 255, 7};
+    write(t.source / "worlds" / "hills" / "holes.r8", holes);
+    write(t.source / "worlds" / "hills" / "terrain.r16", std::vector<u8>(8));
+    writeText(t.source / "worlds" / "hills" / "hills.g7world",
+              terrainWorld("worlds/hills/splat0.png", "worlds/hills/grass.png"));
+
+    auto report =
+        cook::cook({.source = t.source, .out = t.out, .textures = cook::TextureMode::Ktx2, .uastcLevel = 0});
+    REQUIRE(report);
+    CHECK(report.value().errors.empty());
+
+    const auto splat = asset::decodeKtx2(fs::readFile(t.out / "worlds" / "hills" / "splat0.ktx2").value());
+    REQUIRE(splat);
+    CHECK(splat.value().format == asset::TextureFormat::BC7);
+    CHECK_FALSE(splat.value().srgb); // weights stay linear
+    const auto weights = toRgba(fs::readFile(t.out / "worlds" / "hills" / "splat0.ktx2").value());
+    CHECK(int(weights[0]) >= 252); // layer 0 weight kept although alpha (layer 3) is 0
+    CHECK(int(weights[3]) <= 3);
+    const auto grass = asset::decodeKtx2(fs::readFile(t.out / "worlds" / "hills" / "grass.ktx2").value());
+    REQUIRE(grass);
+    CHECK(grass.value().srgb);
+    CHECK(fs::readFile(t.out / "worlds" / "hills" / "holes.r8").value() == holes); // unchanged, lossless
+    CHECK(fs::exists(t.out / "worlds" / "hills" / "hills.g7world"));
+}
+
+TEST_CASE("cook --textures ktx2: a splat map also used as colour is an error")
+{
+    KtxTree t;
+    write(t.source / "worlds" / "hills" / "splat0.png", png(solid(8, 8, 255, 0, 0, 0)));
+    write(t.source / "worlds" / "hills" / "holes.r8", std::vector<u8>{255});
+    write(t.source / "worlds" / "hills" / "terrain.r16", std::vector<u8>(8));
+    writeText(t.source / "worlds" / "hills" / "hills.g7world",
+              terrainWorld("worlds/hills/splat0.png", "worlds/hills/splat0.png"));
+    auto report =
+        cook::cook({.source = t.source, .out = t.out, .textures = cook::TextureMode::Ktx2, .uastcLevel = 0});
+    REQUIRE(report);
+    REQUIRE(report.value().errors.size() == 1);
+    CHECK(report.value().errors[0].find("worlds/hills/splat0.png") != std::string::npos);
+    CHECK(report.value().errors[0].find("terrain splat map") != std::string::npos);
+}
+#endif

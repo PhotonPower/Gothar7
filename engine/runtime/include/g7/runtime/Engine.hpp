@@ -190,6 +190,9 @@ private:
     [[nodiscard]] Result<void> initWorld();
     /// Render instances and lights for the vobs in m_scene (mesh and light vobs).
     [[nodiscard]] Result<void> instantiateScene();
+    /// Splat layers and holes of the loaded terrain; layers that fail to load are a warning (slope
+    /// colours instead), holes always apply.
+    void loadTerrainSurface(const world::TerrainRef& ref);
     [[nodiscard]] Result<void> saveWorld(const fs::Path& path) const;
     [[nodiscard]] Result<void> initAssets();
     /// VFS path for a --scene/--view-mesh argument (mounting the folder of a disk file under local/).

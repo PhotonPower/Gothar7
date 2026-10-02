@@ -29,11 +29,15 @@ Result<void> Buffer::update(usize offset, std::span<const u8> data)
     return {};
 }
 
-Result<void> Texture::upload(u32 level, std::span<const u8> data)
+Result<void> Texture::upload(u32 level, std::span<const u8> data, u32 layer)
 {
     if (level >= m_desc.mipLevels)
     {
         return Error{"Texture::upload: mip level " + std::to_string(level) + " does not exist"};
+    }
+    if (layer >= m_desc.layers)
+    {
+        return Error{"Texture::upload: layer " + std::to_string(layer) + " does not exist"};
     }
     const u32 width = mipSize(m_desc.width, level);
     const u32 height = mipSize(m_desc.height, level);
@@ -45,15 +49,30 @@ Result<void> Texture::upload(u32 level, std::span<const u8> data)
     }
     const auto format = gl::textureFormat(m_desc.format);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    if (isCompressed(m_desc.format))
+    const auto w = static_cast<GLsizei>(width);
+    const auto h = static_cast<GLsizei>(height);
+    const auto lv = static_cast<GLint>(level);
+    if (m_desc.isArray())
     {
-        glCompressedTextureSubImage2D(m_handle.id(), static_cast<GLint>(level), 0, 0,
-                                      static_cast<GLsizei>(width), static_cast<GLsizei>(height),
-                                      format.internalFormat, static_cast<GLsizei>(data.size()), data.data());
+        const auto z = static_cast<GLint>(layer);
+        if (isCompressed(m_desc.format))
+        {
+            glCompressedTextureSubImage3D(m_handle.id(), lv, 0, 0, z, w, h, 1, format.internalFormat,
+                                          static_cast<GLsizei>(data.size()), data.data());
+        }
+        else
+        {
+            glTextureSubImage3D(m_handle.id(), lv, 0, 0, z, w, h, 1, format.format, format.type, data.data());
+        }
         return {};
     }
-    glTextureSubImage2D(m_handle.id(), static_cast<GLint>(level), 0, 0, static_cast<GLsizei>(width),
-                        static_cast<GLsizei>(height), format.format, format.type, data.data());
+    if (isCompressed(m_desc.format))
+    {
+        glCompressedTextureSubImage2D(m_handle.id(), lv, 0, 0, w, h, format.internalFormat,
+                                      static_cast<GLsizei>(data.size()), data.data());
+        return {};
+    }
+    glTextureSubImage2D(m_handle.id(), lv, 0, 0, w, h, format.format, format.type, data.data());
     return {};
 }
 
@@ -115,6 +134,12 @@ void ShaderProgram::setUniform(std::string_view uniformName, const Mat4& value)
 void ShaderProgram::setUniform(std::string_view uniformName, std::span<const i32> values)
 {
     glProgramUniform1iv(m_handle.id(), location(uniformName), static_cast<GLsizei>(values.size()),
+                        values.data());
+}
+
+void ShaderProgram::setUniform(std::string_view uniformName, std::span<const f32> values)
+{
+    glProgramUniform1fv(m_handle.id(), location(uniformName), static_cast<GLsizei>(values.size()),
                         values.data());
 }
 } // namespace g7::render::rhi

@@ -117,7 +117,7 @@ Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig)
 ```
 - `version` (Pflicht, = 1), `heightmap`: VFS-Pfad einer **rohen `.r16`**: `width·height` Werte **uint16 Little Endian**,
   zeilenweise. `width`/`height` ≥ 2, `cellSize` > 0 (Meter zwischen Sample-Mitten), `firstSample` [x, z] der Mitte von
-  Spalte 0 / Zeile 0, `maxY` > `minY`. Reserviert (noch ignoriert): `splat`, `holes`.
+  Spalte 0 / Zeile 0, `maxY` > `minY`. Optional: `splat`, `holes` (unten).
 - **Lage:** Sample (Spalte c, Zeile r) liegt bei x = firstSample.x + c·cellSize, z = firstSample.z + r·cellSize.
   **Zeile 0 = kleinstes z (Norden, −Z), Spalte 0 = kleinstes x (Westen, −X)**, Y oben. Die Fläche reicht von Sample-Mitte
   zu Sample-Mitte; dazwischen bilinear, außerhalb gilt die Randhöhe.
@@ -127,9 +127,45 @@ Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig)
   (Halbwerte beliebig gerundet), auf 0 … 65535 begrenzt.
   Beispiel (minY −50.991, maxY 94.85, Auflösung 2,2254 mm): y 0.0 → v 22913 → y −0.000616; y 21.9 → v 32754 →
   y 21.899457; minY → 0; maxY → 65535.
-- `world::Heightfield` (`Terrain.hpp`): `load(vfs, ref)`, `heightAt(x, z)`, `normalAt(x, z)`, `sampleHeight(c, r)`,
-  `bounds()`, `renderDesc()`; `encodeHeight`/`decodeHeight`. Gerendert von `render::TerrainRenderer` (render.md).
-- Testwelt: `assets/source/testworld/terrain.r16` (257×257, 2 m, −20 … 60 m; erzeugt von `make_terrain.py`).
+### Splat-Schichten (`splat`, optional, M4 Teil B)
+```json
+"splat": {"maps": ["worlds/leonberg/generated/splat0.png"],
+          "layers": [{"name": "Wiese", "albedo": "worlds/leonberg/wiese.png", "tile": 4.0},
+                     {"name": "Fels", "albedo": "worlds/leonberg/fels.png", "tile": 6.0, "normal": "…"}]}
+```
+- `layers`: 1 … 8 Schichten; `name` und `albedo` (VFS-Pfad, sRGB-Farbe) Pflicht, `tile` = Meter je Texturwiederholung
+  (> 0, Vorgabe 4), `normal` (VFS-Pfad) **reserviert**: gelesen und geschrieben, noch nicht gezeichnet. Alle Albedos
+  müssen gleich groß und gleich formatiert sein (sonst Ladewarnung mit Meldung, dann Neigungsfärbung).
+- `maps`: genau ⌈Schichten / 4⌉ (1 oder 2) RGBA-Bilder, **lineare Daten**: Kanal k von Karte m = Gewicht der Schicht
+  4m + k (Alpha ist ein Gewicht, keine Transparenz). Je Punkt auf Summe 1 normiert; Summe 0 → Schicht 0. Alle Karten
+  gleich groß (W×H, beliebig).
+- **Lage:** Pixel-Mitten liegen auf Samples – Pixel (0, 0) auf Sample (0, 0), Pixel (W−1, H−1) auf dem letzten Sample;
+  Zeile 0 = Norden wie die Heightmap; dazwischen bilinear. Pixel (i, j) liegt bei
+  x = firstSample.x + i·(width−1)·cellSize / (W−1), z = firstSample.z + j·(height−1)·cellSize / (H−1).
+  Beispiel Leonberg (2000×2000, 1 m, firstSample −999.5) mit 1000×1000 Splat: Pixel (0, 0) → (−999.5, −999.5);
+  (999, 999) → (999.5, 999.5); (500, 0) → x = −999.5 + 500·1999 / 999 = 1.0005. Bei Heightmap-Auflösung
+  (2000×2000) fällt jedes Pixel genau auf ein Sample; da 1999 prim ist, ergibt jede andere Auflösung einen krummen
+  Pixelabstand (z. B. 2,001 m bei 1000 px) – mit der Formel unproblematisch.
+
+### Löcher (`holes`, optional)
+- `"holes": "worlds/leonberg/generated/holes.r8"` – rohe 8-Bit-Maske **je Zelle** (nicht je Sample):
+  (width−1)·(height−1) Bytes, zeilenweise, Zeile 0 = Norden. Zelle (c, r) ist das Quadrat zwischen Sample (c, r) und
+  (c+1, r+1): x ∈ [firstSample.x + c·cellSize, firstSample.x + (c+1)·cellSize], z entsprechend. **0 = Loch** (Zelle
+  fehlt, auch im Schatten und später für Kollision), sonst Boden (worldgen schreibt 255).
+  Beispiel Leonberg: 1999·1999 = 3 996 001 Bytes; Zelle (0, 0) = x −999.5 … −998.5, z −999.5 … −998.5; Byte-Index von
+  Zelle (c, r) = r·1999 + c; Zelle (1000, 500) = x 0.5 … 1.5, z −499.5 … −498.5.
+- Falsche Länge ist ein Ladefehler mit Dateiname; eine Maske nur aus Nullen wird geladen, aber gewarnt (sie entfernt
+  das ganze Gelände).
+
+- `world::Heightfield` (`Terrain.hpp`): `load(vfs, ref)` (Höhen + Löcher), `heightAt(x, z)`, `normalAt(x, z)`,
+  `sampleHeight(c, r)`, `isHole(x, z)` (letzte Sample-Linie gehört zur letzten Zelle; außerhalb false), `holes()`,
+  `bounds()`, `renderDesc()`; `encodeHeight`/`decodeHeight`. Gerendert von `render::TerrainRenderer` (render.md); die
+  Engine lädt Splat-Karten und Albedos über den AssetManager (gekocht als `.ktx2`, siehe 06-asset-pipeline.md).
+- Testwelt: `assets/source/testworld/` – `terrain.r16` (257×257, 2 m, −20 … 60 m), `splat0.png` (129×129: Gras,
+  Erde, Fels, Weg), `layer_*.png` (128², prozedural), `holes.r8` (Grube östlich des Lagers); alles aus
+  `make_terrain.py`.
+- Generierte Gelände-Daten der Welt-Spur liegen unversioniert unter `assets/source/worlds/<ort>/generated/`
+  (im Dev-Build gemountet, von g7-cook mitgekocht).
 
 ## Spielzeit & Umgebung
 - `GameTime`: Tag + Minuten; Skalierung (Standard: 1 Spielminute = 4 Echtsekunden → 24 h ≈ 96 Min);

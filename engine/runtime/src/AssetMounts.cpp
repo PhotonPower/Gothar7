@@ -141,12 +141,16 @@ std::string vfsSibling(std::string_view base, std::string_view relative)
 
 std::string preferCooked(const asset::Vfs& vfs, std::string_view path)
 {
-    for (const std::string_view extension : {std::string_view(".glb"), std::string_view(".gltf")})
+    constexpr std::pair<std::string_view, std::string_view> kCooked[] = {
+        {".glb", ".g7mesh"}, {".gltf", ".g7mesh"}, {".png", ".ktx2"}, {".jpg", ".ktx2"},
+        {".jpeg", ".ktx2"},  {".tga", ".ktx2"},    {".bmp", ".ktx2"}};
+    for (const auto& [extension, cookedExtension] : kCooked)
     {
         if (path.size() > extension.size() &&
             equalsIgnoreCase(path.substr(path.size() - extension.size()), extension))
         {
-            std::string cooked = std::string(path.substr(0, path.size() - extension.size())) + ".g7mesh";
+            std::string cooked =
+                std::string(path.substr(0, path.size() - extension.size())) + std::string(cookedExtension);
             if (vfs.exists(cooked))
             {
                 return cooked;

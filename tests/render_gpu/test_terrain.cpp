@@ -1,4 +1,5 @@
-// Heightmap terrain on a real driver (label "gpu"): heights reach the screen, culling and LOD.
+// Heightmap terrain on a real driver (label "gpu"): heights reach the screen, culling and LOD, splat
+// layers and holes.
 
 #include "GlFixture.hpp"
 
@@ -7,6 +8,7 @@
 #include <g7/render/Material.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/Terrain.hpp>
+#include <g7/render/TextureUpload.hpp>
 #include <g7/runtime/Engine.hpp>
 
 #include <vector>
@@ -42,9 +44,9 @@ struct TerrainScene
     Texture color;
     Texture depth;
     Framebuffer target;
-    std::vector<u16> samples = cliffSamples(129);
+    std::vector<u16> samples;
 
-    TerrainScene()
+    explicit TerrainScene(std::vector<u16> heights = cliffSamples(129)) : samples(std::move(heights))
     {
         meshes = require(MeshRenderer::create(*gl.device, library, 1.0f));
         const HeightfieldDesc desc{129, 129, 1.0f, Vec2(-64.0f, -64.0f), 0.0f, 20.0f, samples};
@@ -67,6 +69,31 @@ struct TerrainScene
         return gl.device->readPixels(0, 0, 32, 32, &target);
     }
 };
+
+asset::TextureData solidTexture(u32 size, u8 r, u8 g, u8 b)
+{
+    asset::ImageData image{size, size, {}};
+    for (u32 i = 0; i < size * size; ++i)
+    {
+        image.rgba8.insert(image.rgba8.end(), {r, g, b, 255});
+    }
+    return asset::textureFromImage(std::move(image), true);
+}
+
+/// 9 x 9 weights over the whole terrain: west of the middle layer 0, east of it layer 1.
+asset::TextureData westEastSplat()
+{
+    asset::ImageData image{9, 9, {}};
+    for (u32 j = 0; j < 9; ++j)
+    {
+        for (u32 i = 0; i < 9; ++i)
+        {
+            const u8 east = i > 4 ? 255 : i == 4 ? 128 : 0;
+            image.rgba8.insert(image.rgba8.end(), {static_cast<u8>(255 - east), east, 0, 0});
+        }
+    }
+    return asset::textureFromImage(std::move(image), false);
+}
 
 Camera lookingDown(const Vec3& position)
 {
@@ -154,9 +181,132 @@ TEST_CASE("Terrain GPU: the test world loads its terrain through the engine")
     auto result = engine.init();
     REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
     REQUIRE(engine.terrain() != nullptr);
+    CHECK(engine.terrain()->holes().size() == 256u * 256u);
+    CHECK(engine.terrain()->isHole(126.0f, -4.0f)); // the pit east of the camp (make_terrain.py)
+    CHECK_FALSE(engine.terrain()->isHole(0.0f, 0.0f));
     CHECK(engine.terrain()->heightAt(0.0f, 0.0f) == doctest::Approx(0.0f).epsilon(0.01)); // the camp is flat
     CHECK(engine.terrain()->heightAt(-150.0f, -120.0f) < -5.0f);                          // the basin
     CHECK(engine.runFrame());
     CHECK(engine.visibleTerrainChunks() > 0);
     CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}
+
+TEST_CASE("Terrain GPU: texture arrays hold equal layers, differences are errors")
+{
+    GlFixture gl;
+    const asset::TextureData red = solidTexture(4, 255, 0, 0);
+    const asset::TextureData blue = solidTexture(4, 0, 0, 255);
+    const asset::TextureData small = solidTexture(2, 0, 255, 0);
+    const std::vector<const asset::TextureData*> layers{&red, &blue};
+    Texture array = require(createTextureArray(*gl.device, layers, TextureArrayUsage::Data));
+    CHECK(array.desc().layers == 2);
+    CHECK(array.desc().isArray());
+    CHECK(array.desc().mipLevels == 3); // generated: 4x4, 2x2, 1x1
+    const auto pixels = gl.device->readTexture(array, 0);
+    REQUIRE(pixels.size() == 2u * 4u * 4u * 4u);
+    CHECK(pixels[0] == 255);             // layer 0 red
+    CHECK(pixels[4 * 4 * 4 + 2] == 255); // layer 1 blue
+    CHECK(require(createTextureArray(*gl.device, std::vector<const asset::TextureData*>{&red},
+                                     TextureArrayUsage::Colour))
+              .desc()
+              .isArray()); // one layer stays an array (sampler2DArray)
+
+    const std::vector<const asset::TextureData*> mixed{&red, &small};
+    auto wrongSize = createTextureArray(*gl.device, mixed, TextureArrayUsage::Colour);
+    REQUIRE_FALSE(wrongSize.ok());
+    CHECK(wrongSize.error().message ==
+          "texture array: layer 1 is 2x2, layer 0 is 4x4 (all layers need the same size)");
+    asset::TextureData compressed = red;
+    compressed.format = asset::TextureFormat::BC7;
+    const std::vector<const asset::TextureData*> formats{&red, &compressed};
+    auto wrongFormat = createTextureArray(*gl.device, formats, TextureArrayUsage::Colour);
+    REQUIRE_FALSE(wrongFormat.ok());
+    CHECK(wrongFormat.error().message.find("layer 1 differs from layer 0 in format") != std::string::npos);
+    CHECK(gl.device->debugErrorCount() == 0);
+}
+
+TEST_CASE("Terrain GPU: splat weights choose the layer, holes show what lies behind")
+{
+    TerrainScene scene(std::vector<u16>(129 * 129, 0)); // flat at y = 0
+    const asset::TextureData red = solidTexture(4, 220, 20, 20);
+    const asset::TextureData blue = solidTexture(4, 20, 20, 220);
+    const asset::TextureData weights = westEastSplat();
+    TerrainSurfaceDesc surface;
+    surface.splatMaps = {&weights};
+    surface.layers = {{&red, 4.0f}, {&blue, 4.0f}};
+    REQUIRE(scene.terrain.setSurface(*scene.gl.device, surface).ok());
+    CHECK(scene.terrain.layerCount() == 2);
+
+    auto pixels = scene.render(lookingDown(Vec3(0, 100, 0)));
+    const auto at = [&](int x, int y) { return &pixels[(static_cast<usize>(y) * 32 + x) * 4]; };
+    CHECK(at(8, 16)[0] > at(8, 16)[2] + 40);   // west: red layer
+    CHECK(at(24, 16)[2] > at(24, 16)[0] + 40); // east: blue layer
+
+    // Holes: 128 x 128 cells, a 32 x 32 block in the middle removed.
+    std::vector<u8> holes(128 * 128, 255);
+    for (u32 r = 48; r < 80; ++r)
+    {
+        for (u32 c = 48; c < 80; ++c)
+        {
+            holes[r * 128 + c] = 0;
+        }
+    }
+    surface.holes = holes;
+    REQUIRE(scene.terrain.setSurface(*scene.gl.device, surface).ok());
+    CHECK(scene.terrain.hasHoles());
+    pixels = scene.render(lookingDown(Vec3(0, 100, 0)));
+    CHECK(at(16, 16)[0] + at(16, 16)[1] + at(16, 16)[2] == 0); // the clear colour through the hole
+    CHECK(at(4, 16)[0] > 0);                                   // ground around it
+    CHECK(at(4, 16)[0] > at(4, 16)[2] + 40); // still the red layer after the surface was replaced
+    CHECK(at(28, 16)[2] > at(28, 16)[0] + 40);
+
+    // The shadow pass cuts the same holes, without errors.
+    ShadowSettings settings;
+    settings.resolution = 256;
+    ShadowMap shadows = require(ShadowMap::create(*scene.gl.device, settings));
+    const auto cascades = computeCascades(lookingDown(Vec3(0, 50, 0)), Vec3(0.3f, 1.0f, 0.2f), settings);
+    shadows.begin(*scene.gl.device);
+    shadows.beginCascade(*scene.gl.device, 0);
+    scene.terrain.drawShadow(*scene.gl.device, cascades[0]);
+    CHECK(scene.gl.device->debugErrorCount() == 0);
+}
+
+TEST_CASE("Terrain GPU: a broken surface is an error that keeps the previous one")
+{
+    TerrainScene scene;
+    const asset::TextureData red = solidTexture(4, 220, 20, 20);
+    const asset::TextureData small = solidTexture(2, 20, 20, 220);
+    const asset::TextureData weights = westEastSplat();
+    TerrainSurfaceDesc good;
+    good.splatMaps = {&weights};
+    good.layers = {{&red, 4.0f}};
+    REQUIRE(scene.terrain.setSurface(*scene.gl.device, good).ok());
+
+    const auto failure = [&](const TerrainSurfaceDesc& surface)
+    {
+        auto result = scene.terrain.setSurface(*scene.gl.device, surface);
+        REQUIRE_FALSE(result.ok());
+        CHECK(scene.terrain.layerCount() == 1); // unchanged
+        return result.error().message;
+    };
+    TerrainSurfaceDesc nine = good;
+    nine.layers.assign(9, {&red, 4.0f});
+    nine.splatMaps = {&weights, &weights};
+    CHECK(failure(nine) == "terrain surface: 9 layers, at most 8");
+    TerrainSurfaceDesc fewMaps = good;
+    fewMaps.layers.assign(5, {&red, 4.0f});
+    CHECK(failure(fewMaps) == "terrain surface: 5 layers need 2 splat map(s), got 1");
+    TerrainSurfaceDesc sizes = good;
+    sizes.layers = {{&red, 4.0f}, {&small, 4.0f}};
+    CHECK(failure(sizes) ==
+          "terrain layers: texture array: layer 1 is 2x2, layer 0 is 4x4 (all layers need the same size)");
+    TerrainSurfaceDesc tile = good;
+    tile.layers[0].tile = 0.0f;
+    CHECK(failure(tile) == "terrain surface: layer 0 needs a positive tile size");
+    const std::vector<u8> shortMask(10, 255);
+    TerrainSurfaceDesc holes = good;
+    holes.holes = shortMask;
+    CHECK(failure(holes) ==
+          "terrain surface: hole mask has 10 bytes, 128 x 128 = 16384 expected (one per cell)");
+    CHECK(scene.gl.device->debugErrorCount() == 0);
 }
