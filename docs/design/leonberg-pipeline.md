@@ -176,7 +176,27 @@ Annotationen/Overrides pro Gebäude (`tools/worldgen/data/leonberg/buildings/<id
 - DGM1-Kacheln mosaikieren → Heightmap; Ränder für die spätere Erweiterung kennzeichnen.
 - CityGML LoD2 parsen → Grundrisse, Dachflächen → Dachtyp (ALKIS-Code)/Höhen/Firstrichtung → `buildings.json`.
 - OSM → `streets.json`, `features.json` (Straßenbreite aus Tags, sonst Schätzung nach Typ; Plätze, Mauern, Wasser, Bäume, Landnutzung, Brunnen, Landmarken).
-- Vorschau-PNG (Heightmap + Grundrisse + Straßen) zur Kontrolle.
+- Vorschau und Plausibilitätsprüfung (`gothar-worldgen check <ort>`, läuft am Ende von `import` mit):
+  `preview.png` (ganzes Gebiet, 1 m/px) und `preview_core.png` (Altstadt, 0,5 m/px) zeigen das schattierte
+  Gelände mit Gebäuden (Kern rot, Rest grau), Straßen nach Klasse und Breite, Plätzen, Wasser, Mauern,
+  Bäumen, Brunnen und Landmarken, außerdem Legende, Maßstab, Kernrahmen und Ursprungskreuz (Norden oben).
+  `report.json` enthält die Prüfungen mit `ok`/`warn`/`fail`. Bei `fail` endet der Befehl mit Exit-Code 1.
+
+  | Prüfung | Kriterium |
+  |---|---|
+  | `terrain.resolution` | Höhenstufe ≤ 10 mm |
+  | `terrain.originInRange` | Ursprungshöhe liegt im Geländebereich (sonst `fail`) |
+  | `layers.sameOrigin` | alle Dateien haben denselben Ursprung und dieselbe Bezugshöhe (sonst `fail`) |
+  | `buildings.count` | Gebäude vorhanden, davon welche im Kern |
+  | `buildings.groundVsTerrain` | Median \|Gebäudeboden − Gelände an den Grundrissecken\| ≤ 0,5 m (`warn` bis 2 m) |
+  | `buildings.groundOutliers` | ≤ 5 % der Gebäude weichen > 2 m ab (Hanglagen) |
+  | `buildings.heights` / `.warnings` | ≤ 1 % mit Höhe außerhalb 0,5–120 m bzw. mit Umwandlungswarnungen |
+  | `streets.count`, `streets.widths` | Straßen vorhanden; Breiten 0,5–40 m |
+  | `osm.withinArea` | alle OSM-Punkte im Gebiet (Zuschnitt) |
+  | `alignment.roadsInBuildings` | ≤ 3 % der Straßenlänge durch Gebäude (`warn` bis 10 %): prüft, ob OSM und LGL deckungsgleich sind |
+
+  Stand Leonberg: alle Prüfungen `ok`. Die Abweichung von Boden zu Gelände liegt im Median bei 0,03 m,
+  1,6 % der Straßenlänge verläuft durch Gebäude (Durchfahrten). Zwei Läufe von `import` liefern byte-identische Dateien.
 
 ### W-B Terrain in der Engine (C++, Modul `world`/`render`)
 - Heightmap-Terrain in Kacheln (z. B. 64×64 m) mit LOD (geomorphing oder CDLOD).
