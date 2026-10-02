@@ -41,6 +41,7 @@ struct EngineConfig
     fs::Path shaderDirectory;
     /// Optional glTF model shown at the origin (--view-mesh); the debug camera frames it.
     fs::Path viewMesh;
+    bool sun = true;             ///< false: no sunlight (--no-sun), to judge point lights alone.
     platform::WindowDesc window; ///< Used unless headless.
     /// Merged settings (engine.toml + user config). The engine reads [input] (scheme,
     /// stick_deadzone) and [bindings.<scheme>]; window settings are applied by the caller.
@@ -117,6 +118,8 @@ private:
     render::Mesh m_viewMesh; // empty unless --view-mesh
     render::MaterialSet m_viewMaterials;
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs
+    render::Environment m_environment;
+    render::LightList m_lights;
     render::Camera m_camera;
     render::FreeFlyCamera m_flyCamera;
     bool m_mouseLook = false;

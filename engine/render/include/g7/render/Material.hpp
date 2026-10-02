@@ -3,6 +3,7 @@
 #include <g7/asset/MeshData.hpp>
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Result.hpp>
+#include <g7/render/Lighting.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
 #include <array>
@@ -57,6 +58,12 @@ public:
     /// Loads "mesh" and "mesh_alpha_test" from the library; `anisotropy` for the material sampler.
     [[nodiscard]] static Result<MeshRenderer> create(Device& device, ShaderLibrary& shaders, f32 anisotropy);
 
+    /// Uploads the frame's lighting (environment + all point lights). Call once per frame before
+    /// draw(); `lights` must stay alive until the frame's draws are done.
+    void setLighting(Device& device, const Environment& environment, const LightList& lights);
+
+    /// Draws with the lighting set by setLighting(); each object gets the (at most 8) point lights
+    /// that reach its world bounds.
     void draw(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
               const Camera& camera);
 
@@ -76,5 +83,8 @@ private:
     rhi::ShaderProgram* m_alphaTestProgram = nullptr;        // owned by the ShaderLibrary
     std::array<rhi::Pipeline, VariantCount * 2> m_pipelines; // [variant][culled, double-sided]
     rhi::Sampler m_sampler;
+    rhi::Buffer m_lightingBuffer; // GpuLighting, uniform block binding 0
+    const LightList* m_lights = nullptr;
+    std::vector<u32> m_selected;
 };
 } // namespace g7::render

@@ -1,8 +1,9 @@
 #version 450 core
 // Stylised material (render.md): base colour, tangent-space normal map, emissive, alpha test
-// (#define ALPHA_TEST) – lit by a fixed half-Lambert direction until the light task. Lighting
-// happens in linear space, the result is sRGB-encoded until the tonemapping pass exists.
+// (#define ALPHA_TEST), lit by common/lighting.glsl. Lighting happens in linear space, the result
+// is sRGB-encoded until the tonemapping pass exists.
 #include "common/color.glsl"
+#include "common/lighting.glsl"
 
 layout(binding = 0) uniform sampler2D uBaseColorTexture; // sRGB; white if none
 layout(binding = 1) uniform sampler2D uNormalTexture;    // linear; flat (0.5, 0.5, 1) if none
@@ -13,12 +14,11 @@ uniform vec3 uEmissive;     // linear factor
 uniform float uNormalScale;
 uniform float uAlphaCutoff;
 
+in vec3 vWorldPosition;
 in vec3 vNormal;
 in vec4 vTangent;
 in vec2 vUv;
 out vec4 fragColor;
-
-const vec3 kLightDirection = normalize(vec3(0.4, 1.0, 0.3));
 
 vec3 surfaceNormal()
 {
@@ -47,8 +47,7 @@ void main()
         discard;
     }
 #endif
-    const float halfLambert = dot(surfaceNormal(), kLightDirection) * 0.5 + 0.5;
-    vec3 color = base.rgb * (0.25 + 0.75 * halfLambert * halfLambert);
+    vec3 color = base.rgb * incomingLight(vWorldPosition, surfaceNormal());
     color += uEmissive * texture(uEmissiveTexture, vUv).rgb;
     fragColor = vec4(linearToSrgb(color), base.a);
 }

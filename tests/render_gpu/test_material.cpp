@@ -69,6 +69,7 @@ struct Scene
     Texture color;
     Texture depth;
     Framebuffer target;
+    LightList noPointLights;
 
     Scene()
     {
@@ -90,6 +91,14 @@ struct Scene
         gl.device->bindFramebuffer(&target);
         gl.device->setViewport(0, 0, 16, 16);
         gl.device->clear(Vec4(0, 0, 0, 1), 0.0f);
+        // Sun from above-front plus some ambient, so normal maps change the shading.
+        renderer.setLighting(*gl.device,
+                             Environment{.sunDirection = Vec3(0.4f, 1.0f, 0.3f),
+                                         .sunColor = Vec3(1.0f),
+                                         .sunIntensity = 0.75f,
+                                         .ambientSky = Vec3(0.25f),
+                                         .ambientGround = Vec3(0.25f)},
+                             noPointLights);
         renderer.draw(*gl.device, mesh, materials, Mat4(1.0f), camera);
         const auto p = gl.device->readPixels(8, 8, 1, 1, &target);
         REQUIRE(p.size() == 4);

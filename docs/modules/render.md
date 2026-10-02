@@ -126,7 +126,7 @@ class Mesh { static Result<Mesh> create(Device&, const asset::MeshData&);
              std::span<const asset::Submesh> submeshes() const; const AABB& bounds() const; };
 ```
 - Ein Vertex-Buffer (`asset::Vertex`, Attribute 0–3: Position, Normale, UV, Tangente), ein u32-Index-Buffer.
-- Shader `mesh.vert/.frag` (siehe Materialien); Licht vorerst Half-Lambert aus fester Richtung bis zur Licht-Aufgabe.
+- Shader `mesh.vert/.frag` (siehe Materialien und Licht).
 
 ### Texturen – `TextureUpload.hpp`
 ```cpp
@@ -161,6 +161,26 @@ class MeshRenderer { static Result<MeshRenderer> create(Device&, ShaderLibrary&,
   **doubleSided** schaltet Culling ab und dreht die Normale der Rückseite. Texturen: Einheit 0 Basisfarbe, 1 Normale,
   2 Emissive.
 
+### Licht – `Lighting.hpp`, `common/lighting.glsl`
+```cpp
+struct Environment { Vec3 sunDirection; /* zur Sonne */ Vec3 sunColor; f32 sunIntensity; Vec3 ambientSky, ambientGround; };
+struct PointLight { Vec3 position; f32 radius; Vec3 color; f32 intensity; };
+class LightList { static constexpr u32 kMaxPerFrame = 256, kMaxPerObject = 8;
+                  void clear(); void add(const PointLight&); void selectFor(const AABB&, std::vector<u32>&) const; };
+f32 pointLightAttenuation(f32 distance, f32 radius);   // = Shader-Formel
+struct GpuLighting; GpuLighting packLighting(const Environment&, const LightList&);   // std140, UBO-Bindung 0
+// MeshRenderer::setLighting(Device&, const Environment&, const LightList&) einmal pro Frame, dann draw(...)
+```
+- **Verfahren (entschieden, ehemals offene Frage):** einfaches Forward mit Licht-Limit pro Objekt. Die CPU wählt
+  für jedes Objekt (Welt-Bounds) bis zu 8 Punktlichter, deren Reichweite es erreicht – nächste zuerst, bei
+  Gleichstand Einfügereihenfolge. Alle Lichter des Frames (≤ 256, darüber Warnung) liegen in einem UBO, pro Draw
+  gehen nur die Indizes mit. Clustered Forward erst, wenn > 32 Lichter gleichzeitig sichtbar sind oder große
+  Gelände-Meshes (M4) es verlangen.
+- **Lichtmodell (stilisiert):** Hemisphären-Ambient (Himmel/Boden nach Normalen-Y gemischt) + Lambert-Sonne +
+  Punktlichter mit Abfall `saturate(1 − (d/r)⁴)² / (d² + 1)` (Meter; genau 0 am Radius). Keine Glanzlichter.
+- Flackern von Fackeln ist Welt-/Spiellogik (ändert Lichtwerte pro Frame), kommt mit den Vobs (M4).
+- Ohne `setLighting` gilt neutrales Licht (weißes Ambient, keine Sonne).
+
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →
 `ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf nach
@@ -169,6 +189,8 @@ Platzhalter für den Himmel in M4), dann Puffertausch. `--no-render` startet ein
 **Modell ansehen:** `--view-mesh=<pfad.gltf>` lädt ein glTF samt Materialien (`MaterialSet` + `MeshRenderer`),
 zeigt es am Ursprung und richtet die Debug-Kamera so aus, dass das Modell im Bild ist (Fluggeschwindigkeit nach
 Modellgröße).
+Beleuchtung dabei: tiefe warme Abendsonne, kühles Ambient und eine warme Test-„Fackel“ über dem Modell;
+`--no-sun` schaltet die Sonne ab, um das Punktlicht allein zu beurteilen.
 **Debug-Kamera:** `engine.camera()`, gesteuert über die Aktionen (Lauf-/Dreh-Aktionen, `jump`/`sneak` hoch/runter,
 `run` schnell) und gehaltene rechte Maustaste (relativer Mausmodus); läuft in Echtzeit, auch bei Pause.
 Werte aus `[camera]` (`fov`, `near`, `far`, `mouse_sensitivity`, `fly_speed`). Tests mit echter GPU: Suite
@@ -208,5 +230,4 @@ public:
 ```
 
 ## Offene Fragen
-- Forward+ vs. Clustered Forward: beginnen mit einfachem Forward + Light-Limit pro Objekt, umstellen wenn > 32 Lichter sichtbar.
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.
