@@ -67,9 +67,9 @@ das Spiel dort mit `--no-render` starten.
 ## Konfigurationsdateien
 | Datei | Inhalt |
 |---|---|
-| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird beim Bauen neben die Executable kopiert |
+| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird bei jedem Build neben die Executable kopiert (Target `gothar_data`) |
 | `config.toml` im Benutzerverzeichnis (Windows `%APPDATA%\Gothar\Gothar`) | optionale eigene Einstellungen; überschreibt `engine.toml` Schlüssel für Schlüssel |
-| `engine/render/shaders/` → `<build>/game/shaders/` | Engine-Shader (GLSL); werden beim Bauen neben die Executable kopiert – Änderungen dort gehen beim nächsten Build verloren, zum Bearbeiten `[render] shader_dir` auf die Quellen zeigen lassen |
+| `engine/render/shaders/` → `<build>/game/shaders/` | Engine-Shader (GLSL); werden bei jedem Build neben die Executable kopiert (Target `gothar_data`, auch wenn nur ein Shader geändert wurde) – Änderungen dort gehen beim nächsten Build verloren, zum Bearbeiten `[render] shader_dir` auf die Quellen zeigen lassen |
 
 Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 
@@ -82,13 +82,47 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | `--max-fps=N` | Bildrate begrenzen (überschreibt `[window] max_fps`; 0 = unbegrenzt) |
 | `--fullscreen` | randloses Vollbild in Desktop-Auflösung |
 | `--view-mesh=<pfad>` | glTF-Modell (`.gltf`/`.glb`) am Ursprung anzeigen, Debug-Kamera richtet sich danach aus |
-| `--no-ground` | Bodenplatte unter dem `--view-mesh`-Modell weglassen |
+| `--scene=<pfad>` | Testszene laden (TOML, siehe „Testszenen“); ersetzt `--view-mesh` |
+| `--viewpoint=N` | mit Viewpoint N der Szene starten (Standard 0) |
+| `--benchmark` | VSync und Frame-Limit aus, jeden Viewpoint der Szene 300 Frames lang ansteuern (die ersten 30 zum Einschwingen), Frame-Zeiten (Mittel, p95, p99, schlechtester) je Viewpoint loggen, dann beenden |
+| `--screenshot=<datei.png>` | letztes Bild als PNG speichern (mit `--frames` oder `--benchmark`) |
+| `--no-ground` | Bodenplatte unter dem Modell bzw. der Szene weglassen |
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |
 | (Taste F1) | ImGui-Debugfenster ein/aus (Aktion `debug_ui`): Leistung, Kamera, Render-Einstellungen live |
 | (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Achsen, Raster, Bounds, Lichtradien |
 | `--no-render` | Fenster ohne OpenGL (Systeme ohne GL-Treiber, Windows-CI, `nodeps`-Build) |
 | `--editor` | Editor-Modus (ab M4) |
 | `--world=<name>` | Startwelt (ab M4) |
+
+## Testszenen (`--scene`)
+Vorläufiges Szenenformat bis zum Weltformat und Editor in M4 (`runtime/SceneFile.hpp`). Die M2-Abnahmeszene liegt in
+`assets/source/testscene/scene.toml` (Kenney-Modelle, CC0, siehe `assets/LICENSES.md`):
+```
+build\debug\game\gothar.exe --scene=..\..\..\assets\source\testscene\scene.toml
+build\release\game\gothar.exe --scene=..\..\..\assets\source\testscene\scene.toml --benchmark
+```
+```toml
+ground = { size = 640.0, color = [0.34, 0.31, 0.24] }   # Bodenplatte (optional), Farbe linear
+[environment]            # optional: sun_direction/sun_color/sun_intensity, ambient_sky/ambient_ground,
+fog_start = 20.0         #           fog_color, fog_start, fog_density überschreiben die Abendstimmung
+[prefab.hut]             # wiederverwendbare Gruppe; Teile relativ zum Objekt (mit dessen Skalierung)
+[[prefab.hut.part]]
+mesh = "town/wall-wood.glb"
+rotation_y = 90
+[[object]]               # entweder mesh = "…" oder prefab = "…"
+prefab = "hut"
+position = [13.0, 0.0, 0.0]   # Meter
+rotation_y = 0                # Grad um +Y
+scale = 3                     # gleichmäßig
+[[light]]                # Punktlicht (Fackel): position, radius, color (linear), intensity
+position = [0.0, 1.0, 0.0]
+radius = 12
+[[viewpoint]]            # Start (--viewpoint) und --benchmark: position, yaw (0 = Blick nach -Z, + = links), pitch
+position = [16.0, 7.0, 20.0]
+yaw = 38
+```
+Pfade sind relativ zur Szenendatei. Fehler nennen Datei und Eintrag, z. B.
+`scene.toml: 'object[3].position' must be a list of 3 numbers`.
 
 ## CI (GitHub Actions)
 `.github/workflows/ci.yml`: Jobs `build (ubuntu-24.04)`, `build (windows-2022)` und `coverage` bei Push auf `main` und bei

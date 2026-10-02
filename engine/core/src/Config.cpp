@@ -108,6 +108,28 @@ std::optional<std::vector<std::string>> convert<std::vector<std::string>>(const 
     return result;
 }
 
+template <>
+std::optional<std::vector<f64>> convert<std::vector<f64>>(const toml::node& node)
+{
+    const auto* array = node.as_array();
+    if (!array)
+    {
+        return std::nullopt;
+    }
+    std::vector<f64> result;
+    result.reserve(array->size());
+    for (const toml::node& element : *array)
+    {
+        auto value = convert<f64>(element);
+        if (!value)
+        {
+            return std::nullopt;
+        }
+        result.push_back(*value);
+    }
+    return result;
+}
+
 void insertValue(toml::table& table, std::string_view key, bool value)
 {
     table.insert_or_assign(key, value);
@@ -130,6 +152,16 @@ void insertValue(toml::table& table, std::string_view key, std::vector<std::stri
     for (auto& s : value)
     {
         array.push_back(std::move(s));
+    }
+    table.insert_or_assign(key, std::move(array));
+}
+
+void insertValue(toml::table& table, std::string_view key, std::vector<f64> value)
+{
+    toml::array array;
+    for (const f64 v : value)
+    {
+        array.push_back(v);
     }
     table.insert_or_assign(key, std::move(array));
 }
@@ -253,6 +285,13 @@ void Config::set(std::string_view key, std::type_identity_t<T> value)
     insertValue(*table, parts.back(), std::move(value));
 }
 
+usize Config::arraySize(std::string_view key) const
+{
+    const toml::node* node = lookup(m_impl->table, key);
+    const auto* array = node ? node->as_array() : nullptr;
+    return array ? array->size() : 0;
+}
+
 std::vector<std::string> Config::keys(std::string_view table) const
 {
     std::vector<std::string> result;
@@ -283,6 +322,7 @@ G7_CONFIG_INSTANTIATE(i64)
 G7_CONFIG_INSTANTIATE(f64)
 G7_CONFIG_INSTANTIATE(std::string)
 G7_CONFIG_INSTANTIATE(std::vector<std::string>)
+G7_CONFIG_INSTANTIATE(std::vector<f64>)
 
 #undef G7_CONFIG_INSTANTIATE
 } // namespace g7

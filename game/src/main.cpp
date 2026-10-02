@@ -27,6 +27,10 @@ struct CommandLine
     bool noSun = false;
     bool noGround = false;
     std::string viewMesh;
+    std::string scene;
+    std::string screenshot;
+    bool benchmark = false;
+    std::optional<g7::u32> viewpoint;
     std::optional<g7::u64> frames;
     std::optional<g7::u64> maxFps;
 };
@@ -56,6 +60,30 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--no-render")
         {
             cli.noRender = true;
+        }
+        else if (arg.starts_with("--scene="))
+        {
+            cli.scene = std::string(arg.substr(8));
+        }
+        else if (arg.starts_with("--screenshot="))
+        {
+            cli.screenshot = std::string(arg.substr(13));
+        }
+        else if (arg.starts_with("--viewpoint="))
+        {
+            const std::string_view value = arg.substr(12);
+            g7::u32 index = 0;
+            const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), index);
+            if (error != std::errc{} || end != value.data() + value.size())
+            {
+                G7_LOG_FATAL("game", "invalid value for --viewpoint: '{}'", value);
+                return std::nullopt;
+            }
+            cli.viewpoint = index;
+        }
+        else if (arg == "--benchmark")
+        {
+            cli.benchmark = true;
         }
         else if (arg.starts_with("--view-mesh="))
         {
@@ -191,6 +219,25 @@ int main(int argc, char** argv)
     if (!cli->viewMesh.empty())
     {
         config.viewMesh = g7::fs::fromUtf8(cli->viewMesh);
+    }
+    if (!cli->scene.empty())
+    {
+        config.scene = g7::fs::fromUtf8(cli->scene);
+    }
+    if (!cli->screenshot.empty())
+    {
+        config.screenshot = g7::fs::fromUtf8(cli->screenshot);
+    }
+    if (cli->viewpoint)
+    {
+        config.viewpoint = *cli->viewpoint;
+    }
+    if (cli->benchmark)
+    {
+        // Measure what the GPU can do: no VSync, no frame cap.
+        config.benchmark = true;
+        config.window.vsync = false;
+        config.maxFps = 0.0;
     }
     if (cli->noGround)
     {

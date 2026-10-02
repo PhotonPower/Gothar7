@@ -1,6 +1,7 @@
 #include <g7/ai/Ai.hpp>
 #include <g7/animation/Animation.hpp>
 #include <g7/asset/Asset.hpp>
+#include <g7/asset/ImageData.hpp>
 #include <g7/asset/Procedural.hpp>
 #include <g7/audio/Audio.hpp>
 #include <g7/core/Clock.hpp>
@@ -23,6 +24,7 @@
 #include <algorithm>
 #include <array>
 #include <format>
+#include <numeric>
 #include <string_view>
 #include <utility>
 
@@ -83,6 +85,17 @@ Result<void> Engine::init()
         G7_LOG_DEBUG("engine", "module '{}' registered (stub)", name);
     }
 
+    // Camera from [camera] (defaults: 70° vertical FOV, 0.1–1500 m, 0.1°/px mouse). Before the scene,
+    // which places the camera.
+    m_camera.fovY = toRadians(static_cast<f32>(m_config.settings.get<f64>("camera.fov", 70.0)));
+    m_camera.nearPlane = static_cast<f32>(m_config.settings.get<f64>("camera.near", 0.1));
+    m_camera.farPlane = static_cast<f32>(m_config.settings.get<f64>("camera.far", 1500.0));
+    m_camera.transform.position = Vec3(0.0f, 1.8f, 6.0f);
+    m_flyCamera.sensitivity =
+        toRadians(static_cast<f32>(m_config.settings.get<f64>("camera.mouse_sensitivity", 0.1)));
+    m_flyCamera.speed = static_cast<f32>(m_config.settings.get<f64>("camera.fly_speed", 10.0));
+    m_flyCamera.attach(m_camera);
+
     if (!m_config.headless)
     {
         platform::WindowDesc desc = m_config.window;
@@ -115,9 +128,14 @@ Result<void> Engine::init()
             {
                 return result;
             }
-            if (!m_config.viewMesh.empty())
+            if (!m_config.scene.empty() || !m_config.viewMesh.empty())
             {
-                if (auto result = initViewMesh(); !result)
+                auto result = initSceneRendering();
+                if (result)
+                {
+                    result = m_config.scene.empty() ? initViewMesh() : initScene();
+                }
+                if (!result)
                 {
                     return result;
                 }
@@ -132,16 +150,6 @@ Result<void> Engine::init()
     {
         G7_LOG_INFO("engine", "headless mode (no window)");
     }
-
-    // Camera from [camera] (defaults: 70° vertical FOV, 0.1–1500 m, 0.1°/px mouse).
-    m_camera.fovY = toRadians(static_cast<f32>(m_config.settings.get<f64>("camera.fov", 70.0)));
-    m_camera.nearPlane = static_cast<f32>(m_config.settings.get<f64>("camera.near", 0.1));
-    m_camera.farPlane = static_cast<f32>(m_config.settings.get<f64>("camera.far", 1500.0));
-    m_camera.transform.position = Vec3(0.0f, 1.8f, 6.0f);
-    m_flyCamera.sensitivity =
-        toRadians(static_cast<f32>(m_config.settings.get<f64>("camera.mouse_sensitivity", 0.1)));
-    m_flyCamera.speed = static_cast<f32>(m_config.settings.get<f64>("camera.fly_speed", 10.0));
-    m_flyCamera.attach(m_camera);
 
     if (m_window)
     {
@@ -219,7 +227,14 @@ bool Engine::runFrame()
         runDebugUi(realSeconds);
         const bool uiMouse = m_debugUiFrame && m_debugUi.wantsMouse();
         const bool uiKeyboard = m_debugUiFrame && m_debugUi.wantsKeyboard();
-        updateDebugCamera(realSeconds, !uiMouse, !uiKeyboard);
+        if (m_config.benchmark)
+        {
+            updateBenchmark(realSeconds); // drives the camera itself
+        }
+        else
+        {
+            updateDebugCamera(realSeconds, !uiMouse, !uiKeyboard);
+        }
 
         if (!uiKeyboard)
         {
@@ -257,6 +272,12 @@ bool Engine::runFrame()
             const auto size = m_window->pixelSize();
             m_shaders->update(platform::nowSeconds());
             renderScene(size.width, size.height);
+            const bool lastFrame =
+                m_quitRequested || (m_config.maxFrames != 0 && m_frameCount + 1 >= m_config.maxFrames);
+            if (lastFrame && !m_config.screenshot.empty())
+            {
+                saveScreenshot(size.width, size.height);
+            }
             m_glContext->swapBuffers();
         }
         // Real time, so timed debug items also expire while the game is paused.
@@ -344,28 +365,8 @@ Result<void> Engine::initShaders()
     return {};
 }
 
-Result<void> Engine::initViewMesh()
+Result<void> Engine::initSceneRendering()
 {
-    auto data = asset::loadGltf(m_config.viewMesh);
-    if (!data)
-    {
-        return Error{"cannot load mesh: " + data.error().message};
-    }
-    auto mesh = render::Mesh::create(*m_device, data.value());
-    if (!mesh)
-    {
-        return Error{"cannot upload mesh: " + mesh.error().message};
-    }
-    m_viewMesh = std::move(mesh).value();
-
-    // Missing or broken textures are warnings (neutral fallbacks), not a reason to refuse the model.
-    auto materials = render::MaterialSet::create(*m_device, data.value(), m_config.viewMesh.parent_path());
-    if (!materials)
-    {
-        return Error{"cannot create materials: " + materials.error().message};
-    }
-    m_viewMaterials = std::move(materials).value();
-
     // Sun shadows (render.md): [render] shadow_* with the defaults 4 x 2048², 150 m.
     render::ShadowSettings shadows;
     shadows.cascades =
@@ -388,24 +389,102 @@ Result<void> Engine::initViewMesh()
         return Error{"cannot create mesh renderer: " + renderer.error().message};
     }
     m_meshRenderer = std::move(renderer).value();
+    return {};
+}
+
+Result<const LoadedModel*> Engine::loadModel(const fs::Path& path)
+{
+    if (const auto found = m_models.find(path); found != m_models.end())
+    {
+        return found->second.get();
+    }
+    auto data = asset::loadGltf(path);
+    if (!data)
+    {
+        return Error{"cannot load mesh: " + data.error().message};
+    }
+    auto model = std::make_unique<LoadedModel>();
+    auto mesh = render::Mesh::create(*m_device, data.value());
+    if (!mesh)
+    {
+        return Error{"cannot upload mesh: " + mesh.error().message};
+    }
+    model->mesh = std::move(mesh).value();
+    // Missing or broken textures are warnings (neutral fallbacks), not a reason to refuse the model.
+    auto materials = render::MaterialSet::create(*m_device, data.value(), path.parent_path());
+    if (!materials)
+    {
+        return Error{"cannot create materials: " + materials.error().message};
+    }
+    model->materials = std::move(materials).value();
+    model->name = fs::toUtf8(path.filename());
+    G7_LOG_DEBUG("engine", "loaded {} ({} vertices, {} submeshes, {} materials)", fs::toUtf8(path),
+                 data.value().vertices.size(), model->mesh.submeshes().size(), model->materials.size());
+    const LoadedModel* result = model.get();
+    m_models.emplace(path, std::move(model));
+    return result;
+}
+
+void Engine::addInstance(const LoadedModel& model, const Mat4& transform)
+{
+    const AABB bounds = model.mesh.bounds().transformed(transform);
+    // Scene bounds without the ground plate (debug grid, overlay).
+    if (&model != m_groundModel.get())
+    {
+        m_sceneBounds =
+            m_sceneBounds.max.x < m_sceneBounds.min.x
+                ? bounds
+                : AABB{glm::min(m_sceneBounds.min, bounds.min), glm::max(m_sceneBounds.max, bounds.max)};
+    }
+    m_instances.push_back({&model, transform, bounds});
+}
+
+Result<void> Engine::addGround(f32 size, const Vec3& color, f32 height)
+{
+    // Ground plate (it receives the shadows), 1 m texture tiles.
+    const asset::MeshData plane = asset::makePlane(size, 1.0f, Vec4(color, 1.0f));
+    auto mesh = render::Mesh::create(*m_device, plane);
+    auto materials = render::MaterialSet::create(*m_device, plane, {});
+    if (!mesh || !materials)
+    {
+        return Error{"cannot create ground plate"};
+    }
+    m_groundModel = std::make_unique<LoadedModel>();
+    m_groundModel->mesh = std::move(mesh).value();
+    m_groundModel->materials = std::move(materials).value();
+    m_groundModel->name = "ground";
+    addInstance(*m_groundModel, glm::translate(Mat4(1.0f), Vec3(0.0f, height, 0.0f)));
+    return {};
+}
+
+void Engine::setViewpoint(const SceneViewpoint& viewpoint)
+{
+    m_camera.transform.position = viewpoint.position;
+    m_camera.transform.rotation = quatFromEuler(viewpoint.pitch, viewpoint.yaw, 0.0f);
+    m_flyCamera.attach(m_camera);
+}
+
+Result<void> Engine::initViewMesh()
+{
+    auto model = loadModel(m_config.viewMesh);
+    if (!model)
+    {
+        return model.error();
+    }
+    const LoadedModel& loaded = *model.value();
+    addInstance(loaded, Mat4(1.0f));
+    m_sceneName = loaded.name;
 
     // Frame the model: look at its centre from the front-right, at 2.5x its radius.
-    const AABB& bounds = m_viewMesh.bounds();
+    const AABB bounds = loaded.mesh.bounds();
     const f32 radius = std::max(glm::length(bounds.extents()), 0.5f);
-
     if (m_config.ground)
     {
-        // Ground plate under the model (it receives the shadows), 1 m texture tiles.
-        const asset::MeshData plane =
-            asset::makePlane(std::max(radius * 8.0f, 20.0f), 1.0f, Vec4(0.45f, 0.42f, 0.36f, 1.0f));
-        auto ground = render::Mesh::create(*m_device, plane);
-        auto groundMaterials = render::MaterialSet::create(*m_device, plane, {});
-        if (!ground || !groundMaterials)
+        if (auto ground = addGround(std::max(radius * 8.0f, 20.0f), Vec3(0.45f, 0.42f, 0.36f), bounds.min.y);
+            !ground)
         {
-            return Error{"cannot create ground plate"};
+            return ground;
         }
-        m_ground = std::move(ground).value();
-        m_groundMaterials = std::move(groundMaterials).value();
     }
 
     // A warm "torch" above the front-right of the model shows the point lights.
@@ -418,9 +497,69 @@ Result<void> Engine::initViewMesh()
     m_camera.transform.rotation = lookRotation(bounds.center() - m_camera.transform.position);
     m_flyCamera.speed = std::max(radius, 1.0f);
     m_flyCamera.attach(m_camera);
-    G7_LOG_INFO("engine", "viewing {} ({} vertices, {} submeshes, {} materials, {:.1f} m across)",
-                fs::toUtf8(m_config.viewMesh), data.value().vertices.size(), m_viewMesh.submeshes().size(),
-                m_viewMaterials.size(), radius * 2.0f);
+    G7_LOG_INFO("engine", "viewing {} ({} submeshes, {} materials, {:.1f} m across)",
+                fs::toUtf8(m_config.viewMesh), loaded.mesh.submeshes().size(), loaded.materials.size(),
+                radius * 2.0f);
+    return {};
+}
+
+Result<void> Engine::initScene()
+{
+    auto scene = loadSceneFile(m_config.scene);
+    if (!scene)
+    {
+        return Error{"cannot load scene: " + scene.error().message};
+    }
+    const SceneFile& file = scene.value();
+    for (const SceneObject& object : file.objects)
+    {
+        auto model = loadModel(object.mesh);
+        if (!model)
+        {
+            return model.error();
+        }
+        addInstance(*model.value(), object.transform);
+    }
+    if (file.groundSize > 0.0f && m_config.ground)
+    {
+        if (auto ground = addGround(file.groundSize, file.groundColor, 0.0f); !ground)
+        {
+            return ground;
+        }
+    }
+    m_lights.clear();
+    for (const SceneLight& light : file.lights)
+    {
+        m_lights.add({light.position, light.radius, light.color, light.intensity});
+    }
+
+    // Overrides of the interim environment (set up by initEnvironment before).
+    const SceneEnvironment& env = file.environment;
+    m_environment.sunDirection = env.sunDirection.value_or(m_environment.sunDirection);
+    m_environment.sunColor = env.sunColor.value_or(m_environment.sunColor);
+    if (m_config.sun)
+    {
+        m_environment.sunIntensity = env.sunIntensity.value_or(m_environment.sunIntensity);
+    }
+    m_environment.ambientSky = env.ambientSky.value_or(m_environment.ambientSky);
+    m_environment.ambientGround = env.ambientGround.value_or(m_environment.ambientGround);
+    m_environment.fogColor = env.fogColor.value_or(m_environment.fogColor);
+    m_environment.fogStart = env.fogStart.value_or(m_environment.fogStart);
+    m_environment.fogDensity = env.fogDensity.value_or(m_environment.fogDensity);
+
+    m_viewpoints = file.viewpoints;
+    if (!m_viewpoints.empty())
+    {
+        if (m_config.viewpoint >= m_viewpoints.size())
+        {
+            G7_LOG_WARN("engine", "scene has no viewpoint {}, using 0", m_config.viewpoint);
+        }
+        setViewpoint(m_viewpoints[m_config.viewpoint < m_viewpoints.size() ? m_config.viewpoint : 0]);
+    }
+    m_sceneName = fs::toUtf8(m_config.scene.filename());
+    G7_LOG_INFO("engine", "scene {}: {} objects ({} models), {} lights, {} viewpoints",
+                fs::toUtf8(m_config.scene), m_instances.size(), m_models.size(), file.lights.size(),
+                m_viewpoints.size());
     return {};
 }
 
@@ -450,16 +589,8 @@ void Engine::renderScene(u32 width, u32 height)
     }
     m_camera.aspect = height > 0 ? static_cast<f32>(width) / static_cast<f32>(height) : 1.0f;
 
-    // Scene into the linear HDR target: background, then meshes (their shadow pass rebinds it).
-    m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
-    m_device->setViewport(0, 0, width, height);
-    m_device->clear(Vec4(0.0f, 0.0f, 0.0f, 1.0f), 0.0f);
-    m_backgroundProgram->setUniform("uInverseViewProjection", glm::inverse(m_camera.viewProjection()));
-    m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
-    m_backgroundProgram->setUniform("uHorizonColor", m_environment.fogColor);
-    m_device->bindPipeline(m_backgroundPipeline);
-    m_device->draw(3); // fullscreen triangle from gl_VertexID
-    drawViewMesh(width, height);
+    // Scene into the linear HDR target: background, then meshes (after their shadow pass).
+    drawScene(width, height);
 
     // Tonemap into the window.
     m_device->bindFramebuffer(nullptr);
@@ -479,37 +610,57 @@ void Engine::renderScene(u32 width, u32 height)
     }
 }
 
-void Engine::drawViewMesh(u32 width, u32 height)
+void Engine::drawScene(u32 width, u32 height)
 {
-    if (m_viewMesh.submeshes().empty())
-    {
-        return;
-    }
-    // The ground plate sits at the model's lowest point.
-    const Mat4 groundModel = glm::translate(Mat4(1.0f), Vec3(0.0f, m_viewMesh.bounds().min.y, 0.0f));
-
-    // Shadow pass: the model into every cascade (the flat ground cannot shadow anything above it).
+    // Shadow pass: every caster whose bounds reach a cascade's light volume (which extends towards
+    // the sun, so casters outside the view still count). The flat ground cannot shadow anything.
     render::ShadowFrame shadowFrame;
-    if (m_environment.sunIntensity > 0.0f)
+    if (!m_instances.empty() && m_environment.sunIntensity > 0.0f)
     {
         m_cascades = render::computeCascades(m_camera, m_environment.sunDirection, m_shadowMap.settings());
         m_shadowMap.begin(*m_device);
         for (u32 i = 0; i < m_cascades.size(); ++i)
         {
             m_shadowMap.beginCascade(*m_device, i);
-            m_meshRenderer.drawShadow(*m_device, m_viewMesh, m_viewMaterials, Mat4(1.0f), m_cascades[i]);
+            const Frustum volume = Frustum::fromViewProjection(m_cascades[i].viewProjection);
+            for (const SceneInstance& instance : m_instances)
+            {
+                if (instance.model != m_groundModel.get() && volume.intersects(instance.bounds))
+                {
+                    m_meshRenderer.drawShadow(*m_device, instance.model->mesh, instance.model->materials,
+                                              instance.transform, m_cascades[i]);
+                }
+            }
         }
         shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
-        m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
-        m_device->setViewport(0, 0, width, height);
     }
 
-    m_meshRenderer.setLighting(*m_device, m_environment, m_lights, shadowFrame.map ? &shadowFrame : nullptr);
-    if (!m_ground.submeshes().empty())
+    m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
+    m_device->setViewport(0, 0, width, height);
+    m_device->clear(Vec4(0.0f, 0.0f, 0.0f, 1.0f), 0.0f);
+    m_backgroundProgram->setUniform("uInverseViewProjection", glm::inverse(m_camera.viewProjection()));
+    m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
+    m_backgroundProgram->setUniform("uHorizonColor", m_environment.fogColor);
+    m_device->bindPipeline(m_backgroundPipeline);
+    m_device->draw(3); // fullscreen triangle from gl_VertexID
+    if (m_instances.empty())
     {
-        m_meshRenderer.draw(*m_device, m_ground, m_groundMaterials, groundModel, m_camera);
+        return;
     }
-    m_meshRenderer.draw(*m_device, m_viewMesh, m_viewMaterials, Mat4(1.0f), m_camera);
+
+    // Main pass: only instances inside the view frustum.
+    m_meshRenderer.setLighting(*m_device, m_environment, m_lights, shadowFrame.map ? &shadowFrame : nullptr);
+    const Frustum view = m_camera.frustum();
+    m_visibleInstances = 0;
+    for (const SceneInstance& instance : m_instances)
+    {
+        if (view.intersects(instance.bounds))
+        {
+            m_meshRenderer.draw(*m_device, instance.model->mesh, instance.model->materials,
+                                instance.transform, m_camera);
+            ++m_visibleInstances;
+        }
+    }
 }
 
 void Engine::updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard)
@@ -545,6 +696,79 @@ void Engine::updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeybo
     fly.fast = m_actions.isDown(m_input, Action::Run);
     // Real time: the debug camera keeps working while the game is paused or slowed down.
     m_flyCamera.update(m_camera, fly, realSeconds);
+}
+
+void Engine::updateBenchmark(f64 realSeconds)
+{
+    // Each viewpoint for benchmarkFrames frames; the first 10 % (at most 30) warm up and are not
+    // measured. `realSeconds` is the duration of the previous frame, so the first frame of a
+    // viewpoint (which measures the old one) is skipped too.
+    if (m_viewpoints.empty())
+    {
+        m_viewpoints.push_back({m_camera.transform.position, m_flyCamera.yaw(), m_flyCamera.pitch()});
+    }
+    const u64 perView = std::max<u64>(m_config.benchmarkFrames, 2);
+    const u64 warmup = std::min<u64>(perView / 10, 30);
+    const u64 view = m_benchmarkFrame / perView;
+    const u64 frameInView = m_benchmarkFrame % perView;
+    ++m_benchmarkFrame;
+    if (view >= m_viewpoints.size())
+    {
+        if (!m_quitRequested)
+        {
+            for (const FrameTimeSummary& s : m_benchmarkResults)
+            {
+                G7_LOG_INFO("engine", "benchmark viewpoint {}: {}", &s - m_benchmarkResults.data(),
+                            s.toString());
+            }
+            const auto [worstAverage, worstP99] = std::accumulate(
+                m_benchmarkResults.begin(), m_benchmarkResults.end(), std::pair{0.0, 0.0},
+                [](auto acc, const auto& s)
+                { return std::pair{std::max(acc.first, s.averageMs), std::max(acc.second, s.p99Ms)}; });
+            G7_LOG_INFO("engine",
+                        "benchmark on {}: slowest viewpoint {:.2f} ms avg ({:.0f} fps), p99 {:.2f} ms",
+                        m_device ? m_device->info().renderer : "no device", worstAverage,
+                        worstAverage > 0.0 ? 1000.0 / worstAverage : 0.0, worstP99);
+            requestQuit();
+        }
+        return;
+    }
+    if (frameInView == 0)
+    {
+        setViewpoint(m_viewpoints[view]);
+        m_benchmarkTimes.clear();
+    }
+    else if (frameInView > warmup)
+    {
+        m_benchmarkTimes.add(realSeconds);
+    }
+    if (frameInView + 1 == perView)
+    {
+        m_benchmarkResults.push_back(m_benchmarkTimes.summary());
+    }
+}
+
+void Engine::saveScreenshot(u32 width, u32 height)
+{
+    // The window's back buffer before the swap: RGBA, bottom row first.
+    std::vector<u8> pixels = m_device->readPixels(0, 0, static_cast<i32>(width), static_cast<i32>(height));
+    asset::ImageData image{width, height, {}};
+    image.rgba8.resize(pixels.size());
+    const usize row = static_cast<usize>(width) * 4;
+    for (u32 y = 0; y < height; ++y)
+    {
+        std::copy_n(pixels.data() + (height - 1 - y) * row, row, image.rgba8.data() + y * row);
+    }
+    for (usize i = 3; i < image.rgba8.size(); i += 4)
+    {
+        image.rgba8[i] = 255; // the window's alpha is meaningless
+    }
+    if (auto saved = asset::savePng(m_config.screenshot, image); !saved)
+    {
+        G7_LOG_ERROR("engine", "screenshot: {}", saved.error().message);
+        return;
+    }
+    G7_LOG_INFO("engine", "screenshot saved to {}", fs::toUtf8(m_config.screenshot));
 }
 
 void Engine::setTimeScale(f64 scale) noexcept
@@ -634,30 +858,46 @@ void Engine::addDebugOverlay(u32 width, u32 height)
     const Vec3& p = m_camera.transform.position;
     m_debugDraw.screenText(
         Vec2(8.0f, 8.0f),
-        std::format("{:.0f} fps  {:.2f} ms{}\n{} draws  {:.1f}k tris\n{}x{}  cam {:.1f} {:.1f} {:.1f}",
-                    ms > 0.0 ? 1000.0 / ms : 0.0, ms, m_paused ? "  PAUSED" : "", stats.drawCalls,
-                    stats.triangles / 1000.0, width, height, p.x, p.y, p.z),
+        std::format(
+            "{:.0f} fps  {:.2f} ms{}\n{} draws  {:.1f}k tris  {}/{} objects\n{}x{}  cam {:.1f} {:.1f} {:.1f}",
+            ms > 0.0 ? 1000.0 / ms : 0.0, ms, m_paused ? "  PAUSED" : "", stats.drawCalls,
+            stats.triangles / 1000.0, m_visibleInstances, m_instances.size(), width, height, p.x, p.y, p.z),
         Vec4(1.0f), 2.0f);
 
-    // World origin and the --view-mesh scene: ground grid, bounds with the file name, torches.
+    // World origin and the scene: ground grid, bounds (with the name for a single model), torches.
     m_debugDraw.axes(Mat4(1.0f), 1.0f);
-    if (m_viewMesh.submeshes().empty())
+    if (m_sceneBounds.max.x < m_sceneBounds.min.x)
     {
         return;
     }
-    const AABB& bounds = m_viewMesh.bounds();
+    const AABB& bounds = m_sceneBounds;
     const f32 size = std::max(glm::length(bounds.max - bounds.min), 1.0f);
-    const f32 spacing = std::exp2(std::round(std::log2(size / 8.0f))); // ~8 cells across the model
+    const f32 spacing = std::exp2(std::round(std::log2(size / 8.0f))); // ~8 cells across the scene
     m_debugDraw.grid(Vec3(0.0f, bounds.min.y, 0.0f), spacing * 40.0f, spacing,
                      {Vec4(0.6f, 0.6f, 0.6f, 0.35f)});
-    m_debugDraw.box(bounds, {Vec4(1.0f, 0.85f, 0.2f, 1.0f)});
-    m_debugDraw.text(Vec3(bounds.center().x, bounds.max.y, bounds.center().z) +
-                         Vec3(0.0f, size * 0.08f, 0.0f),
-                     fs::toUtf8(m_config.viewMesh.filename()), {Vec4(1.0f, 0.85f, 0.2f, 1.0f)}, 2.0f);
+    const Vec4 yellow(1.0f, 0.85f, 0.2f, 1.0f);
+    if (m_config.scene.empty())
+    {
+        m_debugDraw.box(bounds, {yellow});
+        m_debugDraw.text(Vec3(bounds.center().x, bounds.max.y, bounds.center().z) +
+                             Vec3(0.0f, size * 0.08f, 0.0f),
+                         m_sceneName, {yellow}, 2.0f);
+    }
+    else
+    {
+        const Frustum view = m_camera.frustum();
+        for (const SceneInstance& instance : m_instances)
+        {
+            if (instance.model != m_groundModel.get() && view.intersects(instance.bounds))
+            {
+                m_debugDraw.box(instance.bounds, {Vec4(1.0f, 0.85f, 0.2f, 0.25f)});
+            }
+        }
+    }
     for (const render::PointLight& light : m_lights.lights())
     {
         const render::DebugStyle style{Vec4(1.0f, 0.55f, 0.2f, 0.8f)};
-        m_debugDraw.cross(light.position, size * 0.05f, style);
+        m_debugDraw.cross(light.position, std::min(size * 0.05f, 0.5f), style);
         m_debugDraw.sphere(light.position, light.radius, style);
     }
 }
@@ -677,10 +917,9 @@ void Engine::shutdown()
     m_post = {};
     m_sceneTarget = {};
     m_shadowMap = {};
-    m_groundMaterials = {};
-    m_ground = {};
-    m_viewMaterials = {};
-    m_viewMesh = {};
+    m_instances.clear();
+    m_groundModel.reset();
+    m_models.clear();
     m_backgroundPipeline = {};
     m_backgroundProgram = nullptr;
     m_shaders.reset();

@@ -167,3 +167,35 @@ TEST_CASE("Config: save and load round trip")
     std::error_code ignored;
     std::filesystem::remove_all(dir, ignored);
 }
+
+TEST_CASE("Config: number arrays and arrays of tables")
+{
+    auto parsed = Config::parse(R"(
+position = [1.5, -2, 3]
+mixed = [1.0, "x"]
+
+[[object]]
+mesh = "a.glb"
+position = [0, 1, 2]
+
+[[object]]
+mesh = "b.glb"
+)");
+    REQUIRE(parsed.ok());
+    const Config& config = parsed.value();
+    CHECK(config.get<std::vector<f64>>("position", {}) == std::vector<f64>{1.5, -2.0, 3.0}); // ints widen
+    CHECK_FALSE(config.find<std::vector<f64>>("mixed").has_value());
+    CHECK_FALSE(config.find<std::vector<f64>>("object[0].mesh").has_value());
+
+    CHECK(config.arraySize("object") == 2);
+    CHECK(config.arraySize("position") == 3);
+    CHECK(config.arraySize("object[0].mesh") == 0); // not an array
+    CHECK(config.arraySize("missing") == 0);
+    CHECK(config.get<std::string>("object[1].mesh", "") == "b.glb");
+    CHECK(config.get<std::vector<f64>>("object[0].position", {}) == std::vector<f64>{0.0, 1.0, 2.0});
+    CHECK_FALSE(config.contains("object[2].mesh"));
+
+    Config copy = config;
+    copy.set<std::vector<f64>>("camera.target", {4.0, 5.0});
+    CHECK(copy.get<std::vector<f64>>("camera.target", {}) == std::vector<f64>{4.0, 5.0});
+}

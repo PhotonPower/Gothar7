@@ -23,4 +23,8 @@ struct ImageData
 [[nodiscard]] Result<ImageData> decodeImage(std::span<const u8> bytes,
                                             std::string_view debugName = "<memory>");
 [[nodiscard]] Result<ImageData> loadImage(const fs::Path& path);
+
+/// PNG encoding of `image` (rows top to bottom); for screenshots and tools.
+[[nodiscard]] Result<std::vector<u8>> encodePng(const ImageData& image);
+[[nodiscard]] Result<void> savePng(const fs::Path& path, const ImageData& image);
 } // namespace g7::asset
