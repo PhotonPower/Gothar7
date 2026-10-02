@@ -6,7 +6,7 @@
 - **vcpkg** (Manifest-Modus) mit gesetzter Umgebungsvariable `VCPKG_ROOT`
 - Grafiktreiber mit OpenGL 4.6 (ab M2)
 - **Linux**: Entwicklungspakete für SDL3 (X11/Wayland), z. B. unter Ubuntu:
-  `sudo apt install pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev`
+  `sudo apt install pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libudev-dev`
   (dieselbe Liste wie in `.github/workflows/ci.yml`)
 
 ### vcpkg einrichten (einmalig)

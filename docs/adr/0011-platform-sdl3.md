@@ -23,5 +23,8 @@ Das Preset `nodeps` baut SDL 3.4.16 statisch per `FetchContent`.
 
 ## Konsequenzen
 - Tests und CI ohne Display nutzen den SDL-Videotreiber `offscreen` (`SDL_VIDEO_DRIVER=offscreen`).
+- vcpkg-Port ohne Standard-Features, unter Linux nur `x11` und `wayland`: Die Standard-Features `dbus`/`ibus`
+  ziehen `libsystemd` samt langer Abhängigkeitskette nach. IME-Unterstützung (ibus) und D-Bus-Funktionen
+  (z. B. Bildschirmschoner-Sperre) bei Bedarf später ergänzen.
 - Die Linux-CI braucht Entwicklungspakete für X11/Wayland, damit vcpkg SDL3 bauen kann.
 - Unter Windows liefert vcpkg `SDL3.dll`; sie wird neben die Executables kopiert und muss beim Packaging (M17) mit.
