@@ -157,6 +157,10 @@ Result<std::unique_ptr<Device>> Device::create(GlLoader loader, bool debugOutput
     }
     G7_LOG_INFO("render", "OpenGL {}.{} - {} ({})", info.major, info.minor, info.renderer, info.vendor);
 
+    // Reverse-Z (ADR 0002): 0..1 clip depth so float depth keeps its precision far away. Projections
+    // come from perspectiveReverseZ, depth is cleared to 0 and compared with GreaterEqual.
+    glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
+
     if (hasAnisotropicFiltering(info))
     {
         glGetFloatv(rhi::gl::kMaxTextureMaxAnisotropy, &info.maxAnisotropy);
@@ -188,7 +192,7 @@ void Device::beginFrame(u32 width, u32 height, const Vec4& clearColor)
     m_stats = {};
     bindFramebuffer(nullptr);
     setViewport(0, 0, width, height);
-    clear(clearColor, 1.0f);
+    clear(clearColor, 0.0f); // reverse-Z: 0 = far
 }
 
 std::vector<u8> Device::readPixels(i32 x, i32 y, i32 width, i32 height,

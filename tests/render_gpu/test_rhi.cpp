@@ -83,7 +83,7 @@ struct Scene
     {
         gl.device->bindFramebuffer(&target);
         gl.device->setViewport(0, 0, kTargetSize, kTargetSize);
-        gl.device->clear(clearColor, 1.0f);
+        gl.device->clear(clearColor, 0.0f); // reverse-Z: 0 = far
     }
 
     std::array<u8, 4> pixel(i32 x, i32 y)
@@ -94,7 +94,7 @@ struct Scene
     }
 };
 
-/// Triangle covering the whole viewport at depth z.
+/// Triangle covering the whole viewport at clip depth z (0..1, reverse-Z: 1 = near).
 std::vector<Vertex> fullscreenTriangle(f32 z, u8 r, u8 g, u8 b, u8 a = 255)
 {
     return {{-1, -1, z, r, g, b, a}, {3, -1, z, r, g, b, a}, {-1, 3, z, r, g, b, a}};
@@ -189,8 +189,9 @@ TEST_CASE("RHI: depth test keeps the nearer surface")
 {
     Scene scene;
     Pipeline pipeline = scene.pipeline();
-    Buffer nearBlue = scene.vertices(fullscreenTriangle(-0.5f, 0, 0, 255));
-    Buffer farRed = scene.vertices(fullscreenTriangle(0.5f, 255, 0, 0));
+    // Reverse-Z: larger depth is nearer.
+    Buffer nearBlue = scene.vertices(fullscreenTriangle(0.75f, 0, 0, 255));
+    Buffer farRed = scene.vertices(fullscreenTriangle(0.25f, 255, 0, 0));
 
     scene.begin();
     scene.gl.device->bindPipeline(pipeline);

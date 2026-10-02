@@ -104,11 +104,29 @@ public:
   `[render] shader_dir` (z. B. auf das Quellverzeichnis zeigen, damit Änderungen nicht beim nächsten Build
   überschrieben werden).
 
+### Kamera – `Camera.hpp`
+```cpp
+struct Camera { Transform transform; f32 fovY = 70°, nearPlane = 0.1f, farPlane = 1500.0f, aspect;
+                Mat4 view() const; Mat4 projection() const; Mat4 viewProjection() const; Frustum frustum() const; };
+struct FreeFlyInput { Vec3 move; /* x rechts, y Welt-oben, z vorwärts */ f32 turn; Vec2 lookDelta; bool fast; };
+class FreeFlyCamera { f32 speed, fastFactor, sensitivity, turnRate;
+                      void attach(const Camera&); void update(Camera&, const FreeFlyInput&, f64 dt); };
+```
+- Blickrichtung −Z der Transform, +Y oben; Projektion **Reverse-Z** (ADR 0002): `Device` stellt
+  `glClipControl(…, ZERO_TO_ONE)` ein, `beginFrame` löscht Tiefe mit 0, `PipelineDesc::depthCompare` ist
+  standardmäßig `GreaterEqual`. Skalierung der Kamera-Transform wird ignoriert.
+- `FreeFlyCamera` (Debug, bis zur Spielfigur in M5): fliegt in Blickrichtung, hoch/runter entlang Welt-Y,
+  Diagonalen normiert, Pitch auf ±89° begrenzt, `attach` übernimmt die aktuelle Ausrichtung ohne Sprung.
+
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →
-`ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf** als Hintergrund
-(Vollbild-Dreieck aus `gl_VertexID`, Platzhalter für den Himmel in M4), dann Puffertausch. `--no-render`
-startet ein Fenster ohne OpenGL. Tests mit echter GPU: Suite `render_gpu` (CTest-Label `gpu`).
+`ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf nach
+Blickrichtung** als Hintergrund (Vollbild-Dreieck aus `gl_VertexID`, inverse View-Projection als Uniform;
+Platzhalter für den Himmel in M4), dann Puffertausch. `--no-render` startet ein Fenster ohne OpenGL.
+**Debug-Kamera:** `engine.camera()`, gesteuert über die Aktionen (Lauf-/Dreh-Aktionen, `jump`/`sneak` hoch/runter,
+`run` schnell) und gehaltene rechte Maustaste (relativer Mausmodus); läuft in Echtzeit, auch bei Pause.
+Werte aus `[camera]` (`fov`, `near`, `far`, `mouse_sensitivity`, `fly_speed`). Tests mit echter GPU: Suite
+`render_gpu` (CTest-Label `gpu`).
 
 ## Schichten
 1. **RHI** (`render/rhi/`, siehe oben): `Buffer`, `Texture`, `Sampler`, `ShaderProgram`, `Pipeline`,

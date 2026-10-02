@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M2** (Renderer-Grundlagen) – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer) und Shader-System (Includes, Hot-Reload) stehen. M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
+**Aktueller Stand:** Phase **M2** (Renderer-Grundlagen) – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload) und Kamera (Reverse-Z, Frustum, Debug-Flugkamera) stehen. M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -66,7 +66,7 @@ Windows und Linux grün; core hat > 80 % Testabdeckung seiner Logik.
 - [x] OpenGL 4.6 Core Context (ADR 0003; Mindestversion 4.5), Loader (glad), Debug-Callback
 - [x] Dünne RHI-Schicht: Buffer, Texture, Shader/Program, Pipeline-State, Framebuffer
 - [x] Shader-System (GLSL-Dateien, Includes, Hot-Reload)
-- [ ] Kamera (Perspektive, Frustum), Free-Fly-Debugkamera
+- [x] Kamera (Perspektive, Frustum, Reverse-Z), Free-Fly-Debugkamera
 - [ ] Statische Meshes aus glTF laden (vorläufig direkt, ab M3 über asset)
 - [ ] Texturen (PNG/KTX2), Mipmaps, anisotrope Filterung
 - [ ] Material-Modell: Albedo, Normal, Alpha-Test (Laub!), Emissive – bewusst schlicht/stilisiert

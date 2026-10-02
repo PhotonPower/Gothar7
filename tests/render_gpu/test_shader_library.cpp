@@ -4,6 +4,7 @@
 #include "GlFixture.hpp"
 
 #include <g7/core/FileSystem.hpp>
+#include <g7/render/Camera.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 
 #include <array>
@@ -203,4 +204,31 @@ TEST_CASE("Engine shaders compile")
     ShaderLibrary library(*gl.device, fs::fromUtf8(G7_SHADER_DIR));
     auto background = library.load("background", {"background.vert", "background.frag", {}});
     CHECK_MESSAGE(background.ok(), (background.ok() ? "" : background.error().message));
+}
+
+TEST_CASE("Background shader follows the view direction")
+{
+    GlFixture gl;
+    ShaderLibrary library(*gl.device, fs::fromUtf8(G7_SHADER_DIR));
+    ShaderProgram* program = require(library.load("background", {"background.vert", "background.frag", {}}));
+    Pipeline pipeline = makePipeline(*gl.device, program);
+    Target target = makeTarget(*gl.device);
+
+    const auto centreFor = [&](f32 pitchDegrees)
+    {
+        render::Camera camera;
+        camera.aspect = 1.0f;
+        camera.transform.rotation = quatFromEuler(toRadians(pitchDegrees), 0.0f, 0.0f);
+        program->setUniform("uInverseViewProjection", glm::inverse(camera.viewProjection()));
+        program->setUniform("uCameraPosition", camera.transform.position);
+        return drawAndSample(*gl.device, pipeline, target);
+    };
+    const auto up = centreFor(80.0f);
+    const auto level = centreFor(0.0f);
+    const auto down = centreFor(-80.0f);
+    // Horizon is warm (red > blue), zenith cool (blue > red), ground darkest.
+    CHECK(level[0] > level[2]);
+    CHECK(up[2] > up[0]);
+    CHECK(int(down[0]) + down[1] + down[2] < int(level[0]) + level[1] + level[2]);
+    CHECK(gl.device->debugErrorCount() == 0);
 }

@@ -130,7 +130,7 @@ struct PipelineDesc
     CullMode cull = CullMode::Back; ///< Front faces are counter-clockwise.
     bool depthTest = true;
     bool depthWrite = true;
-    CompareOp depthCompare = CompareOp::LessEqual;
+    CompareOp depthCompare = CompareOp::GreaterEqual; ///< Reverse-Z: larger depth = nearer.
     BlendMode blend = BlendMode::Opaque;
 };
 
@@ -150,7 +150,7 @@ private:
     CullMode m_cull = CullMode::Back;
     bool m_depthTest = true;
     bool m_depthWrite = true;
-    CompareOp m_depthCompare = CompareOp::LessEqual;
+    CompareOp m_depthCompare = CompareOp::GreaterEqual;
     BlendMode m_blend = BlendMode::Opaque;
 };
 

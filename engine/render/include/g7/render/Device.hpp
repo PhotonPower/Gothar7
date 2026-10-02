@@ -65,7 +65,8 @@ public:
     [[nodiscard]] Result<rhi::Framebuffer> createFramebuffer(const rhi::FramebufferDesc& desc);
 
     // --- Frame and render targets ---
-    /// Resets the frame stats, binds the window framebuffer, sets the viewport, clears all.
+    /// Resets the frame stats, binds the window framebuffer, sets the viewport, clears colour and
+    /// depth (to 0: reverse-Z, see perspectiveReverseZ).
     void beginFrame(u32 width, u32 height, const Vec4& clearColor);
     /// nullptr = window framebuffer.
     void bindFramebuffer(const rhi::Framebuffer* framebuffer);

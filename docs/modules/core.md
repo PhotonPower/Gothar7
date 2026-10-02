@@ -40,6 +40,9 @@
   - `interpolate(a, b, t)` – lerp/slerp (kürzester Weg) für das Rendern zwischen Simulationsschritten
   - Verkettung ist nur bei gleichmäßiger Skalierung exakt (nicht-gleichmäßig + Rotation bräuchte Scherung).
 
+- `Geometry.hpp` – `Plane` (Abstand, aus Punkt/Normale oder Koeffizienten), `Sphere`, `AABB` (`center`, `extents`,
+  `transformed`), `Frustum::fromViewProjection` (6 Ebenen nach innen, für 0..1-Tiefe inkl. Reverse-Z;
+  `contains`, `intersects(Sphere/AABB)` konservativ), `perspectiveReverseZ(fovY, aspect, near, far)` (ADR 0002).
 - `StringId.hpp` – `StringId`: 64-Bit-FNV-1a über ASCII-kleingeschriebene Bytes, also **immer
   case-insensitive** (`StringId("WP_HC_CAMPFIRE") == "wp_hc_campfire"_sid`), wie Gothic-Namen.
   - `StringId(name)` (Laufzeit), `"NAME"_sid` (`consteval`, in `g7::literals`; für `switch`/`static_assert`),
@@ -73,5 +76,5 @@
   - `Engine::run` markiert Frames und misst die Zonen `Engine::frame`, `Engine::fixedUpdate`, `Engine::render`.
 
 ## Später
-- Geometrie-Primitive `AABB`, `Sphere`, `Ray`, `Plane`, `Frustum` (M2, zusammen mit Kamera und Culling).
+- `Ray` (Editor-Auswahl, M4).
 - Job-System (M17), Frame-/Pool-Allokatoren bei Bedarf, Zufallszahlen (deterministisch, seedbar – wichtig für Saves/Tests).

@@ -74,4 +74,37 @@ std::vector<u8> Device::readBuffer(const rhi::Buffer&, usize, usize) const
 }
 } // namespace g7::render
 
+namespace g7::render::rhi
+{
+Result<void> Buffer::update(usize, std::span<const u8>)
+{
+    return Error{"render module was built without OpenGL"};
+}
+Result<void> Texture::upload(u32, std::span<const u8>)
+{
+    return Error{"render module was built without OpenGL"};
+}
+void Texture::generateMipmaps()
+{
+}
+void ShaderProgram::setUniform(std::string_view, i32)
+{
+}
+void ShaderProgram::setUniform(std::string_view, f32)
+{
+}
+void ShaderProgram::setUniform(std::string_view, const Vec2&)
+{
+}
+void ShaderProgram::setUniform(std::string_view, const Vec3&)
+{
+}
+void ShaderProgram::setUniform(std::string_view, const Vec4&)
+{
+}
+void ShaderProgram::setUniform(std::string_view, const Mat4&)
+{
+}
+} // namespace g7::render::rhi
+
 #endif

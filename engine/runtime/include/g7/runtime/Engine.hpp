@@ -13,6 +13,7 @@
 #include <g7/platform/GlContext.hpp>
 #include <g7/platform/Input.hpp>
 #include <g7/platform/Window.hpp>
+#include <g7/render/Camera.hpp>
 #include <g7/render/Device.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 
@@ -83,6 +84,8 @@ public:
 
     /// Render device, or nullptr without rendering.
     [[nodiscard]] render::Device* renderDevice() noexcept { return m_device.get(); }
+    /// Camera used for rendering (a free-flying debug camera until the player exists, M5).
+    [[nodiscard]] render::Camera& camera() noexcept { return m_camera; }
     /// Shader programs (with hot-reload), or nullptr without rendering.
     [[nodiscard]] render::ShaderLibrary* shaders() noexcept { return m_shaders.get(); }
     /// The game window, or nullptr when headless / before init().
@@ -95,6 +98,7 @@ public:
 private:
     void shutdown();
     [[nodiscard]] Result<void> initShaders();
+    void updateDebugCamera(f64 realSeconds);
 
     EngineConfig m_config;
     std::unique_ptr<platform::Window> m_window;
@@ -102,6 +106,10 @@ private:
     std::unique_ptr<render::Device> m_device;
     std::unique_ptr<render::ShaderLibrary> m_shaders; // destroyed before the device
     render::rhi::Pipeline m_backgroundPipeline;
+    render::rhi::ShaderProgram* m_backgroundProgram = nullptr;
+    render::Camera m_camera;
+    render::FreeFlyCamera m_flyCamera;
+    bool m_mouseLook = false;
     platform::Input m_input;
     platform::ActionMap m_actions;
     FixedStep m_fixedStep{1.0 / 60.0};
