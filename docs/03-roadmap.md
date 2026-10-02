@@ -31,6 +31,8 @@ Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 Parallel läuft die **Welt-Spur W1–W7** (Leonberg → Spielort, siehe Abschnitt „Welt-Spur“ am Ende und
 `docs/design/leonberg-pipeline.md`). Sie besteht überwiegend aus Python-Werkzeugen in `tools/worldgen/`
 und kann unabhängig von den Engine-Phasen bearbeitet werden; Abhängigkeiten sind je Phase angegeben.
+Ebenso die **Figuren-Spur F1–F5** (Rig, Animationen, Figuren, Monster – `docs/design/characters-pipeline.md`).
+Wie die Spuren zusammenarbeiten: `docs/coordination.md`.
 
 ---
 
@@ -121,6 +123,7 @@ sichtbar, im Editor lassen sich Vobs platzieren und speichern.
 schwimmt; Kamera clippt nicht durch Wände.
 
 ## M6 – Animation  → Meilenstein A
+_Benötigt F1 (Referenz-Rig, Platzhalterfigur) und für den Meilenstein die Prio-A-Animationen aus F2._
 - [ ] Skelett + Skinning (GPU), glTF-Skins
 - [ ] Clips, Sampling, Blending (Crossfade), additive Layer (Oberkörper getrennt)
 - [ ] Animations-Zustandsautomat (datengetrieben), Übergänge mit Bedingungen
@@ -325,3 +328,53 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [ ] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …)
 
 **DoD:** Leonberg ist als fertiger Spielort im Vertical Slice / Kapitel nutzbar.
+
+---
+
+# Figuren-Spur: Figuren & Animationen
+
+Spezifikation: `docs/design/characters-pipeline.md`, Liste: `docs/design/animation-list.md`.
+Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source/characters/`.
+
+**Aktueller Stand Figuren-Spur:** F1 noch nicht begonnen.
+
+## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
+- [ ] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“)
+- [ ] Export-Einstellungen glTF dokumentiert (Maßstab, Ausrichtung, Skin, Morph-Targets)
+- [ ] `tools/chargen` als Python-Paket (ruff, pytest) mit **Rig-Validator**, in CI eingebunden
+- [ ] CC0-Platzhalterfigur auf das Referenz-Rig übertragen, validiert, mit `g7-cook` gekocht
+- [ ] Namenskonvention und `events.toml`-Format mit dem Engine-Strang abgestimmt (`docs/coordination.md`)
+
+**DoD:** Platzhalterfigur + 3 Test-Clips bestehen den Validator und liegen gekocht vor; M6 kann starten.
+
+## F2 – Basis-Animationsset  (benötigt F1)
+- [ ] Retargeting-Mappings (Quaternius, Mixamo) und Stapel-Retargeting in Blender
+- [ ] Animations-Export: Sets nach Konvention, Timeline-Marker → `events.toml`, Root-Motion/In-Place
+- [ ] Abgleich-Werkzeug Animationsliste ↔ vorhandene Clips (Fortschrittsbericht)
+- [ ] Alle **Prio-A**-Animationen (mindestens als Platzhalter-Qualität)
+- [ ] Prio-B-Fortbewegung je Waffenmodus
+
+**DoD:** Meilenstein A ist mit diesen Animationen erreichbar; Bericht zeigt 0 fehlende Prio-A-Clips.
+
+## F3 – Figuren-Baukasten  (benötigt F1)
+- [ ] 2 Grundkörper × 3 Staturen (MPFB2, stilisiert), Köpfe als separate Meshes mit Morph-Targets
+- [ ] Haare/Bärte, erste Kleidungs-/Rüstungslinien (Lumpen, leicht, mittel)
+- [ ] Baukasten-Werkzeug: Zusammensetzen, Passform-Prüfung, LODs, Farbvarianten
+- [ ] Stil-Referenzblatt Figuren (gemeinsam mit W5)
+
+**DoD:** 5 unterscheidbare NPCs in der Engine, alle auf dem Referenz-Rig.
+
+## F4 – Gothic-spezifische Animationen  (benötigt F2; für M8–M11)
+- [ ] Mocap-Workflow testen (2–3 Dienste), Entscheidung dokumentieren
+- [ ] Mob-Interaktionen, Item-Benutzung, Ambient-Routinen, Dialog-Gesten
+- [ ] Nahkampf je Talentstufe, Fernkampf, Magie, Treffer/Tod/Bewusstlos
+- [ ] Alle **Prio-B**-Animationen fertig
+
+**DoD:** Vertical Slice (Meilenstein B) ohne Platzhalter-Animationen.
+
+## F5 – Monster  (benötigt F1; für M9/M11)
+- [ ] CC0-Platzhalter für 3 Arten (Rudeltier, Keiler, Laufvogel)
+- [ ] Eigene Rigs + Mindest-Sets je Art, Design-Doku der Arten
+- [ ] Validator-Regeln für Monster-Rigs
+
+**DoD:** Drei Monsterarten mit vollständigem Mindest-Set in der Engine.

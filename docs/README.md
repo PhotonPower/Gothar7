@@ -12,6 +12,8 @@
 | [modules/](modules/) | Spezifikation je Engine-Modul |
 | [adr/](adr/) | Architekturentscheidungen |
 | [design/](design/) | Spiel-Design (Welt, Story, Inhalte) |
+| [coordination.md](coordination.md) | Zusammenarbeit der Spuren/Sitzungen, Schnittstellen-Verträge, PR-Ablauf |
+| [design/characters-pipeline.md](design/characters-pipeline.md) | Figuren & Animationen (Figuren-Spur F1–F5), [Animationsliste](design/animation-list.md) |
 | [design/leonberg-pipeline.md](design/leonberg-pipeline.md) | Welt-Pipeline: Leonberger Altstadt → Spielort (Welt-Spur W1–W7) |
 
 Pflege-Regel: Wer Code ändert, der eine hier beschriebene API oder ein Verhalten ändert,
