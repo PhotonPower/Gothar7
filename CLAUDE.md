@@ -97,6 +97,8 @@ Profiler-Hook; Engine-Hauptschleife headless; CI (Windows + Linux + Coverage ≥
 Phase **M1** abgeschlossen: SDL3-Fenster, Eingabe, Aktions-Mapping aus `game/config/engine.toml`, Frame-Limit,
 Zeitskalierung/Pause.
 Phase **M2** abgeschlossen: OpenGL-Renderer (RHI, Shader-Hot-Reload, glTF, Materialien, Licht, Schatten, Nebel,
-Tonemapping, Debug-Draw, ImGui), Testszene `assets/source/testscene` (`--scene`, `--benchmark`). Aktuelle Phase: **M3**
-(Asset-System). Die Welt-Spur (W1–W7) wird separat bearbeitet.
+Tonemapping, Debug-Draw, ImGui), Testszene `assets/source/testscene` (`--scene`, `--benchmark`).
+Aktuelle Phase: **M3** (Asset-System): VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles, asynchron), Engine-Anbindung,
+Hot-Reload und `g7-cook` (glTF → `.g7mesh`, KTX2/UASTC; ADR 0016) stehen; offen: KTX2-Upload in `render`, Manifest.
+Welt-Spur: **W1** (Geodaten-Import Leonberg) abgeschlossen; W2/W3 warten auf M4/M5.
 Details siehe `docs/03-roadmap.md`.

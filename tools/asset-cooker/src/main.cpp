@@ -12,13 +12,15 @@ namespace
 {
 void printUsage()
 {
-    std::puts(
-        "usage: g7-cook [--source <dir>] [--out <dir>] [--pack <file.g7pak>] [--level <1-22>] [--clean]\n"
-        "  --source  source assets (default: assets/source)\n"
-        "  --out     output directory (default: assets/cooked)\n"
-        "  --pack    write one archive <out>/<file> instead of loose files (zstd per entry)\n"
-        "  --level   zstd level for --pack (default 19; 1-3 for quick development cooks)\n"
-        "  --clean   delete the output directory first");
+    std::puts("usage: g7-cook [--source <dir>] [--out <dir>] [--pack <file.g7pak>] [--level <1-22>]\n"
+              "               [--textures copy|ktx2] [--uastc-level <0-4>] [--clean]\n"
+              "  --source  source assets (default: assets/source)\n"
+              "  --out     output directory (default: assets/cooked)\n"
+              "  --pack    write one archive <out>/<file> instead of loose files (zstd per entry)\n"
+              "  --level   zstd level for --pack (default 19; 1-3 for quick development cooks)\n"
+              "  --textures     copy (default) keeps images, ktx2 writes UASTC + zstd with mips\n"
+              "  --uastc-level  KTX2 quality vs. speed, 0-4 (default 2)\n"
+              "  --clean   delete the output directory first");
 }
 } // namespace
 
@@ -50,6 +52,26 @@ int main(int argc, char** argv)
                 return 2;
             }
             options.level = level;
+        }
+        else if (arg == "--textures" && hasValue)
+        {
+            const std::string_view mode = argv[++i];
+            if (mode != "copy" && mode != "ktx2")
+            {
+                printUsage();
+                return 2;
+            }
+            options.textures = mode == "ktx2" ? g7::cook::TextureMode::Ktx2 : g7::cook::TextureMode::Copy;
+        }
+        else if (arg == "--uastc-level" && hasValue)
+        {
+            const int level = std::atoi(argv[++i]);
+            if (level < 0 || level > 4)
+            {
+                printUsage();
+                return 2;
+            }
+            options.uastcLevel = static_cast<g7::u32>(level);
         }
         else if (arg == "--clean")
         {

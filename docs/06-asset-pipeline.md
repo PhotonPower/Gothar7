@@ -29,7 +29,8 @@
 
 ## g7-cook
 ```
-g7-cook [--source assets/source] [--out assets/cooked] [--pack data.g7pak] [--level 19] [--clean]
+g7-cook [--source assets/source] [--out assets/cooked] [--pack data.g7pak] [--level 19]
+        [--textures copy|ktx2] [--uastc-level 2] [--clean]
 ```
 Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_lib`
 (`tools/asset-cooker/src/Cooker.hpp`, `g7::cook::cook(options)`); `g7-cook` ist die Kommandozeile dazu.
@@ -38,8 +39,17 @@ Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_
 - **glTF/GLB → `.g7mesh`** (`asset/MeshFile.hpp`). Eingebettete Bilder werden als `<mesh>.img<n>.png|jpg` neben
   das Mesh gelegt. Externe Bilder werden selbst gekocht; das Mesh verweist dann per **VFS-Pfad ab der Wurzel**
   darauf (`../textures/wood.png` wird zu `textures/wood.png`).
-- **Bilder** (`.png/.jpg/.jpeg/.tga/.bmp`) werden auf Lesbarkeit geprüft und unverändert übernommen.
-  KTX2 (UASTC → BC7/BC5) folgt im nächsten Schritt.
+- **Bilder** (`.png/.jpg/.jpeg/.tga/.bmp`) werden auf Lesbarkeit geprüft. Mit `--textures copy` (Vorgabe, bis
+  `render` KTX2 hochladen kann) bleiben sie unverändert. Mit **`--textures ktx2`** werden sie zu `<name>.ktx2`:
+  - vollständige Mip-Kette, im Cooker gerechnet (Box-Filter; Farbe in linearem Licht gemittelt, Normalen gemittelt
+    und neu normiert);
+  - UASTC (`--uastc-level 0..4`, Vorgabe 2) mit zstd-Superkompression.
+  - **Normal-Maps** erkennt der Cooker an `normalImage` in den Materialien aller Meshes; sie werden zweikanalig
+    (X, Y, linear) für BC5 gespeichert. Alles andere ist sRGB-Farbe. Wird ein Bild als Farbe **und** als Normal-Map
+    benutzt, ist das ein Fehler.
+  - Bildverweise in `.g7mesh` zeigen dann auf `.ktx2` (`mimeType` `image/ktx2`), auch für herausgelöste
+    eingebettete Bilder.
+  - Benötigt libktx (vcpkg); ein Build ohne libktx lehnt `--textures ktx2` ab.
 - **Übersprungen** werden versteckte Dateien (`.xyz`), Blender-Dateien (`.blend`, `.blend1`) und glTF-Puffer
   (`.bin`, die über die `.gltf` gelesen werden). **Alles andere** (Skripte, Konfiguration, Sounds) wird kopiert.
 - **Ausgabe:** lose Dateien unter `--out` (Ordnerstruktur wie die Quelle) oder mit `--pack` ein einziges
@@ -49,7 +59,7 @@ Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_
   derselben Ausgabe wie `hut.glb` und `hut.gltf`) werden gesammelt und gemeldet. Der Rest wird trotzdem gekocht;
   der Exit-Code ist dann 1.
 
-**Geplant:** KTX2-Texturen, Manifest mit Hashes für inkrementelles Kochen
+**Geplant:** KTX2 als Vorgabe (sobald `render` BC7/BC5 hochlädt), Manifest mit Hashes für inkrementelles Kochen
 (Quell-Hash + Cooker-Version), `--watch` für Hot-Reload, weitere Prüfungen (Skelett-Namen, Mipmaps).
 
 ## Platzhalter-Inhalte

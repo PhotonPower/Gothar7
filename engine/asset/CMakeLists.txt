@@ -1,5 +1,5 @@
 # fastgltf parses glTF (ADR 0013), stb_image decodes PNG/JPEG (ADR 0014), zstd compresses .g7pak
-# entries (ADR 0016); all private to asset.
+# entries and libktx reads KTX2 textures (ADR 0016); all private to asset.
 # The nodeps preset fetches them (fastgltf downloads simdjson itself).
 include(FetchContent)
 
@@ -42,3 +42,13 @@ if(NOT zstd_FOUND)
 endif()
 
 g7_add_module(asset DEPS core PRIVATE_LIBS fastgltf::fastgltf g7_stb zstd::libzstd)
+
+# libktx comes with vcpkg only (KTX-Software is too large for FetchContent): the nodeps preset
+# builds without KTX2 support and decodeKtx2() reports that (ADR 0016).
+find_package(Ktx CONFIG QUIET)
+if(Ktx_FOUND)
+    target_link_libraries(g7_asset PRIVATE KTX::ktx)
+    target_compile_definitions(g7_asset PRIVATE G7_HAS_KTX=1)
+else()
+    message(STATUS "libktx nicht gefunden - asset ohne KTX2-Unterstuetzung")
+endif()

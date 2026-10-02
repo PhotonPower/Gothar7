@@ -1,8 +1,7 @@
 #pragma once
 
 // g7-cook: converts source assets into runtime formats and optionally packs them (ADR 0016,
-// docs/06-asset-pipeline.md). Version 1: glTF/GLB -> .g7mesh, images unchanged (KTX2 follows),
-// everything else copied.
+// docs/06-asset-pipeline.md): glTF/GLB -> .g7mesh, images unchanged or KTX2, everything else copied.
 
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Result.hpp>
@@ -13,6 +12,12 @@
 
 namespace g7::cook
 {
+enum class TextureMode : u8
+{
+    Copy, ///< images unchanged (until the renderer uploads KTX2)
+    Ktx2, ///< images -> .ktx2 (UASTC + zstd, mips); normal maps detected from mesh materials
+};
+
 struct CookOptions
 {
     fs::Path source; ///< e.g. assets/source
@@ -23,6 +28,9 @@ struct CookOptions
     bool clean = false;
     /// zstd level for archive entries (1 = fast for development .. 22 = smallest).
     int level = 19;
+    TextureMode textures = TextureMode::Copy;
+    /// UASTC quality for TextureMode::Ktx2: 0 = fastest .. 4 = best (2 = default).
+    u32 uastcLevel = 2;
 };
 
 struct CookReport

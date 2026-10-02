@@ -2,6 +2,7 @@
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
 #include <g7/asset/MeshFile.hpp>
+#include <g7/asset/TextureData.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
 
@@ -250,6 +251,21 @@ AssetManager::AssetManager(const Vfs& vfs, AssetManagerDesc desc) : m_impl(std::
     m_impl->pollSeconds = desc.pollSeconds;
     registerLoader<ImageData>([](const LoadContext& ctx) -> Result<ImageData>
                               { return decodeImage(ctx.bytes, ctx.path); });
+    // Textures as the renderer uploads them: cooked KTX2 (BC7/BC5 with mips) or PNG/JPEG as RGBA8.
+    registerLoader<TextureData>(
+        [](const LoadContext& ctx) -> Result<TextureData>
+        {
+            if (hasExtension(ctx.path, ".ktx2"))
+            {
+                return decodeKtx2(ctx.bytes, ctx.path);
+            }
+            auto image = decodeImage(ctx.bytes, ctx.path);
+            if (!image)
+            {
+                return image.error();
+            }
+            return textureFromImage(std::move(image).value());
+        });
     registerLoader<MeshData>(
         [](const LoadContext& ctx) -> Result<MeshData>
         {

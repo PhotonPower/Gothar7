@@ -122,6 +122,25 @@ Result<MeshData> deserializeMesh(std::span<const u8>, std::string_view debugName
   Submeshes im Index-Bereich, Material- und Bildverweise gültig, Alpha-Modus bekannt, keine Rest-Bytes.
 - Bildverweise in gekochten Meshes sind VFS-Pfade ab der Wurzel (`textures/wood.png`), eingebettete Bytes leer.
 
+### `TextureData.hpp` – Texturen für den Upload (ADR 0016)
+```cpp
+enum class TextureFormat : u8 { RGBA8, BC7, BC5 };   // BC5: Normal-Map mit zwei Kanälen (X, Y)
+struct TextureLevel { u32 width, height; std::vector<u8> data; };
+struct TextureData { TextureFormat format; bool srgb; std::vector<TextureLevel> levels;   // levels[0] = volle Größe
+                     u32 width() const; u32 height() const; };
+TextureData textureFromImage(ImageData image, bool srgb = true);     // PNG/JPEG: RGBA8, eine Ebene
+Result<TextureData> decodeKtx2(std::span<const u8>, std::string_view debugName = "<memory>");
+bool hasKtx2Support();
+```
+- `decodeKtx2` liest die von `g7-cook` geschriebenen KTX2-Dateien mit libktx. UASTC wird nach **BC7**
+  umgewandelt, zweikanalige Daten nach **BC5**; sRGB kommt aus der Transferfunktion der Datei. Die vollständige
+  Mip-Kette wird übernommen. Unkomprimiertes RGBA8 wird direkt akzeptiert.
+- **Normal-Maps (BC5)** enthalten nur X und Y. Der Shader rekonstruiert Z: `z = sqrt(max(0, 1 − x² − y²))`.
+- Der eingebaute `AssetManager`-Lader für `Handle<TextureData>` liest `.ktx2` über `decodeKtx2` und alles andere über
+  `decodeImage` + `textureFromImage`, als sRGB markiert. Wer eine **ungekochte** PNG-Normal-Map lädt, muss
+  `srgb` anhand der Verwendung im Material zurücksetzen.
+- **Ohne libktx** (Preset `nodeps`) meldet `decodeKtx2` einen Fehler, und `hasKtx2Support()` liefert `false`.
+
 ### `AssetManager.hpp` – Handles, Cache, asynchrones Laden
 ```cpp
 namespace g7::asset {

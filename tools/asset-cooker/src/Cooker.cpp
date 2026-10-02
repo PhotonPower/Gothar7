@@ -1,5 +1,7 @@
 #include "Cooker.hpp"
 
+#include "Textures.hpp"
+
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
 #include <g7/asset/MeshFile.hpp>
@@ -11,6 +13,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <map>
+#include <set>
 
 namespace g7::cook
 {
@@ -89,7 +92,12 @@ public:
 
     void run()
     {
-        for (const auto& [relative, location] : collectSources())
+        const auto sources = collectSources();
+        if (m_options.textures == TextureMode::Ktx2)
+        {
+            scanTextureUsage(sources);
+        }
+        for (const auto& [relative, location] : sources)
         {
             cookFile(relative, location);
         }
@@ -185,10 +193,16 @@ private:
         const bool image = contains(kImageExtensions, ext);
         if (image)
         {
-            // Version 1 keeps images as they are, but refuses broken ones early.
-            if (auto decoded = asset::decodeImage(bytes.value(), relative); !decoded)
+            // Broken images are refused early, also when they are only copied.
+            auto decoded = asset::decodeImage(bytes.value(), relative);
+            if (!decoded)
             {
                 fail(relative, decoded.error().message);
+                return;
+            }
+            if (m_options.textures == TextureMode::Ktx2)
+            {
+                cookKtx2(relative, decoded.value());
                 return;
             }
         }
@@ -198,15 +212,37 @@ private:
         }
     }
 
+    void cookKtx2(const std::string& relative, const asset::ImageData& image)
+    {
+        if (m_normalImages.contains(relative) && m_colorImages.contains(relative))
+        {
+            fail(relative, "used both as colour texture and as normal map");
+            return;
+        }
+        const auto usage = m_normalImages.contains(relative) ? TextureUsage::Normal : TextureUsage::Color;
+        auto ktx = encodeKtx2(image, usage, m_options.uastcLevel);
+        if (!ktx)
+        {
+            fail(relative, ktx.error().message);
+            return;
+        }
+        if (emit(relative, withoutExtension(relative) + ".ktx2", std::move(ktx).value()))
+        {
+            ++m_report.images;
+        }
+    }
+
     void cookMesh(const std::string& relative, const fs::Path& location)
     {
-        auto loaded = asset::loadGltf(location);
+        auto cached = m_meshes.find(relative);
+        auto loaded = cached != m_meshes.end() ? std::move(cached->second) : asset::loadGltf(location);
         if (!loaded)
         {
             fail(relative, loaded.error().message);
             return;
         }
         asset::MeshData mesh = std::move(loaded).value();
+        const bool ktx2 = m_options.textures == TextureMode::Ktx2;
         const std::string base = withoutExtension(relative);
         // Extracted images are emitted only if the whole mesh cooks (no orphans on errors).
         std::vector<std::pair<std::string, std::vector<u8>>> extracted;
@@ -222,26 +258,40 @@ private:
                     fail(relative, "embedded image " + std::to_string(i) + " has an unknown format");
                     return;
                 }
-                image.uri = base + ".img" + std::to_string(i) + ext;
-                extracted.emplace_back(image.uri, std::move(image.encoded));
+                if (ktx2)
+                {
+                    auto encoded = encodeEmbedded(mesh, i, m_options.uastcLevel);
+                    if (!encoded)
+                    {
+                        fail(relative,
+                             "embedded image " + std::to_string(i) + ": " + encoded.error().message);
+                        return;
+                    }
+                    image.uri = base + ".img" + std::to_string(i) + ".ktx2";
+                    image.mimeType = "image/ktx2";
+                    extracted.emplace_back(image.uri, std::move(encoded).value());
+                }
+                else
+                {
+                    image.uri = base + ".img" + std::to_string(i) + ext;
+                    extracted.emplace_back(image.uri, std::move(image.encoded));
+                }
                 image.encoded.clear();
                 continue;
             }
             // External image: cooked on its own; the mesh refers to it by its VFS path.
-            const fs::Path referenced = (location.parent_path() / fs::fromUtf8(image.uri)).lexically_normal();
-            auto vfsPath =
-                asset::normalizeVfsPath(fs::toUtf8(referenced.lexically_relative(m_options.source)));
-            if (!isWithin(referenced, m_options.source) || !vfsPath)
+            auto vfsPath = resolveTexture(location, image.uri);
+            if (!vfsPath)
             {
-                fail(relative, "texture '" + image.uri + "' lies outside the source directory");
-                return;
-            }
-            if (!fs::exists(referenced))
-            {
-                fail(relative, "missing texture '" + image.uri + "'");
+                fail(relative, vfsPath.error().message);
                 return;
             }
             image.uri = std::move(vfsPath).value();
+            if (ktx2 && contains(kImageExtensions, extensionOf(image.uri)))
+            {
+                image.uri = withoutExtension(image.uri) + ".ktx2";
+                image.mimeType = "image/ktx2";
+            }
         }
         const usize images = extracted.size();
         extracted.emplace_back(base + ".g7mesh", asset::serializeMesh(mesh));
@@ -250,6 +300,84 @@ private:
             m_report.images += static_cast<u32>(images);
             ++m_report.meshes;
         }
+    }
+
+    /// VFS path of a texture referenced by a mesh (relative to the mesh file); must exist in the source.
+    Result<std::string> resolveTexture(const fs::Path& meshLocation, const std::string& uri) const
+    {
+        const fs::Path referenced = (meshLocation.parent_path() / fs::fromUtf8(uri)).lexically_normal();
+        auto vfsPath = asset::normalizeVfsPath(fs::toUtf8(referenced.lexically_relative(m_options.source)));
+        if (!isWithin(referenced, m_options.source) || !vfsPath)
+        {
+            return Error{"texture '" + uri + "' lies outside the source directory"};
+        }
+        if (!fs::exists(referenced))
+        {
+            return Error{"missing texture '" + uri + "'"};
+        }
+        return vfsPath;
+    }
+
+    /// KTX2 needs to know before encoding whether an image is a normal map: collect how the meshes
+    /// use their external textures (and keep the parsed meshes for cookMesh).
+    void scanTextureUsage(const std::map<std::string, fs::Path>& sources)
+    {
+        for (const auto& [relative, location] : sources)
+        {
+            if (isHidden(relative) || !contains(kMeshExtensions, extensionOf(relative)))
+            {
+                continue;
+            }
+            auto loaded = asset::loadGltf(location);
+            if (loaded)
+            {
+                const asset::MeshData& mesh = loaded.value();
+                for (const asset::MaterialInfo& m : mesh.materials)
+                {
+                    noteUsage(mesh, location, m.normalImage, m_normalImages);
+                    noteUsage(mesh, location, m.baseColorImage, m_colorImages);
+                    noteUsage(mesh, location, m.emissiveImage, m_colorImages);
+                }
+            }
+            m_meshes.emplace(relative, std::move(loaded));
+        }
+    }
+
+    void noteUsage(const asset::MeshData& mesh, const fs::Path& location, i32 index,
+                   std::set<std::string>& into)
+    {
+        if (index < 0 || static_cast<usize>(index) >= mesh.images.size() ||
+            mesh.images[static_cast<usize>(index)].uri.empty())
+        {
+            return;
+        }
+        if (auto path = resolveTexture(location, mesh.images[static_cast<usize>(index)].uri))
+        {
+            into.insert(std::move(path).value());
+        }
+    }
+
+    /// Encodes an embedded image of `mesh` to KTX2, as normal map if a material uses it so.
+    static Result<std::vector<u8>> encodeEmbedded(const asset::MeshData& mesh, usize index, u32 uastcLevel)
+    {
+        const auto idx = static_cast<i32>(index);
+        bool asNormal = false;
+        bool asColor = false;
+        for (const asset::MaterialInfo& m : mesh.materials)
+        {
+            asNormal = asNormal || m.normalImage == idx;
+            asColor = asColor || m.baseColorImage == idx || m.emissiveImage == idx;
+        }
+        if (asNormal && asColor)
+        {
+            return Error{"used both as colour texture and as normal map"};
+        }
+        auto decoded = asset::decodeImage(mesh.images[index].encoded, "embedded image");
+        if (!decoded)
+        {
+            return decoded.error();
+        }
+        return encodeKtx2(decoded.value(), asNormal ? TextureUsage::Normal : TextureUsage::Color, uastcLevel);
     }
 
     bool emit(const std::string& source, std::string path, std::vector<u8> data)
@@ -286,8 +414,11 @@ private:
     }
 
     const CookOptions& m_options;
-    std::map<std::string, std::vector<u8>> m_outputs; // sorted by path
-    std::map<std::string, std::string> m_keys;        // lower-case path -> path (collisions)
+    std::map<std::string, std::vector<u8>> m_outputs;        // sorted by path
+    std::map<std::string, Result<asset::MeshData>> m_meshes; // parsed in scanTextureUsage (KTX2 mode)
+    std::set<std::string> m_normalImages;                    // VFS paths used as normal maps
+    std::set<std::string> m_colorImages;                     // VFS paths used as colour textures
+    std::map<std::string, std::string> m_keys;               // lower-case path -> path (collisions)
     CookReport m_report;
 };
 } // namespace
@@ -316,6 +447,11 @@ Result<CookReport> cook(const CookOptions& options)
         {
             return Error{"cannot clean " + fs::toUtf8(out) + " (" + ec.message() + ")"};
         }
+    }
+
+    if (options.textures == TextureMode::Ktx2 && !hasKtx2Encoder())
+    {
+        return Error{"--textures ktx2 needs a build with libktx (vcpkg); this one has none"};
     }
 
     CookOptions resolved = options;
