@@ -19,6 +19,8 @@ layout(std140, binding = 0) uniform Lighting
     vec4 shadowExtra;       // x debug colours, y atlas texel size (uv)
     vec4 cameraPosition;
     vec4 cameraForward;
+    vec4 fogColorStart;     // rgb linear, w start distance
+    vec4 fogParams;         // x density
     vec4 pointPositionRadius[kMaxPointLights];
     vec4 pointColor[kMaxPointLights];
 } uLighting;

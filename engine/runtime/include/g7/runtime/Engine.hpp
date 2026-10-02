@@ -17,6 +17,7 @@
 #include <g7/render/Device.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
+#include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 
 #include <memory>
@@ -106,6 +107,8 @@ private:
     void shutdown();
     [[nodiscard]] Result<void> initShaders();
     [[nodiscard]] Result<void> initViewMesh();
+    void initEnvironment();
+    void renderScene(u32 width, u32 height);
     void drawViewMesh(u32 width, u32 height);
     void updateDebugCamera(f64 realSeconds);
 
@@ -116,6 +119,9 @@ private:
     std::unique_ptr<render::ShaderLibrary> m_shaders; // destroyed before the device
     render::rhi::Pipeline m_backgroundPipeline;
     render::rhi::ShaderProgram* m_backgroundProgram = nullptr;
+    render::SceneTarget m_sceneTarget; // linear HDR scene, tonemapped by m_post
+    render::PostProcess m_post;
+    render::PostSettings m_postSettings;
     render::Mesh m_viewMesh; // empty unless --view-mesh
     render::MaterialSet m_viewMaterials;
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs

@@ -1,9 +1,10 @@
 #version 450 core
 // Stylised material (render.md): base colour, tangent-space normal map, emissive, alpha test
-// (#define ALPHA_TEST), lit by common/lighting.glsl. Lighting happens in linear space, the result
-// is sRGB-encoded until the tonemapping pass exists.
+// (#define ALPHA_TEST), lit by common/lighting.glsl, fogged by common/fog.glsl. Output is linear
+// HDR (render::SceneTarget); render::PostProcess tonemaps and encodes it.
 #include "common/color.glsl"
 #include "common/lighting.glsl"
+#include "common/fog.glsl"
 
 layout(binding = 0) uniform sampler2D uBaseColorTexture; // sRGB; white if none
 layout(binding = 1) uniform sampler2D uNormalTexture;    // linear; flat (0.5, 0.5, 1) if none
@@ -13,6 +14,7 @@ uniform vec4 uBaseColor;    // linear factor
 uniform vec3 uEmissive;     // linear factor
 uniform float uNormalScale;
 uniform float uAlphaCutoff;
+uniform vec3 uCameraPosition; // for the fog distance
 
 in vec3 vWorldPosition;
 in vec3 vNormal;
@@ -50,5 +52,6 @@ void main()
     vec3 color = base.rgb * incomingLight(vWorldPosition, surfaceNormal());
     color += uEmissive * texture(uEmissiveTexture, vUv).rgb;
     color *= shadowDebugTint(vWorldPosition);
-    fragColor = vec4(linearToSrgb(color), base.a);
+    color = applyFog(color, distance(vWorldPosition, uCameraPosition));
+    fragColor = vec4(color, base.a); // linear HDR; the post pass tonemaps and encodes
 }

@@ -4,6 +4,7 @@
 #include <g7/render/Shadows.hpp>
 
 #include <algorithm>
+#include <cmath>
 
 namespace g7::render
 {
@@ -16,6 +17,21 @@ f32 pointLightAttenuation(f32 distance, f32 radius) noexcept
     const f32 ratio = distance / radius;
     const f32 window = std::clamp(1.0f - ratio * ratio * ratio * ratio, 0.0f, 1.0f);
     return window * window / (distance * distance + 1.0f);
+}
+
+f32 fogFactor(f32 distance, f32 start, f32 density) noexcept
+{
+    const f32 x = std::max(distance - start, 0.0f) * density;
+    return 1.0f - std::exp(-x * x);
+}
+
+f32 fogDensityFor(f32 amount, f32 distance, f32 start) noexcept
+{
+    if (amount <= 0.0f || distance <= start)
+    {
+        return 0.0f;
+    }
+    return std::sqrt(-std::log(1.0f - std::min(amount, 0.9999f))) / (distance - start);
 }
 
 void LightList::clear() noexcept
@@ -75,6 +91,8 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
     gpu.sunColor = Vec4(environment.sunColor * environment.sunIntensity, 0.0f);
     gpu.ambientSky = Vec4(environment.ambientSky, 0.0f);
     gpu.ambientGround = Vec4(environment.ambientGround, 0.0f);
+    gpu.fogColorStart = Vec4(environment.fogColor, environment.fogStart);
+    gpu.fogParams = Vec4(environment.fogDensity, 0.0f, 0.0f, 0.0f);
     const auto& points = lights.lights();
     gpu.counts[0] = static_cast<i32>(points.size());
     for (usize i = 0; i < points.size(); ++i)

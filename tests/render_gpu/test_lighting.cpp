@@ -90,10 +90,10 @@ TEST_CASE("Lighting: the sun lights surfaces facing it")
     CHECK(scene.centre(sun, none) == std::array<u8, 4>{255, 255, 255, 255});
     sun.sunDirection = Vec3(0, 0, -1); // behind it
     CHECK(brightness(scene.centre(sun, none)) == 0);
-    sun.sunDirection = Vec3(0, 1, 1); // 45°: cos = 0.707 -> sRGB ~ 218
+    sun.sunDirection = Vec3(0, 1, 1); // 45°: cos = 0.707 -> linear output ~ 180
     const auto slanted = scene.centre(sun, none);
-    CHECK(slanted[0] > 205);
-    CHECK(slanted[0] < 230);
+    CHECK(slanted[0] > 170);
+    CHECK(slanted[0] < 190);
     CHECK(scene.gl.device->debugErrorCount() == 0);
 }
 

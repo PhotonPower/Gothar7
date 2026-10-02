@@ -76,6 +76,10 @@ std::vector<u8> Device::readTexture(const rhi::Texture&, u32) const
 {
     return {};
 }
+std::vector<f32> Device::readTextureFloat(const rhi::Texture&, u32) const
+{
+    return {};
+}
 } // namespace g7::render
 
 namespace g7::render::rhi

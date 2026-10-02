@@ -214,6 +214,20 @@ std::vector<u8> Device::readTexture(const Texture& texture, u32 level) const
     return pixels;
 }
 
+std::vector<f32> Device::readTextureFloat(const Texture& texture, u32 level) const
+{
+    const TextureDesc& desc = texture.desc();
+    if (level >= desc.mipLevels || isDepthFormat(desc.format))
+    {
+        return {};
+    }
+    std::vector<f32> pixels(static_cast<usize>(mipSize(desc.width, level)) * mipSize(desc.height, level) * 4);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glGetTextureImage(texture.m_handle.id(), static_cast<GLint>(level), GL_RGBA, GL_FLOAT,
+                      static_cast<GLsizei>(pixels.size() * sizeof(f32)), pixels.data());
+    return pixels;
+}
+
 std::vector<u8> Device::readBuffer(const Buffer& buffer, usize offset, usize size) const
 {
     if (offset > buffer.size() || size > buffer.size() - offset)
