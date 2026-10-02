@@ -325,6 +325,19 @@ Result<void> Engine::initViewMesh()
     // Frame the model: look at its centre from the front-right, at 2.5x its radius.
     const AABB& bounds = m_viewMesh.bounds();
     const f32 radius = std::max(glm::length(bounds.extents()), 0.5f);
+
+    // Low warm evening sun and cool ambient, matching the dusk background until the sky (M4). A
+    // warm "torch" above the front-right of the model shows the point lights.
+    m_environment.sunDirection = Vec3(0.6f, 0.25f, 0.4f);
+    m_environment.sunColor = Vec3(1.0f, 0.72f, 0.5f);
+    m_environment.sunIntensity = m_config.sun ? 1.6f : 0.0f;
+    m_environment.ambientSky = Vec3(0.16f, 0.18f, 0.26f);
+    m_environment.ambientGround = Vec3(0.07f, 0.06f, 0.05f);
+    m_lights.clear();
+    const Vec3 torchOffset = Vec3(0.6f, 0.8f, 0.6f) * radius;
+    // The falloff is in metres (1 / (d² + 1)); scale the intensity so the torch lights any model size.
+    const f32 torchIntensity = 2.0f * (glm::dot(torchOffset, torchOffset) + 1.0f);
+    m_lights.add({bounds.center() + torchOffset, radius * 2.5f, Vec3(1.0f, 0.62f, 0.3f), torchIntensity});
     m_camera.transform.position = bounds.center() + glm::normalize(Vec3(0.6f, 0.4f, 1.0f)) * radius * 2.5f;
     m_camera.transform.rotation = lookRotation(bounds.center() - m_camera.transform.position);
     m_flyCamera.speed = std::max(radius, 1.0f);
@@ -341,6 +354,7 @@ void Engine::drawViewMesh()
     {
         return;
     }
+    m_meshRenderer.setLighting(*m_device, m_environment, m_lights);
     m_meshRenderer.draw(*m_device, m_viewMesh, m_viewMaterials, Mat4(1.0f), m_camera);
 }
 

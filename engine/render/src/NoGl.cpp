@@ -109,6 +109,9 @@ void ShaderProgram::setUniform(std::string_view, const Vec4&)
 void ShaderProgram::setUniform(std::string_view, const Mat4&)
 {
 }
+void ShaderProgram::setUniform(std::string_view, std::span<const i32>)
+{
+}
 } // namespace g7::render::rhi
 
 #endif

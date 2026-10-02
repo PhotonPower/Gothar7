@@ -4,6 +4,7 @@
 
 #include <g7/core/FileSystem.hpp>
 #include <g7/render/Camera.hpp>
+#include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/TextureUpload.hpp>
@@ -38,20 +39,17 @@ asset::MeshData quad(const Vec4& color)
 }
 } // namespace
 
-TEST_CASE("Mesh: upload and draw with the mesh shader")
+TEST_CASE("Mesh: upload and draw through the mesh renderer")
 {
     GlFixture gl;
-    Mesh mesh = require(Mesh::create(*gl.device, quad(Vec4(1, 0, 0, 1))));
+    const asset::MeshData data = quad(Vec4(1, 0, 0, 1));
+    Mesh mesh = require(Mesh::create(*gl.device, data));
     CHECK(mesh.submeshes().size() == 1);
     CHECK(mesh.bounds().max == Vec3(1, 1, 0));
 
     ShaderLibrary library(*gl.device, fs::fromUtf8(G7_SHADER_DIR));
-    ShaderProgram* program = require(library.load("mesh", {"mesh.vert", "mesh.frag", {}}));
-    PipelineDesc desc;
-    desc.program = program;
-    desc.attributes = Mesh::vertexLayout();
-    desc.vertexStride = Mesh::kVertexStride;
-    Pipeline pipeline = require(gl.device->createPipeline(desc));
+    MeshRenderer renderer = require(MeshRenderer::create(*gl.device, library, 1.0f));
+    MaterialSet materials = require(MaterialSet::create(*gl.device, data, fs::Path(".")));
 
     Texture color = require(gl.device->createTexture({16, 16, Format::RGBA8, 1}));
     Texture depth = require(gl.device->createTexture({16, 16, Format::Depth32F, 1}));
@@ -60,25 +58,14 @@ TEST_CASE("Mesh: upload and draw with the mesh shader")
     Camera camera;
     camera.aspect = 1.0f;
     camera.transform.position = Vec3(0, 0, 3); // looking along -Z at the quad
-    program->setUniform("uViewProjection", camera.viewProjection());
-    program->setUniform("uModel", Mat4(1.0f));
-    program->setUniform("uBaseColor", Vec4(1, 0, 0, 1));
-
     gl.device->bindFramebuffer(&target);
     gl.device->setViewport(0, 0, 16, 16);
     gl.device->clear(Vec4(0, 0, 0, 1), 0.0f);
-    gl.device->bindPipeline(pipeline);
-    mesh.bind(*gl.device);
-    Texture white = require(createSolidTexture(*gl.device, 255, 255, 255, 255));
-    Sampler sampler = require(gl.device->createSampler({}));
-    gl.device->bindTexture(0, white, sampler);
-    mesh.draw(*gl.device, 0);
+    renderer.draw(*gl.device, mesh, materials, Mat4(1.0f), camera); // default lighting: white ambient
 
     const auto centre = gl.device->readPixels(8, 8, 1, 1, &target);
     REQUIRE(centre.size() == 4);
-    // Half-Lambert with the fixed light: about 55 % of the linear base colour, sRGB-encoded ~ 196.
-    CHECK(centre[0] > 175);
-    CHECK(centre[0] < 215);
+    CHECK(centre[0] == 255); // base colour x white ambient, sRGB-encoded
     CHECK(centre[1] == 0);
     CHECK(centre[2] == 0);
     const auto corner = gl.device->readPixels(0, 0, 1, 1, &target); // outside the quad

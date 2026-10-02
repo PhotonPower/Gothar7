@@ -99,6 +99,12 @@ void ShaderProgram::setUniform(std::string_view uniformName, const Mat4& value)
 {
     glProgramUniformMatrix4fv(m_handle.id(), location(uniformName), 1, GL_FALSE, glm::value_ptr(value));
 }
+
+void ShaderProgram::setUniform(std::string_view uniformName, std::span<const i32> values)
+{
+    glProgramUniform1iv(m_handle.id(), location(uniformName), static_cast<GLsizei>(values.size()),
+                        values.data());
+}
 } // namespace g7::render::rhi
 
 #endif

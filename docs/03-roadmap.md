@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M2** (Renderer-Grundlagen) – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB) und Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig) stehen. M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
+**Aktueller Stand:** Phase **M2** (Renderer-Grundlagen) – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig) und Licht (Sonne, Hemisphären-Ambient, Punktlichter) stehen. M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -70,7 +70,7 @@ Windows und Linux grün; core hat > 80 % Testabdeckung seiner Logik.
 - [x] Statische Meshes aus glTF laden (vorläufig direkt, ab M3 über asset)
 - [x] Texturen (PNG/JPEG über stb_image; KTX2 → M3 mit dem Cooker, ADR 0014), Mipmaps, anisotrope Filterung
 - [x] Material-Modell: Albedo, Normal, Alpha-Test (Laub!), Emissive – bewusst schlicht/stilisiert
-- [ ] Licht: gerichtete Sonne + Ambient, Punktlichter (Fackeln, Lagerfeuer), Forward+ oder Clustered
+- [x] Licht: gerichtete Sonne + Ambient, Punktlichter (Fackeln, Lagerfeuer) – Forward mit ≤ 8 Lichtern pro Objekt (Clustered bei Bedarf)
 - [ ] Schatten: Cascaded Shadow Maps für die Sonne
 - [ ] Distanznebel, Gamma/Tonemapping
 - [ ] Debug-Draw (Linien, Boxen, Kugeln, Text im Raum)

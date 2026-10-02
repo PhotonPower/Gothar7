@@ -103,6 +103,8 @@ public:
     void setUniform(std::string_view name, const Vec3& value);
     void setUniform(std::string_view name, const Vec4& value);
     void setUniform(std::string_view name, const Mat4& value);
+    /// Integer array uniform (`uniform int name[N]`), starting at element 0.
+    void setUniform(std::string_view name, std::span<const i32> values);
     [[nodiscard]] const std::string& name() const noexcept { return m_name; }
 
 private:

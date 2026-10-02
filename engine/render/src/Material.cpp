@@ -139,7 +139,27 @@ Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders
         return sampler.error();
     }
     renderer.m_sampler = std::move(sampler).value();
+
+    auto lighting = device.createBuffer({sizeof(GpuLighting), rhi::BufferUsage::Dynamic, {}});
+    if (!lighting)
+    {
+        return lighting.error();
+    }
+    renderer.m_lightingBuffer = std::move(lighting).value();
+    // Neutral default until setLighting(): ambient white, no sun, no point lights.
+    renderer.setLighting(
+        device, Environment{.sunIntensity = 0.0f, .ambientSky = Vec3(1.0f), .ambientGround = Vec3(1.0f)},
+        LightList{});
+    renderer.m_lights = nullptr;
     return renderer;
+}
+
+void MeshRenderer::setLighting(Device&, const Environment& environment, const LightList& lights)
+{
+    const GpuLighting gpu = packLighting(environment, lights);
+    // Only the used part of the point arrays changes; the block is small enough to upload whole.
+    (void)m_lightingBuffer.update(0, std::span(reinterpret_cast<const u8*>(&gpu), sizeof(gpu)));
+    m_lights = &lights;
 }
 
 const rhi::Pipeline& MeshRenderer::pipeline(Variant variant, bool doubleSided) const
@@ -169,10 +189,23 @@ void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& mat
                         const Camera& camera)
 {
     const Mat4 viewProjection = camera.viewProjection();
+    device.bindUniformBuffer(0, m_lightingBuffer);
+    m_selected.clear();
+    if (m_lights)
+    {
+        m_lights->selectFor(mesh.bounds().transformed(model), m_selected);
+    }
+    std::array<i32, LightList::kMaxPerObject> indices{};
+    for (usize i = 0; i < m_selected.size(); ++i)
+    {
+        indices[i] = static_cast<i32>(m_selected[i]);
+    }
     for (rhi::ShaderProgram* program : {m_program, m_alphaTestProgram})
     {
         program->setUniform("uViewProjection", viewProjection);
         program->setUniform("uModel", model);
+        program->setUniform("uLightIndices", std::span<const i32>(indices));
+        program->setUniform("uLightCount", static_cast<i32>(m_selected.size()));
     }
     const auto submeshes = mesh.submeshes();
     // Opaque and alpha-tested first, translucent last (blending needs what lies behind).

@@ -3,6 +3,7 @@
 #include "GlFixture.hpp"
 
 #include <g7/render/Camera.hpp>
+#include <g7/render/Lighting.hpp>
 #include <g7/render/Mesh.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/TextureUpload.hpp>
@@ -125,6 +126,15 @@ TEST_CASE("Textures: UV (0,0) is the image's top-left in the mesh shader")
     program->setUniform("uViewProjection", camera.viewProjection());
     program->setUniform("uModel", Mat4(1.0f));
     program->setUniform("uBaseColor", Vec4(1.0f));
+    // Neutral lighting (white ambient only), so the output is the texel itself.
+    const GpuLighting neutral =
+        packLighting(Environment{.sunIntensity = 0.0f, .ambientSky = Vec3(1.0f), .ambientGround = Vec3(1.0f)},
+                     LightList{});
+    Buffer lighting =
+        require(gl.device->createBuffer({sizeof(neutral), BufferUsage::Static,
+                                         std::span(reinterpret_cast<const u8*>(&neutral), sizeof(neutral))}));
+    gl.device->bindUniformBuffer(0, lighting);
+    program->setUniform("uLightCount", 0);
     gl.device->bindFramebuffer(&target);
     gl.device->setViewport(0, 0, 16, 16);
     gl.device->clear(Vec4(0, 0, 0, 1), 0.0f);
