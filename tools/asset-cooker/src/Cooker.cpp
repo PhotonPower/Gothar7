@@ -1,5 +1,6 @@
 #include "Cooker.hpp"
 
+#include "Manifest.hpp"
 #include "Textures.hpp"
 
 #include <g7/asset/ImageData.hpp>
@@ -13,6 +14,8 @@
 #include <algorithm>
 #include <filesystem>
 #include <map>
+#include <memory>
+#include <optional>
 #include <set>
 
 namespace g7::cook
@@ -88,10 +91,11 @@ bool isWithin(const fs::Path& inner, const fs::Path& outer)
 class Cook
 {
 public:
-    explicit Cook(const CookOptions& options) : m_options(options) {}
+    explicit Cook(const CookOptions& options) : m_options(options) { m_new.options = optionsString(); }
 
     void run()
     {
+        loadPreviousManifest();
         const auto sources = collectSources();
         if (m_options.textures == TextureMode::Ktx2)
         {
@@ -105,8 +109,15 @@ public:
 
     [[nodiscard]] Result<void> write()
     {
+        m_report.outputs = static_cast<u32>(m_outputs.size());
         if (!m_options.pack.empty())
         {
+            const bool hadArchive = m_previousPak != nullptr;
+            m_previousPak.reset(); // everything reused has been read; the archive gets replaced
+            if (hadArchive && nothingChanged())
+            {
+                return {}; // identical archive: skip recompressing, keep its timestamp (hot reload)
+            }
             asset::PakWriter pak;
             pak.setCompressionLevel(m_options.level);
             for (const auto& [path, data] : m_outputs)
@@ -121,12 +132,20 @@ public:
             {
                 return created.error();
             }
-            m_report.outputs = static_cast<u32>(m_outputs.size());
-            return pak.write(target);
+            if (auto written = pak.write(target); !written)
+            {
+                return written;
+            }
+            return writeManifest();
         }
         for (const auto& [path, data] : m_outputs)
         {
             const fs::Path target = m_options.out / fs::fromUtf8(path);
+            // Unchanged files are not rewritten: their timestamps stay, hot reload stays quiet.
+            if (m_unchanged.contains(path) || sameContent(target, data))
+            {
+                continue;
+            }
             if (auto created = fs::createDirectories(target.parent_path()); !created)
             {
                 return created.error();
@@ -135,9 +154,9 @@ public:
             {
                 return written.error();
             }
-            ++m_report.outputs;
         }
-        return {};
+        removeStaleOutputs();
+        return writeManifest();
     }
 
     [[nodiscard]] CookReport report() && { return std::move(m_report); }
@@ -179,22 +198,48 @@ private:
             ++m_report.skipped;
             return;
         }
-        if (contains(kMeshExtensions, ext))
-        {
-            cookMesh(relative, location);
-            return;
-        }
         auto bytes = fs::readFile(location);
         if (!bytes)
         {
             fail(relative, bytes.error().message);
             return;
         }
+        const bool mesh = contains(kMeshExtensions, ext);
+        ManifestEntry entry;
+        if (mesh)
+        {
+            entry.dependencies = meshDependencies(location, bytes.value());
+        }
+        entry.key = sourceKey(relative, bytes.value(), entry.dependencies, textureUsageTag(relative, ext));
+
+        m_emitted.clear();
+        if (reusePrevious(relative, entry))
+        {
+            return;
+        }
+        if (mesh)
+        {
+            cookMesh(relative, location);
+        }
+        else
+        {
+            cookBytes(relative, ext, std::move(bytes).value());
+        }
+        if (!m_emitted.empty()) // empty: the source failed and stays out of the manifest
+        {
+            entry.outputs = std::move(m_emitted);
+            m_new.sources.emplace(relative, std::move(entry));
+            ++m_report.cooked;
+        }
+    }
+
+    void cookBytes(const std::string& relative, const std::string& ext, std::vector<u8> bytes)
+    {
         const bool image = contains(kImageExtensions, ext);
         if (image)
         {
             // Broken images are refused early, also when they are only copied.
-            auto decoded = asset::decodeImage(bytes.value(), relative);
+            auto decoded = asset::decodeImage(bytes, relative);
             if (!decoded)
             {
                 fail(relative, decoded.error().message);
@@ -206,7 +251,7 @@ private:
                 return;
             }
         }
-        if (emit(relative, relative, std::move(bytes).value()))
+        if (emit(relative, relative, std::move(bytes)))
         {
             ++(image ? m_report.images : m_report.copied);
         }
@@ -401,10 +446,232 @@ private:
         }
         for (auto& [path, data] : files)
         {
+            m_emitted.push_back({path, hashBytes(data), data.size()});
             m_keys.emplace(toLower(path), path);
             m_outputs.emplace(std::move(path), std::move(data));
         }
         return true;
+    }
+
+    // --- incremental cooking (manifest) ---
+
+    /// Options that change outputs; a manifest written with other options is not reused.
+    std::string optionsString() const
+    {
+        const bool ktx2 = m_options.textures == TextureMode::Ktx2;
+        return std::string("textures=") + (ktx2 ? "ktx2" : "copy") +
+               " uastc=" + (ktx2 ? std::to_string(m_options.uastcLevel) : std::string("-")) +
+               " output=" + (m_options.pack.empty() ? std::string("loose") : "pack:" + m_options.pack);
+    }
+
+    void loadPreviousManifest()
+    {
+        if (m_options.full)
+        {
+            return;
+        }
+        const fs::Path path = m_options.out / fs::fromUtf8(kManifestPath);
+        if (!fs::exists(path))
+        {
+            return;
+        }
+        auto text = fs::readText(path);
+        auto parsed = text ? parseManifest(text.value()) : Result<Manifest>(text.error());
+        if (!parsed)
+        {
+            G7_LOG_WARN("cook", "ignoring manifest ({}), cooking everything", parsed.error().message);
+            return;
+        }
+        if (parsed.value().cookerVersion != kCookerVersion || parsed.value().options != m_new.options)
+        {
+            G7_LOG_INFO("cook", "cooker version or options changed, cooking everything");
+            return;
+        }
+        m_previous = std::move(parsed).value();
+        if (!m_options.pack.empty())
+        {
+            const fs::Path pak = m_options.out / fs::fromUtf8(m_options.pack);
+            m_previousPak = std::make_unique<asset::Vfs>();
+            if (!fs::exists(pak) || !m_previousPak->mount(pak, 0))
+            {
+                m_previousPak.reset(); // nothing to reuse from
+            }
+        }
+    }
+
+    /// glTF buffers and images referenced by URI, with content hashes (0 = missing).
+    std::vector<ManifestDependency> meshDependencies(const fs::Path& location,
+                                                     std::span<const u8> bytes) const
+    {
+        std::map<std::string, u64> deps;
+        for (const std::string& uri : gltfExternalUris(bytes))
+        {
+            const fs::Path referenced = (location.parent_path() / fs::fromUtf8(uri)).lexically_normal();
+            auto path = asset::normalizeVfsPath(fs::toUtf8(referenced.lexically_relative(m_options.source)));
+            if (!path || !isWithin(referenced, m_options.source))
+            {
+                continue; // reported as error when the mesh is cooked
+            }
+            auto data = fs::readFile(referenced);
+            deps[std::move(path).value()] = data ? hashBytes(data.value()) : 0;
+        }
+        std::vector<ManifestDependency> out;
+        for (auto& [path, hash] : deps)
+        {
+            out.push_back({path, hash});
+        }
+        return out;
+    }
+
+    /// For KTX2 the output of an image depends on how meshes use it.
+    std::string textureUsageTag(const std::string& relative, const std::string& ext) const
+    {
+        if (m_options.textures != TextureMode::Ktx2 || !contains(kImageExtensions, ext))
+        {
+            return {};
+        }
+        const bool normal = m_normalImages.contains(relative);
+        const bool color = m_colorImages.contains(relative);
+        return normal && color ? "both" : normal ? "normal" : "color";
+    }
+
+    u64 sourceKey(const std::string& relative, std::span<const u8> bytes,
+                  const std::vector<ManifestDependency>& deps, const std::string& usage) const
+    {
+        u64 h = hashText("g7cook " + std::to_string(kCookerVersion) + " " + m_new.options);
+        h = hashText(relative, h);
+        h = hashBytes(bytes, h);
+        for (const auto& d : deps)
+        {
+            h = hashText(d.path, h);
+            const u64 dh = d.hash;
+            h = hashBytes(std::span(reinterpret_cast<const u8*>(&dh), sizeof(dh)), h);
+        }
+        return hashText(usage, h);
+    }
+
+    /// Takes over the previous outputs of a source whose key did not change (verified by hash).
+    bool reusePrevious(const std::string& relative, ManifestEntry& entry)
+    {
+        if (!m_previous)
+        {
+            return false;
+        }
+        const auto it = m_previous->sources.find(relative);
+        if (it == m_previous->sources.end() || it->second.key != entry.key)
+        {
+            return false;
+        }
+        std::vector<std::pair<std::string, std::vector<u8>>> files;
+        for (const ManifestOutput& out : it->second.outputs)
+        {
+            auto data = previousOutput(out.path);
+            if (!data || data->size() != out.size || hashBytes(*data) != out.hash)
+            {
+                return false; // missing or changed by hand: cook again
+            }
+            files.emplace_back(out.path, std::move(*data));
+        }
+        if (emitAll(relative, std::move(files)))
+        {
+            if (m_options.pack.empty())
+            {
+                for (const ManifestOutput& out : it->second.outputs)
+                {
+                    m_unchanged.insert(out.path);
+                }
+            }
+            entry.outputs = std::move(m_emitted);
+            m_new.sources.emplace(relative, std::move(entry));
+            ++m_report.reused;
+        }
+        return true; // a collision was reported by emitAll; cooking again would collide too
+    }
+
+    /// True if every source was reused and none was removed: the outputs equal the previous ones.
+    bool nothingChanged() const
+    {
+        if (!m_previous || m_report.cooked != 0 || m_previous->sources.size() != m_new.sources.size())
+        {
+            return false;
+        }
+        return std::equal(m_previous->sources.begin(), m_previous->sources.end(), m_new.sources.begin(),
+                          [](const auto& a, const auto& b)
+                          { return a.first == b.first && a.second.key == b.second.key; });
+    }
+
+    std::optional<std::vector<u8>> previousOutput(const std::string& path) const
+    {
+        if (!m_options.pack.empty())
+        {
+            if (!m_previousPak)
+            {
+                return std::nullopt;
+            }
+            auto data = m_previousPak->read(path);
+            return data ? std::optional(std::move(data).value()) : std::nullopt;
+        }
+        const fs::Path target = (m_options.out / fs::fromUtf8(path)).lexically_normal();
+        if (!isWithin(target, m_options.out))
+        {
+            return std::nullopt; // never reuse files from outside <out>
+        }
+        auto data = fs::readFile(target);
+        return data ? std::optional(std::move(data).value()) : std::nullopt;
+    }
+
+    static bool sameContent(const fs::Path& target, const std::vector<u8>& data)
+    {
+        std::error_code ec;
+        if (!std::filesystem::is_regular_file(target, ec) ||
+            std::filesystem::file_size(target, ec) != data.size())
+        {
+            return false;
+        }
+        auto existing = fs::readFile(target);
+        return existing && existing.value() == data;
+    }
+
+    /// Loose mode: deletes outputs listed in the previous manifest that are no longer produced.
+    void removeStaleOutputs()
+    {
+        if (!m_previous)
+        {
+            return;
+        }
+        for (const auto& [source, entry] : m_previous->sources)
+        {
+            for (const ManifestOutput& out : entry.outputs)
+            {
+                if (m_keys.contains(toLower(out.path)))
+                {
+                    continue; // still produced (possibly in another spelling)
+                }
+                // Second line of defence besides parseManifest: never delete outside <out>.
+                const fs::Path target = (m_options.out / fs::fromUtf8(out.path)).lexically_normal();
+                if (!isWithin(target, m_options.out))
+                {
+                    G7_LOG_WARN("cook", "manifest output '{}' lies outside the output directory, not removed",
+                                out.path);
+                    continue;
+                }
+                std::error_code ec;
+                if (std::filesystem::remove(target, ec))
+                {
+                    G7_LOG_INFO("cook", "removed stale output {}", out.path);
+                }
+            }
+        }
+    }
+
+    Result<void> writeManifest() const
+    {
+        const fs::Path path = m_options.out / fs::fromUtf8(kManifestPath);
+        if (auto created = fs::createDirectories(path.parent_path()); !created)
+        {
+            return created.error();
+        }
+        return fs::writeTextAtomic(path, serializeManifest(m_new));
     }
 
     void fail(const std::string& path, const std::string& message)
@@ -415,6 +682,11 @@ private:
 
     const CookOptions& m_options;
     std::map<std::string, std::vector<u8>> m_outputs;        // sorted by path
+    std::optional<Manifest> m_previous;                      // valid previous manifest, if any
+    std::unique_ptr<asset::Vfs> m_previousPak;               // previous archive (pack mode)
+    Manifest m_new;                                          // written after a successful cook
+    std::vector<ManifestOutput> m_emitted;                   // outputs of the source being cooked
+    std::set<std::string> m_unchanged;                       // loose outputs reused as they are
     std::map<std::string, Result<asset::MeshData>> m_meshes; // parsed in scanTextureUsage (KTX2 mode)
     std::set<std::string> m_normalImages;                    // VFS paths used as normal maps
     std::set<std::string> m_colorImages;                     // VFS paths used as colour textures
@@ -464,9 +736,11 @@ Result<CookReport> cook(const CookOptions& options)
         return written.error();
     }
     CookReport report = std::move(cook).report();
-    G7_LOG_INFO("cook", "{} meshes, {} images, {} copied, {} skipped -> {} outputs ({} errors)",
-                report.meshes, report.images, report.copied, report.skipped, report.outputs,
-                report.errors.size());
+    G7_LOG_INFO(
+        "cook",
+        "{} cooked ({} meshes, {} images, {} copied), {} reused, {} skipped -> {} outputs ({} errors)",
+        report.cooked, report.meshes, report.images, report.copied, report.reused, report.skipped,
+        report.outputs, report.errors.size());
     return report;
 }
 } // namespace g7::cook

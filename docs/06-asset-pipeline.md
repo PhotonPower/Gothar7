@@ -30,7 +30,7 @@
 ## g7-cook
 ```
 g7-cook [--source assets/source] [--out assets/cooked] [--pack data.g7pak] [--level 19]
-        [--textures copy|ktx2] [--uastc-level 2] [--clean]
+        [--textures ktx2|copy] [--uastc-level 2] [--full] [--clean]
 ```
 Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_lib`
 (`tools/asset-cooker/src/Cooker.hpp`, `g7::cook::cook(options)`); `g7-cook` ist die Kommandozeile dazu.
@@ -39,8 +39,9 @@ Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_
 - **glTF/GLB → `.g7mesh`** (`asset/MeshFile.hpp`). Eingebettete Bilder werden als `<mesh>.img<n>.png|jpg` neben
   das Mesh gelegt. Externe Bilder werden selbst gekocht; das Mesh verweist dann per **VFS-Pfad ab der Wurzel**
   darauf (`../textures/wood.png` wird zu `textures/wood.png`).
-- **Bilder** (`.png/.jpg/.jpeg/.tga/.bmp`) werden auf Lesbarkeit geprüft. Mit `--textures copy` (Vorgabe, bis
-  `render` KTX2 hochladen kann) bleiben sie unverändert. Mit **`--textures ktx2`** werden sie zu `<name>.ktx2`:
+- **Bilder** (`.png/.jpg/.jpeg/.tga/.bmp`) werden auf Lesbarkeit geprüft. Mit **`--textures ktx2`** (Vorgabe von
+  `g7-cook`, sofern mit libktx gebaut) werden sie zu `<name>.ktx2`; mit `--textures copy` bleiben sie unverändert
+  (Vorgabe der Bibliothek `CookOptions` und von Builds ohne libktx). Bei KTX2 gilt:
   - vollständige Mip-Kette, im Cooker gerechnet (Box-Filter; Farbe in linearem Licht gemittelt, Normalen gemittelt
     und neu normiert);
   - UASTC (`--uastc-level 0..4`, Vorgabe 2) mit zstd-Superkompression.
@@ -59,8 +60,25 @@ Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_
   derselben Ausgabe wie `hut.glb` und `hut.gltf`) werden gesammelt und gemeldet. Der Rest wird trotzdem gekocht;
   der Exit-Code ist dann 1.
 
-**Geplant:** KTX2 als Vorgabe (sobald `render` BC7/BC5 hochlädt), Manifest mit Hashes für inkrementelles Kochen
-(Quell-Hash + Cooker-Version), `--watch` für Hot-Reload, weitere Prüfungen (Skelett-Namen, Mipmaps).
+**Inkrementelles Kochen (Manifest):** `<out>/.g7cook/manifest.txt` (Textformat, tab-getrennt, sortiert;
+`tools/asset-cooker/src/Manifest.hpp`) hält je Quelle einen **Schlüssel** und ihre Ausgaben mit Hash und Größe fest.
+- Der Schlüssel ist ein 64-Bit-FNV-1a-Hash über die Bytes der Quelle, ihre Abhängigkeiten, die Cooker-Version
+  (`kCookerVersion`, wird bei Formatänderungen erhöht) und die Optionen, die die Ausgabe beeinflussen. Bei Bildern im
+  KTX2-Modus zählt zusätzlich die Verwendung (Farbe oder Normal-Map) dazu.
+- Abhängigkeiten eines glTF sind die `uri`-Einträge im JSON (bei `.glb` im JSON-Chunk), also externe `.bin` und Bilder.
+  `data:`-URIs zählen nicht.
+- **Unveränderter Schlüssel:** Die alten Ausgaben werden wiederverwendet; lose Dateien werden per Hash geprüft,
+  im Pack-Modus kommen die Einträge aus dem alten Archiv. Unveränderte lose Dateien werden nicht neu geschrieben,
+  und hat sich gar nichts geändert, bleibt auch das Archiv unangetastet. So bleiben Zeitstempel stabil, und Hot-Reload löst nicht unnötig aus.
+- **Gelöschte Quellen:** Ihre Ausgaben werden entfernt, aber nur Dateien, die im Manifest stehen; fremde Dateien bleiben.
+  Fehlgeschlagene Quellen kommen nicht ins Manifest.
+- Passen Cooker-Version oder Optionen nicht oder ist das Manifest kaputt, wird alles gekocht. `--full` erzwingt das.
+- **Bericht:** „N cooked, M reused“. Ein inkrementeller Lauf erzeugt byte-gleiche Ergebnisse wie ein vollständiger.
+  Die Testszene (47 Dateien) braucht ohne Änderungen 0,16 s statt 3,5 s.
+
+**Geplant:** `--watch` für Hot-Reload während der Entwicklung; vorkomprimierte Einträge im `PakWriter`, damit
+bei Teiländerungen nicht alle Einträge neu komprimiert werden; weitere Prüfungen (Skelett-Namen, Mipmaps);
+Skelette und Animationen (M6).
 
 ## Platzhalter-Inhalte
 Bis eigene Modelle existieren: Kapseln/Boxen + CC0-Pakete (z. B. Quaternius, Kenney, Poly Haven)
