@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
+import numpy.typing as npt
 from pyproj import Transformer
 
 from gothar_worldgen.facade.equirect import CameraPose
@@ -105,6 +107,20 @@ class Track:
         f = 0.0 if t1 <= t0 else min(1.0, max(0.0, (t - t0) / (t1 - t0)))
         (x0, z0), (x1, z1) = self.xz[i], self.xz[i + 1]
         return x0 + (x1 - x0) * f, z0 + (z1 - z0) * f
+
+    def positions(self, ts: npt.ArrayLike) -> npt.NDArray[np.float64]:
+        """Local (x, z) per time, shape (n, 2); clamped to the track like ``position``."""
+        t = np.asarray(ts, dtype=np.float64)
+        xs = np.interp(t, self.times, [p[0] for p in self.xz])
+        zs = np.interp(t, self.times, [p[1] for p in self.xz])
+        return np.stack([xs, zs], axis=-1)
+
+    def speeds(self, ts: npt.ArrayLike, window_s: float = 2.0) -> npt.NDArray[np.float64]:
+        """Ground speed (m/s) per time, central difference over ``window_s``."""
+        t = np.asarray(ts, dtype=np.float64)
+        a = self.positions(t - window_s / 2)
+        b = self.positions(t + window_s / 2)
+        return np.linalg.norm(b - a, axis=-1) / window_s
 
     def walking_heading(self, t: float) -> float:
         """Compass heading (degrees, clockwise from north) of the movement at time ``t``."""

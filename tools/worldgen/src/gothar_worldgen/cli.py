@@ -17,18 +17,27 @@ from gothar_worldgen.config import (
     load_site,
 )
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
+from gothar_worldgen.facade.capture import (
+    CaptureError,
+    CaptureOptions,
+    process_capture,
+    terrain_ground,
+)
 from gothar_worldgen.facade.equirect import CameraPose
-from gothar_worldgen.facade.poses import DEFAULT_CAMERA_HEIGHT_M
+from gothar_worldgen.facade.frames import ToolError, find_ffmpeg
+from gothar_worldgen.facade.poses import DEFAULT_CAMERA_HEIGHT_M, Track, TrackError, load_gpx
 from gothar_worldgen.facade.preview import load_buildings, load_equirect, preview_building
 from gothar_worldgen.facade.rectify import FacadeError
+from gothar_worldgen.facade.sync import parse_utc
 from gothar_worldgen.geo.bbox import BBox, tiles_covering
 from gothar_worldgen.geo.dgm1 import DgmError
+from gothar_worldgen.geo.frame import LocalFrame
 from gothar_worldgen.geo.lod2 import Lod2Error
 from gothar_worldgen.geo.osm import OsmError
 from gothar_worldgen.importer import run_import
 from gothar_worldgen.qa.checks import FAIL
 from gothar_worldgen.qa.run import run_qa
-from gothar_worldgen.qa.workdata import QaError
+from gothar_worldgen.qa.workdata import QaError, load_work
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -183,6 +192,42 @@ def _cmd_facade_preview(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK if any(r.view is not None for r in results) else EXIT_ERROR
 
 
+def _cmd_facade_frames(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    if args.every <= 0:
+        print("error: --every must be > 0", file=sys.stderr)
+        return EXIT_ERROR
+    try:
+        start = parse_utc(args.start) if args.start else None
+    except ValueError:
+        print(f"error: --start '{args.start}' is not an ISO 8601 time", file=sys.stderr)
+        return EXIT_ERROR
+    try:
+        ffmpeg = find_ffmpeg(args.ffmpeg, local.ffmpeg)
+        track = Track(load_gpx(args.gpx), LocalFrame.for_site(site, 0.0))
+    except (ToolError, TrackError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    ground = None
+    try:
+        work = load_work(paths.work)
+        ground = terrain_ground(lambda x, z: float(work.sample_heights([x], [z])[0]))
+    except QaError as e:
+        print(f"  warning: no terrain ({e}); camera heights relative to y = 0", file=out)
+    name = args.name or args.video.stem
+    out_dir = paths.work / "captures" / name
+    options = CaptureOptions(args.every, start, args.heading_offset, args.camera_height)
+    try:
+        doc = process_capture(ffmpeg, args.video, track, out_dir, options, ground, out)
+    except (ToolError, CaptureError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"  {len(doc['frames'])} frames -> {out_dir / 'frames.json'}", file=out)
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gothar-worldgen",
@@ -243,6 +288,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--px-per-m", type=float, default=50.0)
     p.add_argument("--out", type=Path, default=None, help="default: <work>/<site>/facades")
     p.set_defaults(func=_cmd_facade_preview)
+
+    p = fsub.add_parser(
+        "frames", help="frames + camera poses from an exported 360° video and its GPX track"
+    )
+    p.add_argument("site")
+    p.add_argument("video", type=Path, help="equirectangular MP4 exported from Insta360 Studio")
+    p.add_argument("--gpx", type=Path, required=True, help="GPS track of the recording")
+    p.add_argument("--every", type=float, default=2.0, help="seconds between frames (default 2)")
+    p.add_argument("--start", default=None, help="UTC time of video second 0 (skips auto sync)")
+    p.add_argument("--heading-offset", type=float, default=0.0,
+                   help="image centre vs. walking direction, degrees clockwise")  # fmt: skip
+    p.add_argument("--camera-height", type=float, default=DEFAULT_CAMERA_HEIGHT_M)
+    p.add_argument("--name", default=None, help="capture name (default: video file name)")
+    p.add_argument("--ffmpeg", type=Path, default=None, help="path to ffmpeg")
+    p.set_defaults(func=_cmd_facade_frames)
 
     return parser
 
