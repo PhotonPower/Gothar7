@@ -37,8 +37,17 @@ NPCs mit reduzierter Update-Rate).
 
 ## Referenz-Skelett (Menschen) – verbindlich ab F1
 
-Quelle der Wahrheit: `assets/source/characters/rig/human_reference.blend` (entsteht in F1).
-Inhalts-Pipeline, Namenskonvention der Clips und Quellen: `docs/design/characters-pipeline.md`.
+Quelle der Wahrheit: `assets/source/characters/rig/human_reference.blend`, erzeugt aus
+`tools/chargen/src/gothar_chargen/data/human_reference.toml`; Export `human_reference.glb` daneben
+(60 Knochen, Gliederpuppe mit Skin und Test-Morph-Targets – als Testfigur für M6 geeignet).
+Gelenkpositionen und Knochenachsen stammen aus dem Quaternius-Rig (CC0, Universal Animation Library 2).
+Inhalts-Pipeline, Namenskonvention der Clips, Export-Einstellungen und `events.toml`-Format:
+`docs/design/characters-pipeline.md` (§2, §2.1, §3). Prüfung: `gothar-chargen validate` (`tools/chargen`).
+
+- **Bind-Pose: T-Pose**, Handflächen nach unten. glTF-Konvention: Y oben, Figur blickt nach +Z,
+  linke Seite (`*_l`) bei +X; `root` im Ursprung, Maßstab 1 (1 Einheit = 1 m), Größe ca. 1,83 m.
+- In der `.glb` hängt `root` unter einem Armatur-Knoten (`human_reference`) mit Einheitstransformation;
+  die Y-oben-Umrechnung steckt in der lokalen Rotation von `root`.
 
 ```
 root                                   Bodenhöhe, trägt Root Motion

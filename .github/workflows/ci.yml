@@ -186,3 +186,43 @@ jobs:
 
       - name: Pytest
         run: python -m pytest --cov=gothar_worldgen --cov-report=term-missing
+
+  # Character-track tools (tools/chargen, Python): lint, format check, tests, and the rig validator
+  # over all character assets (assets/source/characters/**/*.glb). Blender is not installed here;
+  # tests marked "blender" are skipped.
+  chargen:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            python: "3.11"   # minimum supported version (= Blender 4.5's Python)
+          - os: windows-2022
+            python: "3.12"   # development setup
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: tools/chargen
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: tools/chargen/pyproject.toml
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Ruff (format)
+        run: ruff format --check .
+
+      - name: Pytest
+        run: python -m pytest --cov=gothar_chargen --cov-report=term-missing
+
+      - name: Validate character assets
+        run: gothar-chargen validate --strict

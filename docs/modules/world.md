@@ -6,7 +6,8 @@
 ## Szene (ADR 0005: EnTT)
 ```cpp
 namespace g7::world {
-struct VobId { u64 value; };                      // persistent, unique per world
+struct VobId { u64 value; };                      // persistent, unique per world, never reused (ADR 0005); 0 = none
+inline constexpr u64 kRuntimeVobIdBase = 0x8000'0000'0000'0000; // vobs spawned at runtime (saved in the save game)
 struct Vob        { VobId id; StringId name; };   // every placed object
 struct Transform  { Vec3 position; Quat rotation; Vec3 scale{1}; };
 struct WorldTransform { Mat4 matrix; };           // computed by hierarchy system
@@ -18,8 +19,11 @@ struct Zone       { ZoneType type /*Music, Ambient, Indoor, Owned*/; StringId va
 
 class World {
 public:
-    entt::registry& registry();
+    // The entt::registry is not part of the API (ADR 0005): upper modules use these functions.
     entt::entity spawnVob(const VobDesc&);  void destroyVob(entt::entity);
+    template <class C> C& set(entt::entity, C);  template <class C> C* get(entt::entity);  template <class C> void remove(entt::entity);
+    template <class... C, class Fn> void each(Fn&&);   // iterate entities with all of C...
+    VobId idOf(entt::entity) const;
     entt::entity findByName(StringId) const; entt::entity findById(VobId) const;
     GameTime& time(); Environment& environment(); const Waynet& waynet() const;
     void fixedUpdate(f64 dt);
@@ -28,8 +32,12 @@ public:
 ```
 
 ## Weltformat `.g7world` (JSON, vom Editor geschrieben)
+**VobId-Vertrag** (ADR 0005, `docs/coordination.md`): Jeder Vob hat eine `id` (u64, ≥ 1), eindeutig in der Welt und nie
+wiederverwendet; `nextVobId` ist der nächste freie Wert und steigt nur. Editor und Welt-Assembler (W3) vergeben IDs
+daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vobs liegen ab `kRuntimeVobIdBase`.
+
 ```json
-{ "version": 1, "name": "testworld",
+{ "version": 1, "name": "testworld", "nextVobId": 102,
   "staticMeshes": ["meshes/world/terrain.g7mesh", "meshes/world/camp.g7mesh"],
   "vobs": [ { "id": 101, "type": "mesh", "name": "CAMPFIRE_01", "pos": [1,0,2], "rot": [0,0,0,1],
               "mesh": "meshes/props/campfire.g7mesh", "components": { "light": { "color": [1,0.6,0.3], "range": 8, "flicker": 0.3 } } } ],

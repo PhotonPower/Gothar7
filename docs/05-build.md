@@ -152,7 +152,7 @@ Standard-Runnern sind damit kostenlos.
 | stb (image, truetype) | `stb` | asset/ui | M2 |
 | KTX (libktx, UASTC → BC7/BC5) | `ktx` (ADR 0016) | asset/tools | M3 |
 | zstd | `zstd` (ADR 0016) | asset/tools | M3 |
-| EnTT | `entt` | world (öffentlich) | M4 |
+| EnTT 3.16 (MIT) | `entt` (ADR 0005) | world (öffentlich; Registry nicht in der API) | M4 |
 | nlohmann-json | `nlohmann-json` | world (Weltformat) | M4 |
 | Jolt Physics | `joltphysics` | physics | M5 |
 | Lua 5.4 + sol2 | `lua`, `sol2` | script | M7 |

@@ -32,6 +32,7 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 | Heightmap `terrain.r16` + `terrain.json` | welt | engine (W2/M4-Terrain) | `leonberg-pipeline.md` §4 |
 | Gebäude-`.glb` + Sammel-Index | welt | engine | `leonberg-pipeline.md` §5 W-C |
 | `.g7world` (Format) | engine | welt (Assembler) | `docs/modules/world.md` |
+| `VobId` (64 Bit, je Welt eindeutig, nie wiederverwendet; `nextVobId` in `.g7world`) | engine | welt (Assembler vergibt IDs) | ADR 0005, `docs/modules/world.md` |
 | Referenz-Skelett, Sockets | figuren + engine gemeinsam | beide | `docs/modules/animation.md` |
 | Clip-Namen, `events.toml` | figuren | engine (M6) | `characters-pipeline.md` §3 |
 | Morph-Target-Namen | figuren | engine (M6, M10 Lippensync) | `characters-pipeline.md` §6 |
@@ -61,5 +62,7 @@ Regeln:
 1. Sitzung arbeitet auf `feature/<spur><nr>-<thema>` (z. B. `feature/f1-rig`), PR gegen `main`.
 2. CI grün; PR-Text nennt betroffene Verträge und gemeinsame Dateien.
 3. Nachricht an `koordinator` → Review (Architekturregeln, Verträge, Tests, Doku) → Merge oder Rückmeldung.
+   Der Koordinator merged **ohne** `--delete-branch`: `gh` würde sonst den Worktree der Autor-Sitzung entfernen, in dem
+   der Branch ausgecheckt ist. Jede Sitzung löscht ihre Branches nach dem Merge selbst (lokal und auf `origin`).
 4. Nach dem Merge: betroffene Sitzungen holen `main` beim nächsten Branch-Start (`git fetch` + neuer Branch von `origin/main`).
 5. PRs mit „Entscheidung nötig:“ merged der Koordinator **nicht**, bis der Mensch entschieden hat.

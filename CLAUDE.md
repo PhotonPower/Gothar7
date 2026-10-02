@@ -111,8 +111,9 @@ Phase **M1** abgeschlossen: SDL3-Fenster, Eingabe, Aktions-Mapping aus `game/con
 Zeitskalierung/Pause.
 Phase **M2** abgeschlossen: OpenGL-Renderer (RHI, Shader-Hot-Reload, glTF, Materialien, Licht, Schatten, Nebel,
 Tonemapping, Debug-Draw, ImGui), Testszene `assets/source/testscene` (`--scene`, `--benchmark`).
-Aktuelle Phase: **M3** (Asset-System): VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles, asynchron), Engine-Anbindung,
-Hot-Reload und `g7-cook` (glTF → `.g7mesh`, KTX2/UASTC; ADR 0016) stehen, `render` lädt KTX2 (BC7/BC5); offen: KTX2 als Cooker-Vorgabe, Manifest.
-Welt-Spur: **W1** (Geodaten-Import Leonberg) abgeschlossen; W2/W3 warten auf M4/M5, W4 ist ohne Engine möglich.
-Figuren-Spur: F1–F5 definiert; **F1** (Referenz-Rig, `tools/chargen`) steht an und ist Voraussetzung für M6.
+Phase **M3** abgeschlossen: VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles, asynchron), Engine-Anbindung,
+Hot-Reload, `g7-cook` (glTF → `.g7mesh`, KTX2/UASTC als Vorgabe, Manifest/inkrementell; ADR 0016), `render` lädt KTX2.
+Aktuelle Phase: **M4** (Welt & Szene): ADR 0005 akzeptiert (EnTT, `VobId`-Vertrag); als Erstes Registry, `VobId`, Transform-Hierarchie.
+Welt-Spur: **W1** abgeschlossen; **W4** Schritt 1 (Fassaden-Werkzeug, Web-UI für Annotationen) läuft; W2/W3 warten auf M4/M5.
+Figuren-Spur: **F1** (Referenz-Rig, `tools/chargen`) in Arbeit, Voraussetzung für M6.
 Details siehe `docs/03-roadmap.md`.
