@@ -266,3 +266,17 @@ TEST_CASE("cook option checks and --clean")
     CHECK_FALSE(std::filesystem::exists(t.out / "stale.txt"));
     CHECK(std::filesystem::exists(t.source / "models" / "Tri.glb")); // sources untouched
 }
+
+TEST_CASE("a glTF without a mesh (animation set) is skipped, not cooked empty")
+{
+    SourceTree t;
+    const std::string json =
+        R"({"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{"name":"root"}]})";
+    writeText(t.source / "anims" / "none.gltf", json);
+    auto report = cook::cook({.source = t.source, .out = t.out});
+    REQUIRE_MESSAGE(report, (report ? "" : report.error().message));
+    CHECK(report.value().errors.empty());
+    CHECK(report.value().meshes == 2);  // the two of the source tree
+    CHECK(report.value().skipped == 5); // the four usual ones + the animation set
+    CHECK_FALSE(std::filesystem::exists(t.out / "anims" / "none.g7mesh"));
+}

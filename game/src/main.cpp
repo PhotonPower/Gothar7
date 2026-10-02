@@ -28,6 +28,8 @@ struct CommandLine
     bool noGround = false;
     std::string viewMesh;
     std::string scene;
+    std::string world;
+    std::string saveWorld;
     std::string screenshot;
     bool benchmark = false;
     std::optional<g7::u32> viewpoint;
@@ -60,6 +62,14 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--no-render")
         {
             cli.noRender = true;
+        }
+        else if (arg.starts_with("--world="))
+        {
+            cli.world = std::string(arg.substr(8));
+        }
+        else if (arg.starts_with("--save-world="))
+        {
+            cli.saveWorld = std::string(arg.substr(13));
         }
         else if (arg.starts_with("--scene="))
         {
@@ -219,6 +229,14 @@ int main(int argc, char** argv)
     if (!cli->viewMesh.empty())
     {
         config.viewMesh = g7::fs::fromUtf8(cli->viewMesh);
+    }
+    if (!cli->world.empty())
+    {
+        config.world = g7::fs::fromUtf8(cli->world);
+    }
+    if (!cli->saveWorld.empty())
+    {
+        config.saveWorld = g7::fs::fromUtf8(cli->saveWorld);
     }
     if (!cli->scene.empty())
     {

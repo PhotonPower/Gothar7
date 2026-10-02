@@ -98,7 +98,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 
 ## M4 – Welt & Szene (+ Editor-Grundlage)
 - [x] EnTT-Registry, Komponenten-Grundsatz, `VobId`, Transform-Hierarchie (ADR 0005) – `world::Scene`, Registry nicht in der API
-- [ ] Weltformat `.g7world` (Text/JSON für Versionierbarkeit, binäre gekochte Variante)
+- [x] Weltformat `.g7world` (Text/JSON für Versionierbarkeit, binäre gekochte Variante) – Text v1 (ADR 0017, `--world`, `--save-world`, Testwelt `testworld/camp.g7world`); Binärvariante bei Bedarf
 - [ ] Statisches Welt-Mesh (Gelände + Architektur) mit Kollisionsgeometrie
 - [ ] **Heightmap-Terrain** (Kacheln, LOD, Splatmap mit 4–8 Schichten, Löcher) – Grundlage für W2 (Leonberg-Gelände)
 - [ ] Vob-Typen: Mesh, Licht, Sound-Emitter, Trigger, Startpunkt, Mob (Platzhalter)

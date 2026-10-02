@@ -28,6 +28,8 @@
 #include <g7/runtime/FrameTimes.hpp>
 #include <g7/runtime/SceneFile.hpp>
 #include <g7/ui/DebugUi.hpp>
+#include <g7/world/Scene.hpp>
+#include <g7/world/WorldFile.hpp>
 
 #include <map>
 #include <memory>
@@ -77,6 +79,11 @@ struct EngineConfig
     /// Optional test scene (--scene, format in SceneFile.hpp); replaces --view-mesh. VFS path or file
     /// on disk like viewMesh.
     fs::Path scene;
+    /// Optional world (--world, .g7world); VFS path or file on disk like viewMesh. Takes precedence
+    /// over scene and viewMesh.
+    fs::Path world;
+    /// After loading, write the scene's world vobs as .g7world to this file (--save-world).
+    fs::Path saveWorld;
     u32 viewpoint = 0;  ///< Start viewpoint of the scene (--viewpoint=N).
     bool ground = true; ///< Ground plate under the --view-mesh model (--no-ground).
     /// Benchmark (--benchmark): visits the scene's viewpoints for `benchmarkFrames` frames each, logs
@@ -143,6 +150,8 @@ public:
     /// the last frame after frustum culling.
     [[nodiscard]] usize sceneObjectCount() const noexcept { return m_instances.size(); }
     [[nodiscard]] u32 visibleSceneObjects() const noexcept { return m_visibleInstances; }
+    /// Vobs of the loaded world or scene.
+    [[nodiscard]] world::Scene& scene() noexcept { return m_scene; }
     /// Camera used for rendering (a free-flying debug camera until the player exists, M5).
     [[nodiscard]] render::Camera& camera() noexcept { return m_camera; }
     /// Shader programs (with hot-reload), or nullptr without rendering.
@@ -167,6 +176,10 @@ private:
     [[nodiscard]] Result<void> initSceneRendering();
     [[nodiscard]] Result<void> initViewMesh();
     [[nodiscard]] Result<void> initScene();
+    [[nodiscard]] Result<void> initWorld();
+    /// Render instances and lights for the vobs in m_scene (mesh and light vobs).
+    [[nodiscard]] Result<void> instantiateScene();
+    [[nodiscard]] Result<void> saveWorld(const fs::Path& path) const;
     [[nodiscard]] Result<void> initAssets();
     /// VFS path for a --scene/--view-mesh argument (mounting the folder of a disk file under local/).
     [[nodiscard]] Result<std::string> resolveAssetArgument(const fs::Path& argument);
@@ -211,6 +224,7 @@ private:
     f64 m_frameSeconds = 0.0;         // real duration of the last frame
     f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
     // Scene: --view-mesh (one model) or --scene (test scene); models are shared by instances.
+    world::Scene m_scene; // world vobs (--world, --scene); render instances are built from it
     std::map<std::string, std::unique_ptr<LoadedModel>, std::less<>> m_models; // by VFS path
     std::unique_ptr<LoadedModel> m_groundModel;
     std::vector<SceneInstance> m_instances;

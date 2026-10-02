@@ -13,6 +13,7 @@
     },
     "glm",
     "imgui",
+    { "name": "nlohmann-json", "version>=": "3.12.0" },
     "ktx",
     {
       "name": "sdl3",
