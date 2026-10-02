@@ -33,6 +33,12 @@ Pfad in `tools/worldgen/config/local.toml`). Einrichtung: `tools/worldgen/README
 Python-Pakete (z. B. numpy) stehen in `tools/worldgen/pyproject.toml` und werden mit pip/uv installiert,
 nicht über vcpkg.
 
+### Python (Figuren-Spur)
+Für `tools/chargen/` (Rig-Validator, Blender-Export) wird ebenfalls Python ≥ 3.11 benötigt; einzige
+Laufzeit-Abhängigkeit ist **numpy** (`tools/chargen/pyproject.toml`, Installation mit pip/uv). Blender **4.5 LTS**
+braucht man für `build-rig`, `build-placeholder`, `export` und das Prüfen von `.blend` (Suche: `--blender`,
+`G7_BLENDER`, `PATH`, Standard-Installationsordner). Einrichtung: `tools/chargen/README.md`.
+
 ## Bauen
 ```bash
 cmake --preset debug            # konfiguriert, installiert Abhängigkeiten aus vcpkg.json

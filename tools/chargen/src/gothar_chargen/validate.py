@@ -16,7 +16,8 @@ import numpy as np
 
 from gothar_chargen.events import events_path_for, load_events
 from gothar_chargen.gltf import Gltf, GltfError, Trs, node_trs, quat_angle_deg
-from gothar_chargen.naming import is_clip_name
+from gothar_chargen.naming import is_clip_name, is_loop_clip
+from gothar_chargen.postprocess import TRANSLATED_BONES
 from gothar_chargen.skeleton import RigSpec
 
 ERROR = "error"
@@ -444,9 +445,33 @@ class _Checker:
                     "anim.target",
                     f"clip '{name}' animates nodes outside the skeleton: {_listed(foreign)}",
                 )
+            self._check_channels(name, anim)
             names[name] = self._duration(anim)
         self.r.stats["clips"] = len(anims)
         self._events(names)
+
+    def _check_channels(self, clip: str, anim: dict[str, Any]) -> None:
+        """Translation only on root/pelvis, no scale (keeps each figure's bone lengths)."""
+        moved, scaled = set(), set()
+        for ch in anim.get("channels", []):
+            target = ch.get("target", {})
+            if "node" not in target:
+                continue
+            bone = self.name(target["node"])
+            if target.get("path") == "translation" and bone not in TRANSLATED_BONES:
+                moved.add(bone)
+            elif target.get("path") == "scale":
+                scaled.add(bone)
+        if moved:
+            self.r.error(
+                "anim.channels",
+                f"clip '{clip}' translates bones other than root/pelvis: {_listed(sorted(moved))} "
+                "(export with gothar-chargen export)",
+            )
+        if scaled:
+            self.r.error(
+                "anim.channels", f"clip '{clip}' has scale channels: {_listed(sorted(scaled))}"
+            )
 
     def _duration(self, anim: dict[str, Any]) -> float:
         end = 0.0
@@ -477,12 +502,18 @@ class _Checker:
                 self.r.error("events.clip", f"{ev_path.name}: clip '{clip}' not in {path.name}")
                 continue
             last = round(clips[clip] * ev_file.fps)
-            late = [f"{e.name}@{e.frame}" for e in events if e.frame > last]
+            # loops (s_*): the last frame equals frame 0, so events must lie before it
+            loop = is_loop_clip(clip)
+            late = [
+                f"{e.name}@{e.frame}"
+                for e in events
+                if e.frame > last or (loop and e.frame == last)
+            ]
             if late:
+                bound = f"< {last} (loop: last frame = frame 0)" if loop else f"<= {last}"
                 self.r.error(
                     "events.frame",
-                    f"{ev_path.name}: clip '{clip}' has {last} frames, events after the end: "
-                    + _listed(late),
+                    f"{ev_path.name}: clip '{clip}' allows frames {bound}, got " + _listed(late),
                 )
         self.r.stats["events"] = sum(len(v) for v in ev_file.clips.values())
 

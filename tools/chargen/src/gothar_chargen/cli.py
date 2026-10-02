@@ -11,7 +11,13 @@ from pathlib import Path
 from typing import TextIO
 
 from gothar_chargen import __version__
-from gothar_chargen.blender_run import BlenderError, build_reference_rig, export_glb, find_blender
+from gothar_chargen.blender_run import (
+    BlenderError,
+    build_placeholder,
+    build_reference_rig,
+    export_glb,
+    find_blender,
+)
 from gothar_chargen.gltf import Gltf, GltfError
 from gothar_chargen.skeleton import SkeletonError, load_rig
 from gothar_chargen.validate import Report, reference_pose, validate_file
@@ -121,9 +127,43 @@ def _cmd_build_rig(args: argparse.Namespace, out: TextIO) -> int:
 
 def _cmd_export(args: argparse.Namespace, out: TextIO) -> int:
     glb = args.out or args.blend.with_suffix(".glb")
-    export_glb(find_blender(args.blender), args.blend, glb)
-    print(f"wrote {glb}", file=out)
+    removed = export_glb(find_blender(args.blender), args.blend, glb)
+    note = f" ({removed} translation/scale channels removed)" if removed else ""
+    print(f"wrote {glb}{note}", file=out)
     return EXIT_OK
+
+
+def _find_one(folder: Path, pattern: str) -> Path:
+    found = sorted(folder.rglob(pattern))
+    if len(found) != 1:
+        raise FileNotFoundError(f"expected one '{pattern}' below {folder}, found {len(found)}")
+    return found[0]
+
+
+def _cmd_build_placeholder(args: argparse.Namespace, out: TextIO) -> int:
+    root = find_repo_root()
+    out_dir = args.out_dir or (root / CHARACTERS_DIR if root else None)
+    if out_dir is None:
+        print("error: repository not found; pass --out-dir", file=out)
+        return EXIT_ERROR
+    ual1 = _find_one(args.quaternius, "AnimationLibrary_Godot_Standard.glb")
+    ual2 = _find_one(args.quaternius, "UAL2_Standard.glb")
+    blender = find_blender(args.blender)
+    build_placeholder(blender, ual1, ual2, out_dir, args.clips)
+    rig = load_rig(args.rig)
+    reference = reference_pose(Gltf.load(out_dir / REFERENCE_GLB.relative_to(CHARACTERS_DIR)))
+    ok = True
+    for blend in (
+        out_dir / "figures/placeholder_mannequin.blend",
+        out_dir / "anims/human/none.blend",
+    ):
+        glb = blend.with_suffix(".glb")
+        export_glb(blender, blend, glb)
+        blend.with_suffix(".blend1").unlink(missing_ok=True)
+        report = validate_file(glb, rig, reference)
+        _print_report(report, out)
+        ok = ok and report.ok(strict=True)
+    return EXIT_OK if ok else EXIT_ERROR
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -153,6 +193,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("blend", type=Path)
     p.add_argument("--out", type=Path, help="default: next to the .blend")
     p.set_defaults(func=_cmd_export)
+
+    p = sub.add_parser(
+        "build-placeholder",
+        help="F1 placeholder figure + test clips from the Quaternius libraries (CC0)",
+    )
+    p.add_argument(
+        "--quaternius",
+        type=Path,
+        required=True,
+        help="folder with the unpacked UAL1/UAL2 [Standard] zips (opengameart.org)",
+    )
+    p.add_argument("--clips", default="f1_placeholder", help="clip list in data/clips/")
+    p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
+    p.set_defaults(func=_cmd_build_placeholder)
     return parser
 
 

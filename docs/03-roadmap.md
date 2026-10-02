@@ -336,20 +336,20 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 Spezifikation: `docs/design/characters-pipeline.md`, Liste: `docs/design/animation-list.md`.
 Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source/characters/`.
 
-**Aktueller Stand Figuren-Spur:** F1 läuft – Referenz-Rig (T-Pose, 60 Knochen, Geometrie aus dem Quaternius-Rig, CC0), Export-Einstellungen und
-`tools/chargen` mit Rig-Validator (CI-Job `chargen`) stehen; `events.toml`-Format vorgeschlagen (wartet auf
-Bestätigung durch engine). Offen: CC0-Platzhalterfigur + 3 Test-Clips (PR `feature/f1-placeholder`).
+**Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört): Referenz-Rig (T-Pose, 60 Knochen,
+Geometrie aus dem Quaternius-Rig, CC0), Export-Einstellungen, `tools/chargen` mit Rig-Validator (CI-Job `chargen`), Platzhalterfigur +
+3 Test-Clips mit Events; Verträge mit engine abgestimmt. Nächste Phase: F2 (Basis-Animationsset).
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
 - [x] Export-Einstellungen glTF dokumentiert (Maßstab, Ausrichtung, Skin, Morph-Targets) – characters-pipeline.md §2.1, `gothar-chargen export`
 - [x] `tools/chargen` als Python-Paket (ruff, pytest) mit **Rig-Validator**, in CI eingebunden (Job `chargen`: Tests + `gothar-chargen validate --strict` über `assets/source/characters/`)
-- [ ] CC0-Platzhalterfigur auf das Referenz-Rig übertragen, validiert, mit `g7-cook` gekocht
-- [ ] Namenskonvention und `events.toml`-Format mit dem Engine-Strang abgestimmt (`docs/coordination.md`)
-  - Stand: Format v1 in characters-pipeline.md §3 festgelegt und im Validator umgesetzt; Bestätigung durch engine steht aus
-- Hinweis: Skin/Skelett/Animation kocht `g7-cook` erst mit M6 (`.g7skel`/`.g7anim`); bis dahin heißt „gekocht“ für die Platzhalterfigur: `.g7mesh` ohne Skin
+- [x] CC0-Platzhalterfigur auf das Referenz-Rig übertragen, validiert, mit `g7-cook` gekocht – `figures/placeholder_mannequin` (Quaternius-Mannequin, CC0) + Test-Clips `anims/human/none.glb` (`none/s_idle`, `s_walk`, `s_run` aus UAL1, Fußkontakt-Events), erzeugt mit `gothar-chargen build-placeholder`; `g7-cook` kocht die Figur als `.g7mesh` (ohne Skin)
+- [x] Namenskonvention und `events.toml`-Format mit dem Engine-Strang abgestimmt (`docs/coordination.md`) – von engine bestätigt 2026-10-03 inkl. Kanal-Regel (Translation nur root/pelvis, keine Skalierung) und Event-Präzisierungen (characters-pipeline.md §3)
+- Hinweis: Skin/Skelett/Animation kocht `g7-cook` erst mit M6 (`.g7skel`/`.g7anim`); bis dahin heißt „gekocht“ für die Platzhalterfigur: `.g7mesh` ohne Skin, und ein Clip-Set ohne Mesh ergibt ein leeres `.g7mesh`
 
 **DoD:** Platzhalterfigur + 3 Test-Clips bestehen den Validator und liegen gekocht vor; M6 kann starten.
+✅ Erfüllt, soweit ohne M6 möglich: Figur und Clips bestehen `gothar-chargen validate --strict` (CI); die Figur kocht als `.g7mesh`. Skin und Clips kocht `g7-cook` mit M6, dann ist nur noch die Prüfung nötig.
 
 ## F2 – Basis-Animationsset  (benötigt F1)
 - [ ] Retargeting-Mappings (Quaternius, Mixamo) und Stapel-Retargeting in Blender

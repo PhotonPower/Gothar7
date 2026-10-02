@@ -288,7 +288,7 @@ def test_events_file_ok(tmp_path, figure, rig, reference):
 version = 1
 fps = 30
 [clips."none/s_walk"]
-events = [ { frame = 0, event = "footstep_l" }, { frame = 30, event = "footstep_r" } ]
+events = [ { frame = 0, event = "footstep_l" }, { frame = 15, event = "footstep_r" } ]
 """
     report = validate_file(_write(tmp_path, figure, events), rig, reference)
     assert report.ok(strict=True), report.issues
@@ -306,6 +306,34 @@ events = [ { frame = 0, event = "footstep_l" } ]
 """
     report = validate_file(_write(tmp_path, figure, events), rig, reference)
     assert codes(report) == {"events.frame", "events.clip"}
+
+
+@pytest.mark.parametrize(
+    ("clip", "frame", "ok"),
+    [("none/s_walk", 29, True), ("none/s_walk", 30, False), ("none/t_jump_land", 30, True)],
+)
+def test_events_on_last_frame(tmp_path, figure, rig, reference, clip, frame, ok):
+    add_clip(figure, clip, ["pelvis"], duration=1.0)
+    events = f"""
+version = 1
+[clips."{clip}"]
+events = [ {{ frame = {frame}, event = "land" }} ]
+"""
+    report = validate_file(_write(tmp_path, figure, events), rig, reference)
+    assert report.ok() == ok, report.issues
+
+
+def test_same_frame_events_allowed(tmp_path, figure, rig, reference):
+    add_clip(figure, "1h/t_attack_combo1_t2", ["pelvis"], duration=1.0)
+    events = """
+version = 1
+[clips."1h/t_attack_combo1_t2"]
+events = [
+    { frame = 6, event = "hit_start" },
+    { frame = 6, event = "sound:swing_light" },
+]
+"""
+    assert validate_file(_write(tmp_path, figure, events), rig, reference).ok(strict=True)
 
 
 def test_events_format_error(tmp_path, figure, rig, reference):
