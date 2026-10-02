@@ -6,6 +6,14 @@
   "dependencies": [
     "doctest",
     "glm",
+    {
+      "name": "sdl3",
+      "default-features": false,
+      "features": [
+        { "name": "x11", "platform": "linux" },
+        { "name": "wayland", "platform": "linux" }
+      ]
+    },
     "tomlplusplus"
   ],
   "builtin-baseline": "3aea538b2bb21a586502c67b00eb474fdd2e3098"

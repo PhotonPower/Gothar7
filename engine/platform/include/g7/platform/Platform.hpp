@@ -4,7 +4,7 @@
 // Fenster, Eingabe, Dateisystem-Pfade, OS-Abstraktion (SDL3).
 // Spezifikation: docs/modules/platform.md   |   Roadmap: M1
 //
-// Status: Platzhalter. Die oeffentliche API wird in der genannten Phase entworfen.
+// Public API: Window.hpp (window, events), Paths.hpp (user data directory); Input follows in M1.
 
 #include <string_view>
 

@@ -7,7 +7,9 @@
 
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
+#include <g7/platform/Window.hpp>
 
+#include <memory>
 #include <string>
 
 namespace g7
@@ -15,8 +17,10 @@ namespace g7
 struct EngineConfig
 {
     std::string appName = "Gothar";
-    f64 simulationHz = 60.0; ///< Fixed simulation rate.
-    u64 maxFrames = 0;       ///< 0 = unlimited. Used by tests and headless runs.
+    f64 simulationHz = 60.0;     ///< Fixed simulation rate.
+    u64 maxFrames = 0;           ///< 0 = unlimited. Used by tests and headless runs.
+    bool headless = false;       ///< No window (tests, CI smoke test).
+    platform::WindowDesc window; ///< Used unless headless.
 };
 
 class Engine
@@ -39,11 +43,14 @@ public:
 
     [[nodiscard]] u64 frameCount() const noexcept { return m_frameCount; }
     [[nodiscard]] u64 simulationTicks() const noexcept { return m_simTicks; }
+    /// The game window, or nullptr when headless / before init().
+    [[nodiscard]] platform::Window* window() noexcept { return m_window.get(); }
 
 private:
     void shutdown();
 
     EngineConfig m_config;
+    std::unique_ptr<platform::Window> m_window;
     bool m_initialized = false;
     bool m_quitRequested = false;
     u64 m_frameCount = 0;
