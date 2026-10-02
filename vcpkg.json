@@ -5,6 +5,7 @@
   "description": "Gothar Engine. Abhaengigkeiten werden pro Roadmap-Phase ergaenzt (siehe docs/03-roadmap.md und docs/adr/).",
   "dependencies": [
     "doctest",
+    "fastgltf",
     {
       "name": "glad",
       "features": [ "gl-api-46" ]

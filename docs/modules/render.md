@@ -118,11 +118,24 @@ class FreeFlyCamera { f32 speed, fastFactor, sensitivity, turnRate;
 - `FreeFlyCamera` (Debug, bis zur Spielfigur in M5): fliegt in Blickrichtung, hoch/runter entlang Welt-Y,
   Diagonalen normiert, Pitch auf ±89° begrenzt, `attach` übernimmt die aktuelle Ausrichtung ohne Sprung.
 
+### Statische Meshes – `Mesh.hpp`
+```cpp
+class Mesh { static Result<Mesh> create(Device&, const asset::MeshData&);
+             static std::vector<rhi::VertexAttribute> vertexLayout();  static constexpr u32 kVertexStride = 48;
+             void bind(Device&) const; void draw(Device&, usize submesh) const;
+             std::span<const asset::Submesh> submeshes() const; const AABB& bounds() const; };
+```
+- Ein Vertex-Buffer (`asset::Vertex`, Attribute 0–3: Position, Normale, UV, Tangente), ein u32-Index-Buffer.
+- Vorläufiger Shader `mesh.vert/.frag`: Basisfarbe mit Half-Lambert aus fester Richtung, bis Material- und
+  Licht-Aufgaben folgen.
+
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →
 `ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf nach
 Blickrichtung** als Hintergrund (Vollbild-Dreieck aus `gl_VertexID`, inverse View-Projection als Uniform;
 Platzhalter für den Himmel in M4), dann Puffertausch. `--no-render` startet ein Fenster ohne OpenGL.
+**Modell ansehen:** `--view-mesh=<pfad.gltf>` lädt ein glTF, zeigt es am Ursprung und richtet die
+Debug-Kamera so aus, dass das Modell im Bild ist (Fluggeschwindigkeit nach Modellgröße).
 **Debug-Kamera:** `engine.camera()`, gesteuert über die Aktionen (Lauf-/Dreh-Aktionen, `jump`/`sneak` hoch/runter,
 `run` schnell) und gehaltene rechte Maustaste (relativer Mausmodus); läuft in Echtzeit, auch bei Pause.
 Werte aus `[camera]` (`fov`, `near`, `far`, `mouse_sensitivity`, `fly_speed`). Tests mit echter GPU: Suite

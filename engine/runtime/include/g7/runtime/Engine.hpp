@@ -15,10 +15,12 @@
 #include <g7/platform/Window.hpp>
 #include <g7/render/Camera.hpp>
 #include <g7/render/Device.hpp>
+#include <g7/render/Mesh.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace g7
 {
@@ -36,6 +38,8 @@ struct EngineConfig
     /// Engine shaders; empty = gamePath("shaders"). Point it at engine/render/shaders to edit the
     /// sources live with hot-reload ([render] shader_dir).
     fs::Path shaderDirectory;
+    /// Optional glTF model shown at the origin (--view-mesh); the debug camera frames it.
+    fs::Path viewMesh;
     platform::WindowDesc window; ///< Used unless headless.
     /// Merged settings (engine.toml + user config). The engine reads [input] (scheme,
     /// stick_deadzone) and [bindings.<scheme>]; window settings are applied by the caller.
@@ -98,6 +102,8 @@ public:
 private:
     void shutdown();
     [[nodiscard]] Result<void> initShaders();
+    [[nodiscard]] Result<void> initViewMesh();
+    void drawViewMesh();
     void updateDebugCamera(f64 realSeconds);
 
     EngineConfig m_config;
@@ -107,6 +113,10 @@ private:
     std::unique_ptr<render::ShaderLibrary> m_shaders; // destroyed before the device
     render::rhi::Pipeline m_backgroundPipeline;
     render::rhi::ShaderProgram* m_backgroundProgram = nullptr;
+    render::Mesh m_viewMesh; // empty unless --view-mesh
+    std::vector<Vec4> m_viewMeshColors;
+    render::rhi::ShaderProgram* m_meshProgram = nullptr;
+    render::rhi::Pipeline m_meshPipeline;
     render::Camera m_camera;
     render::FreeFlyCamera m_flyCamera;
     bool m_mouseLook = false;

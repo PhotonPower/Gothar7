@@ -11,6 +11,7 @@ endfunction()
 g7_add_test_suite(core)
 g7_add_test_suite(runtime)
 g7_add_test_suite(platform)
+g7_add_test_suite(asset)
 # test_input_sdl.cpp injects synthetic SDL events and a virtual gamepad.
 find_package(SDL3 CONFIG REQUIRED)
 target_link_libraries(g7_tests_platform PRIVATE SDL3::SDL3)
