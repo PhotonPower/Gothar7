@@ -61,7 +61,11 @@ const FrameStats& stats();   // drawCalls, triangles, pipelineChanges, textureBi
 - **Komprimierte Texturen (M3):** BC7 (Farbe, linear oder sRGB) und BC5 (zweikanalige Normal-Maps) werden je
   Mip-Ebene fertig hochgeladen (`glCompressedTextureSubImage2D`); `generateMipmaps()` lehnt sie ab, als Render-Ziel
   sind sie nicht erlaubt. Ist die Normal-Textur eines Materials BC5, setzt `MaterialSet` `Material::normalTwoChannel`
-  und `mesh.frag` rekonstruiert `z = sqrt(max(0, 1 − x² − y²))`. Die Anbindung an `asset::TextureData` (KTX2) folgt.
+  und `mesh.frag` rekonstruiert `z = sqrt(max(0, 1 − x² − y²))`.
+- **`createTexture(Device&, const asset::TextureData&, bool colour)`** (`TextureUpload.hpp`): RGBA8 (ungekochte
+  PNG/JPEG) sRGB nach Verwendung (Farbe ja, Normalen/Daten nein) mit Mip-Kette von der GPU; BC7 sRGB laut Daten (aus
+  KTX2); BC5 linear; gekochte Formate mit allen mitgelieferten Ebenen. `MaterialSet::ImageLookup` liefert
+  `const asset::TextureData*`; die Pfad-Variante lädt `.ktx2` über `decodeKtx2`, sonst PNG/JPEG.
 - **RAII, nur verschiebbar**, erzeugt über das `Device` (wie in Vulkan). Jedes GL-Objekt steckt in einem
   `rhi::Handle` mit prozessweit eindeutiger `uid`; der Zustands-Cache vergleicht uids, nie GL-Namen
   (gelöschte Namen werden vom Treiber wiederverwendet).

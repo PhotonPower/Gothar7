@@ -227,8 +227,10 @@ std::string vfsSibling(std::string_view base, std::string_view relative);       
 - **`--scene`/`--view-mesh`** nehmen einen VFS-Pfad (`testscene/scene.toml`). Liegt die Datei nur auf der Festplatte,
   wird ihr Ordner mit Priorität 1000 unter `local/` gemountet (`local/Lantern.glb`). Modellpfade einer Szene sind
   relativ zur Szenendatei.
+- **Gekochtes gewinnt:** Für ein Modell `x.glb`/`x.gltf` lädt die Engine `x.g7mesh`, wenn es im VFS liegt
+  (`preferCooked`) – Szenen und `--view-mesh` dürfen Quelldateien nennen und laufen auch nur mit `data.g7pak`.
 - **Laden** in einem Durchgang: alle Meshes parallel auf den Workern (`Handle<MeshData>`), dann deren externe Bilder
-  (`Handle<ImageData>`; gleiche Pfade teilt der Cache), dann Upload im Hauptthread. Bild-URIs werden zuerst als Pfad
+  (`Handle<TextureData>`: KTX2 → BC7/BC5, PNG/JPEG → RGBA8; gleiche Pfade teilt der Cache), dann Upload im Hauptthread. Bild-URIs werden zuerst als Pfad
   ab der VFS-Wurzel versucht (gekochte `.g7mesh`), dann relativ zum Mesh (glTF). `MaterialSet::create` bekommt dafür
   eine `ImageLookup`-Funktion; nicht gefundene Bilder ergeben neutrale Ersatztexturen mit Warnung.
 - `LoadedModel` behält seine Handles (Grundlage für Hot-Reload).
