@@ -51,10 +51,11 @@ class Texture
 {
 public:
     Texture() = default;
-    /// Uploads a whole mip level; `data` must hold exactly width*height*bytesPerPixel of that level.
+    /// Uploads a whole mip level; `data` must hold exactly imageSize(format, level width, level
+    /// height) bytes - pixels, or 4x4 blocks for compressed formats.
     [[nodiscard]] Result<void> upload(u32 level, std::span<const u8> data);
-    /// Fills levels 1.. from level 0.
-    void generateMipmaps();
+    /// Fills levels 1.. from level 0. Not for compressed formats (their mip levels are uploaded).
+    [[nodiscard]] Result<void> generateMipmaps();
     [[nodiscard]] const TextureDesc& desc() const noexcept { return m_desc; }
 
 private:

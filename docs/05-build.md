@@ -63,7 +63,7 @@ das Spiel dort mit `--no-render` starten.
 | `G7_WARNINGS_AS_ERRORS` | OFF | in CI empfohlen ON |
 | `G7_PROFILING` | OFF | aktiviert die `G7_PROFILE_*`-Zonen (eingebauter Sammler, ab M17 Tracy) |
 | `G7_COVERAGE` | OFF | Testabdeckung (`--coverage`, nur GCC/Clang); Auswertung mit gcovr |
-| `G7_DEV_ASSETS` | ON | Entwicklungs-Builds mounten `<repo>/assets/source` und `assets/cooked` (`[assets] dev_mounts`); für Auslieferungen OFF |
+| `G7_DEV_ASSETS` | ON | Entwicklungs-Builds mounten `<repo>/assets/source`, `assets/cooked` und `assets/cooked/*.g7pak` (`[assets] dev_mounts`); für Auslieferungen OFF |
 
 ## Konfigurationsdateien
 | Datei | Inhalt |

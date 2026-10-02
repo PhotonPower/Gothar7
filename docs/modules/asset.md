@@ -201,7 +201,8 @@ std::string vfsSibling(std::string_view base, std::string_view relative);       
   Frame im Hauptthread.
 - **Mounts** aus `[assets]` in `engine.toml`: `dev_mounts = true` mountet in Entwicklungs-Builds (CMake-Option
   `G7_DEV_ASSETS`, Standard an) `<repo>/assets/source` (Priorität 0) und, falls vorhanden, `<repo>/assets/cooked`
-  (Priorität 10 – Gekochtes gewinnt). Dazu beliebige `[[assets.mount]]` mit `path` (relativ zum Spielordner),
+  (Priorität 10 – Gekochtes gewinnt) sowie jedes Archiv `<repo>/assets/cooked/*.g7pak` (Priorität 11, z. B. `data.g7pak`
+  aus `g7-cook --pack`; ein Ordner-Mount zeigt ein Archiv nur als Datei). Dazu beliebige `[[assets.mount]]` mit `path` (relativ zum Spielordner),
   `priority` und `mount_point`; `path = "data/*.g7pak"` mountet alle Archive des Ordners in Namensreihenfolge.
   Fehlende Ordner werden mit Warnung übersprungen.
 - **`--scene`/`--view-mesh`** nehmen einen VFS-Pfad (`testscene/scene.toml`). Liegt die Datei nur auf der Festplatte,

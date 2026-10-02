@@ -29,6 +29,10 @@ enum class Format : u8
     R32F,
     Depth24Stencil8,
     Depth32F,
+    // Block-compressed (4x4 pixels per 16-byte block); uploaded with ready-made mip levels.
+    BC7,      ///< RGBA, linear
+    BC7_SRGB, ///< RGBA, sRGB colour
+    BC5,      ///< RG (two-channel normal maps; the shader reconstructs Z)
 };
 
 enum class VertexFormat : u8
@@ -93,6 +97,11 @@ enum class Wrap : u8
 [[nodiscard]] u32 bytesPerPixel(Format format) noexcept;
 [[nodiscard]] bool isDepthFormat(Format format) noexcept;
 [[nodiscard]] bool hasStencil(Format format) noexcept;
+/// BC7/BC5: data comes in 4x4 blocks; bytesPerPixel() is 0 for them.
+[[nodiscard]] bool isCompressed(Format format) noexcept;
+/// Bytes of one width x height image (or mip level) in `format`: pixels for plain formats, whole
+/// 4x4 blocks (rounded up) for compressed ones.
+[[nodiscard]] usize imageSize(Format format, u32 width, u32 height) noexcept;
 [[nodiscard]] u32 vertexFormatSize(VertexFormat format) noexcept;
 [[nodiscard]] u32 indexSize(IndexType type) noexcept;
 /// Levels of a full mip chain: 1024x512 -> 11.

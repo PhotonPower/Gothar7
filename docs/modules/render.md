@@ -30,16 +30,18 @@ public:
 Keine GL-Typen in öffentlichen Headern; die Abbildung auf GL liegt in `src/rhi/GlMapping.hpp`.
 ```cpp
 namespace g7::render::rhi {
-enum class Format { R8, RG8, RGBA8, RGBA8_SRGB, RGBA16F, R32F, Depth24Stencil8, Depth32F };
+enum class Format { R8, RG8, RGBA8, RGBA8_SRGB, RGBA16F, R32F, Depth24Stencil8, Depth32F,
+                    BC7, BC7_SRGB, BC5 };   // Blockformate: 4x4 Pixel je 16 Byte, BC5 = RG (Normal-Maps)
 enum class VertexFormat { Float1..Float4, UNorm8x4 };  enum class IndexType { U16, U32 };
 enum class Topology { Triangles, Lines };  enum class CullMode { None, Back, Front };
 enum class CompareOp { Never, Less, LessEqual, Equal, Greater, GreaterEqual, Always };
 enum class BlendMode { Opaque, Alpha, Additive };  enum class Filter { Nearest, Linear };  enum class Wrap { Repeat, Clamp, Mirror };
 u32 bytesPerPixel(Format); bool isDepthFormat(Format); bool hasStencil(Format); u32 vertexFormatSize(VertexFormat);
+bool isCompressed(Format); usize imageSize(Format, w, h);   // Bytes einer Ebene (bei Blockformaten ganze Blöcke)
 u32 indexSize(IndexType); u32 mipLevelCount(w, h); u32 mipSize(size, level);
 
 class Buffer        { Result<void> update(offset, span); usize size(); BufferUsage usage(); };      // BufferDesc{size, Static|Dynamic, initialData}
-class Texture       { Result<void> upload(level, span); void generateMipmaps(); const TextureDesc& desc(); };  // TextureDesc{w, h, format, mipLevels (0 = Kette)}
+class Texture       { Result<void> upload(level, span); Result<void> generateMipmaps(); const TextureDesc& desc(); };  // TextureDesc{w, h, format, mipLevels (0 = Kette)}
 class Sampler       {};   // SamplerDesc{min/mag/mip-Filter, wrapU/V, maxAnisotropy, optional compare (Schatten)}
 class ShaderProgram { void setUniform(name, i32|f32|Vec2|Vec3|Vec4|Mat4); };                      // ShaderDesc{vertex-, fragmentSource, debugName}
 class Pipeline      {};   // PipelineDesc{program, attributes{location, format, offset}, vertexStride, topology, cull, depthTest/Write/Compare, blend}
@@ -56,6 +58,10 @@ void draw(count, first);  void drawIndexed(count, first, baseVertex = 0);   // b
 std::vector<u8> readPixels(x, y, w, h, const Framebuffer* = nullptr);  std::vector<u8> readBuffer(const Buffer&, offset, size);
 const FrameStats& stats();   // drawCalls, triangles, pipelineChanges, textureBinds – Reset in beginFrame
 ```
+- **Komprimierte Texturen (M3):** BC7 (Farbe, linear oder sRGB) und BC5 (zweikanalige Normal-Maps) werden je
+  Mip-Ebene fertig hochgeladen (`glCompressedTextureSubImage2D`); `generateMipmaps()` lehnt sie ab, als Render-Ziel
+  sind sie nicht erlaubt. Ist die Normal-Textur eines Materials BC5, setzt `MaterialSet` `Material::normalTwoChannel`
+  und `mesh.frag` rekonstruiert `z = sqrt(max(0, 1 − x² − y²))`. Die Anbindung an `asset::TextureData` (KTX2) folgt.
 - **RAII, nur verschiebbar**, erzeugt über das `Device` (wie in Vulkan). Jedes GL-Objekt steckt in einem
   `rhi::Handle` mit prozessweit eindeutiger `uid`; der Zustands-Cache vergleicht uids, nie GL-Namen
   (gelöschte Namen werden vom Treiber wiederverwendet).

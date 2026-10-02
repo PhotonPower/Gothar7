@@ -114,6 +114,7 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
         material.baseColorFactor = info.baseColor;
         material.emissiveFactor = info.emissive;
         material.normalScale = info.normalScale;
+        material.normalTwoChannel = material.normal->desc().format == rhi::Format::BC5;
         material.alphaCutoff = info.alphaCutoff;
         material.alphaMode = info.alphaMode;
         material.doubleSided = info.doubleSided;
@@ -242,6 +243,7 @@ void MeshRenderer::drawSubmesh(Device& device, const Mesh& mesh, usize submesh, 
     program->setUniform("uBaseColor", material.baseColorFactor);
     program->setUniform("uEmissive", material.emissiveFactor);
     program->setUniform("uNormalScale", material.normalScale);
+    program->setUniform("uNormalTwoChannel", material.normalTwoChannel ? 1 : 0);
     program->setUniform("uAlphaCutoff", material.alphaCutoff);
     device.bindTexture(0, *material.baseColor, m_sampler);
     device.bindTexture(1, *material.normal, m_sampler);

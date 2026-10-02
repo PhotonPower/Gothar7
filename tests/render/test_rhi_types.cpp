@@ -70,3 +70,20 @@ TEST_CASE("RHI: handle ownership")
     CHECK(deleted == 2); // 7 deleted once, the moved-from handles delete nothing
     CHECK_FALSE(Handle());
 }
+
+TEST_CASE("RHI: block-compressed formats")
+{
+    for (const Format f : {Format::BC7, Format::BC7_SRGB, Format::BC5})
+    {
+        CHECK(isCompressed(f));
+        CHECK_FALSE(isDepthFormat(f));
+        CHECK(bytesPerPixel(f) == 0);
+        CHECK(imageSize(f, 4, 4) == 16); // one block
+        CHECK(imageSize(f, 5, 3) == 32); // 2 x 1 blocks, rounded up
+        CHECK(imageSize(f, 1, 1) == 16); // the smallest mip levels still take a whole block
+        CHECK(imageSize(f, 64, 32) == 16 * 8 * 16);
+    }
+    CHECK_FALSE(isCompressed(Format::RGBA8));
+    CHECK(imageSize(Format::RGBA8, 5, 3) == 60);
+    CHECK(imageSize(Format::RGBA16F, 2, 2) == 32);
+}

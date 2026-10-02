@@ -58,6 +58,15 @@ TEST_CASE("Asset mounts: development folders")
     CHECK(mounts.value()[1].source == devRoot / "cooked");
     CHECK(mounts.value()[1].priority > mounts.value()[0].priority); // cooked wins
 
+    // The cooker's archive: a folder mount would only show it as a file, so it is mounted itself,
+    // above loose cooked files.
+    tree.file("assets/cooked/data.g7pak");
+    mounts = assetMounts(parse(""), tree.root, devRoot);
+    REQUIRE(mounts.value().size() == 3);
+    CHECK(mounts.value()[2].source.filename() == "data.g7pak");
+    CHECK(mounts.value()[2].priority == kDevCookedArchivePriority);
+    CHECK(kDevCookedArchivePriority > kDevCookedPriority);
+
     CHECK(assetMounts(parse("[assets]\ndev_mounts = false\n"), tree.root, devRoot).value().empty());
     CHECK(assetMounts(parse(""), tree.root, fs::Path{}).value().empty()); // shipping build: no dev root
 }

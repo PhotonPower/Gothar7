@@ -35,6 +35,12 @@ inline TextureFormat textureFormat(Format format) noexcept
         return {GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8};
     case Format::Depth32F:
         return {GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT};
+    case Format::BC7:
+        return {GL_COMPRESSED_RGBA_BPTC_UNORM, GL_RGBA, GL_UNSIGNED_BYTE};
+    case Format::BC7_SRGB:
+        return {GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM, GL_RGBA, GL_UNSIGNED_BYTE};
+    case Format::BC5:
+        return {GL_COMPRESSED_RG_RGTC2, GL_RG, GL_UNSIGNED_BYTE};
     }
     return {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE};
 }

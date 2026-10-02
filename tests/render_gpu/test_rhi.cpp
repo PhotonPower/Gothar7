@@ -273,7 +273,7 @@ void main() { fragColor = texture(uTexture, vUv); }
     CHECK(mipped.desc().mipLevels == 3);
     REQUIRE(mipped.upload(0, std::vector<u8>(4 * 4 * 4, 200)).ok());
     REQUIRE(mipped.upload(2, std::vector<u8>(4, 10)).ok()); // 1x1 level
-    mipped.generateMipmaps();
+    REQUIRE(mipped.generateMipmaps().ok());
     CHECK(scene.gl.device->debugErrorCount() == 0);
 }
 

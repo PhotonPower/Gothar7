@@ -95,8 +95,9 @@ Result<void> Texture::upload(u32, std::span<const u8>)
 {
     return Error{"render module was built without OpenGL"};
 }
-void Texture::generateMipmaps()
+Result<void> Texture::generateMipmaps()
 {
+    return {};
 }
 void ShaderProgram::setUniform(std::string_view, i32)
 {

@@ -29,6 +29,7 @@ struct Material
     Vec4 baseColorFactor{1.0f};
     Vec3 emissiveFactor{0.0f};
     f32 normalScale = 1.0f;
+    bool normalTwoChannel = false; ///< BC5 normal map: the shader reconstructs Z
     f32 alphaCutoff = 0.5f;
     asset::AlphaMode alphaMode = asset::AlphaMode::Opaque;
     bool doubleSided = false;

@@ -24,10 +24,13 @@ struct MountSpec
 /// `cooked` (priority 10, so cooked data wins over its sources).
 inline constexpr i32 kDevSourcePriority = 0;
 inline constexpr i32 kDevCookedPriority = 10;
+/// Archives in assets/cooked (e.g. data.g7pak from g7-cook --pack): above the loose cooked files.
+inline constexpr i32 kDevCookedArchivePriority = 11;
 
 /// Reads the mount list:
-/// - `[assets] dev_mounts = true` (default) adds `<devRoot>/source` and `<devRoot>/cooked` when
-///   `devRoot` is set (development builds, G7_DEV_ASSETS) and the folders exist;
+/// - `[assets] dev_mounts = true` (default) adds `<devRoot>/source`, `<devRoot>/cooked` and every
+///   `<devRoot>/cooked/*.g7pak` archive when `devRoot` is set (development builds, G7_DEV_ASSETS)
+///   and the folders exist;
 /// - every `[[assets.mount]]` with `path` (relative paths start at `gameDir`), `priority` (default 0)
 ///   and `mount_point` (default root). A path ending in `*.g7pak` mounts every archive of that
 ///   folder in name order, so on equal priority later names win (patch_02 over patch_01).

@@ -37,7 +37,7 @@ Result<void> Texture::upload(u32 level, std::span<const u8> data)
     }
     const u32 width = mipSize(m_desc.width, level);
     const u32 height = mipSize(m_desc.height, level);
-    const usize expected = static_cast<usize>(width) * height * bytesPerPixel(m_desc.format);
+    const usize expected = imageSize(m_desc.format, width, height);
     if (data.size() != expected)
     {
         return Error{"Texture::upload: expected " + std::to_string(expected) + " bytes for level " +
@@ -45,17 +45,29 @@ Result<void> Texture::upload(u32 level, std::span<const u8> data)
     }
     const auto format = gl::textureFormat(m_desc.format);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    if (isCompressed(m_desc.format))
+    {
+        glCompressedTextureSubImage2D(m_handle.id(), static_cast<GLint>(level), 0, 0,
+                                      static_cast<GLsizei>(width), static_cast<GLsizei>(height),
+                                      format.internalFormat, static_cast<GLsizei>(data.size()), data.data());
+        return {};
+    }
     glTextureSubImage2D(m_handle.id(), static_cast<GLint>(level), 0, 0, static_cast<GLsizei>(width),
                         static_cast<GLsizei>(height), format.format, format.type, data.data());
     return {};
 }
 
-void Texture::generateMipmaps()
+Result<void> Texture::generateMipmaps()
 {
+    if (isCompressed(m_desc.format))
+    {
+        return Error{"Texture::generateMipmaps: compressed textures bring their own mip levels"};
+    }
     if (m_desc.mipLevels > 1)
     {
         glGenerateTextureMipmap(m_handle.id());
     }
+    return {};
 }
 
 i32 ShaderProgram::location(std::string_view uniformName)
