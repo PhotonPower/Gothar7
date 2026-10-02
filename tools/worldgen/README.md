@@ -23,7 +23,7 @@ tools/worldgen/
     qa/                       Vorschaubilder + Plausibilitätsprüfungen (check)  (W1)
     facade/                   360°-Bilder → Fassadenansichten (equirect, rectify), GPS-Posen (poses),
                               Override-JSON (overrides), Einzelbilder + Zeitabgleich (frames, sync,
-                              capture), facade preview/frames; Web-UI folgt  (W4)
+                              capture), facade preview/frames, Web-UI (webui/)  (W4)
     assemble/                 Zwischendaten + .glb → .g7world, Wegnetz-Vorschlag (geplant, W3, W6)
   blender/gothar_buildings/   Blender-Add-on: Gebäude-Generator               (geplant, W3, W5)
   data/leonberg/buildings/    Annotationen/Overrides pro Gebäude (JSON, versioniert)
@@ -51,6 +51,7 @@ gothar-worldgen import leonberg            REM Rohdaten → work/leonberg/ (terr
 gothar-worldgen check leonberg             REM preview.png, preview_core.png, report.json (Exit 1 bei "fail")
 gothar-worldgen facade preview leonberg <id> --image pano.jpg --pose x,z --heading 90   REM entzerrte Fassaden
 gothar-worldgen facade frames leonberg VID_0001.mp4 --gpx VID_0001.gpx   REM Einzelbilder + Posen (braucht ffmpeg)
+gothar-worldgen facade ui leonberg         REM Annotations-Oberfläche im Browser (http://127.0.0.1:8765/)
 ```
 `--config-dir` bzw. `GOTHAR_WORLDGEN_CONFIG` wählen einen anderen Konfigurationsordner;
 `GOTHAR_DATA_ROOT` überschreibt `data_root` aus `local.toml`.

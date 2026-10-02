@@ -286,9 +286,42 @@ unabhängig von der Oberfläche:
   - **ffmpeg:** externes Programm, siehe `docs/05-build.md` (Version, Installation, Suche).
   - Getestet mit einem synthetischen 360°-Video, das ffmpeg selbst erzeugt: Die Startzeit wird auf ±1 s genau
     wiedergefunden. Die Logik ist ohne ffmpeg getestet; die ffmpeg-Tests werden übersprungen, wenn es fehlt.
+- **Annotations-Web-UI (W4 Schritt 3a)**, `facade/webui/`: `gothar-worldgen facade ui <ort> [--port 8765]`
+  öffnet den Browser.
+  - **Technik:** Python-stdlib-Server (`http.server`) und eine statische Seite (HTML, Vanilla-JS, Canvas).
+    Es gibt keine neuen Abhängigkeiten und keinen Build-Schritt; die Logik liegt in `webui/api.py`
+    ohne HTTP-Code.
+  - **Karte:** Grundrisse aus `buildings.json`, gefärbt nach Status (offen, annotiert, gesperrt, fehlerhaft),
+    dazu die Kamerapunkte aus allen `captures/*/frames.json`. Es gibt keine Kartenkacheln aus dem Netz (ADR 0012).
+  - **Gebäude:** Pro Fassaden-Kante (ab 1 m Breite) werden die drei besten Aufnahmen als entzerrte Vorschau
+    angezeigt (`rank_views`). Man kann auch ohne Bild annotieren.
+  - **Editor:**
+    - Stockwerkslinien setzen und verschieben (→ `storeys`).
+    - Öffnungen als Rechtecke aufziehen, verschieben und löschen (→ `storey`, `type`, `x`, `w`, `h`, `y`).
+    - Auswahlfelder für Stil, Fachwerk, Ausfachung und Dachdeckung; Felder für Auskragung, Notizen,
+      `keep` und `locked`.
+    - Unbekannte Schlüssel und `seed` einer vorhandenen Datei bleiben erhalten.
+  - **Speichern:** Geschrieben wird nach `tools/worldgen/data/<ort>/buildings/<id>.json` (versioniert).
+    Die Prüfung entspricht `overrides.from_json` und `validate_against`; Fehler zeigt die Seite an.
+    Die entzerrten Bilder liegen als Cache in `<work>/<ort>/facade_cache/` und nicht im Repo.
+  - **Auswahllisten:** `tools/worldgen/data/facade_vocabulary.json`. Das ist ein **Entwurf; die Festlegung
+    trifft der Projektinhaber vor W5.**
+  - **Sicherheit:**
+    - Der Server ist nur an 127.0.0.1 gebunden.
+    - Fremde `Host`-Header (DNS-Rebinding) und fremde `Origin`-Header bei schreibenden Anfragen werden abgewiesen.
+    - Pfade mit `..`, Backslash oder kodierten Varianten (`%2e%2e`, `%5c`, `%2f`, doppelt kodiert) werden
+      vor dem Routing abgewiesen.
+    - Statische Dateien kommen nur aus einer festen Liste. Gebäude-IDs und Aufnahmenamen sind auf
+      `[A-Za-z0-9_.-]` ohne `..` beschränkt.
+    - Requests sind auf 1 MiB begrenzt. Fehlerseiten sind JSON, ohne Stacktrace und ohne lokale Pfade.
+  - **Tests:** API und Server mit synthetischen Daten, darunter alle genannten Pfad-Varianten.
+    Den Editor habe ich zusätzlich im Browser (headless Edge) durchgespielt: Linien und Öffnungen zeichnen,
+    speichern, neu laden.
+  - **Folgt in 3b:**
+    - Kamerapose pro Bild nachjustieren (`pose_fixes.json` im Work-Ordner).
+    - Mehrere Bilder einer Fassade vergleichen.
 - **Noch offen:**
   - SfM-Verfeinerung.
-  - Web-Oberfläche.
   - Prüfung mit echten Aufnahmen.
 
 ### W-E Straßen & Plätze

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import webbrowser
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TextIO
@@ -13,6 +14,7 @@ from gothar_worldgen.config import (
     ConfigError,
     DataPaths,
     SiteConfig,
+    default_config_dir,
     load_local,
     load_site,
 )
@@ -29,6 +31,8 @@ from gothar_worldgen.facade.poses import DEFAULT_CAMERA_HEIGHT_M, Track, TrackEr
 from gothar_worldgen.facade.preview import load_buildings, load_equirect, preview_building
 from gothar_worldgen.facade.rectify import FacadeError
 from gothar_worldgen.facade.sync import parse_utc
+from gothar_worldgen.facade.webui.api import ApiError, Workspace
+from gothar_worldgen.facade.webui.server import UiServer
 from gothar_worldgen.geo.bbox import BBox, tiles_covering
 from gothar_worldgen.geo.dgm1 import DgmError
 from gothar_worldgen.geo.frame import LocalFrame
@@ -228,6 +232,45 @@ def _cmd_facade_frames(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def open_workspace(args: argparse.Namespace) -> Workspace:
+    """Workspace of ``facade ui``: work data in DATA_ROOT, overrides next to the config dir."""
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    data_dir = (args.config_dir or default_config_dir()).parent / "data"
+    overrides = args.overrides_dir or data_dir / site.name / "buildings"
+    return Workspace.open(
+        site.name,
+        DataPaths(local.data_root, site.name).work,
+        overrides,
+        data_dir / "facade_vocabulary.json",
+    )
+
+
+def _cmd_facade_ui(args: argparse.Namespace, out: TextIO) -> int:
+    try:
+        ws = open_workspace(args)
+    except ApiError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    try:
+        server = UiServer(ws, args.port, log=out if args.verbose else None)
+    except OSError as e:
+        print(f"error: cannot listen on 127.0.0.1:{args.port} ({e})", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"  {len(ws.buildings)} buildings, {len(ws.frames)} frames", file=out)
+    print(f"  overrides: {ws.overrides_dir}", file=out)
+    print(f"  facade UI at {server.url}  (Ctrl+C to stop)", file=out)
+    if not args.no_browser:
+        webbrowser.open(server.url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gothar-worldgen",
@@ -303,6 +346,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--name", default=None, help="capture name (default: video file name)")
     p.add_argument("--ffmpeg", type=Path, default=None, help="path to ffmpeg")
     p.set_defaults(func=_cmd_facade_frames)
+
+    p = fsub.add_parser("ui", help="local web UI for annotating facades (overrides)")
+    p.add_argument("site")
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--no-browser", action="store_true", help="do not open a browser")
+    p.add_argument("--overrides-dir", type=Path, default=None,
+                   help="default: tools/worldgen/data/<site>/buildings")  # fmt: skip
+    p.add_argument("--verbose", action="store_true", help="log every request")
+    p.set_defaults(func=_cmd_facade_ui)
 
     return parser
 
