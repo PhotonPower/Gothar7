@@ -1,7 +1,7 @@
 #pragma once
 
 // The world's entities and their hierarchy (ADR 0005, docs/modules/world.md). EnTT is a public
-// dependency of world, but the registry is not part of the API: upper modules go through World.
+// dependency of world, but the registry is not part of the API: upper modules go through Scene.
 
 #include <g7/core/Result.hpp>
 #include <g7/core/Transform.hpp>
@@ -20,7 +20,7 @@ namespace g7::world
 /// What spawnVob creates.
 struct VobDesc
 {
-    StringId name;
+    std::string name;
     Transform transform; ///< relative to the parent
     VobId parent;        ///< optional; must exist
     /// Fixed id (world loader: the id stored in .g7world). Must be unique and below kRuntimeVobIdBase.
@@ -88,14 +88,26 @@ public:
                       "core components stay until destroyVob");
         m_registry.remove<C>(vob);
     }
-    /// Calls fn(entity, C&...) for every vob that has all of C.
+    /// Calls fn(entity, C&...) for every vob that has all of C. A Transform is handed out as
+    /// const (change it with setTransform(), so the world matrices follow).
     template <typename... C, typename Fn>
     void each(Fn&& fn)
     {
         auto view = m_registry.view<C...>();
         for (const entt::entity e : view)
         {
-            fn(e, view.template get<C>(e)...);
+            fn(e, expose<C>(view.template get<C>(e))...);
+        }
+    }
+
+    /// Read-only variant: fn(entity, const C&...).
+    template <typename... C, typename Fn>
+    void each(Fn&& fn) const
+    {
+        auto view = m_registry.view<const C...>();
+        for (const entt::entity e : view)
+        {
+            fn(e, view.template get<const C>(e)...);
         }
     }
 
@@ -120,6 +132,19 @@ public:
     [[nodiscard]] Result<void> setNextRuntimeVobId(u64 next);
 
 private:
+    template <typename C>
+    static decltype(auto) expose(C& component) noexcept
+    {
+        if constexpr (std::is_same_v<C, Transform>)
+        {
+            return static_cast<const C&>(component);
+        }
+        else
+        {
+            return static_cast<C&>(component);
+        }
+    }
+
     void markDirty(entt::entity vob);
     void destroyRecursive(entt::entity vob);
     void link(entt::entity child, entt::entity parent);

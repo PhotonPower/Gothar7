@@ -61,7 +61,7 @@ Result<entt::entity> Scene::spawnVob(const VobDesc& desc)
     }
 
     const entt::entity e = m_registry.create();
-    m_registry.emplace<Vob>(e, Vob{id, desc.name});
+    m_registry.emplace<Vob>(e, Vob{id, StringId(desc.name), desc.name});
     m_registry.emplace<Transform>(e, desc.transform);
     m_registry.emplace<WorldTransform>(e);
     m_registry.emplace<Hierarchy>(e);

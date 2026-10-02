@@ -5,8 +5,13 @@
 
 #include <g7/render/Device.hpp>
 #include <g7/runtime/Engine.hpp>
+#include <g7/world/WorldFile.hpp>
 
 #include <doctest/doctest.h>
+
+#include <chrono>
+#include <filesystem>
+#include <string>
 
 using namespace g7;
 
@@ -63,4 +68,38 @@ TEST_CASE("Test scene: a broken scene file fails init with its name")
     auto result = engine.init();
     REQUIRE_FALSE(result.ok());
     CHECK(result.error().message.find("exist.toml") != std::string::npos);
+}
+
+TEST_CASE("Test world: a .g7world loads, renders and saves back identically")
+{
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const fs::Path saved =
+        std::filesystem::temp_directory_path() / ("g7_world_" + std::to_string(stamp) + ".g7world");
+    EngineConfig config = sceneConfig(0);
+    config.scene.clear();
+    config.world = fs::fromUtf8("testworld/camp.g7world");
+    config.saveWorld = saved;
+    {
+        g7::test::keepVideoAlive();
+        Engine engine(std::move(config));
+        auto result = engine.init();
+        REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+        CHECK(engine.scene().vobCount() == 169);
+        CHECK(engine.sceneObjectCount() > 160); // mesh vobs + ground plate
+        CHECK(engine.runFrame());
+        CHECK(engine.visibleSceneObjects() > 10);
+        CHECK(engine.renderDevice()->debugErrorCount() == 0);
+    }
+    // Saving what was loaded gives the committed file again (only the name follows the file name).
+    auto original =
+        fs::readText(fs::fromUtf8(G7_TESTSCENE).parent_path().parent_path() / "testworld" / "camp.g7world");
+    auto written = fs::readText(saved);
+    REQUIRE(original.ok());
+    REQUIRE(written.ok());
+    auto reparsed = world::parseWorldFile(written.value());
+    REQUIRE(reparsed.ok());
+    reparsed.value().name = "camp";
+    CHECK(world::writeWorldFile(reparsed.value()) == original.value());
+    std::error_code ignored;
+    std::filesystem::remove(saved, ignored);
 }

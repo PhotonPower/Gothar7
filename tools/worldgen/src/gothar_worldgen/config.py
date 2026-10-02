@@ -72,6 +72,7 @@ class SiteConfig:
 class LocalConfig:
     data_root: Path
     blender: Path | None
+    ffmpeg: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -229,7 +230,10 @@ def load_local(config_dir: Path | None = None) -> LocalConfig:
 
     data_root = Path(env_root or _string(paths, "data_root", f"{path} [paths]"))
 
-    blender_value = paths.get("blender")
-    if blender_value is not None and not isinstance(blender_value, str):
-        raise ConfigError(f"{path} [paths]: 'blender' must be a string")
-    return LocalConfig(data_root=data_root, blender=Path(blender_value) if blender_value else None)
+    tools: dict[str, Path | None] = {}
+    for key in ("blender", "ffmpeg"):
+        value = paths.get(key)
+        if value is not None and not isinstance(value, str):
+            raise ConfigError(f"{path} [paths]: '{key}' must be a string")
+        tools[key] = Path(value) if value else None
+    return LocalConfig(data_root=data_root, blender=tools["blender"], ffmpeg=tools["ffmpeg"])

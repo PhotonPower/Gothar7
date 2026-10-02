@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M4** (Welt & Szene) läuft – ADR 0005 (EnTT, `VobId`-Vertrag, API-Grenze) akzeptiert (#42); als Erstes EnTT-Registry, `VobId` und Transform-Hierarchie. Welt-Spur: **W4** Schritt 1 (Fassaden-Werkzeug mit synthetischen Bildern) läuft, Aufnahmetour folgt; Annotations-Oberfläche als Web-UI (Entscheidung Projektinhaber). Figuren-Spur: **F1** (Referenz-Rig) in Arbeit – Voraussetzung für M6. Phase **M3** (Asset-System & Pipeline) abgeschlossen – VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles, Cache, asynchrones Laden), Engine-Anbindung (Mounts aus `engine.toml`), Hot-Reload (Texturen/Modelle, Shader), `g7-cook` (glTF → `.g7mesh`, Bilder → KTX2/UASTC als Vorgabe, Packen, Manifest mit inkrementellem Kochen; ADR 0016), `render` lädt KTX2 (BC7/BC5) und bevorzugt gekochte Meshes; DoD Ende-zu-Ende geprüft (Spiel nur aus `data.g7pak`, Textur-Hot-Reload; #34, #37, #40). Phase **M2** (Renderer-Grundlagen) abgeschlossen – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig), Licht (Sonne, Hemisphären-Ambient, Punktlichter), Sonnenschatten (CSM), HDR mit Tonemapping (ACES), Distanznebel, Debug-Draw (F2) und das ImGui-Debugfenster (F1), Testszenen (`--scene`, Frustum-Culling, `--benchmark`, `--screenshot`) stehen; DoD-Szene mit 608 FPS (RTX 3080) bzw. 214 FPS (Intel UHD). M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
+**Aktueller Stand:** Phase **M4** (Welt & Szene) läuft – ADR 0005 (EnTT, `VobId`-Vertrag) und ADR 0017 (nlohmann-json) akzeptiert; `world::Scene` (Registry, `VobId`, Transform-Hierarchie, #44) und Weltformat `.g7world` v1 mit `--world`/`--save-world` und Testwelt `testworld/camp.g7world` (#47) stehen; als Nächstes u. a. Heightmap-Terrain (Voraussetzung für W2). Welt-Spur: **W4** läuft – Fassaden-Werkzeug-Kerne (#46, synthetisch geprüft), jetzt Einzelbild-Extraktion (ffmpeg); Aufnahmetour des Projektinhabers steht an; Annotations-Oberfläche als Web-UI. Figuren-Spur: **F1** abgeschlossen (#41, #45: Referenz-Rig, `tools/chargen` mit Validator, Platzhalterfigur + Test-Clips, `events.toml` v1 mit engine abgestimmt); **F2** (Basis-Animationsset) läuft – nur CC0/eigene Clips, kein Mixamo (Repo ist öffentlich; Entscheidung Projektinhaber). Phase **M3** (Asset-System & Pipeline) abgeschlossen – VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles, Cache, asynchrones Laden), Engine-Anbindung (Mounts aus `engine.toml`), Hot-Reload (Texturen/Modelle, Shader), `g7-cook` (glTF → `.g7mesh`, Bilder → KTX2/UASTC als Vorgabe, Packen, Manifest mit inkrementellem Kochen; ADR 0016), `render` lädt KTX2 (BC7/BC5) und bevorzugt gekochte Meshes; DoD Ende-zu-Ende geprüft (Spiel nur aus `data.g7pak`, Textur-Hot-Reload; #34, #37, #40). Phase **M2** (Renderer-Grundlagen) abgeschlossen – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig), Licht (Sonne, Hemisphären-Ambient, Punktlichter), Sonnenschatten (CSM), HDR mit Tonemapping (ACES), Distanznebel, Debug-Draw (F2) und das ImGui-Debugfenster (F1), Testszenen (`--scene`, Frustum-Culling, `--benchmark`, `--screenshot`) stehen; DoD-Szene mit 608 FPS (RTX 3080) bzw. 214 FPS (Intel UHD). M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -98,7 +98,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 
 ## M4 – Welt & Szene (+ Editor-Grundlage)
 - [x] EnTT-Registry, Komponenten-Grundsatz, `VobId`, Transform-Hierarchie (ADR 0005) – `world::Scene`, Registry nicht in der API
-- [ ] Weltformat `.g7world` (Text/JSON für Versionierbarkeit, binäre gekochte Variante)
+- [x] Weltformat `.g7world` (Text/JSON für Versionierbarkeit, binäre gekochte Variante) – Text v1 (ADR 0017, `--world`, `--save-world`, Testwelt `testworld/camp.g7world`); Binärvariante bei Bedarf
 - [ ] Statisches Welt-Mesh (Gelände + Architektur) mit Kollisionsgeometrie
 - [ ] **Heightmap-Terrain** (Kacheln, LOD, Splatmap mit 4–8 Schichten, Löcher) – Grundlage für W2 (Leonberg-Gelände)
 - [ ] Vob-Typen: Mesh, Licht, Sound-Emitter, Trigger, Startpunkt, Mob (Platzhalter)
@@ -268,7 +268,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 Spezifikation: `docs/design/leonberg-pipeline.md`. Werkzeuge in `tools/worldgen/` (Python ≥ 3.11),
 Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
-**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24, CI grün). `gothar-worldgen` mit `info`, `tiles`, `download`, `import` und `check`: DGM1 → `terrain.r16`/`.png`/`.json` (2000 × 2000 m), LoD2 → `buildings.json` (5392 Gebäude, 905 in der Altstadt), OSM → `streets.json` (1802 Achsen, 6 Plätze) und `features.json` (1110 Objekte, u. a. Stadtmauer, Brunnen, Bäume), dazu Vorschaubilder und `report.json` (alle Prüfungen ok). Rohdaten für Leonberg liegen lokal vor, Blender 4.5 LTS ist installiert. Ursprung: Marktbrunnen E 501115 / N 5405347 (386,89 m NHN), Kern ±350 m, Umland ±1000 m. Als Nächstes: W2 benötigt M2 und das M4-Terrain; ohne Engine-Abhängigkeit ist W4 (Aufnahmen und Fassaden-Werkzeug) möglich.
+**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24): `gothar-worldgen` erzeugt aus LGL- und OSM-Daten Terrain, `buildings.json` (5392 Gebäude), `streets.json` und `features.json` für Leonberg (Ursprung Marktbrunnen). W2/W3 warten auf das M4-Terrain. **W4 läuft:** Die Kerne des Fassaden-Werkzeugs (`facade/`: 360°-Projektion, Fassaden-Entzerrung aus `buildings.json`, GPS-Posen, Override-Schema, `facade preview`) stehen und sind mit synthetischen Bildern getestet. Dazu kommen die Einzelbild-Extraktion per ffmpeg und der automatische Zeitabgleich von Video und GPS (`facade frames`). Die Annotations-Oberfläche wird eine Web-UI. Als Nächstes: Aufnahmetour (Projektinhaber), Prüfung mit echten Daten, Plan für die Web-UI.
 
 ## W1 – Geodaten-Import  (keine Engine-Abhängigkeit)
 - [x] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
@@ -299,8 +299,11 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 ## W4 – Aufnahmen & Fassaden-Werkzeug  (keine Engine-Abhängigkeit)
 - [ ] Aufnahmetour(en) nach Leitfaden (Abschnitt 6 der Design-Doku)
 - [ ] Bild-Extraktion aus Insta360-Export, GPS-Zuordnung, optional SfM-Verfeinerung
+  - Stand: Einzelbilder per ffmpeg, Zeitabgleich mit dem GPS-Track und Posen je Bild (`facade frames`, `frames.json`), synthetisch geprüft; SfM offen
 - [ ] Fassaden-Ausschnitt + Entzerrung pro Gebäude
+  - Stand: Entzerrung per Projektion auf die Fassadenebene umgesetzt (`facade/rectify.py`, `facade preview`), synthetisch geprüft; abhaken nach der Prüfung mit echten Aufnahmen
 - [ ] Annotations-Oberfläche → Override-JSON pro Gebäude
+  - Stand: Override-Schema mit Prüfung umgesetzt (`facade/overrides.py`); Oberfläche als Web-UI (Entscheidung 2026-10-03) folgt
 - [ ] Annotation der Häuser am Marktplatz (erste ~20 Gebäude)
 
 **DoD:** Für jedes Haus am Marktplatz gibt es eine entzerrte Fassadenreferenz und eine Annotation.

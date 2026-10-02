@@ -69,15 +69,44 @@ wiederverwendet; `nextVobId` ist der nächste freie Wert und steigt nur. Editor 
 daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vobs liegen ab `kRuntimeVobIdBase`.
 
 ```json
-{ "version": 1, "name": "testworld", "nextVobId": 102,
+{ "version": 1, "name": "testworld", "nextVobId": 103,
   "staticMeshes": ["meshes/world/terrain.g7mesh", "meshes/world/camp.g7mesh"],
-  "vobs": [ { "id": 101, "type": "mesh", "name": "CAMPFIRE_01", "pos": [1,0,2], "rot": [0,0,0,1],
-              "mesh": "meshes/props/campfire.g7mesh", "components": { "light": { "color": [1,0.6,0.3], "range": 8, "flicker": 0.3 } } } ],
+  "vobs": [
+    {"id":101,"type":"mesh","name":"CAMPFIRE_01","pos":[1,0,2],"rot":[0,0,0,1],"mesh":"meshes/props/campfire.g7mesh"},
+    {"id":102,"type":"light","name":"CAMPFIRE_01_LIGHT","parent":101,"pos":[0,1,0],"rot":[0,0,0,1],
+     "components":{"light":{"color":[1,0.6,0.3],"range":8,"intensity":3,"flicker":0.3}}}
+  ],
   "waynet": { "points": [ { "name": "WP_CAMP_ENTRANCE", "pos": [0,0,0], "dir": [0,0,1] } ],
               "edges": [ [0, 1] ],
               "freepoints": [ { "name": "FP_CAMPFIRE_SIT_01", "pos": [1,0,3], "dir": [0,0,-1] } ] },
   "zones": [ { "type": "music", "value": "CAMP", "bounds": [[-20,-5,-20],[20,10,20]] } ] }
 ```
+
+**Version 1 – verbindlich (umgesetzt in `world/WorldFile.hpp`, ADR 0017):**
+- Pflicht: `version` (= 1; andere Versionen werden abgelehnt). Optional: `name`, `nextVobId` (wird beim Lesen auf
+  mindestens max(id) + 1 angehoben), `staticMeshes` (VFS-Pfade), `vobs`, `waynet`, `zones`.
+- Vob: `id` (Pflicht, ≥ 1, eindeutig), `type` = `empty` (Gruppe, Vorgabe) | `mesh` | `light`, `name`, `parent` (ID; Eltern dürfen
+  in der Datei nach den Kindern stehen), `pos` [x,y,z] (Meter, relativ zum Elternteil), `rot` Quaternion **[x,y,z,w]**,
+  `scale` [x,y,z] (Vorgabe 1). `mesh`-Vobs: `mesh` (VFS-Pfad ab Wurzel, `.g7mesh`; ein `.glb`-Pfad lädt die gekochte
+  `.g7mesh`, wenn vorhanden). `light`-Vobs: `components.light` mit `color` (linear), `range` (> 0), `intensity` (Vorgabe 3),
+  `flicker` (0–1, Vorgabe 0).
+- `waynet`/`zones` werden bis zu ihren Systemen unverändert gelesen und zurückgeschrieben. Unbekannte Schlüssel
+  werden ignoriert (nicht zurückgeschrieben).
+- **Schreiben** ist stabil: Kopf-Schlüssel je eine Zeile, dann **ein Vob pro Zeile** nach `id` sortiert, Zahlen auf
+  1e-5 gerundet – gleiche Welt, gleiche Bytes; Laden und Speichern ändert nichts.
+- Fehler nennen Datei und Eintrag (`camp.g7world: vobs[3].pos: must be a list of 3 numbers`); fehlende Eltern,
+  Elternzyklen und doppelte IDs lassen die Szene beim Laden unverändert.
+
+```cpp
+Result<WorldFile> parseWorldFile(std::string_view json, std::string_view source);  Result<WorldFile> loadWorldFile(const asset::Vfs&, path);
+std::string writeWorldFile(const WorldFile&);                                      // stabil
+Result<void> spawnWorld(Scene&, const WorldFile&);  WorldFile captureWorld(const Scene&, std::string_view name);
+// Komponenten: MeshRef { std::string path; }, LightSource { Vec3 color; f32 range, intensity, flicker; }
+```
+- **Engine:** `--world=<vfs-pfad>` lädt eine Welt (Mesh-Vobs werden gerendert, Licht-Vobs zu Punktlichtern, bis zum
+  Gelände eine Bodenplatte unter der Welt), `--save-world=<datei>` speichert die geladene Welt oder Testszene.
+  Testwelt: `assets/source/testworld/camp.g7world` (das Lager der M2-Testszene, 169 Vobs).
+- Eine gekochte Binärvariante folgt bei Bedarf (große Welten); das Textformat bleibt.
 
 ## Spielzeit & Umgebung
 - `GameTime`: Tag + Minuten; Skalierung (Standard: 1 Spielminute = 4 Echtsekunden → 24 h ≈ 96 Min);

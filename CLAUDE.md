@@ -113,7 +113,9 @@ Phase **M2** abgeschlossen: OpenGL-Renderer (RHI, Shader-Hot-Reload, glTF, Mater
 Tonemapping, Debug-Draw, ImGui), Testszene `assets/source/testscene` (`--scene`, `--benchmark`).
 Phase **M3** abgeschlossen: VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles, asynchron), Engine-Anbindung,
 Hot-Reload, `g7-cook` (glTF → `.g7mesh`, KTX2/UASTC als Vorgabe, Manifest/inkrementell; ADR 0016), `render` lädt KTX2.
-Aktuelle Phase: **M4** (Welt & Szene): ADR 0005 akzeptiert (EnTT, `VobId`-Vertrag); als Erstes Registry, `VobId`, Transform-Hierarchie.
-Welt-Spur: **W1** abgeschlossen; **W4** Schritt 1 (Fassaden-Werkzeug, Web-UI für Annotationen) läuft; W2/W3 warten auf M4/M5.
-Figuren-Spur: **F1** (Referenz-Rig, `tools/chargen`) in Arbeit, Voraussetzung für M6.
+Aktuelle Phase: **M4** (Welt & Szene): `world::Scene` (EnTT, `VobId`, Hierarchie; ADR 0005) und `.g7world` v1 (ADR 0017,
+`--world`, `--save-world`) stehen; offen u. a. Heightmap-Terrain, Vob-Typen, Tag/Nacht, Editor-Grundlage.
+Welt-Spur: **W1** abgeschlossen; **W4** läuft (Fassaden-Werkzeug, Einzelbilder, Web-UI für Annotationen); W2/W3 warten auf M4/M5.
+Figuren-Spur: **F1** abgeschlossen (Referenz-Rig, Validator, Platzhalterfigur, `events.toml` v1); **F2** läuft (nur CC0/eigene Clips).
+Lizenzen: Das Repo ist **öffentlich** – nur CC0/eigene bzw. weitergabefähig lizenzierte Assets einchecken.
 Details siehe `docs/03-roadmap.md`.
