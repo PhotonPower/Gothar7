@@ -16,7 +16,7 @@ EngineConfig sceneConfig(u32 viewpoint)
     config.appName = "test scene";
     config.window.size = {320, 180};
     config.window.vsync = false;
-    config.scene = fs::fromUtf8(G7_TESTSCENE);
+    config.scene = fs::fromUtf8("testscene/scene.toml"); // VFS path: development mount of assets/source
     config.viewpoint = viewpoint;
     config.shaderDirectory = fs::fromUtf8(G7_SHADER_DIR);
     config.fixedFrameSeconds = 1.0 / 60.0;

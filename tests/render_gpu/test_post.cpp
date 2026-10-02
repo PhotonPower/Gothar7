@@ -88,7 +88,7 @@ TEST_CASE("Post: distance fog towards the fog colour")
     // Big white plate facing the camera; ambient 1 makes the lit colour exactly white.
     asset::MeshData plate = asset::makePlane(4000.0f);
     Mesh mesh = require(Mesh::create(*gl.device, plate));
-    MaterialSet materials = require(MaterialSet::create(*gl.device, plate, {}));
+    MaterialSet materials = require(MaterialSet::create(*gl.device, plate, MaterialSet::ImageLookup{}));
     Environment environment{.sunIntensity = 0.0f, .ambientSky = Vec3(1.0f), .ambientGround = Vec3(1.0f)};
     environment.fogColor = Vec3(0.2f, 0.4f, 0.6f);
     environment.fogStart = 30.0f;

@@ -13,12 +13,17 @@
 #include <string_view>
 #include <vector>
 
+namespace g7::asset
+{
+class Vfs;
+}
+
 namespace g7
 {
 /// One mesh instance; prefabs are already expanded into their parts.
 struct SceneObject
 {
-    fs::Path mesh; ///< resolved against the scene file's directory
+    std::string mesh; ///< VFS path, resolved against the scene file's folder
     Mat4 transform{1.0f};
 };
 
@@ -61,11 +66,10 @@ struct SceneFile
     std::vector<SceneViewpoint> viewpoints;
 };
 
-/// Reads a scene (format: docs/05-build.md, "Testszenen"). `source` names the file in errors;
-/// mesh paths are resolved against `baseDirectory`.
-[[nodiscard]] Result<SceneFile> parseSceneFile(const Config& config, std::string_view source,
-                                               const fs::Path& baseDirectory);
-[[nodiscard]] Result<SceneFile> loadSceneFile(const fs::Path& path);
+/// Reads a scene (format: docs/05-build.md, "Testszenen") from the VFS file `scenePath`; mesh paths
+/// in it are relative to that file's folder. Errors name `scenePath` and the entry.
+[[nodiscard]] Result<SceneFile> parseSceneFile(const Config& config, std::string_view scenePath);
+[[nodiscard]] Result<SceneFile> loadSceneFile(const asset::Vfs& vfs, std::string_view scenePath);
 
 /// Object transform as the scene file describes it: scale, then rotation about +Y (degrees), then
 /// translation.

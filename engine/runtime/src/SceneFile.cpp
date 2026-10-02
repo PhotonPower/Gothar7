@@ -1,3 +1,5 @@
+#include <g7/asset/Vfs.hpp>
+#include <g7/runtime/AssetMounts.hpp>
 #include <g7/runtime/SceneFile.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -63,7 +65,7 @@ Result<Mat4> readTransform(const Config& config, const std::string& prefix, std:
 
 struct PrefabPart
 {
-    fs::Path mesh;
+    std::string mesh;
     Mat4 transform;
 };
 } // namespace
@@ -75,8 +77,9 @@ Mat4 sceneTransform(const Vec3& position, f32 rotationYDegrees, f32 scale) noexc
     return glm::scale(m, Vec3(scale));
 }
 
-Result<SceneFile> parseSceneFile(const Config& config, std::string_view source, const fs::Path& baseDirectory)
+Result<SceneFile> parseSceneFile(const Config& config, std::string_view scenePath)
 {
+    const std::string_view source = scenePath;
     SceneFile scene;
 
     // [ground]
@@ -147,7 +150,7 @@ Result<SceneFile> parseSceneFile(const Config& config, std::string_view source, 
             {
                 return transform.error();
             }
-            list.push_back({baseDirectory / fs::fromUtf8(*mesh), transform.value()});
+            list.push_back({vfsSibling(scenePath, *mesh), transform.value()});
         }
     }
 
@@ -168,7 +171,7 @@ Result<SceneFile> parseSceneFile(const Config& config, std::string_view source, 
         }
         if (mesh)
         {
-            scene.objects.push_back({baseDirectory / fs::fromUtf8(*mesh), transform.value()});
+            scene.objects.push_back({vfsSibling(scenePath, *mesh), transform.value()});
             continue;
         }
         const auto found = prefabs.find(*prefab);
@@ -234,13 +237,19 @@ Result<SceneFile> parseSceneFile(const Config& config, std::string_view source, 
     return scene;
 }
 
-Result<SceneFile> loadSceneFile(const fs::Path& path)
+Result<SceneFile> loadSceneFile(const asset::Vfs& vfs, std::string_view scenePath)
 {
-    auto config = Config::load(path);
+    auto bytes = vfs.read(scenePath);
+    if (!bytes)
+    {
+        return bytes.error();
+    }
+    const std::string text(bytes.value().begin(), bytes.value().end());
+    auto config = Config::parse(text, scenePath);
     if (!config)
     {
         return config.error();
     }
-    return parseSceneFile(config.value(), fs::toUtf8(path), path.parent_path());
+    return parseSceneFile(config.value(), scenePath);
 }
 } // namespace g7

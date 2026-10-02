@@ -1,3 +1,5 @@
+#include <g7/asset/Vfs.hpp>
+#include <g7/runtime/AssetMounts.hpp>
 #include <g7/runtime/FrameTimes.hpp>
 #include <g7/runtime/SceneFile.hpp>
 
@@ -14,7 +16,7 @@ Result<SceneFile> parse(std::string_view toml)
 {
     auto config = Config::parse(toml, "scene.toml");
     REQUIRE(config.ok());
-    return parseSceneFile(config.value(), "scene.toml", fs::fromUtf8("base"));
+    return parseSceneFile(config.value(), "scene.toml");
 }
 
 Vec3 origin(const Mat4& m)
@@ -69,12 +71,12 @@ pitch = -10
     CHECK_FALSE(s.environment.sunColor.has_value());
 
     REQUIRE(s.objects.size() == 3); // the tree + two prefab parts
-    CHECK(s.objects[0].mesh == fs::fromUtf8("base") / "tree.glb");
+    CHECK(s.objects[0].mesh == "tree.glb");
     CHECK(nearlyEqual(origin(s.objects[0].transform), Vec3(5, 0, -2)));
     // Rotated 90° about +Y and scaled 2: local +X ends up along -Z, twice as long.
     CHECK(nearlyEqual(Vec3(s.objects[0].transform * Vec4(1, 0, 0, 0)), Vec3(0, 0, -2), 1e-5f));
     // Prefab parts: object transform * part transform (part offsets scale with the object).
-    CHECK(s.objects[1].mesh == fs::fromUtf8("base") / "wall.glb");
+    CHECK(s.objects[1].mesh == "wall.glb");
     CHECK(nearlyEqual(origin(s.objects[2].transform), Vec3(10, 3, 0)));
 
     REQUIRE(s.lights.size() == 1);
@@ -123,7 +125,8 @@ TEST_CASE("SceneFile: errors name the file and the entry")
 
 TEST_CASE("SceneFile: loading a missing file fails")
 {
-    CHECK_FALSE(loadSceneFile(fs::fromUtf8("does/not/exist.toml")).ok());
+    const asset::Vfs vfs;
+    CHECK_FALSE(loadSceneFile(vfs, "does/not/exist.toml").ok());
 }
 
 TEST_CASE("FrameTimes: average and percentiles")
@@ -149,4 +152,34 @@ TEST_CASE("FrameTimes: average and percentiles")
     CHECK(one.summary().p99Ms == doctest::Approx(4.0));
     one.clear();
     CHECK(one.size() == 0);
+}
+
+TEST_CASE("SceneFile: mesh paths are relative to the scene's folder")
+{
+    auto config = Config::parse(R"(
+[[object]]
+mesh = "../models/hut.glb"
+[[object]]
+mesh = "tree.glb"
+)");
+    REQUIRE(config.ok());
+    auto scene = parseSceneFile(config.value(), "scenes/camp/scene.toml");
+    REQUIRE(scene.ok());
+    CHECK(scene.value().objects[0].mesh == "scenes/models/hut.glb");
+    CHECK(scene.value().objects[1].mesh == "scenes/camp/tree.glb");
+}
+
+TEST_CASE("Asset paths: siblings and image candidates")
+{
+    CHECK(vfsSibling("a/b/mesh.glb", "tex.png") == "a/b/tex.png");
+    CHECK(vfsSibling("a/b/mesh.glb", "./sub/../tex.png") == "a/b/tex.png");
+    CHECK(vfsSibling("a/b/mesh.glb", "../../x/tex.png") == "x/tex.png");
+    CHECK(vfsSibling("mesh.glb", "tex.png") == "tex.png");
+    CHECK(vfsSibling("a\\mesh.glb", "t\\tex.png") == "a/t/tex.png");
+    CHECK(vfsSibling("a/mesh.glb", "../../tex.png") == "../tex.png"); // above the root: the VFS rejects it
+
+    // Cooked meshes store paths from the root, glTF relative ones: both are tried, root first.
+    CHECK(imageCandidates("models/hut.g7mesh", "textures/wood.png") ==
+          std::vector<std::string>{"textures/wood.png", "models/textures/wood.png"});
+    CHECK(imageCandidates("hut.glb", "wood.png") == std::vector<std::string>{"wood.png"});
 }

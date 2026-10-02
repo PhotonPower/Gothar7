@@ -45,6 +45,16 @@ debug_ui = false
 # Shader-Verzeichnis, Standard: "shaders" neben der Executable. Zum Live-Bearbeiten der Quellen z. B.
 # shader_dir = "C:/dev/Gothar7/engine/render/shaders"
 
+[assets]
+# Ordner und Archive im virtuellen Dateisystem (docs/modules/asset.md). Höhere Priorität gewinnt.
+# dev_mounts: in Entwicklungs-Builds (CMake G7_DEV_ASSETS) assets/source (0) und assets/cooked (10) des Repos.
+dev_mounts = true
+# Weitere Quellen, relativ zum Spielordner; "*.g7pak" mountet alle Archive eines Ordners:
+# [[assets.mount]]
+# path = "data/*.g7pak"
+# priority = 20
+# mount_point = ""
+
 [input]
 # "classic" (Gothic-artig: Aktionstaste + Richtung) oder "modern" (Maus-Angriff, E zum Benutzen)
 scheme = "classic"
