@@ -162,6 +162,12 @@ bool Engine::runFrame()
 
     // While paused the accumulator is not fed, so nothing is caught up afterwards.
     const u32 steps = m_paused ? 0 : m_fixedStep.advance(realSeconds * m_timeScale);
+    if (m_fixedStep.droppedSeconds() > 0.0)
+    {
+        // E.g. window dragged on Windows (modal loop), debugger break, loading stall.
+        G7_LOG_DEBUG("engine", "frame hitch: {:.0f} ms, {:.0f} ms simulation time dropped",
+                     realSeconds * 1000.0, m_fixedStep.droppedSeconds() * 1000.0);
+    }
     for (u32 i = 0; i < steps; ++i)
     {
         G7_PROFILE_SCOPE("Engine::fixedUpdate");

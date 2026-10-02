@@ -53,3 +53,14 @@ TEST_CASE("FramePacer: zero means unlimited")
     CHECK(pacer.interval() == 0.0);
     CHECK(pacer.secondsUntilNextFrame(1.0) == 0.0);
 }
+
+TEST_CASE("FixedStep reports time dropped by a hitch")
+{
+    g7::FixedStep step(0.1, 5);
+    CHECK(step.advance(0.25) == 2);
+    CHECK(step.droppedSeconds() == 0.0);
+    CHECK(step.advance(1.0) == 5); // 1.05 accumulated, 0.5 simulated
+    CHECK(step.droppedSeconds() == doctest::Approx(0.55));
+    CHECK(step.advance(0.1) == 1);
+    CHECK(step.droppedSeconds() == 0.0); // only the last advance counts
+}

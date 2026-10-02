@@ -38,10 +38,13 @@ public:
     /// Interpolation factor [0,1) between the last two simulation states for rendering.
     [[nodiscard]] f64 alpha() const noexcept { return m_accumulator / m_step; }
     [[nodiscard]] f64 step() const noexcept { return m_step; }
+    /// Time discarded by the last advance() because the frame exceeded maxStepsPerFrame (a hitch).
+    [[nodiscard]] f64 droppedSeconds() const noexcept { return m_droppedSeconds; }
 
 private:
     f64 m_step;
     f64 m_accumulator = 0.0;
+    f64 m_droppedSeconds = 0.0;
     u32 m_maxSteps;
 };
 

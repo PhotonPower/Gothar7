@@ -7,7 +7,8 @@
 - `Log.hpp` – kanalbasiertes Logging (`G7_LOG_INFO("render", "...", args)`), threadsicher, `std::format`
 - `Assert.hpp` – `G7_ASSERT` (Debug), `G7_VERIFY` (immer)
 - `Result.hpp` – `Result<T>` / `Result<void>` mit `Error{message}`
-- `Clock.hpp` – `Stopwatch`, `FixedStep` (Akkumulator für feste Simulationsrate), `FramePacer`
+- `Clock.hpp` – `Stopwatch`, `FixedStep` (Akkumulator für feste Simulationsrate; `droppedSeconds()` meldet bei
+  Hängern verworfene Zeit, die Engine loggt sie mit `--verbose` als `frame hitch`), `FramePacer`
   (Frame-Limit ohne Drift: Fristen rücken um ein festes Intervall vor, nach einem Hänger > 1 Intervall
   wird neu synchronisiert statt nachgeholt; Zeit wird injiziert, daher ohne echte Uhr testbar)
 - `Version.hpp`
