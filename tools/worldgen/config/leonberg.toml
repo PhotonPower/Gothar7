@@ -1,18 +1,18 @@
 # Gebietsdefinition für den Spielort "Leonberg".
 # Koordinaten in ETRS89 / UTM 32N (EPSG:25832), Meter.
-# ACHTUNG: Ursprung und Grenzen sind UNGEFÄHRE Startwerte und müssen in W1 am Luftbild geprüft werden.
+# Ursprung und Grenzen am LGL-Luftbild (DOP20, Befliegung 2025) geprüft und festgelegt am 2026-10-02.
 
 [source]
 crs = "EPSG:25832"
 
 [origin]
-# ungefähr Marktplatz Leonberg (aus ca. 48.7985 N, 9.0127 E umgerechnet) – prüfen!
-easting  = 500933.0
-northing = 5405056.0
+# Marktbrunnen (achteckiges Becken) auf dem Leonberger Marktplatz, Geländehöhe ca. 386,9 m NHN.
+easting  = 501115.0
+northing = 5405347.0
 height_reference = "marktplatz"   # Höhe des Ursprungs wird beim Import aus dem DGM1 gelesen
 
 [area.core]          # Altstadt: volle Detailstufe (Gebäude-Generator, Annotationen)
-half_extent_m = 350
+half_extent_m = 350  # deckt die Altstadt (ca. E 500850–501300, N 5405200–5405560) samt Schloss ab
 
 [area.surroundings]  # Umland: nur Gelände + OSM-Grundlage, später frei gestaltet
 half_extent_m = 1000

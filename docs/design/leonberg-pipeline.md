@@ -22,21 +22,25 @@ Engine-Phasen. Werkzeuge: Python unter `tools/worldgen/`; die Engine liest nur g
 | Google Maps / Earth | – | **nur Anschauen**, keine Daten übernehmen | Nutzungsbedingungen erlauben keine Datenextraktion |
 
 Bezug: LGL Open GeoData-Portal (Download DGM1, LoD2, DOP). Alle Credits sammelt `assets/LICENSES.md`.
+Schritt-für-Schritt-Anleitung zum Herunterladen: `docs/design/leonberg-rohdaten.md`.
 
 ## 2. Ablage der Rohdaten
 
 Rohdaten (GBs, personenbezogene Bilder) liegen **außerhalb des Repos** in einem Datenordner,
-dessen Pfad in `tools/worldgen/config/local.toml` steht (nicht versioniert):
+dessen Pfad in `tools/worldgen/config/local.toml` steht (nicht versioniert). Alternativ setzt die
+Umgebungsvariable `GOTHAR_DATA_ROOT` den Pfad (z. B. in CI).
 
 ```
 <DATA_ROOT>/                     z. B. D:\GotharData
-  geo/lgl/dgm1/*.tif             LGL-Downloads (Kacheln)
-  geo/lgl/lod2/*.gml
-  geo/lgl/dop/*.tif
-  geo/osm/leonberg.osm.pbf
+  geo/lgl/dgm1/<kachel>/*.xyz    LGL-Downloads (2-km-Kacheln, je 4 Dateien à 1 km²)
+  geo/lgl/lod2/<kachel>/*.gml
+  geo/lgl/dop/<kachel>/
+  geo/osm/*.osm.pbf              Geofabrik-Extrakt, Zuschnitt macht geo-import
+  geo/SOURCES.md                 Herkunft und Download-Datum
   capture/insta360/<datum>/      .insv/.mp4 + GPS
-  work/                          Zwischenstände der Werkzeuge
+  work/<ort>/                    Zwischenstände der Werkzeuge
 ```
+`gothar-worldgen download leonberg` füllt `geo/`, `gothar-worldgen info leonberg` zeigt, welche Ordner fehlen.
 
 Im Repo landen nur **abgeleitete, geprüfte Ergebnisse** (`assets/source/worlds/leonberg/…`) und
 die Annotationen (`tools/worldgen/data/leonberg/…`, kleine JSON-Dateien).
@@ -44,14 +48,15 @@ die Annotationen (`tools/worldgen/data/leonberg/…`, kleine JSON-Dateien).
 ## 3. Koordinatensystem
 
 - Quelle: ETRS89 / UTM Zone 32N (**EPSG:25832**), Höhen in m über NHN.
-- Engine: lokales System in Metern, **Ursprung am Marktplatz** (genauer Punkt in `leonberg.toml`),
+- Engine: lokales System in Metern, **Ursprung am Marktplatz**: Marktbrunnen, E 501115 / N 5405347,
+  ca. 386,9 m NHN (am Luftbild festgelegt, siehe `leonberg.toml`),
   +X = Osten, +Y = oben, −Z = Norden (rechtshändig, passend zu `docs/modules/core.md`).
   Höhe: `y = NHN − Bezugshöhe` (Bezugshöhe = Marktplatzhöhe), damit Zahlen klein bleiben.
 - Optional ein **Spielmaßstab** pro Achse (siehe Abschnitt 8) – die Umrechnung macht ausschließlich `geo-import`.
 
 ## 4. Datenformate (Zwischenschicht)
 
-`geo-import` schreibt nach `<DATA_ROOT>/work/leonberg/`:
+`geo-import` (`gothar-worldgen import leonberg`) schreibt nach `<DATA_ROOT>/work/leonberg/`:
 
 ```
 terrain.r16 / terrain.png        16-Bit-Heightmap, 1 m/Pixel, + terrain.json (Größe, Ursprung, Höhenbereich)
@@ -60,12 +65,99 @@ streets.json                     Straßenachsen, Breite, Typ; Plätze als Polygo
 features.json                    Mauern, Gewässer, Bäume, Brunnen …
 ```
 
-`buildings.json` (ein Eintrag pro Gebäude):
+**Heightmap** (umgesetzt, Modul `geo/terrain.py`):
+- Ein Sample pro DGM1-Rasterzelle, ohne Neuabtastung. Die Samples liegen auf den Zellmitten des DGM1
+  (Koordinaten `…,5`) und decken das Gebiet `surroundings` ab, bei ±1000 m also 2000 × 2000 Samples.
+- `uint16`, zeilenweise. **Zeile 0 = Norden (−Z), Spalte 0 = Westen (−X).** `terrain.r16` ist Little-Endian
+  ohne Header, `terrain.png` ist dieselbe Karte als 16-Bit-Graustufen-PNG.
+- Höhe: `y = minY + wert / 65535 · (maxY − minY)` in lokalen Metern über der Ursprungshöhe
+  (`y = (NHN − origin.heightNHN) · gameScale.vertical`). `minY`/`maxY` sind der tatsächliche Höhenbereich,
+  auf mm gerundet. Für Leonberg ergibt das etwa 2 mm pro Stufe.
+- Die Ursprungshöhe ist das DGM1 bilinear am Ursprungspunkt, auf mm gerundet.
+- `terrain.json` (Auszug):
+  ```json
+  { "format": "gothar-terrain", "version": 1, "width": 2000, "height": 2000, "cellSize": 1.0,
+    "firstSample": { "x": -999.5, "z": -999.5 },
+    "heightRange": { "minY": -50.991, "maxY": 94.85, "stepM": 0.002225391 },
+    "areas": { "core": { "minX": -350, "minZ": -350, "maxX": 350, "maxZ": 350 }, "surroundings": { … } },
+    "origin": { "crs": "EPSG:25832", "easting": 501115.0, "northing": 5405347.0, "heightNHN": 386.89, "heightReference": "marktplatz" },
+    "gameScale": { "horizontal": 1.0, "vertical": 1.0 },
+    "source": { "product": "LGL DGM1", "heightDatum": "DHHN2016", "files": [ … ], "credit": "Datengrundlage: LGL, www.lgl-bw.de" } }
+  ```
+  `firstSample` ist die lokale Position der Mitte von Sample (0,0), also der Nordwest-Ecke.
+  `areas` kennzeichnet Kern und Rand, z. B. für spätere Erweiterungen oder für den Editor.
+- Der Maßstab `gameScale.horizontal` skaliert `cellSize`, `firstSample` und `areas`;
+  `gameScale.vertical` skaliert die Höhen.
+
+**`buildings.json`** (umgesetzt, Module `geo/lod2.py` + `geo/buildings.py`): Kopf mit `format`
+(`gothar-buildings`), `version`, `origin` (dieselbe Bezugshöhe wie `terrain.json`), `gameScale`,
+`source` (LoD2-Dateien, Credit) und `count`, danach `buildings` mit **einem Gebäude pro Zeile**:
 ```json
-{ "id": "DEBW_0010000abc", "footprint": [[x, z], ...], "groundY": 0.4,
-  "roof": { "type": "saddle", "eaveY": 9.8, "ridgeY": 14.2, "ridgeDir": [1, 0] },
-  "osm": { "building": "house", "levels": 3 }, "areaM2": 112.5 }
+{ "id": "DEBW_00100061Zl2", "function": "31001_1123", "inCore": true,
+  "footprint": [[x, z], ...], "areaM2": 250.2, "groundY": -0.93, "heightM": 17.57,
+  "roof": { "type": "saddle", "alkis": "3100", "eaveY": 9.61, "ridgeY": 16.64,
+            "ridgeDir": [1.0, 0.017], "pitchDeg": 32.7 },
+  "parts": [ { "id": "UUID_…", "footprint": …, "areaM2": …, "groundY": …, "heightM": …, "roof": { … } } ],
+  "warnings": [ "…" ] }
 ```
+- Aufgenommen werden alle Gebäude, deren Grundriss im Gebiet `surroundings` liegt (gemessen an einem
+  repräsentativen Punkt). `inCore` markiert die Gebäude der Altstadt.
+- Koordinaten sind lokal (x, z) in Metern, auf cm gerundet. Der Ring ist nicht geschlossen und läuft in der
+  Draufsicht (Norden oben) gegen den Uhrzeigersinn. Innenhöfe ab 1 m² stehen in `holes`.
+- `groundY`, `eaveY` und `ridgeY` sind **absolute lokale Höhen**, im selben System wie das Terrain.
+  `eaveY` ist der tiefste Dachpunkt, `ridgeY` der höchste; `heightM` = höchster First − Boden.
+- `roof.type` stammt aus der ALKIS-Dachform (`alkis`): `flat` 1000, `shed` 2100, `offset_shed` 2200,
+  `saddle` 3100, `hip` 3200, `half_hip` 3300, `mansard` 3400, `tent` 3500, `cone` 3600, `dome` 3700,
+  `sawtooth` 3800, `arch` 3900, `tower` 4000, `mixed` 5000, `other` 9999.
+  `ridgeDir` ist die Richtung der längsten Kante am höchsten Punkt (vorzeichenfrei, x ≥ 0). Bei
+  Flach-, Zelt-, Kegel-, Kuppel- und Turmdächern ist sie `null`. `pitchDeg` ist die flächengewichtete mittlere Dachneigung.
+- Gebäude mit LoD2-Gebäudeteilen bekommen `parts`, jeweils mit eigenem Dach. Der Grundriss ist die Vereinigung
+  der Teile, `roof` ist das Dach des größten Teils.
+- `function` ist der ALKIS-Gebäudefunktionscode (z. B. `31001_1010` Wohnhaus, `31001_2463` Garage;
+  `51009_*` sind Bauwerke wie Überdachungen). Eine Zuordnung für das Spiel folgt mit den Annotationen.
+- `warnings` (optional) nennt Auffälligkeiten: getrennte Grundrissteile (der größte bleibt erhalten),
+  ein fehlendes Dach oder eine Abweichung von mehr als 1 m zur LoD2-`measuredHeight`.
+- **Offen:** OSM-Gebäudeangaben (`building`, `building:levels`) sind noch nicht zugeordnet. Geplant ist eine
+  Zuordnung über die größte Grundriss-Überlappung, sobald der Generator Stockwerkszahlen braucht (W5).
+
+**`streets.json`** (umgesetzt, Module `geo/osm.py` + `geo/streets.py`): Kopf wie oben, `source` mit
+OSM-Datei, Stand (`timestamp`), Credit „© OpenStreetMap-Mitwirkende“ und Lizenz ODbL 1.0; danach zwei Listen:
+```json
+"streets": [ { "osmId": "w4711", "highway": "residential", "class": "road", "name": "Marktplatz",
+               "widthM": 5.5, "widthSource": "default", "surface": "sett", "layer": 1, "bridge": true,
+               "points": [[x, z], ...] } ],
+"squares": [ { "osmId": "w53012023", "kind": "square", "name": "Marktplatz", "surface": "sett",
+               "polygon": [[x, z], ...], "holes": [...], "areaM2": 2787.4 } ]
+```
+- `streets` enthält Mittellinien aller `highway`-Wege, zugeschnitten auf das Gebiet. Wird ein Weg durch den
+  Zuschnitt geteilt, entstehen mehrere Einträge mit derselben `osmId`.
+- `class` fasst die `highway`-Werte zusammen: `road` (Fahrstraßen), `pedestrian`, `track`, `path`
+  (Fuß-, Rad- und Reitwege) und `steps`. Daraus leitet W6 Belag und Breite ab: Kopfstein in der Stadt,
+  Matsch/Kies außerhalb.
+- `widthM` stammt aus `width`/`est_width` (Meterangaben), sonst aus `lanes` × 3 m, sonst aus einem
+  Standardwert je Typ (z. B. residential 5,5 m, footway 2 m, path 1,5 m). Woher der Wert kommt, steht in
+  `widthSource` (`tag`, `lanes`, `default`).
+- `squares` sind Flächen mit `place=square`, `amenity=marketplace` oder `highway=pedestrian|footway|…`
+  zusammen mit `area=yes`.
+
+**`features.json`** (umgesetzt, Modul `geo/features.py`): eine Liste `features` mit `osmId`, `type`, `kind`
+(OSM-Wert), optional `name` und `tags` (Auswahl, z. B. `height`, `material`, `species`, `start_date`), sowie
+der Geometrie: `"geometry": "point"` + `position`, `"line"` + `points` oder `"polygon"` + `polygon`/`holes`/`areaM2`.
+
+| `type` | aus OSM | Geometrie |
+|---|---|---|
+| `wall` | `barrier=wall/city_wall/retaining_wall`, `historic=city_wall` | Linie |
+| `hedge` | `barrier=hedge` | Linie |
+| `waterway` | `waterway=river/stream/canal/ditch/drain` | Linie |
+| `water` | `natural=water`, `waterway=riverbank`, `landuse=reservoir/basin` | Fläche |
+| `tree` / `tree_row` | `natural=tree` / `natural=tree_row` | Punkt / Linie |
+| `landuse` | `landuse=*` (Wald, Wiese, Acker, Obstwiese, Wohngebiet …), `natural=wood/scrub/…`, `leisure=park/garden/…` | Fläche |
+| `fountain` | `amenity=fountain`, `man_made=water_well` | Punkt oder Fläche |
+| `landmark` | `amenity=place_of_worship`, `historic=castle/city_gate/monument/…` | Punkt oder Fläche |
+| `railway` | `railway=rail/light_rail/tram/narrow_gauge` (modern, nur zur Orientierung) | Linie |
+
+OSM bezieht sich auf WGS84, die LGL-Daten auf ETRS89. Der Unterschied liegt unter 1 m und wird ignoriert.
+Zur Kontrolle: Der OSM-Marktbrunnen liegt 3,7 m neben dem am Luftbild gewählten Ursprung.
 
 Annotationen/Overrides pro Gebäude (`tools/worldgen/data/leonberg/buildings/<id>.json`, versioniert):
 ```json
@@ -82,9 +174,29 @@ Annotationen/Overrides pro Gebäude (`tools/worldgen/data/leonberg/buildings/<id
 ### W-A `geo-import` (Python: GDAL/rasterio, pyproj, shapely, lxml, osmium)
 - Gebiet aus `leonberg.toml` ausschneiden (Kernbereich Altstadt + Rand für Umland).
 - DGM1-Kacheln mosaikieren → Heightmap; Ränder für die spätere Erweiterung kennzeichnen.
-- CityGML LoD2 parsen → Grundrisse, Dachflächen → Dachtyp/Höhen klassifizieren → `buildings.json`.
-- OSM → `streets.json`, `features.json` (Straßenbreite aus Tags, sonst Schätzung nach Typ).
-- Vorschau-PNG (Heightmap + Grundrisse + Straßen) zur Kontrolle.
+- CityGML LoD2 parsen → Grundrisse, Dachflächen → Dachtyp (ALKIS-Code)/Höhen/Firstrichtung → `buildings.json`.
+- OSM → `streets.json`, `features.json` (Straßenbreite aus Tags, sonst Schätzung nach Typ; Plätze, Mauern, Wasser, Bäume, Landnutzung, Brunnen, Landmarken).
+- Vorschau und Plausibilitätsprüfung (`gothar-worldgen check <ort>`, läuft am Ende von `import` mit):
+  `preview.png` (ganzes Gebiet, 1 m/px) und `preview_core.png` (Altstadt, 0,5 m/px) zeigen das schattierte
+  Gelände mit Gebäuden (Kern rot, Rest grau), Straßen nach Klasse und Breite, Plätzen, Wasser, Mauern,
+  Bäumen, Brunnen und Landmarken, außerdem Legende, Maßstab, Kernrahmen und Ursprungskreuz (Norden oben).
+  `report.json` enthält die Prüfungen mit `ok`/`warn`/`fail`. Bei `fail` endet der Befehl mit Exit-Code 1.
+
+  | Prüfung | Kriterium |
+  |---|---|
+  | `terrain.resolution` | Höhenstufe ≤ 10 mm |
+  | `terrain.originInRange` | Ursprungshöhe liegt im Geländebereich (sonst `fail`) |
+  | `layers.sameOrigin` | alle Dateien haben denselben Ursprung und dieselbe Bezugshöhe (sonst `fail`) |
+  | `buildings.count` | Gebäude vorhanden, davon welche im Kern |
+  | `buildings.groundVsTerrain` | Median \|Gebäudeboden − Gelände an den Grundrissecken\| ≤ 0,5 m (`warn` bis 2 m) |
+  | `buildings.groundOutliers` | ≤ 5 % der Gebäude weichen > 2 m ab (Hanglagen) |
+  | `buildings.heights` / `.warnings` | ≤ 1 % mit Höhe außerhalb 0,5–120 m bzw. mit Umwandlungswarnungen |
+  | `streets.count`, `streets.widths` | Straßen vorhanden; Breiten 0,5–40 m |
+  | `osm.withinArea` | alle OSM-Punkte im Gebiet (Zuschnitt) |
+  | `alignment.roadsInBuildings` | ≤ 3 % der Straßenlänge durch Gebäude (`warn` bis 10 %): prüft, ob OSM und LGL deckungsgleich sind |
+
+  Stand Leonberg: alle Prüfungen `ok`. Die Abweichung von Boden zu Gelände liegt im Median bei 0,03 m,
+  1,6 % der Straßenlänge verläuft durch Gebäude (Durchfahrten). Zwei Läufe von `import` liefern byte-identische Dateien.
 
 ### W-B Terrain in der Engine (C++, Modul `world`/`render`)
 - Heightmap-Terrain in Kacheln (z. B. 64×64 m) mit LOD (geomorphing oder CDLOD).
@@ -158,7 +270,8 @@ Material Maker / Substance für Trim-Sheets, QGIS zum Sichten der Geodaten.
 
 ## 9. Offene Fragen
 
-- Genaue Gebietsgrenze (Kern + Umland) und Ursprungspunkt.
+- ~~Genaue Gebietsgrenze (Kern + Umland) und Ursprungspunkt.~~ Festgelegt 2026-10-02: Ursprung Marktbrunnen,
+  Kern ±350 m (umfasst Altstadt und Schloss), Umland ±1000 m (`leonberg.toml`).
 - Maßstabsfaktoren nach dem Klötzchen-Test.
 - Welche realen Bauten bleiben erkennbar (Schloss, Kirche, Marktplatz-Ensemble)?
 - Rolle des Ortes in der Geschichte (Lager einer Fraktion? Handelsstadt?) → `docs/design/world.md`.

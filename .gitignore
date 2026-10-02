@@ -43,4 +43,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .ruff_cache/
+.coverage
+coverage.xml
+*.egg-info/
 /data/

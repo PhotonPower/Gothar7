@@ -259,19 +259,20 @@ gezogene Waffen und Betreten ihrer Hütte.
 Spezifikation: `docs/design/leonberg-pipeline.md`. Werkzeuge in `tools/worldgen/` (Python ≥ 3.11),
 Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
-**Aktueller Stand Welt-Spur:** W1 noch nicht begonnen.
+**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24, CI grün). `gothar-worldgen` mit `info`, `tiles`, `download`, `import` und `check`: DGM1 → `terrain.r16`/`.png`/`.json` (2000 × 2000 m), LoD2 → `buildings.json` (5392 Gebäude, 905 in der Altstadt), OSM → `streets.json` (1802 Achsen, 6 Plätze) und `features.json` (1110 Objekte, u. a. Stadtmauer, Brunnen, Bäume), dazu Vorschaubilder und `report.json` (alle Prüfungen ok). Rohdaten für Leonberg liegen lokal vor, Blender 4.5 LTS ist installiert. Ursprung: Marktbrunnen E 501115 / N 5405347 (386,89 m NHN), Kern ±350 m, Umland ±1000 m. Als Nächstes: W2 benötigt M2 und das M4-Terrain; ohne Engine-Abhängigkeit ist W4 (Aufnahmen und Fassaden-Werkzeug) möglich.
 
 ## W1 – Geodaten-Import  (keine Engine-Abhängigkeit)
-- [ ] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
-- [ ] Konfiguration: `config/leonberg.toml` (Gebiet, Ursprung, Maßstab), `config/local.toml` (DATA_ROOT, nicht versioniert)
-- [ ] Download-Hilfe/Anleitung für LGL-Kacheln (DGM1, LoD2, DOP) und OSM-Ausschnitt
-- [ ] DGM1 → Heightmap (`terrain.r16` + `terrain.json`) im lokalen Koordinatensystem
-- [ ] LoD2 (CityGML) → `buildings.json` (Grundriss, Dachtyp, Trauf-/Firsthöhe, Bodenhöhe)
-- [ ] OSM → `streets.json`, `features.json`
-- [ ] Vorschau-PNG (Höhen, Grundrisse, Straßen) und Plausibilitätsprüfungen
-- [ ] Ursprungspunkt und Gebietsgrenzen am Luftbild prüfen und festlegen
+- [x] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
+- [x] Konfiguration: `config/leonberg.toml` (Gebiet, Ursprung, Maßstab), `config/local.toml` (DATA_ROOT, nicht versioniert)
+- [x] Download-Hilfe/Anleitung für LGL-Kacheln (DGM1, LoD2, DOP) und OSM-Ausschnitt
+- [x] DGM1 → Heightmap (`terrain.r16` + `terrain.json`) im lokalen Koordinatensystem
+- [x] LoD2 (CityGML) → `buildings.json` (Grundriss, Dachtyp, Trauf-/Firsthöhe, Bodenhöhe)
+- [x] OSM → `streets.json`, `features.json`
+- [x] Vorschau-PNG (Höhen, Grundrisse, Straßen) und Plausibilitätsprüfungen
+- [x] Ursprungspunkt und Gebietsgrenzen am Luftbild prüfen und festlegen
 
 **DoD:** Ein Befehl (`gothar-worldgen import leonberg`) erzeugt alle Zwischendaten reproduzierbar; Tests mit LGL-Testdaten laufen in CI.
+✅ Erfüllt: `import leonberg` erzeugt alle Zwischendaten, zwei Läufe waren byte-identisch (2026-10-02). Der CI-Job `worldgen` mit LGL- und OSM-Testausschnitten ist grün unter Linux (py3.11) und Windows (py3.12), PR #24.
 
 ## W2 – Leonberg-Gelände in der Engine  (benötigt M2, M4-Terrain)
 - [ ] Heightmap-Import in das Terrain-System, Splatmap-Grundbelegung aus Straßen/Nutzung

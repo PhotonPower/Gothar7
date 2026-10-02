@@ -151,3 +151,38 @@ jobs:
         with:
           name: coverage-core
           path: coverage/
+
+  # World-track tools (tools/worldgen, Python): lint, format check, tests.
+  worldgen:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            python: "3.11"   # minimum supported version
+          - os: windows-2022
+            python: "3.12"   # development setup
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: tools/worldgen
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: tools/worldgen/pyproject.toml
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Ruff (format)
+        run: ruff format --check .
+
+      - name: Pytest
+        run: python -m pytest --cov=gothar_worldgen --cov-report=term-missing
