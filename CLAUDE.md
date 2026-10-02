@@ -95,5 +95,8 @@ Lücken nachfragen statt raten – Spielgefühl-Entscheidungen trifft der Projek
 Phase **M0** abgeschlossen: core mit Log/Assert/Result/Clock, Dateisystem, Mathe (glm), StringId, Config (toml++),
 Profiler-Hook; Engine-Hauptschleife headless; CI (Windows + Linux + Coverage ≥ 80 % für core).
 Phase **M1** abgeschlossen: SDL3-Fenster, Eingabe, Aktions-Mapping aus `game/config/engine.toml`, Frame-Limit,
-Zeitskalierung/Pause. Aktuelle Phase: **M2** (Renderer). Die Welt-Spur (W1–W7) wird separat bearbeitet.
+Zeitskalierung/Pause.
+Phase **M2** abgeschlossen: OpenGL-Renderer (RHI, Shader-Hot-Reload, glTF, Materialien, Licht, Schatten, Nebel,
+Tonemapping, Debug-Draw, ImGui), Testszene `assets/source/testscene` (`--scene`, `--benchmark`). Aktuelle Phase: **M3**
+(Asset-System). Die Welt-Spur (W1–W7) wird separat bearbeitet.
 Details siehe `docs/03-roadmap.md`.

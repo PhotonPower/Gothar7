@@ -20,14 +20,33 @@
 #include <g7/render/Mesh.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
+#include <g7/runtime/FrameTimes.hpp>
+#include <g7/runtime/SceneFile.hpp>
 #include <g7/ui/DebugUi.hpp>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace g7
 {
+/// A glTF model on the GPU, shared by all its instances.
+struct LoadedModel
+{
+    render::Mesh mesh;
+    render::MaterialSet materials;
+    std::string name;
+};
+
+/// One placed model with its world bounds (for culling).
+struct SceneInstance
+{
+    const LoadedModel* model = nullptr;
+    Mat4 transform{1.0f};
+    AABB bounds;
+};
+
 struct EngineConfig
 {
     std::string appName = "Gothar";
@@ -44,8 +63,17 @@ struct EngineConfig
     fs::Path shaderDirectory;
     /// Optional glTF model shown at the origin (--view-mesh); the debug camera frames it.
     fs::Path viewMesh;
-    bool sun = true;             ///< false: no sunlight (--no-sun), to judge point lights alone.
-    bool ground = true;          ///< Ground plate under the --view-mesh model (--no-ground).
+    bool sun = true; ///< false: no sunlight (--no-sun), to judge point lights alone.
+    /// Optional test scene (--scene, format in SceneFile.hpp); replaces --view-mesh.
+    fs::Path scene;
+    u32 viewpoint = 0;  ///< Start viewpoint of the scene (--viewpoint=N).
+    bool ground = true; ///< Ground plate under the --view-mesh model (--no-ground).
+    /// Benchmark (--benchmark): visits the scene's viewpoints for `benchmarkFrames` frames each, logs
+    /// frame-time statistics and quits. The caller turns VSync and the frame cap off.
+    bool benchmark = false;
+    u32 benchmarkFrames = 300;
+    /// Saves the last rendered frame as PNG (--screenshot=<file>), e.g. with --frames or --benchmark.
+    fs::Path screenshot;
     platform::WindowDesc window; ///< Used unless headless.
     /// Merged settings (engine.toml + user config). The engine reads [input] (scheme,
     /// stick_deadzone) and [bindings.<scheme>]; window settings are applied by the caller.
@@ -94,6 +122,10 @@ public:
 
     /// Render device, or nullptr without rendering.
     [[nodiscard]] render::Device* renderDevice() noexcept { return m_device.get(); }
+    /// Placed objects of the scene (--scene / --view-mesh, ground included) and how many were drawn in
+    /// the last frame after frustum culling.
+    [[nodiscard]] usize sceneObjectCount() const noexcept { return m_instances.size(); }
+    [[nodiscard]] u32 visibleSceneObjects() const noexcept { return m_visibleInstances; }
     /// Camera used for rendering (a free-flying debug camera until the player exists, M5).
     [[nodiscard]] render::Camera& camera() noexcept { return m_camera; }
     /// Shader programs (with hot-reload), or nullptr without rendering.
@@ -115,10 +147,19 @@ public:
 private:
     void shutdown();
     [[nodiscard]] Result<void> initShaders();
+    [[nodiscard]] Result<void> initSceneRendering();
     [[nodiscard]] Result<void> initViewMesh();
+    [[nodiscard]] Result<void> initScene();
+    /// Loads a glTF model once; later calls with the same path return the cached one.
+    [[nodiscard]] Result<const LoadedModel*> loadModel(const fs::Path& path);
+    [[nodiscard]] Result<void> addGround(f32 size, const Vec3& color, f32 height);
+    void addInstance(const LoadedModel& model, const Mat4& transform);
+    void setViewpoint(const SceneViewpoint& viewpoint);
+    void updateBenchmark(f64 realSeconds);
+    void saveScreenshot(u32 width, u32 height);
     void initEnvironment();
     void renderScene(u32 width, u32 height);
-    void drawViewMesh(u32 width, u32 height);
+    void drawScene(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
     /// `allowMouse` / `allowKeyboard` false while the debug UI uses them.
     void updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard);
@@ -142,13 +183,20 @@ private:
     bool m_debugUiFrame = false;      // an ImGui frame was begun this frame and awaits rendering
     f64 m_frameSeconds = 0.0;         // real duration of the last frame
     f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
-    render::Mesh m_viewMesh;          // empty unless --view-mesh
-    render::MaterialSet m_viewMaterials;
+    // Scene: --view-mesh (one model) or --scene (test scene); models are shared by instances.
+    std::map<fs::Path, std::unique_ptr<LoadedModel>> m_models;
+    std::unique_ptr<LoadedModel> m_groundModel;
+    std::vector<SceneInstance> m_instances;
+    std::string m_sceneName;
+    AABB m_sceneBounds{Vec3(1.0f), Vec3(-1.0f)}; // empty until the first non-ground instance
+    std::vector<SceneViewpoint> m_viewpoints;
+    u32 m_visibleInstances = 0;
+    FrameTimes m_benchmarkTimes;
+    std::vector<FrameTimeSummary> m_benchmarkResults;
+    u64 m_benchmarkFrame = 0;
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs
     render::Environment m_environment;
     render::LightList m_lights;
-    render::Mesh m_ground;
-    render::MaterialSet m_groundMaterials;
     render::ShadowMap m_shadowMap;
     std::vector<render::Cascade> m_cascades;
     bool m_shadowDebug = false;

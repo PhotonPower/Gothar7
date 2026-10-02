@@ -16,14 +16,16 @@ namespace g7
 /// Value types a Config can hold.
 template <typename T>
 concept ConfigValue = std::is_same_v<T, bool> || std::is_same_v<T, i64> || std::is_same_v<T, f64> ||
-                      std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<std::string>>;
+                      std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<std::string>> ||
+                      std::is_same_v<T, std::vector<f64>>;
 
 /// Typed key/value configuration backed by TOML (ADR 0010).
 ///
 /// Keys are dotted paths into nested tables: "render.view_distance", "audio.volume.music".
-/// Supported value types: bool, i64, f64, std::string, std::vector<std::string>.
-/// f64 queries also accept integers, so "volume = 1" reads as 1.0. The type is always given
-/// explicitly (`get<i64>("render.fps_limit", 0)`), so literals cannot pick an unsupported one.
+/// Supported value types: bool, i64, f64, std::string, std::vector<std::string>, std::vector<f64>.
+/// f64 queries (also inside arrays) accept integers, so "volume = 1" reads as 1.0. Array elements are
+/// addressed with an index: "object[2].mesh" (arrays of tables, `[[object]]` in TOML). The type is always
+/// given explicitly (`get<i64>("render.fps_limit", 0)`), so literals cannot pick an unsupported one.
 class Config
 {
 public:
@@ -43,6 +45,8 @@ public:
     [[nodiscard]] std::string toToml() const;
 
     [[nodiscard]] bool contains(std::string_view key) const;
+    /// Number of elements of the array at `key`; 0 if absent or not an array.
+    [[nodiscard]] usize arraySize(std::string_view key) const;
 
     /// Value if present and of the requested type, otherwise nullopt.
     template <ConfigValue T>

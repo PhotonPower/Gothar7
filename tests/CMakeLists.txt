@@ -38,7 +38,8 @@ g7_set_warnings(g7_tests_render_gpu)
 set_target_properties(g7_tests_render_gpu PROPERTIES FOLDER "tests")
 add_test(NAME render_gpu COMMAND g7_tests_render_gpu)
 set_tests_properties(render_gpu PROPERTIES LABELS gpu)
-target_compile_definitions(g7_tests_render_gpu PRIVATE G7_SHADER_DIR="${PROJECT_SOURCE_DIR}/engine/render/shaders")
+target_compile_definitions(g7_tests_render_gpu PRIVATE G7_SHADER_DIR="${PROJECT_SOURCE_DIR}/engine/render/shaders"
+    G7_TESTSCENE="${PROJECT_SOURCE_DIR}/assets/source/testscene/scene.toml")
 # test_image.cpp encodes PNG/JPEG with stb_image_write.
 target_link_libraries(g7_tests_asset PRIVATE g7_stb)
 target_link_libraries(g7_tests_render_gpu PRIVATE g7_stb) # test_material.cpp encodes PNGs

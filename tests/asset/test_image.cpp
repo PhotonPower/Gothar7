@@ -170,3 +170,21 @@ TEST_CASE("glTF: images from a data URI, a buffer view and a file URI")
     REQUIRE(decoded.ok());
     CHECK(decoded.value().rgba8 == std::vector<u8>{10, 20, 30, 255});
 }
+
+TEST_CASE("Image: savePng writes what loadImage reads")
+{
+    const ImageData source{2, 1, {255, 0, 0, 255, 0, 0, 255, 128}};
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const fs::Path file =
+        std::filesystem::temp_directory_path() / ("g7_save_" + std::to_string(stamp) + ".png");
+    REQUIRE(savePng(file, source).ok());
+    auto loaded = loadImage(file);
+    REQUIRE(loaded.ok());
+    CHECK(loaded.value().width == 2);
+    CHECK(loaded.value().rgba8 == source.rgba8);
+    std::error_code ignored;
+    std::filesystem::remove(file, ignored);
+
+    CHECK_FALSE(asset::encodePng(ImageData{2, 2, {1, 2, 3}}).ok()); // size mismatch
+    CHECK_FALSE(asset::encodePng(ImageData{}).ok());
+}

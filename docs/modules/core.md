@@ -58,8 +58,10 @@
   - `Config::parse(text, sourceName)`, `Config::load(path)` → `Result<Config>`; Syntaxfehler als
     `"<quelle>:<zeile>:<spalte>: <beschreibung>"`. `save(path)` schreibt atomisch, `toToml()`.
   - Schlüssel sind Punkt-Pfade (`"audio.volume.music"`). Werttypen (Concept `ConfigValue`): `bool`, `i64`, `f64`,
-    `std::string`, `std::vector<std::string>`; der Typ wird immer explizit angegeben:
+    `std::string`, `std::vector<std::string>`, `std::vector<f64>`; der Typ wird immer explizit angegeben:
     `get<i64>("render.fps_limit", 0)`, `find<T>(key) -> std::optional<T>`, `set<T>(key, value)`, `contains(key)`.
+  - Array-Elemente per Index im Pfad: `"object[2].mesh"` (Tabellen-Arrays `[[object]]`); `arraySize(key)` liefert die
+    Länge (0 ohne Array). Zahlen-Arrays akzeptieren auch Ganzzahlen (`[1, 2.5, 3]`).
   - `get` liefert bei fehlendem Schlüssel den Default, bei falschem Typ den Default + Warnung im Log;
     `f64` akzeptiert auch Ganzzahlen. `set` legt Zwischentabellen an und ersetzt vorhandene Werte.
   - `keys(table)` – direkte Unterschlüssel, sortiert (z. B. alle Aktionen in `[bindings]`).

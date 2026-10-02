@@ -1,0 +1,845 @@
+# M2 test scene (Definition of Done): a small camp with huts around a fire, a market, a fence and a
+# forest - sun, shadows, torch light and fog. Models: Kenney Fantasy Town Kit and Nature Kit (CC0,
+# assets/LICENSES.md). One Kenney unit = 1 tile; huts are scaled by 3 (3 m walls).
+#
+#   gothar --scene=<path>/scene.toml               fly around (F1 panel, F2 debug draw)
+#   gothar --scene=<path>/scene.toml --benchmark   frame times from the viewpoints below
+#
+# Format: docs/05-build.md ("Testszenen"). Positions in metres, rotation_y in degrees.
+
+ground = { size = 640.0, color = [0.34, 0.31, 0.24] }
+
+# Late evening: weaker sun so the torches stand out, Gothic-like dense fog (90 % at 200 m, so the
+# ground plate's edge at 320 m disappears in the horizon).
+[environment]
+sun_intensity = 1.1
+fog_start = 20.0
+fog_density = 0.00843
+
+# Hut of 1 x 2 tiles along +Z: plank walls, door at -X, a shuttered window, gable roof.
+[prefab.hut]
+
+[[prefab.hut.part]]
+mesh = "town/wall-wood.glb"
+[[prefab.hut.part]]
+mesh = "town/wall-wood-door.glb"
+rotation_y = 180
+[[prefab.hut.part]]
+mesh = "town/roof-gable.glb"
+position = [0, 1, 0]
+rotation_y = 90
+[[prefab.hut.part]]
+mesh = "town/wall-wood-window-shutters.glb"
+position = [0, 0, 1]
+[[prefab.hut.part]]
+mesh = "town/wall-wood.glb"
+position = [0, 0, 1]
+rotation_y = 180
+[[prefab.hut.part]]
+mesh = "town/roof-gable.glb"
+position = [0, 1, 1]
+rotation_y = 90
+[[prefab.hut.part]]
+mesh = "town/wall-wood.glb"
+rotation_y = 90
+[[prefab.hut.part]]
+mesh = "town/wall-wood-window-small.glb"
+position = [0, 0, 1]
+rotation_y = 270
+
+# Longer stone house, 1 x 3 tiles, with a chimney.
+[prefab.longhouse]
+[[prefab.longhouse.part]]
+mesh = "town/wall.glb"
+[[prefab.longhouse.part]]
+mesh = "town/wall-door.glb"
+rotation_y = 180
+[[prefab.longhouse.part]]
+mesh = "town/roof-gable.glb"
+position = [0, 1, 0]
+rotation_y = 90
+[[prefab.longhouse.part]]
+mesh = "town/wall.glb"
+position = [0, 0, 1]
+[[prefab.longhouse.part]]
+mesh = "town/wall.glb"
+position = [0, 0, 1]
+rotation_y = 180
+[[prefab.longhouse.part]]
+mesh = "town/roof-gable.glb"
+position = [0, 1, 1]
+rotation_y = 90
+[[prefab.longhouse.part]]
+mesh = "town/wall-window-shutters.glb"
+position = [0, 0, 2]
+[[prefab.longhouse.part]]
+mesh = "town/wall.glb"
+position = [0, 0, 2]
+rotation_y = 180
+[[prefab.longhouse.part]]
+mesh = "town/roof-gable.glb"
+position = [0, 1, 2]
+rotation_y = 90
+[[prefab.longhouse.part]]
+mesh = "town/wall.glb"
+rotation_y = 90
+[[prefab.longhouse.part]]
+mesh = "town/wall-window-small.glb"
+position = [0, 0, 2]
+rotation_y = 270
+[[prefab.longhouse.part]]
+mesh = "town/chimney.glb"
+position = [0, 1.3, 2]
+
+# Camp fire: a ring of stones and logs.
+[prefab.campfire]
+[[prefab.campfire.part]]
+mesh = "nature/campfire_stones.glb"
+[[prefab.campfire.part]]
+mesh = "nature/campfire_logs.glb"
+
+# --- Village: huts around the fire, doors facing it, a lantern (torch light) before each door.
+
+[[object]]
+prefab = "hut"
+position = [13.0, 0.0, 0.0]
+scale = 3
+
+[[object]]
+mesh = "town/lantern.glb"
+position = [9.5, 0.0, -1.5]
+scale = 1.5
+
+[[light]]
+position = [9.5, 2.2, -1.5]
+radius = 8
+color = [1, 0.62, 0.3]
+intensity = 3
+
+[[object]]
+prefab = "hut"
+position = [0.0, 0.0, -14.0]
+rotation_y = 90
+scale = 3
+
+[[object]]
+mesh = "town/lantern.glb"
+position = [-1.5, 0.0, -10.5]
+scale = 1.5
+
+[[light]]
+position = [-1.5, 2.2, -10.5]
+radius = 8
+color = [1, 0.62, 0.3]
+intensity = 3
+
+[[object]]
+prefab = "hut"
+position = [-12.0, 0.0, 6.0]
+rotation_y = 207
+scale = 3
+
+[[object]]
+mesh = "town/lantern.glb"
+position = [-8.2, 0.0, 5.8]
+scale = 1.5
+
+[[light]]
+position = [-8.2, 2.2, 5.8]
+radius = 8
+color = [1, 0.62, 0.3]
+intensity = 3
+
+[[object]]
+prefab = "hut"
+position = [7.0, 0.0, 12.0]
+rotation_y = 300
+scale = 3
+
+[[object]]
+mesh = "town/lantern.glb"
+position = [6.5, 0.0, 8.2]
+scale = 1.5
+
+[[light]]
+position = [6.5, 2.2, 8.2]
+radius = 8
+color = [1, 0.62, 0.3]
+intensity = 3
+
+[[object]]
+prefab = "hut"
+position = [-10.0, 0.0, -10.0]
+rotation_y = 135
+scale = 3
+
+[[object]]
+mesh = "town/lantern.glb"
+position = [-8.6, 0.0, -6.5]
+scale = 1.5
+
+[[light]]
+position = [-8.6, 2.2, -6.5]
+radius = 8
+color = [1, 0.62, 0.3]
+intensity = 3
+
+[[object]]
+prefab = "longhouse"
+position = [17.0, 0.0, -13.0]
+rotation_y = 37
+scale = 3
+
+[[object]]
+mesh = "town/lantern.glb"
+position = [13.3, 0.0, -12.1]
+scale = 1.5
+
+[[light]]
+position = [13.3, 2.2, -12.1]
+radius = 8
+color = [1, 0.62, 0.3]
+intensity = 3
+
+# --- Camp fire in the middle.
+
+[[object]]
+prefab = "campfire"
+position = [0.0, 0.0, 0.0]
+scale = 5
+
+[[light]]
+position = [0.0, 1.0, 0.0]
+radius = 12
+color = [1, 0.55, 0.25]
+intensity = 8
+
+# --- Market and camp life.
+
+[[object]]
+mesh = "town/stall-red.glb"
+position = [4.0, 0.0, -6.0]
+rotation_y = 30
+scale = 2.5
+
+[[object]]
+mesh = "town/stall-green.glb"
+position = [-4.5, 0.0, -6.5]
+rotation_y = -20
+scale = 2.5
+
+[[object]]
+mesh = "town/cart.glb"
+position = [6.0, 0.0, 5.0]
+rotation_y = 70
+scale = 2.5
+
+[[object]]
+mesh = "town/banner-red.glb"
+position = [2.0, 0.0, -8.0]
+rotation_y = 30
+scale = 2.5
+
+[[object]]
+mesh = "nature/log_stack.glb"
+position = [-6.0, 0.0, 2.0]
+rotation_y = 40
+scale = 4
+
+[[object]]
+mesh = "nature/log_stack.glb"
+position = [-7.0, 0.0, 3.5]
+rotation_y = 10
+scale = 4
+
+[[object]]
+mesh = "nature/tent_detailedOpen.glb"
+position = [-17.0, 0.0, -3.0]
+rotation_y = 60
+scale = 5
+
+[[object]]
+mesh = "nature/stump_round.glb"
+position = [3.0, 0.0, 3.0]
+scale = 4
+
+[[object]]
+mesh = "town/rock-large.glb"
+position = [-3.0, 0.0, 10.0]
+rotation_y = 20
+scale = 1.5
+
+# --- Fence with a gate on the east side.
+
+[[object]]
+mesh = "town/fence.glb"
+position = [24.0, 0.0, -12.0]
+scale = 3
+
+[[object]]
+mesh = "town/fence.glb"
+position = [24.0, 0.0, -9.0]
+scale = 3
+
+[[object]]
+mesh = "town/fence.glb"
+position = [24.0, 0.0, -6.0]
+scale = 3
+
+[[object]]
+mesh = "town/fence.glb"
+position = [24.0, 0.0, -3.0]
+scale = 3
+
+[[object]]
+mesh = "town/fence-gate.glb"
+position = [24.0, 0.0, 0.0]
+scale = 3
+
+[[object]]
+mesh = "town/fence.glb"
+position = [24.0, 0.0, 3.0]
+scale = 3
+
+[[object]]
+mesh = "town/fence.glb"
+position = [24.0, 0.0, 6.0]
+scale = 3
+
+[[object]]
+mesh = "town/fence.glb"
+position = [24.0, 0.0, 9.0]
+scale = 3
+
+[[object]]
+mesh = "town/fence.glb"
+position = [24.0, 0.0, 12.0]
+scale = 3
+
+# --- Forest: a ring of trees, rocks and bushes from 26 m outwards (seeded, generated once).
+
+[[object]]
+mesh = "nature/tree_oak.glb"
+position = [-15.7, 0.0, 31.4]
+rotation_y = 193
+scale = 5.7
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [-20.4, 0.0, 23.0]
+rotation_y = 31
+scale = 2.8
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [-34.2, 0.0, 19.3]
+rotation_y = 298
+scale = 2.9
+
+[[object]]
+mesh = "nature/tree_oak.glb"
+position = [27.4, 0.0, 27.0]
+rotation_y = 143
+scale = 6.9
+
+[[object]]
+mesh = "nature/tree_detailed.glb"
+position = [26.2, 0.0, -32.3]
+rotation_y = 206
+scale = 6.9
+
+[[object]]
+mesh = "nature/tree_default.glb"
+position = [-55.8, 0.0, -22.2]
+rotation_y = 230
+scale = 7
+
+[[object]]
+mesh = "nature/tree_default.glb"
+position = [-37.4, 0.0, 38.6]
+rotation_y = 223
+scale = 6.9
+
+[[object]]
+mesh = "nature/tree_pineDefaultA.glb"
+position = [-53.0, 0.0, 1.2]
+rotation_y = 332
+scale = 6.7
+
+[[object]]
+mesh = "nature/tree_detailed.glb"
+position = [-25.6, 0.0, 30.3]
+rotation_y = 88
+scale = 7.2
+
+[[object]]
+mesh = "nature/tree_pineDefaultA.glb"
+position = [-47.0, 0.0, -23.7]
+rotation_y = 104
+scale = 7.3
+
+[[object]]
+mesh = "nature/tree_pineRoundA.glb"
+position = [33.3, 0.0, -4.2]
+rotation_y = 123
+scale = 5.9
+
+[[object]]
+mesh = "nature/tree_default.glb"
+position = [43.7, 0.0, -19.5]
+rotation_y = 206
+scale = 7.4
+
+[[object]]
+mesh = "nature/tree_pineDefaultA.glb"
+position = [30.3, 0.0, -30.1]
+rotation_y = 209
+scale = 7
+
+[[object]]
+mesh = "nature/tree_pineTallA.glb"
+position = [-64.9, 0.0, 18.3]
+rotation_y = 239
+scale = 6.7
+
+[[object]]
+mesh = "town/tree.glb"
+position = [56.6, 0.0, 22.7]
+rotation_y = 139
+scale = 2.8
+
+[[object]]
+mesh = "town/tree.glb"
+position = [-14.2, 0.0, -25.3]
+rotation_y = 220
+scale = 2.9
+
+[[object]]
+mesh = "nature/tree_pineTallA.glb"
+position = [-38.2, 0.0, 1.5]
+rotation_y = 89
+scale = 5.8
+
+[[object]]
+mesh = "nature/tree_default.glb"
+position = [-53.4, 0.0, 43.6]
+rotation_y = 145
+scale = 5.9
+
+[[object]]
+mesh = "nature/tree_pineRoundA.glb"
+position = [-6.0, 0.0, 33.9]
+rotation_y = 100
+scale = 7.7
+
+[[object]]
+mesh = "nature/tree_pineRoundA.glb"
+position = [-38.7, 0.0, 22.8]
+rotation_y = 54
+scale = 7.9
+
+[[object]]
+mesh = "nature/tree_fat.glb"
+position = [17.4, 0.0, 34.8]
+rotation_y = 299
+scale = 5.5
+
+[[object]]
+mesh = "nature/tree_pineDefaultA.glb"
+position = [32.4, 0.0, 42.1]
+rotation_y = 249
+scale = 7.9
+
+[[object]]
+mesh = "nature/tree_oak.glb"
+position = [-56.8, 0.0, -5.5]
+rotation_y = 314
+scale = 6.6
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [57.3, 0.0, -17.9]
+rotation_y = 144
+scale = 2.9
+
+[[object]]
+mesh = "nature/tree_oak.glb"
+position = [46.0, 0.0, 35.0]
+rotation_y = 354
+scale = 6
+
+[[object]]
+mesh = "nature/tree_oak.glb"
+position = [-30.9, 0.0, 12.1]
+rotation_y = 204
+scale = 5.8
+
+[[object]]
+mesh = "nature/tree_oak.glb"
+position = [-70.7, 0.0, -16.6]
+rotation_y = 75
+scale = 5.7
+
+[[object]]
+mesh = "town/tree.glb"
+position = [-33.0, 0.0, 5.4]
+rotation_y = 168
+scale = 3.4
+
+[[object]]
+mesh = "nature/tree_pineTallA.glb"
+position = [35.3, 0.0, 26.4]
+rotation_y = 249
+scale = 6.7
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [-37.4, 0.0, -3.9]
+rotation_y = 248
+scale = 2.9
+
+[[object]]
+mesh = "nature/tree_pineTallA.glb"
+position = [54.6, 0.0, -32.7]
+rotation_y = 311
+scale = 7.9
+
+[[object]]
+mesh = "nature/tree_pineDefaultA.glb"
+position = [-13.4, 0.0, -38.0]
+rotation_y = 128
+scale = 7.8
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [9.1, 0.0, 52.7]
+rotation_y = 80
+scale = 2.9
+
+[[object]]
+mesh = "nature/tree_fat.glb"
+position = [28.0, 0.0, -68.8]
+rotation_y = 295
+scale = 7.5
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [-2.5, 0.0, -38.6]
+rotation_y = 263
+scale = 3
+
+[[object]]
+mesh = "town/tree.glb"
+position = [65.0, 0.0, -4.3]
+rotation_y = 249
+scale = 2.8
+
+[[object]]
+mesh = "nature/tree_pineDefaultA.glb"
+position = [47.2, 0.0, -13.2]
+rotation_y = 131
+scale = 7.9
+
+[[object]]
+mesh = "nature/tree_fat.glb"
+position = [7.1, 0.0, 38.0]
+rotation_y = 174
+scale = 6.3
+
+[[object]]
+mesh = "nature/tree_oak.glb"
+position = [56.4, 0.0, -5.2]
+rotation_y = 235
+scale = 6.7
+
+[[object]]
+mesh = "nature/tree_default.glb"
+position = [9.8, 0.0, -30.4]
+rotation_y = 282
+scale = 7.8
+
+[[object]]
+mesh = "nature/tree_detailed.glb"
+position = [0.0, 0.0, -50.5]
+rotation_y = 229
+scale = 6.6
+
+[[object]]
+mesh = "nature/tree_pineRoundA.glb"
+position = [62.0, 0.0, 37.6]
+rotation_y = 268
+scale = 6.7
+
+[[object]]
+mesh = "nature/tree_detailed.glb"
+position = [30.5, 0.0, 18.0]
+rotation_y = 213
+scale = 5.6
+
+[[object]]
+mesh = "town/tree.glb"
+position = [-57.4, 0.0, 12.7]
+rotation_y = 126
+scale = 3.1
+
+[[object]]
+mesh = "nature/tree_oak.glb"
+position = [-32.6, 0.0, -10.3]
+rotation_y = 261
+scale = 7.5
+
+[[object]]
+mesh = "nature/tree_detailed.glb"
+position = [50.5, 0.0, 38.0]
+rotation_y = 314
+scale = 6.6
+
+[[object]]
+mesh = "nature/tree_pineTallA.glb"
+position = [17.5, 0.0, -33.7]
+rotation_y = 180
+scale = 6
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [3.7, 0.0, -43.2]
+rotation_y = 47
+scale = 2.9
+
+[[object]]
+mesh = "town/tree.glb"
+position = [37.7, 0.0, -23.9]
+rotation_y = 293
+scale = 3.1
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [-66.5, 0.0, -7.0]
+rotation_y = 55
+scale = 2.7
+
+[[object]]
+mesh = "nature/tree_detailed.glb"
+position = [9.4, 0.0, -55.8]
+rotation_y = 170
+scale = 5.9
+
+[[object]]
+mesh = "nature/tree_pineDefaultA.glb"
+position = [-8.4, 0.0, -53.5]
+rotation_y = 191
+scale = 7.2
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [-64.1, 0.0, 7.1]
+rotation_y = 69
+scale = 2.6
+
+[[object]]
+mesh = "town/tree.glb"
+position = [31.5, 0.0, 8.5]
+rotation_y = 274
+scale = 3
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [-39.4, 0.0, -33.6]
+rotation_y = 100
+scale = 2.8
+
+[[object]]
+mesh = "nature/tree_fat.glb"
+position = [64.2, 0.0, -31.3]
+rotation_y = 49
+scale = 7.6
+
+[[object]]
+mesh = "nature/tree_default.glb"
+position = [35.2, 0.0, 33.8]
+rotation_y = 154
+scale = 7.2
+
+[[object]]
+mesh = "nature/tree_pineDefaultA.glb"
+position = [46.4, 0.0, 44.9]
+rotation_y = 318
+scale = 5.9
+
+[[object]]
+mesh = "nature/tree_default.glb"
+position = [37.5, 0.0, -7.8]
+rotation_y = 175
+scale = 6.5
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [25.5, 0.0, 41.0]
+rotation_y = 152
+scale = 2.9
+
+[[object]]
+mesh = "nature/tree_default.glb"
+position = [-20.6, 0.0, 70.2]
+rotation_y = 284
+scale = 8
+
+[[object]]
+mesh = "nature/tree_detailed.glb"
+position = [-2.9, 0.0, 29.7]
+rotation_y = 47
+scale = 6.2
+
+[[object]]
+mesh = "nature/tree_pineTallA.glb"
+position = [-62.6, 0.0, 33.2]
+rotation_y = 193
+scale = 6.5
+
+[[object]]
+mesh = "nature/tree_pineDefaultA.glb"
+position = [-51.0, 0.0, -4.8]
+rotation_y = 21
+scale = 5.7
+
+[[object]]
+mesh = "nature/tree_default.glb"
+position = [-18.2, 0.0, -44.4]
+rotation_y = 6
+scale = 6.2
+
+[[object]]
+mesh = "nature/tree_fat.glb"
+position = [34.2, 0.0, 21.3]
+rotation_y = 311
+scale = 5.7
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [-42.1, 0.0, 12.6]
+rotation_y = 330
+scale = 2.9
+
+[[object]]
+mesh = "nature/tree_fat.glb"
+position = [-21.7, 0.0, -20.8]
+rotation_y = 349
+scale = 7.8
+
+[[object]]
+mesh = "town/tree-high.glb"
+position = [52.4, 0.0, -23.8]
+rotation_y = 104
+scale = 3.2
+
+[[object]]
+mesh = "town/tree.glb"
+position = [18.7, 0.0, 46.7]
+rotation_y = 295
+scale = 2.7
+
+[[object]]
+mesh = "nature/plant_bushLarge.glb"
+position = [-36.2, 0.0, 16.5]
+rotation_y = 349
+scale = 4
+
+[[object]]
+mesh = "nature/rock_largeB.glb"
+position = [-10.2, 0.0, 26.7]
+rotation_y = 123
+scale = 4
+
+[[object]]
+mesh = "town/rock-large.glb"
+position = [23.9, 0.0, -42.0]
+rotation_y = 50
+scale = 1.5
+
+[[object]]
+mesh = "nature/rock_largeB.glb"
+position = [59.1, 0.0, -3.9]
+rotation_y = 5
+scale = 4
+
+[[object]]
+mesh = "nature/plant_bushLarge.glb"
+position = [-38.9, 0.0, -39.1]
+rotation_y = 59
+scale = 4
+
+[[object]]
+mesh = "nature/stump_round.glb"
+position = [46.3, 0.0, 27.2]
+rotation_y = 241
+scale = 4
+
+[[object]]
+mesh = "nature/plant_bush.glb"
+position = [-5.9, 0.0, 29.1]
+rotation_y = 16
+scale = 4
+
+[[object]]
+mesh = "nature/rock_largeA.glb"
+position = [12.2, 0.0, 28.3]
+rotation_y = 95
+scale = 4
+
+[[object]]
+mesh = "nature/stump_round.glb"
+position = [57.2, 0.0, -14.0]
+rotation_y = 116
+scale = 4
+
+[[object]]
+mesh = "nature/rock_largeB.glb"
+position = [54.0, 0.0, 11.9]
+rotation_y = 128
+scale = 4
+
+[[object]]
+mesh = "nature/plant_bushLarge.glb"
+position = [35.3, 0.0, 0.2]
+rotation_y = 100
+scale = 4
+
+[[object]]
+mesh = "nature/rock_largeA.glb"
+position = [-16.7, 0.0, -24.9]
+rotation_y = 33
+scale = 4
+
+[[object]]
+mesh = "nature/stump_round.glb"
+position = [10.5, 0.0, -23.5]
+rotation_y = 15
+scale = 4
+
+[[object]]
+mesh = "nature/rock_largeB.glb"
+position = [31.8, 0.0, 4.5]
+rotation_y = 30
+scale = 4
+
+# --- Viewpoints (start and --benchmark); the low evening sun shines from +X/+Z, so these mostly look
+# away from it. yaw 0 = towards -Z, positive turns left.
+[[viewpoint]]   # over the fire towards the huts
+position = [16.0, 7.0, 20.0]
+yaw = 38
+pitch = -16
+
+[[viewpoint]]   # at eye level between the huts
+position = [3.0, 1.8, 8.0]
+yaw = 20
+pitch = -3
+
+[[viewpoint]]   # high above, the whole camp and the forest
+position = [45.0, 35.0, 45.0]
+yaw = 45
+pitch = -32
+
+[[viewpoint]]   # into the sun across the fence: long shadows towards the camera
+position = [-19.0, 3.5, -15.0]
+yaw = -128
+pitch = -8

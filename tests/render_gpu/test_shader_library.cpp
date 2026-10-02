@@ -227,9 +227,12 @@ TEST_CASE("Background shader follows the view direction")
     const auto up = centreFor(80.0f);
     const auto level = centreFor(0.0f);
     const auto down = centreFor(-80.0f);
-    // Horizon is warm (red > blue), zenith cool (blue > red), ground darkest.
+    // Horizon is warm (red > blue), zenith cool (blue > red); below the horizon the fog colour stays.
     CHECK(level[0] > level[2]);
     CHECK(up[2] > up[0]);
-    CHECK(int(down[0]) + down[1] + down[2] < int(level[0]) + level[1] + level[2]);
+    for (usize i = 0; i < 3; ++i)
+    {
+        CHECK(std::abs(int(down[i]) - int(level[i])) <= 1);
+    }
     CHECK(gl.device->debugErrorCount() == 0);
 }

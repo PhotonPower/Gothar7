@@ -11,6 +11,8 @@ Jede Fremdquelle, die in Assets oder abgeleitete Daten einfließt, wird hier ein
 ## Modelle, Texturen, Sounds
 | Asset | Quelle | Lizenz | Pflichtangabe |
 |---|---|---|---|
+| `assets/source/testscene/town/*` (Wände, Dächer, Laterne, Stände, Karren, Zaun, Bäume, Felsen; `Textures/colormap.png`) | Kenney „Fantasy Town Kit“ 2.0, kenney.nl/assets/fantasy-town-kit | CC0 1.0 (Lizenztext `town/License.txt`) | keine (Nennung „Kenney“ freiwillig) |
+| `assets/source/testscene/nature/*` (Bäume, Felsen, Büsche, Lagerfeuer, Holzstapel, Zelt) | Kenney „Nature Kit“ 2.1, kenney.nl/assets/nature-kit | CC0 1.0 (Lizenztext `nature/License.txt`) | keine (Nennung „Kenney“ freiwillig) |
 
 ## Engine-eingebettete Daten
 | Daten | Quelle | Lizenz | Verwendung |

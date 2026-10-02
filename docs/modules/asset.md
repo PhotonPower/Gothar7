@@ -9,9 +9,12 @@
 struct ImageData { u32 width, height; std::vector<u8> rgba8; };   // immer RGBA8, erste Zeile = oben
 Result<ImageData> decodeImage(std::span<const u8> bytes, std::string_view debugName = "<memory>");  // PNG/JPEG/TGA/BMP
 Result<ImageData> loadImage(const fs::Path&);
+Result<std::vector<u8>> encodePng(const ImageData&);  Result<void> savePng(const fs::Path&, const ImageData&);  // atomisch
 ```
 - Grau/RGB werden zu RGBA erweitert; Zeilen in Dateireihenfolge (passt zur glTF-UV-Konvention v = 0 oben).
 - KTX2 (vorkomprimiert, BC7/BC5) kommt mit dem Cooker in M3.
+- PNG-Schreiben (Screenshots, Werkzeuge) über `stb_image_write` mit `STB_IMAGE_WRITE_STATIC`, damit Tests eine eigene
+  Kopie zum Erzeugen von Testbildern einbinden können.
 
 ### `Procedural.hpp`
 - `makePlane(size, uvTileSize, color)` – Platte in XZ (Normale +Y), `makeBox(halfExtents, color)` – Quader mit

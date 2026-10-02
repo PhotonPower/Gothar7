@@ -128,3 +128,25 @@ TEST_CASE("Shadows: texel snapping keeps the shadow grid fixed in the world")
         }
     }
 }
+
+TEST_CASE("Shadows: culling casters against a cascade's light volume")
+{
+    // Camera at the origin looking along -Z; sun low in the +Z direction (behind the camera).
+    Camera camera;
+    camera.aspect = 16.0f / 9.0f;
+    const Vec3 toSun = glm::normalize(Vec3(0.0f, 0.3f, 1.0f));
+    const auto cascades = computeCascades(camera, toSun, ShadowSettings{});
+    const Frustum nearVolume = Frustum::fromViewProjection(cascades[0].viewProjection);
+    const Frustum view = camera.frustum();
+
+    const auto box = [](const Vec3& centre) { return AABB{centre - Vec3(1.0f), centre + Vec3(1.0f)}; };
+    // In view: drawn and casting.
+    CHECK(view.intersects(box(Vec3(0, 0, -5))));
+    CHECK(nearVolume.intersects(box(Vec3(0, 0, -5))));
+    // Behind the camera towards the sun: not drawn, but its shadow falls into view, so it casts.
+    CHECK_FALSE(view.intersects(box(Vec3(0, 3, 30))));
+    CHECK(nearVolume.intersects(box(Vec3(0, 3, 30))));
+    // Far to the side: neither.
+    CHECK_FALSE(view.intersects(box(Vec3(200, 0, -5))));
+    CHECK_FALSE(nearVolume.intersects(box(Vec3(200, 0, -5))));
+}

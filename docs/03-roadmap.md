@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M2** (Renderer-Grundlagen) – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig), Licht (Sonne, Hemisphären-Ambient, Punktlichter), Sonnenschatten (CSM), HDR mit Tonemapping (ACES), Distanznebel, Debug-Draw (F2) und das ImGui-Debugfenster (F1) stehen; offen ist die DoD-Testszene. M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
+**Aktueller Stand:** Phase **M2** (Renderer-Grundlagen) abgeschlossen – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig), Licht (Sonne, Hemisphären-Ambient, Punktlichter), Sonnenschatten (CSM), HDR mit Tonemapping (ACES), Distanznebel, Debug-Draw (F2) und das ImGui-Debugfenster (F1), Testszenen (`--scene`, Frustum-Culling, `--benchmark`, `--screenshot`) stehen; DoD-Szene mit 608 FPS (RTX 3080) bzw. 214 FPS (Intel UHD). M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen). Nächste Phase: **M3** (Asset-System & Pipeline).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -78,6 +78,10 @@ Windows und Linux grün; core hat > 80 % Testabdeckung seiner Logik.
 
 **DoD:** Testszene (Boden, einige Häuser/Bäume als glTF) mit Sonne, Schatten, Fackellicht und Nebel
 bei ≥ 60 FPS auf Mittelklasse-Hardware.
+- [x] **DoD erfüllt:** `assets/source/testscene/scene.toml` (Lager mit Hütten, Feuer, Markt, Zaun und Wald; Kenney-Modelle,
+  CC0; 163 Objekte, 7 Fackellichter, Sonne mit 4 Schattenkaskaden, Nebel), `--benchmark` über 4 Viewpoints bei
+  1600 × 900 im Release-Build: **RTX 3080 Laptop** langsamster Viewpoint 1,64 ms (608 FPS), p99 3,5 ms;
+  **Intel UHD (integriert, schwächer als Mittelklasse)** 4,68 ms (214 FPS), p99 6,5 ms.
 
 ## M3 – Asset-System & Pipeline
 - [ ] Virtuelles Dateisystem: Mount-Punkte (Ordner, `.g7pak`), Priorität (Mods überschreiben)

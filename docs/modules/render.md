@@ -262,6 +262,15 @@ class DebugDrawRenderer { static Result<DebugDrawRenderer> create(Device&, Shade
   `[render] debug_draw`) zeigt FPS/Frame-Zeit, Draw-Calls, Dreiecke, Kameraposition, Weltachsen und bei
   `--view-mesh` Bodenraster, Bounds mit Dateinamen und Fackel-Radien. Nur bei aktivem Overlay wird gezeichnet.
 
+### Szene und Culling (Engine, M2)
+- Die Engine hält eine Liste platzierter Modelle (`--view-mesh` oder `--scene`); gleiche glTF-Dateien werden nur
+  einmal geladen. **Frustum-Culling** pro Objekt mit seinen Welt-Bounds: im Hauptpass gegen die Kamera, im
+  Schattenpass gegen das Lichtvolumen jeder Kaskade (es reicht `casterExtension` zur Sonne, Werfer hinter der
+  Kamera bleiben also erhalten). Die Bodenplatte wirft keinen Schatten.
+- Ab M4 übernimmt `world` die Szene (`RenderScene`), dann mit Sichtweite und später Instancing.
+- **Hintergrund:** oberhalb des Horizonts Verlauf zur Zenitfarbe, unterhalb bleibt er in der Horizont- = Nebelfarbe
+  (dort läge nur unendlich ferner, voll vernebelter Boden), so gibt es hinter dem Weltrand keine Kante.
+
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →
 `ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf nach
