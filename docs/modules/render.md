@@ -283,6 +283,23 @@ class DebugDrawRenderer { static Result<DebugDrawRenderer> create(Device&, Shade
 - **Hintergrund:** oberhalb des Horizonts Verlauf zur Zenitfarbe, unterhalb bleibt er in der Horizont- = Nebelfarbe
   (dort läge nur unendlich ferner, voll vernebelter Boden), so gibt es hinter dem Weltrand keine Kante.
 
+### Gelände – `Terrain.hpp`, `terrain.vert/.frag` (M4)
+```cpp
+struct HeightfieldDesc { u32 width, height; f32 cellSize; Vec2 firstSample; f32 minY, maxY; std::span<const u16> samples; };
+class TerrainRenderer { static Result<TerrainRenderer> create(Device&, ShaderLibrary&, const HeightfieldDesc&, const ShadowSettings&);
+    void drawShadow(Device&, const Cascade&); void draw(Device&, const Camera&, const LightList*);
+    static u32 lodFor(f32 distance, f32 lodDistance); f32 lodDistance = 96; u32 drawnChunks(); };
+// MeshRenderer::bindLighting(Device&): Licht-Block + Schatten-Atlas für andere Renderer
+```
+- `render` kennt nur `HeightfieldDesc` (keine `world`-Typen); `world::Heightfield` liefert ihn. Höhen liegen als
+  **R16**-Textur (neues RHI-Format) vor und werden im Vertex-Shader per `texelFetch` gelesen; Normalen aus
+  Nachbar-Samples.
+- **Kacheln** zu 64×64 Zellen aus vier gemeinsamen Gittern (1/2/4/8 Samples Schrittweite); die Stufe wählt die
+  Entfernung zur Kachel (`lodFor`: volle Auflösung bis `lodDistance`, dann eine Stufe je Verdopplung). **Schürzen**
+  am Kachelrand verdecken Risse zwischen Stufen. Frustum-Culling je Kachel, Punktlichter je Kachel.
+- Schatten: Gelände wirft und empfängt; im Schattenpass mit der gröbsten Stufe. Licht und Nebel wie Meshes;
+  Einfärbung nach Hangneigung und Höhe bis zur Splatmap (Teil B).
+
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →
 `ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf nach

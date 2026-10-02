@@ -23,6 +23,7 @@ enum class Format : u8
 {
     R8,
     RG8,
+    R16, ///< 16-bit unsigned normalised (heightmaps)
     RGBA8,
     RGBA8_SRGB,
     RGBA16F,

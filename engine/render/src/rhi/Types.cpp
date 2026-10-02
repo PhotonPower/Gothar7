@@ -13,6 +13,7 @@ u32 bytesPerPixel(Format format) noexcept
     case Format::R8:
         return 1;
     case Format::RG8:
+    case Format::R16:
         return 2;
     case Format::RGBA8:
     case Format::RGBA8_SRGB:
