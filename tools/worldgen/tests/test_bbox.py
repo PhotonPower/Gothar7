@@ -48,6 +48,11 @@ def test_box_crossing_border_by_a_bit_adds_neighbour():
     assert [t.label for t in tiles] == ["1_2", "2_2"]
 
 
+def test_grid_with_origin_offset():
+    tiles = tiles_covering(BBox(999, 0, 1001, 1), 2000, origin_e=1000)
+    assert [t.min_e for t in tiles] == [-1000, 1000]
+
+
 def test_tile_bbox_matches_grid():
     t = Tile(500_000, 5_404_000, 2000)
     assert t.bbox == BBox(500_000, 5_404_000, 502_000, 5_406_000)

@@ -16,6 +16,7 @@ from gothar_worldgen.config import (
     load_local,
     load_site,
 )
+from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.geo.bbox import BBox, tiles_covering
 
 EXIT_OK = 0
@@ -68,11 +69,42 @@ def _print_site(site: SiteConfig, out: TextIO) -> None:
 def _cmd_tiles(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     bbox = site.bbox(args.area)
-    tiles = tiles_covering(bbox, args.size)
+    if args.size is None:
+        tiles = lgl_tiles(bbox)
+        grid = "LGL Open GeoData grid, 2000 m"
+    else:
+        tiles = tiles_covering(bbox, args.size)
+        grid = f"{args.size} m grid"
     print(f"{site.name} {args.area}: {_fmt_bbox(bbox)} ({site.crs})", file=out)
-    print(f"{len(tiles)} tiles of {args.size} m (label = lower-left corner in km):", file=out)
+    print(f"{len(tiles)} tiles, {grid} (label = lower-left corner in km):", file=out)
     for t in tiles:
         print(f"  {t.label}   {_fmt_bbox(t.bbox)}", file=out)
+    return EXIT_OK
+
+
+def _cmd_download(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    sources = ALL_SOURCES if args.only is None else tuple(args.only.split(","))
+    unknown = [s for s in sources if s not in ALL_SOURCES]
+    if unknown:
+        print(
+            f"error: unknown source(s) {', '.join(unknown)} (known: {', '.join(ALL_SOURCES)})",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
+    paths = DataPaths(local.data_root, site.name)
+    print(
+        f"downloading {', '.join(sources)} for {site.name} {args.area} -> {paths.data_root}",
+        file=out,
+    )
+    try:
+        results = download_site(site, paths, sources, area=args.area, force=args.force, out=out)
+    except (OSError, ValueError) as e:
+        print(f"error: download failed: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    fresh = sum(not r.skipped for r in results)
+    print(f"done: {fresh} downloaded, {len(results) - fresh} already present", file=out)
     return EXIT_OK
 
 
@@ -103,8 +135,22 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("tiles", help="list the data tiles needed to cover a site area")
     p.add_argument("site")
     p.add_argument("--area", choices=("core", "surroundings"), default="surroundings")
-    p.add_argument("--size", type=int, default=1000, help="tile edge length in metres")
+    p.add_argument(
+        "--size",
+        type=int,
+        default=None,
+        help="plain grid with this tile size in metres (default: LGL download grid)",
+    )
     p.set_defaults(func=_cmd_tiles)
+
+    p = sub.add_parser("download", help="download LGL tiles and the OSM extract into DATA_ROOT")
+    p.add_argument("site")
+    p.add_argument("--area", choices=("core", "surroundings"), default="surroundings")
+    p.add_argument(
+        "--only", default=None, help=f"comma-separated subset of: {','.join(ALL_SOURCES)}"
+    )
+    p.add_argument("--force", action="store_true", help="download again even if present")
+    p.set_defaults(func=_cmd_download)
 
     p = sub.add_parser("import", help="convert raw geodata into intermediate world data")
     p.add_argument("site")
@@ -115,7 +161,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None, out: TextIO | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if getattr(args, "size", 1) <= 0:
+    size = getattr(args, "size", None)
+    if size is not None and size <= 0:
         print("error: --size must be > 0", file=sys.stderr)
         return EXIT_ERROR
     try:

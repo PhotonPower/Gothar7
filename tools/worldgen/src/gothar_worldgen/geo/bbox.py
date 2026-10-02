@@ -59,20 +59,23 @@ class Tile:
         return BBox(self.min_e, self.min_n, self.min_e + self.size_m, self.min_n + self.size_m)
 
 
-def tiles_covering(bbox: BBox, tile_size_m: int) -> list[Tile]:
-    """All grid tiles (aligned to multiples of ``tile_size_m``) that overlap ``bbox``.
+def tiles_covering(
+    bbox: BBox, tile_size_m: int, origin_e: int = 0, origin_n: int = 0
+) -> list[Tile]:
+    """All grid tiles that overlap ``bbox``.
 
+    The grid has tiles of ``tile_size_m`` whose corners lie at ``origin + k * tile_size_m``.
     Sorted by northing, then easting. A box edge lying exactly on a tile border does not
     pull in the neighbouring tile.
     """
     if tile_size_m <= 0:
         raise ValueError(f"tile size must be positive, got {tile_size_m}")
-    first_e = math.floor(bbox.min_e / tile_size_m)
-    last_e = math.ceil(bbox.max_e / tile_size_m) - 1
-    first_n = math.floor(bbox.min_n / tile_size_m)
-    last_n = math.ceil(bbox.max_n / tile_size_m) - 1
+    first_e = math.floor((bbox.min_e - origin_e) / tile_size_m)
+    last_e = math.ceil((bbox.max_e - origin_e) / tile_size_m) - 1
+    first_n = math.floor((bbox.min_n - origin_n) / tile_size_m)
+    last_n = math.ceil((bbox.max_n - origin_n) / tile_size_m) - 1
     return [
-        Tile(e * tile_size_m, n * tile_size_m, tile_size_m)
+        Tile(origin_e + e * tile_size_m, origin_n + n * tile_size_m, tile_size_m)
         for n in range(first_n, last_n + 1)
         for e in range(first_e, last_e + 1)
     ]

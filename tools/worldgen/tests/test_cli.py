@@ -12,20 +12,68 @@ def run(*argv: str) -> tuple[int, str]:
     return code, out.getvalue()
 
 
-def test_tiles_lists_leonberg_tiles(config_dir: Path):
+def test_tiles_defaults_to_lgl_grid(config_dir: Path):
     code, out = run("--config-dir", str(config_dir), "tiles", "testsite")
     assert code == EXIT_OK
-    assert "9 tiles of 1000 m" in out
+    assert "4 tiles, LGL Open GeoData grid" in out
     assert "499_5404" in out
     assert "501_5406" in out
 
 
-def test_tiles_core_two_km(config_dir: Path):
+def test_tiles_plain_grid(config_dir: Path):
     code, out = run(
-        "--config-dir", str(config_dir), "tiles", "testsite", "--area", "core", "--size", "2000"
+        "--config-dir", str(config_dir), "tiles", "testsite", "--area", "core", "--size", "1000"
     )
     assert code == EXIT_OK
-    assert "1 tiles of 2000 m" in out
+    assert "4 tiles, 1000 m grid" in out
+
+
+def test_download_requires_local_config(config_dir: Path, capsys: pytest.CaptureFixture[str]):
+    code, _ = run("--config-dir", str(config_dir), "download", "testsite")
+    assert code == EXIT_ERROR
+    assert "local.toml" in capsys.readouterr().err
+
+
+def test_download_rejects_unknown_source(
+    config_dir: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    monkeypatch.setenv("GOTHAR_DATA_ROOT", str(config_dir))
+    code, _ = run("--config-dir", str(config_dir), "download", "testsite", "--only", "dgm1,x")
+    assert code == EXIT_ERROR
+    assert "unknown source" in capsys.readouterr().err
+
+
+def test_download_command(config_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    calls = []
+
+    def fake_download_site(site, paths, sources, **kwargs):
+        calls.append((site.name, paths.data_root, sources, kwargs["area"], kwargs["force"]))
+        return []
+
+    monkeypatch.setattr("gothar_worldgen.cli.download_site", fake_download_site)
+    monkeypatch.setenv("GOTHAR_DATA_ROOT", str(tmp_path))
+    code, out = run(
+        "--config-dir", str(config_dir), "download", "testsite", "--only", "dgm1,osm", "--force"
+    )
+    assert code == EXIT_OK
+    assert calls == [("testsite", tmp_path, ("dgm1", "osm"), "surroundings", True)]
+    assert "done: 0 downloaded" in out
+
+
+def test_download_failure_is_reported(
+    config_dir: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+):
+    def failing(*args, **kwargs):
+        raise OSError("network down")
+
+    monkeypatch.setattr("gothar_worldgen.cli.download_site", failing)
+    monkeypatch.setenv("GOTHAR_DATA_ROOT", str(tmp_path))
+    code, _ = run("--config-dir", str(config_dir), "download", "testsite")
+    assert code == EXIT_ERROR
+    assert "network down" in capsys.readouterr().err
 
 
 def test_tiles_rejects_non_positive_size(config_dir: Path, capsys: pytest.CaptureFixture[str]):
