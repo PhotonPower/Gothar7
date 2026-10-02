@@ -55,7 +55,7 @@ die Annotationen (`tools/worldgen/data/leonberg/…`, kleine JSON-Dateien).
 
 ## 4. Datenformate (Zwischenschicht)
 
-`geo-import` schreibt nach `<DATA_ROOT>/work/leonberg/`:
+`geo-import` (`gothar-worldgen import leonberg`) schreibt nach `<DATA_ROOT>/work/leonberg/`:
 
 ```
 terrain.r16 / terrain.png        16-Bit-Heightmap, 1 m/Pixel, + terrain.json (Größe, Ursprung, Höhenbereich)
@@ -63,6 +63,30 @@ buildings.json                   alle Gebäude
 streets.json                     Straßenachsen, Breite, Typ; Plätze als Polygone
 features.json                    Mauern, Gewässer, Bäume, Brunnen …
 ```
+
+**Heightmap** (umgesetzt, Modul `geo/terrain.py`):
+- Ein Sample pro DGM1-Rasterzelle, ohne Neuabtastung. Die Samples liegen auf den Zellmitten des DGM1
+  (Koordinaten `…,5`) und decken das Gebiet `surroundings` ab, bei ±1000 m also 2000 × 2000 Samples.
+- `uint16`, zeilenweise. **Zeile 0 = Norden (−Z), Spalte 0 = Westen (−X).** `terrain.r16` ist Little-Endian
+  ohne Header, `terrain.png` ist dieselbe Karte als 16-Bit-Graustufen-PNG.
+- Höhe: `y = minY + wert / 65535 · (maxY − minY)` in lokalen Metern über der Ursprungshöhe
+  (`y = (NHN − origin.heightNHN) · gameScale.vertical`). `minY`/`maxY` sind der tatsächliche Höhenbereich,
+  auf mm gerundet. Für Leonberg ergibt das etwa 2 mm pro Stufe.
+- Die Ursprungshöhe ist das DGM1 bilinear am Ursprungspunkt, auf mm gerundet.
+- `terrain.json` (Auszug):
+  ```json
+  { "format": "gothar-terrain", "version": 1, "width": 2000, "height": 2000, "cellSize": 1.0,
+    "firstSample": { "x": -999.5, "z": -999.5 },
+    "heightRange": { "minY": -31.62, "maxY": 110.15, "stepM": 0.002163272 },
+    "areas": { "core": { "minX": -350, "minZ": -350, "maxX": 350, "maxZ": 350 }, "surroundings": { … } },
+    "origin": { "crs": "EPSG:25832", "easting": …, "northing": …, "heightNHN": 371.59, "heightReference": "marktplatz" },
+    "gameScale": { "horizontal": 1.0, "vertical": 1.0 },
+    "source": { "product": "LGL DGM1", "heightDatum": "DHHN2016", "files": [ … ], "credit": "Datengrundlage: LGL, www.lgl-bw.de" } }
+  ```
+  `firstSample` ist die lokale Position der Mitte von Sample (0,0), also der Nordwest-Ecke.
+  `areas` kennzeichnet Kern und Rand, z. B. für spätere Erweiterungen oder für den Editor.
+- Der Maßstab `gameScale.horizontal` skaliert `cellSize`, `firstSample` und `areas`;
+  `gameScale.vertical` skaliert die Höhen.
 
 `buildings.json` (ein Eintrag pro Gebäude):
 ```json

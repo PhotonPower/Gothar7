@@ -28,6 +28,8 @@ Aktualisieren: `%VCPKG_ROOT%\vcpkg x-update-baseline` im Repo-Ordner, danach neu
 ### Python (Welt-Spur)
 Für `tools/worldgen/` wird Python ≥ 3.11 benötigt (`winget install Python.Python.3.12`) sowie
 Blender ≥ 4.2 für das Gebäude-Add-on. Einrichtung: `tools/worldgen/README.md`.
+Python-Pakete (z. B. numpy) stehen in `tools/worldgen/pyproject.toml` und werden mit pip/uv installiert,
+nicht über vcpkg.
 
 ## Bauen
 ```bash
