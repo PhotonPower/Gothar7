@@ -133,16 +133,20 @@ TEST_CASE("ShaderLibrary: load, render, hot-reload into the same pipeline")
     CHECK(library.find("tint") == program); // same object
     CHECK(drawAndSample(*gl.device, pipeline, target) == std::array<u8, 4>{0, 0, 255, 255});
 
+    CHECK(gl.device->debugErrorCount() == 0);
+
     // A broken edit keeps the previous program ...
     dir.write("common/tint.glsl", "const vec4 kTint = oops;\n");
     CHECK(library.reloadChanged() == 0);
+    // The deliberate compile error may be reported several times (Mesa: twice, NVIDIA: once).
+    const u32 errorsAfterBrokenEdit = gl.device->debugErrorCount();
     CHECK(drawAndSample(*gl.device, pipeline, target) == std::array<u8, 4>{0, 0, 255, 255});
 
     // ... and fixing it reloads again.
     dir.write("common/tint.glsl", tint("0.0, 1.0, 0.0, 1.0"));
     CHECK(library.reloadChanged() == 1);
     CHECK(drawAndSample(*gl.device, pipeline, target) == std::array<u8, 4>{0, 255, 0, 255});
-    CHECK(gl.device->debugErrorCount() <= 1); // only the deliberate compile error
+    CHECK(gl.device->debugErrorCount() == errorsAfterBrokenEdit); // no errors besides the deliberate one
 }
 
 TEST_CASE("ShaderLibrary: compile errors name the include file and line")
