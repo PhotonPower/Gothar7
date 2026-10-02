@@ -43,6 +43,8 @@ struct LoadedModel
     std::string name; ///< VFS path
     asset::Handle<asset::MeshData> source;
     std::vector<asset::Handle<asset::ImageData>> images; ///< parallel to MeshData::images (external ones)
+    u32 sourceVersion = 0; ///< versions uploaded to the GPU (hot reload compares them)
+    std::vector<u32> imageVersions;
 };
 
 /// One placed model with its world bounds (for culling).
@@ -170,6 +172,9 @@ private:
     /// Loads models (meshes and their images) through the asset manager in one batch and uploads
     /// them; models already loaded are kept.
     [[nodiscard]] Result<void> loadModels(const std::vector<std::string>& paths);
+    void requestImages(LoadedModel& model, std::vector<std::string>* imagePaths);
+    [[nodiscard]] Result<void> uploadModel(LoadedModel& model);
+    void refreshReloadedModels();
     [[nodiscard]] Result<void> addGround(f32 size, const Vec3& color, f32 height);
     void addInstance(const LoadedModel& model, const Mat4& transform);
     void setViewpoint(const SceneViewpoint& viewpoint);

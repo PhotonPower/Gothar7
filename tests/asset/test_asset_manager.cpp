@@ -366,3 +366,142 @@ TEST_CASE("built-in loaders: ImageData and MeshData")
     REQUIRE(archived.failed());
     CHECK(archived.error().find(".glb") != std::string::npos);
 }
+
+namespace
+{
+/// Text loader that rejects empty files (a file caught while being saved).
+Result<TextAsset> loadNonEmpty(const LoadContext& ctx)
+{
+    if (ctx.bytes.empty())
+    {
+        return Error{"empty file"};
+    }
+    return loadText(ctx);
+}
+
+/// Pretends the file was modified `seconds` after its current time (no sleeping in tests).
+void touch(const fs::Path& path, int seconds)
+{
+    std::error_code ec;
+    const auto time = std::filesystem::last_write_time(path, ec);
+    REQUIRE_FALSE(ec);
+    std::filesystem::last_write_time(path, time + std::chrono::seconds(seconds), ec);
+    REQUIRE_FALSE(ec);
+}
+} // namespace
+
+TEST_CASE("reload swaps the data in update(); the handle stays the same")
+{
+    Fixture f;
+    AssetManager assets(f.vfs, {.workerThreads = 0});
+    assets.registerLoader<TextAsset>(loadNonEmpty);
+    const auto handle = assets.load<TextAsset>("data/a.txt");
+    assets.update();
+    REQUIRE(handle.isReady());
+    CHECK(handle.version() == 1);
+
+    writeText(f.dir.path() / "data" / "a.txt", "alpha 2");
+    CHECK(assets.reload("DATA/A.TXT") == 1); // case-insensitive like load()
+    CHECK(handle->text == "alpha");          // nothing changes before update()
+    assets.update();
+    CHECK(handle->text == "alpha 2");
+    CHECK(handle.version() == 2);
+    CHECK(assets.reload("data/unknown.txt") == 0);
+    CHECK(assets.reload("../outside") == 0);
+}
+
+TEST_CASE("a failed reload keeps the previous version; a failed asset can recover")
+{
+    Fixture f;
+    AssetManager assets(f.vfs, {.workerThreads = 1});
+    assets.registerLoader<TextAsset>(loadNonEmpty);
+    const auto good = assets.load<TextAsset>("data/a.txt");
+    const auto bad = assets.load<TextAsset>("data/bad.txt");
+    assets.waitAll();
+    REQUIRE(good.isReady());
+    REQUIRE(bad.failed());
+
+    writeText(f.dir.path() / "data" / "a.txt", ""); // half-saved
+    writeText(f.dir.path() / "data" / "bad.txt", "fixed");
+    assets.reload("data/a.txt");
+    assets.reload("data/bad.txt");
+    assets.waitAll();
+    CHECK(good.isReady());
+    CHECK(good->text == "alpha");
+    CHECK(good.version() == 1);
+    REQUIRE(bad.isReady());
+    CHECK(bad->text == "fixed");
+}
+
+TEST_CASE("hot reload: changed loose files are reloaded, at most once per poll interval")
+{
+    Fixture f;
+    AssetManager assets(f.vfs, {.workerThreads = 0, .hotReload = true, .pollSeconds = 0.5});
+    assets.registerLoader<TextAsset>(loadNonEmpty);
+    const auto handle = assets.load<TextAsset>("data/a.txt");
+    assets.update();
+    REQUIRE(handle.isReady());
+
+    CHECK(assets.checkForChanges(0.0) == 0); // unchanged
+    const fs::Path file = f.dir.path() / "data" / "a.txt";
+    writeText(file, "alpha 2");
+    touch(file, 2);
+    CHECK(assets.checkForChanges(0.2) == 0); // within the interval
+    CHECK(assets.checkForChanges(0.6) == 1);
+    assets.update();
+    CHECK(handle->text == "alpha 2");
+    CHECK(handle.version() == 2);
+    CHECK(assets.checkForChanges(1.2) == 0); // the same change triggers once
+
+    assets.setHotReload(false);
+    CHECK_FALSE(assets.hotReload());
+    touch(file, 4);
+    CHECK(assets.checkForChanges(10.0) == 0);
+    assets.setHotReload(true);
+    CHECK(assets.checkForChanges(11.0) == 1);
+}
+
+TEST_CASE("hot reload: a changed dependency reloads the asset that read it")
+{
+    Fixture f;
+    AssetManager assets(f.vfs, {.workerThreads = 0, .hotReload = true, .pollSeconds = 0.0});
+    assets.registerLoader<TextAsset>(
+        [](const LoadContext& ctx) -> Result<TextAsset>
+        {
+            auto other = ctx.read(ctx.sibling("b.txt"));
+            if (!other)
+            {
+                return other.error();
+            }
+            return TextAsset{std::string(ctx.bytes.begin(), ctx.bytes.end()) + "+" +
+                             std::string(other.value().begin(), other.value().end())};
+        });
+    const auto handle = assets.load<TextAsset>("data/a.txt");
+    assets.update();
+    REQUIRE(handle.isReady());
+    CHECK(handle->text == "alpha+beta");
+
+    const fs::Path dependency = f.dir.path() / "data" / "b.txt";
+    writeText(dependency, "gamma");
+    touch(dependency, 2);
+    CHECK(assets.checkForChanges(1.0) == 1);
+    assets.update();
+    CHECK(handle->text == "alpha+gamma");
+}
+
+TEST_CASE("hot reload: files inside archives are not watched")
+{
+    test::TempDir dir;
+    PakWriter pak;
+    REQUIRE(pak.add("data/a.txt", bytes("packed")));
+    REQUIRE(pak.write(dir.path() / "base.g7pak"));
+    Vfs vfs;
+    REQUIRE(vfs.mount(dir.path() / "base.g7pak", 0));
+    AssetManager assets(vfs, {.workerThreads = 0, .hotReload = true, .pollSeconds = 0.0});
+    assets.registerLoader<TextAsset>(loadText);
+    const auto handle = assets.load<TextAsset>("data/a.txt");
+    assets.update();
+    REQUIRE(handle.isReady());
+    touch(dir.path() / "base.g7pak", 2);
+    CHECK(assets.checkForChanges(1.0) == 0);
+}

@@ -68,7 +68,7 @@ das Spiel dort mit `--no-render` starten.
 ## Konfigurationsdateien
 | Datei | Inhalt |
 |---|---|
-| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[assets]` (VFS-Mounts), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird bei jedem Build neben die Executable kopiert (Target `gothar_data`) |
+| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[assets]` (VFS-Mounts, Hot-Reload), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird bei jedem Build neben die Executable kopiert (Target `gothar_data`) |
 | `config.toml` im Benutzerverzeichnis (Windows `%APPDATA%\Gothar\Gothar`) | optionale eigene Einstellungen; überschreibt `engine.toml` Schlüssel für Schlüssel |
 | `engine/render/shaders/` → `<build>/game/shaders/` | Engine-Shader (GLSL); werden bei jedem Build neben die Executable kopiert (Target `gothar_data`, auch wenn nur ein Shader geändert wurde) – Änderungen dort gehen beim nächsten Build verloren, zum Bearbeiten `[render] shader_dir` auf die Quellen zeigen lassen |
 

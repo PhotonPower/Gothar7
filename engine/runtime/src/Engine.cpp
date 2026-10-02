@@ -37,6 +37,12 @@ namespace
 {
 /// Dusk colour until there is a sky (M4).
 const Vec4 kClearColor{0.10f, 0.11f, 0.14f, 1.0f};
+/// Hot reload of shaders and assets: on in development (debug) builds, off in release builds.
+#ifdef NDEBUG
+constexpr bool kHotReloadDefault = false;
+#else
+constexpr bool kHotReloadDefault = true;
+#endif
 /// Folders of files given on the command line (outside the mounts) overlay everything.
 constexpr i32 kLocalMountPriority = 1000;
 /// Evening sun of the interim environment (until the time of day, M4).
@@ -274,8 +280,14 @@ bool Engine::runFrame()
         // TODO(M4+): world/ai/gameplay/physics fixed update
         ++m_simTicks;
     }
-    // Finished asset loads become visible here, once per frame on the main thread.
+    // Finished asset loads become visible here, once per frame on the main thread; hot reload
+    // looks for changed files first and re-uploads affected models afterwards.
+    m_assets->checkForChanges(platform::nowSeconds());
     m_assets->update();
+    if (m_device)
+    {
+        refreshReloadedModels();
+    }
 
     {
         G7_PROFILE_SCOPE("Engine::render");
@@ -316,11 +328,6 @@ Result<void> Engine::initShaders()
     const fs::Path root =
         m_config.shaderDirectory.empty() ? fs::gamePath("shaders") : m_config.shaderDirectory;
     m_shaders = std::make_unique<render::ShaderLibrary>(*m_device, root);
-#ifdef NDEBUG
-    constexpr bool kHotReloadDefault = false;
-#else
-    constexpr bool kHotReloadDefault = true;
-#endif
     m_shaders->setHotReload(m_config.settings.get<bool>("render.shader_hot_reload", kHotReloadDefault));
     G7_LOG_INFO("engine", "shaders from {}{}", fs::toUtf8(root),
                 m_shaders->hotReload() ? " (hot-reload)" : "");
@@ -426,7 +433,13 @@ Result<void> Engine::initAssets()
             G7_LOG_WARN("engine", "asset mount skipped: {}", id.error().message);
         }
     }
-    m_assets = std::make_unique<asset::AssetManager>(m_vfs);
+    asset::AssetManagerDesc desc;
+    desc.hotReload = m_config.settings.get<bool>("assets.hot_reload", kHotReloadDefault);
+    m_assets = std::make_unique<asset::AssetManager>(m_vfs, desc);
+    if (desc.hotReload)
+    {
+        G7_LOG_INFO("engine", "asset hot reload on");
+    }
     return {};
 }
 
@@ -458,6 +471,75 @@ const LoadedModel* Engine::model(std::string_view path) const
     return found != m_models.end() ? found->second.get() : nullptr;
 }
 
+void Engine::requestImages(LoadedModel& loaded, std::vector<std::string>* imagePaths)
+{
+    // External images from the VFS root (cooked meshes) or next to the mesh (glTF).
+    const asset::MeshData& data = *loaded.source.get();
+    loaded.images.assign(data.images.size(), {});
+    for (usize i = 0; i < data.images.size(); ++i)
+    {
+        const asset::ImageSource& source = data.images[i];
+        if (source.uri.empty())
+        {
+            continue; // embedded: MaterialSet decodes it
+        }
+        const auto candidates = imageCandidates(loaded.name, source.uri);
+        const auto found = std::find_if(candidates.begin(), candidates.end(),
+                                        [&](const std::string& c) { return m_vfs.exists(c); });
+        if (found == candidates.end())
+        {
+            G7_LOG_WARN("engine", "{}: image '{}' not found in the VFS", loaded.name, source.uri);
+            continue;
+        }
+        loaded.images[i] = m_assets->load<asset::ImageData>(*found);
+        if (imagePaths != nullptr &&
+            std::none_of(imagePaths->begin(), imagePaths->end(),
+                         [&](const std::string& p) { return equalsIgnoreCase(p, *found); }))
+        {
+            imagePaths->push_back(*found);
+        }
+    }
+}
+
+Result<void> Engine::uploadModel(LoadedModel& loaded)
+{
+    // Built aside and swapped in only on success: a broken reload keeps the working model.
+    const asset::MeshData& data = *loaded.source.get();
+    auto mesh = render::Mesh::create(*m_device, data);
+    if (!mesh)
+    {
+        return Error{"cannot upload mesh " + loaded.name + ": " + mesh.error().message};
+    }
+    // Missing or broken textures are warnings (neutral fallbacks), not a reason to refuse the model.
+    auto materials =
+        render::MaterialSet::create(*m_device, data,
+                                    [&](const asset::ImageSource& source) -> const asset::ImageData*
+                                    {
+                                        const auto index = static_cast<usize>(&source - data.images.data());
+                                        const asset::Handle<asset::ImageData>& image = loaded.images[index];
+                                        if (image.failed() && image.valid())
+                                        {
+                                            G7_LOG_WARN("engine", "{}: {}", loaded.name, image.error());
+                                        }
+                                        return image.get();
+                                    });
+    if (!materials)
+    {
+        return Error{"cannot create materials for " + loaded.name + ": " + materials.error().message};
+    }
+    loaded.mesh = std::move(mesh).value();
+    loaded.materials = std::move(materials).value();
+    loaded.sourceVersion = loaded.source.version();
+    loaded.imageVersions.resize(loaded.images.size());
+    for (usize i = 0; i < loaded.images.size(); ++i)
+    {
+        loaded.imageVersions[i] = loaded.images[i].version();
+    }
+    G7_LOG_DEBUG("engine", "uploaded {} ({} vertices, {} submeshes, {} materials)", loaded.name,
+                 data.vertices.size(), loaded.mesh.submeshes().size(), loaded.materials.size());
+    return {};
+}
+
 Result<void> Engine::loadModels(const std::vector<std::string>& paths)
 {
     // 1. Meshes on the asset workers, in parallel.
@@ -477,72 +559,25 @@ Result<void> Engine::loadModels(const std::vector<std::string>& paths)
     }
     m_assets->waitAll();
 
-    // 2. Their external images: from the VFS root (cooked meshes) or next to the mesh (glTF).
-    std::vector<std::string> imagePaths; // distinct, for the log (the cache shares repeated ones)
+    // 2. Their images (repeated paths are shared by the cache).
+    std::vector<std::string> imagePaths; // distinct, for the log
     for (const auto& loaded : pending)
     {
         if (loaded->source.failed())
         {
             return Error{"cannot load mesh: " + loaded->source.error()};
         }
-        const asset::MeshData& data = *loaded->source.get();
-        loaded->images.resize(data.images.size());
-        for (usize i = 0; i < data.images.size(); ++i)
-        {
-            const asset::ImageSource& source = data.images[i];
-            if (source.uri.empty())
-            {
-                continue; // embedded: MaterialSet decodes it
-            }
-            const auto candidates = imageCandidates(loaded->name, source.uri);
-            const auto found = std::find_if(candidates.begin(), candidates.end(),
-                                            [&](const std::string& c) { return m_vfs.exists(c); });
-            if (found == candidates.end())
-            {
-                G7_LOG_WARN("engine", "{}: image '{}' not found in the VFS", loaded->name, source.uri);
-                continue;
-            }
-            loaded->images[i] = m_assets->load<asset::ImageData>(*found);
-            if (std::none_of(imagePaths.begin(), imagePaths.end(),
-                             [&](const std::string& p) { return equalsIgnoreCase(p, *found); }))
-            {
-                imagePaths.push_back(*found);
-            }
-        }
+        requestImages(*loaded, &imagePaths);
     }
     m_assets->waitAll();
 
     // 3. Upload on the main thread.
     for (auto& loaded : pending)
     {
-        const asset::MeshData& data = *loaded->source.get();
-        auto mesh = render::Mesh::create(*m_device, data);
-        if (!mesh)
+        if (auto uploaded = uploadModel(*loaded); !uploaded)
         {
-            return Error{"cannot upload mesh " + loaded->name + ": " + mesh.error().message};
+            return uploaded;
         }
-        loaded->mesh = std::move(mesh).value();
-        // Missing or broken textures are warnings (neutral fallbacks), not a reason to refuse the model.
-        const LoadedModel& current = *loaded;
-        auto materials = render::MaterialSet::create(
-            *m_device, data,
-            [&](const asset::ImageSource& source) -> const asset::ImageData*
-            {
-                const auto index = static_cast<usize>(&source - data.images.data());
-                const asset::Handle<asset::ImageData>& image = current.images[index];
-                if (image.failed() && image.valid())
-                {
-                    G7_LOG_WARN("engine", "{}: {}", current.name, image.error());
-                }
-                return image.get();
-            });
-        if (!materials)
-        {
-            return Error{"cannot create materials for " + loaded->name + ": " + materials.error().message};
-        }
-        loaded->materials = std::move(materials).value();
-        G7_LOG_DEBUG("engine", "loaded {} ({} vertices, {} submeshes, {} materials)", loaded->name,
-                     data.vertices.size(), loaded->mesh.submeshes().size(), loaded->materials.size());
         std::string key = loaded->name;
         m_models.emplace(std::move(key), std::move(loaded));
     }
@@ -552,6 +587,48 @@ Result<void> Engine::loadModels(const std::vector<std::string>& paths)
                     imagePaths.size(), timer.elapsedSeconds() * 1000.0);
     }
     return {};
+}
+
+void Engine::refreshReloadedModels()
+{
+    // Hot reload: a model whose mesh or one of its images has a new version is uploaded again; all
+    // its instances use it right away.
+    for (auto& [path, loaded] : m_models)
+    {
+        const bool meshChanged =
+            loaded->source.isReady() && loaded->source.version() != loaded->sourceVersion;
+        bool imagesChanged = false;
+        for (usize i = 0; i < loaded->images.size() && i < loaded->imageVersions.size(); ++i)
+        {
+            imagesChanged = imagesChanged || (loaded->images[i].isReady() &&
+                                              loaded->images[i].version() != loaded->imageVersions[i]);
+        }
+        if (!meshChanged && !imagesChanged)
+        {
+            continue;
+        }
+        if (meshChanged)
+        {
+            // The new mesh may reference other images.
+            requestImages(*loaded, nullptr);
+            m_assets->waitAll();
+        }
+        if (auto uploaded = uploadModel(*loaded); !uploaded)
+        {
+            G7_LOG_WARN("engine", "hot reload of {} failed, keeping the previous version: {}", path,
+                        uploaded.error().message);
+            loaded->sourceVersion = loaded->source.version(); // do not retry every frame
+            continue;
+        }
+        for (SceneInstance& instance : m_instances)
+        {
+            if (instance.model == loaded.get())
+            {
+                instance.bounds = loaded->mesh.bounds().transformed(instance.transform);
+            }
+        }
+        G7_LOG_INFO("engine", "hot reload: {} updated", path);
+    }
 }
 
 void Engine::addInstance(const LoadedModel& model, const Mat4& transform)

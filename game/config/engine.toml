@@ -49,6 +49,8 @@ debug_ui = false
 # Ordner und Archive im virtuellen Dateisystem (docs/modules/asset.md). Höhere Priorität gewinnt.
 # dev_mounts: in Entwicklungs-Builds (CMake G7_DEV_ASSETS) assets/source (0) und assets/cooked (10) des Repos.
 dev_mounts = true
+# Geänderte Dateien (Texturen, Modelle) im laufenden Spiel neu laden; Standard: an im Debug-, aus im Release-Build.
+# hot_reload = true
 # Weitere Quellen, relativ zum Spielordner; "*.g7pak" mountet alle Archive eines Ordners:
 # [[assets.mount]]
 # path = "data/*.g7pak"
