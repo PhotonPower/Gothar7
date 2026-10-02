@@ -1,6 +1,8 @@
 // The M2 test scene (DoD) through the whole engine on a real driver (label "gpu"): it loads, renders
 // without GL errors and frustum culling skips what is out of view.
 
+#include "GlFixture.hpp"
+
 #include <g7/render/Device.hpp>
 #include <g7/runtime/Engine.hpp>
 
@@ -27,6 +29,7 @@ EngineConfig sceneConfig(u32 viewpoint)
 TEST_CASE("Test scene: loads, renders and culls")
 {
     // Viewpoint 1 is at eye level between the huts: much of the camp lies behind or beside it.
+    g7::test::keepVideoAlive();
     Engine engine(sceneConfig(1));
     auto result = engine.init();
     REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
@@ -44,6 +47,7 @@ TEST_CASE("Test scene: loads, renders and culls")
 
 TEST_CASE("Test scene: an unknown viewpoint falls back to the first")
 {
+    g7::test::keepVideoAlive();
     Engine engine(sceneConfig(99));
     REQUIRE(engine.init().ok());
     CHECK(engine.runFrame());
@@ -54,6 +58,7 @@ TEST_CASE("Test scene: a broken scene file fails init with its name")
 {
     EngineConfig config = sceneConfig(0);
     config.scene = fs::fromUtf8("does/not/exist.toml");
+    g7::test::keepVideoAlive();
     Engine engine(std::move(config));
     auto result = engine.init();
     REQUIRE_FALSE(result.ok());
