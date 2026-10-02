@@ -21,7 +21,7 @@ Zustand = { begin(self), loop(self) -> CONTINUE|END, end(self) }   -- definiert 
 
 ## 3. Tagesabläufe (Routinen)
 - Liste `(von, bis, Zustand, Wegpunkt)`; zu jeder Spielminute prüft das System Wechsel.
-- Routinenwechsel per Skript (`setRoutine(npc, "Rtn_Diego_Ch2")`).
+- Routinenwechsel per Skript (`setRoutine(npc, "Rtn_Ruvin_Ch2")`).
 - **KI-LOD**: NPCs außerhalb der Simulationsdistanz (z. B. > 80 m) werden nicht simuliert; beim
   Wechsel des Zeitfensters werden sie direkt an den Ziel-WP teleportiert, beim Betreten der Distanz
   wird ihr aktueller Routinen-Zustand gestartet.

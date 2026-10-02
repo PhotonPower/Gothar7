@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(Gothic7
+project(Gothar
     VERSION 0.1.0
-    DESCRIPTION "Gothic7 - eine Open-World-RPG-Engine im Stil von Gothic 1"
+    DESCRIPTION "Gothar - eine Open-World-RPG-Engine im Stil von Gothic 1"
     LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)

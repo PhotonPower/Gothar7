@@ -7,7 +7,7 @@
 - **3D-Sounds**: Emitter-Komponente, Abschwächungskurven, Doppler aus, Verdeckung per Raycast (Tiefpass).
 - **Sound-Definitionen** (Daten): Variationen (zufällige Auswahl), Lautstärke/Tonhöhen-Streuung, Reichweite.
 - **Ambient-Zonen**: Loop + zufällige Einzelgeräusche, Überblendung zwischen Zonen, Tag/Nacht-Varianten.
-- **Sprache**: Datei je Text-Schlüssel (`DIA_Diego_Hello_11_01.ogg`), Dauer bestimmt Untertitel/Gesprächstempo; Lippensync aus Amplitude oder Phonem-Daten.
+- **Sprache**: Datei je Text-Schlüssel (`DIA_Ruvin_Hello_11_01.ogg`), Dauer bestimmt Untertitel/Gesprächstempo; Lippensync aus Amplitude oder Phonem-Daten.
 
 ## Dynamisches Musiksystem (Gothic: DirectMusic)
 - Musik-Zone (aus world) → **Thema** (z. B. `CAMP`, `FOREST`, `MINE`).

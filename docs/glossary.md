@@ -1,8 +1,8 @@
 # Glossar
 
-| Begriff | Bedeutung in Gothic7 |
+| Begriff | Bedeutung in Gothar |
 |---|---|
-| **Vob** | „Virtual Object“ – jedes platzierte Objekt in der Welt (Entity mit Transform). In Gothic7 eine EnTT-Entity mit `VobComponent`. |
+| **Vob** | „Virtual Object“ – jedes platzierte Objekt in der Welt (Entity mit Transform). In Gothar eine EnTT-Entity mit `VobComponent`. |
 | **Mob** | Interaktives Vob (Truhe, Bett, Amboss, Tür, Hebel). Hat Interaktionszustände und Slots für die Benutzer-Position. |
 | **NPC** | Nicht-Spieler-Charakter inkl. Monster. Der Spieler ist technisch ebenfalls ein NPC mit Eingabe statt KI. |
 | **Instanz** | In Skripten definierte Vorlage (Item, NPC, Info …), aus der zur Laufzeit Objekte erzeugt werden. |

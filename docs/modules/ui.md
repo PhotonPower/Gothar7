@@ -14,5 +14,5 @@ Truhe, Charakter, Tagebuch, Dokument (Briefe/Bücher), Karte, Hauptmenü, Option
 Ladebildschirm, Konsole (Debug), Bildschirmmeldungen.
 
 ## Lokalisierung
-Alle Texte über Schlüssel (`DIA_Diego_Hello_11_01`, `UI_INVENTORY_TITLE`) aus Tabellen pro Sprache;
+Alle Texte über Schlüssel (`DIA_Ruvin_Hello_11_01`, `UI_INVENTORY_TITLE`) aus Tabellen pro Sprache;
 fehlende Übersetzung → Schlüssel sichtbar + Warnung im Log. Zahlen-/Datumsformat je Sprache.

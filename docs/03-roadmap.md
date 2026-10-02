@@ -35,8 +35,7 @@ Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 - [x] `.clang-format`, `.clang-tidy`, `.editorconfig`, `.gitignore`
 - [x] core: Typen, Logging, Assertions, `Result<T>`, Stopwatch, `FixedStep`
 - [x] Test-Infrastruktur (doctest), erste Tests
-- [x] CI-Workflow geschrieben (Windows + Linux, Build + Test + Smoke-Test) – liegt in `tools/ci/ci.yml`
-- [ ] CI aktivieren: `tools/ci/ci.yml` nach `.github/workflows/` verschieben (siehe `tools/ci/README.md`)
+- [x] CI-Workflow (Windows + Linux, Build + Test + Smoke-Test) in `.github/workflows/ci.yml`
 - [ ] CI einmal erfolgreich durchgelaufen (ggf. Workflow korrigieren)
 - [ ] core: Dateisystem-Helfer (Datei lesen/schreiben, Pfade relativ zum Spielverzeichnis)
 - [ ] core: Mathe-Bibliothek festlegen (ADR 0002: glm) und Typ-Aliasse `Vec3`, `Quat`, `Mat4`, `Transform`

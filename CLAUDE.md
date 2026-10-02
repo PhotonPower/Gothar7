@@ -1,6 +1,6 @@
 # CLAUDE.md – Arbeitsanleitung für Claude Code
 
-Du arbeitest an **Gothic7**: einer eigenen C++20-Game-Engine (+ Spiel) für ein Open-World-Action-RPG
+Du arbeitest an **Gothar**: einer eigenen C++20-Game-Engine (+ Spiel) für ein Open-World-Action-RPG
 im Stil von **Gothic 1**. Ziel ist dessen *Funktionalität und Spielgefühl* (lebendige NPCs mit
 Tagesabläufen, Wahrnehmung, Gilden, Dialoge, Nahkampf, Mob-Interaktion, dynamische Musik) –
 mit moderner Technik und **ausschließlich eigenen Inhalten**.
@@ -18,8 +18,8 @@ mit moderner Technik und **ausschließlich eigenen Inhalten**.
 cmake --preset debug                 # benötigt VCPKG_ROOT; installiert Abhängigkeiten aus vcpkg.json
 cmake --build --preset debug
 ctest --preset debug
-./build/debug/game/gothic7 --verbose      # bzw. build\debug\game\gothic7.exe
-./build/debug/game/gothic7 --smoke-test   # headless, 10 Frames
+./build/debug/game/gothar --verbose      # bzw. build\debug\game\gothar.exe
+./build/debug/game/gothar --smoke-test   # headless, 10 Frames
 ```
 Ohne vcpkg (nur Kern, keine Tests): `cmake --preset nodeps && cmake --build --preset nodeps`.
 Vor jedem Commit: bauen, Tests grün, `clang-format` auf geänderte Dateien.
@@ -29,7 +29,7 @@ Vor jedem Commit: bauen, Tests grün, `clang-format` auf geänderte Dateien.
 engine/<modul>/include/g7/<modul>/   öffentliche API   (#include <g7/<modul>/X.hpp>)
 engine/<modul>/src/                  Implementierung + interne Header
 engine/runtime/                      Engine-Klasse, Hauptschleife, verbindet alle Module
-game/src/                            Spiel-Executable (gothic7)
+game/src/                            Spiel-Executable (gothar)
 game/scripts/                        Spielinhalt in Lua (ab M7)
 tools/asset-cooker/                  g7-cook (ab M3)      tools/editor/  Editor-Modus (ab M4)
 tests/<modul>/                       doctest-Suiten, eine pro Modul
@@ -49,6 +49,7 @@ Dateien automatisch (GLOB mit CONFIGURE_DEPENDS). Neue Test-Suite in `tests/CMak
 - Skripte kennen keine Entity-Handles, nur `VobId`s und Namen.
 
 ## Code-Konventionen (Kurzfassung)
+- Interner Präfix ist **`g7`** (Engine-Kürzel): Namespace `g7::`, Targets `g7_*`, Makros `G7_`, Formate `.g7pak`/`.g7world`. Nicht umbenennen.
 - C++20, keine Compiler-Erweiterungen; Code/Kommentare **Englisch**, Doku in `docs/` **Deutsch**.
 - Typen `CamelCase`, Funktionen/Variablen `camelBack`, Member `m_`, Konstanten `kName`, Makros `G7_`.
 - Namespace `g7::<modul>`; RAII; keine besitzenden Rohzeiger; `[[nodiscard]]`, `const`, `noexcept` wo sinnvoll.
@@ -82,4 +83,4 @@ Lücken nachfragen statt raten – Spielgefühl-Entscheidungen trifft der Projek
 
 ## Aktueller Stand
 Phase **M0** – Skelett steht (alle Module als Platzhalter, core mit Log/Assert/Result/Clock, Engine-Hauptschleife
-headless, Tests; CI-Workflow liegt noch inaktiv in `tools/ci/`). Nächste Aufgaben: siehe `docs/03-roadmap.md` → M0.
+headless, Tests, CI). Nächste Aufgaben: siehe `docs/03-roadmap.md` → M0.

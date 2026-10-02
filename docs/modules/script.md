@@ -18,30 +18,30 @@ Item "ItMw_1H_Sword_Old" {
     mesh = "items/sword_old.g7mesh",
 }
 
--- npcs/oldcamp/diego.lua
-Npc "Diego" {
-    name = "Diego", guild = "SHADOW", level = 12, voice = 11,
+-- npcs/hauptlager/ruvin.lua
+Npc "Ruvin" {
+    name = "Ruvin", guild = "HUNTER", level = 12, voice = 11,
     attributes = { str = 40, dex = 50, hp = 160 },
     talents = { melee_1h = 2, bow = 1 },
-    equipment = { "ItMw_1H_Sword_Old", "ItAr_Shadow_L" },
-    routine = "Rtn_Diego_Start",
+    equipment = { "ItMw_1H_Sword_Old", "ItAr_Hunter_L" },
+    routine = "Rtn_Ruvin_Start",
 }
 
--- routines/diego.lua
-Routine "Rtn_Diego_Start" {
-    { from = "08:00", to = "22:00", state = "ZS_Stand_Guarding", at = "OC_ENTRANCE" },
-    { from = "22:00", to = "08:00", state = "ZS_Sleep",          at = "OC_HUT_DIEGO_BED" },
+-- routines/ruvin.lua
+Routine "Rtn_Ruvin_Start" {
+    { from = "08:00", to = "22:00", state = "ZS_Stand_Guarding", at = "HC_ENTRANCE" },
+    { from = "22:00", to = "08:00", state = "ZS_Sleep",          at = "HC_HUT_RUVIN_BED" },
 }
 
--- dialogs/diego.lua
-Info "DIA_Diego_Hello" {
-    npc = "Diego", important = true, permanent = false,
-    condition = function(self, other) return not Story.metDiego end,
+-- dialogs/ruvin.lua
+Info "DIA_Ruvin_Hello" {
+    npc = "Ruvin", important = true, permanent = false,
+    condition = function(self, other) return not Story.metRuvin end,
     run = function(self, other)
-        say(other, self, "DIA_Diego_Hello_15_00")   -- Spieler spricht (Text-Schlüssel)
-        say(self, other, "DIA_Diego_Hello_11_01")
-        Story.metDiego = true
-        Log.create("TOPIC_Diego", "Diego hat mir angeboten zu helfen.")
+        say(other, self, "DIA_Ruvin_Hello_15_00")   -- Spieler spricht (Text-Schlüssel)
+        say(self, other, "DIA_Ruvin_Hello_11_01")
+        Story.metRuvin = true
+        Log.create("TOPIC_Ruvin", "Ruvin hat mir angeboten zu helfen.")
     end,
 }
 ```

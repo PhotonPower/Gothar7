@@ -7,7 +7,7 @@
 int main(int argc, char** argv)
 {
     g7::EngineConfig config;
-    config.appName = "Gothic7";
+    config.appName = "Gothar";
 
     for (int i = 1; i < argc; ++i)
     {

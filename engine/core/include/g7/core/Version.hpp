@@ -14,5 +14,5 @@ struct Version
 };
 
 inline constexpr Version kEngineVersion{0, 1, 0};
-inline constexpr std::string_view kEngineName = "Gothic7 Engine";
+inline constexpr std::string_view kEngineName = "Gothar Engine";
 } // namespace g7

@@ -16,7 +16,7 @@
   Koordinatensystem: rechtshändig, **+Y oben**, −Z vorwärts, Meter.
 - **Dateisystem**: `readFile(path) -> Result<std::vector<u8>>`, `readText`, `writeFileAtomic`,
   Basis-Pfade (Spielverzeichnis, Benutzer-Daten für Saves/Config).
-- **StringId**: 32/64-Bit-Hash (FNV-1a) für Namen (`"WP_OC_CAMPFIRE"`), Debug-Builds behalten
+- **StringId**: 32/64-Bit-Hash (FNV-1a) für Namen (`"WP_HC_CAMPFIRE"`), Debug-Builds behalten
   den Klartext für Ausgaben; case-insensitive Variante (Gothic-Namen sind case-insensitive).
 - **Config**: TOML lesen, typisierte Abfragen mit Defaults.
 - **Profiler-Makros**: `G7_PROFILE_SCOPE("name")` – zunächst leer, ab M17 Tracy.

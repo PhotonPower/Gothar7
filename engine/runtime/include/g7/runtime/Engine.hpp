@@ -14,7 +14,7 @@ namespace g7
 {
 struct EngineConfig
 {
-    std::string appName = "Gothic7";
+    std::string appName = "Gothar";
     f64 simulationHz = 60.0; ///< Fixed simulation rate.
     u64 maxFrames = 0;       ///< 0 = unlimited. Used by tests and headless runs.
 };

@@ -4,7 +4,7 @@
 Kommandozeilen-Werkzeug zum Kochen und Packen von Assets. Siehe `docs/06-asset-pipeline.md`.
 
 ## Editor (M4 Grundlage, M16 vollständig)
-Editor-Modus der Engine (`gothic7 --editor`), ImGui-basiert – Gegenstück zu Gothics **Spacer**.
+Editor-Modus der Engine (`gothar --editor`), ImGui-basiert – Gegenstück zu Gothics **Spacer**.
 
 | Funktion | Phase |
 |---|---|

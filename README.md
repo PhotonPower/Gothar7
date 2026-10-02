@@ -1,4 +1,4 @@
-# Gothic7
+# Gothar
 
 Eine eigene **C++20-Game-Engine** und ein Open-World-Action-RPG im Geist von **Gothic 1** –
 lebendige Welt, NPCs mit Tagesabläufen, Gilden, Dialoge, direkter Nahkampf, dynamische Musik.
@@ -11,7 +11,7 @@ lebendige Welt, NPCs mit Tagesabläufen, Gilden, Dialoge, direkter Nahkampf, dyn
 cmake --preset debug
 cmake --build --preset debug
 ctest --preset debug
-./build/debug/game/gothic7 --verbose
+./build/debug/game/gothar --verbose
 ```
 
 ## Technik (geplant)

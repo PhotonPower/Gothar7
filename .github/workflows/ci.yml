@@ -50,4 +50,4 @@ jobs:
 
       - name: Smoke test
         shell: bash
-        run: ./build/debug/game/gothic7 --smoke-test
+        run: ./build/debug/game/gothar --smoke-test

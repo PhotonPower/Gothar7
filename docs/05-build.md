@@ -18,7 +18,7 @@ export VCPKG_ROOT=~/vcpkg                                      # Windows: setx V
 cmake --preset debug            # konfiguriert, installiert Abhängigkeiten aus vcpkg.json
 cmake --build --preset debug
 ctest --preset debug            # Unit-Tests
-./build/debug/game/gothic7 --verbose
+./build/debug/game/gothar --verbose
 ```
 Unter Windows die Befehle in der **„x64 Native Tools Command Prompt for VS 2022“** ausführen
 (damit Ninja den MSVC-Compiler findet) – oder den Ordner direkt in Visual Studio / CLion / VS Code

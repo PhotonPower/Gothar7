@@ -2,7 +2,7 @@
 
 ## Ziel
 
-Gothic7 ist eine eigene C++20-Engine für ein **Open-World-Action-RPG im Geist von Gothic 1**
+Gothar ist eine eigene C++20-Engine für ein **Open-World-Action-RPG im Geist von Gothic 1**
 (Piranha Bytes, 2001): eine dichte, handgebaute Welt, in der NPCs ein glaubwürdiges Eigenleben
 führen, der Spieler als Niemand beginnt und sich Respekt erst verdienen muss.
 
@@ -88,11 +88,17 @@ reproduziert die *Funktionalität* und das *Spielgefühl* mit moderner Technik u
 - Konsolen-Ports, VR
 - Prozedurale Welt – die Welt ist handgebaut
 
+## Name
+
+**Gothar** ist der Projekt- und Spielname (vorher Arbeitstitel „Gothic7“). Das interne Kürzel
+der Engine im Code bleibt `g7` (Namespace, Target-Präfix, Dateiformate).
+
 ## Rechtlicher Rahmen
 
 „Gothic“ ist eine Marke von THQ Nordic; alle Original-Inhalte sind urheberrechtlich geschützt.
 Das Projekt verwendet ausschließlich eigene oder frei lizenzierte Inhalte. Vor einer
-Veröffentlichung sollte der Projektname geprüft werden (Markenrecht).
+Veröffentlichung sollte der Name „Gothar“ in den Markenregistern (DPMA, EUIPO) geprüft werden.
+Beispiele in der Doku verwenden bewusst eigene Namen statt Gothic-Figuren und -Orten.
 
 Hinweis: Mit **OpenGothic** (Engine-Neuimplementierung) und **ZenKit** (Dateiformat-Bibliothek)
 existieren offene Projekte, die als Lernreferenz für das Verhalten von Gothic dienen können.

@@ -4,7 +4,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ game/ (gothic7.exe)          tools/ (g7-cook, Editor-Modus)           │
+│ game/ (gothar.exe)          tools/ (g7-cook, Editor-Modus)           │
 ├──────────────────────────────────────────────────────────────────────┤
 │ runtime      Engine: Init-Reihenfolge, Hauptschleife, Modus (Spiel/Editor)
 ├──────────────────────────────────────────────────────────────────────┤
