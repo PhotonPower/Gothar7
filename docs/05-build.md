@@ -115,7 +115,8 @@ Standard-Runnern sind damit kostenlos.
 | Dear ImGui (+ ImGuizmo) | `imgui` (ADR 0015), `imguizmo` | ui | M2/M4 |
 | fastgltf | `fastgltf` | asset/tools | M2/M3 |
 | stb (image, truetype) | `stb` | asset/ui | M2 |
-| KTX | `ktx` | asset/tools | M3 |
+| KTX (libktx, UASTC → BC7/BC5) | `ktx` (ADR 0016) | asset/tools | M3 |
+| zstd | `zstd` (ADR 0016) | asset/tools | M3 |
 | EnTT | `entt` | world (öffentlich) | M4 |
 | nlohmann-json | `nlohmann-json` | world (Weltformat) | M4 |
 | Jolt Physics | `joltphysics` | physics | M5 |
