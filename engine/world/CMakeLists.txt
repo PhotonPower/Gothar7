@@ -19,6 +19,7 @@ if(NOT nlohmann_json_FOUND)
     message(STATUS "nlohmann-json nicht gefunden - lade v3.12.0 per FetchContent")
     FetchContent_Declare(nlohmann_json
         URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+        URL_HASH SHA256=42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa
         SYSTEM)
     FetchContent_MakeAvailable(nlohmann_json)
 endif()

@@ -89,6 +89,10 @@ public:
     void drawShadow(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
                     const Cascade& cascade);
 
+    /// Binds the lighting block (binding 0) and the shadow atlas (unit 3) of the last setLighting(),
+    /// for other renderers that use common/lighting.glsl (terrain).
+    void bindLighting(Device& device) const;
+
     /// Draws with the lighting set by setLighting(); each object gets the (at most 8) point lights
     /// that reach its world bounds.
     void draw(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,

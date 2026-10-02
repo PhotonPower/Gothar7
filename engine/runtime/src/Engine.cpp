@@ -834,16 +834,49 @@ Result<void> Engine::initWorld()
     {
         return Error{"cannot load world: " + spawned.error().message};
     }
+    if (const auto& ref = file.value().terrain)
+    {
+        auto heightfield = world::Heightfield::load(m_vfs, *ref);
+        if (!heightfield)
+        {
+            return Error{"cannot load world: " + heightfield.error().message};
+        }
+        m_heightfield = std::move(heightfield).value();
+        auto terrain = render::TerrainRenderer::create(*m_device, *m_shaders, m_heightfield.renderDesc(),
+                                                       m_shadowMap.settings());
+        if (!terrain)
+        {
+            return Error{"cannot create terrain: " + terrain.error().message};
+        }
+        m_terrain = std::move(terrain).value();
+        m_hasTerrain = true;
+        G7_LOG_INFO("engine", "terrain {} ({} x {} samples, {} m cells, {} chunks)", ref->heightmap,
+                    ref->width, ref->height, ref->cellSize, m_terrain.chunkCount());
+    }
     if (auto instantiated = instantiateScene(); !instantiated)
     {
         return instantiated;
     }
-    // Until the terrain (M4) a ground plate below the world and a camera overlooking it.
-    if (m_sceneBounds.max.x >= m_sceneBounds.min.x)
+    // Without terrain a ground plate below the world; a camera overlooking the vobs (or the terrain
+    // of a world without vobs).
+    const bool hasVobs = m_sceneBounds.max.x >= m_sceneBounds.min.x;
+    if (!hasVobs && m_hasTerrain)
+    {
+        const AABB area = m_heightfield.bounds();
+        const Vec3 centre = area.center();
+        m_camera.transform.position =
+            Vec3(centre.x, m_heightfield.heightAt(centre.x, centre.z) + 60.0f, centre.z + 150.0f);
+        m_camera.transform.rotation =
+            lookRotation(Vec3(centre.x, m_heightfield.heightAt(centre.x, centre.z), centre.z) -
+                         m_camera.transform.position);
+        m_flyCamera.speed = 30.0f;
+        m_flyCamera.attach(m_camera);
+    }
+    if (hasVobs)
     {
         const Vec3 size = m_sceneBounds.max - m_sceneBounds.min;
         const f32 radius = std::max(glm::length(size) * 0.5f, 1.0f);
-        if (m_config.ground)
+        if (m_config.ground && !m_hasTerrain)
         {
             if (auto ground = addGround(std::max(radius * 8.0f, 100.0f), Vec3(0.34f, 0.31f, 0.24f),
                                         m_sceneBounds.min.y);
@@ -867,8 +900,12 @@ Result<void> Engine::initWorld()
 Result<void> Engine::saveWorld(const fs::Path& path) const
 {
     const std::string name = fs::toUtf8(path.stem()); // the file names the world
-    if (auto written = fs::writeTextAtomic(path, world::writeWorldFile(world::captureWorld(m_scene, name)));
-        !written)
+    world::WorldFile file = world::captureWorld(m_scene, name);
+    if (m_hasTerrain)
+    {
+        file.terrain = m_heightfield.ref(); // the scene holds only vobs
+    }
+    if (auto written = fs::writeTextAtomic(path, world::writeWorldFile(file)); !written)
     {
         return Error{"cannot save world: " + written.error().message};
     }
@@ -926,9 +963,10 @@ void Engine::renderScene(u32 width, u32 height)
 void Engine::drawScene(u32 width, u32 height)
 {
     // Shadow pass: every caster whose bounds reach a cascade's light volume (which extends towards
-    // the sun, so casters outside the view still count). The flat ground cannot shadow anything.
+    // the sun, so casters outside the view still count). The flat ground plate cannot shadow
+    // anything; terrain can (hills shade valleys).
     render::ShadowFrame shadowFrame;
-    if (!m_instances.empty() && m_environment.sunIntensity > 0.0f)
+    if ((!m_instances.empty() || m_hasTerrain) && m_environment.sunIntensity > 0.0f)
     {
         m_cascades = render::computeCascades(m_camera, m_environment.sunDirection, m_shadowMap.settings());
         m_shadowMap.begin(*m_device);
@@ -944,6 +982,10 @@ void Engine::drawScene(u32 width, u32 height)
                                               instance.transform, m_cascades[i]);
                 }
             }
+            if (m_hasTerrain)
+            {
+                m_terrain.drawShadow(*m_device, m_cascades[i]);
+            }
         }
         shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
     }
@@ -956,13 +998,18 @@ void Engine::drawScene(u32 width, u32 height)
     m_backgroundProgram->setUniform("uHorizonColor", m_environment.fogColor);
     m_device->bindPipeline(m_backgroundPipeline);
     m_device->draw(3); // fullscreen triangle from gl_VertexID
-    if (m_instances.empty())
+    if (m_instances.empty() && !m_hasTerrain)
     {
         return;
     }
 
-    // Main pass: only instances inside the view frustum.
+    // Main pass: terrain (culled and detailed per chunk), then the instances inside the view frustum.
     m_meshRenderer.setLighting(*m_device, m_environment, m_lights, shadowFrame.map ? &shadowFrame : nullptr);
+    if (m_hasTerrain)
+    {
+        m_meshRenderer.bindLighting(*m_device);
+        m_terrain.draw(*m_device, m_camera, &m_lights);
+    }
     const Frustum view = m_camera.frustum();
     m_visibleInstances = 0;
     for (const SceneInstance& instance : m_instances)
@@ -1226,6 +1273,7 @@ void Engine::shutdown()
     m_debugUi = {}; // releases its GL textures
     m_debugRenderer = {};
     m_debugDraw.clear();
+    m_terrain = {};
     m_meshRenderer = {};
     m_post = {};
     m_sceneTarget = {};

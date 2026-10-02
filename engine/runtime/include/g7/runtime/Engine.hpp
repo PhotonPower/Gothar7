@@ -25,10 +25,12 @@
 #include <g7/render/Mesh.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
+#include <g7/render/Terrain.hpp>
 #include <g7/runtime/FrameTimes.hpp>
 #include <g7/runtime/SceneFile.hpp>
 #include <g7/ui/DebugUi.hpp>
 #include <g7/world/Scene.hpp>
+#include <g7/world/Terrain.hpp>
 #include <g7/world/WorldFile.hpp>
 
 #include <map>
@@ -150,6 +152,15 @@ public:
     /// the last frame after frustum culling.
     [[nodiscard]] usize sceneObjectCount() const noexcept { return m_instances.size(); }
     [[nodiscard]] u32 visibleSceneObjects() const noexcept { return m_visibleInstances; }
+    /// Terrain of the loaded world, or nullptr; chunks drawn in the last frame.
+    [[nodiscard]] const world::Heightfield* terrain() const noexcept
+    {
+        return m_hasTerrain ? &m_heightfield : nullptr;
+    }
+    [[nodiscard]] u32 visibleTerrainChunks() const noexcept
+    {
+        return m_hasTerrain ? m_terrain.drawnChunks() : 0;
+    }
     /// Vobs of the loaded world or scene.
     [[nodiscard]] world::Scene& scene() noexcept { return m_scene; }
     /// Camera used for rendering (a free-flying debug camera until the player exists, M5).
@@ -224,7 +235,10 @@ private:
     f64 m_frameSeconds = 0.0;         // real duration of the last frame
     f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
     // Scene: --view-mesh (one model) or --scene (test scene); models are shared by instances.
-    world::Scene m_scene; // world vobs (--world, --scene); render instances are built from it
+    world::Scene m_scene;              // world vobs (--world, --scene); render instances are built from it
+    world::Heightfield m_heightfield;  // terrain heights (empty without terrain)
+    render::TerrainRenderer m_terrain; // pipelines reference ShaderLibrary programs
+    bool m_hasTerrain = false;
     std::map<std::string, std::unique_ptr<LoadedModel>, std::less<>> m_models; // by VFS path
     std::unique_ptr<LoadedModel> m_groundModel;
     std::vector<SceneInstance> m_instances;

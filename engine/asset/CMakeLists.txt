@@ -35,6 +35,7 @@ if(NOT zstd_FOUND)
     set(ZSTD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     FetchContent_Declare(zstd
         URL https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz
+        URL_HASH SHA256=37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3
         SOURCE_SUBDIR build/cmake
         SYSTEM)
     FetchContent_MakeAvailable(zstd)

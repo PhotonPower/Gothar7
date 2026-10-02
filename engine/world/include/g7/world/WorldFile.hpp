@@ -6,6 +6,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/core/Transform.hpp>
 #include <g7/world/Components.hpp>
+#include <g7/world/Terrain.hpp>
 
 #include <optional>
 #include <string>
@@ -47,6 +48,8 @@ struct WorldFile
     std::string name;
     u64 nextVobId = 1;
     std::vector<std::string> staticMeshes;
+    /// Optional "terrain" block (version 1).
+    std::optional<TerrainRef> terrain;
     std::vector<WorldFileVob> vobs;
     /// Waynet and zones are kept as JSON text until their systems exist (read and written back
     /// unchanged); empty = absent.
