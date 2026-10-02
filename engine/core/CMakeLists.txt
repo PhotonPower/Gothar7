@@ -43,3 +43,6 @@ target_compile_definitions(g7_core PUBLIC
     GLM_FORCE_CTOR_INIT
     GLM_FORCE_SILENT_WARNINGS
     GLM_ENABLE_EXPERIMENTAL)
+
+# G7_PROFILE_* macros are active only with G7_PROFILING=ON (see Profiler.hpp).
+target_compile_definitions(g7_core PUBLIC G7_PROFILING=$<BOOL:${G7_PROFILING}>)

@@ -48,6 +48,7 @@ Ohne vcpkg (nur Kern, ohne Tests): `cmake --preset nodeps && cmake --build --pre
 | `G7_BUILD_TESTS` | ON | Unit-Tests |
 | `G7_BUILD_TOOLS` | ON | g7-cook, Editor |
 | `G7_WARNINGS_AS_ERRORS` | OFF | in CI empfohlen ON |
+| `G7_PROFILING` | OFF | aktiviert die `G7_PROFILE_*`-Zonen (eingebauter Sammler, ab M17 Tracy) |
 
 ## Kommandozeile des Spiels
 | Schalter | Wirkung |

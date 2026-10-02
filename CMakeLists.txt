@@ -13,6 +13,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(G7_BUILD_TESTS  "Unit-Tests bauen (benoetigt doctest)" ON)
 option(G7_BUILD_TOOLS  "Tools (Asset-Cooker, Editor) bauen" ON)
 option(G7_WARNINGS_AS_ERRORS "Warnungen als Fehler behandeln" OFF)
+option(G7_PROFILING   "Profiler-Zonen (G7_PROFILE_*) aktivieren" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(CompilerWarnings)
