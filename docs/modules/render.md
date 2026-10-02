@@ -126,8 +126,7 @@ class Mesh { static Result<Mesh> create(Device&, const asset::MeshData&);
              std::span<const asset::Submesh> submeshes() const; const AABB& bounds() const; };
 ```
 - Ein Vertex-Buffer (`asset::Vertex`, Attribute 0–3: Position, Normale, UV, Tangente), ein u32-Index-Buffer.
-- Vorläufiger Shader `mesh.vert/.frag`: Basisfarbe (Faktor × sRGB-Textur, Einheit 0) mit Half-Lambert aus fester
-  Richtung, bis Material- und Licht-Aufgaben folgen.
+- Shader `mesh.vert/.frag` (siehe Materialien); Licht vorerst Half-Lambert aus fester Richtung bis zur Licht-Aufgabe.
 
 ### Texturen – `TextureUpload.hpp`
 ```cpp
@@ -143,12 +142,31 @@ std::vector<u8> Device::readTexture(const rhi::Texture&, u32 level) const;      
   (`linearToSrgb` in `common/color.glsl`); der Hintergrund liefert noch Anzeigewerte. Beides übernimmt der
   Tonemapping-Pass (Aufgabe „Gamma/Tonemapping“).
 
+### Materialien – `Material.hpp`
+```cpp
+struct Material { const rhi::Texture *baseColor, *normal, *emissive; Vec4 baseColorFactor; Vec3 emissiveFactor;
+                  f32 normalScale, alphaCutoff; asset::AlphaMode alphaMode; bool doubleSided; };
+class MaterialSet  { static Result<MaterialSet> create(Device&, const asset::MeshData&, const fs::Path& modelDir);
+                     const Material& operator[](usize) const; usize size() const; };
+class MeshRenderer { static Result<MeshRenderer> create(Device&, ShaderLibrary&, f32 anisotropy);
+                     void draw(Device&, const Mesh&, const MaterialSet&, const Mat4& model, const Camera&); };
+```
+- **Bewusst schlicht/stilisiert** (kein PBR): Basisfarbe × Textur, Tangentenraum-Normal-Map mit `normalScale`,
+  Emissive (nach dem Licht addiert), Alpha-Modi wie glTF.
+- `MaterialSet` lädt jedes Bild einmal je Verwendung (Farbe sRGB, Normalen linear); fehlende/kaputte Bilder →
+  neutrale 1×1-Ersatztexturen (weiß bzw. flache Normale) mit Warnung. Texturen bleiben beim Verschieben gültig.
+- `MeshRenderer`: Pipelines für Opak / Alpha-Test / Blend × einseitig / beidseitig. **Alpha-Test** ist eine
+  Shader-Variante (`#define ALPHA_TEST` über die ShaderLibrary – `discard` schaltet Early-Z ab, also nur wo nötig);
+  **Blend** ohne Tiefenschreiben, nach allen opaken Submeshes (Sortierung nach Distanz mit der Render-Szene);
+  **doubleSided** schaltet Culling ab und dreht die Normale der Rückseite. Texturen: Einheit 0 Basisfarbe, 1 Normale,
+  2 Emissive.
+
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →
 `ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf nach
 Blickrichtung** als Hintergrund (Vollbild-Dreieck aus `gl_VertexID`, inverse View-Projection als Uniform;
 Platzhalter für den Himmel in M4), dann Puffertausch. `--no-render` startet ein Fenster ohne OpenGL.
-**Modell ansehen:** `--view-mesh=<pfad.gltf>` lädt ein glTF samt Basisfarb-Texturen (fehlende → weiß + Warnung),
+**Modell ansehen:** `--view-mesh=<pfad.gltf>` lädt ein glTF samt Materialien (`MaterialSet` + `MeshRenderer`),
 zeigt es am Ursprung und richtet die Debug-Kamera so aus, dass das Modell im Bild ist (Fluggeschwindigkeit nach
 Modellgröße).
 **Debug-Kamera:** `engine.camera()`, gesteuert über die Aktionen (Lauf-/Dreh-Aktionen, `jump`/`sneak` hoch/runter,
