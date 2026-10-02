@@ -254,7 +254,7 @@ void main() { fragColor = texture(uTexture, vUv); }
     SamplerDesc samplerDesc;
     samplerDesc.minFilter = samplerDesc.magFilter = samplerDesc.mipFilter = Filter::Nearest;
     samplerDesc.wrapU = samplerDesc.wrapV = Wrap::Clamp;
-    samplerDesc.maxAnisotropy = 8.0f; // clamped to the driver limit, ignored if unsupported
+    samplerDesc.maxAnisotropy = 8.0f; // ignored with nearest filtering (would be driver-dependent)
     Sampler sampler = require(scene.gl.device->createSampler(samplerDesc));
 
     scene.begin();

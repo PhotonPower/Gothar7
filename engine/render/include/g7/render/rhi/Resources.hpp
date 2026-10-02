@@ -70,7 +70,7 @@ struct SamplerDesc
     Filter mipFilter = Filter::Linear;
     Wrap wrapU = Wrap::Repeat;
     Wrap wrapV = Wrap::Repeat;
-    f32 maxAnisotropy = 1.0f;         ///< Clamped to what the driver supports.
+    f32 maxAnisotropy = 1.0f;         ///< Clamped to the driver limit; only used with linear minFilter.
     std::optional<CompareOp> compare; ///< Depth comparison (shadow maps).
 };
 

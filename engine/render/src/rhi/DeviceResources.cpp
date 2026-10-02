@@ -133,7 +133,9 @@ Result<Sampler> Device::createSampler(const SamplerDesc& desc)
     glSamplerParameteri(id, GL_TEXTURE_MAG_FILTER, desc.magFilter == Filter::Linear ? GL_LINEAR : GL_NEAREST);
     glSamplerParameteri(id, GL_TEXTURE_WRAP_S, static_cast<GLint>(gl::wrap(desc.wrapU)));
     glSamplerParameteri(id, GL_TEXTURE_WRAP_T, static_cast<GLint>(gl::wrap(desc.wrapV)));
-    if (desc.maxAnisotropy > 1.0f && m_info.maxAnisotropy > 1.0f)
+    // Only with linear minification: anisotropy with NEAREST is implementation-defined (Mesa still
+    // filters, NVIDIA/Intel do not), which would make pixel-art/UI textures driver-dependent.
+    if (desc.maxAnisotropy > 1.0f && m_info.maxAnisotropy > 1.0f && desc.minFilter == Filter::Linear)
     {
         glSamplerParameterf(id, gl::kTextureMaxAnisotropy,
                             std::min(desc.maxAnisotropy, m_info.maxAnisotropy));

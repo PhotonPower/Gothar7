@@ -65,7 +65,8 @@ const FrameStats& stats();   // drawCalls, triangles, pipelineChanges, textureBi
   Framebuffer, Größe 0, Update auf statischen Buffer, falsche Upload-Größe); Programmierfehler `G7_ASSERT`.
 - **Konventionen:** Vorderseiten gegen den Uhrzeigersinn; ein Vertex-Buffer pro Pipeline (interleaved,
   Bindung 0); Uniform-Blöcke/Sampler über GLSL `layout(binding = N)`; anisotrope Filterung wird auf den
-  Treiberwert begrenzt (`DeviceInfo::maxAnisotropy`, 1 = nicht verfügbar).
+  Treiberwert begrenzt (`DeviceInfo::maxAnisotropy`, 1 = nicht verfügbar) und nur bei linearem Min-Filter
+  gesetzt (bei Nearest wäre das Ergebnis treiberabhängig – Mesa filtert dann trotzdem).
 - Shader-Compilerausgaben aus dem Debug-Callback laufen nur auf Debug-Level, weil
   `createShaderProgram` das vollständige Log als Fehler zurückgibt.
 
