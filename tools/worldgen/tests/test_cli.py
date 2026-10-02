@@ -1,10 +1,12 @@
 import io
+import json
 from pathlib import Path
 
 import pytest
 
 from gothar_worldgen.cli import EXIT_ERROR, EXIT_OK, main
 
+from .citygml import building, flat_surfaces, write_citygml
 from .conftest import SITE_TOML
 
 LGL_EXCERPT_DIR = Path(__file__).parent / "data" / "lgl_dgm1"
@@ -137,9 +139,16 @@ def _small_site_with_data(config_dir: Path, data_root: Path) -> None:
     dgm.mkdir(parents=True)
     for f in LGL_EXCERPT_DIR.glob("*.xyz"):
         (dgm / f.name).write_bytes(f.read_bytes())
+    # One synthetic 6 m x 6 m flat-roofed building next to the origin (E 500933, N 5405056).
+    write_citygml(
+        data_root / "geo" / "lgl" / "lod2" / "LoD2_32_500_5405_1_BW.gml",
+        building("B1", flat_surfaces(500930, 5405053, 6, 6, 371.0, 374.0), roof_type="1000"),
+    )
 
 
-def test_import_writes_terrain(config_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_import_writes_terrain_and_buildings(
+    config_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     data_root = tmp_path / "data"
     _small_site_with_data(config_dir, data_root)
     monkeypatch.setenv("GOTHAR_DATA_ROOT", str(data_root))
@@ -151,6 +160,10 @@ def test_import_writes_terrain(config_dir: Path, tmp_path: Path, monkeypatch: py
     assert (work / "terrain.r16").stat().st_size == 40 * 40 * 2
     assert (work / "terrain.png").is_file()
     assert (work / "terrain.json").is_file()
+    assert "buildings: 1 (1 in core" in out
+    doc = json.loads((work / "buildings.json").read_text(encoding="utf-8"))
+    assert doc["origin"]["heightNHN"] == 371.59  # same reference height as the terrain
+    assert doc["buildings"][0]["groundY"] == pytest.approx(371.0 - 371.59)
 
 
 def test_import_without_dgm_data_fails(

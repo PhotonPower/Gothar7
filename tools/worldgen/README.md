@@ -16,7 +16,8 @@ tools/worldgen/
     importer.py               Ablauf von "import" (Schritte nacheinander)
     config.py                 Laden + Prüfen von <ort>.toml und local.toml, Datenpfade
     geo/                      bbox (Gebiete, Kachelraster), dgm1 (XYZ → Höhenraster),
-                              terrain (Heightmap-Export); später LoD2, OSM          (W1)
+                              terrain (Heightmap-Export), lod2 (CityGML lesen),
+                              buildings (→ buildings.json); später OSM            (W1)
     facade/                   Insta360 → Fassadenansichten, Annotations-UI     (geplant, W4)
     assemble/                 Zwischendaten + .glb → .g7world, Wegnetz-Vorschlag (geplant, W3, W6)
   blender/gothar_buildings/   Blender-Add-on: Gebäude-Generator               (geplant, W3, W5)
@@ -41,7 +42,7 @@ GDAL unter Windows: über die Wheels von `rasterio`/`pyogrio` (bringen GDAL mit)
 gothar-worldgen info leonberg              REM Konfiguration, Gebiet, vorhandene/fehlende Rohdaten-Ordner
 gothar-worldgen tiles leonberg             REM benötigte LGL-Kacheln (2-km-Raster), --area core, --size 1000
 gothar-worldgen download leonberg          REM LGL-Kacheln + OSM laden/entpacken, --only dgm1,osm, --force
-gothar-worldgen import leonberg            REM Rohdaten → work/leonberg/ (bisher: terrain.r16/.png/.json)
+gothar-worldgen import leonberg            REM Rohdaten → work/leonberg/ (terrain.r16/.png/.json, buildings.json)
 ```
 `--config-dir` bzw. `GOTHAR_WORLDGEN_CONFIG` wählen einen anderen Konfigurationsordner;
 `GOTHAR_DATA_ROOT` überschreibt `data_root` aus `local.toml`.

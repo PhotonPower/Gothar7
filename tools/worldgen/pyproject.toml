@@ -9,9 +9,11 @@ description = "World-track tools for Gothar: geodata and captures -> game world 
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-# Further geo dependencies (lxml, osmium, ...) are added with the import step that needs them.
+# Further geo dependencies (osmium, ...) are added with the import step that needs them.
 dependencies = [
+    "lxml>=5",
     "numpy>=1.26",
+    "shapely>=2",
 ]
 
 [project.optional-dependencies]
