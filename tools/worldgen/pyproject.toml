@@ -13,6 +13,7 @@ dependencies = [
     "lxml>=5",
     "numpy>=1.26",
     "osmium>=4",
+    "pillow>=10",
     "pyproj>=3.6",
     "shapely>=2",
 ]

@@ -175,6 +175,27 @@ def test_import_writes_all_layers(
     assert streets["source"]["credit"] == "© OpenStreetMap-Mitwirkende"
     assert streets["streets"][0]["points"][0] == [-13.0, 6.0]  # E 500920, N 5405050 local
     assert json.loads((work / "features.json").read_text(encoding="utf-8"))["features"]
+    assert "checks:" in out
+    report = json.loads((work / "report.json").read_text(encoding="utf-8"))
+    assert report["status"] in ("ok", "warn")
+    assert (work / "preview.png").is_file()
+    assert (work / "preview_core.png").is_file()
+
+    code, out = run("--config-dir", str(config_dir), "check", "testsite")
+    assert code == EXIT_OK
+    assert "alignment.roadsInBuildings" in out
+
+
+def test_check_without_work_data(
+    config_dir: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+):
+    monkeypatch.setenv("GOTHAR_DATA_ROOT", str(tmp_path))
+    code, _ = run("--config-dir", str(config_dir), "check", "testsite")
+    assert code == EXIT_ERROR
+    assert "run 'gothar-worldgen import" in capsys.readouterr().err
 
 
 def test_import_without_dgm_data_fails(

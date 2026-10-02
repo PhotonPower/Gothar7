@@ -11,7 +11,7 @@ tools/worldgen/
   config/leonberg.toml        Gebiet, Ursprung, Maßstab (versioniert)
   config/local.toml           DATA_ROOT usw. (lokal, NICHT versioniert; Vorlage: local.example.toml)
   src/gothar_worldgen/
-    cli.py                    Befehle info / tiles / download / import
+    cli.py                    Befehle info / tiles / download / import / check
     download.py               LGL-Kacheln + OSM-Extrakt nach DATA_ROOT laden
     importer.py               Ablauf von "import" (Schritte nacheinander)
     config.py                 Laden + Prüfen von <ort>.toml und local.toml, Datenpfade
@@ -20,6 +20,7 @@ tools/worldgen/
                               buildings (→ buildings.json), osm (PBF lesen),
                               streets / features (→ streets.json, features.json),
                               frame (lokales Koordinatensystem), jsonio            (W1)
+    qa/                       Vorschaubilder + Plausibilitätsprüfungen (check)  (W1)
     facade/                   Insta360 → Fassadenansichten, Annotations-UI     (geplant, W4)
     assemble/                 Zwischendaten + .glb → .g7world, Wegnetz-Vorschlag (geplant, W3, W6)
   blender/gothar_buildings/   Blender-Add-on: Gebäude-Generator               (geplant, W3, W5)
@@ -44,7 +45,8 @@ GDAL unter Windows: über die Wheels von `rasterio`/`pyogrio` (bringen GDAL mit)
 gothar-worldgen info leonberg              REM Konfiguration, Gebiet, vorhandene/fehlende Rohdaten-Ordner
 gothar-worldgen tiles leonberg             REM benötigte LGL-Kacheln (2-km-Raster), --area core, --size 1000
 gothar-worldgen download leonberg          REM LGL-Kacheln + OSM laden/entpacken, --only dgm1,osm, --force
-gothar-worldgen import leonberg            REM Rohdaten → work/leonberg/ (terrain, buildings, streets, features)
+gothar-worldgen import leonberg            REM Rohdaten → work/leonberg/ (terrain, buildings, streets, features) + check
+gothar-worldgen check leonberg             REM preview.png, preview_core.png, report.json (Exit 1 bei "fail")
 ```
 `--config-dir` bzw. `GOTHAR_WORLDGEN_CONFIG` wählen einen anderen Konfigurationsordner;
 `GOTHAR_DATA_ROOT` überschreibt `data_root` aus `local.toml`.

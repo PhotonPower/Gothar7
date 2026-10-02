@@ -22,6 +22,9 @@ from gothar_worldgen.geo.dgm1 import DgmError
 from gothar_worldgen.geo.lod2 import Lod2Error
 from gothar_worldgen.geo.osm import OsmError
 from gothar_worldgen.importer import run_import
+from gothar_worldgen.qa.checks import FAIL
+from gothar_worldgen.qa.run import run_qa
+from gothar_worldgen.qa.workdata import QaError
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -115,12 +118,27 @@ def _cmd_download(args: argparse.Namespace, out: TextIO) -> int:
 def _cmd_import(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
     try:
-        run_import(site, DataPaths(local.data_root, site.name), out)
-    except (DgmError, Lod2Error, OsmError, OSError) as e:
+        run_import(site, paths, out)
+        status = run_qa(site.name, paths.work, out)
+    except (DgmError, Lod2Error, OsmError, QaError, OSError) as e:
         print(f"error: import failed: {e}", file=sys.stderr)
         return EXIT_ERROR
-    return EXIT_OK
+    return EXIT_ERROR if status == FAIL else EXIT_OK
+
+
+def _cmd_check(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    work = DataPaths(local.data_root, site.name).work
+    print(f"checking {site.name} -> {work}", file=out)
+    try:
+        status = run_qa(site.name, work, out)
+    except (QaError, OSError) as e:
+        print(f"error: check failed: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    return EXIT_ERROR if status == FAIL else EXIT_OK
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -161,9 +179,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--force", action="store_true", help="download again even if present")
     p.set_defaults(func=_cmd_download)
 
-    p = sub.add_parser("import", help="convert raw geodata into intermediate world data")
+    p = sub.add_parser(
+        "import", help="convert raw geodata into intermediate world data, then run 'check'"
+    )
     p.add_argument("site")
     p.set_defaults(func=_cmd_import)
+
+    p = sub.add_parser("check", help="plausibility report and preview images of the work data")
+    p.add_argument("site")
+    p.set_defaults(func=_cmd_check)
 
     return parser
 

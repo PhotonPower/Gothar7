@@ -23,9 +23,6 @@ from gothar_worldgen.geo.osm import find_osm_file, read_osm
 from gothar_worldgen.geo.streets import build_streets, summarize_streets
 from gothar_worldgen.geo.terrain import write_terrain
 
-# Steps of the W1 import that are not implemented yet (reported, not an error).
-PENDING_STEPS = ("preview",)
-
 OSM_CREDIT = "© OpenStreetMap-Mitwirkende"
 OSM_LICENSE = "ODbL 1.0"
 
@@ -122,5 +119,3 @@ def run_import(site: SiteConfig, paths: DataPaths, out: TextIO) -> None:
     origin_nhn = terrain["origin"]["heightNHN"]
     import_buildings(site, paths, origin_nhn, out)
     import_osm(site, paths, origin_nhn, out)
-    for step in PENDING_STEPS:
-        print(f"  {step}: not implemented yet", file=out)
