@@ -41,7 +41,7 @@ struct CookReport
     u32 meshes = 0;                  ///< glTF/GLB cooked to .g7mesh
     u32 images = 0;                  ///< image files plus images extracted from meshes
     u32 copied = 0;                  ///< other files taken over unchanged
-    u32 skipped = 0;                 ///< hidden files, Blender files, glTF buffers (.bin)
+    u32 skipped = 0;                 ///< hidden files, Blender files, glTF buffers (.bin), glTF without mesh
     u32 outputs = 0;                 ///< files in the output (written, unchanged or packed)
     u32 cooked = 0;                  ///< sources cooked this time
     u32 reused = 0;                  ///< sources whose previous outputs were reused (manifest)

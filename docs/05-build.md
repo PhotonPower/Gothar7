@@ -83,6 +83,8 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | `--max-fps=N` | Bildrate begrenzen (überschreibt `[window] max_fps`; 0 = unbegrenzt) |
 | `--fullscreen` | randloses Vollbild in Desktop-Auflösung |
 | `--view-mesh=<pfad>` | Modell (`.gltf`/`.glb`/`.g7mesh`) am Ursprung anzeigen, Debug-Kamera richtet sich danach aus; VFS-Pfad oder Datei auf der Festplatte (wie `--scene`) |
+| `--world=<pfad>` | Welt `.g7world` laden (VFS-Pfad wie `testworld/camp.g7world` oder Datei auf der Festplatte); hat Vorrang vor `--scene`/`--view-mesh` |
+| `--save-world=<datei>` | nach dem Laden die Welt bzw. Testszene als `.g7world` speichern (stabil, ein Vob pro Zeile) |
 | `--scene=<pfad>` | Testszene laden (TOML, siehe „Testszenen“): VFS-Pfad wie `testscene/scene.toml` oder Datei auf der Festplatte (deren Ordner wird unter `local/` gemountet); ersetzt `--view-mesh` |
 | `--viewpoint=N` | mit Viewpoint N der Szene starten (Standard 0) |
 | `--benchmark` | VSync und Frame-Limit aus, jeden Viewpoint der Szene 300 Frames lang ansteuern (die ersten 30 zum Einschwingen), Frame-Zeiten (Mittel, p95, p99, schlechtester) je Viewpoint loggen, dann beenden |
@@ -153,7 +155,7 @@ Standard-Runnern sind damit kostenlos.
 | KTX (libktx, UASTC → BC7/BC5) | `ktx` (ADR 0016) | asset/tools | M3 |
 | zstd | `zstd` (ADR 0016) | asset/tools | M3 |
 | EnTT 3.16 (MIT) | `entt` (ADR 0005) | world (öffentlich; Registry nicht in der API) | M4 |
-| nlohmann-json | `nlohmann-json` | world (Weltformat) | M4 |
+| nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world (privat, Weltformat `.g7world`) | M4 |
 | Jolt Physics | `joltphysics` | physics | M5 |
 | Lua 5.4 + sol2 | `lua`, `sol2` | script | M7 |
 | miniaudio | `miniaudio` | audio | M13 |

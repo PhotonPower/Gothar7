@@ -144,12 +144,18 @@ Result<void> Engine::init()
             {
                 return result;
             }
-            if (!m_config.scene.empty() || !m_config.viewMesh.empty())
+            if (!m_config.world.empty() || !m_config.scene.empty() || !m_config.viewMesh.empty())
             {
                 auto result = initSceneRendering();
                 if (result)
                 {
-                    result = m_config.scene.empty() ? initViewMesh() : initScene();
+                    result = !m_config.world.empty()   ? initWorld()
+                             : !m_config.scene.empty() ? initScene()
+                                                       : initViewMesh();
+                }
+                if (result && !m_config.saveWorld.empty())
+                {
+                    result = saveWorld(m_config.saveWorld);
                 }
                 if (!result)
                 {
@@ -722,27 +728,31 @@ Result<void> Engine::initScene()
         return Error{"cannot load scene: " + scene.error().message};
     }
     const SceneFile& file = scene.value();
-    std::vector<std::string> meshes;
-    meshes.reserve(file.objects.size());
+    // The test scene becomes world vobs, so it renders (and saves, --save-world) like a .g7world.
     for (const SceneObject& object : file.objects)
     {
-        meshes.push_back(object.mesh);
-    }
-    if (auto loaded = loadModels(meshes); !loaded)
-    {
-        return loaded;
-    }
-    for (const SceneObject& object : file.objects)
-    {
-        // Cached under the path of its first use; the VFS matches case-insensitively.
-        const LoadedModel* loaded = model(object.mesh);
-        if (loaded == nullptr)
+        auto vob = m_scene.spawnVob(
+            {fs::toUtf8(fs::fromUtf8(object.mesh).stem()), Transform::fromMatrix(object.transform)});
+        if (!vob)
         {
-            const auto found = std::find_if(m_models.begin(), m_models.end(), [&](const auto& entry)
-                                            { return equalsIgnoreCase(entry.first, object.mesh); });
-            loaded = found->second.get();
+            return vob.error();
         }
-        addInstance(*loaded, object.transform);
+        m_scene.set<world::MeshRef>(vob.value(), {object.mesh});
+    }
+    for (const SceneLight& light : file.lights)
+    {
+        Transform at;
+        at.position = light.position;
+        auto vob = m_scene.spawnVob({"LIGHT", at});
+        if (!vob)
+        {
+            return vob.error();
+        }
+        m_scene.set<world::LightSource>(vob.value(), {light.color, light.radius, light.intensity, 0.0f});
+    }
+    if (auto instantiated = instantiateScene(); !instantiated)
+    {
+        return instantiated;
     }
     if (file.groundSize > 0.0f && m_config.ground)
     {
@@ -750,11 +760,6 @@ Result<void> Engine::initScene()
         {
             return ground;
         }
-    }
-    m_lights.clear();
-    for (const SceneLight& light : file.lights)
-    {
-        m_lights.add({light.position, light.radius, light.color, light.intensity});
     }
 
     // Overrides of the interim environment (set up by initEnvironment before).
@@ -783,6 +788,91 @@ Result<void> Engine::initScene()
     m_sceneName = fs::toUtf8(fs::fromUtf8(scenePath.value()).filename());
     G7_LOG_INFO("engine", "scene {}: {} objects ({} models), {} lights, {} viewpoints", scenePath.value(),
                 m_instances.size(), m_models.size(), file.lights.size(), m_viewpoints.size());
+    return {};
+}
+
+Result<void> Engine::instantiateScene()
+{
+    // Models of all mesh vobs in one batch, then one render instance per vob at its world matrix.
+    m_scene.updateTransforms();
+    std::vector<std::string> meshes;
+    m_scene.each<world::MeshRef>([&](entt::entity, const world::MeshRef& mesh)
+                                 { meshes.push_back(mesh.path); });
+    if (auto loaded = loadModels(meshes); !loaded)
+    {
+        return loaded;
+    }
+    m_scene.each<world::MeshRef, world::WorldTransform>(
+        [&](entt::entity, const world::MeshRef& mesh, const world::WorldTransform& world)
+        {
+            // Cached under the path of its first use; the VFS matches case-insensitively.
+            const LoadedModel* loaded = model(mesh.path);
+            if (loaded == nullptr)
+            {
+                const auto found = std::find_if(m_models.begin(), m_models.end(), [&](const auto& entry)
+                                                { return equalsIgnoreCase(entry.first, mesh.path); });
+                loaded = found->second.get();
+            }
+            addInstance(*loaded, world.matrix);
+        });
+    m_lights.clear();
+    m_scene.each<world::LightSource, world::WorldTransform>(
+        [&](entt::entity, const world::LightSource& light, const world::WorldTransform& world)
+        { m_lights.add({Vec3(world.matrix[3]), light.range, light.color, light.intensity}); });
+    return {};
+}
+
+Result<void> Engine::initWorld()
+{
+    auto path = resolveAssetArgument(m_config.world);
+    auto file = path ? world::loadWorldFile(m_vfs, path.value()) : Result<world::WorldFile>(path.error());
+    if (!file)
+    {
+        return Error{"cannot load world: " + file.error().message};
+    }
+    if (auto spawned = world::spawnWorld(m_scene, file.value()); !spawned)
+    {
+        return Error{"cannot load world: " + spawned.error().message};
+    }
+    if (auto instantiated = instantiateScene(); !instantiated)
+    {
+        return instantiated;
+    }
+    // Until the terrain (M4) a ground plate below the world and a camera overlooking it.
+    if (m_sceneBounds.max.x >= m_sceneBounds.min.x)
+    {
+        const Vec3 size = m_sceneBounds.max - m_sceneBounds.min;
+        const f32 radius = std::max(glm::length(size) * 0.5f, 1.0f);
+        if (m_config.ground)
+        {
+            if (auto ground = addGround(std::max(radius * 8.0f, 100.0f), Vec3(0.34f, 0.31f, 0.24f),
+                                        m_sceneBounds.min.y);
+                !ground)
+            {
+                return ground;
+            }
+        }
+        const Vec3 centre = m_sceneBounds.center();
+        m_camera.transform.position = centre + glm::normalize(Vec3(0.6f, 0.5f, 1.0f)) * radius * 1.2f;
+        m_camera.transform.rotation = lookRotation(centre - m_camera.transform.position);
+        m_flyCamera.speed = std::clamp(radius * 0.2f, 5.0f, 50.0f);
+        m_flyCamera.attach(m_camera);
+    }
+    m_sceneName = file.value().name.empty() ? path.value() : file.value().name;
+    G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights", path.value(),
+                m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size());
+    return {};
+}
+
+Result<void> Engine::saveWorld(const fs::Path& path) const
+{
+    const std::string name = fs::toUtf8(path.stem()); // the file names the world
+    if (auto written = fs::writeTextAtomic(path, world::writeWorldFile(world::captureWorld(m_scene, name)));
+        !written)
+    {
+        return Error{"cannot save world: " + written.error().message};
+    }
+    G7_LOG_INFO("engine", "saved world ({} vobs) to {}", m_scene.vobCount(), fs::toUtf8(path));
     return {};
 }
 

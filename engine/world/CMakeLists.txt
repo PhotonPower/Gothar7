@@ -1,5 +1,6 @@
 # EnTT is a public dependency of world (ADR 0005: components and entt::entity appear in the API,
-# the registry does not). The nodeps preset fetches the same version.
+# the registry does not). nlohmann-json reads and writes .g7world and stays private (ADR 0017).
+# The nodeps preset fetches both in the same versions.
 include(FetchContent)
 
 find_package(EnTT CONFIG QUIET)
@@ -13,4 +14,13 @@ if(NOT EnTT_FOUND)
     FetchContent_MakeAvailable(EnTT)
 endif()
 
-g7_add_module(world DEPS core asset render physics PUBLIC_LIBS EnTT::EnTT)
+find_package(nlohmann_json CONFIG QUIET)
+if(NOT nlohmann_json_FOUND)
+    message(STATUS "nlohmann-json nicht gefunden - lade v3.12.0 per FetchContent")
+    FetchContent_Declare(nlohmann_json
+        URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+        SYSTEM)
+    FetchContent_MakeAvailable(nlohmann_json)
+endif()
+
+g7_add_module(world DEPS core asset render physics PUBLIC_LIBS EnTT::EnTT PRIVATE_LIBS nlohmann_json::nlohmann_json)

@@ -287,6 +287,14 @@ private:
             return;
         }
         asset::MeshData mesh = std::move(loaded).value();
+        if (mesh.submeshes.empty())
+        {
+            // E.g. an animation set (anims/*.glb) without geometry: nothing to cook until skeletons and
+            // clips come with M6 - an empty .g7mesh would only mislead.
+            G7_LOG_WARN("cook", "{}: no mesh in this glTF, skipped", relative);
+            ++m_report.skipped;
+            return;
+        }
         const bool ktx2 = m_options.textures == TextureMode::Ktx2;
         const std::string base = withoutExtension(relative);
         // Extracted images are emitted only if the whole mesh cooks (no orphans on errors).

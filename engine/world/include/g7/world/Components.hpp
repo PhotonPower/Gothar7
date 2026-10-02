@@ -10,6 +10,7 @@
 
 #include <compare>
 #include <functional>
+#include <string>
 
 namespace g7::world
 {
@@ -32,14 +33,31 @@ constexpr bool VobId::runtime() const noexcept
     return value >= kRuntimeVobIdBase;
 }
 
-/// Every placed object.
+/// Every placed object. The name is kept as text too: StringId keeps its text only in debug builds,
+/// but saving a world needs it.
 struct Vob
 {
     VobId id;
     StringId name;
+    std::string nameText;
 };
 
-/// World matrix of a vob (parent world * local), kept up to date by World::updateTransforms().
+/// A vob showing a model (VFS path of a .g7mesh or, during development, a glTF).
+struct MeshRef
+{
+    std::string path;
+};
+
+/// A point light (torch, camp fire). Colour is linear; flicker (0..1) is applied by the renderer later.
+struct LightSource
+{
+    Vec3 color{1.0f, 0.62f, 0.3f};
+    f32 range = 8.0f;
+    f32 intensity = 3.0f;
+    f32 flicker = 0.0f;
+};
+
+/// World matrix of a vob (parent world * local), kept up to date by Scene::updateTransforms().
 struct WorldTransform
 {
     Mat4 matrix{1.0f};
