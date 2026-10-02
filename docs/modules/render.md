@@ -230,6 +230,37 @@ class PostProcess { static Result<PostProcess> create(Device&, ShaderLibrary&);
   `[render] fog_start`, `fog_density` (0 = aus). Ab M4 liefert die Tageszeit-Kurve Farbe und Dichte; Höhennebel
   (Sümpfe) folgt mit der Atmosphäre (M17).
 
+### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
+```cpp
+struct DebugStyle { Vec4 color{1}; f32 duration = 0; bool depthTest = true; };   // duration 0 = nur dieser Frame
+class DebugDraw {                     // sammelt auf der CPU, Immediate-Mode
+    void line(a, b, style); arrow(from, to, style); cross(p, size, style);
+    void box(const AABB&, style); box(const Mat4& transform, Vec3 halfExtents, style);
+    void circle(centre, normal, radius, style); sphere(centre, radius, style);
+    void axes(const Mat4&, f32 size); frustum(const Mat4& viewProjection, style); grid(centre, size, spacing, style);
+    void text(const Vec3& world, sv, style, f32 scale = 1);                   // zentriert, feste Pixelgröße
+    void screenText(Vec2 pixels, sv, Vec4 color, f32 scale = 1, f32 duration = 0);
+    void advance(f32 dt); void clear(); bool enabled = true;
+};
+void layoutDebugText(const DebugDraw::Text&, const Mat4& viewProjection, u32 w, u32 h, std::vector<DebugGlyphQuad>&);
+class DebugDrawRenderer { static Result<DebugDrawRenderer> create(Device&, ShaderLibrary&);
+    void render(Device&, const DebugDraw&, const Camera&, const rhi::Texture* sceneDepth, u32 w, u32 h); };
+```
+- Gezeichnet wird **nach dem Post-Pass direkt ins Fenster**: Farben sind Anzeigewerte (sRGB), ohne Tonemapping
+  und Nebel. Linien 1 px (`GL_LINES`), Text als Glyphen-Quads; dynamische Vertex-Buffer wachsen bei Bedarf.
+- **Verdeckung:** Der Shader vergleicht seine Tiefe mit der Tiefe des HDR-Ziels (`SceneTarget::depth()`), mit
+  relativer Toleranz, damit Linien auf Flächen sichtbar bleiben. Verdeckte Linien erscheinen gestrichelt und blass,
+  verdeckter Text blass; `depthTest = false` zeichnet immer voll.
+- **Text:** eingebaute 8×8-Bitmap-Schrift (font8x8, Public Domain, `assets/LICENSES.md`), ASCII; andere Zeichen
+  erscheinen als `?`, `
+` beginnt eine neue Zeile. Weltpunkte hinter der Kamera erzeugen keinen Text; jede Glyphe
+  bekommt einen dunklen 1-px-Schatten zur Lesbarkeit.
+- **Lebensdauer:** `advance(dt)` einmal pro Frame nach dem Zeichnen (Echtzeit, auch bei Pause): Einträge ohne
+  Dauer verschwinden nach einem Frame, andere nach Ablauf.
+- **Engine:** `Engine::debugDraw()` für alle Module; das Overlay (Aktion `debug_draw`, F2, Start über
+  `[render] debug_draw`) zeigt FPS/Frame-Zeit, Draw-Calls, Dreiecke, Kameraposition, Weltachsen und bei
+  `--view-mesh` Bodenraster, Bounds mit Dateinamen und Fackel-Radien. Nur bei aktivem Overlay wird gezeichnet.
+
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →
 `ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf nach

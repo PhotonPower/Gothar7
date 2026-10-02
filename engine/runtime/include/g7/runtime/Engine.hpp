@@ -14,6 +14,7 @@
 #include <g7/platform/Input.hpp>
 #include <g7/platform/Window.hpp>
 #include <g7/render/Camera.hpp>
+#include <g7/render/DebugDraw.hpp>
 #include <g7/render/Device.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
@@ -102,6 +103,10 @@ public:
     [[nodiscard]] const platform::Input& input() const noexcept { return m_input; }
     /// Bindings of the active control scheme.
     [[nodiscard]] const platform::ActionMap& actions() const noexcept { return m_actions; }
+    /// Debug lines, shapes and text (drawn while the overlay is on, toggled with the debug_draw action).
+    [[nodiscard]] render::DebugDraw& debugDraw() noexcept { return m_debugDraw; }
+    [[nodiscard]] bool debugOverlay() const noexcept { return m_debugOverlay; }
+    void setDebugOverlay(bool enabled) noexcept;
 
 private:
     void shutdown();
@@ -110,6 +115,7 @@ private:
     void initEnvironment();
     void renderScene(u32 width, u32 height);
     void drawViewMesh(u32 width, u32 height);
+    void addDebugOverlay(u32 width, u32 height);
     void updateDebugCamera(f64 realSeconds);
 
     EngineConfig m_config;
@@ -122,7 +128,12 @@ private:
     render::SceneTarget m_sceneTarget; // linear HDR scene, tonemapped by m_post
     render::PostProcess m_post;
     render::PostSettings m_postSettings;
-    render::Mesh m_viewMesh; // empty unless --view-mesh
+    render::DebugDraw m_debugDraw;
+    render::DebugDrawRenderer m_debugRenderer;
+    bool m_debugOverlay = false;
+    f64 m_frameSeconds = 0.0;         // real duration of the last frame
+    f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
+    render::Mesh m_viewMesh;          // empty unless --view-mesh
     render::MaterialSet m_viewMaterials;
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs
     render::Environment m_environment;

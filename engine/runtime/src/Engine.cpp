@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <array>
+#include <format>
 #include <string_view>
 #include <utility>
 
@@ -189,6 +190,9 @@ bool Engine::runFrame()
     const f64 realSeconds =
         m_config.fixedFrameSeconds > 0.0 ? m_config.fixedFrameSeconds : m_frameTimer.elapsedSeconds();
     m_frameTimer.reset();
+    m_frameSeconds = realSeconds;
+    m_smoothedFrameSeconds =
+        m_smoothedFrameSeconds > 0.0 ? m_smoothedFrameSeconds * 0.95 + realSeconds * 0.05 : realSeconds;
 
     m_input.beginFrame();
     if (m_window)
@@ -210,6 +214,10 @@ bool Engine::runFrame()
         if (m_actions.pressed(m_input, platform::Action::Pause))
         {
             setPaused(!m_paused);
+        }
+        if (m_actions.pressed(m_input, platform::Action::DebugDraw))
+        {
+            setDebugOverlay(!m_debugOverlay);
         }
     }
 
@@ -237,6 +245,8 @@ bool Engine::runFrame()
             renderScene(size.width, size.height);
             m_glContext->swapBuffers();
         }
+        // Real time, so timed debug items also expire while the game is paused.
+        m_debugDraw.advance(static_cast<f32>(m_frameSeconds));
     }
 
     ++m_frameCount;
@@ -291,6 +301,13 @@ Result<void> Engine::initShaders()
         return Error{"cannot create post pass: " + post.error().message};
     }
     m_post = std::move(post).value();
+    auto debugRenderer = render::DebugDrawRenderer::create(*m_device, *m_shaders);
+    if (!debugRenderer)
+    {
+        return Error{"cannot create debug draw: " + debugRenderer.error().message};
+    }
+    m_debugRenderer = std::move(debugRenderer).value();
+    m_debugOverlay = m_config.settings.get<bool>("render.debug_draw", false);
     const auto size = m_window->pixelSize();
     auto target = render::SceneTarget::create(*m_device, size.width, size.height);
     if (!target)
@@ -425,6 +442,13 @@ void Engine::renderScene(u32 width, u32 height)
     // Tonemap into the window.
     m_device->bindFramebuffer(nullptr);
     m_post.apply(*m_device, m_sceneTarget, width, height, m_postSettings);
+
+    // Debug drawing on top, depth-tested against the scene.
+    if (m_debugOverlay)
+    {
+        addDebugOverlay(width, height);
+        m_debugRenderer.render(*m_device, m_debugDraw, m_camera, &m_sceneTarget.depth(), width, height);
+    }
 }
 
 void Engine::drawViewMesh(u32 width, u32 height)
@@ -504,6 +528,51 @@ void Engine::setPaused(bool paused) noexcept
     }
 }
 
+void Engine::setDebugOverlay(bool enabled) noexcept
+{
+    if (enabled != m_debugOverlay)
+    {
+        m_debugOverlay = enabled;
+        G7_LOG_INFO("engine", "debug overlay {}", enabled ? "on" : "off");
+    }
+}
+
+void Engine::addDebugOverlay(u32 width, u32 height)
+{
+    // Frame statistics in the top-left corner (until the ImGui overlay exists).
+    const render::FrameStats& stats = m_device->stats();
+    const f64 ms = m_smoothedFrameSeconds * 1000.0;
+    const Vec3& p = m_camera.transform.position;
+    m_debugDraw.screenText(
+        Vec2(8.0f, 8.0f),
+        std::format("{:.0f} fps  {:.2f} ms{}\n{} draws  {:.1f}k tris\n{}x{}  cam {:.1f} {:.1f} {:.1f}",
+                    ms > 0.0 ? 1000.0 / ms : 0.0, ms, m_paused ? "  PAUSED" : "", stats.drawCalls,
+                    stats.triangles / 1000.0, width, height, p.x, p.y, p.z),
+        Vec4(1.0f), 2.0f);
+
+    // World origin and the --view-mesh scene: ground grid, bounds with the file name, torches.
+    m_debugDraw.axes(Mat4(1.0f), 1.0f);
+    if (m_viewMesh.submeshes().empty())
+    {
+        return;
+    }
+    const AABB& bounds = m_viewMesh.bounds();
+    const f32 size = std::max(glm::length(bounds.max - bounds.min), 1.0f);
+    const f32 spacing = std::exp2(std::round(std::log2(size / 8.0f))); // ~8 cells across the model
+    m_debugDraw.grid(Vec3(0.0f, bounds.min.y, 0.0f), spacing * 40.0f, spacing,
+                     {Vec4(0.6f, 0.6f, 0.6f, 0.35f)});
+    m_debugDraw.box(bounds, {Vec4(1.0f, 0.85f, 0.2f, 1.0f)});
+    m_debugDraw.text(Vec3(bounds.center().x, bounds.max.y, bounds.center().z) +
+                         Vec3(0.0f, size * 0.08f, 0.0f),
+                     fs::toUtf8(m_config.viewMesh.filename()), {Vec4(1.0f, 0.85f, 0.2f, 1.0f)}, 2.0f);
+    for (const render::PointLight& light : m_lights.lights())
+    {
+        const render::DebugStyle style{Vec4(1.0f, 0.55f, 0.2f, 0.8f)};
+        m_debugDraw.cross(light.position, size * 0.05f, style);
+        m_debugDraw.sphere(light.position, light.radius, style);
+    }
+}
+
 void Engine::shutdown()
 {
     if (!m_initialized)
@@ -512,6 +581,8 @@ void Engine::shutdown()
     }
     // Shutdown in reverse init order.
     G7_LOG_INFO("engine", "shutdown");
+    m_debugRenderer = {};
+    m_debugDraw.clear();
     m_meshRenderer = {};
     m_post = {};
     m_sceneTarget = {};

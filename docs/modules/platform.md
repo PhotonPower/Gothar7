@@ -120,7 +120,7 @@ der Test meldet das und prüft ihn nur mit echtem Treiber.
 namespace g7::platform {
 enum class Action : u16 { MoveForward, MoveBack, StrafeLeft, StrafeRight, TurnLeft, TurnRight,
     Run /*Umschalter*/, Sneak, Jump, Action /*Gothic-Aktionstaste*/, Attack, Use, DrawWeapon, DrawMagic,
-    Inventory, Log, Status, Map, QuickSave, QuickLoad, Console, Pause, Count };
+    Inventory, Log, Status, Map, QuickSave, QuickLoad, Console, Pause, DebugDraw /*Entwicklung, F2*/, Count };
 std::string_view name(Action);  std::optional<Action> actionFromName(sv);      // "move_forward" …
 using InputBinding = std::variant<Key, MouseButton, GamepadButton>;
 std::optional<InputBinding> bindingFromName(sv);  std::string_view name(const InputBinding&);
