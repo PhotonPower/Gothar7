@@ -1,7 +1,8 @@
 # tools
 
 ## g7-cook (M3)
-Kommandozeilen-Werkzeug zum Kochen und Packen von Assets. Siehe `docs/06-asset-pipeline.md`.
+Kommandozeilen-Werkzeug zum Kochen und Packen von Assets (`tools/asset-cooker`, Bibliothek `g7_cook_lib`,
+Tests in `tests/cook`). Stand und Optionen: `docs/06-asset-pipeline.md`; Formate: ADR 0016.
 
 ## Editor (M4 Grundlage, M16 vollständig)
 Editor-Modus der Engine (`gothar --editor`), ImGui-basiert – Gegenstück zu Gothics **Spacer**.
