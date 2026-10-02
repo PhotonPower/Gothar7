@@ -83,6 +83,14 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | `--editor` | Editor-Modus (ab M4) |
 | `--world=<name>` | Startwelt (ab M4) |
 
+## CI (GitHub Actions)
+`.github/workflows/ci.yml`: Jobs `build (ubuntu-24.04)`, `build (windows-2022)` und `coverage` bei Push auf `main` und bei
+Pull Requests. GPU-Tests laufen unter Linux mit Xvfb + Mesa llvmpipe, Windows schließt sie aus (`-LE gpu`).
+**vcpkg-Binärcache:** `VCPKG_BINARY_SOURCES=files,<workspace>/vcpkg-binary-cache` + `actions/cache` – jeder Lauf
+speichert einen neuen Eintrag, PRs lesen die Einträge von `main`. Ohne Treffer baut vcpkg alle Abhängigkeiten neu
+(SDL3, simdjson, fastgltf … – mehrere Minuten pro Job). Das Repository ist öffentlich; Actions-Minuten auf
+Standard-Runnern sind damit kostenlos.
+
 ## Neue Abhängigkeit hinzufügen
 1. ADR schreiben/aktualisieren (warum diese Bibliothek?).
 2. Port in `vcpkg.json` → `dependencies`.
