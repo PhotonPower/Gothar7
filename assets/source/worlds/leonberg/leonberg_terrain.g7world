@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "name": "leonberg_terrain",
+  "nextVobId": 1,
+  "staticMeshes": [],
+  "terrain": {"version":1,"heightmap":"worlds/leonberg/generated/leonberg_terrain.r16","width":2000,"height":2000,"cellSize":1.0,"firstSample":[-999.5,-999.5],"minY":-50.991,"maxY":94.85},
+  "vobs": []
+}
