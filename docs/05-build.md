@@ -59,6 +59,14 @@ Ohne vcpkg (nur Kern, ohne Tests): `cmake --preset nodeps && cmake --build --pre
 | `G7_PROFILING` | OFF | aktiviert die `G7_PROFILE_*`-Zonen (eingebauter Sammler, ab M17 Tracy) |
 | `G7_COVERAGE` | OFF | Testabdeckung (`--coverage`, nur GCC/Clang); Auswertung mit gcovr |
 
+## Konfigurationsdateien
+| Datei | Inhalt |
+|---|---|
+| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird beim Bauen neben die Executable kopiert |
+| `config.toml` im Benutzerverzeichnis (Windows `%APPDATA%\Gothar\Gothar`) | optionale eigene Einstellungen; überschreibt `engine.toml` Schlüssel für Schlüssel |
+
+Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
+
 ## Kommandozeile des Spiels
 | Schalter | Wirkung |
 |---|---|

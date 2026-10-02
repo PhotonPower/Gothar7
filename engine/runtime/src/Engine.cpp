@@ -24,32 +24,19 @@ namespace g7
 {
 namespace
 {
-/// Debug aid until the action mapping exists: shows which inputs arrive (--verbose).
-void logPressedInputs(const platform::Input& input)
+/// Shows which actions fire (--verbose); fulfils the M1 check "log output of the actions".
+void logPressedActions(const platform::ActionMap& actions, const platform::Input& input)
 {
     if (log::minLevel() > log::Level::Debug)
     {
         return;
     }
-    for (usize i = 1; i < static_cast<usize>(platform::Key::Count); ++i)
+    for (usize i = 0; i < static_cast<usize>(platform::Action::Count); ++i)
     {
-        if (input.pressed(static_cast<platform::Key>(i)))
+        const auto action = static_cast<platform::Action>(i);
+        if (actions.pressed(input, action))
         {
-            G7_LOG_DEBUG("engine", "pressed {}", platform::name(static_cast<platform::Key>(i)));
-        }
-    }
-    for (usize i = 0; i < static_cast<usize>(platform::MouseButton::Count); ++i)
-    {
-        if (input.pressed(static_cast<platform::MouseButton>(i)))
-        {
-            G7_LOG_DEBUG("engine", "pressed {}", platform::name(static_cast<platform::MouseButton>(i)));
-        }
-    }
-    for (usize i = 0; i < static_cast<usize>(platform::GamepadButton::Count); ++i)
-    {
-        if (input.pressed(static_cast<platform::GamepadButton>(i)))
-        {
-            G7_LOG_DEBUG("engine", "pressed {}", platform::name(static_cast<platform::GamepadButton>(i)));
+            G7_LOG_DEBUG("engine", "action {}", platform::name(action));
         }
     }
 }
@@ -99,6 +86,14 @@ Result<void> Engine::init()
         G7_LOG_INFO("engine", "headless mode (no window)");
     }
 
+    if (m_window)
+    {
+        const std::string scheme = m_config.settings.get<std::string>("input.scheme", "classic");
+        m_actions = platform::ActionMap::fromConfig(m_config.settings, scheme);
+        m_input.setStickDeadzone(static_cast<f32>(m_config.settings.get<f64>("input.stick_deadzone", 0.2)));
+        G7_LOG_INFO("engine", "control scheme '{}'", scheme);
+    }
+
     m_initialized = true;
     return {};
 }
@@ -121,7 +116,6 @@ int Engine::run()
         const f64 frameSeconds = frameTimer.elapsedSeconds();
         frameTimer.reset();
 
-        // TODO(M1): map input to actions
         m_input.beginFrame();
         if (m_window)
         {
@@ -135,7 +129,7 @@ int Engine::run()
                 const auto size = m_window->pixelSize();
                 G7_LOG_DEBUG("engine", "window resized to {}x{} px", size.width, size.height);
             }
-            logPressedInputs(m_input);
+            logPressedActions(m_actions, m_input);
         }
 
         const u32 steps = fixedStep.advance(frameSeconds);

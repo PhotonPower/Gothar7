@@ -5,8 +5,10 @@
 // Hauptschleife (fester Simulationsschritt + interpoliertes Rendern), Shutdown.
 // Spezifikation: docs/02-architecture.md ("Hauptschleife", "Initialisierung")
 
+#include <g7/core/Config.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
+#include <g7/platform/Actions.hpp>
 #include <g7/platform/Input.hpp>
 #include <g7/platform/Window.hpp>
 
@@ -22,6 +24,9 @@ struct EngineConfig
     u64 maxFrames = 0;           ///< 0 = unlimited. Used by tests and headless runs.
     bool headless = false;       ///< No window (tests, CI smoke test).
     platform::WindowDesc window; ///< Used unless headless.
+    /// Merged settings (engine.toml + user config). The engine reads [input] (scheme,
+    /// stick_deadzone) and [bindings.<scheme>]; window settings are applied by the caller.
+    Config settings;
 };
 
 class Engine
@@ -48,6 +53,8 @@ public:
     [[nodiscard]] platform::Window* window() noexcept { return m_window.get(); }
     /// Input state of the current frame (stays empty when headless).
     [[nodiscard]] const platform::Input& input() const noexcept { return m_input; }
+    /// Bindings of the active control scheme.
+    [[nodiscard]] const platform::ActionMap& actions() const noexcept { return m_actions; }
 
 private:
     void shutdown();
@@ -55,6 +62,7 @@ private:
     EngineConfig m_config;
     std::unique_ptr<platform::Window> m_window;
     platform::Input m_input;
+    platform::ActionMap m_actions;
     bool m_initialized = false;
     bool m_quitRequested = false;
     u64 m_frameCount = 0;

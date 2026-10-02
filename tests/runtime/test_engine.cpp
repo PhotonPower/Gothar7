@@ -57,3 +57,26 @@ TEST_CASE("Engine reports an invalid window description")
     REQUIRE_FALSE(result.ok());
     CHECK(result.error().message.find("window") != std::string::npos);
 }
+
+TEST_CASE("Engine builds the action map of the configured scheme")
+{
+    auto settings = g7::Config::parse(R"(
+[input]
+scheme = "modern"
+[bindings.modern]
+jump = ["Space"]
+[bindings.classic]
+jump = ["LeftAlt"]
+)");
+    REQUIRE(settings.ok());
+
+    g7::EngineConfig config;
+    config.maxFrames = 1;
+    config.window.size = {320, 240};
+    config.settings = std::move(settings).value();
+    g7::Engine engine(config);
+    REQUIRE(engine.init().ok());
+    const auto jump = engine.actions().bindings(g7::platform::Action::Jump);
+    REQUIRE(jump.size() == 1);
+    CHECK(jump[0] == g7::platform::InputBinding(g7::platform::Key::Space));
+}

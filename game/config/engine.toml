@@ -1,0 +1,67 @@
+# Gothar – Standard-Konfiguration (wird neben die Executable nach config/engine.toml kopiert).
+# Eigene Einstellungen gehören in die Benutzer-Konfiguration (config.toml im Benutzerverzeichnis,
+# Windows: %APPDATA%\Gothar\Gothar), die diese Datei Schlüssel für Schlüssel überschreibt.
+
+[window]
+width = 1600
+height = 900
+fullscreen = false
+
+[input]
+# "classic" (Gothic-artig: Aktionstaste + Richtung) oder "modern" (Maus-Angriff, E zum Benutzen)
+scheme = "classic"
+stick_deadzone = 0.2
+
+# Eingabenamen: Tasten nach US-Layout ("W", "LeftCtrl", "Grave", "1", "F5"),
+# Maus "MouseLeft"/"MouseRight"/"MouseMiddle"/"MouseX1"/"MouseX2",
+# Gamepad "PadSouth"/"PadEast"/"PadWest"/"PadNorth"/"PadLeftShoulder"/"PadRightShoulder"/
+#         "PadLeftStick"/"PadRightStick"/"PadBack"/"PadStart"/"PadDpadUp"/"PadDpadDown"/"PadDpadLeft"/"PadDpadRight".
+# Leere Liste = Aktion in diesem Schema nicht belegt.
+
+[bindings.classic]
+move_forward = ["Up", "W", "PadDpadUp"]
+move_back = ["Down", "S", "PadDpadDown"]
+turn_left = ["Left", "A", "PadDpadLeft"]
+turn_right = ["Right", "D", "PadDpadRight"]
+strafe_left = ["Q", "PadLeftShoulder"]
+strafe_right = ["E", "PadRightShoulder"]
+action = ["LeftCtrl", "PadWest"]
+attack = []
+use = []
+jump = ["LeftAlt", "PadSouth"]
+run = ["LeftShift", "PadLeftStick"]
+sneak = ["X", "PadRightStick"]
+draw_weapon = ["Space", "PadNorth"]
+draw_magic = ["1", "PadEast"]
+inventory = ["Tab", "PadBack"]
+log = ["N"]
+status = ["B"]
+map = ["M"]
+quick_save = ["F5"]
+quick_load = ["F9"]
+console = ["Grave"]
+pause = ["Escape", "PadStart"]
+
+[bindings.modern]
+move_forward = ["W", "PadDpadUp"]
+move_back = ["S", "PadDpadDown"]
+turn_left = []
+turn_right = []
+strafe_left = ["A", "PadDpadLeft", "PadLeftShoulder"]
+strafe_right = ["D", "PadDpadRight", "PadRightShoulder"]
+action = []
+attack = ["MouseLeft", "PadEast"]
+use = ["E", "PadWest"]
+jump = ["Space", "PadSouth"]
+run = ["LeftShift", "PadLeftStick"]
+sneak = ["LeftCtrl", "PadRightStick"]
+draw_weapon = ["R", "PadNorth"]
+draw_magic = ["F"]
+inventory = ["Tab", "PadBack"]
+log = ["J"]
+status = ["C"]
+map = ["M"]
+quick_save = ["F5"]
+quick_load = ["F9"]
+console = ["Grave"]
+pause = ["Escape", "PadStart"]
