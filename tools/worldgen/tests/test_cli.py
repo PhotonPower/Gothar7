@@ -3,7 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from gothar_worldgen.cli import EXIT_ERROR, EXIT_NOT_IMPLEMENTED, EXIT_OK, main
+from gothar_worldgen.cli import EXIT_ERROR, EXIT_OK, main
+
+from .conftest import SITE_TOML
+
+LGL_EXCERPT_DIR = Path(__file__).parent / "data" / "lgl_dgm1"
 
 
 def run(*argv: str) -> tuple[int, str]:
@@ -109,9 +113,42 @@ def test_unknown_site_is_an_error(config_dir: Path, capsys: pytest.CaptureFixtur
     assert "not found" in capsys.readouterr().err
 
 
-def test_import_is_not_implemented_yet(config_dir: Path):
+def _small_site_with_data(config_dir: Path, data_root: Path) -> None:
+    """Shrink the test site to the real DGM1 excerpt and put the excerpt under DATA_ROOT."""
+    small = SITE_TOML.replace("half_extent_m = 350", "half_extent_m = 10").replace(
+        "half_extent_m = 1000", "half_extent_m = 20"
+    )
+    (config_dir / "testsite.toml").write_text(small, encoding="utf-8")
+    dgm = data_root / "geo" / "lgl" / "dgm1" / "excerpt"
+    dgm.mkdir(parents=True)
+    for f in LGL_EXCERPT_DIR.glob("*.xyz"):
+        (dgm / f.name).write_bytes(f.read_bytes())
+
+
+def test_import_writes_terrain(config_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    data_root = tmp_path / "data"
+    _small_site_with_data(config_dir, data_root)
+    monkeypatch.setenv("GOTHAR_DATA_ROOT", str(data_root))
+    code, out = run("--config-dir", str(config_dir), "import", "testsite")
+    assert code == EXIT_OK
+    assert "terrain: 40 x 40 samples" in out
+    assert "origin height 371.59 m NHN" in out
+    work = data_root / "work" / "testsite"
+    assert (work / "terrain.r16").stat().st_size == 40 * 40 * 2
+    assert (work / "terrain.png").is_file()
+    assert (work / "terrain.json").is_file()
+
+
+def test_import_without_dgm_data_fails(
+    config_dir: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+):
+    monkeypatch.setenv("GOTHAR_DATA_ROOT", str(tmp_path))
     code, _ = run("--config-dir", str(config_dir), "import", "testsite")
-    assert code == EXIT_NOT_IMPLEMENTED
+    assert code == EXIT_ERROR
+    assert "DGM1 tiles missing" in capsys.readouterr().err
 
 
 def test_command_is_required():

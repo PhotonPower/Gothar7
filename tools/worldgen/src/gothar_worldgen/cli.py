@@ -18,10 +18,11 @@ from gothar_worldgen.config import (
 )
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.geo.bbox import BBox, tiles_covering
+from gothar_worldgen.geo.dgm1 import DgmError
+from gothar_worldgen.importer import run_import
 
 EXIT_OK = 0
 EXIT_ERROR = 1
-EXIT_NOT_IMPLEMENTED = 2
 
 
 def _fmt_bbox(b: BBox) -> str:
@@ -109,9 +110,14 @@ def _cmd_download(args: argparse.Namespace, out: TextIO) -> int:
 
 
 def _cmd_import(args: argparse.Namespace, out: TextIO) -> int:
-    load_site(args.site, args.config_dir)
-    print("import: not implemented yet (W1: DGM1, LoD2, OSM follow)", file=sys.stderr)
-    return EXIT_NOT_IMPLEMENTED
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    try:
+        run_import(site, DataPaths(local.data_root, site.name), out)
+    except (DgmError, OSError) as e:
+        print(f"error: import failed: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    return EXIT_OK
 
 
 def build_parser() -> argparse.ArgumentParser:
