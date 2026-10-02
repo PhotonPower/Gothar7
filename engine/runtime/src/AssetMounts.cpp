@@ -1,3 +1,4 @@
+#include <g7/asset/Vfs.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
 #include <g7/runtime/AssetMounts.hpp>
@@ -136,6 +137,23 @@ std::string vfsSibling(std::string_view base, std::string_view relative)
         result += part;
     }
     return result;
+}
+
+std::string preferCooked(const asset::Vfs& vfs, std::string_view path)
+{
+    for (const std::string_view extension : {std::string_view(".glb"), std::string_view(".gltf")})
+    {
+        if (path.size() > extension.size() &&
+            equalsIgnoreCase(path.substr(path.size() - extension.size()), extension))
+        {
+            std::string cooked = std::string(path.substr(0, path.size() - extension.size())) + ".g7mesh";
+            if (vfs.exists(cooked))
+            {
+                return cooked;
+            }
+        }
+    }
+    return std::string(path);
 }
 
 std::vector<std::string> imageCandidates(std::string_view meshPath, std::string_view uri)

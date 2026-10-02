@@ -1,7 +1,7 @@
 #pragma once
 
-#include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
+#include <g7/asset/TextureData.hpp>
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/render/Lighting.hpp>
@@ -43,7 +43,7 @@ public:
     MaterialSet() = default;
     /// Supplies the decoded image for an external `ImageSource` (uri set), or nullptr if it is
     /// missing (the material then uses a neutral fallback). Embedded images are decoded here.
-    using ImageLookup = std::function<const asset::ImageData*(const asset::ImageSource&)>;
+    using ImageLookup = std::function<const asset::TextureData*(const asset::ImageSource&)>;
 
     [[nodiscard]] static Result<MaterialSet> create(Device& device, const asset::MeshData& mesh,
                                                     const ImageLookup& lookup);

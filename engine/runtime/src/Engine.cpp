@@ -491,7 +491,7 @@ void Engine::requestImages(LoadedModel& loaded, std::vector<std::string>* imageP
             G7_LOG_WARN("engine", "{}: image '{}' not found in the VFS", loaded.name, source.uri);
             continue;
         }
-        loaded.images[i] = m_assets->load<asset::ImageData>(*found);
+        loaded.images[i] = m_assets->load<asset::TextureData>(*found);
         if (imagePaths != nullptr &&
             std::none_of(imagePaths->begin(), imagePaths->end(),
                          [&](const std::string& p) { return equalsIgnoreCase(p, *found); }))
@@ -513,10 +513,10 @@ Result<void> Engine::uploadModel(LoadedModel& loaded)
     // Missing or broken textures are warnings (neutral fallbacks), not a reason to refuse the model.
     auto materials =
         render::MaterialSet::create(*m_device, data,
-                                    [&](const asset::ImageSource& source) -> const asset::ImageData*
+                                    [&](const asset::ImageSource& source) -> const asset::TextureData*
                                     {
                                         const auto index = static_cast<usize>(&source - data.images.data());
-                                        const asset::Handle<asset::ImageData>& image = loaded.images[index];
+                                        const asset::Handle<asset::TextureData>& image = loaded.images[index];
                                         if (image.failed() && image.valid())
                                         {
                                             G7_LOG_WARN("engine", "{}: {}", loaded.name, image.error());
@@ -553,7 +553,8 @@ Result<void> Engine::loadModels(const std::vector<std::string>& paths)
         {
             auto loaded = std::make_unique<LoadedModel>();
             loaded->name = path;
-            loaded->source = m_assets->load<asset::MeshData>(path);
+            // The scene names the model; a cooked .g7mesh of it is loaded instead when present.
+            loaded->source = m_assets->load<asset::MeshData>(preferCooked(m_vfs, path));
             pending.push_back(std::move(loaded));
         }
     }

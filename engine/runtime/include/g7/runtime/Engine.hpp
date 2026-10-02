@@ -8,6 +8,7 @@
 #include <g7/asset/AssetManager.hpp>
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
+#include <g7/asset/TextureData.hpp>
 #include <g7/asset/Vfs.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Config.hpp>
@@ -42,7 +43,7 @@ struct LoadedModel
     render::MaterialSet materials;
     std::string name; ///< VFS path
     asset::Handle<asset::MeshData> source;
-    std::vector<asset::Handle<asset::ImageData>> images; ///< parallel to MeshData::images (external ones)
+    std::vector<asset::Handle<asset::TextureData>> images; ///< parallel to MeshData::images (external ones)
     u32 sourceVersion = 0; ///< versions uploaded to the GPU (hot reload compares them)
     std::vector<u32> imageVersions;
 };
