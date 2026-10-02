@@ -215,6 +215,29 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
 - Löcher (Keller, Höhleneingänge), Kollision über physics (Heightfield-Shape).
 - Editor: Sculpt- und Mal-Pinsel, um die reale Topografie spielgerecht zu verbiegen.
 
+**Umgesetzt (W2 Teil 1):** `gothar-worldgen export-terrain <ort> [--area surroundings|core] [--step n] [--name …]`
+- **Eingabe:** `terrain.json` und `terrain.r16` aus dem Work-Ordner.
+- **Zuschnitt und Ausdünnung:** Optional wird auf ein Gebiet zugeschnitten (es zählen die Sample-Mitten)
+  und nur jedes n-te Sample behalten.
+- **Kodierung:** Über den neuen Höhenbereich wird neu kodiert, gleiche Regel wie beim Import (auf Millimeter nach
+  außen gerundet). Ein Export ohne Zuschnitt ergibt eine **byte-gleiche** `.r16`.
+- **Ablage**, abgestimmt mit engine und Koordinator 2026-10-03:
+  - `assets/source/worlds/<ort>/<ort>_terrain.g7world`: versioniert, etwa 300 Byte. Weltdatei v1 ohne Vobs,
+    mit `terrain`-Block nach `docs/modules/world.md`. Geschrieben im Layout des Engine-Writers, damit Diffs
+    sauber bleiben. Eine vorhandene Datei behält Vobs, `nextVobId` und weitere Schlüssel; nur der `terrain`-Block
+    wird ersetzt.
+  - `assets/source/worlds/<ort>/generated/<name>.r16`: **nicht versioniert**, über
+    `assets/source/worlds/.gitignore` mit dem Muster `*/generated/`. Bei Leonberg (2000 × 2000) sind das 8 MB.
+    Der Dev-Build mountet `assets/source` ohnehin, und `g7-cook` kopiert `.r16` unverändert.
+  - Ein frischer Checkout hat die Heightmap erst nach `import` und `export-terrain`, beides braucht DATA_ROOT.
+- **Leonberg:** 2000 × 2000 Samples zu 1 m, x und z jeweils −999,5 … 999,5, Höhen −50,991 … 94,85 m,
+  Auflösung 2,23 mm.
+- **Splatmap (W2 Teil 2):**
+  - Kommt, sobald engines Teil B (`splat`/`holes`) gemergt ist.
+  - Die Splat-Karten landen in `generated/`; der Cooker erkennt sie am `terrain`-Block und kocht sie linear.
+  - Prozedurale Platzhalter-Albedos liegen versioniert in `assets/source/worlds/<ort>/`.
+  - Die endgültigen Gelände-Texturen sind eine Gestaltungsfrage für später (Stil-Referenzblatt W5).
+
 ### W-C Gebäude-Generator (Blender-Add-on „Gothar Buildings“, Python/bpy)
 - Eingabe: `buildings.json` + Overrides; Ausgabe: ein `.glb` pro Gebäude (+ LODs) und ein Sammel-Index.
 - **Klötzchen-Modus** (W3): Baukörper + Dach als graue Massen – für Maßstabstests.

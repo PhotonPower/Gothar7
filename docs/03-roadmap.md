@@ -270,7 +270,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 Spezifikation: `docs/design/leonberg-pipeline.md`. Werkzeuge in `tools/worldgen/` (Python ≥ 3.11),
 Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
-**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24): `gothar-worldgen` erzeugt aus LGL- und OSM-Daten Terrain, `buildings.json` (5392 Gebäude), `streets.json` und `features.json` für Leonberg (Ursprung Marktbrunnen). W2/W3 warten auf das M4-Terrain. **W4 läuft:** Die Kerne des Fassaden-Werkzeugs (`facade/`: 360°-Projektion, Fassaden-Entzerrung aus `buildings.json`, GPS-Posen, Override-Schema, `facade preview`) stehen und sind mit synthetischen Bildern getestet. Dazu kommen die Einzelbild-Extraktion per ffmpeg und der automatische Zeitabgleich von Video und GPS (`facade frames`). Die Annotations-Web-UI (`facade ui`: Karte, Fassadeneditor, Speichern als Override-JSON) steht; die Auswahllisten sind ein Entwurf zur Festlegung durch den Projektinhaber. Als Nächstes: Aufnahmetour und Test der Oberfläche durch den Projektinhaber, Prüfung mit echten Daten, Schritt 3b (Pose-Korrektur, Bildvergleich).
+**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24): `gothar-worldgen` erzeugt aus LGL- und OSM-Daten Terrain, `buildings.json` (5392 Gebäude), `streets.json` und `features.json` für Leonberg (Ursprung Marktbrunnen). **W2 läuft:** `export-terrain` schreibt `assets/source/worlds/leonberg/leonberg_terrain.g7world` mit `terrain`-Block (Heightmap in `generated/`, nicht versioniert); die Splatmap folgt nach engines Terrain Teil B. W3 wartet auf M5. **W4 läuft:** Die Kerne des Fassaden-Werkzeugs (`facade/`: 360°-Projektion, Fassaden-Entzerrung aus `buildings.json`, GPS-Posen, Override-Schema, `facade preview`) stehen und sind mit synthetischen Bildern getestet. Dazu kommen die Einzelbild-Extraktion per ffmpeg und der automatische Zeitabgleich von Video und GPS (`facade frames`). Die Annotations-Web-UI (`facade ui`: Karte, Fassadeneditor, Speichern als Override-JSON) steht und wurde vom Projektinhaber getestet; die Auswahllisten sind ein Entwurf zur Festlegung durch den Projektinhaber. Als Nächstes: Aufnahmetour, Prüfung mit echten Daten, Schritt 3b (Pose-Korrektur, Bildvergleich), W2-Splatmap.
 
 ## W1 – Geodaten-Import  (keine Engine-Abhängigkeit)
 - [x] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
@@ -287,6 +287,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
 ## W2 – Leonberg-Gelände in der Engine  (benötigt M2, M4-Terrain)
 - [ ] Heightmap-Import in das Terrain-System, Splatmap-Grundbelegung aus Straßen/Nutzung
+  - Stand: Heightmap-Export als `.g7world` mit `terrain`-Block (`export-terrain`); Splatmap folgt nach engines Terrain Teil B
 - [ ] Testwelt `leonberg_terrain.g7world` mit Tag/Nacht
 
 **DoD:** Das Leonberger Gelände ist in der Engine sichtbar und (ab M5) begehbar.
@@ -304,8 +305,8 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
   - Stand: Einzelbilder per ffmpeg, Zeitabgleich mit dem GPS-Track und Posen je Bild (`facade frames`, `frames.json`), synthetisch geprüft; SfM offen
 - [ ] Fassaden-Ausschnitt + Entzerrung pro Gebäude
   - Stand: Entzerrung per Projektion auf die Fassadenebene umgesetzt (`facade/rectify.py`, `facade preview`), synthetisch geprüft; abhaken nach der Prüfung mit echten Aufnahmen
-- [ ] Annotations-Oberfläche → Override-JSON pro Gebäude
-  - Stand: Override-Schema (`facade/overrides.py`) und Web-UI (`facade ui`, Schritt 3a) umgesetzt; abhaken nach dem Test durch den Projektinhaber
+- [x] Annotations-Oberfläche → Override-JSON pro Gebäude
+  - Override-Schema (`facade/overrides.py`) und Web-UI (`facade ui`, PR #53), vom Projektinhaber getestet (2026-10-03); Pose-Korrektur und Bildvergleich folgen als 3b
 - [ ] Annotation der Häuser am Marktplatz (erste ~20 Gebäude)
 
 **DoD:** Für jedes Haus am Marktplatz gibt es eine entzerrte Fassadenreferenz und eine Annotation.
