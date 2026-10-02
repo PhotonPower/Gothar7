@@ -258,12 +258,12 @@ gezogene Waffen und Betreten ihrer Hütte.
 Spezifikation: `docs/design/leonberg-pipeline.md`. Werkzeuge in `tools/worldgen/` (Python ≥ 3.11),
 Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
-**Aktueller Stand Welt-Spur:** W1 noch nicht begonnen.
+**Aktueller Stand Welt-Spur:** W1 läuft. Paket `gothar-worldgen` (uv/pip, ruff, pytest, CI-Job `worldgen`), Konfiguration mit Prüfung (`info`, `tiles`) und Download-Anleitung (`docs/design/leonberg-rohdaten.md`) stehen. Als Nächstes: DGM1 → Heightmap, sobald die Rohdaten unter `DATA_ROOT` liegen.
 
 ## W1 – Geodaten-Import  (keine Engine-Abhängigkeit)
-- [ ] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
-- [ ] Konfiguration: `config/leonberg.toml` (Gebiet, Ursprung, Maßstab), `config/local.toml` (DATA_ROOT, nicht versioniert)
-- [ ] Download-Hilfe/Anleitung für LGL-Kacheln (DGM1, LoD2, DOP) und OSM-Ausschnitt
+- [x] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
+- [x] Konfiguration: `config/leonberg.toml` (Gebiet, Ursprung, Maßstab), `config/local.toml` (DATA_ROOT, nicht versioniert)
+- [x] Download-Hilfe/Anleitung für LGL-Kacheln (DGM1, LoD2, DOP) und OSM-Ausschnitt
 - [ ] DGM1 → Heightmap (`terrain.r16` + `terrain.json`) im lokalen Koordinatensystem
 - [ ] LoD2 (CityGML) → `buildings.json` (Grundriss, Dachtyp, Trauf-/Firsthöhe, Bodenhöhe)
 - [ ] OSM → `streets.json`, `features.json`

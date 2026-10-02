@@ -22,21 +22,25 @@ Engine-Phasen. Werkzeuge: Python unter `tools/worldgen/`; die Engine liest nur g
 | Google Maps / Earth | – | **nur Anschauen**, keine Daten übernehmen | Nutzungsbedingungen erlauben keine Datenextraktion |
 
 Bezug: LGL Open GeoData-Portal (Download DGM1, LoD2, DOP). Alle Credits sammelt `assets/LICENSES.md`.
+Schritt-für-Schritt-Anleitung zum Herunterladen: `docs/design/leonberg-rohdaten.md`.
 
 ## 2. Ablage der Rohdaten
 
 Rohdaten (GBs, personenbezogene Bilder) liegen **außerhalb des Repos** in einem Datenordner,
-dessen Pfad in `tools/worldgen/config/local.toml` steht (nicht versioniert):
+dessen Pfad in `tools/worldgen/config/local.toml` steht (nicht versioniert). Alternativ setzt die
+Umgebungsvariable `GOTHAR_DATA_ROOT` den Pfad (z. B. in CI).
 
 ```
 <DATA_ROOT>/                     z. B. D:\GotharData
-  geo/lgl/dgm1/*.tif             LGL-Downloads (Kacheln)
+  geo/lgl/dgm1/                  LGL-Downloads (Kacheln, GeoTIFF oder XYZ)
   geo/lgl/lod2/*.gml
-  geo/lgl/dop/*.tif
-  geo/osm/leonberg.osm.pbf
+  geo/lgl/dop/
+  geo/osm/*.osm.pbf              Geofabrik-Extrakt, Zuschnitt macht geo-import
+  geo/SOURCES.md                 Herkunft und Download-Datum
   capture/insta360/<datum>/      .insv/.mp4 + GPS
-  work/                          Zwischenstände der Werkzeuge
+  work/<ort>/                    Zwischenstände der Werkzeuge
 ```
+`gothar-worldgen info leonberg` zeigt, welche Ordner fehlen.
 
 Im Repo landen nur **abgeleitete, geprüfte Ergebnisse** (`assets/source/worlds/leonberg/…`) und
 die Annotationen (`tools/worldgen/data/leonberg/…`, kleine JSON-Dateien).
