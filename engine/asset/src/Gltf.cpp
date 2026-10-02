@@ -6,6 +6,7 @@
 #include <fastgltf/tools.hpp>
 
 #include <cstring>
+#include <filesystem>
 #include <limits>
 #include <map>
 #include <string>
@@ -254,6 +255,13 @@ Result<MeshData> parse(fastgltf::GltfDataBuffer& data, const fs::Path& baseDirec
 
 Result<MeshData> loadGltf(const fs::Path& path)
 {
+    if (!fs::exists(path))
+    {
+        // fastgltf reports a missing file as an invalid directory; say what is wrong instead.
+        std::error_code ec;
+        const fs::Path absolute = std::filesystem::absolute(path, ec);
+        return Error{"glTF file not found: '" + fs::toUtf8(ec ? path : absolute) + "'"};
+    }
     auto data = fastgltf::GltfDataBuffer::FromPath(path);
     if (data.error() != fastgltf::Error::None)
     {

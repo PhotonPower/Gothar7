@@ -262,6 +262,7 @@ TEST_CASE("glTF: errors")
     auto missing = loadGltf(fs::Path("does/not/exist.gltf"));
     REQUIRE_FALSE(missing.ok());
     CHECK(missing.error().message.find("exist.gltf") != std::string::npos);
+    CHECK(missing.error().message.find("not found") != std::string::npos);
 }
 
 TEST_CASE("glTF: external .bin and .glb files")
