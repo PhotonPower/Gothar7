@@ -1,6 +1,6 @@
 # 0002 – Mathe-Bibliothek: glm
 
-- **Status:** Vorgeschlagen (vor M0-Abschluss bestätigen)
+- **Status:** Akzeptiert (2026-10-02)
 - **Datum:** 2026-10-02
 - **Phase:** M0
 
@@ -18,3 +18,8 @@ Konfiguration: `GLM_FORCE_DEPTH_ZERO_TO_ONE` nur falls Reverse-Z eingesetzt wird
 
 ## Konsequenzen
 glm ist öffentliche Abhängigkeit von core.
+
+## Umsetzung (M0)
+- glm aus vcpkg (`glm`); das Preset `nodeps` lädt glm 1.0.3 per `FetchContent` nach.
+- Öffentliche Compile-Definitionen an `g7_core`: `GLM_FORCE_CTOR_INIT` (Vektoren/Matrizen sind mit 0
+  bzw. Identität initialisiert), `GLM_FORCE_SILENT_WARNINGS`, `GLM_ENABLE_EXPERIMENTAL`.

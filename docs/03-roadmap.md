@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M0** (Fundament) – Skelett, CI (Windows + Linux grün) und Dateisystem-Helfer stehen; Mathe/StringId/Config/Profiler offen.
+**Aktueller Stand:** Phase **M0** (Fundament) – Skelett, CI (Windows + Linux grün), Dateisystem-Helfer und Mathe (glm) stehen; StringId/Config/Profiler offen.
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -38,7 +38,7 @@ Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 - [x] CI-Workflow (Windows + Linux, Build + Test + Smoke-Test) in `.github/workflows/ci.yml`
 - [x] CI einmal erfolgreich durchgelaufen (ggf. Workflow korrigieren)
 - [x] core: Dateisystem-Helfer (Datei lesen/schreiben, Pfade relativ zum Spielverzeichnis)
-- [ ] core: Mathe-Bibliothek festlegen (ADR 0002: glm) und Typ-Aliasse `Vec3`, `Quat`, `Mat4`, `Transform`
+- [x] core: Mathe-Bibliothek festlegen (ADR 0002: glm) und Typ-Aliasse `Vec3`, `Quat`, `Mat4`, `Transform`
 - [ ] core: String-Hilfen (Hash `StringId` für schnelle Namensvergleiche, case-insensitive Vergleich)
 - [ ] core: Konfigurationsdatei laden (TOML, z. B. toml++)
 - [ ] core: einfacher Profiler-Hook (Makros, später Tracy)
