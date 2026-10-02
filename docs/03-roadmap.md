@@ -268,7 +268,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 Spezifikation: `docs/design/leonberg-pipeline.md`. Werkzeuge in `tools/worldgen/` (Python ≥ 3.11),
 Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
-**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24, CI grün). `gothar-worldgen` mit `info`, `tiles`, `download`, `import` und `check`: DGM1 → `terrain.r16`/`.png`/`.json` (2000 × 2000 m), LoD2 → `buildings.json` (5392 Gebäude, 905 in der Altstadt), OSM → `streets.json` (1802 Achsen, 6 Plätze) und `features.json` (1110 Objekte, u. a. Stadtmauer, Brunnen, Bäume), dazu Vorschaubilder und `report.json` (alle Prüfungen ok). Rohdaten für Leonberg liegen lokal vor, Blender 4.5 LTS ist installiert. Ursprung: Marktbrunnen E 501115 / N 5405347 (386,89 m NHN), Kern ±350 m, Umland ±1000 m. Als Nächstes: W2 benötigt M2 und das M4-Terrain; ohne Engine-Abhängigkeit ist W4 (Aufnahmen und Fassaden-Werkzeug) möglich.
+**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24): `gothar-worldgen` erzeugt aus LGL- und OSM-Daten Terrain, `buildings.json` (5392 Gebäude), `streets.json` und `features.json` für Leonberg (Ursprung Marktbrunnen). W2/W3 warten auf das M4-Terrain. **W4 läuft:** Die Kerne des Fassaden-Werkzeugs (`facade/`: 360°-Projektion, Fassaden-Entzerrung aus `buildings.json`, GPS-Posen, Override-Schema, `facade preview`) stehen und sind mit synthetischen Bildern getestet; die Annotations-Oberfläche wird eine Web-UI. Als Nächstes: Aufnahmetour (Projektinhaber), dann Bild-Extraktion aus den Insta360-Aufnahmen und Prüfung mit echten Daten.
 
 ## W1 – Geodaten-Import  (keine Engine-Abhängigkeit)
 - [x] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
@@ -300,7 +300,9 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [ ] Aufnahmetour(en) nach Leitfaden (Abschnitt 6 der Design-Doku)
 - [ ] Bild-Extraktion aus Insta360-Export, GPS-Zuordnung, optional SfM-Verfeinerung
 - [ ] Fassaden-Ausschnitt + Entzerrung pro Gebäude
+  - Stand: Entzerrung per Projektion auf die Fassadenebene umgesetzt (`facade/rectify.py`, `facade preview`), synthetisch geprüft; abhaken nach der Prüfung mit echten Aufnahmen
 - [ ] Annotations-Oberfläche → Override-JSON pro Gebäude
+  - Stand: Override-Schema mit Prüfung umgesetzt (`facade/overrides.py`); Oberfläche als Web-UI (Entscheidung 2026-10-03) folgt
 - [ ] Annotation der Häuser am Marktplatz (erste ~20 Gebäude)
 
 **DoD:** Für jedes Haus am Marktplatz gibt es eine entzerrte Fassadenreferenz und eine Annotation.

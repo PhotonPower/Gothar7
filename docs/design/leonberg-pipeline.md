@@ -164,10 +164,20 @@ Annotationen/Overrides pro Gebäude (`tools/worldgen/data/leonberg/buildings/<id
 { "id": "DEBW_0010000abc", "keep": true, "style": "buergerhaus",
   "storeys": [3.2, 2.9, 2.8], "jettyM": 0.35,
   "frontFacade": { "edge": 2, "openings": [ { "storey": 0, "type": "door", "x": 1.2, "w": 1.1, "h": 2.0 },
-                                            { "storey": 1, "type": "window", "x": 0.8, "w": 0.7, "h": 0.9 } ],
+                                            { "storey": 1, "type": "window", "x": 0.8, "w": 0.7, "h": 0.9, "y": 0.9 } ],
                    "timber": "mann", "infill": "plaster_ochre" },
   "roofCover": "tiles_old", "notes": "Eckhaus am Marktplatz", "seed": 1234 }
 ```
+Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
+- `edge` ist der Index der Grundriss-Kante aus `buildings.json`: von Punkt `edge` zu Punkt `edge + 1`.
+- Öffnungen haben `storey` (0 = Erdgeschoss) und `type` (`door`, `window` oder `gate`). `x`, `w` und `h` sind in Metern;
+  `x` wird von der linken Fassadenkante gemessen, von außen gesehen.
+- Neu und optional ist `y`, die Brüstungshöhe über dem Stockwerksboden. Fehlt sie, sitzt die Öffnung auf dem Boden
+  (Türen, Tore).
+- Ebenfalls optional ist `locked` (siehe W-C). **Unbekannte Schlüssel bleiben beim Speichern erhalten**, damit neuere
+  Werkzeuge Felder ergänzen können.
+- Die Datei heißt wie die Gebäude-ID. `validate_against(override, gebäude)` prüft Kante und Öffnungsbreiten gegen
+  den Grundriss.
 
 ## 5. Die Werkzeuge
 
@@ -216,14 +226,45 @@ Annotationen/Overrides pro Gebäude (`tools/worldgen/data/leonberg/buildings/<id
 - **Modularer Baukasten + Trim-Sheets** (Balken, Putz, Stein, Holz, Dach) → einheitlicher Look, wenige Texturen, gute Performance.
 - Jedes Haus bleibt in Blender von Hand nachbearbeitbar; erneutes Generieren überschreibt nur Häuser ohne `"locked": true`.
 
-### W-D Fassaden-Werkzeug (Python + kleine Oberfläche, z. B. Dear PyGui oder Web-UI)
+### W-D Fassaden-Werkzeug (Python + Web-UI)
 1. Insta360-Material exportieren (equirektangulär, mit GPS); Einzelbilder in festen Abständen extrahieren.
 2. Kamera-Position pro Bild aus GPS; optional verfeinert über Structure-from-Motion (COLMAP) für Genauigkeit < 1 m.
-3. Für ein Gebäude: Richtung von Kamera zur Fassade aus `buildings.json` → Ausschnitt aus dem 360°-Bild als Perspektivbild → Entzerrung (Homographie an Trauf- und Bodenlinie) → frontale Fassadenansicht.
-4. Oberfläche: bestes Bild pro Fassade wählen, Stockwerkslinien, Öffnungen, Fachwerk-Typ, Materialien anklicken → Override-JSON.
+3. Für ein Gebäude wird die Fassade direkt aus dem 360°-Bild **auf ihre Ebene projiziert**. Jeder Pixel der
+   frontalen Ansicht ist ein Punkt auf der Fassade: Grundriss-Kante plus Boden- bis Traufhöhe aus `buildings.json`.
+   Dessen Richtung von der Kamera wird im equirektangulären Bild abgetastet. Das ist genauer als eine Homographie
+   aus Klickpunkten und braucht keine Handarbeit.
+4. Oberfläche (**Web-UI**, Entscheidung des Projektinhabers 2026-10-03): bestes Bild pro Fassade wählen,
+   Stockwerkslinien, Öffnungen, Fachwerk-Typ und Materialien anklicken → Override-JSON.
 5. Später: automatische Erkennung von Fenstern/Türen als Vorschlag.
 
 Fotos dienen **nur als Referenz**, nicht als Textur (Moderne, Mischlicht, Schatten, Stilbruch).
+
+**Umgesetzt (W4 Schritt 1, mit synthetischen 360°-Bildern geprüft)**, Paket `tools/worldgen/src/gothar_worldgen/facade/`,
+unabhängig von der Oberfläche:
+- **`equirect.py`:** Pixel ↔ Richtung im lokalen System, bilineares Abtasten mit Umlauf, perspektivische Ausschnitte.
+  - Bildmitte = Blickrichtung `heading_deg` (Kompass, im Uhrzeigersinn ab Nord). Positive Länge liegt rechts, Zeile 0 ist oben.
+  - `CameraPose` erlaubt Nick- und Rollwinkel; bei stabilisiertem Horizont sind beide 0.
+- **`rectify.py`:** Fassade aus Grundriss-Kante (`facade_from_footprint`) und frontale Ansicht (`rectify`).
+  - Von außen gesehen liegt der Startpunkt einer Kante (Grundriss gegen den Uhrzeigersinn) links.
+  - Ausgegeben werden außerdem Entfernung, Winkel zur Fassadennormale und Detaildichte des 360°-Bildes in px/m.
+  - Daraus ergibt sich ein Qualitätswert von 0 bis 1 für die Auswahl.
+  - Liegt die Kamera hinter der Fassade, gibt es eine Fehlermeldung.
+- **`poses.py`:** GPX-Track (Insta360-Studio-Export) → lokale Positionen (pyproj + `LocalFrame` wie in W1).
+  - Zeitliche Interpolation, Blickrichtung aus der Gehrichtung plus fester Versatz.
+  - Kamerahöhe: Gelände plus 2,7 m (Stab über dem Kopf, §6).
+  - `rank_views` wählt für eine Fassade die besten Aufnahmen (nah und frontal; von innen oder zu weit weg wird verworfen).
+- **`overrides.py`:** Schema der Override-JSON (siehe §4).
+- **`preview.py` und CLI** `gothar-worldgen facade preview <ort> <gebäude-id> --image <360.jpg> --pose x,z[,y] --heading <grad>`:
+  - Schreibt `<work>/<ort>/facades/<id>_edge<n>.png` für alle Fassaden, die die Kamera von außen sieht,
+    und meldet Entfernung, Winkel und Qualität.
+- **Tests:** Eine per Raycasting gerenderte Schachbrett-Fassade wird zu über 99 % pixelgenau zurückgewonnen,
+  bei jeder Kamerarichtung. Auch schräge Ansichten mit 50° lassen sich entzerren, bekommen aber einen niedrigeren
+  Qualitätswert. GPX, Ranking und Schema sind ebenfalls abgedeckt.
+- **Noch offen:**
+  - Einzelbilder aus Insta360-Videos extrahieren (ffmpeg) und den Zeitversatz zum GPS-Track bestimmen.
+  - SfM-Verfeinerung.
+  - Web-Oberfläche.
+  - Prüfung mit echten Aufnahmen.
 
 ### W-E Straßen & Plätze
 OSM-Achsen + Breite → Splatmap-Schichten (Kopfstein in der Stadt, Matsch/Kies außerhalb), Mittelrinne,
