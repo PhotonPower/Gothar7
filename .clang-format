@@ -1,0 +1,24 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++20
+IndentWidth: 4
+ColumnLimit: 110
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: Never
+AlwaysBreakTemplateDeclarations: Yes
+BreakBeforeBraces: Allman
+PointerAlignment: Left
+NamespaceIndentation: None
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"'
+    Priority: 1
+  - Regex: '^<g7/'
+    Priority: 2
+  - Regex: '^<[a-z_]+>$'
+    Priority: 4
+  - Regex: '.*'
+    Priority: 3

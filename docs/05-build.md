@@ -1,0 +1,74 @@
+# 05 – Bauen & Entwicklungsumgebung
+
+## Voraussetzungen
+- CMake ≥ 3.25, Ninja
+- Compiler: **Windows**: Visual Studio 2022 (MSVC 19.38+) · **Linux**: GCC 13+ oder Clang 17+
+- **vcpkg** (Manifest-Modus) mit gesetzter Umgebungsvariable `VCPKG_ROOT`
+- Grafiktreiber mit OpenGL 4.6 (ab M2)
+
+### vcpkg einrichten (einmalig)
+```bash
+git clone https://github.com/microsoft/vcpkg.git ~/vcpkg      # Windows z. B. C:\dev\vcpkg
+~/vcpkg/bootstrap-vcpkg.sh                                     # Windows: bootstrap-vcpkg.bat
+export VCPKG_ROOT=~/vcpkg                                      # Windows: setx VCPKG_ROOT C:\dev\vcpkg
+```
+
+## Bauen
+```bash
+cmake --preset debug            # konfiguriert, installiert Abhängigkeiten aus vcpkg.json
+cmake --build --preset debug
+ctest --preset debug            # Unit-Tests
+./build/debug/game/gothic7 --verbose
+```
+Unter Windows die Befehle in der **„x64 Native Tools Command Prompt for VS 2022“** ausführen
+(damit Ninja den MSVC-Compiler findet) – oder den Ordner direkt in Visual Studio / CLion / VS Code
+(CMake Tools) öffnen; die Presets werden erkannt.
+
+Ohne vcpkg (nur Kern, ohne Tests): `cmake --preset nodeps && cmake --build --preset nodeps`.
+
+## Presets
+| Preset | Zweck |
+|---|---|
+| `debug` | Entwicklung, Assertions an |
+| `release` | `RelWithDebInfo`, Profiling/Performance |
+| `nodeps` | Schnelltest ohne vcpkg |
+
+## CMake-Optionen
+| Option | Standard | Bedeutung |
+|---|---|---|
+| `G7_BUILD_TESTS` | ON | Unit-Tests |
+| `G7_BUILD_TOOLS` | ON | g7-cook, Editor |
+| `G7_WARNINGS_AS_ERRORS` | OFF | in CI empfohlen ON |
+
+## Kommandozeile des Spiels
+| Schalter | Wirkung |
+|---|---|
+| `--verbose` | Log-Level Debug |
+| `--smoke-test` | 10 Frames headless, dann Ende (CI) |
+| `--editor` | Editor-Modus (ab M4) |
+| `--world=<name>` | Startwelt (ab M4) |
+
+## Neue Abhängigkeit hinzufügen
+1. ADR schreiben/aktualisieren (warum diese Bibliothek?).
+2. Port in `vcpkg.json` → `dependencies`.
+3. `find_package(...)` in der `CMakeLists.txt` des **Moduls**, `PRIVATE_LIBS` in `g7_add_module`.
+4. Tabelle „Drittbibliotheken“ in `docs/02-architecture.md` bzw. Modul-Doku ergänzen.
+
+## Geplante Drittbibliotheken
+| Bibliothek | vcpkg-Port | Modul | Phase |
+|---|---|---|---|
+| doctest | `doctest` | tests | M0 |
+| glm | `glm` | core (öffentlich) | M0 |
+| toml++ | `tomlplusplus` | core | M0 |
+| SDL3 | `sdl3` | platform | M1 |
+| glad (GL 4.6) | `glad` | render | M2 |
+| Dear ImGui (+ ImGuizmo) | `imgui`, `imguizmo` | ui/render | M2/M4 |
+| fastgltf | `fastgltf` | asset/tools | M2/M3 |
+| stb (image, truetype) | `stb` | asset/ui | M2 |
+| KTX | `ktx` | asset/tools | M3 |
+| EnTT | `entt` | world (öffentlich) | M4 |
+| nlohmann-json | `nlohmann-json` | world (Weltformat) | M4 |
+| Jolt Physics | `joltphysics` | physics | M5 |
+| Lua 5.4 + sol2 | `lua`, `sol2` | script | M7 |
+| miniaudio | `miniaudio` | audio | M13 |
+| Tracy | `tracy` | core | M17 |

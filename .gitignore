@@ -1,0 +1,37 @@
+# Build
+/build/
+/out/
+/install/
+CMakeUserPresets.json
+compile_commands.json
+
+# vcpkg
+/vcpkg_installed/
+
+# IDEs
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.user
+*.suo
+.cache/
+.clangd/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Laufzeit
+*.log
+/saves/
+imgui.ini
+
+# Secrets - niemals committen
+*.token
+.env
+github_pat*
+
+# Gekochte/grosse Assets (Quellen liegen in assets/source)
+/assets/cooked/
+*.g7pak
