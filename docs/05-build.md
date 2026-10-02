@@ -13,6 +13,15 @@ git clone https://github.com/microsoft/vcpkg.git ~/vcpkg      # Windows z. B. C:
 export VCPKG_ROOT=~/vcpkg                                      # Windows: setx VCPKG_ROOT C:\dev\vcpkg
 ```
 
+### Hinweis: vcpkg aus Visual Studio
+Die „x64 Native Tools Command Prompt“ setzt `VCPKG_ROOT` oft auf das mit Visual Studio gelieferte
+vcpkg (`...\Microsoft Visual Studio\<ver>\Community\VC\vcpkg`). Das funktioniert, weil `vcpkg.json`
+eine `builtin-baseline` enthält. Wer das eigene vcpkg nutzen will: `set VCPKG_ROOT=C:\dev\vcpkg`.
+
+### Versionen der Abhängigkeiten
+`builtin-baseline` in `vcpkg.json` legt die Port-Versionen fest (reproduzierbare Builds).
+Aktualisieren: `%VCPKG_ROOT%\vcpkg x-update-baseline` im Repo-Ordner, danach neu konfigurieren.
+
 ## Bauen
 ```bash
 cmake --preset debug            # konfiguriert, installiert Abhängigkeiten aus vcpkg.json

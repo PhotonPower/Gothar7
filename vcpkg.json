@@ -5,5 +5,6 @@
   "description": "Gothar Engine. Abhaengigkeiten werden pro Roadmap-Phase ergaenzt (siehe docs/03-roadmap.md und docs/adr/).",
   "dependencies": [
     "doctest"
-  ]
+  ],
+  "builtin-baseline": "3aea538b2bb21a586502c67b00eb474fdd2e3098"
 }
