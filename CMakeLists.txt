@@ -14,10 +14,21 @@ option(G7_BUILD_TESTS  "Unit-Tests bauen (benoetigt doctest)" ON)
 option(G7_BUILD_TOOLS  "Tools (Asset-Cooker, Editor) bauen" ON)
 option(G7_WARNINGS_AS_ERRORS "Warnungen als Fehler behandeln" OFF)
 option(G7_PROFILING   "Profiler-Zonen (G7_PROFILE_*) aktivieren" OFF)
+option(G7_COVERAGE    "Testabdeckung messen (GCC/Clang, --coverage)" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(CompilerWarnings)
 include(G7Module)
+
+if(G7_COVERAGE)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        # atomic counters: tests run zones and StringId registration on several threads
+        add_compile_options(--coverage -O0 -fprofile-update=atomic)
+        add_link_options(--coverage)
+    else()
+        message(WARNING "G7_COVERAGE wird nur mit GCC/Clang unterstuetzt - ignoriert.")
+    endif()
+endif()
 
 add_subdirectory(engine)
 add_subdirectory(game)
