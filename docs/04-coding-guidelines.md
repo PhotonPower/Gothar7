@@ -38,6 +38,9 @@
 - Neue Logik → neue Tests. GPU-/Fenster-abhängiger Code wird über Headless-Pfade oder
   Logik-Trennung testbar gemacht.
 - KI, Dialog- und Quest-Logik bekommen Szenario-Tests (Welt laden, Zeit simulieren, Zustand prüfen).
+- **Testabdeckung:** Der CI-Job `coverage` (Linux, gcovr) misst `engine/core/` und schlägt unter 80 % Zeilenabdeckung fehl.
+  Bericht: Job-Übersicht bzw. Artefakt `coverage-core`. Lokal (GCC/Clang): `cmake --preset coverage`, bauen, `ctest --preset coverage`,
+  dann `gcovr --root . --object-directory build/coverage --filter engine/core/`. Weitere Module kommen mit eigener Logik hinzu.
 
 ## Git
 - Branch `main` ist immer baubar. Arbeit in Feature-Branches `feature/<phase>-<thema>`, z. B. `feature/m1-window`.

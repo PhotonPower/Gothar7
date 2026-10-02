@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M0** (Fundament) – alle Aufgaben erledigt (Skelett, CI grün auf Windows + Linux, Dateisystem, Mathe/glm, StringId, Config/toml++, Profiler-Hook). Offen für die DoD: Testabdeckung von core messen (Ziel > 80 %). Danach M1.
+**Aktueller Stand:** Phase **M0** abgeschlossen (CI grün auf Windows + Linux, core-Testabdeckung 89 %). Nächste Phase: **M1** (Plattform & Hauptschleife).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -45,6 +45,7 @@ Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
 **DoD:** `cmake --preset debug && cmake --build --preset debug && ctest --preset debug` läuft auf
 Windows und Linux grün; core hat > 80 % Testabdeckung seiner Logik.
+✅ Erfüllt: CI grün auf Windows + Linux; core-Zeilenabdeckung 89 % (CI-Job `coverage`, gcovr).
 
 ## M1 – Plattform & Hauptschleife
 - [ ] SDL3 einbinden (vcpkg), Fenster erzeugen, Größenänderung, Vollbild

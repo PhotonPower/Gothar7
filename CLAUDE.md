@@ -82,5 +82,6 @@ und die Modul-Docs (`ai.md`, `gameplay.md`, `audio.md`) beschreiben das Zielverh
 Lücken nachfragen statt raten – Spielgefühl-Entscheidungen trifft der Projektinhaber.
 
 ## Aktueller Stand
-Phase **M0** – Skelett steht (alle Module als Platzhalter, core mit Log/Assert/Result/Clock, Engine-Hauptschleife
-headless, Tests, CI). Nächste Aufgaben: siehe `docs/03-roadmap.md` → M0.
+Phase **M0** abgeschlossen: core mit Log/Assert/Result/Clock, Dateisystem, Mathe (glm), StringId, Config (toml++),
+Profiler-Hook; Engine-Hauptschleife headless; CI (Windows + Linux + Coverage ≥ 80 % für core).
+Aktuelle Phase: **M1** – nächste Aufgaben siehe `docs/03-roadmap.md` → M1.

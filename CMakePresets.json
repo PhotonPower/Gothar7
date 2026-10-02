@@ -12,6 +12,7 @@
     },
     { "name": "debug",   "displayName": "Debug (vcpkg)",   "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" } },
     { "name": "release", "displayName": "Release (vcpkg)", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" } },
+    { "name": "coverage", "displayName": "Debug + Testabdeckung (GCC/Clang)", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "G7_COVERAGE": "ON" } },
     {
       "name": "nodeps",
       "displayName": "Debug ohne vcpkg (nur Kern, keine Tests)",
@@ -23,9 +24,11 @@
   "buildPresets": [
     { "name": "debug",   "configurePreset": "debug" },
     { "name": "release", "configurePreset": "release" },
+    { "name": "coverage", "configurePreset": "coverage" },
     { "name": "nodeps",  "configurePreset": "nodeps" }
   ],
   "testPresets": [
-    { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } }
+    { "name": "debug", "configurePreset": "debug", "output": { "outputOnFailure": true } },
+    { "name": "coverage", "configurePreset": "coverage", "output": { "outputOnFailure": true } }
   ]
 }
