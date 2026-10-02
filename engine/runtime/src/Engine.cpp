@@ -4,6 +4,7 @@
 #include <g7/audio/Audio.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Log.hpp>
+#include <g7/core/Profiler.hpp>
 #include <g7/core/Version.hpp>
 #include <g7/gameplay/Gameplay.hpp>
 #include <g7/physics/Physics.hpp>
@@ -68,6 +69,8 @@ int Engine::run()
 
     while (!m_quitRequested)
     {
+        G7_PROFILE_FRAME();
+        G7_PROFILE_SCOPE("Engine::frame");
         const f64 frameSeconds = frameTimer.elapsedSeconds();
         frameTimer.reset();
 
@@ -75,10 +78,14 @@ int Engine::run()
         const u32 steps = fixedStep.advance(frameSeconds);
         for (u32 i = 0; i < steps; ++i)
         {
+            G7_PROFILE_SCOPE("Engine::fixedUpdate");
             // TODO(M4+): world/ai/gameplay/physics fixed update
             ++m_simTicks;
         }
-        // TODO(M2): render.drawFrame(fixedStep.alpha())
+        {
+            G7_PROFILE_SCOPE("Engine::render");
+            // TODO(M2): render.drawFrame(fixedStep.alpha())
+        }
 
         ++m_frameCount;
         if (m_config.maxFrames != 0 && m_frameCount >= m_config.maxFrames)

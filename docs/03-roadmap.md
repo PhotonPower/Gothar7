@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M0** (Fundament) – Skelett, CI (Windows + Linux grün), Dateisystem-Helfer, Mathe (glm), StringId und Config (toml++) stehen; Profiler-Hook offen.
+**Aktueller Stand:** Phase **M0** (Fundament) – alle Aufgaben erledigt (Skelett, CI grün auf Windows + Linux, Dateisystem, Mathe/glm, StringId, Config/toml++, Profiler-Hook). Offen für die DoD: Testabdeckung von core messen (Ziel > 80 %). Danach M1.
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -41,7 +41,7 @@ Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 - [x] core: Mathe-Bibliothek festlegen (ADR 0002: glm) und Typ-Aliasse `Vec3`, `Quat`, `Mat4`, `Transform`
 - [x] core: String-Hilfen (Hash `StringId` für schnelle Namensvergleiche, case-insensitive Vergleich)
 - [x] core: Konfigurationsdatei laden (TOML, z. B. toml++)
-- [ ] core: einfacher Profiler-Hook (Makros, später Tracy)
+- [x] core: einfacher Profiler-Hook (Makros, später Tracy)
 
 **DoD:** `cmake --preset debug && cmake --build --preset debug && ctest --preset debug` läuft auf
 Windows und Linux grün; core hat > 80 % Testabdeckung seiner Logik.

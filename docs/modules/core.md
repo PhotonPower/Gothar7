@@ -58,8 +58,15 @@
   - `keys(table)` – direkte Unterschlüssel, sortiert (z. B. alle Aktionen in `[bindings]`).
   - `merge(overrides)` – rekursiv; Grundlage für Standard-Config ← Benutzer-Config ← Kommandozeile (ab M1).
 
-## Geplant (M0)
-- **Profiler-Makros**: `G7_PROFILE_SCOPE("name")` – zunächst leer, ab M17 Tracy.
+- `Profiler.hpp` – Profiler-Hook:
+  - Makros `G7_PROFILE_SCOPE("name")`, `G7_PROFILE_FUNCTION()`, `G7_PROFILE_FRAME()`; nur aktiv mit
+    CMake-Option `G7_PROFILING=ON` (Standard OFF → kompilieren zu nichts). Zonennamen müssen statische
+    Lebensdauer haben (String-Literale, `__func__`) – dieselbe Regel wie bei Tracy.
+  - Dahinter vorerst ein eingebauter Sammler (`g7::profiler`, dokumentiertes Subsystem-Singleton, threadsicher):
+    `ScopedZone`, `markFrame()`, `lastFrame() -> std::vector<ZoneStats{name, calls, totalMs, maxMs}>`
+    (inklusive Zeiten, sortiert nach Gesamtzeit). Grundlage für das Debug-Overlay in M2; ab M17 Tracy
+    hinter denselben Makros.
+  - `Engine::run` markiert Frames und misst die Zonen `Engine::frame`, `Engine::fixedUpdate`, `Engine::render`.
 
 ## Später
 - Geometrie-Primitive `AABB`, `Sphere`, `Ray`, `Plane`, `Frustum` (M2, zusammen mit Kamera und Culling).
