@@ -104,6 +104,11 @@ Result<void> Engine::init()
             }
             m_device = std::move(device).value();
             m_glContext->setVSync(m_config.window.vsync);
+
+            if (auto result = initShaders(); !result)
+            {
+                return result;
+            }
         }
         else
         {
@@ -207,7 +212,10 @@ bool Engine::runFrame()
         {
             // TODO(M2): scene rendering with frameAlpha(); for now the frame is only cleared.
             const auto size = m_window->pixelSize();
+            m_shaders->update(platform::nowSeconds());
             m_device->beginFrame(size.width, size.height, kClearColor);
+            m_device->bindPipeline(m_backgroundPipeline);
+            m_device->draw(3); // fullscreen triangle from gl_VertexID
             m_glContext->swapBuffers();
         }
     }
@@ -224,6 +232,39 @@ bool Engine::runFrame()
         platform::sleepPrecise(m_framePacer.secondsUntilNextFrame(platform::nowSeconds()));
     }
     return !m_quitRequested;
+}
+
+Result<void> Engine::initShaders()
+{
+    const fs::Path root =
+        m_config.shaderDirectory.empty() ? fs::gamePath("shaders") : m_config.shaderDirectory;
+    m_shaders = std::make_unique<render::ShaderLibrary>(*m_device, root);
+#ifdef NDEBUG
+    constexpr bool kHotReloadDefault = false;
+#else
+    constexpr bool kHotReloadDefault = true;
+#endif
+    m_shaders->setHotReload(m_config.settings.get<bool>("render.shader_hot_reload", kHotReloadDefault));
+    G7_LOG_INFO("engine", "shaders from {}{}", fs::toUtf8(root),
+                m_shaders->hotReload() ? " (hot-reload)" : "");
+
+    auto background = m_shaders->load("background", {"background.vert", "background.frag", {}});
+    if (!background)
+    {
+        return Error{"cannot load shaders: " + background.error().message};
+    }
+    render::rhi::PipelineDesc desc;
+    desc.program = background.value();
+    desc.cull = render::rhi::CullMode::None;
+    desc.depthTest = false;
+    desc.depthWrite = false;
+    auto pipeline = m_device->createPipeline(desc);
+    if (!pipeline)
+    {
+        return Error{"cannot create background pipeline: " + pipeline.error().message};
+    }
+    m_backgroundPipeline = std::move(pipeline).value();
+    return {};
 }
 
 void Engine::setTimeScale(f64 scale) noexcept
@@ -248,6 +289,8 @@ void Engine::shutdown()
     }
     // Shutdown in reverse init order.
     G7_LOG_INFO("engine", "shutdown");
+    m_backgroundPipeline = {};
+    m_shaders.reset();
     m_device.reset(); // GL objects need the context
     m_glContext.reset();
     m_window.reset();

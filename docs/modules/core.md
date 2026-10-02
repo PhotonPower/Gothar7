@@ -16,7 +16,7 @@
   - `readFile(path) -> Result<std::vector<u8>>`, `readText(path) -> Result<std::string>` (binär, keine Zeilenende-Umwandlung)
   - `writeFile`/`writeText` sowie `writeFileAtomic`/`writeTextAtomic` (Temp-Datei `<ziel>.tmp` + `rename`,
     nie halb geschriebene Saves/Configs)
-  - `createDirectories`, `exists`
+  - `createDirectories`, `exists`, `lastWriteTime` (Hot-Reload-Polling)
   - `fromUtf8`/`toUtf8`: Pfade an der API sind UTF-8 (unter Windows sonst ANSI-Codepage)
   - `BaseDirectories{gameDir, userDir}` als dokumentiertes Subsystem-Singleton (`setBaseDirectories`
     beim Start), `gamePath("assets/...")`, `userPath("saves/...")`.

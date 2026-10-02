@@ -36,6 +36,8 @@ using Path = std::filesystem::path;
 /// Creates the directory and all missing parents. Succeeds if it already exists.
 [[nodiscard]] Result<void> createDirectories(const Path& path);
 [[nodiscard]] bool exists(const Path& path) noexcept;
+/// Last modification time (hot-reload polling).
+[[nodiscard]] Result<std::filesystem::file_time_type> lastWriteTime(const Path& path);
 
 /// Root directories of the running game. Documented subsystem singleton: set once at startup
 /// (game main in M0, platform module from M1 on), read everywhere else.

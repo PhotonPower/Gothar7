@@ -161,6 +161,10 @@ int main(int argc, char** argv)
         config.window.mode = g7::platform::WindowMode::Fullscreen;
     }
     config.window.vsync = config.settings.get<bool>("window.vsync", true);
+    if (const auto shaderDir = config.settings.find<std::string>("render.shader_dir"))
+    {
+        config.shaderDirectory = g7::fs::fromUtf8(*shaderDir);
+    }
     config.maxFps =
         static_cast<g7::f64>(std::max<g7::i64>(0, config.settings.get<g7::i64>("window.max_fps", 240)));
 

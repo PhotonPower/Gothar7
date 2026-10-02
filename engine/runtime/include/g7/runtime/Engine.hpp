@@ -14,6 +14,7 @@
 #include <g7/platform/Input.hpp>
 #include <g7/platform/Window.hpp>
 #include <g7/render/Device.hpp>
+#include <g7/render/ShaderLibrary.hpp>
 
 #include <memory>
 #include <string>
@@ -29,8 +30,11 @@ struct EngineConfig
     /// > 0: every frame advances exactly this much time instead of real time (deterministic
     /// tests and CI runs).
     f64 fixedFrameSeconds = 0.0;
-    bool headless = false;       ///< No window (tests, CI smoke test).
-    bool render = true;          ///< OpenGL rendering in the window (false: window without GL, --no-render).
+    bool headless = false; ///< No window (tests, CI smoke test).
+    bool render = true;    ///< OpenGL rendering in the window (false: window without GL, --no-render).
+    /// Engine shaders; empty = gamePath("shaders"). Point it at engine/render/shaders to edit the
+    /// sources live with hot-reload ([render] shader_dir).
+    fs::Path shaderDirectory;
     platform::WindowDesc window; ///< Used unless headless.
     /// Merged settings (engine.toml + user config). The engine reads [input] (scheme,
     /// stick_deadzone) and [bindings.<scheme>]; window settings are applied by the caller.
@@ -79,6 +83,8 @@ public:
 
     /// Render device, or nullptr without rendering.
     [[nodiscard]] render::Device* renderDevice() noexcept { return m_device.get(); }
+    /// Shader programs (with hot-reload), or nullptr without rendering.
+    [[nodiscard]] render::ShaderLibrary* shaders() noexcept { return m_shaders.get(); }
     /// The game window, or nullptr when headless / before init().
     [[nodiscard]] platform::Window* window() noexcept { return m_window.get(); }
     /// Input state of the current frame (stays empty when headless).
@@ -88,11 +94,14 @@ public:
 
 private:
     void shutdown();
+    [[nodiscard]] Result<void> initShaders();
 
     EngineConfig m_config;
     std::unique_ptr<platform::Window> m_window;
     std::unique_ptr<platform::GlContext> m_glContext; // must outlive m_device
     std::unique_ptr<render::Device> m_device;
+    std::unique_ptr<render::ShaderLibrary> m_shaders; // destroyed before the device
+    render::rhi::Pipeline m_backgroundPipeline;
     platform::Input m_input;
     platform::ActionMap m_actions;
     FixedStep m_fixedStep{1.0 / 60.0};

@@ -70,10 +70,45 @@ const FrameStats& stats();   // drawCalls, triangles, pipelineChanges, textureBi
 - Shader-Compilerausgaben aus dem Debug-Callback laufen nur auf Debug-Level, weil
   `createShaderProgram` das vollständige Log als Fehler zurückgibt.
 
+### Shader-System – `ShaderPreprocessor.hpp`, `ShaderLibrary.hpp`
+```cpp
+namespace g7::render {
+using ShaderFileReader = std::function<Result<std::string>(std::string_view path)>;
+struct PreprocessedShader { std::string source; std::vector<std::string> files; };   // files[i] = #line-Quelle i
+Result<PreprocessedShader> preprocessShader(path, const ShaderFileReader&, std::span<const std::string> defines = {});
+std::string mapShaderLog(std::string_view log, std::span<const std::string> files);   // "0:12(5)" -> "datei:12(5)"
+
+struct ShaderKey { std::string vertexPath, fragmentPath; std::vector<std::string> defines; };
+class ShaderLibrary {
+public:
+    ShaderLibrary(Device&, fs::Path shaderRoot);
+    Result<rhi::ShaderProgram*> load(std::string_view name, const ShaderKey&);   // stabiler Zeiger
+    rhi::ShaderProgram* find(std::string_view name);
+    u32 reloadChanged();                                  // Zeitstempel prüfen, geänderte neu kompilieren
+    void setHotReload(bool enabled, f64 pollIntervalSeconds = 0.5);  void update(f64 now);
+};
+}
+```
+- **Präprozessor** (ohne GL, mit In-Memory-Dateien testbar): `#include "pfad"` relativ zum Shader-Verzeichnis,
+  jede Datei höchstens einmal, Zyklen sind Fehler; `#version` muss in Zeile 1 der Hauptdatei stehen,
+  Defines (`"NAME"` / `"NAME WERT"`) werden direkt dahinter eingefügt. `#line Zeile Quelle` vor und nach jedem
+  Include; `mapShaderLog` übersetzt Treiber-Logs (Mesa `0:12(5)`, Intel/AMD `0:12:`, NVIDIA `0(12)`) zurück auf
+  `datei:zeile`.
+- **Hot-Reload:** `ShaderLibrary` merkt sich alle beteiligten Dateien (inkl. Includes) mit Änderungszeit und
+  prüft sie höchstens alle 0,5 s. Ein Programm behält über Reloads hinweg seine Adresse; **Pipelines verweisen
+  auf ihr `ShaderProgram`** (statt dessen GL-Namen zu kopieren) und nutzen beim nächsten Bind die neue Version.
+  Ein fehlerhafter Reload behält die alte Version und loggt den Fehler mit Datei und Zeile.
+  Dateiüberwachung durch das Betriebssystem folgt mit dem Asset-System (M3).
+- **Engine-Shader** liegen in `engine/render/shaders/` (`background.vert/.frag`, `common/color.glsl`) und werden
+  beim Bauen nach `<exe>/shaders/` kopiert. `[render] shader_hot_reload` (Standard: an im Debug-Build) und
+  `[render] shader_dir` (z. B. auf das Quellverzeichnis zeigen, damit Änderungen nicht beim nächsten Build
+  überschrieben werden).
+
 ### Engine-Anbindung
-Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device`, setzt VSync
-aus `[window] vsync` und leert jeden Frame in einer Abendfarbe, dann Puffertausch. `--no-render` startet
-ein Fenster ohne OpenGL. Tests mit echter GPU: Suite `render_gpu` (CTest-Label `gpu`).
+Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →
+`ShaderLibrary`, setzt VSync aus `[window] vsync` und zeichnet pro Frame einen **Abendverlauf** als Hintergrund
+(Vollbild-Dreieck aus `gl_VertexID`, Platzhalter für den Himmel in M4), dann Puffertausch. `--no-render`
+startet ein Fenster ohne OpenGL. Tests mit echter GPU: Suite `render_gpu` (CTest-Label `gpu`).
 
 ## Schichten
 1. **RHI** (`render/rhi/`, siehe oben): `Buffer`, `Texture`, `Sampler`, `ShaderProgram`, `Pipeline`,

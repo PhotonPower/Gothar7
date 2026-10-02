@@ -142,8 +142,9 @@ public:
 private:
     friend class render::Device;
     Handle m_vertexArray;
-    u32 m_program = 0;
-    u64 m_programUid = 0;
+    // Referenced, not copied: a hot-reloaded program (same object, new GL program) is picked up
+    // by existing pipelines on their next bind.
+    const ShaderProgram* m_program = nullptr;
     u32 m_vertexStride = 0;
     Topology m_topology = Topology::Triangles;
     CullMode m_cull = CullMode::Back;

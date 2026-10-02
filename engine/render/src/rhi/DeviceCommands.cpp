@@ -50,17 +50,18 @@ void Device::clear(std::optional<Vec4> color, std::optional<f32> depth)
 void Device::bindPipeline(const Pipeline& pipeline)
 {
     const u64 uid = pipeline.m_vertexArray.uid();
-    if (m_cache.valid && m_cache.pipeline == uid)
+    const u64 programUid = pipeline.m_program->m_handle.uid();
+    if (m_cache.valid && m_cache.pipeline == uid && m_cache.program == programUid)
     {
-        return;
+        return; // same pipeline and its program was not reloaded meanwhile
     }
     ++m_stats.pipelineChanges;
     const bool all = !m_cache.valid;
 
-    if (all || m_cache.program != pipeline.m_programUid)
+    if (all || m_cache.program != programUid)
     {
-        glUseProgram(pipeline.m_program);
-        m_cache.program = pipeline.m_programUid;
+        glUseProgram(pipeline.m_program->m_handle.id());
+        m_cache.program = programUid;
     }
     // Each pipeline owns its vertex array, so a pipeline change always rebinds it (comparing GL names
     // would be wrong once a deleted VAO name is reused).
