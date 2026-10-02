@@ -1,8 +1,11 @@
+#include <g7/core/FileSystem.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/runtime/Engine.hpp>
 
 #include <cstdlib>
+#include <filesystem>
 #include <string_view>
+#include <system_error>
 
 int main(int argc, char** argv)
 {
@@ -22,6 +25,16 @@ int main(int argc, char** argv)
             config.maxFrames = 10;
         }
     }
+
+    // Interim until M1: the platform module will set the user directory via SDL_GetPrefPath.
+    std::error_code ec;
+    g7::fs::Path gameDir = std::filesystem::weakly_canonical(g7::fs::Path(argv[0]), ec).parent_path();
+    if (ec || gameDir.empty())
+    {
+        gameDir = std::filesystem::current_path(ec);
+    }
+    g7::fs::setBaseDirectories({.gameDir = gameDir, .userDir = gameDir / "userdata"});
+    G7_LOG_DEBUG("game", "game directory: {}", g7::fs::toUtf8(gameDir));
 
     g7::Engine engine(config);
     if (auto result = engine.init(); !result)
