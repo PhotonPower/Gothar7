@@ -21,12 +21,49 @@ Umsetzung als Roadmap-Spur **F1–F5** (`docs/03-roadmap.md`), Animationsliste: 
 
 ## 2. Referenz-Rig (verbindlich ab F1, Details in `docs/modules/animation.md` → „Referenz-Skelett“)
 
-- Maßstab 1 Einheit = 1 m, Standardgröße ca. 1,80 m, Y oben, Ausrichtung nach glTF-Konvention.
+- Maßstab 1 Einheit = 1 m, Standardgröße ca. 1,80 m, Y oben, Ausrichtung nach glTF-Konvention:
+  Figur blickt nach **+Z**, ihre linke Seite (`*_l`) liegt bei **+X** (in Blender: Z oben, Blick nach −Y).
+- **Bind-Pose: T-Pose** (Arme waagerecht, Handflächen nach unten, Daumen nach vorn) – Entscheidung
+  des Projektinhabers vom 2026-10-03 (passt zu Quaternius/Mixamo, einfacheres Retargeting in F2).
+- **Geometrie aus dem Quaternius-Rig** (Entscheidung 2026-10-03): Gelenkpositionen und Knochenachsen
+  (Blender-„Roll“) der Körperknochen sind 1:1 vom Mannequin der *Universal Animation Library 2*
+  (Quaternius, CC0) übernommen, Größe ca. 1,83 m. Damit laufen Quaternius-Clips (UAL1/UAL2, ~300) und
+  -Figuren nach reiner Umbenennung der Knochen (`tools/chargen/.../data/mappings/quaternius_ual*.toml`).
+  Namen, Hierarchie und Sockets sind unsere eigenen (Vertrag animation.md).
 - `root` auf Bodenhöhe zwischen den Füßen (trägt Root Motion), darunter `pelvis`.
 - Knochennamen in `lower_snake_case` mit Seitensuffix `_l`/`_r`.
 - **Sockets** (Knochen ohne Gewichte) für Ausrüstung mit Präfix `socket_` – siehe animation.md.
 - Gesicht über **Morph-Targets** (Blendshapes), nicht über Gesichtsknochen.
 - Ein Blender-Referenzfile `assets/source/characters/rig/human_reference.blend` ist die Quelle der Wahrheit.
+  Es wird aus `tools/chargen/src/gothar_chargen/data/human_reference.toml` erzeugt (`gothar-chargen build-rig`)
+  und enthält neben dem Rig eine einfache Gliederpuppe (eigene Geometrie, starre Gewichte, alle
+  Morph-Targets aus §6 als Test-Shape-Keys). Daneben liegt der Export `human_reference.glb`: gegen
+  ihn vergleicht der Validator die Bind-Pose anderer Dateien; die Engine kann ihn als Testfigur nutzen.
+- Knochen-Achsen: wie im Quaternius-Rig (in der TOML-Datei als `roll` je Knochen). Socket-Knochen:
+  Y-Achse = Griffachse Richtung Klinge/Spitze (`socket_hand_*` nach vorn, `socket_hip_1h` nach unten).
+
+### 2.1 glTF-Export (verbindlich für alle Figuren- und Animationsdateien)
+
+Exportiert wird immer über `gothar-chargen export <datei.blend>` bzw. das Skript
+`tools/chargen/src/gothar_chargen/blender/export_glb.py`; die Einstellungen stehen in
+`gothar_chargen/blender/settings.py` (Blender 4.5 LTS, `bpy.ops.export_scene.gltf`). Wichtig:
+
+| Einstellung | Wert | Grund |
+|---|---|---|
+| Format | `.glb` (binär, eingebettet) | eine Datei pro Figur/Set |
+| `export_yup` | an | Blender Z-oben/−Y-vorn → glTF Y-oben/+Z-vorn |
+| Maßstab | Objekt- und Armatur-Skalierung 1,0 (vorher anwenden) | Validator prüft Maßstab 1 |
+| `export_apply` | aus | Modifikatoren nicht anwenden – würde Skin und Shape Keys zerstören |
+| `export_def_bones` | aus | Sockets sind Nicht-Deform-Knochen und müssen erhalten bleiben |
+| `export_influence_nb` | 4 | max. 4 Knochengewichte pro Vertex |
+| `export_rest_position_armature` | an | Knoten tragen die Bind-Pose (T-Pose) |
+| `export_morph` / `export_morph_normal` | an / an | Gesichts-Morph-Targets (Namen §6) |
+| `export_animation_mode` | `ACTIONS` | eine glTF-Animation pro Blender-Action; Action-Name = Clipname (§3) |
+| `export_force_sampling`, `export_frame_step` | an, 1 | jeder Frame gesampelt (30 fps) |
+| Kameras, Lichter, Extras | aus | gehören nicht in Figuren-Dateien |
+
+Prüfen: `gothar-chargen validate [dateien|ordner]` (ohne Argument: alles unter
+`assets/source/characters/`, so läuft es auch in CI). Prüfungen und Grenzwerte: `tools/chargen/README.md`.
 
 ## 3. Namenskonvention für Animationen
 
@@ -44,11 +81,38 @@ Dateien: ein `.glb` pro **Set** (z. B. `anims/human/1h.glb`) mit allen Clips des
 **Events** stehen in einer Begleitdatei `<set>.events.toml` (Clipname → Liste `{frame, event}`),
 weil glTF keine Standard-Events kennt; das Werkzeug in F2 erzeugt sie aus Blender-Timeline-Markern.
 
+Format `<set>.events.toml` (Version 1, Vertrag mit engine/M6; geprüft von `gothar-chargen validate`):
+```toml
+version = 1          # Pflicht; Formatversion
+fps = 30             # optional (Vorgabe 30): Bildrate, auf die sich die Frame-Nummern beziehen
+
+[clips."none/s_walk"]                       # Clipname = Name der glTF-Animation im Set
+events = [
+    { frame = 0,  event = "footstep_l" },   # Frame ab 0, ≤ letzter Frame des Clips
+    { frame = 15, event = "footstep_r" },   # aufsteigend sortiert
+]
+
+[clips."1h/t_attack_combo1_t2"]
+events = [
+    { frame = 2,  event = "sound:swing_light" },
+    { frame = 6,  event = "hit_start" },
+    { frame = 11, event = "hit_end" },
+    { frame = 14, event = "combo_window" },
+]
+```
+- Event-Namen: `lower_snake_case`, optional mit Argument nach Doppelpunkt (`sound:<name>`).
+  Bekannte Events siehe `docs/modules/animation.md` („Clip“); neue Events nach Absprache mit engine.
+- Clips ohne Events werden weggelassen; die Datei ist optional.
+- Zeit eines Events in Sekunden = `frame / fps`. Alle Sets werden mit 30 fps exportiert.
+
+Clip-Namen prüft der Validator gegen das Muster oben (`[sta]_…`, nur `a-z0-9_`, Modus aus der Liste
+oder `mob/<mobtyp>`).
+
 ## 4. Quellen & Lizenzen
 
 | Quelle | Wofür | Lizenz / Hinweis |
 |---|---|---|
-| **Quaternius** (u. a. Universal Animation Library, Tiere, Platzhalter-Figuren) | Basis-Bewegungen, Platzhalter | CC0 |
+| **Quaternius** (u. a. Universal Animation Library 1+2, Tiere, Platzhalter-Figuren) | Rig-Geometrie, Basis-Bewegungen, Platzhalter | CC0; UAL1/UAL2 „Standard“ direkt von opengameart.org (itch.io blockt automatische Downloads) |
 | **Mixamo** | ergänzende Basis-Bewegungen | kostenlos, Nutzung in Spielen erlaubt; Bedingungen vor Nutzung prüfen, Rohdateien nicht weitergeben |
 | **MPFB2** (MakeHuman für Blender) | Ausgangskörper für eigene Figuren | Ergebnis-Modelle frei nutzbar (vor Nutzung Lizenzhinweise prüfen) |
 | **Video-Mocap** (z. B. Rokoko Vision, Move.ai) | Gothic-spezifische Bewegungen, selbst vorgespielt | eigene Aufnahmen; Dienst-Bedingungen beachten |
@@ -56,11 +120,11 @@ weil glTF keine Standard-Events kennt; das Werkzeug in F2 erzeugt sie aus Blende
 
 Jede Fremdquelle → Eintrag in `assets/LICENSES.md`. Keine Animationen oder Figuren aus Gothic.
 
-## 5. Werkzeuge (zu entwickeln)
+## 5. Werkzeuge
 
 Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pytest.
 
-1. **Rig-Validator** (F1): prüft `.glb`/`.blend` gegen das Referenz-Rig – Knochennamen, Hierarchie,
+1. **Rig-Validator** (F1, `gothar-chargen validate`, umgesetzt): prüft `.glb`/`.blend` gegen das Referenz-Rig – Knochennamen, Hierarchie,
    Bind-Pose, Maßstab, Ausrichtung, Sockets, Gewichte ≤ 4 je Vertex, Morph-Target-Namen. Läuft auch in CI
    für alles unter `assets/source/characters/`.
 2. **Retargeting-Hilfe** (F2): Mapping-Dateien Quell-Rig → Referenz-Rig (Quaternius, Mixamo, Mocap-Exporte),

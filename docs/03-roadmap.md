@@ -336,14 +336,18 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 Spezifikation: `docs/design/characters-pipeline.md`, Liste: `docs/design/animation-list.md`.
 Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source/characters/`.
 
-**Aktueller Stand Figuren-Spur:** F1 noch nicht begonnen.
+**Aktueller Stand Figuren-Spur:** F1 läuft – Referenz-Rig (T-Pose, 60 Knochen, Geometrie aus dem Quaternius-Rig, CC0), Export-Einstellungen und
+`tools/chargen` mit Rig-Validator (CI-Job `chargen`) stehen; `events.toml`-Format vorgeschlagen (wartet auf
+Bestätigung durch engine). Offen: CC0-Platzhalterfigur + 3 Test-Clips (PR `feature/f1-placeholder`).
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
-- [ ] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“)
-- [ ] Export-Einstellungen glTF dokumentiert (Maßstab, Ausrichtung, Skin, Morph-Targets)
-- [ ] `tools/chargen` als Python-Paket (ruff, pytest) mit **Rig-Validator**, in CI eingebunden
+- [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
+- [x] Export-Einstellungen glTF dokumentiert (Maßstab, Ausrichtung, Skin, Morph-Targets) – characters-pipeline.md §2.1, `gothar-chargen export`
+- [x] `tools/chargen` als Python-Paket (ruff, pytest) mit **Rig-Validator**, in CI eingebunden (Job `chargen`: Tests + `gothar-chargen validate --strict` über `assets/source/characters/`)
 - [ ] CC0-Platzhalterfigur auf das Referenz-Rig übertragen, validiert, mit `g7-cook` gekocht
 - [ ] Namenskonvention und `events.toml`-Format mit dem Engine-Strang abgestimmt (`docs/coordination.md`)
+  - Stand: Format v1 in characters-pipeline.md §3 festgelegt und im Validator umgesetzt; Bestätigung durch engine steht aus
+- Hinweis: Skin/Skelett/Animation kocht `g7-cook` erst mit M6 (`.g7skel`/`.g7anim`); bis dahin heißt „gekocht“ für die Platzhalterfigur: `.g7mesh` ohne Skin
 
 **DoD:** Platzhalterfigur + 3 Test-Clips bestehen den Validator und liegen gekocht vor; M6 kann starten.
 

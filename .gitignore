@@ -36,9 +36,12 @@ github_pat*
 /assets/cooked/
 *.g7pak
 
-# worldgen (Python-Werkzeuge, Rohdaten liegen außerhalb des Repos)
+# worldgen/chargen (Python-Werkzeuge; Rohdaten liegen außerhalb des Repos), Blender-Sicherungskopien
 tools/worldgen/config/local.toml
 tools/worldgen/.venv/
+tools/chargen/.venv/
+*.blend1
+*.blend2
 __pycache__/
 *.pyc
 .pytest_cache/
