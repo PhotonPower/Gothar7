@@ -1,0 +1,4 @@
+# Kopie als config/local.toml anlegen (wird nicht versioniert).
+[paths]
+data_root = "D:/GotharData"     # Rohdaten: geo/, capture/, work/ (siehe docs/design/leonberg-pipeline.md)
+blender   = "C:/Program Files/Blender Foundation/Blender 4.5/blender.exe"

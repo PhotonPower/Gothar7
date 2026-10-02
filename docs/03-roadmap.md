@@ -28,6 +28,10 @@ Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 | M16 | Editor & Werkzeuge | |
 | M17 | Atmosphäre, Performance, Release | **D: „Release-Kandidat Engine“** |
 
+Parallel läuft die **Welt-Spur W1–W7** (Leonberg → Spielort, siehe Abschnitt „Welt-Spur“ am Ende und
+`docs/design/leonberg-pipeline.md`). Sie besteht überwiegend aus Python-Werkzeugen in `tools/worldgen/`
+und kann unabhängig von den Engine-Phasen bearbeitet werden; Abhängigkeiten sind je Phase angegeben.
+
 ---
 
 ## M0 – Fundament
@@ -87,6 +91,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 - [ ] EnTT-Registry, Komponenten-Grundsatz, `VobId`, Transform-Hierarchie (ADR 0005)
 - [ ] Weltformat `.g7world` (Text/JSON für Versionierbarkeit, binäre gekochte Variante)
 - [ ] Statisches Welt-Mesh (Gelände + Architektur) mit Kollisionsgeometrie
+- [ ] **Heightmap-Terrain** (Kacheln, LOD, Splatmap mit 4–8 Schichten, Löcher) – Grundlage für W2 (Leonberg-Gelände)
 - [ ] Vob-Typen: Mesh, Licht, Sound-Emitter, Trigger, Startpunkt, Mob (Platzhalter)
 - [ ] Spielzeit & **Tag/Nacht-Zyklus**: Sonnenstand, Himmelsfarben (Verlauf je Uhrzeit), Sterne, Mond
 - [ ] Sichtbarkeit: Frustum-Culling, Distanz-Culling/LOD für Vobs; Innenräume über Portale/Zonen (später)
@@ -245,3 +250,70 @@ gezogene Waffen und Betreten ihrer Hütte.
 - [ ] Optional: Vulkan-Backend hinter der RHI (ADR)
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
+
+---
+
+# Welt-Spur: Leonberg → Spielort
+
+Spezifikation: `docs/design/leonberg-pipeline.md`. Werkzeuge in `tools/worldgen/` (Python ≥ 3.11),
+Rohdaten außerhalb des Repos (`DATA_ROOT`).
+
+**Aktueller Stand Welt-Spur:** W1 noch nicht begonnen.
+
+## W1 – Geodaten-Import  (keine Engine-Abhängigkeit)
+- [ ] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
+- [ ] Konfiguration: `config/leonberg.toml` (Gebiet, Ursprung, Maßstab), `config/local.toml` (DATA_ROOT, nicht versioniert)
+- [ ] Download-Hilfe/Anleitung für LGL-Kacheln (DGM1, LoD2, DOP) und OSM-Ausschnitt
+- [ ] DGM1 → Heightmap (`terrain.r16` + `terrain.json`) im lokalen Koordinatensystem
+- [ ] LoD2 (CityGML) → `buildings.json` (Grundriss, Dachtyp, Trauf-/Firsthöhe, Bodenhöhe)
+- [ ] OSM → `streets.json`, `features.json`
+- [ ] Vorschau-PNG (Höhen, Grundrisse, Straßen) und Plausibilitätsprüfungen
+- [ ] Ursprungspunkt und Gebietsgrenzen am Luftbild prüfen und festlegen
+
+**DoD:** Ein Befehl (`gothar-worldgen import leonberg`) erzeugt alle Zwischendaten reproduzierbar; Tests mit LGL-Testdaten laufen in CI.
+
+## W2 – Leonberg-Gelände in der Engine  (benötigt M2, M4-Terrain)
+- [ ] Heightmap-Import in das Terrain-System, Splatmap-Grundbelegung aus Straßen/Nutzung
+- [ ] Testwelt `leonberg_terrain.g7world` mit Tag/Nacht
+
+**DoD:** Das Leonberger Gelände ist in der Engine sichtbar und (ab M5) begehbar.
+
+## W3 – Klötzchen-Leonberg & Maßstabstest  (benötigt W1, W2; sinnvoll ab M5)
+- [ ] Blender-Add-on „Gothar Buildings“ Grundgerüst: `buildings.json` lesen, Baukörper + Dach als Massen, `.glb`-Export
+- [ ] Welt-Assembler v1: Terrain + Gebäude → `.g7world`
+- [ ] Begehung mit Spielfigur/Kamera; Maßstabsfaktoren und Gassenverbreiterung festlegen (Ergebnis in `leonberg.toml` + Design-Doku)
+
+**DoD:** Graue Altstadt begehbar; Maßstabsentscheidung dokumentiert.
+
+## W4 – Aufnahmen & Fassaden-Werkzeug  (keine Engine-Abhängigkeit)
+- [ ] Aufnahmetour(en) nach Leitfaden (Abschnitt 6 der Design-Doku)
+- [ ] Bild-Extraktion aus Insta360-Export, GPS-Zuordnung, optional SfM-Verfeinerung
+- [ ] Fassaden-Ausschnitt + Entzerrung pro Gebäude
+- [ ] Annotations-Oberfläche → Override-JSON pro Gebäude
+- [ ] Annotation der Häuser am Marktplatz (erste ~20 Gebäude)
+
+**DoD:** Für jedes Haus am Marktplatz gibt es eine entzerrte Fassadenreferenz und eine Annotation.
+
+## W5 – Fachwerk-Generator  (benötigt W3, W4)
+- [ ] Modularer Baukasten + Trim-Sheets (Balken, Putz, Stein, Holz, Dach)
+- [ ] Regeln: Stockwerke, Auskragung, Fachwerk-Muster-Katalog, Öffnungen, Dachdeckung, Gauben, Schornsteine
+- [ ] Overrides aus W4 anwenden; Seeds für Variation; `locked`-Schutz für Handarbeit
+- [ ] LOD-Erzeugung, Kollisions-Mesh
+- [ ] Stil-Referenzblatt (Farben, Materialien, Alterung) in `docs/design/`
+
+**DoD:** Der Marktplatz ist mittelalterlich und stilistisch geschlossen in der Engine zu sehen.
+
+## W6 – Straßen, Mauer, Ausstattung  (benötigt W5, M4-Editor)
+- [ ] Straßen/Plätze aus OSM → Splatmap, Rinnen, Stufen, Stützmauern
+- [ ] Stadtmauer mit Toren
+- [ ] Requisiten- und Vegetationsverteilung über Regeln/Masken
+- [ ] Wegnetz-Vorschlag aus Straßenachsen
+
+**DoD:** Die komplette Altstadt ist ausgestattet und hat ein vorläufiges Wegnetz.
+
+## W7 – Integration & Feinschliff  (benötigt M16, M17)
+- [ ] Handarbeit im Editor, Zellen/Streaming, Performance-Budget
+- [ ] Credits (LGL, OSM, Asset-Lizenzen) im Spiel
+- [ ] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …)
+
+**DoD:** Leonberg ist als fertiger Spielort im Vertical Slice / Kapitel nutzbar.

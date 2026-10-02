@@ -35,3 +35,12 @@ github_pat*
 # Gekochte/grosse Assets (Quellen liegen in assets/source)
 /assets/cooked/
 *.g7pak
+
+# worldgen (Python-Werkzeuge, Rohdaten liegen außerhalb des Repos)
+tools/worldgen/config/local.toml
+tools/worldgen/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+/data/

@@ -1,0 +1,24 @@
+# Gebietsdefinition für den Spielort "Leonberg".
+# Koordinaten in ETRS89 / UTM 32N (EPSG:25832), Meter.
+# ACHTUNG: Ursprung und Grenzen sind UNGEFÄHRE Startwerte und müssen in W1 am Luftbild geprüft werden.
+
+[source]
+crs = "EPSG:25832"
+
+[origin]
+# ungefähr Marktplatz Leonberg (aus ca. 48.7985 N, 9.0127 E umgerechnet) – prüfen!
+easting  = 500933.0
+northing = 5405056.0
+height_reference = "marktplatz"   # Höhe des Ursprungs wird beim Import aus dem DGM1 gelesen
+
+[area.core]          # Altstadt: volle Detailstufe (Gebäude-Generator, Annotationen)
+half_extent_m = 350
+
+[area.surroundings]  # Umland: nur Gelände + OSM-Grundlage, später frei gestaltet
+half_extent_m = 1000
+
+[game_scale]
+# Wird nach dem Klötzchen-Test (W3) festgelegt.
+horizontal = 1.0
+vertical   = 1.0
+alley_widen_factor = 1.0
