@@ -13,7 +13,8 @@ Sitzungen heißen `engine`, `welt` und `figuren` und arbeiten in eigenen Worktre
    - Prüfen: Modul-Abhängigkeitsregeln, Coding-Richtlinien, Tests vorhanden, Doku aktualisiert,
      Roadmap-Abschnitt der Spur gepflegt, Lizenz-Einträge für neue Fremd-Assets, keine Secrets,
      keine Original-Gothic-Inhalte, Verträge in `docs/coordination.md` eingehalten.
-   - In Ordnung und CI grün → mergen (`gh pr merge <nr> --merge --delete-branch`) und den Autor kurz informieren.
+   - In Ordnung und CI grün → mergen (`gh pr merge <nr> --merge`, **ohne** `--delete-branch` – das entfernt sonst den
+     Worktree der Autor-Sitzung) und den Autor kurz informieren; Branches löscht die Autor-Sitzung selbst.
    - Probleme → konkrete Rückmeldung als PR-Kommentar **und** Nachricht an die Autor-Sitzung.
    - PRs mit „Entscheidung nötig:“ oder mit ADR-Statuswechsel auf „Akzeptiert“ **nicht** mergen,
      bevor der Mensch zugestimmt hat; frag ihn in deiner Sitzung.
