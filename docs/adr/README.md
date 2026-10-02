@@ -9,7 +9,7 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | [0002](0002-math-glm.md) | Mathe-Bibliothek: glm | Akzeptiert | M0 |
 | [0003](0003-renderer-opengl.md) | OpenGL 4.5/4.6 hinter einer RHI | Akzeptiert | M2 |
 | [0004](0004-physics-jolt.md) | Physik: Jolt Physics | Vorgeschlagen | M5 |
-| [0005](0005-ecs-entt.md) | Szenenmodell: EnTT mit Vob-Konzept | Vorgeschlagen | M4 |
+| [0005](0005-ecs-entt.md) | Szenenmodell: EnTT mit Vob-Konzept (VobId-Vertrag, API-Grenze) | Akzeptiert | M4 |
 | [0006](0006-scripting-lua.md) | Skriptsprache: Lua 5.4 + sol2 | Vorgeschlagen | M7 |
 | [0007](0007-audio-miniaudio.md) | Audio: miniaudio | Vorgeschlagen | M13 |
 | [0008](0008-no-original-formats.md) | Keine Original-Gothic-Formate im Spiel | Vorgeschlagen | – |
