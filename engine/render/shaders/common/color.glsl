@@ -12,10 +12,18 @@ float ditherNoise(vec2 pixel)
 }
 
 // Exact sRGB transfer function (the hardware applies the inverse when sampling *_SRGB textures).
-// Used until the tonemapping pass exists, which will then own the final encoding.
+// Used by the post pass (post.frag) for the final encoding.
 vec3 linearToSrgb(vec3 linear)
 {
     const vec3 low = linear * 12.92;
     const vec3 high = 1.055 * pow(max(linear, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055;
     return mix(high, low, lessThanEqual(linear, vec3(0.0031308)));
+}
+
+// Inverse of linearToSrgb, for colours authored as display values (palette constants).
+vec3 srgbToLinear(vec3 srgb)
+{
+    const vec3 low = srgb / 12.92;
+    const vec3 high = pow((max(srgb, vec3(0.0)) + 0.055) / 1.055, vec3(2.4));
+    return mix(high, low, lessThanEqual(srgb, vec3(0.04045)));
 }

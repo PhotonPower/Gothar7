@@ -242,6 +242,7 @@ void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& mat
     {
         program->setUniform("uViewProjection", viewProjection);
         program->setUniform("uModel", model);
+        program->setUniform("uCameraPosition", camera.transform.position);
         program->setUniform("uLightIndices", std::span<const i32>(indices));
         program->setUniform("uLightCount", static_cast<i32>(m_selected.size()));
     }

@@ -138,9 +138,8 @@ std::vector<u8> Device::readTexture(const rhi::Texture&, u32 level) const;      
 - Zeilen in Dateireihenfolge hochgeladen: UV (0,0) liest das Texel oben links – wie glTF, ohne Spiegeln.
 - Farbtexturen sind sRGB (Hardware dekodiert beim Sampeln), Datentexturen (Normalen, Masken) linear.
 - Mipmaps auf der GPU erzeugt; Materialsampler mit anisotroper Filterung aus `[render] anisotropy` (Standard 8).
-- **Farbraum bis zum Tonemapping:** Der Mesh-Shader rechnet linear und kodiert am Ende selbst nach sRGB
-  (`linearToSrgb` in `common/color.glsl`); der Hintergrund liefert noch Anzeigewerte. Beides übernimmt der
-  Tonemapping-Pass (Aufgabe „Gamma/Tonemapping“).
+- **Farbraum:** Alle Szenen-Shader rechnen und schreiben **linear** (HDR, Werte über 1 erlaubt) in das
+  `SceneTarget`; erst der Post-Pass tonemappt und kodiert nach sRGB (siehe „Nebel, HDR und Tonemapping“).
 
 ### Materialien – `Material.hpp`
 ```cpp
@@ -205,6 +204,31 @@ class ShadowMap { static Result<ShadowMap> create(Device&, const ShadowSettings&
 - Alpha-getestete Materialien werfen löchrige Schatten (gleiche Alpha-Test-Variante); transparente werfen keine.
 - Konfiguration `[render] shadow_cascades`, `shadow_resolution`, `shadow_distance`, `shadow_debug` (Kaskaden einfärben).
 - Schatten von Punktlichtern: nicht vorgesehen (Stil: Fackeln ohne Schatten), bei Bedarf später.
+
+### Nebel, HDR und Tonemapping – `PostProcess.hpp`, `common/fog.glsl`, `post.vert/.frag`
+```cpp
+// Environment: Vec3 fogColor (linear); f32 fogStart = 30, fogDensity (0 = aus)
+f32 fogFactor(f32 distance, f32 start, f32 density);          // 1 - exp(-((d - start) * density)²)
+f32 fogDensityFor(f32 amount, f32 distance, f32 start);       // Dichte für z. B. 90 % bei 300 m
+class SceneTarget { static Result<SceneTarget> create(Device&, u32 w, u32 h);   // RGBA16F + Depth32F
+                    Result<void> resize(Device&, u32 w, u32 h); framebuffer(); color(); };
+enum class Tonemapper : u8 { Aces, Reinhard, None };
+struct PostSettings { Tonemapper tonemapper = Aces; f32 exposure = 1; };
+Vec3 tonemap(const Vec3& linear, Tonemapper); Tonemapper tonemapperFromName(name, fallback);
+class PostProcess { static Result<PostProcess> create(Device&, ShaderLibrary&);
+                    void apply(Device&, const SceneTarget&, u32 w, u32 h, const PostSettings&); };
+// Device::readTextureFloat(texture, level) liest Float-Ziele (Tests)
+```
+- **Frame:** Schattenpass → `SceneTarget` (linear, HDR; wächst mit dem Fenster, minimiert 1×1) mit Hintergrund
+  und Meshes → `PostProcess` ins Fenster: Belichtung, Tonemapping, sRGB-Kodierung, leichtes Dithering gegen
+  Banding.
+- **Tonemapper:** ACES (Narkowicz-Näherung, Standard: filmischer Kontrast, Lichter laufen weich aus), Reinhard
+  (neutral), None (abschneiden, zum Vergleich). `[render] tonemap = "aces"|"reinhard"|"none"`, `exposure`.
+- **Distanznebel** pro Pixel im Forward-Shader (`applyFog`), damit auch transparente Flächen stimmen und der
+  Himmel nicht doppelt vernebelt wird: kein Nebel bis `fogStart` (Standard 30 m), danach exponentiell-quadratisch
+  (Standard 90 % bei 300 m). **Nebelfarbe = Horizontfarbe des Hintergrunds**, die Ferne geht in den Himmel über.
+  `[render] fog_start`, `fog_density` (0 = aus). Ab M4 liefert die Tageszeit-Kurve Farbe und Dichte; Höhennebel
+  (Sümpfe) folgt mit der Atmosphäre (M17).
 
 ### Engine-Anbindung
 Mit Fenster und `EngineConfig::render` (Standard an) erzeugt die Engine `GlContext` → `Device` →

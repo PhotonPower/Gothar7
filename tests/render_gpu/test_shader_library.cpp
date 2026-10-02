@@ -220,6 +220,7 @@ TEST_CASE("Background shader follows the view direction")
         camera.aspect = 1.0f;
         camera.transform.rotation = quatFromEuler(toRadians(pitchDegrees), 0.0f, 0.0f);
         program->setUniform("uInverseViewProjection", glm::inverse(camera.viewProjection()));
+        program->setUniform("uHorizonColor", Vec3(0.0844f, 0.0395f, 0.0331f));
         program->setUniform("uCameraPosition", camera.transform.position);
         return drawAndSample(*gl.device, pipeline, target);
     };

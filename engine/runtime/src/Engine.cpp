@@ -234,15 +234,7 @@ bool Engine::runFrame()
             // TODO(M2): scene rendering with frameAlpha(); for now the frame is only cleared.
             const auto size = m_window->pixelSize();
             m_shaders->update(platform::nowSeconds());
-            m_device->beginFrame(size.width, size.height, kClearColor);
-            m_camera.aspect =
-                size.height > 0 ? static_cast<f32>(size.width) / static_cast<f32>(size.height) : 1.0f;
-            m_backgroundProgram->setUniform("uInverseViewProjection",
-                                            glm::inverse(m_camera.viewProjection()));
-            m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
-            m_device->bindPipeline(m_backgroundPipeline);
-            m_device->draw(3); // fullscreen triangle from gl_VertexID
-            drawViewMesh(size.width, size.height);
+            renderScene(size.width, size.height);
             m_glContext->swapBuffers();
         }
     }
@@ -292,6 +284,24 @@ Result<void> Engine::initShaders()
         return Error{"cannot create background pipeline: " + pipeline.error().message};
     }
     m_backgroundPipeline = std::move(pipeline).value();
+
+    auto post = render::PostProcess::create(*m_device, *m_shaders);
+    if (!post)
+    {
+        return Error{"cannot create post pass: " + post.error().message};
+    }
+    m_post = std::move(post).value();
+    const auto size = m_window->pixelSize();
+    auto target = render::SceneTarget::create(*m_device, size.width, size.height);
+    if (!target)
+    {
+        return Error{"cannot create scene target: " + target.error().message};
+    }
+    m_sceneTarget = std::move(target).value();
+    m_postSettings.tonemapper = render::tonemapperFromName(
+        m_config.settings.get<std::string>("render.tonemap", "aces"), render::Tonemapper::Aces);
+    m_postSettings.exposure = static_cast<f32>(m_config.settings.get<f64>("render.exposure", 1.0));
+    initEnvironment();
     return {};
 }
 
@@ -359,13 +369,7 @@ Result<void> Engine::initViewMesh()
         m_groundMaterials = std::move(groundMaterials).value();
     }
 
-    // Low warm evening sun and cool ambient, matching the dusk background until the sky (M4). A
-    // warm "torch" above the front-right of the model shows the point lights.
-    m_environment.sunDirection = Vec3(0.6f, 0.25f, 0.4f);
-    m_environment.sunColor = Vec3(1.0f, 0.72f, 0.5f);
-    m_environment.sunIntensity = m_config.sun ? 1.6f : 0.0f;
-    m_environment.ambientSky = Vec3(0.16f, 0.18f, 0.26f);
-    m_environment.ambientGround = Vec3(0.07f, 0.06f, 0.05f);
+    // A warm "torch" above the front-right of the model shows the point lights.
     m_lights.clear();
     const Vec3 torchOffset = Vec3(0.6f, 0.8f, 0.6f) * radius;
     // The falloff is in metres (1 / (d² + 1)); scale the intensity so the torch lights any model size.
@@ -379,6 +383,48 @@ Result<void> Engine::initViewMesh()
                 fs::toUtf8(m_config.viewMesh), data.value().vertices.size(), m_viewMesh.submeshes().size(),
                 m_viewMaterials.size(), radius * 2.0f);
     return {};
+}
+
+void Engine::initEnvironment()
+{
+    // Low warm evening sun, cool ambient and fog in the horizon colour of the dusk background, until
+    // the sky and time of day (M4) drive these.
+    m_environment.sunDirection = Vec3(0.6f, 0.25f, 0.4f);
+    m_environment.sunColor = Vec3(1.0f, 0.72f, 0.5f);
+    m_environment.sunIntensity = m_config.sun ? 1.6f : 0.0f;
+    m_environment.ambientSky = Vec3(0.16f, 0.18f, 0.26f);
+    m_environment.ambientGround = Vec3(0.07f, 0.06f, 0.05f);
+    m_environment.fogColor = Vec3(0.0844f, 0.0395f, 0.0331f); // sRGB (0.32, 0.22, 0.20), the dusk horizon
+    m_environment.fogStart = static_cast<f32>(m_config.settings.get<f64>("render.fog_start", 30.0));
+    // Default density: 90 % fog at 300 m.
+    m_environment.fogDensity = static_cast<f32>(
+        m_config.settings.get<f64>("render.fog_density", render::fogDensityFor(0.9f, 300.0f, 30.0f)));
+}
+
+void Engine::renderScene(u32 width, u32 height)
+{
+    m_device->beginFrame(width, height, kClearColor); // stats, window cleared
+    if (auto resized = m_sceneTarget.resize(*m_device, width, height); !resized)
+    {
+        G7_LOG_ERROR("engine", "{}", resized.error().message);
+        return;
+    }
+    m_camera.aspect = height > 0 ? static_cast<f32>(width) / static_cast<f32>(height) : 1.0f;
+
+    // Scene into the linear HDR target: background, then meshes (their shadow pass rebinds it).
+    m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
+    m_device->setViewport(0, 0, width, height);
+    m_device->clear(Vec4(0.0f, 0.0f, 0.0f, 1.0f), 0.0f);
+    m_backgroundProgram->setUniform("uInverseViewProjection", glm::inverse(m_camera.viewProjection()));
+    m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
+    m_backgroundProgram->setUniform("uHorizonColor", m_environment.fogColor);
+    m_device->bindPipeline(m_backgroundPipeline);
+    m_device->draw(3); // fullscreen triangle from gl_VertexID
+    drawViewMesh(width, height);
+
+    // Tonemap into the window.
+    m_device->bindFramebuffer(nullptr);
+    m_post.apply(*m_device, m_sceneTarget, width, height, m_postSettings);
 }
 
 void Engine::drawViewMesh(u32 width, u32 height)
@@ -402,7 +448,7 @@ void Engine::drawViewMesh(u32 width, u32 height)
             m_meshRenderer.drawShadow(*m_device, m_viewMesh, m_viewMaterials, Mat4(1.0f), m_cascades[i]);
         }
         shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
-        m_device->bindFramebuffer(nullptr);
+        m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
         m_device->setViewport(0, 0, width, height);
     }
 
@@ -467,6 +513,8 @@ void Engine::shutdown()
     // Shutdown in reverse init order.
     G7_LOG_INFO("engine", "shutdown");
     m_meshRenderer = {};
+    m_post = {};
+    m_sceneTarget = {};
     m_shadowMap = {};
     m_groundMaterials = {};
     m_ground = {};

@@ -92,6 +92,8 @@ public:
     [[nodiscard]] std::vector<u8> readBuffer(const rhi::Buffer& buffer, usize offset, usize size) const;
     /// Contents of one mip level (RGBA8 formats only, rows as stored); empty for other formats.
     [[nodiscard]] std::vector<u8> readTexture(const rhi::Texture& texture, u32 level) const;
+    /// Contents of one mip level as RGBA floats (any colour format, e.g. RGBA16F HDR targets).
+    [[nodiscard]] std::vector<f32> readTextureFloat(const rhi::Texture& texture, u32 level) const;
 
     [[nodiscard]] const FrameStats& stats() const noexcept { return m_stats; }
 

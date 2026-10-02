@@ -1,10 +1,12 @@
 #version 450 core
 // Background gradient by view direction (placeholder for the sky, M4): the horizon stays put when
-// the camera looks up or down.
+// the camera looks up or down. Its horizon colour is the fog colour, so distant geometry fades
+// into the sky. Output is linear HDR.
 #include "common/color.glsl"
 
 uniform mat4 uInverseViewProjection;
 uniform vec3 uCameraPosition;
+uniform vec3 uHorizonColor; // linear, = Environment::fogColor
 
 in vec2 vNdc;
 out vec4 fragColor;
@@ -17,12 +19,11 @@ void main()
     vec3 color;
     if (direction.y >= 0.0)
     {
-        color = mix(kDuskHorizon, kDuskZenith, smoothstep(0.0, 0.6, direction.y));
+        color = mix(uHorizonColor, srgbToLinear(kDuskZenith), smoothstep(0.0, 0.6, direction.y));
     }
     else
     {
-        color = mix(kDuskHorizon, kDuskGround, smoothstep(0.0, 0.08, -direction.y));
+        color = mix(uHorizonColor, srgbToLinear(kDuskGround), smoothstep(0.0, 0.08, -direction.y));
     }
-    color += (ditherNoise(gl_FragCoord.xy) - 0.5) / 255.0;
     fragColor = vec4(color, 1.0);
 }
