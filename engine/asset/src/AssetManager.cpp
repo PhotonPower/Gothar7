@@ -5,8 +5,10 @@
 #include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
 
+#include <algorithm>
 #include <condition_variable>
 #include <deque>
+#include <filesystem>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
@@ -15,6 +17,10 @@ namespace g7::asset
 {
 Result<std::vector<u8>> LoadContext::read(std::string_view otherPath) const
 {
+    if (dependencies != nullptr)
+    {
+        dependencies->emplace_back(otherPath);
+    }
     return vfs->read(otherPath);
 }
 
@@ -65,6 +71,29 @@ bool hasExtension(std::string_view path, std::string_view extension) noexcept
            equalsIgnoreCase(path.substr(path.size() - extension.size()), extension);
 }
 
+/// A loose file an asset was built from and its modification time when it was read.
+struct FileStamp
+{
+    fs::Path disk;
+    std::filesystem::file_time_type time;
+};
+
+std::optional<FileStamp> stampOf(const Vfs& vfs, std::string_view path)
+{
+    auto disk = vfs.diskPath(path);
+    if (!disk)
+    {
+        return std::nullopt; // inside an archive: not watched
+    }
+    std::error_code ec;
+    const auto time = std::filesystem::last_write_time(*disk, ec);
+    if (ec)
+    {
+        return std::nullopt;
+    }
+    return FileStamp{std::move(*disk), time};
+}
+
 SlotPtr failedSlot(std::string path, std::type_index type, std::string message)
 {
     G7_LOG_WARN("asset", "{}", message);
@@ -80,11 +109,14 @@ struct AssetManager::Impl
     {
         SlotPtr slot;
         ErasedLoader loader;
+        bool reload = false;
     };
     struct Done
     {
         SlotPtr slot;
         ErasedResult result;
+        bool reload = false;
+        std::vector<FileStamp> files; // the asset's loose file and its dependencies, as read
     };
 
     const Vfs& vfs;
@@ -100,23 +132,44 @@ struct AssetManager::Impl
     bool stopping = false;
     std::vector<std::jthread> workers;
 
+    // Hot reload (main thread only).
+    std::unordered_map<std::string, std::vector<FileStamp>> watches; // lower-case path -> files
+    bool hotReload = false;
+    f64 pollSeconds = 0.5;
+    f64 lastPoll = -1e30;
+
     explicit Impl(const Vfs& v) : vfs(v) {}
 
-    /// Reads the file and runs the loader (worker thread or synchronous mode).
-    [[nodiscard]] ErasedResult execute(const Job& job) const
+    /// Reads the file and runs the loader (worker thread or synchronous mode). Records the loose
+    /// files involved with their times *before* reading, so a later change is never missed.
+    [[nodiscard]] Done execute(const Job& job) const
     {
+        Done outcome{job.slot, Error{""}, job.reload, {}};
+        if (auto stamp = stampOf(vfs, job.slot->path))
+        {
+            outcome.files.push_back(std::move(*stamp));
+        }
         auto bytes = vfs.read(job.slot->path);
         if (!bytes)
         {
-            return Error{"cannot load '" + job.slot->path + "': " + bytes.error().message};
+            outcome.result = Error{"cannot load '" + job.slot->path + "': " + bytes.error().message};
+            return outcome;
         }
-        const LoadContext ctx{job.slot->path, bytes.value(), &vfs};
-        auto result = job.loader(ctx);
-        if (!result)
+        std::vector<std::string> dependencies;
+        const LoadContext ctx{job.slot->path, bytes.value(), &vfs, &dependencies};
+        outcome.result = job.loader(ctx);
+        if (!outcome.result)
         {
-            return Error{"cannot load '" + job.slot->path + "': " + result.error().message};
+            outcome.result = Error{"cannot load '" + job.slot->path + "': " + outcome.result.error().message};
         }
-        return result;
+        for (const std::string& dependency : dependencies)
+        {
+            if (auto stamp = stampOf(vfs, dependency))
+            {
+                outcome.files.push_back(std::move(*stamp));
+            }
+        }
+        return outcome;
     }
 
     void workerLoop()
@@ -135,17 +188,17 @@ struct AssetManager::Impl
                 queue.pop_front();
                 ++inFlight;
             }
-            ErasedResult result = execute(job);
+            Done result = execute(job);
             {
                 std::lock_guard lock(mutex);
-                done.push_back({std::move(job.slot), std::move(result)});
+                done.push_back(std::move(result));
                 --inFlight;
             }
             idle.notify_all();
         }
     }
 
-    /// Main thread: makes finished loads visible.
+    /// Main thread: makes finished loads and reloads visible.
     void publish(std::vector<Done>& finished)
     {
         for (Done& d : finished)
@@ -155,11 +208,25 @@ struct AssetManager::Impl
                 d.slot->data = std::move(d.result).value();
                 ++d.slot->version;
                 d.slot->state.store(AssetState::Ready, std::memory_order_release);
+                if (d.reload)
+                {
+                    G7_LOG_INFO("asset", "reloaded '{}' (version {})", d.slot->path, d.slot->version);
+                }
+            }
+            else if (d.reload && d.slot->state.load(std::memory_order_acquire) == AssetState::Ready)
+            {
+                // E.g. a file caught while being saved: keep what works, retry on the next change.
+                G7_LOG_WARN("asset", "reload failed, keeping version {}: {}", d.slot->version,
+                            d.result.error().message);
             }
             else
             {
                 G7_LOG_WARN("asset", "{}", d.result.error().message);
                 fail(*d.slot, d.result.error().message);
+            }
+            if (!d.files.empty())
+            {
+                watches[toLower(d.slot->path)] = std::move(d.files);
             }
         }
     }
@@ -167,11 +234,20 @@ struct AssetManager::Impl
     void pruneCache()
     {
         std::erase_if(cache, [](const auto& entry) { return entry.second.expired(); });
+        // Released assets are no longer watched.
+        std::erase_if(watches,
+                      [this](const auto& watch)
+                      {
+                          return std::none_of(cache.begin(), cache.end(), [&](const auto& entry)
+                                              { return entry.first.path == watch.first; });
+                      });
     }
 };
 
 AssetManager::AssetManager(const Vfs& vfs, AssetManagerDesc desc) : m_impl(std::make_unique<Impl>(vfs))
 {
+    m_impl->hotReload = desc.hotReload;
+    m_impl->pollSeconds = desc.pollSeconds;
     registerLoader<ImageData>([](const LoadContext& ctx) -> Result<ImageData>
                               { return decodeImage(ctx.bytes, ctx.path); });
     registerLoader<MeshData>(
@@ -261,8 +337,7 @@ void AssetManager::update()
         }
         for (Impl::Job& job : jobs)
         {
-            ErasedResult result = m_impl->execute(job);
-            finished.push_back({std::move(job.slot), std::move(result)});
+            finished.push_back(m_impl->execute(job));
         }
     }
     {
@@ -285,6 +360,83 @@ void AssetManager::waitAll()
         m_impl->idle.wait(lock, [this] { return m_impl->queue.empty() && m_impl->inFlight == 0; });
     }
     update();
+}
+
+usize AssetManager::reload(std::string_view path)
+{
+    auto normalised = normalizeVfsPath(path);
+    if (!normalised)
+    {
+        return 0;
+    }
+    const std::string key = toLower(normalised.value());
+    usize started = 0;
+    for (const auto& [cacheKey, weak] : m_impl->cache)
+    {
+        const SlotPtr slot = weak.lock();
+        // A first load still in flight reads the current file anyway.
+        if (!slot || cacheKey.path != key ||
+            slot->state.load(std::memory_order_acquire) == AssetState::Loading)
+        {
+            continue;
+        }
+        const auto loader = m_impl->loaders.find(cacheKey.type);
+        if (loader == m_impl->loaders.end())
+        {
+            continue;
+        }
+        {
+            std::lock_guard lock(m_impl->mutex);
+            m_impl->queue.push_back({slot, loader->second, true});
+        }
+        m_impl->workAvailable.notify_one();
+        ++started;
+    }
+    return started;
+}
+
+u32 AssetManager::checkForChanges(f64 now)
+{
+    if (!m_impl->hotReload || now - m_impl->lastPoll < m_impl->pollSeconds)
+    {
+        return 0;
+    }
+    m_impl->lastPoll = now;
+    std::vector<std::string> changed;
+    for (auto& [path, files] : m_impl->watches)
+    {
+        bool modified = false;
+        for (FileStamp& file : files)
+        {
+            std::error_code ec;
+            const auto time = std::filesystem::last_write_time(file.disk, ec);
+            if (!ec && time != file.time)
+            {
+                file.time = time; // trigger once per change, even while the reload is running
+                modified = true;
+            }
+        }
+        if (modified)
+        {
+            changed.push_back(path);
+        }
+    }
+    u32 started = 0;
+    for (const std::string& path : changed)
+    {
+        started += reload(path) > 0 ? 1u : 0u;
+    }
+    return started;
+}
+
+void AssetManager::setHotReload(bool enabled) noexcept
+{
+    m_impl->hotReload = enabled;
+}
+
+bool AssetManager::hotReload() const noexcept
+{
+    return m_impl->hotReload;
 }
 
 usize AssetManager::pendingCount() const

@@ -58,7 +58,8 @@ public:
     [[nodiscard]] bool isReady() const noexcept { return state() == AssetState::Ready; }
     [[nodiscard]] bool failed() const noexcept { return state() == AssetState::Failed; }
 
-    /// The asset, or nullptr while loading or after a failure (show a placeholder meanwhile).
+    /// The asset, or nullptr while loading or after a failure (show a placeholder meanwhile). A hot
+    /// reload replaces it in AssetManager::update(), so do not keep the pointer across frames.
     [[nodiscard]] const T* get() const noexcept
     {
         return isReady() ? static_cast<const T*>(m_slot->data.get()) : nullptr;
@@ -71,7 +72,7 @@ public:
     {
         return failed() && m_slot ? m_slot->error : emptyString();
     }
-    /// 1 after the first successful load; hot reload (M3) increments it.
+    /// 1 after the first successful load; every successful reload increments it.
     [[nodiscard]] u32 version() const noexcept { return isReady() ? m_slot->version : 0; }
 
     /// Number of handles sharing the asset (tests, diagnostics).
@@ -98,8 +99,11 @@ struct LoadContext
     std::string_view path;     ///< Normalised VFS path of the asset.
     std::span<const u8> bytes; ///< File contents.
     const Vfs* vfs = nullptr;
+    /// Files read through read() are recorded here (hot reload watches them too); may be null.
+    std::vector<std::string>* dependencies = nullptr;
 
-    /// Reads another file through the VFS (dependencies such as buffers or included files).
+    /// Reads another file through the VFS (dependencies such as buffers or included files). Hot
+    /// reload also reloads the asset when such a file changes.
     [[nodiscard]] Result<std::vector<u8>> read(std::string_view otherPath) const;
     /// Path of a file next to this asset ("textures/a.png" for "textures/b.mat" + "a.png").
     [[nodiscard]] std::string sibling(std::string_view relative) const;
@@ -115,6 +119,10 @@ struct AssetManagerDesc
     /// Worker threads that read and decode assets. 0 = no threads: loads run inside update()
     /// on the calling thread (tools, deterministic tests).
     u32 workerThreads = 2;
+    /// Development: checkForChanges() reloads assets whose loose file changed on disk.
+    bool hotReload = false;
+    /// checkForChanges() looks at the files at most this often.
+    f64 pollSeconds = 0.5;
 };
 
 /// Loads assets of registered types through a Vfs, asynchronously and with a cache
@@ -161,6 +169,19 @@ public:
     void update();
     /// Blocks until no load is pending, then publishes everything (loading screens, tests).
     void waitAll();
+
+    /// Loads every cached asset of `path` (all types) again, asynchronously like load(). update()
+    /// swaps the data in: handles stay valid and their version() increases. A failed reload keeps
+    /// the previous version (and logs the error); a Failed asset becomes Ready if it now loads.
+    /// Returns the number of reloads started (0 if nothing is cached under `path`).
+    usize reload(std::string_view path);
+    /// Hot reload: at most every pollSeconds (`now` in seconds, monotonic), compares the modification
+    /// time of each cached asset's loose file with the time it was read and reloads changed ones.
+    /// Files inside archives are not watched. Does nothing while hot reload is off. Returns the
+    /// number of reloads started.
+    u32 checkForChanges(f64 now);
+    void setHotReload(bool enabled) noexcept;
+    [[nodiscard]] bool hotReload() const noexcept;
 
     /// Loads started but not yet published.
     [[nodiscard]] usize pendingCount() const;
