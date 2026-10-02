@@ -55,6 +55,20 @@ Clips liegen in `assets/source/characters/anims/human/<modus>.glb`; Herkunft je 
 | Dialog-Gesten (additiv Oberkörper) | ~20 | `dlg/a_talk_neutral1..4`, `dlg/a_gesture_shrug`, `a_point`, `a_dismiss`, `a_threaten`, `a_greet` | MC |
 | Magie | ~12 | `mag/t_invest`, `mag/s_invest_loop`, `mag/t_cast_projectile`, `t_cast_area`, `t_cast_self` | MC/K |
 
+### Prio B – Fortbewegung je Waffenmodus (ausgeschrieben, F2)
+
+Je Modus `s_idle` = Haltung; die übrige Fortbewegung ist geschichtet: Beine, Becken und Wirbelsäule aus
+den `none`-Clips, Arme und Kopf aus der Haltung (`layer` in `data/clips/<modus>.toml`). Events: footstep_l/r.
+
+| Name | Haltung | Quelle | Status |
+|---|---|---|---|
+| `fist/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | Deckung (UAL1 `Punch_Enter`, Endpose) | Q→ | platzhalter |
+| `1h/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | UAL1 `Sword_Idle` | Q→ | platzhalter |
+| `2h/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | Keyframe-Pose: Hände zusammen an der rechten Hüfte | K | platzhalter-K |
+| `bow/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | Keyframe-Pose: Bogen tief in der linken Hand | K | platzhalter-K |
+| `cbow/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | UAL1 `Pistol_Idle_Loop` (beide Hände vorn) | Q→ | platzhalter |
+| `mag/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | UAL1 `Spell_Simple_Idle_Loop` | Q→ | platzhalter |
+
 ## Prio C – später
 
 Akrobatik-Varianten, Gangarten (Militär, Frauen, Entspannt) als Varianten-Sets, zusätzliche

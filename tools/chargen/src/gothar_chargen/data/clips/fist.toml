@@ -1,0 +1,62 @@
+# Set "fist" -> assets/source/characters/anims/human/fist.glb (Prio B, placeholders)
+# Fist fighting: guard pose from Quaternius UAL1 Punch_Enter (end), over idle legs.
+# Locomotion: arms and head from the stance, legs, pelvis and spine from the none clips
+# (keeps the spine counter-rotation of strafe/turn; the stance's spine posture is dropped).
+
+set = "fist"
+depends = ["none"]
+
+[sources.ual1]
+file = "AnimationLibrary_Godot_Standard.glb"
+mapping = "quaternius_ual1"
+
+[[clip]]
+name = "fist/s_guard"
+from = "ual1:Punch_Enter[24:26]"
+helper = true
+
+[[clip]]
+name = "fist/s_idle"
+layer = ["none/s_idle", "fist/s_guard"]
+
+[[clip]]
+name = "fist/s_walk"
+layer = ["none/s_walk", "fist/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "fist/s_run"
+layer = ["none/s_run", "fist/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "fist/s_walk_back"
+layer = ["none/s_walk_back", "fist/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "fist/s_strafe_l"
+layer = ["none/s_strafe_l", "fist/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "fist/s_strafe_r"
+layer = ["none/s_strafe_r", "fist/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "fist/t_turn_l"
+layer = ["none/t_turn_l", "fist/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "fist/t_turn_r"
+layer = ["none/t_turn_r", "fist/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"

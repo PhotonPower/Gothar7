@@ -1,0 +1,57 @@
+# Set "mag" -> assets/source/characters/anims/human/mag.glb (Prio B, placeholders)
+# Magic: stance = Quaternius UAL1 Spell_Simple_Idle_Loop.
+# Locomotion: arms and head from the stance, legs, pelvis and spine from the none clips
+# (keeps the spine counter-rotation of strafe/turn; the stance's spine posture is dropped).
+
+set = "mag"
+depends = ["none"]
+
+[sources.ual1]
+file = "AnimationLibrary_Godot_Standard.glb"
+mapping = "quaternius_ual1"
+
+[[clip]]
+name = "mag/s_idle"
+from = "ual1:Spell_Simple_Idle_Loop"
+
+[[clip]]
+name = "mag/s_walk"
+layer = ["none/s_walk", "mag/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "mag/s_run"
+layer = ["none/s_run", "mag/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "mag/s_walk_back"
+layer = ["none/s_walk_back", "mag/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "mag/s_strafe_l"
+layer = ["none/s_strafe_l", "mag/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "mag/s_strafe_r"
+layer = ["none/s_strafe_r", "mag/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "mag/t_turn_l"
+layer = ["none/t_turn_l", "mag/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"
+
+[[clip]]
+name = "mag/t_turn_r"
+layer = ["none/t_turn_r", "mag/s_idle"]
+from_bone = ["clavicle_l", "clavicle_r", "neck"]
+events = "footsteps"

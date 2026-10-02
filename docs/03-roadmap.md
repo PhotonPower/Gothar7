@@ -341,9 +341,9 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 Spezifikation: `docs/design/characters-pipeline.md`, Liste: `docs/design/animation-list.md`.
 Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source/characters/`.
 
-**Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört). F2 läuft: `build-set`,
-`report` und Pose-Marker-Events stehen, alle 36 Prio-A-Clips liegen als Platzhalter vor (18 Quaternius CC0, 18 Keyframe-Platzhalter);
-als Nächstes die Prio-B-Fortbewegung je Waffenmodus. Kein Mixamo (öffentliches Repo).
+**Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört). F2 abgeschlossen: `build-set`,
+`report`, Pose-Marker-Events; 36/36 Prio-A-Clips (18 Quaternius CC0, 18 Keyframe-Platzhalter) und 48 Clips Fortbewegung je Waffenmodus
+(9 Sets). Kein Mixamo (öffentliches Repo). Nächste Phasen: F3 (Figuren-Baukasten) oder F5 (Monster), beide nur von F1 abhängig.
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
@@ -361,10 +361,10 @@ als Nächstes die Prio-B-Fortbewegung je Waffenmodus. Kein Mixamo (öffentliches
 - [x] Animations-Export: Sets nach Konvention, Pose-Marker → `events.toml` (dazu automatische Fußkontakt-/Lande-Events), Root Motion (z. B. `t_climb_low`) bzw. In-Place
 - [x] Abgleich-Werkzeug Animationsliste ↔ vorhandene Clips (`gothar-chargen report`)
 - [x] Alle **Prio-A**-Animationen (mindestens als Platzhalter-Qualität) – 36/36 (`gothar-chargen report`): 18 aus Quaternius bzw. abgeleitet, 18 als Keyframe-Platzhalter (`platzhalter-K`, Rezepte in `blender/keyframes.py`; Ersatz durch Mocap in F4); Sets `none`, `swim`, `dive`
-- [ ] Prio-B-Fortbewegung je Waffenmodus
+- [x] Prio-B-Fortbewegung je Waffenmodus – 6 Modi × 8 Clips (Sets `fist`, `1h`, `2h`, `bow`, `cbow`, `mag`): Haltung aus Quaternius (fist/1h/cbow/mag) bzw. Keyframe-Pose (2h/bow), Fortbewegung geschichtet (Beine/Wirbelsäule aus `none`, Arme/Kopf aus der Haltung); Validator prüft Sprünge je Frame und geschlossene Schleifen
 
 **DoD:** Meilenstein A ist mit diesen Animationen erreichbar; Bericht zeigt 0 fehlende Prio-A-Clips.
-Stand: Bericht zeigt 0 fehlende Prio-A-Clips (CI prüft es). Offen ist nur noch die Prio-B-Fortbewegung je Waffenmodus.
+✅ Erfüllt: Bericht zeigt 0 fehlende Prio-A-Clips (CI prüft es); dazu 48/48 Clips Prio-B-Fortbewegung. Qualität: Platzhalter (Quaternius CC0 bzw. Keyframe), Ersatz durch Mocap in F4.
 
 ## F3 – Figuren-Baukasten  (benötigt F1)
 - [ ] 2 Grundkörper × 3 Staturen (MPFB2, stilisiert), Köpfe als separate Meshes mit Morph-Targets

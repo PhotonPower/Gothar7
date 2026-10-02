@@ -120,3 +120,26 @@ def blend(a: Curves, b: Curves, frames: int, bones: list[str]) -> Curves:
         w = t * t * (3 - 2 * t)
         poses.append(mix(pose_at(a, frame % len_a, bones), pose_at(b, frame, bones), w))
     return to_curves(poses)
+
+
+def layer(
+    base: Curves, upper: Curves, upper_bones: set[str], bones: list[str], loop: bool = False
+) -> Curves:
+    """Base clip with the rotations of `upper_bones` taken from `upper` (looping).
+
+    Used for weapon-mode locomotion: legs and pelvis from the walk/run clip, arms and head from the
+    weapon stance. The clip length is that of `base`. For a looping base (`loop`), the stance is
+    stretched to a whole number of its cycles so the result loops without a jump.
+    """
+    len_base = length(base) or 1.0
+    len_upper = length(upper) or 1.0
+    cycles = max(1, round(len_base / len_upper))
+    poses = []
+    for frame in range(int(len_base) + 1):
+        pose = pose_at(base, frame, bones)
+        phase = (frame / len_base * cycles * len_upper) if loop else frame
+        top = pose_at(upper, phase % len_upper if phase < cycles * len_upper else len_upper, bones)
+        for bone in upper_bones:
+            pose[bone] = (top[bone][0], pose[bone][1])
+        poses.append(pose)
+    return to_curves(poses)

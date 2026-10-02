@@ -32,6 +32,7 @@ from gothar_chargen.blender.curves import (  # noqa: E402
     Curves,
     blend,
     concat,
+    layer,
     length,
     reverse,
 )
@@ -39,6 +40,7 @@ from gothar_chargen.blender.keyframes import RECIPES, RigInfo  # noqa: E402
 from gothar_chargen.clipspec import ClipSpec, SetSpec, SourceRef, load_set_spec  # noqa: E402
 from gothar_chargen.events import detect_contacts  # noqa: E402
 from gothar_chargen.mapping import BoneMap, load_mapping  # noqa: E402
+from gothar_chargen.naming import is_loop_clip  # noqa: E402
 from gothar_chargen.postprocess import TRANSLATED_BONES  # noqa: E402
 from gothar_chargen.skeleton import RigSpec, load_rig  # noqa: E402
 
@@ -135,46 +137,71 @@ def _add_events(arm: bpy.types.Object, action: bpy.types.Action, clip: ClipSpec)
 # --- set ---
 
 
-def build_set(rig: RigSpec, spec: SetSpec, sources: Path, out: Path) -> None:
-    arm = new_reference(rig)
-    arm.animation_data_create()
-    libraries: dict[str, dict[str, bpy.types.Action]] = {}
-    maps: dict[str, BoneMap] = {}
-    imported: list[bpy.types.Object] = []
-    for key, source in spec.sources.items():
-        found = sorted(sources.rglob(source.file))
-        if len(found) != 1:
-            raise SystemExit(f"source '{key}': expected one {source.file} below {sources}")
-        before = set(bpy.data.actions)
-        imported += import_glb(found[0])
-        libraries[key] = {a.name: a for a in bpy.data.actions if a not in before}
-        maps[key] = load_mapping(source.mapping)
+class _Sources:
+    """Source libraries, each .glb imported once (shared by a set and its dependencies)."""
 
-    def read(ref: SourceRef) -> Curves:
-        action = libraries[ref.library].get(ref.action)
+    def __init__(self, folder: Path, rig: RigSpec) -> None:
+        self.folder = folder
+        self.rig = rig
+        self.imported: list[bpy.types.Object] = []
+        self._actions: dict[str, dict[str, bpy.types.Action]] = {}  # file -> actions
+
+    def read(self, spec: SetSpec, ref: SourceRef) -> Curves:
+        source = spec.sources[ref.library]
+        if source.file not in self._actions:
+            found = sorted(self.folder.rglob(source.file))
+            if len(found) != 1:
+                raise SystemExit(f"expected one {source.file} below {self.folder}")
+            before = set(bpy.data.actions)
+            self.imported += import_glb(found[0])
+            self._actions[source.file] = {a.name: a for a in bpy.data.actions if a not in before}
+        action = self._actions[source.file].get(ref.action)
         if action is None:
-            raise SystemExit(f"{ref.library}: no action '{ref.action}'")
-        return _read_source(action, maps[ref.library], rig, ref)
+            raise SystemExit(f"{source.file}: no action '{ref.action}'")
+        return _read_source(action, load_mapping(source.mapping), self.rig, ref)
 
-    rig_info = RigInfo(arm)
-    built: dict[str, Curves] = {}
-    actions: list[bpy.types.Action] = []
+
+def _compute(
+    spec: SetSpec, sources: _Sources, rig_info: RigInfo, built: dict[str, Curves]
+) -> list[ClipSpec]:
+    """Computes all clips of `spec` (after its dependencies) into `built`; returns spec.clips."""
+    for dep in spec.depends:
+        dep_spec = load_set_spec(dep)
+        if not all(c.name in built for c in dep_spec.clips):
+            _compute(dep_spec, sources, rig_info, built)
+            print(f"[chargen] dependency {dep} computed")
     for clip in spec.clips:
         if clip.op == "from":
-            curves = read(clip.sources[0])
+            curves = sources.read(spec, clip.sources[0])
         elif clip.op == "concat":
-            curves = concat([read(r) for r in clip.sources])
+            curves = concat([sources.read(spec, r) for r in clip.sources])
         elif clip.op == "reverse":
             curves = reverse(built[clip.clips[0]])
         elif clip.op == "blend":
             curves = blend(built[clip.clips[0]], built[clip.clips[1]], clip.frames, rig_info.bones)
+        elif clip.op == "layer":
+            upper = set().union(*(rig_info.subtree(bone) for bone in clip.bones))
+            loop = is_loop_clip(clip.name)
+            curves = layer(built[clip.clips[0]], built[clip.clips[1]], upper, rig_info.bones, loop)
         else:
             curves = RECIPES[clip.recipe](rig_info, clip.param, built)
         built[clip.name] = curves
+    return list(spec.clips)
+
+
+def build_set(rig: RigSpec, spec: SetSpec, sources_dir: Path, out: Path) -> None:
+    arm = new_reference(rig)
+    arm.animation_data_create()
+    rig_info = RigInfo(arm)
+    sources = _Sources(sources_dir, rig)
+    built: dict[str, Curves] = {}
+    actions: list[bpy.types.Action] = []
+    for clip in _compute(spec, sources, rig_info, built):
         kind = f"keyframe:{clip.recipe}" if clip.op == "keyframe" else clip.op
         if clip.helper:
             print(f"[chargen] helper {clip.name} ({kind})")
             continue
+        curves = built[clip.name]
         action = _write_action(clip.name, curves)
         _add_events(arm, action, clip)
         actions.append(action)
@@ -187,7 +214,7 @@ def build_set(rig: RigSpec, spec: SetSpec, sources: Path, out: Path) -> None:
         track.strips.new(action.name, 0, action)
         track.mute = True
         action.use_fake_user = True
-    delete_objects(imported)
+    delete_objects(sources.imported)
     purge_unused()
     bpy.context.scene.frame_set(0)
     save(out / "anims" / "human" / f"{spec.set}.blend")

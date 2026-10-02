@@ -122,6 +122,9 @@ die übrigen Kanäle, die Blender beim Sampeln erzeugt; der Validator meldet Ver
 
 Abgestimmt mit engine am 2026-10-03 (Skelett, Kanäle, `events.toml` v1 inkl. der Präzisierungen oben).
 
+Schleifen-Clips (`s_*`) müssen geschlossen sein (letzter Frame = erster; Validator `anim.loop`), und kein
+Kanal darf zwischen zwei Frames springen (`anim.jump`: Fehler ab 120°, Warnung ab 90° je Frame).
+
 Clip-Namen prüft der Validator gegen das Muster oben (`[sta]_…`, nur `a-z0-9_`, Modus aus der Liste
 oder `mob/<mobtyp>`).
 
@@ -149,7 +152,8 @@ Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pyte
    Stapel-Retargeting in Blender, Korrektur-Offsets, Fußkontakt-Prüfung.
 3. **Animations-Export** (F2, `gothar-chargen build-set`/`export`, umgesetzt): Clips nach Namenskonvention in Sets packen
    (Herkunft je Clip in `data/clips/<set>.toml`: Bibliothek, rückwärts, Überblendung, Verkettung oder
-   **Keyframe-Rezept** für Platzhalter `platzhalter-K`, `blender/keyframes.py`), Pose-Marker → `events.toml`,
+   **Keyframe-Rezept** für Platzhalter `platzhalter-K`, `blender/keyframes.py`, oder **Schichtung** `layer`:
+   Beine aus einem Clip, Arme/Kopf aus einer Haltung; `depends` nutzt Clips anderer Sets), Pose-Marker → `events.toml`,
    Root-Motion-Extraktion bzw. In-Place-Bereinigung je Clip-Einstellung.
 4. **Animationslisten-Abgleich** (F2, `gothar-chargen report`, umgesetzt): vergleicht `animation-list.md` mit den vorhandenen Clips →
    Fortschrittsbericht (fehlend / Platzhalter / fertig).
