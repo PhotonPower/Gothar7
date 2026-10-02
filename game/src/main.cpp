@@ -1,6 +1,7 @@
 #include <g7/core/Config.hpp>
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Log.hpp>
+#include <g7/platform/GpuPreference.hpp>
 #include <g7/platform/Paths.hpp>
 #include <g7/runtime/Engine.hpp>
 
@@ -12,6 +13,9 @@
 #include <optional>
 #include <string_view>
 #include <system_error>
+
+// Run on the dedicated GPU of dual-GPU laptops (see GpuPreference.hpp).
+G7_REQUEST_HIGH_PERFORMANCE_GPU();
 
 namespace
 {

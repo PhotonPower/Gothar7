@@ -2,7 +2,7 @@
 #include <g7/render/Device.hpp>
 
 #ifndef G7_RENDER_NO_GL
-#include <glad/glad.h>
+#include "rhi/GlMapping.hpp"
 #endif
 
 #include <string_view>
@@ -19,7 +19,7 @@ Device::~Device() = default;
 void Device::beginFrame(u32, u32, const Vec4&)
 {
 }
-std::vector<u8> Device::readPixels(i32, i32, i32, i32) const
+std::vector<u8> Device::readPixels(i32, i32, i32, i32, const rhi::Framebuffer*) const
 {
     return {};
 }
@@ -40,6 +40,26 @@ GlLoader g_loader = nullptr;
 void* loadProc(const char* name)
 {
     return reinterpret_cast<void*>(g_loader(name));
+}
+
+bool hasAnisotropicFiltering(const DeviceInfo& info)
+{
+    if (info.major > 4 || (info.major == 4 && info.minor >= 6))
+    {
+        return true; // core in 4.6
+    }
+    GLint count = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &count);
+    for (GLint i = 0; i < count; ++i)
+    {
+        const std::string_view name =
+            reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)));
+        if (name == "GL_EXT_texture_filter_anisotropic" || name == "GL_ARB_texture_filter_anisotropic")
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::string glString(GLenum name)
@@ -137,6 +157,11 @@ Result<std::unique_ptr<Device>> Device::create(GlLoader loader, bool debugOutput
     }
     G7_LOG_INFO("render", "OpenGL {}.{} - {} ({})", info.major, info.minor, info.renderer, info.vendor);
 
+    if (hasAnisotropicFiltering(info))
+    {
+        glGetFloatv(rhi::gl::kMaxTextureMaxAnisotropy, &info.maxAnisotropy);
+    }
+
     if (debugOutput)
     {
         glEnable(GL_DEBUG_OUTPUT);
@@ -160,25 +185,30 @@ Device::~Device()
 
 void Device::beginFrame(u32 width, u32 height, const Vec4& clearColor)
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
-    glDepthMask(GL_TRUE);
-    glStencilMask(0xFF);
-    glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
-    glClearDepth(1.0);
-    glClearStencil(0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    m_stats = {};
+    bindFramebuffer(nullptr);
+    setViewport(0, 0, width, height);
+    clear(clearColor, 1.0f);
 }
 
-std::vector<u8> Device::readPixels(i32 x, i32 y, i32 width, i32 height) const
+std::vector<u8> Device::readPixels(i32 x, i32 y, i32 width, i32 height,
+                                   const rhi::Framebuffer* framebuffer) const
 {
     if (width <= 0 || height <= 0)
     {
         return {};
     }
     std::vector<u8> pixels(static_cast<usize>(width) * static_cast<usize>(height) * 4);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    glReadBuffer(GL_BACK);
+    if (framebuffer)
+    {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer->m_handle.id());
+        glReadBuffer(GL_COLOR_ATTACHMENT0);
+    }
+    else
+    {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        glReadBuffer(GL_BACK);
+    }
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
     return pixels;
@@ -194,7 +224,9 @@ void Device::onDebugMessage(u32 source, u32 type, u32 id, DebugSeverity severity
     const DebugKind kind = type == GL_DEBUG_TYPE_ERROR         ? DebugKind::Error
                            : type == GL_DEBUG_TYPE_PERFORMANCE ? DebugKind::Performance
                                                                : DebugKind::Other;
-    const log::Level level = logLevelFor(severity, kind);
+    // Shader compiler output is already returned by createShaderProgram (with the full log).
+    const log::Level level =
+        source == GL_DEBUG_SOURCE_SHADER_COMPILER ? log::Level::Debug : logLevelFor(severity, kind);
     if (level < log::minLevel())
     {
         return;

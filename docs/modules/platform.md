@@ -86,6 +86,13 @@ std::optional<GamepadButton> gamepadButtonFromName(sv);
   4.5 zurück; `swapBuffers()`, `setVSync(bool)` (adaptiv, sonst klassisch; loggt die Bildwiederholrate),
   `procAddress(name)` als Loader für `render`. Muss alle GL-Objekte überleben.
 
+### `GpuPreference.hpp`
+- `G7_REQUEST_HIGH_PERFORMANCE_GPU();` – exportiert unter Windows `NvOptimusEnablement` und
+  `AmdPowerXpressRequestHighPerformance`, damit Laptops mit zwei GPUs die dedizierte GPU nehmen (sonst startet
+  OpenGL auf der integrierten). Muss einmal global in einer Quelldatei **jeder Executable** stehen (nicht in einer
+  Bibliothek): `game/src/main.cpp`, `tests/render_gpu/gpu_preference.cpp`. Umschalten auf die sparsame GPU ggf.
+  später mit den Grafik-Optionen (M14).
+
 ### `Time.hpp`
 - `nowSeconds()` – monotone Uhr (`SDL_GetTicksNS`), `sleepPrecise(seconds)` – genaues Warten
   (`SDL_DelayPrecise`; normale OS-Sleeps sind unter Windows 1–15 ms grob). Nutzt die Engine für das Frame-Limit.
