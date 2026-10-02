@@ -7,6 +7,7 @@
 
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
+#include <g7/platform/Input.hpp>
 #include <g7/platform/Window.hpp>
 
 #include <memory>
@@ -45,12 +46,15 @@ public:
     [[nodiscard]] u64 simulationTicks() const noexcept { return m_simTicks; }
     /// The game window, or nullptr when headless / before init().
     [[nodiscard]] platform::Window* window() noexcept { return m_window.get(); }
+    /// Input state of the current frame (stays empty when headless).
+    [[nodiscard]] const platform::Input& input() const noexcept { return m_input; }
 
 private:
     void shutdown();
 
     EngineConfig m_config;
     std::unique_ptr<platform::Window> m_window;
+    platform::Input m_input;
     bool m_initialized = false;
     bool m_quitRequested = false;
     u64 m_frameCount = 0;

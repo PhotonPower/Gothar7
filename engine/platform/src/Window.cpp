@@ -1,3 +1,5 @@
+#include "SdlInput.hpp"
+
 #include <g7/core/Log.hpp>
 #include <g7/platform/Window.hpp>
 
@@ -9,6 +11,7 @@ namespace g7::platform
 {
 namespace
 {
+constexpr SDL_InitFlags kSubsystems = SDL_INIT_VIDEO | SDL_INIT_GAMEPAD;
 constexpr u32 kMaxDimension = static_cast<u32>(std::numeric_limits<int>::max());
 
 Extent toExtent(int width, int height) noexcept
@@ -26,15 +29,21 @@ struct Window::Impl
     Extent lastPolledPixelSize;
     bool resized = false;
     bool quitRequested = false;
+    SDL_Gamepad* gamepad = nullptr; // single player: the first connected pad is used
+    SDL_JoystickID gamepadId = 0;
 
     ~Impl()
     {
+        if (gamepad)
+        {
+            SDL_CloseGamepad(gamepad);
+        }
         if (window)
         {
             SDL_DestroyWindow(window);
         }
         // Balances SDL_InitSubSystem in create(); SDL ref-counts subsystems.
-        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        SDL_QuitSubSystem(kSubsystems);
     }
 };
 
@@ -50,9 +59,9 @@ Result<std::unique_ptr<Window>> Window::create(const WindowDesc& desc)
     {
         return Error{"invalid window size"};
     }
-    if (!SDL_InitSubSystem(SDL_INIT_VIDEO))
+    if (!SDL_InitSubSystem(kSubsystems))
     {
-        return Error{std::string("SDL video init failed: ") + SDL_GetError()};
+        return Error{std::string("SDL video/gamepad init failed: ") + SDL_GetError()};
     }
 
     auto impl = std::make_unique<Impl>();
@@ -83,20 +92,108 @@ Result<std::unique_ptr<Window>> Window::create(const WindowDesc& desc)
     return window;
 }
 
+namespace
+{
+void openFirstGamepad(SDL_Gamepad*& gamepad, SDL_JoystickID& gamepadId, Input& input)
+{
+    int count = 0;
+    SDL_JoystickID* ids = SDL_GetGamepads(&count);
+    for (int i = 0; i < count && !gamepad; ++i)
+    {
+        gamepad = SDL_OpenGamepad(ids[i]);
+        if (gamepad)
+        {
+            gamepadId = ids[i];
+            G7_LOG_INFO("platform", "gamepad connected: {}", SDL_GetGamepadName(gamepad));
+        }
+    }
+    SDL_free(ids);
+    input.onGamepadConnected(gamepad != nullptr);
+}
+} // namespace
+
 bool Window::pollEvents()
 {
+    Input ignored;
+    return pollEvents(ignored);
+}
+
+bool Window::pollEvents(Input& input)
+{
+    Impl& impl = *m_impl;
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
         switch (event.type)
         {
         case SDL_EVENT_QUIT:
-            m_impl->quitRequested = true;
+            impl.quitRequested = true;
             break;
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-            if (event.window.windowID == m_impl->id)
+            if (event.window.windowID == impl.id)
             {
-                m_impl->quitRequested = true;
+                impl.quitRequested = true;
+            }
+            break;
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+            // Key-up events for keys held during Alt+Tab never arrive.
+            input.releaseAll();
+            break;
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+            if (!event.key.repeat)
+            {
+                input.onKey(sdl::toKey(event.key.scancode), event.key.down);
+            }
+            break;
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            if (const auto button = sdl::toMouseButton(event.button.button))
+            {
+                input.onMouseButton(*button, event.button.down);
+            }
+            break;
+        case SDL_EVENT_MOUSE_MOTION:
+            input.onMouseMotion(Vec2(event.motion.x, event.motion.y),
+                                Vec2(event.motion.xrel, event.motion.yrel));
+            break;
+        case SDL_EVENT_MOUSE_WHEEL:
+            input.onWheel(event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y : event.wheel.y);
+            break;
+        case SDL_EVENT_GAMEPAD_ADDED:
+            if (!impl.gamepad)
+            {
+                openFirstGamepad(impl.gamepad, impl.gamepadId, input);
+            }
+            break;
+        case SDL_EVENT_GAMEPAD_REMOVED:
+            if (impl.gamepad && event.gdevice.which == impl.gamepadId)
+            {
+                G7_LOG_INFO("platform", "gamepad disconnected");
+                SDL_CloseGamepad(impl.gamepad);
+                impl.gamepad = nullptr;
+                impl.gamepadId = 0;
+                input.onGamepadConnected(false);
+                openFirstGamepad(impl.gamepad, impl.gamepadId, input); // fall back to another pad
+            }
+            break;
+        case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+        case SDL_EVENT_GAMEPAD_BUTTON_UP:
+            if (event.gbutton.which == impl.gamepadId)
+            {
+                if (const auto button = sdl::toGamepadButton(event.gbutton.button))
+                {
+                    input.onGamepadButton(*button, event.gbutton.down);
+                }
+            }
+            break;
+        case SDL_EVENT_GAMEPAD_AXIS_MOTION:
+            if (event.gaxis.which == impl.gamepadId)
+            {
+                if (const auto axis = sdl::toGamepadAxis(event.gaxis.axis))
+                {
+                    input.onGamepadAxis(*axis, sdl::normalizeAxis(*axis, event.gaxis.value));
+                }
             }
             break;
         default:
@@ -182,6 +279,21 @@ void Window::setTitle(std::string_view title)
 std::string Window::title() const
 {
     return SDL_GetWindowTitle(m_impl->window);
+}
+
+bool Window::setRelativeMouse(bool enabled)
+{
+    if (!SDL_SetWindowRelativeMouseMode(m_impl->window, enabled))
+    {
+        G7_LOG_WARN("platform", "relative mouse mode not available: {}", SDL_GetError());
+        return false;
+    }
+    return true;
+}
+
+bool Window::relativeMouse() const noexcept
+{
+    return SDL_GetWindowRelativeMouseMode(m_impl->window);
 }
 
 void Window::requestClose()
