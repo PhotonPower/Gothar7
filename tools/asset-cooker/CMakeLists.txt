@@ -1,5 +1,5 @@
 # Cooker logic as a library so tests can call it; g7-cook is a thin command line around it.
-add_library(g7_cook_lib STATIC src/Cooker.cpp src/Textures.cpp)
+add_library(g7_cook_lib STATIC src/Cooker.cpp src/Manifest.cpp src/Textures.cpp)
 target_include_directories(g7_cook_lib PUBLIC src)
 target_link_libraries(g7_cook_lib PUBLIC g7::core g7::asset)
 g7_set_warnings(g7_cook_lib)

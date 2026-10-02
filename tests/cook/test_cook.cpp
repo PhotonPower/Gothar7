@@ -172,9 +172,9 @@ TEST_CASE("cook loose files: meshes, extracted and external images, copies, skip
     CHECK(r.copied == 1);  // init.lua
     CHECK(r.skipped == 4); // house.bin, hut.blend, .gitkeep, .DS_Store
     CHECK(r.outputs == 5);
-    CHECK(filesBelow(t.out) == std::vector<std::string>{"models/Tri.g7mesh", "models/Tri.img0.png",
-                                                        "models/house.g7mesh", "scripts/init.lua",
-                                                        "textures/wood.png"});
+    CHECK(filesBelow(t.out) == std::vector<std::string>{".g7cook/manifest.txt", "models/Tri.g7mesh",
+                                                        "models/Tri.img0.png", "models/house.g7mesh",
+                                                        "scripts/init.lua", "textures/wood.png"});
 
     auto tri = asset::deserializeMesh(fs::readFile(t.out / "models" / "Tri.g7mesh").value());
     REQUIRE(tri);
@@ -197,7 +197,7 @@ TEST_CASE("cook into an archive and load it through the AssetManager")
     auto report = cook::cook({.source = t.source, .out = t.out, .pack = "data.g7pak"});
     REQUIRE(report);
     CHECK(report.value().outputs == 5);
-    CHECK(filesBelow(t.out) == std::vector<std::string>{"data.g7pak"});
+    CHECK(filesBelow(t.out) == std::vector<std::string>{".g7cook/manifest.txt", "data.g7pak"});
 
     asset::Vfs vfs;
     REQUIRE(vfs.mount(t.out / "data.g7pak", 0));
