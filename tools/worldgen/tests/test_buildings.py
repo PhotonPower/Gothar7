@@ -7,13 +7,13 @@ import shapely
 
 from gothar_worldgen.config import load_site
 from gothar_worldgen.geo.buildings import (
-    LocalFrame,
     buildings_document,
     convert_building,
     select_and_convert,
     summarize,
     write_buildings_json,
 )
+from gothar_worldgen.geo.frame import LocalFrame
 from gothar_worldgen.geo.lod2 import read_lod2
 
 from .citygml import (

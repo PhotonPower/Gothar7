@@ -8,6 +8,7 @@ from gothar_worldgen.cli import EXIT_ERROR, EXIT_OK, main
 
 from .citygml import building, flat_surfaces, write_citygml
 from .conftest import SITE_TOML
+from .osmxml import OsmXml
 
 LGL_EXCERPT_DIR = Path(__file__).parent / "data" / "lgl_dgm1"
 
@@ -144,9 +145,13 @@ def _small_site_with_data(config_dir: Path, data_root: Path) -> None:
         data_root / "geo" / "lgl" / "lod2" / "LoD2_32_500_5405_1_BW.gml",
         building("B1", flat_surfaces(500930, 5405053, 6, 6, 371.0, 374.0), roof_type="1000"),
     )
+    osm = OsmXml()
+    osm.way(1, [(500920, 5405050), (500950, 5405050)], {"highway": "residential"})
+    osm.node(500940, 5405060, {"natural": "tree"})
+    osm.write(data_root / "geo" / "osm" / "test.osm")
 
 
-def test_import_writes_terrain_and_buildings(
+def test_import_writes_all_layers(
     config_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     data_root = tmp_path / "data"
@@ -164,6 +169,12 @@ def test_import_writes_terrain_and_buildings(
     doc = json.loads((work / "buildings.json").read_text(encoding="utf-8"))
     assert doc["origin"]["heightNHN"] == 371.59  # same reference height as the terrain
     assert doc["buildings"][0]["groundY"] == pytest.approx(371.0 - 371.59)
+    assert "streets: 1 lines (road 1)" in out
+    assert "features: 1 (tree 1)" in out
+    streets = json.loads((work / "streets.json").read_text(encoding="utf-8"))
+    assert streets["source"]["credit"] == "© OpenStreetMap-Mitwirkende"
+    assert streets["streets"][0]["points"][0] == [-13.0, 6.0]  # E 500920, N 5405050 local
+    assert json.loads((work / "features.json").read_text(encoding="utf-8"))["features"]
 
 
 def test_import_without_dgm_data_fails(

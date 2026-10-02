@@ -7,7 +7,6 @@ and, for buildings made of several LoD2 parts, the same per part. Heights are lo
 
 from __future__ import annotations
 
-import json
 import math
 from collections import Counter
 from collections.abc import Iterable
@@ -21,6 +20,8 @@ from shapely.geometry import Polygon
 from shapely.geometry.polygon import orient
 
 from gothar_worldgen.config import SiteConfig
+from gothar_worldgen.geo.frame import LocalFrame, ring_xz, round_cm
+from gothar_worldgen.geo.jsonio import write_json_records
 from gothar_worldgen.geo.lod2 import Body, Lod2Building, Polygon3
 
 FORMAT_NAME = "gothar-buildings"
@@ -54,33 +55,6 @@ HEIGHT_MISMATCH_M = 1.0  # warn if derived height differs more from LoD2 measure
 GAP_CLOSE_M = 0.05  # gaps between building parts up to twice this are closed
 MIN_HOLE_M2 = 1.0  # smaller holes in footprints (slivers) are dropped
 SIMPLIFY_M = 0.01  # removes collinear vertices left over from merging parts
-
-
-@dataclass(frozen=True)
-class LocalFrame:
-    """Source coordinates -> local engine coordinates (see docs/design/leonberg-pipeline.md)."""
-
-    origin_e: float
-    origin_n: float
-    origin_nhn: float
-    horizontal: float
-    vertical: float
-
-    @classmethod
-    def for_site(cls, site: SiteConfig, origin_nhn: float) -> LocalFrame:
-        s = site.game_scale
-        return cls(site.origin.easting, site.origin.northing, origin_nhn, s.horizontal, s.vertical)
-
-    def xz(self, e: float, n: float) -> tuple[float, float]:
-        return (e - self.origin_e) * self.horizontal, -(n - self.origin_n) * self.horizontal
-
-    def y(self, nhn: float) -> float:
-        return (nhn - self.origin_nhn) * self.vertical
-
-
-def _r(v: float) -> float:
-    """Round output coordinates to centimetres (LoD2 accuracy is decimetres)."""
-    return round(v, 2) + 0.0  # + 0.0 turns -0.0 into 0.0
 
 
 def _polygon_2d(p: Polygon3) -> Polygon:
@@ -123,24 +97,12 @@ def footprint_of(polys: Iterable[Polygon3], warnings: list[str]) -> Polygon | No
     return clean_footprint(shapely.union_all(shapes), warnings) if shapes else None
 
 
-def _ring_xz(ring: shapely.LinearRing, frame: LocalFrame) -> list[list[float]]:
-    out: list[list[float]] = []
-    for e, n in list(ring.coords)[:-1]:  # drop closing point
-        x, z = frame.xz(e, n)
-        pt = [_r(x), _r(z)]
-        if not out or out[-1] != pt:
-            out.append(pt)
-    if len(out) > 1 and out[0] == out[-1]:
-        out.pop()
-    return out
-
-
 def _footprint_fields(footprint: Polygon, frame: LocalFrame) -> dict[str, Any]:
-    fields: dict[str, Any] = {"footprint": _ring_xz(footprint.exterior, frame)}
-    holes = [_ring_xz(r, frame) for r in footprint.interiors if Polygon(r).area >= MIN_HOLE_M2]
+    fields: dict[str, Any] = {"footprint": ring_xz(frame, footprint.exterior)}
+    holes = [ring_xz(frame, r) for r in footprint.interiors if Polygon(r).area >= MIN_HOLE_M2]
     if holes:
         fields["holes"] = holes
-    fields["areaM2"] = round(footprint.area * frame.horizontal**2, 1)
+    fields["areaM2"] = round(frame.area(footprint.area), 1)
     return fields
 
 
@@ -204,8 +166,8 @@ def roof_of(body: Body, frame: LocalFrame) -> dict[str, Any] | None:
     return {
         "type": name,
         "alkis": body.roof_type,
-        "eaveY": _r(frame.y(float(heights.min()))),
-        "ridgeY": _r(frame.y(float(heights.max()))),
+        "eaveY": round_cm(frame.y(float(heights.min()))),
+        "ridgeY": round_cm(frame.y(float(heights.max()))),
         "ridgeDir": None if name in NO_RIDGE else ridge_direction(roofs),
         "pitchDeg": round(roof_pitch_deg(roofs, frame.vertical / frame.horizontal), 1),
     }
@@ -236,10 +198,10 @@ def _body_result(body: Body, frame: LocalFrame, warnings: list[str]) -> BodyResu
     if footprint is not None:
         data.update(_footprint_fields(footprint, frame))
     if ground_nhn is not None:
-        data["groundY"] = _r(frame.y(ground_nhn))
+        data["groundY"] = round_cm(frame.y(ground_nhn))
     ridge_y = roof["ridgeY"] if roof else None
     if ridge_y is not None and ground_nhn is not None:
-        data["heightM"] = _r(ridge_y - frame.y(ground_nhn))
+        data["heightM"] = round_cm(ridge_y - frame.y(ground_nhn))
         if body.measured_height is not None:
             measured = body.measured_height * frame.vertical
             if abs(data["heightM"] - measured) > HEIGHT_MISMATCH_M:
@@ -272,9 +234,9 @@ def convert_building(
         entry["inCore"] = bool(core.contains(footprint.representative_point()))
     entry.update(_footprint_fields(footprint, frame))
     if grounds:
-        entry["groundY"] = _r(frame.y(min(grounds)))
+        entry["groundY"] = round_cm(frame.y(min(grounds)))
         if ridges:
-            entry["heightM"] = _r(max(ridges) - frame.y(min(grounds)))
+            entry["heightM"] = round_cm(max(ridges) - frame.y(min(grounds)))
     entry["roof"] = main.data["roof"]
     if b.has_parts:
         entry["parts"] = [r.data for r in bodies]
@@ -317,13 +279,8 @@ def buildings_document(
     return {
         "format": FORMAT_NAME,
         "version": FORMAT_VERSION,
-        "origin": {
-            "crs": site.crs,
-            "easting": site.origin.easting,
-            "northing": site.origin.northing,
-            "heightNHN": frame.origin_nhn,
-        },
-        "gameScale": {"horizontal": frame.horizontal, "vertical": frame.vertical},
+        "origin": frame.origin_json(site.crs),
+        "gameScale": frame.scale_json(),
         "source": {
             "product": "LGL LoD2",
             "heightDatum": "DHHN2016",
@@ -338,16 +295,7 @@ def buildings_document(
 def write_buildings_json(path: Path, doc: dict[str, Any]) -> None:
     """Pretty header, one building per line (readable, diff-friendly, compact)."""
     header = {k: v for k, v in doc.items() if k != "buildings"}
-    head = json.dumps(header, indent=2, ensure_ascii=False)[:-2]  # strip closing "\n}"
-    lines = [json.dumps(b, ensure_ascii=False, separators=(",", ":")) for b in doc["buildings"]]
-    body = ",\n    ".join(lines)
-    text = (
-        f'{head},\n  "buildings": [\n    {body}\n  ]\n}}\n'
-        if lines
-        else f'{head},\n  "buildings": []\n}}\n'
-    )
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8", newline="\n")
+    write_json_records(path, header, {"buildings": doc["buildings"]})
 
 
 def summarize(entries: list[dict[str, Any]]) -> dict[str, Any]:

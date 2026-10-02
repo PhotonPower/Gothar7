@@ -21,6 +21,7 @@ import numpy.typing as npt
 from gothar_worldgen.config import SiteConfig
 from gothar_worldgen.geo.bbox import BBox
 from gothar_worldgen.geo.dgm1 import HeightGrid
+from gothar_worldgen.geo.frame import LocalFrame
 
 FORMAT_NAME = "gothar-terrain"
 FORMAT_VERSION = 1
@@ -61,14 +62,9 @@ def encode_heightmap(grid: HeightGrid, site: SiteConfig) -> Heightmap:
     return Heightmap(values, min_y, max_y, origin_nhn)
 
 
-def to_local_xz(site: SiteConfig, easting: float, northing: float) -> tuple[float, float]:
-    h = site.game_scale.horizontal
-    return (easting - site.origin.easting) * h, -(northing - site.origin.northing) * h
-
-
-def _local_rect(site: SiteConfig, bbox: BBox) -> dict[str, float]:
-    min_x, max_z = to_local_xz(site, bbox.min_e, bbox.min_n)
-    max_x, min_z = to_local_xz(site, bbox.max_e, bbox.max_n)
+def _local_rect(frame: LocalFrame, bbox: BBox) -> dict[str, float]:
+    min_x, max_z = frame.xz(bbox.min_e, bbox.min_n)
+    max_x, min_z = frame.xz(bbox.max_e, bbox.max_n)
     return {"minX": min_x, "minZ": min_z, "maxX": max_x, "maxZ": max_z}
 
 
@@ -93,7 +89,8 @@ def write_png16(path: Path, values: npt.NDArray[np.uint16]) -> None:
 
 
 def terrain_metadata(grid: HeightGrid, hm: Heightmap, site: SiteConfig) -> dict[str, Any]:
-    first_x, first_z = to_local_xz(site, grid.first_e, grid.first_n)
+    frame = LocalFrame.for_site(site, hm.origin_nhn)
+    first_x, first_z = frame.xz(grid.first_e, grid.first_n)
     return {
         "format": FORMAT_NAME,
         "version": FORMAT_VERSION,
@@ -108,8 +105,8 @@ def terrain_metadata(grid: HeightGrid, hm: Heightmap, site: SiteConfig) -> dict[
             "y = minY + value / 65535 * (maxY - minY)"
         ),
         "areas": {
-            "core": _local_rect(site, site.bbox("core")),
-            "surroundings": _local_rect(site, site.bbox("surroundings")),
+            "core": _local_rect(frame, site.bbox("core")),
+            "surroundings": _local_rect(frame, site.bbox("surroundings")),
         },
         "origin": {
             "crs": site.crs,

@@ -20,6 +20,7 @@ from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.geo.bbox import BBox, tiles_covering
 from gothar_worldgen.geo.dgm1 import DgmError
 from gothar_worldgen.geo.lod2 import Lod2Error
+from gothar_worldgen.geo.osm import OsmError
 from gothar_worldgen.importer import run_import
 
 EXIT_OK = 0
@@ -116,7 +117,7 @@ def _cmd_import(args: argparse.Namespace, out: TextIO) -> int:
     local = load_local(args.config_dir)
     try:
         run_import(site, DataPaths(local.data_root, site.name), out)
-    except (DgmError, Lod2Error, OSError) as e:
+    except (DgmError, Lod2Error, OsmError, OSError) as e:
         print(f"error: import failed: {e}", file=sys.stderr)
         return EXIT_ERROR
     return EXIT_OK
