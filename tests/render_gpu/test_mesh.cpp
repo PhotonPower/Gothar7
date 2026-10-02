@@ -96,6 +96,7 @@ TEST_CASE("Engine: --view-mesh loads and draws a glTF model")
     config.shaderDirectory = fs::fromUtf8(G7_SHADER_DIR);
     config.viewMesh = dir / "tri.gltf";
     {
+        g7::test::keepVideoAlive();
         Engine engine(config);
         REQUIRE(engine.init().ok());
         // The camera frames the model: its centre is in view.
@@ -136,6 +137,7 @@ TEST_CASE("Engine: a missing texture falls back to white instead of failing")
     config.shaderDirectory = fs::fromUtf8(G7_SHADER_DIR);
     config.viewMesh = dir / "tex.gltf";
     {
+        g7::test::keepVideoAlive();
         Engine engine(config);
         REQUIRE(engine.init().ok());
         CHECK(engine.run() == 0);

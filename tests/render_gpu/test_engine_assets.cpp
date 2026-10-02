@@ -1,5 +1,7 @@
 // The engine loads models through its VFS and asset manager (label "gpu").
 
+#include "GlFixture.hpp"
+
 #include <g7/asset/ImageData.hpp>
 #include <g7/render/Device.hpp>
 #include <g7/runtime/Engine.hpp>
@@ -37,6 +39,7 @@ const render::Material& firstMaterial(const Engine& engine, std::string_view pat
 
 TEST_CASE("Engine assets: a model from the development mount with its texture")
 {
+    g7::test::keepVideoAlive();
     Engine engine(viewConfig(fs::fromUtf8("testscene/town/wall.glb")));
     auto result = engine.init();
     REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
@@ -51,6 +54,7 @@ TEST_CASE("Engine assets: a model from the development mount with its texture")
 TEST_CASE("Engine assets: a file outside the mounts is mounted under local/")
 {
     const fs::Path file = fs::fromUtf8(G7_TESTSCENE).parent_path() / "town" / "lantern.glb";
+    g7::test::keepVideoAlive();
     Engine engine(viewConfig(file));
     REQUIRE(engine.init().ok());
     // Not resolved through the development mount: the argument is a disk path.
@@ -77,6 +81,7 @@ TEST_CASE("Engine assets: a mount with higher priority overrides a texture")
     REQUIRE(settings.ok());
     config.settings = std::move(settings).value();
     {
+        g7::test::keepVideoAlive();
         Engine engine(std::move(config));
         REQUIRE(engine.init().ok());
         const render::Material& material = firstMaterial(engine, "testscene/town/wall.glb");
@@ -89,6 +94,7 @@ TEST_CASE("Engine assets: a mount with higher priority overrides a texture")
 
 TEST_CASE("Engine assets: unknown models fail init with a clear message")
 {
+    g7::test::keepVideoAlive();
     Engine engine(viewConfig(fs::fromUtf8("testscene/town/no-such-model.glb")));
     auto result = engine.init();
     REQUIRE_FALSE(result.ok());
