@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M2** (Renderer-Grundlagen) – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig), Licht (Sonne, Hemisphären-Ambient, Punktlichter), Sonnenschatten (CSM) sowie HDR mit Tonemapping (ACES) und Distanznebel stehen. M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
+**Aktueller Stand:** Phase **M2** (Renderer-Grundlagen) – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig), Licht (Sonne, Hemisphären-Ambient, Punktlichter), Sonnenschatten (CSM), HDR mit Tonemapping (ACES), Distanznebel und Debug-Draw (Overlay F2) stehen. M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -73,7 +73,7 @@ Windows und Linux grün; core hat > 80 % Testabdeckung seiner Logik.
 - [x] Licht: gerichtete Sonne + Ambient, Punktlichter (Fackeln, Lagerfeuer) – Forward mit ≤ 8 Lichtern pro Objekt (Clustered bei Bedarf)
 - [x] Schatten: Cascaded Shadow Maps für die Sonne (4 Kaskaden im Atlas, texelstabil, PCF)
 - [x] Distanznebel, Gamma/Tonemapping (HDR-Ziel RGBA16F, ACES/Reinhard, exp²-Nebel in Horizontfarbe)
-- [ ] Debug-Draw (Linien, Boxen, Kugeln, Text im Raum)
+- [x] Debug-Draw (Linien, Boxen, Kugeln, Text im Raum; verdeckt gestrichelt, Bitmap-Schrift, Overlay F2)
 - [ ] Dear ImGui für Debug-Overlays (FPS, Statistiken)
 
 **DoD:** Testszene (Boden, einige Häuser/Bäume als glTF) mit Sonne, Schatten, Fackellicht und Nebel

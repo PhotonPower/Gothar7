@@ -40,6 +40,7 @@ enum class Action : u16
     QuickLoad,
     Console,
     Pause,
+    DebugDraw, ///< Development: toggles the debug-draw overlay.
     Count
 };
 

@@ -21,6 +21,7 @@ public:
 
     [[nodiscard]] const rhi::Framebuffer& framebuffer() const noexcept { return m_framebuffer; }
     [[nodiscard]] const rhi::Texture& color() const noexcept { return m_color; }
+    [[nodiscard]] const rhi::Texture& depth() const noexcept { return m_depth; }
     [[nodiscard]] u32 width() const noexcept { return m_framebuffer.width(); }
     [[nodiscard]] u32 height() const noexcept { return m_framebuffer.height(); }
 

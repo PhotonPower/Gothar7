@@ -11,3 +11,8 @@ Jede Fremdquelle, die in Assets oder abgeleitete Daten einfließt, wird hier ein
 ## Modelle, Texturen, Sounds
 | Asset | Quelle | Lizenz | Pflichtangabe |
 |---|---|---|---|
+
+## Engine-eingebettete Daten
+| Daten | Quelle | Lizenz | Verwendung |
+|---|---|---|---|
+| 8×8-Bitmap-Schrift (ASCII 0x20–0x7E) | `font8x8_basic.h` von Daniel Hepper (github.com/dhepper/font8x8), nach IBM-PC-BIOS-Schriften | Public Domain | Debug-Text (`engine/render/src/DebugFont.hpp`) |

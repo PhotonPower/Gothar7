@@ -38,6 +38,8 @@ exposure = 1.0
 # fog_density = 0 schaltet ihn ab.
 fog_start = 30.0
 fog_density = 0.00562
+# Debug-Overlay (Achsen, Raster, Bounds, Lichtradien, FPS) beim Start zeigen; umschalten mit der Aktion debug_draw (F2).
+debug_draw = false
 # Shader-Verzeichnis, Standard: "shaders" neben der Executable. Zum Live-Bearbeiten der Quellen z. B.
 # shader_dir = "C:/dev/Gothar7/engine/render/shaders"
 
@@ -75,6 +77,7 @@ quick_save = ["F5"]
 quick_load = ["F9"]
 console = ["Grave"]
 pause = ["Escape", "PadStart"]
+debug_draw = ["F2"]
 
 [bindings.modern]
 move_forward = ["W", "PadDpadUp"]
@@ -99,3 +102,4 @@ quick_save = ["F5"]
 quick_load = ["F9"]
 console = ["Grave"]
 pause = ["Escape", "PadStart"]
+debug_draw = ["F2"]
