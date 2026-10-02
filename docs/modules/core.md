@@ -47,9 +47,18 @@
 - `StringUtil.hpp` – ASCII-Groß-/Kleinschreibung (andere Bytes, z. B. UTF-8-Umlaute, bleiben unverändert):
   `toLowerAscii`/`toUpperAscii`, `toLower`/`toUpper`, `equalsIgnoreCase`, `startsWithIgnoreCase`,
   transparente `IgnoreCaseHash`/`IgnoreCaseEqual` für `std::unordered_map<std::string, T, …>`.
+- `Config.hpp` – `Config` (ADR 0010; toml++ PRIVATE hinter PImpl, header-only mit `TOML_EXCEPTIONS=0`):
+  - `Config::parse(text, sourceName)`, `Config::load(path)` → `Result<Config>`; Syntaxfehler als
+    `"<quelle>:<zeile>:<spalte>: <beschreibung>"`. `save(path)` schreibt atomisch, `toToml()`.
+  - Schlüssel sind Punkt-Pfade (`"audio.volume.music"`). Werttypen (Concept `ConfigValue`): `bool`, `i64`, `f64`,
+    `std::string`, `std::vector<std::string>`; der Typ wird immer explizit angegeben:
+    `get<i64>("render.fps_limit", 0)`, `find<T>(key) -> std::optional<T>`, `set<T>(key, value)`, `contains(key)`.
+  - `get` liefert bei fehlendem Schlüssel den Default, bei falschem Typ den Default + Warnung im Log;
+    `f64` akzeptiert auch Ganzzahlen. `set` legt Zwischentabellen an und ersetzt vorhandene Werte.
+  - `keys(table)` – direkte Unterschlüssel, sortiert (z. B. alle Aktionen in `[bindings]`).
+  - `merge(overrides)` – rekursiv; Grundlage für Standard-Config ← Benutzer-Config ← Kommandozeile (ab M1).
 
 ## Geplant (M0)
-- **Config**: TOML lesen, typisierte Abfragen mit Defaults.
 - **Profiler-Makros**: `G7_PROFILE_SCOPE("name")` – zunächst leer, ab M17 Tracy.
 
 ## Später
