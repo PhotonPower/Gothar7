@@ -20,6 +20,7 @@
 #include <g7/render/Mesh.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
+#include <g7/ui/DebugUi.hpp>
 
 #include <memory>
 #include <string>
@@ -107,6 +108,9 @@ public:
     [[nodiscard]] render::DebugDraw& debugDraw() noexcept { return m_debugDraw; }
     [[nodiscard]] bool debugOverlay() const noexcept { return m_debugOverlay; }
     void setDebugOverlay(bool enabled) noexcept;
+    /// ImGui debug panels (toggled with the debug_ui action, F1); only with rendering.
+    [[nodiscard]] bool debugUiVisible() const noexcept { return m_debugUiVisible; }
+    void setDebugUiVisible(bool visible) noexcept;
 
 private:
     void shutdown();
@@ -116,7 +120,9 @@ private:
     void renderScene(u32 width, u32 height);
     void drawViewMesh(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
-    void updateDebugCamera(f64 realSeconds);
+    /// `allowMouse` / `allowKeyboard` false while the debug UI uses them.
+    void updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard);
+    void runDebugUi(f64 realSeconds);
 
     EngineConfig m_config;
     std::unique_ptr<platform::Window> m_window;
@@ -131,6 +137,9 @@ private:
     render::DebugDraw m_debugDraw;
     render::DebugDrawRenderer m_debugRenderer;
     bool m_debugOverlay = false;
+    ui::DebugUi m_debugUi; // invalid without rendering
+    bool m_debugUiVisible = false;
+    bool m_debugUiFrame = false;      // an ImGui frame was begun this frame and awaits rendering
     f64 m_frameSeconds = 0.0;         // real duration of the last frame
     f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
     render::Mesh m_viewMesh;          // empty unless --view-mesh

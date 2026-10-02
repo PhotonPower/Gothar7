@@ -65,7 +65,10 @@ void Device::bindUniformBuffer(u32, const rhi::Buffer&)
 void Device::draw(u32, u32)
 {
 }
-void Device::drawIndexed(u32, u32)
+void Device::setScissor(std::optional<PixelRect>)
+{
+}
+void Device::drawIndexed(u32, u32, i32)
 {
 }
 std::vector<u8> Device::readBuffer(const rhi::Buffer&, usize, usize) const

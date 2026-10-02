@@ -20,6 +20,25 @@ void Device::setViewport(i32 x, i32 y, u32 width, u32 height)
     glViewport(x, y, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
 }
 
+void Device::setScissor(std::optional<PixelRect> rect)
+{
+    if (!rect)
+    {
+        if (m_cache.scissor)
+        {
+            glDisable(GL_SCISSOR_TEST);
+            m_cache.scissor = false;
+        }
+        return;
+    }
+    if (!m_cache.scissor)
+    {
+        glEnable(GL_SCISSOR_TEST);
+        m_cache.scissor = true;
+    }
+    glScissor(rect->x, rect->y, static_cast<GLsizei>(rect->width), static_cast<GLsizei>(rect->height));
+}
+
 void Device::clear(std::optional<Vec4> color, std::optional<f32> depth)
 {
     GLbitfield mask = 0;
@@ -187,12 +206,21 @@ void Device::draw(u32 vertexCount, u32 firstVertex)
     }
 }
 
-void Device::drawIndexed(u32 indexCount, u32 firstIndex)
+void Device::drawIndexed(u32 indexCount, u32 firstIndex, i32 baseVertex)
 {
     G7_ASSERT(m_cache.valid, "drawIndexed needs a bound pipeline");
     const auto offset = static_cast<usize>(firstIndex) * indexSize(m_cache.indexType);
-    glDrawElements(gl::topology(m_cache.topology), static_cast<GLsizei>(indexCount),
-                   gl::indexType(m_cache.indexType), reinterpret_cast<const void*>(offset));
+    if (baseVertex == 0)
+    {
+        glDrawElements(gl::topology(m_cache.topology), static_cast<GLsizei>(indexCount),
+                       gl::indexType(m_cache.indexType), reinterpret_cast<const void*>(offset));
+    }
+    else
+    {
+        glDrawElementsBaseVertex(gl::topology(m_cache.topology), static_cast<GLsizei>(indexCount),
+                                 gl::indexType(m_cache.indexType), reinterpret_cast<const void*>(offset),
+                                 baseVertex);
+    }
     ++m_stats.drawCalls;
     if (m_cache.topology == Topology::Triangles)
     {

@@ -24,6 +24,10 @@ target_compile_definitions(g7_tests_platform PRIVATE G7_GAME_CONFIG_DIR="${CMAKE
 target_link_libraries(g7_tests_runtime PRIVATE SDL3::SDL3)
 
 g7_add_test_suite(render)
+g7_add_test_suite(ui)
+# test_debug_ui.cpp inspects ImGui's state directly.
+find_package(imgui CONFIG QUIET)
+target_link_libraries(g7_tests_ui PRIVATE imgui::imgui)
 
 # Tests that need a real OpenGL 4.5+ driver. Label "gpu": CI runs them on Linux under Xvfb with
 # Mesa llvmpipe and excludes them on Windows (ctest -LE gpu), whose runners have no OpenGL.

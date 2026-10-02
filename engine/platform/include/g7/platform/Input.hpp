@@ -5,6 +5,7 @@
 
 #include <array>
 #include <optional>
+#include <string>
 #include <string_view>
 
 namespace g7::platform
@@ -100,6 +101,8 @@ public:
     [[nodiscard]] Vec2 mouseDelta() const noexcept { return m_mouseDelta; }
     /// Accumulated wheel steps this frame (+ = away from the user).
     [[nodiscard]] f32 wheelDelta() const noexcept { return m_wheelDelta; }
+    /// Text typed this frame (UTF-8, layout- and IME-aware); only while Window::setTextInput is on.
+    [[nodiscard]] std::string_view text() const noexcept { return m_text; }
 
     [[nodiscard]] bool gamepadConnected() const noexcept { return m_gamepadConnected; }
     /// Stick values with radial dead zone applied and rescaled, so motion starts smoothly at 0.
@@ -113,6 +116,7 @@ public:
     void onMouseButton(MouseButton button, bool down) noexcept;
     void onMouseMotion(Vec2 position, Vec2 delta) noexcept;
     void onWheel(f32 steps) noexcept;
+    void onText(std::string_view utf8);
     void onGamepadButton(GamepadButton button, bool down) noexcept;
     /// Raw value: sticks -1..1 (+Y up), triggers 0..1; clamped.
     void onGamepadAxis(GamepadAxis axis, f32 value) noexcept;
@@ -135,6 +139,7 @@ private:
     Vec2 m_mousePosition{0.0f};
     Vec2 m_mouseDelta{0.0f};
     f32 m_wheelDelta = 0.0f;
+    std::string m_text;
     f32 m_deadzone = 0.2f;
     bool m_gamepadConnected = false;
 };

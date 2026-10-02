@@ -67,7 +67,7 @@ das Spiel dort mit `--no-render` starten.
 ## Konfigurationsdateien
 | Datei | Inhalt |
 |---|---|
-| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird beim Bauen neben die Executable kopiert |
+| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird beim Bauen neben die Executable kopiert |
 | `config.toml` im Benutzerverzeichnis (Windows `%APPDATA%\Gothar\Gothar`) | optionale eigene Einstellungen; überschreibt `engine.toml` Schlüssel für Schlüssel |
 | `engine/render/shaders/` → `<build>/game/shaders/` | Engine-Shader (GLSL); werden beim Bauen neben die Executable kopiert – Änderungen dort gehen beim nächsten Build verloren, zum Bearbeiten `[render] shader_dir` auf die Quellen zeigen lassen |
 
@@ -84,6 +84,7 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | `--view-mesh=<pfad>` | glTF-Modell (`.gltf`/`.glb`) am Ursprung anzeigen, Debug-Kamera richtet sich danach aus |
 | `--no-ground` | Bodenplatte unter dem `--view-mesh`-Modell weglassen |
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |
+| (Taste F1) | ImGui-Debugfenster ein/aus (Aktion `debug_ui`): Leistung, Kamera, Render-Einstellungen live |
 | (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Achsen, Raster, Bounds, Lichtradien |
 | `--no-render` | Fenster ohne OpenGL (Systeme ohne GL-Treiber, Windows-CI, `nodeps`-Build) |
 | `--editor` | Editor-Modus (ab M4) |
@@ -111,7 +112,7 @@ Standard-Runnern sind damit kostenlos.
 | toml++ | `tomlplusplus` | core | M0 |
 | SDL3 | `sdl3` | platform | M1 |
 | glad (GL 4.6) | `glad` | render | M2 |
-| Dear ImGui (+ ImGuizmo) | `imgui`, `imguizmo` | ui/render | M2/M4 |
+| Dear ImGui (+ ImGuizmo) | `imgui` (ADR 0015), `imguizmo` | ui | M2/M4 |
 | fastgltf | `fastgltf` | asset/tools | M2/M3 |
 | stb (image, truetype) | `stb` | asset/ui | M2 |
 | KTX | `ktx` | asset/tools | M3 |

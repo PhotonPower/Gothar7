@@ -91,6 +91,7 @@ void Input::beginFrame() noexcept
     clearEdges(m_mouseButtons);
     clearEdges(m_gamepadButtons);
     m_mouseDelta = Vec2(0.0f);
+    m_text.clear();
     m_wheelDelta = 0.0f;
 }
 
@@ -182,6 +183,11 @@ void Input::onMouseMotion(Vec2 position, Vec2 delta) noexcept
 {
     m_mousePosition = position;
     m_mouseDelta += delta;
+}
+
+void Input::onText(std::string_view utf8)
+{
+    m_text += utf8;
 }
 
 void Input::onWheel(f32 steps) noexcept

@@ -139,6 +139,9 @@ bool Window::pollEvents(Input& input)
             input.onMouseMotion(Vec2(event.motion.x, event.motion.y),
                                 Vec2(event.motion.xrel, event.motion.yrel));
             break;
+        case SDL_EVENT_TEXT_INPUT:
+            input.onText(event.text.text);
+            break;
         case SDL_EVENT_MOUSE_WHEEL:
             input.onWheel(event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y : event.wheel.y);
             break;
@@ -276,6 +279,30 @@ bool Window::setRelativeMouse(bool enabled)
 bool Window::relativeMouse() const noexcept
 {
     return SDL_GetWindowRelativeMouseMode(m_impl->window);
+}
+
+f32 Window::displayScale() const noexcept
+{
+    const f32 scale = SDL_GetWindowDisplayScale(m_impl->window);
+    return scale > 0.0f ? scale : 1.0f;
+}
+
+void Window::setTextInput(bool enabled)
+{
+    if (enabled == textInput())
+    {
+        return;
+    }
+    const bool ok = enabled ? SDL_StartTextInput(m_impl->window) : SDL_StopTextInput(m_impl->window);
+    if (!ok)
+    {
+        G7_LOG_WARN("platform", "text input: {}", SDL_GetError());
+    }
+}
+
+bool Window::textInput() const noexcept
+{
+    return SDL_TextInputActive(m_impl->window);
 }
 
 void Window::requestClose()

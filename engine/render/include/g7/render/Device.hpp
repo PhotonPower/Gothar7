@@ -29,6 +29,15 @@ struct DeviceInfo
     f32 maxAnisotropy = 1.0f; ///< 1 if anisotropic filtering is unavailable.
 };
 
+/// Rectangle in pixels of the bound target, origin bottom-left (GL convention).
+struct PixelRect
+{
+    i32 x = 0;
+    i32 y = 0;
+    u32 width = 0;
+    u32 height = 0;
+};
+
 /// Counters of the current frame (reset by beginFrame), for the debug overlay.
 struct FrameStats
 {
@@ -71,6 +80,8 @@ public:
     /// nullptr = window framebuffer.
     void bindFramebuffer(const rhi::Framebuffer* framebuffer);
     void setViewport(i32 x, i32 y, u32 width, u32 height);
+    /// Restricts draws and clears to `rect`; nullopt turns the scissor test off (beginFrame does too).
+    void setScissor(std::optional<PixelRect> rect);
     /// Clears the bound framebuffer; depth also clears stencil to 0.
     void clear(std::optional<Vec4> color, std::optional<f32> depth);
 
@@ -83,7 +94,8 @@ public:
     /// Uniform block binding point (GLSL `layout(binding = slot)`).
     void bindUniformBuffer(u32 slot, const rhi::Buffer& buffer);
     void draw(u32 vertexCount, u32 firstVertex = 0);
-    void drawIndexed(u32 indexCount, u32 firstIndex = 0);
+    /// `baseVertex` is added to every index (e.g. several meshes in one buffer with 16-bit indices).
+    void drawIndexed(u32 indexCount, u32 firstIndex = 0, i32 baseVertex = 0);
 
     // --- Readback (tests now; screenshots/thumbnails later) ---
     /// RGBA8, bottom row first; colour attachment 0 of `framebuffer`, or the window's back buffer.
@@ -130,6 +142,7 @@ private:
         rhi::DepthBias depthBias{};
         rhi::Topology topology = rhi::Topology::Triangles;
         rhi::IndexType indexType = rhi::IndexType::U32;
+        bool scissor = false;
         std::array<BoundTexture, kMaxTextureUnits> textures{};
     };
 

@@ -76,6 +76,16 @@ TEST_CASE("Input: mouse buttons, motion and wheel")
     CHECK(input.mousePosition() == Vec2(12, 25)); // position persists
 }
 
+TEST_CASE("Input: text per frame")
+{
+    Input input;
+    input.onText("a");
+    input.onText("ä");
+    CHECK(input.text() == "aä");
+    input.beginFrame();
+    CHECK(input.text().empty());
+}
+
 TEST_CASE("Input: releaseAll on focus loss")
 {
     Input input;
