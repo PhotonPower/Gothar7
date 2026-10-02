@@ -1,6 +1,7 @@
 #include <g7/asset/AssetManager.hpp>
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
+#include <g7/asset/MeshFile.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
 
@@ -56,6 +57,12 @@ void fail(AssetSlot& slot, std::string message)
 {
     slot.error = std::move(message);
     slot.state.store(AssetState::Failed, std::memory_order_release);
+}
+
+bool hasExtension(std::string_view path, std::string_view extension) noexcept
+{
+    return path.size() >= extension.size() &&
+           equalsIgnoreCase(path.substr(path.size() - extension.size()), extension);
 }
 
 SlotPtr failedSlot(std::string path, std::type_index type, std::string message)
@@ -170,8 +177,13 @@ AssetManager::AssetManager(const Vfs& vfs, AssetManagerDesc desc) : m_impl(std::
     registerLoader<MeshData>(
         [](const LoadContext& ctx) -> Result<MeshData>
         {
+            // Cooked meshes (ADR 0016); glTF stays loadable for development (loose files).
+            if (hasExtension(ctx.path, ".g7mesh"))
+            {
+                return deserializeMesh(ctx.bytes, ctx.path);
+            }
             // External buffers are read from a directory on disk, so they work for loose files only;
-            // archived meshes must be self-contained (.glb, data: URIs), as the cooker writes them.
+            // archived glTF must be self-contained (.glb, data: URIs).
             const auto disk = ctx.diskPath();
             return loadGltf(ctx.bytes, disk ? disk->parent_path() : fs::Path(), ctx.path);
         });
