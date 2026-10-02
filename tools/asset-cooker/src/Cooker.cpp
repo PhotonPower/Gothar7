@@ -112,7 +112,12 @@ public:
         m_report.outputs = static_cast<u32>(m_outputs.size());
         if (!m_options.pack.empty())
         {
+            const bool hadArchive = m_previousPak != nullptr;
             m_previousPak.reset(); // everything reused has been read; the archive gets replaced
+            if (hadArchive && nothingChanged())
+            {
+                return {}; // identical archive: skip recompressing, keep its timestamp (hot reload)
+            }
             asset::PakWriter pak;
             pak.setCompressionLevel(m_options.level);
             for (const auto& [path, data] : m_outputs)
@@ -581,6 +586,18 @@ private:
             ++m_report.reused;
         }
         return true; // a collision was reported by emitAll; cooking again would collide too
+    }
+
+    /// True if every source was reused and none was removed: the outputs equal the previous ones.
+    bool nothingChanged() const
+    {
+        if (!m_previous || m_report.cooked != 0 || m_previous->sources.size() != m_new.sources.size())
+        {
+            return false;
+        }
+        return std::equal(m_previous->sources.begin(), m_previous->sources.end(), m_new.sources.begin(),
+                          [](const auto& a, const auto& b)
+                          { return a.first == b.first && a.second.key == b.second.key; });
     }
 
     std::optional<std::vector<u8>> previousOutput(const std::string& path) const

@@ -224,6 +224,13 @@ TEST_CASE("pack mode: incremental archive equals a full cook")
 {
     Tree t;
     t.run({.pack = "data.g7pak"});
+
+    // Nothing changed: the archive is left alone (no recompression, timestamp kept).
+    const auto packTime = t.mtime("data.g7pak");
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    CHECK(t.run({.pack = "data.g7pak"}).reused == 3);
+    CHECK(t.mtime("data.g7pak") == packTime);
+
     writeText(t.source / "scripts" / "init.lua", "print('v2')");
     const auto r = t.run({.pack = "data.g7pak"});
     CHECK(r.cooked == 1);
