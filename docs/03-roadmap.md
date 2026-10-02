@@ -97,7 +97,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 **DoD:** Spiel lädt ausschließlich aus `assets/cooked`, Änderung einer Textur wird ohne Neustart sichtbar.
 
 ## M4 – Welt & Szene (+ Editor-Grundlage)
-- [ ] EnTT-Registry, Komponenten-Grundsatz, `VobId`, Transform-Hierarchie (ADR 0005)
+- [x] EnTT-Registry, Komponenten-Grundsatz, `VobId`, Transform-Hierarchie (ADR 0005) – `world::Scene`, Registry nicht in der API
 - [ ] Weltformat `.g7world` (Text/JSON für Versionierbarkeit, binäre gekochte Variante)
 - [ ] Statisches Welt-Mesh (Gelände + Architektur) mit Kollisionsgeometrie
 - [ ] **Heightmap-Terrain** (Kacheln, LOD, Splatmap mit 4–8 Schichten, Löcher) – Grundlage für W2 (Leonberg-Gelände)

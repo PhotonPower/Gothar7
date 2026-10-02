@@ -4,6 +4,38 @@
 (Tag/Nacht, Wetter), Zonen, Wegnetz-Daten, Weltwechsel.
 
 ## Szene (ADR 0005: EnTT)
+### Umgesetzt (M4) – `Components.hpp`, `Scene.hpp`
+```cpp
+namespace g7::world {
+struct VobId { u64 value; bool valid() const; bool runtime() const; };   // 0 = keine; >= kRuntimeVobIdBase = Laufzeit
+struct Vob { VobId id; StringId name; };   struct WorldTransform { Mat4 matrix; };   // lokal: g7::Transform
+struct VobDesc { StringId name; Transform transform; VobId parent; VobId id /*fest beim Laden*/; bool runtime; };
+class Scene {   // entt::registry privat (ADR 0005)
+    Result<entt::entity> spawnVob(const VobDesc&);  void destroyVob(entt::entity);   // mit allen Nachkommen
+    bool valid(e); usize vobCount(); entt::entity findById(VobId); entt::entity findByName(StringId); VobId idOf(e);
+    template <C> C& set(e, C); const C* get(e) const; C* get(e); bool has(e); void remove(e);
+    template <C..., Fn> void each(Fn);                     // fn(entity, C&...)
+    void setTransform(e, const Transform& local);  Result<void> setParent(child, parent /*null = Wurzel*/);
+    entt::entity parent(e); std::vector<entt::entity> children(e); Mat4 worldMatrix(e);
+    void updateTransforms();                                // nur geänderte Teilbäume
+    u64 nextVobId(); Result<void> setNextVobId(u64);        // steigt nur
+    u64 nextRuntimeVobId(); Result<void> setNextRuntimeVobId(u64);   // für den Spielstand (M15)
+};
+}
+```
+- **IDs:** Welt-Vobs aus `nextVobId` (ab 1), Laufzeit-Vobs aus einem eigenen Zähler ab `kRuntimeVobIdBase`. Gelöschte IDs
+  kommen nie wieder. Beim Laden kann `VobDesc::id` eine feste ID setzen; doppelte IDs, Welt-IDs im Laufzeitbereich,
+  feste IDs für Laufzeit-Vobs und unbekannte Eltern sind **Fehler** (`Result`, Daten). Die Zähler stehen danach
+  mindestens bei max(ID) + 1; `setNextVobId`/`setNextRuntimeVobId` lehnen kleinere Werte ab.
+- **Komponenten:** `Vob`, `Transform` (lokal), `WorldTransform` hat jeder Vob; andere Module setzen eigene
+  Komponenten über `set`/`get`/`each`. Transformänderungen nur über `setTransform`/`set<Transform>` (setzt die
+  Änderungsmarke), `get<Transform>` ist nur lesend.
+- **Hierarchie** (intern `detail::Hierarchy`, verkettete Kindliste): `setParent` behält die Weltlage (neues Lokal =
+  inverse(Eltern-Welt) × Welt; ohne Scherung) und lehnt Zyklen ab; `destroyVob` löscht den Teilbaum.
+  `updateTransforms` berechnet `WorldTransform` ab dem obersten geänderten Vob jedes Teilbaums neu.
+- `World` (geplant, unten) bündelt `Scene`, Spielzeit, Umgebung und Wegnetz.
+
+### Geplant
 ```cpp
 namespace g7::world {
 struct VobId { u64 value; };                      // persistent, unique per world, never reused (ADR 0005); 0 = none
