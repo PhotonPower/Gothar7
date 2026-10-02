@@ -48,7 +48,8 @@ die Annotationen (`tools/worldgen/data/leonberg/…`, kleine JSON-Dateien).
 ## 3. Koordinatensystem
 
 - Quelle: ETRS89 / UTM Zone 32N (**EPSG:25832**), Höhen in m über NHN.
-- Engine: lokales System in Metern, **Ursprung am Marktplatz** (genauer Punkt in `leonberg.toml`),
+- Engine: lokales System in Metern, **Ursprung am Marktplatz**: Marktbrunnen, E 501115 / N 5405347,
+  ca. 386,9 m NHN (am Luftbild festgelegt, siehe `leonberg.toml`),
   +X = Osten, +Y = oben, −Z = Norden (rechtshändig, passend zu `docs/modules/core.md`).
   Höhe: `y = NHN − Bezugshöhe` (Bezugshöhe = Marktplatzhöhe), damit Zahlen klein bleiben.
 - Optional ein **Spielmaßstab** pro Achse (siehe Abschnitt 8) – die Umrechnung macht ausschließlich `geo-import`.
@@ -77,9 +78,9 @@ features.json                    Mauern, Gewässer, Bäume, Brunnen …
   ```json
   { "format": "gothar-terrain", "version": 1, "width": 2000, "height": 2000, "cellSize": 1.0,
     "firstSample": { "x": -999.5, "z": -999.5 },
-    "heightRange": { "minY": -31.62, "maxY": 110.15, "stepM": 0.002163272 },
+    "heightRange": { "minY": -50.991, "maxY": 94.85, "stepM": 0.002225391 },
     "areas": { "core": { "minX": -350, "minZ": -350, "maxX": 350, "maxZ": 350 }, "surroundings": { … } },
-    "origin": { "crs": "EPSG:25832", "easting": …, "northing": …, "heightNHN": 371.59, "heightReference": "marktplatz" },
+    "origin": { "crs": "EPSG:25832", "easting": 501115.0, "northing": 5405347.0, "heightNHN": 386.89, "heightReference": "marktplatz" },
     "gameScale": { "horizontal": 1.0, "vertical": 1.0 },
     "source": { "product": "LGL DGM1", "heightDatum": "DHHN2016", "files": [ … ], "credit": "Datengrundlage: LGL, www.lgl-bw.de" } }
   ```
@@ -186,7 +187,8 @@ Material Maker / Substance für Trim-Sheets, QGIS zum Sichten der Geodaten.
 
 ## 9. Offene Fragen
 
-- Genaue Gebietsgrenze (Kern + Umland) und Ursprungspunkt.
+- ~~Genaue Gebietsgrenze (Kern + Umland) und Ursprungspunkt.~~ Festgelegt 2026-10-02: Ursprung Marktbrunnen,
+  Kern ±350 m (umfasst Altstadt und Schloss), Umland ±1000 m (`leonberg.toml`).
 - Maßstabsfaktoren nach dem Klötzchen-Test.
 - Welche realen Bauten bleiben erkennbar (Schloss, Kirche, Marktplatz-Ensemble)?
 - Rolle des Ortes in der Geschichte (Lager einer Fraktion? Handelsstadt?) → `docs/design/world.md`.

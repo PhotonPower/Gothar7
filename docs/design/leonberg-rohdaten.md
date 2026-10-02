@@ -42,9 +42,8 @@ gothar-worldgen tiles leonberg --size 1000     REM einfaches 1-km-Raster, z. B. 
 Das LGL liefert DGM1, LoD2 und DOP20 in **2 km × 2 km-Kacheln**. Das Raster beginnt bei
 **ungeraden Ost-km** und geraden Nord-km. Das Kennzeichen `501_5404` steht für die linke untere Ecke in km
 (UTM 32N) und deckt E 501–503 km und N 5404–5406 km ab.
-Das Umland von Leonberg (E 499 933–501 933, N 5 404 056–5 406 056) braucht
-**4 Kacheln: 499_5404, 501_5404, 499_5406, 501_5406**. Die Altstadt braucht 499_5404 und 501_5404.
-Die nördliche Reihe (5406) wird nur für 56 m am Rand benötigt.
+Das Umland von Leonberg (±1000 m um den Marktbrunnen: E 500 115–502 115, N 5 404 347–5 406 347)
+braucht **4 Kacheln: 499_5404, 501_5404, 499_5406, 501_5406**. Die Altstadt (±350 m) braucht 499_5404 und 501_5404.
 
 ## 3. LGL Open GeoData (DGM1, LoD2, DOP20)
 
