@@ -18,7 +18,9 @@ struct Vertex
     Vec3 position{0.0f};
     Vec3 normal{0.0f, 1.0f, 0.0f};
     Vec2 uv{0.0f};
-    Vec4 tangent{0.0f}; ///< xyz + handedness in w; all zero if the source had none.
+    /// xyz + handedness in w (bitangent = cross(normal, tangent) * w). From the file, or computed for
+    /// primitives whose material has a normal map; all zero otherwise.
+    Vec4 tangent{0.0f};
 };
 static_assert(sizeof(Vertex) == 48);
 
@@ -31,12 +33,28 @@ struct ImageSource
     std::string mimeType;    ///< "image/png", "image/jpeg" or empty if unknown.
 };
 
-/// Material parameters as far as known in M2 (the material model follows later).
+/// glTF alpha modes: Mask = alpha test (foliage, fences), Blend = translucency.
+enum class AlphaMode : u8
+{
+    Opaque,
+    Mask,
+    Blend,
+};
+
+/// Deliberately simple, stylised material (no metallic/roughness). Image indices refer to
+/// MeshData::images, -1 = none.
 struct MaterialInfo
 {
     std::string name;
     Vec4 baseColor{1.0f};    ///< Linear factor (glTF baseColorFactor).
-    i32 baseColorImage = -1; ///< Index into MeshData::images (sRGB), -1 = none.
+    i32 baseColorImage = -1; ///< sRGB colour + alpha.
+    i32 normalImage = -1;    ///< Linear tangent-space normal map.
+    f32 normalScale = 1.0f;  ///< Strength of the normal map (glTF normalTexture.scale).
+    Vec3 emissive{0.0f};     ///< Linear factor (glTF emissiveFactor).
+    i32 emissiveImage = -1;  ///< sRGB.
+    AlphaMode alphaMode = AlphaMode::Opaque;
+    f32 alphaCutoff = 0.5f; ///< Mask: fragments with alpha below are discarded.
+    bool doubleSided = false;
 };
 
 /// Range of the index buffer drawn with one material.

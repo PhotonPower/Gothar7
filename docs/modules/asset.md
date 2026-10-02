@@ -18,7 +18,9 @@ Result<ImageData> loadImage(const fs::Path&);
 namespace g7::asset {
 struct Vertex { Vec3 position; Vec3 normal; Vec2 uv; Vec4 tangent; };          // 48 Byte, so lädt render hoch
 struct ImageSource { std::string uri; std::vector<u8> encoded; std::string mimeType; };   // Datei oder eingebettet
-struct MaterialInfo { std::string name; Vec4 baseColor; i32 baseColorImage = -1; };      // Index in images
+enum class AlphaMode : u8 { Opaque, Mask, Blend };
+struct MaterialInfo { std::string name; Vec4 baseColor; i32 baseColorImage = -1; i32 normalImage = -1; f32 normalScale;
+                      Vec3 emissive; i32 emissiveImage = -1; AlphaMode alphaMode; f32 alphaCutoff; bool doubleSided; };
 struct Submesh { u32 firstIndex, indexCount, material; };
 struct MeshData { std::vector<Vertex> vertices; std::vector<u32> indices; std::vector<Submesh> submeshes;
                   std::vector<MaterialInfo> materials; std::vector<ImageSource> images; AABB bounds; };
@@ -31,9 +33,12 @@ Result<MeshData> loadGltf(std::span<const u8>, const fs::Path& baseDir, std::str
   bleiben), Primitive mit gleichem Material werden zu einem Submesh zusammengefasst; Primitive ohne Material
   bekommen ein angehängtes Material `default`.
 - Koordinaten unverändert (glTF: +Y oben, rechtshändig, Meter; Modelle schauen nach +Z).
-- Fehlende Normalen werden flächengewichtet berechnet; fehlende Tangenten bleiben 0 (MikkTSpace mit dem
-  Material-Modell). Indizes immer u32; nur Dreiecke, andere Primitive werden mit Warnung übersprungen.
-- Materialien vorerst: Name, `baseColorFactor` (linear), Basisfarb-Bild (sRGB). Bilder als `ImageSource`: URI relativ
+- Fehlende Normalen werden flächengewichtet berechnet. **Tangenten:** aus der Datei, sonst für Primitive mit
+  Normal-Map aus den UVs berechnet (gemittelt, orthogonalisiert; w = −1 bei gespiegelten UVs; Bitangente =
+  cross(n, t) · w zeigt zum Bild-oben, passend zur glTF-Konvention) – nicht bit-exakt MikkTSpace, das folgt im
+  Cooker (M3); ohne Normal-Map bleiben Tangenten 0. Indizes immer u32; nur Dreiecke, andere Primitive werden mit Warnung übersprungen.
+- Materialien (bewusst ohne Metallic/Roughness): Basisfarbe (Faktor linear, Bild sRGB), Normal-Map (linear, `scale`),
+  Emissive (Faktor linear, Bild sRGB), `alphaMode`/`alphaCutoff`/`doubleSided` wie in glTF. Bilder als `ImageSource`: URI relativ
   zur Modelldatei oder eingebettete Bytes (`.glb`-bufferView, data:-URI) – Dekodieren mit `decodeImage`/`loadImage`.
 - Skins/Animationen: M6. Ab M3 kocht `g7-cook` glTF in ein Laufzeitformat, das dieselbe `MeshData` liefert.
 

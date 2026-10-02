@@ -26,6 +26,12 @@ Mat4 toGlm(const fastgltf::math::fmat4x4& matrix)
     return result;
 }
 
+i32 imageOf(const fastgltf::Asset& asset, usize textureIndex)
+{
+    const fastgltf::Texture& texture = asset.textures[textureIndex];
+    return texture.imageIndex ? static_cast<i32>(*texture.imageIndex) : -1;
+}
+
 std::vector<MaterialInfo> readMaterials(const fastgltf::Asset& asset)
 {
     std::vector<MaterialInfo> materials;
@@ -36,15 +42,32 @@ std::vector<MaterialInfo> readMaterials(const fastgltf::Asset& asset)
         info.name = std::string(material.name);
         const auto& factor = material.pbrData.baseColorFactor;
         info.baseColor = Vec4(factor[0], factor[1], factor[2], factor[3]);
-        if (material.pbrData.baseColorTexture)
+        info.baseColorImage = material.pbrData.baseColorTexture
+                                  ? imageOf(asset, material.pbrData.baseColorTexture->textureIndex)
+                                  : -1;
+        if (material.normalTexture)
         {
-            const fastgltf::Texture& texture =
-                asset.textures[material.pbrData.baseColorTexture->textureIndex];
-            if (texture.imageIndex)
-            {
-                info.baseColorImage = static_cast<i32>(*texture.imageIndex);
-            }
+            info.normalImage = imageOf(asset, material.normalTexture->textureIndex);
+            info.normalScale = material.normalTexture->scale;
         }
+        info.emissive =
+            Vec3(material.emissiveFactor[0], material.emissiveFactor[1], material.emissiveFactor[2]);
+        info.emissiveImage =
+            material.emissiveTexture ? imageOf(asset, material.emissiveTexture->textureIndex) : -1;
+        switch (material.alphaMode)
+        {
+        case fastgltf::AlphaMode::Mask:
+            info.alphaMode = AlphaMode::Mask;
+            break;
+        case fastgltf::AlphaMode::Blend:
+            info.alphaMode = AlphaMode::Blend;
+            break;
+        default:
+            info.alphaMode = AlphaMode::Opaque;
+            break;
+        }
+        info.alphaCutoff = material.alphaCutoff;
+        info.doubleSided = material.doubleSided;
         materials.push_back(std::move(info));
     }
     return materials;
@@ -123,6 +146,55 @@ std::vector<ImageSource> readImages(const fastgltf::Asset& asset, std::string_vi
     return images;
 }
 
+/// Per-vertex tangents from UVs (Lengyel), averaged over the triangles and orthogonalised against
+/// the normal. Not bit-exact MikkTSpace (that comes with the cooker, M3), but consistent with glTF:
+/// +X of the normal map follows +u, +Y points to the image top (decreasing v), and
+/// bitangent = cross(normal, tangent) * w.
+void computeTangents(std::vector<Vertex>& vertices, std::span<const u32> indices, usize firstVertex)
+{
+    std::vector<Vec3> uDirections(vertices.size() - firstVertex, Vec3(0.0f));
+    std::vector<Vec3> upDirections(vertices.size() - firstVertex, Vec3(0.0f));
+    for (usize i = 0; i + 2 < indices.size(); i += 3)
+    {
+        const u32 ia = indices[i];
+        const u32 ib = indices[i + 1];
+        const u32 ic = indices[i + 2];
+        const Vertex& a = vertices[ia];
+        const Vertex& b = vertices[ib];
+        const Vertex& c = vertices[ic];
+        const Vec3 e1 = b.position - a.position;
+        const Vec3 e2 = c.position - a.position;
+        const Vec2 d1 = b.uv - a.uv;
+        const Vec2 d2 = c.uv - a.uv;
+        const f32 det = d1.x * d2.y - d2.x * d1.y;
+        if (std::abs(det) < 1e-12f)
+        {
+            continue; // degenerate UVs contribute nothing
+        }
+        const f32 r = 1.0f / det;
+        const Vec3 dPdu = (e1 * d2.y - e2 * d1.y) * r;
+        const Vec3 dPdv = (e2 * d1.x - e1 * d2.x) * r;
+        for (const u32 index : {ia, ib, ic})
+        {
+            uDirections[index - firstVertex] += dPdu;
+            upDirections[index - firstVertex] -= dPdv; // glTF: v grows downwards, the map's +Y is up
+        }
+    }
+    for (usize i = firstVertex; i < vertices.size(); ++i)
+    {
+        const Vec3 n = vertices[i].normal;
+        Vec3 t = uDirections[i - firstVertex] - n * glm::dot(n, uDirections[i - firstVertex]);
+        if (glm::dot(t, t) < 1e-12f)
+        {
+            // No usable UVs: any tangent perpendicular to the normal keeps the basis valid.
+            t = glm::cross(std::abs(n.y) < 0.99f ? Vec3(0, 1, 0) : Vec3(1, 0, 0), n);
+        }
+        t = glm::normalize(t);
+        const f32 w = glm::dot(glm::cross(n, t), upDirections[i - firstVertex]) < 0.0f ? -1.0f : 1.0f;
+        vertices[i].tangent = Vec4(t, w);
+    }
+}
+
 void computeFlatNormals(std::vector<Vertex>& vertices, std::span<const u32> indices, usize firstVertex)
 {
     for (usize i = firstVertex; i < vertices.size(); ++i)
@@ -149,7 +221,7 @@ void computeFlatNormals(std::vector<Vertex>& vertices, std::span<const u32> indi
 
 Result<void> appendPrimitive(const fastgltf::Asset& asset, const fastgltf::Primitive& primitive,
                              const Mat4& world, u32 material, MeshData& mesh,
-                             IndicesByMaterial& indicesByMaterial)
+                             IndicesByMaterial& indicesByMaterial, bool needsTangents)
 {
     const auto positionIt = primitive.findAttribute("POSITION");
     if (positionIt == primitive.attributes.end())
@@ -232,6 +304,10 @@ Result<void> appendPrimitive(const fastgltf::Asset& asset, const fastgltf::Primi
     {
         computeFlatNormals(mesh.vertices, indices, firstVertex);
     }
+    if (needsTangents && tangentIt == primitive.attributes.end())
+    {
+        computeTangents(mesh.vertices, indices, firstVertex);
+    }
 
     auto& target = indicesByMaterial[material];
     target.insert(target.end(), indices.begin(), indices.end());
@@ -271,7 +347,10 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
                 }
                 const u32 material =
                     primitive.materialIndex ? static_cast<u32>(*primitive.materialIndex) : defaultMaterial;
-                if (auto result = appendPrimitive(asset, primitive, world, material, mesh, indicesByMaterial);
+                const bool needsTangents =
+                    material < mesh.materials.size() && mesh.materials[material].normalImage >= 0;
+                if (auto result = appendPrimitive(asset, primitive, world, material, mesh, indicesByMaterial,
+                                                  needsTangents);
                     !result)
                 {
                     failure = Error{std::string(debugName) + ": " + result.error().message};
@@ -289,7 +368,7 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
     }
     if (indicesByMaterial.contains(defaultMaterial))
     {
-        mesh.materials.push_back(MaterialInfo{"default", Vec4(1.0f), -1});
+        mesh.materials.push_back(MaterialInfo{.name = "default"});
     }
 
     for (auto& [material, indices] : indicesByMaterial)

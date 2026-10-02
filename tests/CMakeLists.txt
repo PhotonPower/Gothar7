@@ -37,3 +37,4 @@ set_tests_properties(render_gpu PROPERTIES LABELS gpu)
 target_compile_definitions(g7_tests_render_gpu PRIVATE G7_SHADER_DIR="${PROJECT_SOURCE_DIR}/engine/render/shaders")
 # test_image.cpp encodes PNG/JPEG with stb_image_write.
 target_link_libraries(g7_tests_asset PRIVATE g7_stb)
+target_link_libraries(g7_tests_render_gpu PRIVATE g7_stb) # test_material.cpp encodes PNGs
