@@ -4,7 +4,7 @@
 // OpenGL-4.6-Renderer: RHI, Materialien, Meshes, Licht, Schatten, Himmel, Debug-Draw.
 // Spezifikation: docs/modules/render.md   |   Roadmap: M2
 //
-// Status: Platzhalter. Die oeffentliche API wird in der genannten Phase entworfen.
+// Public API so far: Device.hpp (RHI root: GL loading, debug output), DebugOutput.hpp.
 
 #include <string_view>
 

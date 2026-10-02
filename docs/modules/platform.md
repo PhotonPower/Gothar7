@@ -12,7 +12,7 @@ struct Extent { u32 width = 0, height = 0; };
 enum class WindowMode : u8 { Windowed, Fullscreen /* randlos in Desktop-Auflösung */ };
 struct WindowDesc { std::string title = "Gothar"; Extent size{1600, 900};
                     WindowMode mode = WindowMode::Windowed; bool resizable = true;
-                    bool vsync = true; /* wirkt ab M2 mit dem GL-Kontext */ };
+                    GraphicsApi graphics = GraphicsApi::None; bool vsync = true; };
 
 class Window {   // PImpl um SDL_Window, hält Referenzen auf SDL-Video- und Gamepad-Subsystem
 public:
@@ -78,6 +78,13 @@ std::optional<GamepadButton> gamepadButtonFromName(sv);
 - **Namen** für die Konfiguration (Bindings): Tasten `"W"`, `"LeftCtrl"`, `"Grave"`, `"1"`, `"F5"`;
   Maus mit Präfix `"MouseLeft"`…; Gamepad `"PadSouth"`… – die Namensräume überschneiden sich nicht,
   Suche ohne Groß-/Kleinschreibung.
+
+### `GlContext.hpp`
+- `GraphicsApi::OpenGL` in `WindowDesc` erzeugt ein GL-fähiges Fenster (Default-Framebuffer: Doppelpuffer,
+  Tiefe 24, Stencil 8).
+- `GlContext::create(window, {major 4, minor 6, minMinor 5, debug})` – Core-Kontext, versucht 4.6 und fällt auf
+  4.5 zurück; `swapBuffers()`, `setVSync(bool)` (adaptiv, sonst klassisch; loggt die Bildwiederholrate),
+  `procAddress(name)` als Loader für `render`. Muss alle GL-Objekte überleben.
 
 ### `Time.hpp`
 - `nowSeconds()` – monotone Uhr (`SDL_GetTicksNS`), `sleepPrecise(seconds)` – genaues Warten

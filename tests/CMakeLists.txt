@@ -21,3 +21,15 @@ set_tests_properties(platform runtime PROPERTIES ENVIRONMENT "SDL_VIDEO_DRIVER=o
 target_compile_definitions(g7_tests_platform PRIVATE G7_GAME_CONFIG_DIR="${CMAKE_SOURCE_DIR}/game/config")
 # test_engine_input.cpp drives the engine with synthetic SDL events.
 target_link_libraries(g7_tests_runtime PRIVATE SDL3::SDL3)
+
+g7_add_test_suite(render)
+
+# Tests that need a real OpenGL 4.5+ driver. Label "gpu": CI runs them on Linux under Xvfb with
+# Mesa llvmpipe and excludes them on Windows (ctest -LE gpu), whose runners have no OpenGL.
+file(GLOB _gpu_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/render_gpu/*.cpp")
+add_executable(g7_tests_render_gpu ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_gpu_sources})
+target_link_libraries(g7_tests_render_gpu PRIVATE g7::runtime doctest::doctest)
+g7_set_warnings(g7_tests_render_gpu)
+set_target_properties(g7_tests_render_gpu PROPERTIES FOLDER "tests")
+add_test(NAME render_gpu COMMAND g7_tests_render_gpu)
+set_tests_properties(render_gpu PROPERTIES LABELS gpu)

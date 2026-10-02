@@ -10,8 +10,10 @@
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 #include <g7/platform/Actions.hpp>
+#include <g7/platform/GlContext.hpp>
 #include <g7/platform/Input.hpp>
 #include <g7/platform/Window.hpp>
+#include <g7/render/Device.hpp>
 
 #include <memory>
 #include <string>
@@ -28,6 +30,7 @@ struct EngineConfig
     /// tests and CI runs).
     f64 fixedFrameSeconds = 0.0;
     bool headless = false;       ///< No window (tests, CI smoke test).
+    bool render = true;          ///< OpenGL rendering in the window (false: window without GL, --no-render).
     platform::WindowDesc window; ///< Used unless headless.
     /// Merged settings (engine.toml + user config). The engine reads [input] (scheme,
     /// stick_deadzone) and [bindings.<scheme>]; window settings are applied by the caller.
@@ -74,6 +77,8 @@ public:
     [[nodiscard]] bool paused() const noexcept { return m_paused; }
     static constexpr f64 kMaxTimeScale = 10.0;
 
+    /// Render device, or nullptr without rendering.
+    [[nodiscard]] render::Device* renderDevice() noexcept { return m_device.get(); }
     /// The game window, or nullptr when headless / before init().
     [[nodiscard]] platform::Window* window() noexcept { return m_window.get(); }
     /// Input state of the current frame (stays empty when headless).
@@ -86,6 +91,8 @@ private:
 
     EngineConfig m_config;
     std::unique_ptr<platform::Window> m_window;
+    std::unique_ptr<platform::GlContext> m_glContext; // must outlive m_device
+    std::unique_ptr<render::Device> m_device;
     platform::Input m_input;
     platform::ActionMap m_actions;
     FixedStep m_fixedStep{1.0 / 60.0};
