@@ -46,26 +46,74 @@ Result<MeshData> loadGltf(std::span<const u8>, const fs::Path& baseDir, std::str
   zur Modelldatei oder eingebettete Bytes (`.glb`-bufferView, data:-URI) – Dekodieren mit `decodeImage`/`loadImage`.
 - Skins/Animationen: M6. Ab M3 kocht `g7-cook` glTF in ein Laufzeitformat, das dieselbe `MeshData` liefert.
 
-## Bestandteile
-- **VFS**: Mount-Liste aus Ordnern und `.g7pak`-Archiven; höhere Priorität überschreibt
-  (Mods/Patches, wie Gothics VDF-Mechanik). Pfade case-insensitive, `/` als Trenner.
-- **Asset-Handles**: `Handle<T>` mit Referenzzählung; `AssetManager::load<T>(path)` liefert
-  sofort ein Handle, Laden läuft asynchron; `isReady()`, Platzhalter bis fertig.
-- **Loader-Registry**: pro Typ (`Texture`, `Mesh`, `Skeleton`, `AnimationClip`, `Sound`, `WorldData`, `Material`).
-- **Hot-Reload**: Dateiüberwachung im Entwicklungsmodus → Loader lädt neu, Handle bleibt gültig.
+## Bestand (M3)
 
-## .g7pak-Format (Entwurf)
-```
-Header { magic "G7PK", version u32, entryCount u32, tocOffset u64 }
-Daten  { Blöcke, optional LZ4/Zstd-komprimiert }
-TOC    { pfadHash u64, pfad (UTF-8), offset u64, size u64, rawSize u64, flags u32 }
-```
-
-## Geplante API
+### `Vfs.hpp` – virtuelles Dateisystem
 ```cpp
 namespace g7::asset {
-class Vfs { public: Result<void> mount(std::string_view source, i32 priority);
-                    Result<std::vector<u8>> read(std::string_view path) const; bool exists(...) const; };
+using MountId = u32;                                         // 0 wird nie vergeben
+struct VfsFileInfo { std::string path; u64 size; };
+Result<std::string> normalizeVfsPath(std::string_view path);
+
+class Vfs {                                                  // PImpl, verschiebbar, nicht kopierbar
+public:
+    Result<MountId> mount(const fs::Path& source, i32 priority, std::string_view mountPoint = {});
+    bool unmount(MountId);
+    Result<void> rescan(MountId);
+    Result<std::vector<u8>> read(std::string_view path) const;
+    bool exists(std::string_view path) const;
+    std::optional<VfsFileInfo> stat(std::string_view path) const;
+    std::vector<VfsFileInfo> list(std::string_view directory = {}, std::string_view extension = {}) const;
+    std::optional<fs::Path> diskPath(std::string_view path) const;
+    usize mountCount() const;
+};
+}
+```
+- **Quellen:** Ordner oder `.g7pak`-Archiv. Was davon vorliegt, erkennt `mount` am Dateityp. Optional werden alle
+  Dateien einer Quelle unter einem Mount-Punkt eingehängt (z. B. `mods/leonberg/…`).
+- **Vorrang:** Höhere Priorität gewinnt. Bei gleicher Priorität gewinnt der **später** gemountete Ordner oder das
+  später gemountete Archiv. So überlagern Mods und Patches die Basisdaten wie Gothics VDF-Archive.
+  Nach `unmount` ist wieder die darunterliegende Datei sichtbar.
+- **Pfade:** `/` als Trenner (`\` wird umgewandelt). Leere und `.`-Abschnitte sowie ein führender `/` entfallen.
+  `..`, `:` (Laufwerksbuchstaben) und Steuerzeichen werden abgewiesen. Die Schreibweise bleibt erhalten, Vergleiche
+  ignorieren Groß- und Kleinschreibung (ASCII), **auf allen Plattformen**: Ordner werden beim Mounten eingelesen,
+  `rescan` übernimmt spätere Änderungen. Unterscheiden sich zwei Dateien eines Linux-Ordners nur in der
+  Schreibweise, gilt die alphabetisch erste, mit Warnung.
+- **`list`** liefert alle sichtbaren Dateien unterhalb eines Ordners rekursiv, optional nach Endung gefiltert
+  (mit oder ohne Punkt), sortiert ohne Rücksicht auf Groß- und Kleinschreibung, je Pfad nur den Gewinner.
+- **`diskPath`** liefert den Ort auf der Platte, wenn der Gewinner eine lose Datei ist. Das ist für Hot-Reload gedacht.
+- **Threads:** `read`/`exists`/`stat`/`list`/`diskPath` laufen parallel (Asset-Worker). `mount`, `unmount` und
+  `rescan` sperren exklusiv. Gelesen wird außerhalb der Sperre; ein Archiv bleibt gültig, auch wenn es während
+  des Lesens ausgehängt wird.
+
+### `Pak.hpp` – `.g7pak`-Archive (Version 1)
+```
+Header (32 B, little-endian): "G7PK", version u32 = 1, entryCount u32, reserved u32, tocOffset u64, tocSize u64
+Daten  Dateiinhalte, jeweils ab einem 16-Byte-ausgerichteten Offset
+TOC    je Eintrag: pfadHash u64 (StringId::hashOf), offset u64, size u64, rawSize u64, flags u32,
+       pfadLänge u16, pfad (UTF-8, normalisiert)
+```
+- `PakWriter` (öffentlich, für Tests und `g7-cook`): `add(path, data)` normalisiert den Pfad und lehnt Duplikate ab
+  (ohne Rücksicht auf Groß-/Kleinschreibung). `serialize()` sortiert die Einträge nach Pfad, gleiche Eingaben
+  ergeben also byte-gleiche Archive. `write(target)` schreibt atomar.
+- **Ohne Kompression in Version 1** (`flags = 0`, `rawSize = size`). Das Flag `kPakFlagCompressed` ist reserviert.
+  Die Entscheidung LZ4 oder Zstd fällt mit dem Cooker (ADR); bis dahin werden solche Einträge mit Fehler abgelehnt.
+- **Beim Mounten wird geprüft:** Magic, Version, Inhaltsverzeichnis und Daten innerhalb der Datei, Pfad normalisiert,
+  Hash passend, keine doppelten Pfade. Ein beschädigtes Archiv liefert einen `Result`-Fehler.
+- Der Leser (`src/PakArchive.hpp`) ist intern. Daten werden bei Bedarf gelesen, jeder Aufruf öffnet einen eigenen Stream.
+
+## Bestandteile (geplant)
+- **Asset-Handles**: `Handle<T>` mit Referenzzählung; `AssetManager::load<T>(path)` liefert
+  sofort ein Handle, Laden läuft asynchron; `isReady()`, Platzhalter bis fertig. Lädt über das `Vfs`.
+- **Loader-Registry**: pro Typ (`Texture`, `Mesh`, `Skeleton`, `AnimationClip`, `Sound`, `WorldData`, `Material`).
+- **Hot-Reload**: Dateiüberwachung im Entwicklungsmodus (über `Vfs::diskPath`/`rescan`) → Loader lädt neu,
+  Handle bleibt gültig.
+- **Engine-Anbindung** (mit den Asset-Handles): `Engine` besitzt das `Vfs`, Mounts aus `engine.toml`
+  (z. B. `assets/cooked/*.g7pak`, im Entwicklungsmodus zusätzlich `assets/source`).
+
+## Geplante API (Rest)
+```cpp
+namespace g7::asset {
 template <class T> class Handle { ... const T* get() const; bool isReady() const; };
 class AssetManager { public: template <class T> Handle<T> load(std::string_view path); void update(); };
 }
