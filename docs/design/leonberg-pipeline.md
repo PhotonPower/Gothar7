@@ -89,12 +89,35 @@ features.json                    Mauern, Gewässer, Bäume, Brunnen …
 - Der Maßstab `gameScale.horizontal` skaliert `cellSize`, `firstSample` und `areas`;
   `gameScale.vertical` skaliert die Höhen.
 
-`buildings.json` (ein Eintrag pro Gebäude):
+**`buildings.json`** (umgesetzt, Module `geo/lod2.py` + `geo/buildings.py`): Kopf mit `format`
+(`gothar-buildings`), `version`, `origin` (dieselbe Bezugshöhe wie `terrain.json`), `gameScale`,
+`source` (LoD2-Dateien, Credit) und `count`, danach `buildings` mit **einem Gebäude pro Zeile**:
 ```json
-{ "id": "DEBW_0010000abc", "footprint": [[x, z], ...], "groundY": 0.4,
-  "roof": { "type": "saddle", "eaveY": 9.8, "ridgeY": 14.2, "ridgeDir": [1, 0] },
-  "osm": { "building": "house", "levels": 3 }, "areaM2": 112.5 }
+{ "id": "DEBW_00100061Zl2", "function": "31001_1123", "inCore": true,
+  "footprint": [[x, z], ...], "areaM2": 250.2, "groundY": -0.93, "heightM": 17.57,
+  "roof": { "type": "saddle", "alkis": "3100", "eaveY": 9.61, "ridgeY": 16.64,
+            "ridgeDir": [1.0, 0.017], "pitchDeg": 32.7 },
+  "parts": [ { "id": "UUID_…", "footprint": …, "areaM2": …, "groundY": …, "heightM": …, "roof": { … } } ],
+  "warnings": [ "…" ] }
 ```
+- Aufgenommen werden alle Gebäude, deren Grundriss im Gebiet `surroundings` liegt (gemessen an einem
+  repräsentativen Punkt). `inCore` markiert die Gebäude der Altstadt.
+- Koordinaten sind lokal (x, z) in Metern, auf cm gerundet. Der Ring ist nicht geschlossen und läuft in der
+  Draufsicht (Norden oben) gegen den Uhrzeigersinn. Innenhöfe ab 1 m² stehen in `holes`.
+- `groundY`, `eaveY` und `ridgeY` sind **absolute lokale Höhen**, im selben System wie das Terrain.
+  `eaveY` ist der tiefste Dachpunkt, `ridgeY` der höchste; `heightM` = höchster First − Boden.
+- `roof.type` stammt aus der ALKIS-Dachform (`alkis`): `flat` 1000, `shed` 2100, `offset_shed` 2200,
+  `saddle` 3100, `hip` 3200, `half_hip` 3300, `mansard` 3400, `tent` 3500, `cone` 3600, `dome` 3700,
+  `sawtooth` 3800, `arch` 3900, `tower` 4000, `mixed` 5000, `other` 9999.
+  `ridgeDir` ist die Richtung der längsten Kante am höchsten Punkt (vorzeichenfrei, x ≥ 0). Bei
+  Flach-, Zelt-, Kegel-, Kuppel- und Turmdächern ist sie `null`. `pitchDeg` ist die flächengewichtete mittlere Dachneigung.
+- Gebäude mit LoD2-Gebäudeteilen bekommen `parts`, jeweils mit eigenem Dach. Der Grundriss ist die Vereinigung
+  der Teile, `roof` ist das Dach des größten Teils.
+- `function` ist der ALKIS-Gebäudefunktionscode (z. B. `31001_1010` Wohnhaus, `31001_2463` Garage;
+  `51009_*` sind Bauwerke wie Überdachungen). Eine Zuordnung für das Spiel folgt mit den Annotationen.
+- `warnings` (optional) nennt Auffälligkeiten: getrennte Grundrissteile (der größte bleibt erhalten),
+  ein fehlendes Dach oder eine Abweichung von mehr als 1 m zur LoD2-`measuredHeight`.
+- OSM-Angaben (`building`, `levels`) ergänzt der OSM-Schritt.
 
 Annotationen/Overrides pro Gebäude (`tools/worldgen/data/leonberg/buildings/<id>.json`, versioniert):
 ```json
@@ -111,7 +134,7 @@ Annotationen/Overrides pro Gebäude (`tools/worldgen/data/leonberg/buildings/<id
 ### W-A `geo-import` (Python: GDAL/rasterio, pyproj, shapely, lxml, osmium)
 - Gebiet aus `leonberg.toml` ausschneiden (Kernbereich Altstadt + Rand für Umland).
 - DGM1-Kacheln mosaikieren → Heightmap; Ränder für die spätere Erweiterung kennzeichnen.
-- CityGML LoD2 parsen → Grundrisse, Dachflächen → Dachtyp/Höhen klassifizieren → `buildings.json`.
+- CityGML LoD2 parsen → Grundrisse, Dachflächen → Dachtyp (ALKIS-Code)/Höhen/Firstrichtung → `buildings.json`.
 - OSM → `streets.json`, `features.json` (Straßenbreite aus Tags, sonst Schätzung nach Typ).
 - Vorschau-PNG (Heightmap + Grundrisse + Straßen) zur Kontrolle.
 
