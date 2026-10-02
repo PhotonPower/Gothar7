@@ -4,7 +4,7 @@
 // Virtuelles Dateisystem, Archive, Asset-Handles, asynchrones Laden, Hot-Reload.
 // Spezifikation: docs/modules/asset.md   |   Roadmap: M3
 //
-// Status: Platzhalter. Die oeffentliche API wird in der genannten Phase entworfen.
+// Status: Bilder, glTF, prozedurale Meshes (M2); VFS und .g7pak (M3). Handles folgen.
 
 #include <string_view>
 

@@ -80,7 +80,7 @@ Windows und Linux grün; core hat > 80 % Testabdeckung seiner Logik.
 bei ≥ 60 FPS auf Mittelklasse-Hardware.
 
 ## M3 – Asset-System & Pipeline
-- [ ] Virtuelles Dateisystem: Mount-Punkte (Ordner, `.g7pak`), Priorität (Mods überschreiben)
+- [x] Virtuelles Dateisystem: Mount-Punkte (Ordner, `.g7pak`), Priorität (Mods überschreiben) – `.g7pak` v1 ohne Kompression, Engine-Anbindung mit den Asset-Handles
 - [ ] Asset-Handles (typisiert, referenzgezählt), Cache, asynchrones Laden auf Worker-Threads
 - [ ] Hot-Reload für Texturen, Shader, Skripte im Entwicklungsmodus
 - [ ] `g7-cook`: glTF → Laufzeit-Mesh/Skelett/Animation, PNG → KTX2 (BC7/BC5), OGG bleibt, Archiv packen; Laufzeit lädt KTX2 (libktx, aus M2 verschoben – ADR 0014)
