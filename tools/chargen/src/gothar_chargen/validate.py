@@ -41,6 +41,10 @@ class Tolerances:
     height_error: tuple[float, float] = (1.50, 2.10)
     height_warn: tuple[float, float] = (1.65, 1.95)
     ground: float = 0.03
+    jump_rotation_error_deg: float = 120.0  # per key (exported at 30 fps: per frame)
+    jump_rotation_warn_deg: float = 90.0
+    jump_translation_m: float = 0.5
+    loop_rotation_deg: float = 5.0  # first vs. last key of s_* clips
 
 
 @dataclass(frozen=True)
@@ -446,6 +450,7 @@ class _Checker:
                     f"clip '{name}' animates nodes outside the skeleton: {_listed(foreign)}",
                 )
             self._check_channels(name, anim)
+            self._check_motion(name, anim)
             names[name] = self._duration(anim)
         self.r.stats["clips"] = len(anims)
         self._events(names)
@@ -471,6 +476,47 @@ class _Checker:
         if scaled:
             self.r.error(
                 "anim.channels", f"clip '{clip}' has scale channels: {_listed(sorted(scaled))}"
+            )
+
+    def _check_motion(self, clip: str, anim: dict[str, Any]) -> None:
+        """Jumps between consecutive keys and, for loops (s_*), a closed cycle."""
+        t = self.tol
+        jumps, warn, open_loop = [], [], []
+        loop = is_loop_clip(clip)
+        for ch in anim.get("channels", []):
+            target = ch.get("target", {})
+            if "node" not in target or target.get("path") not in ("rotation", "translation"):
+                continue
+            sampler = anim["samplers"][ch["sampler"]]
+            try:
+                values = self.g.accessor(sampler["output"]).astype(np.float64)
+            except GltfError:
+                continue
+            if sampler.get("interpolation") == "CUBICSPLINE" or len(values) < 2:
+                continue
+            bone = self.name(target["node"])
+            if target["path"] == "rotation":
+                values /= np.maximum(np.linalg.norm(values, axis=1, keepdims=True), 1e-12)
+                dots = np.abs(np.sum(values[1:] * values[:-1], axis=1)).clip(0, 1)
+                step = float(np.degrees(2 * np.arccos(dots)).max())
+                if step > t.jump_rotation_error_deg:
+                    jumps.append(f"{bone} {step:.0f}°")
+                elif step > t.jump_rotation_warn_deg:
+                    warn.append(f"{bone} {step:.0f}°")
+                end = float(np.degrees(2 * np.arccos(min(1.0, abs(float(values[0] @ values[-1]))))))
+                if loop and end > t.loop_rotation_deg:
+                    open_loop.append(f"{bone} {end:.0f}°")
+            else:
+                step = float(np.linalg.norm(np.diff(values, axis=0), axis=1).max())
+                if step > t.jump_translation_m:
+                    jumps.append(f"{bone} {step:.2f} m")
+        if jumps:
+            self.r.error("anim.jump", f"clip '{clip}' jumps between frames: {_listed(jumps)}")
+        if warn:
+            self.r.warning("anim.jump", f"clip '{clip}' has very fast rotations: {_listed(warn)}")
+        if open_loop:
+            self.r.warning(
+                "anim.loop", f"loop '{clip}' does not end where it starts: {_listed(open_loop)}"
             )
 
     def _duration(self, anim: dict[str, Any]) -> float:

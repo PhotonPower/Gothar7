@@ -29,23 +29,37 @@ class ListRow:
 
 @dataclass
 class Progress:
-    rows: list[ListRow]
+    rows: list[ListRow]  # Prio A (must be complete: --fail-missing)
     present: dict[str, Path]  # clip name -> file
     missing: list[str] = field(default_factory=list)
     stale: list[str] = field(default_factory=list)  # list status contradicts the files
+    sections: dict[str, list[ListRow]] = field(default_factory=dict)  # other written-out tables
 
     @property
     def listed(self) -> list[str]:
         return [n for r in self.rows for n in r.names]
 
+    def section_counts(self) -> dict[str, tuple[int, int]]:
+        """Heading -> (present, listed) for the written-out tables besides Prio A."""
+        counts = {}
+        for heading, rows in self.sections.items():
+            names = [n for r in rows for n in r.names]
+            counts[heading] = (sum(n in self.present for n in names), len(names))
+        return counts
+
     @property
     def extra(self) -> list[str]:
-        listed = set(self.listed)
+        listed = set(self.listed) | {
+            n for rows in self.sections.values() for r in rows for n in r.names
+        }
         return sorted(n for n in self.present if n not in listed)
 
     def to_dict(self) -> dict:
         return {
             "prio_a": {"listed": len(self.listed), "present": len(self.listed) - len(self.missing)},
+            "sections": {
+                h: {"present": p, "listed": n} for h, (p, n) in self.section_counts().items()
+            },
             "missing": self.missing,
             "stale": self.stale,
             "extra": self.extra,
@@ -70,33 +84,48 @@ def expand_names(cell: str) -> list[str]:
     return names
 
 
-def parse_prio_a(text: str) -> list[ListRow]:
-    """Rows of the first table after the "## Prio A" heading: (names, status)."""
-    rows: list[ListRow] = []
-    in_section = False
+def parse_tables(text: str) -> list[tuple[str, list[ListRow]]]:
+    """All tables with 'Name' and 'Status' columns, with the heading above each table."""
+    tables: list[tuple[str, list[ListRow]]] = []
+    heading = ""
     header: list[str] | None = None
+    rows: list[ListRow] = []
+
+    def close() -> None:
+        nonlocal header, rows
+        if rows:
+            tables.append((heading, rows))
+        header, rows = None, []
+
     for number, line in enumerate(text.splitlines(), start=1):
-        if line.startswith("## "):
-            if in_section:
-                break
-            in_section = line.startswith("## Prio A")
+        if line.startswith("#"):
+            close()
+            heading = line.lstrip("#").strip()
             continue
-        if not in_section or not line.startswith("|"):
+        if not line.startswith("|"):
+            if header is not None:
+                close()
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if header is None:
             header = [c.lower() for c in cells]
+            if heading.startswith("Prio A") and not {"name", "status"} <= set(header):
+                raise ReportError("Prio A table needs 'Name' and 'Status' columns")
             continue
-        if set(line) <= set("|-: "):
+        if set(line) <= set("|-: ") or not {"name", "status"} <= set(header):
             continue
-        try:
-            name_col, status_col = header.index("name"), header.index("status")
-        except ValueError as e:
-            raise ReportError("Prio A table needs 'Name' and 'Status' columns") from e
+        name_col, status_col = header.index("name"), header.index("status")
         rows.append(ListRow(tuple(expand_names(cells[name_col])), cells[status_col], number))
-    if not rows:
-        raise ReportError("no 'Prio A' table found")
-    return rows
+    close()
+    return tables
+
+
+def parse_prio_a(text: str) -> list[ListRow]:
+    """Rows of the table under the "## Prio A" heading: (names, status)."""
+    for heading, rows in parse_tables(text):
+        if heading.startswith("Prio A"):
+            return rows
+    raise ReportError("no 'Prio A' table found")
 
 
 def collect_clips(anims_dir: Path) -> dict[str, Path]:
@@ -111,15 +140,26 @@ def collect_clips(anims_dir: Path) -> dict[str, Path]:
     return clips
 
 
+def _check_status(row: ListRow, present: dict[str, Path], stale: list[str]) -> list[str]:
+    missing = [n for n in row.names if n not in present]
+    status = row.status.split()[0].lower() if row.status else ""
+    if missing and (status.startswith("platzhalter") or status == "fertig"):
+        stale.append(f"line {row.line}: status '{status}' but missing {missing}")
+    elif not missing and status == "offen":
+        stale.append(f"line {row.line}: status 'offen' but all clips exist")
+    return missing
+
+
 def progress(list_text: str, anims_dir: Path) -> Progress:
+    tables = parse_tables(list_text)
     rows = parse_prio_a(list_text)
     result = Progress(rows=rows, present=collect_clips(anims_dir))
     for row in rows:
-        missing = [n for n in row.names if n not in result.present]
-        result.missing += missing
-        status = row.status.split()[0].lower() if row.status else ""
-        if missing and (status.startswith("platzhalter") or status == "fertig"):
-            result.stale.append(f"line {row.line}: status '{status}' but missing {missing}")
-        elif not missing and status == "offen":
-            result.stale.append(f"line {row.line}: status 'offen' but all clips exist")
+        result.missing += _check_status(row, result.present, result.stale)
+    for heading, other in tables:
+        if heading.startswith("Prio A"):
+            continue
+        result.sections[heading] = other
+        for row in other:
+            _check_status(row, result.present, result.stale)
     return result
