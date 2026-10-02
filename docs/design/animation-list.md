@@ -21,22 +21,22 @@ Clips liegen in `assets/source/characters/anims/human/<modus>.glb`; Herkunft je 
 | `none/s_idle` | Stehen, entspannt | – | – | Q | platzhalter (UAL1 `Idle_Loop`) |
 | `none/s_walk` | Gehen vorwärts | – | footstep_l/r | Q | platzhalter (UAL1 `Walk_Loop`) |
 | `none/s_walk_back` | Rückwärts gehen | – | footstep_l/r | Q→ | platzhalter (`s_walk` rückwärts) |
-| `none/s_strafe_l` / `s_strafe_r` | Seitwärts | – | footstep_l/r | K/MC | offen |
+| `none/s_strafe_l` / `s_strafe_r` | Seitwärts | – | footstep_l/r | K, später MC | platzhalter-K (Gehen mit seitlich gedrehter Hüfte) |
 | `none/s_run` | Rennen | – | footstep_l/r | Q | platzhalter (UAL1 `Jog_Fwd_Loop`) |
 | `none/s_sneak` | Schleichen | – | footstep_l/r (leise) | Q | platzhalter (UAL1 `Crouch_Fwd_Loop`) |
-| `none/t_turn_l` / `t_turn_r` | Auf der Stelle drehen | – | footstep | K/MC | offen |
+| `none/t_turn_l` / `t_turn_r` | Auf der Stelle drehen | – | footstep | K, später MC | platzhalter-K (Idle + gedämpfte Schritte + Körperdrehung) |
 | `none/t_walk_2_run`, `t_run_2_walk`, `t_run_stop` | Übergänge | – | – | Q→/K | platzhalter (Überblendung 10/10/12 Frames) |
 | `none/t_jump_start`, `s_jump_air`, `t_jump_land` | Sprung | – | land | Q | platzhalter (UAL1 `Jump_Start`/`_Loop`/`_Land`) |
 | `none/t_jump_run` | Sprung aus dem Lauf | – | land | Q→ | platzhalter (`Jump_Loop` 0–20 + `Jump_Land`) |
 | `none/s_fall`, `t_fall_land_hard` | Fallen, harte Landung | – | land | Q | platzhalter (UAL2 `NinjaJump_Idle_Loop`/`_Land`) |
 | `none/t_climb_low` | Kante ~0,8 m hochsteigen | ✓ | – | Q, später MC/K | platzhalter (UAL2 `ClimbUp_1m_RM`, 1 m) |
-| `none/t_climb_mid` | Kante ~1,4 m hochziehen | ✓ | – | K/MC | offen |
-| `none/t_climb_high` | Kante ~2,0 m hochziehen | ✓ | – | K/MC | offen |
-| `none/t_ladder_on`, `s_ladder_up`, `s_ladder_down`, `t_ladder_off` | Leiter | ✓ | – | K/MC | offen |
+| `none/t_climb_mid` | Kante ~1,4 m hochziehen | ✓ | – | K, später MC | platzhalter-K (`t_climb_low` gestreckt: 1,4 m, ×1,3 Zeit) |
+| `none/t_climb_high` | Kante ~2,0 m hochziehen | ✓ | – | K, später MC | platzhalter-K (`t_climb_low` gestreckt: 2,0 m, ×1,6 Zeit) |
+| `none/t_ladder_on`, `s_ladder_up`, `s_ladder_down`, `t_ladder_off` | Leiter | ✓ | – | K, später MC | platzhalter-K (Wechselposen, 0,6 m je Zyklus) |
 | `swim/s_idle`, `swim/s_forward`, `swim/s_back` | Schwimmen | – | splash | Q, Q→ | platzhalter (UAL1 `Swim_Idle_Loop`, `Swim_Fwd_Loop`, rückwärts) |
-| `swim/t_turn_l/r` | Schwimmend drehen | – | – | K/MC | offen |
-| `dive/s_idle`, `dive/s_forward`, `swim/t_2_dive`, `dive/t_2_swim` | Tauchen | – | – | K/MC | offen |
-| `none/t_slide`, `s_slide` | Hang hinabrutschen (stehend, Gothic-typisch) | – | – | K | offen |
+| `swim/t_turn_l/r` | Schwimmend drehen | – | – | K, später MC | platzhalter-K (`swim/s_idle` + Körperdrehung) |
+| `dive/s_idle`, `dive/s_forward`, `swim/t_2_dive`, `dive/t_2_swim` | Tauchen | – | – | K, später MC | platzhalter-K (Schwimmen geneigt/verlangsamt, Überblendungen) |
+| `none/t_slide`, `s_slide` | Hang hinabrutschen (stehend, Gothic-typisch) | – | – | K | platzhalter-K (Balance-Pose mit Schwanken; Übergang aus `s_run`) |
 
 ## Prio B – Vertical Slice (Muster, wird in F2/F4 ausgeschrieben)
 

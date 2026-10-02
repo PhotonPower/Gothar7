@@ -227,5 +227,5 @@ jobs:
       - name: Validate character assets
         run: gothar-chargen validate --strict
 
-      - name: Animation list in sync with clips
-        run: gothar-chargen report --fail-stale
+      - name: Animation list in sync with clips, no Prio-A clip missing
+        run: gothar-chargen report --fail-stale --fail-missing

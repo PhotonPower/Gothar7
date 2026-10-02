@@ -14,6 +14,18 @@ events = [
     { frame = 58, event = "footstep_l" },
 ]
 
+[clips."none/s_strafe_l"]
+events = [
+    { frame = 19, event = "footstep_r" },
+    { frame = 39, event = "footstep_l" },
+]
+
+[clips."none/s_strafe_r"]
+events = [
+    { frame = 19, event = "footstep_r" },
+    { frame = 39, event = "footstep_l" },
+]
+
 [clips."none/s_walk"]
 events = [
     { frame = 19, event = "footstep_r" },
@@ -39,4 +51,14 @@ events = [
 [clips."none/t_jump_run"]
 events = [
     { frame = 23, event = "land" },
+]
+
+[clips."none/t_turn_l"]
+events = [
+    { frame = 18, event = "footstep_r" },
+]
+
+[clips."none/t_turn_r"]
+events = [
+    { frame = 18, event = "footstep_r" },
 ]

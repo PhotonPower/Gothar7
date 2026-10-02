@@ -25,11 +25,11 @@ SOURCES = {"ual1": {"file": "a.glb", "mapping": "quaternius_ual1"}}
 
 
 def test_packaged_sets_are_valid():
-    assert packaged_sets() == ["none", "swim"]
+    assert packaged_sets() == ["dive", "none", "swim"]
     for name in packaged_sets():
         spec = load_set_spec(name)
         assert spec.set == name
-        assert all(c.name.startswith(f"{name}/") for c in spec.clips)
+        assert all(n.startswith(f"{name}/") for n in spec.names)  # helpers may differ
         for source in spec.sources.values():
             load_mapping(source.mapping)
 
@@ -83,10 +83,50 @@ def test_all_operations():
     assert spec.names[0] == "none/s_walk"
 
 
+def test_keyframe_and_helper():
+    spec = parse_set_spec(
+        _spec(
+            {"name": "none/s_walk", "from": "ual1:Walk", "helper": True},
+            {
+                "name": "none/s_strafe_l",
+                "keyframe": "strafe",
+                "params": {"base": "none/s_walk", "side": "l", "yaw": 70},
+                "events": "footsteps",
+            },
+            {"name": "none/s_ladder_up", "keyframe": "ladder"},
+        )
+    )
+    assert spec.names == ["none/s_strafe_l", "none/s_ladder_up"]  # helper not exported
+    strafe = spec.clips[1]
+    assert (strafe.op, strafe.recipe, strafe.clips) == ("keyframe", "strafe", ("none/s_walk",))
+    assert strafe.param == {"base": "none/s_walk", "side": "l", "yaw": 70}
+    assert spec.clips[0].helper and not strafe.helper
+
+
+def test_recipes_match_blender_module():
+    """Recipe names in clipspec.RECIPES and blender/keyframes.py agree (read without bpy)."""
+    import re
+
+    from gothar_chargen.clipspec import RECIPES
+
+    source = (REPO_ROOT / "tools/chargen/src/gothar_chargen/blender/keyframes.py").read_text(
+        "utf-8"
+    )
+    table = source[source.index("RECIPES: dict") :]
+    assert set(re.findall(r'"([a-z_]+)": [a-z_]+,', table)) == set(RECIPES)
+
+
 @pytest.mark.parametrize(
     ("data", "message"),
     [
         ({"clip": []}, "missing 'set'"),
+        (_spec({"name": "none/s_a", "keyframe": "dance"}), "unknown keyframe recipe"),
+        (
+            _spec({"name": "none/s_a", "keyframe": "strafe", "params": {"base": "none/s_x"}}),
+            "earlier",
+        ),
+        (_spec({"name": "none/s_a", "keyframe": "ladder", "params": 3}), "params must"),
+        (_spec({"name": "none/s_a", "keyframe": "ladder", "helper": "yes"}), "helper must"),
         ({"set": "none", "clip": []}, "no clips"),
         ({"set": "none", "sources": {"x": {"file": "a"}}, "clip": []}, "needs 'file'"),
         (_spec({"name": "Walk", "from": "ual1:A"}), "invalid clip name"),

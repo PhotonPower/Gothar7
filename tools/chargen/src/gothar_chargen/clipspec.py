@@ -26,6 +26,16 @@ Format::
     name = "none/t_jump_run"
     concat = ["ual1:Jump_Loop[0:20]", "ual1:Jump_Land"]
 
+    [[clip]]
+    name = "none/s_strafe_l"
+    keyframe = "strafe"                           # keyframe recipe (blender/keyframes.py)
+    params = { base = "none/s_walk", side = "l" }
+
+    [[clip]]
+    name = "swim/s_forward"
+    from = "ual1:Swim_Fwd_Loop"
+    helper = true                                 # only used to build other clips, not exported
+
 Pure Python: parsed and checked here, executed by blender/build_set.py.
 """
 
@@ -40,6 +50,20 @@ from pathlib import Path
 from gothar_chargen.naming import is_clip_name
 
 EVENT_KINDS = ("footsteps", "land")
+
+# Keyframe recipes (implemented in blender/keyframes.py) and their parameters that name earlier
+# clips of the set. Other parameters are numbers or strings checked by the recipe itself.
+RECIPES: dict[str, tuple[str, ...]] = {
+    "strafe": ("base",),
+    "turn": ("idle", "walk"),
+    "scale_root": ("base",),
+    "ladder": (),
+    "ladder_on": ("idle",),
+    "ladder_off": ("idle",),
+    "yaw_wave": ("base",),
+    "pitch": ("base",),
+    "slide": (),
+}
 _SOURCE_REF = re.compile(
     r"^(?P<lib>[a-z0-9_]+):(?P<action>[^\[\]]+)(?:\[(?P<a>\d+):(?P<b>\d+)\])?$"
 )
@@ -66,11 +90,18 @@ class Source:
 @dataclass(frozen=True)
 class ClipSpec:
     name: str
-    op: str  # "from" | "reverse" | "blend" | "concat"
+    op: str  # "from" | "reverse" | "blend" | "concat" | "keyframe"
     sources: tuple[SourceRef, ...] = ()  # for "from" / "concat"
     clips: tuple[str, ...] = ()  # for "reverse" / "blend": earlier clips of the set
     frames: int = 0  # for "blend"
     events: str | None = None
+    recipe: str = ""  # for "keyframe"
+    params: tuple[tuple[str, object], ...] = ()  # for "keyframe" (sorted key/value pairs)
+    helper: bool = False  # built for other clips only, not exported
+
+    @property
+    def param(self) -> dict[str, object]:
+        return dict(self.params)
 
 
 @dataclass(frozen=True)
@@ -81,7 +112,8 @@ class SetSpec:
 
     @property
     def names(self) -> list[str]:
-        return [c.name for c in self.clips]
+        """Exported clips (without helpers)."""
+        return [c.name for c in self.clips if not c.helper]
 
 
 def parse_source_ref(text: str, libraries: dict[str, Source]) -> SourceRef:
@@ -116,9 +148,9 @@ def parse_set_spec(data: dict) -> SetSpec:
             raise ClipSpecError(f"{where}: invalid clip name")
         if name in seen:
             raise ClipSpecError(f"{where}: duplicate")
-        ops = [k for k in ("from", "reverse", "blend", "concat") if k in raw]
+        ops = [k for k in ("from", "reverse", "blend", "concat", "keyframe") if k in raw]
         if len(ops) != 1:
-            raise ClipSpecError(f"{where}: needs exactly one of from/reverse/blend/concat")
+            raise ClipSpecError(f"{where}: needs exactly one of from/reverse/blend/concat/keyframe")
         op = ops[0]
         events = raw.get("events")
         if events is not None and events not in EVENT_KINDS:
@@ -138,6 +170,17 @@ def parse_set_spec(data: dict) -> SetSpec:
             spec = ClipSpec(name, op, sources=tuple(parse_source_ref(r, sources) for r in refs))
         elif op == "reverse":
             spec = ClipSpec(name, op, clips=(earlier(raw["reverse"]),))
+        elif op == "keyframe":
+            recipe = raw["keyframe"]
+            if recipe not in RECIPES:
+                raise ClipSpecError(f"{where}: unknown keyframe recipe '{recipe}'")
+            params = raw.get("params", {})
+            if not isinstance(params, dict):
+                raise ClipSpecError(f"{where}: params must be a table")
+            refs = tuple(earlier(params.get(k)) for k in RECIPES[recipe])
+            spec = ClipSpec(
+                name, op, clips=refs, recipe=recipe, params=tuple(sorted(params.items()))
+            )
         else:
             pair = raw["blend"]
             frames = raw.get("frames")
@@ -146,7 +189,10 @@ def parse_set_spec(data: dict) -> SetSpec:
             if not isinstance(frames, int) or frames < 2:
                 raise ClipSpecError(f"{where}: blend needs frames >= 2")
             spec = ClipSpec(name, op, clips=(earlier(pair[0]), earlier(pair[1])), frames=frames)
-        clips.append(ClipSpec(**{**spec.__dict__, "events": events}))
+        helper = raw.get("helper", False)
+        if not isinstance(helper, bool):
+            raise ClipSpecError(f"{where}: helper must be true or false")
+        clips.append(ClipSpec(**{**spec.__dict__, "events": events, "helper": helper}))
         seen.add(name)
     if not clips:
         raise ClipSpecError("no clips")

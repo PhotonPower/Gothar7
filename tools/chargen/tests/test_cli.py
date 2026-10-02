@@ -122,7 +122,7 @@ def test_report_command():
     assert code == EXIT_OK
     assert "Prio A:" in text and "/36 clips present" in text
     code, _ = run("report", "--fail-missing")
-    assert code == EXIT_ERROR  # Prio-A clips are still missing until F2 is done
+    assert code == EXIT_OK  # F2 DoD: no Prio-A clip missing
     code, text = run("report", "--json")
     assert json.loads(text)["prio_a"]["listed"] == 36
 

@@ -1,0 +1,34 @@
+# Set "dive" -> assets/source/characters/anims/human/dive.glb
+# Keyframe placeholders (platzhalter-K) derived from the Quaternius swim clips (CC0 1.0).
+
+set = "dive"
+
+[sources.ual1]
+file = "AnimationLibrary_Godot_Standard.glb"
+mapping = "quaternius_ual1"
+
+# helpers (same as in swim.toml)
+[[clip]]
+name = "swim/s_idle"
+from = "ual1:Swim_Idle_Loop"
+helper = true
+
+[[clip]]
+name = "swim/s_forward"
+from = "ual1:Swim_Fwd_Loop"
+helper = true
+
+[[clip]]
+name = "dive/s_forward"
+keyframe = "pitch"
+params = { base = "swim/s_forward", angle = 25 }
+
+[[clip]]
+name = "dive/s_idle"
+keyframe = "pitch"
+params = { base = "swim/s_forward", angle = 10, time = 2.5, damp = 0.5 }
+
+[[clip]]
+name = "dive/t_2_swim"
+blend = ["dive/s_forward", "swim/s_idle"]
+frames = 24

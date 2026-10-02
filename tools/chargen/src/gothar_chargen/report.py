@@ -118,7 +118,7 @@ def progress(list_text: str, anims_dir: Path) -> Progress:
         missing = [n for n in row.names if n not in result.present]
         result.missing += missing
         status = row.status.split()[0].lower() if row.status else ""
-        if missing and status in ("platzhalter", "fertig"):
+        if missing and (status.startswith("platzhalter") or status == "fertig"):
             result.stale.append(f"line {row.line}: status '{status}' but missing {missing}")
         elif not missing and status == "offen":
             result.stale.append(f"line {row.line}: status 'offen' but all clips exist")
