@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fassaden-Werkzeug</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <strong>Fassaden-Werkzeug</strong>
+    <span id="site"></span>
+    <span id="counts"></span>
+    <span class="legend">
+      <i class="sw open"></i>offen <i class="sw annotated"></i>annotiert
+      <i class="sw locked"></i>gesperrt <i class="sw invalid"></i>fehlerhaft
+    </span>
+  </header>
+  <main>
+    <section id="map-pane">
+      <canvas id="map"></canvas>
+      <div class="hint">Ziehen: verschieben · Rad: zoomen · Klick: Gebäude wählen</div>
+    </section>
+    <section id="side">
+      <div id="nothing">Gebäude auf der Karte anklicken.</div>
+      <div id="building" hidden>
+        <h2 id="b-title"></h2>
+        <div id="b-info"></div>
+        <h3>Fassaden</h3>
+        <div id="edges"></div>
+      </div>
+    </section>
+  </main>
+  <section id="editor" hidden>
+    <div class="toolbar">
+      <strong id="e-title"></strong>
+      <label><input type="radio" name="mode" value="storey" checked> Stockwerkslinie</label>
+      <label><input type="radio" name="mode" value="opening"> Öffnung</label>
+      <select id="o-type">
+        <option value="window">Fenster</option>
+        <option value="door">Tür</option>
+        <option value="gate">Tor</option>
+      </select>
+      <span class="hint">Rechtsklick: löschen · Entf: gewählte Öffnung löschen</span>
+      <button id="close">Schließen</button>
+    </div>
+    <div class="editor-body">
+      <canvas id="facade"></canvas>
+      <form id="form" autocomplete="off">
+        <label>Stil <select name="style"></select></label>
+        <label>Fachwerk <select name="timber"></select></label>
+        <label>Ausfachung <select name="infill"></select></label>
+        <label>Dachdeckung <select name="roofCover"></select></label>
+        <label>Auskragung je Stockwerk (m) <input name="jettyM" type="number" step="0.05" min="0"></label>
+        <label>Notizen <textarea name="notes" rows="3"></textarea></label>
+        <label class="row"><input name="keep" type="checkbox" checked> behalten</label>
+        <label class="row"><input name="locked" type="checkbox"> gesperrt (Generator überschreibt nicht)</label>
+        <div id="storeys"></div>
+        <button type="submit">Speichern</button>
+        <div id="message"></div>
+        <p class="draft" id="vocab-status"></p>
+      </form>
+    </div>
+  </section>
+  <script src="/static/app.js"></script>
+</body>
+</html>

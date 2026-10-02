@@ -1,0 +1,37 @@
+{
+  "status": "Entwurf – Festlegung durch den Projektinhaber (vor W5)",
+  "style": [
+    { "id": "buergerhaus", "label": "Bürgerhaus" },
+    { "id": "ackerbuergerhaus", "label": "Ackerbürgerhaus" },
+    { "id": "handwerkerhaus", "label": "Handwerkerhaus" },
+    { "id": "scheune", "label": "Scheune / Stall" },
+    { "id": "steinhaus", "label": "Steinhaus" },
+    { "id": "amtshaus", "label": "Amts- / Rathaus" },
+    { "id": "kirche", "label": "Kirche / Kapelle" },
+    { "id": "mauer", "label": "Stadtmauer / Turm" }
+  ],
+  "timber": [
+    { "id": "mann", "label": "Schwäbischer Mann" },
+    { "id": "halber_mann", "label": "Halber Mann" },
+    { "id": "andreaskreuz", "label": "Andreaskreuz" },
+    { "id": "feuerbock", "label": "Feuerbock" },
+    { "id": "raute", "label": "Raute" },
+    { "id": "einfach", "label": "Nur Ständer und Riegel" },
+    { "id": "keins", "label": "Kein sichtbares Fachwerk" }
+  ],
+  "infill": [
+    { "id": "plaster_white", "label": "Putz weiß" },
+    { "id": "plaster_ochre", "label": "Putz ocker" },
+    { "id": "plaster_grey", "label": "Putz grau" },
+    { "id": "lehm", "label": "Lehm / Flechtwerk" },
+    { "id": "brick", "label": "Backstein" },
+    { "id": "stone", "label": "Bruchstein" }
+  ],
+  "roofCover": [
+    { "id": "tiles_old", "label": "Biberschwanz, alt" },
+    { "id": "tiles_red", "label": "Biberschwanz, rot" },
+    { "id": "slate", "label": "Schiefer" },
+    { "id": "wood_shingles", "label": "Holzschindeln" },
+    { "id": "thatch", "label": "Stroh / Reet" }
+  ]
+}
