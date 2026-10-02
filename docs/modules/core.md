@@ -36,9 +36,19 @@
   - `interpolate(a, b, t)` – lerp/slerp (kürzester Weg) für das Rendern zwischen Simulationsschritten
   - Verkettung ist nur bei gleichmäßiger Skalierung exakt (nicht-gleichmäßig + Rotation bräuchte Scherung).
 
+- `StringId.hpp` – `StringId`: 64-Bit-FNV-1a über ASCII-kleingeschriebene Bytes, also **immer
+  case-insensitive** (`StringId("WP_HC_CAMPFIRE") == "wp_hc_campfire"_sid`), wie Gothic-Namen.
+  - `StringId(name)` (Laufzeit), `"NAME"_sid` (`consteval`, in `g7::literals`; für `switch`/`static_assert`),
+    `fromHash`, `hashOf`, `hash()`, `valid()` (Default = ungültig, Hash 0), Vergleichsoperatoren
+  - `G7_STRINGID_NAMES` (Standard: an ohne `NDEBUG`): zur Laufzeit erzeugte IDs tragen ihren Klartext in eine
+    threadsichere Tabelle ein (dokumentiertes Subsystem-Singleton); `name()` liefert die zuerst registrierte
+    Schreibweise, Kollisionen lösen Log-Fehler + `G7_ASSERT` aus. Literale werden nicht registriert.
+  - `std::hash` und `std::formatter` (Klartext oder `#<16 Hex-Ziffern>`)
+- `StringUtil.hpp` – ASCII-Groß-/Kleinschreibung (andere Bytes, z. B. UTF-8-Umlaute, bleiben unverändert):
+  `toLowerAscii`/`toUpperAscii`, `toLower`/`toUpper`, `equalsIgnoreCase`, `startsWithIgnoreCase`,
+  transparente `IgnoreCaseHash`/`IgnoreCaseEqual` für `std::unordered_map<std::string, T, …>`.
+
 ## Geplant (M0)
-- **StringId**: 32/64-Bit-Hash (FNV-1a) für Namen (`"WP_HC_CAMPFIRE"`), Debug-Builds behalten
-  den Klartext für Ausgaben; case-insensitive Variante (Gothic-Namen sind case-insensitive).
 - **Config**: TOML lesen, typisierte Abfragen mit Defaults.
 - **Profiler-Makros**: `G7_PROFILE_SCOPE("name")` – zunächst leer, ab M17 Tracy.
 
