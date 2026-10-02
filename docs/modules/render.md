@@ -146,7 +146,9 @@ std::vector<u8> Device::readTexture(const rhi::Texture&, u32 level) const;      
 ```cpp
 struct Material { const rhi::Texture *baseColor, *normal, *emissive; Vec4 baseColorFactor; Vec3 emissiveFactor;
                   f32 normalScale, alphaCutoff; asset::AlphaMode alphaMode; bool doubleSided; };
-class MaterialSet  { static Result<MaterialSet> create(Device&, const asset::MeshData&, const fs::Path& modelDir);
+class MaterialSet  { using ImageLookup = std::function<const asset::ImageData*(const asset::ImageSource&)>;
+                     static Result<MaterialSet> create(Device&, const asset::MeshData&, const ImageLookup&);  // Engine: über das VFS
+                     static Result<MaterialSet> create(Device&, const asset::MeshData&, const fs::Path& modelDir); // Werkzeuge/Tests
                      const Material& operator[](usize) const; usize size() const; };
 class MeshRenderer { static Result<MeshRenderer> create(Device&, ShaderLibrary&, f32 anisotropy);
                      void draw(Device&, const Mesh&, const MaterialSet&, const Mat4& model, const Camera&); };

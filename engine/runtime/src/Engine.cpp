@@ -7,12 +7,14 @@
 #include <g7/core/Clock.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/Profiler.hpp>
+#include <g7/core/StringUtil.hpp>
 #include <g7/core/Version.hpp>
 #include <g7/gameplay/Gameplay.hpp>
 #include <g7/physics/Physics.hpp>
 #include <g7/platform/Platform.hpp>
 #include <g7/platform/Time.hpp>
 #include <g7/render/Render.hpp>
+#include <g7/runtime/AssetMounts.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/save/Save.hpp>
 #include <g7/script/Script.hpp>
@@ -23,6 +25,7 @@
 
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <format>
 #include <numeric>
 #include <string_view>
@@ -34,6 +37,8 @@ namespace
 {
 /// Dusk colour until there is a sky (M4).
 const Vec4 kClearColor{0.10f, 0.11f, 0.14f, 1.0f};
+/// Folders of files given on the command line (outside the mounts) overlay everything.
+constexpr i32 kLocalMountPriority = 1000;
 /// Evening sun of the interim environment (until the time of day, M4).
 constexpr f32 kSunIntensity = 1.6f;
 
@@ -95,6 +100,11 @@ Result<void> Engine::init()
         toRadians(static_cast<f32>(m_config.settings.get<f64>("camera.mouse_sensitivity", 0.1)));
     m_flyCamera.speed = static_cast<f32>(m_config.settings.get<f64>("camera.fly_speed", 10.0));
     m_flyCamera.attach(m_camera);
+
+    if (auto assets = initAssets(); !assets)
+    {
+        return assets;
+    }
 
     if (!m_config.headless)
     {
@@ -264,6 +274,9 @@ bool Engine::runFrame()
         // TODO(M4+): world/ai/gameplay/physics fixed update
         ++m_simTicks;
     }
+    // Finished asset loads become visible here, once per frame on the main thread.
+    m_assets->update();
+
     {
         G7_PROFILE_SCOPE("Engine::render");
         if (m_device)
@@ -392,37 +405,153 @@ Result<void> Engine::initSceneRendering()
     return {};
 }
 
-Result<const LoadedModel*> Engine::loadModel(const fs::Path& path)
+Result<void> Engine::initAssets()
 {
-    if (const auto found = m_models.find(path); found != m_models.end())
+    // Mounts from [assets]; development builds also see the repository's assets/ folder.
+#if defined(G7_DEV_ASSET_ROOT)
+    const fs::Path devRoot = fs::fromUtf8(G7_DEV_ASSET_ROOT);
+#else
+    const fs::Path devRoot;
+#endif
+    auto mounts = assetMounts(m_config.settings, fs::baseDirectories().gameDir, devRoot);
+    if (!mounts)
     {
-        return found->second.get();
+        return Error{"invalid [assets] configuration: " + mounts.error().message};
     }
-    auto data = asset::loadGltf(path);
-    if (!data)
+    for (const MountSpec& spec : mounts.value())
     {
-        return Error{"cannot load mesh: " + data.error().message};
+        if (auto id = m_vfs.mount(spec.source, spec.priority, spec.mountPoint); !id)
+        {
+            // A missing data folder must not stop the engine (e.g. no cooked data yet).
+            G7_LOG_WARN("engine", "asset mount skipped: {}", id.error().message);
+        }
     }
-    auto model = std::make_unique<LoadedModel>();
-    auto mesh = render::Mesh::create(*m_device, data.value());
-    if (!mesh)
+    m_assets = std::make_unique<asset::AssetManager>(m_vfs);
+    return {};
+}
+
+Result<std::string> Engine::resolveAssetArgument(const fs::Path& argument)
+{
+    const std::string text = fs::toUtf8(argument);
+    if (auto path = asset::normalizeVfsPath(text); path && m_vfs.exists(path.value()))
     {
-        return Error{"cannot upload mesh: " + mesh.error().message};
+        return path.value();
     }
-    model->mesh = std::move(mesh).value();
-    // Missing or broken textures are warnings (neutral fallbacks), not a reason to refuse the model.
-    auto materials = render::MaterialSet::create(*m_device, data.value(), path.parent_path());
-    if (!materials)
+    // A file on disk outside the mounts (e.g. a downloaded model): mount its folder under local/,
+    // so files next to it (glTF buffers, textures, a scene's models) resolve too.
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(argument, ec))
     {
-        return Error{"cannot create materials: " + materials.error().message};
+        return Error{"'" + text + "' is neither a file in the VFS nor on disk"};
     }
-    model->materials = std::move(materials).value();
-    model->name = fs::toUtf8(path.filename());
-    G7_LOG_DEBUG("engine", "loaded {} ({} vertices, {} submeshes, {} materials)", fs::toUtf8(path),
-                 data.value().vertices.size(), model->mesh.submeshes().size(), model->materials.size());
-    const LoadedModel* result = model.get();
-    m_models.emplace(path, std::move(model));
-    return result;
+    const fs::Path folder = std::filesystem::absolute(argument, ec).parent_path();
+    if (auto id = m_vfs.mount(folder, kLocalMountPriority, "local"); !id)
+    {
+        return id.error();
+    }
+    return "local/" + fs::toUtf8(argument.filename());
+}
+
+const LoadedModel* Engine::model(std::string_view path) const
+{
+    const auto found = m_models.find(path);
+    return found != m_models.end() ? found->second.get() : nullptr;
+}
+
+Result<void> Engine::loadModels(const std::vector<std::string>& paths)
+{
+    // 1. Meshes on the asset workers, in parallel.
+    const Stopwatch timer;
+    std::vector<std::unique_ptr<LoadedModel>> pending;
+    for (const std::string& path : paths)
+    {
+        const bool queued = std::any_of(pending.begin(), pending.end(),
+                                        [&](const auto& m) { return equalsIgnoreCase(m->name, path); });
+        if (!queued && model(path) == nullptr)
+        {
+            auto loaded = std::make_unique<LoadedModel>();
+            loaded->name = path;
+            loaded->source = m_assets->load<asset::MeshData>(path);
+            pending.push_back(std::move(loaded));
+        }
+    }
+    m_assets->waitAll();
+
+    // 2. Their external images: from the VFS root (cooked meshes) or next to the mesh (glTF).
+    std::vector<std::string> imagePaths; // distinct, for the log (the cache shares repeated ones)
+    for (const auto& loaded : pending)
+    {
+        if (loaded->source.failed())
+        {
+            return Error{"cannot load mesh: " + loaded->source.error()};
+        }
+        const asset::MeshData& data = *loaded->source.get();
+        loaded->images.resize(data.images.size());
+        for (usize i = 0; i < data.images.size(); ++i)
+        {
+            const asset::ImageSource& source = data.images[i];
+            if (source.uri.empty())
+            {
+                continue; // embedded: MaterialSet decodes it
+            }
+            const auto candidates = imageCandidates(loaded->name, source.uri);
+            const auto found = std::find_if(candidates.begin(), candidates.end(),
+                                            [&](const std::string& c) { return m_vfs.exists(c); });
+            if (found == candidates.end())
+            {
+                G7_LOG_WARN("engine", "{}: image '{}' not found in the VFS", loaded->name, source.uri);
+                continue;
+            }
+            loaded->images[i] = m_assets->load<asset::ImageData>(*found);
+            if (std::none_of(imagePaths.begin(), imagePaths.end(),
+                             [&](const std::string& p) { return equalsIgnoreCase(p, *found); }))
+            {
+                imagePaths.push_back(*found);
+            }
+        }
+    }
+    m_assets->waitAll();
+
+    // 3. Upload on the main thread.
+    for (auto& loaded : pending)
+    {
+        const asset::MeshData& data = *loaded->source.get();
+        auto mesh = render::Mesh::create(*m_device, data);
+        if (!mesh)
+        {
+            return Error{"cannot upload mesh " + loaded->name + ": " + mesh.error().message};
+        }
+        loaded->mesh = std::move(mesh).value();
+        // Missing or broken textures are warnings (neutral fallbacks), not a reason to refuse the model.
+        const LoadedModel& current = *loaded;
+        auto materials = render::MaterialSet::create(
+            *m_device, data,
+            [&](const asset::ImageSource& source) -> const asset::ImageData*
+            {
+                const auto index = static_cast<usize>(&source - data.images.data());
+                const asset::Handle<asset::ImageData>& image = current.images[index];
+                if (image.failed() && image.valid())
+                {
+                    G7_LOG_WARN("engine", "{}: {}", current.name, image.error());
+                }
+                return image.get();
+            });
+        if (!materials)
+        {
+            return Error{"cannot create materials for " + loaded->name + ": " + materials.error().message};
+        }
+        loaded->materials = std::move(materials).value();
+        G7_LOG_DEBUG("engine", "loaded {} ({} vertices, {} submeshes, {} materials)", loaded->name,
+                     data.vertices.size(), loaded->mesh.submeshes().size(), loaded->materials.size());
+        std::string key = loaded->name;
+        m_models.emplace(std::move(key), std::move(loaded));
+    }
+    if (!pending.empty())
+    {
+        G7_LOG_INFO("engine", "loaded {} models and {} images in {:.0f} ms", pending.size(),
+                    imagePaths.size(), timer.elapsedSeconds() * 1000.0);
+    }
+    return {};
 }
 
 void Engine::addInstance(const LoadedModel& model, const Mat4& transform)
@@ -444,7 +573,7 @@ Result<void> Engine::addGround(f32 size, const Vec3& color, f32 height)
     // Ground plate (it receives the shadows), 1 m texture tiles.
     const asset::MeshData plane = asset::makePlane(size, 1.0f, Vec4(color, 1.0f));
     auto mesh = render::Mesh::create(*m_device, plane);
-    auto materials = render::MaterialSet::create(*m_device, plane, {});
+    auto materials = render::MaterialSet::create(*m_device, plane, render::MaterialSet::ImageLookup{});
     if (!mesh || !materials)
     {
         return Error{"cannot create ground plate"};
@@ -466,14 +595,18 @@ void Engine::setViewpoint(const SceneViewpoint& viewpoint)
 
 Result<void> Engine::initViewMesh()
 {
-    auto model = loadModel(m_config.viewMesh);
-    if (!model)
+    auto path = resolveAssetArgument(m_config.viewMesh);
+    if (!path)
     {
-        return model.error();
+        return Error{"cannot load mesh: " + path.error().message};
     }
-    const LoadedModel& loaded = *model.value();
+    if (auto loadedModels = loadModels({path.value()}); !loadedModels)
+    {
+        return loadedModels;
+    }
+    const LoadedModel& loaded = *model(path.value());
     addInstance(loaded, Mat4(1.0f));
-    m_sceneName = loaded.name;
+    m_sceneName = fs::toUtf8(fs::fromUtf8(loaded.name).filename());
 
     // Frame the model: look at its centre from the front-right, at 2.5x its radius.
     const AABB bounds = loaded.mesh.bounds();
@@ -497,28 +630,41 @@ Result<void> Engine::initViewMesh()
     m_camera.transform.rotation = lookRotation(bounds.center() - m_camera.transform.position);
     m_flyCamera.speed = std::max(radius, 1.0f);
     m_flyCamera.attach(m_camera);
-    G7_LOG_INFO("engine", "viewing {} ({} submeshes, {} materials, {:.1f} m across)",
-                fs::toUtf8(m_config.viewMesh), loaded.mesh.submeshes().size(), loaded.materials.size(),
-                radius * 2.0f);
+    G7_LOG_INFO("engine", "viewing {} ({} submeshes, {} materials, {:.1f} m across)", loaded.name,
+                loaded.mesh.submeshes().size(), loaded.materials.size(), radius * 2.0f);
     return {};
 }
 
 Result<void> Engine::initScene()
 {
-    auto scene = loadSceneFile(m_config.scene);
+    auto scenePath = resolveAssetArgument(m_config.scene);
+    auto scene = scenePath ? loadSceneFile(m_vfs, scenePath.value()) : Result<SceneFile>(scenePath.error());
     if (!scene)
     {
         return Error{"cannot load scene: " + scene.error().message};
     }
     const SceneFile& file = scene.value();
+    std::vector<std::string> meshes;
+    meshes.reserve(file.objects.size());
     for (const SceneObject& object : file.objects)
     {
-        auto model = loadModel(object.mesh);
-        if (!model)
+        meshes.push_back(object.mesh);
+    }
+    if (auto loaded = loadModels(meshes); !loaded)
+    {
+        return loaded;
+    }
+    for (const SceneObject& object : file.objects)
+    {
+        // Cached under the path of its first use; the VFS matches case-insensitively.
+        const LoadedModel* loaded = model(object.mesh);
+        if (loaded == nullptr)
         {
-            return model.error();
+            const auto found = std::find_if(m_models.begin(), m_models.end(), [&](const auto& entry)
+                                            { return equalsIgnoreCase(entry.first, object.mesh); });
+            loaded = found->second.get();
         }
-        addInstance(*model.value(), object.transform);
+        addInstance(*loaded, object.transform);
     }
     if (file.groundSize > 0.0f && m_config.ground)
     {
@@ -556,10 +702,9 @@ Result<void> Engine::initScene()
         }
         setViewpoint(m_viewpoints[m_config.viewpoint < m_viewpoints.size() ? m_config.viewpoint : 0]);
     }
-    m_sceneName = fs::toUtf8(m_config.scene.filename());
-    G7_LOG_INFO("engine", "scene {}: {} objects ({} models), {} lights, {} viewpoints",
-                fs::toUtf8(m_config.scene), m_instances.size(), m_models.size(), file.lights.size(),
-                m_viewpoints.size());
+    m_sceneName = fs::toUtf8(fs::fromUtf8(scenePath.value()).filename());
+    G7_LOG_INFO("engine", "scene {}: {} objects ({} models), {} lights, {} viewpoints", scenePath.value(),
+                m_instances.size(), m_models.size(), file.lights.size(), m_viewpoints.size());
     return {};
 }
 
@@ -920,6 +1065,7 @@ void Engine::shutdown()
     m_instances.clear();
     m_groundModel.reset();
     m_models.clear();
+    m_assets.reset(); // before the VFS (a member destroyed after it)
     m_backgroundPipeline = {};
     m_backgroundProgram = nullptr;
     m_shaders.reset();

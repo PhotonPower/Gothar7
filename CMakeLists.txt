@@ -15,6 +15,7 @@ option(G7_BUILD_TOOLS  "Tools (Asset-Cooker, Editor) bauen" ON)
 option(G7_WARNINGS_AS_ERRORS "Warnungen als Fehler behandeln" OFF)
 option(G7_PROFILING   "Profiler-Zonen (G7_PROFILE_*) aktivieren" OFF)
 option(G7_COVERAGE    "Testabdeckung messen (GCC/Clang, --coverage)" OFF)
+option(G7_DEV_ASSETS  "Entwicklung: Repo-Ordner assets/ ins VFS mounten ([assets] dev_mounts); fuer Auslieferung OFF" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(CompilerWarnings)

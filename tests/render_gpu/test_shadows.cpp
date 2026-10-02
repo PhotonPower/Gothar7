@@ -78,7 +78,8 @@ struct Scene
 
     Model model(const asset::MeshData& data, const Vec3& position)
     {
-        return {require(Mesh::create(*gl.device, data)), require(MaterialSet::create(*gl.device, data, {})),
+        return {require(Mesh::create(*gl.device, data)),
+                require(MaterialSet::create(*gl.device, data, MaterialSet::ImageLookup{})),
                 glm::translate(Mat4(1.0f), position)};
     }
 

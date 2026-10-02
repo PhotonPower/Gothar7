@@ -63,11 +63,12 @@ das Spiel dort mit `--no-render` starten.
 | `G7_WARNINGS_AS_ERRORS` | OFF | in CI empfohlen ON |
 | `G7_PROFILING` | OFF | aktiviert die `G7_PROFILE_*`-Zonen (eingebauter Sammler, ab M17 Tracy) |
 | `G7_COVERAGE` | OFF | Testabdeckung (`--coverage`, nur GCC/Clang); Auswertung mit gcovr |
+| `G7_DEV_ASSETS` | ON | Entwicklungs-Builds mounten `<repo>/assets/source` und `assets/cooked` (`[assets] dev_mounts`); für Auslieferungen OFF |
 
 ## Konfigurationsdateien
 | Datei | Inhalt |
 |---|---|
-| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird bei jedem Build neben die Executable kopiert (Target `gothar_data`) |
+| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[assets]` (VFS-Mounts), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird bei jedem Build neben die Executable kopiert (Target `gothar_data`) |
 | `config.toml` im Benutzerverzeichnis (Windows `%APPDATA%\Gothar\Gothar`) | optionale eigene Einstellungen; überschreibt `engine.toml` Schlüssel für Schlüssel |
 | `engine/render/shaders/` → `<build>/game/shaders/` | Engine-Shader (GLSL); werden bei jedem Build neben die Executable kopiert (Target `gothar_data`, auch wenn nur ein Shader geändert wurde) – Änderungen dort gehen beim nächsten Build verloren, zum Bearbeiten `[render] shader_dir` auf die Quellen zeigen lassen |
 
@@ -81,8 +82,8 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | `--frames=N` | nach N Frames beenden (auch mit Fenster; CI mit `SDL_VIDEO_DRIVER=offscreen`) |
 | `--max-fps=N` | Bildrate begrenzen (überschreibt `[window] max_fps`; 0 = unbegrenzt) |
 | `--fullscreen` | randloses Vollbild in Desktop-Auflösung |
-| `--view-mesh=<pfad>` | glTF-Modell (`.gltf`/`.glb`) am Ursprung anzeigen, Debug-Kamera richtet sich danach aus |
-| `--scene=<pfad>` | Testszene laden (TOML, siehe „Testszenen“); ersetzt `--view-mesh` |
+| `--view-mesh=<pfad>` | Modell (`.gltf`/`.glb`/`.g7mesh`) am Ursprung anzeigen, Debug-Kamera richtet sich danach aus; VFS-Pfad oder Datei auf der Festplatte (wie `--scene`) |
+| `--scene=<pfad>` | Testszene laden (TOML, siehe „Testszenen“): VFS-Pfad wie `testscene/scene.toml` oder Datei auf der Festplatte (deren Ordner wird unter `local/` gemountet); ersetzt `--view-mesh` |
 | `--viewpoint=N` | mit Viewpoint N der Szene starten (Standard 0) |
 | `--benchmark` | VSync und Frame-Limit aus, jeden Viewpoint der Szene 300 Frames lang ansteuern (die ersten 30 zum Einschwingen), Frame-Zeiten (Mittel, p95, p99, schlechtester) je Viewpoint loggen, dann beenden |
 | `--screenshot=<datei.png>` | letztes Bild als PNG speichern (mit `--frames` oder `--benchmark`) |
@@ -98,8 +99,8 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 Vorläufiges Szenenformat bis zum Weltformat und Editor in M4 (`runtime/SceneFile.hpp`). Die M2-Abnahmeszene liegt in
 `assets/source/testscene/scene.toml` (Kenney-Modelle, CC0, siehe `assets/LICENSES.md`):
 ```
-build\debug\game\gothar.exe --scene=..\..\..\assets\source\testscene\scene.toml
-build\release\game\gothar.exe --scene=..\..\..\assets\source\testscene\scene.toml --benchmark
+build\debug\game\gothar.exe --scene=testscene/scene.toml
+build\release\game\gothar.exe --scene=testscene/scene.toml --benchmark
 ```
 ```toml
 ground = { size = 640.0, color = [0.34, 0.31, 0.24] }   # Bodenplatte (optional), Farbe linear
@@ -121,7 +122,7 @@ radius = 12
 position = [16.0, 7.0, 20.0]
 yaw = 38
 ```
-Pfade sind relativ zur Szenendatei. Fehler nennen Datei und Eintrag, z. B.
+Modellpfade sind relativ zur Szenendatei (VFS-Pfade, `..` erlaubt). Fehler nennen Datei und Eintrag, z. B.
 `scene.toml: 'object[3].position' must be a list of 3 numbers`.
 
 ## CI (GitHub Actions)
