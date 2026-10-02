@@ -126,11 +126,13 @@ template <class T> class Handle {                 // kopierbar, teilt einen Cach
     const std::string& path() const; const std::string& error() const; u32 version() const; long useCount() const;
 };
 struct LoadContext { std::string_view path; std::span<const u8> bytes; const Vfs* vfs;
+                     std::vector<std::string>* dependencies;   // vom Manager gesetzt, read() trägt ein
                      Result<std::vector<u8>> read(std::string_view) const;
                      std::string sibling(std::string_view relative) const;
                      std::optional<fs::Path> diskPath() const; };
 template <class T> using Loader = std::function<Result<T>(const LoadContext&)>;
-struct AssetManagerDesc { u32 workerThreads = 2; };      // 0 = synchron in update()
+struct AssetManagerDesc { u32 workerThreads = 2;          // 0 = synchron in update()
+                          bool hotReload = false; f64 pollSeconds = 0.5; };
 
 class AssetManager {
 public:
@@ -138,6 +140,9 @@ public:
     template <class T> void registerLoader(Loader<T>);
     template <class T> Handle<T> load(std::string_view path);
     void update();  void waitAll();
+    usize reload(std::string_view path);      // alle gecachten Typen des Pfads neu laden (asynchron)
+    u32 checkForChanges(f64 now);             // Hot-Reload: geänderte lose Dateien neu laden
+    void setHotReload(bool); bool hotReload() const;
     usize pendingCount() const;  usize cachedCount() const;
 };
 }
@@ -150,7 +155,7 @@ public:
 - **Cache und Referenzzählung:** Der Schlüssel ist Typ plus normalisierter Pfad, ohne Rücksicht auf
   Groß-/Kleinschreibung. Solange ein Handle (oder ein laufender Ladevorgang) lebt, liefert `load` denselben Slot
   ohne neues Laden. Nach dem letzten Handle wird das Asset freigegeben, ein späteres `load` lädt neu.
-  Auch ein fehlgeschlagener Slot bleibt bestehen, solange Handles darauf zeigen; erneutes Laden kommt mit Hot-Reload.
+  Auch ein fehlgeschlagener Slot bleibt bestehen, solange Handles darauf zeigen; `reload` kann ihn retten.
 - **Fehler:** Fehlende Datei, Fehler des Laders → `Failed` mit Meldung (und Log-Warnung). Ein ungültiger Pfad oder ein
   Typ ohne Lader ist **sofort** `Failed`. Wird der Manager zerstört, enden nicht veröffentlichte Ladevorgänge
   als `Failed` („shut down“); ein gerade laufender Lader wird noch zu Ende ausgeführt.
@@ -162,6 +167,21 @@ public:
 - **Threads:** `load`, `update`, `waitAll`, `registerLoader` und Handle-Zugriffe gehören in den Hauptthread.
   Lader laufen auf Workern und nutzen nur ihren `LoadContext`. Hochladen auf die Grafikkarte bleibt in `render`
   (Hauptthread mit GL-Kontext). Das `Vfs` muss den Manager überleben.
+
+### Hot-Reload (umgesetzt)
+- **`reload(path)`** lädt alle gecachten Typen eines Pfads über die Worker neu. Erst `update()` tauscht die Daten aus:
+  das **Handle bleibt gültig**, `version()` zählt hoch. Rohzeiger aus `get()` gelten deshalb nur bis zum nächsten
+  `update()`. Ein fehlgeschlagener Reload (etwa eine halb gespeicherte Datei) **behält die alte Version** und meldet
+  den Fehler; ein `Failed`-Asset wird `Ready`, sobald es lädt.
+- **`checkForChanges(now)`** (höchstens alle `pollSeconds`): Die Worker merken sich vor dem Lesen Datei und
+  Änderungszeit jeder losen Datei eines Assets, auch der über `LoadContext::read` gelesenen **Abhängigkeiten**.
+  Ändert sich eine davon, wird das Asset einmal neu geladen. Inhalte von `.g7pak`-Archiven werden nicht überwacht,
+  neue Dateien in Ordner-Mounts erfordern `Vfs::rescan` (kein automatisches Scannen). Externe glTF-Puffer
+  (`.bin`, von fastgltf direkt gelesen) zählen noch nicht als Abhängigkeit.
+- **Engine:** `[assets] hot_reload` (Standard an im Debug-, aus im Release-Build) ruft pro Frame
+  `checkForChanges` vor `update()`. Danach lädt `refreshReloadedModels` jedes Modell neu auf die GPU, dessen Mesh
+  oder Bild eine neue Version hat; alle Instanzen nutzen es sofort, ihre Bounds werden aktualisiert. Shader laden
+  wie bisher über die `ShaderLibrary` neu (`[render] shader_hot_reload`), Skripte (ab M7) nutzen dieselben Handles.
 
 ### Engine-Anbindung (umgesetzt) – `runtime/AssetMounts.hpp`, `Engine`
 ```cpp
@@ -190,5 +210,3 @@ std::string vfsSibling(std::string_view base, std::string_view relative);       
 ## Bestandteile (geplant)
 - **Weitere Loader** pro Typ (`Texture`, `Skeleton`, `AnimationClip`, `Sound`, `WorldData`, `Material`) mit den
   jeweiligen Modulen. Eingetragen werden sie vom höheren Modul über `registerLoader`, `asset` kennt sie nicht.
-- **Hot-Reload**: Dateiüberwachung im Entwicklungsmodus (über `Vfs::diskPath`/`rescan`) → Lader lädt neu,
-  das Handle bleibt gültig, `version()` zählt hoch.
