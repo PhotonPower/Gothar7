@@ -149,6 +149,17 @@ bool exists(const Path& path) noexcept
     return std::filesystem::exists(path, ec);
 }
 
+Result<std::filesystem::file_time_type> lastWriteTime(const Path& path)
+{
+    std::error_code ec;
+    const auto time = std::filesystem::last_write_time(path, ec);
+    if (ec)
+    {
+        return makeError("cannot query modification time of", path, ec);
+    }
+    return time;
+}
+
 void setBaseDirectories(BaseDirectories dirs)
 {
     g_baseDirectories = std::move(dirs);

@@ -10,6 +10,12 @@ fullscreen = false
 vsync = true
 max_fps = 240
 
+[render]
+# Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
+# shader_hot_reload = true
+# Shader-Verzeichnis, Standard: "shaders" neben der Executable. Zum Live-Bearbeiten der Quellen z. B.
+# shader_dir = "C:/dev/Gothar7/engine/render/shaders"
+
 [input]
 # "classic" (Gothic-artig: Aktionstaste + Richtung) oder "modern" (Maus-Angriff, E zum Benutzen)
 scheme = "classic"

@@ -157,3 +157,19 @@ TEST_CASE("fs: game and user paths resolve against base directories")
 
     g7::fs::setBaseDirectories(previous);
 }
+
+TEST_CASE("fs: lastWriteTime follows modifications")
+{
+    TempDir dir;
+    const auto file = dir.path() / "shader.glsl";
+    REQUIRE(g7::fs::writeText(file, "a").ok());
+    auto before = g7::fs::lastWriteTime(file);
+    REQUIRE(before.ok());
+
+    std::filesystem::last_write_time(file, before.value() + std::chrono::seconds(5));
+    auto after = g7::fs::lastWriteTime(file);
+    REQUIRE(after.ok());
+    CHECK(after.value() > before.value());
+
+    CHECK_FALSE(g7::fs::lastWriteTime(dir.path() / "missing.glsl").ok());
+}

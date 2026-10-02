@@ -212,8 +212,7 @@ Result<Pipeline> Device::createPipeline(const PipelineDesc& desc)
 
     Pipeline pipeline;
     pipeline.m_vertexArray = Handle(vao, deleteVertexArray);
-    pipeline.m_program = desc.program->m_handle.id();
-    pipeline.m_programUid = desc.program->m_handle.uid();
+    pipeline.m_program = desc.program;
     pipeline.m_vertexStride = desc.vertexStride;
     pipeline.m_topology = desc.topology;
     pipeline.m_cull = desc.cull;
