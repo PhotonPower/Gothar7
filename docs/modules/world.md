@@ -108,6 +108,29 @@ Result<void> spawnWorld(Scene&, const WorldFile&);  WorldFile captureWorld(const
   Testwelt: `assets/source/testworld/camp.g7world` (das Lager der M2-Testszene, 169 Vobs).
 - Eine gekochte Binärvariante folgt bei Bedarf (große Welten); das Textformat bleibt.
 
+## Gelände – `terrain`-Block (v1.x, Vertrag mit welt)
+Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig). Mit welt abgestimmt (passt zu
+`tools/worldgen` `terrain.json`).
+```json
+"terrain": {"version":1,"heightmap":"worlds/leonberg/terrain.r16","width":2000,"height":2000,"cellSize":1.0,
+            "firstSample":[-999.5,-999.5],"minY":-50.991,"maxY":94.85}
+```
+- `version` (Pflicht, = 1), `heightmap`: VFS-Pfad einer **rohen `.r16`**: `width·height` Werte **uint16 Little Endian**,
+  zeilenweise. `width`/`height` ≥ 2, `cellSize` > 0 (Meter zwischen Sample-Mitten), `firstSample` [x, z] der Mitte von
+  Spalte 0 / Zeile 0, `maxY` > `minY`. Reserviert (noch ignoriert): `splat`, `holes`.
+- **Lage:** Sample (Spalte c, Zeile r) liegt bei x = firstSample.x + c·cellSize, z = firstSample.z + r·cellSize.
+  **Zeile 0 = kleinstes z (Norden, −Z), Spalte 0 = kleinstes x (Westen, −X)**, Y oben. Die Fläche reicht von Sample-Mitte
+  zu Sample-Mitte; dazwischen bilinear, außerhalb gilt die Randhöhe.
+  Beispiel (2000×2000, 1 m, firstSample −999.5): (c 0, r 0) → (−999.5, −999.5); (1999, 0) → (999.5, −999.5);
+  (0, 1999) → (−999.5, 999.5); (1000, 500) → (0.5, −499.5).
+- **Höhe:** y = minY + v / 65535 · (maxY − minY). Kodierung v = round((y − minY) / (maxY − minY) · 65535)
+  (Halbwerte beliebig gerundet), auf 0 … 65535 begrenzt.
+  Beispiel (minY −50.991, maxY 94.85, Auflösung 2,2254 mm): y 0.0 → v 22913 → y −0.000616; y 21.9 → v 32754 →
+  y 21.899457; minY → 0; maxY → 65535.
+- `world::Heightfield` (`Terrain.hpp`): `load(vfs, ref)`, `heightAt(x, z)`, `normalAt(x, z)`, `sampleHeight(c, r)`,
+  `bounds()`, `renderDesc()`; `encodeHeight`/`decodeHeight`. Gerendert von `render::TerrainRenderer` (render.md).
+- Testwelt: `assets/source/testworld/terrain.r16` (257×257, 2 m, −20 … 60 m; erzeugt von `make_terrain.py`).
+
 ## Spielzeit & Umgebung
 - `GameTime`: Tag + Minuten; Skalierung (Standard: 1 Spielminute = 4 Echtsekunden → 24 h ≈ 96 Min);
   `advanceTo(hour)` fürs Schlafen; Ereignis bei jeder neuen Spielminute (für Routinen).

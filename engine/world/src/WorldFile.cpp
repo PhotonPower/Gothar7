@@ -169,6 +169,66 @@ double tidy(f32 value)
     return rounded == 0.0 ? 0.0 : rounded; // no -0
 }
 
+Result<TerrainRef> readTerrain(const Reader& r, const Json& t)
+{
+    const std::string where = "terrain";
+    if (!t.is_object())
+    {
+        return r.error(where, "must be an object");
+    }
+    if (!t.contains("version") || !t["version"].is_number_unsigned())
+    {
+        return r.error(where, "needs a 'version'");
+    }
+    if (t["version"].get<u32>() != kTerrainVersion)
+    {
+        return r.error(where, std::format("version {} is not supported (expected {})",
+                                          t["version"].get<u32>(), kTerrainVersion));
+    }
+    TerrainRef ref;
+    if (!t.contains("heightmap") || !t["heightmap"].is_string() || t["heightmap"].get<std::string>().empty())
+    {
+        return r.error(where, "needs 'heightmap' (VFS path)");
+    }
+    ref.heightmap = t["heightmap"].get<std::string>();
+    for (auto [key, target] : {std::pair{"width", &ref.width}, std::pair{"height", &ref.height}})
+    {
+        if (!t.contains(key) || !t[key].is_number_unsigned() || t[key].get<u32>() < 2)
+        {
+            return r.error(where, std::format("'{}' must be an integer >= 2", key));
+        }
+        *target = t[key].get<u32>();
+    }
+    for (auto [key, target] :
+         {std::pair{"cellSize", &ref.cellSize}, std::pair{"minY", &ref.minY}, std::pair{"maxY", &ref.maxY}})
+    {
+        if (!t.contains(key) || !t[key].is_number())
+        {
+            return r.error(where, std::format("needs '{}' (number)", key));
+        }
+        *target = t[key].get<f32>();
+    }
+    if (!(ref.cellSize > 0.0f))
+    {
+        return r.error(where, "'cellSize' must be positive");
+    }
+    if (!(ref.maxY > ref.minY))
+    {
+        return r.error(where, "'maxY' must be above 'minY'");
+    }
+    if (!t.contains("firstSample"))
+    {
+        return r.error(where, "needs 'firstSample' [x, z]");
+    }
+    auto first = r.numbers(t["firstSample"], "terrain.firstSample", 2);
+    if (!first)
+    {
+        return first.error();
+    }
+    ref.firstSample = Vec2(first.value()[0], first.value()[1]);
+    return ref; // "splat" and "holes" are reserved for later and ignored here
+}
+
 Json numbers(std::initializer_list<f32> values)
 {
     Json array = Json::array();
@@ -234,6 +294,15 @@ Result<WorldFile> parseWorldFile(std::string_view text, std::string_view source)
             world.staticMeshes.push_back(mesh.get<std::string>());
         }
     }
+    if (root.contains("terrain"))
+    {
+        auto terrain = readTerrain(r, root["terrain"]);
+        if (!terrain)
+        {
+            return terrain.error();
+        }
+        world.terrain = std::move(terrain).value();
+    }
     if (root.contains("vobs"))
     {
         if (!root["vobs"].is_array())
@@ -290,6 +359,18 @@ std::string writeWorldFile(const WorldFile& world)
     root["name"] = world.name;
     root["nextVobId"] = world.nextVobId;
     root["staticMeshes"] = world.staticMeshes;
+    if (world.terrain)
+    {
+        const TerrainRef& t = *world.terrain;
+        root["terrain"] = Json{{"version", kTerrainVersion},
+                               {"heightmap", t.heightmap},
+                               {"width", t.width},
+                               {"height", t.height},
+                               {"cellSize", tidy(t.cellSize)},
+                               {"firstSample", numbers({t.firstSample.x, t.firstSample.y})},
+                               {"minY", tidy(t.minY)},
+                               {"maxY", tidy(t.maxY)}};
+    }
 
     std::vector<const WorldFileVob*> sorted;
     for (const WorldFileVob& vob : world.vobs)

@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M4** (Welt & Szene) läuft – ADR 0005 (EnTT, `VobId`-Vertrag, API-Grenze) akzeptiert (#42); als Erstes EnTT-Registry, `VobId` und Transform-Hierarchie. Welt-Spur: **W4** Schritt 1 (Fassaden-Werkzeug mit synthetischen Bildern) läuft, Aufnahmetour folgt; Annotations-Oberfläche als Web-UI (Entscheidung Projektinhaber). Figuren-Spur: **F1** (Referenz-Rig) in Arbeit – Voraussetzung für M6. Phase **M3** (Asset-System & Pipeline) abgeschlossen – VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles, Cache, asynchrones Laden), Engine-Anbindung (Mounts aus `engine.toml`), Hot-Reload (Texturen/Modelle, Shader), `g7-cook` (glTF → `.g7mesh`, Bilder → KTX2/UASTC als Vorgabe, Packen, Manifest mit inkrementellem Kochen; ADR 0016), `render` lädt KTX2 (BC7/BC5) und bevorzugt gekochte Meshes; DoD Ende-zu-Ende geprüft (Spiel nur aus `data.g7pak`, Textur-Hot-Reload; #34, #37, #40). Phase **M2** (Renderer-Grundlagen) abgeschlossen – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig), Licht (Sonne, Hemisphären-Ambient, Punktlichter), Sonnenschatten (CSM), HDR mit Tonemapping (ACES), Distanznebel, Debug-Draw (F2) und das ImGui-Debugfenster (F1), Testszenen (`--scene`, Frustum-Culling, `--benchmark`, `--screenshot`) stehen; DoD-Szene mit 608 FPS (RTX 3080) bzw. 214 FPS (Intel UHD). M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
+**Aktueller Stand:** Phase **M4** (Welt & Szene) läuft – ADR 0005 (EnTT, `VobId`-Vertrag) und ADR 0017 (nlohmann-json) akzeptiert; `world::Scene` (Registry, `VobId`, Transform-Hierarchie, #44) und Weltformat `.g7world` v1 mit `--world`/`--save-world` und Testwelt `testworld/camp.g7world` (#47) stehen; als Nächstes u. a. Heightmap-Terrain (Voraussetzung für W2). Welt-Spur: **W4** läuft – Fassaden-Werkzeug-Kerne (#46, synthetisch geprüft), jetzt Einzelbild-Extraktion (ffmpeg); Aufnahmetour des Projektinhabers steht an; Annotations-Oberfläche als Web-UI. Figuren-Spur: **F1** abgeschlossen (#41, #45: Referenz-Rig, `tools/chargen` mit Validator, Platzhalterfigur + Test-Clips, `events.toml` v1 mit engine abgestimmt); **F2** (Basis-Animationsset) läuft – nur CC0/eigene Clips, kein Mixamo (Repo ist öffentlich; Entscheidung Projektinhaber). Phase **M3** (Asset-System & Pipeline) abgeschlossen – VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles, Cache, asynchrones Laden), Engine-Anbindung (Mounts aus `engine.toml`), Hot-Reload (Texturen/Modelle, Shader), `g7-cook` (glTF → `.g7mesh`, Bilder → KTX2/UASTC als Vorgabe, Packen, Manifest mit inkrementellem Kochen; ADR 0016), `render` lädt KTX2 (BC7/BC5) und bevorzugt gekochte Meshes; DoD Ende-zu-Ende geprüft (Spiel nur aus `data.g7pak`, Textur-Hot-Reload; #34, #37, #40). Phase **M2** (Renderer-Grundlagen) abgeschlossen – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig), Licht (Sonne, Hemisphären-Ambient, Punktlichter), Sonnenschatten (CSM), HDR mit Tonemapping (ACES), Distanznebel, Debug-Draw (F2) und das ImGui-Debugfenster (F1), Testszenen (`--scene`, Frustum-Culling, `--benchmark`, `--screenshot`) stehen; DoD-Szene mit 608 FPS (RTX 3080) bzw. 214 FPS (Intel UHD). M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -98,9 +98,11 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 
 ## M4 – Welt & Szene (+ Editor-Grundlage)
 - [x] EnTT-Registry, Komponenten-Grundsatz, `VobId`, Transform-Hierarchie (ADR 0005) – `world::Scene`, Registry nicht in der API
-- [x] Weltformat `.g7world` (Text/JSON für Versionierbarkeit, binäre gekochte Variante) – Text v1 (ADR 0017, `--world`, `--save-world`, Testwelt `testworld/camp.g7world`); Binärvariante bei Bedarf
+- [x] Weltformat `.g7world` als Text/JSON (v1, ADR 0017, `--world`, `--save-world`, Testwelt `testworld/camp.g7world`)
+- [ ] Gekochte Binärvariante von `.g7world` – verschoben bis zum Bedarf (große Welten), **kein Teil der M4-DoD**
 - [ ] Statisches Welt-Mesh (Gelände + Architektur) mit Kollisionsgeometrie
 - [ ] **Heightmap-Terrain** (Kacheln, LOD, Splatmap mit 4–8 Schichten, Löcher) – Grundlage für W2 (Leonberg-Gelände)
+  - Stand: Teil A fertig – `terrain`-Block in `.g7world` (Vertrag mit welt), `world::Heightfield`, `render::TerrainRenderer` (64er-Kacheln, 4 LOD-Stufen mit Schürzen, Culling, Schatten); Leonberg 2000×2000 mit 619 FPS (RTX 3080). Offen: Splatmap, Löcher (Teil B)
 - [ ] Vob-Typen: Mesh, Licht, Sound-Emitter, Trigger, Startpunkt, Mob (Platzhalter)
 - [ ] Spielzeit & **Tag/Nacht-Zyklus**: Sonnenstand, Himmelsfarben (Verlauf je Uhrzeit), Sterne, Mond
 - [ ] Sichtbarkeit: Frustum-Culling, Distanz-Culling/LOD für Vobs; Innenräume über Portale/Zonen (später)
@@ -339,9 +341,9 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 Spezifikation: `docs/design/characters-pipeline.md`, Liste: `docs/design/animation-list.md`.
 Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source/characters/`.
 
-**Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört): Referenz-Rig (T-Pose, 60 Knochen,
-Geometrie aus dem Quaternius-Rig, CC0), Export-Einstellungen, `tools/chargen` mit Rig-Validator (CI-Job `chargen`), Platzhalterfigur +
-3 Test-Clips mit Events; Verträge mit engine abgestimmt. Nächste Phase: F2 (Basis-Animationsset).
+**Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört). F2 läuft: `build-set`,
+`report` und Pose-Marker-Events stehen, alle 36 Prio-A-Clips liegen als Platzhalter vor (18 Quaternius CC0, 18 Keyframe-Platzhalter);
+als Nächstes die Prio-B-Fortbewegung je Waffenmodus. Kein Mixamo (öffentliches Repo).
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
@@ -355,13 +357,14 @@ Geometrie aus dem Quaternius-Rig, CC0), Export-Einstellungen, `tools/chargen` mi
 ✅ Erfüllt, soweit ohne M6 möglich: Figur und Clips bestehen `gothar-chargen validate --strict` (CI); die Figur kocht als `.g7mesh`. Skin und Clips kocht `g7-cook` mit M6, dann ist nur noch die Prüfung nötig.
 
 ## F2 – Basis-Animationsset  (benötigt F1)
-- [ ] Retargeting-Mappings (Quaternius, Mixamo) und Stapel-Retargeting in Blender
-- [ ] Animations-Export: Sets nach Konvention, Timeline-Marker → `events.toml`, Root-Motion/In-Place
-- [ ] Abgleich-Werkzeug Animationsliste ↔ vorhandene Clips (Fortschrittsbericht)
-- [ ] Alle **Prio-A**-Animationen (mindestens als Platzhalter-Qualität)
+- [x] Bone-Mappings Quaternius UAL1/UAL2 (CC0) und Stapel-Übertragung in Blender (`gothar-chargen build-set`, Clip-Listen `data/clips/<set>.toml`) – **kein Mixamo** (öffentliches Repo, Entscheidung 2026-10-03); Mocap-Retargeting folgt in F4
+- [x] Animations-Export: Sets nach Konvention, Pose-Marker → `events.toml` (dazu automatische Fußkontakt-/Lande-Events), Root Motion (z. B. `t_climb_low`) bzw. In-Place
+- [x] Abgleich-Werkzeug Animationsliste ↔ vorhandene Clips (`gothar-chargen report`)
+- [x] Alle **Prio-A**-Animationen (mindestens als Platzhalter-Qualität) – 36/36 (`gothar-chargen report`): 18 aus Quaternius bzw. abgeleitet, 18 als Keyframe-Platzhalter (`platzhalter-K`, Rezepte in `blender/keyframes.py`; Ersatz durch Mocap in F4); Sets `none`, `swim`, `dive`
 - [ ] Prio-B-Fortbewegung je Waffenmodus
 
 **DoD:** Meilenstein A ist mit diesen Animationen erreichbar; Bericht zeigt 0 fehlende Prio-A-Clips.
+Stand: Bericht zeigt 0 fehlende Prio-A-Clips (CI prüft es). Offen ist nur noch die Prio-B-Fortbewegung je Waffenmodus.
 
 ## F3 – Figuren-Baukasten  (benötigt F1)
 - [ ] 2 Grundkörper × 3 Staturen (MPFB2, stilisiert), Köpfe als separate Meshes mit Morph-Targets

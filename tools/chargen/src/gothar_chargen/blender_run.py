@@ -74,9 +74,13 @@ def export_glb(blender: Path, blend_file: Path, glb_out: Path) -> int:
     return removed
 
 
-def build_placeholder(blender: Path, ual1: Path, ual2: Path, out_dir: Path, clips: str) -> None:
-    run_script(
+def build_placeholder(blender: Path, ual2: Path, out_dir: Path) -> None:
+    run_script(blender, "build_placeholder.py", ["--ual2", str(ual2), "--out", str(out_dir)])
+
+
+def build_set(blender: Path, set_name: str, sources: Path, out_dir: Path) -> str:
+    return run_script(
         blender,
-        "build_placeholder.py",
-        ["--ual1", str(ual1), "--ual2", str(ual2), "--out", str(out_dir), "--clips", clips],
+        "build_set.py",
+        ["--set", set_name, "--sources", str(sources), "--out", str(out_dir)],
     )

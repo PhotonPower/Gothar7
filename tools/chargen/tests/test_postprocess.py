@@ -84,13 +84,15 @@ def test_compact_preserves_mesh_and_skin_data(figure):
     assert figure.doc["buffers"][0]["byteLength"] == len(figure.bin)
 
 
-def test_committed_anim_set_is_clean(rig, reference):
-    g = Gltf.load(ANIM_SET)
-    assert {a["name"] for a in g.doc["animations"]} == {"none/s_idle", "none/s_walk", "none/s_run"}
-    assert strip_animation_channels(g) == 0
-    report = validate_gltf(g, rig, reference, path=ANIM_SET)
-    assert report.ok(strict=True), report.issues
-    assert report.stats["events"] == 4
+def test_committed_anim_sets_are_clean(rig, reference):
+    for glb in sorted(ANIM_SET.parent.glob("*.glb")):
+        g = Gltf.load(glb)
+        assert strip_animation_channels(g) == 0, glb.name
+        report = validate_gltf(g, rig, reference, path=glb)
+        assert report.ok(strict=True), report.issues
+    none = validate_gltf(Gltf.load(ANIM_SET), rig, reference, path=ANIM_SET)
+    assert none.stats["clips"] == 27
+    assert none.stats["events"] >= 15
 
 
 # --- footstep detection and events writer --------------------------------------------------------

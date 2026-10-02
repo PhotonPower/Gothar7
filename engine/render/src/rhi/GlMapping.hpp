@@ -23,6 +23,8 @@ inline TextureFormat textureFormat(Format format) noexcept
         return {GL_R8, GL_RED, GL_UNSIGNED_BYTE};
     case Format::RG8:
         return {GL_RG8, GL_RG, GL_UNSIGNED_BYTE};
+    case Format::R16:
+        return {GL_R16, GL_RED, GL_UNSIGNED_SHORT};
     case Format::RGBA8:
         return {GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE};
     case Format::RGBA8_SRGB:

@@ -276,6 +276,15 @@ void MeshRenderer::drawSubmesh(Device& device, const Mesh& mesh, usize submesh, 
     mesh.draw(device, submesh);
 }
 
+void MeshRenderer::bindLighting(Device& device) const
+{
+    device.bindUniformBuffer(0, m_lightingBuffer);
+    if (m_shadowMap != nullptr)
+    {
+        device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
+    }
+}
+
 void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
                         const Camera& camera)
 {

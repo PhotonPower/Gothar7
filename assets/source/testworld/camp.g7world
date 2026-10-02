@@ -3,6 +3,7 @@
   "name": "camp",
   "nextVobId": 170,
   "staticMeshes": [],
+  "terrain": {"version":1,"heightmap":"testworld/terrain.r16","width":257,"height":257,"cellSize":2.0,"firstSample":[-256.0,-256.0],"minY":-20.0,"maxY":60.0},
   "vobs": [
     {"id":1,"type":"mesh","name":"wall-wood","pos":[13.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,3.0],"mesh":"testscene/town/wall-wood.glb"},
     {"id":2,"type":"mesh","name":"wall-wood-door","pos":[13.0,0.0,0.0],"rot":[0.0,1.0,0.0,0.0],"scale":[3.0,3.0,3.0],"mesh":"testscene/town/wall-wood-door.glb"},

@@ -112,24 +112,21 @@ def test_blend_source_matches_committed_glb():
 
 
 def test_build_placeholder_needs_sources(tmp_path):
-    code, text = run("build-placeholder", "--quaternius", str(tmp_path))
+    code, text = run("build-placeholder", "--sources", str(tmp_path))
     assert code == EXIT_ERROR
-    assert "AnimationLibrary_Godot_Standard.glb" in text
+    assert "UAL2_Standard.glb" in text
 
 
-def test_clip_list_is_valid():
-    import tomllib
-    from importlib import resources
+def test_report_command():
+    code, text = run("report")
+    assert code == EXIT_OK
+    assert "Prio A:" in text and "/36 clips present" in text
+    code, _ = run("report", "--fail-missing")
+    assert code == EXIT_OK  # F2 DoD: no Prio-A clip missing
+    code, text = run("report", "--json")
+    assert json.loads(text)["prio_a"]["listed"] == 36
 
-    from gothar_chargen.mapping import load_mapping
-    from gothar_chargen.naming import is_clip_name
 
-    spec = tomllib.loads(
-        resources.files("gothar_chargen.data.clips")
-        .joinpath("f1_placeholder.toml")
-        .read_text("utf-8")
-    )
-    load_mapping(spec["mapping"])
-    names = [c["name"] for c in spec["clip"]]
-    assert names == ["none/s_idle", "none/s_walk", "none/s_run"]
-    assert all(is_clip_name(n) and n.startswith(spec["set"] + "/") for n in names)
+def test_build_set_rejects_unknown_set(tmp_path):
+    code, text = run("build-set", "nope", "--sources", str(tmp_path))
+    assert code == EXIT_ERROR and "unknown clip list" in text

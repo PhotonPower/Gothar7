@@ -1,0 +1,44 @@
+# Set "swim" -> assets/source/characters/anims/human/swim.glb
+# Sources: Quaternius Universal Animation Library [Standard], CC0 1.0. Placeholders.
+
+set = "swim"
+
+[sources.ual1]
+file = "AnimationLibrary_Godot_Standard.glb"
+mapping = "quaternius_ual1"
+
+[[clip]]
+name = "swim/s_idle"
+from = "ual1:Swim_Idle_Loop"
+
+[[clip]]
+name = "swim/s_forward"
+from = "ual1:Swim_Fwd_Loop"
+
+[[clip]]
+name = "swim/s_back"
+reverse = "swim/s_forward"
+
+# --- keyframe placeholders (platzhalter-K) ---
+
+[[clip]]
+name = "swim/t_turn_l"
+keyframe = "yaw_wave"
+params = { base = "swim/s_idle", side = "l", frames = 30, yaw = 35 }
+
+[[clip]]
+name = "swim/t_turn_r"
+keyframe = "yaw_wave"
+params = { base = "swim/s_idle", side = "r", frames = 30, yaw = 35 }
+
+# helper: the dive pose, defined like dive/s_forward in dive.toml
+[[clip]]
+name = "dive/s_forward"
+keyframe = "pitch"
+params = { base = "swim/s_forward", angle = 25 }
+helper = true
+
+[[clip]]
+name = "swim/t_2_dive"
+blend = ["swim/s_idle", "dive/s_forward"]
+frames = 24
