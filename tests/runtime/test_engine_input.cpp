@@ -27,6 +27,7 @@ pause = ["Escape"]
 
     g7::EngineConfig config;
     config.window.size = {320, 240};
+    config.render = false; // offscreen driver has no OpenGL; GL is covered by the render_gpu suite
     config.fixedFrameSeconds = 1.0 / 60.0;
     config.settings = std::move(settings).value();
     g7::Engine engine(config);

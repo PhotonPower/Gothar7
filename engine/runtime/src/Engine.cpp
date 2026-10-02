@@ -26,6 +26,9 @@ namespace g7
 {
 namespace
 {
+/// Dusk colour until there is a sky (M4).
+const Vec4 kClearColor{0.10f, 0.11f, 0.14f, 1.0f};
+
 /// Shows which actions fire (--verbose); fulfils the M1 check "log output of the actions".
 void logPressedActions(const platform::ActionMap& actions, const platform::Input& input)
 {
@@ -76,12 +79,36 @@ Result<void> Engine::init()
 
     if (!m_config.headless)
     {
-        auto window = platform::Window::create(m_config.window);
+        platform::WindowDesc desc = m_config.window;
+        desc.graphics = m_config.render ? platform::GraphicsApi::OpenGL : platform::GraphicsApi::None;
+        auto window = platform::Window::create(desc);
         if (!window)
         {
             return Error{"cannot create window: " + window.error().message};
         }
         m_window = std::move(window).value();
+
+        if (m_config.render)
+        {
+            auto context = platform::GlContext::create(*m_window);
+            if (!context)
+            {
+                return Error{"cannot create OpenGL context: " + context.error().message};
+            }
+            m_glContext = std::move(context).value();
+            auto device =
+                render::Device::create(&platform::GlContext::procAddress, platform::GlContextDesc{}.debug);
+            if (!device)
+            {
+                return Error{"cannot initialize renderer: " + device.error().message};
+            }
+            m_device = std::move(device).value();
+            m_glContext->setVSync(m_config.window.vsync);
+        }
+        else
+        {
+            G7_LOG_INFO("engine", "rendering disabled (--no-render)");
+        }
     }
     else
     {
@@ -176,7 +203,13 @@ bool Engine::runFrame()
     }
     {
         G7_PROFILE_SCOPE("Engine::render");
-        // TODO(M2): render.drawFrame(frameAlpha()) + swap (VSync from WindowDesc::vsync)
+        if (m_device)
+        {
+            // TODO(M2): scene rendering with frameAlpha(); for now the frame is only cleared.
+            const auto size = m_window->pixelSize();
+            m_device->beginFrame(size.width, size.height, kClearColor);
+            m_glContext->swapBuffers();
+        }
     }
 
     ++m_frameCount;
@@ -215,6 +248,8 @@ void Engine::shutdown()
     }
     // Shutdown in reverse init order.
     G7_LOG_INFO("engine", "shutdown");
+    m_device.reset(); // GL objects need the context
+    m_glContext.reset();
     m_window.reset();
     m_initialized = false;
 }

@@ -1,6 +1,6 @@
-# 0003 – Grafik-API: OpenGL 4.6 hinter einer RHI
+# 0003 – Grafik-API: OpenGL 4.5/4.6 hinter einer RHI
 
-- **Status:** Vorgeschlagen (vor M2 bestätigen)
+- **Status:** Akzeptiert (2026-10-02, Mindestversion 4.5)
 - **Datum:** 2026-10-02
 - **Phase:** M2
 
@@ -20,3 +20,15 @@ Command-Liste) Vulkan-nah sind. Ein Vulkan- oder SDL_GPU-Backend bleibt als Opti
 
 ## Konsequenzen
 Kein macOS. Renderer-Code außerhalb der RHI darf keine GL-Aufrufe enthalten.
+
+## Umsetzung (M2)
+- **Mindestversion 4.5 Core** (DSA ist Kern ab 4.5); angefordert wird 4.6, Rückfall auf 4.5. 4.6-Funktionen
+  (SPIR-V, anisotrope Filterung im Kern) nur optional nutzen. Grund: ältere Intel-GPUs und Tests in der
+  Linux-CI mit Mesa llvmpipe (Software-Rasterizer) unter Xvfb.
+- **Loader: glad** (vcpkg-Port `glad`, Feature `gl-api-46`, privat in `render`). Der Port erzeugt das
+  Kompatibilitätsprofil; die Engine fordert trotzdem einen Core-Kontext an und nutzt nur Core-Funktionen.
+  Das Preset `nodeps` hat kein glad (Generator braucht Python) – `render` baut dann ohne GL-Backend.
+- Kontext-Erzeugung/Puffertausch/VSync in `platform::GlContext` (SDL), alle GL-Aufrufe in `render`.
+- GL-Debug-Output: im Debug-Build synchron, Meldungen im Log (`render`), Wiederholungen gedrosselt.
+- CI: GPU-Tests tragen das CTest-Label `gpu`; Linux führt sie unter Xvfb + llvmpipe aus, Windows-Runner
+  (ohne OpenGL) schließen sie aus und testen das Fenster mit `--no-render`.

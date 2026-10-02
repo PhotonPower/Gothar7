@@ -5,10 +5,10 @@
 - CMake ≥ 3.25, Ninja
 - Compiler: **Windows**: Visual Studio 2022 (MSVC 19.38+) · **Linux**: GCC 13+ oder Clang 17+
 - **vcpkg** (Manifest-Modus) mit gesetzter Umgebungsvariable `VCPKG_ROOT`
-- Grafiktreiber mit OpenGL 4.6 (ab M2)
+- Grafiktreiber mit OpenGL 4.5 oder neuer (ab M2; 4.6 bevorzugt)
 - **Linux**: Entwicklungspakete für SDL3 (X11/Wayland), z. B. unter Ubuntu:
   `sudo apt install pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libudev-dev`
-  (dieselbe Liste wie in `.github/workflows/ci.yml`)
+  (dieselbe Liste wie in `.github/workflows/ci.yml`; dort zusätzlich `xvfb libgl1-mesa-dri` für die GPU-Tests)
 
 ### vcpkg einrichten (einmalig)
 ```bash
@@ -41,7 +41,8 @@ Unter Windows die Befehle in der **„x64 Native Tools Command Prompt for VS 202
 (damit Ninja den MSVC-Compiler findet) – oder den Ordner direkt in Visual Studio / CLion / VS Code
 (CMake Tools) öffnen; die Presets werden erkannt.
 
-Ohne vcpkg (nur Kern, ohne Tests): `cmake --preset nodeps && cmake --build --preset nodeps`.
+Ohne vcpkg (nur Kern, ohne Tests): `cmake --preset nodeps && cmake --build --preset nodeps` – ohne glad,
+das Spiel dort mit `--no-render` starten.
 
 ## Presets
 | Preset | Zweck |
@@ -76,6 +77,7 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | `--frames=N` | nach N Frames beenden (auch mit Fenster; CI mit `SDL_VIDEO_DRIVER=offscreen`) |
 | `--max-fps=N` | Bildrate begrenzen (überschreibt `[window] max_fps`; 0 = unbegrenzt) |
 | `--fullscreen` | randloses Vollbild in Desktop-Auflösung |
+| `--no-render` | Fenster ohne OpenGL (Systeme ohne GL-Treiber, Windows-CI, `nodeps`-Build) |
 | `--editor` | Editor-Modus (ab M4) |
 | `--world=<name>` | Startwelt (ab M4) |
 

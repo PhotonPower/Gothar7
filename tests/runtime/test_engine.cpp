@@ -29,6 +29,7 @@ TEST_CASE("Engine runs a bounded loop with a window")
     g7::EngineConfig config;
     config.maxFrames = 3;
     config.window.size = {320, 240};
+    config.render = false; // offscreen driver has no OpenGL; GL is covered by the render_gpu suite
     g7::Engine engine(config);
     REQUIRE(engine.init().ok());
     REQUIRE(engine.window() != nullptr);
@@ -41,6 +42,7 @@ TEST_CASE("Engine stops when the window is closed")
 {
     g7::EngineConfig config;
     config.window.size = {320, 240};
+    config.render = false;     // offscreen driver has no OpenGL; GL is covered by the render_gpu suite
     g7::Engine engine(config); // no frame limit: only the close request ends the loop
     REQUIRE(engine.init().ok());
     engine.window()->requestClose();
@@ -52,6 +54,7 @@ TEST_CASE("Engine reports an invalid window description")
 {
     g7::EngineConfig config;
     config.window.size = {0, 0};
+    config.render = false;
     g7::Engine engine(config);
     auto result = engine.init();
     REQUIRE_FALSE(result.ok());
@@ -73,6 +76,7 @@ jump = ["LeftAlt"]
     g7::EngineConfig config;
     config.maxFrames = 1;
     config.window.size = {320, 240};
+    config.render = false; // offscreen driver has no OpenGL; GL is covered by the render_gpu suite
     config.settings = std::move(settings).value();
     g7::Engine engine(config);
     REQUIRE(engine.init().ok());
@@ -164,6 +168,7 @@ TEST_CASE("Engine: frame cap with a window")
 {
     g7::EngineConfig config;
     config.window.size = {320, 240};
+    config.render = false; // offscreen driver has no OpenGL; GL is covered by the render_gpu suite
     config.maxFps = 100.0;
     config.maxFrames = 11;
     g7::Engine engine(config);

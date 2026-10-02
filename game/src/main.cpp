@@ -19,6 +19,7 @@ struct CommandLine
 {
     bool smokeTest = false;
     bool fullscreen = false;
+    bool noRender = false;
     std::optional<g7::u64> frames;
     std::optional<g7::u64> maxFps;
 };
@@ -36,6 +37,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--smoke-test")
         {
             cli.smokeTest = true;
+        }
+        else if (arg == "--no-render")
+        {
+            cli.noRender = true;
         }
         else if (arg == "--fullscreen")
         {
@@ -159,6 +164,10 @@ int main(int argc, char** argv)
     if (cli->fullscreen)
     {
         config.window.mode = g7::platform::WindowMode::Fullscreen;
+    }
+    if (cli->noRender)
+    {
+        config.render = false;
     }
     if (cli->maxFps)
     {

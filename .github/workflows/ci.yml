@@ -38,7 +38,7 @@ jobs:
       # SDL3 (ADR 0011) needs X11/Wayland development packages to build on Linux.
       - name: Install Ninja and SDL3 build dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libudev-dev
+        run: sudo apt-get update && sudo apt-get install -y ninja-build pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libudev-dev xvfb libgl1-mesa-dri
 
       - name: Configure
         run: cmake --preset debug
@@ -46,18 +46,34 @@ jobs:
       - name: Build
         run: cmake --build --preset debug
 
-      - name: Test
-        run: ctest --preset debug
+      # GPU tests (label "gpu") need OpenGL 4.5+: Mesa llvmpipe under Xvfb on Linux; the Windows
+      # runners have no OpenGL driver, so they are excluded there (ADR 0003).
+      - name: Test (Linux, incl. OpenGL via Mesa llvmpipe)
+        if: runner.os == 'Linux'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: xvfb-run -a ctest --preset debug
+
+      - name: Test (Windows, without GPU tests)
+        if: runner.os == 'Windows'
+        run: ctest --preset debug -LE gpu
 
       - name: Smoke test
         shell: bash
         run: ./build/debug/game/gothar --smoke-test
 
-      - name: Smoke test with window (offscreen video driver)
+      - name: Smoke test with window and OpenGL (Linux, Xvfb + llvmpipe)
+        if: runner.os == 'Linux'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: xvfb-run -a ./build/debug/game/gothar --frames=10 --verbose
+
+      - name: Smoke test with window, no rendering (Windows, offscreen video driver)
+        if: runner.os == 'Windows'
         shell: bash
         env:
           SDL_VIDEO_DRIVER: offscreen
-        run: ./build/debug/game/gothar --frames=10
+        run: ./build/debug/game/gothar --frames=10 --no-render
 
   # Test coverage of core (M0 DoD: > 80 % lines). Fails below the threshold.
   coverage:
@@ -82,7 +98,7 @@ jobs:
 
       - name: Install Ninja, SDL3 build dependencies and gcovr
         run: |
-          sudo apt-get update && sudo apt-get install -y ninja-build pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libudev-dev
+          sudo apt-get update && sudo apt-get install -y ninja-build pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libudev-dev xvfb libgl1-mesa-dri
           pipx install gcovr
 
       - name: Configure
@@ -92,7 +108,9 @@ jobs:
         run: cmake --build --preset coverage
 
       - name: Test
-        run: ctest --preset coverage
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: xvfb-run -a ctest --preset coverage
 
       - name: Coverage report (core, threshold 80 %)
         run: |

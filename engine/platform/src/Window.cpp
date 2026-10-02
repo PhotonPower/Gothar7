@@ -1,4 +1,5 @@
 #include "SdlInput.hpp"
+#include "WindowImpl.hpp"
 
 #include <g7/core/Log.hpp>
 #include <g7/platform/Window.hpp>
@@ -11,7 +12,6 @@ namespace g7::platform
 {
 namespace
 {
-constexpr SDL_InitFlags kSubsystems = SDL_INIT_VIDEO | SDL_INIT_GAMEPAD;
 constexpr u32 kMaxDimension = static_cast<u32>(std::numeric_limits<int>::max());
 
 Extent toExtent(int width, int height) noexcept
@@ -19,33 +19,6 @@ Extent toExtent(int width, int height) noexcept
     return Extent{static_cast<u32>(width > 0 ? width : 0), static_cast<u32>(height > 0 ? height : 0)};
 }
 } // namespace
-
-struct Window::Impl
-{
-    SDL_Window* window = nullptr;
-    SDL_WindowID id = 0;
-    WindowMode mode = WindowMode::Windowed;
-    Extent lastPolledSize;
-    Extent lastPolledPixelSize;
-    bool resized = false;
-    bool quitRequested = false;
-    SDL_Gamepad* gamepad = nullptr; // single player: the first connected pad is used
-    SDL_JoystickID gamepadId = 0;
-
-    ~Impl()
-    {
-        if (gamepad)
-        {
-            SDL_CloseGamepad(gamepad);
-        }
-        if (window)
-        {
-            SDL_DestroyWindow(window);
-        }
-        // Balances SDL_InitSubSystem in create(); SDL ref-counts subsystems.
-        SDL_QuitSubSystem(kSubsystems);
-    }
-};
 
 Window::Window(std::unique_ptr<Impl> impl) : m_impl(std::move(impl))
 {
@@ -59,7 +32,7 @@ Result<std::unique_ptr<Window>> Window::create(const WindowDesc& desc)
     {
         return Error{"invalid window size"};
     }
-    if (!SDL_InitSubSystem(kSubsystems))
+    if (!SDL_InitSubSystem(kWindowSubsystems))
     {
         return Error{std::string("SDL video/gamepad init failed: ") + SDL_GetError()};
     }
@@ -74,6 +47,14 @@ Result<std::unique_ptr<Window>> Window::create(const WindowDesc& desc)
     {
         flags |= SDL_WINDOW_FULLSCREEN; // no explicit display mode -> borderless desktop
     }
+    if (desc.graphics == GraphicsApi::OpenGL)
+    {
+        // Default framebuffer format must be chosen before the window exists.
+        flags |= SDL_WINDOW_OPENGL;
+        SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+        SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+    }
     impl->window = SDL_CreateWindow(desc.title.c_str(), static_cast<int>(desc.size.width),
                                     static_cast<int>(desc.size.height), flags);
     if (!impl->window)
@@ -82,6 +63,7 @@ Result<std::unique_ptr<Window>> Window::create(const WindowDesc& desc)
     }
     impl->id = SDL_GetWindowID(impl->window);
     impl->mode = desc.mode;
+    impl->graphics = desc.graphics;
     SDL_SyncWindow(impl->window);
 
     std::unique_ptr<Window> window(new Window(std::move(impl)));
