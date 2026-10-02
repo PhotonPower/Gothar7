@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M2** (Renderer-Grundlagen) abgeschlossen – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig), Licht (Sonne, Hemisphären-Ambient, Punktlichter), Sonnenschatten (CSM), HDR mit Tonemapping (ACES), Distanznebel, Debug-Draw (F2) und das ImGui-Debugfenster (F1), Testszenen (`--scene`, Frustum-Culling, `--benchmark`, `--screenshot`) stehen; DoD-Szene mit 608 FPS (RTX 3080) bzw. 214 FPS (Intel UHD). M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen). Nächste Phase: **M3** (Asset-System & Pipeline).
+**Aktueller Stand:** Phase **M3** (Asset-System & Pipeline) läuft – VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles, Cache, asynchrones Laden), Engine-Anbindung (Mounts aus `engine.toml`), `g7-cook` (glTF → `.g7mesh`, Bilder → KTX2/UASTC, Packen; ADR 0016) stehen; offen sind der KTX2-Upload in `render`, Hot-Reload und das Manifest. Phase **M2** (Renderer-Grundlagen) abgeschlossen – OpenGL-Kontext (4.5+), glad, Debug-Output, RHI (Buffer, Texture, Sampler, Shader, Pipeline, Framebuffer), Shader-System (Includes, Hot-Reload), Kamera (Reverse-Z, Frustum, Debug-Flugkamera), statische glTF-Meshes (fastgltf, `--view-mesh`), Texturen (PNG/JPEG, Mipmaps, Anisotropie, sRGB), Materialien (Normal-Map, Emissive, Alpha-Test/Blend, beidseitig), Licht (Sonne, Hemisphären-Ambient, Punktlichter), Sonnenschatten (CSM), HDR mit Tonemapping (ACES), Distanznebel, Debug-Draw (F2) und das ImGui-Debugfenster (F1), Testszenen (`--scene`, Frustum-Culling, `--benchmark`, `--screenshot`) stehen; DoD-Szene mit 608 FPS (RTX 3080) bzw. 214 FPS (Intel UHD). M0 und M1 abgeschlossen (M1-Abnahme am echten Fenster: Aktionen im Log, Pause, sauberes Schließen).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -89,7 +89,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 - [ ] Engine-Anbindung: `Vfs` + `AssetManager` in `Engine`, Mounts aus `engine.toml`, Meshes/Bilder über Handles bzw. VFS
 - [ ] Hot-Reload für Texturen, Shader, Skripte im Entwicklungsmodus
 - [ ] `g7-cook`: glTF → Laufzeit-Mesh/Skelett/Animation, PNG → KTX2 (BC7/BC5), OGG bleibt, Archiv packen; Laufzeit lädt KTX2 (libktx, aus M2 verschoben – ADR 0014)
-  - Stand: ADR 0016 (KTX2/UASTC, zstd, `.g7mesh`) akzeptiert; `g7-cook` kocht glTF → `.g7mesh` und packt `.g7pak` v2 mit zstd pro Eintrag (Bilder noch unverändert). Offen: KTX2 (Cooker, asset, render), Skelett/Animation (M6)
+  - Stand: ADR 0016 (KTX2/UASTC, zstd, `.g7mesh`) akzeptiert; `g7-cook` kocht glTF → `.g7mesh`, Bilder mit `--textures ktx2` → KTX2 (UASTC + zstd, Mips, Normal-Maps erkannt) und packt `.g7pak` v2 mit zstd pro Eintrag; `asset` liest KTX2 als `TextureData` (BC7/BC5). Offen: Upload von BC7/BC5 in `render` (dann KTX2 als Vorgabe), Skelett/Animation (M6)
 - [ ] Asset-Manifest mit Abhängigkeiten und Hashes (inkrementelles Kochen)
 
 **DoD:** Spiel lädt ausschließlich aus `assets/cooked`, Änderung einer Textur wird ohne Neustart sichtbar.
