@@ -46,7 +46,8 @@ def _cmd_info(args: argparse.Namespace, out: TextIO) -> int:
         print(f"  {key:<5} {state:<8} {path}", file=out)
     print(f"  work  -> {paths.work}", file=out)
     if local.blender:
-        print(f"blender:   {local.blender}", file=out)
+        state = "ok" if local.blender.is_file() else "MISSING"
+        print(f"blender:   {state:<8} {local.blender}", file=out)
     return EXIT_OK
 
 

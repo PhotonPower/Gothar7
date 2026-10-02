@@ -107,6 +107,20 @@ def test_info_reports_raw_data_dirs(config_dir: Path, tmp_path: Path):
     assert "MISSING" in rows["osm"]
 
 
+def test_info_reports_blender(config_dir: Path, tmp_path: Path):
+    blender = tmp_path / "blender.exe"
+    blender.write_bytes(b"")
+    (config_dir / "local.toml").write_text(
+        f"[paths]\ndata_root = '{tmp_path.as_posix()}'\nblender = '{blender.as_posix()}'\n",
+        encoding="utf-8",
+    )
+    _, out = run("--config-dir", str(config_dir), "info", "testsite")
+    assert "blender:   ok" in out
+    blender.unlink()
+    _, out = run("--config-dir", str(config_dir), "info", "testsite")
+    assert "blender:   MISSING" in out
+
+
 def test_unknown_site_is_an_error(config_dir: Path, capsys: pytest.CaptureFixture[str]):
     code, _ = run("--config-dir", str(config_dir), "info", "nowhere")
     assert code == EXIT_ERROR
