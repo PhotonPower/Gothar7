@@ -94,4 +94,6 @@ Lücken nachfragen statt raten – Spielgefühl-Entscheidungen trifft der Projek
 ## Aktueller Stand
 Phase **M0** abgeschlossen: core mit Log/Assert/Result/Clock, Dateisystem, Mathe (glm), StringId, Config (toml++),
 Profiler-Hook; Engine-Hauptschleife headless; CI (Windows + Linux + Coverage ≥ 80 % für core).
-Aktuelle Phase: **M1** – nächste Aufgaben siehe `docs/03-roadmap.md` → M1.
+Phase **M1**: alle Aufgaben umgesetzt (SDL3-Fenster, Eingabe, Aktions-Mapping aus `game/config/engine.toml`,
+Frame-Limit, Zeitskalierung/Pause); DoD-Abnahme am echten Fenster steht aus. Danach M2 (Renderer).
+Details siehe `docs/03-roadmap.md`.

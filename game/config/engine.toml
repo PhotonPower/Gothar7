@@ -6,6 +6,9 @@
 width = 1600
 height = 900
 fullscreen = false
+# VSync wirkt ab M2 (OpenGL). max_fps begrenzt die Bildrate zusätzlich (0 = unbegrenzt).
+vsync = true
+max_fps = 240
 
 [input]
 # "classic" (Gothic-artig: Aktionstaste + Richtung) oder "modern" (Maus-Angriff, E zum Benutzen)

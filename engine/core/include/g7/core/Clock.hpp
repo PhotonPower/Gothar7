@@ -44,4 +44,26 @@ private:
     f64 m_accumulator = 0.0;
     u32 m_maxSteps;
 };
+
+/// Paces frames to a maximum rate without drift: deadlines advance by a fixed interval, so a
+/// slightly late frame is compensated by the next one. After a hitch of more than one interval
+/// the cadence restarts instead of rushing frames to catch up. Times are seconds on any
+/// monotonic clock (injected, so the logic is testable).
+class FramePacer
+{
+public:
+    /// 0 (or negative) = unlimited.
+    explicit FramePacer(f64 maxFps) noexcept : m_interval(maxFps > 0.0 ? 1.0 / maxFps : 0.0) {}
+
+    /// Call at the start of each frame.
+    void frameStarted(f64 now) noexcept;
+    /// How long to wait at the end of the frame before the next one may start.
+    [[nodiscard]] f64 secondsUntilNextFrame(f64 now) const noexcept;
+    [[nodiscard]] f64 interval() const noexcept { return m_interval; }
+
+private:
+    f64 m_interval;
+    f64 m_nextFrame = 0.0;
+    bool m_started = false;
+};
 } // namespace g7

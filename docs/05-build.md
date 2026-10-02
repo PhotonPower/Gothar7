@@ -1,3 +1,4 @@
+| `--max-fps=N` | Bildrate begrenzen (überschreibt `[window] max_fps`; 0 = unbegrenzt) |
 # 05 – Bauen & Entwicklungsumgebung
 
 ## Voraussetzungen
@@ -71,8 +72,9 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | Schalter | Wirkung |
 |---|---|
 | `--verbose` | Log-Level Debug |
-| `--smoke-test` | 10 Frames headless, dann Ende (CI) |
+| `--smoke-test` | 10 Frames headless mit fester Frame-Zeit (deterministisch: 10 Ticks), dann Ende (CI) |
 | `--frames=N` | nach N Frames beenden (auch mit Fenster; CI mit `SDL_VIDEO_DRIVER=offscreen`) |
+| `--max-fps=N` | Bildrate begrenzen (überschreibt `[window] max_fps`; 0 = unbegrenzt) |
 | `--fullscreen` | randloses Vollbild in Desktop-Auflösung |
 | `--editor` | Editor-Modus (ab M4) |
 | `--world=<name>` | Startwelt (ab M4) |

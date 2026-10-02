@@ -11,7 +11,8 @@ namespace g7::platform {
 struct Extent { u32 width = 0, height = 0; };
 enum class WindowMode : u8 { Windowed, Fullscreen /* randlos in Desktop-Auflösung */ };
 struct WindowDesc { std::string title = "Gothar"; Extent size{1600, 900};
-                    WindowMode mode = WindowMode::Windowed; bool resizable = true; };
+                    WindowMode mode = WindowMode::Windowed; bool resizable = true;
+                    bool vsync = true; /* wirkt ab M2 mit dem GL-Kontext */ };
 
 class Window {   // PImpl um SDL_Window, hält Referenzen auf SDL-Video- und Gamepad-Subsystem
 public:
@@ -77,6 +78,10 @@ std::optional<GamepadButton> gamepadButtonFromName(sv);
 - **Namen** für die Konfiguration (Bindings): Tasten `"W"`, `"LeftCtrl"`, `"Grave"`, `"1"`, `"F5"`;
   Maus mit Präfix `"MouseLeft"`…; Gamepad `"PadSouth"`… – die Namensräume überschneiden sich nicht,
   Suche ohne Groß-/Kleinschreibung.
+
+### `Time.hpp`
+- `nowSeconds()` – monotone Uhr (`SDL_GetTicksNS`), `sleepPrecise(seconds)` – genaues Warten
+  (`SDL_DelayPrecise`; normale OS-Sleeps sind unter Windows 1–15 ms grob). Nutzt die Engine für das Frame-Limit.
 
 ### `Paths.hpp`
 - `userDataDirectory(org, app) -> Result<fs::Path>` (`SDL_GetPrefPath`, legt das Verzeichnis an;

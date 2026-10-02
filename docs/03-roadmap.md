@@ -5,7 +5,7 @@ abgeschlossen, wenn alle Aufgaben erledigt sind, die DoD erfüllt ist, CI grün 
 Modul-Doku den tatsächlichen Stand beschreibt. Phasen bauen aufeinander auf; innerhalb einer
 Phase ist die Reihenfolge der Aufgaben eine Empfehlung.
 
-**Aktueller Stand:** Phase **M1** (Plattform & Hauptschleife) – SDL3-Fenster (Größe, Vollbild, Schließen), Eingabe (Tastatur, Maus, Gamepad) und Aktions-Mapping (classic/modern aus `engine.toml`) stehen; VSync/Frame-Limit, Zeitskalierung offen. M0 abgeschlossen (core-Testabdeckung 89 %).
+**Aktueller Stand:** Phase **M1** (Plattform & Hauptschleife) – alle Aufgaben umgesetzt (SDL3-Fenster, Eingabe, Aktions-Mapping, Frame-Limit, Zeitskalierung/Pause). Offen für die DoD: manuelle Prüfung am echten Fenster (Aktionen im Log mit `--verbose`). M0 abgeschlossen (core-Testabdeckung 89 %).
 
 | Phase | Thema | Meilenstein |
 |---|---|---|
@@ -55,9 +55,9 @@ Windows und Linux grün; core hat > 80 % Testabdeckung seiner Logik.
 - [x] SDL3 einbinden (vcpkg), Fenster erzeugen, Größenänderung, Vollbild
 - [x] Eingabe: Tastatur, Maus (relativ für Kamera), Gamepad
 - [x] **Aktions-Mapping** (Aktion „Vorwärts“, „Aktion“, „Waffe ziehen“ … → Tasten), aus Konfiguration
-- [ ] Hauptschleife in `Engine::run` mit Event-Polling, Fenster-Schließen, VSync/Frame-Limit
-- [ ] Headless-Modus beibehalten (Tests/CI)
-- [ ] Zeitskalierung/Pause
+- [x] Hauptschleife in `Engine::run` mit Event-Polling, Fenster-Schließen, VSync/Frame-Limit (VSync wirkt ab M2 mit dem GL-Kontext)
+- [x] Headless-Modus beibehalten (Tests/CI)
+- [x] Zeitskalierung/Pause
 
 **DoD:** Fenster öffnet sich, reagiert auf Eingaben (Log-Ausgabe der Aktionen), schließt sauber.
 

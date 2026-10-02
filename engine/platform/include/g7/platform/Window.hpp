@@ -31,6 +31,7 @@ struct WindowDesc
     Extent size{1600, 900};
     WindowMode mode = WindowMode::Windowed;
     bool resizable = true;
+    bool vsync = true; ///< Takes effect with the OpenGL context (M2).
 };
 
 /// The game window (ADR 0011: SDL3, hidden behind PImpl). Owns a reference on the SDL video
