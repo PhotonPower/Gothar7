@@ -10,6 +10,15 @@ fullscreen = false
 vsync = true
 max_fps = 240
 
+[camera]
+# Debug-Kamera bis zur Spielfigur (M5): Bewegen mit den Laufaktionen, hoch/runter mit jump/sneak,
+# schnell mit run, Umsehen mit gehaltener rechter Maustaste.
+fov = 70.0               # vertikal, Grad
+near = 0.1               # Meter
+far = 1500.0             # Meter
+mouse_sensitivity = 0.1  # Grad pro Pixel
+fly_speed = 10.0         # m/s
+
 [render]
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
 # shader_hot_reload = true

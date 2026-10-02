@@ -23,3 +23,10 @@ glm ist öffentliche Abhängigkeit von core.
 - glm aus vcpkg (`glm`); das Preset `nodeps` lädt glm 1.0.3 per `FetchContent` nach.
 - Öffentliche Compile-Definitionen an `g7_core`: `GLM_FORCE_CTOR_INIT` (Vektoren/Matrizen sind mit 0
   bzw. Identität initialisiert), `GLM_FORCE_SILENT_WARNINGS`, `GLM_ENABLE_EXPERIMENTAL`.
+
+## Nachtrag (M2): Reverse-Z
+Entschieden: **Reverse-Z** mit 0..1-Tiefenbereich (`glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE)`, setzt
+`render::Device`). Projektionen kommen aus `g7::perspectiveReverseZ` (rechtshändig, Tiefe 1 am Near-, 0 am
+Far-Plane), nicht aus `glm::perspective`; daher ist `GLM_FORCE_DEPTH_ZERO_TO_ONE` nicht nötig. Tiefe wird mit 0
+gelöscht, Standardvergleich ist `GreaterEqual`. Grund: große Sichtweiten der offenen Welt bei gleichzeitig
+nahen Objekten – mit Fließkomma-Tiefe verteilt Reverse-Z die Genauigkeit fast gleichmäßig über die Distanz.

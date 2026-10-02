@@ -120,6 +120,16 @@ Result<void> Engine::init()
         G7_LOG_INFO("engine", "headless mode (no window)");
     }
 
+    // Camera from [camera] (defaults: 70° vertical FOV, 0.1–1500 m, 0.1°/px mouse).
+    m_camera.fovY = toRadians(static_cast<f32>(m_config.settings.get<f64>("camera.fov", 70.0)));
+    m_camera.nearPlane = static_cast<f32>(m_config.settings.get<f64>("camera.near", 0.1));
+    m_camera.farPlane = static_cast<f32>(m_config.settings.get<f64>("camera.far", 1500.0));
+    m_camera.transform.position = Vec3(0.0f, 1.8f, 6.0f);
+    m_flyCamera.sensitivity =
+        toRadians(static_cast<f32>(m_config.settings.get<f64>("camera.mouse_sensitivity", 0.1)));
+    m_flyCamera.speed = static_cast<f32>(m_config.settings.get<f64>("camera.fly_speed", 10.0));
+    m_flyCamera.attach(m_camera);
+
     if (m_window)
     {
         const std::string scheme = m_config.settings.get<std::string>("input.scheme", "classic");
@@ -184,6 +194,7 @@ bool Engine::runFrame()
             G7_LOG_DEBUG("engine", "window resized to {}x{} px", size.width, size.height);
         }
         logPressedActions(m_actions, m_input);
+        updateDebugCamera(realSeconds);
 
         // Interim until the menu exists (M14): the pause action toggles the pause directly.
         if (m_actions.pressed(m_input, platform::Action::Pause))
@@ -214,6 +225,11 @@ bool Engine::runFrame()
             const auto size = m_window->pixelSize();
             m_shaders->update(platform::nowSeconds());
             m_device->beginFrame(size.width, size.height, kClearColor);
+            m_camera.aspect =
+                size.height > 0 ? static_cast<f32>(size.width) / static_cast<f32>(size.height) : 1.0f;
+            m_backgroundProgram->setUniform("uInverseViewProjection",
+                                            glm::inverse(m_camera.viewProjection()));
+            m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
             m_device->bindPipeline(m_backgroundPipeline);
             m_device->draw(3); // fullscreen triangle from gl_VertexID
             m_glContext->swapBuffers();
@@ -254,7 +270,8 @@ Result<void> Engine::initShaders()
         return Error{"cannot load shaders: " + background.error().message};
     }
     render::rhi::PipelineDesc desc;
-    desc.program = background.value();
+    m_backgroundProgram = background.value();
+    desc.program = m_backgroundProgram;
     desc.cull = render::rhi::CullMode::None;
     desc.depthTest = false;
     desc.depthWrite = false;
@@ -265,6 +282,36 @@ Result<void> Engine::initShaders()
     }
     m_backgroundPipeline = std::move(pipeline).value();
     return {};
+}
+
+void Engine::updateDebugCamera(f64 realSeconds)
+{
+    using platform::Action;
+    const auto axis = [&](Action positive, Action negative)
+    {
+        return (m_actions.isDown(m_input, positive) ? 1.0f : 0.0f) -
+               (m_actions.isDown(m_input, negative) ? 1.0f : 0.0f);
+    };
+
+    // Mouse look while the right mouse button is held (relative mode hides and captures the cursor).
+    if (m_input.pressed(platform::MouseButton::Right))
+    {
+        m_mouseLook = m_window->setRelativeMouse(true);
+    }
+    else if (m_mouseLook && !m_input.isDown(platform::MouseButton::Right))
+    {
+        m_window->setRelativeMouse(false);
+        m_mouseLook = false;
+    }
+
+    render::FreeFlyInput fly;
+    fly.move = Vec3(axis(Action::StrafeRight, Action::StrafeLeft), axis(Action::Jump, Action::Sneak),
+                    axis(Action::MoveForward, Action::MoveBack));
+    fly.turn = axis(Action::TurnLeft, Action::TurnRight);
+    fly.lookDelta = m_mouseLook ? m_input.mouseDelta() : Vec2(0.0f);
+    fly.fast = m_actions.isDown(m_input, Action::Run);
+    // Real time: the debug camera keeps working while the game is paused or slowed down.
+    m_flyCamera.update(m_camera, fly, realSeconds);
 }
 
 void Engine::setTimeScale(f64 scale) noexcept
@@ -290,6 +337,7 @@ void Engine::shutdown()
     // Shutdown in reverse init order.
     G7_LOG_INFO("engine", "shutdown");
     m_backgroundPipeline = {};
+    m_backgroundProgram = nullptr;
     m_shaders.reset();
     m_device.reset(); // GL objects need the context
     m_glContext.reset();
