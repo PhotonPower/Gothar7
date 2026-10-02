@@ -1,0 +1,315 @@
+# Human reference skeleton (contract: docs/modules/animation.md -> "Referenz-Skelett").
+#
+# Names, parents and the socket flag are the contract between the figuren and engine tracks.
+# head/tail/up describe the bind pose used by the Blender generator (build_reference_rig.py);
+# the validator compares other files against the exported human_reference.glb, not against these numbers.
+#
+# Coordinates: Blender space, metres, Z up, character faces -Y (glTF export: Y up, faces +Z),
+# character's left side is +X. Bind pose: T-pose (decision 2026-10-03), palms down.
+# up = direction the bone's local Z axis is aligned to (Blender "align roll").
+
+[rig]
+name = "human_reference"
+height = 1.80
+bind_pose = "T"
+max_bones = 128
+max_influences = 4
+
+# Morph targets allowed on human heads (characters-pipeline.md §6).
+morph_targets = [
+    "vis_aa", "vis_ee", "vis_ih", "vis_oh", "vis_ou", "vis_mbp", "vis_fv", "vis_l", "vis_rest",
+    "blink_l", "blink_r",
+    "expr_angry", "expr_friendly", "expr_fear", "expr_pain", "expr_sleep",
+]
+
+# Bones in hierarchy order (parent before child). Left side only for paired bones whose
+# name ends in "_l"; mirror = true generates the "_r" counterpart (x negated, parent suffix swapped).
+
+[[bone]]
+name = "root"
+head = [0.0, 0.0, 0.0]
+tail = [0.0, -0.20, 0.0]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "pelvis"
+parent = "root"
+head = [0.0, 0.0, 0.98]
+tail = [0.0, 0.0, 1.05]
+up = [0.0, -1.0, 0.0]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0.0, 0.0, 1.05]
+tail = [0.0, 0.0, 1.18]
+up = [0.0, -1.0, 0.0]
+
+[[bone]]
+name = "spine_02"
+parent = "spine_01"
+head = [0.0, 0.0, 1.18]
+tail = [0.0, 0.0, 1.32]
+up = [0.0, -1.0, 0.0]
+
+[[bone]]
+name = "spine_03"
+parent = "spine_02"
+head = [0.0, 0.0, 1.32]
+tail = [0.0, 0.0, 1.50]
+up = [0.0, -1.0, 0.0]
+
+[[bone]]
+name = "neck"
+parent = "spine_03"
+head = [0.0, 0.0, 1.50]
+tail = [0.0, -0.01, 1.61]
+up = [0.0, -1.0, 0.0]
+
+[[bone]]
+name = "head"
+parent = "neck"
+head = [0.0, -0.01, 1.61]
+tail = [0.0, -0.01, 1.80]
+up = [0.0, -1.0, 0.0]
+
+[[bone]]
+name = "socket_helmet"
+parent = "head"
+socket = true
+head = [0.0, -0.01, 1.61]
+tail = [0.0, -0.01, 1.71]
+up = [0.0, -1.0, 0.0]
+
+# --- arms (T-pose, palms down) ---
+
+[[bone]]
+name = "clavicle_l"
+parent = "spine_03"
+mirror = true
+head = [0.02, -0.02, 1.45]
+tail = [0.18, 0.0, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "upperarm_l"
+parent = "clavicle_l"
+mirror = true
+head = [0.18, 0.0, 1.46]
+tail = [0.48, 0.0, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "lowerarm_l"
+parent = "upperarm_l"
+mirror = true
+head = [0.48, 0.0, 1.46]
+tail = [0.74, 0.0, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "hand_l"
+parent = "lowerarm_l"
+mirror = true
+head = [0.74, 0.0, 1.46]
+tail = [0.82, 0.0, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "thumb_01_l"
+parent = "hand_l"
+mirror = true
+head = [0.755, -0.025, 1.45]
+tail = [0.785, -0.06, 1.44]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "thumb_02_l"
+parent = "thumb_01_l"
+mirror = true
+head = [0.785, -0.06, 1.44]
+tail = [0.805, -0.085, 1.435]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "thumb_03_l"
+parent = "thumb_02_l"
+mirror = true
+head = [0.805, -0.085, 1.435]
+tail = [0.82, -0.105, 1.43]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "index_01_l"
+parent = "hand_l"
+mirror = true
+head = [0.83, -0.03, 1.46]
+tail = [0.875, -0.032, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "index_02_l"
+parent = "index_01_l"
+mirror = true
+head = [0.875, -0.032, 1.46]
+tail = [0.90, -0.033, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "index_03_l"
+parent = "index_02_l"
+mirror = true
+head = [0.90, -0.033, 1.46]
+tail = [0.922, -0.034, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "middle_01_l"
+parent = "hand_l"
+mirror = true
+head = [0.835, -0.01, 1.46]
+tail = [0.885, -0.01, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "middle_02_l"
+parent = "middle_01_l"
+mirror = true
+head = [0.885, -0.01, 1.46]
+tail = [0.915, -0.01, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "middle_03_l"
+parent = "middle_02_l"
+mirror = true
+head = [0.915, -0.01, 1.46]
+tail = [0.939, -0.01, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "ring_01_l"
+parent = "hand_l"
+mirror = true
+head = [0.83, 0.01, 1.46]
+tail = [0.875, 0.011, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "ring_02_l"
+parent = "ring_01_l"
+mirror = true
+head = [0.875, 0.011, 1.46]
+tail = [0.903, 0.012, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "ring_03_l"
+parent = "ring_02_l"
+mirror = true
+head = [0.903, 0.012, 1.46]
+tail = [0.925, 0.013, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "pinky_01_l"
+parent = "hand_l"
+mirror = true
+head = [0.82, 0.03, 1.46]
+tail = [0.855, 0.032, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "pinky_02_l"
+parent = "pinky_01_l"
+mirror = true
+head = [0.855, 0.032, 1.46]
+tail = [0.875, 0.033, 1.46]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "pinky_03_l"
+parent = "pinky_02_l"
+mirror = true
+head = [0.875, 0.033, 1.46]
+tail = [0.893, 0.034, 1.46]
+up = [0.0, 0.0, 1.0]
+
+# Grip point below the palm; bone Y axis = grip axis towards blade/tip (points forward).
+[[bone]]
+name = "socket_hand_l"
+parent = "hand_l"
+socket = true
+mirror = true
+head = [0.79, 0.0, 1.43]
+tail = [0.79, -0.10, 1.43]
+up = [0.0, 0.0, 1.0]
+
+# --- equipment sockets on the torso ---
+
+[[bone]]
+name = "socket_back_2h"
+parent = "spine_03"
+socket = true
+head = [0.0, 0.13, 1.35]
+tail = [0.0, 0.13, 1.45]
+up = [0.0, 1.0, 0.0]
+
+[[bone]]
+name = "socket_back_bow"
+parent = "spine_03"
+socket = true
+head = [0.0, 0.14, 1.30]
+tail = [0.0, 0.14, 1.40]
+up = [0.0, 1.0, 0.0]
+
+[[bone]]
+name = "socket_quiver"
+parent = "spine_03"
+socket = true
+head = [0.08, 0.13, 1.30]
+tail = [0.08, 0.13, 1.40]
+up = [0.0, 1.0, 0.0]
+
+# One-handed weapon on the belt (left hip), blade pointing down.
+[[bone]]
+name = "socket_hip_1h"
+parent = "pelvis"
+socket = true
+head = [0.15, 0.0, 0.95]
+tail = [0.15, 0.0, 0.85]
+up = [0.0, -1.0, 0.0]
+
+# --- legs ---
+
+[[bone]]
+name = "thigh_l"
+parent = "pelvis"
+mirror = true
+head = [0.09, 0.0, 0.93]
+tail = [0.09, -0.01, 0.50]
+up = [0.0, -1.0, 0.0]
+
+[[bone]]
+name = "calf_l"
+parent = "thigh_l"
+mirror = true
+head = [0.09, -0.01, 0.50]
+tail = [0.09, 0.02, 0.08]
+up = [0.0, -1.0, 0.0]
+
+[[bone]]
+name = "foot_l"
+parent = "calf_l"
+mirror = true
+head = [0.09, 0.02, 0.08]
+tail = [0.09, -0.11, 0.02]
+up = [0.0, 0.0, 1.0]
+
+[[bone]]
+name = "ball_l"
+parent = "foot_l"
+mirror = true
+head = [0.09, -0.11, 0.02]
+tail = [0.09, -0.18, 0.02]
+up = [0.0, 0.0, 1.0]
