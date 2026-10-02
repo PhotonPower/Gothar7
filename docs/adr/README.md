@@ -20,3 +20,4 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | [0013](0013-gltf-fastgltf.md) | glTF-Import: fastgltf | Akzeptiert | M2 |
 | [0014](0014-images-stb.md) | Bilddekodierung: stb_image (KTX2 ab M3) | Akzeptiert | M2 |
 | [0015](0015-debug-ui-imgui.md) | Debug-/Editor-UI: Dear ImGui mit eigenen Backends | Akzeptiert | M2 |
+| [0016](0016-asset-cooker-formats.md) | Asset-Cooker: KTX2/UASTC, zstd-Paks, `.g7mesh` | Akzeptiert | M3 |

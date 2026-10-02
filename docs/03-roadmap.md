@@ -89,6 +89,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 - [ ] Engine-Anbindung: `Vfs` + `AssetManager` in `Engine`, Mounts aus `engine.toml`, Meshes/Bilder über Handles bzw. VFS
 - [ ] Hot-Reload für Texturen, Shader, Skripte im Entwicklungsmodus
 - [ ] `g7-cook`: glTF → Laufzeit-Mesh/Skelett/Animation, PNG → KTX2 (BC7/BC5), OGG bleibt, Archiv packen; Laufzeit lädt KTX2 (libktx, aus M2 verschoben – ADR 0014)
+  - Stand: ADR 0016 (KTX2/UASTC, zstd, `.g7mesh`) akzeptiert; `g7-cook` v1 kocht glTF → `.g7mesh` und packt `.g7pak` (Bilder noch unverändert). Offen: KTX2 (Cooker, asset, render), zstd in `.g7pak` v2, Skelett/Animation (M6)
 - [ ] Asset-Manifest mit Abhängigkeiten und Hashes (inkrementelles Kochen)
 
 **DoD:** Spiel lädt ausschließlich aus `assets/cooked`, Änderung einer Textur wird ohne Neustart sichtbar.

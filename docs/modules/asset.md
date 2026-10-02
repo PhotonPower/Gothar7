@@ -105,6 +105,17 @@ TOC    je Eintrag: pfadHash u64 (StringId::hashOf), offset u64, size u64, rawSiz
   Hash passend, keine doppelten Pfade. Ein beschädigtes Archiv liefert einen `Result`-Fehler.
 - Der Leser (`src/PakArchive.hpp`) ist intern. Daten werden bei Bedarf gelesen, jeder Aufruf öffnet einen eigenen Stream.
 
+### `MeshFile.hpp` – gekochte Meshes `.g7mesh` (ADR 0016)
+```cpp
+std::vector<u8> serializeMesh(const MeshData&);
+Result<MeshData> deserializeMesh(std::span<const u8>, std::string_view debugName = "<memory>");
+```
+- Version 1: Header (`G7MS`, Zähler, AABB), Vertices im `Vertex`-Layout, u32-Indizes, Submeshes, Materialien, Bilder
+  (Format im Header-Kommentar). Gleiche Daten ergeben gleiche Bytes.
+- Beim Lesen wird geprüft: Zähler passen in die Datei (vor dem Anlegen von Speicher), Indizes im Vertex-Bereich,
+  Submeshes im Index-Bereich, Material- und Bildverweise gültig, Alpha-Modus bekannt, keine Rest-Bytes.
+- Bildverweise in gekochten Meshes sind VFS-Pfade ab der Wurzel (`textures/wood.png`), eingebettete Bytes leer.
+
 ### `AssetManager.hpp` – Handles, Cache, asynchrones Laden
 ```cpp
 namespace g7::asset {
@@ -143,7 +154,8 @@ public:
 - **Fehler:** Fehlende Datei, Fehler des Laders → `Failed` mit Meldung (und Log-Warnung). Ein ungültiger Pfad oder ein
   Typ ohne Lader ist **sofort** `Failed`. Wird der Manager zerstört, enden nicht veröffentlichte Ladevorgänge
   als `Failed` („shut down“); ein gerade laufender Lader wird noch zu Ende ausgeführt.
-- **Eingebaute Lader:** `ImageData` (`decodeImage`) und `MeshData` (`loadGltf`). Externe glTF-Puffer gehen nur
+- **Eingebaute Lader:** `ImageData` (`decodeImage`) und `MeshData`: `.g7mesh` über `deserializeMesh`, alles
+  andere über `loadGltf` (Entwicklung, lose Dateien). Externe glTF-Puffer gehen nur
   bei losen Dateien (Verzeichnis über `diskPath`). In Archiven müssen Meshes eigenständig sein (`.glb`, data:-URIs),
   sonst gibt es eine Fehlermeldung. Bild-URIs eines Meshes bleiben in `ImageSource::uri`; das Laden über das VFS
   kommt mit der Engine-Anbindung.

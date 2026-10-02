@@ -1,3 +1,4 @@
+#include "ByteIo.hpp"
 #include "PakArchive.hpp"
 
 #include <g7/asset/Pak.hpp>
@@ -18,28 +19,6 @@ namespace
 // Smallest TOC entry: hash, offset, size, rawSize (4 x u64), flags u32, pathLength u16.
 constexpr u64 kTocEntryFixedSize = 8 * 4 + 4 + 2;
 
-void putU16(std::vector<u8>& out, u16 v)
-{
-    out.push_back(static_cast<u8>(v));
-    out.push_back(static_cast<u8>(v >> 8));
-}
-
-void putU32(std::vector<u8>& out, u32 v)
-{
-    for (int i = 0; i < 4; ++i)
-    {
-        out.push_back(static_cast<u8>(v >> (8 * i)));
-    }
-}
-
-void putU64(std::vector<u8>& out, u64 v)
-{
-    for (int i = 0; i < 8; ++i)
-    {
-        out.push_back(static_cast<u8>(v >> (8 * i)));
-    }
-}
-
 void setU64(std::vector<u8>& out, usize at, u64 v)
 {
     for (int i = 0; i < 8; ++i)
@@ -48,38 +27,8 @@ void setU64(std::vector<u8>& out, usize at, u64 v)
     }
 }
 
-/// Little-endian reader over a byte span with bounds checks.
-class ByteReader
-{
-public:
-    explicit ByteReader(std::span<const u8> bytes) : m_bytes(bytes) {}
-
-    [[nodiscard]] bool has(u64 n) const noexcept { return n <= m_bytes.size() - m_pos; }
-    [[nodiscard]] u64 position() const noexcept { return m_pos; }
-
-    template <typename T>
-    [[nodiscard]] T get() noexcept
-    {
-        T v = 0;
-        for (usize i = 0; i < sizeof(T); ++i)
-        {
-            v |= static_cast<T>(static_cast<T>(m_bytes[m_pos + i]) << (8 * i));
-        }
-        m_pos += sizeof(T);
-        return v;
-    }
-
-    [[nodiscard]] std::string_view text(usize n) noexcept
-    {
-        std::string_view s(reinterpret_cast<const char*>(m_bytes.data() + m_pos), n);
-        m_pos += n;
-        return s;
-    }
-
-private:
-    std::span<const u8> m_bytes;
-    usize m_pos = 0;
-};
+using detail::ByteReader;
+using detail::ByteWriter;
 
 Error pakError(const fs::Path& path, const std::string& what)
 {
@@ -120,12 +69,13 @@ std::vector<u8> PakWriter::serialize() const
     std::sort(sorted.begin(), sorted.end(), [](const Entry* a, const Entry* b) { return a->key < b->key; });
 
     std::vector<u8> out;
-    out.insert(out.end(), std::begin(kPakMagic), std::end(kPakMagic));
-    putU32(out, kPakVersion);
-    putU32(out, static_cast<u32>(sorted.size()));
-    putU32(out, 0); // reserved
-    putU64(out, 0); // tocOffset, patched below
-    putU64(out, 0); // tocSize, patched below
+    ByteWriter w(out);
+    w.text(std::string_view(kPakMagic, sizeof(kPakMagic)));
+    w.u32v(kPakVersion);
+    w.u32v(static_cast<u32>(sorted.size()));
+    w.u32v(0); // reserved
+    w.u64v(0); // tocOffset, patched below
+    w.u64v(0); // tocSize, patched below
 
     std::vector<u64> offsets;
     offsets.reserve(sorted.size());
@@ -140,13 +90,12 @@ std::vector<u8> PakWriter::serialize() const
     for (usize i = 0; i < sorted.size(); ++i)
     {
         const Entry& e = *sorted[i];
-        putU64(out, StringId::hashOf(e.path));
-        putU64(out, offsets[i]);
-        putU64(out, e.data.size());
-        putU64(out, e.data.size()); // rawSize: uncompressed in version 1
-        putU32(out, 0);             // flags
-        putU16(out, static_cast<u16>(e.path.size()));
-        out.insert(out.end(), e.path.begin(), e.path.end());
+        w.u64v(StringId::hashOf(e.path));
+        w.u64v(offsets[i]);
+        w.u64v(e.data.size());
+        w.u64v(e.data.size()); // rawSize: uncompressed in version 1
+        w.u32v(0);             // flags
+        w.string16(e.path);
     }
     setU64(out, 16, tocOffset);
     setU64(out, 24, out.size() - tocOffset);
@@ -186,11 +135,11 @@ Result<PakArchive> PakArchive::open(const fs::Path& path)
     }
     ByteReader header(std::span<const u8>(headerBytes, kPakHeaderSize));
     (void)header.text(sizeof(kPakMagic));
-    const u32 version = header.get<u32>();
-    const u32 entryCount = header.get<u32>();
-    (void)header.get<u32>(); // reserved
-    const u64 tocOffset = header.get<u64>();
-    const u64 tocSize = header.get<u64>();
+    const u32 version = header.u32v();
+    const u32 entryCount = header.u32v();
+    (void)header.u32v(); // reserved
+    const u64 tocOffset = header.u64v();
+    const u64 tocSize = header.u64v();
     if (version != kPakVersion)
     {
         return pakError(path, "unsupported .g7pak version " + std::to_string(version));
@@ -223,12 +172,12 @@ Result<PakArchive> PakArchive::open(const fs::Path& path)
         {
             return pakError(path, "corrupt archive (truncated table of contents)");
         }
-        const u64 hash = r.get<u64>();
-        const u64 offset = r.get<u64>();
-        const u64 size = r.get<u64>();
-        const u64 rawSize = r.get<u64>();
-        const u32 flags = r.get<u32>();
-        const u16 pathLength = r.get<u16>();
+        const u64 hash = r.u64v();
+        const u64 offset = r.u64v();
+        const u64 size = r.u64v();
+        const u64 rawSize = r.u64v();
+        const u32 flags = r.u32v();
+        const u16 pathLength = r.u16v();
         if (!r.has(pathLength))
         {
             return pakError(path, "corrupt archive (truncated table of contents)");

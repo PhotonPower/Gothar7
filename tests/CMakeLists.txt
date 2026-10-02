@@ -43,3 +43,13 @@ target_compile_definitions(g7_tests_render_gpu PRIVATE G7_SHADER_DIR="${PROJECT_
 # test_image.cpp encodes PNG/JPEG with stb_image_write.
 target_link_libraries(g7_tests_asset PRIVATE g7_stb)
 target_link_libraries(g7_tests_render_gpu PRIVATE g7_stb) # test_material.cpp encodes PNGs
+
+# g7-cook (tools/asset-cooker): cooker logic as a library; tests encode PNGs with stb_image_write.
+if(TARGET g7_cook_lib)
+    file(GLOB _cook_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/cook/*.cpp")
+    add_executable(g7_tests_cook ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_cook_sources})
+    target_link_libraries(g7_tests_cook PRIVATE g7_cook_lib doctest::doctest g7_stb)
+    g7_set_warnings(g7_tests_cook)
+    set_target_properties(g7_tests_cook PROPERTIES FOLDER "tests")
+    add_test(NAME cook COMMAND g7_tests_cook)
+endif()
