@@ -81,7 +81,8 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 
 ## M3 – Asset-System & Pipeline
 - [x] Virtuelles Dateisystem: Mount-Punkte (Ordner, `.g7pak`), Priorität (Mods überschreiben) – `.g7pak` v1 ohne Kompression, Engine-Anbindung mit den Asset-Handles
-- [ ] Asset-Handles (typisiert, referenzgezählt), Cache, asynchrones Laden auf Worker-Threads
+- [x] Asset-Handles (typisiert, referenzgezählt), Cache, asynchrones Laden auf Worker-Threads – `AssetManager` im Modul asset
+- [ ] Engine-Anbindung: `Vfs` + `AssetManager` in `Engine`, Mounts aus `engine.toml`, Meshes/Bilder über Handles bzw. VFS
 - [ ] Hot-Reload für Texturen, Shader, Skripte im Entwicklungsmodus
 - [ ] `g7-cook`: glTF → Laufzeit-Mesh/Skelett/Animation, PNG → KTX2 (BC7/BC5), OGG bleibt, Archiv packen; Laufzeit lädt KTX2 (libktx, aus M2 verschoben – ADR 0014)
 - [ ] Asset-Manifest mit Abhängigkeiten und Hashes (inkrementelles Kochen)

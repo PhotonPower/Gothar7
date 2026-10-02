@@ -29,7 +29,7 @@ struct Submesh { u32 firstIndex, indexCount, material; };
 struct MeshData { std::vector<Vertex> vertices; std::vector<u32> indices; std::vector<Submesh> submeshes;
                   std::vector<MaterialInfo> materials; std::vector<ImageSource> images; AABB bounds; };
 Result<MeshData> loadGltf(const fs::Path&);                                    // .gltf (+ .bin / data:) oder .glb
-Result<MeshData> loadGltf(std::span<const u8>, const fs::Path& baseDir, std::string_view debugName);
+Result<MeshData> loadGltf(std::span<const u8>, const fs::Path& baseDir, std::string_view debugName);   // baseDir leer: nur eigenständige Daten
 }
 ```
 - Lädt die Standardszene als **ein statisches Mesh**: Knoten-Transformationen werden eingerechnet (Normalen mit
@@ -102,19 +102,57 @@ TOC    je Eintrag: pfadHash u64 (StringId::hashOf), offset u64, size u64, rawSiz
   Hash passend, keine doppelten Pfade. Ein beschädigtes Archiv liefert einen `Result`-Fehler.
 - Der Leser (`src/PakArchive.hpp`) ist intern. Daten werden bei Bedarf gelesen, jeder Aufruf öffnet einen eigenen Stream.
 
-## Bestandteile (geplant)
-- **Asset-Handles**: `Handle<T>` mit Referenzzählung; `AssetManager::load<T>(path)` liefert
-  sofort ein Handle, Laden läuft asynchron; `isReady()`, Platzhalter bis fertig. Lädt über das `Vfs`.
-- **Loader-Registry**: pro Typ (`Texture`, `Mesh`, `Skeleton`, `AnimationClip`, `Sound`, `WorldData`, `Material`).
-- **Hot-Reload**: Dateiüberwachung im Entwicklungsmodus (über `Vfs::diskPath`/`rescan`) → Loader lädt neu,
-  Handle bleibt gültig.
-- **Engine-Anbindung** (mit den Asset-Handles): `Engine` besitzt das `Vfs`, Mounts aus `engine.toml`
-  (z. B. `assets/cooked/*.g7pak`, im Entwicklungsmodus zusätzlich `assets/source`).
-
-## Geplante API (Rest)
+### `AssetManager.hpp` – Handles, Cache, asynchrones Laden
 ```cpp
 namespace g7::asset {
-template <class T> class Handle { ... const T* get() const; bool isReady() const; };
-class AssetManager { public: template <class T> Handle<T> load(std::string_view path); void update(); };
+enum class AssetState : u8 { Loading, Ready, Failed };
+template <class T> class Handle {                 // kopierbar, teilt einen Cache-Slot (Referenzzählung)
+    bool valid() const; AssetState state() const; bool isReady() const; bool failed() const;
+    const T* get() const;  const T* operator->() const;   // nullptr bis Ready
+    const std::string& path() const; const std::string& error() const; u32 version() const; long useCount() const;
+};
+struct LoadContext { std::string_view path; std::span<const u8> bytes; const Vfs* vfs;
+                     Result<std::vector<u8>> read(std::string_view) const;
+                     std::string sibling(std::string_view relative) const;
+                     std::optional<fs::Path> diskPath() const; };
+template <class T> using Loader = std::function<Result<T>(const LoadContext&)>;
+struct AssetManagerDesc { u32 workerThreads = 2; };      // 0 = synchron in update()
+
+class AssetManager {
+public:
+    AssetManager(const Vfs& vfs, AssetManagerDesc desc = {});
+    template <class T> void registerLoader(Loader<T>);
+    template <class T> Handle<T> load(std::string_view path);
+    void update();  void waitAll();
+    usize pendingCount() const;  usize cachedCount() const;
+};
 }
 ```
+- **Ablauf:** `load` kehrt sofort zurück. Worker-Threads lesen die Datei über das `Vfs` und rufen den Lader des Typs
+  auf. Erst **`update()` im Hauptthread** schaltet fertige Ladevorgänge auf `Ready` bzw. `Failed`. Ein Asset ändert
+  sich also nie mitten in einem Frame oder Simulationsschritt, sondern erscheint frühestens im nächsten Frame.
+  `waitAll()` wartet auf alle offenen Ladevorgänge und veröffentlicht sie (Ladebildschirm, Tests).
+  Mit `workerThreads = 0` laufen die Lader synchron in `update()` (Werkzeuge, deterministische Tests).
+- **Cache und Referenzzählung:** Der Schlüssel ist Typ plus normalisierter Pfad, ohne Rücksicht auf
+  Groß-/Kleinschreibung. Solange ein Handle (oder ein laufender Ladevorgang) lebt, liefert `load` denselben Slot
+  ohne neues Laden. Nach dem letzten Handle wird das Asset freigegeben, ein späteres `load` lädt neu.
+  Auch ein fehlgeschlagener Slot bleibt bestehen, solange Handles darauf zeigen; erneutes Laden kommt mit Hot-Reload.
+- **Fehler:** Fehlende Datei, Fehler des Laders → `Failed` mit Meldung (und Log-Warnung). Ein ungültiger Pfad oder ein
+  Typ ohne Lader ist **sofort** `Failed`. Wird der Manager zerstört, enden nicht veröffentlichte Ladevorgänge
+  als `Failed` („shut down“); ein gerade laufender Lader wird noch zu Ende ausgeführt.
+- **Eingebaute Lader:** `ImageData` (`decodeImage`) und `MeshData` (`loadGltf`). Externe glTF-Puffer gehen nur
+  bei losen Dateien (Verzeichnis über `diskPath`). In Archiven müssen Meshes eigenständig sein (`.glb`, data:-URIs),
+  sonst gibt es eine Fehlermeldung. Bild-URIs eines Meshes bleiben in `ImageSource::uri`; das Laden über das VFS
+  kommt mit der Engine-Anbindung.
+- **Threads:** `load`, `update`, `waitAll`, `registerLoader` und Handle-Zugriffe gehören in den Hauptthread.
+  Lader laufen auf Workern und nutzen nur ihren `LoadContext`. Hochladen auf die Grafikkarte bleibt in `render`
+  (Hauptthread mit GL-Kontext). Das `Vfs` muss den Manager überleben.
+
+## Bestandteile (geplant)
+- **Engine-Anbindung** (nächster Schritt): `Engine` besitzt `Vfs` und `AssetManager` und ruft `update()` einmal pro
+  Frame. Mounts kommen aus `engine.toml` (z. B. `assets/cooked/*.g7pak`, im Entwicklungsmodus zusätzlich
+  `assets/source`). `--view-mesh` und die Testszene laden über Handles, `MaterialSet` liest Bilder über das VFS.
+- **Weitere Loader** pro Typ (`Texture`, `Skeleton`, `AnimationClip`, `Sound`, `WorldData`, `Material`) mit den
+  jeweiligen Modulen. Eingetragen werden sie vom höheren Modul über `registerLoader`, `asset` kennt sie nicht.
+- **Hot-Reload**: Dateiüberwachung im Entwicklungsmodus (über `Vfs::diskPath`/`rescan`) → Lader lädt neu,
+  das Handle bleibt gültig, `version()` zählt hoch.

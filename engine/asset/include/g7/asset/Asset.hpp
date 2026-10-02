@@ -4,7 +4,7 @@
 // Virtuelles Dateisystem, Archive, Asset-Handles, asynchrones Laden, Hot-Reload.
 // Spezifikation: docs/modules/asset.md   |   Roadmap: M3
 //
-// Status: Bilder, glTF, prozedurale Meshes (M2); VFS und .g7pak (M3). Handles folgen.
+// Status: Bilder, glTF, prozedurale Meshes (M2); VFS, .g7pak, AssetManager/Handles (M3).
 
 #include <string_view>
 

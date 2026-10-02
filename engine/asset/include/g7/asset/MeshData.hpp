@@ -80,7 +80,8 @@ struct MeshData
 /// as one static mesh (ADR 0013). Coordinates need no conversion (+Y up, right-handed, metres).
 /// Only triangle primitives are used; others are skipped with a warning.
 [[nodiscard]] Result<MeshData> loadGltf(const fs::Path& path);
-/// Same, from memory; external buffers are resolved relative to `baseDirectory`.
+/// Same, from memory; external buffers are resolved relative to `baseDirectory`. An empty
+/// `baseDirectory` allows only self-contained data (GLB chunk, data: URIs); external buffers fail.
 [[nodiscard]] Result<MeshData> loadGltf(std::span<const u8> bytes, const fs::Path& baseDirectory,
                                         std::string_view debugName = "<memory>");
 } // namespace g7::asset

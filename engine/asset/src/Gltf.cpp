@@ -392,11 +392,36 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
 Result<MeshData> parse(fastgltf::GltfDataBuffer& data, const fs::Path& baseDirectory,
                        std::string_view debugName)
 {
+    // Without a base directory only self-contained data is allowed (GLB chunk, data: URIs).
+    // fastgltf still wants an existing directory, but reads nothing from it then.
+    const bool external = !baseDirectory.empty();
+    fs::Path directory = baseDirectory;
+    if (!external)
+    {
+        std::error_code ec;
+        directory = std::filesystem::current_path(ec);
+        if (ec)
+        {
+            directory = std::filesystem::temp_directory_path(ec);
+        }
+    }
     fastgltf::Parser parser;
-    auto asset = parser.loadGltf(data, baseDirectory, fastgltf::Options::LoadExternalBuffers);
+    auto asset = parser.loadGltf(data, directory,
+                                 external ? fastgltf::Options::LoadExternalBuffers : fastgltf::Options::None);
     if (asset.error() != fastgltf::Error::None)
     {
         return Error{std::string(debugName) + ": " + std::string(fastgltf::getErrorMessage(asset.error()))};
+    }
+    if (!external)
+    {
+        for (const fastgltf::Buffer& buffer : asset->buffers)
+        {
+            if (const auto* uri = std::get_if<fastgltf::sources::URI>(&buffer.data))
+            {
+                return Error{std::string(debugName) + ": external buffer '" + std::string(uri->uri.path()) +
+                             "' needs a directory on disk (use a self-contained .glb)"};
+            }
+        }
     }
     return convert(asset.get(), debugName);
 }
