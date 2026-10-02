@@ -15,7 +15,9 @@ struct PakEntry
 {
     std::string path; // normalised, original spelling
     u64 offset = 0;
-    u64 size = 0;
+    u64 storedSize = 0; // bytes in the archive
+    u64 size = 0;       // bytes after decompression (what read() returns)
+    bool compressed = false;
 };
 
 /// Table of contents of an archive; data is read on demand, so instances are cheap to share and
@@ -23,11 +25,12 @@ struct PakEntry
 class PakArchive
 {
 public:
-    /// Reads and validates header and TOC (magic, version, bounds, hashes, duplicates).
+    /// Reads and validates header and TOC (magic, version, bounds, hashes, flags, duplicates).
     [[nodiscard]] static Result<PakArchive> open(const fs::Path& path);
 
     [[nodiscard]] const fs::Path& path() const noexcept { return m_path; }
     [[nodiscard]] const std::vector<PakEntry>& entries() const noexcept { return m_entries; }
+    /// Reads (and decompresses) one entry.
     [[nodiscard]] Result<std::vector<u8>> read(const PakEntry& entry) const;
 
 private:

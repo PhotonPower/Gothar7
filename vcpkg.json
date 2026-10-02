@@ -21,7 +21,8 @@
       ]
     },
     "stb",
-    "tomlplusplus"
+    "tomlplusplus",
+    "zstd"
   ],
   "builtin-baseline": "3aea538b2bb21a586502c67b00eb474fdd2e3098"
 }

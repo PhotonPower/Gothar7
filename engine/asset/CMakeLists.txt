@@ -1,4 +1,5 @@
-# fastgltf parses glTF (ADR 0013), stb_image decodes PNG/JPEG (ADR 0014); both private to asset.
+# fastgltf parses glTF (ADR 0013), stb_image decodes PNG/JPEG (ADR 0014), zstd compresses .g7pak
+# entries (ADR 0016); all private to asset.
 # The nodeps preset fetches them (fastgltf downloads simdjson itself).
 include(FetchContent)
 
@@ -26,4 +27,18 @@ endif()
 add_library(g7_stb INTERFACE)
 target_include_directories(g7_stb SYSTEM INTERFACE "${Stb_INCLUDE_DIR}")
 
-g7_add_module(asset DEPS core PRIVATE_LIBS fastgltf::fastgltf g7_stb)
+find_package(zstd CONFIG QUIET)
+if(NOT zstd_FOUND)
+    message(STATUS "zstd nicht gefunden - lade zstd v1.5.7 per FetchContent")
+    set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
+    set(ZSTD_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+    set(ZSTD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(zstd
+        URL https://github.com/facebook/zstd/archive/refs/tags/v1.5.7.tar.gz
+        SOURCE_SUBDIR build/cmake
+        SYSTEM)
+    FetchContent_MakeAvailable(zstd)
+    add_library(zstd::libzstd ALIAS libzstd_static)
+endif()
+
+g7_add_module(asset DEPS core PRIVATE_LIBS fastgltf::fastgltf g7_stb zstd::libzstd)
