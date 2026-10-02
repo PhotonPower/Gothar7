@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from gothar_chargen.events import events_path_for, load_events, parse_events
-from gothar_chargen.naming import is_clip_name, is_event_name
+from gothar_chargen.naming import is_clip_name, is_event_name, is_loop_clip
 
 
 @pytest.mark.parametrize(
@@ -58,6 +58,11 @@ def test_valid_event_names(name):
 @pytest.mark.parametrize("name", ["", "Footstep", "1hit", "sound:", "hit start"])
 def test_invalid_event_names(name):
     assert not is_event_name(name)
+
+
+def test_loop_clips():
+    assert is_loop_clip("none/s_walk") and is_loop_clip("mob/anvil/s_work")
+    assert not is_loop_clip("none/t_jump_land") and not is_loop_clip("dlg/a_gesture_shrug")
 
 
 def test_events_path():

@@ -7,6 +7,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from gothar_chargen.gltf import Gltf
+from gothar_chargen.postprocess import strip_animation_channels
+
 BLENDER_ENV = "G7_BLENDER"
 _SCRIPTS = Path(__file__).resolve().parent / "blender"
 
@@ -58,5 +61,22 @@ def build_reference_rig(blender: Path, blend_out: Path, rig_toml: Path | None = 
     run_script(blender, "build_reference_rig.py", args)
 
 
-def export_glb(blender: Path, blend_file: Path, glb_out: Path) -> None:
+def export_glb(blender: Path, blend_file: Path, glb_out: Path) -> int:
+    """Exports with the project settings, then strips animation channels the contract forbids.
+
+    Returns the number of removed channels (see postprocess.strip_animation_channels).
+    """
     run_script(blender, "export_glb.py", ["--out", str(glb_out)], blend_file=blend_file)
+    gltf = Gltf.load(glb_out)
+    removed = strip_animation_channels(gltf)
+    if removed:
+        glb_out.write_bytes(gltf.to_bytes())
+    return removed
+
+
+def build_placeholder(blender: Path, ual1: Path, ual2: Path, out_dir: Path, clips: str) -> None:
+    run_script(
+        blender,
+        "build_placeholder.py",
+        ["--ual1", str(ual1), "--ual2", str(ual2), "--out", str(out_dir), "--clips", clips],
+    )

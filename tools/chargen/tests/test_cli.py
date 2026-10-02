@@ -109,3 +109,27 @@ def test_blend_source_matches_committed_glb():
     blend = REFERENCE_GLB.with_suffix(".blend")
     code, text = run("validate", "--strict", str(blend))
     assert code == EXIT_OK, text
+
+
+def test_build_placeholder_needs_sources(tmp_path):
+    code, text = run("build-placeholder", "--quaternius", str(tmp_path))
+    assert code == EXIT_ERROR
+    assert "AnimationLibrary_Godot_Standard.glb" in text
+
+
+def test_clip_list_is_valid():
+    import tomllib
+    from importlib import resources
+
+    from gothar_chargen.mapping import load_mapping
+    from gothar_chargen.naming import is_clip_name
+
+    spec = tomllib.loads(
+        resources.files("gothar_chargen.data.clips")
+        .joinpath("f1_placeholder.toml")
+        .read_text("utf-8")
+    )
+    load_mapping(spec["mapping"])
+    names = [c["name"] for c in spec["clip"]]
+    assert names == ["none/s_idle", "none/s_walk", "none/s_run"]
+    assert all(is_clip_name(n) and n.startswith(spec["set"] + "/") for n in names)

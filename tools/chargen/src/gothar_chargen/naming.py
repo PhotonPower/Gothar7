@@ -20,5 +20,10 @@ def is_clip_name(name: str) -> bool:
     return CLIP_NAME_RE.match(name) is not None
 
 
+def is_loop_clip(name: str) -> bool:
+    """State/loop clips (``s_*``): their last frame repeats frame 0."""
+    return name.rsplit("/", 1)[-1].startswith("s_")
+
+
 def is_event_name(name: str) -> bool:
     return EVENT_NAME_RE.match(name) is not None

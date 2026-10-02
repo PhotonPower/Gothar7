@@ -16,12 +16,14 @@ tools/chargen/
     gltf.py                       kleiner .glb-Leser/-Schreiber (Accessoren, Knoten-Transformationen)
     validate.py                   Rig-Validator (Prüfungen siehe unten)
     events.py, naming.py          <set>.events.toml und Namenskonvention der Clips
-    blender_run.py                Blender headless aufrufen
+    postprocess.py                .glb-Nachbearbeitung: verbotene Animationskanäle entfernen, Puffer verdichten
+    blender_run.py                Blender headless aufrufen (export = Blender-Export + Nachbearbeitung)
     blender/                      Skripte, die IN Blender laufen:
       settings.py                 glTF-Export-Einstellungen (verbindlich, siehe characters-pipeline.md)
       build_reference_rig.py      erzeugt human_reference.blend (Rig + Gliederpuppe mit Test-Morph-Targets)
       export_glb.py               .blend → .glb mit settings.py
       extract_rig.py              Ruhe-Geometrie eines Quell-Rigs als [[bone]]-Tabellen (Herkunft der Referenz)
+      build_placeholder.py        F1: Quaternius-Mannequin + Clips (data/clips/f1_placeholder.toml) aufs Referenz-Rig
   tests/                          pytest (synthetische Fehlerfälle auf Basis der Referenz-.glb)
 ```
 
@@ -41,7 +43,9 @@ gothar-chargen validate                       & REM alle .glb unter assets/sourc
 gothar-chargen validate figur.glb anims\      & REM einzelne Dateien/Ordner; .blend wird vorher exportiert
 gothar-chargen validate --json --strict x.glb & REM maschinenlesbar, Warnungen = Fehler
 gothar-chargen build-rig                      & REM human_reference.blend/.glb neu erzeugen + prüfen
-gothar-chargen export figur.blend --out figur.glb
+gothar-chargen export figur.blend --out figur.glb  & REM danach Kanäle bereinigt (nur root/pelvis verschoben)
+gothar-chargen build-placeholder --quaternius C:\GotharData\characters\quaternius
+                                              & REM F1-Platzhalterfigur + Test-Clips neu erzeugen
 ```
 Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 
@@ -54,8 +58,14 @@ Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 | `skin.*` | Knoten stehen in der Bind-Pose (inverse Bind-Matrizen), ≤ 4 Gewichte je Vertex, Summe 1, Sockets ohne Gewichte |
 | `mesh.*` | Größe 1,50–2,10 m (Warnung außerhalb 1,65–1,95 m), Füße auf dem Boden |
 | `morph.name` | nur Morph-Target-Namen aus characters-pipeline.md §6 |
-| `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen |
-| `events.*` | `<set>.events.toml` neben der `.glb`: Format, Clips vorhanden, Frames innerhalb des Clips |
+| `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung |
+| `events.*` | `<set>.events.toml` neben der `.glb`: Format, Clips vorhanden, Frames im Clip (Schleifen `s_*`: vor dem letzten Frame) |
+
+## Quaternius-Quellen (für `build-placeholder`)
+Die „Standard“-Pakete der Universal Animation Library 1 und 2 (CC0) liegen als ZIP direkt auf opengameart.org
+(itch.io blockt automatische Downloads). Entpackt nach `DATA_ROOT\characters\quaternius\` (nicht ins Repo):
+- https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip (UAL1, Rigify-Namen)
+- https://opengameart.org/sites/default/files/universal_animation_library_2standard.zip (UAL2, Mannequin)
 
 ## Tests
 ```cmd

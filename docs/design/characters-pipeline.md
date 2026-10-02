@@ -60,6 +60,7 @@ Exportiert wird immer über `gothar-chargen export <datei.blend>` bzw. das Skrip
 | `export_morph` / `export_morph_normal` | an / an | Gesichts-Morph-Targets (Namen §6) |
 | `export_animation_mode` | `ACTIONS` | eine glTF-Animation pro Blender-Action; Action-Name = Clipname (§3) |
 | `export_force_sampling`, `export_frame_step` | an, 1 | jeder Frame gesampelt (30 fps) |
+| Nachbearbeitung (`gothar-chargen export`) | Translation außer `root`/`pelvis` und alle Skalierungskanäle entfernen | Vertrag §3: Clips behalten die Knochenlängen der Figur |
 | Kameras, Lichter, Extras | aus | gehören nicht in Figuren-Dateien |
 
 Prüfen: `gothar-chargen validate [dateien|ordner]` (ohne Argument: alles unter
@@ -104,6 +105,20 @@ events = [
   Bekannte Events siehe `docs/modules/animation.md` („Clip“); neue Events nach Absprache mit engine.
 - Clips ohne Events werden weggelassen; die Datei ist optional.
 - Zeit eines Events in Sekunden = `frame / fps`. Alle Sets werden mit 30 fps exportiert.
+- **Frame-Bereich:** Schleifen-Clips (`s_*`): `0 ≤ frame < letzter Frame` (der letzte Frame gleicht Frame 0);
+  `t_*`/`a_*`: `0 ≤ frame ≤ letzter Frame`. Der Validator prüft das.
+- **Auslösung (engine):** Ein Event feuert, sobald die Wiedergabezeit `frame / fps` überschreitet; übersprungene
+  Events werden in Reihenfolge nachgeholt. Mehrere Events auf demselben Frame sind erlaubt und feuern in
+  Dateireihenfolge.
+- **Unbekannte Event-Namen** erzeugen in der Engine eine Warnung, keinen Fehler – neue Events dürfen vorab
+  eingetragen werden. Dateien mit `version` > 1 lehnt die Engine ab.
+
+**Animationskanäle (Vertrag):** Clips enthalten **Rotation** für beliebige Knochen, **Translation nur für
+`root` und `pelvis`** (Root Motion bzw. Hüfthöhe) und **keine Skalierung** – so behält jede Figur ihre eigenen
+Knochenlängen. Root Motion wertet die Engine im Raum des Armatur-Knotens aus. `gothar-chargen export` entfernt
+die übrigen Kanäle, die Blender beim Sampeln erzeugt; der Validator meldet Verstöße (`anim.channels`).
+
+Abgestimmt mit engine am 2026-10-03 (Skelett, Kanäle, `events.toml` v1 inkl. der Präzisierungen oben).
 
 Clip-Namen prüft der Validator gegen das Muster oben (`[sta]_…`, nur `a-z0-9_`, Modus aus der Liste
 oder `mob/<mobtyp>`).
@@ -112,7 +127,7 @@ oder `mob/<mobtyp>`).
 
 | Quelle | Wofür | Lizenz / Hinweis |
 |---|---|---|
-| **Quaternius** (u. a. Universal Animation Library 1+2, Tiere, Platzhalter-Figuren) | Rig-Geometrie, Basis-Bewegungen, Platzhalter | CC0; UAL1/UAL2 „Standard“ direkt von opengameart.org (itch.io blockt automatische Downloads) |
+| **Quaternius** (u. a. Universal Animation Library 1+2, Tiere, Platzhalter-Figuren) | Rig-Geometrie, Basis-Bewegungen, Platzhalterfigur (`figures/placeholder_mannequin`), F1-Test-Clips | CC0; UAL1/UAL2 „Standard“ direkt von opengameart.org (itch.io blockt automatische Downloads) |
 | **Mixamo** | ergänzende Basis-Bewegungen | kostenlos, Nutzung in Spielen erlaubt; Bedingungen vor Nutzung prüfen, Rohdateien nicht weitergeben |
 | **MPFB2** (MakeHuman für Blender) | Ausgangskörper für eigene Figuren | Ergebnis-Modelle frei nutzbar (vor Nutzung Lizenzhinweise prüfen) |
 | **Video-Mocap** (z. B. Rokoko Vision, Move.ai) | Gothic-spezifische Bewegungen, selbst vorgespielt | eigene Aufnahmen; Dienst-Bedingungen beachten |

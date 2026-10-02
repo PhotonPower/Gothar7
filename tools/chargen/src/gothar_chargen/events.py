@@ -97,3 +97,42 @@ def load_events(path: Path) -> tuple[EventFile | None, list[str]]:
     except OSError as e:
         return None, [str(e)]
     return parse_events(text)
+
+
+def detect_contacts(
+    heights: list[float], tolerance: float = 0.02, cyclic: bool = True
+) -> list[int]:
+    """Frames where a foot starts touching the ground.
+
+    ``heights[i]`` is the foot height at frame i. A frame counts as contact when the foot is within
+    ``tolerance`` of its lowest point; an event fires on the first frame of each contact phase.
+    For looping clips (``cyclic``) the last frame repeats the first and is ignored, and a contact
+    phase may wrap around the end. A foot that never lifts (idle) yields no events.
+    """
+    if len(heights) < 2:
+        return []
+    h = heights[:-1] if cyclic else heights
+    low = min(h)
+    contact = [v <= low + tolerance for v in h]
+    if all(contact):
+        return []
+    n = len(h)
+    starts = []
+    for i in range(n):
+        prev = contact[i - 1] if (cyclic or i > 0) else False
+        if contact[i] and not prev:
+            starts.append(i)
+    return starts
+
+
+def format_events(fps: int, clips: dict[str, list[Event]]) -> str:
+    """Writes an events file (format version 1); clips without events are left out."""
+    lines = [f"version = {FORMAT_VERSION}", f"fps = {fps}"]
+    for clip in sorted(clips):
+        events = sorted(clips[clip], key=lambda e: (e.frame, e.name))
+        if not events:
+            continue
+        lines += ["", f'[clips."{clip}"]', "events = ["]
+        lines += [f'    {{ frame = {e.frame}, event = "{e.name}" }},' for e in events]
+        lines.append("]")
+    return "\n".join(lines) + "\n"

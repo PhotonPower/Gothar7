@@ -7,17 +7,17 @@ Quelle der Wahrheit für **welche** Animationen gebraucht werden. Konvention sie
 **Legende** – Typ: `s` Schleife, `t` Übergang/Einmal, `a` additiv · RM: Root Motion ·
 Quelle (Vorschlag): Q = Quaternius CC0, M = Mixamo, MC = eigenes Mocap, K = Keyframe ·
 Prio: **A** = Meilenstein A (M6), **B** = Vertical Slice (M10), **C** = später ·
-Status: offen / platzhalter / fertig
+Status: offen / platzhalter / fertig (Clips liegen in `assets/source/characters/anims/human/<modus>.glb`)
 
 ## Prio A – Meilenstein A (vollständig ausgeschrieben)
 
 | Name | Zweck | RM | Events | Quelle | Status |
 |---|---|---|---|---|---|
-| `none/s_idle` | Stehen, entspannt | – | – | Q | offen |
-| `none/s_walk` | Gehen vorwärts | – | footstep_l/r | Q | offen |
+| `none/s_idle` | Stehen, entspannt | – | – | Q | platzhalter (UAL1 `Idle_Loop`) |
+| `none/s_walk` | Gehen vorwärts | – | footstep_l/r | Q | platzhalter (UAL1 `Walk_Loop`) |
 | `none/s_walk_back` | Rückwärts gehen | – | footstep_l/r | Q/M | offen |
 | `none/s_strafe_l` / `s_strafe_r` | Seitwärts | – | footstep_l/r | Q/M | offen |
-| `none/s_run` | Rennen | – | footstep_l/r | Q | offen |
+| `none/s_run` | Rennen | – | footstep_l/r | Q | platzhalter (UAL1 `Jog_Fwd_Loop`) |
 | `none/s_sneak` | Schleichen | – | footstep_l/r (leise) | Q/M | offen |
 | `none/t_turn_l` / `t_turn_r` | Auf der Stelle drehen | – | footstep | M | offen |
 | `none/t_walk_2_run`, `t_run_2_walk`, `t_run_stop` | Übergänge | – | – | K | offen |
