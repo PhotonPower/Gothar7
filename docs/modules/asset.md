@@ -89,20 +89,26 @@ public:
   `rescan` sperren exklusiv. Gelesen wird außerhalb der Sperre; ein Archiv bleibt gültig, auch wenn es während
   des Lesens ausgehängt wird.
 
-### `Pak.hpp` – `.g7pak`-Archive (Version 1)
+### `Pak.hpp` – `.g7pak`-Archive (Version 2, zstd; ADR 0016)
 ```
-Header (32 B, little-endian): "G7PK", version u32 = 1, entryCount u32, reserved u32, tocOffset u64, tocSize u64
-Daten  Dateiinhalte, jeweils ab einem 16-Byte-ausgerichteten Offset
-TOC    je Eintrag: pfadHash u64 (StringId::hashOf), offset u64, size u64, rawSize u64, flags u32,
-       pfadLänge u16, pfad (UTF-8, normalisiert)
+Header (32 B, little-endian): "G7PK", version u32 = 2, entryCount u32, reserved u32, tocOffset u64, tocSize u64
+Daten  Dateiinhalte (roh oder ein zstd-Frame), jeweils ab einem 16-Byte-ausgerichteten Offset
+TOC    je Eintrag: pfadHash u64 (StringId::hashOf), offset u64, size u64 (gespeichert), rawSize u64 (entpackt),
+       flags u32 (Bit 0 = zstd), pfadLänge u16, pfad (UTF-8, normalisiert)
 ```
-- `PakWriter` (öffentlich, für Tests und `g7-cook`): `add(path, data)` normalisiert den Pfad und lehnt Duplikate ab
-  (ohne Rücksicht auf Groß-/Kleinschreibung). `serialize()` sortiert die Einträge nach Pfad, gleiche Eingaben
-  ergeben also byte-gleiche Archive. `write(target)` schreibt atomar.
-- **Ohne Kompression in Version 1** (`flags = 0`, `rawSize = size`). Das Flag `kPakFlagCompressed` ist reserviert.
-  Die Entscheidung LZ4 oder Zstd fällt mit dem Cooker (ADR); bis dahin werden solche Einträge mit Fehler abgelehnt.
+- `PakWriter` (öffentlich, für Tests und `g7-cook`):
+  - `add(path, data, PakCompression = Auto)` normalisiert den Pfad und lehnt Duplikate ab (ohne Rücksicht auf
+    Groß-/Kleinschreibung). Komprimiert wird schon beim Hinzufügen.
+  - `Auto` nutzt zstd, außer bei bereits komprimierten Formaten (`.ktx2`, `.ogg`, `.png`, `.jpg`, `.jpeg`) oder wenn
+    die Datei nicht um mindestens 5 % schrumpft. `None` speichert immer roh, `Zstd` komprimiert immer.
+  - `setCompressionLevel(1..22)` stellt die Stufe ein (Vorgabe 19). Die Entpackgeschwindigkeit hängt nicht von der Stufe ab.
+  - `serialize()` sortiert die Einträge nach Pfad, gleiche Eingaben ergeben also byte-gleiche Archive.
+    `write(target)` schreibt atomar.
+- **Lesen:** Version 1 (immer roh) und 2. `Vfs::read` entpackt transparent; `VfsFileInfo::size` ist die entpackte Größe.
 - **Beim Mounten wird geprüft:** Magic, Version, Inhaltsverzeichnis und Daten innerhalb der Datei, Pfad normalisiert,
-  Hash passend, keine doppelten Pfade. Ein beschädigtes Archiv liefert einen `Result`-Fehler.
+  Hash passend, keine doppelten Pfade, keine unbekannten Flags, zstd nur ab Version 2, entpackte Größe höchstens
+  `kPakMaxEntrySize` (2 GiB). Ein beschädigter zstd-Frame oder eine falsche `rawSize` fällt erst beim Lesen des
+  Eintrags auf und liefert dann einen `Result`-Fehler.
 - Der Leser (`src/PakArchive.hpp`) ist intern. Daten werden bei Bedarf gelesen, jeder Aufruf öffnet einen eigenen Stream.
 
 ### `MeshFile.hpp` – gekochte Meshes `.g7mesh` (ADR 0016)

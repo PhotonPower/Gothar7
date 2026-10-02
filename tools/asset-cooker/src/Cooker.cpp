@@ -100,6 +100,7 @@ public:
         if (!m_options.pack.empty())
         {
             asset::PakWriter pak;
+            pak.setCompressionLevel(m_options.level);
             for (const auto& [path, data] : m_outputs)
             {
                 if (auto added = pak.add(path, data); !added)
