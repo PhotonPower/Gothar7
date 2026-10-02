@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gothar-worldgen"
+version = "0.1.0"
+description = "World-track tools for Gothar: geodata and captures -> game world data (Leonberg)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+# Heavy geo dependencies (rasterio, lxml, osmium, ...) are added with the import step that needs them.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+gothar-worldgen = "gothar_worldgen.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gothar_worldgen"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "N", "ANN"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN"]
