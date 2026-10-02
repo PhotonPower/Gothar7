@@ -172,13 +172,11 @@ TEST_CASE("corrupt archives are rejected with an error")
         writeU64(data, tocOffset, 12345);
         CHECK_FALSE(mountBytes(dir, data, vfs));
     }
-    SUBCASE("compressed entries are not supported yet")
+    SUBCASE("unknown entry flags")
     {
         auto data = good;
-        data[tocOffset + 32] = static_cast<u8>(kPakFlagCompressed);
-        auto result = mountBytes(dir, data, vfs);
-        REQUIRE_FALSE(result);
-        CHECK(result.error().message.find("compressed") != std::string::npos);
+        data[tocOffset + 32] = 0x02;
+        CHECK_FALSE(mountBytes(dir, data, vfs));
     }
     SUBCASE("duplicate paths")
     {
@@ -196,4 +194,159 @@ TEST_CASE("corrupt archives are rejected with an error")
         CHECK(result.error().message.find("duplicate") != std::string::npos);
     }
     CHECK(vfs.mountCount() == 0);
+}
+
+namespace
+{
+/// Offsets of the first TOC entry's fields.
+struct TocEntry
+{
+    usize at;
+    usize offset() const { return at + 8; }
+    usize size() const { return at + 16; }
+    usize rawSize() const { return at + 24; }
+    usize flags() const { return at + 32; }
+};
+
+TocEntry firstEntry(const std::vector<u8>& data)
+{
+    return {static_cast<usize>(readU64(data, 16))};
+}
+
+std::vector<u8> repetitive(usize n)
+{
+    std::vector<u8> out(n);
+    for (usize i = 0; i < n; ++i)
+    {
+        out[i] = static_cast<u8>("Gothar Leonberg "[i % 16]);
+    }
+    return out;
+}
+
+std::vector<u8> noise(usize n)
+{
+    std::vector<u8> out(n);
+    u32 x = 12345;
+    for (auto& b : out)
+    {
+        x = x * 1664525u + 1013904223u; // LCG: incompressible enough for zstd
+        b = static_cast<u8>(x >> 24);
+    }
+    return out;
+}
+} // namespace
+
+TEST_CASE("zstd: compressible data is compressed and reads back unchanged")
+{
+    test::TempDir dir;
+    const auto text = repetitive(20000);
+    PakWriter w;
+    REQUIRE(w.add("scripts/big.lua", text));
+    const auto data = w.serialize();
+    CHECK(data.size() < text.size() / 10);
+    const TocEntry e = firstEntry(data);
+    CHECK(data[e.flags()] == kPakFlagCompressed);
+    CHECK(readU64(data, e.rawSize()) == text.size());
+
+    Vfs vfs;
+    REQUIRE(mountBytes(dir, data, vfs));
+    CHECK(vfs.read("scripts/big.lua").value() == text);
+    CHECK(vfs.stat("scripts/big.lua")->size == text.size()); // uncompressed size
+
+    PakWriter again;
+    REQUIRE(again.add("scripts/big.lua", text));
+    CHECK(again.serialize() == data); // deterministic
+}
+
+TEST_CASE("zstd: Auto keeps already compressed and incompressible data raw")
+{
+    test::TempDir dir;
+    const auto text = repetitive(4096);
+    const auto random = noise(4096);
+    PakWriter w;
+    REQUIRE(w.add("textures/wood.png", text)); // extension says: compressed already
+    REQUIRE(w.add("data/noise.bin", random));  // does not shrink
+    REQUIRE(w.add("data/forced.bin", random, PakCompression::Zstd));
+    REQUIRE(w.add("data/plain.txt", text, PakCompression::None));
+    REQUIRE(w.add("data/empty.txt", {}));
+    const auto data = w.serialize();
+
+    // TOC order is alphabetical: empty, forced, noise, plain, wood.
+    usize at = static_cast<usize>(readU64(data, 16));
+    std::vector<u32> flags;
+    for (int i = 0; i < 5; ++i)
+    {
+        flags.push_back(data[at + 32]);
+        const u16 length = static_cast<u16>(data[at + 36] | (data[at + 37] << 8));
+        at += 38 + length;
+    }
+    CHECK(flags == std::vector<u32>{0, kPakFlagCompressed, 0, 0, 0});
+
+    Vfs vfs;
+    REQUIRE(mountBytes(dir, data, vfs));
+    CHECK(vfs.read("textures/wood.png").value() == text);
+    CHECK(vfs.read("data/noise.bin").value() == random);
+    CHECK(vfs.read("data/forced.bin").value() == random);
+    CHECK(vfs.read("data/plain.txt").value() == text);
+    CHECK(vfs.read("data/empty.txt").value().empty());
+}
+
+TEST_CASE("version 1 archives are still read")
+{
+    test::TempDir dir;
+    PakWriter w;
+    REQUIRE(w.add("a.txt", bytes("version one"), PakCompression::None));
+    auto data = w.serialize();
+    data[4] = 1;
+    Vfs vfs;
+    REQUIRE(mountBytes(dir, data, vfs));
+    CHECK(vfs.read("a.txt").value() == bytes("version one"));
+
+    // Version 1 never had compression.
+    PakWriter compressed;
+    REQUIRE(compressed.add("a.txt", repetitive(1000)));
+    auto v1 = compressed.serialize();
+    v1[4] = 1;
+    Vfs other;
+    CHECK_FALSE(mountBytes(dir, v1, other));
+}
+
+TEST_CASE("corrupt compressed entries")
+{
+    test::TempDir dir;
+    PakWriter w;
+    REQUIRE(w.add("a.txt", repetitive(5000)));
+    const auto good = w.serialize();
+    const TocEntry e = firstEntry(good);
+    REQUIRE(good[e.flags()] == kPakFlagCompressed);
+
+    SUBCASE("damaged zstd frame: mount works, read fails")
+    {
+        auto data = good;
+        const usize offset = static_cast<usize>(readU64(data, e.offset()));
+        for (usize i = 0; i < 8; ++i)
+        {
+            data[offset + 4 + i] ^= 0xFF;
+        }
+        Vfs vfs;
+        REQUIRE(mountBytes(dir, data, vfs));
+        auto read = vfs.read("a.txt");
+        REQUIRE_FALSE(read);
+        CHECK(read.error().message.find("corrupt entry") != std::string::npos);
+    }
+    SUBCASE("wrong raw size")
+    {
+        auto data = good;
+        writeU64(data, e.rawSize(), 4999);
+        Vfs vfs;
+        REQUIRE(mountBytes(dir, data, vfs));
+        CHECK_FALSE(vfs.read("a.txt"));
+    }
+    SUBCASE("absurd raw size is rejected at mount")
+    {
+        auto data = good;
+        writeU64(data, e.rawSize(), kPakMaxEntrySize + 1);
+        Vfs vfs;
+        CHECK_FALSE(mountBytes(dir, data, vfs));
+    }
 }

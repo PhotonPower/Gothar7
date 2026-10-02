@@ -5,17 +5,20 @@
 #include <g7/core/Log.hpp>
 
 #include <cstdio>
+#include <cstdlib>
 #include <string_view>
 
 namespace
 {
 void printUsage()
 {
-    std::puts("usage: g7-cook [--source <dir>] [--out <dir>] [--pack <file.g7pak>] [--clean]\n"
-              "  --source  source assets (default: assets/source)\n"
-              "  --out     output directory (default: assets/cooked)\n"
-              "  --pack    write one archive <out>/<file> instead of loose files\n"
-              "  --clean   delete the output directory first");
+    std::puts(
+        "usage: g7-cook [--source <dir>] [--out <dir>] [--pack <file.g7pak>] [--level <1-22>] [--clean]\n"
+        "  --source  source assets (default: assets/source)\n"
+        "  --out     output directory (default: assets/cooked)\n"
+        "  --pack    write one archive <out>/<file> instead of loose files (zstd per entry)\n"
+        "  --level   zstd level for --pack (default 19; 1-3 for quick development cooks)\n"
+        "  --clean   delete the output directory first");
 }
 } // namespace
 
@@ -37,6 +40,16 @@ int main(int argc, char** argv)
         else if (arg == "--pack" && hasValue)
         {
             options.pack = argv[++i];
+        }
+        else if (arg == "--level" && hasValue)
+        {
+            const int level = std::atoi(argv[++i]);
+            if (level < 1 || level > 22)
+            {
+                printUsage();
+                return 2;
+            }
+            options.level = level;
         }
         else if (arg == "--clean")
         {

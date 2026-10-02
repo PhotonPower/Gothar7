@@ -21,6 +21,8 @@ struct CookOptions
     std::string pack;
     /// Delete `out` before cooking (stale outputs of removed sources).
     bool clean = false;
+    /// zstd level for archive entries (1 = fast for development .. 22 = smallest).
+    int level = 19;
 };
 
 struct CookReport

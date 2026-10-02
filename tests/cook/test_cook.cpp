@@ -213,6 +213,12 @@ TEST_CASE("cook into an archive and load it through the AssetManager")
     REQUIRE(script);
     CHECK(std::string(script.value().begin(), script.value().end()) == "print('hello')");
 
+    // A fast compression level gives a readable archive too.
+    REQUIRE(cook::cook({.source = t.source, .out = t.out, .pack = "fast.g7pak", .level = 1}));
+    asset::Vfs fast;
+    REQUIRE(fast.mount(t.out / "fast.g7pak", 0));
+    CHECK(fast.read("scripts/init.lua").value() == script.value());
+
     // Same sources, same archive.
     const auto first = fs::readFile(t.out / "data.g7pak").value();
     REQUIRE(cook::cook({.source = t.source, .out = t.out, .pack = "data.g7pak"}));

@@ -3,8 +3,11 @@
 
 #include <g7/asset/Pak.hpp>
 #include <g7/asset/Vfs.hpp>
+#include <g7/core/Assert.hpp>
 #include <g7/core/StringId.hpp>
 #include <g7/core/StringUtil.hpp>
+
+#include <zstd.h>
 
 #include <algorithm>
 #include <cstring>
@@ -34,9 +37,30 @@ Error pakError(const fs::Path& path, const std::string& what)
 {
     return Error{fs::toUtf8(path) + ": " + what};
 }
+
+/// Formats that are compressed already; zstd would only cost time.
+bool alreadyCompressed(std::string_view path)
+{
+    static constexpr std::string_view kExtensions[] = {".ktx2", ".ogg", ".png", ".jpg", ".jpeg"};
+    return std::any_of(std::begin(kExtensions), std::end(kExtensions),
+                       [&](std::string_view ext)
+                       {
+                           return path.size() >= ext.size() &&
+                                  equalsIgnoreCase(path.substr(path.size() - ext.size()), ext);
+                       });
+}
+
+std::vector<u8> zstdCompress(std::span<const u8> data, int level)
+{
+    std::vector<u8> out(ZSTD_compressBound(data.size()));
+    const size_t written = ZSTD_compress(out.data(), out.size(), data.data(), data.size(), level);
+    G7_VERIFY(!ZSTD_isError(written), "zstd compression failed");
+    out.resize(written);
+    return out;
+}
 } // namespace
 
-Result<void> PakWriter::add(std::string_view path, std::span<const u8> data)
+Result<void> PakWriter::add(std::string_view path, std::span<const u8> data, PakCompression compression)
 {
     auto normalised = normalizeVfsPath(path);
     if (!normalised)
@@ -54,7 +78,30 @@ Result<void> PakWriter::add(std::string_view path, std::span<const u8> data)
     {
         return Error{"duplicate pak path: " + normalised.value()};
     }
-    m_entries.push_back({std::move(normalised).value(), std::move(key), {data.begin(), data.end()}});
+    if (data.size() > kPakMaxEntrySize)
+    {
+        return Error{"pak entry too large: " + normalised.value()};
+    }
+
+    Entry entry{std::move(normalised).value(), std::move(key), {}, data.size(), 0};
+    const bool tryZstd =
+        compression == PakCompression::Zstd ||
+        (compression == PakCompression::Auto && !data.empty() && !alreadyCompressed(entry.path));
+    if (tryZstd)
+    {
+        std::vector<u8> packed = zstdCompress(data, m_level);
+        // Auto keeps the raw bytes unless compression saves at least 5 %.
+        if (compression == PakCompression::Zstd || packed.size() * 20 <= data.size() * 19)
+        {
+            entry.stored = std::move(packed);
+            entry.flags = kPakFlagCompressed;
+        }
+    }
+    if (entry.flags == 0)
+    {
+        entry.stored.assign(data.begin(), data.end());
+    }
+    m_entries.push_back(std::move(entry));
     return {};
 }
 
@@ -83,7 +130,7 @@ std::vector<u8> PakWriter::serialize() const
     {
         out.resize((out.size() + kPakAlignment - 1) / kPakAlignment * kPakAlignment, 0);
         offsets.push_back(out.size());
-        out.insert(out.end(), e->data.begin(), e->data.end());
+        out.insert(out.end(), e->stored.begin(), e->stored.end());
     }
 
     const u64 tocOffset = out.size();
@@ -92,9 +139,9 @@ std::vector<u8> PakWriter::serialize() const
         const Entry& e = *sorted[i];
         w.u64v(StringId::hashOf(e.path));
         w.u64v(offsets[i]);
-        w.u64v(e.data.size());
-        w.u64v(e.data.size()); // rawSize: uncompressed in version 1
-        w.u32v(0);             // flags
+        w.u64v(e.stored.size());
+        w.u64v(e.rawSize);
+        w.u32v(e.flags);
         w.string16(e.path);
     }
     setU64(out, 16, tocOffset);
@@ -140,7 +187,7 @@ Result<PakArchive> PakArchive::open(const fs::Path& path)
     (void)header.u32v(); // reserved
     const u64 tocOffset = header.u64v();
     const u64 tocSize = header.u64v();
-    if (version != kPakVersion)
+    if (version < kPakMinVersion || version > kPakVersion)
     {
         return pakError(path, "unsupported .g7pak version " + std::to_string(version));
     }
@@ -194,13 +241,14 @@ Result<PakArchive> PakArchive::open(const fs::Path& path)
         {
             return pakError(path, "corrupt archive (path hash mismatch)" + where);
         }
-        if ((flags & kPakFlagCompressed) != 0)
+        const bool compressed = (flags & kPakFlagCompressed) != 0;
+        if ((flags & ~kPakFlagCompressed) != 0 || (compressed && version < 2))
         {
-            return pakError(path, "compressed entries are not supported yet" + where);
+            return pakError(path, "corrupt archive (unknown flags)" + where);
         }
-        if (flags != 0 || rawSize != size)
+        if (compressed ? rawSize > kPakMaxEntrySize : rawSize != size)
         {
-            return pakError(path, "corrupt archive (unknown flags or size mismatch)" + where);
+            return pakError(path, "corrupt archive (size mismatch)" + where);
         }
         if (offset < kPakHeaderSize || offset > tocOffset || size > tocOffset - offset)
         {
@@ -210,7 +258,7 @@ Result<PakArchive> PakArchive::open(const fs::Path& path)
         {
             return pakError(path, "corrupt archive (duplicate path)" + where);
         }
-        archive.m_entries.push_back({entryPath, offset, size});
+        archive.m_entries.push_back({entryPath, offset, size, rawSize, compressed});
     }
     return archive;
 }
@@ -222,12 +270,24 @@ Result<std::vector<u8>> PakArchive::read(const PakEntry& entry) const
     {
         return pakError(m_path, "cannot open archive");
     }
-    std::vector<u8> data(static_cast<usize>(entry.size));
+    std::vector<u8> stored(static_cast<usize>(entry.storedSize));
     in.seekg(static_cast<std::streamoff>(entry.offset));
-    in.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(data.size()));
-    if (!in && !data.empty())
+    in.read(reinterpret_cast<char*>(stored.data()), static_cast<std::streamsize>(stored.size()));
+    if (!in && !stored.empty())
     {
         return pakError(m_path, "cannot read '" + entry.path + "'");
+    }
+    if (!entry.compressed)
+    {
+        return stored;
+    }
+    std::vector<u8> data(static_cast<usize>(entry.size));
+    const size_t result = ZSTD_decompress(data.data(), data.size(), stored.data(), stored.size());
+    if (ZSTD_isError(result) || result != data.size())
+    {
+        return pakError(m_path, "corrupt entry '" + entry.path + "' (" +
+                                    (ZSTD_isError(result) ? ZSTD_getErrorName(result) : "size mismatch") +
+                                    ")");
     }
     return data;
 }
