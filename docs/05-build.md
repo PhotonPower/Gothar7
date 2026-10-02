@@ -33,6 +33,14 @@ Pfad in `tools/worldgen/config/local.toml`). Einrichtung: `tools/worldgen/README
 Python-Pakete (z. B. numpy) stehen in `tools/worldgen/pyproject.toml` und werden mit pip/uv installiert,
 nicht über vcpkg.
 
+Für Einzelbilder aus den 360°-Videos (`gothar-worldgen facade frames`, W4) braucht man außerdem
+**ffmpeg ≥ 6**, getestet mit **9.0** (`winget install Gyan.FFmpeg`; Linux: Paket `ffmpeg`). ffmpeg ist wie
+Blender ein externes Programm und keine Python-Abhängigkeit.
+- Suchreihenfolge: `--ffmpeg`, Umgebungsvariable `G7_FFMPEG`, `paths.ffmpeg` in `local.toml`, `PATH`,
+  danach der winget-Paketordner. Der winget-Befehlsalias wirkt erst in neuen Shells.
+- `ffprobe` wird neben ffmpeg gesucht.
+- Tests, die ffmpeg brauchen, werden übersprungen, wenn es fehlt.
+
 ### Python (Figuren-Spur)
 Für `tools/chargen/` (Rig-Validator, Blender-Export) wird ebenfalls Python ≥ 3.11 benötigt; einzige
 Laufzeit-Abhängigkeit ist **numpy** (`tools/chargen/pyproject.toml`, Installation mit pip/uv). Blender **4.5 LTS**
