@@ -62,5 +62,7 @@ Regeln:
 1. Sitzung arbeitet auf `feature/<spur><nr>-<thema>` (z. B. `feature/f1-rig`), PR gegen `main`.
 2. CI grün; PR-Text nennt betroffene Verträge und gemeinsame Dateien.
 3. Nachricht an `koordinator` → Review (Architekturregeln, Verträge, Tests, Doku) → Merge oder Rückmeldung.
+   Der Koordinator merged **ohne** `--delete-branch`: `gh` würde sonst den Worktree der Autor-Sitzung entfernen, in dem
+   der Branch ausgecheckt ist. Jede Sitzung löscht ihre Branches nach dem Merge selbst (lokal und auf `origin`).
 4. Nach dem Merge: betroffene Sitzungen holen `main` beim nächsten Branch-Start (`git fetch` + neuer Branch von `origin/main`).
 5. PRs mit „Entscheidung nötig:“ merged der Koordinator **nicht**, bis der Mensch entschieden hat.
