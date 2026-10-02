@@ -258,7 +258,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 Spezifikation: `docs/design/leonberg-pipeline.md`. Werkzeuge in `tools/worldgen/` (Python ≥ 3.11),
 Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
-**Aktueller Stand Welt-Spur:** W1 läuft. Paket `gothar-worldgen` (uv/pip, ruff, pytest, CI-Job `worldgen`) mit Konfiguration, `download` (LGL-Kacheln + OSM nach `DATA_ROOT`, Herkunft in `SOURCES.md`) und `import`: DGM1 → `terrain.r16`/`.png`/`.json` (2000 × 2000 m) und LoD2 → `buildings.json` (5392 Gebäude, 905 in der Altstadt). Rohdaten für Leonberg liegen lokal vor, Blender 4.5 LTS ist installiert. Ursprung: Marktbrunnen E 501115 / N 5405347 (386,89 m NHN), Kern ±350 m, Umland ±1000 m. Als Nächstes: OSM → `streets.json`, `features.json`.
+**Aktueller Stand Welt-Spur:** W1 läuft. Paket `gothar-worldgen` (uv/pip, ruff, pytest, CI-Job `worldgen`) mit Konfiguration, `download` (LGL-Kacheln + OSM nach `DATA_ROOT`, Herkunft in `SOURCES.md`) und `import`: DGM1 → `terrain.r16`/`.png`/`.json` (2000 × 2000 m), LoD2 → `buildings.json` (5392 Gebäude, 905 in der Altstadt), OSM → `streets.json` (1802 Achsen, 6 Plätze) und `features.json` (1110 Objekte, u. a. Stadtmauer, Brunnen, Bäume). Rohdaten für Leonberg liegen lokal vor, Blender 4.5 LTS ist installiert. Ursprung: Marktbrunnen E 501115 / N 5405347 (386,89 m NHN), Kern ±350 m, Umland ±1000 m. Als Nächstes: Vorschau-PNG und Plausibilitätsprüfungen (letzte W1-Aufgabe).
 
 ## W1 – Geodaten-Import  (keine Engine-Abhängigkeit)
 - [x] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
@@ -266,7 +266,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [x] Download-Hilfe/Anleitung für LGL-Kacheln (DGM1, LoD2, DOP) und OSM-Ausschnitt
 - [x] DGM1 → Heightmap (`terrain.r16` + `terrain.json`) im lokalen Koordinatensystem
 - [x] LoD2 (CityGML) → `buildings.json` (Grundriss, Dachtyp, Trauf-/Firsthöhe, Bodenhöhe)
-- [ ] OSM → `streets.json`, `features.json`
+- [x] OSM → `streets.json`, `features.json`
 - [ ] Vorschau-PNG (Höhen, Grundrisse, Straßen) und Plausibilitätsprüfungen
 - [x] Ursprungspunkt und Gebietsgrenzen am Luftbild prüfen und festlegen
 

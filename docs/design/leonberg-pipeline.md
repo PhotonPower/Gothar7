@@ -117,7 +117,47 @@ features.json                    Mauern, Gewässer, Bäume, Brunnen …
   `51009_*` sind Bauwerke wie Überdachungen). Eine Zuordnung für das Spiel folgt mit den Annotationen.
 - `warnings` (optional) nennt Auffälligkeiten: getrennte Grundrissteile (der größte bleibt erhalten),
   ein fehlendes Dach oder eine Abweichung von mehr als 1 m zur LoD2-`measuredHeight`.
-- OSM-Angaben (`building`, `levels`) ergänzt der OSM-Schritt.
+- **Offen:** OSM-Gebäudeangaben (`building`, `building:levels`) sind noch nicht zugeordnet. Geplant ist eine
+  Zuordnung über die größte Grundriss-Überlappung, sobald der Generator Stockwerkszahlen braucht (W5).
+
+**`streets.json`** (umgesetzt, Module `geo/osm.py` + `geo/streets.py`): Kopf wie oben, `source` mit
+OSM-Datei, Stand (`timestamp`), Credit „© OpenStreetMap-Mitwirkende“ und Lizenz ODbL 1.0; danach zwei Listen:
+```json
+"streets": [ { "osmId": "w4711", "highway": "residential", "class": "road", "name": "Marktplatz",
+               "widthM": 5.5, "widthSource": "default", "surface": "sett", "layer": 1, "bridge": true,
+               "points": [[x, z], ...] } ],
+"squares": [ { "osmId": "w53012023", "kind": "square", "name": "Marktplatz", "surface": "sett",
+               "polygon": [[x, z], ...], "holes": [...], "areaM2": 2787.4 } ]
+```
+- `streets` enthält Mittellinien aller `highway`-Wege, zugeschnitten auf das Gebiet. Wird ein Weg durch den
+  Zuschnitt geteilt, entstehen mehrere Einträge mit derselben `osmId`.
+- `class` fasst die `highway`-Werte zusammen: `road` (Fahrstraßen), `pedestrian`, `track`, `path`
+  (Fuß-, Rad- und Reitwege) und `steps`. Daraus leitet W6 Belag und Breite ab: Kopfstein in der Stadt,
+  Matsch/Kies außerhalb.
+- `widthM` stammt aus `width`/`est_width` (Meterangaben), sonst aus `lanes` × 3 m, sonst aus einem
+  Standardwert je Typ (z. B. residential 5,5 m, footway 2 m, path 1,5 m). Woher der Wert kommt, steht in
+  `widthSource` (`tag`, `lanes`, `default`).
+- `squares` sind Flächen mit `place=square`, `amenity=marketplace` oder `highway=pedestrian|footway|…`
+  zusammen mit `area=yes`.
+
+**`features.json`** (umgesetzt, Modul `geo/features.py`): eine Liste `features` mit `osmId`, `type`, `kind`
+(OSM-Wert), optional `name` und `tags` (Auswahl, z. B. `height`, `material`, `species`, `start_date`), sowie
+der Geometrie: `"geometry": "point"` + `position`, `"line"` + `points` oder `"polygon"` + `polygon`/`holes`/`areaM2`.
+
+| `type` | aus OSM | Geometrie |
+|---|---|---|
+| `wall` | `barrier=wall/city_wall/retaining_wall`, `historic=city_wall` | Linie |
+| `hedge` | `barrier=hedge` | Linie |
+| `waterway` | `waterway=river/stream/canal/ditch/drain` | Linie |
+| `water` | `natural=water`, `waterway=riverbank`, `landuse=reservoir/basin` | Fläche |
+| `tree` / `tree_row` | `natural=tree` / `natural=tree_row` | Punkt / Linie |
+| `landuse` | `landuse=*` (Wald, Wiese, Acker, Obstwiese, Wohngebiet …), `natural=wood/scrub/…`, `leisure=park/garden/…` | Fläche |
+| `fountain` | `amenity=fountain`, `man_made=water_well` | Punkt oder Fläche |
+| `landmark` | `amenity=place_of_worship`, `historic=castle/city_gate/monument/…` | Punkt oder Fläche |
+| `railway` | `railway=rail/light_rail/tram/narrow_gauge` (modern, nur zur Orientierung) | Linie |
+
+OSM bezieht sich auf WGS84, die LGL-Daten auf ETRS89. Der Unterschied liegt unter 1 m und wird ignoriert.
+Zur Kontrolle: Der OSM-Marktbrunnen liegt 3,7 m neben dem am Luftbild gewählten Ursprung.
 
 Annotationen/Overrides pro Gebäude (`tools/worldgen/data/leonberg/buildings/<id>.json`, versioniert):
 ```json
@@ -135,7 +175,7 @@ Annotationen/Overrides pro Gebäude (`tools/worldgen/data/leonberg/buildings/<id
 - Gebiet aus `leonberg.toml` ausschneiden (Kernbereich Altstadt + Rand für Umland).
 - DGM1-Kacheln mosaikieren → Heightmap; Ränder für die spätere Erweiterung kennzeichnen.
 - CityGML LoD2 parsen → Grundrisse, Dachflächen → Dachtyp (ALKIS-Code)/Höhen/Firstrichtung → `buildings.json`.
-- OSM → `streets.json`, `features.json` (Straßenbreite aus Tags, sonst Schätzung nach Typ).
+- OSM → `streets.json`, `features.json` (Straßenbreite aus Tags, sonst Schätzung nach Typ; Plätze, Mauern, Wasser, Bäume, Landnutzung, Brunnen, Landmarken).
 - Vorschau-PNG (Heightmap + Grundrisse + Straßen) zur Kontrolle.
 
 ### W-B Terrain in der Engine (C++, Modul `world`/`render`)
