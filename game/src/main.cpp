@@ -4,6 +4,7 @@
 #include <g7/platform/Paths.hpp>
 #include <g7/runtime/Engine.hpp>
 
+#include <algorithm>
 #include <charconv>
 #include <cstdlib>
 #include <filesystem>
@@ -19,6 +20,7 @@ struct CommandLine
     bool smokeTest = false;
     bool fullscreen = false;
     std::optional<g7::u64> frames;
+    std::optional<g7::u64> maxFps;
 };
 
 std::optional<CommandLine> parseCommandLine(int argc, char** argv)
@@ -38,6 +40,18 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--fullscreen")
         {
             cli.fullscreen = true;
+        }
+        else if (arg.starts_with("--max-fps="))
+        {
+            const std::string_view value = arg.substr(10);
+            g7::u64 fps = 0;
+            const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), fps);
+            if (error != std::errc{} || end != value.data() + value.size())
+            {
+                G7_LOG_FATAL("game", "invalid value for --max-fps: '{}'", value);
+                return std::nullopt;
+            }
+            cli.maxFps = fps;
         }
         else if (arg.starts_with("--frames="))
         {
@@ -137,11 +151,18 @@ int main(int argc, char** argv)
     {
         config.window.mode = g7::platform::WindowMode::Fullscreen;
     }
+    config.window.vsync = config.settings.get<bool>("window.vsync", true);
+    config.maxFps =
+        static_cast<g7::f64>(std::max<g7::i64>(0, config.settings.get<g7::i64>("window.max_fps", 240)));
 
     // Command line wins over config files.
     if (cli->fullscreen)
     {
         config.window.mode = g7::platform::WindowMode::Fullscreen;
+    }
+    if (cli->maxFps)
+    {
+        config.maxFps = static_cast<g7::f64>(*cli->maxFps);
     }
     if (cli->frames)
     {
@@ -152,6 +173,7 @@ int main(int argc, char** argv)
         // Headless run used by CI: a few frames, then exit.
         config.headless = true;
         config.maxFrames = 10;
+        config.fixedFrameSeconds = 1.0 / 60.0; // deterministic: 10 frames = 10 ticks
     }
 
     g7::Engine engine(std::move(config));

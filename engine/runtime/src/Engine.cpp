@@ -9,6 +9,7 @@
 #include <g7/gameplay/Gameplay.hpp>
 #include <g7/physics/Physics.hpp>
 #include <g7/platform/Platform.hpp>
+#include <g7/platform/Time.hpp>
 #include <g7/render/Render.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/save/Save.hpp>
@@ -16,6 +17,7 @@
 #include <g7/ui/Ui.hpp>
 #include <g7/world/World.hpp>
 
+#include <algorithm>
 #include <array>
 #include <string_view>
 #include <utility>
@@ -94,6 +96,14 @@ Result<void> Engine::init()
         G7_LOG_INFO("engine", "control scheme '{}'", scheme);
     }
 
+    m_fixedStep = FixedStep(1.0 / m_config.simulationHz);
+    m_framePacer = FramePacer(m_config.maxFps);
+    m_frameTimer.reset();
+    if (m_window && m_config.maxFps > 0.0)
+    {
+        G7_LOG_INFO("engine", "frame rate capped at {} fps", m_config.maxFps);
+    }
+
     m_initialized = true;
     return {};
 }
@@ -105,54 +115,90 @@ int Engine::run()
         G7_LOG_ERROR("engine", "run() called before successful init()");
         return 1;
     }
-
-    FixedStep fixedStep(1.0 / m_config.simulationHz);
-    Stopwatch frameTimer;
-
-    while (!m_quitRequested)
+    while (runFrame())
     {
-        G7_PROFILE_FRAME();
-        G7_PROFILE_SCOPE("Engine::frame");
-        const f64 frameSeconds = frameTimer.elapsedSeconds();
-        frameTimer.reset();
+    }
+    G7_LOG_INFO("engine", "main loop finished after {} frames / {} ticks", m_frameCount, m_simTicks);
+    return 0;
+}
 
-        m_input.beginFrame();
-        if (m_window)
-        {
-            if (!m_window->pollEvents(m_input))
-            {
-                G7_LOG_INFO("engine", "quit requested by window");
-                requestQuit();
-            }
-            else if (m_window->resizedSinceLastPoll())
-            {
-                const auto size = m_window->pixelSize();
-                G7_LOG_DEBUG("engine", "window resized to {}x{} px", size.width, size.height);
-            }
-            logPressedActions(m_actions, m_input);
-        }
+bool Engine::runFrame()
+{
+    if (!m_initialized || m_quitRequested)
+    {
+        return false;
+    }
+    G7_PROFILE_FRAME();
+    G7_PROFILE_SCOPE("Engine::frame");
+    if (m_window)
+    {
+        m_framePacer.frameStarted(platform::nowSeconds());
+    }
+    const f64 realSeconds =
+        m_config.fixedFrameSeconds > 0.0 ? m_config.fixedFrameSeconds : m_frameTimer.elapsedSeconds();
+    m_frameTimer.reset();
 
-        const u32 steps = fixedStep.advance(frameSeconds);
-        for (u32 i = 0; i < steps; ++i)
+    m_input.beginFrame();
+    if (m_window)
+    {
+        if (!m_window->pollEvents(m_input))
         {
-            G7_PROFILE_SCOPE("Engine::fixedUpdate");
-            // TODO(M4+): world/ai/gameplay/physics fixed update
-            ++m_simTicks;
-        }
-        {
-            G7_PROFILE_SCOPE("Engine::render");
-            // TODO(M2): render.drawFrame(fixedStep.alpha())
-        }
-
-        ++m_frameCount;
-        if (m_config.maxFrames != 0 && m_frameCount >= m_config.maxFrames)
-        {
+            G7_LOG_INFO("engine", "quit requested by window");
             requestQuit();
+        }
+        else if (m_window->resizedSinceLastPoll())
+        {
+            const auto size = m_window->pixelSize();
+            G7_LOG_DEBUG("engine", "window resized to {}x{} px", size.width, size.height);
+        }
+        logPressedActions(m_actions, m_input);
+
+        // Interim until the menu exists (M14): the pause action toggles the pause directly.
+        if (m_actions.pressed(m_input, platform::Action::Pause))
+        {
+            setPaused(!m_paused);
         }
     }
 
-    G7_LOG_INFO("engine", "main loop finished after {} frames / {} ticks", m_frameCount, m_simTicks);
-    return 0;
+    // While paused the accumulator is not fed, so nothing is caught up afterwards.
+    const u32 steps = m_paused ? 0 : m_fixedStep.advance(realSeconds * m_timeScale);
+    for (u32 i = 0; i < steps; ++i)
+    {
+        G7_PROFILE_SCOPE("Engine::fixedUpdate");
+        // TODO(M4+): world/ai/gameplay/physics fixed update
+        ++m_simTicks;
+    }
+    {
+        G7_PROFILE_SCOPE("Engine::render");
+        // TODO(M2): render.drawFrame(frameAlpha()) + swap (VSync from WindowDesc::vsync)
+    }
+
+    ++m_frameCount;
+    if (m_config.maxFrames != 0 && m_frameCount >= m_config.maxFrames)
+    {
+        requestQuit();
+    }
+
+    if (m_window && !m_quitRequested)
+    {
+        G7_PROFILE_SCOPE("Engine::frameCap");
+        platform::sleepPrecise(m_framePacer.secondsUntilNextFrame(platform::nowSeconds()));
+    }
+    return !m_quitRequested;
+}
+
+void Engine::setTimeScale(f64 scale) noexcept
+{
+    m_timeScale = std::clamp(scale, 0.0, kMaxTimeScale);
+}
+
+void Engine::setPaused(bool paused) noexcept
+{
+    if (paused != m_paused)
+    {
+        m_paused = paused;
+        G7_LOG_INFO("engine", "{}", paused ? "paused" : "resumed");
+    }
 }
 
 void Engine::shutdown()

@@ -60,9 +60,11 @@
 ### Hauptschleife
 
 ```
-while (!quit) {
-    platform.pollEvents()            // Eingabe -> Aktionen
-    steps = fixedStep.advance(dt)    // feste Simulationsrate, Standard 60 Hz
+while (!quit) {                      // Engine::run() = Schleife über Engine::runFrame()
+    framePacer.frameStarted(now)
+    input.beginFrame()
+    window.pollEvents(input)         // Eingabe -> Aktionen (ActionMap), Fenster schließen -> quit
+    steps = paused ? 0 : fixedStep.advance(dt * timeScale)   // feste Simulationsrate, Standard 60 Hz
     repeat steps:
         script.tick()                // Timer, verzögerte Aufrufe
         ai.update()                  // Wahrnehmung, Zustände, Routinen, Pfade
@@ -73,10 +75,17 @@ while (!quit) {
     audio.update(listener)
     render.drawFrame(alpha)          // interpoliert zwischen den letzten zwei Zuständen
     ui.draw()
+    sleepPrecise(framePacer.secondsUntilNextFrame(now))      // Frame-Limit (nur mit Fenster)
 }
 ```
 
 - Simulation ist **deterministisch pro Schritt** (keine Abhängigkeit von Frame-Dauer).
+- **Zeitskalierung** (`Engine::setTimeScale`, 0–10) skaliert die Echtzeit, bevor sie in `FixedStep` fließt.
+  **Pause** (`Engine::setPaused`) speist den Akkumulator nicht – Ereignisse und Rendern laufen weiter,
+  nach der Pause wird nichts nachgeholt. Bis zum Menü (M14) schaltet die Aktion `pause` direkt um.
+- **Frame-Limit** über `FramePacer` (`[window] max_fps`, `--max-fps`); **VSync** (`[window] vsync`) wirkt
+  ab M2 beim Puffertausch. Headless läuft ungebremst; `EngineConfig::fixedFrameSeconds` macht Läufe
+  deterministisch (Tests, `--smoke-test`).
 - Rendern interpoliert Transformationen mit `FixedStep::alpha()`.
 - Spielzeit (Uhrzeit der Welt) ist von Echtzeit entkoppelt und kann beschleunigt werden (Schlafen).
 
