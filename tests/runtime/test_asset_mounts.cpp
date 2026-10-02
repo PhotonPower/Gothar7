@@ -1,3 +1,4 @@
+#include <g7/asset/Vfs.hpp>
 #include <g7/runtime/AssetMounts.hpp>
 
 #include <doctest/doctest.h>
@@ -110,4 +111,20 @@ mount_point = "worlds"
     CHECK(error("[[assets.mount]]\npriority = 1\n") == "[assets] mount 0 needs a 'path'");
     CHECK(error("[[assets.mount]]\npath = \"x\"\npriority = 1.5\n") ==
           "[assets] mount 0: 'priority' must be an integer");
+}
+
+TEST_CASE("Asset mounts: cooked meshes replace their glTF sources")
+{
+    TempTree tree;
+    tree.dir("models");
+    tree.file("models/hut.glb");
+    tree.file("models/hut.g7mesh");
+    tree.file("models/tree.gltf");
+    asset::Vfs vfs;
+    REQUIRE(vfs.mount(tree.root, 0).ok());
+    CHECK(preferCooked(vfs, "models/hut.glb") == "models/hut.g7mesh");
+    CHECK(preferCooked(vfs, "models/HUT.GLB") == "models/HUT.g7mesh");  // the VFS matches case-insensitively
+    CHECK(preferCooked(vfs, "models/tree.gltf") == "models/tree.gltf"); // not cooked yet
+    CHECK(preferCooked(vfs, "models/hut.g7mesh") == "models/hut.g7mesh");
+    CHECK(preferCooked(vfs, "textures/wood.png") == "textures/wood.png");
 }

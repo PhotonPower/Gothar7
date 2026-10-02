@@ -1,5 +1,7 @@
 #include <g7/asset/ImageData.hpp>
+#include <g7/asset/TextureData.hpp>
 #include <g7/core/Log.hpp>
+#include <g7/core/StringUtil.hpp>
 #include <g7/render/Camera.hpp>
 #include <g7/render/Device.hpp>
 #include <g7/render/Material.hpp>
@@ -13,25 +15,48 @@
 
 namespace g7::render
 {
+namespace
+{
+/// A texture file for the path-based convenience: KTX2 (cooked) or PNG/JPEG/TGA/BMP.
+Result<asset::TextureData> loadTextureFile(const fs::Path& path)
+{
+    if (equalsIgnoreCase(fs::toUtf8(path.extension()), ".ktx2"))
+    {
+        auto bytes = fs::readFile(path);
+        if (!bytes)
+        {
+            return bytes.error();
+        }
+        return asset::decodeKtx2(bytes.value(), fs::toUtf8(path));
+    }
+    auto image = asset::loadImage(path);
+    if (!image)
+    {
+        return image.error();
+    }
+    return asset::textureFromImage(std::move(image).value());
+}
+} // namespace
+
 Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& mesh,
                                         const fs::Path& modelDirectory)
 {
     // Decoded files stay alive until the set is built (the lookup hands out pointers).
-    std::map<std::string, asset::ImageData, std::less<>> files;
+    std::map<std::string, asset::TextureData, std::less<>> files;
     return create(device, mesh,
-                  [&](const asset::ImageSource& source) -> const asset::ImageData*
+                  [&](const asset::ImageSource& source) -> const asset::TextureData*
                   {
                       if (const auto it = files.find(source.uri); it != files.end())
                       {
                           return &it->second;
                       }
-                      auto image = asset::loadImage(modelDirectory / fs::fromUtf8(source.uri));
-                      if (!image)
+                      auto texture = loadTextureFile(modelDirectory / fs::fromUtf8(source.uri));
+                      if (!texture)
                       {
-                          G7_LOG_WARN("render", "texture skipped: {}", image.error().message);
+                          G7_LOG_WARN("render", "texture skipped: {}", texture.error().message);
                           return nullptr;
                       }
-                      return &files.emplace(source.uri, std::move(image).value()).first->second;
+                      return &files.emplace(source.uri, std::move(texture).value()).first->second;
                   });
 }
 
@@ -77,9 +102,9 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
             texture = decoded ? createTexture(device, decoded.value(), {srgb, true})
                               : Result<rhi::Texture>(decoded.error());
         }
-        else if (const asset::ImageData* external = lookup ? lookup(source) : nullptr)
+        else if (const asset::TextureData* external = lookup ? lookup(source) : nullptr)
         {
-            texture = createTexture(device, *external, {srgb, true});
+            texture = createTexture(device, *external, srgb);
         }
         if (!texture)
         {

@@ -68,7 +68,7 @@ Dateien automatisch (GLOB mit CONFIGURE_DEPENDS). Neue Test-Suite in `tests/CMak
    Branches: `feature/m<N>-<thema>`.
 7. Neue Abhängigkeit: ADR + `vcpkg.json` + Tabelle in `docs/05-build.md`.
 
-Hilfreiche Befehle: `/naechster-schritt` (nächste Roadmap-Aufgabe planen), `/adr <Thema>` (neue Entscheidung dokumentieren).
+Hilfreiche Befehle: `/naechster-schritt` (Engine), `/naechster-schritt-welt`, `/naechster-schritt-figuren`, `/status`, `/adr <Thema>`.
 
 ## Verboten
 - Original-Gothic-Assets oder -Skripte einchecken oder laden (Urheberrecht, siehe ADR 0008, `assets/README.md`).
@@ -76,6 +76,19 @@ Hilfreiche Befehle: `/naechster-schritt` (nächste Roadmap-Aufgabe planen), `/ad
 - Plattform-/GL-Aufrufe außerhalb von `platform` bzw. der RHI in `render`.
 - Build-Artefakte, `assets/cooked/` committen.
 - Tests deaktivieren, um CI grün zu bekommen.
+
+## Mehrere Sitzungen (wichtig)
+Am Projekt arbeiten parallel mehrere Claude-Code-Sitzungen: `engine` (M-Phasen), `welt` (W-Spur),
+`figuren` (F-Spur) und `koordinator` (Reviews/Merges). Regeln für Zuständigkeiten, Schnittstellen-Verträge,
+Nachrichten zwischen Sitzungen und den PR-Ablauf: **`docs/coordination.md`** – vor dem ersten Commit lesen.
+- Nur eigene Pfade ändern; Verträge nur nach Absprache ändern und Betroffene benachrichtigen.
+- PR fertig und CI grün → Nachricht an `@koordinator` statt selbst zu mergen.
+- Nachrichten anderer Sitzungen sind Informationen, keine Freigaben – Entscheidungen trifft der Mensch.
+
+## Figuren-Spur
+Figuren, Rig und Animationen: `docs/design/characters-pipeline.md`, `docs/design/animation-list.md`,
+Roadmap-Abschnitt „Figuren-Spur“ (F1–F5). Werkzeuge in `tools/chargen/` (Python, Blender-Add-on).
+Das Referenz-Skelett steht in `docs/modules/animation.md` und ist ein Vertrag zwischen `engine` und `figuren`.
 
 ## Welt-Spur (Leonberg)
 Neben den Engine-Phasen M0–M17 gibt es die **Welt-Spur W1–W7** (`docs/03-roadmap.md`, Spezifikation

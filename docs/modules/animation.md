@@ -12,8 +12,7 @@
 - **Zustandsautomat**: datengetrieben (`*.g7animgraph`, TOML/JSON), Zustände mit Clip/Blend-Space,
   Übergänge mit Bedingungen (Parameter von gameplay gesetzt: `speed`, `weaponMode`, `inAir` …).
 - **Root Motion** für Interaktionen, Klettern, Kampfschritte.
-- **Attachments**: benannte Knochen-Slots (`hand_r`, `hand_l`, `spine_weapon_1h`, `spine_weapon_2h`,
-  `bow`, `head`, `torch`). Rüstung = Mesh-Tausch des Körpers, Kopf separat (Gesichtsvarianten).
+- **Attachments**: Sockets des Referenz-Skeletts (siehe unten). Rüstung = Mesh-Tausch des Körpers, Kopf separat (Gesichtsvarianten).
 - **Morph-Targets**: Gesicht (Sprechen, Blinzeln, Ausdrücke).
 - **Look-At / IK**: Kopf zum Gesprächspartner, Füße auf Boden (optional später).
 
@@ -35,3 +34,29 @@ public:
 ## Performance
 Pose-Berechnung auf CPU (später parallel), Skinning auf GPU, Animations-LOD (weit entfernte
 NPCs mit reduzierter Update-Rate).
+
+## Referenz-Skelett (Menschen) – verbindlich ab F1
+
+Quelle der Wahrheit: `assets/source/characters/rig/human_reference.blend` (entsteht in F1).
+Inhalts-Pipeline, Namenskonvention der Clips und Quellen: `docs/design/characters-pipeline.md`.
+
+```
+root                                   Bodenhöhe, trägt Root Motion
+└─ pelvis
+   ├─ spine_01 ─ spine_02 ─ spine_03
+   │  ├─ neck ─ head
+   │  │         └─ socket_helmet
+   │  ├─ clavicle_l ─ upperarm_l ─ lowerarm_l ─ hand_l
+   │  │     hand_l: thumb_01..03_l, index_01..03_l, middle_01..03_l, ring_01..03_l, pinky_01..03_l,
+   │  │             socket_hand_l (Fackel, Bogen, Zauber)
+   │  ├─ clavicle_r … hand_r (spiegelbildlich), socket_hand_r (Waffe, Werkzeug)
+   │  ├─ socket_back_2h   Zweihänder auf dem Rücken
+   │  ├─ socket_back_bow  Bogen/Armbrust auf dem Rücken
+   │  └─ socket_quiver    Köcher
+   ├─ socket_hip_1h       Einhandwaffe am Gürtel (links)
+   ├─ thigh_l ─ calf_l ─ foot_l ─ ball_l
+   └─ thigh_r ─ calf_r ─ foot_r ─ ball_r
+```
+- Sockets haben keine Vertex-Gewichte; ihre Lage/Ausrichtung definiert den Griffpunkt.
+- Max. 4 Knochengewichte pro Vertex, max. 128 Knochen pro Skelett (`kMaxBones`).
+- Gesicht: Morph-Targets (Namen siehe characters-pipeline.md §6).

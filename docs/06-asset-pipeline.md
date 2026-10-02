@@ -22,7 +22,7 @@
 ## Konventionen für Blender-Exporte
 - Einheiten: **1 Einheit = 1 Meter**, +Y oben in der Engine (glTF-Standard).
 - Menschen-Skelett: ein gemeinsames humanoides Rig für alle menschlichen NPCs (Animations-Wiederverwendung wie in Gothic).
-  Knochennamen und Attachment-Knochen (`hand_r`, `hand_l`, `spine_weapon_1h`, `spine_weapon_2h`, `bow`, `head`) sind fest definiert in `docs/modules/animation.md`.
+  Knochennamen und Sockets sind im Abschnitt „Referenz-Skelett“ in `docs/modules/animation.md` festgelegt; Clip-Namen und Events: `docs/design/characters-pipeline.md`.
 - Kollisionsgeometrie: Objekte mit Präfix `COL_` werden nicht gerendert, nur als Kollision gekocht.
 - LODs: Suffix `_LOD1`, `_LOD2`.
 - Mob-Slots / Interaktionspunkte: Empties mit Präfix `SLOT_` (z. B. `SLOT_USE_0`).
