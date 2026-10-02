@@ -1,3 +1,4 @@
+#include <g7/core/Config.hpp>
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/platform/Paths.hpp>
@@ -6,15 +7,23 @@
 #include <charconv>
 #include <cstdlib>
 #include <filesystem>
+#include <limits>
+#include <optional>
 #include <string_view>
 #include <system_error>
 
-int main(int argc, char** argv)
+namespace
 {
-    g7::EngineConfig config;
-    config.appName = "Gothar";
-    config.window.title = "Gothar";
+struct CommandLine
+{
+    bool smokeTest = false;
+    bool fullscreen = false;
+    std::optional<g7::u64> frames;
+};
 
+std::optional<CommandLine> parseCommandLine(int argc, char** argv)
+{
+    CommandLine cli;
     for (int i = 1; i < argc; ++i)
     {
         const std::string_view arg = argv[i];
@@ -24,13 +33,11 @@ int main(int argc, char** argv)
         }
         else if (arg == "--smoke-test")
         {
-            // Headless run used by CI: a few frames, then exit.
-            config.headless = true;
-            config.maxFrames = 10;
+            cli.smokeTest = true;
         }
         else if (arg == "--fullscreen")
         {
-            config.window.mode = g7::platform::WindowMode::Fullscreen;
+            cli.fullscreen = true;
         }
         else if (arg.starts_with("--frames="))
         {
@@ -40,18 +47,22 @@ int main(int argc, char** argv)
             if (error != std::errc{} || end != value.data() + value.size())
             {
                 G7_LOG_FATAL("game", "invalid value for --frames: '{}'", value);
-                return EXIT_FAILURE;
+                return std::nullopt;
             }
-            config.maxFrames = frames;
+            cli.frames = frames;
         }
         else
         {
             G7_LOG_WARN("game", "unknown argument '{}'", arg);
         }
     }
+    return cli;
+}
 
+void setupDirectories(const char* argv0)
+{
     std::error_code ec;
-    g7::fs::Path gameDir = std::filesystem::weakly_canonical(g7::fs::Path(argv[0]), ec).parent_path();
+    g7::fs::Path gameDir = std::filesystem::weakly_canonical(g7::fs::Path(argv0), ec).parent_path();
     if (ec || gameDir.empty())
     {
         gameDir = std::filesystem::current_path(ec);
@@ -68,8 +79,82 @@ int main(int argc, char** argv)
     g7::fs::setBaseDirectories({.gameDir = gameDir, .userDir = userDir});
     G7_LOG_DEBUG("game", "game directory: {}", g7::fs::toUtf8(gameDir));
     G7_LOG_DEBUG("game", "user directory: {}", g7::fs::toUtf8(userDir));
+}
 
-    g7::Engine engine(config);
+/// Default config shipped with the game, overridden key by key by the user config.
+g7::Config loadSettings()
+{
+    g7::Config settings;
+    if (auto defaults = g7::Config::load(g7::fs::gamePath("config/engine.toml")))
+    {
+        settings = std::move(defaults).value();
+    }
+    else
+    {
+        G7_LOG_WARN("game", "default config not loaded ({}), using built-in defaults",
+                    defaults.error().message);
+    }
+
+    const g7::fs::Path userConfig = g7::fs::userPath("config.toml");
+    if (g7::fs::exists(userConfig))
+    {
+        if (auto user = g7::Config::load(userConfig))
+        {
+            settings.merge(user.value());
+            G7_LOG_INFO("game", "user config applied: {}", g7::fs::toUtf8(userConfig));
+        }
+        else
+        {
+            G7_LOG_WARN("game", "user config ignored: {}", user.error().message);
+        }
+    }
+    return settings;
+}
+
+g7::u32 toDimension(g7::i64 value, g7::u32 fallback)
+{
+    return value > 0 && value <= std::numeric_limits<int>::max() ? static_cast<g7::u32>(value) : fallback;
+}
+} // namespace
+
+int main(int argc, char** argv)
+{
+    const auto cli = parseCommandLine(argc, argv);
+    if (!cli)
+    {
+        return EXIT_FAILURE;
+    }
+    setupDirectories(argv[0]);
+
+    g7::EngineConfig config;
+    config.appName = "Gothar";
+    config.settings = loadSettings();
+
+    config.window.title = "Gothar";
+    config.window.size.width = toDimension(config.settings.get<g7::i64>("window.width", 1600), 1600);
+    config.window.size.height = toDimension(config.settings.get<g7::i64>("window.height", 900), 900);
+    if (config.settings.get<bool>("window.fullscreen", false))
+    {
+        config.window.mode = g7::platform::WindowMode::Fullscreen;
+    }
+
+    // Command line wins over config files.
+    if (cli->fullscreen)
+    {
+        config.window.mode = g7::platform::WindowMode::Fullscreen;
+    }
+    if (cli->frames)
+    {
+        config.maxFrames = *cli->frames;
+    }
+    if (cli->smokeTest)
+    {
+        // Headless run used by CI: a few frames, then exit.
+        config.headless = true;
+        config.maxFrames = 10;
+    }
+
+    g7::Engine engine(std::move(config));
     if (auto result = engine.init(); !result)
     {
         G7_LOG_FATAL("game", "engine init failed: {}", result.error().message);

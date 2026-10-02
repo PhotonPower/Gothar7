@@ -86,8 +86,8 @@ std::optional<GamepadButton> gamepadButtonFromName(sv);
 ### Engine-Anbindung
 `EngineConfig::headless` (kein Fenster; `--smoke-test`) und `EngineConfig::window` (`WindowDesc`).
 `Engine::run` ruft pro Frame `input.beginFrame()` und `pollEvents(input)` auf und beendet sich, wenn es
-`false` liefert; `engine.input()` gibt den Zustand frei. Mit `--verbose` werden gedrückte Tasten/Knöpfe
-geloggt (bis das Aktions-Mapping existiert). Kommandozeile: `--fullscreen`, `--frames=N`.
+`false` liefert; `engine.input()` gibt den Zustand frei. Mit `--verbose` werden gedrückte **Aktionen**
+geloggt (siehe Aktions-Mapping). Kommandozeile: `--fullscreen`, `--frames=N`.
 
 ### Tests ohne Bildschirm
 CTest setzt für die Suiten `platform` und `runtime` `SDL_VIDEO_DRIVER=offscreen`; die CI führt
@@ -96,16 +96,42 @@ einzige Stelle außerhalb von `platform` SDL direkt: synthetische Ereignisse (`S
 virtuelles Gamepad (`SDL_AttachVirtualJoystick`). Der Offscreen-Treiber kennt keinen relativen Mausmodus;
 der Test meldet das und prüft ihn nur mit echtem Treiber.
 
-## Geplante API (Rest von M1)
+### `Actions.hpp` – Aktions-Mapping
 ```cpp
 namespace g7::platform {
 enum class Action : u16 { MoveForward, MoveBack, StrafeLeft, StrafeRight, TurnLeft, TurnRight,
-    Run /*toggle*/, Sneak, Jump, Action /*Gothic: Aktionstaste*/, DrawWeapon, DrawMagic,
-    Inventory, Log, Status, QuickSave, QuickLoad, Console, Pause, ... };
-// Aktions-Mapping: Action → Liste von Key/MouseButton/GamepadButton-Namen aus [bindings] der Config;
-// isDown/pressed/released(Action) über Input.
+    Run /*Umschalter*/, Sneak, Jump, Action /*Gothic-Aktionstaste*/, Attack, Use, DrawWeapon, DrawMagic,
+    Inventory, Log, Status, Map, QuickSave, QuickLoad, Console, Pause, Count };
+std::string_view name(Action);  std::optional<Action> actionFromName(sv);      // "move_forward" …
+using InputBinding = std::variant<Key, MouseButton, GamepadButton>;
+std::optional<InputBinding> bindingFromName(sv);  std::string_view name(const InputBinding&);
+
+class ActionMap {
+public:
+    static ActionMap fromConfig(const Config&, std::string_view scheme);   // [bindings.<scheme>]
+    void writeTo(Config&, std::string_view scheme) const;                 // Optionsmenü (M14)
+    void bind(Action, InputBinding); void clear(Action);
+    std::span<const InputBinding> bindings(Action) const;
+    bool isDown(const Input&, Action) const;    // irgendeine gebundene Eingabe gehalten
+    bool pressed(const Input&, Action) const;   // irgendeine in diesem Frame gedrückt
+    bool released(const Input&, Action) const;  // eine losgelassen und keine mehr gehalten
+};
 }
 ```
+- Spiel-Logik fragt **nur Aktionen** ab, nie Tasten. Mehrere Eingaben pro Aktion (Tastatur + Gamepad).
+- `fromConfig` überspringt unbekannte Aktionen, unbekannte Eingabenamen und falsche Typen mit einer
+  Warnung im Log – ein Tippfehler in der Config verhindert nie den Spielstart.
+- **Zwei Schemata** in `game/config/engine.toml`: `classic` (Gothic-artig: Aktionstaste + Richtung,
+  `attack`/`use` leer) und `modern` (Maus-Angriff, E zum Benutzen, `action`/`turn_*` leer).
+  Auswahl über `[input] scheme`, Stick-Totzone über `[input] stick_deadzone`.
+- Analoge Bewegung (Stick) und Mausblick folgen mit Charaktersteuerung und Kamera in M5.
+
+### Konfiguration
+`game/src/main.cpp` lädt `gamePath("config/engine.toml")` (wird beim Bauen neben die Executable kopiert)
+und legt `userPath("config.toml")` per `Config::merge` darüber; Kommandozeilen-Schalter gewinnen.
+`[window]` (`width`, `height`, `fullscreen`) setzt der Aufrufer in `EngineConfig::window`, die Engine
+liest `[input]` und `[bindings.<scheme>]` aus `EngineConfig::settings`, stellt `engine.actions()` bereit
+und loggt mit `--verbose` jede gedrückte Aktion (`action draw_weapon`).
 
 ## Gothic-Bezug
 Gothic 1 nutzt eine Aktionstaste (Strg) in Kombination mit Richtungstasten (Angriff, Aufheben,

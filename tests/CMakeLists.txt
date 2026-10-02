@@ -17,3 +17,5 @@ target_link_libraries(g7_tests_platform PRIVATE SDL3::SDL3)
 
 # Window tests run without a display (CI, headless machines): SDL's offscreen video driver.
 set_tests_properties(platform runtime PROPERTIES ENVIRONMENT "SDL_VIDEO_DRIVER=offscreen")
+# test_actions.cpp validates the shipped default configuration.
+target_compile_definitions(g7_tests_platform PRIVATE G7_GAME_CONFIG_DIR="${CMAKE_SOURCE_DIR}/game/config")
