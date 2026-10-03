@@ -24,6 +24,8 @@ REPO = ROOT.parents[1]
 SPEC = json.loads((ROOT / "data" / "leonberg" / "schloss.json").read_text(encoding="utf-8"))
 PALETTE = json.loads((ROOT / "data" / "building_rules.json").read_text(encoding="utf-8"))["palette"]
 GLB = REPO / "assets" / "source" / "worlds" / "leonberg" / "handmade" / "schloss" / "schloss.glb"
+# the spec the schloss command built from: ground of each wing and garden terraces from the DGM
+BUILT = json.loads(GLB.with_name("schloss_built.json").read_text(encoding="utf-8"))
 BUDGET = 15000  # agreed with engine, no LOD
 geo = schloss_geometry()
 
@@ -92,17 +94,25 @@ def test_handmade_item_and_file(tmp_path: Path):
 def test_versioned_data_is_consistent():
     doc = load(ROOT / "data" / "leonberg" / "handmade.json")
     item = next(i for i in doc["items"] if i["key"] == "schloss")
-    assert item == schloss_item(SPEC, item["mesh"])
+    assert item == schloss_item(BUILT, item["mesh"])
+    assert {k: v for k, v in BUILT.items() if k not in ("wings", "garden")} == {
+        k: v for k, v in SPEC.items() if k not in ("wings", "garden")
+    }  # only measured ground is added
+    assert [{k: v for k, v in w.items() if k != "terrain"} for w in BUILT["wings"]] == [
+        {k: v for k, v in w.items() if k != "terrain"} for w in SPEC["wings"]
+    ]
     overrides = load_all(ROOT / "data" / "leonberg" / "buildings")
     for bid in SPEC["replaces"]:
         assert overrides[bid].keep is False
     data = GLB.read_bytes()
     gl, _ = read_glb(data)
     names = [n["name"] for n in gl["nodes"]]
-    assert names[0] == "schloss" and sum(n.startswith("COL_HULL_") for n in names) == 4
+    built = geo.build(BUILT)
+    assert names[0] == "schloss"
+    assert [n for n in names if n.startswith("COL_HULL_")] == [n for n, _, _ in built.collision]
     tris = sum(gl["accessors"][p["indices"]]["count"] // 3
                for p in gl["meshes"][gl["nodes"][0]["mesh"]]["primitives"])  # fmt: skip
-    assert tris == model().triangles() <= BUDGET
+    assert tris == built.triangles() <= BUDGET
     assert {m["name"] for m in gl["materials"]} <= set(PALETTE)
 
 

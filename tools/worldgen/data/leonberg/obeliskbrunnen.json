@@ -27,14 +27,16 @@
         "step_lower"
       ],
       "shape": "prism",
-      "belowM": 1.0
+      "belowM": 1.0,
+      "sides": 16
     },
     {
       "nodes": [
         "step_upper"
       ],
       "shape": "prism",
-      "belowM": 1.0
+      "belowM": 1.0,
+      "sides": 16
     },
     {
       "nodes": [

@@ -141,13 +141,16 @@ class Wing:
         self.doors: dict[int, list[tuple[float, float, float]]] = {1: [], -1: []}  # u0, u1, top
         terr = spec.get("terrain") or {}
         self._terrain = {1: terr.get("court"), -1: terr.get("garden")}
+        # sample positions along the wing (fractions); the schloss command measures fresh ones
+        # from the DGM, including the wing ends
+        self.terrain_f = tuple(float(f) for f in terr.get("f", TERRAIN_F))
 
     def terrain(self, side: int, s: float) -> float:
         """Ground in front of a long side at s (linear between the samples of schloss.json)."""
         vals = self._terrain.get(side)
         if not vals:
             return self.ground
-        xs = [self.length * f for f in TERRAIN_F]
+        xs = [self.length * f for f in self.terrain_f]
         if s <= xs[0]:
             return float(vals[0])
         for xa, va, xb, vb in zip(xs, vals, xs[1:], vals[1:], strict=False):
@@ -199,7 +202,7 @@ def _long_facade(m: Model, w: Wing, side: int) -> None:
     want = w.out(side)
     top = w.eave
     length = w.length
-    xs = [0.0] + [length * f for f in TERRAIN_F] + [length]
+    xs = sorted({0.0, *(length * f for f in w.terrain_f), length})
 
     def soc(s: float) -> float:
         return w.terrain(side, s) + SOCLE_M
@@ -772,8 +775,10 @@ def _oriel(m: Model, spec: dict, w: Wing) -> None:
     w.skip[side].append((s_c - width / 2, s_c + width / 2))
     t0, t1 = side * w.half, side * (w.half + depth)
     h_storey = (w.eave - w.ground) / w.storeys
-    y0, y1 = w.ground + h_storey * 1.0 + 0.4, w.eave - 0.4
     a, b = s_c - width / 2, s_c + width / 2
+    # on the upper storey, but never in the ground where the slope rises at the wing end
+    ground = max(w.terrain(side, a), w.terrain(side, b))
+    y0, y1 = max(w.ground + h_storey * 1.0 + 0.4, ground + 1.0 + 0.6), w.eave - 0.4
     c = [w.p(a, t0, y0), w.p(b, t0, y0), w.p(b, t1, y0), w.p(a, t1, y0)]
     m.poly(
         "stone",
@@ -916,6 +921,11 @@ class GardenFrame:
         return self.wing.p(*self.st(s, t), y)
 
     def ground(self, g: dict, s: float, t: float) -> float:
+        """Garden ground at (s, t): the level of its terrace (``terracePlan``) or the plane."""
+        plan = g.get("terracePlan")
+        if plan:
+            best = min(plan["terraces"], key=lambda tr: max(tr["s"][0] - s, s - tr["s"][1], 0.0))
+            return float(best["y"])
         return garden_ground(g, *self.st(s, t))
 
 
@@ -999,6 +1009,9 @@ def _garden(m: Model, spec: dict) -> None:
             y = min(w.ground(g, a, b) for a, b in quad) - 0.3
             top = max(w.ground(g, a, b) for a, b in quad) + hh
             m.box("hedge", [w.p(a, b, y) for a, b in quad], top - y)
+    plan = g.get("terracePlan")
+    if plan:
+        _terrace_walls(m, w, plan)
     f = g.get("fountain")
     if f:
         cs, ct, r = float(f["s"]), float(f["t"]), float(f["r"])
@@ -1035,6 +1048,89 @@ def _garden(m: Model, spec: dict) -> None:
             )
         water = [(p[0], top - 0.2, p[2]) for p in inner]
         m.poly("water", water, (0.0, 1.0, 0.0))
+
+
+TOP_LANDING_M = 3.0  # stone landing above an outer terrace flight, as wide as the ledges
+
+
+def _terrace_walls(m: Model, w: GardenFrame, plan: dict) -> None:
+    """Retaining walls, landings and flights of the garden terraces (``garden_terraces.plan``)."""
+
+    def quad(piece: dict) -> list[tuple[float, float]]:
+        (a0, b0), (a1, b1), (ni, nj) = piece["a"], piece["b"], piece["in"]
+        k = float(piece.get("t", plan["wallT"]))
+        return [(a0, b0), (a1, b1), (a1 + ni * k, b1 + nj * k), (a0 + ni * k, b0 + nj * k)]
+
+    for wall in plan["walls"]:
+        y0, y1 = float(wall["y0"]), float(wall["y1"])
+        m.box("stone", [w.p(a, b, y0) for a, b in quad(wall)], y1 - y0)
+    for i, body in enumerate(plan["bodies"]):
+        y0, y1 = float(body["y0"]), float(body["y1"])
+        q = quad(body)
+        m.body(
+            f"COL_HULL_terrace_wall_{i}",
+            [w.p(a, b, y0) for a, b in q],
+            [w.p(a, b, y1) for a, b in q],
+        )
+    for i, land in enumerate(plan.get("landings", [])):
+        (s0, s1), (t0, t1) = land["s"], land["t"]
+        y0, y1 = float(land["y0"]), float(land["y1"])
+        q = [(s0, t0), (s1, t0), (s1, t1), (s0, t1)]
+        m.box("stone", [w.p(a, b, y0) for a, b in q], y1 - y0)
+        m.body(
+            f"COL_HULL_terrace_landing_{i}",
+            [w.p(a, b, y0) for a, b in q],
+            [w.p(a, b, y1) for a, b in q],
+        )
+    rise, run = float(plan["rise"]), float(plan["run"])
+    for i, st in enumerate(plan["stairs"]):
+        (ts, tt), (ds, dt) = st["top"], st["dir"]
+        y0, y1, half = float(st["y0"]), float(st["y1"]), float(st["w"]) / 2
+        n = max(1, math.ceil((y1 - y0) / rise))
+        step = (y1 - y0) / n
+        cut = bool(st.get("cut"))
+        ps, pt = -dt, ds  # across the flight
+
+        def corner(u: float, v: float, o: tuple = (ts, tt, ds, dt, ps, pt)) -> tuple[float, float]:
+            return (o[0] + o[2] * u + o[4] * v, o[1] + o[3] * u + o[5] * v)
+
+        for k in range(n - 1 if not cut else n):
+            # an ordinary flight falls away from the edge; a sunk one rises away from it
+            top = y1 - (k + 1) * step if not cut else y0 + (k + 1) * step
+            if not cut and top <= y0 + 1e-6:
+                break
+            quad = [
+                corner(k * run, -half),
+                corner((k + 1) * run, -half),
+                corner((k + 1) * run, half),
+                corner(k * run, half),
+            ]
+            m.box("stone", [w.p(a, b, y0 - 0.2) for a, b in quad], top - (y0 - 0.2))
+        length = (n - (0 if cut else 1)) * run
+        side = bool(st.get("side"))
+        if not cut and not side:  # a landing on top, so the flight starts flush with the ground
+            quad = [corner(-TOP_LANDING_M, -half), corner(0.0, -half), corner(0.0, half),
+                    corner(-TOP_LANDING_M, half)]  # fmt: skip
+            m.box("stone", [w.p(a, b, y0 - 0.2) for a, b in quad], y1 - (y0 - 0.2))
+            m.body(f"COL_HULL_terrace_top_{i}", [w.p(a, b, y0 - 0.2) for a, b in quad],
+                   [w.p(a, b, y1) for a, b in quad])  # fmt: skip
+        if cut and not side:  # cheek walls along a sunk flight
+            for v0, v1 in ((-half - 0.3, -half), (half, half + 0.3)):
+                quad = [corner(0.0, v0), corner(length, v0), corner(length, v1), corner(0.0, v1)]
+                m.box("stone", [w.p(a, b, y0 - 0.3) for a, b in quad], y1 - (y0 - 0.3))
+        # collision: a ramp over the flight
+        bottom = [
+            corner(0.0, -half),
+            corner(length, -half),
+            corner(length, half),
+            corner(0.0, half),
+        ]
+        near, far = (y1, y0) if not cut else (y0, y1)
+        m.body(
+            f"COL_HULL_terrace_stair_{i}",
+            [w.p(a, b, y0 - 0.2) for a, b in bottom],
+            [w.p(a, b, near if j in (0, 3) else far) for j, (a, b) in enumerate(bottom)],
+        )
 
 
 def garden_splat(spec: dict) -> dict | None:

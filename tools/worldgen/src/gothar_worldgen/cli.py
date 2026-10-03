@@ -39,6 +39,7 @@ from gothar_worldgen.config import (
 )
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.export.descents import dig_descents
+from gothar_worldgen.export.pads import apply_pads
 from gothar_worldgen.export.splat import SplatPaths, composite, coverage, layer_masks, write_splat
 from gothar_worldgen.export.starts import DEFAULT_STARTS, load_starts
 from gothar_worldgen.export.terrain import ExportError, Grid, crop, export_terrain, load_grid
@@ -69,16 +70,25 @@ from gothar_worldgen.handmade import (
     build_marktbrunnen,
     build_schloss,
     find_blender,
+    garden_plan,
     marktbrunnen_item,
     put_item,
     schloss_item,
     splat_areas,
+    with_garden_plan,
+    with_wing_terrain,
 )
 from gothar_worldgen.handmade import footprints as handmade_footprints
 from gothar_worldgen.handmade import load as load_handmade
+from gothar_worldgen.handmade import pads as handmade_pad_list
 from gothar_worldgen.handmade import save as save_handmade
 from gothar_worldgen.importer import run_import
-from gothar_worldgen.owner_models import OwnerModelError, garden_placements, kept_meshes
+from gothar_worldgen.owner_models import (
+    OwnerModelError,
+    fitted_placement,
+    garden_placements,
+    kept_meshes,
+)
 from gothar_worldgen.owner_models import handmade_item as owner_item
 from gothar_worldgen.owner_models import load_spec as load_owner_spec
 from gothar_worldgen.owner_models import prepare_job as prepare_owner_job
@@ -518,6 +528,9 @@ def _cmd_begehung(args: argparse.Namespace, out: TextIO) -> int:
           f"kinds {doors.get('kinds', {})}", file=out)  # fmt: skip
     bad = [c["name"] for c in report["citywall"] if not c["ok"]]
     print(f"  city wall: {'all measures fit' if not bad else ', '.join(bad)}", file=out)
+    sunk = [f"{g['name']} ({g['buried']} points, {g['deepest']} m)" for g in report["grounding"]
+            if not g["ok"]]  # fmt: skip
+    print(f"  hand-made models: {'all on the ground' if not sunk else ', '.join(sunk)}", file=out)
     print(f"  {target}", file=out)
     return EXIT_OK
 
@@ -652,16 +665,26 @@ def _cmd_schloss(args: argparse.Namespace, out: TextIO) -> int:
     out_blend = folder / "generated" / "schloss" / "schloss.blend"
     try:
         spec = json.loads(spec_path.read_text(encoding="utf-8"))
-        line = build_schloss(Path(blender), spec_path, data_dir.parent / "building_rules.json",
+        local = load_local(args.config_dir)
+        grid = load_grid(DataPaths(local.data_root, site.name).work)
+        spec = with_wing_terrain(spec, grid.height_at)  # the socle reaches the ground
+        spec = with_garden_plan(spec, garden_plan(spec, grid.height_at))
+        # versioned beside the model: the spec with the ground measured from the DGM
+        built = out_glb.with_name("schloss_built.json")
+        built.parent.mkdir(parents=True, exist_ok=True)
+        text = json.dumps(spec, ensure_ascii=False, indent=1) + "\n"
+        built.write_text(text, encoding="utf-8", newline="\n")
+        line = build_schloss(Path(blender), built, data_dir.parent / "building_rules.json",
                              out_glb, out_blend)  # fmt: skip
         mesh = f"worlds/{site.name}/handmade/schloss/schloss.glb"
         doc = put_item(load_handmade(data_dir / "handmade.json"), schloss_item(spec, mesh))
         save_handmade(data_dir / "handmade.json", doc)
-    except (OSError, json.JSONDecodeError, HandmadeError) as e:
+    except (OSError, json.JSONDecodeError, HandmadeError, ExportError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
     print(f"  {line}", file=out)
     print(f"  {out_glb}", file=out)
+    print(f"  {built}", file=out)
     print(f"  {out_blend} (not versioned)", file=out)
     print(f"  {data_dir / 'handmade.json'}", file=out)
     return EXIT_OK
@@ -683,7 +706,7 @@ def _cmd_marktbrunnen(args: argparse.Namespace, out: TextIO) -> int:
         spec = json.loads(spec_path.read_text(encoding="utf-8"))
         grid = load_grid(paths.work)
         r = max(float(st["radius"]) for st in spec["collision"]["steps"])
-        ground = min(
+        ground = max(  # ground rule: on the highest ground under the lower step
             grid.height_at(r * f * math.cos(k * math.pi / 8), r * f * math.sin(k * math.pi / 8))
             for f in (0.0, 0.5, 1.0)
             for k in range(16)
@@ -725,16 +748,19 @@ def _cmd_garten(args: argparse.Namespace, out: TextIO) -> int:
             meshes = kept_meshes(specs[key][0], spec_path.parent / specs[key][0]["source"])
             lo, hi = mesh_bounds(meshes)
             radii[key] = float(max(abs(lo[0]), abs(lo[2]), abs(hi[0]), abs(hi[2])))
-        placements = {p.key: p for p in garden_placements(schloss, radii)}
         doc = load_handmade(data_dir / "handmade.json")
+        castle = next((i for i in doc.get("items", []) if i.get("key") == "schloss"), {})
+        terraces = castle.get("terraces")  # level terraces of the garden (gothar-worldgen schloss)
+        placements = {p.key: p for p in garden_placements(schloss, radii, terraces=terraces)}
         for key, name in files.items():
             spec, spec_path = specs[key]
             out_glb = folder / "handmade" / name / f"{name}.glb"
-            fence = key == "garten_gelaender"
-            shear = placements["garten_gelaender"].shear if fence else (0.0, 0.0)
+            fence = placements["garten_gelaender"] if key == "garten_gelaender" else None
+            shear = fence.shear if fence else (0.0, 0.0)
             work = folder / "generated" / name
             job = prepare_owner_job(spec, spec_path, rules["palette"], out_glb,
-                                    work / f"{name}.blend", shear)  # fmt: skip
+                                    work / f"{name}.blend", shear,
+                                    fence.lifts if fence else None)  # fmt: skip
             line = run_owner_blender(Path(blender), job, work / "job.json", subprocess.run)
             print(f"  {line}", file=out)
             mesh = f"worlds/{site.name}/handmade/{name}/{name}.glb"
@@ -749,6 +775,40 @@ def _cmd_garten(args: argparse.Namespace, out: TextIO) -> int:
     for p in placements.values():
         print(f"  {p.key}: pos {list(p.pos)}, yaw {math.degrees(p.yaw):.1f} deg", file=out)
     print(f"  {data_dir / 'handmade.json'}", file=out)
+    return EXIT_OK
+
+
+def _cmd_kirche(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    blender = args.blender or find_blender()
+    if blender is None:
+        print("error: Blender not found (set G7_BLENDER or --blender)", file=sys.stderr)
+        return EXIT_ERROR
+    try:
+        rules = json.loads((data_dir.parent / "building_rules.json").read_text(encoding="utf-8"))
+        spec_path = data_dir / "kirche.json"
+        spec = load_owner_spec(spec_path)
+        grid = load_grid(paths.work)
+        meshes = kept_meshes(spec, spec_path.parent / spec["source"])
+        place, foundation = fitted_placement(spec, grid.height_at, meshes)
+        out_glb = folder / "handmade" / "kirche" / "kirche.glb"
+        work = folder / "generated" / "kirche"
+        job = prepare_owner_job(spec, spec_path, rules["palette"], out_glb, work / "kirche.blend",
+                                foundation=foundation)  # fmt: skip
+        line = run_owner_blender(Path(blender), job, work / "job.json", subprocess.run)
+        mesh = f"worlds/{site.name}/handmade/kirche/kirche.glb"
+        doc = put_item(load_handmade(data_dir / "handmade.json"),
+                       owner_item(place, mesh, spec.get("replaces")))  # fmt: skip
+        save_handmade(data_dir / "handmade.json", doc)
+    except (OSError, json.JSONDecodeError, OwnerModelError, KeyError, ExportError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"  {line}", file=out)
+    print(f"  kirche: pos {list(place.pos)}, yaw {math.degrees(place.yaw):.2f} deg", file=out)
+    print(f"  {out_glb}", file=out)
     return EXIT_OK
 
 
@@ -846,6 +906,10 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             if dug["doors"] or dug["skippedForWays"]:
                 print(f"  descents: {dug['doors']} hillside doors, {dug['cells']} cells, "
                       f"{dug['skippedForWays']} left out (a way there)", file=out)  # fmt: skip
+        handmade_pads = handmade_pad_list(load_handmade(data_dir / "handmade.json"))
+        if handmade_pads:  # level ground under hand-made objects (garden terraces, buildings)
+            grid, padded = apply_pads(grid, handmade_pads)
+            print(f"  pads: {len(handmade_pads)} level areas, {padded} cells", file=out)
         ways_doc = data_dir / "ways.json"
         if ways_doc.is_file():  # E5: steep stretches of ways limited, leaving the DGM there
             street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
@@ -856,6 +920,8 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             print(f"  ways: {smoothed['ways']} steep stretches limited to {smoothed['maxDeg']} deg "
                   f"(steepest {smoothed['maxDegBefore']} deg), {smoothed['cellsChanged']} cells, "
                   f"{smoothed['remaining']} left after the last pass", file=out)  # fmt: skip
+            if handmade_pads:  # the smoothing must not lift the terraces or fill under ledges
+                grid, _ = apply_pads(grid, handmade_pads)
         splat = None
         if not args.no_splat:
             gardens = splat_areas(load_handmade(data_dir / "handmade.json"))
@@ -989,6 +1055,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_garten)
+
+    p = sub.add_parser("kirche", help="town church from the owner's model (W6)")
+    p.add_argument("site")
+    p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_kirche)
 
     p = sub.add_parser("assemble", help="terrain + buildings -> <site>.g7world with stable VobIds")
     p.add_argument("site")

@@ -68,6 +68,7 @@ gothar-worldgen citywall leonberg          REM Stadtmauer (W6): generated/citywa
 gothar-worldgen schloss leonberg           REM Schloss (W6) aus blender/schloss/build_schloss.py (Blender nötig), handmade/schloss/
 gothar-worldgen marktbrunnen leonberg      REM Marktbrunnen (W6) aus dem Modell des Projektinhabers per blender/marktbrunnen/build_marktbrunnen.py (Blender nötig)
 gothar-worldgen garten leonberg            REM Pomeranzengarten (W6): Geländer, Obelisk- und Gartenbrunnen aus Modellen des Projektinhabers (Blender nötig)
+gothar-worldgen kirche leonberg            REM Stadtkirche (W6) aus dem Modell des Projektinhabers (Blender nötig)
 gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
 gothar-worldgen begehung leonberg          REM statische Begehung → generated/begehung.json (docs/design/leonberg-begehung.md)
 gothar-worldgen walk-routes leonberg       REM Routen für gothar --walk → generated/walk/{stations,ways,gates}.json
