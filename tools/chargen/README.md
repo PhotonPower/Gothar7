@@ -18,6 +18,7 @@ tools/chargen/
     clipspec.py, report.py        Clip-Listen lesen/prüfen; Abgleich animation-list.md ↔ Clips
     figure.py                     Figur-Manifeste figures/<name>.figure.toml (Teile, LOD-Anteile, Palette)
     human.py                      Menschen-Rezepte humans/<name>.human.toml (MPFB-Makros, Assets, Tönungen)
+    faces.py, data/faces/         Gesichts-Morph-Targets: Vertragsnamen und ihre MPFB-Quellziele (morphs.toml)
     images.py                     PNG/JPEG-Kopf lesen (Größe, Format, Alpha) für die Textur-Regeln
     meshdata.py, fit.py           Mesh-Daten (Ränder, Gewichte); Passform-Prüfung (Nähte, LOD-Ränder)
     gltf.py                       kleiner .glb-Leser/-Schreiber (Accessoren, Knoten-Transformationen)
@@ -38,7 +39,8 @@ tools/chargen/
       assemble_figure.py          Figuren-Baukasten: Teile → Referenz-Armatur, Palette, LODs (Decimate, Ränder fest)
       build_test_parts.py         Testteile (Box-Körper mit offenem Hals, passender Kopf, Lumpen, Haare)
       mpfb_human.py               baut einen Menschen mit MPFB2 aus einem Rezept (einziges Skript mit MPFB-Aufrufen)
-      conform_human.py            MPFB-Rig → Referenz-Rig, Kopf abtrennen, reduzieren, Materialien/Texturen, Teile
+      conform_human.py            MPFB-Rig → Referenz-Rig, Gesichts-Morphs mischen/übertragen, Kopf abtrennen,
+                                  reduzieren (Morphs baryzentrisch), Materialien/Texturen, Teile
       keyframes.py                Keyframe-Platzhalter-Rezepte (strafe, turn, ladder, slide, keyposes, advance, ...)
       prepare_monster.py          CC0-Tier → Monster-Rig: Bewegung aufzeichnen, umbenennen, drehen, skalieren, neu keyen
   tests/                          pytest (synthetische Fehlerfälle auf Basis der Referenz-.glb)
@@ -85,7 +87,7 @@ Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 | `pose.*` | Bind-Pose = Referenz-T-Pose: lokale Rotation je Knochen ≤ 5° (Warnung ab 1°), Knochenlänge ±15 % (Warnung ab 5 %) |
 | `skin.*` | Knoten stehen in der Bind-Pose (inverse Bind-Matrizen), ≤ 4 Gewichte je Vertex, Summe 1, Sockets ohne Gewichte |
 | `mesh.*` | Größe 1,50–2,10 m (Warnung außerhalb 1,65–1,95 m; Monster: ±30 %/±10 % der Rig-Höhe), Füße auf dem Boden |
-| `morph.name` | nur Morph-Target-Namen aus characters-pipeline.md §6 |
+| `morph.*` | nur Namen aus §6.1; ein Mesh mit Morphs trägt die vollständige Liste in Vertragsreihenfolge, jede Primitive alle Targets, höchstens 16 je Mesh |
 | `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung; `anim.jump`: kein Sprung zwischen zwei Frames (Fehler ab 120°/0,5 m, Warnung ab 90°); `anim.loop`: Schleifen `s_*` geschlossen (Warnung ab 5°); Monster: Clip-Modus = Art, `anim.root_motion`: `s_walk`/`s_run` ≥ 0,1 m/s vorwärts, `t_turn_l/r` ≥ 45° um +Y in die richtige Richtung |
 | `lod.*` | LOD-Vertrag §2.2: Stufen lückenlos ab 0, gleicher Eltern-Knoten/Transformation/Skin, Morphs nur auf `_lod0`, Anteil lod1 ≤ 60 %, lod2 ≤ 30 % (Warnung) |
 | `mesh.budget` | höchstens 20 k Dreiecke je Figur bei lod0 (nicht für Teile unter `parts/`) |

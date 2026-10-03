@@ -383,7 +383,7 @@ Mindest-Set (Platzhalter): `wolf`, `keiler`, `laufvogel`; offen: eigene Rigs/Art
 
 ## F3 – Figuren-Baukasten  (benötigt F1)
 - [ ] 2 Grundkörper × 3 Staturen (MPFB2, Stil A realistisch), Köpfe als separate Meshes mit Morph-Targets
-  - Stand: Werkzeug `gothar-chargen human` (Rezept → MPFB2 → Referenz-Rig → Teile body/head/hair, Texturen extern, Textur-Vertrag §2.3); erste Figur `farmer` (14,3 k Dreiecke, 3 LOD-Stufen). Offen: weitere Körper/Staturen, Köpfe mit Morph-Targets (Viseme/Ausdrücke), Kleidung als einzeln kombinierbare Teile
+  - Stand: Werkzeug `gothar-chargen human` (Rezept → MPFB2 → Referenz-Rig → Teile body/head/hair, Texturen extern, Textur-Vertrag §2.3); erste Figur `farmer` (14,3 k Dreiecke, 3 LOD-Stufen). Köpfe mit 15 Gesichts-Morph-Targets (Viseme, Blinzeln, Ausdrücke; Vertrag mit engine §6.1, mit Zähnen/Zunge). Offen: weitere Körper/Staturen (2 × 3), Kleidung als einzeln kombinierbare Teile, 5 Test-NPCs
 - [ ] Haare/Bärte, erste Kleidungs-/Rüstungslinien (Lumpen, leicht, mittel)
 - [x] Baukasten-Werkzeug: Zusammensetzen, Passform-Prüfung, LODs, Farbvarianten – `gothar-chargen assemble` (Manifest `figures/<name>.figure.toml`, Palette), `fit.*`/`lod.*`/`mesh.budget` im Validator, LOD-Vertrag mit engine (characters-pipeline.md §2.2); getestet mit eigenen Testteilen (`parts/test`, Figuren `test_plain`, `test_rags`). ADR 0018 (MPFB2) angenommen
 - [ ] Stil-Referenzblatt Figuren (gemeinsam mit W5)

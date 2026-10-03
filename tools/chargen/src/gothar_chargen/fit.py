@@ -19,6 +19,15 @@ import numpy as np
 
 from gothar_chargen.gltf import Gltf
 from gothar_chargen.meshdata import MeshData, mesh_data, split_lod
+from gothar_chargen.postprocess import material_role
+
+# parts inside the head (eyes, mouth): their open borders never close against another part
+INNER_ROLES = frozenset({"eyes", "eyebrows", "eyelashes", "teeth", "tongue"})
+
+
+def _inner(material: str) -> bool:
+    return material_role(material) in INNER_ROLES
+
 
 CLOSING_ROLES = ("body", "head")
 LOOSE_ROLES = ("hair", "beard")
@@ -59,7 +68,7 @@ def check_fit(gltf: Gltf, tol: FitTolerances | None = None) -> list[FitIssue]:
     if not parts:
         return issues
     data: dict[tuple[str, int], MeshData] = {
-        key: mesh_data(gltf, idx) for key, idx in parts.items()
+        key: mesh_data(gltf, idx, skip_material=_inner) for key, idx in parts.items()
     }
     levels = sorted({level for _, level in parts})
     for level in levels:

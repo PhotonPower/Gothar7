@@ -20,9 +20,9 @@ bind_pose = "T"
 max_bones = 128
 max_influences = 4
 
-# Morph targets allowed on human heads (characters-pipeline.md §6).
+# Morph targets of human heads in contract order (characters-pipeline.md §6, data/faces/morphs.toml).
 morph_targets = [
-    "vis_aa", "vis_ee", "vis_ih", "vis_oh", "vis_ou", "vis_mbp", "vis_fv", "vis_l", "vis_rest",
+    "vis_aa", "vis_ee", "vis_ih", "vis_oh", "vis_ou", "vis_mbp", "vis_fv", "vis_l",
     "blink_l", "blink_r",
     "expr_angry", "expr_friendly", "expr_fear", "expr_pain", "expr_sleep",
 ]

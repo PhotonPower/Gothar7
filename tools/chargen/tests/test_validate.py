@@ -230,8 +230,8 @@ def test_unskinned_mesh_is_a_warning(figure, rig, reference):
 def test_unknown_morph_target(figure, rig, reference):
     figure.doc["meshes"][0]["extras"]["targetNames"][0] = "smile"
     report = check(figure, rig, reference)
-    assert codes(report) == {"morph.name"}
-    assert "smile" in report.errors[0].message
+    assert codes(report) == {"morph.name", "morph.order"}
+    assert any("smile" in e.message for e in report.errors if e.code == "morph.name")
 
 
 @pytest.mark.parametrize(("top", "level"), [(2.5, "error"), (1.6, "warning"), (1.0, "error")])

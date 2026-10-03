@@ -16,6 +16,8 @@ skin = "skins/middleage_caucasian_male/middleage_caucasian_male.mhmat"
 eyes = "eyes/low-poly/low-poly.mhclo"
 eyebrows = "eyebrows/eyebrow001/eyebrow001.mhclo"
 eyelashes = "eyelashes/eyelashes01/eyelashes01.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"
 hair = "hair/cortu_short_messy_hair/cortu_short_messy_hair.mhclo"
 clothes = [
     "clothes/elvs_crude_t-shirt_male/elvs_crude_t-shirt_male.mhclo",

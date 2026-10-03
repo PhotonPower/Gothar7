@@ -28,6 +28,7 @@ ERROR = "error"
 WARNING = "warning"
 
 _ROOT = "root"
+MAX_MORPHS = 16  # per mesh (engine, §6)
 _MAX_LISTED = 8  # bones listed per message before "..."
 
 
@@ -67,6 +68,8 @@ class Tolerances:
         ("eyes", 256),
         ("eyebrows", 256),
         ("eyelashes", 256),
+        ("teeth", 256),
+        ("tongue", 256),
     )
 
 
@@ -365,6 +368,7 @@ class _Checker:
             self.r.error(
                 "morph.name", f"morph targets not in the naming contract (§6): {_listed(unknown)}"
             )
+        self._check_morph_sets(meshes)
 
         if skinned and np.isfinite(max_y) and not part_file:
             height = max_y - min_y
@@ -385,6 +389,33 @@ class _Checker:
                 )
             if abs(min_y) > self.tol.ground:
                 self.r.warning("mesh.ground", f"lowest vertex at y = {min_y:.3f} m, expected ~0")
+
+    def _check_morph_sets(self, meshes: list[dict[str, Any]]) -> None:
+        """Contract §6 (engine): a mesh with morph targets carries the complete list in contract
+        order, every primitive has one target per name, at most 16 per mesh."""
+        contract = list(self.rig.morph_targets)
+        for mesh in meshes:
+            names = list(mesh.get("extras", {}).get("targetNames", []))
+            counts = {len(p.get("targets", [])) for p in mesh.get("primitives", [])}
+            if not names and counts <= {0}:
+                continue
+            label = mesh.get("name", "?")
+            if len(names) > MAX_MORPHS:
+                self.r.error(
+                    "morph.count", f"mesh '{label}': {len(names)} morph targets (max {MAX_MORPHS})"
+                )
+            if names != contract:
+                self.r.error(
+                    "morph.order",
+                    f"mesh '{label}': morph targets must be the full contract list in order "
+                    f"({', '.join(contract)}), got {_listed(names)}",
+                )
+            if counts != {len(names)}:
+                self.r.error(
+                    "morph.primitives",
+                    f"mesh '{label}': every primitive needs {len(names)} targets, "
+                    f"got {sorted(counts)}",
+                )
 
     # --- LOD levels (contract §2.2) ------------------------------------------------------------
 

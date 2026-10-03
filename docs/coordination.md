@@ -35,7 +35,7 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 | `VobId` (64 Bit, je Welt eindeutig, nie wiederverwendet; `nextVobId` in `.g7world`) | engine | welt (Assembler vergibt IDs) | ADR 0005, `docs/modules/world.md` |
 | Referenz-Skelett, Sockets | figuren + engine gemeinsam | beide | `docs/modules/animation.md` |
 | Clip-Namen, `events.toml` | figuren | engine (M6) | `characters-pipeline.md` §3 |
-| Morph-Target-Namen | figuren | engine (M6, M10 Lippensync) | `characters-pipeline.md` §6 |
+| Gesichts-Morph-Targets (15 Namen in fester Reihenfolge, nur `head_lod0`, gleiche Liste auf allen Kopf-Meshes, Normalen, sparse, ≤ 16 je Mesh) | figuren | engine (M6, M10 Lippensync) | `characters-pipeline.md` §6.1 |
 | LOD-Stufen in Figuren-`.glb` (`_lod0`–`_lod2`), Dreiecks-Budget | figuren | engine (M6, Cooker) | `characters-pipeline.md` §2.2 |
 | Figuren-Texturen (extern unter `characters/textures/`, Größen je Rolle, Formate, alphaMode MASK, VRAM-Budget) | figuren | engine (M6, Cooker) | `characters-pipeline.md` §2.3 |
 | Monster-Rigs (Rig je Art: TOML + Referenz-`.glb`, Pflichtknochen, Clips `<art>/…`, Root Motion `s_walk`/`s_run`/`t_turn_l/r`, Events) | figuren | engine (M6, M9 Monster-KI) | `characters-pipeline.md` §7.1 |
