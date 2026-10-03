@@ -232,11 +232,28 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   - Ein frischer Checkout hat die Heightmap erst nach `import` und `export-terrain`, beides braucht DATA_ROOT.
 - **Leonberg:** 2000 × 2000 Samples zu 1 m, x und z jeweils −999,5 … 999,5, Höhen −50,991 … 94,85 m,
   Auflösung 2,23 mm.
-- **Splatmap (W2 Teil 2):**
-  - Kommt, sobald engines Teil B (`splat`/`holes`) gemergt ist.
-  - Die Splat-Karten landen in `generated/`; der Cooker erkennt sie am `terrain`-Block und kocht sie linear.
-  - Prozedurale Platzhalter-Albedos liegen versioniert in `assets/source/worlds/<ort>/`.
-  - Die endgültigen Gelände-Texturen sind eine Gestaltungsfrage für später (Stil-Referenzblatt W5).
+- **Splatmap (W2 Teil 2, `export/splat.py`):** `export-terrain` schreibt zusätzlich den `splat`-Block
+  (abschalten mit `--no-splat`). Das ist eine Grundbelegung als Ausgangspunkt für die Mal-Pinsel im Editor.
+  - **7 Schichten** (Kanalreihenfolge = Schichtreihenfolge):
+    - Wiese (Rückfall)
+    - Kopfstein: Straßen und Plätze im Kernbereich
+    - Kies: Straßen und Plätze außerhalb, Bahnlinien
+    - Matsch: unter Gebäuden plus 1,5 m Rand, an Bächen und Gräben
+    - Waldboden: Wald, Gebüsch, Einzelbäume mit 3 m Radius
+    - Acker: Ackerland, Kleingärten, Gärten
+    - Fels: Neigung über 35–45°, weich eingeblendet
+    - Autobahnen hinterlassen keine Spur.
+  - **Raster:** Die Masken werden auf dem Heightmap-Raster gezeichnet, 1 Pixel = 1 Sample.
+    Danach 1,5 m weichgezeichnet und nach Priorität übereinandergelegt
+    (Acker < Waldboden < Fels < Matsch < Kies < Kopfstein); die Gewichte ergeben je Pixel 1.
+  - **Ablage:** Zwei RGBA-Karten `generated/<name>_splat0/1.png` (linear, ohne gAMA/iCCP, nicht versioniert,
+    bei Leonberg zusammen 4,4 MB). Der Cooker erkennt sie am `terrain`-Block und kocht sie linear.
+  - **Platzhalter-Albedos:** `assets/source/worlds/<ort>/layers/*.png`, 128 × 128, kachelbar, prozedural und
+    deterministisch, versioniert, zusammen etwa 35 KB. Die endgültigen Gelände-Texturen sind eine
+    Gestaltungsfrage für später (Stil-Referenzblatt W5).
+  - **Leonberg** (ganze 2 km): Wiese 41 %, Matsch 23 % (alle Gebäude einschließlich Neubaugebiete),
+    Acker 15 %, Waldboden 9 %, Kies 8 %, Kopfstein 2 %, Fels 2 %.
+  - `holes` wird noch nicht geschrieben (keine Löcher nötig); Keller und Höhleneingänge kommen später.
 
 ### W-C Gebäude-Generator (Blender-Add-on „Gothar Buildings“, Python/bpy)
 - Eingabe: `buildings.json` + Overrides; Ausgabe: ein `.glb` pro Gebäude (+ LODs) und ein Sammel-Index.
