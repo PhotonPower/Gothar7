@@ -60,12 +60,12 @@ gothar-worldgen export-terrain leonberg    REM assets/source/worlds/leonberg/leo
 gothar-worldgen facade preview leonberg <id> --image pano.jpg --pose x,z --heading 90   REM entzerrte Fassaden
 gothar-worldgen facade frames leonberg VID_0001.mp4 --gpx VID_0001.gpx   REM Einzelbilder + Posen (braucht ffmpeg)
 gothar-worldgen facade ui leonberg         REM Annotations-Oberfläche im Browser (http://127.0.0.1:8765/)
-gothar-worldgen buildings leonberg         REM Klötzchen-Gebäude als .glb (generated/buildings/), --area all
-gothar-worldgen buildings leonberg --mode medieval   REM Fachwerk-Stil (docs/design/leonberg-stil.md) + Rückbau (§7)
+gothar-worldgen buildings leonberg         REM Fachwerk-Stil + Rückbau (Vorgabe medieval), generated/buildings/, --area all
+gothar-worldgen buildings leonberg --mode massing   REM echtes LoD2 als graue Klötzchen (Maßstabsreferenz)
 gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
 ```
 Reihenfolge für die Welt: `import` → `export-terrain` → `buildings` → `assemble`; prüfen mit
-`build\release\game\gothar.exe --world=worlds/leonberg/leonberg.g7world --start=START_UEBERSICHT`.
+`build\release\game\gothar.exe --world=worlds/leonberg/leonberg.g7world --start=START_UEBERSICHT --time=12:00`.
 
 ### Grenzen des glTF-Writers (`buildings/gltf.py`)
 - Pro Datei genau ein Mesh und ein Knoten; ein oder mehrere Dreiecks-Primitives mit je einem untexturierten
