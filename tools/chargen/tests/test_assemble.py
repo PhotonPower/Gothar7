@@ -200,3 +200,25 @@ def test_eye_height_rule():
     assert not [i for i in check_fit(g) if i.code == "head.eyes"]
     issues = check_fit(g, FitTolerances(eye_height=1.5))
     assert [i.code for i in issues if i.level == "error"] == ["head.eyes"]
+
+
+def test_role_order_is_fixed(repo_tmp):
+    """body, head, hair, beard, then the garments: the key order of a manifest does not matter
+    (the engine assembles in the same fixed order, M6 D2)."""
+    text = (FIGURES / "guard.figure.toml").read_text(encoding="utf-8")
+    head, parts = text.split("[parts]\n")
+    lines = parts.split("\n")
+    hair = next(i for i, line in enumerate(lines) if line.startswith("hair ="))
+    reordered = [lines[hair], *lines[:hair], *lines[hair + 1 :]]  # hair before body and head
+    manifest = repo_tmp / "guard.figure.toml"
+    manifest.write_text(head + "[parts]\n" + "\n".join(reordered), encoding="utf-8")
+    a = assemble_figure(
+        load_figure(FIGURES / "guard.figure.toml"),
+        FIGURES / "guard.figure.toml",
+        CHARACTERS,
+        repo_tmp / "a.glb",
+    )
+    b = assemble_figure(load_figure(manifest), manifest, CHARACTERS, repo_tmp / "a.glb")
+    for doc in (a.doc, b.doc):
+        doc["asset"]["extras"]["gothar"].pop("inputs")  # hashes the manifest text
+    assert a.doc == b.doc and a.bin == b.bin

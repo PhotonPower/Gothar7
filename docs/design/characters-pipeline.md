@@ -253,7 +253,8 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   trägt, z. B. die eingebaute Hose unter enger Rüstungshose; Löcher in zerrissener Kleidung und ein
   5-cm-Streifen an der Halsnaht bleiben). Kit-Texturen sind **neutral grau** (halber Kontrast, Helligkeit 0,55) und
   von allen Staturen geteilt; die Farbe gibt die Palette der Figur als glTF `baseColorFactor`.
-- **Schultern in Bewegung (geprüft in M6, 2026-10-03; Bilder `DATA_ROOTeview3k-shoulders`):** Die frühere Falte
+- **Schultern in Bewegung (geprüft in M6, 2026-10-03; Bilder `DATA_ROOT
+eview3k-shoulders`):** Die frühere Falte
   an den Schulterblättern in der T-Pose ist seit den neu berechneten Masken (F3g) weg; beim Gehen und Rennen sitzen
   die Schultern sauber. In Extremposen (Kletter-Platzhalter, Arm weit nach hinten oben) wölbt sich die Schulter zu
   einem Buckel – **auch die nackte Haut**: Ursache ist das lineare Skinning des Körpers bei so großer Armbewegung aus
@@ -346,7 +347,10 @@ Rezepte und Manifeste; `figures/<name>.glb` entsteht beim Bauen und ist git-igno
     ganz entfallen (`hair`, `beard`; Helme und Kapuzen: `["hair"]`). Es betrifft nur ganze Rollen, keine einzelnen
     Stücke; bei mehreren getragenen Stücken gilt die **Vereinigung**. Lücken unter dem Stück sind Sache von figuren.
   - Berechnet von `gothar-chargen part-data` (reines Python; `gothar-chargen human` ruft es nach dem Bauen auf).
-- **Zusammenbau-Algorithmus** (assemble.py, auch für eine spätere C++-Umsetzung): Skelett und Skin vom Körper,
+- **Zusammenbau-Algorithmus** (assemble.py; in C++ umgesetzt von engine für den Laufzeit-Zusammenbau, M6 D2 / #122,
+  in der CI gegen die Python-Ausgabe aller Manifeste verglichen): **feste Rollen-Reihenfolge** body, head, hair,
+  beard, dann die Kleidung in Listenreihenfolge (unabhängig von der Schlüsselreihenfolge im Manifest; Materialien:
+  head zuerst, dann dieselbe Reihenfolge); Skelett und Skin vom Körper,
   Joints der anderen Teile über die Knochennamen umgehängt; Körper-Dreiecke aus allen `covers` des jeweiligen
   LOD entfernen; Halsring des Körpers auf den des Kopfes legen (Paarung: zyklische Verschiebung und Richtung mit
   kleinster Summe der Abstände), `falloff`-Vertices folgen mit Gewicht; Materialien nach Namen zusammenführen
