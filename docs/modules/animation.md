@@ -115,7 +115,7 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
 - Debug-UI (F1, „Animation“ → „Outfit“): Kopf (gleiches Geschlecht, mit Haar/Bart seines Ordners) und die Stücke der
   Kits zur Statur des Körpers (`cloth_`, `armor_`, `headgear_<g>_<statur>`) an- und ablegen.
 - Grenzen: `body_hash` der Masken prüft erst `gothar-chargen` (die Engine vergleicht nur den Pfad des Körpers);
-  die Rollen-Reihenfolge ist fest (Manifeste mit Bart vor Haar ergeben dieselbe Figur in anderer Material-Reihenfolge).
+  die Rollen-Reihenfolge (body, head, hair, beard, Kleidung) ist fest, in `gothar-chargen assemble` ebenso (#123).
 
 ## Attachments, Gesicht, Look-At (M6 Teil D1, umgesetzt)
 - **Attachments:** `Engine::attachToPlayer(socket, modelPath)` bzw. mit einem in Code erzeugten `MeshData`
