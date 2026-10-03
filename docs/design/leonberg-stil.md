@@ -68,10 +68,23 @@ Vorgesehen:
 - Moos auf nordseitigen Dachflächen
 - leicht verzogene Linien bei alten Häusern (kleine Seed-Variation)
 
-Stand:
-- **Umgesetzt:** Moos auf Nordseiten (eigener Paletteneintrag „Biberschwanz alt, bemoost“).
-- **Folgt ohne Texturen:** verzogene Linien.
-- **Folgt mit Texturen bzw. Trim-Sheets:** Schmutz und Regenstreifen.
+Stand (Schritt 3, Entscheidung Koordinator im Auftrag, 2026-10-03; Werte in `building_rules.json` → `aging`):
+- **Moos** auf Nordseiten: eigener Paletteneintrag „Biberschwanz alt, bemoost“.
+- **Alter je Haus** 0 (neu) bis 1 (alt), deterministisch aus ID und Seed, je Stil verteilt:
+  - Scheune 0,5–1; Ackerbürger 0,4–1; Handwerker 0,3–0,95; Bürger 0,2–0,8; Amtshaus 0,1–0,6; Steinbauten 0–0,4.
+  - Ersatzhäuser aus dem Rückbau 0,1–0,6.
+  - Override `age` (0…1) korrigiert von Hand (Schema §4, Web-UI).
+- **Durchhängender First:** bis 1,5 % der Firstlänge × Alter in der Mitte.
+  - Nur die Firstlinie sackt, Traufen und Giebelenden bleiben. Nachbarhäuser an einer Brandwand klaffen an der
+    Traufe nicht auseinander (Test).
+  - Steinbauten: Faktor 0,1.
+  - Das Dach ist dafür in 4 Bänder entlang des Firsts geteilt.
+- **Schiefe Ständer:** innere Ständer bis 1,2° × Alter, nie in eine Öffnung oder aus dem Geschoss; Eckständer bleiben
+  gerade. Steinbauten haben keine Ständer.
+- **Unregelmäßige Fenster:** Brüstung ±5 cm und Breite ±5 % × Alter; annotierte Öffnungen bleiben exakt.
+- **Leonberg-Kern:** Alter (Klassen) 0.0: 118, 0.2: 321, 0.4: 467, 0.6: 272, 0.8: 228; mittlerer Durchhang 7.6 cm; 1,86 Mio. Dreiecke.
+- **Folgt mit Texturen bzw. Trim-Sheets:** Spritzwasser-Schmutz am Sockel, Regenstreifen.
+- Vorher/Nachher bei 12:00: `PLATZHALTER_alterung_*` (nach engines Dunst-Anpassung #80).
 
 ## Erste Bilder und Justierung (Platzhalter, 2026-10-03)
 Ablage `C:\GotharData\review\w5\` (nicht im Repo).

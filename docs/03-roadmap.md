@@ -327,7 +327,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
   - Stand: `storeys`, `jettyM`, `frontFacade` (Öffnungen), `seed`, `locked`, `keep` werden angewendet; abhaken mit den echten Annotationen
 - [ ] LOD-Erzeugung, Kollisions-Mesh
 - [ ] Stil-Referenzblatt (Farben, Materialien, Alterung) in `docs/design/`
-  - Stand: `docs/design/leonberg-stil.md` (Entscheidung 2026-10-03); Alterung mit Texturen folgt, Farben nach den ersten Bildern justieren
+  - Stand: `docs/design/leonberg-stil.md` (Entscheidung 2026-10-03), Palette justiert, Alterung ohne Texturen umgesetzt (First-Durchhang, schiefe Ständer, unregelmäßige Fenster, Moos); Schmutz und Regenstreifen folgen mit Texturen
 
 **DoD:** Der Marktplatz ist mittelalterlich und stilistisch geschlossen in der Engine zu sehen.
 
