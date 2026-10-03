@@ -231,6 +231,46 @@ TEST_CASE("glTF: mirrored nodes keep counter-clockwise front faces")
     CHECK(nearlyEqual(mesh.vertices[0].normal, Vec3(0, 0, 1))); // still faces +Z after the flip
 }
 
+TEST_CASE("glTF: COL_ nodes become collision parts and are not drawn")
+{
+    GltfBuilder b;
+    const u32 pos = b.addFloats(kTriangle, 3, "VEC3");
+    const u32 idx = b.addIndices16({0, 1, 2});
+    // A cube-ish point cloud: corners (0..1)^3.
+    const u32 cube =
+        b.addFloats({0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1}, 3, "VEC3");
+    const std::string render = b.primitive(pos, std::nullopt, idx, std::nullopt);
+    const std::string cubePrim = b.primitive(cube, std::nullopt, std::nullopt, std::nullopt);
+    const MeshData mesh = require(load(b.json(
+        {render, cubePrim},
+        {R"({"mesh":0,"name":"Wall"})", R"({"mesh":0,"name":"COL_Floor","translation":[0,5,0]})",
+         R"({"mesh":1,"name":"COL_HULL_Body"})",
+         R"({"mesh":1,"name":"COL_BOX_Turned","rotation":[0,0.7071068,0,0.7071068],"scale":[2,1,1]})"})));
+
+    CHECK(mesh.vertices.size() == 3); // only "Wall" is drawn
+    CHECK(mesh.bounds.max.y == doctest::Approx(1.0f));
+    REQUIRE(mesh.collision.size() == 3);
+    const CollisionPart& floor = mesh.collision[0];
+    CHECK(floor.kind == CollisionPart::Kind::Mesh);
+    CHECK(floor.indices == std::vector<u32>{0, 1, 2});
+    CHECK(nearlyEqual(floor.points[2], Vec3(0, 6, 0), 1e-5f));
+    CHECK(mesh.collision[1].kind == CollisionPart::Kind::Hull);
+    CHECK(mesh.collision[1].points.size() == 8);
+    CHECK(mesh.collision[1].indices.empty());
+    // The box: node-space bounds (0..1)^3 scaled 2 in x, then turned 90° about Y -> x 0..1, z -2..0.
+    const CollisionPart& box = mesh.collision[2];
+    CHECK(box.kind == CollisionPart::Kind::Hull);
+    REQUIRE(box.points.size() == 8);
+    Vec3 lo(1e9f), hi(-1e9f);
+    for (const Vec3& p : box.points)
+    {
+        lo = glm::min(lo, p);
+        hi = glm::max(hi, p);
+    }
+    CHECK(nearlyEqual(lo, Vec3(0, 0, -2), 1e-4f));
+    CHECK(nearlyEqual(hi, Vec3(1, 1, 0), 1e-4f));
+}
+
 TEST_CASE("glTF: submeshes per material, non-triangles skipped")
 {
     GltfBuilder b;

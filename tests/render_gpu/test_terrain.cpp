@@ -189,6 +189,20 @@ TEST_CASE("Terrain GPU: the test world loads its terrain through the engine")
     CHECK(engine.runFrame());
     CHECK(engine.visibleTerrainChunks() > 0);
     CHECK(engine.renderDevice()->debugErrorCount() == 0);
+
+    // Collision (M5): the terrain, its holes and the camp's walls.
+    const physics::PhysicsWorld& collision = engine.physics();
+    CHECK(collision.stats().bodies > 1);
+    const auto ground = collision.raycast(Vec3(-150.0f, 100.0f, -120.0f), Vec3(0, -1, 0), 500.0f);
+    REQUIRE(ground.has_value());
+    CHECK(ground->position.y == doctest::Approx(engine.terrain()->heightAt(-150.0f, -120.0f)).epsilon(0.02));
+    CHECK(ground->userData == 0);
+    CHECK_FALSE(
+        collision.raycast(Vec3(126.0f, 100.0f, -4.0f), Vec3(0, -1, 0), 500.0f).has_value()); // the pit
+    // Vob 1, a wooden wall at x 13 facing z: a ray along z at knee height hits a mesh vob.
+    const auto wall = collision.raycast(Vec3(13.5f, 1.0f, -20.0f), Vec3(0, 0, 1), 40.0f);
+    REQUIRE(wall.has_value());
+    CHECK(wall->userData != 0);
 }
 
 TEST_CASE("Terrain GPU: texture arrays hold equal layers, differences are errors")

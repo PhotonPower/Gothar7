@@ -204,6 +204,13 @@ Result<void> Engine::init()
         G7_LOG_INFO("engine", "control scheme '{}'", scheme);
     }
 
+    auto collision = physics::PhysicsWorld::create();
+    if (!collision)
+    {
+        return Error{"cannot create the physics world: " + collision.error().message};
+    }
+    m_physics = std::move(collision).value();
+
     m_fixedStep = FixedStep(1.0 / m_config.simulationHz);
     m_framePacer = FramePacer(m_config.maxFps);
     m_frameTimer.reset();
@@ -307,10 +314,15 @@ bool Engine::runFrame()
         G7_LOG_DEBUG("engine", "frame hitch: {:.0f} ms, {:.0f} ms simulation time dropped",
                      realSeconds * 1000.0, m_fixedStep.droppedSeconds() * 1000.0);
     }
+    if (steps > 0)
+    {
+        syncPhysics();
+    }
     for (u32 i = 0; i < steps; ++i)
     {
         G7_PROFILE_SCOPE("Engine::fixedUpdate");
-        // TODO(M4+): world/ai/gameplay/physics fixed update
+        // TODO(M5+): ai/gameplay fixed update
+        m_physics.step(m_fixedStep.step());
         // Triggers notice the camera until the player exists (M5).
         const world::TriggerProbe camera{kCameraProbe, m_camera.transform.position, true};
         m_triggers.update(m_scene, std::span(&camera, 1));
@@ -686,6 +698,7 @@ void Engine::refreshReloadedModels()
             {
                 instance.bounds = loaded->mesh.bounds().transformed(instance.transform);
                 m_cullGridDirty = true;
+                m_physicsDirty = true;
             }
         }
         G7_LOG_INFO("engine", "hot reload: {} updated", path);
@@ -705,6 +718,7 @@ void Engine::addInstance(const LoadedModel& model, const Mat4& transform, bool s
     }
     m_instances.push_back({&model, transform, bounds, sizeCullable, vob});
     m_cullGridDirty = true;
+    m_physicsDirty = true;
 }
 
 Result<void> Engine::addGround(f32 size, const Vec3& color, f32 height)
@@ -886,6 +900,7 @@ Result<void> Engine::refreshScene()
                   [&](const SceneInstance& instance) { return instance.model != m_groundModel.get(); });
     m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)};
     m_cullGridDirty = true;
+    m_physicsDirty = true;
     return instantiateScene();
 }
 
@@ -1017,6 +1032,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     m_worldFile = std::move(file);
     m_worldFile.vobs.clear(); // the scene holds them; captured again when the world is left
     m_sceneName = m_worldFile.name.empty() ? path : m_worldFile.name;
+    syncPhysics(); // queries work right after loading
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
                 m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size(),
                 timer.elapsedSeconds() * 1000.0);
@@ -1033,6 +1049,7 @@ void Engine::unloadWorld()
     m_scene.clear();
     m_instances.clear();
     m_cullGridDirty = true;
+    m_physicsDirty = true;
     m_lights.clear();
     m_terrain = {};
     m_heightfield = {};
@@ -1040,6 +1057,7 @@ void Engine::unloadWorld()
     m_groundModel.reset();
     m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)}; // empty
     m_triggers.reset();
+    m_physics.clear();
 }
 
 void Engine::performWorldChange()

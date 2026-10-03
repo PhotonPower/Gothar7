@@ -30,6 +30,10 @@ MeshData sampleMesh()
     mesh.submeshes.push_back({0, 6, static_cast<u32>(mesh.materials.size() - 1)});
     mesh.images.push_back({"textures/leaves.png", {}, "image/png"});
     mesh.images.push_back({"", {1, 2, 3, 4}, "image/jpeg"});
+    mesh.collision.push_back(
+        {CollisionPart::Kind::Hull, {Vec3(0.0f), Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 1)}, {}});
+    mesh.collision.push_back(
+        {CollisionPart::Kind::Mesh, {Vec3(0.0f), Vec3(2, 0, 0), Vec3(0, 0, 2)}, {0, 2, 1}});
     return mesh;
 }
 
@@ -76,6 +80,13 @@ void checkEqual(const MeshData& a, const MeshData& b)
     }
     CHECK(a.bounds.min == b.bounds.min);
     CHECK(a.bounds.max == b.bounds.max);
+    REQUIRE(a.collision.size() == b.collision.size());
+    for (usize i = 0; i < a.collision.size(); ++i)
+    {
+        CHECK(a.collision[i].kind == b.collision[i].kind);
+        CHECK(a.collision[i].points == b.collision[i].points);
+        CHECK(a.collision[i].indices == b.collision[i].indices);
+    }
 }
 
 void setU32(std::vector<u8>& data, usize at, u32 v)
@@ -128,6 +139,25 @@ TEST_CASE("corrupt .g7mesh files are rejected")
         auto data = good;
         setU32(data, 4, 99);
         rejected(data, "version");
+    }
+    SUBCASE("version 1 (no collision) is still read, but not with a collision count")
+    {
+        MeshData plain = sampleMesh();
+        plain.collision.clear();
+        auto data = serializeMesh(plain);
+        setU32(data, 4, 1);
+        auto loaded = deserializeMesh(data, "old.g7mesh");
+        REQUIRE(loaded);
+        CHECK(loaded.value().collision.empty());
+        data = good;
+        setU32(data, 4, 1);
+        rejected(data, "reserved");
+    }
+    SUBCASE("collision index out of range")
+    {
+        auto data = good;
+        setU32(data, data.size() - 4, 7); // the last collision index
+        rejected(data, "collision index");
     }
     SUBCASE("truncated or trailing data")
     {
