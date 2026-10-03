@@ -52,9 +52,12 @@ braucht man für `build-rig`, `build-placeholder`, `export` und das Prüfen von 
 "C:\Program Files\Blender Foundation\Blender 4.5\blender.exe" --online-mode --command extension sync
 "C:\Program Files\Blender Foundation\Blender 4.5\blender.exe" --online-mode --command extension install mpfb --enable
 ```
-Dazu das Asset-Paket **„MakeHuman system assets“** (Haut, Augen, Zähne; CC0) von
-static.makehumancommunity.org/assets/assetpacks/ laden und in Blender über MPFB → „Apply assets“ →
-„Library settings“ → „Install asset pack“ einspielen. **Nur Core-/System-Pakete (CC0)** verwenden;
+Dazu die Asset-Pakete (alle CC0) von static.makehumancommunity.org/assets/assetpacks/ – **„MakeHuman system
+assets“** (Haut, Augen, Brauen, Wimpern), **Shirts 01, Pants 01, Shoes 01, Hair 01** – laden (schnell über
+`files.makehumancommunity.org/asset_packs/<paket>/<paket>_cc0.zip`; der Spiegel `files2` ist sehr langsam) und
+entweder in Blender über MPFB → „Apply assets“ → „Library settings“ → „Install asset pack“ einspielen oder direkt
+nach `%APPDATA%\Blender Foundation\Blender\4.5\extensions\.user\blender_org\mpfb\data` entpacken.
+Rohdateien bleiben unter `DATA_ROOT\characters\mpfb` (nicht im Repo). **Nur Core-/System-Pakete (CC0)** verwenden;
 Community-Pakete erst nach Lizenzprüfung (ADR 0018). Das Plugin (GPLv3) wird nie ins Repo kopiert.
 
 ## Bauen

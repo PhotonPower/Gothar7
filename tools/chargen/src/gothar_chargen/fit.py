@@ -2,9 +2,12 @@
 
 Figure mesh nodes are named by role (``body``, ``head``, ``hair``, ``beard``) plus the LOD suffix
 (characters-pipeline.md §2.2/§6). ``body`` is the base body or the outfit that replaces it.
-Every open border of a closing part (body, head) must meet an open border of another closing part
-of the same LOD level (gap <= `gap` m) with matching skin weights, so the seam neither shows a gap
-nor opens when animated. Loose parts (hair, beard) may have free borders. Borders of LOD levels
+Where an open border of a closing part (body, head) comes near an open border of another closing
+part of the same LOD level (within `search` m), it is a seam: every seam vertex needs a partner
+within `gap` m with matching skin weights, so the seam neither shows a gap nor opens when animated.
+Other open borders (hems, sleeves, holes hidden under clothes) are free. A closing part with open
+borders must be attached to another closing part by at least one seam. Loose parts (hair, beard)
+may have free borders. Borders of LOD levels
 must stay where they are at lod0 (contract §2.2 point 6).
 """
 
@@ -25,6 +28,7 @@ ROLES = CLOSING_ROLES + LOOSE_ROLES
 @dataclass(frozen=True)
 class FitTolerances:
     gap: float = 0.005  # metres between seam vertices
+    search: float = 0.04  # metres: borders closer than this to another part form a seam
     weight: float = 0.05  # max. difference of one joint weight across a seam
     lod_seam: float = 1e-4  # metres: border of lodN vs. lod0
 
@@ -112,7 +116,7 @@ def _check_seams(
                 )
             )
             continue
-        gaps, weight_diffs = [], []
+        gaps, weight_diffs, seam = [], [], 0
         for v in own:
             p = data.positions[v]
             best = None
@@ -122,6 +126,9 @@ def _check_seams(
                 if best is None or d[k] < best[0]:
                     best = (float(d[k]), other, int(other_border[k]))
             dist, other, w = best
+            if dist > tol.search:
+                continue  # free border (hem, sleeve, hidden hole)
+            seam += 1
             if dist > tol.gap:
                 gaps.append(dist)
                 continue
@@ -131,12 +138,21 @@ def _check_seams(
             )
             if diff > tol.weight:
                 weight_diffs.append(diff)
+        if seam == 0:
+            issues.append(
+                FitIssue(
+                    "error",
+                    "fit.gap",
+                    f"{role}_lod{level}: not attached – no open border within "
+                    f"{tol.search * 100:.0f} cm of another part",
+                )
+            )
         if gaps:
             issues.append(
                 FitIssue(
                     "error",
                     "fit.gap",
-                    f"{role}_lod{level}: {len(gaps)} of {len(own)} border vertices have no partner "
+                    f"{role}_lod{level}: {len(gaps)} of {seam} seam vertices have no partner "
                     f"(largest gap {max(gaps) * 1000:.1f} mm, allowed {tol.gap * 1000:.0f} mm)",
                 )
             )

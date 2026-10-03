@@ -1,0 +1,30 @@
+# Farmer (first NPC in style A, decision 2026-10-03): MPFB2 with CC0 core/system packs.
+version = 1
+triangles = 14000
+
+[macro]
+gender = 1.0
+age = 0.75
+muscle = 0.65
+weight = 0.55
+proportions = 0.5
+height = 0.62
+race = { caucasian = 1.0 }
+
+[assets]
+skin = "skins/middleage_caucasian_male/middleage_caucasian_male.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow001/eyebrow001.mhclo"
+eyelashes = "eyelashes/eyelashes01/eyelashes01.mhclo"
+hair = "hair/cortu_short_messy_hair/cortu_short_messy_hair.mhclo"
+clothes = [
+    "clothes/elvs_crude_t-shirt_male/elvs_crude_t-shirt_male.mhclo",
+    "clothes/toigo_wool_pants/toigo_wool_pants.mhclo",
+    "clothes/culturalibre_male_boots/culturalibre_male_boots.mhclo",
+]
+
+[tint]
+elvs_crude_t-shirt_male = "#ebcc9e"
+toigo_wool_pants = "#bf8559"
+cortu_short_messy_hair = "#5a3d29"
+culturalibre_male_boots = "#cc9973"

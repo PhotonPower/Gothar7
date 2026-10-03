@@ -1,0 +1,14 @@
+# Bone mapping: MPFB2 "game_engine" rig -> reference rig (ADR 0018).
+# The MPFB rig has the same 53 body bones; only these two names differ. Its rest pose is an A-pose
+# with MPFB proportions: blender/conform_human.py poses it joint by joint onto the reference rig.
+
+[source]
+name = "MPFB2 game_engine rig"
+license = "rig data CC0 (MakeHuman core assets)"
+
+[bones]
+Root = "root"
+neck_01 = "neck"
+
+[ignore]
+patterns = []

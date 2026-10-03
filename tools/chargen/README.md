@@ -16,6 +16,8 @@ tools/chargen/
     skeleton.py, mapping.py       Laden der Skelett-Definition (spiegelt *_l → *_r) bzw. der Zuordnungen
     clipspec.py, report.py        Clip-Listen lesen/prüfen; Abgleich animation-list.md ↔ Clips
     figure.py                     Figur-Manifeste figures/<name>.figure.toml (Teile, LOD-Anteile, Palette)
+    human.py                      Menschen-Rezepte humans/<name>.human.toml (MPFB-Makros, Assets, Tönungen)
+    images.py                     PNG/JPEG-Kopf lesen (Größe, Format, Alpha) für die Textur-Regeln
     meshdata.py, fit.py           Mesh-Daten (Ränder, Gewichte); Passform-Prüfung (Nähte, LOD-Ränder)
     gltf.py                       kleiner .glb-Leser/-Schreiber (Accessoren, Knoten-Transformationen)
     validate.py                   Rig-Validator (Prüfungen siehe unten)
@@ -34,6 +36,8 @@ tools/chargen/
       curves.py                   Clip-Daten im Speicher, Posen, Überblenden/Verketten
       assemble_figure.py          Figuren-Baukasten: Teile → Referenz-Armatur, Palette, LODs (Decimate, Ränder fest)
       build_test_parts.py         Testteile (Box-Körper mit offenem Hals, passender Kopf, Lumpen, Haare)
+      mpfb_human.py               baut einen Menschen mit MPFB2 aus einem Rezept (einziges Skript mit MPFB-Aufrufen)
+      conform_human.py            MPFB-Rig → Referenz-Rig, Kopf abtrennen, reduzieren, Materialien/Texturen, Teile
       keyframes.py                Keyframe-Platzhalter-Rezepte (strafe, turn, ladder, slide, ...; „platzhalter-K“)
   tests/                          pytest (synthetische Fehlerfälle auf Basis der Referenz-.glb)
 ```
@@ -62,6 +66,7 @@ gothar-chargen build-set all --sources C:\GotharData\characters\quaternius
 gothar-chargen report                         & REM Prio-A-Fortschritt: animation-list.md ↔ anims/
 gothar-chargen assemble [figures\x.figure.toml] & REM Figuren aus Manifesten bauen (alle ohne Argument)
 gothar-chargen build-test-parts               & REM eigene einfache Testteile unter parts/test/
+gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name>/ + textures/ (nur lokal, braucht MPFB)
 ```
 Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 
@@ -78,6 +83,7 @@ Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 | `lod.*` | LOD-Vertrag §2.2: Stufen lückenlos ab 0, gleicher Eltern-Knoten/Transformation/Skin, Morphs nur auf `_lod0`, Anteil lod1 ≤ 60 %, lod2 ≤ 30 % (Warnung) |
 | `mesh.budget` | höchstens 20 k Dreiecke je Figur bei lod0 (nicht für Teile unter `parts/`) |
 | `fit.*` | Figuren mit Rollen-Knoten (`body`, `head`, `hair`, `beard`): jeder offene Rand von body/head trifft einen Rand eines anderen Teils (≤ 5 mm) mit gleichen Gewichten; `lod.seam`: Ränder in allen Stufen wie bei lod0 |
+| `tex.*` | Textur-Vertrag §2.3: Höchstgröße je Rolle, Zweierpotenz, Normal-Map ≤ Basisfarbe, Masken-Rollen alphaMode MASK + PNG mit Alpha, Datei vorhanden; eingebettet = Warnung |
 | `events.*` | `<set>.events.toml` neben der `.glb`: Format, Clips vorhanden, Frames im Clip (Schleifen `s_*`: vor dem letzten Frame) |
 
 ## Keyframe-Platzhalter
