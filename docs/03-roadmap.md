@@ -348,8 +348,9 @@ Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source
 
 **Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört). F2 abgeschlossen: `build-set`,
 `report`, Pose-Marker-Events; 36/36 Prio-A-Clips (18 Quaternius CC0, 18 Keyframe-Platzhalter) und 48 Clips Fortbewegung je Waffenmodus
-(9 Sets). Kein Mixamo (öffentliches Repo). F3 läuft: Baukasten-Werkzeuge (Manifest, Zusammenbau, Passform, LODs) stehen, LOD-Vertrag
-mit engine abgestimmt, ADR 0018 (MPFB2) angenommen; als Nächstes Grundkörper/Köpfe (F3b, Gestaltung durch den Projektinhaber).
+(9 Sets). Kein Mixamo (öffentliches Repo). F3 läuft: Baukasten-Werkzeuge stehen, Stil A (realistisch, Texturen) entschieden,
+Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag mit engine, erste Figur `farmer`; als Nächstes weitere Körper/Köpfe
+(Morph-Targets) und F5-Monster-Platzhalter.
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
@@ -373,10 +374,12 @@ mit engine abgestimmt, ADR 0018 (MPFB2) angenommen; als Nächstes Grundkörper/K
 ✅ Erfüllt: Bericht zeigt 0 fehlende Prio-A-Clips (CI prüft es); dazu 48/48 Clips Prio-B-Fortbewegung. Qualität: Platzhalter (Quaternius CC0 bzw. Keyframe), Ersatz durch Mocap in F4.
 
 ## F3 – Figuren-Baukasten  (benötigt F1)
-- [ ] 2 Grundkörper × 3 Staturen (MPFB2, stilisiert), Köpfe als separate Meshes mit Morph-Targets
+- [ ] 2 Grundkörper × 3 Staturen (MPFB2, Stil A realistisch), Köpfe als separate Meshes mit Morph-Targets
+  - Stand: Werkzeug `gothar-chargen human` (Rezept → MPFB2 → Referenz-Rig → Teile body/head/hair, Texturen extern, Textur-Vertrag §2.3); erste Figur `farmer` (14,3 k Dreiecke, 3 LOD-Stufen). Offen: weitere Körper/Staturen, Köpfe mit Morph-Targets (Viseme/Ausdrücke), Kleidung als einzeln kombinierbare Teile
 - [ ] Haare/Bärte, erste Kleidungs-/Rüstungslinien (Lumpen, leicht, mittel)
 - [x] Baukasten-Werkzeug: Zusammensetzen, Passform-Prüfung, LODs, Farbvarianten – `gothar-chargen assemble` (Manifest `figures/<name>.figure.toml`, Palette), `fit.*`/`lod.*`/`mesh.budget` im Validator, LOD-Vertrag mit engine (characters-pipeline.md §2.2); getestet mit eigenen Testteilen (`parts/test`, Figuren `test_plain`, `test_rags`). ADR 0018 (MPFB2) angenommen
 - [ ] Stil-Referenzblatt Figuren (gemeinsam mit W5)
+  - Stand: Stilentscheidung Figuren gefallen (Stufe A realistisch mit Texturen, 2026-10-03; Stilproben-Seite für den Projektinhaber)
 
 **DoD:** 5 unterscheidbare NPCs in der Engine, alle auf dem Referenz-Rig.
 

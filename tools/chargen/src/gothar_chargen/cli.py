@@ -14,17 +14,22 @@ from gothar_chargen import __version__
 from gothar_chargen.blender_run import (
     BlenderError,
     assemble_figure,
+    build_mpfb_human,
     build_placeholder,
     build_reference_rig,
     build_set,
     build_test_parts,
+    conform_human,
     export_glb,
     find_blender,
+    finish_textures,
 )
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
 from gothar_chargen.figure import SUFFIX as FIGURE_SUFFIX
 from gothar_chargen.figure import FigureError, load_figure
 from gothar_chargen.gltf import Gltf, GltfError
+from gothar_chargen.human import SUFFIX as HUMAN_SUFFIX
+from gothar_chargen.human import HumanError, load_human
 from gothar_chargen.report import ReportError, progress
 from gothar_chargen.skeleton import SkeletonError, load_rig
 from gothar_chargen.validate import Report, reference_pose, validate_file
@@ -214,9 +219,54 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     for manifest, figure in figures:
         glb = manifest.with_name(figure.name + ".glb")
         assemble_figure(blender, manifest, characters, glb)
+        finish_textures(glb, characters / "textures")
         report = validate_file(glb, rig, reference)
         _print_report(report, out)
         ok = ok and report.ok(strict=True)
+    return EXIT_OK if ok else EXIT_ERROR
+
+
+def _cmd_human(args: argparse.Namespace, out: TextIO) -> int:
+    characters = _characters_dir(args)
+    recipes = args.recipes or sorted((characters / "humans").glob("*" + HUMAN_SUFFIX))
+    humans = [(r, load_human(r)) for r in recipes]  # fail early on a bad recipe
+    if not humans:
+        print("error: no human recipes found", file=out)
+        return EXIT_ERROR
+    blender = find_blender(args.blender)
+    rig = load_rig(args.rig)
+    ok = True
+    for recipe, human in humans:
+        parts_dir = characters / "parts" / human.name
+        with tempfile.TemporaryDirectory(prefix="gothar-human-") as tmp:
+            blend = Path(tmp) / f"{human.name}.blend"
+            build_mpfb_human(blender, recipe, blend)
+            log = conform_human(blender, blend, recipe, parts_dir)
+        for line in log.splitlines():
+            if line.startswith("[chargen] wrote"):
+                print(line[10:], file=out)
+        textures = []
+        for glb in sorted(parts_dir.glob("*.glb")):
+            textures += finish_textures(glb, characters / "textures")
+            report = validate_file(glb, rig, None)
+            _print_report(report, out)
+            ok = ok and report.ok(strict=True)
+        for t in textures:
+            print(f"texture {t.relative_to(characters)}", file=out)
+        manifest = characters / "figures" / f"{human.name}{FIGURE_SUFFIX}"
+        if not manifest.exists():
+            parts = "\n".join(
+                f'{role} = "parts/{human.name}/{role}.glb"'
+                for role in ("body", "head", "hair")
+                if (parts_dir / f"{role}.glb").is_file()
+            )
+            manifest.write_text(
+                f"# {human.name}: assembled from parts built by gothar-chargen human\n"
+                f"version = 1\nlods = [1.0, 0.5, 0.2]\n\n[parts]\n{parts}\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            print(f"wrote {manifest.relative_to(characters)}", file=out)
     return EXIT_OK if ok else EXIT_ERROR
 
 
@@ -297,6 +347,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(func=_cmd_assemble)
 
+    p = sub.add_parser("human", help="MPFB2 human from humans/<name>.human.toml -> parts (local)")
+    p.add_argument("recipes", nargs="*", type=Path, help="default: all in humans/")
+    p.add_argument(
+        "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
+    )
+    p.set_defaults(func=_cmd_human)
+
     p = sub.add_parser("build-test-parts", help="own simple test parts for the figure kit")
     p.add_argument(
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
@@ -332,6 +389,7 @@ def main(argv: Sequence[str] | None = None, out: TextIO | None = None) -> int:
         ClipSpecError,
         FigureError,
         GltfError,
+        HumanError,
         ReportError,
         SkeletonError,
         OSError,

@@ -15,6 +15,9 @@ Umsetzung als Roadmap-Spur **F1–F5** (`docs/03-roadmap.md`), Animationsliste: 
 - **Monster**: ein Rig pro Art bzw. Artenfamilie (Vierbeiner, Vogel, Humanoid-Monster).
 - **Blender** ist das zentrale Werkzeug, Austausch über **glTF (.glb)**.
 - **Stil vor Realismus:** Bewegungen dürfen etwas überzeichnet sein (lesbar aus der Third-Person-Kamera).
+- **Figuren-Stil: realistisch** (Stufe A der Stilproben, Entscheidung des Projektinhabers vom 2026-10-03):
+  MPFB2-Proportionen ohne Kopf-/Handvergrößerung, Oberflächen mit Texturen (Stoff, Leder, Haut). „Stil vor
+  Realismus“ gilt weiter für die Animation, nicht für die Körperform.
   Mocap-Rohdaten werden immer nachbearbeitet (Timing, Posen, Schwung).
 - **Platzhalter zuerst:** Die Engine (M6) startet mit einer CC0-Figur auf dem Referenz-Rig; eigene
   Figuren ersetzen sie später ohne Engine-Änderung.
@@ -89,6 +92,22 @@ fastgltf kennt die Erweiterung nicht, der Blender-Exporter schreibt sie nicht):
 Materialien und Budget (`lod.*`, `mesh.budget`). Laufzeitauswahl folgt in M6; bis dahin ist das ein Datenvertrag,
 den Validator und Cooker prüfen bzw. ablegen.
 
+### 2.3 Texturen (Vertrag mit engine, abgestimmt 2026-10-03)
+
+- **Externe Dateien statt eingebettet:** Figuren-Texturen liegen unter `assets/source/characters/textures/<kategorie>/`
+  (`skin`, `face`, `hair`, `cloth`) und werden aus den `.glb` per relativer URI referenziert; der Cooker macht daraus
+  den VFS-Pfad `characters/textures/…` und KTX2. So teilen sich Figuren Haut-, Stoff- und Ledertexturen auf der
+  Platte und (mit dem GPU-Textur-Cache der Engine ab M6) im VRAM. Tönungen sind in den Dateinamen enthalten
+  (`toigo_wool_pants_bf8559.jpg`).
+- **Höchstgrößen je Rolle** (Material-Namen: `skin`, `cloth_<asset>`, `hair`, `beard`, `eyes`, `eyebrows`,
+  `eyelashes`): Haut ≤ 2048², Kleidung ≤ 1024², Haare ≤ 1024², Augen/Brauen/Wimpern ≤ 256²; Normal-Maps ≤ der
+  zugehörigen Basisfarbe; Seitenlängen Zweierpotenzen (quadratisch nicht nötig).
+- **Formate:** Basisfarbe sRGB; Normal-Maps linear (Tangentenraum, OpenGL-Konvention +Y), bevorzugt PNG.
+  Deckende Basisfarben dürfen JPEG sein. **Haare, Brauen, Wimpern:** glTF `alphaMode` MASK mit `alphaCutoff` 0,5
+  (nicht BLEND – keine Sortierung, korrekte Schatten), Textur als PNG mit Alphakanal.
+- **Budget:** alle Figuren-Texturen zusammen ≤ 512 MB VRAM (engine); je NPC ohne geteilte Haut ≈ 4–6 MB.
+- Der Validator prüft das (`tex.*`); eingebettete Texturen sind eine Warnung.
+
 ## 3. Namenskonvention für Animationen
 
 ```
@@ -157,7 +176,7 @@ oder `mob/<mobtyp>`).
 |---|---|---|
 | **Quaternius** (u. a. Universal Animation Library 1+2, Tiere, Platzhalter-Figuren) | Rig-Geometrie, Basis-Bewegungen, Platzhalterfigur (`figures/placeholder_mannequin`), F1-Test-Clips | CC0; UAL1/UAL2 „Standard“ direkt von opengameart.org (itch.io blockt automatische Downloads) |
 | ~~Mixamo~~ | **wird nicht verwendet** (Entscheidung 2026-10-03) | Das Repo ist öffentlich; Adobe erlaubt die Nutzung in Spielen, aber keine Weitergabe der Animationsdateien – übertragene Clips im Repo wären genau das |
-| **MPFB2** (MakeHuman für Blender) | Ausgangskörper für eigene Figuren | Ergebnis-Modelle frei nutzbar (vor Nutzung Lizenzhinweise prüfen) |
+| **MPFB2** (MakeHuman für Blender, ADR 0018) mit MakeHuman-Asset-Paketen | Körper, Köpfe, Kleidung, Haare, Texturen | Werkzeug GPL (nur lokal); Core-/System-Assets und die Pakete Shirts 01, Pants 01, Shoes 01, Hair 01 **CC0**; Community-Pakete nur nach Einzelprüfung |
 | **Video-Mocap** (z. B. Rokoko Vision, Move.ai) | Gothic-spezifische Bewegungen, selbst vorgespielt | eigene Aufnahmen; Dienst-Bedingungen beachten |
 | **Keyframe in Blender** | Kampf-Feinschliff, Mob-Interaktionen, Monster | eigene Arbeit |
 
@@ -191,6 +210,13 @@ Technik (F3a): Teile als `.glb` auf dem Referenz-Rig unter `assets/source/charac
 die ihn ersetzt). Die zusammengesetzte Figur hat je Rolle die Knoten `<rolle>_lod0..2`. Teile, die aneinanderstoßen
 (Hals), haben deckungsgleiche offene Ränder mit gleichen Gewichten; der Validator prüft das (`fit.*`).
 Ausgangskörper und Köpfe kommen aus MPFB2 (ADR 0018, nur CC0-Core-/System-Assets).
+
+**Menschen aus MPFB2** (`gothar-chargen human`, nur lokal): Ein Rezept `humans/<name>.human.toml` beschreibt den
+Menschen als Daten (MPFB-Makrowerte, Haut, Augen, Kleidung, Haare, Tönungen, Ziel-Dreiecke). Das Werkzeug baut ihn
+mit MPFB, passt das MPFB-Rig „game_engine“ (gleiche 53 Körperknochen) Gelenk für Gelenk an das Referenz-Rig an,
+trennt den Kopf an der Gewichtsgrenze `head` ≥ 0,5 ab (Naht passend für `fit.*`), reduziert aufs Budget und schreibt
+`parts/<name>/body.glb` (Körper + Kleidung), `head.glb` (Kopf, Augen, Brauen, Wimpern), `hair.glb` sowie die
+Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, Stil A).
 
 - **Körper:** 2 Grundkörper (m/w) × 3 Statur-Varianten, aus MPFB2, stilisiert nachbearbeitet.
 - **Köpfe:** separates Mesh (wie Gothic), Ziel 20+ Gesichter; gemeinsame Morph-Targets:
