@@ -67,7 +67,10 @@ public:
 **Modul `world_format`** (seit M5): Lesen, Schreiben und Prüfen von `.g7world` (`WorldFile.hpp`), der
 `terrain`-Block mit Höhenkodierung (`TerrainRef.hpp`) und die Vob-Komponenten (`Components.hpp`) – ohne Rendern,
 Physik und EnTT, damit Werkzeuge (g7-cook) Welten lesen, ohne die Engine zu linken; nlohmann-json bleibt dort privat.
-Die Header behalten den Pfad `g7/world/` und den Namensraum `g7::world`. In `world` bleiben die Szene
+Die Header behalten den Pfad `g7/world/` und den Namensraum `g7::world` – am Include-Pfad ist das Modul also nicht
+erkennbar. Zuordnung: **`world_format`** (Ziel `g7_world_format`): `WorldFile.hpp`, `TerrainRef.hpp`, `Components.hpp`;
+**`world`** (Ziel `g7_world`): alle übrigen (`Scene.hpp`, `WorldScene.hpp`, `Terrain.hpp`, `Triggers.hpp`,
+`StartPoints.hpp`, `GameTime.hpp`, `DayCycle.hpp` …). In `world` bleiben die Szene
 (`spawnWorld`/`captureWorld` in `WorldScene.hpp`), `Heightfield` (`Terrain.hpp`), Trigger, Startpunkte, Spielzeit
 und Tag/Nacht.
 **VobId-Vertrag** (ADR 0005, `docs/coordination.md`): Jeder Vob hat eine `id` (u64, ≥ 1), eindeutig in der Welt und nie
@@ -131,6 +134,7 @@ Texte kommen aus Inhalt/Definitionen (lokalisiert, M14). Konvention der Engine: 
 | `sound` | `sound`: `sound` (Pflicht, Name einer Sound-Definition), `range` m (> 0, Vorgabe 20), `volume` 0…1 (Vorgabe 1), `mode` `loop`|`random` (Vorgabe loop), `delay` [min, max] s (random; Vorgabe [5, 15]) | Geräuschquelle (wie zCVobSound); bis zur Audio-Phase nur Daten + Debug-Draw. |
 | `trigger` | `trigger`: `shape` `box` (`halfExtents` [x,y,z] > 0, Vorgabe 1) | `sphere` (`radius` > 0, Vorgabe 1), `onEnter`/`onLeave` (Skriptfunktionsnamen, optional), `filter` `player`|`npc`|`any` (Vorgabe player), `once` (Vorgabe false), `target` (**reserviert**: Vob-ID oder Name, gelesen/geschrieben, noch ohne Wirkung) | Volumen, das Betreten/Verlassen meldet. Box dreht und skaliert mit dem Vob, Kugel: Radius × größte Skalierung. |
 | `mob` | `mob`: `definition` (Pflicht, Name der Mob-Definition, M8) + `mesh` wie bei `mesh` | Interaktives Objekt (Bett, Truhe, Tür); bis M8 wie ein Mesh gezeichnet. Fokusname kommt aus der Definition. |
+| `water` (**vereinbart, kommt mit M5 Teil E**) | `water`: `halfExtents` [x,y,z] > 0, `kind` (**reserviert**, z. B. Fluss/Sumpf) | Wasserkörper als Box um `pos`, nur um Y gedreht; **Oberfläche = Oberkante** (pos.y + hy). Schwimmen ab Wassertiefe > Hüfthöhe (0,9 m), Tauchen mit Luftvorrat. Boxen dürfen sich überlappen (Flussabschnitte, Stufen an den Überlappungen). Darstellung der Fläche mit M17, bis dahin Debug-Draw. Ein Gefälle-Feld ist für M17 vorgemerkt. Mit welt abgestimmt. |
 
 **Kategorie (`category`, M4 Sichtbarkeit):** `mesh`-Vobs haben optional `"category": "deco" | "gameplay"`, Vorgabe
 `deco` – geschrieben wird es nur bei `gameplay` (bestehende Welten bleiben bytegleich). `deco` darf ausgeblendet werden,

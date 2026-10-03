@@ -59,7 +59,7 @@ std::vector<u8> serializeMesh(const MeshData& mesh)
     w.u32v(static_cast<u32>(mesh.submeshes.size()));
     w.u32v(static_cast<u32>(mesh.materials.size()));
     w.u32v(static_cast<u32>(mesh.images.size()));
-    w.u32v(0); // reserved
+    w.u32v(static_cast<u32>(mesh.collision.size()));
     writeVec(w, &mesh.bounds.min.x, 3);
     writeVec(w, &mesh.bounds.max.x, 3);
 
@@ -99,6 +99,20 @@ std::vector<u8> serializeMesh(const MeshData& mesh)
         w.string16(clamp16(img.mimeType));
         w.blob32(img.encoded);
     }
+    for (const CollisionPart& part : mesh.collision)
+    {
+        w.u8v(static_cast<u8>(part.kind));
+        w.u32v(static_cast<u32>(part.points.size()));
+        w.u32v(static_cast<u32>(part.indices.size()));
+        for (const Vec3& p : part.points)
+        {
+            writeVec(w, &p.x, 3);
+        }
+        for (const u32 i : part.indices)
+        {
+            w.u32v(i);
+        }
+    }
     return out;
 }
 
@@ -111,7 +125,7 @@ Result<MeshData> deserializeMesh(std::span<const u8> bytes, std::string_view deb
     }
     (void)r.text(sizeof(kMeshMagic));
     const u32 version = r.u32v();
-    if (version != kMeshVersion)
+    if (version < kMeshMinVersion || version > kMeshVersion)
     {
         return meshError(debugName, "unsupported .g7mesh version " + std::to_string(version));
     }
@@ -120,7 +134,7 @@ Result<MeshData> deserializeMesh(std::span<const u8> bytes, std::string_view deb
     const u32 submeshCount = r.u32v();
     const u32 materialCount = r.u32v();
     const u32 imageCount = r.u32v();
-    (void)r.u32v(); // reserved
+    const u32 collisionCount = r.u32v(); // version 1: reserved, always 0
 
     // Reject counts that cannot fit before allocating anything.
     const u64 fixed = u64(vertexCount) * kVertexSize + u64(indexCount) * 4 +
@@ -179,6 +193,41 @@ Result<MeshData> deserializeMesh(std::span<const u8> bytes, std::string_view deb
         img.uri = r.string16();
         img.mimeType = r.string16();
         img.encoded = r.blob32();
+    }
+    if (version == 1 && collisionCount != 0)
+    {
+        return meshError(debugName, "corrupt .g7mesh (reserved field set)");
+    }
+    for (u32 c = 0; c < collisionCount && !r.failed(); ++c)
+    {
+        CollisionPart part;
+        const u8 kind = r.u8v();
+        const u32 pointCount = r.u32v();
+        const u32 partIndexCount = r.u32v();
+        if (kind > static_cast<u8>(CollisionPart::Kind::Mesh))
+        {
+            return meshError(debugName, "corrupt .g7mesh (unknown collision kind)");
+        }
+        if (u64(pointCount) * 12 + u64(partIndexCount) * 4 > r.remaining())
+        {
+            return meshError(debugName, "corrupt .g7mesh (truncated collision part)");
+        }
+        part.kind = static_cast<CollisionPart::Kind>(kind);
+        part.points.resize(pointCount);
+        for (Vec3& p : part.points)
+        {
+            readVec(r, &p.x, 3);
+        }
+        part.indices.resize(partIndexCount);
+        for (u32& i : part.indices)
+        {
+            i = r.u32v();
+            if (i >= pointCount)
+            {
+                return meshError(debugName, "corrupt .g7mesh (collision index out of range)");
+            }
+        }
+        mesh.collision.push_back(std::move(part));
     }
     if (r.failed())
     {

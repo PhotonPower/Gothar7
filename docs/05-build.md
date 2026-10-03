@@ -194,7 +194,7 @@ Standard-Runnern sind damit kostenlos.
 | zstd | `zstd` (ADR 0016) | asset/tools | M3 |
 | EnTT 3.16 (MIT) | `entt` (ADR 0005) | world (öffentlich; Registry nicht in der API) | M4 |
 | nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world (privat, Weltformat `.g7world`) | M4 |
-| Jolt Physics | `joltphysics` | physics | M5 |
+| Jolt Physics 5.6 (MIT) | `joltphysics` (ADR 0004; `nodeps`: FetchContent v5.6.0 mit SHA256) | physics (privat) | M5 |
 | Lua 5.4 + sol2 | `lua`, `sol2` | script | M7 |
 | miniaudio | `miniaudio` | audio | M13 |
 | Tracy | `tracy` | core | M17 |

@@ -41,6 +41,9 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 | Monster-Rigs (Rig je Art: TOML + Referenz-`.glb`, Pflichtknochen, Clips `<art>/…`, Root Motion `s_walk`/`s_run`/`t_turn_l/r`, Events) | figuren | engine (M6, M9 Monster-KI) | `characters-pipeline.md` §7.1 |
 | Monster-Kollisionskapsel `[rig.collision]` (shape/radius/length/offset je Art) | figuren | engine (M5 Physik, M9) | `characters-pipeline.md` §7.1 |
 | `.g7mesh`/`.g7pak`/Cooker-Optionen | engine | welt, figuren | `docs/06-asset-pipeline.md`, ADR 0016 |
+| Kollision in `.glb`: Knoten `COL_BOX_*`/`COL_HULL_*`/`COL_*` (nur diese kollidieren; ohne `COL_` das Render-Mesh), Budget ≤ 200 Dreiecke je Haus; Figuren ohne `COL_` (Kapsel) | engine | welt (Häuser, Zellen), figuren (Mobs, Requisiten) | `docs/modules/asset.md` „Kollision in Modellen“ |
+| Vob-Typ `water` (Box, Oberfläche = Oberkante, `kind` reserviert) – vereinbart, umgesetzt mit M5 Teil E | engine | welt (Glems) | `docs/modules/world.md` „Vob-Typen“ |
+| Kollisionsmaße der Monster `[rig.collision]` in `data/monsters/<art>.toml`; Kapsel Mensch r 0,3 / h 1,8 / Hüfte 0,9 / Augen 1,62 m | figuren | engine (M5 C, M9) | `docs/modules/physics.md`, `characters-pipeline.md` §7.1 |
 
 ## Kommunikation
 

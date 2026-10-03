@@ -8,6 +8,7 @@
 
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace g7::asset
@@ -65,6 +66,25 @@ struct Submesh
     u32 material = 0;
 };
 
+/// Collision geometry of a model from its "COL_" nodes (contract: docs/modules/asset.md), in model
+/// space like the vertices. COL_BOX_* arrives as the 8 corners of a Hull.
+struct CollisionPart
+{
+    enum class Kind : u8
+    {
+        Hull, ///< convex hull of `points` (COL_HULL_*, COL_BOX_*); no indices
+        Mesh, ///< triangles (any other COL_* node)
+    };
+    Kind kind = Kind::Mesh;
+    std::vector<Vec3> points;
+    std::vector<u32> indices;
+};
+
+/// Name prefixes of collision nodes (asset.md).
+inline constexpr std::string_view kCollisionPrefix = "COL_";
+inline constexpr std::string_view kCollisionBoxPrefix = "COL_BOX_";
+inline constexpr std::string_view kCollisionHullPrefix = "COL_HULL_";
+
 /// CPU-side static mesh: node transforms baked in, one submesh per material.
 struct MeshData
 {
@@ -73,7 +93,9 @@ struct MeshData
     std::vector<Submesh> submeshes;
     std::vector<MaterialInfo> materials;
     std::vector<ImageSource> images;
-    AABB bounds;
+    AABB bounds; ///< of the render vertices (collision parts not included)
+    /// COL_ nodes: not drawn. Empty = the model has none and its render mesh collides.
+    std::vector<CollisionPart> collision;
 };
 
 /// Loads the default scene of a glTF 2.0 file (.gltf with external or data: buffers, or .glb)

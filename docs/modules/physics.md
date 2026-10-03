@@ -14,15 +14,55 @@
 - Trigger-Volumen → Ereignisse an `world`.
 - Einfache Rigidbodies (fallende Items, Projektile optional kinematisch).
 
-## Geplante API
+## Umgesetzt (M5 Teil B) – `Physics.hpp`
 ```cpp
 namespace g7::physics {
-class PhysicsWorld { public: Result<void> init(); void step(f64 dt);
-    BodyId addStaticMesh(const CollisionMesh&); BodyId addBody(const BodyDesc&);
-    std::optional<RayHit> raycast(const Ray&, f32 maxDist, LayerMask) const; };
-class CharacterController { public: void setDesiredVelocity(Vec3); void jump();
-    MoveState state() const; std::optional<LedgeInfo> detectLedge() const; void beginClimb(const LedgeInfo&); };
+enum class Layer : u8 { World, Npc, Item, Mob, Trigger, Water, Count };   // LayerMask = u32, layerBit(), kAllLayers
+struct ShapePart { enum class Kind : u8 { Hull, Mesh }; Kind kind; std::vector<Vec3> points; std::vector<u32> indices; };
+struct HeightfieldDesc { u32 width, height; f32 cellSize; Vec2 firstSample; span<const f32> heights; span<const u8> holes; };
+struct RayHit { f32 distance; Vec3 position, normal; Layer layer; u64 userData; };
+class PhysicsWorld {
+    static Result<PhysicsWorld> create(const PhysicsSettings& = {});        // maxBodies, threads
+    Result<ShapeId> createShape(span<const ShapePart>);                     // 1 Teil: die Form; mehrere: StaticCompound
+    Result<BodyId> addStatic(ShapeId, pos, rot, scale, Layer, u64 userData);// Form geteilt, Skalierung auch ungleichmäßig
+    Result<BodyId> addHeightfield(const HeightfieldDesc&, u64 userData = 0);
+    void remove(BodyId); void clear(); void optimize(); void step(f64 seconds);
+    std::optional<RayHit> raycast(origin, dir, maxDistance, LayerMask = kAllLayers) const;
+    std::optional<RayHit> sphereCast(origin, radius, dir, maxDistance, LayerMask = kAllLayers) const;
+    std::vector<u64> overlapSphere(centre, radius, LayerMask = kAllLayers) const;   // userData je Körper einmal
+    PhysicsStats stats() const;                                             // Körper, Formen, Mesh-Dreiecke
+};
 }
 ```
+- **Keine Jolt-Typen in der API** (PImpl). Jolts Registrierung (Allocator, Factory, Typen) ist prozessweit und
+  gezählt, mehrere `PhysicsWorld` (Tests) sind möglich. Jolt rechnet auf eigenen Worker-Threads, die API wird nur vom
+  Hauptthread benutzt.
+- **Layer:** World, Trigger und Water sind statisch (zwei Broad-Phase-Schichten: statisch, beweglich; statisch gegen
+  statisch wird nie geprüft). Abfragen filtern mit einer Maske.
+- **Gelände:** Jolt-`HeightField`, quadratisch auf eine gerade Kantenlänge aufgefüllt (aufgefüllte Proben ohne
+  Kollision). Jolt quantisiert Höhen (8 Bit je 2×2-Block relativ zu dessen Spanne, Fehler im cm-Bereich). **Löcher:**
+  Eine Probe entfällt nur, wenn alle angrenzenden Zellen Löcher sind – das Kollisionsloch ist also nie größer als
+  das gezeichnete, am Rand eines Lochs bleibt bis zu eine Zelle Boden.
+- **Engine-Anbindung** (`runtime/src/EnginePhysics.cpp`): `Engine::physics()` liefert die Welt für Abfragen. Gelände,
+  jede gerenderte Instanz (Form je Modell aus `COL_`-Teilen bzw. Render-Mesh, `asset.md` „Kollision in Modellen“) und
+  die Bodenplatte (flacher Quader) werden zu statischen Körpern; `userData` = `VobId` (0 für Gelände/Bodenplatte).
+  Neuaufbau nach dem Laden einer Welt und vor dem nächsten Simulationsschritt, wenn sich Instanzen geändert haben
+  (Editor, Hot-Reload) – vorerst vollständig, gezielte Änderungen bei Bedarf.
+- **Messung Leonberg-Kern** (Release, 2026-10-03, Gelände 2000 × 2000 + 1405 Häuser):
+  - ohne `COL_` (Render-Meshes, 1,69 Mio. Dreiecke): Aufbau **1,13 s**;
+  - mit den `COL_HULL_` von welt (#93: 2288 Hüllen, Median 20 Dreiecke je Haus, 3 Ersatznetze mit zusammen 355
+    Dreiecken): Aufbau **0,25 s**. Die `COL_`-Knoten werden nicht gezeichnet (Screenshot geprüft).
+
+## Geplant: Charakter-Controller (M5 Teil C–E)
+```cpp
+class CharacterController { public: void setDesiredVelocity(Vec3); void jump();
+    MoveState state() const; std::optional<LedgeInfo> detectLedge() const; void beginClimb(const LedgeInfo&); };
+```
+- **Kapsel Mensch** (mit figuren abgestimmt): Radius 0,3 m, Gesamthöhe 1,8 m, Hüfthöhe 0,9 m (Schwimmen),
+  Augenhöhe 1,62 m; eine Kapsel für alle Menschen.
+- **Monster:** Kapsel je Art aus `data/monsters/<art>.toml`, `[rig.collision]` `shape` (`capsule_upright` |
+  `capsule_lying` entlang +Z), `radius`, `length` (inkl. Halbkugeln), `offset` (zu root, Rig-Raum); liefert figuren.
+- **Kantenklassen:** niedrig ≤ 1,0 m, mittel ≤ 1,6 m, hoch ≤ 2,2 m (Clips `t_climb_low/mid/high` auf diese
+  Obergrenzen gebaut; die Engine skaliert die Root-Höhe nur herunter).
 Bewegung wird überwiegend **animationsgetrieben** (Root Motion bei Klettern/Interaktion), der
 Controller sorgt für Kollision und Bodenhaftung.

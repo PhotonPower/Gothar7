@@ -314,6 +314,85 @@ Result<void> appendPrimitive(const fastgltf::Asset& asset, const fastgltf::Primi
     return {};
 }
 
+/// A triangle primitive of a COL_ node as a collision part (positions in model space).
+Result<void> appendCollision(const fastgltf::Asset& asset, const fastgltf::Primitive& primitive,
+                             const Mat4& world, std::string_view nodeName, MeshData& mesh)
+{
+    const auto positionIt = primitive.findAttribute("POSITION");
+    if (positionIt == primitive.attributes.end())
+    {
+        return Error{"collision primitive without POSITION"};
+    }
+    const fastgltf::Accessor& positions = asset.accessors[positionIt->accessorIndex];
+    std::vector<Vec3> local(positions.count);
+    fastgltf::copyFromAccessor<Vec3>(asset, positions, local.data());
+    if (local.empty())
+    {
+        return {};
+    }
+    CollisionPart part;
+    if (nodeName.starts_with(kCollisionBoxPrefix))
+    {
+        // Bounds in node space, so a turned node gives a turned box.
+        Vec3 lo = local.front();
+        Vec3 hi = local.front();
+        for (const Vec3& p : local)
+        {
+            lo = glm::min(lo, p);
+            hi = glm::max(hi, p);
+        }
+        part.kind = CollisionPart::Kind::Hull;
+        for (int i = 0; i < 8; ++i)
+        {
+            const Vec3 corner(i & 1 ? hi.x : lo.x, i & 2 ? hi.y : lo.y, i & 4 ? hi.z : lo.z);
+            part.points.push_back(Vec3(world * Vec4(corner, 1.0f)));
+        }
+    }
+    else
+    {
+        part.kind = nodeName.starts_with(kCollisionHullPrefix) ? CollisionPart::Kind::Hull
+                                                               : CollisionPart::Kind::Mesh;
+        part.points.reserve(local.size());
+        for (const Vec3& p : local)
+        {
+            part.points.push_back(Vec3(world * Vec4(p, 1.0f)));
+        }
+        if (part.kind == CollisionPart::Kind::Mesh)
+        {
+            if (primitive.indicesAccessor)
+            {
+                const fastgltf::Accessor& accessor = asset.accessors[*primitive.indicesAccessor];
+                part.indices.resize(accessor.count);
+                fastgltf::copyFromAccessor<u32>(asset, accessor, part.indices.data());
+            }
+            else
+            {
+                part.indices.resize(local.size());
+                for (usize i = 0; i < part.indices.size(); ++i)
+                {
+                    part.indices[i] = static_cast<u32>(i);
+                }
+            }
+            for (const u32 index : part.indices)
+            {
+                if (index >= part.points.size())
+                {
+                    return Error{"collision index out of range"};
+                }
+            }
+            if (glm::determinant(Mat3(world)) < 0.0f)
+            {
+                for (usize i = 0; i + 2 < part.indices.size(); i += 3)
+                {
+                    std::swap(part.indices[i + 1], part.indices[i + 2]);
+                }
+            }
+        }
+    }
+    mesh.collision.push_back(std::move(part));
+    return {};
+}
+
 Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
 {
     MeshData mesh;
@@ -338,11 +417,23 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
                 return;
             }
             const Mat4 world = toGlm(matrix);
+            const std::string_view nodeName(node.name.data(), node.name.size());
+            const bool collision = nodeName.starts_with(kCollisionPrefix);
             for (const fastgltf::Primitive& primitive : asset.meshes[*node.meshIndex].primitives)
             {
                 if (primitive.type != fastgltf::PrimitiveType::Triangles)
                 {
                     ++skipped;
+                    continue;
+                }
+                if (collision)
+                {
+                    if (auto result = appendCollision(asset, primitive, world, nodeName, mesh); !result)
+                    {
+                        failure = Error{std::string(debugName) + ": " + std::string(nodeName) + ": " +
+                                        result.error().message};
+                        return;
+                    }
                     continue;
                 }
                 const u32 material =

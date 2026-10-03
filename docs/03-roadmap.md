@@ -109,7 +109,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
   - Stand Teil A: Überlinearität bei vielen Modellen behoben (Ursache `AssetManager::pruneCache`, O(n²) je Frame; 5400 eigene Modelle 83 → ~10 ms), Geometrie-Arena (alle Meshes in gemeinsamen Puffern, 0 Pufferbindungen je Frame), Benchmark mit Draws/Binds. Offen (Teil B): Instancing, Raster, Distanz-/Größen-Culling
   - Stand Teil B1: Raster (64-m-Zellen), Sichtweite `view_distance` und Größen-Culling `size_cull` (nur Deko; `category` deco/gameplay in `.g7world`, Mobs immer gameplay), Vorgaben in engine.toml. 
   - Teil B2: Multi-Draw nach Material-Werten (`glMultiDrawElementsIndirect`, Index über `baseInstance`), geteilte neutrale Texturen; Leonberg-Kern RTX 3,06 → 2,17 ms; auf Intel UHD ~10 % langsamer, daher `multi_draw = "auto"` (aus auf Intel) – offener Punkt in render.md
-  - Offener Punkt: einmaliger Hänger eines lokalen Gesamtlaufs (> 30 min), Ursache ungeklärt (`asset.md`); ctest-Timeouts je Suite gesetzt
+  - Offener Punkt: einmaliger Hänger eines lokalen Gesamtlaufs (> 30 min), Ursache ungeklärt (`asset.md`); ctest-Timeouts je Suite gesetzt. Auch in der CI gesehen (2026-10-03, Windows, Suite `cook` bis zum Timeout, nach Neustart grün) – Idee: Stack-Sicherung per Timeout-Handler in der CI
 - [x] Mehrere Welten + Weltwechsel (Levelwechsel-Trigger) – `trigger.changeWorld`, Wechsel zwischen zwei Frames, Zustand verlassener Welten im Speicher (Spielstand: save), kein Pingpong; Testwelten Lager ↔ Höhle
 - [x] **Editor-Grundlage**: Editor-Modus, Vobs auswählen/verschieben/drehen (Gizmos, ImGuizmo), Welt speichern – `gothar --editor` (`tools/editor`, `EngineTool`), **eigene Gizmos** (ImGuizmo verworfen, ADR 0015-Nachtrag), Auswahl per Klick und Liste, Inspektor, Modelle platzieren, Duplizieren/Löschen, Speichern mit `.bak`, Warnung bei Generator-Vobs (`generator`-Kopf); Undo/Wegnetz/Zonen in M16
 
@@ -123,8 +123,10 @@ Gizmo-Mathematik und Operationen). Die Kollision statischer Welt-Meshes ist nach
 
 ## M5 – Physik & Charaktersteuerung
 - [x] Vorarbeit: Modul `world_format` (`.g7world` ohne render/physics/EnTT), g7-cook linkt nur noch das – geprüft beim Konfigurieren
-- [ ] Jolt Physics integrieren (ADR 0004), Welt-Kollision aus statischem Mesh – Gelände und Architektur (aus M4 verschoben: „Statisches Welt-Mesh mit Kollisionsgeometrie“)
-- [ ] Raycasts/Shapecasts-API (Fokus, Kamera, KI-Sicht)
+- [x] Jolt Physics integrieren (ADR 0004), Welt-Kollision aus statischem Mesh – Gelände und Architektur (aus M4 verschoben: „Statisches Welt-Mesh mit Kollisionsgeometrie“)
+  - Jolt 5.6.0 (vcpkg, `nodeps` per FetchContent mit SHA256); Gelände als HeightField mit Löchern, Modelle aus `COL_`-Knoten (Vertrag mit welt/figuren, `asset.md`) bzw. Render-Mesh, Form je Modell geteilt; `.g7mesh` v2 mit Kollisionsteilen
+  - Leonberg-Kern: Aufbau 1,13 s ohne `COL_` (1,69 Mio. Dreiecke), 0,25 s mit den `COL_HULL_` aus #93 (Release)
+- [x] Raycasts/Shapecasts-API (Fokus, Kamera, KI-Sicht) – `raycast`, `sphereCast`, `overlapSphere` mit Layer-Masken, `Engine::physics()`
 - [ ] Charakter-Controller: gehen, rennen, schleichen, Treppen/Steigungen, rutschen an steilen Hängen
 - [ ] Springen, **Kanten hochziehen** (Kantenerkennung per Shapecast), Fallschaden
 - [ ] Schwimmen/Tauchen (Wasservolumen, Luftvorrat)

@@ -29,8 +29,10 @@ enum class AlphaMode : u8 { Opaque, Mask, Blend };
 struct MaterialInfo { std::string name; Vec4 baseColor; i32 baseColorImage = -1; i32 normalImage = -1; f32 normalScale;
                       Vec3 emissive; i32 emissiveImage = -1; AlphaMode alphaMode; f32 alphaCutoff; bool doubleSided; };
 struct Submesh { u32 firstIndex, indexCount, material; };
+struct CollisionPart { enum class Kind : u8 { Hull, Mesh }; Kind kind; std::vector<Vec3> points; std::vector<u32> indices; };
 struct MeshData { std::vector<Vertex> vertices; std::vector<u32> indices; std::vector<Submesh> submeshes;
-                  std::vector<MaterialInfo> materials; std::vector<ImageSource> images; AABB bounds; };
+                  std::vector<MaterialInfo> materials; std::vector<ImageSource> images; AABB bounds;
+                  std::vector<CollisionPart> collision; };                     // aus COL_-Knoten (M5)
 Result<MeshData> loadGltf(const fs::Path&);                                    // .gltf (+ .bin / data:) oder .glb
 Result<MeshData> loadGltf(std::span<const u8>, const fs::Path& baseDir, std::string_view debugName);   // baseDir leer: nur eigenständige Daten
 }
@@ -47,6 +49,7 @@ Result<MeshData> loadGltf(std::span<const u8>, const fs::Path& baseDir, std::str
 - Materialien (bewusst ohne Metallic/Roughness): Basisfarbe (Faktor linear, Bild sRGB), Normal-Map (linear, `scale`),
   Emissive (Faktor linear, Bild sRGB), `alphaMode`/`alphaCutoff`/`doubleSided` wie in glTF. Bilder als `ImageSource`: URI relativ
   zur Modelldatei oder eingebettete Bytes (`.glb`-bufferView, data:-URI) – Dekodieren mit `decodeImage`/`loadImage`.
+- **Kollisionsgeometrie `COL_` (M5, Vertrag mit welt und figuren):** siehe unten „Kollision in Modellen“.
 - Skins/Animationen: M6. Ab M3 kocht `g7-cook` glTF in ein Laufzeitformat, das dieselbe `MeshData` liefert.
 
 ## Bestand (M3)
@@ -116,11 +119,34 @@ TOC    je Eintrag: pfadHash u64 (StringId::hashOf), offset u64, size u64 (gespei
 std::vector<u8> serializeMesh(const MeshData&);
 Result<MeshData> deserializeMesh(std::span<const u8>, std::string_view debugName = "<memory>");
 ```
-- Version 1: Header (`G7MS`, Zähler, AABB), Vertices im `Vertex`-Layout, u32-Indizes, Submeshes, Materialien, Bilder
-  (Format im Header-Kommentar). Gleiche Daten ergeben gleiche Bytes.
+- Version 2 (M5): Header (`G7MS`, Zähler, AABB), Vertices im `Vertex`-Layout, u32-Indizes, Submeshes, Materialien, Bilder,
+  **Kollisionsteile** (Format im Header-Kommentar; die Anzahl steht im früher reservierten Header-Feld). Version 1
+  (ohne Kollision) wird weiter gelesen. Gleiche Daten ergeben gleiche Bytes. Der Cooker (`kCookerVersion` 2) kocht
+  dadurch einmal alles neu.
 - Beim Lesen wird geprüft: Zähler passen in die Datei (vor dem Anlegen von Speicher), Indizes im Vertex-Bereich,
   Submeshes im Index-Bereich, Material- und Bildverweise gültig, Alpha-Modus bekannt, keine Rest-Bytes.
 - Bildverweise in gekochten Meshes sind VFS-Pfade ab der Wurzel (`textures/wood.png`), eingebettete Bytes leer.
+
+### Kollision in Modellen – `COL_`-Knoten (M5, Vertrag mit welt und figuren)
+- Mesh-Knoten, deren **Name mit `COL_` beginnt**, sind Kollisionsgeometrie: nicht gerendert, Material egal, nicht in
+  `bounds`. Sie landen in `MeshData::collision`, im Modellraum wie die Vertices (Knoten-Transformationen eingerechnet).
+- Hat ein Modell **mindestens einen** `COL_`-Knoten, kollidiert **nur** diese Geometrie; ohne `COL_` kollidiert das
+  Render-Mesh (alle Dreiecke).
+- Formen nach Namen:
+  - `COL_BOX_*`: Box aus den Grenzen der Punkte **im Knotenraum** (ein gedrehter Knoten ergibt eine gedrehte Box), als
+    8 Ecken einer Hülle gespeichert;
+  - `COL_HULL_*`: konvexe Hülle der Punkte. Indizes werden ignoriert, nicht konvexe Punktwolken werden zur Hülle
+    „gerundet“;
+  - jedes andere `COL_*`: Dreiecksnetz (Positionen + Indizes).
+- Hüllen und Boxen sind deutlich schneller als Dreiecksnetze.
+- **Budget:** ≤ 200 Kollisions-Dreiecke je Haus (Hüllen zählen ihre Dreiecke); mehr ist kein Fehler.
+- **Häuser (welt):** eine `COL_HULL_` je konvexem Baukörper (Erdgeschoss-Grundriss bis Traufe + Dachprisma);
+  nicht konvexe Grundrisse in konvexe Teile zerlegt. Ersatzweise ist ein `COL_`-Dreiecksnetz der Grundform erlaubt.
+  Dachüberstand, Auskragung, Gauben, Schornsteine, Balken und Fenster kollidieren nicht.
+- **Figuren (figuren):** keine `COL_`-Knoten; Spieler und NPCs kollidieren als Kapsel des Controllers (physics.md).
+  Mobs und Requisiten (Truhe, Bett) bekommen `COL_` wie Häuser.
+- Viele `COL_`-Knoten je Datei (Zellen des Umlands) sind unkritisch: die Engine baut je Modell **eine** Form (bei
+  mehreren Teilen eine statische Verbundform) und teilt sie zwischen allen Instanzen.
 
 ### `TextureData.hpp` – Texturen für den Upload (ADR 0016)
 ```cpp

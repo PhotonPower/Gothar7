@@ -14,6 +14,7 @@
 #include <g7/core/Config.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
+#include <g7/physics/Physics.hpp>
 #include <g7/platform/Actions.hpp>
 #include <g7/platform/GlContext.hpp>
 #include <g7/platform/Input.hpp>
@@ -237,6 +238,10 @@ public:
     /// ImGui debug panels (toggled with the debug_ui action, F1); only with rendering.
     [[nodiscard]] bool debugUiVisible() const noexcept { return m_debugUiVisible; }
     void setDebugUiVisible(bool visible) noexcept;
+    /// Collision of the loaded world (terrain, mesh vobs, ground plate) for queries. Kept in step with
+    /// the scene: rebuilt before the next simulation step after instances change, and right after
+    /// loading a world. Body user data: the vob id (0 for terrain and ground plate).
+    [[nodiscard]] const physics::PhysicsWorld& physics() const noexcept { return m_physics; }
 
 private:
     void shutdown();
@@ -251,6 +256,8 @@ private:
                                          std::string_view start);
     void unloadWorld();
     void performWorldChange();
+    /// Rebuilds m_physics from the terrain and m_instances if they changed (EnginePhysics.cpp).
+    void syncPhysics();
     /// Models no instance uses any more (after a level change) go, with their geometry and textures.
     void releaseUnusedModels();
     /// Render instances and lights for the vobs in m_scene (mesh and light vobs).
@@ -348,6 +355,8 @@ private:
     render::CullSettings m_cullSettings;
     render::CullGrid m_cullGrid; // over m_instances; rebuilt when instances change
     bool m_cullGridDirty = true;
+    physics::PhysicsWorld m_physics;
+    bool m_physicsDirty = true;        // set together with m_cullGridDirty and on terrain changes
     std::vector<u32> m_cullCandidates; // per pass, reused
     bool m_multiDraw = true;           // [render] multi_draw: batches instead of one draw per mesh
     std::vector<render::MeshDrawItem> m_drawItems; // per pass, reused
