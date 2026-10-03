@@ -76,6 +76,11 @@ def test_committed_recipes():
     for r in recipes:
         h = load_human(r)
         for part in h.parts:  # base bodies export only "body", heads "head" and "hair"
+            if part == "cloth":  # clothing kits: one part per garment
+                for garment in h.clothes:
+                    stem = Path(garment).stem
+                    assert (CHARACTERS / "parts" / h.name / f"{stem}.glb").is_file(), garment
+                continue
             assert (CHARACTERS / "parts" / h.name / f"{part}.glb").is_file(), (h.name, part)
 
 
@@ -123,6 +128,39 @@ def test_parts_shape_and_beard():
     assert h.shape == {"nose-hump-incr": 0.6}
     assert ("Beard", "clothes/b/b.mhclo") in h.assets()
     assert parse_human(RECIPE, "x").parts == ("body", "head", "hair")
+
+
+def test_clothing_kit_recipe(tmp_path):
+    from gothar_chargen.human import HumanError, load_human
+
+    body = """version = 1
+parts = ["body"]
+[macro]
+gender = 1.0
+weight = 0.2
+[assets]
+skin = "s/s.mhmat"
+eyes = "e/e.mhclo"
+"""
+    kit_text = """version = 1
+fit_to = "body_x"
+parts = ["cloth"]
+[assets]
+clothes = ["clothes/a/a.mhclo"]
+"""
+    (tmp_path / "body_x.human.toml").write_text(body, encoding="utf-8")
+    kit = tmp_path / "cloth_x.human.toml"
+    kit.write_text(kit_text, encoding="utf-8")
+    h = load_human(kit)
+    assert h.fit_to == "body_x" and h.parts == ("cloth",)
+    assert h.macro["weight"] == 0.2 and h.skin == "s/s.mhmat"  # inherited from the body
+    kit.write_text(kit_text.replace("[assets]", "[macro]\nage = 0.5\n[assets]"), encoding="utf-8")
+    with pytest.raises(HumanError, match="from its base"):
+        load_human(kit)
+    with pytest.raises(HumanError, match="not together"):
+        parse_human({**RECIPE, "parts": ["body", "cloth"]}, "x")
+    with pytest.raises(HumanError, match="fit_to"):
+        parse_human({**RECIPE, "fit_to": "body_y"}, "x")
 
 
 def test_recipe_name_and_suffix(tmp_path):

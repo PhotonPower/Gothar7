@@ -1,0 +1,18 @@
+# Test NPC (F3e): laborer (heavy build, young head). Base body + head + garments from the clothing kit;
+# colours from the palette (shared, neutral kit textures). Names are generic test figures – roles
+# and groups of the game are decided later (owner).
+version = 1
+lods = [1.0, 0.5, 0.2]
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_young/head.glb"
+hair = "parts/head_m_young/hair.glb"
+cloth = [
+    "parts/cloth_m_heavy/elvs_crude_t-shirt_male.glb",
+    "parts/cloth_m_heavy/culturalibre_male_boots.glb",
+]
+
+[palette]
+cloth_elvs_crude_t-shirt_male = "#8a8070"
+cloth_culturalibre_male_boots = "#4a3a2c"

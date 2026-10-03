@@ -1,0 +1,32 @@
+# Head (man in his forties, moustache), style A (F3e): head (with face morphs, teeth, tongue, moustache) and hair.
+# Fits every base body of the same sex (assembly snaps the neck); macros only shape the face.
+version = 1
+triangles = 6000
+parts = ["head", "hair"]
+
+[macro]
+gender = 1.0
+age = 0.6
+muscle = 0.5
+weight = 0.5
+proportions = 0.5
+height = 0.5
+race = { african = 1.0 }
+
+[assets]
+skin = "skins/middleage_african_male/middleage_african_male.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow006/eyebrow006.mhclo"
+eyelashes = "eyelashes/eyelashes02/eyelashes02.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"
+hair = "hair/short01/short01.mhclo"
+beard = "clothes/rehmanpolanski_moustache_viking/rehmanpolanski_moustache_viking.mhclo"
+
+[tint]
+short01 = "#1f1915"
+rehmanpolanski_moustache_viking = "#1f1915"
+
+[shape]
+nose-flaring-incr = 0.4
+chin-height-decr = 0.2

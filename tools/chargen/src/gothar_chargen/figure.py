@@ -9,6 +9,8 @@ Format (version 1)::
     body = "parts/test/body_test.glb"      # assets/source/characters; body = base body or an
     head = "parts/test/head_test.glb"      # outfit/armour that replaces it (mesh swap, §6)
     hair = "parts/test/hair_test.glb"      # optional; beard likewise
+    cloth = ["parts/cloth_m_average/toigo_fisherman_sweater.glb"]  # optional garments (kit):
+                                           # role cloth_<garment>; the body under them is hidden
 
     [palette]                              # material name -> colour (sRGB hex), tints the
     skin = "#c8a07a"                       # base colour of materials with that name
@@ -32,6 +34,18 @@ SUFFIX = ".figure.toml"
 _COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 _NAME = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 REQUIRED_ROLES = ("body", "head")
+CLOTH_PREFIX = "cloth_"
+
+
+def _absolute(path: str) -> bool:
+    """Absolute on any platform (a leading slash counts on Windows, too)."""
+    return Path(path).is_absolute() or path.startswith(("/", "\\"))
+
+
+def cloth_role(path: str) -> str:
+    """'parts/cloth_m_average/elvs_crude_t-shirt_male.glb' -> 'cloth_elvs_crude_t_shirt_male'."""
+    stem = Path(path).stem.lower()
+    return CLOTH_PREFIX + re.sub(r"[^a-z0-9]+", "_", stem).strip("_")
 
 
 class FigureError(Exception):
@@ -72,10 +86,23 @@ def parse_figure(data: dict, name: str) -> Figure:
     parts = data.get("parts")
     if not isinstance(parts, dict):
         raise FigureError("missing [parts] table")
+    parts = dict(parts)
+    cloth = parts.pop("cloth", []) if isinstance(parts, dict) else []
+    if not isinstance(cloth, list) or not all(isinstance(c, str) for c in cloth):
+        raise FigureError("parts.cloth must be a list of .glb paths")
+    for path in cloth:
+        role = cloth_role(path)
+        if role in parts:
+            raise FigureError(f"garment '{path}' listed twice")
+        parts[role] = path
     for role, path in parts.items():
+        if role.startswith(CLOTH_PREFIX):
+            if not path.endswith(".glb") or _absolute(path):
+                raise FigureError(f"garment {path!r}: expected a relative .glb path")
+            continue
         if role not in ROLES:
             raise FigureError(f"unknown part role '{role}' (allowed: {', '.join(ROLES)})")
-        if not isinstance(path, str) or not path.endswith(".glb") or Path(path).is_absolute():
+        if not isinstance(path, str) or not path.endswith(".glb") or _absolute(path):
             raise FigureError(f"part '{role}': expected a relative .glb path, got {path!r}")
     missing = [r for r in REQUIRED_ROLES if r not in parts]
     if missing:

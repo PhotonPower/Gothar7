@@ -1,0 +1,17 @@
+# Clothing kit (F3e) fitted to body_f_heavy: every garment is its own part
+# (parts/cloth_f_heavy/<garment>.glb) and is combined in figure manifests ([parts] cloth).
+# Textures stay untinted and shared by all builds; figures colour them through their palette.
+# CC0 garments only (file header and pack metadata, assets/LICENSES.md).
+version = 1
+fit_to = "body_f_heavy"
+parts = ["cloth"]
+triangles = 7500
+
+[assets]
+clothes = [
+    "clothes/joepal_crude_t-shirt_female/joepal_crude_t-shirt_female.mhclo",
+    "clothes/toigo_bodice-style_top/toigo_bodice-style_top.mhclo",
+    "clothes/toigo_long_full_skirt/toigo_long_full_skirt.mhclo",
+    "clothes/toigo_flats/toigo_flats.mhclo",
+    "clothes/toigo_ankle_boots_female/toigo_ankle_boots_female.mhclo",
+]

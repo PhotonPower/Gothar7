@@ -387,14 +387,16 @@ Mindest-Set (Platzhalter): `wolf`, `keiler`, `laufvogel`; offen: eigene Rigs/Art
 ✅ Erfüllt: Bericht zeigt 0 fehlende Prio-A-Clips (CI prüft es); dazu 48/48 Clips Prio-B-Fortbewegung. Qualität: Platzhalter (Quaternius CC0 bzw. Keyframe), Ersatz durch Mocap in F4.
 
 ## F3 – Figuren-Baukasten  (benötigt F1)
-- [ ] 2 Grundkörper × 3 Staturen (MPFB2, Stil A realistisch), Köpfe als separate Meshes mit Morph-Targets
-  - Stand: Werkzeug `gothar-chargen human` (Rezept → MPFB2 → Referenz-Rig → Teile body/head/hair, Texturen extern, Textur-Vertrag §2.3); erste Figur `farmer` (14,3 k Dreiecke, 3 LOD-Stufen). Köpfe mit 15 Gesichts-Morph-Targets (Viseme, Blinzeln, Ausdrücke; Vertrag mit engine §6.1, mit Zähnen/Zunge). Grundkörper 2 Geschlechter × 3 Staturen und 4 Köpfe (jung/alt, m/w, mit Bart) als Rezepte, frei kombinierbar je Geschlecht (Halsnaht und Haut beim Zusammenbau, alle 12 Kombinationen geprüft). Offen: Kleidung als einzeln kombinierbare Teile, 5 Test-NPCs
+- [x] 2 Grundkörper × 3 Staturen (MPFB2, Stil A realistisch), Köpfe als separate Meshes mit Morph-Targets
+  - Stand: Werkzeug `gothar-chargen human` (Rezept → MPFB2 → Referenz-Rig → Teile body/head/hair, Texturen extern, Textur-Vertrag §2.3); erste Figur `farmer` (14,3 k Dreiecke, 3 LOD-Stufen). Köpfe mit 15 Gesichts-Morph-Targets (Viseme, Blinzeln, Ausdrücke; Vertrag mit engine §6.1, mit Zähnen/Zunge). Grundkörper 2 Geschlechter × 3 Staturen und 4 Köpfe (jung/alt, m/w, mit Bart) als Rezepte, frei kombinierbar je Geschlecht (Halsnaht und Haut beim Zusammenbau, alle 12 Kombinationen geprüft). 5 Köpfe (jung/mittel/alt, m/w, Bart/Schnurrbart).
 - [ ] Haare/Bärte, erste Kleidungs-/Rüstungslinien (Lumpen, leicht, mittel)
+  - Stand: Kleidungs-Kit (F3e): Stücke als eigene Teile je Statur (Männer: grobes Hemd, Fischerpullover, Stiefel, Stoffschuhe; Frauen: grobes Hemd, Mieder, langer Rock, flache Schuhe, Stiefeletten), Körper darunter ausgeblendet, neutrale geteilte Texturen + Palette; jedes Stück auf jeder Statur geprüft. 5 Test-NPCs: `farmer`, `peasant_woman`, `laborer`, `guard`, `old_man` (14–19 k Dreiecke). Offen: Rüstungslinien (leicht/mittel), Kopfbedeckungen, eigene Stoff-Trim-Sheets
 - [x] Baukasten-Werkzeug: Zusammensetzen, Passform-Prüfung, LODs, Farbvarianten – `gothar-chargen assemble` (Manifest `figures/<name>.figure.toml`, Palette), `fit.*`/`lod.*`/`mesh.budget` im Validator, LOD-Vertrag mit engine (characters-pipeline.md §2.2); getestet mit eigenen Testteilen (`parts/test`, Figuren `test_plain`, `test_rags`). ADR 0018 (MPFB2) angenommen
 - [ ] Stil-Referenzblatt Figuren (gemeinsam mit W5)
   - Stand: Stilentscheidung Figuren gefallen (Stufe A realistisch mit Texturen, 2026-10-03; Stilproben-Seite für den Projektinhaber)
 
 **DoD:** 5 unterscheidbare NPCs in der Engine, alle auf dem Referenz-Rig.
+Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine“ hängt an M6 (Skin/Clips kochen).
 
 ## F4 – Gothic-spezifische Animationen  (benötigt F2; für M8–M11)
 - [ ] Mocap-Workflow testen (2–3 Dienste), Entscheidung dokumentieren

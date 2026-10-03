@@ -1,0 +1,20 @@
+# Test NPC (F3e): peasant woman (average build, mature head). Base body + head + garments from the clothing kit;
+# colours from the palette (shared, neutral kit textures). Names are generic test figures – roles
+# and groups of the game are decided later (owner).
+version = 1
+lods = [1.0, 0.5, 0.2]
+
+[parts]
+body = "parts/body_f_average/body.glb"
+head = "parts/head_f_mature/head.glb"
+hair = "parts/head_f_mature/hair.glb"
+cloth = [
+    "parts/cloth_f_average/joepal_crude_t-shirt_female.glb",
+    "parts/cloth_f_average/toigo_long_full_skirt.glb",
+    "parts/cloth_f_average/toigo_flats.glb",
+]
+
+[palette]
+cloth_joepal_crude_t-shirt_female = "#d6c8a8"
+cloth_toigo_long_full_skirt = "#6a5440"
+cloth_toigo_flats = "#4a3b2e"

@@ -1,0 +1,16 @@
+# Clothing kit (F3e) fitted to body_m_thin: every garment is its own part
+# (parts/cloth_m_thin/<garment>.glb) and is combined in figure manifests ([parts] cloth).
+# Textures stay untinted and shared by all builds; figures colour them through their palette.
+# CC0 garments only (file header and pack metadata, assets/LICENSES.md).
+version = 1
+fit_to = "body_m_thin"
+parts = ["cloth"]
+triangles = 6000
+
+[assets]
+clothes = [
+    "clothes/elvs_crude_t-shirt_male/elvs_crude_t-shirt_male.mhclo",
+    "clothes/toigo_fisherman_sweater/toigo_fisherman_sweater.mhclo",
+    "clothes/culturalibre_male_boots/culturalibre_male_boots.mhclo",
+    "clothes/toigo_mj_cloth_shoes/toigo_mj_cloth_shoes.mhclo",
+]

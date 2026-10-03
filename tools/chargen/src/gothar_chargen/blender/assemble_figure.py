@@ -22,13 +22,14 @@ from pathlib import Path
 
 import bmesh  # type: ignore[import-not-found]
 import bpy  # type: ignore[import-not-found]
+from mathutils.bvhtree import BVHTree  # type: ignore[import-not-found]
 from mathutils.kdtree import KDTree  # type: ignore[import-not-found]
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from gothar_chargen.blender.common import delete_objects, import_glb, new_reference  # noqa: E402
 from gothar_chargen.blender.settings import GLTF_EXPORT_SETTINGS  # noqa: E402
-from gothar_chargen.figure import Figure, load_figure  # noqa: E402
+from gothar_chargen.figure import CLOTH_PREFIX, Figure, load_figure  # noqa: E402
 from gothar_chargen.meshdata import WELD  # noqa: E402
 from gothar_chargen.skeleton import load_rig  # noqa: E402
 
@@ -36,6 +37,10 @@ _DUPLICATE = re.compile(r"^(?P<base>.+)\.\d{3}$")
 KEEP_GROUP = "lod_reduce"
 NECK_SEARCH = 0.06  # metres: body skin border this close to the head's ring is the neck ring
 NECK_FALLOFF = 0.05  # metres below the ring over which the body follows the snap
+COVER_DISTANCE = 0.03  # metres: garment this far out along the normal covers a body vertex
+POKE_THROUGH = 0.015  # metres: a body vertex this far outside a garment would show through it
+NECK_KEEP = 0.05  # metres around the neck seam where the body is never hidden (holes there would
+#                   sit inside the seam search radius of fit.py and open the neck)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -178,6 +183,49 @@ def _snap_neck(body: bpy.types.Object, head: bpy.types.Object) -> None:
     print(f"[chargen] neck: {n} ring vertices snapped (max {moved * 1000:.1f} mm)")
 
 
+def _hide_covered(body: bpy.types.Object, garments: list[bpy.types.Object]) -> None:
+    """Deletes body faces under the garments (no poke-through when animated). A body vertex is
+    covered when a ray along its normal hits a garment within COVER_DISTANCE (holes in ragged
+    garments let the ray pass, so the body stays visible there), or when it lies up to
+    POKE_THROUGH outside a garment surface. A face goes when all its vertices are covered; faces
+    at the neck seam (NECK_KEEP) always stay."""
+    bm = bmesh.new()
+    for g in garments:
+        tmp = bmesh.new()
+        tmp.from_mesh(g.data)
+        mesh = bpy.data.meshes.new("cover")
+        tmp.to_mesh(mesh)
+        tmp.free()
+        bm.from_mesh(mesh)
+        bpy.data.meshes.remove(mesh)
+    tree = BVHTree.FromBMesh(bm)
+    bm.free()
+    ring = _skin_ring(body)
+    near_seam = KDTree(max(1, len(ring)))
+    for k, i in enumerate(ring):
+        near_seam.insert(body.data.vertices[i].co, k)
+    near_seam.balance()
+    covered = []
+    for v in body.data.vertices:
+        if ring and near_seam.find(v.co)[2] < NECK_KEEP:
+            covered.append(False)
+            continue
+        ray = tree.ray_cast(v.co + v.normal * 1e-4, v.normal, COVER_DISTANCE)
+        if ray[0] is not None and ray[1].dot(v.normal) <= 0.0:
+            ray = (None,)  # garment folded over (seen from behind): keep the body there
+        near = tree.find_nearest(v.co, POKE_THROUGH)
+        poking = near[0] is not None and (near[0] - v.co).dot(v.normal) < 0.0
+        covered.append(ray[0] is not None or poking)
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    gone = [f for f in bm.faces if all(covered[v.index] for v in f.verts)]
+    bmesh.ops.delete(bm, geom=gone, context="FACES")
+    bm.to_mesh(body.data)
+    bm.free()
+    body.data.update()
+    print(f"[chargen] {len(gone)} body faces hidden under {len(garments)} garment(s)")
+
+
 def _base(mat: bpy.types.Material) -> str:
     m = _DUPLICATE.match(mat.name)
     return m["base"] if m else mat.name
@@ -204,17 +252,35 @@ def _merge_materials(objects: list[bpy.types.Object], figure: Figure) -> None:
             continue
         mat.diffuse_color = (*color, 1.0)
         bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.use_nodes else None
-        if bsdf is not None:
-            bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+        if bsdf is None:
+            continue
+        base = bsdf.inputs["Base Color"]
+        if not base.is_linked:
+            base.default_value = (*color, 1.0)
+            continue
+        # textured: texture x colour (exported as glTF baseColorFactor, the file stays shared)
+        tree = mat.node_tree
+        link = base.links[0]
+        mix = tree.nodes.new("ShaderNodeMix")
+        mix.data_type = "RGBA"
+        mix.blend_type = "MULTIPLY"
+        mix.inputs["Factor"].default_value = 1.0
+        mix.inputs["B"].default_value = (*color, 1.0)
+        tree.links.new(link.from_socket, mix.inputs["A"])
+        tree.links.new(mix.outputs["Result"], base)
 
 
 FREE_BORDER_ROLES = ("hair",)  # alpha cards: their borders are no seams and may move
 
 
+def _free_borders(role: str) -> bool:
+    return role in FREE_BORDER_ROLES or role.startswith(CLOTH_PREFIX)  # hems are no seams
+
+
 def _border_weights(obj: bpy.types.Object) -> None:
     """Vertex group for Decimate: 1 everywhere, 0 on open borders (seams must not move)."""
     border: set[int] = set()
-    if obj.name.rsplit("_lod", 1)[0] not in FREE_BORDER_ROLES:
+    if not _free_borders(obj.name.rsplit("_lod", 1)[0]):
         bm = bmesh.new()
         bm.from_mesh(obj.data)
         border = {v.index for e in bm.edges if e.is_boundary for v in e.verts}
@@ -263,6 +329,9 @@ def assemble(figure: Figure, characters: Path, out: Path) -> None:
     by_role = {o.name.rsplit("_lod", 1)[0]: o for o in lod0}
     if "body" in by_role and "head" in by_role:
         _snap_neck(by_role["body"], by_role["head"])
+    garments = [o for role, o in by_role.items() if role.startswith(CLOTH_PREFIX)]
+    if "body" in by_role and garments:
+        _hide_covered(by_role["body"], garments)
     _merge_materials(lod0, figure)
     objects = list(lod0)
     for obj in lod0:

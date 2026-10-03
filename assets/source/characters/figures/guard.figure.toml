@@ -1,0 +1,18 @@
+# Test NPC (F3e): light guard (average build, middle-aged head). Base body + head + garments from the clothing kit;
+# colours from the palette (shared, neutral kit textures). Names are generic test figures – roles
+# and groups of the game are decided later (owner).
+version = 1
+lods = [1.0, 0.5, 0.2]
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_mid/head.glb"
+hair = "parts/head_m_mid/hair.glb"
+cloth = [
+    "parts/cloth_m_average/toigo_fisherman_sweater.glb",
+    "parts/cloth_m_average/culturalibre_male_boots.glb",
+]
+
+[palette]
+cloth_toigo_fisherman_sweater = "#6f7378"
+cloth_culturalibre_male_boots = "#2e2620"
