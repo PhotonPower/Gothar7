@@ -70,7 +70,8 @@ gothar-chargen assemble [figures\x.figure.toml] & REM Figuren aus Manifesten bau
 gothar-chargen build-test-parts               & REM eigene einfache Testteile unter parts/test/
 gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name>/ + textures/ (nur lokal, braucht MPFB)
 gothar-chargen monster wolf --sources C:\GotharData\characters\monsters
-                                              & REM Monster-Rig + Referenz + Clip-Quelle wolf_clips.blend (§7.2)
+                                              & REM Monster-Rig + Referenz + Clip-Quelle wolf_clips.blend (§7.2);
+                                              & REM meldet je Aktion Beckenabsenkung und Fuß-/Gelenkabweichung
 gothar-chargen build-set wolf --sources C:\GotharData\characters\monsters
                                               & REM Monster-Clips → monsters/wolf/anims/wolf.glb
 ```

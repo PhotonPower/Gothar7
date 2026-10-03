@@ -89,6 +89,20 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_run` bewegen `root` vorw
 | `wolf/s_eat`, `s_sleep` | Fressen (Kopf tief, kauen), Schlafen (liegend, atmet) | – | – | K | platzhalter-K |
 | `wolf/t_threaten` | Drohen: Kopf tief, Knurr-Nicken | – | – | K | platzhalter-K |
 
+### Keiler (`keiler`, Platzhalter aus Quaternius Farm Animal Pack „Pig“, CC0)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `keiler/s_idle` | Stehen | – | – | Q | platzhalter (`Idle`) |
+| `keiler/s_walk` | Gehen | ✓ 0,8 m/s | footstep_front/back_l/r | Q→ | platzhalter (`Walk` 0–32 + root vorwärts) |
+| `keiler/s_run` | Traben | ✓ 1,65 m/s | footstep_front/back_l/r | Q→ | platzhalter-K (`Walk` schneller, weitere Schritte; Quell-`Run` streckt die Beine, unbrauchbar) |
+| `keiler/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K |
+| `keiler/t_attack_1`, `t_attack_2` | Anrennen und Hauer hochreißen / Hauer-Hieb zur Seite | – | hit_start, hit_end | K | platzhalter-K |
+| `keiler/t_hit` | Treffer | – | – | K | platzhalter-K |
+| `keiler/t_die` | Tod: bäumt sich auf, fällt auf die Seite | – | – | Q | platzhalter (`Death`) |
+| `keiler/s_eat`, `s_sleep` | Wühlen (Schnauze am Boden), Schlafen (Seitenlage, atmet) | – | – | K | platzhalter-K |
+| `keiler/t_threaten` | Drohen: Kopf tief, Scharren mit dem Vorderhuf | – | – | K | platzhalter-K |
+
 ## Prio C – später
 
 Akrobatik-Varianten, Gangarten (Militär, Frauen, Entspannt) als Varianten-Sets, zusätzliche
