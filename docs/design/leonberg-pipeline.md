@@ -180,6 +180,7 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   `x` wird von der linken Fassadenkante gemessen, von außen gesehen.
 - Neu und optional ist `y`, die Brüstungshöhe über dem Stockwerksboden. Fehlt sie, sitzt die Öffnung auf dem Boden
   (Türen, Tore).
+- Optional ist `age` (0 neu … 1 alt), die Handkorrektur der Alterung (W5, `leonberg-stil.md`).
 - Ebenfalls optional sind `locked` (siehe W-C) und `rueckbau` (§7): `auto` (Vorgabe), `none` (nie ersetzen) oder
   `split` (immer durch Fachwerkhäuser ersetzen). **Unbekannte Schlüssel bleiben beim Speichern erhalten**, damit neuere
   Werkzeuge Felder ergänzen können.
