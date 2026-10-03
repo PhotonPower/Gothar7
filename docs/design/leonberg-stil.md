@@ -87,4 +87,7 @@ Ablage `C:\GotharData\review\w5\` (nicht im Repo).
   - Balkenfarben unverändert.
 - **Belege:** Vorher/Nachher in Engine-Screenshots (`PLATZHALTER_palette_*`) und als Farbtafel unter neutralem und unter
   Abendlicht (`PLATZHALTER_palette_vorher_nachher.png`).
-- **Offen:** Beurteilung bei neutralem Mittagslicht, sobald der Tag/Nacht-Zyklus der Engine da ist (`--time=12:00`).
+- **Mittagslicht** (`--time=12:00`, engines Tag/Nacht #79): Die Dächer wirken gedeckt rotbraun bzw. braunrot, der Putz warm
+  gebrochen. Die Palette passt. Leonberg wirkt mittags noch überstrahlt (heller Dunst, helle Fassaden); Licht und Nebel
+  justiert engine nach der Abnahme durch den Projektinhaber, nicht die Palette.
+- Bilder für 12:00, 19:30 und 23:00 liegen als `PLATZHALTER_{mittag,abend,nacht}_*.png` im selben Ordner.

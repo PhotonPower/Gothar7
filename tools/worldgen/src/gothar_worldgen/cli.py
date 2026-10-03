@@ -556,7 +556,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="core: old town, a file per building; all: plus 64 m cells")  # fmt: skip
     p.add_argument("--rueckbau", action="store_true",
                    help="replace large buildings also in massing mode (preview)")  # fmt: skip
-    p.add_argument("--mode", choices=("massing", "medieval"), default="massing",
+    p.add_argument("--mode", choices=("massing", "medieval"), default="medieval",
                    help="massing: grey blocks; medieval: half-timbering (W5 draft)")  # fmt: skip
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_buildings)
