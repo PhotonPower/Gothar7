@@ -37,6 +37,7 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 | Clip-Namen, `events.toml` | figuren | engine (M6) | `characters-pipeline.md` §3 |
 | Morph-Target-Namen | figuren | engine (M6, M10 Lippensync) | `characters-pipeline.md` §6 |
 | LOD-Stufen in Figuren-`.glb` (`_lod0`–`_lod2`), Dreiecks-Budget | figuren | engine (M6, Cooker) | `characters-pipeline.md` §2.2 |
+| Figuren-Texturen (extern unter `characters/textures/`, Größen je Rolle, Formate, alphaMode MASK, VRAM-Budget) | figuren | engine (M6, Cooker) | `characters-pipeline.md` §2.3 |
 | `.g7mesh`/`.g7pak`/Cooker-Optionen | engine | welt, figuren | `docs/06-asset-pipeline.md`, ADR 0016 |
 
 ## Kommunikation

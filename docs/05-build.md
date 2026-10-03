@@ -52,9 +52,12 @@ braucht man für `build-rig`, `build-placeholder`, `export` und das Prüfen von 
 "C:\Program Files\Blender Foundation\Blender 4.5\blender.exe" --online-mode --command extension sync
 "C:\Program Files\Blender Foundation\Blender 4.5\blender.exe" --online-mode --command extension install mpfb --enable
 ```
-Dazu das Asset-Paket **„MakeHuman system assets“** (Haut, Augen, Zähne; CC0) von
-static.makehumancommunity.org/assets/assetpacks/ laden und in Blender über MPFB → „Apply assets“ →
-„Library settings“ → „Install asset pack“ einspielen. **Nur Core-/System-Pakete (CC0)** verwenden;
+Dazu die Asset-Pakete (alle CC0) von static.makehumancommunity.org/assets/assetpacks/ – **„MakeHuman system
+assets“** (Haut, Augen, Brauen, Wimpern), **Shirts 01, Pants 01, Shoes 01, Hair 01** – laden (schnell über
+`files.makehumancommunity.org/asset_packs/<paket>/<paket>_cc0.zip`; der Spiegel `files2` ist sehr langsam) und
+entweder in Blender über MPFB → „Apply assets“ → „Library settings“ → „Install asset pack“ einspielen oder direkt
+nach `%APPDATA%\Blender Foundation\Blender\4.5\extensions\.user\blender_org\mpfb\data` entpacken.
+Rohdateien bleiben unter `DATA_ROOT\characters\mpfb` (nicht im Repo). **Nur Core-/System-Pakete (CC0)** verwenden;
 Community-Pakete erst nach Lizenzprüfung (ADR 0018). Das Plugin (GPLv3) wird nie ins Repo kopiert.
 
 ## Bauen
@@ -67,6 +70,8 @@ ctest --preset debug            # Unit-Tests
 Unter Windows die Befehle in der **„x64 Native Tools Command Prompt for VS 2022“** ausführen
 (damit Ninja den MSVC-Compiler findet) – oder den Ordner direkt in Visual Studio / CLion / VS Code
 (CMake Tools) öffnen; die Presets werden erkannt.
+ctest bricht jede Test-Suite nach 300 s ab (GPU-Suite 900 s), damit ein hängender Test die Ausführung rot macht
+statt sie zu blockieren; anpassbar mit `-DG7_TEST_TIMEOUT=<sekunden>`.
 
 Ohne vcpkg (nur Kern, ohne Tests): `cmake --preset nodeps && cmake --build --preset nodeps` – ohne glad,
 das Spiel dort mit `--no-render` starten.
@@ -112,7 +117,7 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | `--save-world=<datei>` | nach dem Laden die Welt bzw. Testszene als `.g7world` speichern (stabil, ein Vob pro Zeile) |
 | `--scene=<pfad>` | Testszene laden (TOML, siehe „Testszenen“): VFS-Pfad wie `testscene/scene.toml` oder Datei auf der Festplatte (deren Ordner wird unter `local/` gemountet); ersetzt `--view-mesh` |
 | `--viewpoint=N` | mit Viewpoint N der Szene starten (Standard 0) |
-| `--benchmark` | VSync und Frame-Limit aus, jeden Viewpoint der Szene 300 Frames lang ansteuern (die ersten 30 zum Einschwingen), Frame-Zeiten (Mittel, p95, p99, schlechtester) je Viewpoint loggen, dann beenden |
+| `--benchmark` | VSync und Frame-Limit aus, jeden Viewpoint der Szene 300 Frames lang ansteuern (die ersten 30 zum Einschwingen), Frame-Zeiten (Mittel, p95, p99, schlechtester) sowie Draws, Pufferbindungen, Pipeline-Wechsel und Dreiecke je Viewpoint loggen, dann beenden |
 | `--screenshot=<datei.png>` | letztes Bild als PNG speichern (mit `--frames` oder `--benchmark`) |
 | `--no-ground` | Bodenplatte unter dem Modell bzw. der Szene weglassen |
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |

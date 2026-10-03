@@ -8,6 +8,8 @@ and ``compact`` drops the now unused accessors, buffer views and binary data.
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from gothar_chargen.gltf import Gltf
@@ -127,3 +129,64 @@ def compact(gltf: Gltf) -> None:
     gltf.bin = bytes(new_bin)
     if doc.get("buffers"):
         doc["buffers"][0]["byteLength"] = len(gltf.bin)
+
+
+# --- textures (contract characters-pipeline.md §2.3) -------------------------------------------
+
+MASK_ROLES = frozenset({"hair", "beard", "eyebrows", "eyelashes"})
+_ROLE_WORDS = ("skin", "eyes", "eyebrows", "eyelashes", "hair", "beard")
+_EXT = {"image/png": "png", "image/jpeg": "jpg"}
+
+
+def material_role(name: str) -> str:
+    """Texture role from a material name: skin, eyes, eyebrows, eyelashes, hair, beard or cloth."""
+    first = name.lower().split(".")[0].replace("-", "_").split("_")[0]
+    return first if first in _ROLE_WORDS else "cloth"
+
+
+def apply_alpha_mask(gltf: Gltf, cutoff: float = 0.5) -> int:
+    """Hair cards, brows and lashes use alphaMode MASK (no sorting, correct shadows)."""
+    changed = 0
+    for mat in gltf.list("materials"):
+        is_mask = material_role(str(mat.get("name", ""))) in MASK_ROLES
+        if is_mask and (mat.get("alphaMode") != "MASK" or mat.get("alphaCutoff") != cutoff):
+            mat["alphaMode"] = "MASK"
+            mat["alphaCutoff"] = cutoff
+            changed += 1
+    return changed
+
+
+def externalize_images(gltf: Gltf, glb_path: Path, textures_root: Path) -> list[Path]:
+    """Moves embedded images to textures_root/<category>/<name>.<ext> and references them by URI.
+
+    The category comes from the image name ``<category>/<name>`` or ``<category>__<name>`` (set by
+    the build scripts), otherwise ``misc``. Files with equal content are shared between figures.
+    """
+    written: list[Path] = []
+    for image in gltf.list("images"):
+        if "bufferView" not in image:
+            continue
+        view = gltf.list("bufferViews")[image["bufferView"]]
+        start = int(view.get("byteOffset", 0))
+        data = gltf.bin[start : start + int(view["byteLength"])]
+        name = str(image.get("name") or f"image{len(written)}")
+        category, _, stem = name.rpartition("/")
+        if not category and "__" in name:  # file-name form used by the build scripts
+            category, _, stem = name.partition("__")
+        ext = _EXT.get(str(image.get("mimeType")), "png")
+        if not category:  # re-imported image without category: reuse an existing shared file
+            stem = Path(stem).stem if stem.lower().endswith((".png", ".jpg", ".jpeg")) else stem
+            existing = (
+                sorted(textures_root.glob(f"*/{stem}.{ext}")) if textures_root.is_dir() else []
+            )
+            category = existing[0].parent.name if existing else "misc"
+        target = textures_root / category / f"{stem}.{ext}"
+        if not target.is_file() or target.read_bytes() != data:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            written.append(target)
+        image.pop("bufferView")
+        image.pop("mimeType", None)
+        image["uri"] = Path(os.path.relpath(target, glb_path.parent)).as_posix()
+    compact(gltf)
+    return written

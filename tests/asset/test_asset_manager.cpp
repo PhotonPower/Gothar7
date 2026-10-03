@@ -505,3 +505,37 @@ TEST_CASE("hot reload: files inside archives are not watched")
     touch(dir.path() / "base.g7pak", 2);
     CHECK(assets.checkForChanges(1.0) == 0);
 }
+
+TEST_CASE("hot reload: released assets are no longer watched, the others stay watched")
+{
+    // update() prunes released assets every frame; it must keep the watches of the living ones
+    // (pruning compares paths through a set now - it used to compare every watch with every entry).
+    Fixture f;
+    AssetManager assets(f.vfs, {.workerThreads = 0, .hotReload = true, .pollSeconds = 0.0});
+    assets.registerLoader<TextAsset>(loadNonEmpty);
+    auto a = assets.load<TextAsset>("data/a.txt");
+    const auto b = assets.load<TextAsset>("data/b.txt");
+    assets.update();
+    REQUIRE((a.isReady() && b.isReady()));
+    CHECK(assets.cachedCount() == 2);
+
+    a = {}; // released: pruned in the next update
+    assets.update();
+    CHECK(assets.cachedCount() == 1);
+    writeText(f.dir.path() / "data" / "a.txt", "alpha 2");
+    touch(f.dir.path() / "data" / "a.txt", 2);
+    writeText(f.dir.path() / "data" / "b.txt", "beta 2");
+    touch(f.dir.path() / "data" / "b.txt", 2);
+    CHECK(assets.checkForChanges(1.0) == 1); // only b
+    assets.update();
+    CHECK(b->text == "beta 2");
+
+    // Many frames without releases keep everything as it is.
+    for (int i = 0; i < 100; ++i)
+    {
+        assets.update();
+    }
+    CHECK(assets.cachedCount() == 1);
+    touch(f.dir.path() / "data" / "b.txt", 4);
+    CHECK(assets.checkForChanges(2.0) == 1);
+}

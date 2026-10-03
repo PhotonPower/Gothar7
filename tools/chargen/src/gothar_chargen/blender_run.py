@@ -8,7 +8,11 @@ import subprocess
 from pathlib import Path
 
 from gothar_chargen.gltf import Gltf
-from gothar_chargen.postprocess import strip_animation_channels
+from gothar_chargen.postprocess import (
+    apply_alpha_mask,
+    externalize_images,
+    strip_animation_channels,
+)
 
 BLENDER_ENV = "G7_BLENDER"
 _SCRIPTS = Path(__file__).resolve().parent / "blender"
@@ -39,13 +43,22 @@ def find_blender(explicit: Path | None = None) -> Path:
     )
 
 
-def run_script(blender: Path, script: str, args: list[str], blend_file: Path | None = None) -> str:
-    """Runs ``blender --background [file] --python <script> -- <args>``; returns its output."""
+def run_script(
+    blender: Path,
+    script: str,
+    args: list[str],
+    blend_file: Path | None = None,
+    factory_startup: bool = True,
+) -> str:
+    """Runs ``blender --background [file] --python <script> -- <args>``; returns its output.
+
+    ``factory_startup=False`` keeps the user's extensions enabled (needed for MPFB).
+    """
     cmd = [str(blender), "--background"]
-    if blend_file is None:
-        cmd.append("--factory-startup")
-    else:
+    if blend_file is not None:
         cmd.append(str(blend_file))
+    elif factory_startup:
+        cmd.append("--factory-startup")
     cmd += ["--python-exit-code", "1", "--python", str(_SCRIPTS / script), "--", *args]
     proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     output = proc.stdout + proc.stderr
@@ -88,6 +101,33 @@ def assemble_figure(blender: Path, manifest: Path, characters: Path, out: Path) 
         "assemble_figure.py",
         ["--manifest", str(manifest), "--characters", str(characters), "--out", str(out)],
     )
+
+
+def build_mpfb_human(blender: Path, recipe: Path, blend_out: Path) -> None:
+    run_script(
+        blender,
+        "mpfb_human.py",
+        ["--recipe", str(recipe), "--out", str(blend_out)],
+        factory_startup=False,
+    )
+
+
+def conform_human(blender: Path, blend_file: Path, recipe: Path, out_dir: Path) -> str:
+    return run_script(
+        blender,
+        "conform_human.py",
+        ["--recipe", str(recipe), "--out-dir", str(out_dir)],
+        blend_file=blend_file,
+    )
+
+
+def finish_textures(glb: Path, textures_root: Path) -> list[Path]:
+    """Moves embedded images to textures_root and sets alpha masks (contract §2.3)."""
+    gltf = Gltf.load(glb)
+    written = externalize_images(gltf, glb, textures_root)
+    apply_alpha_mask(gltf)
+    glb.write_bytes(gltf.to_bytes())
+    return written
 
 
 def build_set(blender: Path, set_name: str, sources: Path, out_dir: Path) -> str:

@@ -17,9 +17,10 @@ import numpy as np
 from gothar_chargen.events import events_path_for, load_events
 from gothar_chargen.fit import check_fit
 from gothar_chargen.gltf import Gltf, GltfError, Trs, node_trs, quat_angle_deg
+from gothar_chargen.images import ImageError, ImageInfo, image_info, is_power_of_two
 from gothar_chargen.meshdata import mesh_data, split_lod
 from gothar_chargen.naming import is_clip_name, is_loop_clip
-from gothar_chargen.postprocess import TRANSLATED_BONES
+from gothar_chargen.postprocess import MASK_ROLES, TRANSLATED_BONES, material_role
 from gothar_chargen.skeleton import RigSpec
 
 ERROR = "error"
@@ -50,6 +51,16 @@ class Tolerances:
     # LOD contract (characters-pipeline.md §2.2)
     figure_triangles_max: int = 20_000  # lod0 per figure
     lod_ratio_warn: tuple[float, ...] = (1.0, 0.6, 0.3)  # max. share of lod0 per level
+    # texture contract (characters-pipeline.md §2.3): max. edge length per material role
+    texture_max: tuple[tuple[str, int], ...] = (
+        ("skin", 2048),
+        ("cloth", 1024),
+        ("hair", 1024),
+        ("beard", 1024),
+        ("eyes", 256),
+        ("eyebrows", 256),
+        ("eyelashes", 256),
+    )
 
 
 @dataclass(frozen=True)
@@ -428,6 +439,93 @@ class _Checker:
             )
         )
 
+    # --- textures (contract §2.3) --------------------------------------------------------------
+
+    def _image(self, index: int) -> tuple[bytes | None, bool, str]:
+        """(image bytes, embedded?, label); bytes None if unreadable."""
+        image = self.g.list("images")[index]
+        label = str(image.get("name") or image.get("uri") or f"image {index}")
+        if "bufferView" in image:
+            view = self.g.list("bufferViews")[image["bufferView"]]
+            start = int(view.get("byteOffset", 0))
+            return self.g.bin[start : start + int(view["byteLength"])], True, label
+        uri = image.get("uri", "")
+        if uri.startswith("data:") or self.g.path is None:
+            return None, True, label
+        path = self.g.path.parent / uri
+        if not path.is_file():
+            self.r.error("tex.missing", f"{label}: file {uri} not found")
+            return None, False, label
+        return path.read_bytes(), False, label
+
+    def textures(self) -> None:
+        limits = dict(self.tol.texture_max)
+        textures = self.g.list("textures")
+        infos: dict[int, ImageInfo] = {}
+        sizes = []
+        for mat in self.g.list("materials"):
+            name = str(mat.get("name", ""))
+            role = material_role(name)
+            limit = limits.get(role, limits["cloth"])
+            pbr = mat.get("pbrMetallicRoughness", {})
+            slots = {"base": pbr.get("baseColorTexture"), "normal": mat.get("normalTexture")}
+            dims: dict[str, tuple[int, int]] = {}
+            for slot, ref in slots.items():
+                if not ref or ref.get("index", -1) >= len(textures):
+                    continue
+                source = textures[ref["index"]].get("source")
+                if source is None:
+                    continue
+                data, embedded, label = self._image(source)
+                if data is None:
+                    continue
+                try:
+                    info = infos.get(source) or image_info(data)
+                except ImageError as e:
+                    self.r.error("tex.format", f"{label}: {e}")
+                    continue
+                infos[source] = info
+                dims[slot] = (info.width, info.height)
+                sizes.append(info.width * info.height)
+                where = f"material '{name}' ({role}) {slot} texture {label}"
+                if max(info.width, info.height) > limit:
+                    self.r.error(
+                        "tex.size",
+                        f"{where}: {info.width}×{info.height} exceeds {limit}² for {role}",
+                    )
+                if not (is_power_of_two(info.width) and is_power_of_two(info.height)):
+                    self.r.error(
+                        "tex.pow2", f"{where}: {info.width}×{info.height} is not a power of two"
+                    )
+                if embedded:
+                    self.r.warning(
+                        "tex.embedded", f"{where}: embedded – reference a file in textures/ instead"
+                    )
+                if (
+                    slot == "base"
+                    and role in MASK_ROLES
+                    and not (info.format == "png" and info.alpha)
+                ):
+                    self.r.error("tex.alpha", f"{where}: mask textures must be PNG with alpha")
+                if slot == "normal" and info.format == "jpeg":
+                    self.r.warning(
+                        "tex.format", f"{where}: normal maps should be PNG (JPEG artefacts)"
+                    )
+            if (
+                "base" in dims
+                and "normal" in dims
+                and (dims["normal"][0] > dims["base"][0] or dims["normal"][1] > dims["base"][1])
+            ):
+                self.r.error("tex.size", f"material '{name}': normal map larger than base colour")
+            if role in MASK_ROLES and "base" in dims and mat.get("alphaMode") != "MASK":
+                self.r.error(
+                    "tex.alpha_mode",
+                    f"material '{name}' ({role}): alphaMode must be MASK, "
+                    f"is {mat.get('alphaMode', 'OPAQUE')}",
+                )
+        if sizes:
+            self.r.stats["textures"] = len(infos)
+
     def fit(self) -> None:
         for issue in check_fit(self.g):
             if issue.level == ERROR:
@@ -681,6 +779,7 @@ def validate_gltf(
         part_file = is_part_file(report.path)
         checker.meshes(part_file)
         checker.lods(part_file)
+        checker.textures()
         if not part_file:
             checker.fit()
         checker.animations()
