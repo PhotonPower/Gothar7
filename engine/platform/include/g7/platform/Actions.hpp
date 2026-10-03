@@ -43,6 +43,16 @@ enum class Action : u16
     DebugDraw, ///< Development: toggles the debug-draw overlay.
     DebugUi,   ///< Development: toggles the ImGui debug panels.
     DebugFly,  ///< Development: switches between the player and the free debug camera.
+    // Free camera (fly mode, F3 / --fly; also the editor): own keys, independent of the scheme.
+    FlyForward,
+    FlyBack,
+    FlyLeft,
+    FlyRight,
+    FlyUp,
+    FlyDown,
+    FlyFast,
+    CopyPosition, ///< Development: copies the view as start options (--world --cam ... --fly) to the
+                  ///< clipboard.
     Count
 };
 

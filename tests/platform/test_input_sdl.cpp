@@ -126,6 +126,8 @@ TEST_CASE("SDL input: focus loss releases held keys")
 
 TEST_CASE("SDL input: virtual gamepad connect, buttons, axes, disconnect")
 {
+    // Joystick events reach unfocused windows only with this hint: the test window may sit behind others.
+    SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
     auto window = makeWindow();
     Input input;
     poll(*window, input);

@@ -124,7 +124,8 @@ der Test meldet das und prüft ihn nur mit echtem Treiber.
 namespace g7::platform {
 enum class Action : u16 { MoveForward, MoveBack, StrafeLeft, StrafeRight, TurnLeft, TurnRight,
     Walk /*gehalten: gehen statt rennen*/, Sneak, Jump, Action /*Gothic-Aktionstaste*/, Attack, Use, DrawWeapon, DrawMagic,
-    Inventory, Log, Status, Map, QuickSave, QuickLoad, Console, Pause, DebugDraw /*Entwicklung, F2*/, DebugUi /*Entwicklung, F1*/, DebugFly /*Entwicklung, F3*/, Count };
+    Inventory, Log, Status, Map, QuickSave, QuickLoad, Console, Pause, DebugDraw /*Entwicklung, F2*/, DebugUi /*Entwicklung, F1*/, DebugFly /*Entwicklung, F3*/,
+    FlyForward, FlyBack, FlyLeft, FlyRight, FlyUp, FlyDown, FlyFast /*freie Kamera*/, CopyPosition /*Entwicklung, F6*/, Count };
 std::string_view name(Action);  std::optional<Action> actionFromName(sv);      // "move_forward" …
 using InputBinding = std::variant<Key, MouseButton, GamepadButton>;
 std::optional<InputBinding> bindingFromName(sv);  std::string_view name(const InputBinding&);
@@ -148,8 +149,14 @@ public:
   `attack`/`use` leer) und `modern` (Maus-Angriff, E zum Benutzen, `action`/`turn_*` leer).
   Auswahl über `[input] scheme`, Stick-Totzone über `[input] stick_deadzone`.
 - Seit M5: `walk` (vorher `run`) wird gehalten, um zu **gehen**; Standard ist Rennen wie in Gothic
-  (Entscheidung Projektinhaber). `debug_fly` (F3) schaltet zwischen Spielfigur und freier Debug-Kamera.
+  (Entscheidung Projektinhaber). `debug_fly` (F3) schaltet den Flugmodus (freie Kamera) ein und aus.
+- Freie Kamera mit eigenen Aktionen `fly_forward/back/left/right/up/down/fast`, in beiden Schemata gleich
+  (W/A/S/D bzw. Pfeile, Leertaste/E, Strg/Q, Shift) – überlappen mit Spielaktionen, die im Flugmodus ruhen.
+  `copy_position` (F6) kopiert die Ansicht als Startoptionen (`runtime/StartView.hpp`).
   Die Maus dreht die Figur (`gameplay.md`). Analoge Bewegung mit dem Stick folgt mit dem Gamepad-Feinschliff.
+
+### `Clipboard.hpp` – Zwischenablage
+`Result<void> setClipboardText(std::string_view)` (SDL, braucht das Video-Subsystem): `copy_position`.
 
 ### Konfiguration
 `game/src/main.cpp` lädt `gamePath("config/engine.toml")` (wird beim Bauen neben die Executable kopiert)

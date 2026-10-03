@@ -174,16 +174,7 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
     {
         return;
     }
-    if (allowKeyboard && m_actions.pressed(m_input, Action::DebugFly))
-    {
-        m_flyMode = !m_flyMode;
-        if (m_flyMode)
-        {
-            m_flyCamera.attach(m_camera);
-        }
-        G7_LOG_INFO("engine", "{}",
-                    m_flyMode ? "free debug camera (F3: back to the player)" : "player camera");
-    }
+    // (debug_fly switches to the free camera: Engine::setFlyMode, EngineView.cpp)
     // The player camera captures the mouse while the game runs and nothing else wants it.
     const bool wantMouse = !m_flyMode && !m_paused && allowMouse && !m_debugUiVisible;
     if (wantMouse != m_playerMouse && m_window)

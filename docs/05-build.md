@@ -128,6 +128,10 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--editor` | Editor-Modus (Simulation pausiert, Editor-Fenster; docs/modules/tools.md) |
 | `--time=HH:MM` | Spielzeit beim Start (Vorgabe `[time] start`, 08:00) |
 | `--start=<name>` | Startpunkt der Welt (Vob-Typ `start`, Groß-/Kleinschreibung egal); ohne Angabe der mit der kleinsten id |
+| `--cam=x,y,z` | freie Kamera an diesem Punkt (Meter, Weltkoordinaten); mit Spielfigur im Flugmodus |
+| `--yaw=grad`, `--pitch=grad` | Blickrichtung: Gier 0 = entlang −Z, positiv nach links (gegen den Uhrzeigersinn von oben); Neigung positiv nach oben. Ohne `--cam`/`--fly`, aber mit `--player` dreht `--yaw` die Spielfigur |
+| `--fly` | Flugmodus: freie Kamera (siehe Taste F3), die Spielfigur wartet an ihrem Startpunkt |
+| `--player=x,y,z` | Füße der Spielfigur an diesen Punkt setzen |
 | `--save-world=<datei>` | nach dem Laden die Welt bzw. Testszene als `.g7world` speichern (stabil, ein Vob pro Zeile) |
 | `--scene=<pfad>` | Testszene laden (TOML, siehe „Testszenen“): VFS-Pfad wie `testscene/scene.toml` oder Datei auf der Festplatte (deren Ordner wird unter `local/` gemountet); ersetzt `--view-mesh` |
 | `--viewpoint=N` | mit Viewpoint N der Szene starten (Standard 0) |
@@ -138,8 +142,9 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--walk=<route.json>` | Autopilot: die Spielfigur läuft die Route ab (mit `--world`), schreibt Protokoll und Screenshots, beendet sich (`docs/modules/tools.md`); mit `--no-render` ohne Grafikgerät und ohne Bilder |
 | `--walk-out=<ordner>` | Ausgabeordner des Autopiloten (Vorgabe `walk/`) |
 | (Taste F1) | ImGui-Debugfenster ein/aus (Aktion `debug_ui`): Leistung, Kamera, Render-Einstellungen live |
-| (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Achsen, Raster, Bounds, Lichtradien, Spielfigur (Zylinder, Zustand, Tempo) |
-| (Taste F3) | Spielfigur ↔ freie Debug-Kamera (Aktion `debug_fly`, M5) |
+| (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Kamera (Position, Gier, Neigung), Achsen, Raster, Bounds, Lichtradien, Spielfigur (Zylinder, Zustand, Tempo) |
+| (Taste F3) | Flugmodus ein/aus (Aktion `debug_fly`): freie Kamera ohne Kollision, Maus-Blick (solange das Debug-UI zu ist), W/A/S/D bzw. Pfeiltasten, Leertaste/E hoch, Strg/Q runter, Shift schnell, Mausrad ändert die Fluggeschwindigkeit (0,5–500 m/s); die Tasten zeigt ein Hinweis unten im Bild. Belegung `fly_*` in `engine.toml` |
+| (Taste F6) | Ansicht kopieren (Aktion `copy_position`): legt die Ansicht als Startoptionen in die Zwischenablage und ins Log, z. B. `--world=worlds/leonberg/leonberg.g7world --cam=103.20,4.10,-55.00 --yaw=45.0 --pitch=-10.0 --time=12:00 --fly` (mit Spielfigur: `--player=… --yaw=…`); Hinweis „position copied“ unten im Bild. Die Zeile an `gothar.exe` angehängt (ggf. mit `--frames=N --screenshot=bild.png`) zeigt genau diese Ansicht |
 | `--no-render` | Fenster ohne OpenGL (Systeme ohne GL-Treiber, Windows-CI, `nodeps`-Build); eine `--world` lädt trotzdem (Szene, Kollision, Spielfigur) |
 
 ## Testszenen (`--scene`)
