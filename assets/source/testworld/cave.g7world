@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "name": "cave",
+  "nextVobId": 12,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_HOEHLE","pos":[0.0,0.0,5.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"trigger","name":"TRG_TO_CAMP","pos":[0.0,1.5,8.5],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[1.5,1.5,1.0],"filter":"player","once":false,"changeWorld":{"world":"testworld/camp.g7world","start":"START_LAGER_HOEHLE"}}}},
+    {"id":3,"type":"mesh","name":"FIRE_STONES","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[5.0,5.0,5.0],"mesh":"testscene/nature/campfire_stones.glb"},
+    {"id":4,"type":"light","name":"CAVE_LIGHT","pos":[0.0,1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.55,0.25],"range":14.0,"intensity":8.0,"flicker":0.2}}},
+    {"id":5,"type":"mesh","name":"CAVE_ROCK","pos":[9.553,0.0,2.955],"rot":[0.0,0.14944,0.0,0.98877],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeB.glb"},
+    {"id":6,"type":"mesh","name":"CAVE_ROCK","pos":[-9.466,0.0,3.225],"rot":[0.0,0.98656,0.0,0.16342],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeB.glb"},
+    {"id":7,"type":"mesh","name":"CAVE_ROCK","pos":[-9.553,0.0,-2.955],"rot":[0.0,0.98877,0.0,-0.14944],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeA.glb"},
+    {"id":8,"type":"mesh","name":"CAVE_ROCK","pos":[-5.992,0.0,-8.006],"rot":[0.0,0.8942,0.0,-0.44767],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeB.glb"},
+    {"id":9,"type":"mesh","name":"CAVE_ROCK","pos":[-0.142,0.0,-9.999],"rot":[0.0,0.7121,0.0,-0.70208],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeA.glb"},
+    {"id":10,"type":"mesh","name":"CAVE_ROCK","pos":[5.763,0.0,-8.173],"rot":[0.0,0.46029,0.0,-0.88777],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeB.glb"},
+    {"id":11,"type":"mesh","name":"CAVE_ROCK","pos":[9.466,0.0,-3.225],"rot":[0.0,0.16342,0.0,-0.98656],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeA.glb"}
+  ]
+}

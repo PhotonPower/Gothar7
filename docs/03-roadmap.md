@@ -111,7 +111,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
   - Stand Teil B1: Raster (64-m-Zellen), Sichtweite `view_distance` und Größen-Culling `size_cull` (nur Deko; `category` deco/gameplay in `.g7world`, Mobs immer gameplay), Vorgaben in engine.toml. 
   - Teil B2: Multi-Draw nach Material-Werten (`glMultiDrawElementsIndirect`, Index über `baseInstance`), geteilte neutrale Texturen; Leonberg-Kern RTX 3,06 → 2,17 ms; auf Intel UHD ~10 % langsamer, daher `multi_draw = "auto"` (aus auf Intel) – offener Punkt in render.md
   - Offener Punkt: einmaliger Hänger eines lokalen Gesamtlaufs (> 30 min), Ursache ungeklärt (`asset.md`); ctest-Timeouts je Suite gesetzt
-- [ ] Mehrere Welten + Weltwechsel (Levelwechsel-Trigger)
+- [x] Mehrere Welten + Weltwechsel (Levelwechsel-Trigger) – `trigger.changeWorld`, Wechsel zwischen zwei Frames, Zustand verlassener Welten im Speicher (Spielstand: save), kein Pingpong; Testwelten Lager ↔ Höhle
 - [ ] **Editor-Grundlage**: Editor-Modus, Vobs auswählen/verschieben/drehen (Gizmos, ImGuizmo), Welt speichern
 
 **DoD:** Eine Testwelt mit Gelände, Lager-Hütten und Lagerfeuer wird geladen, Tag/Nacht läuft

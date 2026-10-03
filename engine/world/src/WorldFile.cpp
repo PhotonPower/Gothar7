@@ -246,6 +246,25 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
         }
         trigger.once = t["once"].get<bool>();
     }
+    if (t.contains("changeWorld"))
+    {
+        const Json& c = t["changeWorld"];
+        const std::string change = at + ".changeWorld";
+        auto world = c.is_object() ? readText(r, c, "world", change, true)
+                                   : Result<std::string>(r.error(change, "must be an object"));
+        auto start =
+            c.is_object() ? readText(r, c, "start", change, true) : Result<std::string>(std::string());
+        if (!world || !start)
+        {
+            return !world ? world.error() : start.error();
+        }
+        if (trigger.filter != TriggerVolume::Filter::Player)
+        {
+            return r.error(change, "a level change reacts to the player only (filter 'player')");
+        }
+        trigger.changeWorld = std::move(world).value();
+        trigger.changeStart = std::move(start).value();
+    }
     if (t.contains("target"))
     {
         // Reserved: a vob id or a vob name.
@@ -802,6 +821,10 @@ std::string writeWorldFile(const WorldFile& world)
             else if (!tv.targetName.empty())
             {
                 trigger["target"] = tv.targetName;
+            }
+            if (!tv.changeWorld.empty())
+            {
+                trigger["changeWorld"] = Json{{"world", tv.changeWorld}, {"start", tv.changeStart}};
             }
             v["components"]["trigger"] = std::move(trigger);
         }

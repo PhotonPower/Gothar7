@@ -84,8 +84,8 @@ TEST_CASE("Test world: a .g7world loads, renders and saves back identically")
         Engine engine(std::move(config));
         auto result = engine.init();
         REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
-        CHECK(engine.scene().vobCount() == 172); // 169 placed objects + start point, sound, trigger
-        CHECK(engine.sceneObjectCount() > 160); // mesh vobs + ground plate
+        CHECK(engine.scene().vobCount() == 174); // 169 placed objects + 2 start points, sound, 2 triggers
+        CHECK(engine.sceneObjectCount() > 160);  // mesh vobs + ground plate
         CHECK(engine.runFrame());
         CHECK(engine.visibleSceneObjects() > 10);
         CHECK(engine.renderDevice()->debugErrorCount() == 0);

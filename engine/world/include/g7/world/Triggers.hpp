@@ -53,9 +53,18 @@ public:
     /// that order.
     std::vector<TriggerEvent> update(const Scene& scene, std::span<const TriggerProbe> probes);
 
+    /// Arrival (a world was loaded, a start point taken): every probe counts as already inside the
+    /// triggers it stands in, without events - such a trigger fires only after the probe left and came
+    /// back, so a start point next to a level change does not bounce the player straight back. Forgets
+    /// who was inside before; once-triggers keep their state.
+    void prime(const Scene& scene, std::span<const TriggerProbe> probes);
+
     [[nodiscard]] bool isInside(VobId trigger, VobId who) const;
     /// Forgets who is inside and which once-triggers fired (e.g. after loading another world).
     void reset();
+    /// Once-triggers that already fired (kept with a world while another one is loaded).
+    [[nodiscard]] const std::set<u64>& spentTriggers() const noexcept { return m_spent; }
+    void setSpentTriggers(std::set<u64> spent) { m_spent = std::move(spent); }
 
     /// True if `point` lies in the volume placed by `world` (box: in the turned and scaled box; sphere:
     /// radius times the largest scale).
