@@ -161,7 +161,10 @@ def _pair_rings(body: np.ndarray, head: np.ndarray) -> np.ndarray:
 
 def _image_uri(uri: str, part: Path, out: Path) -> str:
     target = (part.parent / uri).resolve()
-    return os.path.relpath(target, out.parent.resolve()).replace("\\", "/")
+    try:
+        return os.path.relpath(target, out.parent.resolve()).replace("\\", "/")
+    except ValueError as e:  # Windows: another drive
+        raise AssembleError(f"{out}: output must be on the same drive as the parts ({e})") from e
 
 
 def inputs_hash(manifest: Path, parts: dict[str, Path]) -> str:

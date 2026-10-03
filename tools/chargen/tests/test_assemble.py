@@ -80,8 +80,19 @@ def test_garments_hide_body_triangles():
     assert body_triangles(guard) < body_triangles(plain) - 1000
 
 
-def test_deterministic_and_stale_outputs_removed(tmp_path):
-    figures = tmp_path / "figures"
+@pytest.fixture
+def repo_tmp():
+    """Scratch folder inside the repository (build/ is ignored): texture paths of a figure are
+    relative, which needs the same drive as the parts (CI runners check out on D:)."""
+    path = REPO_ROOT / "build" / "pytest-figures"
+    shutil.rmtree(path, ignore_errors=True)
+    path.mkdir(parents=True)
+    yield path
+    shutil.rmtree(path, ignore_errors=True)
+
+
+def test_deterministic_and_stale_outputs_removed(repo_tmp):
+    figures = repo_tmp / "figures"
     figures.mkdir()
     for name in ("test_plain", "guard"):
         shutil.copy(FIGURES / f"{name}.figure.toml", figures)
