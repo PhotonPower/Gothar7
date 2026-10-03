@@ -126,3 +126,22 @@ def test_ring_pairing_finds_shift_and_direction():
     shifted = np.roll(ring[::-1], 5, axis=0) * 1.01
     pairing = _pair_rings(ring, shifted)
     assert np.allclose(shifted[pairing], ring * 1.01)
+
+
+def test_tight_armour_hides_the_baked_trousers(monkeypatch):
+    """Garments baked into a base body (its trousers) may stick out further under tight armour
+    trousers than skin (POKE_THROUGH_CLOTH); with the skin limit they would poke through."""
+    from gothar_chargen import partdata
+
+    body_rel = "parts/body_m_average/body.glb"
+    body = Gltf.load(CHARACTERS / body_rel)
+    prim = partdata.lod_meshes(body)[0].materials.index("cloth_toigo_wool_pants")
+    trousers = Gltf.load(CHARACTERS / "parts/armor_m_average/wrapped_trousers.glb")
+
+    def hidden() -> int:
+        covers = partdata.garment_data(trousers, body, body_rel)["covers"]["lods"]["body_lod0"]
+        return sum(end - first for p, first, end in covers if p == prim)
+
+    loose = hidden()
+    monkeypatch.setattr(partdata, "POKE_THROUGH_CLOTH", partdata.POKE_THROUGH)
+    assert loose > hidden() + 100

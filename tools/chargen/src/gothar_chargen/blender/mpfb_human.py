@@ -111,6 +111,17 @@ def main() -> None:
         if obj is not None:
             obj["gothar_asset"] = rel
             obj["gothar_type"] = asset_type
+    for d in human.derive:  # own pieces start as a fitted copy of a CC0 garment
+        obj = human_service.add_mhclo_asset(
+            asset(d.source), basemesh, asset_type="Clothes", subdiv_levels=0,
+            material_type="MAKESKIN",
+        )  # fmt: skip
+        obj["gothar_asset"] = d.source
+        obj["gothar_type"] = "Clothes"
+        obj["gothar_derive"] = d.name
+        obj["gothar_texture"] = asset(d.texture)
+        if d.normal:
+            obj["gothar_normal"] = asset(d.normal)
     _load_face_targets(basemesh, target_service, face_service)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(args.out.resolve()))

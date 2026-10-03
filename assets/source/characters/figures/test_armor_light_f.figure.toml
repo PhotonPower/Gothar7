@@ -1,0 +1,20 @@
+# Test figure (F3g): light armour line on the average female build – kit shirt and ankle boots,
+# armour trousers, leather vest and short gloves. Only for checking the pieces; who wears what is
+# decided later (owner).
+version = 1
+
+[parts]
+body = "parts/body_f_average/body.glb"
+head = "parts/head_f_mature/head.glb"
+hair = "parts/head_f_mature/hair.glb"
+cloth = [
+    "parts/cloth_f_average/joepal_crude_t-shirt_female.glb",
+    "parts/cloth_f_average/toigo_ankle_boots_female.glb",
+    "parts/armor_f_average/wrapped_trousers.glb",
+    "parts/armor_f_average/leather_vest.glb",
+    "parts/armor_f_average/gloves_short.glb",
+]
+
+[palette]
+cloth_joepal_crude_t-shirt_female = "#8f8a78"
+cloth_toigo_ankle_boots_female = "#3e3026"

@@ -75,7 +75,8 @@ gothar-chargen build-test-parts               & REM eigene einfache Testteile un
 gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name>/ + textures/ (nur lokal, braucht MPFB);
                                               & REM Grundkörper (parts = ["body"]) und Köpfe (["head", "hair"]) werden
                                               & REM in figures/*.figure.toml kombiniert (assemble: Halsnaht, Haut des Kopfes);
-                                              & REM Kleidungs-Kits (fit_to, parts = ["cloth"]): ein Teil je Stück und Statur
+                                              & REM Kleidungs-Kits (fit_to, parts = ["cloth"]): ein Teil je Stück und Statur;
+                                              & REM Rüstungs-Kits zusätzlich neutral = false, [names], [budget], [derive.x]
 gothar-chargen monster wolf --sources C:\GotharData\characters\monsters
                                               & REM Monster-Rig + Referenz + Clip-Quelle wolf_clips.blend (§7.2);
                                               & REM meldet je Aktion Beckenabsenkung und Fuß-/Gelenkabweichung

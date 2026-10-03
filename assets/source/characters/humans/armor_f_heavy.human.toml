@@ -1,0 +1,43 @@
+# Armour kit (F3g) fitted to body_f_heavy: light and medium pieces, every piece its own part
+# (parts/armor_f_heavy/<piece>.glb), combined in figure manifests ([parts] cloth).
+# Armour keeps its colour textures (owner decision 2026-10-03); the palette may tint it.
+# CC0 pieces only (file header and pack metadata, assets/LICENSES.md), with neutral names.
+# light: leather_vest (own, derived from the kit shirt; ambientCG CC0 leather), gloves_short
+# medium: mail_tunic, wrapped_trousers, wrapped_boots, gloves_medium
+version = 1
+fit_to = "body_f_heavy"
+parts = ["cloth"]
+triangles = 12000
+neutral = false
+
+[assets]
+clothes = [
+    "clothes/rehmanpolanski_viking_tunic/rehmanpolanski_viking_tunic.mhclo",
+    "clothes/rehmanpolanski_viking_pants/rehmanpolanski_viking_pants.mhclo",
+    "clothes/rehmanpolanski_viking_boots/rehmanpolanski_viking_boots.mhclo",
+    "clothes/toigo_gloves_short/toigo_gloves_short.mhclo",
+    "clothes/toigo_gloves_medium/toigo_gloves_medium.mhclo",
+]
+
+[names]
+rehmanpolanski_viking_tunic = "mail_tunic"
+rehmanpolanski_viking_pants = "wrapped_trousers"
+rehmanpolanski_viking_boots = "wrapped_boots"
+toigo_gloves_short = "gloves_short"
+toigo_gloves_medium = "gloves_medium"
+
+[budget]
+mail_tunic = 3000
+wrapped_trousers = 1500
+wrapped_boots = 1500
+gloves_short = 1000
+gloves_medium = 1200
+leather_vest = 1500
+
+[derive.leather_vest]
+from = "clothes/joepal_crude_t-shirt_female/joepal_crude_t-shirt_female.mhclo"
+cut = ["upperarm", "lowerarm"]
+offset = 0.008
+texture = "gothar/ambientcg/Leather033A/Leather033A_1K-JPG_Color.jpg"
+normal = "gothar/ambientcg/Leather033A/Leather033A_1K-JPG_NormalGL.jpg"
+uv_scale = 2.0

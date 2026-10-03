@@ -235,10 +235,23 @@ Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, 
   `fit_to = "body_<…>"` (Makros, Haut, Augen vom Grundkörper) und `parts = ["cloth"]` → `parts/cloth_<…>/<stück>.glb`
   (je ~1,5 k Dreiecke). Das Figur-Manifest listet die Stücke unter `[parts] cloth = [...]` (Rolle `cloth_<stück>`,
   Knoten `cloth_<stück>_lod<n>`). `assemble` löscht die Körperflächen darunter (Strahl entlang der Normalen trifft das
-  Stück innerhalb 3 cm von innen, oder der Körper ragt bis 1,5 cm heraus; Löcher in zerrissener Kleidung und ein
+  Stück innerhalb 3 cm von innen, oder der Körper ragt bis 1,5 cm heraus – bis 4 cm, wo der Körper selbst Kleidung
+  trägt, z. B. die eingebaute Hose unter enger Rüstungshose; Löcher in zerrissener Kleidung und ein
   5-cm-Streifen an der Halsnaht bleiben). Kit-Texturen sind **neutral grau** (halber Kontrast, Helligkeit 0,55) und
   von allen Staturen geteilt; die Farbe gibt die Palette der Figur als glTF `baseColorFactor`. Bekannte Grenze:
   MPFB-Kleidung faltet sich in der T-Pose an den Schulterblättern (auch beim Bauern) – in Animation prüfen.
+- **Rüstungs-Kit (F3g):** leichte und mittlere Linie nach demselben Prinzip, Rezepte `humans/armor_<m|f>_<statur>`
+  → `parts/armor_<…>/<stück>.glb`, jedes Stück auf jeder Statur geprüft. Rüstung **behält ihre eigene Farbtextur**
+  (Entscheidung Projektinhaber 2026-10-03; Rezept `neutral = false`, 512 px, Normal-Map erlaubt); die Palette tönt
+  optional. Stücke tragen **neutrale Namen** (`[names]`: Quell-Asset → unser Name), Dreiecke je Stück über `[budget]`.
+  - leicht: `leather_vest` (eigenes Teil, s. u.), `gloves_short`; dazu Hemd, Hose, Stiefel aus dem Kleidungs-Kit
+  - mittel: `mail_tunic` (Kettenhemd über Tunika, 3 k Dreiecke), `wrapped_trousers`, `wrapped_boots`, `gloves_medium`
+  - **Eigene einfache Teile** (`[derive.<name>]`), wo es kein CC0-Stück gibt: Kopie eines angepassten CC0-Stücks,
+    Vertices überwiegend an Knochen mit den Präfixen `cut` werden entfernt (Ärmel), der Rest um `offset` entlang der
+    Normalen nach außen geschoben, eigene kachelnde Textur (ambientCG, CC0) mit `uv_scale`. Das Lederwams entsteht
+    so aus dem groben Hemd (ohne Ärmel, 8 mm darüber, Leder 033 A).
+  - Mittlere Figur ≈ 15–16 k, leichte ≈ 16–17 k Dreiecke (Testfiguren `test_armor_{light,medium}_{m,f}`, nur zur
+    Prüfung – wer was trägt, entscheidet der Projektinhaber). Schwere Rüstung und Metall-Karten folgen später.
 - **Texturen:** Trim-Sheets und Farbvarianten statt Unikat-Texturen; Stil passend zu den Häusern (W5).
 - **Budget:** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k (mit Bart bis ~5,6 k), höchstens 20 k je Figur, Stufen
   `_lod1`/`_lod2` (Vertrag §2.2). Lose Teile (Haare, Bärte) werden ohne Randschutz reduziert; nur die Nahtränder von

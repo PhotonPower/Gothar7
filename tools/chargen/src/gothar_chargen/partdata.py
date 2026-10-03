@@ -33,6 +33,9 @@ NECK_FALLOFF = 0.05  # metres below the ring that follow the neck snap
 NECK_KEEP = 0.05  # metres around the neck ring where garments never hide the body
 COVER_DISTANCE = 0.03  # metres along the normal within which a garment covers the body
 POKE_THROUGH = 0.015  # metres a body vertex may stick out of a garment and still be hidden
+# garments baked into a base body (its trousers) are looser than skin: tight pieces worn over them
+# (armour trousers, boot shafts) leave them sticking out further
+POKE_THROUGH_CLOTH = 0.04
 _CHUNK = 512  # body vertices per vectorised batch
 
 
@@ -251,9 +254,10 @@ def covered_triangles(
         ray = _ray_hits(pos + n * 1e-4, n, tri, COVER_DISTANCE)
         near = _closest_points(pos, tri)
         offset = near - pos
-        poke = (np.linalg.norm(offset, axis=1) < POKE_THROUGH) & (
-            np.einsum("ij,ij->i", offset, n) < 0
+        limit = (
+            POKE_THROUGH if material_role(body.materials[prim]) == "skin" else POKE_THROUGH_CLOTH
         )
+        poke = (np.linalg.norm(offset, axis=1) < limit) & (np.einsum("ij,ij->i", offset, n) < 0)
         covered = ray | poke
         if ring_pos is not None:
             d = np.linalg.norm(pos[:, None, :] - ring_pos[None], axis=2).min(axis=1)
