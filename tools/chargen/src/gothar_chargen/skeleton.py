@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 
+from gothar_chargen.collision import Collision, CollisionError, parse_collision
+
 Vec3 = tuple[float, float, float]
 
 KINDS = ("human", "monster")
@@ -50,6 +52,7 @@ class RigSpec:
     # axis -> (bone a, bone b): the direction a -> b points mainly along the glTF axis
     # (up = +Y, forward = +Z, left = +X); empty for the human rig (fixed checks).
     orientation: tuple[tuple[str, tuple[str, str]], ...] = ()
+    collision: Collision | None = None  # monsters: engine character capsule (§7.1)
 
     @property
     def is_monster(self) -> bool:
@@ -159,6 +162,14 @@ def parse_rig(data: dict) -> RigSpec:
             raise SkeletonError(f"monster rig lacks required bones {missing}")
         if {a for a, _ in orientation} != set(ORIENTATION_AXES):
             raise SkeletonError(f"monster rig needs [rig.orientation] {ORIENTATION_AXES}")
+    collision = None
+    if "collision" in rig:
+        try:
+            collision = parse_collision(rig["collision"])
+        except CollisionError as e:
+            raise SkeletonError(str(e)) from e
+    elif kind == "monster":
+        raise SkeletonError("monster rig needs [rig.collision] (gothar-chargen collision)")
 
     return RigSpec(
         name=str(rig.get("name", "")),
@@ -171,6 +182,7 @@ def parse_rig(data: dict) -> RigSpec:
         kind=kind,
         species=species,
         orientation=tuple(orientation),
+        collision=collision,
     )
 
 

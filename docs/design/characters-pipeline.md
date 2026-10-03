@@ -284,6 +284,14 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 - **Events:** `footstep_front_l/r`, `footstep_back_l/r` (Vierbeiner; Zweibeiner `footstep_l/r`), `hit_start`/`hit_end`
   im Angriff, `sound:<name>`.
 - **Material/Texturen:** Rolle `fur` (≤ 1024², §2.3); Platzhalter ohne Textur.
+- **Kollision (engine M5/M9, abgestimmt 2026-10-03):** `[rig.collision]` im Rig-TOML mit `shape`
+  (`capsule_upright` | `capsule_lying`, liegend = Achse entlang +Z), `radius`, `length` (ganze Kapsel inkl.
+  Halbkugeln; stehend = Höhe) und `offset` (Kapselmitte relativ zu `root`, Rig-Raum: Y oben, +Z vorn), in Metern.
+  `gothar-chargen collision` leitet sie aus der Referenz ab: Rumpf ohne Schwanz und Unterbeine (Skin-Gewichte),
+  Schnauze knapp drin; lang (Länge > 1,3 × Höhe) → liegend, sonst stehend auf dem Boden. Pflicht für Monster-Rigs;
+  der Validator warnt, wenn sie nicht mehr zum Mesh passt (`collision.stale`). Stand: Wolf liegend r 0,34 / l 1,21,
+  Keiler liegend r 0,37 / l 2,03, Laufvogel stehend r 0,45 / h 1,6. Menschen: eine Kapsel für alle aus der Engine
+  (r 0,3, h 1,8, Hüfte 0,9 m, Augenhöhe 1,62 m); Figuren-`.glb` haben keine `COL_`-Knoten.
 
 ### 7.2 Werkzeuge
 

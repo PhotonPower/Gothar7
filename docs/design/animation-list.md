@@ -29,14 +29,18 @@ Clips liegen in `assets/source/characters/anims/human/<modus>.glb`; Herkunft je 
 | `none/t_jump_start`, `s_jump_air`, `t_jump_land` | Sprung | – | land | Q | platzhalter (UAL1 `Jump_Start`/`_Loop`/`_Land`) |
 | `none/t_jump_run` | Sprung aus dem Lauf | – | land | Q→ | platzhalter (`Jump_Loop` 0–20 + `Jump_Land`) |
 | `none/s_fall`, `t_fall_land_hard` | Fallen, harte Landung | – | land | Q | platzhalter (UAL2 `NinjaJump_Idle_Loop`/`_Land`) |
-| `none/t_climb_low` | Kante ~0,8 m hochsteigen | ✓ | – | Q, später MC/K | platzhalter (UAL2 `ClimbUp_1m_RM`, 1 m) |
-| `none/t_climb_mid` | Kante ~1,4 m hochziehen | ✓ | – | K, später MC | platzhalter-K (`t_climb_low` gestreckt: 1,4 m, ×1,3 Zeit) |
-| `none/t_climb_high` | Kante ~2,0 m hochziehen | ✓ | – | K, später MC | platzhalter-K (`t_climb_low` gestreckt: 2,0 m, ×1,6 Zeit) |
+| `none/t_climb_low` | Kante bis 1,0 m hochsteigen (Root steigt 1,0 m) | ✓ | – | Q, später MC/K | platzhalter (UAL2 `ClimbUp_1m_RM`, 1 m) |
+| `none/t_climb_mid` | Kante bis 1,6 m hochziehen (Root steigt 1,6 m; engine skaliert herunter) | ✓ | – | K, später MC | platzhalter-K (`t_climb_low` gestreckt: 1,6 m, ×1,4 Zeit) |
+| `none/t_climb_high` | Kante bis 2,2 m hochziehen (Root steigt 2,2 m; engine skaliert herunter) | ✓ | – | K, später MC | platzhalter-K (`t_climb_low` gestreckt: 2,2 m, ×1,75 Zeit) |
 | `none/t_ladder_on`, `s_ladder_up`, `s_ladder_down`, `t_ladder_off` | Leiter | ✓ | – | K, später MC | platzhalter-K (Wechselposen, 0,6 m je Zyklus) |
 | `swim/s_idle`, `swim/s_forward`, `swim/s_back` | Schwimmen | – | splash | Q, Q→ | platzhalter (UAL1 `Swim_Idle_Loop`, `Swim_Fwd_Loop`, rückwärts) |
 | `swim/t_turn_l/r` | Schwimmend drehen | – | – | K, später MC | platzhalter-K (`swim/s_idle` + Körperdrehung) |
 | `dive/s_idle`, `dive/s_forward`, `swim/t_2_dive`, `dive/t_2_swim` | Tauchen | – | – | K, später MC | platzhalter-K (Schwimmen geneigt/verlangsamt, Überblendungen) |
 | `none/t_slide`, `s_slide` | Hang hinabrutschen (stehend, Gothic-typisch) | – | – | K | platzhalter-K (Balance-Pose mit Schwanken; Übergang aus `s_run`) |
+
+Kletterhöhen passend zu den engine-Kantenklassen (Stand 2026-10-03: niedrig ≤ 1,0 m, mittel ≤ 1,6 m, hoch ≤ 2,2 m;
+Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber). Ändern sich die Klassen, werden
+`t_climb_mid/high` nachgezogen (`data/clips/none.toml`).
 
 ## Prio B – Vertical Slice (Muster, wird in F2/F4 ausgeschrieben)
 

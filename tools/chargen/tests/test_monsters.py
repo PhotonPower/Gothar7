@@ -269,3 +269,61 @@ def test_validate_command_picks_rig_per_file(capsys):
     assert main(["validate", "--strict", str(WOLF_REF), str(WOLF_ANIMS), str(keiler)]) == 0
     out = capsys.readouterr().out
     assert "3 file(s), 0 failed" in out
+
+
+# --- collision capsule (engine M5/M9, §7.1) -------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("species", "shape"),
+    [("wolf", "capsule_lying"), ("keiler", "capsule_lying"), ("laufvogel", "capsule_upright")],
+)
+def test_collision_matches_mesh(species, shape):
+    from gothar_chargen.collision import derive_collision
+
+    rig = load_rig(species=species)
+    ref = REPO_ROOT / f"assets/source/characters/monsters/{species}/rig/{species}_reference.glb"
+    assert rig.collision is not None and rig.collision.shape == shape
+    assert rig.collision == derive_collision(Gltf.load(ref))
+    assert rig.collision.length >= 2 * rig.collision.radius
+    if shape == "capsule_upright":  # stands on the ground
+        assert rig.collision.offset[1] == pytest.approx(rig.collision.length / 2, abs=0.01)
+
+
+def test_collision_is_required_and_checked():
+    from gothar_chargen.collision import CollisionError, parse_collision
+
+    data = _wolf_data()
+    del data["rig"]["collision"]
+    with pytest.raises(SkeletonError, match="collision"):
+        parse_rig(data)
+    good = {"shape": "capsule_lying", "radius": 0.3, "length": 1.2, "offset": [0, 0.5, 0.4]}
+    assert parse_collision(good).radius == 0.3
+    for change, message in (
+        ({"shape": "box"}, "shape"),
+        ({"radius": 0}, "radius"),
+        ({"length": 0.5}, "length"),
+        ({"offset": [0, 1]}, "offset"),
+    ):
+        with pytest.raises(CollisionError, match=message):
+            parse_collision({**good, **change})
+
+
+def test_write_collision_replaces_block(tmp_path):
+    from gothar_chargen.collision import Collision, write_collision
+
+    toml = tmp_path / "wolf.toml"
+    toml.write_text(monster_rig_text("wolf"), encoding="utf-8")
+    new = Collision("capsule_upright", 0.4, 1.5, (0.0, 0.75, 0.1))
+    write_collision(toml, new)
+    write_collision(toml, new)  # idempotent: one block only
+    text = toml.read_text(encoding="utf-8")
+    assert text.count("[rig.collision]") == 1
+    assert parse_rig(tomllib.loads(text)).collision == new
+
+
+def test_stale_collision_warns(wolf_reference):
+    data = _wolf_data()
+    data["rig"]["collision"]["radius"] = 0.6
+    report = validate_gltf(Gltf.load(WOLF_REF), parse_rig(data), wolf_reference, path=WOLF_REF)
+    assert "collision.stale" in codes(report, "warning")

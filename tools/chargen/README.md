@@ -78,6 +78,7 @@ gothar-chargen monster wolf --sources C:\GotharData\characters\monsters
                                               & REM meldet je Aktion Beckenabsenkung und Fuß-/Gelenkabweichung
 gothar-chargen build-set wolf --sources C:\GotharData\characters\monsters
                                               & REM Monster-Clips → monsters/wolf/anims/wolf.glb
+gothar-chargen collision [wolf]               & REM [rig.collision] aus der Referenz ableiten (ohne Blender)
 ```
 Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 
@@ -90,7 +91,7 @@ Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 | `skin.*` | Knoten stehen in der Bind-Pose (inverse Bind-Matrizen), ≤ 4 Gewichte je Vertex, Summe 1, Sockets ohne Gewichte |
 | `mesh.*` | Größe 1,50–2,10 m (Warnung außerhalb 1,65–1,95 m; Monster: ±30 %/±10 % der Rig-Höhe), Füße auf dem Boden |
 | `morph.*` | nur Namen aus §6.1; ein Mesh mit Morphs trägt die vollständige Liste in Vertragsreihenfolge, jede Primitive alle Targets, höchstens 16 je Mesh |
-| `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung; `anim.jump`: kein Sprung zwischen zwei Frames (Fehler ab 120°/0,5 m, Warnung ab 90°); `anim.loop`: Schleifen `s_*` geschlossen (Warnung ab 5°); Monster: Clip-Modus = Art, `anim.root_motion`: `s_walk`/`s_run` ≥ 0,1 m/s vorwärts, `t_turn_l/r` ≥ 45° um +Y in die richtige Richtung |
+| `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung; `anim.jump`: kein Sprung zwischen zwei Frames (Fehler ab 120°/0,5 m, Warnung ab 90°); `anim.loop`: Schleifen `s_*` geschlossen (Warnung ab 5°); Monster: Clip-Modus = Art, `anim.root_motion`: `s_walk`/`s_run` ≥ 0,1 m/s vorwärts, `t_turn_l/r` ≥ 45° um +Y in die richtige Richtung; `collision.stale`: `[rig.collision]` passt nicht mehr zum Mesh (Warnung) |
 | `lod.*` | LOD-Vertrag §2.2: Stufen lückenlos ab 0, gleicher Eltern-Knoten/Transformation/Skin, Morphs nur auf `_lod0`, Anteil lod1 ≤ 60 %, lod2 ≤ 30 % (Warnung) |
 | `mesh.budget` | höchstens 20 k Dreiecke je Figur bei lod0 (nicht für Teile unter `parts/`) |
 | `fit.*` | Figuren mit Rollen-Knoten (`body`, `head`, `hair`, `beard`): jeder offene Rand von body/head trifft einen Rand eines anderen Teils (≤ 5 mm) mit gleichen Gewichten; `lod.seam`: Nahtränder von body/head in allen Stufen wie bei lod0 (Haare/Bärte dürfen sich verändern) |

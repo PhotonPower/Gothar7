@@ -18,6 +18,12 @@ up = ["root", "head"]
 forward = ["pelvis", "head"]
 left = ["front_foot_r", "front_foot_l"]
 
+[rig.collision]            # engine character capsule (§7.1), derived from the mesh
+shape = "capsule_lying"
+radius = 0.34
+length = 1.21
+offset = [0.00, 0.51, 0.48]
+
 [[bone]]
 name = "root"
 head = [0, 0, 0]
