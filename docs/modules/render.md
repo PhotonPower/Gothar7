@@ -173,8 +173,11 @@ std::vector<u8> Device::readTexture(const rhi::Texture&, u32 level) const;      
 ```cpp
 struct Material { const rhi::Texture *baseColor, *normal, *emissive; Vec4 baseColorFactor; Vec3 emissiveFactor;
                   f32 normalScale, alphaCutoff; asset::AlphaMode alphaMode; bool doubleSided; };
-class MaterialSet  { using ImageLookup = std::function<const asset::ImageData*(const asset::ImageSource&)>;
-                     static Result<MaterialSet> create(Device&, const asset::MeshData&, const ImageLookup&);  // Engine: über das VFS
+struct ExternalImage { const asset::TextureData* data; std::string cacheKey; u64 version; }; // aus Zeiger implizit
+class MaterialSet  { using ImageLookup = std::function<ExternalImage(const asset::ImageSource&)>;
+                     static Result<MaterialSet> create(Device&, const asset::MeshData&, const ImageLookup&,
+                                                       std::shared_ptr<const MaterialDefaults> = {},
+                                                       TextureCache* = nullptr);                   // Engine: über das VFS
                      static Result<MaterialSet> create(Device&, const asset::MeshData&, const fs::Path& modelDir); // Werkzeuge/Tests
                      const Material& operator[](usize) const; usize size() const; };
 class MeshRenderer { static Result<MeshRenderer> create(Device&, ShaderLibrary&, f32 anisotropy);
@@ -184,6 +187,13 @@ class MeshRenderer { static Result<MeshRenderer> create(Device&, ShaderLibrary&,
   Emissive (nach dem Licht addiert), Alpha-Modi wie glTF.
 - `MaterialSet` lädt jedes Bild einmal je Verwendung (Farbe sRGB, Normalen linear); fehlende/kaputte Bilder →
   neutrale 1×1-Ersatztexturen (weiß bzw. flache Normale) mit Warnung. Texturen bleiben beim Verschieben gültig.
+- **Textur-Cache** (`TextureCache`, `MeshRenderer::textureCache()`): Bilder mit Cache-Schlüssel (VFS-Pfad + Version
+  aus dem `AssetManager`) lädt die Engine **einmal für alle Modelle** hoch – je Pfad, sRGB/linear und Version eine
+  Textur. Die `MaterialSet`s halten sie per `shared_ptr` (Referenzzählung), der Cache nur schwach: Sobald das letzte
+  Modell sie freigibt (Weltwechsel), ist sie aus dem VRAM. Hot-Reload: Die neue Version ist eine neue Textur, Modelle
+  wechseln beim Neu-Hochladen; die alte geht mit dem letzten. Viele Häuser auf wenigen Trim-Sheets kosten so die
+  Sheets einmal. Ohne Schlüssel (Werkzeuge, Tests mit Zeiger-Lookup) lädt jedes Set eigene Texturen. Das Log nennt
+  nach dem Laden die Zahl der Bild-Texturen auf der GPU.
 - `MeshRenderer`: Pipelines für Opak / Alpha-Test / Blend × einseitig / beidseitig. **Alpha-Test** ist eine
   Shader-Variante (`#define ALPHA_TEST` über die ShaderLibrary – `discard` schaltet Early-Z ab, also nur wo nötig);
   **Blend** ohne Tiefenschreiben, nach allen opaken Submeshes (Sortierung nach Distanz mit der Render-Szene);
@@ -336,8 +346,8 @@ void beginFrame();  BatchStats lastBatch();  shared_ptr<const MaterialDefaults> 
   (Divisor 1) liefert ihn dem Shader – **kein `gl_DrawID`/`ARB_shader_draw_parameters` nötig** (GL 4.3-Kern, auch
   Mesa llvmpipe in der CI). Durchsichtige Submeshes und Meshes außerhalb einer Arena: einzeln, danach.
 - Gleiche Werte in verschiedenen Modellen bündeln, weil alle `MaterialSet`s die neutralen Texturen des Renderers teilen
-  (`MaterialSet::create(…, defaults())`). Texturen aus Dateien werden noch je Modell hochgeladen – bündeln über
-  Texturen braucht einen GPU-Textur-Cache über den VFS-Pfad (vor welt W5 Schritt 4, spätestens M6).
+  (`MaterialSet::create(…, defaults())`), und Texturen aus Dateien über den Textur-Cache dieselben Objekte sind:
+  Modelle auf demselben Trim-Sheet bündeln miteinander.
 - Pufferung: drei Puffersätze im Wechsel je Frame, innerhalb eines Frames hängt jeder Pass hinten an (kein
   Überschreiben, solange die GPU liest); Wachstum in Zweierpotenzen.
 - **`[render] multi_draw`**: `"auto"` (Vorgabe) = an, außer auf Intel-GPUs; `"on"`/`"off"` erzwingen.

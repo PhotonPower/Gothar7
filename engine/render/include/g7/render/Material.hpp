@@ -7,12 +7,14 @@
 #include <g7/render/Device.hpp>
 #include <g7/render/Lighting.hpp>
 #include <g7/render/Shadows.hpp>
+#include <g7/render/TextureCache.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
 #include <array>
 #include <functional>
 #include <memory>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace g7::render
@@ -47,21 +49,40 @@ struct MaterialDefaults
     rhi::Texture flatNormal; ///< linear (0.5, 0.5, 1)
 };
 
-/// The textures and materials of one model. Images are uploaded once per use (sRGB for colour,
-/// linear for normals); missing or broken images fall back to neutral 1x1 textures with a warning.
+/// An external image as the lookup supplies it: the decoded data and, for sharing through a TextureCache,
+/// its VFS path and asset version (empty key: uploaded for this set only).
+struct ExternalImage
+{
+    const asset::TextureData* data = nullptr;
+    std::string cacheKey;
+    u64 version = 0;
+
+    ExternalImage() = default;
+    ExternalImage(const asset::TextureData* texture)
+        : data(texture) {} // NOLINT: plain lookups return a pointer
+    ExternalImage(const asset::TextureData* texture, std::string key, u64 v)
+        : data(texture), cacheKey(std::move(key)), version(v)
+    {
+    }
+};
+
+/// The textures and materials of one model. Images are uploaded once per set (sRGB for colour, linear
+/// for normals) - or once for all sets through a TextureCache; missing or broken images fall back to
+/// neutral 1x1 textures with a warning.
 class MaterialSet
 {
 public:
     MaterialSet() = default;
-    /// Supplies the decoded image for an external `ImageSource` (uri set), or nullptr if it is
+    /// Supplies the decoded image for an external `ImageSource` (uri set), or no data if it is
     /// missing (the material then uses a neutral fallback). Embedded images are decoded here.
-    using ImageLookup = std::function<const asset::TextureData*(const asset::ImageSource&)>;
+    using ImageLookup = std::function<ExternalImage(const asset::ImageSource&)>;
 
     /// With `defaults` (MeshRenderer::defaults()) materials without an image use the shared neutral
-    /// textures; the set keeps them alive. Without, the set makes its own.
+    /// textures; the set keeps them alive. Without, the set makes its own. With `cache`
+    /// (MeshRenderer::textureCache()) external images with a cache key are shared between sets.
     [[nodiscard]] static Result<MaterialSet>
     create(Device& device, const asset::MeshData& mesh, const ImageLookup& lookup,
-           std::shared_ptr<const MaterialDefaults> defaults = nullptr);
+           std::shared_ptr<const MaterialDefaults> defaults = nullptr, TextureCache* cache = nullptr);
     /// Convenience for tools and tests: external image URIs are files relative to `modelDirectory`.
     [[nodiscard]] static Result<MaterialSet> create(Device& device, const asset::MeshData& mesh,
                                                     const fs::Path& modelDirectory);
@@ -70,7 +91,7 @@ public:
     [[nodiscard]] usize size() const noexcept { return m_materials.size(); }
 
 private:
-    std::vector<rhi::Texture> m_textures; // owns every texture, fallbacks included (stable on move)
+    std::vector<std::shared_ptr<const rhi::Texture>> m_textures; // every texture it uses, own or cached
     std::vector<Material> m_materials;
     std::shared_ptr<const MaterialDefaults> m_defaults;
 };
@@ -155,6 +176,9 @@ public:
     {
         return m_defaults;
     }
+    /// Image textures shared between MaterialSets (by VFS path), so models using the same trim sheet
+    /// upload it once and batch together.
+    [[nodiscard]] TextureCache* textureCache() const noexcept { return m_textureCache.get(); }
 
 private:
     enum Variant : u8
@@ -234,5 +258,6 @@ private:
     std::vector<std::pair<const MeshDrawItem*, usize>> m_singles; // (item, submesh)
     BatchStats m_batch;
     std::shared_ptr<const MaterialDefaults> m_defaults;
+    std::unique_ptr<TextureCache> m_textureCache = std::make_unique<TextureCache>();
 };
 } // namespace g7::render

@@ -63,37 +63,36 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
 
 Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& mesh,
                                         const ImageLookup& lookup,
-                                        std::shared_ptr<const MaterialDefaults> defaults)
+                                        std::shared_ptr<const MaterialDefaults> defaults, TextureCache* cache)
 {
     MaterialSet set;
     set.m_defaults = std::move(defaults);
-    // Shared neutral textures have these indices; everything else indexes m_textures.
-    constexpr usize kSharedWhite = ~usize(0);
-    constexpr usize kSharedFlatNormal = ~usize(0) - 1;
-    // Every texture lives in m_textures; indices first, pointers only once the vector is final.
-    std::map<std::pair<i32, bool>, usize> uploaded; // (image, sRGB) -> texture index
-    const auto fallback = [&](u8 r, u8 g, u8 b, bool srgb) -> Result<usize>
+    // Every texture is held by a shared_ptr (own, cached or the shared defaults), so the pointers in
+    // the materials stay valid when the set moves.
+    const auto own = [&](Result<rhi::Texture> texture) -> Result<const rhi::Texture*>
     {
-        auto texture = createSolidTexture(device, r, g, b, 255, srgb);
         if (!texture)
         {
             return texture.error();
         }
-        set.m_textures.push_back(std::move(texture).value());
-        return set.m_textures.size() - 1;
+        set.m_textures.push_back(std::make_shared<const rhi::Texture>(std::move(texture).value()));
+        return set.m_textures.back().get();
     };
-    auto white = set.m_defaults ? Result<usize>(kSharedWhite) : fallback(255, 255, 255, true);
-    auto flatNormal = set.m_defaults ? Result<usize>(kSharedFlatNormal) : fallback(128, 128, 255, false);
+    auto white = set.m_defaults ? Result<const rhi::Texture*>(&set.m_defaults->white)
+                                : own(createSolidTexture(device, 255, 255, 255, 255, true));
+    auto flatNormal = set.m_defaults ? Result<const rhi::Texture*>(&set.m_defaults->flatNormal)
+                                     : own(createSolidTexture(device, 128, 128, 255, 255, false));
     if (!white || !flatNormal)
     {
         return Error{"cannot create fallback textures"};
     }
 
-    const auto textureFor = [&](i32 image, bool srgb, usize fallbackIndex) -> usize
+    std::map<std::pair<i32, bool>, const rhi::Texture*> uploaded; // (image, sRGB) -> texture
+    const auto textureFor = [&](i32 image, bool srgb, const rhi::Texture* fallback) -> const rhi::Texture*
     {
         if (image < 0 || static_cast<usize>(image) >= mesh.images.size())
         {
-            return fallbackIndex;
+            return fallback;
         }
         const auto key = std::make_pair(image, srgb);
         if (const auto it = uploaded.find(key); it != uploaded.end())
@@ -101,53 +100,53 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
             return it->second;
         }
         const asset::ImageSource& source = mesh.images[static_cast<usize>(image)];
-        Result<rhi::Texture> texture = Error{"image '" + source.uri + "' not available"};
+        Result<const rhi::Texture*> texture = Error{"image '" + source.uri + "' not available"};
         if (!source.encoded.empty())
         {
             auto decoded = asset::decodeImage(source.encoded, "embedded image");
-            texture = decoded ? createTexture(device, decoded.value(), {srgb, true})
-                              : Result<rhi::Texture>(decoded.error());
+            texture = decoded ? own(createTexture(device, decoded.value(), {srgb, true}))
+                              : Result<const rhi::Texture*>(decoded.error());
         }
-        else if (const asset::TextureData* external = lookup ? lookup(source) : nullptr)
+        else if (const ExternalImage external = lookup ? lookup(source) : ExternalImage{};
+                 external.data != nullptr)
         {
-            texture = createTexture(device, *external, srgb);
+            if (cache != nullptr && !external.cacheKey.empty())
+            {
+                auto shared = cache->get(device, external.cacheKey, external.version, *external.data, srgb);
+                if (shared)
+                {
+                    set.m_textures.push_back(shared.value());
+                    texture = shared.value().get();
+                }
+                else
+                {
+                    texture = shared.error();
+                }
+            }
+            else
+            {
+                texture = own(createTexture(device, *external.data, srgb));
+            }
         }
-        if (!texture)
+        const rhi::Texture* result = fallback;
+        if (texture)
+        {
+            result = texture.value();
+        }
+        else
         {
             G7_LOG_DEBUG("render", "texture fallback: {}", texture.error().message);
-            uploaded.emplace(key, fallbackIndex);
-            return fallbackIndex;
         }
-        set.m_textures.push_back(std::move(texture).value());
-        uploaded.emplace(key, set.m_textures.size() - 1);
-        return set.m_textures.size() - 1;
+        uploaded.emplace(key, result);
+        return result;
     };
 
-    struct Slots
-    {
-        usize baseColor, normal, emissive;
-    };
-    std::vector<Slots> slots;
     for (const asset::MaterialInfo& info : mesh.materials)
     {
-        slots.push_back({textureFor(info.baseColorImage, true, white.value()),
-                         textureFor(info.normalImage, false, flatNormal.value()),
-                         textureFor(info.emissiveImage, true, white.value())});
-    }
-
-    for (usize i = 0; i < mesh.materials.size(); ++i)
-    {
-        const asset::MaterialInfo& info = mesh.materials[i];
         Material material;
-        const auto texture = [&](usize slot) -> const rhi::Texture*
-        {
-            return slot == kSharedWhite        ? &set.m_defaults->white
-                   : slot == kSharedFlatNormal ? &set.m_defaults->flatNormal
-                                               : &set.m_textures[slot];
-        };
-        material.baseColor = texture(slots[i].baseColor);
-        material.normal = texture(slots[i].normal);
-        material.emissive = texture(slots[i].emissive);
+        material.baseColor = textureFor(info.baseColorImage, true, white.value());
+        material.normal = textureFor(info.normalImage, false, flatNormal.value());
+        material.emissive = textureFor(info.emissiveImage, true, white.value());
         material.baseColorFactor = info.baseColor;
         material.emissiveFactor = info.emissive;
         material.normalScale = info.normalScale;
