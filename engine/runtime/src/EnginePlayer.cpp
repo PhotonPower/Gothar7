@@ -129,9 +129,24 @@ Vec3 Engine::triggerProbePosition() const
                             : m_camera.transform.position;
 }
 
+void Engine::teleportPlayer(const Vec3& feet, f32 yaw)
+{
+    if (!m_player.valid())
+    {
+        return;
+    }
+    m_climb.reset();
+    m_player.teleport(feet);
+    m_movement.reset(yaw);
+    m_playerFeet = m_playerFeetBefore = m_player.visualFeet();
+    m_playerCamera.reset(m_playerFeet, yaw, m_movementSettings.camera);
+}
+
 void Engine::removePlayer()
 {
     m_player = {};
+    m_climb.reset();
+    m_jumpCooldown = 0.0f;
     if (m_playerMouse && m_window)
     {
         m_window->setRelativeMouse(false);
@@ -181,6 +196,10 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
     m_playerInput.turn = axis(Action::TurnRight, Action::TurnLeft);
     m_playerInput.walk = allowKeyboard && !m_flyMode && m_actions.isDown(m_input, Action::Walk);
     m_playerInput.sneak = allowKeyboard && !m_flyMode && m_actions.isDown(m_input, Action::Sneak);
+    if (allowKeyboard && !m_flyMode && m_actions.pressed(m_input, Action::Jump))
+    {
+        m_playerInput.jump = true; // until the next fixed step uses it
+    }
     if (m_playerMouse)
     {
         m_playerInput.mouseTurn += m_input.mouseDelta().x;
@@ -194,12 +213,71 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     {
         return;
     }
-    const gameplay::MoveInput input = m_playerInputOverride.value_or(m_playerInput);
+    gameplay::MoveInput input = m_playerInputOverride.value_or(m_playerInput);
+    if (m_playerInputOverride)
+    {
+        input.jump = m_playerInputOverride->jump && !m_overrideJumped; // once per switching on
+        m_overrideJumped = m_playerInputOverride->jump;
+    }
     m_playerInput.mouseTurn = 0.0f; // used up by this step
+    m_playerInput.jump = false;
     m_playerYawBefore = m_movement.yaw();
-    const Vec3 velocity = m_movement.step(input, seconds, m_movementSettings);
-    m_player.update(seconds, velocity);
     m_playerFeetBefore = m_playerFeet;
+    const gameplay::MovementSettings& s = m_movementSettings;
+
+    if (m_climb)
+    {
+        // Along the path until it stands on top; input waits (animation-driven later, M6).
+        m_climbSeconds += seconds;
+        if (m_climbSeconds >= m_climb->seconds)
+        {
+            m_player.teleport(m_climb->to);
+            m_climb.reset();
+        }
+        else
+        {
+            m_player.moveTo(m_climb->at(m_climbSeconds));
+        }
+        m_playerFeet = m_climb ? m_player.feet() : m_player.visualFeet();
+        return;
+    }
+
+    const bool running = m_movement.running(s);
+    const Vec3 velocity = m_movement.step(input, seconds, s);
+    m_jumpCooldown = std::max(0.0f, m_jumpCooldown - seconds);
+    if (input.jump && m_jumpCooldown <= 0.0f && m_player.state() == physics::MoveState::Ground)
+    {
+        // In front of a ledge within reach the jump key climbs (Gothic); else it jumps.
+        const auto ledge = m_player.findLedge(gameplay::forwardOf(m_movement.yaw()), s.stepHeight,
+                                              s.climb.highMax, s.climb.reach);
+        const auto kind = ledge ? gameplay::classifyLedge(ledge->height, s.climb) : std::nullopt;
+        if (ledge && kind)
+        {
+            m_climb = gameplay::ClimbPath{m_player.feet(), ledge->feet,
+                                          gameplay::climbSeconds(*kind, s.climb), *kind};
+            m_climbSeconds = 0.0f;
+            m_movement.stop();
+            G7_LOG_DEBUG("engine", "climb {:.2f} m ({})", ledge->height,
+                         *kind == gameplay::LedgeClass::Low   ? "low"
+                         : *kind == gameplay::LedgeClass::Mid ? "mid"
+                                                              : "high");
+            m_playerFeet = m_player.feet();
+            return;
+        }
+        m_player.jump(gameplay::jumpSpeed(running ? s.jump.runHeight : s.jump.standHeight));
+    }
+    m_player.update(seconds, velocity);
+    if (const auto fall = m_player.takeLanding())
+    {
+        m_jumpCooldown = s.jump.cooldown;
+        const f32 damage = gameplay::fallDamage(*fall, s.fall);
+        if (damage > 0.0f)
+        {
+            m_lastFallDamage = damage;
+            // Hit points come with M8; until then the damage is only reported.
+            G7_LOG_INFO("engine", "fall damage {:.0f} (fell {:.1f} m)", damage, *fall);
+        }
+    }
     m_playerFeet = m_player.visualFeet();
 }
 
@@ -272,9 +350,15 @@ void Engine::drawPlayerDebug()
     m_debugDraw.arrow(bottom, bottom + m_player.groundNormal() * 0.6f, style);
     m_debugDraw.arrow(top, top + gameplay::forwardOf(m_movement.yaw()) * 0.8f, style);
     const Vec3 v = m_player.velocity();
-    const char* name = state == physics::MoveState::Ground  ? "ground"
-                       : state == physics::MoveState::Slide ? "slide"
-                                                            : "air";
+    if (m_climb)
+    {
+        m_debugDraw.arrow(m_climb->from, Vec3(m_climb->from.x, m_climb->to.y, m_climb->from.z), style);
+        m_debugDraw.arrow(Vec3(m_climb->from.x, m_climb->to.y, m_climb->from.z), m_climb->to, style);
+    }
+    const char* name = m_climb                               ? "climb"
+                       : state == physics::MoveState::Ground ? "ground"
+                       : state == physics::MoveState::Slide  ? "slide"
+                                                             : "air";
     m_debugDraw.text(top + Vec3(0.0f, 0.3f, 0.0f),
                      std::format("{} {:.1f} m/s", name, std::sqrt(v.x * v.x + v.z * v.z)), style);
 }

@@ -31,6 +31,26 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
     kurzen Weg).
   - **Wände:** Ein `sphereCast` (r 0,2 m) vom Blickpunkt nach hinten verkürzt den Abstand, nie unter 0,6 m.
   - Modi (Kampf, Dialog, Schwimmen) folgen mit ihren Phasen als weitere Datensätze.
+- **Springen, Klettern, Fallen (Teil D; Werte `[jump]`, `[climb]`, `[fall]`, Entscheidungen Projektinhaber):**
+  - **Sprung** (Taste `jump`) aus Stand bzw. Gehen 0,9 m hoch, aus dem Rennen 1,1 m und damit weiter
+    (~3,8 m). Keine Luftsteuerung. Nach der Landung 0,2 s Sperre.
+    `jumpSpeed(h) = √(2 g h)` mit `kGravity` = 9,81.
+  - **Kanten:** `jump` vor einer Kante (Wand höchstens 0,6 m von der Figur, Oberseite mit Platz für die Figur)
+    klettert statt zu springen.
+    - Klassen (`classifyLedge`): niedrig ≤ 1,0 m, mittel ≤ 1,6 m, hoch ≤ 2,2 m; darüber wird gesprungen.
+    - Kanten bis zur Stufenhöhe (0,4 m) geht man hinauf.
+    - Bis zu den Animationen (M6) gleitet die Figur entlang `ClimbPath`: 70 % der Zeit senkrecht, dann nach vorn,
+      geglättet. Dauer 0,6 / 1,0 / 1,4 s. Die Eingabe ruht während des Kletterns.
+    - Mit M6 geben die Clips `t_climb_low/mid/high` Bahn und Dauer vor; die Root-Höhe wird auf die Kante
+      herunterskaliert.
+  - **Fallschaden** `fallDamage(h)`: bis 4 m nichts, darüber 10 Lebenspunkte je Meter (Stadtmauer außen 7 m
+    → 30). Lebenspunkte kommen mit M8; bis dahin meldet das Log `fall damage N` und `Engine::lastFallDamage()`
+    zeigt den Wert. Wasser fängt jeden Fall ab (Teil E).
+  - **Testwelt, Kletterplatz** (`testworld/camp.g7world`, Startpunkt `START_KLETTERPLATZ` bei (46, 0, 2), Blick
+    nach Süden):
+    - Einzelblöcke 0,9 / 1,5 / 2,1 / 2,6 m bei x 40/44/48/52, z 5–7: je eine Klasse, der letzte ist zu hoch.
+    - Treppe aus Blöcken 1–6 m bei x 39–51, z 11–13 (immer „niedrig“). Von oben 6 m hinunter kostet 20.
+    - Block: `testworld/block.gltf` aus `make_block.py` (eigener Inhalt).
 - **Engine (`runtime/src/EnginePlayer.cpp`):**
   - Die Spielfigur entsteht beim Laden einer Welt auf dem Startpunkt (`--start` bzw. kleinste id; Füße = `pos`,
     nur das Gieren).
@@ -38,7 +58,8 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   - Die Bewegung läuft je festem Schritt.
   - Die Darstellung interpoliert die Füße zwischen den Schritten; die Kamera wird je Bild nachgeführt.
   - Trigger melden die Figur (Hüfthöhe) statt der Kamera.
-  - **F3** (`debug_fly`) schaltet auf die freie Debug-Kamera und zurück.
+  - **F3** (`debug_fly`) schaltet auf die freie Debug-Kamera und zurück. `teleportPlayer(feet, yaw)` zum
+    Debuggen bzw. für Tests.
   - Im Spielbetrieb fängt die Maus ein (nicht bei Pause oder offenem Debug-Fenster F1).
   - Bis M6 wird die Platzhalterfigur `characters/figures/placeholder_mannequin.glb` (T-Pose) gezeichnet.
   - F2 zeigt den Zylinder, Bodennormale, Zustand und Tempo.

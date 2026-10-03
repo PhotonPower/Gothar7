@@ -129,7 +129,8 @@ Gizmo-Mathematik und Operationen). Die Kollision statischer Welt-Meshes ist nach
 - [x] Raycasts/Shapecasts-API (Fokus, Kamera, KI-Sicht) – `raycast`, `sphereCast`, `overlapSphere` mit Layer-Masken, `Engine::physics()`
 - [x] Charakter-Controller: gehen, rennen, schleichen, Treppen/Steigungen, rutschen an steilen Hängen
   - `physics::CharacterController` (Jolt CharacterVirtual), aufrechter Zylinder r 0,3/1,8 m statt Kapsel (scharfe Stufengrenze, gemessen, `physics.md`); `gameplay::PlayerMovement` mit Gothic-Gangart (Standard rennen, Shift gehen), Werte in `data/movement.toml` (Hot-Reload); Spielfigur am Startpunkt, Trigger melden die Figur; F3 freie Kamera
-- [ ] Springen, **Kanten hochziehen** (Kantenerkennung per Shapecast), Fallschaden
+- [x] Springen, **Kanten hochziehen** (Kantenerkennung per Shapecast), Fallschaden
+  - Sprung 0,9 m (Stand) bzw. 1,1 m (Rennen), keine Luftsteuerung; Kanten 1,0/1,6/2,2 m per Strahlen und Formtest, Gleitbahn bis M6; Fallschaden ab 4 m mit 10 LP/m (Log bis M8); Kletterplatz in der Testwelt (`START_KLETTERPLATZ`)
 - [ ] Schwimmen/Tauchen (Wasservolumen, Luftvorrat)
 - [ ] Third-Person-Kamera im Gothic-Stil: Verfolgung mit Trägheit, Kollision, Modi (Normal, Kampf, Dialog, Schwimmen)
   - Stand: Modus „normal“ umgesetzt (Trägheit für Position und Gieren, Mausneigung, `sphereCast` gegen Wände, `gameplay::ThirdPersonCamera`); Kampf/Dialog/Schwimmen folgen mit ihren Phasen

@@ -21,6 +21,24 @@ step_height = 0.4        # m, höchste Stufe, die man hinaufgeht (scharfe Grenze
 max_slope_degrees = 50.0 # steiler: man rutscht ab und kommt nicht hinauf
 stick_to_floor = 0.5     # m, bergab und über kleine Absätze am Boden bleiben
 
+[jump]                   # Taste jump (klassisch Alt, modern Leertaste); keine Steuerung in der Luft
+stand_height = 0.9       # m Scheitel der Füße aus Stand und Gehen
+run_height = 1.1         # m aus dem Rennen (höher und damit weiter; Entscheidung Projektinhaber)
+cooldown = 0.2           # s nach der Landung bis zum nächsten Sprung
+
+[climb]                  # vor einer Kante klettert jump statt zu springen (bis M6 entlang einer Bahn)
+low_max = 1.0            # m, Klasse niedrig (hinaufsteigen)
+mid_max = 1.6            # m, mittel (hochziehen)
+high_max = 2.2           # m, hoch (aus dem Sprung greifen); höher ist nicht erreichbar
+reach = 0.6              # m zwischen Figur und Wand
+low_seconds = 0.6
+mid_seconds = 1.0
+high_seconds = 1.4
+
+[fall]                   # Lebenspunkte kommen mit M8; bis dahin meldet das Log den Schaden
+safe_height = 4.0        # m ohne Schaden; Rutschen am Hang zählt nicht
+damage_per_meter = 10.0  # Lebenspunkte je Meter darüber
+
 [camera]
 distance = 3.0           # m hinter dem Blickpunkt
 target_height = 1.55     # m über den Füßen (knapp unter Augenhöhe 1,62)

@@ -68,7 +68,7 @@ TEST_CASE("World vobs GPU: --start picks a start point by name; an unknown one f
     auto result = engine.init();
     REQUIRE_FALSE(result.ok());
     CHECK(result.error().message == "cannot load world: unknown start point 'START_NOWHERE' (the world has: "
-                                    "START_LAGER, START_LAGER_HOEHLE)");
+                                    "START_LAGER, START_LAGER_HOEHLE, START_KLETTERPLATZ)");
 }
 
 TEST_CASE("World vobs GPU: small deco vanishes by size, gameplay (the mob) never; distance hides all")
