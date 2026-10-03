@@ -332,6 +332,16 @@ def garment_data(
     return data
 
 
+def name_meshes(gltf: Gltf) -> None:
+    """Mesh names = the names of their nodes (e.g. ``cloth_lod0``): Blender numbers its mesh data
+    blocks per run (``cloth_lod0.003``), which made rebuilt parts differ without a real change."""
+    meshes = gltf.list("meshes")
+    for node in gltf.list("nodes"):
+        if "mesh" in node and node.get("name"):
+            meshes[node["mesh"]]["name"] = node["name"]
+
+
 def write_part(path: Path, gltf: Gltf, data: dict[str, Any]) -> None:
     set_data(gltf, data)
+    name_meshes(gltf)
     path.write_bytes(gltf.to_bytes())
