@@ -93,6 +93,8 @@ Stand (Entscheidung Koordinator im Auftrag, 2026-10-03; Werte in `building_rules
     keinen; unter 4 m Firstlänge keinen.
   - Scheunen nur mit Herdstelle: angebaut an ein Wohnhaus (≤ 0,5 m) oder mit einer ALKIS-Funktion aus
     `hearthFunctions` (Ackerbürger-Nutzung, vorerst leer). Frei stehende Scheunen haben keinen (Brandschutz, Heu).
+  - ALKIS-Garagen (2463, `noHearthFunctions`) bekommen nie einen, auch angebaut: Um 1700 wären das Schuppen oder
+    Ställe ohne Herd.
   - Lage wie über einer Herdstelle in der Hausmitte: entlang des Firsts bei 30–70 % (bei zweien je einer in jeder
     Hälfte), bis 0,6 m neben dem First, mindestens 1,2 m von den Giebelenden.
   - Querschnitt 0,6 × 0,8 m, 0,8–1,2 m über dem First, Kopfplatte. Der Schaft beginnt unter der Dachfläche, auch beim
@@ -114,7 +116,8 @@ Stand (Entscheidung Koordinator im Auftrag, 2026-10-03; Werte in `building_rules
   die Gauben weg (Stufe 4).
 - **Handkorrektur:** Overrides `dormers` (0–6) und `chimneys` (0–4) als Anzahl, 0 = keine (Schema §4, Web-UI).
 - **Leonberg-Kern:**
-  - 1478 Schornsteine: Handwerker 787, Bürger 341, Ackerbürger 233, Scheunen 114 (angebaut), Steinhaus 2, Amtshaus 1.
+  - 1398 Schornsteine: Handwerker 787, Bürger 341, Ackerbürger 233, Scheunen 34 (angebaut, ohne Garagen; vorher 114),
+    Steinhaus 2, Amtshaus 1.
   - 230 Gauben auf 106 Häusern: Bürger 75 (34 Häuser, 14 %), Handwerker 95 (45, 7 %), Ackerbürger 57 (25, 12 %),
     Scheunen 3.
   - Weniger als gewürfelt, weil viele Dächer zu klein sind, vor allem die schmalen Ersatzhäuser aus dem Rückbau

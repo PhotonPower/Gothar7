@@ -12,6 +12,11 @@ import os
 from pathlib import Path
 
 
+def is_collision(name: str) -> bool:
+    """Collision nodes (contract with engine): names start with COL_ (Blender may add ".001")."""
+    return name.startswith("COL_")
+
+
 def gltf_to_blender(x: float, y: float, z: float) -> tuple[float, float, float]:
     """Engine/glTF (+Y up, -Z north) -> Blender (+Z up, +Y north)."""
     return (x, -z, y)

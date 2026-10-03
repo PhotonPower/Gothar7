@@ -334,6 +334,8 @@
     "barnStyles": ["scheune"],
     "hearthStyles": ["buergerhaus", "amtshaus", "handwerkerhaus", "ackerbuergerhaus"],
     "hearthFunctions": [],
+    "noHearthFunctions": ["31001_2463"],
+    "noHearthNote": "ALKIS-Garagen sind um 1700 Schuppen oder Ställe ohne Herd: nie ein Schornstein, auch angebaut (Entscheidung Koordinator im Auftrag, 2026-10-03)",
     "attachedM": 0.5,
     "minRidgeM": 4.0,
     "ridgeT": [0.3, 0.7],

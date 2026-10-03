@@ -95,10 +95,28 @@ def test_headless_round_trip(tmp_path: Path):
     after = site.mesh_file("B1").read_bytes()
     assert after != before
     doc, _ = read_glb(after)
-    # Origin and axes as generated: the raised roof is 1 m higher, x/z extents unchanged.
-    acc = doc["accessors"][doc["meshes"][0]["primitives"][0]["attributes"]["POSITION"]]
     old, _ = read_glb(before)
-    assert acc["max"][1] == pytest.approx(old["accessors"][0]["max"][1] + 1.0, abs=1e-3)
-    assert acc["min"][0] == pytest.approx(old["accessors"][0]["min"][0], abs=1e-3)
+
+    def render_position(d: dict) -> dict:
+        node = next(n for n in d["nodes"] if not n["name"].startswith("COL_"))
+        return d["accessors"][d["meshes"][node["mesh"]]["primitives"][0]["attributes"]["POSITION"]]
+
+    # Origin and axes as generated: the raised roof is 1 m higher, x/z extents unchanged.
+    acc, old_acc = render_position(doc), render_position(old)
+    assert acc["max"][1] == pytest.approx(old_acc["max"][1] + 1.0, abs=1e-3)
+    assert acc["min"][0] == pytest.approx(old_acc["min"][0], abs=1e-3)
+    # The collision nodes survive, at the root, without material and with their extents.
+    roots = [doc["nodes"][i] for i in doc["scenes"][0]["nodes"]]
+    cols = [n for n in roots if n["name"].startswith("COL_HULL_")]
+    old_cols = [n for n in old["nodes"] if n["name"].startswith("COL_HULL_")]
+    assert old_cols and len(cols) == len(old_cols)
+    for n in cols:
+        prim = doc["meshes"][n["mesh"]]["primitives"][0]
+        assert "material" not in prim and "translation" not in n and "rotation" not in n
+        box = doc["accessors"][prim["attributes"]["POSITION"]]
+        ref = old["accessors"][
+            old["meshes"][old_cols[0]["mesh"]]["primitives"][0]["attributes"]["POSITION"]
+        ]
+        assert box["min"] == pytest.approx(ref["min"], abs=1e-3)
     override = json.loads((site.overrides / "B1.json").read_text(encoding="utf-8"))
     assert override["locked"] is True

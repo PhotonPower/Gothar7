@@ -28,7 +28,7 @@ tools/worldgen/
                               + Platzhalter-Albedos (export-terrain)  (W2)
     buildings/                massing (Klötzchen: Wände + Dächer), medieval (Fachwerk-Regelwerk, W5-Entwurf),
                               rueckbau (große Neubauten → schmale Fachwerkhäuser, §7),
-                              gltf (.glb-Writer), batch (buildings: .glb je Gebäude/Zelle + Index)  (W3/W5)
+                              collision (COL_-Hüllen), gltf (.glb-Writer), batch (buildings: .glb je Gebäude/Zelle + Index)  (W3/W5)
     assemble/                 world: Terrain + Gebäude → <ort>.g7world, stabile VobIds (assemble)  (W3)
   blender/gothar_buildings/   Blender-Add-on: erzeugte Gebäude importieren/zurückschreiben (locked)  (W3)
   data/leonberg/vob_ids.json  stabile VobIds des Assemblers (versioniert, nie wiederverwenden)

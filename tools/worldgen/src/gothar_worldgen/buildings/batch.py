@@ -26,7 +26,13 @@ from typing import Any
 import numpy as np
 from shapely.geometry import Polygon
 
-from gothar_worldgen.buildings.gltf import MeshData, Primitive, glb_bytes_multi
+from gothar_worldgen.buildings.collision import (
+    BUDGET,
+    CollisionResult,
+    collision_for,
+    merge_collision,
+)
+from gothar_worldgen.buildings.gltf import CollisionPart, MeshData, Primitive, glb_bytes_multi
 from gothar_worldgen.buildings.massing import build_mesh, masses_for_building
 from gothar_worldgen.buildings.medieval import Rules, StreetIndex, barn_hearths, build_house
 from gothar_worldgen.export.terrain import Grid
@@ -38,6 +44,7 @@ SINK_M = 0.3  # walls start this far below the lowest ground point
 STEP_WARN_M = 0.5  # report buildings where LoD2 and DGM ground differ more than this
 CELL_M = 64.0
 MASSING_COLOR = (0.6, 0.6, 0.6, 1.0)
+COLLISION_BUDGET = BUDGET
 
 
 def file_stem(building_id: str) -> str:
@@ -98,6 +105,7 @@ class BatchResult:
     over_budget: list[tuple[str, int]] = field(default_factory=list)  # medieval: (id, triangles)
     replaced: list[tuple[str, int]] = field(default_factory=list)  # over budget -> (id, new houses)
     timber_levels: Counter[int] = field(default_factory=Counter)
+    collision: Counter[str] = field(default_factory=Counter)  # hulls, fallbacks, decomposed
     styles: dict[str, Counter[str]] = field(default_factory=lambda: defaultdict(Counter))
 
 
@@ -125,22 +133,27 @@ def generate(
     out_dir.mkdir(parents=True, exist_ok=True)
     result = BatchResult({})
     entries: list[dict[str, Any]] = []
-    cells: dict[tuple[int, int], list[tuple[list[Primitive], tuple[float, float, float]]]] = (
-        defaultdict(list)
-    )
+    cells: dict[
+        tuple[int, int],
+        list[tuple[list[Primitive], list[CollisionPart], tuple[float, float, float]]],
+    ] = defaultdict(list)
     by_hash: dict[str, str] = {}
 
-    def emit(name: str, prims: list[Primitive]) -> str:
+    def emit(name: str, prims: list[Primitive], collision: list[CollisionPart]) -> str:
         geometry = hashlib.sha256()
         for prim in prims:
             geometry.update(prim.material.encode())
             for arr in (prim.mesh.positions, prim.mesh.normals, prim.mesh.uvs, prim.mesh.indices):
                 geometry.update(arr.tobytes())
+        for part in collision:
+            geometry.update(part.name.encode())
+            geometry.update(part.positions.tobytes())
+            geometry.update(part.indices.tobytes())
         digest = geometry.hexdigest()  # the name inside the file does not matter for sharing
         if digest in by_hash:
             result.shared += 1
             return by_hash[digest]
-        data = glb_bytes_multi(prims, name)
+        data = glb_bytes_multi(prims, name, collision)
         path = out_dir / f"{name}.glb"
         if not path.is_file() or path.read_bytes() != data:
             tmp = path.with_name(path.name + ".tmp")
@@ -195,6 +208,7 @@ def generate(
                     queue[0:0] = houses
                     continue
             prims = house.primitives
+            col = house.collision or CollisionResult([])
             result.notes.update(n for n in house.notes if n not in massing.notes)
             result.timber_levels[house.timber_level] += 1
             if house.style is not None:
@@ -226,27 +240,38 @@ def generate(
             except ValueError:
                 result.notes["no usable geometry"] += 1
                 continue
+            col = collision_for(massing.masses, base, (c.x, c.y))
+        result.collision["hulls"] += sum(p.name.startswith("COL_HULL_") for p in col.parts)
+        result.collision["fallbacks"] += int(col.fallback)
+        result.collision["decomposed"] += int(col.decomposed > 0)
+        result.collision["over"] += int(col.triangles > COLLISION_BUDGET)
         triangles = sum(prim.mesh.triangle_count for prim in prims)
         origin = (round(c.x, 3), round(base, 3), round(c.y, 3))
         if in_core:
-            entry = {"id": bid, "kind": "building", "mesh": emit(stem, prims),
+            entry = {"id": bid, "kind": "building", "mesh": emit(stem, prims, col.parts),
                      "pos": list(origin), "triangles": triangles,
-                     "groundY": lod2_ground}  # fmt: skip
+                     "collisionTriangles": col.triangles, "groundY": lod2_ground}  # fmt: skip
             if dgm:
                 entry["dgmMinY"], entry["dgmMaxY"] = round(dgm[0], 3), round(dgm[1], 3)
             entries.append(entry)
         else:
-            cells[(math.floor(c.x / CELL_M), math.floor(c.y / CELL_M))].append((prims, origin))
+            cells[(math.floor(c.x / CELL_M), math.floor(c.y / CELL_M))].append(
+                (prims, col.parts, origin)
+            )
 
     for (i, j), parts in sorted(cells.items()):
-        origin = ((i + 0.5) * CELL_M, min(o[1] for _, o in parts), (j + 0.5) * CELL_M)
-        merged = _merge_primitives(parts, origin)
+        origin = ((i + 0.5) * CELL_M, min(o[1] for _, _, o in parts), (j + 0.5) * CELL_M)
+        merged = _merge_primitives([(p, o) for p, _, o in parts], origin)
+        cols = merge_collision([(cp, o) for _, cp, o in parts], origin)
         name = f"cell_{i}_{j}"
-        entries.append({"id": name, "kind": "cell", "mesh": emit(name, merged),
+        entries.append({"id": name, "kind": "cell", "mesh": emit(name, merged, cols),
                         "pos": [round(v, 3) for v in origin],
                         "triangles": sum(m.mesh.triangle_count for m in merged),
                         "buildings": len(parts)})  # fmt: skip
 
+    col_tris = sorted(
+        e["collisionTriangles"] for e in entries if e["kind"] == "building" and "triangles" in e
+    )
     building_tris = sorted(
         e["triangles"] for e in entries if e["kind"] == "building" and "triangles" in e
     )
@@ -273,6 +298,12 @@ def generate(
                 "median": building_tris[len(building_tris) // 2] if building_tris else 0,
                 "p90": building_tris[int(0.9 * len(building_tris))] if building_tris else 0,
                 "max": building_tris[-1] if building_tris else 0,
+            },
+            "collision": {
+                "budget": COLLISION_BUDGET,
+                "median": col_tris[len(col_tris) // 2] if col_tris else 0,
+                "max": col_tris[-1] if col_tris else 0,
+                **{k: result.collision[k] for k in ("hulls", "fallbacks", "decomposed", "over")},
             },
         },
     }

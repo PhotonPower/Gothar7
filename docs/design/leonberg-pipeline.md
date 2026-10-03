@@ -367,6 +367,24 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     Je `.glb` gibt es ein Primitive pro Rolle.
   - **Budget:** 2000 Dreiecke je Haus, im Kern ≤ 2 Mio. (mit engine abgestimmt). Darüber wird das Fachwerk stufenweise
     reduziert: ohne Muster, dann ohne Feldständer, dann ohne Fachwerk; der Bericht nennt die Stufe.
+  - **Kollision** (`buildings/collision.py`, Vertrag `COL_` in `docs/modules/asset.md`, M5 Teil B):
+    - Je Baukörper der Grundriss des Erdgeschosses (ohne Auskragung). Ist er nahezu konvex (2 %), wird er ein Teil.
+      Sonst wird er an einspringenden Ecken entlang der Wände geschnitten (L → 2, U → 3 Rechtecke) oder, wenn das
+      weniger Teile ergibt, aus verschmolzenen Dreiecken zerlegt. Splitter unter 0,5 m² kommen zum Nachbarn.
+    - Je Teil ein geschlossener konvexer Körper `COL_HULL_<i>`: Boden auf der Basis, Wände bis zur Dachfläche, die
+      Dachflächen der (steilen) Dachform ohne Überstand und ohne Durchhang, First an den Kanten eingefügt. Ein Rechteck
+      ergibt 20 Dreiecke.
+    - Gauben, Schornsteine, Balken, Fenster, Dachüberstand und Auskragung kollidieren nicht.
+    - Mehr als 8 Teile oder mehr als 200 Dreiecke: stattdessen ein Dreiecksnetz `COL_0` der Grundform.
+    - Die Knoten liegen auf Wurzelebene neben dem Render-Knoten, mit demselben Ursprung, ohne Material. In den
+      Umland-Zellen werden sie wie die Primitives in den Zellursprung verschoben. Das Blender-Add-on hängt sie beim
+      Import an das Haus (Drahtgitter) und schreibt sie mit zurück.
+    - Index: `collisionTriangles` je Haus; Statistik `collision` (Hüllen, geschnittene Grundrisse, Ersatznetze,
+      Median, Maximum, über Budget).
+    - **Möglicher Folgepunkt:** Die Spielfigur (Kapsel, 1,8 m) bleibt unter dem Erdgeschoss, die Hüllen reichen für
+      sie. Die Third-Person-Kamera (Kugel-Abfrage) kann aber in auskragende Obergeschosse und den Dachüberstand
+      eintauchen. Sieht engine beim Kameratest Clipping, kommt eine optionale Stufenhülle je Geschoss dazu
+      (Entscheidung nach dem Test).
   - **Leonberg-Kern** (Platzhalterwerte):
     - 1,03 Mio. Dreiecke, je Haus Median 1114, p90 1966, max 10 891.
     - Stufen: 599 Häuser voll, 65 ohne Muster, 45 ohne Feldständer, 196 ohne Fachwerk.
