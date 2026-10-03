@@ -15,7 +15,9 @@ from typing import Any
 import numpy as np
 
 from gothar_chargen.events import events_path_for, load_events
+from gothar_chargen.fit import check_fit
 from gothar_chargen.gltf import Gltf, GltfError, Trs, node_trs, quat_angle_deg
+from gothar_chargen.meshdata import mesh_data, split_lod
 from gothar_chargen.naming import is_clip_name, is_loop_clip
 from gothar_chargen.postprocess import TRANSLATED_BONES
 from gothar_chargen.skeleton import RigSpec
@@ -45,6 +47,9 @@ class Tolerances:
     jump_rotation_warn_deg: float = 90.0
     jump_translation_m: float = 0.5
     loop_rotation_deg: float = 5.0  # first vs. last key of s_* clips
+    # LOD contract (characters-pipeline.md §2.2)
+    figure_triangles_max: int = 20_000  # lod0 per figure
+    lod_ratio_warn: tuple[float, ...] = (1.0, 0.6, 0.3)  # max. share of lod0 per level
 
 
 @dataclass(frozen=True)
@@ -289,7 +294,7 @@ class _Checker:
 
     # --- meshes and skins ------------------------------------------------------------------
 
-    def meshes(self) -> None:
+    def meshes(self, part_file: bool = False) -> None:
         meshes = self.g.list("meshes")
         skins = self.g.list("skins")
         morphs: set[str] = set()
@@ -323,7 +328,7 @@ class _Checker:
                 "morph.name", f"morph targets not in the naming contract (§6): {_listed(unknown)}"
             )
 
-        if skinned and np.isfinite(max_y):
+        if skinned and np.isfinite(max_y) and not part_file:
             height = max_y - min_y
             self.r.stats["height"] = round(float(height), 3)
             lo_e, hi_e = self.tol.height_error
@@ -338,6 +343,97 @@ class _Checker:
                 )
             if abs(min_y) > self.tol.ground:
                 self.r.warning("mesh.ground", f"lowest vertex at y = {min_y:.3f} m, expected ~0")
+
+    # --- LOD levels (contract §2.2) ------------------------------------------------------------
+
+    def lods(self, part_file: bool) -> None:
+        groups: dict[str, dict[int, int]] = {}
+        unsuffixed: list[int] = []
+        for i, node in enumerate(self.nodes):
+            if "mesh" not in node:
+                continue
+            base, level = split_lod(self.name(i))
+            if level is None:
+                unsuffixed.append(i)
+            else:
+                groups.setdefault(base, {})[level] = i
+        triangles = {
+            i: mesh_data(self.g, i).triangle_count
+            for i in range(len(self.nodes))
+            if "mesh" in self.nodes[i]
+        }
+        level_totals: dict[int, int] = {}
+        for base, levels in sorted(groups.items()):
+            present = sorted(levels)
+            if present != list(range(len(present))):
+                self.r.error("lod.gap", f"'{base}': LOD levels {present} are not continuous from 0")
+            ref = levels.get(0)
+            for level, idx in levels.items():
+                node = self.nodes[idx]
+                if level > 0 and self._has_morphs(node):
+                    self.r.error("lod.morph", f"'{self.name(idx)}': morph targets only on _lod0")
+                if ref is None or level == 0:
+                    continue
+                base_node = self.nodes[ref]
+                if self.parents.get(idx) != self.parents.get(ref):
+                    self.r.error("lod.mismatch", f"'{self.name(idx)}': other parent than _lod0")
+                if not np.allclose(self.g.local_matrix(idx), self.g.local_matrix(ref), atol=1e-5):
+                    self.r.error("lod.mismatch", f"'{self.name(idx)}': other transform than _lod0")
+                if not self._same_skin(node.get("skin"), base_node.get("skin")):
+                    self.r.error("lod.mismatch", f"'{self.name(idx)}': other skin than _lod0")
+            for level, idx in levels.items():
+                level_totals[level] = level_totals.get(level, 0) + triangles[idx]
+        shared = sum(triangles[i] for i in unsuffixed)
+        lod0 = level_totals.get(0, 0) + shared
+        self.r.stats["triangles"] = lod0
+        if groups:
+            self.r.stats["lods"] = max(level_totals) + 1
+        if part_file or not self.r.stats.get("skinned_meshes"):
+            return
+        limit = self.tol.figure_triangles_max
+        if lod0 > limit:
+            self.r.error(
+                "mesh.budget", f"{lod0} triangles at lod0, budget {limit} per figure (§2.2)"
+            )
+        for level, total in sorted(level_totals.items()):
+            if level == 0 or level >= len(self.tol.lod_ratio_warn) or lod0 == 0:
+                continue
+            share = (total + shared) / lod0
+            if share > self.tol.lod_ratio_warn[level]:
+                self.r.warning(
+                    "lod.ratio",
+                    f"lod{level} keeps {share:.0%} of the lod0 triangles "
+                    f"(expected ≤ {self.tol.lod_ratio_warn[level]:.0%})",
+                )
+
+    def _has_morphs(self, node: dict[str, Any]) -> bool:
+        mesh = self.g.list("meshes")[node["mesh"]]
+        return any(p.get("targets") for p in mesh.get("primitives", []))
+
+    def _same_skin(self, a: int | None, b: int | None) -> bool:
+        if a == b:
+            return True
+        if a is None or b is None:
+            return False
+        skins = self.g.list("skins")
+        if skins[a].get("joints") != skins[b].get("joints"):
+            return False
+        if "inverseBindMatrices" not in skins[a] or "inverseBindMatrices" not in skins[b]:
+            return "inverseBindMatrices" not in skins[a] and "inverseBindMatrices" not in skins[b]
+        return bool(
+            np.allclose(
+                self.g.accessor(skins[a]["inverseBindMatrices"]),
+                self.g.accessor(skins[b]["inverseBindMatrices"]),
+                atol=1e-6,
+            )
+        )
+
+    def fit(self) -> None:
+        for issue in check_fit(self.g):
+            if issue.level == ERROR:
+                self.r.error(issue.code, issue.message)
+            else:
+                self.r.warning(issue.code, issue.message)
 
     def _check_skin_joints(self, skin_index: int, skin: dict[str, Any], mesh_node: int) -> None:
         joints = skin.get("joints", [])
@@ -564,6 +660,11 @@ class _Checker:
         self.r.stats["events"] = sum(len(v) for v in ev_file.clips.values())
 
 
+def is_part_file(path: Path) -> bool:
+    """Files below a ``parts`` folder are figure parts (body, head, hair ...), not whole figures."""
+    return "parts" in path.parts
+
+
 def validate_gltf(
     gltf: Gltf,
     rig: RigSpec,
@@ -577,7 +678,11 @@ def validate_gltf(
         if checker.skeleton():
             checker.orientation()
             checker.bind_pose()
-        checker.meshes()
+        part_file = is_part_file(report.path)
+        checker.meshes(part_file)
+        checker.lods(part_file)
+        if not part_file:
+            checker.fit()
         checker.animations()
     except (GltfError, KeyError, IndexError, TypeError, ValueError) as e:
         report.error("gltf.structure", f"malformed glTF: {e}")

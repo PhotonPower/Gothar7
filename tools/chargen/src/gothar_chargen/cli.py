@@ -13,13 +13,17 @@ from typing import TextIO
 from gothar_chargen import __version__
 from gothar_chargen.blender_run import (
     BlenderError,
+    assemble_figure,
     build_placeholder,
     build_reference_rig,
     build_set,
+    build_test_parts,
     export_glb,
     find_blender,
 )
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
+from gothar_chargen.figure import SUFFIX as FIGURE_SUFFIX
+from gothar_chargen.figure import FigureError, load_figure
 from gothar_chargen.gltf import Gltf, GltfError
 from gothar_chargen.report import ReportError, progress
 from gothar_chargen.skeleton import SkeletonError, load_rig
@@ -56,7 +60,11 @@ def _print_report(report: Report, out: TextIO) -> None:
     s = report.stats
     parts = [f"{s['bones']} bones"] if "bones" in s else []
     if s.get("skinned_meshes"):
-        parts.append(f"{s['skinned_meshes']} skinned mesh(es), {s.get('height', '?')} m")
+        size = f"{s['height']} m" if "height" in s else "part"
+        parts.append(f"{s['skinned_meshes']} skinned mesh(es), {size}")
+    if s.get("triangles"):
+        lods = f", {s['lods']} LOD levels" if s.get("lods") else ""
+        parts.append(f"{s['triangles']} tris{lods}")
     if s.get("morph_targets"):
         parts.append(f"{len(s['morph_targets'])} morph targets")
     if s.get("clips"):
@@ -192,6 +200,36 @@ def _cmd_build_set(args: argparse.Namespace, out: TextIO) -> int:
     return _export_and_check(blender, blends, out_dir, args, out)
 
 
+def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
+    characters = _characters_dir(args)
+    manifests = args.manifests or sorted((characters / "figures").glob("*" + FIGURE_SUFFIX))
+    if not manifests:
+        print("error: no figure manifests found", file=out)
+        return EXIT_ERROR
+    figures = [(m, load_figure(m)) for m in manifests]  # fail early on a bad manifest
+    blender = find_blender(args.blender)
+    rig = load_rig(args.rig)
+    reference = reference_pose(Gltf.load(characters / REFERENCE_GLB.relative_to(CHARACTERS_DIR)))
+    ok = True
+    for manifest, figure in figures:
+        glb = manifest.with_name(figure.name + ".glb")
+        assemble_figure(blender, manifest, characters, glb)
+        report = validate_file(glb, rig, reference)
+        _print_report(report, out)
+        ok = ok and report.ok(strict=True)
+    return EXIT_OK if ok else EXIT_ERROR
+
+
+def _cmd_build_test_parts(args: argparse.Namespace, out: TextIO) -> int:
+    characters = _characters_dir(args)
+    folder = characters / "parts" / "test"
+    build_test_parts(find_blender(args.blender), folder)
+    reports = [validate_file(p, load_rig(args.rig), None) for p in sorted(folder.glob("*.glb"))]
+    for r in reports:
+        _print_report(r, out)
+    return EXIT_OK if all(r.ok(strict=True) for r in reports) else EXIT_ERROR
+
+
 def _cmd_report(args: argparse.Namespace, out: TextIO) -> int:
     root = find_repo_root()
     list_path = args.list or (root / ANIMATION_LIST if root else None)
@@ -252,6 +290,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
     p.set_defaults(func=_cmd_build_placeholder)
 
+    p = sub.add_parser("assemble", help="assemble figures from figures/<name>.figure.toml")
+    p.add_argument("manifests", nargs="*", type=Path, help="default: all in figures/")
+    p.add_argument(
+        "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
+    )
+    p.set_defaults(func=_cmd_assemble)
+
+    p = sub.add_parser("build-test-parts", help="own simple test parts for the figure kit")
+    p.add_argument(
+        "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
+    )
+    p.set_defaults(func=_cmd_build_test_parts)
+
     p = sub.add_parser("report", help="animation-list.md (Prio A) vs. clips in anims/")
     p.add_argument("--list", type=Path, help="default: docs/design/animation-list.md")
     p.add_argument("--anims", type=Path, help="default: assets/source/characters/anims")
@@ -276,7 +327,15 @@ def main(argv: Sequence[str] | None = None, out: TextIO | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return int(args.func(args, out))
-    except (BlenderError, ClipSpecError, GltfError, ReportError, SkeletonError, OSError) as e:
+    except (
+        BlenderError,
+        ClipSpecError,
+        FigureError,
+        GltfError,
+        ReportError,
+        SkeletonError,
+        OSError,
+    ) as e:
         print(f"error: {e}", file=out)
         return EXIT_ERROR
 

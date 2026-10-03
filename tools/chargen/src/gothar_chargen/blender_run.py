@@ -78,6 +78,18 @@ def build_placeholder(blender: Path, ual2: Path, out_dir: Path) -> None:
     run_script(blender, "build_placeholder.py", ["--ual2", str(ual2), "--out", str(out_dir)])
 
 
+def build_test_parts(blender: Path, out_dir: Path) -> None:
+    run_script(blender, "build_test_parts.py", ["--out", str(out_dir)])
+
+
+def assemble_figure(blender: Path, manifest: Path, characters: Path, out: Path) -> str:
+    return run_script(
+        blender,
+        "assemble_figure.py",
+        ["--manifest", str(manifest), "--characters", str(characters), "--out", str(out)],
+    )
+
+
 def build_set(blender: Path, set_name: str, sources: Path, out_dir: Path) -> str:
     return run_script(
         blender,

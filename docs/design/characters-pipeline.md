@@ -66,6 +66,29 @@ Exportiert wird immer über `gothar-chargen export <datei.blend>` bzw. das Skrip
 Prüfen: `gothar-chargen validate [dateien|ordner]` (ohne Argument: alles unter
 `assets/source/characters/`, so läuft es auch in CI). Prüfungen und Grenzwerte: `tools/chargen/README.md`.
 
+### 2.2 LOD-Stufen (Vertrag mit engine, abgestimmt 2026-10-03)
+
+Figuren-`.glb` enthalten ihre Detailstufen als **Geschwister-Knoten mit Suffix** (nicht `MSFT_lod`:
+fastgltf kennt die Erweiterung nicht, der Blender-Exporter schreibt sie nicht):
+1. Suffix genau `_lod0`, `_lod1`, `_lod2` (klein) am Knotennamen; der Name davor ist bei allen Stufen eines Teils
+   identisch. Stufen **lückenlos ab 0** (`_lod0` + `_lod2` ohne `_lod1` ist ein Fehler). Fehlt bei einem Teil eine
+   höhere Stufe, nimmt die Engine dessen gröbste vorhandene.
+2. **Ohne Suffix** gilt ein Teil in allen Stufen (z. B. kleine Teile, die nicht reduziert werden). Mischen ist erlaubt.
+3. Alle Stufen eines Teils: **gleicher Elternknoten, gleiche lokale Transformation, gleicher Skin** (Joints und
+   inverse Bind-Matrizen identisch). Höhere Stufen dürfen weniger Materialien nutzen, aber nur aus der
+   Materialliste der Datei (keine Materialien nur für LODs).
+4. **Morph-Targets nur auf `_lod0`.** Die Engine schaltet Mimik/Viseme ab, sobald die Figur nicht `lod0` zeigt.
+5. Die Engine wählt die Stufe **je Figur**, nicht je Teil (Kopf und Körper schalten gemeinsam), nach
+   Bildschirmgröße/Entfernung mit Hysterese; die Werte stehen in der Engine, nicht in der Datei. Der Schattenpass
+   nimmt die gröbste Stufe.
+6. **Nähte** (Hals, Handgelenke, wo Teile aneinanderstoßen) bleiben in allen Stufen unverändert (Reduktion mit
+   „Grenzen erhalten“), sonst entstehen Lücken.
+
+**Dreiecks-Budget** (von engine gegen das Render-Budget geprüft): `lod0` Körper + Kleidung 8–15 k, Kopf 3–5 k,
+**Obergrenze 20 k je Figur**; `lod1` ≈ 50 %, `lod2` ≈ 20 % von `lod0`. Der Validator prüft Stufen, Skin,
+Materialien und Budget (`lod.*`, `mesh.budget`). Laufzeitauswahl folgt in M6; bis dahin ist das ein Datenvertrag,
+den Validator und Cooker prüfen bzw. ablegen.
+
 ## 3. Namenskonvention für Animationen
 
 ```
@@ -157,10 +180,17 @@ Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pyte
    Root-Motion-Extraktion bzw. In-Place-Bereinigung je Clip-Einstellung.
 4. **Animationslisten-Abgleich** (F2, `gothar-chargen report`, umgesetzt): vergleicht `animation-list.md` mit den vorhandenen Clips →
    Fortschrittsbericht (fehlend / Platzhalter / fertig).
-5. **Figuren-Baukasten** (F3): setzt Körper + Kopf + Haare + Kleidung/Rüstung zusammen, prüft Passform,
-   erzeugt LODs; Varianten über Seeds und Farbpaletten.
+5. **Figuren-Baukasten** (F3, `gothar-chargen assemble`, umgesetzt): setzt Körper/Kleidung + Kopf + Haare
+   aus einem Manifest zusammen, prüft Passform (Nähte, Gewichte), erzeugt LODs mit festen Rändern; Varianten über
+   Farbpaletten (seed-basierte Varianten später).
 
 ## 6. Figuren-Baukasten
+
+Technik (F3a): Teile als `.glb` auf dem Referenz-Rig unter `assets/source/characters/parts/`, Figuren als Manifest
+`figures/<name>.figure.toml` (Rollen `body`, `head`, `hair`, `beard`; `body` ist Grundkörper oder die Kleidung,
+die ihn ersetzt). Die zusammengesetzte Figur hat je Rolle die Knoten `<rolle>_lod0..2`. Teile, die aneinanderstoßen
+(Hals), haben deckungsgleiche offene Ränder mit gleichen Gewichten; der Validator prüft das (`fit.*`).
+Ausgangskörper und Köpfe kommen aus MPFB2 (ADR 0018, nur CC0-Core-/System-Assets).
 
 - **Körper:** 2 Grundkörper (m/w) × 3 Statur-Varianten, aus MPFB2, stilisiert nachbearbeitet.
 - **Köpfe:** separates Mesh (wie Gothic), Ziel 20+ Gesichter; gemeinsame Morph-Targets:
@@ -169,7 +199,7 @@ Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pyte
 - **Haare/Bärte:** eigene Meshes, an Köpfe angepasst.
 - **Kleidung/Rüstung:** ersetzt den Körper (Mesh-Tausch); je Gilde/Stand eine Linie (Lumpen → leicht → mittel → schwer).
 - **Texturen:** Trim-Sheets und Farbvarianten statt Unikat-Texturen; Stil passend zu den Häusern (W5).
-- **Budget (Richtwert):** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k, 2 LOD-Stufen.
+- **Budget:** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k, höchstens 20 k je Figur, Stufen `_lod1`/`_lod2` (Vertrag §2.2).
 
 ## 7. Monster
 
