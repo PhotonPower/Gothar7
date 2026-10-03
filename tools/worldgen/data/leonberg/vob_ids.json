@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 1721,
+ "nextVobId": 1723,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -1722,6 +1722,8 @@
   "citywall:wall_01_18": 1717,
   "citywall:wall_08_00": 1718,
   "citywall:wall_09_00": 1719,
-  "citywall:wall_10_00": 1720
+  "citywall:wall_10_00": 1720,
+  "group:handmade": 1721,
+  "handmade:schloss": 1722
  }
 }

@@ -559,9 +559,42 @@ Verlauf in `tools/worldgen/data/<ort>/city_wall.json` (versioniert, von Hand kor
   - Werte in `building_rules.json` → `cityWall.wallHouse`.
 - **Leonberg:** Ring 1167 m, davon 933 m Mauer und 234 m Mauerhäuser (29 Häuser), Zwinger 252 m. 17 Türme,
   2 Tortürme, 4 Pforten, 2 Treppen, 8432 Dreiecke, Kollision höchstens 192 je Datei.
-- **Folgt (Entscheidung Projektinhaber):**
-  - Eigenes Schloss-Modell statt der LoD2-Blöcke (Blender-Python-Skript als einzige Quelle).
+- **Schloss:** eigenes Modell statt der LoD2-Blöcke, siehe W-E3.
   - Gedeckte Wehrgang-Abschnitte und Uhr- bzw. Wappenfelder an den Tortürmen bleiben spätere Optionen.
+
+### W-E3 Schloss (`gothar-worldgen schloss <ort>`, W6)
+Entscheidung Projektinhaber 2026-10-03: ein eigenes, einzeln modelliertes Schloss statt der LoD2-Blöcke, gebaut in
+Blender. **Einzige Quelle ist das Blender-Python-Skript**; der Projektinhaber arbeitet nicht mit Blender, sein Feedback
+zu den Bildern wird im Skript umgesetzt. Keine fremden Modelle oder Fotos; Vorlage sind nur LoD2, DOP und später die
+eigenen Aufnahmen.
+- **Dateien:**
+  - `tools/worldgen/data/<ort>/schloss.json`: Maße der Bauteile, aus LoD2 vereinfacht (Flügel als Rechtecke mit Grund,
+    Traufe, First), Gelände je Flügelseite (DGM), Treppenturm, Erker, Portal, Schornsteine, ersetzte Gebäude-IDs.
+  - `tools/worldgen/blender/schloss/schloss_geometry.py`: Geometrie aus benannten Bauteilen, reines Python (läuft in
+    Blender und in den Tests).
+  - `tools/worldgen/blender/schloss/build_schloss.py`: Blender-Skript. Es baut daraus ein Objekt mit Paletten-
+    Materialien und `COL_HULL_`-Objekte, exportiert die `.glb` und speichert die `.blend`.
+  - Ausgabe: `assets/source/worlds/<ort>/handmade/schloss/schloss.glb` (versioniert, nur bei echter Änderung neu
+    einchecken); `generated/schloss/schloss.blend` ist ein reproduzierbares Nebenprodukt (nicht versioniert).
+  - `tools/worldgen/data/<ort>/handmade.json`: Liste der Handmodelle (Schlüssel, Mesh, Position, ersetzte IDs,
+    Grundflächen für die Stadtmauer); der Befehl `schloss` schreibt den Eintrag.
+- **Bauteile** (eigene Interpretation, Renaissance um 1700): Putzbau mit Sockel, Eckquadern, Gesimsen und Kranzgesims
+  aus Stein; Fensterreihen mit Steingewänden, je Seite nach dem Gelände; Ziergiebel (gestuft, Voluten, Obelisken) an
+  den markierten Giebeln; achteckiger Treppenturm mit welscher Haube und Laterne; Erker; Portal mit Verdachung;
+  Gauben mit Fenster; Schornsteine. Das Schlossdach bleibt ohne Moos (gepflegter Bau; Hinweis Koordinator).
+- **Garten** (Feedback Projektinhaber): der Pomeranzengarten als Parterre, Lage aus dem DOP (`garden` in schloss.json):
+  zwei Hälften mit je 4 × 2 Rasenbeeten, Kieswegen (1,6 m) und einem Randweg, niedrige Buchs-Einfassungen (0,45 m,
+  Palette `hedge`), ein Brunnenbecken (Wasser: Palette `water`). Der Boden ist eine an das DGM angepasste Ebene.
+  - Splat: Der Befehl `schloss` schreibt die Flächen nach `handmade.json` (`splat.gravel`, `splat.lawn`);
+    `export-terrain` malt Kies über das Parterre, lässt die Beete Wiese und behandelt OSM-Gartenflächen, die ein
+    Parterre enthalten, als Rasen statt als Acker.
+- **Budget** (mit engine abgestimmt): ≤ 15 Tsd. Dreiecke, keine LOD-Stufen (Mesh-LOD für Vobs frühestens M17,
+  Namensregel dann `_lod1`). Kollision: ein geschlossener konvexer Körper je Bauteil und einer für den Turm.
+- **Einbindung:** Die LoD2-Gebäude bekommen Overrides `keep: false`; der Assembler setzt `HANDMADE_<KEY>` unter
+  `WORLDGEN_HANDMADE`, Kategorie `gameplay` (Landmarke), VobId `handmade:<key>`. `citywall` behandelt die Grundflächen
+  aus `handmade.json` wie Häuser.
+- **Leonberg:** Hauptbau 76 × 14 m (Traufe 14,6 m, First 25,5 m über Grund), Verbindungsbau, Ostflügel 43 × 20 m mit
+  sehr steilem Dach, Pomeranzengarten; 8212 Dreiecke, 4 Kollisionskörper.
 
 ### W-F Ausstattung & Vegetation
 Regelbasiertes Verteilen von Requisiten (Fässer, Karren, Zäune, Holzstapel, Misthaufen, Marktstände)

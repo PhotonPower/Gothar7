@@ -59,7 +59,7 @@ Rähm und Ständer Balken. Die Muster sind eigene Geometrie in normierten Feldko
   - Dächer ab 35° behalten ihre gemessene Form.
 - **Balken:** dunkelbraun bis schwarzbraun; etwa 15 % ochsenblutrot an repräsentativen Häusern (Bürger-, Amtshaus).
 - **Fenster:** dunkle Holzrahmen, kleine Scheiben.
-- **Palette:** 14 feste Materialwerte mit gleichem Wert in allen Häusern; die Engine bündelt danach.
+- **Palette:** 16 feste Materialwerte (14 für die Häuser, dazu `hedge` und `water` für den Schlossgarten) mit gleichem Wert in allen Häusern; die Engine bündelt danach.
 
 ## Alterung
 Vorgesehen:
@@ -137,6 +137,15 @@ Stand (Entscheidung Projektinhaber bzw. Koordinator im Auftrag, 2026-10-03; Wert
   sie Fachwerkhäuser ihres Stils.
 - Leonberg: 29 Mauerhäuser, vor allem die äußere Zeile an der Grabenstraße.
 - Bilder bei 12:00: `C:\GotharData\review\w6\PLATZHALTER_mauerhaeuser_*`.
+
+## Schloss
+Eigenes Modell (Blender-Python-Skript, W-E3), eigene Interpretation eines Renaissance-Schlosses um 1700:
+- weißer Putz (`plaster_white`), Sockel, Eckquader, Gesimse, Fenstergewände und Ziergiebel-Abdeckungen in `stone`;
+  Dächer `roof_old` ohne Moos (gepflegter Bau); Schornsteine `brick`; Portaltür `timber_dark`; Fenster `frame`.
+- Garten: Rasenbeete und Kieswege (Splat), Buchs-Einfassungen `hedge` (dunkles Grün), Brunnenwasser `water`
+  (dunkles Blaugrau); beide Einträge sind für das Schloss neu in der Palette (jetzt 16 Werte).
+- Ziergiebel gestuft mit Voluten und Obelisken, achteckiger Treppenturm mit welscher Haube und Laterne, Erker, Gauben.
+- Bilder bei 12:00 zur Abnahme: `C:\GotharData\review\w6\PLATZHALTER_schloss_*`.
 
 ## Erste Bilder und Justierung (Platzhalter, 2026-10-03)
 Ablage `C:\GotharData\review\w5\` (nicht im Repo).

@@ -20,6 +20,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 from PIL import Image, ImageDraw, ImageFilter
+from shapely.geometry import Polygon
 
 from gothar_worldgen.export.terrain import Grid
 
@@ -93,6 +94,10 @@ class _Canvas:
         for px, pz in (pts[0], pts[-1]):
             self.draw.ellipse((px - r, pz - r, px + r, pz + r), fill=255)
 
+    def erase(self, points: Sequence[Sequence[float]]) -> None:
+        if len(points) >= 3:
+            self.draw.polygon([self.px(x, z) for x, z in points], fill=0)
+
     def disc(self, x: float, z: float, radius_m: float) -> None:
         px, pz = self.px(x, z)
         r = max(0.5, radius_m / self.grid.cell)
@@ -122,6 +127,13 @@ def slope_rock(grid: Grid) -> npt.NDArray[np.float32]:
     return np.clip((slope - lo) / (hi - lo), 0.0, 1.0).astype(np.float32)
 
 
+def _holds_parterre(polygon: Sequence[Sequence[float]], gardens: Sequence[dict[str, Any]]) -> bool:
+    if len(polygon) < 3:
+        return False
+    area = Polygon(polygon).buffer(0)
+    return any(area.intersects(Polygon(g_area)) for g in gardens for g_area in g.get("gravel", []))
+
+
 def layer_masks(
     grid: Grid,
     buildings: Sequence[dict[str, Any]],
@@ -129,8 +141,13 @@ def layer_masks(
     squares: Sequence[dict[str, Any]],
     features: Sequence[dict[str, Any]],
     core: dict[str, float] | None,
+    gardens: Sequence[dict[str, Any]] = (),
 ) -> dict[int, npt.NDArray[np.float32]]:
-    """Coverage 0..1 per layer (except the fallback ``WIESE``)."""
+    """Coverage 0..1 per layer (except the fallback ``WIESE``).
+
+    ``gardens``: formal gardens (``handmade.json``): gravel over the ``gravel`` areas with lawn
+    beds (``lawn``, meadow layer) left out; no field layer there.
+    """
     canvases = {i: _Canvas(grid) for i in (KOPFSTEIN, KIES, MATSCH, WALDBODEN, ACKER)}
     for s in streets:
         if s.get("highway") in NO_SURFACE_HIGHWAYS:
@@ -149,11 +166,20 @@ def layer_masks(
         elif kind == "tree" and geometry == "point":
             canvases[WALDBODEN].disc(*f["position"], TREE_RADIUS_M)
         elif kind in FIELD_KINDS and geometry == "polygon":
+            if kind == "garden" and _holds_parterre(f["polygon"], gardens):
+                continue  # a formal garden: lawn (meadow) instead of a field
             canvases[ACKER].polygon(f["polygon"])
         elif kind in WATER_KINDS and geometry == "line":
             canvases[MATSCH].line(f["points"], WATER_WIDTH_M)
         elif kind == "rail" and geometry == "line":
             canvases[KIES].line(f["points"], RAIL_WIDTH_M)
+    for g in gardens:
+        for area in g.get("gravel", []):
+            canvases[ACKER].erase(area)
+            canvases[MATSCH].erase(area)
+            canvases[KIES].polygon(area)
+        for bed in g.get("lawn", []):
+            canvases[KIES].erase(bed)
     masks = {i: c.weights() for i, c in canvases.items()}
     masks[FELS] = slope_rock(grid)
     return masks
