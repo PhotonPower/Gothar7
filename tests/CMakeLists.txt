@@ -78,3 +78,18 @@ g7_set_warnings(g7_tests_editor)
 set_target_properties(g7_tests_editor PROPERTIES FOLDER "tests")
 add_test(NAME editor COMMAND g7_tests_editor)
 set_tests_properties(editor PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
+
+# Game command line: --help and unknown options must exit at once, without a window or the engine.
+if(TARGET gothar)
+    foreach(_case IN ITEMS "help|--help|0|--world=" "unknown|--bogus|nonzero|unknown argument '--bogus'")
+        string(REPLACE "|" ";" _parts "${_case}")
+        list(GET _parts 0 _name)
+        list(GET _parts 1 _arg)
+        list(GET _parts 2 _rc)
+        list(GET _parts 3 _expect)
+        add_test(NAME game.cli.${_name}
+                 COMMAND ${CMAKE_COMMAND} -DGOTHAR=$<TARGET_FILE:gothar> -DARGS=${_arg} -DEXPECT_RC=${_rc}
+                         "-DEXPECT=${_expect}" -P "${CMAKE_CURRENT_SOURCE_DIR}/game/check_cli.cmake")
+        set_tests_properties(game.cli.${_name} PROPERTIES TIMEOUT 60)
+    endforeach()
+endif()
