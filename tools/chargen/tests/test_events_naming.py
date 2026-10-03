@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from conftest import REPO_ROOT
 from gothar_chargen.events import events_path_for, load_events, parse_events
 from gothar_chargen.naming import is_clip_name, is_event_name, is_loop_clip
 
@@ -100,7 +101,7 @@ def test_default_fps():
         ("version = 1\nspeed = 2\n", "unknown top-level"),
         ("version = 1\nclips = 5\n", "clips must be a table"),
         ('version = 1\n[clips."Walk"]\n', "naming convention"),
-        ('version = 1\n[clips."none/s_walk"]\nloop = true\n', "only 'events'"),
+        ('version = 1\n[clips."none/s_walk"]\nloop = true\n', "'events' and/or 'speed'"),
         ('version = 1\n[clips."none/s_walk"]\nevents = [ { frame = 1 } ]\n', "expected"),
         (
             'version = 1\n[clips."none/s_walk"]\nevents = [ { frame = -1, event = "x" } ]\n',
@@ -125,3 +126,68 @@ def test_invalid_events(text, message):
 def test_load_events_missing_file(tmp_path):
     ev, errors = load_events(tmp_path / "x.events.toml")
     assert ev is None and errors
+
+
+# --- natural speed of locomotion clips (§3 `speed`) ----------------------------------------------
+
+
+def test_parse_and_format_speed():
+    from gothar_chargen.events import Event, format_events
+
+    text = format_events(
+        30, {"none/s_walk": [Event(0, "footstep_l")]}, {"none/s_walk": 0.98, "none/s_run": 5.9}
+    )
+    assert "speed = 5.90" in text and '[clips."none/s_run"]' in text  # speed only: still written
+    parsed, errors = parse_events(text)
+    assert not errors
+    assert parsed.speeds == {"none/s_walk": 0.98, "none/s_run": 5.9}
+    assert parsed.clips["none/s_walk"] == (Event(0, "footstep_l"),)
+
+
+@pytest.mark.parametrize("speed", ["0", "-1.0", '"fast"', "true"])
+def test_invalid_speed(speed):
+    _, errors = parse_events(f'version = 1\n[clips."none/s_walk"]\nspeed = {speed}\n')
+    assert any("speed must be a number > 0" in e for e in errors)
+
+
+def test_clip_speeds_of_the_sets():
+    """In-place human clips: planted foot speed; monster clips with root motion: root speed."""
+    from gothar_chargen.clipspeed import clip_speeds
+    from gothar_chargen.gltf import Gltf
+
+    anims = REPO_ROOT / "assets/source/characters"
+    human = clip_speeds(Gltf.load(anims / "anims/human/none.glb"))
+    assert human["none/s_walk"] == pytest.approx(0.98, abs=0.05)
+    assert human["none/s_run"] > human["none/s_walk"] > human["none/s_sneak"] > 0.5
+    assert "none/s_idle" not in human and "none/s_ladder_up" not in human
+    wolf = clip_speeds(Gltf.load(anims / "monsters/wolf/anims/wolf.glb"))
+    assert wolf["wolf/s_run"] == pytest.approx(0.733 * 30 / 20, abs=0.02)  # root travel per s
+    assert not clip_speeds(Gltf.load(anims / "anims/human/swim.glb"))
+
+
+def test_update_speeds_keeps_events(tmp_path):
+    import shutil
+
+    from gothar_chargen.events import update_speeds
+
+    src = REPO_ROOT / "assets/source/characters/anims/human/none"
+    shutil.copy(src.with_suffix(".glb"), tmp_path / "none.glb")
+    events = tmp_path / "none.events.toml"
+    text = src.with_name("none.events.toml").read_text(encoding="utf-8")
+    events.write_text(text.replace("speed = 0.98", "speed = 3.00"), encoding="utf-8")
+    update_speeds(tmp_path / "none.glb")
+    assert events.read_text(encoding="utf-8") == text  # speeds measured again, events unchanged
+
+
+def test_stale_speed_is_an_error(tmp_path):
+    import shutil
+
+    from gothar_chargen.skeleton import load_rig
+    from gothar_chargen.validate import validate_file
+
+    src = REPO_ROOT / "assets/source/characters/anims/human/none"
+    shutil.copy(src.with_suffix(".glb"), tmp_path / "none.glb")
+    text = src.with_name("none.events.toml").read_text(encoding="utf-8")
+    (tmp_path / "none.events.toml").write_text(text.replace("speed = 0.98", "speed = 1.60"))
+    report = validate_file(tmp_path / "none.glb", load_rig())
+    assert "events.speed" in {i.code for i in report.issues if i.level == "error"}

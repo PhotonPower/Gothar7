@@ -7,6 +7,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from gothar_chargen.events import update_speeds
 from gothar_chargen.gltf import Gltf
 from gothar_chargen.postprocess import (
     apply_alpha_mask,
@@ -84,6 +85,8 @@ def export_glb(blender: Path, blend_file: Path, glb_out: Path) -> int:
     removed = strip_animation_channels(gltf)
     if removed:
         glb_out.write_bytes(gltf.to_bytes())
+    if gltf.doc.get("animations"):
+        update_speeds(glb_out)  # natural speed of the locomotion clips (§3)
     return removed
 
 

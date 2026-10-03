@@ -386,7 +386,7 @@ Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source
 
 **Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört). F2 abgeschlossen: `build-set`,
 `report`, Pose-Marker-Events; 36/36 Prio-A-Clips (18 Quaternius CC0, 18 Keyframe-Platzhalter) und 48 Clips Fortbewegung je Waffenmodus
-(9 Sets). Kein Mixamo (öffentliches Repo). F3 läuft: Baukasten-Werkzeuge stehen, Stil A (realistisch, Texturen) entschieden,
+(9 Sets). Kein Mixamo (öffentliches Repo). Eigengeschwindigkeit je Fortbewegungs-Clip in `events.toml` (`speed`, gegen Fußgleiten; M6-Prüfung). F3 läuft: Baukasten-Werkzeuge stehen, Stil A (realistisch, Texturen) entschieden,
 Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag, Gesichts-Morphs, 6 Grundkörper, 5 Köpfe, Kleidungs-Kit,
 5 Test-NPCs; Figuren entstehen beim Bauen (`gothar-chargen assemble`, reines Python, nicht versioniert, §6.2); Rüstungs-Kit
 leicht/mittel, Kopfbedeckungen. F5 läuft: Monster-Vertrag mit engine, Validator-Regeln und Werkzeuge stehen, erste Art `wolf` mit vollständigem

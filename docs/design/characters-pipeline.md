@@ -133,6 +133,7 @@ version = 1          # Pflicht; Formatversion
 fps = 30             # optional (Vorgabe 30): Bildrate, auf die sich die Frame-Nummern beziehen
 
 [clips."none/s_walk"]                       # Clipname = Name der glTF-Animation im Set
+speed = 0.98                                # optional: Eigengeschwindigkeit in m/s (siehe unten)
 events = [
     { frame = 0,  event = "footstep_l" },   # Frame ab 0, ≤ letzter Frame des Clips
     { frame = 15, event = "footstep_r" },   # aufsteigend sortiert
@@ -148,7 +149,14 @@ events = [
 ```
 - Event-Namen: `lower_snake_case`, optional mit Argument nach Doppelpunkt (`sound:<name>`).
   Bekannte Events siehe `docs/modules/animation.md` („Clip“); neue Events nach Absprache mit engine.
-- Clips ohne Events werden weggelassen; die Datei ist optional.
+- Clips ohne Events und ohne `speed` werden weggelassen; die Datei ist optional.
+- **`speed` (Eigengeschwindigkeit, additiv, abgestimmt mit engine 2026-10-03):** für Fortbewegungs-Clips
+  (`s_walk*`, `s_run*`, `s_sneak*`, `s_strafe*`) die Geschwindigkeit in m/s, bei der die Füße nicht gleiten –
+  Clips am Ort (Menschen): Geschwindigkeit des Standfußes relativ zur Figur; Clips mit Root Motion (Monster, §7):
+  horizontale Geschwindigkeit von `root`. Gemessen von `gothar-chargen speeds` (reines Python; auch `export` und
+  `build-set` schreiben es), der Validator meldet Abweichungen über 3 % (`events.speed`). Die Engine setzt die
+  Abspielrate = Bewegungsparameter / `speed` (begrenzt auf 0,6–1,8; in Blend-Zuständen aus der gewichteten
+  Eigengeschwindigkeit der beteiligten Clips); fehlt `speed`, bleibt die Rate 1, ein Wert ≤ 0 ist ein Ladefehler.
 - Zeit eines Events in Sekunden = `frame / fps`. Alle Sets werden mit 30 fps exportiert.
 - **Frame-Bereich:** Schleifen-Clips (`s_*`): `0 ≤ frame < letzter Frame` (der letzte Frame gleicht Frame 0);
   `t_*`/`a_*`: `0 ≤ frame ≤ letzter Frame`. Der Validator prüft das.

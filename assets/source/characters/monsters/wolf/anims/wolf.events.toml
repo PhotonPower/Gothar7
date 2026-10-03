@@ -3,6 +3,7 @@ version = 1
 fps = 30
 
 [clips."wolf/s_run"]
+speed = 1.10
 events = [
     { frame = 0, event = "footstep_back_l" },
     { frame = 1, event = "footstep_front_l" },
@@ -11,6 +12,7 @@ events = [
 ]
 
 [clips."wolf/s_walk"]
+speed = 0.34
 events = [
     { frame = 8, event = "footstep_back_r" },
     { frame = 22, event = "footstep_front_r" },

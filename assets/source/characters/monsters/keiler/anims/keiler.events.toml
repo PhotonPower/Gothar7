@@ -3,6 +3,7 @@ version = 1
 fps = 30
 
 [clips."keiler/s_run"]
+speed = 1.65
 events = [
     { frame = 3, event = "footstep_front_l" },
     { frame = 7, event = "footstep_back_r" },
@@ -11,6 +12,7 @@ events = [
 ]
 
 [clips."keiler/s_walk"]
+speed = 0.80
 events = [
     { frame = 5, event = "footstep_back_r" },
     { frame = 26, event = "footstep_back_l" },
