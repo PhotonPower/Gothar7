@@ -5,6 +5,7 @@
 #include <sol/sol.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <charconv>
 #include <cstdlib>
 #include <format>
@@ -17,6 +18,12 @@ namespace
 {
 constexpr int kMaxDepth = 32;       // nested tables converted
 constexpr int kHookInterval = 1000; // instructions between budget checks
+
+/// sol2 appends a stack traceback to errors; messages keep only the error itself.
+std::string withoutTraceback(std::string_view text)
+{
+    return std::string(text.substr(0, text.find("\nstack traceback:")));
+}
 
 /// "items/a.lua:3: message" -> file, line, message (other texts: message only).
 ScriptError parseError(std::string_view text)
@@ -119,6 +126,18 @@ struct ScriptVm::Impl
     std::vector<ScriptError> errors;
     std::vector<sol::protected_function> functions;          // FunctionRef id - 1
     std::map<std::string, sol::object, std::less<>> modules; // require cache
+    std::vector<Binding> bindings; // with the built-ins (docs only for print, require)
+    struct Timer
+    {
+        u32 id = 0;
+        f64 due = 0.0;
+        f64 interval = 0.0; // 0: once
+        FunctionRef function;
+    };
+    std::vector<Timer> timers;
+    u32 nextTimer = 1;
+    f64 clock = 0.0;
+    std::map<std::string, std::vector<FunctionRef>, std::less<>> handlers;
 
     explicit Impl(ScriptConfig c) : config(std::move(c)), lua(&panic, &allocate, this) {}
 
@@ -194,6 +213,166 @@ struct ScriptVm::Impl
                          });
         lua.set_function("require", [this](std::string module, sol::this_state state)
                          { return require(module, state); });
+        lua["Story"] = lua.create_table();
+        addBuiltins();
+    }
+
+    /// "items/a.lua:3: " - where the running Lua code calls from (empty if unknown).
+    static std::string where(lua_State* state)
+    {
+        lua_Debug ar{};
+        if (lua_getstack(state, 1, &ar) != 0 && lua_getinfo(state, "Sl", &ar) != 0 && ar.currentline > 0)
+        {
+            const char* source = ar.source != nullptr && ar.source[0] == '@' ? ar.source + 1 : ar.short_src;
+            return std::format("{}:{}: ", source, ar.currentline);
+        }
+        return {};
+    }
+
+    void bindLua(const Binding& b)
+    {
+        if (!b.function)
+        {
+            return; // documentation only (print, require, Story)
+        }
+        auto call = [this, name = b.name, function = b.function](sol::variadic_args va, sol::this_state state)
+        {
+            std::vector<Value> args;
+            for (auto a : va)
+            {
+                args.push_back(toValue(sol::object(a), 0));
+            }
+            auto result = function(args);
+            if (!result)
+            {
+                throw std::runtime_error(where(state) + name + ": " + result.error().message);
+            }
+            return toLua(result.value());
+        };
+        const usize dot = b.name.find('.');
+        if (dot == std::string::npos)
+        {
+            lua.set_function(b.name, call);
+            return;
+        }
+        const std::string table = b.name.substr(0, dot);
+        if (lua[table].get_type() != sol::type::table)
+        {
+            lua[table] = lua.create_table();
+        }
+        sol::table t = lua[table];
+        t.set_function(b.name.substr(dot + 1), call);
+    }
+
+    void addBuiltin(std::string name, std::string signature, std::string description,
+                    std::function<Result<Value>(std::span<const Value>)> function = {})
+    {
+        Binding b{std::move(name), std::move(signature), std::move(description), "Grundlagen",
+                  std::move(function)};
+        bindLua(b);
+        bindings.push_back(std::move(b));
+    }
+
+    void addBuiltins()
+    {
+        addBuiltin("print", "print(...)",
+                   "Schreibt die Werte, mit Tabulatoren getrennt, ins Log bzw. in die Konsole.");
+        addBuiltin(
+            "require", "require(module: string) -> any",
+            "Lädt `module` (Punkte trennen Ordner: `\"lib.util\"` = `lib/util.lua`) einmal und gibt sein "
+            "Ergebnis zurück; nur unterhalb des Skript-Ordners.");
+        addBuiltin(
+            "Story", "Story",
+            "Globale Tabelle der Story-Variablen (Zahlen, Strings, Wahrheitswerte, verschachtelte Tabellen); "
+            "wird mit dem Spielstand gespeichert. Funktionen darin sind nicht erlaubt.");
+        addBuiltin(
+            "after", "after(seconds: number, fn: function) -> integer",
+            "Ruft `fn` einmal nach `seconds` Sekunden Spielzeit auf; gibt die Nummer des Timers zurück.",
+            [this](std::span<const Value> a) -> Result<Value> { return addTimer(a, false); });
+        addBuiltin("every", "every(seconds: number, fn: function) -> integer",
+                   "Ruft `fn` alle `seconds` Sekunden Spielzeit auf (`seconds` > 0); gibt die Nummer des "
+                   "Timers zurück.",
+                   [this](std::span<const Value> a) -> Result<Value> { return addTimer(a, true); });
+        addBuiltin("cancel", "cancel(timer: integer) -> boolean",
+                   "Hält einen Timer von `after`/`every` an; `false`, wenn es ihn nicht (mehr) gibt.",
+                   [this](std::span<const Value> a) -> Result<Value>
+                   {
+                       const i64 id = a.empty() ? 0 : a[0].asInteger();
+                       const auto before = timers.size();
+                       std::erase_if(timers, [&](const Timer& t) { return static_cast<i64>(t.id) == id; });
+                       return Value(timers.size() != before);
+                   });
+        addBuiltin(
+            "on", "on(event: string, fn: function)",
+            "Ruft `fn(...)` bei jedem Ereignis `event` auf (z. B. `\"world_loaded\"`); die Engine nennt ihre "
+            "Ereignisse in dieser Datei.",
+            [this](std::span<const Value> a) -> Result<Value>
+            {
+                if (a.size() < 2 || !a[0].isString() || !a[1].isFunction())
+                {
+                    return Error{"expects (event: string, fn: function)"};
+                }
+                handlers[std::string(a[0].asString())].push_back(a[1].asFunction());
+                return Value();
+            });
+        addBuiltin("emit", "emit(event: string, ...) -> integer",
+                   "Löst das Ereignis `event` mit den übrigen Argumenten aus; gibt die Zahl der aufgerufenen "
+                   "Funktionen zurück.",
+                   [this](std::span<const Value> a) -> Result<Value>
+                   {
+                       if (a.empty() || !a[0].isString())
+                       {
+                           return Error{"expects (event: string, ...)"};
+                       }
+                       return Value(static_cast<i64>(emitEvent(a[0].asString(), a.subspan(1))));
+                   });
+    }
+
+    Result<Value> addTimer(std::span<const Value> a, bool repeat)
+    {
+        if (a.size() < 2 || !a[0].isNumber() || !a[1].isFunction() || a[0].asNumber() < 0.0 ||
+            (repeat && a[0].asNumber() <= 0.0))
+        {
+            return Error{repeat ? "expects (seconds > 0, fn: function)"
+                                : "expects (seconds >= 0, fn: function)"};
+        }
+        const u32 id = nextTimer++;
+        timers.push_back({id, clock + a[0].asNumber(), repeat ? a[0].asNumber() : 0.0, a[1].asFunction()});
+        return Value(static_cast<i64>(id));
+    }
+
+    Result<Value> callFunction(FunctionRef function, std::span<const Value> arguments)
+    {
+        if (!function.valid() || function.id > functions.size())
+        {
+            return Error{std::format("no function #{}", function.id)};
+        }
+        std::vector<sol::object> args;
+        for (const Value& a : arguments)
+        {
+            args.push_back(toLua(a));
+        }
+        startRun();
+        sol::protected_function_result result = functions[function.id - 1](sol::as_args(args));
+        return finish(result);
+    }
+
+    usize emitEvent(std::string_view event, std::span<const Value> arguments)
+    {
+        const auto it = handlers.find(event);
+        if (it == handlers.end())
+        {
+            return 0;
+        }
+        const std::vector<FunctionRef> list = it->second; // handlers may add handlers
+        for (const FunctionRef f : list)
+        {
+            if (auto r = callFunction(f, arguments); !r)
+            {
+                G7_LOG_WARN("script", "event {}: {}", event, r.error().message);
+            }
+        }
+        return list.size();
     }
 
     /// require "lib.util" -> lib/util.lua below the script root, run once.
@@ -330,7 +509,7 @@ struct ScriptVm::Impl
         if (!result.valid())
         {
             const sol::error error = result;
-            return Error{error.what()};
+            return Error{withoutTraceback(error.what())};
         }
         return result.return_count() > 0 ? toValue(result.get<sol::object>(), 0) : Value();
     }
@@ -497,7 +676,7 @@ usize ScriptVm::loadAll()
         if (!chunk.valid())
         {
             const sol::error error = chunk;
-            impl.errors.push_back(parseError(error.what()));
+            impl.errors.push_back(parseError(withoutTraceback(error.what())));
             continue;
         }
         sol::protected_function run = chunk;
@@ -505,7 +684,7 @@ usize ScriptVm::loadAll()
         if (!result.valid())
         {
             const sol::error error = result;
-            impl.errors.push_back(parseError(error.what()));
+            impl.errors.push_back(parseError(withoutTraceback(error.what())));
             continue;
         }
         ++ok;
@@ -534,7 +713,7 @@ Result<Value> ScriptVm::runString(std::string_view code, std::string_view chunkN
     if (!chunk.valid())
     {
         const sol::error error = chunk;
-        return Error{error.what()};
+        return Error{withoutTraceback(error.what())};
     }
     sol::protected_function run = chunk;
     sol::protected_function_result result = run();
@@ -543,19 +722,167 @@ Result<Value> ScriptVm::runString(std::string_view code, std::string_view chunkN
 
 Result<Value> ScriptVm::call(FunctionRef function, std::span<const Value> arguments)
 {
+    return m_impl->callFunction(function, arguments);
+}
+
+void ScriptVm::bind(Binding binding)
+{
+    m_impl->bindLua(binding);
+    std::erase_if(m_impl->bindings, [&](const Binding& b) { return b.name == binding.name; });
+    m_impl->bindings.push_back(std::move(binding));
+}
+
+std::vector<const Binding*> ScriptVm::bindings() const
+{
+    std::vector<const Binding*> out;
+    for (const Binding& b : m_impl->bindings)
+    {
+        out.push_back(&b);
+    }
+    std::sort(out.begin(), out.end(),
+              [](const Binding* a, const Binding* b)
+              {
+                  // Case-insensitive, so "Story" sorts among the lower-case names.
+                  const auto lower = [](std::string_view s)
+                  {
+                      std::string out(s);
+                      std::transform(out.begin(), out.end(), out.begin(),
+                                     [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                      return out;
+                  };
+                  return a->group != b->group ? a->group < b->group : lower(a->name) < lower(b->name);
+              });
+    return out;
+}
+
+std::string ScriptVm::apiMarkdown() const
+{
+    std::string out =
+        "# Skript-API (Lua)\n\n"
+        "Erzeugt aus den Bindings der Engine (`gothar --script-api=docs/script-api.md`) – nicht von Hand "
+        "bearbeiten.\nSprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.\n";
+    std::string group;
+    for (const Binding* b : bindings())
+    {
+        if (b->group != group)
+        {
+            group = b->group;
+            out += std::format("\n## {}\n", group);
+        }
+        out += std::format("\n### `{}`\n{}\n", b->signature, b->description);
+    }
+    return out;
+}
+
+Value ScriptVm::story() const
+{
+    return m_impl->toValue(m_impl->lua["Story"], 0);
+}
+
+namespace
+{
+std::optional<std::string> firstFunction(const Value& v, const std::string& path)
+{
+    if (v.isFunction())
+    {
+        return path;
+    }
+    if (const Table* t = v.asTable())
+    {
+        for (usize i = 0; i < t->array.size(); ++i)
+        {
+            if (auto found = firstFunction(t->array[i], std::format("{}[{}]", path, i + 1)))
+            {
+                return found;
+            }
+        }
+        for (const auto& [name, field] : t->fields)
+        {
+            if (auto found = firstFunction(field, path + "." + name))
+            {
+                return found;
+            }
+        }
+    }
+    return std::nullopt;
+}
+} // namespace
+
+Result<Value> ScriptVm::storyForSave() const
+{
+    Value s = story();
+    if (auto f = firstFunction(s, "Story"))
+    {
+        return Error{std::format("{} is a function: story variables hold data only", *f)};
+    }
+    return s;
+}
+
+Result<void> ScriptVm::setStory(const Value& story)
+{
+    if (!story.isTable())
+    {
+        return Error{"Story must be a table"};
+    }
+    m_impl->lua["Story"] = m_impl->toLua(story);
+    return {};
+}
+
+usize ScriptVm::tick(f64 seconds)
+{
     Impl& impl = *m_impl;
-    if (!function.valid() || function.id > impl.functions.size())
+    impl.clock += seconds;
+    usize calls = 0;
+    // Due timers in order; a timer started by a callback waits for the next tick.
+    std::vector<Impl::Timer> due;
+    for (const Impl::Timer& t : impl.timers)
     {
-        return Error{std::format("no function #{}", function.id)};
+        if (t.due <= impl.clock)
+        {
+            due.push_back(t);
+        }
     }
-    std::vector<sol::object> args;
-    for (const Value& a : arguments)
+    std::sort(due.begin(), due.end(), [](const Impl::Timer& a, const Impl::Timer& b)
+              { return a.due != b.due ? a.due < b.due : a.id < b.id; });
+    for (const Impl::Timer& t : due)
     {
-        args.push_back(impl.toLua(a));
+        const auto still = std::find_if(impl.timers.begin(), impl.timers.end(),
+                                        [&](const Impl::Timer& x) { return x.id == t.id; });
+        if (still == impl.timers.end())
+        {
+            continue; // cancelled by an earlier callback
+        }
+        if (still->interval > 0.0)
+        {
+            // Missed periods are not caught up: at most one call per tick.
+            still->due += still->interval;
+            if (still->due <= impl.clock)
+            {
+                still->due = impl.clock + still->interval;
+            }
+        }
+        else
+        {
+            impl.timers.erase(still);
+        }
+        ++calls;
+        if (auto r = impl.callFunction(t.function, {}); !r)
+        {
+            G7_LOG_WARN("script", "timer {}: {} (dropped)", t.id, r.error().message);
+            std::erase_if(impl.timers, [&](const Impl::Timer& x) { return x.id == t.id; });
+        }
     }
-    impl.startRun();
-    sol::protected_function_result result = impl.functions[function.id - 1](sol::as_args(args));
-    return impl.finish(result);
+    return calls;
+}
+
+f64 ScriptVm::time() const noexcept
+{
+    return m_impl->clock;
+}
+
+usize ScriptVm::emit(std::string_view event, std::span<const Value> arguments)
+{
+    return m_impl->emitEvent(event, arguments);
 }
 
 Result<Value> ScriptVm::callGlobal(std::string_view name, std::span<const Value> arguments)
