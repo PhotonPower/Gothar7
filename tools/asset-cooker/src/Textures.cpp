@@ -2,10 +2,11 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstdlib>
+#include <mutex>
 #include <string>
-#include <thread>
 
 #if G7_HAS_KTX
 #include <ktx.h>
@@ -201,11 +202,29 @@ Result<std::vector<u8>> encodeKtx2(const asset::ImageData& image, TextureUsage u
     params.structSize = sizeof(params);
     params.uastc = KTX_TRUE;
     params.uastcFlags = std::min<u32>(uastcLevel, KTX_PACK_UASTC_MAX_LEVEL);
-    params.threadCount = std::max(1u, std::thread::hardware_concurrency());
+    // One thread: basisu's job_pool (libktx 4.4.2) can hang for ever when it is destroyed - its destructor
+    // sets the kill flag without holding the mutex, so a worker about to wait misses the wake-up and
+    // join() blocks (lost wake-up; reproduced about once per 1000-2000 encodes, docs/modules/asset.md).
+    // With one thread the pool starts no workers; the cooker encodes several textures in parallel instead.
+    params.threadCount = 1;
     params.normalMap = normal ? KTX_TRUE : KTX_FALSE;
+    // The first encode initialises basisu, and libktx guards that with a plain bool: serialise encodes
+    // until one has finished, then they run in parallel.
+    static std::mutex s_firstEncode;
+    static std::atomic<bool> s_initialised{false};
+    std::unique_lock first(s_firstEncode, std::defer_lock);
+    if (!s_initialised.load(std::memory_order_acquire))
+    {
+        first.lock();
+    }
     if (const auto rc = ktxTexture2_CompressBasisEx(tex.ptr, &params); rc != KTX_SUCCESS)
     {
         return ktxError("UASTC encoding failed", rc);
+    }
+    if (first.owns_lock())
+    {
+        s_initialised.store(true, std::memory_order_release);
+        first.unlock();
     }
     if (const auto rc = ktxTexture2_DeflateZstd(tex.ptr, kZstdLevel); rc != KTX_SUCCESS)
     {
