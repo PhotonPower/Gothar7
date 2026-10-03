@@ -365,8 +365,9 @@ Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source
 **Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört). F2 abgeschlossen: `build-set`,
 `report`, Pose-Marker-Events; 36/36 Prio-A-Clips (18 Quaternius CC0, 18 Keyframe-Platzhalter) und 48 Clips Fortbewegung je Waffenmodus
 (9 Sets). Kein Mixamo (öffentliches Repo). F3 läuft: Baukasten-Werkzeuge stehen, Stil A (realistisch, Texturen) entschieden,
-Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag mit engine, erste Figur `farmer`; offen: weitere Körper/Köpfe
-(Morph-Targets). F5 läuft: Monster-Vertrag mit engine, Validator-Regeln und Werkzeuge stehen, erste Art `wolf` mit vollständigem
+Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag, Gesichts-Morphs, 6 Grundkörper, 5 Köpfe, Kleidungs-Kit,
+5 Test-NPCs; Figuren entstehen beim Bauen (`gothar-chargen assemble`, reines Python, nicht versioniert, §6.2); als Nächstes
+Rüstungen und Kopfbedeckungen. F5 läuft: Monster-Vertrag mit engine, Validator-Regeln und Werkzeuge stehen, erste Art `wolf` mit vollständigem
 Mindest-Set (Platzhalter): `wolf`, `keiler`, `laufvogel`; offen: eigene Rigs/Arten mit Design-Doku (nach Stil-Entscheidung).
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
@@ -395,7 +396,7 @@ Mindest-Set (Platzhalter): `wolf`, `keiler`, `laufvogel`; offen: eigene Rigs/Art
   - Stand: Werkzeug `gothar-chargen human` (Rezept → MPFB2 → Referenz-Rig → Teile body/head/hair, Texturen extern, Textur-Vertrag §2.3); erste Figur `farmer` (14,3 k Dreiecke, 3 LOD-Stufen). Köpfe mit 15 Gesichts-Morph-Targets (Viseme, Blinzeln, Ausdrücke; Vertrag mit engine §6.1, mit Zähnen/Zunge). Grundkörper 2 Geschlechter × 3 Staturen und 4 Köpfe (jung/alt, m/w, mit Bart) als Rezepte, frei kombinierbar je Geschlecht (Halsnaht und Haut beim Zusammenbau, alle 12 Kombinationen geprüft). 5 Köpfe (jung/mittel/alt, m/w, Bart/Schnurrbart).
 - [ ] Haare/Bärte, erste Kleidungs-/Rüstungslinien (Lumpen, leicht, mittel)
   - Stand: Kleidungs-Kit (F3e): Stücke als eigene Teile je Statur (Männer: grobes Hemd, Fischerpullover, Stiefel, Stoffschuhe; Frauen: grobes Hemd, Mieder, langer Rock, flache Schuhe, Stiefeletten), Körper darunter ausgeblendet, neutrale geteilte Texturen + Palette; jedes Stück auf jeder Statur geprüft. 5 Test-NPCs: `farmer`, `peasant_woman`, `laborer`, `guard`, `old_man` (14–19 k Dreiecke). Offen: Rüstungslinien (leicht/mittel), Kopfbedeckungen, eigene Stoff-Trim-Sheets
-- [x] Baukasten-Werkzeug: Zusammensetzen, Passform-Prüfung, LODs, Farbvarianten – `gothar-chargen assemble` (Manifest `figures/<name>.figure.toml`, Palette), `fit.*`/`lod.*`/`mesh.budget` im Validator, LOD-Vertrag mit engine (characters-pipeline.md §2.2); getestet mit eigenen Testteilen (`parts/test`, Figuren `test_plain`, `test_rags`). ADR 0018 (MPFB2) angenommen
+- [x] Baukasten-Werkzeug: Zusammensetzen, Passform-Prüfung, LODs, Farbvarianten – `gothar-chargen assemble` (Manifest `figures/<name>.figure.toml`, Palette), `fit.*`/`lod.*`/`mesh.budget` im Validator, LOD-Vertrag mit engine (characters-pipeline.md §2.2); getestet mit eigenen Testteilen (`parts/test`, Figuren `test_plain`, `test_rags`). ADR 0018 (MPFB2) angenommen. Seit 2026-10-03 Figuren beim Bauen statt im Repo: Teile mit LODs und Zusammenbau-Daten, `assemble` in reinem Python (Vertrag §6.2)
 - [ ] Stil-Referenzblatt Figuren (gemeinsam mit W5)
   - Stand: Stilentscheidung Figuren gefallen (Stufe A realistisch mit Texturen, 2026-10-03; Stilproben-Seite für den Projektinhaber)
 

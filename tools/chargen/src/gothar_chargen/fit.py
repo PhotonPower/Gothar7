@@ -77,13 +77,15 @@ def check_fit(gltf: Gltf, tol: FitTolerances | None = None) -> list[FitIssue]:
     for role in CLOSING_ROLES:  # loose parts (hair cards, beards) have no seams to keep
         if (role, 0) not in data:
             continue
-        base = data[(role, 0)]
-        base_border = base.positions[base.border_vertices()]
+        others = [d for (r, lv), d in data.items() if r != role and r in CLOSING_ROLES and lv == 0]
+        base_border = _seam_border(data[(role, 0)], others, tol)
         for level in levels:
             if level == 0 or (role, level) not in data:
                 continue
-            lod = data[(role, level)]
-            lod_border = lod.positions[lod.border_vertices()]
+            others_lv = [
+                d for (r, lv), d in data.items() if r != role and r in CLOSING_ROLES and lv == level
+            ]
+            lod_border = _seam_border(data[(role, level)], others_lv, tol)
             moved = _unmatched(lod_border, base_border, tol.lod_seam) + _unmatched(
                 base_border, lod_border, tol.lod_seam
             )
@@ -97,6 +99,19 @@ def check_fit(gltf: Gltf, tol: FitTolerances | None = None) -> list[FitIssue]:
                     )
                 )
     return issues
+
+
+def _seam_border(data: MeshData, others: list[MeshData], tol: FitTolerances) -> np.ndarray:
+    """Positions of the open-border vertices that form a seam with another closing part (holes
+    under garments are no seams; only the seam must stay the same in every LOD)."""
+    border = data.positions[data.border_vertices()]
+    targets = [o.positions[o.border_vertices()] for o in others]
+    targets = [t for t in targets if len(t)]
+    if not targets or not len(border):
+        return border
+    other = np.concatenate(targets)
+    dist = np.linalg.norm(border[:, None, :] - other[None, :, :], axis=2).min(axis=1)
+    return border[dist <= tol.search]
 
 
 def _unmatched(a: np.ndarray, b: np.ndarray, tol: float) -> int:

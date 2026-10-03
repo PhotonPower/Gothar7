@@ -61,7 +61,10 @@ für Grundkörper und Bärte **Underwear 01** und **Bodyparts 05**, für das Kle
 und
 entweder in Blender über MPFB → „Apply assets“ → „Library settings“ → „Install asset pack“ einspielen oder direkt
 nach `%APPDATA%\Blender Foundation\Blender\4.5\extensions\.user\blender_org\mpfb\data` entpacken.
-Rohdateien bleiben unter `DATA_ROOT\characters\mpfb` (nicht im Repo). Verwenden: **Core/System + einzeln geprüfte CC0-Pakete (Liste in `assets/LICENSES.md`)**;
+Rohdateien bleiben unter `DATA_ROOT\characters\mpfb` (nicht im Repo).
+**Figuren vor dem Kochen bauen** (sie sind nicht versioniert, `characters-pipeline.md` §6.2): im Repo-Wurzelordner
+`PYTHONPATH=tools/chargen/src python -m gothar_chargen assemble` (nur Python + numpy, ohne Blender) bzw. das
+CMake-Ziel `g7_figures`, sobald engine es eingebaut hat. Verwenden: **Core/System + einzeln geprüfte CC0-Pakete (Liste in `assets/LICENSES.md`)**;
 Community-Pakete erst nach Lizenzprüfung (ADR 0018). Das Plugin (GPLv3) wird nie ins Repo kopiert.
 
 ## Bauen

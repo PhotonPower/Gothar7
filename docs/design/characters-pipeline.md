@@ -208,7 +208,7 @@ Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pyte
 
 Technik (F3a): Teile als `.glb` auf dem Referenz-Rig unter `assets/source/characters/parts/`, Figuren als Manifest
 `figures/<name>.figure.toml` (Rollen `body`, `head`, `hair`, `beard`; `body` ist Grundkörper oder die Kleidung,
-die ihn ersetzt). Die zusammengesetzte Figur hat je Rolle die Knoten `<rolle>_lod0..2`. Teile, die aneinanderstoßen
+die ihn ersetzt). Die zusammengesetzte Figur (beim Bauen erzeugt, §6.2) hat je Rolle die Knoten `<rolle>_lod0..2`. Teile, die aneinanderstoßen
 (Hals), haben deckungsgleiche offene Ränder mit gleichen Gewichten; der Validator prüft das (`fit.*`).
 Ausgangskörper und Köpfe kommen aus MPFB2 (ADR 0018, nur CC0-Core-/System-Assets).
 
@@ -263,6 +263,37 @@ Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, 
   `gothar-chargen human` überträgt die Targets durch Rig-Anpassung und Reduktion (baryzentrisch vom unreduzierten
   Mesh); Köpfe haben dafür Zähne und Zunge. Der Validator prüft Namen, Reihenfolge, Vollständigkeit je Primitive
   und die 16er-Grenze (`morph.*`).
+
+### 6.2 Figuren beim Bauen (Vertrag mit engine, abgestimmt 2026-10-03)
+
+Entscheidung des Projektinhabers: **Zusammengesetzte Figuren werden nicht eingecheckt.** Im Repo liegen nur Teile,
+Rezepte und Manifeste; `figures/<name>.glb` entsteht beim Bauen und ist git-ignoriert
+(`assets/source/characters/.gitignore`; Ausnahme `placeholder_mannequin.glb`, die M6-Testfigur ohne Manifest).
+
+- **Bauen:** `gothar-chargen assemble` (reines Python + numpy, kein Blender, kein DATA_ROOT, Sekunden) baut alle
+  Manifeste, prüft sie mit dem strikten Validator und entfernt Figuren ohne Manifest. Aufruf für engine/CMake:
+  im Repo-Wurzelordner `PYTHONPATH=tools/chargen/src python -m gothar_chargen assemble`. Die Ausgabe ist
+  deterministisch (gleiche Teile + Manifest = bytegleiche `.glb`); `asset.generator = "gothar-chargen assemble"`,
+  `asset.extras.gothar = {figure, inputs}` mit einem Hash über Manifest und Teile. Die CI (Job `chargen`) baut
+  und validiert alle Figuren; engines CMake-Ziel `g7_figures` (optional, nicht in ALL) ruft denselben Befehl.
+- **Manifest** `figures/<name>.figure.toml` (Format v1): `[parts]` mit `body`, `head`, optional `hair`/`beard` und
+  `cloth = [...]` (Rollen `cloth_<stück>`), `[palette]` Materialname → `#rrggbb` (wird `baseColorFactor`). Die
+  LOD-Stufen bringen die Teile mit (kein `lods` mehr im Manifest).
+- **Teile** tragen ihre LOD-Stufen (`<rolle>_lod0..2`, Nahtränder fest; Haare und Kleidung frei reduziert) und in
+  `asset.extras.gothar` (Format v1, `partdata.py`) die Daten für den Zusammenbau – damit kann engine später
+  **zur Laufzeit** zusammensetzen (Rüstungs-/Kopfwechsel, Mods ohne Python), ohne Formatänderung:
+  - Körper und Kopf: `neck` je LOD-Knoten = Halsring (offener Rand der Haut) in Randreihenfolge, je Ringpunkt die
+    glTF-Vertices `[primitive, vertex]`; Start am vordersten Punkt (größtes +Z), Lauf Richtung +X. Der Körper hat
+    zusätzlich `falloff` = `[primitive, vertex, ringpunkt, gewicht]` für Vertices bis 5 cm vom Ring.
+  - Kleidungsstück: `covers` = `body` (Pfad des Grundkörper-Teils, auf das es angepasst ist), `body_hash` (Hash der
+    Körper-Geometrie; passt er nicht, ist die Maske veraltet → `gothar-chargen part-data`) und je Körper-LOD die
+    verdeckten Dreiecke als Bereiche `[primitive, erstes, ende)`.
+  - Berechnet von `gothar-chargen part-data` (reines Python; `gothar-chargen human` ruft es nach dem Bauen auf).
+- **Zusammenbau-Algorithmus** (assemble.py, auch für eine spätere C++-Umsetzung): Skelett und Skin vom Körper,
+  Joints der anderen Teile über die Knochennamen umgehängt; Körper-Dreiecke aus allen `covers` des jeweiligen
+  LOD entfernen; Halsring des Körpers auf den des Kopfes legen (Paarung: zyklische Verschiebung und Richtung mit
+  kleinster Summe der Abstände), `falloff`-Vertices folgen mit Gewicht; Materialien nach Namen zusammenführen
+  (`skin.001` → `skin`), die Haut des Kopfes gilt für die ganze Figur; Palette als `baseColorFactor`.
 
 ## 7. Monster
 
