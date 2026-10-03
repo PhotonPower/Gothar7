@@ -1,0 +1,10 @@
+{
+  "format": "gothar-ways",
+  "version": 1,
+  "status": "festgelegt – Entscheidung E5 des Projektinhabers über den Koordinator (2026-10-03): steile Wegstellen in der Heightmap glätten, Treppen-Meshes mit W5",
+  "note": "export-terrain begrenzt die Neigung entlang begehbarer OSM-Wege der Altstadt auf maxDeg (Abstand zum Grenzwinkel 50° der Spielfigur); die Heightmap weicht dort bewusst vom DGM ab (leonberg-pipeline.md W-B, leonberg-begehung.md E5).",
+  "maxDeg": 42.0,
+  "passes": 8,
+  "halfWidthM": 1.5,
+  "fadeM": 2.0
+}

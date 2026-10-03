@@ -334,6 +334,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
   - Teil 1 statisch: `begehung` prüft Gassen, Gefälle, Türen, Mauer gegen die Spielfigur; Bericht mit Entscheidungspunkten E1–E6 in `docs/design/leonberg-begehung.md`, Stationen als Startpunkte (`data/leonberg/starts.json`)
   - Teil 2 mit `gothar --walk` (#109): `walk-routes` (Stationen, alle Wege, Tore/Pforten), `walk-report`; 17,4 km ohne Sturz, Hänger nur am Gelände an bekannten Steilstellen; bestätigt 1:1
   - E3 entschieden (Projektinhaber, 2026-10-03): Maßstab 1:1 endgültig, keine Gassenverbreiterung (`leonberg.toml`)
+  - E1/E4/E5 umgesetzt: Türen nach Gelände (Sockel, Freitreppen, Obergeschoss-Eingänge, Abgänge), Spalten per Kollision geschlossen, steile Wege auf 42° geglättet
 
 **DoD:** Graue Altstadt begehbar; Maßstabsentscheidung dokumentiert.
 

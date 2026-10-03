@@ -71,6 +71,7 @@ def add_start_points(
     """
     vobs = doc.setdefault("vobs", [])
     present = {str(v.get("name", "")).upper() for v in vobs if v.get("type") == "start"}
+    regrounded = reground_start_points(doc, starts, ground)
     added = 0
     for s in starts:
         key = f"start:{s.name}"
@@ -82,4 +83,26 @@ def add_start_points(
         doc["nextVobId"] = max(int(doc.get("nextVobId", 1)), vid + 1)
         added += 1
     vobs.sort(key=lambda v: int(v["id"]))
+    del regrounded  # regrounding is not counted as added
     return added
+
+
+def reground_start_points(doc: dict[str, Any], starts: tuple[StartPoint, ...],
+                          ground: Callable[[float, float], float]) -> int:  # fmt: skip
+    """Puts start points of the site data back on the ground (the heightmap changes: water beds,
+    smoothed ways, descents). Only those still where the data put them (x, z within 1 cm): a start
+    point moved in the editor is left alone. Returns how many changed."""
+    by_name = {s.name.upper(): s for s in starts}
+    changed = 0
+    for v in doc.get("vobs", []):
+        s = by_name.get(str(v.get("name", "")).upper())
+        if v.get("type") != "start" or s is None:
+            continue
+        x, y, z = v["pos"]
+        if abs(x - s.x) > 0.01 or abs(z - s.z) > 0.01:
+            continue
+        want = round(ground(s.x, s.z) + s.height_above_ground, 5) + 0.0
+        if abs(want - y) > 1e-4:
+            v["pos"] = [x, want, z]
+            changed += 1
+    return changed

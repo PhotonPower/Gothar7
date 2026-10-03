@@ -238,3 +238,16 @@ def test_site_start_points(tmp_path):
     assert s.rot == pytest.approx((0.0, 0.707107, 0.0, 0.707107))
     real = load_starts(Path(__file__).parents[1] / "data" / "leonberg" / "starts.json")
     assert len(real) >= 9 and all(p.name.startswith("START_BG_") for p in real)
+
+
+def test_data_start_points_follow_the_ground_unless_moved():
+    from gothar_worldgen.export.starts import StartPoint, reground_start_points
+
+    starts = (StartPoint("START_A", 1.0, 2.0), StartPoint("START_B", 5.0, 5.0, 2.0))
+    doc = {"vobs": [
+        {"id": 1, "type": "start", "name": "START_A", "pos": [1.0, 0.0, 2.0], "rot": [0, 0, 0, 1]},
+        {"id": 2, "type": "start", "name": "START_B", "pos": [9.0, 0.0, 9.0], "rot": [0, 0, 0, 1]},
+    ]}  # fmt: skip
+    assert reground_start_points(doc, starts, lambda x, z: 3.5) == 1
+    assert doc["vobs"][0]["pos"] == [1.0, 3.5, 2.0]
+    assert doc["vobs"][1]["pos"] == [9.0, 0.0, 9.0]  # moved in the editor: left alone

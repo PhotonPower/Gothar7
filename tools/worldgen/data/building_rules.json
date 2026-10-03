@@ -128,6 +128,8 @@
     "pitchDeg": 50.0,
     "pitchSpreadDeg": 4.0
   },
+  "hillside": {"note": "Hanghaus-Regel (Entscheidung E1 des Projektinhabers 2026-10-03): Tür auf die Straßenkante, vor der das Gelände zum Boden passt; liegt es höher, rückt der Boden darauf (Steinsockel darunter); liegt es mehr als stairFromM tiefer, kommt eine Freitreppe vor die Tür; passt bergseitig kein Erdgeschoss unter die Traufe, liegt die Tür im Obergeschoss auf Geländehöhe (E1-C A), sonst ein kurzer Abgang, den export-terrain gräbt (E1-C B)", "stairFromM": 0.4, "stairRiseM": 0.2, "stairRunM": 0.3, "storeyMinM": 2.2, "storeyMaxM": 4.2, "doorStoreyMinM": 2.5, "descentSlopeDeg": 40.0, "descentWidthM": 1.6},
+  "gapFill": {"note": "Spalten zwischen Häusern, schmaler als die Spielfigur, per Kollision schließen (Entscheidung E4 des Projektinhabers 2026-10-03); der Spalt bleibt sichtbar", "enabled": true, "maxWidthM": 0.7, "minAreaM2": 0.3, "enclosedShare": 0.5, "aboveGroundM": 3.0},
   "palette": {
     "note": "baseColorFactor (linear); exakt gleiche Werte in allen Häusern, die Engine bündelt nach Materialwerten",
     "stone": [0.45, 0.4, 0.33, 1.0],
