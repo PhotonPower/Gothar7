@@ -191,6 +191,9 @@ struct AssetManager::Impl
                 ++inFlight;
             }
             Done result = execute(job);
+            // Drop the job (and its reference to the asset) before reporting it done: waitAll() may
+            // return as soon as inFlight drops, and the handle counts must be final then.
+            job = {};
             {
                 std::lock_guard lock(mutex);
                 done.push_back(std::move(result));
