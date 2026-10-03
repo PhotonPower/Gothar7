@@ -163,3 +163,30 @@ frames = 12
 name = "none/t_pickup_ground"
 from = "ual2:Farm_Harvest"
 markers = { pickup = 36 }
+
+[[clip]]
+name = "none/t_pickup_high"
+from = "ual1:PickUp_Table"
+markers = { pickup = 8 }
+
+[[clip]]
+name = "none/t_eat"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [14, "bite"], [20, "chew"], [28, "bite"], [42, "rest"]], poses = { bite = { rotate = { upperarm_r = [["Y", -85]], lowerarm_r = [["Y", -110]] } }, chew = { rotate = { upperarm_r = [["Y", -75]], lowerarm_r = [["Y", -95]] } } } }
+markers = { use = 14, item_from_hand = 32 }
+
+[[clip]]
+name = "none/t_drink"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [14, "sip"], [34, "sip"], [46, "rest"]], poses = { sip = { rotate = { upperarm_r = [["Y", -85]], lowerarm_r = [["Y", -110]], neck = [["X", -15]] } } } }
+markers = { use = 24, item_from_hand = 38 }
+
+[[clip]]
+name = "none/t_read_scroll"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [20, "read"], [70, "read"], [90, "rest"]], poses = { read = { rotate = { upperarm_r = [["Y", -40]], lowerarm_r = [["Y", -80]], upperarm_l = [["Y", 40]], lowerarm_l = [["Y", 80]], neck = [["X", 20]] } } } }
+markers = { use = 45 }
+
+[[clip]]
+name = "none/t_pickpocket"
+from = "ual1:Interact"
