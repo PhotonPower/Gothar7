@@ -34,6 +34,21 @@ Result<Mesh> Mesh::create(Device& device, const asset::MeshData& data)
     return mesh;
 }
 
+Result<Mesh> Mesh::create(Device& device, GeometryArena& arena, const asset::MeshData& data)
+{
+    auto slice = arena.allocate(device, data.vertices, data.indices);
+    if (!slice)
+    {
+        return slice.error();
+    }
+    Mesh mesh;
+    mesh.m_arena = &arena;
+    mesh.m_slice = std::move(slice).value();
+    mesh.m_submeshes = data.submeshes;
+    mesh.m_bounds = data.bounds;
+    return mesh;
+}
+
 std::vector<rhi::VertexAttribute> Mesh::vertexLayout()
 {
     return {
@@ -46,6 +61,11 @@ std::vector<rhi::VertexAttribute> Mesh::vertexLayout()
 
 void Mesh::bind(Device& device) const
 {
+    if (m_arena != nullptr)
+    {
+        m_arena->bind(device, m_slice.block());
+        return;
+    }
     device.bindVertexBuffer(m_vertices);
     device.bindIndexBuffer(m_indices, rhi::IndexType::U32);
 }
@@ -53,6 +73,7 @@ void Mesh::bind(Device& device) const
 void Mesh::draw(Device& device, usize submesh) const
 {
     const asset::Submesh& range = m_submeshes[submesh];
-    device.drawIndexed(range.indexCount, range.firstIndex);
+    device.drawIndexed(range.indexCount, m_slice.firstIndex() + range.firstIndex,
+                       static_cast<i32>(m_slice.firstVertex()));
 }
 } // namespace g7::render

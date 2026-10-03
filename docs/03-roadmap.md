@@ -107,6 +107,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
   - `start` (Kamera in Augenhöhe, `--start`), `sound` (Daten + Debug-Draw, Abspielen mit der Audio-Phase), `trigger` (`world::TriggerSystem`, deterministische Enter/Leave-Ereignisse, `target` reserviert; in M4 mit der Kamera), `mob` (Mesh + Definition, Interaktion in M8); Debug-Draw (F2) für alle
 - [ ] Spielzeit & **Tag/Nacht-Zyklus**: Sonnenstand, Himmelsfarben (Verlauf je Uhrzeit), Sterne, Mond
 - [ ] Sichtbarkeit: Frustum-Culling, Distanz-Culling/LOD für Vobs; Innenräume über Portale/Zonen (später)
+  - Stand Teil A: Überlinearität bei vielen Modellen behoben (Ursache `AssetManager::pruneCache`, O(n²) je Frame; 5400 eigene Modelle 83 → ~10 ms), Geometrie-Arena (alle Meshes in gemeinsamen Puffern, 0 Pufferbindungen je Frame), Benchmark mit Draws/Binds. Offen (Teil B): Instancing, Raster, Distanz-/Größen-Culling
 - [ ] Mehrere Welten + Weltwechsel (Levelwechsel-Trigger)
 - [ ] **Editor-Grundlage**: Editor-Modus, Vobs auswählen/verschieben/drehen (Gizmos, ImGuizmo), Welt speichern
 

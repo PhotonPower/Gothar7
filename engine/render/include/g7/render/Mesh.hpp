@@ -3,6 +3,7 @@
 #include <g7/asset/MeshData.hpp>
 #include <g7/core/Geometry.hpp>
 #include <g7/core/Result.hpp>
+#include <g7/render/GeometryArena.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
 #include <span>
@@ -12,19 +13,25 @@ namespace g7::render
 {
 class Device;
 
-/// Static mesh on the GPU: one interleaved vertex buffer (asset::Vertex), one u32 index buffer,
-/// submeshes per material. Created from asset::MeshData (glTF now, cooked data from M3).
+/// Static mesh on the GPU: interleaved vertices (asset::Vertex), u32 indices, submeshes per material.
+/// Either in a GeometryArena shared with other meshes (the engine's way: few buffers to bind) or in
+/// buffers of its own. Created from asset::MeshData.
 class Mesh
 {
 public:
     Mesh() = default;
+    /// Own vertex and index buffer.
     [[nodiscard]] static Result<Mesh> create(Device& device, const asset::MeshData& data);
+    /// In `arena`, which must outlive the mesh.
+    [[nodiscard]] static Result<Mesh> create(Device& device, GeometryArena& arena,
+                                             const asset::MeshData& data);
 
     /// Attribute locations 0..3: position, normal, uv, tangent (stride 48).
     [[nodiscard]] static std::vector<rhi::VertexAttribute> vertexLayout();
     static constexpr u32 kVertexStride = sizeof(asset::Vertex);
 
-    /// Binds vertex and index buffer; a pipeline with vertexLayout() must be bound first.
+    /// Binds vertex and index buffer (the arena block's, if any); a pipeline with vertexLayout()
+    /// must be bound first. Binding the same block again costs nothing (the device caches it).
     void bind(Device& device) const;
     /// Draws one submesh (after bind()).
     void draw(Device& device, usize submesh) const;
@@ -35,6 +42,8 @@ public:
 private:
     rhi::Buffer m_vertices;
     rhi::Buffer m_indices;
+    const GeometryArena* m_arena = nullptr;
+    GeometrySlice m_slice;
     std::vector<asset::Submesh> m_submeshes;
     AABB m_bounds;
 };

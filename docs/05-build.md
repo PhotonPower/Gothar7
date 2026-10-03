@@ -112,7 +112,7 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | `--save-world=<datei>` | nach dem Laden die Welt bzw. Testszene als `.g7world` speichern (stabil, ein Vob pro Zeile) |
 | `--scene=<pfad>` | Testszene laden (TOML, siehe „Testszenen“): VFS-Pfad wie `testscene/scene.toml` oder Datei auf der Festplatte (deren Ordner wird unter `local/` gemountet); ersetzt `--view-mesh` |
 | `--viewpoint=N` | mit Viewpoint N der Szene starten (Standard 0) |
-| `--benchmark` | VSync und Frame-Limit aus, jeden Viewpoint der Szene 300 Frames lang ansteuern (die ersten 30 zum Einschwingen), Frame-Zeiten (Mittel, p95, p99, schlechtester) je Viewpoint loggen, dann beenden |
+| `--benchmark` | VSync und Frame-Limit aus, jeden Viewpoint der Szene 300 Frames lang ansteuern (die ersten 30 zum Einschwingen), Frame-Zeiten (Mittel, p95, p99, schlechtester) sowie Draws, Pufferbindungen, Pipeline-Wechsel und Dreiecke je Viewpoint loggen, dann beenden |
 | `--screenshot=<datei.png>` | letztes Bild als PNG speichern (mit `--frames` oder `--benchmark`) |
 | `--no-ground` | Bodenplatte unter dem Modell bzw. der Szene weglassen |
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |

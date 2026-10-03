@@ -234,6 +234,8 @@ private:
     std::unique_ptr<platform::Window> m_window;
     std::unique_ptr<platform::GlContext> m_glContext; // must outlive m_device
     std::unique_ptr<render::Device> m_device;
+    /// Shared vertex/index storage of all models (outlives them: reset after the models).
+    std::unique_ptr<render::GeometryArena> m_geometry;
     std::unique_ptr<render::ShaderLibrary> m_shaders; // destroyed before the device
     render::rhi::Pipeline m_backgroundPipeline;
     render::rhi::ShaderProgram* m_backgroundProgram = nullptr;
@@ -263,6 +265,7 @@ private:
     u32 m_visibleInstances = 0;
     FrameTimes m_benchmarkTimes;
     std::vector<FrameTimeSummary> m_benchmarkResults;
+    std::vector<render::FrameStats> m_benchmarkStats; // per viewpoint, of its last measured frame
     u64 m_benchmarkFrame = 0;
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs
     render::Environment m_environment;

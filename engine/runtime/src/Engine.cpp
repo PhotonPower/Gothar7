@@ -139,6 +139,7 @@ Result<void> Engine::init()
                 return Error{"cannot initialize renderer: " + device.error().message};
             }
             m_device = std::move(device).value();
+            m_geometry = std::make_unique<render::GeometryArena>();
             m_glContext->setVSync(m_config.window.vsync);
 
             if (auto result = initShaders(); !result)
@@ -515,7 +516,7 @@ Result<void> Engine::uploadModel(LoadedModel& loaded)
 {
     // Built aside and swapped in only on success: a broken reload keeps the working model.
     const asset::MeshData& data = *loaded.source.get();
-    auto mesh = render::Mesh::create(*m_device, data);
+    auto mesh = render::Mesh::create(*m_device, *m_geometry, data);
     if (!mesh)
     {
         return Error{"cannot upload mesh " + loaded.name + ": " + mesh.error().message};
@@ -660,7 +661,7 @@ Result<void> Engine::addGround(f32 size, const Vec3& color, f32 height)
 {
     // Ground plate (it receives the shadows), 1 m texture tiles.
     const asset::MeshData plane = asset::makePlane(size, 1.0f, Vec4(color, 1.0f));
-    auto mesh = render::Mesh::create(*m_device, plane);
+    auto mesh = render::Mesh::create(*m_device, *m_geometry, plane);
     auto materials = render::MaterialSet::create(*m_device, plane, render::MaterialSet::ImageLookup{});
     if (!mesh || !materials)
     {
@@ -1168,8 +1169,13 @@ void Engine::updateBenchmark(f64 realSeconds)
         {
             for (const FrameTimeSummary& s : m_benchmarkResults)
             {
-                G7_LOG_INFO("engine", "benchmark viewpoint {}: {}", &s - m_benchmarkResults.data(),
-                            s.toString());
+                const render::FrameStats& stats =
+                    m_benchmarkStats[static_cast<usize>(&s - m_benchmarkResults.data())];
+                G7_LOG_INFO(
+                    "engine",
+                    "benchmark viewpoint {}: {}; {} draws, {} buffer binds, {} pipeline changes, {}k tris",
+                    &s - m_benchmarkResults.data(), s.toString(), stats.drawCalls, stats.bufferBinds,
+                    stats.pipelineChanges, stats.triangles / 1000);
             }
             const auto [worstAverage, worstP99] = std::accumulate(
                 m_benchmarkResults.begin(), m_benchmarkResults.end(), std::pair{0.0, 0.0},
@@ -1195,6 +1201,7 @@ void Engine::updateBenchmark(f64 realSeconds)
     if (frameInView + 1 == perView)
     {
         m_benchmarkResults.push_back(m_benchmarkTimes.summary());
+        m_benchmarkStats.push_back(m_device ? m_device->stats() : render::FrameStats{});
     }
 }
 
@@ -1306,13 +1313,13 @@ void Engine::addDebugOverlay(u32 width, u32 height)
     const render::FrameStats& stats = m_device->stats();
     const f64 ms = m_smoothedFrameSeconds * 1000.0;
     const Vec3& p = m_camera.transform.position;
-    m_debugDraw.screenText(
-        Vec2(8.0f, 8.0f),
-        std::format(
-            "{:.0f} fps  {:.2f} ms{}\n{} draws  {:.1f}k tris  {}/{} objects\n{}x{}  cam {:.1f} {:.1f} {:.1f}",
-            ms > 0.0 ? 1000.0 / ms : 0.0, ms, m_paused ? "  PAUSED" : "", stats.drawCalls,
-            stats.triangles / 1000.0, m_visibleInstances, m_instances.size(), width, height, p.x, p.y, p.z),
-        Vec4(1.0f), 2.0f);
+    m_debugDraw.screenText(Vec2(8.0f, 8.0f),
+                           std::format("{:.0f} fps  {:.2f} ms{}\n{} draws  {} binds  {:.1f}k tris  {}/{} "
+                                       "objects\n{}x{}  cam {:.1f} {:.1f} {:.1f}",
+                                       ms > 0.0 ? 1000.0 / ms : 0.0, ms, m_paused ? "  PAUSED" : "",
+                                       stats.drawCalls, stats.bufferBinds, stats.triangles / 1000.0,
+                                       m_visibleInstances, m_instances.size(), width, height, p.x, p.y, p.z),
+                           Vec4(1.0f), 2.0f);
 
     // World origin and the scene: ground grid, bounds (with the name for a single model), torches.
     m_debugDraw.axes(Mat4(1.0f), 1.0f);
@@ -1423,7 +1430,8 @@ void Engine::shutdown()
     m_instances.clear();
     m_groundModel.reset();
     m_models.clear();
-    m_assets.reset(); // before the VFS (a member destroyed after it)
+    m_geometry.reset(); // after every mesh that lives in it
+    m_assets.reset();   // before the VFS (a member destroyed after it)
     m_backgroundPipeline = {};
     m_backgroundProgram = nullptr;
     m_shaders.reset();
