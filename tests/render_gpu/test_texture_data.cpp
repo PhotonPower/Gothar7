@@ -220,3 +220,58 @@ TEST_CASE("TextureData: invalid data is rejected")
     CHECK(texture.desc().mipLevels == 3);
     CHECK(gl.device->debugErrorCount() == 0);
 }
+
+TEST_CASE("TextureCache: sets sharing an image path upload it once, versions and lifetime")
+{
+    Scene scene;
+    TextureCache& cache = *scene.renderer.textureCache();
+    asset::MeshData quad = texturedQuad(true, true);
+    const asset::TextureData colour = rgba8(200, 100, 50, 255, true);
+    const asset::TextureData normal = rgba8(128, 128, 255, 255);
+    u64 version = 1;
+    const auto shared = [&](const asset::MeshData& data)
+    {
+        return require(MaterialSet::create(
+            *scene.gl.device, data,
+            [&](const asset::ImageSource& source) -> ExternalImage
+            {
+                return source.uri == "normal" ? ExternalImage{&normal, "textures/trim_n.ktx2", version}
+                                              : ExternalImage{&colour, "textures/trim.ktx2", version};
+            },
+            scene.renderer.defaults(), &cache));
+    };
+    {
+        // Many models on the same trim sheet: one texture each for colour and normal.
+        std::vector<MaterialSet> houses;
+        for (int i = 0; i < 20; ++i)
+        {
+            houses.push_back(shared(quad));
+        }
+        CHECK(cache.uploads() == 2);
+        CHECK(cache.size() == 2);
+        CHECK(houses[0][0].baseColor == houses[19][0].baseColor);
+        CHECK(houses[0][0].normal == houses[19][0].normal);
+        CHECK(houses[0][0].baseColor != houses[0][0].normal);
+        // The same path as colour and as data are two textures (sRGB and linear).
+        asset::MeshData both = quad;
+        both.images[0].uri = "colour"; // normal map from the colour image's path
+        const MaterialSet mixed = shared(both);
+        CHECK(cache.uploads() == 3);
+        CHECK(mixed[0].normal->desc().format == Format::RGBA8);
+        CHECK(mixed[0].baseColor == houses[0][0].baseColor);
+
+        // Hot reload: a new version uploads again; models not yet updated keep the old one.
+        version = 2;
+        const MaterialSet reloaded = shared(quad);
+        CHECK(cache.uploads() == 5);
+        CHECK(reloaded[0].baseColor != houses[0][0].baseColor);
+        CHECK(houses[0][0].baseColor->desc().format == Format::RGBA8_SRGB); // still alive
+    }
+    // All sets gone: the textures go with them.
+    CHECK(cache.size() == 0);
+    // Without a key (plain pointer lookup) a set uploads its own texture, uncached.
+    const MaterialSet own = scene.materials(quad, &normal, &colour);
+    CHECK(cache.uploads() == 5);
+    CHECK(own[0].baseColor->desc().format == Format::RGBA8_SRGB);
+    CHECK(scene.gl.device->debugErrorCount() == 0);
+}

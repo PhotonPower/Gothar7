@@ -640,7 +640,7 @@ Result<void> Engine::uploadModel(LoadedModel& loaded)
     // Missing or broken textures are warnings (neutral fallbacks), not a reason to refuse the model.
     auto materials = render::MaterialSet::create(
         *m_device, data,
-        [&](const asset::ImageSource& source) -> const asset::TextureData*
+        [&](const asset::ImageSource& source) -> render::ExternalImage
         {
             const auto index = static_cast<usize>(&source - data.images.data());
             const asset::Handle<asset::TextureData>& image = loaded.images[index];
@@ -648,9 +648,11 @@ Result<void> Engine::uploadModel(LoadedModel& loaded)
             {
                 G7_LOG_WARN("engine", "{}: {}", loaded.name, image.error());
             }
-            return image.get();
+            // Shared by VFS path: models using the same image upload it once (TextureCache).
+            return {image.get(), image.path(), image.version()};
         },
-        m_meshRenderer.defaults()); // shared neutral textures: models batch together
+        m_meshRenderer.defaults(),
+        m_meshRenderer.textureCache()); // shared neutral textures: models batch together
     if (!materials)
     {
         return Error{"cannot create materials for " + loaded.name + ": " + materials.error().message};
@@ -716,8 +718,10 @@ Result<void> Engine::loadModels(const std::vector<std::string>& paths)
     }
     if (!pending.empty())
     {
-        G7_LOG_INFO("engine", "loaded {} models and {} images in {:.0f} ms", pending.size(),
-                    imagePaths.size(), timer.elapsedSeconds() * 1000.0);
+        // Image textures are shared by VFS path (TextureCache): one upload per distinct image and use.
+        G7_LOG_INFO("engine", "loaded {} models and {} images in {:.0f} ms ({} image textures on the GPU)",
+                    pending.size(), imagePaths.size(), timer.elapsedSeconds() * 1000.0,
+                    m_device ? m_meshRenderer.textureCache()->size() : 0);
     }
     return {};
 }

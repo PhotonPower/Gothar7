@@ -250,7 +250,7 @@ Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedMo
         materialData.images = data.images;
         auto materials = render::MaterialSet::create(
             *m_device, materialData,
-            [&](const asset::ImageSource& source) -> const asset::TextureData*
+            [&](const asset::ImageSource& source) -> render::ExternalImage
             {
                 const auto index = static_cast<usize>(&source - materialData.images.data());
                 const asset::Handle<asset::TextureData>& image = images[index];
@@ -258,9 +258,10 @@ Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedMo
                 {
                     G7_LOG_WARN("engine", "{}: {}", figure.path, image.error());
                 }
-                return image.get();
+                // Shared by VFS path: models using the same image upload it once (TextureCache).
+                return {image.get(), image.path(), image.version()};
             },
-            m_meshRenderer.defaults());
+            m_meshRenderer.defaults(), m_meshRenderer.textureCache());
         if (!materials)
         {
             return Error{std::format("{}: {}", figure.path, materials.error().message)};
