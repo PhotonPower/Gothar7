@@ -103,6 +103,20 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_run` bewegen `root` vorw
 | `keiler/s_eat`, `s_sleep` | Wühlen (Schnauze am Boden), Schlafen (Seitenlage, atmet) | – | – | K | platzhalter-K |
 | `keiler/t_threaten` | Drohen: Kopf tief, Scharren mit dem Vorderhuf | – | – | K | platzhalter-K |
 
+### Laufvogel (`laufvogel`, Platzhalter aus Quaternius „5 Low poly animals“ – Küken, vergrößert, CC0)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `laufvogel/s_idle` | Stehen, umschauen | – | – | K | platzhalter-K |
+| `laufvogel/s_walk` | Gehen | ✓ 0,38 m/s | footstep_l/r | Q→ | platzhalter-K (Quell-Schritt am Ort ×2 schneller + root vorwärts; Tempo aus der Schrittlänge) |
+| `laufvogel/s_run` | Rennen | ✓ 0,85 m/s | footstep_l/r | Q→ | platzhalter-K (dito, ×3,3 schneller, Schritte ×1,3) |
+| `laufvogel/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_l/r | K | platzhalter-K |
+| `laufvogel/t_attack_1`, `t_attack_2` | Schnabelhieb nach vorn / Tritt mit dem rechten Fuß | – | hit_start, hit_end | K | platzhalter-K |
+| `laufvogel/t_hit` | Treffer | – | – | K | platzhalter-K |
+| `laufvogel/t_die` | Tod: taumeln, auf die Seite fallen | – | – | K | platzhalter-K |
+| `laufvogel/s_eat`, `s_sleep` | Picken am Boden, Schlafen (auf gefalteten Beinen sitzend) | – | – | K | platzhalter-K |
+| `laufvogel/t_threaten` | Drohen: aufrichten, Hals vor, Fauch-Nicken | – | – | K | platzhalter-K |
+
 ## Prio C – später
 
 Akrobatik-Varianten, Gangarten (Militär, Frauen, Entspannt) als Varianten-Sets, zusätzliche

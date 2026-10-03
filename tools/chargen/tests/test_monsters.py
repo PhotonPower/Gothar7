@@ -54,7 +54,7 @@ def codes(report, level="error"):
 
 
 def test_packaged_wolf_rig(wolf_rig):
-    assert packaged_species() == ["keiler", "wolf"]
+    assert packaged_species() == ["keiler", "laufvogel", "wolf"]
     assert wolf_rig.is_monster and wolf_rig.species == "wolf"
     assert set(MONSTER_REQUIRED) <= set(wolf_rig.names)
     assert len(wolf_rig.bones) <= wolf_rig.max_bones == 64
@@ -158,7 +158,7 @@ def test_invalid_monster_sets(data, message):
 # --- validation ----------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(("species", "bones"), [("wolf", 22), ("keiler", 25)])
+@pytest.mark.parametrize(("species", "bones"), [("wolf", 22), ("keiler", 25), ("laufvogel", 12)])
 def test_monster_files_pass(species, bones):
     folder = REPO_ROOT / "assets/source/characters/monsters" / species
     ref_path = folder / f"rig/{species}_reference.glb"
@@ -180,6 +180,14 @@ def test_keiler_rig():
         parents["front_upper_l"] == "front_shoulder_l" and parents["back_upper_r"] == "back_hip_r"
     )
     assert rig.height == pytest.approx(0.95, abs=0.01)
+
+
+def test_laufvogel_rig():
+    rig = load_rig(species="laufvogel")
+    # bird naming (§7.1): thigh/calf/foot; left/right hint from the feet
+    assert {"thigh_l", "calf_r", "foot_l", "foot_r"} <= set(rig.names)
+    assert dict(rig.orientation)["left"] == ("foot_r", "foot_l")
+    assert rig.height == pytest.approx(1.6, abs=0.01)
 
 
 def test_human_rig_rejects_wolf(rig, reference):

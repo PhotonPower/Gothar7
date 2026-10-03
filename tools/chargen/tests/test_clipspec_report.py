@@ -27,8 +27,8 @@ SOURCES = {"ual1": {"file": "a.glb", "mapping": "quaternius_ual1"}}
 def test_packaged_sets_are_valid():
     humans = ["1h", "2h", "bow", "cbow", "dive", "fist", "mag", "none", "swim"]
     assert packaged_sets(monsters=False) == humans
-    assert packaged_sets(monsters=True) == ["keiler", "wolf"]
-    assert packaged_sets() == sorted(humans + ["keiler", "wolf"])
+    assert packaged_sets(monsters=True) == ["keiler", "laufvogel", "wolf"]
+    assert packaged_sets() == sorted(humans + ["keiler", "laufvogel", "wolf"])
     for name in packaged_sets():
         spec = load_set_spec(name)
         assert spec.set == name
@@ -267,7 +267,7 @@ def test_real_list_is_consistent_with_files():
     assert result.extra == []
     assert result.missing == []
     counts = list(result.section_counts().values())
-    assert counts == [(48, 48), (12, 12), (12, 12)]  # Prio-B locomotion per mode, wolf, keiler
+    assert counts == [(48, 48), (12, 12), (12, 12), (12, 12)]  # Prio-B per mode + 3 monsters
     # without the monsters folder the wolf rows are reported as out of date
     assert progress(text, ANIMS).stale
 
