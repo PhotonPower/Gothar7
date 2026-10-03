@@ -1,0 +1,29 @@
+# Head (young woman), style A (F3d): head (with face morphs, teeth, tongue) and hair.
+# Fits every base body of the same sex (assembly snaps the neck); macros only shape the face.
+version = 1
+triangles = 5500
+parts = ["head", "hair"]
+
+[macro]
+gender = 0.0
+age = 0.3
+muscle = 0.5
+weight = 0.5
+proportions = 0.5
+height = 0.5
+race = { caucasian = 1.0 }
+
+[assets]
+skin = "skins/young_caucasian_female/young_caucasian_female.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow003/eyebrow003.mhclo"
+eyelashes = "eyelashes/eyelashes03/eyelashes03.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"
+hair = "hair/braid01/braid01.mhclo"
+
+[tint]
+braid01 = "#6b4a2b"
+
+[shape]
+nose-hump-decr = 0.3

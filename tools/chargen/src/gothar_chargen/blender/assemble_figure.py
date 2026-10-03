@@ -5,10 +5,12 @@ Run inside Blender 4.5:
         --manifest <figures/x.figure.toml> --characters <assets/source/characters> --out <x.glb>
 
 Steps: reference armature; import each part (.glb on the reference rig) and bind it to that
-armature as one mesh per role (body, head, hair, beard); merge equally named materials and tint
-them from the palette; build LOD levels with Decimate (open borders keep weight 0, so seams stay
-put; morph targets only on lod0); export with the project glTF settings. Node names follow the LOD
-contract: <role>_lod<n> (characters-pipeline.md §2.2).
+armature as one mesh per role (body, head, hair, beard); pull the body's neck ring onto the head's
+(bodies and heads of different builds come from the same MPFB topology, so the rings pair up by
+angle; the neck and collar below follow smoothly); merge equally named materials – the head's skin
+wins, so body and face share one skin texture – and tint them from the palette; build LOD levels
+with Decimate (open borders keep weight 0, so seams stay put; morph targets only on lod0); export
+with the project glTF settings. Node names follow the LOD contract: <role>_lod<n> (§2.2).
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ from pathlib import Path
 
 import bmesh  # type: ignore[import-not-found]
 import bpy  # type: ignore[import-not-found]
+from mathutils.kdtree import KDTree  # type: ignore[import-not-found]
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
@@ -31,6 +34,8 @@ from gothar_chargen.skeleton import load_rig  # noqa: E402
 
 _DUPLICATE = re.compile(r"^(?P<base>.+)\.\d{3}$")
 KEEP_GROUP = "lod_reduce"
+NECK_SEARCH = 0.06  # metres: body skin border this close to the head's ring is the neck ring
+NECK_FALLOFF = 0.05  # metres below the ring over which the body follows the snap
 
 
 def _parse_args() -> argparse.Namespace:
@@ -86,16 +91,108 @@ def _weld(obj: bpy.types.Object) -> None:
     obj.data.update()
 
 
+def _skin_ring(obj: bpy.types.Object) -> list[int]:
+    """Vertices on open borders of the skin faces (other materials: eyes, mouth, clothes)."""
+    skin = {
+        i for i, s in enumerate(obj.material_slots) if s.material and _base(s.material) == "skin"
+    }
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    ring = {
+        v.index
+        for e in bm.edges
+        if e.is_boundary and e.link_faces[0].material_index in skin
+        for v in e.verts
+    }
+    bm.free()
+    return sorted(ring)
+
+
+def _loop_order(obj: bpy.types.Object, ring: list[int]) -> list[int]:
+    """The ring's vertices in their order along the border edges (exact, from the topology)."""
+    members = set(ring)
+    nxt: dict[int, list[int]] = {i: [] for i in ring}
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    for e in bm.edges:
+        a, b = e.verts[0].index, e.verts[1].index
+        if e.is_boundary and a in members and b in members:
+            nxt[a].append(b)
+            nxt[b].append(a)
+    bm.free()
+    order = [ring[0]]
+    prev = -1
+    while len(order) < len(ring):
+        options = [n for n in nxt[order[-1]] if n != prev and n not in order[-2:]]
+        if not options:
+            raise SystemExit("neck ring is not a single closed loop")
+        prev = order[-1]
+        order.append(options[0])
+    return order
+
+
+def _snap_neck(body: bpy.types.Object, head: bpy.types.Object) -> None:
+    """Pulls the body's neck ring exactly onto the head's (different builds, same topology)."""
+    head_ring = _skin_ring(head)
+    if not head_ring:
+        return
+    tree = KDTree(len(head_ring))
+    for k, i in enumerate(head_ring):
+        tree.insert(head.data.vertices[i].co, k)
+    tree.balance()
+    body_ring = [
+        i for i in _skin_ring(body) if tree.find(body.data.vertices[i].co)[2] < NECK_SEARCH
+    ]
+    if len(body_ring) != len(head_ring):
+        raise SystemExit(
+            f"neck rings differ: body {len(body_ring)} vs head {len(head_ring)} vertices "
+            "(parts from different MPFB topologies?)"
+        )
+    a = _loop_order(head, head_ring)
+    b = _loop_order(body, body_ring)
+    hv, bv = head.data.vertices, body.data.vertices
+    n = len(a)
+
+    def cost(order: list[int], s: int) -> float:
+        return sum((hv[a[k]].co - bv[order[(k + s) % n]].co).length for k in range(n))
+
+    best = min(((cost(o, s), o, s) for o in (b, b[::-1]) for s in range(n)), key=lambda c: c[0])
+    _, order, shift = best
+    target = {order[(k + shift) % n]: hv[a[k]].co.copy() for k in range(n)}
+    delta = {i: target[i] - bv[i].co for i in target}
+    ring_tree = KDTree(n)
+    for k, i in enumerate(target):
+        ring_tree.insert(bv[i].co, k)
+    ring_tree.balance()
+    ring_ids = list(target)
+    moved = max(d.length for d in delta.values())
+    for v in bv:
+        if v.index in target:
+            continue
+        _, k, dist = ring_tree.find(v.co)
+        if dist < NECK_FALLOFF:
+            v.co += delta[ring_ids[k]] * (1.0 - dist / NECK_FALLOFF)
+    for i, co in target.items():
+        bv[i].co = co
+    body.data.update()
+    print(f"[chargen] neck: {n} ring vertices snapped (max {moved * 1000:.1f} mm)")
+
+
+def _base(mat: bpy.types.Material) -> str:
+    m = _DUPLICATE.match(mat.name)
+    return m["base"] if m else mat.name
+
+
 def _merge_materials(objects: list[bpy.types.Object], figure: Figure) -> None:
-    """Equally named materials (skin, skin.001 ...) become one; palette colours tint them."""
+    """Equally named materials (skin, skin.001 ...) become one; palette colours tint them. The
+    head comes first, so its skin texture is used for the body too (one skin per figure)."""
     canonical: dict[str, bpy.types.Material] = {}
-    for obj in objects:
+    for obj in sorted(objects, key=lambda o: not o.name.startswith("head_")):
         for slot in obj.material_slots:
             mat = slot.material
             if mat is None:
                 continue
-            m = _DUPLICATE.match(mat.name)
-            base = m["base"] if m else mat.name
+            base = _base(mat)
             if base not in canonical:
                 canonical[base] = mat
                 mat.name = base
@@ -111,12 +208,17 @@ def _merge_materials(objects: list[bpy.types.Object], figure: Figure) -> None:
             bsdf.inputs["Base Color"].default_value = (*color, 1.0)
 
 
+FREE_BORDER_ROLES = ("hair",)  # alpha cards: their borders are no seams and may move
+
+
 def _border_weights(obj: bpy.types.Object) -> None:
     """Vertex group for Decimate: 1 everywhere, 0 on open borders (seams must not move)."""
-    bm = bmesh.new()
-    bm.from_mesh(obj.data)
-    border = {v.index for e in bm.edges if e.is_boundary for v in e.verts}
-    bm.free()
+    border: set[int] = set()
+    if obj.name.rsplit("_lod", 1)[0] not in FREE_BORDER_ROLES:
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        border = {v.index for e in bm.edges if e.is_boundary for v in e.verts}
+        bm.free()
     group = obj.vertex_groups.new(name=KEEP_GROUP)
     inner = [v.index for v in obj.data.vertices if v.index not in border]
     if inner:
@@ -158,6 +260,9 @@ def assemble(figure: Figure, characters: Path, out: Path) -> None:
     rig = load_rig()
     arm = new_reference(rig)
     lod0 = [_import_part(path, role, arm) for role, path in figure.part_paths(characters).items()]
+    by_role = {o.name.rsplit("_lod", 1)[0]: o for o in lod0}
+    if "body" in by_role and "head" in by_role:
+        _snap_neck(by_role["body"], by_role["head"])
     _merge_materials(lod0, figure)
     objects = list(lod0)
     for obj in lod0:

@@ -21,8 +21,8 @@ from gothar_chargen.gltf import Gltf
 from gothar_chargen.meshdata import MeshData, mesh_data, split_lod
 from gothar_chargen.postprocess import material_role
 
-# parts inside the head (eyes, mouth): their open borders never close against another part
-INNER_ROLES = frozenset({"eyes", "eyebrows", "eyelashes", "teeth", "tongue"})
+# parts on/inside the head (eyes, mouth, beard): their open borders are not seams
+INNER_ROLES = frozenset({"eyes", "eyebrows", "eyelashes", "teeth", "tongue", "beard"})
 
 
 def _inner(material: str) -> bool:
@@ -74,7 +74,7 @@ def check_fit(gltf: Gltf, tol: FitTolerances | None = None) -> list[FitIssue]:
     for level in levels:
         closing = [(role, data[(role, level)]) for role in CLOSING_ROLES if (role, level) in data]
         issues += _check_seams(closing, level, tol)
-    for role in ROLES:
+    for role in CLOSING_ROLES:  # loose parts (hair cards, beards) have no seams to keep
         if (role, 0) not in data:
             continue
         base = data[(role, 0)]

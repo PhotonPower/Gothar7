@@ -96,9 +96,17 @@ def main() -> None:
     basemesh.name = "basemesh"
     human_service.add_builtin_rig(basemesh, "game_engine", import_weights=True)
     human_service.set_character_skin(asset(human.skin), basemesh, skin_type="GAMEENGINE")
+    if human.shape:
+        missing = [n for n in human.shape if not target_service.target_full_path(n)]
+        if missing:
+            raise SystemExit(f"unknown MPFB targets in [shape]: {missing}")
+        target_service.bulk_load_targets(
+            basemesh, [{"target": n, "value": v} for n, v in human.shape.items()]
+        )
     for asset_type, rel in human.assets():
+        mpfb_type = "Clothes" if asset_type == "Beard" else asset_type
         obj = human_service.add_mhclo_asset(
-            asset(rel), basemesh, asset_type=asset_type, subdiv_levels=0, material_type="MAKESKIN"
+            asset(rel), basemesh, asset_type=mpfb_type, subdiv_levels=0, material_type="MAKESKIN"
         )
         if obj is not None:
             obj["gothar_asset"] = rel

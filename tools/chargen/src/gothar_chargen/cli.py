@@ -319,7 +319,8 @@ def _cmd_human(args: argparse.Namespace, out: TextIO) -> int:
         for t in textures:
             print(f"texture {t.relative_to(characters)}", file=out)
         manifest = characters / "figures" / f"{human.name}{FIGURE_SUFFIX}"
-        if not manifest.exists():
+        # whole humans get a figure; base bodies and heads are combined in hand-written manifests
+        if {"body", "head"} <= set(human.parts) and not manifest.exists():
             parts = "\n".join(
                 f'{role} = "parts/{human.name}/{role}.glb"'
                 for role in ("body", "head", "hair")

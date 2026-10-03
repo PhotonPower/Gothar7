@@ -3,7 +3,9 @@
 Format (version 1)::
 
     version = 1
-    triangles = 15000                   # lod0 target for body + head + hair (budget §2.2: <= 20000)
+    triangles = 15000                   # lod0 target for the exported parts (budget §2.2: <= 20000)
+    parts = ["body", "head", "hair"]    # which parts to export (default: all); e.g. a base body
+                                        # recipe exports ["body"], a head recipe ["head", "hair"]
 
     [macro]                             # MPFB macro values, 0..1
     gender = 1.0
@@ -18,7 +20,11 @@ Format (version 1)::
     teeth = "teeth/teeth_base/teeth_base.mhclo"     # needed by the face morphs (open mouth)
     tongue = "tongue/tongue01/tongue01.mhclo"
     hair = "hair/cortu_short_messy_hair/cortu_short_messy_hair.mhclo"
+    beard = "clothes/rehmanpolanski_beard_viking/rehmanpolanski_beard_viking.mhclo"  # in head.glb
     clothes = ["clothes/toigo_wool_pants/toigo_wool_pants.mhclo"]
+
+    [shape]                             # MPFB2 core targets (face/body shape), value 0..1
+    nose-hump-incr = 0.6
 
     [tint]                              # multiply the base colour texture (asset stem or "skin")
     toigo_wool_pants = "#bf8559"
@@ -39,6 +45,8 @@ FORMAT_VERSION = 1
 SUFFIX = ".human.toml"
 MACROS = ("gender", "age", "muscle", "weight", "proportions", "height", "cupsize", "firmness")
 RACES = ("african", "asian", "caucasian")
+PARTS = ("body", "head", "hair")
+_TARGET = re.compile(r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$")
 _COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 _NAME = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 TRIANGLES_MAX = 20_000
@@ -60,9 +68,12 @@ class Human:
     teeth: str | None = None
     tongue: str | None = None
     hair: str | None = None
+    beard: str | None = None
     clothes: tuple[str, ...] = ()
     tints: dict[str, str] = field(default_factory=dict)
     triangles: int = 15_000
+    parts: tuple[str, ...] = PARTS
+    shape: dict[str, float] = field(default_factory=dict)  # MPFB target -> value
 
     def assets(self) -> list[tuple[str, str]]:
         """(MPFB asset type, path) for every mhclo asset, in loading order."""
@@ -75,6 +86,8 @@ class Human:
             out.append(("Teeth", self.teeth))
         if self.tongue:
             out.append(("Tongue", self.tongue))
+        if self.beard:
+            out.append(("Beard", self.beard))  # MPFB loads beards as clothes
         out += [("Clothes", c) for c in self.clothes]
         if self.hair:
             out.append(("Hair", self.hair))
@@ -99,7 +112,7 @@ def parse_human(data: dict, name: str) -> Human:
         raise HumanError(f"name '{name}' must be lower_snake_case")
     if data.get("version") != FORMAT_VERSION:
         raise HumanError(f"version must be {FORMAT_VERSION}, got {data.get('version')!r}")
-    unknown = set(data) - {"version", "triangles", "macro", "assets", "tint"}
+    unknown = set(data) - {"version", "triangles", "parts", "macro", "assets", "tint", "shape"}
     if unknown:
         raise HumanError(f"unknown keys: {sorted(unknown)}")
 
@@ -122,7 +135,9 @@ def parse_human(data: dict, name: str) -> Human:
     assets = data.get("assets")
     if not isinstance(assets, dict):
         raise HumanError("missing [assets] table")
-    allowed = {"skin", "eyes", "eyebrows", "eyelashes", "teeth", "tongue", "hair", "clothes"}
+    allowed = {
+        "skin", "eyes", "eyebrows", "eyelashes", "teeth", "tongue", "hair", "beard", "clothes",
+    }  # fmt: skip
     if set(assets) - allowed:
         raise HumanError(f"unknown assets: {sorted(set(assets) - allowed)}")
     if "skin" not in assets or "eyes" not in assets:
@@ -137,6 +152,18 @@ def parse_human(data: dict, name: str) -> Human:
     for key, color in tints_raw.items():
         if not isinstance(color, str) or not _COLOR.match(color):
             raise HumanError(f"tint '{key}': expected '#rrggbb', got {color!r}")
+
+    parts = data.get("parts", list(PARTS))
+    if not isinstance(parts, list) or not parts or set(parts) - set(PARTS):
+        raise HumanError(f"parts must be a non-empty list from {PARTS}")
+    shape = data.get("shape", {})
+    if not isinstance(shape, dict):
+        raise HumanError("[shape] must be a table")
+    for target, value in shape.items():
+        if not _TARGET.match(target):
+            raise HumanError(f"shape: bad MPFB target name '{target}'")
+        if not isinstance(value, int | float) or not 0.0 < value <= 1.0:
+            raise HumanError(f"shape '{target}' must be in (0, 1]")
 
     triangles = data.get("triangles", 15_000)
     if not isinstance(triangles, int) or not 1_000 <= triangles <= TRIANGLES_MAX:
@@ -157,9 +184,12 @@ def parse_human(data: dict, name: str) -> Human:
         teeth=_asset_path(assets["teeth"], "teeth", ".mhclo") if "teeth" in assets else None,
         tongue=_asset_path(assets["tongue"], "tongue", ".mhclo") if "tongue" in assets else None,
         hair=_asset_path(assets["hair"], "hair", ".mhclo") if "hair" in assets else None,
+        beard=_asset_path(assets["beard"], "beard", ".mhclo") if "beard" in assets else None,
         clothes=tuple(_asset_path(c, "clothes", ".mhclo") for c in clothes),
         tints=dict(tints_raw),
         triangles=triangles,
+        parts=tuple(p for p in PARTS if p in parts),
+        shape={k: float(v) for k, v in shape.items()},
     )
     known = {"skin"} | {asset_stem(p) for _, p in human.assets()}
     unknown_tints = set(human.tints) - known

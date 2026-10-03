@@ -51,12 +51,13 @@ KEEP_GROUP = "lod_reduce"
 TEXTURE_MAX = {
     "skin": 2048,
     "cloth": 1024,
-    "hair": 1024,
+    "hair": 512,  # contract allows 1024; the MPFB hair cards look the same at 512 (repo size)
     "eyes": 256,
     "eyebrows": 256,
     "eyelashes": 256,
     "teeth": 256,
     "tongue": 256,
+    "beard": 512,
 }
 CATEGORY = {
     "skin": "skin",
@@ -67,6 +68,7 @@ CATEGORY = {
     "eyelashes": "face",
     "teeth": "face",
     "tongue": "face",
+    "beard": "hair",
 }
 ROLE_OF_TYPE = {
     "Eyes": "eyes",
@@ -74,6 +76,7 @@ ROLE_OF_TYPE = {
     "Eyelashes": "eyelashes",
     "Teeth": "teeth",
     "Tongue": "tongue",
+    "Beard": "beard",
     "Hair": "hair",
     "Clothes": "cloth",
 }
@@ -90,8 +93,12 @@ MAIN_CHILD = {
     "foot_r": "ball_r",
 }
 HEAD_SPLIT = 0.5
-FACE_ROLES = ("eyes", "eyebrows", "eyelashes", "teeth", "tongue")  # joined into head.glb
-TEETH_TRIANGLES = 600  # the MPFB teeth have ~7k; they are mostly hidden
+FACE_ROLES = ("eyes", "eyebrows", "eyelashes", "teeth", "tongue", "beard")  # joined into head.glb
+# fixed budgets for heavy face assets (MPFB teeth ~7k triangles, mostly hidden; beards vary)
+FIXED_TRIANGLES = {"teeth": 600, "beard": 1000}
+CARD_ROLES = ("beard",)  # alpha cards: no border protection when reducing
+SKIN_MIN_RATIO = 0.15  # the face keeps at least this share (morph quality), whatever the budget
+PART_OF_ROLE = {"skin": "body", "cloth": "body", "hair": "hair"}  # FACE_ROLES and the head: head
 Morphs = dict[str, np.ndarray]  # object name -> (targets, vertices, 3) offsets
 
 
@@ -299,7 +306,7 @@ def _pin_border(obj: bpy.types.Object) -> None:
 # --- 4. reduce -----------------------------------------------------------------------------------
 
 
-def _decimate_with_morphs(obj: bpy.types.Object, ratio: float) -> None:
+def _decimate_with_morphs(obj: bpy.types.Object, ratio: float, keep_borders: bool) -> None:
     """Decimate cannot run on meshes with shape keys: remove them, reduce, and rebuild every
     target by barycentric interpolation on the nearest triangle of the unreduced mesh."""
     keys = obj.data.shape_keys.key_blocks
@@ -310,7 +317,7 @@ def _decimate_with_morphs(obj: bpy.types.Object, ratio: float) -> None:
     tris = [tuple(t.vertices) for t in obj.data.loop_triangles]
     tree = BVHTree.FromPolygons([Vector(p) for p in basis], tris)
     obj.shape_key_clear()
-    _decimate(obj, ratio)
+    _decimate(obj, ratio, keep_borders)
     new = _coords(obj)
     weights = np.zeros((len(new), 3))
     corners = np.zeros((len(new), 3), dtype=np.int64)
@@ -343,16 +350,20 @@ def _prune_morphs(obj: bpy.types.Object) -> None:
         key.data.foreach_set("co", co.ravel())
 
 
-def _decimate(obj: bpy.types.Object, ratio: float) -> None:
+def _decimate(obj: bpy.types.Object, ratio: float, keep_borders: bool = True) -> None:
+    """Collapse decimation; `keep_borders` holds open borders in place (seams, hems). Hair cards
+    and beards are all border, so they are reduced without it."""
     if ratio >= 0.999:
         return
     if obj.data.shape_keys is not None:
-        _decimate_with_morphs(obj, ratio)
+        _decimate_with_morphs(obj, ratio, keep_borders)
         return
-    bm = bmesh.new()
-    bm.from_mesh(obj.data)
-    border = {v.index for e in bm.edges if e.is_boundary for v in e.verts}
-    bm.free()
+    border: set[int] = set()
+    if keep_borders:
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        border = {v.index for e in bm.edges if e.is_boundary for v in e.verts}
+        bm.free()
     group = obj.vertex_groups.new(name=KEEP_GROUP)
     group.add([v.index for v in obj.data.vertices if v.index not in border], 1.0, "REPLACE")
     if border:
@@ -532,18 +543,35 @@ def main() -> None:
             role_of[o.name] = ROLE_OF_TYPE[o["gothar_type"]]
             stem_of[o.name] = asset_stem(o["gothar_asset"])
 
+    # only the parts the recipe exports count (a head recipe drops its body and vice versa)
+    def part_of(o: bpy.types.Object) -> str:
+        if o is head or role_of[o.name] in FACE_ROLES:
+            return "head"
+        return PART_OF_ROLE[role_of[o.name]]
+
+    for o in [o for o in bpy.data.objects if o.type == "MESH"]:
+        if part_of(o) not in human.parts:
+            bpy.data.objects.remove(o)
+
     # reduce: skin, clothes and hair share the budget; eyes, brows, lashes and tongue stay as
-    # they are, the teeth get a small fixed budget
+    # they are, teeth and beard get a fixed budget
     objects = [o for o in bpy.data.objects if o.type == "MESH"]
     for o in objects:
-        if role_of[o.name] == "teeth":
-            _decimate(o, min(1.0, TEETH_TRIANGLES / max(1, _triangles(o))))
+        role = role_of[o.name]
+        if role in FIXED_TRIANGLES:
+            ratio = min(1.0, FIXED_TRIANGLES[role] / max(1, _triangles(o)))
+            _decimate(o, ratio, keep_borders=role not in CARD_ROLES)
     fixed = [o for o in objects if role_of[o.name] in FACE_ROLES]
     reducible = [o for o in objects if o not in fixed]
     budget = human.triangles - sum(_triangles(o) for o in fixed)
     ratio = min(1.0, budget / max(1, sum(_triangles(o) for o in reducible)))
     for o in reducible:
-        _decimate(o, min(1.0, ratio * 1.4) if role_of[o.name] == "hair" else ratio)
+        if role_of[o.name] == "hair":
+            _decimate(o, min(1.0, ratio * 1.4))
+        elif o is head:
+            _decimate(o, max(ratio, SKIN_MIN_RATIO))
+        else:
+            _decimate(o, ratio)
 
     for o in objects:
         if o.data.shape_keys is not None:
@@ -556,9 +584,12 @@ def main() -> None:
         clothes = [o for o in objects if role_of[o.name] == "cloth"]
         face = [o for o in objects if role_of[o.name] in FACE_ROLES]
         hair = [o for o in objects if role_of[o.name] == "hair"]
-        body = _join(basemesh, clothes)
-        body.name = "body"
-        head = _join(head, face)
+        parts = {}
+        if "body" in human.parts:
+            parts["body"] = _join(basemesh, clothes)
+            parts["body"].name = "body"
+        if "head" in human.parts:
+            parts["head"] = _join(head, face)
         for img in bpy.data.images:  # pack prepared images so the export embeds them
             if (
                 img.filepath
@@ -567,8 +598,7 @@ def main() -> None:
                 and Path(bpy.path.abspath(img.filepath)).is_file()
             ):
                 img.pack()
-        parts = {"body": body, "head": head}
-        if hair:
+        if hair and "hair" in human.parts:
             parts["hair"] = _join(hair[0], hair[1:])
             parts["hair"].name = "hair"
         for role, obj in parts.items():

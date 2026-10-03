@@ -1,0 +1,32 @@
+# Head (old man with a beard), style A (F3d): head (with face morphs, teeth, tongue, beard) and hair.
+# Fits every base body of the same sex (assembly snaps the neck); macros only shape the face.
+version = 1
+triangles = 5500
+parts = ["head", "hair"]
+
+[macro]
+gender = 1.0
+age = 0.95
+muscle = 0.5
+weight = 0.5
+proportions = 0.5
+height = 0.5
+race = { caucasian = 1.0 }
+
+[assets]
+skin = "skins/old_caucasian_male/old_caucasian_male.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow010/eyebrow010.mhclo"
+eyelashes = "eyelashes/eyelashes02/eyelashes02.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"
+hair = "hair/short04/short04.mhclo"
+beard = "clothes/rehmanpolanski_beard_viking/rehmanpolanski_beard_viking.mhclo"
+
+[tint]
+short04 = "#8f8a84"
+rehmanpolanski_beard_viking = "#8f8a84"
+
+[shape]
+nose-hump-incr = 0.6
+head-fat-decr = 0.3

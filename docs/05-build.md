@@ -55,7 +55,8 @@ braucht man für `build-rig`, `build-placeholder`, `export` und das Prüfen von 
 Dazu die Asset-Pakete (alle CC0) von static.makehumancommunity.org/assets/assetpacks/ – **„MakeHuman system
 assets“** (Haut, Augen, Brauen, Wimpern, Zähne, Zunge), **Shirts 01, Pants 01, Shoes 01, Hair 01** – laden (schnell über
 `files.makehumancommunity.org/asset_packs/<paket>/<paket>_cc0.zip`; der Spiegel `files2` ist sehr langsam), für die
-Gesichts-Morphs außerdem **Visemes 02** und **Faceunits 01** (`files.makehumancommunity.org/functional/<paket>.zip`) –
+Gesichts-Morphs außerdem **Visemes 02** und **Faceunits 01** (`files.makehumancommunity.org/functional/<paket>.zip`),
+für Grundkörper und Bärte **Underwear 01** und **Bodyparts 05** (nur die in `assets/LICENSES.md` genannten Teile) –
 und
 entweder in Blender über MPFB → „Apply assets“ → „Library settings“ → „Install asset pack“ einspielen oder direkt
 nach `%APPDATA%\Blender Foundation\Blender\4.5\extensions\.user\blender_org\mpfb\data` entpacken.

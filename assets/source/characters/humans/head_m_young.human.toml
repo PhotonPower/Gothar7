@@ -1,0 +1,30 @@
+# Head (young man), style A (F3d): head (with face morphs, teeth, tongue) and hair.
+# Fits every base body of the same sex (assembly snaps the neck); macros only shape the face.
+version = 1
+triangles = 5500
+parts = ["head", "hair"]
+
+[macro]
+gender = 1.0
+age = 0.35
+muscle = 0.5
+weight = 0.5
+proportions = 0.5
+height = 0.5
+race = { caucasian = 1.0 }
+
+[assets]
+skin = "skins/young_caucasian_male/young_caucasian_male.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow002/eyebrow002.mhclo"
+eyelashes = "eyelashes/eyelashes02/eyelashes02.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"
+hair = "hair/short02/short02.mhclo"
+
+[tint]
+short02 = "#4a3524"
+
+[shape]
+nose-hump-decr = 0.4
+chin-height-incr = 0.3

@@ -219,12 +219,22 @@ trennt den Kopf an der Gewichtsgrenze `head` ≥ 0,5 ab (Naht passend für `fit.
 `parts/<name>/body.glb` (Körper + Kleidung), `head.glb` (Kopf, Augen, Brauen, Wimpern), `hair.glb` sowie die
 Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, Stil A).
 
-- **Körper:** 2 Grundkörper (m/w) × 3 Statur-Varianten, aus MPFB2, stilisiert nachbearbeitet.
-- **Köpfe:** separates Mesh (wie Gothic), Ziel 20+ Gesichter; gemeinsame Morph-Targets (§6.1).
+- **Körper:** 2 Grundkörper (m/w) × 3 Staturen (schlank, mittel, kräftig) als Rezepte `humans/body_<m|f>_<statur>`
+  (`parts = ["body"]`) mit schlichter Grundbekleidung (Hose bzw. Unterwäsche, CC0). Alle Körper werden auf das
+  gemeinsame Referenz-Skelett angepasst, damit jede Animation passt: Staturen unterscheiden sich im **Umfang**
+  (MPFB-Makros Gewicht/Muskeln), **nicht in der Größe** (alle ≈ 1,70–1,75 m; Augenhöhe 1,62 m, Kapsel der Engine).
+- **Köpfe:** separates Mesh (wie Gothic), Ziel 20+ Gesichter; gemeinsame Morph-Targets (§6.1). Rezepte
+  `humans/head_<m|f>_<name>` (`parts = ["head", "hair"]`) mit Alter, Herkunft, Haut, Haaren, optional Bart (wird Teil
+  des Kopf-Meshes und bewegt sich mit den Mund-Morphs) und MPFB-Formzielen (`[shape]`, z. B. `nose-hump-incr`).
+  Ein Kopf passt auf jeden Grundkörper desselben Geschlechts: `assemble` zieht den Halsring des Körpers auf den des
+  Kopfes (beide aus derselben MPFB-Topologie, Paarung über die Randkante; Hals und Kragen folgen weich bis 5 cm
+  darunter) und verwendet die **Haut-Textur des Kopfes auch für den Körper** (eine Haut je Figur, gleiche UV).
 - **Haare/Bärte:** eigene Meshes, an Köpfe angepasst.
 - **Kleidung/Rüstung:** ersetzt den Körper (Mesh-Tausch); je Gilde/Stand eine Linie (Lumpen → leicht → mittel → schwer).
 - **Texturen:** Trim-Sheets und Farbvarianten statt Unikat-Texturen; Stil passend zu den Häusern (W5).
-- **Budget:** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k, höchstens 20 k je Figur, Stufen `_lod1`/`_lod2` (Vertrag §2.2).
+- **Budget:** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k (mit Bart bis ~5,6 k), höchstens 20 k je Figur, Stufen
+  `_lod1`/`_lod2` (Vertrag §2.2). Lose Teile (Haare, Bärte) werden ohne Randschutz reduziert; nur die Nahtränder von
+  Körper und Kopf bleiben in allen Stufen gleich.
 
 ### 6.1 Gesichts-Morph-Targets (Vertrag mit engine, abgestimmt 2026-10-03)
 

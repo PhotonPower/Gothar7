@@ -75,7 +75,8 @@ def test_committed_recipes():
     assert recipes
     for r in recipes:
         h = load_human(r)
-        assert (CHARACTERS / "parts" / h.name / "body.glb").is_file(), h.name
+        for part in h.parts:  # base bodies export only "body", heads "head" and "hair"
+            assert (CHARACTERS / "parts" / h.name / f"{part}.glb").is_file(), (h.name, part)
 
 
 @pytest.mark.parametrize(
@@ -99,11 +100,29 @@ def test_committed_recipes():
         ({"tint": {"shirt": "beige"}}, "#rrggbb"),
         ({"tint": {"cape": "#ffffff"}}, "not in this recipe"),
         ({"triangles": 50000}, "triangles"),
+        ({"parts": ["body", "legs"]}, "parts"),
+        ({"parts": []}, "parts"),
+        ({"shape": {"nose hump": 0.5}}, "bad MPFB target"),
+        ({"shape": {"nose-hump-incr": 1.5}}, "shape"),
     ],
 )
 def test_invalid_recipes(change, message):
     with pytest.raises(HumanError, match=message):
         parse_human({**RECIPE, **change}, "npc")
+
+
+def test_parts_shape_and_beard():
+    data = {
+        **RECIPE,
+        "parts": ["hair", "head"],
+        "shape": {"nose-hump-incr": 0.6},
+        "assets": {**RECIPE["assets"], "beard": "clothes/b/b.mhclo"},
+    }
+    h = parse_human(data, "head_x")
+    assert h.parts == ("head", "hair")  # canonical order
+    assert h.shape == {"nose-hump-incr": 0.6}
+    assert ("Beard", "clothes/b/b.mhclo") in h.assets()
+    assert parse_human(RECIPE, "x").parts == ("body", "head", "hair")
 
 
 def test_recipe_name_and_suffix(tmp_path):

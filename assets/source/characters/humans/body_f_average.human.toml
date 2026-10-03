@@ -1,0 +1,29 @@
+# Base body (female, average), style A (F3d): body part only. Heads come from head_* recipes; the
+# figure assembly pulls the neck onto the head and uses the head's skin texture for the body.
+# Builds differ in girth (weight/muscle), not in height: every body is conformed to the shared
+# reference skeleton so all animations fit.
+# The simple linen base garment stays under all clothing (CC0: MakeHuman packs, assets/LICENSES.md).
+version = 1
+triangles = 10000
+parts = ["body"]
+
+[macro]
+gender = 0.0
+age = 0.5
+muscle = 0.45
+weight = 0.5
+proportions = 0.5
+height = 0.5
+race = { caucasian = 1.0 }
+
+[assets]
+skin = "skins/middleage_caucasian_female/middleage_caucasian_female.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+clothes = [
+    "clothes/wolgade_female_panties_01/wolgade_female_panties_01.mhclo",
+    "clothes/wolgade_female_top_01/wolgade_female_top_01.mhclo",
+]
+
+[tint]
+wolgade_female_panties_01 = "#b5a68a"
+wolgade_female_top_01 = "#b5a68a"

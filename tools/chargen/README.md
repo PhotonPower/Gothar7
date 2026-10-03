@@ -70,7 +70,9 @@ gothar-chargen build-set all --sources C:\GotharData\characters\quaternius
 gothar-chargen report                         & REM Prio-A-Fortschritt: animation-list.md ↔ anims/
 gothar-chargen assemble [figures\x.figure.toml] & REM Figuren aus Manifesten bauen (alle ohne Argument)
 gothar-chargen build-test-parts               & REM eigene einfache Testteile unter parts/test/
-gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name>/ + textures/ (nur lokal, braucht MPFB)
+gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name>/ + textures/ (nur lokal, braucht MPFB);
+                                              & REM Grundkörper (parts = ["body"]) und Köpfe (["head", "hair"]) werden
+                                              & REM in figures/*.figure.toml kombiniert (assemble: Halsnaht, Haut des Kopfes)
 gothar-chargen monster wolf --sources C:\GotharData\characters\monsters
                                               & REM Monster-Rig + Referenz + Clip-Quelle wolf_clips.blend (§7.2);
                                               & REM meldet je Aktion Beckenabsenkung und Fuß-/Gelenkabweichung
@@ -91,7 +93,7 @@ Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 | `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung; `anim.jump`: kein Sprung zwischen zwei Frames (Fehler ab 120°/0,5 m, Warnung ab 90°); `anim.loop`: Schleifen `s_*` geschlossen (Warnung ab 5°); Monster: Clip-Modus = Art, `anim.root_motion`: `s_walk`/`s_run` ≥ 0,1 m/s vorwärts, `t_turn_l/r` ≥ 45° um +Y in die richtige Richtung |
 | `lod.*` | LOD-Vertrag §2.2: Stufen lückenlos ab 0, gleicher Eltern-Knoten/Transformation/Skin, Morphs nur auf `_lod0`, Anteil lod1 ≤ 60 %, lod2 ≤ 30 % (Warnung) |
 | `mesh.budget` | höchstens 20 k Dreiecke je Figur bei lod0 (nicht für Teile unter `parts/`) |
-| `fit.*` | Figuren mit Rollen-Knoten (`body`, `head`, `hair`, `beard`): jeder offene Rand von body/head trifft einen Rand eines anderen Teils (≤ 5 mm) mit gleichen Gewichten; `lod.seam`: Ränder in allen Stufen wie bei lod0 |
+| `fit.*` | Figuren mit Rollen-Knoten (`body`, `head`, `hair`, `beard`): jeder offene Rand von body/head trifft einen Rand eines anderen Teils (≤ 5 mm) mit gleichen Gewichten; `lod.seam`: Nahtränder von body/head in allen Stufen wie bei lod0 (Haare/Bärte dürfen sich verändern) |
 | `tex.*` | Textur-Vertrag §2.3: Höchstgröße je Rolle, Zweierpotenz, Normal-Map ≤ Basisfarbe, Masken-Rollen alphaMode MASK + PNG mit Alpha, Datei vorhanden; eingebettet = Warnung |
 | `events.*` | `<set>.events.toml` neben der `.glb`: Format, Clips vorhanden, Frames im Clip (Schleifen `s_*`: vor dem letzten Frame) |
 
