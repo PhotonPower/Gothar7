@@ -180,7 +180,8 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   `x` wird von der linken Fassadenkante gemessen, von außen gesehen.
 - Neu und optional ist `y`, die Brüstungshöhe über dem Stockwerksboden. Fehlt sie, sitzt die Öffnung auf dem Boden
   (Türen, Tore).
-- Ebenfalls optional ist `locked` (siehe W-C). **Unbekannte Schlüssel bleiben beim Speichern erhalten**, damit neuere
+- Ebenfalls optional sind `locked` (siehe W-C) und `rueckbau` (§7): `auto` (Vorgabe), `none` (nie ersetzen) oder
+  `split` (immer durch Fachwerkhäuser ersetzen). **Unbekannte Schlüssel bleiben beim Speichern erhalten**, damit neuere
   Werkzeuge Felder ergänzen können.
 - Die Datei heißt wie die Gebäude-ID. `validate_against(override, gebäude)` prüft Kante und Öffnungsbreiten gegen
   den Grundriss.
@@ -510,6 +511,41 @@ Material Maker / Substance für Trim-Sheets, QGIS zum Sichten der Geodaten.
 - Protokoll: Datum, Route, Besonderheiten → `capture/<datum>/notes.md`.
 
 ## 7. Mittelalterlicher „Rückbau“ – Gestaltungsregeln
+
+**Entscheidung des Projektinhabers (2026-10-03):** Große neuere Gebäude werden **verkleinert und durch
+Fachwerkhäuser ersetzt** – weder ganz entfernt noch als großes Haus mit Fachwerk. Die Zahlenwerte hat der
+Koordinator im Auftrag des Projektinhabers festgelegt; sie sind nach den ersten Bildern justierbar.
+Sie stehen in `tools/worldgen/data/building_rules.json` unter `rueckbau`.
+
+Umgesetzt in `buildings/rueckbau.py` (`gothar-worldgen buildings <ort> --mode medieval`; `massing` bleibt echtes
+LoD2, mit `--rueckbau` als Vorschau):
+- **Auswahl:** Gebäude im Kern mit Grundfläche > 200 m², längster Seite > 22 m oder Traufhöhe > 12 m.
+  Zusätzlich jedes Haus, das im Fachwerk-Modus das Dreiecksbudget sprengt; es wird im selben Lauf geteilt.
+- **Ausnahmen:**
+  - Gebäude, die eine OSM-Fläche schneiden: Kirche (`place_of_worship`), Schloss (`castle`), Rathaus, Denkmal
+    oder `historic`. Ebenso Gebäude an der Stadtmauer (`city_wall`, 3 m Puffer) und an einem historischen
+    OSM-Punkt.
+  - Override `rueckbau: none` und Häuser mit `locked`.
+  - `rueckbau: split` erzwingt den Ersatz; `keep: false` entfernt ein Gebäude ganz.
+- **Parzellen:** Schnitte senkrecht zur Hauptstraßenseite, 7 m ± 1,5 m breit (deterministisch je Gebäude);
+  Reste unter 25 m² gehen an den Nachbarn.
+- **Tiefe:** Parzellen tiefer als 14 m werden parallel zur Straße geteilt. Ein Rest ab 8 m Tiefe wird ein
+  Hinterhaus (1–2 Geschosse), sonst Hof (kein Gebäude; die Splatmap zeigt dort Matsch).
+- **Höhe und Dach:** höchstens Erdgeschoss plus 2 Obergeschosse. Satteldach mit 50° ± 4°, je Parzelle zu 70 %
+  giebelständig und zu 30 % traufständig, damit Straßenzüge nicht uniform wirken.
+- **IDs:** Die Ersatzhäuser heißen `<lod2-id>-T<n>` (vorne, von links nach rechts von der Straße aus gesehen) und
+  `<lod2-id>-H<n>` (Hinterhaus). Sie bekommen neue VobIds; die VobId des Originals bleibt in `vob_ids.json`
+  reserviert.
+  - Ändert sich die Zahl der Teile, behalten die bestehenden Teile ihre ID.
+  - Ersatzhäuser können eigene Overrides haben (`<id>-T<n>.json`, auch `locked`).
+- **Bericht:** `generated/rueckbau_report.json` nennt ersetzte Gebäude mit Grund, Zahl der Ersatzhäuser und
+  Hoffläche, die Ausnahmen und die Budget-Ersetzungen.
+- **Leonberg:** 160 Gebäude (159 nach Schwellen, 1 wegen des Budgets) werden durch 727 Häuser ersetzt, 3004 m²
+  werden Hof. Geschützt bleiben 10 Gebäude: Schloss (2 Teile), Stadtkirche und 7 große Gebäude an der Stadtmauer.
+  Im Kern stehen dann 1471 Häuser mit 1,58 Mio. Dreiecken (je Haus Median 1113, p90 1856); 6 Häuser liegen über dem
+  Budget, alle geschützt.
+
+Weitere Regeln:
 
 - Alles nach ca. 1700 Erbaute ersetzen oder weglassen; Lücken werden Gärten, Höfe, Ställe, Misthaufen.
 - **Stadtmauer** mit Toren ergänzen (Verlauf an historischen Resten und OSM orientieren, frei interpretiert).
