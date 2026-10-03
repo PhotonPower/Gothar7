@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <limits>
@@ -20,8 +21,34 @@ G7_REQUEST_HIGH_PERFORMANCE_GPU();
 
 namespace
 {
+constexpr const char* kUsage = R"(Usage: gothar [options]
+
+  --help, -h              show this help and exit
+  --verbose               debug log level
+  --smoke-test            10 frames headless with a fixed frame time, then exit (CI)
+  --frames=N              exit after N frames (also with a window)
+  --max-fps=N             cap the frame rate (0 = unlimited)
+  --fullscreen            borderless fullscreen at desktop resolution
+  --no-render             window without OpenGL
+  --world=<path>          load a .g7world (VFS path or file on disk)
+  --start=<name>          start point of the world
+  --time=HH:MM            game time at start
+  --save-world=<file>     save the loaded world or test scene as .g7world
+  --editor                editor mode (simulation paused)
+  --scene=<path>          load a test scene (TOML)
+  --viewpoint=N           start at viewpoint N of the scene
+  --view-mesh=<path>      show a model (.gltf/.glb/.g7mesh) at the origin
+  --benchmark             visit every viewpoint, log frame times, exit
+  --screenshot=<file.png> save the last frame (with --frames or --benchmark)
+  --no-ground             no ground plate under the model or scene
+  --no-sun                no sunlight
+
+Details: docs/05-build.md
+)";
+
 struct CommandLine
 {
+    bool help = false;
     bool smokeTest = false;
     bool fullscreen = false;
     bool noRender = false;
@@ -47,7 +74,11 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
     for (int i = 1; i < argc; ++i)
     {
         const std::string_view arg = argv[i];
-        if (arg == "--verbose")
+        if (arg == "--help" || arg == "-h" || arg == "/?")
+        {
+            cli.help = true;
+        }
+        else if (arg == "--verbose")
         {
             g7::log::setMinLevel(g7::log::Level::Debug);
         }
@@ -145,7 +176,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         }
         else
         {
-            G7_LOG_WARN("game", "unknown argument '{}'", arg);
+            // Never start the engine on a typo: a window would open with settings nobody asked for.
+            G7_LOG_FATAL("game", "unknown argument '{}' (see --help)", arg);
+            std::fputs(kUsage, stderr);
+            return std::nullopt;
         }
     }
     return cli;
@@ -215,6 +249,11 @@ int main(int argc, char** argv)
     if (!cli)
     {
         return EXIT_FAILURE;
+    }
+    if (cli->help)
+    {
+        std::fputs(kUsage, stdout);
+        return EXIT_SUCCESS;
     }
     setupDirectories(argv[0]);
 

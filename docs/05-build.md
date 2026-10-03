@@ -107,8 +107,12 @@ das Spiel dort mit `--no-render` starten.
 Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 
 ## Kommandozeile des Spiels
+Unbekannte Schalter sind ein Fehler: Das Spiel gibt die Hilfe aus und beendet sich (Exit-Code 1), ohne Fenster oder
+Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
+
 | Schalter | Wirkung |
 |---|---|
+| `--help`, `-h` | Übersicht der Schalter ausgeben und beenden |
 | `--verbose` | Log-Level Debug |
 | `--smoke-test` | 10 Frames headless mit fester Frame-Zeit (deterministisch: 10 Ticks), dann Ende (CI) |
 | `--frames=N` | nach N Frames beenden (auch mit Fenster; CI mit `SDL_VIDEO_DRIVER=offscreen`) |
@@ -129,8 +133,6 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | (Taste F1) | ImGui-Debugfenster ein/aus (Aktion `debug_ui`): Leistung, Kamera, Render-Einstellungen live |
 | (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Achsen, Raster, Bounds, Lichtradien |
 | `--no-render` | Fenster ohne OpenGL (Systeme ohne GL-Treiber, Windows-CI, `nodeps`-Build) |
-| `--editor` | Editor-Modus (ab M4) |
-| `--world=<name>` | Startwelt (ab M4) |
 
 ## Testszenen (`--scene`)
 Vorläufiges Szenenformat bis zum Weltformat und Editor in M4 (`runtime/SceneFile.hpp`). Die M2-Abnahmeszene liegt in
