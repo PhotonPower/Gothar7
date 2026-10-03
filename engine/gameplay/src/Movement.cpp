@@ -1,0 +1,209 @@
+#include <g7/core/Config.hpp>
+#include <g7/gameplay/Movement.hpp>
+
+#include <algorithm>
+#include <cmath>
+#include <string>
+
+namespace g7::gameplay
+{
+namespace
+{
+constexpr f32 kTwoPi = 6.28318530718f;
+
+/// Reads `key` if present: a number > 0 (or >= 0 with allowZero), else an error.
+Result<void> read(const Config& config, std::string_view key, f32& value, std::string_view source,
+                  bool allowZero = false, bool allowNegative = false)
+{
+    if (!config.contains(key))
+    {
+        return {};
+    }
+    const auto number = config.find<f64>(key);
+    if (!number || !std::isfinite(*number) ||
+        (!allowNegative && (*number < 0.0 || (*number == 0.0 && !allowZero))))
+    {
+        return Error{std::string(source) + ": '" + std::string(key) + "' must be a positive number"};
+    }
+    value = static_cast<f32>(*number);
+    return {};
+}
+
+/// Exponential approach with time constant `tau`: frame-rate independent, never overshoots.
+f32 follow(f32 seconds, f32 tau)
+{
+    return tau > 0.0f ? 1.0f - std::exp(-seconds / tau) : 1.0f;
+}
+
+f32 wrapAngle(f32 radians)
+{
+    radians = std::fmod(radians + 0.5f * kTwoPi, kTwoPi);
+    return (radians < 0.0f ? radians + kTwoPi : radians) - 0.5f * kTwoPi;
+}
+
+Vec3 moveTowards(const Vec3& from, const Vec3& to, f32 maxStep)
+{
+    const Vec3 delta = to - from;
+    const f32 length = glm::length(delta);
+    return length <= maxStep || length < 1e-6f ? to : from + delta * (maxStep / length);
+}
+} // namespace
+
+Result<MovementSettings> MovementSettings::parse(std::string_view toml, std::string_view source)
+{
+    auto parsed = Config::parse(toml, source);
+    if (!parsed)
+    {
+        return parsed.error();
+    }
+    const Config& c = parsed.value();
+    MovementSettings s;
+    CameraSettings& cam = s.camera;
+    const std::pair<std::string_view, f32*> positive[] = {
+        {"speed.run", &s.runSpeed},
+        {"speed.walk", &s.walkSpeed},
+        {"speed.sneak", &s.sneakSpeed},
+        {"speed.backward", &s.backwardSpeed},
+        {"speed.strafe", &s.strafeSpeed},
+        {"speed.acceleration", &s.acceleration},
+        {"speed.deceleration", &s.deceleration},
+        {"turn.keys_degrees_per_second", &s.turnSpeedDegrees},
+        {"turn.mouse_degrees_per_pixel", &s.mouseTurnPerPixel},
+        {"ground.step_height", &s.stepHeight},
+        {"ground.max_slope_degrees", &s.maxSlopeDegrees},
+        {"camera.distance", &cam.distance},
+        {"camera.target_height", &cam.targetHeight},
+        {"camera.collision_radius", &cam.collisionRadius},
+        {"camera.min_distance", &cam.minDistance},
+        {"camera.mouse_degrees_per_pixel", &cam.mousePitchPerPixel},
+    };
+    for (const auto& [key, value] : positive)
+    {
+        if (auto r = read(c, key, *value, source); !r)
+        {
+            return r.error();
+        }
+    }
+    const std::pair<std::string_view, f32*> nonNegative[] = {
+        {"ground.stick_to_floor", &s.stickToFloor},
+        {"camera.position_lag", &cam.positionLag},
+        {"camera.yaw_lag", &cam.yawLag},
+    };
+    for (const auto& [key, value] : nonNegative)
+    {
+        if (auto r = read(c, key, *value, source, true); !r)
+        {
+            return r.error();
+        }
+    }
+    const std::pair<std::string_view, f32*> anySign[] = {
+        {"camera.pitch_degrees", &cam.pitchDegrees},
+        {"camera.min_pitch_degrees", &cam.minPitchDegrees},
+        {"camera.max_pitch_degrees", &cam.maxPitchDegrees},
+    };
+    for (const auto& [key, value] : anySign)
+    {
+        if (auto r = read(c, key, *value, source, true, true); !r)
+        {
+            return r.error();
+        }
+    }
+    if (s.maxSlopeDegrees >= 89.0f)
+    {
+        return Error{std::string(source) + ": 'ground.max_slope_degrees' must be below 89"};
+    }
+    if (!(cam.minPitchDegrees <= cam.pitchDegrees && cam.pitchDegrees <= cam.maxPitchDegrees) ||
+        cam.minPitchDegrees < -89.0f || cam.maxPitchDegrees > 89.0f)
+    {
+        return Error{std::string(source) + ": camera pitch must satisfy -89 <= min <= pitch <= max <= 89"};
+    }
+    if (cam.minDistance > cam.distance)
+    {
+        return Error{std::string(source) + ": 'camera.min_distance' exceeds 'camera.distance'"};
+    }
+    return s;
+}
+
+Vec3 forwardOf(f32 yaw) noexcept
+{
+    return Vec3(-std::sin(yaw), 0.0f, -std::cos(yaw));
+}
+
+Vec3 rightOf(f32 yaw) noexcept
+{
+    return Vec3(std::cos(yaw), 0.0f, -std::sin(yaw));
+}
+
+Vec3 PlayerMovement::wantedVelocity(const MoveInput& input, f32 yaw, const MovementSettings& s)
+{
+    const f32 gait = input.sneak ? s.sneakSpeed : input.walk ? s.walkSpeed : s.runSpeed;
+    const f32 forward = std::clamp(input.forward, -1.0f, 1.0f);
+    const f32 strafe = std::clamp(input.strafe, -1.0f, 1.0f);
+    // Backwards and sideways have their own speeds, never faster than the gait (sneaking stays slow).
+    const f32 along = forward >= 0.0f ? forward * gait : forward * std::min(s.backwardSpeed, gait);
+    const f32 side = strafe * std::min(s.strafeSpeed, gait);
+    Vec3 v = forwardOf(yaw) * along + rightOf(yaw) * side;
+    // Diagonal: no faster than the faster of the two parts.
+    const f32 limit = std::max(std::abs(along), std::abs(side));
+    const f32 speed = glm::length(v);
+    if (speed > limit && speed > 1e-6f)
+    {
+        v *= limit / speed;
+    }
+    return v;
+}
+
+Vec3 PlayerMovement::step(const MoveInput& input, f32 seconds, const MovementSettings& s)
+{
+    m_yaw =
+        wrapAngle(m_yaw - glm::radians(std::clamp(input.turn, -1.0f, 1.0f) * s.turnSpeedDegrees * seconds +
+                                       input.mouseTurn * s.mouseTurnPerPixel));
+    const Vec3 wanted = wantedVelocity(input, m_yaw, s);
+    const bool faster = glm::length(wanted) > glm::length(m_velocity) + 1e-4f;
+    m_velocity = moveTowards(m_velocity, wanted, (faster ? s.acceleration : s.deceleration) * seconds);
+    return m_velocity;
+}
+
+void PlayerMovement::reset(f32 yaw)
+{
+    m_yaw = wrapAngle(yaw);
+    m_velocity = Vec3(0.0f);
+}
+
+void ThirdPersonCamera::reset(const Vec3& feet, f32 yaw, const CameraSettings& settings)
+{
+    m_target = feet + Vec3(0.0f, settings.targetHeight, 0.0f);
+    m_yaw = wrapAngle(yaw);
+    m_pitch = settings.pitchDegrees;
+    m_distance = settings.distance;
+    place(settings, nullptr);
+}
+
+void ThirdPersonCamera::update(f32 seconds, const Vec3& feet, f32 yaw, f32 mousePitchPixels,
+                               const CameraSettings& settings, const Obstruction& obstruction)
+{
+    const Vec3 target = feet + Vec3(0.0f, settings.targetHeight, 0.0f);
+    m_target += (target - m_target) * follow(seconds, settings.positionLag);
+    m_yaw = wrapAngle(m_yaw + wrapAngle(yaw - m_yaw) * follow(seconds, settings.yawLag));
+    m_pitch = std::clamp(m_pitch + mousePitchPixels * settings.mousePitchPerPixel, settings.minPitchDegrees,
+                         settings.maxPitchDegrees);
+    place(settings, obstruction ? &obstruction : nullptr);
+}
+
+void ThirdPersonCamera::place(const CameraSettings& settings, const Obstruction* obstruction)
+{
+    // Looking direction from yaw and pitch (positive pitch looks down); the camera sits behind the target.
+    const f32 pitch = glm::radians(m_pitch);
+    const Vec3 look = forwardOf(m_yaw) * std::cos(pitch) + Vec3(0.0f, -std::sin(pitch), 0.0f);
+    m_distance = settings.distance;
+    if (obstruction != nullptr)
+    {
+        if (const auto free = (*obstruction)(m_target, -look, settings.collisionRadius, settings.distance))
+        {
+            m_distance = std::clamp(*free, settings.minDistance, settings.distance);
+        }
+    }
+    m_position = m_target - look * m_distance;
+    m_rotation = lookRotation(look);
+}
+} // namespace g7::gameplay

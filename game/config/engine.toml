@@ -11,8 +11,8 @@ vsync = true
 max_fps = 240
 
 [camera]
-# Debug-Kamera bis zur Spielfigur (M5): Bewegen mit den Laufaktionen, hoch/runter mit jump/sneak,
-# schnell mit run, Umsehen mit gehaltener rechter Maustaste.
+# Freie Debug-Kamera (F3 bzw. ohne Spielfigur): Bewegen mit den Laufaktionen, hoch/runter mit jump/sneak,
+# schnell mit walk (Shift), Umsehen mit gehaltener rechter Maustaste. Spielfigur und Kamera: data/movement.toml.
 fov = 70.0               # vertikal, Grad
 near = 0.1               # Meter
 far = 1500.0             # Meter
@@ -96,7 +96,7 @@ action = ["LeftCtrl", "PadWest"]
 attack = []
 use = []
 jump = ["LeftAlt", "PadSouth"]
-run = ["LeftShift", "PadLeftStick"]
+walk = ["LeftShift", "PadLeftStick"]  # gehalten: gehen statt rennen (wie Gothic)
 sneak = ["X", "PadRightStick"]
 draw_weapon = ["Space", "PadNorth"]
 draw_magic = ["1", "PadEast"]
@@ -110,6 +110,7 @@ console = ["Grave"]
 pause = ["Escape", "PadStart"]
 debug_draw = ["F2"]
 debug_ui = ["F1"]
+debug_fly = ["F3"]  # Spielfigur <-> freie Debug-Kamera
 
 [bindings.modern]
 move_forward = ["W", "PadDpadUp"]
@@ -122,7 +123,7 @@ action = []
 attack = ["MouseLeft", "PadEast"]
 use = ["E", "PadWest"]
 jump = ["Space", "PadSouth"]
-run = ["LeftShift", "PadLeftStick"]
+walk = ["LeftShift", "PadLeftStick"]  # gehalten: gehen statt rennen (wie Gothic)
 sneak = ["LeftCtrl", "PadRightStick"]
 draw_weapon = ["R", "PadNorth"]
 draw_magic = ["F"]
@@ -136,3 +137,4 @@ console = ["Grave"]
 pause = ["Escape", "PadStart"]
 debug_draw = ["F2"]
 debug_ui = ["F1"]
+debug_fly = ["F3"]  # Spielfigur <-> freie Debug-Kamera

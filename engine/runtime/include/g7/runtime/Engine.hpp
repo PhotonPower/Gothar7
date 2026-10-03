@@ -14,6 +14,8 @@
 #include <g7/core/Config.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
+#include <g7/gameplay/Movement.hpp>
+#include <g7/physics/Character.hpp>
 #include <g7/physics/Physics.hpp>
 #include <g7/platform/Actions.hpp>
 #include <g7/platform/GlContext.hpp>
@@ -103,6 +105,9 @@ struct EngineConfig
     /// Game time at start, "HH:MM" (--time); empty = [time] start (default 08:00).
     std::string startTime;
     bool ground = true; ///< Ground plate under the --view-mesh model (--no-ground).
+    /// Player figure at the start point of a loaded world (M5); off in the editor (--editor) and with
+    /// --benchmark, which drive the camera themselves.
+    bool player = true;
     /// Benchmark (--benchmark): visits the scene's viewpoints for `benchmarkFrames` frames each, logs
     /// frame-time statistics and quits. The caller turns VSync and the frame cap off.
     bool benchmark = false;
@@ -242,6 +247,20 @@ public:
     /// the scene: rebuilt before the next simulation step after instances change, and right after
     /// loading a world. Body user data: the vob id (0 for terrain and ground plate).
     [[nodiscard]] const physics::PhysicsWorld& physics() const noexcept { return m_physics; }
+    /// The player's character, or nullptr without a player (no start point, editor, benchmark).
+    [[nodiscard]] const physics::CharacterController* player() const noexcept
+    {
+        return m_player.valid() ? &m_player : nullptr;
+    }
+    /// True while the player drives the camera; false in the free debug camera (debug_fly, F3).
+    [[nodiscard]] bool playerCameraActive() const noexcept { return m_player.valid() && !m_flyMode; }
+    [[nodiscard]] const gameplay::PlayerMovement& playerMovement() const noexcept { return m_movement; }
+    [[nodiscard]] const gameplay::MovementSettings& movementSettings() const noexcept
+    {
+        return m_movementSettings;
+    }
+    /// Tests and demos: replaces the keyboard/mouse input of the player (nullopt: back to the actions).
+    void setPlayerInputOverride(std::optional<gameplay::MoveInput> input) { m_playerInputOverride = input; }
 
 private:
     void shutdown();
@@ -258,6 +277,17 @@ private:
     void performWorldChange();
     /// Rebuilds m_physics from the terrain and m_instances if they changed (EnginePhysics.cpp).
     void syncPhysics();
+    // Player (EnginePlayer.cpp)
+    void initPlayer();
+    void spawnPlayer();
+    void removePlayer();
+    void refreshMovementSettings();
+    void updatePlayerInput(bool allowMouse, bool allowKeyboard);
+    void fixedUpdatePlayer(f32 seconds);
+    void updatePlayerCamera(f64 realSeconds);
+    void drawPlayer(bool shadow, u32 cascade);
+    void drawPlayerDebug();
+    [[nodiscard]] Vec3 triggerProbePosition() const;
     /// Models no instance uses any more (after a level change) go, with their geometry and textures.
     void releaseUnusedModels();
     /// Render instances and lights for the vobs in m_scene (mesh and light vobs).
@@ -356,9 +386,25 @@ private:
     render::CullGrid m_cullGrid; // over m_instances; rebuilt when instances change
     bool m_cullGridDirty = true;
     physics::PhysicsWorld m_physics;
-    bool m_physicsDirty = true;        // set together with m_cullGridDirty and on terrain changes
-    std::vector<u32> m_cullCandidates; // per pass, reused
-    bool m_multiDraw = true;           // [render] multi_draw: batches instead of one draw per mesh
+    // Player (M5): character, movement and camera. Drawn feet at the last two fixed steps for interpolation.
+    physics::CharacterController m_player;
+    gameplay::PlayerMovement m_movement;
+    gameplay::ThirdPersonCamera m_playerCamera;
+    gameplay::MovementSettings m_movementSettings;
+    asset::Handle<gameplay::MovementSettings> m_movementData; // data/movement.toml, hot reload
+    u32 m_movementVersion = 0;
+    gameplay::MoveInput m_playerInput; // keys of this frame + mouse gathered since the last step
+    f32 m_playerPitchPixels = 0.0f;    // mouse up/down since the last camera update
+    std::optional<gameplay::MoveInput> m_playerInputOverride;
+    Vec3 m_playerFeetBefore{0.0f};
+    Vec3 m_playerFeet{0.0f};
+    f32 m_playerYawBefore = 0.0f;
+    bool m_flyMode = false;                     // debug_fly: free camera while the player waits
+    bool m_playerMouse = false;                 // relative mouse captured for the player camera
+    const LoadedModel* m_playerModel = nullptr; // placeholder figure until M6
+    bool m_physicsDirty = true;                 // set together with m_cullGridDirty and on terrain changes
+    std::vector<u32> m_cullCandidates;          // per pass, reused
+    bool m_multiDraw = true;                    // [render] multi_draw: batches instead of one draw per mesh
     std::vector<render::MeshDrawItem> m_drawItems; // per pass, reused
     FrameTimes m_benchmarkTimes;
     std::vector<FrameTimeSummary> m_benchmarkResults;

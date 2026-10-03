@@ -1,0 +1,34 @@
+# Bewegung der Spielfigur und Third-Person-Kamera (gameplay.md „Bewegung & Kamera“). Spielgefühl:
+# Startwerte vom Projektinhaber freigegeben (M5 Teil C), Anpassung nach Probespielen ohne Code –
+# die Datei wird im laufenden Spiel neu geladen (Hot-Reload).
+version = 1
+
+[speed]            # m/s; Standard ist Rennen, gehalten „walk“ (Shift) = Gehen, „sneak“ = Schleichen
+run = 4.0
+walk = 1.6
+sneak = 1.1
+backward = 1.4     # nie schneller als die Gangart
+strafe = 2.0       # Seitwärtsschritte (klassisch Q/E)
+acceleration = 12.0  # m/s² auf eine höhere Geschwindigkeit
+deceleration = 16.0  # m/s² bremsen
+
+[turn]
+keys_degrees_per_second = 180.0  # klassisch A/D
+mouse_degrees_per_pixel = 0.15
+
+[ground]
+step_height = 0.4        # m, höchste Stufe, die man hinaufgeht (scharfe Grenze)
+max_slope_degrees = 50.0 # steiler: man rutscht ab und kommt nicht hinauf
+stick_to_floor = 0.5     # m, bergab und über kleine Absätze am Boden bleiben
+
+[camera]
+distance = 3.0           # m hinter dem Blickpunkt
+target_height = 1.55     # m über den Füßen (knapp unter Augenhöhe 1,62)
+pitch_degrees = 12.0     # Grundneigung nach unten
+min_pitch_degrees = -40.0
+max_pitch_degrees = 60.0
+position_lag = 0.12      # s, Trägheit beim Folgen
+yaw_lag = 0.25           # s, Trägheit beim Drehen hinter die Figur
+collision_radius = 0.2   # m
+min_distance = 0.6       # m
+mouse_degrees_per_pixel = 0.15

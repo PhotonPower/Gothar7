@@ -123,8 +123,8 @@ der Test meldet das und prüft ihn nur mit echtem Treiber.
 ```cpp
 namespace g7::platform {
 enum class Action : u16 { MoveForward, MoveBack, StrafeLeft, StrafeRight, TurnLeft, TurnRight,
-    Run /*Umschalter*/, Sneak, Jump, Action /*Gothic-Aktionstaste*/, Attack, Use, DrawWeapon, DrawMagic,
-    Inventory, Log, Status, Map, QuickSave, QuickLoad, Console, Pause, DebugDraw /*Entwicklung, F2*/, DebugUi /*Entwicklung, F1*/, Count };
+    Walk /*gehalten: gehen statt rennen*/, Sneak, Jump, Action /*Gothic-Aktionstaste*/, Attack, Use, DrawWeapon, DrawMagic,
+    Inventory, Log, Status, Map, QuickSave, QuickLoad, Console, Pause, DebugDraw /*Entwicklung, F2*/, DebugUi /*Entwicklung, F1*/, DebugFly /*Entwicklung, F3*/, Count };
 std::string_view name(Action);  std::optional<Action> actionFromName(sv);      // "move_forward" …
 using InputBinding = std::variant<Key, MouseButton, GamepadButton>;
 std::optional<InputBinding> bindingFromName(sv);  std::string_view name(const InputBinding&);
@@ -147,7 +147,9 @@ public:
 - **Zwei Schemata** in `game/config/engine.toml`: `classic` (Gothic-artig: Aktionstaste + Richtung,
   `attack`/`use` leer) und `modern` (Maus-Angriff, E zum Benutzen, `action`/`turn_*` leer).
   Auswahl über `[input] scheme`, Stick-Totzone über `[input] stick_deadzone`.
-- Analoge Bewegung (Stick) und Mausblick folgen mit Charaktersteuerung und Kamera in M5.
+- Seit M5: `walk` (vorher `run`) wird gehalten, um zu **gehen**; Standard ist Rennen wie in Gothic
+  (Entscheidung Projektinhaber). `debug_fly` (F3) schaltet zwischen Spielfigur und freier Debug-Kamera.
+  Die Maus dreht die Figur (`gameplay.md`). Analoge Bewegung mit dem Stick folgt mit dem Gamepad-Feinschliff.
 
 ### Konfiguration
 `game/src/main.cpp` lädt `gamePath("config/engine.toml")` (wird beim Bauen neben die Executable kopiert)

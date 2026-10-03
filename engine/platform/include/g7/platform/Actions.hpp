@@ -24,7 +24,7 @@ enum class Action : u16
     StrafeRight,
     TurnLeft,
     TurnRight,
-    Run, ///< Toggles walking/running.
+    Walk, ///< Held: walk instead of run (Gothic: running is the default).
     Sneak,
     Jump,
     Action,
@@ -42,6 +42,7 @@ enum class Action : u16
     Pause,
     DebugDraw, ///< Development: toggles the debug-draw overlay.
     DebugUi,   ///< Development: toggles the ImGui debug panels.
+    DebugFly,  ///< Development: switches between the player and the free debug camera.
     Count
 };
 

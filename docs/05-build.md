@@ -132,7 +132,8 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--no-ground` | Bodenplatte unter dem Modell bzw. der Szene weglassen |
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |
 | (Taste F1) | ImGui-Debugfenster ein/aus (Aktion `debug_ui`): Leistung, Kamera, Render-Einstellungen live |
-| (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Achsen, Raster, Bounds, Lichtradien |
+| (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Achsen, Raster, Bounds, Lichtradien, Spielfigur (Zylinder, Zustand, Tempo) |
+| (Taste F3) | Spielfigur ↔ freie Debug-Kamera (Aktion `debug_fly`, M5) |
 | `--no-render` | Fenster ohne OpenGL (Systeme ohne GL-Treiber, Windows-CI, `nodeps`-Build) |
 
 ## Testszenen (`--scene`)

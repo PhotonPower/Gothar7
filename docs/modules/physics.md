@@ -53,16 +53,49 @@ class PhysicsWorld {
   - mit den `COL_HULL_` von welt (#93: 2288 Hüllen, Median 20 Dreiecke je Haus, 3 Ersatznetze mit zusammen 355
     Dreiecken): Aufbau **0,25 s**. Die `COL_`-Knoten werden nicht gezeichnet (Screenshot geprüft).
 
-## Geplant: Charakter-Controller (M5 Teil C–E)
+## Umgesetzt (M5 Teil C) – Charakter-Controller, `Character.hpp`
 ```cpp
-class CharacterController { public: void setDesiredVelocity(Vec3); void jump();
-    MoveState state() const; std::optional<LedgeInfo> detectLedge() const; void beginClimb(const LedgeInfo&); };
+namespace g7::physics {
+struct CharacterDesc { f32 radius = 0.3f, height = 1.8f, maxSlopeDegrees = 50, stepHeight = 0.4f, stickToFloor = 0.5f;
+                       LayerMask collidesWith = World | Mob; u64 userData; };
+enum class MoveState : u8 { Ground, Slide, Air };     // Swim/Dive/Climb folgen mit Teil D/E
+class CharacterController {
+    static Result<CharacterController> create(PhysicsWorld&, const CharacterDesc&, const Vec3& feet);
+    void update(f32 seconds, const Vec3& horizontalVelocity);   // je festem Schritt
+    void teleport(const Vec3& feet);  void setLimits(maxSlope, stepHeight, stickToFloor);   // Hot-Reload
+    Vec3 feet() const; Vec3 visualFeet() const; Vec3 velocity() const; MoveState state() const; Vec3 groundNormal() const;
+};
+}
 ```
+- Jolt `CharacterVirtual`, privat. Der Controller kennt **keine Eingabe**, nur die gewünschte waagrechte
+  Geschwindigkeit; Gangarten, Drehen und Beschleunigen liegen in `gameplay` (`Movement.hpp`).
+- **Boden:** Gewünschte Geschwindigkeit plus Bodengeschwindigkeit; Stufen bis `stepHeight` steigt Jolts
+  `WalkStairs`, bergab hält `StickToFloor` den Kontakt (bis 0,5 m).
+- **Zu steil** (> `maxSlopeDegrees`): Zustand `Slide`. Der bergauf gerichtete Anteil der Eingabe entfällt,
+  die Schwerkraft zieht die Figur den Hang hinab.
+- **Luft:** keine Steuerung, die waagrechte Geschwindigkeit bleibt, Schwerkraft 9,81 m/s².
+- `teleport` und `create` bestimmen den Bodenzustand sofort neu (keine Steuerung in der Luft nach einem
+  Teleport).
+- **Form: aufrechter Zylinder statt Kapsel** (Maße wie abgestimmt: r 0,3 m, Höhe 1,8 m; Kantenrundung 0,01 m).
+  Begründung, gemessen:
+  - Jolt beurteilt die Steilheit eines Kontakts an der berührten Fläche. An der Oberkante einer Stufe ist das
+    deren flache Oberseite. Die runde Unterseite einer Kapsel gleitet deshalb an Kanten hoch, je nachdem, wo
+    im festen Schritt die Kante getroffen wird: Bei Stufenhöhe 0,4 m blieb sie an 0,31 m hängen, kam aber auf
+    0,53 m.
+  - Kalibrieren und ein Kontakt-Listener halfen nicht.
+  - Mit flachem Boden hebt nur `WalkStairs`: Stufen bis zur Grenze (+ 1 cm) klappen immer, darüber nie,
+    gehend wie rennend.
+  - Die Kantenrundung 0,05 m ließ eine 7-cm-Kante beim Gehen scheitern, daher 0,01 m.
+- **Am Hang** steht der Zylinder auf seinem Rand, die Mitte schwebt um r · tan(Hang) (0,25 m bei 40°).
+  `visualFeet()` liefert den Boden unter der Mitte; dort zeichnet die Engine die Füße.
+- **Stadtmauer (Entscheidung Projektinhaber, W6):** Die Brustwehr bleibt besteigbar (Gothic-typisch), ohne
+  unsichtbare Sperrhülle. Den Fallschaden trägt der Spieler (Teil D).
 - **Kapsel Mensch** (mit figuren abgestimmt): Radius 0,3 m, Gesamthöhe 1,8 m, Hüfthöhe 0,9 m (Schwimmen),
-  Augenhöhe 1,62 m; eine Kapsel für alle Menschen.
+  Augenhöhe 1,62 m; eine Form für alle Menschen (als Zylinder umgesetzt, siehe oben).
 - **Monster:** Kapsel je Art aus `data/monsters/<art>.toml`, `[rig.collision]` `shape` (`capsule_upright` |
   `capsule_lying` entlang +Z), `radius`, `length` (inkl. Halbkugeln), `offset` (zu root, Rig-Raum); liefert figuren.
 - **Kantenklassen:** niedrig ≤ 1,0 m, mittel ≤ 1,6 m, hoch ≤ 2,2 m (Clips `t_climb_low/mid/high` auf diese
   Obergrenzen gebaut; die Engine skaliert die Root-Höhe nur herunter).
-Bewegung wird überwiegend **animationsgetrieben** (Root Motion bei Klettern/Interaktion), der
+Geplant (Teil D/E): springen, Kanten hochziehen (`detectLedge`, `beginClimb`), Fallschaden, Schwimmen/Tauchen.
+Bewegung wird dann teilweise **animationsgetrieben** (Root Motion bei Klettern/Interaktion), der
 Controller sorgt für Kollision und Bodenhaftung.

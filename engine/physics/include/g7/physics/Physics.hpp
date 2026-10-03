@@ -138,6 +138,7 @@ public:
     [[nodiscard]] bool valid() const noexcept { return m_impl != nullptr; }
 
 private:
+    friend class CharacterController;
     struct Impl;
     std::unique_ptr<Impl> m_impl;
 };

@@ -133,6 +133,15 @@ Result<void> Engine::init()
     {
         return assets;
     }
+    // Before any world: loading one builds its collision and puts the player on the start point.
+    auto collision = physics::PhysicsWorld::create();
+    if (!collision)
+    {
+        return Error{"cannot create the physics world: " + collision.error().message};
+    }
+    m_physics = std::move(collision).value();
+
+    initPlayer();
 
     if (!m_config.headless)
     {
@@ -203,13 +212,6 @@ Result<void> Engine::init()
         m_input.setStickDeadzone(static_cast<f32>(m_config.settings.get<f64>("input.stick_deadzone", 0.2)));
         G7_LOG_INFO("engine", "control scheme '{}'", scheme);
     }
-
-    auto collision = physics::PhysicsWorld::create();
-    if (!collision)
-    {
-        return Error{"cannot create the physics world: " + collision.error().message};
-    }
-    m_physics = std::move(collision).value();
 
     m_fixedStep = FixedStep(1.0 / m_config.simulationHz);
     m_framePacer = FramePacer(m_config.maxFps);
@@ -285,7 +287,11 @@ bool Engine::runFrame()
         }
         else
         {
-            updateDebugCamera(realSeconds, !uiMouse, !uiKeyboard);
+            updatePlayerInput(!uiMouse, !uiKeyboard);
+            if (!playerCameraActive())
+            {
+                updateDebugCamera(realSeconds, !uiMouse, !uiKeyboard);
+            }
         }
         for (EngineTool* tool : m_tools)
         {
@@ -321,11 +327,11 @@ bool Engine::runFrame()
     for (u32 i = 0; i < steps; ++i)
     {
         G7_PROFILE_SCOPE("Engine::fixedUpdate");
-        // TODO(M5+): ai/gameplay fixed update
+        // TODO(M7+): ai/gameplay fixed update
+        fixedUpdatePlayer(static_cast<f32>(m_fixedStep.step()));
         m_physics.step(m_fixedStep.step());
-        // Triggers notice the camera until the player exists (M5).
-        const world::TriggerProbe camera{kCameraProbe, m_camera.transform.position, true};
-        m_triggers.update(m_scene, std::span(&camera, 1));
+        const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
+        m_triggers.update(m_scene, std::span(&probe, 1));
         m_gameTime.advance(m_fixedStep.step()); // global: keeps running across level changes
         ++m_simTicks;
         if (m_pendingWorldChange)
@@ -341,6 +347,8 @@ bool Engine::runFrame()
     // looks for changed files first and re-uploads affected models afterwards.
     m_assets->checkForChanges(platform::nowSeconds());
     m_assets->update();
+    refreshMovementSettings();
+    updatePlayerCamera(realSeconds); // after the steps: the drawn feet are interpolated between them
     if (m_device)
     {
         refreshReloadedModels();
@@ -1013,10 +1021,13 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
                 requestWorldChange(volume->changeWorld, volume->changeStart);
             }
         });
-    // Arrival: triggers the camera already stands in fire only after it left them (no bouncing back
-    // through a level change next to the start point).
+    // The player stands on the start point; it needs the collision of the world.
     m_scene.updateTransforms();
-    const world::TriggerProbe camera{kCameraProbe, m_camera.transform.position, true};
+    syncPhysics();
+    spawnPlayer();
+    // Arrival: triggers the player (or camera) already stands in fire only after it left them (no
+    // bouncing back through a level change next to the start point).
+    const world::TriggerProbe camera{kCameraProbe, triggerProbePosition(), true};
     m_triggers.prime(m_scene, std::span(&camera, 1));
     m_scene.each<world::Vob, world::TriggerVolume>(
         [&](entt::entity, const world::Vob& vob, const world::TriggerVolume& volume)
@@ -1032,7 +1043,6 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     m_worldFile = std::move(file);
     m_worldFile.vobs.clear(); // the scene holds them; captured again when the world is left
     m_sceneName = m_worldFile.name.empty() ? path : m_worldFile.name;
-    syncPhysics(); // queries work right after loading
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
                 m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size(),
                 timer.elapsedSeconds() * 1000.0);
@@ -1057,6 +1067,7 @@ void Engine::unloadWorld()
     m_groundModel.reset();
     m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)}; // empty
     m_triggers.reset();
+    removePlayer();
     m_physics.clear();
 }
 
@@ -1358,6 +1369,7 @@ void Engine::drawScene(u32 width, u32 height)
             {
                 m_terrain.drawShadow(*m_device, m_cascades[i]);
             }
+            drawPlayer(true, i);
         }
         shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
     }
@@ -1421,6 +1433,7 @@ void Engine::drawScene(u32 width, u32 height)
     {
         m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
     }
+    drawPlayer(false, 0);
 }
 
 void Engine::updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard)
@@ -1453,7 +1466,7 @@ void Engine::updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeybo
                     axis(Action::MoveForward, Action::MoveBack));
     fly.turn = axis(Action::TurnLeft, Action::TurnRight);
     fly.lookDelta = m_mouseLook ? m_input.mouseDelta() : Vec2(0.0f);
-    fly.fast = m_actions.isDown(m_input, Action::Run);
+    fly.fast = m_actions.isDown(m_input, Action::Walk); // Shift: fast flying
     // Real time: the debug camera keeps working while the game is paused or slowed down.
     m_flyCamera.update(m_camera, fly, realSeconds);
 }
@@ -1693,6 +1706,7 @@ void Engine::addDebugOverlay(u32 width, u32 height)
 
 void Engine::addWorldDebugOverlay()
 {
+    drawPlayerDebug();
     // Vobs that draw nothing themselves: start points, triggers, sounds; mobs get their definition.
     const Vec4 green(0.3f, 1.0f, 0.4f, 1.0f);
     m_scene.each<world::Vob, world::StartPoint, world::WorldTransform>(

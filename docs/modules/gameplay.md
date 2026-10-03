@@ -2,6 +2,47 @@
 
 **Zweck:** Spielregeln und -systeme. Werte und Formeln möglichst in Skripten; C++ stellt Mechanik bereit.
 
+## Bewegung & Kamera (M5 Teil C, umgesetzt) – `Movement.hpp`
+```cpp
+namespace g7::gameplay {
+struct MovementSettings { runSpeed, walkSpeed, sneakSpeed, backwardSpeed, strafeSpeed, acceleration, deceleration,
+                          turnSpeedDegrees, mouseTurnPerPixel, stepHeight, maxSlopeDegrees, stickToFloor; CameraSettings camera;
+                          static Result<MovementSettings> parse(std::string_view toml, std::string_view source); };
+struct MoveInput { f32 forward, strafe, turn, mouseTurn; bool walk, sneak; };   // aus den Aktionen (runtime)
+class PlayerMovement { Vec3 step(const MoveInput&, f32 seconds, const MovementSettings&); void reset(f32 yaw); f32 yaw() const; };
+class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
+    void update(seconds, feet, yaw, mousePitchPixels, const CameraSettings&, const Obstruction&);   // je Bild
+    Vec3 position() const; Quat rotation() const; };   // Obstruction = sphereCast der Engine
+}
+```
+- **Werte: `assets/source/data/movement.toml`** (Spielgefühl; Startwerte vom Projektinhaber freigegeben).
+  Die Engine lädt die Datei über den `AssetManager` (`[game] movement`, Hot-Reload im laufenden Spiel).
+  Fehlende Schlüssel behalten die Vorgabe; falsche Typen oder Werte sind Fehler, dann gelten die eingebauten
+  Vorgaben mit einer Warnung.
+- **Gangart wie Gothic** (Entscheidung Projektinhaber): Standard ist **Rennen** (4,0 m/s). Gehalten
+  `walk` (Shift) heißt Gehen (1,6), `sneak` Schleichen (1,1). Rückwärts (1,4) und seitwärts (2,0) sind nie
+  schneller als die Gangart, diagonal nicht schneller als der schnellere Anteil. Beschleunigen mit 12 m/s²,
+  Bremsen mit 16 m/s².
+- **Drehen:** klassisch A/D mit 180°/s, die Maus in beiden Schemata (0,15°/Pixel). Gieren 0 = Blick nach −Z.
+- **Kamera:**
+  - Hinter der Figur, Blickpunkt 1,55 m über den Füßen, Abstand 3 m, Grundneigung 12° nach unten.
+  - Die Maus neigt zwischen −40° und +60°.
+  - Position und Gieren folgen exponentiell gedämpft (0,12 s bzw. 0,25 s; kein Überschwingen; Drehen den
+    kurzen Weg).
+  - **Wände:** Ein `sphereCast` (r 0,2 m) vom Blickpunkt nach hinten verkürzt den Abstand, nie unter 0,6 m.
+  - Modi (Kampf, Dialog, Schwimmen) folgen mit ihren Phasen als weitere Datensätze.
+- **Engine (`runtime/src/EnginePlayer.cpp`):**
+  - Die Spielfigur entsteht beim Laden einer Welt auf dem Startpunkt (`--start` bzw. kleinste id; Füße = `pos`,
+    nur das Gieren).
+  - Keine Figur gibt es ohne Startpunkt, mit `--editor` und mit `--benchmark`.
+  - Die Bewegung läuft je festem Schritt.
+  - Die Darstellung interpoliert die Füße zwischen den Schritten; die Kamera wird je Bild nachgeführt.
+  - Trigger melden die Figur (Hüfthöhe) statt der Kamera.
+  - **F3** (`debug_fly`) schaltet auf die freie Debug-Kamera und zurück.
+  - Im Spielbetrieb fängt die Maus ein (nicht bei Pause oder offenem Debug-Fenster F1).
+  - Bis M6 wird die Platzhalterfigur `characters/figures/placeholder_mannequin.glb` (T-Pose) gezeichnet.
+  - F2 zeigt den Zylinder, Bodennormale, Zustand und Tempo.
+
 ## Charakter (M8)
 - Attribute: `hp`, `hpMax`, `mana`, `manaMax`, `str`, `dex`; Erfahrung, Stufe, Lernpunkte.
 - Talente mit Stufen: `melee_1h`, `melee_2h`, `bow`, `crossbow`, `sneak`, `picklock`, `pickpocket`, `acrobatics`, `magic_circle`.
