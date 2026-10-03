@@ -86,6 +86,42 @@ Stand (Schritt 3, Entscheidung Koordinator im Auftrag, 2026-10-03; Werte in `bui
 - **Folgt mit Texturen bzw. Trim-Sheets:** Spritzwasser-Schmutz am Sockel, Regenstreifen.
 - Vorher/Nachher bei 12:00: `PLATZHALTER_alterung_*` (nach engines Dunst-Anpassung #80).
 
+## Schornsteine und Gauben
+Stand (Entscheidung Koordinator im Auftrag, 2026-10-03; Werte in `building_rules.json` → `chimneys`, `dormers`):
+- **Schornsteine**, gemauert (Bruchstein 70 %, Backstein 30 %):
+  - Anzahl: Bürger-, Amts-, Handwerker- und Ackerbürgerhaus 1, ab 14 m Firstlänge 2. Steinhaus 1. Kirche und Mauer
+    keinen; unter 4 m Firstlänge keinen.
+  - Scheunen nur mit Herdstelle: angebaut an ein Wohnhaus (≤ 0,5 m) oder mit einer ALKIS-Funktion aus
+    `hearthFunctions` (Ackerbürger-Nutzung, vorerst leer). Frei stehende Scheunen haben keinen (Brandschutz, Heu).
+  - Lage wie über einer Herdstelle in der Hausmitte: entlang des Firsts bei 30–70 % (bei zweien je einer in jeder
+    Hälfte), bis 0,6 m neben dem First, mindestens 1,2 m von den Giebelenden.
+  - Querschnitt 0,6 × 0,8 m, 0,8–1,2 m über dem First, Kopfplatte. Der Schaft beginnt unter der Dachfläche, auch beim
+    durchhängenden First entsteht kein Spalt (Test).
+- **Gauben**, wenige (historisch):
+  - Schleppgaube 70 % (Dach 15–20°), kleine Giebelgaube 30 % (50°); Breite 1,4–2,0 m, Front 1,2 m hoch.
+  - Häufigkeit je Haus: Amtshaus 50 %, Bürger 40 %, Ackerbürger 25 % (zur Hälfte als Ladeluke), Handwerker 20 %,
+    Scheune 10 % (Ladeluke), Steinbauten keine.
+  - Nur auf Satteldächern mit mindestens 4 m Dachtiefe (Traufe bis First) und 3 m Firsthöhe über der Traufe.
+  - 1 je angefangene 6 m Traufe, höchstens 3 je Dachseite. Zu 70 % nur auf einer Seite:
+    - Traufständig: die Seite zur Straße.
+    - Giebelständig (beide oder keine Dachseite zur Straße): die sonnigere Seite, Süden vor Westen.
+  - Abstände: 1 m zu den Giebeln, 0,8 m unter dem First, 0,6 m über der Traufe (entlang der Dachfläche), 1 m
+    zueinander, 0,5 m zum Schornstein, 1 m zu anderen Baukörpern desselben Gebäudes (keine Gauben an Kehlen).
+  - Die Gaube sitzt auf dem Hauptdach, das kein Loch bekommt: Front und Wangen reichen in die Dachfläche, das
+    Gaubendach taucht hinten unter das Hauptdach. Front und Wangen in der Ausfachung des Hauses, Dach wie das Hausdach
+    (nordseitig bemoost).
+- **Budget:** Schornsteine sind immer dabei. Liegt ein Haus auch ohne Fachwerk (Stufe 3) über 2000 Dreiecken, fallen
+  die Gauben weg (Stufe 4).
+- **Handkorrektur:** Overrides `dormers` (0–6) und `chimneys` (0–4) als Anzahl, 0 = keine (Schema §4, Web-UI).
+- **Leonberg-Kern:**
+  - 1478 Schornsteine: Handwerker 787, Bürger 341, Ackerbürger 233, Scheunen 114 (angebaut), Steinhaus 2, Amtshaus 1.
+  - 230 Gauben auf 106 Häusern: Bürger 75 (34 Häuser, 14 %), Handwerker 95 (45, 7 %), Ackerbürger 57 (25, 12 %),
+    Scheunen 3.
+  - Weniger als gewürfelt, weil viele Dächer zu klein sind, vor allem die schmalen Ersatzhäuser aus dem Rückbau
+    (giebelständig, 3,5 m Dachtiefe).
+  - 1,88 Mio. Dreiecke; 11 Häuser auf Stufe 4.
+- Vorher/Nachher bei 12:00: `PLATZHALTER_gauben_*`.
+
 ## Erste Bilder und Justierung (Platzhalter, 2026-10-03)
 Ablage `C:\GotharData\review\w5\` (nicht im Repo).
 - **Beobachtung:** Im Engine-Licht wirkten die Dachfarben kräftiger orange-rot als „gedeckt, entsättigt“. Das Standardlicht

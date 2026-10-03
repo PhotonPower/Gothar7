@@ -181,6 +181,8 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
 - Neu und optional ist `y`, die Brüstungshöhe über dem Stockwerksboden. Fehlt sie, sitzt die Öffnung auf dem Boden
   (Türen, Tore).
 - Optional ist `age` (0 neu … 1 alt), die Handkorrektur der Alterung (W5, `leonberg-stil.md`).
+- Optional sind `dormers` (0–6) und `chimneys` (0–4): die Zahl der Gauben bzw. Schornsteine, 0 = keine; fehlt der
+  Schlüssel, entscheidet der Generator.
 - Ebenfalls optional sind `locked` (siehe W-C) und `rueckbau` (§7): `auto` (Vorgabe), `none` (nie ersetzen) oder
   `split` (immer durch Fachwerkhäuser ersetzen). **Unbekannte Schlüssel bleiben beim Speichern erhalten**, damit neuere
   Werkzeuge Felder ergänzen können.
@@ -356,11 +358,12 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     - Die Balkenarten liegen in leicht unterschiedlicher Tiefe, damit es keine deckungsgleichen Flächen gibt
       (Test: keine doppelten Dreiecke).
   - **Dach:** Höhenfunktionen wie bei `massing`, über dem obersten Geschoss mit Dachüberstand (Traufe und Ortgang),
-    Dicke, Unterseite im Überstand und Stirnbrett. Gauben und Schornsteine folgen.
+    Dicke, Unterseite im Überstand und Stirnbrett. Schornsteine nahe dem First und wenige Schlepp- bzw. Giebelgauben
+    auf dem größten Satteldach (Regeln in `leonberg-stil.md`).
   - **Seeds:** Variation (Erdgeschoss-Höhe, Fensterraster) ist deterministisch aus `hash(id, seed)`;
     `seed` der Annotation überschreibt. `locked` und `keep` wie bei `massing`.
-  - **Material-Rollen** `wall_ground`, `infill`, `timber`, `roof`, `frame` mit **exakt gleichen Werten in allen
-    Häusern**. Die Engine bündelt nach Materialwerten (Multi-Draw, M4 Teil B); Vertexfarben verwirft sie.
+  - **Material-Rollen** `wall_ground`, `infill`, `timber`, `roof`, `roof_north`, `frame`, `chimney` mit **exakt
+    gleichen Werten in allen Häusern**. Die Engine bündelt nach Materialwerten (Multi-Draw, M4 Teil B); Vertexfarben verwirft sie.
     Je `.glb` gibt es ein Primitive pro Rolle.
   - **Budget:** 2000 Dreiecke je Haus, im Kern ≤ 2 Mio. (mit engine abgestimmt). Darüber wird das Fachwerk stufenweise
     reduziert: ohne Muster, dann ohne Feldständer, dann ohne Fachwerk; der Bericht nennt die Stufe.

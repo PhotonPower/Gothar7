@@ -205,7 +205,7 @@ def test_budget_reduces_timber_step_by_step():
     assert any("timber reduced" in n for n in r.notes)
     none = Rules({**RULES.data, "budget": {"trianglesPerBuilding": 1}})
     r3 = build_house(HOUSE, -0.3, (5.0, -3.5), none, STREET_SOUTH, TIMBERED)
-    assert r3.timber_level == 3
+    assert r3.timber_level == 4 and r3.dormers == 0  # level 4: no timber, no dormers either
     # Only the jetty undersides stay in the timber role.
     assert roles(r3).get("timber", 0) < roles(r)["timber"] < roles(full)["timber"]
 

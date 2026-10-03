@@ -28,7 +28,7 @@ from shapely.geometry import Polygon
 
 from gothar_worldgen.buildings.gltf import MeshData, Primitive, glb_bytes_multi
 from gothar_worldgen.buildings.massing import build_mesh, masses_for_building
-from gothar_worldgen.buildings.medieval import Rules, StreetIndex, build_house
+from gothar_worldgen.buildings.medieval import Rules, StreetIndex, barn_hearths, build_house
 from gothar_worldgen.export.terrain import Grid
 from gothar_worldgen.geo.ground import ground_range
 
@@ -150,6 +150,11 @@ def generate(
         by_hash[digest] = f"{vfs_dir}/{name}.glb"
         return by_hash[digest]
 
+    hearths: set[str] = set()
+    if mode == "medieval":
+        assert rules is not None
+        wanted = [b for b in buildings if area == "all" or b.get("inCore")]
+        hearths = barn_hearths(wanted, overrides, streets, rules)
     queue = list(buildings)
     while queue:
         b = queue.pop(0)
@@ -181,7 +186,8 @@ def generate(
         c = Polygon(footprint).centroid
         if mode == "medieval":
             assert rules is not None
-            house = build_house(b, base, (c.x, c.y), rules, streets, (overrides or {}).get(bid))
+            house = build_house(b, base, (c.x, c.y), rules, streets, (overrides or {}).get(bid),
+                                hearth=bid in hearths)  # fmt: skip
             if house.triangles > budget and replace is not None and "derivedFrom" not in b:
                 houses = replace(b)  # rueckbau: smaller half-timbered houses instead
                 if houses:
@@ -202,6 +208,9 @@ def generate(
                 result.styles["roofSteepened"]["masses"] += house.steepened
                 result.styles["age"][f"{min(int(st.age * 5), 4) / 5:.1f}"] += 1
                 result.styles["ridgeSagCm"]["total"] += round(house.sag_m * 100)
+                result.styles["dormers"][st.style] += house.dormers
+                result.styles["dormerHouses"][st.style] += int(house.dormers > 0)
+                result.styles["chimneys"][st.style] += house.chimneys
             if house.triangles > budget:
                 result.over_budget.append((bid, house.triangles))
             if not prims:
