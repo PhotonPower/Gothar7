@@ -282,7 +282,7 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 |---|---|---|
 | `wolf` (Rudeltier) | Quaternius „Animated Animales Low Poly“ (Animal Pack Vol.2), Wolf | Rig 22 Knochen, 0,85 m, 622 Dreiecke; 12/12 Clips (Idle/Walking aus der Quelle, Rest `platzhalter-K`) |
 | `keiler` | Quaternius „Lowpoly Animated Farm Animal Pack“, Schwein (dunkel eingefärbt) | Rig 25 Knochen (mit Schulter-/Hüftknochen), 0,95 m, 562 Dreiecke; 12/12 Clips (Idle/Walk/Death aus der Quelle, Rest `platzhalter-K`) |
-| `laufvogel` | Quaternius „5 Low poly animals“, Küken (vergrößert) | offen |
+| `laufvogel` | Quaternius „5 Low poly animals“, Küken (auf 1,6 m vergrößert, eingefärbt) | Rig 12 Knochen (Vogel-Namen `thigh/calf/foot`), 1,6 m, 250 Dreiecke; 12/12 Clips (Gehen/Rennen aus dem Quell-Schritt am Ort, Rest `platzhalter-K`) |
 
 ## 8. Ablauf pro Animation
 

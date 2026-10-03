@@ -83,6 +83,11 @@ _CONTACT = 0.05  # metres: a foot target this low stands on the ground and must 
 _MAX_DROP = 0.07  # share of the animal's height the pelvis may go down for that
 
 
+def _is_foot(bone: str) -> bool:
+    """foot_l (birds) or front_foot_l / back_foot_r (quadrupeds)."""
+    return bone.startswith("foot_") or "_foot_" in bone
+
+
 def _chain(arm: bpy.types.Object, bone: str) -> list[str]:
     """Up to three bones below `bone`, each the only deforming child of the one before (a limb:
     upper, lower, foot – or, below a shoulder/hip bone, upper, lower, foot)."""
@@ -154,7 +159,7 @@ def _apply_pose(arm: bpy.types.Object, order: list[str], want: dict[str, tuple])
             continue
         chain = _chain(arm, bone)
         if (pb.head - head).length > _MOVED and len(chain) >= 2 and all(c in want for c in chain):
-            if len(chain) == 3 and "_foot_" in chain[2]:  # shoulder/hip: aim, solve the leg
+            if len(chain) == 3 and _is_foot(chain[2]):  # shoulder/hip: aim, solve the leg
                 _place(arm, bone, _aim(rot, want[chain[0]][0] - head, want[chain[0]][0] - pb.head))
                 bone, chain = chain[0], chain[1:]
                 pb = arm.pose.bones[bone]
@@ -219,7 +224,7 @@ def _rekey(
                 want["pelvis"] = (head - Vector((0.0, 0.0, drop)), rot)
                 _apply_pose(arm, order, want)
             for bone, (head, _) in want.items():
-                kind = "feet" if "_foot_" in bone else "other"
+                kind = "feet" if _is_foot(bone) else "other"
                 off = (arm.pose.bones[bone].head - head).length
                 if bone != "pelvis" and off > worst[kind][0]:
                     worst[kind] = (off, bone, frame)
