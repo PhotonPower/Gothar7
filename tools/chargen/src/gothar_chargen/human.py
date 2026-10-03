@@ -15,6 +15,8 @@ Format (version 1)::
     eyes = "eyes/low-poly/low-poly.mhclo"
     eyebrows = "eyebrows/eyebrow001/eyebrow001.mhclo"
     eyelashes = "eyelashes/eyelashes01/eyelashes01.mhclo"
+    teeth = "teeth/teeth_base/teeth_base.mhclo"     # needed by the face morphs (open mouth)
+    tongue = "tongue/tongue01/tongue01.mhclo"
     hair = "hair/cortu_short_messy_hair/cortu_short_messy_hair.mhclo"
     clothes = ["clothes/toigo_wool_pants/toigo_wool_pants.mhclo"]
 
@@ -55,6 +57,8 @@ class Human:
     eyes: str
     eyebrows: str | None = None
     eyelashes: str | None = None
+    teeth: str | None = None
+    tongue: str | None = None
     hair: str | None = None
     clothes: tuple[str, ...] = ()
     tints: dict[str, str] = field(default_factory=dict)
@@ -67,6 +71,10 @@ class Human:
             out.append(("Eyebrows", self.eyebrows))
         if self.eyelashes:
             out.append(("Eyelashes", self.eyelashes))
+        if self.teeth:
+            out.append(("Teeth", self.teeth))
+        if self.tongue:
+            out.append(("Tongue", self.tongue))
         out += [("Clothes", c) for c in self.clothes]
         if self.hair:
             out.append(("Hair", self.hair))
@@ -114,7 +122,7 @@ def parse_human(data: dict, name: str) -> Human:
     assets = data.get("assets")
     if not isinstance(assets, dict):
         raise HumanError("missing [assets] table")
-    allowed = {"skin", "eyes", "eyebrows", "eyelashes", "hair", "clothes"}
+    allowed = {"skin", "eyes", "eyebrows", "eyelashes", "teeth", "tongue", "hair", "clothes"}
     if set(assets) - allowed:
         raise HumanError(f"unknown assets: {sorted(set(assets) - allowed)}")
     if "skin" not in assets or "eyes" not in assets:
@@ -146,6 +154,8 @@ def parse_human(data: dict, name: str) -> Human:
         eyelashes=_asset_path(assets["eyelashes"], "eyelashes", ".mhclo")
         if "eyelashes" in assets
         else None,
+        teeth=_asset_path(assets["teeth"], "teeth", ".mhclo") if "teeth" in assets else None,
+        tongue=_asset_path(assets["tongue"], "tongue", ".mhclo") if "tongue" in assets else None,
         hair=_asset_path(assets["hair"], "hair", ".mhclo") if "hair" in assets else None,
         clothes=tuple(_asset_path(c, "clothes", ".mhclo") for c in clothes),
         tints=dict(tints_raw),

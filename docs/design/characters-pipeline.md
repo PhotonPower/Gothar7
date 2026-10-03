@@ -100,7 +100,8 @@ den Validator und Cooker prüfen bzw. ablegen.
   Platte und (mit dem GPU-Textur-Cache der Engine ab M6) im VRAM. Tönungen sind in den Dateinamen enthalten
   (`toigo_wool_pants_bf8559.jpg`).
 - **Höchstgrößen je Rolle** (Material-Namen: `skin`, `cloth_<asset>`, `hair`, `beard`, `eyes`, `eyebrows`,
-  `eyelashes`): Haut ≤ 2048², Kleidung ≤ 1024², Haare ≤ 1024², Augen/Brauen/Wimpern ≤ 256²; Normal-Maps ≤ der
+  `eyelashes`, `teeth`, `tongue`): Haut ≤ 2048², Kleidung ≤ 1024², Haare ≤ 1024², Augen/Brauen/Wimpern/Zähne/Zunge
+  ≤ 256²; Normal-Maps ≤ der
   zugehörigen Basisfarbe; Seitenlängen Zweierpotenzen (quadratisch nicht nötig).
 - **Formate:** Basisfarbe sRGB; Normal-Maps linear (Tangentenraum, OpenGL-Konvention +Y), bevorzugt PNG.
   Deckende Basisfarben dürfen JPEG sein. **Haare, Brauen, Wimpern:** glTF `alphaMode` MASK mit `alphaCutoff` 0,5
@@ -219,13 +220,31 @@ trennt den Kopf an der Gewichtsgrenze `head` ≥ 0,5 ab (Naht passend für `fit.
 Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, Stil A).
 
 - **Körper:** 2 Grundkörper (m/w) × 3 Statur-Varianten, aus MPFB2, stilisiert nachbearbeitet.
-- **Köpfe:** separates Mesh (wie Gothic), Ziel 20+ Gesichter; gemeinsame Morph-Targets:
-  Viseme (`vis_aa`, `vis_ee`, `vis_ih`, `vis_oh`, `vis_ou`, `vis_mbp`, `vis_fv`, `vis_l`, `vis_rest`),
-  `blink_l`, `blink_r`, Ausdrücke (`expr_angry`, `expr_friendly`, `expr_fear`, `expr_pain`, `expr_sleep`).
+- **Köpfe:** separates Mesh (wie Gothic), Ziel 20+ Gesichter; gemeinsame Morph-Targets (§6.1).
 - **Haare/Bärte:** eigene Meshes, an Köpfe angepasst.
 - **Kleidung/Rüstung:** ersetzt den Körper (Mesh-Tausch); je Gilde/Stand eine Linie (Lumpen → leicht → mittel → schwer).
 - **Texturen:** Trim-Sheets und Farbvarianten statt Unikat-Texturen; Stil passend zu den Häusern (W5).
 - **Budget:** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k, höchstens 20 k je Figur, Stufen `_lod1`/`_lod2` (Vertrag §2.2).
+
+### 6.1 Gesichts-Morph-Targets (Vertrag mit engine, abgestimmt 2026-10-03)
+
+- **15 Targets in fester Reihenfolge:** Viseme `vis_aa`, `vis_ee`, `vis_ih`, `vis_oh`, `vis_ou`, `vis_mbp`, `vis_fv`,
+  `vis_l`; Blinzeln `blink_l`, `blink_r`; Ausdrücke `expr_angry`, `expr_friendly`, `expr_fear`, `expr_pain`,
+  `expr_sleep`. „Ruhe“ = alle Gewichte 0 (kein eigenes Target). Höchstens **16 Targets je Mesh** (Gewichts-Palette des
+  Skinning-Shaders); mehr nur nach Absprache mit engine.
+- **Ort:** nur auf `head_lod0` (LOD-Vertrag §2.2); in lod1/2 keine Mimik. **Jedes Mesh im Kopf-Teil** (Haut, Augen,
+  Brauen, Wimpern, Zähne, Zunge – im glTF Primitive desselben Meshes) trägt **dieselbe Liste in derselben
+  Reihenfolge**, auch wenn ein Target es nicht bewegt; engine nutzt einen Gewichtsvektor für alle.
+- **Format:** Namen in `mesh.extras.targetNames`, Positionen **und Normalen**, keine Tangenten; sparse Accessoren;
+  Standardgewichte 0. Gewichte 0–1, additiv, beliebig viele gleichzeitig (Lippensync + Blinzeln + Ausdruck).
+- **Seiten:** `blink_l` = linkes Auge der Figur (+X), wie `*_l` im Rig.
+- **Halsnaht:** Morphs bewegen den Nahtring nicht (kein Spalt beim Sprechen).
+- **Herkunft:** gemischt aus MPFB2-Gesichtszielen der CC0-Pakete „Visemes 02“ (Meta-Viseme) und „Faceunits 01“
+  (ARKit-Einheiten); die Mischung steht als Daten in `tools/chargen/src/gothar_chargen/data/faces/morphs.toml`
+  (z. B. `expr_friendly` = Lächeln + Wangen + leichtes Augenkneifen) und kann ohne Code angepasst werden.
+  `gothar-chargen human` überträgt die Targets durch Rig-Anpassung und Reduktion (baryzentrisch vom unreduzierten
+  Mesh); Köpfe haben dafür Zähne und Zunge. Der Validator prüft Namen, Reihenfolge, Vollständigkeit je Primitive
+  und die 16er-Grenze (`morph.*`).
 
 ## 7. Monster
 

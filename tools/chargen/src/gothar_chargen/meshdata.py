@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -56,8 +57,12 @@ class MeshData:
         return out
 
 
-def mesh_data(gltf: Gltf, node_index: int) -> MeshData:
+def mesh_data(
+    gltf: Gltf, node_index: int, skip_material: Callable[[str], bool] | None = None
+) -> MeshData:
+    """`skip_material(name)` leaves out primitives by material (e.g. teeth for seam checks)."""
     node = gltf.list("nodes")[node_index]
+    materials = gltf.list("materials")
     mesh = gltf.list("meshes")[node["mesh"]]
     skin_joints = None
     if "skin" in node:
@@ -66,6 +71,9 @@ def mesh_data(gltf: Gltf, node_index: int) -> MeshData:
     offset = 0
     for prim in mesh.get("primitives", []):
         if prim.get("mode", _TRIANGLES) != _TRIANGLES:
+            continue
+        material = materials[prim["material"]].get("name", "") if "material" in prim else ""
+        if skip_material is not None and material and skip_material(str(material)):
             continue
         attrs = prim.get("attributes", {})
         pos = gltf.accessor(attrs["POSITION"]).astype(np.float64)

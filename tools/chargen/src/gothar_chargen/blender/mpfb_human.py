@@ -17,6 +17,7 @@ import bpy  # type: ignore[import-not-found]
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from gothar_chargen.faces import load_morphs, source_targets  # noqa: E402
 from gothar_chargen.human import load_human  # noqa: E402
 
 
@@ -28,23 +29,43 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _mpfb() -> tuple[object, object]:
+def _mpfb() -> tuple[object, object, object, object]:
     try:
+        from bl_ext.blender_org.mpfb.services.faceservice import (  # type: ignore[import-not-found]
+            FaceService,
+        )
         from bl_ext.blender_org.mpfb.services.humanservice import (  # type: ignore[import-not-found]
             HumanService,
         )
         from bl_ext.blender_org.mpfb.services.locationservice import (  # type: ignore[import-not-found]
             LocationService,
         )
+        from bl_ext.blender_org.mpfb.services.targetservice import (  # type: ignore[import-not-found]
+            TargetService,
+        )
     except ImportError as e:
         raise SystemExit(f"MPFB extension not available ({e}); see docs/05-build.md") from e
-    return HumanService, LocationService
+    return HumanService, LocationService, TargetService, FaceService
+
+
+def _load_face_targets(basemesh: object, target_service: object, face_service: object) -> None:
+    """Face targets (CC0 packs "Visemes 02", "Faceunits 01") as shape keys at value 0 on the
+    basemesh, carried over to brows, lashes, teeth and tongue; conform_human.py mixes them."""
+    names = source_targets(load_morphs())
+    missing = [n for n in names if not target_service.target_full_path(n)]
+    if missing:
+        raise SystemExit(
+            f"MPFB face targets not installed: {missing} (asset packs visemes02, faceunits01; "
+            "docs/05-build.md)"
+        )
+    target_service.bulk_load_targets(basemesh, [{"target": n, "value": 0.0} for n in names])
+    face_service.interpolate_targets(basemesh)
 
 
 def main() -> None:
     args = _parse_args()
     human = load_human(args.recipe)
-    human_service, location_service = _mpfb()
+    human_service, location_service, target_service, face_service = _mpfb()
     data_root = Path(location_service.get_user_data())
     if not data_root.is_dir():
         data_root = (
@@ -82,6 +103,7 @@ def main() -> None:
         if obj is not None:
             obj["gothar_asset"] = rel
             obj["gothar_type"] = asset_type
+    _load_face_targets(basemesh, target_service, face_service)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(args.out.resolve()))
     print(f"[chargen] wrote {args.out}")
