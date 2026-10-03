@@ -1,6 +1,6 @@
 # Tag und Nacht (world.md „Spielzeit & Umgebung“): Schlüsselbilder je Uhrzeit, zyklisch und weich
 # interpoliert. Farben in sRGB 0..1 (wie aus einer Farbwahl), Stärken linear. Werte sind Spielgefühl –
-# Vorgaben bis zur Abnahme durch den Projektinhaber.
+# Abnahme durch den Projektinhaber (M4): Nacht und Morgen so; Mittagsdunst reduziert.
 #   sun_*/moon_*      Richtungslicht (tagsüber Sonne, nachts Mond, mit Schatten)
 #   ambient_sky/_ground  Umgebungslicht von oben/unten
 #   fog_color         Nebel und Horizont des Himmels (gleich, damit Fernes in den Himmel übergeht)
@@ -59,18 +59,18 @@ sun_color = [1.0, 0.86, 0.72]
 sun_intensity = 1.7
 ambient_sky = [0.45, 0.50, 0.60]
 ambient_ground = [0.18, 0.16, 0.13]
-fog_color = [0.62, 0.66, 0.72]
-fog_density = 1.1
+fog_color = [0.52, 0.58, 0.68]
+fog_density = 0.75
 sky_zenith = [0.27, 0.41, 0.67]
 
 [[key]] # Mittag
 hour = 12.5
 sun_color = [1.0, 0.97, 0.92]
-sun_intensity = 2.0
-ambient_sky = [0.50, 0.56, 0.68]
+sun_intensity = 1.85
+ambient_sky = [0.44, 0.50, 0.62]
 ambient_ground = [0.20, 0.18, 0.15]
-fog_color = [0.68, 0.73, 0.80]
-fog_density = 1.0
+fog_color = [0.52, 0.60, 0.72]
+fog_density = 0.55
 sky_zenith = [0.25, 0.42, 0.72]
 
 [[key]] # Nachmittag
@@ -79,8 +79,8 @@ sun_color = [1.0, 0.86, 0.66]
 sun_intensity = 1.7
 ambient_sky = [0.46, 0.47, 0.54]
 ambient_ground = [0.18, 0.15, 0.12]
-fog_color = [0.66, 0.63, 0.61]
-fog_density = 1.0
+fog_color = [0.56, 0.56, 0.58]
+fog_density = 0.7
 sky_zenith = [0.27, 0.38, 0.62]
 
 [[key]] # Sonnenuntergang
