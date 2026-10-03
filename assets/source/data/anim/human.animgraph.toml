@@ -1,8 +1,9 @@
 # Animations-Zustandsautomat der Menschen (animation.md „Zustandsautomat“, M6). Clips: characters-pipeline.md §3,
 # animation-list.md. Parameter setzt das Gameplay je Schritt:
 #   speed   vorwärts in m/s (rückwärts negativ)    strafe  seitwärts in m/s (rechts positiv)
-#   turn    -1 links / 1 rechts (Drehen im Stand, Tasten)   air   in der Luft (bool)   fall  s im freien Fall
-#   landed  gelandet (bool, einen Schritt)          hard    die Landung war hart (bool, mit landed)
+#   turn    -1 links / 1 rechts (Drehen im Stand, Tasten)   jump  Absprung (bool, einen Schritt)
+#   air     s in der Luft (0 am Boden)              fall    s im freien Fall (sinkend)
+#   landed  Fallhöhe der Landung in m (einen Schritt, sonst 0)   hard  die Landung kostete LP (bool, mit landed)
 #   climb   Kantenklasse 1/2/3 (0 = nicht)
 #   swim    an der Oberfläche (bool)                dive    unter Wasser (bool)        slide  rutscht (bool)
 # Übergänge: erster passender in Dateireihenfolge; Bedingungen: "name", "!name", "name > 1.5", "end".
@@ -181,20 +182,32 @@ blend = 0.2
 [[transition]]
 from = "move"
 to = "jump_run"
-when = ["air", "speed > 3.0"]
+when = ["jump", "speed > 3.0"]
 blend = 0.1
 
 [[transition]]
 from = "move"
 to = "jump"
-when = ["air"]
+when = ["jump"]
 blend = 0.1
 
 [[transition]]
 from = "sneak"
 to = "jump"
-when = ["air"]
+when = ["jump"]
 blend = 0.1
+
+[[transition]] # von einer Kante gelaufen: kurze Stufen ohne Sprunghaltung
+from = "move"
+to = "airborne"
+when = ["air > 0.25"]
+blend = 0.2
+
+[[transition]]
+from = "sneak"
+to = "airborne"
+when = ["air > 0.25"]
+blend = 0.2
 
 [[transition]]
 from = "jump"
@@ -220,10 +233,10 @@ to = "land_hard"
 when = ["landed", "hard"]
 blend = 0.05
 
-[[transition]]
+[[transition]] # kleine Stufen und Absätze ohne Landeanimation
 from = "*"
 to = "land"
-when = ["landed"]
+when = ["landed > 0.3"]
 blend = 0.05
 
 [[transition]]

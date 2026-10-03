@@ -17,6 +17,7 @@
 
 namespace g7::render
 {
+class SkinnedMesh;
 class Device;
 class Mesh;
 class ShaderLibrary;
@@ -130,6 +131,14 @@ public:
     void draw(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
               const Camera& camera, i32 onlySubmesh = -1); ///< -1: all submeshes
 
+    /// A skinned mesh (M6): `bones` are the skinning matrices (model-space bone * inverse bind), at most
+    /// asset::kMaxBones. Same lighting and materials as draw().
+    void drawSkinned(Device& device, const SkinnedMesh& mesh, const MaterialSet& materials, const Mat4& model,
+                     std::span<const Mat4> bones, const Camera& camera);
+    /// drawShadow() for a skinned mesh.
+    void drawShadowSkinned(Device& device, const SkinnedMesh& mesh, const MaterialSet& materials,
+                           const Mat4& model, std::span<const Mat4> bones, const Cascade& cascade);
+
     /// Like draw() for many objects: opaque and alpha-tested submeshes of arena meshes are grouped by
     /// pipeline, material values and geometry block and drawn with one multi-draw call per group; the
     /// rest (translucent submeshes, meshes outside an arena) one by one afterwards. Same image as draw().
@@ -158,6 +167,16 @@ private:
 
     [[nodiscard]] const rhi::Pipeline& pipeline(Variant variant, bool doubleSided) const;
     void drawSubmesh(Device& device, const Mesh& mesh, usize submesh, const Material& material);
+    void uploadBones(Device& device, std::span<const Mat4> bones);
+
+    // Skinned meshes (SKINNED shader variants, SkinnedMesh vertex layout, bones in uniform block 2).
+    rhi::ShaderProgram* m_skinnedProgram = nullptr;
+    rhi::ShaderProgram* m_skinnedAlphaTestProgram = nullptr;
+    std::array<rhi::Pipeline, VariantCount * 2> m_skinnedPipelines;
+    rhi::ShaderProgram* m_skinnedShadowProgram = nullptr;
+    rhi::ShaderProgram* m_skinnedShadowAlphaTestProgram = nullptr;
+    std::array<rhi::Pipeline, 2> m_skinnedShadowPipelines;
+    rhi::Buffer m_bonesBuffer;
 
     rhi::ShaderProgram* m_program = nullptr;                 // owned by the ShaderLibrary
     rhi::ShaderProgram* m_alphaTestProgram = nullptr;        // owned by the ShaderLibrary

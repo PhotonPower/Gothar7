@@ -65,6 +65,29 @@ TEST_CASE("Player GPU: starts on the start point with the camera behind and abov
     CHECK(forward.x < -0.9f);
     CHECK(forward.y < 0.0f);
     CHECK(engine.movementSettings().runSpeed == doctest::Approx(4.0f)); // data/movement.toml
+    // The animated figure (M6): [game] hero, or the placeholder mannequin when the figures are not built.
+    CHECK_FALSE(engine.playerFigurePath().empty());
+    CHECK(engine.playerAnimationState() == "move");
+    CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}
+
+TEST_CASE("Player GPU: a missing hero figure falls back to the animated placeholder mannequin")
+{
+    EngineConfig config = playerConfig();
+    config.settings.set<std::string>("game.hero", "characters/figures/does_not_exist.glb");
+    Engine engine(std::move(config));
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    REQUIRE(engine.player() != nullptr);
+    CHECK(engine.playerFigurePath() == "characters/figures/placeholder_mannequin.glb");
+    gameplay::MoveInput run;
+    run.forward = 1.0f;
+    engine.setPlayerInputOverride(run);
+    for (int i = 0; i < 30; ++i)
+    {
+        CHECK(engine.runFrame());
+    }
+    CHECK(engine.playerAnimationState() == "move");
     CHECK(engine.renderDevice()->debugErrorCount() == 0);
 }
 
@@ -134,7 +157,7 @@ TEST_CASE("Player GPU: walking into a level change trigger takes the player to t
     }
     CHECK(engine.worldPath() == "testworld/cave.g7world");
     // The figure is no instance of a world: the level change must not release it (it was, see #99).
-    CHECK(engine.model("characters/figures/placeholder_mannequin.glb") != nullptr);
+    CHECK_FALSE(engine.playerFigurePath().empty());
     // A new player on the cave's start point; the override still holds, so stop first.
     engine.setPlayerInputOverride(gameplay::MoveInput{});
     REQUIRE(engine.player() != nullptr);
@@ -214,9 +237,12 @@ TEST_CASE("Player GPU: jumps higher from a run, lands, waits before the next jum
     engine.setPlayerInputOverride(run);
     highest(engine, 60); // up to running speed
     const f32 start = engine.player()->feet().z;
+    CHECK(engine.playerAnimationState() == "move");
     run.jump = true;
     engine.setPlayerInputOverride(run);
-    CHECK(highest(engine, 70) == doctest::Approx(1.1f).epsilon(0.06)); // from a run
+    highest(engine, 3); // lifts off: the running jump plays
+    CHECK(engine.playerAnimationState() == "jump_run");
+    CHECK(highest(engine, 67) == doctest::Approx(1.1f).epsilon(0.06)); // from a run
     CHECK(start - engine.player()->feet().z > 4.0f);                   // and far
     CHECK(engine.renderDevice()->debugErrorCount() == 0);
 }
@@ -243,6 +269,7 @@ TEST_CASE("Player GPU: climbs the three ledge classes, not the block above them"
         CHECK(engine.runFrame());
         const bool climbable = height < 2.2f;
         CHECK(engine.playerClimbing() == climbable);
+        CHECK((engine.playerAnimationState().starts_with("climb_")) == climbable);
         highest(engine, 120); // the longest climb takes 1.4 s
         CHECK_FALSE(engine.playerClimbing());
         if (climbable)
@@ -317,6 +344,7 @@ TEST_CASE("Player GPU: walks into the pond and swims at the surface; the camera 
     CHECK(engine.playerWaterMode() == gameplay::WaterMode::Swim);
     highest(engine, 240); // 4 s swimming on
     CHECK(engine.playerWaterMode() == gameplay::WaterMode::Swim);
+    CHECK(engine.playerAnimationState() == "swim");
     CHECK(engine.player()->feet().y == doctest::Approx(kFloatingFeet).epsilon(0.03));
     CHECK(engine.camera().transform.position.y > kPondSurface + 0.25f);
     CHECK(engine.playerAirSeconds() == doctest::Approx(30.0f));

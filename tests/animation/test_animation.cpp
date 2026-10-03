@@ -353,9 +353,10 @@ TEST_CASE("Animator with the real data: reference rig, clip sets, human.animgrap
         CHECK(std::isfinite(b.translation.x + b.translation.y + b.translation.z));
         CHECK(std::isfinite(b.rotation.w));
     }
-    a.setBool("air", true);
+    a.setBool("jump", true);
     a.update(0.1f);
     CHECK(a.state() == "jump_run");
+    a.setBool("jump", false);
 
     // Climbing the mid class: the root rises 1.6 m (built for that height), the drawn root stays.
     a.setBool("air", false);

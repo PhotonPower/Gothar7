@@ -1,3 +1,5 @@
+#include "PlayerFigure.hpp"
+
 #include <g7/ai/Ai.hpp>
 #include <g7/animation/Animation.hpp>
 #include <g7/asset/Asset.hpp>
@@ -1684,6 +1686,7 @@ void Engine::runDebugUi(f64 realSeconds)
     panel.paused = m_paused;
     panel.timeScale = static_cast<f32>(m_timeScale);
     m_debugUi.enginePanel(panel);
+    playerAnimationUi();
     for (EngineTool* tool : m_tools)
     {
         tool->ui(*this, m_debugUi);
@@ -1845,6 +1848,7 @@ void Engine::shutdown()
     m_instances.clear();
     m_groundModel.reset();
     m_waterModel.reset();
+    m_figure.reset();
     m_models.clear();
     m_geometry.reset(); // after every mesh that lives in it
     m_assets.reset();   // before the VFS (a member destroyed after it)
