@@ -41,13 +41,14 @@ struct WorldFileVob
     VobId id;
     VobType type = VobType::Empty;
     std::string name;
-    VobId parent;          ///< 0 = root
-    Transform transform;   ///< relative to the parent
-    std::string mesh;      ///< VFS path; Mesh and Mob vobs
-    LightSource light;     ///< Light vobs only
-    SoundEmitter sound;    ///< Sound vobs only
-    TriggerVolume trigger; ///< Trigger vobs only
-    MobRef mob;            ///< Mob vobs only
+    VobId parent;                             ///< 0 = root
+    Transform transform;                      ///< relative to the parent
+    std::string mesh;                         ///< VFS path; Mesh and Mob vobs
+    VobCategory category = VobCategory::Deco; ///< Mesh vobs; Mob vobs are always Gameplay
+    LightSource light;                        ///< Light vobs only
+    SoundEmitter sound;                       ///< Sound vobs only
+    TriggerVolume trigger;                    ///< Trigger vobs only
+    MobRef mob;                               ///< Mob vobs only
 };
 
 struct WorldFile

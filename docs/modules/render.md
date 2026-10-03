@@ -283,6 +283,23 @@ class DebugDrawRenderer { static Result<DebugDrawRenderer> create(Device&, Shade
 - **Hintergrund:** oberhalb des Horizonts Verlauf zur Zenitfarbe, unterhalb bleibt er in der Horizont- = Nebelfarbe
   (dort läge nur unendlich ferner, voll vernebelter Boden), so gibt es hinter dem Weltrand keine Kante.
 
+### Sichtbarkeit – `Visibility.hpp` (M4)
+```cpp
+struct CullSettings { f32 viewDistance; f32 sizeCull; };          // engine.toml [render], 0 = aus
+CullResult cullByDistance(const AABB&, const Vec3& eye, const CullSettings&, bool sizeCullable);
+class CullGrid { void build(span<const AABB>, f32 cellSize = 64); void query(const Frustum&, eye, maxDistance, out); };
+```
+- Die Engine sortiert alle Instanzen in ein **Raster** (64-m-Zellen über x/z; eine Zelle wächst auf die Bounds ihrer
+  Objekte, große Objekte gehen nicht verloren). Haupt- und Schattenpass fragen erst Zellen ab (Frustum, Sichtweite),
+  dann die Objekte darin. Neuaufbau, wenn sich Instanzen ändern.
+- **Sichtweite** `view_distance` (Vorgabe 400 m; Nebel deckt dort 98,7 %): Abstand zum nächsten Punkt der Bounds.
+  **Größe** `size_cull` (Vorgabe 0.005 ≈ 4 Pixel Radius bei 1600×900): nur Deko (`category` deco, world.md); Mobs und
+  `gameplay` nie. Was der Hauptpass ausblendet, wirft auch keinen Schatten.
+- Begründung der Vorgaben: Leonberg-Kern mit Fachwerk (905 Häuser, 1,6 Mio. Dreiecke) von START_UEBERSICHT –
+  Bild ohne sichtbaren Unterschied (nur ferne Häuser im dichten Nebel), 4,16 → 2,91 ms (RTX 3080). Aufploppen an
+  der Grenze verdeckt der Nebel; fällt es auf, ist es ein offener Punkt (kein Überblenden in M4).
+- Overlay (F2): „hidden: N far, M small“.
+
 ### Geometrie-Arena – `GeometryArena.hpp` (M4)
 ```cpp
 class GeometryArena { Result<GeometrySlice> allocate(Device&, span<const asset::Vertex>, span<const u32>);

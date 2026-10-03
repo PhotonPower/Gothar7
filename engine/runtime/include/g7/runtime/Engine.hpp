@@ -26,6 +26,7 @@
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/Terrain.hpp>
+#include <g7/render/Visibility.hpp>
 #include <g7/runtime/FrameTimes.hpp>
 #include <g7/runtime/SceneFile.hpp>
 #include <g7/ui/DebugUi.hpp>
@@ -59,6 +60,7 @@ struct SceneInstance
     const LoadedModel* model = nullptr;
     Mat4 transform{1.0f};
     AABB bounds;
+    bool sizeCullable = true; ///< deco: may vanish when small on screen (render.md "Sichtbarkeit")
 };
 
 struct EngineConfig
@@ -155,6 +157,12 @@ public:
     /// the last frame after frustum culling.
     [[nodiscard]] usize sceneObjectCount() const noexcept { return m_instances.size(); }
     [[nodiscard]] u32 visibleSceneObjects() const noexcept { return m_visibleInstances; }
+    /// Objects the last frame hid for their distance (view_distance) or size (size_cull) - counted among
+    /// the objects of the grid cells it visited (whole cells beyond view_distance are skipped uncounted).
+    [[nodiscard]] u32 culledByDistance() const noexcept { return m_culledFar; }
+    [[nodiscard]] u32 culledBySize() const noexcept { return m_culledSmall; }
+    [[nodiscard]] const render::CullSettings& cullSettings() const noexcept { return m_cullSettings; }
+    render::CullSettings& cullSettings() noexcept { return m_cullSettings; }
     /// Terrain of the loaded world, or nullptr; chunks drawn in the last frame.
     [[nodiscard]] const world::Heightfield* terrain() const noexcept
     {
@@ -215,7 +223,7 @@ private:
     [[nodiscard]] Result<void> uploadModel(LoadedModel& model);
     void refreshReloadedModels();
     [[nodiscard]] Result<void> addGround(f32 size, const Vec3& color, f32 height);
-    void addInstance(const LoadedModel& model, const Mat4& transform);
+    void addInstance(const LoadedModel& model, const Mat4& transform, bool sizeCullable = true);
     void setViewpoint(const SceneViewpoint& viewpoint);
     void updateBenchmark(f64 realSeconds);
     void saveScreenshot(u32 width, u32 height);
@@ -263,6 +271,12 @@ private:
     AABB m_sceneBounds{Vec3(1.0f), Vec3(-1.0f)}; // empty until the first non-ground instance
     std::vector<SceneViewpoint> m_viewpoints;
     u32 m_visibleInstances = 0;
+    u32 m_culledFar = 0;
+    u32 m_culledSmall = 0;
+    render::CullSettings m_cullSettings;
+    render::CullGrid m_cullGrid; // over m_instances; rebuilt when instances change
+    bool m_cullGridDirty = true;
+    std::vector<u32> m_cullCandidates; // per pass, reused
     FrameTimes m_benchmarkTimes;
     std::vector<FrameTimeSummary> m_benchmarkResults;
     std::vector<render::FrameStats> m_benchmarkStats; // per viewpoint, of its last measured frame

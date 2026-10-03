@@ -66,3 +66,30 @@ TEST_CASE("World vobs GPU: --start picks a start point by name; an unknown one f
     CHECK(result.error().message ==
           "cannot load world: unknown start point 'START_NOWHERE' (the world has: START_LAGER)");
 }
+
+TEST_CASE("World vobs GPU: small deco vanishes by size, gameplay (the mob) never; distance hides all")
+{
+    Engine engine(worldConfig());
+    REQUIRE(engine.init().ok());
+    // Look at the mob STOOL_CAMPFIRE (3, 0, 3) from 6 m east of it; the fly camera keeps the start point's
+    // direction (west, -X) and only the position is set here.
+    engine.camera().transform.position = Vec3(9.0f, 1.7f, 3.0f);
+    engine.cullSettings() = {.viewDistance = 0.0f, .sizeCull = 0.0f};
+    CHECK(engine.runFrame());
+    const u32 all = engine.visibleSceneObjects();
+    CHECK(all > 3);
+    CHECK(engine.culledBySize() == 0);
+
+    // Absurdly strict size threshold: every deco object goes, the mob stays.
+    engine.cullSettings().sizeCull = 100.0f;
+    CHECK(engine.runFrame());
+    CHECK(engine.culledBySize() > 0);
+    CHECK(engine.visibleSceneObjects() >= 1);
+    CHECK(engine.visibleSceneObjects() < all);
+
+    // A view distance of 1 m hides the mob too (gameplay objects obey the distance).
+    engine.cullSettings() = {.viewDistance = 1.0f, .sizeCull = 0.0f};
+    CHECK(engine.runFrame());
+    CHECK(engine.culledByDistance() > 0);
+    CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}

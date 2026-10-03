@@ -324,6 +324,24 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             return r.error(where, std::format("a {} vob needs 'mesh' (VFS path)", type));
         }
         vob.mesh = v["mesh"].get<std::string>();
+        if (v.contains("category"))
+        {
+            const std::string category =
+                v["category"].is_string() ? v["category"].get<std::string>() : std::string();
+            if (category != "deco" && category != "gameplay")
+            {
+                return r.error(where, "'category' must be 'deco' or 'gameplay'");
+            }
+            if (vob.type == VobType::Mob && category == "deco")
+            {
+                return r.error(where, "a mob vob is always 'gameplay'");
+            }
+            vob.category = category == "gameplay" ? VobCategory::Gameplay : VobCategory::Deco;
+        }
+        if (vob.type == VobType::Mob)
+        {
+            vob.category = VobCategory::Gameplay;
+        }
     }
     if (vob.type == VobType::Light)
     {
@@ -731,6 +749,10 @@ std::string writeWorldFile(const WorldFile& world)
         if (vob->type == VobType::Mesh || vob->type == VobType::Mob)
         {
             v["mesh"] = vob->mesh;
+            if (vob->type == VobType::Mesh && vob->category == VobCategory::Gameplay)
+            {
+                v["category"] = "gameplay"; // deco is the default and not written
+            }
         }
         if (vob->type == VobType::Light)
         {
@@ -870,7 +892,7 @@ Result<void> spawnWorld(Scene& scene, const WorldFile& world)
         case VobType::Empty:
             break;
         case VobType::Mesh:
-            scene.set<MeshRef>(e.value(), {vob->mesh});
+            scene.set<MeshRef>(e.value(), {vob->mesh, vob->category});
             break;
         case VobType::Light:
             scene.set<LightSource>(e.value(), vob->light);
@@ -885,7 +907,7 @@ Result<void> spawnWorld(Scene& scene, const WorldFile& world)
             scene.set<TriggerVolume>(e.value(), vob->trigger);
             break;
         case VobType::Mob:
-            scene.set<MeshRef>(e.value(), {vob->mesh});
+            scene.set<MeshRef>(e.value(), {vob->mesh, VobCategory::Gameplay});
             scene.set<MobRef>(e.value(), vob->mob);
             break;
         }
@@ -928,6 +950,7 @@ WorldFile captureWorld(const Scene& scene, std::string_view name)
             {
                 out.type = VobType::Mesh;
                 out.mesh = mesh->path;
+                out.category = mesh->category;
             }
             else if (const LightSource* light = scene.get<LightSource>(e))
             {

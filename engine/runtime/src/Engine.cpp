@@ -406,6 +406,8 @@ Result<void> Engine::initSceneRendering()
         std::clamp<i64>(m_config.settings.get<i64>("render.shadow_resolution", 2048), 256, 8192));
     shadows.distance = static_cast<f32>(m_config.settings.get<f64>("render.shadow_distance", 150.0));
     m_shadowDebug = m_config.settings.get<bool>("render.shadow_debug", false);
+    m_cullSettings.viewDistance = static_cast<f32>(m_config.settings.get<f64>("render.view_distance", 400.0));
+    m_cullSettings.sizeCull = static_cast<f32>(m_config.settings.get<f64>("render.size_cull", 0.005));
     auto shadowMap = render::ShadowMap::create(*m_device, shadows);
     if (!shadowMap)
     {
@@ -637,13 +639,14 @@ void Engine::refreshReloadedModels()
             if (instance.model == loaded.get())
             {
                 instance.bounds = loaded->mesh.bounds().transformed(instance.transform);
+                m_cullGridDirty = true;
             }
         }
         G7_LOG_INFO("engine", "hot reload: {} updated", path);
     }
 }
 
-void Engine::addInstance(const LoadedModel& model, const Mat4& transform)
+void Engine::addInstance(const LoadedModel& model, const Mat4& transform, bool sizeCullable)
 {
     const AABB bounds = model.mesh.bounds().transformed(transform);
     // Scene bounds without the ground plate (debug grid, overlay).
@@ -654,7 +657,8 @@ void Engine::addInstance(const LoadedModel& model, const Mat4& transform)
                 ? bounds
                 : AABB{glm::min(m_sceneBounds.min, bounds.min), glm::max(m_sceneBounds.max, bounds.max)};
     }
-    m_instances.push_back({&model, transform, bounds});
+    m_instances.push_back({&model, transform, bounds, sizeCullable});
+    m_cullGridDirty = true;
 }
 
 Result<void> Engine::addGround(f32 size, const Vec3& color, f32 height)
@@ -671,7 +675,7 @@ Result<void> Engine::addGround(f32 size, const Vec3& color, f32 height)
     m_groundModel->mesh = std::move(mesh).value();
     m_groundModel->materials = std::move(materials).value();
     m_groundModel->name = "ground";
-    addInstance(*m_groundModel, glm::translate(Mat4(1.0f), Vec3(0.0f, height, 0.0f)));
+    addInstance(*m_groundModel, glm::translate(Mat4(1.0f), Vec3(0.0f, height, 0.0f)), false);
     return {};
 }
 
@@ -818,7 +822,7 @@ Result<void> Engine::instantiateScene()
                                                 { return equalsIgnoreCase(entry.first, mesh.path); });
                 loaded = found->second.get();
             }
-            addInstance(*loaded, world.matrix);
+            addInstance(*loaded, world.matrix, mesh.category == world::VobCategory::Deco);
         });
     m_lights.clear();
     m_scene.each<world::LightSource, world::WorldTransform>(
@@ -1053,6 +1057,17 @@ void Engine::renderScene(u32 width, u32 height)
 
 void Engine::drawScene(u32 width, u32 height)
 {
+    if (m_cullGridDirty)
+    {
+        std::vector<AABB> bounds;
+        bounds.reserve(m_instances.size());
+        for (const SceneInstance& instance : m_instances)
+        {
+            bounds.push_back(instance.bounds);
+        }
+        m_cullGrid.build(bounds);
+        m_cullGridDirty = false;
+    }
     // Shadow pass: every caster whose bounds reach a cascade's light volume (which extends towards
     // the sun, so casters outside the view still count). The flat ground plate cannot shadow
     // anything; terrain can (hills shade valleys).
@@ -1065,9 +1080,15 @@ void Engine::drawScene(u32 width, u32 height)
         {
             m_shadowMap.beginCascade(*m_device, i);
             const Frustum volume = Frustum::fromViewProjection(m_cascades[i].viewProjection);
-            for (const SceneInstance& instance : m_instances)
+            m_cullCandidates.clear();
+            m_cullGrid.query(volume, m_camera.transform.position, 0.0f, m_cullCandidates);
+            for (const u32 index : m_cullCandidates)
             {
-                if (instance.model != m_groundModel.get() && volume.intersects(instance.bounds))
+                // What the main pass hides (distance, size) casts no shadow either.
+                const SceneInstance& instance = m_instances[index];
+                if (instance.model != m_groundModel.get() && volume.intersects(instance.bounds) &&
+                    render::cullByDistance(instance.bounds, m_camera.transform.position, m_cullSettings,
+                                           instance.sizeCullable) == render::CullResult::Kept)
                 {
                     m_meshRenderer.drawShadow(*m_device, instance.model->mesh, instance.model->materials,
                                               instance.transform, m_cascades[i]);
@@ -1103,9 +1124,18 @@ void Engine::drawScene(u32 width, u32 height)
     }
     const Frustum view = m_camera.frustum();
     m_visibleInstances = 0;
-    for (const SceneInstance& instance : m_instances)
+    m_culledFar = 0;
+    m_culledSmall = 0;
+    m_cullCandidates.clear();
+    m_cullGrid.query(view, m_camera.transform.position, m_cullSettings.viewDistance, m_cullCandidates);
+    for (const u32 index : m_cullCandidates)
     {
-        if (view.intersects(instance.bounds))
+        const SceneInstance& instance = m_instances[index];
+        const render::CullResult cull = render::cullByDistance(instance.bounds, m_camera.transform.position,
+                                                               m_cullSettings, instance.sizeCullable);
+        m_culledFar += cull == render::CullResult::TooFar ? 1 : 0;
+        m_culledSmall += cull == render::CullResult::TooSmall ? 1 : 0;
+        if (cull == render::CullResult::Kept && view.intersects(instance.bounds))
         {
             m_meshRenderer.draw(*m_device, instance.model->mesh, instance.model->materials,
                                 instance.transform, m_camera);
@@ -1315,10 +1345,11 @@ void Engine::addDebugOverlay(u32 width, u32 height)
     const Vec3& p = m_camera.transform.position;
     m_debugDraw.screenText(Vec2(8.0f, 8.0f),
                            std::format("{:.0f} fps  {:.2f} ms{}\n{} draws  {} binds  {:.1f}k tris  {}/{} "
-                                       "objects\n{}x{}  cam {:.1f} {:.1f} {:.1f}",
+                                       "objects (hidden: {} far, {} small)\n{}x{}  cam {:.1f} {:.1f} {:.1f}",
                                        ms > 0.0 ? 1000.0 / ms : 0.0, ms, m_paused ? "  PAUSED" : "",
                                        stats.drawCalls, stats.bufferBinds, stats.triangles / 1000.0,
-                                       m_visibleInstances, m_instances.size(), width, height, p.x, p.y, p.z),
+                                       m_visibleInstances, m_instances.size(), m_culledFar, m_culledSmall,
+                                       width, height, p.x, p.y, p.z),
                            Vec4(1.0f), 2.0f);
 
     // World origin and the scene: ground grid, bounds (with the name for a single model), torches.

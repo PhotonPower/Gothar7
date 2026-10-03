@@ -42,10 +42,18 @@ struct Vob
     std::string nameText;
 };
 
+/// How a drawn vob may be hidden at a distance (render.md "Sichtbarkeit").
+enum class VobCategory : u8
+{
+    Deco,     ///< scenery: hidden when small on screen (size_cull) and beyond view_distance
+    Gameplay, ///< must not vanish for its size (mobs, later NPCs, items): only view_distance applies
+};
+
 /// A vob showing a model (VFS path of a .g7mesh or, during development, a glTF).
 struct MeshRef
 {
     std::string path;
+    VobCategory category = VobCategory::Deco;
 };
 
 /// A point light (torch, camp fire). Colour is linear; flicker (0..1) is applied by the renderer later.
