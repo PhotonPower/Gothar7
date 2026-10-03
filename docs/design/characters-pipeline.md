@@ -217,7 +217,8 @@ Menschen als Daten (MPFB-Makrowerte, Haut, Augen, Kleidung, Haare, Tönungen, Zi
 mit MPFB, passt das MPFB-Rig „game_engine“ (gleiche 53 Körperknochen) Gelenk für Gelenk an das Referenz-Rig an,
 trennt den Kopf an der Gewichtsgrenze `head` ≥ 0,5 ab (Naht passend für `fit.*`), reduziert aufs Budget und schreibt
 `parts/<name>/body.glb` (Körper + Kleidung), `head.glb` (Kopf, Augen, Brauen, Wimpern), `hair.glb` sowie die
-Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, Stil A).
+Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, Stil A); seit F3j wie alle Figuren aus Teilen (Grundkörper, Kopf `head_m_farmer`,
+Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegung die Haut durchscheinen.
 
 - **Körper:** 2 Grundkörper (m/w) × 3 Staturen (schlank, mittel, kräftig) als Rezepte `humans/body_<m|f>_<statur>`
   (`parts = ["body"]`) mit schlichter Grundbekleidung (Hose bzw. Unterwäsche, CC0). Alle Körper werden auf das

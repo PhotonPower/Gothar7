@@ -16,7 +16,7 @@ from gothar_chargen.postprocess import material_role
 from gothar_chargen.validate import validate_gltf
 
 FARMER = REPO_ROOT / "assets/source/characters/figures/farmer.glb"
-FARMER_HEAD = REPO_ROOT / "assets/source/characters/parts/farmer/head.glb"
+FARMER_HEAD = REPO_ROOT / "assets/source/characters/parts/head_m_farmer/head.glb"
 CONTRACT = (
     "vis_aa", "vis_ee", "vis_ih", "vis_oh", "vis_ou", "vis_mbp", "vis_fv", "vis_l",
     "blink_l", "blink_r",
