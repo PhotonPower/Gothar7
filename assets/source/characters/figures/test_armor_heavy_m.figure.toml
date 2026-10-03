@@ -1,0 +1,19 @@
+# Test figure (F3l): heavy armour line on the average male build – the medium line (mail tunic,
+# wrapped trousers and boots) with breastplate, pauldrons, greaves, gauntlets and the kettle helm.
+# Only for checking the pieces; who wears what is decided later (owner).
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_young/head.glb"
+hair = "parts/head_m_young/hair.glb"
+cloth = [
+    "parts/armor_m_average/mail_tunic.glb",
+    "parts/armor_m_average/wrapped_trousers.glb",
+    "parts/armor_m_average/wrapped_boots.glb",
+    "parts/armor_m_average/breastplate.glb",
+    "parts/armor_m_average/pauldrons.glb",
+    "parts/armor_m_average/greaves.glb",
+    "parts/armor_m_average/gauntlets.glb",
+    "parts/headgear_m_average/kettle_helm.glb",
+]

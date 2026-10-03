@@ -3,7 +3,7 @@
 # build, not per head: the pieces fit every head of the same sex (`heads`: domes grow, the hood
 # bulges where one would poke through); worn pieces hide the hair (contract §6.2 `hides`).
 # hood: CC0 hood (MakeHuman Suits 02, Donitz) without its hidden inner part down to the chest.
-# leather_cap, iron_cap, nasal_helmet: own geometry – a dome fitted to the skull of the base body,
+# leather_cap, iron_cap, nasal_helmet, kettle_helm (with brim): own geometry – a dome fitted to the skull of the base body,
 # cut by a plane rising to the front; the nasal is an own bar. Textures ambientCG (CC0).
 version = 1
 fit_to = "body_f_average"
@@ -16,12 +16,14 @@ hood = 2000
 leather_cap = 800
 iron_cap = 800
 nasal_helmet = 800
+kettle_helm = 900
 
 [hides]
 hood = ["hair"]
 leather_cap = ["hair"]
 iron_cap = ["hair"]
 nasal_helmet = ["hair"]
+kettle_helm = ["hair"]
 
 [derive.hood]
 heads = "head_f_*"
@@ -61,6 +63,19 @@ depth = 0.12
 tilt = 30
 offset = 0.008
 nasal = [0.022, 0.07]
+texture = "gothar/ambientcg/Metal021/Metal021_1K-JPG_Color.jpg"
+normal = "gothar/ambientcg/Metal021/Metal021_1K-JPG_NormalGL.jpg"
+uv_scale = 3.0
+
+[derive.kettle_helm]
+heads = "head_f_*"
+from = "basemesh"
+group = "body"
+dome = true
+depth = 0.16
+tilt = 10
+offset = 0.012
+brim = 0.045
 texture = "gothar/ambientcg/Metal021/Metal021_1K-JPG_Color.jpg"
 normal = "gothar/ambientcg/Metal021/Metal021_1K-JPG_NormalGL.jpg"
 uv_scale = 3.0

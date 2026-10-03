@@ -1,0 +1,19 @@
+# Test figure (F3l): heavy armour line on the thin female build – the medium line (mail tunic,
+# wrapped trousers and boots) with breastplate, pauldrons, greaves, gauntlets and the nasal helmet.
+# Only for checking the pieces; who wears what is decided later (owner).
+version = 1
+
+[parts]
+body = "parts/body_f_thin/body.glb"
+head = "parts/head_f_mature/head.glb"
+hair = "parts/head_f_mature/hair.glb"
+cloth = [
+    "parts/armor_f_thin/mail_tunic.glb",
+    "parts/armor_f_thin/wrapped_trousers.glb",
+    "parts/armor_f_thin/wrapped_boots.glb",
+    "parts/armor_f_thin/breastplate.glb",
+    "parts/armor_f_thin/pauldrons.glb",
+    "parts/armor_f_thin/greaves.glb",
+    "parts/armor_f_thin/gauntlets.glb",
+    "parts/headgear_f_thin/nasal_helmet.glb",
+]

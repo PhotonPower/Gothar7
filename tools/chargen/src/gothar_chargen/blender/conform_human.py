@@ -552,20 +552,35 @@ def _to_body_neck(head: bpy.types.Object, characters: Path) -> None:
     print(f"[chargen] head moved {shift * 1000:+.1f} mm to the neck of the base bodies")
 
 
-def _derive(obj: bpy.types.Object, d: Derive, heads: np.ndarray | None = None) -> None:
-    """Own simple piece from a fitted garment: drop the vertices bound mostly to the `cut` bones
-    (and with `depth` all below the top `depth` metres), push the rest along the normals, scale
-    the UVs for a tiling texture."""
+def _derive(
+    obj: bpy.types.Object,
+    d: Derive,
+    heads: np.ndarray | None = None,
+    joints: dict[str, np.ndarray] | None = None,
+) -> None:
+    """Own simple piece from a fitted garment: keep the vertices bound mostly to the `keep` bones
+    and not to the `cut` bones (and near the `near` joints; with `depth` above a plane), smooth
+    the shape into a plate (`smooth`), push it along the normals, scale the UVs for a tiling
+    texture, add own geometry (nasal, brim) and limit the weights to `bones`."""
     mesh = obj.data
+    joints = joints or {}
     if d.dome:
         _dome(obj, heads)
-    groups = {g.index: g.name for g in obj.vertex_groups}
+    # bones only: the skin copy also carries MPFB selection groups ("body" = 1 everywhere)
+    groups = {g.index: g.name for g in obj.vertex_groups if not joints or g.name in joints}
+    centres = np.array([joints[j] for j in d.near]) if d.near else None
     drop = []
     for v in mesh.vertices:
-        if not v.groups:
-            continue
-        best = max(v.groups, key=lambda g: g.weight)
-        if groups.get(best.group, "").startswith(d.cut or ("\0",)):
+        bones = [g for g in v.groups if g.group in groups]
+        best = groups[max(bones, key=lambda g: g.weight).group] if bones else ""
+        if (
+            (d.cut and best.startswith(d.cut))
+            or (d.keep and not best.startswith(d.keep))
+            or (
+                centres is not None
+                and np.linalg.norm(centres - np.array(v.co), axis=1).min() > d.radius
+            )
+        ):
             drop.append(v.index)
     if drop:
         bm = bmesh.new()
@@ -588,10 +603,17 @@ def _derive(obj: bpy.types.Object, d: Derive, heads: np.ndarray | None = None) -
         )
         bm.to_mesh(mesh)
         bm.free()
-    if d.offset:
+    if d.flatten:
+        _flatten_front(obj, d.flatten)
+    if d.smooth:
+        _smooth_shape(obj, d.smooth)
+    if d.offset or d.bulge:
         normals = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
         mesh.vertices.foreach_get("normal", normals)
-        shift = normals.reshape(-1, 3) * d.offset
+        amount = np.full(len(mesh.vertices), d.offset)
+        if d.bulge:  # domed plate: further out towards the middle, `offset` at the border
+            amount += d.bulge * _inside_share(obj)
+        shift = normals.reshape(-1, 3) * amount[:, None]
         co = _coords(obj) + shift
         mesh.vertices.foreach_set("co", co.ravel())
         if mesh.shape_keys is not None:
@@ -607,8 +629,166 @@ def _derive(obj: bpy.types.Object, d: Derive, heads: np.ndarray | None = None) -
         _push_over_heads(obj, heads)
     if d.nasal is not None:
         _add_nasal(obj, *d.nasal)
+    if d.brim:
+        _add_brim(obj, d.brim)
+    if d.rim:
+        _add_rim(obj, d.rim)
+    if d.bones:
+        _limit_weights(obj, d.bones)
     mesh.update()
     print(f"[chargen] derived {d.name}: cut {len(drop)} vertices, offset {d.offset} m")
+
+
+FLATTEN_BUMP = 0.01  # metres in front of the first fit that count as a bump, not torso
+
+
+def _flatten_front(obj: bpy.types.Object, amount: float) -> None:
+    """Neutral plate: the front (-Y) is pulled towards a smooth quadratic envelope over x and z
+    that encloses the protruding parts (e.g. the breasts) – a cuirass instead of an anatomic
+    shape. `amount` 0..1 blends from the original to the envelope."""
+    mesh = obj.data
+    co = _coords(obj)
+    centre = co[:, 1].mean()
+    depth = max(centre - co[:, 1].min(), 1e-6)
+    front = np.clip((centre - co[:, 1]) / depth, 0.0, 1.0)  # 0 at the sides .. 1 at the front
+    sel = front > 0.3
+    x, z = co[sel, 0], co[sel, 2]
+    basis = np.stack([np.ones_like(x), x, z, x * x, z * z, x * z], axis=1)
+    coef = np.linalg.lstsq(basis, co[sel, 1], rcond=None)[0]
+    # second pass without the points well in front of the first fit (breasts): the torso alone
+    torso = (co[sel, 1] - basis @ coef) > -FLATTEN_BUMP
+    coef = np.linalg.lstsq(basis[torso], co[sel, 1][torso], rcond=None)[0]
+    xa, za = co[:, 0], co[:, 2]
+    fit = np.stack([np.ones_like(xa), xa, za, xa * xa, za * za, xa * za], axis=1) @ coef
+    ahead = co[sel, 1] - fit[sel]  # negative: in front of the fit
+    envelope = fit + float(np.percentile(ahead, 3))  # encloses all but the outermost tips
+    weight = amount * np.sin(front * np.pi / 2)  # sides keep their shape
+    co[:, 1] = np.where(front > 0, co[:, 1] + weight * (envelope - co[:, 1]), co[:, 1])
+    mesh.vertices.foreach_set("co", co.ravel())
+    mesh.update()
+
+
+def _smooth_shape(obj: bpy.types.Object, iterations: int) -> None:
+    """Taubin smoothing (shrink-free): cloth folds become a smooth shell, ragged open borders
+    become round outlines (smoothed along the border)."""
+    mesh = obj.data
+    co = _coords(obj)
+    edges = np.array([e.vertices[:] for e in mesh.edges], dtype=np.int64)
+    if not len(edges):
+        return
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    border = np.array([v.is_boundary for v in bm.verts])
+    border_edges = (
+        np.array([e.verts[0].index for e in bm.edges if e.is_boundary]),
+        np.array([e.verts[1].index for e in bm.edges if e.is_boundary]),
+    )
+    bm.free()
+
+    def laplace(pairs: tuple[np.ndarray, np.ndarray], points: np.ndarray) -> np.ndarray:
+        a, b = pairs
+        acc = np.zeros_like(points)
+        cnt = np.zeros(len(points))
+        np.add.at(acc, a, points[b])
+        np.add.at(acc, b, points[a])
+        np.add.at(cnt, a, 1)
+        np.add.at(cnt, b, 1)
+        return np.where(cnt[:, None] > 0, acc / np.maximum(cnt, 1)[:, None] - points, 0.0)
+
+    inner = (edges[:, 0], edges[:, 1])
+    for _ in range(iterations):
+        for factor in (0.5, -0.53):
+            delta = laplace(inner, co)
+            # open borders: smoothed along the border only (round outlines)
+            delta[border] = laplace(border_edges, co)[border] if len(border_edges[0]) else 0.0
+            co = co + factor * delta
+    mesh.vertices.foreach_set("co", co.ravel())
+    mesh.update()
+
+
+def _inside_share(obj: bpy.types.Object) -> np.ndarray:
+    """Per vertex 0 at the open border .. 1 at the point farthest from it (smooth falloff)."""
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    border = np.array([v.is_boundary for v in bm.verts])
+    bm.free()
+    co = _coords(obj)
+    if not border.any():
+        return np.ones(len(co))
+    dist = np.linalg.norm(co[:, None, :] - co[border][None, :, :], axis=2).min(axis=1)
+    share = dist / max(float(dist.max()), 1e-9)
+    return np.sin(share * np.pi / 2)  # rises quickly from the border, flat in the middle
+
+
+def _add_rim(obj: bpy.types.Object, depth: float) -> None:
+    """Own geometry: the open border folded inwards by `depth` – a plate gets a visible edge
+    (thickness) instead of a paper-thin outline."""
+    mesh = obj.data
+    mesh.update()
+    normals = {v.index: np.array(v.normal) for v in mesh.vertices}
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.verts.ensure_lookup_table()
+    rim = [e for e in bm.edges if e.is_boundary]
+    if not rim:
+        bm.free()
+        return
+    origin = {v: v.index for e in rim for v in e.verts}
+    new = bmesh.ops.extrude_edge_only(bm, edges=rim)["geom"]
+    new_verts = [g for g in new if isinstance(g, bmesh.types.BMVert)]
+    for v in new_verts:  # each new vertex sits on its border vertex: find it by position
+        src = min(origin, key=lambda o: (o.co - v.co).length_squared)
+        n = normals[origin[src]]
+        v.co.x -= n[0] * depth
+        v.co.y -= n[1] * depth
+        v.co.z -= n[2] * depth
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
+
+
+def _add_brim(obj: bpy.types.Object, width: float) -> None:
+    """Own geometry: a brim around the open rim (kettle helmet), sloping slightly down."""
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    rim = [e for e in bm.edges if e.is_boundary]
+    if not rim:
+        bm.free()
+        raise SystemExit(f"{obj.name}: brim needs an open rim (use depth)")
+    centre = np.mean([np.array(v.co) for v in bm.verts], axis=0)
+    new = bmesh.ops.extrude_edge_only(bm, edges=rim)["geom"]
+    for v in [g for g in new if isinstance(g, bmesh.types.BMVert)]:
+        out = np.array(v.co) - centre
+        out[2] = 0.0
+        out /= max(np.linalg.norm(out), 1e-9)
+        v.co.x += out[0] * width
+        v.co.y += out[1] * width
+        v.co.z -= 0.35 * width
+    bm.to_mesh(mesh)
+    bm.free()
+
+
+def _limit_weights(obj: bpy.types.Object, prefixes: tuple[str, ...]) -> None:
+    """Plates: weights only on the bones with these prefixes (renormalised; a vertex without any
+    keeps the first such bone of the piece) – they bend like a stiff shell, not like cloth."""
+    mesh = obj.data
+    allowed = [g for g in obj.vertex_groups if g.name.startswith(prefixes)]
+    if not allowed:
+        raise SystemExit(f"{obj.name}: no vertex group matches bones {prefixes}")
+    keep = {g.index for g in allowed}
+    fallback = allowed[0]
+    for v in mesh.vertices:
+        weights = {g.group: g.weight for g in v.groups if g.group in keep and g.weight > 0}
+        total = sum(weights.values())
+        for g in list(v.groups):
+            obj.vertex_groups[g.group].remove([v.index])
+        if total <= 0:
+            fallback.add([v.index], 1.0, "REPLACE")
+            continue
+        for gi, w in weights.items():
+            obj.vertex_groups[gi].add([v.index], w / total, "REPLACE")
 
 
 def _add_nasal(obj: bpy.types.Object, width: float, length: float) -> None:
@@ -861,7 +1041,8 @@ def main() -> None:
             stem_of[o.name] = o["gothar_derive"]
             d = next(d for d in human.derive if d.name == o["gothar_derive"])
             characters = args.out_dir.resolve().parent.parent
-            _derive(o, d, _head_points(characters, d.heads) if d.heads else None)
+            joints = {b.name: np.array(ref.matrix_world @ b.head_local) for b in ref.data.bones}
+            _derive(o, d, _head_points(characters, d.heads) if d.heads else None, joints)
 
     # only the parts the recipe exports count (a head recipe drops its body and vice versa)
     def part_of(o: bpy.types.Object) -> str:

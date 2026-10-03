@@ -301,13 +301,28 @@ eview3k-shoulders`):** Die frühere Falte
     so ist das Zeichen der Quelle auf der Brust des Kettenhemds entfernt (Entscheidung Projektinhaber 2026-10-03),
     reproduzierbar bei jedem Neubau.
   - Mittlere Figur ≈ 15–16 k, leichte ≈ 16–17 k Dreiecke (Testfiguren `test_armor_{light,medium}_{m,f}`, nur zur
-    Prüfung – wer was trägt, entscheidet der Projektinhaber). Schwere Rüstung und Metall-Karten folgen später.
+    Prüfung – wer was trägt, entscheidet der Projektinhaber).
+  - **schwer (F3l, Entscheidung Projektinhaber 2026-10-03):** Gothic-Richtung – die mittlere Linie plus Platten,
+    kein voller Harnisch; dunkles, leicht rostiges Eisen (ambientCG „Metal 021“, wie die Eisenhaube). Alle Platten
+    sind **eigene Teile**: `breastplate` (eigene Schale aus der Rumpfhaut des Grundkörpers, `from = "basemesh"`,
+    `keep = ["spine"]`, stark geglättet, 3,5 cm darüber – über dem Kettenhemd – mit nach innen umgeschlagenem Rand
+    `rim` als sichtbare Kante; nachgebessert auf Wunsch des Projektinhabers: keine Stoff-Falten mehr; bei Frauen
+    **neutrale Form** – `flatten = 1.0` zieht die Front an eine glatte Hülle des Rumpfes, kein anatomischer
+    Harnisch), `pauldrons`
+    (Schale aus der Schulterhaut um die Schultergelenke, gewölbt `bulge`, mit Rand, steif auf `clavicle`/`upperarm`),
+    `greaves` (Schaft der gewickelten Stiefel, steif auf `calf`), `gauntlets` (die Handschuhe in Eisen); dazu
+    `kettle_helm` im Kopf-Kit. Werkzeug: `keep`, `near`/`radius`, `smooth` (Taubin-Glättung ohne Schrumpfen,
+    offene Ränder entlang des Randes – Stoff-Falten werden Platten, Ränder rund), `bones` (Gewichte nur auf diese
+    Knochen), `brim` (eigene Krempe), `bulge` (Wölbung zur Mitte), `rim` (umgeschlagener Rand), `flatten` (neutrale Front). Schwere Figur ≈ 16–17 k Dreiecke; in Bewegung mit Falschfarben geprüft
+    (Platten gelb, Kettenhemd türkis). Der Renderer kennt bewusst kein Metallic/Roughness – der Metall-Look kommt
+    aus der Textur. Testfiguren `test_armor_heavy_{m,f}`.
 - **Kopfbedeckungen (F3h):** Rezepte `humans/headgear_<m|f>_<statur>` → `parts/headgear_<…>/<stück>.glb`, wie die
   Rüstung **pro Statur angepasst, nicht pro Kopf**: Die Stücke passen auf jeden Kopf desselben Geschlechts (in
   Renderings von vorn, seitlich und hinten geprüft), Kopfwechsel bleiben frei. Getragene Stücke blenden das Haar aus
   (`[hides]` → `hides` in §6.2); der Bart bleibt.
   - `hood`: CC0-Kapuze (MakeHuman „Suits 02“, Donitz) ohne ihren verdeckten Innenteil bis zur Brust (`cut`)
-  - `leather_cap`, `iron_cap`, `nasal_helmet`: **eigene Geometrie** – eine Kuppel (`dome`) um den Schädel des
+  - `leather_cap`, `iron_cap`, `nasal_helmet`, `kettle_helm` (F3l: tiefer, mit Krempe `brim`): **eigene Geometrie** –
+    eine Kuppel (`dome`) um den Schädel des
     Grundkörpers (`from = "basemesh"`, Breite/Tiefe aus einem Band über den Ohren, 12 cm hoch, vergrößert bis
     alle Schädelpunkte innen liegen), geschnitten von einer nach vorn ansteigenden Ebene (`depth`, `tilt`), um
     `offset` abgesetzt; der Nasal (`nasal = [breite, länge]`) ist ein eigener Steg vom vorderen Rand über den
