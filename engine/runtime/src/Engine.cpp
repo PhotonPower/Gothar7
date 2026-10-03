@@ -1132,7 +1132,7 @@ void Engine::performWorldChange()
 
 void Engine::releaseUnusedModels()
 {
-    std::set<const LoadedModel*> used;
+    std::set<const LoadedModel*> used{m_playerModel}; // the player figure is drawn but no instance
     for (const SceneInstance& instance : m_instances)
     {
         used.insert(instance.model);

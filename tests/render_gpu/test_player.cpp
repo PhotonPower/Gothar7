@@ -131,6 +131,8 @@ TEST_CASE("Player GPU: walking into a level change trigger takes the player to t
         CHECK(engine.runFrame());
     }
     CHECK(engine.worldPath() == "testworld/cave.g7world");
+    // The figure is no instance of a world: the level change must not release it (it was, see #99).
+    CHECK(engine.model("characters/figures/placeholder_mannequin.glb") != nullptr);
     // A new player on the cave's start point; the override still holds, so stop first.
     engine.setPlayerInputOverride(gameplay::MoveInput{});
     REQUIRE(engine.player() != nullptr);

@@ -267,6 +267,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 ## M17 – Atmosphäre, Performance, Release → Meilenstein D
 - [ ] Wetter: Regen (Partikel + nasse Oberflächen), Gewitter, Wind für Vegetation
 - [ ] Wasser-Rendering (Reflexion, Brechung light), Unterwasser-Effekt
+- [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
 - [ ] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional
 - [ ] Vegetation: Instancing, Wind-Animation, Grasfelder
 - [ ] Job-System, Multithreading für Animation/KI/Culling

@@ -447,3 +447,10 @@ public:
 
 ## Offene Fragen
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.
+- **Spiegelnde Fenster** (Wunsch Projektinhaber, „Raytracing“; M17, nicht jetzt). Optionen:
+  - **Reflexions-Proben bzw. Cubemaps je Zone** (vorberechnet oder selten aktualisiert, mit Parallaxen-Korrektur
+    für Räume/Straßenzüge): günstig, auf jeder Hardware.
+  - **Screen-Space-Reflections:** dynamisch, aber nur was auf dem Bild ist, Lücken am Rand; gut in Kombination mit
+    Proben als Rückfall.
+  - **Echtes Raytracing** nur mit dem optionalen Vulkan-Backend (eigene ADR); OpenGL bietet kein Hardware-Raytracing.
+  - Dazu ein Material-Merkmal „spiegelnd“ (Glas) in den Modellen der Welt-Spur.
