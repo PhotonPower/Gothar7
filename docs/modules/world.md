@@ -85,11 +85,13 @@ daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vo
 **Version 1 – verbindlich (umgesetzt in `world/WorldFile.hpp`, ADR 0017):**
 - Pflicht: `version` (= 1; andere Versionen werden abgelehnt). Optional: `name`, `nextVobId` (wird beim Lesen auf
   mindestens max(id) + 1 angehoben), `staticMeshes` (VFS-Pfade), `vobs`, `waynet`, `zones`.
-- Vob: `id` (Pflicht, ≥ 1, eindeutig), `type` = `empty` (Gruppe, Vorgabe) | `mesh` | `light`, `name`, `parent` (ID; Eltern dürfen
+- Vob: `id` (Pflicht, ≥ 1, eindeutig), `type` = `empty` (Gruppe, Vorgabe) | `mesh` | `light` | `start` | `sound` |
+  `trigger` | `mob` (unten), `name`, `parent` (ID; Eltern dürfen
   in der Datei nach den Kindern stehen), `pos` [x,y,z] (Meter, relativ zum Elternteil), `rot` Quaternion **[x,y,z,w]**,
   `scale` [x,y,z] (Vorgabe 1). `mesh`-Vobs: `mesh` (VFS-Pfad ab Wurzel, `.g7mesh`; ein `.glb`-Pfad lädt die gekochte
   `.g7mesh`, wenn vorhanden). `light`-Vobs: `components.light` mit `color` (linear), `range` (> 0), `intensity` (Vorgabe 3),
   `flicker` (0–1, Vorgabe 0).
+- Weitere Vob-Typen (M4, Erweiterung von v1 nach dem Muster `components`, Abschnitt „Vob-Typen“ unten).
 - `waynet`/`zones` werden bis zu ihren Systemen unverändert gelesen und zurückgeschrieben. Unbekannte Schlüssel
   werden ignoriert (nicht zurückgeschrieben).
 - **Schreiben** ist stabil: Kopf-Schlüssel je eine Zeile, dann **ein Vob pro Zeile** nach `id` sortiert, Zahlen auf
@@ -103,10 +105,49 @@ std::string writeWorldFile(const WorldFile&);                                   
 Result<void> spawnWorld(Scene&, const WorldFile&);  WorldFile captureWorld(const Scene&, std::string_view name);
 // Komponenten: MeshRef { std::string path; }, LightSource { Vec3 color; f32 range, intensity, flicker; }
 ```
+- **Engine (Vob-Typen):** `--start=<name>` bzw. der Startpunkt mit der kleinsten id setzt die Kamera; Trigger melden
+  die Kamera (Log `trigger enter TRG_… -> FUNKTION`, ab M7 Lua); Debug-Draw (F2): Startpunkte grün mit Blickpfeil,
+  Trigger blau (rot, solange die Kamera darin ist), Sound-Reichweite violett, Mob-Fokuspunkt mit Definition.
+  Testwelt: START_LAGER, SND_CAMPFIRE, TRG_CAMP_GATE, Mob STOOL_CAMPFIRE.
 - **Engine:** `--world=<vfs-pfad>` lädt eine Welt (Mesh-Vobs werden gerendert, Licht-Vobs zu Punktlichtern, bis zum
   Gelände eine Bodenplatte unter der Welt), `--save-world=<datei>` speichert die geladene Welt oder Testszene.
-  Testwelt: `assets/source/testworld/camp.g7world` (das Lager der M2-Testszene, 169 Vobs).
+  Testwelt: `assets/source/testworld/camp.g7world` (das Lager der M2-Testszene, 172 Vobs).
 - Eine gekochte Binärvariante folgt bei Bedarf (große Welten); das Textformat bleibt.
+
+## Vob-Typen (v1, M4)
+Für alle Typen gilt dieselbe Transform-Regel: `pos`/`rot`/`scale` relativ zum `parent`, ohne `parent` also
+Weltkoordinaten. Namen sind Bezeichner (Gothic-Konvention, GROSS_MIT_UNTERSTRICH), keine Anzeigetexte – sichtbare
+Texte kommen aus Inhalt/Definitionen (lokalisiert, M14). Konvention der Engine: rechtshändig, +Y oben, **−Z vorn**.
+
+| Typ | Komponente (`components.…`) | Bedeutung |
+|---|---|---|
+| `start` | – | Startpunkt; `name` Pflicht und eindeutig (ohne Groß-/Kleinschreibung), sonst Ladefehler. `pos` = Füße, die Kamera steht **1,7 m** darüber (`kStartEyeHeight`), volle `rot`; die Spielfigur (M5) nimmt nur das Gieren. |
+| `sound` | `sound`: `sound` (Pflicht, Name einer Sound-Definition), `range` m (> 0, Vorgabe 20), `volume` 0…1 (Vorgabe 1), `mode` `loop`|`random` (Vorgabe loop), `delay` [min, max] s (random; Vorgabe [5, 15]) | Geräuschquelle (wie zCVobSound); bis zur Audio-Phase nur Daten + Debug-Draw. |
+| `trigger` | `trigger`: `shape` `box` (`halfExtents` [x,y,z] > 0, Vorgabe 1) | `sphere` (`radius` > 0, Vorgabe 1), `onEnter`/`onLeave` (Skriptfunktionsnamen, optional), `filter` `player`|`npc`|`any` (Vorgabe player), `once` (Vorgabe false), `target` (**reserviert**: Vob-ID oder Name, gelesen/geschrieben, noch ohne Wirkung) | Volumen, das Betreten/Verlassen meldet. Box dreht und skaliert mit dem Vob, Kugel: Radius × größte Skalierung. |
+| `mob` | `mob`: `definition` (Pflicht, Name der Mob-Definition, M8) + `mesh` wie bei `mesh` | Interaktives Objekt (Bett, Truhe, Tür); bis M8 wie ein Mesh gezeichnet. Fokusname kommt aus der Definition. |
+
+Beispiel (Leonberg, Ursprung = Marktbrunnen, Gelände dort y ≈ 0):
+```json
+{"id":1,"type":"start","name":"START_MARKTPLATZ","pos":[0,0,8],"rot":[0,0,0,1]}
+{"id":2,"type":"start","name":"START_UEBERSICHT","pos":[0,40,60],"rot":[-0.258819,0,0,0.965926]}
+```
+- START_MARKTPLATZ: Füße 8 m südlich des Brunnens, Kamera bei (0, 1.7, 8), Blick nach Norden (−Z, Identität).
+- START_UEBERSICHT: Kamera bei (0, 41.7, 60), um 30° nach unten geneigt: Drehung um +X um −30°,
+  q = (sin(−15°), 0, 0, cos(15°)) = (−0.258819, 0, 0, 0.965926).
+- Auswahl: `--start=<name>` (Groß-/Kleinschreibung egal; unbekannter Name = Fehler mit Liste), sonst der Startpunkt
+  mit der **kleinsten id**. Ohne Startpunkt bleibt die bisherige Übersichtskamera.
+
+```cpp
+struct StartPoint {}; struct SoundEmitter { sound, range, volume, mode, delay }; struct MobRef { definition };
+struct TriggerVolume { shape, halfExtents, radius, onEnter, onLeave, filter, once, targetId, targetName };
+Result<entt::entity> findStartPoint(const Scene&, std::string_view name = {});          // StartPoints.hpp
+class TriggerSystem { void setCallback(Callback); std::vector<TriggerEvent> update(const Scene&, span<const TriggerProbe>);
+                      bool isInside(VobId trigger, VobId who) const; void reset(); };  // Triggers.hpp
+```
+- `TriggerSystem::update` prüft Proben (Spieler/NPC mit `VobId`, Position; in M4 die Kamera) gegen alle Trigger und
+  meldet Änderungen **sortiert nach Trigger-ID, dann Proben-ID, Leave vor Enter** – deterministisch für Tests und
+  Skripte. Eine fehlende Probe hat alle Trigger verlassen. `once`: nur das erste Update mit Eintritt meldet (alle
+  Proben darin), danach nichts mehr bis `reset()`. `world` ruft keine Skripte: die Engine registriert den Callback.
 
 ## Gelände – `terrain`-Block (v1.x, Vertrag mit welt)
 Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig). Mit welt abgestimmt (passt zu
