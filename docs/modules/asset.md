@@ -195,6 +195,12 @@ public:
 - **Threads:** `load`, `update`, `waitAll`, `registerLoader` und Handle-Zugriffe gehören in den Hauptthread.
   Lader laufen auf Workern und nutzen nur ihren `LoadContext`. Hochladen auf die Grafikkarte bleibt in `render`
   (Hauptthread mit GL-Kontext). Das `Vfs` muss den Manager überleben.
+- **Offener Punkt – ungeklärter Hänger (seit 2026-10-03):** Ein lokaler Gesamtlauf (Format, Build, ctest, Smoke-Test,
+  `nodeps`) hing einmal über 30 min; einzeln liefen alle Schritte in Sekunden. Kurz zuvor wurde ein Wettlauf im
+  `AssetManager` gefunden (#65: Worker hielt seinen Job nach der Fertigmeldung). Ein Deadlock in Worker/`waitAll`
+  ist nicht ausgeschlossen. Seitdem bricht ctest jede Suite nach 300 s ab (GPU 900 s; `G7_TEST_TIMEOUT`). Tritt es
+  wieder auf: **Stacks aller Threads sichern** (Visual Studio „Anhalten“ bzw. `procdump -ma`, unter Linux
+  `gdb -p <pid> -batch -ex "thread apply all bt"`) und hier eintragen.
 
 ### Hot-Reload (umgesetzt)
 - **`reload(path)`** lädt alle gecachten Typen eines Pfads über die Worker neu. Erst `update()` tauscht die Daten aus:

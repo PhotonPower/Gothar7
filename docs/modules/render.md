@@ -361,6 +361,19 @@ Gothic lebt von Stimmung, nicht Realismus: starker **Distanznebel** passend zur 
 warme Punktlichter (Fackeln, Feuer) mit Flackern, dunkle Nächte, farbige Tageszeiten.
 Wichtig ist ein **zeitabhängiges Farbschema** (Himmel, Nebel, Ambient, Sonne) als Daten-Kurve.
 
+## Leistungsbudgets (verbindlich für Inhalte)
+Mit den Inhalts-Spuren abgestimmt; Messungen auf RTX 3080 Laptop (Release, 1600×900, Schatten an), Ziel bleibt
+spielbar auf Intel UHD. Änderungen nur nach Absprache (`docs/coordination.md`).
+
+| Bereich | Budget | Spur / Vertrag |
+|---|---|---|
+| Figuren-Texturen gesamt | **≤ 512 MB VRAM** (BC7/BC5, mit Mips); je NPC ≈ 4–6 MB ohne geteilte Haut | figuren, `characters-pipeline.md` §2.3 |
+| Figuren-Texturgrößen | Haut ≤ 2048², Kleidung und Haare ≤ 1024², Augen/Brauen/Wimpern ≤ 256², Normal-Map ≤ Basisfarbe, Zweierpotenzen; geteilte Texturen als externe Dateien (sonst kein Teilen) | figuren |
+| Figuren-Geometrie | lod0 ≤ **20 000** Dreiecke je Figur (Körper+Kleidung 8–15 k, Kopf 3–5 k), lod1 ≈ 50 %, lod2 ≈ 20 % | figuren, §2.2 (LOD-Vertrag) |
+| Fachwerk-Häuser (W5) | ≤ **2 000** Dreiecke je Haus, Kern ≤ 2 Mio.; 5 Materialien mit gleichen Werten in allen Häusern; Balken als einfache Quader, keine doppelten Flächen | welt |
+| Gelände | Heightmap bis 2000×2000 Samples (Leonberg: 667 FPS), bis 8 Splat-Schichten | welt, `world.md` „Gelände“ |
+| Vobs je Welt | 5400 Einzel-Vobs mit je eigenem Modell ≈ 10 ms je Frame (nach #65); mehr erst mit Teil B (Multi-Draw, Distanz-Culling) | welt |
+
 ## Geplante API (Ausschnitt)
 ```cpp
 namespace g7::render {

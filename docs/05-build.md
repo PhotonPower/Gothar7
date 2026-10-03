@@ -67,6 +67,8 @@ ctest --preset debug            # Unit-Tests
 Unter Windows die Befehle in der **„x64 Native Tools Command Prompt for VS 2022“** ausführen
 (damit Ninja den MSVC-Compiler findet) – oder den Ordner direkt in Visual Studio / CLion / VS Code
 (CMake Tools) öffnen; die Presets werden erkannt.
+ctest bricht jede Test-Suite nach 300 s ab (GPU-Suite 900 s), damit ein hängender Test die Ausführung rot macht
+statt sie zu blockieren; anpassbar mit `-DG7_TEST_TIMEOUT=<sekunden>`.
 
 Ohne vcpkg (nur Kern, ohne Tests): `cmake --preset nodeps && cmake --build --preset nodeps` – ohne glad,
 das Spiel dort mit `--no-render` starten.
