@@ -7,6 +7,7 @@
 #include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
 #include <g7/render/ShaderLibrary.hpp>
+#include <g7/render/SkinnedMesh.hpp>
 #include <g7/render/TextureUpload.hpp>
 
 #include <map>
@@ -289,6 +290,70 @@ Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders
         renderer.m_multiShadowPipelines[i] = std::move(pipeline).value();
     }
 
+    // Skinned variants (M6): the same shaders with SKINNED, the SkinnedMesh layout, bones in block 2.
+    auto skinned = shaders.load("mesh_skinned", {"mesh.vert", "mesh.frag", {"SKINNED"}});
+    auto skinnedAlpha =
+        shaders.load("mesh_alpha_test_skinned", {"mesh.vert", "mesh.frag", {"ALPHA_TEST", "SKINNED"}});
+    auto skinnedShadow = shaders.load("shadow_skinned", {"shadow.vert", "shadow.frag", {"SKINNED"}});
+    auto skinnedShadowAlpha =
+        shaders.load("shadow_alpha_test_skinned", {"shadow.vert", "shadow.frag", {"ALPHA_TEST", "SKINNED"}});
+    if (!skinned || !skinnedAlpha || !skinnedShadow || !skinnedShadowAlpha)
+    {
+        return !skinned         ? skinned.error()
+               : !skinnedAlpha  ? skinnedAlpha.error()
+               : !skinnedShadow ? skinnedShadow.error()
+                                : skinnedShadowAlpha.error();
+    }
+    renderer.m_skinnedProgram = skinned.value();
+    renderer.m_skinnedAlphaTestProgram = skinnedAlpha.value();
+    renderer.m_skinnedShadowProgram = skinnedShadow.value();
+    renderer.m_skinnedShadowAlphaTestProgram = skinnedShadowAlpha.value();
+    for (u32 variant = 0; variant < VariantCount; ++variant)
+    {
+        for (u32 doubleSided = 0; doubleSided < 2; ++doubleSided)
+        {
+            rhi::PipelineDesc desc;
+            desc.program =
+                variant == AlphaTest ? renderer.m_skinnedAlphaTestProgram : renderer.m_skinnedProgram;
+            desc.attributes = SkinnedMesh::vertexLayout();
+            desc.vertexStride = SkinnedMesh::kVertexStride;
+            desc.cull = doubleSided ? rhi::CullMode::None : rhi::CullMode::Back;
+            if (variant == Blend)
+            {
+                desc.blend = rhi::BlendMode::Alpha;
+                desc.depthWrite = false;
+            }
+            auto pipeline = device.createPipeline(desc);
+            if (!pipeline)
+            {
+                return pipeline.error();
+            }
+            renderer.m_skinnedPipelines[variant * 2 + doubleSided] = std::move(pipeline).value();
+        }
+    }
+    for (usize i = 0; i < renderer.m_skinnedShadowPipelines.size(); ++i)
+    {
+        rhi::PipelineDesc desc;
+        desc.program = i == 0 ? renderer.m_skinnedShadowProgram : renderer.m_skinnedShadowAlphaTestProgram;
+        desc.attributes = SkinnedMesh::vertexLayout();
+        desc.vertexStride = SkinnedMesh::kVertexStride;
+        desc.cull = rhi::CullMode::None;
+        desc.depthCompare = rhi::CompareOp::LessEqual;
+        desc.depthBias = {shadows.depthBias, shadows.slopeBias};
+        auto pipeline = device.createPipeline(desc);
+        if (!pipeline)
+        {
+            return pipeline.error();
+        }
+        renderer.m_skinnedShadowPipelines[i] = std::move(pipeline).value();
+    }
+    auto bones = device.createBuffer({asset::kMaxBones * sizeof(Mat4), rhi::BufferUsage::Dynamic, {}});
+    if (!bones)
+    {
+        return bones.error();
+    }
+    renderer.m_bonesBuffer = std::move(bones).value();
+
     // Neutral textures shared by the MaterialSets made with defaults().
     auto white = createSolidTexture(device, 255, 255, 255, 255, true);
     auto flatNormal = createSolidTexture(device, 128, 128, 255, 255, false);
@@ -397,6 +462,93 @@ void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& mat
         }
     }
 }
+void MeshRenderer::uploadBones(Device& device, std::span<const Mat4> bones)
+{
+    const usize count = std::min<usize>(bones.size(), asset::kMaxBones);
+    (void)m_bonesBuffer.update(0, std::span(reinterpret_cast<const u8*>(bones.data()), count * sizeof(Mat4)));
+    device.bindUniformBuffer(2, m_bonesBuffer);
+}
+
+void MeshRenderer::drawSkinned(Device& device, const SkinnedMesh& mesh, const MaterialSet& materials,
+                               const Mat4& model, std::span<const Mat4> bones, const Camera& camera)
+{
+    uploadBones(device, bones);
+    device.bindUniformBuffer(0, m_lightingBuffer);
+    if (m_shadowMap)
+    {
+        device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
+    }
+    m_selected.clear();
+    if (m_lights)
+    {
+        m_lights->selectFor(mesh.bounds().transformed(model), m_selected);
+    }
+    std::array<i32, LightList::kMaxPerObject> indices{};
+    for (usize i = 0; i < m_selected.size(); ++i)
+    {
+        indices[i] = static_cast<i32>(m_selected[i]);
+    }
+    for (rhi::ShaderProgram* program : {m_skinnedProgram, m_skinnedAlphaTestProgram})
+    {
+        program->setUniform("uViewProjection", camera.viewProjection());
+        program->setUniform("uModel", model);
+        program->setUniform("uCameraPosition", camera.transform.position);
+        program->setUniform("uLightIndices", std::span<const i32>(indices));
+        program->setUniform("uLightCount", static_cast<i32>(m_selected.size()));
+    }
+    const auto submeshes = mesh.submeshes();
+    for (const bool translucentPass : {false, true})
+    {
+        for (usize i = 0; i < submeshes.size(); ++i)
+        {
+            const Material& material = materials[submeshes[i].material];
+            if ((material.alphaMode == asset::AlphaMode::Blend) != translucentPass)
+            {
+                continue;
+            }
+            const Variant variant = material.alphaMode == asset::AlphaMode::Mask    ? AlphaTest
+                                    : material.alphaMode == asset::AlphaMode::Blend ? Blend
+                                                                                    : Opaque;
+            rhi::ShaderProgram* program = variant == AlphaTest ? m_skinnedAlphaTestProgram : m_skinnedProgram;
+            device.bindPipeline(
+                m_skinnedPipelines[static_cast<usize>(variant) * 2 + (material.doubleSided ? 1 : 0)]);
+            mesh.bind(device);
+            bindMaterial(*program, device, material);
+            mesh.draw(device, i);
+        }
+    }
+}
+
+void MeshRenderer::drawShadowSkinned(Device& device, const SkinnedMesh& mesh, const MaterialSet& materials,
+                                     const Mat4& model, std::span<const Mat4> bones, const Cascade& cascade)
+{
+    uploadBones(device, bones);
+    for (rhi::ShaderProgram* program : {m_skinnedShadowProgram, m_skinnedShadowAlphaTestProgram})
+    {
+        program->setUniform("uViewProjection", cascade.viewProjection);
+        program->setUniform("uModel", model);
+    }
+    const auto submeshes = mesh.submeshes();
+    for (usize i = 0; i < submeshes.size(); ++i)
+    {
+        const Material& material = materials[submeshes[i].material];
+        if (material.alphaMode == asset::AlphaMode::Blend)
+        {
+            continue;
+        }
+        const bool alphaTest = material.alphaMode == asset::AlphaMode::Mask;
+        device.bindPipeline(m_skinnedShadowPipelines[alphaTest ? 1 : 0]);
+        mesh.bind(device);
+        if (alphaTest)
+        {
+            m_skinnedShadowAlphaTestProgram->setUniform("uBaseColor", material.baseColorFactor);
+            m_skinnedShadowAlphaTestProgram->setUniform("uAlphaCutoff", material.alphaCutoff);
+            device.bindTexture(0, *material.baseColor, m_sampler);
+        }
+        mesh.draw(device, i);
+    }
+}
+
 void MeshRenderer::drawShadow(Device& device, const Mesh& mesh, const MaterialSet& materials,
                               const Mat4& model, const Cascade& cascade)
 {

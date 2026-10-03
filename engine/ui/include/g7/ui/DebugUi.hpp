@@ -12,6 +12,9 @@
 
 #include <memory>
 #include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace g7::platform
 {
@@ -51,6 +54,20 @@ struct EnginePanel
     f32 minuteSeconds = 4.0f; ///< real seconds per game minute
 };
 
+/// The player figure's animation (M6, "Animation" window): shown only.
+struct AnimationPanel
+{
+    std::string figure;
+    std::string graph;
+    std::string state;
+    std::string previousState; ///< fading out while fade < 1
+    f32 fade = 1.0f;
+    f32 progress = 0.0f;                             ///< 0..1 one-shots, cycles for loops
+    std::vector<std::pair<std::string, f32>> clips;  ///< what shapes the pose, with weights
+    std::vector<std::pair<std::string, f32>> params; ///< parameters set by the gameplay
+    std::vector<std::string> events;                 ///< last events, newest first
+};
+
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor
 /// rectangle (origin bottom-left), clamped to the framebuffer; nullopt if nothing remains.
 [[nodiscard]] std::optional<render::PixelRect> scissorFromClip(const Vec4& clip, u32 framebufferWidth,
@@ -76,6 +93,8 @@ public:
     void beginFrame(const platform::Input& input, Vec2 size, Vec2 pixels, f32 deltaSeconds);
     /// Draws the engine panel; edits are written back into `panel`.
     void enginePanel(EnginePanel& panel);
+    /// Window "Animation" with the player figure's state machine (M6).
+    void animationPanel(const AnimationPanel& panel);
     /// Draws the editor windows (tools/editor); edits and actions are written back into `panel`.
     void editorPanel(EditorPanel& panel);
     /// Finishes the frame and, with a device, draws it into the bound target (normally the window).

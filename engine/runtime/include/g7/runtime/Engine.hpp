@@ -86,6 +86,8 @@ struct PlayerLanding
     u64 tick = 0; ///< simulation tick of the landing
 };
 
+struct PlayerFigure; // the animated hero (EngineFigure.cpp)
+
 struct EngineConfig
 {
     std::string appName = "Gothar";
@@ -280,6 +282,10 @@ public:
     void requestScreenshot(fs::Path file) { m_screenshotRequest = std::move(file); }
     /// Puts the player's feet at `feet` facing `yaw` (radians, 0 = -Z), motion stopped; debugging, tests.
     void teleportPlayer(const Vec3& feet, f32 yaw);
+    /// State of the hero's animation state machine ("move", "jump" ...); empty without an animated figure.
+    [[nodiscard]] std::string_view playerAnimationState() const noexcept;
+    /// VFS path of the animated hero figure; empty without one.
+    [[nodiscard]] std::string_view playerFigurePath() const noexcept;
     /// True while the player climbs a ledge (input is ignored until it stands on top).
     [[nodiscard]] bool playerClimbing() const noexcept { return m_climb.has_value(); }
     /// Swimming or diving (gameplay::WaterMode::Land on land), and the air left under water.
@@ -319,6 +325,18 @@ private:
     void fixedUpdatePlayer(f32 seconds);
     void updatePlayerCamera(f64 realSeconds);
     void drawPlayer(bool shadow, u32 cascade);
+    void movePlayer(f32 seconds, const gameplay::MoveInput& input);
+    void startClimb(const Vec3& from, const Vec3& to, gameplay::LedgeClass ledge);
+    // Hero figure (EngineFigure.cpp)
+    [[nodiscard]] Result<std::unique_ptr<PlayerFigure>> loadFigure(std::string_view path,
+                                                                   std::string_view graphPath);
+    void loadPlayerFigure();
+    void resetPlayerAnimation();
+    void animatePlayer(f32 seconds, const gameplay::MoveInput& input);
+    [[nodiscard]] bool drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade);
+    void playerAnimationUi();
+    [[nodiscard]] f32 climbDuration(gameplay::LedgeClass ledge) const;
+    [[nodiscard]] Vec3 climbPosition() const;
     void drawPlayerDebug();
     [[nodiscard]] Vec3 triggerProbePosition() const;
     /// Models no instance uses any more (after a level change) go, with their geometry and textures.
@@ -446,7 +464,8 @@ private:
     f32 m_playerYawBefore = 0.0f;
     bool m_flyMode = false;                     // debug_fly: free camera while the player waits
     bool m_playerMouse = false;                 // relative mouse captured for the player camera
-    const LoadedModel* m_playerModel = nullptr; // placeholder figure until M6
+    const LoadedModel* m_playerModel = nullptr; // static placeholder when no animated figure loads
+    std::unique_ptr<PlayerFigure> m_figure;     // animated hero (M6)
     bool m_physicsDirty = true;                 // set together with m_cullGridDirty and on terrain changes
     std::vector<u32> m_cullCandidates;          // per pass, reused
     bool m_multiDraw = true;                    // [render] multi_draw: batches instead of one draw per mesh

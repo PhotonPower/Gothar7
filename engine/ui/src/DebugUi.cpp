@@ -508,6 +508,52 @@ void DebugUi::beginFrame(const platform::Input& input, Vec2 size, Vec2 pixels, f
     ImGui::NewFrame();
 }
 
+void DebugUi::animationPanel(const AnimationPanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    ImGui::SetNextWindowPos(ImVec2(360.0f * scale, 10.0f * scale), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(320.0f * scale, 0.0f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Animation"))
+    {
+        ImGui::End();
+        return;
+    }
+    ImGui::TextUnformatted(panel.figure.c_str());
+    ImGui::TextDisabled("%s", panel.graph.c_str());
+    ImGui::Separator();
+    ImGui::Text("state  %s", panel.state.c_str());
+    if (panel.fade < 1.0f && !panel.previousState.empty())
+    {
+        ImGui::Text("from   %s  (fade %.0f %%)", panel.previousState.c_str(), panel.fade * 100.0f);
+    }
+    ImGui::ProgressBar(panel.progress - std::floor(panel.progress), ImVec2(-1.0f, 0.0f));
+    if (ImGui::CollapsingHeader("Clips", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        for (const auto& [clip, weight] : panel.clips)
+        {
+            ImGui::ProgressBar(weight, ImVec2(60.0f * scale, 0.0f));
+            ImGui::SameLine();
+            ImGui::TextUnformatted(clip.c_str());
+        }
+    }
+    if (ImGui::CollapsingHeader("Parameters", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        for (const auto& [name, value] : panel.params)
+        {
+            ImGui::Text("%-8s %6.2f", name.c_str(), value);
+        }
+    }
+    if (ImGui::CollapsingHeader("Events", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        for (const std::string& event : panel.events)
+        {
+            ImGui::TextUnformatted(event.c_str());
+        }
+    }
+    ImGui::End();
+}
+
 void DebugUi::enginePanel(EnginePanel& panel)
 {
     ImGui::SetCurrentContext(m_impl->context);

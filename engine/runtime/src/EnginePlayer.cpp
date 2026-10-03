@@ -1,6 +1,7 @@
 // The player (M5 part C): a character on the start point, moved by the input actions with the values of
-// data/movement.toml, and the third-person camera behind it. Until animation (M6) the placeholder
-// figure is drawn as a static model.
+// data/movement.toml, and the third-person camera behind it. The animated figure: EngineFigure.cpp (M6).
+
+#include "PlayerFigure.hpp"
 
 #include <g7/core/Log.hpp>
 #include <g7/runtime/Engine.hpp>
@@ -109,7 +110,9 @@ void Engine::spawnPlayer()
     m_playerYawBefore = yaw;
     m_playerCamera.reset(m_playerFeet, yaw, m_movementSettings.camera);
     m_flyMode = false;
-    if (m_playerModel == nullptr && m_device)
+    loadPlayerFigure();
+    resetPlayerAnimation();
+    if (!m_figure && m_playerModel == nullptr && m_device)
     {
         if (auto loaded = loadModels({std::string(kPlayerModel)}); loaded)
         {
@@ -144,6 +147,7 @@ void Engine::teleportPlayer(const Vec3& feet, f32 yaw)
     m_swimmer.reset(m_movementSettings.swim); // decided again at the next step
     m_playerFeet = m_playerFeetBefore = m_player.visualFeet();
     m_playerCamera.reset(m_playerFeet, yaw, m_movementSettings.camera);
+    resetPlayerAnimation();
 }
 
 void Engine::steerPlayer(f32 yaw)
@@ -233,11 +237,17 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     m_playerInput.jump = false;
     m_playerYawBefore = m_movement.yaw();
     m_playerFeetBefore = m_playerFeet;
+    movePlayer(seconds, input);
+    animatePlayer(seconds, input);
+}
+
+void Engine::movePlayer(f32 seconds, const gameplay::MoveInput& input)
+{
     const gameplay::MovementSettings& s = m_movementSettings;
 
     if (m_climb)
     {
-        // Along the path until it stands on top; input waits (animation-driven later, M6).
+        // With the climb clip until it stands on top (root motion, else the path); input waits.
         m_climbSeconds += seconds;
         if (m_climbSeconds >= m_climb->seconds)
         {
@@ -246,7 +256,7 @@ void Engine::fixedUpdatePlayer(f32 seconds)
         }
         else
         {
-            m_player.moveTo(m_climb->at(m_climbSeconds));
+            m_player.moveTo(climbPosition());
         }
         m_playerFeet = m_climb ? m_player.feet() : m_player.visualFeet();
         return;
@@ -289,9 +299,7 @@ void Engine::fixedUpdatePlayer(f32 seconds)
             const auto kind = ledge ? gameplay::classifyLedge(ledge->height, s.climb) : std::nullopt;
             if (ledge && kind)
             {
-                m_climb =
-                    gameplay::ClimbPath{feetNow, ledge->feet, gameplay::climbSeconds(*kind, s.climb), *kind};
-                m_climbSeconds = 0.0f;
+                startClimb(feetNow, ledge->feet, *kind);
                 m_swimmer.reset(s.swim);
                 m_playerFeet = feetNow;
                 return;
@@ -313,9 +321,7 @@ void Engine::fixedUpdatePlayer(f32 seconds)
         const auto kind = ledge ? gameplay::classifyLedge(ledge->height, s.climb) : std::nullopt;
         if (ledge && kind)
         {
-            m_climb = gameplay::ClimbPath{m_player.feet(), ledge->feet,
-                                          gameplay::climbSeconds(*kind, s.climb), *kind};
-            m_climbSeconds = 0.0f;
+            startClimb(m_player.feet(), ledge->feet, *kind);
             m_movement.stop();
             G7_LOG_DEBUG("engine", "climb {:.2f} m ({})", ledge->height,
                          *kind == gameplay::LedgeClass::Low   ? "low"
@@ -325,6 +331,10 @@ void Engine::fixedUpdatePlayer(f32 seconds)
             return;
         }
         m_player.jump(gameplay::jumpSpeed(running ? s.jump.runHeight : s.jump.standHeight));
+        if (m_figure)
+        {
+            m_figure->jumped = true;
+        }
     }
     m_player.update(seconds, velocity);
     if (const auto fall = m_player.takeLanding())
@@ -376,7 +386,7 @@ void Engine::updatePlayerCamera(f64 realSeconds)
 
 void Engine::drawPlayer(bool shadow, u32 cascade)
 {
-    if (!m_player.valid() || m_playerModel == nullptr)
+    if (!m_player.valid())
     {
         return;
     }
@@ -386,6 +396,10 @@ void Engine::drawPlayer(bool shadow, u32 cascade)
     const f32 yaw = m_movement.yaw();
     const Mat4 transform =
         glm::translate(Mat4(1.0f), feet) * glm::rotate(Mat4(1.0f), yaw + glm::pi<f32>(), Vec3(0, 1, 0));
+    if (drawPlayerFigure(transform, shadow, cascade) || m_playerModel == nullptr)
+    {
+        return;
+    }
     if (shadow)
     {
         m_meshRenderer.drawShadow(*m_device, m_playerModel->mesh, m_playerModel->materials, transform,

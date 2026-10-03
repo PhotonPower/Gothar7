@@ -54,6 +54,13 @@ debug_ui = false
 # Shader-Verzeichnis, Standard: "shaders" neben der Executable. Zum Live-Bearbeiten der Quellen z. B.
 # shader_dir = "C:/dev/Gothar7/engine/render/shaders"
 
+[game]
+# Spielfigur (M6): Figur aus `cmake --build --preset debug --target g7_figures`; fehlt sie, die Gliederpuppe.
+hero = "characters/figures/farmer.glb"
+hero_graph = "data/anim/human.animgraph.toml"
+# Bewegungswerte der Spielfigur und Kamera
+movement = "data/movement.toml"
+
 [assets]
 # Ordner und Archive im virtuellen Dateisystem (docs/modules/asset.md). Höhere Priorität gewinnt.
 # dev_mounts: in Entwicklungs-Builds (CMake G7_DEV_ASSETS) assets/source (0), assets/cooked (10) und

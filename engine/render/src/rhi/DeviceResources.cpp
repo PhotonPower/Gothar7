@@ -219,7 +219,7 @@ Result<Pipeline> Device::createPipeline(const PipelineDesc& desc)
     {
         const auto format = gl::vertexFormat(attribute.format);
         glEnableVertexArrayAttrib(vao, attribute.location);
-        if (attribute.format == VertexFormat::UInt1)
+        if (attribute.format == VertexFormat::UInt1 || attribute.format == VertexFormat::UInt16x4)
         {
             glVertexArrayAttribIFormat(vao, attribute.location, format.components, format.type,
                                        attribute.offset);

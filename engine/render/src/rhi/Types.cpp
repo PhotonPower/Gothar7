@@ -70,6 +70,10 @@ u32 vertexFormatSize(VertexFormat format) noexcept
         return 16;
     case VertexFormat::UNorm8x4:
         return 4;
+    case VertexFormat::UInt1:
+        return 4;
+    case VertexFormat::UInt16x4:
+        return 8;
     }
     return 0;
 }

@@ -33,3 +33,7 @@ vcpkg-Baseline: **3.12.0** (`"version>=": "3.12.0"` in `vcpkg.json`); `nodeps` l
 - Liest der Editor später große Welten zu langsam, kommt die in `world.md` vorgesehene gekochte Binärvariante
   (`g7-cook`), ohne das Textformat zu ändern.
 - Das Format `.g7world` bleibt Vertrag mit der Welt-Spur (`docs/coordination.md`).
+
+## Nachtrag (M6)
+Zweiter Nutzer: der Autopilot `tools/walk` (`g7_walk`) liest Routen und schreibt `walk.jsonl` /
+`walk_summary.json` mit nlohmann-json, ebenfalls `PRIVATE`. Keine neue Abhängigkeit.

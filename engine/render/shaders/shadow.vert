@@ -2,6 +2,7 @@
 // Depth-only pass into a shadow cascade (uViewProjection = the cascade's light matrix).
 // MULTI_DRAW: the model matrix comes from the draw's DrawData.
 #include "common/draws.glsl"
+#include "common/skinning.glsl"
 
 layout(location = 0) in vec3 aPosition;
 layout(location = 2) in vec2 aUv;
@@ -23,5 +24,10 @@ void main()
     const mat4 model = uModel;
 #endif
     vUv = aUv;
-    gl_Position = uViewProjection * model * vec4(aPosition, 1.0);
+#ifdef SKINNED
+    const vec4 position = skinMatrix() * vec4(aPosition, 1.0);
+#else
+    const vec4 position = vec4(aPosition, 1.0);
+#endif
+    gl_Position = uViewProjection * model * position;
 }

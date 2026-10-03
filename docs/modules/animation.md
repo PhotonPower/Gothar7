@@ -69,11 +69,27 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
   ignoriert (Hinweis figuren, M6 A).
 - **Graph der Menschen** (`human.animgraph.toml`):
   - Parameter `speed` (vorwärts m/s, rückwärts negativ), `strafe`, `turn` (Drehen im Stand mit
-    `t_turn_l/r` wie Gothic, Entscheidung Projektinhaber), `air`, `fall`, `landed`/`hard`, `climb` (1/2/3),
-    `swim`, `dive`, `slide`, `sneak`.
+    `t_turn_l/r` wie Gothic, Entscheidung Projektinhaber), `jump` (Absprung, einen Schritt), `air` (s in der
+    Luft; von einer Kante gelaufen erst ab 0,25 s Sprunghaltung), `fall` (s sinkend), `landed` (Fallhöhe in m,
+    einen Schritt; Landeanimation ab 0,3 m) / `hard` (die Landung kostete LP), `climb` (1/2/3), `swim`, `dive`,
+    `slide`, `sneak`.
   - Zustände: Fortbewegung (rückwärts, Stand, gehen, rennen als Blend), schleichen, seitwärts, drehen, springen
     (aus Stand bzw. Lauf), Luft, Fall, Landungen, Klettern (3 Klassen, root motion), rutschen, schwimmen, tauchen.
-  - Teil C setzt die Parameter aus dem Gameplay.
+  - Teil C setzt die Parameter aus dem Gameplay (siehe unten).
+
+## Held in der Engine (M6 Teil C, umgesetzt)
+- Figur aus `[game] hero` (engine.toml, Vorgabe `characters/figures/farmer.glb` aus `g7_figures`); fehlt sie,
+  die Gliederpuppe `placeholder_mannequin.glb` (versioniert, gleiches Skelett). Graph aus `[game] hero_graph`
+  (Vorgabe `data/anim/human.animgraph.toml`). Gezeichnet wird LOD 0.
+- Je festem Schritt nach der Bewegung: Parameter aus der gezeichneten Bewegung (`speed`/`strafe` aus der
+  Verschiebung der Füße, gilt an Land, im Wasser und beim Rutschen gleich), dann `Animator::update`, dann die
+  Skinning-Matrizen `modelSpace(pose) · inverseBind`. Kein Interpolieren der Pose zwischen Schritten (60 Hz).
+- **Klettern:** Dauer = Länge des Kletter-Clips; die Füße folgen der aufsummierten Root Motion, getrennt nach
+  Höhe (y) und Weg nach vorn (z) auf Kantenhöhe und Standpunkt skaliert. Ohne Kletter-Clip gilt der Pfad aus M5.
+- **Debug-UI** (F1), Fenster „Animation“: Figur, Graph, Zustand, Überblendung, Fortschritt, Clips mit Gewichten,
+  Parameter, die letzten Events.
+- `Engine::playerAnimationState()` / `playerFigurePath()` für Tests (render_gpu `Player GPU`).
+- Offen (Teil D): Attachments, Rüstungs-/Kopfwechsel, Blinzeln/Lippen, Look-At, Tiere.
 
 ## Performance
 Pose-Berechnung auf CPU (später parallel), Skinning auf GPU, Animations-LOD (weit entfernte

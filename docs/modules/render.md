@@ -139,6 +139,23 @@ class Mesh { static Result<Mesh> create(Device&, const asset::MeshData&);
 - Ein Vertex-Buffer (`asset::Vertex`, Attribute 0–3: Position, Normale, UV, Tangente), ein u32-Index-Buffer.
 - Shader `mesh.vert/.frag` (siehe Materialien und Licht).
 
+### Skinned Meshes – `SkinnedMesh.hpp`, `common/skinning.glsl` (M6 Teil C)
+```cpp
+class SkinnedMesh { static Result<SkinnedMesh> create(Device&, const asset::SkinnedModelData&, u32 lod);
+                    void bind(Device&) const; void draw(Device&, usize submesh) const;
+                    usize morphCount() const; void setMorphWeights(std::span<const f32>); };
+void MeshRenderer::drawSkinned(Device&, const SkinnedMesh&, const MaterialSet&, const Mat4& model,
+                               std::span<const Mat4> bones, const Camera&);
+void MeshRenderer::drawShadowSkinned(..., std::span<const Mat4> bones, const Cascade&);
+```
+- Alle Teile einer LOD-Stufe in einem Vertex-/Index-Buffer; Vertex = `asset::Vertex` + 4 Knochenindizes (u16,
+  Attribut 5, `VertexFormat::UInt16x4` → `uvec4`) + 4 Gewichte (Attribut 6), 72 Byte.
+- Knochen: Uniform-Block 2 (`uBones[128]`, `asset::kMaxBones`), Skinning-Matrix = Modellraum-Knochen ·
+  Inverse-Bind. Shader-Varianten mit `SKINNED` (`mesh_skinned`, `mesh_alpha_test_skinned`, `shadow_skinned`, …).
+- Morph-Targets auf der CPU: geänderte Gewichte → nur der betroffene Vertex-Bereich wird hochgeladen
+  (Puffer `Dynamic`); LOD-Stufen ohne Targets ignorieren Gewichte.
+- Nicht im Multi-Draw (einzelne Draws; für viele NPCs später Instancing/Knochen-Puffer, M9).
+
 ### Texturen – `TextureUpload.hpp`
 ```cpp
 struct TextureUpload { bool srgb = true; bool mipmaps = true; };
