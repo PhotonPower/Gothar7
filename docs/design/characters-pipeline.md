@@ -382,6 +382,11 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 - **Kanäle:** Translation nur auf `root`/`pelvis`, keine Skalierung (wie §3). **Root Motion:** `s_walk`/`s_run` bewegen
   `root` vorwärts (+Z, Geschwindigkeit = Schrittlänge, Füße stehen), `t_turn_l/r` drehen `root` um +Y (links positiv);
   alle anderen Clips bleiben am Ort.
+  **Geprüft** (M6-Durchsicht der Tiere, 2026-10-03; `clipfix.py`): die Root-Geschwindigkeit von `s_walk*`/`s_run*`
+  muss der Schrittgeschwindigkeit entsprechen (Füße relativ zu `root` in der Standphase, ±0,1 m/s; `anim.slide`),
+  und Liege-/Ruheposen (`t_die*`, `s_sleep*`) dürfen das gehäutete Referenz-Mesh nicht mehr als 2 cm unter den Boden
+  bringen (`anim.ground`). `gothar-chargen repair-clips` (auch beim Export) setzt die Root-Geschwindigkeit auf die
+  Schrittlänge und hebt `pelvis` je Key gerade so weit an; `speed` in `events.toml` folgt.
 - **Events:** `footstep_front_l/r`, `footstep_back_l/r` (Vierbeiner; Zweibeiner `footstep_l/r`), `hit_start`/`hit_end`
   im Angriff, `sound:<name>`.
 - **Material/Texturen:** Rolle `fur` (≤ 1024², §2.3); Platzhalter ohne Textur.

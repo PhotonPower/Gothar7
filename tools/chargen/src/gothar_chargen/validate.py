@@ -15,6 +15,7 @@ from typing import Any
 
 import numpy as np
 
+from gothar_chargen.clipfix import check_set
 from gothar_chargen.clipspeed import clip_speeds
 from gothar_chargen.collision import CollisionError, derive_collision
 from gothar_chargen.events import SPEED_TOLERANCE, events_path_for, load_events
@@ -744,6 +745,9 @@ class _Checker:
                 self._check_monster_root(name, anim, names[name])
         self.r.stats["clips"] = len(anims)
         self._events(names)
+        if self.g.path is not None:  # feet that stand, lying poses above the ground (clipfix)
+            for code, message in check_set(self.g.path, self.g):
+                self.r.error(code, message)
 
     def _check_channels(self, clip: str, anim: dict[str, Any]) -> None:
         """Translation only on root/pelvis, no scale (keeps each figure's bone lengths)."""
