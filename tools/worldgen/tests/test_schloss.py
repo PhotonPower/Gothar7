@@ -1,8 +1,10 @@
 import json
+import math
 from pathlib import Path
 
 import numpy as np
 import pytest
+from shapely.geometry import Point, Polygon
 
 from gothar_worldgen.assemble.world import VobIds, assemble
 from gothar_worldgen.buildings.collision import body_is_closed
@@ -129,24 +131,33 @@ def test_blender_script_builds_the_same_model(tmp_path: Path):
     assert (tmp_path / "s.blend").is_file()
 
 
-def test_garden_parterre_hedges_fountain_and_splat_areas():
+def test_garden_parterre_hedges_plazas_and_splat_areas():
     g = SPEC["garden"]
     lay = geo.garden_layout(SPEC)
     nu, nv = g["beds"]
     assert len(lay["beds"]) == len(g["parts"]) * nu * nv
-    w = lay["wing"]
-    for s0, s1, t0, _t1 in lay["beds"]:  # every bed inside its parterre, paths between them
-        part = next(p for p in g["parts"] if p[0] <= s0 and s1 <= p[1])
-        assert s0 >= part[0] + g["borderM"] - 1e-9 and t0 >= g["t"][0] + g["borderM"] - 1e-9
+    for bed in lay["beds"]:  # every bed inside its parterre, paths between them
+        ss, ts = [p[0] for p in bed], [p[1] for p in bed]
+        part = next(p for p in g["parts"] if p[0] <= min(ss) and max(ss) <= p[1])
+        assert (
+            min(ss) >= part[0] + g["borderM"] - 1e-9 and min(ts) >= g["t"][0] + g["borderM"] - 1e-9
+        )
+    # round plaza in the middle of each half: no bed reaches into it, four beds are cut
+    for cs, ct in lay["centres"]:
+        cut = [b for b in lay["beds"] if len(b) == 5 and min(math.dist(p, (cs, ct)) for p in b) < 4]
+        assert len(cut) == 4
+        for bed in lay["beds"]:
+            assert Polygon(bed).distance(Point(cs, ct)) >= g["plazaR"] - 1e-6
     m = model()
-    assert len(m.faces["hedge"]) == len(lay["beds"]) * 4 * 5  # four boxes of five faces each
+    edges = sum(len(b) for b in lay["beds"])
+    assert len(m.faces["hedge"]) == edges * 5  # a box of five faces per bed edge
     hedge_y = [p[1] for f in m.faces["hedge"] for p in f]
     assert max(hedge_y) < g["ground"]["y"] + 3.0  # low hedges on the garden terrace
+    assert "fountain" not in g and not m.faces.get("water")  # the obelisk fountain replaces it
     splat = geo.garden_splat(SPEC)
     assert len(splat["gravel"]) == len(g["parts"]) and len(splat["lawn"]) == len(lay["beds"])
     item = schloss_item(SPEC, "x.glb")
     assert item["splat"] == splat
-    del w
 
 
 def test_castle_roof_has_no_moss_and_dormers_have_open_windows():

@@ -1,0 +1,52 @@
+{
+  "format": "gothar-owner-model",
+  "version": 1,
+  "key": "obeliskbrunnen",
+  "status": "festgelegt – Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Modell des Projektinhabers übernehmen, per Skript anpassen",
+  "note": "Brunnen in der Mitte des Pomeranzengartens, eigene Arbeit des Projektinhabers (Claude Design); ersetzt das einfache Becken des Schloss-Skripts",
+  "source": "obeliskbrunnen/obeliskbrunnen_quelle.glb",
+  "remove": [],
+  "decimate": {
+    "baluster": 0.04,
+    "post_ball": 0.08,
+    "garland_fruit": 0.25,
+    "mask_beard": 0.25,
+    "mask": 0.25,
+    "gilt_oval": 0.2,
+    "finial_ball": 0.15,
+    "coat_of_arms": 0.35
+  },
+  "materials": {
+    "gray_stone": "stone",
+    "water": "water"
+  },
+  "budgetTriangles": 8000,
+  "collision": [
+    {
+      "nodes": [
+        "step_lower"
+      ],
+      "shape": "prism",
+      "belowM": 1.0
+    },
+    {
+      "nodes": [
+        "step_upper"
+      ],
+      "shape": "prism",
+      "belowM": 1.0
+    },
+    {
+      "nodes": [
+        "basin"
+      ],
+      "shape": "prism"
+    },
+    {
+      "nodes": [
+        "column"
+      ],
+      "shape": "prism"
+    }
+  ]
+}

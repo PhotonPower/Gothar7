@@ -1,0 +1,51 @@
+{
+  "format": "gothar-owner-model",
+  "version": 1,
+  "key": "garten_gelaender",
+  "status": "festgelegt – Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Modell des Projektinhabers übernehmen, per Skript anpassen",
+  "note": "Geländer des Pomeranzengartens mit Eckpavillons, eigene Arbeit des Projektinhabers (Claude Design); gibt die Maße des Parterres vor (schloss.json garden)",
+  "source": "garten_gelaender/garten_gelaender_quelle.glb",
+  "remove": [],
+  "decimate": {
+    "finial_pinecone": 0.012,
+    "finial_ball": 0.1,
+    "finial_collar": 0.15,
+    "finial_neck": 0.15,
+    "pavilion_wall": 0.6
+  },
+  "thinFaces": {
+    "fence_slats": 0.6
+  },
+  "rigid": [
+    "corner_pavilion"
+  ],
+  "materials": {
+    "gray_stone": "stone"
+  },
+  "budgetTriangles": 12000,
+  "collision": [
+    {
+      "nodes": [
+        "fence_long",
+        "fence_short_inner",
+        "fence_short_outer"
+      ],
+      "shape": "box",
+      "per": "instance",
+      "belowM": 0.3
+    },
+    {
+      "nodes": [
+        "corner_pavilion"
+      ],
+      "shape": "box",
+      "per": "instance"
+    }
+  ],
+  "replaces": [
+    "DEBW_001000623WX",
+    "DEBW_001000623WY",
+    "DEBW_001000623WZ",
+    "DEBW_001000623X0"
+  ]
+}
