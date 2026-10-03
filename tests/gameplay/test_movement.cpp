@@ -255,3 +255,59 @@ damage_per_meter = 12
     CHECK_FALSE(MovementSettings::parse("[climb]\nmid_max = 2.5\n", "m.toml")); // above high_max
     CHECK_FALSE(MovementSettings::parse("[jump]\nrun_height = 0\n", "m.toml"));
 }
+
+TEST_CASE("Swimmer: in from hip deep water, floats at the top, dives, rises, air and drowning")
+{
+    const SwimSettings s;
+    Swimmer swimmer;
+    swimmer.reset(s);
+    const f32 dt = 1.0f / 60.0f;
+    MoveInput in;
+    // Knee deep (0.5 m): still land.
+    CHECK(swimmer.step(dt, -0.5f, 0.0f, 0.0f, in, s).mode == WaterMode::Land);
+    CHECK(swimmer.step(dt, 0.0f, std::nullopt, 0.0f, in, s).mode == WaterMode::Land);
+    // Deeper than the hips: swimming, pushed up towards the floating height (eyes 0.2 m above water).
+    const f32 floating = 0.2f - 1.62f;
+    auto step = swimmer.step(dt, -1.6f, 0.0f, 0.0f, in, s);
+    CHECK(step.mode == WaterMode::Swim);
+    CHECK(step.velocity.y > 0.0f);
+    step = swimmer.step(dt, floating, 0.0f, 0.0f, in, s);
+    CHECK(std::abs(step.velocity.y) < 1e-4f); // held at the top
+    in.forward = 1.0f;
+    CHECK(near(swimmer.step(dt, floating, 0.0f, 0.0f, in, s).velocity, Vec3(0, 0, -1.6f)));
+    in.walk = true;
+    CHECK(glm::length(swimmer.step(dt, floating, 0.0f, 0.0f, in, s).velocity) == doctest::Approx(0.9f));
+    in = {};
+    // Sneak dives down; jump held rises; nothing held floats up slowly.
+    in.sneak = true;
+    step = swimmer.step(dt, -3.0f, 0.0f, 0.0f, in, s);
+    CHECK(step.mode == WaterMode::Dive);
+    CHECK(step.velocity.y == doctest::Approx(-1.0f));
+    in.sneak = false;
+    in.jumpHeld = true;
+    CHECK(swimmer.step(dt, -3.0f, 0.0f, 0.0f, in, s).velocity.y == doctest::Approx(1.2f));
+    in.jumpHeld = false;
+    CHECK(swimmer.step(dt, -3.0f, 0.0f, 0.0f, in, s).velocity.y == doctest::Approx(0.5f));
+    CHECK(swimmer.step(dt, floating, 0.0f, 0.0f, in, s).mode == WaterMode::Swim); // back at the top
+
+    // Air: 30 s under water, then 10 hit points per second; back at the surface it refills in 3 s.
+    swimmer.reset(s);
+    in.sneak = true;
+    f32 damage = 0.0f;
+    for (int i = 0; i < 60 * 32; ++i) // 32 s with the eyes under water
+    {
+        damage += swimmer.step(dt, -3.0f, 0.0f, 0.0f, in, s).drownDamage;
+    }
+    CHECK(swimmer.airSeconds() == doctest::Approx(0.0f));
+    CHECK(damage == doctest::Approx(20.0f).epsilon(0.03));
+    in.sneak = false;
+    for (int i = 0; i < 60 * 3; ++i)
+    {
+        CHECK(swimmer.step(dt, floating, 0.0f, 0.0f, in, s).drownDamage == 0.0f);
+    }
+    CHECK(swimmer.airSeconds() == doctest::Approx(30.0f));
+
+    // Out at the shore only when clearly shallower (no flicker at 0.9 m).
+    CHECK(swimmer.step(dt, -0.8f, 0.0f, 0.0f, in, s).mode == WaterMode::Swim);
+    CHECK(swimmer.step(dt, -0.7f, 0.0f, 0.0f, in, s).mode == WaterMode::Land);
+}

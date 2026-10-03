@@ -17,13 +17,14 @@ namespace
 {
 using Json = nlohmann::ordered_json; // keeps key order: stable output
 
-constexpr std::array<std::pair<VobType, std::string_view>, 7> kVobTypes = {{{VobType::Empty, "empty"},
+constexpr std::array<std::pair<VobType, std::string_view>, 8> kVobTypes = {{{VobType::Empty, "empty"},
                                                                             {VobType::Mesh, "mesh"},
                                                                             {VobType::Light, "light"},
                                                                             {VobType::Start, "start"},
                                                                             {VobType::Sound, "sound"},
                                                                             {VobType::Trigger, "trigger"},
-                                                                            {VobType::Mob, "mob"}}};
+                                                                            {VobType::Mob, "mob"},
+                                                                            {VobType::Water, "water"}}};
 constexpr std::array<std::pair<SoundEmitter::Mode, std::string_view>, 2> kSoundModes = {
     {{SoundEmitter::Mode::Loop, "loop"}, {SoundEmitter::Mode::Random, "random"}}};
 constexpr std::array<std::pair<TriggerVolume::Filter, std::string_view>, 3> kTriggerFilters = {
@@ -189,6 +190,45 @@ Result<SoundEmitter> readSound(const Reader& r, const Json& v, std::string_view 
         sound.delay = Vec2(delay.value()[0], delay.value()[1]);
     }
     return sound;
+}
+
+Result<WaterVolume> readWater(const Reader& r, const Json& v, std::string_view where,
+                              const Transform& transform)
+{
+    const Json w = componentOf(v, "water");
+    const std::string at = std::format("{}.components.water", where);
+    if (!w.contains("halfExtents"))
+    {
+        return r.error(at, "needs 'halfExtents'");
+    }
+    WaterVolume water;
+    auto half = r.vec3(w, "halfExtents", at, water.halfExtents);
+    if (!half)
+    {
+        return half.error();
+    }
+    if (!(half.value().x > 0.0f && half.value().y > 0.0f && half.value().z > 0.0f))
+    {
+        return r.error(at, "'halfExtents' must be positive");
+    }
+    water.halfExtents = half.value();
+    auto kind = readText(r, w, "kind", at, false);
+    if (!kind)
+    {
+        return kind.error();
+    }
+    water.kind = std::move(kind).value();
+    // The surface is the top of the box: it must stay level.
+    const Quat& q = transform.rotation;
+    if (std::abs(q.x) > 1e-4f || std::abs(q.z) > 1e-4f)
+    {
+        return r.error(where, "water may only be turned about Y (its top is the surface)");
+    }
+    if (glm::any(glm::greaterThan(glm::abs(transform.scale - Vec3(1.0f)), Vec3(1e-5f))))
+    {
+        return r.error(where, "water is not scaled - its size is 'halfExtents'");
+    }
+    return water;
 }
 
 Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_view where)
@@ -402,6 +442,15 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             return trigger.error();
         }
         vob.trigger = std::move(trigger).value();
+    }
+    if (vob.type == VobType::Water)
+    {
+        auto water = readWater(r, v, where, vob.transform);
+        if (!water)
+        {
+            return water.error();
+        }
+        vob.water = std::move(water).value();
     }
     if (vob.type == VobType::Mob)
     {
@@ -872,6 +921,16 @@ std::string writeWorldFile(const WorldFile& world)
         if (vob->type == VobType::Mob)
         {
             v["components"]["mob"] = Json{{"definition", vob->mob.definition}};
+        }
+        if (vob->type == VobType::Water)
+        {
+            Json water = Json{{"halfExtents", numbers({vob->water.halfExtents.x, vob->water.halfExtents.y,
+                                                       vob->water.halfExtents.z})}};
+            if (!vob->water.kind.empty())
+            {
+                water["kind"] = vob->water.kind;
+            }
+            v["components"]["water"] = std::move(water);
         }
         vobs.push_back(std::move(v));
     }

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "camp",
-  "nextVobId": 193,
+  "nextVobId": 195,
   "staticMeshes": [],
   "terrain": {"version":1,"heightmap":"testworld/terrain.r16","width":257,"height":257,"cellSize":2.0,"firstSample":[-256.0,-256.0],"minY":-20.0,"maxY":60.0,"splat":{"maps":["testworld/splat0.png"],"layers":[{"name":"grass","albedo":"testworld/layer_grass.png","tile":4.0},{"name":"earth","albedo":"testworld/layer_earth.png","tile":4.0},{"name":"rock","albedo":"testworld/layer_rock.png","tile":6.0},{"name":"path","albedo":"testworld/layer_path.png","tile":3.0}]},"holes":"testworld/holes.r8"},
   "vobs": [
@@ -196,6 +196,8 @@
     {"id":189,"type":"mesh","name":"HOEHLE_STURZ","pos":[-30.5,3.0,20.0],"rot":[0.0,0.0,0.0,1.0],"scale":[4.0,4.0,8.0],"mesh":"testscene/nature/rock_largeA.glb","category":"gameplay"},
     {"id":190,"type":"mesh","name":"HOEHLE_LATERNE","pos":[-27.8,0.0,17.6],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,2.0,2.0],"mesh":"testscene/town/lantern.glb","category":"gameplay"},
     {"id":191,"type":"mesh","name":"HOEHLE_LATERNE","pos":[-27.8,0.0,22.4],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,2.0,2.0],"mesh":"testscene/town/lantern.glb","category":"gameplay"},
-    {"id":192,"type":"light","name":"HOEHLE_LICHT","pos":[-30.5,2.0,20.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.6,0.3],"range":8.0,"intensity":6.0,"flicker":0.15}}}
+    {"id":192,"type":"light","name":"HOEHLE_LICHT","pos":[-30.5,2.0,20.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.6,0.3],"range":8.0,"intensity":6.0,"flicker":0.15}}},
+    {"id":193,"type":"water","name":"WASSER_TEICH","pos":[-160.0,-8.0,-137.0],"rot":[0.0,0.0,0.0,1.0],"components":{"water":{"halfExtents":[32.0,4.0,30.0]}}},
+    {"id":194,"type":"start","name":"START_TEICH","pos":[-122.0,-1.0,-120.0],"rot":[0.0,0.70711,0.0,0.70711]}
   ]
 }

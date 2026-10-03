@@ -54,6 +54,21 @@ struct FallSettings
     f32 damagePerMeter = 10.0f; ///< hit points per metre above it (hit points come with M8)
 };
 
+struct SwimSettings
+{
+    f32 speed = 1.6f;            ///< m/s
+    f32 slowSpeed = 0.9f;        ///< with walk held
+    f32 diveSpeed = 1.0f;        ///< down, sneak held
+    f32 riseSpeed = 1.2f;        ///< up, jump held
+    f32 floatSpeed = 0.5f;       ///< up when nothing is held under water
+    f32 startDepth = 0.9f;       ///< m of water above the feet from which one swims (hip height)
+    f32 eyesAboveSurface = 0.2f; ///< m, swimming at the surface
+    f32 eyeHeight = 1.62f;       ///< m above the feet (figures, physics.md)
+    f32 airSeconds = 30.0f;
+    f32 refillSeconds = 3.0f;         ///< from empty to full at the surface
+    f32 drownDamagePerSecond = 10.0f; ///< hit points while the air is gone (hit points: M8)
+};
+
 struct MovementSettings
 {
     f32 runSpeed = 4.0f; ///< m/s, the default gait (Gothic: run unless walk is held)
@@ -71,6 +86,7 @@ struct MovementSettings
     JumpSettings jump;
     ClimbSettings climb;
     FallSettings fall;
+    SwimSettings swim;
     CameraSettings camera;
 
     /// From data/movement.toml; missing keys keep their defaults, wrong types or values are errors.
@@ -86,7 +102,8 @@ struct MoveInput
     f32 mouseTurn = 0.0f; ///< pixels to the right since the last step
     bool walk = false;    ///< held: walk instead of run
     bool sneak = false;
-    bool jump = false; ///< pressed since the last step: jump, or climb a ledge in front
+    bool jump = false;     ///< pressed since the last step: jump, or climb a ledge in front
+    bool jumpHeld = false; ///< held: rise while diving
 };
 
 /// Upward speed that lifts the feet `height` metres.
@@ -138,6 +155,38 @@ public:
 private:
     f32 m_yaw = 0.0f;
     Vec3 m_velocity{0.0f};
+};
+
+enum class WaterMode : u8
+{
+    Land, ///< not in water deeper than the hips
+    Swim, ///< at the surface
+    Dive, ///< under water (sneak dives, jump rises, nothing floats up)
+};
+
+/// Swimming and diving (M5 part E): from the water surface over the player and the input, the 3D velocity
+/// and the air. Turning stays with PlayerMovement.
+class Swimmer
+{
+public:
+    struct Step
+    {
+        WaterMode mode = WaterMode::Land;
+        Vec3 velocity{0.0f};    ///< for CharacterController::swim (not used on land)
+        f32 drownDamage = 0.0f; ///< hit points lost in this step
+    };
+
+    /// `surface`: water surface over the feet (WaterBodies::surfaceAt), nullopt without water.
+    Step step(f32 seconds, f32 feetY, std::optional<f32> surface, f32 yaw, const MoveInput& input,
+              const SwimSettings& settings);
+    void reset(const SwimSettings& settings) noexcept;
+
+    [[nodiscard]] WaterMode mode() const noexcept { return m_mode; }
+    [[nodiscard]] f32 airSeconds() const noexcept { return m_air; }
+
+private:
+    WaterMode m_mode = WaterMode::Land;
+    f32 m_air = 30.0f;
 };
 
 /// Forward and right vectors of a yaw (horizontal).

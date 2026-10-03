@@ -39,6 +39,7 @@
 #include <g7/world/Scene.hpp>
 #include <g7/world/Terrain.hpp>
 #include <g7/world/Triggers.hpp>
+#include <g7/world/Water.hpp>
 #include <g7/world/WorldFile.hpp>
 
 #include <map>
@@ -71,6 +72,7 @@ struct SceneInstance
     AABB bounds;
     bool sizeCullable = true; ///< deco: may vanish when small on screen (render.md "Sichtbarkeit")
     world::VobId vob;         ///< the mesh vob drawn (0: ground plate, --view-mesh, test scenes)
+    bool solid = true;        ///< collides and casts shadows (false: the water surface placeholder)
 };
 
 struct EngineConfig
@@ -263,6 +265,13 @@ public:
     void teleportPlayer(const Vec3& feet, f32 yaw);
     /// True while the player climbs a ledge (input is ignored until it stands on top).
     [[nodiscard]] bool playerClimbing() const noexcept { return m_climb.has_value(); }
+    /// Swimming or diving (gameplay::WaterMode::Land on land), and the air left under water.
+    [[nodiscard]] gameplay::WaterMode playerWaterMode() const noexcept { return m_swimmer.mode(); }
+    [[nodiscard]] f32 playerAirSeconds() const noexcept { return m_swimmer.airSeconds(); }
+    /// Hit points lost by drowning since the player was put into the world (hit points: M8).
+    [[nodiscard]] f32 drownDamage() const noexcept { return m_drownDamage; }
+    /// The water vobs of the loaded world.
+    [[nodiscard]] const world::WaterBodies& water() const noexcept { return m_water; }
     /// Hit points the last fall cost (0: none yet or a harmless one); hit points themselves come with M8.
     [[nodiscard]] f32 lastFallDamage() const noexcept { return m_lastFallDamage; }
     /// Tests and demos: replaces the keyboard/mouse input of the player (nullopt: back to the actions).
@@ -382,6 +391,8 @@ private:
     bool m_hasTerrain = false;
     std::map<std::string, std::unique_ptr<LoadedModel>, std::less<>> m_models; // by VFS path
     std::unique_ptr<LoadedModel> m_groundModel;
+    std::unique_ptr<LoadedModel> m_waterModel; // translucent placeholder surface of water vobs (until M17)
+    world::WaterBodies m_water;
     std::vector<SceneInstance> m_instances;
     std::string m_sceneName;
     AABB m_sceneBounds{Vec3(1.0f), Vec3(-1.0f)}; // empty until the first non-ground instance
@@ -408,6 +419,9 @@ private:
     f32 m_climbSeconds = 0.0f;
     f32 m_jumpCooldown = 0.0f; // s until the next jump (after landing)
     f32 m_lastFallDamage = 0.0f;
+    gameplay::Swimmer m_swimmer;
+    f32 m_drownDamage = 0.0f;
+    f32 m_drownLogged = 0.0f; // damage already reported in the log (whole points)
     Vec3 m_playerFeetBefore{0.0f};
     Vec3 m_playerFeet{0.0f};
     f32 m_playerYawBefore = 0.0f;

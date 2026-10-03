@@ -99,6 +99,10 @@ void Engine::syncPhysics()
     u32 without = 0;
     for (const SceneInstance& instance : m_instances)
     {
+        if (!instance.solid)
+        {
+            continue; // the water surface placeholder: swimming is handled by WaterBodies
+        }
         auto [it, inserted] = shapes.try_emplace(instance.model);
         if (inserted)
         {

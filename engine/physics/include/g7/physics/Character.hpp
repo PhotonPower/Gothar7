@@ -62,6 +62,9 @@ public:
     /// Leaves the ground with this upward speed in the next update - only from walkable ground (state
     /// Ground); returns false otherwise. The horizontal velocity stays.
     bool jump(f32 upwardSpeed);
+    /// Swimming and diving: moves with `velocity` (3D) without gravity, stair steps or floor snapping;
+    /// walls and ground still collide. A fall in progress ends without a landing (the water catches it).
+    void swim(f32 seconds, const Vec3& velocity);
     /// Moves the feet without collision and motion (climbing along a path that findLedge checked).
     /// teleport() at the end of the path settles the character again.
     void moveTo(const Vec3& feet);

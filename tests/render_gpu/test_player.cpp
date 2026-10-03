@@ -279,3 +279,94 @@ TEST_CASE("Player GPU: a 6 m fall from the top of the stairs costs 20 hit points
     CHECK(engine.player()->feet().y < 0.05f);
     CHECK(engine.lastFallDamage() == doctest::Approx(20.0f).epsilon(0.05));
 }
+
+namespace
+{
+Engine* pondEngine(Engine& engine)
+{
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    REQUIRE(engine.player() != nullptr);
+    REQUIRE(engine.water().bodies().size() == 1); // WASSER_TEICH, surface -4
+    return &engine;
+}
+
+EngineConfig pondConfig()
+{
+    EngineConfig config = playerConfig();
+    config.start = "START_TEICH"; // east shore of the pond in the basin, looking west over the water
+    return config;
+}
+
+constexpr f32 kPondSurface = -4.0f;
+constexpr f32 kFloatingFeet = kPondSurface + 0.2f - 1.62f; // eyes 0.2 m above the water
+} // namespace
+
+TEST_CASE("Player GPU: walks into the pond and swims at the surface; the camera stays above the water")
+{
+    Engine engine(pondConfig());
+    pondEngine(engine);
+    gameplay::MoveInput forward;
+    forward.forward = 1.0f;
+    engine.setPlayerInputOverride(forward);
+    int frames = 0;
+    for (; frames < 900 && engine.playerWaterMode() == gameplay::WaterMode::Land; ++frames)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(engine.playerWaterMode() == gameplay::WaterMode::Swim);
+    highest(engine, 240); // 4 s swimming on
+    CHECK(engine.playerWaterMode() == gameplay::WaterMode::Swim);
+    CHECK(engine.player()->feet().y == doctest::Approx(kFloatingFeet).epsilon(0.03));
+    CHECK(engine.camera().transform.position.y > kPondSurface + 0.25f);
+    CHECK(engine.playerAirSeconds() == doctest::Approx(30.0f));
+    CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}
+
+TEST_CASE("Player GPU: dives with sneak, uses air, rises when let go; a fall into water costs nothing")
+{
+    Engine engine(pondConfig());
+    pondEngine(engine);
+    // Over the deep middle (bottom about -11), 10 m above the water.
+    engine.teleportPlayer(Vec3(-160.0f, 6.0f, -137.0f), 0.0f);
+    engine.setPlayerInputOverride(gameplay::MoveInput{});
+    highest(engine, 240);
+    CHECK(engine.playerWaterMode() == gameplay::WaterMode::Swim);
+    CHECK(engine.lastFallDamage() == doctest::Approx(0.0f)); // 10 m, but into water
+
+    gameplay::MoveInput dive;
+    dive.sneak = true;
+    engine.setPlayerInputOverride(dive);
+    highest(engine, 180); // 3 s down at 1 m/s
+    CHECK(engine.playerWaterMode() == gameplay::WaterMode::Dive);
+    CHECK(engine.player()->feet().y < kFloatingFeet - 2.0f);
+    CHECK(engine.playerAirSeconds() < 29.0f);
+    CHECK(engine.camera().transform.position.y < kPondSurface); // diving: the camera follows under water
+
+    engine.setPlayerInputOverride(gameplay::MoveInput{}); // let go: floats up slowly (0.5 m/s)
+    highest(engine, 60 * 8);
+    CHECK(engine.playerWaterMode() == gameplay::WaterMode::Swim);
+    CHECK(engine.player()->feet().y == doctest::Approx(kFloatingFeet).epsilon(0.03));
+    CHECK(engine.drownDamage() == doctest::Approx(0.0f));
+}
+
+TEST_CASE("Player GPU: swims back to the shore and walks out")
+{
+    Engine engine(pondConfig());
+    pondEngine(engine);
+    engine.teleportPlayer(Vec3(-150.0f, kFloatingFeet, -120.0f), glm::radians(-90.0f)); // facing east (+X)
+    gameplay::MoveInput forward;
+    forward.forward = 1.0f;
+    engine.setPlayerInputOverride(forward);
+    highest(engine, 60);
+    CHECK(engine.playerWaterMode() == gameplay::WaterMode::Swim);
+    int frames = 0;
+    for (; frames < 60 * 20 && engine.playerWaterMode() != gameplay::WaterMode::Land; ++frames)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(engine.playerWaterMode() == gameplay::WaterMode::Land);
+    highest(engine, 60);
+    CHECK(engine.player()->feet().x > -134.0f); // up the bank
+    CHECK(engine.player()->state() == physics::MoveState::Ground);
+}

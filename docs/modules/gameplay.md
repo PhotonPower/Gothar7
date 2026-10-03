@@ -51,6 +51,25 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
     - Einzelblöcke 0,9 / 1,5 / 2,1 / 2,6 m bei x 40/44/48/52, z 5–7: je eine Klasse, der letzte ist zu hoch.
     - Treppe aus Blöcken 1–6 m bei x 39–51, z 11–13 (immer „niedrig“). Von oben 6 m hinunter kostet 20.
     - Block: `testworld/block.gltf` aus `make_block.py` (eigener Inhalt).
+- **Schwimmen und Tauchen (Teil E; Werte `[swim]`, Entscheidungen Projektinhaber):** `gameplay::Swimmer`.
+  - **Modi:** Land, Schwimmen, Tauchen. Schwimmen ab 0,9 m Wasser über den Füßen (Hüfte); zurück an Land erst
+    unter 0,75 m (kein Flackern am Ufer).
+  - **An der Oberfläche:** Auftrieb hält die Augen 0,2 m über Wasser (Füße 1,42 m darunter). Schwimmen 1,6 m/s,
+    mit `walk` 0,9 m/s; Drehen wie an Land; kein Rennen und kein Springen.
+  - **Tauchen:** `sneak` (X) gehalten 1,0 m/s hinab; `jump` gehalten 1,2 m/s hinauf; nichts gedrückt: 0,5 m/s
+    hinauf. Oben wird wieder geschwommen.
+  - **Luft** 30 s, nur mit den Augen unter Wasser. Leer: 10 Lebenspunkte je Sekunde (`Engine::drownDamage()`, Log
+    je 10 LP bis M8). An der Oberfläche füllt sie sich in 3 s auf.
+  - **Fälle ins Wasser** kosten nichts (Füße unter der Oberfläche bei der Landung, oder Schwimmen beginnt vorher).
+  - **Ufer:** Flaches Ufer geht man hinauf. `jump` an der Oberfläche vor einer Kante klettert hinaus (Klassen wie an
+    Land, gemessen ab den Füßen).
+  - **Kamera:** Sie bleibt beim Schwimmen 0,3 m über der Oberfläche, beim Tauchen folgt sie darunter. Eine
+    Unterwasser-Darstellung (Färbung, Nebel) kommt mit M17.
+  - **Darstellung bis M17:** je Wasser-Vob eine halbdurchsichtige blaue Fläche auf der Oberkante (beidseitig,
+    ohne Kollision und Schatten; `SceneInstance::solid = false`); F2 zeigt die Boxen. Die Figur wird vor dem
+    durchscheinenden Durchgang gezeichnet, damit ihr Unterwasserteil unter der Fläche liegt.
+  - **Testwelt:** Teich `WASSER_TEICH` im Becken nordwestlich des Lagers (Oberfläche −4 m, bis ~7 m tief),
+    Startpunkt `START_TEICH` am flachen Ostufer mit Blick aufs Wasser.
 - **Engine (`runtime/src/EnginePlayer.cpp`):**
   - Die Spielfigur entsteht beim Laden einer Welt auf dem Startpunkt (`--start` bzw. kleinste id; Füße = `pos`,
     nur das Gieren).

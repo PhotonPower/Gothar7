@@ -131,13 +131,18 @@ Gizmo-Mathematik und Operationen). Die Kollision statischer Welt-Meshes ist nach
   - `physics::CharacterController` (Jolt CharacterVirtual), aufrechter Zylinder r 0,3/1,8 m statt Kapsel (scharfe Stufengrenze, gemessen, `physics.md`); `gameplay::PlayerMovement` mit Gothic-Gangart (Standard rennen, Shift gehen), Werte in `data/movement.toml` (Hot-Reload); Spielfigur am Startpunkt, Trigger melden die Figur; F3 freie Kamera
 - [x] Springen, **Kanten hochziehen** (Kantenerkennung per Shapecast), Fallschaden
   - Sprung 0,9 m (Stand) bzw. 1,1 m (Rennen), keine Luftsteuerung; Kanten 1,0/1,6/2,2 m per Strahlen und Formtest, Gleitbahn bis M6; Fallschaden ab 4 m mit 10 LP/m (Log bis M8); Kletterplatz in der Testwelt (`START_KLETTERPLATZ`)
-- [ ] Schwimmen/Tauchen (Wasservolumen, Luftvorrat)
-- [ ] Third-Person-Kamera im Gothic-Stil: Verfolgung mit Trägheit, Kollision, Modi (Normal, Kampf, Dialog, Schwimmen)
-  - Stand: Modus „normal“ umgesetzt (Trägheit für Position und Gieren, Mausneigung, `sphereCast` gegen Wände, `gameplay::ThirdPersonCamera`); Kampf/Dialog/Schwimmen folgen mit ihren Phasen
-- [ ] Trigger-Volumen (Betreten/Verlassen-Events)
+- [x] Schwimmen/Tauchen (Wasservolumen, Luftvorrat)
+  - Vob-Typ `water` (Vertrag mit welt), `world::WaterBodies`; schwimmen ab hüfttiefem Wasser, tauchen mit sneak, auftauchen mit jump (Entscheidung Projektinhaber), Luft 30 s, Ertrinken 10 LP/s (Log bis M8), Wasser fängt Fälle ab; Platzhalter-Wasserfläche bis M17; Teich in der Testwelt (`START_TEICH`)
+- [x] Third-Person-Kamera im Gothic-Stil: Verfolgung mit Trägheit, Kollision, Modi (Normal, Kampf, Dialog, Schwimmen)
+  - Modi „normal“ (Trägheit für Position und Gieren, Mausneigung, `sphereCast` gegen Wände, `gameplay::ThirdPersonCamera`) und „schwimmen“ (bleibt über der Wasseroberfläche, beim Tauchen darunter) umgesetzt; der Kampfmodus folgt mit M11, der Dialogmodus mit M10 (dort eingetragen)
+- [x] Trigger-Volumen (Betreten/Verlassen-Events) – seit M4 (`world::TriggerSystem`), seit M5 meldet die Spielfigur statt der Kamera (Levelwechsel per Laufen getestet)
 
 **DoD:** Eine Kapsel-Figur bewegt sich mit Gothic-artiger Steuerung durch die Testwelt, klettert,
 schwimmt; Kamera clippt nicht durch Wände.
+**DoD erfüllt** (2026-10-03, PR M5 Teil E): Figur (Zylinder statt Kapsel, `physics.md`) läuft, rennt, schleicht und springt
+mit Gothic-Steuerung durch die Testwelt, klettert die drei Kantenklassen am Kletterplatz, schwimmt und taucht im Teich;
+die Kamera bleibt vor Wänden (Tests: `render_gpu` „Player GPU …“, Kamera sieht den Kopf nach 10 s Umherlaufen;
+Screenshots `C:\GotharData\review\m5-dod`).
 
 ## M6 – Animation  → Meilenstein A
 _Benötigt F1 (Referenz-Rig, Platzhalterfigur) und für den Meilenstein die Prio-A-Animationen aus F2._
@@ -198,6 +203,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 ## M10 – Dialoge & Quests  → Meilenstein B
 - [ ] Info-System: Bedingung, Beschreibung, Priorität, `important` (NPC spricht an), `permanent`, `onlyOnce`
 - [ ] Dialog-Ablauf: Kamera-Schnitte (Über-die-Schulter), Sprachausgabe/Untertitel, Gesten-Animationen
+- [ ] Kameramodus „Dialog“ der Third-Person-Kamera (aus M5: Schuss/Gegenschuss als Datensatz in `movement.toml` bzw. Dialogdaten)
 - [ ] Auswahl-Menüs (Choices) innerhalb einer Info
 - [ ] Handel-Bildschirm und Lernen über Dialog
 - [ ] Tagebuch: Aufträge (laufend/erfolgreich/gescheitert), Einträge, Notizen
@@ -208,6 +214,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 
 ## M11 – Kampf
 - [ ] Waffenmodi (Faust, Einhand, Zweihand, Bogen, Armbrust), Ziehen/Wegstecken
+- [ ] Kameramodus „Kampf“ der Third-Person-Kamera (aus M5: näher, Blick auf den Gegner bei Ziel-Lock)
 - [ ] Nahkampf: Angriffe mit Treffer-Fenstern aus Animations-Events, Kombos abhängig vom Talent, Parieren, Ausweichschritt
 - [ ] Trefferprüfung (Waffen-Shapecast entlang der Animation), Treffer-Reaktionen, Rückstoß
 - [ ] Schadensmodell: Schadensarten × Schutzwerte, kritische Treffer abhängig vom Talent
