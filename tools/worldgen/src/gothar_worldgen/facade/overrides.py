@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 OPENING_TYPES = ("door", "window", "gate")
+RUECKBAU_MODES = ("auto", "none", "split")
 
 
 class OverrideError(Exception):
@@ -50,6 +51,7 @@ class BuildingOverride:
     notes: str | None = None
     seed: int | None = None
     locked: bool = False  # generator must not overwrite hand-made work
+    rueckbau: str | None = None  # auto (default) | none (never replace) | split (always)
     extra: dict[str, Any] = field(default_factory=dict)  # unknown keys, written back unchanged
 
 
@@ -86,6 +88,7 @@ _KNOWN = {
     "notes",
     "seed",
     "locked",
+    "rueckbau",
 }
 
 
@@ -106,6 +109,9 @@ def from_json(data: Any) -> BuildingOverride:  # noqa: ANN401
         _number({"h": s}, "h", f"{where} storeys[{i}]", positive=True)
         for i, s in enumerate(storeys)
     ]
+    rueckbau = data.get("rueckbau")
+    if rueckbau is not None and rueckbau not in RUECKBAU_MODES:
+        raise OverrideError(f"{where}: 'rueckbau' must be one of {', '.join(RUECKBAU_MODES)}")
     seed = data.get("seed")
     if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
         raise OverrideError(f"{where}: 'seed' must be an integer")
@@ -152,6 +158,7 @@ def from_json(data: Any) -> BuildingOverride:  # noqa: ANN401
         notes=_string(data, "notes", where),
         seed=seed,
         locked=data.get("locked", False),
+        rueckbau=rueckbau,
         extra={k: v for k, v in data.items() if k not in _KNOWN},
     )
 
@@ -192,6 +199,8 @@ def to_json(o: BuildingOverride) -> dict[str, Any]:
         out["seed"] = o.seed
     if o.locked:
         out["locked"] = True
+    if o.rueckbau is not None:
+        out["rueckbau"] = o.rueckbau
     out.update(o.extra)
     return out
 

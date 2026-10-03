@@ -27,6 +27,7 @@ tools/worldgen/
     export/                   terrain: Heightmap → .g7world mit terrain-Block, splat: Splat-Schichten
                               + Platzhalter-Albedos (export-terrain)  (W2)
     buildings/                massing (Klötzchen: Wände + Dächer), medieval (Fachwerk-Regelwerk, W5-Entwurf),
+                              rueckbau (große Neubauten → schmale Fachwerkhäuser, §7),
                               gltf (.glb-Writer), batch (buildings: .glb je Gebäude/Zelle + Index)  (W3/W5)
     assemble/                 world: Terrain + Gebäude → <ort>.g7world, stabile VobIds (assemble)  (W3)
   blender/gothar_buildings/   Blender-Add-on: erzeugte Gebäude importieren/zurückschreiben (locked)  (W3)
@@ -60,7 +61,7 @@ gothar-worldgen facade preview leonberg <id> --image pano.jpg --pose x,z --headi
 gothar-worldgen facade frames leonberg VID_0001.mp4 --gpx VID_0001.gpx   REM Einzelbilder + Posen (braucht ffmpeg)
 gothar-worldgen facade ui leonberg         REM Annotations-Oberfläche im Browser (http://127.0.0.1:8765/)
 gothar-worldgen buildings leonberg         REM Klötzchen-Gebäude als .glb (generated/buildings/), --area all
-gothar-worldgen buildings leonberg --mode medieval   REM Fachwerk-Regelwerk (W5-Entwurf, Platzhalter-Materialien)
+gothar-worldgen buildings leonberg --mode medieval   REM Fachwerk-Regelwerk + Rückbau (§7), Bericht generated/rueckbau_report.json
 gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
 ```
 Reihenfolge für die Welt: `import` → `export-terrain` → `buildings` → `assemble`; prüfen mit

@@ -20,6 +20,9 @@ from gothar_worldgen.assemble.world import (
 )
 from gothar_worldgen.buildings.batch import generate, write_index
 from gothar_worldgen.buildings.medieval import StreetIndex, load_rules
+from gothar_worldgen.buildings.rueckbau import Protection, split_building
+from gothar_worldgen.buildings.rueckbau import apply as apply_rueckbau
+from gothar_worldgen.buildings.rueckbau import select as select_rueckbau
 from gothar_worldgen.config import (
     ConfigError,
     DataPaths,
@@ -337,7 +340,7 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     try:
         buildings = json.loads((paths.work / "buildings.json").read_text(encoding="utf-8"))
         overrides = load_all(data_dir / "buildings")
-        if args.mode == "medieval":
+        if args.mode == "medieval" or args.rueckbau:
             rules = load_rules(data_dir.parent / "building_rules.json")
             street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
             streets = StreetIndex(street_doc.get("streets", []))
@@ -352,9 +355,27 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
         print(f"  warning: no heightmap ({e}); base heights from LoD2 only", file=out)
         grid = None
     entries = [b for b in buildings.get("buildings", []) if b.get("id") not in dropped]
+    replace = report = None
+    rb = rules.data.get("rueckbau") if rules else None
+    if rb and rb.get("enabled") and (args.mode == "medieval" or args.rueckbau):
+        features = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
+        protection = Protection(features.get("features", []))
+        selection = select_rueckbau(entries, rb, overrides, protection)
+        entries, report = apply_rueckbau(entries, selection, rb, streets)
+        protected = frozenset(selection.guarded)
+
+        def replace(b: dict) -> list[dict]:
+            return [] if b["id"] in protected else split_building(b, rb, streets).houses
+
     res = generate(entries, grid, folder / "generated" / "buildings",
                    f"worlds/{site.name}/generated/buildings", args.area, locked,
-                   args.mode, rules, streets, overrides)  # fmt: skip
+                   args.mode, rules, streets, overrides, replace if rb else None)  # fmt: skip
+    if report is not None:
+        report["overBudget"] = [{"id": i, "newHouses": n} for i, n in res.replaced]
+        report["stats"]["replaced"] += len(res.replaced)
+        report["stats"]["newHouses"] += sum(n for _, n in res.replaced)
+        res.index["stats"]["rueckbau"] = report["stats"]
+        write_index(folder / "generated" / "rueckbau_report.json", report)
     write_index(folder / "generated" / "buildings_index.json", res.index)
     st = res.index["stats"]
     per = st["trianglesPerBuilding"]
@@ -367,6 +388,11 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
         b = st["budget"]
         print(f"  budget {b['trianglesPerBuilding']}/building: {b['over']} over; timber levels "
               f"(0 full .. 3 none): {b['timberLevels']}", file=out)  # fmt: skip
+    if report is not None:
+        r = report["stats"]
+        print(f"  rueckbau: {r['replaced']} buildings replaced by {r['newHouses']} houses "
+              f"({len(res.replaced)} of them over budget), {r['protected']} protected, "
+              f"yards {r['yardM2']:.0f} m2 (rueckbau_report.json)", file=out)  # fmt: skip
     if st["fallbacks"]:
         print("  notes: " + ", ".join(f"{k} {v}" for k, v in st["fallbacks"].items()), file=out)
     if res.steps:
@@ -517,6 +543,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("site")
     p.add_argument("--area", choices=("core", "all"), default="core",
                    help="core: old town, a file per building; all: plus 64 m cells")  # fmt: skip
+    p.add_argument("--rueckbau", action="store_true",
+                   help="replace large buildings also in massing mode (preview)")  # fmt: skip
     p.add_argument("--mode", choices=("massing", "medieval"), default="massing",
                    help="massing: grey blocks; medieval: half-timbering (W5 draft)")  # fmt: skip
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
