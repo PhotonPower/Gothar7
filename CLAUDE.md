@@ -115,10 +115,12 @@ Phase **M3** abgeschlossen: VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles,
 Hot-Reload, `g7-cook` (glTF → `.g7mesh`, KTX2/UASTC als Vorgabe, Manifest/inkrementell; ADR 0016), `render` lädt KTX2.
 Phase **M4** abgeschlossen: `world::Scene` (EnTT, `VobId`; ADR 0005), `.g7world` v1 (ADR 0017; Modul `world_format`),
 Heightmap-Terrain, Vob-Typen, Sichtbarkeit (Culling, Multi-Draw), Weltwechsel, Tag/Nacht, Editor (`--editor`, eigene Gizmos).
-Aktuelle Phase: **M5** (Physik & Charaktersteuerung, Jolt – ADR 0004 akzeptiert): Kollision, Spielfigur, Kamera, Klettern, Wasser.
-Welt-Spur: **W1**, **W2** abgeschlossen; **W3** bis auf die Begehung (M5); **W4** wartet auf Aufnahmen;
-**W5** läuft (Fachwerk-Leonberg mit festgelegtem Stil `docs/design/leonberg-stil.md`, Rückbau, Alterung).
-Figuren-Spur: **F1**, **F2** abgeschlossen; **F3** läuft (Stil A realistisch mit Texturen, MPFB2 – ADR 0018; Bauer mit
-Gesichts-Morphs, als Nächstes Staturen und Kleidung); **F5**-Platzhalter (Wolf, Keiler, Laufvogel) fertig.
+Phase **M5** abgeschlossen: Jolt (ADR 0004), Kollision (`COL_`), Spielfigur (Zylinder) mit Gothic-Steuerung,
+Third-Person-Kamera, Springen, Kanten hochziehen, Fallschaden, Schwimmen/Tauchen (`water`); Werte in `assets/source/data/movement.toml`.
+Aktuelle Phase: **M6** (Animation → Meilenstein A): eigene Animations-Laufzeit (ADR 0019), Held vorläufig `farmer`.
+Welt-Spur: **W1**, **W2** abgeschlossen; **W3** bis auf die Begehung; **W4** wartet auf Aufnahmen; **W5/W6** laufen
+(Fachwerk-Leonberg mit Stil `docs/design/leonberg-stil.md`, Stadtmauer mit Mauerhäusern, Schloss per Skript, Glems als Wasser).
+Figuren-Spur: **F1**, **F2** abgeschlossen; **F3** weit fortgeschritten (6 Körper, Köpfe mit Gesichts-Morphs, Kleidung,
+Rüstung leicht/mittel, Kopfbedeckungen; Figuren entstehen beim Bauen per `gothar-chargen assemble`); **F5**-Platzhalter fertig.
 Lizenzen: Das Repo ist **öffentlich** – nur CC0/eigene bzw. weitergabefähig lizenzierte Assets einchecken.
 Details siehe `docs/03-roadmap.md`.
