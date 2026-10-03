@@ -192,8 +192,8 @@ TEST_CASE("Animation set: the clips of none.glb with the events of none.events.t
 TEST_CASE("Animation set: events.toml errors")
 {
     AnimationSetData set;
-    set.clips.push_back({"none/s_walk", 1.0f, {}, {}});
-    set.clips.push_back({"none/t_jump_land", 0.5f, {}, {}});
+    set.clips.push_back({"none/s_walk", 1.0f, {}, {}, 0.0f});
+    set.clips.push_back({"none/t_jump_land", 0.5f, {}, {}, 0.0f});
     const auto fails = [&](const char* toml, const char* expected)
     {
         auto copy = set;
@@ -210,6 +210,8 @@ TEST_CASE("Animation set: events.toml errors")
           "= \"b\" }]\n",
           "rise");
     fails("version = 1\n[clips.\"none/s_walk\"]\nevents = [{ frame = 5 }]\n", "needs 'frame'");
+    fails("version = 1\n[clips.\"none/s_walk\"]\nspeed = 0.0\n", "'speed' must be positive");
+    fails("version = 1\n[clips.\"none/s_walk\"]\nspeed = -1.0\n", "'speed' must be positive");
 
     auto copy = set;
     REQUIRE(
@@ -221,6 +223,14 @@ TEST_CASE("Animation set: events.toml errors")
     REQUIRE(copy.clips[1].events.size() == 2);
     CHECK(copy.clips[1].events[0].time == doctest::Approx(0.5f)); // last frame of a one-shot is allowed
     CHECK(copy.clips[1].events[1].name == "sound:thud");          // same frame: file order
+    CHECK(copy.clips[0].speed == 0.0f);                           // no speed: unknown
+
+    // Own speed of a clip (m/s), with or without events (M6, additive in version 1).
+    copy = set;
+    REQUIRE(
+        applyClipEvents(copy, "version = 1\n[clips.\"none/s_walk\"]\nspeed = 1.05\n", "s.events.toml").ok());
+    CHECK(copy.clips[0].speed == doctest::Approx(1.05f));
+    CHECK(copy.clips[0].events.empty());
 }
 
 TEST_CASE("Skinned model: parts per LOD level fall back to the nearest coarser one")

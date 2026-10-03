@@ -63,6 +63,7 @@ struct AnimationPanel
     std::string previousState; ///< fading out while fade < 1
     f32 fade = 1.0f;
     f32 progress = 0.0f;                             ///< 0..1 one-shots, cycles for loops
+    f32 rate = 1.0f;                                 ///< speed-matched playback rate
     std::vector<std::pair<std::string, f32>> clips;  ///< what shapes the pose, with weights
     std::vector<std::pair<std::string, f32>> params; ///< parameters set by the gameplay
     std::vector<std::string> events;                 ///< last events, newest first

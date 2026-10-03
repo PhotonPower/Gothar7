@@ -6,7 +6,8 @@
 namespace g7::animation
 {
 Clip::Clip(const asset::ClipData& data, const Skeleton& skeleton)
-    : m_name(data.name), m_duration(data.duration), m_loops(data.loops()), m_events(data.events)
+    : m_name(data.name), m_duration(data.duration), m_loops(data.loops()), m_events(data.events),
+      m_speed(data.speed)
 {
     for (const asset::TrackData& t : data.tracks)
     {

@@ -103,6 +103,9 @@ struct ClipData
     f32 duration = 0.0f;
     std::vector<TrackData> tracks;
     std::vector<ClipEvent> events; ///< by time; same time in file order
+    /// Own speed of a locomotion clip in m/s (events.toml `speed`): how fast the planted foot moves back.
+    /// 0 when unknown (no playback-rate matching).
+    f32 speed = 0.0f;
 
     [[nodiscard]] bool loops() const noexcept; ///< "s_" clips (characters-pipeline.md §3)
 };
@@ -126,8 +129,8 @@ struct AnimationSetData
 [[nodiscard]] Result<AnimationSetData> loadAnimationGltf(std::span<const u8> bytes,
                                                          const fs::Path& baseDirectory,
                                                          std::string_view debugName = "<memory>");
-/// Adds the events of a `<set>.events.toml` (characters-pipeline.md §3, version 1) to the set's clips.
-/// Unknown clips, frames outside the clip and unsorted frames are errors.
+/// Adds the events and clip speeds of a `<set>.events.toml` (characters-pipeline.md §3, version 1) to the
+/// set's clips. Unknown clips, frames outside the clip, unsorted frames and speeds <= 0 are errors.
 [[nodiscard]] Result<void> applyClipEvents(AnimationSetData& set, std::string_view toml,
                                            std::string_view source);
 } // namespace g7::asset

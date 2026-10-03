@@ -14,11 +14,15 @@ sets = [
     "characters/anims/human/dive.glb",
 ]
 start = "move"
+# Abspielrate = Parameter / Eigengeschwindigkeit der Clips (`speed` in <set>.events.toml), damit die Füße nicht
+# gleiten; Zustände mit `rate = "<parameter>"`. Grenzen:
+rate_range = [0.6, 1.8]
 
 # --- Zustände ---
 [[state]] # Fortbewegung: rückwärts, Stand, gehen, rennen nach der Geschwindigkeit
 name = "move"
 blend = "speed"
+rate = "speed"
 points = [
     { value = -1.4, clip = "none/s_walk_back" },
     { value = 0.0, clip = "none/s_idle" },
@@ -29,15 +33,18 @@ points = [
 [[state]]
 name = "sneak"
 blend = "speed"
+rate = "speed"
 points = [{ value = 0.0, clip = "none/s_idle" }, { value = 1.1, clip = "none/s_sneak" }]
 
 [[state]]
 name = "strafe_l"
 clip = "none/s_strafe_l"
+rate = "strafe"
 
 [[state]]
 name = "strafe_r"
 clip = "none/s_strafe_r"
+rate = "strafe"
 
 [[state]] # Drehen im Stand wie Gothic (Entscheidung Projektinhaber)
 name = "turn_l"
@@ -94,6 +101,7 @@ clip = "none/s_slide"
 [[state]]
 name = "swim"
 blend = "speed"
+rate = "speed"
 points = [
     { value = -0.9, clip = "swim/s_back" },
     { value = 0.0, clip = "swim/s_idle" },
@@ -103,6 +111,7 @@ points = [
 [[state]]
 name = "dive"
 blend = "speed"
+rate = "speed"
 points = [{ value = 0.0, clip = "dive/s_idle" }, { value = 1.6, clip = "dive/s_forward" }]
 
 # --- Übergänge (Reihenfolge = Vorrang) ---

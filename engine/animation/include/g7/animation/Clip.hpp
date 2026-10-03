@@ -26,6 +26,8 @@ public:
     [[nodiscard]] f32 duration() const noexcept { return m_duration; }
     [[nodiscard]] bool loops() const noexcept { return m_loops; }
     [[nodiscard]] usize droppedTracks() const noexcept { return m_dropped; }
+    /// Own speed in m/s (asset::ClipData::speed), 0 when unknown.
+    [[nodiscard]] f32 nativeSpeed() const noexcept { return m_speed; }
     [[nodiscard]] const std::vector<asset::ClipEvent>& events() const noexcept { return m_events; }
 
     /// Writes the tracked channels at `time` (seconds; loops wrap, others clamp) into `pose`; untracked
@@ -56,5 +58,6 @@ private:
     i32 m_rootTrack = -1; ///< translation track of the bone "root"
     std::vector<asset::ClipEvent> m_events;
     usize m_dropped = 0;
+    f32 m_speed = 0.0f;
 };
 } // namespace g7::animation
