@@ -64,6 +64,12 @@ public:
 ```
 
 ## Weltformat `.g7world` (JSON, vom Editor geschrieben)
+**Modul `world_format`** (seit M5): Lesen, Schreiben und Prüfen von `.g7world` (`WorldFile.hpp`), der
+`terrain`-Block mit Höhenkodierung (`TerrainRef.hpp`) und die Vob-Komponenten (`Components.hpp`) – ohne Rendern,
+Physik und EnTT, damit Werkzeuge (g7-cook) Welten lesen, ohne die Engine zu linken; nlohmann-json bleibt dort privat.
+Die Header behalten den Pfad `g7/world/` und den Namensraum `g7::world`. In `world` bleiben die Szene
+(`spawnWorld`/`captureWorld` in `WorldScene.hpp`), `Heightfield` (`Terrain.hpp`), Trigger, Startpunkte, Spielzeit
+und Tag/Nacht.
 **VobId-Vertrag** (ADR 0005, `docs/coordination.md`): Jeder Vob hat eine `id` (u64, ≥ 1), eindeutig in der Welt und nie
 wiederverwendet; `nextVobId` ist der nächste freie Wert und steigt nur. Editor und Welt-Assembler (W3) vergeben IDs
 daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vobs liegen ab `kRuntimeVobIdBase`.
@@ -154,6 +160,17 @@ class TriggerSystem { void setCallback(Callback); std::vector<TriggerEvent> upda
   meldet Änderungen **sortiert nach Trigger-ID, dann Proben-ID, Leave vor Enter** – deterministisch für Tests und
   Skripte. Eine fehlende Probe hat alle Trigger verlassen. `once`: nur das erste Update mit Eintritt meldet (alle
   Proben darin), danach nichts mehr bis `reset()`. `world` ruft keine Skripte: die Engine registriert den Callback.
+
+## Generator-Kopf (`generator`, optional, M4)
+```json
+"generator": {"tool": "gothar-worldgen", "owned": [3, 4, [10, 935]]}
+```
+- Schreibt der Welt-Assembler (welt) in den Kopf (nach `nextVobId`): `owned` = die Vob-IDs, die er bei jedem Lauf
+  neu schreibt (einzelne IDs oder geschlossene Bereiche [von, bis], aufsteigend); gelockte Gebäude, Startpunkte und
+  reservierte IDs nicht. Von welt gegengelesen.
+- **Nur ein Hinweis für den Editor** (`isGenerated`): er warnt beim Bearbeiten solcher Vobs. Die Engine schreibt den
+  Kopf unverändert zurück; ein veraltetes oder kaputtes `owned` ist **nie** ein Ladefehler (Warnung, dann ohne
+  Wirkung). Der Assembler entscheidet weiter selbst (vob_ids.json).
 
 ## Weltwechsel (M4)
 **Levelwechsel-Trigger** (Vertrag, von welt gegengelesen): `trigger`-Vobs mit `components.trigger.changeWorld =

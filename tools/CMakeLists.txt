@@ -1,2 +1,2 @@
 add_subdirectory(asset-cooker)
-# add_subdirectory(editor)   # ab M4 (Editor-Grundlage), siehe docs/modules/tools.md
+# tools/editor is built with the game (gothar --editor), from the top-level CMakeLists.txt.

@@ -31,7 +31,7 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 |---|---|---|---|
 | Heightmap `terrain.r16` + `terrain.json` | welt | engine (W2/M4-Terrain) | `leonberg-pipeline.md` §4 |
 | Gebäude-`.glb` + Sammel-Index | welt | engine | `leonberg-pipeline.md` §5 W-C |
-| `.g7world` (Format v1, optionaler `terrain`-Block v1: `.r16`-Heightmap, `splat` (Karten + bis 8 Schichten), `holes` (`.r8` je Zelle); Vob-Typen `empty`, `mesh`, `light`, `start`, `sound`, `trigger`, `mob`; `category` deco/gameplay an mesh-Vobs; Levelwechsel `trigger.changeWorld` {world, start} | engine | welt (Assembler, W2-Gelände; generierte Daten unter `assets/source/worlds/<ort>/generated/`) | `docs/modules/world.md` („Gelände“, „Vob-Typen“) |
+| `.g7world` (Format v1, optionaler `terrain`-Block v1: `.r16`-Heightmap, `splat` (Karten + bis 8 Schichten), `holes` (`.r8` je Zelle); Vob-Typen `empty`, `mesh`, `light`, `start`, `sound`, `trigger`, `mob`; `category` deco/gameplay an mesh-Vobs; Levelwechsel `trigger.changeWorld` {world, start}; Kopf `generator` {tool, owned} (Hinweis für den Editor) | engine | welt (Assembler, W2-Gelände; generierte Daten unter `assets/source/worlds/<ort>/generated/`) | `docs/modules/world.md` („Gelände“, „Vob-Typen“) |
 | `VobId` (64 Bit, je Welt eindeutig, nie wiederverwendet; `nextVobId` in `.g7world`) | engine | welt (Assembler vergibt IDs) | ADR 0005, `docs/modules/world.md` |
 | Referenz-Skelett, Sockets | figuren + engine gemeinsam | beide | `docs/modules/animation.md` |
 | Clip-Namen, `events.toml` | figuren | engine (M6) | `characters-pipeline.md` §3 |
@@ -68,4 +68,7 @@ Regeln:
    Der Koordinator merged **ohne** `--delete-branch`: `gh` würde sonst den Worktree der Autor-Sitzung entfernen, in dem
    der Branch ausgecheckt ist. Jede Sitzung löscht ihre Branches nach dem Merge selbst (lokal und auf `origin`).
 4. Nach dem Merge: betroffene Sitzungen holen `main` beim nächsten Branch-Start (`git fetch` + neuer Branch von `origin/main`).
+   Achtung: Alle Worktrees teilen sich die `origin/*`-Refs. Ein `git fetch` einer anderen Sitzung kann `origin/main`
+   jederzeit weiterschieben. Vor `git reset --soft origin/main` (Commits zusammenfassen) daher erst `origin/main`
+   einmergen und danach `git status` bzw. die vorgemerkten Pfade prüfen – sonst macht der Commit fremde Merges rückgängig.
 5. PRs mit „Entscheidung nötig:“ merged der Koordinator **nicht**, bis der Mensch entschieden hat.

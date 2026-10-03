@@ -36,7 +36,7 @@ target_link_libraries(g7_tests_ui PRIVATE imgui::imgui)
 # Mesa llvmpipe and excludes them on Windows (ctest -LE gpu), whose runners have no OpenGL.
 file(GLOB _gpu_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/render_gpu/*.cpp")
 add_executable(g7_tests_render_gpu ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_gpu_sources})
-target_link_libraries(g7_tests_render_gpu PRIVATE g7::runtime doctest::doctest)
+target_link_libraries(g7_tests_render_gpu PRIVATE g7::runtime g7_editor doctest::doctest) # test_editor.cpp: editor end to end
 g7_set_warnings(g7_tests_render_gpu)
 set_target_properties(g7_tests_render_gpu PROPERTIES FOLDER "tests")
 add_test(NAME render_gpu COMMAND g7_tests_render_gpu)
@@ -69,3 +69,12 @@ set(G7_TEST_TIMEOUT 300 CACHE STRING "Seconds per test suite before ctest stops 
 get_property(_g7_tests DIRECTORY PROPERTY TESTS)
 set_tests_properties(${_g7_tests} PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
 set_tests_properties(render_gpu PROPERTIES TIMEOUT 900)
+
+# Editor mode (tools/editor): gizmo maths and world operations on the CPU.
+file(GLOB _editor_test_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/editor/*.cpp")
+add_executable(g7_tests_editor ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_editor_test_sources})
+target_link_libraries(g7_tests_editor PRIVATE g7_editor doctest::doctest)
+g7_set_warnings(g7_tests_editor)
+set_target_properties(g7_tests_editor PROPERTIES FOLDER "tests")
+add_test(NAME editor COMMAND g7_tests_editor)
+set_tests_properties(editor PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
