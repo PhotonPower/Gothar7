@@ -107,7 +107,9 @@ Result<void> Engine::initScripts()
     m_scripts = std::make_unique<script::ScriptVm>(std::move(vm).value());
     gameplay::defineContentKinds(*m_scripts);
     bindEngineFunctions();
+    bindHeroFunctions();
     m_scripts->loadAll();
+    buildHero();
     for (const script::ScriptError& e : m_scripts->errors())
     {
         consolePrint("! " + e.text());

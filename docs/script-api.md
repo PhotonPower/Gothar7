@@ -5,6 +5,9 @@ Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
 ## Ereignisse
 
+### `on("level_up", fn(level: integer))`
+Der Held hat eine neue Stufe erreicht.
+
 ### `on("scripts_reloaded", fn())`
 Nachdem geänderte Skripte neu geladen wurden (Entwicklung); die Story-Variablen bleiben erhalten.
 
@@ -42,6 +45,47 @@ Lädt `module` (Punkte trennen Ordner: `"lib.util"` = `lib/util.lua`) einmal und
 
 ### `Story`
 Globale Tabelle der Story-Variablen (Zahlen, Strings, Wahrheitswerte, verschachtelte Tabellen); wird mit dem Spielstand gespeichert. Funktionen darin sind nicht erlaubt.
+
+## Held
+
+### `add_xp(amount: integer) -> integer`
+Gibt dem Helden Erfahrung; gibt die Zahl der neuen Stufen zurück. Jede Stufe bringt `Progression.learn_points_per_level` Lernpunkte und löst `level_up` aus.
+
+### `equip(item: string) -> string`
+Rüstet ein Item aus dem Inventar aus; gibt den Platz zurück (`melee`, `ranged`, `armor`, `helmet`, `ring1`/`ring2`, `amulet`, `belt`, `rune1`–`rune7`). Fehler, wenn Bedingungen (`requires`) fehlen.
+
+### `equipped(slot: string) -> string | nil`
+Was auf dem Platz `slot` ausgerüstet ist.
+
+### `give_item(item: string, count?: integer) -> integer`
+Gibt dem Helden `count` (Vorgabe 1) Stück eines Items; gibt die neue Anzahl zurück.
+
+### `hero() -> {name, guild, level, xp, next_xp, learn_points}`
+Name, Gilde, Stufe, Erfahrung, Erfahrung bis zur nächsten Stufe und Lernpunkte des Helden.
+
+### `inventory() -> {{item, count, name, category}}`
+Das Inventar des Helden, nach Kategorie sortiert (Waffen zuerst, wie in Gothic), ohne Gewichtsgrenze.
+
+### `item_count(item: string) -> integer`
+Wie viele Stück eines Items der Held hat.
+
+### `remove_item(item: string, count?: integer) -> boolean`
+Nimmt dem Helden `count` Stück weg; `false` (und nichts weggenommen), wenn er weniger hat. Ausgerüstetes wird dabei abgelegt.
+
+### `set_stat(name: string, value: integer)`
+Setzt ein Attribut des Helden; `hp`/`mana` bleiben zwischen 0 und dem Maximum.
+
+### `set_talent(name: string, level: integer)`
+Setzt die Stufe eines Talents des Helden.
+
+### `stat(name: string) -> integer`
+Ein Attribut des Helden (`hp`, `hp_max`, `mana`, `mana_max`, `str`, `dex`) oder ein Schutzwert (`protection_edge`, `_blunt`, `_point`, `_fire`, `_magic`, `_fall`, mit Ausrüstung).
+
+### `talent(name: string) -> integer`
+Stufe eines Talents des Helden (0 = nicht gelernt): `melee_1h`, `melee_2h`, `bow`, `crossbow`, `sneak`, `picklock`, `pickpocket`, `acrobatics`, `magic_circle`.
+
+### `unequip(slot: string)`
+Legt ab, was auf dem Platz `slot` ausgerüstet ist.
 
 ## Welt
 

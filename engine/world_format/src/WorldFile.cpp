@@ -613,6 +613,104 @@ Result<TerrainRef> readTerrain(const Reader& r, const Json& t)
     return ref;
 }
 
+Result<WaynetPoint> readWaynetPoint(const Reader& r, const Json& p, const std::string& where)
+{
+    if (!p.is_object())
+    {
+        return r.error(where, "must be an object");
+    }
+    WaynetPoint point;
+    auto name = readText(r, p, "name", where, true);
+    if (!name)
+    {
+        return name.error();
+    }
+    point.name = std::move(name).value();
+    if (!p.contains("pos"))
+    {
+        return r.error(where, "needs 'pos'");
+    }
+    auto pos = r.vec3(p, "pos", where, Vec3(0.0f));
+    if (!pos)
+    {
+        return pos.error();
+    }
+    point.position = pos.value();
+    if (p.contains("dir"))
+    {
+        auto dir = r.vec3(p, "dir", where, Vec3(0.0f));
+        if (!dir)
+        {
+            return dir.error();
+        }
+        point.dir = dir.value();
+    }
+    if (p.contains("owner"))
+    {
+        if (!p["owner"].is_string() || p["owner"].get<std::string>() != "worldgen")
+        {
+            return r.error(where + ".owner", "must be \"worldgen\" (or left out)");
+        }
+        point.generated = true;
+    }
+    return point;
+}
+
+Result<WaynetData> readWaynet(const Reader& r, const Json& w)
+{
+    if (!w.is_object())
+    {
+        return r.error("waynet", "must be an object");
+    }
+    WaynetData data;
+    for (const auto& [key, list] :
+         {std::pair{"points", &data.points}, std::pair{"freepoints", &data.freepoints}})
+    {
+        if (!w.contains(key))
+        {
+            continue;
+        }
+        if (!w[key].is_array())
+        {
+            return r.error(std::format("waynet.{}", key), "must be a list");
+        }
+        for (usize i = 0; i < w[key].size(); ++i)
+        {
+            auto point = readWaynetPoint(r, w[key][i], std::format("waynet.{}[{}]", key, i));
+            if (!point)
+            {
+                return point.error();
+            }
+            list->push_back(std::move(point).value());
+        }
+    }
+    if (w.contains("edges"))
+    {
+        if (!w["edges"].is_array())
+        {
+            return r.error("waynet.edges", "must be a list");
+        }
+        for (usize i = 0; i < w["edges"].size(); ++i)
+        {
+            const Json& e = w["edges"][i];
+            const bool shape = e.is_array() && (e.size() == 2 || e.size() == 3) && e[0].is_string() &&
+                               e[1].is_string() &&
+                               (e.size() == 2 || (e[2].is_string() && e[2] == "worldgen"));
+            if (!shape)
+            {
+                return r.error(std::format("waynet.edges[{}]", i),
+                               "must be [\"WP_A\", \"WP_B\"] or [\"WP_A\", \"WP_B\", \"worldgen\"]");
+            }
+            data.edges.push_back({e[0].get<std::string>(), e[1].get<std::string>(), e.size() == 3});
+        }
+    }
+    if (auto ok = normalizeWaynet(data, r.source); !ok)
+    {
+        return ok.error();
+    }
+    return data;
+}
+
 Json numbers(std::initializer_list<f32> values)
 {
     Json array = Json::array();
@@ -732,7 +830,12 @@ Result<WorldFile> parseWorldFile(std::string_view text, std::string_view source)
     }
     if (root.contains("waynet"))
     {
-        world.waynetJson = root["waynet"].dump();
+        auto waynet = readWaynet(r, root["waynet"]);
+        if (!waynet)
+        {
+            return waynet.error();
+        }
+        world.waynet = std::move(waynet).value();
     }
     if (root.contains("zones"))
     {
@@ -947,9 +1050,53 @@ std::string writeWorldFile(const WorldFile& world)
         out += (i == 0 ? "\n    " : ",\n    ") + vobs[i].dump();
     }
     out += vobs.empty() ? "]" : "\n  ]";
-    if (!world.waynetJson.empty())
+    if (world.waynet)
     {
-        out += ",\n  \"waynet\": " + Json::parse(world.waynetJson, nullptr, false).dump();
+        // One point, freepoint or edge per line, sorted (normalizeWaynet): moving a point changes one line.
+        const auto point = [](const WaynetPoint& p)
+        {
+            Json j = Json{{"name", p.name}, {"pos", numbers({p.position.x, p.position.y, p.position.z})}};
+            if (p.dir)
+            {
+                j["dir"] = numbers({p.dir->x, p.dir->y, p.dir->z});
+            }
+            if (p.generated)
+            {
+                j["owner"] = "worldgen";
+            }
+            return j.dump();
+        };
+        const auto list = [](const std::vector<std::string>& lines)
+        {
+            std::string text = "[";
+            for (usize i = 0; i < lines.size(); ++i)
+            {
+                text += (i == 0 ? "\n      " : ",\n      ") + lines[i];
+            }
+            return text + (lines.empty() ? "]" : "\n    ]");
+        };
+        std::vector<std::string> points;
+        std::vector<std::string> freepoints;
+        std::vector<std::string> edges;
+        for (const WaynetPoint& p : world.waynet->points)
+        {
+            points.push_back(point(p));
+        }
+        for (const WaynetPoint& p : world.waynet->freepoints)
+        {
+            freepoints.push_back(point(p));
+        }
+        for (const WaynetEdge& e : world.waynet->edges)
+        {
+            Json j = Json::array({e.a, e.b});
+            if (e.generated)
+            {
+                j.push_back("worldgen");
+            }
+            edges.push_back(j.dump());
+        }
+        out += ",\n  \"waynet\": {\n    \"points\": " + list(points) + ",\n    \"edges\": " + list(edges) +
+               ",\n    \"freepoints\": " + list(freepoints) + "\n  }";
     }
     if (!world.zonesJson.empty())
     {

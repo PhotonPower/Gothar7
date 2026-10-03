@@ -1,3 +1,4 @@
+#include <g7/gameplay/Character.hpp>
 #include <g7/gameplay/ScriptContent.hpp>
 
 namespace g7::gameplay
@@ -7,6 +8,7 @@ void defineContentKinds(script::ScriptVm& vm)
     using Type = script::FieldSpec::Type;
     using script::FieldSpec;
     constexpr auto none = std::nullopt;
+    std::vector<std::string> categories(kItemCategories.begin(), kItemCategories.end());
 
     // Item "it_sword_old" { name = "Altes Schwert", category = "melee_1h", value = 40, ... }
     vm.defineKind(
@@ -14,7 +16,7 @@ void defineContentKinds(script::ScriptVm& vm)
          {
              {"name", Type::String, true},
              {"description", Type::String},
-             {"category", Type::String}, // melee_1h, melee_2h, bow, crossbow, armor, food, potion, misc ...
+             {"category", Type::String, false, none, none, {}, categories}, // kItemCategories; default misc
              {"value", Type::Integer, false, 0.0, 1'000'000.0},
              {"weight", Type::Number, false, 0.0, 1000.0},
              {"mesh", Type::String}, // model in the VFS; without one a placeholder by category
@@ -31,7 +33,7 @@ void defineContentKinds(script::ScriptVm& vm)
                    {
                        {"name", Type::String, true},
                        {"guild", Type::String},
-                       {"level", Type::Integer, false, 1.0, 100.0},
+                       {"level", Type::Integer, false, 0.0, 100.0}, // the hero starts at 0 (Gothic)
                        {"voice", Type::Integer, false, 0.0, 99.0},
                        {"figure", Type::String}, // figure manifest or .glb; default: a worker
                        {"attributes", Type::Table},
@@ -39,6 +41,9 @@ void defineContentKinds(script::ScriptVm& vm)
                        {"equipment", Type::StringList, false, none, none, "Item"},
                        {"inventory", Type::Table},
                        {"routine", Type::String, false, none, none, "Routine"},
+                       {"protection", Type::Table}, // by damage type (edge, blunt, point, fire, magic, fall)
+                       {"xp", Type::Integer, false, 0.0, none},
+                       {"learn_points", Type::Integer, false, 0.0, none},
                    },
                    false});
 

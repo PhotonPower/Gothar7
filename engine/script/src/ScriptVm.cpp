@@ -632,6 +632,17 @@ struct ScriptVm::Impl
                                         spec.min ? std::format("{}", *spec.min) : "",
                                         spec.max ? std::format("{}", *spec.max) : ""));
                 }
+                if (!spec.oneOf.empty() && v.isString() &&
+                    std::find(spec.oneOf.begin(), spec.oneOf.end(), v.asString()) == spec.oneOf.end())
+                {
+                    std::string allowed;
+                    for (const std::string& o : spec.oneOf)
+                    {
+                        allowed += (allowed.empty() ? "" : ", ") + o;
+                    }
+                    problem(
+                        std::format("field '{}' = \"{}\" is none of {}", spec.name, v.asString(), allowed));
+                }
                 if (!spec.refKind.empty())
                 {
                     std::vector<std::string_view> names;

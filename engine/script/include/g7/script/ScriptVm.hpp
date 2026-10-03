@@ -60,6 +60,8 @@ struct FieldSpec
     std::optional<f64> max;
     /// The value (or each entry of a StringList) must name an instance of this kind ("Item" ...).
     std::string refKind;
+    /// Allowed values of a String field (empty: any).
+    std::vector<std::string> oneOf;
 };
 
 /// An instance constructor in Lua, `<name> "<instance>" { fields }`, with the schema its tables must follow.

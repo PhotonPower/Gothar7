@@ -83,17 +83,32 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   - Bis M6 wird die Platzhalterfigur `characters/figures/placeholder_mannequin.glb` (T-Pose) gezeichnet.
   - F2 zeigt den Zylinder, Bodennormale, Zustand und Tempo.
 
-## Charakter (M8)
-- Attribute: `hp`, `hpMax`, `mana`, `manaMax`, `str`, `dex`; Erfahrung, Stufe, Lernpunkte.
-- Talente mit Stufen: `melee_1h`, `melee_2h`, `bow`, `crossbow`, `sneak`, `picklock`, `pickpocket`, `acrobatics`, `magic_circle`.
-- Schutzwerte je Schadensart: `edge`, `blunt`, `point`, `fire`, `magic`, `fall`.
-- Gilden + Gilden-Einstellungstabelle (in Lua). Der Spieler ist ein `Npc` mit `PlayerController` statt `Brain`.
+## Charakter (M8 Teil A, umgesetzt) – `Character.hpp`
+- `gameplay::Character::fromInstance(npc, items)` liest ein `Npc`: `attributes` (`hp`, `hp_max`, `mana`, `mana_max`,
+  `str`, `dex`; fehlt `hp`, startet es beim Maximum), `talents` (`melee_1h`, `melee_2h`, `bow`, `crossbow`, `sneak`,
+  `picklock`, `pickpocket`, `acrobatics`, `magic_circle`; 0 = nicht gelernt), `protection` je Schadensart (`edge`,
+  `blunt`, `point`, `fire`, `magic`, `fall`), `guild`, `level`, `xp`, `learn_points`, `inventory = { it_x = 3 }`,
+  `equipment = { "it_y" }`. Unbekannte Namen sind ein Fehler mit Instanzname.
+- `hp`/`mana` bleiben zwischen 0 und dem Maximum. `protection(art)` = eigener Wert + Ausrüstung.
+- Erfahrung: `addExperience(xp, xpForLevel, lernpunkteJeStufe)`; Formel und Lernpunkte in `data/progression.lua`
+  (`Progression.xp_for_level`, `learn_points_per_level`; Gothic 1: Stufe n bei 500·n(n+1)/2, 10 LP je Stufe).
+- Gilden-Einstellungen: `Attitudes`-Tabelle und `attitude(a, b)` in `data/guilds.lua` (gleiche Gilde freundlich,
+  fehlend neutral); die KI wertet sie mit M9 aus.
+- Der Held ist das `Npc "pc_hero"` (`game/scripts/npcs/hero.lua`); `Engine::hero()` baut ihn nach dem Laden der
+  Skripte und behält ihn beim Neuladen. Skriptfunktionen (Gruppe „Held“ in `docs/script-api.md`): `hero`, `stat`,
+  `set_stat`, `talent`, `set_talent`, `add_xp` (Ereignis `level_up`), `give_item`, `remove_item`, `item_count`,
+  `inventory`, `equip`, `unequip`, `equipped`.
 
-## Items & Inventar (M8)
-- Item-Instanz (aus Skript) + Laufzeit-Stack (Menge). Kategorien siehe Roadmap.
-- Inventar ohne Gewichtslimit (wie Gothic), sortiert nach Kategorie.
-- Ausrüstungs-Slots: Nahkampf, Fernkampf, Rüstung, Ring×2, Amulett, Gürtel(optional), 7 Rune/Spruch-Plätze.
-- Benutzen: `onUse`-Skriptfunktion (Trank → Leben, Schriftstück → Dokument-UI).
+## Items & Inventar (M8 Teil A, umgesetzt)
+- Item-Instanz aus dem Skript (`gameplay::itemInfo`) + Laufzeit-Menge (`ItemStack`). `category` ist eine von
+  `kItemCategories` (das Schema prüft sie): `melee_1h`, `melee_2h`, `bow`, `crossbow`, `ammo`, `armor`, `helmet`,
+  `ring`, `amulet`, `belt`, `rune`, `scroll`, `potion`, `food`, `document`, `key`, `misc`.
+- Inventar ohne Gewichtslimit (wie Gothic), sortiert nach Kategorie (diese Reihenfolge), dann nach Name.
+- Ausrüstungs-Plätze (`EquipSlot`, Skriptnamen): `melee`, `ranged`, `armor`, `helmet`, `ring1`/`ring2`, `amulet`,
+  `belt`, `rune1`–`rune7`. Ringe nehmen den freien der zwei Plätze (sonst den ersten), Runen/Spruchrollen den ersten
+  freien. `requires = { str = 20, bow = 1 }` (Attribute oder Talente) muss erfüllt sein. Entfernen eines
+  ausgerüsteten Items legt es ab.
+- Benutzen: `on_use`-Skriptfunktion (Trank → Leben, Schriftstück → Dokument-UI) – Teil D.
 
 ## Fokus (M8)
 Kandidaten im Kegel vor der Kamera/Figur, Priorität NPC > Mob > Item, Distanz- und Sichtprüfung,

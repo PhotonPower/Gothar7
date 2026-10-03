@@ -180,10 +180,11 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 **DoD:** Items und NPC-Instanzen werden aus Lua definiert und per Konsole in die Welt gesetzt.
 
 ## M8 – Gameplay-Kern
-- [ ] Attribute & Talente, Erfahrung, Stufen, Lernpunkte (Formeln in Skripten)
-- [ ] Gilden + Einstellungs-Tabelle
-- [ ] Items: Kategorien (Nahkampf, Fernkampf, Rüstung, Munition, Nahrung, Trank, Rune, Spruchrolle, Schriftstück, Schlüssel, Sonstiges), Wert, Bedingungen (Stärke X)
-- [ ] Inventar (Spieler + NPC + Truhen), Ausrüsten, Gewicht optional (Gothic hat keins)
+- [x] Attribute & Talente, Erfahrung, Stufen, Lernpunkte (Formeln in Skripten) – `gameplay::Character`, `data/progression.lua` (Stufe n: 500·n(n+1)/2, 10 Lernpunkte), Held = `Npc "pc_hero"` (A)
+- [x] Gilden + Einstellungs-Tabelle – `Attitudes`/`attitude(a, b)` in `data/guilds.lua`, Auswertung mit M9 (A)
+- [x] Items: Kategorien (Nahkampf, Fernkampf, Rüstung, Munition, Nahrung, Trank, Rune, Spruchrolle, Schriftstück, Schlüssel, Sonstiges), Wert, Bedingungen (Stärke X) – Schema prüft `category`, `requires` beim Ausrüsten (A)
+- [ ] Inventar (Spieler + NPC + Truhen), Ausrüsten, Gewicht optional (Gothic hat keins) – Spieler/NPC und Ausrüsten fertig (A), Truhen mit Teil C
+- [x] Wegnetz-Block der `.g7world` lesen/schreiben (Vertrag mit welt, world.md „Wegnetz“; Pfadsuche M9) (A)
 - [ ] **Fokus-System** (Ziel-Auswahl nach Blickrichtung/Distanz/Priorität)
 - [ ] **Mob-Interaktion**: Zustandsfolge mit Animationen, Benutzer-Slots, Items verbrauchen/erzeugen (Schmieden, Braten)
 - [ ] Truhen, Türen, Schlösser + Dietrich-Minispiel, Schlüssel
