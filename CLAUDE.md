@@ -113,9 +113,9 @@ Phase **M2** abgeschlossen: OpenGL-Renderer (RHI, Shader-Hot-Reload, glTF, Mater
 Tonemapping, Debug-Draw, ImGui), Testszene `assets/source/testscene` (`--scene`, `--benchmark`).
 Phase **M3** abgeschlossen: VFS mit `.g7pak` v2 (zstd), `AssetManager` (Handles, asynchron), Engine-Anbindung,
 Hot-Reload, `g7-cook` (glTF → `.g7mesh`, KTX2/UASTC als Vorgabe, Manifest/inkrementell; ADR 0016), `render` lädt KTX2.
-Aktuelle Phase: **M4** (Welt & Szene): `world::Scene` (EnTT, `VobId`, Hierarchie; ADR 0005) und `.g7world` v1 (ADR 0017,
-`--world`, `--save-world`), Heightmap-Terrain, Vob-Typen, Sichtbarkeit (Culling, Multi-Draw), Weltwechsel und Tag/Nacht
-stehen; offen nur noch die Editor-Grundlage (eigene Gizmos).
+Phase **M4** abgeschlossen: `world::Scene` (EnTT, `VobId`; ADR 0005), `.g7world` v1 (ADR 0017; Modul `world_format`),
+Heightmap-Terrain, Vob-Typen, Sichtbarkeit (Culling, Multi-Draw), Weltwechsel, Tag/Nacht, Editor (`--editor`, eigene Gizmos).
+Aktuelle Phase: **M5** (Physik & Charaktersteuerung, Jolt – ADR 0004 akzeptiert): Kollision, Spielfigur, Kamera, Klettern, Wasser.
 Welt-Spur: **W1**, **W2** abgeschlossen; **W3** bis auf die Begehung (M5); **W4** wartet auf Aufnahmen;
 **W5** läuft (Fachwerk-Leonberg mit festgelegtem Stil `docs/design/leonberg-stil.md`, Rückbau, Alterung).
 Figuren-Spur: **F1**, **F2** abgeschlossen; **F3** läuft (Stil A realistisch mit Texturen, MPFB2 – ADR 0018; Bauer mit
