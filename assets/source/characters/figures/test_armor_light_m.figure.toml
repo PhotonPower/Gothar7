@@ -1,0 +1,19 @@
+# Test figure (F3g): light armour line on the average male build – kit shirt and boots, leather
+# vest and short gloves from the armour kit. Only for checking the pieces; who wears what is decided
+# later (owner).
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_mid/head.glb"
+hair = "parts/head_m_mid/hair.glb"
+cloth = [
+    "parts/cloth_m_average/elvs_crude_t-shirt_male.glb",
+    "parts/cloth_m_average/culturalibre_male_boots.glb",
+    "parts/armor_m_average/leather_vest.glb",
+    "parts/armor_m_average/gloves_short.glb",
+]
+
+[palette]
+cloth_elvs_crude_t-shirt_male = "#8a8070"
+cloth_culturalibre_male_boots = "#4a3a2c"

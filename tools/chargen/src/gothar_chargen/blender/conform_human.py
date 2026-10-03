@@ -43,7 +43,7 @@ from gothar_chargen.blender import build_reference_rig as reference  # noqa: E40
 from gothar_chargen.blender.lod import make_lods  # noqa: E402
 from gothar_chargen.blender.settings import GLTF_EXPORT_SETTINGS  # noqa: E402
 from gothar_chargen.faces import Morph, load_morphs  # noqa: E402
-from gothar_chargen.human import Human, asset_stem, load_human  # noqa: E402
+from gothar_chargen.human import Derive, Human, asset_stem, load_human  # noqa: E402
 from gothar_chargen.mapping import load_mapping  # noqa: E402
 from gothar_chargen.postprocess import MASK_ROLES  # noqa: E402
 from gothar_chargen.skeleton import load_rig  # noqa: E402
@@ -386,6 +386,44 @@ def _decimate(obj: bpy.types.Object, ratio: float, keep_borders: bool = True) ->
 # --- 5. materials and textures -------------------------------------------------------------------
 
 
+def _derive(obj: bpy.types.Object, d: Derive) -> None:
+    """Own simple piece from a fitted garment: drop the vertices bound mostly to the `cut` bones,
+    push the rest outwards along the normals, scale the UVs for a tiling texture."""
+    mesh = obj.data
+    groups = {g.index: g.name for g in obj.vertex_groups}
+    drop = []
+    for v in mesh.vertices:
+        if not v.groups:
+            continue
+        best = max(v.groups, key=lambda g: g.weight)
+        if groups.get(best.group, "").startswith(d.cut or ("\0",)):
+            drop.append(v.index)
+    if drop:
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bm.verts.ensure_lookup_table()
+        bmesh.ops.delete(bm, geom=[bm.verts[i] for i in drop], context="VERTS")
+        bm.to_mesh(mesh)
+        bm.free()
+    if d.offset:
+        normals = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
+        mesh.vertices.foreach_get("normal", normals)
+        shift = normals.reshape(-1, 3) * d.offset
+        co = _coords(obj) + shift
+        mesh.vertices.foreach_set("co", co.ravel())
+        if mesh.shape_keys is not None:
+            for key in mesh.shape_keys.key_blocks:
+                kco = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
+                key.data.foreach_get("co", kco)
+                key.data.foreach_set("co", (kco.reshape(-1, 3) + shift).ravel())
+    if d.uv_scale != 1.0 and mesh.uv_layers.active is not None:
+        uv = np.empty(len(mesh.loops) * 2, dtype=np.float64)
+        mesh.uv_layers.active.data.foreach_get("uv", uv)
+        mesh.uv_layers.active.data.foreach_set("uv", uv * d.uv_scale)
+    mesh.update()
+    print(f"[chargen] derived {d.name}: cut {len(drop)} vertices, offset {d.offset} m")
+
+
 def _source_images(
     mat: bpy.types.Material | None,
 ) -> tuple[bpy.types.Image | None, bpy.types.Image | None]:
@@ -463,9 +501,18 @@ def _prepare_image(
 
 
 def _rebuild_material(obj: bpy.types.Object, role: str, stem: str, human: Human, tmp: Path) -> None:
-    mat_name = role if role != "cloth" else f"cloth_{stem}"
+    kit = role == "cloth" and "cloth" in human.parts
+    piece = human.part_name(stem) if kit else stem  # our file/material name for the piece
+    mat_name = role if role != "cloth" else f"cloth_{piece}"
     old = obj.material_slots[0].material if obj.material_slots else None
     diffuse, normal = _source_images(old)
+    if "gothar_texture" in obj:  # derived piece: own tiling texture
+        diffuse = bpy.data.images.load(obj["gothar_texture"], check_existing=True)
+        normal = (
+            bpy.data.images.load(obj["gothar_normal"], check_existing=True)
+            if "gothar_normal" in obj
+            else None
+        )
     mat = bpy.data.materials.new(mat_name)
     mat.use_nodes = True
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
@@ -473,14 +520,14 @@ def _rebuild_material(obj: bpy.types.Object, role: str, stem: str, human: Human,
     bsdf.inputs["Roughness"].default_value = 0.85
     tint = human.tints.get(stem) or (human.tints.get("skin") if role == "skin" else None)
     category = CATEGORY[role]
-    neutral = role == "cloth" and "cloth" in human.parts
+    neutral = kit and human.neutral
     suffix = "_neutral" if neutral else f"_{tint[1:].lower()}" if tint else ""
     mask = role in MASK_ROLES
     if diffuse is not None:
         image = _prepare_image(
             diffuse,
-            f"{category}/{stem}{suffix}",
-            KIT_TEXTURE_MAX if neutral else TEXTURE_MAX[role],
+            f"{category}/{piece}{suffix}",
+            KIT_TEXTURE_MAX if kit else TEXTURE_MAX[role],
             tint,
             mask,
             tmp,
@@ -493,7 +540,7 @@ def _rebuild_material(obj: bpy.types.Object, role: str, stem: str, human: Human,
             links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
         if normal is not None and not neutral:  # kit garments: plain cloth, no normal maps
             nimg = _prepare_image(
-                normal, f"{category}/{stem}_normal", min(image.size), None, False, tmp, normal=True
+                normal, f"{category}/{piece}_normal", min(image.size), None, False, tmp, normal=True
             )
             ntex = nodes.new("ShaderNodeTexImage")
             ntex.image = nimg
@@ -564,6 +611,9 @@ def main() -> None:
         if "gothar_type" in o:
             role_of[o.name] = ROLE_OF_TYPE[o["gothar_type"]]
             stem_of[o.name] = asset_stem(o["gothar_asset"])
+        if "gothar_derive" in o:
+            stem_of[o.name] = o["gothar_derive"]
+            _derive(o, next(d for d in human.derive if d.name == o["gothar_derive"]))
 
     # only the parts the recipe exports count (a head recipe drops its body and vice versa)
     def part_of(o: bpy.types.Object) -> str:
@@ -593,7 +643,8 @@ def main() -> None:
     per_garment = human.triangles / max(1, len(garments))
     for o in reducible:
         if "cloth" in human.parts and o in garments:  # kit: each garment its own budget
-            _decimate(o, min(1.0, per_garment / max(1, _triangles(o))), keep_borders=False)
+            target = human.budget.get(human.part_name(stem_of[o.name]), per_garment)
+            _decimate(o, min(1.0, target / max(1, _triangles(o))), keep_borders=False)
         elif role_of[o.name] == "hair":
             _decimate(o, min(1.0, ratio * 1.4))
         elif o is head:
@@ -631,7 +682,7 @@ def main() -> None:
             parts["hair"].name = "hair"
         if "cloth" in human.parts:
             for o in clothes:
-                o.name = stem_of[o.name]
+                o.name = human.part_name(stem_of[o.name])
                 parts[o.name] = o  # parts/<kit>/<garment>.glb
         # every part carries its LOD levels (§2.2): seams of body and head stay fixed,
         # hair and garments are reduced freely

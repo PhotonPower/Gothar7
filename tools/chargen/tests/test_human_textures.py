@@ -76,10 +76,11 @@ def test_committed_recipes():
     for r in recipes:
         h = load_human(r)
         for part in h.parts:  # base bodies export only "body", heads "head" and "hair"
-            if part == "cloth":  # clothing kits: one part per garment
-                for garment in h.clothes:
-                    stem = Path(garment).stem
-                    assert (CHARACTERS / "parts" / h.name / f"{stem}.glb").is_file(), garment
+            if part == "cloth":  # clothing kits: one part per garment, named or derived
+                pieces = [h.part_name(Path(g).stem) for g in h.clothes]
+                pieces += [d.name for d in h.derive]
+                for piece in pieces:
+                    assert (CHARACTERS / "parts" / h.name / f"{piece}.glb").is_file(), piece
                 continue
             assert (CHARACTERS / "parts" / h.name / f"{part}.glb").is_file(), (h.name, part)
 
@@ -317,3 +318,97 @@ def test_reimported_image_reuses_shared_file(tmp_path):
     assert externalize_images(g, glb, textures) == []
     assert g.doc["images"][0]["uri"] == "../textures/skin/face_skin.png"
     assert not (textures / "misc").exists()
+
+
+# --- armour kits (F3g) ---------------------------------------------------------------------------
+
+KIT = {
+    "version": 1,
+    "parts": ["cloth"],
+    "triangles": 8000,
+    "neutral": False,
+    "macro": {"gender": 1.0},
+    "assets": {
+        "skin": "skins/a/a.mhmat",
+        "eyes": "eyes/e/e.mhclo",
+        "clothes": ["clothes/src_tunic/src_tunic.mhclo"],
+    },
+    "names": {"src_tunic": "mail_tunic"},
+    "budget": {"mail_tunic": 3000, "vest": 1500},
+    "derive": {
+        "vest": {
+            "from": "clothes/shirt/shirt.mhclo",
+            "cut": ["upperarm", "lowerarm"],
+            "offset": 0.008,
+            "texture": "gothar/ambientcg/L/L_Color.jpg",
+            "normal": "gothar/ambientcg/L/L_NormalGL.jpg",
+            "uv_scale": 2.0,
+        }
+    },
+}
+
+
+def test_armour_kit_recipe():
+    h = parse_human(KIT, "armor_x")
+    assert not h.neutral
+    assert h.part_name("src_tunic") == "mail_tunic"
+    assert h.part_name("other") == "other"
+    assert h.budget == {"mail_tunic": 3000, "vest": 1500}
+    (d,) = h.derive
+    assert (d.name, d.source, d.cut, d.offset, d.uv_scale) == (
+        "vest",
+        "clothes/shirt/shirt.mhclo",
+        ("upperarm", "lowerarm"),
+        0.008,
+        2.0,
+    )
+    assert d.normal == "gothar/ambientcg/L/L_NormalGL.jpg"
+    assert parse_human(
+        {**KIT, "assets": {**KIT["assets"], "clothes": []}, "names": {}, "budget": {}}, "a"
+    ).derive
+    assert parse_human(RECIPE, "npc").neutral  # default: neutral kit textures
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"parts": ["body"]}, "only for garment kits"),
+        ({"neutral": "no"}, "true or false"),
+        ({"names": {"src_tunic": "Mail Tunic"}}, "lower_snake_case"),
+        ({"names": {"cape": "cape"}}, "not in this recipe"),
+        ({"names": {"src_tunic": "vest"}}, "unique"),
+        ({"budget": {"mail_tunic": 50}}, "budget"),
+        ({"budget": {"cape": 1000}}, "unknown pieces"),
+        ({"derive": {"vest": {"from": "clothes/s/s.mhclo"}}}, "needs 'from' and 'texture'"),
+        ({"derive": {"Vest": {"from": "c/s.mhclo", "texture": "t.jpg"}}}, "lower_snake_case"),
+        ({"derive": {"vest": {"from": "c/s.mhclo", "texture": "t.tga"}}}, ".jpg or .png"),
+        ({"derive": {"vest": {"from": "c/s.mhclo", "texture": "t.jpg", "offset": 0.1}}}, "offset"),
+        (
+            {"derive": {"vest": {"from": "c/s.mhclo", "texture": "t.jpg", "uv_scale": 0}}},
+            "uv_scale",
+        ),
+        ({"derive": {"vest": {"from": "c/s.mhclo", "texture": "t.jpg", "cut": "arm"}}}, "cut"),
+        ({"derive": {"vest": {"from": "c/s.mhclo", "texture": "t.jpg", "x": 1}}}, "unknown keys"),
+        ({"derive": {"vest": {"from": "../s.mhclo", "texture": "t.jpg"}}}, "relative"),
+    ],
+)
+def test_invalid_armour_kits(change, message):
+    data = {**KIT, **change}
+    if "derive" in change and "budget" not in change:
+        data["budget"] = {"mail_tunic": 3000}
+    with pytest.raises(HumanError, match=message):
+        parse_human(data, "armor_x")
+
+
+def test_armour_parts_keep_colour_textures():
+    """Armour kits keep their own colour textures (owner decision), kits stay neutral grey."""
+    from gothar_chargen.images import image_info
+
+    textures = CHARACTERS / "textures" / "cloth"
+    for name in ("mail_tunic", "leather_vest", "wrapped_boots"):
+        g = Gltf.load(CHARACTERS / "parts/armor_m_average" / f"{name}.glb")
+        uris = [i["uri"] for i in g.doc["images"]]
+        assert any(u.endswith(f"cloth/{name}.jpg") for u in uris), uris
+        assert image_info((textures / f"{name}.jpg").read_bytes()).width <= 512
+    g = Gltf.load(CHARACTERS / "parts/armor_m_average/leather_vest.glb")
+    assert any("leather_vest_normal" in i["uri"] for i in g.doc["images"])

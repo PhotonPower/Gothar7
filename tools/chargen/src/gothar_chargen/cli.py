@@ -347,7 +347,7 @@ def update_part_data(characters: Path, dirs: list[Path] | None, out: TextIO) -> 
 
 def _cmd_part_data(args: argparse.Namespace, out: TextIO) -> int:
     characters = _characters_dir(args)
-    update_part_data(characters, [Path(d) for d in args.dirs] or None, out)
+    update_part_data(characters, [Path(d).resolve() for d in args.dirs] or None, out)
     return EXIT_OK
 
 

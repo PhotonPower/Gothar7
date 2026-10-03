@@ -1,0 +1,14 @@
+# Test figure (F3g): medium armour line on the average male build – mail tunic, wrapped trousers
+# and boots, gloves. Only for checking the pieces; who wears what is decided later (owner).
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_young/head.glb"
+hair = "parts/head_m_young/hair.glb"
+cloth = [
+    "parts/armor_m_average/mail_tunic.glb",
+    "parts/armor_m_average/wrapped_trousers.glb",
+    "parts/armor_m_average/wrapped_boots.glb",
+    "parts/armor_m_average/gloves_medium.glb",
+]
