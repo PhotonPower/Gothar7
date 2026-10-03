@@ -266,6 +266,17 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   - Alterung: Durchhang, Schiefstand (leicht!), Moos, Ausbesserungen – per Seed variiert
 - **Modularer Baukasten + Trim-Sheets** (Balken, Putz, Stein, Holz, Dach) → einheitlicher Look, wenige Texturen, gute Performance.
 - Jedes Haus bleibt in Blender von Hand nachbearbeitbar; erneutes Generieren überschreibt nur Häuser ohne `"locked": true`.
+- **Gebäude auf dem Gelände (W3 beachten):** Das DGM1 hat am Hang **Stufen entlang von Häuserreihen**. Es sind in den
+  Hang gebaute Häuser mit Geländesprung an der Hauswand; aufgefallen ist das in der Engine beim W2-Export (2026-10-03).
+  - Insgesamt liegen Steilstellen nicht bevorzugt an Grundrissen (> 45°: 18,6 % nahe Grundrissen bei 35,7 %
+    Flächenanteil). Örtlich am Hang aber schon.
+  - Folge für Generator und Assembler:
+    - `groundY` ist schon der **tiefste** Punkt der LoD2-Bodenfläche; der Baukörper beginnt also talseitig richtig.
+      Bergseitig liegt das Gelände höher, die Wand läuft dort ins Gelände (gewollt, sichtbarer Sockel talseitig).
+    - Prüfen, ob LoD2-`groundY` und DGM unter dem Grundriss zusammenpassen. Liegt das DGM talseitig tiefer als
+      `groundY`, schwebt die Hausecke; dann den Sockel bis zum tiefsten DGM-Punkt verlängern.
+    - Dafür beim Import `groundMinY`/`groundMaxY` aus der Heightmap je Gebäude ergänzen.
+    - In der Begehung (W3) gezielt die Hangreihen ansehen.
 
 ### W-D Fassaden-Werkzeug (Python + Web-UI)
 1. Insta360-Material exportieren: in Insta360 Studio als equirektanguläres 360°-MP4 (2:1) und den GPS-Track als GPX.
