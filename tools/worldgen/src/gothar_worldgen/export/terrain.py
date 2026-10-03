@@ -17,6 +17,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
+from gothar_worldgen.export.starts import StartPoint, add_start_points
 from gothar_worldgen.geo.terrain import U16_MAX, quantize_heights
 
 WORLD_FILE_VERSION = 1
@@ -43,6 +44,17 @@ class Grid:
     @property
     def height(self) -> int:
         return int(self.heights.shape[0])
+
+    def height_at(self, x: float, z: float) -> float:
+        """Bilinear height at local (x, z); the edge value outside (as the engine does)."""
+        fc = min(max((x - self.first_x) / self.cell, 0.0), self.width - 1.0)
+        fr = min(max((z - self.first_z) / self.cell, 0.0), self.height - 1.0)
+        c0, r0 = min(int(fc), self.width - 2), min(int(fr), self.height - 2)
+        tc, tr = fc - c0, fr - r0
+        h = self.heights
+        top = h[r0, c0] * (1 - tc) + h[r0, c0 + 1] * tc
+        bottom = h[r0 + 1, c0] * (1 - tc) + h[r0 + 1, c0 + 1] * tc
+        return float(top * (1 - tr) + bottom * tr)
 
 
 def load_grid(work_dir: Path) -> Grid:
@@ -229,6 +241,7 @@ def export_terrain(
     heightmap_path: Path,
     heightmap_vfs: str,
     splat: dict[str, Any] | None = None,
+    starts: tuple[StartPoint, ...] = (),
 ) -> TerrainExport:
     values, min_y, max_y = quantize_heights(grid.heights)
     block = terrain_block(grid, heightmap_vfs, min_y, max_y)
@@ -244,6 +257,8 @@ def export_terrain(
         except json.JSONDecodeError as e:
             raise ExportError(f"{world_path.name}: invalid JSON ({e})") from None
     doc = world_document(name, block, existing)
+    if starts:
+        add_start_points(doc, starts, grid.height_at)
     _write_atomic(heightmap_path, values.astype("<u2").tobytes())
     _write_atomic(world_path, world_text(doc).encode("utf-8"))
     return TerrainExport(grid, min_y, max_y, world_path, heightmap_path)

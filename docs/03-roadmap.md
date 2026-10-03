@@ -271,7 +271,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 Spezifikation: `docs/design/leonberg-pipeline.md`. Werkzeuge in `tools/worldgen/` (Python ≥ 3.11),
 Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
-**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24): `gothar-worldgen` erzeugt aus LGL- und OSM-Daten Terrain, `buildings.json` (5392 Gebäude), `streets.json` und `features.json` für Leonberg (Ursprung Marktbrunnen). **W2 läuft:** `export-terrain` schreibt `assets/source/worlds/leonberg/leonberg_terrain.g7world` mit `terrain`-Block: Heightmap und Splat-Karten in `generated/` (nicht versioniert), 7 Schichten aus Straßen, Gebäuden, OSM-Nutzung und Neigung, Platzhalter-Albedos; Tag/Nacht folgt mit einer M4-Aufgabe. W3 wartet auf M5. **W4 läuft:** Die Kerne des Fassaden-Werkzeugs (`facade/`: 360°-Projektion, Fassaden-Entzerrung aus `buildings.json`, GPS-Posen, Override-Schema, `facade preview`) stehen und sind mit synthetischen Bildern getestet. Dazu kommen die Einzelbild-Extraktion per ffmpeg und der automatische Zeitabgleich von Video und GPS (`facade frames`). Die Annotations-Web-UI (`facade ui`: Karte, Fassadeneditor, Speichern als Override-JSON) steht und wurde vom Projektinhaber getestet; die Auswahllisten sind ein Entwurf zur Festlegung durch den Projektinhaber. Als Nächstes: Aufnahmetour, Prüfung mit echten Daten, Schritt 3b (Pose-Korrektur, Bildvergleich), W2-Splatmap.
+**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24): `gothar-worldgen` erzeugt aus LGL- und OSM-Daten Terrain, `buildings.json` (5392 Gebäude), `streets.json` und `features.json` für Leonberg (Ursprung Marktbrunnen). **W2 läuft:** `export-terrain` schreibt `assets/source/worlds/leonberg/leonberg_terrain.g7world` mit `terrain`-Block: Heightmap und Splat-Karten in `generated/` (nicht versioniert), 7 Schichten aus Straßen, Gebäuden, OSM-Nutzung und Neigung, Platzhalter-Albedos; Tag/Nacht folgt mit einer M4-Aufgabe. **W3 Teil 1:** `buildings` erzeugt 905 Klötzchen-Häuser der Altstadt (`.glb`, generiert), `assemble` setzt `leonberg.g7world` mit stabilen VobIds und Startpunkten zusammen (Regel für Editor-Handarbeit in der Design-Doku); Blender-Add-on für Handarbeit; die Begehung wartet auf M5. W3 wartet auf M5. **W4 läuft:** Die Kerne des Fassaden-Werkzeugs (`facade/`: 360°-Projektion, Fassaden-Entzerrung aus `buildings.json`, GPS-Posen, Override-Schema, `facade preview`) stehen und sind mit synthetischen Bildern getestet. Dazu kommen die Einzelbild-Extraktion per ffmpeg und der automatische Zeitabgleich von Video und GPS (`facade frames`). Die Annotations-Web-UI (`facade ui`: Karte, Fassadeneditor, Speichern als Override-JSON) steht und wurde vom Projektinhaber getestet; die Auswahllisten sind ein Entwurf zur Festlegung durch den Projektinhaber. Als Nächstes: Aufnahmetour, Prüfung mit echten Daten, Schritt 3b (Pose-Korrektur, Bildvergleich), W2-Splatmap.
 
 ## W1 – Geodaten-Import  (keine Engine-Abhängigkeit)
 - [x] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
@@ -294,8 +294,10 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 **DoD:** Das Leonberger Gelände ist in der Engine sichtbar und (ab M5) begehbar.
 
 ## W3 – Klötzchen-Leonberg & Maßstabstest  (benötigt W1, W2; sinnvoll ab M5)
-- [ ] Blender-Add-on „Gothar Buildings“ Grundgerüst: `buildings.json` lesen, Baukörper + Dach als Massen, `.glb`-Export
-- [ ] Welt-Assembler v1: Terrain + Gebäude → `.g7world`
+- [x] Blender-Add-on „Gothar Buildings“ Grundgerüst: `buildings.json` lesen, Baukörper + Dach als Massen, `.glb`-Export
+  - Generator in Python (`buildings`, eigener glTF-Writer), Add-on für Handarbeit (Import/Zurückschreiben, `locked`)
+- [x] Welt-Assembler v1: Terrain + Gebäude → `.g7world`
+  - `assemble`: `leonberg.g7world` (1029 Vobs), `vob_ids.json`, Startpunkte; Engine lädt ohne Warnungen
 - [ ] Begehung mit Spielfigur/Kamera; Maßstabsfaktoren und Gassenverbreiterung festlegen (Ergebnis in `leonberg.toml` + Design-Doku)
 
 **DoD:** Graue Altstadt begehbar; Maßstabsentscheidung dokumentiert.

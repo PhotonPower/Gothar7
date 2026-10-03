@@ -5,8 +5,8 @@ Jede Fremdquelle, die in Assets oder abgeleitete Daten einfließt, wird hier ein
 ## Geodaten
 | Quelle | Lizenz | Pflichtangabe | Verwendung |
 |---|---|---|---|
-| LGL Baden-Württemberg – DGM1, LoD2, DOP | Datenlizenz Deutschland – Namensnennung 2.0 | „Datengrundlage: LGL, www.lgl-bw.de“ | Gelände und Baukörper des Spielorts Leonberg |
-| OpenStreetMap | ODbL 1.0 | „© OpenStreetMap-Mitwirkende“ | Straßen, Plätze, Nutzung |
+| LGL Baden-Württemberg – DGM1, LoD2, DOP | Datenlizenz Deutschland – Namensnennung 2.0 | „Datengrundlage: LGL, www.lgl-bw.de“ | Gelände und Baukörper des Spielorts Leonberg, einschließlich aller daraus abgeleiteten Dateien unter `assets/source/worlds/leonberg/` (Weltdateien `*.g7world`, Heightmap, Gebäude-`.glb` in `generated/`) und der gekochten Fassungen |
+| OpenStreetMap | ODbL 1.0 | „© OpenStreetMap-Mitwirkende“ | Straßen, Plätze, Nutzung; abgeleitet: Splat-Karten in `assets/source/worlds/leonberg/generated/` |
 
 ## Modelle, Texturen, Sounds
 | Asset | Quelle | Lizenz | Pflichtangabe |

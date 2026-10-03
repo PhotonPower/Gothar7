@@ -244,3 +244,19 @@ def test_cli_export_terrain_without_import(config_dir: Path, tmp_path: Path, mon
 def test_generated_folder_is_git_ignored():
     gitignore = Path(__file__).resolve().parents[3] / "assets" / "source" / "worlds" / ".gitignore"
     assert "*/generated/" in gitignore.read_text(encoding="utf-8").splitlines()
+
+
+def test_start_points_are_added_once(tmp_path: Path):
+    from gothar_worldgen.export.starts import DEFAULT_STARTS
+
+    write_work(tmp_path / "work")
+    grid = load_grid(tmp_path / "work")
+    world = tmp_path / "w.g7world"
+    export_terrain(grid, "w", world, tmp_path / "w.r16", "w.r16", starts=DEFAULT_STARTS)
+    export_terrain(grid, "w", world, tmp_path / "w.r16", "w.r16", starts=DEFAULT_STARTS)
+    doc = json.loads(world.read_text(encoding="utf-8"))
+    starts = {v["name"]: v for v in doc["vobs"] if v["type"] == "start"}
+    assert list(starts) == ["START_MARKTPLATZ", "START_UEBERSICHT"] and doc["nextVobId"] == 3
+    # Feet on the terrain: the plane at (0, 8) is 3 + 0 - 4 = -1 m.
+    assert starts["START_MARKTPLATZ"]["pos"] == pytest.approx([0.0, -1.0, 8.0], abs=0.002)
+    assert starts["START_UEBERSICHT"]["rot"] == [-0.258819, 0.0, 0.0, 0.965926]
