@@ -225,6 +225,24 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
 - **Splatmap** mit 4–8 Materialschichten (Kopfstein, Matsch, Gras, Waldboden, Fels, Acker).
 - Löcher (Keller, Höhleneingänge), Kollision über physics (Heightfield-Shape).
 - Editor: Sculpt- und Mal-Pinsel, um die reale Topografie spielgerecht zu verbiegen.
+- **Gewässer (W2, nach M5 Teil E): Die Heightmap weicht dort bewusst vom DGM ab.** Das DGM hat kein Bachbett (Laserpunkte
+  auf Wasser werden überbrückt); `export-terrain` gräbt deshalb nach `tools/worldgen/data/<ort>/water.json` ein Bett bzw.
+  Becken ein und schreibt die Wasserkörper nach `generated/water_index.json`; `assemble` setzt sie als `water`-Vobs
+  (world.md) unter `WORLDGEN_WATER`, IDs `water:<name>_<n>`. Code: `export/water.py`.
+  - **Flüsse** (OSM-Linie nach Name, ohne Durchlässe, aneinanderhängende Stücke verbunden): Bett 4 m breit, 1,2 m unter
+    dem geglätteten DGM (`smoothM` 40 m), Böschungen 2 m bis zum ursprünglichen Gelände.
+    - Wasserspiegel 0,3 m unter dem geglätteten DGM, höchstens 0,1 m unter dem tiefsten Gelände des Querschnitts (so
+      ragt keine Box über das Ufer), flussabwärts nie steigend; das Bett liegt 0,9 m unter dem Spiegel.
+    - Boxen bis 15 m lang, geteilt an Biegungen (> 20° bzw. > 0,75 m Abweichung von der Sehne) und wo der Spiegel um
+      > 0,25 m fällt; 0,5 m Überlappung, kleine Stufen an den Überlappungen; Oberkante = Spiegel, Boden 0,3 m unter dem
+      Bett.
+  - **Seen** (OSM-Fläche nach Name): Spiegel = Median des DGM im Umriss minus 0,2 m, Becken 1,5 m unter dem Median,
+    erreicht 3 m vom Ufer; je konvexem Teil des Umrisses eine Box.
+  - Die Heightmap wird nur abgesenkt, nie angehoben; Gebäude bleiben unberührt (sie nutzen das DGM der Arbeitsdaten).
+  - **Leonberg:** Glems 163 Boxen (16 936 Zellen abgesenkt), Parksee 23 Boxen (11 513 Zellen); tiefster Punkt der
+    Heightmap jetzt −52,09 m (vorher −50,99 m).
+  - Die Wasserfläche zeichnet die Engine bis M17 als durchscheinende Box (Debug-Darstellung), dabei sind auch die
+    Seiten unter der Oberfläche zu sehen.
 
 **Umgesetzt (W2 Teil 1):** `gothar-worldgen export-terrain <ort> [--area surroundings|core] [--step n] [--name …]`
 - **Eingabe:** `terrain.json` und `terrain.r16` aus dem Work-Ordner.

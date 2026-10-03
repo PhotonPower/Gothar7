@@ -35,6 +35,7 @@ from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.export.splat import SplatPaths, composite, coverage, layer_masks, write_splat
 from gothar_worldgen.export.starts import DEFAULT_STARTS
 from gothar_worldgen.export.terrain import ExportError, Grid, crop, export_terrain, load_grid
+from gothar_worldgen.export.water import carve_and_place
 from gothar_worldgen.facade.capture import (
     CaptureError,
     CaptureOptions,
@@ -571,12 +572,14 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
         except ExportError:
             ground = None
         handmade = load_handmade(data_dir / "handmade.json")
+        water_path = folder / "generated" / "water_index.json"
+        water = json.loads(water_path.read_text(encoding="utf-8")) if water_path.is_file() else None
         wall_path = folder / "generated" / "citywall_index.json"
         citywall = (
             json.loads(wall_path.read_text(encoding="utf-8")) if wall_path.is_file() else None
         )
         res = assemble(terrain_world, index, load_world(folder / f"{name}.g7world"), ids, name,
-                       locked, ground, citywall, handmade)  # fmt: skip
+                       locked, ground, citywall, handmade, water)  # fmt: skip
     except (AssembleError, OverrideError, OSError, json.JSONDecodeError, HandmadeError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -610,9 +613,20 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
     try:
         grid = load_grid(paths.work)
         grid = crop(grid, core if args.area == "core" else None, args.step)
+        data_dir = (args.config_dir or default_config_dir()).parent / "data" / site.name
+        water_doc = data_dir / "water.json"
+        # River beds and lake basins: the heightmap deliberately leaves the DGM there.
+        if water_doc.is_file():
+            features = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
+            spec = json.loads(water_doc.read_text(encoding="utf-8"))
+            grid, water = carve_and_place(grid, features.get("features", []), spec)
+            write_index(folder / "generated" / "water_index.json", water)
+            for kind in ("rivers", "lakes"):
+                for wname, st in water["stats"][kind].items():
+                    print(f"  water: {wname}: {st['boxes']} boxes, "
+                          f"{st['cellsLowered']} cells lowered", file=out)  # fmt: skip
         splat = None
         if not args.no_splat:
-            data_dir = (args.config_dir or default_config_dir()).parent / "data" / site.name
             gardens = splat_areas(load_handmade(data_dir / "handmade.json"))
             splat = _export_splat(grid, paths.work, core, folder, site.name, name, out, gardens)
         starts = DEFAULT_STARTS if site.name == "leonberg" else ()

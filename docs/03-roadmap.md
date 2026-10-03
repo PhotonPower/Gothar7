@@ -313,6 +313,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
   - `export-terrain` (PR #56 Heightmap, Splatmap mit 7 Schichten); Platzhalter-Albedos, endgültige Texturen mit W5
 - [x] Testwelt `leonberg_terrain.g7world` mit Tag/Nacht
   - lädt mit `--time=HH:MM` (engines Tag/Nacht #79), Startpunkte Marktplatz und Übersicht; geprüft 12:00, 19:30, 23:00
+- [x] Gewässer als `water`-Vobs (nach M5 Teil E): Glems und Parksee, Bachbett bzw. Becken in der Heightmap (weicht dort bewusst vom DGM ab)
 
 **DoD:** Das Leonberger Gelände ist in der Engine sichtbar und (ab M5) begehbar.
 

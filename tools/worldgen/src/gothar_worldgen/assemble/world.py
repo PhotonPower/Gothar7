@@ -28,6 +28,7 @@ IDS_VERSION = 1
 ROOT_NAME = "WORLDGEN_BUILDINGS"
 CITYWALL_NAME = "WORLDGEN_CITYWALL"
 HANDMADE_NAME = "WORLDGEN_HANDMADE"
+WATER_NAME = "WORLDGEN_WATER"
 GROUP_CELL_M = 64.0
 IDENTITY = [0.0, 0.0, 0.0, 1.0]
 
@@ -116,6 +117,7 @@ def assemble(
     ground: Any = None,  # noqa: ANN401  callable (x, z) -> y for start points
     citywall: dict[str, Any] | None = None,
     handmade: dict[str, Any] | None = None,
+    water: dict[str, Any] | None = None,
 ) -> AssembleResult:
     if "terrain" not in terrain_world:
         raise AssembleError("the terrain world has no terrain block (run export-terrain)")
@@ -178,6 +180,16 @@ def assemble(
             name = f"HANDMADE_{item['key']}".upper()
             fresh[vid] = _vob(vid, "mesh", name, item["pos"], group, rot=item.get("rot"),
                               mesh=item["mesh"], category="gameplay")  # fmt: skip
+
+    if water and water.get("entries"):
+        # Rivers and lakes (water.json, carved beds): boxes whose top is the surface (world.md).
+        group = ids.get("group:water", floor)
+        fresh[group] = _vob(group, "empty", WATER_NAME, [0.0, 0.0, 0.0])
+        for e in water["entries"]:
+            vid = ids.get(f"water:{e['id']}", floor)
+            v = _vob(vid, "water", e["name"], e["pos"], group, rot=e["rot"])
+            v["components"] = {"water": {"halfExtents": [_tidy(h) for h in e["halfExtents"]]}}
+            fresh[vid] = v
 
     # Owned groups that editor vobs still hang on survive even if empty of buildings.
     editor = {i: v for i, v in old.items() if i not in owned}

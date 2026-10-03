@@ -1,0 +1,14 @@
+{
+  "format": "gothar-water",
+  "version": 1,
+  "status": "festgelegt – Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03)",
+  "note": "Gewässer aus OSM als water-Vobs (world.md). Das DGM hat kein Bachbett: export-terrain gräbt Bett bzw. Becken in die Heightmap ein, die dort bewusst vom DGM abweicht (leonberg-pipeline.md W-B). Durchlässe (tunnel) und kleine Gräben entfallen.",
+  "rivers": [
+    {"osmName": "Glems", "widthM": 4.0, "depthM": 1.2, "bankM": 2.0, "levelBelowM": 0.3, "segmentM": 15.0, "smoothM": 40.0}
+  ],
+  "lakes": [
+    {"osmName": "Parksee", "depthM": 1.5, "levelBelowM": 0.2, "shoreM": 3.0}
+  ],
+  "boxBelowBedM": 0.3,
+  "overlapM": 0.5
+}
