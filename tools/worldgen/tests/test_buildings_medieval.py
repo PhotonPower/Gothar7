@@ -215,3 +215,42 @@ def test_parts_ignore_the_front_facade():
     override = from_json({"id": "P", "frontFacade": {"edge": 0, "openings": []}})
     r = build_house({**HOUSE, "id": "P", "parts": [part]}, -0.3, (5.0, -3.5), RULES, None, override)
     assert any("frontFacade ignored" in n for n in r.notes)
+
+
+def _passage_house(h: float = 3.0):
+    passage = {"axis": [[5.0, 2.0], [5.0, -9.0]], "w": 2.5, "h": h}
+    return from_json(
+        {"id": "H1", "style": "handwerkerhaus", "storeys": [4.0, 2.2, 2.2], "passages": [passage]}
+    )
+
+
+def test_passage_leaves_a_free_corridor_through_the_ground_storey():
+    from shapely.geometry import MultiPoint, box
+
+    r = build_house(HOUSE, -0.3, (5.0, -3.5), RULES, STREET_SOUTH, _passage_house())
+    origin = np.asarray([5.0, -0.3, -3.5])
+    lane = box(5.0 - 1.15, -7.5, 5.0 + 1.15, 0.5)  # the corridor, a little narrower
+    below, above = [], []
+    for part in r.collision.parts:
+        pos = part.positions.astype(float) + origin
+        hull = MultiPoint([(x, z) for x, _, z in pos]).convex_hull
+        if hull.intersects(lane):
+            (above if pos[:, 1].min() >= 3.0 - 1e-3 else below).append(part.name)
+    assert not below and above  # free up to the clear height, the house above it
+    assert not r.collision.fallback
+    # no wall face crosses the corridor below its top: the facades have the opening
+    for p in r.primitives:
+        pos = p.mesh.positions.astype(float) + origin
+        tris = pos[np.asarray(p.mesh.indices).reshape(-1, 3)]
+        for t in tris:
+            if t[:, 1].max() < 2.9 and np.ptp(t[:, 2]) < 1e-3:  # a facade-parallel face (z const)
+                xs = t[:, 0]
+                assert xs.max() <= 5.0 - 1.2 or xs.min() >= 5.0 + 1.2, p.material
+
+
+def test_passage_is_lowered_under_a_low_ground_storey_and_takes_over_the_door():
+    low = from_json({"id": "H1", "style": "handwerkerhaus", "storeys": [2.6, 2.9, 2.9],
+                     "passages": [{"axis": [[5.0, 2.0], [5.0, -9.0]]}]})  # fmt: skip
+    r = build_house(HOUSE, -0.3, (5.0, -3.5), RULES, STREET_SOUTH, low)
+    assert any(n.startswith("passage lowered to") for n in r.notes)
+    assert all(abs(d[0] - 5.0) > 1.75 for d in r.doors)  # the street door went into the passage

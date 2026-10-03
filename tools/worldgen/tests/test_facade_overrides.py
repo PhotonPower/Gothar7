@@ -111,3 +111,22 @@ def test_broken_file(tmp_path: Path):
     (tmp_path / "B.json").write_text("{", encoding="utf-8")
     with pytest.raises(OverrideError):
         load(tmp_path / "B.json")
+
+
+def test_passages_are_parsed_checked_and_written_back():
+    from gothar_worldgen.facade.overrides import from_json, to_json
+
+    doc = {"id": "B", "keep": True,
+           "passages": [{"axis": [[0, 0], [0, 10]], "w": 2.0, "note": "Durchgang"}]}  # fmt: skip
+    o = from_json(doc)
+    (ps,) = o.passages
+    assert ps.axis == ((0.0, 0.0), (0.0, 10.0)) and ps.w == 2.0 and ps.h == 3.0
+    assert from_json(to_json(o)).passages == o.passages
+    for bad in (
+        [{"axis": [[0, 0]]}],
+        [{"axis": [[0, 0], [0, 0.5]]}],
+        "x",
+        [{"axis": [[0, 0], [0, 5]], "w": -1}],
+    ):
+        with pytest.raises(OverrideError):
+            from_json({"id": "B", "passages": bad})

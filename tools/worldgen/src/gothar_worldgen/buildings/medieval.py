@@ -772,6 +772,20 @@ class WallContext:
 
 
 @dataclass
+class _PassagePlan:
+    """A passage through the current mass: corridor and clear top (absolute y)."""
+
+    axis: LineString
+    corridor: Polygon  # the axis buffered by half the width, flat ends, beyond the facades
+    w: float
+    top: float
+
+
+LINTEL_M = 0.3  # beam / stone lintel over a passage
+PASSAGE_HEAD_M = 0.3  # the passage stays this far below the ground storey's ceiling
+
+
+@dataclass
 class _Context:
     rules: Rules
     rng: random.Random
@@ -789,6 +803,9 @@ class _Context:
     stair_ground: float | None = None  # terrain in front of the current mass's door if lower
     doors: list[list[Any]] = field(default_factory=list)  # per mass: x, z, floor, kind, nx, nz
     door_storey: int = 0  # storey of the current mass's door (hillside houses: above ground)
+    passages: list[Any] = field(default_factory=list)  # override passages (BuildingOverride)
+    passages_now: list[_PassagePlan] = field(default_factory=list)  # in the current mass
+    carve: list[tuple[Polygon, float]] = field(default_factory=list)  # for the collision
 
 
 def _top_outline(f: Frame, roof: _Roof, crease: LineString | None, y: float,
@@ -834,6 +851,9 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
             for op in plan:
                 if op.kind in ("door", "gate"):
                     _door_stairs(ctx, f, op, ctx.stair_ground)
+    lintels = []
+    if s == 0 and ctx.passages_now:
+        plan, lintels = _with_passages(ctx, f, plan)
     timbered = st.timber and ctx.level < 3 and edge >= 0
     massive = not st.timber or (s == 0 and st.massive_ground)
     poly = Polygon(outline)
@@ -854,7 +874,13 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
     else:
         _wall(ctx.builders["infill"], f, poly, plan)
     for op in plan:
-        _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
+        if op.kind != "passage":  # open: the tunnel walls are its jambs
+            _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
+    role = "wall_ground" if massive else "timber"  # lintel in the house's style
+    for u0, u1, v in lintels:
+        mid = v + LINTEL_M / 2
+        depth = float(rules.get("timber", "depthM"))
+        _beam(ctx.builders[role], f, np.array([u0, mid]), np.array([u1, mid]), LINTEL_M, depth)
     if massive or not timbered:
         return
     beam, depth = float(rules.get("timber", "beamM")), float(rules.get("timber", "depthM"))
@@ -878,6 +904,89 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
             depth * max(factor, 0.2),
             sides=kind not in BOARD_KINDS,
         )
+
+
+def _plan_passages(ctx: _Context, ring: Sequence[tuple[float, float]], ground: float,
+                   heights: Sequence[float], notes: list[str]) -> list[_PassagePlan]:  # fmt: skip
+    """Passages of the override that cross this mass: corridor and clear top."""
+    out = []
+    poly = Polygon(ring)
+    for ps in ctx.passages:
+        axis = LineString(ps.axis)
+        inside = axis.intersection(poly)
+        if inside.is_empty or inside.length < 0.5:
+            continue
+        ends = [Point(q) for g in getattr(inside, "geoms", [inside]) for q in g.coords]
+        terrain = [ctx.ground_at(e.x, e.y) if ctx.ground_at else ground for e in ends]
+        top = max([ground, *terrain]) + float(ps.h)
+        limit = ground + heights[0] - PASSAGE_HEAD_M - LINTEL_M
+        if top > limit:
+            notes.append(f"passage lowered to {limit - max([ground, *terrain]):.2f} m clear height")
+            top = limit
+        corridor = axis.buffer(float(ps.w) / 2, cap_style="flat")
+        out.append(_PassagePlan(axis, corridor, float(ps.w), top))
+        ctx.carve.append((corridor, top))
+        # a door that the passage takes over is no door any more
+        ctx.doors[:] = [
+            d for d in ctx.doors if not corridor.buffer(0.5).contains(Point(d[0], d[1]))
+        ]
+    return out
+
+
+def _with_passages(ctx: _Context, f: Frame, plan: list[Opening]
+                   ) -> tuple[list[Opening], list[tuple[float, float, float]]]:  # fmt: skip
+    """``plan`` with an opening where a passage crosses this facade (other openings there go);
+    returns the lintels (u0, u1, v) too."""
+    a = (f.lx, f.lz)
+    b = (f.lx + f.ax * f.width, f.lz + f.az * f.width)
+    edge = LineString([a, b])
+    lintels = []
+    for pp in ctx.passages_now:
+        hit = edge.intersection(pp.axis)
+        if hit.is_empty or hit.geom_type != "Point":
+            continue
+        u = math.dist(a, (hit.x, hit.y))
+        d = np.asarray(pp.axis.coords[-1]) - np.asarray(pp.axis.coords[0])
+        d = d / np.linalg.norm(d)
+        sin = abs(f.ax * d[1] - f.az * d[0])  # the corridor meets the facade at an angle
+        wd = pp.w / max(sin, 0.3)
+        u0, u1 = max(u - wd / 2, 0.05), min(u + wd / 2, f.width - 0.05)
+        v = pp.top - f.y0
+        plan = [op for op in plan if op.u + op.w < u0 - 0.3 or op.u > u1 + 0.3]
+        plan.append(Opening("passage", u0, -100.0, u1 - u0, v + 100.0))
+        lintels.append((u0 - 0.2, u1 + 0.2, v))
+    return plan, lintels
+
+
+def _passage_tunnel(ctx: _Context, pp: _PassagePlan, ground_poly: Polygon) -> None:
+    """Side walls and ceiling of a passage inside the ground storey."""
+    role = "wall_ground"
+    ceiling = "timber" if ctx.style.timber else "wall_ground"
+    inner = pp.corridor.intersection(ground_poly)
+    for g in getattr(inner, "geoms", [inner]):
+        if not isinstance(g, Polygon) or g.area < 1e-3:
+            continue
+        for tri in shapely.constrained_delaunay_triangles(g).geoms:
+            pts = [(x, pp.top, z) for x, z in list(tri.exterior.coords)[:3]]
+            ctx.builders[ceiling].polygon(pts, [(x, z) for x, _, z in pts], (0.0, -1.0, 0.0))
+    for side in (1.0, -1.0):
+        line = pp.axis.offset_curve(side * pp.w / 2)
+        part = line.intersection(ground_poly)
+        for seg in getattr(part, "geoms", [part]):
+            if seg.is_empty or seg.geom_type != "LineString" or seg.length < 0.05:
+                continue
+            (x0, z0), (x1, z1) = seg.coords[0], seg.coords[-1]
+            cx, cz = pp.axis.interpolate(
+                pp.axis.project(Point((x0 + x1) / 2, (z0 + z1) / 2))
+            ).coords[0]
+            mx, mz = (x0 + x1) / 2, (z0 + z1) / 2
+            want = (cx - mx, 0.0, cz - mz)  # towards the axis
+            y0 = ctx.base_y
+            ctx.builders[role].polygon(
+                [(x0, y0, z0), (x1, y0, z1), (x1, pp.top, z1), (x0, pp.top, z0)],
+                [(0.0, 0.0), (seg.length, 0.0), (seg.length, pp.top - y0), (0.0, pp.top - y0)],
+                want,
+            )
 
 
 def _with_door(plan: list[Opening], width: float, rules: Rules) -> list[Opening]:
@@ -974,9 +1083,18 @@ def _wall_side(ctx: _Context, f: Frame, s: int, outline: Sequence[tuple[float, f
                 c = f.width / 2 + (i - (n - 1) / 2) * step
                 if c - w / 2 >= 0.8 and c + w / 2 <= f.width - 0.8:
                     plan.append(Opening("window", c - w / 2, sill, w, h))
+    lintels = []
+    if s == 0 and ctx.passages_now:  # a passage out through the town wall (postern)
+        plan, lintels = _with_passages(ctx, f, plan)
     _wall(ctx.builders["wall_ground"], f, Polygon(outline), plan)
     for op in plan:
-        _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
+        if op.kind != "passage":
+            _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
+    depth = float(rules.get("timber", "depthM"))
+    for u0, u1, v in lintels:
+        mid_v = v + LINTEL_M / 2
+        _beam(ctx.builders["wall_ground"], f, np.array([u0, mid_v]), np.array([u1, mid_v]),
+              LINTEL_M, depth)  # fmt: skip
 
 
 def _screen_wall(ctx: _Context, f: Frame, outline: Sequence[tuple[float, float]]) -> None:
@@ -1252,6 +1370,8 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
     if not heights:
         return
 
+    ctx.passages_now = _plan_passages(ctx, ring, ground, heights, notes)
+
     outlines = [offset_ring(ring, [jetty * s if jetty_edges[i] else 0.0 for i in range(n)])
                 for s in range(len(heights))]  # fmt: skip
     if any(not Polygon([p for p, _ in o]).is_valid for o in outlines):
@@ -1290,6 +1410,9 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
                 _screen_wall(ctx, f, outline)
         if s > 0:
             _jetty_underside(ctx, [p for p, _ in ring_s], [p for p, _ in outlines[s - 1]], y)
+        if s == 0:
+            for pp in ctx.passages_now:
+                _passage_tunnel(ctx, pp, Polygon([p for p, _ in ring_s]))
         y += h
     cuts = []  # no roof overhang over the outward sides of a wall house
     top_n = _outward_normals(top_ring)
@@ -1361,13 +1484,22 @@ def build_house(
         else:
             masses.append(mass)
     materials = _materials(style)
-    collision = collision_for(masses, base_y, origin_xz)
+    passages = list(getattr(override, "passages", None) or [])
     result = None
     for level in range(5):
         builders = {role: _Builder((origin_xz[0], base_y, origin_xz[1])) for role in ROLES}
         rng = _rng(building["id"], getattr(override, "seed", None))
         ctx = _Context(
-            rules, rng, front, style, level, builders, base_y, wall=wall, ground_at=ground_at
+            rules,
+            rng,
+            front,
+            style,
+            level,
+            builders,
+            base_y,
+            wall=wall,
+            ground_at=ground_at,
+            passages=passages,
         )
         level_notes: list[str] = []
         for mass, src in zip(masses, sources, strict=False):
@@ -1382,6 +1514,7 @@ def build_house(
         prims = [Primitive(materials[r], rules.color(materials[r]), builders[r].mesh())
                  for r in ROLES if builders[r].idx]  # fmt: skip
         tris = sum(p.mesh.triangle_count for p in prims)
+        collision = collision_for(masses, base_y, origin_xz, ctx.carve)
         col = collision
         if ctx.screens:
             parts = [*collision.parts, *ctx.screens]

@@ -1,0 +1,13 @@
+{
+  "id": "DEBW_00100061ZnA",
+  "keep": true,
+  "storeys": [4.6, 2.7, 2.75],
+  "notes": "Entscheidung Projektinhaber (2026-10-03): Durchgang im Erdgeschoss, die Zwerchstraße führt hindurch zur Pforte (OSM w45837647, tunnel); hohes Erdgeschoss, damit der Durchgang am höheren Ende 3 m frei hat",
+  "passages": [
+    {
+      "axis": [[-12.0, -129.4], [-14.52, -118.13]],
+      "w": 2.5,
+      "h": 3.0
+    }
+  ]
+}

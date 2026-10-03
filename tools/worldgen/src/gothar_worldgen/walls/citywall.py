@@ -64,6 +64,8 @@ class Gate:
     name: str
     at: tuple[float, float]
     street: str = ""
+    wall: str = "ring"  # ring | zwinger (a postern in a Zwinger wall, at its nearest point)
+    w: float | None = None  # passage width (default cityWall.pforte.w)
 
 
 @dataclass
@@ -121,7 +123,11 @@ def load_course(doc: dict[str, Any], features: Sequence[dict[str, Any]]) -> Cour
             raise CourseError(f"gate {g.get('key')}: kind must be tower or pforte")
         at = (float(g["at"][0]), float(g["at"][1]))
         name = str(g.get("name") or g["key"])
-        gates.append(Gate(str(g["key"]), g["kind"], name, at, str(g.get("street", ""))))
+        wall = str(g.get("wall", "ring"))
+        if wall not in ("ring", "zwinger") or (wall == "zwinger" and g["kind"] != "pforte"):
+            raise CourseError(f"gate {g['key']}: wall must be ring, or zwinger for a pforte")
+        w = float(g["w"]) if "w" in g else None
+        gates.append(Gate(str(g["key"]), g["kind"], name, at, str(g.get("street", "")), wall, w))
     return Course(ring, zwinger, gates)
 
 
@@ -259,6 +265,7 @@ class Piece:
     length: float = 0.0
     towers: int = 0
     merlons: int = 0
+    pfortes: int = 0  # posterns in a Zwinger wall
     notes: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -322,6 +329,8 @@ def _samples(path: Path2, s0: float, s1: float, piece: float) -> list[float]:
     marks = [s0, *path.vertices_between(s0, s1), s1]
     out = [s0]
     for a, b in zip(marks, marks[1:], strict=False):
+        if b - a < 1e-6:  # a course vertex on a mark: no zero-length segment
+            continue
         n = max(1, int(math.ceil((b - a) / piece - 1e-9)))
         out += [a + (b - a) * k / n for k in range(1, n + 1)]
     return out
@@ -407,6 +416,8 @@ def strip_collision(piece: Piece, path: Path2, spec: WallSpec, rows: Sequence[tu
         if not last and rows[k + 1][0] - s0 <= max_len and bend <= max_bend:
             continue
         a, b = rows[start], rows[k]
+        if b[0] - a[0] < 0.05:  # no flat body across the wall (it would have no volume)
+            continue
         n = path.outward(path.direction((a[0] + b[0]) / 2))
         base = min(r[3] for r in rows[start : k + 1])
 
@@ -803,7 +814,7 @@ def plan_wall(course: Course, footprints: Sequence[Polygon], height: Height,
                 intervals.append((s0, s1))
     intervals = _bridge_open_gaps(path, intervals, _solids(path, polys, gates, cw), t)
     pfortes = []
-    for g in (g for g in course.gates if g.kind == "pforte"):
+    for g in (g for g in course.gates if g.kind == "pforte" and g.wall == "ring"):
         s = s_of(g.at)
         w = float(cw["pforte"]["w"])
         inside = [iv for iv in intervals if iv[0] + 0.5 < s - w / 2 and s + w / 2 < iv[1] - 0.5]
@@ -956,6 +967,7 @@ def _zwinger(course: Course, footprints: Sequence[Polygon], height: Height,
     z = rules.get("cityWall", "zwinger")
     cw = rules.get("cityWall")
     t, h = float(z["thicknessM"]), float(z["heightM"])
+    chunk = float(cw["chunkM"])
     spec = WallSpec(-t / 2, t / 2, None, h, 0.0, 1.0, float(cw["baseSinkM"]))
     polys = [p for p in footprints if p.is_valid and not p.is_empty]
     tree = STRtree([p.buffer(t / 2) for p in polys]) if polys else None
@@ -963,6 +975,12 @@ def _zwinger(course: Course, footprints: Sequence[Polygon], height: Height,
     for k, pts in enumerate(course.zwinger):
         path = Path2(pts, closed=False)
         prof = Profile(path, height, t / 2, float(cw["smoothM"]))
+        line = LineString(pts)
+        posts = [  # posterns in this Zwinger wall: (s, width)
+            (float(line.project(Point(g.at))), float(g.w or cw["pforte"]["w"]))
+            for g in course.gates
+            if g.wall == "zwinger" and line.distance(Point(g.at)) < 3.0
+        ]
         n = max(2, int(math.ceil(path.length / SAMPLE_M)))
         ss = np.linspace(0.0, path.length, n)
         hit = np.zeros(n, dtype=bool)
@@ -978,14 +996,42 @@ def _zwinger(course: Course, footprints: Sequence[Polygon], height: Height,
             s0, s1 = max(s0, 0.0), min(s1, path.length)
             if s1 - s0 < 0.6:
                 continue
-            p0 = path.point(s0)
-            piece = Piece(f"zwinger_{k:02d}_{j:02d}", "zwinger",
-                          (round(float(p0[0]), 3), round(prof.lowest(s0, s0 + 1) - 1.0, 3),
-                           round(float(p0[1]), 3)))  # fmt: skip
-            piece.length = s1 - s0
-            rows = wall_strip(piece, path, prof, spec, s0, s1, float(cw["pieceM"]))
-            strip_collision(piece, path, spec, rows)
-            pieces.append(piece)
+            # chunks like the ring (collision budget per file), never cut at a postern
+            cuts, x = [s0], s0
+            while s1 - x > chunk * 1.25:
+                y = x + chunk
+                while any(abs(y - s) < w / 2 + 0.5 for s, w in posts):
+                    y += 0.5
+                if s1 - y < 2.0:
+                    break
+                cuts.append(y)
+                x = y
+            cuts.append(s1)
+            for c, (c0, c1) in enumerate(zip(cuts, cuts[1:], strict=False)):
+                p0 = path.point(c0)
+                key = f"zwinger_{k:02d}_{j:02d}" + (f"_{c:02d}" if c else "")
+                piece = Piece(key, "zwinger",
+                              (round(float(p0[0]), 3), round(prof.lowest(c0, c0 + 1) - 1.0, 3),
+                               round(float(p0[1]), 3)))  # fmt: skip
+                piece.length = c1 - c0
+                here = sorted((s, w) for s, w in posts if c0 + w / 2 + 0.5 < s < c1 - w / 2 - 0.5)
+                marks = [c0]
+                for s, w in here:
+                    marks += [s - w / 2, s + w / 2]
+                marks.append(c1)
+                for m in range(0, len(marks), 2):
+                    # caps at the run's ends and at a postern's jambs, not between chunks
+                    caps = (c0 == s0 or m > 0, c1 == s1 or m + 2 < len(marks))
+                    rows = wall_strip(piece, path, prof, spec, marks[m], marks[m + 1],
+                                      float(cw["pieceM"]), caps)  # fmt: skip
+                    strip_collision(piece, path, spec, rows)
+                for s, w in here:  # lintel over the passage
+                    lintel = prof.ground(s) + float(cw["pforte"]["h"])
+                    rows = wall_strip(piece, path, prof, spec, s - w / 2, s + w / 2, w,
+                                      (False, False), lintel)  # fmt: skip
+                    strip_collision(piece, path, spec, rows)
+                piece.pfortes = len(here)
+                pieces.append(piece)
     return pieces
 
 
@@ -1107,6 +1153,7 @@ def generate_citywall(course: Course, footprints: Sequence[Polygon], height: Hei
         "towers": len(plan.towers),
         "gateTowers": len(plan.gates),
         "pfortes": len(plan.pfortes),
+        "zwingerPfortes": sum(p.pfortes for p in pieces),
         "stairs": len(plan.stairs),
         "merlons": sum(p.merlons for p in pieces),
         "files": len(entries),

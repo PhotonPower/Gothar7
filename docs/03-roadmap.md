@@ -370,10 +370,12 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [ ] Straßen/Plätze aus OSM → Splatmap, Rinnen, Stufen, Stützmauern
 - [ ] Stadtmauer mit Toren
   - Stand: Ring mit Türmen, Tortürmen, Pforten, Treppen und Kollision umgesetzt (`gothar-worldgen citywall`, W-E2), Mauerhäuser auf der Linie (Außenseite als Mauer), Schloss als eigenes Modell (Blender-Skript, W-E3)
+  - Stand: Pforte in der Zwingermauer vor dem Garten-Westtor; Durchgang (Override `passages`) durch das Haus an der Pforte Zwerchstraße Nord
 - [ ] Requisiten- und Vegetationsverteilung über Regeln/Masken
   - Stand: Marktbrunnen als Handmodell (Modell des Projektinhabers, per Skript an 1700 angepasst, W-E4)
   - Stand: Pomeranzengarten aus drei Modellen des Projektinhabers (Geländer mit Pavillons, Obelisk- und zwei Gartenbrunnen), Parterre nach dem Geländer, an den LoD2-Pavillons ausgerichtet (W-E5)
-  - Stand: Stadtkirche aus dem Modell des Projektinhabers statt des LoD2-Gebäudes (W-E6; Länge offen)
+  - Stand: Stadtkirche aus dem Modell des Projektinhabers statt des LoD2-Gebäudes (W-E6; mittig auf dem LoD2-Grundriss, Entscheidung K1)
+  - Stand: Bodenregel für alle Handmodelle – nichts versinkt im Gelände; Garten auf drei waagrechten Terrassen mit Stützmauern und Treppen, Kirche mit Fundament, Prüfung `qa/grounding.py` (#131, #132)
 - [ ] Wegnetz-Vorschlag aus Straßenachsen
 
 **DoD:** Die komplette Altstadt ist ausgestattet und hat ein vorläufiges Wegnetz.

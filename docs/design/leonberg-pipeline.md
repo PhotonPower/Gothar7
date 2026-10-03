@@ -185,6 +185,17 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   Schlüssel, entscheidet der Generator.
 - Optional ist `wallHouse` (true/false): Haus auf der Stadtmauerlinie, dessen Außenseite die Mauer ist (W-E2); fehlt
   der Schlüssel, wird es erkannt.
+- Optional ist `passages`: Durchgänge durch das Erdgeschoss, z. B. dort, wo ein OSM-Weg als `tunnel` durch das Haus
+  führt. Je Durchgang gibt es `axis` (zwei Punkte [x, z], über beide Fassaden hinaus), `w` (lichte Breite, Vorgabe
+  2,5 m), `h` (lichte Höhe über dem höheren Ende, Vorgabe 3 m) und optional `note`.
+  - Der Generator öffnet beide Fassaden; Fenster und Türen dort entfallen.
+  - Darüber liegt ein Sturz im Stil des Hauses: ein Balken im Fachwerk, ein Steinsturz am massiven Erdgeschoss und an
+    Mauerhaus-Außenseiten.
+  - Innen gibt es Seitenwände und eine Decke.
+  - Die Kollision wird geteilt: Über dem Durchgang liegt das Haus, unterhalb Körper neben dem Gang.
+  - Ist das Erdgeschoss zu niedrig, wird der Durchgang abgesenkt (Hinweis); ein hohes Erdgeschoss gibt `storeys`.
+  - Leonberg: DEBW_00100061ZnA, die Zwerchstraße zur Pforte Zwerchstraße Nord (Entscheidung Projektinhaber
+    2026-10-03).
 - Ebenfalls optional sind `locked` (siehe W-C) und `rueckbau` (§7): `auto` (Vorgabe), `none` (nie ersetzen) oder
   `split` (immer durch Fachwerkhäuser ersetzen). **Unbekannte Schlüssel bleiben beim Speichern erhalten**, damit neuere
   Werkzeuge Felder ergänzen können.
@@ -568,7 +579,10 @@ Verlauf in `tools/worldgen/data/<ort>/city_wall.json` (versioniert, von Hand kor
   - Türme außerhalb der Mauer und über dem Durchgang. Tortürme: zwei Pfeiler und der Block über dem Kämpfer.
   - Die Durchfahrten bleiben frei (Test). Treppen als Rampe über die Stufenkanten, oben bündig mit dem Wehrgang,
     unten eine Stufe (Charakter-Controller: Stufe ≤ 0,3–0,4 m, Steigung ≤ 50°, Kapsel 0,3 × 1,8 m).
-- **Ausgabe:** `generated/citywall/*.glb` (Abschnitte ≤ 40 m, Tortürme mit Treppe einzeln, Zwingermauern) und
+- **Pforten in Zwingermauern:** `gates` mit `"wall": "zwinger"` (nur `pforte`, optional `w`) sitzen am nächsten Punkt
+  der Zwingermauer, mit Sturz und freiem Durchgang. Leonberg: `pforte_garten_west`, 2,8 m breit, vor dem Westtor des
+  Pomeranzengartens; die Gartentreppe führt hindurch (Entscheidung Projektinhaber 2026-10-03).
+- **Ausgabe:** `generated/citywall/*.glb` (Abschnitte ≤ 40 m, auch die Zwingermauern, Tortürme mit Treppe einzeln) und
   `citywall_index.json`. Der Assembler hängt sie als Mesh-Vobs `CITYWALL_*` unter `WORLDGEN_CITYWALL`, Kategorie
   `gameplay`, IDs `citywall:<abschnitt>` in `vob_ids.json`.
 - **Mauerhäuser** (Entscheidung Projektinhaber 2026-10-03): Häuser auf der Mauerlinie bilden die Mauer, der Ring
@@ -584,7 +598,8 @@ Verlauf in `tools/worldgen/data/<ort>/city_wall.json` (versioniert, von Hand kor
   - Gauben nur auf der Stadtseite. Der Wehrgang endet an den Mauerhäusern.
   - Werte in `building_rules.json` → `cityWall.wallHouse`.
 - **Leonberg:** Ring 1167 m, davon 933 m Mauer und 234 m Mauerhäuser (29 Häuser), Zwinger 252 m. 17 Türme,
-  2 Tortürme, 4 Pforten, 2 Treppen, 8432 Dreiecke, Kollision höchstens 192 je Datei.
+  2 Tortürme, 4 Pforten im Ring und 1 in der Zwingermauer, 2 Treppen, 8454 Dreiecke, Kollision höchstens 192 je Datei.
+  Mauerstücke der Länge 0 an Knicken erzeugen keine flachen Körper mehr (Test).
 - **Schloss:** eigenes Modell statt der LoD2-Blöcke, siehe W-E3.
   - Gedeckte Wehrgang-Abschnitte und Uhr- bzw. Wappenfelder an den Tortürmen bleiben spätere Optionen.
 
