@@ -162,6 +162,11 @@ public:
     [[nodiscard]] u32 culledByDistance() const noexcept { return m_culledFar; }
     [[nodiscard]] u32 culledBySize() const noexcept { return m_culledSmall; }
     [[nodiscard]] const render::CullSettings& cullSettings() const noexcept { return m_cullSettings; }
+    /// Multi-draw batches (engine.toml [render] multi_draw, default on); off draws every mesh on its own.
+    void setMultiDraw(bool enabled) noexcept { m_multiDraw = enabled; }
+    [[nodiscard]] bool multiDraw() const noexcept { return m_multiDraw; }
+    /// Batches of the last main pass.
+    [[nodiscard]] const render::BatchStats& lastBatch() const noexcept { return m_meshRenderer.lastBatch(); }
     render::CullSettings& cullSettings() noexcept { return m_cullSettings; }
     /// Terrain of the loaded world, or nullptr; chunks drawn in the last frame.
     [[nodiscard]] const world::Heightfield* terrain() const noexcept
@@ -277,9 +282,13 @@ private:
     render::CullGrid m_cullGrid; // over m_instances; rebuilt when instances change
     bool m_cullGridDirty = true;
     std::vector<u32> m_cullCandidates; // per pass, reused
+    bool m_multiDraw = true;           // [render] multi_draw: batches instead of one draw per mesh
+    std::vector<render::MeshDrawItem> m_drawItems; // per pass, reused
     FrameTimes m_benchmarkTimes;
     std::vector<FrameTimeSummary> m_benchmarkResults;
     std::vector<render::FrameStats> m_benchmarkStats; // per viewpoint, of its last measured frame
+    std::vector<render::BatchStats> m_benchmarkBatches;
+    std::vector<u32> m_benchmarkTerrainChunks;
     u64 m_benchmarkFrame = 0;
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs
     render::Environment m_environment;

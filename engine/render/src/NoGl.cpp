@@ -62,6 +62,15 @@ void Device::bindTexture(u32, const rhi::Texture&, const rhi::Sampler&)
 void Device::bindUniformBuffer(u32, const rhi::Buffer&)
 {
 }
+void Device::bindInstanceBuffer(const rhi::Buffer&)
+{
+}
+void Device::bindStorageBuffer(u32, const rhi::Buffer&)
+{
+}
+void Device::multiDrawIndexedIndirect(const rhi::Buffer&, usize, u32, u32)
+{
+}
 void Device::draw(u32, u32)
 {
 }

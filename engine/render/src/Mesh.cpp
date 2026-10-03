@@ -70,6 +70,13 @@ void Mesh::bind(Device& device) const
     device.bindIndexBuffer(m_indices, rhi::IndexType::U32);
 }
 
+DrawIndexedIndirect Mesh::drawRecord(usize submesh) const noexcept
+{
+    const asset::Submesh& range = m_submeshes[submesh];
+    return {range.indexCount, 1, m_slice.firstIndex() + range.firstIndex,
+            static_cast<i32>(m_slice.firstVertex()), 0};
+}
+
 void Mesh::draw(Device& device, usize submesh) const
 {
     const asset::Submesh& range = m_submeshes[submesh];

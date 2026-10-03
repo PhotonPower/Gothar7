@@ -4,12 +4,15 @@
 #include <g7/asset/TextureData.hpp>
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Result.hpp>
+#include <g7/render/Device.hpp>
 #include <g7/render/Lighting.hpp>
 #include <g7/render/Shadows.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
 #include <array>
 #include <functional>
+#include <memory>
+#include <span>
 #include <vector>
 
 namespace g7::render
@@ -35,6 +38,14 @@ struct Material
     bool doubleSided = false;
 };
 
+/// Neutral 1x1 textures shared by every MaterialSet of a renderer: materials without images then use
+/// the same textures in every model, so equal materials of different models batch together.
+struct MaterialDefaults
+{
+    rhi::Texture white;      ///< sRGB white (base colour, emissive)
+    rhi::Texture flatNormal; ///< linear (0.5, 0.5, 1)
+};
+
 /// The textures and materials of one model. Images are uploaded once per use (sRGB for colour,
 /// linear for normals); missing or broken images fall back to neutral 1x1 textures with a warning.
 class MaterialSet
@@ -45,8 +56,11 @@ public:
     /// missing (the material then uses a neutral fallback). Embedded images are decoded here.
     using ImageLookup = std::function<const asset::TextureData*(const asset::ImageSource&)>;
 
-    [[nodiscard]] static Result<MaterialSet> create(Device& device, const asset::MeshData& mesh,
-                                                    const ImageLookup& lookup);
+    /// With `defaults` (MeshRenderer::defaults()) materials without an image use the shared neutral
+    /// textures; the set keeps them alive. Without, the set makes its own.
+    [[nodiscard]] static Result<MaterialSet>
+    create(Device& device, const asset::MeshData& mesh, const ImageLookup& lookup,
+           std::shared_ptr<const MaterialDefaults> defaults = nullptr);
     /// Convenience for tools and tests: external image URIs are files relative to `modelDirectory`.
     [[nodiscard]] static Result<MaterialSet> create(Device& device, const asset::MeshData& mesh,
                                                     const fs::Path& modelDirectory);
@@ -57,6 +71,7 @@ public:
 private:
     std::vector<rhi::Texture> m_textures; // owns every texture, fallbacks included (stable on move)
     std::vector<Material> m_materials;
+    std::shared_ptr<const MaterialDefaults> m_defaults;
 };
 
 /// Shadows of the current frame, handed to MeshRenderer::setLighting.
@@ -70,6 +85,23 @@ struct ShadowFrame
 
 /// Draws meshes with their materials: opaque and alpha-tested submeshes first, then translucent
 /// ones (alpha blend, no depth writes; not yet sorted – that comes with the render scene).
+/// One object for MeshRenderer::drawBatched / drawShadowBatched.
+struct MeshDrawItem
+{
+    const Mesh* mesh = nullptr;
+    const MaterialSet* materials = nullptr;
+    Mat4 model{1.0f};
+    AABB bounds; ///< world bounds (point light selection)
+};
+
+/// What the last batched pass did (statistics, tests).
+struct BatchStats
+{
+    u32 groups = 0;       ///< multi-draw calls (one per pipeline, material and geometry block)
+    u32 batchedDraws = 0; ///< submeshes drawn through them
+    u32 singleDraws = 0;  ///< submeshes drawn one by one (translucent, meshes outside an arena)
+};
+
 class MeshRenderer
 {
 public:
@@ -96,7 +128,24 @@ public:
     /// Draws with the lighting set by setLighting(); each object gets the (at most 8) point lights
     /// that reach its world bounds.
     void draw(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
-              const Camera& camera);
+              const Camera& camera, i32 onlySubmesh = -1); ///< -1: all submeshes
+
+    /// Like draw() for many objects: opaque and alpha-tested submeshes of arena meshes are grouped by
+    /// pipeline, material values and geometry block and drawn with one multi-draw call per group; the
+    /// rest (translucent submeshes, meshes outside an arena) one by one afterwards. Same image as draw().
+    void drawBatched(Device& device, std::span<const MeshDrawItem> items, const Camera& camera);
+    /// drawShadow() for many objects, grouped the same way.
+    void drawShadowBatched(Device& device, std::span<const MeshDrawItem> items, const Cascade& cascade);
+    [[nodiscard]] const BatchStats& lastBatch() const noexcept { return m_batch; }
+    /// Starts a frame for the batched passes (rotates their buffers). Call once per frame before them.
+    void beginFrame() noexcept;
+
+    /// Neutral textures to share between MaterialSets (MaterialSet::create), so materials without
+    /// images batch across models.
+    [[nodiscard]] const std::shared_ptr<const MaterialDefaults>& defaults() const noexcept
+    {
+        return m_defaults;
+    }
 
 private:
     enum Variant : u8
@@ -121,5 +170,50 @@ private:
     const ShadowMap* m_shadowMap = nullptr;
     const LightList* m_lights = nullptr;
     std::vector<u32> m_selected;
+
+    // Multi-draw: programs with MULTI_DRAW, pipelines with the per-draw index (binding 1, divisor 1).
+    /// Grouping key of a batched submesh: what must be equal to share one multi-draw call.
+    struct BatchKey
+    {
+        u64 blockAndFlags = 0; // geometry block << 32 | variant | doubleSided << 8 | twoChannel << 9
+        std::array<u64, 3> textures{};
+        std::array<u32, 9> values{}; // float bits: base colour (4), emissive (3), normal scale, cutoff
+        friend auto operator<=>(const BatchKey&, const BatchKey&) = default;
+    };
+    struct BatchEntry
+    {
+        BatchKey key;
+        DrawIndexedIndirect command;
+        const Mesh* mesh = nullptr;
+        const Material* material = nullptr;
+    };
+    void drawGroups(Device& device, bool shadow, const Mat4& viewProjection, const Vec3& cameraPosition);
+    void uploadBatch(Device& device);
+    void bindMaterial(rhi::ShaderProgram& program, Device& device, const Material& material);
+    rhi::ShaderProgram* m_multiProgram = nullptr;
+    rhi::ShaderProgram* m_multiAlphaTestProgram = nullptr;
+    std::array<rhi::Pipeline, VariantCount * 2> m_multiPipelines;
+    rhi::ShaderProgram* m_multiShadowProgram = nullptr;
+    rhi::ShaderProgram* m_multiShadowAlphaTestProgram = nullptr;
+    std::array<rhi::Pipeline, 2> m_multiShadowPipelines;
+    // Per frame one of three buffer sets; every pass of the frame appends behind the previous one, so
+    // no buffer is rewritten while the GPU may still read it (drivers would stall on that).
+    struct BatchBuffers
+    {
+        rhi::Buffer draws;    // DrawData per batched draw (storage block 0)
+        rhi::Buffer commands; // DrawIndexedIndirect per batched draw
+        rhi::Buffer indices;  // 0, 1, 2 ... as per-instance draw index
+        usize capacity = 0;   // records
+    };
+    std::array<BatchBuffers, 3> m_batchBuffers;
+    u32 m_batchFrame = 0;
+    usize m_frameRecords = 0; // records used by earlier passes of this frame
+    usize m_batchBase = 0;    // first record of the current pass
+    std::vector<BatchEntry> m_entries;
+    std::vector<u8> m_drawData;
+    std::vector<DrawIndexedIndirect> m_commands;
+    std::vector<std::pair<const MeshDrawItem*, usize>> m_singles; // (item, submesh)
+    BatchStats m_batch;
+    std::shared_ptr<const MaterialDefaults> m_defaults;
 };
 } // namespace g7::render

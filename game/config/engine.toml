@@ -35,6 +35,9 @@ shadow_distance = 150.0
 # Größe. 0 schaltet die jeweilige Prüfung ab. Leonberg-Kern von oben: gleiches Bild, 4,2 → 2,9 ms (RTX 3080).
 view_distance = 400.0
 size_cull = 0.005
+# Objekte gleichen Materials mit einem Zeichenaufruf je Pass zeichnen (Multi-Draw): "auto" = an, außer auf Intel-GPUs
+# (dort grafikkartenbegrenzt, ~10 % langsamer gemessen; RTX 3080: +41 % im Leonberg-Kern); "on"/"off" erzwingen.
+multi_draw = "auto"
 # Kaskaden einfärben (rot, grün, blau, gelb) zum Einstellen.
 shadow_debug = false
 # Tonemapping des HDR-Bildes: "aces" (filmisch, Standard), "reinhard" (neutral), "none" (abschneiden).

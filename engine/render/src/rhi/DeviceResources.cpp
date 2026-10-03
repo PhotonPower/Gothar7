@@ -219,15 +219,28 @@ Result<Pipeline> Device::createPipeline(const PipelineDesc& desc)
     {
         const auto format = gl::vertexFormat(attribute.format);
         glEnableVertexArrayAttrib(vao, attribute.location);
-        glVertexArrayAttribFormat(vao, attribute.location, format.components, format.type, format.normalized,
-                                  attribute.offset);
-        glVertexArrayAttribBinding(vao, attribute.location, 0); // single interleaved vertex buffer
+        if (attribute.format == VertexFormat::UInt1)
+        {
+            glVertexArrayAttribIFormat(vao, attribute.location, format.components, format.type,
+                                       attribute.offset);
+        }
+        else
+        {
+            glVertexArrayAttribFormat(vao, attribute.location, format.components, format.type,
+                                      format.normalized, attribute.offset);
+        }
+        glVertexArrayAttribBinding(vao, attribute.location, attribute.binding);
+    }
+    if (desc.instanceStride > 0)
+    {
+        glVertexArrayBindingDivisor(vao, 1, 1); // binding 1 advances once per instance
     }
 
     Pipeline pipeline;
     pipeline.m_vertexArray = Handle(vao, deleteVertexArray);
     pipeline.m_program = desc.program;
     pipeline.m_vertexStride = desc.vertexStride;
+    pipeline.m_instanceStride = desc.instanceStride;
     pipeline.m_topology = desc.topology;
     pipeline.m_cull = desc.cull;
     pipeline.m_depthTest = desc.depthTest;
