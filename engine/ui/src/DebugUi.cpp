@@ -573,6 +573,9 @@ void DebugUi::enginePanel(EnginePanel& panel)
     {
         ImGui::Checkbox("paused", &panel.paused);
         ImGui::SliderFloat("time scale", &panel.timeScale, 0.0f, 10.0f, "%.2f");
+        ImGui::SliderFloat("time of day", &panel.hour, 0.0f, 23.99f, "%.2f h");
+        ImGui::SliderFloat("s per game minute", &panel.minuteSeconds, 0.01f, 60.0f, "%.2f",
+                           ImGuiSliderFlags_Logarithmic);
     }
     ImGui::Checkbox("ImGui demo", &m_impl->showDemo);
     ImGui::End();

@@ -223,6 +223,12 @@ TEST_CASE("Background shader follows the view direction")
         camera.transform.rotation = quatFromEuler(toRadians(pitchDegrees), 0.0f, 0.0f);
         program->setUniform("uInverseViewProjection", glm::inverse(camera.viewProjection()));
         program->setUniform("uHorizonColor", horizon);
+        program->setUniform("uZenithColor", Vec3(0.0052f, 0.008f, 0.017f)); // cool dusk zenith
+        program->setUniform("uSunDirection", Vec3(0.0f, -1.0f, 0.0f));      // sun and moon below the horizon
+        program->setUniform("uSunColor", Vec3(0.0f));
+        program->setUniform("uMoonDirection", Vec3(0.0f, -1.0f, 0.0f));
+        program->setUniform("uMoon", 0.0f);
+        program->setUniform("uStars", 0.0f);
         program->setUniform("uCameraPosition", camera.transform.position);
         return drawAndSample(*gl.device, pipeline, target);
     };

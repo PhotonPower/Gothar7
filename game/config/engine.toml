@@ -67,6 +67,13 @@ dev_mounts = true
 # priority = 20
 # mount_point = ""
 
+[time]
+# Spielzeit: Echtsekunden je Spielminute (4 = ein Tag in 96 Minuten), Uhrzeit beim Start (auch --time=HH:MM).
+minute_seconds = 4.0
+start = "08:00"
+# Tag/Nacht-Kurven (Inhalt, im VFS): Licht, Himmel, Nebel je Uhrzeit.
+environment = "data/environment.toml"
+
 [input]
 # "classic" (Gothic-artig: Aktionstaste + Richtung) oder "modern" (Maus-Angriff, E zum Benutzen)
 scheme = "classic"

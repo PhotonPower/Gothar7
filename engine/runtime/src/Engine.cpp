@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <filesystem>
 #include <format>
 #include <numeric>
@@ -85,6 +86,25 @@ Result<void> Engine::init()
     {
         return Error{"simulationHz must be > 0"};
     }
+    // Game time: [time] minute_seconds (real seconds per game minute), start "HH:MM" (or --time).
+    m_gameTime.setSecondsPerMinute(m_config.settings.get<f64>("time.minute_seconds", 4.0));
+    const std::string startTime = m_config.startTime.empty()
+                                      ? m_config.settings.get<std::string>("time.start", "08:00")
+                                      : m_config.startTime;
+    u32 hour = 24;
+    u32 minute = 60;
+    const char* const end = startTime.data() + startTime.size();
+    const auto parsedHour = std::from_chars(startTime.data(), end, hour);
+    if (parsedHour.ec == std::errc{} && parsedHour.ptr != end && *parsedHour.ptr == ':')
+    {
+        const auto parsedMinute = std::from_chars(parsedHour.ptr + 1, end, minute);
+        minute = parsedMinute.ec == std::errc{} && parsedMinute.ptr == end ? minute : 60;
+    }
+    if (hour > 23 || minute > 59)
+    {
+        return Error{"invalid start time '" + startTime + "' (expected HH:MM)"};
+    }
+    m_gameTime.setTime(0, hour, minute);
 
     // Initialization order = dependency order (docs/02-architecture.md).
     // TODO(M1+): replace with real subsystem init calls as modules get implemented.
@@ -289,6 +309,7 @@ bool Engine::runFrame()
         // Triggers notice the camera until the player exists (M5).
         const world::TriggerProbe camera{kCameraProbe, m_camera.transform.position, true};
         m_triggers.update(m_scene, std::span(&camera, 1));
+        m_gameTime.advance(m_fixedStep.step()); // global: keeps running across level changes
         ++m_simTicks;
         if (m_pendingWorldChange)
         {
@@ -1156,6 +1177,20 @@ Result<void> Engine::saveWorld(const fs::Path& path) const
 
 void Engine::initEnvironment()
 {
+    // Day and night from data (data/environment.toml, world.md); the fixed dusk without the file.
+    const std::string curves =
+        m_config.settings.get<std::string>("time.environment", "data/environment.toml");
+    if (auto cycle = world::DayCycle::load(m_vfs, curves))
+    {
+        m_dayCycle = std::move(cycle).value();
+        G7_LOG_INFO("engine", "day and night from {} ({} keys)", curves, m_dayCycle.keys().size());
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "no day and night ({}), fixed dusk instead", cycle.error().message);
+        m_dayCycle = world::DayCycle::fallback();
+    }
+    m_sunEnabled = m_config.sun;
     // Low warm evening sun, cool ambient and fog in the horizon colour of the dusk background, until
     // the sky and time of day (M4) drive these.
     m_environment.sunDirection = Vec3(0.6f, 0.25f, 0.4f);
@@ -1168,6 +1203,21 @@ void Engine::initEnvironment()
     // Default density: 90 % fog at 300 m.
     m_environment.fogDensity = static_cast<f32>(
         m_config.settings.get<f64>("render.fog_density", render::fogDensityFor(0.9f, 300.0f, 30.0f)));
+    m_fogBaseDensity = m_environment.fogDensity;
+    updateEnvironment();
+}
+
+void Engine::updateEnvironment()
+{
+    const f32 fogStart = m_environment.fogStart;
+    const world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
+    m_environment = sample.environment;
+    m_environment.fogStart = fogStart;
+    if (!m_sunEnabled)
+    {
+        m_environment.sunIntensity = 0.0f;
+    }
+    m_sky = sample.sky;
 }
 
 void Engine::renderScene(u32 width, u32 height)
@@ -1179,6 +1229,7 @@ void Engine::renderScene(u32 width, u32 height)
         return;
     }
     m_camera.aspect = height > 0 ? static_cast<f32>(width) / static_cast<f32>(height) : 1.0f;
+    updateEnvironment(); // light, fog and sky at the current game time
 
     // Scene into the linear HDR target: background, then meshes (after their shadow pass).
     drawScene(width, height);
@@ -1268,6 +1319,12 @@ void Engine::drawScene(u32 width, u32 height)
     m_backgroundProgram->setUniform("uInverseViewProjection", glm::inverse(m_camera.viewProjection()));
     m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
     m_backgroundProgram->setUniform("uHorizonColor", m_environment.fogColor);
+    m_backgroundProgram->setUniform("uZenithColor", m_sky.zenith);
+    m_backgroundProgram->setUniform("uSunDirection", m_sky.sunDirection);
+    m_backgroundProgram->setUniform("uSunColor", m_sky.sunColor);
+    m_backgroundProgram->setUniform("uMoonDirection", m_sky.moonDirection);
+    m_backgroundProgram->setUniform("uMoon", m_sky.moon);
+    m_backgroundProgram->setUniform("uStars", m_sky.stars);
     m_device->bindPipeline(m_backgroundPipeline);
     m_device->draw(3); // fullscreen triangle from gl_VertexID
     if (m_instances.empty() && !m_hasTerrain)
@@ -1485,8 +1542,11 @@ void Engine::runDebugUi(f64 realSeconds)
     panel.tonemapper = m_postSettings.tonemapper;
     panel.exposure = m_postSettings.exposure;
     panel.fogStart = m_environment.fogStart;
-    panel.fogDensity = m_environment.fogDensity;
-    panel.sun = m_environment.sunIntensity > 0.0f;
+    panel.fogDensity = m_fogBaseDensity;
+    panel.sun = m_sunEnabled;
+    panel.hour = m_gameTime.hourOfDay();
+    panel.minuteSeconds = static_cast<f32>(m_gameTime.secondsPerMinute());
+    const f32 shownHour = panel.hour;
     panel.shadowDebug = m_shadowDebug;
     panel.debugDraw = m_debugOverlay;
     panel.paused = m_paused;
@@ -1498,8 +1558,14 @@ void Engine::runDebugUi(f64 realSeconds)
     m_postSettings.tonemapper = panel.tonemapper;
     m_postSettings.exposure = panel.exposure;
     m_environment.fogStart = panel.fogStart;
-    m_environment.fogDensity = panel.fogDensity;
-    m_environment.sunIntensity = panel.sun ? kSunIntensity : 0.0f;
+    m_fogBaseDensity = panel.fogDensity;
+    m_sunEnabled = panel.sun;
+    if (panel.hour != shownHour)
+    {
+        const auto minutes = static_cast<u32>(panel.hour * 60.0f);
+        m_gameTime.setTime(m_gameTime.day(), minutes / 60 % 24, minutes % 60);
+    }
+    m_gameTime.setSecondsPerMinute(panel.minuteSeconds);
     m_shadowDebug = panel.shadowDebug;
     setDebugOverlay(panel.debugDraw);
     setPaused(panel.paused);
@@ -1523,11 +1589,14 @@ void Engine::addDebugOverlay(u32 width, u32 height)
     const Vec3& p = m_camera.transform.position;
     m_debugDraw.screenText(Vec2(8.0f, 8.0f),
                            std::format("{:.0f} fps  {:.2f} ms{}\n{} draws  {} binds  {:.1f}k tris  {}/{} "
-                                       "objects (hidden: {} far, {} small)\n{}x{}  cam {:.1f} {:.1f} {:.1f}",
+                                       "objects (hidden: {} far, {} small)\n{}x{}  cam {:.1f} {:.1f} {:.1f}  "
+                                       "day {} {:02}:{:02}",
                                        ms > 0.0 ? 1000.0 / ms : 0.0, ms, m_paused ? "  PAUSED" : "",
                                        stats.drawCalls, stats.bufferBinds, stats.triangles / 1000.0,
                                        m_visibleInstances, m_instances.size(), m_culledFar, m_culledSmall,
-                                       width, height, p.x, p.y, p.z),
+                                       width, height, p.x, p.y, p.z, m_gameTime.day(),
+                                       static_cast<u32>(m_gameTime.minuteOfDay()) / 60,
+                                       static_cast<u32>(m_gameTime.minuteOfDay()) % 60),
                            Vec4(1.0f), 2.0f);
 
     // World origin and the scene: ground grid, bounds (with the name for a single model), torches.

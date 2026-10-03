@@ -300,6 +300,12 @@ class CullGrid { void build(span<const AABB>, f32 cellSize = 64); void query(con
   der Grenze verdeckt der Nebel; fällt es auf, ist es ein offener Punkt (kein Überblenden in M4).
 - Overlay (F2): „hidden: N far, M small“.
 
+### Himmel – `background.frag`, `render::Sky` (M4)
+- Verlauf vom Horizont (= Nebelfarbe, damit Fernes in den Himmel übergeht) zum Zenit, Sonnenscheibe mit Schein,
+  Mondscheibe, prozedurale Sterne (feste Zellen der Blickrichtung, zum Zenit hin eingeblendet). Unter dem Horizont
+  bleibt die Nebelfarbe. Werte je Uhrzeit aus `world::DayCycle` (world.md „Spielzeit & Umgebung“); die Engine setzt
+  `Environment` und `Sky` jeden Frame aus der Spielzeit.
+
 ### Multi-Draw – `MeshRenderer::drawBatched` (M4, B2)
 ```cpp
 struct MeshDrawItem { const Mesh* mesh; const MaterialSet* materials; Mat4 model; AABB bounds; };

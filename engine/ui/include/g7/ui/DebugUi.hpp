@@ -46,6 +46,8 @@ struct EnginePanel
     bool debugDraw = false;
     bool paused = false;
     f32 timeScale = 1.0f;
+    f32 hour = 8.0f;          ///< game time of day (0 .. 24)
+    f32 minuteSeconds = 4.0f; ///< real seconds per game minute
 };
 
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor

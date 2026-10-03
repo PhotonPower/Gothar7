@@ -1,0 +1,106 @@
+# Tag und Nacht (world.md „Spielzeit & Umgebung“): Schlüsselbilder je Uhrzeit, zyklisch und weich
+# interpoliert. Farben in sRGB 0..1 (wie aus einer Farbwahl), Stärken linear. Werte sind Spielgefühl –
+# Vorgaben bis zur Abnahme durch den Projektinhaber.
+#   sun_*/moon_*      Richtungslicht (tagsüber Sonne, nachts Mond, mit Schatten)
+#   ambient_sky/_ground  Umgebungslicht von oben/unten
+#   fog_color         Nebel und Horizont des Himmels (gleich, damit Fernes in den Himmel übergeht)
+#   fog_density       Faktor auf [render] fog_density (Morgendunst > 1)
+#   sky_zenith        Himmel senkrecht oben; stars 0..1
+version = 1
+
+[orbit]
+sunrise = 6.0         # Uhr
+sunset = 18.5
+noon_elevation = 55.0 # Grad über dem Südhorizont
+moon_elevation = 40.0 # Grad, um Mitternacht
+
+# Reserviert (M17): Überschreibungen je Zone bzw. Welt, z. B. [zone.hoehle] mit eigenen [[zone.hoehle.key]].
+# Noch ohne Wirkung.
+[zone]
+
+[[key]] # Mitternacht
+hour = 0.0
+sun_intensity = 0.0
+moon_color = [0.55, 0.65, 0.95]
+moon_intensity = 0.35
+ambient_sky = [0.07, 0.08, 0.13]
+ambient_ground = [0.03, 0.03, 0.04]
+fog_color = [0.04, 0.045, 0.07]
+fog_density = 0.8
+sky_zenith = [0.012, 0.015, 0.035]
+stars = 1.0
+
+[[key]] # Morgengrauen
+hour = 4.75
+sun_intensity = 0.0
+moon_color = [0.6, 0.65, 0.9]
+moon_intensity = 0.25
+ambient_sky = [0.11, 0.11, 0.17]
+ambient_ground = [0.04, 0.04, 0.05]
+fog_color = [0.14, 0.12, 0.16]
+fog_density = 1.1
+sky_zenith = [0.04, 0.05, 0.11]
+stars = 0.5
+
+[[key]] # Sonnenaufgang
+hour = 6.25
+sun_color = [1.0, 0.55, 0.35]
+sun_intensity = 1.2
+ambient_sky = [0.34, 0.30, 0.36]
+ambient_ground = [0.12, 0.10, 0.09]
+fog_color = [0.56, 0.42, 0.37]
+fog_density = 1.4
+sky_zenith = [0.20, 0.27, 0.45]
+stars = 0.0
+
+[[key]] # Vormittag
+hour = 8.5
+sun_color = [1.0, 0.86, 0.72]
+sun_intensity = 1.7
+ambient_sky = [0.45, 0.50, 0.60]
+ambient_ground = [0.18, 0.16, 0.13]
+fog_color = [0.62, 0.66, 0.72]
+fog_density = 1.1
+sky_zenith = [0.27, 0.41, 0.67]
+
+[[key]] # Mittag
+hour = 12.5
+sun_color = [1.0, 0.97, 0.92]
+sun_intensity = 2.0
+ambient_sky = [0.50, 0.56, 0.68]
+ambient_ground = [0.20, 0.18, 0.15]
+fog_color = [0.68, 0.73, 0.80]
+fog_density = 1.0
+sky_zenith = [0.25, 0.42, 0.72]
+
+[[key]] # Nachmittag
+hour = 16.5
+sun_color = [1.0, 0.86, 0.66]
+sun_intensity = 1.7
+ambient_sky = [0.46, 0.47, 0.54]
+ambient_ground = [0.18, 0.15, 0.12]
+fog_color = [0.66, 0.63, 0.61]
+fog_density = 1.0
+sky_zenith = [0.27, 0.38, 0.62]
+
+[[key]] # Sonnenuntergang
+hour = 18.75
+sun_color = [1.0, 0.5, 0.28]
+sun_intensity = 1.2
+ambient_sky = [0.32, 0.26, 0.30]
+ambient_ground = [0.10, 0.08, 0.07]
+fog_color = [0.55, 0.32, 0.25]
+fog_density = 1.1
+sky_zenith = [0.15, 0.17, 0.32]
+
+[[key]] # Abenddämmerung
+hour = 20.25
+sun_intensity = 0.0
+moon_color = [0.55, 0.62, 0.9]
+moon_intensity = 0.25
+ambient_sky = [0.12, 0.11, 0.18]
+ambient_ground = [0.04, 0.035, 0.04]
+fog_color = [0.15, 0.11, 0.15]
+fog_density = 0.9
+sky_zenith = [0.04, 0.05, 0.10]
+stars = 0.6
