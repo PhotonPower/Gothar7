@@ -508,6 +508,47 @@ unabhängig von der Oberfläche:
 OSM-Achsen + Breite → Splatmap-Schichten (Kopfstein in der Stadt, Matsch/Kies außerhalb), Mittelrinne,
 Stufen und Stützmauern an Höhensprüngen; moderne Bordsteine/Markierungen entfallen.
 
+### W-E2 Stadtmauer (`gothar-worldgen citywall <ort>`, W6)
+Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03); Werte in `building_rules.json` → `cityWall`,
+Verlauf in `tools/worldgen/data/<ort>/city_wall.json` (versioniert, von Hand korrigierbar). Code: `walls/citywall.py`.
+- **Verlauf:** geschlossener Ring aus OSM-Stücken (`barrier=city_wall`, Richtung wird angepasst) und Stützpunkten, frei
+  interpretiert. In Leonberg:
+  - Süd- und Westmauer aus OSM, im Osten 6 m innerhalb von „Im Zwinger“, im Norden 3–5 m innerhalb von „Hinterer
+    Zwinger“, von dort am Hangrand zum Schloss.
+  - Dazu offene Zwingermauern (`zwinger`, 4 m, ohne Wehrgang): die innere OSM-Linie im Schlossgarten.
+- **Häuser auf der Linie:** Wo die Mittellinie durch ein Haus läuft, entsteht keine Mauer; die Enden reichen
+  `thicknessM / 2 + stossM` (1,2 m) ins Haus. Häuser, die die Linie nur berühren, stehen an der Mauer.
+  - Bauten, die schmaler als die Mauer sind (Mauerreste), werden überbrückt. Endet eine Mauer sonst im Freien, wird
+    sie bis zu 6 m weiter ins Haus geführt.
+  - Der Bericht nennt verbleibende offene Enden (Leonberg: keine). Grundlage sind die Häuser nach dem Rückbau.
+- **Querschnitt:** 1,8 m dick. Der Wehrgang (1,2 m, Wunsch engine: zwei Figuren kommen aneinander vorbei) liegt 6 m
+  über dem geglätteten Gelände (`smoothM` 12 m). Außen Brustwehr 0,6 m dick und 1,0 m hoch, Zinnen 1,5 m breit und
+  0,8 m hoch mit 0,9 m Lücke; etwa 10 % fehlen (Alterung). Fuß 1 m unter dem tiefsten Gelände des Stücks.
+- **Flankentürme:** 5 × 5 m, 2,5 m nach außen vorspringend, 11 m, Zeltdach, Schießscharten.
+  - An Knicken über 35° und sonst etwa alle 50 m, nur auf freien Stücken mit höchstens 15 % Gefälle.
+  - Der Wehrgang führt in einem Durchgang (2,2 m hoch) durch sie hindurch.
+- **Tortürme** (Arbeitsnamen „Oberes Tor“ Ost, „Unteres Tor“ Nord; die Namen im Spiel legt der Projektinhaber fest):
+  8 × 8 m, 17 m, Zeltdach, Spitzbogen-Durchfahrt 3,6 m breit (Kämpfer 2,6 m, Scheitel 4,6 m), offene Torflügel.
+- **Pforten** an den übrigen Straßen: 2,0 × 2,8 m mit Sturz. Wo Fußwege oder Treppen kreuzen, läuft die Mauer durch.
+- **Treppen:** je Torturm eine Steintreppe innen an der Mauer auf den Wehrgang, auf einem freien, geraden Stück bis
+  40 m vom Tor. Stufen ≤ 0,2 m hoch, 0,3 m tief, 1,2 m breit.
+- **Kollision** (`COL_HULL_`, Vertrag in `docs/modules/asset.md`):
+  - Mauerkörper bis zum Wehrgang und Brustwehr bis zu ihrer Oberkante, je nahezu geradem Abschnitt bis 12 m.
+    Zinnen ohne Kollision: Die Brustwehr ist besteigbar (Entscheidung Projektinhaber, Gothic-typisch).
+  - Türme außerhalb der Mauer und über dem Durchgang. Tortürme: zwei Pfeiler und der Block über dem Kämpfer.
+  - Die Durchfahrten bleiben frei (Test). Treppen als Rampe über die Stufenkanten, oben bündig mit dem Wehrgang,
+    unten eine Stufe (Charakter-Controller: Stufe ≤ 0,3–0,4 m, Steigung ≤ 50°, Kapsel 0,3 × 1,8 m).
+- **Ausgabe:** `generated/citywall/*.glb` (Abschnitte ≤ 40 m, Tortürme mit Treppe einzeln, Zwingermauern) und
+  `citywall_index.json`. Der Assembler hängt sie als Mesh-Vobs `CITYWALL_*` unter `WORLDGEN_CITYWALL`, Kategorie
+  `gameplay`, IDs `citywall:<abschnitt>` in `vob_ids.json`.
+- **Leonberg:** Ring 1102 m, davon 880 m Mauer und 222 m unter Häusern, Zwinger 252 m. 14 Türme, 2 Tortürme,
+  4 Pforten, 2 Treppen, 7762 Dreiecke, Kollision höchstens 180 je Datei.
+- **Folgt (Entscheidung Projektinhaber):**
+  - Die Häuser auf der Mauerlinie werden Mauerhäuser: Ihre Außenseite wird Stadtmauer, sodass der Ring von außen
+    geschlossen wirkt.
+  - Eigenes Schloss-Modell statt des LoD2-Blocks.
+  - Gedeckte Wehrgang-Abschnitte und Uhr- bzw. Wappenfelder an den Tortürmen bleiben spätere Optionen.
+
 ### W-F Ausstattung & Vegetation
 Regelbasiertes Verteilen von Requisiten (Fässer, Karren, Zäune, Holzstapel, Misthaufen, Marktstände)
 und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im Editor (M16).
@@ -606,7 +647,8 @@ LoD2, mit `--rueckbau` als Vorschau):
 Weitere Regeln:
 
 - Alles nach ca. 1700 Erbaute ersetzen oder weglassen; Lücken werden Gärten, Höfe, Ställe, Misthaufen.
-- **Stadtmauer** mit Toren ergänzen (Verlauf an historischen Resten und OSM orientieren, frei interpretiert).
+- **Stadtmauer** mit Toren ergänzen (Verlauf an historischen Resten und OSM orientieren, frei interpretiert;
+  umgesetzt in W-E2).
 - Straßen: in der Stadt Kopfstein mit Mittelrinne, außerhalb Lehm/Matsch; keine Gehwege.
 - Dichte erhöhen, wo es atmosphärisch hilft; Sichtachsen auf Schloss/Kirche erhalten.
 - Gebäudenutzungen für das Spiel festlegen (Schmiede, Taverne, Händler, Wache) → Grundlage für NPC-Routinen.

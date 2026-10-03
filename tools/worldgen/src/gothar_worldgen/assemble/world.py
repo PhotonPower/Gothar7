@@ -26,6 +26,7 @@ from gothar_worldgen.export.terrain import ExportError, world_text
 IDS_FORMAT = "gothar-vob-ids"
 IDS_VERSION = 1
 ROOT_NAME = "WORLDGEN_BUILDINGS"
+CITYWALL_NAME = "WORLDGEN_CITYWALL"
 GROUP_CELL_M = 64.0
 IDENTITY = [0.0, 0.0, 0.0, 1.0]
 
@@ -79,7 +80,8 @@ def _tidy(v: float) -> float:
 
 
 def _vob(vid: int, kind: str, name: str, pos: list[float], parent: int | None = None,
-         rot: list[float] | None = None, mesh: str | None = None) -> dict[str, Any]:  # fmt: skip
+         rot: list[float] | None = None, mesh: str | None = None,
+         category: str | None = None) -> dict[str, Any]:  # fmt: skip
     """Vob in the key order of the engine writer."""
     v: dict[str, Any] = {"id": vid, "type": kind, "name": name}
     if parent is not None:
@@ -88,6 +90,8 @@ def _vob(vid: int, kind: str, name: str, pos: list[float], parent: int | None = 
     v["rot"] = rot or IDENTITY
     if mesh is not None:
         v["mesh"] = mesh
+        if category == "gameplay":  # deco is the default and not written (world.md)
+            v["category"] = category
     return v
 
 
@@ -109,6 +113,7 @@ def assemble(
     name: str,
     locked: frozenset[str] = frozenset(),
     ground: Any = None,  # noqa: ANN401  callable (x, z) -> y for start points
+    citywall: dict[str, Any] | None = None,
 ) -> AssembleResult:
     if "terrain" not in terrain_world:
         raise AssembleError("the terrain world has no terrain block (run export-terrain)")
@@ -152,6 +157,15 @@ def assemble(
             else f"CELLMESH_{e['id']}".upper().replace("-", "M")
         )
         fresh[vid] = _vob(vid, "mesh", vob_name, e["pos"], gid, mesh=e["mesh"])
+
+    if citywall and citywall.get("entries"):
+        # City wall (W6): gameplay category, never culled for size (orientation).
+        group = ids.get("group:citywall", floor)
+        fresh[group] = _vob(group, "empty", CITYWALL_NAME, [0.0, 0.0, 0.0])
+        for e in citywall["entries"]:
+            vid = ids.get(f"citywall:{e['id']}", floor)
+            fresh[vid] = _vob(vid, "mesh", f"CITYWALL_{e['id']}".upper(), e["pos"], group,
+                              mesh=e["mesh"], category="gameplay")  # fmt: skip
 
     # Owned groups that editor vobs still hang on survive even if empty of buildings.
     editor = {i: v for i, v in old.items() if i not in owned}

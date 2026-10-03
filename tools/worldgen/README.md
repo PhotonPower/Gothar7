@@ -29,7 +29,8 @@ tools/worldgen/
     buildings/                massing (Klötzchen: Wände + Dächer), medieval (Fachwerk-Regelwerk, W5-Entwurf),
                               rueckbau (große Neubauten → schmale Fachwerkhäuser, §7),
                               collision (COL_-Hüllen), gltf (.glb-Writer), batch (buildings: .glb je Gebäude/Zelle + Index)  (W3/W5)
-    assemble/                 world: Terrain + Gebäude → <ort>.g7world, stabile VobIds (assemble)  (W3)
+    walls/                    citywall: Stadtmauer mit Türmen, Toren, Pforten, Treppen (citywall)  (W6)
+    assemble/                 world: Terrain + Gebäude + Mauer → <ort>.g7world, stabile VobIds (assemble)  (W3)
   blender/gothar_buildings/   Blender-Add-on: erzeugte Gebäude importieren/zurückschreiben (locked)  (W3)
   data/leonberg/vob_ids.json  stabile VobIds des Assemblers (versioniert, nie wiederverwenden)
   data/building_rules.json    Parameter des Fachwerk-Regelwerks (Entwurf, Festlegung durch den Projektinhaber)
@@ -62,6 +63,7 @@ gothar-worldgen facade frames leonberg VID_0001.mp4 --gpx VID_0001.gpx   REM Ein
 gothar-worldgen facade ui leonberg         REM Annotations-Oberfläche im Browser (http://127.0.0.1:8765/)
 gothar-worldgen buildings leonberg         REM Fachwerk-Stil + Rückbau (Vorgabe medieval), generated/buildings/, --area all
 gothar-worldgen buildings leonberg --mode massing   REM echtes LoD2 als graue Klötzchen (Maßstabsreferenz)
+gothar-worldgen citywall leonberg          REM Stadtmauer (W6): generated/citywall/, Verlauf aus data/leonberg/city_wall.json
 gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
 ```
 Reihenfolge für die Welt: `import` → `export-terrain` → `buildings` → `assemble`; prüfen mit

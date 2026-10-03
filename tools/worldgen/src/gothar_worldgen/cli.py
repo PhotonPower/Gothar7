@@ -59,6 +59,8 @@ from gothar_worldgen.importer import run_import
 from gothar_worldgen.qa.checks import FAIL
 from gothar_worldgen.qa.run import run_qa
 from gothar_worldgen.qa.workdata import QaError, load_work
+from gothar_worldgen.walls.citywall import CourseError, generate_citywall, load_course
+from gothar_worldgen.walls.citywall import write_index as write_citywall_index
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -422,6 +424,66 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_citywall(args: argparse.Namespace, out: TextIO) -> int:
+    from shapely.geometry import Polygon
+
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    try:
+        course_doc = json.loads((data_dir / "city_wall.json").read_text(encoding="utf-8"))
+        features = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
+        buildings = json.loads((paths.work / "buildings.json").read_text(encoding="utf-8"))
+        street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+        rules = load_rules(data_dir.parent / "building_rules.json")
+        overrides = load_all(data_dir / "buildings")
+        course = load_course(course_doc, features.get("features", []))
+        grid = load_grid(paths.work)
+    except (OSError, json.JSONDecodeError, OverrideError, ValueError, KeyError, CourseError,
+            ExportError) as e:  # fmt: skip
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    # The houses as generated (after the rueckbau): the wall is left out where they stand.
+    entries = [b for b in buildings.get("buildings", [])
+               if b.get("id") not in {i for i, o in overrides.items() if not o.keep}]  # fmt: skip
+    rb = rules.data.get("rueckbau")
+    if rb and rb.get("enabled"):
+        streets = StreetIndex(
+            street_doc.get("streets", []), street_doc.get("squares", []),
+            features.get("features", []), rules.get("assignment", "mainStreetHighways"),
+            rules.get("assignment", "representativeSquares"),
+        )  # fmt: skip
+        selection = select_rueckbau(
+            entries, rb, overrides, Protection(features.get("features", []))
+        )
+        entries, _ = apply_rueckbau(entries, selection, rb, streets)
+    footprints = []
+    for b in entries:
+        for part in b.get("parts") or [b]:
+            fp = part.get("footprint") or []
+            if len(fp) >= 3:
+                footprints.append(Polygon(fp).buffer(0))
+    index = generate_citywall(course, footprints, grid.height_at, rules,
+                              folder / "generated" / "citywall",
+                              f"worlds/{site.name}/generated/citywall")  # fmt: skip
+    write_citywall_index(folder / "generated" / "citywall_index.json", index)
+    st = index["stats"]
+    print(f"  ring {st['ringM']} m: wall {st['wallM']} m, {st['onHousesM']} m on houses; "
+          f"Zwinger {st['zwingerM']} m", file=out)  # fmt: skip
+    print(f"  {st['towers']} towers, {st['gateTowers']} gate towers, {st['pfortes']} posterns, "
+          f"{st['stairs']} stairs, {st['merlons']} merlons; {st['files']} files",
+          file=out)  # fmt: skip
+    print(f"  triangles {st['triangles']} (budget {st['budgetTriangles']}); collision max "
+          f"{st['collisionMax']} per file, {st['collisionOver']} over", file=out)  # fmt: skip
+    for note in st["notes"]:
+        print(f"  note: {note}", file=out)
+    if st["openEnds"]:
+        print(f"  warning: {len(st['openEnds'])} wall ends in the open: "
+              + ", ".join(st["openEnds"][:5]), file=out)  # fmt: skip
+    return EXIT_OK
+
+
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -443,8 +505,12 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
             ground = load_grid(paths.work).height_at
         except ExportError:
             ground = None
+        wall_path = folder / "generated" / "citywall_index.json"
+        citywall = (
+            json.loads(wall_path.read_text(encoding="utf-8")) if wall_path.is_file() else None
+        )
         res = assemble(terrain_world, index, load_world(folder / f"{name}.g7world"), ids, name,
-                       locked, ground)  # fmt: skip
+                       locked, ground, citywall)  # fmt: skip
     except (AssembleError, OverrideError, OSError, json.JSONDecodeError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -568,6 +634,11 @@ def build_parser() -> argparse.ArgumentParser:
                    help="massing: grey blocks; medieval: half-timbering (W5 draft)")  # fmt: skip
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_buildings)
+
+    p = sub.add_parser("citywall", help="city wall with towers and gates as .glb (W6) + index")
+    p.add_argument("site")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_citywall)
 
     p = sub.add_parser("assemble", help="terrain + buildings -> <site>.g7world with stable VobIds")
     p.add_argument("site")
