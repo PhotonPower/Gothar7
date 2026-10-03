@@ -53,6 +53,8 @@ class BuildingOverride:
     locked: bool = False  # generator must not overwrite hand-made work
     rueckbau: str | None = None  # auto (default) | none (never replace) | split (always)
     age: float | None = None  # 0 (new) .. 1 (old): hand correction of the generated age
+    dormers: int | None = None  # number of dormers (0 = none), None = generated
+    chimneys: int | None = None  # number of chimneys (0 = none), None = generated
     extra: dict[str, Any] = field(default_factory=dict)  # unknown keys, written back unchanged
 
 
@@ -91,7 +93,19 @@ _KNOWN = {
     "locked",
     "rueckbau",
     "age",
+    "dormers",
+    "chimneys",
 }
+MAX_COUNT = {"dormers": 6, "chimneys": 4}
+
+
+def _count(d: dict[str, Any], key: str, where: str) -> int | None:
+    v = d.get(key)
+    if v is None:
+        return None
+    if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= MAX_COUNT[key]:
+        raise OverrideError(f"{where}: '{key}' must be an integer from 0 to {MAX_COUNT[key]}")
+    return v
 
 
 def from_json(data: Any) -> BuildingOverride:  # noqa: ANN401
@@ -165,6 +179,8 @@ def from_json(data: Any) -> BuildingOverride:  # noqa: ANN401
         locked=data.get("locked", False),
         rueckbau=rueckbau,
         age=age,
+        dormers=_count(data, "dormers", where),
+        chimneys=_count(data, "chimneys", where),
         extra={k: v for k, v in data.items() if k not in _KNOWN},
     )
 
@@ -209,6 +225,10 @@ def to_json(o: BuildingOverride) -> dict[str, Any]:
         out["rueckbau"] = o.rueckbau
     if o.age is not None:
         out["age"] = o.age
+    if o.dormers is not None:
+        out["dormers"] = o.dormers
+    if o.chimneys is not None:
+        out["chimneys"] = o.chimneys
     out.update(o.extra)
     return out
 

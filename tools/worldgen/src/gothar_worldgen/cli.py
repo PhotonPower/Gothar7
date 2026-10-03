@@ -392,13 +392,17 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     if "budget" in st:
         b = st["budget"]
         print(f"  budget {b['trianglesPerBuilding']}/building: {b['over']} over; timber levels "
-              f"(0 full .. 3 none): {b['timberLevels']}", file=out)  # fmt: skip
+              f"(0 full .. 3 none, 4 also no dormers): {b['timberLevels']}", file=out)  # fmt: skip
     if "style" in st:
         sty = st["style"]
         print("  styles: " + ", ".join(f"{k} {v}" for k, v in sty["style"].items()), file=out)
         print("  patterns: " + ", ".join(f"{k} {v}" for k, v in sty["pattern"].items())
               + "; roofs: " + ", ".join(f"{k} {v}" for k, v in sty["roof"].items())
               + f"; steepened roofs {sty['roofSteepened'].get('masses', 0)}", file=out)  # fmt: skip
+        if "chimneys" in sty:
+            print("  chimneys: " + ", ".join(f"{k} {v}" for k, v in sty["chimneys"].items())
+                  + "; dormers: " + ", ".join(f"{k} {v}" for k, v in sty["dormers"].items()),
+                  file=out)  # fmt: skip
     if report is not None:
         r = report["stats"]
         print(f"  rueckbau: {r['replaced']} buildings replaced by {r['newHouses']} houses "

@@ -2,7 +2,8 @@
 
 Mechanics: storeys, jetties on the street sides, openings (exact from the facade annotation or
 procedural), timber frames from pattern data (including ornamental parapet fields), stone socles or
-massive ground storeys, roofs with overhang (flat and low roofs become steep saddle roofs).
+massive ground storeys, roofs with overhang (flat and low roofs become steep saddle roofs), masonry
+chimneys near the ridge and a few shed or gable dormers.
 Style (decided 2026-10-03 by the koordinator on the owner's behalf, ``data/building_rules.json``):
 each house gets a style from the override, OSM, ALKIS function or location, then a weighted,
 seeded choice of timber pattern, infill, roof cover and timber colour.
@@ -41,7 +42,7 @@ from gothar_worldgen.buildings.massing import (
     masses_for_building,
 )
 
-ROLES = ("wall_ground", "infill", "timber", "roof", "roof_north", "frame")
+ROLES = ("wall_ground", "infill", "timber", "roof", "roof_north", "frame", "chimney")
 # Front faces of beams lie at slightly different depths: no coplanar overlaps where they cross.
 DEPTH_FACTOR = {"sill": 1.0, "post": 0.9, "rail": 0.5, "brace": 0.45}
 # Rails and braces are flat boards (front face only): they sit only ~3 cm proud of the wall, their
@@ -557,6 +558,7 @@ class HouseStyle:
     openings: bool
     gate: bool
     age: float = 0.0  # 0 new .. 1 old (aging: ridge sag, leaning posts, irregular windows)
+    chimney: str = "stone"  # palette entry of the chimneys
 
 
 def assign_style(building: dict[str, Any], override: Any, site: StreetIndex | None,  # noqa: ANN401
@@ -645,10 +647,14 @@ def assign_style(building: dict[str, Any], override: Any, site: StreetIndex | No
         prof.get("groundMassive", 0.0)
     )
     jetty = representative or _rng(bid, seed, ":jetty").random() < float(prof.get("jetty", 0.0))
+    chimney = _weighted(
+        _rng(bid, seed, ":chimney-material"),
+        rules.data.get("chimneys", {}).get("material", {"stone": 1.0}),
+    )
     return HouseStyle(style, massive, bool(prof.get("timber")) and pattern is not None, jetty,
                       pattern, brustung, infill, roof, color, prof.get("wall", "stone"),
                       bool(prof.get("openings", True)), bool(prof.get("gate", False)),
-                      float(age))  # fmt: skip
+                      float(age), chimney)  # fmt: skip
 
 
 # --- house -----------------------------------------------------------------------------------
@@ -659,10 +665,13 @@ class HouseResult:
     primitives: list[Primitive]
     triangles: int
     notes: list[str] = field(default_factory=list)
-    timber_level: int = 0  # 0 full, 1 no pattern, 2 no bay posts, 3 no timber (budget)
+    # Budget levels: 0 full, 1 no pattern, 2 no bay posts, 3 no timber, 4 also no dormers.
+    timber_level: int = 0
     style: HouseStyle | None = None
     steepened: int = 0  # roofs made steep (flat or below the minimum pitch)
     sag_m: float = 0.0  # largest ridge sag of the house (aging)
+    dormers: int = 0
+    chimneys: int = 0
 
 
 class _SagRoof(_Roof):
@@ -752,6 +761,7 @@ class _Context:
     builders: dict[str, _Builder]
     base_y: float
     max_sag: float = 0.0
+    roofs: list[_RoofPart] = field(default_factory=list)
 
 
 def _top_outline(f: Frame, roof: _Roof, crease: LineString | None, y: float,
@@ -943,6 +953,7 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
             _jetty_underside(ctx, [p for p, _ in ring_s], [p for p, _ in outlines[s - 1]], y)
         y += h
     _add_roof(ctx.builders["roof"], ctx.builders["roof_north"], roof, top_poly, crease, rules)
+    ctx.roofs.append(_RoofPart(roof, top_poly, Polygon(ring)))
 
 
 def _jetty_underside(ctx: _Context, upper: list, lower: list, y: float) -> None:
@@ -961,7 +972,8 @@ def _materials(st: HouseStyle) -> dict[str, str]:
     """Role -> palette entry for one house."""
     north = "roof_old_moss" if st.roof == "roof_old" else st.roof
     return {"wall_ground": st.wall, "infill": st.infill, "timber": st.timber_color,
-            "roof": st.roof, "roof_north": north, "frame": "frame"}  # fmt: skip
+            "roof": st.roof, "roof_north": north, "frame": "frame",
+            "chimney": st.chimney}  # fmt: skip
 
 
 def build_house(
@@ -971,10 +983,12 @@ def build_house(
     rules: Rules,
     streets: StreetIndex | None = None,
     override: Any = None,  # noqa: ANN401  BuildingOverride or None
+    hearth: bool = False,
 ) -> HouseResult:
     """Half-timbered house of a ``buildings.json`` entry; vertices relative to (origin, base_y).
 
-    Over the triangle budget the timber is reduced step by step: no pattern, no bay posts, none.
+    Over the triangle budget the timber is reduced step by step (no pattern, no bay posts, none),
+    then the dormers are left out. ``hearth``: a barn that may have a chimney (``barn_hearths``).
     """
     budget = int(rules.get("budget", "trianglesPerBuilding"))
     front = getattr(override, "front_facade", None)
@@ -997,7 +1011,7 @@ def build_house(
             masses.append(mass)
     materials = _materials(style)
     result = None
-    for level in range(4):
+    for level in range(5):
         builders = {role: _Builder((origin_xz[0], base_y, origin_xz[1])) for role in ROLES}
         rng = _rng(building["id"], getattr(override, "seed", None))
         ctx = _Context(rules, rng, front, style, level, builders, base_y)
@@ -1008,16 +1022,20 @@ def build_house(
                 _mass(ctx, mass, ground, override, streets, level_notes)
             except shapely.errors.GEOSException:
                 level_notes.append("part skipped (invalid geometry)")
+        dormers, chimneys = _roof_features(
+            ctx, building["id"], override, streets, hearth, level < 4, level_notes
+        )
         prims = [Primitive(materials[r], rules.color(materials[r]), builders[r].mesh())
                  for r in ROLES if builders[r].idx]  # fmt: skip
         tris = sum(p.mesh.triangle_count for p in prims)
         result = HouseResult(prims, tris, [*notes, *massing.notes, *level_notes], level, style,
-                             steepened, round(ctx.max_sag, 3))  # fmt: skip
+                             steepened, round(ctx.max_sag, 3), dormers, chimneys)  # fmt: skip
         if tris <= budget or not style.timber:
             break
     assert result is not None
     if result.timber_level:
-        result.notes.append(f"timber reduced to level {result.timber_level} (budget {budget})")
+        what = "timber and dormers" if result.timber_level == 4 else "timber"
+        result.notes.append(f"{what} reduced to level {result.timber_level} (budget {budget})")
     return result
 
 
@@ -1101,3 +1119,412 @@ def _add_roof(
             b.polygon(
                 quad, [(0, 0), (1, 0), (1, thick), (0, thick)], (normals[i][0], 0.0, normals[i][1])
             )
+
+
+# --- chimneys and dormers --------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _RoofPart:
+    roof: _SagRoof
+    top: Polygon  # outline of the top storey: the roof's plan without overhang
+    footprint: Polygon  # of the mass (clearance to the other LoD2 parts)
+
+
+@dataclass(frozen=True)
+class Dormer:
+    """A dormer on one side of a saddle roof; roof coordinates u (along the ridge), v (across)."""
+
+    side: int  # +1 / -1: the roof side towards +v / -v of the ridge
+    u: float  # centre along the ridge
+    w: float  # width of the front wall
+    kind: str  # schlepp | giebel
+    hatch: bool  # loading hatch instead of a window
+    pitch: float  # degrees of the dormer roof
+    d_front: float  # horizontal distance of the front wall from the ridge line
+    depth: float = 0.0  # from the front wall to where the dormer roof ends under the main roof
+
+
+def _plan(roof: _Roof, u: float, v: float) -> tuple[float, float]:
+    return (roof.u[0] * u + roof.v[0] * v, roof.u[1] * u + roof.v[1] * v)
+
+
+def _plan_rect(roof: _Roof, u0: float, u1: float, v0: float, v1: float) -> Polygon:
+    return Polygon([_plan(roof, u0, v0), _plan(roof, u1, v0), _plan(roof, u1, v1),
+                    _plan(roof, u0, v1)])  # fmt: skip
+
+
+def _main_top(roof: _Roof, thick: float, u: float, v: float) -> float:
+    return roof.height(*_plan(roof, u, v)) + thick
+
+
+def barn_hearths(buildings: Sequence[dict[str, Any]], overrides: dict[str, Any] | None,
+                 site: StreetIndex | None, rules: Rules) -> set[str]:  # fmt: skip
+    """Ids of barns that may have a chimney: built onto a dwelling or with a hearth function.
+
+    Free-standing barns get none (fire protection, hay).
+    """
+    c = rules.data.get("chimneys")
+    if not c:
+        return set()
+    styles: dict[str, str] = {}
+    polys: dict[str, Polygon] = {}
+    for b in buildings:
+        fp = b.get("footprint") or []
+        poly = _valid_polygon([tuple(p) for p in fp]) if len(fp) >= 3 else None
+        if poly is None:
+            continue
+        styles[b["id"]] = assign_style(b, (overrides or {}).get(b["id"]), site, rules).style
+        polys[b["id"]] = poly
+    ids = list(polys)
+    tree = STRtree([polys[i] for i in ids]) if ids else None
+    functions = {b["id"]: str(b.get("function") or "") for b in buildings}
+    result = set()
+    for bid, style in styles.items():
+        if style not in c["barnStyles"]:
+            continue
+        if functions.get(bid) in c["hearthFunctions"]:
+            result.add(bid)
+            continue
+        assert tree is not None
+        near = tree.query(polys[bid].buffer(float(c["attachedM"])), predicate="intersects")
+        if any(ids[j] != bid and styles[ids[j]] in c["hearthStyles"] for j in near):
+            result.add(bid)
+    return result
+
+
+def chimney_count(style: HouseStyle, ridge_m: float, rules: Rules, override: Any,  # noqa: ANN401
+                  hearth: bool) -> int:  # fmt: skip
+    wanted = getattr(override, "chimneys", None)
+    if wanted is not None:
+        return int(wanted)
+    c = rules.data.get("chimneys")
+    if not c or ridge_m < float(c["minRidgeM"]):
+        return 0
+    if style.style in c["barnStyles"] and not hearth:
+        return 0
+    n = int(c["countByStyle"].get(style.style, 0))
+    if n == 1 and style.style in c["secondStyles"] and ridge_m >= float(c["secondFromRidgeM"]):
+        n = 2
+    return n
+
+
+def chimney_rect(roof: _Roof, u: float, v: float, rules: Rules) -> Polygon:
+    along, across = (float(x) for x in rules.get("chimneys", "sizeM"))
+    return _plan_rect(roof, u - along / 2, u + along / 2, v - across / 2, v + across / 2)
+
+
+def place_chimneys(part: _RoofPart, n: int, others: Sequence[Polygon], rules: Rules,
+                   rng: random.Random) -> list[tuple[float, float]]:  # fmt: skip
+    """Chimney centres (u, v) near the ridge, as above a central hearth.
+
+    One chimney: t along the ridge in ``ridgeT``; several: one per section of ``ridgeSpanT``. Each
+    stands up to ``offRidgeMaxM`` beside the ridge, keeps ``gableClearM`` to the gable ends and
+    stays clear of the other parts of the building.
+    """
+    c = rules.get("chimneys")
+    roof = part.roof
+    along = float(c["sizeM"][0])
+    lo = roof.umin + float(c["gableClearM"]) + along / 2
+    hi = roof.umax - float(c["gableClearM"]) - along / 2
+    if n <= 0 or hi < lo or roof.mass.roof != "saddle":
+        return []
+    if n == 1:
+        ranges = [(float(c["ridgeT"][0]), float(c["ridgeT"][1]))]
+    else:
+        a, b = (float(x) for x in c["ridgeSpanT"])
+        ranges = [(a + (b - a) * k / n, a + (b - a) * (k + 1) / n) for k in range(n)]
+    inside = part.top.buffer(1e-6)
+    out: list[tuple[float, float]] = []
+    for t0, t1 in ranges:
+        t = rng.uniform(t0, t1)
+        off = rng.uniform(0.0, float(c["offRidgeMaxM"])) * rng.choice((-1.0, 1.0))
+        for tt, oo in ((t, off), (t, 0.0), ((t0 + t1) / 2, 0.0)):
+            u = min(hi, max(lo, roof.umin + roof.length * tt))
+            v = roof.mid + oo
+            rect = chimney_rect(roof, u, v, rules)
+            if (inside.contains(rect)
+                    and all(rect.distance(o) >= float(c["partsClearM"]) for o in others)
+                    and all(abs(u - pu) >= along + 0.5 for pu, _ in out)):  # fmt: skip
+                out.append((u, v))
+                break
+    return out
+
+
+def _box(b: _Builder, corners: Sequence[tuple[float, float]], y0: float, y1: float,
+         top: bool, bottom: bool) -> None:  # fmt: skip
+    cx = sum(p[0] for p in corners) / len(corners)
+    cz = sum(p[1] for p in corners) / len(corners)
+    for i, p in enumerate(corners):
+        q = corners[(i + 1) % len(corners)]
+        want = ((p[0] + q[0]) / 2 - cx, 0.0, (p[1] + q[1]) / 2 - cz)
+        b.polygon([(p[0], y0, p[1]), (q[0], y0, q[1]), (q[0], y1, q[1]), (p[0], y1, p[1])],
+                  [(0, 0), (1, 0), (1, y1 - y0), (0, y1 - y0)], want)  # fmt: skip
+    if top:
+        b.polygon([(x, y1, z) for x, z in corners], list(corners), (0.0, 1.0, 0.0))
+    if bottom:
+        b.polygon([(x, y0, z) for x, z in corners], list(corners), (0.0, -1.0, 0.0))
+
+
+def _chimney(b: _Builder, roof: _Roof, u: float, v: float, rules: Rules,
+             rng: random.Random) -> None:  # fmt: skip
+    """Masonry shaft from below the roof surface (no gap, also on a sagging roof), cap plate."""
+    c = rules.get("chimneys")
+    thick = float(rules.get("roof", "thicknessM"))
+    along, across = (float(x) for x in c["sizeM"])
+
+    def ring(ha: float, hc: float) -> list[tuple[float, float]]:
+        return [_plan(roof, u + du, v + dv) for du, dv in ((-ha, -hc), (ha, -hc), (ha, hc),
+                                                             (-ha, hc))]  # fmt: skip
+
+    shaft = ring(along / 2, across / 2)
+    foot = min(roof.height(x, z) for x, z in shaft) - 0.05
+    lo, hi = (float(x) for x in c["riseM"])
+    top = _main_top(roof, thick, u, roof.mid) + rng.uniform(lo, hi)
+    _box(b, shaft, foot, top, top=False, bottom=False)
+    co = float(c["capOverhangM"])
+    _box(b, ring(along / 2 + co, across / 2 + co), top, top + float(c["capM"]), True, True)
+
+
+def _dive(roof: _Roof, thick: float, u: float, side: int, d_front: float, h0: float,
+          g: float) -> float:  # fmt: skip
+    """Horizontal distance from the front line (towards the ridge) at which the line h0 + g * s
+    meets the top of the main roof; at a fixed u the main roof is linear across."""
+    m0 = _main_top(roof, thick, u, roof.mid + side * d_front)
+    k = _main_top(roof, thick, u, roof.mid + side * (d_front - 1.0)) - m0
+    if k - g <= 1e-6:
+        return math.inf
+    return max(0.0, (h0 - m0) / (k - g))
+
+
+def _dormer_levels(roof: _Roof, dm: Dormer, rules: Rules) -> tuple[float, float]:
+    """(foot, top) of the front wall: the foot at the lower roof surface of both front corners."""
+    thick = float(rules.get("roof", "thicknessM"))
+    v = roof.mid + dm.side * dm.d_front
+    foot = min(_main_top(roof, thick, u, v) for u in (dm.u - dm.w / 2, dm.u + dm.w / 2))
+    return foot, foot + float(rules.get("dormers", "frontM"))
+
+
+def dormer_depth(roof: _Roof, dm: Dormer, rules: Rules) -> float:
+    """Depth at which the top of the dormer roof has dived under the main roof, plus 0.1 m."""
+    d = rules.get("dormers")
+    thick = float(rules.get("roof", "thicknessM"))
+    t, ov = float(d["roofThicknessM"]), float(d["overhangM"])
+    _, yt = _dormer_levels(roof, dm, rules)
+    tan = math.tan(math.radians(dm.pitch))
+    h0, g = (yt + dm.w / 2 * tan + t, 0.0) if dm.kind == "giebel" else (yt + t, tan)
+    us = (dm.u - dm.w / 2 - ov, dm.u, dm.u + dm.w / 2 + ov)
+    return max(_dive(roof, thick, u, dm.side, dm.d_front, h0, g) for u in us) + 0.1
+
+
+def preferred_side(roof: _Roof, streets: StreetIndex | None, reach: float) -> int:
+    """The roof side towards the street (eaves to the street). If both or neither face one (gable
+    towards the street), the sunnier side: south first, then west."""
+    faces = {}
+    for s in (1, -1):
+        v = roof.mid + s * roof.half
+        a, b = _plan(roof, roof.umin, v), _plan(roof, roof.umax, v)
+        faces[s] = bool(streets and streets.faces_street(a, b, (s * roof.v[0], s * roof.v[1]),
+                                                         reach))  # fmt: skip
+    if faces[1] != faces[-1]:
+        return 1 if faces[1] else -1
+
+    def sunny(s: int) -> float:
+        return s * roof.v[1] - 0.3 * s * roof.v[0]  # +z is south, -x is west
+
+    return 1 if sunny(1) >= sunny(-1) else -1
+
+
+def roof_takes_dormers(roof: _Roof, rules: Rules) -> bool:
+    d = rules.data.get("dormers")
+    m = roof.mass
+    return (
+        bool(d)
+        and m.roof == "saddle"
+        and roof.half >= float(d["minRoofDepthM"])
+        and (m.ridge_y - m.eave_y >= float(d["minRoofRiseM"]))
+    )
+
+
+def place_dormers(part: _RoofPart, counts: dict[int, int], kind: str, w: float, pitch: float,
+                  hatch: bool, chimneys: Sequence[Polygon], others: Sequence[Polygon],
+                  rules: Rules) -> list[Dormer]:  # fmt: skip
+    """Evenly spaced dormers per side that keep every clearance; the others are left out."""
+    d = rules.get("dormers")
+    roof = part.roof
+    if not roof_takes_dormers(roof, rules):
+        return []
+    beta = math.atan2(roof.mass.ridge_y - roof.mass.eave_y, roof.half)
+    d_front = roof.half - float(d["clearEaveM"]) * math.cos(beta)
+    ridge_clear = float(d["clearRidgeM"]) * math.cos(beta)
+    gable, gap, ov = float(d["clearGableM"]), float(d["clearEachOtherM"]), float(d["overhangM"])
+    inside = part.top.buffer(1e-6)
+    out: list[Dormer] = []
+    for side, wanted in sorted(counts.items(), reverse=True):
+        room = roof.length - 2 * gable
+        n = min(wanted, int((room + gap) // (w + gap))) if room > 0 else 0
+        lo, hi = roof.umin + gable + w / 2, roof.umax - gable - w / 2
+        placed: list[float] = []
+        for k in range(n):
+            u = min(hi, max(lo, roof.umin + roof.length * (k + 0.5) / n))
+            dm = Dormer(side, u, w, kind, hatch, pitch, d_front)
+            depth = dormer_depth(roof, dm, rules)
+            if d_front - depth < ridge_clear:
+                continue
+            front, back = roof.mid + side * (d_front + ov), roof.mid + side * (d_front - depth)
+            body = _plan_rect(roof, u - w / 2 - ov, u + w / 2 + ov, min(front, back),
+                              max(front, back))  # fmt: skip
+            v0, v1 = sorted((roof.mid + side * d_front, back))
+            clear = _plan_rect(roof, u - w / 2 - gable, u + w / 2 + gable, v0, v1)
+            if (inside.contains(clear)
+                    and all(body.distance(o) >= float(d["clearPartsM"]) for o in others)
+                    and all(body.distance(c) >= float(d["clearChimneyM"]) for c in chimneys)
+                    and all(abs(u - pu) - w >= gap - 1e-9 for pu in placed)):  # fmt: skip
+                placed.append(u)
+                out.append(Dormer(side, u, w, kind, hatch, pitch, d_front, depth))
+    return out
+
+
+@dataclass(frozen=True)
+class DormerChoice:
+    wanted: bool  # the house gets dormers (share of its style)
+    kind: str
+    w: float
+    pitch: float
+    hatch: bool
+    one_side: bool  # only on the preferred side
+
+
+def dormer_choice(bid: str, seed: int | None, style: str, rules: Rules) -> DormerChoice:
+    """Seeded dormer decisions of a house; every draw is always made (stable across levels)."""
+    d = rules.get("dormers")
+    rng = _rng(bid, seed, ":dormers")
+    wanted = rng.random() < float(d["shareByStyle"].get(style, 0.0))
+    kind = _weighted(rng, d["types"])
+    w = rng.uniform(*(float(x) for x in d["widthM"]))
+    lo, hi = (float(x) for x in d["schleppPitchDeg"])
+    pitch = rng.uniform(lo, hi) if kind == "schlepp" else float(d["giebelPitchDeg"])
+    hatch = rng.random() < float(d["hatchShareByStyle"].get(style, 0.0))
+    one_side = rng.random() < float(d["streetSideOnly"])
+    return DormerChoice(wanted, kind, w, pitch, hatch, one_side)
+
+
+def _roof_face(ctx: _Context, pts: list[tuple[float, float, float]], up: bool) -> None:
+    a, c, e = (np.asarray(p) for p in pts[:3])
+    normal = np.cross(c - a, e - a)
+    if normal[1] < 0:
+        normal = -normal
+    length = float(np.linalg.norm(normal)) or 1.0
+    north = up and normal[2] / length < NORTH_ROOF
+    b = ctx.builders["roof_north" if north else "roof"]
+    b.polygon(pts, [(x - b.ox, z - b.oz) for x, _, z in pts], (0.0, 1.0 if up else -1.0, 0.0))
+
+
+def _dormer(ctx: _Context, roof: _Roof, dm: Dormer) -> None:
+    """Front wall with window or hatch, cheeks down to the main roof, and a dormer roof that dives
+    under the main roof at the back: no hole in the main roof, no coplanar faces."""
+    rules = ctx.rules
+    d = rules.get("dormers")
+    thick = float(rules.get("roof", "thicknessM"))
+    t, ov, height = float(d["roofThicknessM"]), float(d["overhangM"]), float(d["frontM"])
+    s = dm.side
+    u0, u1 = dm.u - dm.w / 2, dm.u + dm.w / 2
+    foot, yt = _dormer_levels(roof, dm, rules)
+    tan = math.tan(math.radians(dm.pitch))
+    v_front = roof.mid + s * dm.d_front
+
+    def p(u: float, ds: float, y: float) -> tuple[float, float, float]:
+        x, z = _plan(roof, u, roof.mid + s * (dm.d_front - ds))
+        return (x, y, z)
+
+    def under_main(u: float, ds: float) -> float:
+        return roof.height(*_plan(roof, u, roof.mid + s * (dm.d_front - ds)))
+
+    wall = ctx.builders["infill" if ctx.style.timber else "wall_ground"]
+    out_n = (s * roof.v[0], s * roof.v[1])
+    f = make_frame(_plan(roof, u0, v_front), _plan(roof, u1, v_front), out_n, foot)
+    below = thick + 0.05
+    outline = [(0.0, -below), (dm.w, -below), (dm.w, height)]
+    if dm.kind == "giebel":
+        outline.append((dm.w / 2, height + dm.w / 2 * tan))
+    outline.append((0.0, height))
+    o = d["hatch" if dm.hatch else "window"]
+    ow = min(float(o["w"]), dm.w - 0.3)
+    op = Opening("gate" if dm.hatch else "window", (dm.w - ow) / 2, float(o["sill"]), ow,
+                 float(o["h"]))  # fmt: skip
+    _wall(wall, f, outline, [op])
+    _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
+
+    g = tan if dm.kind == "schlepp" else 0.0  # slope of the cheeks' top edge
+    for u, sign in ((u0, -1.0), (u1, 1.0)):
+        sc = min(dm.depth, _dive(roof, thick, u, s, dm.d_front, yt, g) + 0.05)
+        quad = [p(u, 0.0, under_main(u, 0.0)), p(u, 0.0, yt), p(u, sc, yt + g * sc),
+                p(u, sc, under_main(u, sc))]  # fmt: skip
+        wall.polygon(quad, [(0, 0), (0, 1), (1, 1), (1, 0)],
+                     (roof.u[0] * sign, 0.0, roof.u[1] * sign))  # fmt: skip
+
+    s0, s1 = -ov, dm.depth
+    # Roof planes as (underside quad, side edges (i, j, sign) that get a fascia).
+    if dm.kind == "schlepp":
+        a, b = u0 - ov, u1 + ov
+        under = [p(a, s0, yt + s0 * tan), p(b, s0, yt + s0 * tan), p(b, s1, yt + s1 * tan),
+                 p(a, s1, yt + s1 * tan)]  # fmt: skip
+        planes = [(under, ((0, 3, -1.0), (1, 2, 1.0)))]
+    else:
+        ridge, eave = yt + dm.w / 2 * tan, yt - ov * tan
+        planes = []
+        for ue, sign in ((u0 - ov, -1.0), (u1 + ov, 1.0)):
+            under = [p(ue, s0, eave), p(dm.u, s0, ridge), p(dm.u, s1, ridge), p(ue, s1, eave)]
+            planes.append((under, ((0, 3, sign),)))
+    fascia = ctx.builders["roof"]
+    for under, edges in planes:
+        top = [(x, y + t, z) for x, y, z in under]
+        _roof_face(ctx, top, up=True)
+        _roof_face(ctx, under, up=False)
+        fascia.polygon([under[0], under[1], top[1], top[0]], [(0, 0), (1, 0), (1, t), (0, t)],
+                       (out_n[0], 0.0, out_n[1]))  # fmt: skip
+        for i, j, sign in edges:
+            fascia.polygon([under[i], under[j], top[j], top[i]], [(0, 0), (1, 0), (1, t), (0, t)],
+                           (roof.u[0] * sign, 0.0, roof.u[1] * sign))  # fmt: skip
+
+
+def _roof_features(ctx: _Context, bid: str, override: Any,  # noqa: ANN401
+                   streets: StreetIndex | None, hearth: bool, with_dormers: bool,
+                   notes: list[str]) -> tuple[int, int]:  # fmt: skip
+    """Chimneys and dormers on the largest saddle roof of the house; returns their numbers."""
+    rules = ctx.rules
+    parts = [r for r in ctx.roofs if r.roof.mass.roof == "saddle" and r.roof.half > 1e-6]
+    if not parts:
+        return 0, 0
+    main = max(parts, key=lambda r: r.top.area)
+    others = [r.footprint for r in ctx.roofs if r is not main]
+    seed = getattr(override, "seed", None)
+    rng = _rng(bid, seed, ":chimneys")
+    n = chimney_count(ctx.style, main.roof.length, rules, override, hearth)
+    spots = place_chimneys(main, n, others, rules, rng)
+    for u, v in spots:
+        _chimney(ctx.builders["chimney"], main.roof, u, v, rules, rng)
+    d = rules.data.get("dormers")
+    if not d:
+        return 0, len(spots)
+    ch = dormer_choice(bid, seed, ctx.style.style, rules)
+    wanted = getattr(override, "dormers", None)
+    if not with_dormers or (wanted is None and not ch.wanted) or wanted == 0:
+        return 0, len(spots)
+    if not roof_takes_dormers(main.roof, rules):
+        if wanted:
+            notes.append("dormers override ignored (roof too small or too flat)")
+        return 0, len(spots)
+    most = int(d["maxPerSide"])
+    pref = preferred_side(main.roof, streets, float(rules.get("jetty", "streetReachM")))
+    if wanted is not None:
+        counts = {pref: min(wanted, most), -pref: min(max(0, wanted - most), most)}
+    else:
+        per_side = min(most, math.ceil(main.roof.length / float(d["perEaveM"])))
+        counts = {pref: per_side} if ch.one_side else {pref: per_side, -pref: per_side}
+    rects = [chimney_rect(main.roof, u, v, rules) for u, v in spots]
+    dormers = place_dormers(main, {k: v for k, v in counts.items() if v > 0}, ch.kind, ch.w,
+                            ch.pitch, ch.hatch, rects, others, rules)  # fmt: skip
+    for dm in dormers:
+        _dormer(ctx, main.roof, dm)
+    return len(dormers), len(spots)

@@ -326,10 +326,10 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
 ## W5 – Fachwerk-Generator  (benötigt W3, W4)
 - [ ] Modularer Baukasten + Trim-Sheets (Balken, Putz, Stein, Holz, Dach)
-- [ ] Regeln: Stockwerke, Auskragung, Fachwerk-Muster-Katalog, Öffnungen, Dachdeckung, Gauben, Schornsteine
-  - Stand: Mechanik und Muster-Katalog, Dachdeckung (Palette), steile Dächer, Stilzuweisung umgesetzt (`--mode medieval`); Gauben und Schornsteine offen
+- [x] Regeln: Stockwerke, Auskragung, Fachwerk-Muster-Katalog, Öffnungen, Dachdeckung, Gauben, Schornsteine
+  - Stand: Mechanik und Muster-Katalog, Dachdeckung (Palette), steile Dächer, Stilzuweisung, Schornsteine und Gauben umgesetzt (`--mode medieval`, `leonberg-stil.md`)
 - [ ] Overrides aus W4 anwenden; Seeds für Variation; `locked`-Schutz für Handarbeit
-  - Stand: `storeys`, `jettyM`, `frontFacade` (Öffnungen), `seed`, `locked`, `keep` werden angewendet; abhaken mit den echten Annotationen
+  - Stand: `storeys`, `jettyM`, `frontFacade` (Öffnungen), `seed`, `locked`, `keep`, `age`, `dormers`, `chimneys` werden angewendet; abhaken mit den echten Annotationen
 - [ ] LOD-Erzeugung, Kollisions-Mesh
 - [ ] Stil-Referenzblatt (Farben, Materialien, Alterung) in `docs/design/`
   - Stand: `docs/design/leonberg-stil.md` (Entscheidung 2026-10-03), Palette justiert, Alterung ohne Texturen umgesetzt (First-Durchhang, schiefe Ständer, unregelmäßige Fenster, Moos); Schmutz und Regenstreifen folgen mit Texturen
