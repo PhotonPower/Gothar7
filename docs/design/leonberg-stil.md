@@ -73,6 +73,18 @@ Stand:
 - **Folgt ohne Texturen:** verzogene Linien.
 - **Folgt mit Texturen bzw. Trim-Sheets:** Schmutz und Regenstreifen.
 
-## Erste Bilder (Platzhalter, 2026-10-03)
-Ablage `C:\GotharData\review\w5\` (nicht im Repo). Beobachtung zur Justierung: Im Engine-Licht wirken die Dachfarben
-kräftiger orange-rot als „gedeckt, entsättigt“. Vorschlag zur nächsten Runde: Dachwerte dunkler und entsättigter.
+## Erste Bilder und Justierung (Platzhalter, 2026-10-03)
+Ablage `C:\GotharData\review\w5\` (nicht im Repo).
+- **Beobachtung:** Im Engine-Licht wirkten die Dachfarben kräftiger orange-rot als „gedeckt, entsättigt“. Das Standardlicht
+  der Engine ist bis zum Tag/Nacht-Zyklus eine tiefe, warme Abendsonne (Sonnenfarbe 1,0/0,72/0,5) vor einem Dämmerungshimmel.
+  Das verstärkt Orange.
+- **Palette justiert** (Entscheidung Koordinator im Auftrag des Projektinhabers):
+  - Biberschwanz rot: Sättigung −35 %, Helligkeit −20 %, Richtung Braunrot. sRGB 155/72/50 → 124/78/70.
+  - Biberschwanz alt: Sättigung −45 %, Helligkeit −20 %, braungrau-rot. 108/60/46 → 86/64/59.
+  - Bemoost und Schindeln entsprechend dunkler.
+  - Ocker-Putz gedämpft: 197/164/111 → 181/158/122.
+  - Weißer Putz gebrochen, wärmer, einen Hauch dunkler: 218/209/192 → 205/196/180.
+  - Balkenfarben unverändert.
+- **Belege:** Vorher/Nachher in Engine-Screenshots (`PLATZHALTER_palette_*`) und als Farbtafel unter neutralem und unter
+  Abendlicht (`PLATZHALTER_palette_vorher_nachher.png`).
+- **Offen:** Beurteilung bei neutralem Mittagslicht, sobald der Tag/Nacht-Zyklus der Engine da ist (`--time=12:00`).
