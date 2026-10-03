@@ -59,7 +59,13 @@ from gothar_worldgen.importer import run_import
 from gothar_worldgen.qa.checks import FAIL
 from gothar_worldgen.qa.run import run_qa
 from gothar_worldgen.qa.workdata import QaError, load_work
-from gothar_worldgen.walls.citywall import CourseError, generate_citywall, load_course
+from gothar_worldgen.walls.citywall import (
+    CourseError,
+    footprints_of,
+    generate_citywall,
+    load_course,
+    wall_context,
+)
 from gothar_worldgen.walls.citywall import write_index as write_citywall_index
 
 EXIT_OK = 0
@@ -374,9 +380,20 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
         def replace(b: dict) -> list[dict]:
             return [] if b["id"] in protected else split_building(b, rb, streets).houses
 
+    wall = None
+    course_path = data_dir / "city_wall.json"
+    if args.mode == "medieval" and rules is not None and grid is not None and course_path.is_file():
+        try:  # wall houses (W6): the same detection as `citywall`, on the houses after rueckbau
+            features = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
+            course = load_course(json.loads(course_path.read_text(encoding="utf-8")),
+                                 features.get("features", []))  # fmt: skip
+            wall = wall_context(course, entries, grid.height_at, rules)
+        except (OSError, json.JSONDecodeError, CourseError) as e:
+            print(f"  warning: no wall houses ({e})", file=out)
     res = generate(entries, grid, folder / "generated" / "buildings",
                    f"worlds/{site.name}/generated/buildings", args.area, locked,
-                   args.mode, rules, streets, overrides, replace if rb else None)  # fmt: skip
+                   args.mode, rules, streets, overrides, replace if rb else None,
+                   wall)  # fmt: skip
     if report is not None:
         report["overBudget"] = [{"id": i, "newHouses": n} for i, n in res.replaced]
         report["stats"]["replaced"] += len(res.replaced)
@@ -405,6 +422,8 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
         print("  patterns: " + ", ".join(f"{k} {v}" for k, v in sty["pattern"].items())
               + "; roofs: " + ", ".join(f"{k} {v}" for k, v in sty["roof"].items())
               + f"; steepened roofs {sty['roofSteepened'].get('masses', 0)}", file=out)  # fmt: skip
+        if "wallHouse" in sty:
+            print(f"  wall houses: {sty['wallHouse'].get('True', 0)}", file=out)
         if "chimneys" in sty:
             print("  chimneys: " + ", ".join(f"{k} {v}" for k, v in sty["chimneys"].items())
                   + "; dormers: " + ", ".join(f"{k} {v}" for k, v in sty["dormers"].items()),
@@ -425,8 +444,6 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
 
 
 def _cmd_citywall(args: argparse.Namespace, out: TextIO) -> int:
-    from shapely.geometry import Polygon
-
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
     paths = DataPaths(local.data_root, site.name)
@@ -458,12 +475,7 @@ def _cmd_citywall(args: argparse.Namespace, out: TextIO) -> int:
             entries, rb, overrides, Protection(features.get("features", []))
         )
         entries, _ = apply_rueckbau(entries, selection, rb, streets)
-    footprints = []
-    for b in entries:
-        for part in b.get("parts") or [b]:
-            fp = part.get("footprint") or []
-            if len(fp) >= 3:
-                footprints.append(Polygon(fp).buffer(0))
+    footprints = [poly for _, poly in footprints_of(entries)]
     index = generate_citywall(course, footprints, grid.height_at, rules,
                               folder / "generated" / "citywall",
                               f"worlds/{site.name}/generated/citywall")  # fmt: skip

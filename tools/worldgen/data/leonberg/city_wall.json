@@ -2,21 +2,61 @@
   "format": "gothar-city-wall",
   "version": 1,
   "status": "festgelegt – Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03); Verlauf frei interpretiert",
-  "note": "Ring aus OSM-Stücken (barrier=city_wall) und Stützpunkten (lokale Meter x, z). Osten 6 m innerhalb von 'Im Zwinger', Norden 5 m innerhalb von 'Hinterer Zwinger', von dort am Hangrand zum Schloss. Tor-Namen sind Arbeitsnamen; ob sie im Spiel so heißen, entscheidet der Projektinhaber.",
+  "note": "Ring aus OSM-Stücken (barrier=city_wall) und Stützpunkten (lokale Meter x, z). Osten durch die äußere Häuserzeile zwischen Im Zwinger und Grabenstraße (äußere Zwingermauer am Graben; diese Häuser sind Mauerhäuser), Norden 3–5 m innerhalb von 'Hinterer Zwinger', von dort am Hangrand zum Schloss. Tor-Namen sind Arbeitsnamen; ob sie im Spiel so heißen, entscheidet der Projektinhaber.",
   "ring": [
-    {"osm": "w725969133"},
-    {"points": [[58, 58], [58, 20], [58, -20], [57, -60], [56, -108], [50, -124], [40, -135], [14, -132], [-10, -128], [-31, -135], [-40, -139], [-68, -152], [-94, -163], [-150, -125], [-185, -100]]},
-    {"osm": "w205276657"}
+    {
+      "osm": "w725969133"
+    },
+    {
+      "points": [[88, 61], [92, 50], [94.5, 30], [94.7, 0], [94.4, -30], [95.2, -45], [94.6, -65], [93.4, -85], [92.4, -95], [91.5, -105], [88, -108], [56, -106], [50, -124], [40, -135], [14, -132], [-10, -128], [-31, -135], [-40, -139], [-68, -152], [-94, -163], [-150, -125], [-185, -100]]
+    },
+    {
+      "osm": "w205276657"
+    }
   ],
   "zwinger": [
-    {"osm": "w725966807"}
+    {
+      "osm": "w725966807"
+    }
   ],
   "gates": [
-    {"key": "oberes_tor", "name": "Oberes Tor", "kind": "tower", "at": [58, 45], "street": "Graf-Eberhard-Straße"},
-    {"key": "unteres_tor", "name": "Unteres Tor", "kind": "tower", "at": [-99, -157], "street": "Spitalhof"},
-    {"key": "pforte_graf_ulrich", "kind": "pforte", "at": [55, -112], "street": "Graf-Ulrich-Straße"},
-    {"key": "pforte_zwerch_nord", "kind": "pforte", "at": [-12, -128], "street": "Zwerchstraße"},
-    {"key": "pforte_zwerch_sued", "kind": "pforte", "at": [-120, 53], "street": "Zwerchstraße"},
-    {"key": "pforte_pfarr", "kind": "pforte", "at": [-180, -104], "street": "Pfarrstraße"}
+    {
+      "key": "oberes_tor",
+      "name": "Oberes Tor",
+      "kind": "tower",
+      "at": [94, 54],
+      "street": "Graf-Eberhard-Straße"
+    },
+    {
+      "key": "unteres_tor",
+      "name": "Unteres Tor",
+      "kind": "tower",
+      "at": [-99, -157],
+      "street": "Spitalhof"
+    },
+    {
+      "key": "pforte_graf_ulrich",
+      "kind": "pforte",
+      "at": [55, -112],
+      "street": "Graf-Ulrich-Straße"
+    },
+    {
+      "key": "pforte_zwerch_nord",
+      "kind": "pforte",
+      "at": [-12, -128],
+      "street": "Zwerchstraße"
+    },
+    {
+      "key": "pforte_zwerch_sued",
+      "kind": "pforte",
+      "at": [-120, 53],
+      "street": "Zwerchstraße"
+    },
+    {
+      "key": "pforte_pfarr",
+      "kind": "pforte",
+      "at": [-180, -104],
+      "street": "Pfarrstraße"
+    }
   ]
 }

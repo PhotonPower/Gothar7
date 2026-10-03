@@ -125,6 +125,19 @@ Stand (Entscheidung Koordinator im Auftrag, 2026-10-03; Werte in `building_rules
   - 1,88 Mio. Dreiecke; 11 Häuser auf Stufe 4.
 - Vorher/Nachher bei 12:00: `PLATZHALTER_gauben_*`.
 
+## Stadtmauer und Mauerhäuser
+Stand (Entscheidung Projektinhaber bzw. Koordinator im Auftrag, 2026-10-03; Werte in `building_rules.json` → `cityWall`):
+- Bruchstein (Palette `stone`), 7 m bis zur Brustwehr, offener Wehrgang mit Zinnen, etwa 10 % der Zinnen fehlen.
+- **Stein aufgehellt** (Abnahme Projektinhaber 2026-10-03): `stone` ist jetzt ein heller, warmer Kalkstein-Grauton,
+  sRGB etwa 120/111/100 → 178/170/155 (linear 0,45/0,40/0,33). Er gilt einheitlich für Mauer, Mauerhäuser, Türme und
+  ebenso für Sockel, massive Erdgeschosse, Schornsteine und Steinbauten.
+- Viereckige Flankentürme und Tortürme mit Zeltdach (`roof_old`), Spitzbogen-Durchfahrt, offene Torflügel (`timber_dark`).
+- **Mauerhäuser:** Häuser auf der Mauerlinie zeigen nach außen nur Bruchstein mit Schießscharten und kleinen Fenstern
+  über der Mauerkrone. Niedrige Häuser verstecken ihr Dach hinter einer Schildmauer mit Zinnen. Zur Stadt hin bleiben
+  sie Fachwerkhäuser ihres Stils.
+- Leonberg: 29 Mauerhäuser, vor allem die äußere Zeile an der Grabenstraße.
+- Bilder bei 12:00: `C:\GotharData\review\w6\PLATZHALTER_mauerhaeuser_*`.
+
 ## Erste Bilder und Justierung (Platzhalter, 2026-10-03)
 Ablage `C:\GotharData\review\w5\` (nicht im Repo).
 - **Beobachtung:** Im Engine-Licht wirkten die Dachfarben kräftiger orange-rot als „gedeckt, entsättigt“. Das Standardlicht

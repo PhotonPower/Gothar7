@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 1704,
+ "nextVobId": 1721,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -1705,6 +1705,23 @@
   "citywall:gate_unteres_tor": 1700,
   "citywall:zwinger_00_00": 1701,
   "citywall:zwinger_00_01": 1702,
-  "citywall:zwinger_00_02": 1703
+  "citywall:zwinger_00_02": 1703,
+  "citywall:wall_01_05": 1704,
+  "citywall:wall_01_06": 1705,
+  "citywall:wall_01_07": 1706,
+  "citywall:wall_01_08": 1707,
+  "citywall:wall_01_09": 1708,
+  "citywall:wall_01_10": 1709,
+  "citywall:wall_01_11": 1710,
+  "citywall:wall_01_12": 1711,
+  "citywall:wall_01_13": 1712,
+  "citywall:wall_01_14": 1713,
+  "citywall:wall_01_15": 1714,
+  "citywall:wall_01_16": 1715,
+  "citywall:wall_01_17": 1716,
+  "citywall:wall_01_18": 1717,
+  "citywall:wall_08_00": 1718,
+  "citywall:wall_09_00": 1719,
+  "citywall:wall_10_00": 1720
  }
 }

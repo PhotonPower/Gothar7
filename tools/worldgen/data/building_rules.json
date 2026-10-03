@@ -130,7 +130,7 @@
   },
   "palette": {
     "note": "baseColorFactor (linear); exakt gleiche Werte in allen Häusern, die Engine bündelt nach Materialwerten",
-    "stone": [0.19, 0.16, 0.13, 1.0],
+    "stone": [0.45, 0.4, 0.33, 1.0],
     "plaster_white": [0.609, 0.5497, 0.4549, 1.0],
     "plaster_ochre": [0.4648, 0.3436, 0.1953, 1.0],
     "plaster_grey": [0.37, 0.34, 0.29, 1.0],
@@ -394,6 +394,7 @@
     "pforte": {"w": 2.0, "h": 2.8},
     "stairs": {"rise": 0.2, "run": 0.3, "width": 1.2, "searchM": 40.0},
     "zwinger": {"heightM": 4.0, "thicknessM": 1.0},
+    "wallHouse": {"note": "Häuser auf der Mauerlinie (Entscheidung Projektinhaber 2026-10-03): Außenseite Bruchstein, kleine Fenster nur über der Mauerkrone, darunter höchstens Schießscharten; niedrige Häuser bekommen eine Schildmauer bis zur Krone", "window": [0.4, 0.6, 0.9], "slit": [0.25, 1.0], "slitEveryM": 4.0, "outerProbeM": 1.5, "nearRingM": 8.0, "onLineM": 0.5},
     "chunkM": 40.0,
     "budgetTriangles": 25000,
     "collisionPerFile": 200,

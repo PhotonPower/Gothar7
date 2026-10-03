@@ -55,6 +55,7 @@ class BuildingOverride:
     age: float | None = None  # 0 (new) .. 1 (old): hand correction of the generated age
     dormers: int | None = None  # number of dormers (0 = none), None = generated
     chimneys: int | None = None  # number of chimneys (0 = none), None = generated
+    wall_house: bool | None = None  # on the city wall line (W6); None = detected
     extra: dict[str, Any] = field(default_factory=dict)  # unknown keys, written back unchanged
 
 
@@ -95,6 +96,7 @@ _KNOWN = {
     "age",
     "dormers",
     "chimneys",
+    "wallHouse",
 }
 MAX_COUNT = {"dormers": 6, "chimneys": 4}
 
@@ -115,7 +117,7 @@ def from_json(data: Any) -> BuildingOverride:  # noqa: ANN401
     if not isinstance(bid, str) or not bid:
         raise OverrideError("override needs a non-empty 'id'")
     where = f"override {bid}"
-    for key in ("keep", "locked"):
+    for key in ("keep", "locked", "wallHouse"):
         if key in data and not isinstance(data[key], bool):
             raise OverrideError(f"{where}: '{key}' must be true or false")
     storeys = data.get("storeys", [])
@@ -181,6 +183,7 @@ def from_json(data: Any) -> BuildingOverride:  # noqa: ANN401
         age=age,
         dormers=_count(data, "dormers", where),
         chimneys=_count(data, "chimneys", where),
+        wall_house=data.get("wallHouse"),
         extra={k: v for k, v in data.items() if k not in _KNOWN},
     )
 
@@ -229,6 +232,8 @@ def to_json(o: BuildingOverride) -> dict[str, Any]:
         out["dormers"] = o.dormers
     if o.chimneys is not None:
         out["chimneys"] = o.chimneys
+    if o.wall_house is not None:
+        out["wallHouse"] = o.wall_house
     out.update(o.extra)
     return out
 
