@@ -37,7 +37,6 @@ def codes(report, level="error"):
 
 GOOD = {
     "version": 1,
-    "lods": [1.0, 0.5, 0.2],
     "parts": {"body": "parts/a.glb", "head": "parts/h.glb", "hair": "parts/x.glb"},
     "palette": {"skin": "#ffffff", "cloth_a": "#000000"},
 }
@@ -46,7 +45,6 @@ GOOD = {
 def test_parse_manifest():
     fig = parse_figure(GOOD, "npc_test_01")
     assert fig.parts["head"] == "parts/h.glb"
-    assert fig.lods == (1.0, 0.5, 0.2)
     assert fig.palette["skin"] == pytest.approx((1.0, 1.0, 1.0))
     assert fig.part_paths(Path("c"))["body"] == Path("c/parts/a.glb")
 
@@ -65,9 +63,7 @@ def test_srgb_to_linear():
         ({"parts": {"body": "a.glb"}}, "missing parts"),
         ({"parts": {"body": "a.glb", "head": "h.glb", "cape": "c.glb"}}, "unknown part role"),
         ({"parts": {"body": "a.fbx", "head": "h.glb"}}, "relative .glb"),
-        ({"lods": [0.5]}, "lods"),
-        ({"lods": [1.0, 0.6, 0.7]}, "lods"),
-        ({"lods": [1.0, 0.5, 0.2, 0.1]}, "lods"),
+        ({"lods": [1.0, 0.5, 0.2]}, "come from the parts"),
         ({"palette": {"skin": "red"}}, "#rrggbb"),
         ({"palette": 3}, "palette"),
     ],

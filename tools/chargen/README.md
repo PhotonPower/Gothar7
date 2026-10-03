@@ -68,7 +68,9 @@ gothar-chargen build-placeholder --sources C:\GotharData\characters\quaternius
 gothar-chargen build-set all --sources C:\GotharData\characters\quaternius
                                               & REM Animations-Sets aus data/clips/<set>.toml (none, swim, dive, fist, 1h, 2h, bow, cbow, mag)
 gothar-chargen report                         & REM Prio-A-Fortschritt: animation-list.md ↔ anims/
-gothar-chargen assemble [figures\x.figure.toml] & REM Figuren aus Manifesten bauen (alle ohne Argument)
+gothar-chargen assemble [figures\x.figure.toml] & REM Figuren aus Manifesten + Teilen (reines Python, ohne Blender;
+                                              & REM nicht versioniert; ohne Argument alle, entfernt veraltete)
+gothar-chargen part-data [parts\x]            & REM Zusammenbau-Daten der Teile (Halsring, Masken; §6.2)
 gothar-chargen build-test-parts               & REM eigene einfache Testteile unter parts/test/
 gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name>/ + textures/ (nur lokal, braucht MPFB);
                                               & REM Grundkörper (parts = ["body"]) und Köpfe (["head", "hair"]) werden
@@ -114,10 +116,10 @@ schneller, `amplify` = weiter ausholen). Feste Events: `markers = { hit_start = 
 ## Figuren-Baukasten (F3)
 Eine Figur besteht aus Teilen (`.glb` auf dem Referenz-Rig, unter `assets/source/characters/parts/`): `body`
 (Grundkörper oder Kleidung/Rüstung, die ihn ersetzt), `head`, optional `hair`/`beard`. Das Manifest
-`figures/<name>.figure.toml` nennt die Teile, die LOD-Anteile und eine Farbpalette (Materialname → `#rrggbb`).
-`gothar-chargen assemble` baut daraus `figures/<name>.glb` mit Knoten `<rolle>_lod<n>` (Vertrag §2.2) und prüft
-sie. Teile werden beim Zusammenbau verschweißt (glTF trennt Vertices an harten Kanten); offene Ränder (Nähte)
-bekommen Gewicht 0 für Decimate und bleiben in allen Stufen erhalten. Der Validator prüft Passform und LODs.
+`figures/<name>.figure.toml` nennt die Teile und eine Farbpalette (Materialname → `#rrggbb`). Die Teile bringen
+ihre LOD-Stufen mit (beim Teile-Bauen in Blender reduziert, Nahtränder fest) und Zusammenbau-Daten (Halsring,
+Masken je Kleidungsstück, `part-data`). `gothar-chargen assemble` baut daraus in reinem Python `figures/<name>.glb`
+mit Knoten `<rolle>_lod<n>` (Vertrag §2.2/§6.2) und prüft sie; die Figuren sind nicht versioniert.
 
 ## Schichtung (Waffenmodi)
 `layer = ["none/s_walk", "1h/s_idle"]` nimmt Beine, Becken und Wirbelsäule aus dem ersten Clip und die Teilbäume

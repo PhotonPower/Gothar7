@@ -1,0 +1,4 @@
+# Figures are assembled at build time from manifests and parts (gothar-chargen assemble, §6.2):
+# generated, not versioned. The placeholder mannequin has no manifest and stays versioned.
+figures/*.glb
+!figures/placeholder_mannequin.glb

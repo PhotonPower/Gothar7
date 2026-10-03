@@ -1,6 +1,5 @@
 # Test figure for the F3 kit: box body in the "rags" outfit, test head and hair (own geometry).
 version = 1
-lods = [1.0, 0.5, 0.2]
 
 [parts]
 body = "parts/test/outfit_rags_test.glb"

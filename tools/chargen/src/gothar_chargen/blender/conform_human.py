@@ -40,6 +40,7 @@ from mathutils.interpolate import poly_3d_calc  # type: ignore[import-not-found]
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from gothar_chargen.blender import build_reference_rig as reference  # noqa: E402
+from gothar_chargen.blender.lod import make_lods  # noqa: E402
 from gothar_chargen.blender.settings import GLTF_EXPORT_SETTINGS  # noqa: E402
 from gothar_chargen.faces import Morph, load_morphs  # noqa: E402
 from gothar_chargen.human import Human, asset_stem, load_human  # noqa: E402
@@ -518,13 +519,15 @@ def _join(target: bpy.types.Object, others: list[bpy.types.Object]) -> bpy.types
     return target
 
 
-def _export(obj: bpy.types.Object, ref: bpy.types.Object, path: Path) -> None:
+def _export(objs: list[bpy.types.Object], ref: bpy.types.Object, path: Path) -> None:
     for o in bpy.context.scene.objects:
-        o.select_set(o in (obj, ref))
+        o.hide_set(o.type == "MESH" and o not in objs)
+        o.select_set(o in objs or o is ref)
     settings = dict(GLTF_EXPORT_SETTINGS, use_selection=True, export_animations=False)
     path.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=str(path.resolve()), **settings)
-    print(f"[chargen] wrote {path} ({_triangles(obj)} tris)")
+    tris = "/".join(str(_triangles(o)) for o in objs)
+    print(f"[chargen] wrote {path} ({tris} tris per LOD)")
 
 
 def main() -> None:
@@ -630,10 +633,14 @@ def main() -> None:
             for o in clothes:
                 o.name = stem_of[o.name]
                 parts[o.name] = o  # parts/<kit>/<garment>.glb
-        for role, obj in parts.items():
-            for other in parts.values():
-                other.hide_set(other is not obj)
-            _export(obj, ref, args.out_dir / f"{role}.glb")
+        # every part carries its LOD levels (§2.2): seams of body and head stay fixed,
+        # hair and garments are reduced freely
+        for file_name, obj in parts.items():
+            role = file_name if file_name in ("body", "head", "hair") else "cloth"
+            levels = make_lods(obj, role, keep_borders=role in ("body", "head"))
+            _export(levels, ref, args.out_dir / f"{file_name}.glb")
+            for o in levels:  # garments of a kit all use the node names cloth_lod<n>
+                bpy.data.objects.remove(o)
 
 
 if __name__ == "__main__":

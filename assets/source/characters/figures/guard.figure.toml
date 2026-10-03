@@ -2,7 +2,6 @@
 # colours from the palette (shared, neutral kit textures). Names are generic test figures – roles
 # and groups of the game are decided later (owner).
 version = 1
-lods = [1.0, 0.5, 0.2]
 
 [parts]
 body = "parts/body_m_average/body.glb"

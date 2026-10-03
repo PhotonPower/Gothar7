@@ -1,6 +1,5 @@
 # farmer: assembled from parts built by gothar-chargen human
 version = 1
-lods = [1.0, 0.5, 0.2]
 
 [parts]
 body = "parts/farmer/body.glb"

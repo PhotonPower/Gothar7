@@ -3,7 +3,6 @@
 Format (version 1)::
 
     version = 1
-    lods = [1.0, 0.5, 0.2]                 # triangle share per LOD level (lod0 = 1.0)
 
     [parts]                                # .glb files on the reference rig, relative to
     body = "parts/test/body_test.glb"      # assets/source/characters; body = base body or an
@@ -56,7 +55,6 @@ class FigureError(Exception):
 class Figure:
     name: str
     parts: dict[str, str]  # role -> part path (relative to the characters folder)
-    lods: tuple[float, ...] = (1.0, 0.5, 0.2)
     palette: dict[str, tuple[float, float, float]] = field(default_factory=dict)  # linear RGB
 
     def part_paths(self, characters_dir: Path) -> dict[str, Path]:
@@ -79,7 +77,9 @@ def parse_figure(data: dict, name: str) -> Figure:
         raise FigureError(f"figure name '{name}' must be lower_snake_case")
     if data.get("version") != FORMAT_VERSION:
         raise FigureError(f"version must be {FORMAT_VERSION}, got {data.get('version')!r}")
-    unknown = set(data) - {"version", "lods", "parts", "palette"}
+    if "lods" in data:
+        raise FigureError("lods: LOD levels come from the parts now (§6.2), remove the key")
+    unknown = set(data) - {"version", "parts", "palette"}
     if unknown:
         raise FigureError(f"unknown keys: {sorted(unknown)}")
 
@@ -108,16 +108,6 @@ def parse_figure(data: dict, name: str) -> Figure:
     if missing:
         raise FigureError(f"missing parts: {missing}")
 
-    lods = data.get("lods", [1.0, 0.5, 0.2])
-    if (
-        not isinstance(lods, list)
-        or not 1 <= len(lods) <= 3
-        or lods[0] != 1.0
-        or not all(isinstance(x, int | float) and 0 < x <= 1 for x in lods)
-        or any(b >= a for a, b in zip(lods, lods[1:], strict=False))
-    ):
-        raise FigureError("lods must be 1-3 decreasing shares in (0, 1], starting with 1.0")
-
     palette_raw = data.get("palette", {})
     if not isinstance(palette_raw, dict):
         raise FigureError("[palette] must be a table")
@@ -126,7 +116,7 @@ def parse_figure(data: dict, name: str) -> Figure:
         if not isinstance(color, str) or not _COLOR.match(color):
             raise FigureError(f"palette '{material}': expected '#rrggbb', got {color!r}")
         palette[material] = srgb_to_linear(color)
-    return Figure(name, dict(parts), tuple(float(x) for x in lods), palette)
+    return Figure(name, dict(parts), palette)
 
 
 def load_figure(path: Path) -> Figure:

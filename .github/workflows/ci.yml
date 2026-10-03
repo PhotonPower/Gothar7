@@ -187,7 +187,8 @@ jobs:
       - name: Pytest
         run: python -m pytest --cov=gothar_worldgen --cov-report=term-missing
 
-  # Character-track tools (tools/chargen, Python): lint, format check, tests, and the rig validator
+  # Character-track tools (tools/chargen, Python): lint, format check, tests, the figures assembled
+  # from manifests and parts (generated, not versioned; no Blender needed), and the rig validator
   # over all character assets (assets/source/characters/**/*.glb). Blender is not installed here;
   # tests marked "blender" are skipped.
   chargen:
@@ -223,6 +224,9 @@ jobs:
 
       - name: Pytest
         run: python -m pytest --cov=gothar_chargen --cov-report=term-missing
+
+      - name: Assemble figures (manifests + parts, characters-pipeline.md §6.2)
+        run: gothar-chargen assemble
 
       - name: Validate character assets
         run: gothar-chargen validate --strict

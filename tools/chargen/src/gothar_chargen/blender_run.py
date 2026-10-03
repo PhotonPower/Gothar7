@@ -95,14 +95,6 @@ def build_test_parts(blender: Path, out_dir: Path) -> None:
     run_script(blender, "build_test_parts.py", ["--out", str(out_dir)])
 
 
-def assemble_figure(blender: Path, manifest: Path, characters: Path, out: Path) -> str:
-    return run_script(
-        blender,
-        "assemble_figure.py",
-        ["--manifest", str(manifest), "--characters", str(characters), "--out", str(out)],
-    )
-
-
 def build_mpfb_human(blender: Path, recipe: Path, blend_out: Path) -> None:
     run_script(
         blender,

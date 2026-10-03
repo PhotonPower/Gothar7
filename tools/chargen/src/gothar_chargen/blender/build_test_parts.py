@@ -32,6 +32,7 @@ from gothar_chargen.blender.build_reference_rig import (  # noqa: E402
     _box_key,
 )
 from gothar_chargen.blender.common import new_reference  # noqa: E402
+from gothar_chargen.blender.lod import make_lods  # noqa: E402
 from gothar_chargen.blender.settings import GLTF_EXPORT_SETTINGS  # noqa: E402
 from gothar_chargen.skeleton import RigSpec, load_rig  # noqa: E402
 
@@ -163,10 +164,10 @@ def _add_face_morphs(rig: RigSpec, obj: bpy.types.Object) -> None:
             key.data[i].co = obj.data.vertices[i].co + offset
 
 
-def _export(obj: bpy.types.Object, arm: bpy.types.Object, path: Path) -> None:
+def _export(objs: list[bpy.types.Object], arm: bpy.types.Object, path: Path) -> None:
     for o in bpy.context.scene.objects:
-        o.hide_set(False)
-        o.select_set(o in (obj, arm))
+        o.hide_set(o.type == "MESH" and o not in objs)
+        o.select_set(o in objs or o is arm)
     settings = dict(GLTF_EXPORT_SETTINGS, use_selection=True, export_animations=False)
     path.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=str(path.resolve()), **settings)
@@ -188,10 +189,12 @@ def main() -> None:
         "hair_test": _hair(rig, arm).to_object("hair", arm, [hair_mat]),
     }
     _add_face_morphs(rig, parts["head_test"])
-    for file_name, obj in parts.items():
-        for other in parts.values():
-            other.hide_set(other is not obj)
-        _export(obj, arm, args.out / f"{file_name}.glb")
+    for file_name, obj in parts.items():  # every part carries its LOD levels (§2.2)
+        role = file_name.split("_")[0] if not file_name.startswith("outfit") else "body"
+        levels = make_lods(obj, role, keep_borders=role != "hair")
+        _export(levels, arm, args.out / f"{file_name}.glb")
+        for o in levels:  # the next part reuses the node names
+            bpy.data.objects.remove(o)
 
 
 if __name__ == "__main__":

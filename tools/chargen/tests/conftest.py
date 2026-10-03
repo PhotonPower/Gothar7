@@ -127,3 +127,11 @@ def rotate_node(g: Gltf, name: str, axis: tuple[float, float, float], degrees: f
 
 def glb_header_length(data: bytes) -> int:
     return struct.unpack_from("<I", data, 8)[0]
+
+
+def pytest_sessionstart(session) -> None:
+    """Figures are generated, not versioned (§6.2): assemble them once before the tests."""
+    from gothar_chargen.assemble import assemble_all
+
+    characters = REPO_ROOT / "assets/source/characters"
+    assemble_all(characters / "figures", characters)

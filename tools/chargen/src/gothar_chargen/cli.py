@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import TextIO
 
 from gothar_chargen import __version__
+from gothar_chargen.assemble import AssembleError, assemble_all
 from gothar_chargen.blender_run import (
     BlenderError,
-    assemble_figure,
     build_mpfb_human,
     build_placeholder,
     build_reference_rig,
@@ -29,10 +29,12 @@ from gothar_chargen.blender_run import (
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
 from gothar_chargen.collision import CollisionError, derive_collision, write_collision
 from gothar_chargen.figure import SUFFIX as FIGURE_SUFFIX
-from gothar_chargen.figure import FigureError, load_figure
+from gothar_chargen.figure import FigureError
 from gothar_chargen.gltf import Gltf, GltfError
 from gothar_chargen.human import SUFFIX as HUMAN_SUFFIX
 from gothar_chargen.human import HumanError, load_human
+from gothar_chargen.meshdata import split_lod
+from gothar_chargen.partdata import PartDataError, body_or_head_data, garment_data, write_part
 from gothar_chargen.report import ReportError, progress
 from gothar_chargen.skeleton import (
     RigSpec,
@@ -290,24 +292,63 @@ def _cmd_collision(args: argparse.Namespace, out: TextIO) -> int:
 
 
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
+    """Figures from manifests and parts, pure Python (no Blender): figures/<name>.glb, then the
+    strict validator. Without arguments all manifests; outputs without a manifest are removed."""
     characters = _characters_dir(args)
-    manifests = args.manifests or sorted((characters / "figures").glob("*" + FIGURE_SUFFIX))
-    if not manifests:
+    figures_dir = characters / "figures"
+    manifests = list(args.manifests) or None
+    if not (manifests or list(figures_dir.glob("*" + FIGURE_SUFFIX))):
         print("error: no figure manifests found", file=out)
         return EXIT_ERROR
-    figures = [(m, load_figure(m)) for m in manifests]  # fail early on a bad manifest
-    blender = find_blender(args.blender)
+    written = assemble_all(figures_dir, characters, manifests)
     rig = load_rig(args.rig)
     reference = reference_pose(Gltf.load(characters / REFERENCE_GLB.relative_to(CHARACTERS_DIR)))
     ok = True
-    for manifest, figure in figures:
-        glb = manifest.with_name(figure.name + ".glb")
-        assemble_figure(blender, manifest, characters, glb)
-        finish_textures(glb, characters / "textures")
+    for glb in written:
         report = validate_file(glb, rig, reference)
         _print_report(report, out)
         ok = ok and report.ok(strict=True)
     return EXIT_OK if ok else EXIT_ERROR
+
+
+def _part_role(g: Gltf) -> str | None:
+    for node in g.list("nodes"):
+        base, level = split_lod(str(node.get("name", "")))
+        if "mesh" in node and level is not None:
+            return base
+    return None
+
+
+def update_part_data(characters: Path, dirs: list[Path] | None, out: TextIO) -> None:
+    """(Re)computes the assembly data of parts (§6.2): neck rings of bodies and heads, masks of
+    garments on the body their kit is fitted to. `dirs`: part folders (default: all)."""
+    parts_root = characters / "parts"
+    folders = dirs or sorted(p for p in parts_root.iterdir() if p.is_dir())
+    garments: list[tuple[Path, Gltf]] = []
+    for folder in folders:
+        for path in sorted(folder.glob("*.glb")):
+            g = Gltf.load(path)
+            role = _part_role(g)
+            if role in ("body", "head"):
+                write_part(path, g, body_or_head_data(g, role))
+                print(f"part data {path.relative_to(characters)} ({role})", file=out)
+            elif role == "cloth":
+                garments.append((path, g))
+    humans = characters / "humans"
+    for path, g in garments:
+        recipe = load_human(humans / (path.parent.name + HUMAN_SUFFIX))
+        if recipe.fit_to is None:
+            raise HumanError(f"{path.parent.name}: garment parts need a recipe with fit_to")
+        body_rel = f"parts/{recipe.fit_to}/body.glb"
+        body = Gltf.load(characters / body_rel)
+        write_part(path, g, garment_data(g, body, body_rel))
+        print(f"part data {path.relative_to(characters)} (covers {body_rel})", file=out)
+
+
+def _cmd_part_data(args: argparse.Namespace, out: TextIO) -> int:
+    characters = _characters_dir(args)
+    update_part_data(characters, [Path(d) for d in args.dirs] or None, out)
+    return EXIT_OK
 
 
 def _cmd_human(args: argparse.Namespace, out: TextIO) -> int:
@@ -347,11 +388,19 @@ def _cmd_human(args: argparse.Namespace, out: TextIO) -> int:
             )
             manifest.write_text(
                 f"# {human.name}: assembled from parts built by gothar-chargen human\n"
-                f"version = 1\nlods = [1.0, 0.5, 0.2]\n\n[parts]\n{parts}\n",
+                f"version = 1\n\n[parts]\n{parts}\n",
                 encoding="utf-8",
                 newline="\n",
             )
             print(f"wrote {manifest.relative_to(characters)}", file=out)
+    # assembly data (§6.2): the rebuilt parts, and the kits fitted to a rebuilt base body
+    built = {h.name for _, h in humans}
+    dirs = {characters / "parts" / name for name in built}
+    for kit in sorted((characters / "humans").glob("*" + HUMAN_SUFFIX)):
+        recipe = load_human(kit)
+        if recipe.fit_to in built:
+            dirs.add(characters / "parts" / recipe.name)
+    update_part_data(characters, sorted(d for d in dirs if d.is_dir()), out)
     return EXIT_OK if ok else EXIT_ERROR
 
 
@@ -426,12 +475,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
     p.set_defaults(func=_cmd_build_placeholder)
 
-    p = sub.add_parser("assemble", help="assemble figures from figures/<name>.figure.toml")
+    p = sub.add_parser("assemble", help="figures from figures/<name>.figure.toml (no Blender)")
     p.add_argument("manifests", nargs="*", type=Path, help="default: all in figures/")
     p.add_argument(
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
     )
     p.set_defaults(func=_cmd_assemble)
+
+    p = sub.add_parser("part-data", help="assembly data of the parts: neck rings, garment masks")
+    p.add_argument("dirs", nargs="*", help="part folders (default: all under parts/)")
+    p.add_argument(
+        "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
+    )
+    p.set_defaults(func=_cmd_part_data)
 
     p = sub.add_parser("human", help="MPFB2 human from humans/<name>.human.toml -> parts (local)")
     p.add_argument("recipes", nargs="*", type=Path, help="default: all in humans/")
@@ -491,8 +547,10 @@ def main(argv: Sequence[str] | None = None, out: TextIO | None = None) -> int:
     try:
         return int(args.func(args, out))
     except (
+        AssembleError,
         BlenderError,
         ClipSpecError,
+        PartDataError,
         CollisionError,
         FigureError,
         GltfError,
