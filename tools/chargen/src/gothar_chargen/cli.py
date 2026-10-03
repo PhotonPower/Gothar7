@@ -27,13 +27,20 @@ from gothar_chargen.blender_run import (
     prepare_monster,
 )
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
+from gothar_chargen.collision import CollisionError, derive_collision, write_collision
 from gothar_chargen.figure import SUFFIX as FIGURE_SUFFIX
 from gothar_chargen.figure import FigureError, load_figure
 from gothar_chargen.gltf import Gltf, GltfError
 from gothar_chargen.human import SUFFIX as HUMAN_SUFFIX
 from gothar_chargen.human import HumanError, load_human
 from gothar_chargen.report import ReportError, progress
-from gothar_chargen.skeleton import RigSpec, SkeletonError, load_rig, species_of
+from gothar_chargen.skeleton import (
+    RigSpec,
+    SkeletonError,
+    load_rig,
+    packaged_species,
+    species_of,
+)
 from gothar_chargen.validate import ReferencePose, Report, reference_pose, validate_file
 
 EXIT_OK = 0
@@ -262,12 +269,24 @@ def _cmd_monster(args: argparse.Namespace, out: TextIO) -> int:
         for line in log.splitlines():
             if line.startswith("[chargen]"):
                 print(line[10:], file=out)
-        rig = load_rig(MONSTER_DATA / f"{species}.toml")
         glb = monster_reference(characters, species)
+        write_collision(MONSTER_DATA / f"{species}.toml", derive_collision(Gltf.load(glb)))
+        rig = load_rig(MONSTER_DATA / f"{species}.toml")
         report = validate_file(glb, rig, reference_pose(Gltf.load(glb)))
         _print_report(report, out)
         ok = ok and report.ok(strict=True)
     return EXIT_OK if ok else EXIT_ERROR
+
+
+def _cmd_collision(args: argparse.Namespace, out: TextIO) -> int:
+    """[rig.collision] of monster rigs from their reference mesh (no Blender needed)."""
+    characters = _characters_dir(args)
+    for species in args.species or packaged_species():
+        rig_toml = MONSTER_DATA / f"{species}.toml"
+        collision = derive_collision(Gltf.load(monster_reference(characters, species)))
+        write_collision(rig_toml, collision)
+        print(f"{species}: {collision}", file=out)
+    return EXIT_OK
 
 
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
@@ -442,6 +461,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
     p.set_defaults(func=_cmd_monster)
 
+    p = sub.add_parser("collision", help="monster collision capsules from the reference meshes")
+    p.add_argument("species", nargs="*", help="default: all packaged monster rigs")
+    p.add_argument(
+        "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
+    )
+    p.set_defaults(func=_cmd_collision)
+
     p = sub.add_parser("build-set", help="animation sets from data/clips/<set>.toml")
     p.add_argument("set", nargs="+", help="set names (none, swim, wolf, ...) or 'all' (humans)")
     p.add_argument(
@@ -466,6 +492,7 @@ def main(argv: Sequence[str] | None = None, out: TextIO | None = None) -> int:
     except (
         BlenderError,
         ClipSpecError,
+        CollisionError,
         FigureError,
         GltfError,
         HumanError,

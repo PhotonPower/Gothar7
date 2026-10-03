@@ -15,6 +15,7 @@ from typing import Any
 
 import numpy as np
 
+from gothar_chargen.collision import CollisionError, derive_collision
 from gothar_chargen.events import events_path_for, load_events
 from gothar_chargen.fit import check_fit
 from gothar_chargen.gltf import Gltf, GltfError, Trs, node_trs, quat_angle_deg
@@ -52,6 +53,7 @@ class Tolerances:
     jump_rotation_warn_deg: float = 90.0
     jump_translation_m: float = 0.5
     loop_rotation_deg: float = 5.0  # first vs. last key of s_* clips
+    collision_drift: float = 0.05  # metres: stored capsule vs. one derived from the mesh
     # monsters (§7): root motion of s_walk/s_run and turning of t_turn_l/r
     monster_advance_min_m_s: float = 0.1
     monster_turn_min_deg: float = 45.0
@@ -389,6 +391,29 @@ class _Checker:
                 )
             if abs(min_y) > self.tol.ground:
                 self.r.warning("mesh.ground", f"lowest vertex at y = {min_y:.3f} m, expected ~0")
+
+    def collision(self) -> None:
+        """Monsters: the stored capsule must still fit the mesh (re-derive after mesh changes)."""
+        stored = self.rig.collision
+        if not self.rig.is_monster or stored is None:
+            return
+        if not any("mesh" in n and "skin" in n for n in self.nodes):
+            return  # animation files carry no mesh
+        try:
+            derived = derive_collision(self.g)
+        except CollisionError:
+            return
+        drift = max(
+            abs(stored.radius - derived.radius),
+            abs(stored.length - derived.length),
+            *(abs(a - b) for a, b in zip(stored.offset, derived.offset, strict=True)),
+        )
+        if stored.shape != derived.shape or drift > self.tol.collision_drift:
+            self.r.warning(
+                "collision.stale",
+                f"[rig.collision] does not fit the mesh any more (derived: {derived}); "
+                "run gothar-chargen collision",
+            )
 
     def _check_morph_sets(self, meshes: list[dict[str, Any]]) -> None:
         """Contract §6 (engine): a mesh with morph targets carries the complete list in contract
@@ -910,6 +935,7 @@ def validate_gltf(
             checker.bind_pose()
         part_file = is_part_file(report.path)
         checker.meshes(part_file)
+        checker.collision()
         checker.lods(part_file)
         checker.textures()
         if not part_file:
