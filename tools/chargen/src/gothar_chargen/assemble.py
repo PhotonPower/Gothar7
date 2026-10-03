@@ -41,6 +41,9 @@ _NP = {_FLOAT: np.float32, _UBYTE: np.uint8, _USHORT: np.uint16, _UINT: np.uint3
 _TYPES = {1: "SCALAR", 2: "VEC2", 3: "VEC3", 4: "VEC4"}
 
 
+NECK_LIFT_MAX = 0.006  # metres the neck seam may move up or down when snapping
+
+
 class AssembleError(Exception):
     """A figure cannot be assembled (missing part, stale data, mismatching rings ...)."""
 
@@ -423,6 +426,12 @@ def _neck_snap(
     head_pts = np.array([head_pos[pt[0][0]][pt[0][1]] for pt in head_ring])
     pairing = _pair_rings(body_pts, head_pts)
     delta = head_pts[pairing] - body_pts
+    lift = float(delta[:, 1].mean())  # widths differ between builds, heights must not
+    if abs(lift) > NECK_LIFT_MAX:
+        raise AssembleError(
+            f"{head_node} sits {lift * 1000:+.0f} mm above the neck of {body_node} (max "
+            f"{NECK_LIFT_MAX * 1000:.0f} mm): rebuild the head (gothar-chargen human)"
+        )
     for prim, vertex, k, weight in body_data.get("falloff", {}).get(body_node, []):
         positions[int(prim)][int(vertex)] += delta[int(k)] * float(weight)
     for k, point in enumerate(ring):

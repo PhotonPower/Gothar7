@@ -40,6 +40,8 @@ class FitTolerances:
     search: float = 0.04  # metres: borders closer than this to another part form a seam
     weight: float = 0.05  # max. difference of one joint weight across a seam
     lod_seam: float = 1e-4  # metres: border of lodN vs. lod0
+    eye_height: float = 1.62  # metres: eye height of the engine capsule (physics.md)
+    eye_tolerance: float = 0.025  # women sit ~2 cm lower on the same neck height
 
 
 @dataclass(frozen=True)
@@ -71,6 +73,8 @@ def check_fit(gltf: Gltf, tol: FitTolerances | None = None) -> list[FitIssue]:
         key: mesh_data(gltf, idx, skip_material=_inner) for key, idx in parts.items()
     }
     levels = sorted({level for _, level in parts})
+    if ("head", 0) in parts:
+        issues += _check_eyes(gltf, parts[("head", 0)], tol)
     for level in levels:
         closing = [(role, data[(role, level)]) for role in CLOSING_ROLES if (role, level) in data]
         issues += _check_seams(closing, level, tol)
@@ -99,6 +103,31 @@ def check_fit(gltf: Gltf, tol: FitTolerances | None = None) -> list[FitIssue]:
                     )
                 )
     return issues
+
+
+def _check_eyes(gltf: Gltf, node: int, tol: FitTolerances) -> list[FitIssue]:
+    """The eyes (material "eyes" of head_lod0) sit at the engine's eye height."""
+    mesh = gltf.doc["meshes"][gltf.doc["nodes"][node]["mesh"]]
+    materials = gltf.doc.get("materials", [])
+    heights = []
+    for prim in mesh["primitives"]:
+        mat = prim.get("material")
+        name = str(materials[mat].get("name", "")) if mat is not None else ""
+        if name.split(".")[0] == "eyes":
+            heights.append(float(gltf.accessor(prim["attributes"]["POSITION"])[:, 1].mean()))
+    if not heights:
+        return []
+    eyes = sum(heights) / len(heights)
+    if abs(eyes - tol.eye_height) <= tol.eye_tolerance:
+        return []
+    return [
+        FitIssue(
+            "error",
+            "head.eyes",
+            f"eyes at {eyes:.3f} m, expected {tol.eye_height} ± {tol.eye_tolerance} m "
+            "(engine capsule; heads are built at the bodies' neck height)",
+        )
+    ]
 
 
 def _seam_border(data: MeshData, others: list[MeshData], tol: FitTolerances) -> np.ndarray:
