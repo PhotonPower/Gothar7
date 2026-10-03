@@ -103,10 +103,39 @@ def _find_cook() -> Path | None:
     return next((c for c in candidates if c.is_file()), None)
 
 
+RULES = Path(__file__).resolve().parents[1] / "data" / "building_rules.json"
+
+
+def test_medieval_mode(tmp_path: Path):
+    from gothar_worldgen.buildings.medieval import ROLES, load_rules
+
+    rules = load_rules(RULES)
+    blds = [house("A", 0, 0), house("B", 20, 0, width=9)]
+    res = generate(blds, GRID, tmp_path, "v", mode="medieval", rules=rules)
+    st = res.index["stats"]
+    assert res.index["mode"] == "medieval" and st["buildings"] == 2
+    assert st["budget"]["trianglesPerBuilding"] == rules.data["budget"]["trianglesPerBuilding"]
+    assert st["trianglesPerBuilding"]["max"] >= st["trianglesPerBuilding"]["median"] > 0
+    colors = []
+    for e in res.index["entries"]:
+        doc, _ = read_glb((tmp_path / e["mesh"].split("/")[-1]).read_bytes())
+        assert [m["name"] for m in doc["materials"]] == list(ROLES)
+        colors.append([m["pbrMetallicRoughness"]["baseColorFactor"] for m in doc["materials"]])
+    assert colors[0] == colors[1]  # equal material values in every house (engine batching)
+    with pytest.raises(ValueError):
+        generate(blds, GRID, tmp_path, "v", mode="medieval")  # rules missing
+    with pytest.raises(ValueError):
+        generate(blds, GRID, tmp_path, "v", mode="baroque")
+
+
 @pytest.mark.skipif(_find_cook() is None, reason="g7-cook not built (set G7_COOK)")
-def test_generated_glb_cooks_with_g7_cook(tmp_path: Path):
+@pytest.mark.parametrize("mode", ["massing", "medieval"])
+def test_generated_glb_cooks_with_g7_cook(tmp_path: Path, mode: str):
+    from gothar_worldgen.buildings.medieval import load_rules
+
     src = tmp_path / "source" / "worlds" / "t"
-    generate([house("A", 0, 0)], GRID, src, "worlds/t")
+    rules = load_rules(RULES) if mode == "medieval" else None
+    generate([house("A", 0, 0)], GRID, src, "worlds/t", mode=mode, rules=rules)
     out = tmp_path / "cooked"
     cmd = [str(_find_cook()), "--source", str(tmp_path / "source"), "--out", str(out)]
     done = subprocess.run(cmd, capture_output=True, text=True, check=False)

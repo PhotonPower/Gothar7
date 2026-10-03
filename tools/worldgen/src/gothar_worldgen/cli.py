@@ -19,6 +19,7 @@ from gothar_worldgen.assemble.world import (
     write_world,
 )
 from gothar_worldgen.buildings.batch import generate, write_index
+from gothar_worldgen.buildings.medieval import StreetIndex, load_rules
 from gothar_worldgen.config import (
     ConfigError,
     DataPaths,
@@ -332,12 +333,19 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     local = load_local(args.config_dir)
     paths = DataPaths(local.data_root, site.name)
     folder, data_dir = _site_dirs(args, site.name)
+    rules = streets = None
     try:
         buildings = json.loads((paths.work / "buildings.json").read_text(encoding="utf-8"))
-        locked, dropped = _overrides(data_dir)
-    except (OSError, json.JSONDecodeError, OverrideError) as e:
+        overrides = load_all(data_dir / "buildings")
+        if args.mode == "medieval":
+            rules = load_rules(data_dir.parent / "building_rules.json")
+            street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+            streets = StreetIndex(street_doc.get("streets", []))
+    except (OSError, json.JSONDecodeError, OverrideError, ValueError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
+    locked = frozenset(i for i, o in overrides.items() if o.locked)
+    dropped = frozenset(i for i, o in overrides.items() if not o.keep)
     try:
         grid = load_grid(paths.work)
     except ExportError as e:
@@ -345,17 +353,22 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
         grid = None
     entries = [b for b in buildings.get("buildings", []) if b.get("id") not in dropped]
     res = generate(entries, grid, folder / "generated" / "buildings",
-                   f"worlds/{site.name}/generated/buildings", args.area, locked)  # fmt: skip
+                   f"worlds/{site.name}/generated/buildings", args.area, locked,
+                   args.mode, rules, streets, overrides)  # fmt: skip
     write_index(folder / "generated" / "buildings_index.json", res.index)
     st = res.index["stats"]
-    print(f"  {st['buildings']} buildings, {st['cells']} cells, {st['triangles']} triangles; "
-          f"{res.written} files, {res.shared} shared, {res.kept_locked} locked kept, "
+    per = st["trianglesPerBuilding"]
+    print(f"  {args.mode}: {st['buildings']} buildings, {st['cells']} cells; {res.written} files, "
+          f"{res.shared} shared, {res.kept_locked} locked kept, "
           f"{len(dropped)} dropped (keep: false)", file=out)  # fmt: skip
+    print(f"  triangles: {st['triangles']} total; per building median {per['median']}, "
+          f"p90 {per['p90']}, max {per['max']}", file=out)  # fmt: skip
+    if "budget" in st:
+        b = st["budget"]
+        print(f"  budget {b['trianglesPerBuilding']}/building: {b['over']} over; timber levels "
+              f"(0 full .. 3 none): {b['timberLevels']}", file=out)  # fmt: skip
     if st["fallbacks"]:
-        print(
-            "  roof fallbacks: " + ", ".join(f"{k} {v}" for k, v in st["fallbacks"].items()),
-            file=out,
-        )
+        print("  notes: " + ", ".join(f"{k} {v}" for k, v in st["fallbacks"].items()), file=out)
     if res.steps:
         worst = sorted(res.steps, key=lambda s: -s[1])[:5]
         listed = ", ".join(f"{i} {d} m" for i, d in worst)
@@ -504,6 +517,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("site")
     p.add_argument("--area", choices=("core", "all"), default="core",
                    help="core: old town, a file per building; all: plus 64 m cells")  # fmt: skip
+    p.add_argument("--mode", choices=("massing", "medieval"), default="massing",
+                   help="massing: grey blocks; medieval: half-timbering (W5 draft)")  # fmt: skip
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_buildings)
 

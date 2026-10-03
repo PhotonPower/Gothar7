@@ -5,6 +5,9 @@ Old town (``inCore``): one ``.glb`` per building, placed by its own mesh vob. Su
 and batching (engine measurement 2026-10-03: 905 single vobs 3.5 ms, 5400 single vobs 79 ms).
 Identical meshes share one file. Buildings marked ``locked`` in their override keep their file.
 
+Modes: ``massing`` (grey blocks, default) and ``medieval`` (rule-based half-timbered houses with
+five shared material roles, ``buildings/medieval.py``; rules from ``data/building_rules.json``).
+
 Base height: the lower of LoD2 ``groundY`` and the lowest heightmap sample under the footprint,
 sunk a little into the ground (DGM steps along terraced houses, leonberg-pipeline.md W-C).
 """
@@ -23,8 +26,9 @@ from typing import Any
 import numpy as np
 from shapely.geometry import Polygon
 
-from gothar_worldgen.buildings.gltf import MeshData, glb_bytes
+from gothar_worldgen.buildings.gltf import MeshData, Primitive, glb_bytes_multi
 from gothar_worldgen.buildings.massing import build_mesh, masses_for_building
+from gothar_worldgen.buildings.medieval import Rules, StreetIndex, build_house
 from gothar_worldgen.export.terrain import Grid
 from gothar_worldgen.geo.ground import ground_range
 
@@ -33,6 +37,7 @@ INDEX_VERSION = 1
 SINK_M = 0.3  # walls start this far below the lowest ground point
 STEP_WARN_M = 0.5  # report buildings where LoD2 and DGM ground differ more than this
 CELL_M = 64.0
+MASSING_COLOR = (0.6, 0.6, 0.6, 1.0)
 
 
 def file_stem(building_id: str) -> str:
@@ -44,6 +49,20 @@ def file_stem(building_id: str) -> str:
     digest = hashlib.sha1(building_id.encode("utf-8")).hexdigest()[:8]
     safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in building_id.lower())
     return f"{safe}_{digest}"
+
+
+def _merge_primitives(
+    parts: Sequence[tuple[list[Primitive], tuple[float, float, float]]],
+    origin: tuple[float, float, float],
+) -> list[Primitive]:
+    """Per material: concatenate the primitives of several buildings around ``origin``."""
+    by_material: dict[str, list[tuple[MeshData, tuple[float, float, float]]]] = defaultdict(list)
+    colors: dict[str, tuple[float, float, float, float]] = {}
+    for prims, o in parts:
+        for prim in prims:
+            by_material[prim.material].append((prim.mesh, o))
+            colors[prim.material] = prim.color
+    return [Primitive(m, colors[m], _merge(meshes, origin)) for m, meshes in by_material.items()]
 
 
 def _merge(
@@ -76,6 +95,8 @@ class BatchResult:
     steps: list[tuple[str, float]] = field(
         default_factory=list
     )  # (id, groundY - dgm min) > STEP_WARN_M
+    over_budget: list[tuple[str, int]] = field(default_factory=list)  # medieval: (id, triangles)
+    timber_levels: Counter[int] = field(default_factory=Counter)
 
 
 def generate(
@@ -85,27 +106,38 @@ def generate(
     vfs_dir: str,
     area: str = "core",
     locked: frozenset[str] = frozenset(),
+    mode: str = "massing",
+    rules: Rules | None = None,
+    streets: StreetIndex | None = None,
+    overrides: dict[str, Any] | None = None,
 ) -> BatchResult:
     """Writes ``<id>.glb`` (old town) and ``cell_<i>_<j>.glb`` (surroundings, area "all")."""
     if area not in ("core", "all"):
         raise ValueError("area must be 'core' or 'all'")
+    if mode not in ("massing", "medieval"):
+        raise ValueError("mode must be 'massing' or 'medieval'")
+    if mode == "medieval" and rules is None:
+        raise ValueError("medieval mode needs rules")
+    budget = int(rules.get("budget", "trianglesPerBuilding")) if rules else 0
     out_dir.mkdir(parents=True, exist_ok=True)
     result = BatchResult({})
     entries: list[dict[str, Any]] = []
-    cells: dict[tuple[int, int], list[tuple[MeshData, tuple[float, float, float]]]] = defaultdict(
-        list
+    cells: dict[tuple[int, int], list[tuple[list[Primitive], tuple[float, float, float]]]] = (
+        defaultdict(list)
     )
     by_hash: dict[str, str] = {}
 
-    def emit(name: str, mesh: MeshData) -> str:
+    def emit(name: str, prims: list[Primitive]) -> str:
         geometry = hashlib.sha256()
-        for arr in (mesh.positions, mesh.normals, mesh.uvs, mesh.indices):
-            geometry.update(arr.tobytes())
+        for prim in prims:
+            geometry.update(prim.material.encode())
+            for arr in (prim.mesh.positions, prim.mesh.normals, prim.mesh.uvs, prim.mesh.indices):
+                geometry.update(arr.tobytes())
         digest = geometry.hexdigest()  # the name inside the file does not matter for sharing
         if digest in by_hash:
             result.shared += 1
             return by_hash[digest]
-        data = glb_bytes(mesh, name)
+        data = glb_bytes_multi(prims, name)
         path = out_dir / f"{name}.glb"
         if not path.is_file() or path.read_bytes() != data:
             tmp = path.with_name(path.name + ".tmp")
@@ -142,30 +174,51 @@ def generate(
         if dgm and lod2_ground - dgm[0] > STEP_WARN_M:
             result.steps.append((bid, round(lod2_ground - dgm[0], 2)))
         c = Polygon(footprint).centroid
-        try:
-            mesh = build_mesh(massing.masses, base, (c.x, c.y))
-        except ValueError:
-            result.notes["no usable geometry"] += 1
-            continue
+        if mode == "medieval":
+            assert rules is not None
+            house = build_house(b, base, (c.x, c.y), rules, streets, (overrides or {}).get(bid))
+            prims = house.primitives
+            result.notes.update(n for n in house.notes if n not in massing.notes)
+            result.timber_levels[house.timber_level] += 1
+            if house.triangles > budget:
+                result.over_budget.append((bid, house.triangles))
+            if not prims:
+                result.notes["no usable geometry"] += 1
+                continue
+        else:
+            try:
+                prims = [
+                    Primitive(
+                        "massing", MASSING_COLOR, build_mesh(massing.masses, base, (c.x, c.y))
+                    )
+                ]
+            except ValueError:
+                result.notes["no usable geometry"] += 1
+                continue
+        triangles = sum(prim.mesh.triangle_count for prim in prims)
         origin = (round(c.x, 3), round(base, 3), round(c.y, 3))
         if in_core:
-            entry = {"id": bid, "kind": "building", "mesh": emit(stem, mesh),
-                     "pos": list(origin), "triangles": mesh.triangle_count,
+            entry = {"id": bid, "kind": "building", "mesh": emit(stem, prims),
+                     "pos": list(origin), "triangles": triangles,
                      "groundY": lod2_ground}  # fmt: skip
             if dgm:
                 entry["dgmMinY"], entry["dgmMaxY"] = round(dgm[0], 3), round(dgm[1], 3)
             entries.append(entry)
         else:
-            cells[(math.floor(c.x / CELL_M), math.floor(c.y / CELL_M))].append((mesh, origin))
+            cells[(math.floor(c.x / CELL_M), math.floor(c.y / CELL_M))].append((prims, origin))
 
     for (i, j), parts in sorted(cells.items()):
         origin = ((i + 0.5) * CELL_M, min(o[1] for _, o in parts), (j + 0.5) * CELL_M)
-        merged = _merge(parts, origin)
+        merged = _merge_primitives(parts, origin)
         name = f"cell_{i}_{j}"
         entries.append({"id": name, "kind": "cell", "mesh": emit(name, merged),
-                        "pos": [round(v, 3) for v in origin], "triangles": merged.triangle_count,
+                        "pos": [round(v, 3) for v in origin],
+                        "triangles": sum(m.mesh.triangle_count for m in merged),
                         "buildings": len(parts)})  # fmt: skip
 
+    building_tris = sorted(
+        e["triangles"] for e in entries if e["kind"] == "building" and "triangles" in e
+    )
     # Files of buildings that no longer exist (or moved into a cell) would be stale: remove them.
     referenced = {e["mesh"].rsplit("/", 1)[-1] for e in entries}
     for stale in out_dir.glob("*.glb"):
@@ -177,6 +230,7 @@ def generate(
         "format": INDEX_FORMAT,
         "version": INDEX_VERSION,
         "area": area,
+        "mode": mode,
         "entries": entries,
         "stats": {
             "buildings": sum(1 for e in entries if e["kind"] == "building"),
@@ -184,8 +238,19 @@ def generate(
             "triangles": sum(e.get("triangles", 0) for e in entries),
             "fallbacks": dict(sorted(result.notes.items())),
             "groundSteps": len(result.steps),
+            "trianglesPerBuilding": {
+                "median": building_tris[len(building_tris) // 2] if building_tris else 0,
+                "p90": building_tris[int(0.9 * len(building_tris))] if building_tris else 0,
+                "max": building_tris[-1] if building_tris else 0,
+            },
         },
     }
+    if mode == "medieval":
+        result.index["stats"]["budget"] = {
+            "trianglesPerBuilding": budget,
+            "over": len(result.over_budget),
+            "timberLevels": {str(k): v for k, v in sorted(result.timber_levels.items())},
+        }
     return result
 
 
