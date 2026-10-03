@@ -1,70 +1,106 @@
 {
   "format": "gothar-starts",
   "version": 1,
-  "note": "Zusätzliche Startpunkte (export-terrain): Stationen der Begehung (docs/design/leonberg-begehung.md). yawDeg: Blickrichtung, 0 = Norden (-Z), 90 = Westen (-X).",
+  "note": "Zusätzliche Startpunkte (export-terrain): Stationen der Begehung (docs/design/leonberg-begehung.md). yawDeg: Blickrichtung, 0 = Norden (-Z), 90 = Westen (-X). target: Stelle, die die Station zeigt (Ziel der Route 'stations' für gothar --walk).",
   "starts": [
     {
       "name": "START_BG_GASSE_ENG",
       "x": -76.57,
       "z": -112.8,
       "yawDeg": -27.6,
-      "note": "engste Stelle eines Weges: 0,63 m (Pfad, blockiert)"
+      "note": "engste Stelle eines Weges: 0,63 m (Pfad, blockiert)",
+      "target": [
+        -73.79,
+        -118.12
+      ]
     },
     {
       "name": "START_BG_GASSE_SCHMAL",
       "x": -1.79,
       "z": -89.81,
       "yawDeg": -109.6,
-      "note": "schmaler Fußweg: 1,12 m"
+      "note": "schmaler Fußweg: 1,12 m",
+      "target": [
+        1.6,
+        -88.6
+      ]
     },
     {
       "name": "START_BG_STEIL",
       "x": -138.78,
       "z": 102.83,
       "yawDeg": -2.2,
-      "note": "Törlensweg, bis 49° steil"
+      "note": "Törlensweg, bis 49° steil",
+      "target": [
+        -138.6,
+        98.23
+      ]
     },
     {
       "name": "START_BG_TREPPE",
       "x": -56.26,
       "z": 194.76,
       "yawDeg": -113.1,
-      "note": "OSM-Treppe als Rampe im Gelände, 62°: zu steil"
+      "note": "OSM-Treppe als Rampe im Gelände, 62°: zu steil",
+      "target": [
+        -48.9,
+        197.9
+      ]
     },
     {
       "name": "START_BG_MAUERDURCHBRUCH",
       "x": -60.47,
       "z": -152.04,
       "yawDeg": -114.7,
-      "note": "Hinterer Zwinger: Straße endet an der Stadtmauer"
+      "note": "Hinterer Zwinger: Straße endet an der Stadtmauer",
+      "target": [
+        -53.2,
+        -148.7
+      ]
     },
     {
       "name": "START_BG_WEG_DURCH_HAUS",
       "x": 61.67,
       "z": -111.29,
       "yawDeg": -177.5,
-      "note": "Im Zwinger: Weg läuft in ein Haus"
+      "note": "Im Zwinger: Weg läuft in ein Haus",
+      "target": [
+        62.11,
+        -101.3
+      ]
     },
     {
       "name": "START_BG_TOR_OBEN",
       "x": 80.0,
       "z": 52.0,
       "yawDeg": -98.1,
-      "note": "Oberes Tor, Durchgang 3,6 m"
+      "note": "Oberes Tor, Durchgang 3,6 m",
+      "target": [
+        93.96,
+        53.99
+      ]
     },
     {
       "name": "START_BG_TUER_IM_BODEN",
       "x": -25.35,
       "z": 40.32,
       "yawDeg": 175.7,
-      "note": "Erdgeschoss 0,9 m im Gelände"
+      "note": "Erdgeschoss 0,9 m im Gelände",
+      "target": [
+        -25.8,
+        46.3
+      ]
     },
     {
       "name": "START_BG_SPALT",
       "x": -7.9,
       "z": 37.4,
       "yawDeg": 0.0,
-      "note": "Spalt zwischen zwei Häusern, schmaler als die Figur"
+      "note": "Spalt zwischen zwei Häusern, schmaler als die Figur",
+      "target": [
+        -7.9,
+        29.6
+      ]
     }
   ]
 }

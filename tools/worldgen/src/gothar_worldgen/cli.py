@@ -68,10 +68,11 @@ from gothar_worldgen.handmade import footprints as handmade_footprints
 from gothar_worldgen.handmade import load as load_handmade
 from gothar_worldgen.handmade import save as save_handmade
 from gothar_worldgen.importer import run_import
-from gothar_worldgen.qa.begehung import LIMITS
+from gothar_worldgen.qa.begehung import LIMITS, Character, game_grid, load_bodies
 from gothar_worldgen.qa.begehung import run as walkthrough
 from gothar_worldgen.qa.checks import FAIL
 from gothar_worldgen.qa.run import run_qa
+from gothar_worldgen.qa.walk import evaluate, read_log, write_routes
 from gothar_worldgen.qa.workdata import QaError, load_work
 from gothar_worldgen.walls.citywall import (
     CourseError,
@@ -502,6 +503,64 @@ def _cmd_begehung(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_walk_routes(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    assets = folder.parents[1]
+    try:
+        world = json.loads((folder / f"{site.name}.g7world").read_text(encoding="utf-8"))
+        character = Character.load(assets / "data" / "movement.toml")
+        grid = game_grid(world, assets)
+        bodies = load_bodies(world, assets, grid, character)
+        streets = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))["streets"]
+        stations = json.loads((data_dir / "starts.json").read_text(encoding="utf-8"))["starts"]
+        features = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
+        wall_doc = json.loads((data_dir / "city_wall.json").read_text(encoding="utf-8"))
+        course = load_course(wall_doc, features.get("features", []))
+    except (OSError, json.JSONDecodeError, KeyError, ValueError, CourseError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    target = folder / "generated" / "walk"
+    gates = [{"key": g.key, "at": list(g.at), "street": g.street} for g in course.gates]
+    ring = [list(p) for p in course.ring]
+    counts = write_routes(target, stations, streets, bodies, ring, gates, site.core_half_extent_m)
+    for name, n in counts.items():
+        print(f"  {name}: {n} points -> {target / (name + '.json')}", file=out)
+    world_vfs = f"worlds/{site.name}/{site.name}.g7world"
+    print(
+        f"  run: gothar --world={world_vfs} --walk=<route> --walk-out=<dir> --no-render", file=out
+    )
+    return EXIT_OK
+
+
+def _cmd_walk_report(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    folder, _ = _site_dirs(args, site.name)
+    try:
+        route = json.loads(args.route.read_text(encoding="utf-8"))
+        events, summary = read_log(args.run)
+        static_path = folder / "generated" / "begehung.json"
+        static = (json.loads(static_path.read_text(encoding="utf-8"))
+                  if static_path.is_file() else None)  # fmt: skip
+    except (OSError, json.JSONDecodeError, KeyError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    report = evaluate(route, events, summary, static)
+    target = args.run / "walk_report.json"
+    target.write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(f"  {report['points']} points, summary: {json.dumps(summary, ensure_ascii=False)}",
+          file=out)  # fmt: skip
+    print(
+        f"  problems {report['count']}, stuck by {report['stuckBy']}; "
+        f"{report['confirmed']} confirm the static walkthrough, {report['new']} new",
+        file=out,
+    )
+    print(f"  {target}", file=out)
+    return EXIT_OK
+
+
 def _cmd_citywall(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -768,6 +827,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("site")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_begehung)
+
+    p = sub.add_parser("walk-routes", help="routes for gothar --walk (W3 walkthrough part 2)")
+    p.add_argument("site")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_walk_routes)
+
+    p = sub.add_parser("walk-report", help="evaluate a gothar --walk run against the static walk")
+    p.add_argument("site")
+    p.add_argument("--route", type=Path, required=True, help="the route.json that was run")
+    p.add_argument("--run", type=Path, required=True, help="the --walk-out folder")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_walk_report)
 
     p = sub.add_parser("schloss", help="castle model from the Blender script (W6) + handmade.json")
     p.add_argument("site")

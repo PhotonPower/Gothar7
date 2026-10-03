@@ -5,10 +5,10 @@ mit Regelwerk-Häusern, Stadtmauer, Schloss, Glems/Parksee) auf `main` nach #108
 
 Die W3-Aufgabe „Maßstabstest: Begehung“ hat zwei Teile:
 
-1. **Statische Begehung** (dieses Dokument): Die Welt wird so gelesen, wie die Engine sie lädt, also Heightmap mit
+1. **Statische Begehung** (#110): Die Welt wird so gelesen, wie die Engine sie lädt, also Heightmap mit
    eingegrabenen Gewässern und `COL_`-Körper aller Mesh-Vobs. Sie wird gegen die Maße der Spielfigur geprüft.
-2. **Echte Begehung** mit engines Autopilot `--walk` (PR #109): Routen über die Stationen unten, Auswertung von
-   `walk.jsonl`. Sie folgt, sobald #109 gemergt ist.
+2. **Echte Begehung** mit engines Autopilot `gothar --walk` (#109): Die Spielfigur läuft drei Routen ab, siehe
+   Abschnitt „Teil 2“ unten.
 
 Maßstabsfragen sind unten als **Entscheidungspunkte E1–E6** gesammelt. Entscheiden muss der Projektinhaber.
 
@@ -102,7 +102,65 @@ Jede Station gibt es zweimal, beide bei 12:00:
 | 09 | `START_BG_TUER_IM_BODEN` | Erdgeschoss 0,9 m im Gelände |
 | 10 | `START_BG_SPALT` | Spalt zwischen zwei Häusern |
 
+## Teil 2: Begehung mit dem Autopilot
+
+`gothar-worldgen walk-routes leonberg` schreibt drei Routen nach `generated/walk/` (nicht versioniert). Code:
+`qa/walk.py`, Tests `test_qa_walk.py`.
+- **stations:** Für jede Station Teleport zum Startpunkt, dann zum Ziel (`target` in `starts.json`) und 6 m weiter.
+- **ways:** alle begehbaren OSM-Wege der Altstadt, Stück für Stück außerhalb der Kollisionskörper.
+  - Jedes Stück beginnt mit einem Teleport, dann folgt alle 8 m ein Punkt.
+  - Insgesamt 466 Stücke und 2950 Punkte.
+- **gates:** durch jedes Tor und jede Pforte und zurück.
+  - Die Figur läuft quer zur Mauer gerade durch den Durchgang.
+  - Steht ein Haus auf dieser Linie, kommt sie über die Straße der Pforte.
+
+Gestartet werden die Routen mit
+`gothar --world=worlds/leonberg/leonberg.g7world --walk=<route> --walk-out=<ordner> --no-render`. Ausgewertet wird
+mit `gothar-worldgen walk-report leonberg --route <route> --run <ordner>`, das `walk_report.json` schreibt.
+- Jedes Hängenbleiben, jeder Sturz und jedes Rutschen ab 0,5 s wird gegen die statische Begehung abgeglichen.
+- Es gilt als bestätigt, wenn derselbe OSM-Weg gemeldet war oder ein Befund höchstens 3 m entfernt liegt.
+- Kürzeres Rutschen ist nur Streifen an einer Wand.
+
+| Route | Punkte | erreicht | Hänger | Stürze | Laufzeit (Spielzeit / echt) |
+|---|---|---|---|---|---|
+| stations | 27 | 15 | 12 | 0 | 40 s / 1 s |
+| ways | 2950 | 2928 | 22 | 0 | 4532 s, 17,4 km / 6 s |
+| gates | 24 | 23 | 1 | 0 | 50 s / 1 s |
+
+- **Stationen:** Die Figur bleibt genau dort stehen, wo die statische Begehung es erwartet:
+  - engste Gasse (0,63 m),
+  - Hang hinter dem Törlensweg,
+  - 62°-Treppe,
+  - Stadtmauer am Hinteren Zwinger,
+  - Haus am Ende von „Im Zwinger“,
+  - Spalt.
+  - Durch die schmale Gasse (1,12 m) und durch das Obere Tor kommt sie durch. Die Station „Tür im Boden“ endet
+    erwartungsgemäß am Haus.
+- **Wege:** 17,4 km ohne einen einzigen Sturz. Alle 22 Hänger kommen vom Gelände, nie von einem Haus.
+  - 18 Hänger liegen an Stellen, die statisch schon als steil, zu steil oder Treppe gemeldet waren: die Treppen am
+    Westhang (w20020128, w205276655), die 62°-Treppe, der Törlensweg, Pfade am Nordhang.
+  - **Neu:** ein Pfad am Nordrand bei (−57,6 / 340,7), w968793394. Dazu kommen 5 kurze Rutscher (0,5–0,7 s) an
+    Hängen.
+  - Alle gehören zu E5 (glätten bzw. Treppen-Meshes).
+- **Tore und Pforten:** Beide Tore und 3 von 4 Pforten sind in beide Richtungen durchgängig.
+  - **Neu:** Bei der Pforte Zwerchstraße Nord ragt das Haus ZnA 0,4 m in die 2 m breite Öffnung; die Figur kommt nicht
+    hinaus.
+  - Das ist ein Fehler der Mauerplanung, kein Maßstabsproblem. Behoben wird er mit der nächsten Mauer-Arbeit: Pforte
+    verschieben oder das Haus dort kürzen.
+- **Maßstab (E3):** Die Läufe bestätigen den Maßstab 1:1. Kein Haus, keine Gasse und keine Mauer hält die Figur auf,
+  außer an den bekannten Stellen.
+  - Die Altstadt ist zu Fuß gut zu durchqueren: Vom Oberen zum Unteren Tor sind es etwa 285 m Luftlinie, also rund
+    70 s Rennen (4 m/s).
+  - Offen bleibt nur das Gefühl für Kamera und Enge in den Gassen; das zeigen die Bilder unter d.
+
 ## Entscheidungspunkte
+
+**Entscheidungen** (Projektinhaber über den Koordinator, 2026-10-03):
+- E1: A + B.
+- E2: Wege enden am Haus, die Mauer bleibt geschlossen, Durchgänge nur an Toren und Pforten.
+- E3: 1:1 vorerst, endgültig nach Teil 2.
+- E4: A.
+- E5: B jetzt, A mit W5.
 
 **E1 – Türen und Erdgeschoss im Hang** (465 von 746 Türen im Gelände)
 - A) Der Generator wählt unter den Straßenkanten die, an der das Gelände zur Türschwelle passt. Das löst etwa 337
@@ -136,6 +194,8 @@ Jede Station gibt es zweimal, beide bei 12:00:
 - C) Horizontal verkleinern, damit die Wege kürzer werden.
 - *Empfehlung:* A. Endgültig erst nach der echten Begehung (Teil 2), denn Kamera in engen Gassen und Laufzeiten
   sieht man erst dort.
+- *Nach Teil 2:* Die Läufe bestätigen 1:1, siehe oben. Vorschlag welt: 1,0 / 1,0 / 1,0 endgültig festlegen und in
+  `leonberg.toml` als entschieden vermerken.
 
 **E4 – Spalten zwischen Häusern** (62, die schmaler als die Figur sind)
 - A) Die Kollision dort schließen (Füllkörper zwischen den Häusern); der Spalt bleibt sichtbar, aber die Figur und
@@ -167,8 +227,8 @@ gedacht; zwei kommen nicht aneinander vorbei, das ist gewollt eng.
 
 ## Nächste Schritte
 
-- E1–E6 entscheiden (Projektinhaber über den Koordinator).
-- Teil 2 nach #109:
-  - Routen-Generator in worldgen: Stationen und Wege als `route.json`.
-  - Läufe mit `--no-render`.
-  - Auswertung von `walk.jsonl` (stuck mit Vob-Name, fall, slide) gegen diesen Bericht.
+- E3 endgültig entscheiden (Vorschlag: 1:1).
+- E1 und E4 im Gebäude-Generator umsetzen, E5 in der Heightmap; danach `begehung` und `walk-routes` erneut laufen
+  lassen.
+- Pforte Zwerchstraße Nord freimachen.
+- Mauer-Wehrgang und Treppen als eigene Route, sobald die Mauerplanung ihre Treppen exportiert.

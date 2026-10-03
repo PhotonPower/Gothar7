@@ -328,7 +328,8 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [x] Welt-Assembler v1: Terrain + Gebäude → `.g7world`
   - `assemble`: `leonberg.g7world` (1029 Vobs), `vob_ids.json`, Startpunkte; Engine lädt ohne Warnungen
 - [ ] Begehung mit Spielfigur/Kamera; Maßstabsfaktoren und Gassenverbreiterung festlegen (Ergebnis in `leonberg.toml` + Design-Doku)
-  - Teil 1 statisch: `begehung` prüft Gassen, Gefälle, Türen, Mauer gegen die Spielfigur; Bericht mit Entscheidungspunkten E1–E6 in `docs/design/leonberg-begehung.md`, Stationen als Startpunkte (`data/leonberg/starts.json`); Teil 2 mit engines `--walk` (#109) offen
+  - Teil 1 statisch: `begehung` prüft Gassen, Gefälle, Türen, Mauer gegen die Spielfigur; Bericht mit Entscheidungspunkten E1–E6 in `docs/design/leonberg-begehung.md`, Stationen als Startpunkte (`data/leonberg/starts.json`)
+  - Teil 2 mit `gothar --walk` (#109): `walk-routes` (Stationen, alle Wege, Tore/Pforten), `walk-report`; 17,4 km ohne Sturz, Hänger nur am Gelände an bekannten Steilstellen; bestätigt 1:1 – endgültige Festlegung E3 offen
 
 **DoD:** Graue Altstadt begehbar; Maßstabsentscheidung dokumentiert.
 
