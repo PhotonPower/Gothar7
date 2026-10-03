@@ -35,6 +35,18 @@ public:
     void sample(f32 time, Pose& pose) const;
     /// Translation of the root bone at `time` (zero without a root track): root motion.
     [[nodiscard]] Vec3 rootTranslation(f32 time) const;
+    /// Turn of the root bone about +Y from time 0 to `time` (radians, positive towards +X = the figure's
+    /// left; animals' t_turn_l/r, characters-pipeline.md §7.1); 0 without a root rotation track.
+    [[nodiscard]] f32 rootYaw(f32 time) const;
+
+    struct RootMotion
+    {
+        Vec3 translation{0.0f}; ///< in the root's parent space (the model)
+        f32 yaw = 0.0f;         ///< radians, positive left
+    };
+    /// Root movement while playing from `from` to `to` (seconds, to >= from): loops add a whole cycle's
+    /// movement for every end they pass (walk and run clips move forward), one-shots clamp.
+    [[nodiscard]] RootMotion rootMotion(f32 from, f32 to) const;
     /// Fires the events in (from, to], in order; a loop that wraps fires the rest of the cycle first.
     /// `to - from` may span several cycles of a loop (each event fires once per cycle passed).
     void fireEvents(f32 from, f32 to, const EventCallback& callback) const;
@@ -55,7 +67,8 @@ private:
     f32 m_duration = 0.0f;
     bool m_loops = false;
     std::vector<Track> m_tracks;
-    i32 m_rootTrack = -1; ///< translation track of the bone "root"
+    i32 m_rootTrack = -1;         ///< translation track of the bone "root"
+    i32 m_rootRotationTrack = -1; ///< rotation track of the bone "root"
     std::vector<asset::ClipEvent> m_events;
     usize m_dropped = 0;
     f32 m_speed = 0.0f;

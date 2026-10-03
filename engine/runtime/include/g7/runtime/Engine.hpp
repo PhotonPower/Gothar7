@@ -44,6 +44,7 @@
 #include <g7/world/Water.hpp>
 #include <g7/world/WorldFile.hpp>
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -88,7 +89,13 @@ struct PlayerLanding
     u64 tick = 0; ///< simulation tick of the landing
 };
 
-struct PlayerFigure; // the animated hero (EngineFigure.cpp)
+namespace animation
+{
+struct AnimGraph;
+}
+struct AnimatedFigure; // animated figures (EngineFigure.cpp)
+struct PlayerFigure;   // the animated hero
+struct Creature;       // an animal (EngineCreatures.cpp)
 
 struct EngineConfig
 {
@@ -323,6 +330,24 @@ public:
     [[nodiscard]] std::optional<asset::FigureManifest> playerFigureManifest() const;
     /// Triangles of the hero figure drawn (LOD 0; 0 without rendering).
     [[nodiscard]] usize playerFigureTriangles() const noexcept;
+
+    /// Animals for tests and the debug UI until M9 brings monsters (AI, collision, vobs): "wolf", "keiler",
+    /// "laufvogel" at `feet` facing `yaw` (radians, 0 = -Z, positive left); moved by their clips' root
+    /// motion, on the ground. Gone with the world. Returns the creature's id.
+    [[nodiscard]] Result<u32> spawnCreature(std::string_view species, const Vec3& feet, f32 yaw);
+    void removeCreatures();
+    /// speed: m/s ahead (blend stand, walk, run); turn: -1 left, 1 right (turns on the spot while held).
+    void setCreatureMove(u32 id, f32 speed, f32 turn = 0.0f);
+    /// "attack_1", "attack_2", "hit", "threaten" (once), "eat", "sleep", "stop", "die", "revive"; false:
+    /// unknown.
+    bool creatureAction(u32 id, std::string_view action);
+    /// Every action in turn (walk, run, turns, attacks, threaten, hit, eat, sleep, die, revive), for checking
+    /// clips.
+    void setCreatureShowcase(u32 id, bool on);
+    [[nodiscard]] usize creatureCount() const noexcept;
+    [[nodiscard]] std::string_view creatureState(u32 id) const noexcept;
+    [[nodiscard]] std::optional<Vec3> creaturePosition(u32 id) const;
+    [[nodiscard]] f32 creatureYaw(u32 id) const noexcept;
     /// True while the player climbs a ledge (input is ignored until it stands on top).
     [[nodiscard]] bool playerClimbing() const noexcept { return m_climb.has_value(); }
     /// Swimming or diving (gameplay::WaterMode::Land on land), and the air left under water.
@@ -376,7 +401,22 @@ private:
     [[nodiscard]] Mat4 playerFigureTransform() const;
     void preparePlayerPose(f32 alpha);
     [[nodiscard]] Result<asset::SkinnedModelData> assembleFigureParts(const asset::FigureManifest& manifest);
-    [[nodiscard]] Result<void> uploadFigure(PlayerFigure& figure, const asset::SkinnedModelData& data);
+    [[nodiscard]] Result<void> uploadFigure(AnimatedFigure& figure, const asset::SkinnedModelData& data);
+    using FigureGraphCallback =
+        std::function<void(const animation::AnimGraph&, std::span<const asset::AnimationSetData* const>)>;
+    /// Model (.glb or *.figure.toml), graph, clips, skeleton, animator, GPU side; `extra` sees the graph and
+    /// sets.
+    [[nodiscard]] Result<void> loadAnimatedFigure(AnimatedFigure& figure, std::string_view path,
+                                                  std::string_view graphPath,
+                                                  const FigureGraphCallback& extra = {});
+    void prepareFigurePose(AnimatedFigure& figure, f32 alpha);
+    void drawAnimatedFigure(AnimatedFigure& figure, const Mat4& transform, bool shadow, u32 cascade);
+    // Animals (EngineCreatures.cpp)
+    void fixedUpdateCreatures(f32 seconds);
+    void drawCreatures(bool shadow, u32 cascade);
+    void creaturesUi();
+    [[nodiscard]] Creature* creature(u32 id) noexcept;
+    [[nodiscard]] const Creature* creature(u32 id) const noexcept;
     [[nodiscard]] Result<void> rebuildPlayerFigure(const asset::FigureManifest& manifest);
     void refreshOutfitChoices();
     [[nodiscard]] Result<void> attachModel(std::string_view socket, const LoadedModel* model,
@@ -515,14 +555,17 @@ private:
     Vec3 m_playerFeetBefore{0.0f};
     Vec3 m_playerFeet{0.0f};
     f32 m_playerYawBefore = 0.0f;
-    bool m_flyMode = false;                     // debug_fly: free camera while the player waits
-    bool m_playerMouse = false;                 // relative mouse captured for the player camera
-    const LoadedModel* m_playerModel = nullptr; // static placeholder when no animated figure loads
-    std::unique_ptr<PlayerFigure> m_figure;     // animated hero (M6)
-    f32 m_figureExpressionWeight = 1.0f;        // debug UI slider
-    bool m_physicsDirty = true;                 // set together with m_cullGridDirty and on terrain changes
-    std::vector<u32> m_cullCandidates;          // per pass, reused
-    bool m_multiDraw = true;                    // [render] multi_draw: batches instead of one draw per mesh
+    bool m_flyMode = false;                             // debug_fly: free camera while the player waits
+    bool m_playerMouse = false;                         // relative mouse captured for the player camera
+    const LoadedModel* m_playerModel = nullptr;         // static placeholder when no animated figure loads
+    std::unique_ptr<PlayerFigure> m_figure;             // animated hero (M6)
+    std::vector<std::unique_ptr<Creature>> m_creatures; // animals (M6 D3, until M9)
+    u32 m_nextCreatureId = 1;
+    std::string m_creatureSpecies = "wolf"; // debug UI choice
+    f32 m_figureExpressionWeight = 1.0f;    // debug UI slider
+    bool m_physicsDirty = true;             // set together with m_cullGridDirty and on terrain changes
+    std::vector<u32> m_cullCandidates;      // per pass, reused
+    bool m_multiDraw = true;                // [render] multi_draw: batches instead of one draw per mesh
     std::vector<render::MeshDrawItem> m_drawItems; // per pass, reused
     FrameTimes m_benchmarkTimes;
     std::vector<FrameTimeSummary> m_benchmarkResults;
