@@ -90,7 +90,7 @@
   ],
   "terrainNote": "Gelände je Seite bei 10/30/50/70/90 % der Flügellänge, 1 m vor der Wand (DGM1, gerundet)",
   "garden": {
-    "note": "Pomeranzengarten als Parterre (Lage aus dem DOP, Rahmen des Hauptbaus: s entlang, t quer, negativ = Gartenseite); Boden als Ebene an das DGM angepasst. Maße nach dem Geländer des Projektinhabers (zwei Hälften je 28 m x 16,5 m, 10 m Mittelfeld mit dem Obeliskbrunnen, Tore in den Achsen); plazaR: Rundplatz in der Mitte jeder Hälfte für die Gartenbrunnen; Mitte und rotDeg (Drehung gegen den Hauptbau) an die vier LoD2-Eckpavillons angepasst (Rest 1,8 m je Ecke: das Geländer ist 67 x 17,5 m, die echten Pavillons stehen 70 x 15,7 m auseinander)",
+    "note": "Pomeranzengarten als Parterre (Lage aus dem DOP, Rahmen des Hauptbaus: s entlang, t quer, negativ = Gartenseite); Boden als Ebene an das DGM angepasst. Maße nach dem Geländer des Projektinhabers (zwei Hälften je 28 m x 16,5 m, 10 m Mittelfeld mit dem Obeliskbrunnen, Tore in den Achsen); plazaR: Rundplatz in der Mitte jeder Hälfte für die Gartenbrunnen; Mitte und rotDeg (Drehung gegen den Hauptbau) an die vier LoD2-Eckpavillons angepasst; railing: halbe Maße des Geländers (Modell des Projektinhabers) für die waagrechten Terrassen, die schloss aus dem DGM plant (garden_terraces.py) (Rest 1,8 m je Ecke: das Geländer ist 67 x 17,5 m, die echten Pavillons stehen 70 x 15,7 m auseinander)",
     "wing": "hauptbau",
     "parts": [[36, 64], [74, 102]],
     "t": [-38.6, -22.1],
@@ -99,6 +99,7 @@
     "pathM": 1.6,
     "borderM": 1.5,
     "plazaR": 2.6,
+    "railing": {"halfS": 34.96, "halfT": 10.21, "innerS": 5.0},
     "hedge": {
       "h": 0.45,
       "w": 0.35

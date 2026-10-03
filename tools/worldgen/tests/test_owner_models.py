@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from shapely.geometry import Point, Polygon
 
 from gothar_worldgen.buildings.gltf import read_glb
 from gothar_worldgen.handmade import find_blender
@@ -148,15 +149,18 @@ def test_church_fits_the_lod2_footprint_and_budget():
     meshes = kept_meshes(s, DATA / "leonberg" / s["source"])
     cols = collision(s, meshes)
     assert len(cols) == 17 and sum(len(t) for _, _, t in cols) <= 230
-    lod2 = {"id": "DEBW_00100061Zjs", "groundMinY": -2.12, "footprint": [[0, 0], [1, 0], [1, 1]]}
-    p = fitted_placement(s, [lod2])
-    assert p.pos[1] == pytest.approx(-2.17) and p.key == "kirche"
-    # the tower stands at the west end, where the LoD2 tower block is (centre -160.0 / -50.2)
+    # ground rule: the floor on the highest ground under the footprint, a stone foundation down
+    # below the lowest (here the ground rises 5 cm per metre towards the east)
+    p, found = fitted_placement(s, lambda x, z: 0.05 * x, meshes)
+    pl = s["placement"]
+    assert p.key == "kirche" and (p.pos[0], p.pos[2]) == (pl["x"], pl["z"])
+    poly = Polygon(found["polygon"])
+    xs = [p.pos[0] + x * math.cos(p.yaw) + z * math.sin(p.yaw) for x, z in found["polygon"]]
+    assert p.pos[1] == pytest.approx(0.05 * max(xs), abs=0.06)
+    assert found["depth"] == pytest.approx(0.05 * (max(xs) - min(xs)) + 0.3, abs=0.1)
     tw = np.vstack([m.positions for m in meshes if m.path[-1] == "tower_shaft"])
-    c, sn = math.cos(p.yaw), math.sin(p.yaw)
-    x, z = tw[:, 0].mean(), tw[:, 2].mean()
-    world = (p.pos[0] + x * c + z * sn, p.pos[2] - x * sn + z * c)
-    assert math.dist(world, (-160.0, -50.2)) < 1.0
+    assert poly.contains(Point(tw[:, 0].mean(), tw[:, 2].mean()))  # the tower stands on it
+    assert 25.0 < poly.length / 2 < 90.0  # nave, choir and tower, not a single part
     data = (ASSETS / "handmade" / "kirche" / "kirche.glb").read_bytes()
     gl, _ = read_glb(data)
     tris = sum(

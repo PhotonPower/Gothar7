@@ -62,10 +62,13 @@ def test_collision_bodies_are_closed_outward_and_walkable():
     assert steps[0]["y1"] == steps[1]["y0"]
 
 
-def test_item_sits_at_the_origin_on_the_lowest_ground():
+def test_item_sits_at_the_origin_on_the_highest_ground_with_a_pad():
     item = marktbrunnen_item(SPEC, "worlds/leonberg/handmade/marktbrunnen/marktbrunnen.glb", -0.2)
     assert item["key"] == "marktbrunnen" and item["replaces"] == []
-    assert item["pos"] == [0.0, pytest.approx(-0.2 - SPEC["sinkM"]), 0.0]
+    assert item["pos"] == [0.0, pytest.approx(-0.2), 0.0]
+    (pad,) = item["pads"]  # the square is levelled, the lower step sits sinkM in it
+    assert pad["y"] == pytest.approx(-0.2 + SPEC["sinkM"]) and pad["fadeM"] == SPEC["padFadeM"]
+    assert min(math.hypot(x, z) for x, z in pad["polygon"]) > 3.56
     (ring,) = item["footprints"]
     assert len(ring) == 8 and max(math.hypot(x, z) for x, z in ring) == pytest.approx(
         3.56, abs=0.01

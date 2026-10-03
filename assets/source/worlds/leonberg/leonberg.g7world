@@ -1572,7 +1572,7 @@
     {"id":1719,"type":"mesh","name":"CITYWALL_WALL_09_00","parent":1671,"pos":[94.658,-0.143,-4.213],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/generated/citywall/wall_09_00.glb","category":"gameplay"},
     {"id":1720,"type":"mesh","name":"CITYWALL_WALL_10_00","parent":1671,"pos":[94.581,-2.603,17.785],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/generated/citywall/wall_10_00.glb","category":"gameplay"},
     {"id":1721,"type":"empty","name":"WORLDGEN_HANDMADE","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
-    {"id":1722,"type":"mesh","name":"HANDMADE_SCHLOSS","parent":1721,"pos":[-215.0,-10.841,-15.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/handmade/schloss/schloss.glb","category":"gameplay"},
+    {"id":1722,"type":"mesh","name":"HANDMADE_SCHLOSS","parent":1721,"pos":[-215.0,-9.6,-15.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/handmade/schloss/schloss.glb","category":"gameplay"},
     {"id":1723,"type":"empty","name":"WORLDGEN_WATER","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
     {"id":1724,"type":"water","name":"WATER_GLEMS_000","parent":1723,"pos":[-992.461,-34.817,188.022],"rot":[0.0,0.169246,0.0,0.985574],"components":{"water":{"halfExtents":[8.247,0.708,3.8]}}},
     {"id":1725,"type":"water","name":"WATER_GLEMS_001","parent":1723,"pos":[-977.457,-35.039,182.532],"rot":[0.0,0.199816,0.0,0.979833],"components":{"water":{"halfExtents":[8.461,0.714,4.484]}}},
@@ -1769,11 +1769,11 @@
     {"id":1916,"type":"start","name":"START_BG_TOR_OBEN","pos":[80.0,-3.48589,52.0],"rot":[0.0,-0.755282,0.0,0.6554]},
     {"id":1917,"type":"start","name":"START_BG_TUER_IM_BODEN","pos":[-25.35,-2.21765,40.32],"rot":[0.0,0.999296,0.0,0.037516]},
     {"id":1918,"type":"start","name":"START_BG_SPALT","pos":[-7.9,-2.28664,37.4],"rot":[0.0,0.0,0.0,1.0]},
-    {"id":1919,"type":"mesh","name":"HANDMADE_MARKTBRUNNEN","parent":1721,"pos":[0.0,-0.221,0.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/handmade/marktbrunnen/marktbrunnen.glb","category":"gameplay"},
-    {"id":1920,"type":"mesh","name":"HANDMADE_GARTEN_GELAENDER","parent":1721,"pos":[-220.915,-8.439,15.431],"rot":[0.0,-0.302145,0.0,0.953262],"mesh":"worlds/leonberg/handmade/garten_gelaender/garten_gelaender.glb","category":"gameplay"},
-    {"id":1921,"type":"mesh","name":"HANDMADE_GARTENBRUNNEN_O","parent":1721,"pos":[-205.384,-7.976,26.376],"rot":[0.0,-0.302145,0.0,0.953262],"mesh":"worlds/leonberg/handmade/gartenbrunnen/gartenbrunnen.glb","category":"gameplay"},
-    {"id":1922,"type":"mesh","name":"HANDMADE_GARTENBRUNNEN_W","parent":1721,"pos":[-236.446,-9.37,4.486],"rot":[0.0,-0.302145,0.0,0.953262],"mesh":"worlds/leonberg/handmade/gartenbrunnen/gartenbrunnen.glb","category":"gameplay"},
-    {"id":1923,"type":"mesh","name":"HANDMADE_OBELISKBRUNNEN","parent":1721,"pos":[-220.915,-8.864,15.431],"rot":[0.0,-0.302145,0.0,0.953262],"mesh":"worlds/leonberg/handmade/obeliskbrunnen/obeliskbrunnen.glb","category":"gameplay"},
-    {"id":1924,"type":"mesh","name":"HANDMADE_KIRCHE","parent":1721,"pos":[-143.71,-2.17,-48.72],"rot":[0.0,-0.002182,0.0,0.999998],"mesh":"worlds/leonberg/handmade/kirche/kirche.glb","category":"gameplay"}
+    {"id":1919,"type":"mesh","name":"HANDMADE_MARKTBRUNNEN","parent":1721,"pos":[0.0,0.047,0.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"worlds/leonberg/handmade/marktbrunnen/marktbrunnen.glb","category":"gameplay"},
+    {"id":1920,"type":"mesh","name":"HANDMADE_GARTEN_GELAENDER","parent":1721,"pos":[-220.915,-8.35,15.431],"rot":[0.0,-0.302145,0.0,0.953262],"mesh":"worlds/leonberg/handmade/garten_gelaender/garten_gelaender.glb","category":"gameplay"},
+    {"id":1921,"type":"mesh","name":"HANDMADE_GARTENBRUNNEN_O","parent":1721,"pos":[-205.384,-7.52,26.376],"rot":[0.0,-0.302145,0.0,0.953262],"mesh":"worlds/leonberg/handmade/gartenbrunnen/gartenbrunnen.glb","category":"gameplay"},
+    {"id":1922,"type":"mesh","name":"HANDMADE_GARTENBRUNNEN_W","parent":1721,"pos":[-236.446,-9.32,4.486],"rot":[0.0,-0.302145,0.0,0.953262],"mesh":"worlds/leonberg/handmade/gartenbrunnen/gartenbrunnen.glb","category":"gameplay"},
+    {"id":1923,"type":"mesh","name":"HANDMADE_OBELISKBRUNNEN","parent":1721,"pos":[-220.915,-8.37,15.431],"rot":[0.0,-0.302145,0.0,0.953262],"mesh":"worlds/leonberg/handmade/obeliskbrunnen/obeliskbrunnen.glb","category":"gameplay"},
+    {"id":1924,"type":"mesh","name":"HANDMADE_KIRCHE","parent":1721,"pos":[-139.03,-0.009,-48.41],"rot":[0.0,-0.002182,0.0,0.999998],"mesh":"worlds/leonberg/handmade/kirche/kirche.glb","category":"gameplay"}
   ]
 }

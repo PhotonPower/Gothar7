@@ -140,20 +140,23 @@ def main() -> None:
         o.parent = None
         o.data.transform(mw)
         o.matrix_world.identity()
-        if a == 0.0 and b == 0.0:
-            continue
-        if roots[o.name] is None:
+        if roots[o.name] is None and not (a == 0.0 and b == 0.0):
             for v in o.data.vertices:
                 v.co.z += a * v.co.x + b * (-v.co.y)
     groups: dict[str, list[bpy.types.Object]] = {}
     for o in meshes:
         if roots[o.name] is not None:
             groups.setdefault(roots[o.name].name, []).append(o)
-    for objs in groups.values():
-        vs = [v.co for o in objs for v in o.data.vertices]
-        cx = sum(v.x for v in vs) / len(vs)
-        cy = sum(v.y for v in vs) / len(vs)
-        dz = a * cx + b * (-cy)
+    lifts = job.get("lifts", {})
+    for root_name, objs in groups.items():
+        lift = next((dy for p, dy in lifts.items() if name_matches(base_name(root_name), p)), None)
+        if lift is not None:  # a whole terrace part (one half of the railing)
+            dz = float(lift)
+        else:  # the shear at the centre of all parts (a pavilion stays level)
+            vs = [v.co for o in objs for v in o.data.vertices]
+            cx = sum(v.x for v in vs) / len(vs)
+            cy = sum(v.y for v in vs) / len(vs)
+            dz = a * cx + b * (-cy)
         for o in objs:
             for v in o.data.vertices:
                 v.co.z += dz
@@ -166,6 +169,38 @@ def main() -> None:
             if slot.material is not None and base_name(slot.material.name) in job["materials"]:
                 name, rgba = job["materials"][base_name(slot.material.name)]
                 slot.material = palette_material(name, rgba)
+
+    # 4b. stone foundation under the footprint, down below the lowest ground (ground rule)
+    found = job.get("foundation")
+    if found:
+        mat = palette_material(*job["foundationMaterial"])
+        ring = [to_blender([x, 0.0, z]) for x, z in found["polygon"]]
+        depth = float(found["depth"])
+        verts, faces = [], []
+        for i in range(len(ring)):
+            a, b2 = ring[i], ring[(i + 1) % len(ring)]
+            base = len(verts)
+            verts += [
+                (a[0], a[1], 0.02),
+                (b2[0], b2[1], 0.02),
+                (b2[0], b2[1], -depth),
+                (a[0], a[1], -depth),
+            ]
+            faces.append([base, base + 1, base + 2, base + 3])
+        mesh = bpy.data.meshes.new("foundation")
+        mesh.from_pydata(verts, [], faces)
+        mesh.update()
+        # outward: the ring may run either way round, so flip the faces if they point inwards
+        cx = sum(p[0] for p in ring) / len(ring)
+        cy = sum(p[1] for p in ring) / len(ring)
+        poly = mesh.polygons[0]
+        c0 = poly.center
+        if (c0.x - cx) * poly.normal.x + (c0.y - cy) * poly.normal.y < 0:
+            mesh.flip_normals()
+        mesh.materials.append(mat)
+        obj = bpy.data.objects.new("foundation", mesh)
+        bpy.context.scene.collection.objects.link(obj)
+        meshes.append(obj)
 
     # 5. one object, collision, export
     bpy.ops.object.select_all(action="DESELECT")

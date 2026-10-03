@@ -679,9 +679,22 @@ Design) bilden den Garten.
   - Gedreht ist der Garten um 5,05° gegen den Hauptbau, die Mitte liegt 1,15 m weiter zum Schloss.
   - Rest je Ecke 1,8 m: Das Geländer misst 67 × 17,5 m, die echten Pavillons stehen 70 × 15,7 m auseinander.
   - Die Zwingermauer (OSM) läuft 0,7 m am südwestlichen Pavillon vorbei; der Garten liegt an ihr.
-- **Gefälle:** Die Gartenebene fällt 2,7 % entlang und 11 % quer.
-  - Zaun und Pfosten sind darauf geschert, die Pavillons stehen als Ganzes darauf.
-  - Die Brunnen stehen auf dem tiefsten Gartenboden unter sich.
+- **Terrassen** (Bodenregel, Entscheidung Projektinhaber 2026-10-03, ersetzt die schräge Gartenebene): Der Garten liegt
+  wie ein Barockgarten auf drei waagrechten Terrassen, `gothar_worldgen/garden_terraces.py`; `gothar-worldgen schloss`
+  plant sie bei jedem Lauf aus dem DGM.
+  - Westhälfte, Mittelfeld und Osthälfte, je auf dem DGM-Median darin (Leonberg −9,30 / −8,35 / −7,50 m).
+  - **Stützmauern** an den Außenkanten als 3 m breite Steinsimse auf der höheren Seite, oben bündig mit ihr: innen, wo
+    das Gelände außen abfällt (Süden, Westende), außen, wo es ansteigt (Norden, Ostende). Die Heightmap (1-m-Zellen,
+    gegen den Garten um 35° gedreht) kann nicht springen, sie fällt über bis zu 1,4 m; der Sims deckt diesen Hang.
+  - Zwischen den Terrassen ist nur Platz für 1,5 m (Obeliskbrunnen, Beete). Dort bleibt rechnerisch höchstens 18 % der
+    Stufe (rund 17 cm) als Hang sichtbar.
+  - **Treppen** an den Toren des Geländers (Norden und Außenenden), mit einem 3 m langen Absatz auf dem Sims. Zwischen
+    den Terrassen gibt es je einen Absatz am Tor und eine schmale Seitentreppe an der Mauer, neben dem Obeliskbrunnen.
+  - **Pads:** `export-terrain` setzt die Heightmap auf jede Terrasse und schiebt mit Streifen (`clampBelow`) den Hang der
+    Zellen unter die Simse (`gothar_worldgen/export/pads.py`). Nach dem Glätten der Wege wird das wiederholt.
+  - Das Geländer steht auf dem Mittelfeld; seine Hälften (`lifts`) und die Gartenbrunnen stehen auf ihrer Terrasse.
+  - `schloss_built.json` neben `schloss.glb` (versioniert): die Spezifikation mit dem gemessenen Boden, aus der das
+    Modell gebaut ist.
 - **Budgets** (Dreiecke je gezeichnetem Knoten; die Quellen teilen Meshes):
 
   | Modell | vorher | nachher | Kollision |
@@ -704,13 +717,31 @@ Werkzeug aus W-E5 (`data/<ort>/kirche.json`); die Quelle liegt unverändert unte
   - Kästen für Schiff, Chor, Seitenschiff, Vorhalle und Turm, ein Prisma für das Oktogon.
   - Ein Kasten je Strebepfeiler.
 - **Lage** (`placement` in kirche.json): Der Grundriss des Modells (Wände unter 1,5 m) ist auf den LoD2-Grundriss
-  gedreht und verschoben; der Turm steht im Westen am westlichen LoD2-Block (0,7 m Abstand). Höhe: tiefster DGM-Punkt
-  unter dem Gebäude.
-  - **Offen:** Das Modell misst 39,3 × 18,9 m, das LoD2-Gebäude 50,4 × 21,6 m. Am Chorende bleiben 255 m² der alten
-    Fläche frei; die Entscheidung liegt beim Projektinhaber.
+  gedreht und mittig gesetzt (Entscheidung K1: beide Enden je rund 5 m kürzer als das LoD2-Gebäude, das 50,4 × 21,6 m
+  misst; das Modell misst 39,3 × 18,9 m).
+  - **Höhe nach der Bodenregel:** Der Boden liegt auf dem höchsten Gelände unter dem Grundriss. Ein Steinfundament
+    (`foundation` in kirche.json: Grundriss der Wandknoten) reicht 0,3 m unter den tiefsten Punkt.
+  - Gläser bleiben, das Dach bleibt orange (Entscheidungen des Projektinhabers).
 - **Anachronismen für 1700** (nur gemeldet, nichts entfernt): verglaste Türen (`door_aisle_glass`,
   `porch_arch_glass`, `tower_door_glass`), verglaste Schallöffnungen im Glockengeschoss (`belfry_opening_glass`,
   `bell_louvre_glass`) und verglaste Turmschlitze. Die Turmuhr mit Minutenzeiger ist um 1700 möglich.
+
+### Bodenregel für handgemachte Modelle (W6)
+Entscheidung Projektinhaber (2026-10-03): Kein sichtbarer Teil eines handgemachten Modells darf im Gelände stecken.
+- Ein Modell steht auf dem höchsten Gelände unter seinem Grundriss. Talseitig gibt es Sockel oder Fundament aus Stein,
+  oder die Heightmap wird unter dem Grundriss geebnet (Pad).
+  - **Schloss:** `schloss` misst den Boden jedes Flügels frisch aus dem DGM, auch an den Flügelenden (je Seite der
+    höchste Wert 0,5–1,5 m vor der Wand). Der Erker am Hauptbau sitzt mindestens 1,6 m über dem Gelände.
+  - **Marktbrunnen:** auf dem höchsten Gelände unter der unteren Stufe. Ein Pad ebnet den Platz darunter und läuft über
+    3 m (`padFadeM`) in den Platz aus.
+  - **Garten:** Terrassen, siehe W-E5.
+  - **Kirche:** Fundament, siehe W-E6.
+- **Prüfung** `gothar_worldgen/qa/grounding.py`: Sie liest die Welt so, wie die Engine sie lädt (Render-Meshes der
+  `HANDMADE_*`-Vobs, Heightmap).
+  - Ein Punkt gilt als versunken, wenn das Gelände mehr als 0,1 m über ihm liegt. Ausgenommen ist das unterste
+    0,35-m-Band (Fuß).
+  - Beim Schloss sind Stein (Sockel, Stützmauern) und Hecken ausgenommen.
+  - Ausgabe in `begehung` („hand-made models: …“); ein Test hält die erzeugte Welt bei 0 versunkenen Punkten.
 
 ### W-F Ausstattung & Vegetation
 Regelbasiertes Verteilen von Requisiten (Fässer, Karren, Zäune, Holzstapel, Misthaufen, Marktstände)

@@ -16,13 +16,14 @@ import fnmatch
 import json
 import math
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 import numpy as np
-from shapely.geometry import MultiPoint
+from shapely.geometry import MultiPoint, Point, Polygon
+from shapely.ops import unary_union
 
 from gothar_worldgen.buildings.gltf_scene import NodeMesh, node_meshes
 
@@ -40,6 +41,7 @@ class Placement:
     pos: tuple[float, float, float]
     yaw: float  # radians about +Y
     shear: tuple[float, float] = (0.0, 0.0)  # dy/dx, dy/dz in model space (sloping garden)
+    lifts: dict[str, float] = field(default_factory=dict)  # node prefix -> dy (one terrace each)
 
     @property
     def rot(self) -> list[float]:
@@ -76,7 +78,8 @@ def sheared(points: np.ndarray, shear: tuple[float, float]) -> np.ndarray:
 
 
 def _rigid_key(m: NodeMesh, rigid: list[str]) -> tuple[int, ...] | None:
-    """Node indices down to the first ancestor under a ``rigid`` prefix (one pavilion)."""
+    """Node indices down to the outermost ancestor under a ``rigid`` prefix (one pavilion, one
+    half of the railing)."""
     for depth, part in enumerate(m.path):
         if any(name_matches(part, p) for p in rigid):
             return m.ids[: depth + 1]
@@ -84,7 +87,10 @@ def _rigid_key(m: NodeMesh, rigid: list[str]) -> tuple[int, ...] | None:
 
 
 def rigid_lifts(
-    meshes: list[NodeMesh], rigid: list[str], shear: tuple[float, float]
+    meshes: list[NodeMesh],
+    rigid: list[str],
+    shear: tuple[float, float],
+    lifts: dict[str, float] | None = None,
 ) -> dict[tuple[int, ...], float]:
     """How far each rigid group (a pavilion) moves up: the shear at the centre of all its parts,
     so its pieces stay together and level."""
@@ -93,11 +99,16 @@ def rigid_lifts(
         key = _rigid_key(m, rigid)
         if key is not None:
             groups.setdefault(key, []).append(m.positions)
-    lifts = {}
+    out = {}
+    names = {m.ids[i]: m.path[i] for m in meshes for i in range(len(m.ids))}
     for key, parts in groups.items():
-        c = np.vstack(parts).mean(axis=0)
-        lifts[key] = float(shear[0] * c[0] + shear[1] * c[2])
-    return lifts
+        name = names[key[-1]]
+        lift = next((dy for p, dy in (lifts or {}).items() if name_matches(name, p)), None)
+        if lift is None:
+            c = np.vstack(parts).mean(axis=0)
+            lift = float(shear[0] * c[0] + shear[1] * c[2])
+        out[key] = lift
+    return out
 
 
 def _hexahedron(pts: np.ndarray) -> tuple[np.ndarray, list[tuple[int, int, int]]]:
@@ -146,7 +157,10 @@ def prism_body(points: np.ndarray, sides: int = 8) -> tuple[np.ndarray, list[tup
 
 
 def collision(
-    spec: dict[str, Any], meshes: list[NodeMesh], shear: tuple[float, float] = (0.0, 0.0)
+    spec: dict[str, Any],
+    meshes: list[NodeMesh],
+    shear: tuple[float, float] = (0.0, 0.0),
+    lifts: dict[str, float] | None = None,
 ) -> list[tuple[str, np.ndarray, list[tuple[int, int, int]]]]:
     """``COL_HULL_<i>`` bodies from ``spec["collision"]``, in model space with the shear applied.
 
@@ -154,8 +168,8 @@ def collision(
     (``instance``: one body per node whose name matches, else one for all), optional ``sides``,
     ``belowM`` (reach that far below the lowest point, into a sloping ground).
     """
-    rigid = spec.get("rigid", [])
-    lift = rigid_lifts(meshes, rigid, shear)
+    rigid = [*(lifts or {}), *spec.get("rigid", [])]
+    lift = rigid_lifts(meshes, rigid, shear, lifts)
     bodies = []
     for rule in spec.get("collision", []):
         prefixes = rule["nodes"]
@@ -205,13 +219,15 @@ def prepare_job(
     out_glb: Path,
     out_blend: Path | None,
     shear: tuple[float, float] = (0.0, 0.0),
+    lifts: dict[str, float] | None = None,
+    foundation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Everything the Blender script needs, as plain data (written as JSON next to the .blend)."""
     source = spec_path.parent / spec["source"]
     if not source.is_file():
         raise OwnerModelError(f"source {source} not found")
     meshes = kept_meshes(spec, source)
-    cols = collision(spec, meshes, shear)
+    cols = collision(spec, meshes, shear, lifts)
     mapping = spec.get("materials", {})
     return {
         "key": spec["key"],
@@ -222,7 +238,10 @@ def prepare_job(
         "materials": {k: [v, palette[v]] for k, v in mapping.items()},
         "smoothDeg": float(spec.get("smoothDeg", 35.0)),
         "shear": list(shear),
-        "rigid": spec.get("rigid", []),
+        "rigid": [*(lifts or {}), *spec.get("rigid", [])],
+        "lifts": dict(lifts or {}),
+        "foundation": foundation,
+        "foundationMaterial": ["stone", palette["stone"]],
         "collision": [[n, p.tolist(), [list(t) for t in tris]] for n, p, tris in cols],
         "outGlb": str(out_glb),
         "outBlend": str(out_blend) if out_blend else "",
@@ -273,7 +292,10 @@ def _ground_frame(
 
 
 def garden_placements(
-    schloss_spec: dict[str, Any], radii: dict[str, float], sink: float = 0.02
+    schloss_spec: dict[str, Any],
+    radii: dict[str, float],
+    sink: float = 0.02,
+    terraces: list[dict[str, Any]] | None = None,
 ) -> list[Placement]:
     """The garden models along the parterre axes (``schloss.json`` garden, wing frame (s, t)):
     the railing around both halves, sheared onto the sloping garden plane; the obelisk fountain
@@ -288,6 +310,30 @@ def garden_placements(
     t0, t1 = (float(v) for v in g["t"])
     yaw = math.atan2(-s_hat[1], s_hat[0])  # model +x along the parterre (wing s axis)
     z_w = np.array([math.sin(yaw), math.cos(yaw)])
+    if terraces:  # level terraces (castle garden plan): every model stands on its terrace
+        level = {tr["key"]: float(tr["y"]) for tr in terraces}
+
+        def on(key: str, s: float, y: float, lifts: dict[str, float] | None = None) -> Placement:
+            x, _, z = w.p(s, (t0 + t1) / 2, 0)
+            return Placement(
+                key, (round(x, 3), round(y, 3), round(z, 3)), yaw, (0.0, 0.0), dict(lifts or {})
+            )
+
+        mid = (s1 + s2) / 2
+        return [
+            on(
+                "garten_gelaender",
+                mid,
+                level["mitte"],
+                {
+                    "parterre_west": round(level["west"] - level["mitte"], 3),
+                    "parterre_east": round(level["ost"] - level["mitte"], 3),
+                },
+            ),
+            on("obeliskbrunnen", mid, level["mitte"] - sink),
+            on("gartenbrunnen_w", (s0 + s1) / 2, level["west"] - sink),
+            on("gartenbrunnen_o", (s2 + s3) / 2, level["ost"] - sink),
+        ]
     mid_s, mid_t = (s1 + s2) / 2, (t0 + t1) / 2
 
     def ground(s: float, t: float) -> float:
@@ -339,19 +385,68 @@ def handmade_item(p: Placement, mesh: str, replaces: list[str] | None = None) ->
     }
 
 
-def fitted_placement(
-    spec: dict[str, Any], buildings: list[dict[str, Any]], sink: float = 0.05
-) -> Placement:
-    """Placement stored in the spec (``placement``: rotDeg, x, z, fitted once to the LoD2
-    footprint of ``lod2``); height: the lowest DGM point under that building, sunk a little."""
-    pl = spec["placement"]
-    b = next((b for b in buildings if b.get("id") == pl["lod2"]), None)
-    if b is None:
-        raise OwnerModelError(f"LoD2 building {pl['lod2']} not in buildings.json")
-    y = float(b.get("groundMinY", b.get("groundY", 0.0))) - sink
-    # rotDeg turns the model counter-clockwise in (x, z); a yaw about +Y turns it the other way
-    return Placement(
-        spec["key"],
-        (float(pl["x"]), round(y, 3), float(pl["z"])),
-        -math.radians(float(pl["rotDeg"])),
+def footprint(meshes: list[NodeMesh], nodes: list[str], below: float = 1.5) -> Polygon:
+    """Model-space (x, z) outline of the parts under ``nodes`` near the ground (below ``below``)."""
+    hulls = []
+    for m in meshes:
+        if _matches(m.path, nodes):
+            low = m.positions[m.positions[:, 1] < below]
+            if len(low) >= 3:
+                h = MultiPoint([(float(x), float(z)) for x, _, z in low]).convex_hull
+                if h.geom_type == "Polygon" and h.area > 0.5:
+                    hulls.append(h)
+    if not hulls:
+        raise OwnerModelError(f"footprint {nodes}: no part near the ground")
+    u = unary_union(hulls).buffer(0.05).buffer(-0.05)
+    poly = u if u.geom_type == "Polygon" else max(u.geoms, key=lambda g: g.area)
+    return poly.simplify(0.2)
+
+
+def world_polygon(poly: Polygon, place: Placement) -> Polygon:
+    c, s = math.cos(place.yaw), math.sin(place.yaw)
+    return Polygon(
+        [
+            (place.pos[0] + x * c + z * s, place.pos[2] - x * s + z * c)
+            for x, z in poly.exterior.coords
+        ]
     )
+
+
+def ground_range(
+    poly: Polygon, height: Callable[[float, float], float], step: float = 1.0
+) -> tuple[float, float]:
+    """(lowest, highest) ground under a world polygon: its outline and a grid inside."""
+    pts = [
+        poly.exterior.interpolate(d).coords[0]
+        for d in np.arange(0.0, poly.exterior.length, step / 2)
+    ]
+    x0, z0, x1, z1 = poly.bounds
+    pts += [
+        (x, z)
+        for x in np.arange(x0, x1, step)
+        for z in np.arange(z0, z1, step)
+        if poly.contains(Point(x, z))
+    ]
+    hs = [height(float(x), float(z)) for x, z in pts]
+    return min(hs), max(hs)
+
+
+def fitted_placement(
+    spec: dict[str, Any], height: Callable[[float, float], float], meshes: list[NodeMesh]
+) -> tuple[Placement, dict[str, Any] | None]:
+    """Placement stored in the spec (``placement``: rotDeg, x, z, fitted once to the LoD2
+    footprint) on the ground rule of the hand-made models: the floor on the highest ground under
+    the footprint; a stone foundation (``foundation``) reaches below the lowest."""
+    pl = spec["placement"]
+    yaw = -math.radians(float(pl["rotDeg"]))  # rotDeg turns counter-clockwise in (x, z)
+    probe = Placement(spec["key"], (float(pl["x"]), 0.0, float(pl["z"])), yaw)
+    found = spec.get("foundation")
+    poly = footprint(meshes, found["nodes"]) if found else footprint(meshes, [""])
+    low, high = ground_range(world_polygon(poly, probe), height)
+    place = Placement(spec["key"], (float(pl["x"]), round(high, 3), float(pl["z"])), yaw)
+    if not found:
+        return place, None
+    return place, {
+        "polygon": [[round(x, 3), round(z, 3)] for x, z in poly.exterior.coords][:-1],
+        "depth": round(high - low + float(found.get("belowM", 0.3)), 3),
+    }
