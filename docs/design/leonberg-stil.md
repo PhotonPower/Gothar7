@@ -128,6 +128,9 @@ Stand (Entscheidung Koordinator im Auftrag, 2026-10-03; Werte in `building_rules
 ## Stadtmauer und Mauerhäuser
 Stand (Entscheidung Projektinhaber bzw. Koordinator im Auftrag, 2026-10-03; Werte in `building_rules.json` → `cityWall`):
 - Bruchstein (Palette `stone`), 7 m bis zur Brustwehr, offener Wehrgang mit Zinnen, etwa 10 % der Zinnen fehlen.
+- **Stein aufgehellt** (Abnahme Projektinhaber 2026-10-03): `stone` ist jetzt ein heller, warmer Kalkstein-Grauton,
+  sRGB etwa 120/111/100 → 178/170/155 (linear 0,45/0,40/0,33). Er gilt einheitlich für Mauer, Mauerhäuser, Türme und
+  ebenso für Sockel, massive Erdgeschosse, Schornsteine und Steinbauten.
 - Viereckige Flankentürme und Tortürme mit Zeltdach (`roof_old`), Spitzbogen-Durchfahrt, offene Torflügel (`timber_dark`).
 - **Mauerhäuser:** Häuser auf der Mauerlinie zeigen nach außen nur Bruchstein mit Schießscharten und kleinen Fenstern
   über der Mauerkrone. Niedrige Häuser verstecken ihr Dach hinter einer Schildmauer mit Zinnen. Zur Stadt hin bleiben
