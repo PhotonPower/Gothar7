@@ -142,7 +142,7 @@ void Engine::updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeybo
     if (m_flyMode)
     {
         // Fly mode: the mouse looks around all the time, unless the debug UI is open.
-        const bool capture = !m_debugUiVisible;
+        const bool capture = !m_debugUiVisible && !m_consoleOpen;
         if (capture != m_mouseLook && m_window)
         {
             m_mouseLook = capture && m_window->setRelativeMouse(true);

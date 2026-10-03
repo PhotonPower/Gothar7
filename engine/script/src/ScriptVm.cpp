@@ -315,6 +315,38 @@ struct ScriptVm::Impl
                 handlers[std::string(a[0].asString())].push_back(a[1].asFunction());
                 return Value();
             });
+        addBuiltin("instance", "instance(kind: string, name: string) -> table | nil",
+                   "Die Felder einer Instanz (`instance(\"Item\", \"it_apple\").value`), Funktionen darin "
+                   "aufrufbar; "
+                   "`nil`, wenn es sie nicht gibt.",
+                   [this](std::span<const Value> a) -> Result<Value>
+                   {
+                       if (a.size() < 2 || !a[0].isString() || !a[1].isString())
+                       {
+                           return Error{"expects (kind: string, name: string)"};
+                       }
+                       const Instance* i = find(a[0].asString(), a[1].asString());
+                       return i != nullptr ? i->fields : Value();
+                   });
+        addBuiltin("instances", "instances(kind: string) -> {string}",
+                   "Die Namen aller Instanzen einer Art, alphabetisch (`instances(\"Npc\")`).",
+                   [this](std::span<const Value> a) -> Result<Value>
+                   {
+                       if (a.empty() || !a[0].isString())
+                       {
+                           return Error{"expects (kind: string)"};
+                       }
+                       std::vector<std::string> names;
+                       for (const Instance& i : instances)
+                       {
+                           if (i.kind == a[0].asString())
+                           {
+                               names.push_back(i.name);
+                           }
+                       }
+                       std::sort(names.begin(), names.end());
+                       return makeTable(std::vector<Value>(names.begin(), names.end()));
+                   });
         addBuiltin("emit", "emit(event: string, ...) -> integer",
                    "Löst das Ereignis `event` mit den übrigen Argumenten aus; gibt die Zahl der aufgerufenen "
                    "Funktionen zurück.",

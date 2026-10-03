@@ -90,6 +90,16 @@ struct AnimationPanel
     std::string outfitError;       ///< shown: the last swap that failed
 };
 
+/// The script console (M7, "Console" window): output lines, an input line with history.
+struct ConsolePanel
+{
+    std::vector<std::string> lines;   ///< shown, oldest first ("> input", results, "! errors")
+    std::vector<std::string> history; ///< earlier inputs, oldest first (Up/Down)
+    bool focus = false;               ///< give the input line the keyboard
+    bool open = true;                 ///< out: false when the window was closed
+    std::string submitted;            ///< out: the line entered with Enter
+};
+
 /// Animals (M6 D3, "Creatures" window): spawn, actions, showcase. The engine fills it and reads the edits.
 struct CreaturesPanel
 {
@@ -138,6 +148,8 @@ public:
     void enginePanel(EnginePanel& panel);
     /// Window "Animation" with the player figure's state machine (M6).
     void animationPanel(AnimationPanel& panel);
+    /// Window "Console" (M7).
+    void consolePanel(ConsolePanel& panel);
     /// Window "Creatures" (M6 D3).
     void creaturesPanel(CreaturesPanel& panel);
     /// Draws the editor windows (tools/editor); edits and actions are written back into `panel`.

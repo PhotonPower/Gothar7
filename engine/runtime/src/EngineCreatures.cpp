@@ -71,11 +71,16 @@ Result<u32> Engine::spawnCreature(std::string_view species, const Vec3& feet, f3
     {
         return Error{std::format("unknown species '{}' (wolf, keiler, laufvogel)", species)};
     }
+    return spawnAnimated(species, std::format("characters/monsters/{0}/rig/{0}_reference.glb", species),
+                         std::format("data/anim/{}.animgraph.toml", species), feet, yaw);
+}
+
+Result<u32> Engine::spawnAnimated(std::string_view label, std::string_view model, std::string_view graph,
+                                  const Vec3& feet, f32 yaw)
+{
     auto c = std::make_unique<Creature>();
-    c->species = std::string(species);
+    c->species = std::string(label);
     c->figure = std::make_unique<AnimatedFigure>();
-    const std::string model = std::format("characters/monsters/{0}/rig/{0}_reference.glb", species);
-    const std::string graph = std::format("data/anim/{}.animgraph.toml", species);
     auto loaded =
         loadAnimatedFigure(*c->figure, model, graph,
                            [&](const animation::AnimGraph& g, std::span<const asset::AnimationSetData* const>)
@@ -85,8 +90,8 @@ Result<u32> Engine::spawnCreature(std::string_view species, const Vec3& feet, f3
                                {
                                    if (s.name == "move" && s.points.size() >= 3)
                                    {
-                                       c->walkSpeed = s.points[1].first;
-                                       c->runSpeed = s.points[2].first;
+                                       c->walkSpeed = s.points[s.points.size() - 2].first;
+                                       c->runSpeed = s.points.back().first;
                                    }
                                }
                            });
@@ -97,7 +102,7 @@ Result<u32> Engine::spawnCreature(std::string_view species, const Vec3& feet, f3
     c->id = m_nextCreatureId++;
     c->position = c->positionBefore = feet;
     c->yaw = c->yawBefore = yaw;
-    G7_LOG_INFO("engine", "creature {} ({}) at ({:.1f}, {:.1f}, {:.1f})", c->id, species, feet.x, feet.y,
+    G7_LOG_INFO("engine", "creature {} ({}) at ({:.1f}, {:.1f}, {:.1f})", c->id, label, feet.x, feet.y,
                 feet.z);
     m_creatures.push_back(std::move(c));
     return m_creatures.back()->id;

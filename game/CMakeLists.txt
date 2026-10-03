@@ -12,7 +12,9 @@ add_custom_target(gothar_data ALL
             "${CMAKE_CURRENT_SOURCE_DIR}/config" "$<TARGET_FILE_DIR:gothar>/config"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${PROJECT_SOURCE_DIR}/engine/render/shaders" "$<TARGET_FILE_DIR:gothar>/shaders"
-    COMMENT "Copying default configuration and engine shaders"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/scripts" "$<TARGET_FILE_DIR:gothar>/scripts"
+    COMMENT "Copying default configuration, engine shaders and game scripts"
     VERBATIM)
 set_target_properties(gothar_data PROPERTIES FOLDER "game")
 add_dependencies(gothar gothar_data)

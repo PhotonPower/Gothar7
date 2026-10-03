@@ -144,6 +144,12 @@ Result<void> Engine::init()
     m_physics = std::move(collision).value();
 
     initPlayer();
+    // Scripts before the world: their handlers hear world_loaded (M7).
+    mountScripts();
+    if (auto scripts = initScripts(); !scripts)
+    {
+        G7_LOG_WARN("engine", "scripts: {}", scripts.error().message);
+    }
 
     if (!m_config.headless)
     {
@@ -296,6 +302,11 @@ bool Engine::runFrame()
         {
             setDebugUiVisible(!m_debugUiVisible);
         }
+        if (m_actions.pressed(m_input, platform::Action::Console))
+        {
+            setConsoleOpen(!m_consoleOpen);
+        }
+        updateScripts(realSeconds);
         // The debug UI sees the input first: what it uses (hovered window, focused text field) the
         // game ignores.
         runDebugUi(realSeconds);
@@ -358,6 +369,10 @@ bool Engine::runFrame()
         // TODO(M7+): ai/gameplay fixed update
         fixedUpdatePlayer(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
+        if (m_scripts)
+        {
+            m_scripts->tick(m_fixedStep.step()); // after/every run in simulation time
+        }
         m_physics.step(m_fixedStep.step());
         const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
         m_triggers.update(m_scene, std::span(&probe, 1));
@@ -1125,6 +1140,11 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
                 m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size(),
                 timer.elapsedSeconds() * 1000.0);
+    if (m_scripts)
+    {
+        const script::Value world[] = {path};
+        m_scripts->emit("world_loaded", world);
+    }
     return {};
 }
 
@@ -1138,6 +1158,7 @@ void Engine::unloadWorld()
     m_creatures.clear(); // they belong to the world they were put into
     m_scene.clear();
     m_instances.clear();
+    m_scriptModels.clear(); // inserted items belong to the world
     m_cullGridDirty = true;
     m_physicsDirty = true;
     m_lights.clear();
@@ -1643,7 +1664,7 @@ void Engine::setDebugUiVisible(bool visible) noexcept
 
 void Engine::runDebugUi(f64 realSeconds)
 {
-    m_debugUiFrame = m_debugUiVisible && m_debugUi.valid();
+    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen) && m_debugUi.valid();
     m_window->setTextInput(m_debugUiFrame && m_debugUi.wantsText());
     if (!m_debugUiFrame)
     {
@@ -1655,6 +1676,14 @@ void Engine::runDebugUi(f64 realSeconds)
                          Vec2(static_cast<f32>(pixels.width), static_cast<f32>(pixels.height)),
                          static_cast<f32>(realSeconds));
 
+    if (m_consoleOpen)
+    {
+        consoleUi(); // also without the other debug windows
+    }
+    if (!m_debugUiVisible)
+    {
+        return;
+    }
     // Statistics are from the previous frame (this one is not rendered yet).
     ui::EnginePanel panel;
     panel.frame = m_device->stats();
@@ -1843,6 +1872,8 @@ void Engine::shutdown()
     m_instances.clear();
     m_groundModel.reset();
     m_waterModel.reset();
+    m_scriptModels.clear();
+    m_scripts.reset();
     m_creatures.clear();
     m_figure.reset();
     m_models.clear();
