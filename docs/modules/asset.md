@@ -221,12 +221,26 @@ public:
 - **Threads:** `load`, `update`, `waitAll`, `registerLoader` und Handle-Zugriffe gehören in den Hauptthread.
   Lader laufen auf Workern und nutzen nur ihren `LoadContext`. Hochladen auf die Grafikkarte bleibt in `render`
   (Hauptthread mit GL-Kontext). Das `Vfs` muss den Manager überleben.
-- **Offener Punkt – ungeklärter Hänger (seit 2026-10-03):** Ein lokaler Gesamtlauf (Format, Build, ctest, Smoke-Test,
-  `nodeps`) hing einmal über 30 min; einzeln liefen alle Schritte in Sekunden. Kurz zuvor wurde ein Wettlauf im
-  `AssetManager` gefunden (#65: Worker hielt seinen Job nach der Fertigmeldung). Ein Deadlock in Worker/`waitAll`
-  ist nicht ausgeschlossen. Seitdem bricht ctest jede Suite nach 300 s ab (GPU 900 s; `G7_TEST_TIMEOUT`). Tritt es
-  wieder auf: **Stacks aller Threads sichern** (Visual Studio „Anhalten“ bzw. `procdump -ma`, unter Linux
-  `gdb -p <pid> -batch -ex "thread apply all bt"`) und hier eintragen.
+- **Gelöst – Hänger in Testläufen (2026-10-03):** Lokal und in der Windows-CI (Suite `cook`) hing ein Lauf
+  gelegentlich bis zum Timeout. Die Ursache lag nicht im `AssetManager`, sondern in **libktx 4.4.2 / basisu**:
+  `basisu::job_pool::~job_pool()` setzt `m_kill_flag`, ohne `m_mutex` zu halten, und ruft dann `notify_all()`.
+  Ein Worker, der unter dem Mutex gerade „keine Arbeit, nicht beendet“ festgestellt hat, legt sich danach schlafen
+  und verpasst das Signal (Lost-Wakeup). `join()` wartet dann ewig. Jede UASTC-Kodierung mit `threadCount` > 1
+  erzeugt und zerstört so einen Pool.
+  - **Nachweis:** Ein Stresstest mit Kodierungen einer 8×8-Textur hing nach 1000–2000 Läufen. Im Prozess blieben
+    2 Threads ohne CPU-Zeit übrig: der Hauptthread im `join`, ein Worker im `wait`.
+  - **Abhilfe** (`g7-cook`): basisu einthreadig (`threadCount = 1`, kein Pool). Stattdessen kodiert der Cooker
+    mehrere Texturen parallel auf eigenen Workern (`std::jthread`). Die Reihenfolge der Ausgaben bleibt gleich,
+    die Ergebnisse sind bytegleich. Die erste Kodierung im Prozess läuft serialisiert, weil libktx die
+    basisu-Initialisierung mit einem einfachen `bool` absichert. Danach: 5000 Kodierungen ohne Hänger.
+  - **Dauer**, voller KTX2-Kochlauf aller Quell-Assets (Release, 1749 Ausgaben, davon 56 KTX2-Bilder): vorher
+    48 s (basisu-Pool), nur einthreadig 294–305 s, mit eigener Parallelisierung 54–57 s; inkrementell 1,4 s.
+  - **Upstream-Hinweis:** In `basisu_enc.cpp` (`job_pool::~job_pool`) muss `m_kill_flag` unter `m_mutex` gesetzt
+    werden. Prüfen, ob neuere KTX-Software- bzw. basis_universal-Versionen das beheben. Dann kann `threadCount`
+    wieder steigen; eine Meldung an KTX-Software/basis_universal steht noch aus.
+  - Die ctest-Timeouts je Suite (300 s, GPU 900 s; `G7_TEST_TIMEOUT`) bleiben als Schutz. Hängt künftig etwas:
+    **Stacks aller Threads sichern** (Visual Studio „Anhalten“ bzw. `procdump -ma`, unter Linux
+    `gdb -p <pid> -batch -ex "thread apply all bt"`).
 
 ### Hot-Reload (umgesetzt)
 - **`reload(path)`** lädt alle gecachten Typen eines Pfads über die Worker neu. Erst `update()` tauscht die Daten aus:
