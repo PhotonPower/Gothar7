@@ -16,6 +16,12 @@
 - **Morph-Targets**: Gesicht (Sprechen, Blinzeln, Ausdrücke).
 - **Look-At / IK**: Kopf zum Gesprächspartner, Füße auf Boden (optional später).
 
+## Daten (M6 Teil A, umgesetzt)
+Das Laden liegt in `asset` (`SkinnedModel.hpp`, `docs/modules/asset.md`): Skelett, Skin-Teile mit LOD und
+Morph-Targets, Clips und Events aus glTF. Die Laufzeit ist eigene Implementierung (ADR 0019). Figuren-Teile
+setzt `gothar-chargen assemble` zusammen. Das CMake-Ziel dafür ist `g7_figures` (optional, Python mit numpy;
+`docs/05-build.md`).
+
 ## Geplante API
 ```cpp
 namespace g7::animation {

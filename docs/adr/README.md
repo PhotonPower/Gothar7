@@ -23,3 +23,4 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | [0016](0016-asset-cooker-formats.md) | Asset-Cooker: KTX2/UASTC, zstd-Paks, `.g7mesh` | Akzeptiert | M3 |
 | [0017](0017-json-world-format.md) | JSON-Bibliothek für `.g7world`: nlohmann-json | Akzeptiert | M4 |
 | [0018](0018-character-base-mpfb2.md) | Ausgangskörper für Figuren: MPFB2 (Werkzeug lokal, Ergebnisse CC0) | Akzeptiert | F3 |
+| [0019](0019-animation-runtime.md) | Animations-Laufzeit: eigene Implementierung (statt ozz-animation) | Akzeptiert | M6 |

@@ -127,6 +127,46 @@ Result<MeshData> deserializeMesh(std::span<const u8>, std::string_view debugName
   Submeshes im Index-Bereich, Material- und Bildverweise gültig, Alpha-Modus bekannt, keine Rest-Bytes.
 - Bildverweise in gekochten Meshes sind VFS-Pfade ab der Wurzel (`textures/wood.png`), eingebettete Bytes leer.
 
+### `SkinnedModel.hpp` – Figuren und Animationen aus glTF (M6 Teil A, ADR 0019)
+```cpp
+namespace g7::asset {
+inline constexpr u32 kMaxBones = 128;
+struct SkeletonData { names, parents (-1 = Wurzel), translations, rotations, scales (Ruhepose lokal), rootParent;
+                      i32 find(name) const; };   // Eltern vor Kindern
+struct SkinnedPartData { node, role, lod; vertices; joints (4 x u16 je Vertex); weights (Summe 1); indices; submeshes;
+                         morphs (Positions-/Normalen-Versätze je Vertex) };
+struct SkinnedModelData { skeleton; inverseBind (je Knochen); parts; materials; images; bounds;
+                          partsForLod(lod); lodCount(); };
+struct ClipEvent { f32 time; std::string name; };
+struct TrackData { bone; Path { Translation, Rotation, Scale }; step; times; values (xyz bzw. Quaternion xyzw) };
+struct ClipData { name; duration; tracks; events; bool loops() const; };   // loops: Aktion beginnt mit "s_"
+struct AnimationSetData { skeleton; clips; const ClipData* find(name) const; };
+Result<SkinnedModelData> loadSkinnedGltf(bytes, baseDir, name);
+Result<AnimationSetData> loadAnimationGltf(bytes, baseDir, name);
+Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.events.toml (Vertrag §3)
+}
+```
+- **Skelett:** aus dem ersten Skin.
+  - Gelenke nach Tiefe sortiert (Eltern zuerst), Eltern = nächster Vorfahre, der Gelenk ist.
+  - `rootParent` = Transformation der Knoten über der Wurzel (Armatur).
+  - Die inversen Bind-Matrizen werden auf diese Reihenfolge umsortiert. Test: globale Ruhepose × inverse
+    Bind-Matrix = Einheit für alle 60 Knochen des Referenz-Rigs.
+- **Teile:** jeder Knoten mit Mesh und Skin. Nach glTF gilt dessen Knoten-Transformation für Skins nicht.
+  - Rolle und LOD aus `<rolle>_lod<n>` (Vertrag §2.2). `partsForLod(n)` wählt je Rolle Stufe n bzw. die nächste
+    darunter.
+  - JOINTS_0 und WEIGHTS_0 sind Pflicht; Gewichte werden auf 1 normiert.
+  - Morph-Targets in Dateireihenfolge, die Namen gibt die feste Liste aus §6.1.
+- **Clips:** je glTF-Animation, Kanäle per Knotenname auf Knochen.
+  - Linear bzw. Schritt; kubische Splines werden abgelehnt, Gewichts-Animationen übersprungen.
+  - `duration` = letzter Schlüssel.
+- **Events:** Der `AssetManager` liest `<set>.events.toml` neben dem Set automatisch, sofern vorhanden (Hot-Reload
+  beobachtet sie mit). Fehler: unbekannter Clip, Frame außerhalb (Schleifen: < letzter Frame), nicht
+  aufsteigend, fehlende Felder.
+- **Lader im `AssetManager`:** `SkinnedModelData` und `AnimationSetData` direkt aus glTF/GLB.
+  - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019). Bis dahin laden Figuren und Sets aus losen Dateien
+    (Entwicklung). g7-cook kocht skinnte Figuren weiterhin nur als statisches `.g7mesh`, Sets ohne Mesh überspringt
+    er; ein reines `.g7pak` enthält sie noch nicht.
+
 ### Kollision in Modellen – `COL_`-Knoten (M5, Vertrag mit welt und figuren)
 - Mesh-Knoten, deren **Name mit `COL_` beginnt**, sind Kollisionsgeometrie: nicht gerendert, Material egal, nicht in
   `bounds`. Sie landen in `MeshData::collision`, im Modellraum wie die Vertices (Knoten-Transformationen eingerechnet).
