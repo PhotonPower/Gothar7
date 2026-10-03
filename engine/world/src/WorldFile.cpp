@@ -1,4 +1,5 @@
 #include <g7/asset/Vfs.hpp>
+#include <g7/core/StringUtil.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/WorldFile.hpp>
 
@@ -16,8 +17,32 @@ namespace
 {
 using Json = nlohmann::ordered_json; // keeps key order: stable output
 
-constexpr std::array<std::pair<VobType, std::string_view>, 3> kVobTypes = {
-    {{VobType::Empty, "empty"}, {VobType::Mesh, "mesh"}, {VobType::Light, "light"}}};
+constexpr std::array<std::pair<VobType, std::string_view>, 7> kVobTypes = {{{VobType::Empty, "empty"},
+                                                                            {VobType::Mesh, "mesh"},
+                                                                            {VobType::Light, "light"},
+                                                                            {VobType::Start, "start"},
+                                                                            {VobType::Sound, "sound"},
+                                                                            {VobType::Trigger, "trigger"},
+                                                                            {VobType::Mob, "mob"}}};
+constexpr std::array<std::pair<SoundEmitter::Mode, std::string_view>, 2> kSoundModes = {
+    {{SoundEmitter::Mode::Loop, "loop"}, {SoundEmitter::Mode::Random, "random"}}};
+constexpr std::array<std::pair<TriggerVolume::Filter, std::string_view>, 3> kTriggerFilters = {
+    {{TriggerVolume::Filter::Player, "player"},
+     {TriggerVolume::Filter::Npc, "npc"},
+     {TriggerVolume::Filter::Any, "any"}}};
+
+template <typename E, usize N>
+std::string_view nameOf(const std::array<std::pair<E, std::string_view>, N>& table, E value)
+{
+    for (const auto& [v, name] : table)
+    {
+        if (v == value)
+        {
+            return name;
+        }
+    }
+    return table[0].second;
+}
 
 /// Reads JSON values with errors that name the file and the entry.
 struct Reader
@@ -75,6 +100,171 @@ struct Reader
     }
 };
 
+/// components.<key> of a vob, or an empty object.
+Json componentOf(const Json& v, const char* key)
+{
+    return v.contains("components") && v["components"].is_object() && v["components"].contains(key)
+               ? v["components"][key]
+               : Json::object();
+}
+
+Result<std::string> readText(const Reader& r, const Json& object, const char* key, std::string_view where,
+                             bool required)
+{
+    if (!object.contains(key))
+    {
+        return required ? Result<std::string>(r.error(where, std::format("needs '{}'", key))) : std::string();
+    }
+    if (!object[key].is_string() || (required && object[key].get<std::string>().empty()))
+    {
+        return r.error(where, std::format("'{}' must be a {}string", key, required ? "non-empty " : ""));
+    }
+    return object[key].get<std::string>();
+}
+
+template <typename E, usize N>
+Result<E> readChoice(const Reader& r, const Json& object, const char* key, std::string_view where,
+                     const std::array<std::pair<E, std::string_view>, N>& table)
+{
+    if (!object.contains(key))
+    {
+        return table[0].first;
+    }
+    const std::string value = object[key].is_string() ? object[key].get<std::string>() : std::string();
+    for (const auto& [e, name] : table)
+    {
+        if (name == value)
+        {
+            return e;
+        }
+    }
+    std::string choices;
+    for (const auto& [e, name] : table)
+    {
+        choices += (choices.empty() ? "'" : ", '") + std::string(name) + "'";
+    }
+    return r.error(where, std::format("'{}' must be one of {}", key, choices));
+}
+
+Result<SoundEmitter> readSound(const Reader& r, const Json& v, std::string_view where)
+{
+    const Json s = componentOf(v, "sound");
+    const std::string at = std::format("{}.components.sound", where);
+    SoundEmitter sound;
+    auto name = readText(r, s, "sound", at, true);
+    if (!name)
+    {
+        return name.error();
+    }
+    sound.sound = std::move(name).value();
+    auto range = r.number(s, "range", at, sound.range);
+    auto volume = r.number(s, "volume", at, sound.volume);
+    auto mode = readChoice(r, s, "mode", at, kSoundModes);
+    if (!range || !volume || !mode)
+    {
+        return !range ? range.error() : !volume ? volume.error() : mode.error();
+    }
+    if (!(range.value() > 0.0f))
+    {
+        return r.error(at, "'range' must be positive");
+    }
+    if (volume.value() < 0.0f || volume.value() > 1.0f)
+    {
+        return r.error(at, "'volume' must lie in 0..1");
+    }
+    sound.range = range.value();
+    sound.volume = volume.value();
+    sound.mode = mode.value();
+    if (s.contains("delay"))
+    {
+        auto delay = r.numbers(s["delay"], std::format("{}.delay", at), 2);
+        if (!delay)
+        {
+            return delay.error();
+        }
+        if (delay.value()[0] < 0.0f || delay.value()[1] < delay.value()[0])
+        {
+            return r.error(at, "'delay' must be [min, max] seconds with 0 <= min <= max");
+        }
+        sound.delay = Vec2(delay.value()[0], delay.value()[1]);
+    }
+    return sound;
+}
+
+Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_view where)
+{
+    const Json t = componentOf(v, "trigger");
+    const std::string at = std::format("{}.components.trigger", where);
+    TriggerVolume trigger;
+    const std::string shape = t.value("shape", std::string("box"));
+    if (shape == "box")
+    {
+        auto half = r.vec3(t, "halfExtents", at, trigger.halfExtents);
+        if (!half)
+        {
+            return half.error();
+        }
+        if (!(half.value().x > 0.0f && half.value().y > 0.0f && half.value().z > 0.0f))
+        {
+            return r.error(at, "'halfExtents' must be positive");
+        }
+        trigger.halfExtents = half.value();
+    }
+    else if (shape == "sphere")
+    {
+        trigger.shape = TriggerVolume::Shape::Sphere;
+        auto radius = r.number(t, "radius", at, trigger.radius);
+        if (!radius)
+        {
+            return radius.error();
+        }
+        if (!(radius.value() > 0.0f))
+        {
+            return r.error(at, "'radius' must be positive");
+        }
+        trigger.radius = radius.value();
+    }
+    else
+    {
+        return r.error(at, "'shape' must be 'box' or 'sphere'");
+    }
+    auto onEnter = readText(r, t, "onEnter", at, false);
+    auto onLeave = readText(r, t, "onLeave", at, false);
+    auto filter = readChoice(r, t, "filter", at, kTriggerFilters);
+    if (!onEnter || !onLeave || !filter)
+    {
+        return !onEnter ? onEnter.error() : !onLeave ? onLeave.error() : filter.error();
+    }
+    trigger.onEnter = std::move(onEnter).value();
+    trigger.onLeave = std::move(onLeave).value();
+    trigger.filter = filter.value();
+    if (t.contains("once"))
+    {
+        if (!t["once"].is_boolean())
+        {
+            return r.error(at, "'once' must be true or false");
+        }
+        trigger.once = t["once"].get<bool>();
+    }
+    if (t.contains("target"))
+    {
+        // Reserved: a vob id or a vob name.
+        if (t["target"].is_number_unsigned() && t["target"].get<u64>() > 0)
+        {
+            trigger.targetId = VobId{t["target"].get<u64>()};
+        }
+        else if (t["target"].is_string() && !t["target"].get<std::string>().empty())
+        {
+            trigger.targetName = t["target"].get<std::string>();
+        }
+        else
+        {
+            return r.error(at, "'target' must be a vob id or a vob name");
+        }
+    }
+    return trigger;
+}
+
 Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view where)
 {
     if (!v.is_object())
@@ -127,11 +317,11 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
         vob.transform.rotation = glm::normalize(Quat(q.value()[3], q.value()[0], q.value()[1], q.value()[2]));
     }
 
-    if (vob.type == VobType::Mesh)
+    if (vob.type == VobType::Mesh || vob.type == VobType::Mob)
     {
         if (!v.contains("mesh") || !v["mesh"].is_string() || v["mesh"].get<std::string>().empty())
         {
-            return r.error(where, "a mesh vob needs 'mesh' (VFS path)");
+            return r.error(where, std::format("a {} vob needs 'mesh' (VFS path)", type));
         }
         vob.mesh = v["mesh"].get<std::string>();
     }
@@ -157,6 +347,34 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             return r.error(at, "'range' must be positive");
         }
         vob.light = {color.value(), range.value(), intensity.value(), flicker.value()};
+    }
+    if (vob.type == VobType::Sound)
+    {
+        auto sound = readSound(r, v, where);
+        if (!sound)
+        {
+            return sound.error();
+        }
+        vob.sound = std::move(sound).value();
+    }
+    if (vob.type == VobType::Trigger)
+    {
+        auto trigger = readTrigger(r, v, where);
+        if (!trigger)
+        {
+            return trigger.error();
+        }
+        vob.trigger = std::move(trigger).value();
+    }
+    if (vob.type == VobType::Mob)
+    {
+        auto definition =
+            readText(r, componentOf(v, "mob"), "definition", std::format("{}.components.mob", where), true);
+        if (!definition)
+        {
+            return definition.error();
+        }
+        vob.mob.definition = std::move(definition).value();
     }
     return vob;
 }
@@ -390,6 +608,8 @@ Result<WorldFile> parseWorldFile(std::string_view text, std::string_view source)
             return r.error("vobs", "must be a list");
         }
         std::unordered_set<u64> ids;
+        std::unordered_map<std::string, usize>
+            startNames; // lower case -> index (--start must be unambiguous)
         for (usize i = 0; i < root["vobs"].size(); ++i)
         {
             auto vob = readVob(r, root["vobs"][i], std::format("vobs[{}]", i));
@@ -401,6 +621,20 @@ Result<WorldFile> parseWorldFile(std::string_view text, std::string_view source)
             {
                 return r.error(std::format("vobs[{}]", i),
                                std::format("duplicate id {}", vob.value().id.value));
+            }
+            if (vob.value().type == VobType::Start)
+            {
+                if (vob.value().name.empty())
+                {
+                    return r.error(std::format("vobs[{}]", i),
+                                   "a start vob needs a 'name' (--start selects it)");
+                }
+                if (const auto [it, added] = startNames.emplace(toLower(vob.value().name), i); !added)
+                {
+                    return r.error(std::format("vobs[{}]", i),
+                                   std::format("start point name '{}' is already used by vobs[{}]",
+                                               vob.value().name, it->second));
+                }
             }
             world.vobs.push_back(std::move(vob).value());
         }
@@ -494,7 +728,7 @@ std::string writeWorldFile(const WorldFile& world)
         {
             v["scale"] = numbers({t.scale.x, t.scale.y, t.scale.z});
         }
-        if (vob->type == VobType::Mesh)
+        if (vob->type == VobType::Mesh || vob->type == VobType::Mob)
         {
             v["mesh"] = vob->mesh;
         }
@@ -505,6 +739,53 @@ std::string writeWorldFile(const WorldFile& world)
                                             {"range", tidy(l.range)},
                                             {"intensity", tidy(l.intensity)},
                                             {"flicker", tidy(l.flicker)}};
+        }
+        if (vob->type == VobType::Sound)
+        {
+            const SoundEmitter& s = vob->sound;
+            v["components"]["sound"] = Json{{"sound", s.sound},
+                                            {"range", tidy(s.range)},
+                                            {"volume", tidy(s.volume)},
+                                            {"mode", nameOf(kSoundModes, s.mode)},
+                                            {"delay", numbers({s.delay.x, s.delay.y})}};
+        }
+        if (vob->type == VobType::Trigger)
+        {
+            const TriggerVolume& tv = vob->trigger;
+            Json trigger = Json::object();
+            if (tv.shape == TriggerVolume::Shape::Box)
+            {
+                trigger["shape"] = "box";
+                trigger["halfExtents"] = numbers({tv.halfExtents.x, tv.halfExtents.y, tv.halfExtents.z});
+            }
+            else
+            {
+                trigger["shape"] = "sphere";
+                trigger["radius"] = tidy(tv.radius);
+            }
+            if (!tv.onEnter.empty())
+            {
+                trigger["onEnter"] = tv.onEnter;
+            }
+            if (!tv.onLeave.empty())
+            {
+                trigger["onLeave"] = tv.onLeave;
+            }
+            trigger["filter"] = nameOf(kTriggerFilters, tv.filter);
+            trigger["once"] = tv.once;
+            if (tv.targetId.valid())
+            {
+                trigger["target"] = tv.targetId.value;
+            }
+            else if (!tv.targetName.empty())
+            {
+                trigger["target"] = tv.targetName;
+            }
+            v["components"]["trigger"] = std::move(trigger);
+        }
+        if (vob->type == VobType::Mob)
+        {
+            v["components"]["mob"] = Json{{"definition", vob->mob.definition}};
         }
         vobs.push_back(std::move(v));
     }
@@ -584,13 +865,29 @@ Result<void> spawnWorld(Scene& scene, const WorldFile& world)
         {
             return e.error(); // not expected after the checks above
         }
-        if (vob->type == VobType::Mesh)
+        switch (vob->type)
         {
+        case VobType::Empty:
+            break;
+        case VobType::Mesh:
             scene.set<MeshRef>(e.value(), {vob->mesh});
-        }
-        else if (vob->type == VobType::Light)
-        {
+            break;
+        case VobType::Light:
             scene.set<LightSource>(e.value(), vob->light);
+            break;
+        case VobType::Start:
+            scene.set<StartPoint>(e.value(), {});
+            break;
+        case VobType::Sound:
+            scene.set<SoundEmitter>(e.value(), vob->sound);
+            break;
+        case VobType::Trigger:
+            scene.set<TriggerVolume>(e.value(), vob->trigger);
+            break;
+        case VobType::Mob:
+            scene.set<MeshRef>(e.value(), {vob->mesh});
+            scene.set<MobRef>(e.value(), vob->mob);
+            break;
         }
     }
     if (world.nextVobId > scene.nextVobId())
@@ -620,7 +917,14 @@ WorldFile captureWorld(const Scene& scene, std::string_view name)
             out.name = vob.nameText;
             out.parent = scene.idOf(scene.parent(e));
             out.transform = transform;
-            if (const MeshRef* mesh = scene.get<MeshRef>(e))
+            if (const MobRef* mob = scene.get<MobRef>(e))
+            {
+                out.type = VobType::Mob;
+                out.mob = *mob;
+                const MeshRef* mesh = scene.get<MeshRef>(e);
+                out.mesh = mesh != nullptr ? mesh->path : std::string();
+            }
+            else if (const MeshRef* mesh = scene.get<MeshRef>(e))
             {
                 out.type = VobType::Mesh;
                 out.mesh = mesh->path;
@@ -629,6 +933,20 @@ WorldFile captureWorld(const Scene& scene, std::string_view name)
             {
                 out.type = VobType::Light;
                 out.light = *light;
+            }
+            else if (scene.has<StartPoint>(e))
+            {
+                out.type = VobType::Start;
+            }
+            else if (const SoundEmitter* sound = scene.get<SoundEmitter>(e))
+            {
+                out.type = VobType::Sound;
+                out.sound = *sound;
+            }
+            else if (const TriggerVolume* trigger = scene.get<TriggerVolume>(e))
+            {
+                out.type = VobType::Trigger;
+                out.trigger = *trigger;
             }
             world.vobs.push_back(std::move(out));
         });

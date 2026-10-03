@@ -57,6 +57,65 @@ struct LightSource
     f32 flicker = 0.0f;
 };
 
+/// Where the player (and, without a player, the camera) starts. The vob's placement is the feet; the
+/// camera sits kStartEyeHeight above it. Selected by name (--start) or the lowest id.
+struct StartPoint
+{
+    u8 reserved = 0; ///< not empty: EnTT keeps no instance of empty components (Scene::get)
+};
+
+inline constexpr f32 kStartEyeHeight = 1.7f;
+
+/// A sound source placed in the world (like ZenGin zCVobSound). Played once the audio module exists;
+/// `sound` names a sound definition (data, not a file path).
+struct SoundEmitter
+{
+    enum class Mode : u8
+    {
+        Loop,   ///< plays continuously
+        Random, ///< plays now and then, `delay` seconds apart
+    };
+    std::string sound;
+    f32 range = 20.0f; ///< metres until silent
+    f32 volume = 1.0f; ///< 0..1
+    Mode mode = Mode::Loop;
+    Vec2 delay{5.0f, 15.0f}; ///< min, max seconds between plays (Random)
+};
+
+/// A volume that reports who enters and leaves it (TriggerSystem). Callbacks name script functions;
+/// the engine passes the events on (log in M4, Lua from M7).
+struct TriggerVolume
+{
+    enum class Shape : u8
+    {
+        Box,    ///< halfExtents around the vob, turned with it
+        Sphere, ///< radius around the vob
+    };
+    enum class Filter : u8
+    {
+        Player,
+        Npc,
+        Any,
+    };
+    Shape shape = Shape::Box;
+    Vec3 halfExtents{1.0f};
+    f32 radius = 1.0f;
+    std::string onEnter;
+    std::string onLeave;
+    Filter filter = Filter::Player;
+    bool once = false; ///< reports the first enter only (and the matching leave)
+    /// Reserved (read and written, not used yet): a vob this trigger acts on - by id or by name.
+    VobId targetId;
+    std::string targetName;
+};
+
+/// An interactive object (bed, chest, door; Gothic "Mob"). Placeholder until M8: drawn with its
+/// MeshRef, `definition` names the mob definition (states, animations, focus name).
+struct MobRef
+{
+    std::string definition;
+};
+
 /// World matrix of a vob (parent world * local), kept up to date by Scene::updateTransforms().
 struct WorldTransform
 {

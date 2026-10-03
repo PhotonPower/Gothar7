@@ -19,6 +19,7 @@
 #include <g7/save/Save.hpp>
 #include <g7/script/Script.hpp>
 #include <g7/ui/Ui.hpp>
+#include <g7/world/StartPoints.hpp>
 #include <g7/world/World.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -284,6 +285,9 @@ bool Engine::runFrame()
     {
         G7_PROFILE_SCOPE("Engine::fixedUpdate");
         // TODO(M4+): world/ai/gameplay/physics fixed update
+        // Triggers notice the camera until the player exists (M5).
+        const world::TriggerProbe camera{kCameraProbe, m_camera.transform.position, true};
+        m_triggers.update(m_scene, std::span(&camera, 1));
         ++m_simTicks;
     }
     // Finished asset loads become visible here, once per frame on the main thread; hot reload
@@ -892,9 +896,42 @@ Result<void> Engine::initWorld()
         m_flyCamera.speed = std::clamp(radius * 0.2f, 5.0f, 50.0f);
         m_flyCamera.attach(m_camera);
     }
+    if (auto started = applyStartPoint(); !started)
+    {
+        return Error{"cannot load world: " + started.error().message};
+    }
+    m_triggers.reset();
+    m_triggers.setCallback(
+        [this](const world::TriggerEvent& event)
+        {
+            // Until scripts exist (M7) the events are logged.
+            const entt::entity e = m_scene.findById(event.trigger);
+            G7_LOG_INFO("engine", "trigger {} {}{}{}",
+                        event.kind == world::TriggerEvent::Kind::Enter ? "enter" : "leave",
+                        e != entt::null ? m_scene.get<world::Vob>(e)->nameText
+                                        : std::to_string(event.trigger.value),
+                        event.function.empty() ? "" : " -> ", event.function);
+        });
     m_sceneName = file.value().name.empty() ? path.value() : file.value().name;
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights", path.value(),
                 m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size());
+    return {};
+}
+
+Result<void> Engine::applyStartPoint()
+{
+    auto start = world::findStartPoint(m_scene, m_config.start);
+    if (!start)
+    {
+        return m_config.start.empty() ? Result<void>() : Result<void>(start.error()); // none: overview camera
+    }
+    const Mat4 world = m_scene.worldMatrix(start.value());
+    m_camera.transform.position = Vec3(world[3]) + Vec3(0.0f, world::kStartEyeHeight, 0.0f);
+    m_camera.transform.rotation = glm::normalize(glm::quat_cast(Mat3(
+        glm::normalize(Vec3(world[0])), glm::normalize(Vec3(world[1])), glm::normalize(Vec3(world[2])))));
+    m_flyCamera.speed = 10.0f;
+    m_flyCamera.attach(m_camera);
+    G7_LOG_INFO("engine", "start point {}", m_scene.get<world::Vob>(start.value())->nameText);
     return {};
 }
 
@@ -1279,6 +1316,7 @@ void Engine::addDebugOverlay(u32 width, u32 height)
 
     // World origin and the scene: ground grid, bounds (with the name for a single model), torches.
     m_debugDraw.axes(Mat4(1.0f), 1.0f);
+    addWorldDebugOverlay();
     if (m_sceneBounds.max.x < m_sceneBounds.min.x)
     {
         return;
@@ -1313,6 +1351,57 @@ void Engine::addDebugOverlay(u32 width, u32 height)
         m_debugDraw.cross(light.position, std::min(size * 0.05f, 0.5f), style);
         m_debugDraw.sphere(light.position, light.radius, style);
     }
+}
+
+void Engine::addWorldDebugOverlay()
+{
+    // Vobs that draw nothing themselves: start points, triggers, sounds; mobs get their definition.
+    const Vec4 green(0.3f, 1.0f, 0.4f, 1.0f);
+    m_scene.each<world::Vob, world::StartPoint, world::WorldTransform>(
+        [&](entt::entity, const world::Vob& vob, const world::StartPoint&, const world::WorldTransform& t)
+        {
+            const Vec3 feet(t.matrix[3]);
+            const Vec3 forward = glm::normalize(Vec3(t.matrix * Vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+            m_debugDraw.cross(feet, 0.3f, {green});
+            m_debugDraw.line(feet, feet + Vec3(0.0f, world::kStartEyeHeight, 0.0f), {green});
+            m_debugDraw.arrow(feet + Vec3(0.0f, world::kStartEyeHeight, 0.0f),
+                              feet + Vec3(0.0f, world::kStartEyeHeight, 0.0f) + forward, {green});
+            m_debugDraw.text(feet + Vec3(0.0f, world::kStartEyeHeight + 0.4f, 0.0f), vob.nameText, {green});
+        });
+    m_scene.each<world::Vob, world::TriggerVolume, world::WorldTransform>(
+        [&](entt::entity, const world::Vob& vob, const world::TriggerVolume& volume,
+            const world::WorldTransform& t)
+        {
+            const bool inside = m_triggers.isInside(vob.id, kCameraProbe);
+            const render::DebugStyle style{inside ? Vec4(1.0f, 0.3f, 0.3f, 1.0f)
+                                                  : Vec4(0.4f, 0.7f, 1.0f, 0.8f)};
+            if (volume.shape == world::TriggerVolume::Shape::Box)
+            {
+                m_debugDraw.box(t.matrix, volume.halfExtents, style);
+            }
+            else
+            {
+                const f32 scale = std::max({glm::length(Vec3(t.matrix[0])), glm::length(Vec3(t.matrix[1])),
+                                            glm::length(Vec3(t.matrix[2]))});
+                m_debugDraw.sphere(Vec3(t.matrix[3]), volume.radius * scale, style);
+            }
+            m_debugDraw.text(Vec3(t.matrix[3]), vob.nameText, style);
+        });
+    m_scene.each<world::Vob, world::SoundEmitter, world::WorldTransform>(
+        [&](entt::entity, const world::Vob&, const world::SoundEmitter& sound, const world::WorldTransform& t)
+        {
+            const render::DebugStyle style{Vec4(0.8f, 0.5f, 1.0f, 0.6f)};
+            m_debugDraw.cross(Vec3(t.matrix[3]), 0.3f, style);
+            m_debugDraw.circle(Vec3(t.matrix[3]), Vec3(0.0f, 1.0f, 0.0f), sound.range, style);
+            m_debugDraw.text(Vec3(t.matrix[3]) + Vec3(0.0f, 0.4f, 0.0f), sound.sound, style);
+        });
+    m_scene.each<world::Vob, world::MobRef, world::WorldTransform>(
+        [&](entt::entity, const world::Vob&, const world::MobRef& mob, const world::WorldTransform& t)
+        {
+            const render::DebugStyle style{Vec4(1.0f, 0.85f, 0.2f, 1.0f)};
+            m_debugDraw.cross(Vec3(t.matrix[3]) + Vec3(0.0f, 1.0f, 0.0f), 0.2f, style); // focus point (M8)
+            m_debugDraw.text(Vec3(t.matrix[3]) + Vec3(0.0f, 1.3f, 0.0f), mob.definition, style);
+        });
 }
 
 void Engine::shutdown()

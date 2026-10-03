@@ -31,6 +31,7 @@
 #include <g7/ui/DebugUi.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/Terrain.hpp>
+#include <g7/world/Triggers.hpp>
 #include <g7/world/WorldFile.hpp>
 
 #include <map>
@@ -86,7 +87,9 @@ struct EngineConfig
     fs::Path world;
     /// After loading, write the scene's world vobs as .g7world to this file (--save-world).
     fs::Path saveWorld;
-    u32 viewpoint = 0;  ///< Start viewpoint of the scene (--viewpoint=N).
+    u32 viewpoint = 0; ///< Start viewpoint of the scene (--viewpoint=N).
+    /// Start point of the world by name (--start); empty = the one with the lowest id.
+    std::string start;
     bool ground = true; ///< Ground plate under the --view-mesh model (--no-ground).
     /// Benchmark (--benchmark): visits the scene's viewpoints for `benchmarkFrames` frames each, logs
     /// frame-time statistics and quits. The caller turns VSync and the frame cap off.
@@ -165,6 +168,10 @@ public:
     [[nodiscard]] world::Scene& scene() noexcept { return m_scene; }
     /// Camera used for rendering (a free-flying debug camera until the player exists, M5).
     [[nodiscard]] render::Camera& camera() noexcept { return m_camera; }
+    /// Trigger volumes of the world (fed with the camera until the player exists).
+    [[nodiscard]] const world::TriggerSystem& triggers() const noexcept { return m_triggers; }
+    /// Who the camera is for the triggers.
+    static constexpr world::VobId kCameraProbe{~0ull};
     /// Shader programs (with hot-reload), or nullptr without rendering.
     [[nodiscard]] render::ShaderLibrary* shaders() noexcept { return m_shaders.get(); }
     /// The game window, or nullptr when headless / before init().
@@ -193,6 +200,10 @@ private:
     /// Splat layers and holes of the loaded terrain; layers that fail to load are a warning (slope
     /// colours instead), holes always apply.
     void loadTerrainSurface(const world::TerrainRef& ref);
+    /// Puts the camera on the start point (--start or the lowest id); no start point and no --start
+    /// keeps the overview camera, an unknown name is an error.
+    [[nodiscard]] Result<void> applyStartPoint();
+    void addWorldDebugOverlay();
     [[nodiscard]] Result<void> saveWorld(const fs::Path& path) const;
     [[nodiscard]] Result<void> initAssets();
     /// VFS path for a --scene/--view-mesh argument (mounting the folder of a disk file under local/).
@@ -239,6 +250,7 @@ private:
     f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
     // Scene: --view-mesh (one model) or --scene (test scene); models are shared by instances.
     world::Scene m_scene;              // world vobs (--world, --scene); render instances are built from it
+    world::TriggerSystem m_triggers;   // fed with the camera until the player exists (M5)
     world::Heightfield m_heightfield;  // terrain heights (empty without terrain)
     render::TerrainRenderer m_terrain; // pipelines reference ShaderLibrary programs
     bool m_hasTerrain = false;

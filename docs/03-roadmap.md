@@ -103,7 +103,8 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 - [ ] Statisches Welt-Mesh (Gelände + Architektur) mit Kollisionsgeometrie
 - [x] **Heightmap-Terrain** (Kacheln, LOD, Splatmap mit 4–8 Schichten, Löcher) – Grundlage für W2 (Leonberg-Gelände)
   - Teil A: `terrain`-Block in `.g7world` (Vertrag mit welt), `world::Heightfield`, `render::TerrainRenderer` (64er-Kacheln, 4 LOD-Stufen mit Schürzen, Culling, Schatten); Leonberg 2000×2000 mit 619 FPS (RTX 3080). Teil B: `splat` (bis 8 Schichten, Texture-Arrays) und `holes` (je Zelle) im `terrain`-Block, Cooker erkennt Splat-Karten als lineare Daten, `Heightfield::isHole`
-- [ ] Vob-Typen: Mesh, Licht, Sound-Emitter, Trigger, Startpunkt, Mob (Platzhalter)
+- [x] Vob-Typen: Mesh, Licht, Sound-Emitter, Trigger, Startpunkt, Mob (Platzhalter)
+  - `start` (Kamera in Augenhöhe, `--start`), `sound` (Daten + Debug-Draw, Abspielen mit der Audio-Phase), `trigger` (`world::TriggerSystem`, deterministische Enter/Leave-Ereignisse, `target` reserviert; in M4 mit der Kamera), `mob` (Mesh + Definition, Interaktion in M8); Debug-Draw (F2) für alle
 - [ ] Spielzeit & **Tag/Nacht-Zyklus**: Sonnenstand, Himmelsfarben (Verlauf je Uhrzeit), Sterne, Mond
 - [ ] Sichtbarkeit: Frustum-Culling, Distanz-Culling/LOD für Vobs; Innenräume über Portale/Zonen (später)
 - [ ] Mehrere Welten + Weltwechsel (Levelwechsel-Trigger)

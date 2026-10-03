@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "camp",
-  "nextVobId": 170,
+  "nextVobId": 173,
   "staticMeshes": [],
   "terrain": {"version":1,"heightmap":"testworld/terrain.r16","width":257,"height":257,"cellSize":2.0,"firstSample":[-256.0,-256.0],"minY":-20.0,"maxY":60.0,"splat":{"maps":["testworld/splat0.png"],"layers":[{"name":"grass","albedo":"testworld/layer_grass.png","tile":4.0},{"name":"earth","albedo":"testworld/layer_earth.png","tile":4.0},{"name":"rock","albedo":"testworld/layer_rock.png","tile":6.0},{"name":"path","albedo":"testworld/layer_path.png","tile":3.0}]},"holes":"testworld/holes.r8"},
   "vobs": [
@@ -72,7 +72,7 @@
     {"id":65,"type":"mesh","name":"log_stack","pos":[-6.0,0.0,2.0],"rot":[0.0,0.34202,0.0,0.93969],"scale":[4.0,4.0,4.0],"mesh":"testscene/nature/log_stack.glb"},
     {"id":66,"type":"mesh","name":"log_stack","pos":[-7.0,0.0,3.5],"rot":[0.0,0.08716,0.0,0.99619],"scale":[4.0,4.0,4.0],"mesh":"testscene/nature/log_stack.glb"},
     {"id":67,"type":"mesh","name":"tent_detailedOpen","pos":[-17.0,0.0,-3.0],"rot":[0.0,0.5,0.0,0.86603],"scale":[5.0,5.0,5.0],"mesh":"testscene/nature/tent_detailedOpen.glb"},
-    {"id":68,"type":"mesh","name":"stump_round","pos":[3.0,0.0,3.0],"rot":[0.0,0.0,0.0,1.0],"scale":[4.0,4.0,4.0],"mesh":"testscene/nature/stump_round.glb"},
+    {"id":68,"type":"mob","name":"STOOL_CAMPFIRE","pos":[3.0,0.0,3.0],"rot":[0.0,0.0,0.0,1.0],"scale":[4.0,4.0,4.0],"mesh":"testscene/nature/stump_round.glb","components":{"mob":{"definition":"STOOL"}}},
     {"id":69,"type":"mesh","name":"rock-large","pos":[-3.0,0.0,10.0],"rot":[0.0,0.17365,0.0,0.98481],"scale":[1.5,1.5,1.5],"mesh":"testscene/town/rock-large.glb"},
     {"id":70,"type":"mesh","name":"fence","pos":[24.0,0.0,-12.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,3.0],"mesh":"testscene/town/fence.glb"},
     {"id":71,"type":"mesh","name":"fence","pos":[24.0,0.0,-9.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,3.0],"mesh":"testscene/town/fence.glb"},
@@ -173,6 +173,9 @@
     {"id":166,"type":"light","name":"LIGHT","pos":[6.5,2.2,8.2],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.62,0.3],"range":8.0,"intensity":3.0,"flicker":0.0}}},
     {"id":167,"type":"light","name":"LIGHT","pos":[-8.6,2.2,-6.5],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.62,0.3],"range":8.0,"intensity":3.0,"flicker":0.0}}},
     {"id":168,"type":"light","name":"LIGHT","pos":[13.3,2.2,-12.1],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.62,0.3],"range":8.0,"intensity":3.0,"flicker":0.0}}},
-    {"id":169,"type":"light","name":"LIGHT","pos":[0.0,1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.55,0.25],"range":12.0,"intensity":8.0,"flicker":0.0}}}
+    {"id":169,"type":"light","name":"LIGHT","pos":[0.0,1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.55,0.25],"range":12.0,"intensity":8.0,"flicker":0.0}}},
+    {"id":170,"type":"start","name":"START_LAGER","pos":[34.0,0.0,0.0],"rot":[0.0,0.70711,0.0,0.70711]},
+    {"id":171,"type":"sound","name":"SND_CAMPFIRE","pos":[0.0,0.5,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"sound":{"sound":"FIRE_CRACKLE","range":15.0,"volume":1.0,"mode":"loop","delay":[5.0,15.0]}}},
+    {"id":172,"type":"trigger","name":"TRG_CAMP_GATE","pos":[24.0,1.5,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[1.5,1.5,3.0],"onEnter":"CAMP_GATE_ENTER","onLeave":"CAMP_GATE_LEAVE","filter":"player","once":false}}}
   ]
 }

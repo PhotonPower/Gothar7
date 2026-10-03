@@ -26,9 +26,13 @@ inline constexpr u32 kWorldFileVersion = 1;
 
 enum class VobType : u8
 {
-    Empty, ///< grouping node (e.g. a hut whose parts are children)
-    Mesh,  ///< MeshRef
-    Light, ///< LightSource
+    Empty,   ///< grouping node (e.g. a hut whose parts are children)
+    Mesh,    ///< MeshRef
+    Light,   ///< LightSource
+    Start,   ///< StartPoint
+    Sound,   ///< SoundEmitter
+    Trigger, ///< TriggerVolume
+    Mob,     ///< MobRef + MeshRef (placeholder until M8)
 };
 
 /// One vob as stored in the file.
@@ -37,10 +41,13 @@ struct WorldFileVob
     VobId id;
     VobType type = VobType::Empty;
     std::string name;
-    VobId parent;        ///< 0 = root
-    Transform transform; ///< relative to the parent
-    std::string mesh;    ///< VFS path; Mesh vobs only
-    LightSource light;   ///< Light vobs only
+    VobId parent;          ///< 0 = root
+    Transform transform;   ///< relative to the parent
+    std::string mesh;      ///< VFS path; Mesh and Mob vobs
+    LightSource light;     ///< Light vobs only
+    SoundEmitter sound;    ///< Sound vobs only
+    TriggerVolume trigger; ///< Trigger vobs only
+    MobRef mob;            ///< Mob vobs only
 };
 
 struct WorldFile
