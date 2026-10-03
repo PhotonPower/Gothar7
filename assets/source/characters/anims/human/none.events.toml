@@ -44,6 +44,18 @@ events = [
     { frame = 29, event = "footstep_l" },
 ]
 
+[clips."none/t_drink"]
+events = [
+    { frame = 24, event = "use" },
+    { frame = 38, event = "item_from_hand" },
+]
+
+[clips."none/t_eat"]
+events = [
+    { frame = 14, event = "use" },
+    { frame = 32, event = "item_from_hand" },
+]
+
 [clips."none/t_fall_land_hard"]
 events = [
     { frame = 3, event = "land" },
@@ -62,6 +74,16 @@ events = [
 [clips."none/t_pickup_ground"]
 events = [
     { frame = 36, event = "pickup" },
+]
+
+[clips."none/t_pickup_high"]
+events = [
+    { frame = 8, event = "pickup" },
+]
+
+[clips."none/t_read_scroll"]
+events = [
+    { frame = 45, event = "use" },
 ]
 
 [clips."none/t_turn_l"]

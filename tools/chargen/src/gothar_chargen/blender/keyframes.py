@@ -350,6 +350,23 @@ def _offset_pose(rig: RigInfo, spec: dict) -> dict[str, tuple[Quaternion, Vector
     return offsets
 
 
+def hold(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
+    """A frame of `base` held as a quiet loop with slight breathing (lying in bed, looking into
+    an open chest). params: base, frame (default 0; -1 = last), frames (default 60)."""
+    base = clips[params["base"]]
+    at = float(params.get("frame", 0))
+    if at < 0:
+        at = length(base)
+    frames = int(params.get("frames", 60))
+    breathe = float(params.get("breathe", 1.0))
+    poses = []
+    for frame in range(frames + 1):
+        pose = pose_at(base, at, rig.bones)
+        rig.rotate(pose, "spine_02", [("X", breathe * math.sin(2 * math.pi * frame / frames))])
+        poses.append(pose)
+    return to_curves(poses)
+
+
 def keyposes(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
     """Named poses at key frames, eased in between (smoothstep), over a looping `base` clip.
 
@@ -418,6 +435,7 @@ def advance(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
 RECIPES: dict[str, Callable[[RigInfo, dict, dict[str, Curves]], Curves]] = {
     "strafe": strafe,
     "turn": turn,
+    "hold": hold,
     "scale_root": scale_root,
     "ladder": ladder,
     "ladder_on": ladder_on,
