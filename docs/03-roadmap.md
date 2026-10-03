@@ -100,7 +100,6 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 - [x] EnTT-Registry, Komponenten-Grundsatz, `VobId`, Transform-Hierarchie (ADR 0005) – `world::Scene`, Registry nicht in der API
 - [x] Weltformat `.g7world` als Text/JSON (v1, ADR 0017, `--world`, `--save-world`, Testwelt `testworld/camp.g7world`)
 - [ ] Gekochte Binärvariante von `.g7world` – verschoben bis zum Bedarf (große Welten), **kein Teil der M4-DoD**
-- [ ] Statisches Welt-Mesh (Gelände + Architektur) mit Kollisionsgeometrie
 - [x] **Heightmap-Terrain** (Kacheln, LOD, Splatmap mit 4–8 Schichten, Löcher) – Grundlage für W2 (Leonberg-Gelände)
   - Teil A: `terrain`-Block in `.g7world` (Vertrag mit welt), `world::Heightfield`, `render::TerrainRenderer` (64er-Kacheln, 4 LOD-Stufen mit Schürzen, Culling, Schatten); Leonberg 2000×2000 mit 619 FPS (RTX 3080). Teil B: `splat` (bis 8 Schichten, Texture-Arrays) und `holes` (je Zelle) im `terrain`-Block, Cooker erkennt Splat-Karten als lineare Daten, `Heightfield::isHole`
 - [x] Vob-Typen: Mesh, Licht, Sound-Emitter, Trigger, Startpunkt, Mob (Platzhalter)
@@ -117,8 +116,14 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 **DoD:** Eine Testwelt mit Gelände, Lager-Hütten und Lagerfeuer wird geladen, Tag/Nacht läuft
 sichtbar, im Editor lassen sich Vobs platzieren und speichern.
 
+**M4 abgeschlossen (2026-10-03, Entscheidung Projektinhaber):** DoD erfüllt – Testwelt `testworld/camp.g7world` mit Gelände,
+Lager und Lagerfeuer; Tag/Nacht mit Abnahme (#79, #80); Editor platziert und speichert Vobs (#84, Ende-zu-Ende-Test).
+Vermerk: **Editor-Bedienung (Maus/Drag) vom Projektinhaber noch nicht von Hand geprüft** (automatisiert getestet sind
+Gizmo-Mathematik und Operationen). Die Kollision statischer Welt-Meshes ist nach M5 verschoben.
+
 ## M5 – Physik & Charaktersteuerung
-- [ ] Jolt Physics integrieren (ADR 0004), Welt-Kollision aus statischem Mesh
+- [x] Vorarbeit: Modul `world_format` (`.g7world` ohne render/physics/EnTT), g7-cook linkt nur noch das – geprüft beim Konfigurieren
+- [ ] Jolt Physics integrieren (ADR 0004), Welt-Kollision aus statischem Mesh – Gelände und Architektur (aus M4 verschoben: „Statisches Welt-Mesh mit Kollisionsgeometrie“)
 - [ ] Raycasts/Shapecasts-API (Fokus, Kamera, KI-Sicht)
 - [ ] Charakter-Controller: gehen, rennen, schleichen, Treppen/Steigungen, rutschen an steilen Hängen
 - [ ] Springen, **Kanten hochziehen** (Kantenerkennung per Shapecast), Fallschaden

@@ -21,6 +21,7 @@
 #include <g7/ui/Ui.hpp>
 #include <g7/world/StartPoints.hpp>
 #include <g7/world/World.hpp>
+#include <g7/world/WorldScene.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
 

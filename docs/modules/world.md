@@ -64,6 +64,12 @@ public:
 ```
 
 ## Weltformat `.g7world` (JSON, vom Editor geschrieben)
+**Modul `world_format`** (seit M5): Lesen, Schreiben und Prüfen von `.g7world` (`WorldFile.hpp`), der
+`terrain`-Block mit Höhenkodierung (`TerrainRef.hpp`) und die Vob-Komponenten (`Components.hpp`) – ohne Rendern,
+Physik und EnTT, damit Werkzeuge (g7-cook) Welten lesen, ohne die Engine zu linken; nlohmann-json bleibt dort privat.
+Die Header behalten den Pfad `g7/world/` und den Namensraum `g7::world`. In `world` bleiben die Szene
+(`spawnWorld`/`captureWorld` in `WorldScene.hpp`), `Heightfield` (`Terrain.hpp`), Trigger, Startpunkte, Spielzeit
+und Tag/Nacht.
 **VobId-Vertrag** (ADR 0005, `docs/coordination.md`): Jeder Vob hat eine `id` (u64, ≥ 1), eindeutig in der Welt und nie
 wiederverwendet; `nextVobId` ist der nächste freie Wert und steigt nur. Editor und Welt-Assembler (W3) vergeben IDs
 daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vobs liegen ab `kRuntimeVobIdBase`.
