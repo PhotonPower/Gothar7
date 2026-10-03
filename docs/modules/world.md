@@ -194,7 +194,14 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
 - **Eigentum** wie bei Vobs (`owner`): `"worldgen"` an einem Punkt, Freepoint oder als drittes Kantenelement heißt,
   der Generator ersetzt ihn bei jedem Lauf; ohne `owner` ist er von Hand bzw. im Editor gesetzt und bleibt.
   Verschiebt der Editor einen erzeugten Punkt, entfällt `owner` (er gehört dann dem Menschen). Der Generator
-  vergibt keine Namen, die schon ein Hand-Punkt trägt, und lässt Kanten ohne `owner` stehen.
+  vergibt keine Namen, die schon ein Hand-Punkt trägt, und lässt Kanten ohne `owner` stehen. Erzeugte Kanten dürfen
+  an beliebigen Punkten enden (auch an Hand-Punkten); ein Punkt ohne `owner` mit einem Namen, den der Generator
+  vergeben würde, gilt für ihn als vorhanden – er verbindet ihn, legt ihn aber nicht neu an.
+- **Erzeugte Punkte dauerhaft entfernen** geht über die Annotationen des Generators (welt:
+  `tools/worldgen/data/<ort>/waynet.json` mit `remove`/`add`); ein Löschen im Editor allein hält nur bis zum nächsten
+  Generatorlauf. Der Editor (M16) weist darauf hin, statt es anders zu lösen.
+- **Namen aus Ortsdaten** (welt): Umlaute umgeschrieben (Ä → AE, ß → SS); Türpunkte ohne Hausnummer tragen das
+  Kürzel der LoD2-Gebäude-ID. Leonberg: etwa 1500–3000 Punkte.
 - **Empfehlungen** (die Engine warnt mit M9, lehnt aber nicht ab): Abstand verbundener Punkte 5–20 m; die Gerade
   zwischen ihnen ist in Hüfthöhe frei (kein Haus, keine Mauer); Punkte stehen auf begehbarem Boden; vor jeder
   benutzbaren Haustür ein Punkt (welt: `WP_LEO_<STRASSE>_<NR>`), Freepoints auf Plätzen und an Bänken/Feuern.
