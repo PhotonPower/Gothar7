@@ -89,3 +89,38 @@ TEST_CASE("Start view: the copied line, and back")
     CHECK(*view.yawDegrees == doctest::Approx(180.0f));
     CHECK(*view.pitchDegrees == doctest::Approx(-10.0f));
 }
+
+TEST_CASE("Fly mode hint: from the bindings, unbound parts left out")
+{
+    using platform::Action;
+    platform::ActionMap actions;
+    const auto bind = [&](Action action, const char* input)
+    { actions.bind(action, *platform::bindingFromName(input)); };
+    // Nothing bound (a config without [bindings]): no dashes, only what needs no key.
+    CHECK(flyHintText(actions, 10.0f) == "fly: mouse look, wheel speed (10 m/s)");
+
+    bind(Action::FlyForward, "W");
+    bind(Action::FlyLeft, "A");
+    bind(Action::FlyBack, "S");
+    bind(Action::FlyRight, "D");
+    bind(Action::FlyUp, "Space");
+    bind(Action::FlyUp, "E"); // only the first input of an action is shown
+    bind(Action::FlyDown, "LeftCtrl");
+    bind(Action::FlyFast, "LeftShift");
+    bind(Action::CopyPosition, "F6");
+    bind(Action::DebugFly, "F3");
+    CHECK(flyHintText(actions, 12.4f) ==
+          "fly: WASD move, Space/LeftCtrl up/down, LeftShift fast, mouse look, wheel "
+          "speed (12 m/s)\nF6 copy position, F3 back");
+
+    platform::ActionMap arrows;
+    for (const auto& [action, input] :
+         {std::pair{Action::FlyForward, "Up"}, std::pair{Action::FlyLeft, "Left"},
+          std::pair{Action::FlyBack, "Down"}, std::pair{Action::FlyRight, "Right"}})
+    {
+        arrows.bind(action, *platform::bindingFromName(input));
+    }
+    const std::string text = flyHintText(arrows, 10.0f);
+    CHECK(text == "fly: Up/Left/Down/Right move, mouse look, wheel speed (10 m/s)");
+    CHECK(text.find('-') == std::string::npos);
+}

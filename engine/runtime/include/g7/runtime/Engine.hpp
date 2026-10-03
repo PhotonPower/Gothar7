@@ -465,7 +465,6 @@ private:
     void showNotice(std::string text, f64 seconds);
     [[nodiscard]] bool noticeVisible() const noexcept;
     void drawNotice(u32 height);
-    [[nodiscard]] std::string bindingText(platform::Action action) const;
     void runDebugUi(f64 realSeconds);
 
     EngineConfig m_config;
