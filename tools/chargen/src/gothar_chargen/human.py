@@ -34,6 +34,11 @@ Armour kits (F3g) keep the colour textures of their pieces and may rename and de
     tilt = 20                           # with depth: the cut rises to the front (degrees)
     nasal = [0.02, 0.07]                # with depth: own nose guard, width and length (metres)
     group = "body"                      # with from = "basemesh": the MPFB vertex group to keep
+    keep = ["spine"]                    # keep vertices bound mostly to these bones (prefixes)
+    near = ["upperarm_l"]               # ... and within `radius` (m) of these joints
+    smooth = 12                         # shrink-free smoothing: cloth folds -> a plate
+    brim = 0.04                         # own brim around the rim (kettle helmet)
+    bones = ["spine_02", "spine_03"]    # weights only on these bones (stiff plates)
     dome = true                         # with from = "basemesh": smooth dome fitted to the skull
     heads = "head_f_*"                  # these head parts fit under it (dome grows, others bulge)
     texture = "gothar/ambientcg/Leather033A/Leather033A_1K-JPG_Color.jpg"  # optional, tiling
@@ -102,6 +107,12 @@ DERIVE_KEYS = {
     "group",
     "dome",
     "heads",
+    "keep",
+    "near",
+    "radius",
+    "smooth",
+    "brim",
+    "bones",
 }
 
 
@@ -125,6 +136,12 @@ class Derive:
     nasal: tuple[float, float] | None = None  # own nose guard: width, length (metres)
     group: str | None = None  # from the skin: keep this MPFB vertex group ("body": the skin)
     dome: bool = False  # own geometry: a smooth dome fitted to the skull (caps, helmets)
+    keep: tuple[str, ...] = ()  # keep only vertices bound mostly to bones with these prefixes
+    near: tuple[str, ...] = ()  # keep only vertices within `radius` of these joints
+    radius: float = 0.15
+    smooth: int = 0  # shrink-free smoothing passes: cloth folds -> a plate
+    brim: float = 0.0  # own geometry: a brim of this width around the rim (metres)
+    bones: tuple[str, ...] = ()  # limit the weights to bones with these prefixes (stiff plates)
     heads: str | None = None  # head parts that must fit under the piece, e.g. "head_f_*"
 
 
@@ -366,6 +383,20 @@ def _patch_ok(r: object) -> bool:
     )
 
 
+def _names(d: dict, key: str, where: str) -> tuple[str, ...]:
+    value = d.get(key, [])
+    if not isinstance(value, list) or not all(isinstance(x, str) and x for x in value):
+        raise HumanError(f"{where}: {key} must be a list of bone names or prefixes")
+    return tuple(value)
+
+
+def _number(d: dict, key: str, where: str, low: float, high: float, default: float) -> float:
+    value = d.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, int | float) or not low <= value <= high:
+        raise HumanError(f"{where}: {key} must be between {low} and {high}")
+    return float(value)
+
+
 def _parse_derive(raw: object) -> tuple[Derive, ...]:
     if not isinstance(raw, dict):
         raise HumanError("[derive] must be a table of [derive.<name>] tables")
@@ -445,6 +476,12 @@ def _parse_derive(raw: object) -> tuple[Derive, ...]:
                 group=group,
                 dome=dome,
                 heads=heads,
+                keep=_names(d, "keep", where),
+                near=_names(d, "near", where),
+                radius=_number(d, "radius", where, 0.02, 0.5, 0.15),
+                smooth=int(_number(d, "smooth", where, 0, 50, 0)),
+                brim=_number(d, "brim", where, 0.0, 0.1, 0.0),
+                bones=_names(d, "bones", where),
             )
         )
     return tuple(out)

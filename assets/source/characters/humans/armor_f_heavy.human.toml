@@ -4,10 +4,12 @@
 # CC0 pieces only (file header and pack metadata, assets/LICENSES.md), with neutral names.
 # light: leather_vest (own, derived from the kit shirt; ambientCG CC0 leather), gloves_short
 # medium: mail_tunic, wrapped_trousers, wrapped_boots, gloves_medium
+# heavy (F3l, over the medium line): breastplate, pauldrons, greaves, gauntlets – own pieces derived
+# from the mail tunic, boots and gloves, smoothed into plates, dark iron (ambientCG Metal 021)
 version = 1
 fit_to = "body_f_heavy"
 parts = ["cloth"]
-triangles = 12000
+triangles = 16000
 neutral = false
 
 [assets]
@@ -33,6 +35,10 @@ wrapped_boots = 1500
 gloves_short = 1000
 gloves_medium = 1200
 leather_vest = 1500
+breastplate = 1200
+pauldrons = 800
+greaves = 600
+gauntlets = 1200
 
 [retouch]  # the source's emblem on the chest (owner decision 2026-10-03): mail from the back panel
 mail_tunic = [[0.16, 0.24, 0.26, 0.345, 0.48, 0.0]]
@@ -44,3 +50,41 @@ offset = 0.008
 texture = "gothar/ambientcg/Leather033A/Leather033A_1K-JPG_Color.jpg"
 normal = "gothar/ambientcg/Leather033A/Leather033A_1K-JPG_NormalGL.jpg"
 uv_scale = 2.0
+
+[derive.breastplate]
+from = "clothes/rehmanpolanski_viking_tunic/rehmanpolanski_viking_tunic.mhclo"
+keep = ["spine"]
+smooth = 15
+offset = 0.022
+texture = "gothar/ambientcg/Metal021/Metal021_1K-JPG_Color.jpg"
+normal = "gothar/ambientcg/Metal021/Metal021_1K-JPG_NormalGL.jpg"
+uv_scale = 3.0
+
+[derive.pauldrons]
+from = "clothes/rehmanpolanski_viking_tunic/rehmanpolanski_viking_tunic.mhclo"
+keep = ["clavicle", "upperarm"]
+near = ["upperarm_l", "upperarm_r"]
+radius = 0.13
+smooth = 10
+offset = 0.028
+bones = ["clavicle", "upperarm"]
+texture = "gothar/ambientcg/Metal021/Metal021_1K-JPG_Color.jpg"
+normal = "gothar/ambientcg/Metal021/Metal021_1K-JPG_NormalGL.jpg"
+uv_scale = 3.0
+
+[derive.greaves]
+from = "clothes/rehmanpolanski_viking_boots/rehmanpolanski_viking_boots.mhclo"
+keep = ["calf"]
+smooth = 8
+offset = 0.01
+bones = ["calf"]
+texture = "gothar/ambientcg/Metal021/Metal021_1K-JPG_Color.jpg"
+normal = "gothar/ambientcg/Metal021/Metal021_1K-JPG_NormalGL.jpg"
+uv_scale = 3.0
+
+[derive.gauntlets]
+from = "clothes/toigo_gloves_medium/toigo_gloves_medium.mhclo"
+offset = 0.002
+texture = "gothar/ambientcg/Metal021/Metal021_1K-JPG_Color.jpg"
+normal = "gothar/ambientcg/Metal021/Metal021_1K-JPG_NormalGL.jpg"
+uv_scale = 3.0

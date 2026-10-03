@@ -494,3 +494,57 @@ def test_invalid_headgear_kits(change, message):
         }
     with pytest.raises(HumanError, match=message):
         parse_human(data, "headgear_x")
+
+
+def test_heavy_armour_derive_keys():
+    data = {
+        **KIT,
+        "assets": {**KIT["assets"], "clothes": []},
+        "names": {},
+        "budget": {},
+        "derive": {
+            "plate": {
+                "from": "clothes/t/t.mhclo",
+                "keep": ["clavicle", "upperarm"],
+                "near": ["upperarm_l", "upperarm_r"],
+                "radius": 0.13,
+                "smooth": 10,
+                "bones": ["clavicle", "upperarm"],
+            },
+            "kettle": {
+                "from": "basemesh",
+                "group": "body",
+                "dome": True,
+                "depth": 0.16,
+                "brim": 0.045,
+            },
+        },
+    }
+    h = parse_human(data, "armor_x")
+    plate, kettle = sorted(h.derive, key=lambda d: d.name != "plate")
+    assert plate.keep == ("clavicle", "upperarm") and plate.near == ("upperarm_l", "upperarm_r")
+    assert (plate.radius, plate.smooth, plate.bones) == (0.13, 10, ("clavicle", "upperarm"))
+    assert kettle.brim == 0.045 and kettle.smooth == 0 and kettle.keep == ()
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"keep": "spine"}, "keep must be a list"),
+        ({"near": [1]}, "near must be a list"),
+        ({"radius": 2.0}, "radius"),
+        ({"smooth": 99}, "smooth"),
+        ({"brim": 0.5}, "brim"),
+        ({"bones": [""]}, "bones must be a list"),
+    ],
+)
+def test_invalid_heavy_armour_keys(change, message):
+    data = {
+        **KIT,
+        "assets": {**KIT["assets"], "clothes": []},
+        "names": {},
+        "budget": {},
+        "derive": {"plate": {"from": "clothes/t/t.mhclo", **change}},
+    }
+    with pytest.raises(HumanError, match=message):
+        parse_human(data, "armor_x")
