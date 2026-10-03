@@ -179,6 +179,17 @@ def inputs_hash(manifest: Path, parts: dict[str, Path]) -> str:
     return h.hexdigest()[:16]
 
 
+ROLE_ORDER = ("body", "head", "hair", "beard")  # then the garments in list order (= engine, M6 D2)
+
+
+def _role_order(figure: Figure, hidden: set[str] | frozenset[str] = frozenset()) -> list[str]:
+    """Parts in the fixed order of the contract (§6.2), independent of the manifest's key order:
+    body, head, hair, beard, then the garments as listed; the engine assembles the same way."""
+    roles = [r for r in ROLE_ORDER if r in figure.parts]
+    roles += [r for r in figure.parts if r not in ROLE_ORDER]
+    return [r for r in roles if r not in hidden]
+
+
 def assemble_figure(figure: Figure, manifest: Path, characters: Path, out: Path) -> Gltf:
     paths = figure.part_paths(characters)
     for role, path in paths.items():
@@ -245,7 +256,7 @@ def assemble_figure(figure: Figure, manifest: Path, characters: Path, out: Path)
     material_of: dict[str, int] = {}
     image_of: dict[str, int] = {}
     sampler_of: dict[str, int] = {}
-    order = ["head"] + [r for r in parts if r != "head"]
+    order = ["head"] + [r for r in _role_order(figure, hidden) if r != "head"]
     part_material: dict[tuple[str, int], int] = {}
     for role in order:
         g = parts[role]
@@ -267,7 +278,7 @@ def assemble_figure(figure: Figure, manifest: Path, characters: Path, out: Path)
             part_material[(role, mi)] = material_of[base]
 
     # 2./3. meshes per role and LOD
-    roles = ["body", "head"] + [r for r in figure.parts if r not in ("body", "head", *hidden)]
+    roles = _role_order(figure, hidden)
     head_lods = _mesh_nodes(head)
     for role in roles:
         g = parts[role]
