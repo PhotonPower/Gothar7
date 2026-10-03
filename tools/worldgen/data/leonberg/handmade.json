@@ -3,6 +3,15 @@
  "version": 1,
  "items": [
   {
+   "key": "marktbrunnen",
+   "mesh": "worlds/leonberg/handmade/marktbrunnen/marktbrunnen.glb",
+   "pos": [0.0, -0.221, 0.0],
+   "replaces": [],
+   "footprints": [
+    [[3.56, 0.0], [2.52, 2.52], [0.0, 3.56], [-2.52, 2.52], [-3.56, 0.0], [-2.52, -2.52], [-0.0, -3.56], [2.52, -2.52]]
+   ]
+  },
+  {
    "key": "schloss",
    "mesh": "worlds/leonberg/handmade/schloss/schloss.glb",
    "pos": [-215.0, -10.92, -15.0],

@@ -1,15 +1,18 @@
 """Individually modelled objects that replace generated buildings (W6, ``handmade.json``).
 
 The castle (``gothar-worldgen schloss <site>``) is built by a Blender Python script, the only
-source of the model (``blender/schloss/build_schloss.py``). This module runs it, keeps the list
-of hand-made objects (key, mesh, position, replaced building ids, footprints for the city wall)
-and gives the assembler what it places.
+source of the model (``blender/schloss/build_schloss.py``). The market fountain
+(``gothar-worldgen marktbrunnen <site>``) is the project owner's own model, adapted by a Blender
+script (``blender/marktbrunnen/build_marktbrunnen.py``). This module runs the scripts, keeps the
+list of hand-made objects (key, mesh, position, replaced building ids, footprints for the city
+wall) and gives the assembler what it places.
 """
 
 from __future__ import annotations
 
 import importlib.util
 import json
+import math
 import os
 import re
 import shutil
@@ -22,6 +25,7 @@ from typing import Any
 FORMAT = "gothar-handmade"
 VERSION = 1
 SCHLOSS_DIR = Path(__file__).resolve().parents[2] / "blender" / "schloss"
+MARKTBRUNNEN_DIR = Path(__file__).resolve().parents[2] / "blender" / "marktbrunnen"
 
 
 class HandmadeError(Exception):
@@ -104,20 +108,56 @@ def put_item(doc: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
     return {"format": FORMAT, "version": VERSION, "items": sorted(items, key=lambda i: i["key"])}
 
 
-def build_schloss(blender: Path, spec_path: Path, rules_path: Path, out_glb: Path,
-                  out_blend: Path | None) -> str:  # fmt: skip
-    """Runs the Blender script headless; returns its summary line."""
+def _run_blender(blender: Path, script: Path, ok: str, spec_path: Path, rules_path: Path,
+                 out_glb: Path, out_blend: Path | None) -> str:  # fmt: skip
     cmd = [str(blender), "--background", "--factory-startup", "--python-exit-code", "1",
-           "--python", str(SCHLOSS_DIR / "build_schloss.py"), "--", str(spec_path),
-           str(rules_path), str(out_glb)]  # fmt: skip
+           "--python", str(script), "--", str(spec_path), str(rules_path),
+           str(out_glb)]  # fmt: skip
     if out_blend is not None:
         cmd.append(str(out_blend))
     done = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
                           timeout=600, check=False)  # fmt: skip
-    line = next((ln for ln in done.stdout.splitlines() if ln.startswith("SCHLOSS_OK")), None)
+    line = next((ln for ln in done.stdout.splitlines() if ln.startswith(ok)), None)
     if done.returncode != 0 or line is None:
         raise HandmadeError("Blender build failed:\n" + (done.stdout + done.stderr)[-2000:])
     return line
+
+
+def build_schloss(blender: Path, spec_path: Path, rules_path: Path, out_glb: Path,
+                  out_blend: Path | None) -> str:  # fmt: skip
+    """Runs the castle's Blender script headless; returns its summary line."""
+    return _run_blender(blender, SCHLOSS_DIR / "build_schloss.py", "SCHLOSS_OK", spec_path,
+                        rules_path, out_glb, out_blend)  # fmt: skip
+
+
+def build_marktbrunnen(blender: Path, spec_path: Path, rules_path: Path, out_glb: Path,
+                       out_blend: Path | None) -> str:  # fmt: skip
+    """Runs the fountain's Blender script headless; returns its summary line."""
+    return _run_blender(blender, MARKTBRUNNEN_DIR / "build_marktbrunnen.py", "MARKTBRUNNEN_OK",
+                        spec_path, rules_path, out_glb, out_blend)  # fmt: skip
+
+
+def marktbrunnen_geometry() -> ModuleType:
+    """The fountain's pure-Python helper module (spouts, collision bodies)."""
+    spec = importlib.util.spec_from_file_location(
+        "marktbrunnen_geometry", MARKTBRUNNEN_DIR / "marktbrunnen_geometry.py"
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("marktbrunnen_geometry", module)
+    spec.loader.exec_module(module)
+    return module
+
+
+def marktbrunnen_item(spec: dict[str, Any], mesh: str, ground_min: float) -> dict[str, Any]:
+    """handmade.json entry of the fountain: at the world origin (the model's origin is the
+    fountain's foot centre), on the lowest ground under the lower step, sunk by ``sinkM``."""
+    r = max(float(st["radius"]) for st in spec["collision"]["steps"])
+    angles = [math.radians(45 * k) for k in range(8)]
+    ring = [[round(r * math.cos(a), 2), round(r * math.sin(a), 2)] for a in angles]
+    y = round(ground_min - float(spec.get("sinkM", 0.0)), 3)
+    return {"key": "marktbrunnen", "mesh": mesh, "pos": [0.0, y, 0.0], "replaces": [],
+            "footprints": [ring]}  # fmt: skip
 
 
 def splat_areas(doc: dict[str, Any]) -> list[dict[str, Any]]:

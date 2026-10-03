@@ -158,7 +158,7 @@ mit `gothar-worldgen walk-report leonberg --route <route> --run <ordner>`, das `
 **Entscheidungen** (Projektinhaber über den Koordinator, 2026-10-03):
 - E1: A + B.
 - E2: Wege enden am Haus, die Mauer bleibt geschlossen, Durchgänge nur an Toren und Pforten.
-- E3: 1:1 vorerst, endgültig nach Teil 2.
+- E3: 1:1 vorerst, endgültig nach Teil 2. **Nach Teil 2 endgültig: 1:1, keine Gassenverbreiterung** (`leonberg.toml`).
 - E4: A.
 - E5: B jetzt, A mit W5.
 
@@ -227,7 +227,6 @@ gedacht; zwei kommen nicht aneinander vorbei, das ist gewollt eng.
 
 ## Nächste Schritte
 
-- E3 endgültig entscheiden (Vorschlag: 1:1).
 - E1 und E4 im Gebäude-Generator umsetzen, E5 in der Heightmap; danach `begehung` und `walk-routes` erneut laufen
   lassen.
 - Pforte Zwerchstraße Nord freimachen.

@@ -89,7 +89,7 @@ def test_handmade_item_and_file(tmp_path: Path):
 
 def test_versioned_data_is_consistent():
     doc = load(ROOT / "data" / "leonberg" / "handmade.json")
-    (item,) = doc["items"]
+    item = next(i for i in doc["items"] if i["key"] == "schloss")
     assert item == schloss_item(SPEC, item["mesh"])
     overrides = load_all(ROOT / "data" / "leonberg" / "buildings")
     for bid in SPEC["replaces"]:

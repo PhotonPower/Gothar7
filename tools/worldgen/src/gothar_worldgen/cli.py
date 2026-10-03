@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import webbrowser
 from collections.abc import Sequence
@@ -58,8 +59,10 @@ from gothar_worldgen.geo.lod2 import Lod2Error
 from gothar_worldgen.geo.osm import OsmError
 from gothar_worldgen.handmade import (
     HandmadeError,
+    build_marktbrunnen,
     build_schloss,
     find_blender,
+    marktbrunnen_item,
     put_item,
     schloss_item,
     splat_areas,
@@ -648,6 +651,45 @@ def _cmd_schloss(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_marktbrunnen(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    blender = args.blender or find_blender()
+    if blender is None:
+        print("error: Blender not found (set G7_BLENDER or --blender)", file=sys.stderr)
+        return EXIT_ERROR
+    spec_path = data_dir / "marktbrunnen.json"
+    out_glb = folder / "handmade" / "marktbrunnen" / "marktbrunnen.glb"
+    out_blend = folder / "generated" / "marktbrunnen" / "marktbrunnen.blend"
+    try:
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        grid = load_grid(paths.work)
+        r = max(float(st["radius"]) for st in spec["collision"]["steps"])
+        ground = min(
+            grid.height_at(r * f * math.cos(k * math.pi / 8), r * f * math.sin(k * math.pi / 8))
+            for f in (0.0, 0.5, 1.0)
+            for k in range(16)
+        )
+        line = build_marktbrunnen(
+            Path(blender), spec_path, data_dir.parent / "building_rules.json", out_glb, out_blend
+        )
+        mesh = f"worlds/{site.name}/handmade/marktbrunnen/marktbrunnen.glb"
+        doc = put_item(
+            load_handmade(data_dir / "handmade.json"), marktbrunnen_item(spec, mesh, ground)
+        )
+        save_handmade(data_dir / "handmade.json", doc)
+    except (OSError, json.JSONDecodeError, HandmadeError, ExportError, KeyError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"  {line}", file=out)
+    print(f"  {out_glb}", file=out)
+    print(f"  {out_blend} (not versioned)", file=out)
+    print(f"  {data_dir / 'handmade.json'}", file=out)
+    return EXIT_OK
+
+
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -845,6 +887,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_schloss)
+
+    p = sub.add_parser("marktbrunnen", help="market fountain from the owner's model (W6)")
+    p.add_argument("site")
+    p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_marktbrunnen)
 
     p = sub.add_parser("assemble", help="terrain + buildings -> <site>.g7world with stable VobIds")
     p.add_argument("site")

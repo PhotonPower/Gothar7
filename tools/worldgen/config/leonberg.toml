@@ -18,7 +18,8 @@ half_extent_m = 350  # deckt die Altstadt (ca. E 500850–501300, N 5405200–54
 half_extent_m = 1000
 
 [game_scale]
-# Wird nach dem Klötzchen-Test (W3) festgelegt.
+# Festgelegt 2026-10-03 nach der Begehung (W3, docs/design/leonberg-begehung.md, Entscheidung E3 des
+# Projektinhabers über den Koordinator): Maßstab 1:1, keine Gassenverbreiterung.
 horizontal = 1.0
 vertical   = 1.0
 alley_widen_factor = 1.0

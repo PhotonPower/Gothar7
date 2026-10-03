@@ -618,6 +618,35 @@ eigenen Aufnahmen.
 - **Leonberg:** Hauptbau 76 × 14 m (Traufe 14,6 m, First 25,5 m über Grund), Verbindungsbau, Ostflügel 43 × 20 m mit
   sehr steilem Dach, Pomeranzengarten; 8212 Dreiecke, 4 Kollisionskörper.
 
+### W-E4 Marktbrunnen (`gothar-worldgen marktbrunnen <ort>`, W6)
+Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Das Modell, das der Projektinhaber selbst aus
+seinem Foto erstellt hat (mit Claude Design), wird übernommen und an Leonberg um 1700 angepasst.
+- **Quelle und Lizenz:** Die Quelle ist `tools/worldgen/data/<ort>/marktbrunnen/marktbrunnen_quelle.glb`. Sie ist
+  versioniert und bleibt unverändert.
+  - Maßstab und Ursprung passen: Boden-Mitte, y oben; der Ursprung ist der Welt-Ursprung, der Marktbrunnen.
+  - In `assets/LICENSES.md` steht sie als „eigene Arbeit des Projektinhabers“. Das Foto liegt nicht im Repo.
+- **Bearbeitung nur per Skript:** `tools/worldgen/blender/marktbrunnen/build_marktbrunnen.py` liest
+  `data/<ort>/marktbrunnen.json`.
+  1. Entfernen nach Knotennamen (`remove`): Koniferen, Büsche und die fein gebauten alten Röhren.
+  2. Reduzieren (`decimate`, Collapse): Ritterfigur, Säulenschaft und Voluten.
+  3. Materialien (`materials`): Granit und Sandstein werden zur Palette `stone`, Beckenwasser wird `water`. Grün,
+     Salbei, Gold und Eisen bleiben die Farben des Projektinhabers.
+  4. Alles wird zu einem Objekt zusammengefügt. Dazu kommen 4 einfache Brunnenröhren an der Säule mit Strahl ins
+     Becken (`spouts`, Materialien `bronze_pipe`/`water_jet`) und die `COL_HULL_`-Körper (`collision`).
+  - Röhren und Kollision berechnet `marktbrunnen_geometry.py` in reinem Python; es läuft in Blender und in den Tests.
+- **Ausgabe und Einbindung:**
+  - Ausgabe: `assets/source/worlds/<ort>/handmade/marktbrunnen/marktbrunnen.glb` (versioniert, nur bei echter Änderung
+    neu einchecken).
+  - Eintrag in `handmade.json`: am Ursprung, Höhe = tiefster Boden unter der unteren Stufe minus `sinkM`, Grundfläche
+    = untere Stufe.
+  - Der Assembler setzt `HANDMADE_MARKTBRUNNEN` (Kategorie `gameplay`, stabile VobId `handmade:marktbrunnen`).
+  - Ein LoD2-Gebäude gibt es dort nicht, und die OSM-Fläche „Marktbrunnen“ wird nicht verwendet.
+- **Budget:** etwa 8–10 Tsd. Dreiecke, keine LOD-Stufe (Mesh-LOD für Vobs frühestens M17, wie beim Schloss).
+  Kollision etwa 200 Dreiecke: 2 Stufen (je 0,18 m, begehbar), 8 Trogwände, Pflanzschale, Säule mit Figur.
+- **Leonberg:** 22 360 → 8636 Dreiecke, 12 Kollisionskörper (208 Dreiecke).
+  - Stufen r 3,56/3,06 m, Trogrand 1,28 m, Wasserspiegel 1,08 m, Figur bis 6,1 m.
+  - Der Platz fällt unter dem Brunnen um 0,26 m; talseitig stehen die Stufen frei.
+
 ### W-F Ausstattung & Vegetation
 Regelbasiertes Verteilen von Requisiten (Fässer, Karren, Zäune, Holzstapel, Misthaufen, Marktstände)
 und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im Editor (M16).

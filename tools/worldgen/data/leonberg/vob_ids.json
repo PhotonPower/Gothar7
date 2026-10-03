@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 1919,
+ "nextVobId": 1920,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -1920,6 +1920,7 @@
   "start:START_BG_WEG_DURCH_HAUS": 1915,
   "start:START_BG_TOR_OBEN": 1916,
   "start:START_BG_TUER_IM_BODEN": 1917,
-  "start:START_BG_SPALT": 1918
+  "start:START_BG_SPALT": 1918,
+  "handmade:marktbrunnen": 1919
  }
 }
