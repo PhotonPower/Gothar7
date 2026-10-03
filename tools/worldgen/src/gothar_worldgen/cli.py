@@ -672,7 +672,8 @@ def _cmd_schloss(args: argparse.Namespace, out: TextIO) -> int:
         # versioned beside the model: the spec with the ground measured from the DGM
         built = out_glb.with_name("schloss_built.json")
         built.parent.mkdir(parents=True, exist_ok=True)
-        built.write_text(json.dumps(spec, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        text = json.dumps(spec, ensure_ascii=False, indent=1) + "\n"
+        built.write_text(text, encoding="utf-8", newline="\n")
         line = build_schloss(Path(blender), built, data_dir.parent / "building_rules.json",
                              out_glb, out_blend)  # fmt: skip
         mesh = f"worlds/{site.name}/handmade/schloss/schloss.glb"
