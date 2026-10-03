@@ -94,6 +94,42 @@ Result<AnimGraph> AnimGraph::parse(std::string_view toml, std::string_view sourc
         return fail(source, "'rate_range' needs [min, max] with 0 < min <= max");
     }
     graph.rateRange = {static_cast<f32>(range[0]), static_cast<f32>(range[1])};
+
+    // [face] and [look_at]: optional, defaults from the structs.
+    const auto number = [&](const std::string& key, f32 fallback)
+    { return static_cast<f32>(c.get<f64>(key, static_cast<f64>(fallback))); };
+    FaceSettings& face = graph.face;
+    face.blinkMinSeconds = number("face.blink_min", face.blinkMinSeconds);
+    face.blinkMaxSeconds = number("face.blink_max", face.blinkMaxSeconds);
+    face.blinkSeconds = number("face.blink_seconds", face.blinkSeconds);
+    face.visemesPerSecond = number("face.visemes_per_second", face.visemesPerSecond);
+    face.talkWeight = number("face.talk_weight", face.talkWeight);
+    face.expressionSeconds = number("face.expression_seconds", face.expressionSeconds);
+    if (!(face.blinkMinSeconds > 0.0f) || face.blinkMaxSeconds < face.blinkMinSeconds ||
+        !(face.blinkSeconds > 0.0f) || !(face.visemesPerSecond > 0.0f))
+    {
+        return fail(
+            source,
+            "[face]: blink_min > 0, blink_max >= blink_min, blink_seconds and visemes_per_second > 0");
+    }
+    LookAtSettings& look = graph.lookAt;
+    if (const auto bones = c.find<std::vector<std::string>>("look_at.bones"))
+    {
+        const auto shares = c.get<std::vector<f64>>("look_at.shares", {});
+        if (bones->empty() || shares.size() != bones->size())
+        {
+            return fail(source, "[look_at]: 'bones' and 'shares' need the same, non-zero length");
+        }
+        look.bones.clear();
+        for (usize i = 0; i < bones->size(); ++i)
+        {
+            look.bones.emplace_back((*bones)[i], static_cast<f32>(shares[i]));
+        }
+    }
+    look.maxYawDegrees = number("look_at.max_yaw", look.maxYawDegrees);
+    look.maxPitchDegrees = number("look_at.max_pitch", look.maxPitchDegrees);
+    look.behindDegrees = number("look_at.behind", look.behindDegrees);
+    look.degreesPerSecond = number("look_at.degrees_per_second", look.degreesPerSecond);
     if (graph.sets.empty())
     {
         return fail(source, "needs 'sets' (animation set files)");

@@ -16,7 +16,23 @@ sets = [
 start = "move"
 # Abspielrate = Parameter / Eigengeschwindigkeit der Clips (`speed` in <set>.events.toml), damit die Füße nicht
 # gleiten; Zustände mit `rate = "<parameter>"`. Grenzen:
-rate_range = [0.6, 1.8]
+rate_range = [0.6, 2.0] # 2,0: Seitwärts (2 m/s, Clip 1 m/s) ohne Gleiten (Koordinator 2026-10-03)
+
+[face] # Gesicht (Morph-Targets characters-pipeline.md §6.1)
+blink_min = 2.0           # s zwischen zwei Lidschlägen, zufällig zwischen min und max
+blink_max = 6.0
+blink_seconds = 0.15      # Schließen und Öffnen zusammen
+visemes_per_second = 8.0  # Mundformen beim Sprechen (grob, bis Lippensynchronisation mit M13)
+talk_weight = 0.8
+expression_seconds = 0.3  # Ein- und Ausblenden von Ausdrücken
+
+[look_at] # Kopf zum Ziel (Gesprächspartner): Anteile der Drehung je Knochen, Grenzen in Grad
+bones = ["neck", "head"]
+shares = [0.4, 0.6]
+max_yaw = 70.0
+max_pitch = 35.0
+behind = 40.0             # Ziel weiter hinten als max_yaw + behind: Kopf zurück zur Mitte
+degrees_per_second = 240.0
 
 # --- Zustände ---
 [[state]] # Fortbewegung: rückwärts, Stand, gehen, rennen nach der Geschwindigkeit

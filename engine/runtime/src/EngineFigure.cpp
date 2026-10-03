@@ -4,6 +4,7 @@
 
 #include "PlayerFigure.hpp"
 
+#include <g7/asset/Procedural.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/runtime/AssetMounts.hpp>
 #include <g7/runtime/Engine.hpp>
@@ -84,6 +85,23 @@ Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, 
     figure->inverseBind = data.inverseBind;
     figure->modelSpace.resize(figure->skeleton.size());
     figure->bones.assign(figure->skeleton.size(), Mat4(1.0f));
+    figure->face =
+        animation::FaceAnimator(static_cast<u32>(std::hash<std::string_view>{}(path)), graph.value().face);
+    if (auto look = animation::LookAt::create(figure->skeleton, graph.value().lookAt))
+    {
+        figure->lookAt = std::move(look).value();
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "{}: {} - the head does not turn", path, look.error().message);
+    }
+    for (usize bone = 0; bone < figure->skeleton.size(); ++bone)
+    {
+        if (figure->skeleton.name(bone).starts_with("socket_"))
+        {
+            figure->sockets.push_back(figure->skeleton.name(bone));
+        }
+    }
 
     // Climb clips: how far their root moves, to scale it to the ledge found.
     for (usize ledge = 0; ledge < kClimbStates.size(); ++ledge)
@@ -208,11 +226,157 @@ void Engine::resetPlayerAnimation()
     m_figure->airSeconds = 0.0f;
     m_figure->jumped = false;
     m_figure->climbMoved = Vec3(0.0f);
-    m_figure->skeleton.modelSpace(m_figure->animator.pose(), m_figure->modelSpace);
-    for (usize i = 0; i < m_figure->bones.size(); ++i)
+    m_figure->poseNow = m_figure->posePrevious = m_figure->animator.pose();
+    m_figure->drawnFrame = ~u64(0);
+    preparePlayerPose(1.0f);
+}
+
+Mat4 Engine::playerFigureTransform() const
+{
+    // Feet interpolated between the last two fixed steps; models face +Z, yaw 0 looks along -Z: half a turn
+    // more.
+    const f32 alpha = static_cast<f32>(m_fixedStep.alpha());
+    const Vec3 feet = glm::mix(m_playerFeetBefore, m_playerFeet, alpha);
+    return glm::translate(Mat4(1.0f), feet) *
+           glm::rotate(Mat4(1.0f), m_movement.yaw() + glm::pi<f32>(), Vec3(0, 1, 0));
+}
+
+void Engine::preparePlayerPose(f32 alpha)
+{
+    // Once per frame (the shadow cascades and the main pass share it): the pose between the last two steps.
+    PlayerFigure& f = *m_figure;
+    if (f.drawnFrame == m_frameCount)
     {
-        m_figure->bones[i] = m_figure->modelSpace[i] * m_figure->inverseBind[i];
+        return;
     }
+    f.drawnFrame = m_frameCount;
+    f.poseDrawn = f.posePrevious;
+    animation::blendPose(f.poseDrawn, f.poseNow, std::clamp(alpha, 0.0f, 1.0f));
+    f.skeleton.modelSpace(f.poseDrawn, f.modelSpace);
+    for (usize i = 0; i < f.bones.size(); ++i)
+    {
+        f.bones[i] = f.modelSpace[i] * f.inverseBind[i];
+    }
+    if (f.uploaded)
+    {
+        f.mesh.setMorphWeights(f.face.weights()); // uploads only when a weight changed
+    }
+}
+
+Result<void> Engine::attachToPlayer(std::string_view socket, std::string_view modelPath)
+{
+    if (!m_figure)
+    {
+        return Error{"no animated player figure"};
+    }
+    if (auto loaded = loadModels({std::string(modelPath)}); !loaded)
+    {
+        return loaded;
+    }
+    return attachModel(socket, model(modelPath), nullptr);
+}
+
+Result<void> Engine::attachToPlayer(std::string_view socket, const asset::MeshData& mesh,
+                                    std::string_view name)
+{
+    if (!m_figure)
+    {
+        return Error{"no animated player figure"};
+    }
+    auto owned = std::make_unique<LoadedModel>();
+    owned->name = std::string(name);
+    owned->bounds = mesh.bounds;
+    if (m_device)
+    {
+        auto gpuMesh = render::Mesh::create(*m_device, *m_geometry, mesh);
+        auto materials = render::MaterialSet::create(*m_device, mesh, render::MaterialSet::ImageLookup{},
+                                                     m_meshRenderer.defaults());
+        if (!gpuMesh || !materials)
+        {
+            return Error{std::format("cannot upload {}", name)};
+        }
+        owned->mesh = std::move(gpuMesh).value();
+        owned->materials = std::move(materials).value();
+    }
+    const LoadedModel* model = owned.get();
+    return attachModel(socket, model, std::move(owned));
+}
+
+Result<void> Engine::attachModel(std::string_view socket, const LoadedModel* model,
+                                 std::unique_ptr<LoadedModel> owned)
+{
+    const i32 bone = m_figure->skeleton.find(socket);
+    if (bone < 0)
+    {
+        return Error{std::format("{} has no bone '{}'", m_figure->path, socket)};
+    }
+    detachFromPlayer(socket); // one model per socket
+    FigureAttachment attachment;
+    attachment.socket = std::string(socket);
+    attachment.bone = static_cast<usize>(bone);
+    attachment.model = model;
+    attachment.owned = std::move(owned);
+    m_figure->attachments.push_back(std::move(attachment));
+    G7_LOG_INFO("engine", "player: {} at {}", model->name, socket);
+    return {};
+}
+
+void Engine::detachFromPlayer(std::string_view socket)
+{
+    if (m_figure)
+    {
+        std::erase_if(m_figure->attachments, [&](const FigureAttachment& a) { return a.socket == socket; });
+    }
+}
+
+std::optional<Mat4> Engine::playerSocketTransform(std::string_view socket) const
+{
+    if (!m_figure || !m_player.valid())
+    {
+        return std::nullopt;
+    }
+    const i32 bone = m_figure->skeleton.find(socket);
+    if (bone < 0)
+    {
+        return std::nullopt;
+    }
+    // The pose of the last fixed step (no interpolation: the same in headless runs).
+    std::vector<Mat4> modelSpace(m_figure->skeleton.size());
+    m_figure->skeleton.modelSpace(m_figure->poseNow, modelSpace);
+    const Mat4 figure = glm::translate(Mat4(1.0f), m_playerFeet) *
+                        glm::rotate(Mat4(1.0f), m_movement.yaw() + glm::pi<f32>(), Vec3(0, 1, 0));
+    return figure * modelSpace[static_cast<usize>(bone)];
+}
+
+void Engine::setPlayerLookTarget(std::optional<Vec3> target)
+{
+    if (m_figure)
+    {
+        m_figure->lookTarget = target;
+    }
+}
+
+bool Engine::setPlayerExpression(std::string_view name, f32 weight)
+{
+    return m_figure && m_figure->face.setExpression(name, weight);
+}
+
+void Engine::setPlayerTalking(bool talking)
+{
+    if (m_figure)
+    {
+        m_figure->face.setTalking(talking);
+    }
+}
+
+std::span<const f32> Engine::playerFaceWeights() const noexcept
+{
+    return m_figure ? m_figure->face.weights() : std::span<const f32>();
+}
+
+f32 Engine::playerLookYawDegrees() const noexcept
+{
+    return m_figure ? m_figure->lookAt.yawDegrees() : 0.0f;
 }
 
 f32 Engine::climbDuration(gameplay::LedgeClass ledge) const
@@ -295,11 +459,27 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     {
         f.climbMoved += a.rootMotion();
     }
-    f.skeleton.modelSpace(a.pose(), f.modelSpace);
-    for (usize i = 0; i < f.bones.size(); ++i)
+
+    // Head towards the look target (world -> the figure's model space at this step), then the face.
+    f.posePrevious = std::move(f.poseNow);
+    f.poseNow = a.pose();
+    if (f.lookAt.valid())
     {
-        f.bones[i] = f.modelSpace[i] * f.inverseBind[i];
+        const std::optional<Vec3> world =
+            f.lookAtCamera ? std::optional<Vec3>(m_camera.transform.position) : f.lookTarget;
+        if (world)
+        {
+            const Mat4 figure = glm::translate(Mat4(1.0f), m_playerFeet) *
+                                glm::rotate(Mat4(1.0f), m_movement.yaw() + glm::pi<f32>(), Vec3(0, 1, 0));
+            f.lookAt.setTarget(Vec3(glm::inverse(figure) * Vec4(*world, 1.0f)));
+        }
+        else
+        {
+            f.lookAt.setTarget(std::nullopt);
+        }
+        f.lookAt.update(seconds, f.skeleton, f.poseNow);
     }
+    f.face.update(seconds);
 }
 
 bool Engine::drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade)
@@ -308,17 +488,50 @@ bool Engine::drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade)
     {
         return false;
     }
+    preparePlayerPose(static_cast<f32>(m_fixedStep.alpha()));
+    const PlayerFigure& f = *m_figure;
     if (shadow)
     {
-        m_meshRenderer.drawShadowSkinned(*m_device, m_figure->mesh, m_figure->materials, transform,
-                                         m_figure->bones, m_cascades[cascade]);
+        m_meshRenderer.drawShadowSkinned(*m_device, f.mesh, f.materials, transform, f.bones,
+                                         m_cascades[cascade]);
     }
     else
     {
-        m_meshRenderer.drawSkinned(*m_device, m_figure->mesh, m_figure->materials, transform, m_figure->bones,
-                                   m_camera);
+        m_meshRenderer.drawSkinned(*m_device, f.mesh, f.materials, transform, f.bones, m_camera);
+    }
+    for (const FigureAttachment& attachment : f.attachments)
+    {
+        const Mat4 at = transform * f.modelSpace[attachment.bone];
+        if (shadow)
+        {
+            m_meshRenderer.drawShadow(*m_device, attachment.model->mesh, attachment.model->materials, at,
+                                      m_cascades[cascade]);
+        }
+        else
+        {
+            m_meshRenderer.draw(*m_device, attachment.model->mesh, attachment.model->materials, at, m_camera);
+        }
     }
     return true;
+}
+
+void Engine::drawPlayerSockets()
+{
+    if (!m_figure || !m_figure->showSockets)
+    {
+        return;
+    }
+    // Axes of every socket: X red, Y (grip axis) green, Z blue, 10 cm.
+    preparePlayerPose(static_cast<f32>(m_fixedStep.alpha()));
+    const Mat4 figure = playerFigureTransform();
+    for (const std::string& socket : m_figure->sockets)
+    {
+        const Mat4 at = figure * m_figure->modelSpace[static_cast<usize>(m_figure->skeleton.find(socket))];
+        const Vec3 origin(at[3]);
+        m_debugDraw.line(origin, origin + glm::normalize(Vec3(at[0])) * 0.1f, {Vec4(1, 0.2f, 0.2f, 1)});
+        m_debugDraw.line(origin, origin + glm::normalize(Vec3(at[1])) * 0.1f, {Vec4(0.2f, 1, 0.2f, 1)});
+        m_debugDraw.line(origin, origin + glm::normalize(Vec3(at[2])) * 0.1f, {Vec4(0.3f, 0.5f, 1, 1)});
+    }
 }
 
 void Engine::playerAnimationUi()
@@ -346,6 +559,50 @@ void Engine::playerAnimationUi()
         panel.params.emplace_back(name, a.param(name));
     }
     panel.events.assign(m_figure->events.begin(), m_figure->events.end());
+    // Trying things out: sockets, a test stick, expressions, talking, look-at.
+    PlayerFigure& f = *m_figure;
+    panel.sockets = f.sockets;
+    panel.showSockets = f.showSockets;
+    panel.stickSocket = f.stickSocket;
+    panel.expression = std::string(f.face.expression());
+    panel.expressionWeight = f.face.expression().empty() ? 1.0f : m_figureExpressionWeight;
+    panel.talking = f.face.talking();
+    panel.lookAtCamera = f.lookAtCamera;
+    panel.lookYaw = f.lookAt.yawDegrees();
+    panel.lookPitch = f.lookAt.pitchDegrees();
     m_debugUi.animationPanel(panel);
+
+    f.showSockets = panel.showSockets;
+    f.lookAtCamera = panel.lookAtCamera;
+    f.face.setTalking(panel.talking);
+    if (panel.expression != f.face.expression() || panel.expressionWeight != m_figureExpressionWeight)
+    {
+        m_figureExpressionWeight = panel.expressionWeight;
+        f.face.setExpression(panel.expression, panel.expressionWeight);
+    }
+    if (panel.stickSocket != f.stickSocket)
+    {
+        if (!f.stickSocket.empty())
+        {
+            detachFromPlayer(f.stickSocket);
+        }
+        f.stickSocket = panel.stickSocket;
+        if (!f.stickSocket.empty())
+        {
+            // A 0.9 m stick along the socket's grip axis (+Y), held a quarter from its lower end.
+            asset::MeshData stick =
+                asset::makeBox(Vec3(0.015f, 0.45f, 0.015f), Vec4(0.45f, 0.3f, 0.15f, 1.0f));
+            for (asset::Vertex& v : stick.vertices)
+            {
+                v.position.y += 0.2f;
+            }
+            stick.bounds = AABB{stick.bounds.min + Vec3(0, 0.2f, 0), stick.bounds.max + Vec3(0, 0.2f, 0)};
+            if (auto attached = attachToPlayer(f.stickSocket, stick, "debug stick"); !attached)
+            {
+                G7_LOG_WARN("engine", "test stick: {}", attached.error().message);
+                f.stickSocket.clear();
+            }
+        }
+    }
 }
 } // namespace g7

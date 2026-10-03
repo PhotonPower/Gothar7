@@ -1202,6 +1202,13 @@ void Engine::performWorldChange()
 void Engine::releaseUnusedModels()
 {
     std::set<const LoadedModel*> used{m_playerModel}; // the player figure is drawn but no instance
+    if (m_figure)
+    {
+        for (const FigureAttachment& attachment : m_figure->attachments) // nor is what it holds
+        {
+            used.insert(attachment.model);
+        }
+    }
     for (const SceneInstance& instance : m_instances)
     {
         used.insert(instance.model);
@@ -1368,9 +1375,13 @@ void Engine::renderScene(u32 width, u32 height)
     m_post.apply(*m_device, m_sceneTarget, width, height, m_postSettings);
 
     // Debug drawing on top, depth-tested against the scene.
-    if (m_debugOverlay)
+    if (m_debugOverlay || (m_figure && m_figure->showSockets))
     {
-        addDebugOverlay(width, height);
+        if (m_debugOverlay)
+        {
+            addDebugOverlay(width, height);
+        }
+        drawPlayerSockets(); // also without the overlay (debug UI, "Animation")
         m_debugRenderer.render(*m_device, m_debugDraw, m_camera, &m_sceneTarget.depth(), width, height);
     }
     // ImGui last, on top of everything.

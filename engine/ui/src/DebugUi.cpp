@@ -508,7 +508,7 @@ void DebugUi::beginFrame(const platform::Input& input, Vec2 size, Vec2 pixels, f
     ImGui::NewFrame();
 }
 
-void DebugUi::animationPanel(const AnimationPanel& panel)
+void DebugUi::animationPanel(AnimationPanel& panel)
 {
     ImGui::SetCurrentContext(m_impl->context);
     const f32 scale = ImGui::GetStyle().FontScaleDpi;
@@ -551,6 +551,44 @@ void DebugUi::animationPanel(const AnimationPanel& panel)
         {
             ImGui::TextUnformatted(event.c_str());
         }
+    }
+    if (ImGui::CollapsingHeader("Try out"))
+    {
+        ImGui::Checkbox("show sockets", &panel.showSockets);
+        const char* stick = panel.stickSocket.empty() ? "(none)" : panel.stickSocket.c_str();
+        if (ImGui::BeginCombo("stick in", stick))
+        {
+            if (ImGui::Selectable("(none)", panel.stickSocket.empty()))
+            {
+                panel.stickSocket.clear();
+            }
+            for (const std::string& socket : panel.sockets)
+            {
+                if (ImGui::Selectable(socket.c_str(), socket == panel.stickSocket))
+                {
+                    panel.stickSocket = socket;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        static constexpr std::array<const char*, 6> kExpressions = {"",     "angry", "friendly",
+                                                                    "fear", "pain",  "sleep"};
+        const char* shown = panel.expression.empty() ? "(neutral)" : panel.expression.c_str();
+        if (ImGui::BeginCombo("expression", shown))
+        {
+            for (const char* e : kExpressions)
+            {
+                if (ImGui::Selectable(*e == '\0' ? "(neutral)" : e, panel.expression == e))
+                {
+                    panel.expression = e;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::SliderFloat("weight", &panel.expressionWeight, 0.0f, 1.0f, "%.2f");
+        ImGui::Checkbox("talking", &panel.talking);
+        ImGui::Checkbox("look at the camera", &panel.lookAtCamera);
+        ImGui::Text("head  yaw %.0f  pitch %.0f", panel.lookYaw, panel.lookPitch);
     }
     ImGui::End();
 }

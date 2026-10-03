@@ -390,12 +390,7 @@ void Engine::drawPlayer(bool shadow, u32 cascade)
     {
         return;
     }
-    const f32 alpha = static_cast<f32>(m_fixedStep.alpha());
-    const Vec3 feet = glm::mix(m_playerFeetBefore, m_playerFeet, alpha);
-    // Models face +Z, yaw 0 looks along -Z: half a turn more.
-    const f32 yaw = m_movement.yaw();
-    const Mat4 transform =
-        glm::translate(Mat4(1.0f), feet) * glm::rotate(Mat4(1.0f), yaw + glm::pi<f32>(), Vec3(0, 1, 0));
+    const Mat4 transform = playerFigureTransform();
     if (drawPlayerFigure(transform, shadow, cascade) || m_playerModel == nullptr)
     {
         return;
