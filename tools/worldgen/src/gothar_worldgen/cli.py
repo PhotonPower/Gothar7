@@ -11,6 +11,14 @@ from pathlib import Path
 from typing import TextIO
 
 from gothar_worldgen import __version__
+from gothar_worldgen.assemble.world import (
+    AssembleError,
+    VobIds,
+    assemble,
+    load_world,
+    write_world,
+)
+from gothar_worldgen.buildings.batch import generate, write_index
 from gothar_worldgen.config import (
     ConfigError,
     DataPaths,
@@ -21,6 +29,7 @@ from gothar_worldgen.config import (
 )
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.export.splat import SplatPaths, composite, coverage, layer_masks, write_splat
+from gothar_worldgen.export.starts import DEFAULT_STARTS
 from gothar_worldgen.export.terrain import ExportError, Grid, crop, export_terrain, load_grid
 from gothar_worldgen.facade.capture import (
     CaptureError,
@@ -30,6 +39,7 @@ from gothar_worldgen.facade.capture import (
 )
 from gothar_worldgen.facade.equirect import CameraPose
 from gothar_worldgen.facade.frames import ToolError, find_ffmpeg
+from gothar_worldgen.facade.overrides import OverrideError, load_all
 from gothar_worldgen.facade.poses import DEFAULT_CAMERA_HEIGHT_M, Track, TrackError, load_gpx
 from gothar_worldgen.facade.preview import load_buildings, load_equirect, preview_building
 from gothar_worldgen.facade.rectify import FacadeError
@@ -303,6 +313,94 @@ def _export_splat(
     return block
 
 
+def _site_dirs(args: argparse.Namespace, site_name: str) -> tuple[Path, Path]:
+    """(assets/source/worlds/<site>, tools/worldgen/data/<site>) for this checkout."""
+    config = args.config_dir or default_config_dir()
+    assets = getattr(args, "assets_dir", None) or config.parents[2] / "assets" / "source"
+    return assets / "worlds" / site_name, config.parent / "data" / site_name
+
+
+def _overrides(data_dir: Path) -> tuple[frozenset[str], frozenset[str]]:
+    """(locked ids, ids with keep = false) from the site's override files."""
+    all_ = load_all(data_dir / "buildings")
+    return (frozenset(i for i, o in all_.items() if o.locked),
+            frozenset(i for i, o in all_.items() if not o.keep))  # fmt: skip
+
+
+def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    try:
+        buildings = json.loads((paths.work / "buildings.json").read_text(encoding="utf-8"))
+        locked, dropped = _overrides(data_dir)
+    except (OSError, json.JSONDecodeError, OverrideError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    try:
+        grid = load_grid(paths.work)
+    except ExportError as e:
+        print(f"  warning: no heightmap ({e}); base heights from LoD2 only", file=out)
+        grid = None
+    entries = [b for b in buildings.get("buildings", []) if b.get("id") not in dropped]
+    res = generate(entries, grid, folder / "generated" / "buildings",
+                   f"worlds/{site.name}/generated/buildings", args.area, locked)  # fmt: skip
+    write_index(folder / "generated" / "buildings_index.json", res.index)
+    st = res.index["stats"]
+    print(f"  {st['buildings']} buildings, {st['cells']} cells, {st['triangles']} triangles; "
+          f"{res.written} files, {res.shared} shared, {res.kept_locked} locked kept, "
+          f"{len(dropped)} dropped (keep: false)", file=out)  # fmt: skip
+    if st["fallbacks"]:
+        print(
+            "  roof fallbacks: " + ", ".join(f"{k} {v}" for k, v in st["fallbacks"].items()),
+            file=out,
+        )
+    if res.steps:
+        worst = sorted(res.steps, key=lambda s: -s[1])[:5]
+        listed = ", ".join(f"{i} {d} m" for i, d in worst)
+        print(f"  {len(res.steps)} buildings > 0.5 m above the lowest DGM point (base lowered): "
+              f"{listed}", file=out)  # fmt: skip
+    return EXIT_OK
+
+
+def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    name = args.name or site.name
+    ids_path = data_dir / "vob_ids.json"
+    try:
+        terrain_world = load_world(folder / f"{site.name}_terrain.g7world")
+        if terrain_world is None:
+            raise AssembleError(f"{site.name}_terrain.g7world not found (run export-terrain)")
+        index_path = folder / "generated" / "buildings_index.json"
+        if not index_path.is_file():
+            raise AssembleError("buildings_index.json not found (run 'gothar-worldgen buildings')")
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        ids = VobIds.load(ids_path)
+        locked, _ = _overrides(data_dir)
+        try:
+            ground = load_grid(paths.work).height_at
+        except ExportError:
+            ground = None
+        res = assemble(terrain_world, index, load_world(folder / f"{name}.g7world"), ids, name,
+                       locked, ground)  # fmt: skip
+    except (AssembleError, OverrideError, OSError, json.JSONDecodeError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    write_world(folder / f"{name}.g7world", res.world)
+    ids.save(ids_path)
+    print(f"  {len(res.world['vobs'])} vobs: {res.added} added, {res.updated} updated, "
+          f"{res.removed} removed, {res.kept_locked} locked kept, "
+          f"{res.kept_editor} editor vobs kept; nextVobId {res.world['nextVobId']}",
+          file=out)  # fmt: skip
+    print(f"  {folder / f'{name}.g7world'}", file=out)
+    print(f"  {ids_path}", file=out)
+    return EXIT_OK
+
+
 def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -325,9 +423,9 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
         splat = None
         if not args.no_splat:
             splat = _export_splat(grid, paths.work, core, folder, site.name, name, out)
-        result = export_terrain(
-            grid, name, folder / f"{name}.g7world", folder / "generated" / f"{name}.r16", vfs, splat
-        )
+        starts = DEFAULT_STARTS if site.name == "leonberg" else ()
+        r16 = folder / "generated" / f"{name}.r16"
+        result = export_terrain(grid, name, folder / f"{name}.g7world", r16, vfs, splat, starts)
     except ExportError as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -401,6 +499,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.add_argument("--no-splat", action="store_true", help="heightmap only, no splat layers")
     p.set_defaults(func=_cmd_export_terrain)
+
+    p = sub.add_parser("buildings", help="grey building masses as .glb (W3) + index")
+    p.add_argument("site")
+    p.add_argument("--area", choices=("core", "all"), default="core",
+                   help="core: old town, a file per building; all: plus 64 m cells")  # fmt: skip
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_buildings)
+
+    p = sub.add_parser("assemble", help="terrain + buildings -> <site>.g7world with stable VobIds")
+    p.add_argument("site")
+    p.add_argument("--name", default=None, help="world name (default: <site>)")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_assemble)
 
     facade = sub.add_parser("facade", help="facade reference tool (W4)")
     fsub = facade.add_subparsers(dest="facade_command", required=True)

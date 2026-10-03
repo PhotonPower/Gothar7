@@ -26,8 +26,11 @@ tools/worldgen/
                               capture), facade preview/frames, Web-UI (webui/)  (W4)
     export/                   terrain: Heightmap → .g7world mit terrain-Block, splat: Splat-Schichten
                               + Platzhalter-Albedos (export-terrain)  (W2)
-    assemble/                 Zwischendaten + .glb → .g7world, Wegnetz-Vorschlag (geplant, W3, W6)
-  blender/gothar_buildings/   Blender-Add-on: Gebäude-Generator               (geplant, W3, W5)
+    buildings/                massing (Klötzchen: Wände + Dächer), gltf (.glb-Writer), batch
+                              (buildings: .glb je Gebäude/Zelle + Index)  (W3)
+    assemble/                 world: Terrain + Gebäude → <ort>.g7world, stabile VobIds (assemble)  (W3)
+  blender/gothar_buildings/   Blender-Add-on: erzeugte Gebäude importieren/zurückschreiben (locked)  (W3)
+  data/leonberg/vob_ids.json  stabile VobIds des Assemblers (versioniert, nie wiederverwenden)
   data/leonberg/buildings/    Annotationen/Overrides pro Gebäude (JSON, versioniert)
   tests/                      pytest; tests/data/ enthält kleine LGL-Ausschnitte (mit Quellenangabe)
 ```
@@ -55,7 +58,27 @@ gothar-worldgen export-terrain leonberg    REM assets/source/worlds/leonberg/leo
 gothar-worldgen facade preview leonberg <id> --image pano.jpg --pose x,z --heading 90   REM entzerrte Fassaden
 gothar-worldgen facade frames leonberg VID_0001.mp4 --gpx VID_0001.gpx   REM Einzelbilder + Posen (braucht ffmpeg)
 gothar-worldgen facade ui leonberg         REM Annotations-Oberfläche im Browser (http://127.0.0.1:8765/)
+gothar-worldgen buildings leonberg         REM Klötzchen-Gebäude als .glb (generated/buildings/), --area all
+gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
 ```
+Reihenfolge für die Welt: `import` → `export-terrain` → `buildings` → `assemble`; prüfen mit
+`build\release\game\gothar.exe --world=worlds/leonberg/leonberg.g7world --start=START_UEBERSICHT`.
+
+### Grenzen des glTF-Writers (`buildings/gltf.py`)
+- Pro Datei genau ein Mesh mit einem Dreiecks-Primitive, ein Knoten, ein untexturiertes PBR-Material.
+- Attribute: `POSITION`, `NORMAL`, `TEXCOORD_0` (float32, UV in Metern); Indizes als uint16, ab 65 536 Vertices
+  uint32.
+- Keine Texturen, Skins, Animationen, Morph-Targets oder Extensions; Positionen auf 0,1 mm gerundet.
+- Ausgabe byte-deterministisch. Die Dateien kocht `g7-cook` ohne Warnung (Test, wenn `g7-cook` gebaut ist
+  oder `G7_COOK` gesetzt ist).
+
+### Blender-Add-on
+In Blender 4.5: *Edit → Preferences → Add-ons → Install from Disk*, Ordner `blender/gothar_buildings` als ZIP
+(oder Symlink in den Add-on-Ordner). Danach im 3D-Viewport unter *Sidebar → Gothar*:
+- Index (`assets/source/worlds/leonberg/generated/buildings_index.json`) wählen.
+- IDs eintragen (oder leer lassen für den Umkreis des 3D-Cursors) → „Gebäude importieren“.
+- Bearbeiten → „Auswahl zurückschreiben“. Das setzt `locked: true` im Override, damit `buildings` und `assemble`
+  die Handarbeit behalten.
 `--config-dir` bzw. `GOTHAR_WORLDGEN_CONFIG` wählen einen anderen Konfigurationsordner;
 `GOTHAR_DATA_ROOT` überschreibt `data_root` aus `local.toml`.
 
