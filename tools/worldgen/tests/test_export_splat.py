@@ -155,3 +155,20 @@ def test_placeholder_albedos_are_small_and_tileable():
 def test_check_splat_block(splat, problem):
     block = {**terrain_block(GRID, "a.r16", -1.0, 1.0), "splat": splat}
     assert any(problem in p for p in check_terrain_block(block))
+
+
+def test_formal_garden_gravel_paths_lawn_beds_and_no_field():
+    garden = {"gravel": [[[0, -20], [40, -20], [40, 0], [0, 0]]],
+              "lawn": [[[4, -16], [18, -16], [18, -4], [4, -4]]]}  # fmt: skip
+    field = {
+        "kind": "garden",
+        "geometry": "polygon",
+        "polygon": [[-5, -25], [45, -25], [45, 5], [-5, 5]],
+    }
+    masks = layer_masks(GRID, [], [], [], [field], CORE, [garden])
+    w = composite(masks, (GRID.height, GRID.width))
+    path, bed = px(30, -10), px(11, -10)
+    assert w[KIES][path] > 0.9 and w[WIESE][bed] > 0.9
+    assert w[ACKER].max() < 1e-6  # the garden feature holding the parterre is lawn, not a field
+    plain = layer_masks(GRID, [], [], [], [field], CORE)
+    assert plain[ACKER][px(11, -10)] > 0.9  # without the parterre it stays a field

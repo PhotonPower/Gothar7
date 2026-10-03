@@ -32,6 +32,7 @@ tools/worldgen/
     walls/                    citywall: Stadtmauer mit Türmen, Toren, Pforten, Treppen (citywall)  (W6)
     assemble/                 world: Terrain + Gebäude + Mauer → <ort>.g7world, stabile VobIds (assemble)  (W3)
   blender/gothar_buildings/   Blender-Add-on: erzeugte Gebäude importieren/zurückschreiben (locked)  (W3)
+  blender/schloss/            Schloss-Modell: Geometrie (reines Python) + Blender-Skript, einzige Quelle  (W6)
   data/leonberg/vob_ids.json  stabile VobIds des Assemblers (versioniert, nie wiederverwenden)
   data/building_rules.json    Parameter des Fachwerk-Regelwerks (Entwurf, Festlegung durch den Projektinhaber)
   data/leonberg/buildings/    Annotationen/Overrides pro Gebäude (JSON, versioniert)
@@ -64,6 +65,7 @@ gothar-worldgen facade ui leonberg         REM Annotations-Oberfläche im Browse
 gothar-worldgen buildings leonberg         REM Fachwerk-Stil + Rückbau (Vorgabe medieval), generated/buildings/, --area all
 gothar-worldgen buildings leonberg --mode massing   REM echtes LoD2 als graue Klötzchen (Maßstabsreferenz)
 gothar-worldgen citywall leonberg          REM Stadtmauer (W6): generated/citywall/, Verlauf aus data/leonberg/city_wall.json
+gothar-worldgen schloss leonberg           REM Schloss (W6) aus blender/schloss/build_schloss.py (Blender nötig), handmade/schloss/
 gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
 ```
 Reihenfolge für die Welt: `import` → `export-terrain` → `buildings` → `assemble`; prüfen mit

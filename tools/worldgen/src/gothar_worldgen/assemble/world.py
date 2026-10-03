@@ -27,6 +27,7 @@ IDS_FORMAT = "gothar-vob-ids"
 IDS_VERSION = 1
 ROOT_NAME = "WORLDGEN_BUILDINGS"
 CITYWALL_NAME = "WORLDGEN_CITYWALL"
+HANDMADE_NAME = "WORLDGEN_HANDMADE"
 GROUP_CELL_M = 64.0
 IDENTITY = [0.0, 0.0, 0.0, 1.0]
 
@@ -114,6 +115,7 @@ def assemble(
     locked: frozenset[str] = frozenset(),
     ground: Any = None,  # noqa: ANN401  callable (x, z) -> y for start points
     citywall: dict[str, Any] | None = None,
+    handmade: dict[str, Any] | None = None,
 ) -> AssembleResult:
     if "terrain" not in terrain_world:
         raise AssembleError("the terrain world has no terrain block (run export-terrain)")
@@ -166,6 +168,16 @@ def assemble(
             vid = ids.get(f"citywall:{e['id']}", floor)
             fresh[vid] = _vob(vid, "mesh", f"CITYWALL_{e['id']}".upper(), e["pos"], group,
                               mesh=e["mesh"], category="gameplay")  # fmt: skip
+
+    if handmade and handmade.get("items"):
+        # Individually modelled objects (castle): landmarks, gameplay category.
+        group = ids.get("group:handmade", floor)
+        fresh[group] = _vob(group, "empty", HANDMADE_NAME, [0.0, 0.0, 0.0])
+        for item in handmade["items"]:
+            vid = ids.get(f"handmade:{item['key']}", floor)
+            name = f"HANDMADE_{item['key']}".upper()
+            fresh[vid] = _vob(vid, "mesh", name, item["pos"], group, rot=item.get("rot"),
+                              mesh=item["mesh"], category="gameplay")  # fmt: skip
 
     # Owned groups that editor vobs still hang on survive even if empty of buildings.
     editor = {i: v for i, v in old.items() if i not in owned}

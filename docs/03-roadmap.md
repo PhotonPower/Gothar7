@@ -345,7 +345,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 ## W6 – Straßen, Mauer, Ausstattung  (benötigt W5, M4-Editor)
 - [ ] Straßen/Plätze aus OSM → Splatmap, Rinnen, Stufen, Stützmauern
 - [ ] Stadtmauer mit Toren
-  - Stand: Ring mit Türmen, Tortürmen, Pforten, Treppen und Kollision umgesetzt (`gothar-worldgen citywall`, W-E2), Mauerhäuser auf der Linie (Außenseite als Mauer); folgt: Schloss-Modell
+  - Stand: Ring mit Türmen, Tortürmen, Pforten, Treppen und Kollision umgesetzt (`gothar-worldgen citywall`, W-E2), Mauerhäuser auf der Linie (Außenseite als Mauer), Schloss als eigenes Modell (Blender-Skript, W-E3)
 - [ ] Requisiten- und Vegetationsverteilung über Regeln/Masken
 - [ ] Wegnetz-Vorschlag aus Straßenachsen
 
