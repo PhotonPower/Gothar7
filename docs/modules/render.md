@@ -283,6 +283,21 @@ class DebugDrawRenderer { static Result<DebugDrawRenderer> create(Device&, Shade
 - **Hintergrund:** oberhalb des Horizonts Verlauf zur Zenitfarbe, unterhalb bleibt er in der Horizont- = Nebelfarbe
   (dort läge nur unendlich ferner, voll vernebelter Boden), so gibt es hinter dem Weltrand keine Kante.
 
+### Geometrie-Arena – `GeometryArena.hpp` (M4)
+```cpp
+class GeometryArena { Result<GeometrySlice> allocate(Device&, span<const asset::Vertex>, span<const u32>);
+                      void bind(Device&, u32 block) const; usize blockCount(), usedVertices(), usedIndices(); };
+static Result<Mesh> Mesh::create(Device&, GeometryArena&, const asset::MeshData&);   // Mesh in der Arena
+```
+- Statische Meshes der Engine liegen in gemeinsamen Blöcken (je 1 Mi Vertices / 4 Mi Indices, größere Meshes in
+  eigenem Block), First-Fit mit Freiliste; freigegebene Bereiche werden zusammengelegt und wiederverwendet (Hot-Reload).
+  `GeometrySlice` gibt seinen Bereich im Destruktor zurück; die Arena muss alle Meshes überleben.
+- Gezeichnet wird mit `firstIndex`/`baseVertex`; das Device merkt sich je Vertex-Array (uid) die angehängten Puffer
+  und hängt gleiche nicht erneut an (`FrameStats::bufferBinds`). Grundlage für Instancing (Teil B).
+- Messung (RTX 3080, 5400 Modelle mit je eigener `.glb`): Die frühere Überlinearität lag **nicht** an den Puffern
+  (Hypothese widerlegt: mit Arena 0 Bindungen, Zeit unverändert), sondern an `AssetManager::pruneCache` (O(n²) je
+  Frame); behoben, 83 → ~10 ms.
+
 ### Gelände – `Terrain.hpp`, `terrain.vert/.frag` (M4)
 ```cpp
 struct HeightfieldDesc { u32 width, height; f32 cellSize; Vec2 firstSample; f32 minY, maxY; std::span<const u16> samples; };

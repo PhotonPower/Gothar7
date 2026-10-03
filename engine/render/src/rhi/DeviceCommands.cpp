@@ -161,6 +161,14 @@ void Device::bindPipeline(const Pipeline& pipeline)
 void Device::bindVertexBuffer(const Buffer& buffer, usize offset)
 {
     G7_ASSERT(m_cache.valid && m_cache.vertexArray != 0, "bindVertexBuffer needs a bound pipeline");
+    BoundBuffers& bound = m_vertexArrayBuffers[m_cache.pipeline]; // by VAO uid: GL names are reused
+    if (bound.vertices == buffer.m_handle.uid() && bound.vertexOffset == offset)
+    {
+        return;
+    }
+    bound.vertices = buffer.m_handle.uid();
+    bound.vertexOffset = offset;
+    ++m_stats.bufferBinds;
     glVertexArrayVertexBuffer(m_cache.vertexArray, 0, buffer.m_handle.id(), static_cast<GLintptr>(offset),
                               static_cast<GLsizei>(m_cache.vertexStride));
 }
@@ -168,8 +176,15 @@ void Device::bindVertexBuffer(const Buffer& buffer, usize offset)
 void Device::bindIndexBuffer(const Buffer& buffer, IndexType type)
 {
     G7_ASSERT(m_cache.valid && m_cache.vertexArray != 0, "bindIndexBuffer needs a bound pipeline");
-    glVertexArrayElementBuffer(m_cache.vertexArray, buffer.m_handle.id());
     m_cache.indexType = type;
+    BoundBuffers& bound = m_vertexArrayBuffers[m_cache.pipeline]; // by VAO uid: GL names are reused
+    if (bound.indices == buffer.m_handle.uid())
+    {
+        return;
+    }
+    bound.indices = buffer.m_handle.uid();
+    ++m_stats.bufferBinds;
+    glVertexArrayElementBuffer(m_cache.vertexArray, buffer.m_handle.id());
 }
 
 void Device::bindTexture(u32 unit, const Texture& texture, const Sampler& sampler)

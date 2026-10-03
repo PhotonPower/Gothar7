@@ -177,6 +177,9 @@ public:
   sich also nie mitten in einem Frame oder Simulationsschritt, sondern erscheint frühestens im nächsten Frame.
   `waitAll()` wartet auf alle offenen Ladevorgänge und veröffentlicht sie (Ladebildschirm, Tests).
   Mit `workerThreads = 0` laufen die Lader synchron in `update()` (Werkzeuge, deterministische Tests).
+  `update()` läuft jeden Frame und muss deshalb linear bleiben: Freigegebene Assets werden dort aus dem Cache
+  entfernt, ihre Beobachtung (Hot-Reload) nur dann neu abgeglichen, wenn etwas freigegeben wurde (über eine
+  Pfadmenge; der frühere Vergleich jeder Beobachtung mit jedem Cache-Eintrag kostete bei 5400 Modellen 80 ms je Frame).
 - **Cache und Referenzzählung:** Der Schlüssel ist Typ plus normalisierter Pfad, ohne Rücksicht auf
   Groß-/Kleinschreibung. Solange ein Handle (oder ein laufender Ladevorgang) lebt, liefert `load` denselben Slot
   ohne neues Laden. Nach dem letzten Handle wird das Asset freigegeben, ein späteres `load` lädt neu.

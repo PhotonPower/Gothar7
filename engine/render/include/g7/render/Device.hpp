@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace g7::render
@@ -45,6 +46,7 @@ struct FrameStats
     u32 triangles = 0;
     u32 pipelineChanges = 0;
     u32 textureBinds = 0;
+    u32 bufferBinds = 0; ///< vertex or index buffer actually re-attached to a vertex array
 };
 
 /// Root of the RHI (ADR 0003) and, for now, its immediate context: creates resources and
@@ -146,6 +148,14 @@ private:
         bool scissor = false;
         std::array<BoundTexture, kMaxTextureUnits> textures{};
     };
+    /// Buffers attached to each vertex array (a VAO keeps them across pipeline switches).
+    struct BoundBuffers
+    {
+        u64 vertices = 0;
+        usize vertexOffset = 0;
+        u64 indices = 0;
+    };
+    std::unordered_map<u64, BoundBuffers> m_vertexArrayBuffers; // key: uid of the pipeline's vertex array
 
     DeviceInfo m_info;
     DebugMessageFilter m_filter;

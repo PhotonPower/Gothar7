@@ -13,6 +13,7 @@
 #include <mutex>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace g7::asset
 {
@@ -234,14 +235,21 @@ struct AssetManager::Impl
 
     void pruneCache()
     {
-        std::erase_if(cache, [](const auto& entry) { return entry.second.expired(); });
+        // Runs every frame: linear, and the watches are only revisited when something was released
+        // (comparing every watch with every cache entry made frame time grow with the square of the
+        // asset count - 80 ms per frame for 5400 models).
+        if (std::erase_if(cache, [](const auto& entry) { return entry.second.expired(); }) == 0)
+        {
+            return;
+        }
+        std::unordered_set<std::string_view> live;
+        live.reserve(cache.size());
+        for (const auto& [key, slot] : cache)
+        {
+            live.insert(key.path);
+        }
         // Released assets are no longer watched.
-        std::erase_if(watches,
-                      [this](const auto& watch)
-                      {
-                          return std::none_of(cache.begin(), cache.end(), [&](const auto& entry)
-                                              { return entry.first.path == watch.first; });
-                      });
+        std::erase_if(watches, [&](const auto& watch) { return !live.contains(watch.first); });
     }
 };
 
