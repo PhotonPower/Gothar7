@@ -353,8 +353,9 @@ Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source
 **Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört). F2 abgeschlossen: `build-set`,
 `report`, Pose-Marker-Events; 36/36 Prio-A-Clips (18 Quaternius CC0, 18 Keyframe-Platzhalter) und 48 Clips Fortbewegung je Waffenmodus
 (9 Sets). Kein Mixamo (öffentliches Repo). F3 läuft: Baukasten-Werkzeuge stehen, Stil A (realistisch, Texturen) entschieden,
-Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag mit engine, erste Figur `farmer`; als Nächstes weitere Körper/Köpfe
-(Morph-Targets) und F5-Monster-Platzhalter.
+Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag mit engine, erste Figur `farmer`; offen: weitere Körper/Köpfe
+(Morph-Targets). F5 läuft: Monster-Vertrag mit engine, Validator-Regeln und Werkzeuge stehen, erste Art `wolf` mit vollständigem
+Mindest-Set (Platzhalter); als Nächstes `keiler` und `laufvogel`.
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
@@ -397,7 +398,8 @@ Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag mit engine,
 
 ## F5 – Monster  (benötigt F1; für M9/M11)
 - [ ] CC0-Platzhalter für 3 Arten (Rudeltier, Keiler, Laufvogel)
+  - Stand: Monster-Vertrag mit engine (characters-pipeline.md §7.1); `wolf` fertig (Rig 22 Knochen, 0,85 m, 12/12 Clips des Mindest-Sets, Quaternius CC0 + Keyframe-Platzhalter); offen: `keiler`, `laufvogel` (je ein PR)
 - [ ] Eigene Rigs + Mindest-Sets je Art, Design-Doku der Arten
-- [ ] Validator-Regeln für Monster-Rigs
+- [x] Validator-Regeln für Monster-Rigs – Rig je Art nach Pfad, Pflichtknochen, Ausrichtungs-Hinweise, Größe relativ zur Art, Clip-Modus = Art, `anim.root_motion` (s_walk/s_run vorwärts, t_turn_l/r drehen root); Werkzeuge `gothar-chargen monster`, Rezepte `advance`/`keyposes`
 
 **DoD:** Drei Monsterarten mit vollständigem Mindest-Set in der Engine.

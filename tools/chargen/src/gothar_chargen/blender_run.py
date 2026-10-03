@@ -130,6 +130,26 @@ def finish_textures(glb: Path, textures_root: Path) -> list[Path]:
     return written
 
 
+def prepare_monster(
+    blender: Path, source: Path, config: Path, characters: Path, clips_out: Path, rig_out: Path
+) -> str:
+    return run_script(
+        blender,
+        "prepare_monster.py",
+        [
+            "--config",
+            str(config),
+            "--characters",
+            str(characters),
+            "--clips-out",
+            str(clips_out),
+            "--rig-out",
+            str(rig_out),
+        ],
+        blend_file=source,
+    )
+
+
 def build_set(blender: Path, set_name: str, sources: Path, out_dir: Path) -> str:
     return run_script(
         blender,

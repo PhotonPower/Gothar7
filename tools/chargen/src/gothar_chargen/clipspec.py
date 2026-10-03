@@ -43,6 +43,15 @@ Format::
     from_bone = ["clavicle_l", "clavicle_r", "neck"]  # optional: bone(s) whose subtrees come
                                                       # from the second clip (default spine_02)
 
+    [[clip]]
+    name = "1h/t_attack_l"
+    ...
+    markers = { hit_start = 8, hit_end = 14 }     # fixed events (frame numbers)
+
+Monster sets (§7) name their rig: ``rig = "wolf"`` -> data/monsters/wolf.toml, clips
+``wolf/<type>_<action>``, output monsters/wolf/anims/<set>.blend. Their clip sources are .blend
+files written by ``gothar-chargen monster`` (bones already renamed: mapping "identity").
+
 Pure Python: parsed and checked here, executed by blender/build_set.py.
 """
 
@@ -54,7 +63,8 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
-from gothar_chargen.naming import is_clip_name
+from gothar_chargen.naming import clip_mode, is_clip_name, is_event_name, is_monster_clip
+from gothar_chargen.skeleton import SkeletonError, monster_rig_text
 
 EVENT_KINDS = ("footsteps", "land")
 
@@ -71,7 +81,11 @@ RECIPES: dict[str, tuple[str, ...]] = {
     "pitch": ("base",),
     "slide": (),
     "pose": (),
+    "keyposes": (),
+    "advance": ("base",),
 }
+# optional parameters naming earlier clips
+RECIPE_OPTIONAL: dict[str, tuple[str, ...]] = {"keyposes": ("base",)}
 DEFAULT_LAYER_BONE = "spine_02"
 _SOURCE_REF = re.compile(
     r"^(?P<lib>[a-z0-9_]+):(?P<action>[^\[\]]+)(?:\[(?P<a>\d+):(?P<b>\d+)\])?$"
@@ -108,6 +122,7 @@ class ClipSpec:
     recipe: str = ""  # for "keyframe"
     params: tuple[tuple[str, object], ...] = ()  # for "keyframe" (sorted key/value pairs)
     helper: bool = False  # built for other clips only, not exported
+    markers: tuple[tuple[str, int], ...] = ()  # fixed events (name, frame)
 
     @property
     def param(self) -> dict[str, object]:
@@ -120,11 +135,18 @@ class SetSpec:
     sources: dict[str, Source]
     clips: tuple[ClipSpec, ...]
     depends: tuple[str, ...] = ()
+    rig: str = ""  # monster species; "" = human reference rig
 
     @property
     def names(self) -> list[str]:
         """Exported clips (without helpers)."""
         return [c.name for c in self.clips if not c.helper]
+
+    def blend_path(self, characters: Path) -> Path:
+        """Where the set's .blend (and the exported .glb) lives below assets/source/characters."""
+        if self.rig:
+            return characters / "monsters" / self.rig / "anims" / f"{self.set}.blend"
+        return characters / "anims" / "human" / f"{self.set}.blend"
 
 
 def parse_source_ref(text: str, libraries: dict[str, Source]) -> SourceRef:
@@ -154,6 +176,12 @@ def parse_set_spec(data: dict, external: frozenset[str] = frozenset()) -> SetSpe
     depends = data.get("depends", [])
     if not isinstance(depends, list) or not all(isinstance(d, str) for d in depends):
         raise ClipSpecError("depends must be a list of set names")
+    rig = data.get("rig", "")
+    if rig:
+        try:
+            monster_rig_text(str(rig))
+        except SkeletonError as e:
+            raise ClipSpecError(f"rig: {e}") from e
     clips: list[ClipSpec] = []
     seen: set[str] = set()
     for i, raw in enumerate(data.get("clip", [])):
@@ -161,6 +189,10 @@ def parse_set_spec(data: dict, external: frozenset[str] = frozenset()) -> SetSpe
         where = f"clip '{name}'" if name else f"clip #{i}"
         if not isinstance(name, str) or not is_clip_name(name):
             raise ClipSpecError(f"{where}: invalid clip name")
+        if rig and clip_mode(name) != rig:
+            raise ClipSpecError(f"{where}: clips of rig '{rig}' must be named '{rig}/...'")
+        if not rig and is_monster_clip(name):
+            raise ClipSpecError(f"{where}: monster clip in a set without 'rig'")
         if name in seen:
             raise ClipSpecError(f"{where}: duplicate")
         ops = [k for k in ("from", "reverse", "blend", "concat", "keyframe", "layer") if k in raw]
@@ -212,6 +244,9 @@ def parse_set_spec(data: dict, external: frozenset[str] = frozenset()) -> SetSpe
             if not isinstance(params, dict):
                 raise ClipSpecError(f"{where}: params must be a table")
             refs = tuple(earlier(params.get(k)) for k in RECIPES[recipe])
+            refs += tuple(
+                earlier(params[k]) for k in RECIPE_OPTIONAL.get(recipe, ()) if k in params
+            )
             spec = ClipSpec(
                 name, op, clips=refs, recipe=recipe, params=tuple(sorted(params.items()))
             )
@@ -226,11 +261,21 @@ def parse_set_spec(data: dict, external: frozenset[str] = frozenset()) -> SetSpe
         helper = raw.get("helper", False)
         if not isinstance(helper, bool):
             raise ClipSpecError(f"{where}: helper must be true or false")
-        clips.append(ClipSpec(**{**spec.__dict__, "events": events, "helper": helper}))
+        markers = raw.get("markers", {})
+        if not isinstance(markers, dict) or not all(
+            is_event_name(k) and isinstance(v, int) and v >= 0 for k, v in markers.items()
+        ):
+            raise ClipSpecError(f"{where}: markers must map event names to frames >= 0")
+        marker_list = tuple(sorted(markers.items(), key=lambda m: (m[1], m[0])))
+        clips.append(
+            ClipSpec(
+                **{**spec.__dict__, "events": events, "helper": helper, "markers": marker_list}
+            )
+        )
         seen.add(name)
     if not clips:
         raise ClipSpecError("no clips")
-    return SetSpec(set_name, sources, tuple(clips), tuple(depends))
+    return SetSpec(set_name, sources, tuple(clips), tuple(depends), str(rig))
 
 
 def _read_spec_data(name_or_path: str | Path) -> dict:
@@ -272,6 +317,10 @@ def dependency_names(spec: SetSpec) -> set[str]:
     return names
 
 
-def packaged_sets() -> list[str]:
+def packaged_sets(monsters: bool | None = None) -> list[str]:
+    """Packaged clip lists; ``monsters`` = True/False filters monster/human sets."""
     folder = resources.files("gothar_chargen.data.clips")
-    return sorted(p.name[:-5] for p in folder.iterdir() if p.name.endswith(".toml"))
+    names = sorted(p.name[:-5] for p in folder.iterdir() if p.name.endswith(".toml"))
+    if monsters is None:
+        return names
+    return [n for n in names if bool(_read_spec_data(n).get("rig")) == monsters]

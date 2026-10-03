@@ -38,6 +38,7 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 | Morph-Target-Namen | figuren | engine (M6, M10 Lippensync) | `characters-pipeline.md` §6 |
 | LOD-Stufen in Figuren-`.glb` (`_lod0`–`_lod2`), Dreiecks-Budget | figuren | engine (M6, Cooker) | `characters-pipeline.md` §2.2 |
 | Figuren-Texturen (extern unter `characters/textures/`, Größen je Rolle, Formate, alphaMode MASK, VRAM-Budget) | figuren | engine (M6, Cooker) | `characters-pipeline.md` §2.3 |
+| Monster-Rigs (Rig je Art: TOML + Referenz-`.glb`, Pflichtknochen, Clips `<art>/…`, Root Motion `s_walk`/`s_run`/`t_turn_l/r`, Events) | figuren | engine (M6, M9 Monster-KI) | `characters-pipeline.md` §7.1 |
 | `.g7mesh`/`.g7pak`/Cooker-Optionen | engine | welt, figuren | `docs/06-asset-pipeline.md`, ADR 0016 |
 
 ## Kommunikation
