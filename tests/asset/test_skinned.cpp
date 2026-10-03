@@ -9,6 +9,7 @@
 #include <doctest/doctest.h>
 
 #include <cmath>
+#include <filesystem>
 #include <ostream> // doctest needs it to print std::string operands
 #include <string>
 #include <tuple>
@@ -269,4 +270,63 @@ TEST_CASE("AssetManager: figures and animation sets load, the set with its event
     REQUIRE(walk != nullptr);
     CHECK_FALSE(walk->events.empty()); // from none.events.toml
     CHECK(swim.get()->find("swim/s_forward") != nullptr);
+}
+
+// Adapted from the check by figuren (M6 A review): every human clip set and every assembled figure shares the
+// reference skeleton - same bones, same order, joints within 1 mm - and figures bind consistently. Figures
+// exist only after `g7_figures` (not versioned); without them only the sets are checked.
+TEST_CASE("Skeletons of the human clip sets and figures equal the reference rig")
+{
+    const std::vector<u8> rigBytes = sourceFile("characters/rig/human_reference.glb");
+    auto rigLoaded = loadSkinnedGltf(rigBytes, {}, "rig");
+    REQUIRE(rigLoaded.ok());
+    const SkeletonData& rig = rigLoaded.value().skeleton;
+    const std::vector<Mat4> rigGlobal = restGlobals(rig);
+    const auto compare = [&](const SkeletonData& s, const std::string& what)
+    {
+        CAPTURE(what);
+        REQUIRE(s.size() == rig.size());
+        const std::vector<Mat4> g = restGlobals(s);
+        for (usize i = 0; i < s.size(); ++i)
+        {
+            CHECK(s.names[i] == rig.names[i]);
+            CHECK(glm::length(Vec3(g[i][3]) - Vec3(rigGlobal[i][3])) < 0.001f);
+        }
+    };
+    const std::filesystem::path root = std::filesystem::path(G7_ASSET_SOURCE_DIR) / "characters";
+    usize sets = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(root / "anims" / "human"))
+    {
+        if (entry.path().extension() == ".glb")
+        {
+            const std::string name = entry.path().filename().generic_string();
+            auto set = loadAnimationGltf(fs::readFile(entry.path()).value(), {}, name);
+            REQUIRE_MESSAGE(set.ok(), name);
+            compare(set.value().skeleton, name);
+            ++sets;
+        }
+    }
+    CHECK(sets >= 9);
+    usize figures = 0;
+    for (const auto& entry : std::filesystem::directory_iterator(root / "figures"))
+    {
+        const std::string name = entry.path().filename().generic_string();
+        if (entry.path().extension() != ".glb" || name == "placeholder_mannequin.glb")
+        {
+            continue;
+        }
+        auto figure = loadSkinnedGltf(fs::readFile(entry.path()).value(), {}, name);
+        REQUIRE_MESSAGE(figure.ok(), name);
+        compare(figure.value().skeleton, name);
+        const std::vector<Mat4> g = restGlobals(figure.value().skeleton);
+        for (usize i = 0; i < g.size(); ++i)
+        {
+            CHECK(nearIdentity(g[i] * figure.value().inverseBind[i], 1e-3f));
+        }
+        ++figures;
+    }
+    if (figures == 0)
+    {
+        MESSAGE("no assembled figures (build g7_figures): only the clip sets were checked");
+    }
 }
