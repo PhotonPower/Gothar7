@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import webbrowser
 from collections.abc import Sequence
@@ -58,8 +59,10 @@ from gothar_worldgen.geo.lod2 import Lod2Error
 from gothar_worldgen.geo.osm import OsmError
 from gothar_worldgen.handmade import (
     HandmadeError,
+    build_marktbrunnen,
     build_schloss,
     find_blender,
+    marktbrunnen_item,
     put_item,
     schloss_item,
     splat_areas,
@@ -322,8 +325,11 @@ def _export_splat(
     gardens: Sequence[dict] = (),
 ) -> dict:
     docs = {}
-    for file, key in (("buildings.json", "buildings"), ("streets.json", "streets"),
-                      ("features.json", "features")):  # fmt: skip
+    for file, key in (
+        ("buildings.json", "buildings"),
+        ("streets.json", "streets"),
+        ("features.json", "features"),
+    ):
         try:
             docs[key] = json.loads((work / file).read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as e:
@@ -340,9 +346,14 @@ def _export_splat(
     weights = composite(masks, (grid.height, grid.width))
     block = write_splat(
         weights,
-        SplatPaths(folder / "generated", f"worlds/{site}/generated", folder / "layers",
-                   f"worlds/{site}/layers", name),
-    )  # fmt: skip
+        SplatPaths(
+            folder / "generated",
+            f"worlds/{site}/generated",
+            folder / "layers",
+            f"worlds/{site}/layers",
+            name,
+        ),
+    )
     shares = ", ".join(f"{k} {v:.0%}" for k, v in coverage(weights).items())
     print(f"  splat: {len(block['maps'])} maps, {len(block['layers'])} layers ({shares})", file=out)
     return block
@@ -358,8 +369,10 @@ def _site_dirs(args: argparse.Namespace, site_name: str) -> tuple[Path, Path]:
 def _overrides(data_dir: Path) -> tuple[frozenset[str], frozenset[str]]:
     """(locked ids, ids with keep = false) from the site's override files."""
     all_ = load_all(data_dir / "buildings")
-    return (frozenset(i for i, o in all_.items() if o.locked),
-            frozenset(i for i, o in all_.items() if not o.keep))  # fmt: skip
+    return (
+        frozenset(i for i, o in all_.items() if o.locked),
+        frozenset(i for i, o in all_.items() if not o.keep),
+    )
 
 
 def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
@@ -376,10 +389,12 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
             street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
             feature_doc = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
             streets = StreetIndex(
-                street_doc.get("streets", []), street_doc.get("squares", []),
-                feature_doc.get("features", []), rules.get("assignment", "mainStreetHighways"),
+                street_doc.get("streets", []),
+                street_doc.get("squares", []),
+                feature_doc.get("features", []),
+                rules.get("assignment", "mainStreetHighways"),
                 rules.get("assignment", "representativeSquares"),
-            )  # fmt: skip
+            )
     except (OSError, json.JSONDecodeError, OverrideError, ValueError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -408,15 +423,26 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     if args.mode == "medieval" and rules is not None and grid is not None and course_path.is_file():
         try:  # wall houses (W6): the same detection as `citywall`, on the houses after rueckbau
             features = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
-            course = load_course(json.loads(course_path.read_text(encoding="utf-8")),
-                                 features.get("features", []))  # fmt: skip
+            course = load_course(
+                json.loads(course_path.read_text(encoding="utf-8")), features.get("features", [])
+            )
             wall = wall_context(course, entries, grid.height_at, rules)
         except (OSError, json.JSONDecodeError, CourseError) as e:
             print(f"  warning: no wall houses ({e})", file=out)
-    res = generate(entries, grid, folder / "generated" / "buildings",
-                   f"worlds/{site.name}/generated/buildings", args.area, locked,
-                   args.mode, rules, streets, overrides, replace if rb else None,
-                   wall)  # fmt: skip
+    res = generate(
+        entries,
+        grid,
+        folder / "generated" / "buildings",
+        f"worlds/{site.name}/generated/buildings",
+        args.area,
+        locked,
+        args.mode,
+        rules,
+        streets,
+        overrides,
+        replace if rb else None,
+        wall,
+    )
     if report is not None:
         report["overBudget"] = [{"id": i, "newHouses": n} for i, n in res.replaced]
         report["stats"]["replaced"] += len(res.replaced)
@@ -426,43 +452,70 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     write_index(folder / "generated" / "buildings_index.json", res.index)
     st = res.index["stats"]
     per = st["trianglesPerBuilding"]
-    print(f"  {args.mode}: {st['buildings']} buildings, {st['cells']} cells; {res.written} files, "
-          f"{res.shared} shared, {res.kept_locked} locked kept, "
-          f"{len(dropped)} dropped (keep: false)", file=out)  # fmt: skip
-    print(f"  triangles: {st['triangles']} total; per building median {per['median']}, "
-          f"p90 {per['p90']}, max {per['max']}", file=out)  # fmt: skip
+    print(
+        f"  {args.mode}: {st['buildings']} buildings, {st['cells']} cells; {res.written} files, "
+        f"{res.shared} shared, {res.kept_locked} locked kept, "
+        f"{len(dropped)} dropped (keep: false)",
+        file=out,
+    )
+    print(
+        f"  triangles: {st['triangles']} total; per building median {per['median']}, "
+        f"p90 {per['p90']}, max {per['max']}",
+        file=out,
+    )
     col = st["collision"]
-    print(f"  collision: {col['hulls']} COL_HULL_ bodies, {col['decomposed']} footprints cut, "
-          f"{col['fallbacks']} triangle-mesh fallbacks; per building median {col['median']}, "
-          f"max {col['max']}, {col['over']} over {col['budget']}", file=out)  # fmt: skip
+    print(
+        f"  collision: {col['hulls']} COL_HULL_ bodies, {col['decomposed']} footprints cut, "
+        f"{col['fallbacks']} triangle-mesh fallbacks; per building median {col['median']}, "
+        f"max {col['max']}, {col['over']} over {col['budget']}",
+        file=out,
+    )
     if "budget" in st:
         b = st["budget"]
-        print(f"  budget {b['trianglesPerBuilding']}/building: {b['over']} over; timber levels "
-              f"(0 full .. 3 none, 4 also no dormers): {b['timberLevels']}", file=out)  # fmt: skip
+        print(
+            f"  budget {b['trianglesPerBuilding']}/building: {b['over']} over; timber levels "
+            f"(0 full .. 3 none, 4 also no dormers): {b['timberLevels']}",
+            file=out,
+        )
     if "style" in st:
         sty = st["style"]
         print("  styles: " + ", ".join(f"{k} {v}" for k, v in sty["style"].items()), file=out)
-        print("  patterns: " + ", ".join(f"{k} {v}" for k, v in sty["pattern"].items())
-              + "; roofs: " + ", ".join(f"{k} {v}" for k, v in sty["roof"].items())
-              + f"; steepened roofs {sty['roofSteepened'].get('masses', 0)}", file=out)  # fmt: skip
+        print(
+            "  patterns: "
+            + ", ".join(f"{k} {v}" for k, v in sty["pattern"].items())
+            + "; roofs: "
+            + ", ".join(f"{k} {v}" for k, v in sty["roof"].items())
+            + f"; steepened roofs {sty['roofSteepened'].get('masses', 0)}",
+            file=out,
+        )
         if "wallHouse" in sty:
             print(f"  wall houses: {sty['wallHouse'].get('True', 0)}", file=out)
         if "chimneys" in sty:
-            print("  chimneys: " + ", ".join(f"{k} {v}" for k, v in sty["chimneys"].items())
-                  + "; dormers: " + ", ".join(f"{k} {v}" for k, v in sty["dormers"].items()),
-                  file=out)  # fmt: skip
+            print(
+                "  chimneys: "
+                + ", ".join(f"{k} {v}" for k, v in sty["chimneys"].items())
+                + "; dormers: "
+                + ", ".join(f"{k} {v}" for k, v in sty["dormers"].items()),
+                file=out,
+            )
     if report is not None:
         r = report["stats"]
-        print(f"  rueckbau: {r['replaced']} buildings replaced by {r['newHouses']} houses "
-              f"({len(res.replaced)} of them over budget), {r['protected']} protected, "
-              f"yards {r['yardM2']:.0f} m2 (rueckbau_report.json)", file=out)  # fmt: skip
+        print(
+            f"  rueckbau: {r['replaced']} buildings replaced by {r['newHouses']} houses "
+            f"({len(res.replaced)} of them over budget), {r['protected']} protected, "
+            f"yards {r['yardM2']:.0f} m2 (rueckbau_report.json)",
+            file=out,
+        )
     if st["fallbacks"]:
         print("  notes: " + ", ".join(f"{k} {v}" for k, v in st["fallbacks"].items()), file=out)
     if res.steps:
         worst = sorted(res.steps, key=lambda s: -s[1])[:5]
         listed = ", ".join(f"{i} {d} m" for i, d in worst)
-        print(f"  {len(res.steps)} buildings > 0.5 m above the lowest DGM point (base lowered): "
-              f"{listed}", file=out)  # fmt: skip
+        print(
+            f"  {len(res.steps)} buildings > 0.5 m above the lowest DGM point (base lowered): "
+            f"{listed}",
+            file=out,
+        )
     return EXIT_OK
 
 
@@ -486,17 +539,27 @@ def _cmd_begehung(args: argparse.Namespace, out: TextIO) -> int:
     target.write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     lanes, slopes, doors = report["lanes"], report["slopes"], report["doors"]
     print(f"  {report['bodies']} collision bodies, {lanes['samples']} way samples", file=out)
-    print(f"  lanes: {lanes['runs']['blocked']} blocked (< {LIMITS['laneBlockedM']} m), "
-          f"{lanes['runs']['tight']} tight (< {LIMITS['laneTightM']} m), "
-          f"{lanes['runs']['throughBody']} ways through bodies {lanes['throughByOwner']}",
-          file=out)  # fmt: skip
-    print(f"  slots narrower than the character: {report['slots']['count']} "
-          f"({report['slots']['areaM2']} m²)", file=out)  # fmt: skip
-    print(f"  slopes: {slopes['runs']['tooSteep']} too steep, {slopes['runs']['steep']} steep; "
-          f"steps ways {slopes['steps']['count']} ({slopes['steps']['tooSteep']} too steep)",
-          file=out)  # fmt: skip
-    print(f"  doors: {doors['checked']} checked, {doors['high']} high, {doors['buried']} buried "
-          f"({doors['fixableByOtherEdge']} fixable by another edge)", file=out)  # fmt: skip
+    print(
+        f"  lanes: {lanes['runs']['blocked']} blocked (< {LIMITS['laneBlockedM']} m), "
+        f"{lanes['runs']['tight']} tight (< {LIMITS['laneTightM']} m), "
+        f"{lanes['runs']['throughBody']} ways through bodies {lanes['throughByOwner']}",
+        file=out,
+    )
+    print(
+        f"  slots narrower than the character: {report['slots']['count']} "
+        f"({report['slots']['areaM2']} m²)",
+        file=out,
+    )
+    print(
+        f"  slopes: {slopes['runs']['tooSteep']} too steep, {slopes['runs']['steep']} steep; "
+        f"steps ways {slopes['steps']['count']} ({slopes['steps']['tooSteep']} too steep)",
+        file=out,
+    )
+    print(
+        f"  doors: {doors['checked']} checked, {doors['high']} high, {doors['buried']} buried "
+        f"({doors['fixableByOtherEdge']} fixable by another edge)",
+        file=out,
+    )
     bad = [c["name"] for c in report["citywall"] if not c["ok"]]
     print(f"  city wall: {'all measures fit' if not bad else ', '.join(bad)}", file=out)
     print(f"  {target}", file=out)
@@ -542,16 +605,18 @@ def _cmd_walk_report(args: argparse.Namespace, out: TextIO) -> int:
         route = json.loads(args.route.read_text(encoding="utf-8"))
         events, summary = read_log(args.run)
         static_path = folder / "generated" / "begehung.json"
-        static = (json.loads(static_path.read_text(encoding="utf-8"))
-                  if static_path.is_file() else None)  # fmt: skip
+        static = (
+            json.loads(static_path.read_text(encoding="utf-8")) if static_path.is_file() else None
+        )
     except (OSError, json.JSONDecodeError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
     report = evaluate(route, events, summary, static)
     target = args.run / "walk_report.json"
     target.write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(f"  {report['points']} points, summary: {json.dumps(summary, ensure_ascii=False)}",
-          file=out)  # fmt: skip
+    print(
+        f"  {report['points']} points, summary: {json.dumps(summary, ensure_ascii=False)}", file=out
+    )
     print(
         f"  problems {report['count']}, stuck by {report['stuckBy']}; "
         f"{report['confirmed']} confirm the static walkthrough, {report['new']} new",
@@ -575,20 +640,32 @@ def _cmd_citywall(args: argparse.Namespace, out: TextIO) -> int:
         overrides = load_all(data_dir / "buildings")
         course = load_course(course_doc, features.get("features", []))
         grid = load_grid(paths.work)
-    except (OSError, json.JSONDecodeError, OverrideError, ValueError, KeyError, CourseError,
-            ExportError) as e:  # fmt: skip
+    except (
+        OSError,
+        json.JSONDecodeError,
+        OverrideError,
+        ValueError,
+        KeyError,
+        CourseError,
+        ExportError,
+    ) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
     # The houses as generated (after the rueckbau): the wall is left out where they stand.
-    entries = [b for b in buildings.get("buildings", [])
-               if b.get("id") not in {i for i, o in overrides.items() if not o.keep}]  # fmt: skip
+    entries = [
+        b
+        for b in buildings.get("buildings", [])
+        if b.get("id") not in {i for i, o in overrides.items() if not o.keep}
+    ]
     rb = rules.data.get("rueckbau")
     if rb and rb.get("enabled"):
         streets = StreetIndex(
-            street_doc.get("streets", []), street_doc.get("squares", []),
-            features.get("features", []), rules.get("assignment", "mainStreetHighways"),
+            street_doc.get("streets", []),
+            street_doc.get("squares", []),
+            features.get("features", []),
+            rules.get("assignment", "mainStreetHighways"),
             rules.get("assignment", "representativeSquares"),
-        )  # fmt: skip
+        )
         selection = select_rueckbau(
             entries, rb, overrides, Protection(features.get("features", []))
         )
@@ -601,23 +678,39 @@ def _cmd_citywall(args: argparse.Namespace, out: TextIO) -> int:
         footprints += [Polygon(fp) for fp in handmade_footprints(hm)]
     except (OSError, json.JSONDecodeError, HandmadeError) as e:
         print(f"  warning: handmade.json ignored ({e})", file=out)
-    index = generate_citywall(course, footprints, grid.height_at, rules,
-                              folder / "generated" / "citywall",
-                              f"worlds/{site.name}/generated/citywall")  # fmt: skip
+    index = generate_citywall(
+        course,
+        footprints,
+        grid.height_at,
+        rules,
+        folder / "generated" / "citywall",
+        f"worlds/{site.name}/generated/citywall",
+    )
     write_citywall_index(folder / "generated" / "citywall_index.json", index)
     st = index["stats"]
-    print(f"  ring {st['ringM']} m: wall {st['wallM']} m, {st['onHousesM']} m on houses; "
-          f"Zwinger {st['zwingerM']} m", file=out)  # fmt: skip
-    print(f"  {st['towers']} towers, {st['gateTowers']} gate towers, {st['pfortes']} posterns, "
-          f"{st['stairs']} stairs, {st['merlons']} merlons; {st['files']} files",
-          file=out)  # fmt: skip
-    print(f"  triangles {st['triangles']} (budget {st['budgetTriangles']}); collision max "
-          f"{st['collisionMax']} per file, {st['collisionOver']} over", file=out)  # fmt: skip
+    print(
+        f"  ring {st['ringM']} m: wall {st['wallM']} m, {st['onHousesM']} m on houses; "
+        f"Zwinger {st['zwingerM']} m",
+        file=out,
+    )
+    print(
+        f"  {st['towers']} towers, {st['gateTowers']} gate towers, {st['pfortes']} posterns, "
+        f"{st['stairs']} stairs, {st['merlons']} merlons; {st['files']} files",
+        file=out,
+    )
+    print(
+        f"  triangles {st['triangles']} (budget {st['budgetTriangles']}); collision max "
+        f"{st['collisionMax']} per file, {st['collisionOver']} over",
+        file=out,
+    )
     for note in st["notes"]:
         print(f"  note: {note}", file=out)
     if st["openEnds"]:
-        print(f"  warning: {len(st['openEnds'])} wall ends in the open: "
-              + ", ".join(st["openEnds"][:5]), file=out)  # fmt: skip
+        print(
+            f"  warning: {len(st['openEnds'])} wall ends in the open: "
+            + ", ".join(st["openEnds"][:5]),
+            file=out,
+        )
     return EXIT_OK
 
 
@@ -633,12 +726,52 @@ def _cmd_schloss(args: argparse.Namespace, out: TextIO) -> int:
     out_blend = folder / "generated" / "schloss" / "schloss.blend"
     try:
         spec = json.loads(spec_path.read_text(encoding="utf-8"))
-        line = build_schloss(Path(blender), spec_path, data_dir.parent / "building_rules.json",
-                             out_glb, out_blend)  # fmt: skip
+        line = build_schloss(
+            Path(blender), spec_path, data_dir.parent / "building_rules.json", out_glb, out_blend
+        )
         mesh = f"worlds/{site.name}/handmade/schloss/schloss.glb"
         doc = put_item(load_handmade(data_dir / "handmade.json"), schloss_item(spec, mesh))
         save_handmade(data_dir / "handmade.json", doc)
     except (OSError, json.JSONDecodeError, HandmadeError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"  {line}", file=out)
+    print(f"  {out_glb}", file=out)
+    print(f"  {out_blend} (not versioned)", file=out)
+    print(f"  {data_dir / 'handmade.json'}", file=out)
+    return EXIT_OK
+
+
+def _cmd_marktbrunnen(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    blender = args.blender or find_blender()
+    if blender is None:
+        print("error: Blender not found (set G7_BLENDER or --blender)", file=sys.stderr)
+        return EXIT_ERROR
+    spec_path = data_dir / "marktbrunnen.json"
+    out_glb = folder / "handmade" / "marktbrunnen" / "marktbrunnen.glb"
+    out_blend = folder / "generated" / "marktbrunnen" / "marktbrunnen.blend"
+    try:
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        grid = load_grid(paths.work)
+        r = max(float(st["radius"]) for st in spec["collision"]["steps"])
+        ground = min(
+            grid.height_at(r * f * math.cos(k * math.pi / 8), r * f * math.sin(k * math.pi / 8))
+            for f in (0.0, 0.5, 1.0)
+            for k in range(16)
+        )
+        line = build_marktbrunnen(
+            Path(blender), spec_path, data_dir.parent / "building_rules.json", out_glb, out_blend
+        )
+        mesh = f"worlds/{site.name}/handmade/marktbrunnen/marktbrunnen.glb"
+        doc = put_item(
+            load_handmade(data_dir / "handmade.json"), marktbrunnen_item(spec, mesh, ground)
+        )
+        save_handmade(data_dir / "handmade.json", doc)
+    except (OSError, json.JSONDecodeError, HandmadeError, ExportError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
     print(f"  {line}", file=out)
@@ -676,18 +809,30 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
         citywall = (
             json.loads(wall_path.read_text(encoding="utf-8")) if wall_path.is_file() else None
         )
-        res = assemble(terrain_world, index, load_world(folder / f"{name}.g7world"), ids, name,
-                       locked, ground, citywall, handmade, water,
-                       DEFAULT_STARTS + load_starts(data_dir / "starts.json"))  # fmt: skip
+        res = assemble(
+            terrain_world,
+            index,
+            load_world(folder / f"{name}.g7world"),
+            ids,
+            name,
+            locked,
+            ground,
+            citywall,
+            handmade,
+            water,
+            DEFAULT_STARTS + load_starts(data_dir / "starts.json"),
+        )
     except (AssembleError, OverrideError, OSError, json.JSONDecodeError, HandmadeError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
     write_world(folder / f"{name}.g7world", res.world)
     ids.save(ids_path)
-    print(f"  {len(res.world['vobs'])} vobs: {res.added} added, {res.updated} updated, "
-          f"{res.removed} removed, {res.kept_locked} locked kept, "
-          f"{res.kept_editor} editor vobs kept; nextVobId {res.world['nextVobId']}",
-          file=out)  # fmt: skip
+    print(
+        f"  {len(res.world['vobs'])} vobs: {res.added} added, {res.updated} updated, "
+        f"{res.removed} removed, {res.kept_locked} locked kept, "
+        f"{res.kept_editor} editor vobs kept; nextVobId {res.world['nextVobId']}",
+        file=out,
+    )
     print(f"  {folder / f'{name}.g7world'}", file=out)
     print(f"  {ids_path}", file=out)
     return EXIT_OK
@@ -722,8 +867,11 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             write_index(folder / "generated" / "water_index.json", water)
             for kind in ("rivers", "lakes"):
                 for wname, st in water["stats"][kind].items():
-                    print(f"  water: {wname}: {st['boxes']} boxes, "
-                          f"{st['cellsLowered']} cells lowered", file=out)  # fmt: skip
+                    print(
+                        f"  water: {wname}: {st['boxes']} boxes, "
+                        f"{st['cellsLowered']} cells lowered",
+                        file=out,
+                    )
         splat = None
         if not args.no_splat:
             gardens = splat_areas(load_handmade(data_dir / "handmade.json"))
@@ -737,9 +885,12 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
     g = result.grid
-    print(f"  {g.width} x {g.height} samples, {g.cell:g} m, x {g.first_x:g} .. "
-          f"{g.first_x + (g.width - 1) * g.cell:g}, z {g.first_z:g} .. "
-          f"{g.first_z + (g.height - 1) * g.cell:g}", file=out)  # fmt: skip
+    print(
+        f"  {g.width} x {g.height} samples, {g.cell:g} m, x {g.first_x:g} .. "
+        f"{g.first_x + (g.width - 1) * g.cell:g}, z {g.first_z:g} .. "
+        f"{g.first_z + (g.height - 1) * g.cell:g}",
+        file=out,
+    )
     print(
         f"  heights {result.min_y:g} .. {result.max_y:g} m, step {result.step_mm:.2f} mm", file=out
     )
@@ -809,12 +960,23 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("buildings", help="grey building masses as .glb (W3) + index")
     p.add_argument("site")
-    p.add_argument("--area", choices=("core", "all"), default="core",
-                   help="core: old town, a file per building; all: plus 64 m cells")  # fmt: skip
-    p.add_argument("--rueckbau", action="store_true",
-                   help="replace large buildings also in massing mode (preview)")  # fmt: skip
-    p.add_argument("--mode", choices=("massing", "medieval"), default="medieval",
-                   help="massing: grey blocks; medieval: half-timbering (W5 draft)")  # fmt: skip
+    p.add_argument(
+        "--area",
+        choices=("core", "all"),
+        default="core",
+        help="core: old town, a file per building; all: plus 64 m cells",
+    )
+    p.add_argument(
+        "--rueckbau",
+        action="store_true",
+        help="replace large buildings also in massing mode (preview)",
+    )
+    p.add_argument(
+        "--mode",
+        choices=("massing", "medieval"),
+        default="medieval",
+        help="massing: grey blocks; medieval: half-timbering (W5 draft)",
+    )
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_buildings)
 
@@ -846,6 +1008,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_schloss)
 
+    p = sub.add_parser("marktbrunnen", help="market fountain from the owner's model (W6)")
+    p.add_argument("site")
+    p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_marktbrunnen)
+
     p = sub.add_parser("assemble", help="terrain + buildings -> <site>.g7world with stable VobIds")
     p.add_argument("site")
     p.add_argument("--name", default=None, help="world name (default: <site>)")
@@ -873,8 +1041,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--gpx", type=Path, required=True, help="GPS track of the recording")
     p.add_argument("--every", type=float, default=2.0, help="seconds between frames (default 2)")
     p.add_argument("--start", default=None, help="UTC time of video second 0 (skips auto sync)")
-    p.add_argument("--heading-offset", type=float, default=0.0,
-                   help="image centre vs. walking direction, degrees clockwise")  # fmt: skip
+    p.add_argument(
+        "--heading-offset",
+        type=float,
+        default=0.0,
+        help="image centre vs. walking direction, degrees clockwise",
+    )
     p.add_argument("--camera-height", type=float, default=DEFAULT_CAMERA_HEIGHT_M)
     p.add_argument("--name", default=None, help="capture name (default: video file name)")
     p.add_argument("--ffmpeg", type=Path, default=None, help="path to ffmpeg")
@@ -884,8 +1056,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("site")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-browser", action="store_true", help="do not open a browser")
-    p.add_argument("--overrides-dir", type=Path, default=None,
-                   help="default: tools/worldgen/data/<site>/buildings")  # fmt: skip
+    p.add_argument(
+        "--overrides-dir",
+        type=Path,
+        default=None,
+        help="default: tools/worldgen/data/<site>/buildings",
+    )
     p.add_argument("--verbose", action="store_true", help="log every request")
     p.set_defaults(func=_cmd_facade_ui)
 

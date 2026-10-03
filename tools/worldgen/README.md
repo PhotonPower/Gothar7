@@ -66,6 +66,7 @@ gothar-worldgen buildings leonberg         REM Fachwerk-Stil + Rückbau (Vorgabe
 gothar-worldgen buildings leonberg --mode massing   REM echtes LoD2 als graue Klötzchen (Maßstabsreferenz)
 gothar-worldgen citywall leonberg          REM Stadtmauer (W6): generated/citywall/, Verlauf aus data/leonberg/city_wall.json
 gothar-worldgen schloss leonberg           REM Schloss (W6) aus blender/schloss/build_schloss.py (Blender nötig), handmade/schloss/
+gothar-worldgen marktbrunnen leonberg      REM Marktbrunnen (W6) aus dem Modell des Projektinhabers per blender/marktbrunnen/build_marktbrunnen.py (Blender nötig)
 gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
 gothar-worldgen begehung leonberg          REM statische Begehung → generated/begehung.json (docs/design/leonberg-begehung.md)
 gothar-worldgen walk-routes leonberg       REM Routen für gothar --walk → generated/walk/{stations,ways,gates}.json

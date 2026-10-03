@@ -361,6 +361,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [ ] Stadtmauer mit Toren
   - Stand: Ring mit Türmen, Tortürmen, Pforten, Treppen und Kollision umgesetzt (`gothar-worldgen citywall`, W-E2), Mauerhäuser auf der Linie (Außenseite als Mauer), Schloss als eigenes Modell (Blender-Skript, W-E3)
 - [ ] Requisiten- und Vegetationsverteilung über Regeln/Masken
+  - Stand: Marktbrunnen als Handmodell (Modell des Projektinhabers, per Skript an 1700 angepasst, W-E4)
 - [ ] Wegnetz-Vorschlag aus Straßenachsen
 
 **DoD:** Die komplette Altstadt ist ausgestattet und hat ein vorläufiges Wegnetz.
