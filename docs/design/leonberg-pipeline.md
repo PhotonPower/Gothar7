@@ -302,6 +302,11 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     - „Auswahl zurückschreiben“ exportiert an denselben Pfad (Ursprung und Achsen wie erzeugt) und setzt
       **`locked: true`** im Override.
     - Ein Headless-Rundlauf mit Blender 4.5 ist getestet, wo Blender installiert ist.
+- **Vorgabe `--mode medieval`** (seit W5, Entscheidung 2026-10-03): `buildings` erzeugt standardmäßig die Fachwerkhäuser
+  mit Rückbau; `--mode massing` liefert weiterhin echtes LoD2 als graue Klötzchen.
+  - Die versionierte `assets/source/worlds/leonberg/leonberg.g7world` ist der medieval-Stand: 1538 Vobs, darunter
+    1405 Häuser.
+  - Die Ersatzhäuser haben neue VobIds; die IDs der 132 ersetzten Originale bleiben in `vob_ids.json` reserviert.
 - **W5-Stil (Schritt 2, festgelegt 2026-10-03)**, Stil-Referenzblatt `docs/design/leonberg-stil.md`:
   - **Stilzuweisung** je Haus (Override, Marktplatz, Rückbau, ALKIS, OSM, Lage). Danach eine gewichtete, deterministische
     Wahl von Muster, Ausfachung, Dachdeckung und Balkenfarbe aus `hash(id, seed)`.
