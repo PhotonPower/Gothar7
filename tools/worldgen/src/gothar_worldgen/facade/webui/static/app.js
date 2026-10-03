@@ -275,6 +275,7 @@ function openEditor(edge, cand) {
   form.keep.checked = ed.base.keep !== false;
   form.locked.checked = !!ed.base.locked;
   form.rueckbau.value = ed.base.rueckbau === "auto" ? "" : (ed.base.rueckbau || "");
+  form.age.value = ed.base.age ?? "";
   $("#vocab-status").textContent = state.vocab.status ? `Auswahllisten: ${state.vocab.status}` : "";
   $("#e-title").textContent = `${d.id} · Kante ${edge.edge} (${ed.W.toFixed(1)} × ${ed.H.toFixed(1)} m)`;
   if (!(f && f.edge !== edge.edge)) msg("", "");
@@ -469,6 +470,7 @@ function buildOverride() {
   set("notes", form.notes.value.trim());
   set("locked", form.locked.checked ? true : undefined);
   set("rueckbau", form.rueckbau.value);
+  set("age", form.age.value === "" ? undefined : Number(form.age.value));
   const fl = floors();
   const openings = ed.openings
     .map((op) => {

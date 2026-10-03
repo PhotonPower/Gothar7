@@ -311,6 +311,20 @@
       }
     }
   },
+  "aging": {
+    "status": "festgelegt – Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03); Startwerte",
+    "ageByStyle": {"scheune": [0.5, 1.0], "ackerbuergerhaus": [0.4, 1.0], "handwerkerhaus": [0.3, 0.95],
+                   "buergerhaus": [0.2, 0.8], "amtshaus": [0.1, 0.6], "steinhaus": [0.0, 0.4],
+                   "kirche": [0.0, 0.4], "mauer": [0.0, 0.4]},
+    "derivedAge": [0.1, 0.6],
+    "ridgeSagMaxRatio": 0.015,
+    "stoneSagFactor": 0.1,
+    "stoneStyles": ["steinhaus", "kirche", "mauer"],
+    "roofBands": 4,
+    "postLeanMaxDeg": 1.2,
+    "windowSillJitterM": 0.05,
+    "windowWidthJitter": 0.05
+  },
   "assignment": {
     "note": "Reihenfolge: Override style, OSM (Kirche, Schloss), ALKIS-Funktion, Lage; dann gewichtete Wahl je Haus aus hash(id, seed); Override timber/infill/roofCover hat Vorrang",
     "wallFunctions": ["51007"],

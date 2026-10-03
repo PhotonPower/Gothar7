@@ -52,6 +52,7 @@ class BuildingOverride:
     seed: int | None = None
     locked: bool = False  # generator must not overwrite hand-made work
     rueckbau: str | None = None  # auto (default) | none (never replace) | split (always)
+    age: float | None = None  # 0 (new) .. 1 (old): hand correction of the generated age
     extra: dict[str, Any] = field(default_factory=dict)  # unknown keys, written back unchanged
 
 
@@ -89,6 +90,7 @@ _KNOWN = {
     "seed",
     "locked",
     "rueckbau",
+    "age",
 }
 
 
@@ -112,6 +114,9 @@ def from_json(data: Any) -> BuildingOverride:  # noqa: ANN401
     rueckbau = data.get("rueckbau")
     if rueckbau is not None and rueckbau not in RUECKBAU_MODES:
         raise OverrideError(f"{where}: 'rueckbau' must be one of {', '.join(RUECKBAU_MODES)}")
+    age = _number(data, "age", where, optional=True)
+    if age is not None and not 0.0 <= age <= 1.0:
+        raise OverrideError(f"{where}: 'age' must be between 0 and 1")
     seed = data.get("seed")
     if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
         raise OverrideError(f"{where}: 'seed' must be an integer")
@@ -159,6 +164,7 @@ def from_json(data: Any) -> BuildingOverride:  # noqa: ANN401
         seed=seed,
         locked=data.get("locked", False),
         rueckbau=rueckbau,
+        age=age,
         extra={k: v for k, v in data.items() if k not in _KNOWN},
     )
 
@@ -201,6 +207,8 @@ def to_json(o: BuildingOverride) -> dict[str, Any]:
         out["locked"] = True
     if o.rueckbau is not None:
         out["rueckbau"] = o.rueckbau
+    if o.age is not None:
+        out["age"] = o.age
     out.update(o.extra)
     return out
 

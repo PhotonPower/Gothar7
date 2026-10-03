@@ -556,6 +556,7 @@ class HouseStyle:
     wall: str  # wall material of massive storeys
     openings: bool
     gate: bool
+    age: float = 0.0  # 0 new .. 1 old (aging: ridge sag, leaning posts, irregular windows)
 
 
 def assign_style(building: dict[str, Any], override: Any, site: StreetIndex | None,  # noqa: ANN401
@@ -633,13 +634,21 @@ def assign_style(building: dict[str, Any], override: Any, site: StreetIndex | No
     if roof == "roof_thatch" and a.get("noThatchInCore") and building.get("inCore"):
         roof = "roof_old"  # fire protection: no thatch inside the wall
     color = _weighted(_rng(bid, seed, ":color"), prof.get("timberColor", {"timber_dark": 1.0}))
+    aging = rules.data.get("aging", {})
+    lo, hi = aging.get("derivedAge" if building.get("derivedFrom") else "", None) or aging.get(
+        "ageByStyle", {}
+    ).get(style, [0.0, 0.0])
+    age = getattr(override, "age", None)
+    if age is None:
+        age = round(_rng(bid, seed, ":age").uniform(float(lo), float(hi)), 3)
     massive = representative or _rng(bid, seed, ":ground").random() < float(
         prof.get("groundMassive", 0.0)
     )
     jetty = representative or _rng(bid, seed, ":jetty").random() < float(prof.get("jetty", 0.0))
     return HouseStyle(style, massive, bool(prof.get("timber")) and pattern is not None, jetty,
                       pattern, brustung, infill, roof, color, prof.get("wall", "stone"),
-                      bool(prof.get("openings", True)), bool(prof.get("gate", False)))  # fmt: skip
+                      bool(prof.get("openings", True)), bool(prof.get("gate", False)),
+                      float(age))  # fmt: skip
 
 
 # --- house -----------------------------------------------------------------------------------
@@ -653,6 +662,48 @@ class HouseResult:
     timber_level: int = 0  # 0 full, 1 no pattern, 2 no bay posts, 3 no timber (budget)
     style: HouseStyle | None = None
     steepened: int = 0  # roofs made steep (flat or below the minimum pitch)
+    sag_m: float = 0.0  # largest ridge sag of the house (aging)
+
+
+class _SagRoof(_Roof):
+    """Saddle roof whose ridge sags in the middle (aging); eaves and gable ends stay put."""
+
+    def __init__(self, mass: Mass, poly: Polygon, sag: float) -> None:
+        super().__init__(mass, poly)
+        us = np.asarray(mass.footprint) @ np.asarray(self.u)
+        self.umin, self.umax = float(us.min()), float(us.max())
+        self.sag = sag if mass.roof == "saddle" and self.half > 1e-6 else 0.0
+
+    @property
+    def length(self) -> float:
+        return self.umax - self.umin
+
+    def sag_at(self, x: float, z: float) -> float:
+        if self.sag <= 0 or self.length < 1e-6:
+            return 0.0
+        t = min(1.0, max(0.0, (x * self.u[0] + z * self.u[1] - self.umin) / self.length))
+        v = x * self.v[0] + z * self.v[1]
+        across = max(0.0, 1.0 - abs(v - self.mid) / self.half)  # 1 at the ridge, 0 at the eaves
+        return self.sag * 4.0 * t * (1.0 - t) * across
+
+    def height(self, x: float, z: float) -> float:
+        return super().height(x, z) - self.sag_at(x, z)
+
+    def bands(self, poly: Polygon, n: int) -> list[LineString]:
+        """Cut lines across the ridge, so the sagging roof is built from n bands."""
+        if self.sag <= 0 or n < 2:
+            return []
+        minx, minz, maxx, maxz = poly.bounds
+        reach = 2 * math.hypot(maxx - minx, maxz - minz) + 10
+        lines = []
+        for k in range(1, n):
+            uc = self.umin + self.length * k / n
+            cx, cz = self.u[0] * uc + self.v[0] * self.mid, self.u[1] * uc + self.v[1] * self.mid
+            vx, vz = self.v
+            lines.append(
+                LineString([(cx - vx * reach, cz - vz * reach), (cx + vx * reach, cz + vz * reach)])
+            )
+        return lines
 
 
 def _roof_mass(mass: Mass, ring: Sequence[tuple[float, float]]) -> Mass:
@@ -660,6 +711,11 @@ def _roof_mass(mass: Mass, ring: Sequence[tuple[float, float]]) -> Mass:
 
 
 def _extrapolated_height(roof: _Roof, x: float, z: float) -> float:
+    sag = roof.sag_at(x, z) if isinstance(roof, _SagRoof) else 0.0
+    return _plain_extrapolated(roof, x, z) - sag
+
+
+def _plain_extrapolated(roof: _Roof, x: float, z: float) -> float:
     m = roof.mass
     if m.roof == "flat" or roof.half < 1e-6:
         return m.ridge_y
@@ -695,6 +751,7 @@ class _Context:
     level: int
     builders: dict[str, _Builder]
     base_y: float
+    max_sag: float = 0.0
 
 
 def _top_outline(f: Frame, roof: _Roof, crease: LineString | None, y: float,
@@ -725,6 +782,7 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
             plan = procedural_openings(f.width, heights, rules, ctx.rng, door, room, st.gate).get(
                 s, []
             )
+            plan = _age_windows(plan, rules, ctx.rng, st.age)
     plan = [op for op in plan
             if op.u >= 0 and op.u + op.w <= f.width + 1e-6
             and op.v + op.h <= usable + 1e-6]  # fmt: skip
@@ -760,6 +818,7 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
     segs = timber_segments(f.width, usable - socle, shifted, rules, pattern, bays=ctx.level < 2,
                            brustung=brustung, plain=plain, figure_every=every)  # fmt: skip
     g = f.raised(socle) if socle else f
+    segs = _lean_posts(segs, f.width, shifted, rules, ctx.rng, st)
     for kind, k, p0, p1 in segs:
         factor = DEPTH_FACTOR[kind] - (BRACE_STAGGER * k if kind == "brace" else 0.0)
         _beam(
@@ -771,6 +830,50 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
             depth * max(factor, 0.2),
             sides=kind not in BOARD_KINDS,
         )
+
+
+def _age_windows(
+    plan: list[Opening], rules: Rules, rng: random.Random, age: float
+) -> list[Opening]:
+    """Old houses: window sills and widths a little irregular (procedural windows only)."""
+    a = rules.data.get("aging", {})
+    if age <= 0 or not a:
+        return plan
+    out = []
+    for op in plan:
+        if op.kind != "window":
+            out.append(op)
+            continue
+        dv = rng.uniform(-1, 1) * float(a.get("windowSillJitterM", 0.0)) * age
+        w = op.w * (1 + rng.uniform(-1, 1) * float(a.get("windowWidthJitter", 0.0)) * age)
+        out.append(Opening(op.kind, op.u + (op.w - w) / 2, max(0.3, op.v + dv), w, op.h))
+    return out
+
+
+def _lean_posts(segs: list, width: float, openings: Sequence[Opening], rules: Rules,
+                rng: random.Random, st: HouseStyle) -> list:  # fmt: skip
+    """Old houses: inner posts lean a little about their foot; never into an opening or outside."""
+    a = rules.data.get("aging", {})
+    max_deg = float(a.get("postLeanMaxDeg", 0.0)) * st.age
+    if max_deg <= 0 or st.style in a.get("stoneStyles", ()):
+        return segs
+    b = float(rules.get("timber", "beamM"))
+    out = []
+    for kind, k, p0, p1 in segs:
+        if kind != "post" or p0[0] < b or p0[0] > width - b:  # corner posts stay upright
+            out.append((kind, k, p0, p1))
+            continue
+        ang = math.radians(rng.uniform(-max_deg, max_deg))
+        d = p1 - p0
+        q1 = p0 + np.array([d[0] * math.cos(ang) - d[1] * math.sin(ang),
+                            d[0] * math.sin(ang) + d[1] * math.cos(ang)])  # fmt: skip
+        inside = b / 2 <= q1[0] <= width - b / 2
+        grown = [Opening(o.kind, o.u - b / 2, o.v - b / 2, o.w + b, o.h + b) for o in openings]
+        clear = len(_clip_out(p0, q1, grown)) == 1 and np.allclose(
+            _clip_out(p0, q1, grown)[0][1], q1
+        )
+        out.append((kind, k, p0, q1) if inside and clear else (kind, k, p0, p1))
+    return out
 
 
 def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN401
@@ -810,7 +913,16 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
         outlines = [offset_ring(ring, [0.0] * n) for _ in heights]
     top_ring = [p for p, _ in outlines[-1]]
     top_poly = Polygon(top_ring)
-    roof = _Roof(_roof_mass(mass, top_ring), top_poly)
+    aging = rules.data.get("aging", {})
+    factor = (
+        float(aging.get("stoneSagFactor", 0.0))
+        if ctx.style.style in aging.get("stoneStyles", ())
+        else 1.0
+    )
+    probe = _SagRoof(_roof_mass(mass, top_ring), top_poly, 0.0)
+    sag = float(aging.get("ridgeSagMaxRatio", 0.0)) * probe.length * ctx.style.age * factor
+    roof = _SagRoof(_roof_mass(mass, top_ring), top_poly, sag)
+    ctx.max_sag = max(ctx.max_sag, roof.sag)
     crease = roof.crease(top_poly)
 
     y = ground
@@ -900,7 +1012,7 @@ def build_house(
                  for r in ROLES if builders[r].idx]  # fmt: skip
         tris = sum(p.mesh.triangle_count for p in prims)
         result = HouseResult(prims, tris, [*notes, *massing.notes, *level_notes], level, style,
-                             steepened)  # fmt: skip
+                             steepened, round(ctx.max_sag, 3))  # fmt: skip
         if tris <= budget or not style.timber:
             break
     assert result is not None
@@ -919,6 +1031,9 @@ def _add_roof(
     if not isinstance(outer, Polygon):
         outer = top
     pieces = list(split(outer, crease).geoms) if crease is not None else [outer]
+    if isinstance(roof, _SagRoof):
+        for line in roof.bands(outer, int(rules.data.get("aging", {}).get("roofBands", 4))):
+            pieces = [g for piece in pieces for g in split(piece, line).geoms]
     for piece in pieces:
         tris = list(shapely.constrained_delaunay_triangles(piece).geoms)
         if not tris:
@@ -941,6 +1056,9 @@ def _add_roof(
     under = (
         list(split(eaves, crease).geoms) if crease is not None and not eaves.is_empty else [eaves]
     )
+    if isinstance(roof, _SagRoof) and not eaves.is_empty:
+        for line in roof.bands(outer, int(rules.data.get("aging", {}).get("roofBands", 4))):
+            under = [g for piece in under for g in split(piece, line).geoms]
     for piece in under:
         for poly in getattr(piece, "geoms", [piece]):
             if poly.is_empty or poly.area < 1e-4:
@@ -964,6 +1082,14 @@ def _add_roof(
                 t = va / (va - vc)
                 pts.append((a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t))
         pts.append(c)
+        if isinstance(roof, _SagRoof) and roof.sag > 0:  # follow the sagging ridge along the edge
+            fine = [pts[0]]
+            for p, q in zip(pts, pts[1:], strict=False):
+                fine += [
+                    (p[0] + (q[0] - p[0]) * k / 4, p[1] + (q[1] - p[1]) * k / 4)
+                    for k in range(1, 5)
+                ]
+            pts = fine
         for p, q in zip(pts, pts[1:], strict=False):
             hp, hq = _extrapolated_height(roof, *p), _extrapolated_height(roof, *q)
             quad = [

@@ -200,6 +200,8 @@ def generate(
                                    ("jetty", str(st.jetty))):  # fmt: skip
                     result.styles[key][value] += 1
                 result.styles["roofSteepened"]["masses"] += house.steepened
+                result.styles["age"][f"{min(int(st.age * 5), 4) / 5:.1f}"] += 1
+                result.styles["ridgeSagCm"]["total"] += round(house.sag_m * 100)
             if house.triangles > budget:
                 result.over_budget.append((bid, house.triangles))
             if not prims:
