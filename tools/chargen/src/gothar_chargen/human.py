@@ -40,6 +40,7 @@ Armour kits (F3g) keep the colour textures of their pieces and may rename and de
     brim = 0.04                         # own brim around the rim (kettle helmet)
     bulge = 0.02                        # domed plate: further out towards the middle
     rim = 0.01                          # plate edge: the border folded inwards
+    flatten = 0.8                       # neutral plate front (no anatomic shape), 0..1
     bones = ["spine_02", "spine_03"]    # weights only on these bones (stiff plates)
     dome = true                         # with from = "basemesh": smooth dome fitted to the skull
     heads = "head_f_*"                  # these head parts fit under it (dome grows, others bulge)
@@ -117,6 +118,7 @@ DERIVE_KEYS = {
     "bones",
     "bulge",
     "rim",
+    "flatten",
 }
 
 
@@ -147,6 +149,7 @@ class Derive:
     brim: float = 0.0  # own geometry: a brim of this width around the rim (metres)
     bulge: float = 0.0  # domed plate: extra offset towards the middle (metres)
     rim: float = 0.0  # own geometry: the border folded inwards by this depth (plate edge)
+    flatten: float = 0.0  # neutral plate: the front pulled towards a smooth envelope (0..1)
     bones: tuple[str, ...] = ()  # limit the weights to bones with these prefixes (stiff plates)
     heads: str | None = None  # head parts that must fit under the piece, e.g. "head_f_*"
 
@@ -489,6 +492,7 @@ def _parse_derive(raw: object) -> tuple[Derive, ...]:
                 brim=_number(d, "brim", where, 0.0, 0.1, 0.0),
                 bulge=_number(d, "bulge", where, 0.0, 0.1, 0.0),
                 rim=_number(d, "rim", where, 0.0, 0.05, 0.0),
+                flatten=_number(d, "flatten", where, 0.0, 1.0, 0.0),
                 bones=_names(d, "bones", where),
             )
         )

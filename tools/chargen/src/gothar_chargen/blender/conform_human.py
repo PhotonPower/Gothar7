@@ -603,6 +603,8 @@ def _derive(
         )
         bm.to_mesh(mesh)
         bm.free()
+    if d.flatten:
+        _flatten_front(obj, d.flatten)
     if d.smooth:
         _smooth_shape(obj, d.smooth)
     if d.offset or d.bulge:
@@ -635,6 +637,29 @@ def _derive(
         _limit_weights(obj, d.bones)
     mesh.update()
     print(f"[chargen] derived {d.name}: cut {len(drop)} vertices, offset {d.offset} m")
+
+
+def _flatten_front(obj: bpy.types.Object, amount: float) -> None:
+    """Neutral plate: the front (-Y) is pulled towards a smooth quadratic envelope over x and z
+    that encloses the protruding parts (e.g. the breasts) – a cuirass instead of an anatomic
+    shape. `amount` 0..1 blends from the original to the envelope."""
+    mesh = obj.data
+    co = _coords(obj)
+    centre = co[:, 1].mean()
+    depth = max(centre - co[:, 1].min(), 1e-6)
+    front = np.clip((centre - co[:, 1]) / depth, 0.0, 1.0)  # 0 at the sides .. 1 at the front
+    sel = front > 0.3
+    x, z = co[sel, 0], co[sel, 2]
+    basis = np.stack([np.ones_like(x), x, z, x * x, z * z, x * z], axis=1)
+    coef = np.linalg.lstsq(basis, co[sel, 1], rcond=None)[0]
+    xa, za = co[:, 0], co[:, 2]
+    fit = np.stack([np.ones_like(xa), xa, za, xa * xa, za * za, xa * za], axis=1) @ coef
+    ahead = co[sel, 1] - fit[sel]  # negative: in front of the fit
+    envelope = fit + float(np.percentile(ahead, 3))  # encloses all but the outermost tips
+    weight = amount * np.sin(front * np.pi / 2)  # sides keep their shape
+    co[:, 1] = np.where(front > 0, co[:, 1] + weight * (envelope - co[:, 1]), co[:, 1])
+    mesh.vertices.foreach_set("co", co.ravel())
+    mesh.update()
 
 
 def _smooth_shape(obj: bpy.types.Object, iterations: int) -> None:
