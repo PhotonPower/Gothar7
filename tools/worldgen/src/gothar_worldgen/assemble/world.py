@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from gothar_worldgen.export.starts import DEFAULT_STARTS, add_start_points
+from gothar_worldgen.export.starts import DEFAULT_STARTS, StartPoint, add_start_points
 from gothar_worldgen.export.terrain import ExportError, world_text
 
 IDS_FORMAT = "gothar-vob-ids"
@@ -118,6 +118,7 @@ def assemble(
     citywall: dict[str, Any] | None = None,
     handmade: dict[str, Any] | None = None,
     water: dict[str, Any] | None = None,
+    starts: tuple[StartPoint, ...] = DEFAULT_STARTS,
 ) -> AssembleResult:
     if "terrain" not in terrain_world:
         raise AssembleError("the terrain world has no terrain block (run export-terrain)")
@@ -213,7 +214,7 @@ def assemble(
     doc["vobs"] = [vobs[k] for k in sorted(vobs)]
     if ground is not None:
         result.added += add_start_points(
-            doc, DEFAULT_STARTS, ground, known=lambda k: k in ids.ids, id_for=ids.get
+            doc, starts, ground, known=lambda k: k in ids.ids, id_for=ids.get
         )
     doc["nextVobId"] = max(
         [int(doc.get("nextVobId", 1)), ids.next_id] + [int(v["id"]) + 1 for v in doc["vobs"]]

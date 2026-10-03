@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "leonberg",
-  "nextVobId": 1910,
+  "nextVobId": 1919,
   "staticMeshes": [],
   "terrain": {"version":1,"heightmap":"worlds/leonberg/generated/leonberg_terrain.r16","width":2000,"height":2000,"cellSize":1.0,"firstSample":[-999.5,-999.5],"minY":-52.093,"maxY":94.85,"splat":{"maps":["worlds/leonberg/generated/leonberg_terrain_splat0.png","worlds/leonberg/generated/leonberg_terrain_splat1.png"],"layers":[{"name":"Wiese","albedo":"worlds/leonberg/layers/wiese.png","tile":4.0},{"name":"Kopfstein","albedo":"worlds/leonberg/layers/kopfstein.png","tile":2.0},{"name":"Kies","albedo":"worlds/leonberg/layers/kies.png","tile":3.0},{"name":"Matsch","albedo":"worlds/leonberg/layers/matsch.png","tile":4.0},{"name":"Waldboden","albedo":"worlds/leonberg/layers/waldboden.png","tile":5.0},{"name":"Acker","albedo":"worlds/leonberg/layers/acker.png","tile":6.0},{"name":"Fels","albedo":"worlds/leonberg/layers/fels.png","tile":6.0}]}},
   "vobs": [
@@ -1766,6 +1766,15 @@
     {"id":1906,"type":"water","name":"WATER_GLEMS_159","parent":1723,"pos":[-837.621,-51.274,-965.01],"rot":[0.0,0.576889,0.0,0.816823],"components":{"water":{"halfExtents":[5.998,0.717,3.8]}}},
     {"id":1907,"type":"water","name":"WATER_GLEMS_160","parent":1723,"pos":[-833.61,-51.513,-976.314],"rot":[0.0,0.576889,0.0,0.816823],"components":{"water":{"halfExtents":[6.997,0.722,3.8]}}},
     {"id":1908,"type":"water","name":"WATER_GLEMS_161","parent":1723,"pos":[-828.098,-51.709,-989.658],"rot":[0.0,0.520263,0.0,0.854006],"components":{"water":{"halfExtents":[8.459,0.674,4.495]}}},
-    {"id":1909,"type":"water","name":"WATER_GLEMS_162","parent":1723,"pos":[-823.098,-51.79,-998.292],"rot":[0.0,0.490236,0.0,0.87159],"components":{"water":{"halfExtents":[2.249,0.608,3.8]}}}
+    {"id":1909,"type":"water","name":"WATER_GLEMS_162","parent":1723,"pos":[-823.098,-51.79,-998.292],"rot":[0.0,0.490236,0.0,0.87159],"components":{"water":{"halfExtents":[2.249,0.608,3.8]}}},
+    {"id":1910,"type":"start","name":"START_BG_GASSE_ENG","pos":[-76.57,-1.55911,-112.8],"rot":[0.0,-0.238533,0.0,0.971134]},
+    {"id":1911,"type":"start","name":"START_BG_GASSE_SCHMAL","pos":[-1.79,3.01703,-89.81],"rot":[0.0,-0.817145,0.0,0.576432]},
+    {"id":1912,"type":"start","name":"START_BG_STEIL","pos":[-138.78,-20.93182,102.83],"rot":[0.0,-0.019197,0.0,0.999816]},
+    {"id":1913,"type":"start","name":"START_BG_TREPPE","pos":[-56.26,-16.14537,194.76],"rot":[0.0,-0.834367,0.0,0.551209]},
+    {"id":1914,"type":"start","name":"START_BG_MAUERDURCHBRUCH","pos":[-60.47,-1.23526,-152.04],"rot":[0.0,-0.841982,0.0,0.539506]},
+    {"id":1915,"type":"start","name":"START_BG_WEG_DURCH_HAUS","pos":[61.67,6.83795,-111.29],"rot":[0.0,-0.999762,0.0,0.021815]},
+    {"id":1916,"type":"start","name":"START_BG_TOR_OBEN","pos":[80.0,-3.48502,52.0],"rot":[0.0,-0.755282,0.0,0.6554]},
+    {"id":1917,"type":"start","name":"START_BG_TUER_IM_BODEN","pos":[-25.35,-2.21739,40.32],"rot":[0.0,0.999296,0.0,0.037516]},
+    {"id":1918,"type":"start","name":"START_BG_SPALT","pos":[-7.9,-2.28587,37.4],"rot":[0.0,0.0,0.0,1.0]}
   ]
 }

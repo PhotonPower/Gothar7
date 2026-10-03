@@ -243,6 +243,10 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     Heightmap jetzt −52,09 m (vorher −50,99 m).
   - Die Wasserfläche zeichnet die Engine bis M17 als durchscheinende Box (Debug-Darstellung), dabei sind auch die
     Seiten unter der Oberfläche zu sehen.
+  - **Offen für M17 (Wasser-Rendering):** Bei 5 von 186 Boxen ragt in engen Biegungen der Glems (steiler Prallhang)
+    eine Kante mehr als 0,3 m über das Gelände (Koordinator 2026-10-03: bleibt bis M17 so). Mit echtem
+    Wasser-Rendering prüfen; mögliche Abhilfe: kürzere Abschnitte in Biegungen oder Spiegel je Abschnitt am Ufer
+    begrenzen.
 
 **Umgesetzt (W2 Teil 1):** `gothar-worldgen export-terrain <ort> [--area surroundings|core] [--step n] [--name …]`
 - **Eingabe:** `terrain.json` und `terrain.r16` aus dem Work-Ordner.
