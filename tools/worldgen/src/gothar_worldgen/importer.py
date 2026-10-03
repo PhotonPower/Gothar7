@@ -7,6 +7,7 @@ from typing import Any, TextIO
 import shapely
 
 from gothar_worldgen.config import DataPaths, SiteConfig
+from gothar_worldgen.export.terrain import load_grid
 from gothar_worldgen.geo.bbox import BBox
 from gothar_worldgen.geo.buildings import (
     buildings_document,
@@ -17,6 +18,7 @@ from gothar_worldgen.geo.buildings import (
 from gothar_worldgen.geo.dgm1 import build_height_grid
 from gothar_worldgen.geo.features import build_features, summarize_features
 from gothar_worldgen.geo.frame import LocalFrame
+from gothar_worldgen.geo.ground import add_ground_ranges
 from gothar_worldgen.geo.jsonio import write_json_records
 from gothar_worldgen.geo.lod2 import files_for_area, read_lod2
 from gothar_worldgen.geo.osm import find_osm_file, read_osm
@@ -62,6 +64,8 @@ def import_buildings(
         area=_box(site.bbox("surroundings")),
         core=_box(site.bbox("core")),
     )
+    # Terrain range under each footprint, from the heightmap written just before.
+    add_ground_ranges(entries, load_grid(paths.work))
     doc = buildings_document(entries, site, frame, [f.name for f in files])
     write_buildings_json(paths.work / "buildings.json", doc)
     stats = summarize(entries)
