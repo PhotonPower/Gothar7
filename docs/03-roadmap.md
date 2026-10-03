@@ -270,7 +270,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 Spezifikation: `docs/design/leonberg-pipeline.md`. Werkzeuge in `tools/worldgen/` (Python ≥ 3.11),
 Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
-**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24): `gothar-worldgen` erzeugt aus LGL- und OSM-Daten Terrain, `buildings.json` (5392 Gebäude), `streets.json` und `features.json` für Leonberg (Ursprung Marktbrunnen). **W2 läuft:** `export-terrain` schreibt `assets/source/worlds/leonberg/leonberg_terrain.g7world` mit `terrain`-Block (Heightmap in `generated/`, nicht versioniert); die Splatmap folgt nach engines Terrain Teil B. W3 wartet auf M5. **W4 läuft:** Die Kerne des Fassaden-Werkzeugs (`facade/`: 360°-Projektion, Fassaden-Entzerrung aus `buildings.json`, GPS-Posen, Override-Schema, `facade preview`) stehen und sind mit synthetischen Bildern getestet. Dazu kommen die Einzelbild-Extraktion per ffmpeg und der automatische Zeitabgleich von Video und GPS (`facade frames`). Die Annotations-Web-UI (`facade ui`: Karte, Fassadeneditor, Speichern als Override-JSON) steht und wurde vom Projektinhaber getestet; die Auswahllisten sind ein Entwurf zur Festlegung durch den Projektinhaber. Als Nächstes: Aufnahmetour, Prüfung mit echten Daten, Schritt 3b (Pose-Korrektur, Bildvergleich), W2-Splatmap.
+**Aktueller Stand Welt-Spur:** W1 abgeschlossen (PR #24): `gothar-worldgen` erzeugt aus LGL- und OSM-Daten Terrain, `buildings.json` (5392 Gebäude), `streets.json` und `features.json` für Leonberg (Ursprung Marktbrunnen). **W2 läuft:** `export-terrain` schreibt `assets/source/worlds/leonberg/leonberg_terrain.g7world` mit `terrain`-Block: Heightmap und Splat-Karten in `generated/` (nicht versioniert), 7 Schichten aus Straßen, Gebäuden, OSM-Nutzung und Neigung, Platzhalter-Albedos; Tag/Nacht folgt mit einer M4-Aufgabe. W3 wartet auf M5. **W4 läuft:** Die Kerne des Fassaden-Werkzeugs (`facade/`: 360°-Projektion, Fassaden-Entzerrung aus `buildings.json`, GPS-Posen, Override-Schema, `facade preview`) stehen und sind mit synthetischen Bildern getestet. Dazu kommen die Einzelbild-Extraktion per ffmpeg und der automatische Zeitabgleich von Video und GPS (`facade frames`). Die Annotations-Web-UI (`facade ui`: Karte, Fassadeneditor, Speichern als Override-JSON) steht und wurde vom Projektinhaber getestet; die Auswahllisten sind ein Entwurf zur Festlegung durch den Projektinhaber. Als Nächstes: Aufnahmetour, Prüfung mit echten Daten, Schritt 3b (Pose-Korrektur, Bildvergleich), W2-Splatmap.
 
 ## W1 – Geodaten-Import  (keine Engine-Abhängigkeit)
 - [x] `tools/worldgen` als Python-Paket einrichten (pyproject, Lint/Format mit ruff, Tests mit pytest)
@@ -286,8 +286,8 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 ✅ Erfüllt: `import leonberg` erzeugt alle Zwischendaten, zwei Läufe waren byte-identisch (2026-10-02). Der CI-Job `worldgen` mit LGL- und OSM-Testausschnitten ist grün unter Linux (py3.11) und Windows (py3.12), PR #24.
 
 ## W2 – Leonberg-Gelände in der Engine  (benötigt M2, M4-Terrain)
-- [ ] Heightmap-Import in das Terrain-System, Splatmap-Grundbelegung aus Straßen/Nutzung
-  - Stand: Heightmap-Export als `.g7world` mit `terrain`-Block (`export-terrain`); Splatmap folgt nach engines Terrain Teil B
+- [x] Heightmap-Import in das Terrain-System, Splatmap-Grundbelegung aus Straßen/Nutzung
+  - `export-terrain` (PR #56 Heightmap, Splatmap mit 7 Schichten); Platzhalter-Albedos, endgültige Texturen mit W5
 - [ ] Testwelt `leonberg_terrain.g7world` mit Tag/Nacht
 
 **DoD:** Das Leonberger Gelände ist in der Engine sichtbar und (ab M5) begehbar.

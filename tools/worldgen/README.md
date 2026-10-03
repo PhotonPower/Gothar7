@@ -24,7 +24,8 @@ tools/worldgen/
     facade/                   360°-Bilder → Fassadenansichten (equirect, rectify), GPS-Posen (poses),
                               Override-JSON (overrides), Einzelbilder + Zeitabgleich (frames, sync,
                               capture), facade preview/frames, Web-UI (webui/)  (W4)
-    export/                   terrain: Heightmap → .g7world mit terrain-Block (export-terrain)  (W2)
+    export/                   terrain: Heightmap → .g7world mit terrain-Block, splat: Splat-Schichten
+                              + Platzhalter-Albedos (export-terrain)  (W2)
     assemble/                 Zwischendaten + .glb → .g7world, Wegnetz-Vorschlag (geplant, W3, W6)
   blender/gothar_buildings/   Blender-Add-on: Gebäude-Generator               (geplant, W3, W5)
   data/leonberg/buildings/    Annotationen/Overrides pro Gebäude (JSON, versioniert)

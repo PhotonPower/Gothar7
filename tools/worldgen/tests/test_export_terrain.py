@@ -43,6 +43,22 @@ def write_work(work: Path) -> np.ndarray:
                   "surroundings": {"minX": -20.0, "minZ": -10.0, "maxX": 20.0, "maxZ": 10.0}},
     }  # fmt: skip
     (work / "terrain.json").write_text(json.dumps(meta), encoding="utf-8")
+    (work / "buildings.json").write_text(
+        json.dumps({"buildings": [{"id": "B1", "footprint": [[0, 0], [3, 0], [3, -3], [0, -3]]}]}),
+        encoding="utf-8",
+    )
+    (work / "streets.json").write_text(
+        json.dumps(
+            {
+                "streets": [
+                    {"highway": "residential", "widthM": 3.0, "points": [[-20, 2], [20, 2]]}
+                ],
+                "squares": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (work / "features.json").write_text(json.dumps({"features": []}), encoding="utf-8")
     return y
 
 
@@ -206,11 +222,15 @@ def test_cli_export_terrain(config_dir: Path, tmp_path: Path, monkeypatch):
     block = json.loads(world.read_text(encoding="utf-8"))["terrain"]
     assert block["heightmap"] == "worlds/testsite/generated/testsite_terrain.r16"
     assert (assets / "worlds" / "testsite" / "generated" / "testsite_terrain.r16").is_file()
-    assert "41 x 21 samples" in out
-    code, _ = run(*base, "--area", "core", "--step", "2", "--name", "core")
+    assert "41 x 21 samples" in out and "splat: 2 maps, 7 layers" in out
+    assert len(json.loads(world.read_text(encoding="utf-8"))["terrain"]["splat"]["layers"]) == 7
+    assert (assets / "worlds" / "testsite" / "generated" / "testsite_terrain_splat1.png").is_file()
+    assert (assets / "worlds" / "testsite" / "layers" / "kopfstein.png").is_file()
+    code, _ = run(*base, "--area", "core", "--step", "2", "--name", "core", "--no-splat")
     assert code == EXIT_OK
     core = json.loads((assets / "worlds/testsite/core.g7world").read_text(encoding="utf-8"))
     assert (core["terrain"]["width"], core["terrain"]["cellSize"]) == (6, 2.0)
+    assert "splat" not in core["terrain"]
 
 
 def test_cli_export_terrain_without_import(config_dir: Path, tmp_path: Path, monkeypatch, capsys):
