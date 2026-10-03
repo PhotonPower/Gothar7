@@ -302,6 +302,28 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     - „Auswahl zurückschreiben“ exportiert an denselben Pfad (Ursprung und Achsen wie erzeugt) und setzt
       **`locked: true`** im Override.
     - Ein Headless-Rundlauf mit Blender 4.5 ist getestet, wo Blender installiert ist.
+- **W5-Stil (Schritt 2, festgelegt 2026-10-03)**, Stil-Referenzblatt `docs/design/leonberg-stil.md`:
+  - **Stilzuweisung** je Haus (Override, Marktplatz, Rückbau, ALKIS, OSM, Lage). Danach eine gewichtete, deterministische
+    Wahl von Muster, Ausfachung, Dachdeckung und Balkenfarbe aus `hash(id, seed)`.
+  - **Override-Vorrang:** `style`, `frontFacade.timber`/`infill` und `roofCover`, über `vocabulary` auf
+    Generator-Namen abgebildet.
+  - **Muster-Katalog** als Segmentdaten:
+    - Schwäbischer Mann, Halber Mann, Ständer und Riegel (auch mit Kopf- und Fußstreben), Andreaskreuz, Feuerbock.
+    - Raute nur in Brüstungsfeldern, also unter Fenstern.
+    - Figuren an den Fassadenenden und in jedem 3. Feld.
+  - **Erdgeschoss:** massiv (Bruchstein) oder Fachwerk auf 0,6 m Steinsockel. Steinhaus, Kirche und Mauer ohne
+    Fachwerk; die Mauer ohne Öffnungen. Scheunen mit Tor.
+  - **Flache und flach geneigte Dächer** (unter 35°) werden Satteldächer mit 50–55°, die Traufe bleibt (485 Dachmassen).
+    Kein Stroh innerhalb der Mauer.
+  - **Palette mit 14 Werten** statt 5 fester Rollen; Moos (eigener Wert) auf nordseitigen Dachflächen mit
+    Biberschwanz alt.
+  - **Kern:**
+    - 1405 Häuser, 1,81 Mio. Dreiecke (je Haus Median 1394).
+    - Stufen: 972 mit vollem Muster, 145 ohne Muster, 147 ohne Feldständer, 142 ohne Fachwerk; 10 Häuser über dem
+      Budget, alle geschützt.
+    - Stile: Handwerker 658, Scheune/Stall 294, Bürger 241, Ackerbürger 203, Mauer 6, Steinhaus 2, Kirche 1,
+      Amtshaus 1.
+    - Statistik in `buildings_index.json` → `stats.style`.
 - **W5-Vorarbeit: Regelwerk (Mechanik)**, `gothar-worldgen buildings <ort> --mode medieval`. Vorgabe bleibt
   `massing`, bis der Stil festgelegt ist. Code: `buildings/medieval.py`.
   - **Trennung:** Der Generator kennt nur abstrakte Parameter und Material-Rollen. Alle Zahlenwerte und die Bedeutung
@@ -522,9 +544,17 @@ LoD2, mit `--rueckbau` als Vorschau):
 - **Auswahl:** Gebäude im Kern mit Grundfläche > 200 m², längster Seite > 22 m oder Traufhöhe > 12 m.
   Zusätzlich jedes Haus, das im Fachwerk-Modus das Dreiecksbudget sprengt; es wird im selben Lauf geteilt.
 - **Ausnahmen:**
+  - **Steile historische Dächer** (Entscheidung Koordinator, 2026-10-03): Sattel-, Walm- oder gemischtes Dach mit
+    LoD2-Neigung ≥ 45° und Traufe ≤ 12 m. Solche Gebäude werden weder über Fläche oder Länge noch über das Budget
+    ersetzt; sie verlieren über die Budget-Stufen nur Fachwerk-Details. Der Bericht listet sie mit Neigung und Traufe.
+  - **Rathaus** ALKIS 31001_3012 mit Traufe ≤ 12 m (das Alte Rathaus am Marktplatz). Das große Neue Rathaus
+    (Traufe 20 m) läuft durch den Rückbau.
+  - **ALKIS 51007** (historische Bauwerke, z. B. 51007_1510 Stadtmauer): nie ersetzt.
   - Gebäude, die eine OSM-Fläche schneiden: Kirche (`place_of_worship`), Schloss (`castle`), Rathaus, Denkmal
-    oder `historic`. Ebenso Gebäude an der Stadtmauer (`city_wall`, 3 m Puffer) und an einem historischen
-    OSM-Punkt.
+    oder `historic`, und Gebäude an einem historischen OSM-Punkt.
+  - Die OSM-Stadtmauer (`city_wall`) schützt ein Gebäude nur, wenn sie mindestens 2 m durch den Grundriss läuft
+    (gemessen 0,25 m innerhalb). Bloßes Berühren reicht nicht; große Bauten an der Mauer sind meist jünger
+    (Entscheidung Koordinator, 2026-10-03).
   - Override `rueckbau: none` und Häuser mit `locked`.
   - `rueckbau: split` erzwingt den Ersatz; `keep: false` entfernt ein Gebäude ganz.
 - **Parzellen:** Schnitte senkrecht zur Hauptstraßenseite, 7 m ± 1,5 m breit (deterministisch je Gebäude);
@@ -540,10 +570,11 @@ LoD2, mit `--rueckbau` als Vorschau):
   - Ersatzhäuser können eigene Overrides haben (`<id>-T<n>.json`, auch `locked`).
 - **Bericht:** `generated/rueckbau_report.json` nennt ersetzte Gebäude mit Grund, Zahl der Ersatzhäuser und
   Hoffläche, die Ausnahmen und die Budget-Ersetzungen.
-- **Leonberg:** 160 Gebäude (159 nach Schwellen, 1 wegen des Budgets) werden durch 727 Häuser ersetzt, 3004 m²
-  werden Hof. Geschützt bleiben 10 Gebäude: Schloss (2 Teile), Stadtkirche und 7 große Gebäude an der Stadtmauer.
-  Im Kern stehen dann 1471 Häuser mit 1,58 Mio. Dreiecken (je Haus Median 1113, p90 1856); 6 Häuser liegen über dem
-  Budget, alle geschützt.
+- **Leonberg** (Stand mit Stil, 2026-10-03):
+  - 132 Gebäude werden durch 633 Häuser ersetzt, 2448 m² werden Hof.
+  - 38 sind geschützt: Schloss, Stadtkirche, Altes Rathaus, 4 Mauerstücke (ALKIS 51007) und 31 Häuser mit
+    steilem Dach, darunter die historischen Häuser am Marktplatz.
+  - Im Kern stehen 1405 Häuser mit 1,81 Mio. Dreiecken.
 
 Weitere Regeln:
 
