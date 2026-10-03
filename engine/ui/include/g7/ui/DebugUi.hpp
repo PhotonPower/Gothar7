@@ -8,6 +8,7 @@
 #include <g7/core/Types.hpp>
 #include <g7/render/Device.hpp>
 #include <g7/render/PostProcess.hpp>
+#include <g7/ui/EditorPanel.hpp>
 
 #include <memory>
 #include <optional>
@@ -75,6 +76,8 @@ public:
     void beginFrame(const platform::Input& input, Vec2 size, Vec2 pixels, f32 deltaSeconds);
     /// Draws the engine panel; edits are written back into `panel`.
     void enginePanel(EnginePanel& panel);
+    /// Draws the editor windows (tools/editor); edits and actions are written back into `panel`.
+    void editorPanel(EditorPanel& panel);
     /// Finishes the frame and, with a device, draws it into the bound target (normally the window).
     void endFrame(render::Device* device);
 

@@ -1,6 +1,7 @@
 #include <g7/core/Config.hpp>
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Log.hpp>
+#include <g7/editor/Editor.hpp>
 #include <g7/platform/GpuPreference.hpp>
 #include <g7/platform/Paths.hpp>
 #include <g7/runtime/Engine.hpp>
@@ -34,6 +35,7 @@ struct CommandLine
     std::string time;
     std::string screenshot;
     bool benchmark = false;
+    bool editor = false;
     std::optional<g7::u32> viewpoint;
     std::optional<g7::u64> frames;
     std::optional<g7::u64> maxFps;
@@ -104,6 +106,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--benchmark")
         {
             cli.benchmark = true;
+        }
+        else if (arg == "--editor")
+        {
+            cli.editor = true;
         }
         else if (arg.starts_with("--view-mesh="))
         {
@@ -302,6 +308,13 @@ int main(int argc, char** argv)
     {
         G7_LOG_FATAL("game", "engine init failed: {}", result.error().message);
         return EXIT_FAILURE;
+    }
+    // Editor mode (docs/modules/tools.md): the same engine with the editor as a tool.
+    std::optional<g7::editor::Editor> editor;
+    if (cli->editor)
+    {
+        editor.emplace(engine);
+        engine.addTool(*editor);
     }
     return engine.run();
 }

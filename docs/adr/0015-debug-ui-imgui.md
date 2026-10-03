@@ -31,7 +31,12 @@ Option 2: **Dear ImGui** (MIT, vcpkg-Port `imgui`, ohne Docking) im Modul **`ui`
 - ImGui-Typen bleiben im Modul; andere Module bekommen Panels als Funktionen mit eigenen Datenstrukturen
   (z. B. `ui::EnginePanel`).
 
-Docking (vcpkg-Feature `docking-experimental`) und ImGuizmo kommen bei Bedarf mit dem Editor (M4).
+Docking (vcpkg-Feature `docking-experimental`) kommt bei Bedarf mit dem Editor.
+
+**Nachtrag 2026-10-03 (Editor-Grundlage M4):** ImGuizmo **verworfen** (Entscheidung des Projektinhabers: keine
+neue Abhängigkeit). Die Editor-Gizmos sind eigene: gezeichnet mit Debug-Draw, getroffen über Strahltests mit
+Toleranz in Bildschirm-Pixeln (Achsen-/Ebenen-Griffe, Drehringe), Mathematik in `tools/editor`, Bedienfenster
+als `ui`-Panels mit eigenen Datenstrukturen (ImGui bleibt im Modul `ui`).
 
 ## Konsequenzen
 - Neue Abhängigkeit `imgui` (vcpkg; `nodeps` lädt v1.92.9b per FetchContent).

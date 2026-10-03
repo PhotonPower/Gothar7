@@ -35,6 +35,7 @@
 | ui | core, platform, render |
 | save | core, world, script, gameplay |
 | runtime | alle |
+| tools/editor (`g7_editor`, im Spiel gelinkt) | runtime, world, ui, render, core – die Engine kennt nur `EngineTool` |
 
 - **Keine Zyklen.** Braucht ein unteres Modul Informationen von oben, geschieht das über
   Interfaces/Callbacks, die das obere Modul registriert (z. B. `ai` ruft Skript-Zustände über

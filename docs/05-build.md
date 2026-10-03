@@ -113,6 +113,7 @@ Kommandozeilen-Schalter haben Vorrang vor beiden Dateien.
 | `--fullscreen` | randloses Vollbild in Desktop-Auflösung |
 | `--view-mesh=<pfad>` | Modell (`.gltf`/`.glb`/`.g7mesh`) am Ursprung anzeigen, Debug-Kamera richtet sich danach aus; VFS-Pfad oder Datei auf der Festplatte (wie `--scene`) |
 | `--world=<pfad>` | Welt `.g7world` laden (VFS-Pfad wie `testworld/camp.g7world` oder Datei auf der Festplatte); hat Vorrang vor `--scene`/`--view-mesh` |
+| `--editor` | Editor-Modus (Simulation pausiert, Editor-Fenster; docs/modules/tools.md) |
 | `--time=HH:MM` | Spielzeit beim Start (Vorgabe `[time] start`, 08:00) |
 | `--start=<name>` | Startpunkt der Welt (Vob-Typ `start`, Groß-/Kleinschreibung egal); ohne Angabe der mit der kleinsten id |
 | `--save-world=<datei>` | nach dem Laden die Welt bzw. Testszene als `.g7world` speichern (stabil, ein Vob pro Zeile) |

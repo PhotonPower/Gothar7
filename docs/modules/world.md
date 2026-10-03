@@ -155,6 +155,17 @@ class TriggerSystem { void setCallback(Callback); std::vector<TriggerEvent> upda
   Skripte. Eine fehlende Probe hat alle Trigger verlassen. `once`: nur das erste Update mit Eintritt meldet (alle
   Proben darin), danach nichts mehr bis `reset()`. `world` ruft keine Skripte: die Engine registriert den Callback.
 
+## Generator-Kopf (`generator`, optional, M4)
+```json
+"generator": {"tool": "gothar-worldgen", "owned": [3, 4, [10, 935]]}
+```
+- Schreibt der Welt-Assembler (welt) in den Kopf (nach `nextVobId`): `owned` = die Vob-IDs, die er bei jedem Lauf
+  neu schreibt (einzelne IDs oder geschlossene Bereiche [von, bis], aufsteigend); gelockte Gebäude, Startpunkte und
+  reservierte IDs nicht. Von welt gegengelesen.
+- **Nur ein Hinweis für den Editor** (`isGenerated`): er warnt beim Bearbeiten solcher Vobs. Die Engine schreibt den
+  Kopf unverändert zurück; ein veraltetes oder kaputtes `owned` ist **nie** ein Ladefehler (Warnung, dann ohne
+  Wirkung). Der Assembler entscheidet weiter selbst (vob_ids.json).
+
 ## Weltwechsel (M4)
 **Levelwechsel-Trigger** (Vertrag, von welt gegengelesen): `trigger`-Vobs mit `components.trigger.changeWorld =
 {"world": "<VFS-Pfad .g7world>", "start": "<Startpunkt-Name der Zielwelt>"}` (beide Pflicht). Wirkt nur auf den Spieler

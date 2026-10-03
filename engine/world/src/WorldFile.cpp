@@ -1,4 +1,5 @@
 #include <g7/asset/Vfs.hpp>
+#include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/WorldFile.hpp>
@@ -689,7 +690,44 @@ Result<WorldFile> parseWorldFile(std::string_view text, std::string_view source)
     {
         world.zonesJson = root["zones"].dump();
     }
+    if (root.contains("generator"))
+    {
+        // A hint for the editor only (world.md): kept as it is, and a broken or stale entry never fails
+        // loading - the generator decides about its vobs itself.
+        world.generatorJson = root["generator"].dump();
+        const Json& g = root["generator"];
+        const Json owned = g.is_object() && g.contains("owned") ? g["owned"] : Json::array();
+        bool readable = owned.is_array();
+        for (const Json& entry : readable ? owned : Json::array())
+        {
+            if (entry.is_number_unsigned())
+            {
+                world.generatorOwned.emplace_back(entry.get<u64>(), entry.get<u64>());
+            }
+            else if (entry.is_array() && entry.size() == 2 && entry[0].is_number_unsigned() &&
+                     entry[1].is_number_unsigned() && entry[0].get<u64>() <= entry[1].get<u64>())
+            {
+                world.generatorOwned.emplace_back(entry[0].get<u64>(), entry[1].get<u64>());
+            }
+            else
+            {
+                readable = false;
+            }
+        }
+        if (!readable)
+        {
+            G7_LOG_WARN("world", "{}: 'generator.owned' is not a list of ids and [from, to] ranges - ignored",
+                        source);
+            world.generatorOwned.clear();
+        }
+    }
     return world;
+}
+
+bool isGenerated(const WorldFile& world, VobId id) noexcept
+{
+    return std::any_of(world.generatorOwned.begin(), world.generatorOwned.end(), [&](const auto& range)
+                       { return id.value >= range.first && id.value <= range.second; });
 }
 
 Result<WorldFile> loadWorldFile(const asset::Vfs& vfs, std::string_view path)
@@ -709,6 +747,10 @@ std::string writeWorldFile(const WorldFile& world)
     root["version"] = kWorldFileVersion;
     root["name"] = world.name;
     root["nextVobId"] = world.nextVobId;
+    if (!world.generatorJson.empty())
+    {
+        root["generator"] = Json::parse(world.generatorJson, nullptr, false);
+    }
     root["staticMeshes"] = world.staticMeshes;
     if (world.terrain)
     {
