@@ -33,6 +33,7 @@
 #include <g7/runtime/EngineTool.hpp>
 #include <g7/runtime/FrameTimes.hpp>
 #include <g7/runtime/SceneFile.hpp>
+#include <g7/runtime/StartView.hpp>
 #include <g7/ui/DebugUi.hpp>
 #include <g7/world/DayCycle.hpp>
 #include <g7/world/GameTime.hpp>
@@ -119,6 +120,8 @@ struct EngineConfig
     std::string start;
     /// Game time at start, "HH:MM" (--time); empty = [time] start (default 08:00).
     std::string startTime;
+    /// --cam, --yaw, --pitch, --fly, --player: a view to reproduce (StartView.hpp), applied after loading.
+    StartView view;
     bool ground = true; ///< Ground plate under the --view-mesh model (--no-ground).
     /// Player figure at the start point of a loaded world (M5); off in the editor (--editor) and with
     /// --benchmark, which drive the camera themselves.
@@ -269,6 +272,11 @@ public:
     }
     /// True while the player drives the camera; false in the free debug camera (debug_fly, F3).
     [[nodiscard]] bool playerCameraActive() const noexcept { return m_player.valid() && !m_flyMode; }
+    /// Fly mode (debug_fly, F3, --fly): the free camera with mouse look; with a player it waits meanwhile.
+    [[nodiscard]] bool flyMode() const noexcept { return m_flyMode; }
+    void setFlyMode(bool on);
+    /// The current view as start options (what copy_position, F6, copies).
+    [[nodiscard]] std::string viewLine() const;
     [[nodiscard]] const gameplay::PlayerMovement& playerMovement() const noexcept { return m_movement; }
     [[nodiscard]] const gameplay::MovementSettings& movementSettings() const noexcept
     {
@@ -397,6 +405,13 @@ private:
     void addDebugOverlay(u32 width, u32 height);
     /// `allowMouse` / `allowKeyboard` false while the debug UI uses them.
     void updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard);
+    // Fly mode, start view, notices (EngineView.cpp)
+    void applyStartView();
+    void copyViewToClipboard();
+    void showNotice(std::string text, f64 seconds);
+    [[nodiscard]] bool noticeVisible() const noexcept;
+    void drawNotice(u32 height);
+    [[nodiscard]] std::string bindingText(platform::Action action) const;
     void runDebugUi(f64 realSeconds);
 
     EngineConfig m_config;
@@ -510,6 +525,9 @@ private:
     render::Camera m_camera;
     render::FreeFlyCamera m_flyCamera;
     bool m_mouseLook = false;
+    std::string m_notice; // short message at the bottom of the screen (fly mode keys, "position copied")
+    f64 m_noticeUntil = 0.0;
+    f64 m_realTime = 0.0; // seconds of frames since start (notices)
     platform::Input m_input;
     platform::ActionMap m_actions;
     FixedStep m_fixedStep{1.0 / 60.0};

@@ -239,6 +239,7 @@ Result<void> Engine::init()
         G7_LOG_INFO("engine", "frame rate capped at {} fps", m_config.maxFps);
     }
 
+    applyStartView(); // --cam, --yaw, --pitch, --fly, --player
     m_initialized = true;
     return {};
 }
@@ -273,6 +274,7 @@ bool Engine::runFrame()
         m_config.fixedFrameSeconds > 0.0 ? m_config.fixedFrameSeconds : m_frameTimer.elapsedSeconds();
     m_frameTimer.reset();
     m_frameSeconds = realSeconds;
+    m_realTime += realSeconds;
     m_smoothedFrameSeconds =
         m_smoothedFrameSeconds > 0.0 ? m_smoothedFrameSeconds * 0.95 + realSeconds * 0.05 : realSeconds;
 
@@ -305,6 +307,14 @@ bool Engine::runFrame()
         }
         else
         {
+            if (!uiKeyboard && m_actions.pressed(m_input, platform::Action::DebugFly))
+            {
+                setFlyMode(!m_flyMode);
+            }
+            if (!uiKeyboard && m_actions.pressed(m_input, platform::Action::CopyPosition))
+            {
+                copyViewToClipboard();
+            }
             updatePlayerInput(!uiMouse, !uiKeyboard);
             if (!playerCameraActive())
             {
@@ -1375,13 +1385,14 @@ void Engine::renderScene(u32 width, u32 height)
     m_post.apply(*m_device, m_sceneTarget, width, height, m_postSettings);
 
     // Debug drawing on top, depth-tested against the scene.
-    if (m_debugOverlay || (m_figure && m_figure->showSockets))
+    if (m_debugOverlay || (m_figure && m_figure->showSockets) || noticeVisible())
     {
         if (m_debugOverlay)
         {
             addDebugOverlay(width, height);
         }
         drawPlayerSockets(); // also without the overlay (debug UI, "Animation")
+        drawNotice(height);  // fly mode hint, "position copied" ...
         m_debugRenderer.render(*m_device, m_debugDraw, m_camera, &m_sceneTarget.depth(), width, height);
     }
     // ImGui last, on top of everything.
@@ -1517,41 +1528,6 @@ void Engine::drawScene(u32 width, u32 height)
     {
         m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
     }
-}
-
-void Engine::updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard)
-{
-    using platform::Action;
-    const auto axis = [&](Action positive, Action negative)
-    {
-        if (!allowKeyboard)
-        {
-            return 0.0f;
-        }
-        return (m_actions.isDown(m_input, positive) ? 1.0f : 0.0f) -
-               (m_actions.isDown(m_input, negative) ? 1.0f : 0.0f);
-    };
-
-    // Mouse look while the right mouse button is held (relative mode hides and captures the cursor).
-    // It starts only outside the debug UI but, once started, continues over it.
-    if (allowMouse && m_input.pressed(platform::MouseButton::Right))
-    {
-        m_mouseLook = m_window->setRelativeMouse(true);
-    }
-    else if (m_mouseLook && !m_input.isDown(platform::MouseButton::Right))
-    {
-        m_window->setRelativeMouse(false);
-        m_mouseLook = false;
-    }
-
-    render::FreeFlyInput fly;
-    fly.move = Vec3(axis(Action::StrafeRight, Action::StrafeLeft), axis(Action::Jump, Action::Sneak),
-                    axis(Action::MoveForward, Action::MoveBack));
-    fly.turn = axis(Action::TurnLeft, Action::TurnRight);
-    fly.lookDelta = m_mouseLook ? m_input.mouseDelta() : Vec2(0.0f);
-    fly.fast = m_actions.isDown(m_input, Action::Walk); // Shift: fast flying
-    // Real time: the debug camera keeps working while the game is paused or slowed down.
-    m_flyCamera.update(m_camera, fly, realSeconds);
 }
 
 void Engine::updateBenchmark(f64 realSeconds)
@@ -1737,14 +1713,17 @@ void Engine::addDebugOverlay(u32 width, u32 height)
     const render::FrameStats& stats = m_device->stats();
     const f64 ms = m_smoothedFrameSeconds * 1000.0;
     const Vec3& p = m_camera.transform.position;
+    render::FreeFlyCamera look; // the camera's yaw and pitch, as --yaw/--pitch take them
+    look.attach(m_camera);
     m_debugDraw.screenText(Vec2(8.0f, 8.0f),
                            std::format("{:.0f} fps  {:.2f} ms{}\n{} draws  {} binds  {:.1f}k tris  {}/{} "
                                        "objects (hidden: {} far, {} small)\n{}x{}  cam {:.1f} {:.1f} {:.1f}  "
-                                       "day {} {:02}:{:02}",
+                                       "yaw {:.0f} pitch {:.0f}  day {} {:02}:{:02}",
                                        ms > 0.0 ? 1000.0 / ms : 0.0, ms, m_paused ? "  PAUSED" : "",
                                        stats.drawCalls, stats.bufferBinds, stats.triangles / 1000.0,
                                        m_visibleInstances, m_instances.size(), m_culledFar, m_culledSmall,
-                                       width, height, p.x, p.y, p.z, m_gameTime.day(),
+                                       width, height, p.x, p.y, p.z, glm::degrees(look.yaw()),
+                                       glm::degrees(look.pitch()), m_gameTime.day(),
                                        static_cast<u32>(m_gameTime.minuteOfDay()) / 60,
                                        static_cast<u32>(m_gameTime.minuteOfDay()) % 60),
                            Vec4(1.0f), 2.0f);

@@ -34,6 +34,11 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --world=<path>          load a .g7world (VFS path or file on disk)
   --start=<name>          start point of the world
   --time=HH:MM            game time at start
+  --cam=x,y,z             free camera at this point (m); with a player: fly mode
+  --yaw=deg --pitch=deg   view direction (yaw 0 = along -Z, positive left; pitch positive up)
+  --fly                   fly mode: free camera (WASD, mouse, wheel = speed), the player waits
+  --player=x,y,z          put the player's feet there (--yaw turns it)
+                          F6 in the game copies the current view as these options
   --save-world=<file>     save the loaded world or test scene as .g7world
   --editor                editor mode (simulation paused)
   --scene=<path>          load a test scene (TOML)
@@ -71,6 +76,7 @@ struct CommandLine
     std::optional<g7::u32> viewpoint;
     std::optional<g7::u64> frames;
     std::optional<g7::u64> maxFps;
+    g7::StartView view;
 };
 
 std::optional<CommandLine> parseCommandLine(int argc, char** argv)
@@ -187,7 +193,12 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
             }
             cli.frames = frames;
         }
-        else
+        else if (auto view = g7::parseStartViewArgument(arg, cli.view); !view)
+        {
+            G7_LOG_FATAL("game", "{}", view.error().message);
+            return std::nullopt;
+        }
+        else if (!view.value())
         {
             // Never start the engine on a typo: a window would open with settings nobody asked for.
             G7_LOG_FATAL("game", "unknown argument '{}' (see --help)", arg);
@@ -304,6 +315,7 @@ int main(int argc, char** argv)
     }
     config.start = cli->start;
     config.startTime = cli->time;
+    config.view = cli->view;
     if (!cli->saveWorld.empty())
     {
         config.saveWorld = g7::fs::fromUtf8(cli->saveWorld);
