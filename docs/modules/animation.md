@@ -96,7 +96,8 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
 - **Debug-UI** (F1), Fenster „Animation“: Figur, Graph, Zustand, Überblendung, Fortschritt, Clips mit Gewichten,
   Parameter, die letzten Events.
 - `Engine::playerAnimationState()` / `playerFigurePath()` für Tests (render_gpu `Player GPU`).
-- Offen: Rüstungs-/Kopfwechsel (Teil D2), Tiere (D3).
+- Offen: Rüstungs-/Kopfwechsel (Teil D2), Tiere (D3); Dual-Quaternion-Skinning gegen die Schulterbeule in extremen
+  Posen (offener Punkt in render.md, Entscheidung mit echten Clips F4).
 
 ## Attachments, Gesicht, Look-At (M6 Teil D1, umgesetzt)
 - **Attachments:** `Engine::attachToPlayer(socket, modelPath)` bzw. mit einem in Code erzeugten `MeshData`
