@@ -119,3 +119,18 @@ TEST_CASE("Creatures GPU: on the ground, walking ahead, turning, every action")
     engine.removeCreatures();
     CHECK(engine.creatureCount() == 0);
 }
+
+TEST_CASE("Scripts GPU: items and NPCs inserted from the console render, the console window draws")
+{
+    Engine engine(creatureConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    REQUIRE(engine.runConsoleLine("insert('it_sword_old')").ok());
+    REQUIRE(engine.runConsoleLine("insert('it_apple', 3)").ok());
+    REQUIRE(engine.runConsoleLine("insert('npc_farmer_woman')").ok());
+    engine.setConsoleOpen(true);
+    frames(engine, 20);
+    CHECK(engine.consoleOpen());
+    CHECK(engine.creatureCount() == 1);
+    CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}

@@ -119,5 +119,22 @@ usize emit(std::string_view event, std::span<const Value> args);
   Takte (höchstens ein Aufruf je `tick`); ein fehlschlagender Timer wird geloggt und entfernt.
 - **Ereignisse:** `on(name, fn)` meldet an; `emit` aus Lua oder C++ ruft alle Funktionen, ein Fehler in einer stoppt
   die anderen nicht. Die Ereignisse der Engine stehen in `docs/script-api.md` (mit Teil C).
-- `docs/script-api.md` erzeugt `gothar --script-api=…` aus allen Bindings der Engine (Teil C); die CI prüft, dass die
+- `docs/script-api.md` erzeugt `gothar --script-api=…` aus allen Bindings der Engine; die CI prüft, dass die
   Datei aktuell ist.
+
+## In der Engine (umgesetzt mit M7 Teil C)
+- **Dateien:** `game/scripts` erscheint im VFS als `scripts/` – die Kopie neben dem Spiel (`gothar_data`), in
+  Entwicklungs-Builds darüber der Ordner des Repos. Die Engine lädt sie beim Start, vor der ersten Welt.
+- **Arten** definiert `gameplay::defineContentKinds`: `Item`, `Npc` (mit `figure` = Figuren-Manifest), `Info`
+  (`condition`/`run` als Funktionen), `Quest`, `Routine` (Einträge geprüft mit M9).
+- **Engine-Funktionen** (Gruppe „Welt“): `insert(name, count?)` setzt ein Item (Platzhalter nach `category`, solange
+  es kein `mesh` gibt) bzw. einen NPC (animierte Figur, schaut zum Spieler; KI mit M9) vor die Spielfigur;
+  `teleport(start)` bzw. `teleport(x, y, z)` (`goto` ist in Lua ein Schlüsselwort); `time(h, m)`; `where()`.
+- **Ereignisse:** `world_loaded(world)` nach jedem Laden einer Welt, `scripts_reloaded()` nach dem Neuladen.
+- **Timer** laufen im festen Schritt (Simulationszeit).
+- **Hot-Reload** (Entwicklung, `[assets] hot_reload`): ändert sich eine Skriptdatei, lädt die VM neu; `Story` behält
+  ihre Werte (was ein Skript beim Laden setzt, überschreibt der alte Stand).
+- **Konsole** (Taste ^, Aktion `console`; ImGui-Fenster „Console“): Eingabe mit Verlauf, erst als Ausdruck (zeigt
+  den Wert), sonst als Anweisung; Fehler rot mit `!`. `Engine::runConsoleLine` für Tests und Werkzeuge.
+- **Beispielinhalt:** Waffen, Essen, Tränke; vier Lager-NPCs (Torwache, Bäuerin, Holzfäller, alter Mann); ein
+  Tagesablauf, zwei Dialog-Infos (per Konsole: `call_info("dia_gate_guard_hello")`), ein Auftrag.

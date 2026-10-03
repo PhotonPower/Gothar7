@@ -199,6 +199,11 @@ Item "it_nothing" "oops"
     REQUIRE(talk.valid());
     const std::vector<Value> args = {"guard", "hero"};
     CHECK(vm.call(talk, args).value().asString() == "guard greets hero");
+    // ... and from Lua: instance() and instances().
+    CHECK(vm.runString("instance('Item', 'it_apple').value").value().asInteger() == 2);
+    CHECK(vm.runString("instance('Npc', 'npc_guard').on_talk('a', 'b')").value().asString() == "a greets b");
+    CHECK(vm.runString("instance('Item', 'it_unknown')").value().isNil());
+    CHECK(vm.runString("instances('Item')").value() == makeTable({"it_apple", "it_sword_old"}));
 
     // The problems, each with file, line and what is wrong.
     std::vector<std::string> texts;
@@ -294,8 +299,8 @@ TEST_CASE("Script bindings: engine functions in Lua, errors at the calling line,
     {
         names.push_back(b->name);
     }
-    CHECK(names == std::vector<std::string>{"after", "cancel", "emit", "every", "on", "print", "require",
-                                            "Story", "Log.create", "add", "insert"});
+    CHECK(names == std::vector<std::string>{"after", "cancel", "emit", "every", "instance", "instances", "on",
+                                            "print", "require", "Story", "Log.create", "add", "insert"});
     const std::string md = vm.apiMarkdown();
     CHECK(md.starts_with("# Skript-API (Lua)"));
     CHECK(md.find("## Grundlagen") < md.find("## Tagebuch"));

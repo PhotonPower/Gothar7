@@ -389,6 +389,9 @@ struct DebugUi::Impl
     usize frameIndex = 0;
     usize frameCount = 0; // valid entries in frameTimes
     bool showDemo = false;
+    std::array<char, 512> consoleInput{};
+    i32 consoleHistory = -1; // index into ConsolePanel::history while browsing, -1: a new line
+    usize consoleShown = 0;  // lines seen: scroll down when more arrive
 
     ~Impl()
     {
@@ -507,6 +510,80 @@ void DebugUi::beginFrame(const platform::Input& input, Vec2 size, Vec2 pixels, f
         io.AddInputCharactersUTF8(text.c_str());
     }
     ImGui::NewFrame();
+}
+
+void DebugUi::consolePanel(ConsolePanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    Impl& impl = *m_impl;
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    const ImVec2 view = ImGui::GetMainViewport()->Size;
+    ImGui::SetNextWindowPos(ImVec2(10.0f * scale, view.y * 0.55f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(std::min(view.x - 20.0f * scale, 900.0f * scale), view.y * 0.4f),
+                             ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Console", &panel.open))
+    {
+        ImGui::End();
+        return;
+    }
+    const f32 inputHeight = ImGui::GetFrameHeightWithSpacing();
+    if (ImGui::BeginChild("lines", ImVec2(0.0f, -inputHeight), ImGuiChildFlags_None))
+    {
+        for (const std::string& line : panel.lines)
+        {
+            const ImVec4 colour = line.starts_with("! ")   ? ImVec4(1.0f, 0.45f, 0.35f, 1.0f)
+                                  : line.starts_with("> ") ? ImVec4(0.6f, 0.8f, 1.0f, 1.0f)
+                                                           : ImVec4(0.9f, 0.9f, 0.9f, 1.0f);
+            ImGui::TextColored(colour, "%s", line.c_str());
+        }
+        if (panel.lines.size() != impl.consoleShown)
+        {
+            ImGui::SetScrollHereY(1.0f);
+            impl.consoleShown = panel.lines.size();
+        }
+    }
+    ImGui::EndChild();
+    // Up/Down browse the earlier inputs.
+    const auto history = [](ImGuiInputTextCallbackData* data) -> int
+    {
+        auto* p = static_cast<std::pair<ConsolePanel*, i32*>*>(data->UserData);
+        const auto& entries = p->first->history;
+        i32& index = *p->second;
+        if (entries.empty())
+        {
+            return 0;
+        }
+        if (data->EventKey == ImGuiKey_UpArrow)
+        {
+            index = index < 0 ? static_cast<i32>(entries.size()) - 1 : std::max(0, index - 1);
+        }
+        else if (data->EventKey == ImGuiKey_DownArrow)
+        {
+            index = index < 0 || index + 1 >= static_cast<i32>(entries.size()) ? -1 : index + 1;
+        }
+        data->DeleteChars(0, data->BufTextLen);
+        if (index >= 0)
+        {
+            data->InsertChars(0, entries[static_cast<usize>(index)].c_str());
+        }
+        return 0;
+    };
+    std::pair<ConsolePanel*, i32*> user{&panel, &impl.consoleHistory};
+    if (panel.focus)
+    {
+        ImGui::SetKeyboardFocusHere();
+    }
+    ImGui::SetNextItemWidth(-1.0f);
+    if (ImGui::InputText("##input", impl.consoleInput.data(), impl.consoleInput.size(),
+                         ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory, history,
+                         &user))
+    {
+        panel.submitted = impl.consoleInput.data();
+        impl.consoleInput.fill('\0');
+        impl.consoleHistory = -1;
+        ImGui::SetKeyboardFocusHere(-1); // keep typing
+    }
+    ImGui::End();
 }
 
 void DebugUi::creaturesPanel(CreaturesPanel& panel)

@@ -143,6 +143,8 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |
 | `--walk=<route.json>` | Autopilot: die Spielfigur läuft die Route ab (mit `--world`), schreibt Protokoll und Screenshots, beendet sich (`docs/modules/tools.md`); mit `--no-render` ohne Grafikgerät und ohne Bilder |
 | `--walk-out=<ordner>` | Ausgabeordner des Autopiloten (Vorgabe `walk/`) |
+| `--script-api=<datei.md>` | Lua-Referenz (`docs/script-api.md`) aus den Bindings der Engine schreiben und beenden; zusammen mit `--smoke-test` ohne Fenster. ctest `game.script_api` prüft, dass die Datei aktuell ist |
+| (Taste ^) | Skript-Konsole ein/aus (Aktion `console`): Lua-Zeilen mit Verlauf (Pfeil hoch/runter), z. B. `insert("it_apple", 3)`, `insert("npc_gate_guard")`, `teleport("START_MARKTPLATZ")`, `time(18, 30)`, `where()` |
 | (Taste F1) | ImGui-Debugfenster ein/aus (Aktion `debug_ui`): Leistung, Kamera, Render-Einstellungen live |
 | (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Kamera (Position, Gier, Neigung), Achsen, Raster, Bounds, Lichtradien, Spielfigur (Zylinder, Zustand, Tempo) |
 | (Taste F3) | Flugmodus ein/aus (Aktion `debug_fly`): freie Kamera ohne Kollision, Maus-Blick (solange das Debug-UI zu ist), W/A/S/D bzw. Pfeiltasten, Leertaste/E hoch, Strg/Q runter, Shift schnell, Mausrad ändert die Fluggeschwindigkeit (0,5–500 m/s); die Tasten zeigt ein Hinweis unten im Bild. Belegung `fly_*` in `engine.toml` |

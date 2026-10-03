@@ -112,4 +112,9 @@ if(TARGET gothar)
                          "-DEXPECT=${_expect}" -P "${CMAKE_CURRENT_SOURCE_DIR}/game/check_cli.cmake")
         set_tests_properties(game.cli.${_name} PROPERTIES TIMEOUT 60)
     endforeach()
+    # docs/script-api.md is generated from the engine's script bindings (M7): it must be up to date.
+    add_test(NAME game.script_api
+             COMMAND ${CMAKE_COMMAND} -DGOTHAR=$<TARGET_FILE:gothar> "-DOUT=${CMAKE_CURRENT_BINARY_DIR}/script-api.md"
+                     "-DDOC=${PROJECT_SOURCE_DIR}/docs/script-api.md" -P "${CMAKE_CURRENT_SOURCE_DIR}/game/check_script_api.cmake")
+    set_tests_properties(game.script_api PROPERTIES TIMEOUT 120)
 endif()

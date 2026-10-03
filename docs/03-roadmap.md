@@ -166,19 +166,16 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 **Meilenstein A abgenommen 2026-10-03 vom Projektinhaber** (Debug-Build 238ea82, „Animation ist ok“). Offen in M6: Teil D2 (Rüstungs-/Kopfwechsel zur Laufzeit) und D3 (Tiere).
 
 ## M7 – Scripting
-- [ ] Lua 5.4 + sol2 (ADR 0006), Skript-VM pro Spielsitzung, Sandbox (kein `io`/`os`)
-  - Stand Teil A: ADR 0006 akzeptiert, Lua 5.4.7 + sol2 3.5.0 privat in `script`; `ScriptVm` mit Sandbox (kein io/os/debug/load, `require` nur unterhalb der Skripte), Befehls- und Speichergrenze, Fehler mit Datei:Zeile; Anbindung pro Spielsitzung mit Teil C
-- [ ] Modul-/Ordnerstruktur in `game/scripts`, Lade-Reihenfolge
-  - Stand Teil A: Lade-Reihenfolge `lib/` → `data/` → Rest, je alphabetisch (`loadOrder`); Ordner und Beispielinhalt mit Teil C
-- [ ] Instanz-System: `Item{...}`, `Npc{...}`, `Info{...}`, `Quest{...}` als deklarative Tabellen
-  - Stand Teil A: Instanz-Arten (`defineKind`) mit Schema (Typen, Pflichtfelder, Bereiche, Verweise, unbekannte Felder), Prüfung nach dem Laden; die Arten selbst registriert gameplay mit Teil C
-- [ ] Engine-API-Bindings (dokumentiert, generierte Referenz `docs/script-api.md`)
-  - Stand Teil B: `ScriptVm::bind` (Name, Signatur, Beschreibung, Gruppe), Fehler an der aufrufenden Zeile, `apiMarkdown()`; die Datei mit allen Engine-Bindings und die CI-Prüfung mit Teil C
+- [x] Lua 5.4 + sol2 (ADR 0006), Skript-VM pro Spielsitzung, Sandbox (kein `io`/`os`)
+  - ADR 0006 akzeptiert, Lua 5.4.7 + sol2 3.5.0 privat in `script`; `ScriptVm` mit Sandbox (kein io/os/debug/load, `require` nur unterhalb der Skripte), Befehls- und Speichergrenze, Fehler mit Datei:Zeile (A); die Engine lädt `game/scripts` beim Start (C)
+- [x] Modul-/Ordnerstruktur in `game/scripts`, Lade-Reihenfolge – `lib/` → `data/` → Rest (A); Ordner, VFS-Mount `scripts/` und Beispielinhalt (C)
+- [x] Instanz-System: `Item{...}`, `Npc{...}`, `Info{...}`, `Quest{...}` als deklarative Tabellen – Arten mit Schema (A), `Item`/`Npc`/`Info`/`Quest`/`Routine` aus `gameplay::defineContentKinds` (C); weitere Felder mit M8 ff.
+- [x] Engine-API-Bindings (dokumentiert, generierte Referenz `docs/script-api.md`) – `ScriptVm::bind` (B); `gothar --script-api=…`, ctest `game.script_api` prüft, dass die Datei aktuell ist (C)
 - [ ] Globale Story-Variablen, persistent (für Save)
   - Stand Teil B: Tabelle `Story`, `storyForSave` (nur Daten) und `setStory`; Spielstand mit M15
-- [x] Timer/verzögerte Aufrufe, Ereignis-Hooks – `after`/`every`/`cancel` in Spielzeit (`ScriptVm::tick`), `on`/`emit` (Teil B); Engine-Ereignisse mit Teil C
-- [ ] Hot-Reload im Entwicklungsmodus, Fehler mit Datei/Zeile im Log
-- [ ] Ingame-Konsole (Lua-Befehle, Cheats wie `insert`, `goto`, `time`)
+- [x] Timer/verzögerte Aufrufe, Ereignis-Hooks – `after`/`every`/`cancel` in Spielzeit (`ScriptVm::tick`), `on`/`emit` (B); `world_loaded`, `scripts_reloaded` (C)
+- [x] Hot-Reload im Entwicklungsmodus, Fehler mit Datei/Zeile im Log – geänderte Skripte laden neu, `Story` bleibt (`[assets] hot_reload`)
+- [x] Ingame-Konsole (Lua-Befehle, Cheats wie `insert`, `goto`, `time`) – Taste ^ (Aktion `console`), Verlauf; `insert`, `teleport` (`goto` ist in Lua ein Schlüsselwort), `time`, `where`
 
 **DoD:** Items und NPC-Instanzen werden aus Lua definiert und per Konsole in die Welt gesetzt.
 
