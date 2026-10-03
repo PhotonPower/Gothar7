@@ -16,6 +16,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 #include <g7/gameplay/Character.hpp>
+#include <g7/gameplay/Focus.hpp>
 #include <g7/gameplay/Movement.hpp>
 #include <g7/physics/Character.hpp>
 #include <g7/physics/Physics.hpp>
@@ -53,6 +54,7 @@
 #include <set>
 #include <span>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace g7
@@ -82,6 +84,24 @@ struct SceneInstance
 };
 
 /// A landing of the player: fall height from the highest point and the hit points it cost.
+/// An item lying in the world (M8), as the engine reports it.
+struct WorldItemInfo
+{
+    world::VobId vob;
+    std::string instance;
+    u32 count = 1;
+    Vec3 position{0.0f};
+};
+
+/// What the hero has in focus (M8): kind, id (VobId value for items and mobs, creature id for NPCs) and its
+/// name.
+struct FocusInfo
+{
+    gameplay::FocusKind kind = gameplay::FocusKind::Item;
+    u64 id = 0;
+    std::string name;
+};
+
 struct PlayerLanding
 {
     f32 height = 0.0f;
@@ -372,6 +392,27 @@ public:
     [[nodiscard]] u32 insertedItemCount() const noexcept { return m_insertedItems; }
     /// The hero's character (M8): Npc "pc_hero" from the scripts; nullptr without it.
     [[nodiscard]] const gameplay::Character* hero() const noexcept;
+
+    // Items, focus, picking up (M8 part B, EngineItems.cpp)
+    /// Items lying in the world (item vobs of the world file plus those inserted or dropped).
+    [[nodiscard]] std::vector<WorldItemInfo> worldItems() const;
+    /// Puts an item vob (runtime id) into the world; the Item instance must exist.
+    [[nodiscard]] Result<world::VobId> spawnItem(std::string_view instance, u32 count, const Vec3& at,
+                                                 f32 yaw = 0.0f);
+    /// The focus of the last frame (hero only; none in fly mode).
+    [[nodiscard]] std::optional<FocusInfo> focus() const;
+    /// Recomputes the focus now (normally once per frame after the simulation).
+    void updateFocus();
+    /// What the action key does with an item in focus: starts picking it up (it reaches the inventory with
+    /// the animation's "pickup" event, or after a moment without one). Errors: nothing to pick up, already
+    /// busy.
+    [[nodiscard]] Result<void> pickUpFocus();
+    [[nodiscard]] bool pickingUp() const noexcept { return m_pickup.has_value(); }
+    /// Puts `count` of the hero's items on the ground in front of him.
+    [[nodiscard]] Result<void> dropItem(std::string_view instance, u32 count = 1);
+    [[nodiscard]] bool inventoryOpen() const noexcept { return m_inventoryOpen; }
+    void setInventoryOpen(bool open) noexcept;
+    [[nodiscard]] const gameplay::FocusSettings& focusSettings() const noexcept { return m_focusSettings; }
     /// True while the player climbs a ledge (input is ignored until it stands on top).
     [[nodiscard]] bool playerClimbing() const noexcept { return m_climb.has_value(); }
     /// Swimming or diving (gameplay::WaterMode::Land on land), and the air left under water.
@@ -451,6 +492,38 @@ private:
     void consoleUi();
     // Hero character (EngineHero.cpp)
     void buildHero();
+    // Items, focus, picking up (EngineItems.cpp)
+    struct WorldItem
+    {
+        world::VobId vob;
+        const LoadedModel* model = nullptr;
+        Mat4 transform{1.0f};
+        AABB bounds;
+    };
+    struct FocusTarget
+    {
+        u64 id = 0;
+        gameplay::FocusKind kind = gameplay::FocusKind::Item;
+        std::string name;
+        Vec3 point{0.0f};
+    };
+    struct PendingPickup
+    {
+        world::VobId vob;
+        f32 time = 0.0f;
+        bool animated = false; ///< the graph plays "pickup"
+        bool taken = false;
+    };
+    void loadFocusSettings();
+    [[nodiscard]] const LoadedModel* itemModel(std::string_view instance);
+    void rebuildWorldItems();
+    void removeWorldItem(world::VobId id);
+    void appendItemDraws(const Frustum& volume, bool shadow, u32 cascade);
+    [[nodiscard]] std::string focusName(gameplay::FocusKind kind, u64 id) const;
+    void takeItem(world::VobId id);
+    void fixedUpdateInteraction(f32 seconds);
+    void inventoryUi();
+    void focusUi();
     void bindHeroFunctions();
     [[nodiscard]] gameplay::ItemLookup itemLookup() const;
     [[nodiscard]] i32 xpForLevel(i32 level);
@@ -605,6 +678,16 @@ private:
     std::vector<std::unique_ptr<LoadedModel>> m_scriptModels; // placeholders of inserted items
     std::unique_ptr<gameplay::Character> m_hero;              // M8: kept over script reloads
     u32 m_insertedItems = 0;
+    std::vector<WorldItem> m_worldItems;
+    std::unordered_map<std::string, const LoadedModel*> m_itemModels; // by Item instance; models in m_models
+                                                                      // or m_scriptModels (placeholders)
+    gameplay::FocusSettings m_focusSettings;
+    std::vector<gameplay::FocusCandidate> m_focusCandidates; // per frame, reused
+    std::optional<FocusTarget> m_focus;
+    std::optional<PendingPickup> m_pickup;
+    bool m_pickupEvent = false; // the figure's "pickup" event fired
+    bool m_inventoryOpen = false;
+    std::string m_inventoryMessage;
     std::string m_scriptStamp; // newest script changes seen (hot reload)
     f64 m_scriptReloadTimer = 0.0;
     bool m_consoleOpen = false;

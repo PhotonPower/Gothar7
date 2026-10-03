@@ -185,7 +185,8 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 - [x] Items: Kategorien (Nahkampf, Fernkampf, Rüstung, Munition, Nahrung, Trank, Rune, Spruchrolle, Schriftstück, Schlüssel, Sonstiges), Wert, Bedingungen (Stärke X) – Schema prüft `category`, `requires` beim Ausrüsten (A)
 - [ ] Inventar (Spieler + NPC + Truhen), Ausrüsten, Gewicht optional (Gothic hat keins) – Spieler/NPC und Ausrüsten fertig (A), Truhen mit Teil C
 - [x] Wegnetz-Block der `.g7world` lesen/schreiben (Vertrag mit welt, world.md „Wegnetz“; Pfadsuche M9) (A)
-- [ ] **Fokus-System** (Ziel-Auswahl nach Blickrichtung/Distanz/Priorität)
+- [x] **Fokus-System** (Ziel-Auswahl nach Blickrichtung/Distanz/Priorität) – `gameplay::selectFocus`, `data/focus.toml`, Name über dem Ziel (B)
+- [x] Items in der Welt (Vob-Typ `item`), Aufheben mit der Aktionstaste und `none/t_pickup_ground` (Event `pickup`), Inventar-Fenster (Tab), `drop_item` (B)
 - [ ] **Mob-Interaktion**: Zustandsfolge mit Animationen, Benutzer-Slots, Items verbrauchen/erzeugen (Schmieden, Braten)
 - [ ] Truhen, Türen, Schlösser + Dietrich-Minispiel, Schlüssel
 - [ ] Schlafen → Zeit vorspulen

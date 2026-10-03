@@ -253,3 +253,28 @@ TEST_CASE("WorldFile: waynet errors name the entry")
            "freepoints": [ { "name": "FP_SIT_X", "pos": [0,0,0] } ], "edges": [ ["WP_A", "FP_SIT_X"] ] })",
         "unknown point \"FP_SIT_X\"");
 }
+
+TEST_CASE("WorldFile: item vobs (instance, count) round-trip and are checked")
+{
+    const char* text = R"({ "version": 1, "vobs": [
+    { "id": 5, "type": "item", "name": "APPLES", "pos": [1, 0, 2], "components": { "item": { "instance": "it_apple", "count": 3 } } },
+    { "id": 6, "type": "item", "pos": [2, 0, 2], "components": { "item": { "instance": "it_club" } } } ] })";
+    const WorldFile world = parse(text);
+    REQUIRE(world.vobs.size() == 2);
+    CHECK(world.vobs[0].type == VobType::Item);
+    CHECK(world.vobs[0].item.instance == "it_apple");
+    CHECK(world.vobs[0].item.count == 3);
+    CHECK(world.vobs[1].item.count == 1);
+    const std::string out = writeWorldFile(world);
+    CHECK(out.find(R"("components":{"item":{"instance":"it_apple","count":3}})") != std::string::npos);
+    CHECK(out.find(R"("components":{"item":{"instance":"it_club"}})") !=
+          std::string::npos); // count 1 left out
+    CHECK(writeWorldFile(parse(out)) == out);
+
+    CHECK(
+        errorOf(R"({ "version": 1, "vobs": [ { "id": 1, "type": "item", "components": { "item": {} } } ] })")
+            .find("vobs[0].components.item: needs 'instance'") != std::string::npos);
+    CHECK(errorOf(R"({ "version": 1, "vobs": [ { "id": 1, "type": "item",
+              "components": { "item": { "instance": "it_apple", "count": 0 } } } ] })")
+              .find("components.item.count: must be a whole number") != std::string::npos);
+}

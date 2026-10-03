@@ -348,6 +348,18 @@ bool Engine::runFrame()
             {
                 setDebugOverlay(!m_debugOverlay);
             }
+            if (m_actions.pressed(m_input, platform::Action::Inventory) && m_player.valid())
+            {
+                setInventoryOpen(!m_inventoryOpen);
+            }
+            // The action key (classic: Ctrl, modern: E) acts on the focus: items are picked up (M8).
+            if (!m_inventoryOpen && m_player.valid() && !m_flyMode && m_focus &&
+                m_focus->kind == gameplay::FocusKind::Item &&
+                (m_actions.pressed(m_input, platform::Action::Action) ||
+                 m_actions.pressed(m_input, platform::Action::Use)))
+            {
+                (void)pickUpFocus();
+            }
         }
     }
 
@@ -368,6 +380,7 @@ bool Engine::runFrame()
         G7_PROFILE_SCOPE("Engine::fixedUpdate");
         // TODO(M7+): ai/gameplay fixed update
         fixedUpdatePlayer(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateInteraction(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {
@@ -387,6 +400,7 @@ bool Engine::runFrame()
     {
         performWorldChange(); // between simulation and rendering, never inside either
     }
+    updateFocus(); // after the simulation: what the hero looks at now
     // Finished asset loads become visible here, once per frame on the main thread; hot reload
     // looks for changed files first and re-uploads affected models afterwards.
     m_assets->checkForChanges(platform::nowSeconds());
@@ -989,6 +1003,7 @@ Result<void> Engine::instantiateScene()
             m_instances.back().solid = false;
         }
     }
+    rebuildWorldItems();
     m_lights.clear();
     m_scene.each<world::LightSource, world::WorldTransform>(
         [&](entt::entity, const world::LightSource& light, const world::WorldTransform& world)
@@ -1162,7 +1177,11 @@ void Engine::unloadWorld()
     m_creatures.clear(); // they belong to the world they were put into
     m_scene.clear();
     m_instances.clear();
-    m_scriptModels.clear(); // inserted items belong to the world
+    m_worldItems.clear(); // items lying around belong to the world
+    m_itemModels.clear();
+    m_scriptModels.clear();
+    m_focus.reset();
+    m_pickup.reset();
     m_cullGridDirty = true;
     m_physicsDirty = true;
     m_lights.clear();
@@ -1480,6 +1499,7 @@ void Engine::drawScene(u32 width, u32 height)
                     }
                 }
             }
+            appendItemDraws(volume, true, i);
             if (m_multiDraw)
             {
                 m_meshRenderer.drawShadowBatched(*m_device, m_drawItems, m_cascades[i]);
@@ -1549,6 +1569,7 @@ void Engine::drawScene(u32 width, u32 height)
             ++m_visibleInstances;
         }
     }
+    appendItemDraws(view, false, 0);
     // The player before the batched pass: that one ends with the translucent water, which must lie over
     // the figure's parts below the surface.
     drawPlayer(false, 0);
@@ -1668,7 +1689,7 @@ void Engine::setDebugUiVisible(bool visible) noexcept
 
 void Engine::runDebugUi(f64 realSeconds)
 {
-    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen) && m_debugUi.valid();
+    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_focus) && m_debugUi.valid();
     m_window->setTextInput(m_debugUiFrame && m_debugUi.wantsText());
     if (!m_debugUiFrame)
     {
@@ -1684,6 +1705,8 @@ void Engine::runDebugUi(f64 realSeconds)
     {
         consoleUi(); // also without the other debug windows
     }
+    inventoryUi(); // the inventory and the focus name until the HUD exists (M13)
+    focusUi();
     if (!m_debugUiVisible)
     {
         return;
@@ -1876,6 +1899,8 @@ void Engine::shutdown()
     m_instances.clear();
     m_groundModel.reset();
     m_waterModel.reset();
+    m_worldItems.clear();
+    m_itemModels.clear();
     m_scriptModels.clear();
     m_scripts.reset();
     m_creatures.clear();

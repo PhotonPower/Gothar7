@@ -36,23 +36,6 @@ constexpr bool kScriptHotReloadDefault = false;
 constexpr bool kScriptHotReloadDefault = true;
 #endif
 
-/// A placeholder model for an item without a mesh: a long bar for weapons, a small box for the rest.
-asset::MeshData itemPlaceholder(std::string_view category)
-{
-    const bool weapon = category.starts_with("melee") || category == "bow" || category == "crossbow";
-    const Vec4 colour = weapon                 ? Vec4(0.55f, 0.55f, 0.6f, 1.0f)
-                        : category == "food"   ? Vec4(0.7f, 0.25f, 0.15f, 1.0f)
-                        : category == "potion" ? Vec4(0.3f, 0.35f, 0.8f, 1.0f)
-                                               : Vec4(0.6f, 0.45f, 0.25f, 1.0f);
-    const Vec3 half = weapon ? Vec3(0.45f, 0.025f, 0.05f) : Vec3(0.08f, 0.08f, 0.08f);
-    asset::MeshData mesh = asset::makeBox(half, colour);
-    for (asset::Vertex& v : mesh.vertices)
-    {
-        v.position.y += half.y; // lying on the ground
-    }
-    mesh.bounds = AABB{mesh.bounds.min + Vec3(0, half.y, 0), mesh.bounds.max + Vec3(0, half.y, 0)};
-    return mesh;
-}
 } // namespace
 
 void Engine::mountScripts()
@@ -311,40 +294,16 @@ Result<void> Engine::insertInstance(std::string_view name, u32 count)
 
     if (const script::Instance* item = m_scripts->findInstance("Item", name))
     {
-        const std::string mesh(item->fields["mesh"].asString());
-        const LoadedModel* model = nullptr;
-        if (!mesh.empty() && m_vfs.exists(mesh) && loadModels({mesh}))
-        {
-            model = this->model(mesh);
-        }
-        else
-        {
-            auto owned = std::make_unique<LoadedModel>();
-            const asset::MeshData placeholder = itemPlaceholder(item->fields["category"].asString());
-            owned->name = std::format("item {}", name);
-            owned->bounds = placeholder.bounds;
-            if (m_device)
-            {
-                auto gpuMesh = render::Mesh::create(*m_device, *m_geometry, placeholder);
-                auto materials = render::MaterialSet::create(
-                    *m_device, placeholder, render::MaterialSet::ImageLookup{}, m_meshRenderer.defaults());
-                if (!gpuMesh || !materials)
-                {
-                    return Error{std::format("cannot upload a placeholder for {}", name)};
-                }
-                owned->mesh = std::move(gpuMesh).value();
-                owned->materials = std::move(materials).value();
-            }
-            model = owned.get();
-            m_scriptModels.push_back(std::move(owned));
-        }
+        // Item vobs at runtime ids: in focus, picked up with the action key (M8).
         const f32 yaw = std::atan2(ahead.x, ahead.z);
         for (u32 i = 0; i < count; ++i)
         {
             const Vec3 at =
                 ground(origin + ahead * 1.2f + side * (0.25f * (static_cast<f32>(i) - 0.5f * (count - 1))));
-            addInstance(*model, glm::translate(Mat4(1.0f), at) * glm::rotate(Mat4(1.0f), yaw, Vec3(0, 1, 0)),
-                        false);
+            if (auto spawned = spawnItem(name, 1, at, yaw); !spawned)
+            {
+                return spawned.error();
+            }
         }
         ++m_insertedItems;
         G7_LOG_INFO("engine", "inserted {} x {} ({})", count, name, item->fields["name"].asString());

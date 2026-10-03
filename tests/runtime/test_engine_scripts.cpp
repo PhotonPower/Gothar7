@@ -181,3 +181,78 @@ TEST_CASE("Engine scripts: the hero's values, inventory, equipment and levels")
     CHECK(run(engine, "item_count('it_apple')").asInteger() == 3);
     CHECK(run(engine, "hero().level").asInteger() == 2);
 }
+
+TEST_CASE("Engine items: focus, picking up, dropping, the inventory stops the hero")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    REQUIRE(engine.hero() != nullptr);
+    const u32 apples = engine.hero()->itemCount("it_apple");
+    // The camp has items of its own (vob type item), not in view from the start point.
+    const usize lying = engine.worldItems().size();
+    CHECK(lying == 3);
+    engine.updateFocus();
+    CHECK_FALSE(engine.focus().has_value());
+
+    // insert puts an item vob 1.2 m in front of the hero: it comes into focus with its name.
+    run(engine, "on('item_taken', function(item, count) Story.taken = item .. ' ' .. count end)");
+    REQUIRE(run(engine, "insert('it_apple')").asBool());
+    REQUIRE(engine.worldItems().size() == lying + 1);
+    const WorldItemInfo inserted = engine.worldItems().back();
+    CHECK(inserted.instance == "it_apple");
+    CHECK(inserted.vob.runtime());
+    engine.updateFocus();
+    REQUIRE(engine.focus().has_value());
+    CHECK(engine.focus()->kind == gameplay::FocusKind::Item);
+    CHECK(engine.focus()->id == inserted.vob.value);
+    CHECK(engine.focus()->name == "Apfel");
+
+    // Picking up: the hero stands still, after a moment the apple is in the bag and gone from the world.
+    REQUIRE(engine.pickUpFocus().ok());
+    CHECK_FALSE(engine.pickUpFocus().ok()); // busy
+    CHECK(engine.pickingUp());
+    bool bent = false; // the figure plays none/t_pickup_ground; the apple goes at its event
+    bool takenEarly = false;
+    for (int i = 0; i < 300 && engine.pickingUp(); ++i) // the clip takes ~2 s, its event comes at 1.2 s
+    {
+        REQUIRE(engine.runFrame());
+        bent = bent || engine.playerAnimationState() == "pickup";
+        takenEarly = takenEarly || (i < 30 && engine.hero()->itemCount("it_apple") > apples);
+    }
+    CHECK(bent);
+    CHECK_FALSE(takenEarly);
+    CHECK_FALSE(engine.pickingUp());
+    CHECK(engine.hero()->itemCount("it_apple") == apples + 1);
+    CHECK(engine.worldItems().size() == lying);
+    CHECK_FALSE(engine.focus().has_value());
+    CHECK(run(engine, "Story.taken").asString() == "it_apple 1");
+    CHECK_FALSE(engine.pickUpFocus().ok()); // nothing in focus
+
+    // Dropping puts it in front of him again; turning away loses the focus.
+    REQUIRE(engine.dropItem("it_apple").ok());
+    CHECK(engine.hero()->itemCount("it_apple") == apples);
+    REQUIRE(engine.worldItems().size() == lying + 1);
+    engine.updateFocus();
+    CHECK(engine.focus().has_value());
+    CHECK_FALSE(engine.dropItem("it_dragon").ok());
+
+    // Inventory open: the hero does not walk.
+    engine.setInventoryOpen(true);
+    CHECK(engine.inventoryOpen());
+    const Vec3 before = engine.player()->feet();
+    gameplay::MoveInput forward;
+    forward.forward = 1.0f;
+    engine.setPlayerInputOverride(forward);
+    for (int i = 0; i < 20; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(glm::length(engine.player()->feet() - before) < 0.01f);
+    engine.setInventoryOpen(false);
+    for (int i = 0; i < 20; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(glm::length(engine.player()->feet() - before) > 0.1f);
+}
