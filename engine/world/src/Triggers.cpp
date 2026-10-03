@@ -71,6 +71,24 @@ std::vector<TriggerEvent> TriggerSystem::update(const Scene& scene, std::span<co
     return events;
 }
 
+void TriggerSystem::prime(const Scene& scene, std::span<const TriggerProbe> probes)
+{
+    m_inside.clear();
+    scene.each<Vob, TriggerVolume, WorldTransform>(
+        [&](entt::entity, const Vob& vob, const TriggerVolume& volume, const WorldTransform& transform)
+        {
+            for (const TriggerProbe& probe : probes)
+            {
+                const bool wanted = volume.filter == TriggerVolume::Filter::Any ||
+                                    (volume.filter == TriggerVolume::Filter::Player) == probe.player;
+                if (wanted && contains(volume, transform.matrix, probe.position))
+                {
+                    m_inside.insert({vob.id.value, probe.who.value});
+                }
+            }
+        });
+}
+
 bool TriggerSystem::isInside(VobId trigger, VobId who) const
 {
     return m_inside.contains({trigger.value, who.value});

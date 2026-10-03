@@ -23,3 +23,14 @@ Result<void> loadGame(SaveContext&, std::string_view slot);
 Result<SaveMeta> readMeta(std::string_view slot);
 }
 ```
+
+## Schnittstelle zum Weltwechsel (Stand M4)
+- Die Engine hält je **verlassener Welt** deren Zustand im Speicher (`Engine::m_leftWorlds`): ein `world::WorldFile`
+  (Vobs wie beim Verlassen, `nextVobId`, Gelände/Wegnetz/Zonen aus der Datei) plus die Menge der verbrauchten
+  `once`-Trigger. Beim Rückkehren wird daraus gespawnt statt aus der Datei.
+- Für den Spielstand heißt das: je besuchter Welt dieses `WorldFile` bzw. sein **Delta zur Ausgangsdatei** (oben)
+  plus die verbrauchten Trigger; die aktuelle Welt wird beim Speichern genauso erfasst (`captureWorld`).
+- **Offener Punkt – Laufzeit-Vobs:** `captureWorld` lässt Vobs ab `kRuntimeVobIdBase` (fallen gelassene Items,
+  gespawnte NPCs) weg. Bis M4 gibt es keine; sobald es sie gibt, müssen sie in den Weltzustand (Erfassen und Spawnen
+  mit fester Laufzeit-ID) – sonst gehen sie beim Weltwechsel verloren.
+- Global, nicht je Welt: Spielzeit/Tag-Nacht, Story-Variablen (world.md).

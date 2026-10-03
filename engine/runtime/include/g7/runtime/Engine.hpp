@@ -37,6 +37,8 @@
 
 #include <map>
 #include <memory>
+#include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -181,6 +183,15 @@ public:
     [[nodiscard]] world::Scene& scene() noexcept { return m_scene; }
     /// Camera used for rendering (a free-flying debug camera until the player exists, M5).
     [[nodiscard]] render::Camera& camera() noexcept { return m_camera; }
+    /// Level change: between this frame and the next, the current world is kept as it is (for coming back)
+    /// and `world` (VFS path of a .g7world) is loaded with the camera on its start point `start`. An unknown
+    /// world or start point is a warning and nothing changes. Game time stays (it is not part of a world).
+    void requestWorldChange(std::string world, std::string start);
+    /// VFS path of the loaded world (--world or the last level change); empty for scenes and models.
+    [[nodiscard]] const std::string& worldPath() const noexcept { return m_worldPath; }
+    /// Worlds left during this session whose state is kept (lower-case paths).
+    [[nodiscard]] usize keptWorlds() const noexcept { return m_leftWorlds.size(); }
+    [[nodiscard]] usize loadedModels() const noexcept { return m_models.size(); }
     /// Trigger volumes of the world (fed with the camera until the player exists).
     [[nodiscard]] const world::TriggerSystem& triggers() const noexcept { return m_triggers; }
     /// Who the camera is for the triggers.
@@ -208,6 +219,14 @@ private:
     [[nodiscard]] Result<void> initViewMesh();
     [[nodiscard]] Result<void> initScene();
     [[nodiscard]] Result<void> initWorld();
+    /// Builds the world from `file` (read from `path` or kept from an earlier visit) and puts the camera on
+    /// the start point `start` (empty: the lowest id or the overview).
+    [[nodiscard]] Result<void> loadWorld(const std::string& path, world::WorldFile file,
+                                         std::string_view start);
+    void unloadWorld();
+    void performWorldChange();
+    /// Models no instance uses any more (after a level change) go, with their geometry and textures.
+    void releaseUnusedModels();
     /// Render instances and lights for the vobs in m_scene (mesh and light vobs).
     [[nodiscard]] Result<void> instantiateScene();
     /// Splat layers and holes of the loaded terrain; layers that fail to load are a warning (slope
@@ -215,7 +234,7 @@ private:
     void loadTerrainSurface(const world::TerrainRef& ref);
     /// Puts the camera on the start point (--start or the lowest id); no start point and no --start
     /// keeps the overview camera, an unknown name is an error.
-    [[nodiscard]] Result<void> applyStartPoint();
+    [[nodiscard]] Result<void> applyStartPoint(std::string_view name);
     void addWorldDebugOverlay();
     [[nodiscard]] Result<void> saveWorld(const fs::Path& path) const;
     [[nodiscard]] Result<void> initAssets();
@@ -264,8 +283,22 @@ private:
     f64 m_frameSeconds = 0.0;         // real duration of the last frame
     f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
     // Scene: --view-mesh (one model) or --scene (test scene); models are shared by instances.
-    world::Scene m_scene;              // world vobs (--world, --scene); render instances are built from it
-    world::TriggerSystem m_triggers;   // fed with the camera until the player exists (M5)
+    world::Scene m_scene;            // world vobs (--world, --scene); render instances are built from it
+    world::TriggerSystem m_triggers; // fed with the camera until the player exists (M5)
+    std::string m_worldPath;
+    world::WorldFile m_worldFile; // the loaded world without its vobs (terrain, waynet ... for capturing)
+    struct LeftWorld
+    {
+        world::WorldFile file;       // as it was when left
+        std::set<u64> spentTriggers; // once-triggers that fired there
+    };
+    std::map<std::string, LeftWorld> m_leftWorlds; // by lower-case path; into the save game later
+    struct PendingWorldChange
+    {
+        std::string world;
+        std::string start;
+    };
+    std::optional<PendingWorldChange> m_pendingWorldChange;
     world::Heightfield m_heightfield;  // terrain heights (empty without terrain)
     render::TerrainRenderer m_terrain; // pipelines reference ShaderLibrary programs
     bool m_hasTerrain = false;

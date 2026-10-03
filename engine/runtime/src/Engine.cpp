@@ -290,6 +290,14 @@ bool Engine::runFrame()
         const world::TriggerProbe camera{kCameraProbe, m_camera.transform.position, true};
         m_triggers.update(m_scene, std::span(&camera, 1));
         ++m_simTicks;
+        if (m_pendingWorldChange)
+        {
+            break; // the level change happens before the next step: the old world is done
+        }
+    }
+    if (m_pendingWorldChange)
+    {
+        performWorldChange(); // between simulation and rendering, never inside either
     }
     // Finished asset loads become visible here, once per frame on the main thread; hot reload
     // looks for changed files first and re-uploads affected models afterwards.
@@ -852,11 +860,17 @@ Result<void> Engine::initWorld()
     {
         return Error{"cannot load world: " + file.error().message};
     }
-    if (auto spawned = world::spawnWorld(m_scene, file.value()); !spawned)
+    return loadWorld(path.value(), std::move(file).value(), m_config.start);
+}
+
+Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, std::string_view start)
+{
+    const Stopwatch timer;
+    if (auto spawned = world::spawnWorld(m_scene, file); !spawned)
     {
         return Error{"cannot load world: " + spawned.error().message};
     }
-    if (const auto& ref = file.value().terrain)
+    if (const auto& ref = file.terrain)
     {
         auto heightfield = world::Heightfield::load(m_vfs, *ref);
         if (!heightfield)
@@ -914,7 +928,7 @@ Result<void> Engine::initWorld()
         m_flyCamera.speed = std::clamp(radius * 0.2f, 5.0f, 50.0f);
         m_flyCamera.attach(m_camera);
     }
-    if (auto started = applyStartPoint(); !started)
+    if (auto started = applyStartPoint(start); !started)
     {
         return Error{"cannot load world: " + started.error().message};
     }
@@ -922,26 +936,145 @@ Result<void> Engine::initWorld()
     m_triggers.setCallback(
         [this](const world::TriggerEvent& event)
         {
-            // Until scripts exist (M7) the events are logged.
+            // Until scripts exist (M7) the events are logged; level changes act right away.
             const entt::entity e = m_scene.findById(event.trigger);
             G7_LOG_INFO("engine", "trigger {} {}{}{}",
                         event.kind == world::TriggerEvent::Kind::Enter ? "enter" : "leave",
                         e != entt::null ? m_scene.get<world::Vob>(e)->nameText
                                         : std::to_string(event.trigger.value),
                         event.function.empty() ? "" : " -> ", event.function);
+            const world::TriggerVolume* volume =
+                e != entt::null ? m_scene.get<world::TriggerVolume>(e) : nullptr;
+            if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr &&
+                !volume->changeWorld.empty())
+            {
+                requestWorldChange(volume->changeWorld, volume->changeStart);
+            }
         });
-    m_sceneName = file.value().name.empty() ? path.value() : file.value().name;
-    G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights", path.value(),
-                m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size());
+    // Arrival: triggers the camera already stands in fire only after it left them (no bouncing back
+    // through a level change next to the start point).
+    m_scene.updateTransforms();
+    const world::TriggerProbe camera{kCameraProbe, m_camera.transform.position, true};
+    m_triggers.prime(m_scene, std::span(&camera, 1));
+    m_scene.each<world::Vob, world::TriggerVolume>(
+        [&](entt::entity, const world::Vob& vob, const world::TriggerVolume& volume)
+        {
+            if (!volume.changeWorld.empty() && m_triggers.isInside(vob.id, kCameraProbe))
+            {
+                G7_LOG_WARN("engine",
+                            "{}: the start lies inside the level change {} (fires only after leaving it)",
+                            path, vob.nameText);
+            }
+        });
+    m_worldPath = path;
+    m_worldFile = std::move(file);
+    m_worldFile.vobs.clear(); // the scene holds them; captured again when the world is left
+    m_sceneName = m_worldFile.name.empty() ? path : m_worldFile.name;
+    G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
+                m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size(),
+                timer.elapsedSeconds() * 1000.0);
     return {};
 }
 
-Result<void> Engine::applyStartPoint()
+void Engine::requestWorldChange(std::string world, std::string start)
 {
-    auto start = world::findStartPoint(m_scene, m_config.start);
+    m_pendingWorldChange = PendingWorldChange{std::move(world), std::move(start)};
+}
+
+void Engine::unloadWorld()
+{
+    m_scene.clear();
+    m_instances.clear();
+    m_cullGridDirty = true;
+    m_lights.clear();
+    m_terrain = {};
+    m_heightfield = {};
+    m_hasTerrain = false;
+    m_groundModel.reset();
+    m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)}; // empty
+    m_triggers.reset();
+}
+
+void Engine::performWorldChange()
+{
+    const PendingWorldChange change = std::move(*m_pendingWorldChange);
+    m_pendingWorldChange.reset();
+    const std::string key = toLower(change.world);
+    // The target: as left earlier (its state kept) or from its file.
+    world::WorldFile target;
+    std::set<u64> spent;
+    if (const auto left = m_leftWorlds.find(key); left != m_leftWorlds.end())
+    {
+        target = left->second.file;
+        spent = left->second.spentTriggers;
+    }
+    else
+    {
+        auto file = world::loadWorldFile(m_vfs, change.world);
+        if (!file)
+        {
+            G7_LOG_WARN("engine", "level change to {} failed, staying here: {}", change.world,
+                        file.error().message);
+            return;
+        }
+        target = std::move(file).value();
+    }
+    const bool hasStart = std::any_of(
+        target.vobs.begin(), target.vobs.end(), [&](const world::WorldFileVob& vob)
+        { return vob.type == world::VobType::Start && equalsIgnoreCase(vob.name, change.start); });
+    if (!hasStart)
+    {
+        G7_LOG_WARN("engine", "level change to {} failed, staying here: no start point '{}'", change.world,
+                    change.start);
+        return;
+    }
+
+    // Keep the world we leave as it is now (moved or removed vobs, spent once-triggers).
+    const std::string leftPath = m_worldPath;
+    world::WorldFile leaving = m_worldFile;
+    const world::WorldFile captured = world::captureWorld(m_scene, m_worldFile.name);
+    leaving.vobs = captured.vobs;
+    leaving.nextVobId = captured.nextVobId;
+    m_leftWorlds[toLower(leftPath)] = LeftWorld{leaving, m_triggers.spentTriggers()};
+
+    G7_LOG_INFO("engine", "level change: {} -> {} ({})", leftPath, change.world, change.start);
+    unloadWorld();
+    if (auto loaded = loadWorld(change.world, std::move(target), change.start); !loaded)
+    {
+        // Not expected (the target was read and checked); go back to where we were.
+        G7_LOG_ERROR("engine", "{}; returning to {}", loaded.error().message, leftPath);
+        unloadWorld();
+        if (auto back = loadWorld(leftPath, leaving, {}); !back)
+        {
+            G7_LOG_ERROR("engine", "cannot return to {}: {}", leftPath, back.error().message);
+        }
+        return;
+    }
+    m_triggers.setSpentTriggers(std::move(spent));
+    releaseUnusedModels();
+}
+
+void Engine::releaseUnusedModels()
+{
+    std::set<const LoadedModel*> used;
+    for (const SceneInstance& instance : m_instances)
+    {
+        used.insert(instance.model);
+    }
+    const usize before = m_models.size();
+    std::erase_if(m_models, [&](const auto& entry) { return !used.contains(entry.second.get()); });
+    if (m_models.size() != before)
+    {
+        G7_LOG_INFO("engine", "released {} models the new world does not use", before - m_models.size());
+    }
+}
+
+Result<void> Engine::applyStartPoint(std::string_view name)
+{
+    auto start = world::findStartPoint(m_scene, name);
     if (!start)
     {
-        return m_config.start.empty() ? Result<void>() : Result<void>(start.error()); // none: overview camera
+        return name.empty() ? Result<void>() : Result<void>(start.error()); // none: overview camera
     }
     const Mat4 world = m_scene.worldMatrix(start.value());
     m_camera.transform.position = Vec3(world[3]) + Vec3(0.0f, world::kStartEyeHeight, 0.0f);

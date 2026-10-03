@@ -115,6 +115,10 @@ struct TriggerVolume
     /// Reserved (read and written, not used yet): a vob this trigger acts on - by id or by name.
     VobId targetId;
     std::string targetName;
+    /// Level change (Gothic: change-level trigger): when the player enters, the engine loads this world
+    /// (VFS path of a .g7world) and puts the player on its start point `changeStart`. Empty = none.
+    std::string changeWorld;
+    std::string changeStart;
 };
 
 /// An interactive object (bed, chest, door; Gothic "Mob"). Placeholder until M8: drawn with its

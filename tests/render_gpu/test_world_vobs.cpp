@@ -6,7 +6,10 @@
 #include <g7/runtime/Engine.hpp>
 #include <g7/world/Components.hpp>
 
+#include <chrono>
 #include <cmath>
+#include <filesystem>
+#include <string>
 #include <utility>
 
 using namespace g7;
@@ -63,8 +66,8 @@ TEST_CASE("World vobs GPU: --start picks a start point by name; an unknown one f
     Engine engine(worldConfig("START_NOWHERE"));
     auto result = engine.init();
     REQUIRE_FALSE(result.ok());
-    CHECK(result.error().message ==
-          "cannot load world: unknown start point 'START_NOWHERE' (the world has: START_LAGER)");
+    CHECK(result.error().message == "cannot load world: unknown start point 'START_NOWHERE' (the world has: "
+                                    "START_LAGER, START_LAGER_HOEHLE)");
 }
 
 TEST_CASE("World vobs GPU: small deco vanishes by size, gameplay (the mob) never; distance hides all")
@@ -92,4 +95,81 @@ TEST_CASE("World vobs GPU: small deco vanishes by size, gameplay (the mob) never
     CHECK(engine.runFrame());
     CHECK(engine.culledByDistance() > 0);
     CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}
+
+TEST_CASE("World vobs GPU: level change to the cave and back keeps the camp as it was left")
+{
+    Engine engine(worldConfig("START_LAGER_HOEHLE"));
+    REQUIRE(engine.init().ok());
+    CHECK(engine.worldPath() == "testworld/camp.g7world");
+    const usize campModels = engine.loadedModels();
+
+    // Move the mob STOOL_CAMPFIRE before leaving: the camp keeps it there.
+    world::Scene& camp = engine.scene();
+    const entt::entity stool = camp.findById(world::VobId{68});
+    Transform moved = *std::as_const(camp).get<Transform>(stool);
+    moved.position = Vec3(5.0f, 0.0f, 5.0f);
+    camp.setTransform(stool, moved);
+
+    // Standing next to TRG_TO_CAVE (x -31.5 .. -28.5) does nothing; stepping in changes the world.
+    CHECK(engine.runFrame());
+    CHECK(engine.worldPath() == "testworld/camp.g7world");
+    engine.camera().transform.position = Vec3(-30.0f, 1.7f, 20.0f);
+    CHECK(engine.runFrame());
+    CHECK(engine.worldPath() == "testworld/cave.g7world");
+    CHECK(engine.camera().transform.position.z == doctest::Approx(5.0f)); // START_HOEHLE
+    CHECK(engine.keptWorlds() == 1);
+    CHECK(engine.loadedModels() < campModels); // camp models the cave does not use are released
+    CHECK(engine.runFrame());
+    CHECK(engine.worldPath() == "testworld/cave.g7world"); // the start lies outside TRG_TO_CAMP
+
+    // Back through TRG_TO_CAMP (z 7.5 .. 9.5): arrival at START_LAGER_HOEHLE, the stool where it was put.
+    engine.camera().transform.position = Vec3(0.0f, 1.7f, 8.5f);
+    CHECK(engine.runFrame());
+    CHECK(engine.worldPath() == "testworld/camp.g7world");
+    CHECK(engine.camera().transform.position.x == doctest::Approx(-26.0f));
+    const entt::entity again = engine.scene().findById(world::VobId{68});
+    REQUIRE(engine.scene().valid(again));
+    CHECK(std::as_const(engine.scene()).get<Transform>(again)->position == Vec3(5.0f, 0.0f, 5.0f));
+    CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}
+
+TEST_CASE("World vobs GPU: no bouncing back from a start inside a level change; unknown targets stay")
+{
+    // A world whose start lies inside a level change back to the camp.
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const fs::Path dir = std::filesystem::temp_directory_path() / ("g7_pingpong_" + std::to_string(stamp));
+    std::filesystem::create_directories(dir);
+    REQUIRE(fs::writeText(dir / "pingpong.g7world", R"({"version": 1, "vobs": [
+      {"id": 1, "type": "start", "name": "START_IN_TRIGGER", "pos": [0, 0, 0]},
+      {"id": 2, "type": "trigger", "name": "TRG_BACK", "pos": [0, 1, 0], "components": {"trigger": {
+        "halfExtents": [2, 2, 2], "changeWorld": {"world": "testworld/camp.g7world", "start": "START_LAGER"}}}},
+      {"id": 3, "type": "mesh", "name": "ROCK", "pos": [0, 0, -8], "mesh": "testscene/nature/rock_largeA.glb"}]})")
+                .ok());
+    EngineConfig config = worldConfig();
+    config.world = dir / "pingpong.g7world";
+    Engine engine(std::move(config));
+    REQUIRE(engine.init().ok());
+    const std::string here = engine.worldPath();
+    for (int i = 0; i < 5; ++i)
+    {
+        CHECK(engine.runFrame()); // standing in TRG_BACK since arrival: no change
+    }
+    CHECK(engine.worldPath() == here);
+
+    engine.requestWorldChange("testworld/nowhere.g7world", "START_LAGER");
+    CHECK(engine.runFrame());
+    CHECK(engine.worldPath() == here);
+    engine.requestWorldChange("testworld/camp.g7world", "START_NOWHERE");
+    CHECK(engine.runFrame());
+    CHECK(engine.worldPath() == here);
+
+    // Out of the trigger and back in: now it changes.
+    engine.camera().transform.position = Vec3(0.0f, 1.7f, 6.0f);
+    CHECK(engine.runFrame());
+    engine.camera().transform.position = Vec3(0.0f, 1.7f, 0.0f);
+    CHECK(engine.runFrame());
+    CHECK(engine.worldPath() == "testworld/camp.g7world");
+    std::error_code ignored;
+    std::filesystem::remove_all(dir, ignored);
 }
