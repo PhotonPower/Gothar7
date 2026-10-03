@@ -3,6 +3,7 @@
 #include <g7/asset/MeshData.hpp>
 #include <g7/core/Geometry.hpp>
 #include <g7/core/Result.hpp>
+#include <g7/render/Device.hpp>
 #include <g7/render/GeometryArena.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
@@ -37,6 +38,11 @@ public:
     void draw(Device& device, usize submesh) const;
 
     [[nodiscard]] std::span<const asset::Submesh> submeshes() const noexcept { return m_submeshes; }
+    /// Arena meshes can be drawn in multi-draw batches (MeshRenderer::drawBatched).
+    [[nodiscard]] const GeometryArena* arena() const noexcept { return m_arena; }
+    [[nodiscard]] u32 arenaBlock() const noexcept { return m_slice.block(); }
+    /// Indices of one submesh as a draw sees them: first index and base vertex include the arena offset.
+    [[nodiscard]] DrawIndexedIndirect drawRecord(usize submesh) const noexcept;
     [[nodiscard]] const AABB& bounds() const noexcept { return m_bounds; }
 
 private:

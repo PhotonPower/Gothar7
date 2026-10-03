@@ -1,4 +1,7 @@
-"""Builds an animation set (anims/human/<set>.blend) from a clip list (data/clips/<set>.toml).
+"""Builds an animation set from a clip list (data/clips/<set>.toml).
+
+Output: anims/human/<set>.blend, for monster sets (``rig = "<species>"``) on the species rig
+monsters/<species>/anims/<set>.blend.
 
 Run inside Blender 4.5:
     blender --background --factory-startup --python build_set.py -- \
@@ -114,24 +117,45 @@ def _foot_heights(arm: bpy.types.Object, action: bpy.types.Action, bone: str) ->
     return heights
 
 
+# foot bone -> footstep event; quadrupeds (contract §7) have four feet
+_FEET = {
+    "foot_l": "footstep_l",
+    "foot_r": "footstep_r",
+    "front_foot_l": "footstep_front_l",
+    "front_foot_r": "footstep_front_r",
+    "back_foot_l": "footstep_back_l",
+    "back_foot_r": "footstep_back_r",
+}
+
+
 def _add_events(arm: bpy.types.Object, action: bpy.types.Action, clip: ClipSpec) -> None:
     for marker in list(action.pose_markers):
         action.pose_markers.remove(marker)
-    if clip.events is None:
-        return
+    events: list[tuple[int, str]] = [(frame, name) for name, frame in clip.markers]
+    if clip.events is not None:
+        events += _detected_events(arm, action, clip)
+    for frame, name in sorted(events):
+        action.pose_markers.new(name).frame = frame
+
+
+def _detected_events(
+    arm: bpy.types.Object, action: bpy.types.Action, clip: ClipSpec
+) -> list[tuple[int, str]]:
     _assign(arm, action)
-    left, right = _foot_heights(arm, action, "foot_l"), _foot_heights(arm, action, "foot_r")
     cyclic = clip.name.rsplit("/", 1)[-1].startswith("s_")
     events: list[tuple[int, str]] = []
     if clip.events == "footsteps":
-        events += [(f, "footstep_l") for f in detect_contacts(left, cyclic=cyclic)]
-        events += [(f, "footstep_r") for f in detect_contacts(right, cyclic=cyclic)]
-    elif clip.events == "land":
+        for bone, event in _FEET.items():
+            if bone in arm.pose.bones:
+                heights = _foot_heights(arm, action, bone)
+                events += [(f, event) for f in detect_contacts(heights, cyclic=cyclic)]
+        return events
+    left, right = _foot_heights(arm, action, "foot_l"), _foot_heights(arm, action, "foot_r")
+    if clip.events == "land":
         both_down = [max(a, b) for a, b in zip(left, right, strict=True)]  # higher foot
         starts = detect_contacts(both_down, cyclic=False)
         events.append((starts[0] if starts else 0, "land"))
-    for frame, name in sorted(events):
-        action.pose_markers.new(name).frame = frame
+    return events
 
 
 # --- set ---
@@ -153,7 +177,11 @@ class _Sources:
             if len(found) != 1:
                 raise SystemExit(f"expected one {source.file} below {self.folder}")
             before = set(bpy.data.actions)
-            self.imported += import_glb(found[0])
+            if found[0].suffix == ".blend":  # monster clip source: actions only
+                with bpy.data.libraries.load(str(found[0])) as (src, dst):
+                    dst.actions = list(src.actions)
+            else:
+                self.imported += import_glb(found[0])
             self._actions[source.file] = {a.name: a for a in bpy.data.actions if a not in before}
         action = self._actions[source.file].get(ref.action)
         if action is None:
@@ -217,12 +245,14 @@ def build_set(rig: RigSpec, spec: SetSpec, sources_dir: Path, out: Path) -> None
     delete_objects(sources.imported)
     purge_unused()
     bpy.context.scene.frame_set(0)
-    save(out / "anims" / "human" / f"{spec.set}.blend")
+    save(spec.blend_path(out))
 
 
 def main() -> None:
     args = _parse_args()
-    build_set(load_rig(), load_set_spec(args.set), args.sources, args.out)
+    spec = load_set_spec(args.set)
+    rig = load_rig(species=spec.rig) if spec.rig else load_rig()
+    build_set(rig, spec, args.sources, args.out)
 
 
 if __name__ == "__main__":

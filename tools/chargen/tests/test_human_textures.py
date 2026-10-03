@@ -142,6 +142,7 @@ def test_material_roles():
     assert material_role("eyelashes") == "eyelashes"
     assert material_role("cloth_toigo_wool_pants") == "cloth"
     assert material_role("mannequin") == "cloth"
+    assert material_role("fur") == "fur"
 
 
 # --- texture post-processing and rules -----------------------------------------------------------

@@ -155,6 +155,7 @@ void Device::bindPipeline(const Pipeline& pipeline)
     m_cache.topology = pipeline.m_topology;
     m_cache.pipeline = uid;
     m_cache.vertexStride = pipeline.m_vertexStride;
+    m_cache.instanceStride = pipeline.m_instanceStride;
     m_cache.valid = true;
 }
 
@@ -207,6 +208,41 @@ void Device::bindTexture(u32 unit, const Texture& texture, const Sampler& sample
 void Device::bindUniformBuffer(u32 slot, const Buffer& buffer)
 {
     glBindBufferBase(GL_UNIFORM_BUFFER, slot, buffer.m_handle.id());
+}
+
+void Device::bindInstanceBuffer(const Buffer& buffer)
+{
+    G7_ASSERT(m_cache.valid && m_cache.instanceStride > 0,
+              "bindInstanceBuffer needs a pipeline with instances");
+    BoundBuffers& bound = m_vertexArrayBuffers[m_cache.pipeline];
+    if (bound.instances == buffer.m_handle.uid())
+    {
+        return;
+    }
+    bound.instances = buffer.m_handle.uid();
+    ++m_stats.bufferBinds;
+    glVertexArrayVertexBuffer(m_cache.vertexArray, 1, buffer.m_handle.id(), 0,
+                              static_cast<GLsizei>(m_cache.instanceStride));
+}
+
+void Device::bindStorageBuffer(u32 slot, const Buffer& buffer)
+{
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, slot, buffer.m_handle.id());
+}
+
+void Device::multiDrawIndexedIndirect(const Buffer& commands, usize offset, u32 drawCount, u32 triangles)
+{
+    G7_ASSERT(m_cache.valid, "multiDrawIndexedIndirect needs a bound pipeline");
+    if (drawCount == 0)
+    {
+        return;
+    }
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, commands.m_handle.id());
+    glMultiDrawElementsIndirect(gl::topology(m_cache.topology), gl::indexType(m_cache.indexType),
+                                reinterpret_cast<const void*>(offset), static_cast<GLsizei>(drawCount),
+                                sizeof(DrawIndexedIndirect));
+    ++m_stats.drawCalls;
+    m_stats.triangles += triangles;
 }
 
 void Device::draw(u32 vertexCount, u32 firstVertex)

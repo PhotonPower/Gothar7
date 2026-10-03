@@ -1,16 +1,24 @@
-"""Reference skeleton definition (data/human_reference.toml).
+"""Rig definitions: the human reference skeleton (data/human_reference.toml) and the monster
+rigs (data/monsters/<species>.toml, characters-pipeline.md §7).
 
-Pure Python (no numpy, no bpy): used by the validator and by the Blender generator.
+Pure Python (no numpy, no bpy): used by the validator and by the Blender scripts.
 """
 
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 
 Vec3 = tuple[float, float, float]
+
+KINDS = ("human", "monster")
+# Bones every monster rig must have (contract §7): the engine aims, attaches and bites with them.
+MONSTER_REQUIRED = ("root", "pelvis", "neck_01", "head", "socket_mouth")
+ORIENTATION_AXES = ("up", "forward", "left")
+SPECIES_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
 class SkeletonError(Exception):
@@ -37,6 +45,15 @@ class RigSpec:
     max_influences: int
     morph_targets: tuple[str, ...]
     bones: tuple[BoneSpec, ...] = field(default_factory=tuple)
+    kind: str = "human"
+    species: str = ""  # monsters: clip mode and folder name (monsters/<species>/)
+    # axis -> (bone a, bone b): the direction a -> b points mainly along the glTF axis
+    # (up = +Y, forward = +Z, left = +X); empty for the human rig (fixed checks).
+    orientation: tuple[tuple[str, tuple[str, str]], ...] = ()
+
+    @property
+    def is_monster(self) -> bool:
+        return self.kind == "monster"
 
     def bone(self, name: str) -> BoneSpec:
         for b in self.bones:
@@ -123,6 +140,26 @@ def parse_rig(data: dict) -> RigSpec:
     if len(roots) != 1:
         raise SkeletonError(f"expected exactly one root bone, got {roots}")
 
+    kind = str(rig.get("kind", "human"))
+    if kind not in KINDS:
+        raise SkeletonError(f"kind must be one of {KINDS}, got '{kind}'")
+    species = str(rig.get("species", ""))
+    orientation: list[tuple[str, tuple[str, str]]] = []
+    for axis, pair in rig.get("orientation", {}).items():
+        if axis not in ORIENTATION_AXES:
+            raise SkeletonError(f"orientation: unknown axis '{axis}'")
+        if not isinstance(pair, list) or len(pair) != 2 or not set(pair) <= seen:
+            raise SkeletonError(f"orientation.{axis}: expected two bones of this rig")
+        orientation.append((axis, (str(pair[0]), str(pair[1]))))
+    if kind == "monster":
+        if not SPECIES_RE.match(species):
+            raise SkeletonError(f"monster rig needs an ASCII species id, got '{species}'")
+        missing = [b for b in MONSTER_REQUIRED if b not in seen]
+        if missing:
+            raise SkeletonError(f"monster rig lacks required bones {missing}")
+        if {a for a, _ in orientation} != set(ORIENTATION_AXES):
+            raise SkeletonError(f"monster rig needs [rig.orientation] {ORIENTATION_AXES}")
+
     return RigSpec(
         name=str(rig.get("name", "")),
         height=float(rig.get("height", 1.8)),
@@ -131,12 +168,43 @@ def parse_rig(data: dict) -> RigSpec:
         max_influences=int(rig.get("max_influences", 4)),
         morph_targets=tuple(rig.get("morph_targets", [])),
         bones=all_bones,
+        kind=kind,
+        species=species,
+        orientation=tuple(orientation),
     )
 
 
-def load_rig(path: Path | None = None) -> RigSpec:
-    """Loads a rig definition; default is the packaged human reference skeleton."""
-    if path is None:
+def packaged_species() -> list[str]:
+    """Monster species with a packaged rig (data/monsters/<species>.toml)."""
+    folder = resources.files("gothar_chargen.data.monsters")
+    return sorted(
+        p.name[:-5]
+        for p in folder.iterdir()
+        if p.name.endswith(".toml") and not p.name.endswith(".build.toml")
+    )
+
+
+def monster_rig_text(species: str) -> str:
+    res = resources.files("gothar_chargen.data.monsters").joinpath(f"{species}.toml")
+    if not SPECIES_RE.match(species) or not res.is_file():
+        raise SkeletonError(f"no monster rig '{species}' (data/monsters/<species>.toml)")
+    return res.read_text(encoding="utf-8")
+
+
+def species_of(path: Path) -> str | None:
+    """``.../monsters/<species>/...`` -> species; None for human files."""
+    parts = path.parts
+    for i, part in enumerate(parts[:-1]):
+        if part == "monsters" and i + 2 < len(parts):
+            return parts[i + 1]
+    return None
+
+
+def load_rig(path: Path | None = None, species: str | None = None) -> RigSpec:
+    """Loads a rig definition: a .toml file, a packaged monster rig, or the human reference."""
+    if species is not None:
+        text = monster_rig_text(species)
+    elif path is None:
         text = (
             resources.files("gothar_chargen.data")
             .joinpath("human_reference.toml")

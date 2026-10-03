@@ -1,4 +1,4 @@
-"""Compares docs/design/animation-list.md with the clips in anims/human/*.glb (progress report).
+"""Compares docs/design/animation-list.md with the clips in anims/ and monsters/ (progress report).
 
 The list's "Prio A" table names clips exactly. A cell may hold several names; later names may omit
 the mode (``none/t_walk_2_run``, ``t_run_2_walk``) and ``_l/r`` stands for both sides.
@@ -150,10 +150,15 @@ def _check_status(row: ListRow, present: dict[str, Path], stale: list[str]) -> l
     return missing
 
 
-def progress(list_text: str, anims_dir: Path) -> Progress:
+def progress(list_text: str, anims_dir: Path, *more_dirs: Path) -> Progress:
+    """`anims_dir` and `more_dirs` (e.g. monsters/) are searched for clips."""
     tables = parse_tables(list_text)
     rows = parse_prio_a(list_text)
-    result = Progress(rows=rows, present=collect_clips(anims_dir))
+    present = collect_clips(anims_dir)
+    for folder in more_dirs:
+        for name, path in collect_clips(folder).items():
+            present.setdefault(name, path)
+    result = Progress(rows=rows, present=present)
     for row in rows:
         result.missing += _check_status(row, result.present, result.stale)
     for heading, other in tables:

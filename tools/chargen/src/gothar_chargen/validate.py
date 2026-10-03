@@ -1,8 +1,9 @@
-"""Rig validator: checks character .glb files against the human reference rig.
+"""Rig validator: checks character .glb files against their rig (human reference or monster).
 
 Contract: docs/modules/animation.md ("Referenz-Skelett"), docs/design/characters-pipeline.md.
-Bone names/hierarchy come from data/human_reference.toml; the bind pose (local joint transforms)
-is compared with the exported reference file assets/source/characters/rig/human_reference.glb.
+Bone names/hierarchy come from data/human_reference.toml (monsters: data/monsters/<species>.toml);
+the bind pose (local joint transforms) is compared with the exported reference file
+assets/source/characters/rig/human_reference.glb (monsters/<species>/rig/<species>_reference.glb).
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from gothar_chargen.fit import check_fit
 from gothar_chargen.gltf import Gltf, GltfError, Trs, node_trs, quat_angle_deg
 from gothar_chargen.images import ImageError, ImageInfo, image_info, is_power_of_two
 from gothar_chargen.meshdata import mesh_data, split_lod
-from gothar_chargen.naming import is_clip_name, is_loop_clip
+from gothar_chargen.naming import clip_mode, is_clip_name, is_loop_clip, is_monster_clip
 from gothar_chargen.postprocess import MASK_ROLES, TRANSLATED_BONES, material_role
 from gothar_chargen.skeleton import RigSpec
 
@@ -43,11 +44,16 @@ class Tolerances:
     weight_sum: float = 1e-2
     height_error: tuple[float, float] = (1.50, 2.10)
     height_warn: tuple[float, float] = (1.65, 1.95)
+    height_rel_error: float = 0.30  # monsters: vs. rig height
+    height_rel_warn: float = 0.10
     ground: float = 0.03
     jump_rotation_error_deg: float = 120.0  # per key (exported at 30 fps: per frame)
     jump_rotation_warn_deg: float = 90.0
     jump_translation_m: float = 0.5
     loop_rotation_deg: float = 5.0  # first vs. last key of s_* clips
+    # monsters (§7): root motion of s_walk/s_run and turning of t_turn_l/r
+    monster_advance_min_m_s: float = 0.1
+    monster_turn_min_deg: float = 45.0
     # LOD contract (characters-pipeline.md §2.2)
     figure_triangles_max: int = 20_000  # lod0 per figure
     lod_ratio_warn: tuple[float, ...] = (1.0, 0.6, 0.3)  # max. share of lod0 per level
@@ -57,6 +63,7 @@ class Tolerances:
         ("cloth", 1024),
         ("hair", 1024),
         ("beard", 1024),
+        ("fur", 1024),  # monsters (§7.1)
         ("eyes", 256),
         ("eyebrows", 256),
         ("eyelashes", 256),
@@ -238,6 +245,9 @@ class _Checker:
 
     def orientation(self) -> None:
         """Y up, character faces +Z, left side is +X (glTF convention)."""
+        if self.rig.orientation:
+            self._orientation_hints()
+            return
 
         def axis_ok(a: str, b: str, axis: int) -> bool:
             """True if the direction from bone a to bone b points mainly along +axis."""
@@ -259,6 +269,23 @@ class _Checker:
             self.r.error("orientation.forward", "character must face +Z (toes in front of ankles)")
         if not axis_ok("hand_r", "hand_l", 0):
             self.r.error("orientation.side", "left side must be +X (hand_l at +X, hand_r at -X)")
+
+    def _orientation_hints(self) -> None:
+        """Rigs with [rig.orientation] (monsters): each bone pair must point along its axis."""
+        axes = {
+            "up": (1, "orientation.up", "Y up"),
+            "forward": (2, "orientation.forward", "facing +Z"),
+            "left": (0, "orientation.side", "left side +X"),
+        }
+        for axis, (a, b) in self.rig.orientation:
+            pa, pb = self.pos(a), self.pos(b)
+            if pa is None or pb is None:
+                continue
+            index, code, text = axes[axis]
+            d = pb - pa
+            n = float(np.linalg.norm(d))
+            if n == 0 or d[index] / n <= 0.5:
+                self.r.error(code, f"expected {text}: {a} -> {b} points along {np.round(d, 2)}")
 
     def bind_pose(self) -> None:
         if self.ref is None:
@@ -344,6 +371,10 @@ class _Checker:
             self.r.stats["height"] = round(float(height), 3)
             lo_e, hi_e = self.tol.height_error
             lo_w, hi_w = self.tol.height_warn
+            if self.rig.is_monster:  # relative to the species' rig height
+                h, e, w = self.rig.height, self.tol.height_rel_error, self.tol.height_rel_warn
+                lo_e, hi_e = round(h * (1 - e), 2), round(h * (1 + e), 2)
+                lo_w, hi_w = round(h * (1 - w), 2), round(h * (1 + w), 2)
             if not lo_e <= height <= hi_e:
                 self.r.error(
                     "mesh.height", f"figure is {height:.2f} m tall (allowed {lo_e}-{hi_e} m)"
@@ -628,6 +659,12 @@ class _Checker:
             name = str(anim.get("name", f"#{ai}"))
             if not is_clip_name(name):
                 self.r.error("anim.name", f"clip '{name}' violates the naming convention (§3)")
+            elif self.rig.is_monster and clip_mode(name) != self.rig.species:
+                self.r.error(
+                    "anim.name", f"clip '{name}' must start with '{self.rig.species}/' (§7)"
+                )
+            elif not self.rig.is_monster and is_monster_clip(name):
+                self.r.error("anim.name", f"monster clip '{name}' in a human file")
             if name in names:
                 self.r.error("anim.name", f"duplicate clip '{name}'")
             foreign = sorted(
@@ -646,6 +683,8 @@ class _Checker:
             self._check_channels(name, anim)
             self._check_motion(name, anim)
             names[name] = self._duration(anim)
+            if self.rig.is_monster:
+                self._check_monster_root(name, anim, names[name])
         self.r.stats["clips"] = len(anims)
         self._events(names)
 
@@ -713,6 +752,39 @@ class _Checker:
                 "anim.loop", f"loop '{clip}' does not end where it starts: {_listed(open_loop)}"
             )
 
+    def _root_keys(self, anim: dict[str, Any], path: str) -> np.ndarray | None:
+        root = self.bone_index.get(_ROOT)
+        for ch in anim.get("channels", []):
+            target = ch.get("target", {})
+            if target.get("node") == root and target.get("path") == path:
+                sampler = anim["samplers"][ch["sampler"]]
+                return self.g.accessor(sampler["output"]).astype(np.float64)
+        return None
+
+    def _check_monster_root(self, clip: str, anim: dict[str, Any], duration: float) -> None:
+        """Contract §7: s_walk/s_run move forward in the root channel, t_turn_l/r turn the root."""
+        action = clip.rsplit("/", 1)[-1]
+        if action in ("s_walk", "s_run"):
+            keys = self._root_keys(anim, "translation")
+            forward = 0.0 if keys is None or len(keys) < 2 else float(keys[-1][2] - keys[0][2])
+            speed = forward / duration if duration > 0 else 0.0
+            if speed < self.tol.monster_advance_min_m_s:
+                self.r.error(
+                    "anim.root_motion",
+                    f"clip '{clip}' must move 'root' forward (+Z), got {speed:.2f} m/s",
+                )
+        elif action in ("t_turn_l", "t_turn_r"):
+            keys = self._root_keys(anim, "rotation")
+            yaw = 0.0 if keys is None or len(keys) < 2 else _yaw_deg(keys[0], keys[-1])
+            left = action.endswith("_l")
+            if (yaw if left else -yaw) < self.tol.monster_turn_min_deg:
+                side = "left" if left else "right"
+                self.r.error(
+                    "anim.root_motion",
+                    f"clip '{clip}' must turn 'root' about +Y to the {side} "
+                    f"(>= {self.tol.monster_turn_min_deg:.0f}°), got {yaw:.0f}°",
+                )
+
     def _duration(self, anim: dict[str, Any]) -> float:
         end = 0.0
         accessors = self.g.list("accessors")
@@ -756,6 +828,35 @@ class _Checker:
                     f"{ev_path.name}: clip '{clip}' allows frames {bound}, got " + _listed(late),
                 )
         self.r.stats["events"] = sum(len(v) for v in ev_file.clips.values())
+
+
+def _rotate(q: np.ndarray, v: np.ndarray) -> np.ndarray:
+    """Rotates v by the glTF quaternion q = (x, y, z, w)."""
+    u, w = q[:3], q[3]
+    return v + 2.0 * np.cross(u, np.cross(u, v) + w * v)
+
+
+def _quat_mul(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Hamilton product of glTF quaternions (x, y, z, w)."""
+    (ax, ay, az, aw), (bx, by, bz, bw) = a, b
+    return np.array(
+        [
+            aw * bx + ax * bw + ay * bz - az * by,
+            aw * by - ax * bz + ay * bw + az * bx,
+            aw * bz + ax * by - ay * bx + az * bw,
+            aw * bw - ax * bx - ay * by - az * bz,
+        ]
+    )
+
+
+def _yaw_deg(q0: np.ndarray, q1: np.ndarray) -> float:
+    """Turn about +Y (parent space) from key q0 to key q1 in degrees, left (+X) positive.
+
+    Uses the change q1 * q0^-1, so the bone's own rest rotation does not matter.
+    """
+    inverse = np.array([-q0[0], -q0[1], -q0[2], q0[3]]) / float(np.dot(q0, q0))
+    forward = _rotate(_quat_mul(q1, inverse), np.array([0.0, 0.0, 1.0]))
+    return float(np.degrees(np.arctan2(forward[0], forward[2])))
 
 
 def is_part_file(path: Path) -> bool:

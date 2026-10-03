@@ -12,6 +12,14 @@ using detail::TransformDirty;
 Scene::Scene() = default;
 Scene::~Scene() = default;
 
+void Scene::clear()
+{
+    m_registry.clear();
+    m_byId.clear();
+    m_nextVobId = 1;
+    m_nextRuntimeVobId = kRuntimeVobIdBase;
+}
+
 Result<entt::entity> Scene::spawnVob(const VobDesc& desc)
 {
     VobId id = desc.id;

@@ -229,10 +229,60 @@ Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, 
 
 ## 7. Monster
 
-Erst CC0-Platzhalter, dann eigene Arten. Pro Art: Rig, Mindest-Set (s_idle, s_walk, s_run, t_attack ×2,
-t_hit, t_die, s_eat, s_sleep, t_threaten, t_turn), dazu artspezifisches (Rudelruf, Sprung).
+Erst CC0-Platzhalter, dann eigene Arten. Pro Art: Rig, Mindest-Set, dazu Artspezifisches (Rudelruf, Sprung).
 Startliste für den Vertical Slice: wolfsartiges Rudeltier, Keiler, großer Laufvogel (Arten und Namen frei erfunden,
-Design in `docs/design/` festhalten).
+Design in `docs/design/` festhalten). Platzhalter tragen **generische Art-IDs** (`wolf`, `keiler`, `laufvogel`),
+keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03).
+
+### 7.1 Monster-Rig (Vertrag mit engine, abgestimmt 2026-10-03)
+
+- **Ein Rig je Art**, kein gemeinsames Monster-Skelett. Definition `tools/chargen/src/gothar_chargen/data/monsters/<art>.toml`
+  (Namen, Eltern, Sockets, Bind-Pose; Format wie `human_reference.toml` plus `kind = "monster"`, `species`,
+  `[rig.orientation]`) und Referenzdatei `assets/source/characters/monsters/<art>/rig/<art>_reference.glb`.
+- **Art-ID:** ASCII, `lower_snake_case`; zugleich Ordnername und Clip-Modus.
+- **Pflichtknochen:** `root` (am Boden unter dem Becken, im Ursprung), `pelvis`, `neck_01`, `head`, Socket `socket_mouth`
+  (Biss-/Trefferpunkt); `jaw` optional. Höchstens **64 Knochen**, **≤ 4 Gewichte** je Vertex, Sockets ohne Gewichte.
+- **Ausrichtung** wie bei Menschen: Y oben, Blick nach +Z, linke Seite +X, Maßstab 1 m, keine Skalierung.
+  Bind-Pose ist die **natürliche Stand-Pose** der Art (keine T-Pose).
+- **Knochennamen:** Vierbeiner `spine_01…`, `neck_01…`, `head`, `tail_01…`, Beine `front_upper/lower/foot_l/r` und
+  `back_upper/lower/foot_l/r`; Vögel `thigh/calf/foot_l/r`, `wing_*_l/r`.
+- **Clips:** `<art>/<typ>_<aktion>` (z. B. `wolf/s_walk`), Datei `monsters/<art>/anims/<art>.glb` + `<art>.events.toml`.
+  Mindest-Set: `s_idle`, `s_walk`, `s_run`, `t_attack_1`, `t_attack_2`, `t_hit`, `t_die`, `s_eat`, `s_sleep`,
+  `t_threaten`, `t_turn_l`, `t_turn_r`.
+- **Kanäle:** Translation nur auf `root`/`pelvis`, keine Skalierung (wie §3). **Root Motion:** `s_walk`/`s_run` bewegen
+  `root` vorwärts (+Z, Geschwindigkeit = Schrittlänge, Füße stehen), `t_turn_l/r` drehen `root` um +Y (links positiv);
+  alle anderen Clips bleiben am Ort.
+- **Events:** `footstep_front_l/r`, `footstep_back_l/r` (Vierbeiner; Zweibeiner `footstep_l/r`), `hit_start`/`hit_end`
+  im Angriff, `sound:<name>`.
+- **Material/Texturen:** Rolle `fur` (≤ 1024², §2.3); Platzhalter ohne Textur.
+
+### 7.2 Werkzeuge
+
+- `gothar-chargen monster <art> --sources DATA_ROOT\characters\monsters` (nur lokal): baut aus einer CC0-Quelle nach
+  `data/monsters/<art>.build.toml` (Quelldatei, Blickrichtung, Höhe, Knochen-Zuordnung, Sockets, Aktionen) das
+  Vertrags-Rig. Bewegungen werden als Verformungen im Weltraum aufgezeichnet und exakt übertragen; verschiebt die Quelle
+  Bein-Knochen (verboten), löst das Werkzeug die Beine als Zwei-Knochen-Kette (Füße landen auf der Quellposition;
+  Schulter-/Hüftknochen darüber werden auf das Bein ausgerichtet) und senkt für Füße am Boden notfalls das Becken
+  (höchstens 7 % der Tierhöhe). Weitere Schlüssel der Build-Konfiguration: `parents` (Knochen umhängen, z. B.
+  IK-Ziel-Füße unter die Unterschenkel), `drop`, `colors` (Platzhalter-Farbe je Quell-Material), `orientation`.
+  Das Werkzeug meldet je Aktion Beckenabsenkung und Abweichung von Füßen und Gelenken. Quell-Animationen mit
+  dehnbarer IK (Beine werden länger) lassen sich mit starren Knochen nicht nachbilden – dann ableiten statt übernehmen.
+  Ausgabe: Rig-TOML, Referenz-`.blend`/`.glb` und die Clip-Quelle `<art>_clips.blend` (bleibt unter `DATA_ROOT`).
+- `gothar-chargen build-set <art>` baut die Clips aus `data/clips/<art>.toml` (`rig = "<art>"`). Rezepte für
+  Platzhalter: `advance` (Schleife am Ort + Vorwärtsbewegung, optional schneller/weiter ausholend) und `keyposes`
+  (benannte Posen an Schlüssel-Frames, weich überblendet, optional über einer Basis-Schleife). Feste Events stehen als
+  `markers = { hit_start = 13, hit_end = 17 }` am Clip.
+- Der Validator wählt das Rig nach dem Pfad (`monsters/<art>/…`) und prüft zusätzlich: Clip-Modus = Art, Größe
+  ±30 % der Rig-Höhe (Warnung ab ±10 %), Ausrichtungs-Hinweise aus `[rig.orientation]`, `anim.root_motion`
+  (s_walk/s_run ≥ 0,1 m/s vorwärts, t_turn_l/r ≥ 45° in die richtige Richtung).
+
+### 7.3 Platzhalter-Arten
+
+| Art | Quelle (CC0) | Stand |
+|---|---|---|
+| `wolf` (Rudeltier) | Quaternius „Animated Animales Low Poly“ (Animal Pack Vol.2), Wolf | Rig 22 Knochen, 0,85 m, 622 Dreiecke; 12/12 Clips (Idle/Walking aus der Quelle, Rest `platzhalter-K`) |
+| `keiler` | Quaternius „Lowpoly Animated Farm Animal Pack“, Schwein (dunkel eingefärbt) | Rig 25 Knochen (mit Schulter-/Hüftknochen), 0,95 m, 562 Dreiecke; 12/12 Clips (Idle/Walk/Death aus der Quelle, Rest `platzhalter-K`) |
+| `laufvogel` | Quaternius „5 Low poly animals“, Küken (vergrößert) | offen |
 
 ## 8. Ablauf pro Animation
 

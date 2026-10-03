@@ -31,13 +31,14 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 |---|---|---|---|
 | Heightmap `terrain.r16` + `terrain.json` | welt | engine (W2/M4-Terrain) | `leonberg-pipeline.md` §4 |
 | Gebäude-`.glb` + Sammel-Index | welt | engine | `leonberg-pipeline.md` §5 W-C |
-| `.g7world` (Format v1, optionaler `terrain`-Block v1: `.r16`-Heightmap, `splat` (Karten + bis 8 Schichten), `holes` (`.r8` je Zelle); Vob-Typen `empty`, `mesh`, `light`, `start`, `sound`, `trigger`, `mob`; `category` deco/gameplay an mesh-Vobs | engine | welt (Assembler, W2-Gelände; generierte Daten unter `assets/source/worlds/<ort>/generated/`) | `docs/modules/world.md` („Gelände“, „Vob-Typen“) |
+| `.g7world` (Format v1, optionaler `terrain`-Block v1: `.r16`-Heightmap, `splat` (Karten + bis 8 Schichten), `holes` (`.r8` je Zelle); Vob-Typen `empty`, `mesh`, `light`, `start`, `sound`, `trigger`, `mob`; `category` deco/gameplay an mesh-Vobs; Levelwechsel `trigger.changeWorld` {world, start} | engine | welt (Assembler, W2-Gelände; generierte Daten unter `assets/source/worlds/<ort>/generated/`) | `docs/modules/world.md` („Gelände“, „Vob-Typen“) |
 | `VobId` (64 Bit, je Welt eindeutig, nie wiederverwendet; `nextVobId` in `.g7world`) | engine | welt (Assembler vergibt IDs) | ADR 0005, `docs/modules/world.md` |
 | Referenz-Skelett, Sockets | figuren + engine gemeinsam | beide | `docs/modules/animation.md` |
 | Clip-Namen, `events.toml` | figuren | engine (M6) | `characters-pipeline.md` §3 |
 | Morph-Target-Namen | figuren | engine (M6, M10 Lippensync) | `characters-pipeline.md` §6 |
 | LOD-Stufen in Figuren-`.glb` (`_lod0`–`_lod2`), Dreiecks-Budget | figuren | engine (M6, Cooker) | `characters-pipeline.md` §2.2 |
 | Figuren-Texturen (extern unter `characters/textures/`, Größen je Rolle, Formate, alphaMode MASK, VRAM-Budget) | figuren | engine (M6, Cooker) | `characters-pipeline.md` §2.3 |
+| Monster-Rigs (Rig je Art: TOML + Referenz-`.glb`, Pflichtknochen, Clips `<art>/…`, Root Motion `s_walk`/`s_run`/`t_turn_l/r`, Events) | figuren | engine (M6, M9 Monster-KI) | `characters-pipeline.md` §7.1 |
 | `.g7mesh`/`.g7pak`/Cooker-Optionen | engine | welt, figuren | `docs/06-asset-pipeline.md`, ADR 0016 |
 
 ## Kommunikation

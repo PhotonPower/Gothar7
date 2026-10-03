@@ -290,6 +290,14 @@ bool Engine::runFrame()
         const world::TriggerProbe camera{kCameraProbe, m_camera.transform.position, true};
         m_triggers.update(m_scene, std::span(&camera, 1));
         ++m_simTicks;
+        if (m_pendingWorldChange)
+        {
+            break; // the level change happens before the next step: the old world is done
+        }
+    }
+    if (m_pendingWorldChange)
+    {
+        performWorldChange(); // between simulation and rendering, never inside either
     }
     // Finished asset loads become visible here, once per frame on the main thread; hot reload
     // looks for changed files first and re-uploads affected models afterwards.
@@ -408,6 +416,17 @@ Result<void> Engine::initSceneRendering()
     m_shadowDebug = m_config.settings.get<bool>("render.shadow_debug", false);
     m_cullSettings.viewDistance = static_cast<f32>(m_config.settings.get<f64>("render.view_distance", 400.0));
     m_cullSettings.sizeCull = static_cast<f32>(m_config.settings.get<f64>("render.size_cull", 0.005));
+    // multi_draw: "auto" (default) batches except on Intel GPUs - there the GPU is the limit and the
+    // batches measured ~10 % slower (render.md); true/false or "on"/"off" force it.
+    const auto forced = m_config.settings.find<bool>("render.multi_draw");
+    const std::string multiMode =
+        forced ? (*forced ? "on" : "off") : m_config.settings.get<std::string>("render.multi_draw", "auto");
+    const bool intel = toLower(m_device->info().vendor).find("intel") != std::string::npos;
+    m_multiDraw = multiMode == "on" || (multiMode == "auto" && !intel);
+    G7_LOG_INFO("engine", "multi-draw batches {} ({})", m_multiDraw ? "on" : "off",
+                multiMode != "auto" ? "forced"
+                : intel             ? "auto: off on Intel GPUs"
+                                    : "auto");
     auto shadowMap = render::ShadowMap::create(*m_device, shadows);
     if (!shadowMap)
     {
@@ -524,18 +543,19 @@ Result<void> Engine::uploadModel(LoadedModel& loaded)
         return Error{"cannot upload mesh " + loaded.name + ": " + mesh.error().message};
     }
     // Missing or broken textures are warnings (neutral fallbacks), not a reason to refuse the model.
-    auto materials =
-        render::MaterialSet::create(*m_device, data,
-                                    [&](const asset::ImageSource& source) -> const asset::TextureData*
-                                    {
-                                        const auto index = static_cast<usize>(&source - data.images.data());
-                                        const asset::Handle<asset::TextureData>& image = loaded.images[index];
-                                        if (image.failed() && image.valid())
-                                        {
-                                            G7_LOG_WARN("engine", "{}: {}", loaded.name, image.error());
-                                        }
-                                        return image.get();
-                                    });
+    auto materials = render::MaterialSet::create(
+        *m_device, data,
+        [&](const asset::ImageSource& source) -> const asset::TextureData*
+        {
+            const auto index = static_cast<usize>(&source - data.images.data());
+            const asset::Handle<asset::TextureData>& image = loaded.images[index];
+            if (image.failed() && image.valid())
+            {
+                G7_LOG_WARN("engine", "{}: {}", loaded.name, image.error());
+            }
+            return image.get();
+        },
+        m_meshRenderer.defaults()); // shared neutral textures: models batch together
     if (!materials)
     {
         return Error{"cannot create materials for " + loaded.name + ": " + materials.error().message};
@@ -666,7 +686,8 @@ Result<void> Engine::addGround(f32 size, const Vec3& color, f32 height)
     // Ground plate (it receives the shadows), 1 m texture tiles.
     const asset::MeshData plane = asset::makePlane(size, 1.0f, Vec4(color, 1.0f));
     auto mesh = render::Mesh::create(*m_device, *m_geometry, plane);
-    auto materials = render::MaterialSet::create(*m_device, plane, render::MaterialSet::ImageLookup{});
+    auto materials = render::MaterialSet::create(*m_device, plane, render::MaterialSet::ImageLookup{},
+                                                 m_meshRenderer.defaults());
     if (!mesh || !materials)
     {
         return Error{"cannot create ground plate"};
@@ -839,11 +860,17 @@ Result<void> Engine::initWorld()
     {
         return Error{"cannot load world: " + file.error().message};
     }
-    if (auto spawned = world::spawnWorld(m_scene, file.value()); !spawned)
+    return loadWorld(path.value(), std::move(file).value(), m_config.start);
+}
+
+Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, std::string_view start)
+{
+    const Stopwatch timer;
+    if (auto spawned = world::spawnWorld(m_scene, file); !spawned)
     {
         return Error{"cannot load world: " + spawned.error().message};
     }
-    if (const auto& ref = file.value().terrain)
+    if (const auto& ref = file.terrain)
     {
         auto heightfield = world::Heightfield::load(m_vfs, *ref);
         if (!heightfield)
@@ -901,7 +928,7 @@ Result<void> Engine::initWorld()
         m_flyCamera.speed = std::clamp(radius * 0.2f, 5.0f, 50.0f);
         m_flyCamera.attach(m_camera);
     }
-    if (auto started = applyStartPoint(); !started)
+    if (auto started = applyStartPoint(start); !started)
     {
         return Error{"cannot load world: " + started.error().message};
     }
@@ -909,26 +936,145 @@ Result<void> Engine::initWorld()
     m_triggers.setCallback(
         [this](const world::TriggerEvent& event)
         {
-            // Until scripts exist (M7) the events are logged.
+            // Until scripts exist (M7) the events are logged; level changes act right away.
             const entt::entity e = m_scene.findById(event.trigger);
             G7_LOG_INFO("engine", "trigger {} {}{}{}",
                         event.kind == world::TriggerEvent::Kind::Enter ? "enter" : "leave",
                         e != entt::null ? m_scene.get<world::Vob>(e)->nameText
                                         : std::to_string(event.trigger.value),
                         event.function.empty() ? "" : " -> ", event.function);
+            const world::TriggerVolume* volume =
+                e != entt::null ? m_scene.get<world::TriggerVolume>(e) : nullptr;
+            if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr &&
+                !volume->changeWorld.empty())
+            {
+                requestWorldChange(volume->changeWorld, volume->changeStart);
+            }
         });
-    m_sceneName = file.value().name.empty() ? path.value() : file.value().name;
-    G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights", path.value(),
-                m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size());
+    // Arrival: triggers the camera already stands in fire only after it left them (no bouncing back
+    // through a level change next to the start point).
+    m_scene.updateTransforms();
+    const world::TriggerProbe camera{kCameraProbe, m_camera.transform.position, true};
+    m_triggers.prime(m_scene, std::span(&camera, 1));
+    m_scene.each<world::Vob, world::TriggerVolume>(
+        [&](entt::entity, const world::Vob& vob, const world::TriggerVolume& volume)
+        {
+            if (!volume.changeWorld.empty() && m_triggers.isInside(vob.id, kCameraProbe))
+            {
+                G7_LOG_WARN("engine",
+                            "{}: the start lies inside the level change {} (fires only after leaving it)",
+                            path, vob.nameText);
+            }
+        });
+    m_worldPath = path;
+    m_worldFile = std::move(file);
+    m_worldFile.vobs.clear(); // the scene holds them; captured again when the world is left
+    m_sceneName = m_worldFile.name.empty() ? path : m_worldFile.name;
+    G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
+                m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size(),
+                timer.elapsedSeconds() * 1000.0);
     return {};
 }
 
-Result<void> Engine::applyStartPoint()
+void Engine::requestWorldChange(std::string world, std::string start)
 {
-    auto start = world::findStartPoint(m_scene, m_config.start);
+    m_pendingWorldChange = PendingWorldChange{std::move(world), std::move(start)};
+}
+
+void Engine::unloadWorld()
+{
+    m_scene.clear();
+    m_instances.clear();
+    m_cullGridDirty = true;
+    m_lights.clear();
+    m_terrain = {};
+    m_heightfield = {};
+    m_hasTerrain = false;
+    m_groundModel.reset();
+    m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)}; // empty
+    m_triggers.reset();
+}
+
+void Engine::performWorldChange()
+{
+    const PendingWorldChange change = std::move(*m_pendingWorldChange);
+    m_pendingWorldChange.reset();
+    const std::string key = toLower(change.world);
+    // The target: as left earlier (its state kept) or from its file.
+    world::WorldFile target;
+    std::set<u64> spent;
+    if (const auto left = m_leftWorlds.find(key); left != m_leftWorlds.end())
+    {
+        target = left->second.file;
+        spent = left->second.spentTriggers;
+    }
+    else
+    {
+        auto file = world::loadWorldFile(m_vfs, change.world);
+        if (!file)
+        {
+            G7_LOG_WARN("engine", "level change to {} failed, staying here: {}", change.world,
+                        file.error().message);
+            return;
+        }
+        target = std::move(file).value();
+    }
+    const bool hasStart = std::any_of(
+        target.vobs.begin(), target.vobs.end(), [&](const world::WorldFileVob& vob)
+        { return vob.type == world::VobType::Start && equalsIgnoreCase(vob.name, change.start); });
+    if (!hasStart)
+    {
+        G7_LOG_WARN("engine", "level change to {} failed, staying here: no start point '{}'", change.world,
+                    change.start);
+        return;
+    }
+
+    // Keep the world we leave as it is now (moved or removed vobs, spent once-triggers).
+    const std::string leftPath = m_worldPath;
+    world::WorldFile leaving = m_worldFile;
+    const world::WorldFile captured = world::captureWorld(m_scene, m_worldFile.name);
+    leaving.vobs = captured.vobs;
+    leaving.nextVobId = captured.nextVobId;
+    m_leftWorlds[toLower(leftPath)] = LeftWorld{leaving, m_triggers.spentTriggers()};
+
+    G7_LOG_INFO("engine", "level change: {} -> {} ({})", leftPath, change.world, change.start);
+    unloadWorld();
+    if (auto loaded = loadWorld(change.world, std::move(target), change.start); !loaded)
+    {
+        // Not expected (the target was read and checked); go back to where we were.
+        G7_LOG_ERROR("engine", "{}; returning to {}", loaded.error().message, leftPath);
+        unloadWorld();
+        if (auto back = loadWorld(leftPath, leaving, {}); !back)
+        {
+            G7_LOG_ERROR("engine", "cannot return to {}: {}", leftPath, back.error().message);
+        }
+        return;
+    }
+    m_triggers.setSpentTriggers(std::move(spent));
+    releaseUnusedModels();
+}
+
+void Engine::releaseUnusedModels()
+{
+    std::set<const LoadedModel*> used;
+    for (const SceneInstance& instance : m_instances)
+    {
+        used.insert(instance.model);
+    }
+    const usize before = m_models.size();
+    std::erase_if(m_models, [&](const auto& entry) { return !used.contains(entry.second.get()); });
+    if (m_models.size() != before)
+    {
+        G7_LOG_INFO("engine", "released {} models the new world does not use", before - m_models.size());
+    }
+}
+
+Result<void> Engine::applyStartPoint(std::string_view name)
+{
+    auto start = world::findStartPoint(m_scene, name);
     if (!start)
     {
-        return m_config.start.empty() ? Result<void>() : Result<void>(start.error()); // none: overview camera
+        return name.empty() ? Result<void>() : Result<void>(start.error()); // none: overview camera
     }
     const Mat4 world = m_scene.worldMatrix(start.value());
     m_camera.transform.position = Vec3(world[3]) + Vec3(0.0f, world::kStartEyeHeight, 0.0f);
@@ -1057,6 +1203,7 @@ void Engine::renderScene(u32 width, u32 height)
 
 void Engine::drawScene(u32 width, u32 height)
 {
+    m_meshRenderer.beginFrame();
     if (m_cullGridDirty)
     {
         std::vector<AABB> bounds;
@@ -1082,6 +1229,7 @@ void Engine::drawScene(u32 width, u32 height)
             const Frustum volume = Frustum::fromViewProjection(m_cascades[i].viewProjection);
             m_cullCandidates.clear();
             m_cullGrid.query(volume, m_camera.transform.position, 0.0f, m_cullCandidates);
+            m_drawItems.clear();
             for (const u32 index : m_cullCandidates)
             {
                 // What the main pass hides (distance, size) casts no shadow either.
@@ -1090,9 +1238,21 @@ void Engine::drawScene(u32 width, u32 height)
                     render::cullByDistance(instance.bounds, m_camera.transform.position, m_cullSettings,
                                            instance.sizeCullable) == render::CullResult::Kept)
                 {
-                    m_meshRenderer.drawShadow(*m_device, instance.model->mesh, instance.model->materials,
-                                              instance.transform, m_cascades[i]);
+                    if (m_multiDraw)
+                    {
+                        m_drawItems.push_back({&instance.model->mesh, &instance.model->materials,
+                                               instance.transform, instance.bounds});
+                    }
+                    else
+                    {
+                        m_meshRenderer.drawShadow(*m_device, instance.model->mesh, instance.model->materials,
+                                                  instance.transform, m_cascades[i]);
+                    }
                 }
+            }
+            if (m_multiDraw)
+            {
+                m_meshRenderer.drawShadowBatched(*m_device, m_drawItems, m_cascades[i]);
             }
             if (m_hasTerrain)
             {
@@ -1128,6 +1288,7 @@ void Engine::drawScene(u32 width, u32 height)
     m_culledSmall = 0;
     m_cullCandidates.clear();
     m_cullGrid.query(view, m_camera.transform.position, m_cullSettings.viewDistance, m_cullCandidates);
+    m_drawItems.clear();
     for (const u32 index : m_cullCandidates)
     {
         const SceneInstance& instance = m_instances[index];
@@ -1137,10 +1298,22 @@ void Engine::drawScene(u32 width, u32 height)
         m_culledSmall += cull == render::CullResult::TooSmall ? 1 : 0;
         if (cull == render::CullResult::Kept && view.intersects(instance.bounds))
         {
-            m_meshRenderer.draw(*m_device, instance.model->mesh, instance.model->materials,
-                                instance.transform, m_camera);
+            if (m_multiDraw)
+            {
+                m_drawItems.push_back(
+                    {&instance.model->mesh, &instance.model->materials, instance.transform, instance.bounds});
+            }
+            else
+            {
+                m_meshRenderer.draw(*m_device, instance.model->mesh, instance.model->materials,
+                                    instance.transform, m_camera);
+            }
             ++m_visibleInstances;
         }
+    }
+    if (m_multiDraw)
+    {
+        m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
     }
 }
 
@@ -1199,13 +1372,16 @@ void Engine::updateBenchmark(f64 realSeconds)
         {
             for (const FrameTimeSummary& s : m_benchmarkResults)
             {
-                const render::FrameStats& stats =
-                    m_benchmarkStats[static_cast<usize>(&s - m_benchmarkResults.data())];
+                const auto v = static_cast<usize>(&s - m_benchmarkResults.data());
+                const render::FrameStats& stats = m_benchmarkStats[v];
+                const render::BatchStats& batch = m_benchmarkBatches[v];
                 G7_LOG_INFO(
                     "engine",
-                    "benchmark viewpoint {}: {}; {} draws, {} buffer binds, {} pipeline changes, {}k tris",
-                    &s - m_benchmarkResults.data(), s.toString(), stats.drawCalls, stats.bufferBinds,
-                    stats.pipelineChanges, stats.triangles / 1000);
+                    "benchmark viewpoint {}: {}; {} draws, {} buffer binds, {} pipeline changes, {}k tris; "
+                    "main pass: {} batches ({} submeshes), {} single draws, {} terrain chunks",
+                    v, s.toString(), stats.drawCalls, stats.bufferBinds, stats.pipelineChanges,
+                    stats.triangles / 1000, batch.groups, batch.batchedDraws, batch.singleDraws,
+                    m_benchmarkTerrainChunks[v]);
             }
             const auto [worstAverage, worstP99] = std::accumulate(
                 m_benchmarkResults.begin(), m_benchmarkResults.end(), std::pair{0.0, 0.0},
@@ -1232,6 +1408,8 @@ void Engine::updateBenchmark(f64 realSeconds)
     {
         m_benchmarkResults.push_back(m_benchmarkTimes.summary());
         m_benchmarkStats.push_back(m_device ? m_device->stats() : render::FrameStats{});
+        m_benchmarkBatches.push_back(m_meshRenderer.lastBatch());
+        m_benchmarkTerrainChunks.push_back(m_hasTerrain ? m_terrain.drawnChunks() : 0);
     }
 }
 

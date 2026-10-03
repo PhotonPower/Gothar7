@@ -68,6 +68,8 @@ inline VertexAttribFormat vertexFormat(VertexFormat format) noexcept
         return {4, GL_FLOAT, GL_FALSE};
     case VertexFormat::UNorm8x4:
         return {4, GL_UNSIGNED_BYTE, GL_TRUE};
+    case VertexFormat::UInt1:
+        return {1, GL_UNSIGNED_INT, GL_FALSE};
     }
     return {3, GL_FLOAT, GL_FALSE};
 }

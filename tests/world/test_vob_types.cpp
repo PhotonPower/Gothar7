@@ -223,3 +223,65 @@ TEST_CASE("Vob category: mesh vobs default to deco, gameplay is written, mobs ar
                       "components": {"mob": {"definition": "BED"}}})") ==
           "w.g7world: vobs[0]: a mob vob is always 'gameplay'");
 }
+
+TEST_CASE("Level change triggers: read, written, player only")
+{
+    const WorldFile file = parse(R"({"version": 1, "vobs": [
+      {"id": 1, "type": "trigger", "name": "TRG_TO_CAVE", "components": {"trigger": {
+        "changeWorld": {"world": "worlds/cave.g7world", "start": "START_HOEHLE"}, "onEnter": "CAVE_ENTER"}}}]})");
+    const TriggerVolume& trigger = file.vobs[0].trigger;
+    CHECK(trigger.changeWorld == "worlds/cave.g7world");
+    CHECK(trigger.changeStart == "START_HOEHLE");
+    CHECK(trigger.onEnter == "CAVE_ENTER");
+    const std::string written = writeWorldFile(file);
+    CHECK(written.find(R"("changeWorld":{"world":"worlds/cave.g7world","start":"START_HOEHLE"})") !=
+          std::string::npos);
+    CHECK(writeWorldFile(parse(written)) == written);
+
+    CHECK(
+        errorOf(
+            R"({"id": 1, "type": "trigger", "components": {"trigger": {"changeWorld": {"world": "a.g7world"}}}})") ==
+        "w.g7world: vobs[0].components.trigger.changeWorld: needs 'start'");
+    CHECK(
+        errorOf(R"({"id": 1, "type": "trigger", "components": {"trigger": {"changeWorld": "a.g7world"}}})") ==
+        "w.g7world: vobs[0].components.trigger.changeWorld: must be an object");
+    CHECK(errorOf(R"({"id": 1, "type": "trigger", "components": {"trigger": {"filter": "any",
+                     "changeWorld": {"world": "a.g7world", "start": "S"}}}})") ==
+          "w.g7world: vobs[0].components.trigger.changeWorld: a level change reacts to the player only "
+          "(filter 'player')");
+}
+
+TEST_CASE("Triggers: priming on arrival - no enter for a trigger one already stands in")
+{
+    Scene scene;
+    REQUIRE(spawnWorld(scene, parse(kWorld)).ok());
+    scene.updateTransforms();
+    TriggerSystem triggers;
+    std::vector<VobId> entered;
+    triggers.setCallback(
+        [&](const TriggerEvent& e)
+        {
+            if (e.kind == TriggerEvent::Kind::Enter)
+            {
+                entered.push_back(e.trigger);
+            }
+        });
+    // Arriving inside the gate (trigger 4): primed, so standing there fires nothing.
+    const TriggerProbe inGate{VobId{100}, Vec3(11.2f, 0.0f, -1.2f), true};
+    triggers.prime(scene, std::span(&inGate, 1));
+    CHECK(triggers.isInside(VobId{4}, VobId{100}));
+    triggers.update(scene, std::span(&inGate, 1));
+    triggers.update(scene, std::span(&inGate, 1));
+    CHECK(entered.empty());
+    // Leaving and coming back fires as usual.
+    const TriggerProbe outside{VobId{100}, Vec3(30.0f, 0.0f, 0.0f), true};
+    triggers.update(scene, std::span(&outside, 1));
+    triggers.update(scene, std::span(&inGate, 1));
+    CHECK(entered == std::vector<VobId>{VobId{4}});
+    // Spent once-triggers survive (kept with a world while another one is loaded).
+    triggers.setSpentTriggers({5});
+    const TriggerProbe atWell{VobId{100}, Vec3(-5.0f, 0.0f, 0.0f), true};
+    triggers.update(scene, std::span(&atWell, 1));
+    CHECK(entered.size() == 1); // the well is "once" and counted as fired already
+    CHECK(triggers.spentTriggers() == std::set<u64>{5});
+}

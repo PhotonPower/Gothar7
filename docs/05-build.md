@@ -57,7 +57,7 @@ assets“** (Haut, Augen, Brauen, Wimpern), **Shirts 01, Pants 01, Shoes 01, Hai
 `files.makehumancommunity.org/asset_packs/<paket>/<paket>_cc0.zip`; der Spiegel `files2` ist sehr langsam) und
 entweder in Blender über MPFB → „Apply assets“ → „Library settings“ → „Install asset pack“ einspielen oder direkt
 nach `%APPDATA%\Blender Foundation\Blender\4.5\extensions\.user\blender_org\mpfb\data` entpacken.
-Rohdateien bleiben unter `DATA_ROOT\characters\mpfb` (nicht im Repo). **Nur Core-/System-Pakete (CC0)** verwenden;
+Rohdateien bleiben unter `DATA_ROOT\characters\mpfb` (nicht im Repo). Verwenden: **Core/System + einzeln geprüfte CC0-Pakete (Liste in `assets/LICENSES.md`)**;
 Community-Pakete erst nach Lizenzprüfung (ADR 0018). Das Plugin (GPLv3) wird nie ins Repo kopiert.
 
 ## Bauen

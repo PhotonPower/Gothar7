@@ -1,4 +1,4 @@
-# Animationsliste (Menschen)
+# Animationsliste (Menschen und Monster)
 
 Quelle der Wahrheit für **welche** Animationen gebraucht werden. Konvention siehe
 `characters-pipeline.md` §3. Gepflegt von der Figuren-Spur (F2–F4); der Abgleich-Tool-Bericht
@@ -68,6 +68,40 @@ den `none`-Clips, Arme und Kopf aus der Haltung (`layer` in `data/clips/<modus>.
 | `bow/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | Keyframe-Pose: Bogen tief in der linken Hand | K | platzhalter-K |
 | `cbow/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | UAL1 `Pistol_Idle_Loop` (beide Hände vorn) | Q→ | platzhalter |
 | `mag/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | UAL1 `Spell_Simple_Idle_Loop` | Q→ | platzhalter |
+
+## Monster (F5, Vertrag `characters-pipeline.md` §7)
+
+Mindestumfang je Art. Clips liegen in `assets/source/characters/monsters/<art>/anims/<art>.glb`, Herkunft je
+Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_run` bewegen `root` vorwärts, `t_turn_l/r` drehen
+`root` um die Hochachse (Wunsch engine); alle anderen Clips bleiben am Ort.
+
+### Wolf (`wolf`, Platzhalter aus Quaternius Animal Pack Vol.2, CC0)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `wolf/s_idle` | Stehen | – | – | Q | platzhalter (`Idle`) |
+| `wolf/s_walk` | Gehen | ✓ 0,34 m/s | footstep_front/back_l/r | Q→ | platzhalter (`Walking` + root vorwärts, Füße stehen) |
+| `wolf/s_run` | Rennen | ✓ 1,1 m/s | footstep_front/back_l/r | Q→ | platzhalter-K (`Walking` ×2,5 schneller, Schritte ×1,3) |
+| `wolf/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Schritte + root-Drehung) |
+| `wolf/t_attack_1`, `t_attack_2` | Biss nach vorn (Ducken, Satz) / Schnappen zur Seite | – | hit_start, hit_end | K | platzhalter-K |
+| `wolf/t_hit` | Treffer | – | – | K | platzhalter-K |
+| `wolf/t_die` | Tod: taumeln, auf die Seite kippen | – | – | K | platzhalter-K |
+| `wolf/s_eat`, `s_sleep` | Fressen (Kopf tief, kauen), Schlafen (liegend, atmet) | – | – | K | platzhalter-K |
+| `wolf/t_threaten` | Drohen: Kopf tief, Knurr-Nicken | – | – | K | platzhalter-K |
+
+### Keiler (`keiler`, Platzhalter aus Quaternius Farm Animal Pack „Pig“, CC0)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `keiler/s_idle` | Stehen | – | – | Q | platzhalter (`Idle`) |
+| `keiler/s_walk` | Gehen | ✓ 0,8 m/s | footstep_front/back_l/r | Q→ | platzhalter (`Walk` 0–32 + root vorwärts) |
+| `keiler/s_run` | Traben | ✓ 1,65 m/s | footstep_front/back_l/r | Q→ | platzhalter-K (`Walk` schneller, weitere Schritte; Quell-`Run` streckt die Beine, unbrauchbar) |
+| `keiler/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K |
+| `keiler/t_attack_1`, `t_attack_2` | Anrennen und Hauer hochreißen / Hauer-Hieb zur Seite | – | hit_start, hit_end | K | platzhalter-K |
+| `keiler/t_hit` | Treffer | – | – | K | platzhalter-K |
+| `keiler/t_die` | Tod: bäumt sich auf, fällt auf die Seite | – | – | Q | platzhalter (`Death`) |
+| `keiler/s_eat`, `s_sleep` | Wühlen (Schnauze am Boden), Schlafen (Seitenlage, atmet) | – | – | K | platzhalter-K |
+| `keiler/t_threaten` | Drohen: Kopf tief, Scharren mit dem Vorderhuf | – | – | K | platzhalter-K |
 
 ## Prio C – später
 

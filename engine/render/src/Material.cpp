@@ -61,9 +61,14 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
 }
 
 Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& mesh,
-                                        const ImageLookup& lookup)
+                                        const ImageLookup& lookup,
+                                        std::shared_ptr<const MaterialDefaults> defaults)
 {
     MaterialSet set;
+    set.m_defaults = std::move(defaults);
+    // Shared neutral textures have these indices; everything else indexes m_textures.
+    constexpr usize kSharedWhite = ~usize(0);
+    constexpr usize kSharedFlatNormal = ~usize(0) - 1;
     // Every texture lives in m_textures; indices first, pointers only once the vector is final.
     std::map<std::pair<i32, bool>, usize> uploaded; // (image, sRGB) -> texture index
     const auto fallback = [&](u8 r, u8 g, u8 b, bool srgb) -> Result<usize>
@@ -76,8 +81,8 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
         set.m_textures.push_back(std::move(texture).value());
         return set.m_textures.size() - 1;
     };
-    auto white = fallback(255, 255, 255, true);
-    auto flatNormal = fallback(128, 128, 255, false);
+    auto white = set.m_defaults ? Result<usize>(kSharedWhite) : fallback(255, 255, 255, true);
+    auto flatNormal = set.m_defaults ? Result<usize>(kSharedFlatNormal) : fallback(128, 128, 255, false);
     if (!white || !flatNormal)
     {
         return Error{"cannot create fallback textures"};
@@ -133,9 +138,15 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
     {
         const asset::MaterialInfo& info = mesh.materials[i];
         Material material;
-        material.baseColor = &set.m_textures[slots[i].baseColor];
-        material.normal = &set.m_textures[slots[i].normal];
-        material.emissive = &set.m_textures[slots[i].emissive];
+        const auto texture = [&](usize slot) -> const rhi::Texture*
+        {
+            return slot == kSharedWhite        ? &set.m_defaults->white
+                   : slot == kSharedFlatNormal ? &set.m_defaults->flatNormal
+                                               : &set.m_textures[slot];
+        };
+        material.baseColor = texture(slots[i].baseColor);
+        material.normal = texture(slots[i].normal);
+        material.emissive = texture(slots[i].emissive);
         material.baseColorFactor = info.baseColor;
         material.emissiveFactor = info.emissive;
         material.normalScale = info.normalScale;
@@ -222,6 +233,72 @@ Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders
         renderer.m_shadowPipelines[i] = std::move(pipeline).value();
     }
 
+    // Multi-draw variants: the draw index as per-instance attribute 4 (binding 1, divisor 1).
+    auto multi = shaders.load("mesh_multi", {"mesh.vert", "mesh.frag", {"MULTI_DRAW"}});
+    auto multiAlpha =
+        shaders.load("mesh_alpha_test_multi", {"mesh.vert", "mesh.frag", {"ALPHA_TEST", "MULTI_DRAW"}});
+    auto multiShadow = shaders.load("shadow_multi", {"shadow.vert", "shadow.frag", {"MULTI_DRAW"}});
+    auto multiShadowAlpha =
+        shaders.load("shadow_alpha_test_multi", {"shadow.vert", "shadow.frag", {"ALPHA_TEST", "MULTI_DRAW"}});
+    if (!multi || !multiAlpha || !multiShadow || !multiShadowAlpha)
+    {
+        return !multi         ? multi.error()
+               : !multiAlpha  ? multiAlpha.error()
+               : !multiShadow ? multiShadow.error()
+                              : multiShadowAlpha.error();
+    }
+    renderer.m_multiProgram = multi.value();
+    renderer.m_multiAlphaTestProgram = multiAlpha.value();
+    renderer.m_multiShadowProgram = multiShadow.value();
+    renderer.m_multiShadowAlphaTestProgram = multiShadowAlpha.value();
+    std::vector<rhi::VertexAttribute> multiLayout = Mesh::vertexLayout();
+    multiLayout.push_back({4, rhi::VertexFormat::UInt1, 0, 1});
+    for (u32 variant : {u32(Opaque), u32(AlphaTest)}) // translucent submeshes are never batched
+    {
+        for (u32 doubleSided = 0; doubleSided < 2; ++doubleSided)
+        {
+            rhi::PipelineDesc desc;
+            desc.program = variant == AlphaTest ? renderer.m_multiAlphaTestProgram : renderer.m_multiProgram;
+            desc.attributes = multiLayout;
+            desc.vertexStride = Mesh::kVertexStride;
+            desc.instanceStride = sizeof(u32);
+            desc.cull = doubleSided ? rhi::CullMode::None : rhi::CullMode::Back;
+            auto pipeline = device.createPipeline(desc);
+            if (!pipeline)
+            {
+                return pipeline.error();
+            }
+            renderer.m_multiPipelines[variant * 2 + doubleSided] = std::move(pipeline).value();
+        }
+    }
+    for (usize i = 0; i < renderer.m_multiShadowPipelines.size(); ++i)
+    {
+        rhi::PipelineDesc desc;
+        desc.program = i == 0 ? renderer.m_multiShadowProgram : renderer.m_multiShadowAlphaTestProgram;
+        desc.attributes = multiLayout;
+        desc.vertexStride = Mesh::kVertexStride;
+        desc.instanceStride = sizeof(u32);
+        desc.cull = rhi::CullMode::None;
+        desc.depthCompare = rhi::CompareOp::LessEqual;
+        desc.depthBias = {shadows.depthBias, shadows.slopeBias};
+        auto pipeline = device.createPipeline(desc);
+        if (!pipeline)
+        {
+            return pipeline.error();
+        }
+        renderer.m_multiShadowPipelines[i] = std::move(pipeline).value();
+    }
+
+    // Neutral textures shared by the MaterialSets made with defaults().
+    auto white = createSolidTexture(device, 255, 255, 255, 255, true);
+    auto flatNormal = createSolidTexture(device, 128, 128, 255, 255, false);
+    if (!white || !flatNormal)
+    {
+        return Error{"cannot create the neutral textures"};
+    }
+    renderer.m_defaults = std::make_shared<const MaterialDefaults>(
+        MaterialDefaults{std::move(white).value(), std::move(flatNormal).value()});
+
     auto lighting = device.createBuffer({sizeof(GpuLighting), rhi::BufferUsage::Dynamic, {}});
     if (!lighting)
     {
@@ -265,14 +342,7 @@ void MeshRenderer::drawSubmesh(Device& device, const Mesh& mesh, usize submesh, 
     rhi::ShaderProgram* program = variant == AlphaTest ? m_alphaTestProgram : m_program;
     device.bindPipeline(pipeline(variant, material.doubleSided));
     mesh.bind(device);
-    program->setUniform("uBaseColor", material.baseColorFactor);
-    program->setUniform("uEmissive", material.emissiveFactor);
-    program->setUniform("uNormalScale", material.normalScale);
-    program->setUniform("uNormalTwoChannel", material.normalTwoChannel ? 1 : 0);
-    program->setUniform("uAlphaCutoff", material.alphaCutoff);
-    device.bindTexture(0, *material.baseColor, m_sampler);
-    device.bindTexture(1, *material.normal, m_sampler);
-    device.bindTexture(2, *material.emissive, m_sampler);
+    bindMaterial(*program, device, material);
     mesh.draw(device, submesh);
 }
 
@@ -286,7 +356,7 @@ void MeshRenderer::bindLighting(Device& device) const
 }
 
 void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
-                        const Camera& camera)
+                        const Camera& camera, i32 onlySubmesh)
 {
     const Mat4 viewProjection = camera.viewProjection();
     device.bindUniformBuffer(0, m_lightingBuffer);
@@ -319,7 +389,8 @@ void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& mat
         for (usize i = 0; i < submeshes.size(); ++i)
         {
             const Material& material = materials[submeshes[i].material];
-            if ((material.alphaMode == asset::AlphaMode::Blend) == translucentPass)
+            if ((material.alphaMode == asset::AlphaMode::Blend) == translucentPass &&
+                (onlySubmesh < 0 || static_cast<usize>(onlySubmesh) == i))
             {
                 drawSubmesh(device, mesh, i, material);
             }

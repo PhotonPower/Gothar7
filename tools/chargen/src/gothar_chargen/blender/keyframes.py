@@ -17,6 +17,7 @@ from collections.abc import Callable
 import bpy  # type: ignore[import-not-found]
 from mathutils import Quaternion, Vector  # type: ignore[import-not-found]
 
+from gothar_chargen.blender.common import FPS
 from gothar_chargen.blender.curves import Curves, Pose, length, mix, pose_at, to_curves
 
 Rotations = dict[str, list[tuple[str, float]]]
@@ -322,6 +323,98 @@ def pose(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
     return to_curves(poses)
 
 
+# --- monsters: key poses and root motion (F5) ---------------------------------------------------
+
+
+def _offset_pose(rig: RigInfo, spec: dict) -> dict[str, tuple[Quaternion, Vector]]:
+    """{rotate = {bone = [[axis, deg], ...]}, move = {root|pelvis = [x, y, z]}} -> channel offsets.
+
+    Axes are world axes at rest (X = left, -Y = forward, Z = up); moves are in metres.
+    """
+    unknown = set(spec) - {"rotate", "move"}
+    if unknown:
+        raise ValueError(f"keyposes: unknown pose keys {sorted(unknown)}")
+    offsets: dict[str, tuple[Quaternion, Vector]] = {}
+    for bone, rots in spec.get("rotate", {}).items():
+        if bone not in rig.rest:
+            raise ValueError(f"keyposes: unknown bone '{bone}'")
+        q = Quaternion()
+        for axis, degrees in rots:
+            q = rig.offset(bone, str(axis), float(degrees)) @ q
+        offsets[bone] = (q, Vector())
+    for bone, world in spec.get("move", {}).items():
+        if bone not in ("root", "pelvis"):
+            raise ValueError(f"keyposes: only root and pelvis can move, not '{bone}'")
+        q, _ = offsets.get(bone, (Quaternion(), Vector()))
+        offsets[bone] = (q, rig.rest[bone].inverted() @ Vector([float(v) for v in world]))
+    return offsets
+
+
+def keyposes(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
+    """Named poses at key frames, eased in between (smoothstep), over a looping `base` clip.
+
+    params: poses = {name = {rotate = ..., move = ...}}, keys = [[frame, name], ...] (first key
+    at frame 0, "rest" = no offset), optional base = earlier clip (default: rest pose).
+    Offsets are multiplied onto the base pose, so a pose on top of idle still breathes.
+    """
+    named = {"rest": {}}
+    for name, spec in params.get("poses", {}).items():
+        named[name] = _offset_pose(rig, spec)
+    keys = [(int(f), str(n)) for f, n in params.get("keys", [])]
+    if (
+        len(keys) < 2
+        or keys[0][0] != 0
+        or any(b[0] <= a[0] for a, b in zip(keys, keys[1:], strict=False))
+    ):
+        raise ValueError("keyposes: keys need >= 2 entries with increasing frames from 0")
+    for _, name in keys:
+        if name not in named:
+            raise ValueError(f"keyposes: unknown pose '{name}'")
+    base = clips[params["base"]] if "base" in params else None
+    len_base = (length(base) or 1.0) if base is not None else 1.0
+    poses = []
+    for frame in range(keys[-1][0] + 1):
+        i = max(k for k in range(len(keys)) if keys[k][0] <= frame)
+        j = min(i + 1, len(keys) - 1)
+        span = keys[j][0] - keys[i][0]
+        s = _smooth((frame - keys[i][0]) / span) if span else 0.0
+        a, b = named[keys[i][1]], named[keys[j][1]]
+        pose = pose_at(base, frame % len_base, rig.bones) if base is not None else rig.rest_pose()
+        for bone in set(a) | set(b):
+            qa, la = a.get(bone, (Quaternion(), Vector()))
+            qb, lb = b.get(bone, (Quaternion(), Vector()))
+            q, loc = pose[bone]
+            pose[bone] = (qa.slerp(qb, s) @ q, None if loc is None else loc + la.lerp(lb, s))
+        poses.append(pose)
+    return to_curves(poses)
+
+
+def _amplified(q: Quaternion, factor: float) -> Quaternion:
+    axis, angle = q.to_axis_angle()
+    return Quaternion(axis, angle * factor)
+
+
+def advance(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
+    """In-place locomotion loop with forward root motion (monster contract §7).
+
+    params: base (in-place loop), speed (m/s forward), time (< 1 plays faster), amplify (scales
+    every joint's rotation away from rest, e.g. 1.25 for longer strides when running).
+    """
+    base = clips[params["base"]]
+    speed = float(params["speed"])
+    time = float(params.get("time", 1.0))
+    amplify = float(params.get("amplify", 1.0))
+    frames = round(length(base) * time)
+    poses = []
+    for frame in range(frames + 1):
+        pose = pose_at(base, frame / time, rig.bones)
+        if amplify != 1.0:
+            pose = {b: (_amplified(q, amplify), loc) for b, (q, loc) in pose.items()}
+        rig.move(pose, "root", Vector((0.0, -speed * frame / FPS, 0.0)))
+        poses.append(pose)
+    return to_curves(poses)
+
+
 RECIPES: dict[str, Callable[[RigInfo, dict, dict[str, Curves]], Curves]] = {
     "strafe": strafe,
     "turn": turn,
@@ -333,4 +426,6 @@ RECIPES: dict[str, Callable[[RigInfo, dict, dict[str, Curves]], Curves]] = {
     "pitch": pitch,
     "slide": slide,
     "pose": pose,
+    "keyposes": keyposes,
+    "advance": advance,
 }

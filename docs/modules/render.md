@@ -300,6 +300,39 @@ class CullGrid { void build(span<const AABB>, f32 cellSize = 64); void query(con
   der Grenze verdeckt der Nebel; fällt es auf, ist es ein offener Punkt (kein Überblenden in M4).
 - Overlay (F2): „hidden: N far, M small“.
 
+### Multi-Draw – `MeshRenderer::drawBatched` (M4, B2)
+```cpp
+struct MeshDrawItem { const Mesh* mesh; const MaterialSet* materials; Mat4 model; AABB bounds; };
+void drawBatched(Device&, span<const MeshDrawItem>, const Camera&);     // Hauptpass
+void drawShadowBatched(Device&, span<const MeshDrawItem>, const Cascade&); // je Kaskade
+void beginFrame();  BatchStats lastBatch();  shared_ptr<const MaterialDefaults> defaults();
+```
+- Deckende und Alpha-Test-Submeshes von Arena-Meshes werden nach (Pipeline, Material-**Werten**, Geometrie-Block)
+  gruppiert, je Gruppe **ein** `glMultiDrawElementsIndirect`. Modellmatrix, Normalenmatrix und Punktlichter je Draw
+  liegen in einem SSBO (`common/draws.glsl`); jeder Draw trägt seinen Index als `baseInstance`, ein Instanz-Attribut
+  (Divisor 1) liefert ihn dem Shader – **kein `gl_DrawID`/`ARB_shader_draw_parameters` nötig** (GL 4.3-Kern, auch
+  Mesa llvmpipe in der CI). Durchsichtige Submeshes und Meshes außerhalb einer Arena: einzeln, danach.
+- Gleiche Werte in verschiedenen Modellen bündeln, weil alle `MaterialSet`s die neutralen Texturen des Renderers teilen
+  (`MaterialSet::create(…, defaults())`). Texturen aus Dateien werden noch je Modell hochgeladen – bündeln über
+  Texturen braucht einen GPU-Textur-Cache über den VFS-Pfad (vor welt W5 Schritt 4, spätestens M6).
+- Pufferung: drei Puffersätze im Wechsel je Frame, innerhalb eines Frames hängt jeder Pass hinten an (kein
+  Überschreiben, solange die GPU liest); Wachstum in Zweierpotenzen.
+- **`[render] multi_draw`**: `"auto"` (Vorgabe) = an, außer auf Intel-GPUs; `"on"`/`"off"` erzwingen.
+- Messung Leonberg-Kern mit Fachwerk (905 Häuser, 1,6 Mio. Dreiecke, Release, 1600×900):
+
+  | GPU | einzeln | Multi-Draw |
+  |---|---|---|
+  | RTX 3080 Laptop, Übersicht | 3,06 ms, 5477 Draws | **2,17 ms**, 477 Draws (Hauptpass: 15 Bündel für 1649 Submeshes; Rest = 336 Gelände-Kacheln) |
+  | RTX 3080 Laptop, Marktplatz | 3,06 ms | **2,05 ms** |
+  | Intel UHD, Übersicht | **22,2 ms** (45 FPS) | 25,0 ms |
+
+  **Offener Punkt (Intel):** Dort begrenzt die GPU, nicht die CPU; Multi-Draw kostet ~10 %. Geprüft und nicht die
+  Ursache: Puffer-Stalls (Rotation ohne Wirkung), Normalenmatrix je Vertex (vorberechnet ohne Wirkung). Vermutung:
+  indirekte Draws und SSBO-Zugriff je Vertex auf Intel teurer; Gelände-Kacheln (336 Draws) sind der nächste Hebel.
+- Z-Fighting: Wo Geometrie deckungsgleich überlappt (modulare Wände der Testszene), gewinnt bei gleicher Tiefe der
+  zuletzt gezeichnete Teil – Multi-Draw zeichnet in anderer Reihenfolge, das Bild unterscheidet sich dort in einzelnen
+  Pixeln. Inhalte sollen keine doppelten Flächen haben (Budget-Tabelle).
+
 ### Geometrie-Arena – `GeometryArena.hpp` (M4)
 ```cpp
 class GeometryArena { Result<GeometrySlice> allocate(Device&, span<const asset::Vertex>, span<const u32>);

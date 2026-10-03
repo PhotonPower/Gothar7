@@ -46,6 +46,8 @@ public:
     void destroyVob(entt::entity vob);
     [[nodiscard]] bool valid(entt::entity vob) const noexcept;
     [[nodiscard]] usize vobCount() const noexcept { return m_byId.size(); }
+    /// Removes every vob and starts the id counters afresh (another world is loaded next).
+    void clear();
 
     [[nodiscard]] entt::entity findById(VobId id) const;
     /// First vob with this name (names need not be unique), or entt::null.

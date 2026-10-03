@@ -43,6 +43,7 @@ enum class VertexFormat : u8
     Float3,
     Float4,
     UNorm8x4, ///< 4 bytes normalised to 0..1 (vertex colours).
+    UInt1,    ///< one 32-bit unsigned integer, read as `uint` in the shader (draw indices)
 };
 
 enum class IndexType : u8

@@ -111,7 +111,7 @@ Result<void> spawnWorld(Scene&, const WorldFile&);  WorldFile captureWorld(const
   Testwelt: START_LAGER, SND_CAMPFIRE, TRG_CAMP_GATE, Mob STOOL_CAMPFIRE.
 - **Engine:** `--world=<vfs-pfad>` lädt eine Welt (Mesh-Vobs werden gerendert, Licht-Vobs zu Punktlichtern, bis zum
   Gelände eine Bodenplatte unter der Welt), `--save-world=<datei>` speichert die geladene Welt oder Testszene.
-  Testwelt: `assets/source/testworld/camp.g7world` (das Lager der M2-Testszene, 172 Vobs).
+  Testwelt: `assets/source/testworld/camp.g7world` (das Lager der M2-Testszene, 174 Vobs).
 - Eine gekochte Binärvariante folgt bei Bedarf (große Welten); das Textformat bleibt.
 
 ## Vob-Typen (v1, M4)
@@ -154,6 +154,29 @@ class TriggerSystem { void setCallback(Callback); std::vector<TriggerEvent> upda
   meldet Änderungen **sortiert nach Trigger-ID, dann Proben-ID, Leave vor Enter** – deterministisch für Tests und
   Skripte. Eine fehlende Probe hat alle Trigger verlassen. `once`: nur das erste Update mit Eintritt meldet (alle
   Proben darin), danach nichts mehr bis `reset()`. `world` ruft keine Skripte: die Engine registriert den Callback.
+
+## Weltwechsel (M4)
+**Levelwechsel-Trigger** (Vertrag, von welt gegengelesen): `trigger`-Vobs mit `components.trigger.changeWorld =
+{"world": "<VFS-Pfad .g7world>", "start": "<Startpunkt-Name der Zielwelt>"}` (beide Pflicht). Wirkt nur auf den Spieler
+(`filter` muss `player` sein, sonst Ladefehler); `onEnter`/`onLeave` bleiben daneben möglich.
+```json
+{"id":7,"type":"trigger","name":"TRG_TO_RATHAUS","pos":[12,0,-3],"components":{"trigger":{"shape":"box",
+ "halfExtents":[1,1.5,0.3],"changeWorld":{"world":"worlds/leonberg/rathaus.g7world","start":"START_RATHAUS_EINGANG"}}}}
+```
+- `Engine::requestWorldChange(world, start)` (auch vom Trigger): ausgeführt **zwischen zwei Frames** – nach der
+  Simulation, vor dem Rendern. Zielwelt und Startpunkt werden erst dann geprüft; fehlt eines: Warnung, man bleibt.
+- Ablauf: Zustand der aktuellen Welt sichern → entladen (Szene, Instanzen, Raster, Gelände, Lichter, Trigger) →
+  Zielwelt laden (aus dem gesicherten Zustand, wenn schon besucht, sonst aus der Datei) → Kamera (später Spieler) auf
+  den Startpunkt → nicht mehr genutzte Modelle freigeben.
+- **Rückkehr:** Die verlassene Welt ist so, wie man sie verlassen hat (verschobene/entfernte Vobs, verbrauchte
+  `once`-Trigger) – in M4 im Speicher, später im Spielstand (save.md „Schnittstelle zum Weltwechsel“).
+- **Kein Pingpong:** Nach der Ankunft gelten Trigger, in denen der Spieler schon steht, als betreten ohne Ereignis
+  (`TriggerSystem::prime`); sie lösen erst nach Verlassen und Wiederbetreten aus. Liegt ein Startpunkt in einem
+  Levelwechsel, warnt die Engine beim Laden. Startpunkte daher knapp hinter den Rück-Trigger setzen.
+- **Global, nicht Teil einer Welt:** Spielzeit und Tag/Nacht (M4), später Story-Variablen und der Spieler selbst –
+  sie laufen über Weltwechsel weiter.
+- Testwelten: `testworld/camp.g7world` (TRG_TO_CAVE → START_HOEHLE, Ankunft START_LAGER_HOEHLE) und
+  `testworld/cave.g7world` (Felsenkessel, TRG_TO_CAMP). Ladezeit wird geloggt; ein Ladebildschirm kommt mit der UI.
 
 ## Gelände – `terrain`-Block (v1.x, Vertrag mit welt)
 Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig). Mit welt abgestimmt (passt zu
@@ -223,4 +246,4 @@ Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig)
 
 ## Gothic-Bezug
 - Vob-Baum ≈ ZenGin `zCVob`-Hierarchie. Mobs, Trigger, Lichter, Startpunkte sind Vob-Typen.
-- Weltwechsel: Zustand der verlassenen Welt wird gespeichert (siehe save) und beim Rückkehren wiederhergestellt.
+- Weltwechsel: siehe Abschnitt „Weltwechsel“ (umgesetzt in M4); Zustand der verlassenen Welt bleibt (save.md).

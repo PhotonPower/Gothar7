@@ -134,12 +134,13 @@ def compact(gltf: Gltf) -> None:
 # --- textures (contract characters-pipeline.md §2.3) -------------------------------------------
 
 MASK_ROLES = frozenset({"hair", "beard", "eyebrows", "eyelashes"})
-_ROLE_WORDS = ("skin", "eyes", "eyebrows", "eyelashes", "hair", "beard")
+_ROLE_WORDS = ("skin", "eyes", "eyebrows", "eyelashes", "hair", "beard", "fur")
 _EXT = {"image/png": "png", "image/jpeg": "jpg"}
 
 
 def material_role(name: str) -> str:
-    """Texture role from a material name: skin, eyes, eyebrows, eyelashes, hair, beard or cloth."""
+    """Texture role from a material name: skin, eyes, eyebrows, eyelashes, hair, beard, fur
+    (monsters, §7.1) or cloth."""
     first = name.lower().split(".")[0].replace("-", "_").split("_")[0]
     return first if first in _ROLE_WORDS else "cloth"
 
