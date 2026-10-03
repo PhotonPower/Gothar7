@@ -1,0 +1,70 @@
+{
+  "format": "gothar-starts",
+  "version": 1,
+  "note": "Zusätzliche Startpunkte (export-terrain): Stationen der Begehung (docs/design/leonberg-begehung.md). yawDeg: Blickrichtung, 0 = Norden (-Z), 90 = Westen (-X).",
+  "starts": [
+    {
+      "name": "START_BG_GASSE_ENG",
+      "x": -76.57,
+      "z": -112.8,
+      "yawDeg": -27.6,
+      "note": "engste Stelle eines Weges: 0,63 m (Pfad, blockiert)"
+    },
+    {
+      "name": "START_BG_GASSE_SCHMAL",
+      "x": -1.79,
+      "z": -89.81,
+      "yawDeg": -109.6,
+      "note": "schmaler Fußweg: 1,12 m"
+    },
+    {
+      "name": "START_BG_STEIL",
+      "x": -138.78,
+      "z": 102.83,
+      "yawDeg": -2.2,
+      "note": "Törlensweg, bis 49° steil"
+    },
+    {
+      "name": "START_BG_TREPPE",
+      "x": -56.26,
+      "z": 194.76,
+      "yawDeg": -113.1,
+      "note": "OSM-Treppe als Rampe im Gelände, 62°: zu steil"
+    },
+    {
+      "name": "START_BG_MAUERDURCHBRUCH",
+      "x": -60.47,
+      "z": -152.04,
+      "yawDeg": -114.7,
+      "note": "Hinterer Zwinger: Straße endet an der Stadtmauer"
+    },
+    {
+      "name": "START_BG_WEG_DURCH_HAUS",
+      "x": 61.67,
+      "z": -111.29,
+      "yawDeg": -177.5,
+      "note": "Im Zwinger: Weg läuft in ein Haus"
+    },
+    {
+      "name": "START_BG_TOR_OBEN",
+      "x": 80.0,
+      "z": 52.0,
+      "yawDeg": -98.1,
+      "note": "Oberes Tor, Durchgang 3,6 m"
+    },
+    {
+      "name": "START_BG_TUER_IM_BODEN",
+      "x": -25.35,
+      "z": 40.32,
+      "yawDeg": 175.7,
+      "note": "Erdgeschoss 0,9 m im Gelände"
+    },
+    {
+      "name": "START_BG_SPALT",
+      "x": -7.9,
+      "z": 37.4,
+      "yawDeg": 0.0,
+      "note": "Spalt zwischen zwei Häusern, schmaler als die Figur"
+    }
+  ]
+}

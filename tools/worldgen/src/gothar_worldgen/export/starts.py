@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 IDENTITY = (0.0, 0.0, 0.0, 1.0)
@@ -23,6 +26,20 @@ DEFAULT_STARTS = (
     StartPoint("START_MARKTPLATZ", 0.0, 8.0),
     StartPoint("START_UEBERSICHT", 0.0, 60.0, 40.0, (-0.258819, 0.0, 0.0, 0.965926)),
 )
+
+
+def load_starts(path: Path) -> tuple[StartPoint, ...]:
+    """Extra start points of a site (``data/<site>/starts.json``, versioned): walkthrough stations
+    and places for the owner to jump to; looking along ``yawDeg`` (0 = -Z, 90 = -X)."""
+    if not path.is_file():
+        return ()
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    out = []
+    for e in doc.get("starts", []):
+        half = math.radians(float(e.get("yawDeg", 0.0))) / 2
+        rot = (0.0, round(math.sin(half), 6) + 0.0, 0.0, round(math.cos(half), 6))
+        out.append(StartPoint(str(e["name"]), float(e["x"]), float(e["z"]), 0.0, rot))
+    return tuple(out)
 
 
 def start_vob(vid: int, s: StartPoint, ground_y: float) -> dict[str, Any]:

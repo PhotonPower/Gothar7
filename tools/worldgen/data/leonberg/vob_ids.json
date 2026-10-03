@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 1910,
+ "nextVobId": 1919,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -1911,6 +1911,15 @@
   "water:glems_159": 1906,
   "water:glems_160": 1907,
   "water:glems_161": 1908,
-  "water:glems_162": 1909
+  "water:glems_162": 1909,
+  "start:START_BG_GASSE_ENG": 1910,
+  "start:START_BG_GASSE_SCHMAL": 1911,
+  "start:START_BG_STEIL": 1912,
+  "start:START_BG_TREPPE": 1913,
+  "start:START_BG_MAUERDURCHBRUCH": 1914,
+  "start:START_BG_WEG_DURCH_HAUS": 1915,
+  "start:START_BG_TOR_OBEN": 1916,
+  "start:START_BG_TUER_IM_BODEN": 1917,
+  "start:START_BG_SPALT": 1918
  }
 }

@@ -33,7 +33,7 @@ from gothar_worldgen.config import (
 )
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.export.splat import SplatPaths, composite, coverage, layer_masks, write_splat
-from gothar_worldgen.export.starts import DEFAULT_STARTS
+from gothar_worldgen.export.starts import DEFAULT_STARTS, load_starts
 from gothar_worldgen.export.terrain import ExportError, Grid, crop, export_terrain, load_grid
 from gothar_worldgen.export.water import carve_and_place
 from gothar_worldgen.facade.capture import (
@@ -68,6 +68,8 @@ from gothar_worldgen.handmade import footprints as handmade_footprints
 from gothar_worldgen.handmade import load as load_handmade
 from gothar_worldgen.handmade import save as save_handmade
 from gothar_worldgen.importer import run_import
+from gothar_worldgen.qa.begehung import LIMITS
+from gothar_worldgen.qa.begehung import run as walkthrough
 from gothar_worldgen.qa.checks import FAIL
 from gothar_worldgen.qa.run import run_qa
 from gothar_worldgen.qa.workdata import QaError, load_work
@@ -463,6 +465,43 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_begehung(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    assets = folder.parents[1]
+    world_path = folder / f"{site.name}.g7world"
+    try:
+        rules = json.loads((data_dir.parent / "building_rules.json").read_text(encoding="utf-8"))
+        movement = assets / "data" / "movement.toml"
+        report = walkthrough(
+            world_path, assets, paths.work, rules, movement, site.core_half_extent_m
+        )
+    except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    target = folder / "generated" / "begehung.json"
+    target.write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    lanes, slopes, doors = report["lanes"], report["slopes"], report["doors"]
+    print(f"  {report['bodies']} collision bodies, {lanes['samples']} way samples", file=out)
+    print(f"  lanes: {lanes['runs']['blocked']} blocked (< {LIMITS['laneBlockedM']} m), "
+          f"{lanes['runs']['tight']} tight (< {LIMITS['laneTightM']} m), "
+          f"{lanes['runs']['throughBody']} ways through bodies {lanes['throughByOwner']}",
+          file=out)  # fmt: skip
+    print(f"  slots narrower than the character: {report['slots']['count']} "
+          f"({report['slots']['areaM2']} m²)", file=out)  # fmt: skip
+    print(f"  slopes: {slopes['runs']['tooSteep']} too steep, {slopes['runs']['steep']} steep; "
+          f"steps ways {slopes['steps']['count']} ({slopes['steps']['tooSteep']} too steep)",
+          file=out)  # fmt: skip
+    print(f"  doors: {doors['checked']} checked, {doors['high']} high, {doors['buried']} buried "
+          f"({doors['fixableByOtherEdge']} fixable by another edge)", file=out)  # fmt: skip
+    bad = [c["name"] for c in report["citywall"] if not c["ok"]]
+    print(f"  city wall: {'all measures fit' if not bad else ', '.join(bad)}", file=out)
+    print(f"  {target}", file=out)
+    return EXIT_OK
+
+
 def _cmd_citywall(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -579,7 +618,8 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
             json.loads(wall_path.read_text(encoding="utf-8")) if wall_path.is_file() else None
         )
         res = assemble(terrain_world, index, load_world(folder / f"{name}.g7world"), ids, name,
-                       locked, ground, citywall, handmade, water)  # fmt: skip
+                       locked, ground, citywall, handmade, water,
+                       DEFAULT_STARTS + load_starts(data_dir / "starts.json"))  # fmt: skip
     except (AssembleError, OverrideError, OSError, json.JSONDecodeError, HandmadeError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -629,7 +669,9 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
         if not args.no_splat:
             gardens = splat_areas(load_handmade(data_dir / "handmade.json"))
             splat = _export_splat(grid, paths.work, core, folder, site.name, name, out, gardens)
-        starts = DEFAULT_STARTS if site.name == "leonberg" else ()
+        starts = (DEFAULT_STARTS if site.name == "leonberg" else ()) + load_starts(
+            data_dir / "starts.json"
+        )
         r16 = folder / "generated" / f"{name}.r16"
         result = export_terrain(grid, name, folder / f"{name}.g7world", r16, vfs, splat, starts)
     except ExportError as e:
@@ -721,6 +763,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("site")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_citywall)
+
+    p = sub.add_parser("begehung", help="static walkthrough of the assembled world (W3)")
+    p.add_argument("site")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_begehung)
 
     p = sub.add_parser("schloss", help="castle model from the Blender script (W6) + handmade.json")
     p.add_argument("site")

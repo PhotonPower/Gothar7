@@ -20,7 +20,7 @@ tools/worldgen/
                               buildings (→ buildings.json), osm (PBF lesen),
                               streets / features (→ streets.json, features.json),
                               frame (lokales Koordinatensystem), jsonio            (W1)
-    qa/                       Vorschaubilder + Plausibilitätsprüfungen (check)  (W1)
+    qa/                       Vorschaubilder + Plausibilitätsprüfungen (check, W1), statische Begehung (begehung, W3)
     facade/                   360°-Bilder → Fassadenansichten (equirect, rectify), GPS-Posen (poses),
                               Override-JSON (overrides), Einzelbilder + Zeitabgleich (frames, sync,
                               capture), facade preview/frames, Web-UI (webui/)  (W4)
@@ -67,6 +67,7 @@ gothar-worldgen buildings leonberg --mode massing   REM echtes LoD2 als graue Kl
 gothar-worldgen citywall leonberg          REM Stadtmauer (W6): generated/citywall/, Verlauf aus data/leonberg/city_wall.json
 gothar-worldgen schloss leonberg           REM Schloss (W6) aus blender/schloss/build_schloss.py (Blender nötig), handmade/schloss/
 gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
+gothar-worldgen begehung leonberg          REM statische Begehung → generated/begehung.json (docs/design/leonberg-begehung.md)
 ```
 Reihenfolge für die Welt: `import` → `export-terrain` → `buildings` → `assemble`; prüfen mit
 `build\release\game\gothar.exe --world=worlds/leonberg/leonberg.g7world --start=START_UEBERSICHT --time=12:00`.
