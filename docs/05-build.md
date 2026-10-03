@@ -65,7 +65,9 @@ Rohdateien bleiben unter `DATA_ROOT\characters\mpfb` (nicht im Repo).
 **Figuren vor dem Kochen bauen** (sie sind nicht versioniert, `characters-pipeline.md` §6.2): im Repo-Wurzelordner
 `PYTHONPATH=tools/chargen/src python -m gothar_chargen assemble` (nur Python + numpy, ohne Blender) bzw. das
 CMake-Ziel `g7_figures` (`cmake --build --preset debug --target g7_figures`; nicht Teil von ALL, ohne Python mit
-numpy nur eine Meldung). Interpreter: `-DG7_FIGURES_PYTHON=…`, sonst `tools/chargen/.venv`, sonst das gefundene Python 3. Verwenden: **Core/System + einzeln geprüfte CC0-Pakete (Liste in `assets/LICENSES.md`)**;
+numpy nur eine Meldung). Interpreter: `-DG7_FIGURES_PYTHON=…`, sonst `tools/chargen/.venv`, sonst das gefundene Python 3.
+Mit `-DG7_REQUIRE_FIGURES=ON` (CI) schlagen die Asset-Tests fehl, wenn gebaute Figuren fehlen: Sie vergleichen den
+Zusammenbau der Engine mit jeder Figur (M6 D2); ohne die Option überspringen sie fehlende Figuren. Verwenden: **Core/System + einzeln geprüfte CC0-Pakete (Liste in `assets/LICENSES.md`)**;
 Community-Pakete erst nach Lizenzprüfung (ADR 0018). Das Plugin (GPLv3) wird nie ins Repo kopiert.
 
 ## Bauen
@@ -128,6 +130,10 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--editor` | Editor-Modus (Simulation pausiert, Editor-Fenster; docs/modules/tools.md) |
 | `--time=HH:MM` | Spielzeit beim Start (Vorgabe `[time] start`, 08:00) |
 | `--start=<name>` | Startpunkt der Welt (Vob-Typ `start`, Groß-/Kleinschreibung egal); ohne Angabe der mit der kleinsten id |
+| `--cam=x,y,z` | freie Kamera an diesem Punkt (Meter, Weltkoordinaten); mit Spielfigur im Flugmodus |
+| `--yaw=grad`, `--pitch=grad` | Blickrichtung: Gier 0 = entlang −Z, positiv nach links (gegen den Uhrzeigersinn von oben); Neigung positiv nach oben. Ohne `--cam`/`--fly`, aber mit `--player` dreht `--yaw` die Spielfigur |
+| `--fly` | Flugmodus: freie Kamera (siehe Taste F3), die Spielfigur wartet an ihrem Startpunkt |
+| `--player=x,y,z` | Füße der Spielfigur an diesen Punkt setzen |
 | `--save-world=<datei>` | nach dem Laden die Welt bzw. Testszene als `.g7world` speichern (stabil, ein Vob pro Zeile) |
 | `--scene=<pfad>` | Testszene laden (TOML, siehe „Testszenen“): VFS-Pfad wie `testscene/scene.toml` oder Datei auf der Festplatte (deren Ordner wird unter `local/` gemountet); ersetzt `--view-mesh` |
 | `--viewpoint=N` | mit Viewpoint N der Szene starten (Standard 0) |
@@ -138,8 +144,9 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--walk=<route.json>` | Autopilot: die Spielfigur läuft die Route ab (mit `--world`), schreibt Protokoll und Screenshots, beendet sich (`docs/modules/tools.md`); mit `--no-render` ohne Grafikgerät und ohne Bilder |
 | `--walk-out=<ordner>` | Ausgabeordner des Autopiloten (Vorgabe `walk/`) |
 | (Taste F1) | ImGui-Debugfenster ein/aus (Aktion `debug_ui`): Leistung, Kamera, Render-Einstellungen live |
-| (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Achsen, Raster, Bounds, Lichtradien, Spielfigur (Zylinder, Zustand, Tempo) |
-| (Taste F3) | Spielfigur ↔ freie Debug-Kamera (Aktion `debug_fly`, M5) |
+| (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Kamera (Position, Gier, Neigung), Achsen, Raster, Bounds, Lichtradien, Spielfigur (Zylinder, Zustand, Tempo) |
+| (Taste F3) | Flugmodus ein/aus (Aktion `debug_fly`): freie Kamera ohne Kollision, Maus-Blick (solange das Debug-UI zu ist), W/A/S/D bzw. Pfeiltasten, Leertaste/E hoch, Strg/Q runter, Shift schnell, Mausrad ändert die Fluggeschwindigkeit (0,5–500 m/s); die Tasten zeigt ein Hinweis unten im Bild. Belegung `fly_*` in `engine.toml` |
+| (Taste F6) | Ansicht kopieren (Aktion `copy_position`): legt die Ansicht als Startoptionen in die Zwischenablage und ins Log, z. B. `--world=worlds/leonberg/leonberg.g7world --cam=103.20,4.10,-55.00 --yaw=45.0 --pitch=-10.0 --time=12:00 --fly` (mit Spielfigur: `--player=… --yaw=…`); Hinweis „position copied“ unten im Bild. Die Zeile an `gothar.exe` angehängt (ggf. mit `--frames=N --screenshot=bild.png`) zeigt genau diese Ansicht |
 | `--no-render` | Fenster ohne OpenGL (Systeme ohne GL-Treiber, Windows-CI, `nodeps`-Build); eine `--world` lädt trotzdem (Szene, Kollision, Spielfigur) |
 
 ## Testszenen (`--scene`)
@@ -202,6 +209,6 @@ Standard-Runnern sind damit kostenlos.
 | EnTT 3.16 (MIT) | `entt` (ADR 0005) | world (öffentlich; Registry nicht in der API) | M4 |
 | nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world_format (privat, Weltformat `.g7world`), tools/walk (privat, Routen und Protokoll) | M4 |
 | Jolt Physics 5.6 (MIT) | `joltphysics` (ADR 0004; `nodeps`: FetchContent v5.6.0 mit SHA256) | physics (privat) | M5 |
-| Lua 5.4 + sol2 | `lua`, `sol2` | script | M7 |
+| Lua 5.4.7 (MIT) + sol2 3.5.0 (MIT) | `lua` (per `overrides` auf 5.4.7, die Baseline brächte 5.5), `sol2` (ADR 0006; `nodeps`: FetchContent mit SHA256) | script (privat) | M7 |
 | miniaudio | `miniaudio` | audio | M13 |
 | Tracy | `tracy` | core | M17 |

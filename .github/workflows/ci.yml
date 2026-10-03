@@ -48,11 +48,26 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ninja-build pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libudev-dev xvfb libgl1-mesa-dri
 
+      # Figures from parts (g7_figures: Python + numpy) before the tests: the C++ figure assembly (M6 D2) is
+      # compared with every figure gothar-chargen assembles (G7_REQUIRE_FIGURES: missing figures fail).
+      - name: Setup Python for g7_figures
+        id: python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install numpy
+        run: python -m pip install numpy
+
       - name: Configure
-        run: cmake --preset debug
+        shell: bash
+        run: cmake --preset debug -DG7_REQUIRE_FIGURES=ON "-DG7_FIGURES_PYTHON=${{ steps.python.outputs.python-path }}"
 
       - name: Build
         run: cmake --build --preset debug
+
+      - name: Assemble figures (g7_figures)
+        run: cmake --build --preset debug --target g7_figures
 
       # GPU tests (label "gpu") need OpenGL 4.5+: Mesa llvmpipe under Xvfb on Linux; the Windows
       # runners have no OpenGL driver, so they are excluded there (ADR 0003).

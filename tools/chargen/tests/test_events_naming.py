@@ -160,8 +160,14 @@ def test_clip_speeds_of_the_sets():
     assert human["none/s_walk"] == pytest.approx(0.98, abs=0.05)
     assert human["none/s_run"] > human["none/s_walk"] > human["none/s_sneak"] > 0.5
     assert "none/s_idle" not in human and "none/s_ladder_up" not in human
-    wolf = clip_speeds(Gltf.load(anims / "monsters/wolf/anims/wolf.glb"))
-    assert wolf["wolf/s_run"] == pytest.approx(0.733 * 30 / 20, abs=0.02)  # root travel per s
+    from gothar_chargen.clipfix import foot_slide
+
+    wolf_glb = Gltf.load(anims / "monsters/wolf/anims/wolf.glb")
+    wolf = clip_speeds(wolf_glb)
+    run = next(a for a in wolf_glb.doc["animations"] if a["name"] == "wolf/s_run")
+    root_speed, stride = foot_slide(wolf_glb, run)
+    assert wolf["wolf/s_run"] == pytest.approx(root_speed, abs=0.01)  # root motion: root speed
+    assert root_speed == pytest.approx(stride, rel=0.02)  # ... = stride (clipfix)
     assert not clip_speeds(Gltf.load(anims / "anims/human/swim.glb"))
 
 

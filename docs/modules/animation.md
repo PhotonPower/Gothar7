@@ -66,8 +66,10 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
 - **Überblenden:** Der alte Zustand läuft weiter und wird linear über `blend` Sekunden ausgeblendet. Ein neuer
   Übergang ersetzt ihn.
 - **Root Motion** (`root_motion = true`): `rootMotion()` meldet die Bewegung des Knochens `root` im letzten
-  Update; gezeichnet bleibt `root` in Ruhe. Die Engine bewegt damit die Figur (Klettern, mit Teil C) und skaliert
-  auf die Kantenhöhe. Fortbewegungs-Clips sind In-Place (`root` bleibt bei 0, geprüft).
+  Update, `rootMotionYaw()` seine Drehung um +Y (Bogenmaß, positiv nach links; Teil D3); gezeichnet bleibt `root` in
+  Ruhe (bei Einzel-Clips auch ohne die Drehung seit Clip-Beginn). Schleifen zählen über ihr Ende hinweg weiter, Blends
+  mitteln nach Gewicht. Die Engine bewegt damit die Figur (Klettern beim Helden, Gehen/Rennen/Drehen bei Tieren).
+  Fortbewegungs-Clips der Menschen sind In-Place (`root` bleibt bei 0, geprüft).
 - **Overlay:** ein Clip über einer Knochenmaske (`maskBelow("spine_02")` = Oberkörper), normal oder additiv
   (Änderung gegen Frame 0), ein- und ausgeblendet. Einmal-Clips blenden am Ende selbst aus.
 - **Morph-Targets** gibt es nur auf `head_lod0` (Vertrag §6.1). Gewichte für LOD 1 und 2 werden still
@@ -83,18 +85,79 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
   - Teil C setzt die Parameter aus dem Gameplay (siehe unten).
 
 ## Held in der Engine (M6 Teil C, umgesetzt)
-- Figur aus `[game] hero` (engine.toml, Vorgabe `characters/figures/farmer.glb` aus `g7_figures`); fehlt sie,
+- Figur aus `[game] hero` (engine.toml): ein Manifest `*.figure.toml` (Vorgabe `characters/figures/farmer.figure.toml`,
+  beim Start aus Teilen zusammengesetzt, Teil D2) oder eine fertige `.glb` (z. B. aus `g7_figures`); fehlt sie,
   die Gliederpuppe `placeholder_mannequin.glb` (versioniert, gleiches Skelett). Graph aus `[game] hero_graph`
   (Vorgabe `data/anim/human.animgraph.toml`). Gezeichnet wird LOD 0.
 - Je festem Schritt nach der Bewegung: Parameter aus der gezeichneten Bewegung (`speed`/`strafe` aus der
   Verschiebung der Füße, gilt an Land, im Wasser und beim Rutschen gleich), dann `Animator::update`, dann die
-  Skinning-Matrizen `modelSpace(pose) · inverseBind`. Kein Interpolieren der Pose zwischen Schritten (60 Hz).
+  Look-At, dann das Gesicht. Gezeichnet wird zwischen den Posen der letzten beiden Schritte interpoliert
+  (`blendPose` nach `FixedStep::alpha`, einmal je Frame für Schatten und Hauptbild), daraus die
+  Skinning-Matrizen `modelSpace(pose) · inverseBind`.
 - **Klettern:** Dauer = Länge des Kletter-Clips; die Füße folgen der aufsummierten Root Motion, getrennt nach
   Höhe (y) und Weg nach vorn (z) auf Kantenhöhe und Standpunkt skaliert. Ohne Kletter-Clip gilt der Pfad aus M5.
 - **Debug-UI** (F1), Fenster „Animation“: Figur, Graph, Zustand, Überblendung, Fortschritt, Clips mit Gewichten,
   Parameter, die letzten Events.
 - `Engine::playerAnimationState()` / `playerFigurePath()` für Tests (render_gpu `Player GPU`).
-- Offen (Teil D): Attachments, Rüstungs-/Kopfwechsel, Blinzeln/Lippen, Look-At, Tiere.
+- Offen: Dual-Quaternion-Skinning gegen die Schulterbeule in extremen
+  Posen (offener Punkt in render.md, Entscheidung mit echten Clips F4).
+
+## Tiere (M6 Teil D3, umgesetzt)
+- Graphen `data/anim/wolf|keiler|laufvogel.animgraph.toml` (ein Muster, Werte als Daten): `move` (Blend
+  Stand/Gehen/Rennen nach `speed`, Punkte = Eigengeschwindigkeiten der Clips, root motion), `turn_l/r` (bei `turn`,
+  root motion mit Drehung), Einmal-Aktionen über `action` (1 Angriff 1, 2 Angriff 2, 3 Treffer, 4 Drohen),
+  Schleifen `eat`/`sleep`, `die` über `dead` (bleibt liegen); `[look_at]` mit `neck_01`/`head`.
+- Engine: Held und Tiere teilen `AnimatedFigure` (Modell, Animator, Posen, Interpolation, Skinning, Schatten);
+  der Held ist unverändert (alle Player-Tests). Tiere zum Testen bis M9: `spawnCreature(art, füße, gier)`,
+  `setCreatureMove(id, speed, turn)`, `creatureAction(id, "attack_1" …)`, `setCreatureShowcase`, `creatureState`;
+  die Root Motion bewegt und dreht sie, ein Strahl nach unten stellt sie auf den Boden (keine Kapsel). Beim
+  Weltwechsel verschwinden sie.
+- Debug-UI (F1, Fenster „Creatures“): Art wählen, vor der Kamera erzeugen, Tempo, Aktionen, „showcase“ (alle
+  Zustände reihum: gehen, rennen, drehen, Angriffe, drohen, Treffer, fressen, schlafen, sterben, aufstehen).
+- Mit M9: Monster-Vob-Typ in `.g7world` (mit welt), KI setzt die Parameter, Kollisionskapsel aus `[rig.collision]`.
+
+## Figuren zur Laufzeit zusammensetzen (M6 Teil D2, umgesetzt)
+- `asset/FigureAssembly.hpp`: `FigureManifest::parse` (Format v1, Rollen in fester Reihenfolge body, head, hair,
+  beard, dann die Kleidungsstücke), `assembleFigure(manifest, parts)` – derselbe Algorithmus wie
+  `gothar-chargen assemble` (`characters-pipeline.md` §6.2): Skelett vom Körper, Teile als `<rolle>_lod<n>`,
+  verdeckte Körper-Dreiecke entfernt, Halsring auf den des Kopfes gelegt (in double), Materialien nach Namen
+  zusammengeführt (Haut des Kopfes zuerst), Palette, `hides`. Bildpfade werden zu VFS-Pfaden.
+- Gleichheitstest gegen die Python-Ausgabe für **alle** Figuren-Manifeste (Positionen < 1e-6, gleiche Dreiecke je
+  Material, gleiche Materialien und Bilder); die CI baut dafür vorher `g7_figures` (`-DG7_REQUIRE_FIGURES=ON`).
+- Engine: Ist `[game] hero` ein Manifest, entsteht der Held beim Start aus den Teilen (Debug ~0,35 s inkl. Clips).
+  `setPlayerPart(rolle, pfad)` (body, head, hair, beard; leer entfernt Haar/Bart) und `setPlayerCloth(stücke)`
+  bauen ihn neu, die Animation läuft weiter; Fehler (fehlendes Teil, Stück für einen anderen Körper, anderes
+  Skelett) lassen die Figur unverändert. `playerFigureManifest()`, `playerFigureTriangles()`.
+- Debug-UI (F1, „Animation“ → „Outfit“): Kopf (gleiches Geschlecht, mit Haar/Bart seines Ordners) und die Stücke der
+  Kits zur Statur des Körpers (`cloth_`, `armor_`, `headgear_<g>_<statur>`) an- und ablegen.
+- Grenzen: `body_hash` der Masken prüft erst `gothar-chargen` (die Engine vergleicht nur den Pfad des Körpers);
+  die Rollen-Reihenfolge (body, head, hair, beard, Kleidung) ist fest, in `gothar-chargen assemble` ebenso (#123).
+
+## Attachments, Gesicht, Look-At (M6 Teil D1, umgesetzt)
+- **Attachments:** `Engine::attachToPlayer(socket, modelPath)` bzw. mit einem in Code erzeugten `MeshData`
+  (Tests, Debug-UI), `detachFromPlayer(socket)`; je Socket ein Modell. Gezeichnet mit der Figur (Weltmatrix =
+  Figur · Modellraum des Sockets, interpoliert), mit Schatten; bleiben über Weltwechsel erhalten.
+  `playerSocketTransform(socket)` liefert die Lage im Pose des letzten Schritts. Die Socket-Achsen gelten wie im
+  Vertrag (Y = Griffachse). Skripte bekommen das mit M7, Gegenstände mit M10.
+- **Gesicht** (`animation/Face.hpp`, `FaceAnimator`): Gewichte der 15 Morph-Targets in Vertragsreihenfolge (§6.1,
+  `FaceMorph`, `faceMorphName`).
+  - Blinzeln: zufällig alle `blink_min`–`blink_max` s, `blink_seconds` lang; der Zufall hat einen Seed je Figur
+    (Pfad), ist also reproduzierbar. Mit `expr_sleep` > 0,5 blinzelt die Figur nicht.
+  - Ausdrücke `angry`, `friendly`, `fear`, `pain`, `sleep`: `setExpression(name, gewicht)`; eingeblendet über
+    `expression_seconds`, andere ausgeblendet.
+  - Sprechen (grob): `setTalking(true)` → zufällige Viseme mit `visemes_per_second`, überblendet, Stärke
+    `talk_weight`. Lippensynchronisation nach Audio mit M13.
+  - Engine: `setPlayerExpression`, `setPlayerTalking`, `playerFaceWeights`; die Gewichte gehen per
+    `SkinnedMesh::setMorphWeights` nur bei Änderung auf die GPU (nur LOD 0 hat Targets).
+- **Look-At** (`animation/LookAt.hpp`): dreht eine Knochenkette (Vorgabe `neck` 40 %, `head` 60 %) im Modellraum
+  zum Ziel; Gier bis `max_yaw`, Nicken bis `max_pitch`, Geschwindigkeit `degrees_per_second`. Liegt das Ziel
+  weiter seitlich als `max_yaw + behind`, geht der Kopf zur Mitte. Nach dem Zustandsautomaten, vor dem Skinning.
+  Engine: `setPlayerLookTarget(weltpunkt)`, `playerLookYawDegrees()`.
+- **Graph-Datei:** `[face]` (`blink_min`, `blink_max`, `blink_seconds`, `visemes_per_second`, `talk_weight`,
+  `expression_seconds`) und `[look_at]` (`bones`, `shares`, `max_yaw`, `max_pitch`, `behind`,
+  `degrees_per_second`), beide optional mit den Vorgaben oben.
+- **Debug-UI** (F1, „Animation“ → „Try out“): Sockets anzeigen (Achsen X rot, Y grün, Z blau), Teststab an
+  einen Socket hängen, Ausdruck mit Gewicht, „talking“, Kopf zur Kamera drehen; Anzeige der Kopfdrehung.
 
 ## Performance
 Pose-Berechnung auf CPU (später parallel), Skinning auf GPU, Animations-LOD (weit entfernte

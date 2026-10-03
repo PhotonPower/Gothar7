@@ -155,17 +155,23 @@ _Benötigt F1 (Referenz-Rig, Platzhalterfigur) und für den Meilenstein die Prio
   - Stand Teil B: Events feuern nach Vertrag §3 an einen Callback; Teil C zeigt die Events des Helden im Debug-UI; Verbraucher (Schritte, Treffer, Item-Wechsel) folgen mit Teil D bzw. M11/M13
 - [ ] Root Motion für Interaktionen/Kampf, In-Place für Fortbewegung
   - Stand Teil B: `root_motion`-Zustände melden die Bewegung von `root`; Teil C: Klettern folgt der Root Motion, auf die Kante skaliert; Interaktionen/Kampf mit M10/M11
-- [ ] Attachments: Items an Knochen (Hand, Rücken, Gürtel), Rüstungs-/Kopfwechsel (Mesh-Tausch)
-- [ ] Morph-Targets für Gesichter (Lippen-Synchronisation grob, Blinzeln)
-- [ ] Look-At (Kopf dreht zu Gesprächspartner)
+- [x] Attachments: Items an Knochen (Hand, Rücken, Gürtel), Rüstungs-/Kopfwechsel (Mesh-Tausch)
+  - D1: Modelle an Sockets (`Engine::attachToPlayer`, mit Schatten, Debug-UI-Teststab). D2: Figuren zur Laufzeit aus Teilen (`assembleFigure`, gleich mit `gothar-chargen assemble`, CI-Vergleich), Held aus `farmer.figure.toml`, Kopf/Rüstung/Helm tauschen (`setPlayerPart`, `setPlayerCloth`, Debug-UI „Outfit“)
+- [x] Morph-Targets für Gesichter (Lippen-Synchronisation grob, Blinzeln) – `FaceAnimator` (D1): Blinzeln, Ausdrücke, grobes Sprechen; Lippensynchronisation nach Audio mit M13
+- [x] Look-At (Kopf dreht zu Gesprächspartner) – `LookAt` (D1): Hals und Kopf, Grenzen und Geschwindigkeit aus `[look_at]`; Gesprächspartner setzen mit M12
+- [x] Tiere: Graphen für wolf, keiler, laufvogel, Root Motion mit Drehung, gemeinsame `AnimatedFigure` mit dem Helden, Test-Tiere und Fenster „Creatures“ mit Vorführung (D3); Monster-Vobs, KI und Kollision mit M9
 
 **DoD / Meilenstein A:** Animierter Held läuft, rennt, springt, klettert, schwimmt durch die
 Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
+**Meilenstein A abgenommen 2026-10-03 vom Projektinhaber** (Debug-Build 238ea82, „Animation ist ok“). Offen in M6: Teil D2 (Rüstungs-/Kopfwechsel zur Laufzeit) und D3 (Tiere).
 
 ## M7 – Scripting
 - [ ] Lua 5.4 + sol2 (ADR 0006), Skript-VM pro Spielsitzung, Sandbox (kein `io`/`os`)
+  - Stand Teil A: ADR 0006 akzeptiert, Lua 5.4.7 + sol2 3.5.0 privat in `script`; `ScriptVm` mit Sandbox (kein io/os/debug/load, `require` nur unterhalb der Skripte), Befehls- und Speichergrenze, Fehler mit Datei:Zeile; Anbindung pro Spielsitzung mit Teil C
 - [ ] Modul-/Ordnerstruktur in `game/scripts`, Lade-Reihenfolge
+  - Stand Teil A: Lade-Reihenfolge `lib/` → `data/` → Rest, je alphabetisch (`loadOrder`); Ordner und Beispielinhalt mit Teil C
 - [ ] Instanz-System: `Item{...}`, `Npc{...}`, `Info{...}`, `Quest{...}` als deklarative Tabellen
+  - Stand Teil A: Instanz-Arten (`defineKind`) mit Schema (Typen, Pflichtfelder, Bereiche, Verweise, unbekannte Felder), Prüfung nach dem Laden; die Arten selbst registriert gameplay mit Teil C
 - [ ] Engine-API-Bindings (dokumentiert, generierte Referenz `docs/script-api.md`)
 - [ ] Globale Story-Variablen, persistent (für Save)
 - [ ] Timer/verzögerte Aufrufe, Ereignis-Hooks
@@ -391,7 +397,8 @@ Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source
 (9 Sets). Kein Mixamo (öffentliches Repo). Eigengeschwindigkeit je Fortbewegungs-Clip in `events.toml` (`speed`, gegen Fußgleiten; M6-Prüfung). F3 läuft: Baukasten-Werkzeuge stehen, Stil A (realistisch, Texturen) entschieden,
 Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag, Gesichts-Morphs, 6 Grundkörper, 5 Köpfe, Kleidungs-Kit,
 5 Test-NPCs; Figuren entstehen beim Bauen (`gothar-chargen assemble`, reines Python, nicht versioniert, §6.2); Rüstungs-Kit
-leicht/mittel, Kopfbedeckungen. F5 läuft: Monster-Vertrag mit engine, Validator-Regeln und Werkzeuge stehen, erste Art `wolf` mit vollständigem
+leicht/mittel, Kopfbedeckungen. F5 läuft: Monster-Vertrag mit engine, Validator-Regeln und Werkzeuge stehen (seit der M6-Durchsicht auch: Füße
+gleiten nicht, Liegeposen über dem Boden), erste Art `wolf` mit vollständigem
 Mindest-Set (Platzhalter): `wolf`, `keiler`, `laufvogel`; offen: eigene Rigs/Arten mit Design-Doku (nach Stil-Entscheidung).
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)

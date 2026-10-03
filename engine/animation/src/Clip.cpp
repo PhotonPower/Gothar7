@@ -21,6 +21,10 @@ Clip::Clip(const asset::ClipData& data, const Skeleton& skeleton)
         {
             m_rootTrack = static_cast<i32>(m_tracks.size());
         }
+        if (t.bone == "root" && t.path == asset::TrackData::Path::Rotation)
+        {
+            m_rootRotationTrack = static_cast<i32>(m_tracks.size());
+        }
         m_tracks.push_back({static_cast<u32>(bone), t.path, t.step, t.times, t.values});
     }
 }
@@ -97,6 +101,52 @@ Vec3 Clip::rootTranslation(f32 time) const
 {
     return m_rootTrack < 0 ? Vec3(0.0f)
                            : Vec3(valueAt(m_tracks[static_cast<usize>(m_rootTrack)], wrap(time)));
+}
+
+f32 Clip::rootYaw(f32 time) const
+{
+    if (m_rootRotationTrack < 0)
+    {
+        return 0.0f;
+    }
+    const Track& track = m_tracks[static_cast<usize>(m_rootRotationTrack)];
+    const auto quat = [&](f32 t)
+    {
+        const Vec4 v = valueAt(track, t);
+        return glm::normalize(Quat(v.w, v.x, v.y, v.z));
+    };
+    // Where +Z (ahead) turned to, in the root's parent space, relative to the start.
+    const Vec3 ahead = quat(std::clamp(time, 0.0f, m_duration)) * glm::inverse(quat(0.0f)) * Vec3(0, 0, 1);
+    return std::atan2(ahead.x, ahead.z);
+}
+
+Clip::RootMotion Clip::rootMotion(f32 from, f32 to) const
+{
+    RootMotion out;
+    if ((m_rootTrack < 0 && m_rootRotationTrack < 0) || m_duration <= 0.0f || to <= from)
+    {
+        return out;
+    }
+    const auto translation = [&](f32 t)
+    { return m_rootTrack < 0 ? Vec3(0.0f) : Vec3(valueAt(m_tracks[static_cast<usize>(m_rootTrack)], t)); };
+    if (!m_loops)
+    {
+        const f32 a = std::clamp(from, 0.0f, m_duration);
+        const f32 b = std::clamp(to, 0.0f, m_duration);
+        out.translation = translation(b) - translation(a);
+        out.yaw = rootYaw(b) - rootYaw(a);
+        return out;
+    }
+    // Loops: the part of the first cycle, whole cycles, the part of the last one.
+    const f32 cycleA = std::floor(from / m_duration);
+    const f32 cycleB = std::floor(to / m_duration);
+    const f32 a = from - cycleA * m_duration;
+    const f32 b = to - cycleB * m_duration;
+    const f32 cycles = cycleB - cycleA;
+    out.translation =
+        translation(b) - translation(a) + (translation(m_duration) - translation(0.0f)) * cycles;
+    out.yaw = rootYaw(b) - rootYaw(a) + rootYaw(m_duration) * cycles;
+    return out;
 }
 
 void Clip::fireEvents(f32 from, f32 to, const EventCallback& callback) const

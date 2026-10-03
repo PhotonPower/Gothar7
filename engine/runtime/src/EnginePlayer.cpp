@@ -174,16 +174,7 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
     {
         return;
     }
-    if (allowKeyboard && m_actions.pressed(m_input, Action::DebugFly))
-    {
-        m_flyMode = !m_flyMode;
-        if (m_flyMode)
-        {
-            m_flyCamera.attach(m_camera);
-        }
-        G7_LOG_INFO("engine", "{}",
-                    m_flyMode ? "free debug camera (F3: back to the player)" : "player camera");
-    }
+    // (debug_fly switches to the free camera: Engine::setFlyMode, EngineView.cpp)
     // The player camera captures the mouse while the game runs and nothing else wants it.
     const bool wantMouse = !m_flyMode && !m_paused && allowMouse && !m_debugUiVisible;
     if (wantMouse != m_playerMouse && m_window)
@@ -390,12 +381,7 @@ void Engine::drawPlayer(bool shadow, u32 cascade)
     {
         return;
     }
-    const f32 alpha = static_cast<f32>(m_fixedStep.alpha());
-    const Vec3 feet = glm::mix(m_playerFeetBefore, m_playerFeet, alpha);
-    // Models face +Z, yaw 0 looks along -Z: half a turn more.
-    const f32 yaw = m_movement.yaw();
-    const Mat4 transform =
-        glm::translate(Mat4(1.0f), feet) * glm::rotate(Mat4(1.0f), yaw + glm::pi<f32>(), Vec3(0, 1, 0));
+    const Mat4 transform = playerFigureTransform();
     if (drawPlayerFigure(transform, shadow, cascade) || m_playerModel == nullptr)
     {
         return;

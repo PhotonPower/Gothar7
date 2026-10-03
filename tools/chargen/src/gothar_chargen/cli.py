@@ -26,6 +26,7 @@ from gothar_chargen.blender_run import (
     finish_textures,
     prepare_monster,
 )
+from gothar_chargen.clipfix import repair_set
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
 from gothar_chargen.collision import CollisionError, derive_collision, write_collision
 from gothar_chargen.events import update_speeds
@@ -415,6 +416,21 @@ def _cmd_build_test_parts(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK if all(r.ok(strict=True) for r in reports) else EXIT_ERROR
 
 
+def _cmd_repair_clips(args: argparse.Namespace, out: TextIO) -> int:
+    """Root speed of root motion locomotion clips = stride; lying poses above the ground."""
+    characters = _characters_dir(args)
+    sets = [Path(s) for s in args.sets] or sorted(
+        [*characters.glob("anims/*/*.glb"), *characters.glob("monsters/*/anims/*.glb")]
+    )
+    for glb in sets:
+        done = repair_set(glb)
+        name = glb.relative_to(characters) if glb.is_relative_to(characters) else glb
+        print(f"{name}: {'; '.join(done) if done else 'ok'}", file=out)
+        if done:
+            update_speeds(glb)  # the root speed is the natural speed of root motion clips
+    return EXIT_OK
+
+
 def _cmd_speeds(args: argparse.Namespace, out: TextIO) -> int:
     """Natural speed of the locomotion clips into the events files (§3, no Blender)."""
     characters = _characters_dir(args)
@@ -516,6 +532,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
     )
     p.set_defaults(func=_cmd_build_test_parts)
+
+    p = sub.add_parser("repair-clips", help="root speed = stride, lying poses above the ground")
+    p.add_argument("sets", nargs="*", help="set .glb files (default: all in anims/ and monsters/)")
+    p.add_argument("--out-dir", type=Path, help="characters folder (default: repository)")
+    p.set_defaults(func=_cmd_repair_clips)
 
     p = sub.add_parser("speeds", help="natural speed of locomotion clips -> events.toml (§3)")
     p.add_argument("sets", nargs="*", help="set .glb files (default: all in anims/ and monsters/)")

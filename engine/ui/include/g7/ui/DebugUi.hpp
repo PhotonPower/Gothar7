@@ -67,6 +67,48 @@ struct AnimationPanel
     std::vector<std::pair<std::string, f32>> clips;  ///< what shapes the pose, with weights
     std::vector<std::pair<std::string, f32>> params; ///< parameters set by the gameplay
     std::vector<std::string> events;                 ///< last events, newest first
+    // Trying things out (edited; the engine applies them afterwards)
+    std::vector<std::string> sockets; ///< shown: the figure's socket bones
+    bool showSockets = false;
+    std::string stickSocket; ///< a test stick in this socket, empty: none
+    std::string expression;  ///< "angry", "friendly", "fear", "pain", "sleep" or empty
+    f32 expressionWeight = 1.0f;
+    bool talking = false;
+    bool lookAtCamera = false;
+    f32 lookYaw = 0.0f; ///< shown, degrees
+    f32 lookPitch = 0.0f;
+    // Outfit (figures assembled from parts, M6 D2): shown only with `outfit`; edited.
+    bool outfit = false;
+    std::vector<std::string> heads; ///< head parts that fit the body
+    std::string head;               ///< worn now
+    struct Garment
+    {
+        std::string path;
+        bool worn = false;
+    };
+    std::vector<Garment> garments; ///< pieces of the kits fitted to the body (clothing, armour, headgear)
+    std::string outfitError;       ///< shown: the last swap that failed
+};
+
+/// Animals (M6 D3, "Creatures" window): spawn, actions, showcase. The engine fills it and reads the edits.
+struct CreaturesPanel
+{
+    std::vector<std::string> species;
+    std::string speciesChoice; ///< edited
+    bool spawn = false;        ///< out: "spawn in front" pressed
+    bool removeAll = false;    ///< out
+    struct Row
+    {
+        u32 id = 0;
+        std::string label;
+        std::string state;
+        f32 speed = 0.0f; ///< edited
+        f32 maxSpeed = 1.0f;
+        bool showcase = false; ///< edited
+        std::string action;    ///< out: the action button pressed ("attack_1", "turn_l" ...)
+        std::vector<std::string> events;
+    };
+    std::vector<Row> rows;
 };
 
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor
@@ -95,7 +137,9 @@ public:
     /// Draws the engine panel; edits are written back into `panel`.
     void enginePanel(EnginePanel& panel);
     /// Window "Animation" with the player figure's state machine (M6).
-    void animationPanel(const AnimationPanel& panel);
+    void animationPanel(AnimationPanel& panel);
+    /// Window "Creatures" (M6 D3).
+    void creaturesPanel(CreaturesPanel& panel);
     /// Draws the editor windows (tools/editor); edits and actions are written back into `panel`.
     void editorPanel(EditorPanel& panel);
     /// Finishes the frame and, with a device, draws it into the bound target (normally the window).

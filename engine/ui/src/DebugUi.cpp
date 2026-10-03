@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <format>
 #include <utility>
 #include <vector>
 
@@ -508,7 +509,73 @@ void DebugUi::beginFrame(const platform::Input& input, Vec2 size, Vec2 pixels, f
     ImGui::NewFrame();
 }
 
-void DebugUi::animationPanel(const AnimationPanel& panel)
+void DebugUi::creaturesPanel(CreaturesPanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    ImGui::SetNextWindowPos(ImVec2(690.0f * scale, 10.0f * scale), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(340.0f * scale, 0.0f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Creatures"))
+    {
+        ImGui::End();
+        return;
+    }
+    if (ImGui::BeginCombo("species", panel.speciesChoice.c_str()))
+    {
+        for (const std::string& s : panel.species)
+        {
+            if (ImGui::Selectable(s.c_str(), s == panel.speciesChoice))
+            {
+                panel.speciesChoice = s;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    panel.spawn = ImGui::Button("spawn in front");
+    ImGui::SameLine();
+    panel.removeAll = ImGui::Button("remove all");
+    static constexpr std::array<std::pair<const char*, const char*>, 11> kActions = {{
+        {"turn left", "turn_l"},
+        {"turn right", "turn_r"},
+        {"attack 1", "attack_1"},
+        {"attack 2", "attack_2"},
+        {"threaten", "threaten"},
+        {"hit", "hit"},
+        {"eat", "eat"},
+        {"sleep", "sleep"},
+        {"stop", "stop"},
+        {"die", "die"},
+        {"revive", "revive"},
+    }};
+    for (CreaturesPanel::Row& row : panel.rows)
+    {
+        ImGui::PushID(static_cast<int>(row.id));
+        if (ImGui::CollapsingHeader(std::format("{}: {}", row.label, row.state).c_str()))
+        {
+            ImGui::Checkbox("showcase", &row.showcase);
+            ImGui::SliderFloat("speed", &row.speed, 0.0f, row.maxSpeed, "%.2f m/s");
+            for (usize i = 0; i < kActions.size(); ++i)
+            {
+                if (i % 4 != 0)
+                {
+                    ImGui::SameLine();
+                }
+                if (ImGui::Button(kActions[i].first))
+                {
+                    row.action = kActions[i].second;
+                }
+            }
+            for (const std::string& event : row.events)
+            {
+                ImGui::TextDisabled("%s", event.c_str());
+            }
+        }
+        ImGui::PopID();
+    }
+    ImGui::End();
+}
+
+void DebugUi::animationPanel(AnimationPanel& panel)
 {
     ImGui::SetCurrentContext(m_impl->context);
     const f32 scale = ImGui::GetStyle().FontScaleDpi;
@@ -550,6 +617,66 @@ void DebugUi::animationPanel(const AnimationPanel& panel)
         for (const std::string& event : panel.events)
         {
             ImGui::TextUnformatted(event.c_str());
+        }
+    }
+    if (ImGui::CollapsingHeader("Try out"))
+    {
+        ImGui::Checkbox("show sockets", &panel.showSockets);
+        const char* stick = panel.stickSocket.empty() ? "(none)" : panel.stickSocket.c_str();
+        if (ImGui::BeginCombo("stick in", stick))
+        {
+            if (ImGui::Selectable("(none)", panel.stickSocket.empty()))
+            {
+                panel.stickSocket.clear();
+            }
+            for (const std::string& socket : panel.sockets)
+            {
+                if (ImGui::Selectable(socket.c_str(), socket == panel.stickSocket))
+                {
+                    panel.stickSocket = socket;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        static constexpr std::array<const char*, 6> kExpressions = {"",     "angry", "friendly",
+                                                                    "fear", "pain",  "sleep"};
+        const char* shown = panel.expression.empty() ? "(neutral)" : panel.expression.c_str();
+        if (ImGui::BeginCombo("expression", shown))
+        {
+            for (const char* e : kExpressions)
+            {
+                if (ImGui::Selectable(*e == '\0' ? "(neutral)" : e, panel.expression == e))
+                {
+                    panel.expression = e;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::SliderFloat("weight", &panel.expressionWeight, 0.0f, 1.0f, "%.2f");
+        ImGui::Checkbox("talking", &panel.talking);
+        ImGui::Checkbox("look at the camera", &panel.lookAtCamera);
+        ImGui::Text("head  yaw %.0f  pitch %.0f", panel.lookYaw, panel.lookPitch);
+    }
+    if (panel.outfit && ImGui::CollapsingHeader("Outfit"))
+    {
+        if (ImGui::BeginCombo("head", panel.head.c_str()))
+        {
+            for (const std::string& head : panel.heads)
+            {
+                if (ImGui::Selectable(head.c_str(), head == panel.head))
+                {
+                    panel.head = head;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        for (AnimationPanel::Garment& garment : panel.garments)
+        {
+            ImGui::Checkbox(garment.path.c_str(), &garment.worn);
+        }
+        if (!panel.outfitError.empty())
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f), "%s", panel.outfitError.c_str());
         }
     }
     ImGui::End();
