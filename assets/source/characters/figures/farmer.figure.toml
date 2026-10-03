@@ -1,7 +1,17 @@
-# farmer: assembled from parts built by gothar-chargen human
+# farmer (player figure of M6): average male base body with its trousers, the farmer head, crude shirt and boots
+# from the clothing kit (F3j; until then a whole MPFB human with baked clothes, whose reduced trousers let the
+# skin show through in motion). Colours as before, through the palette.
 version = 1
 
 [parts]
-body = "parts/farmer/body.glb"
-head = "parts/farmer/head.glb"
-hair = "parts/farmer/hair.glb"
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_farmer/head.glb"
+hair = "parts/head_m_farmer/hair.glb"
+cloth = [
+    "parts/cloth_m_average/elvs_crude_t-shirt_male.glb",
+    "parts/cloth_m_average/culturalibre_male_boots.glb",
+]
+
+[palette]
+cloth_elvs_crude_t-shirt_male = "#ebcc9e"
+cloth_culturalibre_male_boots = "#cc9973"

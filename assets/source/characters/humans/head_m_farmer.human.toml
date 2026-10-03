@@ -1,6 +1,10 @@
-# Farmer (first NPC in style A, decision 2026-10-03): MPFB2 with CC0 core/system packs.
+# Head of the farmer (the player figure of M6), style A: head (with face morphs, teeth, tongue) and hair.
+# Until F3j the farmer was a whole MPFB human with clothes baked into its body; it is now assembled from
+# parts like every figure (figures/farmer.figure.toml): base body, this head, kit garments.
+# Fits every male base body (assembly snaps the neck; the head is built at the bodies' neck height).
 version = 1
-triangles = 14000
+triangles = 6000
+parts = ["head", "hair"]
 
 [macro]
 gender = 1.0
@@ -19,14 +23,6 @@ eyelashes = "eyelashes/eyelashes01/eyelashes01.mhclo"
 teeth = "teeth/teeth_base/teeth_base.mhclo"
 tongue = "tongue/tongue01/tongue01.mhclo"
 hair = "hair/cortu_short_messy_hair/cortu_short_messy_hair.mhclo"
-clothes = [
-    "clothes/elvs_crude_t-shirt_male/elvs_crude_t-shirt_male.mhclo",
-    "clothes/toigo_wool_pants/toigo_wool_pants.mhclo",
-    "clothes/culturalibre_male_boots/culturalibre_male_boots.mhclo",
-]
 
 [tint]
-elvs_crude_t-shirt_male = "#ebcc9e"
-toigo_wool_pants = "#bf8559"
 cortu_short_messy_hair = "#5a3d29"
-culturalibre_male_boots = "#cc9973"
