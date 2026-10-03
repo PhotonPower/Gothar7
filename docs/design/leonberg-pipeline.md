@@ -301,6 +301,50 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     - „Auswahl zurückschreiben“ exportiert an denselben Pfad (Ursprung und Achsen wie erzeugt) und setzt
       **`locked: true`** im Override.
     - Ein Headless-Rundlauf mit Blender 4.5 ist getestet, wo Blender installiert ist.
+- **W5-Vorarbeit: Regelwerk (Mechanik)**, `gothar-worldgen buildings <ort> --mode medieval`. Vorgabe bleibt
+  `massing`, bis der Stil festgelegt ist. Code: `buildings/medieval.py`.
+  - **Trennung:** Der Generator kennt nur abstrakte Parameter und Material-Rollen. Alle Zahlenwerte und die Bedeutung
+    der Begriffe stehen in `tools/worldgen/data/building_rules.json`. Das ist ein **Entwurf mit neutralen
+    Platzhaltern; die Festlegung trifft der Projektinhaber**. Die Zuordnung `vocabulary` (Begriffe aus
+    `facade_vocabulary.json` → Parameter) ist leer, katalogisierte Fachwerk-Muster sind noch nicht nachgebildet.
+  - **Stockwerke:** aus `storeys` der Annotation (zu wenig → oberstes gestreckt, zu viel → anteilig gestaucht),
+    sonst Aufteilung der Wandhöhe (Boden bis Traufe) nach Erd- und Obergeschoss-Höhe mit Mindest- und Höchstzahl.
+    Das Erdgeschoss reicht bis zum Sockel hinunter.
+  - **Auskragung:** Jedes Obergeschoss springt auf den gewählten Seiten um `jettyM` (Annotation, sonst Vorgabe) vor.
+    Vorgabe sind die **Straßenseiten**: Die Kante zeigt innerhalb von 12 m auf eine Straße aus `streets.json`,
+    oder sie ist `frontFacade.edge`. Die Unterseite wird geschlossen. Ist das Versetzen ungültig, gibt es keine
+    Auskragung (Hinweis im Bericht).
+  - **Öffnungen:** An `frontFacade.edge` exakt aus der Annotation (`storey`, `x` von links von außen, `y`, `w`,
+    `h`), sonst prozedural: ein Fensterraster je Geschoss und eine Tür im Erdgeschoss der längsten Straßenseite.
+    Öffnungen sind ausgeschnitten, mit Laibung und zurückgesetzter Füllung (Rolle `frame`). Bei Gebäuden mit
+    LoD2-Teilen wird `frontFacade` ignoriert (Hinweis), weil sich die Kanten auf den Gesamtgrundriss beziehen.
+  - **Fachwerk in den Obergeschossen:** Schwelle und Rähm laufen über die ganze Breite. Ständer stehen an den Ecken,
+    neben jeder Öffnung und im Feldraster. Ein Muster ist eine Liste von Balkensegmenten in normierten
+    Feldkoordinaten (Daten); mitgeliefert ist nur `std_platzhalter` (ein Riegel).
+    - Öffnungen schneiden die Balken.
+    - Balken sind Quader mit drei sichtbaren Flächen (Front, zwei Längsseiten); Rück- und Stirnflächen liegen an
+      Wand bzw. Nachbarbalken.
+    - Die Balkenarten liegen in leicht unterschiedlicher Tiefe, damit es keine deckungsgleichen Flächen gibt
+      (Test: keine doppelten Dreiecke).
+  - **Dach:** Höhenfunktionen wie bei `massing`, über dem obersten Geschoss mit Dachüberstand (Traufe und Ortgang),
+    Dicke, Unterseite im Überstand und Stirnbrett. Gauben und Schornsteine folgen.
+  - **Seeds:** Variation (Erdgeschoss-Höhe, Fensterraster) ist deterministisch aus `hash(id, seed)`;
+    `seed` der Annotation überschreibt. `locked` und `keep` wie bei `massing`.
+  - **Material-Rollen** `wall_ground`, `infill`, `timber`, `roof`, `frame` mit **exakt gleichen Werten in allen
+    Häusern**. Die Engine bündelt nach Materialwerten (Multi-Draw, M4 Teil B); Vertexfarben verwirft sie.
+    Je `.glb` gibt es ein Primitive pro Rolle.
+  - **Budget:** 2000 Dreiecke je Haus, im Kern ≤ 2 Mio. (mit engine abgestimmt). Darüber wird das Fachwerk stufenweise
+    reduziert: ohne Muster, dann ohne Feldständer, dann ohne Fachwerk; der Bericht nennt die Stufe.
+  - **Leonberg-Kern** (Platzhalterwerte):
+    - 1,03 Mio. Dreiecke, je Haus Median 1114, p90 1966, max 10 891.
+    - Stufen: 599 Häuser voll, 65 ohne Muster, 45 ohne Feldständer, 196 ohne Fachwerk.
+    - 71 große Gebäude liegen auch ohne Fachwerk über dem Budget, vor allem wegen vieler Fenster.
+    - Laufzeit 91 s, 85 MB `.glb` (generiert).
+  - Die Engine lädt `leonberg.g7world` mit diesen Häusern ohne Warnungen; `g7-cook` kocht sie mit fünf
+    Materialien ohne Warnung (Test).
+  - **Offen für den Projektinhaber:** Begriffe und Muster-Katalog, Zahlenwerte mit Gestaltungswirkung, Farben und
+    Texturen (Trim-Sheets), Stil-Referenzblatt. Außerdem: Sollen große Neubauten (über Budget, viele Fenster)
+    überhaupt Fachwerk bekommen oder beim Rückbau (§7) weichen?
 - **Gebäude auf dem Gelände (W3 beachten):** Das DGM1 hat am Hang **Stufen entlang von Häuserreihen**. Es sind in den
   Hang gebaute Häuser mit Geländesprung an der Hauswand; aufgefallen ist das in der Engine beim W2-Export (2026-10-03).
   - Insgesamt liegen Steilstellen nicht bevorzugt an Grundrissen (> 45°: 18,6 % nahe Grundrissen bei 35,7 %

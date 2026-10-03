@@ -26,11 +26,12 @@ tools/worldgen/
                               capture), facade preview/frames, Web-UI (webui/)  (W4)
     export/                   terrain: Heightmap → .g7world mit terrain-Block, splat: Splat-Schichten
                               + Platzhalter-Albedos (export-terrain)  (W2)
-    buildings/                massing (Klötzchen: Wände + Dächer), gltf (.glb-Writer), batch
-                              (buildings: .glb je Gebäude/Zelle + Index)  (W3)
+    buildings/                massing (Klötzchen: Wände + Dächer), medieval (Fachwerk-Regelwerk, W5-Entwurf),
+                              gltf (.glb-Writer), batch (buildings: .glb je Gebäude/Zelle + Index)  (W3/W5)
     assemble/                 world: Terrain + Gebäude → <ort>.g7world, stabile VobIds (assemble)  (W3)
   blender/gothar_buildings/   Blender-Add-on: erzeugte Gebäude importieren/zurückschreiben (locked)  (W3)
   data/leonberg/vob_ids.json  stabile VobIds des Assemblers (versioniert, nie wiederverwenden)
+  data/building_rules.json    Parameter des Fachwerk-Regelwerks (Entwurf, Festlegung durch den Projektinhaber)
   data/leonberg/buildings/    Annotationen/Overrides pro Gebäude (JSON, versioniert)
   tests/                      pytest; tests/data/ enthält kleine LGL-Ausschnitte (mit Quellenangabe)
 ```
@@ -59,13 +60,16 @@ gothar-worldgen facade preview leonberg <id> --image pano.jpg --pose x,z --headi
 gothar-worldgen facade frames leonberg VID_0001.mp4 --gpx VID_0001.gpx   REM Einzelbilder + Posen (braucht ffmpeg)
 gothar-worldgen facade ui leonberg         REM Annotations-Oberfläche im Browser (http://127.0.0.1:8765/)
 gothar-worldgen buildings leonberg         REM Klötzchen-Gebäude als .glb (generated/buildings/), --area all
+gothar-worldgen buildings leonberg --mode medieval   REM Fachwerk-Regelwerk (W5-Entwurf, Platzhalter-Materialien)
 gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
 ```
 Reihenfolge für die Welt: `import` → `export-terrain` → `buildings` → `assemble`; prüfen mit
 `build\release\game\gothar.exe --world=worlds/leonberg/leonberg.g7world --start=START_UEBERSICHT`.
 
 ### Grenzen des glTF-Writers (`buildings/gltf.py`)
-- Pro Datei genau ein Mesh mit einem Dreiecks-Primitive, ein Knoten, ein untexturiertes PBR-Material.
+- Pro Datei genau ein Mesh und ein Knoten; ein oder mehrere Dreiecks-Primitives mit je einem untexturierten
+  PBR-Material (gleiche Namen teilen sich ein Material; `medieval`: fünf Rollen).
+- Indizes je Primitive.
 - Attribute: `POSITION`, `NORMAL`, `TEXCOORD_0` (float32, UV in Metern); Indizes als uint16, ab 65 536 Vertices
   uint32.
 - Keine Texturen, Skins, Animationen, Morph-Targets oder Extensions; Positionen auf 0,1 mm gerundet.

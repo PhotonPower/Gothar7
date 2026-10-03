@@ -55,3 +55,24 @@ def test_invalid_input():
         glb_bytes(MeshData(m.positions, m.normals, m.uvs, m.indices + 10), "x")
     with pytest.raises(ValueError):
         read_glb(b"glTF" + struct.pack("<II", 1, 12))
+
+
+def test_multiple_primitives_share_materials_by_name():
+    from gothar_worldgen.buildings.gltf import Primitive, glb_bytes_multi
+
+    red, grey = (1.0, 0.0, 0.0, 1.0), (0.5, 0.5, 0.5, 1.0)
+    prims = [
+        Primitive("a", red, quad()),
+        Primitive("b", grey, quad(2)),
+        Primitive("a", red, quad()),
+    ]
+    empty = MeshData(np.zeros((0, 3), np.float32), np.zeros((0, 3), np.float32),
+                     np.zeros((0, 2), np.float32), np.zeros(0, np.uint32))  # fmt: skip
+    doc, binary = read_glb(glb_bytes_multi([*prims, Primitive("c", grey, empty)], "m"))
+    assert [m["name"] for m in doc["materials"]] == ["a", "b"]  # empty "c" skipped
+    gl = doc["meshes"][0]["primitives"]
+    assert [p["material"] for p in gl] == [0, 1, 0]
+    assert doc["materials"][0]["pbrMetallicRoughness"]["baseColorFactor"] == list(red)
+    assert len(doc["accessors"]) == 12 and len(doc["bufferViews"]) == 12
+    for v in doc["bufferViews"]:
+        assert v["byteOffset"] % 4 == 0 and v["byteOffset"] + v["byteLength"] <= len(binary)

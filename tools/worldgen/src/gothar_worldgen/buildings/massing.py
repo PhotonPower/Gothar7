@@ -137,23 +137,26 @@ class _Builder:
     def polygon(self, pts: Sequence[tuple[float, float, float]], uvs: Sequence[tuple[float, float]],
                 want: tuple[float, float, float]) -> None:  # fmt: skip
         """Planar convex polygon (3 or 4 points) facing roughly ``want``; flat normal."""
-        p = np.asarray(pts, dtype=np.float64)
-        n = np.cross(p[1] - p[0], p[2] - p[0])
-        if len(p) == 4:
-            n = n + np.cross(p[2] - p[0], p[3] - p[0])
-        length = float(np.linalg.norm(n))
+        (x0, y0, z0), (x1, y1, z1), (x2, y2, z2) = pts[0], pts[1], pts[2]
+        ax, ay, az = x1 - x0, y1 - y0, z1 - z0
+        bx, by, bz = x2 - x0, y2 - y0, z2 - z0
+        nx, ny, nz = ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx
+        if len(pts) == 4:
+            cx, cy, cz = pts[3][0] - x0, pts[3][1] - y0, pts[3][2] - z0
+            nx, ny, nz = nx + by * cz - bz * cy, ny + bz * cx - bx * cz, nz + bx * cy - by * cx
+        length = math.sqrt(nx * nx + ny * ny + nz * nz)
         if length < 1e-9:
             return
-        n /= length
-        order = list(range(len(p)))
-        if float(n @ np.asarray(want)) < 0:
+        nx, ny, nz = nx / length, ny / length, nz / length
+        order = list(range(len(pts)))
+        if nx * want[0] + ny * want[1] + nz * want[2] < 0:
             order.reverse()
-            n = -n
+            nx, ny, nz = -nx, -ny, -nz
         base = len(self.pos)
         for i in order:
             x, y, z = pts[i]
             self.pos.append((x - self.ox, y - self.oy, z - self.oz))
-            self.nrm.append((float(n[0]), float(n[1]), float(n[2])))
+            self.nrm.append((nx, ny, nz))
             self.uv.append(uvs[i])
         for k in range(1, len(order) - 1):
             self.idx += [base, base + k, base + k + 1]
