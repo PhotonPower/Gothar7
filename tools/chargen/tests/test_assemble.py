@@ -222,3 +222,12 @@ def test_role_order_is_fixed(repo_tmp):
     for doc in (a.doc, b.doc):
         doc["asset"]["extras"]["gothar"].pop("inputs")  # hashes the manifest text
     assert a.doc == b.doc and a.bin == b.bin
+
+
+def test_mesh_names_follow_node_names():
+    """Blender numbers mesh data blocks per run; part-data names them after their nodes."""
+    for path in sorted(CHARACTERS.glob("parts/*/*.glb")):
+        g = Gltf.load(path)
+        for node in g.doc["nodes"]:
+            if "mesh" in node:
+                assert g.doc["meshes"][node["mesh"]].get("name") == node["name"], path
