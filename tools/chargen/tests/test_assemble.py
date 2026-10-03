@@ -145,3 +145,23 @@ def test_tight_armour_hides_the_baked_trousers(monkeypatch):
     loose = hidden()
     monkeypatch.setattr(partdata, "POKE_THROUGH_CLOTH", partdata.POKE_THROUGH)
     assert loose > hidden() + 100
+
+
+def test_headgear_hides_the_hair(repo_tmp):
+    """Worn pieces drop whole roles (`hides`, §6.2): the union over all pieces; only hair/beard."""
+    g = Gltf.load(FIGURES / "test_armor_medium_m.glb")
+    names = {str(n.get("name")) for n in g.doc["nodes"]}
+    assert "cloth_nasal_helmet_lod0" in names
+    assert not any(n.startswith("hair_") for n in names)
+    assert "head_lod0" in names
+    helmet = CHARACTERS / "parts/headgear_m_average/nasal_helmet.glb"
+    assert data_of(Gltf.load(helmet))["hides"] == ["hair"]
+    # a piece may only hide hair or beard
+    bad = Gltf.load(helmet)
+    bad.doc["asset"]["extras"]["gothar"]["hides"] = ["body"]
+    path = repo_tmp / "bad_helmet.glb"
+    path.write_bytes(bad.to_bytes())
+    figure = load_figure(FIGURES / "test_armor_medium_m.figure.toml")
+    figure.parts["cloth_nasal_helmet"] = str(path)
+    with pytest.raises(AssembleError, match="hides only"):
+        assemble_figure(figure, FIGURES / "test_armor_medium_m.figure.toml", CHARACTERS, path)

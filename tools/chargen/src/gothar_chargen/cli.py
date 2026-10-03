@@ -341,7 +341,7 @@ def update_part_data(characters: Path, dirs: list[Path] | None, out: TextIO) -> 
             raise HumanError(f"{path.parent.name}: garment parts need a recipe with fit_to")
         body_rel = f"parts/{recipe.fit_to}/body.glb"
         body = Gltf.load(characters / body_rel)
-        write_part(path, g, garment_data(g, body, body_rel))
+        write_part(path, g, garment_data(g, body, body_rel, recipe.hides.get(path.stem, ())))
         print(f"part data {path.relative_to(characters)} (covers {body_rel})", file=out)
 
 

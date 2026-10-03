@@ -18,7 +18,7 @@ import bpy  # type: ignore[import-not-found]
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from gothar_chargen.faces import load_morphs, source_targets  # noqa: E402
-from gothar_chargen.human import load_human  # noqa: E402
+from gothar_chargen.human import BASEMESH, load_human  # noqa: E402
 
 
 def _parse_args() -> argparse.Namespace:
@@ -112,6 +112,8 @@ def main() -> None:
             obj["gothar_asset"] = rel
             obj["gothar_type"] = asset_type
     for d in human.derive:  # own pieces start as a fitted copy of a CC0 garment
+        if d.source == BASEMESH:  # ... or of the skin (conform_human copies it)
+            continue
         obj = human_service.add_mhclo_asset(
             asset(d.source), basemesh, asset_type="Clothes", subdiv_levels=0,
             material_type="MAKESKIN",
@@ -119,10 +121,12 @@ def main() -> None:
         obj["gothar_asset"] = d.source
         obj["gothar_type"] = "Clothes"
         obj["gothar_derive"] = d.name
-        obj["gothar_texture"] = asset(d.texture)
+        if d.texture:
+            obj["gothar_texture"] = asset(d.texture)
         if d.normal:
             obj["gothar_normal"] = asset(d.normal)
     _load_face_targets(basemesh, target_service, face_service)
+    bpy.context.scene["gothar_mpfb_data"] = str(data_root)  # textures of skin-derived pieces
     args.out.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(args.out.resolve()))
     print(f"[chargen] wrote {args.out}")

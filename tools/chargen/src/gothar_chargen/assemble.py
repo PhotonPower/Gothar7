@@ -28,6 +28,7 @@ import numpy as np
 
 from gothar_chargen.figure import CLOTH_PREFIX, Figure, load_figure
 from gothar_chargen.gltf import Gltf, GltfError
+from gothar_chargen.human import HIDEABLE
 from gothar_chargen.meshdata import split_lod
 from gothar_chargen.partdata import data_of, geometry_hash
 
@@ -197,6 +198,11 @@ def assemble_figure(figure: Figure, manifest: Path, characters: Path, out: Path)
                 f"{figure.name}: {role} was fitted to {covers['body']}, not to this body "
                 "(or the body changed: run gothar-chargen part-data)"
             )
+    # pieces worn over the head drop whole roles (helmets and hoods: the hair); union over pieces
+    hidden = set().union(*(data_of(g).get("hides", []) for g in garments.values()))
+    if hidden - set(HIDEABLE):
+        raise AssembleError(f"{figure.name}: hides only {HIDEABLE}, got {sorted(hidden)}")
+    parts = {r: g for r, g in parts.items() if r not in hidden}
 
     b = _Builder()
     b.doc["asset"] = {
@@ -258,7 +264,7 @@ def assemble_figure(figure: Figure, manifest: Path, characters: Path, out: Path)
             part_material[(role, mi)] = material_of[base]
 
     # 2./3. meshes per role and LOD
-    roles = ["body", "head"] + [r for r in figure.parts if r not in ("body", "head")]
+    roles = ["body", "head"] + [r for r in figure.parts if r not in ("body", "head", *hidden)]
     head_lods = _mesh_nodes(head)
     for role in roles:
         g = parts[role]

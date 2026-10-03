@@ -43,7 +43,7 @@ from gothar_chargen.blender import build_reference_rig as reference  # noqa: E40
 from gothar_chargen.blender.lod import make_lods  # noqa: E402
 from gothar_chargen.blender.settings import GLTF_EXPORT_SETTINGS  # noqa: E402
 from gothar_chargen.faces import Morph, load_morphs  # noqa: E402
-from gothar_chargen.human import Derive, Human, asset_stem, load_human  # noqa: E402
+from gothar_chargen.human import BASEMESH, Derive, Human, asset_stem, load_human  # noqa: E402
 from gothar_chargen.mapping import load_mapping  # noqa: E402
 from gothar_chargen.postprocess import MASK_ROLES  # noqa: E402
 from gothar_chargen.skeleton import load_rig  # noqa: E402
@@ -386,10 +386,141 @@ def _decimate(obj: bpy.types.Object, ratio: float, keep_borders: bool = True) ->
 # --- 5. materials and textures -------------------------------------------------------------------
 
 
-def _derive(obj: bpy.types.Object, d: Derive) -> None:
-    """Own simple piece from a fitted garment: drop the vertices bound mostly to the `cut` bones,
-    push the rest outwards along the normals, scale the UVs for a tiling texture."""
+def _copy_skin(basemesh: bpy.types.Object, d: Derive) -> bpy.types.Object:
+    """A piece derived from the skin starts as a copy of the base mesh before its helper
+    geometry is masked away: only the vertices of the MPFB vertex group `d.group` remain
+    (``helper-hair``: a scalp cap without ears and face)."""
+    skin = basemesh.copy()
+    skin.data = basemesh.data.copy()
+    bpy.context.scene.collection.objects.link(skin)
+    for m in [m for m in skin.modifiers if m.type == "MASK"]:
+        skin.modifiers.remove(m)
+    group = skin.vertex_groups.get(d.group or "")
+    if group is None:
+        raise SystemExit(f"derive.{d.name}: base mesh has no vertex group {d.group!r}")
+    keep = {v.index for v in skin.data.vertices if any(g.group == group.index for g in v.groups)}
+    bm = bmesh.new()
+    bm.from_mesh(skin.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.index not in keep], context="VERTS")
+    bm.to_mesh(skin.data)
+    bm.free()
+    skin["gothar_asset"] = d.name
+    skin["gothar_type"] = "Clothes"
+    skin["gothar_derive"] = d.name
+    data = Path(bpy.context.scene["gothar_mpfb_data"])
+    if d.texture:
+        skin["gothar_texture"] = str(data / d.texture)
+    if d.normal:
+        skin["gothar_normal"] = str(data / d.normal)
+    return skin
+
+
+DOME_BAND = (0.05, 0.09)  # metres below the top of the skull: width and depth (above the ears)
+DOME_HEIGHT = 0.12  # vertical half axis of the dome (crown to about ear level)
+
+
+HEAD_MARGIN = 0.004  # metres between a head and a piece pushed out over it
+HEAD_FALLOFF = 0.05  # metres around a poking head point within which a piece is pushed out
+HEAD_CROWN = 0.07  # metres below the highest head checked (heads differ there; the face is open)
+
+
+def _head_points(characters: Path, pattern: str) -> np.ndarray:
+    """Skin vertices (lod0) of the head parts matching `pattern` (e.g. head_f_*), in Blender rig
+    space (glTF y-up, +z front -> z-up, -y front)."""
+    from gothar_chargen.gltf import Gltf
+    from gothar_chargen.partdata import lod_meshes
+
+    points = []
+    for path in sorted(characters.glob(f"parts/{pattern}/head.glb")):
+        mesh = lod_meshes(Gltf.load(path))[0]
+        for pos, mat in zip(mesh.positions, mesh.materials, strict=True):
+            if mat == "skin":
+                points.append(np.stack([pos[:, 0], -pos[:, 2], pos[:, 1]], axis=1))
+    if not points:
+        raise SystemExit(f"no head parts match parts/{pattern}/head.glb")
+    return np.concatenate(points)
+
+
+def _push_over_heads(obj: bpy.types.Object, heads: np.ndarray) -> None:
+    """Push a piece out where any of the given heads would stick through it: a crown point
+    further from the head centre than the piece in the same direction pushes the nearby vertices
+    of the piece out along their normals, fading over HEAD_FALLOFF (independent of the piece's
+    face normals – some sources have an inner lining)."""
+    from mathutils.bvhtree import BVHTree
+
     mesh = obj.data
+    mesh.update()
+    co = _coords(obj)
+    normals = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
+    mesh.vertices.foreach_get("normal", normals)
+    normals = normals.reshape(-1, 3)
+    tree = BVHTree.FromPolygons([tuple(v) for v in co], [tuple(p.vertices) for p in mesh.polygons])
+    crown = heads[heads[:, 2] > heads[:, 2].max() - HEAD_CROWN]
+    centre = Vector((0.0, *heads[:, 1:].mean(axis=0)))
+    push = np.zeros(len(co))
+    for p in crown:
+        ray = Vector(p) - centre
+        radius = ray.length
+        hit, _, _, reach = tree.ray_cast(centre, ray.normalized(), 0.3)
+        if hit is None:
+            continue  # the piece is open there (face)
+        depth = radius + HEAD_MARGIN - reach
+        if depth <= 0:
+            continue  # the head stays inside the piece
+        d = np.linalg.norm(co - np.array(hit), axis=1)
+        push = np.maximum(push, depth * np.clip(1.0 - d / HEAD_FALLOFF, 0.0, 1.0))
+    if push.any():
+        mesh.vertices.foreach_set("co", (co + normals * push[:, None]).ravel())
+        mesh.update()
+    print(f"[chargen] pushed {obj.name} out over heads by up to {push.max() * 1000:.1f} mm")
+
+
+def _dome(obj: bpy.types.Object, heads: np.ndarray | None = None) -> None:
+    """Own geometry: replace the skin copy by a smooth half-ellipsoid around the skull – width and
+    depth from a band above the ears, grown until every skull point lies inside, bound fully to
+    the head bone."""
+    co = _coords(obj)
+    top = co[:, 2].max()
+    band = co[(co[:, 2] < top - DOME_BAND[0]) & (co[:, 2] > top - DOME_BAND[1])]
+    skull = co[co[:, 2] > top - DOME_BAND[1]]
+    if heads is not None:  # every head of the sex must fit under the dome
+        skull = np.concatenate([skull, heads[heads[:, 2] > top - DOME_BAND[1]]])
+    centre = np.array([0.0, (band[:, 1].min() + band[:, 1].max()) / 2, top - DOME_HEIGHT])
+    level = top - sum(DOME_BAND) / 2 - centre[2]
+    scale = np.sqrt(1.0 - (level / DOME_HEIGHT) ** 2)  # the band's section of the ellipsoid
+    radii = np.array(
+        [
+            np.abs(band[:, 0]).max() / scale,
+            (band[:, 1].max() - band[:, 1].min()) / 2 / scale,
+            DOME_HEIGHT,
+        ]
+    )
+    radii *= max(1.0, np.sqrt((((skull - centre) / radii) ** 2).sum(axis=1)).max())
+    head = obj.vertex_groups["head"].index
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=1.0, calc_uvs=True)
+    for v in bm.verts:
+        v.co = (v.co.x * radii[0], centre[1] + v.co.y * radii[1], centre[2] + v.co.z * radii[2])
+    lower = [v for v in bm.verts if v.co.z < centre[2] - 0.5 * radii[2]]
+    bmesh.ops.delete(bm, geom=lower, context="VERTS")  # the bisect cuts the rest
+    deform = bm.verts.layers.deform.verify()
+    for v in bm.verts:
+        v[deform][head] = 1.0
+    for f in bm.faces:
+        f.material_index = 0
+        f.smooth = True
+    bm.to_mesh(obj.data)
+    bm.free()
+    print(f"[chargen] dome radii {np.round(radii, 3)} centre {np.round(centre, 3)}")
+
+
+def _derive(obj: bpy.types.Object, d: Derive, heads: np.ndarray | None = None) -> None:
+    """Own simple piece from a fitted garment: drop the vertices bound mostly to the `cut` bones
+    (and with `depth` all below the top `depth` metres), push the rest along the normals, scale
+    the UVs for a tiling texture."""
+    mesh = obj.data
+    if d.dome:
+        _dome(obj, heads)
     groups = {g.index: g.name for g in obj.vertex_groups}
     drop = []
     for v in mesh.vertices:
@@ -403,6 +534,20 @@ def _derive(obj: bpy.types.Object, d: Derive) -> None:
         bm.from_mesh(mesh)
         bm.verts.ensure_lookup_table()
         bmesh.ops.delete(bm, geom=[bm.verts[i] for i in drop], context="VERTS")
+        bm.to_mesh(mesh)
+        bm.free()
+    if d.depth is not None:  # clean cut: plane `depth` below the top, front edge raised by `tilt`
+        co = _coords(obj)
+        tilt = np.radians(d.tilt)
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bmesh.ops.bisect_plane(
+            bm,
+            geom=bm.verts[:] + bm.edges[:] + bm.faces[:],
+            plane_co=(0.0, float(co[:, 1].mean()), float(co[:, 2].max()) - d.depth),
+            plane_no=(0.0, float(np.sin(tilt)), float(np.cos(tilt))),  # the figure faces -Y
+            clear_inner=True,
+        )
         bm.to_mesh(mesh)
         bm.free()
     if d.offset:
@@ -420,8 +565,50 @@ def _derive(obj: bpy.types.Object, d: Derive) -> None:
         uv = np.empty(len(mesh.loops) * 2, dtype=np.float64)
         mesh.uv_layers.active.data.foreach_get("uv", uv)
         mesh.uv_layers.active.data.foreach_set("uv", uv * d.uv_scale)
+    if heads is not None and not d.dome:
+        _push_over_heads(obj, heads)
+    if d.nasal is not None:
+        _add_nasal(obj, *d.nasal)
     mesh.update()
     print(f"[chargen] derived {d.name}: cut {len(drop)} vertices, offset {d.offset} m")
+
+
+def _add_nasal(obj: bpy.types.Object, width: float, length: float) -> None:
+    """Own geometry: a nose guard (thin bar) from the front of the rim down over the nose,
+    leaning forward to clear it, bound fully to the head bone."""
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    rim = [v for v in bm.verts if v.is_boundary and abs(v.co.x) < 0.02]
+    if not rim:
+        bm.free()
+        raise SystemExit(f"{obj.name}: nasal needs an open rim at the front (use depth)")
+    top = min(rim, key=lambda v: v.co.y).co.copy()  # the figure faces -Y
+    # the top reaches up into the dome (which curves back above the rim), the bottom leans
+    # forward to clear the nose
+    lean, thick, overlap, tuck = 0.15 * length, 0.004, 0.015, 0.012
+    corners = []
+    for dz, dy in ((overlap, tuck), (-length, -lean)):
+        for y_off in (0.0, -thick):
+            for x in (-width / 2, width / 2):
+                corners.append(bm.verts.new((x, top.y + dy + y_off, top.z + dz)))
+    # corners: [top back l, r, top front l, r, bottom back l, r, bottom front l, r]
+    quads = ((0, 1, 3, 2), (4, 6, 7, 5), (0, 2, 6, 4), (1, 5, 7, 3), (2, 3, 7, 6), (0, 4, 5, 1))
+    faces = [bm.faces.new([corners[i] for i in q]) for q in quads]
+    bmesh.ops.recalc_face_normals(bm, faces=faces)
+    deform = bm.verts.layers.deform.verify()
+    head = obj.vertex_groups["head"].index
+    uv = bm.loops.layers.uv.verify()
+    for v in corners:
+        v[deform].clear()
+        v[deform][head] = 1.0
+    for f in faces:
+        f.material_index = 0
+        for loop in f.loops:  # a small patch of the tiling metal texture
+            co = loop.vert.co
+            loop[uv].uv = (0.5 + (co.x / width) * 0.05, 0.5 + (co.z - top.z) * 2.0)
+    bm.to_mesh(mesh)
+    bm.free()
 
 
 def _source_images(
@@ -462,6 +649,7 @@ def _prepare_image(
     tmp: Path,
     normal: bool = False,
     neutral: bool = False,
+    retouch: tuple[tuple[float, ...], ...] = (),
 ) -> bpy.types.Image:
     source_path = Path(bpy.path.abspath(src.filepath)).resolve()
     if not source_path.is_file():
@@ -469,6 +657,14 @@ def _prepare_image(
     img = bpy.data.images.load(str(source_path), check_existing=False)
     img.pixels[0]  # force loading the pixel data
     w, h = img.size
+    if retouch:  # cover marks with a shifted patch of the same texture (image coords, top left)
+        px = np.array(img.pixels[:], dtype=np.float32).reshape(h, w, 4)[::-1]  # top row first
+        src = px.copy()
+        for x0, y0, x1, y1, dx, dy in retouch:
+            c0, c1, r0, r1 = int(x0 * w), int(x1 * w), int(y0 * h), int(y1 * h)
+            sx, sy = int(dx * w), int(dy * h)
+            px[r0:r1, c0:c1] = src[r0 + sy : r1 + sy, c0 + sx : c1 + sx]
+        img.pixels.foreach_set(px[::-1].ravel())
     if not img.has_data or w == 0:
         raise SystemExit(f"could not load texture {source_path}")
     scale = min(1.0, limit / max(w, h))
@@ -504,9 +700,11 @@ def _rebuild_material(obj: bpy.types.Object, role: str, stem: str, human: Human,
     kit = role == "cloth" and "cloth" in human.parts
     piece = human.part_name(stem) if kit else stem  # our file/material name for the piece
     mat_name = role if role != "cloth" else f"cloth_{piece}"
+    texture_name = piece
     old = obj.material_slots[0].material if obj.material_slots else None
     diffuse, normal = _source_images(old)
-    if "gothar_texture" in obj:  # derived piece: own tiling texture
+    if "gothar_texture" in obj:  # derived piece: own tiling texture, shared by name of its source
+        texture_name = Path(obj["gothar_texture"]).parent.name.lower()  # e.g. ambientCG Metal021
         diffuse = bpy.data.images.load(obj["gothar_texture"], check_existing=True)
         normal = (
             bpy.data.images.load(obj["gothar_normal"], check_existing=True)
@@ -526,12 +724,13 @@ def _rebuild_material(obj: bpy.types.Object, role: str, stem: str, human: Human,
     if diffuse is not None:
         image = _prepare_image(
             diffuse,
-            f"{category}/{piece}{suffix}",
+            f"{category}/{texture_name}{suffix}",
             KIT_TEXTURE_MAX if kit else TEXTURE_MAX[role],
             tint,
             mask,
             tmp,
             neutral=neutral,
+            retouch=human.retouch.get(piece, ()) if kit else (),
         )
         tex = nodes.new("ShaderNodeTexImage")
         tex.image = image
@@ -540,7 +739,13 @@ def _rebuild_material(obj: bpy.types.Object, role: str, stem: str, human: Human,
             links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
         if normal is not None and not neutral:  # kit garments: plain cloth, no normal maps
             nimg = _prepare_image(
-                normal, f"{category}/{piece}_normal", min(image.size), None, False, tmp, normal=True
+                normal,
+                f"{category}/{texture_name}_normal",
+                min(image.size),
+                None,
+                False,
+                tmp,
+                normal=True,
             )
             ntex = nodes.new("ShaderNodeTexImage")
             ntex.image = nimg
@@ -586,6 +791,9 @@ def main() -> None:
     basemesh = next(o for o in meshes if "gothar_type" not in o and o.vertex_groups.get("head"))
     for o in [o for o in meshes if o is not basemesh and "gothar_type" not in o]:
         bpy.data.objects.remove(o)  # helpers MPFB adds (none expected)
+    for d in human.derive:
+        if d.source == BASEMESH:
+            _copy_skin(basemesh, d)
     meshes = [o for o in bpy.data.objects if o.type == "MESH"]
 
     rig = load_rig()
@@ -613,7 +821,9 @@ def main() -> None:
             stem_of[o.name] = asset_stem(o["gothar_asset"])
         if "gothar_derive" in o:
             stem_of[o.name] = o["gothar_derive"]
-            _derive(o, next(d for d in human.derive if d.name == o["gothar_derive"]))
+            d = next(d for d in human.derive if d.name == o["gothar_derive"])
+            characters = args.out_dir.resolve().parent.parent
+            _derive(o, d, _head_points(characters, d.heads) if d.heads else None)
 
     # only the parts the recipe exports count (a head recipe drops its body and vice versa)
     def part_of(o: bpy.types.Object) -> str:

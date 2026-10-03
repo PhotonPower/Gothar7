@@ -311,19 +311,25 @@ def body_or_head_data(gltf: Gltf, role: str) -> dict[str, Any]:
     return data
 
 
-def garment_data(garment: Gltf, body: Gltf, body_ref: str) -> dict[str, Any]:
-    """`covers` of a garment part on the body part it was fitted to (`body_ref`: its path)."""
+def garment_data(
+    garment: Gltf, body: Gltf, body_ref: str, hides: tuple[str, ...] = ()
+) -> dict[str, Any]:
+    """`covers` of a garment part on the body part it was fitted to (`body_ref`: its path) and
+    the roles it `hides` while worn (hoods and helmets: the hair)."""
     garment_lod0 = lod_meshes(garment)[0]
     body_data = data_of(body)
     lods: dict[str, Any] = {}
     for _level, mesh in sorted(lod_meshes(body).items()):
         ring = body_data.get("neck", {}).get(mesh.node, [])
         lods[mesh.node] = covered_triangles(mesh, garment_lod0, ring)
-    return {
+    data: dict[str, Any] = {
         "version": FORMAT_VERSION,
         "part": "cloth",
         "covers": {"body": body_ref, "body_hash": geometry_hash(body), "lods": lods},
     }
+    if hides:
+        data["hides"] = list(hides)
+    return data
 
 
 def write_part(path: Path, gltf: Gltf, data: dict[str, Any]) -> None:

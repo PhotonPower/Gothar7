@@ -1,5 +1,6 @@
-# Test figure (F3g): medium armour line on the heavy female build – mail tunic, wrapped trousers
-# and boots, gloves. Only for checking the pieces; who wears what is decided later (owner).
+# Test figure (F3g): medium armour line on the heavy female build – mail tunic, wrapped trousers and
+# boots, gloves. With iron cap (F3h, hides the hair). Only for checking the pieces; who wears what
+# is decided later (owner).
 version = 1
 
 [parts]
@@ -11,4 +12,5 @@ cloth = [
     "parts/armor_f_heavy/wrapped_trousers.glb",
     "parts/armor_f_heavy/wrapped_boots.glb",
     "parts/armor_f_heavy/gloves_medium.glb",
+    "parts/headgear_f_heavy/iron_cap.glb",
 ]
