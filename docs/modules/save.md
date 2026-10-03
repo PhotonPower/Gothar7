@@ -34,3 +34,9 @@ Result<SaveMeta> readMeta(std::string_view slot);
   gespawnte NPCs) weg. Bis M4 gibt es keine; sobald es sie gibt, müssen sie in den Weltzustand (Erfassen und Spawnen
   mit fester Laufzeit-ID) – sonst gehen sie beim Weltwechsel verloren.
 - Global, nicht je Welt: Spielzeit/Tag-Nacht, Story-Variablen (world.md).
+
+## Schnittstelle Spielzeit (Stand M4)
+- `world::GameTime` (world.md): zu speichern sind `clock()` (Minuten seit Tag 0, 00:00, mit Bruchteil – daraus Tag
+  und Uhrzeit) und `secondsPerMinute()` (Skalierung); laden mit `restore(clock)` und `setSecondsPerMinute`.
+- Nach dem Laden bekommen Zuhörer **ein** `Jumped`-Ereignis (NPC-Routinen springen in den Zustand zur geladenen
+  Uhrzeit) – `restore` selbst meldet nichts, der Spielstand-Lader löst den Sprung aus (`setTime` bzw. eigenes Ereignis).

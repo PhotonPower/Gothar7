@@ -237,11 +237,33 @@ Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig)
 - Generierte Gelände-Daten der Welt-Spur liegen unversioniert unter `assets/source/worlds/<ort>/generated/`
   (im Dev-Build gemountet, von g7-cook mitgekocht).
 
-## Spielzeit & Umgebung
-- `GameTime`: Tag + Minuten; Skalierung (Standard: 1 Spielminute = 4 Echtsekunden → 24 h ≈ 96 Min);
-  `advanceTo(hour)` fürs Schlafen; Ereignis bei jeder neuen Spielminute (für Routinen).
-- `Environment`: berechnet aus Uhrzeit + Wetter: Sonnenrichtung, Sonnen-/Ambientfarbe, Nebelfarbe/-dichte,
-  Himmelsverlauf, Sternensichtbarkeit. Werte aus Daten-Kurven (`environment.toml`).
+## Spielzeit & Umgebung (M4, umgesetzt)
+```cpp
+class GameTime { advance(f64 seconds); setTime(day, hour, minute); advanceTo(hour, minute);  // GameTime.hpp
+                 day(); minuteOfDay(); hourOfDay(); totalMinutes(); clock(); restore(clock);
+                 setCallback(fn(const TimeEvent&)); setSecondsPerMinute(f64); };
+struct TimeEvent { Kind Minute|Jumped; u64 from, to; };                      // Minuten seit Tag 0, 00:00
+class DayCycle { static parse/load/fallback; DaySample evaluate(f32 hour, f32 fogDensity) const; };  // DayCycle.hpp
+struct Orbit { sunrise, sunset, noonElevation, moonElevation; sunDirection(hour); moonDirection(hour); };
+```
+- **`GameTime`** ist **global** (die Engine hält sie, nicht die Welt): läuft im festen Zeitschritt und über
+  Weltwechsel weiter. `[time] minute_seconds` (Vorgabe 4 → 24 h ≈ 96 Min), `[time] start` bzw. `--time=HH:MM`
+  (Vorgabe 08:00).
+- **Ereignisse, deterministisch:** je Spielminute ein `Minute`-Ereignis in aufsteigender Reihenfolge. **Sprünge**
+  (`advanceTo` – Schlafen –, `setTime`, Laden oder mehr als 60 Minuten in einem Schritt, z. B. bei hohem Zeitraffer)
+  sind **ein** `Jumped`-Ereignis {from, to} statt vieler Minuten: Zuhörer (Tagesabläufe, M9) setzen dann alles direkt
+  in den Zustand zur neuen Uhrzeit, wie Gothic NPCs nach dem Schlafen in ihre Routine setzt.
+- **`DayCycle`** liest die Kurven aus **`data/environment.toml`** (VFS, Inhalt: `assets/source/data/`, `[time]
+  environment`): `[orbit]` (Sonnenauf-/-untergang, Mittags- und Mondhöhe) und `[[key]]` je Uhrzeit mit Sonnen- und
+  Mondlicht, Ambient Himmel/Boden, Nebelfarbe (zugleich Horizont des Himmels) und Nebeldichte-Faktor, Zenitfarbe,
+  Sternen. Farben in **sRGB 0..1**, intern linear; zwischen den Schlüsseln zyklisch und weich (smoothstep).
+  Fehler nennen Datei und Schlüssel (`environment.toml: key[2].hour: …`). Fehlt die Datei: Warnung, feste
+  Abenddämmerung wie vor M4.
+- Sonne: Aufgang im Osten (+X), Mittag im Süden (+Z), Untergang im Westen; der Mond gegenüber. **Ein**
+  Richtungslicht: tagsüber die Sonne, nachts der Mond (schwach, kühl, mit Schatten); am Horizont blenden beide aus.
+- **Reserviert (M17):** `[zone]` für Überschreibungen je Zone bzw. Welt (Höhle, Sumpf; Farbkorrektur) – noch ohne Wirkung.
+- Werte sind Spielgefühl und Vorgaben bis zur Abnahme durch den Projektinhaber (Screenshots zu 6 Uhrzeiten,
+  Lager und Leonberg: `C:\GotharData\review\m4-daynight\`, nicht im Repo).
 - Wetter (M17): Regenintensität als Zustandsautomat mit Übergängen.
 
 ## Gothic-Bezug

@@ -25,6 +25,8 @@ target_link_libraries(g7_tests_runtime PRIVATE SDL3::SDL3)
 
 g7_add_test_suite(render)
 g7_add_test_suite(world)
+# test_day_cycle.cpp checks the shipped day-and-night curves.
+target_compile_definitions(g7_tests_world PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
 g7_add_test_suite(ui)
 # test_debug_ui.cpp inspects ImGui's state directly.
 find_package(imgui CONFIG QUIET)

@@ -31,6 +31,7 @@ struct CommandLine
     std::string world;
     std::string saveWorld;
     std::string start;
+    std::string time;
     std::string screenshot;
     bool benchmark = false;
     std::optional<g7::u32> viewpoint;
@@ -75,6 +76,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg.starts_with("--start="))
         {
             cli.start = std::string(arg.substr(8));
+        }
+        else if (arg.starts_with("--time="))
+        {
+            cli.time = std::string(arg.substr(7));
         }
         else if (arg.starts_with("--scene="))
         {
@@ -240,6 +245,7 @@ int main(int argc, char** argv)
         config.world = g7::fs::fromUtf8(cli->world);
     }
     config.start = cli->start;
+    config.startTime = cli->time;
     if (!cli->saveWorld.empty())
     {
         config.saveWorld = g7::fs::fromUtf8(cli->saveWorld);

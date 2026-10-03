@@ -30,6 +30,8 @@
 #include <g7/runtime/FrameTimes.hpp>
 #include <g7/runtime/SceneFile.hpp>
 #include <g7/ui/DebugUi.hpp>
+#include <g7/world/DayCycle.hpp>
+#include <g7/world/GameTime.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/Terrain.hpp>
 #include <g7/world/Triggers.hpp>
@@ -94,6 +96,8 @@ struct EngineConfig
     u32 viewpoint = 0; ///< Start viewpoint of the scene (--viewpoint=N).
     /// Start point of the world by name (--start); empty = the one with the lowest id.
     std::string start;
+    /// Game time at start, "HH:MM" (--time); empty = [time] start (default 08:00).
+    std::string startTime;
     bool ground = true; ///< Ground plate under the --view-mesh model (--no-ground).
     /// Benchmark (--benchmark): visits the scene's viewpoints for `benchmarkFrames` frames each, logs
     /// frame-time statistics and quits. The caller turns VSync and the frame cap off.
@@ -187,6 +191,11 @@ public:
     /// and `world` (VFS path of a .g7world) is loaded with the camera on its start point `start`. An unknown
     /// world or start point is a warning and nothing changes. Game time stays (it is not part of a world).
     void requestWorldChange(std::string world, std::string start);
+    /// Game time (global across worlds): day, time of day, speed; jumps with setTime/advanceTo.
+    [[nodiscard]] world::GameTime& gameTime() noexcept { return m_gameTime; }
+    /// Light, fog and sky of the last frame (from the day cycle).
+    [[nodiscard]] const render::Environment& environment() const noexcept { return m_environment; }
+    [[nodiscard]] const render::Sky& sky() const noexcept { return m_sky; }
     /// VFS path of the loaded world (--world or the last level change); empty for scenes and models.
     [[nodiscard]] const std::string& worldPath() const noexcept { return m_worldPath; }
     /// Worlds left during this session whose state is kept (lower-case paths).
@@ -252,6 +261,8 @@ private:
     void updateBenchmark(f64 realSeconds);
     void saveScreenshot(u32 width, u32 height);
     void initEnvironment();
+    /// Light, fog and sky from the day cycle at the current game time.
+    void updateEnvironment();
     void renderScene(u32 width, u32 height);
     void drawScene(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
@@ -283,7 +294,12 @@ private:
     f64 m_frameSeconds = 0.0;         // real duration of the last frame
     f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
     // Scene: --view-mesh (one model) or --scene (test scene); models are shared by instances.
-    world::Scene m_scene;            // world vobs (--world, --scene); render instances are built from it
+    world::Scene m_scene;       // world vobs (--world, --scene); render instances are built from it
+    world::GameTime m_gameTime; // global: runs across level changes (save game: save.md)
+    world::DayCycle m_dayCycle = world::DayCycle::fallback();
+    render::Sky m_sky;
+    f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
+    bool m_sunEnabled = true;        // debug: sun and moon light off
     world::TriggerSystem m_triggers; // fed with the camera until the player exists (M5)
     std::string m_worldPath;
     world::WorldFile m_worldFile; // the loaded world without its vobs (terrain, waynet ... for capturing)

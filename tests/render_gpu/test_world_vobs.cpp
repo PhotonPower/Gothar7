@@ -173,3 +173,43 @@ TEST_CASE("World vobs GPU: no bouncing back from a start inside a level change; 
     std::error_code ignored;
     std::filesystem::remove_all(dir, ignored);
 }
+
+TEST_CASE("World vobs GPU: day and night follow the game time, which survives a level change")
+{
+    EngineConfig config = worldConfig("START_LAGER_HOEHLE");
+    config.startTime = "12:00";
+    Engine engine(std::move(config));
+    REQUIRE(engine.init().ok());
+    CHECK(engine.runFrame());
+    CHECK(engine.gameTime().hourOfDay() == doctest::Approx(12.0f).epsilon(0.01));
+    CHECK(engine.environment().sunIntensity > 1.0f);
+    CHECK(engine.sky().stars == 0.0f);
+    const Vec3 noonFog = engine.environment().fogColor;
+
+    engine.gameTime().setTime(0, 0, 0);
+    CHECK(engine.runFrame());
+    CHECK(engine.sky().stars > 0.5f);
+    CHECK(engine.environment().sunDirection.y > 0.0f); // the moon lights the night
+    CHECK(engine.environment().sunIntensity < 1.0f);
+    CHECK(engine.environment().fogColor.r < noonFog.r);
+
+    // Through the level change the clock runs on (it is not part of a world).
+    engine.gameTime().setTime(3, 21, 15);
+    const u64 before = engine.gameTime().totalMinutes();
+    engine.camera().transform.position = Vec3(-30.0f, 1.7f, 20.0f); // into TRG_TO_CAVE
+    CHECK(engine.runFrame());
+    CHECK(engine.worldPath() == "testworld/cave.g7world");
+    CHECK(engine.gameTime().day() == 3);
+    CHECK(engine.gameTime().totalMinutes() - before <= 1);
+    CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}
+
+TEST_CASE("World vobs GPU: an invalid start time is an error")
+{
+    EngineConfig config = worldConfig();
+    config.startTime = "25:00";
+    Engine engine(std::move(config));
+    auto result = engine.init();
+    REQUIRE_FALSE(result.ok());
+    CHECK(result.error().message == "invalid start time '25:00' (expected HH:MM)");
+}

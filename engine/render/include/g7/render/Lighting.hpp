@@ -25,6 +25,18 @@ struct Environment
     f32 fogDensity = 0.0f;
 };
 
+/// Sky of the background pass: colour from the horizon (= fog colour) to `zenith`, sun and moon discs,
+/// stars. Linear colours.
+struct Sky
+{
+    Vec3 zenith{0.04f, 0.03f, 0.05f};
+    Vec3 sunDirection{0.0f, 1.0f, 0.0f}; ///< towards the sun (below the horizon at night)
+    Vec3 sunColor{1.0f};
+    Vec3 moonDirection{0.0f, -1.0f, 0.0f};
+    f32 moon = 0.0f;  ///< visibility of the moon disc 0 .. 1
+    f32 stars = 0.0f; ///< 0 .. 1
+};
+
 /// Point light (torch, campfire). Flicker etc. is game/world logic that changes these per frame.
 struct PointLight
 {
