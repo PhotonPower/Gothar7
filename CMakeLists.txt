@@ -33,6 +33,7 @@ endif()
 
 add_subdirectory(engine)
 add_subdirectory(tools/editor) # editor mode, linked into the game
+add_subdirectory(tools/walk)   # autopilot (--walk), linked into the game
 add_subdirectory(game)
 
 if(G7_BUILD_TOOLS)

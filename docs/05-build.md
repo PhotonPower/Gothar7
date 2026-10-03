@@ -135,10 +135,12 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--screenshot=<datei.png>` | letztes Bild als PNG speichern (mit `--frames` oder `--benchmark`) |
 | `--no-ground` | Bodenplatte unter dem Modell bzw. der Szene weglassen |
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |
+| `--walk=<route.json>` | Autopilot: die Spielfigur läuft die Route ab (mit `--world`), schreibt Protokoll und Screenshots, beendet sich (`docs/modules/tools.md`); mit `--no-render` ohne Grafikgerät und ohne Bilder |
+| `--walk-out=<ordner>` | Ausgabeordner des Autopiloten (Vorgabe `walk/`) |
 | (Taste F1) | ImGui-Debugfenster ein/aus (Aktion `debug_ui`): Leistung, Kamera, Render-Einstellungen live |
 | (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Achsen, Raster, Bounds, Lichtradien, Spielfigur (Zylinder, Zustand, Tempo) |
 | (Taste F3) | Spielfigur ↔ freie Debug-Kamera (Aktion `debug_fly`, M5) |
-| `--no-render` | Fenster ohne OpenGL (Systeme ohne GL-Treiber, Windows-CI, `nodeps`-Build) |
+| `--no-render` | Fenster ohne OpenGL (Systeme ohne GL-Treiber, Windows-CI, `nodeps`-Build); eine `--world` lädt trotzdem (Szene, Kollision, Spielfigur) |
 
 ## Testszenen (`--scene`)
 Vorläufiges Szenenformat bis zum Weltformat und Editor in M4 (`runtime/SceneFile.hpp`). Die M2-Abnahmeszene liegt in
@@ -198,7 +200,7 @@ Standard-Runnern sind damit kostenlos.
 | KTX (libktx, UASTC → BC7/BC5) | `ktx` (ADR 0016) | asset/tools | M3 |
 | zstd | `zstd` (ADR 0016) | asset/tools | M3 |
 | EnTT 3.16 (MIT) | `entt` (ADR 0005) | world (öffentlich; Registry nicht in der API) | M4 |
-| nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world (privat, Weltformat `.g7world`) | M4 |
+| nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world_format (privat, Weltformat `.g7world`), tools/walk (privat, Routen und Protokoll) | M4 |
 | Jolt Physics 5.6 (MIT) | `joltphysics` (ADR 0004; `nodeps`: FetchContent v5.6.0 mit SHA256) | physics (privat) | M5 |
 | Lua 5.4 + sol2 | `lua`, `sol2` | script | M7 |
 | miniaudio | `miniaudio` | audio | M13 |

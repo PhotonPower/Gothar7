@@ -264,6 +264,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 **DoD / Meilenstein C:** Ein komplettes Kapitel (Inhalt eigener Wahl) ist mit Speichern/Laden durchspielbar.
 
 ## M16 – Editor & Werkzeuge
+- [x] Autopilot `gothar --walk` (vorgezogen für die W3-Begehung): Route ablaufen, Protokoll `walk.jsonl` und Zusammenfassung, Screenshots; auch ohne Grafikgerät (`docs/modules/tools.md`, Vertrag mit welt)
 - [ ] Wegnetz-Editor (Punkte setzen, verbinden, Freepoints, Validierung)
 - [ ] Trigger-, Zonen- (Musik/Ambient), Licht- und Mob-Editor
 - [ ] Vorschau von Tagesabläufen (Zeitregler im Editor, NPC-Geister an Routinen-Positionen)
@@ -283,6 +284,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 - [ ] Welt-Streaming in Zellen, Ladezeiten-Optimierung
 - [ ] Tracy-Profiling, Performance-Budget pro System
 - [ ] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info
+- [ ] Gekochtes Format für Figuren und Animationen (`.g7skin`/`.g7anim`, ADR 0019 Folgearbeit) – spätestens vor dem ersten reinen `.g7pak`-Release; bis dahin laden Figuren und Clips aus losen glTF (`asset.md`)
 - [ ] Optional: Vulkan-Backend hinter der RHI (ADR)
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.

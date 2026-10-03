@@ -110,7 +110,7 @@ void Engine::syncPhysics()
             std::vector<physics::ShapePart> parts;
             if (instance.model == m_groundModel.get())
             {
-                parts.push_back(slab(instance.model->mesh.bounds()));
+                parts.push_back(slab(instance.model->bounds));
             }
             else if (data != nullptr)
             {
