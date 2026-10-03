@@ -87,6 +87,8 @@ def test_barns_get_a_hearth_only_next_to_a_dwelling_or_by_function():
     assert barn_hearths([dwelling, attached, alone], None, None, RULES) == {"A"}
     rules = Rules({**RULES.data, "chimneys": {**C, "hearthFunctions": ["31001_2721"]}})
     assert barn_hearths([dwelling, attached, alone], None, None, rules) == {"A", "F"}
+    garage = {**attached, "id": "G", "function": "31001_2463"}  # built on, but a garage
+    assert barn_hearths([dwelling, garage], None, None, RULES) == set()
 
 
 @pytest.mark.parametrize("sag", [0.0, 0.25])

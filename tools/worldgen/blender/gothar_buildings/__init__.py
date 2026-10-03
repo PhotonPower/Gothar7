@@ -6,6 +6,9 @@ Sidebar (N) > Gothar:
 - "Auswahl zurückschreiben": exports each selected building back to its ``.glb`` (origin and axes as
   generated) and sets ``locked: true`` in its override, so new generator runs keep the hand work.
 
+Collision objects (``COL_*`` nodes) are parented to their building on import, shown as wire frames,
+and written back with it as root nodes; they can be edited like any mesh.
+
 The geometry generator itself runs outside Blender (``gothar-worldgen buildings``).
 """
 
@@ -46,10 +49,15 @@ def import_building(site: core.Site, building_id: str) -> bpy.types.Object:
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=str(site.mesh_file(building_id)))
     new = [o for o in bpy.data.objects if o not in before and o.type == "MESH"]
-    if not new:
+    render = [o for o in new if not core.is_collision(o.name)]
+    if not render:
         raise RuntimeError(f"{building_id}: nothing imported")
-    obj = new[0]
+    obj = render[0]
     obj.name = f"BLD_{building_id}"
+    for col in (o for o in new if core.is_collision(o.name)):
+        col.parent = obj  # same origin as the render mesh: identity relative to it
+        col.display_type = "WIRE"
+        col.hide_render = True
     obj.location = core.gltf_to_blender(*entry["pos"])
     obj["gothar_id"] = building_id
     obj["gothar_index"] = str(site.index_path)
@@ -61,16 +69,29 @@ def export_building(obj: bpy.types.Object, site: core.Site) -> Path:
     target = site.mesh_file(building_id)
     saved = obj.location.copy()
     selection = list(bpy.context.selected_objects)
+    cols = [c for c in obj.children if core.is_collision(c.name)]
     try:
         obj.location = (0.0, 0.0, 0.0)  # the vob places the mesh; the file keeps its own origin
+        bpy.context.view_layer.update()
+        for c in cols:  # COL_ nodes go to the root of the file, next to the render node
+            world = c.matrix_world.copy()
+            c.parent = None
+            c.matrix_world = world
         bpy.ops.object.select_all(action="DESELECT")
-        obj.select_set(True)
+        for o in (obj, *cols):
+            o.select_set(True)
         bpy.ops.export_scene.gltf(
             filepath=str(target), export_format="GLB", use_selection=True, export_yup=True,
-            export_apply=True, export_animations=False,
+            export_apply=True, export_animations=False, export_materials="EXPORT",
         )  # fmt: skip
     finally:
+        for c in cols:
+            world = c.matrix_world.copy()
+            c.parent = obj
+            c.matrix_parent_inverse = obj.matrix_world.inverted()
+            c.matrix_world = world
         obj.location = saved
+        bpy.ops.object.select_all(action="DESELECT")
         for o in selection:
             o.select_set(True)
     core.mark_locked(site.overrides, building_id, note="von Hand in Blender bearbeitet")

@@ -389,6 +389,10 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
           f"{len(dropped)} dropped (keep: false)", file=out)  # fmt: skip
     print(f"  triangles: {st['triangles']} total; per building median {per['median']}, "
           f"p90 {per['p90']}, max {per['max']}", file=out)  # fmt: skip
+    col = st["collision"]
+    print(f"  collision: {col['hulls']} COL_HULL_ bodies, {col['decomposed']} footprints cut, "
+          f"{col['fallbacks']} triangle-mesh fallbacks; per building median {col['median']}, "
+          f"max {col['max']}, {col['over']} over {col['budget']}", file=out)  # fmt: skip
     if "budget" in st:
         b = st["budget"]
         print(f"  budget {b['trianglesPerBuilding']}/building: {b['over']} over; timber levels "

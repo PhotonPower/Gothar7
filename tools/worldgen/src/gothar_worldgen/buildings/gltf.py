@@ -1,15 +1,18 @@
 """Minimal glTF 2.0 binary (.glb) writer for generated meshes.
 
-Limits (on purpose): one mesh with one or more triangle primitives (one untextured PBR material
-each), one node; attributes POSITION, NORMAL and TEXCOORD_0 (float32), indices uint16 or uint32
-per primitive. No textures, skins, animations, morph targets or extensions. Output is
-byte-deterministic.
+Limits (on purpose): one render mesh with one or more triangle primitives (one untextured PBR
+material each) in one node; attributes POSITION, NORMAL and TEXCOORD_0 (float32), indices uint16 or
+uint32 per primitive. Optional collision nodes (``COL_HULL_*`` convex hulls, ``COL_*`` triangle
+meshes; contract with engine, M5 part B): one mesh each with POSITION and indices only, no
+material, at the root next to the render node with the same origin. No textures, skins,
+animations, morph targets or extensions. Output is byte-deterministic.
 """
 
 from __future__ import annotations
 
 import json
 import struct
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -49,6 +52,17 @@ class Primitive:
     mesh: MeshData
 
 
+@dataclass
+class CollisionPart:
+    name: str  # node name: COL_HULL_<i> (convex hull of the points) or COL_<i> (triangle mesh)
+    positions: npt.NDArray[np.float32]  # (n, 3), same origin as the render mesh
+    indices: npt.NDArray[np.uint32]  # (m,), closed triangle mesh, counter-clockwise = outside
+
+    @property
+    def triangle_count(self) -> int:
+        return len(self.indices) // 3
+
+
 def glb_bytes(
     mesh: MeshData, name: str, color: tuple[float, float, float, float] = (0.6, 0.6, 0.6, 1.0)
 ) -> bytes:
@@ -56,8 +70,11 @@ def glb_bytes(
     return glb_bytes_multi([Primitive("massing", color, mesh)], name)
 
 
-def glb_bytes_multi(primitives: list[Primitive], name: str) -> bytes:
-    """One mesh, a primitive per entry (empty ones skipped), materials in first-use order."""
+def glb_bytes_multi(
+    primitives: list[Primitive], name: str, collision: Sequence[CollisionPart] = ()
+) -> bytes:
+    """One mesh, a primitive per entry (empty ones skipped), materials in first-use order; then
+    one node and mesh per collision part."""
     prims = [p for p in primitives if len(p.mesh.indices)]
     if not prims:
         raise ValueError("mesh needs vertices and whole triangles")
@@ -103,9 +120,36 @@ def glb_bytes_multi(primitives: list[Primitive], name: str) -> bytes:
             "attributes": {"POSITION": first, "NORMAL": first + 1, "TEXCOORD_0": first + 2},
             "indices": first + 3, "material": material_index[p.material], "mode": 4})  # fmt: skip
 
+    targets = [_ELEMENT_ARRAY_BUFFER if i % 4 == 3 else _ARRAY_BUFFER for i in range(len(blobs))]
+    meshes: list[dict] = [{"name": name, "primitives": gl_prims}]
+    nodes: list[dict] = [{"mesh": 0, "name": name}]
+    for part in collision:
+        if not part.name.startswith("COL_"):
+            raise ValueError("collision node names start with COL_")
+        if len(part.positions) == 0 or len(part.indices) == 0 or len(part.indices) % 3:
+            raise ValueError("collision part needs vertices and whole triangles")
+        if part.indices.max() >= len(part.positions):
+            raise ValueError("index out of range")
+        pos = np.ascontiguousarray(part.positions, dtype="<f4")
+        small = len(pos) <= 0xFFFF
+        idx = np.ascontiguousarray(part.indices, dtype="<u2" if small else "<u4")
+        first = len(accessors)
+        accessors.append({"bufferView": len(blobs), "componentType": _FLOAT, "count": len(pos),
+                          "type": "VEC3", "min": [float(v) for v in pos.min(axis=0)],
+                          "max": [float(v) for v in pos.max(axis=0)]})  # fmt: skip
+        blobs.append(pos.tobytes())
+        targets.append(_ARRAY_BUFFER)
+        accessors.append({"bufferView": len(blobs), "componentType": _UINT16 if small else _UINT32,
+                          "count": len(idx), "type": "SCALAR"})  # fmt: skip
+        blobs.append(idx.tobytes())
+        targets.append(_ELEMENT_ARRAY_BUFFER)
+        meshes.append({"name": part.name,
+                       "primitives": [{"attributes": {"POSITION": first}, "indices": first + 1,
+                                       "mode": 4}]})  # fmt: skip
+        nodes.append({"mesh": len(meshes) - 1, "name": part.name})
+
     views, offset = [], 0
-    for i, blob in enumerate(blobs):
-        target = _ELEMENT_ARRAY_BUFFER if i % 4 == 3 else _ARRAY_BUFFER
+    for blob, target in zip(blobs, targets, strict=True):
         views.append({"buffer": 0, "byteOffset": offset, "byteLength": len(blob), "target": target})
         offset += len(blob) + (-len(blob) % 4)
     binary = b"".join(_pad(b, b"\0") for b in blobs)
@@ -113,9 +157,9 @@ def glb_bytes_multi(primitives: list[Primitive], name: str) -> bytes:
     doc = {
         "asset": {"version": "2.0", "generator": "gothar-worldgen"},
         "scene": 0,
-        "scenes": [{"nodes": [0]}],
-        "nodes": [{"mesh": 0, "name": name}],
-        "meshes": [{"name": name, "primitives": gl_prims}],
+        "scenes": [{"nodes": list(range(len(nodes)))}],
+        "nodes": nodes,
+        "meshes": meshes,
         "materials": materials,
         "accessors": accessors,
         "bufferViews": views,

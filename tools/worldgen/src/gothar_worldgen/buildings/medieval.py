@@ -33,6 +33,7 @@ from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import split
 from shapely.strtree import STRtree
 
+from gothar_worldgen.buildings.collision import CollisionResult, collision_for
 from gothar_worldgen.buildings.gltf import Primitive
 from gothar_worldgen.buildings.massing import (
     Mass,
@@ -672,6 +673,7 @@ class HouseResult:
     sag_m: float = 0.0  # largest ridge sag of the house (aging)
     dormers: int = 0
     chimneys: int = 0
+    collision: CollisionResult | None = None  # COL_ bodies of the (steepened) ground footprints
 
 
 class _SagRoof(_Roof):
@@ -1010,6 +1012,7 @@ def build_house(
         else:
             masses.append(mass)
     materials = _materials(style)
+    collision = collision_for(masses, base_y, origin_xz)
     result = None
     for level in range(5):
         builders = {role: _Builder((origin_xz[0], base_y, origin_xz[1])) for role in ROLES}
@@ -1029,7 +1032,8 @@ def build_house(
                  for r in ROLES if builders[r].idx]  # fmt: skip
         tris = sum(p.mesh.triangle_count for p in prims)
         result = HouseResult(prims, tris, [*notes, *massing.notes, *level_notes], level, style,
-                             steepened, round(ctx.max_sag, 3), dormers, chimneys)  # fmt: skip
+                             steepened, round(ctx.max_sag, 3), dormers, chimneys,
+                             collision)  # fmt: skip
         if tris <= budget or not style.timber:
             break
     assert result is not None
@@ -1162,7 +1166,8 @@ def barn_hearths(buildings: Sequence[dict[str, Any]], overrides: dict[str, Any] 
                  site: StreetIndex | None, rules: Rules) -> set[str]:  # fmt: skip
     """Ids of barns that may have a chimney: built onto a dwelling or with a hearth function.
 
-    Free-standing barns get none (fire protection, hay).
+    Free-standing barns get none (fire protection, hay), nor do the ``noHearthFunctions``
+    (garages: sheds or stables without a hearth around 1700), even when built on.
     """
     c = rules.data.get("chimneys")
     if not c:
@@ -1181,7 +1186,7 @@ def barn_hearths(buildings: Sequence[dict[str, Any]], overrides: dict[str, Any] 
     functions = {b["id"]: str(b.get("function") or "") for b in buildings}
     result = set()
     for bid, style in styles.items():
-        if style not in c["barnStyles"]:
+        if style not in c["barnStyles"] or functions.get(bid) in c.get("noHearthFunctions", ()):
             continue
         if functions.get(bid) in c["hearthFunctions"]:
             result.add(bid)

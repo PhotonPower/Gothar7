@@ -333,6 +333,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [ ] Overrides aus W4 anwenden; Seeds für Variation; `locked`-Schutz für Handarbeit
   - Stand: `storeys`, `jettyM`, `frontFacade` (Öffnungen), `seed`, `locked`, `keep`, `age`, `dormers`, `chimneys` werden angewendet; abhaken mit den echten Annotationen
 - [ ] LOD-Erzeugung, Kollisions-Mesh
+  - Stand: Kollision umgesetzt (`COL_HULL_` je konvexem Baukörperteil, Ersatz `COL_`-Netz; Vertrag in `docs/modules/asset.md`); LOD offen
 - [ ] Stil-Referenzblatt (Farben, Materialien, Alterung) in `docs/design/`
   - Stand: `docs/design/leonberg-stil.md` (Entscheidung 2026-10-03), Palette justiert, Alterung ohne Texturen umgesetzt (First-Durchhang, schiefe Ständer, unregelmäßige Fenster, Moos); Schmutz und Regenstreifen folgen mit Texturen
 
