@@ -8,6 +8,7 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <format>
 #include <map>
 #include <ostream> // doctest needs it to print std::string operands
 #include <string>
@@ -253,4 +254,102 @@ TEST_CASE("Script console and calls: expressions, statements, globals, modules")
     vm.setGlobal("Story", story);
     CHECK(vm.global("Story") == story);
     CHECK(vm.runString("Story.quests[2]").value().asString() == "q2");
+}
+
+TEST_CASE("Script bindings: engine functions in Lua, errors at the calling line, generated docs")
+{
+    Files files;
+    files.files["items/use.lua"] =
+        "total = add(2, 3)\nLog.create('topic_a', 'first entry')\ninsert('it_dragon')\n";
+    ScriptVm vm = makeVm(files);
+    std::vector<std::string> log;
+    vm.bind({"add", "add(a: number, b: number) -> number", "Zählt zusammen.", "Test",
+             [](std::span<const Value> a) -> Result<Value>
+             {
+                 if (a.size() != 2 || !a[0].isNumber() || !a[1].isNumber())
+                 {
+                     return Error{"expects two numbers"};
+                 }
+                 return Value(a[0].asNumber() + a[1].asNumber());
+             }});
+    vm.bind({"Log.create", "Log.create(topic: string, text: string)", "Neues Tagebuch-Thema.", "Tagebuch",
+             [&](std::span<const Value> a) -> Result<Value>
+             {
+                 log.push_back(std::string(a[0].asString()) + ": " + std::string(a[1].asString()));
+                 return Value();
+             }});
+    vm.bind({"insert", "insert(instance: string)", "Setzt eine Instanz in die Welt.", "Welt",
+             [](std::span<const Value> a) -> Result<Value>
+             { return Error{std::format("unknown instance \"{}\"", a.empty() ? "" : a[0].asString())}; }});
+    vm.loadAll();
+    CHECK(vm.global("total").asNumber() == doctest::Approx(5.0));
+    CHECK(log == std::vector<std::string>{"topic_a: first entry"});
+    REQUIRE(vm.errors().size() == 1);
+    CHECK(vm.errors()[0].text() == "items/use.lua:3: insert: unknown instance \"it_dragon\"");
+    CHECK_FALSE(vm.runString("add('x')").ok());
+
+    // Docs: groups sorted, built-ins under "Grundlagen", each with signature and description.
+    std::vector<std::string> names;
+    for (const Binding* b : vm.bindings())
+    {
+        names.push_back(b->name);
+    }
+    CHECK(names == std::vector<std::string>{"after", "cancel", "emit", "every", "on", "print", "require",
+                                            "Story", "Log.create", "add", "insert"});
+    const std::string md = vm.apiMarkdown();
+    CHECK(md.starts_with("# Skript-API (Lua)"));
+    CHECK(md.find("## Grundlagen") < md.find("## Tagebuch"));
+    CHECK(md.find("### `insert(instance: string)`\nSetzt eine Instanz in die Welt.") != std::string::npos);
+}
+
+TEST_CASE("Script story, timers and events")
+{
+    Files files;
+    files.files["startup.lua"] = R"(
+Story.met_guard = false
+Story.gold = 10
+calls = { once = 0, repeated = 0, events = 0 }
+after(1.0, function() calls.once = calls.once + 1 end)
+repeat_id = every(0.5, function() calls.repeated = calls.repeated + 1 end)
+after(0.5, function() error('broken timer') end)
+on('world_loaded', function(name) calls.events = calls.events + 1; calls.world = name end)
+on('world_loaded', function() error('broken handler') end)
+on('world_loaded', function() calls.events = calls.events + 1 end)
+)";
+    ScriptVm vm = makeVm(files);
+    vm.loadAll();
+    REQUIRE(vm.errors().empty());
+
+    // Story: data only, saved and restored.
+    CHECK(vm.story()["gold"].asInteger() == 10);
+    REQUIRE(vm.storyForSave().ok());
+    CHECK(vm.runString("Story.callback = function() end").ok());
+    const auto bad = vm.storyForSave();
+    REQUIRE_FALSE(bad.ok());
+    CHECK(bad.error().message.find("Story.callback") != std::string::npos);
+    CHECK(vm.setStory(makeTable({}, {{"met_guard", true}, {"gold", 99}})).ok());
+    CHECK(vm.runString("Story.gold").value().asInteger() == 99);
+    CHECK(vm.storyForSave().ok());
+    CHECK_FALSE(vm.setStory(Value(3)).ok());
+
+    // Timers: game time; the broken one is dropped, repeating ones do not catch up missed periods.
+    CHECK(vm.tick(0.5) == 2); // repeated + broken
+    CHECK(vm.tick(0.5) == 2); // once + repeated
+    CHECK(vm.runString("calls.once").value().asInteger() == 1);
+    CHECK(vm.runString("calls.repeated").value().asInteger() == 2);
+    CHECK(vm.tick(10.0) == 1); // one call, not twenty
+    CHECK(vm.runString("cancel(repeat_id)").value().asBool());
+    CHECK_FALSE(vm.runString("cancel(repeat_id)").value().asBool());
+    CHECK(vm.tick(1.0) == 0);
+    CHECK(vm.time() == doctest::Approx(12.0));
+    CHECK_FALSE(vm.runString("every(0, function() end)").ok());
+
+    // Events from the engine and from Lua; a failing handler does not stop the others.
+    const std::vector<Value> args = {"camp"};
+    CHECK(vm.emit("world_loaded", args) == 3);
+    CHECK(vm.runString("calls.events").value().asInteger() == 2);
+    CHECK(vm.runString("calls.world").value().asString() == "camp");
+    CHECK(vm.runString("emit('world_loaded', 'cave')").value().asInteger() == 3);
+    CHECK(vm.runString("calls.world").value().asString() == "cave");
+    CHECK(vm.emit("nobody_listens") == 0);
 }

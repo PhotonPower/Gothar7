@@ -70,6 +70,19 @@ struct InstanceKind
     bool allowUnknownFields = false;
 };
 
+/// A function the engine gives to scripts. The module that owns the feature registers it (gameplay: `say`,
+/// ai: `goto_waypoint` ...), so script needs no dependency upwards; docs/script-api.md is generated from
+/// these.
+struct Binding
+{
+    std::string name;        ///< "insert", or "Log.create" for a function in a global table
+    std::string signature;   ///< "insert(instance: string, count?: integer) -> boolean"
+    std::string description; ///< German, for docs/script-api.md
+    std::string group;       ///< chapter of docs/script-api.md ("Welt", "Story" ...)
+    /// Errors become Lua errors at the calling line ("items/a.lua:3: insert: unknown item ...").
+    std::function<Result<Value>(std::span<const Value> arguments)> function;
+};
+
 struct Instance
 {
     std::string kind;
@@ -103,6 +116,27 @@ public:
     [[nodiscard]] Result<Value> callGlobal(std::string_view name, std::span<const Value> arguments = {});
     [[nodiscard]] Value global(std::string_view name) const;
     void setGlobal(std::string_view name, const Value& value);
+
+    /// Makes `binding.function` callable from Lua under `binding.name` (also after loadAll).
+    void bind(Binding binding);
+    /// Every binding and built-in (print, require, after, every, cancel, on, emit, Story), for the docs.
+    [[nodiscard]] std::vector<const Binding*> bindings() const;
+    /// docs/script-api.md: the bindings by group, sorted, with signature and description.
+    [[nodiscard]] std::string apiMarkdown() const;
+
+    /// The global table `Story`: the story variables (numbers, strings, booleans, nested tables).
+    [[nodiscard]] Value story() const;
+    /// For the save game: `Story` without functions - an error names the first function found.
+    [[nodiscard]] Result<Value> storyForSave() const;
+    /// Back from a save game (a table).
+    [[nodiscard]] Result<void> setStory(const Value& story);
+
+    /// Advances the script clock (game time, seconds) and runs the timers that are due (`after`, `every`).
+    /// A failing timer is logged and dropped. Returns the number of timer calls.
+    usize tick(f64 seconds);
+    [[nodiscard]] f64 time() const noexcept;
+    /// Calls every handler registered with `on(event, fn)` (and Lua's emit). Failing handlers are logged.
+    usize emit(std::string_view event, std::span<const Value> arguments = {});
 
     [[nodiscard]] const std::vector<ScriptError>& errors() const noexcept;
     void clearErrors() noexcept;

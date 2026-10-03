@@ -173,8 +173,10 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 - [ ] Instanz-System: `Item{...}`, `Npc{...}`, `Info{...}`, `Quest{...}` als deklarative Tabellen
   - Stand Teil A: Instanz-Arten (`defineKind`) mit Schema (Typen, Pflichtfelder, Bereiche, Verweise, unbekannte Felder), Prüfung nach dem Laden; die Arten selbst registriert gameplay mit Teil C
 - [ ] Engine-API-Bindings (dokumentiert, generierte Referenz `docs/script-api.md`)
+  - Stand Teil B: `ScriptVm::bind` (Name, Signatur, Beschreibung, Gruppe), Fehler an der aufrufenden Zeile, `apiMarkdown()`; die Datei mit allen Engine-Bindings und die CI-Prüfung mit Teil C
 - [ ] Globale Story-Variablen, persistent (für Save)
-- [ ] Timer/verzögerte Aufrufe, Ereignis-Hooks
+  - Stand Teil B: Tabelle `Story`, `storyForSave` (nur Daten) und `setStory`; Spielstand mit M15
+- [x] Timer/verzögerte Aufrufe, Ereignis-Hooks – `after`/`every`/`cancel` in Spielzeit (`ScriptVm::tick`), `on`/`emit` (Teil B); Engine-Ereignisse mit Teil C
 - [ ] Hot-Reload im Entwicklungsmodus, Fehler mit Datei/Zeile im Log
 - [ ] Ingame-Konsole (Lua-Befehle, Cheats wie `insert`, `goto`, `time`)
 

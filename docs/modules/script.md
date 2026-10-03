@@ -92,5 +92,32 @@ std::vector<std::string> loadOrder(std::vector<std::string> paths);
   aufgerufen; gültig bis zum nächsten Neuladen.
 - **Grenzen:** Jeder Lauf (Datei, Konsolenzeile, Aufruf) hat ein Befehlsbudget (Endlosschleifen enden mit Fehler),
   der Speicher der VM ist begrenzt. `print` geht ins Log bzw. in die Konsole.
-- **Bindings** registriert jedes Modul selbst (`gameplay` registriert `say`, `giveItem`…, `ai` registriert
-  `gotoWaypoint`…), damit `script` keine Abhängigkeit nach oben hat – Schnittstelle mit Teil B.
+- **Bindings** registriert jedes Modul selbst (`gameplay` registriert `say`, `give_item`…, `ai` registriert
+  `goto_waypoint`…), damit `script` keine Abhängigkeit nach oben hat.
+
+## Bindings, Story, Timer, Ereignisse (umgesetzt mit M7 Teil B)
+```cpp
+struct Binding { std::string name;        // "insert" oder "Log.create" (Funktion in einer globalen Tabelle)
+                 std::string signature;   // "insert(instance: string) -> boolean"
+                 std::string description; // deutsch, für docs/script-api.md
+                 std::string group;       // Kapitel der Referenz
+                 std::function<Result<Value>(std::span<const Value>)> function; };
+void ScriptVm::bind(Binding);                 // auch nach loadAll
+std::vector<const Binding*> bindings() const; // mit den eingebauten (Gruppe „Grundlagen“)
+std::string apiMarkdown() const;              // docs/script-api.md, nach Gruppe und Name sortiert
+Value story() const; Result<Value> storyForSave() const; Result<void> setStory(const Value&);
+usize tick(f64 seconds); f64 time() const;    // Skript-Uhr (Spielzeit), fällige Timer
+usize emit(std::string_view event, std::span<const Value> args);
+```
+- **Fehler einer Engine-Funktion** werden zu einem Lua-Fehler an der aufrufenden Zeile:
+  `items/use.lua:3: insert: unknown instance "it_dragon"` (Datei bzw. Funktion bricht ab, Rest läuft).
+- **Eingebaut** (Gruppe „Grundlagen“): `print`, `require`, `Story`, `after(s, fn)`, `every(s, fn)`, `cancel(id)`,
+  `on(event, fn)`, `emit(event, ...)`.
+- **Story:** globale Tabelle für Story-Variablen; `storyForSave` lehnt Funktionen darin ab (mit Pfad, z. B.
+  `Story.callback`), `setStory` stellt einen Spielstand wieder her (Anbindung an `save` mit M15).
+- **Timer** laufen in Spielzeit (`tick` aus der Engine): `after` einmal, `every` wiederholt ohne Aufholen verpasster
+  Takte (höchstens ein Aufruf je `tick`); ein fehlschlagender Timer wird geloggt und entfernt.
+- **Ereignisse:** `on(name, fn)` meldet an; `emit` aus Lua oder C++ ruft alle Funktionen, ein Fehler in einer stoppt
+  die anderen nicht. Die Ereignisse der Engine stehen in `docs/script-api.md` (mit Teil C).
+- `docs/script-api.md` erzeugt `gothar --script-api=…` aus allen Bindings der Engine (Teil C); die CI prüft, dass die
+  Datei aktuell ist.
