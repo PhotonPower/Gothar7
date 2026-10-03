@@ -121,6 +121,15 @@ struct TriggerVolume
     std::string changeStart;
 };
 
+/// A body of water (M5, contract with welt: world.md "Vob-Typen"): a box of halfExtents around the vob,
+/// turned about Y only, not scaled. Its top (y + halfExtents.y) is the water surface. Boxes may overlap
+/// (river sections); the highest surface wins.
+struct WaterVolume
+{
+    Vec3 halfExtents{1.0f};
+    std::string kind; ///< reserved (river, swamp ...): read and written, no effect yet
+};
+
 /// An interactive object (bed, chest, door; Gothic "Mob"). Placeholder until M8: drawn with its
 /// MeshRef, `definition` names the mob definition (states, animations, focus name).
 struct MobRef

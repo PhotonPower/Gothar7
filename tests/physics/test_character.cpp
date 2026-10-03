@@ -321,3 +321,23 @@ TEST_CASE("Character: ledges in reach with room on top are found, others not")
         CHECK_FALSE(c.findLedge(east, 0.4f, 2.2f, 0.6f).has_value());
     }
 }
+
+TEST_CASE("Character: swimming moves without gravity, walls still stop it, the water catches a fall")
+{
+    Scene s;
+    s.add(box(Vec3(3.0f, -5.0f, -5.0f), Vec3(4.0f, 5.0f, 5.0f))); // a wall at x 3
+    CharacterController c = s.character(Vec3(0.0f, 3.0f, 0.0f));
+    run(c, Vec3(0.0f), 0.3f); // falling ...
+    CHECK(c.state() == MoveState::Air);
+    for (int i = 0; i < 120; ++i) // ... into water: hovers, then swims against the wall
+    {
+        c.swim(kStep, Vec3(i < 60 ? 0.0f : 2.0f, 0.0f, 0.0f));
+    }
+    CHECK(c.feet().y > 2.0f); // no gravity
+    CHECK(c.feet().x < 3.0f - 0.25f);
+    CHECK(c.feet().x > 1.5f);
+    run(c, Vec3(0.0f), 2.0f); // out of the water: falls and lands - counted from leaving the water
+    const auto fall = c.takeLanding();
+    REQUIRE(fall.has_value());
+    CHECK(*fall < 3.0f);
+}

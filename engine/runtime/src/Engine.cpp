@@ -894,6 +894,39 @@ Result<void> Engine::instantiateScene()
             }
             addInstance(*loaded, world.matrix, mesh.category == world::VobCategory::Deco, vob.id);
         });
+    // Water: the boxes for swimming, and a translucent surface on each until water is rendered (M17).
+    m_water.rebuild(m_scene);
+    if (!m_water.bodies().empty() && m_device && !m_waterModel)
+    {
+        asset::MeshData plane = asset::makePlane(1.0f, 1.0f, Vec4(0.16f, 0.36f, 0.5f, 0.55f));
+        for (asset::MaterialInfo& material : plane.materials)
+        {
+            material.alphaMode = asset::AlphaMode::Blend;
+            material.doubleSided = true; // seen from below while diving
+        }
+        auto mesh = render::Mesh::create(*m_device, *m_geometry, plane);
+        auto materials = render::MaterialSet::create(*m_device, plane, render::MaterialSet::ImageLookup{},
+                                                     m_meshRenderer.defaults());
+        if (mesh && materials)
+        {
+            m_waterModel = std::make_unique<LoadedModel>();
+            m_waterModel->mesh = std::move(mesh).value();
+            m_waterModel->materials = std::move(materials).value();
+            m_waterModel->name = "water";
+        }
+    }
+    if (m_waterModel)
+    {
+        for (const world::WaterBody& body : m_water.bodies())
+        {
+            const Mat4 surface =
+                glm::translate(Mat4(1.0f), Vec3(body.centre.x, body.surface(), body.centre.z)) *
+                glm::rotate(Mat4(1.0f), body.yaw, Vec3(0.0f, 1.0f, 0.0f)) *
+                glm::scale(Mat4(1.0f), Vec3(2.0f * body.halfExtents.x, 1.0f, 2.0f * body.halfExtents.z));
+            addInstance(*m_waterModel, surface, false, body.vob);
+            m_instances.back().solid = false;
+        }
+    }
     m_lights.clear();
     m_scene.each<world::LightSource, world::WorldTransform>(
         [&](entt::entity, const world::LightSource& light, const world::WorldTransform& world)
@@ -1069,6 +1102,7 @@ void Engine::unloadWorld()
     m_triggers.reset();
     removePlayer();
     m_physics.clear();
+    m_water.clear();
 }
 
 void Engine::performWorldChange()
@@ -1345,7 +1379,8 @@ void Engine::drawScene(u32 width, u32 height)
             {
                 // What the main pass hides (distance, size) casts no shadow either.
                 const SceneInstance& instance = m_instances[index];
-                if (instance.model != m_groundModel.get() && volume.intersects(instance.bounds) &&
+                if (instance.model != m_groundModel.get() && instance.solid &&
+                    volume.intersects(instance.bounds) &&
                     render::cullByDistance(instance.bounds, m_camera.transform.position, m_cullSettings,
                                            instance.sizeCullable) == render::CullResult::Kept)
                 {
@@ -1429,11 +1464,13 @@ void Engine::drawScene(u32 width, u32 height)
             ++m_visibleInstances;
         }
     }
+    // The player before the batched pass: that one ends with the translucent water, which must lie over
+    // the figure's parts below the surface.
+    drawPlayer(false, 0);
     if (m_multiDraw)
     {
         m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
     }
-    drawPlayer(false, 0);
 }
 
 void Engine::updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard)
@@ -1774,6 +1811,7 @@ void Engine::shutdown()
     m_shadowMap = {};
     m_instances.clear();
     m_groundModel.reset();
+    m_waterModel.reset();
     m_models.clear();
     m_geometry.reset(); // after every mesh that lives in it
     m_assets.reset();   // before the VFS (a member destroyed after it)

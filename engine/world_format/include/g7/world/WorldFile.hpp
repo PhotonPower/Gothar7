@@ -32,6 +32,7 @@ enum class VobType : u8
     Sound,   ///< SoundEmitter
     Trigger, ///< TriggerVolume
     Mob,     ///< MobRef + MeshRef (placeholder until M8)
+    Water,   ///< WaterVolume (M5)
 };
 
 /// One vob as stored in the file.
@@ -48,6 +49,7 @@ struct WorldFileVob
     SoundEmitter sound;                       ///< Sound vobs only
     TriggerVolume trigger;                    ///< Trigger vobs only
     MobRef mob;                               ///< Mob vobs only
+    WaterVolume water;                        ///< Water vobs only
 };
 
 struct WorldFile

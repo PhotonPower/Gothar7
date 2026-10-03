@@ -175,6 +175,15 @@ void CharacterController::update(f32 seconds, const Vec3& horizontalVelocity)
     }
 }
 
+void CharacterController::swim(f32 seconds, const Vec3& velocity)
+{
+    JPH::CharacterVirtual& c = *m_impl->character;
+    m_impl->pendingJump = 0.0f;
+    m_impl->falling = false;
+    c.SetLinearVelocity(JPH::Vec3(velocity.x, velocity.y, velocity.z));
+    c.Update(seconds, JPH::Vec3::sZero(), {}, m_impl->filter, {}, {}, *m_impl->world->temp);
+}
+
 bool CharacterController::jump(f32 upwardSpeed)
 {
     if (m_impl->character->GetGroundState() != JPH::CharacterBase::EGroundState::OnGround ||

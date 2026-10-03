@@ -81,6 +81,9 @@ Result<void> spawnWorld(Scene& scene, const WorldFile& world)
             scene.set<MeshRef>(e.value(), {vob->mesh, VobCategory::Gameplay});
             scene.set<MobRef>(e.value(), vob->mob);
             break;
+        case VobType::Water:
+            scene.set<WaterVolume>(e.value(), vob->water);
+            break;
         }
     }
     if (world.nextVobId > scene.nextVobId())
@@ -141,6 +144,11 @@ WorldFile captureWorld(const Scene& scene, std::string_view name)
             {
                 out.type = VobType::Trigger;
                 out.trigger = *trigger;
+            }
+            else if (const WaterVolume* water = scene.get<WaterVolume>(e))
+            {
+                out.type = VobType::Water;
+                out.water = *water;
             }
             world.vobs.push_back(std::move(out));
         });

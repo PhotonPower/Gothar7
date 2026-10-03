@@ -39,6 +39,19 @@ high_seconds = 1.4
 safe_height = 4.0        # m ohne Schaden; Rutschen am Hang zählt nicht
 damage_per_meter = 10.0  # Lebenspunkte je Meter darüber
 
+[swim]                   # Schwimmen ab hüfttiefem Wasser; sneak (X) taucht ab, jump (Alt) hält: auftauchen
+speed = 1.6              # m/s
+slow_speed = 0.9         # m/s mit walk (Shift)
+dive_speed = 1.0         # m/s abwärts (sneak gehalten)
+rise_speed = 1.2         # m/s aufwärts (jump gehalten)
+float_speed = 0.5        # m/s aufwärts, wenn unter Wasser nichts gedrückt ist
+start_depth = 0.9        # m Wasser über den Füßen (Hüfthöhe), ab dem man schwimmt
+eyes_above_surface = 0.2 # m, Augen beim Schwimmen an der Oberfläche
+eye_height = 1.62        # m über den Füßen (gemessen an den Figuren)
+air_seconds = 30.0       # Luftvorrat unter Wasser
+refill_seconds = 3.0     # s von leer bis voll an der Oberfläche
+drown_damage_per_second = 10.0  # Lebenspunkte je Sekunde ohne Luft (Log bis M8)
+
 [camera]
 distance = 3.0           # m hinter dem Blickpunkt
 target_height = 1.55     # m über den Füßen (knapp unter Augenhöhe 1,62)

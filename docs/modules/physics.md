@@ -67,6 +67,7 @@ class CharacterController {
     void moveTo(const Vec3& feet);              // ohne Kollision (Kletterbahn), danach teleport()
     std::optional<f32> takeLanding();           // Fallhöhe der letzten Landung, einmal
     std::optional<Ledge> findLedge(dir, minHeight, maxHeight, reach) const;   // Ledge { feet, height }
+    void swim(f32 seconds, const Vec3& velocity);   // 3D, ohne Schwerkraft/Stufen/Haftung; beendet einen Fall
     Vec3 feet() const; Vec3 visualFeet() const; Vec3 velocity() const; MoveState state() const; Vec3 groundNormal() const;
 };
 }
@@ -113,6 +114,7 @@ class CharacterController {
   `capsule_lying` entlang +Z), `radius`, `length` (inkl. Halbkugeln), `offset` (zu root, Rig-Raum); liefert figuren.
 - **Kantenklassen:** niedrig ≤ 1,0 m, mittel ≤ 1,6 m, hoch ≤ 2,2 m (Clips `t_climb_low/mid/high` auf diese
   Obergrenzen gebaut; die Engine skaliert die Root-Höhe nur herunter).
-Geplant (Teil E): Schwimmen/Tauchen.
+- **Schwimmen (Teil E):** `swim()` bewegt mit Kollision, aber ohne Schwerkraft. Ob und wie geschwommen wird, entscheidet
+  `gameplay::Swimmer` aus der Wassertiefe (`world::WaterBodies`); ein laufender Fall endet ohne Landung.
 Bewegung wird dann teilweise **animationsgetrieben** (Root Motion bei Klettern/Interaktion), der
 Controller sorgt für Kollision und Bodenhaftung.

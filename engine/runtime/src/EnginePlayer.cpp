@@ -98,6 +98,9 @@ void Engine::spawnPlayer()
         return;
     }
     m_player = std::move(character).value();
+    m_swimmer.reset(m_movementSettings.swim);
+    m_drownDamage = 0.0f;
+    m_drownLogged = 0.0f;
     const f32 yaw =
         yawOf(glm::quat_cast(Mat3(glm::normalize(Vec3(placement[0])), glm::normalize(Vec3(placement[1])),
                                   glm::normalize(Vec3(placement[2])))));
@@ -200,6 +203,7 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
     {
         m_playerInput.jump = true; // until the next fixed step uses it
     }
+    m_playerInput.jumpHeld = allowKeyboard && !m_flyMode && m_actions.isDown(m_input, Action::Jump);
     if (m_playerMouse)
     {
         m_playerInput.mouseTurn += m_input.mouseDelta().x;
@@ -242,6 +246,53 @@ void Engine::fixedUpdatePlayer(f32 seconds)
         return;
     }
 
+    // Water: swimming at the surface or diving, from hip deep water on (gameplay.md).
+    const Vec3 feetNow = m_player.feet();
+    const auto surface = m_water.surfaceAt(feetNow);
+    const gameplay::WaterMode before = m_swimmer.mode();
+    const gameplay::Swimmer::Step swim =
+        m_swimmer.step(seconds, feetNow.y, surface, m_movement.yaw(), input, s.swim);
+    if (swim.drownDamage > 0.0f)
+    {
+        m_drownDamage += swim.drownDamage;
+        if (m_drownDamage >= m_drownLogged + 10.0f)
+        {
+            m_drownLogged = std::floor(m_drownDamage);
+            G7_LOG_INFO("engine", "drowning: {:.0f} hit points lost", m_drownDamage);
+        }
+    }
+    if (swim.mode != gameplay::WaterMode::Land)
+    {
+        if (before == gameplay::WaterMode::Land)
+        {
+            m_movement.stop();
+            (void)m_player.takeLanding(); // the water catches a fall
+        }
+        gameplay::MoveInput turnOnly; // turning as on land; the swimmer gives the velocity
+        turnOnly.turn = input.turn;
+        turnOnly.mouseTurn = input.mouseTurn;
+        m_movement.step(turnOnly, seconds, s);
+        if (input.jump && swim.mode == gameplay::WaterMode::Swim)
+        {
+            // Out of the water: a bank or ledge in front is climbed (from the feet, deep below).
+            const auto ledge = m_player.findLedge(gameplay::forwardOf(m_movement.yaw()), s.stepHeight,
+                                                  s.climb.highMax, s.climb.reach);
+            const auto kind = ledge ? gameplay::classifyLedge(ledge->height, s.climb) : std::nullopt;
+            if (ledge && kind)
+            {
+                m_climb =
+                    gameplay::ClimbPath{feetNow, ledge->feet, gameplay::climbSeconds(*kind, s.climb), *kind};
+                m_climbSeconds = 0.0f;
+                m_swimmer.reset(s.swim);
+                m_playerFeet = feetNow;
+                return;
+            }
+        }
+        m_player.swim(seconds, swim.velocity);
+        m_playerFeet = m_player.feet(); // floating: the cylinder's bottom is the body's lowest point
+        return;
+    }
+
     const bool running = m_movement.running(s);
     const Vec3 velocity = m_movement.step(input, seconds, s);
     m_jumpCooldown = std::max(0.0f, m_jumpCooldown - seconds);
@@ -270,7 +321,10 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     if (const auto fall = m_player.takeLanding())
     {
         m_jumpCooldown = s.jump.cooldown;
-        const f32 damage = gameplay::fallDamage(*fall, s.fall);
+        const Vec3 landed = m_player.feet();
+        const auto pool = m_water.surfaceAt(landed);
+        const bool intoWater = pool && landed.y < *pool; // water catches any fall
+        const f32 damage = intoWater ? 0.0f : gameplay::fallDamage(*fall, s.fall);
         if (damage > 0.0f)
         {
             m_lastFallDamage = damage;
@@ -299,7 +353,14 @@ void Engine::updatePlayerCamera(f64 realSeconds)
     m_playerCamera.update(static_cast<f32>(realSeconds), feet, m_movement.yaw(), m_playerPitchPixels,
                           m_movementSettings.camera, obstruction);
     m_playerPitchPixels = 0.0f;
-    m_camera.transform.position = m_playerCamera.position();
+    Vec3 eye = m_playerCamera.position();
+    // Above the water while swimming: no under-water view until M17.
+    if (const auto surface = m_water.surfaceAt(eye, 0.3f);
+        surface && eye.y < *surface + 0.3f && m_swimmer.mode() != gameplay::WaterMode::Dive)
+    {
+        eye.y = *surface + 0.3f;
+    }
+    m_camera.transform.position = eye;
     m_camera.transform.rotation = m_playerCamera.rotation();
 }
 
@@ -354,6 +415,20 @@ void Engine::drawPlayerDebug()
     {
         m_debugDraw.arrow(m_climb->from, Vec3(m_climb->from.x, m_climb->to.y, m_climb->from.z), style);
         m_debugDraw.arrow(Vec3(m_climb->from.x, m_climb->to.y, m_climb->from.z), m_climb->to, style);
+    }
+    for (const world::WaterBody& body : m_water.bodies())
+    {
+        const Mat4 box =
+            glm::translate(Mat4(1.0f), body.centre) * glm::rotate(Mat4(1.0f), body.yaw, Vec3(0, 1, 0));
+        m_debugDraw.box(box, body.halfExtents, {Vec4(0.3f, 0.6f, 1.0f, 1.0f)});
+    }
+    if (m_swimmer.mode() != gameplay::WaterMode::Land)
+    {
+        m_debugDraw.text(top + Vec3(0.0f, 0.6f, 0.0f),
+                         std::format("{} air {:.0f} s",
+                                     m_swimmer.mode() == gameplay::WaterMode::Dive ? "dive" : "swim",
+                                     m_swimmer.airSeconds()),
+                         style);
     }
     const char* name = m_climb                               ? "climb"
                        : state == physics::MoveState::Ground ? "ground"
