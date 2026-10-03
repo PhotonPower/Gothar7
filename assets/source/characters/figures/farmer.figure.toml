@@ -1,6 +1,6 @@
 # farmer (player figure of M6): average male base body with its trousers, the farmer head, crude shirt and boots
 # from the clothing kit (F3j; until then a whole MPFB human with baked clothes, whose reduced trousers let the
-# skin show through in motion). Colours as before, through the palette.
+# skin show through in motion). Colours through the palette (on the neutral kit textures: dark boots).
 version = 1
 
 [parts]
@@ -14,4 +14,4 @@ cloth = [
 
 [palette]
 cloth_elvs_crude_t-shirt_male = "#ebcc9e"
-cloth_culturalibre_male_boots = "#cc9973"
+cloth_culturalibre_male_boots = "#5a4232"
