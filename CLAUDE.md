@@ -117,10 +117,13 @@ Phase **M4** abgeschlossen: `world::Scene` (EnTT, `VobId`; ADR 0005), `.g7world`
 Heightmap-Terrain, Vob-Typen, Sichtbarkeit (Culling, Multi-Draw), Weltwechsel, Tag/Nacht, Editor (`--editor`, eigene Gizmos).
 Phase **M5** abgeschlossen: Jolt (ADR 0004), Kollision (`COL_`), Spielfigur (Zylinder) mit Gothic-Steuerung,
 Third-Person-Kamera, Springen, Kanten hochziehen, Fallschaden, Schwimmen/Tauchen (`water`); Werte in `assets/source/data/movement.toml`.
-Aktuelle Phase: **M6** (Animation → Meilenstein A): eigene Animations-Laufzeit (ADR 0019), Held vorläufig `farmer`.
-Welt-Spur: **W1**, **W2** abgeschlossen; **W3** bis auf die Begehung; **W4** wartet auf Aufnahmen; **W5/W6** laufen
-(Fachwerk-Leonberg mit Stil `docs/design/leonberg-stil.md`, Stadtmauer mit Mauerhäusern, Schloss per Skript, Glems als Wasser).
-Figuren-Spur: **F1**, **F2** abgeschlossen; **F3** weit fortgeschritten (6 Körper, Köpfe mit Gesichts-Morphs, Kleidung,
-Rüstung leicht/mittel, Kopfbedeckungen; Figuren entstehen beim Bauen per `gothar-chargen assemble`); **F5**-Platzhalter fertig.
+Phase **M6** abgeschlossen (Meilenstein A vom Projektinhaber abgenommen): eigene Animations-Laufzeit (ADR 0019), GPU-Skinning,
+animierter Held `farmer`, Gesicht/Look-At/Attachments, Figuren zur Laufzeit aus Teilen, Tiere (Wolf, Keiler, Laufvogel).
+Aktuelle Phase: **M7** (Scripting): Lua 5.4.7 + sol2 (ADR 0006), Sandbox, geprüfte Instanzen; eigene Bezeichner (`it_…`, `npc_…`).
+Werkzeug: `gothar --fly`, F3 Flugmodus, F6 Position kopieren (`--cam/--yaw/--pitch`), `--walk` Autopilot.
+Welt-Spur: **W1–W3** abgeschlossen (Maßstab 1:1); **W4** wartet auf Aufnahmen; **W5/W6** laufen (Fachwerk-Leonberg,
+Stil `docs/design/leonberg-stil.md`, Stadtmauer, Schloss, Marktbrunnen; Garten und Kirche aus Modellen des Projektinhabers in Arbeit).
+Figuren-Spur: **F1**, **F2** abgeschlossen; **F3** weit fortgeschritten (Körper, Köpfe, Kleidung, Rüstung leicht/mittel,
+Kopfbedeckungen; schwere Rüstung läuft; Figuren entstehen beim Bauen bzw. zur Laufzeit); **F5**-Platzhalter fertig.
 Lizenzen: Das Repo ist **öffentlich** – nur CC0/eigene bzw. weitergabefähig lizenzierte Assets einchecken.
 Details siehe `docs/03-roadmap.md`.
