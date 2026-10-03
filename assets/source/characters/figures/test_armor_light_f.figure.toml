@@ -1,6 +1,6 @@
 # Test figure (F3g): light armour line on the average female build – kit shirt and ankle boots,
-# armour trousers, leather vest and short gloves. Only for checking the pieces; who wears what is
-# decided later (owner).
+# armour trousers, leather vest and short gloves. With hood (F3h, hides the hair). Only for checking
+# the pieces; who wears what is decided later (owner).
 version = 1
 
 [parts]
@@ -13,6 +13,7 @@ cloth = [
     "parts/armor_f_average/wrapped_trousers.glb",
     "parts/armor_f_average/leather_vest.glb",
     "parts/armor_f_average/gloves_short.glb",
+    "parts/headgear_f_average/hood.glb",
 ]
 
 [palette]

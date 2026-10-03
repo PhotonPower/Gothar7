@@ -379,7 +379,7 @@ def test_armour_kit_recipe():
         ({"names": {"src_tunic": "vest"}}, "unique"),
         ({"budget": {"mail_tunic": 50}}, "budget"),
         ({"budget": {"cape": 1000}}, "unknown pieces"),
-        ({"derive": {"vest": {"from": "clothes/s/s.mhclo"}}}, "needs 'from' and 'texture'"),
+        ({"derive": {"vest": {"texture": "t.jpg"}}}, "needs 'from'"),
         ({"derive": {"Vest": {"from": "c/s.mhclo", "texture": "t.jpg"}}}, "lower_snake_case"),
         ({"derive": {"vest": {"from": "c/s.mhclo", "texture": "t.tga"}}}, ".jpg or .png"),
         ({"derive": {"vest": {"from": "c/s.mhclo", "texture": "t.jpg", "offset": 0.1}}}, "offset"),
@@ -401,14 +401,96 @@ def test_invalid_armour_kits(change, message):
 
 
 def test_armour_parts_keep_colour_textures():
-    """Armour kits keep their own colour textures (owner decision), kits stay neutral grey."""
+    """Armour kits keep their own colour textures (owner decision), kits stay neutral grey;
+    derived pieces share their texture by its source (ambientCG id)."""
     from gothar_chargen.images import image_info
 
     textures = CHARACTERS / "textures" / "cloth"
-    for name in ("mail_tunic", "leather_vest", "wrapped_boots"):
-        g = Gltf.load(CHARACTERS / "parts/armor_m_average" / f"{name}.glb")
+    for kit, name, texture in (
+        ("armor_m_average", "mail_tunic", "mail_tunic"),
+        ("armor_m_average", "wrapped_boots", "wrapped_boots"),
+        ("armor_m_average", "leather_vest", "leather033a"),
+        ("headgear_m_average", "iron_cap", "metal021"),
+        ("headgear_f_thin", "nasal_helmet", "metal021"),
+    ):
+        g = Gltf.load(CHARACTERS / "parts" / kit / f"{name}.glb")
         uris = [i["uri"] for i in g.doc["images"]]
-        assert any(u.endswith(f"cloth/{name}.jpg") for u in uris), uris
-        assert image_info((textures / f"{name}.jpg").read_bytes()).width <= 512
+        assert any(u.endswith(f"cloth/{texture}.jpg") for u in uris), uris
+        assert image_info((textures / f"{texture}.jpg").read_bytes()).width <= 512
     g = Gltf.load(CHARACTERS / "parts/armor_m_average/leather_vest.glb")
-    assert any("leather_vest_normal" in i["uri"] for i in g.doc["images"])
+    assert any("leather033a_normal" in i["uri"] for i in g.doc["images"])
+
+
+def test_headgear_kit_recipe():
+    data = {
+        **KIT,
+        "assets": {**KIT["assets"], "clothes": []},
+        "names": {},
+        "budget": {},
+        "hides": {"cap": ["hair"]},
+        "retouch": {"cap": [[0.1, 0.1, 0.2, 0.2, 0.5, 0.0]]},
+        "derive": {
+            "cap": {
+                "from": "basemesh",
+                "group": "body",
+                "dome": True,
+                "depth": 0.12,
+                "tilt": 30,
+                "nasal": [0.02, 0.07],
+                "offset": -0.004,
+                "texture": "gothar/ambientcg/M/M_Color.jpg",
+            }
+        },
+    }
+    h = parse_human(data, "headgear_x")
+    (d,) = h.derive
+    assert (d.source, d.group, d.dome, d.depth, d.tilt, d.nasal) == (
+        "basemesh",
+        "body",
+        True,
+        0.12,
+        30.0,
+        (0.02, 0.07),
+    )
+    assert h.hides == {"cap": ("hair",)}
+    assert h.retouch == {"cap": ((0.1, 0.1, 0.2, 0.2, 0.5, 0.0),)}
+
+
+CAP = {"from": "basemesh", "group": "body", "dome": True, "depth": 0.12}
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"hides": {"cap": ["cloth_x"]}}, "hides"),
+        ({"hides": {"other": ["hair"]}}, "unknown pieces"),
+        ({"retouch": {"cap": [[0.5, 0.1, 0.4, 0.2, 0.0, 0.0]]}}, "retouch"),
+        ({"retouch": {"cap": [[0.1, 0.1, 0.6, 0.2, 0.5, 0.0]]}}, "retouch"),
+        ({"retouch": {"other": [[0.1, 0.1, 0.2, 0.2, 0.0, 0.0]]}}, "unknown pieces"),
+        ({"derive": {"cap": {**CAP, "group": None}}}, "vertex group"),
+        ({"derive": {"cap": {"from": "c/s.mhclo", "group": "body"}}}, "vertex group"),
+        ({"derive": {"cap": {"from": "c/s.mhclo", "dome": True}}}, "dome"),
+        ({"derive": {"cap": {**CAP, "tilt": 60}}}, "tilt"),
+        ({"derive": {"cap": {"from": "c/s.mhclo", "tilt": 10}}}, "tilt"),
+        ({"derive": {"cap": {**CAP, "nasal": [0.02]}}}, "nasal"),
+        ({"derive": {"cap": {"from": "c/s.mhclo", "nasal": [0.02, 0.07]}}}, "nasal"),
+        ({"derive": {"cap": {**CAP, "depth": 1.0}}}, "depth"),
+        ({"derive": {"cap": {**CAP, "offset": -0.05}}}, "offset"),
+    ],
+)
+def test_invalid_headgear_kits(change, message):
+    data = {
+        **KIT,
+        "assets": {**KIT["assets"], "clothes": []},
+        "names": {},
+        "budget": {},
+        "derive": {"cap": CAP},
+        **change,
+    }
+    if "derive" in change:
+        data["derive"] = {
+            k: {kk: vv for kk, vv in v.items() if vv is not None}
+            for k, v in change["derive"].items()
+        }
+    with pytest.raises(HumanError, match=message):
+        parse_human(data, "headgear_x")

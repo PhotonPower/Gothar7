@@ -249,9 +249,29 @@ Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, 
   - **Eigene einfache Teile** (`[derive.<name>]`), wo es kein CC0-Stück gibt: Kopie eines angepassten CC0-Stücks,
     Vertices überwiegend an Knochen mit den Präfixen `cut` werden entfernt (Ärmel), der Rest um `offset` entlang der
     Normalen nach außen geschoben, eigene kachelnde Textur (ambientCG, CC0) mit `uv_scale`. Das Lederwams entsteht
-    so aus dem groben Hemd (ohne Ärmel, 8 mm darüber, Leder 033 A).
+    so aus dem groben Hemd (ohne Ärmel, 8 mm darüber, Leder 033 A). Ohne `texture` bleibt das Material der Quelle.
+    Abgeleitete Stücke mit eigener Textur teilen sie über den Namen der Quelle (`textures/cloth/metal021.jpg`).
+  - **Retusche** (`[retouch]`): Rechtecke in Texturkoordinaten bekommen einen versetzten Bereich derselben Textur –
+    so ist das Zeichen der Quelle auf der Brust des Kettenhemds entfernt (Entscheidung Projektinhaber 2026-10-03),
+    reproduzierbar bei jedem Neubau.
   - Mittlere Figur ≈ 15–16 k, leichte ≈ 16–17 k Dreiecke (Testfiguren `test_armor_{light,medium}_{m,f}`, nur zur
     Prüfung – wer was trägt, entscheidet der Projektinhaber). Schwere Rüstung und Metall-Karten folgen später.
+- **Kopfbedeckungen (F3h):** Rezepte `humans/headgear_<m|f>_<statur>` → `parts/headgear_<…>/<stück>.glb`, wie die
+  Rüstung **pro Statur angepasst, nicht pro Kopf**: Die Stücke passen auf jeden Kopf desselben Geschlechts (in
+  Renderings von vorn, seitlich und hinten geprüft), Kopfwechsel bleiben frei. Getragene Stücke blenden das Haar aus
+  (`[hides]` → `hides` in §6.2); der Bart bleibt.
+  - `hood`: CC0-Kapuze (MakeHuman „Suits 02“, Donitz) ohne ihren verdeckten Innenteil bis zur Brust (`cut`)
+  - `leather_cap`, `iron_cap`, `nasal_helmet`: **eigene Geometrie** – eine Kuppel (`dome`) um den Schädel des
+    Grundkörpers (`from = "basemesh"`, Breite/Tiefe aus einem Band über den Ohren, 12 cm hoch, vergrößert bis
+    alle Schädelpunkte innen liegen), geschnitten von einer nach vorn ansteigenden Ebene (`depth`, `tilt`), um
+    `offset` abgesetzt; der Nasal (`nasal = [breite, länge]`) ist ein eigener Steg vom vorderen Rand über den
+    Nasenrücken, oben in die Kuppel gesteckt. Texturen ambientCG „Leather 014“ bzw. „Metal 021“ (CC0). Kein
+    Fremd-Helm als Vorlage (der Helm aus „Hats 02“ trägt im Datei-Kopf AGPL3).
+  - `heads = "head_<m|f>_*"`: Beim Bauen müssen alle Köpfe des Geschlechts unter das Stück passen – Kuppeln
+    wachsen, bis auch deren Schädelpunkte innen liegen; die Kapuze wird nur dort weich nach außen gedrückt, wo ein
+    Scheitel durchstechen würde (radial vom Kopfmittelpunkt gemessen, unabhängig von den Flächennormalen der Quelle).
+    Neue Köpfe → Kopf-Kits neu bauen. Bekannt: `head_f_mature` sitzt 2 cm höher als `head_f_young` (Augen 1,63 m
+    statt 1,61 m), deshalb fallen die Frauen-Kappen etwas größer aus – Kopfhöhen angleichen ist ein Folgepunkt.
 - **Texturen:** Trim-Sheets und Farbvarianten statt Unikat-Texturen; Stil passend zu den Häusern (W5).
 - **Budget:** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k (mit Bart bis ~5,6 k), höchstens 20 k je Figur, Stufen
   `_lod1`/`_lod2` (Vertrag §2.2). Lose Teile (Haare, Bärte) werden ohne Randschutz reduziert; nur die Nahtränder von
@@ -300,13 +320,18 @@ Rezepte und Manifeste; `figures/<name>.glb` entsteht beim Bauen und ist git-igno
     zusätzlich `falloff` = `[primitive, vertex, ringpunkt, gewicht]` für Vertices bis 5 cm vom Ring.
   - Kleidungsstück: `covers` = `body` (Pfad des Grundkörper-Teils, auf das es angepasst ist), `body_hash` (Hash der
     Körper-Geometrie; passt er nicht, ist die Maske veraltet → `gothar-chargen part-data`) und je Körper-LOD die
-    verdeckten Dreiecke als Bereiche `[primitive, erstes, ende)`.
+    verdeckten Dreiecke als Bereiche `[primitive, erstes, ende)` – Bezug sind die **glTF-Primitive** des Teils (der
+    Cooker fasst Primitive je Material zusammen und rechnet die Bereiche dann um; Hinweis engine 2026-10-03).
+  - Kleidungsstück, optional (F3h, abgestimmt mit engine 2026-10-03): `hides` = Liste von Rollen, die beim Tragen
+    ganz entfallen (`hair`, `beard`; Helme und Kapuzen: `["hair"]`). Es betrifft nur ganze Rollen, keine einzelnen
+    Stücke; bei mehreren getragenen Stücken gilt die **Vereinigung**. Lücken unter dem Stück sind Sache von figuren.
   - Berechnet von `gothar-chargen part-data` (reines Python; `gothar-chargen human` ruft es nach dem Bauen auf).
 - **Zusammenbau-Algorithmus** (assemble.py, auch für eine spätere C++-Umsetzung): Skelett und Skin vom Körper,
   Joints der anderen Teile über die Knochennamen umgehängt; Körper-Dreiecke aus allen `covers` des jeweiligen
   LOD entfernen; Halsring des Körpers auf den des Kopfes legen (Paarung: zyklische Verschiebung und Richtung mit
   kleinster Summe der Abstände), `falloff`-Vertices folgen mit Gewicht; Materialien nach Namen zusammenführen
-  (`skin.001` → `skin`), die Haut des Kopfes gilt für die ganze Figur; Palette als `baseColorFactor`.
+  (`skin.001` → `skin`), die Haut des Kopfes gilt für die ganze Figur; Palette als `baseColorFactor`; Rollen aus
+  der Vereinigung aller `hides` entfallen.
 
 ## 7. Monster
 

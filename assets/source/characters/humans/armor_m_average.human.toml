@@ -34,6 +34,9 @@ gloves_short = 1000
 gloves_medium = 1200
 leather_vest = 1500
 
+[retouch]  # the source's emblem on the chest (owner decision 2026-10-03): mail from the back panel
+mail_tunic = [[0.16, 0.24, 0.26, 0.345, 0.48, 0.0]]
+
 [derive.leather_vest]
 from = "clothes/elvs_crude_t-shirt_male/elvs_crude_t-shirt_male.mhclo"
 cut = ["upperarm", "lowerarm"]
