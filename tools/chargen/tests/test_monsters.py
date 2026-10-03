@@ -54,7 +54,7 @@ def codes(report, level="error"):
 
 
 def test_packaged_wolf_rig(wolf_rig):
-    assert packaged_species() == ["wolf"]
+    assert packaged_species() == ["keiler", "wolf"]
     assert wolf_rig.is_monster and wolf_rig.species == "wolf"
     assert set(MONSTER_REQUIRED) <= set(wolf_rig.names)
     assert len(wolf_rig.bones) <= wolf_rig.max_bones == 64
@@ -158,11 +158,28 @@ def test_invalid_monster_sets(data, message):
 # --- validation ----------------------------------------------------------------------------------
 
 
-def test_wolf_files_pass(wolf_rig, wolf_reference):
-    for path in (WOLF_REF, WOLF_ANIMS):
-        report = validate_gltf(Gltf.load(path), wolf_rig, wolf_reference, path=path)
+@pytest.mark.parametrize(("species", "bones"), [("wolf", 22), ("keiler", 25)])
+def test_monster_files_pass(species, bones):
+    folder = REPO_ROOT / "assets/source/characters/monsters" / species
+    ref_path = folder / f"rig/{species}_reference.glb"
+    rig, reference = load_rig(species=species), reference_pose(Gltf.load(ref_path))
+    for path in (ref_path, folder / f"anims/{species}.glb"):
+        report = validate_gltf(Gltf.load(path), rig, reference, path=path)
         assert report.ok(strict=True), report.issues
-    assert report.stats["bones"] == 22 and report.stats["clips"] == 12
+    assert report.stats["bones"] == bones and report.stats["clips"] == 12
+    spec = load_set_spec(species)
+    assert spec.rig == species and len(spec.names) == 12
+
+
+def test_keiler_rig():
+    rig = load_rig(species="keiler")
+    parents = rig.parents
+    # IK-target feet of the source hang below the lower legs; shoulder/hip bones above the legs
+    assert parents["front_foot_l"] == "front_lower_l" and parents["back_foot_r"] == "back_lower_r"
+    assert (
+        parents["front_upper_l"] == "front_shoulder_l" and parents["back_upper_r"] == "back_hip_r"
+    )
+    assert rig.height == pytest.approx(0.95, abs=0.01)
 
 
 def test_human_rig_rejects_wolf(rig, reference):
@@ -240,6 +257,7 @@ def test_orientation_and_height(wolf_rig, wolf_reference):
 
 
 def test_validate_command_picks_rig_per_file(capsys):
-    assert main(["validate", "--strict", str(WOLF_REF), str(WOLF_ANIMS)]) == 0
+    keiler = REPO_ROOT / "assets/source/characters/monsters/keiler/anims/keiler.glb"
+    assert main(["validate", "--strict", str(WOLF_REF), str(WOLF_ANIMS), str(keiler)]) == 0
     out = capsys.readouterr().out
-    assert "2 file(s), 0 failed" in out
+    assert "3 file(s), 0 failed" in out

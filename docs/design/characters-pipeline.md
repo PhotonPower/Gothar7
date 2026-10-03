@@ -261,9 +261,13 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 - `gothar-chargen monster <art> --sources DATA_ROOT\characters\monsters` (nur lokal): baut aus einer CC0-Quelle nach
   `data/monsters/<art>.build.toml` (Quelldatei, Blickrichtung, Höhe, Knochen-Zuordnung, Sockets, Aktionen) das
   Vertrags-Rig. Bewegungen werden als Verformungen im Weltraum aufgezeichnet und exakt übertragen; verschiebt die Quelle
-  Bein-Knochen (verboten), löst das Werkzeug die Beine als Zwei-Knochen-Kette (Füße landen auf der Quellposition) und
-  senkt notfalls das Becken. Ausgabe: Rig-TOML, Referenz-`.blend`/`.glb` und die Clip-Quelle `<art>_clips.blend`
-  (bleibt unter `DATA_ROOT`).
+  Bein-Knochen (verboten), löst das Werkzeug die Beine als Zwei-Knochen-Kette (Füße landen auf der Quellposition;
+  Schulter-/Hüftknochen darüber werden auf das Bein ausgerichtet) und senkt für Füße am Boden notfalls das Becken
+  (höchstens 7 % der Tierhöhe). Weitere Schlüssel der Build-Konfiguration: `parents` (Knochen umhängen, z. B.
+  IK-Ziel-Füße unter die Unterschenkel), `drop`, `colors` (Platzhalter-Farbe je Quell-Material), `orientation`.
+  Das Werkzeug meldet je Aktion Beckenabsenkung und Abweichung von Füßen und Gelenken. Quell-Animationen mit
+  dehnbarer IK (Beine werden länger) lassen sich mit starren Knochen nicht nachbilden – dann ableiten statt übernehmen.
+  Ausgabe: Rig-TOML, Referenz-`.blend`/`.glb` und die Clip-Quelle `<art>_clips.blend` (bleibt unter `DATA_ROOT`).
 - `gothar-chargen build-set <art>` baut die Clips aus `data/clips/<art>.toml` (`rig = "<art>"`). Rezepte für
   Platzhalter: `advance` (Schleife am Ort + Vorwärtsbewegung, optional schneller/weiter ausholend) und `keyposes`
   (benannte Posen an Schlüssel-Frames, weich überblendet, optional über einer Basis-Schleife). Feste Events stehen als
@@ -277,7 +281,7 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 | Art | Quelle (CC0) | Stand |
 |---|---|---|
 | `wolf` (Rudeltier) | Quaternius „Animated Animales Low Poly“ (Animal Pack Vol.2), Wolf | Rig 22 Knochen, 0,85 m, 622 Dreiecke; 12/12 Clips (Idle/Walking aus der Quelle, Rest `platzhalter-K`) |
-| `keiler` | Quaternius „Lowpoly Animated Farm Animal Pack“, Schwein | offen |
+| `keiler` | Quaternius „Lowpoly Animated Farm Animal Pack“, Schwein (dunkel eingefärbt) | Rig 25 Knochen (mit Schulter-/Hüftknochen), 0,95 m, 562 Dreiecke; 12/12 Clips (Idle/Walk/Death aus der Quelle, Rest `platzhalter-K`) |
 | `laufvogel` | Quaternius „5 Low poly animals“, Küken (vergrößert) | offen |
 
 ## 8. Ablauf pro Animation

@@ -355,7 +355,7 @@ Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source
 (9 Sets). Kein Mixamo (öffentliches Repo). F3 läuft: Baukasten-Werkzeuge stehen, Stil A (realistisch, Texturen) entschieden,
 Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag mit engine, erste Figur `farmer`; offen: weitere Körper/Köpfe
 (Morph-Targets). F5 läuft: Monster-Vertrag mit engine, Validator-Regeln und Werkzeuge stehen, erste Art `wolf` mit vollständigem
-Mindest-Set (Platzhalter); als Nächstes `keiler` und `laufvogel`.
+Mindest-Set (Platzhalter): `wolf`, `keiler`; als Nächstes `laufvogel`.
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
@@ -398,7 +398,7 @@ Mindest-Set (Platzhalter); als Nächstes `keiler` und `laufvogel`.
 
 ## F5 – Monster  (benötigt F1; für M9/M11)
 - [ ] CC0-Platzhalter für 3 Arten (Rudeltier, Keiler, Laufvogel)
-  - Stand: Monster-Vertrag mit engine (characters-pipeline.md §7.1); `wolf` fertig (Rig 22 Knochen, 0,85 m, 12/12 Clips des Mindest-Sets, Quaternius CC0 + Keyframe-Platzhalter); offen: `keiler`, `laufvogel` (je ein PR)
+  - Stand: Monster-Vertrag mit engine (characters-pipeline.md §7.1); `wolf` (Rig 22 Knochen, 0,85 m) und `keiler` (25 Knochen, 0,95 m) fertig, je 12/12 Clips des Mindest-Sets (Quaternius CC0 + Keyframe-Platzhalter); offen: `laufvogel`
 - [ ] Eigene Rigs + Mindest-Sets je Art, Design-Doku der Arten
 - [x] Validator-Regeln für Monster-Rigs – Rig je Art nach Pfad, Pflichtknochen, Ausrichtungs-Hinweise, Größe relativ zur Art, Clip-Modus = Art, `anim.root_motion` (s_walk/s_run vorwärts, t_turn_l/r drehen root); Werkzeuge `gothar-chargen monster`, Rezepte `advance`/`keyposes`
 

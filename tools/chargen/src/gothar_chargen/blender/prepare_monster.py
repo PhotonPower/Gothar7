@@ -79,19 +79,22 @@ def _record_poses(arm: bpy.types.Object, actions: dict[str, str], names: dict[st
 
 _TRANSLATED = ("root", "pelvis")  # the only bones with translation keys (contract §3/§7)
 _MOVED = 1e-4  # metres: a source bone head further off than this was translated
+_CONTACT = 0.05  # metres: a foot target this low stands on the ground and must be reached
+_MAX_DROP = 0.07  # share of the animal's height the pelvis may go down for that
 
 
-def _chain(arm: bpy.types.Object, bone: str) -> tuple[str, str] | None:
-    """bone -> (child, grandchild) when both are the only deforming children (a limb)."""
-    names = []
+def _chain(arm: bpy.types.Object, bone: str) -> list[str]:
+    """Up to three bones below `bone`, each the only deforming child of the one before (a limb:
+    upper, lower, foot – or, below a shoulder/hip bone, upper, lower, foot)."""
+    names: list[str] = []
     current = arm.data.bones[bone]
-    for _ in range(2):
+    while len(names) < 3:
         children = [c for c in current.children if c.use_deform]
         if len(children) != 1:
-            return None
+            break
         current = children[0]
         names.append(current.name)
-    return names[0], names[1]
+    return names
 
 
 def _two_bone(head: Vector, target: Vector, pole: Vector, upper: float, lower: float) -> Vector:
@@ -150,25 +153,49 @@ def _apply_pose(arm: bpy.types.Object, order: list[str], want: dict[str, tuple])
             bpy.context.view_layer.update()
             continue
         chain = _chain(arm, bone)
-        if (pb.head - head).length > _MOVED and chain and all(c in want for c in chain):
-            mid, end = chain
-            rest = arm.data.bones
-            upper = (rest[mid].head_local - rest[bone].head_local).length
-            lower = (rest[end].head_local - rest[mid].head_local).length
-            knee_was, foot = want[mid][0], want[end][0]
-            drop = max(drop, _drop_needed(pb.head, foot, (upper + lower) * 0.999))
-            knee = _two_bone(pb.head.copy(), foot, knee_was, upper, lower)
-            _place(arm, bone, _aim(rot, knee_was - head, knee - pb.head))
-            _place(arm, mid, _aim(want[mid][1], foot - knee_was, foot - knee))
-            _place(arm, end, want[end][1])
-            done.update(chain)
+        if (pb.head - head).length > _MOVED and len(chain) >= 2 and all(c in want for c in chain):
+            if len(chain) == 3 and "_foot_" in chain[2]:  # shoulder/hip: aim, solve the leg
+                _place(arm, bone, _aim(rot, want[chain[0]][0] - head, want[chain[0]][0] - pb.head))
+                bone, chain = chain[0], chain[1:]
+                pb = arm.pose.bones[bone]
+                head, rot = want[bone]
+            drop = max(drop, _solve_limb(arm, bone, chain[0], chain[1], want))
+            done.update(chain[:2])
         else:
             _place(arm, bone, rot)
     return drop
 
 
-def _rekey(arm: bpy.types.Object, poses: Poses, world: Matrix) -> list[bpy.types.Action]:
-    """Turns recorded deformations (mapped by `world`, the total transform) into actions."""
+def _solve_limb(
+    arm: bpy.types.Object, top: str, mid: str, end: str, want: dict[str, tuple]
+) -> float:
+    """Two-bone solve: `top` and `mid` turn so the head of `end` lands on its source position
+    (knee bent towards the source knee); `end` gets its source rotation. Returns the pelvis drop
+    this limb would need to reach – only for a foot on the ground; a leg stretched in the air
+    may fall a little short."""
+    rest = arm.data.bones
+    upper = (rest[mid].head_local - rest[top].head_local).length
+    lower = (rest[end].head_local - rest[mid].head_local).length
+    head = arm.pose.bones[top].head.copy()
+    top_was, knee_was, foot = want[top][0], want[mid][0], want[end][0]
+    knee = _two_bone(head, foot, knee_was, upper, lower)
+    _place(arm, top, _aim(want[top][1], knee_was - top_was, knee - head))
+    _place(arm, mid, _aim(want[mid][1], foot - knee_was, foot - knee))
+    _place(arm, end, want[end][1])
+    if foot.z > _CONTACT:
+        return 0.0
+    return _drop_needed(head, foot, (upper + lower) * 0.999)
+
+
+def _rekey(
+    arm: bpy.types.Object, poses: Poses, world: Matrix, max_drop: float
+) -> list[bpy.types.Action]:
+    """Turns recorded deformations (mapped by `world`, the total transform) into actions.
+
+    The pelvis goes down at most `max_drop` metres for legs that cannot reach (sources with
+    stretching IK would otherwise push the body into the ground). Prints per action the largest
+    pelvis drop and how far feet and other joints end up from their source positions.
+    """
     world_inv = world.inverted()
     order = [b.name for b in arm.data.bones]  # parents first
     for pb in arm.pose.bones:
@@ -177,6 +204,7 @@ def _rekey(arm: bpy.types.Object, poses: Poses, world: Matrix) -> list[bpy.types
     for name, frames in poses.items():
         action = bpy.data.actions.new(name)
         arm.animation_data.action = action
+        worst = {"drop": (0.0, "pelvis", 0), "feet": (0.0, "", 0), "other": (0.0, "", 0)}
         for frame, pose in enumerate(frames):
             want = {}
             for bone in pose:
@@ -184,10 +212,17 @@ def _rekey(arm: bpy.types.Object, poses: Poses, world: Matrix) -> list[bpy.types
                 loc, rot, _ = (world @ pose[bone] @ world_inv @ rest).decompose()
                 want[bone] = (loc, rot)
             drop = _apply_pose(arm, order, want)
+            drop = min(drop, max_drop)
+            worst["drop"] = max(worst["drop"], (drop, "pelvis", frame))
             if drop > 0.0 and "pelvis" in want:  # legs too short without the source's
                 head, rot = want["pelvis"]  # translated hips: lower the body instead
                 want["pelvis"] = (head - Vector((0.0, 0.0, drop)), rot)
                 _apply_pose(arm, order, want)
+            for bone, (head, _) in want.items():
+                kind = "feet" if "_foot_" in bone else "other"
+                off = (arm.pose.bones[bone].head - head).length
+                if bone != "pelvis" and off > worst[kind][0]:
+                    worst[kind] = (off, bone, frame)
             for bone in order:
                 if bone in pose:
                     pb = arm.pose.bones[bone]
@@ -198,6 +233,8 @@ def _rekey(arm: bpy.types.Object, poses: Poses, world: Matrix) -> list[bpy.types
             for kp in fc.keyframe_points:
                 kp.interpolation = "LINEAR"
         actions.append(action)
+        report = ", ".join(f"{k} {v[0] * 100:.1f} cm ({v[1]} @ {v[2]})" for k, v in worst.items())
+        print(f"[chargen] {name}: max {report}")
     arm.animation_data.action = None
     for pb in arm.pose.bones:
         pb.matrix_basis = Matrix.Identity(4)
@@ -228,13 +265,20 @@ def _transform(
     return applied
 
 
-def _rename_bones(arm: bpy.types.Object, drop: list[str], names: dict[str, str]) -> None:
+def _rename_bones(
+    arm: bpy.types.Object, drop: list[str], names: dict[str, str], parents: dict[str, str]
+) -> None:
+    """Removes constraints, re-parents (source names, e.g. IK-target feet onto the lower legs),
+    drops helper bones and renames the rest to the contract."""
     bpy.context.view_layer.objects.active = arm
     for pb in arm.pose.bones:
         for c in list(pb.constraints):
             pb.constraints.remove(c)
     bpy.ops.object.mode_set(mode="EDIT")
     eb = arm.data.edit_bones
+    for child, parent in parents.items():
+        eb[child].parent = eb[parent]
+        eb[child].use_connect = False
     for name in drop:
         if name in eb:
             eb.remove(eb[name])
@@ -295,8 +339,20 @@ def _export(objects: list[bpy.types.Object], path: Path, animations: bool) -> No
     print(f"[chargen] wrote {path}")
 
 
+_ORIENTATION = {
+    "up": ["root", "head"],
+    "forward": ["pelvis", "head"],
+    "left": ["front_foot_r", "front_foot_l"],
+}
+
+
 def _write_rig(
-    arm: bpy.types.Object, art: str, height: float, sockets: set[str], path: Path
+    arm: bpy.types.Object,
+    art: str,
+    height: float,
+    sockets: set[str],
+    path: Path,
+    orientation: dict[str, list[str]],
 ) -> None:
     lines = [
         f'# Monster rig "{art}" (contract, characters-pipeline.md §7), generated by',
@@ -315,9 +371,7 @@ def _write_rig(
         'required = ["root", "pelvis", "neck_01", "head", "socket_mouth"]',
         "",
         "[rig.orientation]          # pairs (a, b): direction a -> b points mainly along the axis",
-        'up = ["root", "head"]',
-        'forward = ["pelvis", "head"]',
-        'left = ["front_foot_r", "front_foot_l"]',
+        *(f'{axis} = ["{a}", "{b}"]' for axis, (a, b) in orientation.items()),
         "",
     ]
 
@@ -353,6 +407,17 @@ def _write_rig(
     print(f"[chargen] wrote {path}")
 
 
+def _set_color(material: bpy.types.Material, hex_color: str) -> None:
+    """Base colour of a placeholder material from "#rrggbb" (sRGB)."""
+    srgb = [int(hex_color[i : i + 2], 16) / 255.0 for i in (1, 3, 5)]
+    linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in srgb]
+    material.diffuse_color = (*linear, 1.0)
+    if material.node_tree:
+        for node in material.node_tree.nodes:
+            if node.type == "BSDF_PRINCIPLED":
+                node.inputs["Base Color"].default_value = (*linear, 1.0)
+
+
 def main() -> None:
     args = _parse_args()
     cfg = tomllib.loads(args.config.read_text(encoding="utf-8"))
@@ -367,16 +432,18 @@ def main() -> None:
     poses = _record_poses(arm, cfg["actions"], cfg["bones"])
     for a in list(bpy.data.actions):
         bpy.data.actions.remove(a)
-    _rename_bones(arm, cfg.get("drop", []), cfg["bones"])
+    _rename_bones(arm, cfg.get("drop", []), cfg["bones"], cfg.get("parents", {}))
     applied = _transform(arm, mesh, cfg["forward"], float(cfg["height"]))
     shift = _add_root_and_sockets(arm, mesh, sockets)
     scale = applied.to_scale().x
-    actions = _rekey(arm, poses, shift @ applied)
+    actions = _rekey(arm, poses, shift @ applied, _MAX_DROP * float(cfg["height"]))
 
     arm.name = arm.data.name = f"{art}_reference"
     mesh.name = mesh.data.name = "body"
     for slot in mesh.material_slots:
         if slot.material:
+            if slot.material.name in cfg.get("colors", {}):
+                _set_color(slot.material, cfg["colors"][slot.material.name])
             slot.material.name = cfg.get("material", "fur")
     bpy.context.scene.render.fps = FPS
 
@@ -396,7 +463,8 @@ def main() -> None:
     )
     _export([arm, mesh], rig_dir / f"{art}_reference.glb", animations=False)
     height = max((mesh.matrix_world @ v.co).z for v in mesh.data.vertices)
-    _write_rig(arm, art, height, set(sockets), args.rig_out)
+    orientation = {**_ORIENTATION, **cfg.get("orientation", {})}
+    _write_rig(arm, art, height, set(sockets), args.rig_out, orientation)
     print(f"[chargen] {art}: scale {scale:.4f}, height {height:.3f} m, {len(arm.data.bones)} bones")
 
 
