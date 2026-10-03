@@ -2,7 +2,7 @@
   "format": "gothar-marktbrunnen",
   "version": 1,
   "status": "festgelegt – Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Modell des Projektinhabers übernehmen, an 1700 anpassen",
-  "note": "Quelle: eigenes Modell des Projektinhabers (marktbrunnen/marktbrunnen_quelle.glb, aus eigenem Foto mit Claude Design). Das Blender-Skript blender/marktbrunnen/build_marktbrunnen.py bearbeitet es reproduzierbar; von Hand wird nichts korrigiert. Maße gemessen an der Quelle (Ursprung Boden-Mitte, y oben, Ecken des Achtecks auf den Achsen).",
+  "note": "Quelle: eigenes Modell des Projektinhabers (marktbrunnen/marktbrunnen_quelle.glb, aus eigenem Foto mit Claude Design). Das Blender-Skript blender/marktbrunnen/build_marktbrunnen.py bearbeitet es reproduzierbar; von Hand wird nichts korrigiert. Maße gemessen an der Quelle (Ursprung Boden-Mitte, y oben, Ecken des Achtecks auf den Achsen). Bodenregel (Entscheidung Projektinhaber 2026-10-03): auf dem höchsten Gelände unter der unteren Stufe; der Platz darunter wird eingeebnet (pad, 3 m Übergang).",
   "source": "marktbrunnen/marktbrunnen_quelle.glb",
   "remove": ["konifere_", "busch_", "brunnenroehren"],
   "decimate": {"statue_knight": 0.45, "saeulenschaft": 0.25, "volute_": 0.4},
@@ -18,5 +18,6 @@
     "trough": {"outer": 2.641, "inner": 2.44, "y0": 0.36, "y1": 1.28},
     "prisms": [{"radius": 0.966, "y0": 0.36, "y1": 1.14}, {"radius": 0.42, "y0": 1.14, "y1": 6.1}]
   },
-  "sinkM": 0.02
+  "sinkM": 0.02,
+  "padFadeM": 3.0
 }

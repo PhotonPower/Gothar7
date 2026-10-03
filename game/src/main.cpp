@@ -50,6 +50,7 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --no-sun                no sunlight
   --walk=<route.json>     autopilot: the player runs the route, then the game exits (with --world)
   --walk-out=<dir>        where the autopilot writes walk.jsonl, walk_summary.json and screenshots
+  --script-api=<file.md>  write the Lua API reference (docs/script-api.md) and exit, headless
 
 Details: docs/05-build.md
 )";
@@ -77,6 +78,7 @@ struct CommandLine
     std::optional<g7::u64> frames;
     std::optional<g7::u64> maxFps;
     g7::StartView view;
+    std::string scriptApi;
 };
 
 std::optional<CommandLine> parseCommandLine(int argc, char** argv)
@@ -156,6 +158,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg.starts_with("--walk-out="))
         {
             cli.walkOut = std::string(arg.substr(11));
+        }
+        else if (arg.starts_with("--script-api="))
+        {
+            cli.scriptApi = std::string(arg.substr(13));
         }
         else if (arg == "--editor")
         {
@@ -409,6 +415,21 @@ int main(int argc, char** argv)
     {
         G7_LOG_FATAL("game", "engine init failed: {}", result.error().message);
         return EXIT_FAILURE;
+    }
+    if (!cli->scriptApi.empty())
+    {
+        // The reference of every engine function and event scripts can use (CI: game.script_api).
+        const std::string markdown = engine.scriptApiMarkdown();
+        if (auto written = g7::fs::writeFile(
+                g7::fs::fromUtf8(cli->scriptApi),
+                std::span(reinterpret_cast<const g7::u8*>(markdown.data()), markdown.size()));
+            !written)
+        {
+            G7_LOG_FATAL("game", "--script-api: {}", written.error().message);
+            return EXIT_FAILURE;
+        }
+        G7_LOG_INFO("game", "script API written to {}", cli->scriptApi);
+        return EXIT_SUCCESS;
     }
     // Editor mode (docs/modules/tools.md): the same engine with the editor as a tool.
     std::optional<g7::editor::Editor> editor;

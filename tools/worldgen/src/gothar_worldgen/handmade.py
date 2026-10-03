@@ -80,6 +80,51 @@ def save(path: Path, doc: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
+def garden_plan(spec: dict[str, Any], height: Any) -> dict[str, Any] | None:  # noqa: ANN401
+    """Level terraces, walls and stairs of the castle garden from the DGM (``garden_terraces``)."""
+    from gothar_worldgen.garden_terraces import plan
+
+    geo = schloss_geometry()
+    lay = geo.garden_layout(spec)
+    if lay is None or "railing" not in lay["spec"]:
+        return None
+    return plan(lay["wing"], height, lay["spec"]["railing"])
+
+
+WING_F = (0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.0)  # terrain samples along each wing, ends included
+
+
+def with_wing_terrain(spec: dict[str, Any], height: Any) -> dict[str, Any]:  # noqa: ANN401
+    """Copy of the castle spec with each wing's ground measured from the DGM: per side, at the
+    ``WING_F`` fractions, the highest ground 0.5..1.5 m in front of the wall within 1 m along it
+    (so the stone socle reaches the ground also where the slope rises at the ends)."""
+    geo = schloss_geometry()
+    wings = []
+    for ws in spec["wings"]:
+        w = geo.Wing(ws)
+        terrain: dict[str, Any] = {"f": list(WING_F)}
+        for side, key in ((1, "court"), (-1, "garden")):
+            vals = []
+            for f in WING_F:
+                s0 = f * w.length
+                samples = []
+                for ds in (-1.0, 0.0, 1.0):
+                    for dt in (0.5, 1.0, 1.5):
+                        x, _, z = w.p(min(max(s0 + ds, 0.0), w.length), side * (w.half + dt), 0)
+                        samples.append(height(x, z))
+                vals.append(round(max(samples), 2))
+            terrain[key] = vals
+        wings.append({**ws, "terrain": terrain})
+    return {**spec, "wings": wings}
+
+
+def with_garden_plan(spec: dict[str, Any], garden: dict[str, Any] | None) -> dict[str, Any]:
+    """Copy of the castle spec with the terrace plan for the Blender script."""
+    if garden is None:
+        return spec
+    return {**spec, "garden": {**spec["garden"], "terracePlan": garden}}
+
+
 def schloss_item(spec: dict[str, Any], mesh: str) -> dict[str, Any]:
     """handmade.json entry of the castle: position, replaced ids, footprints (wings, tower)."""
     geo = schloss_geometry()
@@ -99,7 +144,18 @@ def schloss_item(spec: dict[str, Any], mesh: str) -> dict[str, Any]:
     splat = geo.garden_splat(spec)
     if splat:
         item["splat"] = splat  # garden: gravel paths, lawn beds (export-terrain)
+    garden = spec.get("garden", {}).get("terracePlan")
+    if garden:
+        item["pads"] = garden["pads"]  # level terraces in the heightmap (export-terrain)
+        item["terraces"] = [
+            {"key": tr["key"], "s": tr["s"], "y": tr["y"]} for tr in garden["terraces"]
+        ]
     return item
+
+
+def pads(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    """Heightmap pads of all hand-made objects (level ground under them)."""
+    return [pad for item in doc.get("items", []) for pad in item.get("pads", [])]
 
 
 def put_item(doc: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
@@ -149,15 +205,21 @@ def marktbrunnen_geometry() -> ModuleType:
     return module
 
 
-def marktbrunnen_item(spec: dict[str, Any], mesh: str, ground_min: float) -> dict[str, Any]:
+def marktbrunnen_item(spec: dict[str, Any], mesh: str, ground_max: float) -> dict[str, Any]:
     """handmade.json entry of the fountain: at the world origin (the model's origin is the
-    fountain's foot centre), on the lowest ground under the lower step, sunk by ``sinkM``."""
+    fountain's foot centre). Ground rule of the hand-made models: on the highest ground under the
+    lower step; a pad levels the square under it to that height (``sinkM`` above the foot, so the
+    step sits a little in it) and blends into the square over ``padFadeM``."""
     r = max(float(st["radius"]) for st in spec["collision"]["steps"])
     angles = [math.radians(45 * k) for k in range(8)]
     ring = [[round(r * math.cos(a), 2), round(r * math.sin(a), 2)] for a in angles]
-    y = round(ground_min - float(spec.get("sinkM", 0.0)), 3)
+    y = round(ground_max, 3)
+    pad_r = r + 0.3
+    pad = [[round(pad_r * math.cos(a), 2), round(pad_r * math.sin(a), 2)] for a in angles]
     return {"key": "marktbrunnen", "mesh": mesh, "pos": [0.0, y, 0.0], "replaces": [],
-            "footprints": [ring]}  # fmt: skip
+            "footprints": [ring],
+            "pads": [{"polygon": pad, "y": round(y + float(spec.get("sinkM", 0.0)), 3),
+                      "fadeM": float(spec.get("padFadeM", 3.0))}]}  # fmt: skip
 
 
 def splat_areas(doc: dict[str, Any]) -> list[dict[str, Any]]:

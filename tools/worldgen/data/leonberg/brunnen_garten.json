@@ -1,0 +1,45 @@
+{
+  "format": "gothar-owner-model",
+  "version": 1,
+  "key": "brunnen_garten",
+  "status": "festgelegt – Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Modell des Projektinhabers übernehmen, per Skript anpassen",
+  "note": "Zwei kleine Brunnen in der Mitte der Parterre-Hälften, eigene Arbeit des Projektinhabers (Claude Design); ein Modell, zweimal eingesetzt",
+  "source": "brunnen_garten/brunnen_garten_quelle.glb",
+  "remove": [],
+  "decimate": {
+    "relief_": 0.3,
+    "spout_pipe": 0.15,
+    "finial_ball": 0.12,
+    "bowl_": 0.4,
+    "pedestal_neck": 0.4,
+    "ball_neck": 0.4,
+    "water_surface": 0.3,
+    "paving_": 0.5
+  },
+  "materials": {
+    "water": "water"
+  },
+  "budgetTriangles": 4000,
+  "collision": [
+    {
+      "nodes": [
+        "paving_disc",
+        "paving_step"
+      ],
+      "shape": "prism",
+      "belowM": 0.5
+    },
+    {
+      "nodes": [
+        "bowl"
+      ],
+      "shape": "prism"
+    },
+    {
+      "nodes": [
+        "pillar"
+      ],
+      "shape": "prism"
+    }
+  ]
+}

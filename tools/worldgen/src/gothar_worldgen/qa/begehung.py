@@ -514,6 +514,8 @@ def run(
     """The whole walkthrough as one report (``generated/begehung.json``)."""
     import json
 
+    from gothar_worldgen.qa.grounding import check_world
+
     world = json.loads(world_path.read_text(encoding="utf-8"))
     ch = Character.load(movement)
     grid = game_grid(world, assets)
@@ -539,4 +541,5 @@ def run(
         "slopes": slopes(streets, grid, area, ch, LIMITS),
         "doors": door_steps(buildings, index, streets, grid, area, LIMITS),
         "citywall": citywall(rules, wall.get("stats", {}), ch),
+        "grounding": [vars(r) | {"ok": r.ok} for r in check_world(world, assets, grid)],
     }

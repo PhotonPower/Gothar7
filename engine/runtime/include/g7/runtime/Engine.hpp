@@ -35,6 +35,7 @@
 #include <g7/runtime/FrameTimes.hpp>
 #include <g7/runtime/SceneFile.hpp>
 #include <g7/runtime/StartView.hpp>
+#include <g7/script/ScriptVm.hpp>
 #include <g7/ui/DebugUi.hpp>
 #include <g7/world/DayCycle.hpp>
 #include <g7/world/GameTime.hpp>
@@ -93,6 +94,11 @@ namespace animation
 {
 struct AnimGraph;
 }
+namespace script
+{
+class ScriptVm;
+class Value;
+} // namespace script
 struct AnimatedFigure; // animated figures (EngineFigure.cpp)
 struct PlayerFigure;   // the animated hero
 struct Creature;       // an animal (EngineCreatures.cpp)
@@ -348,6 +354,21 @@ public:
     [[nodiscard]] std::string_view creatureState(u32 id) const noexcept;
     [[nodiscard]] std::optional<Vec3> creaturePosition(u32 id) const;
     [[nodiscard]] f32 creatureYaw(u32 id) const noexcept;
+
+    /// Scripts (M7): runs a console line (Lua; an expression shows its value) and adds it with its result to
+    /// the console; also for tests and tools.
+    Result<script::Value> runConsoleLine(std::string_view line);
+    [[nodiscard]] const std::vector<std::string>& consoleLines() const noexcept;
+    void setConsoleOpen(bool open) noexcept;
+    [[nodiscard]] bool consoleOpen() const noexcept { return m_consoleOpen; }
+    /// The script VM of the session (nullptr before init).
+    [[nodiscard]] const script::ScriptVm* scripts() const noexcept;
+    /// docs/script-api.md: every engine function and event scripts can use.
+    [[nodiscard]] std::string scriptApiMarkdown() const;
+    /// Loads the changed scripts again (also done by itself in development builds); the story variables stay.
+    void reloadScripts();
+    /// Items placed by `insert` since the start (tests).
+    [[nodiscard]] u32 insertedItemCount() const noexcept { return m_insertedItems; }
     /// True while the player climbs a ledge (input is ignored until it stands on top).
     [[nodiscard]] bool playerClimbing() const noexcept { return m_climb.has_value(); }
     /// Swimming or diving (gameplay::WaterMode::Land on land), and the air left under water.
@@ -414,6 +435,17 @@ private:
     // Animals (EngineCreatures.cpp)
     void fixedUpdateCreatures(f32 seconds);
     void drawCreatures(bool shadow, u32 cascade);
+    [[nodiscard]] Result<u32> spawnAnimated(std::string_view label, std::string_view model,
+                                            std::string_view graph, const Vec3& feet, f32 yaw);
+    // Scripts (EngineScripts.cpp)
+    void mountScripts();
+    [[nodiscard]] Result<void> initScripts();
+    void bindEngineFunctions();
+    void updateScripts(f64 realSeconds);
+    [[nodiscard]] std::string scriptStamp() const;
+    [[nodiscard]] Result<void> insertInstance(std::string_view name, u32 count);
+    void consolePrint(std::string line);
+    void consoleUi();
     void creaturesUi();
     [[nodiscard]] Creature* creature(u32 id) noexcept;
     [[nodiscard]] const Creature* creature(u32 id) const noexcept;
@@ -560,11 +592,20 @@ private:
     std::unique_ptr<PlayerFigure> m_figure;             // animated hero (M6)
     std::vector<std::unique_ptr<Creature>> m_creatures; // animals (M6 D3, until M9)
     u32 m_nextCreatureId = 1;
-    std::string m_creatureSpecies = "wolf"; // debug UI choice
-    f32 m_figureExpressionWeight = 1.0f;    // debug UI slider
-    bool m_physicsDirty = true;             // set together with m_cullGridDirty and on terrain changes
-    std::vector<u32> m_cullCandidates;      // per pass, reused
-    bool m_multiDraw = true;                // [render] multi_draw: batches instead of one draw per mesh
+    std::string m_creatureSpecies = "wolf";                   // debug UI choice
+    std::unique_ptr<script::ScriptVm> m_scripts;              // Lua of the game session (M7)
+    std::vector<std::unique_ptr<LoadedModel>> m_scriptModels; // placeholders of inserted items
+    u32 m_insertedItems = 0;
+    std::string m_scriptStamp; // newest script changes seen (hot reload)
+    f64 m_scriptReloadTimer = 0.0;
+    bool m_consoleOpen = false;
+    bool m_consoleFocus = false; // give the input the keyboard on the next console frame
+    std::vector<std::string> m_consoleLines;
+    std::vector<std::string> m_consoleHistory;
+    f32 m_figureExpressionWeight = 1.0f; // debug UI slider
+    bool m_physicsDirty = true;          // set together with m_cullGridDirty and on terrain changes
+    std::vector<u32> m_cullCandidates;   // per pass, reused
+    bool m_multiDraw = true;             // [render] multi_draw: batches instead of one draw per mesh
     std::vector<render::MeshDrawItem> m_drawItems; // per pass, reused
     FrameTimes m_benchmarkTimes;
     std::vector<FrameTimeSummary> m_benchmarkResults;

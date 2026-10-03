@@ -1,0 +1,98 @@
+{
+  "format": "gothar-owner-model",
+  "version": 1,
+  "key": "kirche",
+  "status": "festgelegt – Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Modell des Projektinhabers übernehmen, per Skript anpassen; K1 mittig, Gläser und oranges Dach bleiben",
+  "note": "Leonberger Stadtkirche, eigene Arbeit des Projektinhabers (Claude Design); ersetzt das geschützte LoD2-Gebäude DEBW_00100061Zjs",
+  "source": "kirche/kirche_quelle.glb",
+  "remove": [],
+  "decimate": {
+    "*_tracery": 0.22,
+    "*_frame": 0.24,
+    "*_glass": 0.4,
+    "*_mullion": 0.5,
+    "clock_ring": 0.25,
+    "gallery_baluster": 0.25,
+    "finial_": 0.3,
+    "pinnacle_": 0.4,
+    "tower_quoin": 0.5,
+    "clock_face": 0.4
+  },
+  "materials": {
+    "sandstone": "stone",
+    "plaster": "plaster_white"
+  },
+  "budgetTriangles": 15000,
+  "replaces": [
+    "DEBW_00100061Zjs"
+  ],
+  "placement": {
+    "lod2": "DEBW_00100061Zjs",
+    "rotDeg": 0.25,
+    "x": -139.03,
+    "z": -48.41,
+    "note": "Entscheidung K1 (Projektinhaber 2026-10-03): mittig auf den LoD2-Grundriss gesetzt (Mitte des kleinsten Rechtecks), Drehung 0,25 Grad; beide Enden je rund 5 m kürzer als das LoD2-Gebäude. Höhe nach der Bodenregel: Boden auf dem höchsten Gelände unter dem Grundriss, darunter ein Fundament aus Stein"
+  },
+  "collision": [
+    {
+      "nodes": [
+        "nave_walls",
+        "west_gable"
+      ],
+      "shape": "box"
+    },
+    {
+      "nodes": [
+        "choir_walls"
+      ],
+      "shape": "box"
+    },
+    {
+      "nodes": [
+        "aisle_walls"
+      ],
+      "shape": "box"
+    },
+    {
+      "nodes": [
+        "porch_walls",
+        "porch_roof"
+      ],
+      "shape": "box"
+    },
+    {
+      "nodes": [
+        "tower_shaft",
+        "tower_plinth"
+      ],
+      "shape": "box",
+      "belowM": 0.5
+    },
+    {
+      "nodes": [
+        "octagon_stage"
+      ],
+      "shape": "prism"
+    },
+    {
+      "nodes": [
+        "buttress_n",
+        "buttress_c"
+      ],
+      "shape": "box",
+      "per": "instance"
+    }
+  ],
+  "foundation": {
+    "nodes": [
+      "nave_walls",
+      "choir_walls",
+      "aisle_walls",
+      "tower_shaft",
+      "tower_plinth",
+      "porch_walls",
+      "west_gable"
+    ],
+    "belowM": 0.3
+  }
+}

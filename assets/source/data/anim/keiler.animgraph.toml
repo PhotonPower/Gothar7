@@ -22,8 +22,8 @@ blend = "speed"
 root_motion = true
 points = [
     { value = 0.0, clip = "keiler/s_idle" },
-    { value = 0.80, clip = "keiler/s_walk" },
-    { value = 1.65, clip = "keiler/s_run" },
+    { value = 0.65, clip = "keiler/s_walk" },
+    { value = 1.33, clip = "keiler/s_run" },
 ]
 
 [[state]]

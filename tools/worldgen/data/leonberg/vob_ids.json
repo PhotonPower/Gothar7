@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 1920,
+ "nextVobId": 1925,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -1921,6 +1921,11 @@
   "start:START_BG_TOR_OBEN": 1916,
   "start:START_BG_TUER_IM_BODEN": 1917,
   "start:START_BG_SPALT": 1918,
-  "handmade:marktbrunnen": 1919
+  "handmade:marktbrunnen": 1919,
+  "handmade:garten_gelaender": 1920,
+  "handmade:gartenbrunnen_o": 1921,
+  "handmade:gartenbrunnen_w": 1922,
+  "handmade:obeliskbrunnen": 1923,
+  "handmade:kirche": 1924
  }
 }

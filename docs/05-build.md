@@ -143,6 +143,8 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |
 | `--walk=<route.json>` | Autopilot: die Spielfigur läuft die Route ab (mit `--world`), schreibt Protokoll und Screenshots, beendet sich (`docs/modules/tools.md`); mit `--no-render` ohne Grafikgerät und ohne Bilder |
 | `--walk-out=<ordner>` | Ausgabeordner des Autopiloten (Vorgabe `walk/`) |
+| `--script-api=<datei.md>` | Lua-Referenz (`docs/script-api.md`) aus den Bindings der Engine schreiben und beenden; zusammen mit `--smoke-test` ohne Fenster. ctest `game.script_api` prüft, dass die Datei aktuell ist |
+| (Taste ^) | Skript-Konsole ein/aus (Aktion `console`): Lua-Zeilen mit Verlauf (Pfeil hoch/runter), z. B. `insert("it_apple", 3)`, `insert("npc_gate_guard")`, `teleport("START_MARKTPLATZ")`, `time(18, 30)`, `where()` |
 | (Taste F1) | ImGui-Debugfenster ein/aus (Aktion `debug_ui`): Leistung, Kamera, Render-Einstellungen live |
 | (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Kamera (Position, Gier, Neigung), Achsen, Raster, Bounds, Lichtradien, Spielfigur (Zylinder, Zustand, Tempo) |
 | (Taste F3) | Flugmodus ein/aus (Aktion `debug_fly`): freie Kamera ohne Kollision, Maus-Blick (solange das Debug-UI zu ist), W/A/S/D bzw. Pfeiltasten, Leertaste/E hoch, Strg/Q runter, Shift schnell, Mausrad ändert die Fluggeschwindigkeit (0,5–500 m/s); die Tasten zeigt ein Hinweis unten im Bild. Belegung `fly_*` in `engine.toml` |
@@ -209,6 +211,6 @@ Standard-Runnern sind damit kostenlos.
 | EnTT 3.16 (MIT) | `entt` (ADR 0005) | world (öffentlich; Registry nicht in der API) | M4 |
 | nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world_format (privat, Weltformat `.g7world`), tools/walk (privat, Routen und Protokoll) | M4 |
 | Jolt Physics 5.6 (MIT) | `joltphysics` (ADR 0004; `nodeps`: FetchContent v5.6.0 mit SHA256) | physics (privat) | M5 |
-| Lua 5.4 + sol2 | `lua`, `sol2` | script | M7 |
+| Lua 5.4.7 (MIT) + sol2 3.5.0 (MIT) | `lua` (per `overrides` auf 5.4.7, die Baseline brächte 5.5), `sol2` (ADR 0006; `nodeps`: FetchContent mit SHA256) | script (privat) | M7 |
 | miniaudio | `miniaudio` | audio | M13 |
 | Tracy | `tracy` | core | M17 |
