@@ -59,6 +59,11 @@ events = [
     { frame = 23, event = "land" },
 ]
 
+[clips."none/t_pickup_ground"]
+events = [
+    { frame = 36, event = "pickup" },
+]
+
 [clips."none/t_turn_l"]
 events = [
     { frame = 18, event = "footstep_r" },

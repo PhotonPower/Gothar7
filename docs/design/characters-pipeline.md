@@ -166,6 +166,30 @@ events = [
 - **Unbekannte Event-Namen** erzeugen in der Engine eine Warnung, keinen Fehler – neue Events dürfen vorab
   eingetragen werden. Dateien mit `version` > 1 lehnt die Engine ab.
 
+### 3.1 Mobs: Slots, Clips, Events (Vertrag engine–figuren–welt, Schiedsentscheidung Koordinator 2026-10-04)
+
+- **Datei** `assets/source/data/mobs.toml` (Version 1, gehört engine; figuren legt sie an und pflegt die Slots,
+  welt kann Werte vorschlagen). Je Mob-Typ (= Name der Mob-Definition, `components.mob.definition` im Vob):
+  `clips = "mob/<typ>"`, `enter`/`loop`/`leave` (Clipnamen ohne Präfix, leer = keiner), `extra` (weitere Schleifen),
+  `[[mobs.<typ>.slots]]` mit `name`, `pos` (Fußpunkt der Figur in Mob-Metern) und `facing` (waagrechter
+  Richtungsvektor der Blickrichtung). Die Engine wählt den nächsten freien Slot, richtet die Figur aus
+  (Toleranz 5 cm / 10°, dann exakt) und spielt `enter`.
+- **Achsen:** Y oben, Mob-Ursprung am Boden, Vorderseite des Mobs +Z – die Figur steht davor und blickt nach −Z.
+- **Clips** (`anims/human/mob.glb`, Set `mob`): Truhe `t_open`/`s_open`/`t_close` + `extra.picklock = s_picklock`;
+  Amboss `t_start`/`s_work`/`t_stop`; Bett `t_lie_down`/`s_lie`/`t_stand_up` – **Root Motion nur hier** (aufs
+  Bett und zurück, im Mob-Raum; die Engine schaltet die Kollision der Figur dabei ab); Tür `t_open` (auch zum
+  Schließen, Slots `front`/`back`). Ohne Mob (Set `none`): `t_pickup_ground`, `t_pickup_high`, `t_eat`,
+  `t_drink`, `t_read_scroll`, `t_pickpocket`.
+- **Events:** `pickup` (Hand am Gegenstand: die Engine nimmt ihn aus der Welt an `hand_r`), `use` (Wirkmoment
+  Essen/Trinken/Lesen), `open`/`close` (Deckel oder Tür bewegt sich), `hit_anvil` (Hammer trifft) +
+  `sound:anvil_hit`, `lie`/`stand` (Bett), `item_from_hand` (Gegenstand verschwindet), optional `picklock_l/r`.
+  Fehlt ein Event, nimmt die Engine die Mitte des `t_`-Clips.
+- **Mob-Modelle (welt):** Tür = Türblatt, Ursprung an der Angel unten, die Engine dreht den ganzen Mob um +Y;
+  Truhe mit Knoten `MOB_LID`, Pivot am Scharnier (Drehung um seine X-Achse). Testmaße: Truhe 0,9×0,6×0,6 m,
+  Amboss Arbeitshöhe 0,8 m, Bett 2,0×0,9 m (Liegefläche 0,45 m), Türklinke 1,0 m.
+- **Gegenstände (`items/<id>.glb`, F6):** Ursprung = Griffpunkt; Item-+Y auf Socket-+Y (aus der Faust zur Klinge
+  bzw. Spitze), Item-+Z auf Socket-+Z; die Engine übernimmt die volle Drehung des Sockets.
+
 **Animationskanäle (Vertrag):** Clips enthalten **Rotation** für beliebige Knochen, **Translation nur für
 `root` und `pelvis`** (Root Motion bzw. Hüfthöhe) und **keine Skalierung** – so behält jede Figur ihre eigenen
 Knochenlängen. Root Motion wertet die Engine im Raum des Armatur-Knotens aus. `gothar-chargen export` entfernt

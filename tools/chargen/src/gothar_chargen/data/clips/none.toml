@@ -156,3 +156,10 @@ params = { frames = 40 }
 name = "none/t_slide"
 blend = ["none/s_run", "none/s_slide"]
 frames = 12
+
+# --- item use (Prio B, M8; placeholders from Quaternius UAL2, replace with mocap in F4) ---
+
+[[clip]]
+name = "none/t_pickup_ground"
+from = "ual2:Farm_Harvest"
+markers = { pickup = 36 }
