@@ -42,7 +42,19 @@ if(NOT zstd_FOUND)
     add_library(zstd::libzstd ALIAS libzstd_static)
 endif()
 
-g7_add_module(asset DEPS core PRIVATE_LIBS fastgltf::fastgltf g7_stb zstd::libzstd)
+# nlohmann-json (ADR 0017) reads the assembly data of figure parts (asset.extras.gothar, M6 D2); world_format
+# and tools/walk use the same target.
+find_package(nlohmann_json CONFIG QUIET)
+if(NOT nlohmann_json_FOUND AND NOT TARGET nlohmann_json::nlohmann_json)
+    message(STATUS "nlohmann-json nicht gefunden - lade v3.12.0 per FetchContent")
+    FetchContent_Declare(nlohmann_json
+        URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+        URL_HASH SHA256=42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa
+        SYSTEM)
+    FetchContent_MakeAvailable(nlohmann_json)
+endif()
+
+g7_add_module(asset DEPS core PRIVATE_LIBS fastgltf::fastgltf g7_stb zstd::libzstd nlohmann_json::nlohmann_json)
 
 # libktx comes with vcpkg only (KTX-Software is too large for FetchContent): the nodeps preset
 # builds without KTX2 support and decodeKtx2() reports that (ADR 0016).

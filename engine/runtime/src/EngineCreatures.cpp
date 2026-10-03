@@ -1,0 +1,381 @@
+// Animals (M6 part D3): wolf, keiler and laufvogel as animated figures for tests and the debug UI - moved by
+// the root motion of their clips, standing on the ground (a ray down, no capsule). Behaviour, collision and
+// monster vobs in worlds come with M9.
+
+#include "PlayerFigure.hpp"
+
+#include <g7/core/Log.hpp>
+#include <g7/gameplay/Movement.hpp>
+#include <g7/runtime/Engine.hpp>
+
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <format>
+
+namespace g7
+{
+namespace
+{
+constexpr std::array<std::string_view, 3> kSpecies = {"wolf", "keiler", "laufvogel"};
+constexpr usize kShownEvents = 6;
+
+/// The showcase: every action in turn, for checking the clips (figuren).
+struct ShowcaseStep
+{
+    std::string_view label;
+    f32 seconds;
+};
+constexpr std::array<ShowcaseStep, 13> kShowcase = {{
+    {"walk", 3.0f},
+    {"run", 2.5f},
+    {"stand", 1.0f},
+    {"turn left", 1.5f},
+    {"turn right", 1.5f},
+    {"attack 1", 1.5f},
+    {"attack 2", 1.5f},
+    {"threaten", 2.0f},
+    {"hit", 1.2f},
+    {"eat", 3.0f},
+    {"sleep", 3.5f},
+    {"die", 3.0f},
+    {"revive", 0.5f},
+}};
+
+Mat4 creatureMatrix(const Vec3& feet, f32 yaw)
+{
+    // Models face +Z, yaw 0 looks along -Z: half a turn more (as the player).
+    return glm::translate(Mat4(1.0f), feet) * glm::rotate(Mat4(1.0f), yaw + glm::pi<f32>(), Vec3(0, 1, 0));
+}
+} // namespace
+
+Creature* Engine::creature(u32 id) noexcept
+{
+    const auto it =
+        std::find_if(m_creatures.begin(), m_creatures.end(), [&](const auto& c) { return c->id == id; });
+    return it == m_creatures.end() ? nullptr : it->get();
+}
+
+const Creature* Engine::creature(u32 id) const noexcept
+{
+    const auto it =
+        std::find_if(m_creatures.begin(), m_creatures.end(), [&](const auto& c) { return c->id == id; });
+    return it == m_creatures.end() ? nullptr : it->get();
+}
+
+Result<u32> Engine::spawnCreature(std::string_view species, const Vec3& feet, f32 yaw)
+{
+    if (std::find(kSpecies.begin(), kSpecies.end(), species) == kSpecies.end())
+    {
+        return Error{std::format("unknown species '{}' (wolf, keiler, laufvogel)", species)};
+    }
+    auto c = std::make_unique<Creature>();
+    c->species = std::string(species);
+    c->figure = std::make_unique<AnimatedFigure>();
+    const std::string model = std::format("characters/monsters/{0}/rig/{0}_reference.glb", species);
+    const std::string graph = std::format("data/anim/{}.animgraph.toml", species);
+    auto loaded =
+        loadAnimatedFigure(*c->figure, model, graph,
+                           [&](const animation::AnimGraph& g, std::span<const asset::AnimationSetData* const>)
+                           {
+                               // The blend points of "move": the speeds the showcase walks and runs at.
+                               for (const animation::AnimGraphState& s : g.states)
+                               {
+                                   if (s.name == "move" && s.points.size() >= 3)
+                                   {
+                                       c->walkSpeed = s.points[1].first;
+                                       c->runSpeed = s.points[2].first;
+                                   }
+                               }
+                           });
+    if (!loaded)
+    {
+        return loaded.error();
+    }
+    c->id = m_nextCreatureId++;
+    c->position = c->positionBefore = feet;
+    c->yaw = c->yawBefore = yaw;
+    G7_LOG_INFO("engine", "creature {} ({}) at ({:.1f}, {:.1f}, {:.1f})", c->id, species, feet.x, feet.y,
+                feet.z);
+    m_creatures.push_back(std::move(c));
+    return m_creatures.back()->id;
+}
+
+void Engine::removeCreatures()
+{
+    m_creatures.clear();
+}
+
+void Engine::setCreatureMove(u32 id, f32 speed, f32 turn)
+{
+    if (Creature* c = creature(id))
+    {
+        c->speed = speed;
+        c->turn = turn;
+    }
+}
+
+bool Engine::creatureAction(u32 id, std::string_view action)
+{
+    Creature* c = creature(id);
+    if (c == nullptr)
+    {
+        return false;
+    }
+    constexpr std::array<std::pair<std::string_view, i32>, 4> kOnce = {
+        {{"attack_1", 1}, {"attack_2", 2}, {"hit", 3}, {"threaten", 4}}};
+    for (const auto& [name, value] : kOnce)
+    {
+        if (action == name)
+        {
+            c->action = value;
+            return true;
+        }
+    }
+    if (action == "eat" || action == "sleep" || action == "stop")
+    {
+        c->eat = action == "eat";
+        c->sleep = action == "sleep";
+        return true;
+    }
+    if (action == "die")
+    {
+        c->dead = true;
+        return true;
+    }
+    if (action == "revive")
+    {
+        c->dead = false;
+        c->figure->animator.enter(c->figure->startState, 0.3f);
+        return true;
+    }
+    return false;
+}
+
+void Engine::setCreatureShowcase(u32 id, bool on)
+{
+    if (Creature* c = creature(id))
+    {
+        c->showcase = on;
+        c->showcaseStep = 0;
+        c->showcaseTime = 0.0f;
+        if (!on)
+        {
+            c->speed = c->turn = 0.0f;
+            c->eat = c->sleep = false;
+        }
+    }
+}
+
+usize Engine::creatureCount() const noexcept
+{
+    return m_creatures.size();
+}
+
+std::string_view Engine::creatureState(u32 id) const noexcept
+{
+    const Creature* c = creature(id);
+    return c ? c->figure->animator.state() : std::string_view();
+}
+
+std::optional<Vec3> Engine::creaturePosition(u32 id) const
+{
+    const Creature* c = creature(id);
+    return c ? std::optional<Vec3>(c->position) : std::nullopt;
+}
+
+f32 Engine::creatureYaw(u32 id) const noexcept
+{
+    const Creature* c = creature(id);
+    return c ? c->yaw : 0.0f;
+}
+
+void Engine::fixedUpdateCreatures(f32 seconds)
+{
+    for (const auto& owned : m_creatures)
+    {
+        Creature& c = *owned;
+        AnimatedFigure& f = *c.figure;
+        c.positionBefore = c.position;
+        c.yawBefore = c.yaw;
+
+        if (c.showcase)
+        {
+            // Start of a step: set its parameters; turns pulse "turn" once; eat/sleep end with their step.
+            const auto label = kShowcase[c.showcaseStep].label;
+            if (c.showcaseTime == 0.0f)
+            {
+                c.speed = label == "walk" ? c.walkSpeed : label == "run" ? c.runSpeed : 0.0f;
+                c.turn = label == "turn left" ? -1.0f : label == "turn right" ? 1.0f : 0.0f;
+                c.action = label == "attack 1"   ? 1
+                           : label == "attack 2" ? 2
+                           : label == "hit"      ? 3
+                           : label == "threaten" ? 4
+                                                 : 0;
+                c.eat = label == "eat";
+                c.sleep = label == "sleep";
+                c.dead = label == "die";
+                if (label == "revive")
+                {
+                    f.animator.enter(f.startState, 0.3f);
+                }
+            }
+            else if (c.showcaseTime > 0.1f)
+            {
+                c.turn = 0.0f; // one turn per step
+            }
+            c.showcaseTime += seconds;
+            if (c.showcaseTime >= kShowcase[c.showcaseStep].seconds)
+            {
+                c.showcaseStep = (c.showcaseStep + 1) % static_cast<u32>(kShowcase.size());
+                c.showcaseTime = 0.0f;
+            }
+        }
+
+        animation::Animator& a = f.animator;
+        a.setFloat("speed", c.speed);
+        a.setFloat("turn", c.turn);
+        a.setFloat("action", static_cast<f32>(c.action));
+        a.setBool("eat", c.eat);
+        a.setBool("sleep", c.sleep);
+        a.setBool("dead", c.dead);
+        a.update(seconds,
+                 [&](std::string_view clip, std::string_view event)
+                 {
+                     f.events.push_front(std::format(
+                         "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));
+                     if (f.events.size() > kShownEvents)
+                     {
+                         f.events.pop_back();
+                     }
+                 });
+        c.action = 0; // a trigger: one step
+
+        // Root motion: turn first, then the movement in the turned frame (model -> world).
+        c.yaw = std::remainder(c.yaw + a.rootMotionYaw(), 2.0f * glm::pi<f32>());
+        const Vec3 ahead = Vec3(creatureMatrix(Vec3(0.0f), c.yaw) * Vec4(a.rootMotion(), 0.0f));
+        c.position += Vec3(ahead.x, 0.0f, ahead.z);
+        if (m_physics.valid())
+        {
+            // On the ground below (terrain and solid models); keeps its height over holes.
+            const Vec3 from = c.position + Vec3(0.0f, 1.5f, 0.0f);
+            if (const auto hit = m_physics.raycast(from, Vec3(0.0f, -1.0f, 0.0f), 30.0f,
+                                                   physics::layerBit(physics::Layer::World)))
+            {
+                c.position.y = hit->position.y;
+            }
+        }
+        f.posePrevious = std::move(f.poseNow);
+        f.poseNow = a.pose();
+    }
+}
+
+void Engine::drawCreatures(bool shadow, u32 cascade)
+{
+    const f32 alpha = static_cast<f32>(m_fixedStep.alpha());
+    for (const auto& owned : m_creatures)
+    {
+        Creature& c = *owned;
+        if (!c.figure->uploaded)
+        {
+            continue;
+        }
+        const f32 turn = std::remainder(c.yaw - c.yawBefore, 2.0f * glm::pi<f32>());
+        drawAnimatedFigure(
+            *c.figure,
+            creatureMatrix(glm::mix(c.positionBefore, c.position, alpha), c.yawBefore + turn * alpha), shadow,
+            cascade);
+    }
+}
+
+void Engine::creaturesUi()
+{
+    ui::CreaturesPanel panel;
+    for (const std::string_view s : kSpecies)
+    {
+        panel.species.emplace_back(s);
+    }
+    panel.speciesChoice = m_creatureSpecies;
+    for (const auto& owned : m_creatures)
+    {
+        const Creature& c = *owned;
+        ui::CreaturesPanel::Row row;
+        row.id = c.id;
+        row.label = std::format("{} {}", c.species, c.id);
+        row.state = std::string(c.figure->animator.state());
+        if (c.showcase)
+        {
+            row.state += std::format("  (showcase: {})", kShowcase[c.showcaseStep].label);
+        }
+        row.speed = c.speed;
+        row.maxSpeed = std::max(c.runSpeed * 1.2f, 0.5f);
+        row.showcase = c.showcase;
+        row.events.assign(c.figure->events.begin(), c.figure->events.end());
+        panel.rows.push_back(std::move(row));
+    }
+    m_debugUi.creaturesPanel(panel);
+
+    m_creatureSpecies = panel.speciesChoice;
+    if (panel.spawn)
+    {
+        // Five metres in front of the camera, on the ground, facing it.
+        Vec3 ahead = m_camera.transform.rotation * Vec3(0.0f, 0.0f, -1.0f);
+        ahead.y = 0.0f;
+        ahead = glm::length(ahead) > 1e-3f ? glm::normalize(ahead) : Vec3(0.0f, 0.0f, -1.0f);
+        Vec3 feet = m_camera.transform.position + ahead * 5.0f;
+        if (m_physics.valid())
+        {
+            if (const auto hit = m_physics.raycast(feet + Vec3(0.0f, 2.0f, 0.0f), Vec3(0.0f, -1.0f, 0.0f),
+                                                   100.0f, physics::layerBit(physics::Layer::World)))
+            {
+                feet.y = hit->position.y;
+            }
+        }
+        const Vec3 toCamera = m_camera.transform.position - feet;
+        if (auto spawned = spawnCreature(m_creatureSpecies, feet, std::atan2(-toCamera.x, -toCamera.z));
+            !spawned)
+        {
+            G7_LOG_WARN("engine", "creature: {}", spawned.error().message);
+        }
+    }
+    if (panel.removeAll)
+    {
+        removeCreatures();
+        return;
+    }
+    for (const ui::CreaturesPanel::Row& row : panel.rows)
+    {
+        Creature* c = creature(row.id);
+        if (c == nullptr)
+        {
+            continue;
+        }
+        if (row.showcase != c->showcase)
+        {
+            setCreatureShowcase(row.id, row.showcase);
+        }
+        if (!c->showcase)
+        {
+            c->speed = row.speed;
+        }
+        if (!row.action.empty())
+        {
+            if (row.action == "turn_l" || row.action == "turn_r")
+            {
+                c->turn = row.action == "turn_l" ? -1.0f : 1.0f;
+                c->showcaseTime = 0.0f;
+            }
+            else
+            {
+                (void)creatureAction(row.id, row.action);
+            }
+        }
+        else if (!c->showcase && c->turn != 0.0f && c->figure->animator.state() != "move")
+        {
+            c->turn = 0.0f; // a button turns once
+        }
+    }
+}
+} // namespace g7

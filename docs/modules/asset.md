@@ -164,6 +164,11 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
   aufsteigend, fehlende Felder, `speed` ≤ 0.
 - **Eigengeschwindigkeit** (M6, additiv in Version 1): optionales Feld `speed` (m/s) je Clip →
   `ClipData::speed` (0 = unbekannt); auch ohne `events`. Liefert figuren (`gothar-chargen report`).
+- **Zusammenbau-Daten** (M6 D2): `SkinnedPartData::primitives` nennt je glTF-Primitive, wo seine Vertices und
+  Dreiecke im Teil liegen (Dreiecke sind nach Material gruppiert, die eines Primitives bleiben zusammen);
+  `SkinnedModelData::assembly` enthält `asset.extras.gothar` der Figuren-Teile (`neck`, `falloff`, `covers`,
+  `hides`; Format v1, §6.2), gelesen mit nlohmann-json (privat, ADR 0017). Zusammenbau: `FigureAssembly.hpp`
+  (`animation.md` „Figuren zur Laufzeit zusammensetzen“).
 - **Lader im `AssetManager`:** `SkinnedModelData` und `AnimationSetData` direkt aus glTF/GLB.
   - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019). Bis dahin laden Figuren und Sets aus losen Dateien
     (Entwicklung). g7-cook kocht skinnte Figuren weiterhin nur als statisches `.g7mesh`, Sets ohne Mesh überspringt

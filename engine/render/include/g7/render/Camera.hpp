@@ -43,6 +43,8 @@ public:
 
     /// Takes yaw/pitch from the camera's current orientation (call after placing it).
     void attach(const Camera& camera) noexcept;
+    /// Turns `camera` to yaw/pitch (radians; yaw 0 along -Z, positive left; pitch clamped to +-89 deg).
+    void setOrientation(Camera& camera, f32 yaw, f32 pitch) noexcept;
     void update(Camera& camera, const FreeFlyInput& input, f64 deltaSeconds) noexcept;
 
     [[nodiscard]] f32 yaw() const noexcept { return m_yaw; }

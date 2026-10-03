@@ -55,8 +55,9 @@ debug_ui = false
 # shader_dir = "C:/dev/Gothar7/engine/render/shaders"
 
 [game]
-# Spielfigur (M6): Figur aus `cmake --build --preset debug --target g7_figures`; fehlt sie, die Gliederpuppe.
-hero = "characters/figures/farmer.glb"
+# Spielfigur (M6): Manifest (*.figure.toml, beim Start aus Teilen zusammengesetzt, Kopf/Rüstung tauschbar) oder
+# eine fertige .glb (z. B. aus g7_figures); fehlt sie, die Gliederpuppe.
+hero = "characters/figures/farmer.figure.toml"
 hero_graph = "data/anim/human.animgraph.toml"
 # Bewegungswerte der Spielfigur und Kamera
 movement = "data/movement.toml"
@@ -118,6 +119,15 @@ pause = ["Escape", "PadStart"]
 debug_draw = ["F2"]
 debug_ui = ["F1"]
 debug_fly = ["F3"]  # Spielfigur <-> freie Debug-Kamera
+# Freie Kamera (Flugmodus F3 bzw. --fly, Editor): Maus-Blick, Mausrad = Fluggeschwindigkeit, ohne Kollision.
+fly_forward = ["W", "Up"]
+fly_back = ["S", "Down"]
+fly_left = ["A", "Left"]
+fly_right = ["D", "Right"]
+fly_up = ["Space", "E"]
+fly_down = ["LeftCtrl", "Q"]
+fly_fast = ["LeftShift"]
+copy_position = ["F6"]  # Ansicht als Startoptionen in die Zwischenablage (--world --cam --yaw --pitch --time)
 
 [bindings.modern]
 move_forward = ["W", "PadDpadUp"]
@@ -145,3 +155,12 @@ pause = ["Escape", "PadStart"]
 debug_draw = ["F2"]
 debug_ui = ["F1"]
 debug_fly = ["F3"]  # Spielfigur <-> freie Debug-Kamera
+# Freie Kamera (Flugmodus F3 bzw. --fly, Editor): Maus-Blick, Mausrad = Fluggeschwindigkeit, ohne Kollision.
+fly_forward = ["W", "Up"]
+fly_back = ["S", "Down"]
+fly_left = ["A", "Left"]
+fly_right = ["D", "Right"]
+fly_up = ["Space", "E"]
+fly_down = ["LeftCtrl", "Q"]
+fly_fast = ["LeftShift"]
+copy_position = ["F6"]  # Ansicht als Startoptionen in die Zwischenablage (--world --cam --yaw --pitch --time)

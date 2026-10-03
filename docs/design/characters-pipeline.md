@@ -252,8 +252,16 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   Stück innerhalb 3 cm von innen, oder der Körper ragt bis 1,5 cm heraus – bis 4 cm, wo der Körper selbst Kleidung
   trägt, z. B. die eingebaute Hose unter enger Rüstungshose; Löcher in zerrissener Kleidung und ein
   5-cm-Streifen an der Halsnaht bleiben). Kit-Texturen sind **neutral grau** (halber Kontrast, Helligkeit 0,55) und
-  von allen Staturen geteilt; die Farbe gibt die Palette der Figur als glTF `baseColorFactor`. Bekannte Grenze:
-  MPFB-Kleidung faltet sich in der T-Pose an den Schulterblättern (auch beim Bauern) – in Animation prüfen.
+  von allen Staturen geteilt; die Farbe gibt die Palette der Figur als glTF `baseColorFactor`.
+- **Schultern in Bewegung (geprüft in M6, 2026-10-03; Bilder `DATA_ROOT
+eview3k-shoulders`):** Die frühere Falte
+  an den Schulterblättern in der T-Pose ist seit den neu berechneten Masken (F3g) weg; beim Gehen und Rennen sitzen
+  die Schultern sauber. In Extremposen (Kletter-Platzhalter, Arm weit nach hinten oben) wölbt sich die Schulter zu
+  einem Buckel – **auch die nackte Haut**: Ursache ist das lineare Skinning des Körpers bei so großer Armbewegung aus
+  der T-Pose, die Kleidung folgt ihm nur. Versuche ohne Erfolg: Gewichte der Kleidung vom unmaskierten Körper
+  übertragen (praktisch identisch, die MPFB-Gewichte stammen schon vom Körper); Schulter-Gewichte glätten (kaum
+  Wirkung, reißt die Halsnaht auf). Entscheidung: akzeptiert (Kletter-Clips sind Platzhalter, Mocap in F4). Optionen
+  bei Bedarf: (b) Dual-Quaternion-Skinning in der Engine (Hinweis an engine), (c) pose-abhängige Korrektur-Morphs.
 - **Rüstungs-Kit (F3g):** leichte und mittlere Linie nach demselben Prinzip, Rezepte `humans/armor_<m|f>_<statur>`
   → `parts/armor_<…>/<stück>.glb`, jedes Stück auf jeder Statur geprüft. Rüstung **behält ihre eigene Farbtextur**
   (Entscheidung Projektinhaber 2026-10-03; Rezept `neutral = false`, 512 px, Normal-Map erlaubt); die Palette tönt
@@ -339,7 +347,10 @@ Rezepte und Manifeste; `figures/<name>.glb` entsteht beim Bauen und ist git-igno
     ganz entfallen (`hair`, `beard`; Helme und Kapuzen: `["hair"]`). Es betrifft nur ganze Rollen, keine einzelnen
     Stücke; bei mehreren getragenen Stücken gilt die **Vereinigung**. Lücken unter dem Stück sind Sache von figuren.
   - Berechnet von `gothar-chargen part-data` (reines Python; `gothar-chargen human` ruft es nach dem Bauen auf).
-- **Zusammenbau-Algorithmus** (assemble.py, auch für eine spätere C++-Umsetzung): Skelett und Skin vom Körper,
+- **Zusammenbau-Algorithmus** (assemble.py; in C++ umgesetzt von engine für den Laufzeit-Zusammenbau, M6 D2 / #122,
+  in der CI gegen die Python-Ausgabe aller Manifeste verglichen): **feste Rollen-Reihenfolge** body, head, hair,
+  beard, dann die Kleidung in Listenreihenfolge (unabhängig von der Schlüsselreihenfolge im Manifest; Materialien:
+  head zuerst, dann dieselbe Reihenfolge); Skelett und Skin vom Körper,
   Joints der anderen Teile über die Knochennamen umgehängt; Körper-Dreiecke aus allen `covers` des jeweiligen
   LOD entfernen; Halsring des Körpers auf den des Kopfes legen (Paarung: zyklische Verschiebung und Richtung mit
   kleinster Summe der Abstände), `falloff`-Vertices folgen mit Gewicht; Materialien nach Namen zusammenführen
@@ -371,6 +382,11 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 - **Kanäle:** Translation nur auf `root`/`pelvis`, keine Skalierung (wie §3). **Root Motion:** `s_walk`/`s_run` bewegen
   `root` vorwärts (+Z, Geschwindigkeit = Schrittlänge, Füße stehen), `t_turn_l/r` drehen `root` um +Y (links positiv);
   alle anderen Clips bleiben am Ort.
+  **Geprüft** (M6-Durchsicht der Tiere, 2026-10-03; `clipfix.py`): die Root-Geschwindigkeit von `s_walk*`/`s_run*`
+  muss der Schrittgeschwindigkeit entsprechen (Füße relativ zu `root` in der Standphase, ±0,1 m/s; `anim.slide`),
+  und Liege-/Ruheposen (`t_die*`, `s_sleep*`) dürfen das gehäutete Referenz-Mesh nicht mehr als 2 cm unter den Boden
+  bringen (`anim.ground`). `gothar-chargen repair-clips` (auch beim Export) setzt die Root-Geschwindigkeit auf die
+  Schrittlänge und hebt `pelvis` je Key gerade so weit an; `speed` in `events.toml` folgt.
 - **Events:** `footstep_front_l/r`, `footstep_back_l/r` (Vierbeiner; Zweibeiner `footstep_l/r`), `hit_start`/`hit_end`
   im Angriff, `sound:<name>`.
 - **Material/Texturen:** Rolle `fur` (≤ 1024², §2.3); Platzhalter ohne Textur.

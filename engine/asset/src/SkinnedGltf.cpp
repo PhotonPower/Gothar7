@@ -1,4 +1,5 @@
 #include "GltfCommon.hpp"
+#include "PartAssembly.hpp"
 
 #include <g7/asset/SkinnedModel.hpp>
 #include <g7/core/Config.hpp>
@@ -341,6 +342,9 @@ Result<void> appendSkinnedPrimitive(const fastgltf::Asset& asset, const fastgltf
         }
     }
     auto& target = byMaterial[material];
+    // firstIndex: within the material's group for now, made absolute when the groups are joined.
+    part.primitives.push_back({static_cast<u32>(first), static_cast<u32>(count),
+                               static_cast<u32>(target.size()), static_cast<u32>(indices.size()), material});
     target.insert(target.end(), indices.begin(), indices.end());
     return {};
 }
@@ -393,6 +397,7 @@ Result<SkinnedModelData> convertSkinned(const fastgltf::Asset& asset, std::strin
         {
             if (primitive.type != fastgltf::PrimitiveType::Triangles)
             {
+                part.primitives.push_back({static_cast<u32>(part.vertices.size()), 0, 0, 0, 0});
                 continue;
             }
             const u32 material =
@@ -407,11 +412,17 @@ Result<SkinnedModelData> convertSkinned(const fastgltf::Asset& asset, std::strin
                 return fail(debugName, part.node + ": " + added.error().message);
             }
         }
+        std::map<u32, u32> groupStart;
         for (auto& [material, indices] : byMaterial)
         {
+            groupStart[material] = static_cast<u32>(part.indices.size());
             part.submeshes.push_back(
                 {static_cast<u32>(part.indices.size()), static_cast<u32>(indices.size()), material});
             part.indices.insert(part.indices.end(), indices.begin(), indices.end());
+        }
+        for (SkinnedPartData::Primitive& p : part.primitives)
+        {
+            p.firstIndex += p.indexCount > 0 ? groupStart[p.material] : 0;
         }
         if (!part.indices.empty())
         {
@@ -527,7 +538,18 @@ Result<T> load(std::span<const u8> bytes, const fs::Path& baseDirectory, std::st
 Result<SkinnedModelData> loadSkinnedGltf(std::span<const u8> bytes, const fs::Path& baseDirectory,
                                          std::string_view debugName)
 {
-    return load<SkinnedModelData>(bytes, baseDirectory, debugName, convertSkinned);
+    auto model = load<SkinnedModelData>(bytes, baseDirectory, debugName, convertSkinned);
+    if (!model)
+    {
+        return model;
+    }
+    auto assembly = readPartAssembly(bytes, debugName);
+    if (!assembly)
+    {
+        return assembly.error();
+    }
+    model.value().assembly = std::move(assembly).value();
+    return model;
 }
 
 Result<AnimationSetData> loadAnimationGltf(std::span<const u8> bytes, const fs::Path& baseDirectory,

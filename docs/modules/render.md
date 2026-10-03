@@ -464,6 +464,10 @@ public:
 
 ## Offene Fragen
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.
+- **Dual-Quaternion-Skinning** (Hinweis figuren, 2026-10-03): Lineares Blend-Skinning verliert in extremen Posen
+  Volumen an Schulter und Ellbogen (Beule bei Arm nach hinten oben, z. B. Klettern; Gewichte helfen nicht).
+  Abhilfe: DQS im Skinning-Shader (Knochen als Dual-Quaternionen, Variante `SKINNED_DQ`), ggf. nur für
+  Menschen. Entscheidung, sobald echte Clips (F4) es noch zeigen.
 - **Spiegelnde Fenster** (Wunsch Projektinhaber, „Raytracing“; M17, nicht jetzt). Optionen:
   - **Reflexions-Proben bzw. Cubemaps je Zone** (vorberechnet oder selten aktualisiert, mit Parallaxen-Korrektur
     für Räume/Straßenzüge): günstig, auf jeder Hardware.

@@ -9,6 +9,8 @@ the numbers in ``<set>.events.toml`` match the clips.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 
 from gothar_chargen.gltf import Gltf
@@ -60,26 +62,27 @@ def _parents(gltf: Gltf) -> dict[int, int]:
     return {c: i for i, n in enumerate(gltf.doc.get("nodes", [])) for c in n.get("children", [])}
 
 
-def bone_paths(
-    gltf: Gltf, animation: dict, bones: list[str], fps: int = FPS
-) -> dict[str, np.ndarray]:
-    """Positions (frames, 3) of the named bones in glTF scene space (y up) over the animation."""
+def duration(gltf: Gltf, animation: dict) -> float:
+    return max(
+        (float(np.asarray(gltf.accessor(s["input"])).max()) for s in animation["samplers"]),
+        default=0.0,
+    )
+
+
+def global_matrices(gltf: Gltf, animation: dict, t: np.ndarray) -> Callable[[int], np.ndarray]:
+    """Returns node index -> (len(t), 4, 4) global transforms of the animation at times t (s)."""
     nodes = gltf.doc["nodes"]
-    names = {n.get("name"): i for i, n in enumerate(nodes)}
     parents = _parents(gltf)
     channels: dict[tuple[int, str], tuple[np.ndarray, np.ndarray]] = {}
-    duration = 0.0
     for ch in animation["channels"]:
         sampler = animation["samplers"][ch["sampler"]]
         times = np.asarray(gltf.accessor(sampler["input"]), dtype=np.float64).ravel()
         values = np.asarray(gltf.accessor(sampler["output"]), dtype=np.float64)
         target = ch["target"]
         channels[(target["node"], target["path"])] = (times, values.reshape(len(times), -1))
-        duration = max(duration, float(times[-1]))
-    t = np.arange(int(round(duration * fps)) + 1) / fps
     cache: dict[int, np.ndarray] = {}
 
-    def global_of(i: int) -> np.ndarray:  # (frames, 4, 4)
+    def global_of(i: int) -> np.ndarray:
         if i in cache:
             return cache[i]
         node = nodes[i]
@@ -102,6 +105,16 @@ def bone_paths(
         cache[i] = out
         return out
 
+    return global_of
+
+
+def bone_paths(
+    gltf: Gltf, animation: dict, bones: list[str], fps: int = FPS
+) -> dict[str, np.ndarray]:
+    """Positions (frames, 3) of the named bones in glTF scene space (y up) over the animation."""
+    names = {n.get("name"): i for i, n in enumerate(gltf.doc["nodes"])}
+    t = np.arange(int(round(duration(gltf, animation) * fps)) + 1) / fps
+    global_of = global_matrices(gltf, animation, t)
     return {b: global_of(names[b])[:, :3, 3] for b in bones if b in names}
 
 

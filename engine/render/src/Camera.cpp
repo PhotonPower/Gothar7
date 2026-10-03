@@ -32,6 +32,13 @@ void FreeFlyCamera::attach(const Camera& camera) noexcept
     m_yaw = std::atan2(-forward.x, -forward.z);
 }
 
+void FreeFlyCamera::setOrientation(Camera& camera, f32 yaw, f32 pitch) noexcept
+{
+    m_yaw = std::remainder(yaw, 2.0f * kPi);
+    m_pitch = std::clamp(pitch, -kMaxPitch, kMaxPitch);
+    camera.transform.rotation = quatFromEuler(m_pitch, m_yaw, 0.0f);
+}
+
 void FreeFlyCamera::update(Camera& camera, const FreeFlyInput& input, f64 deltaSeconds) noexcept
 {
     const f32 dt = static_cast<f32>(deltaSeconds);

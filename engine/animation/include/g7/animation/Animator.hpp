@@ -5,6 +5,8 @@
 // layer plays over masked bones. Graph files: data/anim/<rig>.animgraph.toml (docs/modules/animation.md).
 
 #include <g7/animation/Clip.hpp>
+#include <g7/animation/Face.hpp>
+#include <g7/animation/LookAt.hpp>
 #include <g7/animation/Skeleton.hpp>
 #include <g7/core/Result.hpp>
 
@@ -62,6 +64,8 @@ struct AnimGraph
     std::vector<std::string> sets; ///< VFS paths of the animation sets (glTF)
     std::string start;
     std::array<f32, 2> rateRange{0.6f, 1.8f}; ///< limits of the speed-matched playback rate
+    FaceSettings face;                        ///< `[face]`: blinking, talking, expressions
+    LookAtSettings lookAt;                    ///< `[look_at]`: bones and limits
     std::vector<AnimGraphState> states;
     std::vector<AnimGraphTransition> transitions;
 
@@ -93,6 +97,8 @@ public:
     [[nodiscard]] const Pose& pose() const noexcept { return m_pose; }
     /// Movement of the root bone during the last update in a root-motion state (model space).
     [[nodiscard]] Vec3 rootMotion() const noexcept { return m_rootMotion; }
+    /// Turn of the root bone about +Y during the last update in a root-motion state (radians, positive left).
+    [[nodiscard]] f32 rootMotionYaw() const noexcept { return m_rootYaw; }
     [[nodiscard]] std::string_view state() const noexcept;
     [[nodiscard]] std::string_view previousState() const noexcept;
     [[nodiscard]] f32 fadeWeight() const noexcept; ///< 1 when no cross-fade runs
@@ -156,5 +162,6 @@ private:
     Pose m_pose;
     Pose m_scratch;
     Vec3 m_rootMotion{0.0f};
+    f32 m_rootYaw = 0.0f;
 };
 } // namespace g7::animation

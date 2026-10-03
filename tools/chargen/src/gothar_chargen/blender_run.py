@@ -7,6 +7,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from gothar_chargen.clipfix import repair_set
 from gothar_chargen.events import update_speeds
 from gothar_chargen.gltf import Gltf
 from gothar_chargen.postprocess import (
@@ -86,6 +87,7 @@ def export_glb(blender: Path, blend_file: Path, glb_out: Path) -> int:
     if removed:
         glb_out.write_bytes(gltf.to_bytes())
     if gltf.doc.get("animations"):
+        repair_set(glb_out)  # feet that stand, lying poses above the ground (clipfix)
         update_speeds(glb_out)  # natural speed of the locomotion clips (§3)
     return removed
 

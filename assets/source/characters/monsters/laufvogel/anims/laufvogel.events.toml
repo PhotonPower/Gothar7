@@ -3,14 +3,14 @@ version = 1
 fps = 30
 
 [clips."laufvogel/s_run"]
-speed = 0.85
+speed = 1.04
 events = [
     { frame = 10, event = "footstep_r" },
     { frame = 24, event = "footstep_l" },
 ]
 
 [clips."laufvogel/s_walk"]
-speed = 0.38
+speed = 0.49
 events = [
     { frame = 16, event = "footstep_r" },
     { frame = 39, event = "footstep_l" },
