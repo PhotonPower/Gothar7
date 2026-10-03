@@ -64,7 +64,8 @@ nach `%APPDATA%\Blender Foundation\Blender\4.5\extensions\.user\blender_org\mpfb
 Rohdateien bleiben unter `DATA_ROOT\characters\mpfb` (nicht im Repo).
 **Figuren vor dem Kochen bauen** (sie sind nicht versioniert, `characters-pipeline.md` §6.2): im Repo-Wurzelordner
 `PYTHONPATH=tools/chargen/src python -m gothar_chargen assemble` (nur Python + numpy, ohne Blender) bzw. das
-CMake-Ziel `g7_figures`, sobald engine es eingebaut hat. Verwenden: **Core/System + einzeln geprüfte CC0-Pakete (Liste in `assets/LICENSES.md`)**;
+CMake-Ziel `g7_figures` (`cmake --build --preset debug --target g7_figures`; nicht Teil von ALL, ohne Python mit
+numpy nur eine Meldung; Interpreter wählbar mit `-DPython3_EXECUTABLE=…`). Verwenden: **Core/System + einzeln geprüfte CC0-Pakete (Liste in `assets/LICENSES.md`)**;
 Community-Pakete erst nach Lizenzprüfung (ADR 0018). Das Plugin (GPLv3) wird nie ins Repo kopiert.
 
 ## Bauen

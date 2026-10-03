@@ -147,6 +147,7 @@ Screenshots `C:\GotharData\review\m5-dod`).
 ## M6 – Animation  → Meilenstein A
 _Benötigt F1 (Referenz-Rig, Platzhalterfigur) und für den Meilenstein die Prio-A-Animationen aus F2._
 - [ ] Skelett + Skinning (GPU), glTF-Skins
+  - Stand Teil A: glTF-Skins, Skelett, LOD-Teile, Morph-Targets, Clips und `events.toml` laden (`asset/SkinnedModel.hpp`, ADR 0019 eigene Laufzeit); CMake-Ziel `g7_figures`; GPU-Skinning folgt mit Teil C
 - [ ] Clips, Sampling, Blending (Crossfade), additive Layer (Oberkörper getrennt)
 - [ ] Animations-Zustandsautomat (datengetrieben), Übergänge mit Bedingungen
 - [ ] Animations-Events (Fußschritte, Treffer-Fenster, Item-Wechsel Hand/Gürtel)

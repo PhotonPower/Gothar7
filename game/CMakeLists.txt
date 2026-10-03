@@ -16,3 +16,27 @@ add_custom_target(gothar_data ALL
     VERBATIM)
 set_target_properties(gothar_data PROPERTIES FOLDER "game")
 add_dependencies(gothar gothar_data)
+
+# Figures from parts (docs/design/characters-pipeline.md §6.2): `cmake --build --preset debug --target g7_figures`.
+# Optional and not part of ALL: needs Python 3 with numpy (no Blender, no DATA_ROOT); without it the target only
+# says so. Pick an interpreter with -DPython3_EXECUTABLE=... if the one found lacks numpy.
+find_package(Python3 COMPONENTS Interpreter QUIET)
+set(_g7_numpy 1)
+if(Python3_Interpreter_FOUND)
+    execute_process(COMMAND "${Python3_EXECUTABLE}" -c "import numpy" RESULT_VARIABLE _g7_numpy
+                    OUTPUT_QUIET ERROR_QUIET)
+endif()
+if(Python3_Interpreter_FOUND AND _g7_numpy EQUAL 0)
+    add_custom_target(g7_figures
+        COMMAND ${CMAKE_COMMAND} -E env "PYTHONPATH=${PROJECT_SOURCE_DIR}/tools/chargen/src"
+                "${Python3_EXECUTABLE}" -m gothar_chargen assemble
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+        COMMENT "Assembling the figures (gothar-chargen assemble)"
+        VERBATIM)
+else()
+    add_custom_target(g7_figures
+        COMMAND ${CMAKE_COMMAND} -E echo
+                "g7_figures: Python 3 with numpy not found - figures skipped (characters-pipeline.md 6.2)"
+        VERBATIM)
+endif()
+set_target_properties(g7_figures PROPERTIES FOLDER "game")

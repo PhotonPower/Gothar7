@@ -2,6 +2,7 @@
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
 #include <g7/asset/MeshFile.hpp>
+#include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/TextureData.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
@@ -289,6 +290,42 @@ AssetManager::AssetManager(const Vfs& vfs, AssetManagerDesc desc) : m_impl(std::
             // archived glTF must be self-contained (.glb, data: URIs).
             const auto disk = ctx.diskPath();
             return loadGltf(ctx.bytes, disk ? disk->parent_path() : fs::Path(), ctx.path);
+        });
+    // Skinned figures and animation sets (M6, ADR 0019): glTF as exported (no cooked format yet).
+    registerLoader<SkinnedModelData>(
+        [](const LoadContext& ctx) -> Result<SkinnedModelData>
+        {
+            const auto disk = ctx.diskPath();
+            return loadSkinnedGltf(ctx.bytes, disk ? disk->parent_path() : fs::Path(), ctx.path);
+        });
+    registerLoader<AnimationSetData>(
+        [](const LoadContext& ctx) -> Result<AnimationSetData>
+        {
+            const auto disk = ctx.diskPath();
+            auto set = loadAnimationGltf(ctx.bytes, disk ? disk->parent_path() : fs::Path(), ctx.path);
+            if (!set)
+            {
+                return set;
+            }
+            // <set>.events.toml next to it (characters-pipeline.md §3) - optional; hot reload watches it.
+            const std::string_view file = ctx.path.substr(ctx.path.rfind('/') + 1);
+            const std::string events =
+                ctx.sibling(std::string(file.substr(0, file.rfind('.'))) + ".events.toml");
+            if (ctx.vfs->exists(events))
+            {
+                auto text = ctx.read(events);
+                if (!text)
+                {
+                    return text.error();
+                }
+                const std::string_view toml(reinterpret_cast<const char*>(text.value().data()),
+                                            text.value().size());
+                if (auto applied = applyClipEvents(set.value(), toml, events); !applied)
+                {
+                    return applied.error();
+                }
+            }
+            return set;
         });
     for (u32 i = 0; i < desc.workerThreads; ++i)
     {
