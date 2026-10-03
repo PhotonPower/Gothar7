@@ -25,7 +25,7 @@ tools/worldgen/
                               Override-JSON (overrides), Einzelbilder + Zeitabgleich (frames, sync,
                               capture), facade preview/frames, Web-UI (webui/)  (W4)
     export/                   terrain: Heightmap → .g7world mit terrain-Block, splat: Splat-Schichten
-                              + Platzhalter-Albedos (export-terrain)  (W2)
+                              + Platzhalter-Albedos, water: Bachbett/Seebecken + water-Boxen (export-terrain)  (W2)
     buildings/                massing (Klötzchen: Wände + Dächer), medieval (Fachwerk-Regelwerk, W5-Entwurf),
                               rueckbau (große Neubauten → schmale Fachwerkhäuser, §7),
                               collision (COL_-Hüllen), gltf (.glb-Writer), batch (buildings: .glb je Gebäude/Zelle + Index)  (W3/W5)
@@ -58,7 +58,7 @@ gothar-worldgen tiles leonberg             REM benötigte LGL-Kacheln (2-km-Rast
 gothar-worldgen download leonberg          REM LGL-Kacheln + OSM laden/entpacken, --only dgm1,osm, --force
 gothar-worldgen import leonberg            REM Rohdaten → work/leonberg/ (terrain, buildings, streets, features) + check
 gothar-worldgen check leonberg             REM preview.png, preview_core.png, report.json (Exit 1 bei "fail")
-gothar-worldgen export-terrain leonberg    REM assets/source/worlds/leonberg/leonberg_terrain.g7world (+ generated/*.r16)
+gothar-worldgen export-terrain leonberg    REM leonberg_terrain.g7world (+ generated/*.r16), Bachbett/Seebecken + generated/water_index.json aus data/leonberg/water.json
 gothar-worldgen facade preview leonberg <id> --image pano.jpg --pose x,z --heading 90   REM entzerrte Fassaden
 gothar-worldgen facade frames leonberg VID_0001.mp4 --gpx VID_0001.gpx   REM Einzelbilder + Posen (braucht ffmpeg)
 gothar-worldgen facade ui leonberg         REM Annotations-Oberfläche im Browser (http://127.0.0.1:8765/)
