@@ -45,5 +45,56 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
 | Undo/Redo (Command-Pattern), Prefabs | M16 |
 | Simulation im Editor starten/stoppen (Play-in-Editor) | M16 |
 
+## Autopilot (`gothar --walk`, vorgezogen für die W3-Begehung; Vertrag mit welt)
+Die Spielfigur läuft eine Route ab und protokolliert, was unterwegs passiert. `tools/walk` (`g7_walk`) ist wie der
+Editor ein `EngineTool` im Spiel.
+```
+gothar --world=<welt> --walk=<route.json> [--walk-out=<ordner>] [--no-render]
+```
+- **Ablauf:**
+  - Läuft mit fester Schrittweite (1/60 s), ohne Frame-Grenze und ohne VSync, also deterministisch und so schnell
+    wie möglich.
+  - Mit Fenster entstehen Screenshots aus der Third-Person-Kamera. Mit `--no-render` gibt es keine Bilder: Die Welt
+    lädt dann ohne Grafikgerät (Szene, Kollision, Spielfigur).
+  - Am Ende der Route bzw. beim Zeitlimit beendet sich das Spiel. Immer mit äußerem Timeout starten.
+  - Ausgabe: Standardordner `walk/`.
+- **`route.json` (Version 1):**
+```json
+{"version": 1, "start": "START_MARKTPLATZ", "gait": "run", "time": "11:00", "timeLimit": 900,
+ "screenshot": "all", "screenshotEveryM": 25,
+ "points": [
+   {"name": "P01_MARKT", "pos": [12.5, -40.0], "gait": "walk", "radius": 2.5, "screenshot": true},
+   {"name": "P02_TREPPE", "pos": [30.0, -55.0], "action": "climb"},
+   {"name": "P03_GRABEN", "pos": [41.0, -60.0], "action": "jump"},
+   {"name": "P04_SCHLOSS", "pos": [120.0, 80.0], "teleport": true, "y": 12.0}]}
+```
+  - **Route:**
+    - `start`, `gait` (`run`|`walk`|`sneak`, Vorgabe run) und `time` sind optional.
+    - `timeLimit` in Sekunden Spielzeit (Vorgabe 900).
+    - `"screenshot": "all"` setzt Bilder an allen Punkten; `screenshotEveryM` macht zusätzlich alle N Meter ein Bild
+      (`auto_<nnnn>.png`).
+  - **Punkte:**
+    - `pos` = x, z. Die Figur dreht sich zum Punkt und läuft geradeaus; erreicht ist er waagrecht innerhalb von
+      `radius` (Vorgabe 1,0 m).
+    - `action`:
+      - `jump` drückt die Sprungtaste 2 m vor dem Punkt.
+      - `climb` drückt sie, sobald die Figur in Reichweite 0,25 s ansteht (an der Wand). Ohne erreichbare Kante wird
+        daraus ein Sprung.
+    - `teleport`: setzt die Figur auf den Punkt, auf den höchsten Boden darunter bzw. `y`. Das geschieht erst nach
+      der Landung eines laufenden Falls.
+    - `screenshot`: Bild beim Erreichen (`<name>.png`).
+- **Protokoll** `walk.jsonl`, eine JSON-Zeile je Ereignis, jeweils mit `t` (s Spielzeit):
+  - `start`
+  - `reached` mit `name`, `pos`, `state` (`ground`|`slide`|`air`|`swim`|`dive`|`climb`) und `teleport`
+  - `stuck`: über 2 s weniger als 0,2 m näher. Mit `vob` = Name des Mesh-Vobs vor der Figur (bzw. `terrain`) und
+    `state`; der Punkt wird übersprungen.
+  - `fall` ab 1 m mit `height`, `damage`, `water` und `pos`
+  - `slide_start`/`slide_end`, `swim_start`/`swim_end`, `climb`, `jump`/`climb_try`
+  - `trigger` (`name`), `world_change`, `screenshot`, `teleport_failed`, `timeout`
+- **Zusammenfassung** `walk_summary.json`: Punkte, erreicht, übersprungen (Namen), Hänger, Stürze mit höchstem und
+  Schaden, Ertrinken, Sekunden, Meter, Zeitüberschreitung.
+- **Tests:** `tests/walk` (Routen-Format) und `render_gpu` „Autopilot GPU …“: Lagerroute mit Klettern, 6-m-Fall,
+  Schwimmen und Hänger am geschlossenen Tor (`vob: fence-gate`).
+
 ## Optional: Gothic-Import-Werkzeug (siehe ADR 0008)
 Nur für Forschung/Vergleich mit eigener, legal erworbener Kopie; nicht Teil des Spiels.

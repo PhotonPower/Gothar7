@@ -37,6 +37,7 @@
 | save | core, world, script, gameplay |
 | runtime | alle |
 | tools/editor (`g7_editor`, im Spiel gelinkt) | runtime, world, ui, render, core – die Engine kennt nur `EngineTool` |
+| tools/walk (`g7_walk`, im Spiel gelinkt) | runtime, world (nlohmann-json privat) – Autopilot `--walk`, ebenfalls ein `EngineTool` |
 | tools/asset-cooker (`g7-cook`) | core, asset, world_format – **nicht** render, physics, world, platform (geprüft beim Konfigurieren: `g7_assert_no_link_to`) |
 
 - **Keine Zyklen.** Braucht ein unteres Modul Informationen von oben, geschieht das über

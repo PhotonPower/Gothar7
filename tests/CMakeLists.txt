@@ -39,7 +39,7 @@ target_link_libraries(g7_tests_ui PRIVATE imgui::imgui)
 # Mesa llvmpipe and excludes them on Windows (ctest -LE gpu), whose runners have no OpenGL.
 file(GLOB _gpu_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/render_gpu/*.cpp")
 add_executable(g7_tests_render_gpu ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_gpu_sources})
-target_link_libraries(g7_tests_render_gpu PRIVATE g7::runtime g7_editor doctest::doctest) # test_editor.cpp: editor end to end
+target_link_libraries(g7_tests_render_gpu PRIVATE g7::runtime g7_editor g7_walk doctest::doctest) # editor, autopilot end to end
 g7_set_warnings(g7_tests_render_gpu)
 set_target_properties(g7_tests_render_gpu PROPERTIES FOLDER "tests")
 add_test(NAME render_gpu COMMAND g7_tests_render_gpu)
@@ -81,6 +81,15 @@ g7_set_warnings(g7_tests_editor)
 set_target_properties(g7_tests_editor PROPERTIES FOLDER "tests")
 add_test(NAME editor COMMAND g7_tests_editor)
 set_tests_properties(editor PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
+
+# Autopilot (tools/walk): route files. The run itself is tested end to end in render_gpu (test_walk.cpp).
+file(GLOB _walk_test_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/walk/*.cpp")
+add_executable(g7_tests_walk ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_walk_test_sources})
+target_link_libraries(g7_tests_walk PRIVATE g7_walk doctest::doctest)
+g7_set_warnings(g7_tests_walk)
+set_target_properties(g7_tests_walk PROPERTIES FOLDER "tests")
+add_test(NAME walk COMMAND g7_tests_walk)
+set_tests_properties(walk PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
 
 # Game command line: --help and unknown options must exit at once, without a window or the engine.
 if(TARGET gothar)
