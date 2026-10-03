@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace g7::asset
@@ -63,7 +64,15 @@ struct WorldFile
     /// unchanged); empty = absent.
     std::string waynetJson;
     std::string zonesJson;
+    /// Optional "generator" head (world.md): written by gothar-worldgen, kept unchanged. `generatorOwned`
+    /// holds its "owned" ids as closed ranges - a hint for the editor that such vobs are rewritten by the
+    /// next generator run.
+    std::string generatorJson;
+    std::vector<std::pair<u64, u64>> generatorOwned;
 };
+
+/// True if the world's generator rewrites the vob (editor warning); false without a generator head.
+[[nodiscard]] bool isGenerated(const WorldFile& world, VobId id) noexcept;
 
 /// Reads a .g7world. Errors name `source` and the entry ("vobs[3]: missing 'id'").
 [[nodiscard]] Result<WorldFile> parseWorldFile(std::string_view json, std::string_view source = "<world>");

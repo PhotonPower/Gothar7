@@ -112,7 +112,7 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
   - Teil B2: Multi-Draw nach Material-Werten (`glMultiDrawElementsIndirect`, Index über `baseInstance`), geteilte neutrale Texturen; Leonberg-Kern RTX 3,06 → 2,17 ms; auf Intel UHD ~10 % langsamer, daher `multi_draw = "auto"` (aus auf Intel) – offener Punkt in render.md
   - Offener Punkt: einmaliger Hänger eines lokalen Gesamtlaufs (> 30 min), Ursache ungeklärt (`asset.md`); ctest-Timeouts je Suite gesetzt
 - [x] Mehrere Welten + Weltwechsel (Levelwechsel-Trigger) – `trigger.changeWorld`, Wechsel zwischen zwei Frames, Zustand verlassener Welten im Speicher (Spielstand: save), kein Pingpong; Testwelten Lager ↔ Höhle
-- [ ] **Editor-Grundlage**: Editor-Modus, Vobs auswählen/verschieben/drehen (Gizmos, ImGuizmo), Welt speichern
+- [x] **Editor-Grundlage**: Editor-Modus, Vobs auswählen/verschieben/drehen (Gizmos, ImGuizmo), Welt speichern – `gothar --editor` (`tools/editor`, `EngineTool`), **eigene Gizmos** (ImGuizmo verworfen, ADR 0015-Nachtrag), Auswahl per Klick und Liste, Inspektor, Modelle platzieren, Duplizieren/Löschen, Speichern mit `.bak`, Warnung bei Generator-Vobs (`generator`-Kopf); Undo/Wegnetz/Zonen in M16
 
 **DoD:** Eine Testwelt mit Gelände, Lager-Hütten und Lagerfeuer wird geladen, Tag/Nacht läuft
 sichtbar, im Editor lassen sich Vobs platzieren und speichern.

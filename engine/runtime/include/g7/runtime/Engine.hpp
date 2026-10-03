@@ -27,6 +27,7 @@
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/Terrain.hpp>
 #include <g7/render/Visibility.hpp>
+#include <g7/runtime/EngineTool.hpp>
 #include <g7/runtime/FrameTimes.hpp>
 #include <g7/runtime/SceneFile.hpp>
 #include <g7/ui/DebugUi.hpp>
@@ -41,6 +42,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -65,6 +67,7 @@ struct SceneInstance
     Mat4 transform{1.0f};
     AABB bounds;
     bool sizeCullable = true; ///< deco: may vanish when small on screen (render.md "Sichtbarkeit")
+    world::VobId vob;         ///< the mesh vob drawn (0: ground plate, --view-mesh, test scenes)
 };
 
 struct EngineConfig
@@ -196,6 +199,20 @@ public:
     /// Light, fog and sky of the last frame (from the day cycle).
     [[nodiscard]] const render::Environment& environment() const noexcept { return m_environment; }
     [[nodiscard]] const render::Sky& sky() const noexcept { return m_sky; }
+    /// Writes the scene's world vobs with the loaded world's terrain, waynet, zones and generator head as
+    /// .g7world (--save-world, editor).
+    [[nodiscard]] Result<void> saveWorld(const fs::Path& path) const;
+    /// Registers a tool (the editor) that runs every frame; it must outlive the engine's frames.
+    void addTool(EngineTool& tool);
+    /// After the scene changed (editor): render instances and lights rebuilt from it (models cached).
+    [[nodiscard]] Result<void> refreshScene();
+    /// The loaded world without its vobs (terrain, waynet, zones, generator head).
+    [[nodiscard]] const world::WorldFile& worldFile() const noexcept { return m_worldFile; }
+    /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
+    /// archives and scenes.
+    [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;
+    /// Render instances (one per drawn mesh vob) - picking in the editor.
+    [[nodiscard]] std::span<const SceneInstance> instances() const noexcept { return m_instances; }
     /// VFS path of the loaded world (--world or the last level change); empty for scenes and models.
     [[nodiscard]] const std::string& worldPath() const noexcept { return m_worldPath; }
     /// Worlds left during this session whose state is kept (lower-case paths).
@@ -245,7 +262,6 @@ private:
     /// keeps the overview camera, an unknown name is an error.
     [[nodiscard]] Result<void> applyStartPoint(std::string_view name);
     void addWorldDebugOverlay();
-    [[nodiscard]] Result<void> saveWorld(const fs::Path& path) const;
     [[nodiscard]] Result<void> initAssets();
     /// VFS path for a --scene/--view-mesh argument (mounting the folder of a disk file under local/).
     [[nodiscard]] Result<std::string> resolveAssetArgument(const fs::Path& argument);
@@ -256,7 +272,8 @@ private:
     [[nodiscard]] Result<void> uploadModel(LoadedModel& model);
     void refreshReloadedModels();
     [[nodiscard]] Result<void> addGround(f32 size, const Vec3& color, f32 height);
-    void addInstance(const LoadedModel& model, const Mat4& transform, bool sizeCullable = true);
+    void addInstance(const LoadedModel& model, const Mat4& transform, bool sizeCullable = true,
+                     world::VobId vob = {});
     void setViewpoint(const SceneViewpoint& viewpoint);
     void updateBenchmark(f64 realSeconds);
     void saveScreenshot(u32 width, u32 height);
@@ -315,6 +332,7 @@ private:
         std::string start;
     };
     std::optional<PendingWorldChange> m_pendingWorldChange;
+    std::vector<EngineTool*> m_tools;
     world::Heightfield m_heightfield;  // terrain heights (empty without terrain)
     render::TerrainRenderer m_terrain; // pipelines reference ShaderLibrary programs
     bool m_hasTerrain = false;

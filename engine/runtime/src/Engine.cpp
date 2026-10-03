@@ -279,6 +279,10 @@ bool Engine::runFrame()
         {
             updateDebugCamera(realSeconds, !uiMouse, !uiKeyboard);
         }
+        for (EngineTool* tool : m_tools)
+        {
+            tool->update(*this, realSeconds, uiMouse, uiKeyboard);
+        }
 
         if (!uiKeyboard)
         {
@@ -687,7 +691,7 @@ void Engine::refreshReloadedModels()
     }
 }
 
-void Engine::addInstance(const LoadedModel& model, const Mat4& transform, bool sizeCullable)
+void Engine::addInstance(const LoadedModel& model, const Mat4& transform, bool sizeCullable, world::VobId vob)
 {
     const AABB bounds = model.mesh.bounds().transformed(transform);
     // Scene bounds without the ground plate (debug grid, overlay).
@@ -698,7 +702,7 @@ void Engine::addInstance(const LoadedModel& model, const Mat4& transform, bool s
                 ? bounds
                 : AABB{glm::min(m_sceneBounds.min, bounds.min), glm::max(m_sceneBounds.max, bounds.max)};
     }
-    m_instances.push_back({&model, transform, bounds, sizeCullable});
+    m_instances.push_back({&model, transform, bounds, sizeCullable, vob});
     m_cullGridDirty = true;
 }
 
@@ -853,8 +857,9 @@ Result<void> Engine::instantiateScene()
     {
         return loaded;
     }
-    m_scene.each<world::MeshRef, world::WorldTransform>(
-        [&](entt::entity, const world::MeshRef& mesh, const world::WorldTransform& world)
+    m_scene.each<world::Vob, world::MeshRef, world::WorldTransform>(
+        [&](entt::entity, const world::Vob& vob, const world::MeshRef& mesh,
+            const world::WorldTransform& world)
         {
             // Cached under the path of its first use; the VFS matches case-insensitively.
             const LoadedModel* loaded = model(mesh.path);
@@ -864,13 +869,33 @@ Result<void> Engine::instantiateScene()
                                                 { return equalsIgnoreCase(entry.first, mesh.path); });
                 loaded = found->second.get();
             }
-            addInstance(*loaded, world.matrix, mesh.category == world::VobCategory::Deco);
+            addInstance(*loaded, world.matrix, mesh.category == world::VobCategory::Deco, vob.id);
         });
     m_lights.clear();
     m_scene.each<world::LightSource, world::WorldTransform>(
         [&](entt::entity, const world::LightSource& light, const world::WorldTransform& world)
         { m_lights.add({Vec3(world.matrix[3]), light.range, light.color, light.intensity}); });
     return {};
+}
+
+Result<void> Engine::refreshScene()
+{
+    // Everything but the ground plate is rebuilt from the scene; models stay cached, new ones load.
+    std::erase_if(m_instances,
+                  [&](const SceneInstance& instance) { return instance.model != m_groundModel.get(); });
+    m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)};
+    m_cullGridDirty = true;
+    return instantiateScene();
+}
+
+std::optional<fs::Path> Engine::worldSourceFile() const
+{
+    return m_worldPath.empty() ? std::nullopt : m_vfs.diskPath(m_worldPath);
+}
+
+void Engine::addTool(EngineTool& tool)
+{
+    m_tools.push_back(&tool);
 }
 
 Result<void> Engine::initWorld()
@@ -1162,7 +1187,12 @@ void Engine::loadTerrainSurface(const world::TerrainRef& ref)
 Result<void> Engine::saveWorld(const fs::Path& path) const
 {
     const std::string name = fs::toUtf8(path.stem()); // the file names the world
-    world::WorldFile file = world::captureWorld(m_scene, name);
+    // What the scene does not hold comes from the loaded world: terrain, waynet, zones, generator head.
+    world::WorldFile file = m_worldFile;
+    world::WorldFile captured = world::captureWorld(m_scene, name);
+    file.name = name;
+    file.nextVobId = captured.nextVobId;
+    file.vobs = std::move(captured.vobs);
     if (m_hasTerrain)
     {
         file.terrain = m_heightfield.ref(); // the scene holds only vobs
@@ -1552,6 +1582,10 @@ void Engine::runDebugUi(f64 realSeconds)
     panel.paused = m_paused;
     panel.timeScale = static_cast<f32>(m_timeScale);
     m_debugUi.enginePanel(panel);
+    for (EngineTool* tool : m_tools)
+    {
+        tool->ui(*this, m_debugUi);
+    }
 
     m_camera.fovY = toRadians(panel.fovDegrees);
     m_flyCamera.speed = panel.flySpeed;
