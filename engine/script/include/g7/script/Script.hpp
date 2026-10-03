@@ -4,7 +4,7 @@
 // Lua-5.4-Skript-VM (sol2), Bindings, Hot-Reload, Konsole.
 // Spezifikation: docs/modules/script.md   |   Roadmap: M7
 //
-// Status: Platzhalter. Die oeffentliche API wird in der genannten Phase entworfen.
+// Die VM: ScriptVm.hpp, Werte: Value.hpp (M7 Teil A).
 
 #include <string_view>
 

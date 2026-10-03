@@ -209,6 +209,6 @@ Standard-Runnern sind damit kostenlos.
 | EnTT 3.16 (MIT) | `entt` (ADR 0005) | world (öffentlich; Registry nicht in der API) | M4 |
 | nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world_format (privat, Weltformat `.g7world`), tools/walk (privat, Routen und Protokoll) | M4 |
 | Jolt Physics 5.6 (MIT) | `joltphysics` (ADR 0004; `nodeps`: FetchContent v5.6.0 mit SHA256) | physics (privat) | M5 |
-| Lua 5.4 + sol2 | `lua`, `sol2` | script | M7 |
+| Lua 5.4.7 (MIT) + sol2 3.5.0 (MIT) | `lua` (per `overrides` auf 5.4.7, die Baseline brächte 5.5), `sol2` (ADR 0006; `nodeps`: FetchContent mit SHA256) | script (privat) | M7 |
 | miniaudio | `miniaudio` | audio | M13 |
 | Tracy | `tracy` | core | M17 |

@@ -167,8 +167,11 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 
 ## M7 – Scripting
 - [ ] Lua 5.4 + sol2 (ADR 0006), Skript-VM pro Spielsitzung, Sandbox (kein `io`/`os`)
+  - Stand Teil A: ADR 0006 akzeptiert, Lua 5.4.7 + sol2 3.5.0 privat in `script`; `ScriptVm` mit Sandbox (kein io/os/debug/load, `require` nur unterhalb der Skripte), Befehls- und Speichergrenze, Fehler mit Datei:Zeile; Anbindung pro Spielsitzung mit Teil C
 - [ ] Modul-/Ordnerstruktur in `game/scripts`, Lade-Reihenfolge
+  - Stand Teil A: Lade-Reihenfolge `lib/` → `data/` → Rest, je alphabetisch (`loadOrder`); Ordner und Beispielinhalt mit Teil C
 - [ ] Instanz-System: `Item{...}`, `Npc{...}`, `Info{...}`, `Quest{...}` als deklarative Tabellen
+  - Stand Teil A: Instanz-Arten (`defineKind`) mit Schema (Typen, Pflichtfelder, Bereiche, Verweise, unbekannte Felder), Prüfung nach dem Laden; die Arten selbst registriert gameplay mit Teil C
 - [ ] Engine-API-Bindings (dokumentiert, generierte Referenz `docs/script-api.md`)
 - [ ] Globale Story-Variablen, persistent (für Save)
 - [ ] Timer/verzögerte Aufrufe, Ereignis-Hooks

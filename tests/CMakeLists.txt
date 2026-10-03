@@ -33,6 +33,7 @@ g7_add_test_suite(render)
 g7_add_test_suite(physics)
 g7_add_test_suite(gameplay)
 g7_add_test_suite(animation)
+g7_add_test_suite(script)
 target_compile_definitions(g7_tests_animation PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
 g7_add_test_suite(world)
 # test_day_cycle.cpp checks the shipped day-and-night curves.
