@@ -66,8 +66,10 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
 - **Überblenden:** Der alte Zustand läuft weiter und wird linear über `blend` Sekunden ausgeblendet. Ein neuer
   Übergang ersetzt ihn.
 - **Root Motion** (`root_motion = true`): `rootMotion()` meldet die Bewegung des Knochens `root` im letzten
-  Update; gezeichnet bleibt `root` in Ruhe. Die Engine bewegt damit die Figur (Klettern, mit Teil C) und skaliert
-  auf die Kantenhöhe. Fortbewegungs-Clips sind In-Place (`root` bleibt bei 0, geprüft).
+  Update, `rootMotionYaw()` seine Drehung um +Y (Bogenmaß, positiv nach links; Teil D3); gezeichnet bleibt `root` in
+  Ruhe (bei Einzel-Clips auch ohne die Drehung seit Clip-Beginn). Schleifen zählen über ihr Ende hinweg weiter, Blends
+  mitteln nach Gewicht. Die Engine bewegt damit die Figur (Klettern beim Helden, Gehen/Rennen/Drehen bei Tieren).
+  Fortbewegungs-Clips der Menschen sind In-Place (`root` bleibt bei 0, geprüft).
 - **Overlay:** ein Clip über einer Knochenmaske (`maskBelow("spine_02")` = Oberkörper), normal oder additiv
   (Änderung gegen Frame 0), ein- und ausgeblendet. Einmal-Clips blenden am Ende selbst aus.
 - **Morph-Targets** gibt es nur auf `head_lod0` (Vertrag §6.1). Gewichte für LOD 1 und 2 werden still
@@ -97,8 +99,22 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
 - **Debug-UI** (F1), Fenster „Animation“: Figur, Graph, Zustand, Überblendung, Fortschritt, Clips mit Gewichten,
   Parameter, die letzten Events.
 - `Engine::playerAnimationState()` / `playerFigurePath()` für Tests (render_gpu `Player GPU`).
-- Offen: Tiere (D3); Dual-Quaternion-Skinning gegen die Schulterbeule in extremen
+- Offen: Dual-Quaternion-Skinning gegen die Schulterbeule in extremen
   Posen (offener Punkt in render.md, Entscheidung mit echten Clips F4).
+
+## Tiere (M6 Teil D3, umgesetzt)
+- Graphen `data/anim/wolf|keiler|laufvogel.animgraph.toml` (ein Muster, Werte als Daten): `move` (Blend
+  Stand/Gehen/Rennen nach `speed`, Punkte = Eigengeschwindigkeiten der Clips, root motion), `turn_l/r` (bei `turn`,
+  root motion mit Drehung), Einmal-Aktionen über `action` (1 Angriff 1, 2 Angriff 2, 3 Treffer, 4 Drohen),
+  Schleifen `eat`/`sleep`, `die` über `dead` (bleibt liegen); `[look_at]` mit `neck_01`/`head`.
+- Engine: Held und Tiere teilen `AnimatedFigure` (Modell, Animator, Posen, Interpolation, Skinning, Schatten);
+  der Held ist unverändert (alle Player-Tests). Tiere zum Testen bis M9: `spawnCreature(art, füße, gier)`,
+  `setCreatureMove(id, speed, turn)`, `creatureAction(id, "attack_1" …)`, `setCreatureShowcase`, `creatureState`;
+  die Root Motion bewegt und dreht sie, ein Strahl nach unten stellt sie auf den Boden (keine Kapsel). Beim
+  Weltwechsel verschwinden sie.
+- Debug-UI (F1, Fenster „Creatures“): Art wählen, vor der Kamera erzeugen, Tempo, Aktionen, „showcase“ (alle
+  Zustände reihum: gehen, rennen, drehen, Angriffe, drohen, Treffer, fressen, schlafen, sterben, aufstehen).
+- Mit M9: Monster-Vob-Typ in `.g7world` (mit welt), KI setzt die Parameter, Kollisionskapsel aus `[rig.collision]`.
 
 ## Figuren zur Laufzeit zusammensetzen (M6 Teil D2, umgesetzt)
 - `asset/FigureAssembly.hpp`: `FigureManifest::parse` (Format v1, Rollen in fester Reihenfolge body, head, hair,

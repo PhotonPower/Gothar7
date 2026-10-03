@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <initializer_list>
+#include <vector>
 
 namespace g7
 {
@@ -43,10 +45,65 @@ void Engine::drawNotice(u32 height)
     }
 }
 
-std::string Engine::bindingText(platform::Action action) const
+std::string flyHintText(const platform::ActionMap& actions, f32 speed)
 {
-    const auto bindings = m_actions.bindings(action);
-    return bindings.empty() ? std::string("-") : std::string(platform::name(bindings.front()));
+    using platform::Action;
+    // The first input of each action; parts whose actions are all unbound are left out (no "-" in the hint).
+    const auto key = [&](Action action)
+    {
+        const auto bindings = actions.bindings(action);
+        return bindings.empty() ? std::string() : std::string(platform::name(bindings.front()));
+    };
+    const auto join = [](std::initializer_list<std::string> keys, std::string_view separator)
+    {
+        std::string out;
+        for (const std::string& k : keys)
+        {
+            if (!k.empty())
+            {
+                out += (out.empty() ? "" : std::string(separator)) + k;
+            }
+        }
+        return out;
+    };
+    std::vector<std::string> parts;
+    const auto add = [&](const std::string& keys, std::string_view what)
+    {
+        if (!keys.empty())
+        {
+            parts.push_back(std::format("{} {}", keys, what));
+        }
+    };
+    // W/A/S/D-like single letters read as one word ("WASD"), longer names with slashes.
+    const std::string forward = key(Action::FlyForward);
+    const std::string left = key(Action::FlyLeft);
+    const std::string back = key(Action::FlyBack);
+    const std::string right = key(Action::FlyRight);
+    const bool letters = forward.size() == 1 && left.size() == 1 && back.size() == 1 && right.size() == 1;
+    add(letters ? forward + left + back + right : join({forward, left, back, right}, "/"), "move");
+    add(join({key(Action::FlyUp), key(Action::FlyDown)}, "/"), "up/down");
+    add(key(Action::FlyFast), "fast");
+    std::string line1 = "fly:";
+    for (const std::string& p : parts)
+    {
+        line1 += (line1 == "fly:" ? " " : ", ") + p;
+    }
+    line1 += std::format("{}mouse look, wheel speed ({:.0f} m/s)", parts.empty() ? " " : ", ", speed);
+    std::vector<std::string> extra;
+    if (const std::string copy = key(Action::CopyPosition); !copy.empty())
+    {
+        extra.push_back(copy + " copy position");
+    }
+    if (const std::string back3 = key(Action::DebugFly); !back3.empty())
+    {
+        extra.push_back(back3 + " back");
+    }
+    std::string line2;
+    for (const std::string& e : extra)
+    {
+        line2 += (line2.empty() ? "" : ", ") + e;
+    }
+    return line2.empty() ? line1 : line1 + "\n" + line2;
 }
 
 void Engine::setFlyMode(bool on)
@@ -64,15 +121,7 @@ void Engine::setFlyMode(bool on)
     if (on)
     {
         m_flyCamera.attach(m_camera);
-        using platform::Action;
-        showNotice(std::format(
-                       "fly: {}{}{}{} move, {}/{} up/down, {} fast, mouse look, wheel speed ({:.0f} m/s)\n"
-                       "{} copy position, {} back",
-                       bindingText(Action::FlyForward), bindingText(Action::FlyLeft),
-                       bindingText(Action::FlyBack), bindingText(Action::FlyRight),
-                       bindingText(Action::FlyUp), bindingText(Action::FlyDown), bindingText(Action::FlyFast),
-                       m_flyCamera.speed, bindingText(Action::CopyPosition), bindingText(Action::DebugFly)),
-                   kHintSeconds);
+        showNotice(flyHintText(m_actions, m_flyCamera.speed), kHintSeconds);
     }
     G7_LOG_INFO("engine", "{}", on ? "fly mode (free camera)" : "player camera");
 }

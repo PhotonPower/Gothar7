@@ -357,6 +357,7 @@ bool Engine::runFrame()
         G7_PROFILE_SCOPE("Engine::fixedUpdate");
         // TODO(M7+): ai/gameplay fixed update
         fixedUpdatePlayer(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
         m_physics.step(m_fixedStep.step());
         const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
         m_triggers.update(m_scene, std::span(&probe, 1));
@@ -1134,6 +1135,7 @@ void Engine::requestWorldChange(std::string world, std::string start)
 
 void Engine::unloadWorld()
 {
+    m_creatures.clear(); // they belong to the world they were put into
     m_scene.clear();
     m_instances.clear();
     m_cullGridDirty = true;
@@ -1462,6 +1464,7 @@ void Engine::drawScene(u32 width, u32 height)
                 m_terrain.drawShadow(*m_device, m_cascades[i]);
             }
             drawPlayer(true, i);
+            drawCreatures(true, i);
         }
         shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
     }
@@ -1524,6 +1527,7 @@ void Engine::drawScene(u32 width, u32 height)
     // The player before the batched pass: that one ends with the translucent water, which must lie over
     // the figure's parts below the surface.
     drawPlayer(false, 0);
+    drawCreatures(false, 0);
     if (m_multiDraw)
     {
         m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
@@ -1674,6 +1678,7 @@ void Engine::runDebugUi(f64 realSeconds)
     panel.timeScale = static_cast<f32>(m_timeScale);
     m_debugUi.enginePanel(panel);
     playerAnimationUi();
+    creaturesUi();
     for (EngineTool* tool : m_tools)
     {
         tool->ui(*this, m_debugUi);
@@ -1838,6 +1843,7 @@ void Engine::shutdown()
     m_instances.clear();
     m_groundModel.reset();
     m_waterModel.reset();
+    m_creatures.clear();
     m_figure.reset();
     m_models.clear();
     m_geometry.reset(); // after every mesh that lives in it

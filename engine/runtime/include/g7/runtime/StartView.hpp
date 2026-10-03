@@ -7,6 +7,7 @@
 #include <g7/core/Math.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
+#include <g7/platform/Actions.hpp>
 
 #include <optional>
 #include <string>
@@ -51,4 +52,12 @@ struct ViewLine
 /// E.g. "--world=worlds/leonberg/leonberg.g7world --cam=103.20,4.10,-55.00 --yaw=45.0 --pitch=-10.0
 /// --time=12:00 --fly" (one line; positions in cm, angles in tenths of a degree, yaw in (-180, 180]).
 [[nodiscard]] std::string formatViewLine(const ViewLine& line);
+} // namespace g7
+
+namespace g7
+{
+/// The key hint shown when fly mode starts, from the actual bindings (fly_*, copy_position, debug_fly), e.g.
+/// "fly: WASD move, Space/LeftCtrl up/down, LeftShift fast, mouse look, wheel speed (10 m/s)\nF6 copy
+/// position, F3 back"; parts whose actions have no input are left out.
+[[nodiscard]] std::string flyHintText(const platform::ActionMap& actions, f32 speed);
 } // namespace g7

@@ -159,6 +159,7 @@ _Benötigt F1 (Referenz-Rig, Platzhalterfigur) und für den Meilenstein die Prio
   - D1: Modelle an Sockets (`Engine::attachToPlayer`, mit Schatten, Debug-UI-Teststab). D2: Figuren zur Laufzeit aus Teilen (`assembleFigure`, gleich mit `gothar-chargen assemble`, CI-Vergleich), Held aus `farmer.figure.toml`, Kopf/Rüstung/Helm tauschen (`setPlayerPart`, `setPlayerCloth`, Debug-UI „Outfit“)
 - [x] Morph-Targets für Gesichter (Lippen-Synchronisation grob, Blinzeln) – `FaceAnimator` (D1): Blinzeln, Ausdrücke, grobes Sprechen; Lippensynchronisation nach Audio mit M13
 - [x] Look-At (Kopf dreht zu Gesprächspartner) – `LookAt` (D1): Hals und Kopf, Grenzen und Geschwindigkeit aus `[look_at]`; Gesprächspartner setzen mit M12
+- [x] Tiere: Graphen für wolf, keiler, laufvogel, Root Motion mit Drehung, gemeinsame `AnimatedFigure` mit dem Helden, Test-Tiere und Fenster „Creatures“ mit Vorführung (D3); Monster-Vobs, KI und Kollision mit M9
 
 **DoD / Meilenstein A:** Animierter Held läuft, rennt, springt, klettert, schwimmt durch die
 Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.

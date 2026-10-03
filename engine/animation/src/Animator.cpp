@@ -492,33 +492,58 @@ void Animator::update(f32 seconds, const EventCallback& onEvent)
         m_fade = m_fadeSeconds > 0.0f ? std::min(1.0f, m_fade + seconds / m_fadeSeconds) : 1.0f;
     }
 
-    // 3. Root motion: in root-motion states the root's movement is reported, the drawn root stays put.
+    // 3. Root motion: in root-motion states the root's movement and turn are reported (blends: weighted,
+    // loops across their ends), the drawn root stays put.
     m_rootMotion = Vec3(0.0f);
+    m_rootYaw = 0.0f;
     const StateDef& current = m_states[static_cast<usize>(m_current.state)];
     const i32 root = m_skeleton->find("root");
-    if (current.def.rootMotion && current.def.blendParam.empty())
+    if (current.def.rootMotion)
     {
-        const Clip& clip = m_clips[current.clips.front()];
-        const f32 to = std::min(m_current.time, clip.duration());
-        const f32 from = std::min(m_current.previous, clip.duration());
-        m_rootMotion = clip.rootTranslation(to) - clip.rootTranslation(from);
+        if (current.def.blendParam.empty())
+        {
+            const Clip::RootMotion m =
+                m_clips[current.clips.front()].rootMotion(m_current.previous, m_current.time);
+            m_rootMotion = m.translation;
+            m_rootYaw = m.yaw;
+        }
+        else
+        {
+            for (const auto& [clip, weight] : weights(current))
+            {
+                const Clip& c = m_clips[clip];
+                const Clip::RootMotion m =
+                    c.rootMotion(m_current.previous * c.duration(), m_current.time * c.duration());
+                m_rootMotion += m.translation * weight;
+                m_rootYaw += m.yaw * weight;
+            }
+        }
     }
+    const auto holdRoot = [&](const Instance& instance, Pose& pose)
+    {
+        const StateDef& s = m_states[static_cast<usize>(instance.state)];
+        if (!s.def.rootMotion || root < 0)
+        {
+            return;
+        }
+        BoneTransform& r = pose[static_cast<usize>(root)];
+        r.translation = m_skeleton->restPose()[static_cast<usize>(root)].translation;
+        if (s.def.blendParam.empty()) // turns: the drawn root keeps facing ahead
+        {
+            const Clip& c = m_clips[s.clips.front()];
+            const f32 t = c.loops() && c.duration() > 0.0f ? std::fmod(instance.time, c.duration())
+                                                           : std::min(instance.time, c.duration());
+            r.rotation = glm::angleAxis(-c.rootYaw(t), Vec3(0.0f, 1.0f, 0.0f)) * r.rotation;
+        }
+    };
 
     // 4. Pose: previous state fading out under the current one, then the overlay.
     sample(m_current, m_pose);
-    if (current.def.rootMotion && root >= 0)
-    {
-        m_pose[static_cast<usize>(root)].translation =
-            m_skeleton->restPose()[static_cast<usize>(root)].translation;
-    }
+    holdRoot(m_current, m_pose);
     if (m_fade < 1.0f && m_previous.state >= 0)
     {
         sample(m_previous, m_scratch);
-        if (m_states[static_cast<usize>(m_previous.state)].def.rootMotion && root >= 0)
-        {
-            m_scratch[static_cast<usize>(root)].translation =
-                m_skeleton->restPose()[static_cast<usize>(root)].translation;
-        }
+        holdRoot(m_previous, m_scratch);
         blendPose(m_scratch, m_pose, m_fade);
         std::swap(m_scratch, m_pose);
     }

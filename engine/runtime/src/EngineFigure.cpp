@@ -35,9 +35,10 @@ usize ledgeIndex(gameplay::LedgeClass ledge)
 }
 } // namespace
 
-Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, std::string_view graphPath)
+Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view path,
+                                        std::string_view graphPath, const FigureGraphCallback& extra)
 {
-    auto figure = std::make_unique<PlayerFigure>();
+    AnimatedFigure* figure = &target;
     figure->path = std::string(path);
     figure->graphPath = std::string(graphPath);
     auto graphBytes = m_vfs.read(graphPath);
@@ -140,34 +141,56 @@ Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, 
         }
     }
 
-    // Climb clips: how far their root moves, to scale it to the ledge found.
-    for (usize ledge = 0; ledge < kClimbStates.size(); ++ledge)
+    if (extra)
     {
-        const auto state =
-            std::find_if(graph.value().states.begin(), graph.value().states.end(),
-                         [&](const animation::AnimGraphState& s) { return s.name == kClimbStates[ledge]; });
-        if (state == graph.value().states.end() || !state->rootMotion || state->points.empty())
-        {
-            continue;
-        }
-        for (const asset::AnimationSetData* set : sets)
-        {
-            if (const asset::ClipData* clipData = set->find(state->points.front().second))
-            {
-                const animation::Clip clip(*clipData, figure->skeleton);
-                figure->climbRoot[ledge] = clip.rootTranslation(clip.duration()) - clip.rootTranslation(0.0f);
-                figure->climbSeconds[ledge] = clip.duration() / std::max(state->speed, 0.01f);
-                break;
-            }
-        }
+        extra(graph.value(), sets);
     }
 
+    figure->poseNow = figure->posePrevious = figure->animator.pose();
     if (auto uploaded = uploadFigure(*figure, data); !uploaded)
     {
         return uploaded.error();
     }
-    G7_LOG_INFO("engine", "player figure {}: {} bones, {} parts, animation {} ({} sets)", path,
+    G7_LOG_INFO("engine", "figure {}: {} bones, {} parts, animation {} ({} sets)", path,
                 figure->skeleton.size(), data.parts.size(), graphPath, sets.size());
+    return {};
+}
+
+Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, std::string_view graphPath)
+{
+    auto figure = std::make_unique<PlayerFigure>();
+    PlayerFigure& player = *figure;
+    auto loaded = loadAnimatedFigure(
+        player, path, graphPath,
+        [&](const animation::AnimGraph& graph, std::span<const asset::AnimationSetData* const> sets)
+        {
+            // Climb clips: how far their root moves, to scale it to the ledge found.
+            for (usize ledge = 0; ledge < kClimbStates.size(); ++ledge)
+            {
+                const auto state = std::find_if(graph.states.begin(), graph.states.end(),
+                                                [&](const animation::AnimGraphState& s)
+                                                { return s.name == kClimbStates[ledge]; });
+                if (state == graph.states.end() || !state->rootMotion || state->points.empty())
+                {
+                    continue;
+                }
+                for (const asset::AnimationSetData* set : sets)
+                {
+                    if (const asset::ClipData* clipData = set->find(state->points.front().second))
+                    {
+                        const animation::Clip clip(*clipData, player.skeleton);
+                        player.climbRoot[ledge] =
+                            clip.rootTranslation(clip.duration()) - clip.rootTranslation(0.0f);
+                        player.climbSeconds[ledge] = clip.duration() / std::max(state->speed, 0.01f);
+                        break;
+                    }
+                }
+            }
+        });
+    if (!loaded)
+    {
+        return loaded.error();
+    }
     return figure;
 }
 
@@ -193,7 +216,7 @@ Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureM
     return asset::assembleFigure(manifest, parts);
 }
 
-Result<void> Engine::uploadFigure(PlayerFigure& figure, const asset::SkinnedModelData& data)
+Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedModelData& data)
 {
     // Textures (next to the figure, or VFS paths in assembled figures), then the GPU side; the figure keeps
     // its previous mesh until this succeeds.
@@ -438,8 +461,12 @@ Mat4 Engine::playerFigureTransform() const
 
 void Engine::preparePlayerPose(f32 alpha)
 {
+    prepareFigurePose(*m_figure, alpha);
+}
+
+void Engine::prepareFigurePose(AnimatedFigure& f, f32 alpha)
+{
     // Once per frame (the shadow cascades and the main pass share it): the pose between the last two steps.
-    PlayerFigure& f = *m_figure;
     if (f.drawnFrame == m_frameCount)
     {
         return;
@@ -677,14 +704,9 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     f.face.update(seconds);
 }
 
-bool Engine::drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade)
+void Engine::drawAnimatedFigure(AnimatedFigure& f, const Mat4& transform, bool shadow, u32 cascade)
 {
-    if (!m_figure || !m_figure->uploaded)
-    {
-        return false;
-    }
-    preparePlayerPose(static_cast<f32>(m_fixedStep.alpha()));
-    const PlayerFigure& f = *m_figure;
+    prepareFigurePose(f, static_cast<f32>(m_fixedStep.alpha()));
     if (shadow)
     {
         m_meshRenderer.drawShadowSkinned(*m_device, f.mesh, f.materials, transform, f.bones,
@@ -694,6 +716,16 @@ bool Engine::drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade)
     {
         m_meshRenderer.drawSkinned(*m_device, f.mesh, f.materials, transform, f.bones, m_camera);
     }
+}
+
+bool Engine::drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade)
+{
+    if (!m_figure || !m_figure->uploaded)
+    {
+        return false;
+    }
+    drawAnimatedFigure(*m_figure, transform, shadow, cascade);
+    const PlayerFigure& f = *m_figure;
     for (const FigureAttachment& attachment : f.attachments)
     {
         const Mat4 at = transform * f.modelSpace[attachment.bone];

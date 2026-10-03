@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <format>
 #include <utility>
 #include <vector>
 
@@ -506,6 +507,72 @@ void DebugUi::beginFrame(const platform::Input& input, Vec2 size, Vec2 pixels, f
         io.AddInputCharactersUTF8(text.c_str());
     }
     ImGui::NewFrame();
+}
+
+void DebugUi::creaturesPanel(CreaturesPanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    ImGui::SetNextWindowPos(ImVec2(690.0f * scale, 10.0f * scale), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(340.0f * scale, 0.0f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Creatures"))
+    {
+        ImGui::End();
+        return;
+    }
+    if (ImGui::BeginCombo("species", panel.speciesChoice.c_str()))
+    {
+        for (const std::string& s : panel.species)
+        {
+            if (ImGui::Selectable(s.c_str(), s == panel.speciesChoice))
+            {
+                panel.speciesChoice = s;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    panel.spawn = ImGui::Button("spawn in front");
+    ImGui::SameLine();
+    panel.removeAll = ImGui::Button("remove all");
+    static constexpr std::array<std::pair<const char*, const char*>, 11> kActions = {{
+        {"turn left", "turn_l"},
+        {"turn right", "turn_r"},
+        {"attack 1", "attack_1"},
+        {"attack 2", "attack_2"},
+        {"threaten", "threaten"},
+        {"hit", "hit"},
+        {"eat", "eat"},
+        {"sleep", "sleep"},
+        {"stop", "stop"},
+        {"die", "die"},
+        {"revive", "revive"},
+    }};
+    for (CreaturesPanel::Row& row : panel.rows)
+    {
+        ImGui::PushID(static_cast<int>(row.id));
+        if (ImGui::CollapsingHeader(std::format("{}: {}", row.label, row.state).c_str()))
+        {
+            ImGui::Checkbox("showcase", &row.showcase);
+            ImGui::SliderFloat("speed", &row.speed, 0.0f, row.maxSpeed, "%.2f m/s");
+            for (usize i = 0; i < kActions.size(); ++i)
+            {
+                if (i % 4 != 0)
+                {
+                    ImGui::SameLine();
+                }
+                if (ImGui::Button(kActions[i].first))
+                {
+                    row.action = kActions[i].second;
+                }
+            }
+            for (const std::string& event : row.events)
+            {
+                ImGui::TextDisabled("%s", event.c_str());
+            }
+        }
+        ImGui::PopID();
+    }
+    ImGui::End();
 }
 
 void DebugUi::animationPanel(AnimationPanel& panel)

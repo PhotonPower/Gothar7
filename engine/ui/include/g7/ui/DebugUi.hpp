@@ -90,6 +90,27 @@ struct AnimationPanel
     std::string outfitError;       ///< shown: the last swap that failed
 };
 
+/// Animals (M6 D3, "Creatures" window): spawn, actions, showcase. The engine fills it and reads the edits.
+struct CreaturesPanel
+{
+    std::vector<std::string> species;
+    std::string speciesChoice; ///< edited
+    bool spawn = false;        ///< out: "spawn in front" pressed
+    bool removeAll = false;    ///< out
+    struct Row
+    {
+        u32 id = 0;
+        std::string label;
+        std::string state;
+        f32 speed = 0.0f; ///< edited
+        f32 maxSpeed = 1.0f;
+        bool showcase = false; ///< edited
+        std::string action;    ///< out: the action button pressed ("attack_1", "turn_l" ...)
+        std::vector<std::string> events;
+    };
+    std::vector<Row> rows;
+};
+
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor
 /// rectangle (origin bottom-left), clamped to the framebuffer; nullopt if nothing remains.
 [[nodiscard]] std::optional<render::PixelRect> scissorFromClip(const Vec4& clip, u32 framebufferWidth,
@@ -117,6 +138,8 @@ public:
     void enginePanel(EnginePanel& panel);
     /// Window "Animation" with the player figure's state machine (M6).
     void animationPanel(AnimationPanel& panel);
+    /// Window "Creatures" (M6 D3).
+    void creaturesPanel(CreaturesPanel& panel);
     /// Draws the editor windows (tools/editor); edits and actions are written back into `panel`.
     void editorPanel(EditorPanel& panel);
     /// Finishes the frame and, with a device, draws it into the bound target (normally the window).
