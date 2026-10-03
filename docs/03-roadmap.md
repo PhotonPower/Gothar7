@@ -125,7 +125,7 @@ Gizmo-Mathematik und Operationen). Die Kollision statischer Welt-Meshes ist nach
 - [x] Vorarbeit: Modul `world_format` (`.g7world` ohne render/physics/EnTT), g7-cook linkt nur noch das – geprüft beim Konfigurieren
 - [x] Jolt Physics integrieren (ADR 0004), Welt-Kollision aus statischem Mesh – Gelände und Architektur (aus M4 verschoben: „Statisches Welt-Mesh mit Kollisionsgeometrie“)
   - Jolt 5.6.0 (vcpkg, `nodeps` per FetchContent mit SHA256); Gelände als HeightField mit Löchern, Modelle aus `COL_`-Knoten (Vertrag mit welt/figuren, `asset.md`) bzw. Render-Mesh, Form je Modell geteilt; `.g7mesh` v2 mit Kollisionsteilen
-  - Leonberg-Kern ohne `COL_` (1,69 Mio. Dreiecke): Aufbau 1,13 s (Release)
+  - Leonberg-Kern: Aufbau 1,13 s ohne `COL_` (1,69 Mio. Dreiecke), 0,25 s mit den `COL_HULL_` aus #93 (Release)
 - [x] Raycasts/Shapecasts-API (Fokus, Kamera, KI-Sicht) – `raycast`, `sphereCast`, `overlapSphere` mit Layer-Masken, `Engine::physics()`
 - [ ] Charakter-Controller: gehen, rennen, schleichen, Treppen/Steigungen, rutschen an steilen Hängen
 - [ ] Springen, **Kanten hochziehen** (Kantenerkennung per Shapecast), Fallschaden

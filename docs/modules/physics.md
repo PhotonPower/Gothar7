@@ -48,9 +48,10 @@ class PhysicsWorld {
   die Bodenplatte (flacher Quader) werden zu statischen Körpern; `userData` = `VobId` (0 für Gelände/Bodenplatte).
   Neuaufbau nach dem Laden einer Welt und vor dem nächsten Simulationsschritt, wenn sich Instanzen geändert haben
   (Editor, Hot-Reload) – vorerst vollständig, gezielte Änderungen bei Bedarf.
-- **Messung Leonberg-Kern** (Release, 2026-10-03): 1405 Häuser noch **ohne** `COL_` (Render-Meshes, 1,69 Mio.
-  Dreiecke) + Gelände 2000 × 2000: Aufbau **1,13 s**. Mit den geplanten `COL_HULL_` (≤ 200 Dreiecke je Haus) wird das
-  deutlich weniger.
+- **Messung Leonberg-Kern** (Release, 2026-10-03, Gelände 2000 × 2000 + 1405 Häuser):
+  - ohne `COL_` (Render-Meshes, 1,69 Mio. Dreiecke): Aufbau **1,13 s**;
+  - mit den `COL_HULL_` von welt (#93: 2288 Hüllen, Median 20 Dreiecke je Haus, 3 Ersatznetze mit zusammen 355
+    Dreiecken): Aufbau **0,25 s**. Die `COL_`-Knoten werden nicht gezeichnet (Screenshot geprüft).
 
 ## Geplant: Charakter-Controller (M5 Teil C–E)
 ```cpp
