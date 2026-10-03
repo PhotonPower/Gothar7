@@ -60,3 +60,10 @@ if(TARGET g7_cook_lib)
         target_compile_definitions(g7_tests_cook PRIVATE G7_HAS_KTX=1)
     endif()
 endif()
+
+# A hanging test turns the run red instead of blocking it for hours (CI and local runs). The GPU
+# suite gets more time: under Mesa llvmpipe (CI) it renders in software.
+set(G7_TEST_TIMEOUT 300 CACHE STRING "Seconds per test suite before ctest stops it")
+get_property(_g7_tests DIRECTORY PROPERTY TESTS)
+set_tests_properties(${_g7_tests} PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
+set_tests_properties(render_gpu PROPERTIES TIMEOUT 900)
