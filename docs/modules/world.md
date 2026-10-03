@@ -85,9 +85,10 @@ daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vo
     {"id":102,"type":"light","name":"CAMPFIRE_01_LIGHT","parent":101,"pos":[0,1,0],"rot":[0,0,0,1],
      "components":{"light":{"color":[1,0.6,0.3],"range":8,"intensity":3,"flicker":0.3}}}
   ],
-  "waynet": { "points": [ { "name": "WP_CAMP_ENTRANCE", "pos": [0,0,0], "dir": [0,0,1] } ],
-              "edges": [ [0, 1] ],
-              "freepoints": [ { "name": "FP_CAMPFIRE_SIT_01", "pos": [1,0,3], "dir": [0,0,-1] } ] },
+  "waynet": { "points": [ { "name": "WP_CAMP_ENTRANCE", "pos": [0,0,0], "dir": [0,0,1] },
+                          { "name": "WP_CAMP_FIRE", "pos": [1,0,2] } ],
+              "edges": [ ["WP_CAMP_ENTRANCE", "WP_CAMP_FIRE"] ],
+              "freepoints": [ { "name": "FP_SIT_CAMPFIRE_01", "pos": [1,0,3], "dir": [0,0,-1] } ] },
   "zones": [ { "type": "music", "value": "CAMP", "bounds": [[-20,-5,-20],[20,10,20]] } ] }
 ```
 
@@ -101,8 +102,9 @@ daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vo
   `.g7mesh`, wenn vorhanden). `light`-Vobs: `components.light` mit `color` (linear), `range` (> 0), `intensity` (Vorgabe 3),
   `flicker` (0–1, Vorgabe 0).
 - Weitere Vob-Typen (M4, Erweiterung von v1 nach dem Muster `components`, Abschnitt „Vob-Typen“ unten).
-- `waynet`/`zones` werden bis zu ihren Systemen unverändert gelesen und zurückgeschrieben. Unbekannte Schlüssel
-  werden ignoriert (nicht zurückgeschrieben).
+- `waynet`: Wegnetz, verbindlich ab 2026-10-04 (Abschnitt „Wegnetz“ unten); bis M8 Teil A wird es unverändert
+  gelesen und zurückgeschrieben. `zones` ebenso bis zu ihrem System. Unbekannte Schlüssel werden ignoriert (nicht
+  zurückgeschrieben).
 - **Schreiben** ist stabil: Kopf-Schlüssel je eine Zeile, dann **ein Vob pro Zeile** nach `id` sortiert, Zahlen auf
   1e-5 gerundet – gleiche Welt, gleiche Bytes; Laden und Speichern ändert nichts.
 - Fehler nennen Datei und Eintrag (`camp.g7world: vobs[3].pos: must be a list of 3 numbers`); fehlende Eltern,
@@ -164,6 +166,41 @@ class TriggerSystem { void setCallback(Callback); std::vector<TriggerEvent> upda
   meldet Änderungen **sortiert nach Trigger-ID, dann Proben-ID, Leave vor Enter** – deterministisch für Tests und
   Skripte. Eine fehlende Probe hat alle Trigger verlassen. `once`: nur das erste Update mit Eintritt meldet (alle
   Proben darin), danach nichts mehr bis `reset()`. `world` ruft keine Skripte: die Engine registriert den Callback.
+
+## Wegnetz – `waynet`-Block (v1, Vertrag mit welt, 2026-10-04)
+Wegpunkte, Kanten und Freepoints für Pfadsuche und Tagesabläufe (Glossar „Wegnetz“, `ai.md`). welt erzeugt einen
+Vorschlag aus den Straßenachsen (`leonberg-pipeline.md` W-G), der Editor bessert nach (M16); die Engine liest und
+schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
+```json
+"waynet": {
+  "points":     [ { "name": "WP_LEO_MARKT_01", "pos": [12.5, 3.1, -40.0], "dir": [0, 0, 1], "owner": "worldgen" },
+                  { "name": "WP_LEO_MARKT_02", "pos": [20.0, 3.0, -41.5], "owner": "worldgen" },
+                  { "name": "WP_LEO_KIRCHE_TUER", "pos": [30.2, 4.0, -38.0] } ],
+  "edges":      [ ["WP_LEO_MARKT_01", "WP_LEO_MARKT_02", "worldgen"], ["WP_LEO_MARKT_02", "WP_LEO_KIRCHE_TUER"] ],
+  "freepoints": [ { "name": "FP_SIT_LEO_BRUNNEN_01", "pos": [1.2, 3.0, 0.8], "dir": [0, 0, -1], "owner": "worldgen" } ]
+}
+```
+- **Punkte** (`points`) und **Freepoints** (`freepoints`): `name` (Pflicht), `pos` (Pflicht, Meter, Weltkoordinaten;
+  `y` = Bodenhöhe, also die Füße), `dir` (optional, waagrechte Blickrichtung für dort Stehende/Sitzende; wird
+  normiert), `owner` (optional, siehe unten).
+- **Namen:** Großbuchstaben, Ziffern und `_`; Punkte beginnen mit `WP_`, Freepoints mit `FP_`. Eindeutig über Punkte
+  und Freepoints einer Welt. Bei Freepoints ist das zweite Glied der **Typ**: `FP_SIT_`, `FP_STAND_`,
+  `FP_SMALLTALK_`, `FP_ROAM_`, `FP_SLEEP_`, `FP_CAMPFIRE_`; andere Typen sind erlaubt und werden bis zu ihrer
+  Verwendung ignoriert.
+- **Kanten** (`edges`): ungerichtet, `[name_a, name_b]` bzw. `[name_a, name_b, "worldgen"]`; beide Namen müssen
+  Punkte (`WP_`) sein. Eine Kante auf einen fehlenden Punkt, doppelte Namen oder ungültige Namen sind Ladefehler mit
+  Datei und Eintrag (`leonberg.g7world: waynet.edges[12]: unknown point "WP_X"`); doppelte Kanten werden
+  zusammengefasst. Freepoints haben keine Kanten – die KI geht zum nächsten erreichbaren Punkt und von dort hin.
+- **Eigentum** wie bei Vobs (`owner`): `"worldgen"` an einem Punkt, Freepoint oder als drittes Kantenelement heißt,
+  der Generator ersetzt ihn bei jedem Lauf; ohne `owner` ist er von Hand bzw. im Editor gesetzt und bleibt.
+  Verschiebt der Editor einen erzeugten Punkt, entfällt `owner` (er gehört dann dem Menschen). Der Generator
+  vergibt keine Namen, die schon ein Hand-Punkt trägt, und lässt Kanten ohne `owner` stehen.
+- **Empfehlungen** (die Engine warnt mit M9, lehnt aber nicht ab): Abstand verbundener Punkte 5–20 m; die Gerade
+  zwischen ihnen ist in Hüfthöhe frei (kein Haus, keine Mauer); Punkte stehen auf begehbarem Boden; vor jeder
+  benutzbaren Haustür ein Punkt (welt: `WP_LEO_<STRASSE>_<NR>`), Freepoints auf Plätzen und an Bänken/Feuern.
+- **Schreiben** ist stabil: je Punkt, Freepoint und Kante eine Zeile, Punkte und Freepoints nach Name, Kanten nach
+  ihren Namen sortiert (die kleinere zuerst); Zahlen auf 1e-5 gerundet.
+- Vorher stand hier eine Skizze mit Kanten per Index; sie wurde nie benutzt (das Spiel las den Block nicht).
 
 ## Generator-Kopf (`generator`, optional, M4)
 ```json
