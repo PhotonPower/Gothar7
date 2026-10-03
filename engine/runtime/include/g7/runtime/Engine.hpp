@@ -259,7 +259,14 @@ public:
     {
         return m_movementSettings;
     }
+    /// Puts the player's feet at `feet` facing `yaw` (radians, 0 = -Z), motion stopped; debugging, tests.
+    void teleportPlayer(const Vec3& feet, f32 yaw);
+    /// True while the player climbs a ledge (input is ignored until it stands on top).
+    [[nodiscard]] bool playerClimbing() const noexcept { return m_climb.has_value(); }
+    /// Hit points the last fall cost (0: none yet or a harmless one); hit points themselves come with M8.
+    [[nodiscard]] f32 lastFallDamage() const noexcept { return m_lastFallDamage; }
     /// Tests and demos: replaces the keyboard/mouse input of the player (nullopt: back to the actions).
+    /// A jump in it counts once, when it turns on.
     void setPlayerInputOverride(std::optional<gameplay::MoveInput> input) { m_playerInputOverride = input; }
 
 private:
@@ -396,6 +403,11 @@ private:
     gameplay::MoveInput m_playerInput; // keys of this frame + mouse gathered since the last step
     f32 m_playerPitchPixels = 0.0f;    // mouse up/down since the last camera update
     std::optional<gameplay::MoveInput> m_playerInputOverride;
+    bool m_overrideJumped = false;              // jump of the override already used (edge)
+    std::optional<gameplay::ClimbPath> m_climb; // climbing a ledge
+    f32 m_climbSeconds = 0.0f;
+    f32 m_jumpCooldown = 0.0f; // s until the next jump (after landing)
+    f32 m_lastFallDamage = 0.0f;
     Vec3 m_playerFeetBefore{0.0f};
     Vec3 m_playerFeet{0.0f};
     f32 m_playerYawBefore = 0.0f;

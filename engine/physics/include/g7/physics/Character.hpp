@@ -11,6 +11,7 @@
 #include <g7/physics/Physics.hpp>
 
 #include <memory>
+#include <optional>
 
 namespace g7::physics
 {
@@ -32,6 +33,13 @@ enum class MoveState : u8
     Air,    ///< falling (or later jumping); no control over the horizontal velocity
 };
 
+/// A ledge the character can climb onto: where its feet will stand and how high that is above them.
+struct Ledge
+{
+    Vec3 feet{0.0f};
+    f32 height = 0.0f;
+};
+
 class CharacterController
 {
 public:
@@ -51,6 +59,20 @@ public:
     void update(f32 seconds, const Vec3& horizontalVelocity);
     /// Puts the feet at `feet` and stops all motion (start point, level change, debugging).
     void teleport(const Vec3& feet);
+    /// Leaves the ground with this upward speed in the next update - only from walkable ground (state
+    /// Ground); returns false otherwise. The horizontal velocity stays.
+    bool jump(f32 upwardSpeed);
+    /// Moves the feet without collision and motion (climbing along a path that findLedge checked).
+    /// teleport() at the end of the path settles the character again.
+    void moveTo(const Vec3& feet);
+    /// Height of the last fall, once, at landing: from the highest point in the air down to where it
+    /// touched ground (walkable or steep). Sliding down a slope is no fall; jumps count from their top.
+    [[nodiscard]] std::optional<f32> takeLanding();
+    /// A ledge in `direction` (horizontal unit vector) whose top is between minHeight and maxHeight above
+    /// the feet: a wall within `reach` of the character's side, a walkable top, and room for the whole
+    /// character up there and on the way straight up.
+    [[nodiscard]] std::optional<Ledge> findLedge(const Vec3& direction, f32 minHeight, f32 maxHeight,
+                                                 f32 reach) const;
     /// Slope limit, step height and floor snapping (hot reload of movement data); size stays.
     void setLimits(f32 maxSlopeDegrees, f32 stepHeight, f32 stickToFloor);
 

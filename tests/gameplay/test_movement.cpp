@@ -179,3 +179,79 @@ pitch_degrees = -5
     fails("[camera]\nmin_distance = 5\n", "min_distance");
     fails("[speed\n", "movement.toml");
 }
+
+TEST_CASE("Jump, fall damage, ledge classes and the climb path")
+{
+    CHECK(jumpSpeed(0.9f) == doctest::Approx(std::sqrt(2.0f * 9.81f * 0.9f)));
+    CHECK(jumpSpeed(-1.0f) == doctest::Approx(0.0f));
+    const FallSettings fall;
+    CHECK(fallDamage(3.9f, fall) == doctest::Approx(0.0f));
+    CHECK(fallDamage(4.0f, fall) == doctest::Approx(0.0f));
+    CHECK(fallDamage(7.0f, fall) == doctest::Approx(30.0f)); // the city wall from outside
+    const ClimbSettings climb;
+    CHECK(classifyLedge(0.5f, climb) == LedgeClass::Low);
+    CHECK(classifyLedge(1.0f, climb) == LedgeClass::Low);
+    CHECK(classifyLedge(1.3f, climb) == LedgeClass::Mid);
+    CHECK(classifyLedge(2.2f, climb) == LedgeClass::High);
+    CHECK_FALSE(classifyLedge(2.3f, climb).has_value());
+    CHECK(climbSeconds(LedgeClass::Mid, climb) == doctest::Approx(1.0f));
+
+    const ClimbPath path{Vec3(0.0f), Vec3(0.0f, 1.5f, 1.0f), 1.0f, LedgeClass::Mid};
+    CHECK(near(path.at(0.0f), Vec3(0.0f)));
+    CHECK(near(path.at(0.7f), Vec3(0.0f, 1.5f, 0.0f))); // straight up first
+    CHECK(near(path.at(1.0f), Vec3(0.0f, 1.5f, 1.0f)));
+    CHECK(near(path.at(5.0f), Vec3(0.0f, 1.5f, 1.0f)));
+    for (f32 t = 0.0f; t < 0.7f; t += 0.05f)
+    {
+        CHECK(path.at(t).z == doctest::Approx(0.0f)); // never into the wall on the way up
+    }
+
+    PlayerMovement m;
+    const MovementSettings s;
+    MoveInput in;
+    in.forward = 1.0f;
+    m.step(in, 0.1f, s);
+    CHECK_FALSE(m.running(s));
+    for (int i = 0; i < 10; ++i)
+    {
+        m.step(in, 0.1f, s);
+    }
+    CHECK(m.running(s));
+    in.walk = true;
+    for (int i = 0; i < 10; ++i)
+    {
+        m.step(in, 0.1f, s);
+    }
+    CHECK_FALSE(m.running(s));
+    m.stop();
+    CHECK(near(m.velocity(), Vec3(0.0f)));
+}
+
+TEST_CASE("movement.toml: jump, climb and fall")
+{
+    auto parsed = MovementSettings::parse(R"(
+[jump]
+stand_height = 0.8
+run_height = 1.2
+cooldown = 0
+[climb]
+low_max = 0.9
+reach = 0.5
+[fall]
+safe_height = 3
+damage_per_meter = 12
+)",
+                                          "movement.toml");
+    REQUIRE_MESSAGE(parsed, (parsed ? "" : parsed.error().message));
+    const MovementSettings& s = parsed.value();
+    CHECK(s.jump.standHeight == doctest::Approx(0.8f));
+    CHECK(s.jump.runHeight == doctest::Approx(1.2f));
+    CHECK(s.jump.cooldown == doctest::Approx(0.0f));
+    CHECK(s.climb.lowMax == doctest::Approx(0.9f));
+    CHECK(s.climb.midMax == doctest::Approx(1.6f));
+    CHECK(s.climb.reach == doctest::Approx(0.5f));
+    CHECK(s.fall.safeHeight == doctest::Approx(3.0f));
+    CHECK(s.fall.damagePerMeter == doctest::Approx(12.0f));
+    CHECK_FALSE(MovementSettings::parse("[climb]\nmid_max = 2.5\n", "m.toml")); // above high_max
+    CHECK_FALSE(MovementSettings::parse("[jump]\nrun_height = 0\n", "m.toml"));
+}

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "cave",
-  "nextVobId": 12,
+  "nextVobId": 15,
   "staticMeshes": [],
   "vobs": [
     {"id":1,"type":"start","name":"START_HOEHLE","pos":[0.0,0.0,5.0],"rot":[0.0,0.0,0.0,1.0]},
@@ -14,6 +14,9 @@
     {"id":8,"type":"mesh","name":"CAVE_ROCK","pos":[-5.992,0.0,-8.006],"rot":[0.0,0.8942,0.0,-0.44767],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeB.glb"},
     {"id":9,"type":"mesh","name":"CAVE_ROCK","pos":[-0.142,0.0,-9.999],"rot":[0.0,0.7121,0.0,-0.70208],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeA.glb"},
     {"id":10,"type":"mesh","name":"CAVE_ROCK","pos":[5.763,0.0,-8.173],"rot":[0.0,0.46029,0.0,-0.88777],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeB.glb"},
-    {"id":11,"type":"mesh","name":"CAVE_ROCK","pos":[9.466,0.0,-3.225],"rot":[0.0,0.16342,0.0,-0.98656],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeA.glb"}
+    {"id":11,"type":"mesh","name":"CAVE_ROCK","pos":[9.466,0.0,-3.225],"rot":[0.0,0.16342,0.0,-0.98656],"scale":[6.0,7.0,6.0],"mesh":"testscene/nature/rock_largeA.glb"},
+    {"id":12,"type":"mesh","name":"AUSGANG_LATERNE","pos":[-2.2,0.0,9.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,2.0,2.0],"mesh":"testscene/town/lantern.glb","category":"gameplay"},
+    {"id":13,"type":"mesh","name":"AUSGANG_LATERNE","pos":[2.2,0.0,9.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,2.0,2.0],"mesh":"testscene/town/lantern.glb","category":"gameplay"},
+    {"id":14,"type":"light","name":"AUSGANG_LICHT","pos":[0.0,2.0,10.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[0.75,0.85,1.0],"range":9.0,"intensity":7.0,"flicker":0.0}}}
   ]
 }

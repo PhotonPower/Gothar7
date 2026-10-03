@@ -27,6 +27,33 @@ struct CameraSettings
     f32 mousePitchPerPixel = 0.15f; ///< degrees
 };
 
+/// Gravity of the physics world (m/s^2), for jump speeds.
+inline constexpr f32 kGravity = 9.81f;
+
+struct JumpSettings
+{
+    f32 standHeight = 0.9f; ///< m, top of the feet when jumping from standing or walking
+    f32 runHeight = 1.1f;   ///< m, from a run (project owner: higher and so farther than from standing)
+    f32 cooldown = 0.2f;    ///< s after landing before the next jump
+};
+
+struct ClimbSettings
+{
+    f32 lowMax = 1.0f; ///< m, ledge classes (figuren: clips t_climb_low/mid/high built for these tops)
+    f32 midMax = 1.6f;
+    f32 highMax = 2.2f;    ///< higher ledges cannot be reached: jump instead
+    f32 reach = 0.6f;      ///< m between the character's side and the wall
+    f32 lowSeconds = 0.6f; ///< duration of the climb until animations (M6) give it
+    f32 midSeconds = 1.0f;
+    f32 highSeconds = 1.4f;
+};
+
+struct FallSettings
+{
+    f32 safeHeight = 4.0f;      ///< m, no damage up to this fall height
+    f32 damagePerMeter = 10.0f; ///< hit points per metre above it (hit points come with M8)
+};
+
 struct MovementSettings
 {
     f32 runSpeed = 4.0f; ///< m/s, the default gait (Gothic: run unless walk is held)
@@ -41,6 +68,9 @@ struct MovementSettings
     f32 stepHeight = 0.4f;         ///< m (physics: CharacterDesc)
     f32 maxSlopeDegrees = 50.0f;
     f32 stickToFloor = 0.5f; ///< m
+    JumpSettings jump;
+    ClimbSettings climb;
+    FallSettings fall;
     CameraSettings camera;
 
     /// From data/movement.toml; missing keys keep their defaults, wrong types or values are errors.
@@ -56,6 +86,34 @@ struct MoveInput
     f32 mouseTurn = 0.0f; ///< pixels to the right since the last step
     bool walk = false;    ///< held: walk instead of run
     bool sneak = false;
+    bool jump = false; ///< pressed since the last step: jump, or climb a ledge in front
+};
+
+/// Upward speed that lifts the feet `height` metres.
+[[nodiscard]] f32 jumpSpeed(f32 height) noexcept;
+/// Hit points a fall of `height` metres costs (0 up to the safe height).
+[[nodiscard]] f32 fallDamage(f32 height, const FallSettings& settings) noexcept;
+
+enum class LedgeClass : u8
+{
+    Low,  ///< step up (t_climb_low)
+    Mid,  ///< pull up with the arms (t_climb_mid)
+    High, ///< grab from a jump (t_climb_high)
+};
+/// Class of a ledge `height` metres above the feet; nullopt above highMax.
+[[nodiscard]] std::optional<LedgeClass> classifyLedge(f32 height, const ClimbSettings& settings) noexcept;
+[[nodiscard]] f32 climbSeconds(LedgeClass ledge, const ClimbSettings& settings) noexcept;
+
+/// The way up a ledge until animations drive it (M6): straight up to the top's height (70 % of the time),
+/// then forward onto it, both eased.
+struct ClimbPath
+{
+    Vec3 from{0.0f};
+    Vec3 to{0.0f};
+    f32 seconds = 1.0f;
+    LedgeClass ledge = LedgeClass::Mid;
+
+    [[nodiscard]] Vec3 at(f32 elapsed) const noexcept;
 };
 
 /// Facing and horizontal velocity of the player: turns with keys and mouse, accelerates towards the
@@ -69,6 +127,10 @@ public:
 
     [[nodiscard]] f32 yaw() const noexcept { return m_yaw; }
     [[nodiscard]] Vec3 velocity() const noexcept { return m_velocity; }
+    /// True if moving at running pace (a jump from it uses the run height).
+    [[nodiscard]] bool running(const MovementSettings& settings) const noexcept;
+    /// Stops the horizontal motion, keeps the facing (climbing, landing).
+    void stop() noexcept { m_velocity = Vec3(0.0f); }
     /// The speed the input asks for, before acceleration (for tests and the debug overlay).
     [[nodiscard]] static Vec3 wantedVelocity(const MoveInput& input, f32 yaw,
                                              const MovementSettings& settings);

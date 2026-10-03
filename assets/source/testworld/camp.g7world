@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "camp",
-  "nextVobId": 175,
+  "nextVobId": 193,
   "staticMeshes": [],
   "terrain": {"version":1,"heightmap":"testworld/terrain.r16","width":257,"height":257,"cellSize":2.0,"firstSample":[-256.0,-256.0],"minY":-20.0,"maxY":60.0,"splat":{"maps":["testworld/splat0.png"],"layers":[{"name":"grass","albedo":"testworld/layer_grass.png","tile":4.0},{"name":"earth","albedo":"testworld/layer_earth.png","tile":4.0},{"name":"rock","albedo":"testworld/layer_rock.png","tile":6.0},{"name":"path","albedo":"testworld/layer_path.png","tile":3.0}]},"holes":"testworld/holes.r8"},
   "vobs": [
@@ -178,6 +178,24 @@
     {"id":171,"type":"sound","name":"SND_CAMPFIRE","pos":[0.0,0.5,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"sound":{"sound":"FIRE_CRACKLE","range":15.0,"volume":1.0,"mode":"loop","delay":[5.0,15.0]}}},
     {"id":172,"type":"trigger","name":"TRG_CAMP_GATE","pos":[24.0,1.5,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[1.5,1.5,3.0],"onEnter":"CAMP_GATE_ENTER","onLeave":"CAMP_GATE_LEAVE","filter":"player","once":false}}},
     {"id":173,"type":"trigger","name":"TRG_TO_CAVE","pos":[-30.0,1.5,20.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[1.5,1.5,1.5],"filter":"player","once":false,"changeWorld":{"world":"testworld/cave.g7world","start":"START_HOEHLE"}}}},
-    {"id":174,"type":"start","name":"START_LAGER_HOEHLE","pos":[-26.0,0.0,20.0],"rot":[0.0,-0.70711,0.0,0.70711]}
+    {"id":174,"type":"start","name":"START_LAGER_HOEHLE","pos":[-26.0,0.0,20.0],"rot":[0.0,-0.70711,0.0,0.70711]},
+    {"id":175,"type":"mesh","name":"KLETTER_EINZEL_1","pos":[40.0,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,0.9,2.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":176,"type":"mesh","name":"KLETTER_EINZEL_2","pos":[44.0,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,1.5,2.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":177,"type":"mesh","name":"KLETTER_EINZEL_3","pos":[48.0,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,2.1,2.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":178,"type":"mesh","name":"KLETTER_EINZEL_4","pos":[52.0,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,2.6,2.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":179,"type":"mesh","name":"KLETTER_TREPPE_1","pos":[40.0,0.0,12.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,1.0,2.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":180,"type":"mesh","name":"KLETTER_TREPPE_2","pos":[42.0,0.0,12.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,2.0,2.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":181,"type":"mesh","name":"KLETTER_TREPPE_3","pos":[44.0,0.0,12.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,3.0,2.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":182,"type":"mesh","name":"KLETTER_TREPPE_4","pos":[46.0,0.0,12.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,4.0,2.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":183,"type":"mesh","name":"KLETTER_TREPPE_5","pos":[48.0,0.0,12.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,5.0,2.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":184,"type":"mesh","name":"KLETTER_TREPPE_6","pos":[50.0,0.0,12.0],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,6.0,2.0],"mesh":"testworld/block.gltf","category":"gameplay"},
+    {"id":185,"type":"start","name":"START_KLETTERPLATZ","pos":[46.0,0.0,2.0],"rot":[0.0,1.0,0.0,0.0]},
+    {"id":186,"type":"mesh","name":"HOEHLE_FELS_NORD","pos":[-30.5,0.0,25.0],"rot":[0.0,0.0,0.0,1.0],"scale":[5.0,8.0,5.0],"mesh":"testscene/nature/rock_largeB.glb","category":"gameplay"},
+    {"id":187,"type":"mesh","name":"HOEHLE_FELS_SUED","pos":[-30.5,0.0,15.0],"rot":[0.0,1.0,0.0,0.0],"scale":[5.0,8.0,5.0],"mesh":"testscene/nature/rock_largeB.glb","category":"gameplay"},
+    {"id":188,"type":"mesh","name":"HOEHLE_FELS_HINTEN","pos":[-35.0,0.0,20.0],"rot":[0.0,0.70711,0.0,0.70711],"scale":[6.0,10.0,6.0],"mesh":"testscene/nature/rock_largeB.glb","category":"gameplay"},
+    {"id":189,"type":"mesh","name":"HOEHLE_STURZ","pos":[-30.5,3.0,20.0],"rot":[0.0,0.0,0.0,1.0],"scale":[4.0,4.0,8.0],"mesh":"testscene/nature/rock_largeA.glb","category":"gameplay"},
+    {"id":190,"type":"mesh","name":"HOEHLE_LATERNE","pos":[-27.8,0.0,17.6],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,2.0,2.0],"mesh":"testscene/town/lantern.glb","category":"gameplay"},
+    {"id":191,"type":"mesh","name":"HOEHLE_LATERNE","pos":[-27.8,0.0,22.4],"rot":[0.0,0.0,0.0,1.0],"scale":[2.0,2.0,2.0],"mesh":"testscene/town/lantern.glb","category":"gameplay"},
+    {"id":192,"type":"light","name":"HOEHLE_LICHT","pos":[-30.5,2.0,20.0],"rot":[0.0,0.0,0.0,1.0],"components":{"light":{"color":[1.0,0.6,0.3],"range":8.0,"intensity":6.0,"flicker":0.15}}}
   ]
 }

@@ -211,3 +211,113 @@ TEST_CASE("Character: falls through a terrain hole")
 
     CHECK_FALSE(CharacterController::create(world, {.radius = 0.5f, .height = 0.9f}, Vec3(0.0f)).ok());
 }
+
+TEST_CASE("Character: jumps to the asked height, keeps its run, reports the fall at landing")
+{
+    Scene s;
+    CharacterController c = s.character(Vec3(0.0f, 0.02f, 0.0f));
+    run(c, Vec3(0.0f), 0.2f);
+    REQUIRE(c.state() == MoveState::Ground);
+    const auto settled = c.takeLanding(); // created 2 cm above the floor
+    CHECK((!settled.has_value() || *settled < 0.05f));
+    const f32 speed = std::sqrt(2.0f * 9.81f * 0.9f);
+    CHECK(c.jump(speed));
+    f32 top = 0.0f;
+    int frames = 0;
+    for (; frames < 120; ++frames)
+    {
+        c.update(kStep, Vec3(0.0f));
+        top = std::max(top, c.feet().y);
+        if (frames > 2 && c.state() == MoveState::Ground)
+        {
+            break;
+        }
+        CHECK_FALSE(c.jump(speed)); // not again in the air
+    }
+    CHECK(top == doctest::Approx(0.9f).epsilon(0.05));
+    CHECK(frames * kStep == doctest::Approx(2.0f * speed / 9.81f).epsilon(0.08)); // flight time
+    const auto landing = c.takeLanding();
+    REQUIRE(landing.has_value());
+    CHECK(*landing == doctest::Approx(0.9f).epsilon(0.05));
+    CHECK_FALSE(c.takeLanding().has_value()); // once
+
+    // From a run: the horizontal speed carries the jump about 4 m * flight time.
+    run(c, Vec3(4.0f, 0.0f, 0.0f), 0.5f);
+    const f32 start = c.feet().x;
+    CHECK(c.jump(speed));
+    c.update(kStep, Vec3(4.0f, 0.0f, 0.0f));
+    while (c.state() == MoveState::Air)
+    {
+        c.update(kStep, Vec3(0.0f)); // no steering in the air: letting go changes nothing
+    }
+    CHECK(c.feet().x - start == doctest::Approx(4.0f * 2.0f * speed / 9.81f).epsilon(0.1));
+}
+
+TEST_CASE("Character: falls are measured from the top, sliding is no fall")
+{
+    Scene s;
+    CharacterController c = s.character(Vec3(0.0f, 6.0f, 0.0f));
+    run(c, Vec3(0.0f), 2.0f);
+    const auto fall = c.takeLanding();
+    REQUIRE(fall.has_value());
+    CHECK(*fall == doctest::Approx(6.0f).epsilon(0.02));
+
+    Scene steep;
+    steep.add(ramp(1.0f, 4.0f, 60.0f));
+    CharacterController slider = steep.character(Vec3(0.0f, 0.02f, 0.0f));
+    run(slider, Vec3(0.0f), 0.2f);
+    (void)slider.takeLanding();
+    slider.teleport(Vec3(4.0f, 3.0f * std::tan(glm::radians(60.0f)) + 0.02f, 0.0f)); // on the slope, 5.2 m up
+    run(slider, Vec3(0.0f), 3.0f);
+    CHECK(slider.feet().y < 1.0f);
+    const auto slid = slider.takeLanding();
+    CHECK((!slid.has_value() || *slid < 0.5f)); // at most the first touch, not the 5 m slide
+}
+
+TEST_CASE("Character: ledges in reach with room on top are found, others not")
+{
+    const Vec3 east(1.0f, 0.0f, 0.0f);
+    SUBCASE("1.5 m wall 0.3 m in front")
+    {
+        Scene s;
+        s.add(box(Vec3(0.6f, 0.0f, -3.0f), Vec3(4.0f, 1.5f, 3.0f)));
+        CharacterController c = s.character(Vec3(0.0f, 0.02f, 0.0f));
+        run(c, Vec3(0.0f), 0.2f);
+        const auto ledge = c.findLedge(east, 0.4f, 2.2f, 0.6f);
+        REQUIRE(ledge.has_value());
+        CHECK(ledge->height == doctest::Approx(1.5f).epsilon(0.02));
+        CHECK(ledge->feet.y == doctest::Approx(1.5f).epsilon(0.02));
+        CHECK(ledge->feet.x > 0.6f + 0.3f - 0.01f);                    // the whole cylinder on top
+        CHECK_FALSE(c.findLedge(-east, 0.4f, 2.2f, 0.6f).has_value()); // nothing behind
+        CHECK_FALSE(c.findLedge(east, 0.4f, 1.2f, 0.6f).has_value());  // above the allowed height
+    }
+    SUBCASE("too far, too high, no room")
+    {
+        Scene far;
+        far.add(box(Vec3(1.5f, 0.0f, -3.0f), Vec3(4.0f, 1.5f, 3.0f)));
+        CharacterController a = far.character(Vec3(0.0f, 0.02f, 0.0f));
+        run(a, Vec3(0.0f), 0.2f);
+        CHECK_FALSE(a.findLedge(east, 0.4f, 2.2f, 0.6f).has_value());
+
+        Scene high;
+        high.add(box(Vec3(0.6f, 0.0f, -3.0f), Vec3(4.0f, 2.6f, 3.0f)));
+        CharacterController b = high.character(Vec3(0.0f, 0.02f, 0.0f));
+        run(b, Vec3(0.0f), 0.2f);
+        CHECK_FALSE(b.findLedge(east, 0.4f, 2.2f, 0.6f).has_value());
+
+        Scene roof; // a 1 m ledge under a roof 2.2 m up: no room to stand on it
+        roof.add(box(Vec3(0.6f, 0.0f, -3.0f), Vec3(4.0f, 1.0f, 3.0f)));
+        roof.add(box(Vec3(0.6f, 2.2f, -3.0f), Vec3(4.0f, 3.0f, 3.0f)));
+        CharacterController d = roof.character(Vec3(0.0f, 0.02f, 0.0f));
+        run(d, Vec3(0.0f), 0.2f);
+        CHECK_FALSE(d.findLedge(east, 0.4f, 2.2f, 0.6f).has_value());
+    }
+    SUBCASE("a walkable slope is no ledge")
+    {
+        Scene s;
+        s.add(ramp(0.4f, 6.0f, 40.0f));
+        CharacterController c = s.character(Vec3(0.0f, 0.02f, 0.0f));
+        run(c, Vec3(0.0f), 0.2f);
+        CHECK_FALSE(c.findLedge(east, 0.4f, 2.2f, 0.6f).has_value());
+    }
+}

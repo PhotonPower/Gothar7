@@ -63,6 +63,10 @@ class CharacterController {
     static Result<CharacterController> create(PhysicsWorld&, const CharacterDesc&, const Vec3& feet);
     void update(f32 seconds, const Vec3& horizontalVelocity);   // je festem Schritt
     void teleport(const Vec3& feet);  void setLimits(maxSlope, stepHeight, stickToFloor);   // Hot-Reload
+    bool jump(f32 upwardSpeed);                 // nur vom begehbaren Boden; nächstes update hebt ab
+    void moveTo(const Vec3& feet);              // ohne Kollision (Kletterbahn), danach teleport()
+    std::optional<f32> takeLanding();           // Fallhöhe der letzten Landung, einmal
+    std::optional<Ledge> findLedge(dir, minHeight, maxHeight, reach) const;   // Ledge { feet, height }
     Vec3 feet() const; Vec3 visualFeet() const; Vec3 velocity() const; MoveState state() const; Vec3 groundNormal() const;
 };
 }
@@ -76,6 +80,19 @@ class CharacterController {
 - **Luft:** keine Steuerung, die waagrechte Geschwindigkeit bleibt, Schwerkraft 9,81 m/s².
 - `teleport` und `create` bestimmen den Bodenzustand sofort neu (keine Steuerung in der Luft nach einem
   Teleport).
+- **Springen (Teil D):** `jump(v)` setzt die Aufwärtsgeschwindigkeit fürs nächste `update`. Stufenhilfe und
+  Bodenhaftung sind in diesem Schritt aus, sonst zöge `StickToFloor` den Sprung zurück. Die waagrechte
+  Geschwindigkeit bleibt, Luftsteuerung gibt es nicht.
+- **Fallhöhe:** vom höchsten Punkt in der Luft bis zur ersten Bodenberührung, begehbar oder steil. Die
+  Landung meldet `takeLanding()` einmal. Rutschen ist kein Fall, denn am Hang ist die Figur „gestützt“.
+  Sprünge zählen ab ihrem Scheitel.
+- **Kanten (`findLedge`):**
+  1. Senkrechte Strahlen vor der Figur suchen, nächste zuerst, eine begehbare Oberseite zwischen
+     `minHeight` und `maxHeight`.
+  2. Ein waagrechter Strahl knapp unter der Oberkante sucht die Wand, die zu steil zum Gehen sein muss;
+     ein begehbarer Hang davor ist keine Kante.
+  3. Platz für die ganze Figur senkrecht über ihr und oben hinter der Kante (Formtest).
+  Ergebnis: Ziel der Füße auf der Kante und deren Höhe. Das Klettern selbst (Bahn, Dauer) liegt in `gameplay`.
 - **Form: aufrechter Zylinder statt Kapsel** (Maße wie abgestimmt: r 0,3 m, Höhe 1,8 m; Kantenrundung 0,01 m).
   Begründung, gemessen:
   - Jolt beurteilt die Steilheit eines Kontakts an der berührten Fläche. An der Oberkante einer Stufe ist das
@@ -96,6 +113,6 @@ class CharacterController {
   `capsule_lying` entlang +Z), `radius`, `length` (inkl. Halbkugeln), `offset` (zu root, Rig-Raum); liefert figuren.
 - **Kantenklassen:** niedrig ≤ 1,0 m, mittel ≤ 1,6 m, hoch ≤ 2,2 m (Clips `t_climb_low/mid/high` auf diese
   Obergrenzen gebaut; die Engine skaliert die Root-Höhe nur herunter).
-Geplant (Teil D/E): springen, Kanten hochziehen (`detectLedge`, `beginClimb`), Fallschaden, Schwimmen/Tauchen.
+Geplant (Teil E): Schwimmen/Tauchen.
 Bewegung wird dann teilweise **animationsgetrieben** (Root Motion bei Klettern/Interaktion), der
 Controller sorgt für Kollision und Bodenhaftung.

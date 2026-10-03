@@ -71,6 +71,15 @@ Result<MovementSettings> MovementSettings::parse(std::string_view toml, std::str
         {"turn.mouse_degrees_per_pixel", &s.mouseTurnPerPixel},
         {"ground.step_height", &s.stepHeight},
         {"ground.max_slope_degrees", &s.maxSlopeDegrees},
+        {"jump.stand_height", &s.jump.standHeight},
+        {"jump.run_height", &s.jump.runHeight},
+        {"climb.low_max", &s.climb.lowMax},
+        {"climb.mid_max", &s.climb.midMax},
+        {"climb.high_max", &s.climb.highMax},
+        {"climb.reach", &s.climb.reach},
+        {"climb.low_seconds", &s.climb.lowSeconds},
+        {"climb.mid_seconds", &s.climb.midSeconds},
+        {"climb.high_seconds", &s.climb.highSeconds},
         {"camera.distance", &cam.distance},
         {"camera.target_height", &cam.targetHeight},
         {"camera.collision_radius", &cam.collisionRadius},
@@ -85,9 +94,9 @@ Result<MovementSettings> MovementSettings::parse(std::string_view toml, std::str
         }
     }
     const std::pair<std::string_view, f32*> nonNegative[] = {
-        {"ground.stick_to_floor", &s.stickToFloor},
-        {"camera.position_lag", &cam.positionLag},
-        {"camera.yaw_lag", &cam.yawLag},
+        {"ground.stick_to_floor", &s.stickToFloor}, {"jump.cooldown", &s.jump.cooldown},
+        {"fall.safe_height", &s.fall.safeHeight},   {"fall.damage_per_meter", &s.fall.damagePerMeter},
+        {"camera.position_lag", &cam.positionLag},  {"camera.yaw_lag", &cam.yawLag},
     };
     for (const auto& [key, value] : nonNegative)
     {
@@ -117,11 +126,70 @@ Result<MovementSettings> MovementSettings::parse(std::string_view toml, std::str
     {
         return Error{std::string(source) + ": camera pitch must satisfy -89 <= min <= pitch <= max <= 89"};
     }
+    if (!(s.climb.lowMax <= s.climb.midMax && s.climb.midMax <= s.climb.highMax))
+    {
+        return Error{std::string(source) + ": climb heights must satisfy low_max <= mid_max <= high_max"};
+    }
     if (cam.minDistance > cam.distance)
     {
         return Error{std::string(source) + ": 'camera.min_distance' exceeds 'camera.distance'"};
     }
     return s;
+}
+
+f32 jumpSpeed(f32 height) noexcept
+{
+    return std::sqrt(2.0f * kGravity * std::max(0.0f, height));
+}
+
+f32 fallDamage(f32 height, const FallSettings& settings) noexcept
+{
+    return std::max(0.0f, height - settings.safeHeight) * settings.damagePerMeter;
+}
+
+std::optional<LedgeClass> classifyLedge(f32 height, const ClimbSettings& settings) noexcept
+{
+    if (height <= settings.lowMax)
+    {
+        return LedgeClass::Low;
+    }
+    if (height <= settings.midMax)
+    {
+        return LedgeClass::Mid;
+    }
+    if (height <= settings.highMax)
+    {
+        return LedgeClass::High;
+    }
+    return std::nullopt;
+}
+
+f32 climbSeconds(LedgeClass ledge, const ClimbSettings& settings) noexcept
+{
+    switch (ledge)
+    {
+    case LedgeClass::Low:
+        return settings.lowSeconds;
+    case LedgeClass::Mid:
+        return settings.midSeconds;
+    default:
+        return settings.highSeconds;
+    }
+}
+
+Vec3 ClimbPath::at(f32 elapsed) const noexcept
+{
+    constexpr f32 kRise = 0.7f;
+    const f32 t = std::clamp(elapsed / seconds, 0.0f, 1.0f);
+    const auto ease = [](f32 x) { return x * x * (3.0f - 2.0f * x); };
+    const Vec3 up(from.x, to.y, from.z);
+    return t < kRise ? glm::mix(from, up, ease(t / kRise))
+                     : glm::mix(up, to, ease((t - kRise) / (1.0f - kRise)));
+}
+
+bool PlayerMovement::running(const MovementSettings& settings) const noexcept
+{
+    return glm::length(m_velocity) > 0.5f * (settings.walkSpeed + settings.runSpeed);
 }
 
 Vec3 forwardOf(f32 yaw) noexcept
