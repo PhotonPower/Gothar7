@@ -1,9 +1,11 @@
-// The hero as an animated figure (M6 part C): loads the skinned model ([game] hero, falling back to the
-// placeholder mannequin), drives the animation state machine with the movement of each fixed step and
-// draws it with GPU skinning. Climbing follows the climb clip's root motion, scaled to the ledge.
+// The hero as an animated figure (M6 parts C and D): loads the skinned model or assembles it from the parts
+// of a figure manifest ([game] hero, falling back to the placeholder mannequin), drives the animation state
+// machine with the movement of each fixed step and draws it with GPU skinning. Climbing follows the climb
+// clip's root motion, scaled to the ledge.
 
 #include "PlayerFigure.hpp"
 
+#include <g7/asset/FigureAssembly.hpp>
 #include <g7/asset/Procedural.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/runtime/AssetMounts.hpp>
@@ -19,9 +21,11 @@ namespace g7
 {
 namespace
 {
-constexpr std::string_view kHero = "characters/figures/farmer.glb";
+constexpr std::string_view kHero = "characters/figures/farmer.figure.toml"; // assembled here (D2)
 constexpr std::string_view kFallbackHero = "characters/figures/placeholder_mannequin.glb";
 constexpr std::string_view kHeroGraph = "data/anim/human.animgraph.toml";
+constexpr std::string_view kManifestSuffix = ".figure.toml";
+constexpr std::string_view kCharacters = "characters/"; // manifests name parts relative to it
 constexpr usize kShownEvents = 8;
 constexpr std::array<std::string_view, 3> kClimbStates = {"climb_low", "climb_mid", "climb_high"};
 
@@ -48,17 +52,50 @@ Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, 
     {
         return graph.error();
     }
-    const auto model = m_assets->load<asset::SkinnedModelData>(path);
+    // The figure: an assembled .glb (g7_figures), or a manifest assembled here from its parts (M6 D2).
+    asset::Handle<asset::SkinnedModelData> model;
+    asset::SkinnedModelData assembled;
+    const asset::SkinnedModelData* dataPtr = nullptr;
+    if (path.ends_with(kManifestSuffix))
+    {
+        auto manifestBytes = m_vfs.read(path);
+        if (!manifestBytes)
+        {
+            return Error{std::format("{}: {}", path, manifestBytes.error().message)};
+        }
+        auto manifest = asset::FigureManifest::parse(
+            std::string_view(reinterpret_cast<const char*>(manifestBytes.value().data()),
+                             manifestBytes.value().size()),
+            path);
+        if (!manifest)
+        {
+            return manifest.error();
+        }
+        auto built = assembleFigureParts(manifest.value());
+        if (!built)
+        {
+            return Error{std::format("{}: {}", path, built.error().message)};
+        }
+        assembled = std::move(built).value();
+        dataPtr = &assembled;
+        figure->manifest = std::move(manifest).value();
+    }
+    else
+    {
+        model = m_assets->load<asset::SkinnedModelData>(path);
+        m_assets->waitAll();
+        if (model.failed() || !model.get())
+        {
+            return Error{std::format("{}: {}", path, model.error())};
+        }
+        dataPtr = model.get();
+    }
     std::vector<asset::Handle<asset::AnimationSetData>> setHandles;
     for (const std::string& set : graph.value().sets)
     {
         setHandles.push_back(m_assets->load<asset::AnimationSetData>(set));
     }
     m_assets->waitAll();
-    if (model.failed() || !model.get())
-    {
-        return Error{std::format("{}: {}", path, model.error())};
-    }
     std::vector<const asset::AnimationSetData*> sets;
     for (usize i = 0; i < setHandles.size(); ++i)
     {
@@ -68,7 +105,7 @@ Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, 
         }
         sets.push_back(setHandles[i].get());
     }
-    const asset::SkinnedModelData& data = *model.get();
+    const asset::SkinnedModelData& data = *dataPtr;
     auto skeleton = animation::Skeleton::create(data.skeleton);
     if (!skeleton)
     {
@@ -125,23 +162,57 @@ Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, 
         }
     }
 
-    // Textures next to the figure (../textures/...), then the GPU side.
-    figure->images.assign(data.images.size(), {});
+    if (auto uploaded = uploadFigure(*figure, data); !uploaded)
+    {
+        return uploaded.error();
+    }
+    G7_LOG_INFO("engine", "player figure {}: {} bones, {} parts, animation {} ({} sets)", path,
+                figure->skeleton.size(), data.parts.size(), graphPath, sets.size());
+    return figure;
+}
+
+Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureManifest& manifest)
+{
+    // Parts through the asset manager (cached: swapping back and forth loads nothing twice).
+    std::vector<asset::Handle<asset::SkinnedModelData>> handles;
+    for (const asset::FigureManifest::Part& part : manifest.parts)
+    {
+        handles.push_back(m_assets->load<asset::SkinnedModelData>(std::string(kCharacters) + part.path));
+    }
+    m_assets->waitAll();
+    std::vector<asset::FigurePart> parts;
+    for (usize i = 0; i < handles.size(); ++i)
+    {
+        const std::string path = std::string(kCharacters) + manifest.parts[i].path;
+        if (handles[i].failed() || !handles[i].get())
+        {
+            return Error{std::format("{}: {}", path, handles[i].error())};
+        }
+        parts.push_back({manifest.parts[i].role, path, handles[i].get()});
+    }
+    return asset::assembleFigure(manifest, parts);
+}
+
+Result<void> Engine::uploadFigure(PlayerFigure& figure, const asset::SkinnedModelData& data)
+{
+    // Textures (next to the figure, or VFS paths in assembled figures), then the GPU side; the figure keeps
+    // its previous mesh until this succeeds.
+    std::vector<asset::Handle<asset::TextureData>> images(data.images.size());
     for (usize i = 0; i < data.images.size(); ++i)
     {
         if (data.images[i].uri.empty())
         {
             continue;
         }
-        const auto candidates = imageCandidates(path, data.images[i].uri);
+        const auto candidates = imageCandidates(figure.path, data.images[i].uri);
         const auto found = std::find_if(candidates.begin(), candidates.end(),
                                         [&](const std::string& c) { return m_vfs.exists(c); });
         if (found == candidates.end())
         {
-            G7_LOG_WARN("engine", "{}: image '{}' not found in the VFS", path, data.images[i].uri);
+            G7_LOG_WARN("engine", "{}: image '{}' not found in the VFS", figure.path, data.images[i].uri);
             continue;
         }
-        figure->images[i] = m_assets->load<asset::TextureData>(*found);
+        images[i] = m_assets->load<asset::TextureData>(*found);
     }
     m_assets->waitAll();
     if (m_device)
@@ -149,7 +220,7 @@ Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, 
         auto mesh = render::SkinnedMesh::create(*m_device, data, 0);
         if (!mesh)
         {
-            return Error{std::format("{}: {}", path, mesh.error().message)};
+            return Error{std::format("{}: {}", figure.path, mesh.error().message)};
         }
         asset::MeshData materialData; // MaterialSet reads only materials and images
         materialData.materials = data.materials;
@@ -159,25 +230,149 @@ Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, 
             [&](const asset::ImageSource& source) -> const asset::TextureData*
             {
                 const auto index = static_cast<usize>(&source - materialData.images.data());
-                const asset::Handle<asset::TextureData>& image = figure->images[index];
+                const asset::Handle<asset::TextureData>& image = images[index];
                 if (image.failed() && image.valid())
                 {
-                    G7_LOG_WARN("engine", "{}: {}", path, image.error());
+                    G7_LOG_WARN("engine", "{}: {}", figure.path, image.error());
                 }
                 return image.get();
             },
             m_meshRenderer.defaults());
         if (!materials)
         {
-            return Error{std::format("{}: {}", path, materials.error().message)};
+            return Error{std::format("{}: {}", figure.path, materials.error().message)};
         }
-        figure->mesh = std::move(mesh).value();
-        figure->materials = std::move(materials).value();
-        figure->uploaded = true;
+        figure.mesh = std::move(mesh).value();
+        figure.materials = std::move(materials).value();
+        figure.uploaded = true;
+        figure.mesh.setMorphWeights(figure.face.weights());
     }
-    G7_LOG_INFO("engine", "player figure {}: {} bones, {} parts, animation {} ({} sets)", path,
-                figure->skeleton.size(), data.parts.size(), graphPath, sets.size());
-    return figure;
+    figure.images = std::move(images);
+    figure.inverseBind = data.inverseBind;
+    figure.drawnFrame = ~u64(0);
+    return {};
+}
+
+Result<void> Engine::rebuildPlayerFigure(const asset::FigureManifest& manifest)
+{
+    if (!m_figure)
+    {
+        return Error{"no animated player figure"};
+    }
+    auto data = assembleFigureParts(manifest);
+    if (!data)
+    {
+        return data.error();
+    }
+    // The animation keeps running: the new parts must hang on the same skeleton.
+    const asset::SkeletonData& skeleton = data.value().skeleton;
+    if (skeleton.size() != m_figure->skeleton.size())
+    {
+        return Error{"the new parts have another skeleton"};
+    }
+    for (usize bone = 0; bone < skeleton.size(); ++bone)
+    {
+        if (skeleton.names[bone] != m_figure->skeleton.name(bone))
+        {
+            return Error{std::format("the new parts have another skeleton (bone {} is '{}')", bone,
+                                     skeleton.names[bone])};
+        }
+    }
+    if (auto uploaded = uploadFigure(*m_figure, data.value()); !uploaded)
+    {
+        return uploaded;
+    }
+    m_figure->manifest = manifest;
+    G7_LOG_INFO("engine", "player figure rebuilt: {} parts", data.value().parts.size());
+    return {};
+}
+
+Result<void> Engine::setPlayerPart(std::string_view role, std::string_view partPath)
+{
+    if (!m_figure || !m_figure->manifest)
+    {
+        return Error{"the hero is no figure assembled from parts ([game] hero = \"....figure.toml\")"};
+    }
+    asset::FigureManifest manifest = *m_figure->manifest;
+    if (auto set = manifest.setPart(role, partPath); !set)
+    {
+        return set;
+    }
+    return rebuildPlayerFigure(manifest);
+}
+
+Result<void> Engine::setPlayerCloth(std::span<const std::string> partPaths)
+{
+    if (!m_figure || !m_figure->manifest)
+    {
+        return Error{"the hero is no figure assembled from parts ([game] hero = \"....figure.toml\")"};
+    }
+    asset::FigureManifest manifest = *m_figure->manifest;
+    manifest.setCloth(partPaths);
+    return rebuildPlayerFigure(manifest);
+}
+
+std::optional<asset::FigureManifest> Engine::playerFigureManifest() const
+{
+    return m_figure ? m_figure->manifest : std::nullopt;
+}
+
+void Engine::refreshOutfitChoices()
+{
+    // parts/body_<sex>_<build>/body.glb: heads of the same sex (head_<sex>_*/head.glb), the pieces of the
+    // kits fitted to this build (cloth_, armor_, headgear_<sex>_<build>/*.glb).
+    PlayerFigure& f = *m_figure;
+    const std::string& body = f.manifest->find("body")->path;
+    if (f.outfitFor == body)
+    {
+        return;
+    }
+    f.outfitFor = body;
+    f.outfitHeads.clear();
+    f.outfitGarments.clear();
+    const usize folderStart = body.find('/') + 1;
+    const std::string folder = body.substr(folderStart, body.find('/', folderStart) - folderStart);
+    if (!folder.starts_with("body_"))
+    {
+        return; // an outfit that replaces the body: nothing known fits it
+    }
+    const std::string build = folder.substr(5);               // "m_average"
+    const std::string sex = build.substr(0, build.find('_')); // "m"
+    for (const asset::VfsFileInfo& file : m_vfs.list(std::string(kCharacters) + "parts", ".glb"))
+    {
+        const std::string path = file.path.substr(kCharacters.size()); // "parts/<folder>/<piece>.glb"
+        const usize slash = path.find('/', 6);
+        if (slash == std::string::npos)
+        {
+            continue;
+        }
+        const std::string partFolder = path.substr(6, slash - 6);
+        const std::string piece = path.substr(slash + 1);
+        if (partFolder.starts_with("head_" + sex + "_") && piece == "head.glb")
+        {
+            f.outfitHeads.push_back(path);
+        }
+        for (const char* kit : {"cloth_", "armor_", "headgear_"})
+        {
+            if (partFolder == kit + build)
+            {
+                f.outfitGarments.push_back(path);
+            }
+        }
+    }
+}
+
+usize Engine::playerFigureTriangles() const noexcept
+{
+    usize indices = 0;
+    if (m_figure)
+    {
+        for (const asset::Submesh& submesh : m_figure->mesh.submeshes())
+        {
+            indices += submesh.indexCount;
+        }
+    }
+    return indices / 3;
 }
 
 void Engine::loadPlayerFigure()
@@ -570,7 +765,70 @@ void Engine::playerAnimationUi()
     panel.lookAtCamera = f.lookAtCamera;
     panel.lookYaw = f.lookAt.yawDegrees();
     panel.lookPitch = f.lookAt.pitchDegrees();
+    std::vector<std::string> worn;
+    if (f.manifest)
+    {
+        refreshOutfitChoices();
+        worn = f.manifest->cloth();
+        panel.outfit = true;
+        panel.heads = f.outfitHeads;
+        panel.head = f.manifest->find("head")->path;
+        for (const std::string& garment : f.outfitGarments)
+        {
+            panel.garments.push_back({garment, std::find(worn.begin(), worn.end(), garment) != worn.end()});
+        }
+        for (const std::string& garment : worn) // worn pieces of other kits stay visible
+        {
+            if (std::find(f.outfitGarments.begin(), f.outfitGarments.end(), garment) ==
+                f.outfitGarments.end())
+            {
+                panel.garments.push_back({garment, true});
+            }
+        }
+        panel.outfitError = f.outfitError;
+    }
     m_debugUi.animationPanel(panel);
+
+    if (f.manifest)
+    {
+        // Outfit: a new head brings the hair and beard of its folder; garments in the order of the list.
+        asset::FigureManifest next = *f.manifest;
+        bool changed = false;
+        if (panel.head != f.manifest->find("head")->path)
+        {
+            const std::string folder = panel.head.substr(0, panel.head.find_last_of('/') + 1);
+            (void)next.setPart("head", panel.head);
+            for (const char* role : {"hair", "beard"})
+            {
+                const std::string path = folder + role + ".glb";
+                (void)next.setPart(role,
+                                   m_vfs.exists(std::string(kCharacters) + path) ? path : std::string());
+            }
+            changed = true;
+        }
+        std::vector<std::string> cloth;
+        for (const ui::AnimationPanel::Garment& garment : panel.garments)
+        {
+            if (garment.worn)
+            {
+                cloth.push_back(garment.path);
+            }
+        }
+        if (cloth != worn)
+        {
+            next.setCloth(cloth);
+            changed = true;
+        }
+        if (changed)
+        {
+            auto rebuilt = rebuildPlayerFigure(next);
+            f.outfitError = rebuilt ? std::string() : rebuilt.error().message;
+            if (!rebuilt)
+            {
+                G7_LOG_WARN("engine", "outfit: {}", rebuilt.error().message);
+            }
+        }
+    }
 
     f.showSockets = panel.showSockets;
     f.lookAtCamera = panel.lookAtCamera;

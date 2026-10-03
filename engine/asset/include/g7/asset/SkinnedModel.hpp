@@ -11,6 +11,7 @@
 #include <g7/core/Types.hpp>
 
 #include <array>
+#include <map>
 #include <span>
 #include <string>
 #include <string_view>
@@ -58,6 +59,17 @@ struct SkinnedPartData
     std::vector<Submesh> submeshes; ///< per material
     /// In file order; for heads the fixed list of characters-pipeline.md §6.1 gives the names.
     std::vector<MorphTargetData> morphs;
+    /// The node's glTF primitives in file order (non-triangle ones empty): where their vertices and
+    /// triangles ended up here - the assembly data of §6.2 names glTF primitives. Empty for assembled parts.
+    struct Primitive
+    {
+        u32 firstVertex = 0;
+        u32 vertexCount = 0;
+        u32 firstIndex = 0; ///< into `indices` (grouped by material, the primitive's triangles stay together)
+        u32 indexCount = 0;
+        u32 material = 0;
+    };
+    std::vector<Primitive> primitives;
 };
 
 struct SkinnedModelData
@@ -68,6 +80,29 @@ struct SkinnedModelData
     std::vector<MaterialInfo> materials;
     std::vector<ImageSource> images;
     AABB bounds; ///< of all parts in the bind pose
+    /// `asset.extras.gothar` of a figure part (characters-pipeline.md §6.2, format v1): what assembling
+    /// figures at run time needs. Empty (version 0) for files without it.
+    struct Assembly
+    {
+        u32 version = 0;
+        std::string part; ///< "body", "head", "hair", "cloth" ... as written by gothar-chargen
+        /// Per LOD node: the neck ring in loop order; per ring point its glTF vertices [primitive, vertex].
+        std::map<std::string, std::vector<std::vector<std::array<u32, 2>>>, std::less<>> neck;
+        struct Falloff
+        {
+            u32 primitive = 0;
+            u32 vertex = 0;
+            u32 ringPoint = 0;
+            f64 weight = 0.0; // double: assemble.py computes in double
+        };
+        std::map<std::string, std::vector<Falloff>, std::less<>>
+            falloff;            ///< body: vertices following the ring
+        std::string coversBody; ///< garment: the body part it fits (path relative to characters/)
+        /// Garment: per body LOD node the hidden body triangles as [primitive, first, end).
+        std::map<std::string, std::vector<std::array<u32, 3>>, std::less<>> covers;
+        std::vector<std::string> hides; ///< garment: roles dropped while worn ("hair", "beard")
+    };
+    Assembly assembly;
 
     /// Parts of one LOD level (nearest available per role when a role has fewer levels).
     [[nodiscard]] std::vector<const SkinnedPartData*> partsForLod(u32 lod) const;

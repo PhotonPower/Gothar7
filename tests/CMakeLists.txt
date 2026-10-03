@@ -13,6 +13,11 @@ g7_add_test_suite(runtime)
 g7_add_test_suite(platform)
 g7_add_test_suite(asset)
 target_compile_definitions(g7_tests_asset PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
+# CI builds g7_figures first: then the C++ figure assembly must be compared with every assembled figure (M6 D2).
+option(G7_REQUIRE_FIGURES "Asset tests fail when assembled figures (g7_figures) are missing" OFF)
+if(G7_REQUIRE_FIGURES)
+    target_compile_definitions(g7_tests_asset PRIVATE G7_REQUIRE_FIGURES=1)
+endif()
 # test_input_sdl.cpp injects synthetic SDL events and a virtual gamepad.
 find_package(SDL3 CONFIG REQUIRED)
 target_link_libraries(g7_tests_platform PRIVATE SDL3::SDL3)

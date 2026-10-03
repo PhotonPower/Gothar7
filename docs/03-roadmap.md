@@ -155,8 +155,8 @@ _Benötigt F1 (Referenz-Rig, Platzhalterfigur) und für den Meilenstein die Prio
   - Stand Teil B: Events feuern nach Vertrag §3 an einen Callback; Teil C zeigt die Events des Helden im Debug-UI; Verbraucher (Schritte, Treffer, Item-Wechsel) folgen mit Teil D bzw. M11/M13
 - [ ] Root Motion für Interaktionen/Kampf, In-Place für Fortbewegung
   - Stand Teil B: `root_motion`-Zustände melden die Bewegung von `root`; Teil C: Klettern folgt der Root Motion, auf die Kante skaliert; Interaktionen/Kampf mit M10/M11
-- [ ] Attachments: Items an Knochen (Hand, Rücken, Gürtel), Rüstungs-/Kopfwechsel (Mesh-Tausch)
-  - Stand D1: Modelle an Sockets (`Engine::attachToPlayer`, mit Schatten, Debug-UI-Teststab); Rüstungs- und Kopfwechsel zur Laufzeit folgen mit D2
+- [x] Attachments: Items an Knochen (Hand, Rücken, Gürtel), Rüstungs-/Kopfwechsel (Mesh-Tausch)
+  - D1: Modelle an Sockets (`Engine::attachToPlayer`, mit Schatten, Debug-UI-Teststab). D2: Figuren zur Laufzeit aus Teilen (`assembleFigure`, gleich mit `gothar-chargen assemble`, CI-Vergleich), Held aus `farmer.figure.toml`, Kopf/Rüstung/Helm tauschen (`setPlayerPart`, `setPlayerCloth`, Debug-UI „Outfit“)
 - [x] Morph-Targets für Gesichter (Lippen-Synchronisation grob, Blinzeln) – `FaceAnimator` (D1): Blinzeln, Ausdrücke, grobes Sprechen; Lippensynchronisation nach Audio mit M13
 - [x] Look-At (Kopf dreht zu Gesprächspartner) – `LookAt` (D1): Hals und Kopf, Grenzen und Geschwindigkeit aus `[look_at]`; Gesprächspartner setzen mit M12
 

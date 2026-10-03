@@ -9,6 +9,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
+#include <vector>
 
 using namespace g7;
 
@@ -116,4 +118,76 @@ TEST_CASE("Player figure GPU: holds a stick in the hand while running, looks at 
     CHECK(mouth > 0.3f);
     CHECK(blink > 0.8f);
     CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}
+
+TEST_CASE("Player figure GPU: the hero is assembled from parts; head, armour and helmet swap while it runs")
+{
+    Engine engine(figureConfig()); // default hero: characters/figures/farmer.figure.toml
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    REQUIRE(engine.player() != nullptr);
+    CHECK(engine.playerFigurePath() == "characters/figures/farmer.figure.toml");
+    const auto manifest = engine.playerFigureManifest();
+    REQUIRE(manifest.has_value());
+    CHECK(manifest->find("head")->path == "parts/head_m_farmer/head.glb");
+    CHECK(manifest->cloth().size() == 2);
+    const usize farmer = engine.playerFigureTriangles();
+    CHECK(farmer > 5000);
+
+    gameplay::MoveInput run;
+    run.forward = 1.0f;
+    engine.setPlayerInputOverride(run);
+    for (int i = 0; i < 20; ++i)
+    {
+        CHECK(engine.runFrame());
+    }
+
+    // Another head (with its hair) while running: the animation goes on.
+    REQUIRE(engine.setPlayerPart("head", "parts/head_m_old/head.glb").ok());
+    REQUIRE(engine.setPlayerPart("hair", "parts/head_m_old/hair.glb").ok());
+    CHECK(engine.playerFigureManifest()->find("head")->path == "parts/head_m_old/head.glb");
+    CHECK(engine.playerFigureTriangles() != farmer);
+    for (int i = 0; i < 10; ++i)
+    {
+        CHECK(engine.runFrame());
+    }
+    CHECK(engine.playerAnimationState() == "move");
+
+    // Medium armour; the nasal helmet hides the hair.
+    const std::vector<std::string> armour = {
+        "parts/armor_m_average/mail_tunic.glb", "parts/armor_m_average/wrapped_trousers.glb",
+        "parts/armor_m_average/wrapped_boots.glb", "parts/armor_m_average/gloves_medium.glb"};
+    REQUIRE(engine.setPlayerCloth(armour).ok());
+    const usize armoured = engine.playerFigureTriangles();
+    std::vector<std::string> withHelmet = armour;
+    withHelmet.push_back("parts/headgear_m_average/nasal_helmet.glb");
+    REQUIRE(engine.setPlayerCloth(withHelmet).ok());
+    CHECK(engine.playerFigureTriangles() != armoured);
+    CHECK(engine.playerFigureManifest()->cloth().size() == 5);
+
+    // Errors leave the figure as it was: a missing part, a garment for another build, removing the head.
+    const usize before = engine.playerFigureTriangles();
+    CHECK_FALSE(engine.setPlayerPart("head", "parts/head_m_nobody/head.glb").ok());
+    CHECK_FALSE(
+        engine.setPlayerCloth(std::vector<std::string>{"parts/cloth_m_heavy/elvs_crude_t-shirt_male.glb"})
+            .ok());
+    CHECK_FALSE(engine.setPlayerPart("head", "").ok());
+    CHECK(engine.playerFigureTriangles() == before);
+    CHECK(engine.playerFigureManifest()->find("head")->path == "parts/head_m_old/head.glb");
+    for (int i = 0; i < 10; ++i)
+    {
+        CHECK(engine.runFrame());
+    }
+    CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}
+
+TEST_CASE("Player figure GPU: an assembled .glb hero cannot swap parts")
+{
+    EngineConfig config = figureConfig();
+    config.settings.set<std::string>("game.hero", "characters/figures/placeholder_mannequin.glb");
+    Engine engine(std::move(config));
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    CHECK_FALSE(engine.playerFigureManifest().has_value());
+    CHECK_FALSE(engine.setPlayerPart("head", "parts/head_m_old/head.glb").ok());
 }

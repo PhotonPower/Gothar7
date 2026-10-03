@@ -83,7 +83,8 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
   - Teil C setzt die Parameter aus dem Gameplay (siehe unten).
 
 ## Held in der Engine (M6 Teil C, umgesetzt)
-- Figur aus `[game] hero` (engine.toml, Vorgabe `characters/figures/farmer.glb` aus `g7_figures`); fehlt sie,
+- Figur aus `[game] hero` (engine.toml): ein Manifest `*.figure.toml` (Vorgabe `characters/figures/farmer.figure.toml`,
+  beim Start aus Teilen zusammengesetzt, Teil D2) oder eine fertige `.glb` (z. B. aus `g7_figures`); fehlt sie,
   die Gliederpuppe `placeholder_mannequin.glb` (versioniert, gleiches Skelett). Graph aus `[game] hero_graph`
   (Vorgabe `data/anim/human.animgraph.toml`). Gezeichnet wird LOD 0.
 - Je festem Schritt nach der Bewegung: Parameter aus der gezeichneten Bewegung (`speed`/`strafe` aus der
@@ -96,8 +97,25 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
 - **Debug-UI** (F1), Fenster „Animation“: Figur, Graph, Zustand, Überblendung, Fortschritt, Clips mit Gewichten,
   Parameter, die letzten Events.
 - `Engine::playerAnimationState()` / `playerFigurePath()` für Tests (render_gpu `Player GPU`).
-- Offen: Rüstungs-/Kopfwechsel (Teil D2), Tiere (D3); Dual-Quaternion-Skinning gegen die Schulterbeule in extremen
+- Offen: Tiere (D3); Dual-Quaternion-Skinning gegen die Schulterbeule in extremen
   Posen (offener Punkt in render.md, Entscheidung mit echten Clips F4).
+
+## Figuren zur Laufzeit zusammensetzen (M6 Teil D2, umgesetzt)
+- `asset/FigureAssembly.hpp`: `FigureManifest::parse` (Format v1, Rollen in fester Reihenfolge body, head, hair,
+  beard, dann die Kleidungsstücke), `assembleFigure(manifest, parts)` – derselbe Algorithmus wie
+  `gothar-chargen assemble` (`characters-pipeline.md` §6.2): Skelett vom Körper, Teile als `<rolle>_lod<n>`,
+  verdeckte Körper-Dreiecke entfernt, Halsring auf den des Kopfes gelegt (in double), Materialien nach Namen
+  zusammengeführt (Haut des Kopfes zuerst), Palette, `hides`. Bildpfade werden zu VFS-Pfaden.
+- Gleichheitstest gegen die Python-Ausgabe für **alle** Figuren-Manifeste (Positionen < 1e-6, gleiche Dreiecke je
+  Material, gleiche Materialien und Bilder); die CI baut dafür vorher `g7_figures` (`-DG7_REQUIRE_FIGURES=ON`).
+- Engine: Ist `[game] hero` ein Manifest, entsteht der Held beim Start aus den Teilen (Debug ~0,35 s inkl. Clips).
+  `setPlayerPart(rolle, pfad)` (body, head, hair, beard; leer entfernt Haar/Bart) und `setPlayerCloth(stücke)`
+  bauen ihn neu, die Animation läuft weiter; Fehler (fehlendes Teil, Stück für einen anderen Körper, anderes
+  Skelett) lassen die Figur unverändert. `playerFigureManifest()`, `playerFigureTriangles()`.
+- Debug-UI (F1, „Animation“ → „Outfit“): Kopf (gleiches Geschlecht, mit Haar/Bart seines Ordners) und die Stücke der
+  Kits zur Statur des Körpers (`cloth_`, `armor_`, `headgear_<g>_<statur>`) an- und ablegen.
+- Grenzen: `body_hash` der Masken prüft erst `gothar-chargen` (die Engine vergleicht nur den Pfad des Körpers);
+  die Rollen-Reihenfolge ist fest (Manifeste mit Bart vor Haar ergeben dieselbe Figur in anderer Material-Reihenfolge).
 
 ## Attachments, Gesicht, Look-At (M6 Teil D1, umgesetzt)
 - **Attachments:** `Engine::attachToPlayer(socket, modelPath)` bzw. mit einem in Code erzeugten `MeshData`

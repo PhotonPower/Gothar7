@@ -77,6 +77,17 @@ struct AnimationPanel
     bool lookAtCamera = false;
     f32 lookYaw = 0.0f; ///< shown, degrees
     f32 lookPitch = 0.0f;
+    // Outfit (figures assembled from parts, M6 D2): shown only with `outfit`; edited.
+    bool outfit = false;
+    std::vector<std::string> heads; ///< head parts that fit the body
+    std::string head;               ///< worn now
+    struct Garment
+    {
+        std::string path;
+        bool worn = false;
+    };
+    std::vector<Garment> garments; ///< pieces of the kits fitted to the body (clothing, armour, headgear)
+    std::string outfitError;       ///< shown: the last swap that failed
 };
 
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor
