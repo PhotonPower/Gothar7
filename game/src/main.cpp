@@ -318,6 +318,7 @@ int main(int argc, char** argv)
     {
         config.ground = false;
     }
+    config.player = !cli->editor; // the editor flies the camera itself
     if (cli->noSun)
     {
         config.sun = false;

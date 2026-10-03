@@ -130,7 +130,7 @@ Texte kommen aus Inhalt/Definitionen (lokalisiert, M14). Konvention der Engine: 
 
 | Typ | Komponente (`components.…`) | Bedeutung |
 |---|---|---|
-| `start` | – | Startpunkt; `name` Pflicht und eindeutig (ohne Groß-/Kleinschreibung), sonst Ladefehler. `pos` = Füße, die Kamera steht **1,7 m** darüber (`kStartEyeHeight`), volle `rot`; die Spielfigur (M5) nimmt nur das Gieren. |
+| `start` | – | Startpunkt; `name` Pflicht und eindeutig (ohne Groß-/Kleinschreibung), sonst Ladefehler. `pos` = Füße. Ohne Spielfigur steht die Kamera **1,62 m** darüber (`kStartEyeHeight`, gemessene Augenhöhe der Figuren; bis M5 1,7 m), volle `rot`; die Spielfigur (M5) steht mit den Füßen dort und nimmt nur das Gieren. |
 | `sound` | `sound`: `sound` (Pflicht, Name einer Sound-Definition), `range` m (> 0, Vorgabe 20), `volume` 0…1 (Vorgabe 1), `mode` `loop`|`random` (Vorgabe loop), `delay` [min, max] s (random; Vorgabe [5, 15]) | Geräuschquelle (wie zCVobSound); bis zur Audio-Phase nur Daten + Debug-Draw. |
 | `trigger` | `trigger`: `shape` `box` (`halfExtents` [x,y,z] > 0, Vorgabe 1) | `sphere` (`radius` > 0, Vorgabe 1), `onEnter`/`onLeave` (Skriptfunktionsnamen, optional), `filter` `player`|`npc`|`any` (Vorgabe player), `once` (Vorgabe false), `target` (**reserviert**: Vob-ID oder Name, gelesen/geschrieben, noch ohne Wirkung) | Volumen, das Betreten/Verlassen meldet. Box dreht und skaliert mit dem Vob, Kugel: Radius × größte Skalierung. |
 | `mob` | `mob`: `definition` (Pflicht, Name der Mob-Definition, M8) + `mesh` wie bei `mesh` | Interaktives Objekt (Bett, Truhe, Tür); bis M8 wie ein Mesh gezeichnet. Fokusname kommt aus der Definition. |
@@ -147,8 +147,8 @@ Beispiel (Leonberg, Ursprung = Marktbrunnen, Gelände dort y ≈ 0):
 {"id":1,"type":"start","name":"START_MARKTPLATZ","pos":[0,0,8],"rot":[0,0,0,1]}
 {"id":2,"type":"start","name":"START_UEBERSICHT","pos":[0,40,60],"rot":[-0.258819,0,0,0.965926]}
 ```
-- START_MARKTPLATZ: Füße 8 m südlich des Brunnens, Kamera bei (0, 1.7, 8), Blick nach Norden (−Z, Identität).
-- START_UEBERSICHT: Kamera bei (0, 41.7, 60), um 30° nach unten geneigt: Drehung um +X um −30°,
+- START_MARKTPLATZ: Füße 8 m südlich des Brunnens, Kamera ohne Figur bei (0, 1.62, 8), Blick nach Norden (−Z, Identität).
+- START_UEBERSICHT: Kamera ohne Figur bei (0, 41.62, 60), um 30° nach unten geneigt: Drehung um +X um −30°,
   q = (sin(−15°), 0, 0, cos(15°)) = (−0.258819, 0, 0, 0.965926).
 - Auswahl: `--start=<name>` (Groß-/Kleinschreibung egal; unbekannter Name = Fehler mit Liste), sonst der Startpunkt
   mit der **kleinsten id**. Ohne Startpunkt bleibt die bisherige Übersichtskamera.

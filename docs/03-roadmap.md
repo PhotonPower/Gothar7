@@ -127,10 +127,12 @@ Gizmo-Mathematik und Operationen). Die Kollision statischer Welt-Meshes ist nach
   - Jolt 5.6.0 (vcpkg, `nodeps` per FetchContent mit SHA256); Gelände als HeightField mit Löchern, Modelle aus `COL_`-Knoten (Vertrag mit welt/figuren, `asset.md`) bzw. Render-Mesh, Form je Modell geteilt; `.g7mesh` v2 mit Kollisionsteilen
   - Leonberg-Kern: Aufbau 1,13 s ohne `COL_` (1,69 Mio. Dreiecke), 0,25 s mit den `COL_HULL_` aus #93 (Release)
 - [x] Raycasts/Shapecasts-API (Fokus, Kamera, KI-Sicht) – `raycast`, `sphereCast`, `overlapSphere` mit Layer-Masken, `Engine::physics()`
-- [ ] Charakter-Controller: gehen, rennen, schleichen, Treppen/Steigungen, rutschen an steilen Hängen
+- [x] Charakter-Controller: gehen, rennen, schleichen, Treppen/Steigungen, rutschen an steilen Hängen
+  - `physics::CharacterController` (Jolt CharacterVirtual), aufrechter Zylinder r 0,3/1,8 m statt Kapsel (scharfe Stufengrenze, gemessen, `physics.md`); `gameplay::PlayerMovement` mit Gothic-Gangart (Standard rennen, Shift gehen), Werte in `data/movement.toml` (Hot-Reload); Spielfigur am Startpunkt, Trigger melden die Figur; F3 freie Kamera
 - [ ] Springen, **Kanten hochziehen** (Kantenerkennung per Shapecast), Fallschaden
 - [ ] Schwimmen/Tauchen (Wasservolumen, Luftvorrat)
 - [ ] Third-Person-Kamera im Gothic-Stil: Verfolgung mit Trägheit, Kollision, Modi (Normal, Kampf, Dialog, Schwimmen)
+  - Stand: Modus „normal“ umgesetzt (Trägheit für Position und Gieren, Mausneigung, `sphereCast` gegen Wände, `gameplay::ThirdPersonCamera`); Kampf/Dialog/Schwimmen folgen mit ihren Phasen
 - [ ] Trigger-Volumen (Betreten/Verlassen-Events)
 
 **DoD:** Eine Kapsel-Figur bewegt sich mit Gothic-artiger Steuerung durch die Testwelt, klettert,
@@ -265,6 +267,7 @@ gezogene Waffen und Betreten ihrer Hütte.
 ## M17 – Atmosphäre, Performance, Release → Meilenstein D
 - [ ] Wetter: Regen (Partikel + nasse Oberflächen), Gewitter, Wind für Vegetation
 - [ ] Wasser-Rendering (Reflexion, Brechung light), Unterwasser-Effekt
+- [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
 - [ ] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional
 - [ ] Vegetation: Instancing, Wind-Animation, Grasfelder
 - [ ] Job-System, Multithreading für Animation/KI/Culling

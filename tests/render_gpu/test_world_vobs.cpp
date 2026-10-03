@@ -26,6 +26,7 @@ EngineConfig worldConfig(std::string start = {})
     config.shaderDirectory = fs::fromUtf8(G7_SHADER_DIR);
     config.fixedFrameSeconds = 1.0 / 60.0;
     config.start = std::move(start);
+    config.player = false; // these tests drive the camera (the player: test_player.cpp)
     g7::test::keepVideoAlive();
     return config;
 }

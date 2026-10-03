@@ -72,7 +72,7 @@ struct StartPoint
     u8 reserved = 0; ///< not empty: EnTT keeps no instance of empty components (Scene::get)
 };
 
-inline constexpr f32 kStartEyeHeight = 1.7f;
+inline constexpr f32 kStartEyeHeight = 1.62f; // measured on the figures (figuren, M5)
 
 /// A sound source placed in the world (like ZenGin zCVobSound). Played once the audio module exists;
 /// `sound` names a sound definition (data, not a file path).

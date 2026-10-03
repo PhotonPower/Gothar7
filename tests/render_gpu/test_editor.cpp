@@ -52,6 +52,7 @@ EngineConfig editorConfig(const fs::Path& world)
     config.window.vsync = false;
     config.world = world;
     config.start = "START_LAGER";
+    config.player = false; // as gothar --editor
     config.shaderDirectory = fs::fromUtf8(G7_SHADER_DIR);
     config.fixedFrameSeconds = 1.0 / 60.0;
     g7::test::keepVideoAlive();
