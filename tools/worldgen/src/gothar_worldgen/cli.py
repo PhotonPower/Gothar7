@@ -11,6 +11,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TextIO
 
+from shapely.geometry import LineString, box
+from shapely.ops import unary_union
+
 from gothar_worldgen import __version__
 from gothar_worldgen.assemble.world import (
     AssembleError,
@@ -33,10 +36,12 @@ from gothar_worldgen.config import (
     load_site,
 )
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
+from gothar_worldgen.export.descents import dig_descents
 from gothar_worldgen.export.splat import SplatPaths, composite, coverage, layer_masks, write_splat
 from gothar_worldgen.export.starts import DEFAULT_STARTS, load_starts
 from gothar_worldgen.export.terrain import ExportError, Grid, crop, export_terrain, load_grid
 from gothar_worldgen.export.water import carve_and_place
+from gothar_worldgen.export.ways import smooth_ways
 from gothar_worldgen.facade.capture import (
     CaptureError,
     CaptureOptions,
@@ -71,7 +76,7 @@ from gothar_worldgen.handmade import footprints as handmade_footprints
 from gothar_worldgen.handmade import load as load_handmade
 from gothar_worldgen.handmade import save as save_handmade
 from gothar_worldgen.importer import run_import
-from gothar_worldgen.qa.begehung import LIMITS, Character, game_grid, load_bodies
+from gothar_worldgen.qa.begehung import LIMITS, WALKABLE, Character, game_grid, load_bodies
 from gothar_worldgen.qa.begehung import run as walkthrough
 from gothar_worldgen.qa.checks import FAIL
 from gothar_worldgen.qa.run import run_qa
@@ -445,6 +450,9 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     if "style" in st:
         sty = st["style"]
         print("  styles: " + ", ".join(f"{k} {v}" for k, v in sty["style"].items()), file=out)
+    if col.get("gapFillers"):
+        print(f"  gaps: {col['gapFillers']} filler bodies on {col['gapHouses']} houses (E4)",
+              file=out)  # fmt: skip
         print("  patterns: " + ", ".join(f"{k} {v}" for k, v in sty["pattern"].items())
               + "; roofs: " + ", ".join(f"{k} {v}" for k, v in sty["roof"].items())
               + f"; steepened roofs {sty['roofSteepened'].get('masses', 0)}", file=out)  # fmt: skip
@@ -499,7 +507,8 @@ def _cmd_begehung(args: argparse.Namespace, out: TextIO) -> int:
           f"steps ways {slopes['steps']['count']} ({slopes['steps']['tooSteep']} too steep)",
           file=out)  # fmt: skip
     print(f"  doors: {doors['checked']} checked, {doors['high']} high, {doors['buried']} buried "
-          f"({doors['fixableByOtherEdge']} fixable by another edge)", file=out)  # fmt: skip
+          f"({doors['fixableByOtherEdge']} fixable by another edge); "
+          f"kinds {doors.get('kinds', {})}", file=out)  # fmt: skip
     bad = [c["name"] for c in report["citywall"] if not c["ok"]]
     print(f"  city wall: {'all measures fit' if not bad else ', '.join(bad)}", file=out)
     print(f"  {target}", file=out)
@@ -707,10 +716,13 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
         index = json.loads(index_path.read_text(encoding="utf-8"))
         ids = VobIds.load(ids_path)
         locked, _ = _overrides(data_dir)
-        try:
-            ground = load_grid(paths.work).height_at
-        except ExportError:
-            ground = None
+        try:  # start points stand on the heightmap the engine loads (water beds, smoothing)
+            ground = game_grid(terrain_world, folder.parents[1]).height_at
+        except (OSError, KeyError, ValueError):
+            try:
+                ground = load_grid(paths.work).height_at
+            except ExportError:
+                ground = None
         handmade = load_handmade(data_dir / "handmade.json")
         water_path = folder / "generated" / "water_index.json"
         water = json.loads(water_path.read_text(encoding="utf-8")) if water_path.is_file() else None
@@ -766,6 +778,31 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
                 for wname, st in water["stats"][kind].items():
                     print(f"  water: {wname}: {st['boxes']} boxes, "
                           f"{st['cellsLowered']} cells lowered", file=out)  # fmt: skip
+        index_path = folder / "generated" / "buildings_index.json"
+        # E1-C B: descents in front of hillside doors (needs the buildings index; then the ways
+        # are smoothed, which also repairs descents that cut into a way)
+        if index_path.is_file():
+            entries = json.loads(index_path.read_text(encoding="utf-8")).get("entries", [])
+            hillside = json.loads((data_dir.parent / "building_rules.json").read_text(
+                encoding="utf-8")).get("hillside", {})  # fmt: skip
+            street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+            walkable = unary_union([LineString(w["points"]) for w in street_doc.get("streets", [])
+                                    if w["highway"] in WALKABLE and len(w["points"]) >= 2
+                                    and not w.get("tunnel")]).buffer(0.8)  # fmt: skip
+            grid, dug = dig_descents(grid, entries, hillside, walkable)
+            if dug["doors"] or dug["skippedForWays"]:
+                print(f"  descents: {dug['doors']} hillside doors, {dug['cells']} cells, "
+                      f"{dug['skippedForWays']} left out (a way there)", file=out)  # fmt: skip
+        ways_doc = data_dir / "ways.json"
+        if ways_doc.is_file():  # E5: steep stretches of ways limited, leaving the DGM there
+            street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+            half = site.core_half_extent_m
+            ways_spec = json.loads(ways_doc.read_text(encoding="utf-8"))
+            core_box = box(-half, -half, half, half)
+            grid, smoothed = smooth_ways(grid, street_doc.get("streets", []), core_box, ways_spec)
+            print(f"  ways: {smoothed['ways']} steep stretches limited to {smoothed['maxDeg']} deg "
+                  f"(steepest {smoothed['maxDegBefore']} deg), {smoothed['cellsChanged']} cells, "
+                  f"{smoothed['remaining']} left after the last pass", file=out)  # fmt: skip
         splat = None
         if not args.no_splat:
             gardens = splat_areas(load_handmade(data_dir / "handmade.json"))

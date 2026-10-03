@@ -10,7 +10,7 @@
     {"id":3,"type":"start","name":"START_BG_GASSE_ENG","pos":[-76.57,-1.55911,-112.8],"rot":[0.0,-0.238533,0.0,0.971134]},
     {"id":4,"type":"start","name":"START_BG_GASSE_SCHMAL","pos":[-1.79,3.01703,-89.81],"rot":[0.0,-0.817145,0.0,0.576432]},
     {"id":5,"type":"start","name":"START_BG_STEIL","pos":[-138.78,-20.93182,102.83],"rot":[0.0,-0.019197,0.0,0.999816]},
-    {"id":6,"type":"start","name":"START_BG_TREPPE","pos":[-56.26,-16.14537,194.76],"rot":[0.0,-0.834367,0.0,0.551209]},
+    {"id":6,"type":"start","name":"START_BG_TREPPE","pos":[-56.26,-14.33784,194.76],"rot":[0.0,-0.834367,0.0,0.551209]},
     {"id":7,"type":"start","name":"START_BG_MAUERDURCHBRUCH","pos":[-60.47,-1.23526,-152.04],"rot":[0.0,-0.841982,0.0,0.539506]},
     {"id":8,"type":"start","name":"START_BG_WEG_DURCH_HAUS","pos":[61.67,6.83795,-111.29],"rot":[0.0,-0.999762,0.0,0.021815]},
     {"id":9,"type":"start","name":"START_BG_TOR_OBEN","pos":[80.0,-3.48502,52.0],"rot":[0.0,-0.755282,0.0,0.6554]},

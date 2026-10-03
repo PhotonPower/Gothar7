@@ -213,6 +213,64 @@ mit `gothar-worldgen walk-report leonberg --route <route> --run <ordner>`, das `
 **E6 – Stadtmauer:** Alle Maße passen, es gibt nichts zu entscheiden. Der Wehrgang mit 1,2 m ist für eine Person
 gedacht; zwei kommen nicht aneinander vorbei, das ist gewollt eng.
 
+## Umsetzung E1, E4, E5
+
+Nachgemessen mit `begehung` und den drei `--walk`-Routen. Bilder (nicht im Repo):
+`C:\GotharData\review\w3e\PLATZHALTER_*`.
+
+**E1 – Türen und Erdgeschoss im Hang** (`buildings/medieval.py`, Regeln `hillside` in `building_rules.json`)
+- Der Generator liest das Gelände (DGM) an der Tür.
+  - **A:** Unter den Straßenkanten nimmt er die, vor der das Gelände zum Boden passt.
+  - **B:** Liegt das Gelände dort höher, steht der Boden darauf; darunter wird der Steinsockel des Hanghauses sichtbar.
+  - Liegt es mehr als 0,4 m tiefer, kommt eine Freitreppe mit Stufen zu höchstens 0,2 m vor die Tür, mit
+    Kollisionskörper.
+  - Fenster, deren Brüstung im Gelände stecken würde, entfallen.
+- **E1-C** (Koordinator im Auftrag): Passt bergseitig kein Erdgeschoss unter die Traufe, darf die Tür auf eine andere
+  Kante ausweichen (Hof- oder Gassenseite).
+  - Sonst **A:** Eingang im Obergeschoss. Die Stockwerke darunter werden so geteilt, dass ein Boden genau auf
+    Geländehöhe liegt.
+  - Sonst **B:** kurzer Abgang. `export-terrain` gräbt vor der Tür eine Rampe von 40° mit Böschungen
+    (`export/descents.py`); ein Weg hat Vorrang, dort entfällt der Abgang.
+- Die Türen stehen mit Position, Boden, Art und Richtung im Gebäude-Index (`doors`); die Begehung prüft sie direkt.
+- **Leonberg** (1403 Häuser):
+
+  | Art | Anzahl |
+  |---|---|
+  | Boden passt bzw. angehoben | 1143 |
+  | Tür auf eine andere Kante ausgewichen (Hang) | 179 |
+  | Freitreppe | 6 |
+  | A: Eingang im Obergeschoss | 10 |
+  | B: Abgang | 244 (141 gegraben, 11 wegen eines Weges ausgelassen, der Rest ohne nötige Tiefe) |
+
+  - Türen im Gelände: **465 → 44**, meist nur wenige Zentimeter; Median aller Türen 0,0 m.
+  - A ist selten, weil bei den meisten tief steckenden Häusern das Gelände an der Tür schon die Traufe erreicht. Für
+    ein Obergeschoss ist dort kein Platz.
+
+**E4 – Spalten** (`buildings/gaps.py`, Regeln `gapFill`): Freiraum, den eine Scheibe von 0,7 m Durchmesser nicht erreicht
+und der überwiegend von Häusern umschlossen ist, bekommt unsichtbare `COL_HULL_`-Füllkörper am angrenzenden Haus. Der
+Spalt bleibt sichtbar.
+- Leonberg: 79 Füllkörper an 64 Häusern; Spalten schmaler als die Figur: **62 → 15**. Der Rest ist kleiner als
+  0,3 m² oder offen zur Gasse.
+
+**E5 – steile Wege** (`export/ways.py`, `data/leonberg/ways.json`): Das Längsprofil jedes begehbaren Weges der Altstadt
+wird auf höchstens 42° begrenzt. Die Zellen am Weg folgen dem Profil, wiederholt bis keine Stelle mehr steiler ist.
+- Abgänge werden vorher gegraben, damit die Glättung Schnitte in einen Weg ausgleicht.
+- Die Routen folgen den Biegungen (Sehne höchstens 0,4 m neben dem Weg); sonst schnitten Serpentinen den Hang gerade
+  hinauf.
+- Leonberg: 16 Stellen, die steilste vorher 71°.
+  - Statisch keine zu steile Stelle mehr, auch keine Treppe.
+  - Der Autopilot bleibt auf **7 statt 11 Wegen** hängen. Der Rest sind Geländestufen von 1 m und mehr (Stützmauern,
+    Terrassen neben OSM-Treppen) und bleibt Hindernis bis zu den Treppen-Meshes (E5-A, W5).
+
+**Außerdem:**
+- Startpunkte aus den Daten stehen nach jedem Export wieder auf der Heightmap, sofern sie nicht im Editor verschoben
+  wurden.
+- `assemble` nimmt dafür die exportierte Heightmap statt des DGM.
+
+**Autopilot nachher:**
+- Wege: 3229 von 3245 Punkten, 0 Stürze, Hänger nur am Gelände.
+- Tore: unverändert; nur die Pforte Zwerchstraße Nord bleibt zu (Haus ZnA, folgt mit der Mauer-Arbeit).
+
 ## Selbst begehen (Anleitung für den Projektinhaber)
 
 1. Engine bauen (Debug genügt): `cmake --preset debug` und dann `cmake --build --preset debug`.

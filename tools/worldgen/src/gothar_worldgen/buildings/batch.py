@@ -32,6 +32,7 @@ from gothar_worldgen.buildings.collision import (
     collision_for,
     merge_collision,
 )
+from gothar_worldgen.buildings.gaps import Filler, find_fillers, footprint_of, prism_part
 from gothar_worldgen.buildings.gltf import CollisionPart, MeshData, Primitive, glb_bytes_multi
 from gothar_worldgen.buildings.massing import build_mesh, masses_for_building
 from gothar_worldgen.buildings.medieval import Rules, StreetIndex, barn_hearths, build_house
@@ -139,6 +140,8 @@ def generate(
         list[tuple[list[Primitive], list[CollisionPart], tuple[float, float, float]]],
     ] = defaultdict(list)
     by_hash: dict[str, str] = {}
+    deferred: list[tuple[dict[str, Any], str, list[Primitive], list[CollisionPart],
+                         tuple[float, float, float]]] = []  # fmt: skip
 
     def emit(name: str, prims: list[Primitive], collision: list[CollisionPart]) -> str:
         geometry = hashlib.sha256()
@@ -201,7 +204,8 @@ def generate(
         if mode == "medieval":
             assert rules is not None
             house = build_house(b, base, (c.x, c.y), rules, streets, (overrides or {}).get(bid),
-                                hearth=bid in hearths, wall=wall)  # fmt: skip
+                                hearth=bid in hearths, wall=wall,
+                                ground_at=grid.height_at if grid is not None else None)  # fmt: skip
             if house.triangles > budget and replace is not None and "derivedFrom" not in b:
                 houses = replace(b)  # rueckbau: smaller half-timbered houses instead
                 if houses:
@@ -250,16 +254,45 @@ def generate(
         triangles = sum(prim.mesh.triangle_count for prim in prims)
         origin = (round(c.x, 3), round(base, 3), round(c.y, 3))
         if in_core:
-            entry = {"id": bid, "kind": "building", "mesh": emit(stem, prims, col.parts),
-                     "pos": list(origin), "triangles": triangles,
-                     "collisionTriangles": col.triangles, "groundY": lod2_ground}  # fmt: skip
+            entry = {"id": bid, "kind": "building", "mesh": "", "pos": list(origin),
+                     "triangles": triangles, "collisionTriangles": col.triangles,
+                     "groundY": lod2_ground}  # fmt: skip
+            deferred.append((entry, stem, prims, list(col.parts), origin))
             if dgm:
                 entry["dgmMinY"], entry["dgmMaxY"] = round(dgm[0], 3), round(dgm[1], 3)
+            if mode == "medieval" and house.doors:  # where the doors are and their floor (E1)
+                entry["doors"] = [list(d) for d in house.doors]
             entries.append(entry)
         else:
             cells[(math.floor(c.x / CELL_M), math.floor(c.y / CELL_M))].append(
                 (prims, col.parts, origin)
             )
+
+    # E4: slots between the houses get filler bodies, written with the neighbouring house.
+    gap_spec = rules.data.get("gapFill") if (mode == "medieval" and rules is not None) else None
+    if gap_spec and gap_spec.get("enabled", True) and grid is not None:
+        footprints = {}
+        for entry, _, _, parts, origin in deferred:
+            fp = footprint_of(parts, origin)
+            if fp is not None:
+                footprints[entry["id"]] = fp
+        fillers = find_fillers(footprints, grid.height_at, gap_spec)
+        extra: dict[str, list[Filler]] = defaultdict(list)
+        for f in fillers:
+            extra[f.owner].append(f)
+        result.collision["gapFillers"] = len(fillers)
+        result.collision["gapHouses"] = len(extra)
+    else:
+        extra = {}
+    for entry, stem, prims, parts, origin in deferred:
+        if entry["id"] in extra:
+            parts = parts + [prism_part(f.piece, f.y0, f.y1, origin, "COL_HULL_x")
+                             for f in extra[entry["id"]]]  # fmt: skip
+            parts = [CollisionPart(f"COL_HULL_{k}", q.positions, q.indices)
+                     if q.name.startswith("COL_HULL_") else q
+                     for k, q in enumerate(parts)]  # fmt: skip
+            entry["collisionTriangles"] = sum(q.triangle_count for q in parts)
+        entry["mesh"] = emit(stem, prims, parts)
 
     for (i, j), parts in sorted(cells.items()):
         origin = ((i + 0.5) * CELL_M, min(o[1] for _, _, o in parts), (j + 0.5) * CELL_M)
@@ -305,7 +338,10 @@ def generate(
                 "budget": COLLISION_BUDGET,
                 "median": col_tris[len(col_tris) // 2] if col_tris else 0,
                 "max": col_tris[-1] if col_tris else 0,
-                **{k: result.collision[k] for k in ("hulls", "fallbacks", "decomposed", "over")},
+                **{
+                    k: result.collision[k]
+                    for k in ("hulls", "fallbacks", "decomposed", "over", "gapFillers", "gapHouses")
+                },  # fmt: skip
             },
         },
     }

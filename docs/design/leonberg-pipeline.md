@@ -243,6 +243,10 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     Heightmap jetzt −52,09 m (vorher −50,99 m).
   - Die Wasserfläche zeichnet die Engine bis M17 als durchscheinende Box (Debug-Darstellung), dabei sind auch die
     Seiten unter der Oberfläche zu sehen.
+- **Wege und Abgänge (W3-Entscheidungen E5 und E1-C, `leonberg-begehung.md`): Die Heightmap weicht auch dort bewusst
+  vom DGM ab.** `export-terrain` gräbt erst die Abgänge vor Hanghaus-Türen (`export/descents.py`, aus den `doors` des
+  Gebäude-Index, also nach `buildings`) und begrenzt dann das Längsprofil der begehbaren Wege der Altstadt auf 42°
+  (`export/ways.py`, `data/<ort>/ways.json`). Reihenfolge: `buildings` → `export-terrain` → `assemble`.
   - **Offen für M17 (Wasser-Rendering):** Bei 5 von 186 Boxen ragt in engen Biegungen der Glems (steiler Prallhang)
     eine Kante mehr als 0,3 m über das Gelände (Koordinator 2026-10-03: bleibt bis M17 so). Mit echtem
     Wasser-Rendering prüfen; mögliche Abhilfe: kürzere Abschnitte in Biegungen oder Spiegel je Abschnitt am Ufer

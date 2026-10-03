@@ -361,12 +361,14 @@ def door_steps(
     area: Polygon,
     limits: dict[str, float],
 ) -> dict[str, Any]:
-    """Door bottom (floor of the house) against the ground in front of the likely door edge.
+    """Door bottom (floor of the house) against the ground in front of the door.
 
-    The generator puts the door on the longest edge that faces a street; here the street test
-    is approximated by the edge whose outer midpoint lies nearest to a way.
+    Index entries with ``doors`` (written by the generator since E1) are exact: the point in front
+    of the main door and the floor. Older entries: the street test of the generator is
+    approximated by the edge whose outer midpoint lies nearest to a way.
     """
     floor = {e["id"]: e["groundY"] for e in index.get("entries", []) if "groundY" in e}
+    exact = {e["id"]: e["doors"] for e in index.get("entries", []) if e.get("doors")}
     ways = unary_union(
         [
             LineString(w["points"])
@@ -375,9 +377,23 @@ def door_steps(
         ]
     )
     high, buried, checked, fixable = [], [], 0, 0
+    kinds: dict[str, int] = {}
+    for bid, doors in exact.items():  # the generator wrote its doors (E1): no guessing
+        x, z, y = doors[0][:3]
+        kind = doors[0][3] if len(doors[0]) > 3 else "ground"
+        kinds[kind] = kinds.get(kind, 0) + 1
+        if not area.contains(Point(x, z)):
+            continue
+        checked += 1
+        step = y - grid.height_at(x, z)
+        item = {"id": bid, "stepM": round(step, 2), "at": [x, z]}
+        if step > limits["doorStepM"]:
+            high.append(item)
+        elif step < -limits["doorBuriedM"]:
+            buried.append(item)
     for b in buildings:
         bid = b.get("id")
-        if bid not in floor:
+        if bid not in floor or bid in exact:
             continue
         ring = b.get("footprint") or (b.get("masses") or [{}])[0].get("footprint") or []
         if len(ring) < 3 or not area.contains(Point(ring[0])):
@@ -425,6 +441,7 @@ def door_steps(
         "high": len(high),
         "buried": len(buried),
         "fixableByOtherEdge": fixable,
+        "kinds": dict(sorted(kinds.items())),
         "buriedMedianM": round(float(np.median([d["stepM"] for d in buried])), 2)
         if buried
         else 0.0,

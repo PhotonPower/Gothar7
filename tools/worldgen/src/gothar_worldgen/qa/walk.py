@@ -27,7 +27,8 @@ from gothar_worldgen.qa.begehung import WALKABLE, Body
 
 ROUTE_VERSION = 1
 FORMAT = "gothar-walk-report"
-STEP_M = 8.0  # point spacing along a way
+STEP_M = 8.0  # longest point spacing along a way
+CHORD_SAG_M = 0.4  # the straight line between two points leaves the way by at most this
 MIN_RUN_M = 5.0  # shorter free runs of a way are left out
 RUN_SPEED = 4.0  # m/s, generous estimate for the time limit
 TELEPORT_S = 3.0
@@ -95,14 +96,25 @@ def way_runs(
     return runs
 
 
+def _stations_along(run: LineString, step: float, sag: float = CHORD_SAG_M) -> list[Point]:
+    """Points along ``run``: its bends (chords leave the way by at most ``sag``), then no gap
+    longer than ``step``. The character walks straight between points; on switchbacks a long
+    chord would run straight up the slope."""
+    corners = list(run.simplify(sag, preserve_topology=False).coords)
+    out = [Point(corners[0])]
+    for a, b in zip(corners, corners[1:], strict=False):
+        seg = LineString([a, b])
+        n = max(1, int(math.ceil(seg.length / step)))
+        out += [seg.interpolate(seg.length * j / n) for j in range(1, n + 1)]
+    return out
+
+
 def ways_route(
     runs: list[tuple[dict[str, Any], LineString]], step: float = STEP_M
 ) -> dict[str, Any]:
     points, metres = [], 0.0
     for k, (w, run) in enumerate(runs):
-        n = max(1, int(math.ceil(run.length / step)))
-        for j in range(n + 1):
-            p = run.interpolate(run.length * j / n)
+        for j, p in enumerate(_stations_along(run, step)):
             name = f"W{k:04d}_{w['osmId']}_{j:02d}"
             pt: dict[str, Any] = {"name": name, "pos": [_r(p.x), _r(p.y)]}
             if j == 0:

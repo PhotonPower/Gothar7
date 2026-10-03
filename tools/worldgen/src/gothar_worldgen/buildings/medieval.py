@@ -50,6 +50,11 @@ DEPTH_FACTOR = {"sill": 1.0, "post": 0.9, "rail": 0.5, "brace": 0.45}
 # sides barely show, and figures (Mann, Andreaskreuz) stay within the triangle budget.
 BOARD_KINDS = {"rail", "brace"}
 BRACE_STAGGER = 0.06  # crossing braces: each further segment of a pattern a little flatter
+DOOR_PROBE_M = 0.6  # the ground in front of a door / opening is read this far out
+DOOR_TOLERANCE_M = 0.15  # floor this close to the ground at the door: no change
+SILL_CLEAR_M = 0.1  # ground-storey openings need their sill this far above the terrain
+STAIR_EXTRA_M = 0.2  # steps reach this far beyond the door on both sides
+STAIR_SINK_M = 0.2  # steps reach this far into the ground
 NORTH_ROOF = -0.25  # roof faces whose normal z is below this face north (-Z): moss
 
 
@@ -675,6 +680,7 @@ class HouseResult:
     dormers: int = 0
     chimneys: int = 0
     collision: CollisionResult | None = None  # COL_ bodies of the (steepened) ground footprints
+    doors: list[list[Any]] = field(default_factory=list)  # x, z in front, floor, kind, nx, nz
 
 
 class _SagRoof(_Roof):
@@ -779,6 +785,10 @@ class _Context:
     wall: WallContext | None = None
     wall_edges: set[int] = field(default_factory=set)  # outward sides of the current mass
     screens: list[CollisionPart] = field(default_factory=list)
+    ground_at: Callable[[float, float], float] | None = None  # terrain (x, z) -> y (E1)
+    stair_ground: float | None = None  # terrain in front of the current mass's door if lower
+    doors: list[list[Any]] = field(default_factory=list)  # per mass: x, z, floor, kind, nx, nz
+    door_storey: int = 0  # storey of the current mass's door (hillside houses: above ground)
 
 
 def _top_outline(f: Frame, roof: _Roof, crease: LineString | None, y: float,
@@ -816,6 +826,14 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
     plan = [op for op in plan
             if op.u >= 0 and op.u + op.w <= f.width + 1e-6
             and op.v + op.h <= usable + 1e-6]  # fmt: skip
+    if door and s > 0 and st.openings:  # hillside house: the door in an upper storey (E1-C)
+        plan = _with_door(plan, f.width, rules)
+    if s <= ctx.door_storey and ctx.ground_at is not None:
+        plan = _above_ground(ctx, f, plan)
+        if door and ctx.stair_ground is not None:
+            for op in plan:
+                if op.kind in ("door", "gate"):
+                    _door_stairs(ctx, f, op, ctx.stair_ground)
     timbered = st.timber and ctx.level < 3 and edge >= 0
     massive = not st.timber or (s == 0 and st.massive_ground)
     poly = Polygon(outline)
@@ -860,6 +878,74 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
             depth * max(factor, 0.2),
             sides=kind not in BOARD_KINDS,
         )
+
+
+def _with_door(plan: list[Opening], width: float, rules: Rules) -> list[Opening]:
+    """``plan`` with a door in the middle instead of the windows it would overlap."""
+    d = rules.get("openings", "door")
+    dw, dh = float(d["w"]), float(d["h"])
+    u0 = (width - dw) / 2
+    kept = [op for op in plan if op.u + op.w < u0 - 0.2 or op.u > u0 + dw + 0.2]
+    return [*kept, Opening("door", u0, 0.0, dw, dh)]
+
+
+def _above_ground(ctx: _Context, f: Frame, plan: list[Opening]) -> list[Opening]:
+    """Openings whose sill is above the terrain in front (hillside, E1 B and C)."""
+    keep = []
+    for op in plan:
+        x, _, z = f.point(op.u + op.w / 2, 0.0, DOOR_PROBE_M)
+        terrain = ctx.ground_at(x, z)  # type: ignore[misc]
+        if op.kind in ("door", "gate") or f.y0 + op.v >= terrain + SILL_CLEAR_M:
+            keep.append(op)
+    return keep
+
+
+def _door_stairs(ctx: _Context, f: Frame, door: Opening, terrain: float) -> None:
+    """Stone steps from the terrain up to the door sill, with one convex collision body."""
+    rules = ctx.rules
+    rise_max = float(rules.get("hillside", "stairRiseM"))
+    run = float(rules.get("hillside", "stairRunM"))
+    total = f.y0 - terrain
+    count = max(1, math.ceil(total / rise_max))
+    rise = total / count
+    u0, u1 = door.u - STAIR_EXTRA_M, door.u + door.w + STAIR_EXTRA_M
+    b = ctx.builders["wall_ground"]
+    bottom = -total - STAIR_SINK_M
+    for k in range(count):
+        top = -rise * (k + 1)  # step k+1 below the sill, k * run in front of the wall
+        d0, d1 = run * k, run * (k + 1)
+        uv = [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
+        b.polygon([f.point(u0, top, d0), f.point(u0, top, d1), f.point(u1, top, d1),
+                   f.point(u1, top, d0)], uv, (0.0, 1.0, 0.0))  # fmt: skip
+        b.polygon([f.point(u0, bottom, d1), f.point(u1, bottom, d1), f.point(u1, top, d1),
+                   f.point(u0, top, d1)], uv, (f.nx, 0.0, f.nz))  # fmt: skip
+        for u, sgn in ((u0, -1.0), (u1, 1.0)):
+            side = [f.point(u, bottom, d0), f.point(u, top, d0), f.point(u, top, d1),
+                    f.point(u, bottom, d1)]  # fmt: skip
+            if sgn > 0:
+                side.reverse()
+            b.polygon(side, uv, (f.ax * sgn, 0.0, f.az * sgn))
+    depth = run * count
+    pts = np.asarray([f.point(u, v, d) for (v, d) in ((bottom, 0.0), (0.0, 0.0), (-total, depth),
+                                                       (bottom, depth)) for u in (u0, u1)],
+                     dtype=np.float64)  # fmt: skip
+    origin = np.asarray([b.ox, b.oy, b.oz])
+    ctx.screens.append(CollisionPart("COL_HULL_0", np.round(pts - origin, 4).astype(np.float32),
+                                     _hull_indices(pts)))  # fmt: skip
+
+
+def _hull_indices(pts: np.ndarray) -> np.ndarray:
+    """Outward triangles of a convex hexahedron given as 4 pairs of points (u0, u1) around it."""
+    quads = [(0, 2, 4, 6), (1, 7, 5, 3), (0, 1, 3, 2), (2, 3, 5, 4), (4, 5, 7, 6), (6, 7, 1, 0)]
+    centre = pts.mean(axis=0)
+    tris: list[int] = []
+    for q in quads:
+        for t in ((q[0], q[1], q[2]), (q[0], q[2], q[3])):
+            a, b, c = pts[list(t)]
+            if np.dot(np.cross(b - a, c - a), (a + b + c) / 3 - centre) < 0:
+                t = (t[0], t[2], t[1])
+            tris += t
+    return np.asarray(tris, dtype=np.uint32)
 
 
 def _wall_side(ctx: _Context, f: Frame, s: int, outline: Sequence[tuple[float, float]],
@@ -1032,6 +1118,88 @@ def _lean_posts(segs: list, width: float, openings: Sequence[Opening], rules: Ru
     return out
 
 
+def _door_point(
+    ring: Sequence[tuple[float, float]],
+    normals: Sequence[tuple[float, float]],
+    i: int,
+    out: float = DOOR_PROBE_M,
+) -> tuple[float, float]:
+    a, b = ring[i], ring[(i + 1) % len(ring)]
+    return ((a[0] + b[0]) / 2 + normals[i][0] * out, (a[1] + b[1]) / 2 + normals[i][1] * out)
+
+
+def _door_edge(ctx: _Context, ring: Sequence[tuple[float, float]],
+               normals: Sequence[tuple[float, float]], lengths: Sequence[float],
+               candidates: Sequence[int], others: Sequence[int], ground: float,
+               eave: float, rules: Rules,
+               notes: list[str]) -> tuple[int, float, float | None]:  # fmt: skip
+    """Door edge and floor height of a mass (decision E1 of the walkthrough).
+
+    Without terrain: the longest candidate (street) edge. With terrain: among the candidates long
+    enough for a facade, the one where the ground in front of the middle matches the floor best
+    (A). If the ground there is still higher, the floor moves up onto it (at most so far that a
+    ground storey still fits under the eave) and the part below becomes the socle of a hillside
+    house (B); if it is much lower, the door gets stairs. Where no street edge allows that
+    without burying the door (steep slopes), the door may go to another edge (``others``, not on
+    the city wall) whose ground fits. If even that is too high, the third value is the ground at
+    the door: ``_mass`` then puts the door into an upper storey (E1-C).
+    """
+    ctx.stair_ground = None
+    ctx.door_storey = 0
+    if ctx.ground_at is None:
+        return max(candidates, key=lambda i: lengths[i]), ground, None
+    min_facade = float(rules.get("openings", "minFacadeM"))
+    long = [i for i in candidates if lengths[i] >= min_facade] or list(candidates)
+
+    def key(i: int) -> tuple[int, float]:
+        t = ctx.ground_at(*_door_point(ring, normals, i))  # type: ignore[misc]
+        return (round(abs(t - ground) / DOOR_TOLERANCE_M), -lengths[i])
+
+    edge = min(long, key=key)
+    probe = _door_point(ring, normals, edge)
+    t = ctx.ground_at(*probe)
+    # never so high that not even a ground storey fits under the eave (steep slopes)
+    cap = eave - float(rules.get("storeys")["groundM"])
+    if t > cap + DOOR_TOLERANCE_M:
+        spare = [i for i in others if lengths[i] >= min_facade and i not in long]
+        if spare and key(min(spare, key=key)) < key(edge):
+            edge = min(spare, key=key)
+            notes.append("door moved off the street (slope)")
+            probe = _door_point(ring, normals, edge)
+            t = ctx.ground_at(*probe)
+    nx, nz = normals[edge]
+    record = [round(probe[0], 2), round(probe[1], 2), 0.0, "ground", round(nx, 4), round(nz, 4)]
+    ctx.doors.append(record)
+    if t > cap + DOOR_TOLERANCE_M:
+        return edge, ground, t  # hillside house: door above the ground storey (``_mass``)
+    if t > ground + DOOR_TOLERANCE_M:
+        notes.append("floor raised to the ground at the door")
+        ground = t
+    elif t < ground - float(rules.get("hillside", "stairFromM")):
+        notes.append("stairs in front of the door")
+        ctx.stair_ground = t
+        record[3] = "stairs"
+    record[2] = round(ground, 3)
+    return edge, ground, None
+
+
+def _hillside_storeys(ground: float, eave: float, door_y: float, rules: Rules,
+                      storeys: Sequence[float] | None,
+                      rng: random.Random) -> tuple[list[float], int] | None:  # fmt: skip
+    """Storey heights with a floor exactly at ``door_y`` and the storey number of that floor
+    (E1-C A), or None if the storeys below or above the door would get too low."""
+    hs = rules.get("hillside")
+    low_min, low_max = float(hs["storeyMinM"]), float(hs["storeyMaxM"])
+    below, above = door_y - ground, eave - door_y
+    if above < float(hs["doorStoreyMinM"]):
+        return None
+    k = max(1, round(below / float(rules.get("storeys")["upperM"])))
+    if not low_min <= below / k <= low_max:
+        return None
+    upper = storey_heights(above, rules, storeys, rng)
+    return [below / k] * k + upper, k
+
+
 def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN401
           streets: StreetIndex | None, notes: list[str]) -> None:  # fmt: skip
     rules = ctx.rules
@@ -1039,9 +1207,6 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
         return
     ring = [(float(x), float(z)) for x, z in mass.footprint]
     storeys = getattr(override, "storeys", None) or None
-    heights = storey_heights(mass.eave_y - ground, rules, storeys, ctx.rng)
-    if not heights:
-        return
     normals = _outward_normals(ring)
     n = len(ring)
     ctx.wall_edges = set()
@@ -1068,7 +1233,24 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
     lengths = [math.dist(ring[i], ring[(i + 1) % n]) for i in range(n)]
     inner = [i for i in range(n) if i not in ctx.wall_edges]
     candidates = [i for i in range(n) if street[i]] or inner or list(range(n))
-    door_edge = max(candidates, key=lambda i: lengths[i])
+    door_edge, ground, door_y = _door_edge(
+        ctx, ring, normals, lengths, candidates, inner, ground, mass.eave_y, rules, notes
+    )
+    heights: list[float] = []
+    if door_y is not None:
+        hill = _hillside_storeys(ground, mass.eave_y, door_y, rules, storeys, ctx.rng)
+        if hill is not None:  # A: the door in the storey whose floor meets the ground there
+            heights, ctx.door_storey = hill
+            notes.append("door in an upper storey (hillside)")
+            ctx.doors[-1][2:4] = [round(door_y, 3), "upper"]
+        else:  # B: floor as high as a ground storey allows; export-terrain digs a descent
+            ground = max(ground, mass.eave_y - float(rules.get("storeys")["groundM"]))
+            notes.append("door below the ground (short descent)")
+            ctx.doors[-1][2:4] = [round(ground, 3), "descent"]
+    if not heights:
+        heights = storey_heights(mass.eave_y - ground, rules, storeys, ctx.rng)
+    if not heights:
+        return
 
     outlines = [offset_ring(ring, [jetty * s if jetty_edges[i] else 0.0 for i in range(n)])
                 for s in range(len(heights))]  # fmt: skip
@@ -1102,7 +1284,8 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
                 outline, usable = _top_outline(f, roof, crease, y, below)
             else:
                 outline, usable = [(0.0, -below), (f.width, -below), (f.width, h), (0.0, h)], h
-            _facade(ctx, f, edge, s, heights, outline, usable, edge == door_edge)
+            _facade(ctx, f, edge, s, heights, outline, usable,
+                    edge == door_edge and s == ctx.door_storey)  # fmt: skip
             if s == len(heights) - 1 and edge >= 0 and edge in ctx.wall_edges:
                 _screen_wall(ctx, f, outline)
         if s > 0:
@@ -1147,6 +1330,7 @@ def build_house(
     override: Any = None,  # noqa: ANN401  BuildingOverride or None
     hearth: bool = False,
     wall: WallContext | None = None,
+    ground_at: Callable[[float, float], float] | None = None,
 ) -> HouseResult:
     """Half-timbered house of a ``buildings.json`` entry; vertices relative to (origin, base_y).
 
@@ -1182,7 +1366,9 @@ def build_house(
     for level in range(5):
         builders = {role: _Builder((origin_xz[0], base_y, origin_xz[1])) for role in ROLES}
         rng = _rng(building["id"], getattr(override, "seed", None))
-        ctx = _Context(rules, rng, front, style, level, builders, base_y, wall=wall)
+        ctx = _Context(
+            rules, rng, front, style, level, builders, base_y, wall=wall, ground_at=ground_at
+        )
         level_notes: list[str] = []
         for mass, src in zip(masses, sources, strict=False):
             ground = float(src.get("groundY", building.get("groundY", base_y)))
@@ -1208,7 +1394,7 @@ def build_house(
             col = CollisionResult(parts, collision.fallback, collision.decomposed)
         result = HouseResult(prims, tris, [*notes, *massing.notes, *level_notes], level, style,
                              steepened, round(ctx.max_sag, 3), dormers, chimneys,
-                             col)  # fmt: skip
+                             col, list(ctx.doors))  # fmt: skip
         if tris <= budget or not style.timber:
             break
     assert result is not None
