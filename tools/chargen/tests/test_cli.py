@@ -130,3 +130,20 @@ def test_report_command():
 def test_build_set_rejects_unknown_set(tmp_path):
     code, text = run("build-set", "nope", "--sources", str(tmp_path))
     assert code == EXIT_ERROR and "unknown clip list" in text
+
+
+@pytest.mark.blender
+def test_assemble_test_figure(tmp_path):
+    """Assembling the committed test manifest again yields a valid figure (needs Blender)."""
+    import shutil
+
+    _blender_or_skip()
+    characters = REPO_ROOT / "assets/source/characters"
+    out = tmp_path / "characters"
+    shutil.copytree(characters / "rig", out / "rig")
+    shutil.copytree(characters / "parts", out / "parts")
+    (out / "figures").mkdir()
+    manifest = shutil.copy(characters / "figures/test_plain.figure.toml", out / "figures")
+    code, text = run("assemble", str(manifest), "--out-dir", str(out))
+    assert code == EXIT_OK, text
+    assert (out / "figures/test_plain.glb").is_file()

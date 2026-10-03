@@ -12,10 +12,14 @@ from gothar_chargen.skeleton import RigSpec
 FPS = 30
 
 
-def import_glb(path: Path) -> list[bpy.types.Object]:
-    """Imports a .glb and returns the new objects."""
+def import_glb(path: Path, merge_vertices: bool = False) -> list[bpy.types.Object]:
+    """Imports a .glb and returns the new objects.
+
+    `merge_vertices` joins the vertices glTF splits at hard edges/UV seams, so the mesh is
+    connected again (needed before Decimate, which would otherwise tear it apart).
+    """
     before = set(bpy.data.objects)
-    bpy.ops.import_scene.gltf(filepath=str(path))
+    bpy.ops.import_scene.gltf(filepath=str(path), merge_vertices=merge_vertices)
     return [o for o in bpy.data.objects if o not in before]
 
 

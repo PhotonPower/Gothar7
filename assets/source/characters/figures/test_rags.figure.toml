@@ -1,0 +1,13 @@
+# Test figure for the F3 kit: box body in the "rags" outfit, test head and hair (own geometry).
+version = 1
+lods = [1.0, 0.5, 0.2]
+
+[parts]
+body = "parts/test/outfit_rags_test.glb"
+head = "parts/test/head_test.glb"
+hair = "parts/test/hair_test.glb"
+
+[palette]
+skin = "#c49a74"
+cloth_a = "#6b5a3e"
+hair = "#2e2016"

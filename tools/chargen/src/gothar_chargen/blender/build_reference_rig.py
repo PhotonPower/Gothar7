@@ -46,15 +46,17 @@ for _finger in ("index", "middle", "ring", "pinky"):
     for _seg in ("01", "02", "03"):
         _BOX_SIZE[f"{_finger}_{_seg}"] = (0.017, 0.016)
 
-# Box faces as quads over the 8 corners (x-, x+) x (y0, y1) x (z-, z+), outward winding.
+# Box faces as quads over the 8 corners, corner index = 4*x + 2*y + z for (x-, x+) x (y0, y1) x
+# (z-, z+) in bone space (y along the bone), outward winding.
 _BOX_FACES = [
     (0, 1, 3, 2),  # x-
     (4, 6, 7, 5),  # x+
-    (0, 4, 5, 1),  # z-
-    (2, 3, 7, 6),  # z+
-    (0, 2, 6, 4),  # y0 (head end)
-    (1, 5, 7, 3),  # y1 (tail end)
+    (0, 4, 5, 1),  # y0 (head end of the bone)
+    (2, 3, 7, 6),  # y1 (tail end of the bone)
+    (0, 2, 6, 4),  # z-
+    (1, 5, 7, 3),  # z+
 ]
+FACE_HEAD_END, FACE_TAIL_END = 2, 3
 
 
 def _box_key(bone_name: str) -> str:

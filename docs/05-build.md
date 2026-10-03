@@ -47,6 +47,16 @@ Laufzeit-Abhängigkeit ist **numpy** (`tools/chargen/pyproject.toml`, Installati
 braucht man für `build-rig`, `build-placeholder`, `export` und das Prüfen von `.blend` (Suche: `--blender`,
 `G7_BLENDER`, `PATH`, Standard-Installationsordner). Einrichtung: `tools/chargen/README.md`.
 
+**MPFB2** (MakeHuman Plugin for Blender, ADR 0018) – nur lokal, für Ausgangskörper und Köpfe (F3); nicht in CI:
+```cmd
+"C:\Program Files\Blender Foundation\Blender 4.5\blender.exe" --online-mode --command extension sync
+"C:\Program Files\Blender Foundation\Blender 4.5\blender.exe" --online-mode --command extension install mpfb --enable
+```
+Dazu das Asset-Paket **„MakeHuman system assets“** (Haut, Augen, Zähne; CC0) von
+static.makehumancommunity.org/assets/assetpacks/ laden und in Blender über MPFB → „Apply assets“ →
+„Library settings“ → „Install asset pack“ einspielen. **Nur Core-/System-Pakete (CC0)** verwenden;
+Community-Pakete erst nach Lizenzprüfung (ADR 0018). Das Plugin (GPLv3) wird nie ins Repo kopiert.
+
 ## Bauen
 ```bash
 cmake --preset debug            # konfiguriert, installiert Abhängigkeiten aus vcpkg.json

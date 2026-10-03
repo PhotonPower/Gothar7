@@ -343,7 +343,8 @@ Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source
 
 **Aktueller Stand Figuren-Spur:** F1 abgeschlossen (bis auf das Kochen von Skin/Clips, das zu M6 gehört). F2 abgeschlossen: `build-set`,
 `report`, Pose-Marker-Events; 36/36 Prio-A-Clips (18 Quaternius CC0, 18 Keyframe-Platzhalter) und 48 Clips Fortbewegung je Waffenmodus
-(9 Sets). Kein Mixamo (öffentliches Repo). Nächste Phasen: F3 (Figuren-Baukasten) oder F5 (Monster), beide nur von F1 abhängig.
+(9 Sets). Kein Mixamo (öffentliches Repo). F3 läuft: Baukasten-Werkzeuge (Manifest, Zusammenbau, Passform, LODs) stehen, LOD-Vertrag
+mit engine abgestimmt, ADR 0018 (MPFB2) angenommen; als Nächstes Grundkörper/Köpfe (F3b, Gestaltung durch den Projektinhaber).
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
@@ -369,7 +370,7 @@ Werkzeuge in `tools/chargen/` (Python, Blender-Add-on), Assets in `assets/source
 ## F3 – Figuren-Baukasten  (benötigt F1)
 - [ ] 2 Grundkörper × 3 Staturen (MPFB2, stilisiert), Köpfe als separate Meshes mit Morph-Targets
 - [ ] Haare/Bärte, erste Kleidungs-/Rüstungslinien (Lumpen, leicht, mittel)
-- [ ] Baukasten-Werkzeug: Zusammensetzen, Passform-Prüfung, LODs, Farbvarianten
+- [x] Baukasten-Werkzeug: Zusammensetzen, Passform-Prüfung, LODs, Farbvarianten – `gothar-chargen assemble` (Manifest `figures/<name>.figure.toml`, Palette), `fit.*`/`lod.*`/`mesh.budget` im Validator, LOD-Vertrag mit engine (characters-pipeline.md §2.2); getestet mit eigenen Testteilen (`parts/test`, Figuren `test_plain`, `test_rags`). ADR 0018 (MPFB2) angenommen
 - [ ] Stil-Referenzblatt Figuren (gemeinsam mit W5)
 
 **DoD:** 5 unterscheidbare NPCs in der Engine, alle auf dem Referenz-Rig.

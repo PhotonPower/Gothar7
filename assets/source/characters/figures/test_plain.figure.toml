@@ -1,0 +1,10 @@
+# Test figure for the F3 kit: plain box body and test head, no hair, two LOD levels.
+version = 1
+lods = [1.0, 0.4]
+
+[parts]
+body = "parts/test/body_test.glb"
+head = "parts/test/head_test.glb"
+
+[palette]
+skin = "#e0b896"
