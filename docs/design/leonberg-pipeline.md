@@ -95,10 +95,12 @@ features.json                    Mauern, Gewässer, Bäume, Brunnen …
 `source` (LoD2-Dateien, Credit) und `count`, danach `buildings` mit **einem Gebäude pro Zeile**:
 ```json
 { "id": "DEBW_00100061Zl2", "function": "31001_1123", "inCore": true,
-  "footprint": [[x, z], ...], "areaM2": 250.2, "groundY": -0.93, "heightM": 17.57,
+  "footprint": [[x, z], ...], "areaM2": 250.2, "groundY": -0.93, "groundMinY": -1.12, "groundMaxY": 0.4,
+  "heightM": 17.57,
   "roof": { "type": "saddle", "alkis": "3100", "eaveY": 9.61, "ridgeY": 16.64,
             "ridgeDir": [1.0, 0.017], "pitchDeg": 32.7 },
-  "parts": [ { "id": "UUID_…", "footprint": …, "areaM2": …, "groundY": …, "heightM": …, "roof": { … } } ],
+  "parts": [ { "id": "UUID_…", "footprint": …, "areaM2": …, "groundY": …, "groundMinY": …, "groundMaxY": …,
+               "heightM": …, "roof": { … } } ],
   "warnings": [ "…" ] }
 ```
 - Aufgenommen werden alle Gebäude, deren Grundriss im Gebiet `surroundings` liegt (gemessen an einem
@@ -107,6 +109,9 @@ features.json                    Mauern, Gewässer, Bäume, Brunnen …
   Draufsicht (Norden oben) gegen den Uhrzeigersinn. Innenhöfe ab 1 m² stehen in `holes`.
 - `groundY`, `eaveY` und `ridgeY` sind **absolute lokale Höhen**, im selben System wie das Terrain.
   `eaveY` ist der tiefste Dachpunkt, `ridgeY` der höchste; `heightM` = höchster First − Boden.
+- `groundMinY`/`groundMaxY` (seit W3): tiefstes und höchstes Heightmap-Sample unter dem Grundriss und auf seinen
+  Eckpunkten (auf cm gerundet). Gebäude und Teile außerhalb der Heightmap haben die Felder nicht. Der Generator
+  setzt den Sockel auf min(`groundY`, `groundMinY`) − 0,3 m (W-C, Hanghäuser).
 - `roof.type` stammt aus der ALKIS-Dachform (`alkis`): `flat` 1000, `shed` 2100, `offset_shed` 2200,
   `saddle` 3100, `hip` 3200, `half_hip` 3300, `mansard` 3400, `tent` 3500, `cone` 3600, `dome` 3700,
   `sawtooth` 3800, `arch` 3900, `tower` 4000, `mixed` 5000, `other` 9999.
@@ -305,7 +310,7 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
       Bergseitig liegt das Gelände höher, die Wand läuft dort ins Gelände (gewollt, sichtbarer Sockel talseitig).
     - Prüfen, ob LoD2-`groundY` und DGM unter dem Grundriss zusammenpassen. Liegt das DGM talseitig tiefer als
       `groundY`, schwebt die Hausecke; dann den Sockel bis zum tiefsten DGM-Punkt verlängern.
-    - Dafür beim Import `groundMinY`/`groundMaxY` aus der Heightmap je Gebäude ergänzen.
+    - Dafür ergänzt `import` je Gebäude und Teil `groundMinY`/`groundMaxY` aus der Heightmap (siehe §4).
     - In der Begehung (W3) gezielt die Hangreihen ansehen.
 
 ### W-D Fassaden-Werkzeug (Python + Web-UI)

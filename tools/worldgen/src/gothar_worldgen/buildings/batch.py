@@ -21,12 +21,12 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import shapely
 from shapely.geometry import Polygon
 
 from gothar_worldgen.buildings.gltf import MeshData, glb_bytes
 from gothar_worldgen.buildings.massing import build_mesh, masses_for_building
 from gothar_worldgen.export.terrain import Grid
+from gothar_worldgen.geo.ground import ground_range
 
 INDEX_FORMAT = "gothar-buildings-index"
 INDEX_VERSION = 1
@@ -44,34 +44,6 @@ def file_stem(building_id: str) -> str:
     digest = hashlib.sha1(building_id.encode("utf-8")).hexdigest()[:8]
     safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in building_id.lower())
     return f"{safe}_{digest}"
-
-
-def ground_range(
-    grid: Grid | None, footprint: Sequence[Sequence[float]]
-) -> tuple[float, float] | None:
-    """Lowest and highest heightmap sample under (and on) the footprint."""
-    if grid is None or len(footprint) < 3:
-        return None
-    ring = np.asarray(footprint, dtype=np.float64)
-    poly = Polygon(ring)
-    minx, minz = ring.min(axis=0)
-    maxx, maxz = ring.max(axis=0)
-    c0 = max(0, math.floor((minx - grid.first_x) / grid.cell))
-    c1 = min(grid.width - 1, math.ceil((maxx - grid.first_x) / grid.cell))
-    r0 = max(0, math.floor((minz - grid.first_z) / grid.cell))
-    r1 = min(grid.height - 1, math.ceil((maxz - grid.first_z) / grid.cell))
-    if c1 < c0 or r1 < r0:
-        return None
-    cols, rows = np.meshgrid(np.arange(c0, c1 + 1), np.arange(r0, r1 + 1))
-    xs = grid.first_x + cols * grid.cell
-    zs = grid.first_z + rows * grid.cell
-    inside = shapely.contains_xy(poly, xs, zs)
-    values = list(grid.heights[rows[inside], cols[inside]])
-    # Vertices too (small footprints may contain no sample at all), nearest sample.
-    vc = np.clip(np.rint((ring[:, 0] - grid.first_x) / grid.cell).astype(int), 0, grid.width - 1)
-    vr = np.clip(np.rint((ring[:, 1] - grid.first_z) / grid.cell).astype(int), 0, grid.height - 1)
-    values += list(grid.heights[vr, vc])
-    return float(min(values)), float(max(values))
 
 
 def _merge(
@@ -162,7 +134,10 @@ def generate(
         result.notes.update(massing.notes)
         grounds = [float(p.get("groundY", b.get("groundY", 0.0))) for p in (b.get("parts") or [b])]
         lod2_ground = min(grounds)
-        dgm = ground_range(grid, footprint)
+        if "groundMinY" in b and "groundMaxY" in b:  # from import (buildings.json)
+            dgm = (float(b["groundMinY"]), float(b["groundMaxY"]))
+        else:
+            dgm = ground_range(grid, footprint)
         base = min(lod2_ground, dgm[0] if dgm else lod2_ground) - SINK_M
         if dgm and lod2_ground - dgm[0] > STEP_WARN_M:
             result.steps.append((bid, round(lod2_ground - dgm[0], 2)))
