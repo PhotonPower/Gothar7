@@ -18,7 +18,7 @@ import hashlib
 import json
 import math
 from collections import Counter, defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -96,6 +96,7 @@ class BatchResult:
         default_factory=list
     )  # (id, groundY - dgm min) > STEP_WARN_M
     over_budget: list[tuple[str, int]] = field(default_factory=list)  # medieval: (id, triangles)
+    replaced: list[tuple[str, int]] = field(default_factory=list)  # over budget -> (id, new houses)
     timber_levels: Counter[int] = field(default_factory=Counter)
 
 
@@ -110,6 +111,7 @@ def generate(
     rules: Rules | None = None,
     streets: StreetIndex | None = None,
     overrides: dict[str, Any] | None = None,
+    replace: Callable[[dict[str, Any]], list[dict[str, Any]]] | None = None,
 ) -> BatchResult:
     """Writes ``<id>.glb`` (old town) and ``cell_<i>_<j>.glb`` (surroundings, area "all")."""
     if area not in ("core", "all"):
@@ -147,7 +149,9 @@ def generate(
         by_hash[digest] = f"{vfs_dir}/{name}.glb"
         return by_hash[digest]
 
-    for b in buildings:
+    queue = list(buildings)
+    while queue:
+        b = queue.pop(0)
         in_core = bool(b.get("inCore"))
         if not in_core and area == "core":
             continue
@@ -177,6 +181,12 @@ def generate(
         if mode == "medieval":
             assert rules is not None
             house = build_house(b, base, (c.x, c.y), rules, streets, (overrides or {}).get(bid))
+            if house.triangles > budget and replace is not None and "derivedFrom" not in b:
+                houses = replace(b)  # rueckbau: smaller half-timbered houses instead
+                if houses:
+                    result.replaced.append((bid, len(houses)))
+                    queue[0:0] = houses
+                    continue
             prims = house.primitives
             result.notes.update(n for n in house.notes if n not in massing.notes)
             result.timber_levels[house.timber_level] += 1

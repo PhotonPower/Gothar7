@@ -55,6 +55,13 @@
         <label>Notizen <textarea name="notes" rows="3"></textarea></label>
         <label class="row"><input name="keep" type="checkbox" checked> behalten</label>
         <label class="row"><input name="locked" type="checkbox"> gesperrt (Generator überschreibt nicht)</label>
+        <label>Rückbau (große Neubauten)
+          <select name="rueckbau">
+            <option value="">automatisch</option>
+            <option value="none">nie ersetzen</option>
+            <option value="split">immer durch Fachwerkhäuser ersetzen</option>
+          </select>
+        </label>
         <div id="storeys"></div>
         <button type="submit">Speichern</button>
         <div id="message"></div>

@@ -1,11 +1,29 @@
 {
   "status": "Entwurf – Festlegung durch den Projektinhaber (Begriffe und Zahlenwerte vor W5; nur neutrale Platzhalter)",
-  "storeys": { "groundM": 3.0, "upperM": 2.7, "min": 1, "max": 4 },
-  "jetty": { "defaultM": 0.25, "sides": "street", "streetReachM": 12.0 },
+  "storeys": {
+    "groundM": 3.0,
+    "upperM": 2.7,
+    "min": 1,
+    "max": 4
+  },
+  "jetty": {
+    "defaultM": 0.25,
+    "sides": "street",
+    "streetReachM": 12.0
+  },
   "openings": {
     "minFacadeM": 3.0,
-    "window": { "w": 0.8, "h": 1.0, "sill": 0.9, "spacingM": 2.4, "cornerM": 0.9 },
-    "door": { "w": 1.0, "h": 2.1 },
+    "window": {
+      "w": 0.8,
+      "h": 1.0,
+      "sill": 0.9,
+      "spacingM": 2.4,
+      "cornerM": 0.9
+    },
+    "door": {
+      "w": 1.0,
+      "h": 2.1
+    },
     "revealM": 0.12
   },
   "timber": {
@@ -20,9 +38,17 @@
       }
     }
   },
-  "roof": { "overhangM": 0.4, "thicknessM": 0.2 },
-  "variation": { "storeyM": 0.1, "windowShiftM": 0.15 },
-  "budget": { "trianglesPerBuilding": 2000 },
+  "roof": {
+    "overhangM": 0.4,
+    "thicknessM": 0.2
+  },
+  "variation": {
+    "storeyM": 0.1,
+    "windowShiftM": 0.15
+  },
+  "budget": {
+    "trianglesPerBuilding": 2000
+  },
   "materials": {
     "wall_ground": [0.62, 0.6, 0.56, 1.0],
     "infill": [0.82, 0.8, 0.75, 1.0],
@@ -36,5 +62,34 @@
     "timber": {},
     "infill": {},
     "roofCover": {}
+  },
+  "rueckbau": {
+    "status": "festgelegt – Entscheidung des Projektinhabers (2026-10-03): große neuere Gebäude verkleinern und durch Fachwerkhäuser ersetzen; Zahlenwerte: Entscheidung Koordinator im Auftrag des Projektinhabers, justierbar nach den ersten Bildern",
+    "enabled": true,
+    "select": {
+      "areaM2": 200.0,
+      "lengthM": 22.0,
+      "eaveM": 12.0,
+      "overBudget": true
+    },
+    "parcels": {
+      "widthM": 7.0,
+      "widthSpreadM": 1.5,
+      "minAreaM2": 25.0,
+      "maxDepthM": 14.0,
+      "rearHouseMinDepthM": 8.0,
+      "rearStoreysMax": 2
+    },
+    "storeysMax": 3,
+    "storeys": {
+      "groundM": 3.0,
+      "upperM": 2.7
+    },
+    "ridge": {
+      "gableToStreet": 0.7,
+      "eaveToStreet": 0.3
+    },
+    "pitchDeg": 50.0,
+    "pitchSpreadDeg": 4.0
   }
 }
