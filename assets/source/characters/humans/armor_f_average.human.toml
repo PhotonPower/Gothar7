@@ -4,8 +4,8 @@
 # CC0 pieces only (file header and pack metadata, assets/LICENSES.md), with neutral names.
 # light: leather_vest (own, derived from the kit shirt; ambientCG CC0 leather), gloves_short
 # medium: mail_tunic, wrapped_trousers, wrapped_boots, gloves_medium
-# heavy (F3l, over the medium line): breastplate, pauldrons, greaves, gauntlets – own pieces derived
-# from the mail tunic, boots and gloves, smoothed into plates, dark iron (ambientCG Metal 021)
+# heavy (F3l, over the medium line): breastplate and pauldrons as own shells from the skin (smooth,
+# domed, folded edge), greaves and gauntlets from the boots and gloves; dark iron (ambientCG Metal 021)
 version = 1
 fit_to = "body_f_average"
 parts = ["cloth"]
@@ -52,21 +52,26 @@ normal = "gothar/ambientcg/Leather033A/Leather033A_1K-JPG_NormalGL.jpg"
 uv_scale = 2.0
 
 [derive.breastplate]
-from = "clothes/rehmanpolanski_viking_tunic/rehmanpolanski_viking_tunic.mhclo"
+from = "basemesh"
+group = "body"
 keep = ["spine"]
-smooth = 15
-offset = 0.022
+smooth = 20
+offset = 0.035
+rim = 0.012
 texture = "gothar/ambientcg/Metal021/Metal021_1K-JPG_Color.jpg"
 normal = "gothar/ambientcg/Metal021/Metal021_1K-JPG_NormalGL.jpg"
 uv_scale = 3.0
 
 [derive.pauldrons]
-from = "clothes/rehmanpolanski_viking_tunic/rehmanpolanski_viking_tunic.mhclo"
+from = "basemesh"
+group = "body"
 keep = ["clavicle", "upperarm"]
 near = ["upperarm_l", "upperarm_r"]
-radius = 0.13
-smooth = 10
-offset = 0.028
+radius = 0.12
+smooth = 15
+offset = 0.035
+bulge = 0.025
+rim = 0.01
 bones = ["clavicle", "upperarm"]
 texture = "gothar/ambientcg/Metal021/Metal021_1K-JPG_Color.jpg"
 normal = "gothar/ambientcg/Metal021/Metal021_1K-JPG_NormalGL.jpg"

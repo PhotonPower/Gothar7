@@ -566,11 +566,13 @@ def _derive(
     joints = joints or {}
     if d.dome:
         _dome(obj, heads)
-    groups = {g.index: g.name for g in obj.vertex_groups}
+    # bones only: the skin copy also carries MPFB selection groups ("body" = 1 everywhere)
+    groups = {g.index: g.name for g in obj.vertex_groups if not joints or g.name in joints}
     centres = np.array([joints[j] for j in d.near]) if d.near else None
     drop = []
     for v in mesh.vertices:
-        best = groups.get(max(v.groups, key=lambda g: g.weight).group, "") if v.groups else ""
+        bones = [g for g in v.groups if g.group in groups]
+        best = groups[max(bones, key=lambda g: g.weight).group] if bones else ""
         if (
             (d.cut and best.startswith(d.cut))
             or (d.keep and not best.startswith(d.keep))
@@ -603,10 +605,13 @@ def _derive(
         bm.free()
     if d.smooth:
         _smooth_shape(obj, d.smooth)
-    if d.offset:
+    if d.offset or d.bulge:
         normals = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
         mesh.vertices.foreach_get("normal", normals)
-        shift = normals.reshape(-1, 3) * d.offset
+        amount = np.full(len(mesh.vertices), d.offset)
+        if d.bulge:  # domed plate: further out towards the middle, `offset` at the border
+            amount += d.bulge * _inside_share(obj)
+        shift = normals.reshape(-1, 3) * amount[:, None]
         co = _coords(obj) + shift
         mesh.vertices.foreach_set("co", co.ravel())
         if mesh.shape_keys is not None:
@@ -624,6 +629,8 @@ def _derive(
         _add_nasal(obj, *d.nasal)
     if d.brim:
         _add_brim(obj, d.brim)
+    if d.rim:
+        _add_rim(obj, d.rim)
     if d.bones:
         _limit_weights(obj, d.bones)
     mesh.update()
@@ -665,6 +672,48 @@ def _smooth_shape(obj: bpy.types.Object, iterations: int) -> None:
             delta[border] = laplace(border_edges, co)[border] if len(border_edges[0]) else 0.0
             co = co + factor * delta
     mesh.vertices.foreach_set("co", co.ravel())
+    mesh.update()
+
+
+def _inside_share(obj: bpy.types.Object) -> np.ndarray:
+    """Per vertex 0 at the open border .. 1 at the point farthest from it (smooth falloff)."""
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    border = np.array([v.is_boundary for v in bm.verts])
+    bm.free()
+    co = _coords(obj)
+    if not border.any():
+        return np.ones(len(co))
+    dist = np.linalg.norm(co[:, None, :] - co[border][None, :, :], axis=2).min(axis=1)
+    share = dist / max(float(dist.max()), 1e-9)
+    return np.sin(share * np.pi / 2)  # rises quickly from the border, flat in the middle
+
+
+def _add_rim(obj: bpy.types.Object, depth: float) -> None:
+    """Own geometry: the open border folded inwards by `depth` – a plate gets a visible edge
+    (thickness) instead of a paper-thin outline."""
+    mesh = obj.data
+    mesh.update()
+    normals = {v.index: np.array(v.normal) for v in mesh.vertices}
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.verts.ensure_lookup_table()
+    rim = [e for e in bm.edges if e.is_boundary]
+    if not rim:
+        bm.free()
+        return
+    origin = {v: v.index for e in rim for v in e.verts}
+    new = bmesh.ops.extrude_edge_only(bm, edges=rim)["geom"]
+    new_verts = [g for g in new if isinstance(g, bmesh.types.BMVert)]
+    for v in new_verts:  # each new vertex sits on its border vertex: find it by position
+        src = min(origin, key=lambda o: (o.co - v.co).length_squared)
+        n = normals[origin[src]]
+        v.co.x -= n[0] * depth
+        v.co.y -= n[1] * depth
+        v.co.z -= n[2] * depth
+    bm.to_mesh(mesh)
+    bm.free()
     mesh.update()
 
 

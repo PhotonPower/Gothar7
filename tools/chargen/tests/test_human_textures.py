@@ -536,6 +536,8 @@ def test_heavy_armour_derive_keys():
         ({"smooth": 99}, "smooth"),
         ({"brim": 0.5}, "brim"),
         ({"bones": [""]}, "bones must be a list"),
+        ({"bulge": 0.5}, "bulge"),
+        ({"rim": -0.01}, "rim"),
     ],
 )
 def test_invalid_heavy_armour_keys(change, message):

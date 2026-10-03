@@ -38,6 +38,8 @@ Armour kits (F3g) keep the colour textures of their pieces and may rename and de
     near = ["upperarm_l"]               # ... and within `radius` (m) of these joints
     smooth = 12                         # shrink-free smoothing: cloth folds -> a plate
     brim = 0.04                         # own brim around the rim (kettle helmet)
+    bulge = 0.02                        # domed plate: further out towards the middle
+    rim = 0.01                          # plate edge: the border folded inwards
     bones = ["spine_02", "spine_03"]    # weights only on these bones (stiff plates)
     dome = true                         # with from = "basemesh": smooth dome fitted to the skull
     heads = "head_f_*"                  # these head parts fit under it (dome grows, others bulge)
@@ -113,6 +115,8 @@ DERIVE_KEYS = {
     "smooth",
     "brim",
     "bones",
+    "bulge",
+    "rim",
 }
 
 
@@ -141,6 +145,8 @@ class Derive:
     radius: float = 0.15
     smooth: int = 0  # shrink-free smoothing passes: cloth folds -> a plate
     brim: float = 0.0  # own geometry: a brim of this width around the rim (metres)
+    bulge: float = 0.0  # domed plate: extra offset towards the middle (metres)
+    rim: float = 0.0  # own geometry: the border folded inwards by this depth (plate edge)
     bones: tuple[str, ...] = ()  # limit the weights to bones with these prefixes (stiff plates)
     heads: str | None = None  # head parts that must fit under the piece, e.g. "head_f_*"
 
@@ -416,8 +422,8 @@ def _parse_derive(raw: object) -> tuple[Derive, ...]:
         if not isinstance(cut, list) or not all(isinstance(c, str) and c for c in cut):
             raise HumanError(f"{where}: cut must be a list of bone name prefixes")
         offset = d.get("offset", 0.0)
-        if not isinstance(offset, int | float) or not -0.02 <= offset <= 0.03:
-            raise HumanError(f"{where}: offset must be between -0.02 and 0.03 m")
+        if not isinstance(offset, int | float) or not -0.02 <= offset <= 0.06:
+            raise HumanError(f"{where}: offset must be between -0.02 and 0.06 m")
         depth = d.get("depth")
         if depth is not None and (not isinstance(depth, int | float) or not 0.02 <= depth <= 0.5):
             raise HumanError(f"{where}: depth must be between 0.02 and 0.5 m")
@@ -481,6 +487,8 @@ def _parse_derive(raw: object) -> tuple[Derive, ...]:
                 radius=_number(d, "radius", where, 0.02, 0.5, 0.15),
                 smooth=int(_number(d, "smooth", where, 0, 50, 0)),
                 brim=_number(d, "brim", where, 0.0, 0.1, 0.0),
+                bulge=_number(d, "bulge", where, 0.0, 0.1, 0.0),
+                rim=_number(d, "rim", where, 0.0, 0.05, 0.0),
                 bones=_names(d, "bones", where),
             )
         )
