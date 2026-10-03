@@ -15,6 +15,7 @@ The job comes from ``gothar_worldgen.owner_models.prepare_job`` (usually through
 5. joins everything into one object, adds the ``COL_HULL_*`` bodies of the job and exports.
 """
 
+import fnmatch
 import json
 import math
 import sys
@@ -42,11 +43,15 @@ def ancestors(obj: bpy.types.Object) -> Iterator[bpy.types.Object]:
         obj = obj.parent
 
 
+def name_matches(name: str, pattern: str) -> bool:
+    return fnmatch.fnmatchcase(name, pattern) if "*" in pattern else name.startswith(pattern)
+
+
 def rigid_root(obj: bpy.types.Object, prefixes: list[str]) -> bpy.types.Object | None:
     """The outermost ancestor under a ``rigid`` prefix (one pavilion), or None."""
     found = None
     for o in ancestors(obj):
-        if any(base_name(o.name).startswith(p) for p in prefixes):
+        if any(name_matches(base_name(o.name), p) for p in prefixes):
             found = o
     return found
 
@@ -54,7 +59,7 @@ def rigid_root(obj: bpy.types.Object, prefixes: list[str]) -> bpy.types.Object |
 def rule(obj: bpy.types.Object, prefixes: list[str]) -> str | None:
     for o in ancestors(obj):
         for p in prefixes:
-            if base_name(o.name).startswith(p):
+            if name_matches(base_name(o.name), p):
                 return p
     return None
 

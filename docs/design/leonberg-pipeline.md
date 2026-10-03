@@ -693,6 +693,25 @@ Design) bilden den Garten.
 - **Vobs:** `HANDMADE_GARTEN_GELAENDER`, `HANDMADE_OBELISKBRUNNEN`, `HANDMADE_GARTENBRUNNEN_W` und `_O`, jeweils mit
   `rot`, Kategorie `gameplay` und stabiler VobId.
 
+### W-E6 Stadtkirche (`gothar-worldgen kirche <ort>`, W6)
+Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Das eigene Modell des Projektinhabers (Claude
+Design) ersetzt das geschützte LoD2-Gebäude DEBW_00100061Zjs (Override `keep: false`). Bearbeitet wird es mit dem
+Werkzeug aus W-E5 (`data/<ort>/kirche.json`); die Quelle liegt unverändert unter `data/<ort>/kirche/`.
+- **Reduziert:** 48 208 → 14 802 Dreiecke. Gekürzt werden Maßwerk, Fensterrahmen und Glas (Regeln mit `*`), Uhrring,
+  Galeriebaluster, Fialen und Turmquader; Turm und Silhouette bleiben.
+- **Palette:** `sandstone` → `stone`, `plaster` → `plaster_white`; die übrigen Farben des Projektinhabers bleiben.
+- **Kollision:** 17 Körper, 220 Dreiecke.
+  - Kästen für Schiff, Chor, Seitenschiff, Vorhalle und Turm, ein Prisma für das Oktogon.
+  - Ein Kasten je Strebepfeiler.
+- **Lage** (`placement` in kirche.json): Der Grundriss des Modells (Wände unter 1,5 m) ist auf den LoD2-Grundriss
+  gedreht und verschoben; der Turm steht im Westen am westlichen LoD2-Block (0,7 m Abstand). Höhe: tiefster DGM-Punkt
+  unter dem Gebäude.
+  - **Offen:** Das Modell misst 39,3 × 18,9 m, das LoD2-Gebäude 50,4 × 21,6 m. Am Chorende bleiben 255 m² der alten
+    Fläche frei; die Entscheidung liegt beim Projektinhaber.
+- **Anachronismen für 1700** (nur gemeldet, nichts entfernt): verglaste Türen (`door_aisle_glass`,
+  `porch_arch_glass`, `tower_door_glass`), verglaste Schallöffnungen im Glockengeschoss (`belfry_opening_glass`,
+  `bell_louvre_glass`) und verglaste Turmschlitze. Die Turmuhr mit Minutenzeiger ist um 1700 möglich.
+
 ### W-F Ausstattung & Vegetation
 Regelbasiertes Verteilen von Requisiten (Fässer, Karren, Zäune, Holzstapel, Misthaufen, Marktstände)
 und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im Editor (M16).

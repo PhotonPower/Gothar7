@@ -32,6 +32,16 @@
    "footprints": []
   },
   {
+   "key": "kirche",
+   "mesh": "worlds/leonberg/handmade/kirche/kirche.glb",
+   "pos": [-143.71, -2.17, -48.72],
+   "rot": [0.0, -0.002182, 0.0, 0.999998],
+   "replaces": [
+    "DEBW_00100061Zjs"
+   ],
+   "footprints": []
+  },
+  {
    "key": "marktbrunnen",
    "mesh": "worlds/leonberg/handmade/marktbrunnen/marktbrunnen.glb",
    "pos": [0.0, -0.221, 0.0],

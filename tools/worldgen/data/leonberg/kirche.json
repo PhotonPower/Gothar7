@@ -1,0 +1,86 @@
+{
+  "format": "gothar-owner-model",
+  "version": 1,
+  "key": "kirche",
+  "status": "festgelegt – Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Modell des Projektinhabers übernehmen, per Skript anpassen; Lage vorläufig (Turm im Westen am LoD2 ausgerichtet, Modell 11 m kürzer als LoD2 – Entscheidung offen)",
+  "note": "Leonberger Stadtkirche, eigene Arbeit des Projektinhabers (Claude Design); ersetzt das geschützte LoD2-Gebäude DEBW_00100061Zjs",
+  "source": "kirche/kirche_quelle.glb",
+  "remove": [],
+  "decimate": {
+    "*_tracery": 0.22,
+    "*_frame": 0.24,
+    "*_glass": 0.4,
+    "*_mullion": 0.5,
+    "clock_ring": 0.25,
+    "gallery_baluster": 0.25,
+    "finial_": 0.3,
+    "pinnacle_": 0.4,
+    "tower_quoin": 0.5,
+    "clock_face": 0.4
+  },
+  "materials": {
+    "sandstone": "stone",
+    "plaster": "plaster_white"
+  },
+  "budgetTriangles": 15000,
+  "replaces": [
+    "DEBW_00100061Zjs"
+  ],
+  "placement": {
+    "lod2": "DEBW_00100061Zjs",
+    "rotDeg": 0.25,
+    "x": -143.71,
+    "z": -48.72,
+    "note": "Grundriss des Modells (Wände unter 1,5 m) auf den LoD2-Grundriss gedreht/verschoben, Turm im Westen am westlichen LoD2-Block (Abstand 0,7 m), IoU 0,66; Höhe: tiefster DGM-Punkt unter dem Grundriss"
+  },
+  "collision": [
+    {
+      "nodes": [
+        "nave_walls",
+        "west_gable"
+      ],
+      "shape": "box"
+    },
+    {
+      "nodes": [
+        "choir_walls"
+      ],
+      "shape": "box"
+    },
+    {
+      "nodes": [
+        "aisle_walls"
+      ],
+      "shape": "box"
+    },
+    {
+      "nodes": [
+        "porch_walls",
+        "porch_roof"
+      ],
+      "shape": "box"
+    },
+    {
+      "nodes": [
+        "tower_shaft",
+        "tower_plinth"
+      ],
+      "shape": "box",
+      "belowM": 0.5
+    },
+    {
+      "nodes": [
+        "octagon_stage"
+      ],
+      "shape": "prism"
+    },
+    {
+      "nodes": [
+        "buttress_n",
+        "buttress_c"
+      ],
+      "shape": "box",
+      "per": "instance"
+    }
+  ]
+}

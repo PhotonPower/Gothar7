@@ -368,6 +368,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [ ] Requisiten- und Vegetationsverteilung über Regeln/Masken
   - Stand: Marktbrunnen als Handmodell (Modell des Projektinhabers, per Skript an 1700 angepasst, W-E4)
   - Stand: Pomeranzengarten aus drei Modellen des Projektinhabers (Geländer mit Pavillons, Obelisk- und zwei Gartenbrunnen), Parterre nach dem Geländer, an den LoD2-Pavillons ausgerichtet (W-E5)
+  - Stand: Stadtkirche aus dem Modell des Projektinhabers statt des LoD2-Gebäudes (W-E6; Länge offen)
 - [ ] Wegnetz-Vorschlag aus Straßenachsen
 
 **DoD:** Die komplette Altstadt ist ausgestattet und hat ein vorläufiges Wegnetz.

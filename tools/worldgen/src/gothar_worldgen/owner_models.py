@@ -12,6 +12,7 @@ Kept here, not in Blender, so the tests can check everything except the decimati
 
 from __future__ import annotations
 
+import fnmatch
 import json
 import math
 from collections.abc import Callable
@@ -52,8 +53,13 @@ def load_spec(path: Path) -> dict[str, Any]:
     return spec
 
 
+def name_matches(name: str, pattern: str) -> bool:
+    """A node name against a rule: a prefix, or a glob with ``*`` (``*_frame``)."""
+    return fnmatch.fnmatchcase(name, pattern) if "*" in pattern else name.startswith(pattern)
+
+
 def _matches(path: tuple[str, ...], prefixes: list[str]) -> bool:
-    return any(part.startswith(p) for part in path for p in prefixes)
+    return any(name_matches(part, p) for part in path for p in prefixes)
 
 
 def kept_meshes(spec: dict[str, Any], source: Path) -> list[NodeMesh]:
@@ -72,7 +78,7 @@ def sheared(points: np.ndarray, shear: tuple[float, float]) -> np.ndarray:
 def _rigid_key(m: NodeMesh, rigid: list[str]) -> tuple[int, ...] | None:
     """Node indices down to the first ancestor under a ``rigid`` prefix (one pavilion)."""
     for depth, part in enumerate(m.path):
-        if any(part.startswith(p) for p in rigid):
+        if any(name_matches(part, p) for p in rigid):
             return m.ids[: depth + 1]
     return None
 
@@ -160,7 +166,9 @@ def collision(
         for m in hits:
             if rule.get("per") == "instance":
                 depth = next(
-                    i for i, part in enumerate(m.path) if any(part.startswith(p) for p in prefixes)
+                    i
+                    for i, part in enumerate(m.path)
+                    if any(name_matches(part, p) for p in prefixes)
                 )
                 key = m.ids[: depth + 1]
             else:
@@ -329,3 +337,21 @@ def handmade_item(p: Placement, mesh: str, replaces: list[str] | None = None) ->
         "replaces": list(replaces or []),
         "footprints": [],
     }
+
+
+def fitted_placement(
+    spec: dict[str, Any], buildings: list[dict[str, Any]], sink: float = 0.05
+) -> Placement:
+    """Placement stored in the spec (``placement``: rotDeg, x, z, fitted once to the LoD2
+    footprint of ``lod2``); height: the lowest DGM point under that building, sunk a little."""
+    pl = spec["placement"]
+    b = next((b for b in buildings if b.get("id") == pl["lod2"]), None)
+    if b is None:
+        raise OwnerModelError(f"LoD2 building {pl['lod2']} not in buildings.json")
+    y = float(b.get("groundMinY", b.get("groundY", 0.0))) - sink
+    # rotDeg turns the model counter-clockwise in (x, z); a yaw about +Y turns it the other way
+    return Placement(
+        spec["key"],
+        (float(pl["x"]), round(y, 3), float(pl["z"])),
+        -math.radians(float(pl["rotDeg"])),
+    )

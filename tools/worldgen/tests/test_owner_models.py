@@ -139,3 +139,29 @@ def _indices(doc: dict) -> int:
     return sum(
         doc["accessors"][p["indices"]]["count"] for m in doc["meshes"] for p in m["primitives"]
     )
+
+
+def test_church_fits_the_lod2_footprint_and_budget():
+    from gothar_worldgen.owner_models import fitted_placement
+
+    s = spec("kirche")
+    meshes = kept_meshes(s, DATA / "leonberg" / s["source"])
+    cols = collision(s, meshes)
+    assert len(cols) == 17 and sum(len(t) for _, _, t in cols) <= 230
+    lod2 = {"id": "DEBW_00100061Zjs", "groundMinY": -2.12, "footprint": [[0, 0], [1, 0], [1, 1]]}
+    p = fitted_placement(s, [lod2])
+    assert p.pos[1] == pytest.approx(-2.17) and p.key == "kirche"
+    # the tower stands at the west end, where the LoD2 tower block is (centre -160.0 / -50.2)
+    tw = np.vstack([m.positions for m in meshes if m.path[-1] == "tower_shaft"])
+    c, sn = math.cos(p.yaw), math.sin(p.yaw)
+    x, z = tw[:, 0].mean(), tw[:, 2].mean()
+    world = (p.pos[0] + x * c + z * sn, p.pos[2] - x * sn + z * c)
+    assert math.dist(world, (-160.0, -50.2)) < 1.0
+    data = (ASSETS / "handmade" / "kirche" / "kirche.glb").read_bytes()
+    gl, _ = read_glb(data)
+    tris = sum(
+        gl["accessors"][q["indices"]]["count"] // 3 for m in gl["meshes"] for q in m["primitives"]
+    )
+    assert tris - sum(len(t) for _, _, t in collision_parts(data)) <= s["budgetTriangles"]
+    override = json.loads((DATA / "leonberg/buildings/DEBW_00100061Zjs.json").read_text("utf-8"))
+    assert override["keep"] is False

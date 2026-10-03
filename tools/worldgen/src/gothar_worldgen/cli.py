@@ -78,7 +78,12 @@ from gothar_worldgen.handmade import footprints as handmade_footprints
 from gothar_worldgen.handmade import load as load_handmade
 from gothar_worldgen.handmade import save as save_handmade
 from gothar_worldgen.importer import run_import
-from gothar_worldgen.owner_models import OwnerModelError, garden_placements, kept_meshes
+from gothar_worldgen.owner_models import (
+    OwnerModelError,
+    fitted_placement,
+    garden_placements,
+    kept_meshes,
+)
 from gothar_worldgen.owner_models import handmade_item as owner_item
 from gothar_worldgen.owner_models import load_spec as load_owner_spec
 from gothar_worldgen.owner_models import prepare_job as prepare_owner_job
@@ -752,6 +757,38 @@ def _cmd_garten(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_kirche(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    blender = args.blender or find_blender()
+    if blender is None:
+        print("error: Blender not found (set G7_BLENDER or --blender)", file=sys.stderr)
+        return EXIT_ERROR
+    try:
+        rules = json.loads((data_dir.parent / "building_rules.json").read_text(encoding="utf-8"))
+        spec_path = data_dir / "kirche.json"
+        spec = load_owner_spec(spec_path)
+        buildings = json.loads((paths.work / "buildings.json").read_text(encoding="utf-8"))
+        place = fitted_placement(spec, buildings.get("buildings", []))
+        out_glb = folder / "handmade" / "kirche" / "kirche.glb"
+        work = folder / "generated" / "kirche"
+        job = prepare_owner_job(spec, spec_path, rules["palette"], out_glb, work / "kirche.blend")
+        line = run_owner_blender(Path(blender), job, work / "job.json", subprocess.run)
+        mesh = f"worlds/{site.name}/handmade/kirche/kirche.glb"
+        doc = put_item(load_handmade(data_dir / "handmade.json"),
+                       owner_item(place, mesh, spec.get("replaces")))  # fmt: skip
+        save_handmade(data_dir / "handmade.json", doc)
+    except (OSError, json.JSONDecodeError, OwnerModelError, KeyError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"  {line}", file=out)
+    print(f"  kirche: pos {list(place.pos)}, yaw {math.degrees(place.yaw):.2f} deg", file=out)
+    print(f"  {out_glb}", file=out)
+    return EXIT_OK
+
+
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -989,6 +1026,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_garten)
+
+    p = sub.add_parser("kirche", help="town church from the owner's model (W6)")
+    p.add_argument("site")
+    p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_kirche)
 
     p = sub.add_parser("assemble", help="terrain + buildings -> <site>.g7world with stable VobIds")
     p.add_argument("site")
