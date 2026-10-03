@@ -47,9 +47,8 @@ def find_blender() -> Path | None:
 
 def schloss_geometry() -> ModuleType:
     """The castle's pure-Python geometry module (shared with the Blender script)."""
-    spec = importlib.util.spec_from_file_location(
-        "schloss_geometry", SCHLOSS_DIR / "schloss_geometry.py"
-    )
+    spec = importlib.util.spec_from_file_location("schloss_geometry",
+                                                  SCHLOSS_DIR / "schloss_geometry.py")  # fmt: skip
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules.setdefault("schloss_geometry", module)  # dataclasses look the module up
@@ -95,13 +94,8 @@ def schloss_item(spec: dict[str, Any], mesh: str) -> dict[str, Any]:
     if tower:
         ring = geo._ring((tower["at"][0], tower["at"][1]), float(tower["radius"]), 0.0)
         footprints.append([[round(p[0], 2), round(p[2], 2)] for p in ring])
-    item = {
-        "key": "schloss",
-        "mesh": mesh,
-        "pos": [round(v, 3) for v in origin],
-        "replaces": list(spec.get("replaces", [])),
-        "footprints": footprints,
-    }
+    item = {"key": "schloss", "mesh": mesh, "pos": [round(v, 3) for v in origin],
+            "replaces": list(spec.get("replaces", [])), "footprints": footprints}  # fmt: skip
     splat = geo.garden_splat(spec)
     if splat:
         item["splat"] = splat  # garden: gravel paths, lawn beds (export-terrain)
@@ -114,73 +108,33 @@ def put_item(doc: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
     return {"format": FORMAT, "version": VERSION, "items": sorted(items, key=lambda i: i["key"])}
 
 
-def _run_blender(
-    blender: Path,
-    script: Path,
-    ok: str,
-    spec_path: Path,
-    rules_path: Path,
-    out_glb: Path,
-    out_blend: Path | None,
-) -> str:
-    cmd = [
-        str(blender),
-        "--background",
-        "--factory-startup",
-        "--python-exit-code",
-        "1",
-        "--python",
-        str(script),
-        "--",
-        str(spec_path),
-        str(rules_path),
-        str(out_glb),
-    ]
+def _run_blender(blender: Path, script: Path, ok: str, spec_path: Path, rules_path: Path,
+                 out_glb: Path, out_blend: Path | None) -> str:  # fmt: skip
+    cmd = [str(blender), "--background", "--factory-startup", "--python-exit-code", "1",
+           "--python", str(script), "--", str(spec_path), str(rules_path),
+           str(out_glb)]  # fmt: skip
     if out_blend is not None:
         cmd.append(str(out_blend))
-    done = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=600,
-        check=False,
-    )
+    done = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                          timeout=600, check=False)  # fmt: skip
     line = next((ln for ln in done.stdout.splitlines() if ln.startswith(ok)), None)
     if done.returncode != 0 or line is None:
         raise HandmadeError("Blender build failed:\n" + (done.stdout + done.stderr)[-2000:])
     return line
 
 
-def build_schloss(
-    blender: Path, spec_path: Path, rules_path: Path, out_glb: Path, out_blend: Path | None
-) -> str:
+def build_schloss(blender: Path, spec_path: Path, rules_path: Path, out_glb: Path,
+                  out_blend: Path | None) -> str:  # fmt: skip
     """Runs the castle's Blender script headless; returns its summary line."""
-    return _run_blender(
-        blender,
-        SCHLOSS_DIR / "build_schloss.py",
-        "SCHLOSS_OK",
-        spec_path,
-        rules_path,
-        out_glb,
-        out_blend,
-    )
+    return _run_blender(blender, SCHLOSS_DIR / "build_schloss.py", "SCHLOSS_OK", spec_path,
+                        rules_path, out_glb, out_blend)  # fmt: skip
 
 
-def build_marktbrunnen(
-    blender: Path, spec_path: Path, rules_path: Path, out_glb: Path, out_blend: Path | None
-) -> str:
+def build_marktbrunnen(blender: Path, spec_path: Path, rules_path: Path, out_glb: Path,
+                       out_blend: Path | None) -> str:  # fmt: skip
     """Runs the fountain's Blender script headless; returns its summary line."""
-    return _run_blender(
-        blender,
-        MARKTBRUNNEN_DIR / "build_marktbrunnen.py",
-        "MARKTBRUNNEN_OK",
-        spec_path,
-        rules_path,
-        out_glb,
-        out_blend,
-    )
+    return _run_blender(blender, MARKTBRUNNEN_DIR / "build_marktbrunnen.py", "MARKTBRUNNEN_OK",
+                        spec_path, rules_path, out_glb, out_blend)  # fmt: skip
 
 
 def marktbrunnen_geometry() -> ModuleType:
@@ -199,18 +153,11 @@ def marktbrunnen_item(spec: dict[str, Any], mesh: str, ground_min: float) -> dic
     """handmade.json entry of the fountain: at the world origin (the model's origin is the
     fountain's foot centre), on the lowest ground under the lower step, sunk by ``sinkM``."""
     r = max(float(st["radius"]) for st in spec["collision"]["steps"])
-    ring = [
-        [round(r * math.cos(math.radians(45 * k)), 2), round(r * math.sin(math.radians(45 * k)), 2)]
-        for k in range(8)
-    ]
+    angles = [math.radians(45 * k) for k in range(8)]
+    ring = [[round(r * math.cos(a), 2), round(r * math.sin(a), 2)] for a in angles]
     y = round(ground_min - float(spec.get("sinkM", 0.0)), 3)
-    return {
-        "key": "marktbrunnen",
-        "mesh": mesh,
-        "pos": [0.0, y, 0.0],
-        "replaces": [],
-        "footprints": [ring],
-    }
+    return {"key": "marktbrunnen", "mesh": mesh, "pos": [0.0, y, 0.0], "replaces": [],
+            "footprints": [ring]}  # fmt: skip
 
 
 def splat_areas(doc: dict[str, Any]) -> list[dict[str, Any]]:
