@@ -68,6 +68,8 @@ gothar-worldgen citywall leonberg          REM Stadtmauer (W6): generated/citywa
 gothar-worldgen schloss leonberg           REM Schloss (W6) aus blender/schloss/build_schloss.py (Blender nötig), handmade/schloss/
 gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
 gothar-worldgen begehung leonberg          REM statische Begehung → generated/begehung.json (docs/design/leonberg-begehung.md)
+gothar-worldgen walk-routes leonberg       REM Routen für gothar --walk → generated/walk/{stations,ways,gates}.json
+gothar-worldgen walk-report leonberg --route <route.json> --run <walk-out>   REM Auswertung → <walk-out>/walk_report.json
 ```
 Reihenfolge für die Welt: `import` → `export-terrain` → `buildings` → `assemble`; prüfen mit
 `build\release\game\gothar.exe --world=worlds/leonberg/leonberg.g7world --start=START_UEBERSICHT --time=12:00`.
