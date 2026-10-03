@@ -1,5 +1,5 @@
 {
-  "status": "Entwurf – Festlegung durch den Projektinhaber (vor W5)",
+  "status": "festgelegt – Entscheidung (Koordinator im Auftrag des Projektinhabers), 2026-10-03: Leonberg um 1700, schwäbisch-alemannisches Fachwerk, gedeckte erdige leicht entsättigte Farben, deutliche Alterung; alle Prozente und Maße sind Startwerte, nach den ersten Bildern justierbar",
   "style": [
     { "id": "buergerhaus", "label": "Bürgerhaus" },
     { "id": "ackerbuergerhaus", "label": "Ackerbürgerhaus" },
@@ -13,25 +13,25 @@
   "timber": [
     { "id": "mann", "label": "Schwäbischer Mann" },
     { "id": "halber_mann", "label": "Halber Mann" },
+    { "id": "einfach", "label": "Ständer und Riegel" },
+    { "id": "riegel_streben", "label": "Ständer und Riegel mit Kopf- und Fußstreben" },
     { "id": "andreaskreuz", "label": "Andreaskreuz" },
     { "id": "feuerbock", "label": "Feuerbock" },
-    { "id": "raute", "label": "Raute" },
-    { "id": "einfach", "label": "Nur Ständer und Riegel" },
+    { "id": "raute", "label": "Raute (Zierform, nur Brüstungsfelder)" },
     { "id": "keins", "label": "Kein sichtbares Fachwerk" }
   ],
   "infill": [
-    { "id": "plaster_white", "label": "Putz weiß" },
-    { "id": "plaster_ochre", "label": "Putz ocker" },
-    { "id": "plaster_grey", "label": "Putz grau" },
-    { "id": "lehm", "label": "Lehm / Flechtwerk" },
-    { "id": "brick", "label": "Backstein" },
-    { "id": "stone", "label": "Bruchstein" }
+    { "id": "plaster_white", "label": "Kalkputz gebrochenes Weiß" },
+    { "id": "plaster_ochre", "label": "Kalkputz ocker" },
+    { "id": "plaster_grey", "label": "Kalkputz grau-verwittert" },
+    { "id": "lehm", "label": "Lehm / Flechtwerk sichtbar (Scheunen, ärmere Häuser)" },
+    { "id": "brick", "label": "Backstein (selten)" },
+    { "id": "stone", "label": "Bruchstein (Sockel, Erdgeschoss)" }
   ],
   "roofCover": [
-    { "id": "tiles_old", "label": "Biberschwanz, alt" },
-    { "id": "tiles_red", "label": "Biberschwanz, rot" },
-    { "id": "slate", "label": "Schiefer" },
-    { "id": "wood_shingles", "label": "Holzschindeln" },
-    { "id": "thatch", "label": "Stroh / Reet" }
+    { "id": "tiles_old", "label": "Biberschwanz alt (dunkles Rotbraun, bemoost)" },
+    { "id": "tiles_red", "label": "Biberschwanz rot" },
+    { "id": "wood_shingles", "label": "Holzschindeln (Schuppen, Anbauten)" },
+    { "id": "thatch", "label": "Stroh (nur Scheunen außerhalb der Mauer)" }
   ]
 }

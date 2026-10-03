@@ -27,7 +27,10 @@ from shapely.ops import split
 
 PROTECTED_POLYGON_KINDS = {"place_of_worship", "castle", "town_hall", "monument"}
 PROTECTED_LINE_KINDS = {"city_wall"}
-PROTECTED_LINE_BUFFER_M = 3.0
+# ALKIS function prefixes that are never replaced: 51007 = historic structure (e.g. 51007_1510 city
+# wall, mapped in LoD2 as long thin bodies a little off the OSM wall line).
+PROTECTED_FUNCTION_PREFIXES = ("51007",)
+PROTECTED_LINE_MIN_M = 2.0  # the wall must run at least this far through the footprint
 
 
 @dataclass
@@ -63,7 +66,7 @@ class Protection:
             if geom == "polygon" and (kind in PROTECTED_POLYGON_KINDS or historic):
                 geoms.append((Polygon(f["polygon"]), f"{kind} {f.get('name') or ''}".strip()))
             elif geom == "line" and kind in PROTECTED_LINE_KINDS:
-                geoms.append((LineString(f["points"]).buffer(PROTECTED_LINE_BUFFER_M), kind))
+                geoms.append((LineString(f["points"]), kind))
             elif geom == "point" and historic:
                 geoms.append(
                     (Point(f["position"]).buffer(0.5), f"{kind} {f.get('name') or ''}".strip())
@@ -73,7 +76,15 @@ class Protection:
     def reason(self, footprint: Sequence[Sequence[float]]) -> str | None:
         poly = Polygon(footprint)
         for geom, why in self.geoms:
-            if poly.intersects(geom) and poly.intersection(geom).area > 0.5:
+            if not poly.intersects(geom):
+                continue
+            if geom.geom_type == "LineString":
+                # Runs through, not just along a wall: measured inside, 0.25 m from the outline.
+                if poly.buffer(-0.25).intersection(geom).length >= PROTECTED_LINE_MIN_M:
+                    return why
+                continue
+            cut = poly.intersection(geom)
+            if cut.area > 0.5:
                 return why
         return None
 
@@ -109,13 +120,29 @@ def select(
         if mode == "split":
             reasons.append("override rueckbau: split")
         why = None
+        function = str(b.get("function") or "")
+        pitch = float(roof.get("pitchDeg") or 0.0)
+        steep = (
+            roof.get("type") in ("saddle", "mixed", "hip")
+            and pitch >= th.get("steepRoofDeg", 90)
+            and eave <= th.get("steepRoofMaxEaveM", 0)
+        )
         if o is not None and o.locked:
             why = "locked"
         elif mode == "none":
             why = "override rueckbau: none"
         elif mode != "split":
-            osm = protection.reason(b["footprint"])
-            why = f"OSM {osm}" if osm else None
+            if function.startswith(PROTECTED_FUNCTION_PREFIXES):
+                why = f"ALKIS historic structure {function}"
+            elif function in th.get("alwaysProtectFunctions", ()) and eave <= th.get(
+                "steepRoofMaxEaveM", 0
+            ):  # old town hall; a large new one (eave above the limit) is replaced
+                why = f"ALKIS {function} (town hall)"
+            elif steep:
+                why = f"historic steep roof {pitch:.0f} deg, eave {eave:.1f} m"
+            else:
+                osm = protection.reason(b["footprint"])
+                why = f"OSM {osm}" if osm else None
         if why:
             sel.guarded.add(bid)
             if reasons:

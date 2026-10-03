@@ -50,6 +50,8 @@ def test_select_thresholds_reasons_and_protection():
         block("LOCK", 180, 30, 10),
         block("NONE", 220, 30, 10),
         block("FORCE", 260, 6, 6),
+        block("TOUCH", 300, 30, 10),
+        {**block("HISTWALL", 340, 60, 2), "function": "51007_1510"},
     ]
     features = [
         {
@@ -58,7 +60,8 @@ def test_select_thresholds_reasons_and_protection():
             "name": "Kirche",
             "polygon": [[101, -1], [129, -1], [129, -14], [101, -14]],
         },
-        {"kind": "city_wall", "geometry": "line", "points": [[140, -12], [170, -12]]},
+        {"kind": "city_wall", "geometry": "line", "points": [[140, -5], [170, -5]]},
+        {"kind": "city_wall", "geometry": "line", "points": [[300, -10], [330, -10]]},
         {
             "kind": "memorial",
             "geometry": "point",
@@ -72,7 +75,13 @@ def test_select_thresholds_reasons_and_protection():
         "FORCE": from_json({"id": "FORCE", "rueckbau": "split"}),
     }
     sel = select(blds, RB, ov, Protection(features), over_budget=frozenset({"SMALL"}))
-    assert set(sel.selected) == {"AREA", "LONG", "TALL", "FORCE"}
+    assert set(sel.selected) == {
+        "AREA",
+        "LONG",
+        "TALL",
+        "FORCE",
+        "TOUCH",
+    }  # touching: not protected
     assert sel.selected["AREA"] == ["area 252 m2"] and sel.selected["TALL"] == ["eave 13.0 m"]
     assert sel.protected == {
         "CHURCH": "OSM place_of_worship Kirche",
@@ -80,6 +89,7 @@ def test_select_thresholds_reasons_and_protection():
         "LOCK": "locked",
         "NONE": "override rueckbau: none",
         "SMALL": "OSM memorial",
+        "HISTWALL": "ALKIS historic structure 51007_1510",
     }
     assert {"SMALL", "CHURCH"} <= sel.guarded  # protected also against the budget split
 

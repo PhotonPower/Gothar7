@@ -61,7 +61,7 @@ gothar-worldgen facade preview leonberg <id> --image pano.jpg --pose x,z --headi
 gothar-worldgen facade frames leonberg VID_0001.mp4 --gpx VID_0001.gpx   REM Einzelbilder + Posen (braucht ffmpeg)
 gothar-worldgen facade ui leonberg         REM Annotations-Oberfläche im Browser (http://127.0.0.1:8765/)
 gothar-worldgen buildings leonberg         REM Klötzchen-Gebäude als .glb (generated/buildings/), --area all
-gothar-worldgen buildings leonberg --mode medieval   REM Fachwerk-Regelwerk + Rückbau (§7), Bericht generated/rueckbau_report.json
+gothar-worldgen buildings leonberg --mode medieval   REM Fachwerk-Stil (docs/design/leonberg-stil.md) + Rückbau (§7)
 gothar-worldgen assemble leonberg          REM assets/source/worlds/leonberg/leonberg.g7world + data/leonberg/vob_ids.json
 ```
 Reihenfolge für die Welt: `import` → `export-terrain` → `buildings` → `assemble`; prüfen mit

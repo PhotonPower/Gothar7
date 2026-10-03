@@ -122,7 +122,7 @@ def test_safe_name(bad):
 
 def test_vocabulary_is_marked_as_draft(ws: Workspace):
     v = ws.vocabulary()
-    assert "Entwurf" in v["status"]
+    assert v["status"].startswith("festgelegt")
     for key in ("style", "timber", "infill", "roofCover"):
         ids = [item["id"] for item in v[key]]
         assert ids and len(ids) == len(set(ids))
