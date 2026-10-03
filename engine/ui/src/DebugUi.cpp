@@ -590,6 +590,28 @@ void DebugUi::animationPanel(AnimationPanel& panel)
         ImGui::Checkbox("look at the camera", &panel.lookAtCamera);
         ImGui::Text("head  yaw %.0f  pitch %.0f", panel.lookYaw, panel.lookPitch);
     }
+    if (panel.outfit && ImGui::CollapsingHeader("Outfit"))
+    {
+        if (ImGui::BeginCombo("head", panel.head.c_str()))
+        {
+            for (const std::string& head : panel.heads)
+            {
+                if (ImGui::Selectable(head.c_str(), head == panel.head))
+                {
+                    panel.head = head;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        for (AnimationPanel::Garment& garment : panel.garments)
+        {
+            ImGui::Checkbox(garment.path.c_str(), &garment.worn);
+        }
+        if (!panel.outfitError.empty())
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f), "%s", panel.outfitError.c_str());
+        }
+    }
     ImGui::End();
 }
 

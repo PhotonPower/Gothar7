@@ -65,7 +65,9 @@ Rohdateien bleiben unter `DATA_ROOT\characters\mpfb` (nicht im Repo).
 **Figuren vor dem Kochen bauen** (sie sind nicht versioniert, `characters-pipeline.md` §6.2): im Repo-Wurzelordner
 `PYTHONPATH=tools/chargen/src python -m gothar_chargen assemble` (nur Python + numpy, ohne Blender) bzw. das
 CMake-Ziel `g7_figures` (`cmake --build --preset debug --target g7_figures`; nicht Teil von ALL, ohne Python mit
-numpy nur eine Meldung). Interpreter: `-DG7_FIGURES_PYTHON=…`, sonst `tools/chargen/.venv`, sonst das gefundene Python 3. Verwenden: **Core/System + einzeln geprüfte CC0-Pakete (Liste in `assets/LICENSES.md`)**;
+numpy nur eine Meldung). Interpreter: `-DG7_FIGURES_PYTHON=…`, sonst `tools/chargen/.venv`, sonst das gefundene Python 3.
+Mit `-DG7_REQUIRE_FIGURES=ON` (CI) schlagen die Asset-Tests fehl, wenn gebaute Figuren fehlen: Sie vergleichen den
+Zusammenbau der Engine mit jeder Figur (M6 D2); ohne die Option überspringen sie fehlende Figuren. Verwenden: **Core/System + einzeln geprüfte CC0-Pakete (Liste in `assets/LICENSES.md`)**;
 Community-Pakete erst nach Lizenzprüfung (ADR 0018). Das Plugin (GPLv3) wird nie ins Repo kopiert.
 
 ## Bauen

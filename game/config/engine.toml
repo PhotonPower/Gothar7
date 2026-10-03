@@ -55,8 +55,9 @@ debug_ui = false
 # shader_dir = "C:/dev/Gothar7/engine/render/shaders"
 
 [game]
-# Spielfigur (M6): Figur aus `cmake --build --preset debug --target g7_figures`; fehlt sie, die Gliederpuppe.
-hero = "characters/figures/farmer.glb"
+# Spielfigur (M6): Manifest (*.figure.toml, beim Start aus Teilen zusammengesetzt, Kopf/Rüstung tauschbar) oder
+# eine fertige .glb (z. B. aus g7_figures); fehlt sie, die Gliederpuppe.
+hero = "characters/figures/farmer.figure.toml"
 hero_graph = "data/anim/human.animgraph.toml"
 # Bewegungswerte der Spielfigur und Kamera
 movement = "data/movement.toml"

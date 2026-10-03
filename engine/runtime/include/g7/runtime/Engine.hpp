@@ -6,6 +6,7 @@
 // Spezifikation: docs/02-architecture.md ("Hauptschleife", "Initialisierung")
 
 #include <g7/asset/AssetManager.hpp>
+#include <g7/asset/FigureAssembly.hpp>
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
 #include <g7/asset/TextureData.hpp>
@@ -313,6 +314,15 @@ public:
     [[nodiscard]] std::span<const f32> playerFaceWeights() const noexcept;
     /// Current head turn of the hero in degrees (positive: towards the figure's left).
     [[nodiscard]] f32 playerLookYawDegrees() const noexcept;
+    /// Heroes assembled from parts ([game] hero = "...figure.toml"): swaps a part ("body", "head", "hair",
+    /// "beard"; paths relative to characters/, empty removes hair or beard) or all garments ("cloth" pieces,
+    /// armour, headgear) and rebuilds the figure; the animation goes on. Errors leave the figure as it was.
+    [[nodiscard]] Result<void> setPlayerPart(std::string_view role, std::string_view partPath);
+    [[nodiscard]] Result<void> setPlayerCloth(std::span<const std::string> partPaths);
+    /// The parts the hero wears (nullopt: no figure, or an assembled .glb).
+    [[nodiscard]] std::optional<asset::FigureManifest> playerFigureManifest() const;
+    /// Triangles of the hero figure drawn (LOD 0; 0 without rendering).
+    [[nodiscard]] usize playerFigureTriangles() const noexcept;
     /// True while the player climbs a ledge (input is ignored until it stands on top).
     [[nodiscard]] bool playerClimbing() const noexcept { return m_climb.has_value(); }
     /// Swimming or diving (gameplay::WaterMode::Land on land), and the air left under water.
@@ -365,6 +375,10 @@ private:
     void playerAnimationUi();
     [[nodiscard]] Mat4 playerFigureTransform() const;
     void preparePlayerPose(f32 alpha);
+    [[nodiscard]] Result<asset::SkinnedModelData> assembleFigureParts(const asset::FigureManifest& manifest);
+    [[nodiscard]] Result<void> uploadFigure(PlayerFigure& figure, const asset::SkinnedModelData& data);
+    [[nodiscard]] Result<void> rebuildPlayerFigure(const asset::FigureManifest& manifest);
+    void refreshOutfitChoices();
     [[nodiscard]] Result<void> attachModel(std::string_view socket, const LoadedModel* model,
                                            std::unique_ptr<LoadedModel> owned);
     [[nodiscard]] f32 climbDuration(gameplay::LedgeClass ledge) const;

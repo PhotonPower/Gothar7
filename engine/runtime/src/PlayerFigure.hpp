@@ -8,6 +8,7 @@
 #include <g7/animation/Face.hpp>
 #include <g7/animation/LookAt.hpp>
 #include <g7/asset/AssetManager.hpp>
+#include <g7/asset/FigureAssembly.hpp>
 #include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/TextureData.hpp>
 #include <g7/render/Material.hpp>
@@ -37,6 +38,13 @@ struct PlayerFigure
     std::string path;      ///< VFS path of the figure (.glb)
     std::string graphPath; ///< VFS path of the animation graph
     std::string startState;
+    /// Figures assembled at run time (hero = *.figure.toml): the parts worn now (D2).
+    std::optional<asset::FigureManifest> manifest;
+    /// Debug UI "Outfit": heads and kit pieces that fit the body `outfitFor` (paths relative to characters/).
+    std::string outfitFor;
+    std::vector<std::string> outfitHeads;
+    std::vector<std::string> outfitGarments;
+    std::string outfitError;
     animation::Skeleton skeleton;
     animation::Animator animator;
     animation::FaceAnimator face;

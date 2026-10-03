@@ -37,3 +37,6 @@ vcpkg-Baseline: **3.12.0** (`"version>=": "3.12.0"` in `vcpkg.json`); `nodeps` l
 ## Nachtrag (M6)
 Zweiter Nutzer: der Autopilot `tools/walk` (`g7_walk`) liest Routen und schreibt `walk.jsonl` /
 `walk_summary.json` mit nlohmann-json, ebenfalls `PRIVATE`. Keine neue Abhängigkeit.
+Dritter Nutzer (M6 D2): `asset` liest die Zusammenbau-Daten der Figuren-Teile (`asset.extras.gothar`) aus dem
+glTF-JSON, `PRIVATE`; fastgltf reicht Extras nur als simdjson-Objekte weiter. Das Ziel wird jetzt in
+`engine/asset` gesucht bzw. geladen (`world_format` und `tools/walk` nutzen es mit).
