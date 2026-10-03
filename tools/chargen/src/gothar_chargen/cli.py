@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 import tempfile
+import tomllib
 from collections.abc import Sequence
 from pathlib import Path
 from typing import TextIO
@@ -23,6 +24,7 @@ from gothar_chargen.blender_run import (
     export_glb,
     find_blender,
     finish_textures,
+    prepare_monster,
 )
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
 from gothar_chargen.figure import SUFFIX as FIGURE_SUFFIX
@@ -31,8 +33,8 @@ from gothar_chargen.gltf import Gltf, GltfError
 from gothar_chargen.human import SUFFIX as HUMAN_SUFFIX
 from gothar_chargen.human import HumanError, load_human
 from gothar_chargen.report import ReportError, progress
-from gothar_chargen.skeleton import SkeletonError, load_rig
-from gothar_chargen.validate import Report, reference_pose, validate_file
+from gothar_chargen.skeleton import RigSpec, SkeletonError, load_rig, species_of
+from gothar_chargen.validate import ReferencePose, Report, reference_pose, validate_file
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -40,6 +42,45 @@ EXIT_ERROR = 1
 CHARACTERS_DIR = Path("assets/source/characters")
 REFERENCE_GLB = CHARACTERS_DIR / "rig/human_reference.glb"
 ANIMATION_LIST = Path("docs/design/animation-list.md")
+MONSTER_DATA = Path(__file__).resolve().parent / "data" / "monsters"
+
+
+def monster_reference(characters: Path, species: str) -> Path:
+    return characters / "monsters" / species / "rig" / f"{species}_reference.glb"
+
+
+class _Rigs:
+    """Rig and reference pose per file: monsters/<species>/... use the species rig (§7)."""
+
+    def __init__(self, args: argparse.Namespace, characters: Path | None) -> None:
+        self.explicit = args.rig
+        self.characters = characters
+        self.no_reference = getattr(args, "no_reference", False)
+        self.reference_path: Path | None = getattr(args, "reference", None)
+        self._cache: dict[str, tuple[RigSpec, ReferencePose | None]] = {}
+
+    def for_file(self, path: Path) -> tuple[RigSpec, ReferencePose | None]:
+        species = None if self.explicit else species_of(path)
+        key = species or ""
+        if key not in self._cache:
+            rig = load_rig(self.explicit, species=species)
+            ref = None
+            if not self.no_reference:
+                if self.reference_path is not None:
+                    ref_path = self.reference_path
+                elif self.characters is None:
+                    raise FileNotFoundError("repository not found; use --reference")
+                elif species:
+                    ref_path = monster_reference(self.characters, species)
+                else:
+                    ref_path = self.characters / REFERENCE_GLB.relative_to(CHARACTERS_DIR)
+                if not ref_path.is_file():
+                    raise FileNotFoundError(
+                        f"reference rig not found ({ref_path}); use --reference"
+                    )
+                ref = reference_pose(Gltf.load(ref_path))
+            self._cache[key] = (rig, ref)
+        return self._cache[key]
 
 
 def find_repo_root(start: Path | None = None) -> Path | None:
@@ -84,15 +125,8 @@ def _print_report(report: Report, out: TextIO) -> None:
 
 
 def _cmd_validate(args: argparse.Namespace, out: TextIO) -> int:
-    rig = load_rig(args.rig)
     root = find_repo_root()
-    reference = None
-    if not args.no_reference:
-        ref_path = args.reference or (root / REFERENCE_GLB if root else None)
-        if ref_path is None or not ref_path.is_file():
-            print(f"error: reference rig not found ({ref_path}); use --reference", file=out)
-            return EXIT_ERROR
-        reference = reference_pose(Gltf.load(ref_path))
+    rigs = _Rigs(args, root / CHARACTERS_DIR if root else None)
 
     paths = args.paths or ([root / CHARACTERS_DIR] if root else [])
     files = _collect(paths)
@@ -103,6 +137,7 @@ def _cmd_validate(args: argparse.Namespace, out: TextIO) -> int:
     reports: list[Report] = []
     with tempfile.TemporaryDirectory(prefix="gothar-chargen-") as tmp:
         for f in files:
+            rig, reference = rigs.for_file(f)
             if f.suffix.lower() == ".blend":
                 blender = find_blender(args.blender)
                 glb = Path(tmp) / (f.stem + ".glb")
@@ -168,13 +203,13 @@ def _characters_dir(args: argparse.Namespace) -> Path:
 def _export_and_check(
     blender: Path, blends: list[Path], out_dir: Path, args: argparse.Namespace, out: TextIO
 ) -> int:
-    rig = load_rig(args.rig)
-    reference = reference_pose(Gltf.load(out_dir / REFERENCE_GLB.relative_to(CHARACTERS_DIR)))
+    rigs = _Rigs(args, out_dir)
     ok = True
     for blend in blends:
         glb = blend.with_suffix(".glb")
         export_glb(blender, blend, glb)
         blend.with_suffix(".blend1").unlink(missing_ok=True)
+        rig, reference = rigs.for_file(glb)
         report = validate_file(glb, rig, reference)
         _print_report(report, out)
         ok = ok and report.ok(strict=True)
@@ -192,7 +227,7 @@ def _cmd_build_placeholder(args: argparse.Namespace, out: TextIO) -> int:
 
 def _cmd_build_set(args: argparse.Namespace, out: TextIO) -> int:
     out_dir = _characters_dir(args)
-    names = packaged_sets() if args.set == ["all"] else args.set
+    names = packaged_sets(monsters=False) if args.set == ["all"] else args.set
     specs = [load_set_spec(n) for n in names]  # fail early on a bad list
     blender = find_blender(args.blender)
     blends = []
@@ -201,8 +236,38 @@ def _cmd_build_set(args: argparse.Namespace, out: TextIO) -> int:
         for line in log.splitlines():
             if line.startswith("[chargen] clip"):
                 print(line[10:], file=out)
-        blends.append(out_dir / "anims/human" / f"{spec.set}.blend")
+        blends.append(spec.blend_path(out_dir))
     return _export_and_check(blender, blends, out_dir, args, out)
+
+
+def _cmd_monster(args: argparse.Namespace, out: TextIO) -> int:
+    """CC0 source animal -> contract rig, reference mesh and clip source (contract §7)."""
+    characters = _characters_dir(args)
+    blender = find_blender(args.blender)
+    ok = True
+    for species in args.species:
+        config = MONSTER_DATA / f"{species}.build.toml"
+        if not config.is_file():
+            print(f"error: no build configuration {config.name} in data/monsters/", file=out)
+            return EXIT_ERROR
+        cfg = tomllib.loads(config.read_text(encoding="utf-8"))
+        source = args.sources / cfg["source"]
+        if not source.is_file():
+            print(f"error: source not found: {source}", file=out)
+            return EXIT_ERROR
+        clips = args.sources / f"{species}_clips.blend"
+        log = prepare_monster(
+            blender, source, config, characters, clips, MONSTER_DATA / f"{species}.toml"
+        )
+        for line in log.splitlines():
+            if line.startswith("[chargen]"):
+                print(line[10:], file=out)
+        rig = load_rig(MONSTER_DATA / f"{species}.toml")
+        glb = monster_reference(characters, species)
+        report = validate_file(glb, rig, reference_pose(Gltf.load(glb)))
+        _print_report(report, out)
+        ok = ok and report.ok(strict=True)
+    return EXIT_OK if ok else EXIT_ERROR
 
 
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
@@ -287,7 +352,8 @@ def _cmd_report(args: argparse.Namespace, out: TextIO) -> int:
     if list_path is None or anims is None:
         print("error: repository not found; pass --list and --anims", file=out)
         return EXIT_ERROR
-    result = progress(list_path.read_text(encoding="utf-8"), anims)
+    monsters = [anims.parent / "monsters"] if (anims.parent / "monsters").is_dir() else []
+    result = progress(list_path.read_text(encoding="utf-8"), anims, *monsters)
     if args.json:
         json.dump(result.to_dict(), out, indent=2)
         print(file=out)
@@ -360,7 +426,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(func=_cmd_build_test_parts)
 
-    p = sub.add_parser("report", help="animation-list.md (Prio A) vs. clips in anims/")
+    p = sub.add_parser("report", help="animation-list.md vs. clips in anims/ and monsters/")
     p.add_argument("--list", type=Path, help="default: docs/design/animation-list.md")
     p.add_argument("--anims", type=Path, help="default: assets/source/characters/anims")
     p.add_argument("--json", action="store_true", help="machine-readable output")
@@ -368,9 +434,22 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--fail-stale", action="store_true", help="exit 1 if a list status is outdated")
     p.set_defaults(func=_cmd_report)
 
+    p = sub.add_parser("monster", help="monster rig + clip source from a CC0 animal (§7, local)")
+    p.add_argument("species", nargs="+", help="species with data/monsters/<species>.build.toml")
+    p.add_argument(
+        "--sources", type=Path, required=True, help="DATA_ROOT/characters/monsters (unpacked packs)"
+    )
+    p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
+    p.set_defaults(func=_cmd_monster)
+
     p = sub.add_parser("build-set", help="animation sets from data/clips/<set>.toml")
-    p.add_argument("set", nargs="+", help="set names (none, swim, ...) or 'all'")
-    p.add_argument("--sources", type=Path, required=True, help=sources_help)
+    p.add_argument("set", nargs="+", help="set names (none, swim, wolf, ...) or 'all' (humans)")
+    p.add_argument(
+        "--sources",
+        type=Path,
+        required=True,
+        help=sources_help + "; monster sets: the folder with <species>_clips.blend",
+    )
     p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
     p.set_defaults(func=_cmd_build_set)
     return parser

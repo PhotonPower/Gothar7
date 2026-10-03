@@ -25,7 +25,10 @@ SOURCES = {"ual1": {"file": "a.glb", "mapping": "quaternius_ual1"}}
 
 
 def test_packaged_sets_are_valid():
-    assert packaged_sets() == ["1h", "2h", "bow", "cbow", "dive", "fist", "mag", "none", "swim"]
+    humans = ["1h", "2h", "bow", "cbow", "dive", "fist", "mag", "none", "swim"]
+    assert packaged_sets(monsters=False) == humans
+    assert packaged_sets(monsters=True) == ["wolf"]
+    assert packaged_sets() == sorted(humans + ["wolf"])
     for name in packaged_sets():
         spec = load_set_spec(name)
         assert spec.set == name
@@ -37,8 +40,9 @@ def test_packaged_sets_are_valid():
 def test_set_files_match_specs():
     """Every packaged set has its .glb with exactly the listed clips."""
     for name in packaged_sets():
-        g = Gltf.load(ANIMS / "human" / f"{name}.glb")
-        assert sorted(a["name"] for a in g.doc["animations"]) == sorted(load_set_spec(name).names)
+        spec = load_set_spec(name)
+        g = Gltf.load(spec.blend_path(ANIMS.parent).with_suffix(".glb"))
+        assert sorted(a["name"] for a in g.doc["animations"]) == sorted(spec.names)
 
 
 def test_source_refs():
@@ -257,12 +261,15 @@ def test_real_list_has_36_prio_a_clips():
 
 
 def test_real_list_is_consistent_with_files():
-    result = progress(ANIMATION_LIST.read_text(encoding="utf-8"), ANIMS)
+    text = ANIMATION_LIST.read_text(encoding="utf-8")
+    result = progress(text, ANIMS, ANIMS.parent / "monsters")
     assert result.stale == []
     assert result.extra == []
     assert result.missing == []
     counts = list(result.section_counts().values())
-    assert counts == [(48, 48)]  # Prio-B locomotion per weapon mode
+    assert counts == [(48, 48), (12, 12)]  # Prio-B locomotion per weapon mode, wolf
+    # without the monsters folder the wolf rows are reported as out of date
+    assert progress(text, ANIMS).stale
 
 
 LIST = """# Liste

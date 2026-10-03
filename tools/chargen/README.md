@@ -13,6 +13,7 @@ tools/chargen/
                                   Körpergeometrie aus dem Quaternius-Rig (CC0)
     data/mappings/*.toml          Knochen-Zuordnung Quell-Rig → Referenz-Rig (quaternius_ual1, quaternius_ual2)
     data/clips/<set>.toml         Herkunft je Clip eines Animations-Sets (Format: clipspec.py)
+    data/monsters/<art>.toml      Monster-Rig je Art (Vertrag §7.1); <art>.build.toml: wie die CC0-Quelle umgebaut wird
     skeleton.py, mapping.py       Laden der Skelett-Definition (spiegelt *_l → *_r) bzw. der Zuordnungen
     clipspec.py, report.py        Clip-Listen lesen/prüfen; Abgleich animation-list.md ↔ Clips
     figure.py                     Figur-Manifeste figures/<name>.figure.toml (Teile, LOD-Anteile, Palette)
@@ -38,7 +39,8 @@ tools/chargen/
       build_test_parts.py         Testteile (Box-Körper mit offenem Hals, passender Kopf, Lumpen, Haare)
       mpfb_human.py               baut einen Menschen mit MPFB2 aus einem Rezept (einziges Skript mit MPFB-Aufrufen)
       conform_human.py            MPFB-Rig → Referenz-Rig, Kopf abtrennen, reduzieren, Materialien/Texturen, Teile
-      keyframes.py                Keyframe-Platzhalter-Rezepte (strafe, turn, ladder, slide, ...; „platzhalter-K“)
+      keyframes.py                Keyframe-Platzhalter-Rezepte (strafe, turn, ladder, slide, keyposes, advance, ...)
+      prepare_monster.py          CC0-Tier → Monster-Rig: Bewegung aufzeichnen, umbenennen, drehen, skalieren, neu keyen
   tests/                          pytest (synthetische Fehlerfälle auf Basis der Referenz-.glb)
 ```
 
@@ -67,19 +69,23 @@ gothar-chargen report                         & REM Prio-A-Fortschritt: animatio
 gothar-chargen assemble [figures\x.figure.toml] & REM Figuren aus Manifesten bauen (alle ohne Argument)
 gothar-chargen build-test-parts               & REM eigene einfache Testteile unter parts/test/
 gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name>/ + textures/ (nur lokal, braucht MPFB)
+gothar-chargen monster wolf --sources C:\GotharData\characters\monsters
+                                              & REM Monster-Rig + Referenz + Clip-Quelle wolf_clips.blend (§7.2)
+gothar-chargen build-set wolf --sources C:\GotharData\characters\monsters
+                                              & REM Monster-Clips → monsters/wolf/anims/wolf.glb
 ```
 Exit-Code 0 = alles in Ordnung, 1 = Fehler.
 
 ## Prüfungen des Validators
 | Code | Prüft |
 |---|---|
-| `skeleton.*` | Knoten `root` vorhanden, Knochennamen und Eltern wie im Vertrag, keine fremden Knochen, ≤ 128 Knochen, Maßstab 1, `root` im Ursprung |
-| `orientation.*` | Y oben, Figur blickt nach +Z, linke Seite (`*_l`) bei +X |
+| `skeleton.*` | Knoten `root` vorhanden, Knochennamen und Eltern wie im Vertrag, keine fremden Knochen, ≤ 128 Knochen (Monster ≤ 64), Maßstab 1, `root` im Ursprung. Dateien unter `monsters/<art>/` prüft der Validator gegen das Rig der Art |
+| `orientation.*` | Y oben, Figur blickt nach +Z, linke Seite (`*_l`) bei +X (Monster: Knochenpaare aus `[rig.orientation]`) |
 | `pose.*` | Bind-Pose = Referenz-T-Pose: lokale Rotation je Knochen ≤ 5° (Warnung ab 1°), Knochenlänge ±15 % (Warnung ab 5 %) |
 | `skin.*` | Knoten stehen in der Bind-Pose (inverse Bind-Matrizen), ≤ 4 Gewichte je Vertex, Summe 1, Sockets ohne Gewichte |
-| `mesh.*` | Größe 1,50–2,10 m (Warnung außerhalb 1,65–1,95 m), Füße auf dem Boden |
+| `mesh.*` | Größe 1,50–2,10 m (Warnung außerhalb 1,65–1,95 m; Monster: ±30 %/±10 % der Rig-Höhe), Füße auf dem Boden |
 | `morph.name` | nur Morph-Target-Namen aus characters-pipeline.md §6 |
-| `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung; `anim.jump`: kein Sprung zwischen zwei Frames (Fehler ab 120°/0,5 m, Warnung ab 90°); `anim.loop`: Schleifen `s_*` geschlossen (Warnung ab 5°) |
+| `anim.*` | Clip-Namen nach Konvention (§3), Kanäle nur auf Skelett-Knochen, Translation nur `root`/`pelvis`, keine Skalierung; `anim.jump`: kein Sprung zwischen zwei Frames (Fehler ab 120°/0,5 m, Warnung ab 90°); `anim.loop`: Schleifen `s_*` geschlossen (Warnung ab 5°); Monster: Clip-Modus = Art, `anim.root_motion`: `s_walk`/`s_run` ≥ 0,1 m/s vorwärts, `t_turn_l/r` ≥ 45° um +Y in die richtige Richtung |
 | `lod.*` | LOD-Vertrag §2.2: Stufen lückenlos ab 0, gleicher Eltern-Knoten/Transformation/Skin, Morphs nur auf `_lod0`, Anteil lod1 ≤ 60 %, lod2 ≤ 30 % (Warnung) |
 | `mesh.budget` | höchstens 20 k Dreiecke je Figur bei lod0 (nicht für Teile unter `parts/`) |
 | `fit.*` | Figuren mit Rollen-Knoten (`body`, `head`, `hair`, `beard`): jeder offene Rand von body/head trifft einen Rand eines anderen Teils (≤ 5 mm) mit gleichen Gewichten; `lod.seam`: Ränder in allen Stufen wie bei lod0 |
@@ -92,6 +98,11 @@ Clips ohne passende CC0-Quelle entstehen aus Rezepten in `blender/keyframes.py` 
 −Y = vorn, Z = oben), z. B. `"upperarm_l": [("Z", -90), ("X", -80)]` = Arm nach vorn, dann hoch. Sie sind bewusst
 grob und stehen in `animation-list.md` als `platzhalter-K`; F4 ersetzt sie durch Mocap. Hilfs-Clips
 (`helper = true`) werden nur zum Bauen benutzt und nicht exportiert.
+
+Für Monster (§7.2): `keyposes` setzt benannte Posen (`[clip.params.poses.<name>]` mit `rotate`/`move`) an
+Schlüssel-Frames (`keys = [[0, "rest"], [8, "crouch"], ...]`) und überblendet weich, optional über einer
+Basis-Schleife (`base`); `advance` macht aus einer Schleife am Ort Root Motion (`speed` in m/s, `time` < 1 =
+schneller, `amplify` = weiter ausholen). Feste Events: `markers = { hit_start = 13, hit_end = 17 }`.
 
 ## Figuren-Baukasten (F3)
 Eine Figur besteht aus Teilen (`.glb` auf dem Referenz-Rig, unter `assets/source/characters/parts/`): `body`
@@ -112,6 +123,12 @@ Die „Standard“-Pakete der Universal Animation Library 1 und 2 (CC0) liegen a
 (itch.io blockt automatische Downloads). Entpackt nach `DATA_ROOT\characters\quaternius\` (nicht ins Repo):
 - https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip (UAL1, Rigify-Namen)
 - https://opengameart.org/sites/default/files/universal_animation_library_2standard.zip (UAL2, Mannequin)
+
+## Monster-Quellen (für `monster`)
+Quaternius-Tierpakete (CC0, opengameart.org), entpackt nach `DATA_ROOT\characters\monsters\` (nicht ins Repo):
+- https://opengameart.org/content/animated-animales-low-poly („Animal Pack Vol.2“: Wolf)
+- https://opengameart.org/content/lowpoly-animated-farm-animal-pack (Schwein → `keiler`)
+- https://opengameart.org/content/5-low-poly-animals (Küken → `laufvogel`)
 
 ## Tests
 ```cmd
