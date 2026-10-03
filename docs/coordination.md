@@ -68,4 +68,7 @@ Regeln:
    Der Koordinator merged **ohne** `--delete-branch`: `gh` würde sonst den Worktree der Autor-Sitzung entfernen, in dem
    der Branch ausgecheckt ist. Jede Sitzung löscht ihre Branches nach dem Merge selbst (lokal und auf `origin`).
 4. Nach dem Merge: betroffene Sitzungen holen `main` beim nächsten Branch-Start (`git fetch` + neuer Branch von `origin/main`).
+   Achtung: Alle Worktrees teilen sich die `origin/*`-Refs. Ein `git fetch` einer anderen Sitzung kann `origin/main`
+   jederzeit weiterschieben. Vor `git reset --soft origin/main` (Commits zusammenfassen) daher erst `origin/main`
+   einmergen und danach `git status` bzw. die vorgemerkten Pfade prüfen – sonst macht der Commit fremde Merges rückgängig.
 5. PRs mit „Entscheidung nötig:“ merged der Koordinator **nicht**, bis der Mensch entschieden hat.
