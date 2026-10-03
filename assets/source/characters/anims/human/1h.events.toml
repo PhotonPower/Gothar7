@@ -3,30 +3,35 @@ version = 1
 fps = 30
 
 [clips."1h/s_run"]
+speed = 5.90
 events = [
     { frame = 1, event = "footstep_l" },
     { frame = 15, event = "footstep_r" },
 ]
 
 [clips."1h/s_strafe_l"]
+speed = 1.00
 events = [
     { frame = 19, event = "footstep_r" },
     { frame = 39, event = "footstep_l" },
 ]
 
 [clips."1h/s_strafe_r"]
+speed = 0.97
 events = [
     { frame = 19, event = "footstep_r" },
     { frame = 39, event = "footstep_l" },
 ]
 
 [clips."1h/s_walk"]
+speed = 0.98
 events = [
     { frame = 19, event = "footstep_r" },
     { frame = 39, event = "footstep_l" },
 ]
 
 [clips."1h/s_walk_back"]
+speed = 0.98
 events = [
     { frame = 9, event = "footstep_r" },
     { frame = 29, event = "footstep_l" },

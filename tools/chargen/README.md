@@ -68,6 +68,7 @@ gothar-chargen build-placeholder --sources C:\GotharData\characters\quaternius
 gothar-chargen build-set all --sources C:\GotharData\characters\quaternius
                                               & REM Animations-Sets aus data/clips/<set>.toml (none, swim, dive, fist, 1h, 2h, bow, cbow, mag)
 gothar-chargen report                         & REM Prio-A-Fortschritt: animation-list.md ↔ anims/
+gothar-chargen speeds                         & REM Eigengeschwindigkeit der Fortbewegungs-Clips → events.toml (§3)
 gothar-chargen assemble [figures\x.figure.toml] & REM Figuren aus Manifesten + Teilen (reines Python, ohne Blender;
                                               & REM nicht versioniert; ohne Argument alle, entfernt veraltete)
 gothar-chargen part-data [parts\x]            & REM Zusammenbau-Daten der Teile (Halsring, Masken; §6.2)

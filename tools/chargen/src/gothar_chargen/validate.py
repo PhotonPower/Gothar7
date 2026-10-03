@@ -15,8 +15,9 @@ from typing import Any
 
 import numpy as np
 
+from gothar_chargen.clipspeed import clip_speeds
 from gothar_chargen.collision import CollisionError, derive_collision
-from gothar_chargen.events import events_path_for, load_events
+from gothar_chargen.events import SPEED_TOLERANCE, events_path_for, load_events
 from gothar_chargen.fit import check_fit
 from gothar_chargen.gltf import Gltf, GltfError, Trs, node_trs, quat_angle_deg
 from gothar_chargen.images import ImageError, ImageInfo, image_info, is_power_of_two
@@ -884,6 +885,15 @@ class _Checker:
                     f"{ev_path.name}: clip '{clip}' allows frames {bound}, got " + _listed(late),
                 )
         self.r.stats["events"] = sum(len(v) for v in ev_file.clips.values())
+        measured = clip_speeds(self.g)
+        for clip in sorted(set(measured) | set(ev_file.speeds)):
+            have, want = ev_file.speeds.get(clip), measured.get(clip)
+            if have is None or want is None or abs(have - want) > SPEED_TOLERANCE * want:
+                self.r.error(
+                    "events.speed",
+                    f"{ev_path.name}: clip '{clip}' speed {have} m/s, measured {want} m/s "
+                    "(gothar-chargen speeds)",
+                )
 
 
 def _rotate(q: np.ndarray, v: np.ndarray) -> np.ndarray:
