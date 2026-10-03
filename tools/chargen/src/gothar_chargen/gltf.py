@@ -135,6 +135,27 @@ class Gltf:
             return arr.reshape(count, 4, 4).transpose(0, 2, 1).copy()
         return arr
 
+    def set_accessor(self, index: int, values: np.ndarray) -> None:
+        """Overwrites the data of a tightly packed float accessor in place (same count and type),
+        e.g. animation keys; min/max are updated when the accessor has them."""
+        acc = self.list("accessors")[index]
+        old = self.accessor(index)
+        if acc.get("componentType") != 5126 or "sparse" in acc or "bufferView" not in acc:
+            raise GltfError(f"accessor {index}: only plain float accessors can be written")
+        values = np.asarray(values, dtype=np.float32).reshape(old.shape)
+        view = self.list("bufferViews")[acc["bufferView"]]
+        elem = 4 * values[0].size if len(values) else 0
+        if int(view.get("byteStride", elem) or elem) != elem:
+            raise GltfError(f"accessor {index}: interleaved data cannot be written")
+        start = int(view.get("byteOffset", 0)) + int(acc.get("byteOffset", 0))
+        data = bytearray(self.bin)
+        data[start : start + values.nbytes] = values.tobytes()
+        self.bin = bytes(data)
+        if "min" in acc and "max" in acc and len(values):
+            flat = values.reshape(len(values), -1)
+            acc["min"] = [float(x) for x in flat.min(axis=0)]
+            acc["max"] = [float(x) for x in flat.max(axis=0)]
+
     # --- nodes -----------------------------------------------------------------------------
 
     def node_parents(self) -> dict[int, int]:
