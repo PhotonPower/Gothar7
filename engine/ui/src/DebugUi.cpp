@@ -586,6 +586,89 @@ void DebugUi::consolePanel(ConsolePanel& panel)
     ImGui::End();
 }
 
+void DebugUi::inventoryPanel(InventoryPanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    const ImVec2 view = ImGui::GetMainViewport()->Size;
+    ImGui::SetNextWindowPos(ImVec2(view.x - 470.0f * scale, 40.0f * scale), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(460.0f * scale, std::min(view.y - 80.0f * scale, 560.0f * scale)),
+                             ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Inventory", &panel.open))
+    {
+        ImGui::End();
+        return;
+    }
+    ImGui::TextUnformatted(panel.title.c_str());
+    for (const std::string& line : panel.stats)
+    {
+        ImGui::TextDisabled("%s", line.c_str());
+    }
+    ImGui::Separator();
+    if (panel.rows.empty())
+    {
+        ImGui::TextDisabled("(empty)");
+    }
+    std::string_view category;
+    for (const InventoryPanel::Row& row : panel.rows)
+    {
+        if (row.category != category)
+        {
+            category = row.category;
+            ImGui::SeparatorText(row.category.c_str());
+        }
+        ImGui::PushID(row.item.c_str());
+        if (row.equipped.empty())
+        {
+            ImGui::Text("%u x %s", row.count, row.name.c_str());
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.4f, 1.0f), "%u x %s  [%s]", row.count, row.name.c_str(),
+                               row.equipped.c_str());
+        }
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip("%s", row.item.c_str());
+        }
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 150.0f * scale + ImGui::GetCursorPosX() -
+                        ImGui::GetStyle().ItemSpacing.x);
+        if (row.equippable)
+        {
+            const bool on = !row.equipped.empty();
+            if (ImGui::SmallButton(on ? "unequip" : "equip"))
+            {
+                panel.action = on ? "unequip" : "equip";
+                panel.actionItem = row.item;
+            }
+            ImGui::SameLine();
+        }
+        if (ImGui::SmallButton("drop"))
+        {
+            panel.action = "drop";
+            panel.actionItem = row.item;
+        }
+        ImGui::PopID();
+    }
+    if (!panel.message.empty())
+    {
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.4f, 1.0f), "%s", panel.message.c_str());
+    }
+    ImGui::End();
+}
+
+void DebugUi::focusLabel(Vec2 screen, std::string_view text)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const std::string label(text);
+    const ImVec2 size = ImGui::CalcTextSize(label.c_str());
+    const ImVec2 at(screen.x - 0.5f * size.x, screen.y - size.y);
+    ImDrawList* draw = ImGui::GetForegroundDrawList();
+    draw->AddText(ImVec2(at.x + 1.0f, at.y + 1.0f), IM_COL32(0, 0, 0, 200), label.c_str()); // shadow
+    draw->AddText(at, IM_COL32(255, 255, 255, 255), label.c_str());
+}
+
 void DebugUi::creaturesPanel(CreaturesPanel& panel)
 {
     ImGui::SetCurrentContext(m_impl->context);

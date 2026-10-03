@@ -34,6 +34,7 @@ enum class VobType : u8
     Trigger, ///< TriggerVolume
     Mob,     ///< MobRef + MeshRef (placeholder until M8)
     Water,   ///< WaterVolume (M5)
+    Item,    ///< ItemRef (M8)
 };
 
 /// One vob as stored in the file.
@@ -51,6 +52,7 @@ struct WorldFileVob
     TriggerVolume trigger;                    ///< Trigger vobs only
     MobRef mob;                               ///< Mob vobs only
     WaterVolume water;                        ///< Water vobs only
+    ItemRef item;                             ///< Item vobs only
 };
 
 struct WorldFile

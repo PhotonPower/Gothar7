@@ -1,0 +1,19 @@
+# Fokus (gameplay.md „Fokus“): Reichweite in Metern vom Auge bis zum Fokuspunkt und halber Öffnungswinkel in Grad
+# um die Blickrichtung. Vorrang NPC > Mob > Item; innerhalb einer Art gewinnt, was näher an der Blickrichtung liegt.
+# Der Winkel wird waagrecht gemessen (ein Gegenstand zu Füßen liegt genauso „vorn“ wie einer in Augenhöhe);
+# `height` begrenzt den Höhenunterschied zwischen Auge und Fokuspunkt.
+# Der aktuelle Fokus bleibt, solange er innerhalb von `keep` mal Reichweite und Winkel liegt (gegen Flackern).
+keep = 1.25
+height = 2.0
+
+[npc]
+distance = 8.0
+angle = 30.0
+
+[mob]
+distance = 3.0
+angle = 35.0
+
+[item]
+distance = 2.5
+angle = 35.0

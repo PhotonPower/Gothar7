@@ -286,3 +286,21 @@ TEST_CASE("Triggers: priming on arrival - no enter for a trigger one already sta
     CHECK(entered.size() == 1); // the well is "once" and counted as fired already
     CHECK(triggers.spentTriggers() == std::set<u64>{5});
 }
+
+TEST_CASE("Vob types: an item vob spawns as ItemRef without a mesh and is captured back")
+{
+    const WorldFile file = parse(R"({"version": 1, "vobs": [
+  {"id": 9, "type": "item", "name": "APPLE", "pos": [1, 0, 2], "components": {"item": {"instance": "it_apple", "count": 2}}}
+]})");
+    Scene scene;
+    REQUIRE(spawnWorld(scene, file).ok());
+    const entt::entity apple = scene.findById(VobId{9});
+    REQUIRE(scene.get<ItemRef>(apple) != nullptr);
+    CHECK(scene.get<ItemRef>(apple)->instance == "it_apple");
+    CHECK(scene.get<ItemRef>(apple)->count == 2);
+    CHECK_FALSE(scene.has<MeshRef>(apple)); // drawn by the engine from the Item, not a static mesh
+    const WorldFile captured = captureWorld(scene, "items");
+    REQUIRE(captured.vobs.size() == 1);
+    CHECK(captured.vobs[0].type == VobType::Item);
+    CHECK(captured.vobs[0].item.count == 2);
+}

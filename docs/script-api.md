@@ -5,6 +5,9 @@ Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
 ## Ereignisse
 
+### `on("item_taken", fn(item: string, count: integer))`
+Der Held hat einen Gegenstand aus der Welt aufgehoben (Aktionstaste auf ein Item im Fokus).
+
 ### `on("level_up", fn(level: integer))`
 Der Held hat eine neue Stufe erreicht.
 
@@ -50,6 +53,9 @@ Globale Tabelle der Story-Variablen (Zahlen, Strings, Wahrheitswerte, verschacht
 
 ### `add_xp(amount: integer) -> integer`
 Gibt dem Helden Erfahrung; gibt die Zahl der neuen Stufen zurück. Jede Stufe bringt `Progression.learn_points_per_level` Lernpunkte und löst `level_up` aus.
+
+### `drop_item(item: string, count?: integer)`
+Legt `count` (Vorgabe 1) Stück aus dem Inventar des Helden vor ihm auf den Boden; Ausgerüstetes wird dabei abgelegt.
 
 ### `equip(item: string) -> string`
 Rüstet ein Item aus dem Inventar aus; gibt den Platz zurück (`melee`, `ranged`, `armor`, `helmet`, `ring1`/`ring2`, `amulet`, `belt`, `rune1`–`rune7`). Fehler, wenn Bedingungen (`requires`) fehlen.
