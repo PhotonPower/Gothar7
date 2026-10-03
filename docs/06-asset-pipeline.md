@@ -44,7 +44,8 @@ Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_
   (Vorgabe der Bibliothek `CookOptions` und von Builds ohne libktx). Bei KTX2 gilt:
   - vollständige Mip-Kette, im Cooker gerechnet (Box-Filter; Farbe in linearem Licht gemittelt, Normalen gemittelt
     und neu normiert);
-  - UASTC (`--uastc-level 0..4`, Vorgabe 2) mit zstd-Superkompression.
+  - UASTC (`--uastc-level 0..4`, Vorgabe 2) mit zstd-Superkompression. Mehrere Texturen werden parallel kodiert,
+    jede einzelne einthreadig (Hänger im basisu-Job-Pool, `docs/modules/asset.md`).
   - **Normal-Maps** erkennt der Cooker an `normalImage` in den Materialien aller Meshes; sie werden zweikanalig
     (X, Y, linear) für BC5 gespeichert. Alles andere ist sRGB-Farbe. Wird ein Bild als Farbe **und** als Normal-Map
     benutzt, ist das ein Fehler.

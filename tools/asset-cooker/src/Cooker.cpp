@@ -13,11 +13,14 @@
 #include <g7/world/WorldFile.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <filesystem>
+#include <future>
 #include <map>
 #include <memory>
 #include <optional>
 #include <set>
+#include <thread>
 
 namespace g7::cook
 {
@@ -101,6 +104,7 @@ public:
         if (m_options.textures == TextureMode::Ktx2)
         {
             scanTextureUsage(sources);
+            startKtx2Encoding(sources);
         }
         for (const auto& [relative, location] : sources)
         {
@@ -274,7 +278,14 @@ private:
             return;
         }
         const auto usage = normal ? TextureUsage::Normal : data ? TextureUsage::Data : TextureUsage::Color;
-        auto ktx = encodeKtx2(image, usage, m_options.uastcLevel);
+        // Encoded ahead on the workers (startKtx2Encoding), or here if it was not expected to be cooked.
+        const auto ahead = m_ktx2Ahead.find(relative);
+        auto ktx =
+            ahead != m_ktx2Ahead.end() ? ahead->second.get() : encodeKtx2(image, usage, m_options.uastcLevel);
+        if (ahead != m_ktx2Ahead.end())
+        {
+            m_ktx2Ahead.erase(ahead);
+        }
         if (!ktx)
         {
             fail(relative, ktx.error().message);
@@ -283,6 +294,71 @@ private:
         if (emit(relative, withoutExtension(relative) + ".ktx2", std::move(ktx).value()))
         {
             ++m_report.images;
+        }
+    }
+
+    /// KTX2 encoding (UASTC) is by far the slowest step and basisu runs single-threaded (Textures.cpp):
+    /// the images that will be cooked (new key) are encoded in parallel on own workers while the main
+    /// thread goes through the sources in order. Order, reports and outputs stay exactly as before.
+    void startKtx2Encoding(const std::map<std::string, fs::Path>& sources)
+    {
+        for (const auto& [relative, location] : sources)
+        {
+            const std::string ext = extensionOf(relative);
+            if (isHidden(relative) || contains(kSkippedExtensions, ext) || !contains(kImageExtensions, ext))
+            {
+                continue;
+            }
+            const bool normal = m_normalImages.contains(relative);
+            const bool color = m_colorImages.contains(relative);
+            const bool data = m_dataImages.contains(relative);
+            if ((normal && color) || (data && (normal || color)))
+            {
+                continue; // an error, reported when the file's turn comes
+            }
+            auto bytes = fs::readFile(location);
+            if (!bytes)
+            {
+                continue; // reported when the file's turn comes
+            }
+            const u64 key = sourceKey(relative, bytes.value(), {}, textureUsageTag(relative, ext));
+            if (m_previous)
+            {
+                const auto previous = m_previous->sources.find(relative);
+                if (previous != m_previous->sources.end() && previous->second.key == key)
+                {
+                    continue; // most likely reused (if its outputs changed by hand, cookKtx2 encodes it)
+                }
+            }
+            auto job = std::make_unique<Ktx2Job>();
+            job->bytes = std::move(bytes).value();
+            job->name = relative;
+            job->usage = normal ? TextureUsage::Normal : data ? TextureUsage::Data : TextureUsage::Color;
+            m_ktx2Ahead.emplace(relative, job->result.get_future());
+            m_ktx2Jobs.push_back(std::move(job));
+        }
+        if (m_ktx2Jobs.empty())
+        {
+            return;
+        }
+        const u32 hardware = std::max(1u, std::thread::hardware_concurrency());
+        const auto workers = static_cast<usize>(std::max(1u, hardware - 1)); // the main thread cooks meshes
+        for (usize w = 0; w < std::min(workers, m_ktx2Jobs.size()); ++w)
+        {
+            m_ktx2Workers.emplace_back(
+                [this]
+                {
+                    for (usize i = m_ktx2Next.fetch_add(1); i < m_ktx2Jobs.size();
+                         i = m_ktx2Next.fetch_add(1))
+                    {
+                        Ktx2Job& job = *m_ktx2Jobs[i];
+                        auto decoded = asset::decodeImage(job.bytes, job.name);
+                        job.result.set_value(
+                            decoded ? encodeKtx2(decoded.value(), job.usage, m_options.uastcLevel)
+                                    : Result<std::vector<u8>>(decoded.error()));
+                        job.bytes = {};
+                    }
+                });
         }
     }
 
@@ -743,6 +819,17 @@ private:
     std::set<std::string> m_dataImages;                      // VFS paths used as terrain splat maps
     std::map<std::string, std::string> m_keys;               // lower-case path -> path (collisions)
     CookReport m_report;
+    struct Ktx2Job
+    {
+        std::string name;
+        std::vector<u8> bytes;
+        TextureUsage usage = TextureUsage::Color;
+        std::promise<Result<std::vector<u8>>> result;
+    };
+    std::vector<std::unique_ptr<Ktx2Job>> m_ktx2Jobs;                        // fixed once workers start
+    std::map<std::string, std::future<Result<std::vector<u8>>>> m_ktx2Ahead; // by source path
+    std::atomic<usize> m_ktx2Next{0};
+    std::vector<std::jthread> m_ktx2Workers; // last: joined before the jobs go
 };
 } // namespace
 
