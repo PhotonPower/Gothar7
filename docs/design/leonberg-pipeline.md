@@ -183,6 +183,8 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
 - Optional ist `age` (0 neu … 1 alt), die Handkorrektur der Alterung (W5, `leonberg-stil.md`).
 - Optional sind `dormers` (0–6) und `chimneys` (0–4): die Zahl der Gauben bzw. Schornsteine, 0 = keine; fehlt der
   Schlüssel, entscheidet der Generator.
+- Optional ist `wallHouse` (true/false): Haus auf der Stadtmauerlinie, dessen Außenseite die Mauer ist (W-E2); fehlt
+  der Schlüssel, wird es erkannt.
 - Ebenfalls optional sind `locked` (siehe W-C) und `rueckbau` (§7): `auto` (Vorgabe), `none` (nie ersetzen) oder
   `split` (immer durch Fachwerkhäuser ersetzen). **Unbekannte Schlüssel bleiben beim Speichern erhalten**, damit neuere
   Werkzeuge Felder ergänzen können.
@@ -513,8 +515,10 @@ Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03); Werte in `
 Verlauf in `tools/worldgen/data/<ort>/city_wall.json` (versioniert, von Hand korrigierbar). Code: `walls/citywall.py`.
 - **Verlauf:** geschlossener Ring aus OSM-Stücken (`barrier=city_wall`, Richtung wird angepasst) und Stützpunkten, frei
   interpretiert. In Leonberg:
-  - Süd- und Westmauer aus OSM, im Osten 6 m innerhalb von „Im Zwinger“, im Norden 3–5 m innerhalb von „Hinterer
-    Zwinger“, von dort am Hangrand zum Schloss.
+  - Süd- und Westmauer aus OSM.
+  - Im Osten durch die äußere Häuserzeile zwischen „Im Zwinger“ und „Grabenstraße“ (äußere Zwingermauer am Graben),
+    0,9 m hinter der Fassadenflucht, sodass die Mauer bündig mit den Mauerhäusern abschließt.
+  - Im Norden 3–5 m innerhalb von „Hinterer Zwinger“, von dort am Hangrand zum Schloss.
   - Dazu offene Zwingermauern (`zwinger`, 4 m, ohne Wehrgang): die innere OSM-Linie im Schlossgarten.
 - **Häuser auf der Linie:** Wo die Mittellinie durch ein Haus läuft, entsteht keine Mauer; die Enden reichen
   `thicknessM / 2 + stossM` (1,2 m) ins Haus. Häuser, die die Linie nur berühren, stehen an der Mauer.
@@ -541,12 +545,22 @@ Verlauf in `tools/worldgen/data/<ort>/city_wall.json` (versioniert, von Hand kor
 - **Ausgabe:** `generated/citywall/*.glb` (Abschnitte ≤ 40 m, Tortürme mit Treppe einzeln, Zwingermauern) und
   `citywall_index.json`. Der Assembler hängt sie als Mesh-Vobs `CITYWALL_*` unter `WORLDGEN_CITYWALL`, Kategorie
   `gameplay`, IDs `citywall:<abschnitt>` in `vob_ids.json`.
-- **Leonberg:** Ring 1102 m, davon 880 m Mauer und 222 m unter Häusern, Zwinger 252 m. 14 Türme, 2 Tortürme,
-  4 Pforten, 2 Treppen, 7762 Dreiecke, Kollision höchstens 180 je Datei.
+- **Mauerhäuser** (Entscheidung Projektinhaber 2026-10-03): Häuser auf der Mauerlinie bilden die Mauer, der Ring
+  wirkt von außen geschlossen.
+  - Erkennung: Die Mittellinie läuft mindestens 0,5 m durch den Grundriss (Häuser nach dem Rückbau). `buildings` und
+    `citywall` nutzen dieselbe Funktion (`walls.citywall.wall_houses` bzw. `wall_context`); Override `wallHouse`.
+  - Außenseiten: Grundrisskanten, hinter denen (1,5 m) die Stadt endet und die höchstens 8 m von der Linie liegen.
+  - Dort: Bruchstein über alle Geschosse, kein Fachwerk, keine Auskragung, keine Tür, kein Dachüberstand.
+    Kleine Fenster (0,4 × 0,6 m) nur über der Mauerkrone, darunter Schießscharten (0,25 × 1,0 m, ab dem 1. OG).
+  - Ist die Traufe niedriger als die Mauerkrone (dieselbe Höhe wie die Nachbarmauer), steigt die Außenwand als
+    Schildmauer (0,6 m dick) bis zur Krone, mit Zinnen und eigener Kollisionshülle. Höhere Häuser: die Steinwand
+    geht bis zum Dach.
+  - Gauben nur auf der Stadtseite. Der Wehrgang endet an den Mauerhäusern.
+  - Werte in `building_rules.json` → `cityWall.wallHouse`.
+- **Leonberg:** Ring 1167 m, davon 933 m Mauer und 234 m Mauerhäuser (29 Häuser), Zwinger 252 m. 17 Türme,
+  2 Tortürme, 4 Pforten, 2 Treppen, 8432 Dreiecke, Kollision höchstens 192 je Datei.
 - **Folgt (Entscheidung Projektinhaber):**
-  - Die Häuser auf der Mauerlinie werden Mauerhäuser: Ihre Außenseite wird Stadtmauer, sodass der Ring von außen
-    geschlossen wirkt.
-  - Eigenes Schloss-Modell statt des LoD2-Blocks.
+  - Eigenes Schloss-Modell statt der LoD2-Blöcke (Blender-Python-Skript als einzige Quelle).
   - Gedeckte Wehrgang-Abschnitte und Uhr- bzw. Wappenfelder an den Tortürmen bleiben spätere Optionen.
 
 ### W-F Ausstattung & Vegetation

@@ -121,6 +121,7 @@ def generate(
     streets: StreetIndex | None = None,
     overrides: dict[str, Any] | None = None,
     replace: Callable[[dict[str, Any]], list[dict[str, Any]]] | None = None,
+    wall: Any = None,  # noqa: ANN401  medieval.WallContext: wall houses on the city wall line (W6)
 ) -> BatchResult:
     """Writes ``<id>.glb`` (old town) and ``cell_<i>_<j>.glb`` (surroundings, area "all")."""
     if area not in ("core", "all"):
@@ -200,7 +201,7 @@ def generate(
         if mode == "medieval":
             assert rules is not None
             house = build_house(b, base, (c.x, c.y), rules, streets, (overrides or {}).get(bid),
-                                hearth=bid in hearths)  # fmt: skip
+                                hearth=bid in hearths, wall=wall)  # fmt: skip
             if house.triangles > budget and replace is not None and "derivedFrom" not in b:
                 houses = replace(b)  # rueckbau: smaller half-timbered houses instead
                 if houses:
@@ -225,6 +226,7 @@ def generate(
                 result.styles["dormers"][st.style] += house.dormers
                 result.styles["dormerHouses"][st.style] += int(house.dormers > 0)
                 result.styles["chimneys"][st.style] += house.chimneys
+                result.styles["wallHouse"][str(st.wall_house)] += 1
             if house.triangles > budget:
                 result.over_budget.append((bid, house.triangles))
             if not prims:

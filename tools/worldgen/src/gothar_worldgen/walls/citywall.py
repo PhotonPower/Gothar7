@@ -32,7 +32,14 @@ from shapely.strtree import STRtree
 
 from gothar_worldgen.buildings.gltf import CollisionPart, Primitive, glb_bytes_multi
 from gothar_worldgen.buildings.massing import _Builder
-from gothar_worldgen.buildings.medieval import Opening, Rules, _reveal, _wall, make_frame
+from gothar_worldgen.buildings.medieval import (
+    Opening,
+    Rules,
+    WallContext,
+    _reveal,
+    _wall,
+    make_frame,
+)
 
 Height = Callable[[float, float], float]
 ROLES = ("wall", "roof", "frame", "timber")
@@ -1119,3 +1126,44 @@ def write_index(path: Path, index: dict[str, Any]) -> None:
     text = json.dumps(index, indent=1, ensure_ascii=False) + "\n"
     tmp.write_text(text, encoding="utf-8", newline="\n")
     tmp.replace(path)
+
+
+def footprints_of(buildings: Sequence[dict[str, Any]]) -> list[tuple[str, Polygon]]:
+    """(id, footprint) of every building or LoD2 part."""
+    out = []
+    for b in buildings:
+        for part in b.get("parts") or [b]:
+            fp = part.get("footprint") or []
+            if len(fp) >= 3:
+                poly = Polygon(fp).buffer(0)
+                if isinstance(poly, Polygon) and not poly.is_empty:
+                    out.append((str(b["id"]), poly))
+    return out
+
+
+def wall_houses(course: Course, buildings: Sequence[dict[str, Any]], rules: Rules) -> set[str]:
+    """Houses the wall line runs through (shared by ``buildings`` and ``citywall``)."""
+    line = LineString([*course.ring, course.ring[0]])
+    least = float(rules.get("cityWall", "wallHouse", "onLineM"))
+    return {
+        bid for bid, poly in footprints_of(buildings) if line.intersection(poly).length >= least
+    }
+
+
+def wall_context(course: Course, buildings: Sequence[dict[str, Any]], height: Height,
+                 rules: Rules) -> WallContext:  # fmt: skip
+    """The wall as the house generator needs it: town outline, crown height, wall houses."""
+    footprints = [poly for _, poly in footprints_of(buildings)]
+    plan, prof, spec = plan_wall(course, footprints, height, rules)
+    line = LineString([*course.ring, course.ring[0]])
+    path = plan.path
+
+    def crown(x: float, z: float) -> float:
+        s = (line.project(Point(x, z)) - path.start) % path.length
+        return walk_height(prof, spec, s) + spec.parapet_high
+
+    cw = rules.get("cityWall")
+    m = cw["merlon"]
+    houses = frozenset(wall_houses(course, buildings, rules))
+    merlon = (float(m["w"]), float(m["gap"]), float(m["h"]))
+    return WallContext(Polygon(course.ring), crown, houses, merlon, float(cw["parapetM"]))

@@ -22,8 +22,8 @@ import hashlib
 import json
 import math
 import random
-from collections.abc import Sequence
-from dataclasses import dataclass, field
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +34,7 @@ from shapely.ops import split
 from shapely.strtree import STRtree
 
 from gothar_worldgen.buildings.collision import CollisionResult, collision_for
-from gothar_worldgen.buildings.gltf import Primitive
+from gothar_worldgen.buildings.gltf import CollisionPart, Primitive
 from gothar_worldgen.buildings.massing import (
     Mass,
     _Builder,
@@ -560,6 +560,7 @@ class HouseStyle:
     gate: bool
     age: float = 0.0  # 0 new .. 1 old (aging: ridge sag, leaning posts, irregular windows)
     chimney: str = "stone"  # palette entry of the chimneys
+    wall_house: bool = False  # on the city wall line: the outward sides are the town wall (W6)
 
 
 def assign_style(building: dict[str, Any], override: Any, site: StreetIndex | None,  # noqa: ANN401
@@ -753,6 +754,17 @@ def steepen(mass: Mass, rules: Rules, rng: random.Random) -> Mass | None:
     return Mass(mass.footprint, mass.eave_y, ridge, "saddle", mass.ridge_dir or roof.u)
 
 
+@dataclass(frozen=True)
+class WallContext:
+    """The city wall as the houses see it (W6, built by ``walls.citywall.wall_context``)."""
+
+    ring: Polygon  # the town inside the wall
+    crown: Callable[[float, float], float]  # absolute height of the parapet top near (x, z)
+    houses: frozenset[str]  # ids of the houses on the wall line
+    merlon: tuple[float, float, float] = (1.5, 0.9, 0.8)  # width, gap, height
+    parapet: float = 0.6  # thickness of the screen wall above low eaves
+
+
 @dataclass
 class _Context:
     rules: Rules
@@ -764,6 +776,9 @@ class _Context:
     base_y: float
     max_sag: float = 0.0
     roofs: list[_RoofPart] = field(default_factory=list)
+    wall: WallContext | None = None
+    wall_edges: set[int] = field(default_factory=set)  # outward sides of the current mass
+    screens: list[CollisionPart] = field(default_factory=list)
 
 
 def _top_outline(f: Frame, roof: _Roof, crease: LineString | None, y: float,
@@ -785,6 +800,9 @@ def _top_outline(f: Frame, roof: _Roof, crease: LineString | None, y: float,
 def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float],
             outline: Sequence[tuple[float, float]], usable: float, door: bool) -> None:  # fmt: skip
     rules, st = ctx.rules, ctx.style
+    if edge >= 0 and edge in ctx.wall_edges:
+        _wall_side(ctx, f, s, outline, usable)
+        return
     plan: list[Opening] = []
     if edge >= 0 and st.openings:
         if ctx.front is not None and ctx.front.edge == edge:
@@ -844,6 +862,132 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
         )
 
 
+def _wall_side(ctx: _Context, f: Frame, s: int, outline: Sequence[tuple[float, float]],
+               usable: float) -> None:  # fmt: skip
+    """Outward side of a wall house: rubble stone, small windows above the wall crown only, at
+    most arrow slits below, no timber, no door."""
+    rules = ctx.rules
+    wh = rules.get("cityWall", "wallHouse")
+    assert ctx.wall is not None
+    mid = f.point(f.width / 2, 0.0)
+    crown = ctx.wall.crown(mid[0], mid[2])
+    plan: list[Opening] = []
+    if ctx.style.openings and f.width >= 2.0:
+        if f.y0 >= crown - 0.5:
+            w, h, sill = (float(x) for x in wh["window"])
+            step = float(rules.get("openings", "window", "spacingM"))
+        elif s > 0:
+            w, h = (float(x) for x in wh["slit"])
+            sill = max(0.3, min(1.0, usable - h - 0.4))
+            step = float(wh["slitEveryM"])
+        else:
+            w = 0.0
+        if w > 0 and sill + h <= usable - 0.2:
+            n = max(1, int((f.width - 1.6) // step) + 1)
+            for i in range(n):
+                c = f.width / 2 + (i - (n - 1) / 2) * step
+                if c - w / 2 >= 0.8 and c + w / 2 <= f.width - 0.8:
+                    plan.append(Opening("window", c - w / 2, sill, w, h))
+    _wall(ctx.builders["wall_ground"], f, Polygon(outline), plan)
+    for op in plan:
+        _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
+
+
+def _screen_wall(ctx: _Context, f: Frame, outline: Sequence[tuple[float, float]]) -> None:
+    """Where a wall house is lower than the wall crown: its outward wall rises to the crown as
+    a screen wall with parapet top and merlons, flush with the neighbouring wall."""
+    assert ctx.wall is not None
+    w = ctx.wall
+    a, b = f.point(0.0, 0.0), f.point(f.width, 0.0)
+    va, vb = w.crown(a[0], a[2]) - f.y0, w.crown(b[0], b[2]) - f.y0
+    house = Polygon(outline)
+    low = min(y for _, y in outline)
+    area = Polygon([(0.0, low), (f.width, low), (f.width, vb), (0.0, va)])
+    if not area.is_valid or area.area < 1e-3:
+        return
+    screen = area.difference(house.buffer(1e-6))
+    parts = [
+        g for g in getattr(screen, "geoms", [screen]) if isinstance(g, Polygon) and g.area > 0.05
+    ]
+    if not parts:
+        return
+    t = w.parapet
+    bw = ctx.builders["wall_ground"]
+    n = f.n3()
+    back = (-n[0], 0.0, -n[2])
+    for part in parts:
+        for tri in shapely.constrained_delaunay_triangles(part).geoms:
+            pts = list(tri.exterior.coords)[:3]
+            bw.polygon([f.point(u, v) for u, v in pts], [(u, v) for u, v in pts], n)
+            bw.polygon([f.point(u, v, -t) for u, v in pts], [(u, v) for u, v in pts], back)
+        ring = list(part.exterior.coords)
+        for (ua, wa), (ub, wb) in zip(ring, ring[1:], strict=False):
+            edge = np.array([ub - ua, wb - wa])
+            length = float(np.linalg.norm(edge))
+            if length < 1e-6:
+                continue
+            # Outward in facade coordinates (the part is counter-clockwise after orient).
+            nu, nv = edge[1] / length, -edge[0] / length
+            if Polygon(part).exterior.is_ccw:
+                nu, nv = -nu, -nv
+            want = (f.ax * nu, nv, f.az * nu)
+            bw.polygon([f.point(ua, wa), f.point(ub, wb), f.point(ub, wb, -t), f.point(ua, wa, -t)],
+                       [(0, 0), (length, 0), (length, t), (0, t)], want)  # fmt: skip
+        # Merlons on the crown line where the screen reaches it.
+        mw, gap, mh = w.merlon
+        u = 0.4 + mw / 2
+        top_y = part.bounds[3]
+        while u + mw / 2 <= f.width - 0.4:
+            v = va + (vb - va) * u / f.width
+            if v >= top_y - 0.05 and part.buffer(0.05).contains(Point(u, v - 0.02)):
+                u0, u1 = u - mw / 2, u + mw / 2
+                y0 = min(va + (vb - va) * u0 / f.width, va + (vb - va) * u1 / f.width) - 0.05
+                y1 = v + mh
+                box = [(u0, y0), (u1, y0), (u1, y1), (u0, y1)]
+                bw.polygon([f.point(x, y) for x, y in box], box, n)
+                bw.polygon([f.point(x, y, -t) for x, y in box], box, back)
+                bw.polygon([f.point(u0, y1), f.point(u1, y1), f.point(u1, y1, -t),
+                            f.point(u0, y1, -t)], box, (0.0, 1.0, 0.0))  # fmt: skip
+                for x, sgn in ((u0, -1.0), (u1, 1.0)):
+                    side = [f.point(x, y0), f.point(x, y1), f.point(x, y1, -t), f.point(x, y0, -t)]
+                    bw.polygon(side, box, (f.ax * sgn, 0.0, f.az * sgn))
+            u += mw + gap
+        # Collision: a slab from the lowest screen point up to the parapet top.
+        bot = part.bounds[1]
+        corners = [f.point(0.0, bot), f.point(f.width, bot), f.point(f.width, bot, -t),
+                   f.point(0.0, bot, -t)]  # fmt: skip
+        tops = [f.point(0.0, va), f.point(f.width, vb), f.point(f.width, vb, -t),
+                f.point(0.0, va, -t)]  # fmt: skip
+        pts = np.asarray(corners + tops, dtype=np.float64)
+        origin = np.asarray([bw.ox, bw.oy, bw.oz])
+        ring2 = [(p[0], p[2]) for p in corners]
+        area2 = sum(ring2[i - 1][0] * ring2[i][1] - ring2[i][0] * ring2[i - 1][1]
+                    for i in range(4))  # fmt: skip
+        order = [0, 1, 2, 3] if area2 > 0 else [3, 2, 1, 0]
+        pts = pts[order + [4 + i for i in order]]
+        tris = [(0, 1, 2), (0, 2, 3)]
+        for i in range(4):
+            j = (i + 1) % 4
+            tris += [(i, 4 + i, 4 + j), (i, 4 + j, j)]
+        tris += [(4, 6, 5), (4, 7, 6)]
+        pos = np.round(pts - origin, 4).astype(np.float32)
+        idx = np.asarray(tris, dtype=np.uint32).reshape(-1)
+        ctx.screens.append(CollisionPart("COL_HULL_0", pos, idx))
+
+
+def _outer_edge(a: Sequence[float], b: Sequence[float], normal: Sequence[float],
+                wall: WallContext, rules: Rules) -> bool:  # fmt: skip
+    """A footprint edge that faces out of the town near the wall line."""
+    wh = rules.get("cityWall", "wallHouse")
+    mx, mz = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
+    probe = Point(
+        mx + normal[0] * float(wh["outerProbeM"]), mz + normal[1] * float(wh["outerProbeM"])
+    )
+    return (not wall.ring.contains(probe)) and wall.ring.exterior.distance(Point(mx, mz)) <= float(
+        wh["nearRingM"]
+    )
+
+
 def _age_windows(
     plan: list[Opening], rules: Rules, rng: random.Random, age: float
 ) -> list[Opening]:
@@ -900,13 +1044,20 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
         return
     normals = _outward_normals(ring)
     n = len(ring)
+    ctx.wall_edges = set()
+    if ctx.style.wall_house and ctx.wall is not None:
+        wall = ctx.wall
+        ctx.wall_edges = {
+            i for i in range(n) if _outer_edge(ring[i], ring[(i + 1) % n], normals[i], wall, rules)
+        }
     reach = float(rules.get("jetty", "streetReachM"))
     street = []
     for i in range(n):
         faces = bool(
             streets and streets.faces_street(ring[i], ring[(i + 1) % n], normals[i], reach)
         )
-        street.append(faces or (ctx.front is not None and ctx.front.edge == i))
+        own = faces or (ctx.front is not None and ctx.front.edge == i)
+        street.append(own and i not in ctx.wall_edges)
     sides = rules.get("jetty", "sides")
     jetty = getattr(override, "jetty_m", None)
     use_jetty = ctx.style.jetty or jetty is not None
@@ -915,7 +1066,8 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
         jetty = 0.0
     jetty_edges = [sides == "all" or (sides == "street" and street[i]) for i in range(n)]
     lengths = [math.dist(ring[i], ring[(i + 1) % n]) for i in range(n)]
-    candidates = [i for i in range(n) if street[i]] or list(range(n))
+    inner = [i for i in range(n) if i not in ctx.wall_edges]
+    candidates = [i for i in range(n) if street[i]] or inner or list(range(n))
     door_edge = max(candidates, key=lambda i: lengths[i])
 
     outlines = [offset_ring(ring, [jetty * s if jetty_edges[i] else 0.0 for i in range(n)])
@@ -951,10 +1103,18 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
             else:
                 outline, usable = [(0.0, -below), (f.width, -below), (f.width, h), (0.0, h)], h
             _facade(ctx, f, edge, s, heights, outline, usable, edge == door_edge)
+            if s == len(heights) - 1 and edge >= 0 and edge in ctx.wall_edges:
+                _screen_wall(ctx, f, outline)
         if s > 0:
             _jetty_underside(ctx, [p for p, _ in ring_s], [p for p, _ in outlines[s - 1]], y)
         y += h
-    _add_roof(ctx.builders["roof"], ctx.builders["roof_north"], roof, top_poly, crease, rules)
+    cuts = []  # no roof overhang over the outward sides of a wall house
+    top_n = _outward_normals(top_ring)
+    for k, (a, edge) in enumerate(outlines[-1]):
+        if edge >= 0 and edge in ctx.wall_edges:
+            cuts.append((a, outlines[-1][(k + 1) % len(outlines[-1])][0], top_n[k]))
+    _add_roof(ctx.builders["roof"], ctx.builders["roof_north"], roof, top_poly, crease, rules,
+              cuts)  # fmt: skip
     ctx.roofs.append(_RoofPart(roof, top_poly, Polygon(ring)))
 
 
@@ -986,6 +1146,7 @@ def build_house(
     streets: StreetIndex | None = None,
     override: Any = None,  # noqa: ANN401  BuildingOverride or None
     hearth: bool = False,
+    wall: WallContext | None = None,
 ) -> HouseResult:
     """Half-timbered house of a ``buildings.json`` entry; vertices relative to (origin, base_y).
 
@@ -999,6 +1160,10 @@ def build_house(
         notes.append("frontFacade ignored (building has LoD2 parts)")
         front = None
     style = assign_style(building, override, streets, rules)
+    wanted = getattr(override, "wall_house", None)
+    on_line = wall is not None and building["id"] in wall.houses
+    if wall is not None and (wanted if wanted is not None else on_line) and style.timber:
+        style = replace(style, wall_house=True)
     massing = masses_for_building(building)
     sources = building.get("parts") or [building]
     masses, steepened = [], 0
@@ -1017,7 +1182,7 @@ def build_house(
     for level in range(5):
         builders = {role: _Builder((origin_xz[0], base_y, origin_xz[1])) for role in ROLES}
         rng = _rng(building["id"], getattr(override, "seed", None))
-        ctx = _Context(rules, rng, front, style, level, builders, base_y)
+        ctx = _Context(rules, rng, front, style, level, builders, base_y, wall=wall)
         level_notes: list[str] = []
         for mass, src in zip(masses, sources, strict=False):
             ground = float(src.get("groundY", building.get("groundY", base_y)))
@@ -1031,9 +1196,19 @@ def build_house(
         prims = [Primitive(materials[r], rules.color(materials[r]), builders[r].mesh())
                  for r in ROLES if builders[r].idx]  # fmt: skip
         tris = sum(p.mesh.triangle_count for p in prims)
+        col = collision
+        if ctx.screens:
+            parts = [*collision.parts, *ctx.screens]
+            parts = [
+                CollisionPart(f"COL_HULL_{i}", p.positions, p.indices)
+                if p.name.startswith("COL_HULL_")
+                else p
+                for i, p in enumerate(parts)
+            ]
+            col = CollisionResult(parts, collision.fallback, collision.decomposed)
         result = HouseResult(prims, tris, [*notes, *massing.notes, *level_notes], level, style,
                              steepened, round(ctx.max_sag, 3), dormers, chimneys,
-                             collision)  # fmt: skip
+                             col)  # fmt: skip
         if tris <= budget or not style.timber:
             break
     assert result is not None
@@ -1045,13 +1220,24 @@ def build_house(
 
 def _add_roof(
     b: _Builder, north: _Builder, roof: _Roof, top: Polygon, crease: LineString | None,
-    rules: Rules,
+    rules: Rules, cuts: Sequence[tuple[Any, Any, Any]] = (),
 ) -> None:  # fmt: skip
     over = float(rules.get("roof", "overhangM"))
     thick = float(rules.get("roof", "thicknessM"))
     outer = top.buffer(over, join_style="mitre", mitre_limit=3.0)
     if not isinstance(outer, Polygon):
         outer = top
+    for a, c, nrm in cuts:  # keep the overhang off these edges (half-plane on the inner side)
+        d = np.asarray(c, dtype=float) - np.asarray(a, dtype=float)
+        d /= float(np.linalg.norm(d)) or 1.0
+        nn, big = np.asarray(nrm, dtype=float), 1e4
+        pa, pc = np.asarray(a, dtype=float), np.asarray(c, dtype=float)
+        half = Polygon(
+            [pa - d * big, pc + d * big, pc + d * big - nn * big, pa - d * big - nn * big]
+        )
+        clipped = outer.intersection(half)
+        if isinstance(clipped, Polygon) and not clipped.is_empty:
+            outer = clipped
     pieces = list(split(outer, crease).geoms) if crease is not None else [outer]
     if isinstance(roof, _SagRoof):
         for line in roof.bands(outer, int(rules.data.get("aging", {}).get("roofBands", 4))):
@@ -1522,11 +1708,20 @@ def _roof_features(ctx: _Context, bid: str, override: Any,  # noqa: ANN401
         return 0, len(spots)
     most = int(d["maxPerSide"])
     pref = preferred_side(main.roof, streets, float(rules.get("jetty", "streetReachM")))
+    inside_only = False
+    if ctx.style.wall_house and ctx.wall is not None:  # no dormers on the town wall side
+        um = (main.roof.umin + main.roof.umax) / 2
+        side_in = [s for s in (1, -1) if ctx.wall.ring.contains(
+            Point(*_plan(main.roof, um, main.roof.mid + s * (main.roof.half + 3.0))))]  # fmt: skip
+        if len(side_in) == 1:
+            pref, inside_only = side_in[0], True
     if wanted is not None:
         counts = {pref: min(wanted, most), -pref: min(max(0, wanted - most), most)}
     else:
         per_side = min(most, math.ceil(main.roof.length / float(d["perEaveM"])))
         counts = {pref: per_side} if ch.one_side else {pref: per_side, -pref: per_side}
+    if inside_only:
+        counts = {pref: counts.get(pref, 0) + counts.get(-pref, 0)}
     rects = [chimney_rect(main.roof, u, v, rules) for u, v in spots]
     dormers = place_dormers(main, {k: v for k, v in counts.items() if v > 0}, ch.kind, ch.w,
                             ch.pitch, ch.hatch, rects, others, rules)  # fmt: skip

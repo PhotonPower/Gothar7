@@ -278,6 +278,7 @@ function openEditor(edge, cand) {
   form.age.value = ed.base.age ?? "";
   form.dormers.value = ed.base.dormers ?? "";
   form.chimneys.value = ed.base.chimneys ?? "";
+  form.wallHouse.value = ed.base.wallHouse === undefined ? "" : String(ed.base.wallHouse);
   $("#vocab-status").textContent = state.vocab.status ? `Auswahllisten: ${state.vocab.status}` : "";
   $("#e-title").textContent = `${d.id} · Kante ${edge.edge} (${ed.W.toFixed(1)} × ${ed.H.toFixed(1)} m)`;
   if (!(f && f.edge !== edge.edge)) msg("", "");
@@ -474,6 +475,7 @@ function buildOverride() {
   set("rueckbau", form.rueckbau.value);
   set("age", form.age.value === "" ? undefined : Number(form.age.value));
   for (const key of ["dormers", "chimneys"]) set(key, form[key].value === "" ? undefined : Number(form[key].value));
+  set("wallHouse", form.wallHouse.value === "" ? undefined : form.wallHouse.value === "true");
   const fl = floors();
   const openings = ed.openings
     .map((op) => {
