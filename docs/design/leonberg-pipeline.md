@@ -266,6 +266,36 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   - Alterung: Durchhang, Schiefstand (leicht!), Moos, Ausbesserungen – per Seed variiert
 - **Modularer Baukasten + Trim-Sheets** (Balken, Putz, Stein, Holz, Dach) → einheitlicher Look, wenige Texturen, gute Performance.
 - Jedes Haus bleibt in Blender von Hand nachbearbeitbar; erneutes Generieren überschreibt nur Häuser ohne `"locked": true`.
+- **Umgesetzt (W3 Teil 1, Klötzchen):** `gothar-worldgen buildings <ort> [--area core|all]`
+  - **Geometrie-Kern** `buildings/massing.py`, reines Python:
+    - Wände werden aus dem Grundriss bis zur Dachfläche extrudiert; Giebel entstehen von selbst.
+    - Dächer sind Höhenfunktionen über beliebigen Polygonen: flach; Satteldach mit First entlang `ridgeDir`
+      durch die Grundrissmitte (der Grundriss wird an der Firstlinie geteilt und trianguliert); Pultdach.
+    - Walm- und Zeltdach werden zum Satteldach. LoD2 `mixed`/`other` wird zum Satteldach, wenn `ridgeDir`
+      vorhanden ist, sonst flach auf halber Höhe.
+    - Gebäude mit LoD2-Teilen werden Teil für Teil gebaut.
+    - Leonberg-Kern: 905 Häuser, 23 271 Dreiecke, 1,1 s. Ersatzformen: mixed→saddle 273, other→flat 44,
+      mixed→flat 33, other→saddle 13, hip/tent→saddle 5.
+  - **Sockel:** Er beginnt beim niedrigeren Wert aus LoD2-`groundY` und dem tiefsten Heightmap-Sample unter dem
+    Grundriss, minus 0,3 m. Der Bericht nennt Häuser, deren LoD2-Boden mehr als 0,5 m über dem DGM liegt
+    (Leonberg: 27, höchstens 1,7 m).
+  - **Ausgabe:** Je Altstadthaus eine `.glb` in `assets/source/worlds/<ort>/generated/buildings/`, nicht versioniert.
+    - Ursprung = Grundriss-Schwerpunkt auf Sockelhöhe; der Vob setzt die Lage.
+    - Dazu `generated/buildings_index.json` mit Mesh-Pfad, Lage, Dreiecken und DGM-Bereich.
+    - **Dateinamen** sind kleingeschrieben und tragen einen Hash der ID (`debw_…_1a2b3c4d.glb`). LoD2-IDs
+      unterscheiden sich teils nur in Groß-/Kleinschreibung, was NTFS und der Cooker als gleiche Datei werten.
+    - Gleiche Geometrie teilt sich eine Datei. Veraltete Dateien werden entfernt.
+  - **Umland** (`--area all`): je 64-m-Zelle eine zusammengefasste `.glb`, bis Distanz-Culling und Batching da sind.
+    Engine-Messung 2026-10-03: 905 Einzel-Vobs 3,5 ms, 5400 Einzel-Vobs 79 ms.
+  - **Overrides:** `locked` behält die vorhandene Datei; `keep: false` lässt das Haus weg.
+  - **glTF-Writer** `buildings/gltf.py`: Grenzen siehe Worldgen-README. Die Dateien kocht `g7-cook` ohne Warnung;
+    ein Test kocht eine erzeugte Datei, sofern `g7-cook` gebaut ist.
+  - **Blender-Add-on** `tools/worldgen/blender/gothar_buildings` (nur für Handarbeit; Blenders Python hat kein
+    shapely, der Generator läuft außerhalb):
+    - „Gebäude importieren“ holt die `.glb` nach ID oder im Umkreis des 3D-Cursors an ihre Weltposition.
+    - „Auswahl zurückschreiben“ exportiert an denselben Pfad (Ursprung und Achsen wie erzeugt) und setzt
+      **`locked: true`** im Override.
+    - Ein Headless-Rundlauf mit Blender 4.5 ist getestet, wo Blender installiert ist.
 - **Gebäude auf dem Gelände (W3 beachten):** Das DGM1 hat am Hang **Stufen entlang von Häuserreihen**. Es sind in den
   Hang gebaute Häuser mit Geländesprung an der Hauswand; aufgefallen ist das in der Engine beim W2-Export (2026-10-03).
   - Insgesamt liegen Steilstellen nicht bevorzugt an Grundrissen (> 45°: 18,6 % nahe Grundrissen bei 35,7 %
@@ -385,6 +415,32 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
 
 ### W-G Welt-Assembler & Wegnetz-Vorschlag
 - Terrain + Gebäude + Straßen + Ausstattung → `.g7world` (Zellen), Kollision, Validierung, Credits.
+- **Umgesetzt (W3 Teil 1):** `gothar-worldgen assemble <ort>` erzeugt `assets/source/worlds/<ort>/<ort>.g7world`
+  (versioniert) aus dem `terrain`-Block von `<ort>_terrain.g7world` und `buildings_index.json`.
+  - **Aufbau:** Wurzelgruppe `WORLDGEN_BUILDINGS` (`empty`), darunter je 64-m-Zelle eine Gruppe `CELL_<i>_<j>`
+    (negative Indizes als `M`) und darin je Gebäude ein `mesh`-Vob `BLD_<lod2-id>`. Die Gruppen liegen im
+    Ursprung, `pos` ist also auch absolut.
+  - **Startpunkte** `START_MARKTPLATZ` und `START_UEBERSICHT` (world.md); die Füße stehen auf der Heightmap.
+  - Leonberg: 1029 Vobs (1 + 121 Gruppen + 905 Häuser + 2 Startpunkte), Engine ohne Warnungen.
+  - **VobIds** (ADR 0005): `tools/worldgen/data/<ort>/vob_ids.json` (versioniert) ordnet jedem Schlüssel
+    (`building:<id>`, `group:cell_…`, `start:<name>`) eine feste ID zu.
+    - Schlüssel werden nie gelöscht, IDs nie wiederverwendet.
+    - Neue IDs liegen über dem größten Wert aus `nextVobId` der Welt, `nextVobId` der Datei und der höchsten
+      vorhandenen ID. So gibt es keine Kollision mit IDs, die der Editor vergeben hat.
+    - Ein erneuter Lauf mit gleichen Daten ändert nichts.
+- **Regel für Handarbeit aus dem Editor (M4):** Der Assembler überschreibt keine Editor-Arbeit.
+  1. Er **besitzt nur die Vobs, deren ID in `vob_ids.json` steht**. Alle anderen Vobs (im Editor angelegt), ihre
+     Eltern-Verknüpfungen und weitere Schlüssel der Weltdatei bleiben unverändert.
+  2. Eigene Gruppen- und Gebäude-Vobs spiegeln die Daten und werden bei jedem Lauf neu geschrieben. Ausnahme:
+     Gebäude mit `"locked": true` im Override. Deren Vob bleibt genau so, wie er in der Datei steht, und ihre
+     `.glb` wird nicht neu erzeugt.
+     Wer ein Haus im Editor verschieben oder ersetzen will, setzt also `locked` (Annotations-Oberfläche,
+     Blender-Add-on oder Datei). Soll ein erzeugtes Haus ganz weg, gilt `keep: false`.
+  3. Startpunkte werden **einmal** angelegt und danach nie neu geschrieben. Ein im Editor gelöschter Startpunkt
+     wird nicht wieder angelegt.
+  4. Eigene Vobs, deren Quelle verschwunden ist, werden entfernt; ihre ID bleibt in `vob_ids.json` und wird nie
+     wieder vergeben. Eine eigene Gruppe, an der noch Editor-Vobs hängen, bleibt erhalten.
+  5. Der `terrain`-Block wird jedes Mal aus `<ort>_terrain.g7world` übernommen.
 - **Wegnetz-Vorschlag** aus Straßenachsen: Wegpunkte an Kreuzungen, in festen Abständen und vor
   Haustüren (`WP_LEO_<STRASSE>_<NR>`); Freepoints auf Plätzen. Der Designer bessert im Editor nach.
 
