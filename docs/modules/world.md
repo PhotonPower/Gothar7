@@ -102,8 +102,9 @@ daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vo
   `.g7mesh`, wenn vorhanden). `light`-Vobs: `components.light` mit `color` (linear), `range` (> 0), `intensity` (Vorgabe 3),
   `flicker` (0–1, Vorgabe 0).
 - Weitere Vob-Typen (M4, Erweiterung von v1 nach dem Muster `components`, Abschnitt „Vob-Typen“ unten).
-- `waynet`: Wegnetz, verbindlich ab 2026-10-04 (Abschnitt „Wegnetz“ unten); bis M8 Teil A wird es unverändert
-  gelesen und zurückgeschrieben. `zones` ebenso bis zu ihrem System. Unbekannte Schlüssel werden ignoriert (nicht
+- `waynet`: Wegnetz, verbindlich ab 2026-10-04 (Abschnitt „Wegnetz“ unten); seit M8 Teil A gelesen und geprüft
+  (`WorldFile::waynet`, `world::WaynetData`, Fehler mit Eintrag) und sortiert, ein Eintrag je Zeile geschrieben.
+  `zones` wird bis zu seinem System unverändert gelesen und zurückgeschrieben. Unbekannte Schlüssel werden ignoriert (nicht
   zurückgeschrieben).
 - **Schreiben** ist stabil: Kopf-Schlüssel je eine Zeile, dann **ein Vob pro Zeile** nach `id` sortiert, Zahlen auf
   1e-5 gerundet – gleiche Welt, gleiche Bytes; Laden und Speichern ändert nichts.
