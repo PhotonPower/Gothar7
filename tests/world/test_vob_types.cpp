@@ -4,6 +4,7 @@
 #include <g7/world/StartPoints.hpp>
 #include <g7/world/Triggers.hpp>
 #include <g7/world/WorldFile.hpp>
+#include <g7/world/WorldScene.hpp>
 
 #include <doctest/doctest.h>
 

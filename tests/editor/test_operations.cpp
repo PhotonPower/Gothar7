@@ -5,6 +5,7 @@
 #include <g7/runtime/Engine.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/WorldFile.hpp>
+#include <g7/world/WorldScene.hpp>
 
 #include <doctest/doctest.h>
 
