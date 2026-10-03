@@ -40,7 +40,7 @@ Armour kits (F3g) keep the colour textures of their pieces and may rename and de
     brim = 0.04                         # own brim around the rim (kettle helmet)
     bulge = 0.02                        # domed plate: further out towards the middle
     rim = 0.01                          # plate edge: the border folded inwards
-    flatten = 0.8                       # neutral plate front (no anatomic shape), 0..1
+    flatten = 1.0                       # neutral plate front (no anatomic shape), 0..1
     bones = ["spine_02", "spine_03"]    # weights only on these bones (stiff plates)
     dome = true                         # with from = "basemesh": smooth dome fitted to the skull
     heads = "head_f_*"                  # these head parts fit under it (dome grows, others bulge)

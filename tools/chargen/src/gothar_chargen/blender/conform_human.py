@@ -639,6 +639,9 @@ def _derive(
     print(f"[chargen] derived {d.name}: cut {len(drop)} vertices, offset {d.offset} m")
 
 
+FLATTEN_BUMP = 0.01  # metres in front of the first fit that count as a bump, not torso
+
+
 def _flatten_front(obj: bpy.types.Object, amount: float) -> None:
     """Neutral plate: the front (-Y) is pulled towards a smooth quadratic envelope over x and z
     that encloses the protruding parts (e.g. the breasts) – a cuirass instead of an anatomic
@@ -652,6 +655,9 @@ def _flatten_front(obj: bpy.types.Object, amount: float) -> None:
     x, z = co[sel, 0], co[sel, 2]
     basis = np.stack([np.ones_like(x), x, z, x * x, z * z, x * z], axis=1)
     coef = np.linalg.lstsq(basis, co[sel, 1], rcond=None)[0]
+    # second pass without the points well in front of the first fit (breasts): the torso alone
+    torso = (co[sel, 1] - basis @ coef) > -FLATTEN_BUMP
+    coef = np.linalg.lstsq(basis[torso], co[sel, 1][torso], rcond=None)[0]
     xa, za = co[:, 0], co[:, 2]
     fit = np.stack([np.ones_like(xa), xa, za, xa * xa, za * za, xa * za], axis=1) @ coef
     ahead = co[sel, 1] - fit[sel]  # negative: in front of the fit
