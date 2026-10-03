@@ -230,7 +230,15 @@ Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, 
   Kopfes (beide aus derselben MPFB-Topologie, Paarung über die Randkante; Hals und Kragen folgen weich bis 5 cm
   darunter) und verwendet die **Haut-Textur des Kopfes auch für den Körper** (eine Haut je Figur, gleiche UV).
 - **Haare/Bärte:** eigene Meshes, an Köpfe angepasst.
-- **Kleidung/Rüstung:** ersetzt den Körper (Mesh-Tausch); je Gilde/Stand eine Linie (Lumpen → leicht → mittel → schwer).
+- **Kleidung/Rüstung:** je Gilde/Stand eine Linie (Lumpen → leicht → mittel → schwer). **Kleidungs-Kit (F3e):**
+  jedes Kleidungsstück ist ein eigenes Teil, je Statur angepasst – Rezepte `humans/cloth_<m|f>_<statur>` mit
+  `fit_to = "body_<…>"` (Makros, Haut, Augen vom Grundkörper) und `parts = ["cloth"]` → `parts/cloth_<…>/<stück>.glb`
+  (je ~1,5 k Dreiecke). Das Figur-Manifest listet die Stücke unter `[parts] cloth = [...]` (Rolle `cloth_<stück>`,
+  Knoten `cloth_<stück>_lod<n>`). `assemble` löscht die Körperflächen darunter (Strahl entlang der Normalen trifft das
+  Stück innerhalb 3 cm von innen, oder der Körper ragt bis 1,5 cm heraus; Löcher in zerrissener Kleidung und ein
+  5-cm-Streifen an der Halsnaht bleiben). Kit-Texturen sind **neutral grau** (halber Kontrast, Helligkeit 0,55) und
+  von allen Staturen geteilt; die Farbe gibt die Palette der Figur als glTF `baseColorFactor`. Bekannte Grenze:
+  MPFB-Kleidung faltet sich in der T-Pose an den Schulterblättern (auch beim Bauern) – in Animation prüfen.
 - **Texturen:** Trim-Sheets und Farbvarianten statt Unikat-Texturen; Stil passend zu den Häusern (W5).
 - **Budget:** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k (mit Bart bis ~5,6 k), höchstens 20 k je Figur, Stufen
   `_lod1`/`_lod2` (Vertrag §2.2). Lose Teile (Haare, Bärte) werden ohne Randschutz reduziert; nur die Nahtränder von

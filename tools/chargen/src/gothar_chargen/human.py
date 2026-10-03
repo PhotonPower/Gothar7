@@ -7,6 +7,14 @@ Format (version 1)::
     parts = ["body", "head", "hair"]    # which parts to export (default: all); e.g. a base body
                                         # recipe exports ["body"], a head recipe ["head", "hair"]
 
+A clothing kit recipe exports every garment as its own part, fitted to one base body::
+
+    version = 1
+    fit_to = "body_m_average"           # macros, skin and eyes from humans/body_m_average
+    parts = ["cloth"]                   # -> parts/<name>/<garment>.glb (figure: [parts] cloth)
+    [assets]
+    clothes = ["clothes/toigo_fisherman_sweater/toigo_fisherman_sweater.mhclo"]
+
     [macro]                             # MPFB macro values, 0..1
     gender = 1.0
     age = 0.75
@@ -45,7 +53,8 @@ FORMAT_VERSION = 1
 SUFFIX = ".human.toml"
 MACROS = ("gender", "age", "muscle", "weight", "proportions", "height", "cupsize", "firmness")
 RACES = ("african", "asian", "caucasian")
-PARTS = ("body", "head", "hair")
+PARTS = ("body", "head", "hair", "cloth")
+DEFAULT_PARTS = ("body", "head", "hair")
 _TARGET = re.compile(r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$")
 _COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 _NAME = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
@@ -72,8 +81,9 @@ class Human:
     clothes: tuple[str, ...] = ()
     tints: dict[str, str] = field(default_factory=dict)
     triangles: int = 15_000
-    parts: tuple[str, ...] = PARTS
+    parts: tuple[str, ...] = DEFAULT_PARTS
     shape: dict[str, float] = field(default_factory=dict)  # MPFB target -> value
+    fit_to: str | None = None  # clothing kits: the base body recipe they are fitted to
 
     def assets(self) -> list[tuple[str, str]]:
         """(MPFB asset type, path) for every mhclo asset, in loading order."""
@@ -107,14 +117,28 @@ def _asset_path(value: object, where: str, ext: str) -> str:
     return value
 
 
-def parse_human(data: dict, name: str) -> Human:
+def parse_human(data: dict, name: str, base: Human | None = None) -> Human:
+    """`base` is the recipe named by ``fit_to`` (clothing kits inherit its macros, skin, eyes)."""
     if not _NAME.match(name):
         raise HumanError(f"name '{name}' must be lower_snake_case")
     if data.get("version") != FORMAT_VERSION:
         raise HumanError(f"version must be {FORMAT_VERSION}, got {data.get('version')!r}")
-    unknown = set(data) - {"version", "triangles", "parts", "macro", "assets", "tint", "shape"}
+    allowed_keys = {"version", "triangles", "parts", "macro", "assets", "tint", "shape", "fit_to"}
+    unknown = set(data) - allowed_keys
     if unknown:
         raise HumanError(f"unknown keys: {sorted(unknown)}")
+    fit_to = data.get("fit_to")
+    if fit_to is not None:
+        if base is None or base.name != fit_to:
+            raise HumanError(f"fit_to '{fit_to}': base recipe not given")
+        if "macro" in data or "shape" in data:
+            raise HumanError("a recipe with fit_to takes [macro] and [shape] from its base")
+        data = {
+            **data,
+            "macro": {**base.macro, "race": base.race},
+            "shape": base.shape,
+            "assets": {"skin": base.skin, "eyes": base.eyes, **data.get("assets", {})},
+        }
 
     macro_raw = dict(data.get("macro", {}))
     race_raw = macro_raw.pop("race", {"caucasian": 1.0})
@@ -153,9 +177,13 @@ def parse_human(data: dict, name: str) -> Human:
         if not isinstance(color, str) or not _COLOR.match(color):
             raise HumanError(f"tint '{key}': expected '#rrggbb', got {color!r}")
 
-    parts = data.get("parts", list(PARTS))
+    parts = data.get("parts", list(DEFAULT_PARTS))
     if not isinstance(parts, list) or not parts or set(parts) - set(PARTS):
         raise HumanError(f"parts must be a non-empty list from {PARTS}")
+    if "cloth" in parts and "body" in parts:
+        raise HumanError("parts: 'cloth' exports garments on their own, not together with 'body'")
+    if "cloth" in parts and not assets_clothes(data):
+        raise HumanError("parts: 'cloth' needs clothes in [assets]")
     shape = data.get("shape", {})
     if not isinstance(shape, dict):
         raise HumanError("[shape] must be a table")
@@ -190,12 +218,18 @@ def parse_human(data: dict, name: str) -> Human:
         triangles=triangles,
         parts=tuple(p for p in PARTS if p in parts),
         shape={k: float(v) for k, v in shape.items()},
+        fit_to=fit_to,
     )
     known = {"skin"} | {asset_stem(p) for _, p in human.assets()}
     unknown_tints = set(human.tints) - known
     if unknown_tints:
         raise HumanError(f"tint for assets not in this recipe: {sorted(unknown_tints)}")
     return human
+
+
+def assets_clothes(data: dict) -> list:
+    assets = data.get("assets", {})
+    return assets.get("clothes", []) if isinstance(assets, dict) else []
 
 
 def load_human(path: Path) -> Human:
@@ -205,4 +239,10 @@ def load_human(path: Path) -> Human:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as e:
         raise HumanError(str(e)) from e
-    return parse_human(data, path.name[: -len(SUFFIX)])
+    base = None
+    if isinstance(data.get("fit_to"), str):
+        base_path = path.with_name(data["fit_to"] + SUFFIX)
+        if not base_path.is_file():
+            raise HumanError(f"fit_to: {base_path.name} not found next to {path.name}")
+        base = load_human(base_path)
+    return parse_human(data, path.name[: -len(SUFFIX)], base)

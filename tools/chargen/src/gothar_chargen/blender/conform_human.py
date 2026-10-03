@@ -93,6 +93,9 @@ MAIN_CHILD = {
     "foot_r": "ball_r",
 }
 HEAD_SPLIT = 0.5
+NEUTRAL_MEAN = 0.55  # mean luminance of neutral kit textures (palette colours multiply it)
+NEUTRAL_CONTRAST = 0.5  # pattern contrast kept in neutral kit textures
+KIT_TEXTURE_MAX = 512  # kit garments (contract allows 1024 for cloth; repo size)
 FACE_ROLES = ("eyes", "eyebrows", "eyelashes", "teeth", "tongue", "beard")  # joined into head.glb
 # fixed budgets for heavy face assets (MPFB teeth ~7k triangles, mostly hidden; beards vary)
 FIXED_TRIANGLES = {"teeth": 600, "beard": 1000}
@@ -419,6 +422,7 @@ def _prepare_image(
     keep_alpha: bool,
     tmp: Path,
     normal: bool = False,
+    neutral: bool = False,
 ) -> bpy.types.Image:
     source_path = Path(bpy.path.abspath(src.filepath)).resolve()
     if not source_path.is_file():
@@ -436,6 +440,14 @@ def _prepare_image(
         px = np.array(img.pixels[:], dtype=np.float32).reshape(-1, 4)
         rgb = [int(tint[i : i + 2], 16) / 255.0 for i in (1, 3, 5)]
         px[:, :3] *= rgb
+        img.pixels.foreach_set(px.ravel())
+    if neutral:  # kit garments: grey with headroom, the figure palette gives the colour
+        px = np.array(img.pixels[:], dtype=np.float32).reshape(-1, 4)
+        lum = px[:, :3] @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+        mean = max(float(lum.mean()), 1e-3)
+        lum = mean + NEUTRAL_CONTRAST * (lum - mean)  # softer patterns, colour from the palette
+        lum *= NEUTRAL_MEAN / mean
+        px[:, :3] = np.clip(lum, 0.0, 1.0)[:, None]
         img.pixels.foreach_set(px.ravel())
     ext = "png" if keep_alpha or normal else "jpg"
     path = tmp / (name.replace("/", "__") + "." + ext)
@@ -460,18 +472,25 @@ def _rebuild_material(obj: bpy.types.Object, role: str, stem: str, human: Human,
     bsdf.inputs["Roughness"].default_value = 0.85
     tint = human.tints.get(stem) or (human.tints.get("skin") if role == "skin" else None)
     category = CATEGORY[role]
-    suffix = f"_{tint[1:].lower()}" if tint else ""
+    neutral = role == "cloth" and "cloth" in human.parts
+    suffix = "_neutral" if neutral else f"_{tint[1:].lower()}" if tint else ""
     mask = role in MASK_ROLES
     if diffuse is not None:
         image = _prepare_image(
-            diffuse, f"{category}/{stem}{suffix}", TEXTURE_MAX[role], tint, mask, tmp
+            diffuse,
+            f"{category}/{stem}{suffix}",
+            KIT_TEXTURE_MAX if neutral else TEXTURE_MAX[role],
+            tint,
+            mask,
+            tmp,
+            neutral=neutral,
         )
         tex = nodes.new("ShaderNodeTexImage")
         tex.image = image
         links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
         if mask:
             links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
-        if normal is not None:
+        if normal is not None and not neutral:  # kit garments: plain cloth, no normal maps
             nimg = _prepare_image(
                 normal, f"{category}/{stem}_normal", min(image.size), None, False, tmp, normal=True
             )
@@ -547,6 +566,8 @@ def main() -> None:
     def part_of(o: bpy.types.Object) -> str:
         if o is head or role_of[o.name] in FACE_ROLES:
             return "head"
+        if role_of[o.name] == "cloth" and "cloth" in human.parts:
+            return "cloth"  # clothing kit: every garment becomes its own part
         return PART_OF_ROLE[role_of[o.name]]
 
     for o in [o for o in bpy.data.objects if o.type == "MESH"]:
@@ -565,8 +586,12 @@ def main() -> None:
     reducible = [o for o in objects if o not in fixed]
     budget = human.triangles - sum(_triangles(o) for o in fixed)
     ratio = min(1.0, budget / max(1, sum(_triangles(o) for o in reducible)))
+    garments = [o for o in reducible if role_of[o.name] == "cloth"]
+    per_garment = human.triangles / max(1, len(garments))
     for o in reducible:
-        if role_of[o.name] == "hair":
+        if "cloth" in human.parts and o in garments:  # kit: each garment its own budget
+            _decimate(o, min(1.0, per_garment / max(1, _triangles(o))), keep_borders=False)
+        elif role_of[o.name] == "hair":
             _decimate(o, min(1.0, ratio * 1.4))
         elif o is head:
             _decimate(o, max(ratio, SKIN_MIN_RATIO))
@@ -601,6 +626,10 @@ def main() -> None:
         if hair and "hair" in human.parts:
             parts["hair"] = _join(hair[0], hair[1:])
             parts["hair"].name = "hair"
+        if "cloth" in human.parts:
+            for o in clothes:
+                o.name = stem_of[o.name]
+                parts[o.name] = o  # parts/<kit>/<garment>.glb
         for role, obj in parts.items():
             for other in parts.values():
                 other.hide_set(other is not obj)

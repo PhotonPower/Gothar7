@@ -232,3 +232,60 @@ def test_part_files_skip_figure_checks(rig, reference):
     report = validate_gltf(Gltf.load(head), rig, reference, path=head)
     assert report.ok(strict=True), report.issues
     assert "height" not in report.stats
+
+
+# --- clothing kit (F3e) ---------------------------------------------------------------------
+
+
+def test_manifest_with_garments():
+    from gothar_chargen.figure import cloth_role
+
+    fig = parse_figure(
+        {
+            "version": 1,
+            "parts": {
+                "body": "parts/body_m_average/body.glb",
+                "head": "parts/head_m_mid/head.glb",
+                "cloth": [
+                    "parts/cloth_m_average/elvs_crude_t-shirt_male.glb",
+                    "parts/cloth_m_average/culturalibre_male_boots.glb",
+                ],
+            },
+        },
+        "npc",
+    )
+    assert cloth_role("parts/x/elvs_crude_t-shirt_male.glb") == "cloth_elvs_crude_t_shirt_male"
+    assert set(fig.parts) == {
+        "body",
+        "head",
+        "cloth_elvs_crude_t_shirt_male",
+        "cloth_culturalibre_male_boots",
+    }
+    for bad, message in (
+        ({"cloth": "parts/x/a.glb"}, "list"),
+        ({"cloth": ["parts/x/a.glb", "parts/y/a.glb"]}, "twice"),
+        ({"cloth": ["/abs/a.glb"]}, "relative"),
+    ):
+        data = {"version": 1, "parts": {"body": "b.glb", "head": "h.glb", **bad}}
+        with pytest.raises(FigureError, match=message):
+            parse_figure(data, "npc")
+
+
+@pytest.mark.parametrize("name", ["peasant_woman", "laborer", "guard", "old_man"])
+def test_test_npcs(name, rig, reference):
+    path = REPO_ROOT / f"assets/source/characters/figures/{name}.glb"
+    g = Gltf.load(path)
+    report = validate_gltf(g, rig, reference, path=path)
+    assert report.ok(strict=True), report.issues
+    nodes = {n.get("name", "") for n in g.doc["nodes"]}
+    assert any(n.startswith("cloth_") and n.endswith("_lod0") for n in nodes)
+    # palette colours stay a factor: the kit textures are shared and neutral
+    factors = [
+        m["pbrMetallicRoughness"].get("baseColorFactor")
+        for m in g.doc["materials"]
+        if m["name"].startswith("cloth_")
+        and "baseColorTexture" in m.get("pbrMetallicRoughness", {})
+    ]
+    assert any(f is not None and f[:3] != [1, 1, 1] for f in factors)
+    uris = {i["uri"] for i in g.doc.get("images", [])}
+    assert any(u.endswith("_neutral.jpg") for u in uris)
