@@ -59,7 +59,8 @@ TEST_CASE("WorldFile: reads vobs, components and the id counter")
     CHECK(world.vobs[1].mesh == "meshes/campfire.g7mesh");
     CHECK(world.vobs[2].transform.scale == Vec3(2.0f));
     CHECK(world.vobs[2].transform.rotation.y == doctest::Approx(0.7071068f));
-    CHECK_FALSE(world.waynetJson.empty());
+    REQUIRE(world.waynet.has_value());
+    CHECK(world.waynet->points.size() == 1);
     CHECK_FALSE(world.zonesJson.empty());
 }
 
@@ -73,7 +74,8 @@ TEST_CASE("WorldFile: writing is stable and round-trips")
     CHECK(writeWorldFile(parse(text)) == text);
     CHECK(text.ends_with("\n"));
     // Waynet and zones come back unchanged.
-    CHECK(parse(text).waynetJson == world.waynetJson);
+    REQUIRE(parse(text).waynet.has_value());
+    CHECK(parse(text).waynet->points[0].name == "WP_CAMP");
     CHECK(parse(text).zonesJson == world.zonesJson);
 }
 
@@ -176,4 +178,78 @@ TEST_CASE("WorldFile: one vob per line for readable diffs")
     }
     CHECK(vobLines == 3);
     CHECK(writeWorldFile(WorldFile{}).find("\"vobs\": []") != std::string::npos);
+}
+
+TEST_CASE("WorldFile: waynet by name - points, freepoints, edges, owner, stable lines")
+{
+    const char* text = R"({ "version": 1, "vobs": [],
+  "waynet": {
+    "points": [ { "name": "WP_MARKT_02", "pos": [20, 3, -41.5], "owner": "worldgen" },
+                { "name": "WP_MARKT_01", "pos": [12.5, 3.1, -40], "dir": [0, 0.5, 2], "owner": "worldgen" },
+                { "name": "WP_KIRCHE_TUER", "pos": [30.2, 4, -38] } ],
+    "edges": [ ["WP_MARKT_02", "WP_MARKT_01", "worldgen"], ["WP_MARKT_02", "WP_KIRCHE_TUER"],
+               ["WP_MARKT_01", "WP_MARKT_02"] ],
+    "freepoints": [ { "name": "FP_SIT_BRUNNEN_01", "pos": [1.2, 3, 0.8], "dir": [0, 0, -1], "owner": "worldgen" } ]
+  } })";
+    const WorldFile world = parse(text);
+    REQUIRE(world.waynet.has_value());
+    const WaynetData& w = *world.waynet;
+    // Sorted by name; dir made horizontal and unit length.
+    REQUIRE(w.points.size() == 3);
+    CHECK(w.points[0].name == "WP_KIRCHE_TUER");
+    CHECK_FALSE(w.points[0].generated);
+    CHECK(w.points[1].name == "WP_MARKT_01");
+    CHECK(w.points[1].generated);
+    REQUIRE(w.points[1].dir.has_value());
+    CHECK(w.points[1].dir->y == 0.0f);
+    CHECK(w.points[1].dir->z == doctest::Approx(1.0f));
+    CHECK(w.findPoint("WP_MARKT_02") != nullptr);
+    CHECK(w.findFreepoint("FP_SIT_BRUNNEN_01") != nullptr);
+    CHECK(freepointType("FP_SIT_BRUNNEN_01") == "SIT");
+    CHECK(freepointType("WP_MARKT_01").empty());
+    // Edges: the smaller name first, duplicates merged (hand-made wins over generated).
+    REQUIRE(w.edges.size() == 2);
+    CHECK(w.edges[0].a == "WP_KIRCHE_TUER");
+    CHECK(w.edges[0].b == "WP_MARKT_02");
+    CHECK(w.edges[1].a == "WP_MARKT_01");
+    CHECK_FALSE(w.edges[1].generated);
+
+    // One entry per line; the same world gives the same bytes.
+    const std::string out = writeWorldFile(world);
+    CHECK(
+        out.find(
+            R"(      {"name":"WP_MARKT_01","pos":[12.5,3.1,-40.0],"dir":[0.0,0.0,1.0],"owner":"worldgen"})") !=
+        std::string::npos);
+    CHECK(out.find(R"(      ["WP_KIRCHE_TUER","WP_MARKT_02"])") != std::string::npos);
+    CHECK(out.find(R"(      {"name":"FP_SIT_BRUNNEN_01")") != std::string::npos);
+    CHECK(writeWorldFile(parse(out)) == out);
+    // Without a waynet block nothing is written.
+    CHECK(writeWorldFile(parse(R"({ "version": 1, "vobs": [] })")).find("waynet") == std::string::npos);
+}
+
+TEST_CASE("WorldFile: waynet errors name the entry")
+{
+    const auto bad = [](const char* waynet, const char* expected)
+    {
+        const std::string text = std::string(R"({ "version": 1, "vobs": [], "waynet": )") + waynet + "}";
+        const std::string message = errorOf(text);
+        CHECK_MESSAGE(message.find(expected) != std::string::npos, message);
+    };
+    bad(R"({ "points": [ { "name": "WP_A" } ] })", "waynet.points[0]: needs 'pos'");
+    bad(R"({ "points": [ { "name": "wp_a", "pos": [0,0,0] } ] })",
+        "waynet.points[0]: name \"wp_a\" must start with WP_");
+    bad(R"({ "freepoints": [ { "name": "WP_A", "pos": [0,0,0] } ] })", "must start with FP_");
+    bad(R"({ "points": [ { "name": "WP_A", "pos": [0,0,0] }, { "name": "WP_A", "pos": [1,0,0] } ] })",
+        "waynet.points[1]: name \"WP_A\" is already used by points[0]");
+    bad(R"({ "points": [ { "name": "WP_A", "pos": [0,0,0] } ], "edges": [ ["WP_A", "WP_B"] ] })",
+        "waynet.edges[0]: unknown point \"WP_B\"");
+    bad(R"({ "points": [ { "name": "WP_A", "pos": [0,0,0] } ], "edges": [ ["WP_A", "WP_A"] ] })",
+        "with itself");
+    bad(R"({ "points": [ { "name": "WP_A", "pos": [0,0,0] }, { "name": "WP_B", "pos": [1,0,0] } ],
+           "edges": [ [0, 1] ] })",
+        "waynet.edges[0]: must be");
+    bad(R"({ "points": [ { "name": "WP_A", "pos": [0,0,0], "owner": "me" } ] })", "waynet.points[0].owner");
+    bad(R"({ "points": [ { "name": "WP_A", "pos": [0,0,0] } ],
+           "freepoints": [ { "name": "FP_SIT_X", "pos": [0,0,0] } ], "edges": [ ["WP_A", "FP_SIT_X"] ] })",
+        "unknown point \"FP_SIT_X\"");
 }

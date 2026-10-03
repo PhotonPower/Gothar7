@@ -7,6 +7,7 @@
 #include <g7/core/Transform.hpp>
 #include <g7/world/Components.hpp>
 #include <g7/world/TerrainRef.hpp>
+#include <g7/world/Waynet.hpp>
 
 #include <optional>
 #include <string>
@@ -60,9 +61,10 @@ struct WorldFile
     /// Optional "terrain" block (version 1).
     std::optional<TerrainRef> terrain;
     std::vector<WorldFileVob> vobs;
-    /// Waynet and zones are kept as JSON text until their systems exist (read and written back
-    /// unchanged); empty = absent.
-    std::string waynetJson;
+    /// Optional "waynet" block (v1, world.md "Wegnetz"): checked and sorted when read.
+    std::optional<WaynetData> waynet;
+    /// Zones are kept as JSON text until their system exists (read and written back unchanged); empty =
+    /// absent.
     std::string zonesJson;
     /// Optional "generator" head (world.md): written by gothar-worldgen, kept unchanged. `generatorOwned`
     /// holds its "owned" ids as closed ranges - a hint for the editor that such vobs are rewritten by the

@@ -132,3 +132,52 @@ TEST_CASE("Engine scripts: docs/script-api.md lists the engine functions and eve
         CHECK(md.find(entry) != std::string::npos);
     }
 }
+
+TEST_CASE("Engine scripts: the hero's values, inventory, equipment and levels")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    REQUIRE(engine.hero() != nullptr);
+    CHECK(engine.hero()->instance() == "pc_hero");
+    CHECK(run(engine, "hero().level").asInteger() == 0);
+    CHECK(run(engine, "hero().next_xp").asInteger() == 500);
+    CHECK(run(engine, "stat('hp')").asInteger() == 40);
+
+    // Items in and out; unknown items are an error naming them.
+    CHECK(run(engine, "give_item('it_apple', 3)").asInteger() == 5);
+    CHECK(run(engine, "item_count('it_apple')").asInteger() == 5);
+    CHECK(run(engine, "remove_item('it_apple', 2)").asBool());
+    CHECK_FALSE(run(engine, "remove_item('it_apple', 10)").asBool());
+    const auto unknown = engine.runConsoleLine("give_item('it_dragon')");
+    REQUIRE_FALSE(unknown.ok());
+    CHECK(unknown.error().message.find("unknown item \"it_dragon\"") != std::string::npos);
+
+    // Equipment: requirements, slot names, protection with equipment.
+    run(engine, "give_item('it_armor_leather')");
+    const auto weak = engine.runConsoleLine("equip('it_armor_leather')");
+    REQUIRE_FALSE(weak.ok());
+    CHECK(weak.error().message.find("needs str 15") != std::string::npos);
+    run(engine, "set_stat('str', 20)");
+    CHECK(run(engine, "equip('it_armor_leather')").asString() == "armor");
+    CHECK(run(engine, "equipped('armor')").asString() == "it_armor_leather");
+    CHECK(run(engine, "stat('protection_edge')").asInteger() == 15);
+    run(engine, "unequip('armor')");
+    CHECK(run(engine, "equipped('armor')").isNil());
+    CHECK(run(engine, "inventory()[1].item").asString() == "it_armor_leather"); // armour before food
+
+    // Talents and levels; level_up reaches the scripts.
+    run(engine, "set_talent('picklock', 1)");
+    CHECK(run(engine, "talent('picklock')").asInteger() == 1);
+    run(engine, "on('level_up', function(level) Story.last_level = level end)");
+    CHECK(run(engine, "add_xp(1600)").asInteger() == 2);
+    CHECK(run(engine, "Story.last_level").asInteger() == 2);
+    CHECK(run(engine, "hero().learn_points").asInteger() == 20);
+    CHECK(run(engine, "attitude('guard', 'outcast')").asString() == "hostile");
+    CHECK(run(engine, "attitude('farmer', 'farmer')").asString() == "friendly");
+
+    // A reload keeps the hero's state.
+    engine.reloadScripts();
+    CHECK(run(engine, "item_count('it_apple')").asInteger() == 3);
+    CHECK(run(engine, "hero().level").asInteger() == 2);
+}

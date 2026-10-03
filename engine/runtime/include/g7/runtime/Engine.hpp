@@ -15,6 +15,7 @@
 #include <g7/core/Config.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
+#include <g7/gameplay/Character.hpp>
 #include <g7/gameplay/Movement.hpp>
 #include <g7/physics/Character.hpp>
 #include <g7/physics/Physics.hpp>
@@ -369,6 +370,8 @@ public:
     void reloadScripts();
     /// Items placed by `insert` since the start (tests).
     [[nodiscard]] u32 insertedItemCount() const noexcept { return m_insertedItems; }
+    /// The hero's character (M8): Npc "pc_hero" from the scripts; nullptr without it.
+    [[nodiscard]] const gameplay::Character* hero() const noexcept;
     /// True while the player climbs a ledge (input is ignored until it stands on top).
     [[nodiscard]] bool playerClimbing() const noexcept { return m_climb.has_value(); }
     /// Swimming or diving (gameplay::WaterMode::Land on land), and the air left under water.
@@ -446,6 +449,11 @@ private:
     [[nodiscard]] Result<void> insertInstance(std::string_view name, u32 count);
     void consolePrint(std::string line);
     void consoleUi();
+    // Hero character (EngineHero.cpp)
+    void buildHero();
+    void bindHeroFunctions();
+    [[nodiscard]] gameplay::ItemLookup itemLookup() const;
+    [[nodiscard]] i32 xpForLevel(i32 level);
     void creaturesUi();
     [[nodiscard]] Creature* creature(u32 id) noexcept;
     [[nodiscard]] const Creature* creature(u32 id) const noexcept;
@@ -595,6 +603,7 @@ private:
     std::string m_creatureSpecies = "wolf";                   // debug UI choice
     std::unique_ptr<script::ScriptVm> m_scripts;              // Lua of the game session (M7)
     std::vector<std::unique_ptr<LoadedModel>> m_scriptModels; // placeholders of inserted items
+    std::unique_ptr<gameplay::Character> m_hero;              // M8: kept over script reloads
     u32 m_insertedItems = 0;
     std::string m_scriptStamp; // newest script changes seen (hot reload)
     f64 m_scriptReloadTimer = 0.0;
