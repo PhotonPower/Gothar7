@@ -31,7 +31,7 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 |---|---|---|---|
 | Heightmap `terrain.r16` + `terrain.json` | welt | engine (W2/M4-Terrain) | `leonberg-pipeline.md` §4 |
 | Gebäude-`.glb` + Sammel-Index | welt | engine | `leonberg-pipeline.md` §5 W-C |
-| `.g7world` (Format v1, optionaler `terrain`-Block v1 mit `.r16`-Heightmap) | engine | welt (Assembler, W2-Gelände) | `docs/modules/world.md` („Gelände“) |
+| `.g7world` (Format v1, optionaler `terrain`-Block v1: `.r16`-Heightmap, `splat` (Karten + bis 8 Schichten), `holes` (`.r8` je Zelle)) | engine | welt (Assembler, W2-Gelände; generierte Daten unter `assets/source/worlds/<ort>/generated/`) | `docs/modules/world.md` („Gelände“) |
 | `VobId` (64 Bit, je Welt eindeutig, nie wiederverwendet; `nextVobId` in `.g7world`) | engine | welt (Assembler vergibt IDs) | ADR 0005, `docs/modules/world.md` |
 | Referenz-Skelett, Sockets | figuren + engine gemeinsam | beide | `docs/modules/animation.md` |
 | Clip-Namen, `events.toml` | figuren | engine (M6) | `characters-pipeline.md` §3 |

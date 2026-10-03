@@ -54,12 +54,21 @@ def encode_heightmap(grid: HeightGrid, site: SiteConfig) -> Heightmap:
     """
     origin_nhn = round(grid.sample(site.origin.easting, site.origin.northing), 3)
     y = (grid.heights.astype(np.float64) - origin_nhn) * site.game_scale.vertical
-    min_y = math.floor(float(y.min()) * 1000) / 1000
-    max_y = math.ceil(float(y.max()) * 1000) / 1000
+    values, min_y, max_y = quantize_heights(y)
+    return Heightmap(values, min_y, max_y, origin_nhn)
+
+
+def quantize_heights(
+    y: npt.NDArray[np.float64],
+) -> tuple[npt.NDArray[np.uint16], float, float]:
+    """uint16 over the occurring range, rounded outwards to millimetres (the .r16 encoding)."""
+    # The tolerance keeps already rounded ranges (re-encoding decoded heights) unchanged.
+    min_y = math.floor(float(y.min()) * 1000 + 1e-6) / 1000
+    max_y = math.ceil(float(y.max()) * 1000 - 1e-6) / 1000
     if max_y - min_y < 1e-3:  # flat terrain: any non-zero span works
         max_y = min_y + 1.0
     values = np.rint((y - min_y) / (max_y - min_y) * U16_MAX).astype(np.uint16)
-    return Heightmap(values, min_y, max_y, origin_nhn)
+    return values, min_y, max_y
 
 
 def _local_rect(frame: LocalFrame, bbox: BBox) -> dict[str, float]:

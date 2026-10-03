@@ -14,14 +14,18 @@ enum class TextureUsage : u8
 {
     Color,  ///< sRGB colour (+ alpha) -> BC7 sRGB at load time
     Normal, ///< tangent-space normal map -> two channels (X, Y), linear -> BC5 at load time
+    Data,   ///< four independent linear channels (terrain splat weights) -> BC7 linear at load time;
+            ///< alpha is a weight like the others: no premultiplying, nothing dropped at alpha 0
 };
 
 /// Complete mip chain (level 0 = the image itself) down to 1 x 1, box-filtered: colour is
-/// averaged in linear light (alpha linearly), normals are averaged and renormalised.
+/// averaged in linear light (alpha linearly), normals are averaged and renormalised, data channels
+/// are averaged each on its own.
 [[nodiscard]] std::vector<asset::ImageData> buildMipChain(const asset::ImageData& image, TextureUsage usage);
 
 /// Encodes an RGBA8 image as KTX2: full mip chain, UASTC (level 0 = fastest .. 4 = best) with
-/// zstd supercompression. Colour is stored as sRGB RGBA, normal maps as linear RG (X, Y).
+/// zstd supercompression. Colour is stored as sRGB RGBA, normal maps as linear RG (X, Y), data
+/// as linear RGBA.
 [[nodiscard]] Result<std::vector<u8>> encodeKtx2(const asset::ImageData& image, TextureUsage usage,
                                                  u32 uastcLevel = 2);
 

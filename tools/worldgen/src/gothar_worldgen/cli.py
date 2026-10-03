@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import webbrowser
 from collections.abc import Sequence
@@ -19,6 +20,7 @@ from gothar_worldgen.config import (
     load_site,
 )
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
+from gothar_worldgen.export.terrain import ExportError, crop, export_terrain, load_grid
 from gothar_worldgen.facade.capture import (
     CaptureError,
     CaptureOptions,
@@ -271,6 +273,42 @@ def _cmd_facade_ui(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    assets = (
+        args.assets_dir
+        or (args.config_dir or default_config_dir()).parents[2] / "assets" / "source"
+    )
+    name = args.name or f"{site.name}_terrain"
+    folder = assets / "worlds" / site.name
+    vfs = f"worlds/{site.name}/generated/{name}.r16"
+    try:
+        grid = load_grid(paths.work)
+        rect = None
+        if args.area == "core":
+            meta = json.loads((paths.work / "terrain.json").read_text(encoding="utf-8"))
+            rect = meta["areas"]["core"]
+        result = export_terrain(
+            crop(grid, rect, args.step), name, folder / f"{name}.g7world",
+            folder / "generated" / f"{name}.r16", vfs,
+        )  # fmt: skip
+    except ExportError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    g = result.grid
+    print(f"  {g.width} x {g.height} samples, {g.cell:g} m, x {g.first_x:g} .. "
+          f"{g.first_x + (g.width - 1) * g.cell:g}, z {g.first_z:g} .. "
+          f"{g.first_z + (g.height - 1) * g.cell:g}", file=out)  # fmt: skip
+    print(
+        f"  heights {result.min_y:g} .. {result.max_y:g} m, step {result.step_mm:.2f} mm", file=out
+    )
+    print(f"  {result.world_path}", file=out)
+    print(f"  {result.heightmap_path}  (VFS {vfs}, not versioned)", file=out)
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="gothar-worldgen",
@@ -318,6 +356,16 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("check", help="plausibility report and preview images of the work data")
     p.add_argument("site")
     p.set_defaults(func=_cmd_check)
+
+    p = sub.add_parser(
+        "export-terrain", help="heightmap -> .g7world with terrain block (W2, see world.md)"
+    )
+    p.add_argument("site")
+    p.add_argument("--area", choices=("surroundings", "core"), default="surroundings")
+    p.add_argument("--step", type=int, default=1, help="keep every n-th sample (default 1)")
+    p.add_argument("--name", default=None, help="world name (default: <site>_terrain)")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_export_terrain)
 
     facade = sub.add_parser("facade", help="facade reference tool (W4)")
     fsub = facade.add_subparsers(dest="facade_command", required=True)

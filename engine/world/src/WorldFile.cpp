@@ -169,6 +169,70 @@ double tidy(f32 value)
     return rounded == 0.0 ? 0.0 : rounded; // no -0
 }
 
+Result<void> readSplat(const Reader& r, const Json& s, TerrainRef& ref)
+{
+    const std::string where = "terrain.splat";
+    if (!s.is_object())
+    {
+        return r.error(where, "must be an object with 'maps' and 'layers'");
+    }
+    if (!s.contains("layers") || !s["layers"].is_array() || s["layers"].empty() ||
+        s["layers"].size() > kMaxTerrainLayers)
+    {
+        return r.error(where, std::format("needs 'layers': a list of 1 to {}", kMaxTerrainLayers));
+    }
+    const usize mapsNeeded = (s["layers"].size() + 3) / 4;
+    if (!s.contains("maps") || !s["maps"].is_array() || s["maps"].size() != mapsNeeded)
+    {
+        return r.error(where, std::format("{} layers need 'maps': a list of {} VFS path(s)",
+                                          s["layers"].size(), mapsNeeded));
+    }
+    for (const Json& map : s["maps"])
+    {
+        if (!map.is_string() || map.get<std::string>().empty())
+        {
+            return r.error(where, "'maps' must hold VFS paths");
+        }
+        ref.splatMaps.push_back(map.get<std::string>());
+    }
+    for (usize i = 0; i < s["layers"].size(); ++i)
+    {
+        const Json& l = s["layers"][i];
+        const std::string at = std::format("terrain.splat.layers[{}]", i);
+        if (!l.is_object())
+        {
+            return r.error(at, "must be an object");
+        }
+        TerrainLayerRef layer;
+        for (auto [key, target] : {std::pair{"name", &layer.name}, std::pair{"albedo", &layer.albedo}})
+        {
+            if (!l.contains(key) || !l[key].is_string() || l[key].get<std::string>().empty())
+            {
+                return r.error(at, std::format("needs '{}'", key));
+            }
+            *target = l[key].get<std::string>();
+        }
+        if (l.contains("tile"))
+        {
+            if (!l["tile"].is_number() || !(l["tile"].get<f32>() > 0.0f))
+            {
+                return r.error(at, "'tile' must be a positive number (metres)");
+            }
+            layer.tile = l["tile"].get<f32>();
+        }
+        if (l.contains("normal"))
+        {
+            if (!l["normal"].is_string())
+            {
+                return r.error(at, "'normal' must be a VFS path");
+            }
+            layer.normal = l["normal"].get<std::string>();
+        }
+        ref.layers.push_back(std::move(layer));
+    }
+    return {};
+}
+
 Result<TerrainRef> readTerrain(const Reader& r, const Json& t)
 {
     const std::string where = "terrain";
@@ -226,7 +290,23 @@ Result<TerrainRef> readTerrain(const Reader& r, const Json& t)
         return first.error();
     }
     ref.firstSample = Vec2(first.value()[0], first.value()[1]);
-    return ref; // "splat" and "holes" are reserved for later and ignored here
+    if (t.contains("splat"))
+    {
+        auto splat = readSplat(r, t["splat"], ref);
+        if (!splat)
+        {
+            return splat.error();
+        }
+    }
+    if (t.contains("holes"))
+    {
+        if (!t["holes"].is_string() || t["holes"].get<std::string>().empty())
+        {
+            return r.error(where, "'holes' must be a VFS path");
+        }
+        ref.holes = t["holes"].get<std::string>();
+    }
+    return ref;
 }
 
 Json numbers(std::initializer_list<f32> values)
@@ -370,6 +450,24 @@ std::string writeWorldFile(const WorldFile& world)
                                {"firstSample", numbers({t.firstSample.x, t.firstSample.y})},
                                {"minY", tidy(t.minY)},
                                {"maxY", tidy(t.maxY)}};
+        if (!t.layers.empty())
+        {
+            Json layers = Json::array();
+            for (const TerrainLayerRef& layer : t.layers)
+            {
+                Json l = Json{{"name", layer.name}, {"albedo", layer.albedo}, {"tile", tidy(layer.tile)}};
+                if (!layer.normal.empty())
+                {
+                    l["normal"] = layer.normal;
+                }
+                layers.push_back(std::move(l));
+            }
+            root["terrain"]["splat"] = Json{{"maps", t.splatMaps}, {"layers", std::move(layers)}};
+        }
+        if (!t.holes.empty())
+        {
+            root["terrain"]["holes"] = t.holes;
+        }
     }
 
     std::vector<const WorldFileVob*> sorted;

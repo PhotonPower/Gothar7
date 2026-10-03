@@ -113,11 +113,25 @@ Result<Texture> Device::createTexture(const TextureDesc& desc)
     const u32 fullChain = mipLevelCount(desc.width, desc.height);
     resolved.mipLevels = desc.mipLevels == 0 ? fullChain : std::min(desc.mipLevels, fullChain);
 
+    if (desc.layers == 0)
+    {
+        return Error{"texture needs at least one layer"};
+    }
     GLuint id = 0;
-    glCreateTextures(GL_TEXTURE_2D, 1, &id);
-    glTextureStorage2D(id, static_cast<GLsizei>(resolved.mipLevels),
-                       gl::textureFormat(desc.format).internalFormat, static_cast<GLsizei>(desc.width),
-                       static_cast<GLsizei>(desc.height));
+    const GLenum internalFormat = gl::textureFormat(desc.format).internalFormat;
+    if (desc.isArray())
+    {
+        glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &id);
+        glTextureStorage3D(id, static_cast<GLsizei>(resolved.mipLevels), internalFormat,
+                           static_cast<GLsizei>(desc.width), static_cast<GLsizei>(desc.height),
+                           static_cast<GLsizei>(desc.layers));
+    }
+    else
+    {
+        glCreateTextures(GL_TEXTURE_2D, 1, &id);
+        glTextureStorage2D(id, static_cast<GLsizei>(resolved.mipLevels), internalFormat,
+                           static_cast<GLsizei>(desc.width), static_cast<GLsizei>(desc.height));
+    }
     Texture texture;
     texture.m_handle = Handle(id, deleteTexture);
     texture.m_desc = resolved;

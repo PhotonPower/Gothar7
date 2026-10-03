@@ -235,7 +235,8 @@ std::vector<u8> Device::readTexture(const Texture& texture, u32 level) const
     {
         return {};
     }
-    std::vector<u8> pixels(static_cast<usize>(mipSize(desc.width, level)) * mipSize(desc.height, level) * 4);
+    std::vector<u8> pixels(static_cast<usize>(mipSize(desc.width, level)) * mipSize(desc.height, level) * 4 *
+                           desc.layers);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glGetTextureImage(texture.m_handle.id(), static_cast<GLint>(level), GL_RGBA, GL_UNSIGNED_BYTE,
                       static_cast<GLsizei>(pixels.size()), pixels.data());
@@ -249,7 +250,8 @@ std::vector<f32> Device::readTextureFloat(const Texture& texture, u32 level) con
     {
         return {};
     }
-    std::vector<f32> pixels(static_cast<usize>(mipSize(desc.width, level)) * mipSize(desc.height, level) * 4);
+    std::vector<f32> pixels(static_cast<usize>(mipSize(desc.width, level)) * mipSize(desc.height, level) * 4 *
+                            desc.layers);
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
     glGetTextureImage(texture.m_handle.id(), static_cast<GLint>(level), GL_RGBA, GL_FLOAT,
                       static_cast<GLsizei>(pixels.size() * sizeof(f32)), pixels.data());

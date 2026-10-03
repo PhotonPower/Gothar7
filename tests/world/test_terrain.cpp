@@ -118,8 +118,7 @@ TEST_CASE("Terrain: the .g7world block is optional, versioned, read and written"
 {
     const std::string text = R"({"version": 1, "name": "w",
       "terrain": {"version": 1, "heightmap": "worlds/leonberg/terrain.r16", "width": 2000, "height": 2000,
-                  "cellSize": 1.0, "firstSample": [-999.5, -999.5], "minY": -50.991, "maxY": 94.85,
-                  "splat": ["reserved"]},
+                  "cellSize": 1.0, "firstSample": [-999.5, -999.5], "minY": -50.991, "maxY": 94.85},
       "vobs": []})";
     auto world = parseWorldFile(text, "w.g7world");
     REQUIRE_MESSAGE(world.ok(), (world.ok() ? "" : world.error().message));
@@ -168,4 +167,107 @@ TEST_CASE("Terrain: detail levels by distance")
     CHECK(TerrainRenderer::lodFor(250.0f, 100.0f) == 2);
     CHECK(TerrainRenderer::lodFor(450.0f, 100.0f) == 3);
     CHECK(TerrainRenderer::lodFor(1e6f, 100.0f) == TerrainRenderer::kLodLevels - 1);
+}
+
+TEST_CASE("Terrain: splat layers and holes in the .g7world block")
+{
+    const std::string text = R"({"version": 1, "name": "w",
+      "terrain": {"version": 1, "heightmap": "t.r16", "width": 3, "height": 3, "cellSize": 1, "firstSample": [0, 0],
+                  "minY": 0, "maxY": 1,
+                  "splat": {"maps": ["s0.png", "s1.png"],
+                            "layers": [{"name": "Kopfstein", "albedo": "a.png", "tile": 2.5},
+                                       {"name": "Matsch", "albedo": "b.png"}, {"name": "Kies", "albedo": "c.png"},
+                                       {"name": "Wiese", "albedo": "d.png", "normal": "d_n.png"},
+                                       {"name": "Fels", "albedo": "e.png", "tile": 8}]},
+                  "holes": "h.r8"}})";
+    auto world = parseWorldFile(text, "w.g7world");
+    REQUIRE_MESSAGE(world.ok(), (world.ok() ? "" : world.error().message));
+    const TerrainRef& t = *world.value().terrain;
+    CHECK(t.splatMaps == std::vector<std::string>{"s0.png", "s1.png"});
+    REQUIRE(t.layers.size() == 5);
+    CHECK(t.layers[0].name == "Kopfstein");
+    CHECK(t.layers[0].tile == 2.5f);
+    CHECK(t.layers[1].tile == 4.0f); // default
+    CHECK(t.layers[3].normal == "d_n.png");
+    CHECK(t.holes == "h.r8");
+    const std::string written = writeWorldFile(world.value());
+    CHECK(writeWorldFile(parseWorldFile(written).value()) == written);
+    CHECK(parseWorldFile(written).value().terrain->layers[3].normal == "d_n.png");
+
+    const auto error = [](std::string_view extra)
+    {
+        auto w = parseWorldFile(std::string(R"({"version": 1, "terrain": {"version": 1, "heightmap": "t.r16",
+            "width": 3, "height": 3, "cellSize": 1, "firstSample": [0, 0], "minY": 0, "maxY": 1, )") +
+                                    std::string(extra) + "}}",
+                                "w.g7world");
+        REQUIRE_FALSE(w.ok());
+        return w.error().message;
+    };
+    CHECK(error(R"("splat": ["s.png"])") ==
+          "w.g7world: terrain.splat: must be an object with 'maps' and 'layers'");
+    CHECK(error(R"("splat": {"maps": ["s.png"], "layers": []})") ==
+          "w.g7world: terrain.splat: needs 'layers': a list of 1 to 8");
+    CHECK(error(R"("splat": {"maps": ["s.png"], "layers": [{"name": "a", "albedo": "a.png"}, {"name": "b",
+               "albedo": "b.png"}, {"name": "c", "albedo": "c.png"}, {"name": "d", "albedo": "d.png"},
+               {"name": "e", "albedo": "e.png"}]})") ==
+          "w.g7world: terrain.splat: 5 layers need 'maps': a list of 2 VFS path(s)");
+    CHECK(error(R"("splat": {"maps": ["s.png"], "layers": [{"name": "a"}]})") ==
+          "w.g7world: terrain.splat.layers[0]: needs 'albedo'");
+    CHECK(error(R"("splat": {"maps": ["s.png"], "layers": [{"name": "a", "albedo": "a.png", "tile": 0}]})") ==
+          "w.g7world: terrain.splat.layers[0]: 'tile' must be a positive number (metres)");
+    CHECK(error(R"("holes": 3)") == "w.g7world: terrain: 'holes' must be a VFS path");
+}
+
+TEST_CASE("Terrain: holes are one byte per cell, 0 = hole")
+{
+    // 3 x 2 samples, 2 m apart, first sample at (10, 20): 2 x 1 cells, x 10..12 and 12..14, z 20..22.
+    Heightfield field = smallField();
+    CHECK_FALSE(field.isHole(11.0f, 21.0f)); // no mask: no holes
+    CHECK(field.setHoles({255, 0}).ok());
+    CHECK_FALSE(field.isHole(11.0f, 21.0f));
+    CHECK(field.isHole(13.0f, 21.0f));
+    CHECK(field.isHole(14.0f, 22.0f));       // the last sample line belongs to the last cell
+    CHECK_FALSE(field.isHole(15.0f, 21.0f)); // outside the area
+    CHECK_FALSE(field.isHole(13.0f, 19.0f));
+    const auto wrong = field.setHoles({255, 0, 255}); // 3 bytes for 2 cells
+    REQUIRE_FALSE(wrong.ok());
+    CHECK(wrong.error().message == "3 bytes, 2 x 1 = 2 expected (one per cell)");
+    CHECK(field.holes().size() == 2); // the previous mask stays
+
+    // Worked example of the contract (docs/modules/world.md): Leonberg, 2000 x 2000 samples.
+    TerrainRef leonberg{"t.r16", 2000, 2000, 1.0f, Vec2(-999.5f, -999.5f), -50.991f, 94.85f};
+    auto big = Heightfield::create(leonberg, std::vector<u16>(2000 * 2000));
+    REQUIRE(big.ok());
+    std::vector<u8> mask(1999 * 1999, 255);
+    mask[500 * 1999 + 1000] = 0; // cell (c 1000, r 500): x 0.5 .. 1.5, z -499.5 .. -498.5
+    REQUIRE(big.value().setHoles(std::move(mask)).ok());
+    CHECK(big.value().isHole(1.0f, -499.0f));
+    CHECK_FALSE(big.value().isHole(0.4f, -499.0f));
+    CHECK_FALSE(big.value().isHole(1.0f, -498.4f));
+}
+
+TEST_CASE("Terrain: the hole mask is loaded with the heights and checked")
+{
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const fs::Path dir = std::filesystem::temp_directory_path() / ("g7_holes_" + std::to_string(stamp));
+    std::filesystem::create_directories(dir);
+    REQUIRE(fs::writeFile(dir / "t.r16", std::vector<u8>(3 * 3 * 2)).ok());
+    REQUIRE(fs::writeFile(dir / "h.r8", std::vector<u8>{255, 0, 255, 255}).ok());
+    REQUIRE(fs::writeFile(dir / "short.r8", std::vector<u8>{255, 0, 255}).ok());
+    asset::Vfs vfs;
+    REQUIRE(vfs.mount(dir, 0).ok());
+    TerrainRef ref{"t.r16", 3, 3, 1.0f, Vec2(0.0f), 0.0f, 1.0f};
+    ref.holes = "h.r8";
+    auto field = Heightfield::load(vfs, ref);
+    REQUIRE_MESSAGE(field.ok(), (field.ok() ? "" : field.error().message));
+    CHECK(field.value().isHole(1.5f, 0.5f));
+    CHECK_FALSE(field.value().isHole(0.5f, 1.5f));
+    ref.holes = "short.r8";
+    auto wrong = Heightfield::load(vfs, ref);
+    REQUIRE_FALSE(wrong.ok());
+    CHECK(wrong.error().message == "terrain holes 'short.r8': 3 bytes, 2 x 2 = 4 expected (one per cell)");
+    ref.holes = "missing.r8";
+    CHECK_FALSE(Heightfield::load(vfs, ref).ok());
+    std::error_code ignored;
+    std::filesystem::remove_all(dir, ignored);
 }
