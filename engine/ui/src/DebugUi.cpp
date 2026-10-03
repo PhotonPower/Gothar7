@@ -527,6 +527,7 @@ void DebugUi::animationPanel(const AnimationPanel& panel)
     {
         ImGui::Text("from   %s  (fade %.0f %%)", panel.previousState.c_str(), panel.fade * 100.0f);
     }
+    ImGui::Text("rate   %.2f", panel.rate);
     ImGui::ProgressBar(panel.progress - std::floor(panel.progress), ImVec2(-1.0f, 0.0f));
     if (ImGui::CollapsingHeader("Clips", ImGuiTreeNodeFlags_DefaultOpen))
     {

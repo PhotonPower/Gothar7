@@ -8,6 +8,7 @@
 #include <g7/animation/Skeleton.hpp>
 #include <g7/core/Result.hpp>
 
+#include <array>
 #include <map>
 #include <optional>
 #include <span>
@@ -43,6 +44,9 @@ struct AnimGraphState
     std::vector<std::pair<f32, std::string>> points; ///< parameter value -> clip, rising
     f32 speed = 1.0f;
     bool rootMotion = false; ///< the root bone's movement is reported (rootMotion()) instead of drawn
+    /// Parameter (m/s) the playback follows: rate = |value| / the clips' own speed (weighted in blends),
+    /// within AnimGraph::rateRange - feet do not slide. Empty, or clips without a speed: rate 1.
+    std::string rateParam;
 };
 
 struct AnimGraphTransition
@@ -57,6 +61,7 @@ struct AnimGraph
 {
     std::vector<std::string> sets; ///< VFS paths of the animation sets (glTF)
     std::string start;
+    std::array<f32, 2> rateRange{0.6f, 1.8f}; ///< limits of the speed-matched playback rate
     std::vector<AnimGraphState> states;
     std::vector<AnimGraphTransition> transitions;
 
@@ -91,6 +96,8 @@ public:
     [[nodiscard]] std::string_view state() const noexcept;
     [[nodiscard]] std::string_view previousState() const noexcept;
     [[nodiscard]] f32 fadeWeight() const noexcept; ///< 1 when no cross-fade runs
+    /// Speed-matched playback rate of the current state (1 without `rate`).
+    [[nodiscard]] f32 playbackRate() const;
     [[nodiscard]] f32 stateTime() const noexcept { return m_current.time; }
     /// Playback progress of the current state: 0..1 (one-shots), cycles (loops).
     [[nodiscard]] f32 stateProgress() const noexcept;
@@ -133,11 +140,13 @@ private:
     void advance(Instance& instance, f32 seconds, const EventCallback* onEvent);
     void sample(const Instance& instance, Pose& pose) const;
     [[nodiscard]] std::vector<std::pair<usize, f32>> weights(const StateDef& state) const;
+    [[nodiscard]] f32 rate(const StateDef& state) const;
 
     const Skeleton* m_skeleton = nullptr;
     std::vector<Clip> m_clips;
     std::vector<StateDef> m_states;
     std::vector<AnimGraphTransition> m_transitions;
+    std::array<f32, 2> m_rateRange{0.6f, 1.8f};
     std::map<std::string, f32, std::less<>> m_params;
     Instance m_current;
     Instance m_previous;

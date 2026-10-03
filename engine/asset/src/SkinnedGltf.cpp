@@ -564,6 +564,14 @@ Result<void> applyClipEvents(AnimationSetData& set, std::string_view toml, std::
         {
             return fail(source, std::format("events for unknown clip '{}'", name));
         }
+        if (const auto speed = c.find<f64>("clips." + name + ".speed"))
+        {
+            if (!(*speed > 0.0))
+            {
+                return fail(source, std::format("clip '{}': 'speed' must be positive (m/s)", name));
+            }
+            clip->speed = static_cast<f32>(*speed);
+        }
         const std::string array = "clips." + name + ".events";
         const f64 lastFrame = static_cast<f64>(clip->duration) * fps;
         i64 previous = -1;

@@ -161,7 +161,9 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
   - `duration` = letzter Schlüssel.
 - **Events:** Der `AssetManager` liest `<set>.events.toml` neben dem Set automatisch, sofern vorhanden (Hot-Reload
   beobachtet sie mit). Fehler: unbekannter Clip, Frame außerhalb (Schleifen: < letzter Frame), nicht
-  aufsteigend, fehlende Felder.
+  aufsteigend, fehlende Felder, `speed` ≤ 0.
+- **Eigengeschwindigkeit** (M6, additiv in Version 1): optionales Feld `speed` (m/s) je Clip →
+  `ClipData::speed` (0 = unbekannt); auch ohne `events`. Liefert figuren (`gothar-chargen report`).
 - **Lader im `AssetManager`:** `SkinnedModelData` und `AnimationSetData` direkt aus glTF/GLB.
   - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019). Bis dahin laden Figuren und Sets aus losen Dateien
     (Entwicklung). g7-cook kocht skinnte Figuren weiterhin nur als statisches `.g7mesh`, Sets ohne Mesh überspringt

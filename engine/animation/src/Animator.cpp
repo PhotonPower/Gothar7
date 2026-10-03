@@ -88,6 +88,12 @@ Result<AnimGraph> AnimGraph::parse(std::string_view toml, std::string_view sourc
     AnimGraph graph;
     graph.sets = c.get<std::vector<std::string>>("sets", {});
     graph.start = c.get<std::string>("start", "");
+    const auto range = c.get<std::vector<f64>>("rate_range", {0.6, 1.8});
+    if (range.size() != 2 || !(range[0] > 0.0) || !(range[1] >= range[0]))
+    {
+        return fail(source, "'rate_range' needs [min, max] with 0 < min <= max");
+    }
+    graph.rateRange = {static_cast<f32>(range[0]), static_cast<f32>(range[1])};
     if (graph.sets.empty())
     {
         return fail(source, "needs 'sets' (animation set files)");
@@ -103,6 +109,7 @@ Result<AnimGraph> AnimGraph::parse(std::string_view toml, std::string_view sourc
         }
         state.speed = static_cast<f32>(c.get<f64>(at + ".speed", 1.0));
         state.rootMotion = c.get<bool>(at + ".root_motion", false);
+        state.rateParam = c.get<std::string>(at + ".rate", "");
         if (const auto clip = c.find<std::string>(at + ".clip"))
         {
             state.points.emplace_back(0.0f, *clip);
@@ -205,6 +212,7 @@ Result<Animator> Animator::create(const AnimGraph& graph, const Skeleton& skelet
         }
     }
     a.m_transitions = graph.transitions;
+    a.m_rateRange = graph.rateRange;
     a.m_current.state = a.findState(graph.start);
     if (a.m_current.state < 0)
     {
@@ -328,7 +336,7 @@ std::vector<std::pair<usize, f32>> Animator::weights(const StateDef& state) cons
 void Animator::advance(Instance& instance, f32 seconds, const EventCallback* onEvent)
 {
     const StateDef& s = m_states[static_cast<usize>(instance.state)];
-    const f32 dt = seconds * s.def.speed;
+    const f32 dt = seconds * s.def.speed * rate(s);
     instance.previous = instance.time;
     if (s.def.blendParam.empty())
     {
@@ -356,6 +364,46 @@ void Animator::advance(Instance& instance, f32 seconds, const EventCallback* onE
         const Clip& clip = m_clips[dominant->first];
         clip.fireEvents(instance.previous * clip.duration(), instance.time * clip.duration(), *onEvent);
     }
+}
+
+f32 Animator::rate(const StateDef& s) const
+{
+    if (s.def.rateParam.empty())
+    {
+        return 1.0f;
+    }
+    // The clips' own speed, weighted like the pose; clips without one (standing) do not count.
+    f32 native = 0.0f;
+    f32 total = 0.0f;
+    const auto add = [&](usize clip, f32 weight)
+    {
+        if (m_clips[clip].nativeSpeed() > 0.0f)
+        {
+            native += m_clips[clip].nativeSpeed() * weight;
+            total += weight;
+        }
+    };
+    if (s.def.blendParam.empty())
+    {
+        add(s.clips.front(), 1.0f);
+    }
+    else
+    {
+        for (const auto& [clip, weight] : weights(s))
+        {
+            add(clip, weight);
+        }
+    }
+    if (total <= 0.0f)
+    {
+        return 1.0f;
+    }
+    return std::clamp(std::abs(param(s.def.rateParam)) / (native / total), m_rateRange[0], m_rateRange[1]);
+}
+
+f32 Animator::playbackRate() const
+{
+    return m_current.state < 0 ? 1.0f : rate(m_states[static_cast<usize>(m_current.state)]);
 }
 
 void Animator::sample(const Instance& instance, Pose& pose) const

@@ -273,6 +273,76 @@ blend = 0
     CHECK(again.activeClips().back().weight == doctest::Approx(1.0f));
 }
 
+TEST_CASE("Animator: playback rate follows the clips' own speed, weighted in blends, within rate_range")
+{
+    const Skeleton s = Skeleton::create(threeBones()).value();
+    asset::AnimationSetData set;
+    set.clips.push_back(armSwing("none/s_idle")); // standing: no speed
+    set.clips.push_back(armSwing("none/s_walk"));
+    set.clips.back().speed = 1.0f;
+    set.clips.push_back(armSwing("none/s_strafe_l"));
+    set.clips.back().speed = 1.0f;
+    set.clips.push_back(armSwing("none/s_back")); // no speed: rate 1 although the state asks for one
+    const asset::AnimationSetData* sets[] = {&set};
+    auto graph = AnimGraph::parse(R"(
+version = 1
+sets = ["x.glb"]
+start = "move"
+[[state]]
+name = "move"
+blend = "speed"
+rate = "speed"
+points = [{ value = 0.0, clip = "none/s_idle" }, { value = 1.6, clip = "none/s_walk" }]
+[[state]]
+name = "strafe"
+clip = "none/s_strafe_l"
+rate = "strafe"
+[[state]]
+name = "back"
+clip = "none/s_back"
+rate = "speed"
+[[state]]
+name = "plain"
+clip = "none/s_walk"
+)",
+                                  "rate.toml");
+    REQUIRE_MESSAGE(graph.ok(), (graph.ok() ? "" : graph.error().message));
+    CHECK(graph.value().rateRange[0] == doctest::Approx(0.6f));
+    CHECK(graph.value().rateRange[1] == doctest::Approx(1.8f));
+    Animator a = Animator::create(graph.value(), s, sets).value();
+
+    a.setFloat("speed", 1.6f); // walk alone, made for 1.0 m/s
+    CHECK(a.playbackRate() == doctest::Approx(1.6f));
+    a.setFloat("speed", 1.0f); // idle and walk blended: only walk has a speed
+    CHECK(a.playbackRate() == doctest::Approx(1.0f));
+    a.setFloat("speed", 0.2f); // limits
+    CHECK(a.playbackRate() == doctest::Approx(0.6f));
+    a.setFloat("speed", 0.0f); // idle alone: nothing to match
+    CHECK(a.playbackRate() == doctest::Approx(1.0f));
+
+    a.enter("strafe");
+    a.setFloat("strafe", -1.5f); // left: the magnitude counts
+    CHECK(a.playbackRate() == doctest::Approx(1.5f));
+    a.update(0.5f);
+    CHECK(a.stateTime() == doctest::Approx(0.75f));
+    a.setFloat("strafe", 3.0f);
+    CHECK(a.playbackRate() == doctest::Approx(1.8f));
+
+    a.enter("back");
+    CHECK(a.playbackRate() == doctest::Approx(1.0f));
+    a.enter("plain");
+    CHECK(a.playbackRate() == doctest::Approx(1.0f));
+
+    auto narrow =
+        AnimGraph::parse("version = 1\nsets = [\"a\"]\nrate_range = [0.8, 1.2]\n[[state]]\nname = \"x\"\n"
+                         "clip = \"none/s_walk\"\nrate = \"speed\"\n",
+                         "g");
+    REQUIRE(narrow.ok());
+    Animator b = Animator::create(narrow.value(), s, sets).value();
+    b.setFloat("speed", 4.0f);
+    CHECK(b.playbackRate() == doctest::Approx(1.2f));
+}
+
 TEST_CASE("AnimGraph: errors")
 {
     const auto fails = [](const char* toml, const char* expected)
@@ -284,6 +354,8 @@ TEST_CASE("AnimGraph: errors")
     fails("sets = [\"a\"]\n", "version = 1");
     fails("version = 1\n", "sets");
     fails("version = 1\nsets = [\"a\"]\n", "[[state]]");
+    fails("version = 1\nsets = [\"a\"]\nrate_range = [1.5, 1.0]\n", "rate_range");
+    fails("version = 1\nsets = [\"a\"]\nrate_range = [0.0, 1.0]\n", "rate_range");
     fails("version = 1\nsets = [\"a\"]\n[[state]]\nname = \"x\"\n", "'clip'");
     fails("version = 1\nsets = [\"a\"]\n[[state]]\nname = \"x\"\nblend = \"s\"\n"
           "points = [{ value = 1.0, clip = \"a\" }, { value = 0.5, clip = \"b\" }]\n",

@@ -335,6 +335,7 @@ void Engine::playerAnimationUi()
     panel.previousState = std::string(a.previousState());
     panel.fade = a.fadeWeight();
     panel.progress = a.stateProgress();
+    panel.rate = a.playbackRate();
     for (const animation::Animator::ClipWeight& clip : a.activeClips())
     {
         panel.clips.emplace_back(std::string(clip.clip), clip.weight);

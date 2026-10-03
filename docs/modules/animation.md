@@ -58,6 +58,11 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
   - Je Update höchstens ein Übergang; Vorrang in Dateireihenfolge.
   - Blend-Zustände teilen eine Phase (Zyklen), damit Schritte von Gehen und Rennen im Takt bleiben; die
     Zykluslänge folgt den Gewichten.
+  - **Abspielrate gegen Fußgleiten** (`rate = "<parameter>"` je Zustand): Rate = |Parameter| /
+    Eigengeschwindigkeit der Clips (`speed` aus `<set>.events.toml`; bei Blends nach Gewicht gemittelt, Clips ohne
+    `speed` wie `s_idle` zählen nicht), begrenzt durch `rate_range = [min, max]` (Graph, Vorgabe 0,6–1,8). Ohne
+    `speed`-Daten bleibt die Rate 1. Nur visuell: `movement.toml` bestimmt weiter die Bewegung.
+    `Animator::playbackRate()`; im Debug-Fenster „Animation“ als `rate`.
 - **Überblenden:** Der alte Zustand läuft weiter und wird linear über `blend` Sekunden ausgeblendet. Ein neuer
   Übergang ersetzt ihn.
 - **Root Motion** (`root_motion = true`): `rootMotion()` meldet die Bewegung des Knochens `root` im letzten
