@@ -73,8 +73,22 @@ gothar-worldgen begehung leonberg          REM statische Begehung → generated/
 gothar-worldgen walk-routes leonberg       REM Routen für gothar --walk → generated/walk/{stations,ways,gates}.json
 gothar-worldgen walk-report leonberg --route <route.json> --run <walk-out>   REM Auswertung → <walk-out>/walk_report.json
 ```
-Reihenfolge für die Welt: `import` → `export-terrain` → `buildings` → `assemble`; prüfen mit
-`build\release\game\gothar.exe --world=worlds/leonberg/leonberg.g7world --start=START_UEBERSICHT --time=12:00`.
+### Leonberg komplett neu erzeugen
+`generated/` (Gebäude, Mauer, Heightmap, Splat) ist nicht versioniert. Für eine Engine passend zu `main` gilt:
+1. Auf dem `main`-Stand des Checkouts arbeiten.
+2. Einmalig das venv und `config/local.toml` mit `data_root` anlegen (siehe Einrichtung).
+3. In `tools/worldgen` diese Befehle ausführen:
+```bat
+.venv\Scripts\gothar-worldgen buildings leonberg        REM ~2 min, Vorgabe medieval
+.venv\Scripts\gothar-worldgen citywall leonberg
+.venv\Scripts\gothar-worldgen export-terrain leonberg   REM nach buildings: liest die Hanghaus-Türen (Abgänge)
+.venv\Scripts\gothar-worldgen assemble leonberg
+git status                                     REM muss leer bleiben, sonst passt der Stand nicht zu main
+```
+- `import` ist nur bei neuen Rohdaten nötig.
+- Die Handmodelle (`schloss`, `marktbrunnen`, `garten`, `kirche`) sind als `.glb` versioniert und brauchen Blender nur,
+  wenn sich ihre Daten ändern; danach `export-terrain` und `assemble` erneut.
+- Prüfen mit `build\release\game\gothar.exe --world=worlds/leonberg/leonberg.g7world --start=START_UEBERSICHT --time=12:00`.
 
 ### Grenzen des glTF-Writers (`buildings/gltf.py`)
 - Pro Datei genau ein Mesh und ein Knoten; ein oder mehrere Dreiecks-Primitives mit je einem untexturierten
