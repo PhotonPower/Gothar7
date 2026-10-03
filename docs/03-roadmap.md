@@ -148,10 +148,12 @@ Screenshots `C:\GotharData\review\m5-dod`).
 _Benötigt F1 (Referenz-Rig, Platzhalterfigur) und für den Meilenstein die Prio-A-Animationen aus F2._
 - [ ] Skelett + Skinning (GPU), glTF-Skins
   - Stand Teil A: glTF-Skins, Skelett, LOD-Teile, Morph-Targets, Clips und `events.toml` laden (`asset/SkinnedModel.hpp`, ADR 0019 eigene Laufzeit); CMake-Ziel `g7_figures`; GPU-Skinning folgt mit Teil C
-- [ ] Clips, Sampling, Blending (Crossfade), additive Layer (Oberkörper getrennt)
-- [ ] Animations-Zustandsautomat (datengetrieben), Übergänge mit Bedingungen
+- [x] Clips, Sampling, Blending (Crossfade), additive Layer (Oberkörper getrennt) – `animation/Clip.hpp`, `Skeleton.hpp`, Overlay mit Knochenmaske (Teil B)
+- [x] Animations-Zustandsautomat (datengetrieben), Übergänge mit Bedingungen – `animgraph.toml`, `Animator`, Graph der Menschen `data/anim/human.animgraph.toml` (Teil B)
 - [ ] Animations-Events (Fußschritte, Treffer-Fenster, Item-Wechsel Hand/Gürtel)
+  - Stand Teil B: Events feuern nach Vertrag §3 an einen Callback; Verbraucher (Schritte, Treffer, Item-Wechsel) folgen mit Teil C/D bzw. M11/M13
 - [ ] Root Motion für Interaktionen/Kampf, In-Place für Fortbewegung
+  - Stand Teil B: `root_motion`-Zustände melden die Bewegung von `root`; Anbindung an das Klettern mit Teil C
 - [ ] Attachments: Items an Knochen (Hand, Rücken, Gürtel), Rüstungs-/Kopfwechsel (Mesh-Tausch)
 - [ ] Morph-Targets für Gesichter (Lippen-Synchronisation grob, Blinzeln)
 - [ ] Look-At (Kopf dreht zu Gesprächspartner)

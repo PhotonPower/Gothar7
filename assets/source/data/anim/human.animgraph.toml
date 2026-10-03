@@ -1,0 +1,312 @@
+# Animations-Zustandsautomat der Menschen (animation.md „Zustandsautomat“, M6). Clips: characters-pipeline.md §3,
+# animation-list.md. Parameter setzt das Gameplay je Schritt:
+#   speed   vorwärts in m/s (rückwärts negativ)    strafe  seitwärts in m/s (rechts positiv)
+#   turn    -1 links / 1 rechts (Drehen im Stand, Tasten)   air   in der Luft (bool)   fall  s im freien Fall
+#   landed  gelandet (bool, einen Schritt)          hard    die Landung war hart (bool, mit landed)
+#   climb   Kantenklasse 1/2/3 (0 = nicht)
+#   swim    an der Oberfläche (bool)                dive    unter Wasser (bool)        slide  rutscht (bool)
+# Übergänge: erster passender in Dateireihenfolge; Bedingungen: "name", "!name", "name > 1.5", "end".
+version = 1
+sets = [
+    "characters/anims/human/none.glb",
+    "characters/anims/human/swim.glb",
+    "characters/anims/human/dive.glb",
+]
+start = "move"
+
+# --- Zustände ---
+[[state]] # Fortbewegung: rückwärts, Stand, gehen, rennen nach der Geschwindigkeit
+name = "move"
+blend = "speed"
+points = [
+    { value = -1.4, clip = "none/s_walk_back" },
+    { value = 0.0, clip = "none/s_idle" },
+    { value = 1.6, clip = "none/s_walk" },
+    { value = 4.0, clip = "none/s_run" },
+]
+
+[[state]]
+name = "sneak"
+blend = "speed"
+points = [{ value = 0.0, clip = "none/s_idle" }, { value = 1.1, clip = "none/s_sneak" }]
+
+[[state]]
+name = "strafe_l"
+clip = "none/s_strafe_l"
+
+[[state]]
+name = "strafe_r"
+clip = "none/s_strafe_r"
+
+[[state]] # Drehen im Stand wie Gothic (Entscheidung Projektinhaber)
+name = "turn_l"
+clip = "none/t_turn_l"
+
+[[state]]
+name = "turn_r"
+clip = "none/t_turn_r"
+
+[[state]]
+name = "jump"
+clip = "none/t_jump_start"
+
+[[state]]
+name = "jump_run"
+clip = "none/t_jump_run"
+
+[[state]]
+name = "airborne"
+clip = "none/s_jump_air"
+
+[[state]]
+name = "fall"
+clip = "none/s_fall"
+
+[[state]]
+name = "land"
+clip = "none/t_jump_land"
+speed = 1.5
+
+[[state]]
+name = "land_hard"
+clip = "none/t_fall_land_hard"
+
+[[state]] # Klettern: der Clip bewegt die Figur (root motion, auf die Kante skaliert)
+name = "climb_low"
+clip = "none/t_climb_low"
+root_motion = true
+
+[[state]]
+name = "climb_mid"
+clip = "none/t_climb_mid"
+root_motion = true
+
+[[state]]
+name = "climb_high"
+clip = "none/t_climb_high"
+root_motion = true
+
+[[state]]
+name = "slide"
+clip = "none/s_slide"
+
+[[state]]
+name = "swim"
+blend = "speed"
+points = [
+    { value = -0.9, clip = "swim/s_back" },
+    { value = 0.0, clip = "swim/s_idle" },
+    { value = 1.6, clip = "swim/s_forward" },
+]
+
+[[state]]
+name = "dive"
+blend = "speed"
+points = [{ value = 0.0, clip = "dive/s_idle" }, { value = 1.6, clip = "dive/s_forward" }]
+
+# --- Übergänge (Reihenfolge = Vorrang) ---
+[[transition]] # Klettern hat Vorrang vor allem
+from = "*"
+to = "climb_low"
+when = ["climb == 1"]
+blend = 0.1
+
+[[transition]]
+from = "*"
+to = "climb_mid"
+when = ["climb == 2"]
+blend = 0.1
+
+[[transition]]
+from = "*"
+to = "climb_high"
+when = ["climb == 3"]
+blend = 0.1
+
+[[transition]]
+from = "*"
+to = "dive"
+when = ["dive"]
+blend = 0.4
+
+[[transition]]
+from = "*"
+to = "swim"
+when = ["swim"]
+blend = 0.3
+
+[[transition]]
+from = "*"
+to = "slide"
+when = ["slide"]
+blend = 0.2
+
+[[transition]] # Ende des Kletterns, Schwimmens, Rutschens
+from = "climb_low"
+to = "move"
+when = ["end"]
+blend = 0.15
+
+[[transition]]
+from = "climb_mid"
+to = "move"
+when = ["end"]
+blend = 0.15
+
+[[transition]]
+from = "climb_high"
+to = "move"
+when = ["end"]
+blend = 0.15
+
+[[transition]]
+from = "swim"
+to = "move"
+when = ["!swim", "!dive"]
+blend = 0.3
+
+[[transition]]
+from = "dive"
+to = "swim"
+when = ["!dive"]
+blend = 0.4
+
+[[transition]]
+from = "slide"
+to = "move"
+when = ["!slide"]
+blend = 0.2
+
+# Springen und Fallen
+[[transition]]
+from = "move"
+to = "jump_run"
+when = ["air", "speed > 3.0"]
+blend = 0.1
+
+[[transition]]
+from = "move"
+to = "jump"
+when = ["air"]
+blend = 0.1
+
+[[transition]]
+from = "sneak"
+to = "jump"
+when = ["air"]
+blend = 0.1
+
+[[transition]]
+from = "jump"
+to = "airborne"
+when = ["air", "end"]
+blend = 0.15
+
+[[transition]]
+from = "jump_run"
+to = "airborne"
+when = ["air", "end"]
+blend = 0.15
+
+[[transition]]
+from = "airborne"
+to = "fall"
+when = ["fall > 0.8"]
+blend = 0.3
+
+[[transition]]
+from = "fall"
+to = "land_hard"
+when = ["landed", "hard"]
+blend = 0.05
+
+[[transition]]
+from = "*"
+to = "land"
+when = ["landed"]
+blend = 0.05
+
+[[transition]]
+from = "land"
+to = "move"
+when = ["end"]
+blend = 0.15
+
+[[transition]]
+from = "land_hard"
+to = "move"
+when = ["end"]
+blend = 0.2
+
+# Am Boden: schleichen, seitwärts, drehen, zurück zur Fortbewegung
+[[transition]]
+from = "move"
+to = "sneak"
+when = ["sneak"]
+blend = 0.25
+
+[[transition]]
+from = "sneak"
+to = "move"
+when = ["!sneak"]
+blend = 0.25
+
+[[transition]]
+from = "move"
+to = "strafe_l"
+when = ["strafe < -0.1"]
+blend = 0.15
+
+[[transition]]
+from = "move"
+to = "strafe_r"
+when = ["strafe > 0.1"]
+blend = 0.15
+
+[[transition]]
+from = "strafe_l"
+to = "move"
+when = ["strafe > -0.1"]
+blend = 0.15
+
+[[transition]]
+from = "strafe_r"
+to = "move"
+when = ["strafe < 0.1"]
+blend = 0.15
+
+[[transition]]
+from = "move"
+to = "turn_l"
+when = ["turn < -0.5", "speed < 0.1", "speed > -0.1"]
+blend = 0.1
+
+[[transition]]
+from = "move"
+to = "turn_r"
+when = ["turn > 0.5", "speed < 0.1", "speed > -0.1"]
+blend = 0.1
+
+[[transition]]
+from = "turn_l"
+to = "move"
+when = ["end"]
+blend = 0.1
+
+[[transition]]
+from = "turn_r"
+to = "move"
+when = ["end"]
+blend = 0.1
+
+[[transition]]
+from = "turn_l"
+to = "move"
+when = ["speed > 0.1"]
+blend = 0.15
+
+[[transition]]
+from = "turn_r"
+to = "move"
+when = ["speed > 0.1"]
+blend = 0.15

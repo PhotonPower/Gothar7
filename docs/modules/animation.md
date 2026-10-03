@@ -22,20 +22,58 @@ Morph-Targets, Clips und Events aus glTF. Die Laufzeit ist eigene Implementierun
 setzt `gothar-chargen assemble` zusammen. Das CMake-Ziel dafür ist `g7_figures` (optional, Python mit numpy;
 `docs/05-build.md`).
 
-## Geplante API
+## Laufzeit (M6 Teil B, umgesetzt; ADR 0019)
 ```cpp
 namespace g7::animation {
-class Animator {                       // component on animated entities
-public:
-    void setGraph(asset::Handle<AnimGraph>);
-    void setParam(StringId, f32); void setParam(StringId, bool); void trigger(StringId);
-    void play(StringId clip, PlayDesc);          // direct override (interactions, dialog gestures)
-    void update(f64 dt, EventSink&);             // fires clip events
-    const Pose& pose() const; Transform rootMotionDelta() const;
-    Mat4 boneWorld(StringId bone) const;
-};
+struct BoneTransform { Vec3 translation; Quat rotation; Vec3 scale; Mat4 matrix() const; };
+using Pose = std::vector<BoneTransform>;                       // lokal, je Knochen
+class Skeleton { static Result<Skeleton> create(const asset::SkeletonData&); find(name); restPose();
+                 void modelSpace(const Pose&, span<Mat4>) const; std::vector<f32> maskBelow(bone) const; };
+void blendPose(Pose& a, const Pose& b, f32 weight, span<const f32> mask = {});      // lerp/nlerp, kürzester Bogen
+void addPose(Pose& a, const Pose& b, const Pose& reference, f32 weight, span<const f32> mask = {}); // additiv
+class Clip { Clip(const asset::ClipData&, const Skeleton&); sample(time, Pose&); rootTranslation(time);
+             fireEvents(from, to, EventCallback); loops(); duration(); };   // Spuren unbekannter Knochen fallen weg
+struct AnimGraph { sets; start; states; transitions; static Result<AnimGraph> parse(toml, source); };
+class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton&, span<const asset::AnimationSetData*>);
+    void setFloat(name, v); void setBool(name, b); void enter(state, blend);
+    void update(f32 seconds, const EventCallback& = {});
+    void playOverlay(clip, maskBone, blendIn, additive = false); void stopOverlay(blendOut);
+    const Pose& pose() const; Vec3 rootMotion() const; state(); previousState(); fadeWeight(); stateProgress();
+    stateEnded(); std::vector<ClipWeight> activeClips() const; };     // activeClips: Debug-UI
 }
 ```
+- **Abtasten:** Translation und Skalierung linear, Rotation slerp auf dem kürzesten Bogen, Schritt-Schlüssel halten.
+  Schleifen (`s_*`) laufen um, Einmal-Clips klemmen am Ende. Unbewegte Knochen behalten die Ruhepose.
+- **Events (Vertrag §3):** feuern für (von, bis].
+  - Eine Schleife, die umläuft, feuert erst den Rest des Zyklus, dann den Anfang; über mehrere Zyklen jedes Event
+    einmal je Zyklus.
+  - Einmal-Clips feuern auch auf dem letzten Frame. Gleiche Zeit: Dateireihenfolge.
+  - Bei Blend-Zuständen feuert der Clip mit dem größten Gewicht.
+- **Zustandsautomat** `data/anim/<rig>.animgraph.toml` (Version 1; Menschen: `human.animgraph.toml`):
+  - `[[state]]` mit `clip` oder `blend = "<param>"` und `points = [{ value, clip }, …]` (aufsteigend; 1D, die zwei
+    Nachbarn werden gemischt), `speed`, `root_motion`.
+  - `[[transition]]` mit `from` (Zustand oder `*` = jeder andere), `to`, `when = [...]` (alle müssen gelten),
+    `blend` (Sekunden Überblendung).
+  - Bedingungen: `name` (≠ 0), `!name`, `name < <= > >= == != Zahl`, `end` (der Clip ist einmal durch).
+  - Je Update höchstens ein Übergang; Vorrang in Dateireihenfolge.
+  - Blend-Zustände teilen eine Phase (Zyklen), damit Schritte von Gehen und Rennen im Takt bleiben; die
+    Zykluslänge folgt den Gewichten.
+- **Überblenden:** Der alte Zustand läuft weiter und wird linear über `blend` Sekunden ausgeblendet. Ein neuer
+  Übergang ersetzt ihn.
+- **Root Motion** (`root_motion = true`): `rootMotion()` meldet die Bewegung des Knochens `root` im letzten
+  Update; gezeichnet bleibt `root` in Ruhe. Die Engine bewegt damit die Figur (Klettern, mit Teil C) und skaliert
+  auf die Kantenhöhe. Fortbewegungs-Clips sind In-Place (`root` bleibt bei 0, geprüft).
+- **Overlay:** ein Clip über einer Knochenmaske (`maskBelow("spine_02")` = Oberkörper), normal oder additiv
+  (Änderung gegen Frame 0), ein- und ausgeblendet. Einmal-Clips blenden am Ende selbst aus.
+- **Morph-Targets** gibt es nur auf `head_lod0` (Vertrag §6.1). Gewichte für LOD 1 und 2 werden still
+  ignoriert (Hinweis figuren, M6 A).
+- **Graph der Menschen** (`human.animgraph.toml`):
+  - Parameter `speed` (vorwärts m/s, rückwärts negativ), `strafe`, `turn` (Drehen im Stand mit
+    `t_turn_l/r` wie Gothic, Entscheidung Projektinhaber), `air`, `fall`, `landed`/`hard`, `climb` (1/2/3),
+    `swim`, `dive`, `slide`, `sneak`.
+  - Zustände: Fortbewegung (rückwärts, Stand, gehen, rennen als Blend), schleichen, seitwärts, drehen, springen
+    (aus Stand bzw. Lauf), Luft, Fall, Landungen, Klettern (3 Klassen, root motion), rutschen, schwimmen, tauchen.
+  - Teil C setzt die Parameter aus dem Gameplay.
 
 ## Performance
 Pose-Berechnung auf CPU (später parallel), Skinning auf GPU, Animations-LOD (weit entfernte
