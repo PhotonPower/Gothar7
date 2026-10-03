@@ -20,7 +20,8 @@ from gothar_worldgen.config import (
     load_site,
 )
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
-from gothar_worldgen.export.terrain import ExportError, crop, export_terrain, load_grid
+from gothar_worldgen.export.splat import SplatPaths, composite, coverage, layer_masks, write_splat
+from gothar_worldgen.export.terrain import ExportError, Grid, crop, export_terrain, load_grid
 from gothar_worldgen.facade.capture import (
     CaptureError,
     CaptureOptions,
@@ -273,6 +274,35 @@ def _cmd_facade_ui(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _export_splat(
+    grid: Grid, work: Path, core: dict | None, folder: Path, site: str, name: str, out: TextIO
+) -> dict:
+    docs = {}
+    for file, key in (("buildings.json", "buildings"), ("streets.json", "streets"),
+                      ("features.json", "features")):  # fmt: skip
+        try:
+            docs[key] = json.loads((work / file).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as e:
+            raise ExportError(f"{file}: {e} (run 'import' first or pass --no-splat)") from None
+    masks = layer_masks(
+        grid,
+        docs["buildings"].get("buildings", []),
+        docs["streets"].get("streets", []),
+        docs["streets"].get("squares", []),
+        docs["features"].get("features", []),
+        core,
+    )
+    weights = composite(masks, (grid.height, grid.width))
+    block = write_splat(
+        weights,
+        SplatPaths(folder / "generated", f"worlds/{site}/generated", folder / "layers",
+                   f"worlds/{site}/layers", name),
+    )  # fmt: skip
+    shares = ", ".join(f"{k} {v:.0%}" for k, v in coverage(weights).items())
+    print(f"  splat: {len(block['maps'])} maps, {len(block['layers'])} layers ({shares})", file=out)
+    return block
+
+
 def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -285,15 +315,19 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
     folder = assets / "worlds" / site.name
     vfs = f"worlds/{site.name}/generated/{name}.r16"
     try:
+        meta = json.loads((paths.work / "terrain.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        meta = {}
+    core = meta.get("areas", {}).get("core")
+    try:
         grid = load_grid(paths.work)
-        rect = None
-        if args.area == "core":
-            meta = json.loads((paths.work / "terrain.json").read_text(encoding="utf-8"))
-            rect = meta["areas"]["core"]
+        grid = crop(grid, core if args.area == "core" else None, args.step)
+        splat = None
+        if not args.no_splat:
+            splat = _export_splat(grid, paths.work, core, folder, site.name, name, out)
         result = export_terrain(
-            crop(grid, rect, args.step), name, folder / f"{name}.g7world",
-            folder / "generated" / f"{name}.r16", vfs,
-        )  # fmt: skip
+            grid, name, folder / f"{name}.g7world", folder / "generated" / f"{name}.r16", vfs, splat
+        )
     except ExportError as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -365,6 +399,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--step", type=int, default=1, help="keep every n-th sample (default 1)")
     p.add_argument("--name", default=None, help="world name (default: <site>_terrain)")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.add_argument("--no-splat", action="store_true", help="heightmap only, no splat layers")
     p.set_defaults(func=_cmd_export_terrain)
 
     facade = sub.add_parser("facade", help="facade reference tool (W4)")

@@ -129,6 +129,27 @@ def check_terrain_block(block: dict[str, Any]) -> list[str]:
         problems.append("terrain.firstSample must be [x, z]")
     if not (block.get("maxY", 0) > block.get("minY", 0)):
         problems.append("terrain.maxY must be greater than terrain.minY")
+    if "splat" in block:
+        problems.extend(check_splat_block(block["splat"]))
+    return problems
+
+
+def check_splat_block(splat: Any) -> list[str]:  # noqa: ANN401
+    """Rules of the ``splat`` block (world.md, "Splat-Schichten")."""
+    if not isinstance(splat, dict):
+        return ["terrain.splat must be an object"]
+    problems = []
+    layers = splat.get("layers")
+    if not isinstance(layers, list) or not 1 <= len(layers) <= 8:
+        return ["terrain.splat.layers must hold 1 to 8 layers"]
+    for i, layer in enumerate(layers):
+        if not isinstance(layer, dict) or not layer.get("name") or not layer.get("albedo"):
+            problems.append(f"terrain.splat.layers[{i}] needs name and albedo")
+        elif not (isinstance(layer.get("tile", 4.0), int | float) and layer.get("tile", 4.0) > 0):
+            problems.append(f"terrain.splat.layers[{i}].tile must be > 0")
+    maps = splat.get("maps")
+    if not isinstance(maps, list) or len(maps) != math.ceil(len(layers) / 4):
+        problems.append("terrain.splat.maps must hold ceil(layers / 4) images")
     return problems
 
 
@@ -207,9 +228,12 @@ def export_terrain(
     world_path: Path,
     heightmap_path: Path,
     heightmap_vfs: str,
+    splat: dict[str, Any] | None = None,
 ) -> TerrainExport:
     values, min_y, max_y = quantize_heights(grid.heights)
     block = terrain_block(grid, heightmap_vfs, min_y, max_y)
+    if splat is not None:
+        block["splat"] = splat
     problems = check_terrain_block(block)
     if problems:
         raise ExportError("; ".join(problems))
