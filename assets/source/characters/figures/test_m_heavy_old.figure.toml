@@ -1,0 +1,9 @@
+# Test figure (F3d): heavy male base body + old head with beard – checks the neck snap and the
+# shared skin across builds. Not an NPC; the five test NPCs follow with the clothing kit (F3e).
+version = 1
+lods = [1.0, 0.5, 0.2]
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_old/head.glb"
+hair = "parts/head_m_old/hair.glb"

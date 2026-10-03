@@ -1,0 +1,29 @@
+# Head (woman in her forties), style A (F3d): head (with face morphs, teeth, tongue) and hair.
+# Fits every base body of the same sex (assembly snaps the neck); macros only shape the face.
+version = 1
+triangles = 5500
+parts = ["head", "hair"]
+
+[macro]
+gender = 0.0
+age = 0.7
+muscle = 0.5
+weight = 0.5
+proportions = 0.5
+height = 0.5
+race = { african = 1.0 }
+
+[assets]
+skin = "skins/middleage_african_female/middleage_african_female.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow006/eyebrow006.mhclo"
+eyelashes = "eyelashes/eyelashes03/eyelashes03.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"
+hair = "hair/bob02/bob02.mhclo"
+
+[tint]
+bob02 = "#2b211b"
+
+[shape]
+chin-height-decr = 0.3

@@ -143,3 +143,11 @@ def test_recipe_with_teeth_and_tongue():
     h = parse_human(data, "npc")
     assert [t for t, _ in h.assets()] == ["Eyes", "Teeth", "Tongue"]
     assert material_role("teeth") == "teeth" and material_role("tongue.001") == "tongue"
+
+
+def test_hair_lods_may_change_their_borders():
+    """Loose parts (hair cards) are reduced freely; only body/head seams must stay (lod.seam)."""
+    g = Gltf.load(REPO_ROOT / "assets/source/characters/figures/test_m_heavy_old.glb")
+    names = {n.get("name") for n in g.doc["nodes"]}
+    assert {"hair_lod0", "hair_lod2", "head_lod0", "body_lod0"} <= names
+    assert not [i for i in check_fit(g) if i.level == "error"]
