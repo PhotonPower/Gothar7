@@ -126,6 +126,12 @@ Texte kommen aus Inhalt/Definitionen (lokalisiert, M14). Konvention der Engine: 
 | `trigger` | `trigger`: `shape` `box` (`halfExtents` [x,y,z] > 0, Vorgabe 1) | `sphere` (`radius` > 0, Vorgabe 1), `onEnter`/`onLeave` (Skriptfunktionsnamen, optional), `filter` `player`|`npc`|`any` (Vorgabe player), `once` (Vorgabe false), `target` (**reserviert**: Vob-ID oder Name, gelesen/geschrieben, noch ohne Wirkung) | Volumen, das Betreten/Verlassen meldet. Box dreht und skaliert mit dem Vob, Kugel: Radius × größte Skalierung. |
 | `mob` | `mob`: `definition` (Pflicht, Name der Mob-Definition, M8) + `mesh` wie bei `mesh` | Interaktives Objekt (Bett, Truhe, Tür); bis M8 wie ein Mesh gezeichnet. Fokusname kommt aus der Definition. |
 
+**Kategorie (`category`, M4 Sichtbarkeit):** `mesh`-Vobs haben optional `"category": "deco" | "gameplay"`, Vorgabe
+`deco` – geschrieben wird es nur bei `gameplay` (bestehende Welten bleiben bytegleich). `deco` darf ausgeblendet werden,
+wenn es auf dem Bildschirm klein wird (`size_cull`), `gameplay` nie wegen der Größe (Wegweiser, Questobjekte) – für
+beide gilt die Sichtweite `view_distance` (engine.toml, render.md „Sichtbarkeit“). `mob`-Vobs sind immer `gameplay`;
+`"category": "deco"` an einem Mob ist ein Ladefehler. Andere Typen haben kein Feld. Mit welt abgestimmt.
+
 Beispiel (Leonberg, Ursprung = Marktbrunnen, Gelände dort y ≈ 0):
 ```json
 {"id":1,"type":"start","name":"START_MARKTPLATZ","pos":[0,0,8],"rot":[0,0,0,1]}

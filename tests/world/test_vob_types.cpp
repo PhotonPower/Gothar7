@@ -194,3 +194,32 @@ TEST_CASE("Start points: lowest id by default, by name, errors list the known on
     Scene empty;
     CHECK(findStartPoint(empty).error().message == "the world has no start point");
 }
+
+TEST_CASE("Vob category: mesh vobs default to deco, gameplay is written, mobs are always gameplay")
+{
+    const WorldFile file = parse(R"({"version": 1, "vobs": [
+      {"id": 1, "type": "mesh", "name": "TREE", "mesh": "tree.glb"},
+      {"id": 2, "type": "mesh", "name": "SIGNPOST", "mesh": "sign.glb", "category": "gameplay"},
+      {"id": 3, "type": "mob", "name": "BED", "mesh": "bed.glb", "components": {"mob": {"definition": "BED"}}}]})");
+    CHECK(file.vobs[0].category == VobCategory::Deco);
+    CHECK(file.vobs[1].category == VobCategory::Gameplay);
+    CHECK(file.vobs[2].category == VobCategory::Gameplay);
+    Scene scene;
+    REQUIRE(spawnWorld(scene, file).ok());
+    CHECK(scene.get<MeshRef>(scene.findById(VobId{1}))->category == VobCategory::Deco);
+    CHECK(scene.get<MeshRef>(scene.findById(VobId{2}))->category == VobCategory::Gameplay);
+    CHECK(scene.get<MeshRef>(scene.findById(VobId{3}))->category == VobCategory::Gameplay);
+
+    // Only gameplay is written: deco worlds stay byte for byte as they were.
+    const std::string written = writeWorldFile(captureWorld(scene, "w"));
+    CHECK(written.find(R"("mesh":"tree.glb"})") != std::string::npos);
+    CHECK(written.find(R"("mesh":"sign.glb","category":"gameplay"})") != std::string::npos);
+    CHECK(written.find(R"("mesh":"bed.glb","components")") != std::string::npos); // mobs: implied
+    CHECK(writeWorldFile(parse(written)) == written);
+
+    CHECK(errorOf(R"({"id": 1, "type": "mesh", "mesh": "a.glb", "category": "scenery"})") ==
+          "w.g7world: vobs[0]: 'category' must be 'deco' or 'gameplay'");
+    CHECK(errorOf(R"({"id": 1, "type": "mob", "mesh": "a.glb", "category": "deco",
+                      "components": {"mob": {"definition": "BED"}}})") ==
+          "w.g7world: vobs[0]: a mob vob is always 'gameplay'");
+}
