@@ -120,14 +120,26 @@ def select(
         if mode == "split":
             reasons.append("override rueckbau: split")
         why = None
+        function = str(b.get("function") or "")
+        pitch = float(roof.get("pitchDeg") or 0.0)
+        steep = (
+            roof.get("type") in ("saddle", "mixed", "hip")
+            and pitch >= th.get("steepRoofDeg", 90)
+            and eave <= th.get("steepRoofMaxEaveM", 0)
+        )
         if o is not None and o.locked:
             why = "locked"
         elif mode == "none":
             why = "override rueckbau: none"
         elif mode != "split":
-            function = str(b.get("function") or "")
             if function.startswith(PROTECTED_FUNCTION_PREFIXES):
                 why = f"ALKIS historic structure {function}"
+            elif function in th.get("alwaysProtectFunctions", ()) and eave <= th.get(
+                "steepRoofMaxEaveM", 0
+            ):  # old town hall; a large new one (eave above the limit) is replaced
+                why = f"ALKIS {function} (town hall)"
+            elif steep:
+                why = f"historic steep roof {pitch:.0f} deg, eave {eave:.1f} m"
             else:
                 osm = protection.reason(b["footprint"])
                 why = f"OSM {osm}" if osm else None

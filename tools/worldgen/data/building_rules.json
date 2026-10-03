@@ -1,5 +1,5 @@
 {
-  "status": "Entwurf – Festlegung durch den Projektinhaber (Begriffe und Zahlenwerte vor W5; nur neutrale Platzhalter)",
+  "status": "festgelegt – Entscheidung (Koordinator im Auftrag des Projektinhabers), 2026-10-03: Leonberg um 1700, schwäbisch-alemannisches Fachwerk, gedeckte erdige leicht entsättigte Farben, deutliche Alterung; alle Prozente und Maße sind Startwerte, nach den ersten Bildern justierbar",
   "storeys": {
     "groundM": 3.0,
     "upperM": 2.7,
@@ -29,12 +29,32 @@
   "timber": {
     "beamM": 0.18,
     "depthM": 0.06,
-    "bayM": 1.3,
-    "pattern": "std_platzhalter",
+    "bayM": 1.6,
+    "figureEvery": 3,
+    "pattern": "einfach",
     "patterns": {
-      "std_platzhalter": {
-        "note": "neutraler Platzhalter: nur Riegel in halber Geschosshöhe (Ständer, Schwelle und Rähm kommen immer)",
+      "note": "Balkensegmente [u0, v0, u1, v1] in normierten Feldkoordinaten (u über das Feld zwischen zwei Ständern, v über das Geschoss zwischen Schwelle und Rähm); eigene Geometrie nach der Konstruktionsweise",
+      "einfach": {
         "segments": [[0.0, 0.5, 1.0, 0.5]]
+      },
+      "riegel_streben": {
+        "segments": [[0.0, 0.5, 1.0, 0.5], [0.0, 0.25, 0.3, 0.0], [1.0, 0.25, 0.7, 0.0], [0.0, 0.75, 0.3, 1.0], [1.0, 0.75, 0.7, 1.0]]
+      },
+      "mann": {
+        "segments": [[0.0, 0.5, 1.0, 0.5], [0.0, 0.5, 0.42, 0.0], [0.0, 0.5, 0.42, 1.0], [1.0, 0.5, 0.58, 0.0], [1.0, 0.5, 0.58, 1.0]]
+      },
+      "halber_mann": {
+        "segments": [[0.0, 0.5, 1.0, 0.5], [0.0, 0.5, 0.45, 0.0], [0.0, 0.5, 0.45, 1.0]]
+      },
+      "andreaskreuz": {
+        "segments": [[0.0, 0.0, 1.0, 1.0], [0.0, 1.0, 1.0, 0.0]]
+      },
+      "feuerbock": {
+        "segments": [[0.0, 0.6, 1.0, 0.6], [0.0, 0.0, 1.0, 0.6], [1.0, 0.0, 0.0, 0.6], [0.5, 0.6, 0.5, 1.0]]
+      },
+      "raute": {
+        "brustung": true,
+        "segments": [[0.5, 0.0, 1.0, 0.5], [1.0, 0.5, 0.5, 1.0], [0.5, 1.0, 0.0, 0.5], [0.0, 0.5, 0.5, 0.0]]
       }
     }
   },
@@ -49,19 +69,32 @@
   "budget": {
     "trianglesPerBuilding": 2000
   },
-  "materials": {
-    "wall_ground": [0.62, 0.6, 0.56, 1.0],
-    "infill": [0.82, 0.8, 0.75, 1.0],
-    "timber": [0.32, 0.26, 0.2, 1.0],
-    "roof": [0.5, 0.36, 0.3, 1.0],
-    "frame": [0.22, 0.2, 0.18, 1.0]
-  },
   "vocabulary": {
-    "note": "Zuordnung der Begriffe aus facade_vocabulary.json zu Parametern; leer, bis der Projektinhaber die Begriffe festlegt",
-    "style": {},
-    "timber": {},
-    "infill": {},
-    "roofCover": {}
+    "note": "Begriffe aus facade_vocabulary.json -> Generator (festgelegt 2026-10-03)",
+    "timber": {
+      "mann": "mann",
+      "halber_mann": "halber_mann",
+      "einfach": "einfach",
+      "riegel_streben": "riegel_streben",
+      "andreaskreuz": "andreaskreuz",
+      "feuerbock": "feuerbock",
+      "raute": "raute",
+      "keins": null
+    },
+    "infill": {
+      "plaster_white": "plaster_white",
+      "plaster_ochre": "plaster_ochre",
+      "plaster_grey": "plaster_grey",
+      "lehm": "lehm",
+      "brick": "brick",
+      "stone": "stone"
+    },
+    "roofCover": {
+      "tiles_old": "roof_old",
+      "tiles_red": "roof_red",
+      "wood_shingles": "roof_shingles",
+      "thatch": "roof_thatch"
+    }
   },
   "rueckbau": {
     "status": "festgelegt – Entscheidung des Projektinhabers (2026-10-03): große neuere Gebäude verkleinern und durch Fachwerkhäuser ersetzen; Zahlenwerte: Entscheidung Koordinator im Auftrag des Projektinhabers, justierbar nach den ersten Bildern",
@@ -70,7 +103,10 @@
       "areaM2": 200.0,
       "lengthM": 22.0,
       "eaveM": 12.0,
-      "overBudget": true
+      "overBudget": true,
+      "steepRoofDeg": 45.0,
+      "steepRoofMaxEaveM": 12.0,
+      "alwaysProtectFunctions": ["31001_3012"]
     },
     "parcels": {
       "widthM": 7.0,
@@ -91,5 +127,202 @@
     },
     "pitchDeg": 50.0,
     "pitchSpreadDeg": 4.0
+  },
+  "palette": {
+    "note": "baseColorFactor (linear); exakt gleiche Werte in allen Häusern, die Engine bündelt nach Materialwerten",
+    "stone": [0.19, 0.16, 0.13, 1.0],
+    "plaster_white": [0.7, 0.64, 0.53, 1.0],
+    "plaster_ochre": [0.56, 0.37, 0.16, 1.0],
+    "plaster_grey": [0.37, 0.34, 0.29, 1.0],
+    "lehm": [0.34, 0.22, 0.11, 1.0],
+    "brick": [0.25, 0.07, 0.04, 1.0],
+    "timber_dark": [0.045, 0.024, 0.013, 1.0],
+    "timber_oxblood": [0.13, 0.018, 0.012, 1.0],
+    "roof_old": [0.15, 0.045, 0.027, 1.0],
+    "roof_old_moss": [0.09, 0.08, 0.03, 1.0],
+    "roof_red": [0.33, 0.065, 0.032, 1.0],
+    "roof_shingles": [0.11, 0.08, 0.05, 1.0],
+    "roof_thatch": [0.39, 0.28, 0.11, 1.0],
+    "frame": [0.026, 0.017, 0.011, 1.0]
+  },
+  "socleM": 0.6,
+  "roofPitch": {
+    "note": "Modus medieval: Dächer flach/Pult oder unter minDeg werden Satteldächer; Traufe bleibt, First wächst (Entscheidung Koordinator, 2026-10-03)",
+    "minDeg": 35.0,
+    "targetMinDeg": 50.0,
+    "targetMaxDeg": 55.0
+  },
+  "styles": {
+    "buergerhaus": {
+      "groundMassive": 0.7,
+      "timber": true,
+      "jetty": 1.0,
+      "patterns": {
+        "mann": 0.35,
+        "halber_mann": 0.25,
+        "einfach": 0.2,
+        "andreaskreuz": 0.1,
+        "feuerbock": 0.05,
+        "raute": 0.05
+      },
+      "infill": {
+        "plaster_white": 0.55,
+        "plaster_ochre": 0.28,
+        "plaster_grey": 0.11,
+        "brick": 0.06
+      },
+      "roof": {
+        "roof_old": 0.7,
+        "roof_red": 0.25,
+        "roof_shingles": 0.05
+      },
+      "timberColor": {
+        "timber_dark": 0.85,
+        "timber_oxblood": 0.15
+      }
+    },
+    "amtshaus": {
+      "groundMassive": 0.7,
+      "timber": true,
+      "jetty": 1.0,
+      "patterns": {
+        "mann": 1.0
+      },
+      "brustung": "raute",
+      "infill": {
+        "plaster_white": 0.55,
+        "plaster_ochre": 0.28,
+        "plaster_grey": 0.11,
+        "brick": 0.06
+      },
+      "roof": {
+        "roof_old": 0.7,
+        "roof_red": 0.3
+      },
+      "timberColor": {
+        "timber_dark": 0.85,
+        "timber_oxblood": 0.15
+      }
+    },
+    "handwerkerhaus": {
+      "groundMassive": 0.0,
+      "timber": true,
+      "jetty": 0.1,
+      "patterns": {
+        "einfach": 0.4,
+        "halber_mann": 0.3,
+        "mann": 0.2,
+        "andreaskreuz": 0.1
+      },
+      "infill": {
+        "plaster_white": 0.5,
+        "plaster_ochre": 0.25,
+        "plaster_grey": 0.1,
+        "lehm": 0.1,
+        "brick": 0.05
+      },
+      "roof": {
+        "roof_old": 0.7,
+        "roof_red": 0.25,
+        "roof_shingles": 0.05
+      },
+      "timberColor": {
+        "timber_dark": 1.0
+      }
+    },
+    "ackerbuergerhaus": {
+      "groundMassive": 0.0,
+      "timber": true,
+      "jetty": 0.1,
+      "patterns": {
+        "einfach": 0.4,
+        "halber_mann": 0.3,
+        "mann": 0.2,
+        "andreaskreuz": 0.1
+      },
+      "infill": {
+        "plaster_white": 0.5,
+        "plaster_ochre": 0.25,
+        "plaster_grey": 0.1,
+        "lehm": 0.1,
+        "brick": 0.05
+      },
+      "roof": {
+        "roof_old": 0.7,
+        "roof_red": 0.25,
+        "roof_shingles": 0.05
+      },
+      "timberColor": {
+        "timber_dark": 1.0
+      }
+    },
+    "scheune": {
+      "groundMassive": 0.0,
+      "timber": true,
+      "jetty": 0.0,
+      "gate": true,
+      "patterns": {
+        "riegel_streben": 0.7,
+        "andreaskreuz": 0.3
+      },
+      "infill": {
+        "lehm": 0.45,
+        "plaster_grey": 0.3,
+        "plaster_white": 0.25
+      },
+      "roof": {
+        "roof_old": 0.65,
+        "roof_shingles": 0.2,
+        "roof_red": 0.1,
+        "roof_thatch": 0.05
+      },
+      "timberColor": {
+        "timber_dark": 1.0
+      }
+    },
+    "steinhaus": {
+      "groundMassive": 1.0,
+      "timber": false,
+      "jetty": 0.0,
+      "wall": "stone",
+      "roof": {
+        "roof_old": 0.7,
+        "roof_red": 0.3
+      }
+    },
+    "kirche": {
+      "groundMassive": 1.0,
+      "timber": false,
+      "jetty": 0.0,
+      "wall": "stone",
+      "roof": {
+        "roof_old": 0.8,
+        "roof_red": 0.2
+      }
+    },
+    "mauer": {
+      "groundMassive": 1.0,
+      "timber": false,
+      "jetty": 0.0,
+      "wall": "stone",
+      "openings": false,
+      "roof": {
+        "roof_old": 1.0
+      }
+    }
+  },
+  "assignment": {
+    "note": "Reihenfolge: Override style, OSM (Kirche, Schloss), ALKIS-Funktion, Lage; dann gewichtete Wahl je Haus aus hash(id, seed); Override timber/infill/roofCover hat Vorrang",
+    "wallFunctions": ["51007"],
+    "churchFunctions": ["31001_3041", "31001_3042", "31001_3043", "31001_3044"],
+    "officeFunctions": ["31001_3010", "31001_3011", "31001_3012", "31001_3013", "31001_3014", "31001_3015", "31001_3016"],
+    "barnFunctions": ["31001_27", "31001_2463", "31001_2461"],
+    "mainStreetHighways": ["primary", "secondary", "tertiary", "pedestrian"],
+    "mainReachM": 12.0,
+    "buergerMinAreaM2": 60.0,
+    "edgeDistanceM": 230.0,
+    "representativeSquares": ["Marktplatz"],
+    "representativeReachM": 6.0,
+    "noThatchInCore": true
   }
 }

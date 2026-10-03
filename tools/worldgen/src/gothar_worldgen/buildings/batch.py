@@ -98,6 +98,7 @@ class BatchResult:
     over_budget: list[tuple[str, int]] = field(default_factory=list)  # medieval: (id, triangles)
     replaced: list[tuple[str, int]] = field(default_factory=list)  # over budget -> (id, new houses)
     timber_levels: Counter[int] = field(default_factory=Counter)
+    styles: dict[str, Counter[str]] = field(default_factory=lambda: defaultdict(Counter))
 
 
 def generate(
@@ -190,6 +191,15 @@ def generate(
             prims = house.primitives
             result.notes.update(n for n in house.notes if n not in massing.notes)
             result.timber_levels[house.timber_level] += 1
+            if house.style is not None:
+                st = house.style
+                for key, value in (("style", st.style), ("pattern", st.pattern or "-"),
+                                   ("brustung", st.brustung or "-"), ("infill", st.infill),
+                                   ("roof", st.roof), ("timberColor", st.timber_color),
+                                   ("massiveGround", str(st.massive_ground)),
+                                   ("jetty", str(st.jetty))):  # fmt: skip
+                    result.styles[key][value] += 1
+                result.styles["roofSteepened"]["masses"] += house.steepened
             if house.triangles > budget:
                 result.over_budget.append((bid, house.triangles))
             if not prims:
@@ -260,6 +270,10 @@ def generate(
             "trianglesPerBuilding": budget,
             "over": len(result.over_budget),
             "timberLevels": {str(k): v for k, v in sorted(result.timber_levels.items())},
+        }
+        result.index["stats"]["style"] = {
+            k: dict(sorted(v.items(), key=lambda kv: -kv[1]))
+            for k, v in sorted(result.styles.items())
         }
     return result
 

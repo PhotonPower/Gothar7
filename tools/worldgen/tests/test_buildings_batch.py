@@ -107,7 +107,7 @@ RULES = Path(__file__).resolve().parents[1] / "data" / "building_rules.json"
 
 
 def test_medieval_mode(tmp_path: Path):
-    from gothar_worldgen.buildings.medieval import ROLES, load_rules
+    from gothar_worldgen.buildings.medieval import load_rules
 
     rules = load_rules(RULES)
     blds = [house("A", 0, 0), house("B", 20, 0, width=9)]
@@ -116,12 +116,11 @@ def test_medieval_mode(tmp_path: Path):
     assert res.index["mode"] == "medieval" and st["buildings"] == 2
     assert st["budget"]["trianglesPerBuilding"] == rules.data["budget"]["trianglesPerBuilding"]
     assert st["trianglesPerBuilding"]["max"] >= st["trianglesPerBuilding"]["median"] > 0
-    colors = []
     for e in res.index["entries"]:
         doc, _ = read_glb((tmp_path / e["mesh"].split("/")[-1]).read_bytes())
-        assert [m["name"] for m in doc["materials"]] == list(ROLES)
-        colors.append([m["pbrMetallicRoughness"]["baseColorFactor"] for m in doc["materials"]])
-    assert colors[0] == colors[1]  # equal material values in every house (engine batching)
+        for m in doc["materials"]:  # equal material values in every house (engine batching)
+            assert m["pbrMetallicRoughness"]["baseColorFactor"] == rules.data["palette"][m["name"]]
+    assert sum(res.index["stats"]["style"]["style"].values()) == 2
     with pytest.raises(ValueError):
         generate(blds, GRID, tmp_path, "v", mode="medieval")  # rules missing
     with pytest.raises(ValueError):

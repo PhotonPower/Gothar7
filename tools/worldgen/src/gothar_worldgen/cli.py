@@ -343,7 +343,12 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
         if args.mode == "medieval" or args.rueckbau:
             rules = load_rules(data_dir.parent / "building_rules.json")
             street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
-            streets = StreetIndex(street_doc.get("streets", []))
+            feature_doc = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
+            streets = StreetIndex(
+                street_doc.get("streets", []), street_doc.get("squares", []),
+                feature_doc.get("features", []), rules.get("assignment", "mainStreetHighways"),
+                rules.get("assignment", "representativeSquares"),
+            )  # fmt: skip
     except (OSError, json.JSONDecodeError, OverrideError, ValueError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -388,6 +393,12 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
         b = st["budget"]
         print(f"  budget {b['trianglesPerBuilding']}/building: {b['over']} over; timber levels "
               f"(0 full .. 3 none): {b['timberLevels']}", file=out)  # fmt: skip
+    if "style" in st:
+        sty = st["style"]
+        print("  styles: " + ", ".join(f"{k} {v}" for k, v in sty["style"].items()), file=out)
+        print("  patterns: " + ", ".join(f"{k} {v}" for k, v in sty["pattern"].items())
+              + "; roofs: " + ", ".join(f"{k} {v}" for k, v in sty["roof"].items())
+              + f"; steepened roofs {sty['roofSteepened'].get('masses', 0)}", file=out)  # fmt: skip
     if report is not None:
         r = report["stats"]
         print(f"  rueckbau: {r['replaced']} buildings replaced by {r['newHouses']} houses "
