@@ -40,6 +40,16 @@ class FrontFacade:
 
 
 @dataclass
+class Passage:
+    """A covered way through the ground storey (OSM ``tunnel`` through a house, W6)."""
+
+    axis: tuple[tuple[float, float], tuple[float, float]]  # local (x, z), beyond both facades
+    w: float = 2.5  # clear width
+    h: float = 3.0  # clear height above the higher end
+    note: str | None = None
+
+
+@dataclass
 class BuildingOverride:
     id: str
     keep: bool = True
@@ -56,6 +66,7 @@ class BuildingOverride:
     dormers: int | None = None  # number of dormers (0 = none), None = generated
     chimneys: int | None = None  # number of chimneys (0 = none), None = generated
     wall_house: bool | None = None  # on the city wall line (W6); None = detected
+    passages: list[Passage] = field(default_factory=list)  # ways through the ground storey
     extra: dict[str, Any] = field(default_factory=dict)  # unknown keys, written back unchanged
 
 
@@ -97,6 +108,7 @@ _KNOWN = {
     "dormers",
     "chimneys",
     "wallHouse",
+    "passages",
 }
 MAX_COUNT = {"dormers": 6, "chimneys": 4}
 
@@ -136,6 +148,30 @@ def from_json(data: Any) -> BuildingOverride:  # noqa: ANN401
     seed = data.get("seed")
     if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
         raise OverrideError(f"{where}: 'seed' must be an integer")
+
+    passages = []
+    raw = data.get("passages", [])
+    if not isinstance(raw, list):
+        raise OverrideError(f"{where}: 'passages' must be a list")
+    for i, ps in enumerate(raw):
+        pw = f"{where} passage {i}"
+        axis = ps.get("axis") if isinstance(ps, dict) else None
+        if not (isinstance(axis, list) and len(axis) == 2
+                and all(isinstance(q, list) and len(q) == 2 for q in axis)):  # fmt: skip
+            raise OverrideError(f"{pw}: 'axis' must be two points [x, z]")
+        a, b = ((_number({"v": q[0]}, "v", pw), _number({"v": q[1]}, "v", pw)) for q in axis)
+        if math.dist(a, b) < 1.0:  # type: ignore[arg-type]
+            raise OverrideError(f"{pw}: the axis is shorter than 1 m")
+        w = _number(ps, "w", pw, positive=True, optional=True)
+        h = _number(ps, "h", pw, positive=True, optional=True)
+        passages.append(
+            Passage(
+                (a, b),  # type: ignore[arg-type]
+                w if w is not None else 2.5,
+                h if h is not None else 3.0,
+                _string(ps, "note", pw),
+            )
+        )
 
     front = None
     if data.get("frontFacade") is not None:
@@ -184,6 +220,7 @@ def from_json(data: Any) -> BuildingOverride:  # noqa: ANN401
         dormers=_count(data, "dormers", where),
         chimneys=_count(data, "chimneys", where),
         wall_house=data.get("wallHouse"),
+        passages=passages,
         extra={k: v for k, v in data.items() if k not in _KNOWN},
     )
 
@@ -234,6 +271,12 @@ def to_json(o: BuildingOverride) -> dict[str, Any]:
         out["chimneys"] = o.chimneys
     if o.wall_house is not None:
         out["wallHouse"] = o.wall_house
+    if o.passages:
+        out["passages"] = [
+            {"axis": [list(ps.axis[0]), list(ps.axis[1])], "w": ps.w, "h": ps.h}
+            | ({"note": ps.note} if ps.note else {})
+            for ps in o.passages
+        ]
     out.update(o.extra)
     return out
 

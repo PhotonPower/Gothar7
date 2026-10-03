@@ -53,6 +53,14 @@
       "street": "Zwerchstraße"
     },
     {
+      "key": "pforte_garten_west",
+      "kind": "pforte",
+      "wall": "zwinger",
+      "at": [-251.83, -6.36],
+      "w": 2.8,
+      "note": "Entscheidung Projektinhaber (2026-10-03): schmale Pforte in der Zwingermauer vor dem Westtor des Pomeranzengartens; die Gartentreppe führt hindurch in den Zwinger"
+    },
+    {
       "key": "pforte_pfarr",
       "kind": "pforte",
       "at": [-180, -104],

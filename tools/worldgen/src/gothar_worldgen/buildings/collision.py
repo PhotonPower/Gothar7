@@ -189,9 +189,35 @@ def hull_body(piece: Polygon, roof: _Roof, base_y: float, origin: tuple[float, f
     return _body(points, tris, origin, name)
 
 
-def collision_for(masses: Sequence[Mass], base_y: float,
-                  origin_xz: tuple[float, float]) -> CollisionResult:  # fmt: skip
-    """``COL_HULL_`` bodies for all masses (ground footprints); triangle mesh as fallback."""
+def prism_body(piece: Polygon, y0: float, y1: float, origin: tuple[float, float, float],
+               name: str) -> CollisionPart:  # fmt: skip
+    """Closed convex prism over a convex piece from y0 to y1."""
+    ring = list(shapely.orient_polygons(piece).exterior.coords)[:-1]
+    n = len(ring)
+    pts = [(x, y0, z) for x, z in ring] + [(x, y1, z) for x, z in ring]
+    tris: list[tuple[int, int, int]] = [(0, k, k + 1) for k in range(1, n - 1)]
+    for i in range(n):
+        j = (i + 1) % n
+        tris += [(i, n + i, n + j), (i, n + j, j)]
+    tris += [(n, n + k + 1, n + k) for k in range(1, n - 1)]
+    pos = np.asarray(pts, dtype=np.float64) - np.asarray(origin)
+    centre = pos.mean(axis=0)
+    fixed = []
+    for a, b, d in tris:  # outward winding regardless of the ring's orientation
+        pa, pb, pd = pos[a], pos[b], pos[d]
+        if np.dot(np.cross(pb - pa, pd - pa), (pa + pb + pd) / 3 - centre) < 0:
+            b, d = d, b
+        fixed.append((a, b, d))
+    return CollisionPart(name, np.round(pos, 4).astype(np.float32),
+                         np.asarray(fixed, dtype=np.uint32).reshape(-1))  # fmt: skip
+
+
+def collision_for(masses: Sequence[Mass], base_y: float, origin_xz: tuple[float, float],
+                  carve: Sequence[tuple[Polygon, float]] = ()) -> CollisionResult:  # fmt: skip
+    """``COL_HULL_`` bodies for all masses (ground footprints); triangle mesh as fallback.
+
+    ``carve``: passages (corridor polygon, clear top): a piece they cross becomes the body above
+    the top plus prisms beside the corridor below it."""
     origin = (origin_xz[0], base_y, origin_xz[1])
     parts: list[CollisionPart] = []
     decomposed = 0
@@ -205,9 +231,21 @@ def collision_for(masses: Sequence[Mass], base_y: float,
         decomposed += len(pieces) > 1
         pieces_total += len(pieces)
         for piece in pieces:
-            parts.append(hull_body(piece, roof, base_y, origin, f"COL_HULL_{len(parts)}"))
+            cut = next(((cor, top) for cor, top in carve if cor.intersects(piece)), None)
+            if cut is None:
+                parts.append(hull_body(piece, roof, base_y, origin, f"COL_HULL_{len(parts)}"))
+                continue
+            corridor, top = cut
+            parts.append(hull_body(piece, roof, top, origin, f"COL_HULL_{len(parts)}"))
+            rest = piece.difference(corridor)
+            for g in getattr(rest, "geoms", [rest]):
+                if isinstance(g, Polygon) and g.area > 0.05:
+                    for sub in convex_pieces(g):
+                        parts.append(prism_body(sub, base_y, top, origin,
+                                                f"COL_HULL_{len(parts)}"))  # fmt: skip
     result = CollisionResult(parts, False, decomposed)
-    if pieces_total > MAX_PIECES or result.triangles > BUDGET:
+    # a passage needs the hulls (the triangle mesh would close it); over budget only warns
+    if not carve and (pieces_total > MAX_PIECES or result.triangles > BUDGET):
         try:
             mesh = build_mesh(masses, base_y, origin_xz)
         except ValueError:

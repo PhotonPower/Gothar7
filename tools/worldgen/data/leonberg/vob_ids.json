@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 1925,
+ "nextVobId": 1930,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -1926,6 +1926,11 @@
   "handmade:gartenbrunnen_o": 1921,
   "handmade:gartenbrunnen_w": 1922,
   "handmade:obeliskbrunnen": 1923,
-  "handmade:kirche": 1924
+  "handmade:kirche": 1924,
+  "citywall:zwinger_00_00_01": 1925,
+  "citywall:zwinger_00_00_02": 1926,
+  "citywall:zwinger_00_00_03": 1927,
+  "citywall:zwinger_00_00_04": 1928,
+  "citywall:zwinger_00_01_01": 1929
  }
 }

@@ -214,9 +214,42 @@ def test_zwinger_walls_are_lower_without_a_walk():
     course = load_course(course_doc(zwinger=[{"points": [[20, -20], [100, -20]]}]), FEATURES)
     pieces, _ = build_wall(course, [], flat, RULES)
     z = [p for p in pieces if p.kind == "zwinger"]
-    assert len(z) == 1 and z[0].length == pytest.approx(80.0)
-    top = max(b[2] for b in _bodies(z[0]))
+    assert sum(p.length for p in z) == pytest.approx(80.0)
+    assert [p.key for p in z] == ["zwinger_00_00", "zwinger_00_00_01"]  # chunks like the ring
+    assert all(p.collision_triangles <= CW["collisionPerFile"] for p in z)
+    top = max(b[2] for p in z for b in _bodies(p))
     assert top == pytest.approx(CW["zwinger"]["heightM"], abs=0.05)
+
+
+def test_every_collision_body_has_volume_also_at_bends():
+    bent = [[20, -20], [30, -20], [30, -30], [42, -30], [42, -21]]  # corners on sample marks
+    course = load_course(course_doc(zwinger=[{"points": bent}]), FEATURES)
+    pieces, _ = build_wall(course, [], slope, RULES)
+    for piece in pieces:
+        for part in piece.collision:
+            pos = np.asarray(part.positions, dtype=float).reshape(-1, 3)
+            assert MultiPoint([(x, z) for x, _, z in pos]).convex_hull.area > 0.05, part.name
+
+
+def test_a_postern_in_a_zwinger_wall_leaves_a_free_passage_under_a_lintel():
+    gate = {"key": "garten", "kind": "pforte", "wall": "zwinger", "at": [60.3, -19.0], "w": 2.8}
+    doc = course_doc(zwinger=[{"points": [[20, -20], [100, -20]]}])
+    doc["gates"].append(gate)
+    course = load_course(doc, FEATURES)
+    pieces, _ = build_wall(course, [], flat, RULES)
+    z = [p for p in pieces if p.kind == "zwinger"]
+    assert sum(p.pfortes for p in z) == 1
+    lane = box(60.3 - 1.3, -23.0, 60.3 + 1.3, -17.0)  # across the wall, 2.6 m of the 2.8 m
+    bodies = [b for p in z for b in _bodies(p)]
+    assert not [b for b in bodies if b[0].intersects(lane) and b[1] < CW["pforte"]["h"] - 0.1]
+    lintel = [b for b in bodies if b[0].intersects(lane)]
+    assert lintel and min(b[1] for b in lintel) == pytest.approx(CW["pforte"]["h"], abs=0.01)
+    ring_only = load_course(course_doc(), FEATURES)
+    assert all(g.wall == "ring" for g in ring_only.gates)
+    with pytest.raises(CourseError):
+        bad = course_doc()
+        bad["gates"].append({**gate, "kind": "tower"})
+        load_course(bad, FEATURES)
 
 
 def test_rules_check_the_arch_and_the_cross_section():
