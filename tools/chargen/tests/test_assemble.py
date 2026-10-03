@@ -165,3 +165,38 @@ def test_headgear_hides_the_hair(repo_tmp):
     figure.parts["cloth_nasal_helmet"] = str(path)
     with pytest.raises(AssembleError, match="hides only"):
         assemble_figure(figure, FIGURES / "test_armor_medium_m.figure.toml", CHARACTERS, path)
+
+
+def test_heads_sit_at_the_neck_of_the_bodies():
+    """Heads are built at the neck height of the base bodies (age changes the MakeHuman stature):
+    every head fits every body of its sex without stretching the neck."""
+    from gothar_chargen.partdata import lod_meshes
+
+    def ring_height(path, part):
+        g = Gltf.load(path)
+        mesh = lod_meshes(g)[0]
+        ring = data_of(g)["neck"][f"{part}_lod0"]
+        return np.mean([mesh.positions[p[0][0]][p[0][1]][1] for p in ring])
+
+    bodies = [ring_height(p, "body") for p in sorted(CHARACTERS.glob("parts/body_*/body.glb"))]
+    heads = [ring_height(p, "head") for p in sorted(CHARACTERS.glob("parts/head_*/head.glb"))]
+    assert len(heads) >= 5
+    assert max(abs(h - np.mean(bodies)) for h in heads) < 0.003
+
+
+def test_neck_lift_is_an_error(monkeypatch):
+    import gothar_chargen.assemble as assemble
+
+    monkeypatch.setattr(assemble, "NECK_LIFT_MAX", -1.0)
+    figure = load_figure(FIGURES / "test_plain.figure.toml")
+    with pytest.raises(AssembleError, match="above the neck"):
+        assemble_figure(figure, FIGURES / "test_plain.figure.toml", CHARACTERS, FIGURES / "x.glb")
+
+
+def test_eye_height_rule():
+    from gothar_chargen.fit import FitTolerances
+
+    g = Gltf.load(FIGURES / "guard.glb")
+    assert not [i for i in check_fit(g) if i.code == "head.eyes"]
+    issues = check_fit(g, FitTolerances(eye_height=1.5))
+    assert [i.code for i in issues if i.level == "error"] == ["head.eyes"]

@@ -226,6 +226,11 @@ Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, 
 - **Köpfe:** separates Mesh (wie Gothic), Ziel 20+ Gesichter; gemeinsame Morph-Targets (§6.1). Rezepte
   `humans/head_<m|f>_<name>` (`parts = ["head", "hair"]`) mit Alter, Herkunft, Haut, Haaren, optional Bart (wird Teil
   des Kopf-Meshes und bewegt sich mit den Mund-Morphs) und MPFB-Formzielen (`[shape]`, z. B. `nose-hump-incr`).
+  **Köpfe werden auf Halshöhe der Grundkörper gebaut:** Das Alter-Makro ändert in MakeHuman die Körpergröße, deshalb
+  verschiebt `gothar-chargen human` Kopf, Gesichtsteile und Haare senkrecht, bis die Halsnaht auf der mittleren
+  Ringhöhe der Teile `parts/body_*` liegt (F3i). `assemble` meldet einen Fehler, wenn die Naht beim Zusammenbau
+  mehr als 6 mm auf- oder absteigen müsste; der Validator prüft die Augenhöhe (`head.eyes`: 1,62 m ± 2,5 cm, Kapsel
+  der Engine – Frauen liegen bei gleicher Halshöhe ~2 cm tiefer). Neue Grundkörper → Köpfe neu bauen.
   Ein Kopf passt auf jeden Grundkörper desselben Geschlechts: `assemble` zieht den Halsring des Körpers auf den des
   Kopfes (beide aus derselben MPFB-Topologie, Paarung über die Randkante; Hals und Kragen folgen weich bis 5 cm
   darunter) und verwendet die **Haut-Textur des Kopfes auch für den Körper** (eine Haut je Figur, gleiche UV).
@@ -270,8 +275,7 @@ Texturen nach `textures/` und ein Figur-Manifest. Erste Figur: `farmer` (Bauer, 
   - `heads = "head_<m|f>_*"`: Beim Bauen müssen alle Köpfe des Geschlechts unter das Stück passen – Kuppeln
     wachsen, bis auch deren Schädelpunkte innen liegen; die Kapuze wird nur dort weich nach außen gedrückt, wo ein
     Scheitel durchstechen würde (radial vom Kopfmittelpunkt gemessen, unabhängig von den Flächennormalen der Quelle).
-    Neue Köpfe → Kopf-Kits neu bauen. Bekannt: `head_f_mature` sitzt 2 cm höher als `head_f_young` (Augen 1,63 m
-    statt 1,61 m), deshalb fallen die Frauen-Kappen etwas größer aus – Kopfhöhen angleichen ist ein Folgepunkt.
+    Neue Köpfe → Kopf-Kits neu bauen.
 - **Texturen:** Trim-Sheets und Farbvarianten statt Unikat-Texturen; Stil passend zu den Häusern (W5).
 - **Budget:** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k (mit Bart bis ~5,6 k), höchstens 20 k je Figur, Stufen
   `_lod1`/`_lod2` (Vertrag §2.2). Lose Teile (Haare, Bärte) werden ohne Randschutz reduziert; nur die Nahtränder von

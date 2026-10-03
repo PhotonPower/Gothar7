@@ -514,6 +514,44 @@ def _dome(obj: bpy.types.Object, heads: np.ndarray | None = None) -> None:
     print(f"[chargen] dome radii {np.round(radii, 3)} centre {np.round(centre, 3)}")
 
 
+def _body_neck_height(characters: Path) -> float:
+    """Mean height of the neck rings of the base body parts (glTF y-up = Blender z)."""
+    from gothar_chargen.gltf import Gltf
+    from gothar_chargen.partdata import data_of, lod_meshes
+
+    heights = []
+    for path in sorted(characters.glob("parts/body_*/body.glb")):
+        g = Gltf.load(path)
+        mesh = lod_meshes(g)[0]
+        ring = data_of(g).get("neck", {}).get(mesh.node, [])
+        heights += [mesh.positions[pt[0][0]][pt[0][1]][1] for pt in ring]
+    if not heights:
+        raise SystemExit("no base body parts with neck data (build bodies first)")
+    return float(np.mean(heights))
+
+
+def _to_body_neck(head: bpy.types.Object, characters: Path) -> None:
+    """Moves the head parts (head, face assets, hair) up or down so that the neck seam of the
+    head meets the neck of the base bodies: the age macro changes the stature in MakeHuman, so
+    heads of other ages would otherwise stretch the neck and sit too high or too low."""
+    bm = bmesh.new()
+    bm.from_mesh(head.data)
+    border = [v.co.z for v in bm.verts if v.is_boundary]
+    bm.free()
+    if not border:
+        raise SystemExit("head without an open neck border")
+    shift = _body_neck_height(characters) - float(np.mean(border))
+    for o in [o for o in bpy.data.objects if o.type == "MESH"]:
+        o.data.vertices.foreach_set("co", (_coords(o) + (0.0, 0.0, shift)).ravel())
+        if o.data.shape_keys is not None:
+            for key in o.data.shape_keys.key_blocks:
+                co = np.empty(len(key.data) * 3, dtype=np.float64)
+                key.data.foreach_get("co", co)
+                key.data.foreach_set("co", (co.reshape(-1, 3) + (0.0, 0.0, shift)).ravel())
+        o.data.update()
+    print(f"[chargen] head moved {shift * 1000:+.1f} mm to the neck of the base bodies")
+
+
 def _derive(obj: bpy.types.Object, d: Derive, heads: np.ndarray | None = None) -> None:
     """Own simple piece from a fitted garment: drop the vertices bound mostly to the `cut` bones
     (and with `depth` all below the top `depth` metres), push the rest along the normals, scale
@@ -836,6 +874,8 @@ def main() -> None:
     for o in [o for o in bpy.data.objects if o.type == "MESH"]:
         if part_of(o) not in human.parts:
             bpy.data.objects.remove(o)
+    if "head" in human.parts and "body" not in human.parts:  # a head for any base body
+        _to_body_neck(head, args.out_dir.resolve().parent.parent)
 
     # reduce: skin, clothes and hair share the budget; eyes, brows, lashes and tongue stay as
     # they are, teeth and beard get a fixed budget
