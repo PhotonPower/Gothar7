@@ -408,6 +408,17 @@ Result<void> Engine::initSceneRendering()
     m_shadowDebug = m_config.settings.get<bool>("render.shadow_debug", false);
     m_cullSettings.viewDistance = static_cast<f32>(m_config.settings.get<f64>("render.view_distance", 400.0));
     m_cullSettings.sizeCull = static_cast<f32>(m_config.settings.get<f64>("render.size_cull", 0.005));
+    // multi_draw: "auto" (default) batches except on Intel GPUs - there the GPU is the limit and the
+    // batches measured ~10 % slower (render.md); true/false or "on"/"off" force it.
+    const auto forced = m_config.settings.find<bool>("render.multi_draw");
+    const std::string multiMode =
+        forced ? (*forced ? "on" : "off") : m_config.settings.get<std::string>("render.multi_draw", "auto");
+    const bool intel = toLower(m_device->info().vendor).find("intel") != std::string::npos;
+    m_multiDraw = multiMode == "on" || (multiMode == "auto" && !intel);
+    G7_LOG_INFO("engine", "multi-draw batches {} ({})", m_multiDraw ? "on" : "off",
+                multiMode != "auto" ? "forced"
+                : intel             ? "auto: off on Intel GPUs"
+                                    : "auto");
     auto shadowMap = render::ShadowMap::create(*m_device, shadows);
     if (!shadowMap)
     {
@@ -524,18 +535,19 @@ Result<void> Engine::uploadModel(LoadedModel& loaded)
         return Error{"cannot upload mesh " + loaded.name + ": " + mesh.error().message};
     }
     // Missing or broken textures are warnings (neutral fallbacks), not a reason to refuse the model.
-    auto materials =
-        render::MaterialSet::create(*m_device, data,
-                                    [&](const asset::ImageSource& source) -> const asset::TextureData*
-                                    {
-                                        const auto index = static_cast<usize>(&source - data.images.data());
-                                        const asset::Handle<asset::TextureData>& image = loaded.images[index];
-                                        if (image.failed() && image.valid())
-                                        {
-                                            G7_LOG_WARN("engine", "{}: {}", loaded.name, image.error());
-                                        }
-                                        return image.get();
-                                    });
+    auto materials = render::MaterialSet::create(
+        *m_device, data,
+        [&](const asset::ImageSource& source) -> const asset::TextureData*
+        {
+            const auto index = static_cast<usize>(&source - data.images.data());
+            const asset::Handle<asset::TextureData>& image = loaded.images[index];
+            if (image.failed() && image.valid())
+            {
+                G7_LOG_WARN("engine", "{}: {}", loaded.name, image.error());
+            }
+            return image.get();
+        },
+        m_meshRenderer.defaults()); // shared neutral textures: models batch together
     if (!materials)
     {
         return Error{"cannot create materials for " + loaded.name + ": " + materials.error().message};
@@ -666,7 +678,8 @@ Result<void> Engine::addGround(f32 size, const Vec3& color, f32 height)
     // Ground plate (it receives the shadows), 1 m texture tiles.
     const asset::MeshData plane = asset::makePlane(size, 1.0f, Vec4(color, 1.0f));
     auto mesh = render::Mesh::create(*m_device, *m_geometry, plane);
-    auto materials = render::MaterialSet::create(*m_device, plane, render::MaterialSet::ImageLookup{});
+    auto materials = render::MaterialSet::create(*m_device, plane, render::MaterialSet::ImageLookup{},
+                                                 m_meshRenderer.defaults());
     if (!mesh || !materials)
     {
         return Error{"cannot create ground plate"};
@@ -1057,6 +1070,7 @@ void Engine::renderScene(u32 width, u32 height)
 
 void Engine::drawScene(u32 width, u32 height)
 {
+    m_meshRenderer.beginFrame();
     if (m_cullGridDirty)
     {
         std::vector<AABB> bounds;
@@ -1082,6 +1096,7 @@ void Engine::drawScene(u32 width, u32 height)
             const Frustum volume = Frustum::fromViewProjection(m_cascades[i].viewProjection);
             m_cullCandidates.clear();
             m_cullGrid.query(volume, m_camera.transform.position, 0.0f, m_cullCandidates);
+            m_drawItems.clear();
             for (const u32 index : m_cullCandidates)
             {
                 // What the main pass hides (distance, size) casts no shadow either.
@@ -1090,9 +1105,21 @@ void Engine::drawScene(u32 width, u32 height)
                     render::cullByDistance(instance.bounds, m_camera.transform.position, m_cullSettings,
                                            instance.sizeCullable) == render::CullResult::Kept)
                 {
-                    m_meshRenderer.drawShadow(*m_device, instance.model->mesh, instance.model->materials,
-                                              instance.transform, m_cascades[i]);
+                    if (m_multiDraw)
+                    {
+                        m_drawItems.push_back({&instance.model->mesh, &instance.model->materials,
+                                               instance.transform, instance.bounds});
+                    }
+                    else
+                    {
+                        m_meshRenderer.drawShadow(*m_device, instance.model->mesh, instance.model->materials,
+                                                  instance.transform, m_cascades[i]);
+                    }
                 }
+            }
+            if (m_multiDraw)
+            {
+                m_meshRenderer.drawShadowBatched(*m_device, m_drawItems, m_cascades[i]);
             }
             if (m_hasTerrain)
             {
@@ -1128,6 +1155,7 @@ void Engine::drawScene(u32 width, u32 height)
     m_culledSmall = 0;
     m_cullCandidates.clear();
     m_cullGrid.query(view, m_camera.transform.position, m_cullSettings.viewDistance, m_cullCandidates);
+    m_drawItems.clear();
     for (const u32 index : m_cullCandidates)
     {
         const SceneInstance& instance = m_instances[index];
@@ -1137,10 +1165,22 @@ void Engine::drawScene(u32 width, u32 height)
         m_culledSmall += cull == render::CullResult::TooSmall ? 1 : 0;
         if (cull == render::CullResult::Kept && view.intersects(instance.bounds))
         {
-            m_meshRenderer.draw(*m_device, instance.model->mesh, instance.model->materials,
-                                instance.transform, m_camera);
+            if (m_multiDraw)
+            {
+                m_drawItems.push_back(
+                    {&instance.model->mesh, &instance.model->materials, instance.transform, instance.bounds});
+            }
+            else
+            {
+                m_meshRenderer.draw(*m_device, instance.model->mesh, instance.model->materials,
+                                    instance.transform, m_camera);
+            }
             ++m_visibleInstances;
         }
+    }
+    if (m_multiDraw)
+    {
+        m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
     }
 }
 
@@ -1199,13 +1239,16 @@ void Engine::updateBenchmark(f64 realSeconds)
         {
             for (const FrameTimeSummary& s : m_benchmarkResults)
             {
-                const render::FrameStats& stats =
-                    m_benchmarkStats[static_cast<usize>(&s - m_benchmarkResults.data())];
+                const auto v = static_cast<usize>(&s - m_benchmarkResults.data());
+                const render::FrameStats& stats = m_benchmarkStats[v];
+                const render::BatchStats& batch = m_benchmarkBatches[v];
                 G7_LOG_INFO(
                     "engine",
-                    "benchmark viewpoint {}: {}; {} draws, {} buffer binds, {} pipeline changes, {}k tris",
-                    &s - m_benchmarkResults.data(), s.toString(), stats.drawCalls, stats.bufferBinds,
-                    stats.pipelineChanges, stats.triangles / 1000);
+                    "benchmark viewpoint {}: {}; {} draws, {} buffer binds, {} pipeline changes, {}k tris; "
+                    "main pass: {} batches ({} submeshes), {} single draws, {} terrain chunks",
+                    v, s.toString(), stats.drawCalls, stats.bufferBinds, stats.pipelineChanges,
+                    stats.triangles / 1000, batch.groups, batch.batchedDraws, batch.singleDraws,
+                    m_benchmarkTerrainChunks[v]);
             }
             const auto [worstAverage, worstP99] = std::accumulate(
                 m_benchmarkResults.begin(), m_benchmarkResults.end(), std::pair{0.0, 0.0},
@@ -1232,6 +1275,8 @@ void Engine::updateBenchmark(f64 realSeconds)
     {
         m_benchmarkResults.push_back(m_benchmarkTimes.summary());
         m_benchmarkStats.push_back(m_device ? m_device->stats() : render::FrameStats{});
+        m_benchmarkBatches.push_back(m_meshRenderer.lastBatch());
+        m_benchmarkTerrainChunks.push_back(m_hasTerrain ? m_terrain.drawnChunks() : 0);
     }
 }
 

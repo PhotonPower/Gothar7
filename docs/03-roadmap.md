@@ -106,9 +106,10 @@ bei ≥ 60 FPS auf Mittelklasse-Hardware.
 - [x] Vob-Typen: Mesh, Licht, Sound-Emitter, Trigger, Startpunkt, Mob (Platzhalter)
   - `start` (Kamera in Augenhöhe, `--start`), `sound` (Daten + Debug-Draw, Abspielen mit der Audio-Phase), `trigger` (`world::TriggerSystem`, deterministische Enter/Leave-Ereignisse, `target` reserviert; in M4 mit der Kamera), `mob` (Mesh + Definition, Interaktion in M8); Debug-Draw (F2) für alle
 - [ ] Spielzeit & **Tag/Nacht-Zyklus**: Sonnenstand, Himmelsfarben (Verlauf je Uhrzeit), Sterne, Mond
-- [ ] Sichtbarkeit: Frustum-Culling, Distanz-Culling/LOD für Vobs; Innenräume über Portale/Zonen (später)
+- [x] Sichtbarkeit: Frustum-Culling, Distanz-Culling/LOD für Vobs; Innenräume über Portale/Zonen (später) – Mesh-LOD für Vobs und Portale/Zonen später (kein Teil der M4-DoD)
   - Stand Teil A: Überlinearität bei vielen Modellen behoben (Ursache `AssetManager::pruneCache`, O(n²) je Frame; 5400 eigene Modelle 83 → ~10 ms), Geometrie-Arena (alle Meshes in gemeinsamen Puffern, 0 Pufferbindungen je Frame), Benchmark mit Draws/Binds. Offen (Teil B): Instancing, Raster, Distanz-/Größen-Culling
-  - Stand Teil B1: Raster (64-m-Zellen), Sichtweite `view_distance` und Größen-Culling `size_cull` (nur Deko; `category` deco/gameplay in `.g7world`, Mobs immer gameplay), Vorgaben in engine.toml. Offen (B2): Gruppierung nach Material und Multi-Draw
+  - Stand Teil B1: Raster (64-m-Zellen), Sichtweite `view_distance` und Größen-Culling `size_cull` (nur Deko; `category` deco/gameplay in `.g7world`, Mobs immer gameplay), Vorgaben in engine.toml. 
+  - Teil B2: Multi-Draw nach Material-Werten (`glMultiDrawElementsIndirect`, Index über `baseInstance`), geteilte neutrale Texturen; Leonberg-Kern RTX 3,06 → 2,17 ms; auf Intel UHD ~10 % langsamer, daher `multi_draw = "auto"` (aus auf Intel) – offener Punkt in render.md
   - Offener Punkt: einmaliger Hänger eines lokalen Gesamtlaufs (> 30 min), Ursache ungeklärt (`asset.md`); ctest-Timeouts je Suite gesetzt
 - [ ] Mehrere Welten + Weltwechsel (Levelwechsel-Trigger)
 - [ ] **Editor-Grundlage**: Editor-Modus, Vobs auswählen/verschieben/drehen (Gizmos, ImGuizmo), Welt speichern

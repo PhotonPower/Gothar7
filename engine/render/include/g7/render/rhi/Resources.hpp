@@ -130,6 +130,9 @@ struct VertexAttribute
     u32 location = 0;
     VertexFormat format = VertexFormat::Float3;
     u32 offset = 0;
+    /// 0: the vertex buffer; 1: the instance buffer (advances once per instance,
+    /// PipelineDesc::instanceStride).
+    u32 binding = 0;
 };
 
 /// Depth bias (glPolygonOffset): constant units plus a slope-scaled part. Used by shadow passes
@@ -145,6 +148,8 @@ struct PipelineDesc
     const ShaderProgram* program = nullptr; ///< Must outlive the pipeline.
     std::vector<VertexAttribute> attributes;
     u32 vertexStride = 0;
+    /// Stride of the instance buffer (binding 1, Device::bindInstanceBuffer); 0 = none.
+    u32 instanceStride = 0;
     Topology topology = Topology::Triangles;
     CullMode cull = CullMode::Back; ///< Front faces are counter-clockwise.
     bool depthTest = true;
@@ -166,6 +171,7 @@ private:
     // by existing pipelines on their next bind.
     const ShaderProgram* m_program = nullptr;
     u32 m_vertexStride = 0;
+    u32 m_instanceStride = 0;
     Topology m_topology = Topology::Triangles;
     CullMode m_cull = CullMode::Back;
     bool m_depthTest = true;

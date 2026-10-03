@@ -25,8 +25,17 @@ layout(std140, binding = 0) uniform Lighting
     vec4 pointColor[kMaxPointLights];
 } uLighting;
 
+#ifdef MULTI_DRAW
+#include "common/draws.glsl"
+flat in uint vDrawIndex;
+int lightCount() { return uDraws[vDrawIndex].counts.x; }
+int lightIndex(int i) { return i < 4 ? uDraws[vDrawIndex].lights0[i] : uDraws[vDrawIndex].lights1[i - 4]; }
+#else
 uniform int uLightIndices[kMaxLightsPerObject]; // indices into the point lights for this draw
 uniform int uLightCount;
+int lightCount() { return uLightCount; }
+int lightIndex(int i) { return uLightIndices[i]; }
+#endif
 
 // saturate(1 - (d/r)^4)^2 / (d^2 + 1): 1 at the light, exactly 0 at the radius (render::pointLightAttenuation).
 float pointLightAttenuation(float distance, float radius)
@@ -108,9 +117,9 @@ vec3 incomingLight(vec3 worldPosition, vec3 n)
 {
     vec3 light = mix(uLighting.ambientGround.rgb, uLighting.ambientSky.rgb, n.y * 0.5 + 0.5);
     light += uLighting.sunColor.rgb * max(dot(n, uLighting.sunDirection.xyz), 0.0) * sunShadow(worldPosition, n);
-    for (int i = 0; i < uLightCount; ++i)
+    for (int i = 0; i < lightCount(); ++i)
     {
-        const int index = uLightIndices[i];
+        const int index = lightIndex(i);
         const vec4 positionRadius = uLighting.pointPositionRadius[index];
         const vec3 toLight = positionRadius.xyz - worldPosition;
         const float distance = length(toLight);

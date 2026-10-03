@@ -16,6 +16,17 @@
 
 namespace g7::render
 {
+/// Record of Device::multiDrawIndexedIndirect (layout of GL's DrawElementsIndirectCommand).
+struct DrawIndexedIndirect
+{
+    u32 indexCount = 0;
+    u32 instanceCount = 1;
+    u32 firstIndex = 0;
+    i32 baseVertex = 0;
+    u32 baseInstance = 0; ///< first value of instance attributes; the draw's index in multi-draw shaders
+};
+static_assert(sizeof(DrawIndexedIndirect) == 20);
+
 /// GL function lookup supplied by the platform (platform::GlContext::procAddress).
 using GlProc = void (*)();
 using GlLoader = GlProc (*)(const char* name);
@@ -92,12 +103,19 @@ public:
     /// Applies to the bound pipeline's vertex layout.
     void bindVertexBuffer(const rhi::Buffer& buffer, usize offset = 0);
     void bindIndexBuffer(const rhi::Buffer& buffer, rhi::IndexType type);
+    /// Per-instance attributes (binding 1) of the bound pipeline; needs PipelineDesc::instanceStride.
+    void bindInstanceBuffer(const rhi::Buffer& buffer);
+    /// Shader storage block binding point (GLSL `layout(std430, binding = slot) buffer`).
+    void bindStorageBuffer(u32 slot, const rhi::Buffer& buffer);
     void bindTexture(u32 unit, const rhi::Texture& texture, const rhi::Sampler& sampler);
     /// Uniform block binding point (GLSL `layout(binding = slot)`).
     void bindUniformBuffer(u32 slot, const rhi::Buffer& buffer);
     void draw(u32 vertexCount, u32 firstVertex = 0);
     /// `baseVertex` is added to every index (e.g. several meshes in one buffer with 16-bit indices).
     void drawIndexed(u32 indexCount, u32 firstIndex = 0, i32 baseVertex = 0);
+    /// One draw call for `drawCount` indexed draws read from `commands` at `offset` (DrawIndexedIndirect
+    /// records, 20 bytes each, tightly packed). `triangles` only feeds the frame statistics.
+    void multiDrawIndexedIndirect(const rhi::Buffer& commands, usize offset, u32 drawCount, u32 triangles);
 
     // --- Readback (tests now; screenshots/thumbnails later) ---
     /// RGBA8, bottom row first; colour attachment 0 of `framebuffer`, or the window's back buffer.
@@ -136,6 +154,7 @@ private:
         u64 pipeline = 0;
         u32 vertexArray = 0; // GL name of the bound pipeline's VAO (for vertex/index buffer binds)
         u32 vertexStride = 0;
+        u32 instanceStride = 0;
         u64 program = 0;
         rhi::CullMode cull = rhi::CullMode::None;
         bool depthTest = false;
@@ -154,6 +173,7 @@ private:
         u64 vertices = 0;
         usize vertexOffset = 0;
         u64 indices = 0;
+        u64 instances = 0;
     };
     std::unordered_map<u64, BoundBuffers> m_vertexArrayBuffers; // key: uid of the pipeline's vertex array
 
