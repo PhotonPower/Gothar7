@@ -896,27 +896,79 @@ def _chimney(m: Model, w: Wing, t: float) -> None:
 # --- whole model -----------------------------------------------------------------------------
 
 
+class GardenFrame:
+    """The parterre's own frame: wing coordinates (s, t) turned by ``rotDeg`` about the garden
+    centre (the real garden is not quite parallel to the main wing)."""
+
+    def __init__(self, wing: Wing, centre: tuple[float, float], rot_deg: float) -> None:
+        self.wing = wing
+        self.centre = centre
+        self.c, self.s = math.cos(math.radians(rot_deg)), math.sin(math.radians(rot_deg))
+
+    def st(self, s: float, t: float) -> tuple[float, float]:
+        ds, dt = s - self.centre[0], t - self.centre[1]
+        return (
+            self.centre[0] + ds * self.c - dt * self.s,
+            self.centre[1] + ds * self.s + dt * self.c,
+        )
+
+    def p(self, s: float, t: float, y: float) -> Vec3:
+        return self.wing.p(*self.st(s, t), y)
+
+    def ground(self, g: dict, s: float, t: float) -> float:
+        return garden_ground(g, *self.st(s, t))
+
+
+def _plaza_cut(
+    bed: list[tuple[float, float]], centre: tuple[float, float], r: float
+) -> list[tuple[float, float]]:
+    """``bed`` (counter-clockwise in (s, t)) with the corner nearest ``centre`` cut off along a
+    45-degree line at distance ``r`` from it (a round plaza between four beds)."""
+    k = max(range(len(bed)), key=lambda i: -((bed[i][0] - centre[0]) ** 2
+                                             + (bed[i][1] - centre[1]) ** 2))  # fmt: skip
+    cs, ct = bed[k]
+    ds, dt = cs - centre[0], ct - centre[1]
+    us, ut = (1.0 if ds >= 0 else -1.0), (1.0 if dt >= 0 else -1.0)
+    reach = r * math.sqrt(2.0)  # the cut line: us*(s-cs0) + ut*(t-ct0) = reach, from the centre
+    if abs(ds) + abs(dt) >= reach:
+        return bed
+    along_s = (centre[0] + us * (reach - abs(dt)), ct)  # on the edge with t = ct
+    along_t = (cs, centre[1] + ut * (reach - abs(ds)))  # on the edge with s = cs
+    prev = bed[k - 1]
+    first, second = (along_s, along_t) if abs(prev[1] - ct) < 1e-9 else (along_t, along_s)
+    return [*bed[:k], first, second, *bed[k + 1 :]]
+
+
 def garden_layout(spec: dict) -> dict | None:
-    """Parterre of the castle garden in world (x, z): beds, the garden area, the fountain basin."""
+    """Parterre of the castle garden in world (x, z): beds (polygons in the wing frame (s, t),
+    counter-clockwise), the garden areas and, with ``plazaR``, a round plaza in the middle of
+    each half (for the garden fountains)."""
     g = spec.get("garden")
     if not g:
         return None
     w = next(Wing(ws) for ws in spec["wings"] if ws["key"] == g["wing"])
     t0, t1 = (float(v) for v in g["t"])
     nu, nv = (int(v) for v in g["beds"])
+    parts = [(float(a), float(b)) for a, b in g["parts"]]
+    centre = ((min(a for a, _ in parts) + max(b for _, b in parts)) / 2, (t0 + t1) / 2)
+    w = GardenFrame(w, centre, float(g.get("rotDeg", 0.0)))
     path, border = float(g["pathM"]), float(g["borderM"])
-    beds, areas = [], []
+    plaza = float(g.get("plazaR", 0.0))
+    beds, areas, centres = [], [], []
     for s0, s1 in g["parts"]:
         s0, s1 = float(s0), float(s1)
         areas.append([w.p(s0, t0, 0), w.p(s1, t0, 0), w.p(s1, t1, 0), w.p(s0, t1, 0)])
+        centre = ((s0 + s1) / 2, (t0 + t1) / 2)
+        centres.append(centre)
         bu = (s1 - s0 - 2 * border - (nu - 1) * path) / nu
         bv = (t1 - t0 - 2 * border - (nv - 1) * path) / nv
         for i in range(nu):
             for k in range(nv):
                 a = s0 + border + i * (bu + path)
                 b = t0 + border + k * (bv + path)
-                beds.append((a, a + bu, b, b + bv))
-    return {"wing": w, "beds": beds, "areas": areas, "spec": g}
+                bed = [(a, b), (a + bu, b), (a + bu, b + bv), (a, b + bv)]
+                beds.append(_plaza_cut(bed, centre, plaza) if plaza > 0 else bed)
+    return {"wing": w, "beds": beds, "areas": areas, "centres": centres, "spec": g}
 
 
 def garden_ground(g: dict, s: float, t: float) -> float:
@@ -934,18 +986,19 @@ def _garden(m: Model, spec: dict) -> None:
         return
     w, g = lay["wing"], lay["spec"]
     hh, hw = float(g["hedge"]["h"]), float(g["hedge"]["w"])
-    for s0, s1, t0, t1 in lay["beds"]:
-        # Four low hedges around the bed; their foot follows the (planar) garden ground.
-        for a0, a1, b0, b1 in (
-            (s0, s1, t0, t0 + hw),
-            (s0, s1, t1 - hw, t1),
-            (s0, s0 + hw, t0 + hw, t1 - hw),
-            (s1 - hw, s1, t0 + hw, t1 - hw),
-        ):
-            y = min(garden_ground(g, a, b) for a in (a0, a1) for b in (b0, b1)) - 0.3
-            top = max(garden_ground(g, a, b) for a in (a0, a1) for b in (b0, b1)) + hh
-            corners = [w.p(a0, b0, y), w.p(a1, b0, y), w.p(a1, b1, y), w.p(a0, b1, y)]
-            m.box("hedge", corners, top - y)
+    for bed in lay["beds"]:
+        # A low hedge along every edge of the bed, inside it; its foot follows the garden ground.
+        n = len(bed)
+        for i in range(n):
+            (a0, b0), (a1, b1) = bed[i], bed[(i + 1) % n]
+            length = math.hypot(a1 - a0, b1 - b0)
+            if length < 1e-6:
+                continue
+            ns, nt = -(b1 - b0) / length * hw, (a1 - a0) / length * hw  # inward (bed is ccw)
+            quad = [(a0, b0), (a1, b1), (a1 + ns, b1 + nt), (a0 + ns, b0 + nt)]
+            y = min(w.ground(g, a, b) for a, b in quad) - 0.3
+            top = max(w.ground(g, a, b) for a, b in quad) + hh
+            m.box("hedge", [w.p(a, b, y) for a, b in quad], top - y)
     f = g.get("fountain")
     if f:
         cs, ct, r = float(f["s"]), float(f["t"]), float(f["r"])
@@ -994,10 +1047,7 @@ def garden_splat(spec: dict) -> dict | None:
     def xz(pts: list[Vec3]) -> list[list[float]]:
         return [[round(p[0], 2), round(p[2], 2)] for p in pts]
 
-    beds = [
-        xz([w.p(a0, b0, 0), w.p(a1, b0, 0), w.p(a1, b1, 0), w.p(a0, b1, 0)])
-        for a0, a1, b0, b1 in lay["beds"]
-    ]
+    beds = [xz([w.p(a, b, 0) for a, b in bed]) for bed in lay["beds"]]
     return {"gravel": [xz(a) for a in lay["areas"]], "lawn": beds}
 
 
@@ -1091,8 +1141,9 @@ def origin_of(spec: dict) -> Vec3:
     """Vob position: the given (x, z) and the lowest foot of the model (wings and garden)."""
     ox, oz = spec["origin"]
     lowest = min(float(w["ground"]) for w in spec["wings"]) - SINK_M
-    g = spec.get("garden")
-    if g:
+    lay = garden_layout(spec)
+    if lay:
+        g, frame = lay["spec"], lay["wing"]
         corners = [(s, t) for part in g["parts"] for s in part for t in g["t"]]
-        lowest = min(lowest, min(garden_ground(g, s, t) for s, t in corners) - 0.3)
+        lowest = min(lowest, min(frame.ground(g, s, t) for s, t in corners) - 0.3)
     return (float(ox), round(lowest, 3), float(oz))

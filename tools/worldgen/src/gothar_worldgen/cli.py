@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import subprocess
 import sys
 import webbrowser
 from collections.abc import Sequence
@@ -23,6 +24,7 @@ from gothar_worldgen.assemble.world import (
     write_world,
 )
 from gothar_worldgen.buildings.batch import generate, write_index
+from gothar_worldgen.buildings.gltf_scene import bounds as mesh_bounds
 from gothar_worldgen.buildings.medieval import StreetIndex, load_rules
 from gothar_worldgen.buildings.rueckbau import Protection, split_building
 from gothar_worldgen.buildings.rueckbau import apply as apply_rueckbau
@@ -76,6 +78,11 @@ from gothar_worldgen.handmade import footprints as handmade_footprints
 from gothar_worldgen.handmade import load as load_handmade
 from gothar_worldgen.handmade import save as save_handmade
 from gothar_worldgen.importer import run_import
+from gothar_worldgen.owner_models import OwnerModelError, garden_placements, kept_meshes
+from gothar_worldgen.owner_models import handmade_item as owner_item
+from gothar_worldgen.owner_models import load_spec as load_owner_spec
+from gothar_worldgen.owner_models import prepare_job as prepare_owner_job
+from gothar_worldgen.owner_models import run_blender as run_owner_blender
 from gothar_worldgen.qa.begehung import LIMITS, WALKABLE, Character, game_grid, load_bodies
 from gothar_worldgen.qa.begehung import run as walkthrough
 from gothar_worldgen.qa.checks import FAIL
@@ -699,6 +706,52 @@ def _cmd_marktbrunnen(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_garten(args: argparse.Namespace, out: TextIO) -> int:
+    site = load_site(args.site, args.config_dir)
+    folder, data_dir = _site_dirs(args, site.name)
+    blender = args.blender or find_blender()
+    if blender is None:
+        print("error: Blender not found (set G7_BLENDER or --blender)", file=sys.stderr)
+        return EXIT_ERROR
+    files = {"garten_gelaender": "garten_gelaender", "obeliskbrunnen": "obeliskbrunnen",
+             "brunnen_garten": "gartenbrunnen"}  # fmt: skip
+    try:
+        rules = json.loads((data_dir.parent / "building_rules.json").read_text(encoding="utf-8"))
+        schloss = json.loads((data_dir / "schloss.json").read_text(encoding="utf-8"))
+        specs, radii = {}, {}
+        for key in files:
+            spec_path = data_dir / f"{key}.json"
+            specs[key] = (load_owner_spec(spec_path), spec_path)
+            meshes = kept_meshes(specs[key][0], spec_path.parent / specs[key][0]["source"])
+            lo, hi = mesh_bounds(meshes)
+            radii[key] = float(max(abs(lo[0]), abs(lo[2]), abs(hi[0]), abs(hi[2])))
+        placements = {p.key: p for p in garden_placements(schloss, radii)}
+        doc = load_handmade(data_dir / "handmade.json")
+        for key, name in files.items():
+            spec, spec_path = specs[key]
+            out_glb = folder / "handmade" / name / f"{name}.glb"
+            fence = key == "garten_gelaender"
+            shear = placements["garten_gelaender"].shear if fence else (0.0, 0.0)
+            work = folder / "generated" / name
+            job = prepare_owner_job(spec, spec_path, rules["palette"], out_glb,
+                                    work / f"{name}.blend", shear)  # fmt: skip
+            line = run_owner_blender(Path(blender), job, work / "job.json", subprocess.run)
+            print(f"  {line}", file=out)
+            mesh = f"worlds/{site.name}/handmade/{name}/{name}.glb"
+            for p in placements.values():
+                twin = key == "brunnen_garten" and p.key.startswith("gartenbrunnen")
+                if p.key == key or twin:
+                    doc = put_item(doc, owner_item(p, mesh, spec.get("replaces")))
+        save_handmade(data_dir / "handmade.json", doc)
+    except (OSError, json.JSONDecodeError, OwnerModelError, KeyError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    for p in placements.values():
+        print(f"  {p.key}: pos {list(p.pos)}, yaw {math.degrees(p.yaw):.1f} deg", file=out)
+    print(f"  {data_dir / 'handmade.json'}", file=out)
+    return EXIT_OK
+
+
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -930,6 +983,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_marktbrunnen)
+
+    p = sub.add_parser("garten", help="castle garden: railing, obelisk and garden fountains (W6)")
+    p.add_argument("site")
+    p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_garten)
 
     p = sub.add_parser("assemble", help="terrain + buildings -> <site>.g7world with stable VobIds")
     p.add_argument("site")

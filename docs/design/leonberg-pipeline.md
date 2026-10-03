@@ -610,7 +610,7 @@ eigenen Aufnahmen.
   Gauben mit Fenster; Schornsteine. Das Schlossdach bleibt ohne Moos (gepflegter Bau; Hinweis Koordinator).
 - **Garten** (Feedback Projektinhaber): der Pomeranzengarten als Parterre, Lage aus dem DOP (`garden` in schloss.json):
   zwei Hälften mit je 4 × 2 Rasenbeeten, Kieswegen (1,6 m) und einem Randweg, niedrige Buchs-Einfassungen (0,45 m,
-  Palette `hedge`), ein Brunnenbecken (Wasser: Palette `water`). Der Boden ist eine an das DGM angepasste Ebene.
+  Palette `hedge`), in der Mitte zunächst ein einfaches Brunnenbecken (Palette `water`), inzwischen durch den Obeliskbrunnen des Projektinhabers ersetzt (W-E5). Der Boden ist eine an das DGM angepasste Ebene.
   - Splat: Der Befehl `schloss` schreibt die Flächen nach `handmade.json` (`splat.gravel`, `splat.lawn`);
     `export-terrain` malt Kies über das Parterre, lässt die Beete Wiese und behandelt OSM-Gartenflächen, die ein
     Parterre enthalten, als Rasen statt als Acker.
@@ -650,6 +650,48 @@ seinem Foto erstellt hat (mit Claude Design), wird übernommen und an Leonberg u
 - **Leonberg:** 22 360 → 8636 Dreiecke, 12 Kollisionskörper (208 Dreiecke).
   - Stufen r 3,56/3,06 m, Trogrand 1,28 m, Wasserspiegel 1,08 m, Figur bis 6,1 m.
   - Der Platz fällt unter dem Brunnen um 0,26 m; talseitig stehen die Stufen frei.
+
+### W-E5 Pomeranzengarten (`gothar-worldgen garten <ort>`, W6)
+Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): drei eigene Modelle des Projektinhabers (Claude
+Design) bilden den Garten.
+- Geländer mit vier Eckpavillons.
+- Obeliskbrunnen in der Mitte.
+- Zwei kleine Gartenbrunnen, ein Modell, zweimal eingesetzt.
+- Wie beim Marktbrunnen gilt: Die Quellen liegen unverändert unter `tools/worldgen/data/<ort>/<schlüssel>/`, bearbeitet
+  wird nur per Skript, in `assets/LICENSES.md` stehen sie als eigene Arbeit des Projektinhabers.
+- **Werkzeug für Modelle des Projektinhabers:** `gothar_worldgen/owner_models.py` mit `data/<ort>/<schlüssel>.json`
+  (Format `gothar-owner-model`) und das allgemeine Blender-Skript `blender/owner_models/build_owner_model.py`.
+  - Entfernen und Reduzieren nach Knotennamen; geteilte Meshes werden einmal reduziert.
+  - `thinFaces`: Bei dünnen Teilen wie Latten bleiben nur die großen Flächen.
+  - Materialien auf die Palette, wo sinnvoll; die übrigen Farben des Projektinhabers bleiben.
+  - Kollision aus Knotengruppen (`box` je Instanz, `prism`), berechnet in Python und getestet ohne Blender.
+  - `shear` legt Zäune auf ein Gefälle (die Senkrechten bleiben senkrecht); `rigid`-Gruppen wie Pavillons heben sich als
+    Ganzes und bleiben waagrecht.
+- **Parterre nach dem Geländer:** Das Geländer gibt die Maße vor.
+  - Zwei Hälften je 28 × 16,5 m, dazwischen ein Mittelfeld von 10 m mit dem Obeliskbrunnen.
+  - Tore in allen vier Achsen jeder Hälfte; sie liegen auf den Mittelwegen.
+  - Das Schloss-Skript baut die Beete danach (`schloss.json` garden: `parts`, `t`). In der Mitte jeder Hälfte schneidet
+    es einen Rundplatz (`plazaR` 2,6 m) für die Gartenbrunnen; Beete sind dafür Polygone, die Hecken folgen jeder Kante.
+  - Das einfache Becken aus #100 entfällt.
+- **Lage:** Der Garten hat einen eigenen Rahmen (Mitte und `rotDeg` gegen den Hauptbau). Angepasst ist er an die vier
+  LoD2-Eckpavillons DEBW_001000623WX/WY/WZ/X0; deren Overrides `keep: false` ersetzen sie durch die Pavillons des
+  Geländers.
+  - Gedreht ist der Garten um 5,05° gegen den Hauptbau, die Mitte liegt 1,15 m weiter zum Schloss.
+  - Rest je Ecke 1,8 m: Das Geländer misst 67 × 17,5 m, die echten Pavillons stehen 70 × 15,7 m auseinander.
+  - Die Zwingermauer (OSM) läuft 0,7 m am südwestlichen Pavillon vorbei; der Garten liegt an ihr.
+- **Gefälle:** Die Gartenebene fällt 2,7 % entlang und 11 % quer.
+  - Zaun und Pfosten sind darauf geschert, die Pavillons stehen als Ganzes darauf.
+  - Die Brunnen stehen auf dem tiefsten Gartenboden unter sich.
+- **Budgets** (Dreiecke je gezeichnetem Knoten; die Quellen teilen Meshes):
+
+  | Modell | vorher | nachher | Kollision |
+  |---|---|---|---|
+  | Geländer | 116 592 | 12 500 | 20 Kästen, 240 Dreiecke, Tore frei |
+  | Obeliskbrunnen | 70 256 | 7928 | 4 Prismen |
+  | Gartenbrunnen | 13 516 | 4008 je Brunnen | 3 Prismen |
+
+- **Vobs:** `HANDMADE_GARTEN_GELAENDER`, `HANDMADE_OBELISKBRUNNEN`, `HANDMADE_GARTENBRUNNEN_W` und `_O`, jeweils mit
+  `rot`, Kategorie `gameplay` und stabiler VobId.
 
 ### W-F Ausstattung & Vegetation
 Regelbasiertes Verteilen von Requisiten (Fässer, Karren, Zäune, Holzstapel, Misthaufen, Marktstände)
