@@ -286,6 +286,25 @@ public:
     [[nodiscard]] std::string_view playerAnimationState() const noexcept;
     /// VFS path of the animated hero figure; empty without one.
     [[nodiscard]] std::string_view playerFigurePath() const noexcept;
+    /// Hangs the model at `modelPath` (VFS) at a socket bone of the hero ("socket_hand_r" ...), replacing
+    /// what the socket held; drawn with the figure, shadows included. Errors: no figure, no such socket or
+    /// model.
+    [[nodiscard]] Result<void> attachToPlayer(std::string_view socket, std::string_view modelPath);
+    /// The same for a model made in code (tests, debug UI); `name` for the log.
+    [[nodiscard]] Result<void> attachToPlayer(std::string_view socket, const asset::MeshData& mesh,
+                                              std::string_view name);
+    void detachFromPlayer(std::string_view socket);
+    /// World transform of a socket in the pose of the last fixed step (nullopt: no figure or socket).
+    [[nodiscard]] std::optional<Mat4> playerSocketTransform(std::string_view socket) const;
+    /// The hero's head turns towards this world point (within limits); nullopt: straight ahead.
+    void setPlayerLookTarget(std::optional<Vec3> target);
+    /// Face: "angry", "friendly", "fear", "pain", "sleep" or "" (neutral); false for an unknown name.
+    bool setPlayerExpression(std::string_view name, f32 weight = 1.0f);
+    void setPlayerTalking(bool talking);
+    /// Face morph weights of the hero (animation::FaceMorph order); empty without a figure.
+    [[nodiscard]] std::span<const f32> playerFaceWeights() const noexcept;
+    /// Current head turn of the hero in degrees (positive: towards the figure's left).
+    [[nodiscard]] f32 playerLookYawDegrees() const noexcept;
     /// True while the player climbs a ledge (input is ignored until it stands on top).
     [[nodiscard]] bool playerClimbing() const noexcept { return m_climb.has_value(); }
     /// Swimming or diving (gameplay::WaterMode::Land on land), and the air left under water.
@@ -334,7 +353,12 @@ private:
     void resetPlayerAnimation();
     void animatePlayer(f32 seconds, const gameplay::MoveInput& input);
     [[nodiscard]] bool drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade);
+    void drawPlayerSockets();
     void playerAnimationUi();
+    [[nodiscard]] Mat4 playerFigureTransform() const;
+    void preparePlayerPose(f32 alpha);
+    [[nodiscard]] Result<void> attachModel(std::string_view socket, const LoadedModel* model,
+                                           std::unique_ptr<LoadedModel> owned);
     [[nodiscard]] f32 climbDuration(gameplay::LedgeClass ledge) const;
     [[nodiscard]] Vec3 climbPosition() const;
     void drawPlayerDebug();
@@ -466,6 +490,7 @@ private:
     bool m_playerMouse = false;                 // relative mouse captured for the player camera
     const LoadedModel* m_playerModel = nullptr; // static placeholder when no animated figure loads
     std::unique_ptr<PlayerFigure> m_figure;     // animated hero (M6)
+    f32 m_figureExpressionWeight = 1.0f;        // debug UI slider
     bool m_physicsDirty = true;                 // set together with m_cullGridDirty and on terrain changes
     std::vector<u32> m_cullCandidates;          // per pass, reused
     bool m_multiDraw = true;                    // [render] multi_draw: batches instead of one draw per mesh

@@ -88,13 +88,41 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
   (Vorgabe `data/anim/human.animgraph.toml`). Gezeichnet wird LOD 0.
 - Je festem Schritt nach der Bewegung: Parameter aus der gezeichneten Bewegung (`speed`/`strafe` aus der
   Verschiebung der Füße, gilt an Land, im Wasser und beim Rutschen gleich), dann `Animator::update`, dann die
-  Skinning-Matrizen `modelSpace(pose) · inverseBind`. Kein Interpolieren der Pose zwischen Schritten (60 Hz).
+  Look-At, dann das Gesicht. Gezeichnet wird zwischen den Posen der letzten beiden Schritte interpoliert
+  (`blendPose` nach `FixedStep::alpha`, einmal je Frame für Schatten und Hauptbild), daraus die
+  Skinning-Matrizen `modelSpace(pose) · inverseBind`.
 - **Klettern:** Dauer = Länge des Kletter-Clips; die Füße folgen der aufsummierten Root Motion, getrennt nach
   Höhe (y) und Weg nach vorn (z) auf Kantenhöhe und Standpunkt skaliert. Ohne Kletter-Clip gilt der Pfad aus M5.
 - **Debug-UI** (F1), Fenster „Animation“: Figur, Graph, Zustand, Überblendung, Fortschritt, Clips mit Gewichten,
   Parameter, die letzten Events.
 - `Engine::playerAnimationState()` / `playerFigurePath()` für Tests (render_gpu `Player GPU`).
-- Offen (Teil D): Attachments, Rüstungs-/Kopfwechsel, Blinzeln/Lippen, Look-At, Tiere.
+- Offen: Rüstungs-/Kopfwechsel (Teil D2), Tiere (D3).
+
+## Attachments, Gesicht, Look-At (M6 Teil D1, umgesetzt)
+- **Attachments:** `Engine::attachToPlayer(socket, modelPath)` bzw. mit einem in Code erzeugten `MeshData`
+  (Tests, Debug-UI), `detachFromPlayer(socket)`; je Socket ein Modell. Gezeichnet mit der Figur (Weltmatrix =
+  Figur · Modellraum des Sockets, interpoliert), mit Schatten; bleiben über Weltwechsel erhalten.
+  `playerSocketTransform(socket)` liefert die Lage im Pose des letzten Schritts. Die Socket-Achsen gelten wie im
+  Vertrag (Y = Griffachse). Skripte bekommen das mit M7, Gegenstände mit M10.
+- **Gesicht** (`animation/Face.hpp`, `FaceAnimator`): Gewichte der 15 Morph-Targets in Vertragsreihenfolge (§6.1,
+  `FaceMorph`, `faceMorphName`).
+  - Blinzeln: zufällig alle `blink_min`–`blink_max` s, `blink_seconds` lang; der Zufall hat einen Seed je Figur
+    (Pfad), ist also reproduzierbar. Mit `expr_sleep` > 0,5 blinzelt die Figur nicht.
+  - Ausdrücke `angry`, `friendly`, `fear`, `pain`, `sleep`: `setExpression(name, gewicht)`; eingeblendet über
+    `expression_seconds`, andere ausgeblendet.
+  - Sprechen (grob): `setTalking(true)` → zufällige Viseme mit `visemes_per_second`, überblendet, Stärke
+    `talk_weight`. Lippensynchronisation nach Audio mit M13.
+  - Engine: `setPlayerExpression`, `setPlayerTalking`, `playerFaceWeights`; die Gewichte gehen per
+    `SkinnedMesh::setMorphWeights` nur bei Änderung auf die GPU (nur LOD 0 hat Targets).
+- **Look-At** (`animation/LookAt.hpp`): dreht eine Knochenkette (Vorgabe `neck` 40 %, `head` 60 %) im Modellraum
+  zum Ziel; Gier bis `max_yaw`, Nicken bis `max_pitch`, Geschwindigkeit `degrees_per_second`. Liegt das Ziel
+  weiter seitlich als `max_yaw + behind`, geht der Kopf zur Mitte. Nach dem Zustandsautomaten, vor dem Skinning.
+  Engine: `setPlayerLookTarget(weltpunkt)`, `playerLookYawDegrees()`.
+- **Graph-Datei:** `[face]` (`blink_min`, `blink_max`, `blink_seconds`, `visemes_per_second`, `talk_weight`,
+  `expression_seconds`) und `[look_at]` (`bones`, `shares`, `max_yaw`, `max_pitch`, `behind`,
+  `degrees_per_second`), beide optional mit den Vorgaben oben.
+- **Debug-UI** (F1, „Animation“ → „Try out“): Sockets anzeigen (Achsen X rot, Y grün, Z blau), Teststab an
+  einen Socket hängen, Ausdruck mit Gewicht, „talking“, Kopf zur Kamera drehen; Anzeige der Kopfdrehung.
 
 ## Performance
 Pose-Berechnung auf CPU (später parallel), Skinning auf GPU, Animations-LOD (weit entfernte

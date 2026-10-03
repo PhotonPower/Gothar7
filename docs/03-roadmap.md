@@ -156,11 +156,13 @@ _Benötigt F1 (Referenz-Rig, Platzhalterfigur) und für den Meilenstein die Prio
 - [ ] Root Motion für Interaktionen/Kampf, In-Place für Fortbewegung
   - Stand Teil B: `root_motion`-Zustände melden die Bewegung von `root`; Teil C: Klettern folgt der Root Motion, auf die Kante skaliert; Interaktionen/Kampf mit M10/M11
 - [ ] Attachments: Items an Knochen (Hand, Rücken, Gürtel), Rüstungs-/Kopfwechsel (Mesh-Tausch)
-- [ ] Morph-Targets für Gesichter (Lippen-Synchronisation grob, Blinzeln)
-- [ ] Look-At (Kopf dreht zu Gesprächspartner)
+  - Stand D1: Modelle an Sockets (`Engine::attachToPlayer`, mit Schatten, Debug-UI-Teststab); Rüstungs- und Kopfwechsel zur Laufzeit folgen mit D2
+- [x] Morph-Targets für Gesichter (Lippen-Synchronisation grob, Blinzeln) – `FaceAnimator` (D1): Blinzeln, Ausdrücke, grobes Sprechen; Lippensynchronisation nach Audio mit M13
+- [x] Look-At (Kopf dreht zu Gesprächspartner) – `LookAt` (D1): Hals und Kopf, Grenzen und Geschwindigkeit aus `[look_at]`; Gesprächspartner setzen mit M12
 
 **DoD / Meilenstein A:** Animierter Held läuft, rennt, springt, klettert, schwimmt durch die
 Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
+**Meilenstein A abgenommen 2026-10-03 vom Projektinhaber** (Debug-Build 238ea82, „Animation ist ok“). Offen in M6: Teil D2 (Rüstungs-/Kopfwechsel zur Laufzeit) und D3 (Tiere).
 
 ## M7 – Scripting
 - [ ] Lua 5.4 + sol2 (ADR 0006), Skript-VM pro Spielsitzung, Sandbox (kein `io`/`os`)

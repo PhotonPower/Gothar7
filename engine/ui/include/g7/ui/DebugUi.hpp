@@ -67,6 +67,16 @@ struct AnimationPanel
     std::vector<std::pair<std::string, f32>> clips;  ///< what shapes the pose, with weights
     std::vector<std::pair<std::string, f32>> params; ///< parameters set by the gameplay
     std::vector<std::string> events;                 ///< last events, newest first
+    // Trying things out (edited; the engine applies them afterwards)
+    std::vector<std::string> sockets; ///< shown: the figure's socket bones
+    bool showSockets = false;
+    std::string stickSocket; ///< a test stick in this socket, empty: none
+    std::string expression;  ///< "angry", "friendly", "fear", "pain", "sleep" or empty
+    f32 expressionWeight = 1.0f;
+    bool talking = false;
+    bool lookAtCamera = false;
+    f32 lookYaw = 0.0f; ///< shown, degrees
+    f32 lookPitch = 0.0f;
 };
 
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor
@@ -95,7 +105,7 @@ public:
     /// Draws the engine panel; edits are written back into `panel`.
     void enginePanel(EnginePanel& panel);
     /// Window "Animation" with the player figure's state machine (M6).
-    void animationPanel(const AnimationPanel& panel);
+    void animationPanel(AnimationPanel& panel);
     /// Draws the editor windows (tools/editor); edits and actions are written back into `panel`.
     void editorPanel(EditorPanel& panel);
     /// Finishes the frame and, with a device, draws it into the bound target (normally the window).
