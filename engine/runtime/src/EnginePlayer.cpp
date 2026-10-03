@@ -141,8 +141,14 @@ void Engine::teleportPlayer(const Vec3& feet, f32 yaw)
     m_climb.reset();
     m_player.teleport(feet);
     m_movement.reset(yaw);
+    m_swimmer.reset(m_movementSettings.swim); // decided again at the next step
     m_playerFeet = m_playerFeetBefore = m_player.visualFeet();
     m_playerCamera.reset(m_playerFeet, yaw, m_movementSettings.camera);
+}
+
+void Engine::steerPlayer(f32 yaw)
+{
+    m_movement.setYaw(yaw);
 }
 
 void Engine::removePlayer()
@@ -266,7 +272,10 @@ void Engine::fixedUpdatePlayer(f32 seconds)
         if (before == gameplay::WaterMode::Land)
         {
             m_movement.stop();
-            (void)m_player.takeLanding(); // the water catches a fall
+            if (const auto fall = m_player.takeLanding()) // the water catches a fall
+            {
+                m_lastLanding = PlayerLanding{*fall, 0.0f, true, feetNow, m_simTicks};
+            }
         }
         gameplay::MoveInput turnOnly; // turning as on land; the swimmer gives the velocity
         turnOnly.turn = input.turn;
@@ -325,6 +334,7 @@ void Engine::fixedUpdatePlayer(f32 seconds)
         const auto pool = m_water.surfaceAt(landed);
         const bool intoWater = pool && landed.y < *pool; // water catches any fall
         const f32 damage = intoWater ? 0.0f : gameplay::fallDamage(*fall, s.fall);
+        m_lastLanding = PlayerLanding{*fall, damage, intoWater, landed, m_simTicks};
         if (damage > 0.0f)
         {
             m_lastFallDamage = damage;

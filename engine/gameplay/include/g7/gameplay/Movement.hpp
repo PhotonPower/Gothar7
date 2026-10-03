@@ -141,6 +141,8 @@ public:
     /// Returns the horizontal velocity for this step (y = 0).
     Vec3 step(const MoveInput& input, f32 seconds, const MovementSettings& settings);
     void reset(f32 yaw);
+    /// Turns to `yaw` at once, keeping the speed (autopilot).
+    void setYaw(f32 yaw) noexcept;
 
     [[nodiscard]] f32 yaw() const noexcept { return m_yaw; }
     [[nodiscard]] Vec3 velocity() const noexcept { return m_velocity; }

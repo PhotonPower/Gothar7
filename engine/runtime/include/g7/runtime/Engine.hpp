@@ -58,6 +58,7 @@ struct LoadedModel
     render::Mesh mesh;
     render::MaterialSet materials;
     std::string name; ///< VFS path
+    AABB bounds;      ///< model space, from the CPU data (also without a GPU: --no-render)
     asset::Handle<asset::MeshData> source;
     std::vector<asset::Handle<asset::TextureData>> images; ///< parallel to MeshData::images (external ones)
     u32 sourceVersion = 0; ///< versions uploaded to the GPU (hot reload compares them)
@@ -73,6 +74,16 @@ struct SceneInstance
     bool sizeCullable = true; ///< deco: may vanish when small on screen (render.md "Sichtbarkeit")
     world::VobId vob;         ///< the mesh vob drawn (0: ground plate, --view-mesh, test scenes)
     bool solid = true;        ///< collides and casts shadows (false: the water surface placeholder)
+};
+
+/// A landing of the player: fall height from the highest point and the hit points it cost.
+struct PlayerLanding
+{
+    f32 height = 0.0f;
+    f32 damage = 0.0f;
+    bool intoWater = false;
+    Vec3 feet{0.0f};
+    u64 tick = 0; ///< simulation tick of the landing
 };
 
 struct EngineConfig
@@ -261,6 +272,12 @@ public:
     {
         return m_movementSettings;
     }
+    /// Turns the player to `yaw` (radians, 0 = -Z) at once (autopilot); movement keeps its speed.
+    void steerPlayer(f32 yaw);
+    /// The last landing of the player (nullopt before the first).
+    [[nodiscard]] const std::optional<PlayerLanding>& lastLanding() const noexcept { return m_lastLanding; }
+    /// Saves the next rendered frame as PNG (no effect without rendering).
+    void requestScreenshot(fs::Path file) { m_screenshotRequest = std::move(file); }
     /// Puts the player's feet at `feet` facing `yaw` (radians, 0 = -Z), motion stopped; debugging, tests.
     void teleportPlayer(const Vec3& feet, f32 yaw);
     /// True while the player climbs a ledge (input is ignored until it stands on top).
@@ -329,7 +346,7 @@ private:
                      world::VobId vob = {});
     void setViewpoint(const SceneViewpoint& viewpoint);
     void updateBenchmark(f64 realSeconds);
-    void saveScreenshot(u32 width, u32 height);
+    void saveScreenshot(u32 width, u32 height, const fs::Path& file);
     void initEnvironment();
     /// Light, fog and sky from the day cycle at the current game time.
     void updateEnvironment();
@@ -419,6 +436,8 @@ private:
     f32 m_climbSeconds = 0.0f;
     f32 m_jumpCooldown = 0.0f; // s until the next jump (after landing)
     f32 m_lastFallDamage = 0.0f;
+    std::optional<PlayerLanding> m_lastLanding;
+    std::optional<fs::Path> m_screenshotRequest;
     gameplay::Swimmer m_swimmer;
     f32 m_drownDamage = 0.0f;
     f32 m_drownLogged = 0.0f; // damage already reported in the log (whole points)

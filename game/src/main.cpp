@@ -5,6 +5,7 @@
 #include <g7/platform/GpuPreference.hpp>
 #include <g7/platform/Paths.hpp>
 #include <g7/runtime/Engine.hpp>
+#include <g7/walk/Autopilot.hpp>
 
 #include <algorithm>
 #include <charconv>
@@ -42,6 +43,8 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --screenshot=<file.png> save the last frame (with --frames or --benchmark)
   --no-ground             no ground plate under the model or scene
   --no-sun                no sunlight
+  --walk=<route.json>     autopilot: the player runs the route, then the game exits (with --world)
+  --walk-out=<dir>        where the autopilot writes walk.jsonl, walk_summary.json and screenshots
 
 Details: docs/05-build.md
 )";
@@ -63,6 +66,8 @@ struct CommandLine
     std::string screenshot;
     bool benchmark = false;
     bool editor = false;
+    std::string walk;
+    std::string walkOut;
     std::optional<g7::u32> viewpoint;
     std::optional<g7::u64> frames;
     std::optional<g7::u64> maxFps;
@@ -137,6 +142,14 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--benchmark")
         {
             cli.benchmark = true;
+        }
+        else if (arg.starts_with("--walk="))
+        {
+            cli.walk = std::string(arg.substr(7));
+        }
+        else if (arg.starts_with("--walk-out="))
+        {
+            cli.walkOut = std::string(arg.substr(11));
         }
         else if (arg == "--editor")
         {
@@ -343,6 +356,42 @@ int main(int argc, char** argv)
         config.fixedFrameSeconds = 1.0 / 60.0; // deterministic: 10 frames = 10 ticks
     }
 
+    // Autopilot (docs/modules/tools.md): the route sets start point and time; the run is as fast as the
+    // machine allows (fixed frame time, no frame cap, no VSync) and deterministic.
+    std::optional<g7::walk::Route> route;
+    if (!cli->walk.empty())
+    {
+        auto text = g7::fs::readFile(g7::fs::fromUtf8(cli->walk));
+        auto parsed =
+            text ? g7::walk::parseRoute(std::string_view(reinterpret_cast<const char*>(text.value().data()),
+                                                         text.value().size()),
+                                        cli->walk)
+                 : g7::Result<g7::walk::Route>(text.error());
+        if (!parsed)
+        {
+            G7_LOG_FATAL("game", "--walk: {}", parsed.error().message);
+            return EXIT_FAILURE;
+        }
+        if (config.world.empty())
+        {
+            G7_LOG_FATAL("game", "--walk needs --world");
+            return EXIT_FAILURE;
+        }
+        route = std::move(parsed).value();
+        if (!route->start.empty())
+        {
+            config.start = route->start;
+        }
+        if (!route->time.empty())
+        {
+            config.startTime = route->time;
+        }
+        config.player = true;
+        config.fixedFrameSeconds = 1.0 / 60.0;
+        config.maxFps = 0.0;
+        config.window.vsync = false;
+    }
+
     g7::Engine engine(std::move(config));
     if (auto result = engine.init(); !result)
     {
@@ -355,6 +404,12 @@ int main(int argc, char** argv)
     {
         editor.emplace(engine);
         engine.addTool(*editor);
+    }
+    std::optional<g7::walk::Autopilot> autopilot;
+    if (route)
+    {
+        autopilot.emplace(std::move(*route), g7::fs::fromUtf8(cli->walkOut.empty() ? "walk" : cli->walkOut));
+        engine.addTool(*autopilot);
     }
     return engine.run();
 }

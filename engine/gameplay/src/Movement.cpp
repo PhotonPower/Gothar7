@@ -316,6 +316,11 @@ Vec3 PlayerMovement::step(const MoveInput& input, f32 seconds, const MovementSet
     return m_velocity;
 }
 
+void PlayerMovement::setYaw(f32 yaw) noexcept
+{
+    m_yaw = wrapAngle(yaw);
+}
+
 void PlayerMovement::reset(f32 yaw)
 {
     m_yaw = wrapAngle(yaw);

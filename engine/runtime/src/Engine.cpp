@@ -204,6 +204,22 @@ Result<void> Engine::init()
     {
         G7_LOG_INFO("engine", "headless mode (no window)");
     }
+    // Without a renderer a world still loads: scene, collision and the player (the autopilot --walk
+    // checks routes this way, docs/modules/tools.md).
+    if (!m_device && !m_config.world.empty())
+    {
+        if (auto result = initWorld(); !result)
+        {
+            return result;
+        }
+        if (!m_config.saveWorld.empty())
+        {
+            if (auto saved = saveWorld(m_config.saveWorld); !saved)
+            {
+                return saved;
+            }
+        }
+    }
 
     if (m_window)
     {
@@ -366,7 +382,12 @@ bool Engine::runFrame()
                 m_quitRequested || (m_config.maxFrames != 0 && m_frameCount + 1 >= m_config.maxFrames);
             if (lastFrame && !m_config.screenshot.empty())
             {
-                saveScreenshot(size.width, size.height);
+                saveScreenshot(size.width, size.height, m_config.screenshot);
+            }
+            if (m_screenshotRequest)
+            {
+                saveScreenshot(size.width, size.height, *m_screenshotRequest);
+                m_screenshotRequest.reset();
             }
             m_glContext->swapBuffers();
         }
@@ -654,9 +675,13 @@ Result<void> Engine::loadModels(const std::vector<std::string>& paths)
     // 3. Upload on the main thread.
     for (auto& loaded : pending)
     {
-        if (auto uploaded = uploadModel(*loaded); !uploaded)
+        loaded->bounds = loaded->source.get()->bounds;
+        if (m_device)
         {
-            return uploaded;
+            if (auto uploaded = uploadModel(*loaded); !uploaded)
+            {
+                return uploaded;
+            }
         }
         std::string key = loaded->name;
         m_models.emplace(std::move(key), std::move(loaded));
@@ -704,7 +729,7 @@ void Engine::refreshReloadedModels()
         {
             if (instance.model == loaded.get())
             {
-                instance.bounds = loaded->mesh.bounds().transformed(instance.transform);
+                instance.bounds = loaded->bounds.transformed(instance.transform);
                 m_cullGridDirty = true;
                 m_physicsDirty = true;
             }
@@ -715,7 +740,7 @@ void Engine::refreshReloadedModels()
 
 void Engine::addInstance(const LoadedModel& model, const Mat4& transform, bool sizeCullable, world::VobId vob)
 {
-    const AABB bounds = model.mesh.bounds().transformed(transform);
+    const AABB bounds = model.bounds.transformed(transform);
     // Scene bounds without the ground plate (debug grid, overlay).
     if (&model != m_groundModel.get())
     {
@@ -733,16 +758,20 @@ Result<void> Engine::addGround(f32 size, const Vec3& color, f32 height)
 {
     // Ground plate (it receives the shadows), 1 m texture tiles.
     const asset::MeshData plane = asset::makePlane(size, 1.0f, Vec4(color, 1.0f));
-    auto mesh = render::Mesh::create(*m_device, *m_geometry, plane);
-    auto materials = render::MaterialSet::create(*m_device, plane, render::MaterialSet::ImageLookup{},
-                                                 m_meshRenderer.defaults());
-    if (!mesh || !materials)
-    {
-        return Error{"cannot create ground plate"};
-    }
     m_groundModel = std::make_unique<LoadedModel>();
-    m_groundModel->mesh = std::move(mesh).value();
-    m_groundModel->materials = std::move(materials).value();
+    m_groundModel->bounds = plane.bounds;
+    if (m_device) // without one (--no-render) the plate only collides
+    {
+        auto mesh = render::Mesh::create(*m_device, *m_geometry, plane);
+        auto materials = render::MaterialSet::create(*m_device, plane, render::MaterialSet::ImageLookup{},
+                                                     m_meshRenderer.defaults());
+        if (!mesh || !materials)
+        {
+            return Error{"cannot create ground plate"};
+        }
+        m_groundModel->mesh = std::move(mesh).value();
+        m_groundModel->materials = std::move(materials).value();
+    }
     m_groundModel->name = "ground";
     addInstance(*m_groundModel, glm::translate(Mat4(1.0f), Vec3(0.0f, height, 0.0f)), false);
     return {};
@@ -771,7 +800,7 @@ Result<void> Engine::initViewMesh()
     m_sceneName = fs::toUtf8(fs::fromUtf8(loaded.name).filename());
 
     // Frame the model: look at its centre from the front-right, at 2.5x its radius.
-    const AABB bounds = loaded.mesh.bounds();
+    const AABB bounds = loaded.bounds;
     const f32 radius = std::max(glm::length(bounds.extents()), 0.5f);
     if (m_config.ground)
     {
@@ -913,6 +942,7 @@ Result<void> Engine::instantiateScene()
             m_waterModel->mesh = std::move(mesh).value();
             m_waterModel->materials = std::move(materials).value();
             m_waterModel->name = "water";
+            m_waterModel->bounds = plane.bounds;
         }
     }
     if (m_waterModel)
@@ -981,17 +1011,20 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
             return Error{"cannot load world: " + heightfield.error().message};
         }
         m_heightfield = std::move(heightfield).value();
-        auto terrain = render::TerrainRenderer::create(*m_device, *m_shaders, m_heightfield.renderDesc(),
-                                                       m_shadowMap.settings());
-        if (!terrain)
-        {
-            return Error{"cannot create terrain: " + terrain.error().message};
-        }
-        m_terrain = std::move(terrain).value();
         m_hasTerrain = true;
-        G7_LOG_INFO("engine", "terrain {} ({} x {} samples, {} m cells, {} chunks)", ref->heightmap,
-                    ref->width, ref->height, ref->cellSize, m_terrain.chunkCount());
-        loadTerrainSurface(*ref);
+        if (m_device) // without one (--no-render) the terrain only collides
+        {
+            auto terrain = render::TerrainRenderer::create(*m_device, *m_shaders, m_heightfield.renderDesc(),
+                                                           m_shadowMap.settings());
+            if (!terrain)
+            {
+                return Error{"cannot create terrain: " + terrain.error().message};
+            }
+            m_terrain = std::move(terrain).value();
+            G7_LOG_INFO("engine", "terrain {} ({} x {} samples, {} m cells, {} chunks)", ref->heightmap,
+                        ref->width, ref->height, ref->cellSize, m_terrain.chunkCount());
+            loadTerrainSurface(*ref);
+        }
     }
     if (auto instantiated = instantiateScene(); !instantiated)
     {
@@ -1569,7 +1602,7 @@ void Engine::updateBenchmark(f64 realSeconds)
     }
 }
 
-void Engine::saveScreenshot(u32 width, u32 height)
+void Engine::saveScreenshot(u32 width, u32 height, const fs::Path& file)
 {
     // The window's back buffer before the swap: RGBA, bottom row first.
     std::vector<u8> pixels = m_device->readPixels(0, 0, static_cast<i32>(width), static_cast<i32>(height));
@@ -1584,12 +1617,12 @@ void Engine::saveScreenshot(u32 width, u32 height)
     {
         image.rgba8[i] = 255; // the window's alpha is meaningless
     }
-    if (auto saved = asset::savePng(m_config.screenshot, image); !saved)
+    if (auto saved = asset::savePng(file, image); !saved)
     {
         G7_LOG_ERROR("engine", "screenshot: {}", saved.error().message);
         return;
     }
-    G7_LOG_INFO("engine", "screenshot saved to {}", fs::toUtf8(m_config.screenshot));
+    G7_LOG_INFO("engine", "screenshot saved to {}", fs::toUtf8(file));
 }
 
 void Engine::setTimeScale(f64 scale) noexcept

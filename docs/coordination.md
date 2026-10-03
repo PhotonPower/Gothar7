@@ -44,6 +44,7 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 | `.g7mesh`/`.g7pak`/Cooker-Optionen | engine | welt, figuren | `docs/06-asset-pipeline.md`, ADR 0016 |
 | Kollision in `.glb`: Knoten `COL_BOX_*`/`COL_HULL_*`/`COL_*` (nur diese kollidieren; ohne `COL_` das Render-Mesh), Budget ≤ 200 Dreiecke je Haus; Figuren ohne `COL_` (Kapsel) | engine | welt (Häuser, Zellen), figuren (Mobs, Requisiten) | `docs/modules/asset.md` „Kollision in Modellen“ |
 | Vob-Typ `water` (Box, Oberfläche = Oberkante, `kind` reserviert) – vereinbart, umgesetzt mit M5 Teil E | engine | welt (Glems) | `docs/modules/world.md` „Vob-Typen“ |
+| Autopilot: `route.json` v1, Protokoll `walk.jsonl` und `walk_summary.json` (`gothar --walk`) | welt (Routen), engine (Autopilot) | welt (W3-Begehung, Auswertung) | `docs/modules/tools.md` „Autopilot“ |
 | Kollisionsmaße der Monster `[rig.collision]` in `data/monsters/<art>.toml`; Kapsel Mensch r 0,3 / h 1,8 / Hüfte 0,9 / Augen 1,62 m | figuren | engine (M5 C, M9) | `docs/modules/physics.md`, `characters-pipeline.md` §7.1 |
 
 ## Kommunikation
