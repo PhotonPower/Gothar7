@@ -31,18 +31,34 @@ def test_every_listed_manifest_exists_and_loads():
             load_figure(path)  # a valid manifest
 
 
-def test_each_manifest_in_one_set_and_no_named_figures():
+def _stem(rel: str) -> str:
+    return Path(rel).name.removesuffix(".figure.toml")
+
+
+def test_sets_by_sex_and_their_unions():
+    """<set>_m / <set>_f hold one sex each (Npc has no sex field); <set> is their union. Every
+    manifest is in exactly one sex set, no named figure in any set."""
+    sets = _sets()
     seen: dict[str, str] = {}
-    for name, members in _sets().items():
-        for rel in members:
-            stem = Path(rel).name.removesuffix(".figure.toml")
-            assert stem not in NAMED, f"{stem} belongs to one NPC (Npc.figure), not to a set"
+    groups = {name for name in sets if not name.endswith(("_m", "_f"))}
+    for name, members in sets.items():
+        stems = [_stem(rel) for rel in members]
+        assert not NAMED & set(stems), f"{name}: named figures belong to one NPC (Npc.figure)"
+        assert len(stems) == len(set(stems)), f"{name}: listed twice"
+        if name in groups:
+            by_sex = [s for sex in ("_m", "_f") for s in sets.get(name + sex, [])]
+            assert sorted(members) == sorted(by_sex), f"{name} must be the union of its sex sets"
+            continue
+        group, sex = name[:-2], name[-1]
+        assert group in groups, f"{name}: no union set '{group}'"
+        for stem in stems:
+            assert stem.startswith(f"{group}_{sex}_"), f"{stem} in {name}: <set>_<m|f>_<n>"
             assert stem not in seen, f"{stem} in {seen.get(stem)} and {name}"
             seen[stem] = name
-            assert stem.startswith(f"{name}_"), f"{stem}: manifests are named <set>_<m|f>_<n>"
 
 
 def test_men_only_sets():
-    for name in GUILDS_MEN_ONLY & set(_sets()):
-        for rel in _sets()[name]:
-            assert "_m_" in Path(rel).name, f"{rel}: {name} figures are men only"
+    sets = _sets()
+    for name in GUILDS_MEN_ONLY & set(sets):
+        assert f"{name}_f" not in sets, f"{name} is men only"
+        assert sorted(sets[name]) == sorted(sets[f"{name}_m"])

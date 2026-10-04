@@ -1,7 +1,8 @@
 # Figure sets (contract figuren -> engine, F3v): an NPC with `figure_set` and without its own
 # `figure` gets one of these manifests, chosen at random but stable per NPC. Paths relative to
-# assets/source. Named figures (smith, innkeeper, market_woman, gate_guard, guard_captain) are
-# not in a set: they belong to one NPC each (Npc.figure).
+# assets/source. <set>_m and <set>_f hold one sex (Npc has no sex field; guard and hunter are men
+# only, so <set>_m equals <set>); <set> is their union (kept for existing NPCs). Named figures
+# (smith, innkeeper, market_woman, gate_guard, guard_captain) are in no set: one NPC each.
 
 [sets]
 citizen = [
@@ -13,6 +14,17 @@ citizen = [
     "characters/figures/citizen_f_2.figure.toml",
     "characters/figures/citizen_f_3.figure.toml",
 ]
+citizen_m = [
+    "characters/figures/citizen_m_1.figure.toml",
+    "characters/figures/citizen_m_2.figure.toml",
+    "characters/figures/citizen_m_3.figure.toml",
+    "characters/figures/citizen_m_4.figure.toml",
+]
+citizen_f = [
+    "characters/figures/citizen_f_1.figure.toml",
+    "characters/figures/citizen_f_2.figure.toml",
+    "characters/figures/citizen_f_3.figure.toml",
+]
 craftsman = [
     "characters/figures/craftsman_m_1.figure.toml",
     "characters/figures/craftsman_m_2.figure.toml",
@@ -20,7 +32,23 @@ craftsman = [
     "characters/figures/craftsman_f_1.figure.toml",
     "characters/figures/craftsman_f_2.figure.toml",
 ]
+craftsman_m = [
+    "characters/figures/craftsman_m_1.figure.toml",
+    "characters/figures/craftsman_m_2.figure.toml",
+    "characters/figures/craftsman_m_3.figure.toml",
+]
+craftsman_f = [
+    "characters/figures/craftsman_f_1.figure.toml",
+    "characters/figures/craftsman_f_2.figure.toml",
+]
 guard = [
+    "characters/figures/guard_m_1.figure.toml",
+    "characters/figures/guard_m_2.figure.toml",
+    "characters/figures/guard_m_3.figure.toml",
+    "characters/figures/guard_m_4.figure.toml",
+    "characters/figures/guard_m_5.figure.toml",
+]
+guard_m = [
     "characters/figures/guard_m_1.figure.toml",
     "characters/figures/guard_m_2.figure.toml",
     "characters/figures/guard_m_3.figure.toml",
@@ -36,7 +64,24 @@ farmer = [
     "characters/figures/farmer_f_2.figure.toml",
     "characters/figures/farmer_f_3.figure.toml",
 ]
+farmer_m = [
+    "characters/figures/farmer_m_1.figure.toml",
+    "characters/figures/farmer_m_2.figure.toml",
+    "characters/figures/farmer_m_3.figure.toml",
+    "characters/figures/farmer_m_4.figure.toml",
+]
+farmer_f = [
+    "characters/figures/farmer_f_1.figure.toml",
+    "characters/figures/farmer_f_2.figure.toml",
+    "characters/figures/farmer_f_3.figure.toml",
+]
 hunter = [
+    "characters/figures/hunter_m_1.figure.toml",
+    "characters/figures/hunter_m_2.figure.toml",
+    "characters/figures/hunter_m_3.figure.toml",
+    "characters/figures/hunter_m_4.figure.toml",
+]
+hunter_m = [
     "characters/figures/hunter_m_1.figure.toml",
     "characters/figures/hunter_m_2.figure.toml",
     "characters/figures/hunter_m_3.figure.toml",
@@ -46,6 +91,15 @@ outcast = [
     "characters/figures/outcast_m_1.figure.toml",
     "characters/figures/outcast_m_2.figure.toml",
     "characters/figures/outcast_m_3.figure.toml",
+    "characters/figures/outcast_f_1.figure.toml",
+    "characters/figures/outcast_f_2.figure.toml",
+]
+outcast_m = [
+    "characters/figures/outcast_m_1.figure.toml",
+    "characters/figures/outcast_m_2.figure.toml",
+    "characters/figures/outcast_m_3.figure.toml",
+]
+outcast_f = [
     "characters/figures/outcast_f_1.figure.toml",
     "characters/figures/outcast_f_2.figure.toml",
 ]

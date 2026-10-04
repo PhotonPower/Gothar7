@@ -537,6 +537,9 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   `[sets] <name> = ["characters/figures/<manifest>.figure.toml", …]` (Pfade relativ zu `assets/source`).
 - **Nutzung (engine):** Ein NPC mit `figure_set` und ohne eigenes `figure` bekommt eines der Manifeste, zufällig, aber je
   NPC stabil; `Npc.figure` hat Vorrang. Die Set-Namen sind unabhängig von den Gilden.
+- **Je Geschlecht** (2026-10-05, Wunsch engine: `Npc` hat kein Geschlechtsfeld, eine Bäckerin bekam aus `citizen` eine
+  Männerfigur): `<set>_m` und `<set>_f` enthalten nur Figuren eines Geschlechts; `<set>` bleibt als Vereinigung
+  bestehen. `guard` und `hunter` sind nur Männer (`guard_m` = `guard`, kein `_f`).
 - **Sets:** `citizen` (7) und `craftsman` (5) für Leonberg (sauber), `guard` (5, nur Männer wie in Gothic, mittlere
   Rüstung mit Helm), `farmer` (7, abgetragen, Strohhüte, Schürzen), `hunter` (4, nur Männer, Leder, gewickelte Hosen
   und Stiefel), `outcast` (5, Lumpen; barfuß oder in Stoffschuhen). Manifeste `figures/<set>_<m|f>_<n>.figure.toml`;
@@ -551,8 +554,8 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
     durch (25 cm²).
   - Keine Schürze über dem vollen langen Rock kräftiger Frauen.
 - **Prüfung:** Jedes Manifest wird beim Bauen zusammengesetzt (`assemble`); `poke` bleibt für alle Gilden-Figuren unter
-  der Schwelle. Der Test `test_figure_sets` prüft, dass jedes gelistete Manifest existiert, in genau einem Set steht und
-  keine benannte Figur enthält.
+  der Schwelle. Der Test `test_figure_sets` prüft, dass jedes gelistete Manifest existiert, in genau einem
+  Geschlechter-Set steht, jedes `<set>` die Vereinigung seiner Geschlechter-Sets ist und keine benannte Figur darin steht.
 
 ## 7. Monster
 
