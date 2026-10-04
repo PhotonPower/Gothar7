@@ -69,8 +69,12 @@ public:
     [[nodiscard]] u32 layerCount() const noexcept { return m_layerCount; }
     [[nodiscard]] bool hasHoles() const noexcept { return m_hasHoles; }
 
-    /// Depth of every chunk inside the cascade's light volume (the terrain casts shadows too).
-    void drawShadow(Device& device, const Cascade& cascade);
+    /// Depth of every chunk inside the cascade's light volume (the terrain casts shadows too), each at the
+    /// detail the main pass draws it with from `eye` (the camera): a coarser shadow surface would lie above
+    /// the drawn one in hollows and shadow it in rings (acne, welt 2026-10-04).
+    void drawShadow(Device& device, const Cascade& cascade, const Vec3& eye);
+    /// Chunks the last shadow pass drew per detail level (tests, statistics).
+    [[nodiscard]] const std::array<u32, 4>& shadowLevels() const noexcept { return m_shadowLevels; }
     /// Main pass: chunks inside the camera frustum, each at the detail its distance asks for. The
     /// lighting block and shadow atlas must be bound (MeshRenderer::bindLighting).
     void draw(Device& device, const Camera& camera, const LightList* lights);
@@ -124,6 +128,7 @@ private:
     AABB m_bounds;
     f32 m_skirtDepth = 1.0f;
     u32 m_drawn = 0;
+    std::array<u32, 4> m_shadowLevels{};
     std::vector<u32> m_selectedLights;
 };
 } // namespace g7::render

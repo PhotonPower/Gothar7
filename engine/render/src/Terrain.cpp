@@ -329,8 +329,9 @@ void TerrainRenderer::bindCommon(rhi::ShaderProgram& program, Device& device)
     device.bindTexture(kHoleUnit, m_hasHoles ? m_holes : m_noHoles, m_nearest);
 }
 
-void TerrainRenderer::drawShadow(Device& device, const Cascade& cascade)
+void TerrainRenderer::drawShadow(Device& device, const Cascade& cascade, const Vec3& eye)
 {
+    m_shadowLevels = {};
     if (m_chunks.empty())
     {
         return;
@@ -339,17 +340,26 @@ void TerrainRenderer::drawShadow(Device& device, const Cascade& cascade)
     device.bindPipeline(m_shadowPipeline);
     bindCommon(*m_shadowProgram, device);
     m_shadowProgram->setUniform("uViewProjection", cascade.viewProjection);
-    // Shadow maps are coarse: the lowest detail is enough and keeps the pass cheap.
-    const Grid& grid = m_grids[kLodLevels - 1];
-    device.bindVertexBuffer(grid.vertices);
-    device.bindIndexBuffer(grid.indices, rhi::IndexType::U32);
+    // The same detail as the main pass: the shadow surface must be the drawn surface, else hollows shadow
+    // themselves in rings. Far chunks are coarse in both passes anyway.
+    u32 boundLevel = kLodLevels; // none
     for (const Chunk& chunk : m_chunks)
     {
-        if (volume.intersects(chunk.bounds))
+        if (!volume.intersects(chunk.bounds))
         {
-            m_shadowProgram->setUniform("uChunkOrigin", chunk.origin);
-            device.drawIndexed(grid.indexCount);
+            continue;
         }
+        const Vec3 closest = glm::clamp(eye, chunk.bounds.min, chunk.bounds.max);
+        const u32 level = lodFor(glm::length(closest - eye), lodDistance);
+        if (level != boundLevel)
+        {
+            device.bindVertexBuffer(m_grids[level].vertices);
+            device.bindIndexBuffer(m_grids[level].indices, rhi::IndexType::U32);
+            boundLevel = level;
+        }
+        m_shadowProgram->setUniform("uChunkOrigin", chunk.origin);
+        device.drawIndexed(m_grids[level].indexCount);
+        ++m_shadowLevels[level];
     }
 }
 
