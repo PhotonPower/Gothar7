@@ -120,9 +120,13 @@ class _Roof:
             return None
         minx, minz, maxx, maxz = poly.bounds
         reach = 2 * math.hypot(maxx - minx, maxz - minz) + 10
-        cx = self.v[0] * self.mid
-        cz = self.v[1] * self.mid
         ux, uz = self.u
+        # centred on the polygon along the ridge: a line centred at the point of the ridge line
+        # nearest the origin missed houses far from it, which then lost their roof slopes
+        c = poly.centroid
+        uc = c.x * ux + c.y * uz
+        cx = self.v[0] * self.mid + ux * uc
+        cz = self.v[1] * self.mid + uz * uc
         return LineString([(cx - ux * reach, cz - uz * reach), (cx + ux * reach, cz + uz * reach)])
 
 
