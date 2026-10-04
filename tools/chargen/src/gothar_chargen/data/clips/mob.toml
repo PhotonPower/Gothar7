@@ -89,3 +89,17 @@ params = { base = "mob/bed/s_lie_source", keys = [[0, "lie"], [60, "lie"]], pose
 name = "mob/door/t_open"
 from = "ual1:Interact"
 markers = { open = 10 }
+
+# --- bench (sitting; the figure stands in front of the bench with its back to it) ---------------
+
+[[clip]]
+name = "mob/bench/t_sit"
+from = "ual1:Sitting_Enter"
+
+[[clip]]
+name = "mob/bench/s_sit"
+from = "ual1:Sitting_Idle_Loop"
+
+[[clip]]
+name = "mob/bench/t_stand"
+from = "ual1:Sitting_Exit"

@@ -20,7 +20,7 @@ from pathlib import Path
 
 import numpy as np
 
-from gothar_chargen.fabrics import fractal
+from gothar_chargen.fabrics import fractal, value_noise
 from gothar_chargen.gltf import Gltf, GltfError
 from gothar_chargen.validate import Report
 
@@ -339,6 +339,44 @@ def key(seg: int) -> list[Mesh]:
     return [metal]
 
 
+def broom(seg: int) -> list[Mesh]:
+    """Sweeping broom: a straight handle (held at its upper end, the origin) and a bundle of twigs
+    along +Y, bound with a cord."""
+    rng = np.random.default_rng(31)
+    handle = Mesh("wood")
+    loft(handle, np.array([[0, -0.2, 0], [0, 0.82, 0]]), [circle(0.016, max(6, seg // 2))] * 2,
+         tile=0.3)  # fmt: skip
+    twigs = Mesh("straw")
+    ys = np.linspace(0.78, 1.2, 8)
+    t = (ys - 0.78) / 0.42
+    radius = 0.03 + 0.085 * t**0.7
+    sections = []
+    for i, r in enumerate(radius):
+        shaggy = 1 + (0.25 * t[i]) * (rng.random(seg) - 0.5)  # loose twig ends
+        sections.append(circle(r, seg, ry=0.55) * shaggy[:, None])  # flat bundle: wide along Z
+    sections[-1] = sections[-1] * 1.05
+    loft(twigs, np.stack([np.zeros_like(ys), ys, np.zeros_like(ys)], axis=1), sections, tile=0.25)
+    cord = Mesh("cork")
+    loft(cord, np.array([[0, 0.8, 0], [0, 0.84, 0]]), [circle(0.036, seg, ry=0.6)] * 2, tile=0.05)
+    return [handle, twigs, cord]
+
+
+def mug(seg: int) -> list[Mesh]:
+    """Wooden mug held by its handle (the origin): +Y up, the cup on the side of +Z."""
+    cup = Mesh("wood_dark")
+    body = [(0.0, -0.05), (0.04, -0.05), (0.042, -0.04), (0.042, 0.06), (0.046, 0.065),
+            (0.039, 0.065), (0.037, 0.06), (0.037, -0.035), (0.0, -0.035)]  # fmt: skip
+    path = np.array([[0.0, y, 0.07] for _, y in body])
+    loft(cup, path, [circle(max(r, 1e-6), seg) for r, _ in body], tile=0.1)
+    handle = [
+        [0.0, 0.015 + 0.035 * np.sin(a), 0.07 - 0.042 - 0.028 * np.cos(a)]
+        for a in np.linspace(-np.pi / 2, np.pi / 2, 7)
+    ]
+    loft(cup, np.array(handle), [circle(1.0, 6) * np.array([0.006, 0.011])] * 7,
+         ref=(1.0, 0.0, 0.0), tile=0.05)  # fmt: skip
+    return [cup]
+
+
 ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_sword_old": (lambda s: sword(s, rust=True), 12),
     "it_sword_crude": (lambda s: sword(s, rust=False), 12),
@@ -349,6 +387,8 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_potion_heal_small": (potion, 16),
     "it_lockpick": (lockpick, 8),
     "it_key": (key, 10),
+    "it_broom": (broom, 12),
+    "it_mug": (mug, 14),
 }
 
 # textures: name -> (source below the item sources folder, size, colour factor) or procedural
@@ -357,8 +397,9 @@ TEXTURES: dict[str, tuple[str, int, tuple[float, float, float]]] = {
     "leather": ("Leather014/Leather014_1K-JPG_Color.jpg", 256, (1.0, 1.0, 1.0)),
     "wood": ("Wood049/Wood049_1K-JPG_Color.jpg", 512, (1.0, 1.0, 1.0)),
     "bark": ("Bark012/Bark012_1K-JPG_Color.jpg", 512, (0.62, 0.5, 0.4)),  # darker, browner
+    "wood_dark": ("Wood060/Wood060_1K-JPG_Color.jpg", 256, (0.85, 0.8, 0.75)),
 }
-PROCEDURAL = ("iron_forged", "apple", "bread", "glass_red", "cork")
+PROCEDURAL = ("iron_forged", "apple", "bread", "glass_red", "cork", "straw")
 
 
 def procedural_texture(name: str, size: int = 256) -> np.ndarray:
@@ -383,6 +424,10 @@ def procedural_texture(name: str, size: int = 256) -> np.ndarray:
         band = 0.5 + 0.5 * np.sin(np.linspace(0, 6 * np.pi, size))[None, :]
         c = np.array([0.38, 0.04, 0.05])[None, None] * (0.8 + 0.4 * band[..., None] * n1[..., None])
         return np.clip(c, 0, 1)
+    if name == "straw":  # dry twigs: streaks along v (the bundle)
+        streak = value_noise(size, 64, rng)[:, :1].repeat(size, axis=1).T
+        c = np.array([0.62, 0.5, 0.3])[None, None] * (0.6 + 0.6 * streak[..., None])
+        return np.clip(c * (0.85 + 0.3 * n2[..., None]), 0, 1)
     if name == "cork":
         return np.clip(np.array([0.55, 0.4, 0.24])[None, None] * (0.7 + 0.5 * n2[..., None]), 0, 1)
     raise ValueError(f"unknown procedural texture {name}")
@@ -520,6 +565,7 @@ LENGTHS = {
     "it_sword_old": (0.9, 1.15), "it_sword_crude": (0.9, 1.15), "it_club": (0.6, 0.85),
     "it_bow_short": (1.0, 1.4), "it_apple": (0.06, 0.1), "it_bread": (0.15, 0.3),
     "it_potion_heal_small": (0.12, 0.2), "it_lockpick": (0.1, 0.2), "it_key": (0.07, 0.15),
+    "it_broom": (1.2, 1.6), "it_mug": (0.09, 0.15),
 }  # fmt: skip
 
 

@@ -1,0 +1,152 @@
+# Set "amb" -> assets/source/characters/anims/human/amb.glb (Prio C, routines for M9; placeholders,
+# mocap in F4). States with a way in and out: amb/t_<x>_in, amb/s_<x>, amb/t_<x>_out. Origin = the
+# foot point, the figure faces +Z, in place; only sitting and lying may carry root motion (like the
+# bed). Items in the hand (broom, mug) appear with item_to_hand in t_<x>_in and go with
+# item_from_hand in t_<x>_out; the engine decides which item (contract characters-pipeline.md §3.1).
+#
+# Key poses rotate about world axes at rest (Blender: X = the figure's left, -Y = forward, Z = up;
+# +X pitches the head down and swings a leg back, +Z turns left) and move root/pelvis in metres.
+
+set = "amb"
+depends = ["none"]
+
+[sources.ual1]
+file = "AnimationLibrary_Godot_Standard.glb"
+mapping = "quaternius_ual1"
+
+[sources.ual2]
+file = "UAL2_Standard.glb"
+mapping = "quaternius_ual2"
+
+# --- sitting on the ground (freepoint FP_SIT, also at the campfire) ------------------------------
+
+[[clip]]
+name = "amb/s_sit_ground"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "sit"], [75, "sit"]], poses = { sit = { move = { pelvis = [0.0, 0.0, -0.8] }, rotate = { thigh_l = [["X", -125], ["Y", -12]], thigh_r = [["X", -125], ["Y", 12]], calf_l = [["X", 140]], calf_r = [["X", 140]], spine_01 = [["X", 18]], upperarm_l = [["Y", 55]], upperarm_r = [["Y", -55]], lowerarm_l = [["Y", 50]], lowerarm_r = [["Y", -50]] } } } }
+
+[[clip]]
+name = "amb/t_sit_ground_in"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [36, "sit"]], poses = { sit = { move = { pelvis = [0.0, 0.0, -0.8] }, rotate = { thigh_l = [["X", -125], ["Y", -12]], thigh_r = [["X", -125], ["Y", 12]], calf_l = [["X", 140]], calf_r = [["X", 140]], spine_01 = [["X", 18]], upperarm_l = [["Y", 55]], upperarm_r = [["Y", -55]], lowerarm_l = [["Y", 50]], lowerarm_r = [["Y", -50]] } } } }
+
+[[clip]]
+name = "amb/t_sit_ground_out"
+reverse = "amb/t_sit_ground_in"
+
+# --- standing guard, arms crossed --------------------------------------------------------------
+
+[[clip]]
+name = "amb/s_guard"
+from = "ual2:Idle_FoldArms_Loop"
+
+[[clip]]
+name = "amb/t_guard_in"
+blend = ["none/s_idle", "amb/s_guard"]
+frames = 15
+
+[[clip]]
+name = "amb/t_guard_out"
+blend = ["amb/s_guard", "none/s_idle"]
+frames = 15
+
+# --- leaning with the back against a wall (the wall is behind the foot point, -Z of the figure) ---
+
+[[clip]]
+name = "amb/s_lean_wall"
+keyframe = "keyposes"
+params = { base = "amb/s_guard", keys = [[0, "lean"], [75, "lean"]], poses = { lean = { move = { pelvis = [0.0, 0.08, -0.03] }, rotate = { spine_01 = [["X", -6]], thigh_r = [["X", -35]], calf_r = [["X", 70]] } } } }
+
+[[clip]]
+name = "amb/t_lean_wall_in"
+blend = ["none/s_idle", "amb/s_lean_wall"]
+frames = 20
+
+[[clip]]
+name = "amb/t_lean_wall_out"
+blend = ["amb/s_lean_wall", "none/s_idle"]
+frames = 20
+
+# --- talking (two variants, so neighbours do not move in step) ---------------------------------
+
+[[clip]]
+name = "amb/s_talk_a"
+from = "ual1:Idle_Talking_Loop"
+
+[[clip]]
+name = "amb/s_talk_b"
+keyframe = "keyposes"
+params = { base = "amb/s_talk_a", keys = [[0, "other"], [88, "other"]], poses = { other = { rotate = { upperarm_l = [["X", -15]], lowerarm_l = [["X", -35]], neck = [["Z", 12], ["X", -5]], spine_02 = [["Z", -6]] } } } }
+
+# --- sleeping on the ground (lies where it stood, along its view direction) --------------------
+
+[[clip]]
+name = "amb/t_sleep_ground_out"
+from = "ual2:LayToIdle"
+markers = { stand = 43 }
+
+[[clip]]
+name = "amb/t_sleep_ground_in"
+reverse = "amb/t_sleep_ground_out"
+markers = { lie = 43 }
+
+[[clip]]
+name = "amb/s_sleep_ground"
+keyframe = "hold"
+params = { base = "amb/t_sleep_ground_out", frame = 0 }
+
+# --- warming the hands at the campfire (crouching) ---------------------------------------------
+
+[[clip]]
+name = "amb/s_campfire_crouch"
+from = "ual1:Crouch_Idle_Loop"
+helper = true
+
+[[clip]]
+name = "amb/s_campfire_warm"
+keyframe = "keyposes"
+params = { base = "amb/s_campfire_crouch", keys = [[0, "warm"], [88, "warm"]], poses = { warm = { rotate = { upperarm_r = [["X", -30], ["Y", 60], ["Z", 30]], lowerarm_r = [["X", -30], ["Y", 30]], upperarm_l = [["X", -30], ["Y", -60], ["Z", -30]], lowerarm_l = [["X", -30], ["Y", -30]] } } } }
+
+# --- sweeping with a broom (it_broom in the right hand) -----------------------------------------
+
+[[clip]]
+name = "amb/s_sweep"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "left"], [37, "right"], [75, "left"]], poses = { left = { rotate = { spine_02 = [["Z", 15]], spine_01 = [["X", 20]], upperarm_r = [["X", -75], ["Y", 20], ["Z", 60]], lowerarm_r = [["X", -15]], upperarm_l = [["Y", 50]], lowerarm_l = [["Y", 40]] }, twist = { lowerarm_r = -180 } }, right = { rotate = { spine_02 = [["Z", -15]], spine_01 = [["X", 20]], upperarm_r = [["X", -75], ["Y", 20], ["Z", 60]], lowerarm_r = [["X", -15]], upperarm_l = [["Y", 50]], lowerarm_l = [["Y", 40]] }, twist = { lowerarm_r = -180 } } } }
+
+[[clip]]
+name = "amb/t_sweep_in"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [20, "left"]], poses = { left = { rotate = { spine_02 = [["Z", 15]], spine_01 = [["X", 20]], upperarm_r = [["X", -75], ["Y", 20], ["Z", 60]], lowerarm_r = [["X", -15]], upperarm_l = [["Y", 50]], lowerarm_l = [["Y", 40]] }, twist = { lowerarm_r = -180 } } } }
+markers = { item_to_hand = 2 }
+
+[[clip]]
+name = "amb/t_sweep_out"
+reverse = "amb/t_sweep_in"
+markers = { item_from_hand = 18 }
+
+# --- drinking from a mug (it_mug in the right hand) ---------------------------------------------
+
+[[clip]]
+name = "amb/s_drink_mug"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "hold"], [40, "hold"], [55, "sip"], [80, "sip"], [95, "hold"], [150, "hold"]], poses = { hold = { rotate = { upperarm_r = [["Y", -30]], lowerarm_r = [["Y", -90]] }, twist = { lowerarm_r = -150 } }, sip = { rotate = { upperarm_r = [["Y", -85]], lowerarm_r = [["Y", -110]], neck = [["X", -15]] }, twist = { lowerarm_r = -150 } } } }
+
+[[clip]]
+name = "amb/t_drink_mug_in"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [20, "hold"]], poses = { hold = { rotate = { upperarm_r = [["Y", -30]], lowerarm_r = [["Y", -90]] }, twist = { lowerarm_r = -150 } } } }
+markers = { item_to_hand = 2 }
+
+[[clip]]
+name = "amb/t_drink_mug_out"
+reverse = "amb/t_drink_mug_in"
+markers = { item_from_hand = 18 }
+
+# --- sword training (the weapon in socket_hand_r) ------------------------------------------------
+
+[[clip]]
+name = "amb/s_train_sword"
+from = "ual2:Sword_Regular_Combo"
+close = 12
+in_place = true

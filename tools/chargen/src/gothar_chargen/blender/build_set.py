@@ -34,7 +34,9 @@ from gothar_chargen.blender.curves import (  # noqa: E402
     BONE_PATH,
     Curves,
     blend,
+    close_loop,
     concat,
+    in_place,
     layer,
     length,
     reverse,
@@ -213,6 +215,10 @@ def _compute(
             curves = layer(built[clip.clips[0]], built[clip.clips[1]], upper, rig_info.bones, loop)
         else:
             curves = RECIPES[clip.recipe](rig_info, clip.param, built)
+        if clip.in_place:
+            curves = in_place(curves, rig_info.rest, rig_info.bones)
+        if clip.close:
+            curves = close_loop(curves, clip.close, rig_info.bones)
         built[clip.name] = curves
     return list(spec.clips)
 
