@@ -62,6 +62,7 @@ void defineContentKinds(script::ScriptVm& vm)
                        {"important", Type::Boolean},
                        {"permanent", Type::Boolean},
                        {"approach", Type::Boolean}, // important: the NPC walks up to the player (M10)
+                       {"trade", Type::Boolean},    // after its lines: the trade screen (M10 part C)
                        {"condition", Type::Function},
                        {"run", Type::Function, true},
                    },

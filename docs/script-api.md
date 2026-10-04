@@ -26,6 +26,21 @@ Im Dialog: eine Zeile. `who` ist der NPC (das Argument von run) oder `"hero"`. S
 ### `talk(npc: string) -> boolean`
 Beginnt einen Dialog mit dem NPC (Konsole, Tests; im Spiel: Aktionstaste auf ihn).
 
+### `trade_buy(item: string, count?: integer) -> boolean`
+Im Handel: kauft vom Händler (zum vollen Wert mal Trade.sell_factor).
+
+### `trade_close()`
+Schließt den Handel; der Dialog geht weiter.
+
+### `trade_open()`
+Im Dialog: öffnet den Handel mit dem NPC, sobald die Zeilen gesagt sind (wie `trade = true` an der Info).
+
+### `trade_price(item: string, buying: boolean) -> integer`
+Der Preis eines Stücks: kauft der Held (`true`) bzw. verkauft er.
+
+### `trade_sell(item: string, count?: integer) -> boolean`
+Im Handel: verkauft an den Händler (zum Wert mal Trade.buy_factor).
+
 ## Ereignisse
 
 ### `on("assess_enter_room", fn(npc: string, owner: string, area: string))`
@@ -52,8 +67,14 @@ Ein Dialog ist vorbei.
 ### `on("dialog_started", fn(npc: string))`
 Ein Dialog beginnt.
 
+### `on("item_bought", fn(npc: string, item: string, count: integer, price: integer))`
+Der Held hat beim Händler gekauft.
+
 ### `on("item_crafted", fn(recipe: string))`
 Der Held hat an einem Mob etwas hergestellt (Amboss: nach seinen Schlägen).
+
+### `on("item_sold", fn(npc: string, item: string, count: integer, price: integer))`
+Der Held hat an den Händler verkauft.
 
 ### `on("item_taken", fn(item: string, count: integer))`
 Der Held hat einen Gegenstand aus der Welt aufgehoben (Aktionstaste auf ein Item im Fokus).
@@ -167,6 +188,9 @@ Wie viele Stück eines Items der Held hat.
 ### `remove_item(item: string, count?: integer) -> boolean`
 Nimmt dem Helden `count` Stück weg; `false` (und nichts weggenommen), wenn er weniger hat. Ausgerüstetes wird dabei abgelegt.
 
+### `set_learn_points(points: integer)`
+Setzt die Lernpunkte des Helden (Lehrer ziehen sie ab, M10).
+
 ### `set_stat(name: string, value: integer)`
 Setzt ein Attribut des Helden; `hp`/`mana` bleiben zwischen 0 und dem Maximum.
 
@@ -224,6 +248,9 @@ Reiht ein: zum Spieler gehen (bzw. rennen), bis auf `distance` Meter (Vorgabe 1,
 
 ### `npc_goto_point(npc: string, x: number, y: number, z: number, run?: boolean)`
 Reiht ein: zu einem Punkt gehen (bzw. rennen), über das Wegnetz, wo nötig.
+
+### `npc_item_count(npc: string, item: string) -> integer`
+Wie viele Stück eines Gegenstands der NPC hat.
 
 ### `npc_play(npc: string, ambient: string, item?: string)`
 Reiht ein: eine Tagesablauf-Animation (`"sit_ground"`, `"guard"` ... – Zustände amb_<x>_in, amb_<x>, amb_<x>_out des Menschen-Graphen; `"idle_look"` und `"react_warn"` usw. direkt), bis npc_stop oder Gehen sie beendet. `item` (`"it_broom"`) nimmt er bei `item_to_hand` in die rechte Hand und legt es bei `item_from_hand` bzw. am Ende weg.

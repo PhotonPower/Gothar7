@@ -35,4 +35,6 @@ Npc "npc_old_man" {
     level = 1,
     figure = "characters/figures/old_man.figure.toml",
     routine = "rtn_old_man",
+    -- Er handelt mit allerlei Kram (M10): seine Waren und Gulden zum Bezahlen.
+    inventory = { it_gulden = 120, it_apple = 6, it_bread = 4, it_lockpick = 3, it_potion_heal_small = 2 },
 }

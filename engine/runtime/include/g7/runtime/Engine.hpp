@@ -469,6 +469,13 @@ public:
     /// Skips the line being said.
     void dialogSkip();
     void endDialog();
+    // Trading (M10 part C, EngineTrade.cpp)
+    [[nodiscard]] bool trading() const noexcept { return m_trade.has_value(); }
+    [[nodiscard]] Result<void> tradeBuy(std::string_view item, u32 count = 1);
+    [[nodiscard]] Result<void> tradeSell(std::string_view item, u32 count = 1);
+    void closeTrade();
+    /// Price of one piece: the hero buys (full value x Trade.sell_factor) or sells (x Trade.buy_factor).
+    [[nodiscard]] i64 tradePrice(std::string_view item, bool heroBuys) const;
     /// Whether one can walk straight from a to b (a sphere at knee-to-hip height meets nothing).
     [[nodiscard]] bool walkableLine(const Vec3& a, const Vec3& b) const;
 
@@ -647,6 +654,12 @@ private:
     void dialogPerception(Creature& c, f32 distance, bool sees);
     void presentLine(const struct DialogLineRef& line);
     void loadDialogPresentation();
+    void loadTradeSettings();
+    [[nodiscard]] Result<void> openTrade();
+    [[nodiscard]] i64 itemValue(std::string_view item) const;
+    [[nodiscard]] gameplay::Character* trader();
+    void tradeUi();
+    void bindTradeFunctions();
     void stopTalking();
     /// Over the listener's shoulder at the speaker (M10 part B); in updatePlayerCamera.
     void updateDialogCamera(f32 seconds);
@@ -1011,8 +1024,20 @@ private:
         std::vector<DialogOption> menu;    ///< shown when no line is said
         i32 selected = 0;
         bool endRequested = false;
+        bool tradeRequested = false; ///< after the lines: the trade screen
     };
     std::optional<Dialog> m_dialog;
+    struct Trade
+    {
+        u32 npc = 0;
+    };
+    std::optional<Trade> m_trade;
+    struct TradeSettings
+    {
+        std::string currency = "it_gulden"; ///< owner decision E6
+        f32 sellFactor = 1.0f;              ///< the trader sells at the full value
+        f32 buyFactor = 0.5f;               ///< and buys at half of it
+    } m_tradeSettings;
     struct DialogPresentation
     {
         f32 side = 0.55f;

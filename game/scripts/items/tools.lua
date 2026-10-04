@@ -42,3 +42,10 @@ Item "it_axe" {
     category = "misc",
     value = 15,
 }
+
+-- Die Währung (M10, Entscheidung des Projektinhabers E6): Gulden, im Handel und beim Lehrer.
+Item "it_gulden" {
+    name = "Gulden",
+    category = "misc",
+    value = 1,
+}

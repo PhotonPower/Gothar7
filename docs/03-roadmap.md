@@ -220,7 +220,7 @@ ihrem Bereich binnen 30 Ticks (E).
 - [x] Dialog-Ablauf: Kamera-Schnitte (Über-die-Schulter), Sprachausgabe/Untertitel, Gesten-Animationen – Untertitel; Sprachausgabe später über die Zeilen-Schlüssel (E4); dlg-Gesten additiv gegen dlg/a_neutral, Mund und Blick (B)
 - [x] Kameramodus „Dialog“ der Third-Person-Kamera (aus M5: Schuss/Gegenschuss als Datensatz in `movement.toml` bzw. Dialogdaten) – `data/dialog.lua` (B)
 - [x] Auswahl-Menüs (Choices) innerhalb einer Info – `choice(text, fn)` (A)
-- [ ] Handel-Bildschirm und Lernen über Dialog
+- [x] Handel-Bildschirm und Lernen über Dialog – Tauschhandel in Gulden (Info `trade = true`, `data/trade.lua`), Lehrer über `teach_menu` (`data/teaching.lua`); Händler: alter Mann, Lehrer: Holzfäller (C)
 - [ ] Tagebuch: Aufträge (laufend/erfolgreich/gescheitert), Einträge, Notizen
 - [ ] Kapitelwechsel-Mechanik
 

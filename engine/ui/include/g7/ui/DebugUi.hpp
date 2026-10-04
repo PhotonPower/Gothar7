@@ -134,6 +134,28 @@ struct DialogPanel
     i32 clicked = -1; ///< out
 };
 
+/// Trading (M10 part C): the trader's goods and the hero's, prices in the currency; one piece per click.
+struct TradePanel
+{
+    std::string title;
+    std::string currency;
+    struct Row
+    {
+        std::string item;
+        std::string name;
+        u32 count = 0;
+        i64 price = 0; ///< per piece
+    };
+    std::vector<Row> trader; ///< what the hero can buy
+    std::vector<Row> hero;   ///< what he can sell
+    i64 traderMoney = 0;
+    i64 heroMoney = 0;
+    // out
+    i32 buy = -1;
+    i32 sell = -1;
+    bool close = false;
+};
+
 /// NPC behaviour (M9 part E, window "AI"): per NPC state, routine, queue, perception. The engine fills it;
 /// the selected NPC's senses are drawn in the debug overlay (F2).
 struct AiPanel
@@ -253,6 +275,8 @@ public:
     void consolePanel(ConsolePanel& panel);
     /// Window "Creatures" (M6 D3).
     void creaturesPanel(CreaturesPanel& panel);
+    /// Window "Handel" (M10 part C).
+    void tradePanel(TradePanel& panel);
     /// The dialogue box at the bottom (M10).
     void dialogPanel(DialogPanel& panel);
     /// Window "AI" (M9 part E).

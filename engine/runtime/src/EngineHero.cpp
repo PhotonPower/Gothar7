@@ -301,6 +301,18 @@ void Engine::bindHeroFunctions()
                  }
                  return Value(static_cast<i64>(gained));
              }});
+    vm.bind({"set_learn_points", "set_learn_points(points: integer)",
+             "Setzt die Lernpunkte des Helden (Lehrer ziehen sie ab, M10).", "Held",
+             [this, hero](std::span<const Value> a) -> Result<Value>
+             {
+                 auto h = hero();
+                 if (!h || a.empty() || !a[0].isNumber() || a[0].asInteger() < 0)
+                 {
+                     return !h ? h.error() : Error{"expects (points >= 0)"};
+                 }
+                 h.value()->setLearnPoints(static_cast<i32>(a[0].asInteger()));
+                 return Value();
+             }});
     vm.bind({"hero", "hero() -> {name, guild, level, xp, next_xp, learn_points}",
              "Name, Gilde, Stufe, Erfahrung, Erfahrung bis zur nächsten Stufe und Lernpunkte des Helden.",
              "Held", [this, hero](std::span<const Value>) -> Result<Value>
