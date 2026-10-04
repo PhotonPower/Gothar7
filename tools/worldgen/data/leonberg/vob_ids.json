@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 2050,
+ "nextVobId": 2055,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -2051,6 +2051,11 @@
   "use:MOB_LEO_GEWANDSCHNEIDER_ZKV_CHEST_1": 2046,
   "use:MOB_LEO_SCHMIEDE_ZNP_ANVIL_1": 2047,
   "use:MOB_LEO_SCHREINER_ZJR_BENCH_1": 2048,
-  "use:MOB_LEO_TOEPFER_ZKT_BENCH_1": 2049
+  "use:MOB_LEO_TOEPFER_ZKT_BENCH_1": 2049,
+  "use:door:DEBW_00100061ZhE": 2050,
+  "use:door:DEBW_00100061ZjV": 2051,
+  "use:door:DEBW_00100061Zkx": 2052,
+  "use:door:DEBW_00100061Zl2-T2": 2053,
+  "use:door:DEBW_00100061ZnP": 2054
  }
 }

@@ -99,7 +99,7 @@ from gothar_worldgen.qa.checks import FAIL
 from gothar_worldgen.qa.run import run_qa
 from gothar_worldgen.qa.walk import evaluate, read_log, write_routes
 from gothar_worldgen.qa.workdata import QaError, load_work
-from gothar_worldgen.uses.places import UsesError
+from gothar_worldgen.uses.places import UsesError, door_mobs, load_uses
 from gothar_worldgen.walls.citywall import (
     CourseError,
     footprints_of,
@@ -451,10 +451,18 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
             wall = wall_context(course, entries, grid.height_at, rules)
         except (OSError, json.JSONDecodeError, CourseError) as e:
             print(f"  warning: no wall houses ({e})", file=out)
+    interiors: dict[str, dict[str, Any]] = {}
+    uses_path = data_dir / "uses.json"
+    if args.mode == "medieval" and uses_path.is_file():  # W7: enterable houses
+        try:
+            interiors = {h.id: {"use": h.use} for h in load_uses(uses_path).houses if h.inside}
+        except UsesError as e:
+            print(f"error: {e}", file=sys.stderr)
+            return EXIT_ERROR
     res = generate(entries, grid, folder / "generated" / "buildings",
                    f"worlds/{site.name}/generated/buildings", args.area, locked,
                    args.mode, rules, streets, overrides, replace if rb else None,
-                   wall)  # fmt: skip
+                   wall, interiors)  # fmt: skip
     if report is not None:
         report["overBudget"] = [{"id": i, "newHouses": n} for i, n in res.replaced]
         report["stats"]["replaced"] += len(res.replaced)
@@ -1029,12 +1037,18 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
                        handmade, water, starts)  # fmt: skip
         uses_path = data_dir / "uses.json"
         places = None
+        rules_doc = json.loads((data_dir.parent / "building_rules.json").read_text("utf-8"))
+        opened = bool(rules_doc.get("interior", {}).get("doorsOpen", True))
+        doors = door_mobs(index, opened)  # W7: the doors of the enterable houses
+        if doors:
+            res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
+                           handmade, water, starts, doors)  # fmt: skip
         if uses_path.is_file():  # W7: mobs and routine places at the houses with a use
             street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
             places, mobs = _plan_uses(uses_path, res.world, index, folder.parents[1],
                                       street_doc.get("streets", []))  # fmt: skip
             res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
-                           handmade, water, starts, mobs)  # fmt: skip
+                           handmade, water, starts, [*doors, *mobs])  # fmt: skip
     except (AssembleError, OverrideError, OSError, json.JSONDecodeError, HandmadeError,
             UsesError) as e:  # fmt: skip
         print(f"error: {e}", file=sys.stderr)
