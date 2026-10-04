@@ -217,6 +217,9 @@ ihrem Bereich binnen 30 Ticks (E).
 
 ## M10 – Dialoge & Quests  → Meilenstein B
 - [ ] Info-System: Bedingung, Beschreibung, Priorität, `important` (NPC spricht an), `permanent`, `onlyOnce`
+- [ ] Gesprochene Texte nur über Schlüssel: `say(self, other, "dia_…")` statt `print`/Freitext (Torwache), `Shouts` → `svm_<stimme>_<anlass>` je `Npc.voice`; Texte, Geschlecht und Regie stehen in `assets/source/voice/lines.de.json`
+  - [x] Werkzeug `tools/voice` (Streamlit): Tabelle aller Sprechtexte (Text, M/F, Stimme, Regieanweisung, Status), WAV-Takes hochladen (Dateinamen und Ablage vergibt das Werkzeug), Take wählen, CSV der offenen Zeilen für TTS, Abgleich `gothar-voice scan` gegen `game/scripts`
+  - [ ] offen (Projektinhaber): Anzahl der Stimmen für `svm_*` (Beispiel: 1 = m, 2 = f); Takes versionieren oder nur den gewählten Take (Git LFS laut `06-asset-pipeline.md` ab > 100 MB)
 - [ ] Dialog-Ablauf: Kamera-Schnitte (Über-die-Schulter), Sprachausgabe/Untertitel, Gesten-Animationen
 - [ ] Kameramodus „Dialog“ der Third-Person-Kamera (aus M5: Schuss/Gegenschuss als Datensatz in `movement.toml` bzw. Dialogdaten)
 - [ ] Auswahl-Menüs (Choices) innerhalb einer Info
@@ -253,6 +256,7 @@ ihrem Bereich binnen 30 Ticks (E).
 - [ ] 3D-Sound mit Abschwächung, Verdeckung (einfacher Raycast-Filter)
 - [ ] Ambient-Zonen (Wind, Sumpf, Höhle), Zufalls-Einzelgeräusche
 - [ ] Sprachausgabe mit Lippensync-Daten, Untertitel-Synchronisation
+  - Quelle: gewählte Takes `assets/source/voice/<sprache>/<key>.wav` → Cooker `voice/<sprache>/<key>.ogg`; fehlt die Datei, nur Untertitel mit Lesedauer aus der Textlänge
 - [ ] **Dynamisches Musiksystem**: Musik-Zonen, Zustände (Standard/Bedrohung/Kampf) × Tag/Nacht, musikalische Übergänge auf Taktgrenzen, Stingers
 - [ ] Fußschritt-Sounds nach Material
 
@@ -265,6 +269,7 @@ ihrem Bereich binnen 30 Ticks (E).
 - [ ] Charakterbildschirm, Tagebuch-Bildschirm, Karte (falls Karten-Item)
 - [ ] Hauptmenü, Optionen (Grafik, Audio, Steuerung), Ladebildschirm
 - [ ] Lokalisierung (Schlüssel → Text-Tabellen DE/EN), Untertitel
+  - Gesprochene Texte kommen aus `assets/source/voice/lines.<sprache>.json` (eine Datei je Sprache)
 - [ ] Bildschirmtexte (z. B. „Erfahrung +50“), Nachrichten
 
 **DoD:** Das Vertical Slice ist vollständig ohne Debug-UI spielbar.

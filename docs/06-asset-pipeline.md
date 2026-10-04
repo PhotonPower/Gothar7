@@ -14,7 +14,7 @@
 | Animationen | `.glb` (eine Datei pro Set) | `.g7anim` (komprimierte Tracks, Events) |
 | Texturen | `.png`/`.tga` | `.ktx2` (BC7 Farbe, BC5 Normal, Mipmaps) |
 | Materialien | `.g7mat` (TOML/JSON) | dito, vorvalidiert |
-| Sounds/Musik/Sprache | `.ogg`/`.wav` | `.ogg` |
+| Sounds/Musik/Sprache | `.ogg`/`.wav` (Sprache: `assets/source/voice/`, siehe `tools/voice`) | `.ogg` |
 | Welten | `.g7world` (JSON, vom Editor) | `.g7worldc` (binär) |
 | Skripte | `.lua` | `.lua` (ggf. vorkompiliert) |
 | Lokalisierung | `.csv`/`.toml` | Text-Tabelle |
