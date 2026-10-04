@@ -17,6 +17,13 @@ Data (version 1)::
     tile = "linen"
     wear = 0.8                                         # 0 clean .. 1 worn out
     tint = "#b5a68a"                                   # optional: coloured instead of neutral grey
+    fray = 0.6                                         # optional: frayed hems 0..1 (file .png)
+
+Frayed hems (alpha test, contract with engine: MASK, cutoff 0.5, double-sided): the texture gets
+an alpha channel that cuts an irregular, jagged band out of the cloth along its hems – the open
+edges of the garment in 3D (hems, cuffs, collars), not its UV seams. `gothar-chargen fabrics` then
+switches the materials of every part that uses the texture to MASK; `part-data` keeps the body
+under a frayed garment's hems (`partdata.HEM_KEEP`), so one sees skin, not through the figure.
 """
 
 from __future__ import annotations
@@ -37,6 +44,8 @@ NEUTRAL_MEAN = 0.55  # same as the kit textures: the palette multiplies it
 CONTRAST = 1.1  # fabric pattern contrast kept before wear
 PAD = 8  # pixels of colour bled outside the UV islands (mipmaps)
 SEAM = 9  # pixels: widest dirty band along seams and hems at wear 1
+FRAY = 14  # pixels: deepest fraying cut into a hem at fray 1 (512 px: about 4 cm on a shirt)
+ALPHA_CUTOFF = 0.5  # contract with engine (§2.3)
 _COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
@@ -59,6 +68,7 @@ class Target:
     tile: str
     wear: float
     tint: tuple[float, float, float] | None = None
+    fray: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -83,8 +93,9 @@ def parse_fabrics(data: dict) -> FabricData:
         where = f"texture {file}"
         if not file.endswith((".jpg", ".png")) or "/" in file:
             raise FabricError(f"{where}: a file name in textures/cloth/")
-        if set(t) - {"part", "material", "tile", "wear", "tint"}:
-            raise FabricError(f"{where}: unknown keys {sorted(set(t) - {'part'})}")
+        keys = {"part", "material", "tile", "wear", "tint", "fray"}
+        if set(t) - keys:
+            raise FabricError(f"{where}: unknown keys {sorted(set(t) - keys)}")
         if t.get("tile") not in tiles:
             raise FabricError(f"{where}: unknown tile {t.get('tile')!r}")
         wear = t.get("wear", 0.5)
@@ -93,6 +104,11 @@ def parse_fabrics(data: dict) -> FabricData:
         tint = t.get("tint")
         if tint is not None and (not isinstance(tint, str) or not _COLOR.match(tint)):
             raise FabricError(f"{where}: tint must be '#rrggbb'")
+        fray = t.get("fray", 0.0)
+        if not isinstance(fray, int | float) or not 0.0 <= fray <= 1.0:
+            raise FabricError(f"{where}: fray must be 0..1")
+        if fray > 0 and not file.endswith(".png"):
+            raise FabricError(f"{where}: frayed textures need an alpha channel (.png)")
         if not isinstance(t.get("part"), str) or not isinstance(t.get("material"), str):
             raise FabricError(f"{where}: needs part and material")
         targets.append(
@@ -103,6 +119,7 @@ def parse_fabrics(data: dict) -> FabricData:
                 t["tile"],
                 float(wear),
                 tuple(int(tint[i : i + 2], 16) / 255 for i in (1, 3, 5)) if tint else None,
+                float(fray),
             )
         )
     return FabricData(tiles, tuple(targets))
@@ -273,6 +290,39 @@ def bake(
     return bleed(colour, covered, PAD)
 
 
+def hem_lines(g: Garment, size: int = SIZE) -> np.ndarray:
+    """Texels (size, size) on the garment's hems: its open edges in 3D (welded across UV seams),
+    drawn in UV space; UV seams inside the cloth are not hems."""
+    _, weld = np.unique(np.round(g.positions / 1e-5).astype(np.int64), axis=0, return_inverse=True)
+    weld = weld.ravel()
+    corners = ((0, 1), (1, 2), (2, 0))
+    keys = np.concatenate([np.sort(weld[g.triangles[:, list(c)]], axis=1) for c in corners])
+    _, inverse, counts = np.unique(keys, axis=0, return_inverse=True, return_counts=True)
+    open_edge = counts[inverse.ravel()] == 1
+    ends = np.concatenate([g.triangles[:, list(c)] for c in corners])[open_edge]
+    hem = np.zeros((size, size), dtype=bool)
+    for a, b in ends:
+        pa, pb = g.uv[a] * size - 0.5, g.uv[b] * size - 0.5
+        steps = 2 * int(np.ceil(np.abs(pb - pa).max())) + 2  # half-texel steps: no gaps
+        pts = np.rint(pa[None] + (pb - pa)[None] * np.linspace(0, 1, steps)[:, None]).astype(int)
+        ok = (pts >= 0).all(axis=1) & (pts < size).all(axis=1)
+        hem[pts[ok, 1], pts[ok, 0]] = True
+    return hem
+
+
+def fray_alpha(g: Garment, fray: float, seed: int, size: int = SIZE) -> np.ndarray:
+    """Alpha (size, size) in {0, 1}: jagged cuts along the hems, deeper with `fray`."""
+    if fray <= 0:
+        return np.ones((size, size))
+    rng = np.random.default_rng(seed + 1)
+    hem = hem_lines(g, size)
+    dist = distance_inside(~hem, FRAY + 2)  # texels to the nearest hem texel
+    # teeth: fine noise along the hem, a slower one for torn stretches
+    jag = 0.6 * value_noise(size, 128, rng) + 0.4 * fractal(size, rng, octaves=2, base=12)
+    depth = fray * FRAY * np.clip(1.5 * jag - 0.25, 0.1, 1.0)
+    return (dist >= depth).astype(np.float64)
+
+
 def bleed(colour: np.ndarray, mask: np.ndarray, steps: int) -> np.ndarray:
     """Spreads colours outward from the covered texels (no dark seams in mipmaps)."""
     out = colour.copy()
@@ -290,3 +340,35 @@ def bleed(colour: np.ndarray, mask: np.ndarray, steps: int) -> np.ndarray:
         known |= grow
     out[~known] = colour[known].mean(axis=0) if known.any() else 0.5
     return out
+
+
+def apply_fray_materials(characters: Path, target: Target) -> list[Path]:
+    """Points every part that uses the target's texture (any extension) at the frayed .png and
+    switches those materials to MASK, cutoff 0.5, double-sided. Returns the parts written."""
+    stem = Path(target.file).stem
+    written = []
+    for path in sorted((characters / "parts").rglob("*.glb")):
+        g = Gltf.load(path)
+        images = [
+            i for i, img in enumerate(g.list("images"))
+            if Path(str(img.get("uri", ""))).stem == stem
+        ]  # fmt: skip
+        if not images:
+            continue
+        changed = False
+        for i in images:
+            img = g.doc["images"][i]
+            new = str(Path(img["uri"]).with_name(target.file).as_posix())
+            changed |= img["uri"] != new
+            img["uri"] = new
+        textures = {k for k, tex in enumerate(g.list("textures")) if tex.get("source") in images}
+        for mat in g.list("materials"):
+            base = mat.get("pbrMetallicRoughness", {}).get("baseColorTexture", {}).get("index")
+            if base in textures:
+                want = {"alphaMode": "MASK", "alphaCutoff": ALPHA_CUTOFF, "doubleSided": True}
+                changed |= any(mat.get(k) != v for k, v in want.items())
+                mat.update(want)
+        if changed:
+            path.write_bytes(g.to_bytes())
+            written.append(path)
+    return written

@@ -34,17 +34,19 @@ size = 0.3
 
 # --- clothing kit (neutral grey, the figure palette colours it) -----------------------------------
 
-[textures."elvs_crude_t-shirt_male_neutral.jpg"]
+[textures."elvs_crude_t-shirt_male_neutral.png"]
 part = "parts/cloth_m_average/elvs_crude_t-shirt_male.glb"
 material = "cloth_elvs_crude_t-shirt_male"
 tile = "linen"
 wear = 0.85
+fray = 0.7  # frayed hems (alpha test)
 
-[textures."joepal_crude_t-shirt_female_neutral.jpg"]
+[textures."joepal_crude_t-shirt_female_neutral.png"]
 part = "parts/cloth_f_average/joepal_crude_t-shirt_female.glb"
 material = "cloth_joepal_crude_t-shirt_female"
 tile = "linen"
 wear = 0.85
+fray = 0.7  # frayed hems (alpha test)
 
 [textures."toigo_fisherman_sweater_neutral.jpg"]
 part = "parts/cloth_m_average/toigo_fisherman_sweater.glb"
@@ -58,11 +60,12 @@ material = "cloth_toigo_bodice-style_top"
 tile = "fine_weave"
 wear = 0.6
 
-[textures."toigo_long_full_skirt_neutral.jpg"]
+[textures."toigo_long_full_skirt_neutral.png"]
 part = "parts/cloth_f_average/toigo_long_full_skirt.glb"
 material = "cloth_toigo_long_full_skirt"
 tile = "wool"
 wear = 0.8
+fray = 0.5  # frayed hems (alpha test)
 
 [textures."toigo_mj_cloth_shoes_neutral.jpg"]
 part = "parts/cloth_m_average/toigo_mj_cloth_shoes.glb"

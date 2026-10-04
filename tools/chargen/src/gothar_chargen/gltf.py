@@ -156,6 +156,25 @@ class Gltf:
             acc["min"] = [float(x) for x in flat.min(axis=0)]
             acc["max"] = [float(x) for x in flat.max(axis=0)]
 
+    def set_indices(self, index: int, values: np.ndarray) -> None:
+        """Writes fewer (or as many) indices into an index accessor in place: the count shrinks,
+        the buffer view keeps its place (unused bytes stay in the buffer)."""
+        acc = self.list("accessors")[index]
+        old = self.accessor(index)
+        values = np.asarray(values).ravel()
+        if len(values) > old.size or "bufferView" not in acc or "sparse" in acc:
+            raise GltfError(f"accessor {index}: indices can only shrink in place")
+        dtype = {5121: np.uint8, 5123: np.uint16, 5125: np.uint32}[acc["componentType"]]
+        data = values.astype(dtype)
+        view = self.list("bufferViews")[acc["bufferView"]]
+        start = int(view.get("byteOffset", 0)) + int(acc.get("byteOffset", 0))
+        buf = bytearray(self.bin)
+        buf[start : start + data.nbytes] = data.tobytes()
+        self.bin = bytes(buf)
+        acc["count"] = int(len(values))
+        if "min" in acc and "max" in acc and len(values):
+            acc["min"], acc["max"] = [int(values.min())], [int(values.max())]
+
     # --- nodes -----------------------------------------------------------------------------
 
     def node_parents(self) -> dict[int, int]:

@@ -32,6 +32,7 @@ from gothar_chargen.clipfix import repair_set
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
 from gothar_chargen.collision import CollisionError, derive_collision, write_collision
 from gothar_chargen.events import update_speeds
+from gothar_chargen.fabrics import apply_fray_materials, load_fabrics
 from gothar_chargen.figure import SUFFIX as FIGURE_SUFFIX
 from gothar_chargen.figure import FigureError
 from gothar_chargen.gltf import Gltf, GltfError
@@ -39,7 +40,16 @@ from gothar_chargen.human import SUFFIX as HUMAN_SUFFIX
 from gothar_chargen.human import HumanError, load_human
 from gothar_chargen.items import build_items, validate_item
 from gothar_chargen.meshdata import split_lod
-from gothar_chargen.partdata import PartDataError, body_or_head_data, garment_data, write_part
+from gothar_chargen.partdata import (
+    PartDataError,
+    body_or_head_data,
+    garment_data,
+    hide_own_skin,
+    write_part,
+)
+from gothar_chargen.poke import CLIPS as POKE_CLIPS
+from gothar_chargen.poke import SAMPLES as POKE_SAMPLES
+from gothar_chargen.poke import check_figure, poke_report
 from gothar_chargen.report import ReportError, progress
 from gothar_chargen.skeleton import (
     RigSpec,
@@ -55,6 +65,7 @@ EXIT_ERROR = 1
 
 CHARACTERS_DIR = Path("assets/source/characters")
 ITEMS_DIR = Path("assets/source/items")
+POKE_FIGURES = ("farmer", "peasant_woman", "laborer", "guard", "old_man")  # the test NPCs
 REFERENCE_GLB = CHARACTERS_DIR / "rig/human_reference.glb"
 ANIMATION_LIST = Path("docs/design/animation-list.md")
 MONSTER_DATA = Path(__file__).resolve().parent / "data" / "monsters"
@@ -340,8 +351,12 @@ def update_part_data(characters: Path, dirs: list[Path] | None, out: TextIO) -> 
             g = Gltf.load(path)
             role = _part_role(g)
             if role in ("body", "head"):
+                removed = hide_own_skin(g) if role == "body" else 0
                 write_part(path, g, body_or_head_data(g, role))
-                print(f"part data {path.relative_to(characters)} ({role})", file=out)
+                extra = (
+                    f", {removed} skin triangles under its own clothing removed" if removed else ""
+                )
+                print(f"part data {path.relative_to(characters)} ({role}{extra})", file=out)
             elif role == "cloth":
                 garments.append((path, g))
     humans = characters / "humans"
@@ -439,6 +454,28 @@ def _cmd_repair_clips(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_poke(args: argparse.Namespace, out: TextIO) -> int:
+    """Skin showing through the clothes in motion (rule fit.poke_motion, F3o)."""
+    characters = _characters_dir(args)
+    figures = args.figures or [characters / "figures" / f"{n}.glb" for n in POKE_FIGURES]
+    clips = tuple(args.clips) if args.clips else POKE_CLIPS
+    ok = True
+    for fig in figures:
+        if not fig.is_file():
+            print(f"error: {fig} not found (run gothar-chargen assemble)", file=out)
+            return EXIT_ERROR
+        results = check_figure(fig, characters / "anims" / "human", clips, args.samples)
+        report = poke_report(fig, results)
+        state = "OK" if report.ok(args.strict) else "FAILED"
+        print(f"{state:<6} {fig.name}  (worst {report.stats['poke_cm2']} cm²)", file=out)
+        for r in results:
+            print(f"         {r.clip:<24} {r.area:6.1f} cm²  {', '.join(r.bones)}", file=out)
+        for issue in report.issues:
+            print(f"  {issue.level.upper():<7} {issue.code}: {issue.message}", file=out)
+        ok = ok and report.ok(args.strict)
+    return EXIT_OK if ok else EXIT_ERROR
+
+
 def _cmd_build_items(args: argparse.Namespace, out: TextIO) -> int:
     """Weapons and hand items (F6): textures in Blender, geometry and glTF in Python."""
     root = find_repo_root()
@@ -466,6 +503,17 @@ def _cmd_fabrics(args: argparse.Namespace, out: TextIO) -> int:
     for line in log.splitlines():
         if line.startswith("[chargen] baked"):
             print(line[10:], file=out)
+    # frayed hems: the parts use the .png with MASK; the old texture goes, the masks follow
+    for target in load_fabrics().targets:
+        if target.fray <= 0 or (args.only and target.file not in args.only):
+            continue
+        for part in apply_fray_materials(characters, target):
+            print(f"material MASK {part.relative_to(characters)} -> {target.file}", file=out)
+        for old in (characters / "textures" / "cloth").glob(Path(target.file).stem + ".*"):
+            if old.name != target.file:
+                old.unlink()
+                print(f"removed {old.relative_to(characters)}", file=out)
+    print("next: gothar-chargen part-data (masks keep the body under frayed hems)", file=out)
     return EXIT_OK
 
 
@@ -570,6 +618,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
     )
     p.set_defaults(func=_cmd_build_test_parts)
+
+    p = sub.add_parser("poke", help="skin showing through clothes in motion (fit.poke_motion)")
+    p.add_argument("figures", nargs="*", type=Path, help="built figures (default: test NPCs)")
+    p.add_argument("--clips", nargs="*", default=[], help="clip names (default: a bending set)")
+    p.add_argument("--samples", type=int, default=POKE_SAMPLES, help="frames per clip")
+    p.add_argument("--strict", action="store_true", help="warnings fail too")
+    p.add_argument(
+        "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
+    )
+    p.set_defaults(func=_cmd_poke)
 
     p = sub.add_parser("build-items", help="weapons and hand items -> assets/source/items (F6)")
     p.add_argument("--sources", type=Path, help="DATA_ROOT/characters/ambientcg/items")

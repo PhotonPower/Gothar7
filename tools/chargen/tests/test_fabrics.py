@@ -9,9 +9,12 @@ from conftest import REPO_ROOT
 from gothar_chargen.fabrics import (
     FabricError,
     Garment,
+    apply_fray_materials,
     bake,
     distance_inside,
+    fray_alpha,
     garment_of,
+    hem_lines,
     load_fabrics,
     metres_per_uv,
     parse_fabrics,
@@ -105,8 +108,82 @@ def test_wear_darkens_seams_and_is_deterministic():
             },
             "tint",
         ),
+        (
+            {
+                "version": 1,
+                "tiles": {"a": {"source": "x.jpg", "size": 0.2}},
+                "textures": {"t.jpg": {"tile": "a", "part": "p", "material": "m", "fray": 0.5}},
+            },
+            "alpha channel",
+        ),
+        (
+            {
+                "version": 1,
+                "tiles": {"a": {"source": "x.jpg", "size": 0.2}},
+                "textures": {"t.png": {"tile": "a", "part": "p", "material": "m", "fray": 3}},
+            },
+            "fray",
+        ),
     ],
 )
 def test_invalid_fabric_data(data, message):
     with pytest.raises(FabricError, match=message):
         parse_fabrics(data)
+
+
+def two_squares() -> Garment:
+    """Two 1 x 1 m squares side by side, joined in 3D along x = 1 but apart in UV (a seam)."""
+    pos = np.array(
+        [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [1, 0, 0], [2, 0, 0], [2, 1, 0], [1, 1, 0]],
+        dtype=float,
+    )
+    uv = np.array(
+        [[0.1, 0.1], [0.4, 0.1], [0.4, 0.4], [0.1, 0.4], [0.6, 0.1], [0.9, 0.1], [0.9, 0.4],
+         [0.6, 0.4]]
+    )  # fmt: skip
+    tris = np.array([[0, 1, 2], [0, 2, 3], [4, 5, 6], [4, 6, 7]])
+    return Garment(uv, pos, tris)
+
+
+def test_hems_are_open_edges_not_uv_seams():
+    hem = hem_lines(two_squares(), 100)
+    assert hem[10, 25] and hem[25, 10]  # outer edges (v = 0.1 row, u = 0.1 column)
+    assert not hem[25, 39] and not hem[25, 60]  # the shared edge is a UV seam, not a hem
+    assert hem[25, 88:92].any()  # the far outer edge
+    assert hem[10, 10:40].all()  # a hem is drawn without gaps
+
+
+def test_fray_cuts_the_hems_only():
+    g = two_squares()
+    alpha = fray_alpha(g, 1.0, seed=3, size=200)
+    assert alpha[50, 50] == 1.0 and alpha[50, 150] == 1.0  # inside the cloth
+    assert alpha[20, 50] == 0.0  # on the hem
+    band = alpha[21:48, 25:75]
+    assert 0.05 < 1 - band.mean() < 0.6  # jagged: some texels cut, most kept
+    assert np.array_equal(alpha, fray_alpha(g, 1.0, seed=3, size=200))
+    assert (fray_alpha(g, 0.0, seed=3, size=200) == 1).all()
+
+
+def test_apply_fray_materials(tmp_path):
+    from gothar_chargen.items import glb_bytes
+
+    doc = {
+        "asset": {"version": "2.0"},
+        "images": [{"uri": "../../textures/cloth/shirt_neutral.jpg"}, {"uri": "skin.jpg"}],
+        "textures": [{"source": 0}, {"source": 1}],
+        "materials": [
+            {"name": "cloth_shirt", "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}},
+            {"name": "skin", "pbrMetallicRoughness": {"baseColorTexture": {"index": 1}}},
+        ],
+    }
+    part = tmp_path / "parts" / "cloth_m" / "shirt.glb"
+    part.parent.mkdir(parents=True)
+    part.write_bytes(glb_bytes(doc, b""))
+    target = load_fabrics().targets[0].__class__("shirt_neutral.png", "p", "m", "linen", 0.5)
+    assert apply_fray_materials(tmp_path, target) == [part]
+    g = Gltf.load(part)
+    assert g.doc["images"][0]["uri"] == "../../textures/cloth/shirt_neutral.png"
+    shirt, skin = g.doc["materials"]
+    assert shirt["alphaMode"] == "MASK" and shirt["alphaCutoff"] == 0.5 and shirt["doubleSided"]
+    assert "alphaMode" not in skin
+    assert apply_fray_materials(tmp_path, target) == []  # nothing left to change

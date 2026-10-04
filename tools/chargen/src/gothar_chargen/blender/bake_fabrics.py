@@ -17,7 +17,13 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from gothar_chargen.fabrics import SIZE, bake, garment_of, load_fabrics  # noqa: E402
+from gothar_chargen.fabrics import (  # noqa: E402
+    SIZE,
+    bake,
+    fray_alpha,
+    garment_of,
+    load_fabrics,
+)
 from gothar_chargen.gltf import Gltf  # noqa: E402
 
 
@@ -39,12 +45,14 @@ def _luminance(path: Path) -> np.ndarray:
     return px[:, :, :3] @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
 
 
-def _save(colour: np.ndarray, path: Path) -> None:
-    """colour (size, size, 3) 0..1, row 0 = top (glTF v = 0)."""
+def _save(colour: np.ndarray, path: Path, alpha: np.ndarray | None = None) -> None:
+    """colour (size, size, 3) 0..1, row 0 = top (glTF v = 0); alpha (size, size) for .png."""
     size = colour.shape[0]
-    img = bpy.data.images.new(path.stem, size, size, alpha=False)
+    img = bpy.data.images.new(path.stem, size, size, alpha=alpha is not None)
     rgba = np.ones((size, size, 4), dtype=np.float32)
     rgba[:, :, :3] = colour[::-1]  # Blender rows start at the bottom
+    if alpha is not None:
+        rgba[:, :, 3] = alpha[::-1]
     img.pixels.foreach_set(rgba.ravel())
     img.file_format = "JPEG" if path.suffix == ".jpg" else "PNG"
     img.filepath_raw = str(path)
@@ -61,18 +69,21 @@ def main() -> None:
         if args.only and target.file not in args.only:
             continue
         garment = garment_of(Gltf.load(args.characters / target.part), target.material)
+        seed = zlib.crc32(target.file.encode())
         colour = bake(
             tiles[target.tile],
             data.tiles[target.tile].size,
             garment,
             target.wear,
-            seed=zlib.crc32(target.file.encode()),
+            seed=seed,
             tint=target.tint,
             size=SIZE,
         )
         out = args.characters / "textures" / "cloth" / target.file
-        _save(colour, out)
-        print(f"[chargen] baked {out.name} ({target.tile}, wear {target.wear})")
+        alpha = fray_alpha(garment, target.fray, seed, SIZE) if target.fray > 0 else None
+        _save(colour, out, alpha)
+        fray = f", fray {target.fray}" if target.fray > 0 else ""
+        print(f"[chargen] baked {out.name} ({target.tile}, wear {target.wear}{fray})")
 
 
 if __name__ == "__main__":
