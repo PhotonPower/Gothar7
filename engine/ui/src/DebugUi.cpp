@@ -793,6 +793,48 @@ void DebugUi::focusLabel(Vec2 screen, std::string_view text)
     draw->AddText(at, IM_COL32(255, 255, 255, 255), label.c_str());
 }
 
+void DebugUi::tradePanel(TradePanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    const ImVec2 view = ImGui::GetMainViewport()->Size;
+    ImGui::SetNextWindowPos(ImVec2(view.x * 0.5f - 320.0f * scale, view.y * 0.15f), ImGuiCond_Appearing);
+    ImGui::SetNextWindowSize(ImVec2(640.0f * scale, 420.0f * scale), ImGuiCond_Appearing);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.04f, 0.04f, 0.05f, 0.92f));
+    bool open = true;
+    if (ImGui::Begin(std::format("{}###trade", panel.title).c_str(), &open, ImGuiWindowFlags_NoCollapse))
+    {
+        const auto column = [&](const char* id, const char* heading, i64 money,
+                                std::vector<TradePanel::Row>& rows, i32& clicked)
+        {
+            ImGui::BeginChild(id,
+                              ImVec2(ImGui::GetContentRegionAvail().x * (id[0] == 't' ? 0.5f : 1.0f), 0.0f),
+                              ImGuiChildFlags_Borders);
+            ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.45f, 1.0f), "%s  (%lld %s)", heading,
+                               static_cast<long long>(money), panel.currency.c_str());
+            ImGui::Separator();
+            for (usize i = 0; i < rows.size(); ++i)
+            {
+                ImGui::PushID(static_cast<int>(i));
+                const std::string label =
+                    std::format("{} x{}   {} {}", rows[i].name, rows[i].count, rows[i].price, panel.currency);
+                if (ImGui::Selectable(label.c_str()))
+                {
+                    clicked = static_cast<i32>(i);
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndChild();
+        };
+        column("trader", "Händler (kaufen)", panel.traderMoney, panel.trader, panel.buy);
+        ImGui::SameLine();
+        column("hero", "Du (verkaufen)", panel.heroMoney, panel.hero, panel.sell);
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
+    panel.close = !open;
+}
+
 void DebugUi::dialogPanel(DialogPanel& panel)
 {
     ImGui::SetCurrentContext(m_impl->context);

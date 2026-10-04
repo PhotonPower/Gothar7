@@ -101,9 +101,11 @@ Result<void> Engine::initScripts()
     bindAiFunctions();
     bindPerceptionFunctions();
     bindDialogFunctions();
+    bindTradeFunctions();
     m_scripts->loadAll();
     loadPerceptionSettings(); // data/perception.lua (M9 part C)
     loadDialogPresentation(); // data/dialog.lua (M10 part B)
+    loadTradeSettings();      // data/trade.lua (M10 part C)
     buildHero();
     for (const script::ScriptError& e : m_scripts->errors())
     {
@@ -152,6 +154,7 @@ void Engine::reloadScripts()
     }
     loadPerceptionSettings();
     loadDialogPresentation();
+    loadTradeSettings();
     m_scripts->emit("scripts_reloaded");
     G7_LOG_INFO("engine", "scripts reloaded");
     consolePrint("(scripts reloaded)");

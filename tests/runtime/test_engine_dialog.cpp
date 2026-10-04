@@ -142,3 +142,82 @@ TEST_CASE("Engine dialogue: an important Info starts by itself; with approach th
     runSeconds(engine, 3.0f);
     CHECK_FALSE(engine.inDialog());
 }
+
+TEST_CASE("Engine trade: the old man sells at the full value and buys at half, in Gulden")
+{
+    Engine engine(dialogConfig());
+    REQUIRE(engine.init().ok());
+    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_center')").isString());
+    run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man')");
+    run(engine, "teleport(9, 0, -4)");
+    run(engine, "give_item('it_gulden', 15) give_item('it_lockpick', 1) give_item('it_sword_old') "
+                "equip('it_sword_old')");
+    runSeconds(engine, 0.2f);
+    REQUIRE(run(engine, "talk('npc_old_man')").asBool());
+    REQUIRE(engine.runFrame());
+    CHECK(menu(engine) == "Wer bist du? | Zeig mir, was du hast. | Ende");
+    run(engine, "dialog_choose(2)");
+    skipLines(engine);
+    REQUIRE(engine.trading());
+
+    // Buying: a lockpick (value 10) costs 10, an apple (2) costs 2.
+    CHECK(run(engine, "trade_price('it_lockpick', true)").asInteger() == 10);
+    CHECK(run(engine, "trade_price('it_lockpick', false)").asInteger() == 5);
+    const i64 apples = run(engine, "item_count('it_apple')").asInteger();
+    CHECK(run(engine, "trade_buy('it_apple')").asBool());
+    CHECK(run(engine, "item_count('it_gulden')").asInteger() == 13);
+    CHECK(run(engine, "item_count('it_apple')").asInteger() == apples + 1);
+    CHECK(run(engine, "npc_item_count('npc_old_man', 'it_gulden')").asInteger() == 122);
+    // Not enough Gulden for two lockpicks (20): nothing changes.
+    CHECK_FALSE(engine.runConsoleLine("trade_buy('it_lockpick', 2)").ok());
+    CHECK(run(engine, "item_count('it_gulden')").asInteger() == 13);
+    // Selling the own lockpick brings half its value; the sword in the hand cannot be sold.
+    CHECK(run(engine, "trade_sell('it_lockpick')").asBool());
+    CHECK(run(engine, "item_count('it_gulden')").asInteger() == 18);
+    CHECK(run(engine, "npc_item_count('npc_old_man', 'it_lockpick')").asInteger() == 4);
+    CHECK_FALSE(engine.runConsoleLine("trade_sell('it_sword_old')").ok());
+    CHECK_FALSE(engine.runConsoleLine("trade_buy('it_gulden', 5)").ok()); // the currency is no ware
+
+    // Closed: the menu again, the topic stays (permanent).
+    run(engine, "trade_close()");
+    REQUIRE(engine.runFrame());
+    CHECK_FALSE(engine.trading());
+    CHECK(menu(engine).find("Zeig mir, was du hast.") != std::string::npos);
+}
+
+TEST_CASE("Engine teaching: the woodcutter teaches strength for learn points and Gulden")
+{
+    Engine engine(dialogConfig());
+    REQUIRE(engine.init().ok());
+    REQUIRE(run(engine, "insert_npc('npc_woodcutter', 'wp_camp_center')").isString());
+    run(engine, "set_routine('npc_woodcutter', '') npc_clear('npc_woodcutter')");
+    run(engine, "teleport(9, 0, -4)");
+    run(engine, "give_item('it_gulden', 10) set_learn_points(3)");
+    const i64 strength = run(engine, "stat('str')").asInteger();
+    runSeconds(engine, 0.2f);
+    REQUIRE(run(engine, "talk('npc_woodcutter')").asBool());
+    REQUIRE(engine.runFrame());
+    CHECK(menu(engine) == "Harte Arbeit, das Holzhacken? | Ende"); // teaching only after meeting him
+    run(engine, "dialog_choose(1)");
+    skipLines(engine);
+    CHECK(menu(engine) == "Bring mir bei, kräftiger zuzupacken. | Ende");
+    run(engine, "dialog_choose(1)");
+    skipLines(engine);
+    CHECK(menu(engine) == "Stärke +1 (1 LP, 5 Gulden) | Stärke +5 (5 LP, 25 Gulden) | Zurück.");
+    run(engine, "dialog_choose(1)");
+    skipLines(engine);
+    CHECK(run(engine, "stat('str')").asInteger() == strength + 1);
+    CHECK(run(engine, "hero().learn_points").asInteger() == 2);
+    CHECK(run(engine, "item_count('it_gulden')").asInteger() == 5);
+    // Too few learn points for +5: he says so, nothing is spent; the offers stay until "Zurück."
+    run(engine, "dialog_choose(2)");
+    CHECK(field(engine, "line") == "Stärke +5 (5 LP, 25 Gulden)");
+    engine.dialogSkip();
+    REQUIRE(engine.runFrame());
+    CHECK(field(engine, "line") == "Dafür fehlt dir noch die Erfahrung.");
+    skipLines(engine);
+    CHECK(run(engine, "hero().learn_points").asInteger() == 2);
+    run(engine, "dialog_choose(3)");
+    skipLines(engine);
+    CHECK(menu(engine) == "Bring mir bei, kräftiger zuzupacken. | Ende");
+}

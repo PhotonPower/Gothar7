@@ -218,7 +218,20 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   `extras.targetNames`), so folgt z. B. ein Bart mit denselben Morphs dem Kiefer (figuren).
 - Der Fokusname wird im Dialog ausgeblendet.
 
-### Weiter (Teile C–E)
+### Handel und Lernen (Teil C, umgesetzt) – `runtime/EngineTrade.cpp`, `data/trade.lua`, `data/teaching.lua`
+- **Handel** (Entscheidung E6, wie Gothic 1): Eine Info mit `trade = true` (oder `trade_open()` im Dialog) öffnet nach
+  ihren Zeilen das Fenster „Handel mit …“: links die Waren des Händlers (kaufen), rechts die des Helden (verkaufen),
+  je ein Stück pro Klick; geschlossen geht der Dialog weiter. Währung `it_gulden` („Gulden“). Der Händler verkauft
+  zum vollen Wert (`Trade.sell_factor` = 1, aufgerundet) und kauft zum halben (`buy_factor` = 0,5, abgerundet,
+  mindestens 1); er zahlt aus seinen Gulden. Getragenes wird nicht verkauft. Ereignisse `item_bought`, `item_sold`;
+  `trade_buy`, `trade_sell`, `trade_price`, `trade_close`, `npc_item_count`.
+- **Lernen** (E7): Lehrer bieten im Dialog Antworten an (`teach_menu(npc, angebote, antworten)`), z. B.
+  `{ attribute = "str", amount = 1, lp = 1, gulden = 5 }` oder `{ talent = "picklock", level = 1, lp = 10 }`; `teach`
+  prüft Lernpunkte, Gulden, die Grenze (100) bzw. ob das Talent schon gelernt ist, und zieht ab
+  (`set_learn_points`). Kosten wie Gothic 1: Attribut +1 = 1 LP, +5 = 5 LP, Talente 5–20 LP, dazu Gulden je Lehrer.
+- Testlager: der alte Mann handelt (`dialogs/old_man.lua`), der Holzfäller lehrt Stärke (`dialogs/woodcutter.lua`).
+
+### Weiter (Teile D–E)
 - Dialog-Ablauf als Sequenz: `say` (Sprache + Untertitel + Gesten + Lippensync), `choices`, `trade`, `teach`, `end`.
 - Dialog-Kamera: Schuss/Gegenschuss je Sprecher.
 - Tagebuch: Topics mit Status, Einträge mit Zeitstempel.

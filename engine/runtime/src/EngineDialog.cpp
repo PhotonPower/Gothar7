@@ -137,6 +137,10 @@ void Engine::runInfo(const script::Instance& info)
             G7_LOG_WARN("engine", "{}.run: {}", info.name, ok.error().message);
         }
     }
+    if (info.fields["trade"].asBool())
+    {
+        m_dialog->tradeRequested = true; // the trade screen after the lines (M10 part C)
+    }
 }
 
 void Engine::buildDialogMenu()
@@ -231,6 +235,7 @@ void Engine::endDialog()
     }
     const std::string npc = m_dialog->npcName;
     stopTalking();
+    m_trade.reset();
     if (Creature* c = creature(m_dialog->npc))
     {
         c->talking = false; // its routine starts again
@@ -277,6 +282,19 @@ void Engine::fixedUpdateDialog(f32 seconds)
         return;
     }
     stopTalking(); // the menu: nobody speaks
+    if (m_dialog->tradeRequested)
+    {
+        m_dialog->tradeRequested = false;
+        if (auto opened = openTrade(); !opened)
+        {
+            G7_LOG_WARN("engine", "{}", opened.error().message);
+        }
+        return;
+    }
+    if (m_trade)
+    {
+        return; // trading: the menu comes back when it closes
+    }
     if (m_dialog->endRequested)
     {
         endDialog();
@@ -291,9 +309,9 @@ void Engine::fixedUpdateDialog(f32 seconds)
 void Engine::dialogInput()
 {
     using platform::Action;
-    if (!m_dialog)
+    if (!m_dialog || m_trade)
     {
-        return;
+        return; // trading: the window's buttons
     }
     const bool action = m_actions.pressed(m_input, Action::Action) || m_actions.pressed(m_input, Action::Use);
     if (!m_dialog->lines.empty())
@@ -327,6 +345,11 @@ void Engine::dialogUi()
 {
     if (!m_dialog)
     {
+        return;
+    }
+    if (m_trade)
+    {
+        tradeUi();
         return;
     }
     ui::DialogPanel panel;
