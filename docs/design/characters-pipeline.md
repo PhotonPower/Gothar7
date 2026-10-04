@@ -186,7 +186,8 @@ events = [
   Fehlt ein Event, nimmt die Engine die Mitte des `t_`-Clips.
 - **Mob-Modelle (welt):** Tür = Türblatt, Ursprung an der Angel unten, die Engine dreht den ganzen Mob um +Y;
   Truhe mit Knoten `MOB_LID`, Pivot am Scharnier (Drehung um seine X-Achse). Testmaße: Truhe 0,9×0,6×0,6 m,
-  Amboss Arbeitshöhe 0,8 m, Bett 2,0×0,9 m (Liegefläche 0,45 m), Türklinke 1,0 m.
+  Amboss Arbeitshöhe 0,8 m, Bett 2,0×0,9 m (Liegefläche 0,45 m), Türklinke 1,0 m. Das Bett liegt entlang X
+  (Längsseite zu +Z, Slot davor), **Kopfende −X**: Die Figur liegt entlang X, Kopf bei −X (vom Slot aus links).
 - **Gegenstände (`items/<id>.glb`, F6):** Ursprung = Griffpunkt; Item-+Y auf Socket-+Y (aus der Faust zur Klinge
   bzw. Spitze), Item-+Z auf Socket-+Z; die Engine übernimmt die volle Drehung des Sockets. Einzelheiten,
   Stücke und Prüfregeln: §6.3.
