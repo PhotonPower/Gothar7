@@ -37,6 +37,16 @@ events = [
     { frame = 29, event = "footstep_l" },
 ]
 
+[clips."1h/t_draw"]
+events = [
+    { frame = 10, event = "draw" },
+]
+
+[clips."1h/t_sheath"]
+events = [
+    { frame = 15, event = "sheath" },
+]
+
 [clips."1h/t_turn_l"]
 events = [
     { frame = 18, event = "footstep_r" },

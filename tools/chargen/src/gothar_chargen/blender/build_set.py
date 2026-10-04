@@ -208,6 +208,8 @@ def _compute(
             curves = concat([sources.read(spec, r) for r in clip.sources])
         elif clip.op == "reverse":
             curves = reverse(built[clip.clips[0]])
+        elif clip.op == "chain":
+            curves = concat([built[c] for c in clip.clips])
         elif clip.op == "blend":
             curves = blend(built[clip.clips[0]], built[clip.clips[1]], clip.frames, rig_info.bones)
         elif clip.op == "layer":

@@ -55,3 +55,35 @@ name = "1h/t_turn_r"
 layer = ["none/t_turn_r", "1h/s_idle"]
 from_bone = ["clavicle_l", "clavicle_r", "neck"]
 events = "footsteps"
+
+# --- drawing and sheathing (M9 C1; played as an overlay from spine_02, no root motion) ---------
+# The right hand reaches across the belly towards the grip at socket_hip_1h (event draw: the engine
+# moves the weapon into socket_hand_r), then lifts it into the stance. Sheathing runs backwards.
+
+[[clip]]
+name = "1h/s_reach"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "reach"], [10, "reach"]], poses = { reach = { rotate = { spine_02 = [["Z", 45]], clavicle_r = [["Z", 20]], upperarm_r = [["X", -30], ["Y", 30], ["Z", 30]], lowerarm_r = [["X", 30], ["Y", -30]] } } } }
+helper = true
+
+[[clip]]
+name = "1h/t_reach"
+blend = ["none/s_idle", "1h/s_reach"]
+frames = 10
+helper = true
+
+[[clip]]
+name = "1h/t_lift"
+blend = ["1h/s_reach", "1h/s_idle"]
+frames = 14
+helper = true
+
+[[clip]]
+name = "1h/t_draw"
+chain = ["1h/t_reach", "1h/t_lift"]
+markers = { draw = 10 }
+
+[[clip]]
+name = "1h/t_sheath"
+reverse = "1h/t_draw"
+markers = { sheath = 15 }
