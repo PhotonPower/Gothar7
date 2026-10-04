@@ -238,6 +238,7 @@ Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pyte
    aus einem Manifest zusammen, prüft Passform (Nähte, Gewichte), erzeugt LODs mit festen Rändern; Varianten über
    Farbpaletten (seed-basierte Varianten später).
 6. **Gegenstände** (F6, `gothar-chargen build-items`, umgesetzt): Waffen und Handgegenstände per Code, §6.3.
+7. **Haut durch Kleidung** (F3o, `gothar-chargen poke`, umgesetzt): misst in Bewegung, §6.2.
 
 ## 6. Figuren-Baukasten
 
@@ -346,8 +347,15 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   und Nähte entlang der UV-Inselränder. Daten in `tools/chargen/src/gothar_chargen/data/fabrics.toml` (Kachel,
   Größe, je Textur Teil/Material/Kachel/`wear`/optional `tint`); saubere Figuren (Bürger) später mit kleinerem
   `wear`. Die Texturen behalten ihre Namen, die Teile ändern sich nicht. Kit-Texturen bleiben neutral grau (die
-  Palette färbt), die Kleidung der Grundkörper getönt wie bisher. Ausgefranste Säume mit Alpha-Test (`MASK`,
-  doppelseitig, nur auf Stücken mit Fransen; von engine bestätigt) folgen als Zusatz.
+  Palette färbt), die Kleidung der Grundkörper getönt wie bisher.
+- **Ausgefranste Säume (F3o, mit engine abgestimmt):** `fray` 0–1 je Textur in `fabrics.toml` schneidet ein
+  unregelmäßiges, gezacktes Band entlang der **Säume** aus dem Stoff (Alpha 0; bis 14 px bei 512², etwa 4 cm
+  am Hemd). Säume sind die offenen 3D-Kanten des Stücks (Saum, Ärmel, Kragen), nicht seine UV-Nähte. Solche
+  Texturen sind PNG mit Alpha; `gothar-chargen fabrics` stellt die Materialien aller Teile, die sie nutzen, auf
+  `alphaMode` `MASK`, `alphaCutoff` 0,5 und `doubleSided` um (kein BLEND). Damit man durch die Lücken Haut
+  und nicht das Innere der Figur sieht, behalten die Abdeck-Masken solcher Stücke den Körper bis 5 cm um
+  ihre Säume (§6.2). Fransen haben die groben Hemden (Lumpen, `fray` 0,7) und der lange Rock (0,5); Pullover,
+  Mieder und Schuhe nicht. Nach `fabrics` → `part-data`.
 - **Budget:** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k (mit Bart bis ~5,6 k), höchstens 20 k je Figur, Stufen
   `_lod1`/`_lod2` (Vertrag §2.2). Lose Teile (Haare, Bärte) werden ohne Randschutz reduziert; nur die Nahtränder von
   Körper und Kopf bleiben in allen Stufen gleich.
@@ -401,6 +409,16 @@ Rezepte und Manifeste; `figures/<name>.glb` entsteht beim Bauen und ist git-igno
     ganz entfallen (`hair`, `beard`; Helme und Kapuzen: `["hair"]`). Es betrifft nur ganze Rollen, keine einzelnen
     Stücke; bei mehreren getragenen Stücken gilt die **Vereinigung**. Lücken unter dem Stück sind Sache von figuren.
   - Berechnet von `gothar-chargen part-data` (reines Python; `gothar-chargen human` ruft es nach dem Bauen auf).
+    Bei ausgefransten Stücken (Material `MASK`) bleiben Körper-Dreiecke bis 5 cm um die Säume erhalten.
+  - Grundkörper mit eigener Kleidung (Hose, Unterwäsche; F3o): `part-data` entfernt die Haut darunter aus dem
+    Körper-Teil selbst (Regel wie bei den Masken, Abstand bis 6 cm, weil die Hose der dünnen Statur lockerer
+    sitzt). Sie wird nie gebraucht und stach in Bewegung durch den groben Stoff. Kein Formatwechsel: Die
+    Indexpuffer werden kürzer, der Laufzeit-Zusammenbau bleibt gleich.
+  - **Prüfung in Bewegung** (`gothar-chargen poke`, Regel `fit.poke_motion`): Die Figur wird mit Clips des
+    Referenz-Rigs gehäutet (reines numpy; Knochenlängen der Figur, Drehungen vom Clip), und gemessen wird die
+    Haut, die in Ruhe unter Kleidung lag und im schlimmsten Frame frei liegt (Fläche in cm², Knochen).
+    Säume zählen nicht. Fehler über 20 cm², Warnung über 5 cm² je Clip; Standard: die 5 Test-NPCs mit
+    Idle, Gehen, Rennen, Schleichen, `1h`-Haltung und Aufheben.
 - **Zusammenbau-Algorithmus** (assemble.py; in C++ umgesetzt von engine für den Laufzeit-Zusammenbau, M6 D2 / #122,
   in der CI gegen die Python-Ausgabe aller Manifeste verglichen): **feste Rollen-Reihenfolge** body, head, hair,
   beard, dann die Kleidung in Listenreihenfolge (unabhängig von der Schlüsselreihenfolge im Manifest; Materialien:

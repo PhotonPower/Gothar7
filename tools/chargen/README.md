@@ -71,7 +71,9 @@ gothar-chargen report                         & REM Prio-A-Fortschritt: animatio
 gothar-chargen speeds                         & REM Eigengeschwindigkeit der Fortbewegungs-Clips → events.toml (§3)
 gothar-chargen repair-clips                   & REM Root Motion = Schrittlänge, Liegeposen über dem Boden (§7.1)
 gothar-chargen fabrics --sources C:\GotharData\characters\ambientcg\fabric
-                                              & REM abgetragene Kleidungstexturen aus data/fabrics.toml (F3n, lokal)
+                                              & REM abgetragene Kleidungstexturen aus data/fabrics.toml (F3n, lokal;
+                                              & REM mit `fray`: ausgefranste Säume, Material MASK; danach part-data)
+gothar-chargen poke [figures\x.glb]           & REM Haut durch Kleidung in Bewegung (fit.poke_motion; Standard: Test-NPCs)
 gothar-chargen build-items --sources C:\GotharData\characters\ambientcg\items
                                               & REM Waffen und Handgegenstände → assets/source/items (F6, §6.3;
                                               & REM --skip-textures: nur Geometrie, ohne Blender)

@@ -24,12 +24,14 @@ from gothar_chargen.gltf import Gltf
 from gothar_chargen.meshdata import WELD
 from gothar_chargen.partdata import POKE_THROUGH, _closest_points
 from gothar_chargen.postprocess import material_role
+from gothar_chargen.validate import Report
 
 REST_REACH = 0.05  # metres along the normal within which a garment covers the skin at rest
 NEAR = POKE_THROUGH  # metres skin may stick out of a garment at rest and still count as covered
 BORDER = 0.04  # metres: skin whose nearest garment point is this close to a hem is not expected
 MOTION_REACH = 0.08  # metres in motion (cloth lifts off the body)
 CANDIDATES = 48  # nearest garment triangles per covered skin vertex
+CLOSE = 0.25  # metres to the nearest garment triangle centre: farther skin is never near a garment
 SAMPLES = 8  # frames per clip
 # clips that bend the body most: standing, walking, running, sneaking, weapon stance, picking up
 CLIPS = (
@@ -195,8 +197,10 @@ class PokeCheck:
             if len(tri_rest):
                 centres = tri_rest.mean(axis=1)
                 k = min(CANDIDATES, len(centres))
+                nearest = np.empty(len(pos))
                 for s in range(0, len(pos), 512):
                     d = np.linalg.norm(pos[s : s + 512, None] - centres[None], axis=2)
+                    nearest[s : s + 512] = d.min(axis=1)
                     near = np.argpartition(d, k - 1, axis=1)[:, :k]
                     cand[s : s + 512, :k] = near
                     if k < CANDIDATES:
@@ -204,7 +208,7 @@ class PokeCheck:
                 under = _hits(pos + nrm * 1e-4, nrm, tri_rest[cand], REST_REACH)
                 near = np.zeros(len(pos), dtype=bool)
                 interior = np.zeros(len(pos), dtype=bool)
-                idx = np.flatnonzero(used)
+                idx = np.flatnonzero(used & (nearest < CLOSE))
                 closest = _closest_points(pos[idx], tri_rest)
                 offset = closest - pos[idx]
                 near[idx] = (np.linalg.norm(offset, axis=1) < NEAR) & (
@@ -309,3 +313,24 @@ def check_figure(
             raise KeyError(f"clip {clip} not in {name}.glb")
         results.append(check.clip(anim, animation, samples))
     return results
+
+
+# --- rule fit.poke_motion ----------------------------------------------------------------------
+
+MAX_AREA = 20.0  # cm² of visible skin that should be covered: error above (per clip, worst frame)
+WARN_AREA = 5.0  # cm²: warning above
+
+
+def poke_report(figure: Path, results: list[ClipResult]) -> Report:
+    """Rule fit.poke_motion: skin shows through the clothes in a clip."""
+    report = Report(figure)
+    worst = max((r.area for r in results), default=0.0)
+    report.stats["poke_cm2"] = round(worst, 1)
+    for r in results:
+        where = f"{r.clip} at {r.frame:.2f} s: {r.area:.1f} cm² ({r.triangles} triangles"
+        where += f", {', '.join(r.bones)})" if r.bones else ")"
+        if r.area > MAX_AREA:
+            report.error("fit.poke_motion", f"skin shows through the clothes in {where}")
+        elif r.area > WARN_AREA:
+            report.warning("fit.poke_motion", f"skin shows through the clothes in {where}")
+    return report

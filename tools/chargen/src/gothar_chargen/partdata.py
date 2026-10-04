@@ -39,6 +39,9 @@ POKE_THROUGH = 0.015  # metres a body vertex may stick out of a garment and stil
 # the clothing baked into a base body sits looser (thin bodies wear the average trousers): skin
 # up to this far under it is removed from the body part (`hide_own_skin`)
 OWN_COVER_DISTANCE = 0.06
+# frayed garments (alpha test, F3o): the body within this far of their hems stays, so the gaps
+# show skin and not the inside of the figure
+HEM_KEEP = 0.05
 # garments baked into a base body (its trousers) are looser than skin: tight pieces worn over them
 # (armour trousers, boot shafts) leave them sticking out further
 POKE_THROUGH_CLOTH = 0.04
@@ -251,8 +254,10 @@ def covered_triangles(
     garment: LodMesh,
     ring: list[list[list[int]]],
     cover_distance: float = COVER_DISTANCE,
+    keep_near: np.ndarray | None = None,
 ) -> list[list[int]]:
-    """Triangle ranges [primitive, first, end) of `body` hidden under `garment`."""
+    """Triangle ranges [primitive, first, end) of `body` hidden under `garment`; body vertices
+    within HEM_KEEP of the points `keep_near` (hems of frayed garments) are never hidden."""
     tri = _triangles_of(garment)
     ring_pos = np.array([body.positions[p[0][0]][p[0][1]] for p in ring]) if ring else None
     ranges: list[list[int]] = []
@@ -271,6 +276,12 @@ def covered_triangles(
         if ring_pos is not None:
             d = np.linalg.norm(pos[:, None, :] - ring_pos[None], axis=2).min(axis=1)
             covered &= d >= NECK_KEEP
+        if keep_near is not None and len(keep_near):
+            gap = np.full(len(pos), np.inf)
+            for s in range(0, len(pos), _CHUNK):
+                dd = np.linalg.norm(pos[s : s + _CHUNK, None, :] - keep_near[None], axis=2)
+                gap[s : s + _CHUNK] = dd.min(axis=1)
+            covered &= gap >= HEM_KEEP
         hidden = covered[tris].all(axis=1)
         ranges += _ranges(prim, hidden)
     return ranges
@@ -359,6 +370,30 @@ def body_or_head_data(gltf: Gltf, role: str) -> dict[str, Any]:
     return data
 
 
+def frays(gltf: Gltf) -> bool:
+    """A garment with alpha-tested cloth (frayed hems)."""
+    return any(
+        m.get("alphaMode") == "MASK" and material_role(str(m.get("name", ""))) == "cloth"
+        for m in gltf.list("materials")
+    )
+
+
+def hem_points(mesh: LodMesh) -> np.ndarray:
+    """Positions on the open edges of a garment (hems, cuffs, collars), welded across seams."""
+    pos = mesh.all_positions()
+    weld, first = _weld(pos)
+    offsets = np.cumsum([0] + [len(p) for p in mesh.positions])
+    tris = weld[np.concatenate([t + offsets[i] for i, t in enumerate(mesh.triangles)])]
+    edges = np.sort(np.concatenate([tris[:, [0, 1]], tris[:, [1, 2]], tris[:, [2, 0]]]), axis=1)
+    unique, counts = np.unique(edges, axis=0, return_counts=True)
+    ends = unique[counts == 1]
+    if not len(ends):
+        return np.zeros((0, 3))
+    a, b = pos[first[ends[:, 0]]], pos[first[ends[:, 1]]]
+    t = np.linspace(0.0, 1.0, 4)[None, :, None]  # a few points along each edge
+    return (a[:, None] + (b - a)[:, None] * t).reshape(-1, 3)
+
+
 def garment_data(
     garment: Gltf, body: Gltf, body_ref: str, hides: tuple[str, ...] = ()
 ) -> dict[str, Any]:
@@ -366,10 +401,11 @@ def garment_data(
     the roles it `hides` while worn (hoods and helmets: the hair)."""
     garment_lod0 = lod_meshes(garment)[0]
     body_data = data_of(body)
+    hems = hem_points(garment_lod0) if frays(garment) else None
     lods: dict[str, Any] = {}
     for _level, mesh in sorted(lod_meshes(body).items()):
         ring = body_data.get("neck", {}).get(mesh.node, [])
-        lods[mesh.node] = covered_triangles(mesh, garment_lod0, ring)
+        lods[mesh.node] = covered_triangles(mesh, garment_lod0, ring, keep_near=hems)
     data: dict[str, Any] = {
         "version": FORMAT_VERSION,
         "part": "cloth",
