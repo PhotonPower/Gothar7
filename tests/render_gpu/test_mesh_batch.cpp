@@ -169,3 +169,46 @@ TEST_CASE("Mesh batches: buffers grow with the number of draws")
     CHECK(renderer.lastBatch().batchedDraws == 10000);
     CHECK(gl.device->debugErrorCount() == 0);
 }
+
+TEST_CASE("Mesh batches: a translucent quad on a wall is blended, flush or a little in front")
+{
+    // welt's finding (2026-10-04): translucent quads on house walls were not seen. The batched pass draws
+    // them after the opaque groups and blends them, also when they lie flush on the wall (same depth passes).
+    GlFixture gl;
+    ShaderLibrary library(*gl.device, fs::fromUtf8(G7_SHADER_DIR));
+    MeshRenderer renderer = require(MeshRenderer::create(*gl.device, library, 1.0f));
+    GeometryArena arena;
+    const asset::MeshData wallData = quad(Vec4(0.8f, 0.1f, 0.1f, 1.0f));
+    const asset::MeshData glassData = quad(Vec4(0.1f, 0.9f, 0.1f, 0.5f), asset::AlphaMode::Blend);
+    const Model wall{require(Mesh::create(*gl.device, arena, wallData)),
+                     require(MaterialSet::create(*gl.device, wallData, {}, renderer.defaults()))};
+    const Model glass{require(Mesh::create(*gl.device, arena, glassData)),
+                      require(MaterialSet::create(*gl.device, glassData, {}, renderer.defaults()))};
+    Texture color = require(gl.device->createTexture({32, 32, Format::RGBA8, 1}));
+    Texture depth = require(gl.device->createTexture({32, 32, Format::Depth32F, 1}));
+    Framebuffer target = require(gl.device->createFramebuffer({{&color}, &depth}));
+    Camera camera;
+    camera.aspect = 1.0f;
+    camera.transform.position = Vec3(0.0f, 0.0f, 12.0f); // a house wall seen from the street
+    const auto centreGreen = [&](f32 offset)
+    {
+        gl.device->bindFramebuffer(&target);
+        gl.device->setViewport(0, 0, 32, 32);
+        gl.device->clear(Vec4(0, 0, 0, 1), 0.0f);
+        const Environment light{.sunIntensity = 0.0f, .ambientSky = Vec3(1.0f), .ambientGround = Vec3(1.0f)};
+        static const LightList none;
+        renderer.setLighting(*gl.device, light, none);
+        renderer.beginFrame();
+        const Mat4 big = glm::scale(Mat4(1.0f), Vec3(4.0f));
+        const Mat4 onTop = glm::translate(Mat4(1.0f), Vec3(0.0f, 0.0f, offset)) * big;
+        const MeshDrawItem items[] = {
+            {&wall.mesh, &wall.materials, big, wall.mesh.bounds().transformed(big)},
+            {&glass.mesh, &glass.materials, onTop, glass.mesh.bounds().transformed(onTop)}};
+        renderer.drawBatched(*gl.device, items, camera);
+        const auto p = gl.device->readPixels(16, 16, 1, 1, &target);
+        return static_cast<int>(p[1]);
+    };
+    CHECK(centreGreen(0.002f) > 100); // 2 mm in front: blended over the wall
+    CHECK(centreGreen(0.0f) > 100);   // flush on it too
+    CHECK(gl.device->debugErrorCount() == 0);
+}
