@@ -24,7 +24,8 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from shapely.geometry import Polygon
+from shapely.geometry import LineString, Point, Polygon
+from shapely.strtree import STRtree
 
 from gothar_worldgen.buildings.collision import (
     BUDGET,
@@ -36,6 +37,8 @@ from gothar_worldgen.buildings.gaps import Filler, find_fillers, footprint_of, p
 from gothar_worldgen.buildings.gltf import CollisionPart, MeshData, Part, Primitive, glb_bytes_multi
 from gothar_worldgen.buildings.massing import build_mesh, masses_for_building
 from gothar_worldgen.buildings.medieval import (
+    DOOR_CLEAR_M,
+    DOOR_REACH_M,
     Rules,
     StreetIndex,
     barn_hearths,
@@ -45,6 +48,7 @@ from gothar_worldgen.buildings.medieval import (
 from gothar_worldgen.export.terrain import Grid
 from gothar_worldgen.geo.ground import ground_range
 from gothar_worldgen.textures.apply import texture_house, write_textures
+from gothar_worldgen.waynet.generate import GRADE_SAMPLE_M, NPC_SLOPE_DEG
 
 INDEX_FORMAT = "gothar-buildings-index"
 INDEX_VERSION = 1
@@ -115,6 +119,90 @@ class BatchResult:
     timber_levels: Counter[int] = field(default_factory=Counter)
     collision: Counter[str] = field(default_factory=Counter)  # hulls, fallbacks, decomposed
     styles: dict[str, Counter[str]] = field(default_factory=lambda: defaultdict(Counter))
+
+
+class _Footprints:
+    """Footprints of all buildings for the door check (W6): a door point is free if no other
+    building is closer than ``DOOR_CLEAR_M``. Rueckbau replacements swap a building for its
+    houses (they lie inside it, so houses built before saw the same walls)."""
+
+    def __init__(self, buildings: Sequence[dict[str, Any]], streets: Any = None,  # noqa: ANN401
+                 height: Callable[[float, float], float] | None = None) -> None:  # fmt: skip
+        self.streets = streets  # StreetIndex: lines + tree
+        self.height = height  # terrain: the way must not be steeper than a character walks
+        self.polys: dict[str, Polygon] = {}
+        for b in buildings:
+            self._add(b)
+        self.tree: STRtree | None = None
+        self.ids: list[str] = []
+
+    def _add(self, b: dict[str, Any]) -> None:
+        ring = b.get("footprint") or []
+        if len(ring) < 3:
+            return
+        poly = Polygon(ring)
+        if not poly.is_valid:
+            poly = poly.buffer(0)
+        if not poly.is_empty:
+            self.polys[b["id"]] = poly
+
+    def replace(self, bid: str, houses: Sequence[dict[str, Any]]) -> None:
+        self.polys.pop(bid, None)
+        for h in houses:
+            self._add(h)
+        self.tree = None
+
+    def _ensure(self) -> STRtree:
+        if self.tree is None:
+            self.ids = list(self.polys)
+            self.tree = STRtree([self.polys[i] for i in self.ids])
+        return self.tree
+
+    def reach_for(self, bid: str) -> Callable[[float, float], bool] | None:
+        """From (x, z) a street axis within ``DOOR_REACH_M`` in a straight line that crosses no
+        house (the own one included: nobody walks through it)."""
+        if self.streets is None or self.streets.tree is None:
+            return None
+
+        def reach(x: float, z: float) -> bool:
+            tree = self._ensure()
+            q = Point(x, z)
+            lines = self.streets.lines
+            near = self.streets.tree.query(q.buffer(DOOR_REACH_M))
+            for k in sorted(near, key=lambda k: lines[int(k)].distance(q)):
+                line = lines[int(k)]
+                if line.distance(q) > DOOR_REACH_M:
+                    break
+                target = line.interpolate(line.project(q))
+                way = LineString([(x, z), (target.x, target.y)])
+                if any(self.polys[self.ids[int(j)]].intersects(way) for j in tree.query(way)):
+                    continue
+                if self.height is None or self._walkable((x, z), (target.x, target.y)):
+                    return True
+            return False
+
+        return reach
+
+    def _walkable(self, a: tuple[float, float], b: tuple[float, float]) -> bool:
+        """No piece of the line steeper than the waynet allows (``NPC_SLOPE_DEG`` on 0.5 m)."""
+        assert self.height is not None
+        n = max(1, math.ceil(math.dist(a, b) / GRADE_SAMPLE_M))
+        hs = [self.height(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n)
+              for k in range(n + 1)]  # fmt: skip
+        limit = math.tan(math.radians(NPC_SLOPE_DEG)) * math.dist(a, b) / n
+        return all(abs(hs[k + 1] - hs[k]) <= limit for k in range(n))
+
+    def free_for(self, bid: str) -> Callable[[float, float], bool]:
+        def free(x: float, z: float) -> bool:
+            tree = self._ensure()
+            q = Point(x, z)
+            for k in tree.query(q.buffer(DOOR_CLEAR_M)):
+                other = self.ids[int(k)]
+                if other != bid and self.polys[other].distance(q) < DOOR_CLEAR_M:
+                    return False
+            return True
+
+        return free
 
 
 def generate(
@@ -189,6 +277,9 @@ def generate(
         by_hash[digest] = f"{vfs_dir}/{name}.glb"
         return by_hash[digest]
 
+    # W6: doors only where no other house stands in front, preferably with a way to a street
+    height = grid.height_at if grid is not None else None
+    neighbours = _Footprints(buildings, streets, height)
     hearths: set[str] = set()
     if mode == "medieval":
         assert rules is not None
@@ -227,11 +318,14 @@ def generate(
             assert rules is not None
             house = build_house(b, base, (c.x, c.y), rules, streets, (overrides or {}).get(bid),
                                 hearth=bid in hearths, wall=wall,
-                                ground_at=grid.height_at if grid is not None else None)  # fmt: skip
+                                ground_at=grid.height_at if grid is not None else None,
+                                door_free=neighbours.free_for(bid),
+                                door_reach=neighbours.reach_for(bid))  # fmt: skip
             if house.triangles > budget and replace is not None and "derivedFrom" not in b:
                 houses = replace(b)  # rueckbau: smaller half-timbered houses instead
                 if houses:
                     result.replaced.append((bid, len(houses)))
+                    neighbours.replace(bid, houses)
                     queue[0:0] = houses
                     continue
             prims = house.primitives
@@ -240,7 +334,9 @@ def generate(
                 h1 = build_house(b, base, (c.x, c.y), rules, streets, (overrides or {}).get(bid),
                                  hearth=bid in hearths, wall=wall,
                                  ground_at=grid.height_at if grid is not None else None,
-                                 lod=1, lod0_level=house.timber_level)  # fmt: skip
+                                 lod=1, lod0_level=house.timber_level,
+                                 door_free=neighbours.free_for(bid),
+                                 door_reach=neighbours.reach_for(bid))  # fmt: skip
                 # lod 2 keeps the windows of lod 1 (flat panels): without them the houses turn
                 # into blank blocks at the distance
                 windows = [q for q in h1.primitives if q.material == "frame"]

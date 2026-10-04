@@ -382,6 +382,8 @@ def door_steps(
         x, z, y = doors[0][:3]
         kind = doors[0][3] if len(doors[0]) > 3 else "ground"
         kinds[kind] = kinds.get(kind, 0) + 1
+        if kind == "blocked":  # no free wall, no door geometry (W6): no step to check
+            continue
         if not area.contains(Point(x, z)):
             continue
         checked += 1

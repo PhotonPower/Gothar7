@@ -551,7 +551,8 @@ def _cmd_waynet(args: argparse.Namespace, out: TextIO) -> int:
           f"{r['edges']} edges, {r['freepoints']} freepoints", file=out)  # fmt: skip
     print(f"  components {r['components']}, main {r['mainShare']:.1%}; dropped points "
           f"{len(r['droppedPoints'])}, dropped edges {len(r['droppedEdges'])}, unconnected doors "
-          f"{len(r['doorsUnconnected'])}", file=out)  # fmt: skip
+          f"{len(r['doorsUnconnected'])}, without access {len(r.get('doorsWithoutAccess', []))}",
+          file=out)  # fmt: skip
     print(f"  {world_path}", file=out)
     print(f"  {target}", file=out)
     return EXIT_OK

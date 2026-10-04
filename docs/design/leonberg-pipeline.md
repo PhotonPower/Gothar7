@@ -418,6 +418,15 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     Auskragung (Hinweis im Bericht).
   - **Öffnungen:** An `frontFacade.edge` exakt aus der Annotation (`storey`, `x` von links von außen, `y`, `w`,
     `h`), sonst prozedural: ein Fensterraster je Geschoss und eine Tür im Erdgeschoss der längsten Straßenseite.
+  - **Türwand (W6 „Türen verlegen“, Entscheidung Koordinator 2026-10-04):** Eine Tür kommt nur an eine Wand, vor
+    der 1,2 m und 2,2 m vor der Mitte kein anderes Haus, kein anderer Baukörper desselben Gebäudes und nicht die
+    Stadtmauer näher als 0,5 m steht (Raumindex aller Grundrisse in `batch.py`, Rückbau-Häuser ersetzen ihr
+    Ausgangsgebäude). Reihenfolge: freie Straßenwand mit Weg zu einer Straße (gerade Linie bis 30 m, durch kein
+    Haus, kein 0,5-m-Stück steiler als 35°), freie Seiten- oder Rückwand (≥ 2 m) mit Weg, die zur nächsten Straße
+    zuerst (Hinweis „door moved: street side blocked“), dann freie Wände ohne Weg. Hat ein Baukörper keine freie
+    Wand, bestimmt die Straßenwand nur die Fußbodenhöhe; eine Tür wird nicht gezeichnet (kein Rahmen in der
+    gemeinsamen Wand), im Index `blocked`, im Wegnetz-Bericht `doorsWithoutAccess` („ohne Zugang“). Wichtige
+    Häuser bekommen später gezielt einen Zugang per `passages` bzw. Hof-Override.
     Öffnungen sind ausgeschnitten, mit Laibung und zurückgesetzter Füllung (Rolle `frame`). Bei Gebäuden mit
     LoD2-Teilen wird `frontFacade` ignoriert (Hinweis), weil sich die Kanten auf den Gesamtgrundriss beziehen.
   - **Fachwerk in den Obergeschossen:** Schwelle und Rähm laufen über die ganze Breite. Ständer stehen an den Ecken,
@@ -844,8 +853,8 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
     Kollisionskörpern), sonst bis 3 m quer zur Achse verschoben oder ausgelassen.
   - **Türpunkte** `WP_LEO_<STRASSE>_<KÜRZEL>` (Kürzel aus der LoD2-ID) 0,6 m vor der Tür bzw. am
     Fuß von Treppe oder Abgang, mit `dir` zur Tür; angebunden an den nächsten erreichbaren Punkt
-    oder an eine Kante (die dafür geteilt wird). Türen, vor denen direkt ein Nachbarhaus oder eine
-    Mauer steht, bekommen keinen Punkt (Bericht `doorsUnusable`).
+    oder an eine Kante (die dafür geteilt wird). Häuser ohne Tür (`blocked`, siehe Türwand) führt der
+    Bericht als `doorsWithoutAccess`; steht trotzdem etwas vor einer Tür, `doorsUnusable`.
   - **Kanten** nur, wenn die Gerade frei von Kollisionskörpern ist und **kein 0,5-m-Stück steiler
     als 35°** (Autopilot: die Figur bleibt an kurzen steilen Stücken weit unter der Grenze des
     Controllers hängen; Treppenwege sind im Gelände nur Rampen und nicht ausgenommen); sonst ein

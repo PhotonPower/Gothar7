@@ -86,3 +86,67 @@ def test_no_room_for_an_upper_door_means_a_descent():
     assert "door below the ground (short descent)" in r.notes
     x, z, floor, kind = r.doors[0][:4]
     assert kind == "descent" and floor == pytest.approx(8.4 - RULES.get("storeys")["groundM"])
+
+
+def sill_near(r, x: float, z: float) -> int:  # noqa: ANN001
+    """Stone vertices of a door sill within 1.5 m of (x, z), above the socle (origin
+    (5.0, -0.5, -3.5)); a wall without a door has a window there instead."""
+    import numpy as np
+
+    pos = np.vstack([p.mesh.positions for p in r.primitives if p.material == "stone"])
+    w = pos + np.array([5.0, -0.5, -3.5])
+    near = (np.hypot(w[:, 0] - x, w[:, 2] - z) < 1.5) & (w[:, 1] > 0.2) & (w[:, 1] < 1.0)
+    return int(near.sum())
+
+
+def test_a_neighbour_in_front_moves_the_door_to_a_free_wall():
+    # W6: a house wall to wall with the street side blocked; the east side is free
+    def free(x: float, z: float) -> bool:
+        return not (z > 0.0 and -2.0 < x < 12.0) and x < 10.0 + 9.0  # neighbour in front (south)
+
+    r = build_house(HOUSE, -0.5, (5.0, -3.5), RULES, STREET_SOUTH,
+                    ground_at=lambda x, z: 0.0, door_free=free)  # fmt: skip
+    assert "door moved: street side blocked" in r.notes
+    ((x, z, _, kind, nx, nz),) = r.doors
+    assert kind == "ground" and nz <= 0.0  # not the south side any more
+    assert free(x + nx * 0.6, z + nz * 0.6)
+
+
+def test_the_door_turns_to_the_side_nearest_a_street():
+    # south blocked, east and west free: the street runs along the west side
+    west = StreetIndex([{"points": [[-5.0, 20.0], [-5.0, -30.0]]}])
+
+    def free(x: float, z: float) -> bool:
+        return z <= 0.0  # only the south is blocked
+
+    r = build_house(HOUSE, -0.5, (5.0, -3.5), RULES, west, ground_at=lambda x, z: 0.0,
+                    door_free=free)  # fmt: skip
+    ((x, _, _, _, nx, _),) = r.doors
+    assert nx == pytest.approx(-1.0) and x < 0.0  # the west wall
+
+
+def test_no_free_wall_keeps_the_floor_but_draws_no_door():
+    plain = build_house(HOUSE, -0.5, (5.0, -3.5), RULES, STREET_SOUTH, ground_at=lambda x, z: 0.0)
+    r = build_house(HOUSE, -0.5, (5.0, -3.5), RULES, STREET_SOUTH,
+                    ground_at=lambda x, z: 0.0, door_free=lambda x, z: False)  # fmt: skip
+    assert "door without access (no free wall)" in r.notes
+    ((x, z, floor, kind, _, _),) = r.doors
+    assert kind == "blocked" and (x, z, floor) == tuple(plain.doors[0][:3])
+    # no door frame on the shared wall (nothing pokes into the neighbour)
+    assert sill_near(plain, x, z) > 0 and sill_near(r, x, z) == 0
+
+
+def test_without_the_check_the_doors_stay():
+    a = build_house(HOUSE, -0.5, (5.0, -3.5), RULES, STREET_SOUTH, ground_at=lambda x, z: 0.0)
+    b = build_house(HOUSE, -0.5, (5.0, -3.5), RULES, STREET_SOUTH, ground_at=lambda x, z: 0.0,
+                    door_free=lambda x, z: True)  # fmt: skip
+    assert a.doors == b.doors and a.triangles == b.triangles
+
+
+def test_a_wall_with_a_way_to_a_street_comes_first():
+    # every wall is free, but only from the east side a street can be reached in a line
+    r = build_house(HOUSE, -0.5, (5.0, -3.5), RULES, STREET_SOUTH, ground_at=lambda x, z: 0.0,
+                    door_free=lambda x, z: True, door_reach=lambda x, z: x > 10.0)  # fmt: skip
+    ((x, _, _, kind, nx, _),) = r.doors
+    assert kind == "ground" and nx == pytest.approx(1.0) and x > 10.0
+    assert "door moved: street side blocked" in r.notes
