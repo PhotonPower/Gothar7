@@ -16,6 +16,12 @@
 
 namespace g7
 {
+/// What presentLine needs of a line (the speaker); a struct so the header needs no DialogLine there.
+struct DialogLineRef
+{
+    std::string speaker;
+};
+
 namespace
 {
 constexpr f32 kLinePerCharacter = 0.06f; ///< seconds a line stays, per character
@@ -87,6 +93,19 @@ Result<void> Engine::startDialog(u32 npcId)
     c->route.reset();
     c->talking = true;
     c->routineEntry = -1;
+    // It stays sitting (head gestures only); any other ambient animation ends (M10 part B).
+    if (c->ambientPhase != Creature::AmbientPhase::None &&
+        std::ranges::find(m_dialogPresentation.keep, c->ambient) == m_dialogPresentation.keep.end())
+    {
+        c->ambient.clear();
+        c->ambientPhase = Creature::AmbientPhase::None;
+        c->eat = c->sleep = false;
+        c->handItem = nullptr;
+        if (c->figure && c->figure->animator.hasState("move"))
+        {
+            c->figure->animator.enter("move", 0.25f);
+        }
+    }
     m_dialog.emplace();
     m_dialog->npc = npcId;
     m_dialog->npcName = c->species;
@@ -185,6 +204,7 @@ void Engine::dialogSkip()
     {
         m_dialog->lines.pop_front();
         m_dialog->lineTime = 0.0f;
+        m_dialog->linePresented = false;
     }
 }
 
@@ -210,11 +230,17 @@ void Engine::endDialog()
         return;
     }
     const std::string npc = m_dialog->npcName;
+    stopTalking();
     if (Creature* c = creature(m_dialog->npc))
     {
         c->talking = false; // its routine starts again
     }
+    if (m_figure)
+    {
+        m_figure->lookTarget.reset();
+    }
     m_dialog.reset();
+    m_dialogCamera = false;
     if (m_scripts)
     {
         const script::Value args[] = {npc};
@@ -236,14 +262,21 @@ void Engine::fixedUpdateDialog(f32 seconds)
     }
     if (!m_dialog->lines.empty())
     {
+        if (!m_dialog->linePresented)
+        {
+            m_dialog->linePresented = true;
+            presentLine({m_dialog->lines.front().speaker});
+        }
         m_dialog->lineTime += seconds;
         if (m_dialog->lineTime >= m_dialog->lines.front().seconds)
         {
             m_dialog->lines.pop_front();
             m_dialog->lineTime = 0.0f;
+            m_dialog->linePresented = false;
         }
         return;
     }
+    stopTalking(); // the menu: nobody speaks
     if (m_dialog->endRequested)
     {
         endDialog();
@@ -348,6 +381,130 @@ void Engine::dialogPerception(Creature& c, f32 distance, bool sees)
         cmd.distance = 1.5f;
         c.commands.push_back(std::move(cmd));
     }
+}
+
+void Engine::loadDialogPresentation()
+{
+    m_dialogPresentation = DialogPresentation{};
+    const script::Value table = m_scripts ? m_scripts->global("DialogPresentation") : script::Value();
+    if (table.asTable() == nullptr)
+    {
+        return;
+    }
+    const script::Value camera = table["camera"];
+    const auto number = [&](std::string_view key, f32& out)
+    { out = static_cast<f32>(camera[key].asNumber(static_cast<f64>(out))); };
+    number("side", m_dialogPresentation.side);
+    number("height", m_dialogPresentation.height);
+    number("back", m_dialogPresentation.back);
+    number("look", m_dialogPresentation.look);
+    number("blend", m_dialogPresentation.blend);
+    const auto list = [&](std::string_view key, std::vector<std::string>& out)
+    {
+        if (const script::Table* t = table[key].asTable())
+        {
+            for (const script::Value& v : t->array)
+            {
+                out.emplace_back(v.asString());
+            }
+        }
+    };
+    list("gestures", m_dialogPresentation.gestures);
+    list("head_gestures", m_dialogPresentation.headGestures);
+    if (const script::Table* keep = table["keep"].asTable())
+    {
+        for (const auto& [ambient, yes] : keep->fields)
+        {
+            if (yes.asBool())
+            {
+                m_dialogPresentation.keep.push_back(ambient);
+            }
+        }
+    }
+}
+
+void Engine::presentLine(const DialogLineRef& line)
+{
+    Creature* npc = creature(m_dialog->npc);
+    const bool hero = line.speaker == kHero;
+    AnimatedFigure* speaker =
+        hero ? static_cast<AnimatedFigure*>(m_figure.get()) : (npc != nullptr ? npc->figure.get() : nullptr);
+    AnimatedFigure* listener =
+        hero ? (npc != nullptr ? npc->figure.get() : nullptr) : static_cast<AnimatedFigure*>(m_figure.get());
+    // The mouth of the speaker moves (FaceAnimator "talking"); the hero looks at the NPC.
+    if (speaker != nullptr)
+    {
+        speaker->face.setTalking(true);
+    }
+    if (listener != nullptr)
+    {
+        listener->face.setTalking(false);
+    }
+    if (m_figure && npc != nullptr)
+    {
+        m_figure->lookTarget = npc->position + Vec3(0.0f, m_dialogPresentation.look, 0.0f);
+    }
+    // A gesture of the speaker: arms and hands, or only the head while his arms are busy (sitting).
+    if (speaker == nullptr || !speaker->animator.hasClip("dlg/a_neutral"))
+    {
+        return;
+    }
+    const bool busyArms = !hero && npc != nullptr && npc->ambientPhase != Creature::AmbientPhase::None;
+    const std::vector<std::string>& choices =
+        busyArms ? m_dialogPresentation.headGestures : m_dialogPresentation.gestures;
+    std::uniform_real_distribution<f32> unit(0.0f, 1.0f);
+    if (choices.empty() || (busyArms && unit(m_rng) < 0.5f))
+    {
+        return;
+    }
+    const std::string& gesture =
+        choices[std::min(choices.size() - 1, static_cast<usize>(unit(m_rng) * choices.size()))];
+    speaker->animator.playOverlay(gesture, "spine_02", 0.2f, true, "dlg/a_neutral");
+}
+
+void Engine::stopTalking()
+{
+    if (m_figure)
+    {
+        m_figure->face.setTalking(false);
+    }
+    if (m_dialog)
+    {
+        if (Creature* c = creature(m_dialog->npc); c != nullptr && c->figure)
+        {
+            c->figure->face.setTalking(false);
+        }
+    }
+}
+
+void Engine::updateDialogCamera(f32 seconds)
+{
+    Creature* npc = m_dialog ? creature(m_dialog->npc) : nullptr;
+    if (npc == nullptr || !m_player.valid())
+    {
+        m_dialogCamera = false;
+        return;
+    }
+    // Shot over the listener's shoulder at the speaker; in the menu the NPC is the one looked at.
+    const bool heroSpeaks = !m_dialog->lines.empty() && m_dialog->lines.front().speaker == kHero;
+    const Vec3 hero = m_player.feet();
+    const Vec3 listener = heroSpeaks ? npc->position : hero;
+    const Vec3 speaker = heroSpeaks ? hero : npc->position;
+    Vec3 dir = speaker - listener;
+    dir.y = 0.0f;
+    dir = glm::length(dir) > 1e-3f ? glm::normalize(dir) : gameplay::forwardOf(m_movement.yaw());
+    const Vec3 right(-dir.z, 0.0f, dir.x);
+    const DialogPresentation& p = m_dialogPresentation;
+    const Vec3 eye = listener + Vec3(0.0f, p.height, 0.0f) - dir * p.back + right * p.side;
+    const Vec3 target = speaker + Vec3(0.0f, p.look, 0.0f);
+    const Quat look = glm::quatLookAt(glm::normalize(target - eye), Vec3(0.0f, 1.0f, 0.0f));
+    if (!m_dialogCamera)
+    {
+        m_dialogCamera = true; // blend from the player's camera
+    }
+    const f32 t = p.blend > 0.0f ? 1.0f - std::exp(-seconds / p.blend) : 1.0f;
+    m_camera.transform.position = glm::mix(m_camera.transform.position, eye, t);
+    m_camera.transform.rotation = glm::slerp(m_camera.transform.rotation, look, t);
 }
 
 void Engine::bindDialogFunctions()

@@ -293,6 +293,19 @@ void Engine::fixedUpdateCreatures(f32 seconds)
         }
         f.posePrevious = std::move(f.poseNow);
         f.poseNow = a.pose();
+        // Talking (M10): the head towards the player, the mouth moving; the face blinks always.
+        if (f.lookAt.valid())
+        {
+            std::optional<Vec3> target;
+            if (c.talking && m_player.valid())
+            {
+                const Vec3 head = m_player.feet() + Vec3(0.0f, 1.6f, 0.0f);
+                target = Vec3(glm::inverse(creatureMatrix(c.position, c.yaw)) * Vec4(head, 1.0f));
+            }
+            f.lookAt.setTarget(target);
+            f.lookAt.update(seconds, f.skeleton, f.poseNow);
+        }
+        f.face.update(seconds);
     }
     m_routineMinute = m_gameTime.totalMinutes(); // routines are checked once per game minute (M9 part B)
 }

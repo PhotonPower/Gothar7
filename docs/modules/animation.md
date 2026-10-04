@@ -37,7 +37,7 @@ struct AnimGraph { sets; start; states; transitions; static Result<AnimGraph> pa
 class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton&, span<const asset::AnimationSetData*>);
     void setFloat(name, v); void setBool(name, b); void enter(state, blend);
     void update(f32 seconds, const EventCallback& = {});
-    void playOverlay(clip, maskBone, blendIn, additive = false); void stopOverlay(blendOut);
+    void playOverlay(clip, maskBone, blendIn, additive = false, reference = ""); void stopOverlay(blendOut);  // reference: additive gegen den ersten Frame dieses Clips (dlg/a_neutral, M10)
     const Pose& pose() const; Vec3 rootMotion() const; state(); previousState(); fadeWeight(); stateProgress();
     stateEnded(); std::vector<ClipWeight> activeClips() const; };     // activeClips: Debug-UI
 }

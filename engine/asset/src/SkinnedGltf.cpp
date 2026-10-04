@@ -549,6 +549,18 @@ Result<SkinnedModelData> loadSkinnedGltf(std::span<const u8> bytes, const fs::Pa
         return assembly.error();
     }
     model.value().assembly = std::move(assembly).value();
+    // The morph targets' names: faces and beards map their weights by them (M10, figuren).
+    const auto names = readMorphNames(bytes);
+    for (SkinnedPartData& part : model.value().parts)
+    {
+        if (const auto it = names.find(part.node); it != names.end())
+        {
+            for (usize t = 0; t < part.morphs.size() && t < it->second.size(); ++t)
+            {
+                part.morphs[t].name = it->second[t];
+            }
+        }
+    }
     return model;
 }
 

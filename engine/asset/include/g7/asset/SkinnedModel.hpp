@@ -41,6 +41,7 @@ struct SkeletonData
 /// Position and normal offsets of one morph target, per vertex of its part.
 struct MorphTargetData
 {
+    std::string name; ///< from the mesh's extras.targetNames ("vis_aa", "blink_l" ...); empty if unnamed
     std::vector<Vec3> positions;
     std::vector<Vec3> normals; ///< empty if the file has none
 };

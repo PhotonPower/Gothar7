@@ -645,6 +645,11 @@ private:
     void dialogInput();
     void dialogUi();
     void dialogPerception(Creature& c, f32 distance, bool sees);
+    void presentLine(const struct DialogLineRef& line);
+    void loadDialogPresentation();
+    void stopTalking();
+    /// Over the listener's shoulder at the speaker (M10 part B); in updatePlayerCamera.
+    void updateDialogCamera(f32 seconds);
     void bindDialogFunctions();
     void updateRoutine(Creature& c);
     void beginState(Creature& c, std::string_view state, std::string_view at);
@@ -1001,13 +1006,27 @@ private:
         u32 lineNumber = 0;
         std::deque<DialogLine> lines;
         f32 lineTime = 0.0f;
+        bool linePresented = false;        ///< the front line's gesture and mouth started
         std::vector<DialogOption> choices; ///< answers added by the running Info
         std::vector<DialogOption> menu;    ///< shown when no line is said
         i32 selected = 0;
         bool endRequested = false;
     };
     std::optional<Dialog> m_dialog;
-    std::string m_aiFilter; // window "AI"
+    struct DialogPresentation
+    {
+        f32 side = 0.55f;
+        f32 height = 1.62f;
+        f32 back = 0.9f;
+        f32 look = 1.55f;
+        f32 blend = 0.25f;
+        std::vector<std::string> gestures;
+        std::vector<std::string> headGestures;
+        std::vector<std::string> keep;
+    } m_dialogPresentation;
+    bool m_dialogCamera = false; // the camera follows the dialogue (blended from where it was)
+    usize m_presentedLines = 0;  // lines of this dialogue presented (gesture, mouth)
+    std::string m_aiFilter;      // window "AI"
     u32 m_aiSelected = 0;
     std::optional<Config> m_creatureBodies; // data/creatures.toml, read on first use (M9 part D)
     std::vector<WorldItem> m_worldItems;

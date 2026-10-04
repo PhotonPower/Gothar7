@@ -587,7 +587,7 @@ void Engine::inventoryUi()
 
 void Engine::focusUi()
 {
-    if (!m_focus || m_focus->name.empty() || !m_window || m_inventoryOpen)
+    if (!m_focus || m_focus->name.empty() || !m_window || m_inventoryOpen || m_dialog)
     {
         return;
     }

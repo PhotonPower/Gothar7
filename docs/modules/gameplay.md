@@ -205,7 +205,20 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   (vor/zurück) bzw. Maus, Aktionstaste wählt. Vorläufig ImGui, die echte Oberfläche mit M14.
 - Ereignisse `dialog_started(npc)`, `dialog_ended(npc)`; Abfrage `dialog_state()`, `dialog_choose(n)` (Konsole, Tests).
 
-### Weiter (Teile B–E)
+### Darstellung (Teil B, umgesetzt)
+- **Kamera** Schuss/Gegenschuss: über die Schulter des Zuhörers auf den Sprecher, im Menü auf den NPC; weich
+  übergeblendet (`DialogPresentation.camera` in `data/dialog.lua`: side, height, back, look, blend). Danach wieder die
+  Spielerkamera.
+- **Gesten:** je Zeile eine zufällige Geste des Sprechers aus `gestures` (figurens Set `dlg`), additiv über
+  `spine_02` gegen die Referenz `dlg/a_neutral` (`Animator::playOverlay(…, additive, reference)`). Sitzt der NPC
+  (`keep`: Haltungen, in denen er zum Reden bleibt), nur Kopfgesten (`head_gestures`) und das nur jede zweite Zeile;
+  jede andere Tagesablauf-Animation endet beim Ansprechen.
+- **Mund und Blick:** Der Sprecher bewegt den Mund (FaceAnimator „talking“), der NPC sieht den Helden an und
+  umgekehrt (Look-at). Gesichts-Morphs werden nach Namen zugeordnet (`SkinnedMesh::mapMorphNames`, glTF
+  `extras.targetNames`), so folgt z. B. ein Bart mit denselben Morphs dem Kiefer (figuren).
+- Der Fokusname wird im Dialog ausgeblendet.
+
+### Weiter (Teile C–E)
 - Dialog-Ablauf als Sequenz: `say` (Sprache + Untertitel + Gesten + Lippensync), `choices`, `trade`, `teach`, `end`.
 - Dialog-Kamera: Schuss/Gegenschuss je Sprecher.
 - Tagebuch: Topics mit Status, Einträge mit Zeitstempel.

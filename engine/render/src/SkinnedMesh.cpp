@@ -38,7 +38,12 @@ Result<SkinnedMesh> SkinnedMesh::create(Device& device, const asset::SkinnedMode
         }
         if (!part->morphs.empty())
         {
-            mesh.m_morphParts.push_back({base, part->morphs});
+            std::vector<usize> identity(part->morphs.size());
+            for (usize t = 0; t < identity.size(); ++t)
+            {
+                identity[t] = t;
+            }
+            mesh.m_morphParts.push_back({base, part->morphs, std::move(identity)});
             mesh.m_morphCount = std::max(mesh.m_morphCount, part->morphs.size());
         }
     }
@@ -97,6 +102,28 @@ void SkinnedMesh::draw(Device& device, usize submesh) const
     device.drawIndexed(range.indexCount, range.firstIndex, 0);
 }
 
+void SkinnedMesh::mapMorphNames(std::span<const std::string_view> names)
+{
+    if (m_morphParts.empty())
+    {
+        return; // LOD 1/2: no targets
+    }
+    for (MorphPart& part : m_morphParts)
+    {
+        for (usize t = 0; t < part.targets.size(); ++t)
+        {
+            if (part.targets[t].name.empty())
+            {
+                continue;
+            }
+            const auto it = std::find(names.begin(), names.end(), part.targets[t].name);
+            part.weightIndex[t] = it != names.end() ? static_cast<usize>(it - names.begin()) : ~usize(0);
+        }
+    }
+    m_morphCount = std::max(m_morphCount, names.size());
+    m_weights.resize(m_morphCount, 0.0f);
+}
+
 void SkinnedMesh::setMorphWeights(std::span<const f32> weights)
 {
     if (m_morphCount == 0)
@@ -127,14 +154,15 @@ void SkinnedMesh::setMorphWeights(std::span<const f32> weights)
             Vec3 normal = base.base.normal;
             for (usize t = 0; t < part.targets.size(); ++t)
             {
-                if (m_weights[t] == 0.0f)
+                const usize w = part.weightIndex[t];
+                if (w >= m_weights.size() || m_weights[w] == 0.0f)
                 {
                     continue;
                 }
-                position += part.targets[t].positions[v] * m_weights[t];
+                position += part.targets[t].positions[v] * m_weights[w];
                 if (!part.targets[t].normals.empty())
                 {
-                    normal += part.targets[t].normals[v] * m_weights[t];
+                    normal += part.targets[t].normals[v] * m_weights[w];
                 }
             }
             if (position != out.base.position || normal != out.base.normal)

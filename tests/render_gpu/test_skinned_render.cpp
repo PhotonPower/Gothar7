@@ -42,7 +42,7 @@ asset::SkinnedModelData skinnedQuad()
     part.weights.assign(4, Vec4(1, 0, 0, 0));
     part.indices = {0, 1, 2, 0, 2, 3};
     part.submeshes = {{0, 6, 0}};
-    part.morphs.push_back({std::vector<Vec3>(4, Vec3(1.5f, 0.0f, 0.0f)), {}});
+    part.morphs.push_back({"", std::vector<Vec3>(4, Vec3(1.5f, 0.0f, 0.0f)), {}});
     model.parts.push_back(part);
     model.materials = {{"red", Vec4(1, 0, 0, 1), -1}};
     model.bounds = AABB{Vec3(-1, -1, 0), Vec3(1, 1, 0)};
@@ -98,6 +98,23 @@ TEST_CASE("Skinned mesh: bones and morph targets move the vertices, shadows draw
     mesh.setMorphWeights({});
     render({Mat4(1.0f), Mat4(1.0f)});
     CHECK(red(8));
+
+    // By name (M10, figuren's beards): the target "vis_aa" follows weight 1 of the list, not weight 0.
+    asset::SkinnedModelData named = model;
+    named.parts[0].morphs[0].name = "vis_aa";
+    mesh = require(SkinnedMesh::create(*gl.device, named, 0));
+    const std::string_view names[] = {"blink_l", "vis_aa"};
+    mesh.mapMorphNames(names);
+    const f32 first[] = {1.0f, 0.0f};
+    mesh.setMorphWeights(first);
+    render({Mat4(1.0f), Mat4(1.0f)});
+    CHECK(red(8)); // weight 0 drives blink_l: this part has none
+    const f32 second[] = {0.0f, 1.0f};
+    mesh.setMorphWeights(second);
+    render({Mat4(1.0f), Mat4(1.0f)});
+    CHECK_FALSE(red(8));
+    CHECK(red(13));
+    mesh.setMorphWeights({});
 
     // Shadow pass: depth only, no GL errors.
     ShadowMap shadows = require(ShadowMap::create(*gl.device, ShadowSettings{}));
