@@ -121,6 +121,29 @@ struct CreaturesPanel
     std::vector<Row> rows;
 };
 
+/// The hero's inventory (M8, "Inventory" window, Tab) until the real inventory screen (M13): items by
+/// category, equipment, values. The engine fills it and acts on the button pressed.
+struct InventoryPanel
+{
+    std::string title;              ///< "Held - Stufe 2"
+    std::vector<std::string> stats; ///< lines shown above the list ("LP 40/40", "Stärke 10" ...)
+    struct Row
+    {
+        std::string item;     ///< instance name
+        std::string name;     ///< display name
+        std::string category; ///< kItemCategories
+        u32 count = 0;
+        std::string equipped; ///< slot name, empty: not equipped
+        bool equippable = false;
+    };
+    std::vector<Row> rows;
+    std::string message; ///< shown: the result of the last action ("needs str 15")
+    bool open = true;    ///< out: false when the window was closed
+    // out: the button pressed this frame
+    std::string action; ///< "equip", "unequip", "drop"
+    std::string actionItem;
+};
+
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor
 /// rectangle (origin bottom-left), clamped to the framebuffer; nullopt if nothing remains.
 [[nodiscard]] std::optional<render::PixelRect> scissorFromClip(const Vec4& clip, u32 framebufferWidth,
@@ -152,6 +175,11 @@ public:
     void consolePanel(ConsolePanel& panel);
     /// Window "Creatures" (M6 D3).
     void creaturesPanel(CreaturesPanel& panel);
+    /// Window "Inventory" (M8).
+    void inventoryPanel(InventoryPanel& panel);
+    /// A text centred at `screen` (window coordinates, +Y down) over everything, without a window: the name
+    /// of the focused object (M8) until the HUD exists (M13).
+    void focusLabel(Vec2 screen, std::string_view text);
     /// Draws the editor windows (tools/editor); edits and actions are written back into `panel`.
     void editorPanel(EditorPanel& panel);
     /// Finishes the frame and, with a device, draws it into the bound target (normally the window).

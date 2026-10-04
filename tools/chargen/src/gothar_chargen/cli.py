@@ -15,6 +15,7 @@ from gothar_chargen import __version__
 from gothar_chargen.assemble import AssembleError, assemble_all
 from gothar_chargen.blender_run import (
     BlenderError,
+    bake_fabrics,
     build_mpfb_human,
     build_placeholder,
     build_reference_rig,
@@ -431,6 +432,16 @@ def _cmd_repair_clips(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_fabrics(args: argparse.Namespace, out: TextIO) -> int:
+    """Worn cloth textures from data/fabrics.toml (F3n; fabric sources in DATA_ROOT, Blender)."""
+    characters = _characters_dir(args)
+    log = bake_fabrics(find_blender(args.blender), characters, args.sources, args.only)
+    for line in log.splitlines():
+        if line.startswith("[chargen] baked"):
+            print(line[10:], file=out)
+    return EXIT_OK
+
+
 def _cmd_speeds(args: argparse.Namespace, out: TextIO) -> int:
     """Natural speed of the locomotion clips into the events files (§3, no Blender)."""
     characters = _characters_dir(args)
@@ -532,6 +543,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
     )
     p.set_defaults(func=_cmd_build_test_parts)
+
+    p = sub.add_parser("fabrics", help="worn cloth textures from data/fabrics.toml (local, F3n)")
+    p.add_argument(
+        "--sources", type=Path, required=True, help="DATA_ROOT/characters/ambientcg/fabric"
+    )
+    p.add_argument("--only", nargs="*", default=[], help="texture file names (default: all)")
+    p.add_argument("--out-dir", type=Path, help="characters folder (default: repository)")
+    p.set_defaults(func=_cmd_fabrics)
 
     p = sub.add_parser("repair-clips", help="root speed = stride, lying poses above the ground")
     p.add_argument("sets", nargs="*", help="set .glb files (default: all in anims/ and monsters/)")

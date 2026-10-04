@@ -59,6 +59,21 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 | Dialog-Gesten (additiv Oberkörper) | ~20 | `dlg/a_talk_neutral1..4`, `dlg/a_gesture_shrug`, `a_point`, `a_dismiss`, `a_threaten`, `a_greet` | MC |
 | Magie | ~12 | `mag/t_invest`, `mag/s_invest_loop`, `mag/t_cast_projectile`, `t_cast_area`, `t_cast_self` | MC/K |
 
+### Prio B – Item-Benutzung und Mobs für M8 (ausgeschrieben, Vertrag „Mobs“ §3.1)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `none/t_pickup_ground` | Gegenstand vom Boden aufheben | – | pickup | Q | platzhalter (UAL2 `Farm_Harvest`) |
+| `none/t_pickup_high` | Gegenstand von Tisch/Regal nehmen | – | pickup | Q | platzhalter (UAL1 `PickUp_Table`) |
+| `none/t_eat`, `t_drink` | Essen, Trinken | – | use, item_from_hand | K | platzhalter-K (rechte Hand zum Mund, Trinken mit gehobenem Kopf) |
+| `none/t_read_scroll` | Schriftrolle lesen | – | use | K | platzhalter-K (beide Hände vor der Brust, Kopf gesenkt) |
+| `none/t_pickpocket` | Taschendiebstahl | – | – | Q | platzhalter (UAL1 `Interact`) |
+| `mob/chest/t_open`, `s_open`, `t_close` | Truhe öffnen, hineinsehen, schließen | – | open, close | Q | platzhalter (UAL2 `Chest_Open`; `s_open` hält die Pose mit offenem Deckel, `t_close` rückwärts) |
+| `mob/chest/s_picklock` | Schloss knacken | – | (picklock_l/r) | Q | platzhalter (UAL1 `Fixing_Kneeling`) |
+| `mob/anvil/t_start`, `s_work`, `t_stop` | Am Amboss schmieden | – | hit_anvil, sound:anvil_hit | Q | platzhalter (UAL2 `TreeChopping_Loop`, Überblendung 12 Frames) |
+| `mob/bed/t_lie_down`, `s_lie`, `t_stand_up` | Ins Bett legen, liegen, aufstehen | ja (nur t_) | lie, stand | Q→ | platzhalter (UAL2 `LayToIdle` + Root Motion aufs Bett; `t_lie_down` rückwärts, `s_lie` hält das Liegen) |
+| `mob/door/t_open` | Tür öffnen/schließen | – | open | Q | platzhalter (UAL1 `Interact`) |
+
 ### Prio B – Fortbewegung je Waffenmodus (ausgeschrieben, F2)
 
 Je Modus `s_idle` = Haltung; die übrige Fortbewegung ist geschichtet: Beine, Becken und Wirbelsäule aus

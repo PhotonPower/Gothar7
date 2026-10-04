@@ -667,9 +667,14 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     a.setBool("dive", water == gameplay::WaterMode::Dive);
     a.setBool("slide", onLand && state == physics::MoveState::Slide);
     a.setBool("sneak", onLand && input.sneak);
+    a.setBool("pickup", m_pickup && m_pickup->animated && !m_pickup->taken);
     a.update(seconds,
              [&](std::string_view clip, std::string_view event)
              {
+                 if (event == "pickup")
+                 {
+                     m_pickupEvent = true; // the hand reaches the item (M8)
+                 }
                  f.events.push_front(std::format(
                      "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));
                  if (f.events.size() > kShownEvents)

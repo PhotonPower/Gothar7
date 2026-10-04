@@ -84,6 +84,9 @@ Result<void> spawnWorld(Scene& scene, const WorldFile& world)
         case VobType::Water:
             scene.set<WaterVolume>(e.value(), vob->water);
             break;
+        case VobType::Item:
+            scene.set<ItemRef>(e.value(), vob->item);
+            break;
         }
     }
     if (world.nextVobId > scene.nextVobId())
@@ -113,7 +116,12 @@ WorldFile captureWorld(const Scene& scene, std::string_view name)
             out.name = vob.nameText;
             out.parent = scene.idOf(scene.parent(e));
             out.transform = transform;
-            if (const MobRef* mob = scene.get<MobRef>(e))
+            if (const ItemRef* item = scene.get<ItemRef>(e))
+            {
+                out.type = VobType::Item;
+                out.item = *item;
+            }
+            else if (const MobRef* mob = scene.get<MobRef>(e))
             {
                 out.type = VobType::Mob;
                 out.mob = *mob;

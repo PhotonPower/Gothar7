@@ -6,6 +6,7 @@
 #   landed  Fallhöhe der Landung in m (einen Schritt, sonst 0)   hard  die Landung kostete LP (bool, mit landed)
 #   climb   Kantenklasse 1/2/3 (0 = nicht)
 #   swim    an der Oberfläche (bool)                dive    unter Wasser (bool)        slide  rutscht (bool)
+#   pickup  hebt einen Gegenstand auf (bool, bis das Event „pickup“ ihn genommen hat; M8)
 # Übergänge: erster passender in Dateireihenfolge; Bedingungen: "name", "!name", "name > 1.5", "end".
 version = 1
 sets = [
@@ -114,6 +115,10 @@ root_motion = true
 name = "slide"
 clip = "none/s_slide"
 
+[[state]] # Aufheben (M8): das Event „pickup“ nimmt den Gegenstand, am Ende zurück in die Fortbewegung
+name = "pickup"
+clip = "none/t_pickup_ground"
+
 [[state]]
 name = "swim"
 blend = "speed"
@@ -167,7 +172,19 @@ to = "slide"
 when = ["slide"]
 blend = 0.2
 
-[[transition]] # Ende des Kletterns, Schwimmens, Rutschens
+[[transition]]
+from = "move"
+to = "pickup"
+when = ["pickup"]
+blend = 0.2
+
+[[transition]] # Ende des Kletterns, Schwimmens, Rutschens, Aufhebens
+from = "pickup"
+to = "move"
+when = ["end"]
+blend = 0.25
+
+[[transition]]
 from = "climb_low"
 to = "move"
 when = ["end"]

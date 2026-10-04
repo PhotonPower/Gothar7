@@ -107,7 +107,7 @@ def test_committed_anim_sets_are_clean(rig, reference):
         report = validate_gltf(g, rig, reference, path=glb)
         assert report.ok(strict=True), report.issues
     none = validate_gltf(Gltf.load(ANIM_SET), rig, reference, path=ANIM_SET)
-    assert none.stats["clips"] == 27
+    assert none.stats["clips"] == 33
     assert none.stats["events"] >= 15
 
 

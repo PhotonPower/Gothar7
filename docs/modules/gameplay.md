@@ -109,10 +109,30 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   freien. `requires = { str = 20, bow = 1 }` (Attribute oder Talente) muss erfüllt sein. Entfernen eines
   ausgerüsteten Items legt es ab.
 - Benutzen: `on_use`-Skriptfunktion (Trank → Leben, Schriftstück → Dokument-UI) – Teil D.
+- **In der Welt** (Teil B): Vob-Typ `item` (world.md), zur Laufzeit `Engine::spawnItem`, `insert('it_x')`,
+  `drop_item('it_x', n)` (legt vor den Helden). **Aufheben** mit der Aktionstaste (klassisch Strg, modern E) auf ein Item
+  im Fokus (`Engine::pickUpFocus`): Der Held bleibt stehen und spielt `none/t_pickup_ground` (Zustand `pickup` im
+  Graphen, Parameter `pickup`); beim Event `pickup` wandert das Item ins Inventar, der Vob verschwindet, Skripte
+  bekommen `item_taken(item, count)`. Ohne `pickup`-Zustand im Graphen geht es nach 0,35 s.
+- **Inventar-Fenster** (Tab, bis zum Inventar-Bildschirm in M13): Werte, Schutz, Inhalt nach Kategorie,
+  Ausrüsten/Ablegen/Wegwerfen; solange es offen ist, steht der Held und die Maus ist frei.
 
-## Fokus (M8)
-Kandidaten im Kegel vor der Kamera/Figur, Priorität NPC > Mob > Item, Distanz- und Sichtprüfung,
-Hysterese gegen Flackern. Im Kampf: Gegner-Fokus mit Ziel-Lock.
+## Fokus (M8 Teil B, umgesetzt) – `Focus.hpp`
+- `gameplay::selectFocus(kandidaten, auge, blickrichtung, settings, aktuell, sichtbar)`: Kandidaten (`FocusCandidate`:
+  id, Art `Npc`/`Mob`/`Item`, Fokuspunkt) innerhalb von Reichweite und Winkel ihrer Art; **Vorrang NPC > Mob > Item**,
+  innerhalb einer Art der kleinste Anteil `Winkel/Grenze + ½ · Abstand/Reichweite`. Der Winkel wird **waagrecht**
+  gemessen (ein Gegenstand zu Füßen ist genauso „vorn“), dazu höchstens `height` Höhenunterschied.
+- **Hysterese:** Der aktuelle Fokus bleibt innerhalb von `keep` × Reichweite/Winkel, solange keine höhere Art in
+  Reichweite kommt. **Sicht:** Ein Strahl vom Auge zum Fokuspunkt gegen die Weltkollision; was das Ziel trägt, verdeckt
+  es nicht (0,3 m Spielraum).
+- Werte in `assets/source/data/focus.toml` (`[npc]`/`[mob]`/`[item]` mit `distance`, `angle`; `keep`, `height`):
+  NPC 8 m/30°, Mob 3 m/35°, Item 2,5 m/35°.
+- Engine (`EngineItems.cpp`): einmal je Frame nach der Simulation, vom Auge des Helden (Füße + 1,6 m) in seiner
+  Blickrichtung; Kandidaten sind Item-Vobs (Mitte ihrer Box), Mobs (1 m über dem Ursprung) und Kreaturen/NPCs.
+  `Engine::focus()` liefert Art, ID und Namen (Item: Skriptname, ab 2 Stück „Apfel (3)“; Mob: vorerst die
+  Definition, Teil C den Namen; NPC: `name` der `Npc`-Instanz). Der Name steht über dem Ziel (bis zum HUD in M13 als
+  Text im Debug-UI-Kontext); im Flugmodus kein Fokus.
+- Im Kampf (M11): Gegner-Fokus mit Ziel-Lock.
 
 ## Mob-Interaktion (M8)
 - Mob-Definition (Daten): Typ, Zustände (`S0`→`S1`…), Animationen je Übergang, Benutzer-Slots, benötigtes Item,

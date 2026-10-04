@@ -137,6 +137,14 @@ struct MobRef
     std::string definition;
 };
 
+/// An item lying in the world (M8): the Item instance of the scripts and how many. Drawn with the Item's
+/// `mesh` (or a placeholder of its category); no collision, like Gothic.
+struct ItemRef
+{
+    std::string instance;
+    u32 count = 1;
+};
+
 /// World matrix of a vob (parent world * local), kept up to date by Scene::updateTransforms().
 struct WorldTransform
 {

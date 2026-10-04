@@ -166,6 +166,30 @@ events = [
 - **Unbekannte Event-Namen** erzeugen in der Engine eine Warnung, keinen Fehler – neue Events dürfen vorab
   eingetragen werden. Dateien mit `version` > 1 lehnt die Engine ab.
 
+### 3.1 Mobs: Slots, Clips, Events (Vertrag engine–figuren–welt, Schiedsentscheidung Koordinator 2026-10-04)
+
+- **Datei** `assets/source/data/mobs.toml` (Version 1, gehört engine; figuren legt sie an und pflegt die Slots,
+  welt kann Werte vorschlagen). Je Mob-Typ (= Name der Mob-Definition, `components.mob.definition` im Vob):
+  `clips = "mob/<typ>"`, `enter`/`loop`/`leave` (Clipnamen ohne Präfix, leer = keiner), `extra` (weitere Schleifen),
+  `[[mobs.<typ>.slots]]` mit `name`, `pos` (Fußpunkt der Figur in Mob-Metern) und `facing` (waagrechter
+  Richtungsvektor der Blickrichtung). Die Engine wählt den nächsten freien Slot, richtet die Figur aus
+  (Toleranz 5 cm / 10°, dann exakt) und spielt `enter`.
+- **Achsen:** Y oben, Mob-Ursprung am Boden, Vorderseite des Mobs +Z – die Figur steht davor und blickt nach −Z.
+- **Clips** (`anims/human/mob.glb`, Set `mob`): Truhe `t_open`/`s_open`/`t_close` + `extra.picklock = s_picklock`;
+  Amboss `t_start`/`s_work`/`t_stop`; Bett `t_lie_down`/`s_lie`/`t_stand_up` – **Root Motion nur hier** (aufs
+  Bett und zurück, im Mob-Raum; die Engine schaltet die Kollision der Figur dabei ab); Tür `t_open` (auch zum
+  Schließen, Slots `front`/`back`). Ohne Mob (Set `none`): `t_pickup_ground`, `t_pickup_high`, `t_eat`,
+  `t_drink`, `t_read_scroll`, `t_pickpocket`.
+- **Events:** `pickup` (Hand am Gegenstand: die Engine nimmt ihn aus der Welt an `hand_r`), `use` (Wirkmoment
+  Essen/Trinken/Lesen), `open`/`close` (Deckel oder Tür bewegt sich), `hit_anvil` (Hammer trifft) +
+  `sound:anvil_hit`, `lie`/`stand` (Bett), `item_from_hand` (Gegenstand verschwindet), optional `picklock_l/r`.
+  Fehlt ein Event, nimmt die Engine die Mitte des `t_`-Clips.
+- **Mob-Modelle (welt):** Tür = Türblatt, Ursprung an der Angel unten, die Engine dreht den ganzen Mob um +Y;
+  Truhe mit Knoten `MOB_LID`, Pivot am Scharnier (Drehung um seine X-Achse). Testmaße: Truhe 0,9×0,6×0,6 m,
+  Amboss Arbeitshöhe 0,8 m, Bett 2,0×0,9 m (Liegefläche 0,45 m), Türklinke 1,0 m.
+- **Gegenstände (`items/<id>.glb`, F6):** Ursprung = Griffpunkt; Item-+Y auf Socket-+Y (aus der Faust zur Klinge
+  bzw. Spitze), Item-+Z auf Socket-+Z; die Engine übernimmt die volle Drehung des Sockets.
+
 **Animationskanäle (Vertrag):** Clips enthalten **Rotation** für beliebige Knochen, **Translation nur für
 `root` und `pelvis`** (Root Motion bzw. Hüfthöhe) und **keine Skalierung** – so behält jede Figur ihre eigenen
 Knochenlängen. Root Motion wertet die Engine im Raum des Armatur-Knotens aus. `gothar-chargen export` entfernt
@@ -253,8 +277,7 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   trägt, z. B. die eingebaute Hose unter enger Rüstungshose; Löcher in zerrissener Kleidung und ein
   5-cm-Streifen an der Halsnaht bleiben). Kit-Texturen sind **neutral grau** (halber Kontrast, Helligkeit 0,55) und
   von allen Staturen geteilt; die Farbe gibt die Palette der Figur als glTF `baseColorFactor`.
-- **Schultern in Bewegung (geprüft in M6, 2026-10-03; Bilder `DATA_ROOT
-eview3k-shoulders`):** Die frühere Falte
+- **Schultern in Bewegung (geprüft in M6, 2026-10-03; Bilder `DATA_ROOT\review\f3k-shoulders`):** Die frühere Falte
   an den Schulterblättern in der T-Pose ist seit den neu berechneten Masken (F3g) weg; beim Gehen und Rennen sitzen
   die Schultern sauber. In Extremposen (Kletter-Platzhalter, Arm weit nach hinten oben) wölbt sich die Schulter zu
   einem Buckel – **auch die nackte Haut**: Ursache ist das lineare Skinning des Körpers bei so großer Armbewegung aus
@@ -308,7 +331,20 @@ eview3k-shoulders`):** Die frühere Falte
     wachsen, bis auch deren Schädelpunkte innen liegen; die Kapuze wird nur dort weich nach außen gedrückt, wo ein
     Scheitel durchstechen würde (radial vom Kopfmittelpunkt gemessen, unabhängig von den Flächennormalen der Quelle).
     Neue Köpfe → Kopf-Kits neu bauen.
-- **Texturen:** Trim-Sheets und Farbvarianten statt Unikat-Texturen; Stil passend zu den Häusern (W5).
+- **Texturen – abgetragene Stoffe (F3n, Entscheidung Projektinhaber 2026-10-04: Gothic-Kolonie, abgetragen und
+  schmutzig):** Ein echtes Trim-Sheet (mehrere kachelnde Stoffe in einer Textur) kann der Renderer nicht
+  (Wiederholung innerhalb einer Kachel bräuchte UV-Versatz je Material im Shader), und Flecken würden sich auf
+  kachelnden Stoffen sichtbar wiederholen. Deshalb **eine Stoff-Bibliothek plus gebackene Kleidungstexturen**:
+  `gothar-chargen fabrics` (Kern in reinem numpy, `fabrics.py`; Bild-Ein/Ausgabe in Blender) backt je
+  Kleidungsstück eine 512²-Textur aus einer kachelnden Stoffkachel (ambientCG, CC0; Quellen nur in
+  `DATA_ROOT\characters\ambientcg\fabric`) – im UV des Stücks so oft wiederholt, dass die Fadendichte auf allen
+  Stücken gleich ist (Wiederholungen je UV-Einheit = √(3D-Fläche ÷ UV-Fläche) ÷ Kachelgröße in m) – plus
+  **Alterung `wear` 0–1**: verblichen (weniger Kontrast), Flecken (Rauschen), schmutzige, unregelmäßig breite Säume
+  und Nähte entlang der UV-Inselränder. Daten in `tools/chargen/src/gothar_chargen/data/fabrics.toml` (Kachel,
+  Größe, je Textur Teil/Material/Kachel/`wear`/optional `tint`); saubere Figuren (Bürger) später mit kleinerem
+  `wear`. Die Texturen behalten ihre Namen, die Teile ändern sich nicht. Kit-Texturen bleiben neutral grau (die
+  Palette färbt), die Kleidung der Grundkörper getönt wie bisher. Ausgefranste Säume mit Alpha-Test (`MASK`,
+  doppelseitig, nur auf Stücken mit Fransen; von engine bestätigt) folgen als Zusatz.
 - **Budget:** Körper+Kleidung 8–15 k Dreiecke, Kopf 3–5 k (mit Bart bis ~5,6 k), höchstens 20 k je Figur, Stufen
   `_lod1`/`_lod2` (Vertrag §2.2). Lose Teile (Haare, Bärte) werden ohne Randschutz reduziert; nur die Nahtränder von
   Körper und Kopf bleiben in allen Stufen gleich.

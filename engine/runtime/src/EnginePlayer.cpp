@@ -51,6 +51,7 @@ void Engine::initPlayer()
     {
         G7_LOG_WARN("engine", "movement data {}: {} - built-in defaults", path, m_movementData.error());
     }
+    loadFocusSettings(); // data/focus.toml (M8)
 }
 
 void Engine::refreshMovementSettings()
@@ -176,7 +177,8 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
     }
     // (debug_fly switches to the free camera: Engine::setFlyMode, EngineView.cpp)
     // The player camera captures the mouse while the game runs and nothing else wants it.
-    const bool wantMouse = !m_flyMode && !m_paused && allowMouse && !m_debugUiVisible && !m_consoleOpen;
+    const bool wantMouse =
+        !m_flyMode && !m_paused && allowMouse && !m_debugUiVisible && !m_consoleOpen && !m_inventoryOpen;
     if (wantMouse != m_playerMouse && m_window)
     {
         m_playerMouse = wantMouse && m_window->setRelativeMouse(true);
@@ -223,6 +225,10 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     {
         input.jump = m_playerInputOverride->jump && !m_overrideJumped; // once per switching on
         m_overrideJumped = m_playerInputOverride->jump;
+    }
+    if (m_pickup || m_inventoryOpen)
+    {
+        input = {}; // the hero stands while picking something up or looking into his bag (Gothic)
     }
     m_playerInput.mouseTurn = 0.0f; // used up by this step
     m_playerInput.jump = false;

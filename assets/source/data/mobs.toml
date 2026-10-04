@@ -1,0 +1,53 @@
+# Mobs: user slots and clips per mob type (contract characters-pipeline.md §3.1; engine reads it in M8 C).
+# Owned by engine; figuren maintains the slots (welt may propose values, the sizes belong to its models).
+# Axes: Y up, mob origin on the ground, the front of the mob faces +Z. A slot is the foot point of the
+# figure in mob metres (`pos`) and its horizontal view direction (`facing`). Clips live in
+# characters/anims/human/mob.glb (set "mob") – names without the "mob/<type>/" prefix; empty = none.
+# Test sizes: chest 0.9 x 0.6 x 0.6 m, anvil working height 0.8 m, bed 2.0 x 0.9 m (lying surface 0.45 m),
+# door handle 1.0 m.
+version = 1
+
+[mobs.chest]
+clips = "mob/chest"
+enter = "t_open"
+loop = "s_open"
+leave = "t_close"
+extra = { picklock = "s_picklock" }
+[[mobs.chest.slots]]
+name = "front"
+pos = [0.0, 0.0, 0.65]       # 0.35 m in front of the chest (front face at z = 0.3)
+facing = [0.0, 0.0, -1.0]
+
+[mobs.anvil]
+clips = "mob/anvil"
+enter = "t_start"
+loop = "s_work"
+leave = "t_stop"
+[[mobs.anvil.slots]]
+name = "front"
+pos = [0.0, 0.0, 0.6]
+facing = [0.0, 0.0, -1.0]
+
+[mobs.bed]
+clips = "mob/bed"            # t_lie_down / t_stand_up carry root motion onto the bed and back
+enter = "t_lie_down"
+loop = "s_lie"
+leave = "t_stand_up"
+[[mobs.bed.slots]]
+name = "side"
+pos = [0.0, 0.0, 0.75]       # beside the bed (long side faces +Z, depth 0.9 m)
+facing = [0.0, 0.0, -1.0]
+
+[mobs.door]
+clips = "mob/door"           # one clip opens and closes; the door stays as it is between uses
+enter = "t_open"
+loop = ""
+leave = ""
+[[mobs.door.slots]]
+name = "front"
+pos = [0.5, 0.0, 0.6]        # door blade from the hinge (origin) along +X, ~1.0 m wide
+facing = [0.0, 0.0, -1.0]
+[[mobs.door.slots]]
+name = "back"
+pos = [0.5, 0.0, -0.6]
+facing = [0.0, 0.0, 1.0]

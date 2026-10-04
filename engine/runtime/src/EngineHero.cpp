@@ -318,6 +318,33 @@ void Engine::bindHeroFunctions()
                                                {"next_xp", static_cast<i64>(xpForLevel(c.level() + 1))},
                                                {"learn_points", static_cast<i64>(c.learnPoints())}});
              }});
+    vm.bind({"drop_item", "drop_item(item: string, count?: integer)",
+             "Legt `count` (Vorgabe 1) Stück aus dem Inventar des Helden vor ihm auf den Boden; "
+             "Ausgerüstetes wird "
+             "dabei abgelegt.",
+             "Held", [this, text](std::span<const Value> a) -> Result<Value>
+             {
+                 auto item = text(a, 0);
+                 if (!item)
+                 {
+                     return item.error();
+                 }
+                 const i64 count = a.size() > 1 ? a[1].asInteger(1) : 1;
+                 if (count < 1)
+                 {
+                     return Error{"count must be at least 1"};
+                 }
+                 if (auto dropped = dropItem(item.value(), static_cast<u32>(count)); !dropped)
+                 {
+                     return dropped.error();
+                 }
+                 return Value();
+             }});
+    vm.bind({"item_taken",
+             "on(\"item_taken\", fn(item: string, count: integer))",
+             "Der Held hat einen Gegenstand aus der Welt aufgehoben (Aktionstaste auf ein Item im Fokus).",
+             "Ereignisse",
+             {}});
     vm.bind({"level_up",
              "on(\"level_up\", fn(level: integer))",
              "Der Held hat eine neue Stufe erreicht.",

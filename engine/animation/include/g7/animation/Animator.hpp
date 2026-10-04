@@ -100,6 +100,8 @@ public:
     /// Turn of the root bone about +Y during the last update in a root-motion state (radians, positive left).
     [[nodiscard]] f32 rootMotionYaw() const noexcept { return m_rootYaw; }
     [[nodiscard]] std::string_view state() const noexcept;
+    /// Whether the graph has a state of this name (gameplay checks for optional states like "pickup").
+    [[nodiscard]] bool hasState(std::string_view name) const { return findState(name) >= 0; }
     [[nodiscard]] std::string_view previousState() const noexcept;
     [[nodiscard]] f32 fadeWeight() const noexcept; ///< 1 when no cross-fade runs
     /// Speed-matched playback rate of the current state (1 without `rate`).

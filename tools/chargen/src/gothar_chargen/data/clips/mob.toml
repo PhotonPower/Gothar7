@@ -1,0 +1,83 @@
+# Set "mob" -> assets/source/characters/anims/human/mob.glb (Prio B, M8; placeholders, mocap in F4).
+# Clips per mob type mob/<type>/... (contract characters-pipeline.md §3.1, data/mobs.toml): the figure
+# stands on the slot of the mob and faces it (-Z of the mob). Root motion only in bed/t_lie_down and
+# bed/t_stand_up (onto the bed and back: bed centre 0.75 m in front of the slot, lying surface 0.45 m).
+
+set = "mob"
+depends = ["none"]
+
+[sources.ual1]
+file = "AnimationLibrary_Godot_Standard.glb"
+mapping = "quaternius_ual1"
+
+[sources.ual2]
+file = "UAL2_Standard.glb"
+mapping = "quaternius_ual2"
+
+# --- chest ---------------------------------------------------------------------------------------
+
+[[clip]]
+name = "mob/chest/t_open"
+from = "ual2:Chest_Open"
+markers = { open = 18 }
+
+[[clip]]
+name = "mob/chest/t_close"
+reverse = "mob/chest/t_open"
+markers = { close = 23 }
+
+[[clip]]
+name = "mob/chest/s_open"
+keyframe = "hold"
+params = { base = "mob/chest/t_open", frame = 18 }
+
+[[clip]]
+name = "mob/chest/s_picklock"
+from = "ual1:Fixing_Kneeling"
+
+# --- anvil ---------------------------------------------------------------------------------------
+
+[[clip]]
+name = "mob/anvil/s_work"
+from = "ual2:TreeChopping_Loop"
+markers = { hit_anvil = 8, "sound:anvil_hit" = 8 }
+
+[[clip]]
+name = "mob/anvil/t_start"
+blend = ["none/s_idle", "mob/anvil/s_work"]
+frames = 12
+
+[[clip]]
+name = "mob/anvil/t_stop"
+blend = ["mob/anvil/s_work", "none/s_idle"]
+frames = 12
+
+# --- bed -----------------------------------------------------------------------------------------
+
+[[clip]]
+name = "mob/bed/t_getup_source"
+from = "ual2:LayToIdle"
+helper = true
+
+[[clip]]
+name = "mob/bed/t_stand_up"
+keyframe = "keyposes"
+params = { base = "mob/bed/t_getup_source", keys = [[0, "bed"], [12, "bed"], [45, "rest"]], poses = { bed = { move = { root = [0.0, -0.75, 0.45] } } } }
+markers = { stand = 43 }
+
+[[clip]]
+name = "mob/bed/t_lie_down"
+reverse = "mob/bed/t_stand_up"
+markers = { lie = 43 }
+
+[[clip]]
+name = "mob/bed/s_lie"
+keyframe = "hold"
+params = { base = "mob/bed/t_getup_source", frame = 0 }
+
+# --- door ----------------------------------------------------------------------------------------
+
+[[clip]]
+name = "mob/door/t_open"
+from = "ual1:Interact"
+markers = { open = 10 }

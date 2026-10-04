@@ -17,14 +17,15 @@ namespace
 {
 using Json = nlohmann::ordered_json; // keeps key order: stable output
 
-constexpr std::array<std::pair<VobType, std::string_view>, 8> kVobTypes = {{{VobType::Empty, "empty"},
+constexpr std::array<std::pair<VobType, std::string_view>, 9> kVobTypes = {{{VobType::Empty, "empty"},
                                                                             {VobType::Mesh, "mesh"},
                                                                             {VobType::Light, "light"},
                                                                             {VobType::Start, "start"},
                                                                             {VobType::Sound, "sound"},
                                                                             {VobType::Trigger, "trigger"},
                                                                             {VobType::Mob, "mob"},
-                                                                            {VobType::Water, "water"}}};
+                                                                            {VobType::Water, "water"},
+                                                                            {VobType::Item, "item"}}};
 constexpr std::array<std::pair<SoundEmitter::Mode, std::string_view>, 2> kSoundModes = {
     {{SoundEmitter::Mode::Loop, "loop"}, {SoundEmitter::Mode::Random, "random"}}};
 constexpr std::array<std::pair<TriggerVolume::Filter, std::string_view>, 3> kTriggerFilters = {
@@ -461,6 +462,26 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             return definition.error();
         }
         vob.mob.definition = std::move(definition).value();
+    }
+    if (vob.type == VobType::Item)
+    {
+        const Json item = componentOf(v, "item");
+        const std::string at = std::format("{}.components.item", where);
+        auto instance = readText(r, item, "instance", at, true);
+        if (!instance)
+        {
+            return instance.error();
+        }
+        vob.item.instance = std::move(instance).value();
+        if (item.contains("count"))
+        {
+            if (!item["count"].is_number_unsigned() || item["count"].get<u64>() == 0 ||
+                item["count"].get<u64>() > 1'000'000)
+            {
+                return r.error(at + ".count", "must be a whole number from 1 to 1000000");
+            }
+            vob.item.count = static_cast<u32>(item["count"].get<u64>());
+        }
     }
     return vob;
 }
@@ -1024,6 +1045,15 @@ std::string writeWorldFile(const WorldFile& world)
         if (vob->type == VobType::Mob)
         {
             v["components"]["mob"] = Json{{"definition", vob->mob.definition}};
+        }
+        if (vob->type == VobType::Item)
+        {
+            Json item = Json{{"instance", vob->item.instance}};
+            if (vob->item.count != 1)
+            {
+                item["count"] = vob->item.count;
+            }
+            v["components"]["item"] = std::move(item);
         }
         if (vob->type == VobType::Water)
         {
