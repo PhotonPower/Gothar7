@@ -380,6 +380,18 @@ def _site_dirs(args: argparse.Namespace, site_name: str) -> tuple[Path, Path]:
     return assets / "worlds" / site_name, config.parent / "data" / site_name
 
 
+def _cmd_mobs(args: argparse.Namespace, out: TextIO) -> int:
+    """Mob models (M8): chest, anvil, bed, door into assets/source/mobs (not tied to a site)."""
+    from gothar_worldgen.mobs import write_mobs
+
+    config = args.config_dir or default_config_dir()
+    folder = (args.assets_dir or config.parents[2] / "assets" / "source") / "mobs"
+    for line in write_mobs(folder):
+        print(f"  {line}", file=out)
+    print(f"  {folder}", file=out)
+    return EXIT_OK
+
+
 def _overrides(data_dir: Path) -> tuple[frozenset[str], frozenset[str]]:
     """(locked ids, ids with keep = false) from the site's override files."""
     all_ = load_all(data_dir / "buildings")
@@ -1043,6 +1055,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_schloss)
+
+    p = sub.add_parser("mobs", help="mob models chest, anvil, bed, door (M8 contract)")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_mobs)
 
     p = sub.add_parser("marktbrunnen", help="market fountain from the owner's model (W6)")
     p.add_argument("site")
