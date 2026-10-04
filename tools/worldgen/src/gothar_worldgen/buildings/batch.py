@@ -218,6 +218,7 @@ def generate(
     overrides: dict[str, Any] | None = None,
     replace: Callable[[dict[str, Any]], list[dict[str, Any]]] | None = None,
     wall: Any = None,  # noqa: ANN401  medieval.WallContext: wall houses on the city wall line (W6)
+    interiors: dict[str, dict[str, Any]] | None = None,  # W7: enterable houses (id -> {"use"})
 ) -> BatchResult:
     """Writes ``<id>.glb`` (old town) and ``cell_<i>_<j>.glb`` (surroundings, area "all")."""
     if area not in ("core", "all"):
@@ -320,7 +321,8 @@ def generate(
                                 hearth=bid in hearths, wall=wall,
                                 ground_at=grid.height_at if grid is not None else None,
                                 door_free=neighbours.free_for(bid),
-                                door_reach=neighbours.reach_for(bid))  # fmt: skip
+                                door_reach=neighbours.reach_for(bid),
+                                interior=(interiors or {}).get(bid))  # fmt: skip
             if house.triangles > budget and replace is not None and "derivedFrom" not in b:
                 houses = replace(b)  # rueckbau: smaller half-timbered houses instead
                 if houses:
@@ -396,6 +398,8 @@ def generate(
                 entry["dgmMinY"], entry["dgmMaxY"] = round(dgm[0], 3), round(dgm[1], 3)
             if mode == "medieval" and house.doors:  # where the doors are and their floor (E1)
                 entry["doors"] = [list(d) for d in house.doors]
+            if mode == "medieval" and house.room:  # W7: the room of an enterable house
+                entry["interior"] = house.room
             entries.append(entry)
         else:
             cells[(math.floor(c.x / CELL_M), math.floor(c.y / CELL_M))].append(

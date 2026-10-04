@@ -320,3 +320,31 @@ def routine_table_md(places: dict[str, Any]) -> str:
         rows.append(f"| {h['short']} | {use} | {h.get('name') or '–'} | {h['residents']} | {wp} | "
                     f"{fps} | {mobs} | {'ja' if h['inside'] else ''} |")  # fmt: skip
     return "\n".join(rows) + "\n"
+
+
+DOOR_IN_REVEAL_M = 0.06  # the door blade stands this far inside the room's wall face
+
+
+def door_mobs(index: dict[str, Any], opened: bool) -> list[dict[str, Any]]:
+    """A door mob in the opening of every enterable house (index ``interior``): hinge at one
+    jamb, the blade (``mobs/door.glb``, along +X) across the opening, its front (+Z) facing out.
+    ``opened``: placed swung 90 degrees into the room, until NPCs open doors (W7, koordinator)."""
+    out = []
+    for e in index.get("entries", []):
+        room = e.get("interior")
+        if not room:
+            continue
+        d = room["door"]
+        nx, nz = d["normal"]
+        a = math.atan2(nx, nz)
+        xdir = (math.cos(a), -math.sin(a))  # the model's +X in the world for that turn
+        f, t = d["from"], d["to"]
+        hinge = f if (t[0] - f[0]) * xdir[0] + (t[1] - f[1]) * xdir[1] > 0 else t
+        hx, hz = hinge[0] + nx * DOOR_IN_REVEAL_M, hinge[1] + nz * DOOR_IN_REVEAL_M
+        turn = a + math.pi / 2 if opened else a
+        name = f"MOB_LEO_TUER_{name_part(short_id(e['id']))}"
+        out.append({"key": f"use:door:{e['id']}", "name": name, "pos": [hx, d["floor"], hz],
+                    "rot": [0.0, round(math.sin(turn / 2), 5) + 0.0, 0.0,
+                            round(math.cos(turn / 2), 5) + 0.0],
+                    "mesh": "mobs/door.glb", "definition": "door"})  # fmt: skip
+    return out

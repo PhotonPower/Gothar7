@@ -906,6 +906,24 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   als Hindernisse.
 - Übergabe an engine und figuren: Tabelle der Routinen-Orte in `docs/design/leonberg-routinen-orte.md`.
 
+### W7 Begehbare Häuser (C1: Raum, Tür, Kollision; Plan freigegeben 2026-10-04)
+- Häuser mit `inside: true` in `uses.json` (Leonberg: Gasthaus ZhE, Schmiede ZnP, Krämer Zkx, Wohnhäuser Zl2-T2 und
+  ZjV) bekommen im Baukörper mit der Tür das **Erdgeschoss als einen Raum** (`medieval._room`, nur lod0; lod1/lod2
+  bleiben außen geschlossen): Grundriss um `interior.wallM` (0,3 m) eingerückt, Innenwände verputzt, Boden aus
+  Holz bzw. Stein (`interior.stoneFloors`: Schmiede, Gasthaus), Decke `interior.ceilingM` unter dem 1. Obergeschoss
+  mit Balken quer zur kurzen Seite. Materialien aus der vorhandenen Palette (höchstens 16, die Engine bündelt nach
+  Material): Wände `plaster_white`, Boden/Decke `timber_dark`, Steinboden `stone`. Mindestgröße 8 m², lichte Höhe
+  2,4 m, sonst Hinweis „room skipped“.
+- **Tür:** echte Öffnung mit Laibung über die ganze Wandstärke (keine Füllung); `assemble` setzt einen **Tür-Mob**
+  (`mobs/door.glb`, Name `MOB_LEO_TUER_<KÜRZEL>`) an die Angel in der Laibung, Vorderseite nach außen.
+  `interior.doorsOpen` (Vorgabe `true`, Entscheidung Koordinator): offen, d. h. 90° in den Raum gedreht, bis die
+  Engine NPCs Türen öffnen lässt; dann `false`.
+- **Kollision:** der Raum samt Türdurchgang wird aus dem Hüllkörper geschnitten (wie bei Durchgängen: Körper über
+  der Decke, Wandprismen daneben), dazu eine feste Bodenplatte, wenn der Boden über der Basis liegt.
+- **Budget:** Innenraum-Dreiecke (Rollen `room_*`) zählen nicht gegen das Hausbudget; außen bleibt das Fachwerk.
+- Der Index-Eintrag bekommt `interior` (Boden, Decke, Raum-Ring, Tür mit Angeln, Achse, Normale, Maßen); daraus
+  baut C2 Innen-Mobs, Möbel, Freepoints, Licht, Wegnetz und `trigger.owner`.
+
 ### Vorhandene Werkzeuge (kein Eigenbau)
 Blender (+ Add-on BlenderGIS zum Gegenprüfen), COLMAP / RealityScan / Postshot (Photogrammetrie bzw.
 Gaussian Splatting für 3D-Referenzen einzelner Objekte wie Brunnen, Treppen, Mauerreste),
