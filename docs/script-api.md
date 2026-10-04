@@ -240,6 +240,9 @@ Reiht ein: dem NPC `target` folgen (Rudel, Jagd) – auf etwa `distance` Meter (
 ### `npc_follow_player(npc: string, seconds?: number, distance?: number)`
 Reiht ein: dem Spieler `seconds` Sekunden lang (Vorgabe 10) auf etwa `distance` Meter (Vorgabe 2) folgen und ihn ansehen (Drohen, Begleiten).
 
+### `npc_give_item(npc: string, item: string, count?: integer)`
+Gibt dem NPC Gegenstände (Übergaben im Dialog: der Held verliert sie mit remove_item).
+
 ### `npc_goto(npc: string, target: string, run?: boolean)`
 Reiht ein: Der NPC geht (oder rennt) über das Wegnetz zu einem Wegpunkt oder Freepoint (Name ohne Rücksicht auf Groß- und Kleinschreibung). Ankunft: Ereignis `npc_arrived`.
 
@@ -275,6 +278,9 @@ Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zusta
 
 ### `npc_stop(npc: string)`
 Reiht ein: die laufende Tagesablauf-Animation beenden (_out).
+
+### `npc_take_item(npc: string, item: string, count?: integer) -> boolean`
+Nimmt dem NPC Gegenstände weg; `false`, wenn er weniger hat.
 
 ### `npc_turn(npc: string, point: string)`
 Reiht ein: in die Richtung (`dir`) eines Wegpunkts oder Freepoints drehen.

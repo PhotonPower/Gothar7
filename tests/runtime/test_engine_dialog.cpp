@@ -237,7 +237,7 @@ TEST_CASE("Engine diary: quests with entries by status, notes by topic, chapters
     ui::DiaryPanel diary = engine.diaryPanelData();
     CHECK(diary.chapter == "Kapitel 1");
     REQUIRE(diary.running.size() == 1);
-    CHECK(diary.running[0].name == "Arbeit auf dem Feld");
+    CHECK(diary.running[0].name == "Arbeit im Lager");
     REQUIRE(diary.running[0].entries.size() == 2);
     CHECK(diary.running[0].entries[0] ==
           "Tag 1, 12:00: Die Torwache meint, die Bäuerin am Feld brauche Hilfe.");

@@ -226,6 +226,10 @@ ihrem Bereich binnen 30 Ticks (E).
 
 **DoD / Meilenstein B (Vertical Slice):** Ein kleines Lager mit 5–10 NPCs mit Routinen, 3 Quests
 (Botengang, Beschaffung, Konflikt), Handel, ein Lehrer, Truhen, Tag/Nacht – durchspielbar.
+*Inhalt* (Platzhalter-Geschichte „Bauern und Wache“, eigene Texte, Teil E): Testlager mit Torwache, Bäuerin, Holzfäller
+(Lehrer: Stärke), altem Mann (Händler), Tieren; Aufträge Botengang (Essen für den Holzfäller), Beschaffung (Grobes
+Schwert für die Wache, am Amboss geschmiedet), Konflikt (der Ring der Bäuerin: abkaufen, von der Wache holen lassen
+oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_engine_m10_scenario.cpp`.
 
 ## M11 – Kampf
 - [ ] Waffenmodi (Faust, Einhand, Zweihand, Bogen, Armbrust), Ziehen/Wegstecken
