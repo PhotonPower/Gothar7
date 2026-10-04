@@ -358,3 +358,32 @@ on('world_loaded', function() calls.events = calls.events + 1 end)
     CHECK(vm.runString("calls.world").value().asString() == "cave");
     CHECK(vm.emit("nobody_listens") == 0);
 }
+
+TEST_CASE("Script functions handed to the engine while a handler or timer runs")
+{
+    // welt 2026-10-04: a timer created in an event handler crashed when it fired. The handler being called
+    // was an element of the function table, which grew (and moved) while it ran.
+    Files files;
+    files.files["startup.lua"] = R"(
+fired = 0
+on('world_loaded', function(world)
+    for i = 1, 100 do -- enough to make the table grow
+        after(1.0, function() fired = fired + 1 end)
+    end
+end)
+every(0.5, function()
+    for i = 1, 100 do
+        after(0.25, function() fired = fired + 1000 end)
+    end
+end)
+)";
+    ScriptVm vm = makeVm(files);
+    vm.loadAll();
+    REQUIRE(vm.errors().empty());
+    const std::vector<Value> args = {"camp"};
+    CHECK(vm.emit("world_loaded", args) == 1);
+    vm.tick(0.5);  // the repeating timer adds 100 one-shots
+    vm.tick(0.25); // ... which fire
+    vm.tick(0.25); // the handler's 100 fire; the repeating timer adds another 100
+    CHECK(vm.runString("fired").value().asInteger() == 100 * 1000 + 100);
+}
