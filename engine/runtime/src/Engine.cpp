@@ -1192,6 +1192,7 @@ void Engine::unloadWorld()
     m_instances.clear();
     m_worldItems.clear(); // items lying around belong to the world
     m_itemModels.clear();
+    m_itemRest.clear();
     m_scriptModels.clear();
     m_focus.reset();
     m_pickup.reset();

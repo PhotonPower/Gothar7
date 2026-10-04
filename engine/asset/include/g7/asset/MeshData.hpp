@@ -82,6 +82,9 @@ struct CollisionPart
 
 /// Name prefixes of collision nodes (asset.md).
 inline constexpr std::string_view kCollisionPrefix = "COL_";
+/// Nodes named "<name>_lod<n>" with n >= 1 are coarser levels of detail; until mesh LOD for vobs exists (M17)
+/// static models use level 0 only (render.md, leonberg-pipeline.md "Namensregel _lod1").
+[[nodiscard]] bool isCoarserLod(std::string_view nodeName) noexcept;
 inline constexpr std::string_view kCollisionBoxPrefix = "COL_BOX_";
 inline constexpr std::string_view kCollisionHullPrefix = "COL_HULL_";
 
@@ -100,7 +103,8 @@ struct MeshData
 
 /// Loads the default scene of a glTF 2.0 file (.gltf with external or data: buffers, or .glb)
 /// as one static mesh (ADR 0013). Coordinates need no conversion (+Y up, right-handed, metres).
-/// Only triangle primitives are used; others are skipped with a warning.
+/// Only triangle primitives are used; others are skipped with a warning. Nodes of coarser LODs (`_lod1` ...)
+/// are left out.
 [[nodiscard]] Result<MeshData> loadGltf(const fs::Path& path);
 /// Same, from memory; external buffers are resolved relative to `baseDirectory`. An empty
 /// `baseDirectory` allows only self-contained data (GLB chunk, data: URIs); external buffers fail.
