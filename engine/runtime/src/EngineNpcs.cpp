@@ -145,7 +145,7 @@ std::optional<u32> Engine::npcByInstance(std::string_view instance) const noexce
 {
     for (const auto& c : m_creatures)
     {
-        if (c->character && c->species == instance)
+        if (c->character && c->species == instance) // "mon_wolf#2" names the second one
         {
             return c->id;
         }

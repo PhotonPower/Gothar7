@@ -122,14 +122,17 @@ struct Creature
             Stop,
             Wait,
             Say,
-            Follow, ///< the player, for `value` seconds, at about `distance`
-            Flee,   ///< away from the player, running, for `value` seconds
+            Follow,    ///< the player, for `value` seconds, at about `distance`
+            Flee,      ///< away from `text` (the player or an NPC), running, for `value` seconds
+            GoToPoint, ///< to `point`
+            Roam,      ///< to a random point within `value` metres of the way point `text`
         };
         Kind kind = Kind::Wait;
         std::string text;    ///< target, ambient, freepoint type, words
         std::string item;    ///< Play: the item taken into the hand (broom, mug)
         f32 value = 0.0f;    ///< seconds, radius
         f32 distance = 1.5f; ///< GoTo/Follow the player: how near
+        Vec3 point{0.0f};    ///< GoToPoint
         bool run = false;
     };
     std::deque<Command> commands;

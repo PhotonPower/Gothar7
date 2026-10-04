@@ -591,6 +591,8 @@ struct ScriptVm::Impl
 
     const Instance* find(std::string_view kind, std::string_view name) const
     {
+        // "mon_wolf#2": the second NPC of the instance mon_wolf in the world (M9, packs) - same instance.
+        name = name.substr(0, name.find('#'));
         const auto it = std::find_if(instances.begin(), instances.end(),
                                      [&](const Instance& i) { return i.kind == kind && i.name == name; });
         return it == instances.end() ? nullptr : &*it;

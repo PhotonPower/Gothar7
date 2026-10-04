@@ -110,9 +110,32 @@ Routine "rtn_farmer_woman" {
 - **Warnungen** vor dem Angriff: Abschnitt 4 (zweimal, dann `npc_would_attack`).
 - `npc_shout(npc, text)` ruft sofort, ohne auf die Befehlsliste zu warten (Weglaufen).
 
-## 6. Monster
-- Revier (Mittelpunkt + Radius), Rudel (Anführer + Mitglieder), Routinen Fressen/Schlafen/Umherstreifen,
-  Drohen vor Angriff, Fliehen bei < X % Leben oder vor stärkeren Arten, Beutetier/Raubtier-Beziehungen.
+## 6. Monster (M9 Teil D, umgesetzt) – Inhalt `ai/monsters.lua`, Werte `data/creatures.lua`
+- **Tiere sind Npcs** (wie Gothics Monster): `species = "wolf" | "keiler" | "laufvogel"` wählt Figur und Graph
+  (`characters/monsters/<art>`), die Kapsel steht in `assets/source/data/creatures.toml` (Wolf 0,35 / 0,9 m, Keiler
+  0,45 / 1,0 m, Laufvogel 0,4 / 1,8 m). Tagesablauf, Zustände, Wahrnehmung (`senses.angle = 220`) wie bei Menschen.
+- **Namen:** Mehrere NPCs derselben Instanz heißen `mon_wolf`, `mon_wolf#2` …; `insert_npc` gibt den Namen zurück,
+  Instanz-Abfragen ignorieren das `#n`.
+- **Revier:** Mitte = Wegpunkt des Tagesablaufs, Radius `territory`; `npc_roam(npc, mitte, radius)` geht zu einem
+  zufälligen, von der Mitte gerade erreichbaren Punkt. Zwischendurch fressen (`eat_chance`).
+- **Tagesablauf** (Entscheidung Projektinhaber): Wölfe streifen nachts und schlafen tags, Keiler und Laufvogel
+  umgekehrt (`routines/animals.lua`).
+- **Rudel:** `insert_pack(instanz, anzahl, ort)` – das erste Tier führt, die anderen folgen ihm
+  (`npc_follow_npc`); droht eines, droht das ganze Rudel.
+- **Spieler** (Entscheidung Projektinhaber, wie Gothic): Wolf und Keiler drohen ab 12 m (`threaten_distance`) 3 s lang
+  (Knurren bzw. Scharren, Clip `threaten`), dann `npc_would_attack(npc, "animal")` und Angriff – bis M11 verfolgen
+  sie den Spieler 20 s. Der Laufvogel ist neutral und greift erst unter 4 m an (`attack_distance`). Grundlage ist das
+  Ereignis `observe_player(npc, abstand)` bei jedem Blick, solange der NPC den Spieler sieht. Schlafende nehmen nichts
+  wahr.
+- **Beute und Räuber:** einmal je Sekunde: ein Wolf jagt einen Laufvogel in 15 m (`npc_follow_npc`, rennend), ein
+  Laufvogel flieht vor einem Wolf in 12 m (`npc_flee(npc, 8, wolf)`: 10 m gerade weg, sonst 45° seitlich, sonst zum
+  fernsten Wegpunkt). Mit den Platzhalter-Clips ist der Wolf (1,3 m/s) schneller als der Laufvogel (1,04 m/s).
+- Fliehen bei wenig Leben kommt mit dem Kampf (M11).
+- **Testlager:** Wegpunkte `WP_WOLF_DEN` (Wolfsbau im Westen), `WP_MEADOW_NORTH` (Keiler), `WP_MEADOW_SOUTH`
+  (Laufvogel), mit Wegen zum Lager. Einsetzen z. B. `insert_pack('mon_wolf', 3, 'wp_wolf_den')`,
+  `insert_animal('mon_laufvogel')`.
+- **Einsetzen auf dem Boden:** `insert_npc` stellt auf den Boden unter bzw. über dem Wegpunkt, `insert` vor dem
+  Spieler sucht den Boden notfalls von oben (Hang; welt).
 
 ## Geplante API
 ```cpp

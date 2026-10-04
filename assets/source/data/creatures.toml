@@ -1,0 +1,19 @@
+# Kapseln der Tiere (M9 Teil D): Größe der Kollision, mit der sie gehen (physics.md; Menschen 0,3 / 1,8 m).
+# Maße passend zu den Platzhalter-Figuren von figuren (characters-pipeline.md §7.1).
+[wolf]
+radius = 0.35
+height = 0.9
+step_height = 0.35
+max_slope_degrees = 50.0
+
+[keiler]
+radius = 0.45
+height = 1.0
+step_height = 0.35
+max_slope_degrees = 45.0
+
+[laufvogel]
+radius = 0.4
+height = 1.8
+step_height = 0.4
+max_slope_degrees = 45.0

@@ -8,6 +8,11 @@ local function busy(npc)
     return s == "zs_sleep" or s == "zs_warn_weapon" or s == "zs_threaten" or s == "zs_intruder" or s == "zs_flee"
 end
 
+--- Tiere reagieren nach ai/monsters.lua.
+local function human(npc)
+    return animal(npc) == nil
+end
+
 local function guild_of(npc)
     return instance("Npc", npc).guild
 end
@@ -112,7 +117,7 @@ State "zs_flee" {
 }
 
 on("assess_call", function(helper, caller)
-    if busy(helper) then
+    if not human(helper) or busy(helper) then
         return
     end
     set_temp_attitude(helper, "angry")
@@ -122,14 +127,14 @@ end)
 
 on("assess_player", function(npc, distance)
     -- Feindlich Gesinnte greifen auf kurze Entfernung an (bis M11: drohen).
-    if npc_attitude(npc) == "hostile" and distance <= 10 and not busy(npc) then
+    if human(npc) and npc_attitude(npc) == "hostile" and distance <= 10 and not busy(npc) then
         npc_say(npc, Shouts.hostile)
         would_attack(npc, "hostile")
     end
 end)
 
 on("assess_fighter", function(npc, distance, what)
-    if busy(npc) then
+    if not human(npc) or busy(npc) then
         return
     end
     if coward(npc) then
@@ -145,6 +150,9 @@ on("assess_fighter", function(npc, distance, what)
 end)
 
 on("assess_enter_room", function(npc, owner, area)
+    if not human(npc) then
+        return
+    end
     set_temp_attitude(npc, "angry")
     if npc_state(npc).state ~= "zs_intruder" then
         npc_start_state(npc, "zs_intruder", area)
@@ -152,19 +160,22 @@ on("assess_enter_room", function(npc, owner, area)
 end)
 
 on("assess_theft", function(npc, owner, item)
+    if not human(npc) then
+        return
+    end
     npc_say(npc, Shouts.thief)
     would_attack(npc, "theft")
 end)
 
 on("assess_use_mob", function(npc, owner, mob)
-    if npc == owner or is_guard(npc) then
+    if human(npc) and (npc == owner or is_guard(npc)) then
         npc_say(npc, Shouts.foreign_mob)
         would_attack(npc, "mob")
     end
 end)
 
 on("assess_noise", function(npc, kind)
-    if not busy(npc) and npc_state(npc).state ~= "zs_look_around" then
+    if human(npc) and not busy(npc) and npc_state(npc).state ~= "zs_look_around" then
         npc_start_state(npc, "zs_look_around")
     end
 end)
