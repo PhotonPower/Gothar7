@@ -23,7 +23,7 @@ Npc "npc_leo_baker" {
     name = "Gertrud die Bäckerin",
     guild = "citizen",
     level = 3,
-    figure_set = "citizen",
+    figure = "characters/figures/craftsman_f_1.figure.toml", -- a set mixes men and women: fixed
     inventory = { it_gulden = 80, it_bread = 12, it_apple = 6 },
     routine = "rtn_leo_baker",
 }
