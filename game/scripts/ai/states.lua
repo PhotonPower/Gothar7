@@ -98,3 +98,38 @@ State "zs_look_around" {
         end
     end,
 }
+
+-- Tätigkeiten an welts Freepoints in Leonberg (Leonberg lebt). Jeweils: zum Ort, zum nächsten freien Freepoint
+-- des Typs, die Tagesablauf-Animation; ohne freien Platz stehen sie am Wegpunkt.
+local function at_freepoint(kind, ambient, item)
+    return {
+        begin = function(npc, at)
+            npc_goto(npc, at)
+            npc_goto_freepoint(npc, kind, 15)
+            npc_play(npc, ambient, item)
+        end,
+        loop = retry,
+    }
+end
+
+State "zs_repair" (at_freepoint("REPAIR", "repair_kneel"))   -- ausbessern, kniend (Schmied, Handwerker)
+State "zs_harvest" (at_freepoint("HARVEST", "harvest"))      -- ernten (Bauer)
+State "zs_smalltalk" (at_freepoint("SMALLTALK", "talk_a"))   -- plaudern
+State "zs_drink" (at_freepoint("DRINK", "drink_mug", "it_mug")) -- aus dem Krug trinken
+State "zs_lean" (at_freepoint("LEAN", "lean_wall"))          -- an der Wand lehnen (abends, nachts vor dem Haus)
+State "zs_sit" (at_freepoint("SIT", "sit_ground"))           -- sitzen (bis M11 am Boden neben der Bank)
+
+--- Am Laden stehen und sich ab und zu umsehen (Händler).
+State "zs_stand_shop" {
+    begin = function(npc, at)
+        npc_goto(npc, at)
+        npc_goto_freepoint(npc, "STAND", 15)
+    end,
+    loop = function(npc, seconds)
+        if math.random() < 0.05 then
+            npc_play(npc, "idle_look")
+            npc_wait(npc, 3)
+            npc_stop(npc)
+        end
+    end,
+}

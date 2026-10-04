@@ -28,6 +28,7 @@ set_tests_properties(platform runtime PROPERTIES ENVIRONMENT "SDL_VIDEO_DRIVER=o
 target_compile_definitions(g7_tests_platform PRIVATE G7_GAME_CONFIG_DIR="${CMAKE_SOURCE_DIR}/game/config")
 # test_engine_input.cpp drives the engine with synthetic SDL events.
 target_link_libraries(g7_tests_runtime PRIVATE SDL3::SDL3)
+target_compile_definitions(g7_tests_runtime PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
 
 g7_add_test_suite(render)
 g7_add_test_suite(physics)

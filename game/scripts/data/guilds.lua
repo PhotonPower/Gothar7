@@ -27,3 +27,8 @@ end
 Guilds.wolf = { name = "Wölfe" }
 Guilds.keiler = { name = "Keiler" }
 Guilds.laufvogel = { name = "Laufvögel" }
+
+-- Bürger der Stadt (Leonberg lebt): den Wachen und Bauern freundlich gesinnt.
+Guilds.citizen = { name = "Bürger" }
+Attitudes.citizen = { guard = "friendly", farmer = "friendly" }
+Attitudes.guard.citizen = "friendly"
