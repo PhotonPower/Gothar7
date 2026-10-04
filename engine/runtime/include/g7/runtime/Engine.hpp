@@ -628,6 +628,7 @@ private:
     void runCommands(Creature& c, f32 seconds);
     bool startCommand(Creature& c);
     void releaseFreepoint(Creature& c);
+    void npcSays(const Creature& c, std::string_view text); ///< log, npc_said, shown near the player
     /// item_to_hand / item_from_hand of an NPC's animation: its hand item appears or goes.
     void handEvent(Creature& c, std::string_view event);
     [[nodiscard]] Creature* npcNamed(std::string_view instance) noexcept;
@@ -941,7 +942,7 @@ private:
     u8 m_weaponMode = 0;
     bool m_drawWeaponRequested = false;
     f32 m_runNoiseTimer = 0.0f;
-    u64 m_routineMinute = ~0ull; // the game minute routines were last checked
+    u64 m_routineMinute = ~0ull;      // the game minute routines were last checked
     f32 m_simulationDistance = 80.0f; // [ai] simulation_distance: AI LOD
     std::vector<WorldItem> m_worldItems;
     std::unordered_map<std::string, const LoadedModel*> m_itemModels; // by Item instance; models in m_models

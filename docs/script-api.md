@@ -172,6 +172,9 @@ Setzt ein Npc an einen Wegpunkt oder Freepoint (ohne `at`: an den Ort des passen
 ### `npc_clear(npc: string)`
 Leert die Befehlsliste des NPCs (er bleibt, wo er ist).
 
+### `npc_flee(npc: string, seconds?: number)`
+Reiht ein: `seconds` Sekunden lang (Vorgabe 8) vor dem Spieler weglaufen – zum Wegpunkt im Umkreis von 30 m, der am weitesten von ihm weg ist, alle 2 s neu gewählt.
+
 ### `npc_follow_player(npc: string, seconds?: number, distance?: number)`
 Reiht ein: dem Spieler `seconds` Sekunden lang (Vorgabe 10) auf etwa `distance` Meter (Vorgabe 2) folgen und ihn ansehen (Drohen, Begleiten).
 
@@ -189,6 +192,9 @@ Reiht ein: eine Tagesablauf-Animation (`"sit_ground"`, `"guard"` ... – Zustän
 
 ### `npc_say(npc: string, text: string)`
 Reiht ein: einen Satz sagen (bis zu den Dialogen in M10 eine Einblendung in der Nähe des Helden; Ereignis `npc_said`).
+
+### `npc_shout(npc: string, text: string)`
+Ruft sofort (ohne Warteschlange, z. B. beim Weglaufen); sonst wie npc_say.
 
 ### `npc_start_state(npc: string, state: string, at?: string)`
 Unterbricht: beendet den laufenden Zustand (finish) und startet einen anderen. Endet er ("done"), greift wieder der Tagesablauf.
@@ -224,6 +230,9 @@ Abstand des NPCs zum Spieler in Metern.
 
 ### `npc_sees_player(npc: string) -> boolean`
 Ob der NPC den Spieler gerade sieht (Sichtkegel, Reichweite, freie Sicht).
+
+### `npcs_near(npc: string, radius: number) -> {{npc, guild, distance}, ...}`
+Die anderen simulierten NPCs im Umkreis des NPCs, nach Abstand sortiert (Hilferufe, Gruppen).
 
 ### `player_inside(area: string) -> boolean`
 Ob der Spieler im Trigger `area` (Vob-Name, z. B. ein privater Bereich) steht.

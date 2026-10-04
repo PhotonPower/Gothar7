@@ -298,6 +298,36 @@ void Engine::bindPerceptionFunctions()
                  }
                  return Value(static_cast<f64>(glm::length(creature(*id)->position - m_player.feet())));
              }});
+    vm.bind({"npcs_near", "npcs_near(npc: string, radius: number) -> {{npc, guild, distance}, ...}",
+             "Die anderen simulierten NPCs im Umkreis des NPCs, nach Abstand sortiert (Hilferufe, Gruppen).",
+             "Wahrnehmung", [this](std::span<const Value> a) -> Result<Value>
+             {
+                 const auto id = a.empty() ? std::nullopt : npcByInstance(a[0].asString());
+                 if (!id || a.size() < 2 || !a[1].isNumber())
+                 {
+                     return Error{"expects (npc: string, radius: number) for an NPC in this world"};
+                 }
+                 const Creature& self = *creature(*id);
+                 const f32 radius = static_cast<f32>(a[1].asNumber());
+                 std::vector<std::pair<f32, const Creature*>> near;
+                 for (const auto& owned : m_creatures)
+                 {
+                     const f32 d = glm::length(owned->position - self.position);
+                     if (owned.get() != &self && owned->character && owned->simulated && d <= radius)
+                     {
+                         near.emplace_back(d, owned.get());
+                     }
+                 }
+                 std::ranges::sort(near, {}, &std::pair<f32, const Creature*>::first);
+                 std::vector<Value> list;
+                 for (const auto& [d, c] : near)
+                 {
+                     list.push_back(script::makeTable({}, {{"npc", c->species},
+                                                           {"guild", c->character->guild()},
+                                                           {"distance", static_cast<f64>(d)}}));
+                 }
+                 return script::makeTable(std::move(list), {});
+             }});
     vm.bind(
         {"player_weapon", "player_weapon() -> string",
          "Was der Held gezogen hat: `\"none\"`, `\"weapon\"` (Nahkampfwaffe) oder `\"fists\"`.",

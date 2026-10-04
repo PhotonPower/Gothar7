@@ -123,6 +123,7 @@ struct Creature
             Wait,
             Say,
             Follow, ///< the player, for `value` seconds, at about `distance`
+            Flee,   ///< away from the player, running, for `value` seconds
         };
         Kind kind = Kind::Wait;
         std::string text;    ///< target, ambient, freepoint type, words

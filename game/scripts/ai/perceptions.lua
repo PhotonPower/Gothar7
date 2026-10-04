@@ -5,16 +5,42 @@
 --- Ob der NPC gerade auf etwas anderes reagiert oder nicht wahrnehmen kann (schläft).
 local function busy(npc)
     local s = npc_state(npc).state
-    return s == "zs_sleep" or s == "zs_warn_weapon" or s == "zs_threaten" or s == "zs_intruder"
+    return s == "zs_sleep" or s == "zs_warn_weapon" or s == "zs_threaten" or s == "zs_intruder" or s == "zs_flee"
+end
+
+local function guild_of(npc)
+    return instance("Npc", npc).guild
 end
 
 local function is_guard(npc)
-    return instance("Npc", npc).guild == "guard"
+    return guild_of(npc) == "guard"
 end
 
---- Würde angreifen: melden und drohen (Kampf ab M11).
+--- Wer bei Gefahr wegläuft statt mitzumachen: Bauern und Ausgestoßene niedriger Stufe (C2).
+local function coward(npc)
+    local n = instance("Npc", npc)
+    return (n.guild == "farmer" or n.guild == "outcast") and (n.level or 0) <= 3
+end
+
+--- Ruft Kameraden in Hörweite: wessen Gilde der eigenen freundlich gesinnt ist, hilft (assess_call);
+--- Feiglinge in der Nähe laufen weg.
+local function alarm(npc)
+    for _, near in ipairs(npcs_near(npc, 15)) do
+        if not busy(near.npc) then
+            if coward(near.npc) and near.distance <= 10 then
+                npc_start_state(near.npc, "zs_flee")
+            elseif attitude(near.guild, guild_of(npc)) == "friendly" then
+                emit("assess_call", near.npc, npc)
+            end
+        end
+    end
+end
+
+--- Würde angreifen: verärgert, ruft Hilfe, meldet es und droht (Kampf ab M11).
 local function would_attack(npc, reason)
+    set_temp_attitude(npc, "angry")
     emit("npc_would_attack", npc, reason)
+    alarm(npc)
     npc_start_state(npc, "zs_threaten")
 end
 
@@ -74,8 +100,42 @@ State "zs_intruder" {
     end,
 }
 
+State "zs_flee" {
+    begin = function(npc)
+        npc_clear(npc)
+        npc_shout(npc, Shouts.flee)
+        npc_flee(npc, 8)
+    end,
+    loop = function(npc, seconds)
+        return "done"
+    end,
+}
+
+on("assess_call", function(helper, caller)
+    if busy(helper) then
+        return
+    end
+    set_temp_attitude(helper, "angry")
+    npc_say(helper, Shouts.help)
+    npc_start_state(helper, "zs_threaten")
+end)
+
+on("assess_player", function(npc, distance)
+    -- Feindlich Gesinnte greifen auf kurze Entfernung an (bis M11: drohen).
+    if npc_attitude(npc) == "hostile" and distance <= 10 and not busy(npc) then
+        npc_say(npc, Shouts.hostile)
+        would_attack(npc, "hostile")
+    end
+end)
+
 on("assess_fighter", function(npc, distance, what)
     if busy(npc) then
+        return
+    end
+    if coward(npc) then
+        if distance < 4 then
+            npc_start_state(npc, "zs_flee")
+        end
         return
     end
     -- Wachen warnen auf Sichtweite, alle anderen nur, wenn man ihnen damit nahe kommt.
@@ -85,6 +145,7 @@ on("assess_fighter", function(npc, distance, what)
 end)
 
 on("assess_enter_room", function(npc, owner, area)
+    set_temp_attitude(npc, "angry")
     if npc_state(npc).state ~= "zs_intruder" then
         npc_start_state(npc, "zs_intruder", area)
     end
