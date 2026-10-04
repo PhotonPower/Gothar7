@@ -1,0 +1,292 @@
+{
+  "schema": 1,
+  "lang": "de",
+  "lines": {
+    "dia_gate_guard_hello_01": {
+      "text": "Halt! Wer bist du?",
+      "speaker": "npc_gate_guard",
+      "gender": "m",
+      "voice": 0,
+      "direction": "Laut, misstrauisch, kurz angebunden",
+      "context": "dialogs/gate_guard.lua",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "dia_gate_guard_hello_02": {
+      "text": "Nur ein Wanderer auf der Suche nach Arbeit.",
+      "speaker": "hero",
+      "gender": "m",
+      "voice": 0,
+      "direction": "Ruhig, etwas müde",
+      "context": "dialogs/gate_guard.lua",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "dia_gate_guard_work_01": {
+      "text": "Gibt es hier Arbeit?",
+      "speaker": "hero",
+      "gender": "m",
+      "voice": 0,
+      "direction": "Neutral, fragend",
+      "context": "dialogs/gate_guard.lua",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "dia_gate_guard_work_02": {
+      "text": "Frag die Bäuerin am Feld. Die braucht immer Hilfe.",
+      "speaker": "npc_gate_guard",
+      "gender": "m",
+      "voice": 0,
+      "direction": "Gelangweilt, deutet mit dem Kopf",
+      "context": "dialogs/gate_guard.lua",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_flee": {
+      "text": "Lass mich bloß in Ruhe!",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Ängstlich, im Weglaufen",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_foreign_mob": {
+      "text": "Was fummelst du da an meinen Sachen herum?",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Misstrauisch, scharf",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_help": {
+      "text": "Warte, ich helf dir! Den knöpfen wir uns vor!",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Gerufen, kampfeslustig",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_hostile": {
+      "text": "Dich hab ich schon gesucht!",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Drohend, grimmig",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_intruder": {
+      "text": "Raus aus meinem Haus, aber flott!",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Empört, laut",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_intruder_again": {
+      "text": "Hast du nicht gehört? Raus hier!",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Gereizt, lauter als vorher",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_thief": {
+      "text": "Finger weg von fremden Sachen, du Dieb!",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Empört, rufend",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_threaten": {
+      "text": "Jetzt reicht's mir mit dir!",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Wütend, gepresst",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_weapon_calm": {
+      "text": "Na also. Geht doch.",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Erleichtert, abfällig",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_weapon_warn_1": {
+      "text": "He! Weg mit der Klinge, sonst gibt's Ärger!",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Laut und scharf, warnend",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_1_weapon_warn_2": {
+      "text": "Ich sag's nicht noch mal: Waffe runter!",
+      "speaker": "svm",
+      "gender": "m",
+      "voice": 1,
+      "direction": "Sehr laut, letzte Warnung",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_flee": {
+      "text": "Lass mich bloß in Ruhe!",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Ängstlich, im Weglaufen",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_foreign_mob": {
+      "text": "Was fummelst du da an meinen Sachen herum?",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Misstrauisch, scharf",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_help": {
+      "text": "Warte, ich helf dir! Den knöpfen wir uns vor!",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Gerufen, kampfeslustig",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_hostile": {
+      "text": "Dich hab ich schon gesucht!",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Drohend, grimmig",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_intruder": {
+      "text": "Raus aus meinem Haus, aber flott!",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Empört, laut",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_intruder_again": {
+      "text": "Hast du nicht gehört? Raus hier!",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Gereizt, lauter als vorher",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_thief": {
+      "text": "Finger weg von fremden Sachen, du Dieb!",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Empört, rufend",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_threaten": {
+      "text": "Jetzt reicht's mir mit dir!",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Wütend, gepresst",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_weapon_calm": {
+      "text": "Na also. Geht doch.",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Erleichtert, abfällig",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_weapon_warn_1": {
+      "text": "He! Weg mit der Klinge, sonst gibt's Ärger!",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Laut und scharf, warnend",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    },
+    "svm_2_weapon_warn_2": {
+      "text": "Ich sag's nicht noch mal: Waffe runter!",
+      "speaker": "svm",
+      "gender": "f",
+      "voice": 2,
+      "direction": "Sehr laut, letzte Warnung",
+      "context": "ai/perceptions.lua (Shouts)",
+      "status": "offen",
+      "selected": null,
+      "takes": []
+    }
+  }
+}
