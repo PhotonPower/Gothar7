@@ -1,0 +1,17 @@
+# farmer_m_4: guild set 'farmer' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_old/head.glb"
+hair = "parts/head_m_old/hair.glb"
+cloth = [
+    "parts/cloth_m_average/toigo_fisherman_sweater.glb",
+    "parts/garb_m_average/straw_hat.glb",
+    "parts/cloth_m_average/culturalibre_male_boots.glb",
+]
+
+[palette]
+cloth_toigo_fisherman_sweater = "#7a6e5a"
+cloth_straw_hat = "#c8b070"
+cloth_culturalibre_male_boots = "#3a2c22"

@@ -1,0 +1,17 @@
+# citizen_m_4: guild set 'citizen' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_old/head.glb"
+hair = "parts/head_m_old/hair.glb"
+cloth = [
+    "parts/garb_m_average/coat_clean.glb",
+    "parts/garb_m_average/belt.glb",
+    "parts/cloth_m_average/culturalibre_male_boots.glb",
+]
+
+[palette]
+cloth_coat_clean = "#3e4a3a"
+cloth_belt = "#2e2018"
+cloth_culturalibre_male_boots = "#2e241c"

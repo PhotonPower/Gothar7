@@ -1,0 +1,22 @@
+# farmer_m_3: guild set 'farmer' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_stubble/head.glb"
+hair = "parts/hair_m_stubble/hair_long_shaggy.glb"
+beard = "parts/hair_m_stubble/beard_goatee.glb"
+cloth = [
+    "parts/cloth_m_heavy/elvs_crude_t-shirt_male.glb",
+    "parts/garb_m_heavy/apron.glb",
+    "parts/garb_m_heavy/belt.glb",
+    "parts/cloth_m_heavy/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#3a2a1e"
+beard = "#3a2a1e"
+cloth_elvs_crude_t-shirt_male = "#a89a7e"
+cloth_apron = "#b8a888"
+cloth_belt = "#2e2018"
+cloth_culturalibre_male_boots = "#3a2c22"

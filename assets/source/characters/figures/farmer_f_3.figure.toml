@@ -1,0 +1,20 @@
+# farmer_f_3: guild set 'farmer' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_f_average/body.glb"
+head = "parts/head_f_girl/head.glb"
+hair = "parts/hair_f_girl/hair_long.glb"
+cloth = [
+    "parts/cloth_f_average/joepal_crude_t-shirt_female.glb",
+    "parts/cloth_f_average/toigo_long_full_skirt.glb",
+    "parts/garb_f_average/belt.glb",
+    "parts/cloth_f_average/toigo_flats.glb",
+]
+
+[palette]
+hair = "#8a4020"
+cloth_joepal_crude_t-shirt_female = "#ddd0b2"
+cloth_toigo_long_full_skirt = "#7a5a3e"
+cloth_belt = "#3a2a1e"
+cloth_toigo_flats = "#4a3b2e"

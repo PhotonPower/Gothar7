@@ -1,0 +1,21 @@
+# farmer_f_2: guild set 'farmer' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_f_heavy/body.glb"
+head = "parts/head_f_old/head.glb"
+hair = "parts/hair_f_old/hair_braid.glb"
+cloth = [
+    "parts/cloth_f_heavy/toigo_bodice-style_top.glb",
+    "parts/cloth_f_heavy/toigo_long_full_skirt.glb",
+    "parts/garb_f_heavy/straw_hat.glb",
+    "parts/cloth_f_heavy/toigo_flats.glb",
+]
+
+[palette]
+hair = "#7a7672"
+cloth_toigo_bodice-style_top = "#5a4636"
+cloth_toigo_long_full_skirt = "#4e4636"
+cloth_straw_hat = "#d0b878"
+cloth_toigo_flats = "#4a3b2e"
+cloth_wolgade_female_top_01 = "#ddd3bc"

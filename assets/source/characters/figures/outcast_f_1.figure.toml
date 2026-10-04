@@ -1,0 +1,16 @@
+# outcast_f_1: guild set 'outcast' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_f_average/body.glb"
+head = "parts/head_f_girl/head.glb"
+hair = "parts/hair_f_girl/hair_long_shaggy.glb"
+cloth = [
+    "parts/cloth_f_average/joepal_crude_t-shirt_female.glb",
+    "parts/cloth_f_average/toigo_long_full_skirt.glb",
+]
+
+[palette]
+hair = "#3a2a1e"
+cloth_joepal_crude_t-shirt_female = "#8a7e66"
+cloth_toigo_long_full_skirt = "#4e4434"

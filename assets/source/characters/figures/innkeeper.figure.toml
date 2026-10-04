@@ -1,0 +1,24 @@
+# innkeeper: Leonberg innkeeper: clean shirt and apron (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_stubble/head.glb"
+hair = "parts/hair_m_stubble/hair_short.glb"
+beard = "parts/hair_m_stubble/beard_moustache.glb"
+cloth = [
+    "parts/garb_m_heavy/shirt.glb",
+    "parts/garb_m_heavy/wide_trousers.glb",
+    "parts/garb_m_heavy/apron.glb",
+    "parts/garb_m_heavy/belt.glb",
+    "parts/cloth_m_heavy/toigo_mj_cloth_shoes.glb",
+]
+
+[palette]
+hair = "#7a4a2c"
+beard = "#7a4a2c"
+cloth_shirt = "#f0ead8"
+cloth_wide_trousers = "#5a4a3a"
+cloth_apron = "#e6dcc4"
+cloth_belt = "#4a3424"
+cloth_toigo_mj_cloth_shoes = "#4a3a2c"

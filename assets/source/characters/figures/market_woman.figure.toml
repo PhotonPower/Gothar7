@@ -1,0 +1,19 @@
+# market_woman: Leonberg market woman: bodice over the long skirt (it layers over neither shirts nor the tiered skirt) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_f_heavy/body.glb"
+head = "parts/head_f_mid/head.glb"
+hair = "parts/hair_f_mid/hair_braid.glb"
+cloth = [
+    "parts/cloth_f_heavy/toigo_bodice-style_top.glb",
+    "parts/cloth_f_heavy/toigo_long_full_skirt.glb",
+    "parts/cloth_f_heavy/toigo_flats.glb",
+]
+
+[palette]
+hair = "#3a2a1e"
+cloth_toigo_bodice-style_top = "#6a3a2a"
+cloth_toigo_long_full_skirt = "#3e5a6a"
+cloth_toigo_flats = "#3e3024"
+cloth_wolgade_female_top_01 = "#ddd3bc"

@@ -1,0 +1,20 @@
+# guard_captain: guard captain: heavy armour (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_old/head.glb"
+hair = "parts/head_m_old/hair.glb"
+cloth = [
+    "parts/armor_m_heavy/mail_tunic.glb",
+    "parts/armor_m_heavy/wrapped_trousers.glb",
+    "parts/armor_m_heavy/wrapped_boots.glb",
+    "parts/armor_m_heavy/breastplate.glb",
+    "parts/armor_m_heavy/pauldrons.glb",
+    "parts/armor_m_heavy/greaves.glb",
+    "parts/armor_m_heavy/gauntlets.glb",
+    "parts/headgear_m_heavy/kettle_helm.glb",
+]
+
+[palette]
+cloth_wrapped_trousers = "#5a2622"

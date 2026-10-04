@@ -1,0 +1,22 @@
+# craftsman_m_3: guild set 'craftsman' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_farmer/head.glb"
+hair = "parts/hair_m_farmer/hair_short.glb"
+beard = "parts/hair_m_farmer/beard_moustache.glb"
+cloth = [
+    "parts/cloth_m_heavy/toigo_fisherman_sweater.glb",
+    "parts/garb_m_heavy/apron_leather.glb",
+    "parts/garb_m_heavy/belt.glb",
+    "parts/cloth_m_heavy/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#8a4020"
+beard = "#8a4020"
+cloth_toigo_fisherman_sweater = "#6e6a5e"
+cloth_apron_leather = "#4e3624"
+cloth_belt = "#2a1e16"
+cloth_culturalibre_male_boots = "#3a2c22"
