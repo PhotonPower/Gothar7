@@ -377,6 +377,27 @@ def mug(seg: int) -> list[Mesh]:
     return [cup]
 
 
+def axe(seg: int) -> list[Mesh]:
+    """Woodcutter's axe: a handle along +Y (held near its lower end, the origin) and an iron head
+    at the top whose edge points to +Z (contract: item +Z = edge)."""
+    handle = Mesh("wood")
+    ys = np.linspace(-0.12, 0.62, 6)
+    radius = 0.017 - 0.002 * (ys + 0.12) / 0.74
+    loft(handle, np.stack([np.zeros_like(ys), ys, np.zeros_like(ys)], axis=1),
+         [circle(r, max(6, seg // 2), ry=1.25) for r in radius], tile=0.3)  # fmt: skip
+    head = Mesh("iron_forged")
+    zs = np.array([-0.035, -0.015, 0.02, 0.06, 0.1, 0.125])
+    thick = np.array([0.016, 0.02, 0.018, 0.01, 0.004, 0.0015])  # along X
+    height = np.array([0.04, 0.05, 0.05, 0.075, 0.11, 0.13])  # along Y, flared towards the edge
+    path = np.stack([np.zeros_like(zs), np.full_like(zs, 0.57), zs], axis=1)
+    sections = [
+        np.array([[-th / 2, -h / 2], [th / 2, -h / 2], [th / 2, h / 2], [-th / 2, h / 2]])
+        for th, h in zip(thick, height, strict=True)
+    ]
+    loft(head, path, sections, ref=(0.0, 1.0, 0.0), tile=0.1)
+    return [handle, head]
+
+
 ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_sword_old": (lambda s: sword(s, rust=True), 12),
     "it_sword_crude": (lambda s: sword(s, rust=False), 12),
@@ -389,6 +410,7 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_key": (key, 10),
     "it_broom": (broom, 12),
     "it_mug": (mug, 14),
+    "it_axe": (axe, 12),
 }
 
 # textures: name -> (source below the item sources folder, size, colour factor) or procedural
@@ -565,7 +587,7 @@ LENGTHS = {
     "it_sword_old": (0.9, 1.15), "it_sword_crude": (0.9, 1.15), "it_club": (0.6, 0.85),
     "it_bow_short": (1.0, 1.4), "it_apple": (0.06, 0.1), "it_bread": (0.15, 0.3),
     "it_potion_heal_small": (0.12, 0.2), "it_lockpick": (0.1, 0.2), "it_key": (0.07, 0.15),
-    "it_broom": (1.2, 1.6), "it_mug": (0.09, 0.15),
+    "it_broom": (1.2, 1.6), "it_mug": (0.09, 0.15), "it_axe": (0.6, 0.9),
 }  # fmt: skip
 
 
