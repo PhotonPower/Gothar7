@@ -10,14 +10,17 @@
 - **Route** (`route(von, ziel, gehbar)`): geradeaus, wenn die Linie gehbar ist; sonst zum nächsten von der Position
   aus gehbaren WP, über das Netz zum WP, von dem aus das Ziel gehbar ist, dann zum Ziel. **Glättung:** Von jedem Punkt
   aus geht es zum weitesten Folgepunkt, der noch in gerader Linie gehbar ist.
-- **Gehbar** (Engine, `walkableLine`): Kugeln (Radius 0,25 m) in 0,5 / 1,0 / 1,5 m Höhe treffen auf der Linie nichts
-  – Zäune mit Lücken zwischen den Latten zählen als Hindernis, niedrige Stufen nicht.
+- **Gehbar** (Engine, `walkableLine`): Kugeln mit dem Radius der NPC-Kapsel (0,3 m) in 0,5 / 1,0 / 1,5 m Höhe
+  treffen auf der Linie nichts – Zäune mit Lücken zwischen den Latten zählen als Hindernis, niedrige Stufen nicht.
+  Dazu Bodenproben alle 0,5 m: kein Schritt steiler als 35° (wie welts Wegnetzprüfung), kein fehlender Boden
+  (Abgrund). Linien über 50 m gelten nicht als gehbar (Aufwand); sie gehen über das Wegnetz (welt #171).
 - **NPCs** (eingefügte `Npc`-Instanzen) haben eine eigene Kapsel wie der Held (`physics::CharacterController`):
   Schwerkraft, Stufen, Kollision mit der Welt. `npc_goto(npc, ziel, rennen)` bzw. `Engine::npcGoTo`: drehen sich zum
   nächsten Routenpunkt (6 rad/s), gehen (Geschwindigkeit aus den Blendpunkten des Menschen-Graphen) oder rennen, ein
-  Punkt gilt in 0,35 m als erreicht. **Blockiert** (1,5 s ohne 0,3 m Fortschritt): neu planen, höchstens dreimal,
-  dann `npc_blocked`; steht etwas auf dem Ziel und der NPC ist schon näher als 1,2 m, gilt er als angekommen. Ankunft:
-  Ereignis `npc_arrived(npc, ziel)`.
+  Punkt gilt in 0,35 m als erreicht. **Blockiert**: Wird der Weg zum nächsten Routenpunkt 1,5 s lang nicht um 0,3 m
+  kürzer (Hindernis, oder er rutscht am Hang ab – Bewegung allein zählt nicht), wird neu geplant, höchstens dreimal,
+  dann `npc_blocked`. Ist er dabei schon näher als 1,2 m am Punkt (Kiste auf dem Ziel, Wegpunkt zu nah an einer
+  Hausecke), gilt der Punkt als erreicht. Ankunft: Ereignis `npc_arrived(npc, ziel)`.
 - **Debug** (F2): Kanten, Wegpunkte mit Namen (bis 40 m), Freepoints mit Blickrichtung, die Routen gehender NPCs.
 - Testlager: Wegnetz mit 11 Punkten und 4 Freepoints (um das Südende des Zauns herum; das Tor ist zu).
 - Später optional: Navmesh für freie Bewegung im Kampf (ADR, wenn nötig).
@@ -56,7 +59,7 @@ Routine "rtn_farmer_woman" {
 - **Freepoints** werden belegt: `npc_goto_freepoint(npc, "SIT", 12)` nimmt den nächsten freien dieses Typs im
   Umkreis, reserviert ihn bis zum Ende des Zustands und dreht den NPC in seine Richtung; ist keiner frei, bleibt
   er stehen.
-- **KI-LOD**: NPCs weiter als 80 m vom Spieler (zurück unter 75 m) werden weder bewegt noch animiert und
+- **KI-LOD**: NPCs weiter als `[ai] simulation_distance` (80 m) vom Spieler (zurück 5 m näher) werden weder bewegt noch animiert und
   beginnen keinen Zustand; wechselt ihr Zeitfenster, stehen sie sofort am neuen Ort. Kommt der Spieler näher,
   beginnt der aktuelle Zustand.
 - Testlager: `camp_people()` (Konsole oder `--exec=camp_people()`) setzt Torwache, Bäuerin, Holzfäller und den

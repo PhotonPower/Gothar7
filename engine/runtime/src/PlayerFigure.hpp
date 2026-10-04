@@ -107,7 +107,8 @@ struct Creature
     bool running = false;
     f32 stuckSeconds = 0.0f;
     u32 replans = 0;
-    Vec3 progressAt{0.0f};
+    usize progressIndex = ~usize(0); ///< route point the progress is measured to
+    f32 progressDistance = 0.0f;     ///< the shortest way to it so far
     // Behaviour (M9 part B, EngineAi.cpp): command queue, script state, routine, ambient animation,
     // freepoint.
     struct Command
