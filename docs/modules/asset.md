@@ -50,6 +50,9 @@ Result<MeshData> loadGltf(std::span<const u8>, const fs::Path& baseDir, std::str
   Emissive (Faktor linear, Bild sRGB), `alphaMode`/`alphaCutoff`/`doubleSided` wie in glTF. Bilder als `ImageSource`: URI relativ
   zur Modelldatei oder eingebettete Bytes (`.glb`-bufferView, data:-URI) – Dekodieren mit `decodeImage`/`loadImage`.
 - **Kollisionsgeometrie `COL_` (M5, Vertrag mit welt und figuren):** siehe unten „Kollision in Modellen“.
+- **LOD-Knoten in statischen Modellen** (seit M8): Knoten `<name>_lod<n>` mit n ≥ 1 (`isCoarserLod`) lässt `loadGltf`
+  aus; gezeichnet wird nur Stufe 0 (bzw. Knoten ohne Endung), bis Vob-LOD kommt (M17, Namensregel aus
+  leonberg-pipeline.md). Betrifft z. B. figurens Gegenstände `items/<id>.glb` mit `_lod0`–`_lod2`.
 - Skins/Animationen: M6. Ab M3 kocht `g7-cook` glTF in ein Laufzeitformat, das dieselbe `MeshData` liefert.
 
 ## Bestand (M3)

@@ -462,6 +462,10 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
             }
             const Mat4 world = toGlm(matrix);
             const std::string_view nodeName(node.name.data(), node.name.size());
+            if (isCoarserLod(nodeName))
+            {
+                return; // level 0 only until vob LOD exists (M17)
+            }
             const bool collision = nodeName.starts_with(kCollisionPrefix);
             for (const fastgltf::Primitive& primitive : asset.meshes[*node.meshIndex].primitives)
             {
@@ -535,6 +539,21 @@ Result<MeshData> parse(fastgltf::GltfDataBuffer& data, const fs::Path& baseDirec
     return convert(asset.value(), debugName);
 }
 } // namespace
+
+bool isCoarserLod(std::string_view nodeName) noexcept
+{
+    const usize at = nodeName.rfind("_lod");
+    if (at == std::string_view::npos || at + 4 >= nodeName.size())
+    {
+        return false;
+    }
+    const std::string_view digits = nodeName.substr(at + 4);
+    if (!std::all_of(digits.begin(), digits.end(), [](char c) { return c >= '0' && c <= '9'; }))
+    {
+        return false;
+    }
+    return std::any_of(digits.begin(), digits.end(), [](char c) { return c != '0'; });
+}
 
 Result<MeshData> loadGltf(const fs::Path& path)
 {

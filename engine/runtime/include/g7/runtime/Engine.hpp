@@ -799,6 +799,7 @@ private:
     std::vector<WorldItem> m_worldItems;
     std::unordered_map<std::string, const LoadedModel*> m_itemModels; // by Item instance; models in m_models
                                                                       // or m_scriptModels (placeholders)
+    std::unordered_map<std::string, Mat4> m_itemRest; // by Item instance: how its model lies on the ground
     gameplay::FocusSettings m_focusSettings;
     std::vector<gameplay::FocusCandidate> m_focusCandidates; // per frame, reused
     std::optional<FocusTarget> m_focus;
