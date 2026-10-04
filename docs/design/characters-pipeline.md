@@ -206,6 +206,26 @@ Kanal darf zwischen zwei Frames springen (`anim.jump`: Fehler ab 120°, Warnung 
 Clip-Namen prüft der Validator gegen das Muster oben (`[sta]_…`, nur `a-z0-9_`, Modus aus der Liste
 oder `mob/<mobtyp>`).
 
+### 3.2 Additive Clips: Dialog-Gesten (Vertrag engine–figuren, Zusammenführung Koordinator 2026-10-04)
+
+- **Namen:** Typ `a_` = additiv, Set `dlg`, Clips `dlg/a_<x>`; gehaltene Posen als `a_<x>_in` / `a_<x>` / `a_<x>_out`.
+- **Referenz:** engine legt alle `dlg`-Clips additiv gegen **`dlg/a_neutral`** (1 Frame = erster Frame von
+  `none/s_idle` ohne Atmung); `playOverlay` bekommt dafür einen Referenz-Clip. So halten Schleifen und `_out`
+  ihre Pose. Ohne Referenz-Clip gilt Frame 0 des Clips als Referenz.
+- **Maske ab `spine_02`** (mit Schlüsselbeinen, Armen, Händen, Hals, Kopf); Becken und Beine bleiben auf der
+  Referenz (additiv null). **Nur Rotationen**, keine Translationen.
+- **Anfang und Ende:** Einzelgesten und Redeschleifen beginnen und enden in der Referenzpose, `_in` beginnt und
+  `_out` endet dort, gehaltene Schleifen sind geschlossen.
+- **Kopf und Hals nur wenig:** Das Look-At dreht den Kopf zum Gesprächspartner; Ausnahmen sind Nicken und
+  Kopfschütteln. Mund und Gesicht machen die Morphs (§6.1), nicht die Clips.
+- **Längen:** Redeschleifen 2–4 s, Einzelgesten 0,8–2 s (Erklären, Drohen bis 2,7 s). Optionales Event `beat`
+  auf der Betonung.
+- **Werkzeug:** Clip-Option `additive = true` (nur `a_*`; alles außerhalb von `spine_02` hält Frame 0); Validator
+  `anim.additive` prüft die Regeln oben gegen `<modus>/a_neutral`.
+- **Hinweis für das Abspielen:** Die Armgesten sind auf freie Arme ausgelegt (Stehen, auf der Bank sitzen). Über
+  Haltungen mit belegten Armen (verschränkt, Arme um die Knie) ergeben sie seltsame Posen; dort die Arme vorher
+  lösen oder nur Kopfgesten spielen.
+
 ## 4. Quellen & Lizenzen
 
 | Quelle | Wofür | Lizenz / Hinweis |

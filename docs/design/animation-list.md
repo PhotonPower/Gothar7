@@ -112,6 +112,23 @@ bei engine in Lua. Ursprung = Fußpunkt, Blick +Z, auf der Stelle; Gegenstände 
 | `none/s_idle_look`, `none/t_idle_scratch` | Stand-Varianten: sich umsehen, am Kopf kratzen | – | – | K | platzhalter-K |
 | `none/t_warn`, `t_point`, `t_surprised`, `t_search` | Reaktionen: warnen (erhobene Faust), zeigen, erschrecken, suchen | – | – | K | platzhalter-K |
 
+### Prio B – Dialog-Gesten für M10 (ausgeschrieben, additiv)
+
+Additive Oberkörper-Clips (Vertrag `characters-pipeline.md` §3.2), Set `dlg` (`anims/human/dlg.glb`), Referenz
+`dlg/a_neutral`. Event `beat` auf der Betonung.
+
+| Name | Zweck | Länge | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `dlg/a_neutral` | Referenzpose (1 Frame, erster Frame von `none/s_idle` ohne Atmung) | – | – | K | platzhalter-K |
+| `dlg/a_talk_1`, `a_talk_2`, `a_talk_3`, `a_talk_4` | Redegesten: rechte Hand, beide Hände, linke Hand, offen | 2,5–3,5 s | – | K | platzhalter-K |
+| `dlg/a_nod`, `a_shake_head` | Nicken, Kopf schütteln | 0,9–1,1 s | beat | K | platzhalter-K |
+| `dlg/a_shrug`, `a_dismiss` | Achselzucken (Handflächen offen), abwinken | 1,2–1,5 s | beat | K | platzhalter-K |
+| `dlg/a_point_self`, `a_point` | auf sich zeigen, nach vorn zeigen (Zeigefinger gestreckt) | 1,7–1,8 s | beat | K | platzhalter-K |
+| `dlg/a_explain`, `a_threaten` | mit beiden Händen erklären, mit dem Zeigefinger drohen | 2–2,7 s | beat | K | platzhalter-K |
+| `dlg/a_greet`, `a_fist`, `a_bow` | grüßen (Hand heben), Faust (Ärger), Oberkörper zum Gruß neigen | 1,5–1,6 s | beat | K | platzhalter-K |
+| `dlg/a_arms_crossed_in`, `a_arms_crossed`, `a_arms_crossed_out` | Arme verschränken, halten, lösen | 0,5 s / Schleife | – | Q→ | platzhalter (UAL2 `Idle_FoldArms_Loop` ab spine_02) |
+| `dlg/a_hands_hips_in`, `a_hands_hips`, `a_hands_hips_out` | Hände in die Hüften, halten, lösen | 0,5 s / Schleife | – | K | platzhalter-K |
+
 ## Monster (F5, Vertrag `characters-pipeline.md` §7)
 
 Mindestumfang je Art. Clips liegen in `assets/source/characters/monsters/<art>/anims/<art>.glb`, Herkunft je

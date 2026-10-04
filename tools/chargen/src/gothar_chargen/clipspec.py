@@ -55,6 +55,12 @@ Format::
                                                   # first, for sources that do not loop
     in_place = true                               # no horizontal travel (sources that walk)
 
+    [[clip]]
+    name = "dlg/a_nod"
+    ...
+    additive = true                               # a_* only: bones outside spine_02's subtree
+                                                  # hold frame 0 (additive overlay, §3)
+
 Monster sets (§7) name their rig: ``rig = "wolf"`` -> data/monsters/wolf.toml, clips
 ``wolf/<type>_<action>``, output monsters/wolf/anims/<set>.blend. Their clip sources are .blend
 files written by ``gothar-chargen monster`` (bones already renamed: mapping "identity").
@@ -70,7 +76,13 @@ from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
 
-from gothar_chargen.naming import clip_mode, is_clip_name, is_event_name, is_monster_clip
+from gothar_chargen.naming import (
+    clip_mode,
+    is_additive_clip,
+    is_clip_name,
+    is_event_name,
+    is_monster_clip,
+)
 from gothar_chargen.skeleton import SkeletonError, monster_rig_text
 
 EVENT_KINDS = ("footsteps", "land")
@@ -133,6 +145,7 @@ class ClipSpec:
     markers: tuple[tuple[str, int], ...] = ()  # fixed events (name, frame)
     close: int = 0  # loops: frames at the end faded into the first frame
     in_place: bool = False  # no horizontal travel of root and pelvis (sources that walk)
+    additive: bool = False  # a_* clips: everything outside spine_02's subtree held at frame 0
 
     @property
     def param(self) -> dict[str, object]:
@@ -285,6 +298,11 @@ def parse_set_spec(data: dict, external: frozenset[str] = frozenset()) -> SetSpe
         place = raw.get("in_place", False)
         if not isinstance(place, bool):
             raise ClipSpecError(f"{where}: in_place must be true or false")
+        additive = raw.get("additive", False)
+        if not isinstance(additive, bool):
+            raise ClipSpecError(f"{where}: additive must be true or false")
+        if additive != is_additive_clip(name) and not helper:
+            raise ClipSpecError(f"{where}: additive = true exactly for a_* clips")
         clips.append(
             ClipSpec(
                 **{
@@ -294,6 +312,7 @@ def parse_set_spec(data: dict, external: frozenset[str] = frozenset()) -> SetSpe
                     "markers": marker_list,
                     "close": close,
                     "in_place": place,
+                    "additive": additive,
                 }
             )
         )

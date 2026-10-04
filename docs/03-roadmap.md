@@ -443,7 +443,7 @@ Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine�
 ## F4 – Gothic-spezifische Animationen  (benötigt F2; für M8–M11)
 - [ ] Mocap-Workflow testen (2–3 Dienste), Entscheidung dokumentieren
 - [ ] Mob-Interaktionen, Item-Benutzung, Ambient-Routinen, Dialog-Gesten
-  - Stand: Platzhalter für M8 (Mobs, Items) und M9 (Routinen und Reaktionen nach engines Liste: Set `amb` mit Sitzen, Wache, Anlehnen, Reden, Zuhören, Schlafen, Lagerfeuer, Fegen, Krug, Schwerttraining, Holzhacken, Ernten, Gießen, Reparieren; Bank als Mob; `none/s_idle_look`, `t_idle_scratch`, `t_warn`, `t_point`, `t_surprised`, `t_search`); Dialog-Gesten folgen mit M10
+  - Stand: Platzhalter für M8 (Mobs, Items) und M9 (Routinen und Reaktionen nach engines Liste: Set `amb` mit Sitzen, Wache, Anlehnen, Reden, Zuhören, Schlafen, Lagerfeuer, Fegen, Krug, Schwerttraining, Holzhacken, Ernten, Gießen, Reparieren; Bank als Mob; `none/s_idle_look`, `t_idle_scratch`, `t_warn`, `t_point`, `t_surprised`, `t_search`); Dialog-Gesten für M10 als additive Clips `dlg/a_*` gegen die Referenz `dlg/a_neutral` (Vertrag §3.2, Validator `anim.additive`)
 - [ ] Nahkampf je Talentstufe, Fernkampf, Magie, Treffer/Tod/Bewusstlos
 - [ ] Alle **Prio-B**-Animationen fertig
 
