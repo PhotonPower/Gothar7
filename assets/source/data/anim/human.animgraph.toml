@@ -120,6 +120,23 @@ clip = "none/s_slide"
 name = "pickup"
 clip = "none/t_pickup_ground"
 
+# Benutzen und Taschendiebstahl (M8 Teil D): die Engine schaltet diese Zustände selbst, Event „use“ = Wirkung.
+[[state]]
+name = "use_eat"
+clip = "none/t_eat"
+
+[[state]]
+name = "use_drink"
+clip = "none/t_drink"
+
+[[state]]
+name = "use_read"
+clip = "none/t_read_scroll"
+
+[[state]]
+name = "pickpocket"
+clip = "none/t_pickpocket"
+
 # Mobs (M8 Teil C): Die Engine schaltet diese Zustände selbst (<typ>_enter/_loop/_leave/_<extra>, Clips nach
 # data/mobs.toml); ohne Übergänge, am Ende geht es zurück nach „move“.
 [[state]]

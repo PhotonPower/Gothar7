@@ -108,7 +108,19 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   `belt`, `rune1`–`rune7`. Ringe nehmen den freien der zwei Plätze (sonst den ersten), Runen/Spruchrollen den ersten
   freien. `requires = { str = 20, bow = 1 }` (Attribute oder Talente) muss erfüllt sein. Entfernen eines
   ausgerüsteten Items legt es ab.
-- Benutzen: `on_use`-Skriptfunktion (Trank → Leben, Schriftstück → Dokument-UI) – Teil D.
+- **Benutzen** (Teil D, Werte und Regel Projektinhaber 2026-10-04): „use“ im Inventar-Fenster bzw. `use_item(item)`,
+  **nur im Stand** (sonst „Nicht jetzt.“). Nahrung `use_eat` (`none/t_eat`), Tränke `use_drink` (`t_drink`),
+  Schriftstücke `use_read` (`t_read_scroll`). Beim Event `use` wirken `effects = { hp = …, mana = … }` (bis zum
+  Maximum), dann `on_use(item)` und das Ereignis `item_used`; Nahrung und Tränke sind verbraucht. Schriftstücke öffnen
+  ihren `text` im Fenster „Document“ und bleiben im Inventar. Werte: Apfel +5, Brot +10, kleiner Heiltrank +40 LP.
+- **Taschendiebstahl** (Teil D, wie Gothic 1): Aktionstaste beim Schleichen auf einen NPC im Fokus. Nur mit dem
+  Talent `pickpocket` („Das kann ich nicht.“); mit Geschick ≥ `pickpocket_dex` des NPCs (Vorgabe
+  `Pickpocketing.default_dex` = 30) gelingt er sicher: ein nicht getragenes Stück eines zufälligen Stapels, Ereignis
+  `pickpocket(npc, item)`; sonst merkt er es, Ereignis `pickpocket_failed(npc)` (Reaktion mit M9). Je NPC ein Versuch.
+  Eingefügte NPCs haben dafür ein Laufzeit-Inventar aus ihrer `Npc`-Instanz.
+- **Besitz** (Teil D): Item-Vobs mit `owner` (world.md), Mobs mit `owner` in ihrer Lua-Definition. Nimmt der Held
+  ein fremdes Item auf oder etwas aus einer fremden Truhe, kommt `theft(owner, item, count)`; `owned_by(vob)` fragt
+  den Besitzer ab. Zeugen und Reaktionen (Wachen, Gildenmitglieder) folgen mit M9.
 - **Modelle:** `Item.mesh = "items/<id>.glb"` (figuren, F6: Ursprung am Griffpunkt, Griffachse +Y; alle Schlüssel
   `items/it_key.glb`), sonst ein Platzhalter je Kategorie. Liegend ruht ein Gegenstand auf seiner breiten Seite – die
   dünnste Achse zeigt nach oben (Schwert, Schlüssel, Brot liegen flach), Tränke stehen; der tiefste Punkt liegt auf

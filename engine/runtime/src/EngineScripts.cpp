@@ -92,6 +92,7 @@ Result<void> Engine::initScripts()
     bindEngineFunctions();
     bindHeroFunctions();
     bindMobFunctions();
+    bindUseFunctions();
     m_scripts->loadAll();
     buildHero();
     for (const script::ScriptError& e : m_scripts->errors())
@@ -323,6 +324,16 @@ Result<void> Engine::insertInstance(std::string_view name, u32 count)
             if (!spawned)
             {
                 return Error{std::format("{}: {}", name, spawned.error().message)};
+            }
+            // Its values and inventory (pickpocketing, M8 part D); a broken instance only loses those.
+            if (auto character = gameplay::Character::fromInstance(*npc, itemLookup()))
+            {
+                creature(spawned.value())->character =
+                    std::make_unique<gameplay::Character>(std::move(character).value());
+            }
+            else
+            {
+                G7_LOG_WARN("engine", "{}", character.error().message);
             }
         }
         G7_LOG_INFO("engine", "inserted {} x {} ({})", count, name, npc->fields["name"].asString());

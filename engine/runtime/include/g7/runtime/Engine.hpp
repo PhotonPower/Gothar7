@@ -457,6 +457,26 @@ public:
     /// Picks option `index` of mobChoices(): the anvil forges the recipe (its strikes, then the items
     /// change), the bed sleeps until that hour (hit points and mana full) and the hero gets up.
     [[nodiscard]] Result<void> chooseMobOption(usize index);
+    // Using items, pickpocketing (M8 part D, EngineUse.cpp)
+    /// The hero uses an item: food and potions take effect at the "use" event of t_eat / t_drink and are used
+    /// up, documents open (t_read_scroll). Only while standing (else "Nicht jetzt.").
+    [[nodiscard]] Result<void> useItem(std::string_view item);
+    [[nodiscard]] bool usingItem() const noexcept { return m_itemUse.has_value(); }
+    struct Document
+    {
+        std::string title;
+        std::string text;
+    };
+    /// The document being read (window "Document"); nullopt when none is open.
+    [[nodiscard]] std::optional<Document> document() const;
+    void closeDocument() noexcept;
+    /// The action key while sneaking on an NPC in focus (Gothic 1): needs the talent pickpocket; with
+    /// dexterity
+    /// >= the NPC's pickpocket_dex it takes one item not worn, otherwise the NPC notices. Once per NPC.
+    [[nodiscard]] Result<void> pickpocketFocus();
+    [[nodiscard]] bool pickpocketing() const noexcept { return m_pickpocket.has_value(); }
+    /// An inserted NPC's inventory (nullopt for animals).
+    [[nodiscard]] std::optional<std::vector<gameplay::ItemStack>> creatureInventory(u32 id) const;
     /// The last short message to the player ("Verschlossen.", "Der Dietrich ist abgebrochen."; also fly mode
     /// hints).
     [[nodiscard]] const std::string& lastNotice() const noexcept { return m_notice; }
@@ -568,8 +588,9 @@ private:
         std::string definition; ///< the Lua Mob instance (or a bare type)
         std::string type;
         std::string name;
-        std::string lock; ///< combination, empty: none
-        std::string key;  ///< item that opens it
+        std::string lock;  ///< combination, empty: none
+        std::string key;   ///< item that opens it
+        std::string owner; ///< Npc or guild (taking from it is theft)
         bool locked = false;
         bool open = false;
         std::map<std::string, u32, std::less<>> contents;
@@ -628,6 +649,28 @@ private:
     void fixedUpdateMobs(f32 seconds);
     void swingDoors(f32 seconds);
     void lockpickUi();
+    // Using items, pickpocketing (EngineUse.cpp)
+    struct ItemUse
+    {
+        std::string item;
+        std::string category;
+        std::string state; ///< "use_eat" ...
+        f32 time = 0.0f;
+        bool animated = false;
+        bool applied = false;
+    };
+    struct PendingPickpocket
+    {
+        u32 creature = 0;
+        f32 time = 0.0f;
+        bool animated = false;
+    };
+    [[nodiscard]] bool heroStanding() const;
+    void applyItemUse(ItemUse& use);
+    void fixedUpdateItemUse(f32 seconds);
+    void finishPickpocket(const PendingPickpocket& p);
+    void documentUi();
+    void bindUseFunctions();
     void choiceUi();
     [[nodiscard]] std::vector<const script::Instance*> recipesFor(std::string_view type) const;
     void finishRecipe(MobUse& use);
@@ -812,6 +855,9 @@ private:
     std::optional<MobUse> m_mobUse;
     std::vector<std::string> m_mobEvents;         // "open"/"close" of the hero's figure this step
     std::unordered_map<u64, MobBody> m_mobBodies; // collision of mob vobs (doors turn theirs)
+    std::optional<ItemUse> m_itemUse;
+    std::optional<Document> m_document;
+    std::optional<PendingPickpocket> m_pickpocket;
     std::mt19937 m_rng{std::random_device{}()};
     std::function<f32()> m_random;
     std::string m_scriptStamp; // newest script changes seen (hot reload)

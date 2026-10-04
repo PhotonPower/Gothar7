@@ -12,6 +12,7 @@
 #include <g7/asset/FigureAssembly.hpp>
 #include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/TextureData.hpp>
+#include <g7/gameplay/Character.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/SkinnedMesh.hpp>
 #include <g7/runtime/Engine.hpp>
@@ -92,7 +93,10 @@ struct PlayerFigure : AnimatedFigure
 struct Creature
 {
     u32 id = 0;
-    std::string species;
+    std::string species; ///< an animal, or the Npc instance of an inserted NPC
+    /// NPCs (M8 part D): values and inventory from their Npc instance (pickpocketing).
+    std::unique_ptr<gameplay::Character> character;
+    bool pickpocketed = false; ///< tried once (Gothic: one try per NPC)
     std::unique_ptr<AnimatedFigure> figure;
     Vec3 position{0.0f}; ///< feet, after the last fixed step
     Vec3 positionBefore{0.0f};

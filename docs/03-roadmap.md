@@ -190,9 +190,9 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 - [x] **Mob-Interaktion**: Zustandsfolge mit Animationen, Benutzer-Slots, Items verbrauchen/erzeugen (Schmieden, Braten) – Ablauf, Slots, Clips (`data/mobs.toml`), Lua-`Mob` (C1); Rezepte (`Recipe`) am Amboss (C2)
 - [x] Truhen, Türen, Schlösser + Dietrich-Minispiel, Schlüssel – Bruchchance 50/25/5 % nach Talent (C1)
 - [x] Schlafen → Zeit vorspulen – bis Morgen/Mittag/Abend/Mitternacht, danach LP/Mana voll (C2)
-- [ ] Item benutzen (Essen, Tränke, Lesen von Schriftstücken)
-- [ ] Taschendiebstahl (Talent + Geschick)
-- [ ] Besitzverhältnisse (Items und Bereiche gehören NPCs/Gilden) als Basis für Diebstahl-Reaktionen
+- [x] Item benutzen (Essen, Tränke, Lesen von Schriftstücken) – nur im Stand, Wirkung beim Event `use` (D)
+- [x] Taschendiebstahl (Talent + Geschick) – wie Gothic 1: mit Talent und Geschick ≥ `pickpocket_dex` sicher, sonst bemerkt (D)
+- [x] Besitzverhältnisse (Items und Bereiche gehören NPCs/Gilden) als Basis für Diebstahl-Reaktionen – `owner` an Items und Mobs, Ereignis `theft`; Reaktionen mit M9 (D)
 
 **DoD:** Spieler kann Items aufheben, ausrüsten, Truhen knacken, am Amboss schmieden, schlafen.
 

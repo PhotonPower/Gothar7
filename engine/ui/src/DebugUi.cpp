@@ -655,6 +655,15 @@ void DebugUi::inventoryPanel(InventoryPanel& panel)
         }
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - 150.0f * scale + ImGui::GetCursorPosX() -
                         ImGui::GetStyle().ItemSpacing.x);
+        if (row.usable && !panel.container)
+        {
+            if (ImGui::SmallButton("use"))
+            {
+                panel.action = "use";
+                panel.actionItem = row.item;
+            }
+            ImGui::SameLine();
+        }
         if (row.equippable)
         {
             const bool on = !row.equipped.empty();
@@ -752,6 +761,24 @@ void DebugUi::choicePanel(ChoicePanel& panel)
         ImGui::Separator();
         ImGui::TextUnformatted(panel.message.c_str());
     }
+    ImGui::End();
+}
+
+void DebugUi::documentPanel(DocumentPanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    const ImVec2 view = ImGui::GetMainViewport()->Size;
+    ImGui::SetNextWindowPos(ImVec2(view.x * 0.5f - 220.0f * scale, view.y * 0.2f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(440.0f * scale, 320.0f * scale), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Document", &panel.open))
+    {
+        ImGui::End();
+        return;
+    }
+    ImGui::TextUnformatted(panel.title.c_str());
+    ImGui::Separator();
+    ImGui::TextWrapped("%s", panel.text.c_str());
     ImGui::End();
 }
 
