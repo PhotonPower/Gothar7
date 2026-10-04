@@ -228,3 +228,24 @@ def test_routine_places_join_the_net():
     fp = next(p for p in res.freepoints if p.name == "FP_REPAIR_LEO_SCHMIEDE_ZNA_01")
     assert fp.pos == (12.0, 1.0, -3.5) and fp.owner == "worldgen"
     assert res.report["usePoints"] == 1 and res.report["usesUnconnected"] == []
+
+
+def test_inside_places_hang_on_their_door_and_stand_on_the_floor():
+    places = [
+        {"kind": "wp", "name": "WP_LEO_SCHMIEDE_ZNA", "house": "H", "pos": [15.0, -3.0],
+         "dir": [0.0, -1.0]},
+        {"kind": "wp", "name": "WP_LEO_SCHMIEDE_ZNA_TUER", "house": "H", "pos": [15.0, -6.15],
+         "dir": [0.0, -1.0], "y": 0.4, "link": "WP_LEO_SCHMIEDE_ZNA"},
+        {"kind": "wp", "name": "WP_LEO_SCHMIEDE_ZNA_INNEN", "house": "H", "pos": [15.0, -7.5],
+         "dir": [0.0, -1.0], "y": 0.4, "link": "WP_LEO_SCHMIEDE_ZNA_TUER"},
+        {"kind": "fp", "name": "FP_LEAN_LEO_SCHMIEDE_ZNA_INNEN_01", "house": "H",
+         "pos": [12.0, -9.0], "dir": [1.0, 0.0], "y": 0.4},
+    ]  # fmt: skip
+    res = run(places=places)  # the house body covers the inside points: no line checks there
+    edges = {(a, b) for a, b, _ in res.edges}
+    assert ("WP_LEO_SCHMIEDE_ZNA", "WP_LEO_SCHMIEDE_ZNA_TUER") in edges
+    assert ("WP_LEO_SCHMIEDE_ZNA_INNEN", "WP_LEO_SCHMIEDE_ZNA_TUER") in edges
+    by = {p.name: p for p in res.points}
+    assert by["WP_LEO_SCHMIEDE_ZNA_INNEN"].pos[1] == 0.4
+    fp = next(f for f in res.freepoints if f.name.endswith("_INNEN_01"))
+    assert fp.pos == (12.0, 0.4, -9.0)

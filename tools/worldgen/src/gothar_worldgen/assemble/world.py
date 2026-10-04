@@ -199,10 +199,15 @@ def assemble(
         # Mobs at the houses with a use (W7, uses.json): anvils, benches, chests.
         group = ids.get("group:uses", floor)
         fresh[group] = _vob(group, "empty", USES_NAME, [0.0, 0.0, 0.0])
-        for m in mobs:
+        for m in mobs:  # mob, mesh (props), light or trigger specs
             vid = ids.get(m["key"], floor)
-            v = _vob(vid, "mob", m["name"], m["pos"], group, rot=m["rot"], mesh=m["mesh"])
-            v["components"] = {"mob": {"definition": m["definition"]}}
+            v = _vob(vid, m.get("type", "mob"), m["name"], m["pos"], group, rot=m["rot"],
+                     mesh=m.get("mesh"))  # fmt: skip
+            components = m.get("components")
+            if components is None and "definition" in m:
+                components = {"mob": {"definition": m["definition"]}}
+            if components:
+                v["components"] = components
             fresh[vid] = v
 
     # Owned groups that editor vobs still hang on survive even if empty of buildings.

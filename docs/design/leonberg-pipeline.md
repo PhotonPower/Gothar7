@@ -925,6 +925,19 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
 - **Budget:** Innenraum-Dreiecke (Rollen `room_*`) zählen nicht gegen das Hausbudget; außen bleibt das Fachwerk.
 - Der Index-Eintrag bekommt `interior` (Boden, Decke, Raum-Ring, Tür mit Angeln, Achse, Normale, Maßen); daraus
   baut C2 Innen-Mobs, Möbel, Freepoints, Licht, Wegnetz und `trigger.owner`.
+- **C2 – Einrichtung** (`gothar_worldgen/uses/inside.py`, von `assemble` geplant; Angaben je Nutzung in
+  `uses.<nutzung>.inside`: `mobs` `typ:N` bzw. `bed:R` = Bewohner, höchstens 3; `freepoints`; `hearth`):
+  Betten und Truhen mit dem Rücken zur Wand (Slot frei, in den Raum blickend), ein Tisch (`mobs/table.glb`) mit je
+  einer Bank an beiden Längsseiten (Mitte ±0,62 m, Vorderseite vom Tisch weg) in der freien Fläche nahe der
+  Raummitte, eine Feuerstelle (`props/hearth.glb`, kein Mob) an einer Wand mit warmem, flackerndem `light`-Vob
+  darüber; in großen Räumen (> 60 m²) ein zweites Licht über dem Tisch bzw. der Mitte. Der Weg von der Tür zur
+  Raummitte (1,3 m breit) und 1,4 m hinter der Tür bleiben frei. Freepoints im Raum: CAMPFIRE vor der Feuerstelle,
+  STAND am Slot einer Truhe (Ladentheke), LEAN an Wänden, SMALLTALK paarweise; jeder vom Raum-Wegpunkt aus in
+  gerader Linie erreichbar. Wegpunkte: `WP_…_TUER` in der Mitte der Türöffnung (verbunden mit dem Routinen-Wegpunkt)
+  und `WP_…_INNEN` 1,2 m im Raum (verbunden mit `…_TUER`): die Figur richtet sich vor dem schmalen Durchgang aus.
+  Innen-Punkte stehen auf dem Raumboden (`y`), nicht auf dem Gelände darunter. Mit `owner` in `uses.json` kommt ein
+  Box-Trigger über den Raum (`trigger.owner`, privater Bereich); ohne owner keiner. `assemble` schreibt allgemeine
+  Vob-Angaben (mob, mesh, light, trigger) in die Gruppe `WORLDGEN_USES`.
 
 ### Vorhandene Werkzeuge (kein Eigenbau)
 Blender (+ Add-on BlenderGIS zum Gegenprüfen), COLMAP / RealityScan / Postshot (Photogrammetrie bzw.

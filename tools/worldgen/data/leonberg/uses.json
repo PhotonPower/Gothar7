@@ -1,6 +1,6 @@
 {
  "version": 1,
- "note": "Gebäudenutzungen für Gameplay (W7). Auswahl des Koordinators im Auftrag des Projektinhabers (2026-10-04) aus dem Vorschlag von `gothar-worldgen uses-suggest` (PR #182); Schuster auf ZkB-H4 und Wache am Oberen Tor auf Zj7-T1 verlegt, Bauernhof von Zjb auf ZkL, weil ZkB-T4 keine freie Wand hat und Zj7-H1 bzw. Zjb das Wegnetz nicht erreichen (Entscheidung Koordinator 2026-10-04). Namen eigen und mittelalterlich, nicht nach heutigen Läden und nicht an Gothic angelehnt. `inside`: Kandidat für die begehbaren Häuser (eigener PR). `owner`: Npc-Instanz bzw. Gilde, setzen engine/figuren mit den Routinen (vorerst leer).",
+ "note": "Gebäudenutzungen für Gameplay (W7). Auswahl des Koordinators im Auftrag des Projektinhabers (2026-10-04) aus dem Vorschlag von `gothar-worldgen uses-suggest` (PR #182); Schuster auf ZkB-H4 und Wache am Oberen Tor auf Zj7-T1 verlegt, Bauernhof von Zjb auf ZkL, weil ZkB-T4 keine freie Wand hat und Zj7-H1 bzw. Zjb das Wegnetz nicht erreichen (Entscheidung Koordinator 2026-10-04). Namen eigen und mittelalterlich, nicht nach heutigen Läden und nicht an Gothic angelehnt. `inside`: Kandidat für die begehbaren Häuser (eigener PR). `owner`: Npc-Instanz bzw. Gilde, setzen engine/figuren mit den Routinen (vorerst leer). `uses.<use>.inside`: was in begehbaren Häusern steht (Mobs `typ:N` bzw. `bed:R` = Bewohner, höchstens 3; Freepoints; `hearth`: Feuerstelle mit Licht).",
  "houses": [
   {"id": "DEBW_00100061ZhE", "use": "gasthaus", "name": "Zur krummen Gans", "residents": 5, "inside": true},
   {"id": "DEBW_00100061Zja", "use": "gasthaus", "name": "Zum hölzernen Krug", "residents": 3},
@@ -34,11 +34,11 @@
   {"id": "DEBW_00100061ZhK", "use": "wohnhaus", "residents": 5}
  ],
  "uses": {
-  "gasthaus": {"freepoints": ["SIT:3", "DRINK:2", "SMALLTALK:2"], "mobs": ["bench:2"]},
+  "gasthaus": {"freepoints": ["SIT:3", "DRINK:2", "SMALLTALK:2"], "mobs": ["bench:2"], "inside": {"mobs": ["table:2", "chest:1", "bed:1"], "freepoints": ["SMALLTALK:1", "STAND:1"], "hearth": true}},
   "baecker": {"freepoints": ["SWEEP:1", "STAND:1"]},
   "metzger": {"freepoints": ["CHOP:1", "STAND:1"]},
-  "haendler": {"freepoints": ["STAND:2"], "mobs": ["chest:1"]},
-  "schmiede": {"freepoints": ["REPAIR:1", "CHOP:1"], "mobs": ["anvil:1"]},
+  "haendler": {"freepoints": ["STAND:2"], "mobs": ["chest:1"], "inside": {"mobs": ["chest:2", "table:1", "bed:1"], "freepoints": ["STAND:1"]}},
+  "schmiede": {"freepoints": ["REPAIR:1", "CHOP:1"], "mobs": ["anvil:1"], "inside": {"mobs": ["bed:1", "chest:1", "table:1"], "freepoints": ["LEAN:1"], "hearth": true}},
   "werkstatt": {"freepoints": ["REPAIR:1", "SWEEP:1"], "mobs": ["bench:1"]},
   "bader": {"freepoints": ["STAND:1", "SIT:1"]},
   "kraeuter": {"freepoints": ["STAND:1"]},
@@ -46,6 +46,6 @@
   "wache": {"freepoints": ["STAND:2", "LEAN:1"]},
   "pfarrhaus": {"freepoints": ["SWEEP:1"]},
   "bauer": {"freepoints": ["CHOP:1", "HARVEST:1"]},
-  "wohnhaus": {"freepoints": ["LEAN:1"]}
+  "wohnhaus": {"freepoints": ["LEAN:1"], "inside": {"mobs": ["bed:R", "chest:1", "table:1"], "freepoints": ["LEAN:1"], "hearth": true}}
  }
 }

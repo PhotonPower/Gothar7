@@ -25,6 +25,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -44,6 +45,8 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "straw": ("straw", (0.42, 0.33, 0.15)),
     "wool": ("cloth", (0.13, 0.075, 0.05)),  # undyed brown wool
     "linen": ("cloth", (0.5, 0.45, 0.36)),
+    "fieldstone": ("stone", (0.24, 0.22, 0.2)),  # hearth (props)
+    "ash": ("stone", (0.04, 0.035, 0.03)),
 }
 # the texture kind's grain runs along u (timber, straw) or v (boards); boxes map their grain axis so
 GRAIN_U = {"timber", "straw", "iron", "cloth"}
@@ -316,13 +319,36 @@ BUILDERS = {"chest": chest, "anvil": anvil, "bed": bed, "door": door, "bench": b
             "table": table}  # fmt: skip
 
 
-def write_mobs(folder: Path, types: Sequence[str] = TYPES) -> list[str]:
+HEARTH_W, HEARTH_H = 0.9, 0.25
+
+
+def hearth() -> MobModel:
+    """Open hearth (W7 rooms, a prop, not a mob): a low frame of field stones round a bed of ash
+    with two logs; the room's light hangs over it."""
+    m = Mesh()
+    h, t = HEARTH_W / 2, 0.16  # half size, stone thickness
+    m.box("fieldstone", (-h, 0.0, -h), (h, HEARTH_H, -h + t))
+    m.box("fieldstone", (-h, 0.0, h - t), (h, HEARTH_H, h))
+    m.box("fieldstone", (-h, 0.0, -h + t), (-h + t, HEARTH_H, h - t))
+    m.box("fieldstone", (h - t, 0.0, -h + t), (h, HEARTH_H, h - t))
+    m.box("ash", (-h + t, 0.0, -h + t), (h - t, 0.05, h - t))
+    m.box("oak_beam", (-0.25, 0.05, -0.06), (0.25, 0.14, 0.04), grain=0)
+    m.box("oak_beam", (-0.05, 0.05, -0.25), (0.05, 0.13, 0.22), grain=1)
+    m.body("hearth", (-h, 0.0, -h), (h, HEARTH_H, h))
+    return MobModel("hearth", m)
+
+
+PROPS = {"hearth": hearth}  # placed as plain mesh vobs (assets/source/props)
+
+
+def write_mobs(folder: Path, types: Sequence[str] = TYPES,
+               builders: dict[str, Any] | None = None) -> list[str]:  # fmt: skip
     """Writes ``<type>.glb`` and the textures they use into ``folder``; returns report lines."""
     folder.mkdir(parents=True, exist_ok=True)
     kinds: set[str] = set()
     lines = []
     for t in types:
-        model = BUILDERS[t]()
+        model = (builders or BUILDERS)[t]()
         data = model.glb()
         path = folder / f"{t}.glb"
         if not path.is_file() or path.read_bytes() != data:
