@@ -1,6 +1,7 @@
 #include <g7/world/Waynet.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <map>
 
@@ -61,8 +62,12 @@ Result<void> normalizeWaynet(WaynetData& waynet, std::string_view where)
             }
             if (p.dir)
             {
-                Vec3 d(p.dir->x, 0.0f, p.dir->z);
-                p.dir = glm::length(d) > 1e-6f ? std::optional<Vec3>(glm::normalize(d)) : std::nullopt;
+                // Horizontal and unit length; one already so (to the written decimals) stays as written, so
+                // saving gives the generator's numbers back.
+                const Vec3 d(p.dir->x, 0.0f, p.dir->z);
+                const f32 length = glm::length(d);
+                const bool asWritten = p.dir->y == 0.0f && std::abs(length - 1.0f) <= 1e-4f;
+                p.dir = length <= 1e-6f ? std::nullopt : std::optional<Vec3>(asWritten ? d : d / length);
             }
         }
     }

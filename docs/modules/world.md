@@ -109,9 +109,10 @@ daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vo
 - **Schreiben** ist stabil: Kopf-Schlüssel je eine Zeile, dann **ein Vob pro Zeile** nach `id` sortiert – gleiche
   Welt, gleiche Bytes; Laden und Speichern ändert nichts.
 - **Zahlen** wie Pythons `json` (welts Generator): die wenigsten Ziffern, die denselben Wert ergeben (`24.12317`,
-  `4.0`, `1e-05`). Gespeichert als 32-Bit-Float, geschrieben mit den wenigsten Nachkommastellen, die wieder diesen
-  Float ergeben (`-343.106`). Braucht ein Wert mehr als sechs Nachkommastellen (Rechenrauschen wie `-4.37e-08`), wird
-  er erst auf 1e-5 gerundet. Quaternionen werden beim Lesen nur normiert, wenn ihre Länge um mehr als 1e-4 von 1
+  `4.0`, `1e-05`). Gespeichert als 32-Bit-Float, geschrieben mit den wenigsten Nachkommastellen (Festkomma), die
+  wieder diesen Float ergeben (`-343.106`). Braucht ein Wert mehr als sechs Nachkommastellen (Rechenrauschen wie
+  `-0.0000000437`), wird er erst auf 1e-5 gerundet. In Python: für `d` = 0 … 9 das erste `f"{f:.{d}f}"`, das den
+  float32 `f` wieder ergibt; bei `d` > 6 vorher `round(f, 5)`. Quaternionen werden beim Lesen nur normiert, wenn ihre Länge um mehr als 1e-4 von 1
   abweicht. So ergibt ein Speichern im Editor dieselben Bytes wie der Generator.
 - Fehler nennen Datei und Eintrag (`camp.g7world: vobs[3].pos: must be a list of 3 numbers`); fehlende Eltern,
   Elternzyklen und doppelte IDs lassen die Szene beim Laden unverändert.
@@ -218,7 +219,10 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   zwischen ihnen ist in Hüfthöhe frei (kein Haus, keine Mauer); Punkte stehen auf begehbarem Boden; vor jeder
   benutzbaren Haustür ein Punkt (welt: `WP_LEO_<STRASSE>_<NR>`), Freepoints auf Plätzen und an Bänken/Feuern.
 - **Schreiben** ist stabil: je Punkt, Freepoint und Kante eine Zeile, Punkte und Freepoints nach Name, Kanten nach
-  ihren Namen sortiert (die kleinere zuerst); Zahlen auf 1e-5 gerundet.
+  ihren Namen sortiert (die kleinere zuerst). Zahlen wie bei den Vobs (Abschnitt „Zahlen“): die wenigsten
+  Nachkommastellen, die denselben 32-Bit-Float ergeben; auf 1e-5 gerundet wird nur Rechenrauschen mit mehr als
+  sechs Nachkommastellen. `dir` wird nur normiert, wenn es nicht waagrecht ist oder seine Länge um mehr als 1e-4
+  von 1 abweicht.
 - Vorher stand hier eine Skizze mit Kanten per Index; sie wurde nie benutzt (das Spiel las den Block nicht).
 
 ## Generator-Kopf (`generator`, optional, M4)

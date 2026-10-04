@@ -325,7 +325,7 @@ TEST_CASE("WorldFile: positions and rotations come back as welt's generator wrot
   "nextVobId": 3,
   "vobs": [
     {"id":1,"type":"mesh","name":"BLD","pos":[181.715,23.39,-343.106],"rot":[0.0,0.169246,0.0,0.985574],"mesh":"m.glb"},
-    {"id":2,"type":"empty","name":"NOISE","pos":[-4.37e-08,0.70710677,1000.25]}
+    {"id":2,"type":"empty","name":"NOISE","pos":[-0.0000000437,0.70710677,1000.25]}
   ]
 })";
     const std::string text = writeWorldFile(parse(kWorld));

@@ -496,36 +496,31 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
     return vob;
 }
 
-/// The fewest decimals that read back to the same float: -343.106 is stored as the float -343.10598755 and
-/// written as "-343.106" again, -0.258819 as "-0.258819" - what welt's generator wrote. A float that needs
-/// more than six decimals is noise from arithmetic (-4.37e-08 for a zero, 0.70710677): it is rounded to 1e-5
-/// (0.01 mm, quaternions well within float noise) first. Reading and writing again stays identical.
+/// The fewest decimals that read back to the same float (shortest fixed notation): -343.106 is stored as the
+/// float -343.10598755 and written as "-343.106" again, -0.258819 as "-0.258819" - what welt's generator
+/// wrote. A float that needs more than six decimals is noise from arithmetic (-0.0000000437 for a zero,
+/// 0.70710677): it is rounded to 1e-5 (0.01 mm, quaternions well within float noise) first. Reading and
+/// writing again stays identical. Python (welt): for d in 0..9 the first f"{f:.{d}f}" that gives the float32
+/// f back; d > 6: round(f, 5) first.
 double tidy(f32 value)
 {
-    const auto shortest = [](f32 v, char* buffer) -> std::string_view
+    const auto fixed = [](f32 v, char* buffer) -> std::string_view
     {
-        const auto [end, ec] = std::to_chars(buffer, buffer + 32, v);
-        G7_ASSERT(ec == std::errc(), "to_chars of a float fits 32 characters");
+        const auto [end, ec] = std::to_chars(buffer, buffer + 64, v, std::chars_format::fixed);
+        G7_ASSERT(ec == std::errc(), "to_chars of a float in fixed notation fits 64 characters");
         return {buffer, static_cast<usize>(end - buffer)};
     };
-    char buffer[32];
-    std::string_view text = shortest(value, buffer);
+    char buffer[64];
+    std::string_view text = fixed(value, buffer);
     const usize point = text.find('.');
-    const bool noisy = text.find('e') != std::string_view::npos
-                           ? std::abs(value) < 1.0f
-                           : point != std::string_view::npos && text.size() - point - 1 > 6;
-    if (noisy)
+    if (point != std::string_view::npos && text.size() - point - 1 > 6)
     {
         const double rounded = std::round(static_cast<double>(value) * 1e5) / 1e5;
-        if (rounded == 0.0)
-        {
-            return 0.0; // no -0
-        }
-        text = shortest(static_cast<f32>(rounded), buffer);
+        text = fixed(static_cast<f32>(rounded), buffer);
     }
     double result = 0.0;
     std::from_chars(text.data(), text.data() + text.size(), result);
-    return result == 0.0 ? 0.0 : result;
+    return result == 0.0 ? 0.0 : result; // no -0
 }
 
 /// A floating-point number with the fewest digits that read back to the same double (std::to_chars), laid out
