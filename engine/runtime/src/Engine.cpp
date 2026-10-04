@@ -534,6 +534,7 @@ Result<void> Engine::initSceneRendering()
 {
     // Sun shadows (render.md): [render] shadow_* with the defaults 4 x 2048², 150 m.
     render::ShadowSettings shadows;
+    m_shadowCadence = m_config.settings.get<bool>("render.shadow_far_cadence", true);
     shadows.cascades =
         static_cast<u32>(std::clamp<i64>(m_config.settings.get<i64>("render.shadow_cascades", 4), 1, 4));
     shadows.resolution = static_cast<u32>(
@@ -563,6 +564,7 @@ Result<void> Engine::initSceneRendering()
         return Error{"cannot create shadow map: " + shadowMap.error().message};
     }
     m_shadowMap = std::move(shadowMap).value();
+    m_cascadesDrawn.clear(); // a new map holds nothing yet
 
     const auto anisotropy = static_cast<f32>(m_config.settings.get<f64>("render.anisotropy", 8.0));
     auto renderer = render::MeshRenderer::create(*m_device, *m_shaders, anisotropy, shadows);
@@ -1190,6 +1192,33 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     return {};
 }
 
+bool Engine::shadowRedraw(u32 i) const
+{
+    // The near cascades every frame. The far ones (2, 3) every 2nd and 4th frame, never in the same frame:
+    // their texels are large and what moves in them is far away. Sooner when their fit moved by more than 5 %
+    // of its size (the camera walked or turned): the old tile would not cover the view any more.
+    if (i < 2 || !m_shadowCadence)
+    {
+        return true;
+    }
+    const render::Cascade& drawn = m_cascadesDrawn[i];
+    const render::Cascade& fresh = m_cascades[i];
+    if (drawn.texelWorldSize != fresh.texelWorldSize || drawn.atlasRect != fresh.atlasRect)
+    {
+        return true; // never drawn (0), or another size
+    }
+    const Mat4 toDrawn = drawn.viewProjection * glm::inverse(fresh.viewProjection);
+    for (const Vec2 corner : {Vec2(-1.0f, -1.0f), Vec2(1.0f, -1.0f), Vec2(-1.0f, 1.0f), Vec2(1.0f, 1.0f)})
+    {
+        const Vec4 p = toDrawn * Vec4(corner, 0.5f, 1.0f);
+        if (glm::length(Vec2(p) / p.w - corner) > 0.1f) // NDC spans 2: 0.1 is 5 %
+        {
+            return true;
+        }
+    }
+    return i == 2 ? m_frameCount % 2 == 0 : m_frameCount % 4 == 1;
+}
+
 void Engine::requestWorldChange(std::string world, std::string start)
 {
     m_pendingWorldChange = PendingWorldChange{std::move(world), std::move(start)};
@@ -1199,6 +1228,7 @@ void Engine::unloadWorld()
 {
     m_creatures.clear(); // they belong to the world they were put into
     m_waynet = {};
+    m_cascadesDrawn.clear(); // shadows of the old world
     m_scene.clear();
     m_instances.clear();
     m_worldItems.clear(); // items lying around belong to the world
@@ -1503,9 +1533,20 @@ void Engine::drawScene(u32 width, u32 height)
     if ((!m_instances.empty() || m_hasTerrain) && m_environment.sunIntensity > 0.0f)
     {
         m_cascades = render::computeCascades(m_camera, m_environment.sunDirection, m_shadowMap.settings());
+        if (m_cascadesDrawn.size() != m_cascades.size())
+        {
+            m_cascadesDrawn.assign(m_cascades.size(), render::Cascade{});
+        }
         m_shadowMap.begin(*m_device);
         for (u32 i = 0; i < m_cascades.size(); ++i)
         {
+            if (!shadowRedraw(i))
+            {
+                m_cascades[i] = m_cascadesDrawn[i]; // shade with what the tile holds
+                continue;
+            }
+            m_cascadesDrawn[i] = m_cascades[i];
+            ++m_cascadeDraws[std::min<u32>(i, 3)];
             m_shadowMap.beginCascade(*m_device, i);
             const Frustum volume = Frustum::fromViewProjection(m_cascades[i].viewProjection);
             m_cullCandidates.clear();
