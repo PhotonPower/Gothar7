@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 1930,
+ "nextVobId": 1933,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -1931,6 +1931,9 @@
   "citywall:zwinger_00_00_02": 1926,
   "citywall:zwinger_00_00_03": 1927,
   "citywall:zwinger_00_00_04": 1928,
-  "citywall:zwinger_00_01_01": 1929
+  "citywall:zwinger_00_01_01": 1929,
+  "building:DEBW_001000oZ9wF-T1": 1930,
+  "building:DEBW_001000oZ9wF-T2": 1931,
+  "building:DEBW_001000oZ9wF-T3": 1932
  }
 }

@@ -256,3 +256,20 @@ def test_passage_is_lowered_under_a_low_ground_storey_and_takes_over_the_door():
     r = build_house(HOUSE, -0.3, (5.0, -3.5), RULES, STREET_SOUTH, low)
     assert any(n.startswith("passage lowered to") for n in r.notes)
     assert all(abs(d[0] - 5.0) > 1.75 for d in r.doors)  # the street door went into the passage
+
+
+def test_houses_far_from_the_origin_keep_their_roof_slopes():
+    # the ridge line used to be centred at the point nearest the origin: far houses lost it
+    far = {"id": "F1", "groundY": 0.0, "roof": ROOF,
+           "footprint": [[x + 300.0, z - 200.0] for x, z in RING]}  # fmt: skip
+    for house in (HOUSE, far):
+        r = build_house(house, -0.3, (5.0, -3.5), RULES, None, TIMBERED)
+        slopes = 0
+        for p in r.primitives:
+            if kind(p.material) != "roof":
+                continue
+            t = p.mesh.positions[p.mesh.indices.reshape(-1, 3)].astype(float)
+            n = np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])
+            n /= np.linalg.norm(n, axis=1, keepdims=True)
+            slopes += int(((n[:, 1] > 0.3) & (n[:, 1] < 0.95)).sum())  # pitched, facing up
+        assert slopes >= 4, house["id"]
