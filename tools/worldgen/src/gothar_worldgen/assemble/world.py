@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,7 @@ IDS_VERSION = 1
 ROOT_NAME = "WORLDGEN_BUILDINGS"
 CITYWALL_NAME = "WORLDGEN_CITYWALL"
 HANDMADE_NAME = "WORLDGEN_HANDMADE"
+USES_NAME = "WORLDGEN_USES"  # group of the mobs at the houses with a use (W7)
 WATER_NAME = "WORLDGEN_WATER"
 GROUP_CELL_M = 64.0
 IDENTITY = [0.0, 0.0, 0.0, 1.0]
@@ -119,6 +121,7 @@ def assemble(
     handmade: dict[str, Any] | None = None,
     water: dict[str, Any] | None = None,
     starts: tuple[StartPoint, ...] = DEFAULT_STARTS,
+    mobs: Sequence[dict[str, Any]] = (),
 ) -> AssembleResult:
     if "terrain" not in terrain_world:
         raise AssembleError("the terrain world has no terrain block (run export-terrain)")
@@ -190,6 +193,16 @@ def assemble(
             vid = ids.get(f"water:{e['id']}", floor)
             v = _vob(vid, "water", e["name"], e["pos"], group, rot=e["rot"])
             v["components"] = {"water": {"halfExtents": [_tidy(h) for h in e["halfExtents"]]}}
+            fresh[vid] = v
+
+    if mobs:
+        # Mobs at the houses with a use (W7, uses.json): anvils, benches, chests.
+        group = ids.get("group:uses", floor)
+        fresh[group] = _vob(group, "empty", USES_NAME, [0.0, 0.0, 0.0])
+        for m in mobs:
+            vid = ids.get(m["key"], floor)
+            v = _vob(vid, "mob", m["name"], m["pos"], group, rot=m["rot"], mesh=m["mesh"])
+            v["components"] = {"mob": {"definition": m["definition"]}}
             fresh[vid] = v
 
     # Owned groups that editor vobs still hang on survive even if empty of buildings.

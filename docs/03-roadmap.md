@@ -390,7 +390,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 ## W7 – Integration & Feinschliff  (benötigt M16, M17)
 - [ ] Handarbeit im Editor, Zellen/Streaming, Performance-Budget
 - [ ] Credits (LGL, OSM, Asset-Lizenzen) im Spiel
-- [ ] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …)
+- [x] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …) – `uses-suggest` (OSM/ALKIS), Auswahl des Koordinators in `data/leonberg/uses.json` (30 Häuser), Routinen-Wegpunkte, Freepoints und Mobs (`docs/design/leonberg-routinen-orte.md`)
 
 **DoD:** Leonberg ist als fertiger Spielort im Vertical Slice / Kapitel nutzbar.
 

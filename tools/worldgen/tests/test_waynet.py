@@ -211,3 +211,20 @@ def test_writing_a_written_block_again_changes_nothing():
     assert '"dir":[-0.4265,0.0,-0.90449]' in once
     again = json.loads("{" + '"w": ' + once + "}")["w"]
     assert waynet_text(again) == once
+
+
+def test_routine_places_join_the_net():
+    places = [
+        {"kind": "wp", "name": "WP_LEO_SCHMIEDE_ZNA", "house": "DEBW_00100061ZnA",
+         "pos": [15.0, -3.0], "dir": [0.0, -1.0]},
+        {"kind": "fp", "name": "FP_REPAIR_LEO_SCHMIEDE_ZNA_01", "house": "DEBW_00100061ZnA",
+         "pos": [12.0, -3.5], "dir": [0.0, -1.0]},
+        {"kind": "mob", "name": "MOB_X", "house": "DEBW_00100061ZnA", "pos": [0, 0], "dir": [0, 1]},
+    ]  # fmt: skip
+    res = run(places=places)
+    names = {p.name for p in res.points}
+    assert "WP_LEO_SCHMIEDE_ZNA" in names and "MOB_X" not in names
+    assert any("WP_LEO_SCHMIEDE_ZNA" in e[:2] for e in res.edges)
+    fp = next(p for p in res.freepoints if p.name == "FP_REPAIR_LEO_SCHMIEDE_ZNA_01")
+    assert fp.pos == (12.0, 1.0, -3.5) and fp.owner == "worldgen"
+    assert res.report["usePoints"] == 1 and res.report["usesUnconnected"] == []

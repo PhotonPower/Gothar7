@@ -134,3 +134,20 @@ def test_world_file_round_trip(tmp_path: Path):
         assemble({"version": 1}, index("A"), None, VobIds({}, 1), "t")
     with pytest.raises(AssembleError):
         assemble(TERRAIN, index("A"), {"version": 2}, VobIds({}, 1), "t")
+
+
+def test_mobs_at_houses_with_a_use():
+    mob = {"key": "use:MOB_LEO_SCHMIEDE_ZNP_ANVIL_1", "name": "MOB_LEO_SCHMIEDE_ZNP_ANVIL_1",
+           "pos": [3.0, 2.0, 1.0], "rot": [0.0, 0.70711, 0.0, 0.70711], "mesh": "mobs/anvil.glb",
+           "definition": "anvil"}  # fmt: skip
+    ids = VobIds({}, 1)
+    w = run(index("A"), None, ids, mobs=[mob])
+    names = by_name(w)
+    v = names["MOB_LEO_SCHMIEDE_ZNP_ANVIL_1"]
+    assert v["type"] == "mob" and v["mesh"] == "mobs/anvil.glb"
+    assert v["components"] == {"mob": {"definition": "anvil"}}
+    assert v["parent"] == names["WORLDGEN_USES"]["id"] and v["rot"] == mob["rot"]
+    w2 = run(index("A"), w, ids, mobs=[mob])  # stable id, generator-owned
+    assert by_name(w2)["MOB_LEO_SCHMIEDE_ZNP_ANVIL_1"]["id"] == v["id"]
+    w3 = run(index("A"), w2, ids)  # the use is gone: its mob goes too
+    assert "MOB_LEO_SCHMIEDE_ZNP_ANVIL_1" not in by_name(w3)

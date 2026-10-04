@@ -220,6 +220,7 @@ def build_waynet(
     existing: dict[str, Any] | None = None,
     annotations: dict[str, Any] | None = None,
     links: Sequence[tuple[str, tuple[float, float], tuple[float, float]]] = (),
+    places: Sequence[dict[str, Any]] = (),
 ) -> Result:
     prefix = f"WP_{SITE_PREFIX.get(site, name_part(site))}"
     fprefix = SITE_PREFIX.get(site, name_part(site))
@@ -232,6 +233,7 @@ def build_waynet(
         "doorsUnconnected": [],
         "doorsUnusable": [],
         "doorsWithoutAccess": [],
+        "usesUnconnected": [],
         "steep": [],
     }
 
@@ -496,6 +498,22 @@ def build_waynet(
                     }
                 )
 
+    # --- routine places of the houses with a use (W7, uses_places.json) ---------------------------
+    use_points = 0
+    for pl in places:
+        if pl.get("kind") != "wp":
+            continue
+        name = pl["name"]
+        while name in points:
+            name += "_U"
+        spot = (float(pl["pos"][0]), float(pl["pos"][1]))
+        points[name] = wp(name, spot[0], spot[1], tuple(pl["dir"]))  # type: ignore[arg-type]
+        use_points += 1
+        if not connect(name, spot):
+            why = "no reachable point or way within 30 m"
+            report["usesUnconnected"].append({"point": name, "house": pl.get("house"),
+                                              "reason": why})  # fmt: skip
+
     # --- bridges: each island tied to the nearest other part a free, walkable line reaches -----
     bridges = 0
     names_all = sorted(points)
@@ -542,6 +560,12 @@ def build_waynet(
             report["droppedPoints"].append(
                 {"at": [round(x, 2), round(z, 2)], "freepoint": fp.name, "reason": "blocked"}
             )
+
+    for pl in places:  # their freepoints (no edges, as every freepoint)
+        if pl.get("kind") == "fp":
+            x, z = float(pl["pos"][0]), float(pl["pos"][1])
+            d = (float(pl["dir"][0]), 0.0, float(pl["dir"][1]))
+            freepoints[pl["name"]] = Wp(pl["name"], (x, height(x, z), z), d)
 
     # --- annotations and hand-made entries -------------------------------------------------------
     ann = annotations or {}
@@ -596,6 +620,7 @@ def build_waynet(
             "freepoints": len(freepoints),
             "detours": detours,
             "splits": splits,
+            "usePoints": use_points,
             "bridges": bridges,
             "handPoints": len(hand_points),
             "removed": sorted(removed),
