@@ -31,29 +31,31 @@ void defineContentKinds(script::ScriptVm& vm)
          false});
 
     // Npc "npc_gate_guard" { name = "Torwache", level = 12, figure = "characters/figures/guard.figure.toml" }
-    vm.defineKind({"Npc",
-                   {
-                       {"name", Type::String, true},
-                       {"guild", Type::String},
-                       {"level", Type::Integer, false, 0.0, 100.0}, // the hero starts at 0 (Gothic)
-                       {"voice", Type::Integer, false, 0.0, 99.0},
-                       {"figure", Type::String}, // figure manifest or .glb; default: a worker
-                       {"attributes", Type::Table},
-                       {"talents", Type::Table},
-                       {"equipment", Type::StringList, false, none, none, "Item"},
-                       {"inventory", Type::Table},
-                       {"routine", Type::String, false, none, none, "Routine"},
-                       {"senses", Type::Table},     // sight (m), angle (degrees), hearing (factor); M9
-                       {"species", Type::String},   // animals: wolf, keiler, laufvogel (M9 part D)
-                       {"protection", Type::Table}, // by damage type (edge, blunt, point, fire, magic, fall)
-                       {"xp", Type::Integer, false, 0.0, none},
-                       {"learn_points", Type::Integer, false, 0.0, none},
-                       // Pickpocketing (Gothic 1): the dexterity needed; default Pickpocketing.default_dex
-                       {"pickpocket_dex", Type::Integer, false, 0.0, 200.0},
-                       // What a successful pickpocket takes first while the NPC has it (a quest item; M10)
-                       {"pickpocket_item", Type::String, false, none, none, "Item"},
-                   },
-                   false});
+    vm.defineKind(
+        {"Npc",
+         {
+             {"name", Type::String, true},
+             {"guild", Type::String},
+             {"level", Type::Integer, false, 0.0, 100.0}, // the hero starts at 0 (Gothic)
+             {"voice", Type::Integer, false, 0.0, 99.0},
+             {"figure", Type::String}, // figure manifest or .glb; default: a worker
+             {"attributes", Type::Table},
+             {"talents", Type::Table},
+             {"equipment", Type::StringList, false, none, none, "Item"},
+             {"inventory", Type::Table},
+             {"routine", Type::String, false, none, none, "Routine"},
+             {"senses", Type::Table},      // sight (m), angle (degrees), hearing (factor); M9
+             {"species", Type::String},    // animals: wolf, keiler, laufvogel (M9 part D)
+             {"figure_set", Type::String}, // nameless people: a figure of this set (figure_sets.toml)
+             {"protection", Type::Table},  // by damage type (edge, blunt, point, fire, magic, fall)
+             {"xp", Type::Integer, false, 0.0, none},
+             {"learn_points", Type::Integer, false, 0.0, none},
+             // Pickpocketing (Gothic 1): the dexterity needed; default Pickpocketing.default_dex
+             {"pickpocket_dex", Type::Integer, false, 0.0, 200.0},
+             // What a successful pickpocket takes first while the NPC has it (a quest item; M10)
+             {"pickpocket_item", Type::String, false, none, none, "Item"},
+         },
+         false});
 
     // Info "dia_gate_guard_hello" { npc = "npc_gate_guard", condition = function ... end, run = ... }
     vm.defineKind({"Info",

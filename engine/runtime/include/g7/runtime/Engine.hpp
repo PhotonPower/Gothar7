@@ -684,6 +684,8 @@ private:
     [[nodiscard]] ui::AiPanel aiPanelData();
     /// Capsule of an animal species (data/creatures.toml), the human one otherwise.
     [[nodiscard]] physics::CharacterDesc creatureBody(std::string_view species);
+    /// A figure of `set` (data/figure_sets.toml, figuren) for the NPC, stable by its name; empty if none.
+    [[nodiscard]] std::string figureFromSet(std::string_view set, std::string_view npc);
     /// item_to_hand / item_from_hand of an NPC's animation: its hand item appears or goes.
     void handEvent(Creature& c, std::string_view event);
     [[nodiscard]] Creature* npcNamed(std::string_view instance) noexcept;
@@ -1062,6 +1064,7 @@ private:
     std::string m_aiFilter;      // window "AI"
     u32 m_aiSelected = 0;
     std::optional<Config> m_creatureBodies; // data/creatures.toml, read on first use (M9 part D)
+    std::optional<Config> m_figureSets;     // data/figure_sets.toml (figuren), read on first use
     std::vector<WorldItem> m_worldItems;
     std::unordered_map<std::string, const LoadedModel*> m_itemModels; // by Item instance; models in m_models
                                                                       // or m_scriptModels (placeholders)

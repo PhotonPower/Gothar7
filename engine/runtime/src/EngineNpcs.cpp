@@ -293,6 +293,38 @@ void Engine::bindNpcFunctions()
 {
     using script::Value;
     script::ScriptVm& vm = *m_scripts;
+    vm.bind({"route_length", "route_length(from: string, to: string) -> number | nil",
+             "Länge des Weges (Meter) zwischen zwei Wegpunkten bzw. Freepoints, wie ein NPC ihn gehen würde; "
+             "`nil`, "
+             "wenn es keinen gibt (Prüfung der Routinen-Orte, Inhalte).",
+             "NPCs", [this](std::span<const Value> a) -> Result<Value>
+             {
+                 if (a.size() < 2 || !a[0].isString() || !a[1].isString())
+                 {
+                     return Error{"expects (from: string, to: string)"};
+                 }
+                 const auto from = navigationTarget(a[0].asString());
+                 const auto to = navigationTarget(a[1].asString());
+                 if (!from || !to)
+                 {
+                     return Error{std::format("no way point or freepoint \"{}\"",
+                                              !from ? a[0].asString() : a[1].asString())};
+                 }
+                 const auto route = m_waynet.route(*from, *to, [this](const Vec3& p, const Vec3& q)
+                                                   { return walkableLine(p, q); });
+                 if (!route)
+                 {
+                     return Value();
+                 }
+                 f64 length = 0.0;
+                 Vec3 previous = *from;
+                 for (const Vec3& p : route->points)
+                 {
+                     length += static_cast<f64>(glm::length(p - previous));
+                     previous = p;
+                 }
+                 return Value(length);
+             }});
     vm.bind(
         {"npc_goto", "npc_goto(npc: string, target: string, run?: boolean) -> boolean",
          "Schickt den (ersten eingefügten) NPC dieser Instanz zu einem Wegpunkt oder Freepoint (Name ohne "

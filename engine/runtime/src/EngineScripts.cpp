@@ -355,6 +355,32 @@ Result<void> Engine::insertInstance(std::string_view name, u32 count)
     return Error{std::format("unknown instance \"{}\" (no Item or Npc of that name)", name)};
 }
 
+std::string Engine::figureFromSet(std::string_view set, std::string_view npc)
+{
+    if (!m_figureSets)
+    {
+        auto bytes = m_vfs.read("data/figure_sets.toml");
+        auto parsed =
+            bytes ? Config::parse(std::string_view(reinterpret_cast<const char*>(bytes.value().data()),
+                                                   bytes.value().size()),
+                                  "data/figure_sets.toml")
+                  : Result<Config>(bytes.error());
+        m_figureSets = parsed ? std::move(parsed).value() : Config{};
+    }
+    const auto figures = m_figureSets->get<std::vector<std::string>>(std::format("sets.{}", set), {});
+    if (figures.empty())
+    {
+        G7_LOG_WARN("engine", "{}: no figure set \"{}\" in data/figure_sets.toml", npc, set);
+        return {};
+    }
+    // Stable: the same NPC (instance and number, "npc_citizen#3") gets the same figure every time.
+    const std::string key =
+        std::format("{}#{}", npc,
+                    std::count_if(m_creatures.begin(), m_creatures.end(),
+                                  [&](const auto& c) { return c->species.starts_with(npc); }));
+    return figures[std::hash<std::string>{}(key) % figures.size()];
+}
+
 physics::CharacterDesc Engine::creatureBody(std::string_view species)
 {
     physics::CharacterDesc desc; // human (physics.md)
@@ -396,8 +422,21 @@ Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
     // Animals are Npcs too (M9 part D, like Gothic's monsters): `species` picks their figure and graph.
     const std::string species =
         npc->fields["species"].isString() ? std::string(npc->fields["species"].asString()) : std::string();
-    const std::string_view figure =
-        npc->fields["figure"].isString() ? npc->fields["figure"].asString() : kDefaultNpcFigure;
+    // The figure: its own manifest, or one of a set for nameless people (figure_set, data/figure_sets.toml),
+    // chosen by the NPC's name so that it looks the same each time; the default one if neither is there.
+    std::string figure(npc->fields["figure"].isString() ? npc->fields["figure"].asString() : "");
+    if (figure.empty() && npc->fields["figure_set"].isString())
+    {
+        figure = figureFromSet(npc->fields["figure_set"].asString(), name);
+    }
+    if (figure.empty() || !m_vfs.exists(figure))
+    {
+        if (!figure.empty())
+        {
+            G7_LOG_WARN("engine", "{}: no figure {}, the default one stands in", name, figure);
+        }
+        figure = std::string(kDefaultNpcFigure);
+    }
     auto spawned =
         species.empty() ? spawnAnimated(name, figure, kHumanGraph, at, yaw) : spawnCreature(species, at, yaw);
     if (!spawned)

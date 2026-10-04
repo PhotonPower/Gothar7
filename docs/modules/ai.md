@@ -147,6 +147,20 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
 }
 ```
 
+## Leonberg lebt (Inhalt nach M10)
+- Acht Bewohner mit Tagesabläufen auf welts Routinen-Orten (`docs/design/leonberg-routinen-orte.md`):
+  Schmied, Wirt, Bäckerin und Marktfrau (handeln), zwei Torwachen (Tag- bzw. Nachtschicht), Bauer, Ratsdiener;
+  `npcs/leonberg/residents.lua`, `routines/leonberg.lua`, `dialogs/leonberg.lua` (eigene Namen und Plauder-Dialoge,
+  Entscheidungen L1–L3). Beim Laden von Leonberg setzt `leonberg_people()` sie ein (`startup.lua`, L2).
+- Tätigkeiten an Freepoints: `zs_repair`, `zs_harvest`, `zs_smalltalk`, `zs_drink` (mit Krug), `zs_lean`, `zs_sit`,
+  `zs_stand_shop`; nachts lehnen sie an ihrem Haus, bis NPCs mit M11 Betten benutzen.
+- **Figuren:** `figure` (eigenes Manifest) oder `figure_set` für Namenlose: eine Figur aus
+  `data/figure_sets.toml` (`[sets] citizen = [...]`, figuren), stabil nach dem Namen gewählt. Fehlt die Figur, steht
+  die Standardfigur ein (Warnung).
+- `route_length(von, nach)`: Weglänge zwischen zwei Punkten bzw. `nil` (Prüfung der Routinen-Orte).
+- Tests: Die Orte aller `rtn_leo_*` stehen in Leonbergs Wegnetz (auch in der CI); mit den erzeugten Daten (lokal)
+  ein Spieltag in Leonberg, jeder zur rechten Zeit am rechten Ort.
+
 ## Debug (M9 Teil E, umgesetzt) – `runtime/EngineAiDebug.cpp`
 - **Fenster „AI“** (Debug-UI, F1): je NPC Name, Zustand, Abstand zum Spieler, „sees you“, „(far)“ außerhalb der
   KI-LOD; aufgeklappt Tagesablauf und Ort, Animation (Graph-Zustand und Tagesablauf-Animation), Einstellung zum
