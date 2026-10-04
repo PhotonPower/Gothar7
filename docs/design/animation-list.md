@@ -47,7 +47,7 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 | Bereich | Umfang (Richtwert) | Muster / Beispiele | Quelle |
 |---|---|---|---|
 | Fortbewegung je Waffenmodus (`fist`, `1h`, `2h`, `bow`, `cbow`, `mag`) | ~60 | wie Prio A: s_idle, s_walk, s_run, s_walk_back, s_strafe_l/r, t_turn_l/r | Q/K |
-| Waffe ziehen/wegstecken | ~12 | `1h/t_draw`, `1h/t_sheathe`, `2h/t_draw`, `bow/t_draw` … | MC/K |
+| Waffe ziehen/wegstecken | ~12 | `1h/t_draw`, `1h/t_sheath`, `2h/t_draw`, `bow/t_draw` … | MC/K |
 | Nahkampf 1h/2h je Talent t0–t2 | ~60 | `1h/t_attack_combo1..4_t2`, `t_attack_l/r`, `t_parry`, `t_dodge_back`, `t_hit_front`, `t_stumble` | MC/K |
 | Faustkampf | ~10 | `fist/t_attack_combo1..2`, `fist/t_parry` | Q/MC |
 | Fernkampf | ~12 | `bow/s_aim`, `bow/t_shoot`, `bow/t_reload`, `cbow/…` | MC/K |
@@ -111,6 +111,8 @@ bei engine in Lua. Ursprung = Fußpunkt, Blick +Z, auf der Stelle; Gegenstände 
 | `amb/s_harvest`, `s_water`, `s_repair_kneel` | Ernten, gießen, kniend reparieren (FP_HARVEST, FP_WATER, FP_REPAIR) | – | – | Q→ | platzhalter (UAL2 `Farm_Harvest`, `Farm_Watering`, UAL1 `Fixing_Kneeling`; auf der Stelle, Schleife geschlossen) |
 | `none/s_idle_look`, `none/t_idle_scratch` | Stand-Varianten: sich umsehen, am Kopf kratzen | – | – | K | platzhalter-K |
 | `none/t_warn`, `t_point`, `t_surprised`, `t_search` | Reaktionen: warnen (erhobene Faust), zeigen, erschrecken, suchen | – | – | K | platzhalter-K |
+| `1h/t_draw`, `1h/t_sheath` | Einhandwaffe ziehen bzw. wegstecken (Overlay ab spine_02) | – | draw, sheath | K | platzhalter-K (rechte Hand greift quer über den Bauch zum Griff an `socket_hip_1h`, dann in die `1h`-Haltung; wegstecken rückwärts) |
+| `fist/t_draw`, `fist/t_sheath` | Fäuste heben bzw. senken | – | – | K | platzhalter-K (Überblendung 15 Frames) |
 
 ### Prio B – Dialog-Gesten für M10 (ausgeschrieben, additiv)
 

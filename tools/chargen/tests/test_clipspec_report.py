@@ -138,7 +138,8 @@ def test_weapon_sets_depend_on_none():
     for mode in ("fist", "1h", "2h", "bow", "cbow", "mag"):
         spec = load_set_spec(mode)
         assert spec.depends == ("none",)
-        assert len(spec.names) == 8
+        # 8 locomotion clips per mode, plus drawing and sheathing for 1h and fist (M9)
+        assert len(spec.names) == (10 if mode in ("fist", "1h") else 8)
         layered = [c for c in spec.clips if c.op == "layer" and not c.name.endswith("/s_idle")]
         assert len(layered) == 7
         assert all(c.bones == ("clavicle_l", "clavicle_r", "neck") for c in layered)
@@ -268,7 +269,7 @@ def test_real_list_is_consistent_with_files():
     assert result.missing == []
     counts = list(result.section_counts().values())
     # Prio-B item use + mobs (M8), Prio-B per mode, Prio-C routines (M9), dialogue (M10), 3 monsters
-    assert counts == [(17, 17), (48, 48), (37, 37), (22, 22), (12, 12), (12, 12), (12, 12)]
+    assert counts == [(17, 17), (48, 48), (41, 41), (22, 22), (12, 12), (12, 12), (12, 12)]
     # without the monsters folder the wolf rows are reported as out of date
     assert progress(text, ANIMS).stale
 
@@ -354,3 +355,25 @@ def test_additive_option_only_for_a_clips():
     ):
         with pytest.raises(ClipSpecError, match="additive"):
             parse_set_spec({"set": "dlg", "sources": SOURCES, "clip": [bad]})
+
+
+def test_chain_option():
+    spec = parse_set_spec(
+        {"set": "1h", "sources": SOURCES, "clip": [
+            {"name": "1h/t_a", "from": "ual1:A"},
+            {"name": "1h/t_b", "from": "ual1:B"},
+            {"name": "1h/t_draw", "chain": ["1h/t_a", "1h/t_b"], "markers": {"draw": 10}},
+        ]}
+    )  # fmt: skip
+    assert spec.clips[2].op == "chain" and spec.clips[2].clips == ("1h/t_a", "1h/t_b")
+    for bad, message in (
+        (["1h/t_a"], "at least two"),
+        (["1h/t_a", "1h/t_x"], "neither an earlier clip"),
+    ):
+        with pytest.raises(ClipSpecError, match=message):
+            parse_set_spec(
+                {"set": "1h", "sources": SOURCES, "clip": [
+                    {"name": "1h/t_a", "from": "ual1:A"},
+                    {"name": "1h/t_draw", "chain": bad},
+                ]}
+            )  # fmt: skip

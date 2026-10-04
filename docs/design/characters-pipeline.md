@@ -254,7 +254,8 @@ Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pyte
    Beine aus einem Clip, Arme/Kopf aus einer Haltung; `depends` nutzt Clips anderer Sets), Pose-Marker → `events.toml`,
    Root-Motion-Extraktion bzw. In-Place-Bereinigung je Clip-Einstellung. Je Clip optional `in_place = true`
    (kein waagrechtes Wandern von root und Becken, für Quellen, die laufen) und `close = N` (nur Schleifen:
-   die letzten N Frames blenden in den ersten über, für Quellen, die nicht geschlossen sind).
+   die letzten N Frames blenden in den ersten über, für Quellen, die nicht geschlossen sind); `chain = [a, b, …]`
+   hängt früher gebaute Clips des Sets hintereinander (z. B. zum Gürtel greifen, dann in die Haltung).
 4. **Animationslisten-Abgleich** (F2, `gothar-chargen report`, umgesetzt): vergleicht `animation-list.md` mit den vorhandenen Clips →
    Fortschrittsbericht (fehlend / Platzhalter / fertig).
 5. **Figuren-Baukasten** (F3, `gothar-chargen assemble`, umgesetzt): setzt Körper/Kleidung + Kopf + Haare
