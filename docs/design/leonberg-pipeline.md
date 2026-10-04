@@ -873,6 +873,23 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   - **Prüfung:** Bericht mit Komponenten (Inseln mit Grund); Autopilot über 30 zufällige Wege A→B
     (Spieler mit `--walk` entlang der A*-Pfade, NPCs mit `npc_goto` über die Pfadsuche der Engine).
 
+### W7 Gebäudenutzungen (Vorschlag, Plan freigegeben 2026-10-04)
+- `gothar-worldgen uses-suggest <ort>` (nach `assemble`): schlägt ca. 30 Häuser mit mittelalterlicher Nutzung vor
+  (Gasthaus, Bäcker, Metzger, Händler, Schmiede, Werkstatt, Bader, Kräuterhändler, Amtshaus, Wache, Pfarrhaus,
+  Bauernhof, Wohnhaus) – `gothar_worldgen/uses/suggest.py`.
+- Quellen: heutige Läden, Gaststätten und Handwerk aus OSM (`amenity`, `shop`, `craft`, `tourism`, `office`; ein
+  Punkt bis 4 m am Grundriss gehört zum Haus) und die ALKIS-Gebäudefunktion (z. B. 2081 Gaststätte, 2120 Werkstatt,
+  2050 Geschäftsgebäude, 2721/2724 Scheune/Stall, 3012 Rathaus). Gewicht: OSM 3 (Dienstleistungen und Cafés 2,5),
+  ALKIS 2, dazu bis 1 für die Nähe zu Markt, Kirche und Toren; Läden und Handwerk nur bis 250 m um Markt und Kirche.
+- Höchstzahlen je Nutzung (`USES`), eine Nutzung je Haus. Ohne Hinweis aus den Daten: die Schmiede am Tor, je Tor
+  eine Wache (die heutige Polizei liegt außerhalb), das Pfarrhaus an der Kirche; der Rest Wohnhäuser nahe Markt und
+  Kirche mit Bewohnerzahl (ca. ein Bewohner je 60 m² Geschossfläche).
+- Ausgabe (nicht versioniert): `generated/uses_suggest.json`, Draufsicht `DATA_ROOT/review/w7-nutzungen/vorschlag.png`
+  (Nummer, Kürzel mit Groß-/Kleinschreibung, Nutzung) und Tabelle `vorschlag.md` mit dem Grund je Haus. Die echten
+  Geschäftsnamen stehen nur dort als Grund; im Spiel tragen die Häuser eigene, mittelalterliche Namen (keine echten,
+  keine an Gothic angelehnten).
+- Die Auswahl des Koordinators wird `data/<ort>/uses.json` (PR B: Routinen-Orte, Freepoints, Mobs).
+
 ### Vorhandene Werkzeuge (kein Eigenbau)
 Blender (+ Add-on BlenderGIS zum Gegenprüfen), COLMAP / RealityScan / Postshot (Photogrammetrie bzw.
 Gaussian Splatting für 3D-Referenzen einzelner Objekte wie Brunnen, Treppen, Mauerreste),

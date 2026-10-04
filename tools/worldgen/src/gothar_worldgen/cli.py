@@ -10,7 +10,7 @@ import sys
 import webbrowser
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TextIO
+from typing import Any, TextIO
 
 from shapely.geometry import LineString, box
 from shapely.ops import unary_union
@@ -558,6 +558,74 @@ def _cmd_waynet(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_uses_suggest(args: argparse.Namespace, out: TextIO) -> int:
+    """Suggested building uses from OSM and ALKIS with a labelled map (W7, for choosing)."""
+    from shapely.ops import unary_union
+
+    from gothar_worldgen.geo.frame import LocalFrame
+    from gothar_worldgen.geo.osm import find_osm_file, read_osm
+    from gothar_worldgen.qa.begehung import Character, game_grid, load_bodies
+    from gothar_worldgen.uses.sheet import draw_map, table_md
+    from gothar_worldgen.uses.suggest import short_id, suggest
+
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    assets = folder.parents[1]
+    try:
+        world = json.loads((folder / f"{site.name}.g7world").read_text(encoding="utf-8"))
+        grid = game_grid(world, assets)
+        bodies = load_bodies(world, assets, grid, Character.load(assets / "data" / "movement.toml"))
+        doc = json.loads((paths.work / "buildings.json").read_text(encoding="utf-8"))
+        entries = doc.get("buildings", doc.get("entries", []))
+        wall = json.loads((data_dir / "city_wall.json").read_text(encoding="utf-8"))
+        extract = read_osm(find_osm_file(paths.osm), site.bbox("core"), site.crs,
+                           keys=("amenity", "shop", "craft", "tourism", "office"))  # fmt: skip
+    except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    parts: dict[str, list[Any]] = {}
+    for b in bodies:
+        if b.owner.startswith("BLD_"):
+            parts.setdefault(b.owner[4:], []).append(b.poly)
+    houses = {hid: unary_union(ps) for hid, ps in parts.items()}
+    function = {e["id"]: e.get("function") for e in entries}
+    functions = {h: function.get(h, function.get(h.split("-")[0])) for h in houses}
+    frame = LocalFrame.for_site(site, 0.0)
+    pois = []
+    for o in extract.objects:
+        c = o.geometry.centroid
+        pois.append((o.tags, frame.xz(c.x, c.y)))
+    vob = {v.get("name"): v for v in world.get("vobs", [])}
+    anchors = [(float(v["pos"][0]), float(v["pos"][2])) for n, v in vob.items()
+               if n in ("HANDMADE_MARKTBRUNNEN", "HANDMADE_KIRCHE")]  # fmt: skip
+    kirche = vob.get("HANDMADE_KIRCHE")
+    church = (float(kirche["pos"][0]), float(kirche["pos"][2])) if kirche else None
+    gates = [(float(g["at"][0]), float(g["at"][1])) for g in wall.get("gates", [])
+             if g.get("kind") != "pforte"]  # fmt: skip
+    picks = suggest(
+        houses, functions, pois, anchors + gates, gates, anchors, church, short=short_id
+    )
+    target = folder / "generated" / "uses_suggest.json"
+    doc_out = {"version": 1, "houses": [p.json() for p in picks]}
+    target.write_text(json.dumps(doc_out, ensure_ascii=False, indent=1) + "\n", "utf-8")
+    review = (
+        Path(args.review_dir) if args.review_dir else local.data_root / "review" / "w7-nutzungen"
+    )
+    review.mkdir(parents=True, exist_ok=True)
+    centre = anchors[0] if anchors else (0.0, 0.0)
+    draw_map(review / "vorschlag.png", houses, picks, centre, 300.0)
+    (review / "vorschlag.md").write_text(table_md(picks), encoding="utf-8")
+    counts: dict[str, int] = {}
+    for p in picks:
+        counts[p.use] = counts.get(p.use, 0) + 1
+    print(f"  {len(picks)} houses: {counts}; {len(pois)} OSM places", file=out)
+    print(f"  {target}", file=out)
+    print(f"  {review / 'vorschlag.png'}, {review / 'vorschlag.md'}", file=out)
+    return EXIT_OK
+
+
 def _cmd_begehung(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -1089,6 +1157,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("site")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_waynet)
+
+    p = sub.add_parser("uses-suggest", help="suggested building uses with a map (W7)")
+    p.add_argument("site")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.add_argument("--review-dir", default=None, help="default: DATA_ROOT/review/w7-nutzungen")
+    p.set_defaults(func=_cmd_uses_suggest)
 
     p = sub.add_parser("begehung", help="static walkthrough of the assembled world (W3)")
     p.add_argument("site")
