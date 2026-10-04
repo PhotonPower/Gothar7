@@ -513,6 +513,9 @@ def _beam(
 # --- site context ----------------------------------------------------------------------------
 
 
+NO_WALK_HIGHWAYS = {"motorway", "motorway_link", "trunk", "trunk_link"}
+
+
 class StreetIndex:
     """Streets (for street sides) plus what the style assignment needs about the surroundings.
 
@@ -527,6 +530,15 @@ class StreetIndex:
                  ) -> None:  # fmt: skip
         self.lines = [LineString(s["points"]) for s in streets if len(s.get("points") or []) >= 2]
         self.tree = STRtree(self.lines) if self.lines else None
+        # ways a character can walk (as the waynet takes them): no motorways, nothing underground
+        self.walk_lines = [
+            LineString(s["points"])
+            for s in streets
+            if len(s.get("points") or []) >= 2
+            and s.get("highway") not in NO_WALK_HIGHWAYS
+            and not (s.get("tunnel") and int(s.get("layer", 0) or 0) < 0)
+        ]
+        self.walk_tree = STRtree(self.walk_lines) if self.walk_lines else None
         main = [
             LineString(s["points"])
             for s in streets

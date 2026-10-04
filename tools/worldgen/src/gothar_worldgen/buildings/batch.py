@@ -161,14 +161,14 @@ class _Footprints:
     def reach_for(self, bid: str) -> Callable[[float, float], bool] | None:
         """From (x, z) a street axis within ``DOOR_REACH_M`` in a straight line that crosses no
         house (the own one included: nobody walks through it)."""
-        if self.streets is None or self.streets.tree is None:
+        if self.streets is None or getattr(self.streets, "walk_tree", None) is None:
             return None
 
         def reach(x: float, z: float) -> bool:
             tree = self._ensure()
             q = Point(x, z)
-            lines = self.streets.lines
-            near = self.streets.tree.query(q.buffer(DOOR_REACH_M))
+            lines = self.streets.walk_lines  # walkable ways only, as the waynet takes them
+            near = self.streets.walk_tree.query(q.buffer(DOOR_REACH_M))
             for k in sorted(near, key=lambda k: lines[int(k)].distance(q)):
                 line = lines[int(k)]
                 if line.distance(q) > DOOR_REACH_M:
