@@ -16,6 +16,8 @@ from gothar_worldgen.buildings.rueckbau import Protection, select
 from gothar_worldgen.facade.overrides import from_json
 
 RULES = load_rules(Path(__file__).resolve().parents[1] / "data" / "building_rules.json")
+# geometry and palette tests without the W5 textures (those: test_textures.py)
+RULES.data["textures"] = {}
 FP = [[0.0, 0.0], [10.0, 0.0], [10.0, -7.0], [0.0, -7.0]]
 MAIN = {"highway": "secondary", "points": [[-50.0, 6.0], [60.0, 6.0]]}
 LANE = {"highway": "residential", "points": [[-50.0, 30.0], [60.0, 30.0]]}

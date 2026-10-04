@@ -43,7 +43,15 @@ from gothar_worldgen.buildings.massing import (
     masses_for_building,
 )
 
-ROLES = ("wall_ground", "infill", "timber", "roof", "roof_north", "frame", "chimney")
+# *_low: the dirty foot band of a textured house (W5)
+ROLES = ("wall_ground", "infill", "timber", "roof", "roof_north", "frame", "chimney",
+         "wall_ground_low", "infill_low", "wall_ground_streak", "infill_streak")  # fmt: skip
+LOW_SUFFIX = "~low"  # material name of the foot band (textures.apply.LOW)
+MOSS_SUFFIX = "~moss"  # shady roof side of a textured house (textures.apply.MOSS)
+STREAK_SUFFIX = "~streak"  # plaster under a window with a rain streak (textures.apply.STREAK)
+STREAK_M = 0.6  # how far a streak runs down from the sill
+STREAK_SHARE = 0.65  # share of windows with a streak (deterministic per window)
+STREAK_VARIANTS = 4  # textures.procedural.STREAK_VARIANTS
 # Front faces of beams lie at slightly different depths: no coplanar overlaps where they cross.
 DEPTH_FACTOR = {"sill": 1.0, "post": 0.9, "rail": 0.5, "brace": 0.45}
 # Rails and braces are flat boards (front face only): they sit only ~3 cm proud of the wall, their
@@ -806,6 +814,7 @@ class _Context:
     passages: list[Any] = field(default_factory=list)  # override passages (BuildingOverride)
     passages_now: list[_PassagePlan] = field(default_factory=list)  # in the current mass
     carve: list[tuple[Polygon, float]] = field(default_factory=list)  # for the collision
+    dirt_m: float = 0.0  # > 0: textured house, plaster walls get a dirty foot band this high
 
 
 def _top_outline(f: Frame, roof: _Roof, crease: LineString | None, y: float,
@@ -859,7 +868,7 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
     poly = Polygon(outline)
     socle = 0.0
     if massive:
-        _wall(ctx.builders["wall_ground"], f, poly, plan)
+        _wall_banded(ctx, "wall_ground", f, poly, plan, s)
     elif s == 0:
         # Timber on a stone socle: lower band stone, the rest infill.
         socle = float(rules.get("socleM"))
@@ -870,9 +879,9 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
         for part, role in ((low, "wall_ground"), (high, "infill")):
             for g in getattr(part, "geoms", [part]):
                 if isinstance(g, Polygon):
-                    _wall(ctx.builders[role], f, g, plan)
+                    _wall_banded(ctx, role, f, g, plan, s)
     else:
-        _wall(ctx.builders["infill"], f, poly, plan)
+        _wall_banded(ctx, "infill", f, poly, plan, s)
     for op in plan:
         if op.kind != "passage":  # open: the tunnel walls are its jambs
             _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
@@ -987,6 +996,66 @@ def _passage_tunnel(ctx: _Context, pp: _PassagePlan, ground_poly: Polygon) -> No
                 [(0.0, 0.0), (seg.length, 0.0), (seg.length, pp.top - y0), (0.0, pp.top - y0)],
                 want,
             )
+
+
+def _wall_banded(ctx: _Context, role: str, f: Frame, poly: Polygon, holes: Sequence[Opening],
+                 s: int) -> None:  # fmt: skip
+    """``_wall``; on a textured house plaster gets its weathering as parts of the wall itself:
+    under some windows a rain streak (``*_streak``: u across one of the texture's variants, v 0 at
+    the sill to 1 at ``STREAK_M`` below), and in the ground storey the plaster up to ``dirt_m``
+    above the terrain goes to the foot band (``*_low``, v 0..1 from the ground up)."""
+    palette = ctx.style.wall if role == "wall_ground" else ctx.style.infill
+    if ctx.dirt_m <= 0 or not palette.startswith(("plaster", "lehm")):
+        _wall(ctx.builders[role], f, poly, holes)
+        return
+    for op in holes:
+        poly = poly.difference(shapely.box(op.u, op.v, op.u + op.w, op.v + op.h))
+    if poly.is_empty:
+        return
+    for op in holes:
+        if op.kind != "window":
+            continue
+        # chosen by the window's place, not by the house's random stream (nothing else moves)
+        pick = random.Random(hash((round(f.lx, 2), round(f.lz, 2), round(f.y0, 2), round(op.u, 2))))
+        if pick.random() > STREAK_SHARE:
+            continue
+        k = pick.randrange(STREAK_VARIANTS)
+        u0, u1 = op.u - 0.08, op.u + op.w + 0.08
+        region = shapely.box(u0, op.v - STREAK_M, u1, op.v)
+        part = poly.intersection(region)
+        poly = poly.difference(region)
+        for g in getattr(part, "geoms", [part]):
+            if not isinstance(g, Polygon) or g.area < 1e-4:
+                continue
+            for tri in shapely.constrained_delaunay_triangles(g).geoms:
+                pts = list(tri.exterior.coords)[:3]
+                uvs = [((k + (u - u0) / (u1 - u0)) / STREAK_VARIANTS, (op.v - v) / STREAK_M)
+                       for u, v in pts]  # fmt: skip
+                ctx.builders[f"{role}_streak"].polygon([f.point(u, v) for u, v in pts], uvs,
+                                                        f.n3())  # fmt: skip
+    if s != 0:
+        _wall(ctx.builders[role], f, poly, [])
+        return
+    terrain = []
+    for u in (0.0, f.width):
+        x, _, z = f.point(u, 0.0, 0.3)
+        terrain.append((ctx.ground_at(x, z) if ctx.ground_at else f.y0) - f.y0)
+
+    def ground(u: float) -> float:
+        t = u / f.width if f.width > 1e-9 else 0.0
+        return terrain[0] + (terrain[1] - terrain[0]) * t
+
+    band = Polygon([(-1.0, -1e3), (f.width + 1.0, -1e3), (f.width + 1.0, ground(f.width + 1.0)
+                    + ctx.dirt_m), (-1.0, ground(-1.0) + ctx.dirt_m)])  # fmt: skip
+    _wall(ctx.builders[role], f, poly.difference(band), [])
+    low = poly.intersection(band)
+    for g in getattr(low, "geoms", [low]):
+        if not isinstance(g, Polygon) or g.area < 1e-4:
+            continue
+        for tri in shapely.constrained_delaunay_triangles(g).geoms:
+            pts = list(tri.exterior.coords)[:3]
+            uvs = [(u, (v - ground(u)) / ctx.dirt_m) for u, v in pts]
+            ctx.builders[f"{role}_low"].polygon([f.point(u, v) for u, v in pts], uvs, f.n3())
 
 
 def _with_door(plan: list[Opening], width: float, rules: Rules) -> list[Opening]:
@@ -1441,7 +1510,9 @@ def _materials(st: HouseStyle) -> dict[str, str]:
     north = "roof_old_moss" if st.roof == "roof_old" else st.roof
     return {"wall_ground": st.wall, "infill": st.infill, "timber": st.timber_color,
             "roof": st.roof, "roof_north": north, "frame": "frame",
-            "chimney": st.chimney}  # fmt: skip
+            "chimney": st.chimney, "wall_ground_low": st.wall,
+            "infill_low": st.infill, "wall_ground_streak": st.wall,
+            "infill_streak": st.infill}  # fmt: skip
 
 
 def build_house(
@@ -1485,6 +1556,9 @@ def build_house(
             masses.append(mass)
     materials = _materials(style)
     passages = list(getattr(override, "passages", None) or [])
+    tex = rules.data.get("textures", {})
+    textured = tex.get("all", False) or building["id"] in tex.get("probe", ())
+    dirt_m = float(tex.get("dirtM", 0.8)) if textured else 0.0
     result = None
     for level in range(5):
         builders = {role: _Builder((origin_xz[0], base_y, origin_xz[1])) for role in ROLES}
@@ -1500,6 +1574,7 @@ def build_house(
             wall=wall,
             ground_at=ground_at,
             passages=passages,
+            dirt_m=dirt_m,
         )
         level_notes: list[str] = []
         for mass, src in zip(masses, sources, strict=False):
@@ -1511,9 +1586,21 @@ def build_house(
         dormers, chimneys = _roof_features(
             ctx, building["id"], override, streets, hearth, level < 4, level_notes
         )
-        prims = [Primitive(materials[r], rules.color(materials[r]), builders[r].mesh())
+
+        def name(role: str) -> str:
+            if role.endswith("_low"):
+                return materials[role] + LOW_SUFFIX
+            if role == "roof_north" and dirt_m > 0:
+                return materials[role] + MOSS_SUFFIX
+            if role.endswith("_streak"):
+                return materials[role] + STREAK_SUFFIX
+            return materials[role]
+
+        prims = [Primitive(name(r), rules.color(materials[r]), builders[r].mesh())
                  for r in ROLES if builders[r].idx]  # fmt: skip
-        tris = sum(p.mesh.triangle_count for p in prims)
+        # the weathering splits walls into a few more triangles; that does not cost timber
+        tris = sum(p.mesh.triangle_count for p in prims
+                   if not p.material.endswith((STREAK_SUFFIX, LOW_SUFFIX)))  # fmt: skip
         collision = collision_for(masses, base_y, origin_xz, ctx.carve)
         col = collision
         if ctx.screens:

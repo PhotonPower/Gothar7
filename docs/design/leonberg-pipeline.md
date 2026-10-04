@@ -313,6 +313,24 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   - Dach: Typ aus LoD2, Neigung idealisiert, Dachüberstand, Gauben, Schornsteine; Deckung nach Stand (Ziegel/Schindel/Stroh)
   - Alterung: Durchhang, Schiefstand (leicht!), Moos, Ausbesserungen – per Seed variiert
 - **Modularer Baukasten + Trim-Sheets** (Balken, Putz, Stein, Holz, Dach) → einheitlicher Look, wenige Texturen, gute Performance.
+- **Texturen umgesetzt (W5, Entscheidung Projektinhaber 2026-10-04):** eigene, prozedural erzeugte Texturen in
+  `gothar_worldgen/textures/` (`procedural.py`, `apply.py`), kachelbar, je 1024² als Albedo + Normal-Map.
+  - Arten: Putz, Putz-Fußband, Putz mit Regenschliere, Schichtmauerwerk (Bruchstein), Balken (Maserung, Risse,
+    Äste), Biberschwanz-Ziegel, Ziegel mit Moos (Schattenseite), Bretter (Läden, Türen).
+  - Die Palette bleibt der Materialfaktor (Tönung). Die Bilder speichern 1,0 tiefer, damit hellere Details bleiben
+    (dunkles Holz noch tiefer); der Materialfaktor gleicht das aus.
+  - Häuser verweisen per relativer URI (`../textures/*.png`, glTF-üblich) auf `worlds/<ort>/generated/textures/`; Engine
+    und Cooker finden sie, die Engine lädt jede Textur nur einmal (#138,
+    Log „N image textures on the GPU“).
+  - Texturkoordinaten: Wände in Fassadenmetern, Balken entlang des Balkens, Dächer aus der Fläche neu berechnet
+    (Ziegelreihen parallel zur Traufe).
+  - Alterung ohne Engine-Änderung (Variante A), als Teile der Putzwand:
+    - Fußband: Erdgeschoss-Putz bis 0,8 m über dem Gelände (`*_low`).
+    - Regenschlieren: unter etwa zwei Dritteln der Fenster, vier Varianten, kurz und weich auslaufend (`*_streak`).
+    - Diese Teilungen zählen nicht ins Fachwerk-Budget.
+  - `building_rules.json` → `textures`: `probe` (Probe-Häuser), `all` (alle Häuser), `size`, `dirtM`.
+  - Gelände: Die Schicht „Kopfstein“ ist runde, unregelmäßige Kopfsteine (eingebackene Rundung, das Gelände hat keine
+    Normal-Maps). Alle Gelände-Schichten haben 512², weil die Engine gleich große Bilder verlangt.
 - Jedes Haus bleibt in Blender von Hand nachbearbeitbar; erneutes Generieren überschreibt nur Häuser ohne `"locked": true`.
 - **Umgesetzt (W3 Teil 1, Klötzchen):** `gothar-worldgen buildings <ort> [--area core|all]`
   - **Geometrie-Kern** `buildings/massing.py`, reines Python:
