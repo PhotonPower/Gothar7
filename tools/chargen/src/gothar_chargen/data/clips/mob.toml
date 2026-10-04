@@ -2,6 +2,8 @@
 # Clips per mob type mob/<type>/... (contract characters-pipeline.md §3.1, data/mobs.toml): the figure
 # stands on the slot of the mob and faces it (-Z of the mob). Root motion only in bed/t_lie_down and
 # bed/t_stand_up (onto the bed and back: bed centre 0.75 m in front of the slot, lying surface 0.45 m).
+# The bed runs along X with its long side to the slot; the figure lies along it, head end at -X of the
+# mob (to the left seen from the slot) - turned in the pelvis, so the root motion carries no yaw.
 
 set = "mob"
 depends = ["none"]
@@ -62,7 +64,7 @@ helper = true
 [[clip]]
 name = "mob/bed/t_stand_up"
 keyframe = "keyposes"
-params = { base = "mob/bed/t_getup_source", keys = [[0, "bed"], [12, "bed"], [45, "rest"]], poses = { bed = { move = { root = [0.0, -0.75, 0.45] } } } }
+params = { base = "mob/bed/t_getup_source", keys = [[0, "bed"], [12, "bed"], [45, "rest"]], poses = { bed = { move = { root = [0.0, -0.75, 0.45], pelvis = [0.1, -0.24, 0.0] }, rotate = { pelvis = [["Z", -90]] } } } }
 markers = { stand = 43 }
 
 [[clip]]
@@ -71,9 +73,15 @@ reverse = "mob/bed/t_stand_up"
 markers = { lie = 43 }
 
 [[clip]]
-name = "mob/bed/s_lie"
+name = "mob/bed/s_lie_source"
 keyframe = "hold"
 params = { base = "mob/bed/t_getup_source", frame = 0 }
+helper = true
+
+[[clip]]
+name = "mob/bed/s_lie"
+keyframe = "keyposes"
+params = { base = "mob/bed/s_lie_source", keys = [[0, "lie"], [60, "lie"]], poses = { lie = { move = { pelvis = [0.1, -0.24, 0.0] }, rotate = { pelvis = [["Z", -90]] } } } }
 
 # --- door ----------------------------------------------------------------------------------------
 

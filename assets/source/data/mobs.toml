@@ -4,7 +4,8 @@
 # figure in mob metres (`pos`) and its horizontal view direction (`facing`). Clips live in
 # characters/anims/human/mob.glb (set "mob") – names without the "mob/<type>/" prefix; empty = none.
 # Test sizes: chest 0.9 x 0.6 x 0.6 m, anvil working height 0.8 m, bed 2.0 x 0.9 m (lying surface 0.45 m),
-# door handle 1.0 m.
+# door handle 1.0 m. The bed runs along X, long side to +Z, head end (Kopfende) at -X: the figure lies
+# along X with its head at -X (to the left seen from the slot).
 version = 1
 
 [mobs.chest]
@@ -35,7 +36,7 @@ loop = "s_lie"
 leave = "t_stand_up"
 [[mobs.bed.slots]]
 name = "side"
-pos = [0.0, 0.0, 0.75]       # beside the bed (long side faces +Z, depth 0.9 m)
+pos = [0.0, 0.0, 0.75]       # beside the bed (long side faces +Z, depth 0.9 m; head end -X)
 facing = [0.0, 0.0, -1.0]
 
 [mobs.door]
