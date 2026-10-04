@@ -123,11 +123,13 @@ Phase **M7** abgeschlossen: Lua 5.4.7 + sol2 (ADR 0006), Sandbox, geprüfte Inst
 `docs/script-api.md`, Story/Timer/Ereignisse, Konsole (^), Hot-Reload; eigene Bezeichner (`it_…`, `npc_…`, `mob_…`).
 Phase **M8** abgeschlossen: Werte/Talente/Inventar, Wegnetz-Format (Vertrag), Fokus und Aufheben, Mobs nach
 `assets/source/data/mobs.toml` (Truhe/Tür mit Schloss und Dietrich, Amboss, Bett/Schlaf), Benutzen, Taschendiebstahl, Besitz.
-Als Nächstes: LOD-Auswahl statischer Modelle (`--lod`), Schatten-Akne, dann **M9** (KI: Wahrnehmung, Routinen, Wegnetz).
+Phase **M9** abgeschlossen: Wegnetz-Pfadsuche, Tagesabläufe mit Freepoints, Wahrnehmung, Waffe ziehen, private Bereiche,
+Einstellungen, Kameraden, Fliehen, Tier-KI (Rudel, Revier); Fenster „AI“; LOD-Auswahl statischer Modelle (`--lod`).
+Aktuelle Phase: **M10** (Dialoge und Quests → Meilenstein B), Währung „Gulden“.
 Werkzeug: `gothar --fly`, F3 Flugmodus, F6 Position kopieren (`--cam/--yaw/--pitch`), `--walk` Autopilot.
 Welt-Spur: **W1–W3** abgeschlossen (Maßstab 1:1); **W4** wartet auf Aufnahmen; **W5/W6** laufen (Fachwerk-Leonberg,
 Stil `docs/design/leonberg-stil.md`, prozedurale Texturen auf allen Häusern, Kopfsteinpflaster, Stadtmauer, Schloss, Kirche,
-Pomeranzengarten, Marktbrunnen, Mob-Modelle in `assets/source/mobs/`, Häuser-LOD-Stufen).
+Pomeranzengarten, Marktbrunnen, Mob-Modelle in `assets/source/mobs/`, Häuser-LOD-Stufen, Wegnetz, Gebäudenutzungen in Arbeit).
 Figuren-Spur: **F1**, **F2** abgeschlossen; **F3** weit fortgeschritten (Körper, Köpfe, abgetragene Kleidung, Rüstung
 leicht/mittel/schwer, Kopfbedeckungen; Figuren beim Bauen bzw. zur Laufzeit); **F6** Waffen und Handgegenstände in
 `assets/source/items/`; Platzhalter-Clips für Mobs und Item-Benutzung; **F5**-Platzhalter fertig.
