@@ -143,6 +143,9 @@ public:
     [[nodiscard]] const std::vector<ScriptError>& errors() const noexcept;
     void clearErrors() noexcept;
     [[nodiscard]] std::span<const Instance> instances() const noexcept;
+    /// Failed calls of script functions since start (event handlers, timers, states, instance functions):
+    /// errors while the game runs, each also logged. The M9 scenario test expects none.
+    [[nodiscard]] u64 callErrors() const noexcept;
     /// `name` may carry a "#n" suffix (several NPCs of one instance, "mon_wolf#2"): the instance is the same.
     [[nodiscard]] const Instance* findInstance(std::string_view kind, std::string_view name) const noexcept;
     [[nodiscard]] std::vector<const Instance*> instancesOf(std::string_view kind) const;

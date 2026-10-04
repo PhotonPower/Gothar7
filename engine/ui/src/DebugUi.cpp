@@ -793,6 +793,63 @@ void DebugUi::focusLabel(Vec2 screen, std::string_view text)
     draw->AddText(at, IM_COL32(255, 255, 255, 255), label.c_str());
 }
 
+void DebugUi::aiPanel(AiPanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    ImGui::SetNextWindowPos(ImVec2(690.0f * scale, 330.0f * scale), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(420.0f * scale, 360.0f * scale), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("AI"))
+    {
+        ImGui::End();
+        return;
+    }
+    ImGui::Text("%zu NPCs, %llu script errors", panel.rows.size(),
+                static_cast<unsigned long long>(panel.scriptErrors));
+    char filter[64] = {};
+    std::snprintf(filter, sizeof(filter), "%s", panel.filter.c_str());
+    if (ImGui::InputText("filter", filter, sizeof(filter)))
+    {
+        panel.filter = filter;
+    }
+    for (const AiPanel::Row& row : panel.rows)
+    {
+        if (!panel.filter.empty() && row.name.find(panel.filter) == std::string::npos)
+        {
+            continue;
+        }
+        ImGui::PushID(static_cast<int>(row.id));
+        const std::string title = std::format("{}{}  {}  {:.0f} m{}", row.name, row.simulated ? "" : " (far)",
+                                              row.state.empty() ? "-" : row.state, row.distance,
+                                              row.seesPlayer ? "  sees you" : "");
+        const bool open = ImGui::CollapsingHeader(title.c_str());
+        if (ImGui::IsItemClicked())
+        {
+            panel.selected = panel.selected == row.id ? 0 : row.id;
+        }
+        if (open)
+        {
+            ImGui::Text("routine %s, at %s", row.routine.empty() ? "-" : row.routine.c_str(),
+                        row.at.empty() ? "-" : row.at.c_str());
+            ImGui::Text("animation %s%s%s", row.animation.c_str(), row.ambient.empty() ? "" : ", ambient ",
+                        row.ambient.c_str());
+            ImGui::Text("attitude %s%s", row.attitude.empty() ? "-" : row.attitude.c_str(),
+                        row.walking ? ", walking" : "");
+            for (usize i = 0; i < row.commands.size(); ++i)
+            {
+                ImGui::BulletText("%s%s", row.commands[i].c_str(), i == 0 ? "  <" : "");
+            }
+            if (row.commands.empty())
+            {
+                ImGui::TextDisabled("(no commands)");
+            }
+        }
+        ImGui::PopID();
+    }
+    ImGui::TextDisabled("click a name: its senses in the overlay (F2)");
+    ImGui::End();
+}
+
 void DebugUi::creaturesPanel(CreaturesPanel& panel)
 {
     ImGui::SetCurrentContext(m_impl->context);

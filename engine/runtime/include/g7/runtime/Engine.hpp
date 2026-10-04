@@ -635,6 +635,8 @@ private:
     void npcSays(const Creature& c, std::string_view text); ///< log, npc_said, shown near the player
     /// "@player" (or empty): the player's feet; otherwise the position of the NPC of that instance.
     [[nodiscard]] std::optional<Vec3> targetPosition(std::string_view target) const;
+    /// What the window "AI" shows (M9 part E): every NPC's state, queue, perception.
+    [[nodiscard]] ui::AiPanel aiPanelData();
     /// Capsule of an animal species (data/creatures.toml), the human one otherwise.
     [[nodiscard]] physics::CharacterDesc creatureBody(std::string_view species);
     /// item_to_hand / item_from_hand of an NPC's animation: its hand item appears or goes.
@@ -773,6 +775,8 @@ private:
     [[nodiscard]] gameplay::ItemLookup itemLookup() const;
     [[nodiscard]] i32 xpForLevel(i32 level);
     void creaturesUi();
+    void aiUi();         // window "AI" (M9 part E)
+    void drawAiSenses(); // overlay: the selected NPC's sight cone and hearing
     [[nodiscard]] Creature* creature(u32 id) noexcept;
     [[nodiscard]] const Creature* creature(u32 id) const noexcept;
     [[nodiscard]] Result<void> rebuildPlayerFigure(const asset::FigureManifest& manifest);
@@ -951,8 +955,10 @@ private:
     std::string m_weaponDrawn; // Item instance of the melee weapon being drawn
     bool m_drawWeaponRequested = false;
     f32 m_runNoiseTimer = 0.0f;
-    u64 m_routineMinute = ~0ull;            // the game minute routines were last checked
-    f32 m_simulationDistance = 80.0f;       // [ai] simulation_distance: AI LOD
+    u64 m_routineMinute = ~0ull;      // the game minute routines were last checked
+    f32 m_simulationDistance = 80.0f; // [ai] simulation_distance: AI LOD
+    std::string m_aiFilter;           // window "AI"
+    u32 m_aiSelected = 0;
     std::optional<Config> m_creatureBodies; // data/creatures.toml, read on first use (M9 part D)
     std::vector<WorldItem> m_worldItems;
     std::unordered_map<std::string, const LoadedModel*> m_itemModels; // by Item instance; models in m_models

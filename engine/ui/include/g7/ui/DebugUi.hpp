@@ -123,6 +123,32 @@ struct CreaturesPanel
     std::vector<Row> rows;
 };
 
+/// NPC behaviour (M9 part E, window "AI"): per NPC state, routine, queue, perception. The engine fills it;
+/// the selected NPC's senses are drawn in the debug overlay (F2).
+struct AiPanel
+{
+    struct Row
+    {
+        u32 id = 0;
+        std::string name;                  ///< "npc_farmer_woman", "mon_wolf#2"
+        std::string state;                 ///< zs_... or empty
+        std::string routine;               ///< rtn_... or empty
+        std::string at;                    ///< the way point of the state
+        std::string ambient;               ///< "sit_ground" ...
+        std::string animation;             ///< the graph's state
+        std::string attitude;              ///< to the player (scripts)
+        std::vector<std::string> commands; ///< the queue, first = running
+        bool simulated = true;
+        bool seesPlayer = false;
+        bool walking = false;
+        f32 distance = 0.0f; ///< to the player (or the camera)
+    };
+    std::vector<Row> rows;
+    std::string filter;   ///< edited: only rows whose name contains it
+    u32 selected = 0;     ///< edited: the NPC whose senses the overlay draws (0: none)
+    u64 scriptErrors = 0; ///< failed script calls since start
+};
+
 /// The hero's inventory (M8, "Inventory" window, Tab) until the real inventory screen (M13): items by
 /// category, equipment, values. The engine fills it and acts on the button pressed.
 struct InventoryPanel
@@ -216,6 +242,8 @@ public:
     void consolePanel(ConsolePanel& panel);
     /// Window "Creatures" (M6 D3).
     void creaturesPanel(CreaturesPanel& panel);
+    /// Window "AI" (M9 part E).
+    void aiPanel(AiPanel& panel);
     /// Window "Inventory" (M8).
     void inventoryPanel(InventoryPanel& panel);
     /// Window "Lockpick" (M8 part C).

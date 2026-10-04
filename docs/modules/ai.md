@@ -147,6 +147,20 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
 }
 ```
 
+## Debug (M9 Teil E, umgesetzt) – `runtime/EngineAiDebug.cpp`
+- **Fenster „AI“** (Debug-UI, F1): je NPC Name, Zustand, Abstand zum Spieler, „sees you“, „(far)“ außerhalb der
+  KI-LOD; aufgeklappt Tagesablauf und Ort, Animation (Graph-Zustand und Tagesablauf-Animation), Einstellung zum
+  Spieler, die Befehlsliste (die erste läuft). Filter nach Namen; oben die Zahl der Skriptfehler seit dem Start
+  (`ScriptVm::callErrors`).
+- **Overlay** (F2): Ein Klick auf einen Namen zeigt dessen Sichtkegel (gelb, grün mit Linie zum Spieler, solange
+  er ihn sieht) und die Hörweite fürs Rennen (blau); dazu Wegnetz und Routen (Abschnitt 1).
+- Zustände, die ihre Tätigkeit nicht erreichen (Weg versperrt), beginnen nach 5 s neu (`retry` in
+  `ai/states.lua`).
+
 ## Tests
-Szenario-Tests: Testwelt + 3 NPCs, Spielzeit 24 h vorspulen, prüfen dass jeder NPC zur richtigen
-Zeit am richtigen WP im richtigen Zustand ist; Spieler zieht Waffe → Wache reagiert binnen N Ticks.
+- Je Teil: `tests/ai` (Wegnetz), `tests/runtime` „Engine NPCs“, „NPC routines“, „perception“, „attitudes“,
+  „animals“, „weapon“.
+- **M9-Szenario** (`test_engine_m9_scenario.cpp`, die DoD): vier Leute und sechs Tiere im Testlager einen Spieltag
+  lang (Spielminute = 0,25 s) – der Spieler fern, sie springen an die Orte ihres Tagesablaufs: jede Stunde jeder im
+  Zustand seines Eintrags am richtigen Wegpunkt; zwei Stunden mitten unter ihnen; keine Skriptfehler; die Wache
+  warnt binnen 30 Ticks vor gezogener Waffe und bemerkt den Spieler in ihrem Bereich binnen 30 Ticks.

@@ -206,10 +206,14 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 - [x] Einstellungen (dauerhaft/temporär), Gruppenhilfe, Fliehen – `ai/attitudes.lua` (`npc_attitude`, `set_attitude`, `set_temp_attitude`), Hilferuf an befreundete Gilden (`assess_call`, `npcs_near`), Feiglinge fliehen (`npc_flee`); Fliehen bei wenig Leben mit M11 (C2)
 - [x] Monster-KI: Revier, Rudel, Fressen/Schlafen, Jagd, Flucht – Tiere sind Npcs mit `species` (Kapseln in `data/creatures.toml`), Verhalten in `ai/monsters.lua`, Werte in `data/creatures.lua`; Rudel `insert_pack`, Drohen und Angriff (bis M11: verfolgen) nach Entscheidung des Projektinhabers (D)
 - [x] KI-LOD: weit entfernte NPCs „springen“ entlang ihrer Routine statt simuliert zu werden – über 80 m (zurück unter 75 m) (B)
-- [ ] Debug-Ansicht: Wegnetz, aktueller Zustand/Routine pro NPC, Wahrnehmungsradien
+- [x] Debug-Ansicht: Wegnetz, aktueller Zustand/Routine pro NPC, Wahrnehmungsradien – Fenster „AI“ (F1: Zustand, Tagesablauf, Befehlsliste, Wahrnehmung, Einstellung je NPC; ein Klick zeigt Sichtkegel und Hörweite in F2), Wegnetz und Routen in F2 (E)
 
 **DoD:** 10 NPCs folgen über 24 Spielstunden fehlerfrei ihren Routinen und reagieren auf
 gezogene Waffen und Betreten ihrer Hütte.
+*Nachgewiesen* durch den Szenariotest `tests/runtime/test_engine_m9_scenario.cpp`: vier Leute und sechs Tiere
+(Wolfsrudel, Keiler, zwei Laufvögel) einen Spieltag lang im Zeitraffer ohne Skriptfehler im Zustand ihres
+Tagesablaufs am richtigen Ort; die Wache warnt binnen 30 Ticks vor gezogener Waffe und bemerkt den Spieler in
+ihrem Bereich binnen 30 Ticks (E).
 
 ## M10 – Dialoge & Quests  → Meilenstein B
 - [ ] Info-System: Bedingung, Beschreibung, Priorität, `important` (NPC spricht an), `permanent`, `onlyOnce`
