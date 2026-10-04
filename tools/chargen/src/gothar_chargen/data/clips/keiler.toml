@@ -24,17 +24,46 @@ name = "keiler/s_walk_inplace"
 from = "src:walk[0:40]"           # the source cycle ends at its frame 32 (24 fps)
 helper = true
 
-[[clip]]
-name = "keiler/s_walk"
-keyframe = "advance"
-params = { base = "keiler/s_walk_inplace", speed = 0.8 }   # measured: feet stand still
-events = "footsteps"
+# Own gait cycles (gaits.py): feet planted at exactly the clip speed, legs solved with IK.
+# Speeds agreed with engine (2026-10-05): walk 1.0, run (gallop) 5.0 m/s.
 
 [[clip]]
-name = "keiler/s_run"             # trot: the source "Run" stretches its legs (not usable)
-keyframe = "advance"
-params = { base = "keiler/s_walk_inplace", time = 0.6, amplify = 1.25, speed = 1.65 }
+name = "keiler/s_walk"            # lateral-sequence walk
+keyframe = "gait"
 events = "footsteps"
+[clip.params]
+speed = 1.0
+period = 16                       # phases and duty on whole frames
+duty = 0.625
+lift = 0.05
+bob = 0.008
+nod = { bone = "neck_01", degrees = 2.0, phase = 0.0 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 30 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -50 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 30 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -50 },
+]
+
+[[clip]]
+name = "keiler/s_run"             # transverse gallop: hind legs, then fore legs
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 5.0
+period = 10
+duty = 0.2
+lift = 0.1
+bob = 0.025
+bob_cycles = 1
+flex = { bone = "spine_01", degrees = 5.0, phase = 0.25 }
+nod = { bone = "neck_01", degrees = 4.0, phase = 0.5 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 30 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.5, curl = -50 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.1, curl = 30 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.6, curl = -50 },
+]
 
 [[clip]]
 name = "keiler/t_turn_l"

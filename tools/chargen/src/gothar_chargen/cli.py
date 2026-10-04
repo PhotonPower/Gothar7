@@ -266,7 +266,7 @@ def _cmd_build_set(args: argparse.Namespace, out: TextIO) -> int:
     for spec in specs:
         log = build_set(blender, spec.set, args.sources, out_dir)
         for line in log.splitlines():
-            if line.startswith("[chargen] clip"):
+            if line.startswith(("[chargen] clip", "[chargen] gait")):
                 print(line[10:], file=out)
         blends.append(spec.blend_path(out_dir))
     return _export_and_check(blender, blends, out_dir, args, out)

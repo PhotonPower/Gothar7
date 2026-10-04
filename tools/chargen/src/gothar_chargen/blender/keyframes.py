@@ -15,10 +15,20 @@ import math
 from collections.abc import Callable
 
 import bpy  # type: ignore[import-not-found]
-from mathutils import Quaternion, Vector  # type: ignore[import-not-found]
+from mathutils import Matrix, Quaternion, Vector  # type: ignore[import-not-found]
 
 from gothar_chargen.blender.common import FPS
 from gothar_chargen.blender.curves import Curves, Pose, length, mix, pose_at, to_curves
+from gothar_chargen.gaits import (
+    Gait,
+    Leg,
+    foot_offset,
+    parse_gait,
+    required_drop,
+    smooth_cyclic,
+    solve_leg,
+    vault,
+)
 
 Rotations = dict[str, list[tuple[str, float]]]
 _AXES = {"X": Vector((1, 0, 0)), "Y": Vector((0, 1, 0)), "Z": Vector((0, 0, 1))}
@@ -31,6 +41,9 @@ class RigInfo:
         self.bones = [b.name for b in arm.data.bones]
         self.rest = {b.name: b.matrix_local.to_quaternion() for b in arm.data.bones}
         self._children = {b.name: [c.name for c in b.children_recursive] for b in arm.data.bones}
+        self.matrix = {b.name: b.matrix_local.copy() for b in arm.data.bones}
+        self.parent = {b.name: b.parent.name if b.parent else None for b in arm.data.bones}
+        self.tail = {b.name: Vector(b.tail_local) for b in arm.data.bones}
 
     def subtree(self, bone: str) -> set[str]:
         """`bone` and all bones below it."""
@@ -62,6 +75,21 @@ class RigInfo:
         world = self.rest[bone] @ loc
         world = Vector(a * b for a, b in zip(world, factors, strict=True))
         pose[bone] = (q, self.rest[bone].inverted() @ world)
+
+    def world(self, pose: Pose, bone: str) -> Matrix:
+        """Armature-space matrix of `bone` in `pose` (forward kinematics)."""
+        q, loc = pose[bone]
+        local = Matrix.Translation(loc or Vector()) @ q.to_matrix().to_4x4()
+        parent = self.parent[bone]
+        if parent is None:
+            return self.matrix[bone] @ local
+        rel = self.matrix[parent].inverted() @ self.matrix[bone]
+        return self.world(pose, parent) @ rel @ local
+
+    def pitch(self, pose: Pose, bone: str) -> float:
+        """World rotation of `bone` against its rest about the left axis (radians)."""
+        delta = self.world(pose, bone).to_quaternion() @ self.rest[bone].inverted()
+        return 2.0 * math.atan2(delta.x, delta.w)
 
     def rest_pose(self) -> Pose:
         return {
@@ -447,6 +475,104 @@ def advance(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
     return to_curves(poses)
 
 
+def _gait_body(rig: RigInfo, g: Gait, frame: int, dz: float = 0.0, phi: float = 0.0) -> Pose:
+    """Root motion, body bob, vault (lowering ``dz``, pitch ``phi``) and the waves of a gait."""
+    pose = rig.rest_pose()
+    cycle = 2 * math.pi * frame / g.period
+    rig.move(pose, "root", Vector((0.0, -g.speed * frame / FPS, 0.0)))
+    height = g.bob * math.cos(g.bob_cycles * cycle) - g.crouch - dz
+    if height:
+        rig.move(pose, "pelvis", Vector((0.0, 0.0, height)))
+    angle = g.pitch * math.sin(cycle) + math.degrees(phi)
+    if angle:
+        rig.rotate(pose, "pelvis", [("X", angle)])
+    for wave in (g.flex, g.nod):
+        if wave is not None:
+            for bone in wave.bones:
+                rig.rotate(
+                    pose, bone, [("X", wave.degrees * math.sin(cycle + 2 * math.pi * wave.phase))]
+                )
+    if g.tail is not None:
+        for i, bone in enumerate(g.tail.bones):
+            angle = g.tail.degrees * math.sin(cycle - 2 * math.pi * g.tail.phase * (i + 1))
+            rig.rotate(pose, bone, [("X", angle)])
+    return pose
+
+
+def gait(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
+    """Walk, trot or gallop loop with root motion and planted feet (gaits.py, F5).
+
+    Two passes: first how far the front and rear hips must come down so that every planted foot
+    reaches the ground (straight legs vault the body over them), then the body lowered and pitched
+    accordingly (smoothed over the loop) and the legs solved with IK."""
+    g = parse_gait(params)
+    for leg in g.legs:
+        for bone in (leg.upper, leg.lower, leg.foot):
+            if bone not in rig.rest:
+                raise ValueError(f"gait: unknown bone '{bone}'")
+    rest = rig.rest_pose()
+    hips = {leg.upper: rig.world(rest, leg.upper).translation for leg in g.legs}
+    ground = {leg.upper: rig.world(rest, leg.foot).translation for leg in g.legs}
+    bones = {}
+    for leg in g.legs:
+        u = rig.tail[leg.upper] - hips[leg.upper]
+        low = rig.tail[leg.lower] - rig.world(rest, leg.lower).translation
+        bones[leg.upper] = ((u.y, u.z), (low.y, low.z), u.length + low.length)
+    pivot = rig.world(rest, "pelvis").translation.y
+    front = [leg for leg in g.legs if hips[leg.upper].y < pivot]
+    rear = [leg for leg in g.legs if hips[leg.upper].y >= pivot]
+    y_front = sum(hips[leg.upper].y for leg in front) / len(front) if front and rear else None
+    y_rear = sum(hips[leg.upper].y for leg in rear) / len(rear) if front and rear else None
+
+    def target(leg: Leg, frame: int) -> tuple[Vector, bool]:
+        forward, up, planted = foot_offset(g, leg, frame)
+        rest_hip, foot = hips[leg.upper], ground[leg.upper]
+        # stride centre: below the hip at rest, `reach` ahead (forward = -Y)
+        y = rest_hip.y - leg.reach - forward - g.speed * frame / FPS
+        return Vector((foot.x, y, foot.z + up)), planted
+
+    drops: dict[str, list[float]] = {"front": [], "rear": []}
+    for frame in range(g.period + 1):
+        pose = _gait_body(rig, g, frame)
+        need = {"front": 0.0, "rear": 0.0}
+        for leg in g.legs:
+            goal, planted = target(leg, frame)
+            if planted:
+                hip = rig.world(pose, leg.upper).translation
+                d = required_drop(hip.z - goal.z, goal.y - hip.y, bones[leg.upper][2])
+                group = "front" if leg in front else "rear"
+                need[group] = max(need[group], d)
+        drops["front"].append(need["front"])
+        drops["rear"].append(need["rear"])
+    smooth = {k: smooth_cyclic(v) for k, v in drops.items()}
+
+    worst = 1.0
+    poses = []
+    for frame in range(g.period + 1):
+        dz, phi = vault(smooth["front"][frame], smooth["rear"][frame], y_front, y_rear, pivot)
+        pose = _gait_body(rig, g, frame, dz, phi)
+        for leg in g.legs:
+            goal, planted = target(leg, frame)
+            hip = rig.world(pose, leg.upper).translation
+            upper, lower, _ = bones[leg.upper]
+            alpha, beta, reached = solve_leg(upper, lower, (goal.y - hip.y, goal.z - hip.z))
+            if planted:  # a swinging leg may stay stretched
+                worst = min(worst, reached)
+            parent = rig.pitch(pose, rig.parent[leg.upper] or leg.upper)
+            swing = ((frame / g.period - leg.phase - g.duty) % 1.0) / (1.0 - g.duty)
+            curl = 0.0 if planted else leg.curl * math.sin(math.pi * swing)
+            pose[leg.upper] = (rig.offset(leg.upper, "X", math.degrees(alpha - parent)), None)
+            pose[leg.lower] = (rig.offset(leg.lower, "X", math.degrees(beta)), None)
+            pose[leg.foot] = (rig.offset(leg.foot, "X", curl - math.degrees(alpha + beta)), None)
+        poses.append(pose)
+    most = max(max(drops["front"]), max(drops["rear"]))
+    print(
+        f"[chargen] gait {g.speed} m/s, stride {g.stride:.2f} m, vault up to {most * 100:.1f} cm, "
+        f"worst reach while planted {worst:.3f}"
+    )
+    return to_curves(poses)
+
+
 RECIPES: dict[str, Callable[[RigInfo, dict, dict[str, Curves]], Curves]] = {
     "strafe": strafe,
     "turn": turn,
@@ -461,4 +587,5 @@ RECIPES: dict[str, Callable[[RigInfo, dict, dict[str, Curves]], Curves]] = {
     "pose": pose,
     "keyposes": keyposes,
     "advance": advance,
+    "gait": gait,
 }

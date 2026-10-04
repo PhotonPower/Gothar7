@@ -96,6 +96,9 @@ def _times(clips: Gltf, animation: dict) -> np.ndarray:
     return np.arange(int(round(duration(clips, animation) * FPS)) + 1) / FPS
 
 
+STANCE_CONTACT = 0.02  # metres above its lowest point a foot counts as standing
+
+
 def _is_root_motion_locomotion(clips: Gltf, animation: dict) -> bool:
     name = str(animation.get("name", "")).split("/")[-1]
     if not name.startswith(LOCOMOTION):
@@ -123,9 +126,12 @@ def foot_slide(clips: Gltf, animation: dict) -> tuple[float, float]:
     for foot in feet_of(clips) or [n for n in names if n in ("foot_l", "foot_r")]:
         p = global_of(names[foot])[:, :3, 3]
         back = np.diff((p - root)[:, [0, 2]] @ direction) * FPS  # relative to the root
-        h = p[:-1, 1]
-        # stance: the foot moves backwards relative to the root in the lower half of its lift
-        stance = (back < 0) & (h <= h.min() + 0.5 * (h.max() - h.min()))
+        h = p[:, 1]
+        # stance: the foot moves backwards relative to the root and is on the ground at both
+        # ends of the step (lift-off and touch-down frames would mix in the swing; fast gaits
+        # stand only two or three frames)
+        low = h <= h.min() + STANCE_CONTACT
+        stance = (back < 0) & low[:-1] & low[1:]
         if stance.any():
             rel.append(-back[stance])
     stride = float(np.concatenate(rel).mean()) if rel else 0.0

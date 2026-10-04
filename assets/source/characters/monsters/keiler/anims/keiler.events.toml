@@ -3,21 +3,21 @@ version = 1
 fps = 30
 
 [clips."keiler/s_run"]
-speed = 1.33
+speed = 4.98
 events = [
-    { frame = 3, event = "footstep_front_l" },
-    { frame = 7, event = "footstep_back_r" },
-    { frame = 17, event = "footstep_front_r" },
-    { frame = 19, event = "footstep_back_l" },
+    { frame = 0, event = "footstep_back_l" },
+    { frame = 1, event = "footstep_back_r" },
+    { frame = 5, event = "footstep_front_l" },
+    { frame = 6, event = "footstep_front_r" },
 ]
 
 [clips."keiler/s_walk"]
-speed = 0.65
+speed = 0.99
 events = [
-    { frame = 5, event = "footstep_back_r" },
-    { frame = 26, event = "footstep_back_l" },
-    { frame = 27, event = "footstep_front_r" },
-    { frame = 35, event = "footstep_front_l" },
+    { frame = 0, event = "footstep_back_l" },
+    { frame = 4, event = "footstep_front_l" },
+    { frame = 8, event = "footstep_back_r" },
+    { frame = 12, event = "footstep_front_r" },
 ]
 
 [clips."keiler/t_attack_1"]

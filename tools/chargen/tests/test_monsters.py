@@ -117,9 +117,20 @@ def test_wolf_set():
     assert spec.rig == "wolf"
     assert spec.blend_path(Path("c")) == Path("c/monsters/wolf/anims/wolf.blend")
     contract = {
-        "s_idle", "s_walk", "s_run", "t_attack_1", "t_attack_2", "t_hit", "t_die",
-        "s_eat", "s_sleep", "t_threaten", "t_turn_l", "t_turn_r",
-    }  # fmt: skip
+        "s_idle",
+        "s_walk",
+        "s_trot",
+        "s_run",
+        "t_attack_1",
+        "t_attack_2",
+        "t_hit",
+        "t_die",
+        "s_eat",
+        "s_sleep",
+        "t_threaten",
+        "t_turn_l",
+        "t_turn_r",
+    }  # fmt: skip  (s_trot: wolf only, agreed with engine 2026-10-05)
     assert {n.split("/")[1] for n in spec.names} == contract
     attack = next(c for c in spec.clips if c.name == "wolf/t_attack_1")
     assert dict(attack.markers) == {"hit_start": 13, "hit_end": 17}
@@ -158,17 +169,19 @@ def test_invalid_monster_sets(data, message):
 # --- validation ----------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(("species", "bones"), [("wolf", 22), ("keiler", 25), ("laufvogel", 12)])
-def test_monster_files_pass(species, bones):
+@pytest.mark.parametrize(
+    ("species", "bones", "clips"), [("wolf", 22, 13), ("keiler", 25, 12), ("laufvogel", 12, 12)]
+)
+def test_monster_files_pass(species, bones, clips):
     folder = REPO_ROOT / "assets/source/characters/monsters" / species
     ref_path = folder / f"rig/{species}_reference.glb"
     rig, reference = load_rig(species=species), reference_pose(Gltf.load(ref_path))
     for path in (ref_path, folder / f"anims/{species}.glb"):
         report = validate_gltf(Gltf.load(path), rig, reference, path=path)
         assert report.ok(strict=True), report.issues
-    assert report.stats["bones"] == bones and report.stats["clips"] == 12
+    assert report.stats["bones"] == bones and report.stats["clips"] == clips
     spec = load_set_spec(species)
-    assert spec.rig == species and len(spec.names) == 12
+    assert spec.rig == species and len(spec.names) == clips
 
 
 def test_keiler_rig():
