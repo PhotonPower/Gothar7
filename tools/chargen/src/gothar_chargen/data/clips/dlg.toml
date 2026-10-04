@@ -5,9 +5,9 @@
 # start and end at the reference; held poses a_<x> lie between a_<x>_in and a_<x>_out. Head and neck
 # move little (look-at turns the head), nodding and shaking the head excepted; faces are morphs.
 # Optional event `beat` on the stress of a gesture. Arm poses were found by a grid search on the rig
-# (hand targets in front of the chest, at the side, on the chest, raised, at the hip); the left arm
-# mirrors the right (X kept, Y and Z negated). Key-pose axes: X = the figure's left, -Y = forward,
-# Z = up (blender/keyframes.py).
+# (hand targets in front of the chest, at the side, on the chest, raised, at the hip; the forearm
+# kept clear of the chest); the left arm mirrors the right (X kept, Y and Z negated). Key-pose axes:
+# X = the figure's left, -Y = forward, Z = up (blender/keyframes.py).
 
 set = "dlg"
 depends = ["none"]
@@ -59,7 +59,7 @@ markers = { beat = 18 }
 [[clip]]
 name = "dlg/a_point_self"
 keyframe = "keyposes"
-params = { base = "dlg/s_neutral_hold", keys = [[0, "rest"], [14, "self"], [36, "self"], [50, "rest"]], poses = { self = { rotate = { upperarm_r = [["X", -30], ["Y", 0], ["Z", 30]], lowerarm_r = [["X", 0], ["Y", -120]], index_01_r = [["Y", 40]], index_02_r = [["Y", 40]], index_03_r = [["Y", 40]], middle_01_r = [["Y", 40]], middle_02_r = [["Y", 40]], middle_03_r = [["Y", 40]], ring_01_r = [["Y", 40]], ring_02_r = [["Y", 40]], ring_03_r = [["Y", 40]], pinky_01_r = [["Y", 40]], pinky_02_r = [["Y", 40]], pinky_03_r = [["Y", 40]], thumb_01_r = [["Z", 40]], thumb_02_r = [["Z", 40]], thumb_03_r = [["Z", 40]] } } } }
+params = { base = "dlg/s_neutral_hold", keys = [[0, "rest"], [14, "self"], [36, "self"], [50, "rest"]], poses = { self = { rotate = { upperarm_r = [["X", -60], ["Y", 30], ["Z", 30]], lowerarm_r = [["X", 0], ["Y", -60]], index_01_r = [["Y", 40]], index_02_r = [["Y", 40]], index_03_r = [["Y", 40]], middle_01_r = [["Y", 40]], middle_02_r = [["Y", 40]], middle_03_r = [["Y", 40]], ring_01_r = [["Y", 40]], ring_02_r = [["Y", 40]], ring_03_r = [["Y", 40]], pinky_01_r = [["Y", 40]], pinky_02_r = [["Y", 40]], pinky_03_r = [["Y", 40]], thumb_01_r = [["Z", 40]], thumb_02_r = [["Z", 40]], thumb_03_r = [["Z", 40]] } } } }
 additive = true
 markers = { beat = 14 }
 
@@ -80,7 +80,7 @@ markers = { beat = 30 }
 [[clip]]
 name = "dlg/a_threaten"
 keyframe = "keyposes"
-params = { base = "dlg/s_neutral_hold", keys = [[0, "rest"], [12, "up"], [20, "wag"], [28, "up"], [36, "wag"], [44, "up"], [60, "rest"]], poses = { up = { rotate = { upperarm_r = [["X", -30], ["Y", -90], ["Z", -30]], lowerarm_r = [["X", 0], ["Y", -60]], index_01_r = [["Y", 40]], index_02_r = [["Y", 40]], index_03_r = [["Y", 40]] } }, wag = { rotate = { upperarm_r = [["X", -30], ["Y", -90], ["Z", -30]], lowerarm_r = [["X", 0], ["Y", -60], ["Z", 12]], index_01_r = [["Y", 40]], index_02_r = [["Y", 40]], index_03_r = [["Y", 40]] } } } }
+params = { base = "dlg/s_neutral_hold", keys = [[0, "rest"], [12, "up"], [20, "wag"], [28, "up"], [36, "wag"], [44, "up"], [60, "rest"]], poses = { up = { rotate = { upperarm_r = [["X", -90], ["Y", 0], ["Z", 0]], lowerarm_r = [["X", 30], ["Y", -30]], index_01_r = [["Y", 40]], index_02_r = [["Y", 40]], index_03_r = [["Y", 40]] } }, wag = { rotate = { upperarm_r = [["X", -90], ["Y", 0], ["Z", 0]], lowerarm_r = [["X", 30], ["Y", -30], ["Z", 12]], index_01_r = [["Y", 40]], index_02_r = [["Y", 40]], index_03_r = [["Y", 40]] } } } }
 additive = true
 markers = { beat = 20 }
 
