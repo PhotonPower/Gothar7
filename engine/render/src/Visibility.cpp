@@ -12,6 +12,25 @@ f32 distanceTo(const AABB& box, const Vec3& point) noexcept
     return glm::length(glm::clamp(point, box.min, box.max) - point);
 }
 
+u32 selectLod(f32 distance, u32 current, const LodSettings& settings) noexcept
+{
+    if (settings.forced >= 0)
+    {
+        return static_cast<u32>(settings.forced);
+    }
+    const f32 thresholds[] = {settings.lod1Distance, settings.lod2Distance}; // level n+1 from thresholds[n]
+    u32 level = std::min<u32>(current, 2);
+    while (level < 2 && distance > thresholds[level] * (1.0f + settings.hysteresis))
+    {
+        ++level;
+    }
+    while (level > 0 && distance < thresholds[level - 1] * (1.0f - settings.hysteresis))
+    {
+        --level;
+    }
+    return level;
+}
+
 CullResult cullByDistance(const AABB& bounds, const Vec3& eye, const CullSettings& settings,
                           bool sizeCullable) noexcept
 {

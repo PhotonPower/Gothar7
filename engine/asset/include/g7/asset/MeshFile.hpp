@@ -27,7 +27,7 @@ namespace g7::asset
 /// In meshes written by g7-cook, image uris are VFS paths from the archive root (the cooker resolves
 /// "../textures/x.png" once, since the VFS rejects ".."), and encoded bytes are empty.
 inline constexpr char kMeshMagic[4] = {'G', '7', 'M', 'S'};
-inline constexpr u32 kMeshVersion = 2;
+inline constexpr u32 kMeshVersion = 3; // 3: LOD level per submesh
 /// Oldest version still read (no collision parts).
 inline constexpr u32 kMeshMinVersion = 1;
 

@@ -27,6 +27,19 @@ enum class CullResult : u8
     TooSmall, ///< below sizeCull (size-cullable objects only)
 };
 
+/// Levels of detail of static models by distance (asset.md "Detailstufen (LOD) statischer Modelle").
+struct LodSettings
+{
+    f32 lod1Distance = 60.0f; ///< metres from the camera to the centre of the bounds
+    f32 lod2Distance = 150.0f;
+    f32 hysteresis = 0.1f; ///< share of a threshold to go past it before switching back (no flicker)
+    i32 forced = -1;       ///< 0, 1, 2: every object at this level (--lod, debug UI); -1: by distance
+};
+
+/// The level for `distance`, starting from `current`: coarser beyond threshold * (1 + hysteresis), finer
+/// below threshold * (1 - hysteresis); between them the current level stays.
+[[nodiscard]] u32 selectLod(f32 distance, u32 current, const LodSettings& settings) noexcept;
+
 /// Distance and size test for bounds seen from `eye`; frustum tests are separate.
 [[nodiscard]] CullResult cullByDistance(const AABB& bounds, const Vec3& eye, const CullSettings& settings,
                                         bool sizeCullable) noexcept;

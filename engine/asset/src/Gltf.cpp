@@ -19,7 +19,7 @@ namespace g7::asset
 namespace gltf
 {
 /// Indices of one material, collected over all primitives before they are concatenated.
-using IndicesByMaterial = std::map<u32, std::vector<u32>>;
+using IndicesByMaterial = std::map<std::pair<u32, u32>, std::vector<u32>>; // (lod, material) -> indices
 
 Mat4 toGlm(const fastgltf::math::fmat4x4& matrix)
 {
@@ -264,7 +264,7 @@ namespace
 using namespace gltf;
 
 Result<void> appendPrimitive(const fastgltf::Asset& asset, const fastgltf::Primitive& primitive,
-                             const Mat4& world, u32 material, MeshData& mesh,
+                             const Mat4& world, u32 material, u32 lod, MeshData& mesh,
                              IndicesByMaterial& indicesByMaterial, bool needsTangents)
 {
     const auto positionIt = primitive.findAttribute("POSITION");
@@ -353,7 +353,7 @@ Result<void> appendPrimitive(const fastgltf::Asset& asset, const fastgltf::Primi
         computeTangents(mesh.vertices, indices, firstVertex);
     }
 
-    auto& target = indicesByMaterial[material];
+    auto& target = indicesByMaterial[{lod, material}];
     target.insert(target.end(), indices.begin(), indices.end());
     return {};
 }
@@ -462,11 +462,12 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
             }
             const Mat4 world = toGlm(matrix);
             const std::string_view nodeName(node.name.data(), node.name.size());
-            if (isCoarserLod(nodeName))
-            {
-                return; // level 0 only until vob LOD exists (M17)
-            }
             const bool collision = nodeName.starts_with(kCollisionPrefix);
+            const u32 lod = collision ? 0 : lodLevel(nodeName);
+            if (lod > kMaxLod)
+            {
+                return; // coarser than the engine draws
+            }
             for (const fastgltf::Primitive& primitive : asset.meshes[*node.meshIndex].primitives)
             {
                 if (primitive.type != fastgltf::PrimitiveType::Triangles)
@@ -488,8 +489,8 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
                     primitive.materialIndex ? static_cast<u32>(*primitive.materialIndex) : defaultMaterial;
                 const bool needsTangents =
                     material < mesh.materials.size() && mesh.materials[material].normalImage >= 0;
-                if (auto result = appendPrimitive(asset, primitive, world, material, mesh, indicesByMaterial,
-                                                  needsTangents);
+                if (auto result = appendPrimitive(asset, primitive, world, material, lod, mesh,
+                                                  indicesByMaterial, needsTangents);
                     !result)
                 {
                     failure = Error{std::string(debugName) + ": " + result.error().message};
@@ -505,15 +506,16 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
     {
         G7_LOG_WARN("asset", "{}: skipped {} non-triangle primitive(s)", debugName, skipped);
     }
-    if (indicesByMaterial.contains(defaultMaterial))
+    if (std::any_of(indicesByMaterial.begin(), indicesByMaterial.end(),
+                    [&](const auto& entry) { return entry.first.second == defaultMaterial; }))
     {
         mesh.materials.push_back(MaterialInfo{.name = "default"});
     }
 
-    for (auto& [material, indices] : indicesByMaterial)
+    for (auto& [key, indices] : indicesByMaterial) // ordered by level, then material
     {
         mesh.submeshes.push_back(
-            {static_cast<u32>(mesh.indices.size()), static_cast<u32>(indices.size()), material});
+            {static_cast<u32>(mesh.indices.size()), static_cast<u32>(indices.size()), key.second, key.first});
         mesh.indices.insert(mesh.indices.end(), indices.begin(), indices.end());
     }
     if (!mesh.vertices.empty())
@@ -540,19 +542,39 @@ Result<MeshData> parse(fastgltf::GltfDataBuffer& data, const fs::Path& baseDirec
 }
 } // namespace
 
-bool isCoarserLod(std::string_view nodeName) noexcept
+u32 lodLevel(std::string_view nodeName) noexcept
 {
     const usize at = nodeName.rfind("_lod");
-    if (at == std::string_view::npos || at + 4 >= nodeName.size())
+    if (at == std::string_view::npos || at + 4 >= nodeName.size() || nodeName.size() - at - 4 > 3)
     {
-        return false;
+        return 0;
     }
     const std::string_view digits = nodeName.substr(at + 4);
     if (!std::all_of(digits.begin(), digits.end(), [](char c) { return c >= '0' && c <= '9'; }))
     {
-        return false;
+        return 0;
     }
-    return std::any_of(digits.begin(), digits.end(), [](char c) { return c != '0'; });
+    u32 level = 0;
+    for (const char c : digits)
+    {
+        level = level * 10 + static_cast<u32>(c - '0');
+    }
+    return level;
+}
+
+bool isCoarserLod(std::string_view nodeName) noexcept
+{
+    return lodLevel(nodeName) > 0;
+}
+
+u32 maxLod(const MeshData& mesh) noexcept
+{
+    u32 level = 0;
+    for (const Submesh& s : mesh.submeshes)
+    {
+        level = std::max(level, s.lod);
+    }
+    return level;
 }
 
 Result<MeshData> loadGltf(const fs::Path& path)

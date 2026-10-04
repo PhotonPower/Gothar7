@@ -542,6 +542,10 @@ Result<void> Engine::initSceneRendering()
     m_shadowDebug = m_config.settings.get<bool>("render.shadow_debug", false);
     m_cullSettings.viewDistance = static_cast<f32>(m_config.settings.get<f64>("render.view_distance", 400.0));
     m_cullSettings.sizeCull = static_cast<f32>(m_config.settings.get<f64>("render.size_cull", 0.005));
+    m_lodSettings.lod1Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod1_distance", 60.0));
+    m_lodSettings.lod2Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod2_distance", 150.0));
+    m_lodSettings.hysteresis = static_cast<f32>(m_config.settings.get<f64>("render.lod_hysteresis", 0.1));
+    m_lodSettings.forced = m_config.forcedLod;
     // multi_draw: "auto" (default) batches except on Intel GPUs - there the GPU is the limit and the
     // batches measured ~10 % slower (render.md); true/false or "on"/"off" force it.
     const auto forced = m_config.settings.find<bool>("render.multi_draw");
@@ -1517,12 +1521,12 @@ void Engine::drawScene(u32 width, u32 height)
                     if (m_multiDraw)
                     {
                         m_drawItems.push_back({&instance.model->mesh, &instance.model->materials,
-                                               instance.transform, instance.bounds});
+                                               instance.transform, instance.bounds, instance.lod});
                     }
                     else
                     {
                         m_meshRenderer.drawShadow(*m_device, instance.model->mesh, instance.model->materials,
-                                                  instance.transform, m_cascades[i]);
+                                                  instance.transform, m_cascades[i], instance.lod);
                     }
                 }
             }
@@ -1569,6 +1573,7 @@ void Engine::drawScene(u32 width, u32 height)
     }
     const Frustum view = m_camera.frustum();
     m_visibleInstances = 0;
+    m_lodCounts = {};
     m_culledFar = 0;
     m_culledSmall = 0;
     m_cullCandidates.clear();
@@ -1576,22 +1581,27 @@ void Engine::drawScene(u32 width, u32 height)
     m_drawItems.clear();
     for (const u32 index : m_cullCandidates)
     {
-        const SceneInstance& instance = m_instances[index];
+        SceneInstance& instance = m_instances[index];
         const render::CullResult cull = render::cullByDistance(instance.bounds, m_camera.transform.position,
                                                                m_cullSettings, instance.sizeCullable);
         m_culledFar += cull == render::CullResult::TooFar ? 1 : 0;
         m_culledSmall += cull == render::CullResult::TooSmall ? 1 : 0;
         if (cull == render::CullResult::Kept && view.intersects(instance.bounds))
         {
+            // Level of detail by the distance to the centre of the bounds (with hysteresis).
+            instance.lod =
+                render::selectLod(glm::length(instance.bounds.center() - m_camera.transform.position),
+                                  instance.lod, m_lodSettings);
+            ++m_lodCounts[std::min<u32>(instance.lod, 2)];
             if (m_multiDraw)
             {
-                m_drawItems.push_back(
-                    {&instance.model->mesh, &instance.model->materials, instance.transform, instance.bounds});
+                m_drawItems.push_back({&instance.model->mesh, &instance.model->materials, instance.transform,
+                                       instance.bounds, instance.lod});
             }
             else
             {
                 m_meshRenderer.draw(*m_device, instance.model->mesh, instance.model->materials,
-                                    instance.transform, m_camera);
+                                    instance.transform, m_camera, -1, instance.lod);
             }
             ++m_visibleInstances;
         }
@@ -1633,10 +1643,11 @@ void Engine::updateBenchmark(f64 realSeconds)
                 G7_LOG_INFO(
                     "engine",
                     "benchmark viewpoint {}: {}; {} draws, {} buffer binds, {} pipeline changes, {}k tris; "
-                    "main pass: {} batches ({} submeshes), {} single draws, {} terrain chunks",
+                    "main pass: {} batches ({} submeshes), {} single draws, {} terrain chunks; LOD {}/{}/{}",
                     v, s.toString(), stats.drawCalls, stats.bufferBinds, stats.pipelineChanges,
                     stats.triangles / 1000, batch.groups, batch.batchedDraws, batch.singleDraws,
-                    m_benchmarkTerrainChunks[v]);
+                    m_benchmarkTerrainChunks[v], m_benchmarkLods[v][0], m_benchmarkLods[v][1],
+                    m_benchmarkLods[v][2]);
             }
             const auto [worstAverage, worstP99] = std::accumulate(
                 m_benchmarkResults.begin(), m_benchmarkResults.end(), std::pair{0.0, 0.0},
@@ -1665,6 +1676,7 @@ void Engine::updateBenchmark(f64 realSeconds)
         m_benchmarkStats.push_back(m_device ? m_device->stats() : render::FrameStats{});
         m_benchmarkBatches.push_back(m_meshRenderer.lastBatch());
         m_benchmarkTerrainChunks.push_back(m_hasTerrain ? m_terrain.drawnChunks() : 0);
+        m_benchmarkLods.push_back(m_lodCounts);
     }
 }
 
@@ -1761,6 +1773,8 @@ void Engine::runDebugUi(f64 realSeconds)
     panel.minuteSeconds = static_cast<f32>(m_gameTime.secondsPerMinute());
     const f32 shownHour = panel.hour;
     panel.shadowDebug = m_shadowDebug;
+    panel.lod = m_lodSettings.forced;
+    panel.lodCounts = m_lodCounts;
     panel.debugDraw = m_debugOverlay;
     panel.paused = m_paused;
     panel.timeScale = static_cast<f32>(m_timeScale);
@@ -1786,6 +1800,7 @@ void Engine::runDebugUi(f64 realSeconds)
     }
     m_gameTime.setSecondsPerMinute(panel.minuteSeconds);
     m_shadowDebug = panel.shadowDebug;
+    setForcedLod(panel.lod);
     setDebugOverlay(panel.debugDraw);
     setPaused(panel.paused);
     setTimeScale(panel.timeScale);
@@ -1903,6 +1918,20 @@ void Engine::addWorldDebugOverlay()
             m_debugDraw.circle(Vec3(t.matrix[3]), Vec3(0.0f, 1.0f, 0.0f), sound.range, style);
             m_debugDraw.text(Vec3(t.matrix[3]) + Vec3(0.0f, 0.4f, 0.0f), sound.sound, style);
         });
+    // Levels of detail: models that have some, coloured by the level drawn (green full, yellow lod1, red
+    // lod2).
+    const f32 lodReach = m_lodSettings.lod2Distance * 2.0f;
+    for (const SceneInstance& instance : m_instances)
+    {
+        if (instance.model->mesh.maxLod() == 0 ||
+            glm::length(instance.bounds.center() - m_camera.transform.position) > lodReach)
+        {
+            continue;
+        }
+        const Vec4 colours[] = {Vec4(0.3f, 1.0f, 0.3f, 0.7f), Vec4(1.0f, 0.9f, 0.2f, 0.7f),
+                                Vec4(1.0f, 0.3f, 0.2f, 0.7f)};
+        m_debugDraw.box(instance.bounds, render::DebugStyle{colours[std::min<u32>(instance.lod, 2)]});
+    }
     m_scene.each<world::Vob, world::MobRef, world::WorldTransform>(
         [&](entt::entity, const world::Vob&, const world::MobRef& mob, const world::WorldTransform& t)
         {

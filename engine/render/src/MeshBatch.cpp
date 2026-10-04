@@ -69,6 +69,10 @@ void MeshRenderer::drawBatched(Device& device, std::span<const MeshDrawItem> ite
         {
             for (usize i = 0; i < submeshes.size(); ++i)
             {
+                if (!item.mesh->inLod(i, item.lod))
+                {
+                    continue;
+                }
                 ((*item.materials)[submeshes[i].material].alphaMode == asset::AlphaMode::Blend ? translucent
                                                                                                : m_singles)
                     .emplace_back(&item, i);
@@ -93,6 +97,10 @@ void MeshRenderer::drawBatched(Device& device, std::span<const MeshDrawItem> ite
                           reinterpret_cast<const u8*>(&data) + sizeof(data));
         for (usize i = 0; i < submeshes.size(); ++i)
         {
+            if (!item.mesh->inLod(i, item.lod))
+            {
+                continue; // another level of detail
+            }
             const Material& material = (*item.materials)[submeshes[i].material];
             if (material.alphaMode == asset::AlphaMode::Blend)
             {
@@ -132,7 +140,8 @@ void MeshRenderer::drawBatched(Device& device, std::span<const MeshDrawItem> ite
     m_singles.insert(m_singles.end(), translucent.begin(), translucent.end());
     for (const auto& [item, submesh] : m_singles)
     {
-        draw(device, *item->mesh, *item->materials, item->model, camera, static_cast<i32>(submesh));
+        draw(device, *item->mesh, *item->materials, item->model, camera, static_cast<i32>(submesh),
+             item->lod);
         ++m_batch.singleDraws;
     }
 }
@@ -147,7 +156,7 @@ void MeshRenderer::drawShadowBatched(Device& device, std::span<const MeshDrawIte
     {
         if (item.mesh->arena() == nullptr)
         {
-            drawShadow(device, *item.mesh, *item.materials, item.model, cascade);
+            drawShadow(device, *item.mesh, *item.materials, item.model, cascade, item.lod);
             ++m_batch.singleDraws;
             continue;
         }
@@ -160,9 +169,9 @@ void MeshRenderer::drawShadowBatched(Device& device, std::span<const MeshDrawIte
         for (usize i = 0; i < submeshes.size(); ++i)
         {
             const Material& material = (*item.materials)[submeshes[i].material];
-            if (material.alphaMode == asset::AlphaMode::Blend)
+            if (material.alphaMode == asset::AlphaMode::Blend || !item.mesh->inLod(i, item.lod))
             {
-                continue; // translucent surfaces cast no shadow
+                continue; // translucent surfaces cast no shadow; other levels of detail
             }
             // Depth only: opaque submeshes of a block share one group; alpha-tested ones need their
             // base colour (texture, alpha, cutoff).

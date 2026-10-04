@@ -79,6 +79,7 @@ std::vector<u8> serializeMesh(const MeshData& mesh)
         w.u32v(s.firstIndex);
         w.u32v(s.indexCount);
         w.u32v(s.material);
+        w.u32v(s.lod); // version 3
     }
     for (const MaterialInfo& m : mesh.materials)
     {
@@ -167,6 +168,7 @@ Result<MeshData> deserializeMesh(std::span<const u8> bytes, std::string_view deb
         s.firstIndex = r.u32v();
         s.indexCount = r.u32v();
         s.material = r.u32v();
+        s.lod = version >= 3 ? r.u32v() : 0;
     }
     mesh.materials.resize(materialCount);
     for (MaterialInfo& m : mesh.materials)

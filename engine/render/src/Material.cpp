@@ -420,7 +420,7 @@ void MeshRenderer::bindLighting(Device& device) const
 }
 
 void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
-                        const Camera& camera, i32 onlySubmesh)
+                        const Camera& camera, i32 onlySubmesh, u32 lod)
 {
     const Mat4 viewProjection = camera.viewProjection();
     device.bindUniformBuffer(0, m_lightingBuffer);
@@ -453,7 +453,7 @@ void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& mat
         for (usize i = 0; i < submeshes.size(); ++i)
         {
             const Material& material = materials[submeshes[i].material];
-            if ((material.alphaMode == asset::AlphaMode::Blend) == translucentPass &&
+            if ((material.alphaMode == asset::AlphaMode::Blend) == translucentPass && mesh.inLod(i, lod) &&
                 (onlySubmesh < 0 || static_cast<usize>(onlySubmesh) == i))
             {
                 drawSubmesh(device, mesh, i, material);
@@ -549,7 +549,7 @@ void MeshRenderer::drawShadowSkinned(Device& device, const SkinnedMesh& mesh, co
 }
 
 void MeshRenderer::drawShadow(Device& device, const Mesh& mesh, const MaterialSet& materials,
-                              const Mat4& model, const Cascade& cascade)
+                              const Mat4& model, const Cascade& cascade, u32 lod)
 {
     for (rhi::ShaderProgram* program : {m_shadowProgram, m_shadowAlphaTestProgram})
     {
@@ -560,7 +560,7 @@ void MeshRenderer::drawShadow(Device& device, const Mesh& mesh, const MaterialSe
     for (usize i = 0; i < submeshes.size(); ++i)
     {
         const Material& material = materials[submeshes[i].material];
-        if (material.alphaMode == asset::AlphaMode::Blend)
+        if (material.alphaMode == asset::AlphaMode::Blend || !mesh.inLod(i, lod))
         {
             continue;
         }

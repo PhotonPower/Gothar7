@@ -46,6 +46,7 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --view-mesh=<path>      show a model (.gltf/.glb/.g7mesh) at the origin
   --benchmark             visit every viewpoint, log frame times, exit
   --screenshot=<file.png> save the last frame (with --frames or --benchmark)
+  --lod=auto|0|1|2        level of detail of static models: by distance (default) or forced (test images)
   --no-ground             no ground plate under the model or scene
   --no-sun                no sunlight
   --walk=<route.json>     autopilot: the player runs the route, then the game exits (with --world)
@@ -71,6 +72,7 @@ struct CommandLine
     std::string time;
     std::string screenshot;
     bool benchmark = false;
+    int lod = -1; // --lod: -1 = auto
     bool editor = false;
     std::string walk;
     std::string walkOut;
@@ -150,6 +152,23 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--benchmark")
         {
             cli.benchmark = true;
+        }
+        else if (arg.starts_with("--lod="))
+        {
+            const std::string_view value = arg.substr(6);
+            if (value == "auto")
+            {
+                cli.lod = -1;
+            }
+            else if (value == "0" || value == "1" || value == "2")
+            {
+                cli.lod = value[0] - '0';
+            }
+            else
+            {
+                G7_LOG_FATAL("game", "invalid value for --lod: '{}' (auto, 0, 1 or 2)", value);
+                return std::nullopt;
+            }
         }
         else if (arg.starts_with("--walk="))
         {
@@ -338,6 +357,7 @@ int main(int argc, char** argv)
     {
         config.viewpoint = *cli->viewpoint;
     }
+    config.forcedLod = cli->lod;
     if (cli->benchmark)
     {
         // Measure what the GPU can do: no VSync, no frame cap.

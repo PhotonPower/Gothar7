@@ -357,18 +357,32 @@ TEST_CASE("glTF: external .bin and .glb files")
     std::filesystem::remove_all(dir, ignored);
 }
 
-TEST_CASE("glTF: coarser LOD nodes (_lod1 ...) are left out of static models")
+TEST_CASE("glTF: LOD nodes (_lod1, _lod2) become submeshes of their level")
 {
-    CHECK_FALSE(isCoarserLod("it_bread_lod0"));
-    CHECK(isCoarserLod("it_bread_lod1"));
-    CHECK(isCoarserLod("WALL_lod12"));
-    CHECK_FALSE(isCoarserLod("WALL"));
-    CHECK_FALSE(isCoarserLod("flood"));
-    CHECK_FALSE(isCoarserLod("x_lod"));
-    CHECK_FALSE(isCoarserLod("x_lodA"));
-    // figuren's items carry _lod0 .. _lod2: only level 0 is drawn (<= 628 triangles, contract F6).
+    CHECK(lodLevel("it_bread_lod0") == 0);
+    CHECK(lodLevel("it_bread_lod1") == 1);
+    CHECK(lodLevel("WALL_lod2") == 2);
+    CHECK(lodLevel("WALL") == 0);
+    CHECK(lodLevel("flood") == 0);
+    CHECK(lodLevel("x_lod") == 0);
+    CHECK(lodLevel("x_lodA") == 0);
+    CHECK(isCoarserLod("WALL_lod1"));
+    CHECK_FALSE(isCoarserLod("WALL_lod0"));
+    // figuren's items carry _lod0 .. _lod2: three levels, the full one within the budget (<= 628 triangles).
     const MeshData sword = require(loadGltf(fs::fromUtf8(G7_ASSET_SOURCE_DIR "/items/it_sword_old.glb")));
-    CHECK(sword.indices.size() / 3 <= 628);
+    CHECK(maxLod(sword) == 2);
+    u32 triangles[3] = {};
+    for (const Submesh& s : sword.submeshes)
+    {
+        REQUIRE(s.lod <= 2);
+        triangles[s.lod] += s.indexCount / 3;
+    }
+    CHECK(triangles[0] <= 628);
+    CHECK(triangles[1] < triangles[0]);
+    CHECK(triangles[2] < triangles[1]);
+    // Levels lie on top of each other (same origin): the bounds are those of one blade.
     const Vec3 size = sword.bounds.max - sword.bounds.min;
-    CHECK(size.y == doctest::Approx(1.035f).epsilon(0.01)); // one blade, not three
+    CHECK(size.y == doctest::Approx(1.035f).epsilon(0.01));
+    // Submeshes are ordered by level: level 0 first.
+    CHECK(sword.submeshes.front().lod == 0);
 }

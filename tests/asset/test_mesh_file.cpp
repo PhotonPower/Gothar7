@@ -28,6 +28,7 @@ MeshData sampleMesh()
     leaves.doubleSided = true;
     mesh.materials.push_back(leaves);
     mesh.submeshes.push_back({0, 6, static_cast<u32>(mesh.materials.size() - 1)});
+    mesh.submeshes.push_back({0, 3, 0, 2}); // a coarser level of detail (version 3)
     mesh.images.push_back({"textures/leaves.png", {}, "image/png"});
     mesh.images.push_back({"", {1, 2, 3, 4}, "image/jpeg"});
     mesh.collision.push_back(
@@ -54,6 +55,7 @@ void checkEqual(const MeshData& a, const MeshData& b)
         CHECK(a.submeshes[i].firstIndex == b.submeshes[i].firstIndex);
         CHECK(a.submeshes[i].indexCount == b.submeshes[i].indexCount);
         CHECK(a.submeshes[i].material == b.submeshes[i].material);
+        CHECK(a.submeshes[i].lod == b.submeshes[i].lod);
     }
     REQUIRE(a.materials.size() == b.materials.size());
     for (usize i = 0; i < a.materials.size(); ++i)
@@ -101,6 +103,31 @@ constexpr usize kVertexCountAt = 8;
 constexpr usize kHeaderSize = 4 + 7 * 4 + 6 * 4;
 } // namespace
 
+namespace
+{
+/// The same file in the layout of version 1 or 2: submeshes without their LOD level (version 3 added it).
+std::vector<u8> olderLayout(std::vector<u8> data, u32 version)
+{
+    const auto read = [&](usize at)
+    {
+        u32 v = 0;
+        std::memcpy(&v, data.data() + at, 4);
+        return v;
+    };
+    const u32 vertices = read(8);
+    const u32 indices = read(12);
+    const u32 submeshes = read(16);
+    const usize first = 4 + 7 * 4 + 6 * 4 + usize(vertices) * 48 + usize(indices) * 4;
+    for (u32 i = submeshes; i-- > 0;)
+    {
+        const auto lod = data.begin() + static_cast<std::ptrdiff_t>(first + usize(i) * 16 + 12);
+        data.erase(lod, lod + 4);
+    }
+    setU32(data, 4, version);
+    return data;
+}
+} // namespace
+
 TEST_CASE(".g7mesh round trip keeps every field")
 {
     const MeshData mesh = sampleMesh();
@@ -144,14 +171,15 @@ TEST_CASE("corrupt .g7mesh files are rejected")
     {
         MeshData plain = sampleMesh();
         plain.collision.clear();
-        auto data = serializeMesh(plain);
-        setU32(data, 4, 1);
-        auto loaded = deserializeMesh(data, "old.g7mesh");
-        REQUIRE(loaded);
+        auto loaded = deserializeMesh(olderLayout(serializeMesh(plain), 1), "old.g7mesh");
+        REQUIRE_MESSAGE(loaded, (loaded ? "" : loaded.error().message));
         CHECK(loaded.value().collision.empty());
-        data = good;
-        setU32(data, 4, 1);
-        rejected(data, "reserved");
+        CHECK(loaded.value().submeshes.back().lod == 0); // no levels before version 3
+        rejected(olderLayout(good, 1), "reserved");
+        // Version 2 (collision, no levels) is read too.
+        auto v2 = deserializeMesh(olderLayout(good, 2), "v2.g7mesh");
+        REQUIRE_MESSAGE(v2, (v2 ? "" : v2.error().message));
+        CHECK_FALSE(v2.value().collision.empty());
     }
     SUBCASE("collision index out of range")
     {

@@ -83,6 +83,7 @@ struct SceneInstance
     bool sizeCullable = true; ///< deco: may vanish when small on screen (render.md "Sichtbarkeit")
     world::VobId vob;         ///< the mesh vob drawn (0: ground plate, --view-mesh, test scenes)
     bool solid = true;        ///< collides and casts shadows (false: the water surface placeholder)
+    u32 lod = 0;              ///< level of detail drawn now (chosen by distance with hysteresis)
 };
 
 /// A landing of the player: fall height from the highest point and the hit points it cost.
@@ -186,6 +187,8 @@ struct EngineConfig
     /// frame-time statistics and quits. The caller turns VSync and the frame cap off.
     bool benchmark = false;
     u32 benchmarkFrames = 300;
+    /// Level of detail for every static model (--lod=0|1|2, test images); -1 = by distance (--lod=auto).
+    i32 forcedLod = -1;
     /// Saves the last rendered frame as PNG (--screenshot=<file>), e.g. with --frames or --benchmark.
     fs::Path screenshot;
     platform::WindowDesc window; ///< Used unless headless.
@@ -413,6 +416,12 @@ public:
     [[nodiscard]] u32 insertedItemCount() const noexcept { return m_insertedItems; }
     /// The hero's character (M8): Npc "pc_hero" from the scripts; nullptr without it.
     [[nodiscard]] const gameplay::Character* hero() const noexcept;
+
+    /// Levels of detail of static models (asset.md "Detailstufen"): thresholds, forcing (--lod, debug UI).
+    [[nodiscard]] const render::LodSettings& lodSettings() const noexcept { return m_lodSettings; }
+    void setForcedLod(i32 lod) noexcept { m_lodSettings.forced = lod < 0 ? -1 : std::min(lod, 2); }
+    /// Instances drawn per level in the last frame's main pass.
+    [[nodiscard]] const std::array<u32, 3>& lodCounts() const noexcept { return m_lodCounts; }
 
     // Items, focus, picking up (M8 part B, EngineItems.cpp)
     /// Items lying in the world (item vobs of the world file plus those inserted or dropped).
@@ -802,7 +811,9 @@ private:
     u32 m_culledFar = 0;
     u32 m_culledSmall = 0;
     render::CullSettings m_cullSettings;
-    render::CullGrid m_cullGrid; // over m_instances; rebuilt when instances change
+    render::LodSettings m_lodSettings;
+    std::array<u32, 3> m_lodCounts{}; // instances drawn per level of detail in the last main pass
+    render::CullGrid m_cullGrid;      // over m_instances; rebuilt when instances change
     bool m_cullGridDirty = true;
     physics::PhysicsWorld m_physics;
     // Player (M5): character, movement and camera. Drawn feet at the last two fixed steps for interpolation.
@@ -876,6 +887,7 @@ private:
     std::vector<render::FrameStats> m_benchmarkStats; // per viewpoint, of its last measured frame
     std::vector<render::BatchStats> m_benchmarkBatches;
     std::vector<u32> m_benchmarkTerrainChunks;
+    std::vector<std::array<u32, 3>> m_benchmarkLods; // instances per level of detail, per viewpoint
     u64 m_benchmarkFrame = 0;
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs
     render::Environment m_environment;

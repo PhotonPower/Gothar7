@@ -15,7 +15,7 @@
 namespace g7::cook
 {
 /// Bump whenever the cooker's output for the same input changes (format, encoder settings).
-inline constexpr u32 kCookerVersion = 2; // 2: .g7mesh v2 (collision parts)
+inline constexpr u32 kCookerVersion = 3; // 2: .g7mesh v2 (collision parts), 3: .g7mesh v3 (LOD per submesh)
 /// Manifest location below the output directory.
 inline constexpr std::string_view kManifestPath = ".g7cook/manifest.txt";
 

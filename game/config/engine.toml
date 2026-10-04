@@ -35,6 +35,12 @@ shadow_distance = 150.0
 # Größe. 0 schaltet die jeweilige Prüfung ab. Leonberg-Kern von oben: gleiches Bild, 4,2 → 2,9 ms (RTX 3080).
 view_distance = 400.0
 size_cull = 0.005
+# Detailstufen statischer Modelle (asset.md „Detailstufen (LOD) statischer Modelle“): Modelle mit Knoten <name>_lod1 /
+# _lod2 zeigen diese ab der Entfernung (Kamera bis Mitte der Bounds); der Wechsel zurück erst lod_hysteresis
+# (Anteil) unter bzw. über der Schwelle, gegen Flackern. --lod=0|1|2 erzwingt eine Stufe (Prüfbilder).
+lod1_distance = 60.0
+lod2_distance = 150.0
+lod_hysteresis = 0.1
 # Objekte gleichen Materials mit einem Zeichenaufruf je Pass zeichnen (Multi-Draw): "auto" = an, außer auf Intel-GPUs
 # (dort grafikkartenbegrenzt, ~10 % langsamer gemessen; RTX 3080: +41 % im Leonberg-Kern); "on"/"off" erzwingen.
 multi_draw = "auto"

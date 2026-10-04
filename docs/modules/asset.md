@@ -50,9 +50,7 @@ Result<MeshData> loadGltf(std::span<const u8>, const fs::Path& baseDir, std::str
   Emissive (Faktor linear, Bild sRGB), `alphaMode`/`alphaCutoff`/`doubleSided` wie in glTF. Bilder als `ImageSource`: URI relativ
   zur Modelldatei oder eingebettete Bytes (`.glb`-bufferView, data:-URI) – Dekodieren mit `decodeImage`/`loadImage`.
 - **Kollisionsgeometrie `COL_` (M5, Vertrag mit welt und figuren):** siehe unten „Kollision in Modellen“.
-- **LOD-Knoten in statischen Modellen** (seit M8): Knoten `<name>_lod<n>` mit n ≥ 1 (`isCoarserLod`) lässt `loadGltf`
-  aus; gezeichnet wird nur Stufe 0 (bzw. Knoten ohne Endung), bis Vob-LOD kommt (M17, Namensregel aus
-  leonberg-pipeline.md). Betrifft z. B. figurens Gegenstände `items/<id>.glb` mit `_lod0`–`_lod2`.
+- **Detailstufen statischer Modelle:** siehe unten „Detailstufen (LOD) statischer Modelle“.
 - Skins/Animationen: M6. Ab M3 kocht `g7-cook` glTF in ein Laufzeitformat, das dieselbe `MeshData` liefert.
 
 ## Bestand (M3)
@@ -176,6 +174,23 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
   - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019). Bis dahin laden Figuren und Sets aus losen Dateien
     (Entwicklung). g7-cook kocht skinnte Figuren weiterhin nur als statisches `.g7mesh`, Sets ohne Mesh überspringt
     er; ein reines `.g7pak` enthält sie noch nicht.
+
+### Detailstufen (LOD) statischer Modelle (Vertrag mit welt und figuren, 2026-10-04)
+- **Knoten:** Ein `.glb` enthält bis zu drei Render-Stufen mit **gleichem Ursprung**: Stufe 0 als `<name>` oder
+  `<name>_lod0`, gröber `<name>_lod1`, `<name>_lod2` (`lodLevel`, `isCoarserLod`). Materialien werden geteilt; jeder
+  Knoten darf mehrere Teile/Materialien haben. Stufen über 2 lässt der Loader weg.
+- **Kollision:** `COL_*` gibt es **einmal**, unabhängig von der Stufe. Ohne `COL_` kollidiert nur Stufe 0.
+- **Ohne `_lod`-Knoten** ist alles wie zuvor (Schloss, Kirche, Mauer, Mobs, Testwelt).
+- **Daten:** `MeshData`-Submeshes tragen ihre Stufe (`Submesh::lod`, nach Stufe sortiert), `maxLod(mesh)`; `.g7mesh`
+  v3 speichert sie (v1/v2 werden weiter gelesen, ihre Submeshes sind Stufe 0); `g7-cook` Version 3 kocht neu.
+- **Auswahl** (render/engine): je Vob nach der Entfernung Kamera – Mitte der Bounds, `render::selectLod` mit
+  Hysterese: Stufe 1 ab `lod1_distance` (60 m), Stufe 2 ab `lod2_distance` (150 m), zurück erst `lod_hysteresis`
+  (10 %) darunter (engine.toml `[render]`). Hat ein Modell weniger Stufen, zeichnet es seine gröbste (`Mesh::inLod`).
+  Der Schattenpass nimmt die Stufe des Hauptpasses. Alle Stufen liegen in einem Arena-Mesh; die Auswahl wählt nur die
+  Submeshes, das Multi-Draw-Batching bleibt.
+- **Prüfen:** `--lod=0|1|2` bzw. Debug-UI (Engine → Render → LOD) erzwingen eine Stufe; dort und im Benchmark-Log
+  steht, wie viele Objekte je Stufe gezeichnet wurden. Das Debug-Overlay (F2) umrandet Modelle mit Stufen nach der
+  gezeichneten: grün 0, gelb 1, rot 2.
 
 ### Kollision in Modellen – `COL_`-Knoten (M5, Vertrag mit welt und figuren)
 - Mesh-Knoten, deren **Name mit `COL_` beginnt**, sind Kollisionsgeometrie: nicht gerendert, Material egal, nicht in

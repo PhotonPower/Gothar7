@@ -30,7 +30,15 @@ std::vector<physics::ShapePart> collisionParts(const asset::MeshData& data)
     {
         mesh.points.push_back(vertex.position);
     }
-    mesh.indices = data.indices;
+    // The full level of detail only (asset.md "Detailstufen"): coarser levels never collide.
+    for (const asset::Submesh& submesh : data.submeshes)
+    {
+        if (submesh.lod == 0)
+        {
+            mesh.indices.insert(mesh.indices.end(), data.indices.begin() + submesh.firstIndex,
+                                data.indices.begin() + submesh.firstIndex + submesh.indexCount);
+        }
+    }
     parts.push_back(std::move(mesh));
     return parts;
 }
