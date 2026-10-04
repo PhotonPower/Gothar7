@@ -110,6 +110,7 @@ def test_medieval_mode(tmp_path: Path):
     from gothar_worldgen.buildings.medieval import load_rules
 
     rules = load_rules(RULES)
+    rules.data["textures"] = {}  # palette materials (textures: test_textures.py)
     blds = [house("A", 0, 0), house("B", 20, 0, width=9)]
     res = generate(blds, GRID, tmp_path, "v", mode="medieval", rules=rules)
     st = res.index["stats"]
@@ -141,3 +142,5 @@ def test_generated_glb_cooks_with_g7_cook(tmp_path: Path, mode: str):
     assert done.returncode == 0, done.stdout + done.stderr
     assert list(out.rglob("*.g7mesh")), done.stdout
     assert "warn" not in (done.stdout + done.stderr).lower()
+    if mode == "medieval":  # textured houses: the images next to the buildings cook too
+        assert list(out.rglob("*_albedo*")), done.stdout

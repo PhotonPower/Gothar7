@@ -24,7 +24,7 @@ from shapely.geometry import Polygon
 
 from gothar_worldgen.export.terrain import Grid
 
-ALBEDO_SIZE = 128
+ALBEDO_SIZE = 512  # all layers the same size (engine texture array); the cobbles need it
 
 
 @dataclass(frozen=True)
@@ -227,16 +227,16 @@ def _periodic_noise(rng: np.random.Generator, size: int, scale: float) -> npt.ND
 def placeholder_albedo(layer: Layer, size: int = ALBEDO_SIZE) -> npt.NDArray[np.uint8]:
     """Small tileable placeholder texture (deterministic per layer)."""
     rng = np.random.default_rng(sum(map(ord, layer.key)))
-    shade = 0.6 * _periodic_noise(rng, size, 12.0) + 0.4 * _periodic_noise(rng, size, 40.0)
+    k = size / 128  # the noise keeps its look at any size
+    shade = 0.6 * _periodic_noise(rng, size, 12.0 * k) + 0.4 * _periodic_noise(rng, size, 40.0 * k)
     if layer.key == "kopfstein":
-        # Rows of stones with offset joints, darker mortar.
-        y, x = np.mgrid[0:size, 0:size]
-        stone = size // 8
-        row = y // stone
-        xs = (x + (row % 2) * stone // 2) % stone
-        mortar = (y % stone < 2) | (xs < 2)
-        shade = shade * 0.5 - 0.6 * mortar
-    elif layer.key == "acker":
+        # Round, irregular cobbles (decision of the project owner 2026-10-04), baked shading.
+        from gothar_worldgen.textures.procedural import make
+
+        tex = make("cobbles", size)
+        rgb = np.array(layer.color, dtype=np.float64) * tex.albedo
+        return (np.clip(np.rint(rgb / 2) * 2, 0, 255)).astype(np.uint8)
+    if layer.key == "acker":
         y = np.arange(size)[:, None]
         shade = shade * 0.6 + 0.4 * np.sin(2 * np.pi * y / (size / 8))  # furrows
     base = np.array(layer.color, dtype=np.float64)

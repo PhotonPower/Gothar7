@@ -1,10 +1,11 @@
 """Minimal glTF 2.0 binary (.glb) writer for generated meshes.
 
-Limits (on purpose): one render mesh with one or more triangle primitives (one untextured PBR
-material each) in one node; attributes POSITION, NORMAL and TEXCOORD_0 (float32), indices uint16 or
-uint32 per primitive. Optional collision nodes (``COL_HULL_*`` convex hulls, ``COL_*`` triangle
-meshes; contract with engine, M5 part B): one mesh each with POSITION and indices only, no
-material, at the root next to the render node with the same origin. No textures, skins,
+Limits (on purpose): one render mesh with one or more triangle primitives (one PBR material each,
+untextured or with an external base colour and normal image, W5 textures) in one node;
+attributes POSITION, NORMAL and TEXCOORD_0 (float32), indices uint16 or uint32 per primitive.
+Optional collision nodes (``COL_HULL_*`` convex hulls, ``COL_*`` triangle meshes; contract with
+engine, M5 part B): one mesh each with POSITION and indices only, no
+material, at the root next to the render node with the same origin. No embedded images, skins,
 animations, morph targets or extensions. Output is byte-deterministic.
 """
 
@@ -50,6 +51,7 @@ class Primitive:
     material: str  # material name; equal names share one material entry
     color: tuple[float, float, float, float]
     mesh: MeshData
+    textures: tuple[str, str] | None = None  # (base colour, normal) image URIs from the VFS root
 
 
 @dataclass
@@ -82,7 +84,16 @@ def glb_bytes_multi(
     accessors: list[dict] = []
     gl_prims: list[dict] = []
     materials: list[dict] = []
-    material_index: dict[str, int] = {}
+    material_index: dict[tuple[str, tuple[str, str] | None], int] = {}
+    images: list[dict] = []
+    image_index: dict[str, int] = {}
+
+    def texture(uri: str) -> int:  # one texture per image, all with the repeating sampler 0
+        if uri not in image_index:
+            image_index[uri] = len(images)
+            images.append({"uri": uri})
+        return image_index[uri]
+
     for p in prims:
         m = p.mesh
         if len(m.positions) == 0 or len(m.indices) % 3:
@@ -111,14 +122,19 @@ def glb_bytes_multi(
                 acc["max"] = [float(v) for v in pos.max(axis=0)]
             accessors.append(acc)
             blobs.append(arr.tobytes())
-        if p.material not in material_index:
-            material_index[p.material] = len(materials)
-            materials.append({"name": p.material, "pbrMetallicRoughness": {
-                "baseColorFactor": [float(c) for c in p.color], "metallicFactor": 0.0,
-                "roughnessFactor": 0.9}})  # fmt: skip
+        key = (p.material, p.textures)
+        if key not in material_index:
+            material_index[key] = len(materials)
+            pbr: dict = {"baseColorFactor": [float(c) for c in p.color], "metallicFactor": 0.0,
+                         "roughnessFactor": 0.9}  # fmt: skip
+            material: dict = {"name": p.material, "pbrMetallicRoughness": pbr}
+            if p.textures is not None:
+                pbr["baseColorTexture"] = {"index": texture(p.textures[0])}
+                material["normalTexture"] = {"index": texture(p.textures[1])}
+            materials.append(material)
         gl_prims.append({
             "attributes": {"POSITION": first, "NORMAL": first + 1, "TEXCOORD_0": first + 2},
-            "indices": first + 3, "material": material_index[p.material], "mode": 4})  # fmt: skip
+            "indices": first + 3, "material": material_index[key], "mode": 4})  # fmt: skip
 
     targets = [_ELEMENT_ARRAY_BUFFER if i % 4 == 3 else _ARRAY_BUFFER for i in range(len(blobs))]
     meshes: list[dict] = [{"name": name, "primitives": gl_prims}]
@@ -165,6 +181,10 @@ def glb_bytes_multi(
         "bufferViews": views,
         "buffers": [{"byteLength": len(binary)}],
     }
+    if images:
+        doc["images"] = images
+        doc["samplers"] = [{"magFilter": 9729, "minFilter": 9987, "wrapS": 10497, "wrapT": 10497}]
+        doc["textures"] = [{"sampler": 0, "source": i} for i in range(len(images))]
     js = _pad(json.dumps(doc, separators=(",", ":")).encode("utf-8"), b" ")
     total = 12 + 8 + len(js) + 8 + len(binary)
     return b"".join([

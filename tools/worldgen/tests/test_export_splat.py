@@ -6,6 +6,7 @@ from PIL import Image
 
 from gothar_worldgen.export.splat import (
     ACKER,
+    ALBEDO_SIZE,
     FELS,
     KIES,
     KOPFSTEIN,
@@ -120,7 +121,7 @@ def test_write_splat(tmp_path: Path, weights: np.ndarray):
     for layer in LAYERS:
         with Image.open(tmp_path / "layers" / f"{layer.key}.png") as img:
             sizes.add(img.size)
-    assert sizes == {(128, 128)}  # engine: all albedos equally sized
+    assert sizes == {(ALBEDO_SIZE, ALBEDO_SIZE)}  # engine: all albedos equally sized
     full = {**terrain_block(GRID, "worlds/x/generated/x.r16", -1.0, 1.0), "splat": block}
     assert check_terrain_block(full) == []
     # Deterministic: a second run writes identical files.
@@ -132,7 +133,7 @@ def test_write_splat(tmp_path: Path, weights: np.ndarray):
 def test_placeholder_albedos_are_small_and_tileable():
     for layer in LAYERS:
         img = placeholder_albedo(layer)
-        assert img.shape == (128, 128, 3)
+        assert img.shape == (ALBEDO_SIZE, ALBEDO_SIZE, 3)
         # Tileable: the jump across the wrap is not larger than inside the texture.
         inner = np.abs(np.diff(img.astype(int), axis=1)).mean()
         wrap = np.abs(img[:, 0].astype(int) - img[:, -1].astype(int)).mean()

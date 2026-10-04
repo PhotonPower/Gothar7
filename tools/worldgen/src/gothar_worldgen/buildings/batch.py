@@ -38,6 +38,7 @@ from gothar_worldgen.buildings.massing import build_mesh, masses_for_building
 from gothar_worldgen.buildings.medieval import Rules, StreetIndex, barn_hearths, build_house
 from gothar_worldgen.export.terrain import Grid
 from gothar_worldgen.geo.ground import ground_range
+from gothar_worldgen.textures.apply import texture_house, write_textures
 
 INDEX_FORMAT = "gothar-buildings-index"
 INDEX_VERSION = 1
@@ -133,6 +134,12 @@ def generate(
         raise ValueError("medieval mode needs rules")
     budget = int(rules.get("budget", "trianglesPerBuilding")) if rules else 0
     out_dir.mkdir(parents=True, exist_ok=True)
+    tex = rules.data.get("textures", {}) if rules else {}
+    textured_ids = frozenset(tex.get("probe", ()))
+    textured_all = bool(tex.get("all", False))  # W5: every house, after the probe was accepted
+    texture_root = "../textures"  # next to the buildings folder, relative like glTF wants
+    if textured_ids or textured_all:
+        write_textures(out_dir.parent / "textures", int(tex.get("size", 1024)))
     result = BatchResult({})
     entries: list[dict[str, Any]] = []
     cells: dict[
@@ -147,6 +154,7 @@ def generate(
         geometry = hashlib.sha256()
         for prim in prims:
             geometry.update(prim.material.encode())
+            geometry.update(repr(prim.textures).encode())
             for arr in (prim.mesh.positions, prim.mesh.normals, prim.mesh.uvs, prim.mesh.indices):
                 geometry.update(arr.tobytes())
         for part in collision:
@@ -213,6 +221,8 @@ def generate(
                     queue[0:0] = houses
                     continue
             prims = house.primitives
+            if textured_all or bid in textured_ids:  # W5 textures
+                prims = texture_house(prims, texture_root)
             col = house.collision or CollisionResult([])
             result.notes.update(n for n in house.notes if n not in massing.notes)
             result.timber_levels[house.timber_level] += 1

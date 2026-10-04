@@ -23,6 +23,8 @@ from gothar_worldgen.buildings.medieval import (
 from gothar_worldgen.facade.overrides import from_json
 
 RULES = load_rules(Path(__file__).resolve().parents[1] / "data" / "building_rules.json")
+# geometry and palette tests without the W5 textures (those: test_textures.py)
+RULES.data["textures"] = {}
 # 10 m x 7 m, counter-clockwise north-up like buildings.json; edge 0 is the south side (z = 0).
 RING = [[0.0, 0.0], [10.0, 0.0], [10.0, -7.0], [0.0, -7.0]]
 ROOF = {"type": "saddle", "eaveY": 8.4, "ridgeY": 13.0, "ridgeDir": [1.0, 0.0]}
