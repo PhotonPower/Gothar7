@@ -119,6 +119,9 @@ struct TriggerVolume
     /// (VFS path of a .g7world) and puts the player on its start point `changeStart`. Empty = none.
     std::string changeWorld;
     std::string changeStart;
+    /// Private area (M9, Gothic: a hut's room): the Npc instance or guild it belongs to. The player entering
+    /// it is perceived by that owner (assess_enter_room). Empty: nobody's.
+    std::string owner;
 };
 
 /// A body of water (M5, contract with welt: world.md "Vob-Typen"): a box of halfExtents around the vob,

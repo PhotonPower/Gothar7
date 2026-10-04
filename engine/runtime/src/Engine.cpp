@@ -1165,6 +1165,13 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
             {
                 requestWorldChange(volume->changeWorld, volume->changeStart);
             }
+            if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr &&
+                !volume->owner.empty() && m_player.valid())
+            {
+                // A private area (M9 part C): its owner notices.
+                enteredPrivateArea(volume->owner,
+                                   e != entt::null ? m_scene.get<world::Vob>(e)->nameText : "");
+            }
         });
     // The player stands on the start point; it needs the collision of the world.
     m_scene.updateTransforms();

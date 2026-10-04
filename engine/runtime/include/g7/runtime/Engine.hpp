@@ -433,6 +433,23 @@ public:
     /// plans a route over the waynet (straight where nothing is in the way). Errors: not an NPC, unknown
     /// target, no way.
     [[nodiscard]] Result<void> npcGoTo(u32 id, std::string_view target, bool run = false);
+    /// The same to a position (the player ...); `label` names it in npc_arrived.
+    [[nodiscard]] Result<void> npcGoToPosition(u32 id, const Vec3& goal, std::string_view label,
+                                               bool run = false);
+
+    // Perception (M9 part C, EnginePerception.cpp)
+    /// A noise NPCs may hear: within `radius` (times their hearing) they get assess_noise(npc, kind, x, y,
+    /// z).
+    void emitNoise(const Vec3& at, f32 radius, std::string_view kind);
+    /// The radius of a noise kind from the scripts (Perception.noise.<kind>), 0 if none.
+    [[nodiscard]] f32 noiseRadius(std::string_view kind) const;
+    /// Whether the NPC sees the player now (cone, range - shorter when sneaking or at night -, line of
+    /// sight).
+    [[nodiscard]] bool npcSeesPlayer(u32 id) const;
+    /// The hero's drawn weapon: 0 none, 1 one-handed, 2 fists.
+    [[nodiscard]] u8 weaponMode() const noexcept { return m_weaponMode; }
+    /// Draws the equipped melee weapon (fists without one) or puts it away.
+    void toggleWeapon();
     [[nodiscard]] bool npcWalking(u32 id) const noexcept;
     /// The first inserted NPC of an Npc instance.
     [[nodiscard]] std::optional<u32> npcByInstance(std::string_view instance) const noexcept;
@@ -591,6 +608,16 @@ private:
     [[nodiscard]] Result<u32> spawnNpc(std::string_view name, const Vec3& at, f32 yaw);
     // Behaviour (EngineAi.cpp)
     void fixedUpdateAi(Creature& c, f32 seconds);
+    void perceive(Creature& c, f32 seconds);
+    [[nodiscard]] bool seesPlayer(const Creature& c) const;
+    /// The player did something (theft, used a mob) that NPCs who see it react to: `event`(npc, args...).
+    void witnessed(std::string_view event, std::span<const script::Value> arguments,
+                   std::string_view alsoNpc = {});
+    /// The player entered a private area of `owner` (Npc instance or guild).
+    void enteredPrivateArea(std::string_view owner, std::string_view area);
+    [[nodiscard]] bool ownedBy(const Creature& c, std::string_view owner) const;
+    void loadPerceptionSettings();
+    void bindPerceptionFunctions();
     void updateRoutine(Creature& c);
     void beginState(Creature& c, std::string_view state, std::string_view at);
     void finishState(Creature& c);
@@ -887,7 +914,30 @@ private:
     u32 m_insertedItems = 0;
     ai::Waynet m_waynet;               // of the loaded world (M9)
     std::vector<u32> m_freepointUsers; // creature id per freepoint, 0: free (M9 part B)
-    u64 m_routineMinute = ~0ull;       // the game minute routines were last checked
+    // Perception (M9 part C)
+    struct Noise
+    {
+        Vec3 at{0.0f};
+        f32 radius = 0.0f;
+        std::string kind;
+        f64 time = 0.0;
+    };
+    std::vector<Noise> m_noises; // of the last two seconds
+    struct PerceptionSettings
+    {
+        f32 sight = 25.0f;
+        f32 angle = 100.0f;
+        f32 sneakFactor = 0.5f;
+        f32 nightFactor = 0.6f;
+        f32 nearDistance = 20.0f; ///< below: 5 Hz, above: 1 Hz
+        f32 forgetSeconds = 10.0f;
+        f32 roomDistance = 8.0f; ///< an owner this near notices the player in the room without seeing him
+        std::vector<std::pair<std::string, f32>> noises; ///< kind -> radius
+    } m_perception;
+    u8 m_weaponMode = 0;
+    bool m_drawWeaponRequested = false;
+    f32 m_runNoiseTimer = 0.0f;
+    u64 m_routineMinute = ~0ull; // the game minute routines were last checked
     std::vector<WorldItem> m_worldItems;
     std::unordered_map<std::string, const LoadedModel*> m_itemModels; // by Item instance; models in m_models
                                                                       // or m_scriptModels (placeholders)
@@ -901,6 +951,7 @@ private:
     std::string m_inventoryMessage;
     gameplay::MobTypes m_mobTypes;
     std::unordered_map<u64, MobRuntime> m_mobs; // by vob id
+    void lockpickNoticed(const MobRuntime& m);  // witnesses of picking a lock (M9 part C)
     std::optional<MobUse> m_mobUse;
     std::vector<std::string> m_mobEvents;         // "open"/"close" of the hero's figure this step
     std::unordered_map<u64, MobBody> m_mobBodies; // collision of mob vobs (doors turn theirs)
