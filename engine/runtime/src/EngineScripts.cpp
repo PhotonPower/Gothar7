@@ -40,20 +40,24 @@ constexpr bool kScriptHotReloadDefault = true;
 
 void Engine::mountScripts()
 {
-    // The copy next to the game (gothar_data) and, in development builds, the repository's game/scripts above
-    // it.
+    // In development builds the repository's game/scripts alone: the copy next to the game keeps files
+    // deleted or renamed since (or from another branch), and every script found is loaded. Otherwise the copy
+    // (gothar_data).
+#if defined(G7_DEV_SCRIPT_ROOT)
+    std::error_code devError;
+    if (m_config.settings.get<bool>("assets.dev_mounts", true) &&
+        std::filesystem::is_directory(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), devError))
+    {
+        (void)m_vfs.mount(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), kScriptDevPriority, std::string(kScriptRoot));
+        return;
+    }
+#endif
     const fs::Path copy = fs::baseDirectories().gameDir / "scripts";
     std::error_code ec;
     if (std::filesystem::is_directory(copy, ec))
     {
         (void)m_vfs.mount(copy, kScriptCopyPriority, std::string(kScriptRoot));
     }
-#if defined(G7_DEV_SCRIPT_ROOT)
-    if (m_config.settings.get<bool>("assets.dev_mounts", true))
-    {
-        (void)m_vfs.mount(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), kScriptDevPriority, std::string(kScriptRoot));
-    }
-#endif
 }
 
 Result<void> Engine::initScripts()
