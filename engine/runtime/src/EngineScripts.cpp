@@ -102,6 +102,7 @@ Result<void> Engine::initScripts()
     bindPerceptionFunctions();
     bindDialogFunctions();
     bindTradeFunctions();
+    bindDiaryFunctions();
     m_scripts->loadAll();
     loadPerceptionSettings(); // data/perception.lua (M9 part C)
     loadDialogPresentation(); // data/dialog.lua (M10 part B)
@@ -255,8 +256,9 @@ void Engine::bindEngineFunctions()
                                     static_cast<u32>(a.size() > 1 ? a[1].asInteger() : 0));
                  return Value();
              }});
-    vm.bind({"where", "where() -> {x, y, z, yaw, world, time}",
-             "Position (Meter) und Blickrichtung (Grad) der Spielfigur bzw. der Kamera, die Welt und die "
+    vm.bind({"where", "where() -> {x, y, z, yaw, world, time, day}",
+             "Position (Meter) und Blickrichtung (Grad) der Spielfigur bzw. der Kamera, die Welt, der "
+             "Spieltag (ab 1) und die "
              "Uhrzeit.",
              "Welt", [this](std::span<const Value>) -> Result<Value>
              {
@@ -264,13 +266,14 @@ void Engine::bindEngineFunctions()
                  const auto minute = static_cast<u32>(m_gameTime.minuteOfDay());
                  const auto rounded = [](f32 v, f64 scale)
                  { return std::round(static_cast<f64>(v) * scale) / scale; };
-                 return script::makeTable({},
-                                          {{"x", rounded(p.x, 100.0)},
-                                           {"y", rounded(p.y, 100.0)},
-                                           {"z", rounded(p.z, 100.0)},
-                                           {"yaw", rounded(glm::degrees(m_movement.yaw()), 10.0)},
-                                           {"world", m_worldPath},
-                                           {"time", std::format("{:02}:{:02}", minute / 60, minute % 60)}});
+                 return script::makeTable(
+                     {}, {{"x", rounded(p.x, 100.0)},
+                          {"y", rounded(p.y, 100.0)},
+                          {"z", rounded(p.z, 100.0)},
+                          {"yaw", rounded(glm::degrees(m_movement.yaw()), 10.0)},
+                          {"world", m_worldPath},
+                          {"time", std::format("{:02}:{:02}", minute / 60, minute % 60)},
+                          {"day", static_cast<i64>(m_gameTime.day()) + 1}}); // the first day is 1
              }});
     // Events the engine emits (documentation only).
     vm.bind({"world_loaded",

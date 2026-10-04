@@ -793,6 +793,67 @@ void DebugUi::focusLabel(Vec2 screen, std::string_view text)
     draw->AddText(at, IM_COL32(255, 255, 255, 255), label.c_str());
 }
 
+void DebugUi::diaryPanel(DiaryPanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    const ImVec2 view = ImGui::GetMainViewport()->Size;
+    ImGui::SetNextWindowPos(ImVec2(view.x * 0.5f - 300.0f * scale, view.y * 0.1f), ImGuiCond_Appearing);
+    ImGui::SetNextWindowSize(ImVec2(600.0f * scale, 460.0f * scale), ImGuiCond_Appearing);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.06f, 0.05f, 0.04f, 0.94f));
+    if (ImGui::Begin("Tagebuch", &panel.open, ImGuiWindowFlags_NoCollapse))
+    {
+        ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.45f, 1.0f), "%s", panel.chapter.c_str());
+        const auto list = [&](std::vector<DiaryPanel::Quest>& quests, const char* empty)
+        {
+            if (quests.empty())
+            {
+                ImGui::TextDisabled("%s", empty);
+            }
+            for (usize i = 0; i < quests.size(); ++i)
+            {
+                ImGui::PushID(static_cast<int>(i));
+                if (ImGui::CollapsingHeader(quests[i].name.c_str()))
+                {
+                    for (const std::string& e : quests[i].entries)
+                    {
+                        ImGui::PushTextWrapPos(0.0f);
+                        ImGui::BulletText("%s", e.c_str());
+                        ImGui::PopTextWrapPos();
+                    }
+                }
+                ImGui::PopID();
+            }
+        };
+        if (ImGui::BeginTabBar("diary"))
+        {
+            if (ImGui::BeginTabItem("Laufend"))
+            {
+                list(panel.running, "Keine laufenden Aufträge.");
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Erledigt"))
+            {
+                list(panel.done, "Noch nichts erledigt.");
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Gescheitert"))
+            {
+                list(panel.failed, "Nichts gescheitert.");
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Notizen"))
+            {
+                list(panel.notes, "Keine Notizen.");
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
+}
+
 void DebugUi::tradePanel(TradePanel& panel)
 {
     ImGui::SetCurrentContext(m_impl->context);

@@ -100,7 +100,15 @@ def test_farmer_head_has_full_set(head, rig):
 def test_morph_order(head, rig):
     names = head.doc["meshes"][0]["extras"]["targetNames"]
     names[0], names[1] = names[1], names[0]
-    assert codes(validate_gltf(head, rig, None, path=FARMER_HEAD)) == {"morph.order"}
+    report = validate_gltf(head, rig, None, path=FARMER_HEAD)  # engine maps by name (M10)
+    assert report.ok()
+    assert {w.code for w in report.warnings} == {"morph.order"}
+
+
+def test_morph_duplicate_name(head, rig):
+    names = head.doc["meshes"][0]["extras"]["targetNames"]
+    names[1] = names[0]
+    assert codes(validate_gltf(head, rig, None, path=FARMER_HEAD)) == {"morph.set"}
 
 
 def test_morph_incomplete_primitive(head, rig):
@@ -113,7 +121,7 @@ def test_morph_limit(head, rig):
     mesh["extras"]["targetNames"] += [f"x{i}" for i in range(2)]
     for prim in mesh["primitives"]:
         prim["targets"] += prim["targets"][:2]
-    assert {"morph.count", "morph.name", "morph.order"} <= codes(
+    assert {"morph.count", "morph.name", "morph.set"} <= codes(
         validate_gltf(head, rig, None, path=FARMER_HEAD)
     )
 

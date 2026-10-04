@@ -237,6 +237,12 @@ void Engine::finishPickpocket(const PendingPickpocket& p)
         notice(std::format("{} hat nichts bei sich.", name));
         return;
     }
+    // A quest item the scripts name comes first (Gothic: each NPC's pickpocket item; M10).
+    if (const std::string_view wanted = npc != nullptr ? npc->fields["pickpocket_item"].asString() : "";
+        !wanted.empty() && std::ranges::find(loot, wanted) != loot.end())
+    {
+        loot = {std::string(wanted)};
+    }
     const f32 roll = m_random ? m_random() : std::uniform_real_distribution<f32>(0.0f, 1.0f)(m_rng);
     const std::string item =
         loot[std::min(loot.size() - 1, static_cast<usize>(roll * static_cast<f32>(loot.size())))];

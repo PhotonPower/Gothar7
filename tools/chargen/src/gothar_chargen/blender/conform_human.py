@@ -584,13 +584,15 @@ def _derive(
     joints: dict[str, np.ndarray] | None = None,
 ) -> None:
     """Own simple piece from a fitted garment: keep the vertices bound mostly to the `keep` bones
-    and not to the `cut` bones (and near the `near` joints; with `depth` above a plane), smooth
-    the shape into a plate (`smooth`), push it along the normals, scale the UVs for a tiling
-    texture, add own geometry (nasal, brim) and limit the weights to `bones`."""
+    and not to the `cut` bones (near the `near` joints; with `depth` or `band` between
+    planes), smooth the shape into a plate (`smooth`), push it along the normals, scale the UVs
+    for a tiling texture, add own geometry (panel, nasal, brim) and limit the weights to `bones`."""
     mesh = obj.data
     joints = joints or {}
     if d.dome:
         _dome(obj, heads)
+    if d.panel and d.band is not None and d.band_at is not None:
+        _panel(obj, d.panel, *_band_heights(d, joints))
     # bones only: the skin copy also carries MPFB selection groups ("body" = 1 everywhere)
     groups = {g.index: g.name for g in obj.vertex_groups if not joints or g.name in joints}
     centres = np.array([joints[j] for j in d.near]) if d.near else None
@@ -628,6 +630,21 @@ def _derive(
         )
         bm.to_mesh(mesh)
         bm.free()
+    if d.band is not None and not d.panel:  # clean cuts at fixed heights
+        low, high = _band_heights(d, joints)
+        for height, keep_above in ((low, True), (high, False)):
+            bm = bmesh.new()
+            bm.from_mesh(mesh)
+            bmesh.ops.bisect_plane(
+                bm,
+                geom=bm.verts[:] + bm.edges[:] + bm.faces[:],
+                plane_co=(0.0, 0.0, height),
+                plane_no=(0.0, 0.0, 1.0),
+                clear_inner=keep_above,
+                clear_outer=not keep_above,
+            )
+            bm.to_mesh(mesh)
+            bm.free()
     if d.flatten:
         _flatten_front(obj, d.flatten)
     if d.smooth:
@@ -662,6 +679,85 @@ def _derive(
         _limit_weights(obj, d.bones)
     mesh.update()
     print(f"[chargen] derived {d.name}: cut {len(drop)} vertices, offset {d.offset} m")
+
+
+def _band_heights(d: Derive, joints: dict[str, np.ndarray]) -> tuple[float, float]:
+    """Low and high cut of `band`, relative to the heights of the `band_at` joints."""
+    assert d.band is not None and d.band_at is not None
+    for joint in d.band_at:
+        if joint not in joints:
+            raise SystemExit(f"derive {d.name}: unknown joint '{joint}'")
+    return (
+        float(joints[d.band_at[0]][2]) + d.band[0],
+        float(joints[d.band_at[1]][2]) + d.band[1],
+    )
+
+
+PANEL_GRID = (12, 16)  # columns, rows of an own front panel
+PANEL_REACH = (0.03, 0.025)  # metres: skin points per grid point, across and up/down
+PANEL_FLARE = 0.04  # metres: the hem stands this much further out than the top (over skirts)
+
+
+def _panel(obj: bpy.types.Object, width: float, low: float, high: float) -> None:
+    """Own geometry: replace the skin copy by a panel in front of the body between the heights
+    `low` and `high`, `width` wide – it follows the front of the body and, below the most
+    forward point (belly, hips), hangs straight down instead of following the legs (aprons).
+    Every grid point takes the bone weights of the nearest skin vertex."""
+    co = _coords(obj)
+    mesh = obj.data
+    torso = co[np.abs(co[:, 0]) < width]  # no arms or hands
+    cols, rows = PANEL_GRID
+    xs = np.linspace(-width / 2, width / 2, cols)
+    zs = np.linspace(high, low, rows)  # top row first
+    ys = np.empty((rows, cols))
+    for r, z in enumerate(zs):
+        for c, x in enumerate(xs):
+            near = torso[
+                (np.abs(torso[:, 0] - x) < PANEL_REACH[0])
+                & (np.abs(torso[:, 2] - z) < PANEL_REACH[1])
+            ]
+            front = float(near[:, 1].min()) if len(near) else np.inf  # the figure faces -Y
+            ys[r, c] = front if r == 0 else min(front, ys[r - 1, c])  # hangs, never recedes
+        valid = np.isfinite(ys[r])
+        if not valid.any():
+            raise SystemExit(f"panel: no skin at height {z:.2f} m")
+        # columns beside the body take their nearest column with skin: the sides wrap the hips
+        idx = np.arange(cols)
+        nearest = idx[valid][np.abs(idx[:, None] - idx[valid][None, :]).argmin(axis=1)]
+        ys[r] = ys[r, nearest]
+    for _ in range(2):  # even out the columns a little (no single-column dents)
+        ys[:, 1:-1] = np.minimum(ys[:, 1:-1], (ys[:, :-2] + ys[:, 1:-1] + ys[:, 2:]) / 3)
+    ys -= PANEL_FLARE * (high - zs[:, None]) / (high - low)  # a little flare towards the hem
+    # bone weights of the nearest skin vertex
+    weights: list[dict[int, float]] = [{} for _ in range(len(mesh.vertices))]
+    for v in mesh.vertices:
+        weights[v.index] = {g.group: g.weight for g in v.groups}
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new()
+    deform = bm.verts.layers.deform.verify()
+    grid = [[bm.verts.new((x, ys[r, c], zs[r])) for c, x in enumerate(xs)] for r in range(rows)]
+    for r in range(rows):
+        for c in range(cols):
+            p = np.array([xs[c], ys[r, c], zs[r]])
+            nearest = int(np.argmin(np.linalg.norm(co - p, axis=1)))
+            for group, w in weights[nearest].items():
+                grid[r][c][deform][group] = w
+    for r in range(rows - 1):
+        for c in range(cols - 1):
+            quad = (grid[r][c], grid[r + 1][c], grid[r + 1][c + 1], grid[r][c + 1])
+            f = bm.faces.new(quad)  # normal to the front (-Y)
+            f.smooth = True
+            for loop, (rr, cc) in zip(
+                f.loops, ((r, c), (r + 1, c), (r + 1, c + 1), (r, c + 1)), strict=True
+            ):
+                loop[uv].uv = (xs[cc] / width + 0.5, 1.0 - (high - zs[rr]) / (high - low))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    for f in bm.faces:
+        if f.normal.y > 0:  # face the front
+            f.normal_flip()
+    bm.to_mesh(mesh)
+    bm.free()
+    print(f"[chargen] panel {width:.2f} m wide, {high - low:.2f} m long")
 
 
 FLATTEN_BUMP = 0.01  # metres in front of the first fit that count as a bump, not torso

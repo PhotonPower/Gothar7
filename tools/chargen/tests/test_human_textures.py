@@ -599,3 +599,47 @@ hair_long = 1800
     kit.write_text(kit_text.replace('parts = ["hair", "beard"]', 'parts = ["cloth"]'), "utf-8")
     with pytest.raises(HumanError, match="hair kits only"):
         load_human(kit)
+
+
+APRON = {
+    "from": "basemesh",
+    "group": "body",
+    "band_at": ["calf_l", "spine_01"],
+    "band": [0.0, -0.01],
+    "panel": 0.36,
+    "texture": "gothar/ambientcg/F/F_Color.jpg",
+}
+
+
+def _garb_kit(derive: dict) -> dict:
+    return {**KIT, "assets": {**KIT["assets"], "clothes": []}, "names": {}, "budget": {}, **derive}
+
+
+def test_garb_derive_keys():
+    """F3v: clean cuts at joint heights (band, band_at) and own front panels (aprons)."""
+    hem = {"from": "c/s.mhclo", "band_at": "calf_l", "band": [-0.06, 2.0]}
+    h = parse_human(_garb_kit({"derive": {"apron": APRON, "tunic": hem}}), "garb_x")
+    apron, tunic = sorted(h.derive, key=lambda d: d.name)
+    assert (apron.band_at, apron.band, apron.panel) == (("calf_l", "spine_01"), (0.0, -0.01), 0.36)
+    assert (tunic.band_at, tunic.band, tunic.panel) == (("calf_l", "calf_l"), (-0.06, 2.0), 0.0)
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"band_at": None}, "go together"),
+        ({"band": None}, "go together"),
+        ({"band_at": ["calf_l", "spine_01", "head"]}, "band_at"),
+        ({"band_at": 3}, "band_at"),
+        ({"band": [0.0]}, "band ="),
+        ({"band": [0.0, 3.0]}, "band ="),
+        ({"band_at": "spine_01", "band": [0.05, 0.0]}, "low < high"),
+        ({"panel": 2.0}, "panel"),
+        ({"from": "c/s.mhclo", "group": None}, "panel needs"),
+        ({"band": None, "band_at": None}, "panel needs"),
+    ],
+)
+def test_invalid_garb_derive(change, message):
+    piece = {k: v for k, v in {**APRON, **change}.items() if v is not None}
+    with pytest.raises(HumanError, match=message):
+        parse_human(_garb_kit({"derive": {"apron": piece}}), "garb_x")

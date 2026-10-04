@@ -474,6 +474,11 @@ public:
     [[nodiscard]] Result<void> tradeBuy(std::string_view item, u32 count = 1);
     [[nodiscard]] Result<void> tradeSell(std::string_view item, u32 count = 1);
     void closeTrade();
+    // Diary (M10 part D, EngineDiary.cpp)
+    void setDiaryOpen(bool open) noexcept { m_diaryOpen = open; }
+    [[nodiscard]] bool diaryOpen() const noexcept { return m_diaryOpen; }
+    /// What the window "Tagebuch" shows (from Story).
+    [[nodiscard]] ui::DiaryPanel diaryPanelData() const;
     /// Price of one piece: the hero buys (full value x Trade.sell_factor) or sells (x Trade.buy_factor).
     [[nodiscard]] i64 tradePrice(std::string_view item, bool heroBuys) const;
     /// Whether one can walk straight from a to b (a sphere at knee-to-hip height meets nothing).
@@ -660,6 +665,8 @@ private:
     [[nodiscard]] gameplay::Character* trader();
     void tradeUi();
     void bindTradeFunctions();
+    void diaryUi();
+    void bindDiaryFunctions();
     void stopTalking();
     /// Over the listener's shoulder at the speaker (M10 part B); in updatePlayerCamera.
     void updateDialogCamera(f32 seconds);
@@ -1032,6 +1039,7 @@ private:
         u32 npc = 0;
     };
     std::optional<Trade> m_trade;
+    bool m_diaryOpen = false; // window "Tagebuch" (action log)
     struct TradeSettings
     {
         std::string currency = "it_gulden"; ///< owner decision E6

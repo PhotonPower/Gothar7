@@ -41,6 +41,11 @@ Armour kits (F3g) keep the colour textures of their pieces and may rename and de
     bulge = 0.02                        # domed plate: further out towards the middle
     rim = 0.01                          # plate edge: the border folded inwards
     flatten = 1.0                       # neutral plate front (no anatomic shape), 0..1
+    band_at = "spine_01"                # with band: clean cuts relative to this joint's height
+    band = [-0.03, 0.03]                # keep between these heights (metres; belts, hems)
+    # band_at = ["calf_l", "spine_01"]  # two joints: low cut from the first, high from the second
+    panel = 0.42                        # from basemesh, with band: own front panel (aprons),
+                                        # this wide, hanging straight below the belly
     bones = ["spine_02", "spine_03"]    # weights only on these bones (stiff plates)
     dome = true                         # with from = "basemesh": smooth dome fitted to the skull
     heads = "head_f_*"                  # these head parts fit under it (dome grows, others bulge)
@@ -120,6 +125,9 @@ DERIVE_KEYS = {
     "bulge",
     "rim",
     "flatten",
+    "band",
+    "band_at",
+    "panel",
 }
 
 
@@ -151,6 +159,9 @@ class Derive:
     bulge: float = 0.0  # domed plate: extra offset towards the middle (metres)
     rim: float = 0.0  # own geometry: the border folded inwards by this depth (plate edge)
     flatten: float = 0.0  # neutral plate: the front pulled towards a smooth envelope (0..1)
+    band: tuple[float, float] | None = None  # keep between these heights above `band_at`
+    band_at: tuple[str, str] | None = None  # joints of the reference rig for the low/high cut
+    panel: float = 0.0  # own front panel this wide (metres) between the band heights
     bones: tuple[str, ...] = ()  # limit the weights to bones with these prefixes (stiff plates)
     heads: str | None = None  # head parts that must fit under the piece, e.g. "head_f_*"
 
@@ -464,6 +475,32 @@ def _parse_derive(raw: object) -> tuple[Derive, ...]:
         heads = d.get("heads")
         if heads is not None and (not isinstance(heads, str) or not _HEADS.match(heads)):
             raise HumanError(f"{where}: heads must be a part folder pattern like head_f_*")
+        band, band_at = d.get("band"), d.get("band_at")
+        if (band is None) != (band_at is None):
+            raise HumanError(f"{where}: band and band_at go together")
+        if band is not None:
+            if (
+                not isinstance(band, list)
+                or len(band) != 2
+                or not all(isinstance(x, int | float) for x in band)
+                or not -2.0 <= band[0] <= 2.0
+                or not -2.0 <= band[1] <= 2.0
+            ):
+                raise HumanError(f"{where}: band = [low, high] metres")
+            if isinstance(band_at, str):
+                band_at = [band_at, band_at]
+            if (
+                not isinstance(band_at, list)
+                or len(band_at) != 2
+                or not all(isinstance(j, str) and j for j in band_at)
+            ):
+                raise HumanError(f"{where}: band_at = joint name or [low joint, high joint]")
+            if band_at[0] == band_at[1] and band[0] >= band[1]:
+                raise HumanError(f"{where}: band = [low, high] needs low < high")
+            band = (float(band[0]), float(band[1]))
+            band_at = (band_at[0], band_at[1])
+        if d.get("panel") and (band is None or d["from"] != BASEMESH):
+            raise HumanError(f'{where}: panel needs from = "basemesh" and band')
         nasal = d.get("nasal")
         if nasal is not None and (
             depth is None
@@ -513,6 +550,9 @@ def _parse_derive(raw: object) -> tuple[Derive, ...]:
                 bulge=_number(d, "bulge", where, 0.0, 0.1, 0.0),
                 rim=_number(d, "rim", where, 0.0, 0.05, 0.0),
                 flatten=_number(d, "flatten", where, 0.0, 1.0, 0.0),
+                band=band,
+                band_at=band_at,
+                panel=_number(d, "panel", where, 0.0, 1.0, 0.0),
                 bones=_names(d, "bones", where),
             )
         )

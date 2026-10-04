@@ -113,3 +113,53 @@ material = "cloth_wolgade_female_top_01"
 tile = "linen"
 wear = 0.7
 tint = "#d1d9d4"
+
+# F3v clothing kits garb_<sex>_<build>: worn pieces for farmers and outcasts, *_clean and the
+# citizens' pieces (shirt, skirt_tiered) clean for Leonberg
+[textures."shirt_neutral.jpg"]
+part = "parts/garb_m_average/shirt.glb"
+material = "cloth_shirt"
+tile = "fine_weave"
+wear = 0.25
+
+[textures."wide_trousers_neutral.jpg"]
+part = "parts/garb_m_average/wide_trousers.glb"
+material = "cloth_wide_trousers"
+tile = "canvas"
+wear = 0.55
+
+[textures."coat_neutral.jpg"]
+part = "parts/garb_m_average/coat.glb"
+material = "cloth_coat"
+tile = "wool"
+wear = 0.8
+
+[textures."coat_clean_neutral.jpg"]
+part = "parts/garb_m_average/coat_clean.glb"
+material = "cloth_coat_clean"
+tile = "wool"
+wear = 0.25
+
+[textures."tunic_neutral.jpg"]
+part = "parts/garb_m_average/tunic.glb"
+material = "cloth_tunic"
+tile = "linen"
+wear = 0.8
+
+[textures."tunic_clean_neutral.jpg"]
+part = "parts/garb_m_average/tunic_clean.glb"
+material = "cloth_tunic_clean"
+tile = "linen"
+wear = 0.25
+
+[textures."fabric063_neutral.jpg"]  # canvas aprons (own panels)
+part = "parts/garb_m_average/apron.glb"
+material = "cloth_apron"
+tile = "canvas"
+wear = 0.75
+
+[textures."skirt_tiered_neutral.jpg"]
+part = "parts/garb_f_average/skirt_tiered.glb"
+material = "cloth_skirt_tiered"
+tile = "fine_weave"
+wear = 0.25

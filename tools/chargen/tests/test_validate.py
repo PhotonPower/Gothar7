@@ -230,7 +230,7 @@ def test_unskinned_mesh_is_a_warning(figure, rig, reference):
 def test_unknown_morph_target(figure, rig, reference):
     figure.doc["meshes"][0]["extras"]["targetNames"][0] = "smile"
     report = check(figure, rig, reference)
-    assert codes(report) == {"morph.name", "morph.order"}
+    assert codes(report) == {"morph.name", "morph.set"}
     assert any("smile" in e.message for e in report.errors if e.code == "morph.name")
 
 

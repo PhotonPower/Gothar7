@@ -374,6 +374,26 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
     wachsen, bis auch deren Schädelpunkte innen liegen; die Kapuze wird nur dort weich nach außen gedrückt, wo ein
     Scheitel durchstechen würde (radial vom Kopfmittelpunkt gemessen, unabhängig von den Flächennormalen der Quelle).
     Neue Köpfe → Kopf-Kits neu bauen.
+- **Alltagskleidung (F3v):** Rezepte `humans/garb_<m|f>_<statur>` → `parts/garb_<…>/<stück>.glb`, eigene Kits
+  neben den Kleidungs-Kits (die bestehenden Teile bleiben unverändert). Stoffe über `data/fabrics.toml` gebacken
+  (neutral, Farbe über die Palette).
+  - CC0 laut Datei-Kopf: `shirt` (`toigo_basic_tucked_t-shirt`, sauber für Bürger), `wide_trousers`
+    (`toigo_harem_pants`, Männer), `skirt_tiered` (`toigo_tiered_skirt`, Frauen, sauber).
+  - Aus der langen CC0-Kutte (`donitz_monk_robe`, um 12 mm gelockert, sonst schneidet die reduzierte Kutte in Beine
+    und Stiefel), nur Männer: `coat` (langer Rock bzw. Kutte; mit `hood` aus dem Kopf-Kit ein Kapuzenmantel),
+    `tunic` (Saum unter dem Knie, mit der Kordel der Kutte gegürtet). Die Kutte folgt jedem Bein einzeln; als
+    Kleid bei Frauen stachen deshalb die nackten Beine im Laufen durch (`poke` 91 cm²) – Bürgerinnen tragen Hemd
+    oder Mieder mit dem sauberen Stufenrock.
+  - Sauber für Leonberg: `coat_clean`, `tunic_clean` – dieselbe Geometrie (zweites `derive` mit gleichen Werten),
+    anderes Bild (`wear` 0,25). Nur diese Stücke doppelt (Größe); Hemd und Stufenrock sind gleich sauber.
+  - **Eigene Geometrie:** `apron` (Leinwand, ambientCG „Fabric 063“) und `apron_leather` (Handwerker, „Leather 014“)
+    als Tafel vor dem Körper vom Knie bis zur Taille (`panel = breite`): Sie folgt der Körperfront und hängt unterhalb
+    des Bauchs gerade herab statt den Beinen zu folgen, weitet sich zum Saum (über Röcken), Ränder mit `rim`.
+    `belt`: Ring der Haut an der Taille, abgesetzt, mit Rand. `straw_hat`: Kuppel mit breiter Krempe wie
+    `kettle_helm`, flacher (ambientCG „Wicker 013“), blendet das Haar aus.
+  - Werkzeug: `band = [unten, oben]` mit `band_at = "<gelenk>"` oder `["<gelenk unten>", "<gelenk oben>"]` –
+    saubere Schnitte in festen Höhen relativ zu Gelenken des Referenz-Rigs (Säume, Gürtel), statt nach
+    Knochengewichten (zackig); `panel` (s. o.).
 - **Texturen – abgetragene Stoffe (F3n, Entscheidung Projektinhaber 2026-10-04: Gothic-Kolonie, abgetragen und
   schmutzig):** Ein echtes Trim-Sheet (mehrere kachelnde Stoffe in einer Textur) kann der Renderer nicht
   (Wiederholung innerhalb einer Kachel bräuchte UV-Versatz je Material im Shader), und Flecken würden sich auf
@@ -399,26 +419,28 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   `_lod1`/`_lod2` (Vertrag §2.2). Lose Teile (Haare, Bärte) werden ohne Randschutz reduziert; nur die Nahtränder von
   Körper und Kopf bleiben in allen Stufen gleich.
 
-### 6.1 Gesichts-Morph-Targets (Vertrag mit engine, abgestimmt 2026-10-03)
+### 6.1 Gesichts-Morph-Targets (Vertrag mit engine, abgestimmt 2026-10-03, Zuordnung nach Namen seit M10)
 
-- **15 Targets in fester Reihenfolge:** Viseme `vis_aa`, `vis_ee`, `vis_ih`, `vis_oh`, `vis_ou`, `vis_mbp`, `vis_fv`,
+- **15 Targets** (empfohlene Reihenfolge): Viseme `vis_aa`, `vis_ee`, `vis_ih`, `vis_oh`, `vis_ou`, `vis_mbp`, `vis_fv`,
   `vis_l`; Blinzeln `blink_l`, `blink_r`; Ausdrücke `expr_angry`, `expr_friendly`, `expr_fear`, `expr_pain`,
   `expr_sleep`. „Ruhe“ = alle Gewichte 0 (kein eigenes Target). Höchstens **16 Targets je Mesh** (Gewichts-Palette des
   Skinning-Shaders); mehr nur nach Absprache mit engine.
 - **Ort:** nur auf `head_lod0` (LOD-Vertrag §2.2); in lod1/2 keine Mimik. **Jedes Mesh im Kopf-Teil** (Haut, Augen,
-  Brauen, Wimpern, Zähne, Zunge – im glTF Primitive desselben Meshes) trägt **dieselbe Liste in derselben
-  Reihenfolge**, auch wenn ein Target es nicht bewegt; engine nutzt einen Gewichtsvektor für alle.
+  Brauen, Wimpern, Zähne, Zunge – im glTF Primitive desselben Meshes) trägt **dieselbe vollständige Liste**, jeden
+  Namen einmal, auch wenn ein Target es nicht bewegt. engine ordnet die Gewichte **nach Namen** zu (seit M10, #188);
+  die Reihenfolge oben ist nur empfohlen (Validator: andere Reihenfolge `morph.order` als Warnung, fehlende oder
+  doppelte Namen `morph.set` als Fehler).
 - **Format:** Namen in `mesh.extras.targetNames`, Positionen **und Normalen**, keine Tangenten; sparse Accessoren;
   Standardgewichte 0. Gewichte 0–1, additiv, beliebig viele gleichzeitig (Lippensync + Blinzeln + Ausdruck).
 - **Seiten:** `blink_l` = linkes Auge der Figur (+X), wie `*_l` im Rig.
 - **Halsnaht:** Morphs bewegen den Nahtring nicht (kein Spalt beim Sprechen).
-- **Gilt für alle Teile mit Morphs**, z. B. `beard` (Frisur-Kits, F3v): dieselbe Liste in derselben Reihenfolge
-  (Validator `morph.order`). engine ordnet bis M10 nach Index zu, danach nach Namen (Absprache 2026-10-04).
+- **Gilt für alle Teile mit Morphs**, z. B. `beard` (Frisur-Kits, F3v): dieselben 15 Namen; der Bart folgt so dem
+  Kiefer. Bis M10 ordnete engine nach Index zu, seit #188 nach Namen (Absprache 2026-10-04).
 - **Herkunft:** gemischt aus MPFB2-Gesichtszielen der CC0-Pakete „Visemes 02“ (Meta-Viseme) und „Faceunits 01“
   (ARKit-Einheiten); die Mischung steht als Daten in `tools/chargen/src/gothar_chargen/data/faces/morphs.toml`
   (z. B. `expr_friendly` = Lächeln + Wangen + leichtes Augenkneifen) und kann ohne Code angepasst werden.
   `gothar-chargen human` überträgt die Targets durch Rig-Anpassung und Reduktion (baryzentrisch vom unreduzierten
-  Mesh); Köpfe haben dafür Zähne und Zunge. Der Validator prüft Namen, Reihenfolge, Vollständigkeit je Primitive
+  Mesh); Köpfe haben dafür Zähne und Zunge. Der Validator prüft Namen, Vollständigkeit je Primitive, die Reihenfolge (Warnung)
   und die 16er-Grenze (`morph.*`).
 
 ### 6.2 Figuren beim Bauen (Vertrag mit engine, abgestimmt 2026-10-03)

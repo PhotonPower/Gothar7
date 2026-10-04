@@ -50,6 +50,8 @@ void defineContentKinds(script::ScriptVm& vm)
                        {"learn_points", Type::Integer, false, 0.0, none},
                        // Pickpocketing (Gothic 1): the dexterity needed; default Pickpocketing.default_dex
                        {"pickpocket_dex", Type::Integer, false, 0.0, 200.0},
+                       // What a successful pickpocket takes first while the NPC has it (a quest item; M10)
+                       {"pickpocket_item", Type::String, false, none, none, "Item"},
                    },
                    false});
 
