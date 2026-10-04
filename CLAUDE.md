@@ -119,11 +119,17 @@ Phase **M5** abgeschlossen: Jolt (ADR 0004), Kollision (`COL_`), Spielfigur (Zyl
 Third-Person-Kamera, Springen, Kanten hochziehen, Fallschaden, Schwimmen/Tauchen (`water`); Werte in `assets/source/data/movement.toml`.
 Phase **M6** abgeschlossen (Meilenstein A vom Projektinhaber abgenommen): eigene Animations-Laufzeit (ADR 0019), GPU-Skinning,
 animierter Held `farmer`, Gesicht/Look-At/Attachments, Figuren zur Laufzeit aus Teilen, Tiere (Wolf, Keiler, Laufvogel).
-Aktuelle Phase: **M7** (Scripting): Lua 5.4.7 + sol2 (ADR 0006), Sandbox, geprüfte Instanzen; eigene Bezeichner (`it_…`, `npc_…`).
+Phase **M7** abgeschlossen: Lua 5.4.7 + sol2 (ADR 0006), Sandbox, geprüfte Instanzen, Bindings mit generierter
+`docs/script-api.md`, Story/Timer/Ereignisse, Konsole (^), Hot-Reload; eigene Bezeichner (`it_…`, `npc_…`, `mob_…`).
+Phase **M8** abgeschlossen: Werte/Talente/Inventar, Wegnetz-Format (Vertrag), Fokus und Aufheben, Mobs nach
+`assets/source/data/mobs.toml` (Truhe/Tür mit Schloss und Dietrich, Amboss, Bett/Schlaf), Benutzen, Taschendiebstahl, Besitz.
+Als Nächstes: LOD-Auswahl statischer Modelle (`--lod`), Schatten-Akne, dann **M9** (KI: Wahrnehmung, Routinen, Wegnetz).
 Werkzeug: `gothar --fly`, F3 Flugmodus, F6 Position kopieren (`--cam/--yaw/--pitch`), `--walk` Autopilot.
 Welt-Spur: **W1–W3** abgeschlossen (Maßstab 1:1); **W4** wartet auf Aufnahmen; **W5/W6** laufen (Fachwerk-Leonberg,
-Stil `docs/design/leonberg-stil.md`, Stadtmauer, Schloss, Marktbrunnen; Garten und Kirche aus Modellen des Projektinhabers in Arbeit).
-Figuren-Spur: **F1**, **F2** abgeschlossen; **F3** weit fortgeschritten (Körper, Köpfe, Kleidung, Rüstung leicht/mittel,
-Kopfbedeckungen; schwere Rüstung läuft; Figuren entstehen beim Bauen bzw. zur Laufzeit); **F5**-Platzhalter fertig.
+Stil `docs/design/leonberg-stil.md`, prozedurale Texturen auf allen Häusern, Kopfsteinpflaster, Stadtmauer, Schloss, Kirche,
+Pomeranzengarten, Marktbrunnen, Mob-Modelle in `assets/source/mobs/`, Häuser-LOD-Stufen).
+Figuren-Spur: **F1**, **F2** abgeschlossen; **F3** weit fortgeschritten (Körper, Köpfe, abgetragene Kleidung, Rüstung
+leicht/mittel/schwer, Kopfbedeckungen; Figuren beim Bauen bzw. zur Laufzeit); **F6** Waffen und Handgegenstände in
+`assets/source/items/`; Platzhalter-Clips für Mobs und Item-Benutzung; **F5**-Platzhalter fertig.
 Lizenzen: Das Repo ist **öffentlich** – nur CC0/eigene bzw. weitergabefähig lizenzierte Assets einchecken.
 Details siehe `docs/03-roadmap.md`.
