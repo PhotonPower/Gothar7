@@ -1,0 +1,23 @@
+# Head (middle-aged, mixed descent), style A (F3v): head with face morphs, teeth and tongue; hair and beards
+# come from the hair kit hair_m_stubble (parts/hair_m_stubble/). Fits every base body of the
+# same sex (assembly snaps the neck); macros only shape the face.
+version = 1
+triangles = 5500
+parts = ["head"]
+
+[macro]
+gender = 1.0
+age = 0.6
+muscle = 0.6
+weight = 0.6
+proportions = 0.5
+height = 0.5
+race = { asian = 0.6, caucasian = 0.4 }
+
+[assets]
+skin = "skins/middleage_asian_male/middleage_asian_male.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow005/eyebrow005.mhclo"
+eyelashes = "eyelashes/eyelashes02/eyelashes02.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"

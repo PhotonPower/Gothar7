@@ -1,0 +1,26 @@
+# Head (young, rough, strong), style A (F3v): head with face morphs, teeth and tongue; hair and beards
+# come from the hair kit hair_m_rough (parts/hair_m_rough/). Fits every base body of the
+# same sex (assembly snaps the neck); macros only shape the face.
+version = 1
+triangles = 5500
+parts = ["head"]
+
+[macro]
+gender = 1.0
+age = 0.42
+muscle = 0.85
+weight = 0.55
+proportions = 0.5
+height = 0.5
+race = { caucasian = 1.0 }
+
+[assets]
+skin = "skins/young_caucasian_male2/young_caucasian_male2.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow007/eyebrow007.mhclo"
+eyelashes = "eyelashes/eyelashes02/eyelashes02.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"
+
+[shape]
+nose-hump-incr = 0.4

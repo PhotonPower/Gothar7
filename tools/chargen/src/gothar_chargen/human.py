@@ -88,7 +88,8 @@ FORMAT_VERSION = 1
 SUFFIX = ".human.toml"
 MACROS = ("gender", "age", "muscle", "weight", "proportions", "height", "cupsize", "firmness")
 RACES = ("african", "asian", "caucasian")
-PARTS = ("body", "head", "hair", "cloth")
+PARTS = ("body", "head", "hair", "beard", "cloth")
+HAIR_KIT_PARTS = ("hair", "beard")  # hair kits: styles fitted to one head recipe (fit_to)
 DEFAULT_PARTS = ("body", "head", "hair")
 _TARGET = re.compile(r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$")
 _COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -168,6 +169,8 @@ class Human:
     hair: str | None = None
     beard: str | None = None
     clothes: tuple[str, ...] = ()
+    hairs: tuple[str, ...] = ()  # hair kits: every style its own part (hair_<name>.glb)
+    beards: tuple[str, ...] = ()  # hair kits: every beard its own part (beard_<name>.glb)
     tints: dict[str, str] = field(default_factory=dict)
     triangles: int = 15_000
     parts: tuple[str, ...] = DEFAULT_PARTS
@@ -185,6 +188,11 @@ class Human:
     def part_name(self, stem: str) -> str:
         return self.names.get(stem, stem)
 
+    @property
+    def hair_kit(self) -> bool:
+        """Styles (hairs, beards) fitted to the head recipe named by fit_to, each a part."""
+        return bool(self.hairs or self.beards)
+
     def assets(self) -> list[tuple[str, str]]:
         """(MPFB asset type, path) for every mhclo asset, in loading order."""
         out = [("Eyes", self.eyes)]
@@ -199,6 +207,8 @@ class Human:
         if self.beard:
             out.append(("Beard", self.beard))  # MPFB loads beards as clothes
         out += [("Clothes", c) for c in self.clothes]
+        out += [("KitBeard", b) for b in self.beards]  # loaded like clothes, several at once
+        out += [("KitHair", h) for h in self.hairs]
         if self.hair:
             out.append(("Hair", self.hair))
         return out
@@ -264,6 +274,7 @@ def parse_human(data: dict, name: str, base: Human | None = None) -> Human:
         raise HumanError("missing [assets] table")
     allowed = {
         "skin", "eyes", "eyebrows", "eyelashes", "teeth", "tongue", "hair", "beard", "clothes",
+        "hairs", "beards",
     }  # fmt: skip
     if set(assets) - allowed:
         raise HumanError(f"unknown assets: {sorted(set(assets) - allowed)}")
@@ -272,6 +283,12 @@ def parse_human(data: dict, name: str, base: Human | None = None) -> Human:
     clothes = assets.get("clothes", [])
     if not isinstance(clothes, list):
         raise HumanError("clothes must be a list")
+    hairs, beards = assets.get("hairs", []), assets.get("beards", [])
+    if not isinstance(hairs, list) or not isinstance(beards, list):
+        raise HumanError("hairs and beards must be lists")
+    kit_parts = set(data.get("parts", [])) - set(HAIR_KIT_PARTS)
+    if (hairs or beards) and (fit_to is None or kit_parts):
+        raise HumanError("hairs/beards: hair kits only (fit_to a head, parts hair/beard)")
 
     tints_raw = data.get("tint", {})
     if not isinstance(tints_raw, dict):
@@ -297,14 +314,15 @@ def parse_human(data: dict, name: str, base: Human | None = None) -> Human:
             raise HumanError(f"shape '{target}' must be in (0, 1]")
 
     kit_keys = {"neutral", "names", "budget", "derive", "hides", "retouch"} & set(data)
-    if kit_keys and parts != ["cloth"]:
+    hair_kit_ok = bool(hairs or beards) and kit_keys <= {"neutral", "names", "budget"}
+    if kit_keys and parts != ["cloth"] and not hair_kit_ok:
         raise HumanError(f'{sorted(kit_keys)}: only for garment kits (parts = ["cloth"])')
     neutral = data.get("neutral", True)
     if not isinstance(neutral, bool):
         raise HumanError("neutral must be true or false")
     derive = _parse_derive(data.get("derive", {}))
     names = data.get("names", {})
-    stems = {asset_stem(c) for c in clothes}
+    stems = {asset_stem(c) for c in [*clothes, *hairs, *beards]}
     if not isinstance(names, dict) or not all(
         isinstance(v, str) and _NAME.match(v) for v in names.values()
     ):
@@ -359,6 +377,8 @@ def parse_human(data: dict, name: str, base: Human | None = None) -> Human:
         hair=_asset_path(assets["hair"], "hair", ".mhclo") if "hair" in assets else None,
         beard=_asset_path(assets["beard"], "beard", ".mhclo") if "beard" in assets else None,
         clothes=tuple(_asset_path(c, "clothes", ".mhclo") for c in clothes),
+        hairs=tuple(_asset_path(h, "hairs", ".mhclo") for h in hairs),
+        beards=tuple(_asset_path(b, "beards", ".mhclo") for b in beards),
         tints=dict(tints_raw),
         triangles=triangles,
         parts=tuple(p for p in PARTS if p in parts),

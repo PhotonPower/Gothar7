@@ -1,0 +1,28 @@
+# Hair kit (F3v) fitted to head_m_mid: every style and beard is its own part
+# (parts/hair_m_mid/<name>.glb, roles hair and beard in figure manifests). Neutral grey textures
+# shared by name across the kits: the figure palette gives the colour (keys hair, beard; the
+# texture mean is 0.55). CC0 only, file headers checked: MakeHuman Hair 01, Bodyparts 05, system assets.
+version = 1
+fit_to = "head_m_mid"
+parts = ["hair", "beard"]
+triangles = 1200
+
+[assets]
+hairs = [
+    "hair/short04/short04.mhclo",
+    "hair/afro01/afro01.mhclo",
+    "hair/short02/short02.mhclo",
+    "hair/short01/short01.mhclo",
+]
+beards = [
+    "clothes/rehmanpolanski_beard_viking/rehmanpolanski_beard_viking.mhclo",
+    "clothes/culturalibre_faun_beard/culturalibre_faun_beard.mhclo",
+]
+
+[names]
+short04 = "hair_buzz"
+afro01 = "hair_curly"
+short02 = "hair_short"
+short01 = "hair_cropped"
+rehmanpolanski_beard_viking = "beard_goatee"
+culturalibre_faun_beard = "beard_faun"
