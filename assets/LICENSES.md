@@ -42,6 +42,7 @@ Jede Fremdquelle, die in Assets oder abgeleitete Daten einfließt, wird hier ein
 | `assets/source/worlds/leonberg/handmade/garten_gelaender/garten_gelaender.glb` (Geländer und Eckpavillons des Pomeranzengartens; vom Skript reduziert, auf das Gartengefälle gelegt, Kollision), Quelle `tools/worldgen/data/leonberg/garten_gelaender/garten_gelaender_quelle.glb` | eigene Arbeit des Projektinhabers (mit Claude Design erstellt) | eigene Arbeit des Projektinhabers | keine |
 | `assets/source/worlds/leonberg/handmade/kirche/kirche.glb` (Leonberger Stadtkirche; vom Skript `tools/worldgen/blender/owner_models/build_owner_model.py` reduziert, Kollision), Quelle `tools/worldgen/data/leonberg/kirche/kirche_quelle.glb` | eigene Arbeit des Projektinhabers (mit Claude Design erstellt) | eigene Arbeit des Projektinhabers | keine |
 | `assets/source/testscene/nature/*` (Bäume, Felsen, Büsche, Lagerfeuer, Holzstapel, Zelt) | Kenney „Nature Kit“ 2.1, kenney.nl/assets/nature-kit | CC0 1.0 (Lizenztext `nature/License.txt`) | keine (Nennung „Kenney“ freiwillig) |
+| `assets/source/items/textures/metal_rust.jpg`, `leather.jpg`, `wood.jpg`, `bark.jpg` (Waffen und Handgegenstände, F6; verkleinert, Rinde dunkler getönt; Geometrie aller `items/*.glb` und die übrigen Texturen sind eigene Arbeit, per Code erzeugt) | ambientCG „Metal 021“, „Leather 014“, „Wood 049“, „Bark 012“, ambientcg.com (1K-JPG) | CC0 1.0 | keine (Nennung „ambientCG.com“ freiwillig) |
 
 ## Engine-eingebettete Daten
 | Daten | Quelle | Lizenz | Verwendung |

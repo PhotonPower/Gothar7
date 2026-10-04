@@ -72,6 +72,9 @@ gothar-chargen speeds                         & REM Eigengeschwindigkeit der For
 gothar-chargen repair-clips                   & REM Root Motion = Schrittlänge, Liegeposen über dem Boden (§7.1)
 gothar-chargen fabrics --sources C:\GotharData\characters\ambientcg\fabric
                                               & REM abgetragene Kleidungstexturen aus data/fabrics.toml (F3n, lokal)
+gothar-chargen build-items --sources C:\GotharData\characters\ambientcg\items
+                                              & REM Waffen und Handgegenstände → assets/source/items (F6, §6.3;
+                                              & REM --skip-textures: nur Geometrie, ohne Blender)
 gothar-chargen assemble [figures\x.figure.toml] & REM Figuren aus Manifesten + Teilen (reines Python, ohne Blender;
                                               & REM nicht versioniert; ohne Argument alle, entfernt veraltete)
 gothar-chargen part-data [parts\x]            & REM Zusammenbau-Daten der Teile (Halsring, Masken; §6.2)

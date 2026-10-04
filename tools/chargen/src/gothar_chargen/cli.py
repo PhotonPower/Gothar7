@@ -16,6 +16,7 @@ from gothar_chargen.assemble import AssembleError, assemble_all
 from gothar_chargen.blender_run import (
     BlenderError,
     bake_fabrics,
+    bake_item_textures,
     build_mpfb_human,
     build_placeholder,
     build_reference_rig,
@@ -36,6 +37,7 @@ from gothar_chargen.figure import FigureError
 from gothar_chargen.gltf import Gltf, GltfError
 from gothar_chargen.human import SUFFIX as HUMAN_SUFFIX
 from gothar_chargen.human import HumanError, load_human
+from gothar_chargen.items import build_items, validate_item
 from gothar_chargen.meshdata import split_lod
 from gothar_chargen.partdata import PartDataError, body_or_head_data, garment_data, write_part
 from gothar_chargen.report import ReportError, progress
@@ -52,6 +54,7 @@ EXIT_OK = 0
 EXIT_ERROR = 1
 
 CHARACTERS_DIR = Path("assets/source/characters")
+ITEMS_DIR = Path("assets/source/items")
 REFERENCE_GLB = CHARACTERS_DIR / "rig/human_reference.glb"
 ANIMATION_LIST = Path("docs/design/animation-list.md")
 MONSTER_DATA = Path(__file__).resolve().parent / "data" / "monsters"
@@ -140,7 +143,8 @@ def _cmd_validate(args: argparse.Namespace, out: TextIO) -> int:
     root = find_repo_root()
     rigs = _Rigs(args, root / CHARACTERS_DIR if root else None)
 
-    paths = args.paths or ([root / CHARACTERS_DIR] if root else [])
+    defaults = [root / CHARACTERS_DIR, root / ITEMS_DIR] if root else []
+    paths = args.paths or [d for d in defaults if d.is_dir()]
     files = _collect(paths)
     if not files:
         print("error: no .glb/.blend files to validate", file=out)
@@ -149,6 +153,9 @@ def _cmd_validate(args: argparse.Namespace, out: TextIO) -> int:
     reports: list[Report] = []
     with tempfile.TemporaryDirectory(prefix="gothar-chargen-") as tmp:
         for f in files:
+            if "items" in f.parts:
+                reports.append(validate_item(f))
+                continue
             rig, reference = rigs.for_file(f)
             if f.suffix.lower() == ".blend":
                 blender = find_blender(args.blender)
@@ -432,6 +439,26 @@ def _cmd_repair_clips(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_build_items(args: argparse.Namespace, out: TextIO) -> int:
+    """Weapons and hand items (F6): textures in Blender, geometry and glTF in Python."""
+    root = find_repo_root()
+    items_dir = args.out_dir or (root / ITEMS_DIR if root else None)
+    if items_dir is None:
+        print("error: repository not found; pass --out-dir", file=out)
+        return EXIT_ERROR
+    if not args.skip_textures:
+        log = bake_item_textures(find_blender(args.blender), items_dir / "textures", args.sources)
+        for line in log.splitlines():
+            if line.startswith("[chargen] texture"):
+                print(line[10:], file=out)
+    ok = True
+    for path in build_items(items_dir, args.only or None):
+        report = validate_item(path)
+        _print_report(report, out)
+        ok = ok and report.ok(strict=True)
+    return EXIT_OK if ok else EXIT_ERROR
+
+
 def _cmd_fabrics(args: argparse.Namespace, out: TextIO) -> int:
     """Worn cloth textures from data/fabrics.toml (F3n; fabric sources in DATA_ROOT, Blender)."""
     characters = _characters_dir(args)
@@ -543,6 +570,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
     )
     p.set_defaults(func=_cmd_build_test_parts)
+
+    p = sub.add_parser("build-items", help="weapons and hand items -> assets/source/items (F6)")
+    p.add_argument("--sources", type=Path, help="DATA_ROOT/characters/ambientcg/items")
+    p.add_argument("--skip-textures", action="store_true", help="geometry only (no Blender)")
+    p.add_argument("--only", nargs="*", default=[], help="item ids (default: all)")
+    p.add_argument("--out-dir", type=Path, help="items folder (default: repository)")
+    p.set_defaults(func=_cmd_build_items)
 
     p = sub.add_parser("fabrics", help="worn cloth textures from data/fabrics.toml (local, F3n)")
     p.add_argument(

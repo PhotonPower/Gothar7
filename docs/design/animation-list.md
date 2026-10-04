@@ -65,7 +65,7 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 |---|---|---|---|---|---|
 | `none/t_pickup_ground` | Gegenstand vom Boden aufheben | – | pickup | Q | platzhalter (UAL2 `Farm_Harvest`) |
 | `none/t_pickup_high` | Gegenstand von Tisch/Regal nehmen | – | pickup | Q | platzhalter (UAL1 `PickUp_Table`) |
-| `none/t_eat`, `t_drink` | Essen, Trinken | – | use, item_from_hand | K | platzhalter-K (rechte Hand zum Mund, Trinken mit gehobenem Kopf) |
+| `none/t_eat`, `t_drink` | Essen, Trinken | – | use, item_from_hand | K | platzhalter-K (rechte Hand zum Mund, Unterarm gedreht: Daumen oben, Bissen bzw. Flaschenhals am Mund – mit den F6-Gegenständen geprüft; Trinken mit gehobenem Kopf) |
 | `none/t_read_scroll` | Schriftrolle lesen | – | use | K | platzhalter-K (beide Hände vor der Brust, Kopf gesenkt) |
 | `none/t_pickpocket` | Taschendiebstahl | – | – | Q | platzhalter (UAL1 `Interact`) |
 | `mob/chest/t_open`, `s_open`, `t_close` | Truhe öffnen, hineinsehen, schließen | – | open, close | Q | platzhalter (UAL2 `Chest_Open`; `s_open` hält die Pose mit offenem Deckel, `t_close` rückwärts) |
