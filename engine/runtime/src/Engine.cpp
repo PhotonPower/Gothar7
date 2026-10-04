@@ -352,13 +352,24 @@ bool Engine::runFrame()
             {
                 setInventoryOpen(!m_inventoryOpen);
             }
-            // The action key (classic: Ctrl, modern: E) acts on the focus: items are picked up (M8).
-            if (!m_inventoryOpen && m_player.valid() && !m_flyMode && m_focus &&
-                m_focus->kind == gameplay::FocusKind::Item &&
-                (m_actions.pressed(m_input, platform::Action::Action) ||
-                 m_actions.pressed(m_input, platform::Action::Use)))
+            // The action key (classic: Ctrl, modern: E) acts on the focus: items are picked up, mobs used
+            // (M8).
+            const bool actionKey = m_actions.pressed(m_input, platform::Action::Action) ||
+                                   m_actions.pressed(m_input, platform::Action::Use);
+            if (m_mobUse)
             {
-                (void)pickUpFocus();
+                mobInput();
+            }
+            else if (actionKey && !m_inventoryOpen && m_player.valid() && !m_flyMode && m_focus)
+            {
+                if (m_focus->kind == gameplay::FocusKind::Item)
+                {
+                    (void)pickUpFocus();
+                }
+                else if (m_focus->kind == gameplay::FocusKind::Mob)
+                {
+                    (void)useFocusedMob();
+                }
             }
         }
     }
@@ -381,6 +392,7 @@ bool Engine::runFrame()
         // TODO(M7+): ai/gameplay fixed update
         fixedUpdatePlayer(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateInteraction(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateMobs(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {
@@ -1004,6 +1016,7 @@ Result<void> Engine::instantiateScene()
         }
     }
     rebuildWorldItems();
+    rebuildMobs();
     m_lights.clear();
     m_scene.each<world::LightSource, world::WorldTransform>(
         [&](entt::entity, const world::LightSource& light, const world::WorldTransform& world)
@@ -1182,6 +1195,9 @@ void Engine::unloadWorld()
     m_scriptModels.clear();
     m_focus.reset();
     m_pickup.reset();
+    m_mobs.clear();
+    m_mobUse.reset();
+    m_mobBodies.clear();
     m_cullGridDirty = true;
     m_physicsDirty = true;
     m_lights.clear();
@@ -1689,7 +1705,8 @@ void Engine::setDebugUiVisible(bool visible) noexcept
 
 void Engine::runDebugUi(f64 realSeconds)
 {
-    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_focus) && m_debugUi.valid();
+    m_debugUiFrame =
+        (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_focus || m_mobUse) && m_debugUi.valid();
     m_window->setTextInput(m_debugUiFrame && m_debugUi.wantsText());
     if (!m_debugUiFrame)
     {
@@ -1707,6 +1724,7 @@ void Engine::runDebugUi(f64 realSeconds)
     }
     inventoryUi(); // the inventory and the focus name until the HUD exists (M13)
     focusUi();
+    lockpickUi();
     if (!m_debugUiVisible)
     {
         return;

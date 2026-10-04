@@ -17,6 +17,7 @@
 #include <g7/core/Types.hpp>
 #include <g7/gameplay/Character.hpp>
 #include <g7/gameplay/Focus.hpp>
+#include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
 #include <g7/physics/Character.hpp>
 #include <g7/physics/Physics.hpp>
@@ -51,6 +52,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <random>
 #include <set>
 #include <span>
 #include <string>
@@ -100,6 +102,25 @@ struct FocusInfo
     gameplay::FocusKind kind = gameplay::FocusKind::Item;
     u64 id = 0;
     std::string name;
+};
+
+/// A mob vob as the engine reports it (M8 part C): its Lua definition, type, focus name, lock and contents.
+struct MobInfo
+{
+    std::string definition;
+    std::string type;
+    std::string name;
+    bool locked = false;
+    bool open = false; ///< chest lid up, door open
+    std::vector<gameplay::ItemStack> contents;
+};
+
+/// What the hero does at a mob (keys, or the lockpick window's buttons).
+enum class MobCommand : u8
+{
+    Leave,    ///< stop using it (the leave clip plays)
+    TurnLeft, ///< lockpicking
+    TurnRight,
 };
 
 struct PlayerLanding
@@ -413,6 +434,26 @@ public:
     [[nodiscard]] bool inventoryOpen() const noexcept { return m_inventoryOpen; }
     void setInventoryOpen(bool open) noexcept;
     [[nodiscard]] const gameplay::FocusSettings& focusSettings() const noexcept { return m_focusSettings; }
+
+    // Mobs (M8 part C, EngineMobs.cpp)
+    /// The hero walks to the nearest slot of the mob and uses it: enter clip, loop (chest: its contents next
+    /// to the inventory), leave clip. A locked mob opens with its key; with a lockpick the lockpicking
+    /// starts. Errors: busy, no such mob, no slot, locked without key and lockpick ("locked").
+    [[nodiscard]] Result<void> useMob(world::VobId vob);
+    [[nodiscard]] Result<void> useFocusedMob();
+    /// "approach", "picklock", "enter", "loop", "leave" while using a mob.
+    [[nodiscard]] std::optional<std::string_view> mobPhase() const noexcept;
+    void mobCommand(MobCommand command);
+    [[nodiscard]] std::optional<MobInfo> mobInfo(world::VobId vob) const;
+    /// The mob vob of this name ("LAGER_TRUHE").
+    [[nodiscard]] std::optional<world::VobId> findMob(std::string_view vobName) const;
+    [[nodiscard]] Result<void> takeFromMob(world::VobId vob, std::string_view item, u32 count = 1);
+    [[nodiscard]] Result<void> putIntoMob(world::VobId vob, std::string_view item, u32 count = 1);
+    /// Numbers in [0, 1) for chances (lockpicks breaking); tests set a fixed one.
+    void setRandomSource(std::function<f32()> random) { m_random = std::move(random); }
+    /// The last short message to the player ("Verschlossen.", "Der Dietrich ist abgebrochen."; also fly mode
+    /// hints).
+    [[nodiscard]] const std::string& lastNotice() const noexcept { return m_notice; }
     /// True while the player climbs a ledge (input is ignored until it stands on top).
     [[nodiscard]] bool playerClimbing() const noexcept { return m_climb.has_value(); }
     /// Swimming or diving (gameplay::WaterMode::Land on land), and the air left under water.
@@ -515,6 +556,70 @@ private:
         bool taken = false;
     };
     void loadFocusSettings();
+    // Mobs (EngineMobs.cpp)
+    struct MobRuntime
+    {
+        std::string definition; ///< the Lua Mob instance (or a bare type)
+        std::string type;
+        std::string name;
+        std::string lock; ///< combination, empty: none
+        std::string key;  ///< item that opens it
+        bool locked = false;
+        bool open = false;
+        std::map<std::string, u32, std::less<>> contents;
+        Quat closedRotation{1.0f, 0.0f, 0.0f, 0.0f}; ///< local rotation as loaded (doors turn from here)
+        f32 doorAngle = 0.0f;
+        f32 doorFrom = 0.0f;
+        f32 doorTo = 0.0f;
+        f32 doorTime = -1.0f; ///< 0..1 while swinging, -1: still
+    };
+    struct MobUse
+    {
+        enum class Phase : u8
+        {
+            Approach,
+            Picklock,
+            Enter,
+            Loop,
+            Leave,
+        };
+        world::VobId vob;
+        std::string type;
+        gameplay::SlotPlace place;
+        Phase phase = Phase::Approach;
+        f32 time = 0.0f;
+        Vec3 fromFeet{0.0f};
+        f32 fromYaw = 0.0f;
+        f32 approachSeconds = 0.1f;
+        bool picklock = false;
+        std::optional<gameplay::Lockpick> lockpick;
+        std::string lockpickResult;
+        bool leaveRequested = false;
+        bool eventFired = false;
+        bool animated = false; ///< the graph plays the phase's state
+        std::string state;     ///< "chest_enter" ...
+        bool containerOpen = false;
+    };
+    struct MobBody
+    {
+        physics::BodyId body;
+        physics::ShapeId shape;
+    };
+    void loadMobTypes();
+    void rebuildMobs();
+    void notice(std::string text);
+    [[nodiscard]] std::string lockpickItem() const;
+    [[nodiscard]] f32 lockpickBreakChance() const;
+    bool playMobState(std::string_view state);
+    [[nodiscard]] bool mobClipDone(const MobUse& use) const;
+    void startMobPhase(MobUse& use, MobUse::Phase phase);
+    void finishMobUse();
+    void approachMob(f32 seconds);
+    void fixedUpdateMobs(f32 seconds);
+    void swingDoors(f32 seconds);
+    void lockpickUi();
+    void bindMobFunctions();
+    void mobInput();
     [[nodiscard]] const LoadedModel* itemModel(std::string_view instance);
     void rebuildWorldItems();
     void removeWorldItem(world::VobId id);
@@ -688,6 +793,13 @@ private:
     bool m_pickupEvent = false; // the figure's "pickup" event fired
     bool m_inventoryOpen = false;
     std::string m_inventoryMessage;
+    gameplay::MobTypes m_mobTypes;
+    std::unordered_map<u64, MobRuntime> m_mobs; // by vob id
+    std::optional<MobUse> m_mobUse;
+    std::vector<std::string> m_mobEvents;         // "open"/"close" of the hero's figure this step
+    std::unordered_map<u64, MobBody> m_mobBodies; // collision of mob vobs (doors turn theirs)
+    std::mt19937 m_rng{std::random_device{}()};
+    std::function<f32()> m_random;
     std::string m_scriptStamp; // newest script changes seen (hot reload)
     f64 m_scriptReloadTimer = 0.0;
     bool m_consoleOpen = false;

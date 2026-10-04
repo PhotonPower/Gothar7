@@ -76,6 +76,7 @@ void Engine::syncPhysics()
     m_physicsDirty = false;
     const Stopwatch timer;
     m_physics.clear();
+    m_mobBodies.clear();
     if (m_hasTerrain)
     {
         const world::TerrainRef& ref = m_heightfield.ref();
@@ -141,6 +142,11 @@ void Engine::syncPhysics()
             !body)
         {
             G7_LOG_WARN("engine", "collision of {}: {}", instance.model->name, body.error().message);
+        }
+        else if (const entt::entity e = m_scene.findById(instance.vob);
+                 e != entt::null && m_scene.has<world::MobRef>(e))
+        {
+            m_mobBodies[instance.vob.value] = MobBody{body.value(), it->second}; // doors turn theirs (M8 C)
         }
     }
     m_physics.optimize();

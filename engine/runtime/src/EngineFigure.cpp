@@ -675,6 +675,10 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
                  {
                      m_pickupEvent = true; // the hand reaches the item (M8)
                  }
+                 else if (event == "open" || event == "close")
+                 {
+                     m_mobEvents.emplace_back(event); // lid or door moves (M8 part C)
+                 }
                  f.events.push_front(std::format(
                      "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));
                  if (f.events.size() > kShownEvents)

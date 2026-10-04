@@ -139,9 +139,28 @@ struct InventoryPanel
     std::vector<Row> rows;
     std::string message; ///< shown: the result of the last action ("needs str 15")
     bool open = true;    ///< out: false when the window was closed
+    /// An open chest (M8 part C): its contents next to the hero's; the hero's rows then offer "put" instead
+    /// of "drop", the chest's "take".
+    bool container = false;
+    std::string containerTitle;
+    std::vector<Row> containerRows;
     // out: the button pressed this frame
-    std::string action; ///< "equip", "unequip", "drop"
+    std::string action; ///< "equip", "unequip", "drop", "take", "put"
     std::string actionItem;
+};
+
+/// Lockpicking (M8 part C, "Lockpick" window): progress through the combination, picks left, the last result.
+struct LockpickPanel
+{
+    std::string title;  ///< the mob's name
+    usize progress = 0; ///< steps done
+    usize length = 0;   ///< steps of the combination
+    u32 picks = 0;      ///< lockpicks the hero has
+    std::string hint;   ///< keys to use
+    std::string result; ///< the last turn ("Das Schloss gibt nach.", "Der Dietrich ist abgebrochen.")
+    // out: buttons
+    char turn = 0; ///< 'L' or 'R'
+    bool leave = false;
 };
 
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor
@@ -177,6 +196,8 @@ public:
     void creaturesPanel(CreaturesPanel& panel);
     /// Window "Inventory" (M8).
     void inventoryPanel(InventoryPanel& panel);
+    /// Window "Lockpick" (M8 part C).
+    void lockpickPanel(LockpickPanel& panel);
     /// A text centred at `screen` (window coordinates, +Y down) over everything, without a window: the name
     /// of the focused object (M8) until the HUD exists (M13).
     void focusLabel(Vec2 screen, std::string_view text);

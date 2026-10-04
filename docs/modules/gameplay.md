@@ -134,10 +134,33 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   Text im Debug-UI-Kontext); im Flugmodus kein Fokus.
 - Im Kampf (M11): Gegner-Fokus mit Ziel-Lock.
 
-## Mob-Interaktion (M8)
-- Mob-Definition (Daten): Typ, Zustände (`S0`→`S1`…), Animationen je Übergang, Benutzer-Slots, benötigtes Item,
-  erzeugtes Item, Skript-Hook (`onUse`, `onStateChange`), Besitzer, Schloss (Kombination z. B. `LRRL`).
-- Ablauf: hingehen → an Slot ausrichten → Einstiegs-Animation → Zustände → Ausstieg.
+## Mob-Interaktion (M8 Teil C1, umgesetzt) – `Mobs.hpp`, `EngineMobs.cpp`
+- **Mob-Typen** (`assets/source/data/mobs.toml` v1, Vertrag engine–figuren–welt, characters-pipeline.md §3.1):
+  Clips `enter`/`loop`/`leave`/`extra` und Benutzer-Slots (`pos` = Fußpunkt im Mob-Raum, `facing`); Achsen Y oben,
+  Ursprung am Boden, Vorderseite +Z. `gameplay::MobTypes::parse`, `placeSlot`, `chooseSlot` (nächster freier Slot).
+- **Mob-Definition** in Lua (`Mob "mob_x" { name, type, lock, key, contents, owner, on_use }`): Der Vob verweist mit
+  `components.mob.definition` darauf; `type` wählt den Mob-Typ. Eine Definition, die keine Lua-Instanz ist, gilt als
+  bloßer Typ (offen, leer). `name` ist der Fokusname.
+- **Ablauf:** Aktionstaste auf ein Mob im Fokus (`Engine::useMob`) → der Held geht zum nächsten Slot (1,6 m/s, ohne
+  Kollision, dreht sich zum Mob) → `<typ>_enter` (Zustand im Menschen-Graphen, Clip aus `mobs.toml`) → bei `loop`
+  `<typ>_loop` bis zum Verlassen (Rückwärts- oder Aktionstaste, Inventar schließen) → `<typ>_leave` → zurück nach
+  `move`. Während der Benutzung steht der Held fest auf dem Slot. Ohne Zustand im Graphen dauert eine Phase 0,6 s.
+  Events `open`/`close` (sonst spät im Clip) öffnen bzw. schließen; Skripte bekommen `mob_used(mob, type)` und den
+  Hook `on_use(mob)` am Ende des Einstiegs.
+- **Truhen:** offen zeigt das Inventar-Fenster ihren Inhalt neben dem des Helden (nehmen / hineinlegen).
+- **Türen:** Der Tür-Mob ist das Türblatt (Ursprung an der Angel); derselbe Clip öffnet und schließt, die Tür dreht
+  sich in 0,8 s um 90° um +Y, die Kollision dreht mit (der Körper wird je Schritt neu gesetzt). Die Slots gehören zur
+  geschlossenen Tür.
+- **Schlösser** (Entscheidung Projektinhaber 2026-10-04, wie Gothic 1): Mit dem `key`-Item schließt der Held auf dem
+  Weg auf. Sonst mit einem Dietrich (`Lockpicking.item`): Phase `picklock` (`chest_picklock`), Fenster „Lockpick“, links
+  /rechts drehen (Dreh- oder Seitwärts-Tasten) nach der Kombination (`lock = "LRRL"`); ein falscher Schritt setzt
+  zurück und bricht den Dietrich mit `Lockpicking.break_chance[Talent]` (ohne Talent 50 %, Talent 1: 25 %, Talent 2:
+  5 %; Knacken geht auch ohne Talent). Ohne Schlüssel und Dietrich: „Verschlossen.“, Ereignis `mob_locked`.
+  Ereignisse `lock_picked`, `lockpick_broken`; `unlock(vob)` schließt per Skript auf, `mob_state(vob)` gibt den
+  Zustand.
+- **Noch offen (C2):** Amboss (Schmieden nach Rezept), Bett (Schlafen bis Morgen/Mittag/Abend/Mitternacht, danach LP
+  und Mana voll); der Truhendeckel (`MOB_LID`) bewegt sich noch nicht – das Modell wird bisher als ein Mesh geladen.
+- Mob-Zustände (offen, verschlossen, Inhalt) gelten für die Sitzung; gespeichert werden sie mit M14.
 
 ## Dialog & Quests (M10)
 - `Info` (siehe script.md): Auswahl der verfügbaren Infos = Bedingung erfüllt ∧ (permanent ∨ nicht gesagt), sortiert nach Priorität; `important` startet Dialog automatisch, wenn der NPC den Spieler wahrnimmt.

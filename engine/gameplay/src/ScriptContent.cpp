@@ -69,6 +69,22 @@ void defineContentKinds(script::ScriptVm& vm)
                    },
                    false});
 
+    // Mob "mob_chest_hut" { name = "Truhe", type = "chest", lock = "LRRL", key = "it_key_chest_hut",
+    //                       contents = { it_apple = 2 } }: what a mob vob (components.mob.definition) is;
+    //                       type is a
+    // mob type of data/mobs.toml (slots, clips). M8 part C.
+    vm.defineKind({"Mob",
+                   {
+                       {"name", Type::String, true}, // the focus name
+                       {"type", Type::String, true}, // chest, door, anvil, bed ... (data/mobs.toml)
+                       {"lock", Type::String},       // combination of L and R; empty or missing: not locked
+                       {"key", Type::String, false, none, none, "Item"},
+                       {"contents", Type::Table},  // chests: { it_x = count }
+                       {"owner", Type::String},    // Npc or guild (part D)
+                       {"on_use", Type::Function}, // fn(mob: string): when a user is at the mob (loop)
+                   },
+                   false});
+
     // Routine "rtn_x" { { from = "08:00", to = "22:00", state = "zs_x", at = "wp_x" } }: entries checked with
     // M9.
     vm.defineKind({"Routine", {}, true});

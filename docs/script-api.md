@@ -11,6 +11,18 @@ Der Held hat einen Gegenstand aus der Welt aufgehoben (Aktionstaste auf ein Item
 ### `on("level_up", fn(level: integer))`
 Der Held hat eine neue Stufe erreicht.
 
+### `on("lock_picked", fn(mob: string))`
+Ein Schloss wurde mit dem Dietrich geknackt.
+
+### `on("lockpick_broken", fn(mob: string))`
+Beim Knacken ist ein Dietrich abgebrochen.
+
+### `on("mob_locked", fn(mob: string))`
+Der Held wollte ein verschlossenes Mob benutzen, ohne Schlüssel und Dietrich.
+
+### `on("mob_used", fn(mob: string, type: string))`
+Der Held hat ein Mob benutzt (Truhe offen, Tür bewegt); `mob` ist die Mob-Instanz.
+
 ### `on("scripts_reloaded", fn())`
 Nachdem geänderte Skripte neu geladen wurden (Entwicklung); die Story-Variablen bleiben erhalten.
 
@@ -92,6 +104,14 @@ Stufe eines Talents des Helden (0 = nicht gelernt): `melee_1h`, `melee_2h`, `bow
 
 ### `unequip(slot: string)`
 Legt ab, was auf dem Platz `slot` ausgerüstet ist.
+
+## Mobs
+
+### `mob_state(vob: string) -> {definition, type, name, locked, open}`
+Zustand eines Mob-Vobs dieser Welt (Name des Vobs, z. B. "LAGER_TRUHE").
+
+### `unlock(vob: string)`
+Schließt ein Mob-Vob auf (Truhe, Tür), etwa wenn eine Quest es öffnet.
 
 ## Welt
 

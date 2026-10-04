@@ -13,6 +13,7 @@ sets = [
     "characters/anims/human/none.glb",
     "characters/anims/human/swim.glb",
     "characters/anims/human/dive.glb",
+    "characters/anims/human/mob.glb",
 ]
 start = "move"
 # Abspielrate = Parameter / Eigengeschwindigkeit der Clips (`speed` in <set>.events.toml), damit die Füße nicht
@@ -118,6 +119,28 @@ clip = "none/s_slide"
 [[state]] # Aufheben (M8): das Event „pickup“ nimmt den Gegenstand, am Ende zurück in die Fortbewegung
 name = "pickup"
 clip = "none/t_pickup_ground"
+
+# Mobs (M8 Teil C): Die Engine schaltet diese Zustände selbst (<typ>_enter/_loop/_leave/_<extra>, Clips nach
+# data/mobs.toml); ohne Übergänge, am Ende geht es zurück nach „move“.
+[[state]]
+name = "chest_enter"
+clip = "mob/chest/t_open"
+
+[[state]]
+name = "chest_loop"
+clip = "mob/chest/s_open"
+
+[[state]]
+name = "chest_leave"
+clip = "mob/chest/t_close"
+
+[[state]]
+name = "chest_picklock"
+clip = "mob/chest/s_picklock"
+
+[[state]]
+name = "door_enter"
+clip = "mob/door/t_open"
 
 [[state]]
 name = "swim"

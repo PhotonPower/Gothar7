@@ -273,13 +273,13 @@ std::string Engine::focusName(gameplay::FocusKind kind, u64 id) const
 
 void Engine::updateFocus()
 {
-    if (!m_player.valid() || m_flyMode || m_pickup)
+    if (!m_player.valid() || m_flyMode || m_pickup || m_mobUse)
     {
-        if (!m_pickup)
+        if (!m_pickup && !m_mobUse)
         {
             m_focus.reset();
         }
-        return;
+        return; // busy: the focus stays on what is being used
     }
     const Vec3 eye = m_playerFeet + Vec3(0.0f, kEyeHeight, 0.0f);
     const Vec3 ahead = gameplay::forwardOf(m_movement.yaw());
@@ -473,6 +473,19 @@ void Engine::inventoryUi()
         panel.rows.push_back(std::move(row));
     }
     panel.message = m_inventoryMessage;
+    const MobRuntime* chest =
+        m_mobUse && m_mobUse->containerOpen ? &m_mobs.at(m_mobUse->vob.value) : nullptr; // M8 part C
+    if (chest != nullptr)
+    {
+        panel.container = true;
+        panel.containerTitle = chest->name;
+        for (const auto& [item, count] : chest->contents)
+        {
+            const auto info = items(item);
+            panel.containerRows.push_back(
+                {item, info ? info->name : item, info ? info->category : "misc", count, {}, false});
+        }
+    }
     m_debugUi.inventoryPanel(panel);
     if (!panel.open)
     {
@@ -499,6 +512,15 @@ void Engine::inventoryUi()
     {
         auto dropped = dropItem(panel.actionItem, 1);
         m_inventoryMessage = dropped ? std::string() : dropped.error().message;
+    }
+    else if ((panel.action == "take" || panel.action == "put") && m_mobUse)
+    {
+        const world::VobId vob = m_mobUse->vob;
+        const u32 count = panel.action == "take" ? m_mobs.at(vob.value).contents[panel.actionItem]
+                                                 : hero.itemCount(panel.actionItem);
+        auto moved = panel.action == "take" ? takeFromMob(vob, panel.actionItem, std::max(count, 1u))
+                                            : putIntoMob(vob, panel.actionItem, 1);
+        m_inventoryMessage = moved ? std::string() : moved.error().message;
     }
 }
 
