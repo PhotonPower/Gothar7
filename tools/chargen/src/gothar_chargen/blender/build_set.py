@@ -36,6 +36,7 @@ from gothar_chargen.blender.curves import (  # noqa: E402
     blend,
     close_loop,
     concat,
+    hold_outside,
     in_place,
     layer,
     length,
@@ -45,7 +46,7 @@ from gothar_chargen.blender.keyframes import RECIPES, RigInfo  # noqa: E402
 from gothar_chargen.clipspec import ClipSpec, SetSpec, SourceRef, load_set_spec  # noqa: E402
 from gothar_chargen.events import detect_contacts  # noqa: E402
 from gothar_chargen.mapping import BoneMap, load_mapping  # noqa: E402
-from gothar_chargen.naming import is_loop_clip  # noqa: E402
+from gothar_chargen.naming import ADDITIVE_ROOT, is_loop_clip  # noqa: E402
 from gothar_chargen.postprocess import TRANSLATED_BONES  # noqa: E402
 from gothar_chargen.skeleton import RigSpec, load_rig  # noqa: E402
 
@@ -217,6 +218,8 @@ def _compute(
             curves = RECIPES[clip.recipe](rig_info, clip.param, built)
         if clip.in_place:
             curves = in_place(curves, rig_info.rest, rig_info.bones)
+        if clip.additive:
+            curves = hold_outside(curves, rig_info.subtree(ADDITIVE_ROOT), rig_info.bones)
         if clip.close:
             curves = close_loop(curves, clip.close, rig_info.bones)
         built[clip.name] = curves

@@ -47,5 +47,14 @@ def is_loop_clip(name: str) -> bool:
     return name.rsplit("/", 1)[-1].startswith("s_")
 
 
+def is_additive_clip(name: str) -> bool:
+    """Additive overlay clips (``a_*``, dialogue gestures): deviation from their first frame,
+    played from spine_02 upwards (characters-pipeline.md §3)."""
+    return name.rsplit("/", 1)[-1].startswith("a_")
+
+
+ADDITIVE_ROOT = "spine_02"  # additive clips move this bone and the bones below it only
+
+
 def is_event_name(name: str) -> bool:
     return EVENT_NAME_RE.match(name) is not None

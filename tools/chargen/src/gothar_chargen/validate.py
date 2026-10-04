@@ -23,7 +23,14 @@ from gothar_chargen.fit import check_fit
 from gothar_chargen.gltf import Gltf, GltfError, Trs, node_trs, quat_angle_deg
 from gothar_chargen.images import ImageError, ImageInfo, image_info, is_power_of_two
 from gothar_chargen.meshdata import mesh_data, split_lod
-from gothar_chargen.naming import clip_mode, is_clip_name, is_loop_clip, is_monster_clip
+from gothar_chargen.naming import (
+    ADDITIVE_ROOT,
+    clip_mode,
+    is_additive_clip,
+    is_clip_name,
+    is_loop_clip,
+    is_monster_clip,
+)
 from gothar_chargen.postprocess import MASK_ROLES, TRANSLATED_BONES, material_role
 from gothar_chargen.skeleton import RigSpec
 
@@ -744,6 +751,7 @@ class _Checker:
             if self.rig.is_monster:
                 self._check_monster_root(name, anim, names[name])
         self.r.stats["clips"] = len(anims)
+        self._check_additive(anims)
         self._events(names)
         if self.g.path is not None:  # feet that stand, lying poses above the ground (clipfix)
             for code, message in check_set(self.g.path, self.g):
@@ -812,6 +820,88 @@ class _Checker:
             self.r.warning(
                 "anim.loop", f"loop '{clip}' does not end where it starts: {_listed(open_loop)}"
             )
+
+    def _keys(self, anim: dict[str, Any]) -> dict[tuple[str, str], np.ndarray]:
+        out = {}
+        for ch in anim.get("channels", []):
+            target = ch.get("target", {})
+            if "node" in target and target.get("path") in ("rotation", "translation"):
+                values = self.g.accessor(anim["samplers"][ch["sampler"]]["output"])
+                values = values.astype(np.float64).reshape(len(values), -1)
+                if target["path"] == "rotation":
+                    values /= np.maximum(np.linalg.norm(values, axis=1, keepdims=True), 1e-12)
+                out[(self.name(target["node"]), target["path"])] = values
+        return out
+
+    @staticmethod
+    def _apart(a: np.ndarray, b: np.ndarray, path: str) -> float:
+        """Degrees between rotations, millimetres between translations (a, b: (n, k) or (k,))."""
+        if path == "rotation":
+            dots = np.abs(np.sum(np.atleast_2d(a) * np.atleast_2d(b), axis=1)).clip(0, 1)
+            return float(np.degrees(2 * np.arccos(dots)).max())
+        return float(np.linalg.norm(np.atleast_2d(a) - np.atleast_2d(b), axis=1).max()) * 1000
+
+    def _check_additive(self, anims: list[dict[str, Any]]) -> None:
+        """a_* overlays (§3, contract with engine): played additively against the reference pose
+        ``<mode>/a_neutral`` (one frame) from spine_02 up. Outside spine_02's subtree every frame
+        equals the reference; no translations inside it; gestures and talk loops start and end at
+        the reference, *_in starts and *_out ends there, held loops (with an *_in) are closed."""
+        children: dict[str, list[str]] = {}
+        for b in self.rig.bones:
+            if b.parent:
+                children.setdefault(b.parent, []).append(b.name)
+        upper, stack = set(), [ADDITIVE_ROOT]
+        while stack:
+            bone = stack.pop()
+            upper.add(bone)
+            stack += children.get(bone, [])
+        clips = {str(a.get("name", "")): a for a in anims if is_additive_clip(str(a.get("name")))}
+        names = set(clips)
+        refs: dict[str, dict[tuple[str, str], np.ndarray]] = {}
+        for name in names:
+            if name.rsplit("/", 1)[-1] == "a_neutral":
+                refs[name.rsplit("/", 1)[0]] = {k: v[0] for k, v in self._keys(clips[name]).items()}
+        tol = self.tol.loop_rotation_deg
+        for name, anim in sorted(clips.items()):
+            mode, action = name.rsplit("/", 1)
+            if action == "a_neutral":
+                continue
+            ref = refs.get(mode)
+            if ref is None:
+                self.r.error("anim.additive", f"additive clip '{name}' without {mode}/a_neutral")
+                continue
+            held = f"{mode}/{action}_in" in names
+            below, moved, start, end = [], [], [], []
+            for (bone, path), values in self._keys(anim).items():
+                base = ref.get((bone, path))
+                if bone not in upper:
+                    if base is not None and self._apart(values, base, path) > 0.5:
+                        below.append(bone)
+                    continue
+                if path == "translation":
+                    if self._apart(values, values[0], path) > 0.5:
+                        moved.append(bone)
+                    continue
+                if base is None:
+                    continue
+                if held:  # a held pose: closed loop
+                    if self._apart(values[-1], values[0], path) > tol:
+                        end.append(bone)
+                    continue
+                if not action.endswith("_out") and self._apart(values[0], base, path) > tol:
+                    start.append(bone)
+                if not action.endswith("_in") and self._apart(values[-1], base, path) > tol:
+                    end.append(bone)
+            for problem, bones in (
+                (f"moves bones outside {ADDITIVE_ROOT} away from the reference", below),
+                ("translates", moved),
+                ("does not start at the reference pose", start),
+                ("does not end where it should (reference pose, or closed loop)", end),
+            ):
+                if bones:
+                    self.r.error(
+                        "anim.additive", f"additive clip '{name}' {problem}: {_listed(bones)}"
+                    )
 
     def _root_keys(self, anim: dict[str, Any], path: str) -> np.ndarray | None:
         root = self.bone_index.get(_ROOT)
