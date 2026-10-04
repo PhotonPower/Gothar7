@@ -182,7 +182,9 @@ def _valid_polygon(ring: Sequence[tuple[float, float]]) -> Polygon | None:
     return poly if poly.area > 1e-6 else None
 
 
-def _add_mass(b: _Builder, mass: Mass, base_y: float) -> bool:
+def _add_mass(b: _Builder, mass: Mass, base_y: float, roof_b: _Builder | None = None) -> bool:
+    """Walls into ``b``, the roof into ``roof_b`` (default ``b``)."""
+    rb = roof_b or b
     poly = _valid_polygon(mass.footprint)
     if poly is None:
         return False
@@ -194,7 +196,7 @@ def _add_mass(b: _Builder, mass: Mass, base_y: float) -> bool:
     for piece in pieces:
         for tri in shapely.constrained_delaunay_triangles(piece).geoms:
             pts = [(x, roof.height(x, z), z) for x, z in list(tri.exterior.coords)[:3]]
-            b.polygon(pts, [(x - b.ox, z - b.oz) for x, _, z in pts], (0.0, 1.0, 0.0))
+            rb.polygon(pts, [(x - rb.ox, z - rb.oz) for x, _, z in pts], (0.0, 1.0, 0.0))
 
     # Walls along the (oriented) outer ring, split where the ridge crosses an edge.
     ring = list(poly.exterior.coords)[:-1]

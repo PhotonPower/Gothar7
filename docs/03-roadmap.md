@@ -362,8 +362,8 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
   - Stand: Mechanik und Muster-Katalog, Dachdeckung (Palette), steile Dächer, Stilzuweisung, Schornsteine und Gauben umgesetzt (`--mode medieval`, `leonberg-stil.md`)
 - [ ] Overrides aus W4 anwenden; Seeds für Variation; `locked`-Schutz für Handarbeit
   - Stand: `storeys`, `jettyM`, `frontFacade` (Öffnungen), `seed`, `locked`, `keep`, `age`, `dormers`, `chimneys` werden angewendet; abhaken mit den echten Annotationen
-- [ ] LOD-Erzeugung, Kollisions-Mesh
-  - Stand: Kollision umgesetzt (`COL_HULL_` je konvexem Baukörperteil, Ersatz `COL_`-Netz; Vertrag in `docs/modules/asset.md`); LOD offen
+- [x] LOD-Erzeugung, Kollisions-Mesh
+  - Stand: Kollision umgesetzt (`COL_HULL_` je konvexem Baukörperteil, Ersatz `COL_`-Netz; Vertrag in `docs/modules/asset.md`); LOD: jedes Haus mit `_lod1` (vereinfacht, ca. 31 %) und `_lod2` (Baukörper mit Fenstern, ca. 5 %), Vertrag in `docs/coordination.md`; die Auswahl nach Entfernung baut engine
 - [ ] Stil-Referenzblatt (Farben, Materialien, Alterung) in `docs/design/`
   - Stand: `docs/design/leonberg-stil.md` (Entscheidung 2026-10-03), Palette justiert, Alterung umgesetzt (First-Durchhang, schiefe Ständer, unregelmäßige Fenster, Moos; mit den Texturen Schmutz-Fußband, Regenschlieren und Moos-Ziegel)
 
