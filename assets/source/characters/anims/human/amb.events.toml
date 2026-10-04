@@ -8,6 +8,16 @@ events = [
     { frame = 8, event = "sound:wood_chop" },
 ]
 
+[clips."amb/t_chop_wood_in"]
+events = [
+    { frame = 1, event = "item_to_hand" },
+]
+
+[clips."amb/t_chop_wood_out"]
+events = [
+    { frame = 11, event = "item_from_hand" },
+]
+
 [clips."amb/t_drink_mug_in"]
 events = [
     { frame = 2, event = "item_to_hand" },

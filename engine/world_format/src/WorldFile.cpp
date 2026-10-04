@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <format>
 #include <unordered_map>
@@ -374,7 +375,10 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
         {
             return q.error();
         }
-        vob.transform.rotation = glm::normalize(Quat(q.value()[3], q.value()[0], q.value()[1], q.value()[2]));
+        // Normalized only when clearly off: written with six decimals a unit quaternion is off by ~1e-6, and
+        // normalizing that would change the numbers written back (welt's generator, editor saves).
+        const Quat read(q.value()[3], q.value()[0], q.value()[1], q.value()[2]);
+        vob.transform.rotation = std::abs(glm::length(read) - 1.0f) > 1e-4f ? glm::normalize(read) : read;
     }
 
     if (vob.type == VobType::Mesh || vob.type == VobType::Mob)
@@ -492,12 +496,121 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
     return vob;
 }
 
-/// Numbers rounded to 1e-5 (0.01 mm, quaternions well within float noise): float rounding like
-/// -4.37e-08 for a zero would make every save differ; reading and writing again stays identical.
+/// The fewest decimals that read back to the same float (shortest fixed notation): -343.106 is stored as the
+/// float -343.10598755 and written as "-343.106" again, -0.258819 as "-0.258819" - what welt's generator
+/// wrote. A float that needs more than six decimals is noise from arithmetic (-0.0000000437 for a zero,
+/// 0.70710677): it is rounded to 1e-5 (0.01 mm, quaternions well within float noise) first. Reading and
+/// writing again stays identical. Python (welt): for d in 0..9 the first f"{f:.{d}f}" that gives the float32
+/// f back; d > 6: round(f, 5) first.
 double tidy(f32 value)
 {
-    const double rounded = std::round(static_cast<double>(value) * 1e5) / 1e5;
-    return rounded == 0.0 ? 0.0 : rounded; // no -0
+    const auto fixed = [](f32 v, char* buffer) -> std::string_view
+    {
+        const auto [end, ec] = std::to_chars(buffer, buffer + 64, v, std::chars_format::fixed);
+        G7_ASSERT(ec == std::errc(), "to_chars of a float in fixed notation fits 64 characters");
+        return {buffer, static_cast<usize>(end - buffer)};
+    };
+    char buffer[64];
+    std::string_view text = fixed(value, buffer);
+    const usize point = text.find('.');
+    if (point != std::string_view::npos && text.size() - point - 1 > 6)
+    {
+        const double rounded = std::round(static_cast<double>(value) * 1e5) / 1e5;
+        text = fixed(static_cast<f32>(rounded), buffer);
+    }
+    double result = 0.0;
+    std::from_chars(text.data(), text.data() + text.size(), result);
+    return result == 0.0 ? 0.0 : result; // no -0
+}
+
+/// A floating-point number with the fewest digits that read back to the same double (std::to_chars), laid out
+/// like Python's repr and nlohmann: fixed for exponents -4..15 with at least one decimal ("4.0"), otherwise
+/// "1e-05". nlohmann's Grisu2 is not always shortest (24.123169999999998 for 24.12317), so files written here
+/// would differ from welt's generator for the same double.
+std::string formatNumber(double value)
+{
+    if (!std::isfinite(value))
+    {
+        return "null"; // as nlohmann
+    }
+    if (value == 0.0)
+    {
+        return std::signbit(value) ? "-0.0" : "0.0";
+    }
+    char buffer[32];
+    const auto [end, ec] =
+        std::to_chars(buffer, buffer + sizeof(buffer), value, std::chars_format::scientific);
+    G7_ASSERT(ec == std::errc(), "to_chars of a double fits 32 characters");
+    const std::string_view text(buffer, static_cast<usize>(end - buffer));
+    const usize e = text.find('e');
+    const bool negative = text.front() == '-';
+    std::string digits;
+    for (const char c : text.substr(negative ? 1 : 0, e - (negative ? 1 : 0)))
+    {
+        if (c != '.')
+        {
+            digits += c;
+        }
+    }
+    int exponent = 0;
+    std::from_chars(text.data() + e + (text[e + 1] == '+' ? 2 : 1), text.data() + text.size(), exponent);
+    std::string out = negative ? "-" : "";
+    const int count = static_cast<int>(digits.size());
+    if (exponent >= -4 && exponent < 16)
+    {
+        if (exponent < 0)
+        {
+            out += "0." + std::string(static_cast<usize>(-exponent - 1), '0') + digits;
+        }
+        else if (count <= exponent + 1)
+        {
+            out += digits + std::string(static_cast<usize>(exponent + 1 - count), '0') + ".0";
+        }
+        else
+        {
+            out += digits.substr(0, static_cast<usize>(exponent + 1)) + "." +
+                   digits.substr(static_cast<usize>(exponent + 1));
+        }
+        return out;
+    }
+    out += digits.substr(0, 1);
+    if (count > 1)
+    {
+        out += "." + digits.substr(1);
+    }
+    return out + std::format("e{}{:02}", exponent < 0 ? '-' : '+', std::abs(exponent));
+}
+
+/// Json::dump() (compact) with formatNumber for floating-point numbers.
+std::string dumpJson(const Json& j)
+{
+    switch (j.type())
+    {
+    case Json::value_t::number_float:
+        return formatNumber(j.get<double>());
+    case Json::value_t::array:
+    {
+        std::string out = "[";
+        for (usize i = 0; i < j.size(); ++i)
+        {
+            out += (i == 0 ? "" : ",") + dumpJson(j[i]);
+        }
+        return out + "]";
+    }
+    case Json::value_t::object:
+    {
+        std::string out = "{";
+        bool first = true;
+        for (const auto& [key, value] : j.items())
+        {
+            out += (first ? "" : ",") + Json(key).dump() + ":" + dumpJson(value);
+            first = false;
+        }
+        return out + "}";
+    }
+    default:
+        return j.dump();
+    }
 }
 
 Result<void> readSplat(const Reader& r, const Json& s, TerrainRef& ref)
@@ -1082,12 +1195,12 @@ std::string writeWorldFile(const WorldFile& world)
     std::string out = "{\n";
     for (const auto& [key, value] : root.items())
     {
-        out += "  \"" + key + "\": " + value.dump() + ",\n";
+        out += "  \"" + key + "\": " + dumpJson(value) + ",\n";
     }
     out += "  \"vobs\": [";
     for (usize i = 0; i < vobs.size(); ++i)
     {
-        out += (i == 0 ? "\n    " : ",\n    ") + vobs[i].dump();
+        out += (i == 0 ? "\n    " : ",\n    ") + dumpJson(vobs[i]);
     }
     out += vobs.empty() ? "]" : "\n  ]";
     if (world.waynet)
@@ -1104,7 +1217,7 @@ std::string writeWorldFile(const WorldFile& world)
             {
                 j["owner"] = "worldgen";
             }
-            return j.dump();
+            return dumpJson(j);
         };
         const auto list = [](const std::vector<std::string>& lines)
         {
@@ -1133,14 +1246,14 @@ std::string writeWorldFile(const WorldFile& world)
             {
                 j.push_back("worldgen");
             }
-            edges.push_back(j.dump());
+            edges.push_back(dumpJson(j));
         }
         out += ",\n  \"waynet\": {\n    \"points\": " + list(points) + ",\n    \"edges\": " + list(edges) +
                ",\n    \"freepoints\": " + list(freepoints) + "\n  }";
     }
     if (!world.zonesJson.empty())
     {
-        out += ",\n  \"zones\": " + Json::parse(world.zonesJson, nullptr, false).dump();
+        out += ",\n  \"zones\": " + dumpJson(Json::parse(world.zonesJson, nullptr, false));
     }
     out += "\n}\n";
     return out;

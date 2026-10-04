@@ -405,7 +405,7 @@ Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag, Gesichts-M
 leicht/mittel, Kopfbedeckungen. F5 läuft: Monster-Vertrag mit engine, Validator-Regeln und Werkzeuge stehen (seit der M6-Durchsicht auch: Füße
 gleiten nicht, Liegeposen über dem Boden), erste Art `wolf` mit vollständigem
 Mindest-Set (Platzhalter): `wolf`, `keiler`, `laufvogel`; offen: eigene Rigs/Arten mit Design-Doku (nach Stil-Entscheidung).
-F6 läuft: 11 Waffen und Handgegenstände (`gothar-chargen build-items`, Validator `item.*`), zuletzt Besen und Krug für M9; Essen/Trinken und Bogenhaltung mit den Gegenständen nachgerichtet.
+F6 läuft: 12 Waffen und Handgegenstände (`gothar-chargen build-items`, Validator `item.*`), zuletzt Besen, Krug und Axt für M9; Essen/Trinken und Bogenhaltung mit den Gegenständen nachgerichtet.
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur

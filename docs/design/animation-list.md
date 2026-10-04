@@ -107,7 +107,7 @@ bei engine in Lua. Ursprung = Fußpunkt, Blick +Z, auf der Stelle; Gegenstände 
 | `amb/t_sweep_in`, `s_sweep`, `t_sweep_out` | Fegen mit dem Besen (`it_broom`) | – | item_to_hand, item_from_hand | K | platzhalter-K (Besen schräg nach unten, Oberkörper pendelt) |
 | `amb/t_drink_mug_in`, `s_drink_mug`, `t_drink_mug_out` | Aus dem Krug trinken (`it_mug`) | – | item_to_hand, item_from_hand | K | platzhalter-K (Haltung wie `none/t_drink`) |
 | `amb/s_train_sword` | Schwerttraining (Waffe in der Hand) | – | – | Q→ | platzhalter (UAL2 `Sword_Regular_Combo`, auf der Stelle, Schleife geschlossen) |
-| `amb/s_chop_wood` | Holz hacken (FP_CHOP) | – | hit_wood, sound:wood_chop | Q | platzhalter (UAL2 `TreeChopping_Loop`) |
+| `amb/t_chop_wood_in`, `s_chop_wood`, `t_chop_wood_out` | Holz hacken mit der Axt `it_axe` (FP_CHOP) | – | item_to_hand, hit_wood, sound:wood_chop, item_from_hand | Q→ | platzhalter (UAL2 `TreeChopping_Loop`, Unterarm halb gedreht: Schneide voran; Ein-/Ausstieg Überblendung 12 Frames) |
 | `amb/s_harvest`, `s_water`, `s_repair_kneel` | Ernten, gießen, kniend reparieren (FP_HARVEST, FP_WATER, FP_REPAIR) | – | – | Q→ | platzhalter (UAL2 `Farm_Harvest`, `Farm_Watering`, UAL1 `Fixing_Kneeling`; auf der Stelle, Schleife geschlossen) |
 | `none/s_idle_look`, `none/t_idle_scratch` | Stand-Varianten: sich umsehen, am Kopf kratzen | – | – | K | platzhalter-K |
 | `none/t_warn`, `t_point`, `t_surprised`, `t_search` | Reaktionen: warnen (erhobene Faust), zeigen, erschrecken, suchen | – | – | K | platzhalter-K |
