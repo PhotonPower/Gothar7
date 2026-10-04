@@ -144,3 +144,29 @@ def test_generated_glb_cooks_with_g7_cook(tmp_path: Path, mode: str):
     assert "warn" not in (done.stdout + done.stderr).lower()
     if mode == "medieval":  # textured houses: the images next to the buildings cook too
         assert list(out.rglob("*_albedo*")), done.stdout
+
+
+def test_door_check_sees_the_other_houses_not_the_own():
+    from gothar_worldgen.buildings.batch import _Footprints
+
+    a = {"id": "A", "footprint": [[0, 0], [10, 0], [10, -7], [0, -7]]}
+    b = {"id": "B", "footprint": [[0, 0.2], [10, 0.2], [10, 7], [0, 7]]}  # wall to wall, south
+    fp = _Footprints([a, b])
+    assert not fp.free_for("A")(5.0, 1.2)  # in front of A's south side stands B
+    assert fp.free_for("B")(5.0, 1.2)  # inside B: its own footprint does not count
+    assert fp.free_for("A")(5.0, -9.0)
+    fp.replace("B", [{"id": "B-T1", "footprint": [[0, 0.2], [4, 0.2], [4, 7], [0, 7]]}])
+    assert fp.free_for("A")(8.0, 1.2) and not fp.free_for("A")(2.0, 1.2)  # rueckbau swapped B
+
+
+def test_door_reach_needs_a_line_to_a_street_past_no_house():
+    from gothar_worldgen.buildings.batch import _Footprints
+    from gothar_worldgen.buildings.medieval import StreetIndex
+
+    street = StreetIndex([{"points": [[-20.0, 10.0], [30.0, 10.0]]}])  # north of everything
+    a = {"id": "A", "footprint": [[0, 0], [10, 0], [10, -7], [0, -7]]}
+    b = {"id": "B", "footprint": [[0, 0.2], [10, 0.2], [10, 7], [0, 7]]}
+    reach = _Footprints([a, b], street).reach_for("A")
+    assert reach(5.0, -8.2) is False  # behind A: the line runs through A and B
+    assert reach(11.2, -3.0) is True  # east of A: past both houses
+    assert _Footprints([a], None).reach_for("A") is None

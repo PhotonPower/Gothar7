@@ -61,6 +61,11 @@ BOARD_KINDS = {"rail", "brace"}
 BRACE_STAGGER = 0.06  # crossing braces: each further segment of a pattern a little flatter
 DOOR_PROBE_M = 0.6  # the ground in front of a door / opening is read this far out
 DOOR_TOLERANCE_M = 0.15  # floor this close to the ground at the door: no change
+DOOR_FREE_PROBES_M = (1.2, 2.2)  # in front of a usable door nothing stands at these distances ...
+DOOR_CLEAR_M = 0.5  # ... closer than this (character radius + margin, as the waynet asks)
+DOOR_SIDE_MIN_M = 2.0  # a door moved to a side or back wall needs at least this much wall
+DOOR_WALL_M = 1.3  # door probes this close to the city wall line are blocked (houses inside)
+DOOR_REACH_M = 30.0  # a door "has a way" if a street axis this near is reachable in a line
 SILL_CLEAR_M = 0.1  # ground-storey openings need their sill this far above the terrain
 STAIR_EXTRA_M = 0.2  # steps reach this far beyond the door on both sides
 STAIR_SINK_M = 0.2  # steps reach this far into the ground
@@ -549,6 +554,13 @@ class StreetIndex:
                           (mx + normal[0] * reach, mz + normal[1] * reach)])  # fmt: skip
         return len(self.tree.query(ray, predicate="intersects")) > 0
 
+    def distance(self, x: float, z: float) -> float:
+        """Distance to the nearest street axis (inf without streets)."""
+        if self.tree is None:
+            return math.inf
+        p = Point(x, z)
+        return float(self.lines[int(self.tree.nearest(p))].distance(p))
+
     def near_main(self, footprint: Sequence[Sequence[float]], reach: float) -> bool:
         if self.main is None:
             return False
@@ -841,6 +853,11 @@ class _Context:
     screens: list[CollisionPart] = field(default_factory=list)
     ground_at: Callable[[float, float], float] | None = None  # terrain (x, z) -> y (E1)
     stair_ground: float | None = None  # terrain in front of the current mass's door if lower
+    door_free: Callable[[float, float], bool] | None = None  # no other house there (W6 doors)
+    door_reach: Callable[[float, float], bool] | None = None  # a street reachable from there
+    streets: Any = None  # StreetIndex: a moved door turns towards the nearest street
+    own_masses: list[Polygon] = field(default_factory=list)  # the building's masses (door check)
+    door_blocked: bool = False  # the current mass has no free wall: no door geometry
     doors: list[list[Any]] = field(default_factory=list)  # per mass: x, z, floor, kind, nx, nz
     door_storey: int = 0  # storey of the current mass's door (hillside houses: above ground)
     passages: list[Any] = field(default_factory=list)  # override passages (BuildingOverride)
@@ -1355,6 +1372,25 @@ def _door_point(
     return ((a[0] + b[0]) / 2 + normals[i][0] * out, (a[1] + b[1]) / 2 + normals[i][1] * out)
 
 
+def _door_is_free(ctx: _Context, ring: Sequence[tuple[float, float]],
+                  normals: Sequence[tuple[float, float]], i: int) -> bool:  # fmt: skip
+    """Nothing in front of the middle of edge ``i``: no other house (``door_free``), no other
+    mass of this building, not the city wall (W6: a door on a shared wall is never reachable)."""
+    if ctx.door_free is None:
+        return True
+    for d in DOOR_FREE_PROBES_M:
+        x, z = _door_point(ring, normals, i, d)
+        if not ctx.door_free(x, z):
+            return False
+        q = Point(x, z)
+        # every mass of this building, the own one too (an L-shaped mass faces its other wing)
+        if any(m.distance(q) < DOOR_CLEAR_M for m in ctx.own_masses):
+            return False
+        if ctx.wall is not None and ctx.wall.ring.exterior.distance(q) < DOOR_WALL_M:
+            return False
+    return True
+
+
 def _door_edge(ctx: _Context, ring: Sequence[tuple[float, float]],
                normals: Sequence[tuple[float, float]], lengths: Sequence[float],
                candidates: Sequence[int], others: Sequence[int], ground: float,
@@ -1370,17 +1406,54 @@ def _door_edge(ctx: _Context, ring: Sequence[tuple[float, float]],
     without burying the door (steep slopes), the door may go to another edge (``others``, not on
     the city wall) whose ground fits. If even that is too high, the third value is the ground at
     the door: ``_mass`` then puts the door into an upper storey (E1-C).
+
+    With ``ctx.door_free`` (W6) only edges with nothing in front count; if no street edge is free,
+    the door moves to a free side or back wall, the nearest to a street first; without any free
+    edge the mass keeps its street edge for the floor but gets no door (``door_blocked``).
     """
     ctx.stair_ground = None
     ctx.door_storey = 0
+    ctx.door_blocked = False
+    moved = False
+    if ctx.door_free is not None:
+        free = [i for i in range(len(ring)) if _door_is_free(ctx, ring, normals, i)]
+        reach = ctx.door_reach
+
+        def reachable(i: int) -> bool:
+            return reach is None or reach(*_door_point(ring, normals, i, DOOR_FREE_PROBES_M[0]))
+
+        street_free = [i for i in candidates if i in free]
+        side = [i for i in others if i in free and lengths[i] >= DOOR_SIDE_MIN_M]
+        # a way to a street first, then the street side (decision W6 "Türen verlegen")
+        street_way = [i for i in street_free if reachable(i)]
+        side_way = [i for i in side if i not in street_free and reachable(i)]
+        if street_way:
+            candidates = street_way
+        elif side_way:
+            candidates, moved = side_way, True
+            notes.append("door moved: street side blocked")
+        elif street_free:
+            candidates = street_free
+        elif side:
+            candidates, moved = side, True
+            notes.append("door moved: street side blocked")
+        else:
+            ctx.door_blocked = True
+            notes.append("door without access (no free wall)")
+        if not ctx.door_blocked:
+            others = [i for i in others if i in free]
     if ctx.ground_at is None:
         return max(candidates, key=lambda i: lengths[i]), ground, None
     min_facade = float(rules.get("openings", "minFacadeM"))
     long = [i for i in candidates if lengths[i] >= min_facade] or list(candidates)
 
-    def key(i: int) -> tuple[int, float]:
+    def key(i: int) -> tuple[float, ...]:
         t = ctx.ground_at(*_door_point(ring, normals, i))  # type: ignore[misc]
-        return (round(abs(t - ground) / DOOR_TOLERANCE_M), -lengths[i])
+        fit = round(abs(t - ground) / DOOR_TOLERANCE_M)
+        if moved and ctx.streets is not None:  # a moved door: towards the nearest street
+            near = round(ctx.streets.distance(*_door_point(ring, normals, i)) / 4.0)
+            return (fit, near, -lengths[i])
+        return (fit, -lengths[i])
 
     edge = min(long, key=key)
     probe = _door_point(ring, normals, edge)
@@ -1395,14 +1468,15 @@ def _door_edge(ctx: _Context, ring: Sequence[tuple[float, float]],
             probe = _door_point(ring, normals, edge)
             t = ctx.ground_at(*probe)
     nx, nz = normals[edge]
-    record = [round(probe[0], 2), round(probe[1], 2), 0.0, "ground", round(nx, 4), round(nz, 4)]
+    kind = "blocked" if ctx.door_blocked else "ground"
+    record = [round(probe[0], 2), round(probe[1], 2), 0.0, kind, round(nx, 4), round(nz, 4)]
     ctx.doors.append(record)
     if t > cap + DOOR_TOLERANCE_M:
         return edge, ground, t  # hillside house: door above the ground storey (``_mass``)
     if t > ground + DOOR_TOLERANCE_M:
         notes.append("floor raised to the ground at the door")
         ground = t
-    elif t < ground - float(rules.get("hillside", "stairFromM")):
+    elif t < ground - float(rules.get("hillside", "stairFromM")) and not ctx.door_blocked:
         notes.append("stairs in front of the door")
         ctx.stair_ground = t
         record[3] = "stairs"
@@ -1469,11 +1543,13 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
         if hill is not None:  # A: the door in the storey whose floor meets the ground there
             heights, ctx.door_storey = hill
             notes.append("door in an upper storey (hillside)")
-            ctx.doors[-1][2:4] = [round(door_y, 3), "upper"]
+            kind = "blocked" if ctx.door_blocked else "upper"
+            ctx.doors[-1][2:4] = [round(door_y, 3), kind]
         else:  # B: floor as high as a ground storey allows; export-terrain digs a descent
             ground = max(ground, mass.eave_y - float(rules.get("storeys")["groundM"]))
             notes.append("door below the ground (short descent)")
-            ctx.doors[-1][2:4] = [round(ground, 3), "descent"]
+            kind = "blocked" if ctx.door_blocked else "descent"  # no door: nothing to dig
+            ctx.doors[-1][2:4] = [round(ground, 3), kind]
     if not heights:
         heights = storey_heights(mass.eave_y - ground, rules, storeys, ctx.rng)
     if not heights:
@@ -1513,8 +1589,8 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
                 outline, usable = _top_outline(f, roof, crease, y, below)
             else:
                 outline, usable = [(0.0, -below), (f.width, -below), (f.width, h), (0.0, h)], h
-            _facade(ctx, f, edge, s, heights, outline, usable,
-                    edge == door_edge and s == ctx.door_storey)  # fmt: skip
+            door_here = edge == door_edge and s == ctx.door_storey and not ctx.door_blocked
+            _facade(ctx, f, edge, s, heights, outline, usable, door_here)
             if s == len(heights) - 1 and edge >= 0 and edge in ctx.wall_edges:
                 _screen_wall(ctx, f, outline)
         if s > 0:
@@ -1567,6 +1643,8 @@ def build_house(
     ground_at: Callable[[float, float], float] | None = None,
     lod: int = 0,
     lod0_level: int = 0,
+    door_free: Callable[[float, float], bool] | None = None,
+    door_reach: Callable[[float, float], bool] | None = None,
 ) -> HouseResult:
     """Half-timbered house of a ``buildings.json`` entry; vertices relative to (origin, base_y).
 
@@ -1619,6 +1697,10 @@ def build_house(
             passages=passages,
             dirt_m=dirt_m,
             lod=lod,
+            door_free=door_free,
+            door_reach=door_reach,
+            streets=streets,
+            own_masses=[_valid_polygon(m.footprint) or Polygon() for m in masses],
         )
         level_notes: list[str] = []
         for mass, src in zip(masses, sources, strict=False):

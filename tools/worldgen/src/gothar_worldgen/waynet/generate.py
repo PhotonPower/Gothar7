@@ -231,6 +231,7 @@ def build_waynet(
         "droppedEdges": [],
         "doorsUnconnected": [],
         "doorsUnusable": [],
+        "doorsWithoutAccess": [],
         "steep": [],
     }
 
@@ -450,6 +451,11 @@ def build_waynet(
     for bld in sorted(buildings, key=lambda b: b["id"]):
         for j, d in enumerate(bld.get("doors", [])):
             x, z, _, kind, nx, nz = d[:6]
+            if kind == "blocked":  # no free wall: the house has no usable door (W6)
+                report["doorsWithoutAccess"].append(
+                    {"building": bld["id"], "at": [round(x, 2), round(z, 2)]}
+                )
+                continue
             out = (
                 DOOR_OUT_M
                 + (1.2 if kind == "stairs" else 0.0)
