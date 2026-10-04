@@ -51,8 +51,13 @@ add_executable(g7_tests_render_gpu ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_gpu_s
 target_link_libraries(g7_tests_render_gpu PRIVATE g7::runtime g7_editor g7_walk doctest::doctest) # editor, autopilot end to end
 g7_set_warnings(g7_tests_render_gpu)
 set_target_properties(g7_tests_render_gpu PROPERTIES FOLDER "tests")
-add_test(NAME render_gpu COMMAND g7_tests_render_gpu)
-set_tests_properties(render_gpu PROPERTIES LABELS gpu)
+# Two ctest entries over one executable (the coverage job runs them under software GL, each within its timeout):
+# the render tests, and the engine-level ones (whole engine with a world: "... GPU: ...", test world/scene, engine).
+# Every test case runs in exactly one of them.
+set(_g7_gpu_engine_cases "*GPU:*,Test world*,Test scene*,Engine*")
+add_test(NAME render_gpu COMMAND g7_tests_render_gpu "--test-case-exclude=${_g7_gpu_engine_cases}")
+add_test(NAME render_gpu_engine COMMAND g7_tests_render_gpu "--test-case=${_g7_gpu_engine_cases}")
+set_tests_properties(render_gpu render_gpu_engine PROPERTIES LABELS gpu)
 target_compile_definitions(g7_tests_render_gpu PRIVATE G7_SHADER_DIR="${PROJECT_SOURCE_DIR}/engine/render/shaders"
     G7_TESTSCENE="${PROJECT_SOURCE_DIR}/assets/source/testscene/scene.toml")
 # test_image.cpp encodes PNG/JPEG with stb_image_write.
@@ -80,7 +85,7 @@ endif()
 set(G7_TEST_TIMEOUT 300 CACHE STRING "Seconds per test suite before ctest stops it")
 get_property(_g7_tests DIRECTORY PROPERTY TESTS)
 set_tests_properties(${_g7_tests} PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
-set_tests_properties(render_gpu PROPERTIES TIMEOUT 900)
+set_tests_properties(render_gpu render_gpu_engine PROPERTIES TIMEOUT 900)
 
 # Editor mode (tools/editor): gizmo maths and world operations on the CPU.
 file(GLOB _editor_test_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/editor/*.cpp")

@@ -1286,6 +1286,11 @@ void Engine::releaseUnusedModels()
     {
         used.insert(instance.model);
     }
+    // Item models (M8): drawn as world items, not as instances; the cache keeps them for items dropped later.
+    for (const auto& [instance, model] : m_itemModels)
+    {
+        used.insert(model);
+    }
     const usize before = m_models.size();
     std::erase_if(m_models, [&](const auto& entry) { return !used.contains(entry.second.get()); });
     if (m_models.size() != before)
