@@ -148,6 +148,7 @@ WOOD = (0.45, 0.30, 0.17)
 DARK = (0.30, 0.20, 0.12)
 IRON = (0.32, 0.33, 0.36)
 CLOTH = (0.65, 0.58, 0.45)
+PILLOW = (0.85, 0.82, 0.74)
 
 if __name__ == "__main__":
     # Chest 0.9 x 0.6 x 0.6: body up to 0.5 m, the lid (node MOB_LID) with its pivot at the back edge (hinge).
@@ -199,11 +200,17 @@ if __name__ == "__main__":
             ),
         ],
     )
-    # Bed 2.0 x 0.9, lying surface 0.45 m; the long side faces +Z, where the slot "side" of data/mobs.toml is.
+    # Bed 2.0 x 0.9, lying surface 0.45 m, head end at -X; the long side faces +Z, where the slot "side" of data/mobs.toml is.
     write_glb(
         HERE / "bed.glb",
         [
             ("BED_FRAME", [((-1.0, 0.0, -0.45), (1.0, 0.35, 0.45))], (0, 0, 0), WOOD),
             ("BED_STRAW", [((-0.95, 0.35, -0.4), (0.95, 0.45, 0.4))], (0, 0, 0), CLOTH),
+            (
+                "BED_PILLOW",
+                [((-0.92, 0.45, -0.3), (-0.62, 0.53, 0.3))],
+                (0, 0, 0),
+                PILLOW,
+            ),  # head end at -X
         ],
     )
