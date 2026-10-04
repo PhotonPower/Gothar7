@@ -383,13 +383,17 @@ def _site_dirs(args: argparse.Namespace, site_name: str) -> tuple[Path, Path]:
 
 def _cmd_mobs(args: argparse.Namespace, out: TextIO) -> int:
     """Mob models (M8): chest, anvil, bed, door into assets/source/mobs (not tied to a site)."""
-    from gothar_worldgen.mobs import write_mobs
+    from gothar_worldgen.mobs import PROPS, write_mobs
 
     config = args.config_dir or default_config_dir()
     folder = (args.assets_dir or config.parents[2] / "assets" / "source") / "mobs"
     for line in write_mobs(folder):
         print(f"  {line}", file=out)
     print(f"  {folder}", file=out)
+    props = folder.parent / "props"  # W7: plain props of the rooms (hearth)
+    for line in write_mobs(props, tuple(PROPS), PROPS):
+        print(f"  {line}", file=out)
+    print(f"  {props}", file=out)
     return EXIT_OK
 
 
@@ -997,7 +1001,21 @@ def _plan_uses(
 
     doors = {e["id"]: e["doors"][0] for e in index.get("entries", []) if e.get("doors")}
     plan = plan_places(doc, doors, free, grid.height_at, way)
-    return plan.json(doc), mob_vobs(plan, grid.height_at)
+    places = plan.json(doc)
+    vobs = mob_vobs(plan, grid.height_at)
+    # W7 C2: inside the enterable houses
+    from gothar_worldgen.uses.inside import inside_spec, plan_inside
+
+    specs = {u: inside_spec(s, f"uses.{u}.inside") for u, s in doc.inside.items()}
+    routine = {p.house: p.name for p in plan.places if p.kind == "wp"}
+    inside = plan_inside(doc.houses, specs, index, routine)
+    places["places"] += inside.places
+    places["failed"] += inside.failed
+    for h in places["houses"]:
+        mine = [p["name"] for p in inside.places if p["house"] == h["id"]]
+        if mine:
+            h["insidePlaces"] = mine
+    return places, [*vobs, *inside.vobs]
 
 
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:

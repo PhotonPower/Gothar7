@@ -65,6 +65,7 @@ class House:
 class UsesDoc:
     houses: list[House]
     uses: dict[str, dict[str, list[tuple[str, int]]]]
+    inside: dict[str, dict[str, Any]] = field(default_factory=dict)  # uses.<use>.inside (raw)
 
 
 def _counts(
@@ -89,7 +90,10 @@ def load_uses(path: Path) -> UsesDoc:
     if doc.get("version") != 1:
         raise UsesError(f"{path.name}: version must be 1")
     uses: dict[str, dict[str, list[tuple[str, int]]]] = {}
+    inside: dict[str, dict[str, Any]] = {}
     for use, spec in (doc.get("uses") or {}).items():
+        if "inside" in spec:
+            inside[use] = dict(spec["inside"])
         if use not in USES:
             raise UsesError(f"{path.name}: uses.{use}: unknown use")
         uses[use] = {
@@ -109,7 +113,7 @@ def load_uses(path: Path) -> UsesDoc:
         houses.append(House(h["id"], h["use"], h.get("name", ""), h.get("trade", ""),
                             int(h.get("residents", 0)), bool(h.get("inside", False)),
                             h.get("owner", "")))  # fmt: skip
-    return UsesDoc(houses, uses)
+    return UsesDoc(houses, uses, inside)
 
 
 @dataclass
@@ -309,7 +313,7 @@ def mob_vobs(plan: Plan, height: Callable[[float, float], float]) -> list[dict[s
 def routine_table_md(places: dict[str, Any]) -> str:
     """Routine places per house for writing the Leonberg routines (engine, figuren)."""
     rows = [
-        "| Kürzel | Nutzung | Name | Bewohner | Routinen-Wegpunkt | Freepoints | Mobs | begehbar |",
+        "| Kürzel | Nutzung | Name | Bewohner | Routinen-Wegpunkt | Freepoints | Mobs | Innen |",
         "|---|---|---|---|---|---|---|---|",
     ]
     for h in places.get("houses", []):
@@ -317,8 +321,10 @@ def routine_table_md(places: dict[str, Any]) -> str:
         fps = ", ".join(f"`{n}`" for n in h["freepoints"]) or "–"
         mobs = ", ".join(f"`{n}`" for n in h["mobs"]) or "–"
         wp = f"`{h['waypoint']}`" if h.get("waypoint") else "– (kein Zugang)"
+        inside = ", ".join(f"`{n}`" for n in h.get("insidePlaces", []) if not n.startswith("WP_")
+                           or n.endswith("_INNEN"))  # fmt: skip
         rows.append(f"| {h['short']} | {use} | {h.get('name') or '–'} | {h['residents']} | {wp} | "
-                    f"{fps} | {mobs} | {'ja' if h['inside'] else ''} |")  # fmt: skip
+                    f"{fps} | {mobs} | {inside} |")  # fmt: skip
     return "\n".join(rows) + "\n"
 
 

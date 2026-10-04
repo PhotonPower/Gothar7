@@ -151,3 +151,22 @@ def test_mobs_at_houses_with_a_use():
     assert by_name(w2)["MOB_LEO_SCHMIEDE_ZNP_ANVIL_1"]["id"] == v["id"]
     w3 = run(index("A"), w2, ids)  # the use is gone: its mob goes too
     assert "MOB_LEO_SCHMIEDE_ZNP_ANVIL_1" not in by_name(w3)
+
+
+def test_light_prop_and_trigger_vobs_at_the_houses():
+    specs = [
+        {"key": "use:LIGHT_X", "name": "LIGHT_X", "type": "light", "pos": [1.0, 2.0, 3.0],
+         "rot": [0.0, 0.0, 0.0, 1.0], "components": {"light": {"color": [1, 0.6, 0.3],
+                                                              "range": 6.0, "intensity": 2.5,
+                                                              "flicker": 0.3}}},
+        {"key": "use:PROP_X", "name": "PROP_X", "type": "mesh", "pos": [1.0, 2.0, 3.0],
+         "rot": [0.0, 0.0, 0.0, 1.0], "mesh": "props/hearth.glb"},
+        {"key": "use:TRIGGER_X", "name": "TRIGGER_X", "type": "trigger", "pos": [1.0, 2.0, 3.0],
+         "rot": [0.0, 0.0, 0.0, 1.0],
+         "components": {"trigger": {"shape": "box", "halfExtents": [2, 1.5, 3], "owner": "npc_a"}}},
+    ]  # fmt: skip
+    names = by_name(run(index("A"), None, VobIds({}, 1), mobs=specs))
+    assert names["LIGHT_X"]["type"] == "light" and "mesh" not in names["LIGHT_X"]
+    assert names["LIGHT_X"]["components"]["light"]["flicker"] == 0.3
+    assert names["PROP_X"]["type"] == "mesh" and "components" not in names["PROP_X"]
+    assert names["TRIGGER_X"]["components"]["trigger"]["owner"] == "npc_a"

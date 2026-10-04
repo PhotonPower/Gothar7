@@ -509,6 +509,17 @@ def build_waynet(
         spot = (float(pl["pos"][0]), float(pl["pos"][1]))
         points[name] = wp(name, spot[0], spot[1], tuple(pl["dir"]))  # type: ignore[arg-type]
         use_points += 1
+        if "y" in pl:  # inside a house: on its floor, not on the terrain under it
+            p = points[name]
+            points[name] = Wp(name, (p.pos[0], float(pl["y"]), p.pos[2]), p.dir)
+        if pl.get("link"):  # through a door: tied to its routine waypoint as it is
+            if pl["link"] in points:
+                add_edge(name, pl["link"])
+            else:
+                why = f"link {pl['link']} missing"
+                report["usesUnconnected"].append({"point": name, "house": pl.get("house"),
+                                                  "reason": why})  # fmt: skip
+            continue
         if not connect(name, spot):
             why = "no reachable point or way within 30 m"
             report["usesUnconnected"].append({"point": name, "house": pl.get("house"),
@@ -565,7 +576,8 @@ def build_waynet(
         if pl.get("kind") == "fp":
             x, z = float(pl["pos"][0]), float(pl["pos"][1])
             d = (float(pl["dir"][0]), 0.0, float(pl["dir"][1]))
-            freepoints[pl["name"]] = Wp(pl["name"], (x, height(x, z), z), d)
+            y = float(pl["y"]) if "y" in pl else height(x, z)  # inside: the room's floor
+            freepoints[pl["name"]] = Wp(pl["name"], (x, y, z), d)
 
     # --- annotations and hand-made entries -------------------------------------------------------
     ann = annotations or {}
