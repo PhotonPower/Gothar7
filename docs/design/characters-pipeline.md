@@ -306,6 +306,11 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   `hair_long`, `hair_ponytail`, `hair_curly`; Frauen dazu `hair_braid`, `hair_bob`; Bärte `beard_goatee`,
   `beard_moustache`, `beard_faun`. **Nur CC0 laut Datei-Kopf:** Viele Stücke der Pakete Hair 01 und Bodyparts 05
   tragen im `.mhclo`-Kopf AGPL3 oder CC BY und werden nicht verwendet (Paketseite allein genügt nicht).
+  **Automatisch geprüft:** `gothar-chargen human` (vor dem Blender-Lauf) und `gothar-chargen licences` lesen die
+  `license`-Zeile jedes Assets eines Rezepts (`.mhclo`, `.mhmat`, das vom `.mhclo` genannte Material) und lehnen
+  alles außer CC0 ab. Dateien **ohne** Lizenzzeile (Systemassets, Cortu, ambientCG) gehen nur aus Ordnern, die in
+  `tools/chargen/src/gothar_chargen/data/asset_licences.toml` mit ihrer CC0-Quelle (Zeile in `assets/LICENSES.md`)
+  stehen; neue Ordner erst nach Prüfung des Pakets eintragen.
 - **Kleidung/Rüstung:** je Gilde/Stand eine Linie (Lumpen → leicht → mittel → schwer). **Kleidungs-Kit (F3e):**
   jedes Kleidungsstück ist ein eigenes Teil, je Statur angepasst – Rezepte `humans/cloth_<m|f>_<statur>` mit
   `fit_to = "body_<…>"` (Makros, Haut, Augen vom Grundkörper) und `parts = ["cloth"]` → `parts/cloth_<…>/<stück>.glb`
