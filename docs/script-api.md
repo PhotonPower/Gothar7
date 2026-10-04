@@ -61,6 +61,9 @@ Der NPC sieht, wie der Spieler etwas stiehlt bzw. beim Taschendiebstahl erwischt
 ### `on("assess_use_mob", fn(npc: string, owner: string, mob: string))`
 Der NPC sieht, wie der Spieler einen fremden Mob (Truhe, Tür …) benutzt oder knackt.
 
+### `on("chapter_changed", fn(chapter: integer))`
+Das Kapitel hat gewechselt (set_chapter in lib/diary.lua).
+
 ### `on("dialog_ended", fn(npc: string))`
 Ein Dialog ist vorbei.
 
@@ -310,8 +313,14 @@ Was der Held gezogen hat: `"none"`, `"weapon"` (Nahkampfwaffe) oder `"fists"`.
 
 ## Welt
 
+### `diary_open(open?: boolean)`
+Öffnet (bzw. mit `false` schließt) das Tagebuch, wie die Taste log (N bzw. J).
+
 ### `insert(instance: string, count?: integer) -> boolean`
 Setzt ein Item (vor der Spielfigur auf den Boden, `count` Stück nebeneinander) oder einen NPC (vor die Spielfigur, ihr zugewandt) in die Welt. Ohne `mesh` erhält ein Item einen Platzhalter nach `category`.
+
+### `notice(text: string)`
+Eine kurze Meldung am Bildschirm (Tagebuch-Einträge, Kapitel, Hinweise).
 
 ### `teleport(start: string) | teleport(x: number, y: number, z: number)`
 Setzt die Spielfigur (bzw. ohne Spielfigur die Kamera) auf einen Startpunkt der Welt oder an eine Position in Metern.
@@ -319,5 +328,5 @@ Setzt die Spielfigur (bzw. ohne Spielfigur die Kamera) auf einen Startpunkt der 
 ### `time(hour: integer, minute?: integer)`
 Stellt die Uhrzeit des Spiels (der Tag bleibt).
 
-### `where() -> {x, y, z, yaw, world, time}`
-Position (Meter) und Blickrichtung (Grad) der Spielfigur bzw. der Kamera, die Welt und die Uhrzeit.
+### `where() -> {x, y, z, yaw, world, time, day}`
+Position (Meter) und Blickrichtung (Grad) der Spielfigur bzw. der Kamera, die Welt, der Spieltag (ab 1) und die Uhrzeit.

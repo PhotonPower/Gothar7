@@ -360,6 +360,10 @@ bool Engine::runFrame()
             {
                 setInventoryOpen(!m_inventoryOpen);
             }
+            if (m_actions.pressed(m_input, platform::Action::Log) && m_player.valid())
+            {
+                m_diaryOpen = !m_diaryOpen; // the diary (M10)
+            }
             // The action key (classic: Ctrl, modern: E) acts on the focus: items are picked up, mobs used
             // (M8).
             const bool actionKey = m_actions.pressed(m_input, platform::Action::Action) ||
@@ -1799,9 +1803,9 @@ void Engine::setDebugUiVisible(bool visible) noexcept
 
 void Engine::runDebugUi(f64 realSeconds)
 {
-    m_debugUiFrame =
-        (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_focus || m_mobUse || m_document) &&
-        m_debugUi.valid();
+    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_focus || m_mobUse ||
+                      m_document || m_dialog || m_diaryOpen) &&
+                     m_debugUi.valid();
     m_window->setTextInput(m_debugUiFrame && m_debugUi.wantsText());
     if (!m_debugUiFrame)
     {
@@ -1823,6 +1827,7 @@ void Engine::runDebugUi(f64 realSeconds)
     choiceUi();
     documentUi();
     dialogUi(); // M10
+    diaryUi();
     if (!m_debugUiVisible)
     {
         return;

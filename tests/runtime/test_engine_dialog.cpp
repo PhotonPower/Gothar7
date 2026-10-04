@@ -101,7 +101,7 @@ TEST_CASE("Engine dialogue: important Info first, the menu, answers, Infos told 
     run(engine, "dialog_choose(1)");
     CHECK(field(engine, "line") == "Dann gehe ich gleich zu ihr.");
     skipLines(engine);
-    CHECK(run(engine, "Story.quest_farm_work").asString() == "running");
+    CHECK(run(engine, "quest_status('quest_farm_work')").asString() == "running"); // in the diary (part D)
     // Told once: the work topic is gone, the permanent one stays.
     CHECK(menu(engine) == "Was ist das hier für ein Lager? | Ende");
     run(engine, "dialog_choose(1)");
@@ -220,4 +220,38 @@ TEST_CASE("Engine teaching: the woodcutter teaches strength for learn points and
     run(engine, "dialog_choose(3)");
     skipLines(engine);
     CHECK(menu(engine) == "Bring mir bei, kräftiger zuzupacken. | Ende");
+}
+
+TEST_CASE("Engine diary: quests with entries by status, notes by topic, chapters")
+{
+    Engine engine(dialogConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "on('chapter_changed', function(n) Story.changed = n end)");
+    CHECK(run(engine, "quest_status('quest_farm_work')").asString() == "none");
+    CHECK(run(engine, "quest_start('quest_farm_work')").asBool());
+    CHECK_FALSE(run(engine, "quest_start('quest_farm_work')").asBool()); // once
+    run(engine, "quest_entry('quest_farm_work', 'Die Bäuerin will, dass ich das Feld umgrabe.')");
+    CHECK_FALSE(engine.runConsoleLine("quest_start('quest_nowhere')").ok());
+    run(engine, "note('Das Lager', 'Nachts kommen Wölfe bis an den Zaun.')");
+
+    ui::DiaryPanel diary = engine.diaryPanelData();
+    CHECK(diary.chapter == "Kapitel 1");
+    REQUIRE(diary.running.size() == 1);
+    CHECK(diary.running[0].name == "Arbeit auf dem Feld");
+    REQUIRE(diary.running[0].entries.size() == 2);
+    CHECK(diary.running[0].entries[0] ==
+          "Tag 1, 12:00: Die Torwache meint, die Bäuerin am Feld brauche Hilfe.");
+    REQUIRE(diary.notes.size() == 1);
+    CHECK(diary.notes[0].name == "Das Lager");
+
+    run(engine, "quest_success('quest_farm_work', 'Das Feld ist umgegraben.')");
+    diary = engine.diaryPanelData();
+    CHECK(diary.running.empty());
+    REQUIRE(diary.done.size() == 1);
+    CHECK(diary.done[0].entries.size() == 3);
+
+    run(engine, "set_chapter(2, 'Ärger im Lager')");
+    CHECK(run(engine, "chapter()").asInteger() == 2);
+    CHECK(run(engine, "Story.changed").asInteger() == 2);
+    CHECK(engine.diaryPanelData().chapter == "Kapitel 2");
 }
