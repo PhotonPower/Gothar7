@@ -75,6 +75,11 @@ def test_committed_recipes():
     assert recipes
     for r in recipes:
         h = load_human(r)
+        if h.hair_kit:  # hair kits: one part per style and beard, named after the recipe
+            for asset in [*h.hairs, *h.beards]:
+                piece = h.part_name(Path(asset).stem)
+                assert (CHARACTERS / "parts" / h.name / f"{piece}.glb").is_file(), piece
+            continue
         for part in h.parts:  # base bodies export only "body", heads "head" and "hair"
             if part == "cloth":  # clothing kits: one part per garment, named or derived
                 pieces = [h.part_name(Path(g).stem) for g in h.clothes]
@@ -551,3 +556,46 @@ def test_invalid_heavy_armour_keys(change, message):
     }
     with pytest.raises(HumanError, match=message):
         parse_human(data, "armor_x")
+
+
+def test_hair_kit_recipe(tmp_path):
+    """Hair kits (F3v): styles and beards fitted to a head recipe, each its own part."""
+    from gothar_chargen.human import HumanError, load_human
+
+    head = """version = 1
+parts = ["head", "hair"]
+[macro]
+gender = 1.0
+age = 0.6
+[assets]
+skin = "s/s.mhmat"
+eyes = "e/e.mhclo"
+hair = "hair/h/h.mhclo"
+"""
+    kit_text = """version = 1
+fit_to = "head_x"
+parts = ["hair", "beard"]
+triangles = 1500
+[assets]
+hairs = ["hair/long/long.mhclo", "hair/short/short.mhclo"]
+beards = ["clothes/viking/viking.mhclo"]
+[names]
+long = "hair_long"
+viking = "beard_viking"
+[budget]
+hair_long = 1800
+"""
+    (tmp_path / "head_x.human.toml").write_text(head, encoding="utf-8")
+    kit = tmp_path / "hair_x.human.toml"
+    kit.write_text(kit_text, encoding="utf-8")
+    h = load_human(kit)
+    assert h.hair_kit and h.parts == ("hair", "beard")
+    assert h.macro["age"] == 0.6 and h.skin == "s/s.mhmat"  # the head's shape and skin
+    assert [t for t, _ in h.assets()][-3:] == ["KitBeard", "KitHair", "KitHair"]
+    assert h.part_name("long") == "hair_long" and h.part_name("short") == "short"
+    assert not parse_human(RECIPE, "npc").hair_kit
+    with pytest.raises(HumanError, match="hair kits only"):
+        parse_human({**RECIPE, "assets": {**RECIPE["assets"], "hairs": ["hair/a/a.mhclo"]}}, "x")
+    kit.write_text(kit_text.replace('parts = ["hair", "beard"]', 'parts = ["cloth"]'), "utf-8")
+    with pytest.raises(HumanError, match="hair kits only"):
+        load_human(kit)

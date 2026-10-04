@@ -168,6 +168,8 @@ struct Creature
     bool reportedFighter = false;          ///< assess_fighter sent for the drawn weapon
     f64 heardUntil = 0.0;                  ///< noises up to this time are heard already
     bool followPlayer = false;             ///< Follow command running
+    bool talking = false;                  ///< in a dialogue with the player (M10): stands, faces him
+    bool approaching = false;              ///< walks up to the player for an important Info (approach = true)
     const LoadedModel* handItem = nullptr; ///< drawn at socket_hand_r
     usize handBone = 0;
     std::unique_ptr<AnimatedFigure> figure;

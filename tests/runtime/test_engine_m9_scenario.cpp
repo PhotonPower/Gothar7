@@ -95,6 +95,7 @@ TEST_CASE("M9 scenario: ten NPCs follow their routines through a game day, the g
     Engine engine(scenarioConfig());
     auto result = engine.init();
     REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    run(engine, "Story.met_gate_guard = true"); // no greeting (dialogues: test_engine_dialog.cpp)
     run(engine, kCheck);
     run(engine, "camp_people()");
     run(engine, "insert_pack('mon_wolf', 3)");

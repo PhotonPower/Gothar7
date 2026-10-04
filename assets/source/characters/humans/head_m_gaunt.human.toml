@@ -1,0 +1,27 @@
+# Head (middle-aged, gaunt, hooked nose), style A (F3v): head with face morphs, teeth and tongue; hair and beards
+# come from the hair kit hair_m_gaunt (parts/hair_m_gaunt/). Fits every base body of the
+# same sex (assembly snaps the neck); macros only shape the face.
+version = 1
+triangles = 5500
+parts = ["head"]
+
+[macro]
+gender = 1.0
+age = 0.62
+muscle = 0.5
+weight = 0.3
+proportions = 0.5
+height = 0.5
+race = { caucasian = 1.0 }
+
+[assets]
+skin = "skins/middleage_caucasian_male/middleage_caucasian_male.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow009/eyebrow009.mhclo"
+eyelashes = "eyelashes/eyelashes02/eyelashes02.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"
+
+[shape]
+nose-hump-incr = 0.8
+head-fat-decr = 0.5

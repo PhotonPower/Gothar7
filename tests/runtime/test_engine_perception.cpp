@@ -63,6 +63,7 @@ TEST_CASE("Engine perception: sight cone, range, sneaking and night")
     Engine engine(perceptionConfig());
     auto result = engine.init();
     REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    run(engine, "Story.met_gate_guard = true"); // no greeting (dialogues: test_engine_dialog.cpp)
     // The guard on the camp's centre (7, 0, -4), the player 10 m east of him.
     placeFacingPlayer(engine, "npc_gate_guard", "wp_camp_center", Vec3(17.0f, 0.0f, -4.0f));
     CHECK(run(engine, "npc_sees_player('npc_gate_guard')").asBool());
@@ -93,6 +94,7 @@ TEST_CASE("Engine perception: a drawn weapon, the guard warns, then would attack
 {
     Engine engine(perceptionConfig());
     REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true"); // no greeting (dialogues: test_engine_dialog.cpp)
     run(engine, "on('npc_would_attack', function(npc, reason) Story.attack = npc .. ' ' .. reason end)");
     placeFacingPlayer(engine, "npc_gate_guard", "wp_camp_center", Vec3(12.0f, 0.0f, -4.0f));
 
@@ -124,6 +126,7 @@ TEST_CASE("Engine perception: the owner notices the player in his private area")
 {
     Engine engine(perceptionConfig());
     REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true"); // no greeting (dialogues: test_engine_dialog.cpp)
     // The guard at the gate (21.5, 0, 0); his sleeping corner TRG_PRIVAT_WACHE east of it.
     placeFacingPlayer(engine, "npc_gate_guard", "wp_camp_gate", Vec3(27.0f, 0.0f, -4.0f));
     CHECK(run(engine, "player_inside('TRG_PRIVAT_WACHE')").asBool());
@@ -140,6 +143,7 @@ TEST_CASE("Engine perception: noises are heard within their radius")
 {
     Engine engine(perceptionConfig());
     REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true"); // no greeting (dialogues: test_engine_dialog.cpp)
     REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_south')").isString());
     run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man')");
     run(engine, "on('assess_noise', function(npc, kind) Story.heard = npc .. ' ' .. kind end)");
@@ -157,6 +161,7 @@ TEST_CASE("Engine attitudes: temporary ones are forgotten, permanent ones are sa
 {
     Engine engine(perceptionConfig());
     REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true"); // no greeting (dialogues: test_engine_dialog.cpp)
     CHECK(run(engine, "npc_attitude('npc_gate_guard')").asString() == "neutral"); // the hero has no guild yet
     run(engine, "set_temp_attitude('npc_gate_guard', 'angry', 2)");
     CHECK(run(engine, "npc_attitude('npc_gate_guard')").asString() == "angry");
@@ -172,6 +177,7 @@ TEST_CASE("Engine attitudes: a hostile guard would attack, his friends come to h
 {
     Engine engine(perceptionConfig());
     REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true"); // no greeting (dialogues: test_engine_dialog.cpp)
     run(engine, "on('npc_would_attack', function(npc, reason) Story.attack = npc .. ' ' .. reason end)");
     run(engine, "set_attitude('npc_gate_guard', 'hostile')");
     // The guard in the centre (7, 0, -4) looking north; the woodcutter (farmer, friends of the guards) 10 m
@@ -202,6 +208,7 @@ TEST_CASE("Engine weapon: drawn and put away with figuren's clips, the sword app
 {
     Engine engine(perceptionConfig());
     REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true"); // no greeting (dialogues: test_engine_dialog.cpp)
     run(engine, "give_item('it_sword_old') equip('it_sword_old')");
     runSeconds(engine, 0.5f);
     CHECK(run(engine, "draw_weapon()").asString() == "weapon");

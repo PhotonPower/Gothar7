@@ -295,7 +295,22 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   Ein Kopf passt auf jeden Grundkörper desselben Geschlechts: `assemble` zieht den Halsring des Körpers auf den des
   Kopfes (beide aus derselben MPFB-Topologie, Paarung über die Randkante; Hals und Kragen folgen weich bis 5 cm
   darunter) und verwendet die **Haut-Textur des Kopfes auch für den Körper** (eine Haut je Figur, gleiche UV).
-- **Haare/Bärte:** eigene Meshes, an Köpfe angepasst.
+- **Haare/Bärte:** eigene Meshes, an Köpfe angepasst. **Frisur-Kits (F3v):** Rezept `humans/hair_<kopf>` mit
+  `fit_to = "head_<kopf>"`, `parts = ["hair", "beard"]` und `[assets] hairs = [...]`, `beards = [...]` → je
+  Stil ein Teil `parts/hair_<kopf>/hair_<stil>.glb` bzw. `beard_<stil>.glb` (Rollen `hair`, `beard` im Manifest;
+  Knoten `hair_lod<n>` bzw. `beard_lod<n>`). Die Kits erben Makros, Form und Haut vom Kopf-Rezept, sitzen also
+  genau auf dem Kopf (auch nach dem Anheben auf Halshöhe). Texturen **neutral grau** und je Stil geteilt
+  (`textures/hair/<stil>_neutral.png`, Mittel 0,55): die Haarfarbe gibt die Palette (`hair`, `beard`). Budget je
+  Frisur `triangles` (1200), je Bart 600; Bärte tragen die 15 Gesichts-Morphs (§6.1). 13 Köpfe (8 m, 5 w),
+  Frisuren: Männer `hair_messy`, `hair_long_shaggy`, `hair_tousled`, `hair_buzz`, `hair_short`, `hair_cropped`,
+  `hair_long`, `hair_ponytail`, `hair_curly`; Frauen dazu `hair_braid`, `hair_bob`; Bärte `beard_goatee`,
+  `beard_moustache`, `beard_faun`. **Nur CC0 laut Datei-Kopf:** Viele Stücke der Pakete Hair 01 und Bodyparts 05
+  tragen im `.mhclo`-Kopf AGPL3 oder CC BY und werden nicht verwendet (Paketseite allein genügt nicht).
+  **Automatisch geprüft:** `gothar-chargen human` (vor dem Blender-Lauf) und `gothar-chargen licences` lesen die
+  `license`-Zeile jedes Assets eines Rezepts (`.mhclo`, `.mhmat`, das vom `.mhclo` genannte Material) und lehnen
+  alles außer CC0 ab. Dateien **ohne** Lizenzzeile (Systemassets, Cortu, ambientCG) gehen nur aus Ordnern, die in
+  `tools/chargen/src/gothar_chargen/data/asset_licences.toml` mit ihrer CC0-Quelle (Zeile in `assets/LICENSES.md`)
+  stehen; neue Ordner erst nach Prüfung des Pakets eintragen.
 - **Kleidung/Rüstung:** je Gilde/Stand eine Linie (Lumpen → leicht → mittel → schwer). **Kleidungs-Kit (F3e):**
   jedes Kleidungsstück ist ein eigenes Teil, je Statur angepasst – Rezepte `humans/cloth_<m|f>_<statur>` mit
   `fit_to = "body_<…>"` (Makros, Haut, Augen vom Grundkörper) und `parts = ["cloth"]` → `parts/cloth_<…>/<stück>.glb`
@@ -397,6 +412,8 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   Standardgewichte 0. Gewichte 0–1, additiv, beliebig viele gleichzeitig (Lippensync + Blinzeln + Ausdruck).
 - **Seiten:** `blink_l` = linkes Auge der Figur (+X), wie `*_l` im Rig.
 - **Halsnaht:** Morphs bewegen den Nahtring nicht (kein Spalt beim Sprechen).
+- **Gilt für alle Teile mit Morphs**, z. B. `beard` (Frisur-Kits, F3v): dieselbe Liste in derselben Reihenfolge
+  (Validator `morph.order`). engine ordnet bis M10 nach Index zu, danach nach Namen (Absprache 2026-10-04).
 - **Herkunft:** gemischt aus MPFB2-Gesichtszielen der CC0-Pakete „Visemes 02“ (Meta-Viseme) und „Faceunits 01“
   (ARKit-Einheiten); die Mischung steht als Daten in `tools/chargen/src/gothar_chargen/data/faces/morphs.toml`
   (z. B. `expr_friendly` = Lächeln + Wangen + leichtes Augenkneifen) und kann ohne Code angepasst werden.

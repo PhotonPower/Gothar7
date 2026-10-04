@@ -123,6 +123,17 @@ struct CreaturesPanel
     std::vector<Row> rows;
 };
 
+/// A dialogue (M10, owner decision E3: like Gothic 1): the line being said with the speaker's name, or the
+/// menu (topics, answers) below; arrow keys or the mouse, the action key chooses.
+struct DialogPanel
+{
+    std::string speaker;
+    std::string line; ///< empty: the menu is shown
+    std::vector<std::string> options;
+    i32 selected = 0; ///< edited (mouse hover)
+    i32 clicked = -1; ///< out
+};
+
 /// NPC behaviour (M9 part E, window "AI"): per NPC state, routine, queue, perception. The engine fills it;
 /// the selected NPC's senses are drawn in the debug overlay (F2).
 struct AiPanel
@@ -242,6 +253,8 @@ public:
     void consolePanel(ConsolePanel& panel);
     /// Window "Creatures" (M6 D3).
     void creaturesPanel(CreaturesPanel& panel);
+    /// The dialogue box at the bottom (M10).
+    void dialogPanel(DialogPanel& panel);
     /// Window "AI" (M9 part E).
     void aiPanel(AiPanel& panel);
     /// Window "Inventory" (M8).

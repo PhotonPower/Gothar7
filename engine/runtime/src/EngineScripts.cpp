@@ -100,6 +100,7 @@ Result<void> Engine::initScripts()
     bindNpcFunctions();
     bindAiFunctions();
     bindPerceptionFunctions();
+    bindDialogFunctions();
     m_scripts->loadAll();
     loadPerceptionSettings(); // data/perception.lua (M9 part C)
     buildHero();

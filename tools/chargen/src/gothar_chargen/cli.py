@@ -39,12 +39,14 @@ from gothar_chargen.gltf import Gltf, GltfError
 from gothar_chargen.human import SUFFIX as HUMAN_SUFFIX
 from gothar_chargen.human import HumanError, load_human
 from gothar_chargen.items import build_items, validate_item
+from gothar_chargen.licences import check_recipe
 from gothar_chargen.meshdata import split_lod
 from gothar_chargen.partdata import (
     PartDataError,
     body_or_head_data,
     garment_data,
     hide_own_skin,
+    name_meshes,
     write_part,
 )
 from gothar_chargen.poke import CLIPS as POKE_CLIPS
@@ -359,6 +361,10 @@ def update_part_data(characters: Path, dirs: list[Path] | None, out: TextIO) -> 
                 print(f"part data {path.relative_to(characters)} ({role}{extra})", file=out)
             elif role == "cloth":
                 garments.append((path, g))
+            elif role in ("hair", "beard"):  # no assembly data; only stable mesh names
+                name_meshes(g)
+                path.write_bytes(g.to_bytes())
+                print(f"part data {path.relative_to(characters)} ({role}, names)", file=out)
     humans = characters / "humans"
     for path, g in garments:
         recipe = load_human(humans / (path.parent.name + HUMAN_SUFFIX))
@@ -376,12 +382,28 @@ def _cmd_part_data(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_licences(args: argparse.Namespace, out: TextIO) -> int:
+    """Licence headers of all MPFB assets the recipes use (CC0 only; local MPFB data)."""
+    characters = _characters_dir(args)
+    recipes = args.recipes or sorted((characters / "humans").glob("*" + HUMAN_SUFFIX))
+    errors = [e for r in recipes for e in check_recipe(r, args.mpfb_data)]
+    for e in errors:
+        print(f"error: {e}", file=out)
+    print(f"{len(recipes)} recipe(s), {len(errors)} licence error(s)", file=out)
+    return EXIT_ERROR if errors else EXIT_OK
+
+
 def _cmd_human(args: argparse.Namespace, out: TextIO) -> int:
     characters = _characters_dir(args)
     recipes = args.recipes or sorted((characters / "humans").glob("*" + HUMAN_SUFFIX))
     humans = [(r, load_human(r)) for r in recipes]  # fail early on a bad recipe
     if not humans:
         print("error: no human recipes found", file=out)
+        return EXIT_ERROR
+    licence_errors = [e for r, _ in humans for e in check_recipe(r, args.mpfb_data)]
+    if licence_errors:  # public repo: CC0 assets only, checked before Blender starts
+        for e in licence_errors:
+            print(f"error: {e}", file=out)
         return EXIT_ERROR
     blender = find_blender(args.blender)
     rig = load_rig(args.rig)
@@ -611,7 +633,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
     )
+    p.add_argument("--mpfb-data", type=Path, help="MPFB data folder (default: MPFB_DATA/Blender)")
     p.set_defaults(func=_cmd_human)
+
+    p = sub.add_parser("licences", help="CC0 check of the MPFB assets in humans/ (file headers)")
+    p.add_argument("recipes", nargs="*", type=Path, help="default: all in humans/")
+    p.add_argument("--mpfb-data", type=Path, help="MPFB data folder (default: MPFB_DATA/Blender)")
+    p.add_argument(
+        "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
+    )
+    p.set_defaults(func=_cmd_licences)
 
     p = sub.add_parser("build-test-parts", help="own simple test parts for the figure kit")
     p.add_argument(

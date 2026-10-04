@@ -188,7 +188,24 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
 - Mob-Zustände (offen, verschlossen, Inhalt) gelten für die Sitzung; gespeichert werden sie mit M14.
 
 ## Dialog & Quests (M10)
-- `Info` (siehe script.md): Auswahl der verfügbaren Infos = Bedingung erfüllt ∧ (permanent ∨ nicht gesagt), sortiert nach Priorität; `important` startet Dialog automatisch, wenn der NPC den Spieler wahrnimmt.
+### Dialog-Ablauf (Teil A, umgesetzt) – `runtime/EngineDialog.cpp`
+- **Ansprechen:** NPC im Fokus und Aktionstaste (schleichend bleibt es Taschendiebstahl); Konsole `talk(npc)`. Der NPC
+  unterbricht seinen Zustand, dreht sich zum Spieler und steht; danach beginnt sein Tagesablauf wieder.
+- **Infos** (`Info "dia_x" { npc, nr, description, important, permanent, approach, condition(npc), run(npc) }`):
+  verfügbar, wenn die Bedingung gilt und die Info `permanent` oder noch nicht gesagt ist (`Story.told`,
+  `info_told(name)`); Menü nach `nr`, dazu immer „Ende“. Wählt der Spieler eine, sagt der Held zuerst ihre
+  `description`.
+- **`important`** (Entscheidung E1): beim Ansprechen zuerst, ohne Auswahl; der NPC spricht den Spieler von sich aus an,
+  sobald er ihn in 3 m sieht. Mit `approach = true` geht er bis 10 m auf ihn zu.
+- **run(npc)** reiht ein: `say(wer, text)` (`wer` = der NPC oder `"hero"`), `choice(text, fn)` (Antworten; gewählt sagt
+  der Held den Text, dann läuft `fn(npc)`), `end_dialog()`. Ohne Antworten folgt wieder das Menü.
+- **Zeilen** (E2, E4): deutscher Text inline in Lua, Schlüssel automatisch `<info>_<nn>` (für Übersetzung und spätere
+  Sprachdateien), Dauer nach Zeichenzahl (0,06 s je Zeichen, mindestens 1,5 s), mit der Aktionstaste überspringbar.
+- **Darstellung** (E3, E5): unten ein dunkles Feld, Sprechername und Zeile bzw. das Menü; Pfeiltasten
+  (vor/zurück) bzw. Maus, Aktionstaste wählt. Vorläufig ImGui, die echte Oberfläche mit M14.
+- Ereignisse `dialog_started(npc)`, `dialog_ended(npc)`; Abfrage `dialog_state()`, `dialog_choose(n)` (Konsole, Tests).
+
+### Weiter (Teile B–E)
 - Dialog-Ablauf als Sequenz: `say` (Sprache + Untertitel + Gesten + Lippensync), `choices`, `trade`, `teach`, `end`.
 - Dialog-Kamera: Schuss/Gegenschuss je Sprecher.
 - Tagebuch: Topics mit Status, Einträge mit Zeitstempel.

@@ -61,6 +61,7 @@ void defineContentKinds(script::ScriptVm& vm)
                        {"description", Type::String}, // menu text; important infos start by themselves
                        {"important", Type::Boolean},
                        {"permanent", Type::Boolean},
+                       {"approach", Type::Boolean}, // important: the NPC walks up to the player (M10)
                        {"condition", Type::Function},
                        {"run", Type::Function, true},
                    },

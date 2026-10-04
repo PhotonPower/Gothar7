@@ -104,7 +104,8 @@ def main() -> None:
             basemesh, [{"target": n, "value": v} for n, v in human.shape.items()]
         )
     for asset_type, rel in human.assets():
-        mpfb_type = "Clothes" if asset_type == "Beard" else asset_type
+        # beards and the styles of a hair kit load as clothes (several at once)
+        mpfb_type = "Clothes" if asset_type in ("Beard", "KitBeard", "KitHair") else asset_type
         obj = human_service.add_mhclo_asset(
             asset(rel), basemesh, asset_type=mpfb_type, subdiv_levels=0, material_type="MAKESKIN"
         )
