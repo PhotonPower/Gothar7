@@ -506,6 +506,57 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_waynet(args: argparse.Namespace, out: TextIO) -> int:
+    """Waynet proposal from the street axes into the assembled world (W6)."""
+    from gothar_worldgen.export.terrain import world_text
+    from gothar_worldgen.qa.begehung import Character, game_grid, load_bodies
+    from gothar_worldgen.waynet.generate import build_waynet
+    from gothar_worldgen.waynet.landmarks import garden_beds, garden_links, landmarks
+
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    assets = folder.parents[1]
+    world_path = folder / f"{site.name}.g7world"
+    try:
+        world = json.loads(world_path.read_text(encoding="utf-8"))
+        streets = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))["streets"]
+        index = json.loads((folder / "generated" / "buildings_index.json").read_text("utf-8"))
+        ch = Character.load(assets / "data" / "movement.toml")
+        grid = game_grid(world, assets)
+        bodies = load_bodies(world, assets, grid, ch)
+        ann_path = data_dir / "waynet.json"
+        ann = json.loads(ann_path.read_text(encoding="utf-8")) if ann_path.is_file() else {}
+        gates = json.loads((data_dir / "city_wall.json").read_text(encoding="utf-8"))
+        castle = folder / "handmade" / "schloss" / "schloss_built.json"
+        posterns = [(float(g["at"][0]), float(g["at"][1])) for g in gates.get("gates", [])
+                    if g.get("wall") == "zwinger"]  # fmt: skip
+        spec = json.loads(castle.read_text("utf-8")) if castle.is_file() else {}
+        links = garden_links(spec, posterns) if spec else []
+        marks = landmarks(world, gates)
+        marks["beds"] = garden_beds(spec) if spec else []
+        res = build_waynet(site.name, streets, index.get("entries", []), bodies, grid.height_at,
+                           ch, site.core_half_extent_m, marks,
+                           world.get("waynet"), ann, links)  # fmt: skip
+    except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    world["waynet"] = res.block()
+    world_path.write_text(world_text(world), encoding="utf-8", newline="\n")
+    target = folder / "generated" / "waynet_report.json"
+    target.write_text(json.dumps(res.report, ensure_ascii=False, indent=1) + "\n", "utf-8")
+    r = res.report
+    print(f"  {r['points']} points ({r['doorPoints']} at doors, {r['detours']} detours), "
+          f"{r['edges']} edges, {r['freepoints']} freepoints", file=out)  # fmt: skip
+    print(f"  components {r['components']}, main {r['mainShare']:.1%}; dropped points "
+          f"{len(r['droppedPoints'])}, dropped edges {len(r['droppedEdges'])}, unconnected doors "
+          f"{len(r['doorsUnconnected'])}", file=out)  # fmt: skip
+    print(f"  {world_path}", file=out)
+    print(f"  {target}", file=out)
+    return EXIT_OK
+
+
 def _cmd_begehung(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -1032,6 +1083,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("site")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_citywall)
+
+    p = sub.add_parser("waynet", help="waynet proposal from the street axes (W6), after assemble")
+    p.add_argument("site")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_waynet)
 
     p = sub.add_parser("begehung", help="static walkthrough of the assembled world (W3)")
     p.add_argument("site")

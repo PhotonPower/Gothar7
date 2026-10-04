@@ -172,8 +172,8 @@ def test_world_text_layout_like_the_engine():
     }
     text = world_text({**doc, "vobs": [vob, {**vob, "id": 5}], "waynet": {"points": []}})
     assert '  "vobs": [\n    {"id":4,' in text and text.endswith(
-        '\n  ],\n  "waynet": {"points":[]}\n}\n'
-    )
+        '\n  ],\n  "waynet": {\n    "points": [],\n    "edges": [],\n    "freepoints": []\n  }\n}\n'
+    )  # the engine's waynet layout: one entry per line, all three lists
     assert json.loads(text)["vobs"][1]["id"] == 5
 
 

@@ -835,8 +835,34 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   4. Eigene Vobs, deren Quelle verschwunden ist, werden entfernt; ihre ID bleibt in `vob_ids.json` und wird nie
      wieder vergeben. Eine eigene Gruppe, an der noch Editor-Vobs hängen, bleibt erhalten.
   5. Der `terrain`-Block wird jedes Mal aus `<ort>_terrain.g7world` übernommen.
-- **Wegnetz-Vorschlag** aus Straßenachsen: Wegpunkte an Kreuzungen, in festen Abständen und vor
-  Haustüren (`WP_LEO_<STRASSE>_<NR>`); Freepoints auf Plätzen. Der Designer bessert im Editor nach.
+- **Wegnetz-Vorschlag** aus Straßenachsen (`gothar-worldgen waynet <ort>` nach `assemble`,
+  `gothar_worldgen/waynet/`, Vertrag world.md „Wegnetz“); schreibt den `waynet`-Block in die Welt und
+  `generated/waynet_report.json`:
+  - **Punkte** `WP_LEO_<STRASSE>_<NNN>` entlang jeder begehbaren OSM-Achse im Kern (höchstens 12 m
+    Abstand, dazu Knicke über 30°, Kreuzungen, Enden); ohne Tiefgaragen (`tunnel` mit `layer` < 0)
+    und Schnellstraßen. Jeder Punkt liegt auf freiem Boden (Radius der Figur + 0,2 m Abstand zu
+    Kollisionskörpern), sonst bis 3 m quer zur Achse verschoben oder ausgelassen.
+  - **Türpunkte** `WP_LEO_<STRASSE>_<KÜRZEL>` (Kürzel aus der LoD2-ID) 0,6 m vor der Tür bzw. am
+    Fuß von Treppe oder Abgang, mit `dir` zur Tür; angebunden an den nächsten erreichbaren Punkt
+    oder an eine Kante (die dafür geteilt wird). Türen, vor denen direkt ein Nachbarhaus oder eine
+    Mauer steht, bekommen keinen Punkt (Bericht `doorsUnusable`).
+  - **Kanten** nur, wenn die Gerade frei von Kollisionskörpern ist und **kein 0,5-m-Stück steiler
+    als 35°** (Autopilot: die Figur bleibt an kurzen steilen Stücken weit unter der Grenze des
+    Controllers hängen; Treppenwege sind im Gelände nur Rampen und nicht ausgenommen); sonst ein
+    Umweg-Punkt daneben oder die Kante entfällt (Bericht `droppedEdges`, steile Stücke als Liste
+    `steep`). Inseln werden untereinander und ans Hauptnetz gebunden, wo eine freie, begehbare
+    Gerade bis 30 m sie erreicht; ausdrücklich verbunden werden die Gartentreppen und -tore des
+    Schlosses und die Zwinger-Pforte davor (Treppenrampen sind Kollisionskörper).
+  - **Freepoints:** `FP_SIT` auf dem Brunnenrand (nach außen), `FP_DRINK` an den Brunnen,
+    `FP_SMALLTALK` paarweise und `FP_ROAM` auf dem Marktplatz, `FP_STAND` innen an den Toren,
+    `FP_WATER` (Pflanzen gießen) an den Beeten des Pomeranzengartens.
+  - **Eigentum:** alles Erzeugte mit `owner: "worldgen"`; Hand-Punkte, -Freepoints und -Kanten
+    bleiben (ihre Namen vergibt der Generator nicht, er bindet sie an). Dauerhafte Korrekturen in
+    `data/leonberg/waynet.json` (`remove`, `add`).
+  - **Schreiben** im Layout der Engine (eine Zeile je Eintrag, sortiert, Zahlen wie die Engine sie
+    rundet; Richtungen als Fixpunkt ihres Normierens), Lauf → `assemble` → Lauf ist byte-gleich.
+  - **Prüfung:** Bericht mit Komponenten (Inseln mit Grund); Autopilot über 30 zufällige Wege A→B
+    (Spieler mit `--walk` entlang der A*-Pfade, NPCs mit `npc_goto` über die Pfadsuche der Engine).
 
 ### Vorhandene Werkzeuge (kein Eigenbau)
 Blender (+ Add-on BlenderGIS zum Gegenprüfen), COLMAP / RealityScan / Postshot (Photogrammetrie bzw.

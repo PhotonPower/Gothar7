@@ -191,3 +191,18 @@ def test_no_hand_made_model_is_sunk_in_the_world():
     assert {"HANDMADE_SCHLOSS", "HANDMADE_KIRCHE", "HANDMADE_MARKTBRUNNEN"} <= names
     assert {"HANDMADE_GARTEN_GELAENDER", "HANDMADE_OBELISKBRUNNEN"} <= names
     assert [(r.name, r.buried, r.deepest, r.worst) for r in reports if not r.ok] == []
+
+
+def test_north_flights_lie_on_the_railing_gates():
+    # the railing model has its north gates at gateS from the centre: the flights must meet them
+    # (W6 autopilot: 1.2 m off, the character got stuck between flight and railing)
+    p = plan(Frame(), slope, {**EXTENT, "gateS": 16.0})
+    north = sorted(
+        st["top"][0] for st in p["stairs"] if st["dir"] == [0.0, 1.0] and not st.get("side")
+    )
+    assert north and all(any(abs(s - g) < 1e-6 for g in (-16.0, 0.0, 16.0)) for s in north)
+    plain = plan(Frame(), slope, EXTENT)  # without gateS: the axis of each part, as before
+    axes = sorted(
+        st["top"][0] for st in plain["stairs"] if st["dir"] == [0.0, 1.0] and not st.get("side")
+    )
+    assert axes != north

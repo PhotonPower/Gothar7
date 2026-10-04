@@ -61,6 +61,18 @@
       "note": "Entscheidung Projektinhaber (2026-10-03): schmale Pforte in der Zwingermauer vor dem Westtor des Pomeranzengartens; die Gartentreppe führt hindurch in den Zwinger"
     },
     {
+      "key": "pforte_garten_ost",
+      "kind": "pforte",
+      "at": [-137.05, 76.35],
+      "note": "Entscheidung Projektinhaber (2026-10-04): Pforte vom Schlossgarten-Bezirk zur Stadt, wo der OSM-Weg die Ringmauer quert"
+    },
+    {
+      "key": "pforte_schlosshang",
+      "kind": "pforte",
+      "at": [-272.75, -44.8],
+      "note": "Entscheidung Projektinhaber (2026-10-04, Variante A): Pforte am Schlosshang-Weg in den Schlossgarten-Bezirk, wo der OSM-Weg die Ringmauer quert"
+    },
+    {
       "key": "pforte_pfarr",
       "kind": "pforte",
       "at": [-180, -104],

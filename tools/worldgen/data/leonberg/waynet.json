@@ -1,0 +1,5 @@
+{
+  "note": "Dauerhafte Korrekturen am erzeugten Wegnetz (Vertrag world.md \"Wegnetz\"): remove = erzeugte Punkte, die nicht angelegt werden (ihre Kanten entfallen mit); add = zusätzliche Punkte, Freepoints und Kanten. Derzeit keine.",
+  "remove": [],
+  "add": {}
+}

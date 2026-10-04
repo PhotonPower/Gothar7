@@ -181,10 +181,14 @@ def world_text(doc: dict[str, Any]) -> str:
     else:
         tail = '  "vobs": []'
     for key in ("waynet", "zones"):
-        if key in doc:
-            tail += (
-                f',\n  "{key}": {json.dumps(doc[key], separators=(",", ":"), ensure_ascii=False)}'
-            )
+        if key not in doc:
+            continue
+        if key == "waynet" and isinstance(doc[key], dict):  # the engine's layout, entry per line
+            from gothar_worldgen.waynet.write import waynet_text
+
+            tail += f',\n  "waynet": {waynet_text(doc[key])}'
+            continue
+        tail += f',\n  "{key}": {json.dumps(doc[key], separators=(",", ":"), ensure_ascii=False)}'
     return "\n".join(lines) + "\n" + tail + "\n}\n"
 
 
