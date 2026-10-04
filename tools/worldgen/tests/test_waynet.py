@@ -200,3 +200,14 @@ def test_islands_are_tied_to_each_other_and_links_join_without_checks():
     assert linked.report["components"] == 1
     assert {"WP_LEO_TOR_1", "WP_LEO_TOR_2"} <= {p.name for p in linked.points}
     assert ("WP_LEO_TOR_1", "WP_LEO_TOR_2", True) in linked.edges
+
+
+def test_writing_a_written_block_again_changes_nothing():
+    # assemble reads the waynet block and writes it again: a direction that is unit length within
+    # the engine's tolerance stays as written (-0.90449 must not become -0.904488)
+    block = {"points": [{"name": "WP_A", "pos": [1, 2, 3], "dir": [-0.4265, 0.0, -0.90449],
+                         "owner": "worldgen"}]}  # fmt: skip
+    once = waynet_text(block)
+    assert '"dir":[-0.4265,0.0,-0.90449]' in once
+    again = json.loads("{" + '"w": ' + once + "}")["w"]
+    assert waynet_text(again) == once

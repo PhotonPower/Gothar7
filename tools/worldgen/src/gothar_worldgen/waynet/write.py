@@ -36,15 +36,22 @@ def tidy(value: float) -> float:
     return 0.0 if r == 0.0 else r
 
 
+DIR_UNIT_TOLERANCE = 1e-4  # as the engine: a direction this close to unit length stays as written
+
+
 def _dir(d: Any) -> list[float] | None:  # noqa: ANN401
-    """The written direction: horizontal and unit length (the engine keeps it as written)."""
+    """The written direction: horizontal and unit length. Like the engine (world.md "Wegnetz"),
+    a horizontal direction within ``DIR_UNIT_TOLERANCE`` of unit length is kept as it is, so
+    writing a block that was read again changes nothing (assemble rewrites the waynet)."""
     if d is None:
         return None
-    x, z = float(d[0]), float(d[2])
+    x, y, z = float(d[0]), float(d[1]), float(d[2])
     n = math.hypot(x, z)
     if n <= 1e-6:
         return None
-    return [tidy(x / n), 0.0, tidy(z / n)]
+    if y != 0.0 or abs(n - 1.0) > DIR_UNIT_TOLERANCE:
+        x, z = x / n, z / n
+    return [tidy(x), 0.0, tidy(z)]
 
 
 def _point(p: dict[str, Any]) -> str:
