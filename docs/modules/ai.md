@@ -2,12 +2,24 @@
 
 **Zweck:** Das „Eigenleben“ der Welt – das Herz von Gothic. Mechanik in C++, Verhalten in Skripten.
 
-## 1. Wegnetz & Navigation
-- **Wegpunkte (WP)**: benannte Knoten mit Position/Richtung, Kanten ungerichtet.
-- **Freepoints (FP)**: lose Aufenthaltsorte mit Typ-Präfix (`FP_SIT_`, `FP_STAND_`, `FP_SMALLTALK_`, `FP_ROAM_`),
-  werden per Belegung reserviert (`findFreepoint(npc, "SIT", radius)`).
-- **A\*** auf dem Wegnetz, Heuristik euklidisch; Pfad = [aktuelle Position → nächster erreichbarer WP → … → Ziel].
-- Folgen eines Pfades mit Charakter-Controller, Ausweichen bei Blockade (anderer NPC), Neuplanung bei Hindernis.
+## 1. Wegnetz & Navigation (M9 Teil A, umgesetzt) – `ai/Waynet.hpp`, `runtime/EngineNpcs.cpp`
+- **Wegpunkte (WP)** und **Freepoints (FP)** aus dem `waynet`-Block der Welt (world.md „Wegnetz“, Vertrag mit welt),
+  `ai::Waynet::build`. Namen ohne Rücksicht auf Groß- und Kleinschreibung (`find`, `findFreepoint`); Freepoint-Typ
+  = zweites Namensglied (`FP_SIT_…` → `SIT`). Belegung der Freepoints kommt mit Teil B.
+- **A\*** über die ungerichteten Kanten (`path`), Heuristik euklidisch.
+- **Route** (`route(von, ziel, gehbar)`): geradeaus, wenn die Linie gehbar ist; sonst zum nächsten von der Position
+  aus gehbaren WP, über das Netz zum WP, von dem aus das Ziel gehbar ist, dann zum Ziel. **Glättung:** Von jedem Punkt
+  aus geht es zum weitesten Folgepunkt, der noch in gerader Linie gehbar ist.
+- **Gehbar** (Engine, `walkableLine`): Kugeln (Radius 0,25 m) in 0,5 / 1,0 / 1,5 m Höhe treffen auf der Linie nichts
+  – Zäune mit Lücken zwischen den Latten zählen als Hindernis, niedrige Stufen nicht.
+- **NPCs** (eingefügte `Npc`-Instanzen) haben eine eigene Kapsel wie der Held (`physics::CharacterController`):
+  Schwerkraft, Stufen, Kollision mit der Welt. `npc_goto(npc, ziel, rennen)` bzw. `Engine::npcGoTo`: drehen sich zum
+  nächsten Routenpunkt (6 rad/s), gehen (Geschwindigkeit aus den Blendpunkten des Menschen-Graphen) oder rennen, ein
+  Punkt gilt in 0,35 m als erreicht. **Blockiert** (1,5 s ohne 0,3 m Fortschritt): neu planen, höchstens dreimal,
+  dann `npc_blocked`; steht etwas auf dem Ziel und der NPC ist schon näher als 1,2 m, gilt er als angekommen. Ankunft:
+  Ereignis `npc_arrived(npc, ziel)`.
+- **Debug** (F2): Kanten, Wegpunkte mit Namen (bis 40 m), Freepoints mit Blickrichtung, die Routen gehender NPCs.
+- Testlager: Wegnetz mit 11 Punkten und 4 Freepoints (um das Südende des Zauns herum; das Tor ist zu).
 - Später optional: Navmesh für freie Bewegung im Kampf (ADR, wenn nötig).
 
 ## 2. NPC-Zustandsautomat (Gothic: „ZS_“-Zustände)

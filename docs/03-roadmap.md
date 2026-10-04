@@ -197,7 +197,7 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 **DoD:** Spieler kann Items aufheben, ausrüsten, Truhen knacken, am Amboss schmieden, schlafen.
 
 ## M9 – NPC-KI
-- [ ] Wegnetz: Wegpunkte, Kanten, Freepoints; A*-Pfadsuche; Pfadglättung; Fallback-Navigation zwischen Netz und Position
+- [x] Wegnetz: Wegpunkte, Kanten, Freepoints; A*-Pfadsuche; Pfadglättung; Fallback-Navigation zwischen Netz und Position – `ai::Waynet`, NPCs mit eigener Kapsel, `npc_goto`, Wegnetz und Routen in F2 (A)
 - [ ] NPC-Zustandsautomat: Skript-Zustände `begin/loop/end`, Zustandswechsel, Unterbrechungen
 - [ ] **Tagesabläufe** (Routinen) mit Zeitfenstern, Routinenwechsel per Skript (z. B. Kapitelwechsel)
 - [ ] Freepoint-Belegung (Sitzplätze am Lagerfeuer etc.)

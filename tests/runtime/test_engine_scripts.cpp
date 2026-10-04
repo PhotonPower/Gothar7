@@ -630,3 +630,43 @@ TEST_CASE("Engine use: taking somebody else's things is theft")
     CHECK(run(engine, "owned_by('LAGER_TRUHE_ZU')").asString() == "npc_farmer_woman");
     CHECK(run(engine, "owned_by('LAGER_TRUHE')").isNil());
 }
+
+TEST_CASE("Engine NPCs: walking over the camp's waynet through the gate to the fire and back")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    REQUIRE_FALSE(engine.waynet().empty());
+    CHECK(engine.waynet().find("wp_camp_fire").has_value()); // names without regard to case
+
+    run(engine, "on('npc_arrived', function(npc, target) Story.arrived = npc .. ' ' .. target end)");
+    REQUIRE(run(engine, "insert('npc_farmer_woman')").asBool());
+    const auto id = engine.npcByInstance("npc_farmer_woman");
+    REQUIRE(id.has_value());
+    for (int i = 0; i < 30; ++i) // she lands
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK_FALSE(engine.npcGoTo(*id, "wp_nowhere").ok());
+    REQUIRE(run(engine, "npc_goto('npc_farmer_woman', 'wp_camp_fire')").asBool());
+    CHECK(engine.npcWalking(*id));
+    // ~33 m at walking pace: about 21 s.
+    for (int i = 0; i < 60 * 45 && engine.npcWalking(*id); ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK_FALSE(engine.npcWalking(*id));
+    CHECK(run(engine, "Story.arrived").asString() == "npc_farmer_woman wp_camp_fire");
+    const Vec3 fire = engine.waynet().points()[*engine.waynet().find("WP_CAMP_FIRE")].position;
+    const Vec3 at = *engine.creaturePosition(*id);
+    CHECK(glm::length(Vec3(at.x - fire.x, 0.0f, at.z - fire.z)) < 0.5f);
+
+    // Back out, running, to a freepoint at the gate.
+    REQUIRE(engine.npcGoTo(*id, "fp_stand_gate_01", true).ok());
+    for (int i = 0; i < 60 * 30 && engine.npcWalking(*id); ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK_FALSE(engine.npcWalking(*id));
+    CHECK(run(engine, "Story.arrived").asString() == "npc_farmer_woman fp_stand_gate_01");
+}

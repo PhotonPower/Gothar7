@@ -97,6 +97,7 @@ Result<void> Engine::initScripts()
     bindHeroFunctions();
     bindMobFunctions();
     bindUseFunctions();
+    bindNpcFunctions();
     m_scripts->loadAll();
     buildHero();
     for (const script::ScriptError& e : m_scripts->errors())
@@ -328,6 +329,16 @@ Result<void> Engine::insertInstance(std::string_view name, u32 count)
             if (!spawned)
             {
                 return Error{std::format("{}: {}", name, spawned.error().message)};
+            }
+            // A capsule to walk with (M9): NPCs collide and follow the ground like the hero.
+            if (m_physics.valid())
+            {
+                physics::CharacterDesc body;
+                body.userData = 0;
+                if (auto controller = physics::CharacterController::create(m_physics, body, at))
+                {
+                    creature(spawned.value())->body = std::move(controller).value();
+                }
             }
             // Its values and inventory (pickpocketing, M8 part D); a broken instance only loses those.
             if (auto character = gameplay::Character::fromInstance(*npc, itemLookup()))

@@ -1072,6 +1072,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     {
         return Error{"cannot load world: " + spawned.error().message};
     }
+    m_waynet = file.waynet ? ai::Waynet::build(*file.waynet) : ai::Waynet{}; // M9: NPCs walk on it
     if (const auto& ref = file.terrain)
     {
         auto heightfield = world::Heightfield::load(m_vfs, *ref);
@@ -1197,6 +1198,7 @@ void Engine::requestWorldChange(std::string world, std::string start)
 void Engine::unloadWorld()
 {
     m_creatures.clear(); // they belong to the world they were put into
+    m_waynet = {};
     m_scene.clear();
     m_instances.clear();
     m_worldItems.clear(); // items lying around belong to the world
@@ -1932,6 +1934,7 @@ void Engine::addWorldDebugOverlay()
                                 Vec4(1.0f, 0.3f, 0.2f, 0.7f)};
         m_debugDraw.box(instance.bounds, render::DebugStyle{colours[std::min<u32>(instance.lod, 2)]});
     }
+    drawWaynet(); // M9: way points, edges, freepoints, the routes NPCs walk
     m_scene.each<world::Vob, world::MobRef, world::WorldTransform>(
         [&](entt::entity, const world::Vob&, const world::MobRef& mob, const world::WorldTransform& t)
         {
