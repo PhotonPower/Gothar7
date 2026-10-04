@@ -35,3 +35,10 @@ Item "it_mug" {
     category = "misc",
     value = 3,
 }
+
+Item "it_axe" {
+    name = "Axt",
+    mesh = "items/it_axe.glb",
+    category = "misc",
+    value = 15,
+}

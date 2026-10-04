@@ -62,20 +62,33 @@ Routine "rtn_farmer_woman" {
 - Testlager: `camp_people()` (Konsole oder `--exec=camp_people()`) setzt Torwache, Bäuerin, Holzfäller und den
   alten Mann an die Orte ihres Tagesablaufs (`routines/camp.lua`).
 
-## 4. Wahrnehmung
+## 4. Wahrnehmung (M9 Teil C1, umgesetzt) – `runtime/EnginePerception.cpp`, Inhalt `ai/perceptions.lua`
 | Sinn | Umsetzung |
 |---|---|
-| Sehen | Sichtkegel (Winkel, Reichweite je NPC) + Raycast; Spieler im Schleichmodus/Dunkelheit schwerer sichtbar |
-| Hören | Lärmereignisse mit Position + Radius (Kampf, Schritte beim Rennen, Zauber, Truhe knacken) |
-| Nähe | Radius (z. B. Spieler kommt zu nah) |
+| Sehen | Kegel (Vorgabe 100°) und Reichweite (25 m) je NPC, Strahl von Augenhöhe (1,6 m) zur Brust des Spielers gegen die Welt; schleicht er, halbe Reichweite, nachts (21–6 Uhr) 0,6 |
+| Hören | Geräusche mit Ort und Radius (mal Gehör des NPCs), 2 s hörbar: die Engine meldet Rennen (`run`) und jeden Dietrich-Dreh (`lockpick`), Skripte rufen `noise(x, y, z, radius, art)` |
+| Nähe | Besitzer im privaten Bereich: in `room_distance` (8 m) auch ohne Sicht |
 
-Ereignistypen → Skript-Reaktion (`perceptions.lua` je Gilde/NPC-Typ):
-`AssessPlayer`, `AssessEnemy`, `AssessFighter` (Waffe gezogen), `AssessThreat`, `AssessTheft`,
-`AssessUseMob` (fremde Truhe), `AssessEnterRoom` (Besitz), `AssessDamage`, `AssessMagic`,
-`AssessCall` (Kamerad ruft um Hilfe), `AssessTalk`, `ObserveIntruder`.
-
-- Wahrnehmungs-Update gestaffelt (nicht jeder NPC jeden Tick), Takt nach Distanz.
-- Jede Wahrnehmung hat Reichweite und Priorität; Zustände können Wahrnehmungen aktivieren/deaktivieren.
+- Werte in `data/perception.lua` (`Perception`: sight, angle, sneak_factor, night_factor, near_distance,
+  forget_seconds, room_distance, noise.<art>); je Npc `senses = { sight, angle, hearing }`.
+- **Takt:** nur simulierte NPCs (< 80 m, KI-LOD); unter 20 m fünfmal je Sekunde, sonst einmal, gestaffelt.
+- **Ereignisse** an Lua, der NPC zuerst (Gothics B_Assess…):
+  `assess_player(npc, abstand)` (neu gesehen bzw. nach 10 s wieder), `assess_fighter(npc, abstand, "weapon"|"fists")`
+  (einmal je Ziehen), `assess_noise(npc, art, x, y, z)`, `assess_theft(npc, besitzer, item, anzahl)` (wer zusieht;
+  beim misslungenen Taschendiebstahl immer das Opfer), `assess_use_mob(npc, besitzer, mob)` (fremder Mob benutzt
+  bzw. Schloss geknackt), `assess_enter_room(npc, besitzer, bereich)` (Trigger mit `owner`, world.md).
+- **Abfragen:** `npc_sees_player`, `npc_distance_to_player`, `player_weapon`, `player_inside(bereich)`.
+- **Waffe ziehen** (Taste `draw_weapon`, Konsole `draw_weapon()`): die ausgerüstete Nahkampfwaffe in
+  `socket_hand_r`, Bewegung im 1h-Set; ohne Waffe Fäuste. Schwimmen und Klettern stecken sie weg. Bis figurens
+  `t_draw`/`t_sheath` kommen, wird übergeblendet.
+- **Reaktionen** (Inhalt, `ai/perceptions.lua`, Texte zentral in `data/shouts.lua`, eigene Formulierungen):
+  Wachen warnen bei gezogener Waffe auf Sicht, andere ab 5 m; zweimal gewarnt, dann `npc_would_attack(npc, grund)`
+  und Drohen (`zs_threaten`: dem Spieler 15 s folgen) bis zum Kampf in M11. Privater Bereich: hinauswerfen, nach 6 s
+  drohen. Diebstahl bzw. fremder Mob gesehen: schimpfen und drohen. Geräusch: kurz umsehen. Schlafende nehmen nichts
+  wahr.
+- **Befehle dazu:** `npc_turn_to_player`, `npc_goto_player(npc, abstand, rennen)`, `npc_follow_player(npc, sekunden,
+  abstand)`.
+- Testlager: `TRG_PRIVAT_WACHE` (Schlafplatz der Wache mit Truhen hinter dem Tor) gehört `npc_gate_guard`.
 
 ## 5. Einstellungen & Gruppen
 - Einstellung NPC→Spieler: dauerhaft + temporär (vergisst sich nach Zeit), abgeleitet aus Gilden-Tabelle, wenn nicht gesetzt.

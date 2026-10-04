@@ -209,6 +209,10 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
         m_playerInput.jump = true; // until the next fixed step uses it
     }
     m_playerInput.jumpHeld = allowKeyboard && !m_flyMode && m_actions.isDown(m_input, Action::Jump);
+    if (allowKeyboard && !m_flyMode && m_actions.pressed(m_input, Action::DrawWeapon))
+    {
+        m_drawWeaponRequested = true; // until the next fixed step uses it (M9 part C)
+    }
     if (m_playerMouse)
     {
         m_playerInput.mouseTurn += m_input.mouseDelta().x;

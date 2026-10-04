@@ -5,6 +5,24 @@ Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
 ## Ereignisse
 
+### `on("assess_enter_room", fn(npc: string, owner: string, area: string))`
+Der Spieler betritt einen privaten Bereich (Trigger mit `owner`) des NPCs bzw. seiner Gilde; der NPC sieht ihn oder ist in der Nähe.
+
+### `on("assess_fighter", fn(npc: string, distance: number, what: string))`
+Der NPC sieht den Spieler mit gezogener Waffe (`what`: `"weapon"` oder `"fists"`); einmal je Ziehen.
+
+### `on("assess_noise", fn(npc: string, kind: string, x, y, z))`
+Der NPC hört ein Geräusch (`kind`: `"run"`, `"lockpick"`, `"lock_broken"` … oder aus noise()).
+
+### `on("assess_player", fn(npc: string, distance: number))`
+Der NPC sieht den Spieler (neu, oder wieder nach `Perception.forget_seconds`).
+
+### `on("assess_theft", fn(npc: string, owner: string, item: string, count: integer))`
+Der NPC sieht, wie der Spieler etwas stiehlt bzw. beim Taschendiebstahl erwischt wird (`item` leer).
+
+### `on("assess_use_mob", fn(npc: string, owner: string, mob: string))`
+Der NPC sieht, wie der Spieler einen fremden Mob (Truhe, Tür …) benutzt oder knackt.
+
 ### `on("item_crafted", fn(recipe: string))`
 Der Held hat an einem Mob etwas hergestellt (Amboss: nach seinen Schlägen).
 
@@ -154,11 +172,17 @@ Setzt ein Npc an einen Wegpunkt oder Freepoint (ohne `at`: an den Ort des passen
 ### `npc_clear(npc: string)`
 Leert die Befehlsliste des NPCs (er bleibt, wo er ist).
 
+### `npc_follow_player(npc: string, seconds?: number, distance?: number)`
+Reiht ein: dem Spieler `seconds` Sekunden lang (Vorgabe 10) auf etwa `distance` Meter (Vorgabe 2) folgen und ihn ansehen (Drohen, Begleiten).
+
 ### `npc_goto(npc: string, target: string, run?: boolean)`
 Reiht ein: Der NPC geht (oder rennt) über das Wegnetz zu einem Wegpunkt oder Freepoint (Name ohne Rücksicht auf Groß- und Kleinschreibung). Ankunft: Ereignis `npc_arrived`.
 
 ### `npc_goto_freepoint(npc: string, type: string, radius?: number, run?: boolean)`
 Reiht ein: zum nächsten freien Freepoint dieses Typs (`"SIT"`, `"CAMPFIRE"` ...) im Umkreis (Vorgabe 10 m), reserviert ihn und dreht sich in seine Richtung. Gibt es keinen, bleibt er stehen.
+
+### `npc_goto_player(npc: string, distance?: number, run?: boolean)`
+Reiht ein: zum Spieler gehen (bzw. rennen), bis auf `distance` Meter (Vorgabe 1,5).
 
 ### `npc_play(npc: string, ambient: string, item?: string)`
 Reiht ein: eine Tagesablauf-Animation (`"sit_ground"`, `"guard"` ... – Zustände amb_<x>_in, amb_<x>, amb_<x>_out des Menschen-Graphen; `"idle_look"` und `"react_warn"` usw. direkt), bis npc_stop oder Gehen sie beendet. `item` (`"it_broom"`) nimmt er bei `item_to_hand` in die rechte Hand und legt es bei `item_from_hand` bzw. am Ende weg.
@@ -178,11 +202,34 @@ Reiht ein: die laufende Tagesablauf-Animation beenden (_out).
 ### `npc_turn(npc: string, point: string)`
 Reiht ein: in die Richtung (`dir`) eines Wegpunkts oder Freepoints drehen.
 
+### `npc_turn_to_player(npc: string)`
+Reiht ein: sich zum Spieler drehen.
+
 ### `npc_wait(npc: string, seconds: number)`
 Reiht ein: warten.
 
 ### `set_routine(npc: string, routine: string)`
 Wechselt den Tagesablauf (Kapitelwechsel); der passende Eintrag beginnt sofort. `""` schaltet ihn ab (der NPC tut dann nur, was Skripte ihm auftragen).
+
+## Wahrnehmung
+
+### `draw_weapon() -> string`
+Zieht die ausgerüstete Nahkampfwaffe (ohne sie die Fäuste) bzw. steckt sie weg, wie die Taste draw_weapon; gibt zurück, was danach gezogen ist (wie player_weapon).
+
+### `noise(x: number, y: number, z: number, radius: number, kind?: string)`
+Ein Geräusch: NPCs im Umkreis (mal ihrem Gehör) bekommen `assess_noise(npc, kind, x, y, z)`.
+
+### `npc_distance_to_player(npc: string) -> number`
+Abstand des NPCs zum Spieler in Metern.
+
+### `npc_sees_player(npc: string) -> boolean`
+Ob der NPC den Spieler gerade sieht (Sichtkegel, Reichweite, freie Sicht).
+
+### `player_inside(area: string) -> boolean`
+Ob der Spieler im Trigger `area` (Vob-Name, z. B. ein privater Bereich) steht.
+
+### `player_weapon() -> string`
+Was der Held gezogen hat: `"none"`, `"weapon"` (Nahkampfwaffe) oder `"fists"`.
 
 ## Welt
 
