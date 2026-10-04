@@ -889,6 +889,22 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   Geschäftsnamen stehen nur dort als Grund; im Spiel tragen die Häuser eigene, mittelalterliche Namen (keine echten,
   keine an Gothic angelehnten).
 - Die Auswahl des Koordinators wird `data/<ort>/uses.json` (PR B: Routinen-Orte, Freepoints, Mobs).
+- **`data/<ort>/uses.json`** (versioniert): `houses` mit `id`, `use`, optional `trade` (Gewerk, z. B. `schuster`;
+  bestimmt den Namensteil), `name` (eigener mittelalterlicher Name), `residents`, `inside` (Kandidat für die begehbaren
+  Häuser) und `owner` (Npc-Instanz bzw. Gilde, setzen engine/figuren mit den Routinen); `uses` je Nutzung mit
+  `freepoints` (`TYP:Anzahl`, Typen nach world.md) und `mobs` (`typ:Anzahl`, Typen aus `data/mobs.toml`). Fehler mit
+  Datei und Eintrag (unbekannte Nutzung, doppelte ID, falsches `TYP:N`).
+- **Routinen-Orte** (`gothar_worldgen/uses/places.py`), von `assemble` geplant (zweiter Durchgang auf der fertigen
+  Welt): je Haus ein Routinen-Wegpunkt `WP_LEO_<NUTZUNG bzw. GEWERK>_<KÜRZEL>` 1,8 m vor der Tür, Mobs mit dem Rücken
+  zur Wand neben der Tür (nicht im Türbereich, Ecken und Slot frei, ein Gang davor bleibt frei, mindestens halbe
+  Breite + 1,2 m Abstand zur Achse eines begehbaren Wegs), Freepoints nach Typ in Reihen vor der Fassade
+  (`FP_<TYP>_LEO_<…>_<KÜRZEL>_<NN>`; REPAIR am Slot des Ambosses, SMALLTALK paarweise einander zugewandt), alles auf
+  freiem Boden, höchstens 0,6 m über bzw. unter dem Routinen-Punkt, 0,9 m Abstand untereinander. Was nicht passt,
+  steht im Bericht (`failed`). `assemble` schreibt die Mobs als `mob`-Vobs in die Gruppe `WORLDGEN_USES` (stabile IDs
+  `use:<name>`), dazu `generated/uses_places.json` und `generated/uses_table.md`; `waynet` übernimmt Routinen-Punkte
+  (angebunden wie Türpunkte, Bericht `usesUnconnected`) und Freepoints. Die Begehung und das Wegnetz behandeln Mobs
+  als Hindernisse.
+- Übergabe an engine und figuren: Tabelle der Routinen-Orte in `docs/design/leonberg-routinen-orte.md`.
 
 ### Vorhandene Werkzeuge (kein Eigenbau)
 Blender (+ Add-on BlenderGIS zum Gegenprüfen), COLMAP / RealityScan / Postshot (Photogrammetrie bzw.

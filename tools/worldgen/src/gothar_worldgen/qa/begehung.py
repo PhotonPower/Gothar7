@@ -156,7 +156,7 @@ def load_bodies(world: dict[str, Any], assets: Path, grid: Grid, ch: Character) 
     cache: dict[str, list[tuple[str, np.ndarray, np.ndarray]]] = {}
     bodies = []
     for v in world["vobs"]:
-        if v["type"] != "mesh" or not v.get("mesh"):
+        if v["type"] not in ("mesh", "mob") or not v.get("mesh"):  # mobs block ways too
             continue
         if v["mesh"] not in cache:
             path = assets / v["mesh"]

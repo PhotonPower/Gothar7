@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 2038,
+ "nextVobId": 2050,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -2039,6 +2039,18 @@
   "building:DEBW_001000620zW-H3d": 2034,
   "building:DEBW_001000620zW-H4b": 2035,
   "building:DEBW_001000620zW-H4c": 2036,
-  "building:DEBW_001000620zW-H4d": 2037
+  "building:DEBW_001000620zW-H4d": 2037,
+  "group:uses": 2038,
+  "use:MOB_LEO_GASTHAUS_ZHE_BENCH_1": 2039,
+  "use:MOB_LEO_GASTHAUS_ZHE_BENCH_2": 2040,
+  "use:MOB_LEO_GASTHAUS_ZJA_BENCH_1": 2041,
+  "use:MOB_LEO_GASTHAUS_ZJA_BENCH_2": 2042,
+  "use:MOB_LEO_GOLDSCHMIED_ZMR_CHEST_1": 2043,
+  "use:MOB_LEO_TUCHHAENDLER_ZMA_CHEST_1": 2044,
+  "use:MOB_LEO_KRAEMER_ZKX_CHEST_1": 2045,
+  "use:MOB_LEO_GEWANDSCHNEIDER_ZKV_CHEST_1": 2046,
+  "use:MOB_LEO_SCHMIEDE_ZNP_ANVIL_1": 2047,
+  "use:MOB_LEO_SCHREINER_ZJR_BENCH_1": 2048,
+  "use:MOB_LEO_TOEPFER_ZKT_BENCH_1": 2049
  }
 }

@@ -99,6 +99,7 @@ from gothar_worldgen.qa.checks import FAIL
 from gothar_worldgen.qa.run import run_qa
 from gothar_worldgen.qa.walk import evaluate, read_log, write_routes
 from gothar_worldgen.qa.workdata import QaError, load_work
+from gothar_worldgen.uses.places import UsesError
 from gothar_worldgen.walls.citywall import (
     CourseError,
     footprints_of,
@@ -526,6 +527,12 @@ def _cmd_waynet(args: argparse.Namespace, out: TextIO) -> int:
         ch = Character.load(assets / "data" / "movement.toml")
         grid = game_grid(world, assets)
         bodies = load_bodies(world, assets, grid, ch)
+        places_path = folder / "generated" / "uses_places.json"
+        places = (
+            json.loads(places_path.read_text(encoding="utf-8")).get("places", [])
+            if places_path.is_file()
+            else []
+        )
         ann_path = data_dir / "waynet.json"
         ann = json.loads(ann_path.read_text(encoding="utf-8")) if ann_path.is_file() else {}
         gates = json.loads((data_dir / "city_wall.json").read_text(encoding="utf-8"))
@@ -538,7 +545,7 @@ def _cmd_waynet(args: argparse.Namespace, out: TextIO) -> int:
         marks["beds"] = garden_beds(spec) if spec else []
         res = build_waynet(site.name, streets, index.get("entries", []), bodies, grid.height_at,
                            ch, site.core_half_extent_m, marks,
-                           world.get("waynet"), ann, links)  # fmt: skip
+                           world.get("waynet"), ann, links, places)  # fmt: skip
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -944,6 +951,47 @@ def _cmd_kirche(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _plan_uses(
+    path: Path, world: dict[str, Any], index: dict[str, Any], assets: Path,
+    streets: list[dict[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:  # fmt: skip
+    """Routine places and mobs of ``uses.json`` on the assembled world (W7)."""
+    from shapely.geometry import Point
+    from shapely.strtree import STRtree
+
+    from gothar_worldgen.qa.begehung import Character, game_grid, load_bodies
+    from gothar_worldgen.uses.places import load_uses, mob_vobs, plan_places
+
+    doc = load_uses(path)
+    grid = game_grid(world, assets)
+    bodies = load_bodies(world, assets, grid, Character.load(assets / "data" / "movement.toml"))
+    polys = [b.poly for b in bodies]
+    tree = STRtree(polys)
+
+    def free(x: float, z: float, r: float) -> bool:
+        q = Point(x, z)
+        return not any(polys[int(k)].distance(q) < r for k in tree.query(q.buffer(r)))
+
+    from shapely.geometry import LineString
+
+    from gothar_worldgen.waynet.generate import SKIP_HIGHWAYS
+
+    lines = [LineString(s["points"]) for s in streets
+             if s.get("highway") not in SKIP_HIGHWAYS and len(s.get("points") or []) >= 2
+             and not (s.get("tunnel") and int(s.get("layer", 0) or 0) < 0)]  # fmt: skip
+    ways = STRtree(lines) if lines else None
+
+    def way(x: float, z: float) -> float:
+        if ways is None:
+            return math.inf
+        q = Point(x, z)
+        return float(lines[int(ways.nearest(q))].distance(q))
+
+    doors = {e["id"]: e["doors"][0] for e in index.get("entries", []) if e.get("doors")}
+    plan = plan_places(doc, doors, free, grid.height_at, way)
+    return plan.json(doc), mob_vobs(plan, grid.height_at)
+
+
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -975,14 +1023,35 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
         citywall = (
             json.loads(wall_path.read_text(encoding="utf-8")) if wall_path.is_file() else None
         )
-        res = assemble(terrain_world, index, load_world(folder / f"{name}.g7world"), ids, name,
-                       locked, ground, citywall, handmade, water,
-                       DEFAULT_STARTS + load_starts(data_dir / "starts.json"))  # fmt: skip
-    except (AssembleError, OverrideError, OSError, json.JSONDecodeError, HandmadeError) as e:
+        existing = load_world(folder / f"{name}.g7world")
+        starts = DEFAULT_STARTS + load_starts(data_dir / "starts.json")
+        res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
+                       handmade, water, starts)  # fmt: skip
+        uses_path = data_dir / "uses.json"
+        places = None
+        if uses_path.is_file():  # W7: mobs and routine places at the houses with a use
+            street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+            places, mobs = _plan_uses(uses_path, res.world, index, folder.parents[1],
+                                      street_doc.get("streets", []))  # fmt: skip
+            res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
+                           handmade, water, starts, mobs)  # fmt: skip
+    except (AssembleError, OverrideError, OSError, json.JSONDecodeError, HandmadeError,
+            UsesError) as e:  # fmt: skip
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
     write_world(folder / f"{name}.g7world", res.world)
     ids.save(ids_path)
+    if places is not None:
+        target = folder / "generated" / "uses_places.json"
+        target.write_text(json.dumps(places, ensure_ascii=False, indent=1) + "\n", "utf-8")
+        from gothar_worldgen.uses.places import routine_table_md
+
+        table = folder / "generated" / "uses_table.md"
+        table.write_text(routine_table_md(places), encoding="utf-8", newline="\n")
+        n = {k: sum(1 for q in places["places"] if q["kind"] == k) for k in ("wp", "fp", "mob")}
+        print(f"  uses: {len(places['houses'])} houses, {n['wp']} routine points, {n['fp']} "
+              f"freepoints, {n['mob']} mobs, {len(places['failed'])} not placed ({target.name})",
+              file=out)  # fmt: skip
     print(f"  {len(res.world['vobs'])} vobs: {res.added} added, {res.updated} updated, "
           f"{res.removed} removed, {res.kept_locked} locked kept, "
           f"{res.kept_editor} editor vobs kept; nextVobId {res.world['nextVobId']}",
