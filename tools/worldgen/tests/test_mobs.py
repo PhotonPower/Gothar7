@@ -41,6 +41,9 @@ def test_sizes_follow_the_contract():
     assert (hi - lo)[0] == pytest.approx(2.0, abs=0.01) and (hi - lo)[2] == pytest.approx(
         0.9, abs=0.01
     )
+    lo, hi = _bounds(BUILDERS["bench"]())
+    assert hi[1] == pytest.approx(0.45) and (hi - lo)[0] == pytest.approx(1.5)
+    assert (hi - lo)[2] == pytest.approx(0.35) and lo[0] == pytest.approx(-hi[0])  # centred
     lo, hi = _bounds(BUILDERS["door"]())
     assert lo[0] == pytest.approx(0.0) and hi[0] == pytest.approx(1.0)  # from the hinge along +X
     assert hi[1] == pytest.approx(2.0)
@@ -112,4 +115,4 @@ def test_mobs_cook(tmp_path: Path):
     done = subprocess.run([str(_find_cook()), "--source", str(src), "--out", str(out)],
                           capture_output=True, text=True, check=False)  # fmt: skip
     assert done.returncode == 0, done.stdout + done.stderr
-    assert len(list(out.rglob("*.g7mesh"))) == len(TYPES)
+    assert len(list(out.rglob("*.g7mesh"))) == len(TYPES)  # incl. the bench

@@ -803,6 +803,7 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   - Amboss: Arbeitsfläche 0,8 m, Horn zu +X.
   - Bett 2,0 × 0,9 m entlang X, Liegefläche 0,45 m, Kopfende bei −X (bestätigt von figuren).
   - Tür: nur das Türblatt, 1,0 × 2,0 m entlang +X ab der Angel im Ursprung, Klinke beidseitig auf 1,0 m.
+  - Bank (M9): Brettbank 1,5 × 0,35 m, Sitzhöhe 0,45 m, Ursprung mittig am Boden (Testmaße von figuren).
   - Je 1–2 Kollisionskästen; ca. 70–300 Dreiecke je Modell (Budget 1500).
   - Platzierung in Leonberg folgt mit Ausstattung bzw. Innenräumen.
 
