@@ -467,3 +467,23 @@ TEST_CASE("Engine mobs: forging at the anvil, sleeping in the bed")
     CHECK(run(engine, "Story.slept").asInteger() == 8);
     CHECK(runMobUse(engine, "leave"));
 }
+
+TEST_CASE("Engine mobs: the spots of the PR play guide face their mobs")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    constexpr f32 kWest = 1.5707963f; // yaw: 0 = -Z, positive turns left
+    const auto focusFrom = [&](const char* teleport, f32 yaw)
+    {
+        run(engine, teleport);
+        engine.steerPlayer(yaw);
+        REQUIRE(engine.runFrame());
+        engine.updateFocus();
+        return engine.focus() ? engine.focus()->name : std::string();
+    };
+    CHECK(focusFrom("teleport(31, 0, -4.8)", kWest).find("Truhe") != std::string::npos);
+    CHECK(focusFrom("teleport(31, 0, -1.5)", kWest) == "Amboss");
+    CHECK(focusFrom("teleport(28, 0, -4.5)", kWest) == "Bett");
+    CHECK(focusFrom("teleport(31, 0, -7.5)", 0.0f).find("Tür") != std::string::npos); // facing south (-Z)
+}
