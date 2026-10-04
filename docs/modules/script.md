@@ -137,4 +137,4 @@ usize emit(std::string_view event, std::span<const Value> args);
 - **Konsole** (Taste ^, Aktion `console`; ImGui-Fenster „Console“): Eingabe mit Verlauf, erst als Ausdruck (zeigt
   den Wert), sonst als Anweisung; Fehler rot mit `!`. `Engine::runConsoleLine` für Tests und Werkzeuge.
 - **Beispielinhalt:** Waffen, Essen, Tränke; vier Lager-NPCs (Torwache, Bäuerin, Holzfäller, alter Mann); ein
-  Tagesablauf, zwei Dialog-Infos (per Konsole: `call_info("dia_gate_guard_hello")`), ein Auftrag.
+  Tagesablauf, Dialog-Infos der Torwache (M10: ansprechen oder `talk("npc_gate_guard")`), ein Auftrag.

@@ -97,12 +97,8 @@ TEST_CASE("Engine scripts: content loads, the console acts on the world")
     CHECK(run(engine, "where().world").asString() == "testworld/camp.g7world");
     CHECK(run(engine, "where().time").asString() == "12:30");
 
-    // A dialog through the console helper; Story remembers it.
-    CHECK(run(engine, "call_info('dia_gate_guard_hello')").asBool());
-    CHECK(printed(engine, "Torwache: Halt! Wer bist du?"));
-    CHECK_FALSE(run(engine, "call_info('dia_gate_guard_hello')").asBool());
-    CHECK(run(engine, "call_info('dia_gate_guard_work')").asBool());
-    CHECK(run(engine, "Story.quest_farm_work").asString() == "running");
+    // Story variables (dialogues set them; test_engine_dialog.cpp).
+    run(engine, "Story.met_gate_guard = true");
 
     // Timers run in simulation time.
     CHECK(engine.runConsoleLine("after(0.1, function() Story.timer_fired = true end)").ok());

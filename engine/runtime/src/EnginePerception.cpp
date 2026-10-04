@@ -174,6 +174,8 @@ void Engine::perceive(Creature& c, f32 seconds)
         m_scripts->emit("assess_fighter", args);
     }
 
+    dialogPerception(c, distance, sees); // important Infos (M10)
+
     // Hearing: noises since the last look.
     for (const Noise& n : m_noises)
     {

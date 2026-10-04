@@ -40,6 +40,7 @@ namespace g7
 {
 namespace
 {
+constexpr u64 kCreatureFocusBit = 1ull << 62; ///< as in EngineItems.cpp: the focus is a creature
 /// Dusk colour until there is a sky (M4).
 const Vec4 kClearColor{0.10f, 0.11f, 0.14f, 1.0f};
 /// Hot reload of shaders and assets: on in development (debug) builds, off in release builds.
@@ -333,7 +334,7 @@ bool Engine::runFrame()
             {
                 copyViewToClipboard();
             }
-            updatePlayerInput(!uiMouse, !uiKeyboard);
+            updatePlayerInput(!uiMouse && !m_dialog, !uiKeyboard && !m_dialog); // talking: standing still
             if (!playerCameraActive())
             {
                 updateDebugCamera(realSeconds, !uiMouse, !uiKeyboard);
@@ -363,7 +364,11 @@ bool Engine::runFrame()
             // (M8).
             const bool actionKey = m_actions.pressed(m_input, platform::Action::Action) ||
                                    m_actions.pressed(m_input, platform::Action::Use);
-            if (m_mobUse)
+            if (m_dialog)
+            {
+                dialogInput(); // M10: lines skipped, the menu chosen
+            }
+            else if (m_mobUse)
             {
                 mobInput();
             }
@@ -380,6 +385,10 @@ bool Engine::runFrame()
                 else if (m_focus->kind == gameplay::FocusKind::Npc && m_playerInput.sneak)
                 {
                     (void)pickpocketFocus(); // Gothic 1: sneaking up on someone (M8 part D)
+                }
+                else if (m_focus->kind == gameplay::FocusKind::Npc && heroStanding())
+                {
+                    (void)startDialog(static_cast<u32>(m_focus->id & ~kCreatureFocusBit)); // M10
                 }
             }
         }
@@ -406,6 +415,7 @@ bool Engine::runFrame()
         fixedUpdateItemUse(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateMobs(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateDialog(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {
             m_scripts->tick(m_fixedStep.step()); // after/every run in simulation time
@@ -1245,6 +1255,7 @@ void Engine::unloadWorld()
 {
     m_creatures.clear(); // they belong to the world they were put into
     m_waynet = {};
+    m_dialog.reset();        // with somebody of the old world
     m_cascadesDrawn.clear(); // shadows of the old world
     m_scene.clear();
     m_instances.clear();
@@ -1811,6 +1822,7 @@ void Engine::runDebugUi(f64 realSeconds)
     lockpickUi();
     choiceUi();
     documentUi();
+    dialogUi(); // M10
     if (!m_debugUiVisible)
     {
         return;
