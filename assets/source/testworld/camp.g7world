@@ -214,5 +214,40 @@
     {"id":207,"type":"item","name":"LAGER_TRANK","pos":[29.1,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_potion_heal_small"}}},
     {"id":208,"type":"item","name":"LAGER_DIETRICH","pos":[30.0,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_lockpick"}}},
     {"id":209,"type":"item","name":"LAGER_SCHLUESSEL","pos":[30.9,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_key"}}}
-  ]
+  ],
+  "waynet": {
+    "points": [
+      {"name":"WP_CAMP_CENTER","pos":[7.0,0.0,-4.0]},
+      {"name":"WP_CAMP_EAST","pos":[17.5,0.0,-3.0]},
+      {"name":"WP_CAMP_FENCE_SOUTH_IN","pos":[21.0,0.0,15.5]},
+      {"name":"WP_CAMP_FENCE_SOUTH_OUT","pos":[27.0,0.0,15.5]},
+      {"name":"WP_CAMP_FIRE","pos":[-1.0,0.0,3.0]},
+      {"name":"WP_CAMP_GATE","pos":[21.5,0.0,0.0],"dir":[1.0,0.0,0.0]},
+      {"name":"WP_CAMP_GUARD_BED","pos":[27.5,0.0,-3.0]},
+      {"name":"WP_CAMP_NORTH","pos":[2.0,0.0,-8.0]},
+      {"name":"WP_CAMP_OUTSIDE","pos":[30.0,0.0,1.0]},
+      {"name":"WP_CAMP_SOUTH","pos":[5.0,0.0,8.0]},
+      {"name":"WP_CAMP_WEST","pos":[-6.0,0.0,-1.0]}
+    ],
+    "edges": [
+      ["WP_CAMP_CENTER","WP_CAMP_EAST"],
+      ["WP_CAMP_CENTER","WP_CAMP_FIRE"],
+      ["WP_CAMP_CENTER","WP_CAMP_NORTH"],
+      ["WP_CAMP_CENTER","WP_CAMP_WEST"],
+      ["WP_CAMP_EAST","WP_CAMP_FENCE_SOUTH_IN"],
+      ["WP_CAMP_EAST","WP_CAMP_GATE"],
+      ["WP_CAMP_FENCE_SOUTH_IN","WP_CAMP_FENCE_SOUTH_OUT"],
+      ["WP_CAMP_FENCE_SOUTH_IN","WP_CAMP_SOUTH"],
+      ["WP_CAMP_FENCE_SOUTH_OUT","WP_CAMP_OUTSIDE"],
+      ["WP_CAMP_FIRE","WP_CAMP_SOUTH"],
+      ["WP_CAMP_FIRE","WP_CAMP_WEST"],
+      ["WP_CAMP_GUARD_BED","WP_CAMP_OUTSIDE"]
+    ],
+    "freepoints": [
+      {"name":"FP_CAMPFIRE_CAMP_01","pos":[0.5,0.0,-1.2],"dir":[0.0,0.0,1.0]},
+      {"name":"FP_SIT_CAMPFIRE_01","pos":[-1.5,0.0,-1.2],"dir":[0.70711,0.0,0.70711]},
+      {"name":"FP_SIT_CAMPFIRE_02","pos":[2.5,0.0,2.6],"dir":[-0.74329,0.0,-0.66896]},
+      {"name":"FP_STAND_GATE_01","pos":[22.0,0.0,1.5],"dir":[1.0,0.0,0.0]}
+    ]
+  }
 }

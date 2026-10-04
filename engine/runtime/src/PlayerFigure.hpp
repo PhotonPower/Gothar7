@@ -5,6 +5,7 @@
 // animals (Creature, part D3). They live behind a unique_ptr: the Animator points to the Skeleton, so neither
 // may move.
 
+#include <g7/ai/Waynet.hpp>
 #include <g7/animation/Animator.hpp>
 #include <g7/animation/Face.hpp>
 #include <g7/animation/LookAt.hpp>
@@ -13,6 +14,7 @@
 #include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/TextureData.hpp>
 #include <g7/gameplay/Character.hpp>
+#include <g7/physics/Character.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/SkinnedMesh.hpp>
 #include <g7/runtime/Engine.hpp>
@@ -97,6 +99,15 @@ struct Creature
     /// NPCs (M8 part D): values and inventory from their Npc instance (pickpocketing).
     std::unique_ptr<gameplay::Character> character;
     bool pickpocketed = false; ///< tried once (Gothic: one try per NPC)
+    /// Human NPCs (M9): a capsule like the hero's, walking along a route over the waynet.
+    std::optional<physics::CharacterController> body;
+    std::optional<ai::Route> route;
+    usize routeIndex = 0;
+    std::string routeGoal; ///< the way point or freepoint walked to
+    bool running = false;
+    f32 stuckSeconds = 0.0f;
+    u32 replans = 0;
+    Vec3 progressAt{0.0f};
     std::unique_ptr<AnimatedFigure> figure;
     Vec3 position{0.0f}; ///< feet, after the last fixed step
     Vec3 positionBefore{0.0f};

@@ -186,9 +186,14 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   `y` = Bodenhöhe, also die Füße), `dir` (optional, waagrechte Blickrichtung für dort Stehende/Sitzende; wird
   normiert), `owner` (optional, siehe unten).
 - **Namen:** Großbuchstaben, Ziffern und `_`; Punkte beginnen mit `WP_`, Freepoints mit `FP_`. Eindeutig über Punkte
-  und Freepoints einer Welt. Bei Freepoints ist das zweite Glied der **Typ**: `FP_SIT_`, `FP_STAND_`,
-  `FP_SMALLTALK_`, `FP_ROAM_`, `FP_SLEEP_`, `FP_CAMPFIRE_`; andere Typen sind erlaubt und werden bis zu ihrer
-  Verwendung ignoriert.
+  und Freepoints einer Welt. Bei Freepoints ist das zweite Glied der **Typ** (M9, Clips je Typ in Lua):
+  `FP_SIT_` (am Boden sitzen), `FP_STAND_` (Wache stehen), `FP_SMALLTALK_` (zu zweit plaudern), `FP_ROAM_`
+  (herumgehen), `FP_SLEEP_` (am Boden schlafen), `FP_CAMPFIRE_` (am Feuer wärmen), `FP_LEAN_` (an die Wand lehnen;
+  `dir` vom Wegpunkt weg), `FP_SWEEP_` (fegen), `FP_DRINK_` (aus dem Krug trinken), `FP_TRAIN_` (Schwertübung) sowie
+  die Arbeitsplätze `FP_CHOP_` (Holz hacken), `FP_HARVEST_` (ernten), `FP_WATER_` (gießen), `FP_REPAIR_` (kniend
+  ausbessern). Andere Typen sind erlaubt und werden bis zu ihrer Verwendung ignoriert.
+- **Nachschlagen** (M9): Skripte nennen Punkte in Kleinschreibung (`at = "wp_camp_gate"`); die Engine sucht Namen
+  ohne Rücksicht auf Groß- und Kleinschreibung.
 - **Kanten** (`edges`): ungerichtet, `[name_a, name_b]` bzw. `[name_a, name_b, "worldgen"]`; beide Namen müssen
   Punkte (`WP_`) sein. Eine Kante auf einen fehlenden Punkt, doppelte Namen oder ungültige Namen sind Ladefehler mit
   Datei und Eintrag (`leonberg.g7world: waynet.edges[12]: unknown point "WP_X"`); doppelte Kanten werden

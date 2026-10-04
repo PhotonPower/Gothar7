@@ -5,6 +5,7 @@
 // Hauptschleife (fester Simulationsschritt + interpoliertes Rendern), Shutdown.
 // Spezifikation: docs/02-architecture.md ("Hauptschleife", "Initialisierung")
 
+#include <g7/ai/Waynet.hpp>
 #include <g7/asset/AssetManager.hpp>
 #include <g7/asset/FigureAssembly.hpp>
 #include <g7/asset/ImageData.hpp>
@@ -423,6 +424,19 @@ public:
     /// Instances drawn per level in the last frame's main pass.
     [[nodiscard]] const std::array<u32, 3>& lodCounts() const noexcept { return m_lodCounts; }
 
+    // NPC navigation (M9 part A, EngineNpcs.cpp)
+    /// The world's waynet (empty without a waynet block).
+    [[nodiscard]] const ai::Waynet& waynet() const noexcept { return m_waynet; }
+    /// Sends an NPC walking (or running) to a way point or freepoint by name, without regard to case; it
+    /// plans a route over the waynet (straight where nothing is in the way). Errors: not an NPC, unknown
+    /// target, no way.
+    [[nodiscard]] Result<void> npcGoTo(u32 id, std::string_view target, bool run = false);
+    [[nodiscard]] bool npcWalking(u32 id) const noexcept;
+    /// The first inserted NPC of an Npc instance.
+    [[nodiscard]] std::optional<u32> npcByInstance(std::string_view instance) const noexcept;
+    /// Whether one can walk straight from a to b (a sphere at knee-to-hip height meets nothing).
+    [[nodiscard]] bool walkableLine(const Vec3& a, const Vec3& b) const;
+
     // Items, focus, picking up (M8 part B, EngineItems.cpp)
     /// Items lying in the world (item vobs of the world file plus those inserted or dropped).
     [[nodiscard]] std::vector<WorldItemInfo> worldItems() const;
@@ -568,6 +582,11 @@ private:
     void consoleUi();
     // Hero character (EngineHero.cpp)
     void buildHero();
+    // NPC navigation (EngineNpcs.cpp)
+    [[nodiscard]] std::optional<Vec3> navigationTarget(std::string_view name) const;
+    void walkNpc(Creature& c, f32 seconds);
+    void drawWaynet();
+    void bindNpcFunctions();
     // Items, focus, picking up (EngineItems.cpp)
     struct WorldItem
     {
@@ -850,6 +869,7 @@ private:
     std::vector<std::unique_ptr<LoadedModel>> m_scriptModels; // placeholders of inserted items
     std::unique_ptr<gameplay::Character> m_hero;              // M8: kept over script reloads
     u32 m_insertedItems = 0;
+    ai::Waynet m_waynet; // of the loaded world (M9)
     std::vector<WorldItem> m_worldItems;
     std::unordered_map<std::string, const LoadedModel*> m_itemModels; // by Item instance; models in m_models
                                                                       // or m_scriptModels (placeholders)

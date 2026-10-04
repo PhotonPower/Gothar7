@@ -29,6 +29,12 @@ Der Held wollte ein verschlossenes Mob benutzen, ohne Schlüssel und Dietrich.
 ### `on("mob_used", fn(mob: string, type: string))`
 Der Held hat ein Mob benutzt (Truhe offen, Tür bewegt); `mob` ist die Mob-Instanz.
 
+### `on("npc_arrived", fn(npc: string, target: string))`
+Ein NPC ist an seinem Ziel angekommen (npc_goto).
+
+### `on("npc_blocked", fn(npc: string, target: string))`
+Ein NPC kommt nicht weiter und hat aufgegeben (nach mehrfachem Neuplanen).
+
 ### `on("pickpocket", fn(npc: string, item: string))`
 Der Held hat einem NPC etwas aus der Tasche gezogen.
 
@@ -136,6 +142,11 @@ Wem ein Item- oder Mob-Vob dieser Welt gehört (Npc oder Gilde); nil, wenn niema
 
 ### `unlock(vob: string)`
 Schließt ein Mob-Vob auf (Truhe, Tür), etwa wenn eine Quest es öffnet.
+
+## NPCs
+
+### `npc_goto(npc: string, target: string, run?: boolean) -> boolean`
+Schickt den (ersten eingefügten) NPC dieser Instanz zu einem Wegpunkt oder Freepoint (Name ohne Rücksicht auf Groß- und Kleinschreibung) über das Wegnetz; `run` rennt. Fehler, wenn es keinen Weg gibt. Ankunft: Ereignis `npc_arrived`.
 
 ## Welt
 
