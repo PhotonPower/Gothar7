@@ -193,7 +193,8 @@ def plan(
 
     ``frame``: the garden frame (``p(s, t, y)``, ``centre``); ``height``: DGM at world (x, z);
     ``extent``: half sizes of the railing (``halfS`` along, ``halfT`` across, ``innerS`` the
-    distance of the inner fences from the centre).
+    distance of the inner fences from the centre, optional ``gateS`` the distance of the north
+    gates of both halves from the centre: their flights lie on the gates).
     """
     cs, ct = frame.centre
     hs, ht, inner = extent["halfS"] + 0.5, extent["halfT"] + 0.4, extent["innerS"]
@@ -218,9 +219,14 @@ def plan(
             }
         )
     level = {tr["key"]: tr["y"] for tr in terraces}
+    gate_s = extent.get("gateS")  # the railing model's north gates, from the centre
     for tr in terraces:
         (a, b), y = tr["s"], tr["y"]
-        pl.edge(y, (a, t1), (b, t1), (0.0, 1.0), [0.5])  # north: gates on the axes of each part
+        gate = 0.5  # north: a gate on the axis of each part, or where the railing has its gates
+        if gate_s is not None and tr["key"] != "mitte":
+            at = cs - float(gate_s) if tr["key"] == "west" else cs + float(gate_s)
+            gate = (at - a) / (b - a)
+        pl.edge(y, (a, t1), (b, t1), (0.0, 1.0), [gate])
         pl.edge(y, (a, t0), (b, t0), (0.0, -1.0), [])  # south: the garden falls to the old wall
     west, east = terraces[0], terraces[-1]
     pl.edge(west["y"], (west["s"][0], t0), (west["s"][0], t1), (-1.0, 0.0), [0.5])

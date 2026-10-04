@@ -99,7 +99,7 @@
     "pathM": 1.6,
     "borderM": 1.5,
     "plazaR": 2.6,
-    "railing": {"halfS": 34.96, "halfT": 10.21, "innerS": 5.0},
+    "railing": {"halfS": 34.96, "halfT": 10.21, "innerS": 5.0, "gateS": 19.0, "gateNote": "Tore der Nordseite im Geländer-Modell des Projektinhabers (2 m breit, 19 m von der Mitte); die Treppen liegen darauf (W6-Autopilot: vorher 1,2 m versetzt, Figur blieb hängen)"},
     "hedge": {
       "h": 0.45,
       "w": 0.35

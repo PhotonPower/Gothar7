@@ -379,7 +379,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
   - Stand: Pomeranzengarten aus drei Modellen des Projektinhabers (Geländer mit Pavillons, Obelisk- und zwei Gartenbrunnen), Parterre nach dem Geländer, an den LoD2-Pavillons ausgerichtet (W-E5)
   - Stand: Stadtkirche aus dem Modell des Projektinhabers statt des LoD2-Gebäudes (W-E6; mittig auf dem LoD2-Grundriss, Entscheidung K1)
   - Stand: Bodenregel für alle Handmodelle – nichts versinkt im Gelände; Garten auf drei waagrechten Terrassen mit Stützmauern und Treppen, Kirche mit Fundament, Prüfung `qa/grounding.py` (#131, #132)
-- [ ] Wegnetz-Vorschlag aus Straßenachsen
+- [x] Wegnetz-Vorschlag aus Straßenachsen – `gothar-worldgen waynet`: ca. 3200 Punkte (1245 an Türen), Hauptnetz 94 %, Freepoints an Brunnen, Markt, Toren, Beeten; Pforte am Schlosshang und bei (−137, 76); Autopilot 30 Wege A→B (Spieler und NPCs)
 
 **DoD:** Die komplette Altstadt ist ausgestattet und hat ein vorläufiges Wegnetz.
 
