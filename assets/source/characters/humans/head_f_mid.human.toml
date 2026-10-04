@@ -1,0 +1,23 @@
+# Head (middle-aged woman), style A (F3v): head with face morphs, teeth and tongue; hair and beards
+# come from the hair kit hair_f_mid (parts/hair_f_mid/). Fits every base body of the
+# same sex (assembly snaps the neck); macros only shape the face.
+version = 1
+triangles = 5500
+parts = ["head"]
+
+[macro]
+gender = 0.0
+age = 0.55
+muscle = 0.5
+weight = 0.6
+proportions = 0.5
+height = 0.5
+race = { african = 1.0 }
+
+[assets]
+skin = "skins/middleage_african_female/middleage_african_female.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow006/eyebrow006.mhclo"
+eyelashes = "eyelashes/eyelashes02/eyelashes02.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"

@@ -80,6 +80,8 @@ ROLE_OF_TYPE = {
     "Beard": "beard",
     "Hair": "hair",
     "Clothes": "cloth",
+    "KitHair": "hair",  # hair kits: each style its own part
+    "KitBeard": "beard",
 }
 MAIN_CHILD = {
     "root": None,
@@ -100,6 +102,7 @@ KIT_TEXTURE_MAX = 512  # kit garments (contract allows 1024 for cloth; repo size
 FACE_ROLES = ("eyes", "eyebrows", "eyelashes", "teeth", "tongue", "beard")  # joined into head.glb
 # fixed budgets for heavy face assets (MPFB teeth ~7k triangles, mostly hidden; beards vary)
 FIXED_TRIANGLES = {"teeth": 600, "beard": 1000}
+KIT_BEARD_TRIANGLES = 600  # beards of hair kits (each carries the face morphs)
 CARD_ROLES = ("beard",)  # alpha cards: no border protection when reducing
 SKIN_MIN_RATIO = 0.15  # the face keeps at least this share (morph quality), whatever the budget
 PART_OF_ROLE = {"skin": "body", "cloth": "body", "hair": "hair"}  # FACE_ROLES and the head: head
@@ -536,10 +539,29 @@ def _to_body_neck(head: bpy.types.Object, characters: Path) -> None:
     heads of other ages would otherwise stretch the neck and sit too high or too low."""
     bm = bmesh.new()
     bm.from_mesh(head.data)
-    border = [v.co.z for v in bm.verts if v.is_boundary]
+    # the neck is the lowest open border loop: hair loaded as clothes (hair kits) deletes the
+    # scalp under it, which opens more border loops on top of the head
+    loops: list[list[float]] = []
+    seen: set[int] = set()
+    for start in [v for v in bm.verts if v.is_boundary]:
+        if start.index in seen:
+            continue
+        loop, stack = [], [start]
+        seen.add(start.index)
+        while stack:
+            v = stack.pop()
+            loop.append(v.co.z)
+            for e in v.link_edges:
+                if e.is_boundary:
+                    w = e.other_vert(v)
+                    if w.index not in seen:
+                        seen.add(w.index)
+                        stack.append(w)
+        loops.append(loop)
     bm.free()
-    if not border:
+    if not loops:
         raise SystemExit("head without an open neck border")
+    border = min(loops, key=lambda zs: float(np.mean(zs)))
     shift = _body_neck_height(characters) - float(np.mean(border))
     for o in [o for o in bpy.data.objects if o.type == "MESH"]:
         o.data.vertices.foreach_set("co", (_coords(o) + (0.0, 0.0, shift)).ravel())
@@ -549,7 +571,10 @@ def _to_body_neck(head: bpy.types.Object, characters: Path) -> None:
                 key.data.foreach_get("co", co)
                 key.data.foreach_set("co", (co.reshape(-1, 3) + (0.0, 0.0, shift)).ravel())
         o.data.update()
-    print(f"[chargen] head moved {shift * 1000:+.1f} mm to the neck of the base bodies")
+    print(
+        f"[chargen] head moved {shift * 1000:+.1f} mm to the neck of the base bodies"
+        f" (neck border {float(np.mean(border)):.3f} m, {len(border)} vertices)"
+    )
 
 
 def _derive(
@@ -897,7 +922,8 @@ def _prepare_image(
     if neutral:  # kit garments: grey with headroom, the figure palette gives the colour
         px = np.array(img.pixels[:], dtype=np.float32).reshape(-1, 4)
         lum = px[:, :3] @ np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
-        mean = max(float(lum.mean()), 1e-3)
+        seen = px[:, 3] > 0.5 if keep_alpha else np.ones(len(px), dtype=bool)  # hair cards
+        mean = max(float(lum[seen].mean()) if seen.any() else float(lum.mean()), 1e-3)
         lum = mean + NEUTRAL_CONTRAST * (lum - mean)  # softer patterns, colour from the palette
         lum *= NEUTRAL_MEAN / mean
         px[:, :3] = np.clip(lum, 0.0, 1.0)[:, None]
@@ -915,7 +941,9 @@ def _prepare_image(
 
 
 def _rebuild_material(obj: bpy.types.Object, role: str, stem: str, human: Human, tmp: Path) -> None:
-    kit = role == "cloth" and "cloth" in human.parts
+    kit = (role == "cloth" and "cloth" in human.parts) or (
+        human.hair_kit and role in ("hair", "beard")
+    )
     piece = human.part_name(stem) if kit else stem  # our file/material name for the piece
     mat_name = role if role != "cloth" else f"cloth_{piece}"
     texture_name = piece
@@ -1046,17 +1074,19 @@ def main() -> None:
 
     # only the parts the recipe exports count (a head recipe drops its body and vice versa)
     def part_of(o: bpy.types.Object) -> str:
+        if human.hair_kit and o.get("gothar_type") in ("KitHair", "KitBeard"):
+            return role_of[o.name]  # hair kit: "hair" or "beard"
         if o is head or role_of[o.name] in FACE_ROLES:
             return "head"
         if role_of[o.name] == "cloth" and "cloth" in human.parts:
             return "cloth"  # clothing kit: every garment becomes its own part
         return PART_OF_ROLE[role_of[o.name]]
 
+    if ("head" in human.parts or human.hair_kit) and "body" not in human.parts:
+        _to_body_neck(head, args.out_dir.resolve().parent.parent)  # a head for any base body
     for o in [o for o in bpy.data.objects if o.type == "MESH"]:
         if part_of(o) not in human.parts:
             bpy.data.objects.remove(o)
-    if "head" in human.parts and "body" not in human.parts:  # a head for any base body
-        _to_body_neck(head, args.out_dir.resolve().parent.parent)
 
     # reduce: skin, clothes and hair share the budget; eyes, brows, lashes and tongue stay as
     # they are, teeth and beard get a fixed budget
@@ -1064,7 +1094,10 @@ def main() -> None:
     for o in objects:
         role = role_of[o.name]
         if role in FIXED_TRIANGLES:
-            ratio = min(1.0, FIXED_TRIANGLES[role] / max(1, _triangles(o)))
+            target = FIXED_TRIANGLES[role]
+            if human.hair_kit and role == "beard":  # kit beards: smaller (one per head and style)
+                target = human.budget.get(human.part_name(stem_of[o.name]), KIT_BEARD_TRIANGLES)
+            ratio = min(1.0, target / max(1, _triangles(o)))
             _decimate(o, ratio, keep_borders=role not in CARD_ROLES)
     fixed = [o for o in objects if role_of[o.name] in FACE_ROLES]
     reducible = [o for o in objects if o not in fixed]
@@ -1075,6 +1108,9 @@ def main() -> None:
     for o in reducible:
         if "cloth" in human.parts and o in garments:  # kit: each garment its own budget
             target = human.budget.get(human.part_name(stem_of[o.name]), per_garment)
+            _decimate(o, min(1.0, target / max(1, _triangles(o))), keep_borders=False)
+        elif human.hair_kit and role_of[o.name] == "hair":  # kit: each style its own budget
+            target = human.budget.get(human.part_name(stem_of[o.name]), human.triangles)
             _decimate(o, min(1.0, target / max(1, _triangles(o))), keep_borders=False)
         elif role_of[o.name] == "hair":
             _decimate(o, min(1.0, ratio * 1.4))
@@ -1095,6 +1131,7 @@ def main() -> None:
         face = [o for o in objects if role_of[o.name] in FACE_ROLES]
         hair = [o for o in objects if role_of[o.name] == "hair"]
         parts = {}
+        kit_role: dict[str, str] = {}  # hair kits: part file -> hair | beard
         if "body" in human.parts:
             parts["body"] = _join(basemesh, clothes)
             parts["body"].name = "body"
@@ -1108,7 +1145,13 @@ def main() -> None:
                 and Path(bpy.path.abspath(img.filepath)).is_file()
             ):
                 img.pack()
-        if hair and "hair" in human.parts:
+        if human.hair_kit:  # parts/<kit>/hair_<style>.glb, beard_<style>.glb
+            for o in [o for o in objects if role_of[o.name] in ("hair", "beard")]:
+                part = human.part_name(stem_of[o.name])
+                kit_role[part] = role_of[o.name]
+                o.name = part
+                parts[part] = o
+        elif hair and "hair" in human.parts:
             parts["hair"] = _join(hair[0], hair[1:])
             parts["hair"].name = "hair"
         if "cloth" in human.parts:
@@ -1119,6 +1162,7 @@ def main() -> None:
         # hair and garments are reduced freely
         for file_name, obj in parts.items():
             role = file_name if file_name in ("body", "head", "hair") else "cloth"
+            role = kit_role.get(file_name, role)
             levels = make_lods(obj, role, keep_borders=role in ("body", "head"))
             _export(levels, ref, args.out_dir / f"{file_name}.glb")
             for o in levels:  # garments of a kit all use the node names cloth_lod<n>

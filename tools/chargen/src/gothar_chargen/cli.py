@@ -45,6 +45,7 @@ from gothar_chargen.partdata import (
     body_or_head_data,
     garment_data,
     hide_own_skin,
+    name_meshes,
     write_part,
 )
 from gothar_chargen.poke import CLIPS as POKE_CLIPS
@@ -359,6 +360,10 @@ def update_part_data(characters: Path, dirs: list[Path] | None, out: TextIO) -> 
                 print(f"part data {path.relative_to(characters)} ({role}{extra})", file=out)
             elif role == "cloth":
                 garments.append((path, g))
+            elif role in ("hair", "beard"):  # no assembly data; only stable mesh names
+                name_meshes(g)
+                path.write_bytes(g.to_bytes())
+                print(f"part data {path.relative_to(characters)} ({role}, names)", file=out)
     humans = characters / "humans"
     for path, g in garments:
         recipe = load_human(humans / (path.parent.name + HUMAN_SUFFIX))

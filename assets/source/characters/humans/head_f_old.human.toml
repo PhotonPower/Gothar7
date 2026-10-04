@@ -1,0 +1,26 @@
+# Head (old woman), style A (F3v): head with face morphs, teeth and tongue; hair and beards
+# come from the hair kit hair_f_old (parts/hair_f_old/). Fits every base body of the
+# same sex (assembly snaps the neck); macros only shape the face.
+version = 1
+triangles = 5500
+parts = ["head"]
+
+[macro]
+gender = 0.0
+age = 0.9
+muscle = 0.4
+weight = 0.55
+proportions = 0.5
+height = 0.5
+race = { caucasian = 1.0 }
+
+[assets]
+skin = "skins/old_caucasian_female/old_caucasian_female.mhmat"
+eyes = "eyes/low-poly/low-poly.mhclo"
+eyebrows = "eyebrows/eyebrow008/eyebrow008.mhclo"
+eyelashes = "eyelashes/eyelashes02/eyelashes02.mhclo"
+teeth = "teeth/teeth_base/teeth_base.mhclo"
+tongue = "tongue/tongue01/tongue01.mhclo"
+
+[shape]
+nose-hump-incr = 0.3

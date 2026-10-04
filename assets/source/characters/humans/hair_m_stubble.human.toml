@@ -1,0 +1,28 @@
+# Hair kit (F3v) fitted to head_m_stubble: every style and beard is its own part
+# (parts/hair_m_stubble/<name>.glb, roles hair and beard in figure manifests). Neutral grey textures
+# shared by name across the kits: the figure palette gives the colour (keys hair, beard; the
+# texture mean is 0.55). CC0 only, file headers checked: MakeHuman Hair 01, Bodyparts 05, system assets.
+version = 1
+fit_to = "head_m_stubble"
+parts = ["hair", "beard"]
+triangles = 1200
+
+[assets]
+hairs = [
+    "hair/cortu_shaggy_green_hair/cortu_shaggy_green_hair.mhclo",
+    "hair/short02/short02.mhclo",
+    "hair/short04/short04.mhclo",
+    "hair/culturalibre_hair_05/culturalibre_hair_05.mhclo",
+]
+beards = [
+    "clothes/rehmanpolanski_moustache_viking/rehmanpolanski_moustache_viking.mhclo",
+    "clothes/rehmanpolanski_beard_viking/rehmanpolanski_beard_viking.mhclo",
+]
+
+[names]
+cortu_shaggy_green_hair = "hair_long_shaggy"
+short02 = "hair_short"
+short04 = "hair_buzz"
+culturalibre_hair_05 = "hair_tousled"
+rehmanpolanski_moustache_viking = "beard_moustache"
+rehmanpolanski_beard_viking = "beard_goatee"
