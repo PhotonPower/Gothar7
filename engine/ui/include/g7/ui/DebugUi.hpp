@@ -134,6 +134,22 @@ struct DialogPanel
     i32 clicked = -1; ///< out
 };
 
+/// The diary (M10 part D): chapter, quests by status with their entries, notes by topic.
+struct DiaryPanel
+{
+    std::string chapter;
+    struct Quest
+    {
+        std::string name; ///< or the topic of notes
+        std::vector<std::string> entries;
+    };
+    std::vector<Quest> running;
+    std::vector<Quest> done;
+    std::vector<Quest> failed;
+    std::vector<Quest> notes;
+    bool open = true; ///< edited: closed with its button
+};
+
 /// Trading (M10 part C): the trader's goods and the hero's, prices in the currency; one piece per click.
 struct TradePanel
 {
@@ -275,6 +291,8 @@ public:
     void consolePanel(ConsolePanel& panel);
     /// Window "Creatures" (M6 D3).
     void creaturesPanel(CreaturesPanel& panel);
+    /// Window "Tagebuch" (M10 part D).
+    void diaryPanel(DiaryPanel& panel);
     /// Window "Handel" (M10 part C).
     void tradePanel(TradePanel& panel);
     /// The dialogue box at the bottom (M10).

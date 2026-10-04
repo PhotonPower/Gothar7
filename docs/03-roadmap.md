@@ -221,8 +221,8 @@ ihrem Bereich binnen 30 Ticks (E).
 - [x] Kameramodus „Dialog“ der Third-Person-Kamera (aus M5: Schuss/Gegenschuss als Datensatz in `movement.toml` bzw. Dialogdaten) – `data/dialog.lua` (B)
 - [x] Auswahl-Menüs (Choices) innerhalb einer Info – `choice(text, fn)` (A)
 - [x] Handel-Bildschirm und Lernen über Dialog – Tauschhandel in Gulden (Info `trade = true`, `data/trade.lua`), Lehrer über `teach_menu` (`data/teaching.lua`); Händler: alter Mann, Lehrer: Holzfäller (C)
-- [ ] Tagebuch: Aufträge (laufend/erfolgreich/gescheitert), Einträge, Notizen
-- [ ] Kapitelwechsel-Mechanik
+- [x] Tagebuch: Aufträge (laufend/erfolgreich/gescheitert), Einträge, Notizen – `lib/diary.lua` (in Story gespeichert), Fenster „Tagebuch“ auf der Aktion log (N bzw. J) (D)
+- [x] Kapitelwechsel-Mechanik – `set_chapter(n, titel)`, Ereignis `chapter_changed` (D)
 
 **DoD / Meilenstein B (Vertical Slice):** Ein kleines Lager mit 5–10 NPCs mit Routinen, 3 Quests
 (Botengang, Beschaffung, Konflikt), Handel, ein Lehrer, Truhen, Tag/Nacht – durchspielbar.

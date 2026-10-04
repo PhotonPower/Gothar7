@@ -27,7 +27,7 @@ Info "dia_gate_guard_work" {
         say(npc, "Die Bäuerin draußen am Feld sucht immer helfende Hände.")
         choice("Dann gehe ich gleich zu ihr.", function()
             say(npc, "Gut. Sag ihr, die Wache schickt dich.")
-            Story.quest_farm_work = "running"
+            quest_start("quest_farm_work")
         end)
         choice("Feldarbeit ist nichts für mich.", function()
             say(npc, "Dann wirst du hier nicht alt, Fremder.")

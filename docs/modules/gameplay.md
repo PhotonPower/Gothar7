@@ -231,7 +231,18 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   (`set_learn_points`). Kosten wie Gothic 1: Attribut +1 = 1 LP, +5 = 5 LP, Talente 5–20 LP, dazu Gulden je Lehrer.
 - Testlager: der alte Mann handelt (`dialogs/old_man.lua`), der Holzfäller lehrt Stärke (`dialogs/woodcutter.lua`).
 
-### Weiter (Teile D–E)
+### Tagebuch und Kapitel (Teil D, umgesetzt) – `game/scripts/lib/diary.lua`, `runtime/EngineDiary.cpp`
+- **Aufträge** sind `Quest`-Instanzen (name, description, topic). `quest_start(name, text?)` (einmal; erster Eintrag
+  ist die description), `quest_entry`, `quest_success`, `quest_fail`, `quest_status` („none“, „running“, „success“,
+  „failed“). Einträge tragen Spieltag und Uhrzeit (`where().day` ab 1).
+- **Notizen** nach Themen: `note(thema, text)`.
+- **Kapitel:** `chapter()`, `set_chapter(n, titel?)` – Meldung „Kapitel n: …“ und Ereignis `chapter_changed(n)`; die
+  Inhalte tauschen darauf Tagesabläufe (`set_routine`) und Infos (Bedingungen auf `chapter()`).
+- Alles steht in `Story` (`quests`, `notes`, `chapter`) und wird mit dem Spielstand gespeichert (M15).
+- **Fenster „Tagebuch“** (Aktion `log`: N klassisch, J modern; Konsole `diary_open()`): Kapitel, Reiter Laufend,
+  Erledigt, Gescheitert, Notizen; je Auftrag die Einträge. Meldungen am Bildschirm über `notice(text)`.
+
+### Weiter (Teil E)
 - Dialog-Ablauf als Sequenz: `say` (Sprache + Untertitel + Gesten + Lippensync), `choices`, `trade`, `teach`, `end`.
 - Dialog-Kamera: Schuss/Gegenschuss je Sprecher.
 - Tagebuch: Topics mit Status, Einträge mit Zeitstempel.
