@@ -307,6 +307,15 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
         trigger.changeWorld = std::move(world).value();
         trigger.changeStart = std::move(start).value();
     }
+    if (t.contains("owner"))
+    {
+        auto owner = readText(r, t, "owner", at, true);
+        if (!owner)
+        {
+            return owner.error();
+        }
+        trigger.owner = std::move(owner).value();
+    }
     if (t.contains("target"))
     {
         // Reserved: a vob id or a vob name.
@@ -1158,6 +1167,10 @@ std::string writeWorldFile(const WorldFile& world)
             if (!tv.changeWorld.empty())
             {
                 trigger["changeWorld"] = Json{{"world", tv.changeWorld}, {"start", tv.changeStart}};
+            }
+            if (!tv.owner.empty())
+            {
+                trigger["owner"] = tv.owner;
             }
             v["components"]["trigger"] = std::move(trigger);
         }

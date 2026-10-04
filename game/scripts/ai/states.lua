@@ -51,7 +51,7 @@ State "zs_chop_wood" {
     begin = function(npc, at)
         npc_goto(npc, at)
         npc_goto_freepoint(npc, "CHOP", 15)
-        npc_play(npc, "chop_wood")
+        npc_play(npc, "chop_wood", "it_axe")
     end,
 }
 

@@ -28,6 +28,10 @@ Format::
     concat = ["ual1:Jump_Loop[0:20]", "ual1:Jump_Land"]
 
     [[clip]]
+    name = "1h/t_draw"
+    chain = ["1h/t_reach", "1h/t_lift"]           # earlier clips of the set, one after the other
+
+    [[clip]]
     name = "none/s_strafe_l"
     keyframe = "strafe"                           # keyframe recipe (blender/keyframes.py)
     params = { base = "none/s_walk", side = "l" }
@@ -133,9 +137,9 @@ class Source:
 @dataclass(frozen=True)
 class ClipSpec:
     name: str
-    op: str  # "from" | "reverse" | "blend" | "concat" | "keyframe"
+    op: str  # "from" | "reverse" | "blend" | "concat" | "chain" | "keyframe" | "layer"
     sources: tuple[SourceRef, ...] = ()  # for "from" / "concat"
-    clips: tuple[str, ...] = ()  # for "reverse" / "blend": earlier clips of the set
+    clips: tuple[str, ...] = ()  # for "reverse" / "blend" / "chain": earlier clips of the set
     frames: int = 0  # for "blend"
     events: str | None = None
     bones: tuple[str, ...] = ()  # for "layer": bones whose subtrees come from the second clip
@@ -218,10 +222,14 @@ def parse_set_spec(data: dict, external: frozenset[str] = frozenset()) -> SetSpe
             raise ClipSpecError(f"{where}: monster clip in a set without 'rig'")
         if name in seen:
             raise ClipSpecError(f"{where}: duplicate")
-        ops = [k for k in ("from", "reverse", "blend", "concat", "keyframe", "layer") if k in raw]
+        ops = [
+            k
+            for k in ("from", "reverse", "blend", "concat", "chain", "keyframe", "layer")
+            if k in raw
+        ]
         if len(ops) != 1:
             raise ClipSpecError(
-                f"{where}: needs exactly one of from/reverse/blend/concat/keyframe/layer"
+                f"{where}: needs exactly one of from/reverse/blend/concat/chain/keyframe/layer"
             )
         op = ops[0]
         events = raw.get("events")
@@ -242,6 +250,11 @@ def parse_set_spec(data: dict, external: frozenset[str] = frozenset()) -> SetSpe
             if not isinstance(refs, list) or len(refs) < 2:
                 raise ClipSpecError(f"{where}: concat needs at least two sources")
             spec = ClipSpec(name, op, sources=tuple(parse_source_ref(r, sources) for r in refs))
+        elif op == "chain":
+            parts = raw["chain"]
+            if not isinstance(parts, list) or len(parts) < 2:
+                raise ClipSpecError(f"{where}: chain needs at least two earlier clips")
+            spec = ClipSpec(name, op, clips=tuple(earlier(c) for c in parts))
         elif op == "reverse":
             spec = ClipSpec(name, op, clips=(earlier(raw["reverse"]),))
         elif op == "layer":

@@ -288,6 +288,15 @@ std::optional<std::string_view> Engine::mobPhase() const noexcept
     return phaseName(static_cast<int>(m_mobUse->phase));
 }
 
+void Engine::lockpickNoticed(const MobRuntime& m)
+{
+    if (!m.owner.empty())
+    {
+        const script::Value seen[] = {m.owner, m.definition};
+        witnessed("assess_use_mob", seen); // picking somebody else's lock
+    }
+}
+
 void Engine::mobCommand(MobCommand command)
 {
     if (!m_mobUse)
@@ -305,6 +314,10 @@ void Engine::mobCommand(MobCommand command)
         return;
     }
     MobRuntime& m = m_mobs.at(use.vob.value);
+    if (m_player.valid())
+    {
+        emitNoise(m_player.feet(), noiseRadius("lockpick"), "lockpick"); // every turn clicks (M9 part C)
+    }
     const f32 roll = m_random ? m_random() : std::uniform_real_distribution<f32>(0.0f, 1.0f)(m_rng);
     switch (use.lockpick->turn(command == MobCommand::TurnLeft ? 'L' : 'R', roll, lockpickBreakChance()))
     {
@@ -324,6 +337,7 @@ void Engine::mobCommand(MobCommand command)
             const script::Value args[] = {m.definition};
             m_scripts->emit("lockpick_broken", args);
         }
+        lockpickNoticed(m); // M9 part C
         if (m_hero->itemCount(lockpickItem()) == 0)
         {
             use.leaveRequested = true;
@@ -339,6 +353,7 @@ void Engine::mobCommand(MobCommand command)
             const script::Value args[] = {m.definition};
             m_scripts->emit("lock_picked", args);
         }
+        lockpickNoticed(m); // M9 part C
         break;
     }
 }
@@ -475,6 +490,11 @@ void Engine::fixedUpdateMobs(f32 seconds)
             {
                 const script::Value args[] = {m.definition, m.type};
                 m_scripts->emit("mob_used", args);
+                if (!m.owner.empty())
+                {
+                    const script::Value seen[] = {m.owner, m.definition};
+                    witnessed("assess_use_mob", seen); // somebody else's chest or door (M9 part C)
+                }
                 const script::Instance* def = m_scripts->findInstance("Mob", m.definition);
                 if (def != nullptr)
                 {
@@ -627,6 +647,7 @@ Result<void> Engine::takeFromMob(world::VobId vob, std::string_view item, u32 co
     {
         const script::Value theft[] = {it->second.owner, std::string(item), static_cast<i64>(count)};
         m_scripts->emit("theft", theft); // somebody else's chest (M8 part D)
+        witnessed("assess_theft", theft);
     }
     return {};
 }

@@ -43,6 +43,7 @@ void defineContentKinds(script::ScriptVm& vm)
                        {"equipment", Type::StringList, false, none, none, "Item"},
                        {"inventory", Type::Table},
                        {"routine", Type::String, false, none, none, "Routine"},
+                       {"senses", Type::Table},     // sight (m), angle (degrees), hearing (factor); M9
                        {"protection", Type::Table}, // by damage type (edge, blunt, point, fire, magic, fall)
                        {"xp", Type::Integer, false, 0.0, none},
                        {"learn_points", Type::Integer, false, 0.0, none},

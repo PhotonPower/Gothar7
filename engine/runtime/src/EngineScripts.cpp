@@ -99,7 +99,9 @@ Result<void> Engine::initScripts()
     bindUseFunctions();
     bindNpcFunctions();
     bindAiFunctions();
+    bindPerceptionFunctions();
     m_scripts->loadAll();
+    loadPerceptionSettings(); // data/perception.lua (M9 part C)
     buildHero();
     for (const script::ScriptError& e : m_scripts->errors())
     {
@@ -146,6 +148,7 @@ void Engine::reloadScripts()
         }
         (void)m_scripts->setStory(script::Value(std::move(merged)));
     }
+    loadPerceptionSettings();
     m_scripts->emit("scripts_reloaded");
     G7_LOG_INFO("engine", "scripts reloaded");
     consolePrint("(scripts reloaded)");
@@ -369,6 +372,17 @@ Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
     {
         G7_LOG_WARN("engine", "{}", character.error().message);
     }
+    // Its senses (M9 part C): the defaults of the scripts, `senses` of the instance overrides them.
+    c->sight = m_perception.sight;
+    c->sightCos = std::cos(glm::radians(m_perception.angle * 0.5f));
+    if (const script::Table* senses = npc->fields["senses"].asTable())
+    {
+        c->sight = static_cast<f32>(senses->field("sight").asNumber(c->sight));
+        c->sightCos = std::cos(
+            glm::radians(static_cast<f32>(senses->field("angle").asNumber(m_perception.angle)) * 0.5f));
+        c->hearing = static_cast<f32>(senses->field("hearing").asNumber(1.0));
+    }
+    c->perceptionTimer = static_cast<f32>(c->id % 5) * 0.04f; // staggered
     // Its daily routine (M9 part B), if the instance names one.
     if (npc->fields["routine"].isString())
     {

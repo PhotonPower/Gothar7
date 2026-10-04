@@ -432,7 +432,8 @@ void Engine::takeItem(world::VobId id)
         if (!owner.empty())
         {
             const script::Value theft[] = {owner, instance, static_cast<i64>(count)};
-            m_scripts->emit("theft", theft); // witnesses and reactions with M9
+            m_scripts->emit("theft", theft);
+            witnessed("assess_theft", theft); // M9 part C
         }
     }
 }

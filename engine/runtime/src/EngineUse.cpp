@@ -212,7 +212,9 @@ void Engine::finishPickpocket(const PendingPickpocket& p)
         if (m_scripts)
         {
             const script::Value args[] = {c->species};
-            m_scripts->emit("pickpocket_failed", args); // the reaction comes with M9
+            m_scripts->emit("pickpocket_failed", args);
+            const script::Value seen[] = {c->species, std::string(), i64{0}};
+            witnessed("assess_theft", seen, c->species); // the victim notices, and whoever sees it (M9)
         }
         return;
     }

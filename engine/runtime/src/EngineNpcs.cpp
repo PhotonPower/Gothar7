@@ -83,7 +83,17 @@ Result<void> Engine::npcGoTo(u32 id, std::string_view target, bool run)
     {
         return Error{std::format("no way point or freepoint \"{}\" in this world", target)};
     }
-    auto route = m_waynet.route(c->position, *goal,
+    return npcGoToPosition(id, *goal, target, run);
+}
+
+Result<void> Engine::npcGoToPosition(u32 id, const Vec3& goal, std::string_view target, bool run)
+{
+    Creature* c = creature(id);
+    if (c == nullptr || !c->body)
+    {
+        return Error{std::format("creature {} cannot walk (no NPC)", id)};
+    }
+    auto route = m_waynet.route(c->position, goal,
                                 [this](const Vec3& a, const Vec3& b) { return walkableLine(a, b); });
     if (!route)
     {

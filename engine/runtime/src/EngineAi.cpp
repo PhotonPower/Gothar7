@@ -59,6 +59,8 @@ f32 wrapAngle(f32 a)
 {
     return std::remainder(a, 2.0f * glm::pi<f32>());
 }
+
+constexpr std::string_view kPlayerTarget = "@player"; ///< target of npc_goto_player, npc_turn_to_player
 } // namespace
 
 Creature* Engine::npcNamed(std::string_view instance) noexcept
@@ -233,6 +235,7 @@ void Engine::fixedUpdateAi(Creature& c, f32 seconds)
     {
         return;
     }
+    perceive(c, seconds); // M9 part C
     runCommands(c, seconds);
     // The state's loop while nothing is queued.
     if (!c.state.empty() && c.stateBegun && c.commands.empty() && !c.commandRunning && m_scripts)
@@ -279,6 +282,26 @@ bool Engine::startCommand(Creature& c)
     switch (cmd.kind)
     {
     case Kind::GoTo:
+        if (cmd.text == kPlayerTarget)
+        {
+            if (!m_player.valid())
+            {
+                return false;
+            }
+            const Vec3 to = m_player.feet() - c.position;
+            const f32 distance = glm::length(Vec3(to.x, 0.0f, to.z));
+            if (distance <= cmd.distance)
+            {
+                return false; // near enough already
+            }
+            const Vec3 goal = m_player.feet() - Vec3(to.x, 0.0f, to.z) / distance * cmd.distance;
+            if (auto sent = npcGoToPosition(c.id, goal, "player", cmd.run); !sent)
+            {
+                G7_LOG_WARN("engine", "{}: {}", c.species, sent.error().message);
+                return false;
+            }
+            return true;
+        }
         if (auto sent = npcGoTo(c.id, cmd.text, cmd.run); !sent)
         {
             G7_LOG_WARN("engine", "{}: {}", c.species, sent.error().message);
@@ -323,7 +346,11 @@ bool Engine::startCommand(Creature& c)
     case Kind::Turn:
     {
         std::optional<Vec3> dir;
-        if (const auto wp = m_waynet.find(cmd.text))
+        if (cmd.text == kPlayerTarget && m_player.valid())
+        {
+            dir = m_player.feet() - c.position;
+        }
+        else if (const auto wp = m_waynet.find(cmd.text))
         {
             dir = m_waynet.points()[*wp].dir;
         }
@@ -384,6 +411,9 @@ bool Engine::startCommand(Creature& c)
     }
     case Kind::Wait:
         return cmd.value > 0.0f;
+    case Kind::Follow:
+        c.followPlayer = true;
+        return cmd.value > 0.0f && m_player.valid();
     case Kind::Say:
         G7_LOG_INFO("engine", "{}: \"{}\"", c.species, cmd.text);
         if (m_scripts)
@@ -435,6 +465,10 @@ void Engine::runCommands(Creature& c, f32 seconds)
             break;
         case Kind::Turn:
         {
+            if (cmd.text == kPlayerTarget && m_player.valid())
+            {
+                c.turnTo = gameplay::yawOf(m_player.feet() - c.position); // the player may move
+            }
             const f32 turn = c.turnTo ? wrapAngle(*c.turnTo - c.yaw) : 0.0f;
             c.yaw = wrapAngle(c.yaw + std::clamp(turn, -kTurnRate * seconds, kTurnRate * seconds));
             done = std::abs(turn) < 0.05f;
@@ -472,6 +506,33 @@ void Engine::runCommands(Creature& c, f32 seconds)
         case Kind::Say:
             done = c.commandTime >= cmd.value;
             break;
+        case Kind::Follow:
+        {
+            // Keep about `distance` from the player: a new way when he got away, face him when near.
+            const Vec3 to = m_player.valid() ? m_player.feet() - c.position : Vec3(0.0f);
+            const f32 distance = glm::length(Vec3(to.x, 0.0f, to.z));
+            if (distance > cmd.distance + 1.0f && (!c.route || std::fmod(c.commandTime, 1.0f) < seconds))
+            {
+                const Vec3 goal = m_player.feet() - Vec3(to.x, 0.0f, to.z) / distance * cmd.distance;
+                (void)npcGoToPosition(c.id, goal, "player", distance > 8.0f);
+            }
+            else if (distance <= cmd.distance)
+            {
+                c.route.reset();
+                if (distance > 0.1f)
+                {
+                    const f32 turn = wrapAngle(gameplay::yawOf(to) - c.yaw);
+                    c.yaw = wrapAngle(c.yaw + std::clamp(turn, -kTurnRate * seconds, kTurnRate * seconds));
+                }
+            }
+            done = c.commandTime >= cmd.value || !m_player.valid();
+            if (done)
+            {
+                c.route.reset();
+                c.followPlayer = false;
+            }
+            break;
+        }
         }
         if (!done)
         {
@@ -544,6 +605,40 @@ void Engine::bindAiFunctions()
          "Reiht ein: Der NPC geht (oder rennt) über das Wegnetz zu einem Wegpunkt oder Freepoint (Name ohne "
          "Rücksicht auf Groß- und Kleinschreibung). Ankunft: Ereignis `npc_arrived`.",
          "NPCs", queue(Kind::GoTo, true)});
+    const auto toPlayer = [npc](Kind kind)
+    {
+        return [npc, kind](std::span<const Value> a) -> Result<Value>
+        {
+            auto c = npc(a);
+            if (!c)
+            {
+                return c.error();
+            }
+            Creature::Command cmd{kind, std::string(kPlayerTarget)};
+            if (kind == Kind::Follow)
+            {
+                cmd.value = static_cast<f32>(a.size() > 1 ? a[1].asNumber(10.0) : 10.0);
+                cmd.distance = static_cast<f32>(a.size() > 2 ? a[2].asNumber(2.0) : 2.0);
+            }
+            else if (kind == Kind::GoTo)
+            {
+                cmd.distance = static_cast<f32>(a.size() > 1 ? a[1].asNumber(1.5) : 1.5);
+                cmd.run = a.size() > 2 && a[2].asBool();
+            }
+            c.value()->commands.push_back(std::move(cmd));
+            return Value();
+        };
+    };
+    vm.bind({"npc_goto_player", "npc_goto_player(npc: string, distance?: number, run?: boolean)",
+             "Reiht ein: zum Spieler gehen (bzw. rennen), bis auf `distance` Meter (Vorgabe 1,5).", "NPCs",
+             toPlayer(Kind::GoTo)});
+    vm.bind({"npc_turn_to_player", "npc_turn_to_player(npc: string)", "Reiht ein: sich zum Spieler drehen.",
+             "NPCs", toPlayer(Kind::Turn)});
+    vm.bind(
+        {"npc_follow_player", "npc_follow_player(npc: string, seconds?: number, distance?: number)",
+         "Reiht ein: dem Spieler `seconds` Sekunden lang (Vorgabe 10) auf etwa `distance` Meter (Vorgabe 2) "
+         "folgen und ihn ansehen (Drohen, Begleiten).",
+         "NPCs", toPlayer(Kind::Follow)});
     vm.bind(
         {"npc_goto_freepoint",
          "npc_goto_freepoint(npc: string, type: string, radius?: number, run?: boolean)",

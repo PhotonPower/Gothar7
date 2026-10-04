@@ -667,6 +667,20 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     a.setBool("dive", water == gameplay::WaterMode::Dive);
     a.setBool("slide", onLand && state == physics::MoveState::Slide);
     a.setBool("sneak", onLand && input.sneak);
+    // The weapon (M9 part C): drawn and put away on land; swimming and climbing put it away.
+    const bool armsFree = onLand && !m_mobUse && !m_pickup;
+    if ((std::exchange(m_drawWeaponRequested, false) && armsFree) || (m_weaponMode != 0 && !onLand))
+    {
+        toggleWeapon();
+    }
+    a.setFloat("weapon", static_cast<f32>(m_weaponMode));
+    // Running is heard (Perception.noise.run), twice a second.
+    m_runNoiseTimer -= seconds;
+    if (onLand && !input.sneak && glm::length(Vec2(moved.x, moved.z)) > 3.0f && m_runNoiseTimer <= 0.0f)
+    {
+        m_runNoiseTimer = 0.5f;
+        emitNoise(m_playerFeet, noiseRadius("run"), "run");
+    }
     a.setBool("pickup", m_pickup && m_pickup->animated && !m_pickup->taken);
     a.update(seconds,
              [&](std::string_view clip, std::string_view event)

@@ -60,3 +60,15 @@ name = "fist/t_turn_r"
 layer = ["none/t_turn_r", "fist/s_idle"]
 from_bone = ["clavicle_l", "clavicle_r", "neck"]
 events = "footsteps"
+
+# --- raising and lowering the fists (M9 C1; overlay from spine_02, no event) --------------------
+
+[[clip]]
+name = "fist/t_draw"
+blend = ["none/s_idle", "fist/s_idle"]
+frames = 15
+
+[[clip]]
+name = "fist/t_sheath"
+blend = ["fist/s_idle", "none/s_idle"]
+frames = 15

@@ -201,8 +201,8 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 - [x] NPC-Zustandsautomat: Skript-Zustände `begin/loop/end`, Zustandswechsel, Unterbrechungen – Lua-Art `State` (begin/loop/finish), Befehlsliste (`npc_goto`, `npc_play` …), `npc_start_state` (B)
 - [x] **Tagesabläufe** (Routinen) mit Zeitfenstern, Routinenwechsel per Skript (z. B. Kapitelwechsel) – `routine` am Npc, `set_routine`, `insert_npc`; Testlager: vier Leute mit Tagesablauf (`camp_people()`) (B)
 - [x] Freepoint-Belegung (Sitzplätze am Lagerfeuer etc.) – `npc_goto_freepoint` reserviert den nächsten freien (B)
-- [ ] **Wahrnehmung**: Sicht (Kegel + Raycast), Gehör (Lärmereignisse mit Radius), Reichweiten, Update-Takt nach Distanz
-- [ ] Wahrnehmungs-Ereignisse: Spieler gesehen, Waffe gezogen, Kampf, Diebstahl, Betreten privater Bereiche, Zauber, Item angefasst
+- [x] **Wahrnehmung**: Sicht (Kegel + Raycast), Gehör (Lärmereignisse mit Radius), Reichweiten, Update-Takt nach Distanz – Schleichen und Nacht verkürzen die Sicht, Werte in `data/perception.lua` (C1)
+- [ ] Wahrnehmungs-Ereignisse: Spieler gesehen, Waffe gezogen, Kampf, Diebstahl, Betreten privater Bereiche, Zauber, Item angefasst – umgesetzt: gesehen, Waffe gezogen (Taste `draw_weapon`, 1h-/Faust-Haltung), Diebstahl, fremder Mob, privater Bereich (`trigger.owner`), Geräusch; Warnungen und Drohen in `ai/perceptions.lua` (C1); offen: Kampf (M11), Zauber (M13)
 - [ ] Einstellungen (dauerhaft/temporär), Gruppenhilfe, Fliehen
 - [ ] Monster-KI: Revier, Rudel, Fressen/Schlafen, Jagd, Flucht
 - [x] KI-LOD: weit entfernte NPCs „springen“ entlang ihrer Routine statt simuliert zu werden – über 80 m (zurück unter 75 m) (B)

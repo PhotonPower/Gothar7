@@ -121,11 +121,13 @@ struct Creature
             Stop,
             Wait,
             Say,
+            Follow, ///< the player, for `value` seconds, at about `distance`
         };
         Kind kind = Kind::Wait;
-        std::string text; ///< target, ambient, freepoint type, words
-        std::string item; ///< Play: the item taken into the hand (broom, mug)
-        f32 value = 0.0f; ///< seconds, radius
+        std::string text;    ///< target, ambient, freepoint type, words
+        std::string item;    ///< Play: the item taken into the hand (broom, mug)
+        f32 value = 0.0f;    ///< seconds, radius
+        f32 distance = 1.5f; ///< GoTo/Follow the player: how near
         bool run = false;
     };
     std::deque<Command> commands;
@@ -151,6 +153,16 @@ struct Creature
     bool simulated = true;     ///< near enough to the player (AI LOD)
     /// The item of the ambient animation: taken at its event item_to_hand, put away at item_from_hand.
     std::string handItemWanted;
+    // Perception (M9 part C, EnginePerception.cpp).
+    f32 sight = 25.0f;     ///< metres (Perception.sight, Npc senses.sight)
+    f32 sightCos = 0.643f; ///< cos of half the cone (100 degrees)
+    f32 hearing = 1.0f;    ///< factor on noise radii
+    f32 perceptionTimer = 0.0f;
+    bool seesPlayer = false;
+    f64 lastSawPlayer = -1e9;              ///< sim seconds
+    bool reportedFighter = false;          ///< assess_fighter sent for the drawn weapon
+    f64 heardUntil = 0.0;                  ///< noises up to this time are heard already
+    bool followPlayer = false;             ///< Follow command running
     const LoadedModel* handItem = nullptr; ///< drawn at socket_hand_r
     usize handBone = 0;
     std::unique_ptr<AnimatedFigure> figure;

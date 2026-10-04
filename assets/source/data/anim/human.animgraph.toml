@@ -7,6 +7,7 @@
 #   climb   Kantenklasse 1/2/3 (0 = nicht)
 #   swim    an der Oberfläche (bool)                dive    unter Wasser (bool)        slide  rutscht (bool)
 #   pickup  hebt einen Gegenstand auf (bool, bis das Event „pickup“ ihn genommen hat; M8)
+#   weapon  gezogene Waffe: 0 keine, 1 Einhandwaffe, 2 Fäuste (M9 Teil C)
 # Übergänge: erster passender in Dateireihenfolge; Bedingungen: "name", "!name", "name > 1.5", "end".
 version = 1
 sets = [
@@ -15,6 +16,8 @@ sets = [
     "characters/anims/human/dive.glb",
     "characters/anims/human/mob.glb",
     "characters/anims/human/amb.glb",
+    "characters/anims/human/1h.glb",
+    "characters/anims/human/fist.glb",
 ]
 start = "move"
 # Abspielrate = Parameter / Eigengeschwindigkeit der Clips (`speed` in <set>.events.toml), damit die Füße nicht
@@ -47,6 +50,28 @@ points = [
     { value = 0.0, clip = "none/s_idle" },
     { value = 1.6, clip = "none/s_walk" },
     { value = 4.0, clip = "none/s_run" },
+]
+
+[[state]] # mit gezogener Einhandwaffe (M9 Teil C; Kampf mit M11)
+name = "move_1h"
+blend = "speed"
+rate = "speed"
+points = [
+    { value = -1.4, clip = "1h/s_walk_back" },
+    { value = 0.0, clip = "1h/s_idle" },
+    { value = 1.6, clip = "1h/s_walk" },
+    { value = 4.0, clip = "1h/s_run" },
+]
+
+[[state]] # mit erhobenen Fäusten
+name = "move_fist"
+blend = "speed"
+rate = "speed"
+points = [
+    { value = -1.4, clip = "fist/s_walk_back" },
+    { value = 0.0, clip = "fist/s_idle" },
+    { value = 1.6, clip = "fist/s_walk" },
+    { value = 4.0, clip = "fist/s_run" },
 ]
 
 [[state]]
@@ -207,8 +232,16 @@ name = "amb_campfire_warm"
 clip = "amb/s_campfire_warm"
 
 [[state]]
+name = "amb_chop_wood_in"
+clip = "amb/t_chop_wood_in"
+
+[[state]]
 name = "amb_chop_wood"
 clip = "amb/s_chop_wood"
+
+[[state]]
+name = "amb_chop_wood_out"
+clip = "amb/t_chop_wood_out"
 
 [[state]]
 name = "amb_drink_mug_in"
@@ -370,6 +403,30 @@ from = "*"
 to = "slide"
 when = ["slide"]
 blend = 0.2
+
+[[transition]] # Waffe ziehen und wegstecken (bis t_draw/t_sheath kommen: Überblenden)
+from = "move"
+to = "move_1h"
+when = ["weapon == 1"]
+blend = 0.25
+
+[[transition]]
+from = "move"
+to = "move_fist"
+when = ["weapon == 2"]
+blend = 0.25
+
+[[transition]]
+from = "move_1h"
+to = "move"
+when = ["weapon < 0.5"]
+blend = 0.25
+
+[[transition]]
+from = "move_fist"
+to = "move"
+when = ["weapon < 0.5"]
+blend = 0.25
 
 [[transition]]
 from = "move"
