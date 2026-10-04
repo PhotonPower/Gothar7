@@ -172,13 +172,13 @@ markers = { pickup = 8 }
 [[clip]]
 name = "none/t_eat"
 keyframe = "keyposes"
-params = { base = "none/s_idle", keys = [[0, "rest"], [14, "bite"], [20, "chew"], [28, "bite"], [42, "rest"]], poses = { bite = { rotate = { upperarm_r = [["Y", -85]], lowerarm_r = [["Y", -110]] } }, chew = { rotate = { upperarm_r = [["Y", -75]], lowerarm_r = [["Y", -95]] } } } }
+params = { base = "none/s_idle", keys = [[0, "rest"], [14, "bite"], [20, "chew"], [28, "bite"], [42, "rest"]], poses = { bite = { rotate = { upperarm_r = [["Y", -85]], lowerarm_r = [["Y", -110]] }, twist = { lowerarm_r = -150 } }, chew = { rotate = { upperarm_r = [["Y", -75]], lowerarm_r = [["Y", -95]] }, twist = { lowerarm_r = -150 } } } }
 markers = { use = 14, item_from_hand = 32 }
 
 [[clip]]
 name = "none/t_drink"
 keyframe = "keyposes"
-params = { base = "none/s_idle", keys = [[0, "rest"], [14, "sip"], [34, "sip"], [46, "rest"]], poses = { sip = { rotate = { upperarm_r = [["Y", -85]], lowerarm_r = [["Y", -110]], neck = [["X", -15]] } } } }
+params = { base = "none/s_idle", keys = [[0, "rest"], [14, "sip"], [34, "sip"], [46, "rest"]], poses = { sip = { rotate = { upperarm_r = [["Y", -85]], lowerarm_r = [["Y", -110]], neck = [["X", -15]] }, twist = { lowerarm_r = -150 } } } }
 markers = { use = 24, item_from_hand = 38 }
 
 [[clip]]

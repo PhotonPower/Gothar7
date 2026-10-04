@@ -101,6 +101,12 @@ def bake_fabrics(blender: Path, characters: Path, sources: Path, only: list[str]
     return run_script(blender, "bake_fabrics.py", args + (["--only", *only] if only else []))
 
 
+def bake_item_textures(blender: Path, out: Path, sources: Path) -> str:
+    return run_script(
+        blender, "bake_item_textures.py", ["--out", str(out), "--sources", str(sources)]
+    )
+
+
 def build_test_parts(blender: Path, out_dir: Path) -> None:
     run_script(blender, "build_test_parts.py", ["--out", str(out_dir)])
 

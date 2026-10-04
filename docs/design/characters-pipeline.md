@@ -188,7 +188,8 @@ events = [
   Truhe mit Knoten `MOB_LID`, Pivot am Scharnier (Drehung um seine X-Achse). Testmaße: Truhe 0,9×0,6×0,6 m,
   Amboss Arbeitshöhe 0,8 m, Bett 2,0×0,9 m (Liegefläche 0,45 m), Türklinke 1,0 m.
 - **Gegenstände (`items/<id>.glb`, F6):** Ursprung = Griffpunkt; Item-+Y auf Socket-+Y (aus der Faust zur Klinge
-  bzw. Spitze), Item-+Z auf Socket-+Z; die Engine übernimmt die volle Drehung des Sockets.
+  bzw. Spitze), Item-+Z auf Socket-+Z; die Engine übernimmt die volle Drehung des Sockets. Einzelheiten,
+  Stücke und Prüfregeln: §6.3.
 
 **Animationskanäle (Vertrag):** Clips enthalten **Rotation** für beliebige Knochen, **Translation nur für
 `root` und `pelvis`** (Root Motion bzw. Hüfthöhe) und **keine Skalierung** – so behält jede Figur ihre eigenen
@@ -221,7 +222,7 @@ Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pyte
 
 1. **Rig-Validator** (F1, `gothar-chargen validate`, umgesetzt): prüft `.glb`/`.blend` gegen das Referenz-Rig – Knochennamen, Hierarchie,
    Bind-Pose, Maßstab, Ausrichtung, Sockets, Gewichte ≤ 4 je Vertex, Morph-Target-Namen. Läuft auch in CI
-   für alles unter `assets/source/characters/`.
+   für alles unter `assets/source/characters/` und `assets/source/items/` (Regeln `item.*`, §6.3).
 2. **Retargeting-Hilfe** (F2/F4): Mapping-Dateien Quell-Rig → Referenz-Rig (`data/mappings/`: Quaternius UAL1/UAL2;
    Mocap-Exporte ab F4),
    Stapel-Retargeting in Blender, Korrektur-Offsets, Fußkontakt-Prüfung.
@@ -235,6 +236,7 @@ Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pyte
 5. **Figuren-Baukasten** (F3, `gothar-chargen assemble`, umgesetzt): setzt Körper/Kleidung + Kopf + Haare
    aus einem Manifest zusammen, prüft Passform (Nähte, Gewichte), erzeugt LODs mit festen Rändern; Varianten über
    Farbpaletten (seed-basierte Varianten später).
+6. **Gegenstände** (F6, `gothar-chargen build-items`, umgesetzt): Waffen und Handgegenstände per Code, §6.3.
 
 ## 6. Figuren-Baukasten
 
@@ -408,6 +410,42 @@ Rezepte und Manifeste; `figures/<name>.glb` entsteht beim Bauen und ist git-igno
   (`skin.001` → `skin`), die Haut des Kopfes gilt für die ganze Figur; Palette als `baseColorFactor`; Rollen aus
   der Vereinigung aller `hides` entfallen.
 
+### 6.3 Gegenstände (F6)
+
+`gothar-chargen build-items --sources DATA_ROOT/characters/ambientcg/items` erzeugt `assets/source/items/<id>.glb`
+und `items/textures/*.jpg` (`--skip-textures`: nur Geometrie, ohne Blender; `--only <id> …`). Die Geometrie
+entsteht per Code (`items.py`, eigene Arbeit ohne Vorlage): Querschnitte entlang eines Pfads (Klingen, Griffe,
+Wurfarme, Ringe) und Drehkörper (Obst, Brot, Flasche). Die `.glb` schreibt reines Python (deterministisch),
+Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schmiedeeisen sind prozedural.
+
+- **Datei:** statisches Mesh ohne Skin, Knoten `<id>_lod0..2` (weniger Segmente je Stufe), höchstens
+  1500 Dreiecke in Stufe 0, je Teil ein Material mit Basisfarb-Textur (`textures/<name>.jpg`), ohne Alpha.
+- **Achsen (Vertrag §3.1):** Ursprung = Griffpunkt (Mitte der Faust), +Y aus der Faust zur Klinge bzw. Spitze
+  (Daumenseite), +Z = Schneide bzw. Vorderseite. In der T-Pose zeigt `socket_hand_r`/`_l` mit +Y nach vorn, +Z nach
+  oben, +X am Unterarm entlang zur Schulter. Der **Bogen** hat die Wurfarme entlang ±Y und die **Sehne auf +X**
+  (zum Schützen); am Rücken (`socket_back_bow`) liegt er flach an. **Apfel und Brot** sitzen über der Faust
+  (zwischen Daumen und Fingern bzw. an einem Ende gehalten), damit der Bissen den Mund erreicht; die **Flasche**
+  zeigt mit dem Hals entlang +Y.
+- **Stücke:**
+
+  | ID | Länge | Material |
+  |---|---|---|
+  | `it_sword_old` (alt: rostig, schartig) | 1,0 m | Rost-Metall (Metal 021), Lederwicklung |
+  | `it_sword_crude` (Amboss-Rezept: frisch geschmiedet, grob) | 1,0 m | dunkles, ungleichmäßiges Schmiedeeisen, Leder |
+  | `it_club` (knorriger Ast mit Astknoten) | 0,74 m | Rinde (Bark 012, dunkler getönt) |
+  | `it_bow_short` | 1,2 m | Holz (Wood 049), Ledergriff, Sehne |
+  | `it_apple`, `it_bread`, `it_potion_heal_small` | 7 / 18 / 17 cm | prozedural (Glas undurchsichtig) |
+  | `it_lockpick`, `it_key` | 15 / 10 cm | Schmiedeeisen |
+
+  Alle Schlüssel-Items (`it_key_chest_hut`, …) nutzen dasselbe Modell `it_key.glb`; die Lua-Items und die Pfade
+  legt engine an.
+- **Validator:** `gothar-chargen validate` (auch in CI) prüft alles unter `assets/source/items/` mit den Regeln
+  `item.skin`, `item.lod`, `item.budget`, `item.origin` (Griffpunkt im Gegenstand, ±2 cm), `item.axis` (längste
+  Ausdehnung entlang +Y), `item.size` (Länge je Stück), `item.texture` (Textur vorhanden), `item.stale` (weicht vom
+  frischen Bau ab) und `item.unknown` (Warnung: nicht von `build-items` gebaut).
+- **Prüfung:** jedes Stück am Socket einer Testfigur in passender Haltung (`1h/s_idle`, `1h/s_run`, `bow/s_idle`,
+  `none/t_eat`, `none/t_drink`, `mob/chest/s_picklock`, Gürtel `socket_hip_1h`, Rücken `socket_back_bow`).
+
 ## 7. Monster
 
 Erst CC0-Platzhalter, dann eigene Arten. Pro Art: Rig, Mindest-Set, dazu Artspezifisches (Rudelruf, Sprung).
@@ -464,7 +502,9 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
   Ausgabe: Rig-TOML, Referenz-`.blend`/`.glb` und die Clip-Quelle `<art>_clips.blend` (bleibt unter `DATA_ROOT`).
 - `gothar-chargen build-set <art>` baut die Clips aus `data/clips/<art>.toml` (`rig = "<art>"`). Rezepte für
   Platzhalter: `advance` (Schleife am Ort + Vorwärtsbewegung, optional schneller/weiter ausholend) und `keyposes`
-  (benannte Posen an Schlüssel-Frames, weich überblendet, optional über einer Basis-Schleife). Feste Events stehen als
+  (benannte Posen an Schlüssel-Frames, weich überblendet, optional über einer Basis-Schleife; je Pose
+  `rotate` um Ruhe-Weltachsen, `move` für root/pelvis und `twist` = Drehung eines Knochens um die eigene
+  Längsachse nach der Basis, z. B. Unterarm, damit der Daumen beim Trinken oben ist). Feste Events stehen als
   `markers = { hit_start = 13, hit_end = 17 }` am Clip.
 - Der Validator wählt das Rig nach dem Pfad (`monsters/<art>/…`) und prüft zusätzlich: Clip-Modus = Art, Größe
   ±30 % der Rig-Höhe (Warnung ab ±10 %), Ausrichtungs-Hinweise aus `[rig.orientation]`, `anim.root_motion`

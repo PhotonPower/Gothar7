@@ -326,27 +326,38 @@ def pose(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
 # --- monsters: key poses and root motion (F5) ---------------------------------------------------
 
 
-def _offset_pose(rig: RigInfo, spec: dict) -> dict[str, tuple[Quaternion, Vector]]:
-    """{rotate = {bone = [[axis, deg], ...]}, move = {root|pelvis = [x, y, z]}} -> channel offsets.
+Offset = tuple[Quaternion, Vector, Quaternion]  # before the base pose, move, twist after it
 
-    Axes are world axes at rest (X = left, -Y = forward, Z = up); moves are in metres.
+
+def _offset_pose(rig: RigInfo, spec: dict) -> dict[str, Offset]:
+    """Channel offsets of a pose: rotate = {bone = [[axis, deg], ...]},
+    move = {root|pelvis = [x, y, z]}, twist = {bone = deg}.
+
+    Axes are world axes at rest (X = left, -Y = forward, Z = up); moves are in metres. A twist
+    turns the bone about its own length axis after the base pose and the rotation (forearm roll:
+    the hand turns in place, e.g. thumb up to bring a bottle neck to the mouth).
     """
-    unknown = set(spec) - {"rotate", "move"}
+    unknown = set(spec) - {"rotate", "move", "twist"}
     if unknown:
         raise ValueError(f"keyposes: unknown pose keys {sorted(unknown)}")
-    offsets: dict[str, tuple[Quaternion, Vector]] = {}
+    offsets: dict[str, Offset] = {}
     for bone, rots in spec.get("rotate", {}).items():
         if bone not in rig.rest:
             raise ValueError(f"keyposes: unknown bone '{bone}'")
         q = Quaternion()
         for axis, degrees in rots:
             q = rig.offset(bone, str(axis), float(degrees)) @ q
-        offsets[bone] = (q, Vector())
+        offsets[bone] = (q, Vector(), Quaternion())
     for bone, world in spec.get("move", {}).items():
         if bone not in ("root", "pelvis"):
             raise ValueError(f"keyposes: only root and pelvis can move, not '{bone}'")
-        q, _ = offsets.get(bone, (Quaternion(), Vector()))
-        offsets[bone] = (q, rig.rest[bone].inverted() @ Vector([float(v) for v in world]))
+        q, _, tw = offsets.get(bone, (Quaternion(), Vector(), Quaternion()))
+        offsets[bone] = (q, rig.rest[bone].inverted() @ Vector([float(v) for v in world]), tw)
+    for bone, degrees in spec.get("twist", {}).items():
+        if bone not in rig.rest:
+            raise ValueError(f"keyposes: unknown bone '{bone}'")
+        q, loc, _ = offsets.get(bone, (Quaternion(), Vector(), Quaternion()))
+        offsets[bone] = (q, loc, Quaternion((0.0, 1.0, 0.0), math.radians(float(degrees))))
     return offsets
 
 
@@ -370,8 +381,8 @@ def hold(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
 def keyposes(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
     """Named poses at key frames, eased in between (smoothstep), over a looping `base` clip.
 
-    params: poses = {name = {rotate = ..., move = ...}}, keys = [[frame, name], ...] (first key
-    at frame 0, "rest" = no offset), optional base = earlier clip (default: rest pose).
+    params: poses = {name = {rotate = ..., move = ..., twist = ...}}, keys = [[frame, name], ...]
+    (first key at frame 0, "rest" = no offset), optional base = earlier clip (default: rest pose).
     Offsets are multiplied onto the base pose, so a pose on top of idle still breathes.
     """
     named = {"rest": {}}
@@ -398,10 +409,13 @@ def keyposes(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
         a, b = named[keys[i][1]], named[keys[j][1]]
         pose = pose_at(base, frame % len_base, rig.bones) if base is not None else rig.rest_pose()
         for bone in set(a) | set(b):
-            qa, la = a.get(bone, (Quaternion(), Vector()))
-            qb, lb = b.get(bone, (Quaternion(), Vector()))
+            qa, la, ta = a.get(bone, (Quaternion(), Vector(), Quaternion()))
+            qb, lb, tb = b.get(bone, (Quaternion(), Vector(), Quaternion()))
             q, loc = pose[bone]
-            pose[bone] = (qa.slerp(qb, s) @ q, None if loc is None else loc + la.lerp(lb, s))
+            pose[bone] = (
+                qa.slerp(qb, s) @ q @ ta.slerp(tb, s),
+                None if loc is None else loc + la.lerp(lb, s),
+            )
         poses.append(pose)
     return to_curves(poses)
 
