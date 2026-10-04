@@ -31,7 +31,10 @@ TILE_M = {  # metres covered by one texture (u, v)
     "roof": (2.0, 2.0),
     "boards": (1.0, 1.0),
     "roof_moss": (2.0, 2.0),
-    "plaster_streak": (1.0, 0.6),  # a window wide, 0.6 m down from the sill (stretched to it)
+    "plaster_streak": (1.0, 0.6),
+    "iron": (0.5, 0.5),
+    "straw": (1.0, 1.0),
+    "cloth": (1.0, 1.0),  # a window wide, 0.6 m down from the sill (stretched to it)
 }
 
 
@@ -398,13 +401,55 @@ KINDS: dict[str, Callable[[int, np.random.Generator], Texture]] = {
     "roof_moss": roof_moss,
     "plaster_streak": plaster_streak,
 }
-TERRAIN_KINDS = {"cobbles": cobbles}  # baked into the terrain layer albedos (export/splat.py)
+
+
+def iron(size: int, rng: np.random.Generator) -> Texture:
+    """Forged iron: hammer dents, dark scale, rust in patches."""
+    dents = periodic_noise((size, size), rng, beta=1.2, low_cut=12.0)
+    scale = periodic_noise((size, size), rng, beta=2.4)
+    rust = np.clip((periodic_noise((size, size), rng, beta=2.8) - 0.6) / 0.2, 0.0, 1.0)
+    val = 0.85 + 0.35 * (scale - 0.5) + 0.15 * (dents - 0.5)
+    rgb = np.stack([val, val, val * 1.04], axis=-1)
+    rust_rgb = np.array([2.2, 1.1, 0.55]) * (0.8 + 0.4 * dents[:, :, None])
+    rgb = rgb * (1 - rust[:, :, None]) + rust_rgb * rust[:, :, None]
+    return Texture("iron", _mean_one(rgb), 0.6 * dents + 0.4 * scale, 2.5)
+
+
+def straw(size: int, rng: np.random.Generator) -> Texture:
+    """Straw sack filling: long fibres along u in all shades, a little coarse."""
+    fibres = periodic_noise((size, size), rng, beta=1.0, low_cut=4.0, aniso=(1.0, 10.0))
+    cross = periodic_noise((size, size), rng, beta=1.0, low_cut=4.0, aniso=(10.0, 1.0))
+    clumps = periodic_noise((size, size), rng, beta=2.6)
+    val = 0.8 + 0.5 * (fibres - 0.5) + 0.2 * (cross - 0.5) + 0.25 * (clumps - 0.5)
+    return Texture("straw", _mean_one(np.clip(val, 0.1, None)), 0.7 * fibres + 0.3 * cross, 2.5)
+
+
+def cloth(size: int, rng: np.random.Generator) -> Texture:
+    """Coarse wool cloth: a visible weave, felted in places, a few darker stains."""
+    yy, xx = np.mgrid[0:size, 0:size]
+    period = size / 128  # about 128 threads per texture (1 m): 8 mm
+    warp = np.sin(xx / period * np.pi) ** 2
+    weft = np.sin(yy / period * np.pi) ** 2
+    weave = np.where(((xx // period + yy // period) % 2) == 0, warp, weft)
+    felt = periodic_noise((size, size), rng, beta=2.2)
+    stains = np.clip((periodic_noise((size, size), rng, beta=2.8) - 0.65) / 0.2, 0.0, 1.0)
+    val = (0.85 + 0.25 * (weave - 0.5) + 0.2 * (felt - 0.5)) * (1 - 0.3 * stains)
+    return Texture("cloth", _mean_one(val), 0.6 * weave + 0.4 * felt, 1.5)
+
+
+TERRAIN_KINDS = {"cobbles": cobbles}
+# materials of the mobs (assets/source/mobs, not tied to a place); boards and timber come from KINDS
+MOB_KINDS = {
+    "iron": iron,
+    "straw": straw,
+    "cloth": cloth,
+}  # baked into the terrain layer albedos (export/splat.py)
 
 
 def make(kind: str, size: int = 1024, seed: int = 7) -> Texture:
     """One texture; the seed is mixed with the kind, so kinds differ but stay reproducible."""
     rng = np.random.default_rng([seed, sum(ord(c) * 31**i for i, c in enumerate(kind)) % 2**31])
-    return (KINDS.get(kind) or TERRAIN_KINDS[kind])(size, rng)
+    return (KINDS.get(kind) or TERRAIN_KINDS.get(kind) or MOB_KINDS[kind])(size, rng)
 
 
 def to_png(img: Image, path: Path, srgb: bool, scale: float = ALBEDO_SCALE) -> None:

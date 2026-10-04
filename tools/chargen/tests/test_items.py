@@ -82,6 +82,10 @@ def test_grip_axes_of_weapons_and_the_bow():
     assert sword[:, 1].max() > 0.85 and sword[:, 1].min() > -0.15  # blade along +Y, pommel below
     blade = sword[sword[:, 1] > 0.3]
     assert np.ptp(blade[:, 2]) > 4 * np.ptp(blade[:, 0])  # the edges face +-Z, flat sides +-X
+    guard = sword[np.abs(sword[:, 1] - 0.098) < 0.01]
+    assert (
+        np.ptp(guard[:, 2]) > 0.15 and np.ptp(guard[:, 0]) < 0.04
+    )  # cross-guard in the edge plane
     bow = lod0("it_bow_short")
     assert bow[:, 0].max() == pytest.approx(0.1, abs=0.01)  # string side +X (towards the archer)
     assert bow[:, 0].min() > -0.04

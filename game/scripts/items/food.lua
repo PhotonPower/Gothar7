@@ -1,6 +1,7 @@
 -- Essen und Tränke (Beispielinhalt M7).
 Item "it_apple" {
     name = "Apfel",
+    mesh = "items/it_apple.glb",
     category = "food",
     value = 2,
     weight = 0.2,
@@ -9,6 +10,7 @@ Item "it_apple" {
 
 Item "it_bread" {
     name = "Brot",
+    mesh = "items/it_bread.glb",
     category = "food",
     value = 5,
     weight = 0.4,
@@ -17,6 +19,7 @@ Item "it_bread" {
 
 Item "it_potion_heal_small" {
     name = "Kleiner Heiltrank",
+    mesh = "items/it_potion_heal_small.glb",
     category = "potion",
     value = 30,
     weight = 0.3,

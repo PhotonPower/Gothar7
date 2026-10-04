@@ -23,6 +23,7 @@ Item "it_amulet_old" {
 
 Item "it_key_chest_hut" {
     name = "Truhenschlüssel",
+    mesh = "items/it_key.glb",
     category = "key",
     value = 0,
 }

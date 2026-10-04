@@ -55,6 +55,18 @@ class Primitive:
 
 
 @dataclass
+class Part:
+    """A named node beside the render node (``glb_bytes_multi(..., parts=)``): its own mesh at
+    ``translation`` (the pivot, e.g. a chest lid's hinge ``MOB_LID``), with its collision bodies as
+    child nodes, so they move with it."""
+
+    name: str
+    translation: tuple[float, float, float]
+    primitives: list[Primitive]
+    collision: Sequence[CollisionPart] = ()
+
+
+@dataclass
 class CollisionPart:
     name: str  # node name: COL_HULL_<i> (convex hull of the points) or COL_<i> (triangle mesh)
     positions: npt.NDArray[np.float32]  # (n, 3), same origin as the render mesh
@@ -73,14 +85,19 @@ def glb_bytes(
 
 
 def glb_bytes_multi(
-    primitives: list[Primitive], name: str, collision: Sequence[CollisionPart] = ()
+    primitives: list[Primitive],
+    name: str,
+    collision: Sequence[CollisionPart] = (),
+    parts: Sequence[Part] = (),
 ) -> bytes:
     """One mesh, a primitive per entry (empty ones skipped), materials in first-use order; then
-    one node and mesh per collision part."""
+    one node and mesh per collision part; then one node per ``parts`` entry (mesh, translation,
+    its collision as children)."""
     prims = [p for p in primitives if len(p.mesh.indices)]
     if not prims:
         raise ValueError("mesh needs vertices and whole triangles")
     blobs: list[bytes] = []
+    targets: list[int] = []
     accessors: list[dict] = []
     gl_prims: list[dict] = []
     materials: list[dict] = []
@@ -94,7 +111,13 @@ def glb_bytes_multi(
             images.append({"uri": uri})
         return image_index[uri]
 
-    for p in prims:
+    def encode(prims: list[Primitive]) -> list[dict]:
+        gl_prims: list[dict] = []
+        for p in prims:
+            gl_prims.append(encode_one(p))
+        return gl_prims
+
+    def encode_one(p: Primitive) -> dict:
         m = p.mesh
         if len(m.positions) == 0 or len(m.indices) % 3:
             raise ValueError("mesh needs vertices and whole triangles")
@@ -122,6 +145,7 @@ def glb_bytes_multi(
                 acc["max"] = [float(v) for v in pos.max(axis=0)]
             accessors.append(acc)
             blobs.append(arr.tobytes())
+            targets.append(_ELEMENT_ARRAY_BUFFER if i == 3 else _ARRAY_BUFFER)
         key = (p.material, p.textures)
         if key not in material_index:
             material_index[key] = len(materials)
@@ -132,14 +156,16 @@ def glb_bytes_multi(
                 pbr["baseColorTexture"] = {"index": texture(p.textures[0])}
                 material["normalTexture"] = {"index": texture(p.textures[1])}
             materials.append(material)
-        gl_prims.append({
+        return {
             "attributes": {"POSITION": first, "NORMAL": first + 1, "TEXCOORD_0": first + 2},
-            "indices": first + 3, "material": material_index[key], "mode": 4})  # fmt: skip
+            "indices": first + 3, "material": material_index[key], "mode": 4}  # fmt: skip
 
-    targets = [_ELEMENT_ARRAY_BUFFER if i % 4 == 3 else _ARRAY_BUFFER for i in range(len(blobs))]
+    gl_prims = encode(prims)
     meshes: list[dict] = [{"name": name, "primitives": gl_prims}]
     nodes: list[dict] = [{"mesh": 0, "name": name}]
-    for part in collision:
+    roots = [0]
+
+    def collision_node(part: CollisionPart) -> int:
         if not part.name.startswith("COL_"):
             raise ValueError("collision node names start with COL_")
         if len(part.positions) == 0 or len(part.indices) == 0 or len(part.indices) % 3:
@@ -163,6 +189,22 @@ def glb_bytes_multi(
                        "primitives": [{"attributes": {"POSITION": first}, "indices": first + 1,
                                        "mode": 4}]})  # fmt: skip
         nodes.append({"mesh": len(meshes) - 1, "name": part.name})
+        return len(nodes) - 1
+
+    for part in collision:
+        roots.append(collision_node(part))
+    for part in parts:
+        gl = encode([p for p in part.primitives if len(p.mesh.indices)])
+        if not gl:
+            raise ValueError(f"part {part.name} needs vertices and whole triangles")
+        meshes.append({"name": part.name, "primitives": gl})
+        node: dict = {"mesh": len(meshes) - 1, "name": part.name,
+                      "translation": [float(v) for v in part.translation]}  # fmt: skip
+        nodes.append(node)
+        roots.append(len(nodes) - 1)
+        children = [collision_node(c) for c in part.collision]
+        if children:
+            node["children"] = children
 
     views, offset = [], 0
     for blob, target in zip(blobs, targets, strict=True):
@@ -173,7 +215,7 @@ def glb_bytes_multi(
     doc = {
         "asset": {"version": "2.0", "generator": "gothar-worldgen"},
         "scene": 0,
-        "scenes": [{"nodes": list(range(len(nodes)))}],
+        "scenes": [{"nodes": roots}],
         "nodes": nodes,
         "meshes": meshes,
         "materials": materials,

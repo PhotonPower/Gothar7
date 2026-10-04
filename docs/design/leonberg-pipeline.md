@@ -780,6 +780,18 @@ Entscheidung Projektinhaber (2026-10-03): Kein sichtbarer Teil eines handgemacht
 Regelbasiertes Verteilen von Requisiten (Fässer, Karren, Zäune, Holzstapel, Misthaufen, Marktstände)
 und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im Editor (M16).
 
+- **Mob-Modelle umgesetzt (M8-Vertrag, characters-pipeline.md §3.1, `mobs.toml` v1):** `gothar-worldgen mobs` →
+  `assets/source/mobs/{chest,anvil,bed,door}.glb`, Texturen daneben unter `textures/` (ortsunabhängig, 512²,
+  relativ verlinkt; Eiche, Eisen, Stroh, Wolle aus dem Textur-Werkzeug). Werkzeug `gothar_worldgen/mobs.py`.
+  - Ursprung am Boden, Vorderseite +Z, Meter.
+  - Truhe 0,9 × 0,6 × 0,6 m, Vorderseite z = +0,3, Korpus 0,5 m. Der Deckel ist der Knoten `MOB_LID` mit Pivot am
+    hinteren Scharnier (0; 0,5; −0,3); sein Kollisionskörper hängt als Kind daran und dreht mit.
+  - Amboss: Arbeitsfläche 0,8 m, Horn zu +X.
+  - Bett 2,0 × 0,9 m entlang X, Liegefläche 0,45 m, Kopfende bei −X (bestätigt von figuren).
+  - Tür: nur das Türblatt, 1,0 × 2,0 m entlang +X ab der Angel im Ursprung, Klinke beidseitig auf 1,0 m.
+  - Je 1–2 Kollisionskästen; ca. 70–300 Dreiecke je Modell (Budget 1500).
+  - Platzierung in Leonberg folgt mit Ausstattung bzw. Innenräumen.
+
 ### W-G Welt-Assembler & Wegnetz-Vorschlag
 - Terrain + Gebäude + Straßen + Ausstattung → `.g7world` (Zellen), Kollision, Validierung, Credits.
 - **Umgesetzt (W3 Teil 1):** `gothar-worldgen assemble <ort>` erzeugt `assets/source/worlds/<ort>/<ort>.g7world`
