@@ -14,7 +14,9 @@ Axes (contract): Y up, origin on the ground, the front faces +Z, metres. The fig
 - bed 2.0 x 0.9 m along X (long side towards +Z), lying surface 0.45 m, head board at -X;
 - door: the blade only, 1.0 x 2.0 x 0.05 m along +X from the hinge at the origin, handle at 1.0 m
   on both sides; the engine turns the whole mob about +Y;
-- bench (M9): plank bench 1.5 x 0.35 m, seat 0.45 m, origin in the middle on the ground.
+- bench (M9): plank bench 1.5 x 0.35 m, seat 0.45 m, origin in the middle on the ground;
+- table (W7): trestle table, top 1.6 x 0.8 m at 0.75 m, origin in the middle on the ground,
+  seats along both long sides.
 """
 
 from __future__ import annotations
@@ -30,7 +32,7 @@ from gothar_worldgen.buildings.gltf import CollisionPart, Part, Primitive, glb_b
 from gothar_worldgen.buildings.massing import _Builder
 from gothar_worldgen.textures.procedural import TILE_M, albedo_scale, make, to_png
 
-TYPES = ("chest", "anvil", "bed", "door", "bench")
+TYPES = ("chest", "anvil", "bed", "door", "bench", "table")
 TEXTURE_SIZE = 512
 TEXTURE_DIR = "textures"  # next to the models, relative URIs like glTF wants
 BUDGET = 1500  # triangles per model (render)
@@ -291,7 +293,27 @@ def bench() -> MobModel:
     return MobModel("bench", m)
 
 
-BUILDERS = {"chest": chest, "anvil": anvil, "bed": bed, "door": door, "bench": bench}
+TABLE_L, TABLE_D, TABLE_H = 1.6, 0.8, 0.75
+TABLE_TOP_M = 0.06
+
+
+def table() -> MobModel:
+    """Trestle table for 2-4 (W7, mob type ``table`` of engine): top 1.6 x 0.8 m at 0.75 m on two
+    trestles with a stretcher; seats along both long sides (+Z and -Z), the benches stand
+    alongside (seat 0.45 m, its middle about 0.62 m from the table's axis)."""
+    m = Mesh()
+    hl, hd = TABLE_L / 2, TABLE_D / 2
+    m.box("oak", (-hl, TABLE_H - TABLE_TOP_M, -hd), (hl, TABLE_H, hd), grain=0)
+    for x in (-hl + 0.18, hl - 0.26):  # trestles: a slab leg with a foot across
+        m.box("oak_beam", (x, 0.08, -0.06), (x + 0.08, TABLE_H - TABLE_TOP_M, 0.06), grain=1)
+        m.box("oak_beam", (x - 0.04, 0.0, -hd + 0.08), (x + 0.12, 0.08, hd - 0.08), grain=0)
+    m.box("oak_beam", (-hl + 0.26, 0.3, -0.04), (hl - 0.26, 0.38, 0.04), grain=0)  # stretcher
+    m.body("table", (-hl, 0.0, -hd), (hl, TABLE_H, hd))
+    return MobModel("table", m)
+
+
+BUILDERS = {"chest": chest, "anvil": anvil, "bed": bed, "door": door, "bench": bench,
+            "table": table}  # fmt: skip
 
 
 def write_mobs(folder: Path, types: Sequence[str] = TYPES) -> list[str]:
