@@ -44,6 +44,9 @@ def test_sizes_follow_the_contract():
     lo, hi = _bounds(BUILDERS["bench"]())
     assert hi[1] == pytest.approx(0.45) and (hi - lo)[0] == pytest.approx(1.5)
     assert (hi - lo)[2] == pytest.approx(0.35) and lo[0] == pytest.approx(-hi[0])  # centred
+    lo, hi = _bounds(BUILDERS["table"]())
+    assert hi[1] == pytest.approx(0.75) and (hi - lo)[0] == pytest.approx(1.6)
+    assert (hi - lo)[2] == pytest.approx(0.8) and lo[0] == pytest.approx(-hi[0]) and lo[1] == 0.0
     lo, hi = _bounds(BUILDERS["door"]())
     assert lo[0] == pytest.approx(0.0) and hi[0] == pytest.approx(1.0)  # from the hinge along +X
     assert hi[1] == pytest.approx(2.0)
