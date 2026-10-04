@@ -199,12 +199,13 @@ def sword(seg: int, rust: bool) -> list[Mesh]:
     )
     pommel = [(0.0, -0.135), (0.018, -0.13), (0.026, -0.115), (0.022, -0.1), (0.014, -0.09)]
     if not rust:  # crude: a simple disc
-        pommel = [(0.0, -0.12), (0.024, -0.118), (0.024, -0.1), (0.0, -0.098)]
+        pommel = [(0.0, -0.112), (0.024, -0.11), (0.024, -0.09), (0.0, -0.088)]
     lathe(metal, pommel, seg, tile=0.1)
     guard_w = 0.1 if rust else 0.085
     loft(
         metal,
-        np.array([[x, 0.098, 0] for x in np.linspace(-guard_w, guard_w, 7)]),
+        # the cross-guard lies in the plane of the edges (along Z), across the flat of the blade
+        np.array([[0, 0.098, z] for z in np.linspace(-guard_w, guard_w, 7)]),
         [np.array([[-0.009, -0.012], [-0.009, 0.012], [0.009, 0.012], [0.009, -0.012]])] * 7,
         tile=0.1,
     )
