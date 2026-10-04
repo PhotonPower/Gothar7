@@ -764,6 +764,25 @@ def _plain_extrapolated(roof: _Roof, x: float, z: float) -> float:
     return m.eave_y + (m.ridge_y - m.eave_y) * (v - roof.vmin) / (2 * roof.half)
 
 
+def cap_rise(mass: Mass, rules: Rules) -> Mass | None:
+    """A saddle roof whose ridge lies more than ``roofPitch.maxRiseM`` above the eave gets a
+    flatter pitch, down to ``minDeg`` (a very wide house keeps ``minDeg`` and a higher ridge)."""
+    p = rules.get("roofPitch")
+    max_rise = float(p.get("maxRiseM", 0.0))
+    if max_rise <= 0 or mass.roof != "saddle" or mass.ridge_y - mass.eave_y <= max_rise:
+        return None
+    poly = _valid_polygon(mass.footprint)
+    if poly is None:
+        return None
+    half = _Roof(mass, poly).half
+    if half < 1e-6:
+        return None
+    rise = max(max_rise, math.tan(math.radians(float(p["minDeg"]))) * half)
+    if rise >= mass.ridge_y - mass.eave_y:
+        return None
+    return replace(mass, ridge_y=mass.eave_y + rise)
+
+
 def steepen(mass: Mass, rules: Rules, rng: random.Random) -> Mass | None:
     """Flat, shed or low roofs become saddle roofs of 50-55 degrees; eave kept, ridge grows."""
     p = rules.get("roofPitch")
@@ -1573,10 +1592,9 @@ def build_house(
             mass, rules, _rng(building["id"], getattr(override, "seed", None), f":roof{i}")
         )
         if steep is not None and style.style != "mauer":
-            masses.append(steep)
+            mass = steep
             steepened += 1
-        else:
-            masses.append(mass)
+        masses.append(cap_rise(mass, rules) or mass)
     materials = _materials(style)
     passages = list(getattr(override, "passages", None) or [])
     tex = rules.data.get("textures", {})

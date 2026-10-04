@@ -217,3 +217,33 @@ def test_assembler_reserves_the_original_id():
     assert min(names["BLD_BIG-T1"], names["BLD_BIG-T2"]) > big_id
     assert json.dumps(w2)  # serialisable
     assert math.isfinite(np.float64(w2["nextVobId"]))
+
+
+def test_deep_plots_get_several_rear_houses_and_no_giant_roofs():
+    rb = RULES.data["rueckbau"]
+    # 10 m along the street, 50 m deep: front house plus rear strips of at most maxDepthM
+    deep = {"id": "D1", "groundY": 0.0, "footprint": [[0, 0], [10, 0], [10, -50], [0, -50]],
+            "roof": {"type": "flat", "eaveY": 12.0, "ridgeY": 12.0}}  # fmt: skip
+    street = StreetIndex([{"points": [[-20.0, 5.0], [30.0, 5.0]]}])  # the short side faces it
+    res = split_building(deep, rb, street)
+    rear = [h for h in res.houses if h["rueckbau"] == "rear"]
+    assert len(rear) >= 2
+    for h in res.houses:
+        ys = np.asarray(h["footprint"])[:, 1]
+        assert np.ptp(ys) <= rb["parcels"]["maxDepthM"] + 1e-6 or h["rueckbau"] == "front"
+        assert h["roof"]["ridgeY"] - h["roof"]["eaveY"] <= rb["maxRiseM"] + 1e-6
+
+
+def test_wide_original_roofs_are_capped_but_not_flatter_than_the_minimum():
+    from gothar_worldgen.buildings.massing import Mass
+    from gothar_worldgen.buildings.medieval import cap_rise
+
+    wide = Mass(((0.0, 0.0), (30.0, 0.0), (30.0, -24.0), (0.0, -24.0)), 10.0, 40.0, "saddle",
+                (1.0, 0.0))  # fmt: skip
+    capped = cap_rise(wide, RULES)
+    p = RULES.data["roofPitch"]
+    rise = capped.ridge_y - capped.eave_y
+    assert rise == pytest.approx(max(p["maxRiseM"], math.tan(math.radians(p["minDeg"])) * 12.0))
+    normal = Mass(((0.0, 0.0), (10.0, 0.0), (10.0, -7.0), (0.0, -7.0)), 8.0, 12.0, "saddle",
+                  (1.0, 0.0))  # fmt: skip
+    assert cap_rise(normal, RULES) is None

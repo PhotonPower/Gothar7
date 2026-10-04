@@ -199,6 +199,9 @@ def _entry(new_id: str, src: dict[str, Any], poly: Polygon, storeys: int,
     across = np.array([-ridge_along[1], ridge_along[0]])
     proj = np.asarray(ring) @ across
     half = (proj.max() - proj.min()) / 2
+    max_rise = float(rules.get("maxRiseM", 0.0))
+    if max_rise > 0 and half > 1e-6 and math.tan(pitch) * half > max_rise:  # no giant roofs
+        pitch = max(math.atan2(max_rise, half), math.radians(float(rules.get("minPitchDeg", 35.0))))
     ridge = eave + math.tan(pitch) * half
     return {
         "id": new_id,
@@ -218,6 +221,24 @@ def _entry(new_id: str, src: dict[str, Any], poly: Polygon, storeys: int,
         "derivedFrom": src["id"],
         "rueckbau": kind,
     }
+
+
+def _rear_strips(rear: Any, a0: np.ndarray, along: np.ndarray, inward: np.ndarray,  # noqa: ANN401
+                 reach: float, depth: float) -> list[Polygon]:  # fmt: skip
+    """The rear rest cut parallel to the street into strips of at most ``depth``."""
+    polys = [g for g in getattr(rear, "geoms", [rear]) if isinstance(g, Polygon) and g.area > 0]
+    out: list[Polygon] = []
+    for poly in polys:
+        t = (np.asarray(poly.exterior.coords) - a0) @ inward
+        t0, t1 = float(t.min()), float(t.max())
+        n = max(1, math.ceil((t1 - t0) / depth - 1e-6))
+        pieces = [poly]
+        for j in range(1, n):
+            c = a0 + inward * (t0 + (t1 - t0) * j / n)
+            line = LineString([tuple(c - along * reach), tuple(c + along * reach)])
+            pieces = [q for piece in pieces for q in _cut(piece, line)]
+        out += [q for q in pieces if isinstance(q, Polygon) and not q.is_empty]
+    return out
 
 
 @dataclass
@@ -290,13 +311,18 @@ def split_building(b: dict[str, Any], rules: dict[str, Any], streets: Any = None
         storeys = rng.randint(max(2, storeys_max - 1), storeys_max)
         houses.append(_entry(f"{b['id']}-T{i}", b, front, storeys, ridge, rules, rng, "front"))
         if rear is not None and not rear.is_empty:
-            rq = rear if isinstance(rear, Polygon) else max(rear.geoms, key=lambda g: g.area)
-            rt = (np.asarray(rq.exterior.coords) - a0) @ inward
-            if float(np.ptp(rt)) >= p["rearHouseMinDepthM"] and rq.area >= p["minAreaM2"]:
-                rs = rng.randint(1, int(p["rearStoreysMax"]))
-                houses.append(_entry(f"{b['id']}-H{i}", b, rq, rs, front_dir, rules, rng, "rear"))
-            else:
-                yard += rear.area
+            # the rest behind the front house: rear houses in strips of at most maxDepthM, each
+            # with its ridge parallel to the street; strips too small become yard
+            k = 0
+            for rq in _rear_strips(rear, a0, along, inward, reach, float(p["maxDepthM"])):
+                rt = (np.asarray(rq.exterior.coords) - a0) @ inward
+                if float(np.ptp(rt)) >= p["rearHouseMinDepthM"] and rq.area >= p["minAreaM2"]:
+                    k += 1
+                    rs = rng.randint(1, int(p["rearStoreysMax"]))
+                    rid = f"{b['id']}-H{i}" + (f"{chr(ord('a') + k - 1)}" if k > 1 else "")
+                    houses.append(_entry(rid, b, rq, rs, front_dir, rules, rng, "rear"))
+                else:
+                    yard += rq.area
     return SplitResult(houses, yard)
 
 
