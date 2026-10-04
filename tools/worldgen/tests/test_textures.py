@@ -30,8 +30,8 @@ def test_textures_tile_seamlessly_and_keep_the_palette_brightness(kind):
     assert _seam(tex.height, 1) <= 1.05  # across u: always seamless
     if kind not in ("plaster_low", "plaster_streak"):  # these do not repeat upwards
         assert _seam(tex.height, 0) <= 1.05
-        # the palette colour stays; the rubble stone is darker on purpose (owner, 2026-10-04)
-        assert gray.mean() == pytest.approx(0.7 if kind == "stone" else 1.0, abs=0.02)
+        # the palette colour stays; the rubble stone is darker on purpose (owner 2026-10-04)
+        assert gray.mean() == pytest.approx(0.45 if kind == "stone" else 1.0, abs=0.02)
     n = tex.normal() * 2 - 1
     assert np.allclose(np.linalg.norm(n, axis=-1), 1.0, atol=1e-6)
     assert (n[..., 2] > 0.2).all()  # no normal lies flat
@@ -164,3 +164,15 @@ def test_cobbles_tile_and_have_round_stones_in_sand():
     assert tex.albedo.mean() == pytest.approx(1.0, abs=0.02)
     gaps = (tex.height <= 0.0).mean()
     assert 0.05 < gaps < 0.45  # stones touch, sand shows between them
+
+
+def test_neighbouring_houses_get_different_offsets_of_the_repeating_textures():
+    from gothar_worldgen.textures.apply import texture_house
+
+    mesh = _quad([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], [0, 0, 1])
+    prims = [Primitive("stone", (0.45, 0.4, 0.33, 1.0), mesh), Primitive("plaster_white~streak",
+             (0.6, 0.55, 0.45, 1.0), mesh)]  # fmt: skip
+    a, b = texture_house(prims, "t", "A"), texture_house(prims, "t", "B")
+    assert not np.allclose(a[0].mesh.uvs, b[0].mesh.uvs)  # the stones move
+    assert np.allclose(a[1].mesh.uvs, b[1].mesh.uvs)  # streak variants stay where they are
+    assert np.allclose(texture_house(prims, "t", "A")[0].mesh.uvs, a[0].mesh.uvs)  # stable

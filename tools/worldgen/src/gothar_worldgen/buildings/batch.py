@@ -222,7 +222,7 @@ def generate(
                     continue
             prims = house.primitives
             if textured_all or bid in textured_ids:  # W5 textures
-                prims = texture_house(prims, texture_root)
+                prims = texture_house(prims, texture_root, bid)
             col = house.collision or CollisionResult([])
             result.notes.update(n for n in house.notes if n not in massing.notes)
             result.timber_levels[house.timber_level] += 1
