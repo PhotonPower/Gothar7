@@ -30,6 +30,7 @@ Result<Mesh> Mesh::create(Device& device, const asset::MeshData& data)
     mesh.m_vertices = std::move(vertices).value();
     mesh.m_indices = std::move(indices).value();
     mesh.m_submeshes = data.submeshes;
+    mesh.m_maxLod = asset::maxLod(data);
     mesh.m_bounds = data.bounds;
     return mesh;
 }
@@ -45,6 +46,7 @@ Result<Mesh> Mesh::create(Device& device, GeometryArena& arena, const asset::Mes
     mesh.m_arena = &arena;
     mesh.m_slice = std::move(slice).value();
     mesh.m_submeshes = data.submeshes;
+    mesh.m_maxLod = asset::maxLod(data);
     mesh.m_bounds = data.bounds;
     return mesh;
 }

@@ -114,6 +114,7 @@ struct MeshDrawItem
     const MaterialSet* materials = nullptr;
     Mat4 model{1.0f};
     AABB bounds; ///< world bounds (point light selection)
+    u32 lod = 0; ///< level of detail drawn (asset.md "Detailstufen")
 };
 
 /// What the last batched pass did (statistics, tests).
@@ -141,7 +142,7 @@ public:
     /// Renders a mesh's depth into the current shadow cascade (after ShadowMap::beginCascade).
     /// Translucent submeshes cast no shadow; alpha-tested ones cast holed shadows.
     void drawShadow(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
-                    const Cascade& cascade);
+                    const Cascade& cascade, u32 lod = 0);
 
     /// Binds the lighting block (binding 0) and the shadow atlas (unit 3) of the last setLighting(),
     /// for other renderers that use common/lighting.glsl (terrain).
@@ -149,8 +150,9 @@ public:
 
     /// Draws with the lighting set by setLighting(); each object gets the (at most 8) point lights
     /// that reach its world bounds.
+    /// `lod`: the level of detail drawn (Mesh::inLod).
     void draw(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
-              const Camera& camera, i32 onlySubmesh = -1); ///< -1: all submeshes
+              const Camera& camera, i32 onlySubmesh = -1, u32 lod = 0); ///< -1: all submeshes
 
     /// A skinned mesh (M6): `bones` are the skinning matrices (model-space bone * inverse bind), at most
     /// asset::kMaxBones. Same lighting and materials as draw().

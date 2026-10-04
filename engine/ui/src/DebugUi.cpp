@@ -1026,6 +1026,17 @@ void DebugUi::enginePanel(EnginePanel& panel)
         ImGui::SameLine();
         ImGui::Checkbox("cascade colours", &panel.shadowDebug);
         ImGui::Checkbox("debug draw (F2)", &panel.debugDraw);
+        // Levels of detail (asset.md "Detailstufen"): forced for test images; F2 colours the objects by
+        // level.
+        const char* lods[] = {"auto", "0", "1", "2"};
+        i32 lodChoice = panel.lod + 1;
+        ImGui::SetNextItemWidth(90.0f * ImGui::GetStyle().FontScaleDpi);
+        if (ImGui::Combo("LOD", &lodChoice, lods, 4))
+        {
+            panel.lod = lodChoice - 1;
+        }
+        ImGui::SameLine();
+        ImGui::Text("drawn: %u / %u / %u", panel.lodCounts[0], panel.lodCounts[1], panel.lodCounts[2]);
     }
     if (ImGui::CollapsingHeader("Time"))
     {

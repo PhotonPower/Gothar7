@@ -212,3 +212,69 @@ TEST_CASE("Mesh batches: a translucent quad on a wall is blended, flush or a lit
     CHECK(centreGreen(0.0f) > 100);   // flush on it too
     CHECK(gl.device->debugErrorCount() == 0);
 }
+
+TEST_CASE("Mesh batches: a level of detail draws only its submeshes; a model without levels draws whole")
+{
+    GlFixture gl;
+    ShaderLibrary library(*gl.device, fs::fromUtf8(G7_SHADER_DIR));
+    MeshRenderer renderer = require(MeshRenderer::create(*gl.device, library, 1.0f));
+    GeometryArena arena;
+    // One quad per level, red / green / blue, on top of each other (same origin, as the LOD contract wants).
+    asset::MeshData levels = quad(Vec4(0.9f, 0.1f, 0.1f, 1.0f));
+    levels.indices = {0, 1, 2, 0, 2, 3, 0, 1, 2, 0, 2, 3, 0, 1, 2, 0, 2, 3};
+    levels.submeshes = {{0, 6, 0, 0}, {6, 6, 1, 1}, {12, 6, 2, 2}};
+    for (const Vec4 c : {Vec4(0.1f, 0.9f, 0.1f, 1.0f), Vec4(0.1f, 0.1f, 0.9f, 1.0f)})
+    {
+        asset::MaterialInfo m;
+        m.baseColor = c;
+        levels.materials.push_back(m);
+    }
+    const asset::MeshData plain = quad(Vec4(0.9f, 0.9f, 0.1f, 1.0f));
+    const Model lodModel{require(Mesh::create(*gl.device, arena, levels)),
+                         require(MaterialSet::create(*gl.device, levels, {}, renderer.defaults()))};
+    const Model plainModel{require(Mesh::create(*gl.device, arena, plain)),
+                           require(MaterialSet::create(*gl.device, plain, {}, renderer.defaults()))};
+    CHECK(lodModel.mesh.maxLod() == 2);
+    CHECK(plainModel.mesh.maxLod() == 0);
+    Texture color = require(gl.device->createTexture({16, 16, Format::RGBA8, 1}));
+    Texture depth = require(gl.device->createTexture({16, 16, Format::Depth32F, 1}));
+    Framebuffer target = require(gl.device->createFramebuffer({{&color}, &depth}));
+    Camera camera;
+    camera.aspect = 1.0f;
+    camera.transform.position = Vec3(0.0f, 0.0f, 2.0f);
+    const auto centre = [&](const Model& model, u32 lod, bool batched)
+    {
+        gl.device->bindFramebuffer(&target);
+        gl.device->setViewport(0, 0, 16, 16);
+        gl.device->clear(Vec4(0, 0, 0, 1), 0.0f);
+        const Environment light{.sunIntensity = 0.0f, .ambientSky = Vec3(1.0f), .ambientGround = Vec3(1.0f)};
+        static const LightList none;
+        renderer.setLighting(*gl.device, light, none);
+        renderer.beginFrame();
+        const Mat4 at(1.0f);
+        if (batched)
+        {
+            const MeshDrawItem item{&model.mesh, &model.materials, at, model.mesh.bounds(), lod};
+            renderer.drawBatched(*gl.device, std::span(&item, 1), camera);
+        }
+        else
+        {
+            renderer.draw(*gl.device, model.mesh, model.materials, at, camera, -1, lod);
+        }
+        const auto p = gl.device->readPixels(8, 8, 1, 1, &target);
+        return std::array<int, 3>{p[0], p[1], p[2]};
+    };
+    for (const bool batched : {true, false})
+    {
+        CAPTURE(batched);
+        const auto l0 = centre(lodModel, 0, batched);
+        const auto l1 = centre(lodModel, 1, batched);
+        const auto l2 = centre(lodModel, 2, batched);
+        CHECK((l0[0] > 150 && l0[1] < 100 && l0[2] < 100)); // red
+        CHECK((l1[1] > 150 && l1[0] < 100 && l1[2] < 100)); // green
+        CHECK((l2[2] > 150 && l2[0] < 100 && l2[1] < 100)); // blue
+        const auto plain2 = centre(plainModel, 2, batched); // no levels: the whole model at every level
+        CHECK((plain2[0] > 150 && plain2[1] > 150));
+    }
+    CHECK(gl.device->debugErrorCount() == 0);
+}

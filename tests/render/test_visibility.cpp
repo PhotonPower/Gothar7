@@ -81,3 +81,21 @@ TEST_CASE("Visibility: the grid returns the objects of cells in the frustum, lar
     grid.build({}, 64.0f);
     CHECK(grid.cellCount() == 0);
 }
+
+TEST_CASE("Visibility: level of detail by distance with hysteresis, forced levels")
+{
+    const LodSettings s; // 60 m, 150 m, 10 %
+    CHECK(selectLod(10.0f, 0, s) == 0);
+    CHECK(selectLod(65.0f, 0, s) == 0); // past 60 m but within the hysteresis (66 m)
+    CHECK(selectLod(67.0f, 0, s) == 1);
+    CHECK(selectLod(55.0f, 1, s) == 1); // back below 60 m: stays until 54 m
+    CHECK(selectLod(53.0f, 1, s) == 0);
+    CHECK(selectLod(200.0f, 0, s) == 2); // far at once: straight to the coarsest
+    CHECK(selectLod(140.0f, 2, s) == 2);
+    CHECK(selectLod(130.0f, 2, s) == 1);
+    CHECK(selectLod(10.0f, 2, s) == 0);
+    LodSettings forced = s;
+    forced.forced = 1;
+    CHECK(selectLod(1.0f, 0, forced) == 1);
+    CHECK(selectLod(500.0f, 2, forced) == 1);
+}

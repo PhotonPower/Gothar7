@@ -64,6 +64,7 @@ struct Submesh
     u32 firstIndex = 0;
     u32 indexCount = 0;
     u32 material = 0;
+    u32 lod = 0; ///< level of detail (asset.md "Detailstufen"): 0 = full, 1 and 2 coarser
 };
 
 /// Collision geometry of a model from its "COL_" nodes (contract: docs/modules/asset.md), in model
@@ -82,9 +83,13 @@ struct CollisionPart
 
 /// Name prefixes of collision nodes (asset.md).
 inline constexpr std::string_view kCollisionPrefix = "COL_";
-/// Nodes named "<name>_lod<n>" with n >= 1 are coarser levels of detail; until mesh LOD for vobs exists (M17)
-/// static models use level 0 only (render.md, leonberg-pipeline.md "Namensregel _lod1").
+/// Coarsest level of detail a static model may carry (lod0 .. lod2).
+inline constexpr u32 kMaxLod = 2;
+/// Nodes named "<name>_lod<n>" (n = 1, 2) are coarser levels of detail of a static model (asset.md
+/// "Detailstufen (LOD) statischer Modelle"); "<name>" or "<name>_lod0" is level 0.
 [[nodiscard]] bool isCoarserLod(std::string_view nodeName) noexcept;
+/// The level a node belongs to: n for "<name>_lod<n>", 0 otherwise.
+[[nodiscard]] u32 lodLevel(std::string_view nodeName) noexcept;
 inline constexpr std::string_view kCollisionBoxPrefix = "COL_BOX_";
 inline constexpr std::string_view kCollisionHullPrefix = "COL_HULL_";
 
@@ -101,10 +106,13 @@ struct MeshData
     std::vector<CollisionPart> collision;
 };
 
+/// Highest LOD level among the submeshes (0: the model has no coarser levels).
+[[nodiscard]] u32 maxLod(const MeshData& mesh) noexcept;
+
 /// Loads the default scene of a glTF 2.0 file (.gltf with external or data: buffers, or .glb)
 /// as one static mesh (ADR 0013). Coordinates need no conversion (+Y up, right-handed, metres).
-/// Only triangle primitives are used; others are skipped with a warning. Nodes of coarser LODs (`_lod1` ...)
-/// are left out.
+/// Only triangle primitives are used; others are skipped with a warning. Nodes of coarser LODs (`_lod1`,
+/// `_lod2`) become submeshes of their level (Submesh::lod); levels above kMaxLod are left out.
 [[nodiscard]] Result<MeshData> loadGltf(const fs::Path& path);
 /// Same, from memory; external buffers are resolved relative to `baseDirectory`. An empty
 /// `baseDirectory` allows only self-contained data (GLB chunk, data: URIs); external buffers fail.

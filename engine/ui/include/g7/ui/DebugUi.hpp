@@ -48,6 +48,8 @@ struct EnginePanel
     bool sun = true;
     bool shadowDebug = false;
     bool debugDraw = false;
+    i32 lod = -1;                   ///< edited: forced level of detail, -1 = by distance
+    std::array<u32, 3> lodCounts{}; ///< shown: instances drawn per level
     bool paused = false;
     f32 timeScale = 1.0f;
     f32 hour = 8.0f;          ///< game time of day (0 .. 24)

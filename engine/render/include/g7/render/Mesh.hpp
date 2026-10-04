@@ -38,6 +38,14 @@ public:
     void draw(Device& device, usize submesh) const;
 
     [[nodiscard]] std::span<const asset::Submesh> submeshes() const noexcept { return m_submeshes; }
+    /// Coarsest level of detail the mesh has (0: none besides the full one).
+    [[nodiscard]] u32 maxLod() const noexcept { return m_maxLod; }
+    /// Whether submesh `i` is drawn at level `lod`: its own level, or the coarsest one when the mesh has
+    /// fewer levels than asked for (a model without LODs draws its whole mesh at every level).
+    [[nodiscard]] bool inLod(usize i, u32 lod) const noexcept
+    {
+        return m_submeshes[i].lod == (lod < m_maxLod ? lod : m_maxLod);
+    }
     /// Arena meshes can be drawn in multi-draw batches (MeshRenderer::drawBatched).
     [[nodiscard]] const GeometryArena* arena() const noexcept { return m_arena; }
     [[nodiscard]] u32 arenaBlock() const noexcept { return m_slice.block(); }
@@ -51,6 +59,7 @@ private:
     const GeometryArena* m_arena = nullptr;
     GeometrySlice m_slice;
     std::vector<asset::Submesh> m_submeshes;
+    u32 m_maxLod = 0;
     AABB m_bounds;
 };
 } // namespace g7::render
