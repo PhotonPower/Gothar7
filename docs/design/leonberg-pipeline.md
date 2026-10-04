@@ -329,6 +329,16 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     - Regenschlieren: unter etwa zwei Dritteln der Fenster, vier Varianten, kurz und weich auslaufend (`*_streak`).
     - Diese Teilungen zählen nicht ins Fachwerk-Budget.
   - `building_rules.json` → `textures`: `probe` (Probe-Häuser), `all` (alle Häuser), `size`, `dirtM`.
+- **Detailstufen umgesetzt (W5, Plan freigegeben 2026-10-04, Vertrag mit engine in coordination.md):** Jedes Haus
+  des Kerns enthält drei Render-Knoten mit gleichem Ursprung und geteilten Materialien; die Kollision gibt es nur einmal.
+  - `<name>` (lod0): das volle Haus.
+  - `<name>_lod1`, ca. 31 %: geschlossene Wände, Fenster und Türen als dunkle Flächen davor, Fachwerk nur als
+    Frontflächen ohne Figuren (nie mehr Fachwerk als lod0), keine Gauben, keine Verwitterungs-Teilung.
+  - `<name>_lod2`, ca. 5 %: die Baukörper mit Dach in den Hausfarben, dazu die Fensterflächen von lod1.
+  - Leonberg: 1,76 Mio. Dreiecke in lod0, 0,54 Mio. in lod1, 0,09 Mio. in lod2.
+  - Die Engine wählt je Vob nach Entfernung (60/150 m); ohne Auswahl zeichnet sie lod0.
+  - `building_rules.json` → `lod`: `enabled`, `suffixes`; `preview` (1 oder 2) zeichnet für Prüfbilder diese Stufe als
+    lod0.
   - Gelände: Die Schicht „Kopfstein“ ist runde, unregelmäßige Kopfsteine (eingebackene Rundung, das Gelände hat keine
     Normal-Maps). Alle Gelände-Schichten haben 512², weil die Engine gleich große Bilder verlangt.
 - Jedes Haus bleibt in Blender von Hand nachbearbeitbar; erneutes Generieren überschreibt nur Häuser ohne `"locked": true`.
