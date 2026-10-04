@@ -242,7 +242,19 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
 - **Fenster „Tagebuch“** (Aktion `log`: N klassisch, J modern; Konsole `diary_open()`): Kapitel, Reiter Laufend,
   Erledigt, Gescheitert, Notizen; je Auftrag die Einträge. Meldungen am Bildschirm über `notice(text)`.
 
-### Weiter (Teil E)
+### Vertical Slice (Teil E) – Inhalt im Testlager
+- **Geschichte** „Bauern und Wache“ (Platzhalter, eigene Texte nach ADR 0008; der Projektinhaber überarbeitet sie):
+  Die Torwache schickt den Helden zur Bäuerin („Arbeit im Lager“). Botengang: Essensbündel zum Holzfäller.
+  Beschaffung: ein Grobes Schwert für die Wache (am Amboss schmieden, Rohlinge in der Truhe). Konflikt: der
+  Familienring der Bäuerin liegt beim alten Mann – abkaufen (30 Gulden), von der Wache holen lassen oder stehlen
+  (`pickpocket_item` am Npc: ein erfolgreicher Taschendiebstahl nimmt zuerst diesen Gegenstand). Sind alle drei
+  erledigt: Kapitel 2.
+- Dateien: `quests/farm_work.lua`, `dialogs/*.lua`, `items/story.lua`; Übergaben mit `npc_give_item` /
+  `npc_take_item`.
+- **Szenario-Test** `test_engine_m10_scenario.cpp`: die drei Aufträge über die Dialog-Schnittstelle durchgespielt,
+  die drei Wege zum Ring, Kapitel 2, keine Skriptfehler.
+
+### Weiter
 - Dialog-Ablauf als Sequenz: `say` (Sprache + Untertitel + Gesten + Lippensync), `choices`, `trade`, `teach`, `end`.
 - Dialog-Kamera: Schuss/Gegenschuss je Sprecher.
 - Tagebuch: Topics mit Status, Einträge mit Zeitstempel.

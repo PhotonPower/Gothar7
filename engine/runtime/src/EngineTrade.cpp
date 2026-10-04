@@ -253,6 +253,41 @@ void Engine::bindTradeFunctions()
                  }
                  return Value(static_cast<i64>(c->character->itemCount(a[1].asString())));
              }});
+    const auto npcCharacter = [this](std::span<const Value> a) -> Result<gameplay::Character*>
+    {
+        const auto id = a.empty() ? std::nullopt : npcByInstance(a[0].asString());
+        Creature* c = id ? creature(*id) : nullptr;
+        if (c == nullptr || !c->character || a.size() < 2 || !a[1].isString() ||
+            !m_scripts->findInstance("Item", a[1].asString()))
+        {
+            return Error{"expects (npc in this world, item, count?)"};
+        }
+        return c->character.get();
+    };
+    vm.bind({"npc_give_item", "npc_give_item(npc: string, item: string, count?: integer)",
+             "Gibt dem NPC Gegenstände (Übergaben im Dialog: der Held verliert sie mit remove_item).", "NPCs",
+             [npcCharacter](std::span<const Value> a) -> Result<Value>
+             {
+                 auto c = npcCharacter(a);
+                 if (!c)
+                 {
+                     return c.error();
+                 }
+                 c.value()->addItem(a[1].asString(), static_cast<u32>(a.size() > 2 ? a[2].asInteger(1) : 1));
+                 return Value();
+             }});
+    vm.bind({"npc_take_item", "npc_take_item(npc: string, item: string, count?: integer) -> boolean",
+             "Nimmt dem NPC Gegenstände weg; `false`, wenn er weniger hat.", "NPCs",
+             [npcCharacter](std::span<const Value> a) -> Result<Value>
+             {
+                 auto c = npcCharacter(a);
+                 if (!c)
+                 {
+                     return c.error();
+                 }
+                 return Value(c.value()->removeItem(a[1].asString(),
+                                                    static_cast<u32>(a.size() > 2 ? a[2].asInteger(1) : 1)));
+             }});
     vm.bind({"item_bought",
              "on(\"item_bought\", fn(npc: string, item: string, count: integer, price: integer))",
              "Der Held hat beim Händler gekauft.",
