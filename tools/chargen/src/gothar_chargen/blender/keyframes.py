@@ -373,7 +373,8 @@ def hold(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
     poses = []
     for frame in range(frames + 1):
         pose = pose_at(base, at, rig.bones)
-        rig.rotate(pose, "spine_02", [("X", breathe * math.sin(2 * math.pi * frame / frames))])
+        if frames:  # frames = 0: a single frame (reference poses)
+            rig.rotate(pose, "spine_02", [("X", breathe * math.sin(2 * math.pi * frame / frames))])
         poses.append(pose)
     return to_curves(poses)
 

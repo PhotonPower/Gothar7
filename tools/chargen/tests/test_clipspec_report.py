@@ -25,7 +25,7 @@ SOURCES = {"ual1": {"file": "a.glb", "mapping": "quaternius_ual1"}}
 
 
 def test_packaged_sets_are_valid():
-    humans = ["1h", "2h", "amb", "bow", "cbow", "dive", "fist", "mag", "mob", "none", "swim"]
+    humans = ["1h", "2h", "amb", "bow", "cbow", "dive", "dlg", "fist", "mag", "mob", "none", "swim"]
     assert packaged_sets(monsters=False) == humans
     assert packaged_sets(monsters=True) == ["keiler", "laufvogel", "wolf"]
     assert packaged_sets() == sorted(humans + ["keiler", "laufvogel", "wolf"])
@@ -267,8 +267,8 @@ def test_real_list_is_consistent_with_files():
     assert result.extra == []
     assert result.missing == []
     counts = list(result.section_counts().values())
-    # Prio-B item use + mobs (M8), Prio-B per mode, Prio-C routines (M9), 3 monsters
-    assert counts == [(17, 17), (48, 48), (37, 37), (12, 12), (12, 12), (12, 12)]
+    # Prio-B item use + mobs (M8), Prio-B per mode, Prio-C routines (M9), dialogue (M10), 3 monsters
+    assert counts == [(17, 17), (48, 48), (37, 37), (22, 22), (12, 12), (12, 12), (12, 12)]
     # without the monsters folder the wolf rows are reported as out of date
     assert progress(text, ANIMS).stale
 
@@ -340,3 +340,17 @@ def test_close_and_in_place_options():
     ):
         with pytest.raises(ClipSpecError, match=message):
             parse_set_spec({"set": "amb", "sources": SOURCES, "clip": [bad]})
+
+
+def test_additive_option_only_for_a_clips():
+    ok = parse_set_spec(
+        {"set": "dlg", "sources": SOURCES,
+         "clip": [{"name": "dlg/a_nod", "from": "ual1:A", "additive": True}]}
+    )  # fmt: skip
+    assert ok.clips[0].additive
+    for bad in (
+        {"name": "dlg/a_nod", "from": "ual1:A"},
+        {"name": "dlg/s_x", "from": "ual1:A", "additive": True},
+    ):
+        with pytest.raises(ClipSpecError, match="additive"):
+            parse_set_spec({"set": "dlg", "sources": SOURCES, "clip": [bad]})

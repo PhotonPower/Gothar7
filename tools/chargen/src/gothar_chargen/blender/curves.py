@@ -142,6 +142,21 @@ def in_place(a: Curves, rest: dict, bones: list[str]) -> Curves:
     return to_curves(poses)
 
 
+def hold_outside(a: Curves, moving: set[str], bones: list[str]) -> Curves:
+    """Bones outside `moving` keep their frame-0 pose (rotation and location) for the whole clip:
+    an additive overlay changes nothing there."""
+    n = int(length(a))
+    first = pose_at(a, 0, bones)
+    poses = []
+    for frame in range(n + 1):
+        pose = pose_at(a, frame, bones)
+        for bone in bones:
+            if bone not in moving:
+                pose[bone] = first[bone]
+        poses.append(pose)
+    return to_curves(poses)
+
+
 def close_loop(a: Curves, frames: int, bones: list[str]) -> Curves:
     """The last `frames` frames of a clip faded into its first frame, so it loops."""
     n = int(length(a))
