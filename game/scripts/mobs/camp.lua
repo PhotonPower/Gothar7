@@ -3,7 +3,7 @@
 Mob "mob_camp_chest" {
     name = "Truhe",
     type = "chest",
-    contents = { it_apple = 2, it_lockpick = 1 },
+    contents = { it_apple = 2, it_lockpick = 1, it_blank_hot = 2 },
 }
 
 Mob "mob_camp_chest_locked" {
@@ -24,4 +24,14 @@ Mob "mob_camp_door_locked" {
     type = "door",
     lock = "RLR",
     key = "it_key_hut_door",
+}
+
+Mob "mob_camp_anvil" {
+    name = "Amboss",
+    type = "anvil",
+}
+
+Mob "mob_camp_bed" {
+    name = "Bett",
+    type = "bed",
 }

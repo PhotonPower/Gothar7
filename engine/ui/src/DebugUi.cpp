@@ -722,6 +722,39 @@ void DebugUi::lockpickPanel(LockpickPanel& panel)
     ImGui::End();
 }
 
+void DebugUi::choicePanel(ChoicePanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    const ImVec2 view = ImGui::GetMainViewport()->Size;
+    ImGui::SetNextWindowPos(ImVec2(view.x * 0.5f - 160.0f * scale, view.y * 0.55f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(320.0f * scale, 0.0f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Choice", nullptr, ImGuiWindowFlags_NoCollapse))
+    {
+        ImGui::End();
+        return;
+    }
+    ImGui::TextUnformatted(panel.title.c_str());
+    ImGui::Separator();
+    for (usize i = 0; i < panel.options.size(); ++i)
+    {
+        if (ImGui::Button(panel.options[i].c_str(), ImVec2(-1.0f, 0.0f)))
+        {
+            panel.chosen = static_cast<i32>(i);
+        }
+    }
+    if (ImGui::Button("zurück", ImVec2(-1.0f, 0.0f)))
+    {
+        panel.cancel = true;
+    }
+    if (!panel.message.empty())
+    {
+        ImGui::Separator();
+        ImGui::TextUnformatted(panel.message.c_str());
+    }
+    ImGui::End();
+}
+
 void DebugUi::focusLabel(Vec2 screen, std::string_view text)
 {
     ImGui::SetCurrentContext(m_impl->context);

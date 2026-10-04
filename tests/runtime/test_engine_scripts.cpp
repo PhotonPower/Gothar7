@@ -293,7 +293,7 @@ TEST_CASE("Engine mobs: chests open and close, take and put, locks with key and 
     CHECK(info.type == "chest");
     CHECK(info.name == "Truhe");
     CHECK_FALSE(info.locked);
-    CHECK(info.contents.size() == 2);
+    CHECK(info.contents.size() == 3);
 
     // Walk over, open (chest_enter with the lid's "open" event), its contents next to the inventory.
     REQUIRE(engine.useMob(*chest).ok());
@@ -312,7 +312,7 @@ TEST_CASE("Engine mobs: chests open and close, take and put, locks with key and 
     CHECK(engine.hero()->itemCount("it_apple") == apples + 2);
     CHECK_FALSE(engine.takeFromMob(*chest, "it_apple").ok()); // none left
     REQUIRE(engine.putIntoMob(*chest, "it_apple").ok());
-    CHECK(engine.mobInfo(*chest)->contents.size() == 2);
+    CHECK(engine.mobInfo(*chest)->contents.size() == 3);
     // Leaving closes it (chest_leave) and gives the hero back.
     engine.mobCommand(MobCommand::Leave);
     CHECK(runMobUse(engine, "leave"));
@@ -415,4 +415,55 @@ TEST_CASE("Engine mobs: a door swings open with its collision, the same clip clo
         engine.physics()
             .raycast(Vec3(31.0f, 1.0f, -8.0f), Vec3(0, 0, -1), 2.0f, physics::layerBit(physics::Layer::World))
             .has_value());
+}
+
+TEST_CASE("Engine mobs: forging at the anvil, sleeping in the bed")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+
+    // Anvil: the recipe needs a glowing blank; three blows (hit_anvil of s_work), then the sword.
+    const auto anvil = engine.findMob("LAGER_AMBOSS");
+    REQUIRE(anvil.has_value());
+    run(engine, "on('item_crafted', function(recipe) Story.crafted = recipe end)");
+    REQUIRE(engine.useMob(*anvil).ok());
+    REQUIRE(runUntilPhase(engine, "loop"));
+    CHECK(engine.playerAnimationState() == "anvil_loop");
+    REQUIRE(engine.mobChoices() == std::vector<std::string>{"Grobes Schwert"});
+    const auto missing = engine.chooseMobOption(0);
+    REQUIRE_FALSE(missing.ok());
+    CHECK(missing.error().message == "Dafür fehlt: Glühender Rohling.");
+    run(engine, "give_item('it_blank_hot')");
+    REQUIRE(engine.chooseMobOption(0).ok());
+    CHECK(engine.mobChoices().empty()); // busy forging
+    for (int i = 0; i < 600 && engine.hero()->itemCount("it_sword_crude") == 0; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(engine.hero()->itemCount("it_sword_crude") == 1);
+    CHECK(engine.hero()->itemCount("it_blank_hot") == 0);
+    CHECK(run(engine, "Story.crafted").asString() == "rcp_sword_crude");
+    CHECK(engine.mobChoices().size() == 1); // again
+    engine.mobCommand(MobCommand::Leave);
+    CHECK(runMobUse(engine, "leave"));
+
+    // Bed: at 22:00 hurt, sleep until morning: day after, 08:00, hit points full; he gets up by himself.
+    run(engine, "time(22, 0)");
+    run(engine, "set_stat('hp', 5)");
+    const u32 day = engine.gameTime().day();
+    run(engine, "on('slept', function(hour) Story.slept = hour end)");
+    const auto bed = engine.findMob("LAGER_BETT");
+    REQUIRE(bed.has_value());
+    REQUIRE(engine.useMob(*bed).ok());
+    REQUIRE(runUntilPhase(engine, "loop"));
+    CHECK(engine.playerAnimationState() == "bed_loop");
+    REQUIRE(engine.mobChoices().size() == 4);
+    CHECK(engine.mobChoices()[0] == "Bis zum Morgen (8:00)");
+    REQUIRE(engine.chooseMobOption(0).ok());
+    CHECK(engine.gameTime().day() == day + 1);
+    CHECK(engine.gameTime().hourOfDay() == doctest::Approx(8.0f).epsilon(0.01));
+    CHECK(engine.hero()->attribute("hp") == engine.hero()->attribute("hp_max"));
+    CHECK(run(engine, "Story.slept").asInteger() == 8);
+    CHECK(runMobUse(engine, "leave"));
 }

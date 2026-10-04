@@ -1725,6 +1725,7 @@ void Engine::runDebugUi(f64 realSeconds)
     inventoryUi(); // the inventory and the focus name until the HUD exists (M13)
     focusUi();
     lockpickUi();
+    choiceUi();
     if (!m_debugUiVisible)
     {
         return;

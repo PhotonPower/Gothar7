@@ -142,6 +142,30 @@ clip = "mob/chest/s_picklock"
 name = "door_enter"
 clip = "mob/door/t_open"
 
+[[state]] # Amboss (C2): hit_anvil je Schlag
+name = "anvil_enter"
+clip = "mob/anvil/t_start"
+
+[[state]]
+name = "anvil_loop"
+clip = "mob/anvil/s_work"
+
+[[state]]
+name = "anvil_leave"
+clip = "mob/anvil/t_stop"
+
+[[state]] # Bett (C2): die Clips tragen die Figur aufs Bett (Wurzel im Clip) und zurück
+name = "bed_enter"
+clip = "mob/bed/t_lie_down"
+
+[[state]]
+name = "bed_loop"
+clip = "mob/bed/s_lie"
+
+[[state]]
+name = "bed_leave"
+clip = "mob/bed/t_stand_up"
+
 [[state]]
 name = "swim"
 blend = "speed"

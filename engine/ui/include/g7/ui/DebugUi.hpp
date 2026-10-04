@@ -163,6 +163,17 @@ struct LockpickPanel
     bool leave = false;
 };
 
+/// A choice at a mob (M8 part C2, "Choice" window): what to forge at the anvil, how long to sleep in the bed.
+struct ChoicePanel
+{
+    std::string title;
+    std::vector<std::string> options;
+    std::string message; ///< shown below ("Grobes Schwert geschmiedet.", "needs it_blank_hot")
+    // out
+    i32 chosen = -1;
+    bool cancel = false;
+};
+
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor
 /// rectangle (origin bottom-left), clamped to the framebuffer; nullopt if nothing remains.
 [[nodiscard]] std::optional<render::PixelRect> scissorFromClip(const Vec4& clip, u32 framebufferWidth,
@@ -198,6 +209,8 @@ public:
     void inventoryPanel(InventoryPanel& panel);
     /// Window "Lockpick" (M8 part C).
     void lockpickPanel(LockpickPanel& panel);
+    /// Window "Choice" (M8 part C2).
+    void choicePanel(ChoicePanel& panel);
     /// A text centred at `screen` (window coordinates, +Y down) over everything, without a window: the name
     /// of the focused object (M8) until the HUD exists (M13).
     void focusLabel(Vec2 screen, std::string_view text);

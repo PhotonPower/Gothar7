@@ -85,6 +85,20 @@ void defineContentKinds(script::ScriptVm& vm)
                    },
                    false});
 
+    // Recipe "rcp_sword_crude" { name = "Grobes Schwert", mob = "anvil", takes = { it_blank_hot = 1 },
+    //                            gives = { it_sword_crude = 1 }, strikes = 3 }: what can be made at a mob
+    //                            type
+    // (anvil: forging; later frying, brewing). M8 part C2.
+    vm.defineKind({"Recipe",
+                   {
+                       {"name", Type::String, true},
+                       {"mob", Type::String, true},  // mob type of data/mobs.toml
+                       {"takes", Type::Table, true}, // { it_x = count }
+                       {"gives", Type::Table, true},
+                       {"strikes", Type::Integer, false, 1.0, 20.0}, // anvil: hammer blows (default 3)
+                   },
+                   false});
+
     // Routine "rtn_x" { { from = "08:00", to = "22:00", state = "zs_x", at = "wp_x" } }: entries checked with
     // M9.
     vm.defineKind({"Routine", {}, true});
