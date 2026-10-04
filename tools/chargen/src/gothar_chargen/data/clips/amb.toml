@@ -150,3 +150,33 @@ name = "amb/s_train_sword"
 from = "ual2:Sword_Regular_Combo"
 close = 12
 in_place = true
+
+# --- work at freepoints (FP_CHOP, FP_HARVEST, FP_WATER, FP_REPAIR) and listening -----------------
+
+[[clip]]
+name = "amb/s_chop_wood"
+from = "ual2:TreeChopping_Loop"
+markers = { hit_wood = 8, "sound:wood_chop" = 8 }
+
+[[clip]]
+name = "amb/s_harvest"
+from = "ual2:Farm_Harvest"
+close = 10
+in_place = true
+
+[[clip]]
+name = "amb/s_water"
+from = "ual2:Farm_Watering"
+close = 10
+in_place = true
+
+[[clip]]
+name = "amb/s_repair_kneel"
+from = "ual1:Fixing_Kneeling"
+close = 12
+in_place = true
+
+[[clip]]
+name = "amb/s_listen"
+keyframe = "keyposes"
+params = { base = "amb/s_guard", keys = [[0, "tilt"], [30, "tilt"], [38, "nod"], [46, "tilt"], [54, "nod"], [62, "tilt"], [75, "tilt"]], poses = { tilt = { rotate = { neck = [["Z", 6]], head = [["Y", 8]] } }, nod = { rotate = { neck = [["Z", 6], ["X", 12]], head = [["Y", 8]] } } } }

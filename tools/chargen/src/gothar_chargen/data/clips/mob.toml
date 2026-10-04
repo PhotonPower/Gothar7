@@ -103,3 +103,7 @@ from = "ual1:Sitting_Idle_Loop"
 [[clip]]
 name = "mob/bench/t_stand"
 from = "ual1:Sitting_Exit"
+
+[[clip]]
+name = "mob/bench/s_sit_talk"
+from = "ual1:Sitting_Talking_Loop"

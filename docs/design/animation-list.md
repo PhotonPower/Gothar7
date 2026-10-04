@@ -88,6 +88,30 @@ den `none`-Clips, Arme und Kopf aus der Haltung (`layer` in `data/clips/<modus>.
 | `cbow/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | UAL1 `Pistol_Idle_Loop` (beide Hände vorn) | Q→ | platzhalter |
 | `mag/s_idle`, `s_walk`, `s_run`, `s_walk_back`, `s_strafe_l/r`, `t_turn_l/r` | UAL1 `Spell_Simple_Idle_Loop` | Q→ | platzhalter |
 
+### Prio C – Routinen und Reaktionen für M9 (ausgeschrieben, Liste von engine)
+
+Zustände mit Ein- und Ausstieg heißen `t_<x>_in` / `s_<x>` / `t_<x>_out`; die Zuordnung Freepoint → Clips steht
+bei engine in Lua. Ursprung = Fußpunkt, Blick +Z, auf der Stelle; Gegenstände in der Hand erscheinen mit
+`item_to_hand` und verschwinden mit `item_from_hand`. Neues Set `amb` (`anims/human/amb.glb`).
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `amb/t_sit_ground_in`, `s_sit_ground`, `t_sit_ground_out` | Am Boden sitzen (FP_SIT, auch am Lagerfeuer) | – | – | K | platzhalter-K (Knie angezogen, Arme um die Knie; sitzt, wo es stand) |
+| `mob/bench/t_sit`, `s_sit`, `t_stand`, `s_sit_talk` | Bank: hinsetzen, sitzen, aufstehen, im Sitzen reden | – | – | Q | platzhalter (UAL1 `Sitting_Enter`, `Sitting_Idle_Loop`, `Sitting_Exit`, `Sitting_Talking_Loop`; Becken 0,33 m hinter den Füßen, Slot in `mobs.toml`) |
+| `amb/t_guard_in`, `s_guard`, `t_guard_out` | Wache stehen, Arme verschränkt | – | – | Q | platzhalter (UAL2 `Idle_FoldArms_Loop`, Überblendung 15 Frames) |
+| `amb/t_lean_wall_in`, `s_lean_wall`, `t_lean_wall_out` | Mit dem Rücken an der Wand (Wand hinter dem Fußpunkt) | – | – | K | platzhalter-K (auf `s_guard`, Becken 8 cm zurück, ein Bein angewinkelt) |
+| `amb/s_talk_a`, `s_talk_b` | Reden, zwei Varianten | – | – | Q | platzhalter (UAL1 `Idle_Talking_Loop`; b mit anderer Arm- und Kopfhaltung) |
+| `amb/s_listen` | Zuhören, nicken | – | – | K | platzhalter-K (auf `s_guard`) |
+| `amb/t_sleep_ground_in`, `s_sleep_ground`, `t_sleep_ground_out` | Am Boden schlafen | – | lie, stand | Q→ | platzhalter (UAL2 `LayToIdle`, liegt, wo es stand) |
+| `amb/s_campfire_warm` | Am Feuer hocken, Hände wärmen | – | – | Q→ | platzhalter (UAL1 `Crouch_Idle_Loop`, Hände nach vorn) |
+| `amb/t_sweep_in`, `s_sweep`, `t_sweep_out` | Fegen mit dem Besen (`it_broom`) | – | item_to_hand, item_from_hand | K | platzhalter-K (Besen schräg nach unten, Oberkörper pendelt) |
+| `amb/t_drink_mug_in`, `s_drink_mug`, `t_drink_mug_out` | Aus dem Krug trinken (`it_mug`) | – | item_to_hand, item_from_hand | K | platzhalter-K (Haltung wie `none/t_drink`) |
+| `amb/s_train_sword` | Schwerttraining (Waffe in der Hand) | – | – | Q→ | platzhalter (UAL2 `Sword_Regular_Combo`, auf der Stelle, Schleife geschlossen) |
+| `amb/s_chop_wood` | Holz hacken (FP_CHOP) | – | hit_wood, sound:wood_chop | Q | platzhalter (UAL2 `TreeChopping_Loop`) |
+| `amb/s_harvest`, `s_water`, `s_repair_kneel` | Ernten, gießen, kniend reparieren (FP_HARVEST, FP_WATER, FP_REPAIR) | – | – | Q→ | platzhalter (UAL2 `Farm_Harvest`, `Farm_Watering`, UAL1 `Fixing_Kneeling`; auf der Stelle, Schleife geschlossen) |
+| `none/s_idle_look`, `none/t_idle_scratch` | Stand-Varianten: sich umsehen, am Kopf kratzen | – | – | K | platzhalter-K |
+| `none/t_warn`, `t_point`, `t_surprised`, `t_search` | Reaktionen: warnen (erhobene Faust), zeigen, erschrecken, suchen | – | – | K | platzhalter-K |
+
 ## Monster (F5, Vertrag `characters-pipeline.md` §7)
 
 Mindestumfang je Art. Clips liegen in `assets/source/characters/monsters/<art>/anims/<art>.glb`, Herkunft je

@@ -25,7 +25,7 @@ SOURCES = {"ual1": {"file": "a.glb", "mapping": "quaternius_ual1"}}
 
 
 def test_packaged_sets_are_valid():
-    humans = ["1h", "2h", "bow", "cbow", "dive", "fist", "mag", "mob", "none", "swim"]
+    humans = ["1h", "2h", "amb", "bow", "cbow", "dive", "fist", "mag", "mob", "none", "swim"]
     assert packaged_sets(monsters=False) == humans
     assert packaged_sets(monsters=True) == ["keiler", "laufvogel", "wolf"]
     assert packaged_sets() == sorted(humans + ["keiler", "laufvogel", "wolf"])
@@ -267,8 +267,8 @@ def test_real_list_is_consistent_with_files():
     assert result.extra == []
     assert result.missing == []
     counts = list(result.section_counts().values())
-    # Prio-B item use + mobs (M8), Prio-B per mode, 3 monsters
-    assert counts == [(17, 17), (48, 48), (12, 12), (12, 12), (12, 12)]
+    # Prio-B item use + mobs (M8), Prio-B per mode, Prio-C routines (M9), 3 monsters
+    assert counts == [(17, 17), (48, 48), (37, 37), (12, 12), (12, 12), (12, 12)]
     # without the monsters folder the wolf rows are reported as out of date
     assert progress(text, ANIMS).stale
 
@@ -323,3 +323,20 @@ def test_progress_with_synthetic_files(tmp_path, figure):
 def test_bad_lists(text, message):
     with pytest.raises(ReportError, match=message):
         parse_prio_a(text)
+
+
+def test_close_and_in_place_options():
+    clip = {"name": "amb/s_train_sword", "from": "ual1:Sword", "close": 12, "in_place": True}
+    spec = parse_set_spec({"set": "amb", "sources": SOURCES, "clip": [clip]})
+    assert spec.clips[0].close == 12 and spec.clips[0].in_place
+    plain = parse_set_spec(
+        {"set": "amb", "sources": SOURCES, "clip": [{"name": "amb/s_x", "from": "ual1:A"}]}
+    )
+    assert plain.clips[0].close == 0 and not plain.clips[0].in_place
+    for bad, message in (
+        ({"name": "amb/t_x", "from": "ual1:A", "close": 8}, "loops"),
+        ({"name": "amb/s_x", "from": "ual1:A", "close": 1}, "close"),
+        ({"name": "amb/s_x", "from": "ual1:A", "in_place": "yes"}, "in_place"),
+    ):
+        with pytest.raises(ClipSpecError, match=message):
+            parse_set_spec({"set": "amb", "sources": SOURCES, "clip": [bad]})

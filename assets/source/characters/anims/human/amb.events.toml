@@ -2,6 +2,12 @@
 version = 1
 fps = 30
 
+[clips."amb/s_chop_wood"]
+events = [
+    { frame = 8, event = "hit_wood" },
+    { frame = 8, event = "sound:wood_chop" },
+]
+
 [clips."amb/t_drink_mug_in"]
 events = [
     { frame = 2, event = "item_to_hand" },
