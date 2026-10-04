@@ -11,6 +11,14 @@ local function idle_now_and_then(npc, seconds)
     end
 end
 
+--- Kam der NPC nicht zu seiner Tätigkeit (Weg versperrt, npc_blocked), beginnt der Tagesablauf den Zustand nach
+--- einer Weile neu (Gothic: die Routine versucht es wieder).
+local function retry(npc, seconds)
+    if npc_state(npc).ambient == "" and seconds > 5 then
+        return "done"
+    end
+end
+
 --- Wache stehen am Wegpunkt, in dessen Richtung.
 State "zs_stand_guarding" {
     begin = function(npc, at)
@@ -18,6 +26,7 @@ State "zs_stand_guarding" {
         npc_turn(npc, at)
         npc_play(npc, "guard")
     end,
+    loop = retry,
 }
 
 --- Am Wegpunkt am Boden schlafen (Betten benutzen NPCs mit M11).
@@ -26,6 +35,7 @@ State "zs_sleep" {
         npc_goto(npc, at)
         npc_play(npc, "sleep_ground")
     end,
+    loop = retry,
 }
 
 --- Sich an einen freien Sitzplatz in der Nähe setzen; ohne einen stehen bleiben.
@@ -35,6 +45,7 @@ State "zs_sit_campfire" {
         npc_goto_freepoint(npc, "SIT", 12)
         npc_play(npc, "sit_ground")
     end,
+    loop = retry,
 }
 
 --- Stehend am Feuer wärmen.
@@ -44,6 +55,7 @@ State "zs_campfire" {
         npc_goto_freepoint(npc, "CAMPFIRE", 12)
         npc_play(npc, "campfire_warm")
     end,
+    loop = retry,
 }
 
 --- Holz hacken an einem Hackplatz.
@@ -53,6 +65,7 @@ State "zs_chop_wood" {
         npc_goto_freepoint(npc, "CHOP", 15)
         npc_play(npc, "chop_wood", "it_axe")
     end,
+    loop = retry,
 }
 
 --- Fegen: ein Stück fegen, dann weiter zum nächsten Fleck.
@@ -62,6 +75,7 @@ State "zs_sweep" {
         npc_goto_freepoint(npc, "SWEEP", 15)
         npc_play(npc, "sweep", "it_broom")
     end,
+    loop = retry,
 }
 
 --- Herumstehen am Wegpunkt (Vorgabe, wenn nichts anderes passt).

@@ -373,6 +373,8 @@ struct ScriptVm::Impl
         return Value(static_cast<i64>(id));
     }
 
+    u64 callErrors = 0; ///< failed calls of script functions (callFunction)
+
     Result<Value> callFunction(FunctionRef function, std::span<const Value> arguments)
     {
         if (!function.valid() || function.id > functions.size())
@@ -390,6 +392,10 @@ struct ScriptVm::Impl
         // handler).
         const sol::protected_function callee = functions[function.id - 1];
         sol::protected_function_result result = callee(sol::as_args(args));
+        if (!result.valid())
+        {
+            ++callErrors; // handlers, timers, states: errors while the game runs
+        }
         return finish(result);
     }
 
@@ -975,6 +981,11 @@ void ScriptVm::clearErrors() noexcept
 std::span<const Instance> ScriptVm::instances() const noexcept
 {
     return m_impl->instances;
+}
+
+u64 ScriptVm::callErrors() const noexcept
+{
+    return m_impl->callErrors;
 }
 
 const Instance* ScriptVm::findInstance(std::string_view kind, std::string_view name) const noexcept
