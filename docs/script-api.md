@@ -291,6 +291,9 @@ Reiht ein: sich zum Spieler drehen.
 ### `npc_wait(npc: string, seconds: number)`
 Reiht ein: warten.
 
+### `route_length(from: string, to: string) -> number | nil`
+Länge des Weges (Meter) zwischen zwei Wegpunkten bzw. Freepoints, wie ein NPC ihn gehen würde; `nil`, wenn es keinen gibt (Prüfung der Routinen-Orte, Inhalte).
+
 ### `set_routine(npc: string, routine: string)`
 Wechselt den Tagesablauf (Kapitelwechsel); der passende Eintrag beginnt sofort. `""` schaltet ihn ab (der NPC tut dann nur, was Skripte ihm auftragen).
 
