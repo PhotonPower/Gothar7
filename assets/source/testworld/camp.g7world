@@ -228,7 +228,13 @@
       {"name":"WP_CAMP_NORTH","pos":[2.0,0.0,-8.0]},
       {"name":"WP_CAMP_OUTSIDE","pos":[30.0,0.0,1.0]},
       {"name":"WP_CAMP_SOUTH","pos":[5.0,0.0,8.0]},
-      {"name":"WP_CAMP_WEST","pos":[-6.0,0.0,-1.0]}
+      {"name":"WP_CAMP_WEST","pos":[-6.0,0.0,-1.0]},
+      {"name":"WP_MEADOW_NORTH","pos":[5.0,0.0,-40.0]},
+      {"name":"WP_MEADOW_SOUTH","pos":[-15.0,0.0,45.0]},
+      {"name":"WP_PATH_NORTH","pos":[3.0,0.0,-24.0]},
+      {"name":"WP_PATH_SOUTH","pos":[-5.0,0.0,27.0]},
+      {"name":"WP_PATH_WEST","pos":[-22.0,0.0,-8.0]},
+      {"name":"WP_WOLF_DEN","pos":[-35.0,0.0,-20.0]}
     ],
     "edges": [
       ["WP_CAMP_CENTER","WP_CAMP_EAST"],
@@ -242,7 +248,13 @@
       ["WP_CAMP_FENCE_SOUTH_OUT","WP_CAMP_OUTSIDE"],
       ["WP_CAMP_FIRE","WP_CAMP_SOUTH"],
       ["WP_CAMP_FIRE","WP_CAMP_WEST"],
-      ["WP_CAMP_GUARD_BED","WP_CAMP_OUTSIDE"]
+      ["WP_CAMP_GUARD_BED","WP_CAMP_OUTSIDE"],
+      ["WP_CAMP_NORTH","WP_PATH_NORTH"],
+      ["WP_CAMP_SOUTH","WP_PATH_SOUTH"],
+      ["WP_CAMP_WEST","WP_PATH_WEST"],
+      ["WP_MEADOW_NORTH","WP_PATH_NORTH"],
+      ["WP_MEADOW_SOUTH","WP_PATH_SOUTH"],
+      ["WP_PATH_WEST","WP_WOLF_DEN"]
     ],
     "freepoints": [
       {"name":"FP_CAMPFIRE_CAMP_01","pos":[0.5,0.0,-1.2],"dir":[0.0,0.0,1.0]},

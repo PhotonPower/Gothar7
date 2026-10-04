@@ -633,6 +633,10 @@ private:
     bool startCommand(Creature& c);
     void releaseFreepoint(Creature& c);
     void npcSays(const Creature& c, std::string_view text); ///< log, npc_said, shown near the player
+    /// "@player" (or empty): the player's feet; otherwise the position of the NPC of that instance.
+    [[nodiscard]] std::optional<Vec3> targetPosition(std::string_view target) const;
+    /// Capsule of an animal species (data/creatures.toml), the human one otherwise.
+    [[nodiscard]] physics::CharacterDesc creatureBody(std::string_view species);
     /// item_to_hand / item_from_hand of an NPC's animation: its hand item appears or goes.
     void handEvent(Creature& c, std::string_view event);
     [[nodiscard]] Creature* npcNamed(std::string_view instance) noexcept;
@@ -947,8 +951,9 @@ private:
     std::string m_weaponDrawn; // Item instance of the melee weapon being drawn
     bool m_drawWeaponRequested = false;
     f32 m_runNoiseTimer = 0.0f;
-    u64 m_routineMinute = ~0ull;      // the game minute routines were last checked
-    f32 m_simulationDistance = 80.0f; // [ai] simulation_distance: AI LOD
+    u64 m_routineMinute = ~0ull;            // the game minute routines were last checked
+    f32 m_simulationDistance = 80.0f;       // [ai] simulation_distance: AI LOD
+    std::optional<Config> m_creatureBodies; // data/creatures.toml, read on first use (M9 part D)
     std::vector<WorldItem> m_worldItems;
     std::unordered_map<std::string, const LoadedModel*> m_itemModels; // by Item instance; models in m_models
                                                                       // or m_scriptModels (placeholders)

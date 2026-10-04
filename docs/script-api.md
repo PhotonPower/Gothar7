@@ -56,6 +56,9 @@ Ein NPC kommt nicht weiter und hat aufgegeben (nach mehrfachem Neuplanen).
 ### `on("npc_said", fn(npc: string, text: string))`
 Ein NPC hat etwas gesagt (npc_say).
 
+### `on("observe_player", fn(npc: string, distance: number))`
+Bei jedem Blick (5- bzw. 1-mal je Sekunde), solange der NPC den Spieler sieht.
+
 ### `on("pickpocket", fn(npc: string, item: string))`
 Der Held hat einem NPC etwas aus der Tasche gezogen.
 
@@ -166,14 +169,17 @@ Schließt ein Mob-Vob auf (Truhe, Tür), etwa wenn eine Quest es öffnet.
 
 ## NPCs
 
-### `insert_npc(npc: string, at?: string) -> boolean`
-Setzt ein Npc an einen Wegpunkt oder Freepoint (ohne `at`: an den Ort des passenden Eintrags seines Tagesablaufs, `routine` der Instanz) und startet den Tagesablauf.
+### `insert_npc(npc: string, at?: string) -> string`
+Setzt ein Npc an einen Wegpunkt oder Freepoint (ohne `at`: an den Ort des passenden Eintrags seines Tagesablaufs, `routine` der Instanz) und startet den Tagesablauf. Gibt seinen Namen zurück: die Instanz, ab dem zweiten NPC derselben Instanz `name#2` …
 
 ### `npc_clear(npc: string)`
 Leert die Befehlsliste des NPCs (er bleibt, wo er ist).
 
-### `npc_flee(npc: string, seconds?: number)`
-Reiht ein: `seconds` Sekunden lang (Vorgabe 8) vor dem Spieler weglaufen – zum Wegpunkt im Umkreis von 30 m, der am weitesten von ihm weg ist, alle 2 s neu gewählt.
+### `npc_flee(npc: string, seconds?: number, from?: string)`
+Reiht ein: `seconds` Sekunden lang (Vorgabe 8) vor dem Spieler (bzw. dem NPC `from`) weglaufen – zum Wegpunkt im Umkreis von 30 m, der am weitesten von ihm weg ist, alle 2 s neu gewählt.
+
+### `npc_follow_npc(npc: string, target: string, distance?: number, seconds?: number, run?: boolean)`
+Reiht ein: dem NPC `target` folgen (Rudel, Jagd) – auf etwa `distance` Meter (Vorgabe 2), `seconds` Sekunden lang (Vorgabe 10).
 
 ### `npc_follow_player(npc: string, seconds?: number, distance?: number)`
 Reiht ein: dem Spieler `seconds` Sekunden lang (Vorgabe 10) auf etwa `distance` Meter (Vorgabe 2) folgen und ihn ansehen (Drohen, Begleiten).
@@ -187,8 +193,14 @@ Reiht ein: zum nächsten freien Freepoint dieses Typs (`"SIT"`, `"CAMPFIRE"` ...
 ### `npc_goto_player(npc: string, distance?: number, run?: boolean)`
 Reiht ein: zum Spieler gehen (bzw. rennen), bis auf `distance` Meter (Vorgabe 1,5).
 
+### `npc_goto_point(npc: string, x: number, y: number, z: number, run?: boolean)`
+Reiht ein: zu einem Punkt gehen (bzw. rennen), über das Wegnetz, wo nötig.
+
 ### `npc_play(npc: string, ambient: string, item?: string)`
 Reiht ein: eine Tagesablauf-Animation (`"sit_ground"`, `"guard"` ... – Zustände amb_<x>_in, amb_<x>, amb_<x>_out des Menschen-Graphen; `"idle_look"` und `"react_warn"` usw. direkt), bis npc_stop oder Gehen sie beendet. `item` (`"it_broom"`) nimmt er bei `item_to_hand` in die rechte Hand und legt es bei `item_from_hand` bzw. am Ende weg.
+
+### `npc_roam(npc: string, centre: string, radius: number, run?: boolean)`
+Reiht ein: zu einem zufälligen Punkt im Umkreis `radius` um den Wegpunkt `centre` gehen (Revier, Herumstreifen); gerade von dort erreichbar.
 
 ### `npc_say(npc: string, text: string)`
 Reiht ein: einen Satz sagen (bis zu den Dialogen in M10 eine Einblendung in der Nähe des Helden; Ereignis `npc_said`).

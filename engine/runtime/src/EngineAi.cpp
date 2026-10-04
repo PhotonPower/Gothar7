@@ -61,6 +61,7 @@ f32 wrapAngle(f32 a)
 }
 
 constexpr std::string_view kPlayerTarget = "@player"; ///< target of npc_goto_player, npc_turn_to_player
+constexpr f32 kFleeStep = 10.0f; ///< metres a fleeing NPC runs straight away from the threat
 constexpr f32 kFleeRadius =
     30.0f; ///< metres: a fleeing NPC runs to the way point within this farthest from the player
 } // namespace
@@ -85,6 +86,16 @@ void Engine::npcSays(const Creature& c, std::string_view text)
         const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", c.species) : nullptr;
         notice(std::format("{}: {}", npc != nullptr ? npc->fields["name"].asString() : c.species, text));
     }
+}
+
+std::optional<Vec3> Engine::targetPosition(std::string_view target) const
+{
+    if (target.empty() || target == kPlayerTarget)
+    {
+        return m_player.valid() ? std::optional<Vec3>(m_player.feet()) : std::nullopt;
+    }
+    const auto id = npcByInstance(target);
+    return id ? std::optional<Vec3>(creature(*id)->position) : std::nullopt;
 }
 
 void Engine::releaseFreepoint(Creature& c)
@@ -395,6 +406,21 @@ bool Engine::startCommand(Creature& c)
         const std::string loop = cmd.text.starts_with("idle") || cmd.text.starts_with("react")
                                      ? cmd.text
                                      : std::format("amb_{}", cmd.text);
+        // Animals (M9 part D): their graphs loop eat and sleep while the flag is set, threaten is an action.
+        if (a != nullptr && !a->hasState(in) && !a->hasState(loop) && a->hasState(cmd.text))
+        {
+            if (cmd.text == "threaten")
+            {
+                c.action = 4;
+                c.ambient.clear();
+                c.ambientPhase = Creature::AmbientPhase::None;
+                return false;
+            }
+            c.eat = cmd.text == "eat";
+            c.sleep = cmd.text == "sleep";
+            c.ambientPhase = Creature::AmbientPhase::Loop;
+            return false;
+        }
         if (a != nullptr && a->hasState(in))
         {
             a->enter(in, 0.2f);
@@ -418,10 +444,12 @@ bool Engine::startCommand(Creature& c)
             c.ambientPhase = Creature::AmbientPhase::Out;
             return true;
         }
-        if (a != nullptr && a->hasState("move"))
+        if (a != nullptr && a->hasState("move") && !c.eat && !c.sleep)
         {
             a->enter("move", 0.25f);
         }
+        c.eat = false; // animals: their graph goes back to walking by itself
+        c.sleep = false;
         c.ambient.clear();
         c.ambientPhase = Creature::AmbientPhase::None;
         c.handItem = nullptr;
@@ -430,10 +458,42 @@ bool Engine::startCommand(Creature& c)
     case Kind::Wait:
         return cmd.value > 0.0f;
     case Kind::Follow:
-        c.followPlayer = true;
-        return cmd.value > 0.0f && m_player.valid();
+        c.followPlayer = cmd.text == kPlayerTarget;
+        return cmd.value > 0.0f && targetPosition(cmd.text).has_value();
     case Kind::Flee:
-        return cmd.value > 0.0f && m_player.valid();
+        return cmd.value > 0.0f && targetPosition(cmd.text).has_value();
+    case Kind::GoToPoint:
+        if (auto sent = npcGoToPosition(c.id, cmd.point, "point", cmd.run); !sent)
+        {
+            G7_LOG_WARN("engine", "{}: {}", c.species, sent.error().message);
+            return false;
+        }
+        return true;
+    case Kind::Roam:
+    {
+        // A random point of the ground within the radius around the way point, reachable in a straight line
+        // from it (no house, no slope in between); a few tries.
+        const auto centre = navigationTarget(cmd.text);
+        if (!centre || !m_physics.valid())
+        {
+            return false;
+        }
+        std::uniform_real_distribution<f32> unit(0.0f, 1.0f);
+        for (int attempt = 0; attempt < 8; ++attempt)
+        {
+            const f32 angle = unit(m_rng) * 2.0f * glm::pi<f32>();
+            const f32 r = std::sqrt(unit(m_rng)) * cmd.value;
+            const Vec3 p = *centre + Vec3(std::cos(angle) * r, 0.0f, std::sin(angle) * r);
+            const auto hit = m_physics.raycast(p + Vec3(0.0f, 5.0f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), 10.0f,
+                                               physics::layerBit(physics::Layer::World));
+            if (hit && walkableLine(*centre, hit->position) &&
+                npcGoToPosition(c.id, hit->position, "roam", cmd.run).ok())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
     case Kind::Say:
         npcSays(c, cmd.text);
         cmd.value = std::max(kSayMinimum, kSayPerCharacter * static_cast<f32>(cmd.text.size()));
@@ -470,6 +530,8 @@ void Engine::runCommands(Creature& c, f32 seconds)
         {
         case Kind::GoTo:
         case Kind::GoToFreepoint:
+        case Kind::GoToPoint:
+        case Kind::Roam:
             done = !c.route.has_value();
             break;
         case Kind::Turn:
@@ -517,13 +579,16 @@ void Engine::runCommands(Creature& c, f32 seconds)
             break;
         case Kind::Follow:
         {
-            // Keep about `distance` from the player: a new way when he got away, face him when near.
-            const Vec3 to = m_player.valid() ? m_player.feet() - c.position : Vec3(0.0f);
+            // Keep about `distance` from the target (the player, the pack leader, prey): a new way when it
+            // got away, face it when near.
+            const auto target = targetPosition(cmd.text);
+            const Vec3 to = target ? *target - c.position : Vec3(0.0f);
             const f32 distance = glm::length(Vec3(to.x, 0.0f, to.z));
-            if (distance > cmd.distance + 1.0f && (!c.route || std::fmod(c.commandTime, 1.0f) < seconds))
+            if (target && distance > cmd.distance + 1.0f &&
+                (!c.route || std::fmod(c.commandTime, 1.0f) < seconds))
             {
-                const Vec3 goal = m_player.feet() - Vec3(to.x, 0.0f, to.z) / distance * cmd.distance;
-                (void)npcGoToPosition(c.id, goal, "player", distance > 8.0f);
+                const Vec3 goal = *target - Vec3(to.x, 0.0f, to.z) / distance * cmd.distance;
+                (void)npcGoToPosition(c.id, goal, "follow", distance > 8.0f || cmd.run);
             }
             else if (distance <= cmd.distance)
             {
@@ -534,7 +599,7 @@ void Engine::runCommands(Creature& c, f32 seconds)
                     c.yaw = wrapAngle(c.yaw + std::clamp(turn, -kTurnRate * seconds, kTurnRate * seconds));
                 }
             }
-            done = c.commandTime >= cmd.value || !m_player.valid();
+            done = c.commandTime >= cmd.value || !target;
             if (done)
             {
                 c.route.reset();
@@ -546,7 +611,8 @@ void Engine::runCommands(Creature& c, f32 seconds)
         {
             // Every 2 s (or when arrived): to the way point within kFleeRadius that is farthest from the
             // player.
-            done = c.commandTime >= cmd.value || !m_player.valid();
+            const auto from = targetPosition(cmd.text);
+            done = c.commandTime >= cmd.value || !from;
             if (done)
             {
                 c.route.reset();
@@ -554,7 +620,35 @@ void Engine::runCommands(Creature& c, f32 seconds)
             }
             if (!c.route || std::fmod(c.commandTime, 2.0f) < seconds)
             {
-                const Vec3 player = m_player.feet();
+                const Vec3 player = *from;
+                // Straight away from the threat first (or 45 degrees to either side), 10 m over walkable
+                // ground.
+                Vec3 away = c.position - player;
+                away.y = 0.0f;
+                away = glm::length(away) > 1e-3f ? glm::normalize(away) : gameplay::forwardOf(c.yaw);
+                bool running = false;
+                for (const f32 angle : {0.0f, 0.785f, -0.785f})
+                {
+                    const Vec3 dir(away.x * std::cos(angle) - away.z * std::sin(angle), 0.0f,
+                                   away.x * std::sin(angle) + away.z * std::cos(angle));
+                    const Vec3 p = c.position + dir * kFleeStep;
+                    const auto ground =
+                        m_physics.valid()
+                            ? m_physics.raycast(p + Vec3(0.0f, 3.0f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), 6.0f,
+                                                physics::layerBit(physics::Layer::World))
+                            : std::nullopt;
+                    if (ground && walkableLine(c.position, ground->position) &&
+                        npcGoToPosition(c.id, ground->position, "flee", true).ok())
+                    {
+                        running = true;
+                        break;
+                    }
+                }
+                if (running)
+                {
+                    break;
+                }
+                // Cornered: the way point within kFleeRadius farthest from the threat.
                 const auto& points = m_waynet.points();
                 const Vec3* best = nullptr;
                 f32 bestDistance = glm::length(c.position - player);
@@ -670,19 +764,73 @@ void Engine::bindAiFunctions()
             return Value();
         };
     };
+    vm.bind({"npc_flee", "npc_flee(npc: string, seconds?: number, from?: string)",
+             "Reiht ein: `seconds` Sekunden lang (Vorgabe 8) vor dem Spieler (bzw. dem NPC `from`) weglaufen "
+             "– zum "
+             "Wegpunkt im Umkreis von 30 m, der am weitesten von ihm weg ist, alle 2 s neu gewählt.",
+             "NPCs", [npc](std::span<const Value> a) -> Result<Value>
+             {
+                 auto c = npc(a);
+                 if (!c)
+                 {
+                     return c.error();
+                 }
+                 Creature::Command cmd{Kind::Flee};
+                 cmd.value = static_cast<f32>(a.size() > 1 ? a[1].asNumber(8.0) : 8.0);
+                 cmd.text = a.size() > 2 && a[2].isString() ? std::string(a[2].asString()) : std::string();
+                 c.value()->commands.push_back(std::move(cmd));
+                 return Value();
+             }});
     vm.bind(
-        {"npc_flee", "npc_flee(npc: string, seconds?: number)",
-         "Reiht ein: `seconds` Sekunden lang (Vorgabe 8) vor dem Spieler weglaufen – zum Wegpunkt im Umkreis "
-         "von 30 m, der am weitesten von ihm weg ist, alle 2 s neu gewählt.",
+        {"npc_follow_npc",
+         "npc_follow_npc(npc: string, target: string, distance?: number, seconds?: number, run?: boolean)",
+         "Reiht ein: dem NPC `target` folgen (Rudel, Jagd) – auf etwa `distance` Meter (Vorgabe 2), "
+         "`seconds` "
+         "Sekunden lang (Vorgabe 10).",
          "NPCs", [npc](std::span<const Value> a) -> Result<Value>
          {
              auto c = npc(a);
-             if (!c)
+             if (!c || a.size() < 2 || !a[1].isString())
              {
-                 return c.error();
+                 return !c ? c.error() : Error{"argument 2 must be an NPC"};
              }
-             Creature::Command cmd{Kind::Flee};
-             cmd.value = static_cast<f32>(a.size() > 1 ? a[1].asNumber(8.0) : 8.0);
+             Creature::Command cmd{Kind::Follow, std::string(a[1].asString())};
+             cmd.distance = static_cast<f32>(a.size() > 2 ? a[2].asNumber(2.0) : 2.0);
+             cmd.value = static_cast<f32>(a.size() > 3 ? a[3].asNumber(10.0) : 10.0);
+             cmd.run = a.size() > 4 && a[4].asBool();
+             c.value()->commands.push_back(std::move(cmd));
+             return Value();
+         }});
+    vm.bind({"npc_goto_point", "npc_goto_point(npc: string, x: number, y: number, z: number, run?: boolean)",
+             "Reiht ein: zu einem Punkt gehen (bzw. rennen), über das Wegnetz, wo nötig.", "NPCs",
+             [npc](std::span<const Value> a) -> Result<Value>
+             {
+                 auto c = npc(a);
+                 if (!c || a.size() < 4 || !a[1].isNumber() || !a[2].isNumber() || !a[3].isNumber())
+                 {
+                     return !c ? c.error() : Error{"expects (npc, x, y, z, run?)"};
+                 }
+                 Creature::Command cmd{Kind::GoToPoint};
+                 cmd.point = Vec3(static_cast<f32>(a[1].asNumber()), static_cast<f32>(a[2].asNumber()),
+                                  static_cast<f32>(a[3].asNumber()));
+                 cmd.run = a.size() > 4 && a[4].asBool();
+                 c.value()->commands.push_back(std::move(cmd));
+                 return Value();
+             }});
+    vm.bind(
+        {"npc_roam", "npc_roam(npc: string, centre: string, radius: number, run?: boolean)",
+         "Reiht ein: zu einem zufälligen Punkt im Umkreis `radius` um den Wegpunkt `centre` gehen (Revier, "
+         "Herumstreifen); gerade von dort erreichbar.",
+         "NPCs", [npc](std::span<const Value> a) -> Result<Value>
+         {
+             auto c = npc(a);
+             if (!c || a.size() < 3 || !a[1].isString() || !a[2].isNumber())
+             {
+                 return !c ? c.error() : Error{"expects (npc, centre: string, radius: number, run?)"};
+             }
+             Creature::Command cmd{Kind::Roam, std::string(a[1].asString())};
+             cmd.value = static_cast<f32>(a[2].asNumber());
+             cmd.run = a.size() > 3 && a[3].asBool();
              c.value()->commands.push_back(std::move(cmd));
              return Value();
          }});
@@ -810,10 +958,11 @@ void Engine::bindAiFunctions()
                  c.value()->routineEntry = -1;
                  return Value();
              }});
-    vm.bind({"insert_npc", "insert_npc(npc: string, at?: string) -> boolean",
+    vm.bind({"insert_npc", "insert_npc(npc: string, at?: string) -> string",
              "Setzt ein Npc an einen Wegpunkt oder Freepoint (ohne `at`: an den Ort des passenden Eintrags "
              "seines "
-             "Tagesablaufs, `routine` der Instanz) und startet den Tagesablauf.",
+             "Tagesablaufs, `routine` der Instanz) und startet den Tagesablauf. Gibt seinen Namen zurück: "
+             "die Instanz, ab dem zweiten NPC derselben Instanz `name#2` …",
              "NPCs", [this](std::span<const Value> a) -> Result<Value>
              {
                  if (a.empty() || !a[0].isString())
@@ -849,12 +998,23 @@ void Engine::bindAiFunctions()
                  {
                      return Error{std::format("no way point or freepoint \"{}\"", at)};
                  }
-                 auto spawned = spawnNpc(a[0].asString(), *target, 0.0f);
+                 // On the ground: a way point may lie a little below it (welt: hollows of the terrain model).
+                 Vec3 at3 = *target;
+                 if (m_physics.valid())
+                 {
+                     if (const auto hit =
+                             m_physics.raycast(at3 + Vec3(0.0f, 3.0f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), 6.0f,
+                                               physics::layerBit(physics::Layer::World)))
+                     {
+                         at3.y = std::max(at3.y, hit->position.y);
+                     }
+                 }
+                 auto spawned = spawnNpc(a[0].asString(), at3, 0.0f);
                  if (!spawned)
                  {
                      return spawned.error();
                  }
-                 return Value(true);
+                 return Value(creature(spawned.value())->species); // its name: "mon_wolf", "mon_wolf#2" ...
              }});
     vm.bind({"npc_said",
              "on(\"npc_said\", fn(npc: string, text: string))",

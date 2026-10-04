@@ -294,8 +294,16 @@ Result<void> Engine::insertInstance(std::string_view name, u32 count)
     {
         if (m_physics.valid())
         {
-            if (const auto hit = m_physics.raycast(p + Vec3(0.0f, 1.5f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), 30.0f,
-                                                   physics::layerBit(physics::Layer::World)))
+            // From just above the player's height (under a roof indoors); where the ground in front rises
+            // more than that (a hill side, welt 2026-10-04) the ray starts inside it and finds nothing: from
+            // above.
+            const physics::LayerMask world = physics::layerBit(physics::Layer::World);
+            auto hit = m_physics.raycast(p + Vec3(0.0f, 1.5f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), 30.0f, world);
+            if (!hit)
+            {
+                hit = m_physics.raycast(p + Vec3(0.0f, 10.0f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), 40.0f, world);
+            }
+            if (hit)
             {
                 p.y = hit->position.y;
             }
@@ -338,6 +346,37 @@ Result<void> Engine::insertInstance(std::string_view name, u32 count)
     return Error{std::format("unknown instance \"{}\" (no Item or Npc of that name)", name)};
 }
 
+physics::CharacterDesc Engine::creatureBody(std::string_view species)
+{
+    physics::CharacterDesc desc; // human (physics.md)
+    if (species.empty())
+    {
+        return desc;
+    }
+    if (!m_creatureBodies)
+    {
+        auto bytes = m_vfs.read("data/creatures.toml");
+        auto parsed =
+            bytes ? Config::parse(std::string_view(reinterpret_cast<const char*>(bytes.value().data()),
+                                                   bytes.value().size()),
+                                  "data/creatures.toml")
+                  : Result<Config>(bytes.error());
+        if (!parsed)
+        {
+            G7_LOG_WARN("engine", "data/creatures.toml: {} (animals get the human capsule)",
+                        parsed.error().message);
+        }
+        m_creatureBodies = parsed ? std::move(parsed).value() : Config{};
+    }
+    const std::string key(species);
+    desc.radius = static_cast<f32>(m_creatureBodies->get<f64>(key + ".radius", desc.radius));
+    desc.height = static_cast<f32>(m_creatureBodies->get<f64>(key + ".height", desc.height));
+    desc.stepHeight = static_cast<f32>(m_creatureBodies->get<f64>(key + ".step_height", desc.stepHeight));
+    desc.maxSlopeDegrees =
+        static_cast<f32>(m_creatureBodies->get<f64>(key + ".max_slope_degrees", desc.maxSlopeDegrees));
+    return desc;
+}
+
 Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
 {
     const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", name) : nullptr;
@@ -345,18 +384,31 @@ Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
     {
         return Error{std::format("no Npc \"{}\"", name)};
     }
+    // Animals are Npcs too (M9 part D, like Gothic's monsters): `species` picks their figure and graph.
+    const std::string species =
+        npc->fields["species"].isString() ? std::string(npc->fields["species"].asString()) : std::string();
     const std::string_view figure =
         npc->fields["figure"].isString() ? npc->fields["figure"].asString() : kDefaultNpcFigure;
-    auto spawned = spawnAnimated(name, figure, kHumanGraph, at, yaw);
+    auto spawned =
+        species.empty() ? spawnAnimated(name, figure, kHumanGraph, at, yaw) : spawnCreature(species, at, yaw);
     if (!spawned)
     {
         return Error{std::format("{}: {}", name, spawned.error().message)};
     }
     Creature* c = creature(spawned.value());
+    // Its name for scripts: the instance; the second and further ones of the same instance "name#2" ...
+    // (packs).
+    u32 same = 0;
+    for (const auto& other : m_creatures)
+    {
+        const std::string_view base = std::string_view(other->species).substr(0, other->species.find('#'));
+        same += other.get() != c && other->character && base == name ? 1u : 0u;
+    }
+    c->species = same == 0 ? std::string(name) : std::format("{}#{}", name, same + 1);
     // A capsule to walk with (M9): NPCs collide and follow the ground like the hero.
     if (m_physics.valid())
     {
-        physics::CharacterDesc body;
+        physics::CharacterDesc body = creatureBody(species);
         body.userData = 0;
         if (auto controller = physics::CharacterController::create(m_physics, body, at))
         {

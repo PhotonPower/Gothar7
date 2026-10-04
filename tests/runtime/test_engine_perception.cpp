@@ -49,7 +49,7 @@ std::string stateOf(Engine& engine, std::string_view npc)
 /// An NPC standing still at `at` (no routine), turned towards the player at `player`.
 void placeFacingPlayer(Engine& engine, std::string_view npc, std::string_view at, const Vec3& player)
 {
-    REQUIRE(run(engine, std::format("insert_npc('{}', '{}')", npc, at)).asBool());
+    REQUIRE(run(engine, std::format("insert_npc('{}', '{}')", npc, at)).isString());
     run(engine, std::format("set_routine('{}', '') npc_clear('{}')", npc, npc));
     run(engine, std::format("teleport({}, {}, {})", player.x, player.y, player.z));
     runSeconds(engine, 0.5f);
@@ -140,7 +140,7 @@ TEST_CASE("Engine perception: noises are heard within their radius")
 {
     Engine engine(perceptionConfig());
     REQUIRE(engine.init().ok());
-    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_south')").asBool());
+    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_south')").isString());
     run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man')");
     run(engine, "on('assess_noise', function(npc, kind) Story.heard = npc .. ' ' .. kind end)");
     runSeconds(engine, 1.0f);
@@ -181,7 +181,7 @@ TEST_CASE("Engine attitudes: a hostile guard would attack, his friends come to h
          {std::pair{"npc_gate_guard", "wp_camp_center"}, std::pair{"npc_woodcutter", "wp_camp_east"},
           std::pair{"npc_old_man", "wp_camp_north"}})
     {
-        REQUIRE(run(engine, std::format("insert_npc('{}', '{}')", npc, at)).asBool());
+        REQUIRE(run(engine, std::format("insert_npc('{}', '{}')", npc, at)).isString());
         run(engine, std::format("set_routine('{}', '') npc_clear('{}')", npc, npc));
     }
     runSeconds(engine, 1.0f);

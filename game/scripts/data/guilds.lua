@@ -22,3 +22,8 @@ function attitude(a, b)
     local row = Attitudes[a]
     return row and row[b] or "neutral"
 end
+
+-- Tiere (M9 Teil D): eigene Gilden; ihr Verhalten steht in data/creatures.lua.
+Guilds.wolf = { name = "Wölfe" }
+Guilds.keiler = { name = "Keiler" }
+Guilds.laufvogel = { name = "Laufvögel" }

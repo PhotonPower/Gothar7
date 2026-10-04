@@ -703,7 +703,7 @@ TEST_CASE("Engine NPC routines: the state of the time's entry, freepoints, ambie
     run(engine, "time(20, 0)");
 
     // insert_npc without a place: where the routine wants her now (19-23: sitting at the fire).
-    REQUIRE(run(engine, "insert_npc('npc_farmer_woman')").asBool());
+    REQUIRE(run(engine, "insert_npc('npc_farmer_woman')").isString());
     const auto woman = engine.npcByInstance("npc_farmer_woman");
     REQUIRE(woman.has_value());
     runSeconds(engine, 1.0f);
@@ -719,7 +719,7 @@ TEST_CASE("Engine NPC routines: the state of the time's entry, freepoints, ambie
     CHECK(onSeat);
 
     // The woodcutter at the same time wants to sit too: he takes the other seat, not hers.
-    REQUIRE(run(engine, "insert_npc('npc_woodcutter', 'wp_camp_center')").asBool());
+    REQUIRE(run(engine, "insert_npc('npc_woodcutter', 'wp_camp_center')").isString());
     const auto woodcutter = engine.npcByInstance("npc_woodcutter");
     runSeconds(engine, 20.0f);
     CHECK(npcAmbient(engine, "npc_woodcutter") == "sit_ground");
@@ -761,7 +761,7 @@ TEST_CASE("Engine NPC commands: errors and the queue")
     REQUIRE(engine.init().ok());
     CHECK_FALSE(engine.runConsoleLine("npc_play('npc_nobody', 'guard')").ok());
     CHECK_FALSE(engine.runConsoleLine("insert_npc('npc_farmer_woman', 'wp_nowhere')").ok());
-    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_south')").asBool());
+    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_south')").isString());
     CHECK_FALSE(engine.runConsoleLine("set_routine('npc_old_man', 'rtn_nowhere')").ok());
     CHECK_FALSE(engine.runConsoleLine("npc_start_state('npc_old_man', 'zs_nowhere')").ok());
     run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man')");

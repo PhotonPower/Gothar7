@@ -158,6 +158,9 @@ void Engine::perceive(Creature& c, f32 seconds)
     if (sees)
     {
         c.lastSawPlayer = now;
+        // Every look while he is in sight (animals threaten when he comes nearer; M9 part D).
+        const script::Value args[] = {c.species, static_cast<f64>(distance)};
+        m_scripts->emit("observe_player", args);
     }
     if (m_weaponMode == 0)
     {
@@ -395,6 +398,11 @@ void Engine::bindPerceptionFunctions()
     vm.bind({"assess_player",
              "on(\"assess_player\", fn(npc: string, distance: number))",
              "Der NPC sieht den Spieler (neu, oder wieder nach `Perception.forget_seconds`).",
+             "Ereignisse",
+             {}});
+    vm.bind({"observe_player",
+             "on(\"observe_player\", fn(npc: string, distance: number))",
+             "Bei jedem Blick (5- bzw. 1-mal je Sekunde), solange der NPC den Spieler sieht.",
              "Ereignisse",
              {}});
     vm.bind(
