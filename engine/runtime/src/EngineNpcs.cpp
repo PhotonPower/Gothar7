@@ -22,11 +22,17 @@ constexpr f32 kTurnRate = 6.0f;        ///< radians per second an NPC turns whil
 /// A walkable line is checked with spheres at these heights above the feet: low obstacles (below the step
 /// height) are walked over, fences with gaps between their rails still block.
 constexpr f32 kWalkableHeights[] = {0.5f, 1.0f, 1.5f};
-constexpr f32 kWalkableRadius = 0.25f;
-constexpr f32 kStuckSeconds = 1.5f; ///< no progress for this long: plan again
-constexpr u32 kMaxReplans = 3;      ///< then give up
-constexpr f32 kCloseEnough = 1.2f;  ///< stuck this near the goal (something stands on it): arrived
-constexpr f32 kNpcWalkSpeed = 1.6f; ///< m/s without blend points in the graph
+constexpr f32 kWalkableRadius = 0.3f; ///< the NPC capsule's
+// Ground under a straight line (welt #171: shortcuts over steep slopes): probed every kGroundStep, no step
+// may rise or fall more than tan 35 degrees (as welt's waynet check), and the ground must be there (no drop).
+constexpr f32 kGroundStep = 0.5f;
+constexpr f32 kMaxSlope = 0.7f;         ///< tan 35 degrees
+constexpr f32 kMaxStraightLine = 50.0f; ///< longer lines are not checked (cost): they go over the waynet
+constexpr f32 kProgressDistance = 0.3f; ///< the way to the next route point must shrink this much ...
+constexpr f32 kStuckSeconds = 1.5f;     ///< ... within this long, else plan again (sliding is no progress)
+constexpr u32 kMaxReplans = 3;          ///< then give up
+constexpr f32 kCloseEnough = 1.2f;      ///< stuck this near the goal (something stands on it): arrived
+constexpr f32 kNpcWalkSpeed = 1.6f;     ///< m/s without blend points in the graph
 constexpr f32 kNpcRunSpeed = 4.5f;
 
 f32 wrapAngle(f32 a)
@@ -47,6 +53,10 @@ bool Engine::walkableLine(const Vec3& a, const Vec3& b) const
     {
         return true;
     }
+    if (length > kMaxStraightLine)
+    {
+        return false;
+    }
     for (const f32 height : kWalkableHeights)
     {
         if (m_physics.sphereCast(a + Vec3(0.0f, height, 0.0f), kWalkableRadius, delta / length, length,
@@ -54,6 +64,22 @@ bool Engine::walkableLine(const Vec3& a, const Vec3& b) const
         {
             return false;
         }
+    }
+    // The ground along it: no steep slope, no drop.
+    const f32 flat = glm::length(Vec2(delta.x, delta.z));
+    const u32 steps = static_cast<u32>(std::ceil(flat / kGroundStep));
+    f32 ground = a.y;
+    for (u32 i = 1; i <= steps; ++i)
+    {
+        const f32 t = static_cast<f32>(i) / static_cast<f32>(steps);
+        const Vec3 p = a + delta * t;
+        const auto hit = m_physics.raycast(Vec3(p.x, ground + 1.5f, p.z), Vec3(0.0f, -1.0f, 0.0f), 3.5f,
+                                           physics::layerBit(physics::Layer::World));
+        if (!hit || std::abs(hit->position.y - ground) > kMaxSlope * flat / static_cast<f32>(steps) + 0.05f)
+        {
+            return false;
+        }
+        ground = hit->position.y;
     }
     return true;
 }
@@ -105,7 +131,7 @@ Result<void> Engine::npcGoToPosition(u32 id, const Vec3& goal, std::string_view 
     c->routeGoal = std::string(target);
     c->running = run;
     c->stuckSeconds = 0.0f;
-    c->progressAt = c->position;
+    c->progressIndex = ~usize(0);
     return {};
 }
 
@@ -167,18 +193,21 @@ void Engine::walkNpc(Creature& c, f32 seconds)
                                         : (c.walkSpeed > 0.0f ? c.walkSpeed : kNpcWalkSpeed);
             const f32 facing = std::abs(turn) < 1.0f ? std::cos(turn) : 0.0f;
             velocity = gameplay::forwardOf(c.yaw) * speed * facing;
-            // Blocked (another NPC, a door, a crate): plan again from here, at most a few times.
+            // Blocked (another NPC, a door, a crate, a slope it slides down): the way to the next route point
+            // does not shrink. Plan again from here, at most a few times.
             c.stuckSeconds += seconds;
-            if (glm::length(c.position - c.progressAt) > 0.3f)
+            const f32 left = glm::length(Vec2(to.x, to.z));
+            if (c.routeIndex != c.progressIndex || left < c.progressDistance - kProgressDistance)
             {
-                c.progressAt = c.position;
+                c.progressIndex = c.routeIndex;
+                c.progressDistance = left;
                 c.stuckSeconds = 0.0f;
             }
-            const bool lastPoint = c.routeIndex + 1 == c.route->points.size();
-            if (c.stuckSeconds > kStuckSeconds && lastPoint &&
-                glm::length(Vec3(to.x, 0.0f, to.z)) < kCloseEnough)
+            if (c.stuckSeconds > kStuckSeconds && left < kCloseEnough)
             {
-                c.routeIndex = c.route->points.size(); // a crate or a stool on the spot: near enough
+                // Near enough to a point it cannot reach: a crate or a stool on the goal, a way point too
+                // close to a house corner (welt #171). On to the next one.
+                ++c.routeIndex;
                 c.stuckSeconds = 0.0f;
             }
             else if (c.stuckSeconds > kStuckSeconds)

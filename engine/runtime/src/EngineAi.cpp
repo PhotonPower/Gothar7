@@ -18,11 +18,11 @@ namespace g7
 {
 namespace
 {
-constexpr f32 kSimulationDistance = 80.0f; ///< metres from the player: farther NPCs are not simulated
-constexpr f32 kSimulationReturn = 75.0f;   ///< ... and come back nearer than this (no flicker at the edge)
-constexpr f32 kLoopInterval = 0.5f;        ///< seconds between calls of a state's loop()
-constexpr f32 kTurnRate = 5.0f;            ///< radians per second when turning on the spot
-constexpr f32 kSayPerCharacter = 0.06f;    ///< seconds a line stays, per character (at least kSayMinimum)
+// AI LOD: [ai] simulation_distance (80 m) from the player - farther NPCs are not simulated - and back 5 m
+// nearer (no flicker at the edge); m_simulationDistance.
+constexpr f32 kLoopInterval = 0.5f;     ///< seconds between calls of a state's loop()
+constexpr f32 kTurnRate = 5.0f;         ///< radians per second when turning on the spot
+constexpr f32 kSayPerCharacter = 0.06f; ///< seconds a line stays, per character (at least kSayMinimum)
 constexpr f32 kSayMinimum = 1.5f;
 
 /// "08:30" -> minute of the day; nullopt if malformed.
@@ -211,14 +211,14 @@ void Engine::fixedUpdateAi(Creature& c, f32 seconds)
     // AI LOD by the distance to the player (or the camera without one).
     const Vec3 eye = m_player.valid() ? m_player.feet() : m_camera.transform.position;
     const f32 distance = glm::length(c.position - eye);
-    if (c.simulated && distance > kSimulationDistance)
+    if (c.simulated && distance > m_simulationDistance)
     {
         c.simulated = false;
         c.route.reset();
         c.commands.clear();
         c.commandRunning = false;
     }
-    else if (!c.simulated && distance < kSimulationReturn)
+    else if (!c.simulated && distance < m_simulationDistance - 5.0f)
     {
         c.simulated = true;
         if (!c.state.empty() && !c.stateBegun)
@@ -697,9 +697,10 @@ void Engine::bindAiFunctions()
                  beginState(*c.value(), a[1].asString(), a.size() > 2 ? a[2].asString() : c.value()->stateAt);
                  return Value();
              }});
-    vm.bind({"npc_state", "npc_state(npc: string) -> {state, routine, ambient, at, commands, animation}",
-             "Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste und Zustand des "
-             "Animationsgraphen.",
+    vm.bind({"npc_state",
+             "npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, x, y, z}",
+             "Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des "
+             "Animationsgraphen, ob er gerade geht, und seine Position.",
              "NPCs", [npc](std::span<const Value> a) -> Result<Value>
              {
                  auto c = npc(a);
@@ -714,7 +715,11 @@ void Engine::bindAiFunctions()
                           {"at", c.value()->stateAt},
                           {"commands", static_cast<i64>(c.value()->commands.size())},
                           {"animation", c.value()->figure ? std::string(c.value()->figure->animator.state())
-                                                          : std::string()}});
+                                                          : std::string()},
+                          {"walking", c.value()->route.has_value()},
+                          {"x", static_cast<f64>(c.value()->position.x)},
+                          {"y", static_cast<f64>(c.value()->position.y)},
+                          {"z", static_cast<f64>(c.value()->position.z)}});
              }});
     vm.bind({"set_routine", "set_routine(npc: string, routine: string)",
              "Wechselt den Tagesablauf (Kapitelwechsel); der passende Eintrag beginnt sofort. `\"\"` "

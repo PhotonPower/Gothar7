@@ -771,3 +771,51 @@ TEST_CASE("Engine NPC commands: errors and the queue")
     runSeconds(engine, 4.0f);
     CHECK(npcAmbient(engine, "npc_old_man").empty());
 }
+
+TEST_CASE("Engine NPCs: a straight line is walkable only over gentle ground")
+{
+    // welt #171: route shortcuts went over slopes too steep for the NPC capsule. Searched in the camp's
+    // terrain: a stretch steeper than 45 degrees and a flat one.
+    Engine engine(scriptConfig());
+    REQUIRE(engine.init().ok());
+    const auto ground = [&](f32 x, f32 z) -> std::optional<f32>
+    {
+        const auto hit = engine.physics().raycast(Vec3(x, 200.0f, z), Vec3(0.0f, -1.0f, 0.0f), 400.0f,
+                                                  physics::layerBit(physics::Layer::World));
+        return hit ? std::optional<f32>(hit->position.y) : std::nullopt;
+    };
+    std::optional<std::pair<Vec3, Vec3>> steep;
+    std::optional<std::pair<Vec3, Vec3>> flat;
+    for (f32 angle = 0.0f; angle < 6.28f && (!steep || !flat); angle += 0.2f)
+    {
+        const Vec3 dir(std::cos(angle), 0.0f, std::sin(angle));
+        for (f32 r = 30.0f; r < 150.0f; r += 1.0f)
+        {
+            const Vec3 p = dir * r;
+            const Vec3 q = dir * (r + 2.0f);
+            const auto hp = ground(p.x, p.z);
+            const auto hq = ground(q.x, q.z);
+            const auto hfar = ground(p.x + dir.x * 6.0f, p.z + dir.z * 6.0f);
+            if (!hp || !hq || !hfar)
+            {
+                continue;
+            }
+            if (!steep && std::abs(*hq - *hp) > 2.2f) // steeper than 47 degrees
+            {
+                steep = std::pair(Vec3(p.x, *hp, p.z), Vec3(q.x, *hq, q.z));
+            }
+            if (!flat && std::abs(*hq - *hp) < 0.05f && std::abs(*hfar - *hp) < 0.1f &&
+                engine.walkableLine(Vec3(p.x, *hp, p.z), Vec3(p.x + dir.x * 6.0f, *hfar, p.z + dir.z * 6.0f)))
+            {
+                flat = std::pair(Vec3(p.x, *hp, p.z), Vec3(p.x + dir.x * 6.0f, *hfar, p.z + dir.z * 6.0f));
+            }
+        }
+    }
+    REQUIRE_MESSAGE(steep.has_value(), "the camp has no slope steeper than 45 degrees within 150 m");
+    REQUIRE(flat.has_value());
+    CHECK_FALSE(engine.walkableLine(steep->first, steep->second));
+    CHECK_FALSE(engine.walkableLine(steep->second, steep->first)); // down as well
+    CHECK(engine.walkableLine(flat->first, flat->second));
+    // Long lines are not checked: they go over the waynet.
+    CHECK_FALSE(engine.walkableLine(Vec3(-30.0f, 0.0f, 30.0f), Vec3(30.0f, 0.0f, -30.0f)));
+}

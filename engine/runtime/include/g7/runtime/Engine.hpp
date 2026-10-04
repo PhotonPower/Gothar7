@@ -942,6 +942,7 @@ private:
     bool m_drawWeaponRequested = false;
     f32 m_runNoiseTimer = 0.0f;
     u64 m_routineMinute = ~0ull; // the game minute routines were last checked
+    f32 m_simulationDistance = 80.0f; // [ai] simulation_distance: AI LOD
     std::vector<WorldItem> m_worldItems;
     std::unordered_map<std::string, const LoadedModel*> m_itemModels; // by Item instance; models in m_models
                                                                       // or m_scriptModels (placeholders)

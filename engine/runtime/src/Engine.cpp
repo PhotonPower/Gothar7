@@ -515,6 +515,7 @@ Result<void> Engine::initShaders()
     }
     m_debugRenderer = std::move(debugRenderer).value();
     m_debugOverlay = m_config.settings.get<bool>("render.debug_draw", false);
+    m_simulationDistance = static_cast<f32>(m_config.settings.get<f64>("ai.simulation_distance", 80.0));
 
     auto debugUi = ui::DebugUi::create(m_device.get(), m_shaders.get(), m_window->displayScale());
     if (!debugUi)
