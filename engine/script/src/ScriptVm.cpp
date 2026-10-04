@@ -385,7 +385,11 @@ struct ScriptVm::Impl
             args.push_back(toLua(a));
         }
         startRun();
-        sol::protected_function_result result = functions[function.id - 1](sol::as_args(args));
+        // A copy: the function may hand new functions to the engine (after(), on() ...), which grows
+        // `functions` and would move the element being called (crash when a timer was created in an event
+        // handler).
+        const sol::protected_function callee = functions[function.id - 1];
+        sol::protected_function_result result = callee(sol::as_args(args));
         return finish(result);
     }
 
