@@ -109,6 +109,7 @@ void Engine::rebuildMobs()
                 m.type = std::string(def->fields["type"].asString());
                 m.lock = std::string(def->fields["lock"].asString());
                 m.key = std::string(def->fields["key"].asString());
+                m.owner = std::string(def->fields["owner"].asString());
                 if (const script::Table* contents = def->fields["contents"].asTable())
                 {
                     for (const auto& [item, count] : contents->fields)
@@ -622,6 +623,11 @@ Result<void> Engine::takeFromMob(world::VobId vob, std::string_view item, u32 co
         contents.erase(found);
     }
     m_hero->addItem(item, count);
+    if (!it->second.owner.empty() && m_scripts)
+    {
+        const script::Value theft[] = {it->second.owner, std::string(item), static_cast<i64>(count)};
+        m_scripts->emit("theft", theft); // somebody else's chest (M8 part D)
+    }
     return {};
 }
 

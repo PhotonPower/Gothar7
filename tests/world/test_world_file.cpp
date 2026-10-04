@@ -278,3 +278,16 @@ TEST_CASE("WorldFile: item vobs (instance, count) round-trip and are checked")
               "components": { "item": { "instance": "it_apple", "count": 0 } } } ] })")
               .find("components.item.count: must be a whole number") != std::string::npos);
 }
+
+TEST_CASE("WorldFile: an item vob's owner is read and written back")
+{
+    const WorldFile world = parse(R"({ "version": 1, "vobs": [
+    { "id": 5, "type": "item", "pos": [1, 0, 2], "components": { "item": { "instance": "it_bread", "owner": "npc_farmer_woman" } } } ] })");
+    CHECK(world.vobs[0].item.owner == "npc_farmer_woman");
+    const std::string out = writeWorldFile(world);
+    CHECK(out.find(R"("item":{"instance":"it_bread","owner":"npc_farmer_woman"})") != std::string::npos);
+    CHECK(
+        errorOf(
+            R"({ "version": 1, "vobs": [ { "id": 1, "type": "item", "components": { "item": { "instance": "it_bread", "owner": 3 } } } ] })")
+            .find("'owner' must be a string") != std::string::npos);
+}

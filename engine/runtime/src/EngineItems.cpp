@@ -421,6 +421,7 @@ void Engine::takeItem(world::VobId id)
     }
     const std::string instance = ref->instance;
     const u32 count = ref->count;
+    const std::string owner = ref->owner;
     m_hero->addItem(instance, count);
     removeWorldItem(id);
     G7_LOG_INFO("engine", "picked up {} x {}", count, instance);
@@ -428,6 +429,11 @@ void Engine::takeItem(world::VobId id)
     {
         const script::Value args[] = {instance, static_cast<i64>(count)};
         m_scripts->emit("item_taken", args);
+        if (!owner.empty())
+        {
+            const script::Value theft[] = {owner, instance, static_cast<i64>(count)};
+            m_scripts->emit("theft", theft); // witnesses and reactions with M9
+        }
     }
 }
 
@@ -510,6 +516,7 @@ void Engine::inventoryUi()
         row.category = info ? info->category : "misc";
         row.count = stack.count;
         row.equippable = gameplay::Character::slotFor(row.category).has_value();
+        row.usable = row.category == "food" || row.category == "potion" || row.category == "document";
         for (usize s = 0; s < static_cast<usize>(gameplay::EquipSlot::Count); ++s)
         {
             if (hero.equipped(static_cast<gameplay::EquipSlot>(s)) == stack.item)
@@ -555,6 +562,11 @@ void Engine::inventoryUi()
             }
         }
         m_inventoryMessage.clear();
+    }
+    else if (panel.action == "use")
+    {
+        auto used = useItem(panel.actionItem);
+        m_inventoryMessage = used ? std::string() : used.error().message;
     }
     else if (panel.action == "drop")
     {

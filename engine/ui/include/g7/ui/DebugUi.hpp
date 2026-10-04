@@ -135,6 +135,7 @@ struct InventoryPanel
         u32 count = 0;
         std::string equipped; ///< slot name, empty: not equipped
         bool equippable = false;
+        bool usable = false; ///< food, potions, documents (M8 part D)
     };
     std::vector<Row> rows;
     std::string message; ///< shown: the result of the last action ("needs str 15")
@@ -145,8 +146,16 @@ struct InventoryPanel
     std::string containerTitle;
     std::vector<Row> containerRows;
     // out: the button pressed this frame
-    std::string action; ///< "equip", "unequip", "drop", "take", "put"
+    std::string action; ///< "equip", "unequip", "drop", "take", "put", "use"
     std::string actionItem;
+};
+
+/// A document being read (M8 part D, "Document" window).
+struct DocumentPanel
+{
+    std::string title;
+    std::string text;
+    bool open = true; ///< out: false when closed
 };
 
 /// Lockpicking (M8 part C, "Lockpick" window): progress through the combination, picks left, the last result.
@@ -211,6 +220,8 @@ public:
     void lockpickPanel(LockpickPanel& panel);
     /// Window "Choice" (M8 part C2).
     void choicePanel(ChoicePanel& panel);
+    /// Window "Document" (M8 part D).
+    void documentPanel(DocumentPanel& panel);
     /// A text centred at `screen` (window coordinates, +Y down) over everything, without a window: the name
     /// of the focused object (M8) until the HUD exists (M13).
     void focusLabel(Vec2 screen, std::string_view text);

@@ -15,7 +15,8 @@ Npc "npc_farmer_woman" {
     guild = "farmer",
     level = 2,
     figure = "characters/figures/peasant_woman.figure.toml",
-    inventory = { it_apple = 5, it_bread = 2 },
+    inventory = { it_apple = 5, it_bread = 2, it_letter_farm = 1 },
+    pickpocket_dex = 15, -- leicht zu bestehlen
 }
 
 Npc "npc_woodcutter" {

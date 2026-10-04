@@ -143,6 +143,7 @@ struct ItemRef
 {
     std::string instance;
     u32 count = 1;
+    std::string owner; ///< Npc instance or guild it belongs to (taking it is theft); empty: nobody's
 };
 
 /// World matrix of a vob (parent world * local), kept up to date by Scene::updateTransforms().

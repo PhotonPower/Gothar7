@@ -228,7 +228,7 @@ void Engine::fixedUpdatePlayer(f32 seconds)
         input.jump = m_playerInputOverride->jump && !m_overrideJumped; // once per switching on
         m_overrideJumped = m_playerInputOverride->jump;
     }
-    if (m_pickup || m_inventoryOpen || m_mobUse)
+    if (m_pickup || m_inventoryOpen || m_mobUse || m_itemUse || m_pickpocket)
     {
         input = {}; // the hero stands while picking something up or looking into his bag (Gothic)
     }

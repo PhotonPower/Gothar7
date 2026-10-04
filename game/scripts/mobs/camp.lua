@@ -12,6 +12,7 @@ Mob "mob_camp_chest_locked" {
     lock = "LRRLR",
     key = "it_key_chest_hut",
     contents = { it_ring_protection = 1, it_amulet_old = 1 },
+    owner = "npc_farmer_woman", -- daraus nehmen ist Diebstahl
 }
 
 Mob "mob_camp_door" {

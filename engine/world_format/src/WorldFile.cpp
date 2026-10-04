@@ -482,6 +482,12 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             }
             vob.item.count = static_cast<u32>(item["count"].get<u64>());
         }
+        auto owner = readText(r, item, "owner", at, false);
+        if (!owner)
+        {
+            return owner.error();
+        }
+        vob.item.owner = std::move(owner).value();
     }
     return vob;
 }
@@ -1052,6 +1058,10 @@ std::string writeWorldFile(const WorldFile& world)
             if (vob->item.count != 1)
             {
                 item["count"] = vob->item.count;
+            }
+            if (!vob->item.owner.empty())
+            {
+                item["owner"] = vob->item.owner;
             }
             v["components"]["item"] = std::move(item);
         }

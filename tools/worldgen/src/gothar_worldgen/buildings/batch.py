@@ -33,9 +33,15 @@ from gothar_worldgen.buildings.collision import (
     merge_collision,
 )
 from gothar_worldgen.buildings.gaps import Filler, find_fillers, footprint_of, prism_part
-from gothar_worldgen.buildings.gltf import CollisionPart, MeshData, Primitive, glb_bytes_multi
+from gothar_worldgen.buildings.gltf import CollisionPart, MeshData, Part, Primitive, glb_bytes_multi
 from gothar_worldgen.buildings.massing import build_mesh, masses_for_building
-from gothar_worldgen.buildings.medieval import Rules, StreetIndex, barn_hearths, build_house
+from gothar_worldgen.buildings.medieval import (
+    Rules,
+    StreetIndex,
+    barn_hearths,
+    build_house,
+    lod2_primitives,
+)
 from gothar_worldgen.export.terrain import Grid
 from gothar_worldgen.geo.ground import ground_range
 from gothar_worldgen.textures.apply import texture_house, write_textures
@@ -149,10 +155,15 @@ def generate(
     by_hash: dict[str, str] = {}
     deferred: list[tuple[dict[str, Any], str, list[Primitive], list[CollisionPart],
                          tuple[float, float, float]]] = []  # fmt: skip
+    lod_spec = rules.data.get("lod", {}) if (mode == "medieval" and rules is not None) else {}
+    lod_on = bool(lod_spec.get("enabled", False))
+    suffixes = list(lod_spec.get("suffixes", ["", "_lod1", "_lod2"])) if lod_on else [""]
+    lods: dict[str, list[list[Primitive]]] = {}  # house id -> primitives of lod 1, lod 2
 
-    def emit(name: str, prims: list[Primitive], collision: list[CollisionPart]) -> str:
+    def emit(name: str, prims: list[Primitive], collision: list[CollisionPart],
+             lod_prims: Sequence[list[Primitive]] = ()) -> str:  # fmt: skip
         geometry = hashlib.sha256()
-        for prim in prims:
+        for prim in [*prims, *(q for level in lod_prims for q in level)]:
             geometry.update(prim.material.encode())
             geometry.update(repr(prim.textures).encode())
             for arr in (prim.mesh.positions, prim.mesh.normals, prim.mesh.uvs, prim.mesh.indices):
@@ -165,7 +176,10 @@ def generate(
         if digest in by_hash:
             result.shared += 1
             return by_hash[digest]
-        data = glb_bytes_multi(prims, name, collision)
+        parts = [Part(f"{name}{suffixes[k + 1]}", (0.0, 0.0, 0.0), level)
+                 for k, level in enumerate(lod_prims) if level]  # fmt: skip
+        node = f"{name}{suffixes[0]}" if lod_prims else name
+        data = glb_bytes_multi(prims, node, collision, parts)
         path = out_dir / f"{name}.glb"
         if not path.is_file() or path.read_bytes() != data:
             tmp = path.with_name(path.name + ".tmp")
@@ -221,8 +235,22 @@ def generate(
                     queue[0:0] = houses
                     continue
             prims = house.primitives
+            lod_prims: list[list[Primitive]] = []
+            if lod_on and in_core:  # W5 LOD: simplified house and masses for the distance
+                h1 = build_house(b, base, (c.x, c.y), rules, streets, (overrides or {}).get(bid),
+                                 hearth=bid in hearths, wall=wall,
+                                 ground_at=grid.height_at if grid is not None else None,
+                                 lod=1, lod0_level=house.timber_level)  # fmt: skip
+                # lod 2 keeps the windows of lod 1 (flat panels): without them the houses turn
+                # into blank blocks at the distance
+                windows = [q for q in h1.primitives if q.material == "frame"]
+                masses = lod2_primitives(house, base, (c.x, c.y), rules)
+                lod_prims = [h1.primitives, masses + windows]
             if textured_all or bid in textured_ids:  # W5 textures
                 prims = texture_house(prims, texture_root)
+                lod_prims = [texture_house(level, texture_root) for level in lod_prims]
+            if lod_prims:
+                lods[bid] = lod_prims
             col = house.collision or CollisionResult([])
             result.notes.update(n for n in house.notes if n not in massing.notes)
             result.timber_levels[house.timber_level] += 1
@@ -302,7 +330,13 @@ def generate(
                      if q.name.startswith("COL_HULL_") else q
                      for k, q in enumerate(parts)]  # fmt: skip
             entry["collisionTriangles"] = sum(q.triangle_count for q in parts)
-        entry["mesh"] = emit(stem, prims, parts)
+        lod_prims = lods.get(entry["id"], [])
+        if lod_prims:
+            entry["lodTriangles"] = [sum(q.mesh.triangle_count for q in lvl) for lvl in lod_prims]
+            preview = int(lod_spec.get("preview", 0))  # review only: draw this level as lod 0
+            if preview and lod_prims[preview - 1]:
+                prims, lod_prims = lod_prims[preview - 1], []
+        entry["mesh"] = emit(stem, prims, parts, lod_prims)
 
     for (i, j), parts in sorted(cells.items()):
         origin = ((i + 0.5) * CELL_M, min(o[1] for _, _, o in parts), (j + 0.5) * CELL_M)

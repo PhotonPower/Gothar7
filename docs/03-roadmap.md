@@ -190,9 +190,9 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 - [x] **Mob-Interaktion**: Zustandsfolge mit Animationen, Benutzer-Slots, Items verbrauchen/erzeugen (Schmieden, Braten) – Ablauf, Slots, Clips (`data/mobs.toml`), Lua-`Mob` (C1); Rezepte (`Recipe`) am Amboss (C2)
 - [x] Truhen, Türen, Schlösser + Dietrich-Minispiel, Schlüssel – Bruchchance 50/25/5 % nach Talent (C1)
 - [x] Schlafen → Zeit vorspulen – bis Morgen/Mittag/Abend/Mitternacht, danach LP/Mana voll (C2)
-- [ ] Item benutzen (Essen, Tränke, Lesen von Schriftstücken)
-- [ ] Taschendiebstahl (Talent + Geschick)
-- [ ] Besitzverhältnisse (Items und Bereiche gehören NPCs/Gilden) als Basis für Diebstahl-Reaktionen
+- [x] Item benutzen (Essen, Tränke, Lesen von Schriftstücken) – nur im Stand, Wirkung beim Event `use` (D)
+- [x] Taschendiebstahl (Talent + Geschick) – wie Gothic 1: mit Talent und Geschick ≥ `pickpocket_dex` sicher, sonst bemerkt (D)
+- [x] Besitzverhältnisse (Items und Bereiche gehören NPCs/Gilden) als Basis für Diebstahl-Reaktionen – `owner` an Items und Mobs, Ereignis `theft`; Reaktionen mit M9 (D)
 
 **DoD:** Spieler kann Items aufheben, ausrüsten, Truhen knacken, am Amboss schmieden, schlafen.
 
@@ -362,8 +362,8 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
   - Stand: Mechanik und Muster-Katalog, Dachdeckung (Palette), steile Dächer, Stilzuweisung, Schornsteine und Gauben umgesetzt (`--mode medieval`, `leonberg-stil.md`)
 - [ ] Overrides aus W4 anwenden; Seeds für Variation; `locked`-Schutz für Handarbeit
   - Stand: `storeys`, `jettyM`, `frontFacade` (Öffnungen), `seed`, `locked`, `keep`, `age`, `dormers`, `chimneys` werden angewendet; abhaken mit den echten Annotationen
-- [ ] LOD-Erzeugung, Kollisions-Mesh
-  - Stand: Kollision umgesetzt (`COL_HULL_` je konvexem Baukörperteil, Ersatz `COL_`-Netz; Vertrag in `docs/modules/asset.md`); LOD offen
+- [x] LOD-Erzeugung, Kollisions-Mesh
+  - Stand: Kollision umgesetzt (`COL_HULL_` je konvexem Baukörperteil, Ersatz `COL_`-Netz; Vertrag in `docs/modules/asset.md`); LOD: jedes Haus mit `_lod1` (vereinfacht, ca. 31 %) und `_lod2` (Baukörper mit Fenstern, ca. 5 %), Vertrag in `docs/coordination.md`; die Auswahl nach Entfernung baut engine
 - [ ] Stil-Referenzblatt (Farben, Materialien, Alterung) in `docs/design/`
   - Stand: `docs/design/leonberg-stil.md` (Entscheidung 2026-10-03), Palette justiert, Alterung umgesetzt (First-Durchhang, schiefe Ständer, unregelmäßige Fenster, Moos; mit den Texturen Schmutz-Fußband, Regenschlieren und Moos-Ziegel)
 
