@@ -82,8 +82,9 @@ Routine "rtn_farmer_woman" {
   bzw. Schloss geknackt), `assess_enter_room(npc, besitzer, bereich)` (Trigger mit `owner`, world.md).
 - **Abfragen:** `npc_sees_player`, `npc_distance_to_player`, `player_weapon`, `player_inside(bereich)`.
 - **Waffe ziehen** (Taste `draw_weapon`, Konsole `draw_weapon()`): die ausgerüstete Nahkampfwaffe in
-  `socket_hand_r`, Bewegung im 1h-Set; ohne Waffe Fäuste. Schwimmen und Klettern stecken sie weg. Bis figurens
-  `t_draw`/`t_sheath` kommen, wird übergeblendet.
+  `socket_hand_r`, Bewegung im 1h-Set; ohne Waffe Fäuste. Schwimmen und Klettern stecken sie weg. Figurens
+  `1h|fist/t_draw` und `t_sheath` spielen dabei; das Schwert erscheint bzw. verschwindet bei ihren Events `draw`
+  und `sheath` (`Engine::weaponEvent`).
 - **Reaktionen** (Inhalt, `ai/perceptions.lua`, Texte zentral in `data/shouts.lua`, eigene Formulierungen):
   Wachen warnen bei gezogener Waffe auf Sicht, andere ab 5 m; zweimal gewarnt, dann `npc_would_attack(npc, grund)`
   und Drohen (`zs_threaten`: dem Spieler 15 s folgen) bis zum Kampf in M11. Privater Bereich: hinauswerfen, nach 6 s

@@ -689,6 +689,10 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
                  {
                      m_pickupEvent = true; // the hand reaches the item (M8)
                  }
+                 else if (event == "draw" || event == "sheath")
+                 {
+                     weaponEvent(event); // the weapon in or out of the hand (M9)
+                 }
                  else if (event == "open" || event == "close" || event == "hit_anvil" || event == "use")
                  {
                      m_mobEvents.emplace_back(event); // lid or door moves, hammer strikes (M8 part C)

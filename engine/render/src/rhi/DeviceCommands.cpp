@@ -39,6 +39,12 @@ void Device::setScissor(std::optional<PixelRect> rect)
     glScissor(rect->x, rect->y, static_cast<GLsizei>(rect->width), static_cast<GLsizei>(rect->height));
 }
 
+void Device::clearDepthRegion(const rhi::Texture& depth, const PixelRect& rect, f32 value)
+{
+    glClearTexSubImage(depth.m_handle.id(), 0, rect.x, rect.y, 0, static_cast<GLsizei>(rect.width),
+                       static_cast<GLsizei>(rect.height), 1, GL_DEPTH_COMPONENT, GL_FLOAT, &value);
+}
+
 void Device::clear(std::optional<Vec4> color, std::optional<f32> depth)
 {
     GLbitfield mask = 0;

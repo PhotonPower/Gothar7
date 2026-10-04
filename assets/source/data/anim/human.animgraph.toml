@@ -74,6 +74,22 @@ points = [
     { value = 4.0, clip = "fist/s_run" },
 ]
 
+[[state]] # Waffe ziehen bzw. wegstecken (figuren: Events draw/sheath, dort erscheint bzw. verschwindet sie)
+name = "draw_1h"
+clip = "1h/t_draw"
+
+[[state]]
+name = "sheath_1h"
+clip = "1h/t_sheath"
+
+[[state]]
+name = "draw_fist"
+clip = "fist/t_draw"
+
+[[state]]
+name = "sheath_fist"
+clip = "fist/t_sheath"
+
 [[state]]
 name = "sneak"
 blend = "speed"
@@ -404,29 +420,53 @@ to = "slide"
 when = ["slide"]
 blend = 0.2
 
-[[transition]] # Waffe ziehen und wegstecken (bis t_draw/t_sheath kommen: Überblenden)
+[[transition]] # Waffe ziehen und wegstecken
 from = "move"
-to = "move_1h"
+to = "draw_1h"
 when = ["weapon == 1"]
-blend = 0.25
+blend = 0.15
+
+[[transition]]
+from = "draw_1h"
+to = "move_1h"
+when = ["end"]
+blend = 0.2
 
 [[transition]]
 from = "move"
-to = "move_fist"
+to = "draw_fist"
 when = ["weapon == 2"]
-blend = 0.25
+blend = 0.15
+
+[[transition]]
+from = "draw_fist"
+to = "move_fist"
+when = ["end"]
+blend = 0.2
 
 [[transition]]
 from = "move_1h"
-to = "move"
+to = "sheath_1h"
 when = ["weapon < 0.5"]
-blend = 0.25
+blend = 0.15
+
+[[transition]]
+from = "sheath_1h"
+to = "move"
+when = ["end"]
+blend = 0.2
 
 [[transition]]
 from = "move_fist"
-to = "move"
+to = "sheath_fist"
 when = ["weapon < 0.5"]
-blend = 0.25
+blend = 0.15
+
+[[transition]]
+from = "sheath_fist"
+to = "move"
+when = ["end"]
+blend = 0.2
 
 [[transition]]
 from = "move"

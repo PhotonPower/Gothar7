@@ -138,9 +138,7 @@ void ShadowMap::beginCascade(Device& device, u32 index) const
     const auto r = static_cast<i32>(m_settings.resolution);
     const PixelRect tile{static_cast<i32>(index % 2) * r, static_cast<i32>(index / 2) * r,
                          m_settings.resolution, m_settings.resolution};
-    device.setViewport(tile.x, tile.y, tile.width, tile.height);
-    device.setScissor(tile); // the clear only; the viewport keeps the draws in the tile
-    device.clear(std::nullopt, 1.0f); // shadow depth is not reversed: 1 = far
-    device.setScissor(std::nullopt);
+    device.setViewport(tile.x, tile.y, tile.width, tile.height); // keeps the draws in the tile
+    device.clearDepthRegion(m_depth, tile, 1.0f);                // shadow depth is not reversed: 1 = far
 }
 } // namespace g7::render

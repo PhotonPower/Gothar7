@@ -197,3 +197,21 @@ TEST_CASE("Engine attitudes: a hostile guard would attack, his friends come to h
     runSeconds(engine, 4.0f);
     CHECK(run(engine, "npc_distance_to_player('npc_old_man')").asNumber() > before + 4.0);
 }
+
+TEST_CASE("Engine weapon: drawn and put away with figuren's clips, the sword appears at their events")
+{
+    Engine engine(perceptionConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "give_item('it_sword_old') equip('it_sword_old')");
+    runSeconds(engine, 0.5f);
+    CHECK(run(engine, "draw_weapon()").asString() == "weapon");
+    runSeconds(engine, 0.1f);
+    CHECK_FALSE(engine.playerHolds("socket_hand_r")); // the hand is still on the way to the hilt
+    runSeconds(engine, 1.5f);
+    CHECK(engine.playerHolds("socket_hand_r"));
+    CHECK(run(engine, "draw_weapon()").asString() == "none");
+    runSeconds(engine, 0.1f);
+    CHECK(engine.playerHolds("socket_hand_r")); // until the clip puts it away
+    runSeconds(engine, 1.5f);
+    CHECK_FALSE(engine.playerHolds("socket_hand_r"));
+}
