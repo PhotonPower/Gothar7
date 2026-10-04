@@ -13,7 +13,8 @@ Axes (contract): Y up, origin on the ground, the front faces +Z, metres. The fig
 - anvil: wooden block and forged anvil, working surface 0.8 m, horn towards +X;
 - bed 2.0 x 0.9 m along X (long side towards +Z), lying surface 0.45 m, head board at -X;
 - door: the blade only, 1.0 x 2.0 x 0.05 m along +X from the hinge at the origin, handle at 1.0 m
-  on both sides; the engine turns the whole mob about +Y.
+  on both sides; the engine turns the whole mob about +Y;
+- bench (M9): plank bench 1.5 x 0.35 m, seat 0.45 m, origin in the middle on the ground.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ from gothar_worldgen.buildings.gltf import CollisionPart, Part, Primitive, glb_b
 from gothar_worldgen.buildings.massing import _Builder
 from gothar_worldgen.textures.procedural import TILE_M, albedo_scale, make, to_png
 
-TYPES = ("chest", "anvil", "bed", "door")
+TYPES = ("chest", "anvil", "bed", "door", "bench")
 TEXTURE_SIZE = 512
 TEXTURE_DIR = "textures"  # next to the models, relative URIs like glTF wants
 BUDGET = 1500  # triangles per model (render)
@@ -273,7 +274,24 @@ def door() -> MobModel:
     return MobModel("door", m)
 
 
-BUILDERS = {"chest": chest, "anvil": anvil, "bed": bed, "door": door}
+BENCH_L, BENCH_D, BENCH_SEAT = 1.5, 0.35, 0.45
+
+
+def bench() -> MobModel:
+    """Plank bench: thick seat on two slab legs with a stretcher, no back (M9, test sizes from
+    figuren: seat 0.45 m, depth 0.35 m, length 1.5 m)."""
+    m = Mesh()
+    hl, hd = BENCH_L / 2, BENCH_D / 2
+    seat_t = 0.06
+    m.box("oak", (-hl, BENCH_SEAT - seat_t, -hd), (hl, BENCH_SEAT, hd), grain=0)
+    for x in (-hl + 0.12, hl - 0.18):  # slab legs, slightly inset
+        m.box("oak_beam", (x, 0.0, -hd + 0.03), (x + 0.06, BENCH_SEAT - seat_t, hd - 0.03), grain=1)
+    m.box("oak_beam", (-hl + 0.18, 0.12, -0.03), (hl - 0.18, 0.18, 0.03), grain=0)  # stretcher
+    m.body("bench", (-hl, 0.0, -hd), (hl, BENCH_SEAT, hd))
+    return MobModel("bench", m)
+
+
+BUILDERS = {"chest": chest, "anvil": anvil, "bed": bed, "door": door, "bench": bench}
 
 
 def write_mobs(folder: Path, types: Sequence[str] = TYPES) -> list[str]:
