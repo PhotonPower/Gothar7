@@ -8,6 +8,7 @@ Item "it_blank_hot" {
 
 Item "it_sword_crude" {
     name = "Grobes Schwert",
+    mesh = "items/it_sword_crude.glb",
     category = "melee_1h",
     value = 40,
     damage = { edge = 12 },

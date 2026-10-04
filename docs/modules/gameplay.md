@@ -109,6 +109,10 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   freien. `requires = { str = 20, bow = 1 }` (Attribute oder Talente) muss erfüllt sein. Entfernen eines
   ausgerüsteten Items legt es ab.
 - Benutzen: `on_use`-Skriptfunktion (Trank → Leben, Schriftstück → Dokument-UI) – Teil D.
+- **Modelle:** `Item.mesh = "items/<id>.glb"` (figuren, F6: Ursprung am Griffpunkt, Griffachse +Y; alle Schlüssel
+  `items/it_key.glb`), sonst ein Platzhalter je Kategorie. Liegend ruht ein Gegenstand auf seiner breiten Seite – die
+  dünnste Achse zeigt nach oben (Schwert, Schlüssel, Brot liegen flach), Tränke stehen; der tiefste Punkt liegt auf
+  dem Boden.
 - **In der Welt** (Teil B): Vob-Typ `item` (world.md), zur Laufzeit `Engine::spawnItem`, `insert('it_x')`,
   `drop_item('it_x', n)` (legt vor den Helden). **Aufheben** mit der Aktionstaste (klassisch Strg, modern E) auf ein Item
   im Fokus (`Engine::pickUpFocus`): Der Held bleibt stehen und spielt `none/t_pickup_ground` (Zustand `pickup` im
@@ -166,8 +170,9 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
 - **Bett** (C2, wie Gothic 1): `t_lie_down` trägt die Figur aufs Bett (Wurzel im Clip, der Held bleibt am Slot), in
   `s_lie` fragt „Choice“ bis wann: Morgen 8:00, Mittag 12:00, Abend 20:00, Mitternacht 0:00 (`GameTime::advanceTo`,
   heute falls noch vor uns, sonst morgen). Danach LP und Mana voll, Ereignis `slept(hour)`, der Held steht auf.
-- Der Truhendeckel (`MOB_LID`) bewegt sich noch nicht – statische Modelle werden als ein Mesh geladen; mit welts
-  Modellen.
+- Modelle: welts `assets/source/mobs/{chest,anvil,bed,door}.glb` (#148, Achsen und Maße nach `mobs.toml`). Der
+  Truhendeckel (`MOB_LID`, Scharnier-Knoten, Drehung um X) bewegt sich noch nicht – statische Modelle werden als ein
+  Mesh geladen; seine `COL_`-Kinder werden mit ihrer Knotenlage gelesen.
 - Mob-Zustände (offen, verschlossen, Inhalt) gelten für die Sitzung; gespeichert werden sie mit M14.
 
 ## Dialog & Quests (M10)

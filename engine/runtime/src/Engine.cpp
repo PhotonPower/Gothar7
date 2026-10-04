@@ -1192,6 +1192,7 @@ void Engine::unloadWorld()
     m_instances.clear();
     m_worldItems.clear(); // items lying around belong to the world
     m_itemModels.clear();
+    m_itemRest.clear();
     m_scriptModels.clear();
     m_focus.reset();
     m_pickup.reset();
@@ -1284,6 +1285,11 @@ void Engine::releaseUnusedModels()
     for (const SceneInstance& instance : m_instances)
     {
         used.insert(instance.model);
+    }
+    // Item models (M8): drawn as world items, not as instances; the cache keeps them for items dropped later.
+    for (const auto& [instance, model] : m_itemModels)
+    {
+        used.insert(model);
     }
     const usize before = m_models.size();
     std::erase_if(m_models, [&](const auto& entry) { return !used.contains(entry.second.get()); });

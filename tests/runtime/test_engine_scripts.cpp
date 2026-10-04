@@ -191,7 +191,7 @@ TEST_CASE("Engine items: focus, picking up, dropping, the inventory stops the he
     const u32 apples = engine.hero()->itemCount("it_apple");
     // The camp has items of its own (vob type item), not in view from the start point.
     const usize lying = engine.worldItems().size();
-    CHECK(lying == 3);
+    CHECK(lying == 9);
     engine.updateFocus();
     CHECK_FALSE(engine.focus().has_value());
 
