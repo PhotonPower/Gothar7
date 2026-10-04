@@ -231,8 +231,8 @@ def stone(size: int, rng: np.random.Generator) -> Texture:
             d = (np.minimum(np.minimum(dx, dy), corner)
                  - 0.07 * m * (wobble[sub] - 0.45) - 2.5 * (ragged[sub] - 0.5))  # fmt: skip
             dist[sub] = d
-            shade[sub] = rng.uniform(0.45, 1.0)
-            warm[sub] = rng.uniform(0.0, 0.1)
+            shade[sub] = rng.uniform(0.3, 1.0) ** 1.3  # more dark stones
+            warm[sub] = rng.uniform(-0.03, 0.14)
             gy = (ys - y0)[:, None] / max(h - 1, 1) - 0.5
             gx = np.arange(w)[None, :] / max(w - 1, 1) - 0.5
             tilt[sub] = rng.uniform(-0.25, 0.25) * gx + rng.uniform(-0.3, 0.1) * gy
@@ -248,8 +248,14 @@ def stone(size: int, rng: np.random.Generator) -> Texture:
     rgb = (
         rgb * (1 - mortar[:, :, None]) + lime * (0.8 + 0.4 * grain[:, :, None]) * mortar[:, :, None]
     )
+    # grime and moss in patches across stones and joints (owner 2026-10-04: socles too clean)
+    grime = np.clip((periodic_noise((size, size), rng, beta=2.4) - 0.45) / 0.35, 0.0, 1.0)
+    moss = np.clip((periodic_noise((size, size), rng, beta=2.8) - 0.62) / 0.2, 0.0, 1.0)
+    moss *= 0.5 + 0.5 * (1 - face)  # in the joints and on broken edges first
+    rgb = rgb * (1 - 0.35 * grime[:, :, None])
+    rgb = rgb * (1 - moss[:, :, None]) + rgb * np.array([0.7, 0.95, 0.5]) * moss[:, :, None]
     height = 0.85 * face * (1 - mortar) + 0.12 * grain - 0.1 * pits + 0.2 * tilt * (1 - mortar)
-    return Texture("stone", _mean_one(np.clip(rgb, 0.05, None), 0.7), height - height.min(), 6.0)
+    return Texture("stone", _mean_one(np.clip(rgb, 0.04, None), 0.45), height - height.min(), 6.0)
 
 
 def timber(size: int, rng: np.random.Generator) -> Texture:

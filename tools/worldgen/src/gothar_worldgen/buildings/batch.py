@@ -247,8 +247,8 @@ def generate(
                 masses = lod2_primitives(house, base, (c.x, c.y), rules)
                 lod_prims = [h1.primitives, masses + windows]
             if textured_all or bid in textured_ids:  # W5 textures
-                prims = texture_house(prims, texture_root)
-                lod_prims = [texture_house(level, texture_root) for level in lod_prims]
+                prims = texture_house(prims, texture_root, bid)
+                lod_prims = [texture_house(level, texture_root, bid) for level in lod_prims]
             if lod_prims:
                 lods[bid] = lod_prims
             col = house.collision or CollisionResult([])
