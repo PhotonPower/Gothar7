@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "camp",
-  "nextVobId": 198,
+  "nextVobId": 202,
   "staticMeshes": [],
   "terrain": {"version":1,"heightmap":"testworld/terrain.r16","width":257,"height":257,"cellSize":2.0,"firstSample":[-256.0,-256.0],"minY":-20.0,"maxY":60.0,"splat":{"maps":["testworld/splat0.png"],"layers":[{"name":"grass","albedo":"testworld/layer_grass.png","tile":4.0},{"name":"earth","albedo":"testworld/layer_earth.png","tile":4.0},{"name":"rock","albedo":"testworld/layer_rock.png","tile":6.0},{"name":"path","albedo":"testworld/layer_path.png","tile":3.0}]},"holes":"testworld/holes.r8"},
   "vobs": [
@@ -201,6 +201,10 @@
     {"id":194,"type":"start","name":"START_TEICH","pos":[-122.0,-1.0,-120.0],"rot":[0.0,0.70711,0.0,0.70711]},
     {"id":195,"type":"item","name":"LAGER_AEPFEL","pos":[29.5,0.0,4.5],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_apple","count":3}}},
     {"id":196,"type":"item","name":"LAGER_KNUEPPEL","pos":[29.0,0.0,6.2],"rot":[0.0,0.38268,0.0,0.92388],"components":{"item":{"instance":"it_club"}}},
-    {"id":197,"type":"item","name":"LAGER_RUESTUNG","pos":[28.6,0.0,5.6],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_armor_leather"}}}
+    {"id":197,"type":"item","name":"LAGER_RUESTUNG","pos":[28.6,0.0,5.6],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_armor_leather"}}},
+    {"id":198,"type":"mob","name":"LAGER_TRUHE","pos":[29.0,0.0,-4.0],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"testworld/mobs/chest.glb","components":{"mob":{"definition":"mob_camp_chest"}}},
+    {"id":199,"type":"mob","name":"LAGER_TRUHE_ZU","pos":[29.0,0.0,-5.6],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"testworld/mobs/chest.glb","components":{"mob":{"definition":"mob_camp_chest_locked"}}},
+    {"id":200,"type":"mob","name":"LAGER_TUER","pos":[30.5,0.0,-9.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"testworld/mobs/door.glb","components":{"mob":{"definition":"mob_camp_door"}}},
+    {"id":201,"type":"mob","name":"LAGER_TUER_ZU","pos":[33.0,0.0,-9.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"testworld/mobs/door.glb","components":{"mob":{"definition":"mob_camp_door_locked"}}}
   ]
 }

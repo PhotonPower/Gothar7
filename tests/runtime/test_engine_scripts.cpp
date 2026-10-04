@@ -256,3 +256,163 @@ TEST_CASE("Engine items: focus, picking up, dropping, the inventory stops the he
     }
     CHECK(glm::length(engine.player()->feet() - before) > 0.1f);
 }
+
+namespace
+{
+/// Runs frames until the hero is done with the mob (or the limit); whether `phase` was seen on the way.
+bool runMobUse(Engine& engine, std::string_view phase = {}, int limit = 600)
+{
+    bool seen = phase.empty();
+    for (int i = 0; i < limit && engine.mobPhase(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+        seen = seen || engine.mobPhase() == phase;
+    }
+    return seen && !engine.mobPhase();
+}
+
+/// Runs frames until the mob use reaches `phase`.
+bool runUntilPhase(Engine& engine, std::string_view phase, int limit = 600)
+{
+    for (int i = 0; i < limit && engine.mobPhase() && engine.mobPhase() != phase; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    return engine.mobPhase() == phase;
+}
+} // namespace
+
+TEST_CASE("Engine mobs: chests open and close, take and put, locks with key and lockpick")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    const auto chest = engine.findMob("LAGER_TRUHE");
+    REQUIRE(chest.has_value());
+    const MobInfo info = *engine.mobInfo(*chest);
+    CHECK(info.type == "chest");
+    CHECK(info.name == "Truhe");
+    CHECK_FALSE(info.locked);
+    CHECK(info.contents.size() == 2);
+
+    // Walk over, open (chest_enter with the lid's "open" event), its contents next to the inventory.
+    REQUIRE(engine.useMob(*chest).ok());
+    CHECK(engine.mobPhase() == "approach");
+    CHECK_FALSE(engine.useMob(*chest).ok()); // busy
+    REQUIRE(runUntilPhase(engine, "loop"));
+    CHECK(engine.playerAnimationState() == "chest_loop");
+    CHECK(engine.mobInfo(*chest)->open);
+    CHECK(engine.inventoryOpen());
+    // The hero stands on the slot in front of it: 0.65 m before the chest along its front (+X here).
+    const Vec3 feet = engine.player()->feet();
+    CHECK(feet.x == doctest::Approx(29.65f).epsilon(0.01));
+    CHECK(feet.z == doctest::Approx(-4.0f).epsilon(0.01));
+    const u32 apples = engine.hero()->itemCount("it_apple");
+    REQUIRE(engine.takeFromMob(*chest, "it_apple", 2).ok());
+    CHECK(engine.hero()->itemCount("it_apple") == apples + 2);
+    CHECK_FALSE(engine.takeFromMob(*chest, "it_apple").ok()); // none left
+    REQUIRE(engine.putIntoMob(*chest, "it_apple").ok());
+    CHECK(engine.mobInfo(*chest)->contents.size() == 2);
+    // Leaving closes it (chest_leave) and gives the hero back.
+    engine.mobCommand(MobCommand::Leave);
+    CHECK(runMobUse(engine, "leave"));
+    CHECK_FALSE(engine.mobInfo(*chest)->open);
+    CHECK_FALSE(engine.inventoryOpen());
+
+    // Locked, no key, no lockpick: "Verschlossen.", nothing happens.
+    const auto locked = engine.findMob("LAGER_TRUHE_ZU");
+    REQUIRE(locked.has_value());
+    CHECK(engine.mobInfo(*locked)->locked);
+    run(engine, "on('mob_locked', function(mob) Story.locked = mob end)");
+    const auto refused = engine.useMob(*locked);
+    REQUIRE_FALSE(refused.ok());
+    CHECK(refused.error().message == "locked");
+    CHECK(engine.lastNotice() == "Verschlossen.");
+    CHECK(run(engine, "Story.locked").asString() == "mob_camp_chest_locked");
+
+    // With two lockpicks: a wrong turn with a bad roll breaks one (no talent: 50 %), the right combination
+    // (LRRLR) opens it, then it opens like any chest.
+    run(engine, "give_item('it_lockpick', 2)");
+    f32 roll = 0.1f; // < 0.5: breaks
+    engine.setRandomSource([&] { return roll; });
+    REQUIRE(engine.useMob(*locked).ok());
+    REQUIRE(runUntilPhase(engine, "picklock"));
+    CHECK(engine.playerAnimationState() == "chest_picklock");
+    engine.mobCommand(MobCommand::TurnRight); // wrong first step
+    CHECK(engine.hero()->itemCount("it_lockpick") == 1);
+    CHECK(engine.lastNotice() == "Der Dietrich ist abgebrochen.");
+    roll = 0.9f;
+    engine.mobCommand(MobCommand::TurnLeft);
+    engine.mobCommand(MobCommand::TurnLeft); // wrong again: reset, the pick holds
+    CHECK(engine.hero()->itemCount("it_lockpick") == 1);
+    for (const MobCommand c : {MobCommand::TurnLeft, MobCommand::TurnRight, MobCommand::TurnRight,
+                               MobCommand::TurnLeft, MobCommand::TurnRight})
+    {
+        engine.mobCommand(c);
+    }
+    CHECK_FALSE(engine.mobInfo(*locked)->locked);
+    CHECK(engine.lastNotice() == "Das Schloss springt auf.");
+    REQUIRE(runUntilPhase(engine, "loop"));
+    REQUIRE(engine.takeFromMob(*locked, "it_ring_protection").ok());
+    engine.mobCommand(MobCommand::Leave);
+    CHECK(runMobUse(engine));
+
+    // The locked door opens with its key on the way (without key and lockpick it stays shut).
+    run(engine, "remove_item('it_lockpick', item_count('it_lockpick'))");
+    const auto door = engine.findMob("LAGER_TUER_ZU");
+    REQUIRE(door.has_value());
+    CHECK_FALSE(engine.useMob(*door).ok());
+    run(engine, "give_item('it_key_hut_door')");
+    REQUIRE(engine.useMob(*door).ok());
+    CHECK_FALSE(engine.mobInfo(*door)->locked);
+    CHECK(runMobUse(engine));
+    CHECK(engine.mobInfo(*door)->open);
+}
+
+TEST_CASE("Engine mobs: a door swings open with its collision, the same clip closes it")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    const auto door = engine.findMob("LAGER_TUER");
+    REQUIRE(door.has_value());
+    const auto blade = [&]
+    {
+        for (const SceneInstance& instance : engine.instances())
+        {
+            if (instance.vob == *door)
+            {
+                return Vec3(instance.transform[0]); // the blade runs along local +X
+            }
+        }
+        return Vec3(0.0f);
+    };
+    CHECK(blade().x == doctest::Approx(1.0f));
+    run(engine, "on('mob_used', function(mob, type) Story.used = mob .. ' ' .. type end)");
+    REQUIRE(engine.useMob(*door).ok());
+    CHECK(runMobUse(engine, "enter"));
+    CHECK(engine.mobInfo(*door)->open);
+    CHECK(run(engine, "Story.used").asString() == "mob_camp_door door");
+    for (int i = 0; i < 60; ++i) // the swing takes 0.8 s
+    {
+        REQUIRE(engine.runFrame());
+    }
+    // Turned 90 degrees about +Y: the blade now runs along -Z.
+    CHECK(blade().x == doctest::Approx(0.0f).epsilon(0.01));
+    CHECK(blade().z == doctest::Approx(-1.0f).epsilon(0.01));
+    // Where the closed blade stood (x 30.5..31.5 at z -9) is free now; the open one lies along -Z at x 30.5.
+    CHECK(engine.physics().raycast(Vec3(31.0f, 1.0f, -8.0f), Vec3(0, 0, -1), 2.0f,
+                                   physics::layerBit(physics::Layer::World)) == std::nullopt);
+    REQUIRE(engine.useMob(*door).ok());
+    CHECK(runMobUse(engine));
+    for (int i = 0; i < 60; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK_FALSE(engine.mobInfo(*door)->open);
+    CHECK(blade().x == doctest::Approx(1.0f).epsilon(0.01));
+    CHECK(
+        engine.physics()
+            .raycast(Vec3(31.0f, 1.0f, -8.0f), Vec3(0, 0, -1), 2.0f, physics::layerBit(physics::Layer::World))
+            .has_value());
+}

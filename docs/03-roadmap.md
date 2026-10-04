@@ -183,12 +183,12 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 - [x] Attribute & Talente, Erfahrung, Stufen, Lernpunkte (Formeln in Skripten) – `gameplay::Character`, `data/progression.lua` (Stufe n: 500·n(n+1)/2, 10 Lernpunkte), Held = `Npc "pc_hero"` (A)
 - [x] Gilden + Einstellungs-Tabelle – `Attitudes`/`attitude(a, b)` in `data/guilds.lua`, Auswertung mit M9 (A)
 - [x] Items: Kategorien (Nahkampf, Fernkampf, Rüstung, Munition, Nahrung, Trank, Rune, Spruchrolle, Schriftstück, Schlüssel, Sonstiges), Wert, Bedingungen (Stärke X) – Schema prüft `category`, `requires` beim Ausrüsten (A)
-- [ ] Inventar (Spieler + NPC + Truhen), Ausrüsten, Gewicht optional (Gothic hat keins) – Spieler/NPC und Ausrüsten fertig (A), Truhen mit Teil C
+- [x] Inventar (Spieler + NPC + Truhen), Ausrüsten, Gewicht optional (Gothic hat keins) – Spieler/NPC und Ausrüsten (A), Truhen (C1)
 - [x] Wegnetz-Block der `.g7world` lesen/schreiben (Vertrag mit welt, world.md „Wegnetz“; Pfadsuche M9) (A)
 - [x] **Fokus-System** (Ziel-Auswahl nach Blickrichtung/Distanz/Priorität) – `gameplay::selectFocus`, `data/focus.toml`, Name über dem Ziel (B)
 - [x] Items in der Welt (Vob-Typ `item`), Aufheben mit der Aktionstaste und `none/t_pickup_ground` (Event `pickup`), Inventar-Fenster (Tab), `drop_item` (B)
-- [ ] **Mob-Interaktion**: Zustandsfolge mit Animationen, Benutzer-Slots, Items verbrauchen/erzeugen (Schmieden, Braten)
-- [ ] Truhen, Türen, Schlösser + Dietrich-Minispiel, Schlüssel
+- [ ] **Mob-Interaktion**: Zustandsfolge mit Animationen, Benutzer-Slots, Items verbrauchen/erzeugen (Schmieden, Braten) – Ablauf, Slots, Clips (`data/mobs.toml`), Lua-`Mob` fertig (C1); Items verbrauchen/erzeugen mit dem Amboss (C2)
+- [x] Truhen, Türen, Schlösser + Dietrich-Minispiel, Schlüssel – Bruchchance 50/25/5 % nach Talent (C1)
 - [ ] Schlafen → Zeit vorspulen
 - [ ] Item benutzen (Essen, Tränke, Lesen von Schriftstücken)
 - [ ] Taschendiebstahl (Talent + Geschick)
