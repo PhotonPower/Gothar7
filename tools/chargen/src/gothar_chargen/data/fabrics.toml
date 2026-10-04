@@ -1,0 +1,112 @@
+# Worn cloth textures (F3n; gothar-chargen fabrics, fabrics.py). Tiles: ambientCG fabrics (CC0) in
+# DATA_ROOT/characters/ambientcg/fabric (not in the repository); only the baked textures are versioned,
+# under the names the parts already use. wear 0..1: faded, stains, dirty seams and hems (Gothic colony:
+# worn; owner decision 2026-10-04 – cleaner figures such as citizens get a lower wear later).
+version = 1
+
+[tiles.linen]
+source = "Fabric066/Fabric066_1K-JPG_Color.jpg"
+size = 0.22
+
+[tiles.fine_weave]
+source = "Fabric062/Fabric062_1K-JPG_Color.jpg"
+size = 0.18
+
+[tiles.knit]
+source = "Fabric068/Fabric068_1K-JPG_Color.jpg"
+size = 0.3
+
+[tiles.wool]
+source = "Fabric031/Fabric031_1K-JPG_Color.jpg"
+size = 0.3
+
+[tiles.canvas]
+source = "Fabric063/Fabric063_1K-JPG_Color.jpg"
+size = 0.22
+
+[tiles.burlap]
+source = "Fabric045/Fabric045_1K-JPG_Color.jpg"
+size = 0.35
+
+[tiles.leather]
+source = "Leather014/Leather014_1K-JPG_Color.jpg"
+size = 0.3
+
+# --- clothing kit (neutral grey, the figure palette colours it) -----------------------------------
+
+[textures."elvs_crude_t-shirt_male_neutral.jpg"]
+part = "parts/cloth_m_average/elvs_crude_t-shirt_male.glb"
+material = "cloth_elvs_crude_t-shirt_male"
+tile = "linen"
+wear = 0.85
+
+[textures."joepal_crude_t-shirt_female_neutral.jpg"]
+part = "parts/cloth_f_average/joepal_crude_t-shirt_female.glb"
+material = "cloth_joepal_crude_t-shirt_female"
+tile = "linen"
+wear = 0.85
+
+[textures."toigo_fisherman_sweater_neutral.jpg"]
+part = "parts/cloth_m_average/toigo_fisherman_sweater.glb"
+material = "cloth_toigo_fisherman_sweater"
+tile = "knit"
+wear = 0.7
+
+[textures."toigo_bodice-style_top_neutral.jpg"]
+part = "parts/cloth_f_average/toigo_bodice-style_top.glb"
+material = "cloth_toigo_bodice-style_top"
+tile = "fine_weave"
+wear = 0.6
+
+[textures."toigo_long_full_skirt_neutral.jpg"]
+part = "parts/cloth_f_average/toigo_long_full_skirt.glb"
+material = "cloth_toigo_long_full_skirt"
+tile = "wool"
+wear = 0.8
+
+[textures."toigo_mj_cloth_shoes_neutral.jpg"]
+part = "parts/cloth_m_average/toigo_mj_cloth_shoes.glb"
+material = "cloth_toigo_mj_cloth_shoes"
+tile = "burlap"
+wear = 0.9
+
+[textures."culturalibre_male_boots_neutral.jpg"]
+part = "parts/cloth_m_average/culturalibre_male_boots.glb"
+material = "cloth_culturalibre_male_boots"
+tile = "leather"
+wear = 0.75
+
+[textures."toigo_flats_neutral.jpg"]
+part = "parts/cloth_f_average/toigo_flats.glb"
+material = "cloth_toigo_flats"
+tile = "leather"
+wear = 0.75
+
+[textures."toigo_ankle_boots_female_neutral.jpg"]
+part = "parts/cloth_f_average/toigo_ankle_boots_female.glb"
+material = "cloth_toigo_ankle_boots_female"
+tile = "leather"
+wear = 0.75
+
+# --- garments of the base bodies (tinted, as before) ----------------------------------------------
+
+[textures."toigo_wool_pants_b5a68a.jpg"]
+part = "parts/body_m_average/body.glb"
+material = "cloth_toigo_wool_pants"
+tile = "wool"
+wear = 0.85
+tint = "#514b3f"  # the dark wool of the old texture (file name kept, parts unchanged)
+
+[textures."wolgade_female_panties_01_b5a68a.jpg"]
+part = "parts/body_f_average/body.glb"
+material = "cloth_wolgade_female_panties_01"
+tile = "linen"
+wear = 0.7
+tint = "#d1d9d4"
+
+[textures."wolgade_female_top_01_b5a68a.jpg"]
+part = "parts/body_f_average/body.glb"
+material = "cloth_wolgade_female_top_01"
+tile = "linen"
+wear = 0.7
+tint = "#d1d9d4"
