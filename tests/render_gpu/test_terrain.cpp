@@ -149,7 +149,17 @@ TEST_CASE("Terrain GPU: chunks outside the view are skipped, distant ones coarse
     const auto cascades = computeCascades(lookingDown(Vec3(0, 50, 0)), Vec3(0.3f, 1.0f, 0.2f), settings);
     shadows.begin(*scene.gl.device);
     shadows.beginCascade(*scene.gl.device, 0);
-    scene.terrain.drawShadow(*scene.gl.device, cascades[0]);
+    scene.terrain.drawShadow(*scene.gl.device, cascades[0], Vec3(0, 50, 0));
+    CHECK(scene.gl.device->debugErrorCount() == 0);
+    // Each chunk at the detail of the main pass (welt's rings: a coarser shadow surface lay above the drawn
+    // one): close to the eye full detail, far away the coarsest grid.
+    scene.terrain.lodDistance = 96.0f;
+    scene.terrain.drawShadow(*scene.gl.device, cascades[0], Vec3(0, 2, 0));
+    CHECK(scene.terrain.shadowLevels()[0] > 0);
+    CHECK(scene.terrain.shadowLevels()[3] == 0);
+    scene.terrain.drawShadow(*scene.gl.device, cascades[0], Vec3(0, 5000, 0));
+    CHECK(scene.terrain.shadowLevels()[0] == 0);
+    CHECK(scene.terrain.shadowLevels()[3] > 0);
     CHECK(scene.gl.device->debugErrorCount() == 0);
 }
 
@@ -281,7 +291,7 @@ TEST_CASE("Terrain GPU: splat weights choose the layer, holes show what lies beh
     const auto cascades = computeCascades(lookingDown(Vec3(0, 50, 0)), Vec3(0.3f, 1.0f, 0.2f), settings);
     shadows.begin(*scene.gl.device);
     shadows.beginCascade(*scene.gl.device, 0);
-    scene.terrain.drawShadow(*scene.gl.device, cascades[0]);
+    scene.terrain.drawShadow(*scene.gl.device, cascades[0], Vec3(0, 50, 0));
     CHECK(scene.gl.device->debugErrorCount() == 0);
 }
 

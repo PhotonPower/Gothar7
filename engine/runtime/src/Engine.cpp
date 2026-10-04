@@ -1533,7 +1533,7 @@ void Engine::drawScene(u32 width, u32 height)
             }
             if (m_hasTerrain)
             {
-                m_terrain.drawShadow(*m_device, m_cascades[i]);
+                m_terrain.drawShadow(*m_device, m_cascades[i], m_camera.transform.position);
             }
             drawPlayer(true, i);
             drawCreatures(true, i);
