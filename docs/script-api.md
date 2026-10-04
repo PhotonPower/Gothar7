@@ -5,6 +5,9 @@ Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
 ## Ereignisse
 
+### `on("item_crafted", fn(recipe: string))`
+Der Held hat an einem Mob etwas hergestellt (Amboss: nach seinen Schlägen).
+
 ### `on("item_taken", fn(item: string, count: integer))`
 Der Held hat einen Gegenstand aus der Welt aufgehoben (Aktionstaste auf ein Item im Fokus).
 
@@ -25,6 +28,9 @@ Der Held hat ein Mob benutzt (Truhe offen, Tür bewegt); `mob` ist die Mob-Insta
 
 ### `on("scripts_reloaded", fn())`
 Nachdem geänderte Skripte neu geladen wurden (Entwicklung); die Story-Variablen bleiben erhalten.
+
+### `on("slept", fn(hour: integer))`
+Der Held hat im Bett bis zu dieser Stunde geschlafen (8, 12, 20 oder 0); LP und Mana sind voll.
 
 ### `on("world_loaded", fn(world: string))`
 Nachdem eine Welt geladen ist (auch nach einem Weltwechsel); `world` ist ihr Pfad.

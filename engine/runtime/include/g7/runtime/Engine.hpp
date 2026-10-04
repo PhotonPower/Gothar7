@@ -451,6 +451,12 @@ public:
     [[nodiscard]] Result<void> putIntoMob(world::VobId vob, std::string_view item, u32 count = 1);
     /// Numbers in [0, 1) for chances (lockpicks breaking); tests set a fixed one.
     void setRandomSource(std::function<f32()> random) { m_random = std::move(random); }
+    /// What the hero can choose at the mob now (anvil: recipes for which he has the material, bed: until when
+    /// to sleep); empty when there is nothing to choose (M8 part C2).
+    [[nodiscard]] std::vector<std::string> mobChoices() const;
+    /// Picks option `index` of mobChoices(): the anvil forges the recipe (its strikes, then the items
+    /// change), the bed sleeps until that hour (hit points and mana full) and the hero gets up.
+    [[nodiscard]] Result<void> chooseMobOption(usize index);
     /// The last short message to the player ("Verschlossen.", "Der Dietrich ist abgebrochen."; also fly mode
     /// hints).
     [[nodiscard]] const std::string& lastNotice() const noexcept { return m_notice; }
@@ -599,6 +605,10 @@ private:
         bool animated = false; ///< the graph plays the phase's state
         std::string state;     ///< "chest_enter" ...
         bool containerOpen = false;
+        std::string recipe;  ///< anvil: the Recipe being forged
+        u32 strikesLeft = 0; ///< anvil: hammer blows still to come
+        f32 strikeTimer = 0.0f;
+        std::string choiceMessage;
     };
     struct MobBody
     {
@@ -618,6 +628,9 @@ private:
     void fixedUpdateMobs(f32 seconds);
     void swingDoors(f32 seconds);
     void lockpickUi();
+    void choiceUi();
+    [[nodiscard]] std::vector<const script::Instance*> recipesFor(std::string_view type) const;
+    void finishRecipe(MobUse& use);
     void bindMobFunctions();
     void mobInput();
     [[nodiscard]] const LoadedModel* itemModel(std::string_view instance);

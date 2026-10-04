@@ -187,9 +187,9 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 - [x] Wegnetz-Block der `.g7world` lesen/schreiben (Vertrag mit welt, world.md „Wegnetz“; Pfadsuche M9) (A)
 - [x] **Fokus-System** (Ziel-Auswahl nach Blickrichtung/Distanz/Priorität) – `gameplay::selectFocus`, `data/focus.toml`, Name über dem Ziel (B)
 - [x] Items in der Welt (Vob-Typ `item`), Aufheben mit der Aktionstaste und `none/t_pickup_ground` (Event `pickup`), Inventar-Fenster (Tab), `drop_item` (B)
-- [ ] **Mob-Interaktion**: Zustandsfolge mit Animationen, Benutzer-Slots, Items verbrauchen/erzeugen (Schmieden, Braten) – Ablauf, Slots, Clips (`data/mobs.toml`), Lua-`Mob` fertig (C1); Items verbrauchen/erzeugen mit dem Amboss (C2)
+- [x] **Mob-Interaktion**: Zustandsfolge mit Animationen, Benutzer-Slots, Items verbrauchen/erzeugen (Schmieden, Braten) – Ablauf, Slots, Clips (`data/mobs.toml`), Lua-`Mob` (C1); Rezepte (`Recipe`) am Amboss (C2)
 - [x] Truhen, Türen, Schlösser + Dietrich-Minispiel, Schlüssel – Bruchchance 50/25/5 % nach Talent (C1)
-- [ ] Schlafen → Zeit vorspulen
+- [x] Schlafen → Zeit vorspulen – bis Morgen/Mittag/Abend/Mitternacht, danach LP/Mana voll (C2)
 - [ ] Item benutzen (Essen, Tränke, Lesen von Schriftstücken)
 - [ ] Taschendiebstahl (Talent + Geschick)
 - [ ] Besitzverhältnisse (Items und Bereiche gehören NPCs/Gilden) als Basis für Diebstahl-Reaktionen

@@ -251,7 +251,11 @@ std::string Engine::focusName(gameplay::FocusKind kind, u64 id) const
     }
     case gameplay::FocusKind::Mob:
     {
-        // The mob's name comes from its definition with part C; until then the definition's id.
+        // The name of its Mob definition (part C), else the definition's id.
+        if (const auto it = m_mobs.find(id); it != m_mobs.end())
+        {
+            return it->second.name;
+        }
         const entt::entity e = m_scene.findById(world::VobId{id});
         const world::MobRef* mob = e != entt::null ? m_scene.get<world::MobRef>(e) : nullptr;
         return mob != nullptr ? mob->definition : std::string();
@@ -292,8 +296,17 @@ void Engine::updateFocus()
     m_scene.each<world::Vob, world::MobRef, world::WorldTransform>(
         [&](entt::entity, const world::Vob& vob, const world::MobRef&, const world::WorldTransform& t)
         {
-            m_focusCandidates.push_back(
-                {vob.id.value, gameplay::FocusKind::Mob, Vec3(t.matrix[3]) + Vec3(0, 1, 0)});
+            // The middle of what is drawn (a door's origin is its hinge), else 1 m above the origin.
+            Vec3 point = Vec3(t.matrix[3]) + Vec3(0, 1, 0);
+            for (const SceneInstance& instance : m_instances)
+            {
+                if (instance.vob == vob.id)
+                {
+                    point = 0.5f * (instance.bounds.min + instance.bounds.max);
+                    break;
+                }
+            }
+            m_focusCandidates.push_back({vob.id.value, gameplay::FocusKind::Mob, point});
         });
     for (const auto& c : m_creatures)
     {
@@ -317,7 +330,8 @@ void Engine::updateFocus()
         }
         const auto hit =
             m_physics.raycast(eye, to / distance, distance, physics::layerBit(physics::Layer::World));
-        return !hit || hit->distance >= distance - 0.3f; // what it lies on or in does not hide it
+        // What it lies on or in does not hide it, nor does the target's own collision (a mob, a door).
+        return !hit || hit->distance >= distance - 0.3f || hit->userData == c.id;
     };
     const std::optional<u64> current = m_focus ? std::optional<u64>(m_focus->id) : std::nullopt;
     const std::optional<u64> chosen =

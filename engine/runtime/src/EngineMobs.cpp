@@ -20,9 +20,15 @@ namespace
 {
 constexpr f32 kApproachSpeed = 1.6f; ///< m/s while walking to the slot
 constexpr f32 kDoorSwingSeconds = 0.8f;
-constexpr f32 kDoorOpenAngle = 1.5707963f; ///< doors open by 90 degrees about +Y (away from the front)
-constexpr f32 kFallbackClipSeconds = 0.6f; ///< a phase without its clip in the graph lasts this long
-constexpr f64 kNoticeSeconds = 2.5;        ///< "Verschlossen." and the like
+constexpr f32 kDoorOpenAngle = 1.5707963f;   ///< doors open by 90 degrees about +Y (away from the front)
+constexpr f32 kFallbackClipSeconds = 0.6f;   ///< a phase without its clip in the graph lasts this long
+constexpr f64 kNoticeSeconds = 2.5;          ///< "Verschlossen." and the like
+constexpr f32 kStrikeFallbackSeconds = 0.7f; ///< a hammer blow without the hit_anvil event
+/// Sleeping (Entscheidung Projektinhaber 2026-10-04, wie Gothic 1): until morning, noon, evening or midnight.
+constexpr std::pair<u32, const char*> kSleepUntil[] = {{8, "Bis zum Morgen (8:00)"},
+                                                       {12, "Bis Mittag (12:00)"},
+                                                       {20, "Bis zum Abend (20:00)"},
+                                                       {0, "Bis Mitternacht (0:00)"}};
 
 f32 wrapAngle(f32 a)
 {
@@ -495,6 +501,26 @@ void Engine::fixedUpdateMobs(f32 seconds)
         }
         break;
     case MobUse::Phase::Loop:
+        if (use.strikesLeft > 0)
+        {
+            // Forging: each hit_anvil of s_work is one blow (without the clip: one per 0.7 s).
+            u32 blows = 0;
+            for (const std::string& e : m_mobEvents)
+            {
+                blows += e == "hit_anvil" ? 1 : 0;
+            }
+            use.strikeTimer += seconds;
+            if (!use.animated && use.strikeTimer >= kStrikeFallbackSeconds)
+            {
+                use.strikeTimer = 0.0f;
+                blows = 1;
+            }
+            use.strikesLeft -= std::min(use.strikesLeft, blows);
+            if (use.strikesLeft == 0)
+            {
+                finishRecipe(use);
+            }
+        }
         if (use.leaveRequested || (use.containerOpen && !m_inventoryOpen))
         {
             use.containerOpen = false;
@@ -731,10 +757,186 @@ void Engine::bindMobFunctions()
              "Ein Schloss wurde mit dem Dietrich geknackt.",
              "Ereignisse",
              {}});
+    vm.bind({"item_crafted",
+             "on(\"item_crafted\", fn(recipe: string))",
+             "Der Held hat an einem Mob etwas hergestellt (Amboss: nach seinen Schlägen).",
+             "Ereignisse",
+             {}});
+    vm.bind(
+        {"slept",
+         "on(\"slept\", fn(hour: integer))",
+         "Der Held hat im Bett bis zu dieser Stunde geschlafen (8, 12, 20 oder 0); LP und Mana sind voll.",
+         "Ereignisse",
+         {}});
     vm.bind({"lockpick_broken",
              "on(\"lockpick_broken\", fn(mob: string))",
              "Beim Knacken ist ein Dietrich abgebrochen.",
              "Ereignisse",
              {}});
+}
+} // namespace g7
+
+namespace g7
+{
+std::vector<const script::Instance*> Engine::recipesFor(std::string_view type) const
+{
+    std::vector<const script::Instance*> out;
+    if (!m_scripts)
+    {
+        return out;
+    }
+    for (const script::Instance* recipe : m_scripts->instancesOf("Recipe"))
+    {
+        if (recipe->fields["mob"].asString() == type)
+        {
+            out.push_back(recipe);
+        }
+    }
+    std::sort(out.begin(), out.end(), [](const auto* a, const auto* b) { return a->name < b->name; });
+    return out;
+}
+
+std::vector<std::string> Engine::mobChoices() const
+{
+    std::vector<std::string> out;
+    if (!m_mobUse || m_mobUse->phase != MobUse::Phase::Loop || m_mobUse->leaveRequested)
+    {
+        return out;
+    }
+    if (m_mobUse->type == "bed")
+    {
+        for (const auto& [hour, label] : kSleepUntil)
+        {
+            out.emplace_back(label);
+        }
+    }
+    else if (m_mobUse->strikesLeft == 0)
+    {
+        for (const script::Instance* recipe : recipesFor(m_mobUse->type))
+        {
+            out.emplace_back(recipe->fields["name"].asString());
+        }
+    }
+    return out;
+}
+
+Result<void> Engine::chooseMobOption(usize index)
+{
+    if (!m_mobUse || !m_hero || index >= mobChoices().size())
+    {
+        return Error{"nothing to choose"};
+    }
+    MobUse& use = *m_mobUse;
+    if (use.type == "bed")
+    {
+        const auto [hour, label] = kSleepUntil[index];
+        m_gameTime.advanceTo(hour, 0);
+        // Rested (Gothic 1): hit points and mana full.
+        (void)m_hero->setAttribute("hp", m_hero->attribute("hp_max"));
+        (void)m_hero->setAttribute("mana", m_hero->attribute("mana_max"));
+        notice(std::format("Ausgeschlafen - Tag {}, {:02}:00.", m_gameTime.day(), hour));
+        if (m_scripts)
+        {
+            const script::Value args[] = {static_cast<i64>(hour)};
+            m_scripts->emit("slept", args);
+        }
+        use.leaveRequested = true; // gets up
+        return {};
+    }
+    const script::Instance* recipe = recipesFor(use.type)[index];
+    if (const script::Table* takes = recipe->fields["takes"].asTable())
+    {
+        for (const auto& [item, count] : takes->fields)
+        {
+            if (m_hero->itemCount(item) < static_cast<u32>(std::max<i64>(1, count.asInteger(1))))
+            {
+                const script::Instance* needed = m_scripts->findInstance("Item", item);
+                use.choiceMessage = std::format("Dafür fehlt: {}.",
+                                                needed != nullptr ? needed->fields["name"].asString() : item);
+                return Error{use.choiceMessage};
+            }
+        }
+    }
+    use.recipe = recipe->name;
+    use.strikesLeft = static_cast<u32>(recipe->fields["strikes"].asInteger(3));
+    use.strikeTimer = 0.0f;
+    use.choiceMessage.clear();
+    return {};
+}
+
+void Engine::finishRecipe(MobUse& use)
+{
+    const script::Instance* recipe = m_scripts ? m_scripts->findInstance("Recipe", use.recipe) : nullptr;
+    if (recipe == nullptr || !m_hero)
+    {
+        return;
+    }
+    // The material went into the work: taken now, the result given (all or nothing).
+    const script::Table* takes = recipe->fields["takes"].asTable();
+    const script::Table* gives = recipe->fields["gives"].asTable();
+    if (takes != nullptr)
+    {
+        for (const auto& [item, count] : takes->fields)
+        {
+            if (m_hero->itemCount(item) < static_cast<u32>(std::max<i64>(1, count.asInteger(1))))
+            {
+                use.choiceMessage = "Das Material ist weg.";
+                use.recipe.clear();
+                return;
+            }
+        }
+        for (const auto& [item, count] : takes->fields)
+        {
+            (void)m_hero->removeItem(item, static_cast<u32>(std::max<i64>(1, count.asInteger(1))));
+        }
+    }
+    if (gives != nullptr)
+    {
+        for (const auto& [item, count] : gives->fields)
+        {
+            m_hero->addItem(item, static_cast<u32>(std::max<i64>(1, count.asInteger(1))));
+        }
+    }
+    use.choiceMessage = std::format("{} fertig.", recipe->fields["name"].asString());
+    notice(use.choiceMessage);
+    if (m_scripts)
+    {
+        const script::Value args[] = {use.recipe};
+        m_scripts->emit("item_crafted", args);
+    }
+    use.recipe.clear();
+}
+
+void Engine::choiceUi()
+{
+    if (!m_mobUse || m_mobUse->phase != MobUse::Phase::Loop || m_mobUse->containerOpen)
+    {
+        return;
+    }
+    MobUse& use = *m_mobUse;
+    ui::ChoicePanel panel;
+    panel.title = m_mobs.at(use.vob.value).name;
+    panel.options = mobChoices();
+    if (use.strikesLeft > 0)
+    {
+        panel.message = std::format("Schmiedet ... noch {} Schläge", use.strikesLeft);
+    }
+    else
+    {
+        panel.message = use.choiceMessage;
+    }
+    if (panel.options.empty() && use.type != "anvil")
+    {
+        return;
+    }
+    m_debugUi.choicePanel(panel);
+    if (panel.chosen >= 0)
+    {
+        (void)chooseMobOption(static_cast<usize>(panel.chosen));
+    }
+    if (panel.cancel)
+    {
+        mobCommand(MobCommand::Leave);
+    }
 }
 } // namespace g7

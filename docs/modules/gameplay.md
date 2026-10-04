@@ -134,7 +134,7 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   Text im Debug-UI-Kontext); im Flugmodus kein Fokus.
 - Im Kampf (M11): Gegner-Fokus mit Ziel-Lock.
 
-## Mob-Interaktion (M8 Teil C1, umgesetzt) – `Mobs.hpp`, `EngineMobs.cpp`
+## Mob-Interaktion (M8 Teil C, umgesetzt) – `Mobs.hpp`, `EngineMobs.cpp`
 - **Mob-Typen** (`assets/source/data/mobs.toml` v1, Vertrag engine–figuren–welt, characters-pipeline.md §3.1):
   Clips `enter`/`loop`/`leave`/`extra` und Benutzer-Slots (`pos` = Fußpunkt im Mob-Raum, `facing`); Achsen Y oben,
   Ursprung am Boden, Vorderseite +Z. `gameplay::MobTypes::parse`, `placeSlot`, `chooseSlot` (nächster freier Slot).
@@ -158,8 +158,16 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   5 %; Knacken geht auch ohne Talent). Ohne Schlüssel und Dietrich: „Verschlossen.“, Ereignis `mob_locked`.
   Ereignisse `lock_picked`, `lockpick_broken`; `unlock(vob)` schließt per Skript auf, `mob_state(vob)` gibt den
   Zustand.
-- **Noch offen (C2):** Amboss (Schmieden nach Rezept), Bett (Schlafen bis Morgen/Mittag/Abend/Mitternacht, danach LP
-  und Mana voll); der Truhendeckel (`MOB_LID`) bewegt sich noch nicht – das Modell wird bisher als ein Mesh geladen.
+- **Amboss** (C2): In der Schleife bietet das Fenster „Choice“ die Rezepte (`Recipe "rcp_x" { name, mob = "anvil",
+  takes, gives, strikes }`) des Mob-Typs an; fehlt Material, steht da „Dafür fehlt: …“. Nach der Wahl zählen die
+  Events `hit_anvil` von `s_work` die Schläge (ohne Clip einer je 0,7 s); nach dem letzten wird `takes` verbraucht und
+  `gives` gegeben, Ereignis `item_crafted(recipe)`. Schmieden ohne Talentpflicht (Entscheidung Projektinhaber; das
+  Talent kommt später als Inhalt).
+- **Bett** (C2, wie Gothic 1): `t_lie_down` trägt die Figur aufs Bett (Wurzel im Clip, der Held bleibt am Slot), in
+  `s_lie` fragt „Choice“ bis wann: Morgen 8:00, Mittag 12:00, Abend 20:00, Mitternacht 0:00 (`GameTime::advanceTo`,
+  heute falls noch vor uns, sonst morgen). Danach LP und Mana voll, Ereignis `slept(hour)`, der Held steht auf.
+- Der Truhendeckel (`MOB_LID`) bewegt sich noch nicht – statische Modelle werden als ein Mesh geladen; mit welts
+  Modellen.
 - Mob-Zustände (offen, verschlossen, Inhalt) gelten für die Sitzung; gespeichert werden sie mit M14.
 
 ## Dialog & Quests (M10)
