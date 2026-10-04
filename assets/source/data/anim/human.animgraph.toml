@@ -14,6 +14,7 @@ sets = [
     "characters/anims/human/swim.glb",
     "characters/anims/human/dive.glb",
     "characters/anims/human/mob.glb",
+    "characters/anims/human/amb.glb",
 ]
 start = "move"
 # Abspielrate = Parameter / Eigengeschwindigkeit der Clips (`speed` in <set>.events.toml), damit die Füße nicht
@@ -198,6 +199,140 @@ name = "dive"
 blend = "speed"
 rate = "speed"
 points = [{ value = 0.0, clip = "dive/s_idle" }, { value = 1.6, clip = "dive/s_forward" }]
+
+# Tagesabläufe (M9 Teil B): Die Engine schaltet diese Zustände selbst (npc_play): amb_<x>_in, amb_<x>, amb_<x>_out;
+# ohne _in/_out direkt die Schleife. Reaktionen und Stand-Varianten ebenso.
+[[state]]
+name = "amb_campfire_warm"
+clip = "amb/s_campfire_warm"
+
+[[state]]
+name = "amb_chop_wood"
+clip = "amb/s_chop_wood"
+
+[[state]]
+name = "amb_drink_mug_in"
+clip = "amb/t_drink_mug_in"
+
+[[state]]
+name = "amb_drink_mug"
+clip = "amb/s_drink_mug"
+
+[[state]]
+name = "amb_drink_mug_out"
+clip = "amb/t_drink_mug_out"
+
+[[state]]
+name = "amb_guard_in"
+clip = "amb/t_guard_in"
+
+[[state]]
+name = "amb_guard"
+clip = "amb/s_guard"
+
+[[state]]
+name = "amb_guard_out"
+clip = "amb/t_guard_out"
+
+[[state]]
+name = "amb_harvest"
+clip = "amb/s_harvest"
+
+[[state]]
+name = "amb_lean_wall_in"
+clip = "amb/t_lean_wall_in"
+
+[[state]]
+name = "amb_lean_wall"
+clip = "amb/s_lean_wall"
+
+[[state]]
+name = "amb_lean_wall_out"
+clip = "amb/t_lean_wall_out"
+
+[[state]]
+name = "amb_listen"
+clip = "amb/s_listen"
+
+[[state]]
+name = "amb_repair_kneel"
+clip = "amb/s_repair_kneel"
+
+[[state]]
+name = "amb_sit_ground_in"
+clip = "amb/t_sit_ground_in"
+
+[[state]]
+name = "amb_sit_ground"
+clip = "amb/s_sit_ground"
+
+[[state]]
+name = "amb_sit_ground_out"
+clip = "amb/t_sit_ground_out"
+
+[[state]]
+name = "amb_sleep_ground_in"
+clip = "amb/t_sleep_ground_in"
+
+[[state]]
+name = "amb_sleep_ground"
+clip = "amb/s_sleep_ground"
+
+[[state]]
+name = "amb_sleep_ground_out"
+clip = "amb/t_sleep_ground_out"
+
+[[state]]
+name = "amb_sweep_in"
+clip = "amb/t_sweep_in"
+
+[[state]]
+name = "amb_sweep"
+clip = "amb/s_sweep"
+
+[[state]]
+name = "amb_sweep_out"
+clip = "amb/t_sweep_out"
+
+[[state]]
+name = "amb_talk_a"
+clip = "amb/s_talk_a"
+
+[[state]]
+name = "amb_talk_b"
+clip = "amb/s_talk_b"
+
+[[state]]
+name = "amb_train_sword"
+clip = "amb/s_train_sword"
+
+[[state]]
+name = "amb_water"
+clip = "amb/s_water"
+
+[[state]]
+name = "idle_look"
+clip = "none/s_idle_look"
+
+[[state]]
+name = "idle_scratch"
+clip = "none/t_idle_scratch"
+
+[[state]]
+name = "react_warn"
+clip = "none/t_warn"
+
+[[state]]
+name = "react_point"
+clip = "none/t_point"
+
+[[state]]
+name = "react_surprised"
+clip = "none/t_surprised"
+
+[[state]]
+name = "react_search"
+clip = "none/t_search"
 
 # --- Übergänge (Reihenfolge = Vorrang) ---
 [[transition]] # Klettern hat Vorrang vor allem

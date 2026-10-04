@@ -22,21 +22,45 @@
 - Testlager: Wegnetz mit 11 Punkten und 4 Freepoints (um das Südende des Zauns herum; das Tor ist zu).
 - Später optional: Navmesh für freie Bewegung im Kampf (ADR, wenn nötig).
 
-## 2. NPC-Zustandsautomat (Gothic: „ZS_“-Zustände)
+## 2. NPC-Zustandsautomat (M9 Teil B, umgesetzt) – `runtime/EngineAi.cpp`, Inhalt `game/scripts/ai/states.lua`
+```lua
+State "zs_sit_campfire" {
+    begin  = function(npc, at) ... end,            -- füllt die Befehlsliste
+    loop   = function(npc, seconds) ... end,       -- alle 0,5 s, solange die Liste leer ist; "done" beendet
+    finish = function(npc) ... end,                -- räumt auf (optional)
+}
 ```
-Zustand = { begin(self), loop(self) -> CONTINUE|END, end(self) }   -- definiert in Lua
-```
-- Ein NPC hat genau einen aktiven Zustand + eine **Befehlswarteschlange** (AI-Queue:
-  „gehe zu WP“, „drehe zu X“, „spiele Animation“, „warte“, „sage Text“), die der Zustand füllt.
-- Zustandswechsel: durch Routine (Zeitfenster), Wahrnehmung (Unterbrechung), Skript (`startState`).
-- Unterbrechung speichert nicht den alten Zustand – nach Ende greift wieder die Routine (wie in Gothic).
+- Ein NPC hat genau einen aktiven Zustand und eine **Befehlsliste**, die der Zustand füllt:
+  `npc_goto` (Wegpunkt/Freepoint), `npc_goto_freepoint` (Typ, Umkreis), `npc_turn` (Richtung eines Punkts),
+  `npc_play` (Tagesablauf-Animation, optional mit Gegenstand in der Hand), `npc_stop`, `npc_wait`, `npc_say`;
+  `npc_clear` leert sie. Gehen oder eine andere Animation beendet eine laufende erst mit ihrem `_out`-Clip.
+- **Animationen** (`npc_play(npc, "sit_ground")`): Zustände `amb_<x>_in` → `amb_<x>` → `amb_<x>_out` des
+  Menschen-Graphen (figurens Set `amb`); ohne `_in`/`_out` direkt die Schleife; `idle_look`, `idle_scratch`,
+  `react_warn` usw. heißen direkt so. Ein Gegenstand (`npc_play(npc, "sweep", "it_broom")`) erscheint beim
+  Clip-Ereignis `item_to_hand` an `socket_hand_r` und verschwindet bei `item_from_hand` bzw. am Ende.
+- Zustandswechsel: durch die Routine (Zeitfenster), Skript (`npc_start_state(npc, zustand, ort?)`), später die
+  Wahrnehmung (Teil C). Eine Unterbrechung speichert den alten Zustand nicht – endet sie („done“), greift wieder
+  die Routine (wie in Gothic).
 
-## 3. Tagesabläufe (Routinen)
-- Liste `(von, bis, Zustand, Wegpunkt)`; zu jeder Spielminute prüft das System Wechsel.
-- Routinenwechsel per Skript (`setRoutine(npc, "Rtn_Ruvin_Ch2")`).
-- **KI-LOD**: NPCs außerhalb der Simulationsdistanz (z. B. > 80 m) werden nicht simuliert; beim
-  Wechsel des Zeitfensters werden sie direkt an den Ziel-WP teleportiert, beim Betreten der Distanz
-  wird ihr aktueller Routinen-Zustand gestartet.
+## 3. Tagesabläufe (Routinen, M9 Teil B, umgesetzt)
+```lua
+Routine "rtn_farmer_woman" {
+    { from = "06:00", to = "12:00", state = "zs_sweep", at = "wp_camp_center" },
+    { from = "23:00", to = "06:00", state = "zs_sleep", at = "wp_camp_west" },   -- über Mitternacht
+}
+```
+- Zeitfenster [from, to); einmal je Spielminute prüft die Engine den Eintrag, bei Wechsel endet der alte Zustand
+  (finish) und der neue beginnt mit `at`.
+- `routine` am `Npc`; `set_routine(npc, rtn)` wechselt (Kapitel), `""` schaltet ab. `insert_npc(npc, ort?)` setzt
+  ein Npc ohne Ort an den Ort des aktuellen Eintrags.
+- **Freepoints** werden belegt: `npc_goto_freepoint(npc, "SIT", 12)` nimmt den nächsten freien dieses Typs im
+  Umkreis, reserviert ihn bis zum Ende des Zustands und dreht den NPC in seine Richtung; ist keiner frei, bleibt
+  er stehen.
+- **KI-LOD**: NPCs weiter als 80 m vom Spieler (zurück unter 75 m) werden weder bewegt noch animiert und
+  beginnen keinen Zustand; wechselt ihr Zeitfenster, stehen sie sofort am neuen Ort. Kommt der Spieler näher,
+  beginnt der aktuelle Zustand.
+- Testlager: `camp_people()` (Konsole oder `--exec=camp_people()`) setzt Torwache, Bäuerin, Holzfäller und den
+  alten Mann an die Orte ihres Tagesablaufs (`routines/camp.lua`).
 
 ## 4. Wahrnehmung
 | Sinn | Umsetzung |

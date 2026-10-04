@@ -103,6 +103,17 @@ void defineContentKinds(script::ScriptVm& vm)
                    },
                    false});
 
+    // State "zs_x" { begin = fn(npc, at), loop = fn(npc, seconds) -> "done"|nil, finish = fn(npc) }: what an
+    // NPC does in a routine entry (Gothic's ZS_). begin queues commands (npc_goto, npc_play ...); loop runs
+    // every half second while the queue is empty; "done" ends the state. M9 part B.
+    vm.defineKind({"State",
+                   {
+                       {"begin", Type::Function},
+                       {"loop", Type::Function},
+                       {"finish", Type::Function},
+                   },
+                   false});
+
     // Routine "rtn_x" { { from = "08:00", to = "22:00", state = "zs_x", at = "wp_x" } }: entries checked with
     // M9.
     vm.defineKind({"Routine", {}, true});

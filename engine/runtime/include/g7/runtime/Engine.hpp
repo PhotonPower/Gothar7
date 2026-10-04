@@ -178,6 +178,8 @@ struct EngineConfig
     std::string start;
     /// Game time at start, "HH:MM" (--time); empty = [time] start (default 08:00).
     std::string startTime;
+    /// Console lines (Lua) run once after start (--exec, repeatable), e.g. `insert_npc('npc_farmer_woman')`.
+    std::vector<std::string> exec;
     /// --cam, --yaw, --pitch, --fly, --player: a view to reproduce (StartView.hpp), applied after loading.
     StartView view;
     bool ground = true; ///< Ground plate under the --view-mesh model (--no-ground).
@@ -585,6 +587,20 @@ private:
     // NPC navigation (EngineNpcs.cpp)
     [[nodiscard]] std::optional<Vec3> navigationTarget(std::string_view name) const;
     void walkNpc(Creature& c, f32 seconds);
+    /// Spawns an Npc instance with its figure, capsule, values and routine.
+    [[nodiscard]] Result<u32> spawnNpc(std::string_view name, const Vec3& at, f32 yaw);
+    // Behaviour (EngineAi.cpp)
+    void fixedUpdateAi(Creature& c, f32 seconds);
+    void updateRoutine(Creature& c);
+    void beginState(Creature& c, std::string_view state, std::string_view at);
+    void finishState(Creature& c);
+    void runCommands(Creature& c, f32 seconds);
+    bool startCommand(Creature& c);
+    void releaseFreepoint(Creature& c);
+    /// item_to_hand / item_from_hand of an NPC's animation: its hand item appears or goes.
+    void handEvent(Creature& c, std::string_view event);
+    [[nodiscard]] Creature* npcNamed(std::string_view instance) noexcept;
+    void bindAiFunctions();
     void drawWaynet();
     void bindNpcFunctions();
     // Items, focus, picking up (EngineItems.cpp)
@@ -869,7 +885,9 @@ private:
     std::vector<std::unique_ptr<LoadedModel>> m_scriptModels; // placeholders of inserted items
     std::unique_ptr<gameplay::Character> m_hero;              // M8: kept over script reloads
     u32 m_insertedItems = 0;
-    ai::Waynet m_waynet; // of the loaded world (M9)
+    ai::Waynet m_waynet;               // of the loaded world (M9)
+    std::vector<u32> m_freepointUsers; // creature id per freepoint, 0: free (M9 part B)
+    u64 m_routineMinute = ~0ull;       // the game minute routines were last checked
     std::vector<WorldItem> m_worldItems;
     std::unordered_map<std::string, const LoadedModel*> m_itemModels; // by Item instance; models in m_models
                                                                       // or m_scriptModels (placeholders)

@@ -16,6 +16,7 @@
 #include <optional>
 #include <string_view>
 #include <system_error>
+#include <vector>
 
 // Run on the dedicated GPU of dual-GPU laptops (see GpuPreference.hpp).
 G7_REQUEST_HIGH_PERFORMANCE_GPU();
@@ -34,6 +35,7 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --world=<path>          load a .g7world (VFS path or file on disk)
   --start=<name>          start point of the world
   --time=HH:MM            game time at start
+  --exec=<lua>            console line run after start (repeatable), e.g. --exec=camp_people()
   --cam=x,y,z             free camera at this point (m); with a player: fly mode
   --yaw=deg --pitch=deg   view direction (yaw 0 = along -Z, positive left; pitch positive up)
   --fly                   fly mode: free camera (WASD, mouse, wheel = speed), the player waits
@@ -70,6 +72,7 @@ struct CommandLine
     std::string saveWorld;
     std::string start;
     std::string time;
+    std::vector<std::string> exec;
     std::string screenshot;
     bool benchmark = false;
     int lod = -1; // --lod: -1 = auto
@@ -128,6 +131,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg.starts_with("--time="))
         {
             cli.time = std::string(arg.substr(7));
+        }
+        else if (arg.starts_with("--exec="))
+        {
+            cli.exec.emplace_back(arg.substr(7));
         }
         else if (arg.starts_with("--scene="))
         {
@@ -340,6 +347,7 @@ int main(int argc, char** argv)
     }
     config.start = cli->start;
     config.startTime = cli->time;
+    config.exec = cli->exec;
     config.view = cli->view;
     if (!cli->saveWorld.empty())
     {

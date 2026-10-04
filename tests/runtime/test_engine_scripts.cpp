@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <ostream> // doctest needs it to print std::string operands
 #include <string>
 
@@ -648,7 +649,9 @@ TEST_CASE("Engine NPCs: walking over the camp's waynet through the gate to the f
         REQUIRE(engine.runFrame());
     }
     CHECK_FALSE(engine.npcGoTo(*id, "wp_nowhere").ok());
-    REQUIRE(run(engine, "npc_goto('npc_farmer_woman', 'wp_camp_fire')").asBool());
+    run(engine, "set_routine('npc_farmer_woman', '') npc_clear('npc_farmer_woman')"); // only what we say
+    run(engine, "npc_goto('npc_farmer_woman', 'wp_camp_fire')"); // queued: starts with the next step
+    REQUIRE(engine.runFrame());
     CHECK(engine.npcWalking(*id));
     // ~33 m at walking pace: about 21 s.
     for (int i = 0; i < 60 * 45 && engine.npcWalking(*id); ++i)
@@ -669,4 +672,102 @@ TEST_CASE("Engine NPCs: walking over the camp's waynet through the gate to the f
     }
     CHECK_FALSE(engine.npcWalking(*id));
     CHECK(run(engine, "Story.arrived").asString() == "npc_farmer_woman fp_stand_gate_01");
+}
+
+namespace
+{
+std::string npcState(Engine& engine, std::string_view npc)
+{
+    return std::string(run(engine, std::format("npc_state('{}').state", npc)).asString());
+}
+
+std::string npcAmbient(Engine& engine, std::string_view npc)
+{
+    return std::string(run(engine, std::format("npc_state('{}').ambient", npc)).asString());
+}
+
+void runSeconds(Engine& engine, f32 seconds)
+{
+    for (int i = 0; i < static_cast<int>(seconds * 60.0f); ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+}
+} // namespace
+
+TEST_CASE("Engine NPC routines: the state of the time's entry, freepoints, ambient animations, AI LOD")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    run(engine, "time(20, 0)");
+
+    // insert_npc without a place: where the routine wants her now (19-23: sitting at the fire).
+    REQUIRE(run(engine, "insert_npc('npc_farmer_woman')").asBool());
+    const auto woman = engine.npcByInstance("npc_farmer_woman");
+    REQUIRE(woman.has_value());
+    runSeconds(engine, 1.0f);
+    CHECK(npcState(engine, "npc_farmer_woman") == "zs_sit_campfire");
+    // She walks to a free SIT freepoint, turns and sits down (in, loop).
+    runSeconds(engine, 20.0f);
+    CHECK_FALSE(engine.npcWalking(*woman));
+    CHECK(npcAmbient(engine, "npc_farmer_woman") == "sit_ground");
+    const Vec3 at = *engine.creaturePosition(*woman);
+    const auto& fps = engine.waynet().freepoints();
+    const bool onSeat = std::ranges::any_of(
+        fps, [&](const auto& fp) { return fp.type == "SIT" && glm::length(fp.position - at) < 0.6f; });
+    CHECK(onSeat);
+
+    // The woodcutter at the same time wants to sit too: he takes the other seat, not hers.
+    REQUIRE(run(engine, "insert_npc('npc_woodcutter', 'wp_camp_center')").asBool());
+    const auto woodcutter = engine.npcByInstance("npc_woodcutter");
+    runSeconds(engine, 20.0f);
+    CHECK(npcAmbient(engine, "npc_woodcutter") == "sit_ground");
+    const Vec3 his = *engine.creaturePosition(*woodcutter);
+    CHECK(glm::length(his - *engine.creaturePosition(*woman)) > 1.0f);
+
+    // At 23:00 her routine says: sleep at the west way point. She stands up first (out) and walks there.
+    run(engine, "time(23, 0)");
+    runSeconds(engine, 2.0f);
+    CHECK(npcState(engine, "npc_farmer_woman") == "zs_sleep");
+    runSeconds(engine, 25.0f);
+    CHECK(npcAmbient(engine, "npc_farmer_woman") == "sleep_ground");
+    const Vec3 west = engine.waynet().points()[*engine.waynet().find("wp_camp_west")].position;
+    CHECK(glm::length(Vec3(*engine.creaturePosition(*woman) - west) * Vec3(1, 0, 1)) < 0.6f);
+
+    // A script interrupts with another state; when that ends ("done"), the routine takes over again.
+    run(engine, "npc_start_state('npc_farmer_woman', 'zs_look_around')");
+    CHECK(npcState(engine, "npc_farmer_woman") == "zs_look_around");
+    runSeconds(engine, 7.0f); // standing up 1.5 s, looking around 3 s
+    INFO(run(engine, "local s = npc_state('npc_farmer_woman') return s.animation .. ' ' .. s.commands .. ' ' "
+                     ".. s.ambient")
+             .asString());
+    CHECK(npcState(engine, "npc_farmer_woman") == "zs_sleep"); // the routine again
+
+    // AI LOD: the player far away -> she is no longer simulated; a routine change moves her straight there.
+    run(engine, "teleport(400, 0, 400)");
+    runSeconds(engine, 1.0f);
+    run(engine, "time(13, 0)"); // 12-19: warming at the fire
+    runSeconds(engine, 2.0f);
+    CHECK(npcState(engine, "npc_farmer_woman") == "zs_campfire");
+    const Vec3 fire = engine.waynet().points()[*engine.waynet().find("wp_camp_fire")].position;
+    CHECK(glm::length(Vec3(*engine.creaturePosition(*woman) - fire) * Vec3(1, 0, 1)) < 1.0f);
+    CHECK(npcAmbient(engine, "npc_farmer_woman").empty()); // nothing begun while far away
+}
+
+TEST_CASE("Engine NPC commands: errors and the queue")
+{
+    Engine engine(scriptConfig());
+    REQUIRE(engine.init().ok());
+    CHECK_FALSE(engine.runConsoleLine("npc_play('npc_nobody', 'guard')").ok());
+    CHECK_FALSE(engine.runConsoleLine("insert_npc('npc_farmer_woman', 'wp_nowhere')").ok());
+    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_south')").asBool());
+    CHECK_FALSE(engine.runConsoleLine("set_routine('npc_old_man', 'rtn_nowhere')").ok());
+    CHECK_FALSE(engine.runConsoleLine("npc_start_state('npc_old_man', 'zs_nowhere')").ok());
+    run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man')");
+    run(engine, "npc_play('npc_old_man', 'guard') npc_wait('npc_old_man', 1) npc_stop('npc_old_man')");
+    runSeconds(engine, 0.5f);
+    CHECK(npcAmbient(engine, "npc_old_man") == "guard");
+    runSeconds(engine, 4.0f);
+    CHECK(npcAmbient(engine, "npc_old_man").empty());
 }
