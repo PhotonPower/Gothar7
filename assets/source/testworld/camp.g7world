@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "camp",
-  "nextVobId": 204,
+  "nextVobId": 210,
   "staticMeshes": [],
   "terrain": {"version":1,"heightmap":"testworld/terrain.r16","width":257,"height":257,"cellSize":2.0,"firstSample":[-256.0,-256.0],"minY":-20.0,"maxY":60.0,"splat":{"maps":["testworld/splat0.png"],"layers":[{"name":"grass","albedo":"testworld/layer_grass.png","tile":4.0},{"name":"earth","albedo":"testworld/layer_earth.png","tile":4.0},{"name":"rock","albedo":"testworld/layer_rock.png","tile":6.0},{"name":"path","albedo":"testworld/layer_path.png","tile":3.0}]},"holes":"testworld/holes.r8"},
   "vobs": [
@@ -207,6 +207,12 @@
     {"id":200,"type":"mob","name":"LAGER_TUER","pos":[30.5,0.0,-9.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"testworld/mobs/door.glb","components":{"mob":{"definition":"mob_camp_door"}}},
     {"id":201,"type":"mob","name":"LAGER_TUER_ZU","pos":[33.0,0.0,-9.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"testworld/mobs/door.glb","components":{"mob":{"definition":"mob_camp_door_locked"}}},
     {"id":202,"type":"mob","name":"LAGER_AMBOSS","pos":[29.0,0.0,-1.5],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"testworld/mobs/anvil.glb","components":{"mob":{"definition":"mob_camp_anvil"}}},
-    {"id":203,"type":"mob","name":"LAGER_BETT","pos":[26.0,0.0,-4.5],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"testworld/mobs/bed.glb","components":{"mob":{"definition":"mob_camp_bed"}}}
+    {"id":203,"type":"mob","name":"LAGER_BETT","pos":[26.0,0.0,-4.5],"rot":[0.0,0.70711,0.0,0.70711],"mesh":"testworld/mobs/bed.glb","components":{"mob":{"definition":"mob_camp_bed"}}},
+    {"id":204,"type":"item","name":"LAGER_SCHWERT","pos":[26.4,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_sword_old"}}},
+    {"id":205,"type":"item","name":"LAGER_BOGEN","pos":[27.3,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_bow_short"}}},
+    {"id":206,"type":"item","name":"LAGER_BROT","pos":[28.2,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_bread"}}},
+    {"id":207,"type":"item","name":"LAGER_TRANK","pos":[29.1,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_potion_heal_small"}}},
+    {"id":208,"type":"item","name":"LAGER_DIETRICH","pos":[30.0,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_lockpick"}}},
+    {"id":209,"type":"item","name":"LAGER_SCHLUESSEL","pos":[30.9,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_key"}}}
   ]
 }

@@ -43,6 +43,35 @@ asset::MeshData itemPlaceholder(std::string_view category)
     return mesh;
 }
 
+/// How an item model lies on the ground. Item models stand with their grip at the origin and the grip axis +Y
+/// (characters-pipeline.md "Gegenstände"); on the ground an item rests on its broad side: its thinnest axis
+/// points up (a sword, a key, a loaf lie flat). Potions stand (bottles), placeholders already lie. The lowest
+/// point touches the ground.
+Mat4 restingPose(const AABB& bounds, bool placeholder, std::string_view category)
+{
+    const Vec3 size = bounds.max - bounds.min;
+    Mat4 turn(1.0f);
+    if (!placeholder && category != "potion")
+    {
+        if (size.x < size.y && size.x <= size.z)
+        {
+            turn = glm::rotate(Mat4(1.0f), 1.5707963f, Vec3(0.0f, 0.0f, 1.0f)); // +X up
+        }
+        else if (size.z < size.y && size.z < size.x)
+        {
+            turn = glm::rotate(Mat4(1.0f), -1.5707963f, Vec3(1.0f, 0.0f, 0.0f)); // +Z up
+        }
+    }
+    f32 lowest = 1e30f;
+    for (int i = 0; i < 8; ++i)
+    {
+        const Vec3 corner((i & 1) ? bounds.max.x : bounds.min.x, (i & 2) ? bounds.max.y : bounds.min.y,
+                          (i & 4) ? bounds.max.z : bounds.min.z);
+        lowest = std::min(lowest, Vec3(turn * Vec4(corner, 1.0f)).y);
+    }
+    return glm::translate(Mat4(1.0f), Vec3(0.0f, -lowest, 0.0f)) * turn;
+}
+
 AABB transformBounds(const AABB& box, const Mat4& m)
 {
     AABB out{Vec3(1e30f), Vec3(-1e30f)};
@@ -126,6 +155,10 @@ const LoadedModel* Engine::itemModel(std::string_view instance)
         }
     }
     m_itemModels.emplace(std::string(instance), model);
+    const std::string_view category =
+        item != nullptr && item->fields["category"].isString() ? item->fields["category"].asString() : "misc";
+    m_itemRest[std::string(instance)] =
+        restingPose(model->bounds, model->name.starts_with("placeholder "), category);
     return model;
 }
 
@@ -144,7 +177,8 @@ void Engine::rebuildWorldItems()
             const LoadedModel* model = itemModel(item.instance);
             if (model != nullptr)
             {
-                m_worldItems.push_back({vob.id, model, t.matrix, transformBounds(model->bounds, t.matrix)});
+                const Mat4 matrix = t.matrix * m_itemRest[item.instance];
+                m_worldItems.push_back({vob.id, model, matrix, transformBounds(model->bounds, matrix)});
             }
         });
 }
@@ -172,7 +206,7 @@ Result<world::VobId> Engine::spawnItem(std::string_view instance, u32 count, con
     }
     m_scene.set<world::ItemRef>(vob.value(), {std::string(instance), std::max(count, 1u)});
     m_scene.updateTransforms();
-    const Mat4 matrix = m_scene.worldMatrix(vob.value());
+    const Mat4 matrix = m_scene.worldMatrix(vob.value()) * m_itemRest[std::string(instance)];
     const world::VobId id = m_scene.idOf(vob.value());
     m_worldItems.push_back({id, model, matrix, transformBounds(model->bounds, matrix)});
     return id;

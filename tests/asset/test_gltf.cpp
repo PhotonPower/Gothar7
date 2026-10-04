@@ -356,3 +356,19 @@ TEST_CASE("glTF: external .bin and .glb files")
     std::error_code ignored;
     std::filesystem::remove_all(dir, ignored);
 }
+
+TEST_CASE("glTF: coarser LOD nodes (_lod1 ...) are left out of static models")
+{
+    CHECK_FALSE(isCoarserLod("it_bread_lod0"));
+    CHECK(isCoarserLod("it_bread_lod1"));
+    CHECK(isCoarserLod("WALL_lod12"));
+    CHECK_FALSE(isCoarserLod("WALL"));
+    CHECK_FALSE(isCoarserLod("flood"));
+    CHECK_FALSE(isCoarserLod("x_lod"));
+    CHECK_FALSE(isCoarserLod("x_lodA"));
+    // figuren's items carry _lod0 .. _lod2: only level 0 is drawn (<= 628 triangles, contract F6).
+    const MeshData sword = require(loadGltf(fs::fromUtf8(G7_ASSET_SOURCE_DIR "/items/it_sword_old.glb")));
+    CHECK(sword.indices.size() / 3 <= 628);
+    const Vec3 size = sword.bounds.max - sword.bounds.min;
+    CHECK(size.y == doctest::Approx(1.035f).epsilon(0.01)); // one blade, not three
+}
