@@ -91,6 +91,7 @@ Result<void> Engine::initScripts()
     gameplay::defineContentKinds(*m_scripts);
     bindEngineFunctions();
     bindHeroFunctions();
+    bindMobFunctions();
     m_scripts->loadAll();
     buildHero();
     for (const script::ScriptError& e : m_scripts->errors())

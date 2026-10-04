@@ -609,6 +609,28 @@ void DebugUi::inventoryPanel(InventoryPanel& panel)
     {
         ImGui::TextDisabled("(empty)");
     }
+    if (panel.container)
+    {
+        ImGui::SeparatorText(panel.containerTitle.c_str());
+        if (panel.containerRows.empty())
+        {
+            ImGui::TextDisabled("(leer)");
+        }
+        for (const InventoryPanel::Row& row : panel.containerRows)
+        {
+            ImGui::PushID(("c " + row.item).c_str());
+            ImGui::Text("%u x %s", row.count, row.name.c_str());
+            ImGui::SameLine(ImGui::GetContentRegionAvail().x - 60.0f * scale + ImGui::GetCursorPosX() -
+                            ImGui::GetStyle().ItemSpacing.x);
+            if (ImGui::SmallButton("take"))
+            {
+                panel.action = "take";
+                panel.actionItem = row.item;
+            }
+            ImGui::PopID();
+        }
+        ImGui::SeparatorText("Held");
+    }
     std::string_view category;
     for (const InventoryPanel::Row& row : panel.rows)
     {
@@ -643,9 +665,9 @@ void DebugUi::inventoryPanel(InventoryPanel& panel)
             }
             ImGui::SameLine();
         }
-        if (ImGui::SmallButton("drop"))
+        if (ImGui::SmallButton(panel.container ? "put" : "drop"))
         {
-            panel.action = "drop";
+            panel.action = panel.container ? "put" : "drop";
             panel.actionItem = row.item;
         }
         ImGui::PopID();
@@ -654,6 +676,48 @@ void DebugUi::inventoryPanel(InventoryPanel& panel)
     {
         ImGui::Separator();
         ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.4f, 1.0f), "%s", panel.message.c_str());
+    }
+    ImGui::End();
+}
+
+void DebugUi::lockpickPanel(LockpickPanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    const ImVec2 view = ImGui::GetMainViewport()->Size;
+    ImGui::SetNextWindowPos(ImVec2(view.x * 0.5f - 170.0f * scale, view.y * 0.62f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(340.0f * scale, 0.0f), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Lockpick", nullptr, ImGuiWindowFlags_NoCollapse))
+    {
+        ImGui::End();
+        return;
+    }
+    ImGui::TextUnformatted(panel.title.c_str());
+    std::string steps;
+    for (usize i = 0; i < panel.length; ++i)
+    {
+        steps += i < panel.progress ? "# " : "- ";
+    }
+    ImGui::Text("Schloss: %s", steps.c_str());
+    ImGui::Text("Dietriche: %u", panel.picks);
+    if (ImGui::Button("< links"))
+    {
+        panel.turn = 'L';
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("rechts >"))
+    {
+        panel.turn = 'R';
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("aufhören"))
+    {
+        panel.leave = true;
+    }
+    ImGui::TextDisabled("%s", panel.hint.c_str());
+    if (!panel.result.empty())
+    {
+        ImGui::TextUnformatted(panel.result.c_str());
     }
     ImGui::End();
 }
