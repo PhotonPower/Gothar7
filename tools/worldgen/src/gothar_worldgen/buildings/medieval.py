@@ -37,6 +37,7 @@ from gothar_worldgen.buildings.collision import CollisionResult, collision_for
 from gothar_worldgen.buildings.gltf import CollisionPart, Primitive
 from gothar_worldgen.buildings.massing import (
     Mass,
+    _add_mass,
     _Builder,
     _Roof,
     _valid_polygon,
@@ -442,6 +443,17 @@ def _wall(
         builder.polygon([f.point(u, v) for u, v in pts], [(u, v) for u, v in pts], f.n3())
 
 
+LOD_PANEL_M = 0.01  # lod 1: openings as flat panels this far in front of the wall
+
+
+def _flat_opening(frame_b: _Builder, f: Frame, op: Opening) -> None:
+    """lod 1: a window or door as one dark panel just in front of the closed wall."""
+    u0, u1, v0, v1 = op.u, op.u + op.w, op.v, op.v + op.h
+    d = LOD_PANEL_M
+    pts = [f.point(u0, v0, d), f.point(u1, v0, d), f.point(u1, v1, d), f.point(u0, v1, d)]
+    frame_b.polygon(pts, [(u0, v0), (u1, v0), (u1, v1), (u0, v1)], f.n3())
+
+
 def _reveal(frame_b: _Builder, f: Frame, op: Opening, depth: float) -> None:
     """Recessed panel (window/door) with the four reveal faces."""
     u0, u1, v0, v1 = op.u, op.u + op.w, op.v, op.v + op.h
@@ -689,6 +701,7 @@ class HouseResult:
     chimneys: int = 0
     collision: CollisionResult | None = None  # COL_ bodies of the (steepened) ground footprints
     doors: list[list[Any]] = field(default_factory=list)  # x, z in front, floor, kind, nx, nz
+    masses: list[Mass] = field(default_factory=list)  # the (steepened) masses, for lod 2
 
 
 class _SagRoof(_Roof):
@@ -815,6 +828,7 @@ class _Context:
     passages_now: list[_PassagePlan] = field(default_factory=list)  # in the current mass
     carve: list[tuple[Polygon, float]] = field(default_factory=list)  # for the collision
     dirt_m: float = 0.0  # > 0: textured house, plaster walls get a dirty foot band this high
+    lod: int = 0  # 1: simplified for the distance (flat openings, flat timber, no dormers)
 
 
 def _top_outline(f: Frame, roof: _Roof, crease: LineString | None, y: float,
@@ -883,7 +897,11 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
     else:
         _wall_banded(ctx, "infill", f, poly, plan, s)
     for op in plan:
-        if op.kind != "passage":  # open: the tunnel walls are its jambs
+        if op.kind == "passage":  # open: the tunnel walls are its jambs
+            continue
+        if ctx.lod:
+            _flat_opening(ctx.builders["frame"], f, op)
+        else:
             _reveal(ctx.builders["frame"], f, op, float(rules.get("openings", "revealM")))
     role = "wall_ground" if massive else "timber"  # lintel in the house's style
     for u0, u1, v in lintels:
@@ -911,7 +929,7 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
             p1,
             beam,
             depth * max(factor, 0.2),
-            sides=kind not in BOARD_KINDS,
+            sides=kind not in BOARD_KINDS and not ctx.lod,
         )
 
 
@@ -1005,6 +1023,9 @@ def _wall_banded(ctx: _Context, role: str, f: Frame, poly: Polygon, holes: Seque
     the sill to 1 at ``STREAK_M`` below), and in the ground storey the plaster up to ``dirt_m``
     above the terrain goes to the foot band (``*_low``, v 0..1 from the ground up)."""
     palette = ctx.style.wall if role == "wall_ground" else ctx.style.infill
+    if ctx.lod:  # the distance: closed walls, the openings are flat panels in front of them
+        _wall(ctx.builders[role], f, poly, [op for op in holes if op.kind == "passage"])
+        return
     if ctx.dirt_m <= 0 or not palette.startswith(("plaster", "lehm")):
         _wall(ctx.builders[role], f, poly, holes)
         return
@@ -1525,6 +1546,8 @@ def build_house(
     hearth: bool = False,
     wall: WallContext | None = None,
     ground_at: Callable[[float, float], float] | None = None,
+    lod: int = 0,
+    lod0_level: int = 0,
 ) -> HouseResult:
     """Half-timbered house of a ``buildings.json`` entry; vertices relative to (origin, base_y).
 
@@ -1558,9 +1581,11 @@ def build_house(
     passages = list(getattr(override, "passages", None) or [])
     tex = rules.data.get("textures", {})
     textured = tex.get("all", False) or building["id"] in tex.get("probe", ())
-    dirt_m = float(tex.get("dirtM", 0.8)) if textured else 0.0
+    dirt_m = float(tex.get("dirtM", 0.8)) if textured and not lod else 0.0
     result = None
-    for level in range(5):
+    # lod 1: one pass with the plain timber (no figures) and without dormers
+    # (never more timber than lod 0 kept: pass its ``timber_level`` as ``lod0_level``)
+    for level in range(5) if not lod else (max(LOD1_LEVEL, lod0_level),):
         builders = {role: _Builder((origin_xz[0], base_y, origin_xz[1])) for role in ROLES}
         rng = _rng(building["id"], getattr(override, "seed", None))
         ctx = _Context(
@@ -1575,6 +1600,7 @@ def build_house(
             ground_at=ground_at,
             passages=passages,
             dirt_m=dirt_m,
+            lod=lod,
         )
         level_notes: list[str] = []
         for mass, src in zip(masses, sources, strict=False):
@@ -1584,13 +1610,13 @@ def build_house(
             except shapely.errors.GEOSException:
                 level_notes.append("part skipped (invalid geometry)")
         dormers, chimneys = _roof_features(
-            ctx, building["id"], override, streets, hearth, level < 4, level_notes
+            ctx, building["id"], override, streets, hearth, level < 4 and not lod, level_notes
         )
 
         def name(role: str) -> str:
             if role.endswith("_low"):
                 return materials[role] + LOW_SUFFIX
-            if role == "roof_north" and dirt_m > 0:
+            if role == "roof_north" and textured:
                 return materials[role] + MOSS_SUFFIX
             if role.endswith("_streak"):
                 return materials[role] + STREAK_SUFFIX
@@ -1614,14 +1640,36 @@ def build_house(
             col = CollisionResult(parts, collision.fallback, collision.decomposed)
         result = HouseResult(prims, tris, [*notes, *massing.notes, *level_notes], level, style,
                              steepened, round(ctx.max_sag, 3), dormers, chimneys,
-                             col, list(ctx.doors))  # fmt: skip
-        if tris <= budget or not style.timber:
+                             col, list(ctx.doors), list(masses))  # fmt: skip
+        if lod or tris <= budget or not style.timber:
             break
     assert result is not None
     if result.timber_level:
         what = "timber and dormers" if result.timber_level == 4 else "timber"
         result.notes.append(f"{what} reduced to level {result.timber_level} (budget {budget})")
     return result
+
+
+LOD1_LEVEL = 1  # timber level of lod 1: posts and rails, no figures
+
+
+def lod2_primitives(house: HouseResult, base_y: float, origin_xz: tuple[float, float],
+                    rules: Rules) -> list[Primitive]:  # fmt: skip
+    """lod 2: the masses only, walls in the house's wall colour (the infill of a timbered house)
+    and the roof in its colour; no openings, timber or overhang."""
+    if house.style is None or not house.masses:
+        return []
+    st = house.style
+    wall_mat = st.infill if st.timber else st.wall
+    walls = _Builder((origin_xz[0], base_y, origin_xz[1]))
+    roofs = _Builder((origin_xz[0], base_y, origin_xz[1]))
+    for mass in house.masses:
+        _add_mass(walls, mass, base_y, roofs)
+    out = []
+    for mat, b in ((wall_mat, walls), (st.roof, roofs)):
+        if b.idx:
+            out.append(Primitive(mat, rules.color(mat), b.mesh()))
+    return out
 
 
 def _add_roof(
