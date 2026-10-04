@@ -222,6 +222,8 @@ public:
     void requestQuit() noexcept { m_quitRequested = true; }
 
     [[nodiscard]] u64 frameCount() const noexcept { return m_frameCount; }
+    /// Shadow tiles drawn per cascade since start (far cascades less often than every frame).
+    [[nodiscard]] const std::array<u32, 4>& cascadeDraws() const noexcept { return m_cascadeDraws; }
     [[nodiscard]] u64 simulationTicks() const noexcept { return m_simTicks; }
     /// Simulated time in seconds (ticks * step): stands still while paused, follows timeScale.
     [[nodiscard]] f64 simulationTime() const noexcept
@@ -571,6 +573,8 @@ private:
     // Animals (EngineCreatures.cpp)
     void fixedUpdateCreatures(f32 seconds);
     void drawCreatures(bool shadow, u32 cascade);
+    /// Whether shadow cascade `i` is drawn this frame (m_cascades holds the fresh fit).
+    [[nodiscard]] bool shadowRedraw(u32 i) const;
     [[nodiscard]] Result<u32> spawnAnimated(std::string_view label, std::string_view model,
                                             std::string_view graph, const Vec3& feet, f32 yaw);
     // Scripts (EngineScripts.cpp)
@@ -932,6 +936,11 @@ private:
     render::LightList m_lights;
     render::ShadowMap m_shadowMap;
     std::vector<render::Cascade> m_cascades;
+    /// The cascades as last drawn into the shadow map: far ones are redrawn every 2nd/4th frame
+    /// (shadowRedraw).
+    std::vector<render::Cascade> m_cascadesDrawn;
+    bool m_shadowCadence = true;         ///< [render] shadow_far_cadence
+    std::array<u32, 4> m_cascadeDraws{}; ///< tiles drawn since start (debug UI, tests)
     bool m_shadowDebug = false;
     render::Camera m_camera;
     render::FreeFlyCamera m_flyCamera;

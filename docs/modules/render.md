@@ -242,7 +242,14 @@ class ShadowMap { static Result<ShadowMap> create(Device&, const ShadowSettings&
   Normal-Offset beim Abtasten (in Schatten-Texeln der Kaskade); 3×3-PCF über Hardware-Vergleich
   (`sampler2DShadow`, Einheit 3), Kernel bleibt in seiner Kachel.
 - Alpha-getestete Materialien werfen löchrige Schatten (gleiche Alpha-Test-Variante); transparente werfen keine.
-- Konfiguration `[render] shadow_cascades`, `shadow_resolution`, `shadow_distance`, `shadow_debug` (Kaskaden einfärben).
+- **Seltener neu gezeichnet** (`Engine::shadowRedraw`): Kaskade 1 und 2 jedes Bild, Kaskade 3 jedes 2. und Kaskade 4
+  jedes 4. Bild (nie im selben). Dazwischen behält die Kachel ihre Tiefe, schattiert wird mit der Matrix, mit der sie
+  gezeichnet wurde (`ShadowMap::beginCascade` löscht nur die eigene Kachel). Hat sich die frische Anpassung um mehr
+  als 5 % der Kachel verschoben (Kamera gegangen oder gedreht), wird sofort neu gezeichnet; ebenso nach Weltwechsel
+  oder neuer Schattenkarte. Nachteil: Bewegte Werfer in der Ferne (Tiere, NPCs) und der Sonnenstand hängen dort bis
+  zu 3 Bilder nach – bei schnellem Flug höchstens in der Ferne sichtbar. Leonberg-Überblick: 31,7 → 23,5 ms je Bild.
+- Konfiguration `[render] shadow_cascades`, `shadow_resolution`, `shadow_distance`, `shadow_far_cadence` (seltener
+  neu zeichnen, Vorgabe an), `shadow_debug` (Kaskaden einfärben).
 - Schatten von Punktlichtern: nicht vorgesehen (Stil: Fackeln ohne Schatten), bei Bedarf später.
 
 ### Nebel, HDR und Tonemapping – `PostProcess.hpp`, `common/fog.glsl`, `post.vert/.frag`

@@ -129,14 +129,18 @@ Result<ShadowMap> ShadowMap::create(Device& device, const ShadowSettings& settin
 void ShadowMap::begin(Device& device)
 {
     device.bindFramebuffer(&m_framebuffer);
-    device.setViewport(0, 0, m_framebuffer.width(), m_framebuffer.height());
-    device.clear(std::nullopt, 1.0f); // shadow depth is not reversed: 1 = far
 }
 
 void ShadowMap::beginCascade(Device& device, u32 index) const
 {
+    // Only this tile is cleared and drawn: the others may keep last frame's depth (Engine redraws far
+    // cascades less often).
     const auto r = static_cast<i32>(m_settings.resolution);
-    device.setViewport(static_cast<i32>(index % 2) * r, static_cast<i32>(index / 2) * r,
-                       m_settings.resolution, m_settings.resolution);
+    const PixelRect tile{static_cast<i32>(index % 2) * r, static_cast<i32>(index / 2) * r,
+                         m_settings.resolution, m_settings.resolution};
+    device.setViewport(tile.x, tile.y, tile.width, tile.height);
+    device.setScissor(tile); // the clear only; the viewport keeps the draws in the tile
+    device.clear(std::nullopt, 1.0f); // shadow depth is not reversed: 1 = far
+    device.setScissor(std::nullopt);
 }
 } // namespace g7::render

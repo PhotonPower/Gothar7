@@ -54,7 +54,7 @@ public:
     /// Binds and clears the atlas.
     void begin(Device& device);
     /// Restricts rendering to the tile of cascade `index`.
-    void beginCascade(Device& device, u32 index) const;
+    void beginCascade(Device& device, u32 index) const; ///< clears and selects its tile only
 
     [[nodiscard]] const rhi::Texture& texture() const noexcept { return m_depth; }
     [[nodiscard]] const rhi::Sampler& sampler() const noexcept { return m_sampler; }

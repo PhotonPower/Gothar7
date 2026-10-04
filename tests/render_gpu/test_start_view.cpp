@@ -82,3 +82,39 @@ TEST_CASE("Start view GPU: --player and --yaw move and turn the player")
     CHECK(std::abs(std::remainder(glm::degrees(engine.playerMovement().yaw()) - 180.0f, 360.0f)) < 0.1f);
     CHECK(engine.viewLine().find("--player=40.00,0.00,3.00 --yaw=180.0 --time=08:00") != std::string::npos);
 }
+
+TEST_CASE("Shadows GPU: far cascades are redrawn every 2nd and 4th frame, at once when the view moves")
+{
+    EngineConfig config = viewConfig();
+    config.view.camera = Vec3(10.0f, 6.0f, -20.0f);
+    config.view.yawDegrees = 45.0f;
+    config.view.fly = true;
+    Engine engine(std::move(config));
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    for (int i = 0; i < 4; ++i) // every tile drawn once
+    {
+        REQUIRE(engine.runFrame());
+    }
+    const auto before = engine.cascadeDraws();
+    REQUIRE(before[3] > 0);
+    for (int i = 0; i < 8; ++i) // the camera stands still
+    {
+        REQUIRE(engine.runFrame());
+    }
+    auto drawn = engine.cascadeDraws();
+    CHECK(drawn[0] - before[0] == 8);
+    CHECK(drawn[1] - before[1] == 8);
+    CHECK(drawn[2] - before[2] == 4);
+    CHECK(drawn[3] - before[3] == 2);
+
+    // A jump: the old tiles do not cover the view any more, all four are drawn in the very next frame.
+    const auto still = drawn;
+    engine.camera().transform.position += Vec3(0.0f, 0.0f, -80.0f);
+    REQUIRE(engine.runFrame());
+    drawn = engine.cascadeDraws();
+    for (usize i = 0; i < 4; ++i)
+    {
+        CHECK(drawn[i] - still[i] == 1);
+    }
+}
