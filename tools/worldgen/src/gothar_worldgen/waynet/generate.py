@@ -323,7 +323,10 @@ def build_waynet(
 
     def wp(name: str, x: float, z: float, d: tuple[float, float] | None = None) -> Wp:
         y = height(x, z)
-        dir3 = (d[0], 0.0, d[1]) if d is not None else None
+        dir3 = None
+        if d is not None:  # unit length here: the writer keeps near-unit directions as they are
+            ln = math.hypot(d[0], d[1]) or 1.0
+            dir3 = (d[0] / ln, 0.0, d[1] / ln)
         return Wp(name, (x, y, z), dir3)
 
     for n in nodes:
