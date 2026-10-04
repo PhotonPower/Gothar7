@@ -1,0 +1,20 @@
+# citizen_f_3: guild set 'citizen' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_f_heavy/body.glb"
+head = "parts/head_f_old/head.glb"
+hair = "parts/hair_f_old/hair_bob.glb"
+cloth = [
+    "parts/garb_f_heavy/shirt.glb",
+    "parts/garb_f_heavy/skirt_tiered.glb",
+    "parts/garb_f_heavy/apron.glb",
+    "parts/cloth_f_heavy/toigo_ankle_boots_female.glb",
+]
+
+[palette]
+hair = "#c8c4bc"
+cloth_shirt = "#e0d8c4"
+cloth_skirt_tiered = "#3a3a4a"
+cloth_apron = "#ddd2b8"
+cloth_toigo_ankle_boots_female = "#2e241c"

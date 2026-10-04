@@ -1,0 +1,21 @@
+# hunter_m_1: guild set 'hunter' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_rough/head.glb"
+hair = "parts/hair_m_rough/hair_long_shaggy.glb"
+beard = "parts/hair_m_rough/beard_faun.glb"
+cloth = [
+    "parts/cloth_m_average/elvs_crude_t-shirt_male.glb",
+    "parts/armor_m_average/leather_vest.glb",
+    "parts/armor_m_average/wrapped_trousers.glb",
+    "parts/armor_m_average/wrapped_boots.glb",
+    "parts/armor_m_average/gloves_short.glb",
+]
+
+[palette]
+hair = "#5a3a28"
+beard = "#5a3a28"
+cloth_elvs_crude_t-shirt_male = "#5a6a44"
+cloth_wrapped_trousers = "#4a4a34"

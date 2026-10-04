@@ -1,0 +1,22 @@
+# smith: Leonberg smith (engine, "Leonberg lebt"): leather apron (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_rough/head.glb"
+hair = "parts/hair_m_rough/hair_buzz.glb"
+beard = "parts/hair_m_rough/beard_goatee.glb"
+cloth = [
+    "parts/garb_m_heavy/shirt.glb",
+    "parts/garb_m_heavy/apron_leather.glb",
+    "parts/garb_m_heavy/belt.glb",
+    "parts/cloth_m_heavy/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#1e1812"
+beard = "#1e1812"
+cloth_shirt = "#8c7f6c"
+cloth_apron_leather = "#5a3d28"
+cloth_belt = "#2e2018"
+cloth_culturalibre_male_boots = "#3a2c22"

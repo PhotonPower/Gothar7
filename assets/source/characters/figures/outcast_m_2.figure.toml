@@ -1,0 +1,20 @@
+# outcast_m_2: guild set 'outcast' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_rough/head.glb"
+hair = "parts/hair_m_rough/hair_messy.glb"
+beard = "parts/hair_m_rough/beard_faun.glb"
+cloth = [
+    "parts/garb_m_average/coat.glb",
+    "parts/headgear_m_average/hood.glb",
+    "parts/cloth_m_average/toigo_mj_cloth_shoes.glb",
+]
+
+[palette]
+hair = "#5a3a28"
+beard = "#5a3a28"
+cloth_coat = "#4a4038"
+cloth_hood = "#3e362e"
+cloth_toigo_mj_cloth_shoes = "#4a4034"

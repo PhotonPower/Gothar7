@@ -1,0 +1,19 @@
+# gate_guard: Leonberg gate guard: medium armour, kettle helmet (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_gaunt/head.glb"
+beard = "parts/hair_m_gaunt/beard_moustache.glb"
+cloth = [
+    "parts/armor_m_average/mail_tunic.glb",
+    "parts/armor_m_average/wrapped_trousers.glb",
+    "parts/armor_m_average/wrapped_boots.glb",
+    "parts/armor_m_average/gloves_medium.glb",
+    "parts/headgear_m_average/kettle_helm.glb",
+]
+
+[palette]
+hair = "#5a3a28"
+beard = "#5a3a28"
+cloth_wrapped_trousers = "#6a2e28"

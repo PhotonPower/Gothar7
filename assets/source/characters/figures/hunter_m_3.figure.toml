@@ -1,0 +1,21 @@
+# hunter_m_3: guild set 'hunter' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_young/head.glb"
+hair = "parts/hair_m_young/hair_messy.glb"
+beard = "parts/hair_m_young/beard_faun.glb"
+cloth = [
+    "parts/cloth_m_heavy/toigo_fisherman_sweater.glb",
+    "parts/armor_m_heavy/leather_vest.glb",
+    "parts/armor_m_heavy/wrapped_trousers.glb",
+    "parts/armor_m_heavy/wrapped_boots.glb",
+    "parts/headgear_m_heavy/leather_cap.glb",
+]
+
+[palette]
+hair = "#7a4a2c"
+beard = "#7a4a2c"
+cloth_toigo_fisherman_sweater = "#5e5a44"
+cloth_wrapped_trousers = "#4a4230"

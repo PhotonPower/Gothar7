@@ -1,0 +1,18 @@
+# farmer_m_2: guild set 'farmer' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_thin/body.glb"
+head = "parts/head_m_young/head.glb"
+hair = "parts/hair_m_young/hair_messy.glb"
+cloth = [
+    "parts/garb_m_thin/tunic.glb",
+    "parts/garb_m_thin/belt.glb",
+    "parts/cloth_m_thin/toigo_mj_cloth_shoes.glb",
+]
+
+[palette]
+hair = "#8a7a62"
+cloth_tunic = "#7a6448"
+cloth_belt = "#3a2a1e"
+cloth_toigo_mj_cloth_shoes = "#4a3a2c"

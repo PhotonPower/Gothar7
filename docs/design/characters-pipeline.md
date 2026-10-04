@@ -531,6 +531,29 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
 - **Prüfung:** jedes Stück am Socket einer Testfigur in passender Haltung (`1h/s_idle`, `1h/s_run`, `bow/s_idle`,
   `none/t_eat`, `none/t_drink`, `mob/chest/s_picklock`, Gürtel `socket_hip_1h`, Rücken `socket_back_bow`).
 
+### 6.4 Figuren-Sets und Gilden-Figuren (Vertrag mit engine, F3v, vereinbart 2026-10-04)
+
+- **Datei:** `assets/source/data/figure_sets.toml`, gepflegt von figuren:
+  `[sets] <name> = ["characters/figures/<manifest>.figure.toml", …]` (Pfade relativ zu `assets/source`).
+- **Nutzung (engine):** Ein NPC mit `figure_set` und ohne eigenes `figure` bekommt eines der Manifeste, zufällig, aber je
+  NPC stabil; `Npc.figure` hat Vorrang. Die Set-Namen sind unabhängig von den Gilden.
+- **Sets:** `citizen` (7) und `craftsman` (5) für Leonberg (sauber), `guard` (5, nur Männer wie in Gothic, mittlere
+  Rüstung mit Helm), `farmer` (7, abgetragen, Strohhüte, Schürzen), `hunter` (4, nur Männer, Leder, gewickelte Hosen
+  und Stiefel), `outcast` (5, Lumpen; barfuß oder in Stoffschuhen). Manifeste `figures/<set>_<m|f>_<n>.figure.toml`;
+  sie mischen Kopf, Frisur und Bart, Statur, Kleidung und Palette.
+- **Benannte Figuren** (je ein NPC, in keinem Set): `smith` (Lederschürze), `innkeeper` (sauber, Schürze),
+  `market_woman` (Mieder über dem langen Rock), `gate_guard` (mittlere Rüstung, Kesselhelm), `guard_captain`
+  (schwere Rüstung).
+- **Kombinationsregeln** (aus den Prüfbildern und `poke`):
+  - Das Mieder liegt nur ohne Hemd über dem langen Rock sauber, nicht über Hemden oder dem Stufenrock.
+  - Die Lederweste nur über dem groben Hemd oder dem Pullover (aus dem groben Hemd abgeleitet).
+  - Den langen Rock nicht an schlanken Frauen (`cloth_f_thin`): Beim Schleichen und Aufheben stechen die Oberschenkel
+    durch (25 cm²).
+  - Keine Schürze über dem vollen langen Rock kräftiger Frauen.
+- **Prüfung:** Jedes Manifest wird beim Bauen zusammengesetzt (`assemble`); `poke` bleibt für alle Gilden-Figuren unter
+  der Schwelle. Der Test `test_figure_sets` prüft, dass jedes gelistete Manifest existiert, in genau einem Set steht und
+  keine benannte Figur enthält.
+
 ## 7. Monster
 
 Erst CC0-Platzhalter, dann eigene Arten. Pro Art: Rig, Mindest-Set, dazu Artspezifisches (Rudelruf, Sprung).

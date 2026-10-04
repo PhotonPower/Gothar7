@@ -1,0 +1,18 @@
+# guard_m_3: guild set 'guard' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_thin/body.glb"
+head = "parts/head_m_young/head.glb"
+hair = "parts/hair_m_young/hair_messy.glb"
+cloth = [
+    "parts/armor_m_thin/mail_tunic.glb",
+    "parts/armor_m_thin/wrapped_trousers.glb",
+    "parts/armor_m_thin/wrapped_boots.glb",
+    "parts/armor_m_thin/gloves_short.glb",
+    "parts/headgear_m_thin/iron_cap.glb",
+]
+
+[palette]
+hair = "#b08850"
+cloth_wrapped_trousers = "#6a2e28"

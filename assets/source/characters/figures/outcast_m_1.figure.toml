@@ -1,0 +1,16 @@
+# outcast_m_1: guild set 'outcast' (figure_sets.toml) (F3v)
+version = 1
+
+[parts]
+body = "parts/body_m_thin/body.glb"
+head = "parts/head_m_gaunt/head.glb"
+hair = "parts/hair_m_gaunt/hair_long.glb"
+beard = "parts/hair_m_gaunt/beard_goatee.glb"
+cloth = [
+    "parts/cloth_m_thin/elvs_crude_t-shirt_male.glb",
+]
+
+[palette]
+hair = "#3a2a1e"
+beard = "#3a2a1e"
+cloth_elvs_crude_t-shirt_male = "#7a6e58"
