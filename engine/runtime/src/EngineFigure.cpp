@@ -269,6 +269,13 @@ Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedMo
         figure.mesh = std::move(mesh).value();
         figure.materials = std::move(materials).value();
         figure.uploaded = true;
+        // Face weights by morph name: head and beard (figuren) follow the same visemes and expressions.
+        std::array<std::string_view, animation::kFaceMorphCount> names{};
+        for (usize i = 0; i < names.size(); ++i)
+        {
+            names[i] = animation::faceMorphName(static_cast<animation::FaceMorph>(i));
+        }
+        figure.mesh.mapMorphNames(names);
         figure.mesh.setMorphWeights(figure.face.weights());
     }
     figure.images = std::move(images);

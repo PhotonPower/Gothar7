@@ -18,6 +18,7 @@ sets = [
     "characters/anims/human/amb.glb",
     "characters/anims/human/1h.glb",
     "characters/anims/human/fist.glb",
+    "characters/anims/human/dlg.glb",
 ]
 start = "move"
 # Abspielrate = Parameter / Eigengeschwindigkeit der Clips (`speed` in <set>.events.toml), damit die Füße nicht

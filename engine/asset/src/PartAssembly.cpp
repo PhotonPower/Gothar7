@@ -46,6 +46,39 @@ bool unsignedAt(const Json& array, usize index, u32& out)
 }
 } // namespace
 
+std::map<std::string, std::vector<std::string>> readMorphNames(std::span<const u8> bytes)
+{
+    std::map<std::string, std::vector<std::string>> out;
+    const std::string_view text = jsonText(bytes);
+    const Json doc = Json::parse(text.begin(), text.end(), nullptr, false);
+    if (doc.is_discarded() || !doc.contains("nodes") || !doc.contains("meshes"))
+    {
+        return out;
+    }
+    const Json& meshes = doc["meshes"];
+    for (const Json& node : doc["nodes"])
+    {
+        u32 mesh = 0;
+        if (!node.is_object() || !node.contains("name") || !node.contains("mesh") ||
+            !unsignedAt(Json::array({node["mesh"]}), 0, mesh) || mesh >= meshes.size())
+        {
+            continue;
+        }
+        const Json& extras = meshes[mesh].value("extras", Json::object());
+        if (!extras.is_object() || !extras.contains("targetNames") || !extras["targetNames"].is_array())
+        {
+            continue;
+        }
+        std::vector<std::string> names;
+        for (const Json& n : extras["targetNames"])
+        {
+            names.push_back(n.is_string() ? n.get<std::string>() : std::string());
+        }
+        out[node["name"].get<std::string>()] = std::move(names);
+    }
+    return out;
+}
+
 Result<SkinnedModelData::Assembly> readPartAssembly(std::span<const u8> bytes, std::string_view debugName)
 {
     SkinnedModelData::Assembly out;

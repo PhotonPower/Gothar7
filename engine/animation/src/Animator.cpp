@@ -568,7 +568,7 @@ void Animator::update(f32 seconds, const EventCallback& onEvent)
         if (o.additive)
         {
             Pose reference = m_skeleton->restPose();
-            clip.sample(0.0f, reference);
+            (o.reference >= 0 ? m_clips[static_cast<usize>(o.reference)] : clip).sample(0.0f, reference);
             addPose(m_pose, m_scratch, reference, o.weight, o.mask);
         }
         else
@@ -582,17 +582,36 @@ void Animator::update(f32 seconds, const EventCallback& onEvent)
     }
 }
 
-void Animator::playOverlay(std::string_view clip, std::string_view maskBone, f32 blendIn, bool additive)
+void Animator::playOverlay(std::string_view clip, std::string_view maskBone, f32 blendIn, bool additive,
+                           std::string_view reference)
 {
+    i32 referenceClip = -1;
+    for (usize i = 0; i < m_clips.size() && !reference.empty(); ++i)
+    {
+        if (m_clips[i].name() == reference)
+        {
+            referenceClip = static_cast<i32>(i);
+        }
+    }
     for (usize i = 0; i < m_clips.size(); ++i)
     {
         if (m_clips[i].name() == clip)
         {
-            m_overlay = Overlay{i,    m_skeleton->maskBelow(maskBone),       additive, 0.0f, 0.0f,
-                                1.0f, blendIn > 0.0f ? 1.0f / blendIn : 1e6f};
+            Overlay o;
+            o.clip = i;
+            o.mask = m_skeleton->maskBelow(maskBone);
+            o.additive = additive;
+            o.reference = referenceClip;
+            o.rate = blendIn > 0.0f ? 1.0f / blendIn : 1e6f;
+            m_overlay = std::move(o);
             return;
         }
     }
+}
+
+bool Animator::hasClip(std::string_view clip) const noexcept
+{
+    return std::ranges::any_of(m_clips, [&](const Clip& c) { return c.name() == clip; });
 }
 
 void Animator::stopOverlay(f32 blendOut)

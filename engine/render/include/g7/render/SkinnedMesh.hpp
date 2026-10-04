@@ -49,12 +49,16 @@ public:
     [[nodiscard]] usize morphCount() const noexcept { return m_morphCount; }
     /// Morph weights (missing ones are 0); uploads the affected vertices if anything changed.
     void setMorphWeights(std::span<const f32> weights);
+    /// Weight i of setMorphWeights drives the targets named names[i] in every part (head, beard ...);
+    /// unnamed targets keep their index, named ones not in the list stay still.
+    void mapMorphNames(std::span<const std::string_view> names);
 
 private:
     struct MorphPart
     {
         usize firstVertex = 0;
         std::vector<asset::MorphTargetData> targets;
+        std::vector<usize> weightIndex; ///< per target: its weight (~0: none)
     };
     rhi::Buffer m_vertices;
     rhi::Buffer m_indices;

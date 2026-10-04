@@ -398,6 +398,18 @@ void Engine::updatePlayerCamera(f64 realSeconds)
     {
         eye.y = *surface + 0.3f;
     }
+    if (m_dialog)
+    {
+        // Talking (M10 part B): shot and reverse shot instead of the camera behind the hero. The player
+        // camera keeps following, so that it is where it belongs when the dialogue ends.
+        if (!m_dialogCamera)
+        {
+            m_camera.transform.position = eye;
+            m_camera.transform.rotation = m_playerCamera.rotation();
+        }
+        updateDialogCamera(static_cast<f32>(realSeconds));
+        return;
+    }
     m_camera.transform.position = eye;
     m_camera.transform.rotation = m_playerCamera.rotation();
 }

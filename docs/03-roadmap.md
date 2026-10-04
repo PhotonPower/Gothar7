@@ -217,8 +217,8 @@ ihrem Bereich binnen 30 Ticks (E).
 
 ## M10 – Dialoge & Quests  → Meilenstein B
 - [x] Info-System: Bedingung, Beschreibung, Priorität, `important` (NPC spricht an), `permanent`, `onlyOnce` – gesagte Infos in `Story.told`, `important` in 3 m Sichtweite, `approach` geht auf den Spieler zu (A)
-- [ ] Dialog-Ablauf: Kamera-Schnitte (Über-die-Schulter), Sprachausgabe/Untertitel, Gesten-Animationen
-- [ ] Kameramodus „Dialog“ der Third-Person-Kamera (aus M5: Schuss/Gegenschuss als Datensatz in `movement.toml` bzw. Dialogdaten)
+- [x] Dialog-Ablauf: Kamera-Schnitte (Über-die-Schulter), Sprachausgabe/Untertitel, Gesten-Animationen – Untertitel; Sprachausgabe später über die Zeilen-Schlüssel (E4); dlg-Gesten additiv gegen dlg/a_neutral, Mund und Blick (B)
+- [x] Kameramodus „Dialog“ der Third-Person-Kamera (aus M5: Schuss/Gegenschuss als Datensatz in `movement.toml` bzw. Dialogdaten) – `data/dialog.lua` (B)
 - [x] Auswahl-Menüs (Choices) innerhalb einer Info – `choice(text, fn)` (A)
 - [ ] Handel-Bildschirm und Lernen über Dialog
 - [ ] Tagebuch: Aufträge (laufend/erfolgreich/gescheitert), Einträge, Notizen

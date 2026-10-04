@@ -103,6 +103,7 @@ Result<void> Engine::initScripts()
     bindDialogFunctions();
     m_scripts->loadAll();
     loadPerceptionSettings(); // data/perception.lua (M9 part C)
+    loadDialogPresentation(); // data/dialog.lua (M10 part B)
     buildHero();
     for (const script::ScriptError& e : m_scripts->errors())
     {
@@ -150,6 +151,7 @@ void Engine::reloadScripts()
         (void)m_scripts->setStory(script::Value(std::move(merged)));
     }
     loadPerceptionSettings();
+    loadDialogPresentation();
     m_scripts->emit("scripts_reloaded");
     G7_LOG_INFO("engine", "scripts reloaded");
     consolePrint("(scripts reloaded)");

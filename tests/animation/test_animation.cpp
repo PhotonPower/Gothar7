@@ -395,7 +395,7 @@ TEST_CASE("Animator with the real data: reference rig, clip sets, human.animgrap
     for (const char* set : {"characters/anims/human/none.glb", "characters/anims/human/swim.glb",
                             "characters/anims/human/amb.glb", "characters/anims/human/dive.glb",
                             "characters/anims/human/mob.glb", "characters/anims/human/1h.glb",
-                            "characters/anims/human/fist.glb"})
+                            "characters/anims/human/fist.glb", "characters/anims/human/dlg.glb"})
     {
         auto loaded = asset::loadAnimationGltf(read(set), {}, set);
         REQUIRE(loaded.ok());
@@ -406,7 +406,7 @@ TEST_CASE("Animator with the real data: reference rig, clip sets, human.animgrap
         AnimGraph::parse(std::string_view(reinterpret_cast<const char*>(graphText.data()), graphText.size()),
                          "human.animgraph.toml");
     REQUIRE_MESSAGE(graph.ok(), (graph.ok() ? "" : graph.error().message));
-    CHECK(graph.value().sets.size() == 7);
+    CHECK(graph.value().sets.size() == 8);
     std::vector<const asset::AnimationSetData*> sets;
     for (const auto& d : data)
     {
