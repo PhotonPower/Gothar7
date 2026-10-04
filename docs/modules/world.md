@@ -106,8 +106,13 @@ daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vo
   (`WorldFile::waynet`, `world::WaynetData`, Fehler mit Eintrag) und sortiert, ein Eintrag je Zeile geschrieben.
   `zones` wird bis zu seinem System unverändert gelesen und zurückgeschrieben. Unbekannte Schlüssel werden ignoriert (nicht
   zurückgeschrieben).
-- **Schreiben** ist stabil: Kopf-Schlüssel je eine Zeile, dann **ein Vob pro Zeile** nach `id` sortiert, Zahlen auf
-  1e-5 gerundet – gleiche Welt, gleiche Bytes; Laden und Speichern ändert nichts.
+- **Schreiben** ist stabil: Kopf-Schlüssel je eine Zeile, dann **ein Vob pro Zeile** nach `id` sortiert – gleiche
+  Welt, gleiche Bytes; Laden und Speichern ändert nichts.
+- **Zahlen** wie Pythons `json` (welts Generator): die wenigsten Ziffern, die denselben Wert ergeben (`24.12317`,
+  `4.0`, `1e-05`). Gespeichert als 32-Bit-Float, geschrieben mit den wenigsten Nachkommastellen, die wieder diesen
+  Float ergeben (`-343.106`). Braucht ein Wert mehr als sechs Nachkommastellen (Rechenrauschen wie `-4.37e-08`), wird
+  er erst auf 1e-5 gerundet. Quaternionen werden beim Lesen nur normiert, wenn ihre Länge um mehr als 1e-4 von 1
+  abweicht. So ergibt ein Speichern im Editor dieselben Bytes wie der Generator.
 - Fehler nennen Datei und Eintrag (`camp.g7world: vobs[3].pos: must be a list of 3 numbers`); fehlende Eltern,
   Elternzyklen und doppelte IDs lassen die Szene beim Laden unverändert.
 

@@ -291,3 +291,51 @@ TEST_CASE("WorldFile: an item vob's owner is read and written back")
             R"({ "version": 1, "vobs": [ { "id": 1, "type": "item", "components": { "item": { "instance": "it_bread", "owner": 3 } } } ] })")
             .find("'owner' must be a string") != std::string::npos);
 }
+
+TEST_CASE("WorldFile: numbers are written with the fewest digits, as Python writes them")
+{
+    // welt's generator (Python json) and an editor save must agree byte for byte: the shortest digits that
+    // read back to the same double, fixed for exponents -4..15, otherwise "1e-05". Expected: Python's
+    // json.dumps.
+    constexpr std::string_view kNumbers =
+        R"([{"type":"numbers","v":[24.12317,24.123169999999998,0.1,0.0001,1e-05,-1.5e-07,4.0,-0.5,123456.78901,)"
+        R"(1e15,1e16,1.7976931348623157e308,5e-324,0.6666666666666666,-0.0,0.30000000000000004,)"
+        R"(1234567890123456.0,9.999999999999999e-05]}])";
+    constexpr std::string_view kPython =
+        R"([{"type":"numbers","v":[24.12317,24.12317,0.1,0.0001,1e-05,-1.5e-07,4.0,-0.5,123456.78901,)"
+        R"(1000000000000000.0,1e+16,1.7976931348623157e+308,5e-324,0.6666666666666666,-0.0,)"
+        R"(0.30000000000000004,1234567890123456.0,9.999999999999999e-05]}])";
+    WorldFile world = parse(kCamp);
+    world.zonesJson = std::string(kNumbers);
+    world.waynet->points[0].position = Vec3(24.12317f, 0.0001f, -0.00001f);
+    const std::string text = writeWorldFile(world);
+    CHECK(text.find(std::string(kPython)) != std::string::npos);
+    CHECK(text.find(R"("pos":[24.12317,0.0001,-1e-05])") != std::string::npos);
+    CHECK(writeWorldFile(parse(text)) == text);
+}
+
+TEST_CASE("WorldFile: positions and rotations come back as welt's generator wrote them")
+{
+    // Leonberg: an engine save must equal the generated file. -343.106 is the float -343.10598755 (rounding
+    // it to 1e-5 gave -343.10599); a quaternion with six decimals is not exactly unit length (normalizing
+    // changed it).
+    constexpr std::string_view kWorld = R"({
+  "version": 1,
+  "name": "w",
+  "nextVobId": 3,
+  "vobs": [
+    {"id":1,"type":"mesh","name":"BLD","pos":[181.715,23.39,-343.106],"rot":[0.0,0.169246,0.0,0.985574],"mesh":"m.glb"},
+    {"id":2,"type":"empty","name":"NOISE","pos":[-4.37e-08,0.70710677,1000.25]}
+  ]
+})";
+    const std::string text = writeWorldFile(parse(kWorld));
+    CHECK(text.find(R"("pos":[181.715,23.39,-343.106],"rot":[0.0,0.169246,0.0,0.985574])") !=
+          std::string::npos);
+    // Arithmetic noise (more than six decimals) is rounded to 1e-5, no -0.
+    CHECK(text.find(R"("pos":[0.0,0.70711,1000.25])") != std::string::npos);
+    CHECK(writeWorldFile(parse(text)) == text);
+    // A quaternion clearly off unit length is still normalized.
+    WorldFile scaled = parse(
+        R"({"version":1,"name":"w","nextVobId":2,"vobs":[{"id":1,"type":"empty","name":"Q","rot":[0,0,0,2]}]})");
+    CHECK(scaled.vobs[0].transform.rotation.w == doctest::Approx(1.0f));
+}
