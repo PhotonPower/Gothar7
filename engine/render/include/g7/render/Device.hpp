@@ -97,6 +97,9 @@ public:
     void setScissor(std::optional<PixelRect> rect);
     /// Clears the bound framebuffer; depth also clears stencil to 0.
     void clear(std::optional<Vec4> color, std::optional<f32> depth);
+    /// Sets a region of a depth texture (level 0) to `value`, without the scissor (a scissored clear makes
+    /// some drivers fall back from their fast clear and warn).
+    void clearDepthRegion(const rhi::Texture& depth, const PixelRect& rect, f32 value);
 
     // --- State and draws ---
     void bindPipeline(const rhi::Pipeline& pipeline);

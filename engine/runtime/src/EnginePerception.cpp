@@ -243,16 +243,38 @@ void Engine::toggleWeapon()
     }
     if (m_weaponMode != 0)
     {
-        m_weaponMode = 0;
-        detachFromPlayer("socket_hand_r");
+        m_weaponMode = 0; // the model goes at the clip's "sheath" event (weaponEvent)
+        if (!m_figure->animator.hasState("sheath_1h"))
+        {
+            weaponEvent("sheath");
+        }
         return;
     }
     const gameplay::Character* h = hero();
     const std::string weapon = h != nullptr ? h->equipped(gameplay::EquipSlot::Melee) : std::string();
     m_weaponMode = weapon.empty() ? 2 : 1;
-    if (!weapon.empty())
+    m_weaponDrawn = weapon; // in the hand at the clip's "draw" event
+    if (!m_figure->animator.hasState("draw_1h"))
     {
-        if (const LoadedModel* model = itemModel(weapon))
+        weaponEvent("draw");
+    }
+}
+
+bool Engine::playerHolds(std::string_view socket) const
+{
+    return m_figure && std::ranges::any_of(m_figure->attachments,
+                                           [&](const FigureAttachment& a) { return a.socket == socket; });
+}
+
+void Engine::weaponEvent(std::string_view event)
+{
+    if (event == "sheath" && m_weaponMode == 0)
+    {
+        detachFromPlayer("socket_hand_r");
+    }
+    else if (event == "draw" && m_weaponMode == 1 && !m_weaponDrawn.empty())
+    {
+        if (const LoadedModel* model = itemModel(m_weaponDrawn))
         {
             if (auto attached = attachModel("socket_hand_r", model, nullptr); !attached)
             {

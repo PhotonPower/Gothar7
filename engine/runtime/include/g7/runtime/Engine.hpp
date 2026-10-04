@@ -452,6 +452,10 @@ public:
     [[nodiscard]] u8 weaponMode() const noexcept { return m_weaponMode; }
     /// Draws the equipped melee weapon (fists without one) or puts it away.
     void toggleWeapon();
+    /// The figure's "draw"/"sheath" events: the weapon model appears in or leaves the hand.
+    void weaponEvent(std::string_view event);
+    /// Whether the hero's figure holds a model at this socket (sword in socket_hand_r ...).
+    [[nodiscard]] bool playerHolds(std::string_view socket) const;
     [[nodiscard]] bool npcWalking(u32 id) const noexcept;
     /// The first inserted NPC of an Npc instance.
     [[nodiscard]] std::optional<u32> npcByInstance(std::string_view instance) const noexcept;
@@ -940,6 +944,7 @@ private:
         std::vector<std::pair<std::string, f32>> noises; ///< kind -> radius
     } m_perception;
     u8 m_weaponMode = 0;
+    std::string m_weaponDrawn; // Item instance of the melee weapon being drawn
     bool m_drawWeaponRequested = false;
     f32 m_runNoiseTimer = 0.0f;
     u64 m_routineMinute = ~0ull;      // the game minute routines were last checked
