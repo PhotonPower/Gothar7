@@ -1,0 +1,103 @@
+# Clothing kit (F3v) fitted to body_m_thin: every garment its own part
+# (parts/garb_m_thin/<garment>.glb), combined in figure manifests ([parts] cloth). Neutral
+# textures baked from tileable fabrics (data/fabrics.toml); figures colour them by palette.
+# CC0 by file header: shirt, wide_trousers. Own geometry: aprons (a panel in front of the
+# body from the knee to the waist, hanging straight below the belly; ambientCG canvas or
+# leather), belt (ring of the skin at the waist), straw hat (dome and brim, Wicker 013).
+# coat: the long CC0 robe (Donitz), a little looser; tunic: the robe with
+# its hem below the knee; *_clean: same geometry, clean fabric (Leonberg).
+version = 1
+fit_to = "body_m_thin"
+parts = ["cloth"]
+triangles = 12700
+
+[assets]
+clothes = [
+    "clothes/toigo_basic_tucked_t-shirt/toigo_basic_tucked_t-shirt.mhclo",
+    "clothes/toigo_harem_pants/toigo_harem_pants.mhclo",
+]
+
+[names]
+"toigo_basic_tucked_t-shirt" = "shirt"
+toigo_harem_pants = "wide_trousers"
+
+[budget]
+shirt = 1500
+wide_trousers = 1500
+coat = 1800
+coat_clean = 1800
+tunic = 1500
+tunic_clean = 1500
+apron = 900
+apron_leather = 900
+belt = 400
+straw_hat = 900
+
+[hides]
+straw_hat = ["hair"]
+
+[derive.coat]
+from = "clothes/donitz_monk_robe/donitz_monk_robe.mhclo"
+offset = 0.012
+
+[derive.coat_clean]
+from = "clothes/donitz_monk_robe/donitz_monk_robe.mhclo"
+offset = 0.012
+
+[derive.tunic]
+from = "clothes/donitz_monk_robe/donitz_monk_robe.mhclo"
+band_at = "calf_l"
+band = [-0.06, 2.0]
+offset = 0.006
+
+[derive.tunic_clean]
+from = "clothes/donitz_monk_robe/donitz_monk_robe.mhclo"
+band_at = "calf_l"
+band = [-0.06, 2.0]
+offset = 0.006
+
+[derive.apron]
+from = "basemesh"
+group = "body"
+band_at = ["calf_l", "spine_01"]
+band = [0.0, -0.01]
+panel = 0.36
+offset = 0.035
+rim = 0.004
+texture = "gothar/ambientcg/Fabric063/Fabric063_1K-JPG_Color.jpg"
+
+[derive.apron_leather]
+from = "basemesh"
+group = "body"
+band_at = ["calf_l", "spine_01"]
+band = [0.0, -0.01]
+panel = 0.36
+offset = 0.035
+rim = 0.004
+texture = "gothar/ambientcg/Leather014/Leather014_1K-JPG_Color.jpg"
+normal = "gothar/ambientcg/Leather014/Leather014_1K-JPG_NormalGL.jpg"
+uv_scale = 2.0
+
+[derive.belt]
+from = "basemesh"
+group = "body"
+band_at = "spine_01"
+band = [-0.01, 0.035]
+offset = 0.03
+rim = 0.006
+texture = "gothar/ambientcg/Leather014/Leather014_1K-JPG_Color.jpg"
+normal = "gothar/ambientcg/Leather014/Leather014_1K-JPG_NormalGL.jpg"
+uv_scale = 2.0
+
+[derive.straw_hat]
+heads = "head_m_*"
+from = "basemesh"
+group = "body"
+dome = true
+depth = 0.085
+tilt = 8
+offset = 0.016
+brim = 0.085
+texture = "gothar/ambientcg/Wicker013/Wicker013_1K-JPG_Color.jpg"
+normal = "gothar/ambientcg/Wicker013/Wicker013_1K-JPG_NormalGL.jpg"
+uv_scale = 2.0

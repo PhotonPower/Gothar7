@@ -425,8 +425,9 @@ class _Checker:
             )
 
     def _check_morph_sets(self, meshes: list[dict[str, Any]]) -> None:
-        """Contract §6 (engine): a mesh with morph targets carries the complete list in contract
-        order, every primitive has one target per name, at most 16 per mesh."""
+        """Contract §6.1 (engine): a mesh with morph targets carries the complete list, each
+        name once (engine maps them by name since M10; the contract order is recommended, a
+        different one only a warning), every primitive has one target per name, at most 16."""
         contract = list(self.rig.morph_targets)
         for mesh in meshes:
             names = list(mesh.get("extras", {}).get("targetNames", []))
@@ -438,10 +439,16 @@ class _Checker:
                 self.r.error(
                     "morph.count", f"mesh '{label}': {len(names)} morph targets (max {MAX_MORPHS})"
                 )
-            if names != contract:
+            if len(set(names)) != len(names) or set(names) != set(contract):
                 self.r.error(
+                    "morph.set",
+                    f"mesh '{label}': morph targets must be the full contract list, each name "
+                    f"once ({', '.join(contract)}), got {_listed(names)}",
+                )
+            elif names != contract:
+                self.r.warning(
                     "morph.order",
-                    f"mesh '{label}': morph targets must be the full contract list in order "
+                    f"mesh '{label}': morph targets not in the recommended contract order "
                     f"({', '.join(contract)}), got {_listed(names)}",
                 )
             if counts != {len(names)}:
