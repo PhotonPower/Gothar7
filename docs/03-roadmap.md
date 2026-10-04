@@ -230,6 +230,7 @@ ihrem Bereich binnen 30 Ticks (E).
 (Lehrer: Stärke), altem Mann (Händler), Tieren; Aufträge Botengang (Essen für den Holzfäller), Beschaffung (Grobes
 Schwert für die Wache, am Amboss geschmiedet), Konflikt (der Ring der Bäuerin: abkaufen, von der Wache holen lassen
 oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_engine_m10_scenario.cpp`.
+**Meilenstein B vom Projektinhaber abgenommen, 2026-10-05** („Testlager ist ok“).
 
 ## M11 – Kampf
 - [ ] Waffenmodi (Faust, Einhand, Zweihand, Bogen, Armbrust), Ziehen/Wegstecken

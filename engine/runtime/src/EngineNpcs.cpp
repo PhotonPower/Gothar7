@@ -23,6 +23,14 @@ constexpr f32 kTurnRate = 6.0f;        ///< radians per second an NPC turns whil
 /// height) are walked over, fences with gaps between their rails still block.
 constexpr f32 kWalkableHeights[] = {0.5f, 1.0f, 1.5f};
 constexpr f32 kWalkableRadius = 0.3f; ///< the NPC capsule's
+// Doors (Leonberg's walkable houses): walkable lines pass unlocked door leaves; a walking NPC opens a closed
+// door in front of it and closes it again behind itself.
+constexpr f32 kDoorOpenAngleNpc = 1.5707963f; ///< as EngineMobs' kDoorOpenAngle (+90 degrees, into the room)
+constexpr int kMaxDoorsOnLine = 2;
+constexpr f32 kDoorSkip = 0.6f;  ///< metres past a door leaf where the check goes on
+constexpr f32 kDoorReach = 1.6f; ///< an NPC opens a closed door whose leaf is this near and ahead
+constexpr f32 kDoorWait = 1.3f;  ///< ... and waits while it swings if this near
+constexpr f32 kDoorLeave = 1.8f; ///< closes it again once this far from the hinge (the leaf is 1 m)
 // Ground under a straight line (welt #171: shortcuts over steep slopes): probed every kGroundStep, no step
 // may rise or fall more than tan 35 degrees (as welt's waynet check), and the ground must be there (no drop).
 constexpr f32 kGroundStep = 0.5f;
@@ -57,12 +65,32 @@ bool Engine::walkableLine(const Vec3& a, const Vec3& b) const
     {
         return false;
     }
+    const Vec3 dir = delta / length;
     for (const f32 height : kWalkableHeights)
     {
-        if (m_physics.sphereCast(a + Vec3(0.0f, height, 0.0f), kWalkableRadius, delta / length, length,
-                                 physics::layerBit(physics::Layer::World)))
+        // Unlocked doors are no obstacle: NPCs open them on the way (walkNpc). Past a door leaf the cast goes
+        // on.
+        Vec3 from = a + Vec3(0.0f, height, 0.0f);
+        f32 left = length;
+        for (int doors = 0; doors <= kMaxDoorsOnLine; ++doors)
         {
-            return false;
+            const auto hit = m_physics.sphereCast(from, kWalkableRadius, dir, left,
+                                                  physics::layerBit(physics::Layer::World));
+            if (!hit)
+            {
+                break;
+            }
+            if (!passableDoor(hit->userData) || doors == kMaxDoorsOnLine)
+            {
+                return false;
+            }
+            const f32 skip = hit->distance + kDoorSkip;
+            from += dir * skip;
+            left -= skip;
+            if (left <= 0.0f)
+            {
+                break;
+            }
         }
     }
     // The ground along it: no steep slope, no drop.
@@ -75,6 +103,10 @@ bool Engine::walkableLine(const Vec3& a, const Vec3& b) const
         const Vec3 p = a + delta * t;
         const auto hit = m_physics.raycast(Vec3(p.x, ground + 1.5f, p.z), Vec3(0.0f, -1.0f, 0.0f), 3.5f,
                                            physics::layerBit(physics::Layer::World));
+        if (hit && passableDoor(hit->userData))
+        {
+            continue; // a door leaf is no ground: the next sample beyond it
+        }
         if (!hit || std::abs(hit->position.y - ground) > kMaxSlope * flat / static_cast<f32>(steps) + 0.05f)
         {
             return false;
@@ -153,6 +185,81 @@ std::optional<u32> Engine::npcByInstance(std::string_view instance) const noexce
     return std::nullopt;
 }
 
+bool Engine::passableDoor(u64 vob) const
+{
+    const auto it = m_mobs.find(vob);
+    return it != m_mobs.end() && it->second.type == "door" && !it->second.locked;
+}
+
+std::optional<Vec3> Engine::doorLeafCentre(u64 vob) const
+{
+    const entt::entity e = m_scene.findById(world::VobId{vob});
+    if (e == entt::null)
+    {
+        return std::nullopt;
+    }
+    // Hinge at the origin, the leaf along +X (world.md); its middle half a metre out.
+    return Vec3(m_scene.worldMatrix(e) * Vec4(0.5f, 0.0f, 0.0f, 1.0f));
+}
+
+bool Engine::npcDoors(Creature& c)
+{
+    const Vec3 ahead = gameplay::forwardOf(c.yaw);
+    bool wait = false;
+    for (auto& [id, m] : m_mobs)
+    {
+        if (m.type != "door")
+        {
+            continue;
+        }
+        const auto leaf = doorLeafCentre(id);
+        if (!leaf)
+        {
+            continue;
+        }
+        const Vec3 to = *leaf - c.position;
+        const f32 distance = glm::length(Vec2(to.x, to.z));
+        // Behind it again (measured to the hinge: the open leaf may swing towards it): close the door it
+        // opened.
+        if (c.openedDoor == id)
+        {
+            const entt::entity e = m_scene.findById(world::VobId{id});
+            const Vec3 hinge = e != entt::null ? Vec3(m_scene.worldMatrix(e)[3]) : *leaf;
+            if (glm::length(Vec2(hinge.x - c.position.x, hinge.z - c.position.z)) > kDoorLeave && m.open &&
+                m.doorTime < 0.0f)
+            {
+                m.open = false;
+                m.doorFrom = m.doorAngle;
+                m.doorTo = 0.0f;
+                m.doorTime = 0.0f;
+                c.openedDoor = 0;
+            }
+            continue;
+        }
+        if (!c.route)
+        {
+            continue; // standing: opens nothing
+        }
+        const bool inFront =
+            distance < kDoorReach && glm::dot(Vec2(to.x, to.z), Vec2(ahead.x, ahead.z)) > 0.0f;
+        if (!inFront)
+        {
+            continue;
+        }
+        // Locked: only its owner has the key.
+        if (!m.open && (!m.locked || ownedBy(c, m.owner)))
+        {
+            m.open = true;
+            m.doorFrom = m.doorAngle;
+            m.doorTo = kDoorOpenAngleNpc;
+            m.doorTime = 0.0f;
+            c.openedDoor = id;
+        }
+        wait = wait || (m.doorTime >= 0.0f && distance < kDoorWait);
+    }
+    return wait;
+}
+
 void Engine::walkNpc(Creature& c, f32 seconds)
 {
     if (!c.body)
@@ -181,6 +288,10 @@ void Engine::walkNpc(Creature& c, f32 seconds)
                 const script::Value args[] = {c.species, c.routeGoal};
                 m_scripts->emit("npc_arrived", args);
             }
+        }
+        else if (npcDoors(c))
+        {
+            c.stuckSeconds = 0.0f; // waiting for a door to open is no blockage
         }
         else
         {
@@ -231,6 +342,10 @@ void Engine::walkNpc(Creature& c, f32 seconds)
                 }
             }
         }
+    }
+    if (!c.route && c.openedDoor != 0)
+    {
+        (void)npcDoors(c); // arrived behind a door: close it once away from it
     }
     c.body->update(seconds, velocity);
     c.position = c.body->feet();

@@ -634,6 +634,11 @@ private:
     // NPC navigation (EngineNpcs.cpp)
     [[nodiscard]] std::optional<Vec3> navigationTarget(std::string_view name) const;
     void walkNpc(Creature& c, f32 seconds);
+    /// Unlocked door mob (NPCs plan through it and open it).
+    [[nodiscard]] bool passableDoor(u64 vob) const;
+    [[nodiscard]] std::optional<Vec3> doorLeafCentre(u64 vob) const;
+    /// Opens a closed door ahead of the walking NPC, closes the one behind it; true while it waits for one.
+    bool npcDoors(Creature& c);
     /// Spawns an Npc instance with its figure, capsule, values and routine.
     [[nodiscard]] Result<u32> spawnNpc(std::string_view name, const Vec3& at, f32 yaw);
     // Behaviour (EngineAi.cpp)
@@ -1077,8 +1082,9 @@ private:
     bool m_inventoryOpen = false;
     std::string m_inventoryMessage;
     gameplay::MobTypes m_mobTypes;
-    std::unordered_map<u64, MobRuntime> m_mobs; // by vob id
-    void lockpickNoticed(const MobRuntime& m);  // witnesses of picking a lock (M9 part C)
+    std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
+    void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)
+    void storeDoors(world::WorldFile& file) const; // doors closed in the file, components.mob.open
     std::optional<MobUse> m_mobUse;
     std::vector<std::string> m_mobEvents;         // "open"/"close" of the hero's figure this step
     std::unordered_map<u64, MobBody> m_mobBodies; // collision of mob vobs (doors turn theirs)

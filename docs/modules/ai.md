@@ -161,6 +161,15 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
 - Tests: Die Orte aller `rtn_leo_*` stehen in Leonbergs Wegnetz (auch in der CI); mit den erzeugten Daten (lokal)
   ein Spieltag in Leonberg, jeder zur rechten Zeit am rechten Ort.
 
+## Türen (für welts begehbare Häuser)
+- Unverschlossene Tür-Mobs sind für die Wegeplanung kein Hindernis (`walkableLine` geht am Türblatt vorbei weiter,
+  höchstens zwei Türen je Linie; ein Türblatt ist kein Boden).
+- Ein gehender NPC öffnet eine geschlossene Tür, deren Blatt näher als 1,6 m vor ihm ist (ohne Animation, bis NPCs
+  mit M11 Mobs benutzen), wartet, während sie aufschwingt, und schließt sie wieder, sobald er 1,8 m von der Angel
+  weg ist. Verschlossene Türen öffnet nur der Besitzer (`owner` des Mobs: NPC oder Gilde); für die Planung sind sie
+  Wände.
+- Türen, die laut Weltdatei offen stehen (`components.mob.open`, world.md), stehen beim Laden offen.
+
 ## Debug (M9 Teil E, umgesetzt) – `runtime/EngineAiDebug.cpp`
 - **Fenster „AI“** (Debug-UI, F1): je NPC Name, Zustand, Abstand zum Spieler, „sees you“, „(far)“ außerhalb der
   KI-LOD; aufgeklappt Tagesablauf und Ort, Animation (Graph-Zustand und Tagesablauf-Animation), Einstellung zum
