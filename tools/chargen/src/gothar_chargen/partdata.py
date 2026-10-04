@@ -13,6 +13,9 @@ by `gothar-chargen assemble` today and by the engine at run time later (armour/h
   ranges. Hidden: a ray along the vertex normal hits the garment within 3 cm from inside, or
   the body pokes out of the garment by up to 1.5 cm; all three vertices hidden -> triangle hidden.
   Holes in ragged garments, folds seen from behind and a 5 cm band at the neck seam keep the body.
+* base bodies with clothing of their own (trousers, underwear): the skin under it is removed from
+  the body part itself (`hide_own_skin`, same rule as the masks) – nobody needs it, and in motion
+  it would show through the coarse cloth (F3o).
 """
 
 from __future__ import annotations
@@ -33,6 +36,9 @@ NECK_FALLOFF = 0.05  # metres below the ring that follow the neck snap
 NECK_KEEP = 0.05  # metres around the neck ring where garments never hide the body
 COVER_DISTANCE = 0.03  # metres along the normal within which a garment covers the body
 POKE_THROUGH = 0.015  # metres a body vertex may stick out of a garment and still be hidden
+# the clothing baked into a base body sits looser (thin bodies wear the average trousers): skin
+# up to this far under it is removed from the body part (`hide_own_skin`)
+OWN_COVER_DISTANCE = 0.06
 # garments baked into a base body (its trousers) are looser than skin: tight pieces worn over them
 # (armour trousers, boot shafts) leave them sticking out further
 POKE_THROUGH_CLOTH = 0.04
@@ -241,7 +247,10 @@ def _closest_points(points: np.ndarray, tri: np.ndarray) -> np.ndarray:
 
 
 def covered_triangles(
-    body: LodMesh, garment: LodMesh, ring: list[list[list[int]]]
+    body: LodMesh,
+    garment: LodMesh,
+    ring: list[list[list[int]]],
+    cover_distance: float = COVER_DISTANCE,
 ) -> list[list[int]]:
     """Triangle ranges [primitive, first, end) of `body` hidden under `garment`."""
     tri = _triangles_of(garment)
@@ -251,7 +260,7 @@ def covered_triangles(
         zip(body.positions, body.normals, body.triangles, strict=True)
     ):
         n = nrm / np.maximum(np.linalg.norm(nrm, axis=1, keepdims=True), 1e-12)
-        ray = _ray_hits(pos + n * 1e-4, n, tri, COVER_DISTANCE)
+        ray = _ray_hits(pos + n * 1e-4, n, tri, cover_distance)
         near = _closest_points(pos, tri)
         offset = near - pos
         limit = (
@@ -265,6 +274,45 @@ def covered_triangles(
         hidden = covered[tris].all(axis=1)
         ranges += _ranges(prim, hidden)
     return ranges
+
+
+def hide_own_skin(gltf: Gltf) -> int:
+    """Removes skin triangles covered by the part's own clothing primitives (per LOD node, rule of
+    `covered_triangles`); returns the number removed. Idempotent."""
+    removed = 0
+    nodes, meshes = gltf.list("nodes"), gltf.list("meshes")
+    by_node = {str(n.get("name", "")): n for n in nodes if "mesh" in n}
+    for _level, mesh in sorted(lod_meshes(gltf).items()):
+        roles = [material_role(m) for m in mesh.materials]
+        cloth = [i for i, r in enumerate(roles) if r == "cloth"]
+        if not cloth or "skin" not in roles:
+            continue
+        garment = LodMesh(
+            mesh.node,
+            [mesh.positions[i] for i in cloth],
+            [mesh.normals[i] for i in cloth],
+            [mesh.triangles[i] for i in cloth],
+            [mesh.materials[i] for i in cloth],
+        )
+        skin_only = LodMesh(
+            mesh.node,
+            mesh.positions,
+            mesh.normals,
+            [t if r == "skin" else t[:0] for t, r in zip(mesh.triangles, roles, strict=True)],
+            mesh.materials,
+        )
+        ring = neck_ring(mesh, lowest=False)
+        hidden: dict[int, np.ndarray] = {}
+        for prim, first, end in covered_triangles(skin_only, garment, ring, OWN_COVER_DISTANCE):
+            hidden.setdefault(prim, np.zeros(len(mesh.triangles[prim]), dtype=bool))[first:end] = (
+                True
+            )
+        prims = meshes[by_node[mesh.node]["mesh"]]["primitives"]
+        for prim, flags in hidden.items():
+            keep = mesh.triangles[prim][~flags]
+            gltf.set_indices(prims[prim]["indices"], keep)
+            removed += int(flags.sum())
+    return removed
 
 
 def _ranges(prim: int, flags: np.ndarray) -> list[list[int]]:

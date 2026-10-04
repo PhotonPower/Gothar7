@@ -39,7 +39,13 @@ from gothar_chargen.human import SUFFIX as HUMAN_SUFFIX
 from gothar_chargen.human import HumanError, load_human
 from gothar_chargen.items import build_items, validate_item
 from gothar_chargen.meshdata import split_lod
-from gothar_chargen.partdata import PartDataError, body_or_head_data, garment_data, write_part
+from gothar_chargen.partdata import (
+    PartDataError,
+    body_or_head_data,
+    garment_data,
+    hide_own_skin,
+    write_part,
+)
 from gothar_chargen.report import ReportError, progress
 from gothar_chargen.skeleton import (
     RigSpec,
@@ -340,8 +346,12 @@ def update_part_data(characters: Path, dirs: list[Path] | None, out: TextIO) -> 
             g = Gltf.load(path)
             role = _part_role(g)
             if role in ("body", "head"):
+                removed = hide_own_skin(g) if role == "body" else 0
                 write_part(path, g, body_or_head_data(g, role))
-                print(f"part data {path.relative_to(characters)} ({role})", file=out)
+                extra = (
+                    f", {removed} skin triangles under its own clothing removed" if removed else ""
+                )
+                print(f"part data {path.relative_to(characters)} ({role}{extra})", file=out)
             elif role == "cloth":
                 garments.append((path, g))
     humans = characters / "humans"
