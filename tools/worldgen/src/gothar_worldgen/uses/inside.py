@@ -19,13 +19,13 @@ from typing import Any
 from shapely import affinity
 from shapely.geometry import LineString, Point, Polygon, box
 
-from gothar_worldgen.uses.places import FP_TYPES, MOB_TYPES, House, UsesError
+from gothar_worldgen.uses.places import FP_TYPES, MOB_TYPES, House, UsesError, door_hinge
 from gothar_worldgen.uses.suggest import short_id
 from gothar_worldgen.waynet.generate import name_part
 
 # footprint (along the wall or the table axis, depth) of what stands in a room, and the slot
 SIZE = {"bed": (2.0, 0.9), "chest": (0.9, 0.6), "bench": (1.5, 0.35), "table": (1.6, 0.8),
-        "anvil": (0.8, 0.5), "hearth": (0.9, 0.9)}  # fmt: skip
+        "anvil": (0.8, 0.5), "hearth": (1.2, 0.9)}  # fmt: skip
 SLOT = {"bed": 0.75, "chest": 0.65, "bench": 0.38, "anvil": 0.6, "hearth": 0.6}
 BENCH_OFF_M = 0.62  # bench middles beside the table axis (engine's table slots, #197)
 WALL_GAP_M = 0.05
@@ -35,6 +35,7 @@ MOVE_M = 0.45  # room to walk past furniture
 STEP_M = 0.25  # placement search step
 INSIDE_WP_M = 1.2  # the room's waypoint this far inside the door
 DOOR_WP_IN_M = 0.15  # the door's waypoint in the middle of the opening (half the wall)
+OUTSIDE_WP_M = 0.9  # the waypoint in front of the door, outside
 LIGHT = {
     "hearth": {"color": [1.0, 0.62, 0.32], "range": 6.5, "intensity": 2.6, "flicker": 0.3},
     "candle": {"color": [1.0, 0.75, 0.45], "range": 5.0, "intensity": 1.8, "flicker": 0.1},
@@ -115,7 +116,17 @@ def _room(e: dict[str, Any]) -> _Room:
     c = poly.centroid
     path = LineString([mid, (c.x, c.y)]).buffer(PATH_W_M / 2, cap_style="flat")
     zone = Point(mid).buffer(DOOR_ZONE_M)
-    return _Room(poly, float(r["floor"]), float(r["ceiling"]), path.union(zone), mid, inward)
+    # the door swings into the room: its sweep stays free, the open blade is in the way
+    hx, hz = door_hinge(d)
+    w = math.dist(d["from"], d["to"])
+    ux, uz = (mid[0] - hx) / (w / 2), (mid[1] - hz) / (w / 2)
+    quarter = Polygon([(hx, hz), (hx + ux * w, hz + uz * w),
+                       (hx + (ux + inward[0]) * w, hz + (uz + inward[1]) * w),
+                       (hx + inward[0] * w, hz + inward[1] * w)])  # fmt: skip
+    sweep = Point(hx, hz).buffer(w).intersection(quarter)
+    blade = LineString([(hx, hz), (hx + inward[0] * w, hz + inward[1] * w)]).buffer(0.06)
+    keep = path.union(zone).union(sweep)
+    return _Room(poly, float(r["floor"]), float(r["ceiling"]), keep, mid, inward, [blade])
 
 
 def _walls(room: _Room) -> list[tuple[tuple[float, float], tuple[float, float], float]]:
@@ -131,25 +142,36 @@ def _walls(room: _Room) -> list[tuple[tuple[float, float], tuple[float, float], 
 
 
 def _against_wall(
-    room: _Room, kind: str
+    room: _Room, kind: str, facing: tuple[float, float] | None = None
 ) -> tuple[Polygon, tuple[float, float], tuple[float, float]] | None:
-    """A spot with the back to a wall: (footprint, centre, front direction into the room)."""
+    """A spot with the back to a wall: (footprint, centre, front direction into the room); the
+    first along the longest walls, or with ``facing`` the one turned most towards that point
+    (the hearth towards the door: seen on coming in) and reached from the room's waypoint."""
     length, depth = SIZE[kind]
+    best: tuple[float, Polygon, tuple[float, float], tuple[float, float]] | None = None
     for a, (ux, uz), wall_len in _walls(room):
         nx, nz = -uz, ux  # into the room (counter-clockwise ring)
         t = length / 2 + 0.1
         while t <= wall_len - length / 2 - 0.1:
             cx = a[0] + ux * t + nx * (WALL_GAP_M + depth / 2)
             cz = a[1] + uz * t + nz * (WALL_GAP_M + depth / 2)
-            shape = _rect(cx, cz, ux, uz, length, depth)
-            slot = Point(
-                cx + nx * (depth / 2 + SLOT.get(kind, 0.6)),
-                cz + nz * (depth / 2 + SLOT.get(kind, 0.6)),
-            )
-            if room.fits(shape) and room.poly.contains(slot) and not room.keep.contains(slot):
-                return shape, (cx, cz), (nx, nz)
             t += STEP_M
-    return None
+            shape = _rect(cx, cz, ux, uz, length, depth)
+            reach = depth / 2 + SLOT.get(kind, 0.6)
+            slot = (cx + nx * reach, cz + nz * reach)
+            if not (room.fits(shape) and room.poly.contains(Point(slot))):
+                continue
+            if room.keep.contains(Point(slot)):
+                continue
+            if facing is None:
+                return shape, (cx, cz), (nx, nz)
+            if not room.reachable(slot):
+                continue
+            dx, dz = facing[0] - cx, facing[1] - cz
+            score = (nx * dx + nz * dz) / max(math.hypot(dx, dz), 1e-6)
+            if best is None or score > best[0] + 1e-9:
+                best = (score, shape, (cx, cz), (nx, nz))
+    return None if best is None else best[1:]
 
 
 def _table_spot(room: _Room) -> tuple[Polygon, tuple[float, float], tuple[float, float]] | None:
@@ -223,6 +245,23 @@ class _House:
     def build(self, spec: InsideSpec, routine_wp: str) -> None:
         room, h = self.room, self.h
         table_at, hearth_at = None, None
+        # the hearth first: the furniture keeps out of its way and out of the view on it
+        if spec.hearth:
+            hearth_spot = _against_wall(room, "hearth", facing=room.door_mid)
+            if hearth_spot is None:
+                self.fail("hearth")
+            else:
+                shape, centre, front = hearth_spot
+                self.vob("mesh", f"PROP_{self.tag}_HERD", centre, front, mesh="props/hearth.glb")
+                light = {"light": dict(LIGHT["hearth"])}
+                self.vob("light", f"LIGHT_{self.tag}_HERD", centre, front,
+                         height=room.floor + 0.9, components=light)  # fmt: skip
+                room.taken.append(shape)
+                hearth_at = (centre, front)
+                # keep the way to the fire and the view on it from the door free of furniture
+                reach = SIZE["hearth"][1] / 2 + SLOT["hearth"]
+                fire = (centre[0] + front[0] * reach, centre[1] + front[1] * reach)
+                room.keep = room.keep.union(LineString([room.entry, fire]).buffer(0.6))
         for kind, n in spec.mobs:
             for _ in range(min(3, max(1, h.residents)) if n == "R" else int(n)):
                 if kind == "table":
@@ -249,18 +288,6 @@ class _House:
                     reach = SIZE["chest"][1] / 2 + SLOT["chest"]
                     slot = (centre[0] + front[0] * reach, centre[1] + front[1] * reach)
                     room.stands.append((slot, (-front[0], -front[1])))
-        if spec.hearth:
-            hearth_spot = _against_wall(room, "hearth")
-            if hearth_spot is None:
-                self.fail("hearth")
-            else:
-                shape, centre, front = hearth_spot
-                self.vob("mesh", f"PROP_{self.tag}_HERD", centre, front, mesh="props/hearth.glb")
-                light = {"light": dict(LIGHT["hearth"])}
-                self.vob("light", f"LIGHT_{self.tag}_HERD", centre, front,
-                         height=room.floor + 0.6, components=light)  # fmt: skip
-                room.taken.append(shape)
-                hearth_at = (centre, front)
         want = 2 if room.poly.area > BIG_ROOM_M2 else 1
         c = room.poly.centroid
         for k in range(want - (1 if hearth_at else 0)):
@@ -286,12 +313,20 @@ class _House:
                     self.fp(kind, pos, d)
         # waypoints: in the middle of the door (linked to the routine waypoint outside), then
         # just inside it (linked to the door's): a figure lines up before the narrow passage
-        door_name = f"WP_{self.tag[: -len('_INNEN')]}_TUER"
+        # in front of it first (on the ground outside): through the opening straight, not across
+        # a jamb towards a routine waypoint off to one side
+        base = f"WP_{self.tag[: -len('_INNEN')]}"
+        door_name = f"{base}_TUER"
+        vx = room.door_mid[0] - room.inward[0] * OUTSIDE_WP_M
+        vz = room.door_mid[1] - room.inward[1] * OUTSIDE_WP_M
+        self.plan.places.append({"kind": "wp", "name": f"{base}_VOR", "house": h.id,
+                                 "pos": [vx, vz], "dir": [room.inward[0], room.inward[1]],
+                                 "link": routine_wp})  # fmt: skip
         dx = room.door_mid[0] - room.inward[0] * DOOR_WP_IN_M
         dz = room.door_mid[1] - room.inward[1] * DOOR_WP_IN_M
         self.plan.places.append({"kind": "wp", "name": door_name, "house": h.id,
                                  "pos": [dx, dz], "dir": [room.inward[0], room.inward[1]],
-                                 "y": room.floor, "link": routine_wp})  # fmt: skip
+                                 "y": room.floor, "link": f"{base}_VOR"})  # fmt: skip
         wx, wz = room.entry
         self.plan.places.append({"kind": "wp", "name": f"WP_{self.tag}", "house": h.id,
                                  "pos": [wx, wz], "dir": [room.inward[0], room.inward[1]],

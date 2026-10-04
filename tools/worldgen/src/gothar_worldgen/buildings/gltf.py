@@ -52,6 +52,7 @@ class Primitive:
     color: tuple[float, float, float, float]
     mesh: MeshData
     textures: tuple[str, str] | None = None  # (base colour, normal) image URIs from the VFS root
+    emissive: tuple[float, float, float] | None = None  # glowing (embers, flames): emissiveFactor
 
 
 @dataclass
@@ -146,7 +147,7 @@ def glb_bytes_multi(
             accessors.append(acc)
             blobs.append(arr.tobytes())
             targets.append(_ELEMENT_ARRAY_BUFFER if i == 3 else _ARRAY_BUFFER)
-        key = (p.material, p.textures)
+        key = (p.material, p.textures, p.emissive)
         if key not in material_index:
             material_index[key] = len(materials)
             pbr: dict = {"baseColorFactor": [float(c) for c in p.color], "metallicFactor": 0.0,
@@ -155,6 +156,8 @@ def glb_bytes_multi(
             if p.textures is not None:
                 pbr["baseColorTexture"] = {"index": texture(p.textures[0])}
                 material["normalTexture"] = {"index": texture(p.textures[1])}
+            if p.emissive is not None:
+                material["emissiveFactor"] = [float(c) for c in p.emissive]
             materials.append(material)
         return {
             "attributes": {"POSITION": first, "NORMAL": first + 1, "TEXCOORD_0": first + 2},

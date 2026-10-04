@@ -13,13 +13,20 @@ from gothar_worldgen.mobs import (
     BUDGET,
     BUILDERS,
     CHEST_BODY_H,
+    EMISSIVE,
+    HEARTH_D,
+    HEARTH_H,
+    HEARTH_W,
+    HOOD_Y1,
     LID_PIVOT,
+    PROPS,
     TYPES,
     write_mobs,
 )
 
 REPO = Path(__file__).resolve().parents[3]
 ASSETS = REPO / "assets" / "source" / "mobs"
+PROP_ASSETS = REPO / "assets" / "source" / "props"
 
 
 def _bounds(model) -> tuple[np.ndarray, np.ndarray]:
@@ -119,3 +126,27 @@ def test_mobs_cook(tmp_path: Path):
                           capture_output=True, text=True, check=False)  # fmt: skip
     assert done.returncode == 0, done.stdout + done.stderr
     assert len(list(out.rglob("*.g7mesh"))) == len(TYPES)  # incl. the bench
+
+
+def test_hearth_glows_with_hood_and_collision_only_at_the_block():
+    m = PROPS["hearth"]()
+    lo, hi = _bounds(m)
+    assert (hi - lo)[0] == pytest.approx(HEARTH_W, abs=0.11) and (hi - lo)[2] == pytest.approx(
+        HEARTH_D
+    )
+    assert lo[1] == 0.0 and hi[1] == pytest.approx(HOOD_Y1)  # the smoke hood on top
+    ((body),) = m.main.collision
+    assert body_is_closed(body) and body.positions[:, 1].max() == pytest.approx(HEARTH_H)
+    assert 0 < m.triangles() <= BUDGET
+    doc, _ = read_glb(m.glb())
+    glow = sorted(mat["emissiveFactor"] for mat in doc["materials"] if "emissiveFactor" in mat)
+    want = sorted(list(e) for e in EMISSIVE.values())
+    assert len(glow) == len(want)
+    assert all(g == pytest.approx(w, abs=1e-6) for g, w in zip(glow, want, strict=True))
+    assert all(0.0 <= c <= 1.0 for g in glow for c in g)  # the engine's range
+
+
+def test_versioned_props_are_current(tmp_path: Path):
+    write_mobs(tmp_path, tuple(PROPS), PROPS)
+    for kind in PROPS:
+        assert (tmp_path / f"{kind}.glb").read_bytes() == (PROP_ASSETS / f"{kind}.glb").read_bytes()
