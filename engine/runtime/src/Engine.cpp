@@ -246,6 +246,13 @@ Result<void> Engine::init()
     }
 
     applyStartView(); // --cam, --yaw, --pitch, --fly, --player
+    for (const std::string& line : m_config.exec)
+    {
+        if (auto r = runConsoleLine(line); !r)
+        {
+            G7_LOG_WARN("engine", "--exec {}: {}", line, r.error().message);
+        }
+    }
     m_initialized = true;
     return {};
 }
@@ -1073,6 +1080,8 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
         return Error{"cannot load world: " + spawned.error().message};
     }
     m_waynet = file.waynet ? ai::Waynet::build(*file.waynet) : ai::Waynet{}; // M9: NPCs walk on it
+    m_freepointUsers.assign(m_waynet.freepoints().size(), 0u);
+    m_routineMinute = ~0ull;
     if (const auto& ref = file.terrain)
     {
         auto heightfield = world::Heightfield::load(m_vfs, *ref);

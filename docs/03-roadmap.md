@@ -198,14 +198,14 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 
 ## M9 – NPC-KI
 - [x] Wegnetz: Wegpunkte, Kanten, Freepoints; A*-Pfadsuche; Pfadglättung; Fallback-Navigation zwischen Netz und Position – `ai::Waynet`, NPCs mit eigener Kapsel, `npc_goto`, Wegnetz und Routen in F2 (A)
-- [ ] NPC-Zustandsautomat: Skript-Zustände `begin/loop/end`, Zustandswechsel, Unterbrechungen
-- [ ] **Tagesabläufe** (Routinen) mit Zeitfenstern, Routinenwechsel per Skript (z. B. Kapitelwechsel)
-- [ ] Freepoint-Belegung (Sitzplätze am Lagerfeuer etc.)
+- [x] NPC-Zustandsautomat: Skript-Zustände `begin/loop/end`, Zustandswechsel, Unterbrechungen – Lua-Art `State` (begin/loop/finish), Befehlsliste (`npc_goto`, `npc_play` …), `npc_start_state` (B)
+- [x] **Tagesabläufe** (Routinen) mit Zeitfenstern, Routinenwechsel per Skript (z. B. Kapitelwechsel) – `routine` am Npc, `set_routine`, `insert_npc`; Testlager: vier Leute mit Tagesablauf (`camp_people()`) (B)
+- [x] Freepoint-Belegung (Sitzplätze am Lagerfeuer etc.) – `npc_goto_freepoint` reserviert den nächsten freien (B)
 - [ ] **Wahrnehmung**: Sicht (Kegel + Raycast), Gehör (Lärmereignisse mit Radius), Reichweiten, Update-Takt nach Distanz
 - [ ] Wahrnehmungs-Ereignisse: Spieler gesehen, Waffe gezogen, Kampf, Diebstahl, Betreten privater Bereiche, Zauber, Item angefasst
 - [ ] Einstellungen (dauerhaft/temporär), Gruppenhilfe, Fliehen
 - [ ] Monster-KI: Revier, Rudel, Fressen/Schlafen, Jagd, Flucht
-- [ ] KI-LOD: weit entfernte NPCs „springen“ entlang ihrer Routine statt simuliert zu werden
+- [x] KI-LOD: weit entfernte NPCs „springen“ entlang ihrer Routine statt simuliert zu werden – über 80 m (zurück unter 75 m) (B)
 - [ ] Debug-Ansicht: Wegnetz, aktueller Zustand/Routine pro NPC, Wahrnehmungsradien
 
 **DoD:** 10 NPCs folgen über 24 Spielstunden fehlerfrei ihren Routinen und reagieren auf

@@ -1,5 +1,5 @@
 -- Leute im Lager (Beispielinhalt M7). `figure` ist ein Figuren-Manifest (characters/figures/*.figure.toml);
--- Tagesablauf und KI folgen mit M9, Dialoge mit M12.
+-- `routine` ist der Tagesablauf (routines/, M9), Dialoge folgen mit M12.
 Npc "npc_gate_guard" {
     name = "Torwache",
     guild = "guard",
@@ -17,6 +17,7 @@ Npc "npc_farmer_woman" {
     figure = "characters/figures/peasant_woman.figure.toml",
     inventory = { it_apple = 5, it_bread = 2, it_letter_farm = 1 },
     pickpocket_dex = 15, -- leicht zu bestehlen
+    routine = "rtn_farmer_woman",
 }
 
 Npc "npc_woodcutter" {
@@ -25,6 +26,7 @@ Npc "npc_woodcutter" {
     level = 4,
     figure = "characters/figures/laborer.figure.toml",
     equipment = { "it_club" },
+    routine = "rtn_woodcutter",
 }
 
 Npc "npc_old_man" {
@@ -32,4 +34,5 @@ Npc "npc_old_man" {
     guild = "outcast",
     level = 1,
     figure = "characters/figures/old_man.figure.toml",
+    routine = "rtn_old_man",
 }

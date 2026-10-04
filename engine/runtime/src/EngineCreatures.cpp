@@ -199,9 +199,11 @@ f32 Engine::creatureYaw(u32 id) const noexcept
 
 void Engine::fixedUpdateCreatures(f32 seconds)
 {
-    for (const auto& owned : m_creatures)
+    // By index: a script state may insert NPCs while this runs (they move next step).
+    const usize creatureCount = m_creatures.size();
+    for (usize index = 0; index < creatureCount; ++index)
     {
-        Creature& c = *owned;
+        Creature& c = *m_creatures[index];
         AnimatedFigure& f = *c.figure;
         c.positionBefore = c.position;
         c.yawBefore = c.yaw;
@@ -239,6 +241,14 @@ void Engine::fixedUpdateCreatures(f32 seconds)
             }
         }
 
+        if (c.body || c.character)
+        {
+            fixedUpdateAi(c, seconds); // routine, state, commands (M9 part B)
+            if (!c.simulated)
+            {
+                continue; // far from the player: neither walked nor animated (AI LOD)
+            }
+        }
         walkNpc(c, seconds); // human NPCs: their capsule along the route sets position, yaw and speed (M9)
         animation::Animator& a = f.animator;
         a.setFloat("speed", c.speed);
@@ -250,6 +260,7 @@ void Engine::fixedUpdateCreatures(f32 seconds)
         a.update(seconds,
                  [&](std::string_view clip, std::string_view event)
                  {
+                     handEvent(c, event); // broom, mug (M9 part B)
                      f.events.push_front(std::format(
                          "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));
                      if (f.events.size() > kShownEvents)
@@ -283,6 +294,7 @@ void Engine::fixedUpdateCreatures(f32 seconds)
         f.posePrevious = std::move(f.poseNow);
         f.poseNow = a.pose();
     }
+    m_routineMinute = m_gameTime.totalMinutes(); // routines are checked once per game minute (M9 part B)
 }
 
 void Engine::drawCreatures(bool shadow, u32 cascade)
@@ -296,10 +308,22 @@ void Engine::drawCreatures(bool shadow, u32 cascade)
             continue;
         }
         const f32 turn = std::remainder(c.yaw - c.yawBefore, 2.0f * glm::pi<f32>());
-        drawAnimatedFigure(
-            *c.figure,
-            creatureMatrix(glm::mix(c.positionBefore, c.position, alpha), c.yawBefore + turn * alpha), shadow,
-            cascade);
+        const Mat4 transform =
+            creatureMatrix(glm::mix(c.positionBefore, c.position, alpha), c.yawBefore + turn * alpha);
+        drawAnimatedFigure(*c.figure, transform, shadow, cascade);
+        if (c.handItem != nullptr && c.handBone < c.figure->modelSpace.size())
+        {
+            const Mat4 at = transform * c.figure->modelSpace[c.handBone];
+            if (shadow)
+            {
+                m_meshRenderer.drawShadow(*m_device, c.handItem->mesh, c.handItem->materials, at,
+                                          m_cascades[cascade]);
+            }
+            else
+            {
+                m_meshRenderer.draw(*m_device, c.handItem->mesh, c.handItem->materials, at, m_camera);
+            }
+        }
     }
 }
 

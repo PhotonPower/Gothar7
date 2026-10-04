@@ -20,3 +20,18 @@ Item "it_key" {
     category = "key",
     value = 0,
 }
+
+-- Gegenstände der Tagesabläufe (M9): Die NPCs nehmen sie bei der Animation in die Hand (npc_play).
+Item "it_broom" {
+    name = "Besen",
+    mesh = "items/it_broom.glb",
+    category = "misc",
+    value = 2,
+}
+
+Item "it_mug" {
+    name = "Krug",
+    mesh = "items/it_mug.glb",
+    category = "misc",
+    value = 3,
+}

@@ -98,6 +98,7 @@ Result<void> Engine::initScripts()
     bindMobFunctions();
     bindUseFunctions();
     bindNpcFunctions();
+    bindAiFunctions();
     m_scripts->loadAll();
     buildHero();
     for (const script::ScriptError& e : m_scripts->errors())
@@ -318,43 +319,62 @@ Result<void> Engine::insertInstance(std::string_view name, u32 count)
     }
     if (const script::Instance* npc = m_scripts->findInstance("Npc", name))
     {
-        const std::string_view figure =
-            npc->fields["figure"].isString() ? npc->fields["figure"].asString() : kDefaultNpcFigure;
         for (u32 i = 0; i < count; ++i)
         {
             const Vec3 at =
                 ground(origin + ahead * 2.5f + side * (1.0f * (static_cast<f32>(i) - 0.5f * (count - 1))));
             const Vec3 toPlayer = origin - at;
-            auto spawned = spawnAnimated(name, figure, kHumanGraph, at, std::atan2(-toPlayer.x, -toPlayer.z));
-            if (!spawned)
+            if (auto spawned = spawnNpc(name, at, std::atan2(-toPlayer.x, -toPlayer.z)); !spawned)
             {
-                return Error{std::format("{}: {}", name, spawned.error().message)};
-            }
-            // A capsule to walk with (M9): NPCs collide and follow the ground like the hero.
-            if (m_physics.valid())
-            {
-                physics::CharacterDesc body;
-                body.userData = 0;
-                if (auto controller = physics::CharacterController::create(m_physics, body, at))
-                {
-                    creature(spawned.value())->body = std::move(controller).value();
-                }
-            }
-            // Its values and inventory (pickpocketing, M8 part D); a broken instance only loses those.
-            if (auto character = gameplay::Character::fromInstance(*npc, itemLookup()))
-            {
-                creature(spawned.value())->character =
-                    std::make_unique<gameplay::Character>(std::move(character).value());
-            }
-            else
-            {
-                G7_LOG_WARN("engine", "{}", character.error().message);
+                return spawned.error();
             }
         }
         G7_LOG_INFO("engine", "inserted {} x {} ({})", count, name, npc->fields["name"].asString());
         return {};
     }
     return Error{std::format("unknown instance \"{}\" (no Item or Npc of that name)", name)};
+}
+
+Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
+{
+    const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", name) : nullptr;
+    if (npc == nullptr)
+    {
+        return Error{std::format("no Npc \"{}\"", name)};
+    }
+    const std::string_view figure =
+        npc->fields["figure"].isString() ? npc->fields["figure"].asString() : kDefaultNpcFigure;
+    auto spawned = spawnAnimated(name, figure, kHumanGraph, at, yaw);
+    if (!spawned)
+    {
+        return Error{std::format("{}: {}", name, spawned.error().message)};
+    }
+    Creature* c = creature(spawned.value());
+    // A capsule to walk with (M9): NPCs collide and follow the ground like the hero.
+    if (m_physics.valid())
+    {
+        physics::CharacterDesc body;
+        body.userData = 0;
+        if (auto controller = physics::CharacterController::create(m_physics, body, at))
+        {
+            c->body = std::move(controller).value();
+        }
+    }
+    // Its values and inventory (pickpocketing, M8 part D); a broken instance only loses those.
+    if (auto character = gameplay::Character::fromInstance(*npc, itemLookup()))
+    {
+        c->character = std::make_unique<gameplay::Character>(std::move(character).value());
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "{}", character.error().message);
+    }
+    // Its daily routine (M9 part B), if the instance names one.
+    if (npc->fields["routine"].isString())
+    {
+        c->routine = std::string(npc->fields["routine"].asString());
+    }
+    return spawned.value();
 }
 
 void Engine::setConsoleOpen(bool open) noexcept

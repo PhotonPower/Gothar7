@@ -35,6 +35,9 @@ Ein NPC ist an seinem Ziel angekommen (npc_goto).
 ### `on("npc_blocked", fn(npc: string, target: string))`
 Ein NPC kommt nicht weiter und hat aufgegeben (nach mehrfachem Neuplanen).
 
+### `on("npc_said", fn(npc: string, text: string))`
+Ein NPC hat etwas gesagt (npc_say).
+
 ### `on("pickpocket", fn(npc: string, item: string))`
 Der Held hat einem NPC etwas aus der Tasche gezogen.
 
@@ -145,8 +148,41 @@ Schließt ein Mob-Vob auf (Truhe, Tür), etwa wenn eine Quest es öffnet.
 
 ## NPCs
 
-### `npc_goto(npc: string, target: string, run?: boolean) -> boolean`
-Schickt den (ersten eingefügten) NPC dieser Instanz zu einem Wegpunkt oder Freepoint (Name ohne Rücksicht auf Groß- und Kleinschreibung) über das Wegnetz; `run` rennt. Fehler, wenn es keinen Weg gibt. Ankunft: Ereignis `npc_arrived`.
+### `insert_npc(npc: string, at?: string) -> boolean`
+Setzt ein Npc an einen Wegpunkt oder Freepoint (ohne `at`: an den Ort des passenden Eintrags seines Tagesablaufs, `routine` der Instanz) und startet den Tagesablauf.
+
+### `npc_clear(npc: string)`
+Leert die Befehlsliste des NPCs (er bleibt, wo er ist).
+
+### `npc_goto(npc: string, target: string, run?: boolean)`
+Reiht ein: Der NPC geht (oder rennt) über das Wegnetz zu einem Wegpunkt oder Freepoint (Name ohne Rücksicht auf Groß- und Kleinschreibung). Ankunft: Ereignis `npc_arrived`.
+
+### `npc_goto_freepoint(npc: string, type: string, radius?: number, run?: boolean)`
+Reiht ein: zum nächsten freien Freepoint dieses Typs (`"SIT"`, `"CAMPFIRE"` ...) im Umkreis (Vorgabe 10 m), reserviert ihn und dreht sich in seine Richtung. Gibt es keinen, bleibt er stehen.
+
+### `npc_play(npc: string, ambient: string, item?: string)`
+Reiht ein: eine Tagesablauf-Animation (`"sit_ground"`, `"guard"` ... – Zustände amb_<x>_in, amb_<x>, amb_<x>_out des Menschen-Graphen; `"idle_look"` und `"react_warn"` usw. direkt), bis npc_stop oder Gehen sie beendet. `item` (`"it_broom"`) nimmt er bei `item_to_hand` in die rechte Hand und legt es bei `item_from_hand` bzw. am Ende weg.
+
+### `npc_say(npc: string, text: string)`
+Reiht ein: einen Satz sagen (bis zu den Dialogen in M10 eine Einblendung in der Nähe des Helden; Ereignis `npc_said`).
+
+### `npc_start_state(npc: string, state: string, at?: string)`
+Unterbricht: beendet den laufenden Zustand (finish) und startet einen anderen. Endet er ("done"), greift wieder der Tagesablauf.
+
+### `npc_state(npc: string) -> {state, routine, ambient, at, commands, animation}`
+Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste und Zustand des Animationsgraphen.
+
+### `npc_stop(npc: string)`
+Reiht ein: die laufende Tagesablauf-Animation beenden (_out).
+
+### `npc_turn(npc: string, point: string)`
+Reiht ein: in die Richtung (`dir`) eines Wegpunkts oder Freepoints drehen.
+
+### `npc_wait(npc: string, seconds: number)`
+Reiht ein: warten.
+
+### `set_routine(npc: string, routine: string)`
+Wechselt den Tagesablauf (Kapitelwechsel); der passende Eintrag beginnt sofort. `""` schaltet ihn ab (der NPC tut dann nur, was Skripte ihm auftragen).
 
 ## Welt
 

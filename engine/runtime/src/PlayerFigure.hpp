@@ -108,6 +108,51 @@ struct Creature
     f32 stuckSeconds = 0.0f;
     u32 replans = 0;
     Vec3 progressAt{0.0f};
+    // Behaviour (M9 part B, EngineAi.cpp): command queue, script state, routine, ambient animation,
+    // freepoint.
+    struct Command
+    {
+        enum class Kind : u8
+        {
+            GoTo,
+            GoToFreepoint,
+            Turn,
+            Play,
+            Stop,
+            Wait,
+            Say,
+        };
+        Kind kind = Kind::Wait;
+        std::string text; ///< target, ambient, freepoint type, words
+        std::string item; ///< Play: the item taken into the hand (broom, mug)
+        f32 value = 0.0f; ///< seconds, radius
+        bool run = false;
+    };
+    std::deque<Command> commands;
+    bool commandRunning = false;
+    f32 commandTime = 0.0f;
+    std::string state;       ///< zs_... running, empty: none
+    std::string stateAt;     ///< the way point it was started for
+    bool stateBegun = false; ///< begin() ran (not while far away)
+    f32 stateLoopTime = 0.0f;
+    f32 loopTimer = 0.0f;
+    std::string routine;   ///< rtn_...
+    i32 routineEntry = -1; ///< entry whose state runs, -1: none (or interrupted)
+    std::string ambient;   ///< "sit_ground" while playing amb_sit_ground
+    enum class AmbientPhase : u8
+    {
+        None,
+        In,
+        Loop,
+        Out,
+    } ambientPhase = AmbientPhase::None;
+    i32 freepoint = -1;        ///< reserved freepoint index
+    std::optional<f32> turnTo; ///< yaw to turn to
+    bool simulated = true;     ///< near enough to the player (AI LOD)
+    /// The item of the ambient animation: taken at its event item_to_hand, put away at item_from_hand.
+    std::string handItemWanted;
+    const LoadedModel* handItem = nullptr; ///< drawn at socket_hand_r
+    usize handBone = 0;
     std::unique_ptr<AnimatedFigure> figure;
     Vec3 position{0.0f}; ///< feet, after the last fixed step
     Vec3 positionBefore{0.0f};
