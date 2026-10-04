@@ -218,6 +218,7 @@ ihrem Bereich binnen 30 Ticks (E).
 ## M10 – Dialoge & Quests  → Meilenstein B
 - [x] Info-System: Bedingung, Beschreibung, Priorität, `important` (NPC spricht an), `permanent`, `onlyOnce` – gesagte Infos in `Story.told`, `important` in 3 m Sichtweite, `approach` geht auf den Spieler zu (A)
 - [x] Dialog-Ablauf: Kamera-Schnitte (Über-die-Schulter), Sprachausgabe/Untertitel, Gesten-Animationen – Untertitel; Sprachausgabe später über die Zeilen-Schlüssel (E4); dlg-Gesten additiv gegen dlg/a_neutral, Mund und Blick (B)
+- [x] Sprechtexte mit Schlüsseln (Vorschlag B, vom Koordinator bestätigt): Texte inline in Lua (E2), `gothar-voice scan` vergibt `<info>_NN` in Quelltext-Reihenfolge (say, choice, Antwort-Tabellen) und Zurufe `svm_<gilde>_<m|f>_<anlass>_NN` (Projektinhaber: Stimme je Gilde und Geschlecht, `Npc.voice` überschreibt) in `assets/source/voice/lines.de.json`; die Engine schlägt den Schlüssel über (Info, Text) nach; Werkzeug `tools/voice` (Streamlit) für TTS-Takes, ins Repo nur der gewählte Take `voice/de/<key>.wav`, alle Takes lokal unter `DATA_ROOT/voice/takes`
 - [x] Kameramodus „Dialog“ der Third-Person-Kamera (aus M5: Schuss/Gegenschuss als Datensatz in `movement.toml` bzw. Dialogdaten) – `data/dialog.lua` (B)
 - [x] Auswahl-Menüs (Choices) innerhalb einer Info – `choice(text, fn)` (A)
 - [x] Handel-Bildschirm und Lernen über Dialog – Tauschhandel in Gulden (Info `trade = true`, `data/trade.lua`), Lehrer über `teach_menu` (`data/teaching.lua`); Händler: alter Mann, Lehrer: Holzfäller (C)
@@ -258,6 +259,7 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 - [ ] 3D-Sound mit Abschwächung, Verdeckung (einfacher Raycast-Filter)
 - [ ] Ambient-Zonen (Wind, Sumpf, Höhle), Zufalls-Einzelgeräusche
 - [ ] Sprachausgabe mit Lippensync-Daten, Untertitel-Synchronisation
+  - Quelle: gewählte Takes `assets/source/voice/<sprache>/<key>.wav` → Cooker `voice/<sprache>/<key>.ogg`; fehlt die Datei, nur Untertitel mit Lesedauer aus der Textlänge
 - [ ] **Dynamisches Musiksystem**: Musik-Zonen, Zustände (Standard/Bedrohung/Kampf) × Tag/Nacht, musikalische Übergänge auf Taktgrenzen, Stingers
 - [ ] Fußschritt-Sounds nach Material
 
@@ -270,6 +272,7 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 - [ ] Charakterbildschirm, Tagebuch-Bildschirm, Karte (falls Karten-Item)
 - [ ] Hauptmenü, Optionen (Grafik, Audio, Steuerung), Ladebildschirm
 - [ ] Lokalisierung (Schlüssel → Text-Tabellen DE/EN), Untertitel
+  - Gesprochene Texte kommen aus `assets/source/voice/lines.<sprache>.json` (eine Datei je Sprache)
 - [ ] Bildschirmtexte (z. B. „Erfahrung +50“), Nachrichten
 
 **DoD:** Das Vertical Slice ist vollständig ohne Debug-UI spielbar.

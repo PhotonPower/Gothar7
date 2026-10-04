@@ -8,7 +8,7 @@ Technologieentscheidungen. Diese Datei regelt Zuständigkeiten, Schnittstellen u
 
 | Name (`/rename`) | Spur | Worktree (Vorschlag) | Zuständig für |
 |---|---|---|---|
-| `engine` | M0–M17 | `C:\dev\Gothar7` | `engine/`, `game/src`, `tests/`, `tools/asset-cooker`, `tools/editor`, Engine-Doku |
+| `engine` | M0–M17 | `C:\dev\Gothar7` | `engine/`, `game/src`, `tests/`, `tools/asset-cooker`, `tools/editor`, `tools/voice`, Engine-Doku |
 | `welt` | W1–W7 | `C:\dev\Gothar7-welt` | `tools/worldgen/`, `assets/source/worlds/`, `docs/design/leonberg-pipeline.md` |
 | `figuren` | F1–F5 | `C:\dev\Gothar7-figuren` | `tools/chargen/`, `assets/source/characters/`, `docs/design/characters-pipeline.md`, `animation-list.md` |
 | `koordinator` | – | `C:\dev\Gothar7-koord` | Reviews, Merges, Roadmap-Gesamtstand, Schnittstellen, Konflikte (siehe `.claude/agents/koordinator.md`) |
@@ -49,6 +49,7 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 | Vob-Typ `water` (Box, Oberfläche = Oberkante, `kind` reserviert) – vereinbart, umgesetzt mit M5 Teil E | engine | welt (Glems) | `docs/modules/world.md` „Vob-Typen“ |
 | Autopilot: `route.json` v1, Protokoll `walk.jsonl` und `walk_summary.json` (`gothar --walk`) | welt (Routen), engine (Autopilot) | welt (W3-Begehung, Auswertung) | `docs/modules/tools.md` „Autopilot“ |
 | Wegnetz `waynet` in `.g7world` v1 (Punkte `WP_`, Freepoints `FP_<TYP>_`, ungerichtete Kanten per Name, `owner: "worldgen"` wie bei Vobs; vereinbart 2026-10-04) | engine | welt (Wegnetz-Vorschlag aus Straßenachsen, W-G), engine (KI M9, Editor M16) | `docs/modules/world.md` „Wegnetz“ |
+| Sprechtexte `assets/source/voice/lines.<sprache>.json` v1 (je Zeile: Schlüssel, Text, Sprecher, `gender` m/f, `voice`, Regieanweisung, Kontext, Status offen/aufgenommen/abgenommen, Takes); gewählter Take als `voice/<sprache>/<key>.wav`, alle Takes unter `voice/<sprache>/takes/<key>__tNN.wav`; Schlüssel `dia_<npc>_<info>_NN` (Dialog) bzw. `svm_<stimme>_<anlass>` (allgemeine Zurufe je Stimme); Pflege mit `tools/voice` (vereinbart 2026-10-04) | Projektinhaber (Texte, TTS-Takes) | engine (M10 Dialoge, M13 Sprachausgabe, M14 Untertitel/Lokalisierung, Cooker `.wav` → `.ogg`) | `tools/voice/README.md`, `docs/modules/audio.md` „Sprache“ |
 | Kollisionsmaße der Monster `[rig.collision]` in `data/monsters/<art>.toml`; Kapsel Mensch r 0,3 / h 1,8 / Hüfte 0,9 / Augen 1,62 m | figuren | engine (M5 C, M9) | `docs/modules/physics.md`, `characters-pipeline.md` §7.1 |
 
 ## Kommunikation

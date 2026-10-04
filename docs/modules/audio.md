@@ -7,7 +7,10 @@
 - **3D-Sounds**: Emitter-Komponente, Abschwächungskurven, Doppler aus, Verdeckung per Raycast (Tiefpass).
 - **Sound-Definitionen** (Daten): Variationen (zufällige Auswahl), Lautstärke/Tonhöhen-Streuung, Reichweite.
 - **Ambient-Zonen**: Loop + zufällige Einzelgeräusche, Überblendung zwischen Zonen, Tag/Nacht-Varianten.
-- **Sprache**: Datei je Text-Schlüssel (`DIA_Ruvin_Hello_11_01.ogg`), Dauer bestimmt Untertitel/Gesprächstempo; Lippensync aus Amplitude oder Phonem-Daten.
+- **Sprache**: Datei je Text-Schlüssel (`voice/de/dia_gate_guard_hello_01.ogg`), Dauer bestimmt Untertitel/Gesprächstempo; Lippensync aus Amplitude oder Phonem-Daten.
+  Quelle ist die Sprechtext-Datenbank `assets/source/voice/lines.<sprache>.json` (Text, Sprecher, M/F, Stimme, Regie, Takes),
+  gepflegt mit `tools/voice`; der gewählte Take liegt als `assets/source/voice/<sprache>/<key>.wav` daneben.
+  Allgemeine Zurufe gibt es je Stimme (`svm_<stimme>_<anlass>`, Stimme aus `Npc.voice`).
 
 ## Dynamisches Musiksystem (Gothic: DirectMusic)
 - Musik-Zone (aus world) → **Thema** (z. B. `CAMP`, `FOREST`, `MINE`).
