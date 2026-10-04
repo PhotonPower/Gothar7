@@ -71,7 +71,7 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 | `mob/chest/t_open`, `s_open`, `t_close` | Truhe öffnen, hineinsehen, schließen | – | open, close | Q | platzhalter (UAL2 `Chest_Open`; `s_open` hält die Pose mit offenem Deckel, `t_close` rückwärts) |
 | `mob/chest/s_picklock` | Schloss knacken | – | (picklock_l/r) | Q | platzhalter (UAL1 `Fixing_Kneeling`) |
 | `mob/anvil/t_start`, `s_work`, `t_stop` | Am Amboss schmieden | – | hit_anvil, sound:anvil_hit | Q | platzhalter (UAL2 `TreeChopping_Loop`, Überblendung 12 Frames) |
-| `mob/bed/t_lie_down`, `s_lie`, `t_stand_up` | Ins Bett legen, liegen, aufstehen | ja (nur t_) | lie, stand | Q→ | platzhalter (UAL2 `LayToIdle` + Root Motion aufs Bett; `t_lie_down` rückwärts, `s_lie` hält das Liegen) |
+| `mob/bed/t_lie_down`, `s_lie`, `t_stand_up` | Ins Bett legen, liegen, aufstehen | ja (nur t_) | lie, stand | Q→ | platzhalter (UAL2 `LayToIdle` + Root Motion aufs Bett; `t_lie_down` rückwärts, `s_lie` hält das Liegen; liegt entlang der Längsseite, Kopfende −X des Betts, Drehung im Becken) |
 | `mob/door/t_open` | Tür öffnen/schließen | – | open | Q | platzhalter (UAL1 `Interact`) |
 
 ### Prio B – Fortbewegung je Waffenmodus (ausgeschrieben, F2)
