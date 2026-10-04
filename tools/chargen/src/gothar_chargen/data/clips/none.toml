@@ -190,3 +190,35 @@ markers = { use = 45 }
 [[clip]]
 name = "none/t_pickpocket"
 from = "ual1:Interact"
+
+# --- idle variants and reactions (Prio C, M9; keyframe placeholders, mocap in F4) -----------------
+
+[[clip]]
+name = "none/s_idle_look"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [25, "left"], [60, "left"], [90, "right"], [125, "right"], [150, "rest"]], poses = { left = { rotate = { neck = [["Z", 20]], head = [["Z", 20]], spine_03 = [["Z", 8]] } }, right = { rotate = { neck = [["Z", -20]], head = [["Z", -20]], spine_03 = [["Z", -8]] } } } }
+
+[[clip]]
+name = "none/t_idle_scratch"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [18, "a"], [26, "b"], [34, "a"], [42, "b"], [50, "a"], [66, "rest"]], poses = { a = { rotate = { upperarm_r = [["X", -150]], lowerarm_r = [["X", 30], ["Y", -90]], neck = [["X", 10], ["Z", -8]] } }, b = { rotate = { upperarm_r = [["X", -145]], lowerarm_r = [["X", 25], ["Y", -100]], neck = [["X", 10], ["Z", -8]] } } } }
+
+[[clip]]
+name = "none/t_warn"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [10, "up"], [20, "wag"], [28, "up"], [36, "wag"], [56, "rest"]], poses = { up = { rotate = { upperarm_r = [["X", -120]], lowerarm_r = [["Y", -60]], spine_02 = [["X", 6]], neck = [["X", 8]] } }, wag = { rotate = { upperarm_r = [["X", -115]], lowerarm_r = [["Y", -75]], spine_02 = [["X", 6]], neck = [["X", 8]] } } } }
+
+[[clip]]
+name = "none/t_point"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [14, "point"], [44, "point"], [60, "rest"]], poses = { point = { rotate = { upperarm_r = [["X", -90], ["Y", 30], ["Z", 30]], lowerarm_r = [["X", 30], ["Y", 30]], spine_02 = [["Z", -6]], neck = [["Z", -5]] } } } }
+
+[[clip]]
+name = "none/t_surprised"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [6, "jolt"], [30, "jolt"], [50, "rest"]], poses = { jolt = { move = { pelvis = [0.0, 0.05, -0.02] }, rotate = { spine_02 = [["X", -10]], neck = [["X", -12]], upperarm_r = [["Y", -35]], upperarm_l = [["Y", 35]], lowerarm_r = [["Y", -60]], lowerarm_l = [["Y", 60]] } } } }
+
+[[clip]]
+name = "none/t_search"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [22, "left"], [50, "left"], [80, "right"], [108, "right"], [130, "rest"]], poses = { left = { rotate = { spine_02 = [["Z", 25], ["X", 8]], neck = [["Z", 20]], head = [["Z", 10]] } }, right = { rotate = { spine_02 = [["Z", -25], ["X", 8]], neck = [["Z", -20]], head = [["Z", -10]] } } } }

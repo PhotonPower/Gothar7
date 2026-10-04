@@ -1,5 +1,6 @@
 # Set "bow" -> assets/source/characters/anims/human/bow.glb (Prio B, placeholders)
-# Bow: no CC0 source -> keyframe stance (platzhalter-K), bow held low in the left hand.
+# Bow: no CC0 source -> keyframe stance (platzhalter-K), bow held low in the left hand, pointing
+# down and forward.
 # Locomotion: arms and head from the stance, legs, pelvis and spine from the none clips
 # (keeps the spine counter-rotation of strafe/turn; the stance's spine posture is dropped).
 
@@ -21,6 +22,8 @@ frames = 60
 [clip.params.rotations]
 upperarm_l = [["Y", 60], ["Z", -35]]
 lowerarm_l = [["Z", -15]]
+# the bow points down and forward, its string (item +X) towards the body (F6 check)
+hand_l = [["X", 45], ["Y", -75], ["Z", 60]]
 upperarm_r = [["Y", -75]]
 lowerarm_r = [["Z", 15]]
 

@@ -48,6 +48,13 @@ Format::
     ...
     markers = { hit_start = 8, hit_end = 14 }     # fixed events (frame numbers)
 
+    [[clip]]
+    name = "amb/s_train_sword"
+    from = "ual2:Sword_Regular_Combo"
+    close = 12                                    # loops only: fade the last 12 frames into the
+                                                  # first, for sources that do not loop
+    in_place = true                               # no horizontal travel (sources that walk)
+
 Monster sets (§7) name their rig: ``rig = "wolf"`` -> data/monsters/wolf.toml, clips
 ``wolf/<type>_<action>``, output monsters/wolf/anims/<set>.blend. Their clip sources are .blend
 files written by ``gothar-chargen monster`` (bones already renamed: mapping "identity").
@@ -124,6 +131,8 @@ class ClipSpec:
     params: tuple[tuple[str, object], ...] = ()  # for "keyframe" (sorted key/value pairs)
     helper: bool = False  # built for other clips only, not exported
     markers: tuple[tuple[str, int], ...] = ()  # fixed events (name, frame)
+    close: int = 0  # loops: frames at the end faded into the first frame
+    in_place: bool = False  # no horizontal travel of root and pelvis (sources that walk)
 
     @property
     def param(self) -> dict[str, object]:
@@ -268,9 +277,24 @@ def parse_set_spec(data: dict, external: frozenset[str] = frozenset()) -> SetSpe
         ):
             raise ClipSpecError(f"{where}: markers must map event names to frames >= 0")
         marker_list = tuple(sorted(markers.items(), key=lambda m: (m[1], m[0])))
+        close = raw.get("close", 0)
+        if not isinstance(close, int) or close < 0 or close == 1:
+            raise ClipSpecError(f"{where}: close must be a number of frames >= 2")
+        if close and not name.split("/")[-1].startswith("s_"):
+            raise ClipSpecError(f"{where}: close is for loops (s_...) only")
+        place = raw.get("in_place", False)
+        if not isinstance(place, bool):
+            raise ClipSpecError(f"{where}: in_place must be true or false")
         clips.append(
             ClipSpec(
-                **{**spec.__dict__, "events": events, "helper": helper, "markers": marker_list}
+                **{
+                    **spec.__dict__,
+                    "events": events,
+                    "helper": helper,
+                    "markers": marker_list,
+                    "close": close,
+                    "in_place": place,
+                }
             )
         )
         seen.add(name)

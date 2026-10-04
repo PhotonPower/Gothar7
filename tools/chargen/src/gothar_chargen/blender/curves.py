@@ -122,6 +122,40 @@ def blend(a: Curves, b: Curves, frames: int, bones: list[str]) -> Curves:
     return to_curves(poses)
 
 
+def in_place(a: Curves, rest: dict, bones: list[str]) -> Curves:
+    """Removes horizontal travel: root stays where it starts, the pelvis keeps the horizontal
+    position of the first frame (heights and rotations stay). `rest`: bone -> rest quaternion."""
+    n = int(length(a))
+    first = pose_at(a, 0, bones)
+    poses = []
+    for frame in range(n + 1):
+        pose = pose_at(a, frame, bones)
+        for bone in ("root", "pelvis"):
+            q, loc = pose.get(bone, (None, None))
+            if loc is None:
+                continue
+            start = first[bone][1] if first[bone][1] is not None else loc
+            w, w0 = rest[bone] @ loc, rest[bone] @ start  # world axes, Blender Z up
+            w.x, w.y = w0.x, w0.y
+            pose[bone] = (q, rest[bone].inverted() @ w)
+        poses.append(pose)
+    return to_curves(poses)
+
+
+def close_loop(a: Curves, frames: int, bones: list[str]) -> Curves:
+    """The last `frames` frames of a clip faded into its first frame, so it loops."""
+    n = int(length(a))
+    start = pose_at(a, 0, bones)
+    poses = []
+    for frame in range(n + 1):
+        pose = pose_at(a, frame, bones)
+        t = (frame - (n - frames)) / frames
+        if t > 0:
+            pose = mix(pose, start, t * t * (3 - 2 * t))
+        poses.append(pose)
+    return to_curves(poses)
+
+
 def layer(
     base: Curves, upper: Curves, upper_bones: set[str], bones: list[str], loop: bool = False
 ) -> Curves:

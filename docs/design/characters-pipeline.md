@@ -186,7 +186,8 @@ events = [
   Fehlt ein Event, nimmt die Engine die Mitte des `t_`-Clips.
 - **Mob-Modelle (welt):** Tür = Türblatt, Ursprung an der Angel unten, die Engine dreht den ganzen Mob um +Y;
   Truhe mit Knoten `MOB_LID`, Pivot am Scharnier (Drehung um seine X-Achse). Testmaße: Truhe 0,9×0,6×0,6 m,
-  Amboss Arbeitshöhe 0,8 m, Bett 2,0×0,9 m (Liegefläche 0,45 m), Türklinke 1,0 m. Das Bett liegt entlang X
+  Amboss Arbeitshöhe 0,8 m, Bett 2,0×0,9 m (Liegefläche 0,45 m), Türklinke 1,0 m, Bank Sitzhöhe 0,45 m,
+  Tiefe 0,35 m, Länge 1,5 m (Slot 0,38 m vor der Mitte, Blick von der Bank weg). Das Bett liegt entlang X
   (Längsseite zu +Z, Slot davor), **Kopfende −X**: Die Figur liegt entlang X, Kopf bei −X (vom Slot aus links).
 - **Gegenstände (`items/<id>.glb`, F6):** Ursprung = Griffpunkt; Item-+Y auf Socket-+Y (aus der Faust zur Klinge
   bzw. Spitze), Item-+Z auf Socket-+Z; die Engine übernimmt die volle Drehung des Sockets. Einzelheiten,
@@ -231,7 +232,9 @@ Python, Ordner `tools/chargen/` (Blender-Add-on + Kommandozeile), Tests mit pyte
    (Herkunft je Clip in `data/clips/<set>.toml`: Bibliothek, rückwärts, Überblendung, Verkettung oder
    **Keyframe-Rezept** für Platzhalter `platzhalter-K`, `blender/keyframes.py`, oder **Schichtung** `layer`:
    Beine aus einem Clip, Arme/Kopf aus einer Haltung; `depends` nutzt Clips anderer Sets), Pose-Marker → `events.toml`,
-   Root-Motion-Extraktion bzw. In-Place-Bereinigung je Clip-Einstellung.
+   Root-Motion-Extraktion bzw. In-Place-Bereinigung je Clip-Einstellung. Je Clip optional `in_place = true`
+   (kein waagrechtes Wandern von root und Becken, für Quellen, die laufen) und `close = N` (nur Schleifen:
+   die letzten N Frames blenden in den ersten über, für Quellen, die nicht geschlossen sind).
 4. **Animationslisten-Abgleich** (F2, `gothar-chargen report`, umgesetzt): vergleicht `animation-list.md` mit den vorhandenen Clips →
    Fortschrittsbericht (fehlend / Platzhalter / fertig).
 5. **Figuren-Baukasten** (F3, `gothar-chargen assemble`, umgesetzt): setzt Körper/Kleidung + Kopf + Haare
@@ -455,6 +458,8 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_bow_short` | 1,2 m | Holz (Wood 049), Ledergriff, Sehne |
   | `it_apple`, `it_bread`, `it_potion_heal_small` | 7 / 18 / 17 cm | prozedural (Glas undurchsichtig) |
   | `it_lockpick`, `it_key` | 15 / 10 cm | Schmiedeeisen |
+  | `it_broom` (Besen, Ursprung im oberen Griff, +Y zum Reisig) | 1,4 m | Holz, Reisig (prozedural), Bindung |
+  | `it_mug` (Krug, Ursprung am Henkel, +Y nach oben) | 12 cm | dunkles Holz (Wood 060) |
 
   Alle Schlüssel-Items (`it_key_chest_hut`, …) nutzen dasselbe Modell `it_key.glb`; die Lua-Items und die Pfade
   legt engine an.

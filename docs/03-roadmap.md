@@ -405,7 +405,7 @@ Menschen aus MPFB2-Rezepten (`gothar-chargen human`), Textur-Vertrag, Gesichts-M
 leicht/mittel, Kopfbedeckungen. F5 läuft: Monster-Vertrag mit engine, Validator-Regeln und Werkzeuge stehen (seit der M6-Durchsicht auch: Füße
 gleiten nicht, Liegeposen über dem Boden), erste Art `wolf` mit vollständigem
 Mindest-Set (Platzhalter): `wolf`, `keiler`, `laufvogel`; offen: eigene Rigs/Arten mit Design-Doku (nach Stil-Entscheidung).
-F6 läuft: erste 9 Waffen und Handgegenstände (`gothar-chargen build-items`, Validator `item.*`); Essen/Trinken mit den Gegenständen nachgerichtet.
+F6 läuft: 11 Waffen und Handgegenstände (`gothar-chargen build-items`, Validator `item.*`), zuletzt Besen und Krug für M9; Essen/Trinken und Bogenhaltung mit den Gegenständen nachgerichtet.
 
 ## F1 – Referenz-Rig & Konventionen  (keine Engine-Abhängigkeit; Voraussetzung für M6)
 - [x] Referenz-Rig `assets/source/characters/rig/human_reference.blend` nach animation.md („Referenz-Skelett“) – T-Pose, erzeugt mit `gothar-chargen build-rig`, mit Gliederpuppe als Testfigur
@@ -443,6 +443,7 @@ Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine�
 ## F4 – Gothic-spezifische Animationen  (benötigt F2; für M8–M11)
 - [ ] Mocap-Workflow testen (2–3 Dienste), Entscheidung dokumentieren
 - [ ] Mob-Interaktionen, Item-Benutzung, Ambient-Routinen, Dialog-Gesten
+  - Stand: Platzhalter für M8 (Mobs, Items) und M9 (Routinen und Reaktionen nach engines Liste: Set `amb` mit Sitzen, Wache, Anlehnen, Reden, Zuhören, Schlafen, Lagerfeuer, Fegen, Krug, Schwerttraining, Holzhacken, Ernten, Gießen, Reparieren; Bank als Mob; `none/s_idle_look`, `t_idle_scratch`, `t_warn`, `t_point`, `t_surprised`, `t_search`); Dialog-Gesten folgen mit M10
 - [ ] Nahkampf je Talentstufe, Fernkampf, Magie, Treffer/Tod/Bewusstlos
 - [ ] Alle **Prio-B**-Animationen fertig
 
