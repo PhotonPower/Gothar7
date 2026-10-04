@@ -3,6 +3,29 @@
 Erzeugt aus den Bindings der Engine (`gothar --script-api=docs/script-api.md`) – nicht von Hand bearbeiten.
 Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
+## Dialoge
+
+### `choice(text: string, fn: function)`
+Im Dialog: eine Antwort zur Auswahl (Gothic Info_AddChoice). Gewählt sagt der Held `text`, dann läuft `fn(npc)`; sie kann neue Antworten hinzufügen. Ohne Antworten folgt wieder die Themenliste.
+
+### `dialog_choose(n: integer)`
+Wählt den n-ten Eintrag (ab 1) der Auswahl (Konsole, Tests).
+
+### `dialog_state() -> {npc, speaker, line, key, options} | nil`
+Der laufende Dialog: wer spricht, die Zeile und ihr Schlüssel, bzw. die Auswahl (Liste der Texte).
+
+### `end_dialog()`
+Im Dialog: beendet ihn, sobald die Zeilen gesagt sind.
+
+### `info_told(info: string) -> boolean`
+Ob die Info schon gesagt wurde.
+
+### `say(who: string, text: string)`
+Im Dialog: eine Zeile. `who` ist der NPC (das Argument von run) oder `"hero"`. Sie steht als Untertitel mit Sprechername, so lange wie ihre Länge verlangt (überspringbar); Schlüssel `<info>_<nn>` für Übersetzung und Sprachaufnahmen.
+
+### `talk(npc: string) -> boolean`
+Beginnt einen Dialog mit dem NPC (Konsole, Tests; im Spiel: Aktionstaste auf ihn).
+
 ## Ereignisse
 
 ### `on("assess_enter_room", fn(npc: string, owner: string, area: string))`
@@ -22,6 +45,12 @@ Der NPC sieht, wie der Spieler etwas stiehlt bzw. beim Taschendiebstahl erwischt
 
 ### `on("assess_use_mob", fn(npc: string, owner: string, mob: string))`
 Der NPC sieht, wie der Spieler einen fremden Mob (Truhe, Tür …) benutzt oder knackt.
+
+### `on("dialog_ended", fn(npc: string))`
+Ein Dialog ist vorbei.
+
+### `on("dialog_started", fn(npc: string))`
+Ein Dialog beginnt.
 
 ### `on("item_crafted", fn(recipe: string))`
 Der Held hat an einem Mob etwas hergestellt (Amboss: nach seinen Schlägen).

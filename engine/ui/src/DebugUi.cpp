@@ -793,6 +793,51 @@ void DebugUi::focusLabel(Vec2 screen, std::string_view text)
     draw->AddText(at, IM_COL32(255, 255, 255, 255), label.c_str());
 }
 
+void DebugUi::dialogPanel(DialogPanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    const ImVec2 view = ImGui::GetMainViewport()->Size;
+    const f32 width = std::min(view.x - 40.0f * scale, 820.0f * scale);
+    ImGui::SetNextWindowPos(ImVec2((view.x - width) * 0.5f, view.y - 20.0f * scale), ImGuiCond_Always,
+                            ImVec2(0.0f, 1.0f));
+    ImGui::SetNextWindowSize(ImVec2(width, 0.0f), ImGuiCond_Always);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.04f, 0.04f, 0.05f, 0.85f));
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                                   ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
+                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing;
+    if (ImGui::Begin("##dialog", nullptr, flags))
+    {
+        if (!panel.line.empty())
+        {
+            ImGui::TextColored(ImVec4(0.95f, 0.8f, 0.45f, 1.0f), "%s", panel.speaker.c_str());
+            ImGui::PushTextWrapPos(width - 20.0f * scale);
+            ImGui::TextUnformatted(panel.line.c_str());
+            ImGui::PopTextWrapPos();
+        }
+        else
+        {
+            for (usize i = 0; i < panel.options.size(); ++i)
+            {
+                const bool chosen = static_cast<i32>(i) == panel.selected;
+                ImGui::PushStyleColor(ImGuiCol_Text, chosen ? ImVec4(1.0f, 0.9f, 0.55f, 1.0f)
+                                                            : ImVec4(0.75f, 0.75f, 0.75f, 1.0f));
+                if (ImGui::Selectable(panel.options[i].c_str(), chosen))
+                {
+                    panel.clicked = static_cast<i32>(i);
+                }
+                if (ImGui::IsItemHovered())
+                {
+                    panel.selected = static_cast<i32>(i);
+                }
+                ImGui::PopStyleColor();
+            }
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleColor();
+}
+
 void DebugUi::aiPanel(AiPanel& panel)
 {
     ImGui::SetCurrentContext(m_impl->context);

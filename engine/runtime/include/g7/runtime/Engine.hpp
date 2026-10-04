@@ -49,6 +49,7 @@
 #include <g7/world/Water.hpp>
 #include <g7/world/WorldFile.hpp>
 
+#include <deque>
 #include <functional>
 #include <map>
 #include <memory>
@@ -459,6 +460,15 @@ public:
     [[nodiscard]] bool npcWalking(u32 id) const noexcept;
     /// The first inserted NPC of an Npc instance.
     [[nodiscard]] std::optional<u32> npcByInstance(std::string_view instance) const noexcept;
+    // Dialogues (M10 part A, EngineDialog.cpp)
+    /// Starts talking to an NPC: an important Info runs first, then the menu of Infos.
+    [[nodiscard]] Result<void> startDialog(u32 npc);
+    [[nodiscard]] bool inDialog() const noexcept { return m_dialog.has_value(); }
+    /// Picks the n-th entry (from 0) of the menu shown (an Info, an answer, "Ende").
+    void dialogChoose(usize index);
+    /// Skips the line being said.
+    void dialogSkip();
+    void endDialog();
     /// Whether one can walk straight from a to b (a sphere at knee-to-hip height meets nothing).
     [[nodiscard]] bool walkableLine(const Vec3& a, const Vec3& b) const;
 
@@ -626,6 +636,16 @@ private:
     [[nodiscard]] bool ownedBy(const Creature& c, std::string_view owner) const;
     void loadPerceptionSettings();
     void bindPerceptionFunctions();
+    // Dialogues (EngineDialog.cpp)
+    [[nodiscard]] std::vector<const script::Instance*> availableInfos(std::string_view npc, bool important);
+    void runInfo(const script::Instance& info);
+    void buildDialogMenu();
+    void queueLine(std::string speaker, std::string text);
+    void fixedUpdateDialog(f32 seconds);
+    void dialogInput();
+    void dialogUi();
+    void dialogPerception(Creature& c, f32 distance, bool sees);
+    void bindDialogFunctions();
     void updateRoutine(Creature& c);
     void beginState(Creature& c, std::string_view state, std::string_view at);
     void finishState(Creature& c);
@@ -957,7 +977,37 @@ private:
     f32 m_runNoiseTimer = 0.0f;
     u64 m_routineMinute = ~0ull;      // the game minute routines were last checked
     f32 m_simulationDistance = 80.0f; // [ai] simulation_distance: AI LOD
-    std::string m_aiFilter;           // window "AI"
+    // Dialogue (M10 part A)
+    struct DialogLine
+    {
+        std::string speaker; ///< NPC instance or "hero"
+        std::string name;    ///< shown: "Torwache", "Held"
+        std::string text;
+        std::string key; ///< "<info>_<nn>": translation and voice files later
+        f32 seconds = 1.5f;
+    };
+    struct DialogOption
+    {
+        std::string text;
+        std::string info;           ///< an Info of the menu
+        script::FunctionRef choice; ///< an answer of the running Info
+        bool end = false;           ///< "Ende"
+    };
+    struct Dialog
+    {
+        u32 npc = 0;
+        std::string npcName;
+        std::string info; ///< running
+        u32 lineNumber = 0;
+        std::deque<DialogLine> lines;
+        f32 lineTime = 0.0f;
+        std::vector<DialogOption> choices; ///< answers added by the running Info
+        std::vector<DialogOption> menu;    ///< shown when no line is said
+        i32 selected = 0;
+        bool endRequested = false;
+    };
+    std::optional<Dialog> m_dialog;
+    std::string m_aiFilter; // window "AI"
     u32 m_aiSelected = 0;
     std::optional<Config> m_creatureBodies; // data/creatures.toml, read on first use (M9 part D)
     std::vector<WorldItem> m_worldItems;

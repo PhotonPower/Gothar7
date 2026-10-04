@@ -265,6 +265,21 @@ void Engine::fixedUpdateAi(Creature& c, f32 seconds)
         return;
     }
     perceive(c, seconds); // M9 part C
+    if (c.talking)
+    {
+        // In a dialogue: stands and faces the player (M10).
+        if (m_player.valid())
+        {
+            const f32 turn = wrapAngle(gameplay::yawOf(m_player.feet() - c.position) - c.yaw);
+            c.yaw = wrapAngle(c.yaw + std::clamp(turn, -kTurnRate * seconds, kTurnRate * seconds));
+        }
+        c.route.reset();
+        return;
+    }
+    if (c.approaching && c.commands.empty() && !c.commandRunning)
+    {
+        c.approaching = false; // walked up (or gave up): an important Info may start
+    }
     runCommands(c, seconds);
     // The state's loop while nothing is queued.
     if (!c.state.empty() && c.stateBegun && c.commands.empty() && !c.commandRunning && m_scripts)
