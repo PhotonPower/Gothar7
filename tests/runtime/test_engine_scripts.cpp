@@ -487,3 +487,146 @@ TEST_CASE("Engine mobs: the spots of the PR play guide face their mobs")
     CHECK(focusFrom("teleport(28, 0, -4.5)", kWest) == "Bett");
     CHECK(focusFrom("teleport(31, 0, -7.5)", 0.0f).find("Tür") != std::string::npos); // facing south (-Z)
 }
+
+TEST_CASE("Engine use: eating, drinking, reading - only standing, effects at the use event")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    for (int i = 0; i < 20; ++i) // the hero lands on the start point
+    {
+        REQUIRE(engine.runFrame());
+    }
+    const auto runWhile = [&](auto busy)
+    {
+        for (int i = 0; i < 400 && busy(); ++i)
+        {
+            REQUIRE(engine.runFrame());
+        }
+    };
+    run(engine, "set_stat('hp', 10)");
+    run(engine, "on('item_used', function(item) Story.used = item end)");
+    const u32 apples = engine.hero()->itemCount("it_apple");
+    REQUIRE(engine.useItem("it_apple").ok());
+    CHECK(engine.usingItem());
+    CHECK(engine.hero()->attribute("hp") == 10); // not before the "use" event of t_eat
+    bool eating = false;
+    for (int i = 0; i < 400 && engine.usingItem(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+        eating = eating || engine.playerAnimationState() == "use_eat";
+    }
+    CHECK(eating);
+    CHECK(engine.hero()->attribute("hp") == 15); // apple +5 (owner's value)
+    CHECK(engine.hero()->itemCount("it_apple") == apples - 1);
+    CHECK(run(engine, "Story.used").asString() == "it_apple");
+
+    // A potion: +40, capped at the maximum.
+    run(engine, "give_item('it_potion_heal_small')");
+    REQUIRE(engine.useItem("it_potion_heal_small").ok());
+    runWhile([&] { return engine.usingItem(); });
+    CHECK(engine.hero()->attribute("hp") == engine.hero()->attribute("hp_max"));
+    CHECK(engine.hero()->itemCount("it_potion_heal_small") == 0);
+
+    // A document opens and stays in the bag.
+    run(engine, "give_item('it_letter_farm')");
+    REQUIRE(engine.useItem("it_letter_farm").ok());
+    runWhile([&] { return engine.usingItem(); });
+    REQUIRE(engine.document().has_value());
+    CHECK(engine.document()->title == "Brief an den Bauern");
+    CHECK(engine.document()->text.find("Vollmond") != std::string::npos);
+    CHECK(engine.hero()->itemCount("it_letter_farm") == 1);
+    engine.closeDocument();
+    CHECK_FALSE(engine.document().has_value());
+
+    // Not usable; not while running.
+    CHECK_FALSE(engine.useItem("it_club").ok());
+    CHECK_FALSE(engine.useItem("it_dragon").ok());
+    run(engine, "give_item('it_bread')");
+    gameplay::MoveInput forward;
+    forward.forward = 1.0f;
+    engine.setPlayerInputOverride(forward);
+    for (int i = 0; i < 30; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK_FALSE(engine.useItem("it_bread").ok());
+    CHECK(engine.lastNotice() == "Nicht jetzt.");
+}
+
+TEST_CASE("Engine use: pickpocketing as in Gothic 1 - talent, then dexterity, once per NPC")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    for (int i = 0; i < 20; ++i) // the hero lands on the start point
+    {
+        REQUIRE(engine.runFrame());
+    }
+    const auto steal = [&]
+    {
+        engine.updateFocus();
+        auto tried = engine.pickpocketFocus();
+        for (int i = 0; i < 400 && engine.pickpocketing(); ++i)
+        {
+            REQUIRE(engine.runFrame());
+        }
+        return tried;
+    };
+    run(engine, "on('pickpocket', function(npc, item) Story.stolen = item end)");
+    run(engine, "on('pickpocket_failed', function(npc) Story.noticed = npc end)");
+
+    // The farmer woman 2.5 m in front of the hero (needs dexterity 15).
+    REQUIRE(run(engine, "insert('npc_farmer_woman')").asBool());
+    engine.updateFocus();
+    REQUIRE(engine.focus().has_value());
+    REQUIRE(engine.focus()->kind == gameplay::FocusKind::Npc);
+    CHECK(engine.focus()->name == "Bäuerin");
+    const u32 id = static_cast<u32>(engine.focus()->id);
+    REQUIRE(engine.creatureInventory(id).has_value());
+    CHECK(engine.creatureInventory(id)->size() == 3);
+
+    // Without the talent: no.
+    CHECK_FALSE(steal().ok());
+    CHECK(engine.lastNotice() == "Das kann ich nicht.");
+    // Talent, but dexterity 10 < 15: she notices; only one try.
+    run(engine, "set_talent('pickpocket', 1)");
+    REQUIRE(steal().ok());
+    CHECK(run(engine, "Story.noticed").asString() == "npc_farmer_woman");
+    CHECK(engine.creatureInventory(id)->size() == 3);
+    CHECK_FALSE(steal().ok());
+    CHECK(engine.lastNotice() == "Da ist nichts mehr zu holen.");
+
+    // Another one with enough dexterity: one item changes hands for sure.
+    engine.removeCreatures();
+    REQUIRE(run(engine, "insert('npc_farmer_woman')").asBool());
+    run(engine, "set_stat('dex', 20)");
+    engine.setRandomSource([] { return 0.0f; });
+    const u32 apples = engine.hero()->itemCount("it_apple");
+    REQUIRE(steal().ok());
+    CHECK(run(engine, "Story.stolen").asString() == "it_apple"); // first stack (food before documents)
+    CHECK(engine.hero()->itemCount("it_apple") == apples + 1);
+}
+
+TEST_CASE("Engine use: taking somebody else's things is theft")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    run(engine,
+        "on('theft', function(owner, item, count) Story.theft = owner .. ' ' .. item .. ' ' .. count end)");
+    // An item lying in front of the hero that belongs to the guards.
+    REQUIRE(run(engine, "insert('it_bread')").asBool());
+    const WorldItemInfo bread = engine.worldItems().back();
+    engine.scene().get<world::ItemRef>(engine.scene().findById(bread.vob))->owner = "guard";
+    engine.updateFocus();
+    REQUIRE(engine.pickUpFocus().ok());
+    for (int i = 0; i < 300 && engine.pickingUp(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(run(engine, "Story.theft").asString() == "guard it_bread 1");
+    // owned_by: the locked chest of the camp belongs to the farmer woman.
+    CHECK(run(engine, "owned_by('LAGER_TRUHE_ZU')").asString() == "npc_farmer_woman");
+    CHECK(run(engine, "owned_by('LAGER_TRUHE')").isNil());
+}

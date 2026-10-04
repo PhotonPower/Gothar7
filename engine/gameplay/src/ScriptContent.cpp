@@ -23,7 +23,9 @@ void defineContentKinds(script::ScriptVm& vm)
              {"damage", Type::Table},
              {"protection", Type::Table},
              {"requires", Type::Table},
-             {"effects", Type::Table},
+             {"effects", Type::Table},   // using it: { hp = 20, mana = 10 } (food, potions)
+             {"text", Type::String},     // documents: what reading shows
+             {"on_use", Type::Function}, // fn(item): after the effects
              {"tags", Type::StringList},
          },
          false});
@@ -44,6 +46,8 @@ void defineContentKinds(script::ScriptVm& vm)
                        {"protection", Type::Table}, // by damage type (edge, blunt, point, fire, magic, fall)
                        {"xp", Type::Integer, false, 0.0, none},
                        {"learn_points", Type::Integer, false, 0.0, none},
+                       // Pickpocketing (Gothic 1): the dexterity needed; default Pickpocketing.default_dex
+                       {"pickpocket_dex", Type::Integer, false, 0.0, 200.0},
                    },
                    false});
 

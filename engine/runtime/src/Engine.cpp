@@ -370,6 +370,10 @@ bool Engine::runFrame()
                 {
                     (void)useFocusedMob();
                 }
+                else if (m_focus->kind == gameplay::FocusKind::Npc && m_playerInput.sneak)
+                {
+                    (void)pickpocketFocus(); // Gothic 1: sneaking up on someone (M8 part D)
+                }
             }
         }
     }
@@ -392,6 +396,7 @@ bool Engine::runFrame()
         // TODO(M7+): ai/gameplay fixed update
         fixedUpdatePlayer(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateInteraction(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateItemUse(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateMobs(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
@@ -1712,7 +1717,8 @@ void Engine::setDebugUiVisible(bool visible) noexcept
 void Engine::runDebugUi(f64 realSeconds)
 {
     m_debugUiFrame =
-        (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_focus || m_mobUse) && m_debugUi.valid();
+        (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_focus || m_mobUse || m_document) &&
+        m_debugUi.valid();
     m_window->setTextInput(m_debugUiFrame && m_debugUi.wantsText());
     if (!m_debugUiFrame)
     {
@@ -1732,6 +1738,7 @@ void Engine::runDebugUi(f64 realSeconds)
     focusUi();
     lockpickUi();
     choiceUi();
+    documentUi();
     if (!m_debugUiVisible)
     {
         return;

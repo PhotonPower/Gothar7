@@ -11,6 +11,9 @@ Der Held hat an einem Mob etwas hergestellt (Amboss: nach seinen Schlägen).
 ### `on("item_taken", fn(item: string, count: integer))`
 Der Held hat einen Gegenstand aus der Welt aufgehoben (Aktionstaste auf ein Item im Fokus).
 
+### `on("item_used", fn(item: string))`
+Der Held hat ein Item benutzt (nach seiner Wirkung).
+
 ### `on("level_up", fn(level: integer))`
 Der Held hat eine neue Stufe erreicht.
 
@@ -26,11 +29,20 @@ Der Held wollte ein verschlossenes Mob benutzen, ohne Schlüssel und Dietrich.
 ### `on("mob_used", fn(mob: string, type: string))`
 Der Held hat ein Mob benutzt (Truhe offen, Tür bewegt); `mob` ist die Mob-Instanz.
 
+### `on("pickpocket", fn(npc: string, item: string))`
+Der Held hat einem NPC etwas aus der Tasche gezogen.
+
+### `on("pickpocket_failed", fn(npc: string))`
+Der NPC hat den Taschendiebstahl bemerkt (die Reaktion folgt mit M9).
+
 ### `on("scripts_reloaded", fn())`
 Nachdem geänderte Skripte neu geladen wurden (Entwicklung); die Story-Variablen bleiben erhalten.
 
 ### `on("slept", fn(hour: integer))`
 Der Held hat im Bett bis zu dieser Stunde geschlafen (8, 12, 20 oder 0); LP und Mana sind voll.
+
+### `on("theft", fn(owner: string, item: string, count: integer))`
+Der Held hat fremden Besitz genommen (Item-Vob mit owner, Truhe eines anderen).
 
 ### `on("world_loaded", fn(world: string))`
 Nachdem eine Welt geladen ist (auch nach einem Weltwechsel); `world` ist ihr Pfad.
@@ -111,10 +123,16 @@ Stufe eines Talents des Helden (0 = nicht gelernt): `melee_1h`, `melee_2h`, `bow
 ### `unequip(slot: string)`
 Legt ab, was auf dem Platz `slot` ausgerüstet ist.
 
+### `use_item(item: string)`
+Der Held benutzt ein Item aus dem Inventar (Nahrung, Trank, Schriftstück) – nur im Stand, sonst „Nicht jetzt.“. Die Wirkung (`effects`) kommt beim Event `use` des Clips.
+
 ## Mobs
 
 ### `mob_state(vob: string) -> {definition, type, name, locked, open}`
 Zustand eines Mob-Vobs dieser Welt (Name des Vobs, z. B. "LAGER_TRUHE").
+
+### `owned_by(vob: string) -> string | nil`
+Wem ein Item- oder Mob-Vob dieser Welt gehört (Npc oder Gilde); nil, wenn niemandem.
 
 ### `unlock(vob: string)`
 Schließt ein Mob-Vob auf (Truhe, Tür), etwa wenn eine Quest es öffnet.

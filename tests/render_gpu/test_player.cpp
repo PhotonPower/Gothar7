@@ -242,8 +242,13 @@ TEST_CASE("Player GPU: jumps higher from a run, lands, waits before the next jum
     engine.setPlayerInputOverride(run);
     highest(engine, 3); // lifts off: the running jump plays
     CHECK(engine.playerAnimationState() == "jump_run");
-    CHECK(highest(engine, 67) == doctest::Approx(1.1f).epsilon(0.06)); // from a run
-    CHECK(start - engine.player()->feet().z > 4.0f);                   // and far
+    const f32 top = highest(engine, 67);
+    // Diagnosis for a rare short jump seen once (3.70 m, 2026-10-04): where it took off and landed, how fast.
+    const Vec3 landed = engine.player()->feet();
+    INFO("take-off z ", start, ", landed at (", landed.x, ", ", landed.y, ", ", landed.z, "), top ", top,
+         ", state ", engine.playerAnimationState(), ", speed ", glm::length(engine.player()->velocity()));
+    CHECK(top == doctest::Approx(1.1f).epsilon(0.06)); // from a run
+    CHECK(start - landed.z > 4.0f);                    // and far
     CHECK(engine.renderDevice()->debugErrorCount() == 0);
 }
 
