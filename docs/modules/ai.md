@@ -93,10 +93,21 @@ Routine "rtn_farmer_woman" {
   abstand)`.
 - Testlager: `TRG_PRIVAT_WACHE` (Schlafplatz der Wache mit Truhen hinter dem Tor) gehört `npc_gate_guard`.
 
-## 5. Einstellungen & Gruppen
-- Einstellung NPC→Spieler: dauerhaft + temporär (vergisst sich nach Zeit), abgeleitet aus Gilden-Tabelle, wenn nicht gesetzt.
-- Kameraden: NPCs derselben Gilde/Freundschaft helfen im Kampf, wenn sie es wahrnehmen.
-- Warnungen vor Angriff („Steck die Waffe weg!“) → Eskalationsstufen.
+## 5. Einstellungen & Gruppen (M9 Teil C2, umgesetzt) – Inhalt `ai/attitudes.lua`, `ai/perceptions.lua`
+- **Einstellung NPC → Spieler** (`npc_attitude(npc)`: `friendly`, `neutral`, `angry`, `hostile`): vorübergehend
+  (`set_temp_attitude(npc, a, sekunden)`, vergessen nach `AttitudeSettings.forget_seconds`, 300 s) vor dauerhaft
+  (`set_attitude(npc, a)`, in `Story.attitudes`, wird gespeichert) vor der Gilden-Tabelle `Attitudes`
+  (`data/guilds.lua`) gegen die Gilde des Helden. Ganz in Lua.
+- **Verärgert** wird ein NPC, der angreifen würde, der den Spieler in seinem Bereich erwischt, und wer zu Hilfe kommt.
+  **Feindlich** Gesinnte greifen auf Sicht in 10 m an (bis M11: drohen).
+- **Kameraden:** Würde ein NPC angreifen, ruft er: NPCs in 15 m, deren Gilde der seinen freundlich gesinnt ist,
+  bekommen `assess_call(helfer, rufer)` und drohen mit. Engine-Abfrage dazu `npcs_near(npc, radius)` (Liste
+  `{npc, guild, distance}`, nach Abstand).
+- **Fliehen:** Bauern und Ausgestoßene bis Stufe 3 laufen weg, wenn in 10 m jemand angreifen würde oder der Spieler
+  ihnen mit gezogener Waffe näher als 4 m kommt (`zs_flee`: `npc_flee(npc, 8)` – zum Wegpunkt im Umkreis von 30 m, der
+  am weitesten vom Spieler weg ist, alle 2 s neu gewählt). Fliehen bei wenig Leben kommt mit dem Kampf (M11).
+- **Warnungen** vor dem Angriff: Abschnitt 4 (zweimal, dann `npc_would_attack`).
+- `npc_shout(npc, text)` ruft sofort, ohne auf die Befehlsliste zu warten (Weglaufen).
 
 ## 6. Monster
 - Revier (Mittelpunkt + Radius), Rudel (Anführer + Mitglieder), Routinen Fressen/Schlafen/Umherstreifen,

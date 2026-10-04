@@ -11,4 +11,7 @@ Shouts = {
     intruder_again = "Hast du nicht gehört? Raus hier!",
     thief = "Finger weg von fremden Sachen, du Dieb!",
     foreign_mob = "Was fummelst du da an meinen Sachen herum?",
+    help = "Warte, ich helf dir! Den knöpfen wir uns vor!",
+    flee = "Lass mich bloß in Ruhe!",
+    hostile = "Dich hab ich schon gesucht!",
 }

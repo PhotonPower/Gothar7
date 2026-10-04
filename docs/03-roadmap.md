@@ -203,7 +203,7 @@ Testwelt bei Tag und Nacht; Debug-UI zeigt Animationszustände.
 - [x] Freepoint-Belegung (Sitzplätze am Lagerfeuer etc.) – `npc_goto_freepoint` reserviert den nächsten freien (B)
 - [x] **Wahrnehmung**: Sicht (Kegel + Raycast), Gehör (Lärmereignisse mit Radius), Reichweiten, Update-Takt nach Distanz – Schleichen und Nacht verkürzen die Sicht, Werte in `data/perception.lua` (C1)
 - [ ] Wahrnehmungs-Ereignisse: Spieler gesehen, Waffe gezogen, Kampf, Diebstahl, Betreten privater Bereiche, Zauber, Item angefasst – umgesetzt: gesehen, Waffe gezogen (Taste `draw_weapon`, 1h-/Faust-Haltung), Diebstahl, fremder Mob, privater Bereich (`trigger.owner`), Geräusch; Warnungen und Drohen in `ai/perceptions.lua` (C1); offen: Kampf (M11), Zauber (M13)
-- [ ] Einstellungen (dauerhaft/temporär), Gruppenhilfe, Fliehen
+- [x] Einstellungen (dauerhaft/temporär), Gruppenhilfe, Fliehen – `ai/attitudes.lua` (`npc_attitude`, `set_attitude`, `set_temp_attitude`), Hilferuf an befreundete Gilden (`assess_call`, `npcs_near`), Feiglinge fliehen (`npc_flee`); Fliehen bei wenig Leben mit M11 (C2)
 - [ ] Monster-KI: Revier, Rudel, Fressen/Schlafen, Jagd, Flucht
 - [x] KI-LOD: weit entfernte NPCs „springen“ entlang ihrer Routine statt simuliert zu werden – über 80 m (zurück unter 75 m) (B)
 - [ ] Debug-Ansicht: Wegnetz, aktueller Zustand/Routine pro NPC, Wahrnehmungsradien

@@ -152,3 +152,48 @@ TEST_CASE("Engine perception: noises are heard within their radius")
     CHECK(run(engine, "Story.heard").asString() == "npc_old_man bang");
     CHECK(stateOf(engine, "npc_old_man") == "zs_look_around");
 }
+
+TEST_CASE("Engine attitudes: temporary ones are forgotten, permanent ones are saved")
+{
+    Engine engine(perceptionConfig());
+    REQUIRE(engine.init().ok());
+    CHECK(run(engine, "npc_attitude('npc_gate_guard')").asString() == "neutral"); // the hero has no guild yet
+    run(engine, "set_temp_attitude('npc_gate_guard', 'angry', 2)");
+    CHECK(run(engine, "npc_attitude('npc_gate_guard')").asString() == "angry");
+    runSeconds(engine, 2.5f);
+    CHECK(run(engine, "npc_attitude('npc_gate_guard')").asString() == "neutral");
+    run(engine, "set_attitude('npc_old_man', 'friendly')");
+    CHECK(run(engine, "npc_attitude('npc_old_man')").asString() == "friendly");
+    CHECK(run(engine, "Story.attitudes.npc_old_man").asString() == "friendly"); // saved with the game
+    CHECK_FALSE(engine.runConsoleLine("set_attitude('npc_old_man', 'grumpy')").ok());
+}
+
+TEST_CASE("Engine attitudes: a hostile guard would attack, his friends come to help, the weak run away")
+{
+    Engine engine(perceptionConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "on('npc_would_attack', function(npc, reason) Story.attack = npc .. ' ' .. reason end)");
+    run(engine, "set_attitude('npc_gate_guard', 'hostile')");
+    // The guard in the centre (7, 0, -4) looking north; the woodcutter (farmer, friends of the guards) 10 m
+    // east, the old man (outcast, level 1) 6 m north-west. The player far away first.
+    run(engine, "teleport(60, 0, 60)");
+    for (const auto& [npc, at] :
+         {std::pair{"npc_gate_guard", "wp_camp_center"}, std::pair{"npc_woodcutter", "wp_camp_east"},
+          std::pair{"npc_old_man", "wp_camp_north"}})
+    {
+        REQUIRE(run(engine, std::format("insert_npc('{}', '{}')", npc, at)).asBool());
+        run(engine, std::format("set_routine('{}', '') npc_clear('{}')", npc, npc));
+    }
+    runSeconds(engine, 1.0f);
+    // The player appears 7 m in front of the guard.
+    run(engine, "teleport(7, 0, -11)");
+    runSeconds(engine, 1.0f);
+    CHECK(run(engine, "Story.attack").asString() == "npc_gate_guard hostile");
+    CHECK(stateOf(engine, "npc_gate_guard") == "zs_threaten");
+    CHECK(stateOf(engine, "npc_woodcutter") == "zs_threaten"); // came to help
+    CHECK(run(engine, "npc_attitude('npc_woodcutter')").asString() == "angry");
+    CHECK(stateOf(engine, "npc_old_man") == "zs_flee");
+    const f64 before = run(engine, "npc_distance_to_player('npc_old_man')").asNumber();
+    runSeconds(engine, 4.0f);
+    CHECK(run(engine, "npc_distance_to_player('npc_old_man')").asNumber() > before + 4.0);
+}

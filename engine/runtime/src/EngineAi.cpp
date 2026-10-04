@@ -61,12 +61,30 @@ f32 wrapAngle(f32 a)
 }
 
 constexpr std::string_view kPlayerTarget = "@player"; ///< target of npc_goto_player, npc_turn_to_player
+constexpr f32 kFleeRadius =
+    30.0f; ///< metres: a fleeing NPC runs to the way point within this farthest from the player
 } // namespace
 
 Creature* Engine::npcNamed(std::string_view instance) noexcept
 {
     const auto id = npcByInstance(instance);
     return id ? creature(*id) : nullptr;
+}
+
+void Engine::npcSays(const Creature& c, std::string_view text)
+{
+    G7_LOG_INFO("engine", "{}: \"{}\"", c.species, text);
+    if (m_scripts)
+    {
+        const script::Value args[] = {c.species, std::string(text)};
+        m_scripts->emit("npc_said", args);
+    }
+    // Until the dialogues (M10): shown near the player.
+    if (m_player.valid() && glm::length(c.position - m_player.feet()) < 15.0f)
+    {
+        const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", c.species) : nullptr;
+        notice(std::format("{}: {}", npc != nullptr ? npc->fields["name"].asString() : c.species, text));
+    }
 }
 
 void Engine::releaseFreepoint(Creature& c)
@@ -414,19 +432,10 @@ bool Engine::startCommand(Creature& c)
     case Kind::Follow:
         c.followPlayer = true;
         return cmd.value > 0.0f && m_player.valid();
+    case Kind::Flee:
+        return cmd.value > 0.0f && m_player.valid();
     case Kind::Say:
-        G7_LOG_INFO("engine", "{}: \"{}\"", c.species, cmd.text);
-        if (m_scripts)
-        {
-            const script::Value args[] = {c.species, cmd.text};
-            m_scripts->emit("npc_said", args);
-        }
-        if (m_player.valid() && glm::length(c.position - m_player.feet()) < 15.0f)
-        {
-            const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", c.species) : nullptr;
-            notice(
-                std::format("{}: {}", npc != nullptr ? npc->fields["name"].asString() : c.species, cmd.text));
-        }
+        npcSays(c, cmd.text);
         cmd.value = std::max(kSayMinimum, kSayPerCharacter * static_cast<f32>(cmd.text.size()));
         return true;
     }
@@ -533,6 +542,38 @@ void Engine::runCommands(Creature& c, f32 seconds)
             }
             break;
         }
+        case Kind::Flee:
+        {
+            // Every 2 s (or when arrived): to the way point within kFleeRadius that is farthest from the
+            // player.
+            done = c.commandTime >= cmd.value || !m_player.valid();
+            if (done)
+            {
+                c.route.reset();
+                break;
+            }
+            if (!c.route || std::fmod(c.commandTime, 2.0f) < seconds)
+            {
+                const Vec3 player = m_player.feet();
+                const auto& points = m_waynet.points();
+                const Vec3* best = nullptr;
+                f32 bestDistance = glm::length(c.position - player);
+                for (const auto& p : points)
+                {
+                    const f32 fromPlayer = glm::length(p.position - player);
+                    if (glm::length(p.position - c.position) < kFleeRadius && fromPlayer > bestDistance)
+                    {
+                        best = &p.position;
+                        bestDistance = fromPlayer;
+                    }
+                }
+                if (best != nullptr)
+                {
+                    (void)npcGoToPosition(c.id, *best, "flee", true);
+                }
+            }
+            break;
+        }
         }
         if (!done)
         {
@@ -629,6 +670,22 @@ void Engine::bindAiFunctions()
             return Value();
         };
     };
+    vm.bind(
+        {"npc_flee", "npc_flee(npc: string, seconds?: number)",
+         "Reiht ein: `seconds` Sekunden lang (Vorgabe 8) vor dem Spieler weglaufen – zum Wegpunkt im Umkreis "
+         "von 30 m, der am weitesten von ihm weg ist, alle 2 s neu gewählt.",
+         "NPCs", [npc](std::span<const Value> a) -> Result<Value>
+         {
+             auto c = npc(a);
+             if (!c)
+             {
+                 return c.error();
+             }
+             Creature::Command cmd{Kind::Flee};
+             cmd.value = static_cast<f32>(a.size() > 1 ? a[1].asNumber(8.0) : 8.0);
+             c.value()->commands.push_back(std::move(cmd));
+             return Value();
+         }});
     vm.bind({"npc_goto_player", "npc_goto_player(npc: string, distance?: number, run?: boolean)",
              "Reiht ein: zum Spieler gehen (bzw. rennen), bis auf `distance` Meter (Vorgabe 1,5).", "NPCs",
              toPlayer(Kind::GoTo)});
@@ -666,6 +723,18 @@ void Engine::bindAiFunctions()
          "Reiht ein: einen Satz sagen (bis zu den Dialogen in M10 eine Einblendung in der Nähe des Helden; "
          "Ereignis `npc_said`).",
          "NPCs", queue(Kind::Say, true)});
+    vm.bind({"npc_shout", "npc_shout(npc: string, text: string)",
+             "Ruft sofort (ohne Warteschlange, z. B. beim Weglaufen); sonst wie npc_say.", "NPCs",
+             [this, npc](std::span<const Value> a) -> Result<Value>
+             {
+                 auto c = npc(a);
+                 if (!c || a.size() < 2 || !a[1].isString())
+                 {
+                     return !c ? c.error() : Error{"argument 2 must be a string"};
+                 }
+                 npcSays(*c.value(), a[1].asString());
+                 return Value();
+             }});
     vm.bind({"npc_clear", "npc_clear(npc: string)", "Leert die Befehlsliste des NPCs (er bleibt, wo er ist).",
              "NPCs", [npc](std::span<const Value> a) -> Result<Value>
              {
