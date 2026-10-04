@@ -317,6 +317,10 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   `gothar_worldgen/textures/` (`procedural.py`, `apply.py`), kachelbar, je 1024² als Albedo + Normal-Map.
   - Arten: Putz, Putz-Fußband, Putz mit Regenschliere, Schichtmauerwerk (Bruchstein), Balken (Maserung, Risse,
     Äste), Biberschwanz-Ziegel, Ziegel mit Moos (Schattenseite), Bretter (Läden, Türen).
+  - Sockel (Rückmeldung Projektinhaber 2026-10-04: in Gassen zu hell und gleichförmig): Der Bruchstein liegt bei
+    45 % der Palettenhelligkeit, mit Schmutz und Moos in Flecken. Jedes Haus verschiebt die sich wiederholenden
+    Texturen (Putz, Stein, Ziegel, Bretter) um einen festen Versatz aus seiner ID, damit Nachbarhäuser nicht dieselben
+    Steine zeigen.
   - Die Palette bleibt der Materialfaktor (Tönung). Die Bilder speichern 1,0 tiefer, damit hellere Details bleiben
     (dunkles Holz noch tiefer); der Materialfaktor gleicht das aus.
   - Häuser verweisen per relativer URI (`../textures/*.png`, glTF-üblich) auf `worlds/<ort>/generated/textures/`; Engine

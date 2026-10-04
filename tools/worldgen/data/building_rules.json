@@ -126,7 +126,9 @@
       "eaveToStreet": 0.3
     },
     "pitchDeg": 50.0,
-    "pitchSpreadDeg": 4.0
+    "pitchSpreadDeg": 4.0,
+    "maxRiseM": 9.0,
+    "minPitchDeg": 35.0
   },
   "hillside": {"note": "Hanghaus-Regel (Entscheidung E1 des Projektinhabers 2026-10-03): Tür auf die Straßenkante, vor der das Gelände zum Boden passt; liegt es höher, rückt der Boden darauf (Steinsockel darunter); liegt es mehr als stairFromM tiefer, kommt eine Freitreppe vor die Tür; passt bergseitig kein Erdgeschoss unter die Traufe, liegt die Tür im Obergeschoss auf Geländehöhe (E1-C A), sonst ein kurzer Abgang, den export-terrain gräbt (E1-C B)", "stairFromM": 0.4, "stairRiseM": 0.2, "stairRunM": 0.3, "storeyMinM": 2.2, "storeyMaxM": 4.2, "doorStoreyMinM": 2.5, "descentSlopeDeg": 40.0, "descentWidthM": 1.6},
   "gapFill": {"note": "Spalten zwischen Häusern, schmaler als die Spielfigur, per Kollision schließen (Entscheidung E4 des Projektinhabers 2026-10-03); der Spalt bleibt sichtbar", "enabled": true, "maxWidthM": 0.7, "minAreaM2": 0.3, "enclosedShare": 0.5, "aboveGroundM": 3.0},
@@ -156,7 +158,9 @@
     "note": "Modus medieval: Dächer flach/Pult oder unter minDeg werden Satteldächer; Traufe bleibt, First wächst (Entscheidung Koordinator, 2026-10-03)",
     "minDeg": 35.0,
     "targetMinDeg": 50.0,
-    "targetMaxDeg": 55.0
+    "targetMaxDeg": 55.0,
+    "maxRiseM": 9.0,
+    "maxRiseNote": "Firsthöhe über Traufe höchstens 9 m; breitere Häuser bekommen eine flachere Neigung, aber nicht unter minDeg (Entscheidung Koordinator im Auftrag des Projektinhabers, 2026-10-04: keine Riesendächer, auch nicht bei geschützten Originalen)"
   },
   "styles": {
     "buergerhaus": {

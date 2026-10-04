@@ -18,6 +18,7 @@ one texture (``TILE_M``), with v pointing up in the image (glTF v grows downward
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
@@ -67,8 +68,9 @@ def _roof_uvs(mesh: MeshData) -> np.ndarray:
     return np.stack([np.sum(p * eave, axis=1), np.sum(p * slope, axis=1)], axis=1)
 
 
-def textured(prim: Primitive, uri_root: str) -> Primitive:
-    """The primitive with texture coordinates for its kind and its two images."""
+def textured(prim: Primitive, uri_root: str, offset: tuple[float, float] = (0.0, 0.0)) -> Primitive:
+    """The primitive with texture coordinates for its kind and its two images; ``offset`` (in
+    textures) shifts the repeating kinds, so neighbouring houses do not show the same stones."""
     kind = kind_of(prim.material)
     if kind is None:
         return prim
@@ -81,6 +83,10 @@ def textured(prim: Primitive, uri_root: str) -> Primitive:
         out = np.stack([uv[:, 0] / tu, 1.0 - uv[:, 1]], axis=1)  # builder: v already 0..1 in band
     else:
         out = np.stack([uv[:, 0] / tu, -uv[:, 1] / tv], axis=1)
+    if kind in SHIFTED:
+        out = out + np.asarray(offset)
+    elif kind == "plaster_low":
+        out[:, 0] += offset[0]  # along the wall only: the band runs from the ground up
     scale = albedo_scale(kind)
     color = tuple(min(c / scale, 1.0) for c in prim.color[:3]) + (prim.color[3],)
     return replace(
@@ -91,8 +97,14 @@ def textured(prim: Primitive, uri_root: str) -> Primitive:
     )
 
 
-def texture_house(prims: Sequence[Primitive], uri_root: str) -> list[Primitive]:
-    return [textured(p, uri_root) for p in prims]
+SHIFTED = {"plaster", "stone", "roof", "roof_moss", "boards"}  # shifted per house (texture_house)
+
+
+def texture_house(prims: Sequence[Primitive], uri_root: str, key: str = "") -> list[Primitive]:
+    """Textures for one house; ``key`` (its id) picks a fixed offset of the repeating textures."""
+    h = hashlib.sha256(key.encode()).digest() if key else bytes(2)
+    offset = (h[0] / 256.0, h[1] / 256.0)
+    return [textured(p, uri_root, offset) for p in prims]
 
 
 def write_textures(folder: Path, size: int = 1024, seed: int = 7) -> list[Path]:
