@@ -419,6 +419,7 @@ bool Engine::runFrame()
         fixedUpdateItemUse(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateMobs(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateDialog(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {

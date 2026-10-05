@@ -47,6 +47,7 @@ void defineContentKinds(script::ScriptVm& vm)
              {"routine", Type::String, false, none, none, "Routine"},
              {"senses", Type::Table},      // sight (m), angle (degrees), hearing (factor); M9
              {"species", Type::String},    // animals: wolf, keiler, laufvogel (M9 part D)
+             {"damage", Type::Table},      // animals: their bite or blow by type, plus strength (M11)
              {"figure_set", Type::String}, // nameless people: a figure of this set (figure_sets.toml)
              {"protection", Type::Table},  // by damage type (edge, blunt, point, fire, magic, fall)
              {"xp", Type::Integer, false, 0.0, none},

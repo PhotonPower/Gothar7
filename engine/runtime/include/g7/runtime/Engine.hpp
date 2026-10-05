@@ -18,6 +18,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 #include <g7/gameplay/Character.hpp>
+#include <g7/gameplay/Combat.hpp>
 #include <g7/gameplay/Focus.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
@@ -786,6 +787,18 @@ private:
         physics::ShapeId shape;
     };
     void loadMobTypes();
+    // Combat (M11, EngineCombat.cpp).
+    struct Combatant;
+    void loadCombat();
+    void bindCombatFunctions();
+    void fixedUpdateCombat(f32 seconds);
+    [[nodiscard]] std::optional<Combatant> combatant(u32 id);
+    [[nodiscard]] std::string
+    meleeWeapon(const Combatant& c) const; ///< drawn/equipped melee item, empty: fists
+    [[nodiscard]] std::string fightMode(const Combatant& c) const; ///< "fist", "1h", "2h"
+    bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
+    void resolveHit(Combatant& attacker, Combatant& target);
+    void stopForFight(Creature& c);
     void loadVoiceLines(); // voice/lines.<language>.json: the keys of the spoken lines
     /// Key of a spoken line: dialogue "<info>_NN", else the NPC's shout "svm_<voice>_<m|f>_<occasion>_NN";
     /// empty if the voice database does not know the text.
@@ -1099,6 +1112,9 @@ private:
     bool m_inventoryOpen = false;
     std::string m_inventoryMessage;
     gameplay::MobTypes m_mobTypes;
+    gameplay::CombatSettings m_combat; // data/combat.lua (M11)
+    gameplay::Fighter m_heroFighter;
+    std::vector<u32> m_heroHitThisSwing;
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)

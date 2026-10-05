@@ -267,12 +267,34 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
 - Tagebuch: Topics mit Status, Einträge mit Zeitstempel.
 
 ## Kampf (M11)
-- Waffenmodus-Wechsel (Ziehen/Wegstecken als Animation mit Event `item_to_hand`).
-- Nahkampf: Angriff startet Clip; zwischen `hit_start`/`hit_end` Shapecast der Waffe; Kombo-Eingabe
-  nur im `combo_window`; Anzahl Kombo-Schläge und Tempo abhängig von Talentstufe.
-- Parade/Block, Seitwärtsschritt, Rückwärtsschritt.
-- Schaden = max(Waffenschaden + Attributbonus − Schutz, Minimum); kritisch nach Talent; Faustkampf/menschliche Gegner → bewusstlos.
-- Fernkampf: Zielmodus, Projektil (Ballistik), Treffer-Chance/-Streuung nach Talent.
+Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, wie Gothic 1; Werte in
+`data/combat.lua`).
+
+**Teil A – Kampfkern (umgesetzt, `gameplay/Combat.hpp`, `EngineCombat.cpp`):**
+- **Kämpfer** (`gameplay::Fighter`) für den Helden und jedes NPC: bereit, Angriff (Trefferfenster `hit_start` …
+  `hit_end`, Kombofenster `combo_start` … `combo_end`), Parade, Ausweichen, Taumeln, bewusstlos, tot. Die Clip-Events
+  treiben ihn; solange ein Clip fehlt (die menschlichen Kampfclips liefert figuren), steht eine feste Zeitleiste ein
+  (Treffer 0,25–0,45 s, Kombo bis 0,7 s, Ende 0,9 s). Clips: `<modus>/t_attack_combo<n>`, `t_attack_l/r`, `t_parry`,
+  `t_dodge_back`, `none/t_hit_light`, `none/t_ko`, `none/t_die_front` (Modus `fist`, `1h`, `2h`).
+- **Kombos (K4):** Talent 0 Einzelschläge, 1 bis 3, 2 bis 4 und 1,25-mal schneller; der nächste Schlag nur im
+  Kombofenster. Seitenhiebe ketten nicht. Talent: `melee_2h` für Zweihänder, sonst `melee_1h` (auch Fäuste).
+- **Treffer:** im Trefferfenster jedes Ziel höchstens einmal je Schlag, in Reichweite (ab den Körpern: Faust 0,9 m,
+  Einhand 1,3 m, Zweihand 1,7 m) und im Winkel (±50°) vor dem Angreifer. Eine Waffen-Kapsel entlang der Animation
+  folgt mit den Clips.
+- **Schaden (K2, K3):** je Schadensart max(Waffe − Schutz, 0), die Stärke zur Hauptart der Waffe (Fäuste: stumpf),
+  mindestens 5; kritisch nach Talent 0/10/20 % mit doppeltem Waffenschaden. Tiere: `Npc.damage` (Art) plus Stärke.
+- **Parade (K6):** blockt 0,4 s ab Beginn Schläge von vorn (±60°); der Schlag prallt ab (der Angreifer taumelt).
+  Fäuste parieren keine Waffen, Tiere lassen sich nicht parieren.
+- **Folgen (K7, K8):** Treffer lassen taumeln. Menschen, von Menschen auf 0 geschlagen, werden bewusstlos (1 LP,
+  30 s, dann stehen sie auf); ein Schlag auf den Liegenden tötet; Tiere sterben (und töten). Der Held stirbt nie: er
+  bleibt 5 s liegen und steht am Ort mit einem Zehntel seines Lebens auf (bis M15). Bewusstlose und Tote: keine
+  Routine, kein Gehen.
+- **Lua:** `npc_attack(npc, "front"|"left"|"right")`, `npc_parry`, `npc_dodge`, `hero_attack`, `hero_parry`,
+  `fight_state(npc|"hero")`, `npc_stat`, `npc_set_stat`, `npc_teleport`; Ereignisse `npc_hit(angreifer, ziel,
+  schaden, kritisch)`, `npc_parried`, `npc_knocked_out`, `npc_killed`.
+
+**Weiter:** B Steuerung des Helden (K1 Gothic-1-Tasten, Maus als Zweitbelegung), Ziel-Lock und Kamera-Kampfprofil
+(K5); C Plündern, Einstellung nach dem Niederschlagen, Zeugen; D Kampf-KI; E Fernkampf (K9).
 
 ## Magie (M12)
 Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten
