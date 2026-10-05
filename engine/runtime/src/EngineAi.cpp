@@ -72,6 +72,25 @@ Creature* Engine::npcNamed(std::string_view instance) noexcept
     return id ? creature(*id) : nullptr;
 }
 
+namespace
+{
+// The optional `run` argument of the NPC commands: true runs, "trot" trots (animals with a trot, else walks).
+void setGait(Creature::Command& cmd, std::span<const script::Value> a, usize index)
+{
+    if (a.size() <= index)
+    {
+        return;
+    }
+    if (a[index].isString())
+    {
+        cmd.run = a[index].asString() == "run";
+        cmd.trot = a[index].asString() == "trot";
+        return;
+    }
+    cmd.run = a[index].asBool();
+}
+} // namespace
+
 void Engine::npcSays(const Creature& c, std::string_view text)
 {
     G7_LOG_INFO("engine", "{}: \"{}\"", c.species, text);
@@ -536,6 +555,7 @@ void Engine::runCommands(Creature& c, f32 seconds)
                 c.commands.pop_front();
                 continue;
             }
+            c.trotting = c.route && c.commands.front().trot; // a way started at the trot
             c.commandRunning = true;
         }
         Creature::Command& cmd = c.commands.front();
@@ -603,7 +623,10 @@ void Engine::runCommands(Creature& c, f32 seconds)
                 (!c.route || std::fmod(c.commandTime, 1.0f) < seconds))
             {
                 const Vec3 goal = *target - Vec3(to.x, 0.0f, to.z) / distance * cmd.distance;
-                (void)npcGoToPosition(c.id, goal, "follow", distance > 8.0f || cmd.run);
+                if (npcGoToPosition(c.id, goal, "follow", distance > 8.0f || cmd.run).ok())
+                {
+                    c.trotting = cmd.trot;
+                }
             }
             else if (distance <= cmd.distance)
             {
@@ -743,7 +766,7 @@ void Engine::bindAiFunctions()
             }
             if (kind == Kind::GoTo || kind == Kind::GoToFreepoint)
             {
-                cmd.run = a.size() > (kind == Kind::GoTo ? 2u : 3u) && a[kind == Kind::GoTo ? 2 : 3].asBool();
+                setGait(cmd, a, kind == Kind::GoTo ? 2u : 3u);
             }
             c.value()->commands.push_back(std::move(cmd));
             return Value();
@@ -751,7 +774,7 @@ void Engine::bindAiFunctions()
     };
     // npc_goto queues now (part A walked at once).
     vm.bind(
-        {"npc_goto", "npc_goto(npc: string, target: string, run?: boolean)",
+        {"npc_goto", "npc_goto(npc: string, target: string, run?: boolean|\"trot\")",
          "Reiht ein: Der NPC geht (oder rennt) über das Wegnetz zu einem Wegpunkt oder Freepoint (Name ohne "
          "Rücksicht auf Groß- und Kleinschreibung). Ankunft: Ereignis `npc_arrived`.",
          "NPCs", queue(Kind::GoTo, true)});
@@ -769,11 +792,12 @@ void Engine::bindAiFunctions()
             {
                 cmd.value = static_cast<f32>(a.size() > 1 ? a[1].asNumber(10.0) : 10.0);
                 cmd.distance = static_cast<f32>(a.size() > 2 ? a[2].asNumber(2.0) : 2.0);
+                setGait(cmd, a, 3);
             }
             else if (kind == Kind::GoTo)
             {
                 cmd.distance = static_cast<f32>(a.size() > 1 ? a[1].asNumber(1.5) : 1.5);
-                cmd.run = a.size() > 2 && a[2].asBool();
+                setGait(cmd, a, 2);
             }
             c.value()->commands.push_back(std::move(cmd));
             return Value();
@@ -796,27 +820,28 @@ void Engine::bindAiFunctions()
                  c.value()->commands.push_back(std::move(cmd));
                  return Value();
              }});
-    vm.bind(
-        {"npc_follow_npc",
-         "npc_follow_npc(npc: string, target: string, distance?: number, seconds?: number, run?: boolean)",
-         "Reiht ein: dem NPC `target` folgen (Rudel, Jagd) – auf etwa `distance` Meter (Vorgabe 2), "
-         "`seconds` "
-         "Sekunden lang (Vorgabe 10).",
-         "NPCs", [npc](std::span<const Value> a) -> Result<Value>
-         {
-             auto c = npc(a);
-             if (!c || a.size() < 2 || !a[1].isString())
+    vm.bind({"npc_follow_npc",
+             "npc_follow_npc(npc: string, target: string, distance?: number, seconds?: number, run?: "
+             "boolean|\"trot\")",
+             "Reiht ein: dem NPC `target` folgen (Rudel, Jagd) – auf etwa `distance` Meter (Vorgabe 2), "
+             "`seconds` "
+             "Sekunden lang (Vorgabe 10).",
+             "NPCs", [npc](std::span<const Value> a) -> Result<Value>
              {
-                 return !c ? c.error() : Error{"argument 2 must be an NPC"};
-             }
-             Creature::Command cmd{Kind::Follow, std::string(a[1].asString())};
-             cmd.distance = static_cast<f32>(a.size() > 2 ? a[2].asNumber(2.0) : 2.0);
-             cmd.value = static_cast<f32>(a.size() > 3 ? a[3].asNumber(10.0) : 10.0);
-             cmd.run = a.size() > 4 && a[4].asBool();
-             c.value()->commands.push_back(std::move(cmd));
-             return Value();
-         }});
-    vm.bind({"npc_goto_point", "npc_goto_point(npc: string, x: number, y: number, z: number, run?: boolean)",
+                 auto c = npc(a);
+                 if (!c || a.size() < 2 || !a[1].isString())
+                 {
+                     return !c ? c.error() : Error{"argument 2 must be an NPC"};
+                 }
+                 Creature::Command cmd{Kind::Follow, std::string(a[1].asString())};
+                 cmd.distance = static_cast<f32>(a.size() > 2 ? a[2].asNumber(2.0) : 2.0);
+                 cmd.value = static_cast<f32>(a.size() > 3 ? a[3].asNumber(10.0) : 10.0);
+                 setGait(cmd, a, 4);
+                 c.value()->commands.push_back(std::move(cmd));
+                 return Value();
+             }});
+    vm.bind({"npc_goto_point",
+             "npc_goto_point(npc: string, x: number, y: number, z: number, run?: boolean|\"trot\")",
              "Reiht ein: zu einem Punkt gehen (bzw. rennen), über das Wegnetz, wo nötig.", "NPCs",
              [npc](std::span<const Value> a) -> Result<Value>
              {
@@ -828,12 +853,12 @@ void Engine::bindAiFunctions()
                  Creature::Command cmd{Kind::GoToPoint};
                  cmd.point = Vec3(static_cast<f32>(a[1].asNumber()), static_cast<f32>(a[2].asNumber()),
                                   static_cast<f32>(a[3].asNumber()));
-                 cmd.run = a.size() > 4 && a[4].asBool();
+                 setGait(cmd, a, 4);
                  c.value()->commands.push_back(std::move(cmd));
                  return Value();
              }});
     vm.bind(
-        {"npc_roam", "npc_roam(npc: string, centre: string, radius: number, run?: boolean)",
+        {"npc_roam", "npc_roam(npc: string, centre: string, radius: number, run?: boolean|\"trot\")",
          "Reiht ein: zu einem zufälligen Punkt im Umkreis `radius` um den Wegpunkt `centre` gehen (Revier, "
          "Herumstreifen); gerade von dort erreichbar.",
          "NPCs", [npc](std::span<const Value> a) -> Result<Value>
@@ -845,23 +870,24 @@ void Engine::bindAiFunctions()
              }
              Creature::Command cmd{Kind::Roam, std::string(a[1].asString())};
              cmd.value = static_cast<f32>(a[2].asNumber());
-             cmd.run = a.size() > 3 && a[3].asBool();
+             setGait(cmd, a, 3);
              c.value()->commands.push_back(std::move(cmd));
              return Value();
          }});
-    vm.bind({"npc_goto_player", "npc_goto_player(npc: string, distance?: number, run?: boolean)",
+    vm.bind({"npc_goto_player", "npc_goto_player(npc: string, distance?: number, run?: boolean|\"trot\")",
              "Reiht ein: zum Spieler gehen (bzw. rennen), bis auf `distance` Meter (Vorgabe 1,5).", "NPCs",
              toPlayer(Kind::GoTo)});
     vm.bind({"npc_turn_to_player", "npc_turn_to_player(npc: string)", "Reiht ein: sich zum Spieler drehen.",
              "NPCs", toPlayer(Kind::Turn)});
     vm.bind(
-        {"npc_follow_player", "npc_follow_player(npc: string, seconds?: number, distance?: number)",
+        {"npc_follow_player",
+         "npc_follow_player(npc: string, seconds?: number, distance?: number, run?: boolean|\"trot\")",
          "Reiht ein: dem Spieler `seconds` Sekunden lang (Vorgabe 10) auf etwa `distance` Meter (Vorgabe 2) "
          "folgen und ihn ansehen (Drohen, Begleiten).",
          "NPCs", toPlayer(Kind::Follow)});
     vm.bind(
         {"npc_goto_freepoint",
-         "npc_goto_freepoint(npc: string, type: string, radius?: number, run?: boolean)",
+         "npc_goto_freepoint(npc: string, type: string, radius?: number, run?: boolean|\"trot\")",
          "Reiht ein: zum nächsten freien Freepoint dieses Typs (`\"SIT\"`, `\"CAMPFIRE\"` ...) im Umkreis "
          "(Vorgabe 10 m), reserviert ihn und dreht sich in seine Richtung. Gibt es keinen, bleibt er stehen.",
          "NPCs", queue(Kind::GoToFreepoint, true)});

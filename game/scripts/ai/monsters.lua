@@ -44,7 +44,7 @@ local function roam(npc, at)
         npc_stop(npc)
     end
     if leaders[npc] then
-        npc_follow_npc(npc, leaders[npc], 3, 8)
+        npc_follow_npc(npc, leaders[npc], 3, 8, c.pack_gait)
     else
         npc_roam(npc, at, c.territory)
         npc_wait(npc, 1 + math.random() * 3)
@@ -91,7 +91,7 @@ State "zs_mm_threaten" {
 State "zs_mm_attack" {
     begin = function(npc)
         npc_clear(npc)
-        npc_follow_player(npc, 20, 1.5) -- bis zum Kampf (M11): verfolgen
+        npc_follow_player(npc, 20, 1.5, animal(npc).chase_gait) -- bis zum Kampf (M11): verfolgen (weiter weg rennend)
     end,
     loop = function()
         return "done"

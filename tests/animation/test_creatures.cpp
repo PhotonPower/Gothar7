@@ -79,11 +79,26 @@ TEST_CASE("Animals: the graphs of wolf, keiler and laufvogel with their rigs and
             }
             return sum / 2.0f; // m/s
         };
-        const Vec3 walk = travel(graph.value().states[0].points[1].first);
-        const Vec3 run = travel(graph.value().states[0].points[2].first);
-        CHECK(walk.z > 0.1f);
-        CHECK(run.z > walk.z);
-        CHECK(std::abs(walk.x) < 0.25f * walk.z); // straight on
+        // At every blend point the root moves at the point's speed: the points are the clips' own speeds
+        // (figuren #200: wolf 1.19 / 2.99 / 6.00, keiler 0.99 / 4.98, laufvogel 1.30 / 6.50), so the feet do
+        // not slide.
+        f32 previous = 0.0f;
+        usize gaits = 0;
+        for (const auto& [value, clip] : graph.value().states[0].points)
+        {
+            if (value <= 0.0f)
+            {
+                continue;
+            }
+            CAPTURE(clip);
+            const Vec3 v = travel(value);
+            CHECK(v.z == doctest::Approx(value).epsilon(0.1));
+            CHECK(v.z > previous);
+            CHECK(std::abs(v.x) < 0.25f * v.z); // straight on
+            previous = v.z;
+            ++gaits;
+        }
+        CHECK(gaits == (species == "wolf" ? 3u : 2u)); // the wolf trots as well
         const i32 root = skeleton.find("root");
         REQUIRE(root >= 0);
         CHECK(glm::length(a.pose()[static_cast<usize>(root)].translation -

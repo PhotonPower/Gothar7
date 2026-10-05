@@ -9,6 +9,8 @@ Creatures = {
         threaten_seconds = 3,   -- so lange, dann Angriff
         eat_chance = 0.25,      -- je Streifzug: erst fressen
         prey = { laufvogel = true },
+        pack_gait = "trot",  -- Rudel folgt dem Anführer im Trab (figuren #200: Trab 3 m/s)
+        chase_gait = "trot", -- verfolgen: nah im Trab, ab 8 m rennend (Gangarten: Gehen 1,2 / Trab 3 / Rennen 6)
     },
     keiler = {
         territory = 20,

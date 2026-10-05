@@ -129,7 +129,12 @@ Routine "rtn_farmer_woman" {
   wahr.
 - **Beute und Räuber:** einmal je Sekunde: ein Wolf jagt einen Laufvogel in 15 m (`npc_follow_npc`, rennend), ein
   Laufvogel flieht vor einem Wolf in 12 m (`npc_flee(npc, 8, wolf)`: 10 m gerade weg, sonst 45° seitlich, sonst zum
-  fernsten Wegpunkt). Mit den Platzhalter-Clips ist der Wolf (1,3 m/s) schneller als der Laufvogel (1,04 m/s).
+  fernsten Wegpunkt). Der Laufvogel (6,5 m/s) ist schneller als der Wolf (6,0 m/s) und entkommt im Freien.
+- **Gangarten** (Projektinhaber: Tiere schneller als der Held mit 4 m/s; Clips figuren #200): Wolf gehen 1,19 / Trab
+  2,99 / rennen 6,0 m/s, Keiler 0,99 / 4,98, Laufvogel 1,30 / 6,5. Die Engine liest sie aus den Blend-Punkten von
+  `move` (erster Punkt > 0 gehen, letzter rennen, ein mittlerer Trab). Das `run`-Argument der NPC-Befehle nimmt
+  `true` (rennen) oder `"trot"` (Trab; ohne Trab-Clip gehen). In `data/creatures.lua`: `pack_gait` (Rudel folgt
+  dem Anführer) und `chase_gait` (Verfolgen; über 8 m rennt jedes Tier), beim Wolf `"trot"`.
 - Fliehen bei wenig Leben kommt mit dem Kampf (M11).
 - **Testlager:** Wegpunkte `WP_WOLF_DEN` (Wolfsbau im Westen), `WP_MEADOW_NORTH` (Keiler), `WP_MEADOW_SOUTH`
   (Laufvogel), mit Wegen zum Lager. Einsetzen z. B. `insert_pack('mon_wolf', 3, 'wp_wolf_den')`,

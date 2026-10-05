@@ -85,13 +85,28 @@ Result<u32> Engine::spawnAnimated(std::string_view label, std::string_view model
         loadAnimatedFigure(*c->figure, model, graph,
                            [&](const animation::AnimGraph& g, std::span<const asset::AnimationSetData* const>)
                            {
-                               // The blend points of "move": the speeds the showcase walks and runs at.
+                               // The blend points of "move" (clip speeds): walk = the first forward one,
+                               // run = the last, trot = one in between where there are three (wolf).
                                for (const animation::AnimGraphState& s : g.states)
                                {
-                                   if (s.name == "move" && s.points.size() >= 3)
+                                   if (s.name != "move")
                                    {
-                                       c->walkSpeed = s.points[s.points.size() - 2].first;
-                                       c->runSpeed = s.points.back().first;
+                                       continue;
+                                   }
+                                   std::vector<f32> forward;
+                                   for (const auto& point : s.points)
+                                   {
+                                       if (point.first > 0.0f)
+                                       {
+                                           forward.push_back(point.first);
+                                       }
+                                   }
+                                   if (forward.size() >= 2)
+                                   {
+                                       c->walkSpeed = forward.front();
+                                       c->runSpeed = forward.back();
+                                       c->trotSpeed =
+                                           forward.size() >= 3 ? forward[forward.size() - 2] : 0.0f;
                                    }
                                }
                            });

@@ -163,3 +163,41 @@ TEST_CASE("Engine animals: the wolf hunts the bird, the bird flees")
     runSeconds(engine, 4.0f);
     CHECK(flat(positionOf(engine, "mon_laufvogel"), start) > 2.0f);
 }
+
+TEST_CASE("Engine animals: gaits at the clips' speeds - the wolf walks, trots and runs (figuren #200)")
+{
+    Engine engine(monsterConfig());
+    REQUIRE(engine.init().ok());
+    REQUIRE(run(engine, "insert_npc('mon_wolf', 'wp_wolf_den')").isString());
+    run(engine, "set_routine('mon_wolf', '')");
+    // The player 40 m away: inside the AI's simulation distance, outside threatening.
+    const Vec3 den = positionOf(engine, "mon_wolf");
+    run(engine, std::format("teleport({}, {}, {})", den.x + 40.0f, den.y + 1.0f, den.z));
+    for (const auto& [gait, speed] :
+         {std::pair{"false", 1.19f}, std::pair{"'trot'", 2.99f}, std::pair{"true", 6.0f}})
+    {
+        CAPTURE(gait);
+        run(engine, "npc_clear('mon_wolf')");
+        runSeconds(engine, 0.5f);
+        const Vec3 start = positionOf(engine, "mon_wolf");
+        // Each direction until one is open ground for 25 m.
+        bool walked = false;
+        for (int d = 0; d < 8 && !walked; ++d)
+        {
+            const f32 a = static_cast<f32>(d) * 0.785f;
+            run(engine,
+                std::format("npc_clear('mon_wolf') npc_goto_point('mon_wolf', {}, {}, {}, {})",
+                            start.x + 25.0f * std::sin(a), start.y, start.z + 25.0f * std::cos(a), gait));
+            runSeconds(engine, 1.0f); // turned and up to speed
+            const Vec3 from = positionOf(engine, "mon_wolf");
+            runSeconds(engine, 2.0f);
+            const f32 measured = flat(positionOf(engine, "mon_wolf"), from) / 2.0f;
+            if (measured > 0.5f * speed)
+            {
+                walked = true;
+                CHECK(measured == doctest::Approx(speed).epsilon(0.25));
+            }
+        }
+        CHECK(walked);
+    }
+}
