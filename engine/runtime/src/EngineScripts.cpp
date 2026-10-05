@@ -104,6 +104,11 @@ Result<void> Engine::initScripts()
     bindTradeFunctions();
     loadVoiceLines();
     bindDiaryFunctions();
+    if (m_config.randomSeed)
+    {
+        m_rng.seed(*m_config.randomSeed); // tests: reproducible roaming, eating, combat rolls
+        (void)m_scripts->runString(std::format("math.randomseed({})", *m_config.randomSeed), "seed");
+    }
     m_scripts->loadAll();
     loadPerceptionSettings(); // data/perception.lua (M9 part C)
     loadDialogPresentation(); // data/dialog.lua (M10 part B)

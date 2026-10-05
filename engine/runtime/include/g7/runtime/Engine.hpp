@@ -152,6 +152,9 @@ struct Creature;       // an animal (EngineCreatures.cpp)
 struct EngineConfig
 {
     std::string appName = "Gothar";
+    /// Seeds the engine's random numbers and Lua's math.random (tests: the same run every time); unset:
+    /// random.
+    std::optional<u32> randomSeed;
     f64 simulationHz = 60.0; ///< Fixed simulation rate.
     u64 maxFrames = 0;       ///< 0 = unlimited. Used by tests and headless runs.
     f64 maxFps = 0.0;        ///< Frame-rate cap with a window; 0 = unlimited. Headless is never capped.
