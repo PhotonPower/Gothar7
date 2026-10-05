@@ -86,6 +86,9 @@ def test_door_mob_in_the_opening():
     (closed,) = door_mobs(index, opened=False)
     (opened,) = door_mobs(index, opened=True)
     assert closed["name"] == "MOB_LEO_TUER_ZJV" and closed["definition"] == "door"
+    assert closed["components"] == {"mob": {"definition": "door"}}  # closed: no "open" key
+    assert list(opened["components"]["mob"]) == ["definition", "open"]  # order (world.md)
+    assert opened["components"]["mob"]["open"] is True and opened["rot"] == closed["rot"]
     assert closed["mesh"] == "mobs/door.glb" and closed["pos"][1] == room["door"]["floor"]
 
     def turned(v: dict, local: tuple[float, float]) -> tuple[float, float]:
@@ -99,5 +102,4 @@ def test_door_mob_in_the_opening():
     far = (hx + bx * room["door"]["w"], hz + bz * room["door"]["w"])
     ends = [room["door"]["from"], room["door"]["to"]]
     assert min(math.dist(far, e) for e in ends) == pytest.approx(0.06, abs=0.02)
-    assert turned(opened, (1.0, 0.0)) == pytest.approx((0.0, -1.0), abs=1e-4)  # swung into the room
     assert door_mobs({"entries": [{"id": "X"}]}, True) == []
