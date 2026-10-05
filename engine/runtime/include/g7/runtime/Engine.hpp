@@ -802,6 +802,7 @@ private:
     [[nodiscard]] std::string
     meleeWeapon(const Combatant& c) const; ///< drawn/equipped melee item, empty: fists
     [[nodiscard]] std::string fightMode(const Combatant& c) const; ///< "fist", "1h", "2h"
+    [[nodiscard]] f32 reachOf(const Combatant& c) const;           ///< m beyond the bodies
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
     void stopForFight(Creature& c);

@@ -106,23 +106,24 @@ TEST_CASE("Engine combat: a parry from the front blocks and the blow bounces off
     run(engine, "Story.met_gate_guard = true");
     run(engine, "teleport(10, 0, 30)");
     run(engine, "on('npc_parried', function(d, a) Story.parried = d end)");
-    // Two fighters with fists: the gate guard's weapon taken away, the farmer woman unarmed.
-    face(engine, "npc_farmer_woman", "npc_woodcutter");
-    const i64 before = hp(engine, "npc_woodcutter");
+    // Two fighters with fists, of different guilds (comrades do not hit each other): farmer woman and old
+    // man.
+    face(engine, "npc_farmer_woman", "npc_old_man");
+    const i64 before = hp(engine, "npc_old_man");
     REQUIRE(run(engine, "npc_attack('npc_farmer_woman')").asBool());
     runSeconds(engine, 0.1f);
-    REQUIRE(run(engine, "npc_parry('npc_woodcutter')").asBool());
+    REQUIRE(run(engine, "npc_parry('npc_old_man')").asBool());
     runSeconds(engine, 1.0f);
-    CHECK(hp(engine, "npc_woodcutter") == before);
-    CHECK(run(engine, "Story.parried").asString() == "npc_woodcutter");
+    CHECK(hp(engine, "npc_old_man") == before);
+    CHECK(run(engine, "Story.parried").asString() == "npc_old_man");
     // Turned away: the parry does not help.
-    run(engine, "npc_teleport('npc_woodcutter', 40, 0, 18.8, 0)");
+    run(engine, "npc_teleport('npc_old_man', 40, 0, 18.8, 0)");
     runSeconds(engine, 0.1f);
     REQUIRE(run(engine, "npc_attack('npc_farmer_woman')").asBool());
     runSeconds(engine, 0.1f);
-    REQUIRE(run(engine, "npc_parry('npc_woodcutter')").asBool());
+    REQUIRE(run(engine, "npc_parry('npc_old_man')").asBool());
     runSeconds(engine, 1.0f);
-    CHECK(hp(engine, "npc_woodcutter") < before);
+    CHECK(hp(engine, "npc_old_man") < before);
 }
 
 TEST_CASE(
@@ -251,4 +252,77 @@ TEST_CASE(
     runSeconds(engine, 0.2f);
     run(engine, "npc_give_item('npc_farmer_woman', 'it_bread', 1)");
     CHECK_FALSE(engine.runConsoleLine("loot('npc_farmer_woman', 'it_bread')").ok()); // too far
+}
+
+TEST_CASE("Engine combat AI: an attacked NPC fights back; it leaves the hero lying (K8)")
+{
+    Engine engine(combatConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true");
+    face(engine, "npc_old_man", "npc_woodcutter");
+    run(engine, "npc_teleport('npc_old_man', 30, 0, 30, 0)");
+    // The hero strikes the woodcutter: he fights back until the hero lies.
+    run(engine, "npc_teleport('npc_woodcutter', 40, 0, 18.8, 270)"); // looking along +X at the hero
+    run(engine, "teleport(41.2, 0, 18.8)");
+    run(engine, "set_stat('hp', 40)");
+    run(engine, "draw_weapon()");
+    runSeconds(engine, 1.0f);
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    runSeconds(engine, 1.5f);
+    CHECK(run(engine, "npc_state('npc_woodcutter').state").asString() == "zs_attack");
+    bool down = false;
+    for (int i = 0; i < 60 && !down; ++i)
+    {
+        runSeconds(engine, 0.5f);
+        down = state(engine, "hero") == "down";
+    }
+    REQUIRE(down); // the hero does not fight back here
+    runSeconds(engine, 1.5f);
+    CHECK(run(engine, "npc_state('npc_woodcutter').state").asString() != "zs_attack"); // leaves him lying
+}
+
+TEST_CASE("Engine combat AI: a pack attacks two at a time, a wounded wolf flees, the hunted bird dies")
+{
+    Engine engine(combatConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true");
+    run(engine, "teleport(-41, 0, -26)");                         // 8 m from the wolf den
+    run(engine, "set_stat('hp_max', 1000) set_stat('hp', 1000)"); // the hero lasts
+    runSeconds(engine, 0.5f);
+    REQUIRE(run(engine, "#insert_pack('mon_wolf', 3, 'wp_wolf_den')").asInteger() == 3);
+    for (const char* wolf : {"mon_wolf", "mon_wolf#2", "mon_wolf#3"})
+    {
+        run(engine, std::format("set_routine('{}', '') npc_clear('{}')", wolf, wolf));
+        run(engine, std::format("fight('{}', 'hero')", wolf));
+    }
+    i64 most = 0;
+    for (int i = 0; i < 40; ++i)
+    {
+        runSeconds(engine, 0.5f);
+        most = std::max(most, run(engine, "fight_attackers('hero')").asInteger());
+    }
+    CHECK(most == 2); // the third waits
+    CHECK(run(engine, "stat('hp')").asInteger() < 1000);
+
+    // Below a fifth of its life a wolf runs off.
+    run(engine, "npc_set_stat('mon_wolf', 'hp', 5)");
+    runSeconds(engine, 1.5f);
+    CHECK(run(engine, "npc_state('mon_wolf').state").asString() != "zs_mm_attack");
+    CHECK(run(engine, "npc_state('mon_wolf').state").asString() != "zs_attack");
+
+    // A wolf hunting a bird kills it (the hero out of the way: near him the wolves would threaten him).
+    run(engine, "teleport(-35, 0, 5)");
+    runSeconds(engine, 1.0f);
+    REQUIRE(run(engine, "insert_npc('mon_laufvogel', 'wp_wolf_den')").isString());
+    run(engine, "set_routine('mon_laufvogel', '') npc_clear('mon_laufvogel') npc_set_stat('mon_laufvogel', "
+                "'hp', 10)");
+    run(engine, "npc_set_stat('mon_wolf#2', 'hp', 60)");
+    run(engine, "fight('mon_wolf#2', 'mon_laufvogel')");
+    bool killed = false;
+    for (int i = 0; i < 40 && !killed; ++i)
+    {
+        runSeconds(engine, 0.5f);
+        killed = state(engine, "mon_laufvogel") == "dead";
+    }
+    CHECK(killed);
 }

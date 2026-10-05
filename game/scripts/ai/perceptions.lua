@@ -6,6 +6,7 @@
 local function busy(npc)
     local s = npc_state(npc).state
     return s == "zs_sleep" or s == "zs_warn_weapon" or s == "zs_threaten" or s == "zs_intruder" or s == "zs_flee"
+        or s == "zs_attack" or fight_state(npc) == "down" or fight_state(npc) == "dead"
 end
 
 --- Tiere reagieren nach ai/monsters.lua.
@@ -41,12 +42,12 @@ local function alarm(npc)
     end
 end
 
---- Würde angreifen: verärgert, ruft Hilfe, meldet es und droht (Kampf ab M11).
+--- Greift an: verärgert, ruft Hilfe, meldet es (npc_would_attack) und kämpft (M11, ai/combat.lua).
 local function would_attack(npc, reason)
     set_temp_attitude(npc, "angry")
     emit("npc_would_attack", npc, reason)
     alarm(npc)
-    npc_start_state(npc, "zs_threaten")
+    fight(npc, "hero")
 end
 
 -- Wie oft ein NPC schon wegen der Waffe gewarnt hat (vergisst es, wenn sie weg ist).
@@ -122,7 +123,7 @@ on("assess_call", function(helper, caller)
     end
     set_temp_attitude(helper, "angry")
     npc_say(helper, Shouts.help)
-    npc_start_state(helper, "zs_threaten")
+    fight(helper, Fights[caller] or "hero")
 end)
 
 on("assess_player", function(npc, distance)

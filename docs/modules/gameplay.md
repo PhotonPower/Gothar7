@@ -313,7 +313,20 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
   nahesteht – gleiche oder befreundete Gilde, Wachen –, wird verärgert; ein Totschlag macht Zeugen feindlich, sie
   rufen Hilfe. Ereignis `npc_witnessed(zeuge, opfer, einstellung)`.
 
-**Weiter:** Kamera-Kampfprofil (K5, nach #206); D Kampf-KI; E Fernkampf (K9).
+**Teil D – Kampf-KI (umgesetzt, Inhalt `ai/combat.lua`, Werte `CombatAi`):**
+- `fight(npc, ziel)` startet `zs_attack` gegen den Helden oder ein NPC; je Schleife (0,5 s) ein Schritt
+  (`fight_step`): in Reichweite gehen (`npc_reach`, Tiere in ihrer Gangart), zum Ziel drehen (`npc_face`), schlagen
+  (Kombos nach Talent, ein Viertel Seitenhiebe), parieren, wenn das Ziel schlägt (10/30/50 % je Talent).
+- Höchstens zwei greifen dasselbe Ziel an, die übrigen warten in 3,5 m (`fight_attackers`). Liegende lässt er in Ruhe
+  (K7, K8), über 30 m gibt er auf. Tiere fliehen unter 20 % Leben, Feiglinge (Bauern, Ausgestoßene bis Stufe 3) unter
+  50 %.
+- Wer getroffen wird, schlägt zurück (`npc_hit`). Wer angreifen würde (Waffe, Eindringling, feindlich), greift jetzt
+  an statt nur zu drohen; Gerufene helfen gegen den Feind des Rufers. Tiere: `zs_mm_attack` und die Jagd
+  (`zs_mm_hunt`) kämpfen mit demselben Schritt – ein Wolf reißt den Laufvogel.
+- Gleiche Gilde trifft sich nicht (Rudel, Kameraden); der Held trifft jeden.
+- Engine-Hilfen: `npc_distance(npc, anderer)`, `npc_face(npc, anderer)`, `npc_reach(npc)` (`hero` für den Helden).
+
+**Weiter:** Kamera-Kampfprofil (K5, nach #206); E Fernkampf (K9); DoD-Szenario.
 
 ## Magie (M12)
 Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten

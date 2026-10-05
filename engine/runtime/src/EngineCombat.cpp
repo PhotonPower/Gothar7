@@ -162,6 +162,12 @@ std::string Engine::fightMode(const Combatant& c) const
     return item != nullptr ? "1h" : "fist";
 }
 
+f32 Engine::reachOf(const Combatant& c) const
+{
+    const std::string mode = fightMode(c);
+    return mode == "2h" ? m_combat.reach2h : mode == "1h" ? m_combat.reach1h : m_combat.fistReach;
+}
+
 bool Engine::startFight(Combatant& c, std::string_view move, AttackKind kind)
 {
     const std::string mode = fightMode(c);
@@ -229,9 +235,7 @@ void Engine::fixedUpdateCombat(f32 seconds)
         {
             continue;
         }
-        const f32 reach = fightMode(*attacker) == "2h"   ? m_combat.reach2h
-                          : fightMode(*attacker) == "1h" ? m_combat.reach1h
-                                                         : m_combat.fistReach;
+        const f32 reach = reachOf(*attacker);
         const Vec3 forward = gameplay::forwardOf(attacker->yaw);
         for (const u32 other : ids)
         {
@@ -242,6 +246,12 @@ void Engine::fixedUpdateCombat(f32 seconds)
             }
             auto target = combatant(other);
             if (!target || target->fighter->state() == FightState::Dead)
+            {
+                continue;
+            }
+            // A pack or comrades of one guild do not hit each other (Gothic); the hero hits anyone.
+            if (id != kHeroId && other != kHeroId && !attacker->character->guild().empty() &&
+                attacker->character->guild() == target->character->guild())
             {
                 continue;
             }
@@ -475,6 +485,59 @@ void Engine::bindCombatFunctions()
              }
              return Value();
          }});
+    // Who a fighter is: an NPC or "hero".
+    const auto fighterOf = [this](const Value& v) -> std::optional<Combatant>
+    {
+        if (!v.isString())
+        {
+            return std::nullopt;
+        }
+        const std::optional<u32> id =
+            v.asString() == "hero" ? std::optional<u32>(kHeroId) : npcByInstance(v.asString());
+        return id ? combatant(*id) : std::nullopt;
+    };
+    vm.bind({"npc_distance", "npc_distance(npc: string, other: string) -> number",
+             "Abstand zweier Kämpfer auf dem Boden in Metern (`hero` für den Helden).", "Kampf",
+             [fighterOf](std::span<const Value> a) -> Result<Value>
+             {
+                 auto x = a.size() >= 2 ? fighterOf(a[0]) : std::nullopt;
+                 auto y = a.size() >= 2 ? fighterOf(a[1]) : std::nullopt;
+                 if (!x || !y)
+                 {
+                     return Error{"expects (npc, other) in the world (\"hero\" for the hero)"};
+                 }
+                 const Vec3 d = y->position - x->position;
+                 return Value(static_cast<f64>(glm::length(Vec2(d.x, d.z))));
+             }});
+    vm.bind({"npc_face", "npc_face(npc: string, other: string)",
+             "Dreht ein NPC sofort zu einem anderen bzw. zum Helden (Kampf).", "Kampf",
+             [this, fighterOf](std::span<const Value> a) -> Result<Value>
+             {
+                 auto x = a.size() >= 2 ? fighterOf(a[0]) : std::nullopt;
+                 auto y = a.size() >= 2 ? fighterOf(a[1]) : std::nullopt;
+                 if (!x || !y || x->creature == nullptr)
+                 {
+                     return Error{"expects (npc, other) in the world"};
+                 }
+                 const Vec3 d = y->position - x->position;
+                 if (glm::length(Vec2(d.x, d.z)) > 1e-3f)
+                 {
+                     x->creature->yaw = gameplay::yawOf(glm::normalize(Vec3(d.x, 0.0f, d.z)));
+                 }
+                 return Value();
+             }});
+    vm.bind({"npc_reach", "npc_reach(npc: string) -> number",
+             "Bis zu welchem Abstand (Mitte zu Mitte, m) die Schläge des Kämpfers treffen (`hero` für den "
+             "Helden).",
+             "Kampf", [this, fighterOf](std::span<const Value> a) -> Result<Value>
+             {
+                 auto x = !a.empty() ? fighterOf(a[0]) : std::nullopt;
+                 if (!x)
+                 {
+                     return Error{"expects an NPC in the world"};
+                 }
+                 return Value(static_cast<f64>(reachOf(*x) + 2.0f * kBodyRadius));
+             }});
     vm.bind({"hero_attack", "hero_attack(kind?: \"front\"|\"left\"|\"right\") -> boolean",
              "Ein Schlag des Helden (sonst über die Steuerung).", "Kampf", heroMove("attack")});
     vm.bind({"hero_parry", "hero_parry() -> boolean", "Parade des Helden.", "Kampf", heroMove("parry")});

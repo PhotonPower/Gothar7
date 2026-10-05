@@ -244,11 +244,20 @@ Nimmt einem bewusstlosen oder toten NPC in der Nähe des Helden `count` (ohne: a
 ### `npc_attack(npc: string, kind?: "front"|"left"|"right") -> boolean`
 Ein Schlag (M11): `front` setzt die Kombo fort, soweit das Talent reicht; false, wenn er gerade nicht kann.
 
+### `npc_distance(npc: string, other: string) -> number`
+Abstand zweier Kämpfer auf dem Boden in Metern (`hero` für den Helden).
+
 ### `npc_dodge(npc: string) -> boolean`
 Ausweichschritt zurück (M11).
 
+### `npc_face(npc: string, other: string)`
+Dreht ein NPC sofort zu einem anderen bzw. zum Helden (Kampf).
+
 ### `npc_parry(npc: string) -> boolean`
 Parade (M11, K6): blockt Nahkampftreffer von vorn kurz nach ihrem Beginn.
+
+### `npc_reach(npc: string) -> number`
+Bis zu welchem Abstand (Mitte zu Mitte, m) die Schläge des Kämpfers treffen (`hero` für den Helden).
 
 ## Mobs
 
