@@ -179,3 +179,39 @@ on("assess_noise", function(npc, kind)
         npc_start_state(npc, "zs_look_around")
     end
 end)
+
+-- Kampf (M11 Teil C, Entscheidung K7 wie Gothic 1): Wen der Held niederschlägt, der ist ihm danach dauerhaft eine Stufe
+-- schlechter gesinnt. Wer es sieht und dem Opfer nahesteht (gleiche oder befreundete Gilde, Wachen), wird verärgert;
+-- wer einen Totschlag sieht, wird feindlich und ruft Hilfe.
+local worse = { friendly = "neutral", neutral = "angry", angry = "angry", hostile = "hostile" }
+
+local function witnesses(victim, attitude_after)
+    for _, near in ipairs(npcs_near(victim, 20)) do
+        local close = near.guild == guild_of(victim) or attitude(near.guild, guild_of(victim)) == "friendly"
+            or is_guard(near.npc)
+        if human(near.npc) and close and npc_sees_player(near.npc) then
+            if attitude_after == "hostile" then
+                set_attitude(near.npc, "hostile")
+                alarm(near.npc)
+            else
+                set_temp_attitude(near.npc, attitude_after)
+            end
+            emit("npc_witnessed", near.npc, victim, attitude_after)
+        end
+    end
+end
+
+on("npc_knocked_out", function(target, attacker)
+    if attacker ~= "hero" or not human(target) then
+        return
+    end
+    set_attitude(target, worse[npc_attitude(target)])
+    witnesses(target, "angry")
+end)
+
+on("npc_killed", function(target, attacker)
+    if attacker ~= "hero" or not human(target) then
+        return
+    end
+    witnesses(target, "hostile")
+end)

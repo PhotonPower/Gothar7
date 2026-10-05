@@ -685,3 +685,92 @@ CombatInput combatInput(const platform::ActionMap& actions, const platform::Inpu
     return result;
 }
 } // namespace g7::runtime
+
+namespace g7
+{
+namespace
+{
+constexpr f32 kLootReach = 3.0f; ///< m: the hero takes from a lying NPC this near
+} // namespace
+
+bool Engine::focusedNpcLying() const
+{
+    if (!m_focus || m_focus->kind != gameplay::FocusKind::Npc)
+    {
+        return false;
+    }
+    const Creature* c = creature(static_cast<u32>(m_focus->id & ~kCreatureFocusBit));
+    return c != nullptr && (c->fighter.state() == FightState::Down || c->fighter.state() == FightState::Dead);
+}
+
+Result<void> Engine::lootFocus()
+{
+    if (!focusedNpcLying())
+    {
+        return Error{"nobody lying in focus"};
+    }
+    m_lootTarget = static_cast<u32>(m_focus->id & ~kCreatureFocusBit);
+    m_inventoryMessage.clear();
+    setInventoryOpen(true);
+    return {};
+}
+
+Result<u32> Engine::loot(std::string_view npc, std::string_view item, u32 count)
+{
+    const auto id = npcByInstance(npc);
+    Creature* c = id ? creature(*id) : nullptr;
+    if (c == nullptr || !c->character || !m_hero || !m_player.valid())
+    {
+        return Error{std::format("no NPC {} in the world", npc)};
+    }
+    if (c->fighter.state() != FightState::Down && c->fighter.state() != FightState::Dead)
+    {
+        return Error{"Nur Bewusstlose und Tote lassen sich plündern."};
+    }
+    if (glm::length(c->position - m_player.feet()) > kLootReach)
+    {
+        return Error{"Zu weit weg."};
+    }
+    const u32 have = c->character->itemCount(item);
+    const u32 take = count == 0 ? have : std::min(count, have);
+    if (take == 0 || !c->character->removeItem(item, take))
+    {
+        return Error{std::format("{} hat kein {}.", c->character->name(), item)};
+    }
+    m_hero->addItem(item, take);
+    if (m_scripts)
+    {
+        const script::Value args[] = {std::string(npc), std::string(item), Value(static_cast<i64>(take))};
+        m_scripts->emit("npc_looted", args);
+    }
+    return take;
+}
+
+void Engine::bindLootFunctions()
+{
+    script::ScriptVm& vm = *m_scripts;
+    vm.bind(
+        {"loot", "loot(npc: string, item: string, count?: integer) -> integer",
+         "Nimmt einem bewusstlosen oder toten NPC in der Nähe des Helden `count` (ohne: alle) Stück ab (M11, "
+         "K7); gibt die Zahl zurück.",
+         "Kampf", [this](std::span<const Value> a) -> Result<Value>
+         {
+             if (a.size() < 2 || !a[0].isString() || !a[1].isString())
+             {
+                 return Error{"expects (npc, item, count?)"};
+             }
+             auto taken = loot(a[0].asString(), a[1].asString(),
+                               a.size() > 2 ? static_cast<u32>(std::max<i64>(a[2].asInteger(), 0)) : 0u);
+             if (!taken)
+             {
+                 return taken.error();
+             }
+             return Value(static_cast<i64>(taken.value()));
+         }});
+    vm.bind({"npc_looted",
+             "on(\"npc_looted\", fn(npc: string, item: string, count: integer))",
+             "Der Held hat einem Bewusstlosen oder Toten etwas abgenommen (M11).",
+             "Ereignisse",
+             {}});
+}
+} // namespace g7

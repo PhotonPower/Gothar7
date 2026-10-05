@@ -210,3 +210,45 @@ TEST_CASE("Engine combat: with the weapon drawn the hero locks the nearest enemy
     runSeconds(engine, 1.0f);
     CHECK_FALSE(engine.heroCombatTarget().has_value());
 }
+
+TEST_CASE(
+    "Engine combat: knocked out by the hero - worse attitude, witnesses angry, looting the one lying (K7)")
+{
+    Engine engine(combatConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true");
+    // The farmer woman in front of the hero; the gate guard (friendly to farmers) behind him, watching.
+    face(engine, "npc_old_man", "npc_farmer_woman");
+    run(engine, "npc_teleport('npc_old_man', 30, 0, 30, 0)"); // out of the way
+    run(engine, "npc_teleport('npc_farmer_woman', 40, 0, 18.8, 0)");
+    if (!engine.runConsoleLine("npc_state('npc_gate_guard')").ok())
+    {
+        REQUIRE(run(engine, "insert_npc('npc_gate_guard', 'wp_camp_center')").isString());
+    }
+    run(engine, "set_routine('npc_gate_guard', '') npc_clear('npc_gate_guard')");
+    run(engine, "npc_teleport('npc_gate_guard', 45, 0, 18.8, 90)"); // looking along -X at the scene
+    run(engine, "teleport(41.2, 0, 18.8)"); // the hero starts looking along -X: she is ahead
+    runSeconds(engine, 0.5f);
+    const std::string before(run(engine, "npc_attitude('npc_farmer_woman')").asString());
+    run(engine, "npc_set_stat('npc_farmer_woman', 'hp', 2)");
+    run(engine, "draw_weapon()");
+    runSeconds(engine, 1.0f);
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    runSeconds(engine, 1.0f);
+    REQUIRE(state(engine, "npc_farmer_woman") == "down");
+    // One step worse, for good (Story).
+    CHECK(run(engine, "npc_attitude('npc_farmer_woman')").asString() != before);
+    CHECK(run(engine, "Story.attitudes.npc_farmer_woman").isString());
+    CHECK(run(engine, "npc_attitude('npc_gate_guard')").asString() == "angry"); // he saw it
+
+    // Looting: only the one lying, only near.
+    run(engine, "npc_give_item('npc_farmer_woman', 'it_apple', 3)");
+    const i64 apples = run(engine, "npc_item_count('npc_farmer_woman', 'it_apple')").asInteger();
+    CHECK(run(engine, "loot('npc_farmer_woman', 'it_apple')").asInteger() == apples); // all of them
+    CHECK(run(engine, "npc_item_count('npc_farmer_woman', 'it_apple')").asInteger() == 0);
+    CHECK_FALSE(engine.runConsoleLine("loot('npc_gate_guard', 'it_sword_old')").ok()); // standing
+    run(engine, "teleport(50, 0, 20)");
+    runSeconds(engine, 0.2f);
+    run(engine, "npc_give_item('npc_farmer_woman', 'it_bread', 1)");
+    CHECK_FALSE(engine.runConsoleLine("loot('npc_farmer_woman', 'it_bread')").ok()); // too far
+}

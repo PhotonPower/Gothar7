@@ -478,6 +478,9 @@ public:
     [[nodiscard]] f32 playerCameraDistance() const noexcept { return m_playerCamera.distance(); }
     /// K5: the enemy the hero has locked while his weapon is drawn (its Npc instance).
     [[nodiscard]] std::optional<std::string> heroCombatTarget() const;
+    /// K7: takes `count` (0: all) of `item` from a knocked out or dead NPC next to the hero; returns how
+    /// many.
+    Result<u32> loot(std::string_view npc, std::string_view item, u32 count);
     /// Picks the n-th entry (from 0) of the menu shown (an Info, an answer, "Ende").
     void dialogChoose(usize index);
     /// Skips the line being said.
@@ -793,6 +796,7 @@ private:
     struct Combatant;
     void loadCombat();
     void bindCombatFunctions();
+    void bindLootFunctions();
     void fixedUpdateCombat(f32 seconds);
     [[nodiscard]] std::optional<Combatant> combatant(u32 id);
     [[nodiscard]] std::string
@@ -804,7 +808,9 @@ private:
     void readCombatInput(); // K1: Gothic 1 keys, the mouse as second assignment
     void fixedUpdateHeroFight(gameplay::MoveInput& input, f32 seconds); // moves, lock (K5)
     [[nodiscard]] std::optional<u32> pickCombatTarget() const;
-    void loadVoiceLines(); // voice/lines.<language>.json: the keys of the spoken lines
+    [[nodiscard]] bool focusedNpcLying() const;
+    Result<void> lootFocus(); // opens the inventory with the lying NPC's belongings
+    void loadVoiceLines();    // voice/lines.<language>.json: the keys of the spoken lines
     /// Key of a spoken line: dialogue "<info>_NN", else the NPC's shout "svm_<voice>_<m|f>_<occasion>_NN";
     /// empty if the voice database does not know the text.
     [[nodiscard]] std::string voiceKey(std::string_view info, std::string_view npc,
@@ -1127,6 +1133,7 @@ private:
     };
     std::optional<CombatRequest> m_combatRequest; // read per frame, used by the next fixed step
     std::optional<u32> m_combatTarget;            // K5: the locked enemy while the weapon is drawn
+    std::optional<u32> m_lootTarget;              // K7: whose belongings the inventory window shows
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)

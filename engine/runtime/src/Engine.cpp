@@ -387,6 +387,11 @@ bool Engine::runFrame()
                 {
                     (void)useFocusedMob();
                 }
+                else if (m_focus->kind == gameplay::FocusKind::Npc &&
+                         focusedNpcLying()) // M11: the knocked out and the dead are looted
+                {
+                    (void)lootFocus();
+                }
                 else if (m_focus->kind == gameplay::FocusKind::Npc && m_playerInput.sneak)
                 {
                     (void)pickpocketFocus(); // Gothic 1: sneaking up on someone (M8 part D)

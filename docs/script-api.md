@@ -115,6 +115,9 @@ Getötet (M11, K7).
 ### `on("npc_knocked_out", fn(target: string, attacker: string))`
 Bewusstlos geschlagen (M11, K7); auch der Held (K8: er steht am Ort wieder auf).
 
+### `on("npc_looted", fn(npc: string, item: string, count: integer))`
+Der Held hat einem Bewusstlosen oder Toten etwas abgenommen (M11).
+
 ### `on("npc_parried", fn(defender: string, attacker: string))`
 Ein Schlag wurde pariert (M11).
 
@@ -234,6 +237,9 @@ Ein Schlag des Helden (sonst über die Steuerung).
 
 ### `hero_parry() -> boolean`
 Parade des Helden.
+
+### `loot(npc: string, item: string, count?: integer) -> integer`
+Nimmt einem bewusstlosen oder toten NPC in der Nähe des Helden `count` (ohne: alle) Stück ab (M11, K7); gibt die Zahl zurück.
 
 ### `npc_attack(npc: string, kind?: "front"|"left"|"right") -> boolean`
 Ein Schlag (M11): `front` setzt die Kombo fort, soweit das Talent reicht; false, wenn er gerade nicht kann.

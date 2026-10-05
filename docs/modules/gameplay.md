@@ -304,8 +304,16 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
   oder Waffe weg: neues Ziel bzw. keins. `Engine::heroCombatTarget()`.
 - Der Held steht beim Schlagen, Parieren, Taumeln und Liegen; der Ausweichschritt geht bis zum Clip rückwärts.
 
-**Weiter:** Kamera-Kampfprofil (K5, nach #206); C Plündern, Einstellung nach dem Niederschlagen, Zeugen; D Kampf-KI;
-E Fernkampf (K9).
+**Teil C – Folgen (umgesetzt):**
+- **Plündern (K7):** Bewusstlose und Tote bleiben im Fokus (tiefer, wo sie liegen); die Aktionstaste öffnet statt
+  Dialog oder Taschendiebstahl das Inventar mit ihren Sachen daneben (nur nehmen). `loot(npc, item, count?)` (bis 3 m),
+  Ereignis `npc_looted(npc, item, count)`.
+- **Einstellung (K7, Inhalt in `ai/perceptions.lua`):** Wen der Held niederschlägt, ist ihm dauerhaft eine Stufe
+  schlechter gesinnt (freundlich → neutral → verärgert). Wer es sieht (20 m, sieht den Helden) und dem Opfer
+  nahesteht – gleiche oder befreundete Gilde, Wachen –, wird verärgert; ein Totschlag macht Zeugen feindlich, sie
+  rufen Hilfe. Ereignis `npc_witnessed(zeuge, opfer, einstellung)`.
+
+**Weiter:** Kamera-Kampfprofil (K5, nach #206); D Kampf-KI; E Fernkampf (K9).
 
 ## Magie (M12)
 Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten
