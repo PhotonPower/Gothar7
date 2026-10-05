@@ -3,6 +3,8 @@
 // themselves. An Info's run(npc) queues lines (say), answers (choice) and the end (end_dialog). Lines stay
 // for a time by their length and can be skipped. Decisions of the owner (2026-10-04): text only for now,
 // inline German text in Lua with automatic keys (info name + number) for later translation and voice files.
+// The keys come from the voice database (voice/lines.<language>.json, `gothar-voice scan`): the line's text
+// in its Info gives the key; a text the database does not know yet falls back to the number in the Info.
 
 #include "PlayerFigure.hpp"
 
@@ -121,8 +123,11 @@ Result<void> Engine::startDialog(u32 npcId)
 
 void Engine::runInfo(const script::Instance& info)
 {
-    m_dialog->info = info.name;
-    m_dialog->lineNumber = 0;
+    if (m_dialog->info != info.name)
+    {
+        m_dialog->info = info.name;
+        m_dialog->lineNumber = 0;
+    }
     m_dialog->menu.clear();
     if (!info.fields["permanent"].asBool())
     {
@@ -183,7 +188,9 @@ void Engine::dialogChoose(usize index)
         m_dialog->choices.clear();
         if (const script::Instance* info = m_scripts->findInstance("Info", option.info))
         {
-            // The player says the menu text first (Gothic: the hero asks).
+            // The player says the menu text first (Gothic: the hero asks), already as a line of this Info.
+            m_dialog->info = info->name;
+            m_dialog->lineNumber = 0;
             queueLine(std::string(kHero), option.text);
             runInfo(*info);
         }
@@ -216,8 +223,14 @@ void Engine::queueLine(std::string speaker, std::string text)
 {
     DialogLine line;
     line.speaker = std::move(speaker);
-    line.key = std::format("{}_{:02}", m_dialog->info.empty() ? m_dialog->npcName : m_dialog->info,
-                           m_dialog->lineNumber++);
+    const std::string& context = m_dialog->info.empty() ? m_dialog->npcName : m_dialog->info;
+    line.key = voiceKey(m_dialog->info, line.speaker, text);
+    if (line.key.empty())
+    {
+        line.key = std::format("{}_{:02}", context, m_dialog->lineNumber);
+        G7_LOG_DEBUG("engine", "{}: no voice key for \"{}\" (gothar-voice scan --write)", context, text);
+    }
+    ++m_dialog->lineNumber;
     const script::Instance* npc = m_scripts->findInstance(
         "Npc", line.speaker == kHero ? std::string_view("pc_hero") : std::string_view(line.speaker));
     line.name = npc != nullptr ? std::string(npc->fields["name"].asString()) : line.speaker;
@@ -225,6 +238,49 @@ void Engine::queueLine(std::string speaker, std::string text)
     line.text = std::move(text);
     G7_LOG_INFO("engine", "{} [{}]: {}", line.name, line.key, line.text);
     m_dialog->lines.push_back(std::move(line));
+}
+
+void Engine::loadVoiceLines()
+{
+    const std::string language = m_config.settings.get<std::string>("voice.language", "de");
+    const std::string path = std::format("voice/lines.{}.json", language);
+    auto bytes = m_vfs.read(path);
+    if (!bytes)
+    {
+        G7_LOG_WARN("engine", "{}: {} (lines without voice keys)", path, bytes.error().message);
+        return;
+    }
+    auto lines = asset::VoiceLines::parse(
+        std::string_view(reinterpret_cast<const char*>(bytes.value().data()), bytes.value().size()), path);
+    if (!lines)
+    {
+        G7_LOG_WARN("engine", "{} (lines without voice keys)", lines.error().message);
+        return;
+    }
+    m_voiceLines = std::move(lines).value();
+    G7_LOG_INFO("engine", "{}: {} spoken lines", path, m_voiceLines.size());
+}
+
+std::string Engine::voiceKey(std::string_view info, std::string_view npc, std::string_view text) const
+{
+    if (!info.empty())
+    {
+        if (auto key = m_voiceLines.dialogKey(info, text))
+        {
+            return *std::move(key);
+        }
+    }
+    // A shout: in the voice of the NPC's guild and gender (data/voices.lua; Npc.voice overrides the guild).
+    const script::Instance* def = m_scripts ? m_scripts->findInstance("Npc", npc) : nullptr;
+    if (def == nullptr)
+    {
+        return {};
+    }
+    const std::string_view voice = def->fields["voice"].asString();
+    const std::string_view gender = def->fields["gender"].asString();
+    auto key = m_voiceLines.shoutKey(voice.empty() ? def->fields["guild"].asString() : voice,
+                                     gender.empty() ? std::string_view("m") : gender, text);
+    return key ? *std::move(key) : std::string();
 }
 
 void Engine::endDialog()

@@ -11,6 +11,7 @@ Npc "npc_gate_guard" {
 }
 
 Npc "npc_farmer_woman" {
+    gender = "f",
     name = "Bäuerin",
     guild = "farmer",
     level = 2,

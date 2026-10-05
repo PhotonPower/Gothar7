@@ -74,10 +74,11 @@ Creature* Engine::npcNamed(std::string_view instance) noexcept
 
 void Engine::npcSays(const Creature& c, std::string_view text)
 {
-    G7_LOG_INFO("engine", "{}: \"{}\"", c.species, text);
+    const std::string key = voiceKey({}, c.species, text); // shouts: svm_<voice>_<m|f>_<occasion>_NN
+    G7_LOG_INFO("engine", "{}: \"{}\" [{}]", c.species, text, key);
     if (m_scripts)
     {
-        const script::Value args[] = {c.species, std::string(text)};
+        const script::Value args[] = {c.species, std::string(text), key};
         m_scripts->emit("npc_said", args);
     }
     // Until the dialogues (M10): shown near the player.
@@ -1032,8 +1033,9 @@ void Engine::bindAiFunctions()
                  return Value(creature(spawned.value())->species); // its name: "mon_wolf", "mon_wolf#2" ...
              }});
     vm.bind({"npc_said",
-             "on(\"npc_said\", fn(npc: string, text: string))",
-             "Ein NPC hat etwas gesagt (npc_say).",
+             "on(\"npc_said\", fn(npc: string, text: string, key: string))",
+             "Ein NPC hat etwas gesagt (npc_say, npc_shout); `key` ist der Sprach-Schlüssel des Zurufs "
+             "(`svm_<stimme>_<m|f>_<anlass>_NN`, leer, wenn die Sprach-Datenbank den Text nicht kennt).",
              "Ereignisse",
              {}});
 }

@@ -7,18 +7,18 @@ import sys
 import pandas as pd
 import streamlit as st
 
-from gothar_voice.cli import repo_root
-from gothar_voice.db import GENDERS, STATUSES, Line, VoiceDb
+from gothar_voice.cli import load_db, repo_root
+from gothar_voice.db import STATUSES, VoiceDb
+from gothar_voice.luascan import scan
 
 LANG = sys.argv[sys.argv.index("--lang") + 1] if "--lang" in sys.argv else "de"
 ROOT = repo_root()
-VOICE_DIR = ROOT / "assets/source/voice"
 
 st.set_page_config(page_title="Gothar – Sprechtexte", layout="wide")
 
 
 def load() -> VoiceDb:
-    return VoiceDb.load(VOICE_DIR, LANG)
+    return load_db(ROOT, LANG)
 
 
 def save(db: VoiceDb) -> bool:
@@ -32,7 +32,14 @@ def save(db: VoiceDb) -> bool:
 
 db = load()
 st.title(f"Sprechtexte ({LANG})")
-st.caption(f"Datenbank: {db.db_path.relative_to(ROOT).as_posix()}")
+st.caption(
+    f"Datenbank: {db.db_path.relative_to(ROOT).as_posix()} · Texte, Sprecher und Schlüssel kommen aus den Skripten "
+    "(Abgleich rechts unten); hier werden Regie, Status und Takes gepflegt."
+)
+if db.takes_root is None:
+    st.warning(
+        "Kein DATA_ROOT (GOTHAR_DATA_ROOT bzw. tools/worldgen/config/local.toml): Takes nicht verfügbar."
+    )
 
 # --- Filter ------------------------------------------------------------------------------------------------
 c1, c2, c3 = st.columns([2, 2, 3])
@@ -60,10 +67,23 @@ for ln in sorted(db.lines.values(), key=lambda x: x.key):
             "status": ln.status,
             "takes": len(ln.takes),
             "context": ln.context,
+            "orphan": ln.orphan,
         }
     )
 df = pd.DataFrame(
-    rows, columns=["key", "text", "gender", "direction", "speaker", "voice", "status", "takes", "context"]
+    rows,
+    columns=[
+        "key",
+        "text",
+        "gender",
+        "direction",
+        "speaker",
+        "voice",
+        "status",
+        "takes",
+        "context",
+        "orphan",
+    ],
 )
 
 # --- Tabelle -----------------------------------------------------------------------------------------------
@@ -72,25 +92,24 @@ edited = st.data_editor(
     key="table",
     hide_index=True,
     width="stretch",
-    disabled=["key", "takes"],
+    disabled=["key", "text", "gender", "speaker", "voice", "takes", "context", "orphan"],
     column_config={
         "key": st.column_config.TextColumn("Schlüssel", width="medium"),
         "text": st.column_config.TextColumn("Text", width="large"),
-        "gender": st.column_config.SelectboxColumn("M/F", options=list(GENDERS), width="small"),
+        "gender": st.column_config.TextColumn("M/F", width="small"),
         "direction": st.column_config.TextColumn("Regieanweisung", width="medium"),
         "speaker": st.column_config.TextColumn("Sprecher"),
-        "voice": st.column_config.NumberColumn("Stimme", min_value=0, step=1, width="small"),
+        "voice": st.column_config.TextColumn("Stimme", width="small"),
         "status": st.column_config.SelectboxColumn("Status", options=list(STATUSES)),
         "takes": st.column_config.NumberColumn("Takes", width="small"),
         "context": st.column_config.TextColumn("Kontext"),
+        "orphan": st.column_config.CheckboxColumn("verwaist", width="small"),
     },
 )
 if st.button("Tabelle speichern", type="primary"):
     for r in edited.to_dict("records"):
         ln = db.lines[r["key"]]
-        ln.text, ln.gender, ln.direction = r["text"], r["gender"], r["direction"] or ""
-        ln.speaker, ln.voice, ln.status = r["speaker"] or "", int(r["voice"] or 0), r["status"]
-        ln.context = r["context"] or ""
+        ln.direction, ln.status = r["direction"] or "", r["status"]
     if save(db):
         st.success("Gespeichert.")
 
@@ -126,14 +145,15 @@ with left:
                         t = db.add_take(key, f.getvalue(), note=note or f.name)
                         st.toast(f"→ {t.file}")
                     save(db)
-                except ValueError as e:
+                except (ValueError, RuntimeError) as e:
                     st.error(str(e))
                 st.rerun()
         for i, t in enumerate(ln.takes):
             chosen = ln.selected == i
             a, b, c = st.columns([5, 1, 1])
             a.markdown(f"{'⭐ ' if chosen else ''}`{t.file}` · {t.note} · {t.added}")
-            a.audio(str(db.take_path(t)))
+            if db.takes_root is not None:
+                a.audio(str(db.take_path(t)))
             if b.button("Wählen", key=f"sel{i}", disabled=chosen):
                 db.select_take(key, i)
                 save(db)
@@ -143,48 +163,17 @@ with left:
                 save(db)
                 st.rerun()
 
-# --- Neue Zeile / Skript-Abgleich --------------------------------------------------------------------------
+# --- Abgleich mit den Skripten ----------------------------------------------------------------------------
 with right:
-    st.subheader("Neue Zeile")
-    with st.form("new", clear_on_submit=True):
-        nk = st.text_input("Schlüssel", placeholder="dia_gate_guard_hello_01")
-        nt = st.text_area("Text")
-        n1, n2, n3 = st.columns(3)
-        ns = n1.text_input("Sprecher", placeholder="npc_gate_guard")
-        ng = n2.selectbox("M/F", GENDERS)
-        nv = n3.number_input("Stimme", min_value=0, step=1)
-        nd = st.text_input("Regieanweisung", placeholder="Sprich laut und scharf")
-        if st.form_submit_button("Anlegen"):
-            try:
-                db.add_line(
-                    Line(
-                        key=nk.strip(),
-                        text=nt.strip(),
-                        speaker=ns.strip(),
-                        gender=ng,
-                        voice=int(nv),
-                        direction=nd.strip(),
-                    )
-                )
-                save(db)
-                st.rerun()
-            except (KeyError, ValueError) as e:
-                st.error(str(e))
-
-    st.subheader("Abgleich mit Skripten")
-    if st.button("game/scripts durchsuchen"):
-        missing = db.scan_scripts(ROOT / "game/scripts")
-        st.session_state["missing"] = missing
-    missing = st.session_state.get("missing")
-    if missing is not None:
-        if not missing:
-            st.success("Alle Schlüssel aus say(...) sind in der Datenbank.")
-        else:
-            st.warning(f"{len(missing)} Schlüssel fehlen")
-            st.dataframe(pd.DataFrame(missing.items(), columns=["key", "Fundstelle"]), hide_index=True)
-            if st.button("Als leere Zeilen anlegen"):
-                for k, where in missing.items():
-                    db.add_line(Line(key=k, text="", context=where))
-                save(db)
-                st.session_state.pop("missing")
-                st.rerun()
+    st.subheader("Abgleich mit den Skripten")
+    st.caption(
+        "Neue Texte kommen offen dazu, geänderte werden wieder offen, entfernte nur als verwaist markiert."
+    )
+    if st.button("game/scripts abgleichen", type="primary"):
+        report = db.merge(scan(ROOT / "game/scripts"))
+        if save(db):
+            st.success(
+                f"{len(report.added)} neu, {len(report.changed)} geändert, {len(report.orphaned)} verwaist, "
+                f"{len(report.updated)} aktualisiert"
+            )
+            st.rerun()

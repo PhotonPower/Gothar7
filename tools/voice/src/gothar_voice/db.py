@@ -1,33 +1,37 @@
-"""Sprechtext-Datenbank: eine JSON-Datei je Sprache, Takes als WAV daneben.
+"""Voice-line database: one JSON file per language; the chosen take of each line next to it.
 
-Layout (relativ zur Repo-Wurzel):
-    assets/source/voice/lines.de.json              Datenbank
-    assets/source/voice/de/takes/<key>__tNN.wav    alle Takes einer Zeile
-    assets/source/voice/de/<key>.wav               gewählter Take (das liest der Cooker -> voice/de/<key>.ogg)
+Layout:
+    assets/source/voice/lines.de.json        database (versioned)
+    assets/source/voice/de/<key>.wav         chosen take (versioned; the cooker makes voice/de/<key>.ogg)
+    DATA_ROOT/voice/takes/de/<key>__tNN.wav  every take of a line (local only, project owner's decision)
+
+The keys come from the scripts (``luascan``); the database adds direction, status and takes.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
+import tomllib
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+
+from .luascan import ScanResult
 
 SCHEMA = 1
 KEY_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 GENDERS = ("m", "f")
 STATUSES = ("offen", "aufgenommen", "abgenommen")
-
-# say(self, other, "key") / npc_say(npc, "key") / npc_shout(npc, "key") mit Schlüssel statt Freitext
-_SAY_RE = re.compile(r'\b(?:say|npc_say|npc_shout)\s*\([^)"]*"([a-z][a-z0-9_]*)"\s*\)')
+DATA_ROOT_ENV = "GOTHAR_DATA_ROOT"
 
 
 @dataclass
 class Take:
-    file: str  # relativ zum Sprachordner, z. B. "takes/dia_x_01__t02.wav"
-    note: str = ""  # z. B. "etwas langsamer", "TTS: stability 0.3"
+    file: str  # file name below the takes folder, e.g. "dia_x_01__t02.wav"
+    note: str = ""  # e.g. "etwas langsamer", "TTS: stability 0.3"
     added: str = ""
 
 
@@ -35,13 +39,14 @@ class Take:
 class Line:
     key: str
     text: str
-    speaker: str = ""  # NPC-Instanz ("npc_gate_guard"), "hero" oder "svm" (allgemeine Zurufe)
+    speaker: str = ""  # Npc instance ("npc_gate_guard"), "hero" or "svm" (shouts)
     gender: str = "m"
-    voice: int = 0  # Stimmnummer (Npc.voice); 0 = noch keine
-    direction: str = ""  # Regieanweisung
-    context: str = ""  # wo/wann gesagt (Datei, Situation)
+    voice: str = ""  # voice group (guild or Npc.voice): which TTS voice
+    direction: str = ""  # stage direction
+    context: str = ""  # where it is said ("dialogs/gate_guard.lua")
     status: str = "offen"
-    selected: int | None = None  # Index in takes
+    orphan: bool = False  # no longer in the scripts (kept, only marked)
+    selected: int | None = None  # index into takes
     takes: list[Take] = field(default_factory=list)
 
     def validate(self) -> list[str]:
@@ -57,13 +62,41 @@ class Line:
         return errors
 
 
+@dataclass
+class MergeReport:
+    added: list[str] = field(default_factory=list)
+    changed: list[str] = field(default_factory=list)  # text changed: open again
+    orphaned: list[str] = field(default_factory=list)
+    updated: list[str] = field(default_factory=list)  # speaker, gender, voice or context changed
+
+    @property
+    def dirty(self) -> bool:
+        """The database does not match the scripts (the CI check fails)."""
+        return bool(self.added or self.changed or self.orphaned or self.updated)
+
+
+def data_root(repo: Path) -> Path | None:
+    """``$GOTHAR_DATA_ROOT``, else ``paths.data_root`` of ``tools/worldgen/config/local.toml`` (one machine
+    config for all tools); None if neither is there."""
+    env = os.environ.get(DATA_ROOT_ENV)
+    if env:
+        return Path(env)
+    local = repo / "tools/worldgen/config/local.toml"
+    if local.exists():
+        root = tomllib.loads(local.read_text(encoding="utf-8")).get("paths", {}).get("data_root")
+        if root:
+            return Path(root)
+    return None
+
+
 class VoiceDb:
-    def __init__(self, root: Path, lang: str = "de") -> None:
+    def __init__(self, root: Path, lang: str = "de", takes_root: Path | None = None) -> None:
         self.root = Path(root)  # assets/source/voice
         self.lang = lang
+        self.takes_root = takes_root  # DATA_ROOT/voice/takes (None: no takes on this machine)
         self.lines: dict[str, Line] = {}
 
-    # --- Pfade -------------------------------------------------------------------------------------------
+    # --- paths ---------------------------------------------------------------------------------------------
     @property
     def db_path(self) -> Path:
         return self.root / f"lines.{self.lang}.json"
@@ -72,16 +105,25 @@ class VoiceDb:
     def lang_dir(self) -> Path:
         return self.root / self.lang
 
+    @property
+    def takes_dir(self) -> Path:
+        if self.takes_root is None:
+            raise RuntimeError(
+                f"kein DATA_ROOT: ${DATA_ROOT_ENV} setzen oder paths.data_root in "
+                "tools/worldgen/config/local.toml (Takes liegen nur lokal)"
+            )
+        return self.takes_root / self.lang
+
     def final_path(self, key: str) -> Path:
         return self.lang_dir / f"{key}.wav"
 
     def take_path(self, take: Take) -> Path:
-        return self.lang_dir / take.file
+        return self.takes_dir / take.file
 
-    # --- Laden/Speichern ---------------------------------------------------------------------------------
+    # --- load/save -----------------------------------------------------------------------------------------
     @classmethod
-    def load(cls, root: Path, lang: str = "de") -> VoiceDb:
-        db = cls(root, lang)
+    def load(cls, root: Path, lang: str = "de", takes_root: Path | None = None) -> VoiceDb:
+        db = cls(root, lang, takes_root)
         if db.db_path.exists():
             raw = json.loads(db.db_path.read_text(encoding="utf-8"))
             if raw.get("schema") != SCHEMA:
@@ -95,20 +137,20 @@ class VoiceDb:
         errors = self.validate()
         if errors:
             raise ValueError("\n".join(errors))
-        out = {"schema": SCHEMA, "lang": self.lang, "lines": {}}
+        out: dict = {"schema": SCHEMA, "lang": self.lang, "lines": {}}
         for key in sorted(self.lines):
             d = asdict(self.lines[key])
             d.pop("key")
             out["lines"][key] = d
         self.root.mkdir(parents=True, exist_ok=True)
         tmp = self.db_path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        tmp.replace(self.db_path)  # atomar: kein halbes JSON nach Absturz
+        tmp.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+        tmp.replace(self.db_path)  # atomic: no half JSON after a crash
 
     def validate(self) -> list[str]:
         return [e for line in self.lines.values() for e in line.validate()]
 
-    # --- Bearbeiten --------------------------------------------------------------------------------------
+    # --- edit ----------------------------------------------------------------------------------------------
     def add_line(self, line: Line) -> None:
         if line.key in self.lines:
             raise KeyError(f"{line.key} gibt es schon")
@@ -118,15 +160,13 @@ class VoiceDb:
         self.lines[line.key] = line
 
     def add_take(self, key: str, data: bytes, note: str = "", select: bool | None = None) -> Take:
-        """Speichert eine WAV als nächsten Take (Dateiname vergibt das Werkzeug)."""
+        """Stores a WAV as the next take (the tool names the file)."""
         if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
             raise ValueError("keine WAV-Datei (RIFF/WAVE-Kopf fehlt)")
         line = self.lines[key]
         n = 1 + max((_take_number(t.file) for t in line.takes), default=0)
         take = Take(
-            file=f"takes/{key}__t{n:02d}.wav",
-            note=note,
-            added=datetime.now(UTC).strftime("%Y-%m-%d %H:%M"),
+            file=f"{key}__t{n:02d}.wav", note=note, added=datetime.now(UTC).strftime("%Y-%m-%d %H:%M")
         )
         path = self.take_path(take)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -157,16 +197,42 @@ class VoiceDb:
         if not line.takes:
             line.status = "offen"
 
-    # --- Abgleich mit den Skripten -----------------------------------------------------------------------
-    def scan_scripts(self, scripts_dir: Path) -> dict[str, str]:
-        """Schlüssel aus say(...)-Aufrufen, die in der Datenbank fehlen -> Fundstelle."""
-        missing: dict[str, str] = {}
-        for path in sorted(Path(scripts_dir).rglob("*.lua")):
-            for no, text in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-                for key in _SAY_RE.findall(text):
-                    if key not in self.lines and key not in missing:
-                        missing[key] = f"{path.relative_to(scripts_dir).as_posix()}:{no}"
-        return missing
+    # --- the scripts ---------------------------------------------------------------------------------------
+    def merge(self, scanned: ScanResult) -> MergeReport:
+        """Brings the database in line with the scripts. New texts are added (open); a changed text opens the
+        line again (its chosen take no longer fits and is removed, the takes stay); lines no longer in the
+        scripts are only marked ``orphan``. Direction, status and takes of unchanged lines stay."""
+        report = MergeReport()
+        for key, s in scanned.lines.items():
+            line = self.lines.get(key)
+            if line is None:
+                self.lines[key] = Line(key, s.text, s.speaker, s.gender, s.voice, context=s.context)
+                report.added.append(key)
+                continue
+            if line.text != s.text:
+                line.text = s.text
+                line.status = "offen"
+                if line.selected is not None:
+                    line.selected = None
+                    self.final_path(key).unlink(missing_ok=True)
+                report.changed.append(key)
+            if line.orphan:
+                line.orphan = False
+                report.updated.append(key)
+            if (line.speaker, line.gender, line.voice, line.context) != (
+                s.speaker,
+                s.gender,
+                s.voice,
+                s.context,
+            ):
+                line.speaker, line.gender, line.voice, line.context = s.speaker, s.gender, s.voice, s.context
+                if key not in report.changed:
+                    report.updated.append(key)
+        for key, line in self.lines.items():
+            if key not in scanned.lines and not line.orphan:
+                line.orphan = True
+                report.orphaned.append(key)
+        return report
 
 
 def _take_number(file: str) -> int:

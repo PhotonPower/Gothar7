@@ -37,7 +37,8 @@ void defineContentKinds(script::ScriptVm& vm)
              {"name", Type::String, true},
              {"guild", Type::String},
              {"level", Type::Integer, false, 0.0, 100.0}, // the hero starts at 0 (Gothic)
-             {"voice", Type::Integer, false, 0.0, 99.0},
+             {"gender", Type::String}, // "m" (default) or "f": the voice of its shouts (data/voices.lua)
+             {"voice", Type::String},  // voice group of its shouts; default: its guild (data/voices.lua)
              {"figure", Type::String}, // figure manifest or .glb; default: a worker
              {"attributes", Type::Table},
              {"talents", Type::Table},

@@ -3,6 +3,7 @@
 -- Standardfigur ein). Beim Laden von Leonberg setzt leonberg_people() sie ein (L2, startup.lua).
 
 Npc "npc_leo_smith" {
+    voice = "craftsman",
     name = "Ulrich der Schmied",
     guild = "citizen",
     level = 8,
@@ -20,6 +21,8 @@ Npc "npc_leo_innkeeper" {
 }
 
 Npc "npc_leo_baker" {
+    gender = "f",
+    voice = "craftsman",
     name = "Gertrud die Bäckerin",
     guild = "citizen",
     level = 3,
@@ -29,6 +32,7 @@ Npc "npc_leo_baker" {
 }
 
 Npc "npc_leo_market" {
+    gender = "f",
     name = "Agnes vom Krämerladen",
     guild = "citizen",
     level = 3,
