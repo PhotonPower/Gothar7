@@ -77,10 +77,17 @@ TEST_CASE("Mobs: the contract file in the repository parses")
     text << file.rdbuf();
     const auto mobs = MobTypes::parse(text.str(), "mobs.toml");
     REQUIRE_MESSAGE(mobs.ok(), (mobs.ok() ? "" : mobs.error().message));
-    for (const char* type : {"chest", "anvil", "bed", "door"})
+    for (const char* type : {"chest", "anvil", "bed", "door", "bench", "table"})
     {
         REQUIRE_MESSAGE(mobs.value().find(type) != nullptr, type);
         CHECK_FALSE(mobs.value().find(type)->slots.empty());
+    }
+    // The table: four seats facing its middle (welt #197).
+    const MobType& table = *mobs.value().find("table");
+    REQUIRE(table.slots.size() == 4);
+    for (const MobSlot& slot : table.slots)
+    {
+        CHECK(glm::dot(slot.facing, -slot.position) > 0.0f);
     }
 }
 

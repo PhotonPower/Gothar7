@@ -138,6 +138,9 @@ struct WaterVolume
 struct MobRef
 {
     std::string definition;
+    /// Doors (contract with welt, world.md): stored closed (the vob's rotation), open = +90 degrees about the
+    /// hinge, the leaf into the room (away from the front, +Z outside). Written only when true.
+    bool open = false;
 };
 
 /// An item lying in the world (M8): the Item instance of the scripts and how many. Drawn with the Item's

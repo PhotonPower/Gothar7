@@ -3,6 +3,7 @@
 
 #include <g7/physics/Character.hpp>
 #include <g7/runtime/Engine.hpp>
+#include <g7/world/WorldFile.hpp>
 
 #include <doctest/doctest.h>
 
@@ -814,4 +815,65 @@ TEST_CASE("Engine NPCs: a straight line is walkable only over gentle ground")
     CHECK(engine.walkableLine(flat->first, flat->second));
     // Long lines are not checked: they go over the waynet.
     CHECK_FALSE(engine.walkableLine(Vec3(-30.0f, 0.0f, 30.0f), Vec3(30.0f, 0.0f, -30.0f)));
+}
+
+TEST_CASE("Engine NPCs: doors - planned through when unlocked, opened on the way, closed behind")
+{
+    // The test camp's door LAGER_TUER (vob 200): hinge at (30.5, 0, -9), the leaf along +X, closed.
+    Engine engine(scriptConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true");
+    const world::VobId door{200};
+    REQUIRE(engine.mobInfo(door).has_value());
+    REQUIRE(engine.mobInfo(door)->type == "door");
+    CHECK_FALSE(engine.mobInfo(door)->open);
+    // A closed but unlocked door is no wall for planning.
+    CHECK(engine.walkableLine(Vec3(31.0f, 0.0f, -7.0f), Vec3(31.0f, 0.0f, -11.0f)));
+
+    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_guard_bed')").isString());
+    run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man')");
+    run(engine, "teleport(36, 0, -4)");
+    run(engine, "npc_goto_point('npc_old_man', 31, 0, -6.5)");
+    for (int i = 0;
+         i < 60 * 60 && (i < 5 || run(engine, "npc_state('npc_old_man').commands").asInteger() > 0); ++i)
+    {
+        REQUIRE(engine.runFrame()); // in front of the door
+    }
+    REQUIRE(run(engine, "npc_state('npc_old_man').z").asNumber() > -8.0);
+    run(engine, "on('npc_arrived', function(npc, target) Story.through = target end)");
+    run(engine, "npc_goto_point('npc_old_man', 31, 0, -11.5)");
+    bool opened = false;
+    for (int i = 0; i < 60 * 40 && run(engine, "Story.through").isNil(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+        opened = opened || engine.mobInfo(door)->open;
+    }
+    CHECK(opened);                                             // he opened it on his way
+    CHECK(run(engine, "Story.through").asString() == "point"); // and got through
+    CHECK(run(engine, "npc_state('npc_old_man').z").asNumber() < -10.0);
+    for (int i = 0; i < 60 * 3; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK_FALSE(engine.mobInfo(door)->open); // and closed it behind himself
+}
+
+TEST_CASE("Engine world: a door open in the world file stands open and is saved closed with open = true")
+{
+    const char* text =
+        R"({"version":1,"name":"d","nextVobId":2,"vobs":[{"id":1,"type":"mob","name":"TUER","rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/door.glb","components":{"mob":{"definition":"door","open":true}}}]})";
+    auto file = world::parseWorldFile(text, "d.g7world");
+    REQUIRE(file.ok());
+    CHECK(file.value().vobs[0].mob.open);
+    // Written back the same: "open" after "definition", only when true.
+    CHECK(world::writeWorldFile(file.value())
+              .find(R"("components":{"mob":{"definition":"door","open":true}})") != std::string::npos);
+    file.value().vobs[0].mob.open = false;
+    CHECK(world::writeWorldFile(file.value()).find(R"("components":{"mob":{"definition":"door"}})") !=
+          std::string::npos);
+    CHECK_FALSE(
+        world::parseWorldFile(
+            R"({"version":1,"name":"d","nextVobId":2,"vobs":[{"id":1,"type":"mob","name":"T","mesh":"m.glb","components":{"mob":{"definition":"door","open":"yes"}}}]})",
+            "d")
+            .ok());
 }

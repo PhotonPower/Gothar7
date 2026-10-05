@@ -1,7 +1,7 @@
 # Set "wolf" (monster contract, characters-pipeline.md §7) -> monsters/wolf/anims/wolf.glb
 # Source: Quaternius "Animated Animales Low Poly" (Animal Pack Vol.2), CC0 1.0 – only Idle and
 # Walking exist; gothar-chargen monster turns them into wolf_clips.blend on the contract rig.
-# Everything else is a keyframe placeholder (animation-list.md status "platzhalter-K").
+# Walk, trot and gallop are own gait cycles (gait); everything else is a keyframe placeholder.
 #
 # Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches the
 # head down and swings a leg back, +Z turns left) and move root/pelvis in metres.
@@ -24,17 +24,71 @@ name = "wolf/s_walk_inplace"
 from = "src:walk"
 helper = true
 
-[[clip]]
-name = "wolf/s_walk"
-keyframe = "advance"
-params = { base = "wolf/s_walk_inplace", speed = 0.34 }   # measured: feet stand still
-events = "footsteps"
+# Own gait cycles (gaits.py): feet planted at exactly the clip speed, legs solved with IK.
+# Speeds agreed with engine (2026-10-05): walk 1.2, trot 3.0, run (gallop) 6.0 m/s.
 
 [[clip]]
-name = "wolf/s_run"
-keyframe = "advance"
-params = { base = "wolf/s_walk_inplace", time = 0.4, amplify = 1.3, speed = 1.1 }
+name = "wolf/s_walk"              # lateral-sequence walk: left hind, left fore, right hind, right fore
+keyframe = "gait"
 events = "footsteps"
+[clip.params]
+speed = 1.2
+period = 16                        # phases and duty on whole frames
+duty = 0.625
+lift = 0.06
+crouch = 0.02
+bob = 0.008
+nod = { bone = "neck_01", degrees = 2.5, phase = 0.0 }
+tail = { bones = ["tail_01", "tail_02", "tail_03", "tail_04"], degrees = 5, lag = 0.08 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 35 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -70 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 35 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -70 },
+]
+
+[[clip]]
+name = "wolf/s_trot"              # trot: diagonal pairs
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 3.0
+period = 10
+duty = 0.4
+lift = 0.09
+crouch = 0.03
+bob = 0.012
+nod = { bone = "neck_01", degrees = 3.0, phase = 0.25 }
+tail = { bones = ["tail_01", "tail_02", "tail_03", "tail_04"], degrees = 7, lag = 0.08 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 35 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.5, curl = -70 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 35 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.0, curl = -70 },
+]
+
+[[clip]]
+name = "wolf/s_run"               # rotary gallop: hind legs, then fore legs; the spine flexes
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 6.0
+period = 10
+duty = 0.22
+lift = 0.12
+crouch = 0.05
+bob = 0.03
+bob_cycles = 1
+pitch = 4.0
+flex = { bone = "spine_01", degrees = 8.0, phase = 0.25 }
+nod = { bone = "neck_01", degrees = 6.0, phase = 0.5 }
+tail = { bones = ["tail_01", "tail_02", "tail_03", "tail_04"], degrees = 10, lag = 0.08 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 35 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.6, curl = -70 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.1, curl = 35 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.5, curl = -70 },
+]
 
 [[clip]]
 name = "wolf/t_turn_l"

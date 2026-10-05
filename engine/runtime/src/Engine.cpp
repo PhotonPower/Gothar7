@@ -1323,7 +1323,8 @@ void Engine::performWorldChange()
     // Keep the world we leave as it is now (moved or removed vobs, spent once-triggers).
     const std::string leftPath = m_worldPath;
     world::WorldFile leaving = m_worldFile;
-    const world::WorldFile captured = world::captureWorld(m_scene, m_worldFile.name);
+    world::WorldFile captured = world::captureWorld(m_scene, m_worldFile.name);
+    storeDoors(captured);
     leaving.vobs = captured.vobs;
     leaving.nextVobId = captured.nextVobId;
     m_leftWorlds[toLower(leftPath)] = LeftWorld{leaving, m_triggers.spentTriggers()};
@@ -1447,6 +1448,7 @@ Result<void> Engine::saveWorld(const fs::Path& path) const
     // What the scene does not hold comes from the loaded world: terrain, waynet, zones, generator head.
     world::WorldFile file = m_worldFile;
     world::WorldFile captured = world::captureWorld(m_scene, name);
+    storeDoors(captured);
     file.name = name;
     file.nextVobId = captured.nextVobId;
     file.vobs = std::move(captured.vobs);
