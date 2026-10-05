@@ -16,7 +16,7 @@ by `gothar-chargen assemble` today and by the engine at run time later (armour/h
   Loose pieces with ``inside`` (long skirts, recipe ``[inside]``): a body vertex is hidden as well
   when horizontal rays hit the garment from inside in at least two of four directions within that
   distance – a vertex outside it never hits it from inside (thighs inside a skirt that hangs
-  away from them; crouching would push them through).
+  away from them; crouching would push them through). Skin only: underwear keeps its triangles.
 * base bodies with clothing of their own (trousers, underwear): the skin under it is removed from
   the body part itself (`hide_own_skin`, same rule as the masks) – nobody needs it, and in motion
   it would show through the coarse cloth (F3o).
@@ -279,7 +279,10 @@ def covered_triangles(
         )
         poke = (np.linalg.norm(offset, axis=1) < limit) & (np.einsum("ij,ij->i", offset, n) < 0)
         covered = ray | poke
-        if inside > 0:  # inside a loose garment: hit horizontally all around (glTF: y up)
+        # inside a loose garment (horizontal rays hit it from inside; glTF: y up) – skin only: the
+        # body's own underwear keeps triangles, so no body primitive vanishes completely (the C++
+        # figure assembly keeps the vertices of empty primitives, assemble.py drops them)
+        if inside > 0 and material_role(body.materials[prim]) == "skin":
             hits = sum(
                 _ray_hits(
                     pos, np.broadcast_to(np.array(d, dtype=float), pos.shape), tri, inside
