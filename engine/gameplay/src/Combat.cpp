@@ -62,25 +62,27 @@ Result<CombatSettings> CombatSettings::fromTable(const script::Table& t)
 {
     CombatSettings s;
     f32 minDamage = static_cast<f32>(s.minDamage);
-    for (auto r :
-         {readNumber(t, "min_damage", minDamage, 0.0, 1000.0),
-          readNumber(t, "crit_factor", s.critFactor, 1.0, 10.0),
-          readNumber(t, "parry_seconds", s.parrySeconds, 0.0, 5.0),
-          readNumber(t, "parry_angle", s.parryAngleDegrees, 0.0, 180.0),
-          readNumber(t, "knockout_seconds", s.knockoutSeconds, 0.0, 600.0),
-          readNumber(t, "stagger_seconds", s.staggerSeconds, 0.0, 5.0),
-          readNumber(t, "fist_reach", s.fistReach, 0.1, 5.0), readNumber(t, "reach_1h", s.reach1h, 0.1, 5.0),
-          readNumber(t, "reach_2h", s.reach2h, 0.1, 5.0),
-          readNumber(t, "hit_angle", s.hitAngleDegrees, 1.0, 180.0),
-          readLevels(t, "crit_chance", s.critChance, 0.0, 1.0),
-          readLevels(t, "combo_hits", s.comboHits, 1.0, 10.0),
-          readLevels(t, "attack_speed", s.attackSpeed, 0.25, 4.0),
-          readNumber(t, "projectile_speed", s.projectileSpeed, 5.0, 200.0),
-          readNumber(t, "miss_spread", s.missSpreadDegrees, 0.0, 45.0),
-          readNumber(t, "bow_reload", s.bowReload, 0.1, 10.0),
-          readNumber(t, "crossbow_reload", s.crossbowReload, 0.1, 10.0),
-          readLevels(t, "bow_hit_chance", s.bowHitChance, 0.0, 1.0),
-          readLevels(t, "crossbow_hit_chance", s.crossbowHitChance, 0.0, 1.0)})
+    for (auto r : {readNumber(t, "min_damage", minDamage, 0.0, 1000.0),
+                   readNumber(t, "crit_factor", s.critFactor, 1.0, 10.0),
+                   readNumber(t, "parry_seconds", s.parrySeconds, 0.0, 5.0),
+                   readNumber(t, "parry_angle", s.parryAngleDegrees, 0.0, 180.0),
+                   readNumber(t, "knockout_seconds", s.knockoutSeconds, 0.0, 600.0),
+                   readNumber(t, "stagger_seconds", s.staggerSeconds, 0.0, 5.0),
+                   readNumber(t, "stagger_share", s.staggerShare, 0.0, 1.0),
+                   readNumber(t, "fist_reach", s.fistReach, 0.1, 5.0),
+                   readNumber(t, "reach_1h", s.reach1h, 0.1, 5.0),
+                   readNumber(t, "reach_2h", s.reach2h, 0.1, 5.0),
+                   readNumber(t, "animal_reach", s.animalReach, 0.1, 5.0),
+                   readNumber(t, "hit_angle", s.hitAngleDegrees, 1.0, 180.0),
+                   readLevels(t, "crit_chance", s.critChance, 0.0, 1.0),
+                   readLevels(t, "combo_hits", s.comboHits, 1.0, 10.0),
+                   readLevels(t, "attack_speed", s.attackSpeed, 0.25, 4.0),
+                   readNumber(t, "projectile_speed", s.projectileSpeed, 5.0, 200.0),
+                   readNumber(t, "miss_spread", s.missSpreadDegrees, 0.0, 45.0),
+                   readNumber(t, "bow_reload", s.bowReload, 0.1, 10.0),
+                   readNumber(t, "crossbow_reload", s.crossbowReload, 0.1, 10.0),
+                   readLevels(t, "bow_hit_chance", s.bowHitChance, 0.0, 1.0),
+                   readLevels(t, "crossbow_hit_chance", s.crossbowHitChance, 0.0, 1.0)})
     {
         if (!r)
         {

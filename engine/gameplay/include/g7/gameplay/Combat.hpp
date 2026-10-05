@@ -35,9 +35,11 @@ struct CombatSettings
     f32 parryAngleDegrees = 60.0f;                     ///< K6: hits from within this angle of the front
     f32 knockoutSeconds = 30.0f;                       ///< K7
     f32 staggerSeconds = 0.5f;                         ///< a hit interrupts (without a clip: this long)
-    f32 fistReach = 0.9f;                              ///< m from the body's front
+    f32 staggerShare = 0.15f; ///< only a hit of at least this share of the target's life staggers it
+    f32 fistReach = 0.9f;     ///< m from the body's front
     f32 reach1h = 1.3f;
     f32 reach2h = 1.7f;
+    f32 animalReach = 1.3f;      ///< a bite or a horn lunges forward
     f32 hitAngleDegrees = 50.0f; ///< half-angle of the swing in front of the attacker
     // Ranged (M11 part E, owner decisions R1-R4).
     f32 projectileSpeed = 40.0f;                       ///< m/s

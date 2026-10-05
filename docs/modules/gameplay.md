@@ -343,7 +343,15 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
   +Y entlang der Flugbahn (figurens Pfeil: Ursprung in der Schaftmitte, +Y zur Spitze). Ereignis `npc_shot`.
 - **Lua:** `draw_ranged()`, `hero_shoot()`. Inhalt: `it_crossbow`, `it_arrow`, `it_bolt` (Modelle folgen von figuren).
 
-**Weiter:** Kamera-Kampfprofil (K5, nach #206); Fernkampf für NPCs (Jäger); DoD-Szenario.
+**DoD-Szenario** (`tests/runtime/test_engine_m11_scenario.cpp`, Gegner-Platzhalter `npcs/camp/bandits.lua`): ein
+Bot spielt den Helden (Waffe gezogen, schlägt, pariert ab und zu). Ein Wegelagerer fällt mit Talent 2 deutlich
+schneller als mit Talent 0; ein Wolfsrudel zu dritt (zwei zugleich) wird besiegt; der starke Gegner (Rotbart) wirft
+einen ungeübten Helden nieder und unterliegt einem geübten, gerüsteten. Werte dazu: Taumeln nur ab 15 % des Lebens
+(`stagger_share`, starke Gegner schütteln leichte Treffer ab), Tiere springen beim Biss vor (`animal_reach` 1,3 m).
+Ob es sich responsiv anfühlt, entscheidet der Projektinhaber beim Probespielen.
+
+**Weiter:** Kamera-Kampfprofil (K5); Fernkampf für NPCs (Jäger); Waffen-Kapsel entlang der Animation mit figurens
+Kampfclips.
 
 ## Magie (M12)
 Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten

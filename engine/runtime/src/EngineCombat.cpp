@@ -164,6 +164,10 @@ std::string Engine::fightMode(const Combatant& c) const
 
 f32 Engine::reachOf(const Combatant& c) const
 {
+    if (c.animal)
+    {
+        return m_combat.animalReach;
+    }
     const std::string mode = fightMode(c);
     return mode == "2h" ? m_combat.reach2h : mode == "1h" ? m_combat.reach1h : m_combat.fistReach;
 }
@@ -327,11 +331,15 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
                 hit.critical ? " (critical)" : "", std::max(hp, 0));
     if (hp > 0)
     {
-        target.fighter->stagger();
-        target.fighter->useTimeline();
-        if (target.creature != nullptr && target.animal)
+        // A hard hit staggers (breaks off an attack); a strong one shrugs off light ones.
+        if (hit.damage >= m_combat.staggerShare * static_cast<f32>(target.character->attribute("hp_max")))
         {
-            target.creature->action = 3; // the hit clip
+            target.fighter->stagger();
+            target.fighter->useTimeline();
+            if (target.creature != nullptr && target.animal)
+            {
+                target.creature->action = 3; // the hit clip
+            }
         }
         return;
     }
@@ -606,7 +614,8 @@ void Engine::readCombatInput()
 
 std::optional<u32> Engine::pickCombatTarget() const
 {
-    // K5 (Gothic 1): the nearest living NPC ahead within reach of the lock - the focused one first.
+    // K5 (Gothic 1): the nearest living NPC within reach of the lock - the focused one first, then those
+    // ahead.
     if (!m_player.valid())
     {
         return std::nullopt;
@@ -615,7 +624,7 @@ std::optional<u32> Engine::pickCombatTarget() const
     const Vec3 forward = gameplay::forwardOf(m_movement.yaw());
     std::optional<u32> best;
     const f32 range = m_weaponMode == 3 ? kRangedLockRange : kLockRange;
-    f32 bestDistance = range;
+    f32 bestDistance = 2.0f * range;
     for (const auto& c : m_creatures)
     {
         if (!c->character || c->fighter.state() == FightState::Dead || c->fighter.state() == FightState::Down)
@@ -624,14 +633,16 @@ std::optional<u32> Engine::pickCombatTarget() const
         }
         const Vec3 to = c->position - hero;
         const f32 distance = glm::length(Vec2(to.x, to.z));
-        if (distance > range ||
-            (distance > 0.5f && glm::dot(Vec2(to.x, to.z) / distance, Vec2(forward.x, forward.z)) < 0.0f))
+        if (distance > range)
         {
             continue;
         }
+        // The focused one first, then ahead; one behind only when nobody is ahead (circling wolves).
+        const bool ahead =
+            distance <= 0.5f || glm::dot(Vec2(to.x, to.z) / distance, Vec2(forward.x, forward.z)) >= 0.0f;
         const bool focused = m_focus && m_focus->kind == gameplay::FocusKind::Npc &&
                              static_cast<u32>(m_focus->id & ~kCreatureFocusBit) == c->id;
-        const f32 score = focused ? 0.0f : distance;
+        const f32 score = focused ? 0.0f : distance + (ahead ? 0.0f : range);
         if (!best || score < bestDistance)
         {
             best = c->id;
