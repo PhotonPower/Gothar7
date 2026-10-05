@@ -160,6 +160,10 @@ events = [
   - Werkzeug: Rezept `framed` (Clip aus der Haltung ein- und in sie ausblenden, `stance_frame` für eine feste Pose,
     `soften` glättet Knochen, deren Quelle zu ruckartig ist), eigene Schläge über `none/s_idle` geschrieben
     (hängende Arme: die Weltachsen wirken wie notiert) und mit `framed` in die Waffenhaltung gesetzt.
+  - Zweihänder: Rezept `two_hands` setzt die linke Hand je Bild auf den Griff unter der rechten (`grip` Meter gegen
+    +Y von `socket_hand_r`, CCD über Ober- und Unterarm, Warmstart aus dem Vorbild – stetige Lösung) und dreht sie wie
+    die rechte. Fernkampf: `s_aim` (Schleife), `t_shoot` mit Event `release`, `t_reload`; Bogen-Posen per Gittersuche
+    (Bogenarm gestreckt, Bogen aufrecht mit der Sehne zum Körper, Sehnenhand an der Wange, Köcher hinter der Schulter).
 - Event-Namen: `lower_snake_case`, optional mit Argument nach Doppelpunkt (`sound:<name>`).
   Bekannte Events siehe `docs/modules/animation.md` („Clip“); neue Events nach Absprache mit engine.
 - Clips ohne Events und ohne `speed` werden weggelassen; die Datei ist optional.

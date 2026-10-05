@@ -475,6 +475,45 @@ def advance(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
     return to_curves(poses)
 
 
+TWO_HANDS_ITERATIONS = 16  # CCD passes per frame (upper and lower arm)
+
+
+def _turn_world(rig: RigInfo, pose: Pose, bone: str, delta: Quaternion) -> None:
+    """Turns `bone` by the world rotation `delta` (its children follow)."""
+    q, loc = pose[bone]
+    m = rig.world(pose, bone).to_quaternion()
+    pose[bone] = (q @ m.inverted() @ delta @ m, loc)
+
+
+def two_hands(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
+    """Two-handed grip (2h weapons): ``base`` with the left hand placed on the grip below the right
+    hand – ``grip`` metres from socket_hand_r against its +Y (towards the pommel), the left hand
+    turned like the right one. Upper and lower left arm are solved per frame (CCD)."""
+    base = clips[params["base"]]
+    grip = float(params.get("grip", 0.1))
+    poses: list[Pose] = []
+    for frame in range(int(length(base)) + 1):
+        pose = pose_at(base, frame, rig.bones)
+        if poses:  # warm start from the previous frame: the arm keeps one continuous solution
+            for bone in ("upperarm_l", "lowerarm_l"):
+                pose[bone] = (poses[-1][bone][0].copy(), pose[bone][1])
+        socket = rig.world(pose, "socket_hand_r")
+        target = socket @ Vector((0.0, -grip, 0.0))
+        for _ in range(TWO_HANDS_ITERATIONS):
+            for bone in ("lowerarm_l", "upperarm_l"):
+                joint = rig.world(pose, bone).translation
+                hand = rig.world(pose, "hand_l").translation
+                a, b = hand - joint, target - joint
+                if a.length < 1e-6 or b.length < 1e-6:
+                    continue
+                _turn_world(rig, pose, bone, a.rotation_difference(b))
+        right = rig.world(pose, "hand_r").to_quaternion()
+        left = rig.world(pose, "hand_l").to_quaternion()
+        _turn_world(rig, pose, "hand_l", right @ left.inverted())
+        poses.append(pose)
+    return to_curves(poses)
+
+
 SOFTEN_PASSES = 2  # framed: smoothing passes over the `soften` bones
 
 
@@ -632,4 +671,5 @@ RECIPES: dict[str, Callable[[RigInfo, dict, dict[str, Curves]], Curves]] = {
     "advance": advance,
     "gait": gait,
     "framed": framed,
+    "two_hands": two_hands,
 }

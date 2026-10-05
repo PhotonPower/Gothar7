@@ -55,3 +55,24 @@ name = "cbow/t_turn_r"
 layer = ["none/t_turn_r", "cbow/s_idle"]
 from_bone = ["clavicle_l", "clavicle_r", "neck"]
 events = "footsteps"
+
+# --- combat (M11): aiming, shooting, reloading – Quaternius UAL1 pistol clips (both hands forward)
+
+[[clip]]
+name = "cbow/t_aim_src"
+from = "ual1:Pistol_Aim_Neutral"
+helper = true
+
+[[clip]]
+name = "cbow/s_aim"
+keyframe = "hold"
+params = { base = "cbow/t_aim_src", frame = 0, frames = 60 }
+
+[[clip]]
+name = "cbow/t_shoot"
+from = "ual1:Pistol_Shoot"
+markers = { release = 2 }
+
+[[clip]]
+name = "cbow/t_reload"
+from = "ual1:Pistol_Reload"

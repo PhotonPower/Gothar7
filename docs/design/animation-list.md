@@ -136,7 +136,8 @@ Additive Oberkörper-Clips (Vertrag `characters-pipeline.md` §3.2), Set `dlg` (
 Vertrag mit engine (2026-10-05): Jeder Angriff beginnt und endet in der Kampfhaltung des Modus (`<modus>/s_idle`),
 engine blendet 0,1 s zum nächsten Schlag; Trefferfenster `hit_start`/`hit_end` (Fäuste: Aufprall der Faust),
 Kombo-Fenster `combo_start` (= `hit_end`) bis `combo_end` (ca. 80 %), danach Erholung. Talentstufen nur über die
-Abspielrate (keine Clips je Stufe). `2h`, `bow`, `cbow` folgen.
+Abspielrate (keine Clips je Stufe). Zweihänder: linke Hand per Rezept `two_hands` am Griff unter der rechten.
+Fernkampf: Event `release` beim Lösen des Schusses.
 
 | Name | Zweck | Länge | Events | Quelle | Status |
 |---|---|---|---|---|---|
@@ -157,6 +158,20 @@ Abspielrate (keine Clips je Stufe). `2h`, `bow`, `cbow` folgen.
 | `1h/t_attack_r` | Richtungshieb nach rechts (Rückhand) | 1,0 s | hit_start, hit_end | K | platzhalter-K |
 | `1h/t_parry` | Parade von vorn (Blockfenster setzt engine) | 0,5 s | – | Q | platzhalter (UAL2 `Sword_Block`, gekürzt) |
 | `1h/t_dodge_back` | Sprung zurück, Root Motion 0,8 m | 0,8 s | – | K | platzhalter-K |
+| `2h/t_attack_combo1` | Kombo 1: Hieb von oben, beide Hände am Griff | 1,4 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL2 `Sword_Regular_A` + `_Rec`, linke Hand per `two_hands`) |
+| `2h/t_attack_combo2` | Kombo 2: weiter waagrechter Schnitt | 1,6 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL2 `Sword_Regular_B` + `_Rec`; am weitesten Punkt erreicht die linke Hand den Griff nicht ganz) |
+| `2h/t_attack_combo3` | Kombo 3: schräger Hieb von oben | 1,3 s | hit_start, hit_end, combo_start, combo_end | K | platzhalter-K |
+| `2h/t_attack_combo4` | Kombo 4: wuchtiger Abschluss | 1,5 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL1 `Sword_Attack`) |
+| `2h/t_attack_l` | Richtungshieb nach links, weit ausholend | 1,3 s | hit_start, hit_end | K | platzhalter-K |
+| `2h/t_attack_r` | Richtungshieb nach rechts | 1,3 s | hit_start, hit_end | K | platzhalter-K |
+| `2h/t_parry` | Parade von vorn, beide Hände am Griff | 0,5 s | – | Q | platzhalter (UAL2 `Sword_Block`, gekürzt) |
+| `2h/t_dodge_back` | Sprung zurück, Root Motion 0,8 m | 0,8 s | – | K | platzhalter-K |
+| `bow/s_aim` | zielen (Schleife): seitlich, Bogenarm gestreckt, Sehnenhand an der Wange | 2,5 s | – | K | platzhalter-K (Pose per Gittersuche) |
+| `bow/t_shoot` | Schuss, Sehnenhand schnellt zurück, wieder zielen | 0,67 s | release | K | platzhalter-K |
+| `bow/t_reload` | Pfeil aus dem Köcher über der rechten Schulter, auflegen, zielen | 1,2 s | – | K | platzhalter-K |
+| `cbow/s_aim` | zielen (Schleife), beide Hände vorn | 2,0 s | – | Q | platzhalter (UAL1 `Pistol_Aim_Neutral`, gehalten) |
+| `cbow/t_shoot` | Schuss mit Rückstoß | 0,63 s | release | Q | platzhalter (UAL1 `Pistol_Shoot`) |
+| `cbow/t_reload` | nachladen | 1,7 s | – | Q | platzhalter (UAL1 `Pistol_Reload`) |
 
 ## Monster (F5, Vertrag `characters-pipeline.md` §7)
 
