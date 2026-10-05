@@ -134,7 +134,7 @@ Additive Oberkörper-Clips (Vertrag `characters-pipeline.md` §3.2), Set `dlg` (
 ## Monster (F5, Vertrag `characters-pipeline.md` §7)
 
 Mindestumfang je Art. Clips liegen in `assets/source/characters/monsters/<art>/anims/<art>.glb`, Herkunft je
-Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_run` bewegen `root` vorwärts, `t_turn_l/r` drehen
+Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `root` vorwärts, `t_turn_l/r` drehen
 `root` um die Hochachse (Wunsch engine); alle anderen Clips bleiben am Ort.
 
 ### Wolf (`wolf`, Platzhalter aus Quaternius Animal Pack Vol.2, CC0)
@@ -142,8 +142,9 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_run` bewegen `root` vorw
 | Name | Zweck | RM | Events | Quelle | Status |
 |---|---|---|---|---|---|
 | `wolf/s_idle` | Stehen | – | – | Q | platzhalter (`Idle`) |
-| `wolf/s_walk` | Gehen | ✓ 0,34 m/s | footstep_front/back_l/r | Q→ | platzhalter (`Walking` + root vorwärts, Füße stehen) |
-| `wolf/s_run` | Rennen | ✓ 1,1 m/s | footstep_front/back_l/r | Q→ | platzhalter-K (`Walking` ×2,5 schneller, Schritte ×1,3) |
+| `wolf/s_walk` | Gehen (Kreuzgang) | ✓ 1,2 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt)) |
+| `wolf/s_trot` | Traben (diagonale Paare; Rudel folgen, drohend annähern) | ✓ 3,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt); mit engine vereinbart 2026-10-05) |
+| `wolf/s_run` | Rennen (Rotationsgalopp, Rücken beugt sich) | ✓ 6,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt)) |
 | `wolf/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Schritte + root-Drehung) |
 | `wolf/t_attack_1`, `t_attack_2` | Biss nach vorn (Ducken, Satz) / Schnappen zur Seite | – | hit_start, hit_end | K | platzhalter-K |
 | `wolf/t_hit` | Treffer | – | – | K | platzhalter-K |
@@ -156,8 +157,8 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_run` bewegen `root` vorw
 | Name | Zweck | RM | Events | Quelle | Status |
 |---|---|---|---|---|---|
 | `keiler/s_idle` | Stehen | – | – | Q | platzhalter (`Idle`) |
-| `keiler/s_walk` | Gehen | ✓ 0,8 m/s | footstep_front/back_l/r | Q→ | platzhalter (`Walk` 0–32 + root vorwärts) |
-| `keiler/s_run` | Traben | ✓ 1,65 m/s | footstep_front/back_l/r | Q→ | platzhalter-K (`Walk` schneller, weitere Schritte; Quell-`Run` streckt die Beine, unbrauchbar) |
+| `keiler/s_walk` | Gehen (Kreuzgang) | ✓ 1,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt)) |
+| `keiler/s_run` | Rennen (Galopp) | ✓ 5,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt); Quell-`Run` streckt die Beine, unbrauchbar) |
 | `keiler/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K |
 | `keiler/t_attack_1`, `t_attack_2` | Anrennen und Hauer hochreißen / Hauer-Hieb zur Seite | – | hit_start, hit_end | K | platzhalter-K |
 | `keiler/t_hit` | Treffer | – | – | K | platzhalter-K |
@@ -170,8 +171,8 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_run` bewegen `root` vorw
 | Name | Zweck | RM | Events | Quelle | Status |
 |---|---|---|---|---|---|
 | `laufvogel/s_idle` | Stehen, umschauen | – | – | K | platzhalter-K |
-| `laufvogel/s_walk` | Gehen | ✓ 0,38 m/s | footstep_l/r | Q→ | platzhalter-K (Quell-Schritt am Ort ×2 schneller + root vorwärts; Tempo aus der Schrittlänge) |
-| `laufvogel/s_run` | Rennen | ✓ 0,85 m/s | footstep_l/r | Q→ | platzhalter-K (dito, ×3,3 schneller, Schritte ×1,3) |
+| `laufvogel/s_walk` | Gehen (Kopf nickt mit) | ✓ 1,3 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt)) |
+| `laufvogel/s_run` | Rennen (mit Flugphase) | ✓ 6,5 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt)) |
 | `laufvogel/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_l/r | K | platzhalter-K |
 | `laufvogel/t_attack_1`, `t_attack_2` | Schnabelhieb nach vorn / Tritt mit dem rechten Fuß | – | hit_start, hit_end | K | platzhalter-K |
 | `laufvogel/t_hit` | Treffer | – | – | K | platzhalter-K |

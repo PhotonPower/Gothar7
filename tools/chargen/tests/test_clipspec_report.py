@@ -269,7 +269,7 @@ def test_real_list_is_consistent_with_files():
     assert result.missing == []
     counts = list(result.section_counts().values())
     # Prio-B item use + mobs (M8), Prio-B per mode, Prio-C routines (M9), dialogue (M10), 3 monsters
-    assert counts == [(17, 17), (48, 48), (43, 43), (22, 22), (12, 12), (12, 12), (12, 12)]
+    assert counts == [(17, 17), (48, 48), (43, 43), (22, 22), (13, 13), (12, 12), (12, 12)]
     # without the monsters folder the wolf rows are reported as out of date
     assert progress(text, ANIMS).stale
 

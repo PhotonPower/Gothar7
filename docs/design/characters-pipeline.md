@@ -576,9 +576,21 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 - **Clips:** `<art>/<typ>_<aktion>` (z. B. `wolf/s_walk`), Datei `monsters/<art>/anims/<art>.glb` + `<art>.events.toml`.
   Mindest-Set: `s_idle`, `s_walk`, `s_run`, `t_attack_1`, `t_attack_2`, `t_hit`, `t_die`, `s_eat`, `s_sleep`,
   `t_threaten`, `t_turn_l`, `t_turn_r`.
-- **Kanäle:** Translation nur auf `root`/`pelvis`, keine Skalierung (wie §3). **Root Motion:** `s_walk`/`s_run` bewegen
-  `root` vorwärts (+Z, Geschwindigkeit = Schrittlänge, Füße stehen), `t_turn_l/r` drehen `root` um +Y (links positiv);
-  alle anderen Clips bleiben am Ort.
+- **Kanäle:** Translation nur auf `root`/`pelvis`, keine Skalierung (wie §3). **Root Motion:** `s_walk`/`s_trot`/`s_run`
+  bewegen `root` vorwärts (+Z, Geschwindigkeit = Schrittlänge, Füße stehen), `t_turn_l/r` drehen `root` um +Y (links
+  positiv); alle anderen Clips bleiben am Ort. `wolf/s_trot` (Trab) ist ein mittlerer Blend-Punkt (mit engine
+  vereinbart 2026-10-05); andere Arten haben nur `s_walk` und `s_run`.
+- **Gangarten (F5, 2026-10-05):** eigene Zyklen mit dem Rezept `gait` (`gaits.py`) statt der zu langsamen Quell-Clips.
+  - Jedes Bein setzt bei seiner `phase` auf und steht `duty` des Zyklus in der Welt still, während `root` mit genau
+    `speed` vorwärts geht; Ober- und Unterschenkel per Zwei-Knochen-IK in der Seitenebene, der Fuß flach.
+  - Gestreckte Beine (Wolf vorn, Laufvogel) erreichen weiter vorn bzw. hinten liegende Füße nur, wenn die Hüfte
+    sinkt: Becken senken und kippen wird je Bild aus den Standbeinen berechnet und über den Zyklus geglättet
+    (das Tier federt über das Standbein).
+  - Tempo (m/s, = `speed` in `events.toml`, Blend-Punkte setzt engine): Wolf 1,2 / Trab 3,0 / 6,0, Keiler 1,0 / 5,0,
+    Laufvogel 1,3 / 6,5 – alle schneller als der rennende Held (4,0). Füße rutschen höchstens 3 %.
+  - `phase · period` und `duty · period` auf ganzen Bildern, sonst zählt ein halb gesetzter Fuß als Standbein und
+    `clipfix` passt die Root-Geschwindigkeit falsch an (Standphase erkennt `clipfix` jetzt nur bei Bodenkontakt an
+    beiden Enden eines Schritts: schnelle Gangarten stehen nur zwei, drei Bilder).
   **Geprüft** (M6-Durchsicht der Tiere, 2026-10-03; `clipfix.py`): die Root-Geschwindigkeit von `s_walk*`/`s_run*`
   muss der Schrittgeschwindigkeit entsprechen (Füße relativ zu `root` in der Standphase, ±0,1 m/s; `anim.slide`),
   und Liege-/Ruheposen (`t_die*`, `s_sleep*`) dürfen das gehäutete Referenz-Mesh nicht mehr als 2 cm unter den Boden

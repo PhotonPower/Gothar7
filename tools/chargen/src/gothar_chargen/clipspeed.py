@@ -22,7 +22,13 @@ GROUND = (
 )
 MIN_SPEED = 0.15  # m/s: slower clips stand (idle, turning in place)
 ROOT_MOTION = 0.01  # metres of root travel over a clip that make it a root motion clip
-LOCOMOTION = ("s_walk", "s_run", "s_sneak", "s_strafe")  # clip name prefixes (after "<set>/")
+LOCOMOTION = (
+    "s_walk",
+    "s_trot",
+    "s_run",
+    "s_sneak",
+    "s_strafe",
+)  # clip name prefixes (after "<set>/")
 HUMAN_FEET = ("ball_l", "ball_r")
 ANIMAL_FEET = ("front_foot_l", "front_foot_r", "back_foot_l", "back_foot_r")
 
