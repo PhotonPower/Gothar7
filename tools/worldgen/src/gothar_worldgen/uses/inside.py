@@ -18,6 +18,8 @@ from typing import Any
 
 from shapely import affinity
 from shapely.geometry import LineString, Point, Polygon, box
+from shapely.geometry.polygon import orient
+from shapely.ops import unary_union
 
 from gothar_worldgen.uses.places import FP_TYPES, MOB_TYPES, House, UsesError, door_hinge
 from gothar_worldgen.uses.suggest import short_id
@@ -107,12 +109,21 @@ class _Room:
         return not any(shape.distance(t) < margin for t in self.taken)
 
 
-def _room(e: dict[str, Any]) -> _Room:
+def _room(e: dict[str, Any], obstacles: Sequence[Polygon] = ()) -> _Room:
+    """The room of an index entry; ``obstacles`` (other bodies reaching into it, such as a town wall
+    the house leans against) are cut off: their face is the room's wall there."""
     r = e["interior"]
     poly = Polygon(r["ring"])
     d = r["door"]
     mid = ((d["from"][0] + d["to"][0]) / 2, (d["from"][1] + d["to"][1]) / 2)
     inward = (-d["normal"][0], -d["normal"][1])
+    inside = [o for o in obstacles if o.intersects(poly)]
+    if inside:
+        rest = poly.difference(unary_union(inside).buffer(WALL_GAP_M))
+        parts = [g for g in getattr(rest, "geoms", [rest]) if isinstance(g, Polygon)]
+        near_door = Point(mid[0] + inward[0] * INSIDE_WP_M, mid[1] + inward[1] * INSIDE_WP_M)
+        if parts:
+            poly = orient(min(parts, key=lambda g: g.distance(near_door)), sign=1.0)
     c = poly.centroid
     path = LineString([mid, (c.x, c.y)]).buffer(PATH_W_M / 2, cap_style="flat")
     zone = Point(mid).buffer(DOOR_ZONE_M)
@@ -352,14 +363,23 @@ class _House:
 
 
 def plan_inside(houses: Sequence[House], specs: dict[str, InsideSpec],
-                index: dict[str, Any], routine_wps: dict[str, str]) -> InsidePlan:  # fmt: skip
-    """Everything inside the enterable houses (those with ``interior`` in the index)."""
+                index: dict[str, Any], routine_wps: dict[str, str],
+                bodies: Sequence[tuple[str, Polygon]] = ()) -> InsidePlan:  # fmt: skip
+    """Everything inside the enterable houses (those with ``interior`` in the index); ``bodies``
+    (vob name, section) are the world's collision bodies: those of other vobs reaching into a room
+    (a town wall, a neighbour) are cut off it, the house's own and the mobs' are not."""
     plan = InsidePlan()
     rooms = {e["id"]: e for e in index.get("entries", []) if e.get("interior")}
     for h in houses:
         if h.inside and h.id in rooms:
-            _House(plan, h, _room(rooms[h.id])).build(specs.get(h.use, InsideSpec()),
-                                                      routine_wps.get(h.id, ""))  # fmt: skip
+            own = f"BLD_{h.id}"
+            others = [
+                poly
+                for owner, poly in bodies
+                if owner != own and not owner.startswith(("MOB_", "PROP_"))
+            ]
+            house = _House(plan, h, _room(rooms[h.id], others))
+            house.build(specs.get(h.use, InsideSpec()), routine_wps.get(h.id, ""))
     return plan
 
 

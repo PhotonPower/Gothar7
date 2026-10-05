@@ -118,3 +118,18 @@ def test_door_swing_stays_free_and_the_open_blade_is_walked_around():
     entry = next(w for w in p.places if w["name"] == "WP_LEO_WOHNHAUS_ZJV_INNEN")
     for f in (f for f in p.places if f["kind"] == "fp"):
         assert LineString([entry["pos"], f["pos"]]).distance(blade) >= 0.3, f["name"]
+
+
+def test_a_town_wall_through_the_room_is_its_back_wall():
+    wall = Polygon([(-1.0, -5.5), (11.0, -5.5), (11.0, -7.5), (-1.0, -7.5)])
+    bodies = [("CITYWALL_WALL_01", wall), ("BLD_DEBW_00100061ZjV", Polygon(ROOM["ring"])),
+              ("MOB_LEO_TUER_ZJV", Point(6.0, -1.0).buffer(0.3))]  # fmt: skip
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=3, inside=True)
+    p = plan_inside([house], SPEC, INDEX, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"}, bodies)
+    assert p.failed == []
+    for v in by_kind(p, "mob") + by_kind(p, "mesh"):
+        assert v["pos"][2] > -5.5, v["name"]  # nothing in or behind the wall
+    for f in (f for f in p.places if f["kind"] == "fp"):
+        assert not wall.buffer(0.2).contains(Point(f["pos"])), f["name"]
+    (prop,) = by_kind(p, "mesh")  # the hearth against the town wall, facing the door
+    assert prop["pos"][2] == pytest.approx(-5.5 + 0.05 + 0.05 + 0.45)  # gap to the wall, half depth

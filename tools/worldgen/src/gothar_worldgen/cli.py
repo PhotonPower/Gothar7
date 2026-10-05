@@ -1008,7 +1008,7 @@ def _plan_uses(
 
     specs = {u: inside_spec(s, f"uses.{u}.inside") for u, s in doc.inside.items()}
     routine = {p.house: p.name for p in plan.places if p.kind == "wp"}
-    inside = plan_inside(doc.houses, specs, index, routine)
+    inside = plan_inside(doc.houses, specs, index, routine, [(b.owner, b.poly) for b in bodies])
     places["places"] += inside.places
     places["failed"] += inside.failed
     for h in places["houses"]:

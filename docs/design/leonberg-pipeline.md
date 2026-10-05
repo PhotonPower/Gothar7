@@ -922,6 +922,11 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   Engine NPCs Türen öffnen lässt; dann `false`.
 - **Kollision:** der Raum samt Türdurchgang wird aus dem Hüllkörper geschnitten (wie bei Durchgängen: Körper über
   der Decke, Wandprismen daneben), dazu eine feste Bodenplatte, wenn der Boden über der Basis liegt.
+- **Gelände unter dem Raum:** `export-terrain` senkt die Heightmap unter jedem Raum (Index `interior.ring`, um eine
+  Zelle vergrößert) auf 2 cm unter den Boden, nur absenkend (`export/pads.py` `room_pads`); sonst ragt am Hang das
+  Gelände bergseitig durch den Boden (vorher bis 1,1 m, Schmiede). Außen läuft die Senke über 1,5 m ins Gelände aus
+  (sanfte Mulde am Wandfuß statt einer Stufe). Löcher im Gelände (`holes`) wurden verworfen: bei 1-m-Zellen bliebe
+  das Gelände in den Zellen entlang der Wände im Raum stehen.
 - **Budget:** Innenraum-Dreiecke (Rollen `room_*`) zählen nicht gegen das Hausbudget; außen bleibt das Fachwerk.
 - Der Index-Eintrag bekommt `interior` (Boden, Decke, Raum-Ring, Tür mit Angeln, Achse, Normale, Maßen); daraus
   baut C2 Innen-Mobs, Möbel, Freepoints, Licht, Wegnetz und `trigger.owner`.
@@ -941,7 +946,9 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   Routinen-Wegpunkt: der Weg geht gerade durch die Öffnung statt schräg an der Laibung vorbei), `WP_…_TUER` in der
   Mitte der Türöffnung (verbunden mit `…_VOR`) und `WP_…_INNEN` 1,2 m im Raum (verbunden mit `…_TUER`): die Figur richtet sich vor dem schmalen Durchgang aus.
   Innen-Punkte stehen auf dem Raumboden (`y`), nicht auf dem Gelände darunter. Mit `owner` in `uses.json` kommt ein
-  Box-Trigger über den Raum (`trigger.owner`, privater Bereich); ohne owner keiner. `assemble` schreibt allgemeine
+  Box-Trigger über den Raum (`trigger.owner`, privater Bereich); ohne owner keiner. Ragt ein fremder Körper in den Raum (Schmiede
+  ZnP: die Stadtmauer, an die sie gebaut ist), endet der Raum für die Einrichtung an dessen Wand; der Herd steht dort an
+  der Mauer. `assemble` schreibt allgemeine
   Vob-Angaben (mob, mesh, light, trigger) in die Gruppe `WORLDGEN_USES`.
 
 ### Vorhandene Werkzeuge (kein Eigenbau)
