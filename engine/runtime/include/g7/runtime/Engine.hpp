@@ -476,6 +476,8 @@ public:
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
     [[nodiscard]] f32 playerCameraDistance() const noexcept { return m_playerCamera.distance(); }
+    /// K5: the enemy the hero has locked while his weapon is drawn (its Npc instance).
+    [[nodiscard]] std::optional<std::string> heroCombatTarget() const;
     /// Picks the n-th entry (from 0) of the menu shown (an Info, an answer, "Ende").
     void dialogChoose(usize index);
     /// Skips the line being said.
@@ -799,6 +801,9 @@ private:
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
     void stopForFight(Creature& c);
+    void readCombatInput(); // K1: Gothic 1 keys, the mouse as second assignment
+    void fixedUpdateHeroFight(gameplay::MoveInput& input, f32 seconds); // moves, lock (K5)
+    [[nodiscard]] std::optional<u32> pickCombatTarget() const;
     void loadVoiceLines(); // voice/lines.<language>.json: the keys of the spoken lines
     /// Key of a spoken line: dialogue "<info>_NN", else the NPC's shout "svm_<voice>_<m|f>_<occasion>_NN";
     /// empty if the voice database does not know the text.
@@ -1115,6 +1120,13 @@ private:
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
     std::vector<u32> m_heroHitThisSwing;
+    struct CombatRequest
+    {
+        std::string move; ///< "attack", "parry", "dodge"
+        gameplay::AttackKind kind = gameplay::AttackKind::Front;
+    };
+    std::optional<CombatRequest> m_combatRequest; // read per frame, used by the next fixed step
+    std::optional<u32> m_combatTarget;            // K5: the locked enemy while the weapon is drawn
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)

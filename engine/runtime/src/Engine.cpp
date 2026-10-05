@@ -376,7 +376,8 @@ bool Engine::runFrame()
             {
                 mobInput();
             }
-            else if (actionKey && !m_inventoryOpen && m_player.valid() && !m_flyMode && m_focus)
+            else if (actionKey && !m_inventoryOpen && m_player.valid() && !m_flyMode && m_focus &&
+                     m_weaponMode == 0) // with the weapon drawn the action key fights (M11, K1)
             {
                 if (m_focus->kind == gameplay::FocusKind::Item)
                 {

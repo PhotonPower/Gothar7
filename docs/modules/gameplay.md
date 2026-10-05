@@ -293,8 +293,19 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
   `fight_state(npc|"hero")`, `npc_stat`, `npc_set_stat`, `npc_teleport`; Ereignisse `npc_hit(angreifer, ziel,
   schaden, kritisch)`, `npc_parried`, `npc_knocked_out`, `npc_killed`.
 
-**Weiter:** B Steuerung des Helden (K1 Gothic-1-Tasten, Maus als Zweitbelegung), Ziel-Lock und Kamera-Kampfprofil
-(K5); C Plündern, Einstellung nach dem Niederschlagen, Zeugen; D Kampf-KI; E Fernkampf (K9).
+**Teil B – der Held (umgesetzt bis auf das Kamera-Kampfprofil):**
+- **Tasten (K1, `runtime/CombatInput.hpp`):** mit gezogener Waffe wie Gothic 1 – Aktionstaste (Strg) gehalten und
+  vor = Schlag (erneut im Kombofenster: der nächste), links/rechts = Seitenhieb, zurück = Parade, Sprung =
+  Ausweichschritt; solange Strg gehalten ist, geht der Held nicht. Zweitbelegung Maus: links Schlag (mit
+  links/rechts gehalten: Seitenhieb), rechts Parade (neue Aktion `parry`, `engine.toml`). Mit gezogener Waffe
+  nimmt die Aktionstaste nichts auf und spricht niemanden an.
+- **Ziel-Lock (K5):** Beim Ziehen nimmt der Held das nächste lebende NPC vor sich bis 8 m (das fokussierte zuerst),
+  hält es bis 12 m und dreht sich zu ihm (6 rad/s); die Drehtasten gehen dann seitwärts. Bewusstlos, tot, zu weit
+  oder Waffe weg: neues Ziel bzw. keins. `Engine::heroCombatTarget()`.
+- Der Held steht beim Schlagen, Parieren, Taumeln und Liegen; der Ausweichschritt geht bis zum Clip rückwärts.
+
+**Weiter:** Kamera-Kampfprofil (K5, nach #206); C Plündern, Einstellung nach dem Niederschlagen, Zeugen; D Kampf-KI;
+E Fernkampf (K9).
 
 ## Magie (M12)
 Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten

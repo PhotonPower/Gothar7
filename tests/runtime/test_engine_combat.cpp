@@ -183,3 +183,30 @@ TEST_CASE("Engine combat: animals die; the hero falls and gets up at the spot wi
     CHECK(state(engine, "hero") == "ready");
     CHECK(run(engine, "stat('hp')").asInteger() == (run(engine, "stat('hp_max')").asInteger() + 5) / 10);
 }
+
+TEST_CASE("Engine combat: with the weapon drawn the hero locks the nearest enemy ahead and turns to it (K5)")
+{
+    Engine engine(combatConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true");
+    face(engine, "npc_farmer_woman", "npc_woodcutter"); // both at x 40, z 20 / 18.8
+    // The hero 4 m from the farmer woman, looking past her (along -Z, she is ahead to the right).
+    run(engine, "teleport(42, 0, 23)");
+    runSeconds(engine, 0.2f);
+    CHECK_FALSE(engine.heroCombatTarget().has_value()); // no weapon drawn: no lock
+    run(engine, "draw_weapon()");
+    runSeconds(engine, 1.0f);
+    REQUIRE(engine.heroCombatTarget().has_value());
+    CHECK(*engine.heroCombatTarget() == "npc_farmer_woman"); // the nearest ahead
+    // Turned to her: a blow now hits her.
+    const i64 before = hp(engine, "npc_farmer_woman");
+    run(engine, "npc_teleport('npc_farmer_woman', 42, 0, 22)");
+    runSeconds(engine, 0.5f);
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    runSeconds(engine, 1.0f);
+    CHECK(hp(engine, "npc_farmer_woman") < before);
+    // Sheathed: the lock is gone.
+    run(engine, "draw_weapon()");
+    runSeconds(engine, 1.0f);
+    CHECK_FALSE(engine.heroCombatTarget().has_value());
+}

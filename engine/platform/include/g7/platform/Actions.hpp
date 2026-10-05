@@ -30,6 +30,7 @@ enum class Action : u16
     Action,
     Attack,
     Use,
+    Parry, ///< M11: the second (mouse) assignment of the classic scheme
     DrawWeapon,
     DrawMagic,
     Inventory,
