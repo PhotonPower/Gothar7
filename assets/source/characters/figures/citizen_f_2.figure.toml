@@ -2,13 +2,13 @@
 version = 1
 
 [parts]
-body = "parts/body_f_average/body.glb"
+body = "parts/body_f_thin/body.glb"
 head = "parts/head_f_girl/head.glb"
 hair = "parts/hair_f_girl/hair_braid.glb"
 cloth = [
-    "parts/cloth_f_average/toigo_bodice-style_top.glb",
-    "parts/cloth_f_average/toigo_long_full_skirt.glb",
-    "parts/cloth_f_average/toigo_flats.glb",
+    "parts/cloth_f_thin/toigo_bodice-style_top.glb",
+    "parts/cloth_f_thin/toigo_long_full_skirt.glb",
+    "parts/cloth_f_thin/toigo_flats.glb",
 ]
 
 [palette]

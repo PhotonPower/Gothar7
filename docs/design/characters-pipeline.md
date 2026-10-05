@@ -318,7 +318,10 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   Knoten `cloth_<stück>_lod<n>`). `assemble` löscht die Körperflächen darunter (Strahl entlang der Normalen trifft das
   Stück innerhalb 3 cm von innen, oder der Körper ragt bis 1,5 cm heraus – bis 4 cm, wo der Körper selbst Kleidung
   trägt, z. B. die eingebaute Hose unter enger Rüstungshose; Löcher in zerrissener Kleidung und ein
-  5-cm-Streifen an der Halsnaht bleiben). Kit-Texturen sind **neutral grau** (halber Kontrast, Helligkeit 0,55) und
+  5-cm-Streifen an der Halsnaht bleiben). Weite Stücke mit `[inside]` im Kit-Rezept (Stück → Meter; der lange Rock:
+  0,3) verdecken zusätzlich die Haut in ihrem Inneren – waagrechte Strahlen treffen das Stück von innen in mindestens
+  zwei von vier Richtungen –, damit Oberschenkel beim Hocken nicht durch den weit abstehenden Rock stechen
+  (2026-10-05; vorher bis 25 cm² an schlanken Frauen). Kit-Texturen sind **neutral grau** (halber Kontrast, Helligkeit 0,55) und
   von allen Staturen geteilt; die Farbe gibt die Palette der Figur als glTF `baseColorFactor`.
 - **Schultern in Bewegung (geprüft in M6, 2026-10-03; Bilder `DATA_ROOT\review\f3k-shoulders`):** Die frühere Falte
   an den Schulterblättern in der T-Pose ist seit den neu berechneten Masken (F3g) weg; beim Gehen und Rennen sitzen
@@ -387,8 +390,10 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   - Sauber für Leonberg: `coat_clean`, `tunic_clean` – dieselbe Geometrie (zweites `derive` mit gleichen Werten),
     anderes Bild (`wear` 0,25). Nur diese Stücke doppelt (Größe); Hemd und Stufenrock sind gleich sauber.
   - **Eigene Geometrie:** `apron` (Leinwand, ambientCG „Fabric 063“) und `apron_leather` (Handwerker, „Leather 014“)
-    als Tafel vor dem Körper vom Knie bis zur Taille (`panel = breite`): Sie folgt der Körperfront und hängt unterhalb
-    des Bauchs gerade herab statt den Beinen zu folgen, weitet sich zum Saum (über Röcken), Ränder mit `rim`.
+    als Stoffbahn vor dem Körper vom Knie bis zur Taille (`panel = breite`): Auf dem Körper (Taille, Hüfte) ist sie so
+    breit wie er und legt sich um die Hüften, darunter hängt sie gerade herab statt den Beinen zu folgen, wird zum
+    Saum 15 % schmaler und steht etwas ab (über Röcken); leichte Wölbung, nach unten tiefer werdende Falten, die
+    Seiten fallen zurück, der Saum hängt in den Falten länger (2026-10-05, vorher eine steife Tafel). Ränder mit `rim`.
     `belt`: Ring der Haut an der Taille, abgesetzt, mit Rand. `straw_hat`: Kuppel mit breiter Krempe wie
     `kettle_helm`, flacher (ambientCG „Wicker 013“), blendet das Haar aus.
   - Werkzeug: `band = [unten, oben]` mit `band_at = "<gelenk>"` oder `["<gelenk unten>", "<gelenk oben>"]` –
@@ -550,8 +555,7 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
 - **Kombinationsregeln** (aus den Prüfbildern und `poke`):
   - Das Mieder liegt nur ohne Hemd über dem langen Rock sauber, nicht über Hemden oder dem Stufenrock.
   - Die Lederweste nur über dem groben Hemd oder dem Pullover (aus dem groben Hemd abgeleitet).
-  - Den langen Rock nicht an schlanken Frauen (`cloth_f_thin`): Beim Schleichen und Aufheben stechen die Oberschenkel
-    durch (25 cm²).
+  - Der lange Rock passt seit `[inside]` auch schlanken Frauen (vorher stachen beim Hocken die Oberschenkel durch).
   - Keine Schürze über dem vollen langen Rock kräftiger Frauen.
 - **Prüfung:** Jedes Manifest wird beim Bauen zusammengesetzt (`assemble`); `poke` bleibt für alle Gilden-Figuren unter
   der Schwelle. Der Test `test_figure_sets` prüft, dass jedes gelistete Manifest existiert, in genau einem
