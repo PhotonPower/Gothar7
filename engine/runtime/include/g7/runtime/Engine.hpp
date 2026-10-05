@@ -291,6 +291,9 @@ public:
     [[nodiscard]] world::GameTime& gameTime() noexcept { return m_gameTime; }
     /// Light, fog and sky of the last frame (from the day cycle).
     [[nodiscard]] const render::Environment& environment() const noexcept { return m_environment; }
+    /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes; the renderer
+    /// gives them the indoor ambient (environment.toml [indoor]).
+    [[nodiscard]] std::vector<render::IndoorVolume> nearestIndoorVolumes(const Vec3& point) const;
     [[nodiscard]] const render::Sky& sky() const noexcept { return m_sky; }
     /// Writes the scene's world vobs with the loaded world's terrain, waynet, zones and generator head as
     /// .g7world (--save-world, editor).

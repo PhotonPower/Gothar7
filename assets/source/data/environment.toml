@@ -8,6 +8,9 @@
 #   sky_zenith        Himmel senkrecht oben; stars 0..1
 version = 1
 
+[indoor]              # Räume (Zonen vom Typ indoor, world.md „Zonen“): Umgebungslicht drinnen = Faktor mal draußen,
+ambient = 0.35        # je Fläche (die Straße bleibt hell, der Raum von draußen dunkel); Spielgefühl, Projektinhaber
+
 [orbit]
 sunrise = 6.0         # Uhr
 sunset = 18.5

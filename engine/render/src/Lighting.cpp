@@ -82,6 +82,24 @@ void LightList::selectFor(const AABB& bounds, std::vector<u32>& out) const
     }
 }
 
+f32 indoorAmount(const Vec3& point, std::span<const IndoorVolume> volumes, f32 edge) noexcept
+{
+    f32 amount = 0.0f;
+    for (const IndoorVolume& v : volumes)
+    {
+        const Vec3 d = point - v.center;
+        const f32 c = std::cos(v.yaw);
+        const f32 s = std::sin(v.yaw);
+        // Local axes: +X = (c, 0, -s), +Z = (s, 0, c).
+        const Vec3 local(d.x * c - d.z * s, d.y, d.x * s + d.z * c);
+        const Vec3 outside = glm::max(glm::abs(local) - v.halfExtents - Vec3(0.05f), Vec3(0.0f));
+        const f32 beyond = std::max({outside.x, outside.y, outside.z});
+        amount = std::max(amount, edge > 0.0f ? std::clamp(1.0f - beyond / edge, 0.0f, 1.0f)
+                                              : (beyond <= 0.0f ? 1.0f : 0.0f));
+    }
+    return amount;
+}
+
 GpuLighting packLighting(const Environment& environment, const LightList& lights) noexcept
 {
     GpuLighting gpu{};
@@ -93,6 +111,14 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
     gpu.ambientGround = Vec4(environment.ambientGround, 0.0f);
     gpu.fogColorStart = Vec4(environment.fogColor, environment.fogStart);
     gpu.fogParams = Vec4(environment.fogDensity, 0.0f, 0.0f, 0.0f);
+    const usize rooms = std::min<usize>(environment.indoor.size(), kMaxIndoorVolumes);
+    gpu.indoorParams = Vec4(static_cast<f32>(rooms), environment.indoorAmbient, environment.indoorEdge, 0.0f);
+    for (usize i = 0; i < rooms; ++i)
+    {
+        const IndoorVolume& v = environment.indoor[i];
+        gpu.indoorBoxes[2 * i] = Vec4(v.center, std::cos(v.yaw));
+        gpu.indoorBoxes[2 * i + 1] = Vec4(v.halfExtents, std::sin(v.yaw));
+    }
     const auto& points = lights.lights();
     gpu.counts[0] = static_cast<i32>(points.size());
     for (usize i = 0; i < points.size(); ++i)
