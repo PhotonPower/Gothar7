@@ -538,6 +538,8 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_broom` (Besen, Ursprung im oberen Griff, +Y zum Reisig) | 1,4 m | Holz, Reisig (prozedural), Bindung |
   | `it_mug` (Krug, Ursprung am Henkel, +Y nach oben) | 12 cm | dunkles Holz (Wood 060) |
   | `it_axe` (Axt, Ursprung am unteren Stiel, Schneide zu +Z) | 0,74 m | Holz, Schmiedeeisen |
+  | `it_arrow`, `it_bolt` (Pfeil, Armbrustbolzen; Ursprung in der Schaftmitte, +Y zur Spitze, +Z Federebene – Projektil, steckend: engine setzt um halbe Länge − 7 cm zurück; Nocke −0,375 bzw. −0,175 m; mit engine abgestimmt 2026-10-05) | 0,75 / 0,35 m | Holz, Schmiedeeisen, Federn (prozedural); 92 / 76 Dreiecke |
+  | `it_crossbow` (Armbrust, Ursprung am Griff bzw. Abzug, Schaft +Y nach vorn, Bogen quer, +Z oben; an `socket_hand_r`, die `cbow`-Clips halten den Schaft in der Faust) | 0,8 m | Holz, Schmiedeeisen, Sehne |
 
   Alle Schlüssel-Items (`it_key_chest_hut`, …) nutzen dasselbe Modell `it_key.glb`; die Lua-Items und die Pfade
   legt engine an.
