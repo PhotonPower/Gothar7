@@ -165,4 +165,12 @@ TEST_CASE("Day cycle: errors name the key; the shipped curves load")
     CHECK(shipped.value().evaluate(0.0f, 0.01f).sky.stars > 0.5f);
     CHECK(shipped.value().evaluate(12.5f, 0.01f).environment.sunIntensity >
           shipped.value().evaluate(19.5f, 0.01f).environment.sunIntensity);
+    CHECK(shipped.value().indoorAmbient() < 1.0f); // rooms are darker
+
+    // [indoor] ambient: a factor 0..1 on the ambient inside rooms (zones of type indoor).
+    auto indoor = DayCycle::parse("version = 1\n[indoor]\nambient = 0.2\n[[key]]\nhour = 1.0\n", "e.toml");
+    REQUIRE(indoor.ok());
+    CHECK(indoor.value().indoorAmbient() == doctest::Approx(0.2f));
+    CHECK(error("version = 1\n[indoor]\nambient = 1.5\n[[key]]\nhour = 1.0\n") ==
+          "environment.toml: indoor.ambient: must be 0..1 (a factor on the ambient)");
 }

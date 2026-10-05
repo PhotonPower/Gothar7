@@ -1496,12 +1496,37 @@ void Engine::initEnvironment()
     updateEnvironment();
 }
 
+std::vector<render::IndoorVolume> Engine::nearestIndoorVolumes(const Vec3& point) const
+{
+    std::vector<std::pair<f32, render::IndoorVolume>> rooms;
+    for (const world::Zone& z : m_worldFile.zones)
+    {
+        if (z.box)
+        {
+            const render::IndoorVolume v{z.box->center, z.box->halfExtents, glm::radians(z.box->yawDegrees)};
+            rooms.emplace_back(glm::length(v.center - point), v);
+        }
+    }
+    const usize count = std::min<usize>(rooms.size(), render::kMaxIndoorVolumes);
+    std::partial_sort(rooms.begin(), rooms.begin() + static_cast<std::ptrdiff_t>(count), rooms.end(),
+                      [](const auto& a, const auto& b) { return a.first < b.first; });
+    std::vector<render::IndoorVolume> nearest;
+    for (usize i = 0; i < count; ++i)
+    {
+        nearest.push_back(rooms[i].second);
+    }
+    return nearest;
+}
+
 void Engine::updateEnvironment()
 {
     const f32 fogStart = m_environment.fogStart;
     const world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
     m_environment = sample.environment;
     m_environment.fogStart = fogStart;
+    // Rooms (zones of type indoor, world.md): the nearest to the camera get the indoor ambient.
+    m_environment.indoorAmbient = m_dayCycle.indoorAmbient();
+    m_environment.indoor = nearestIndoorVolumes(m_camera.transform.position);
     if (!m_sunEnabled)
     {
         m_environment.sunIntensity = 0.0f;
