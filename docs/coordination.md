@@ -8,7 +8,7 @@ Technologieentscheidungen. Diese Datei regelt Zuständigkeiten, Schnittstellen u
 
 | Name (`/rename`) | Spur | Worktree (Vorschlag) | Zuständig für |
 |---|---|---|---|
-| `engine` | M0–M17 | `C:\dev\Gothar7` | `engine/`, `game/src`, `tests/`, `tools/asset-cooker`, `tools/editor`, Engine-Doku |
+| `engine` | M0–M17 | `C:\dev\Gothar7` | `engine/`, `game/src`, `tests/`, `tools/asset-cooker`, `tools/editor`, `tools/voice`, Engine-Doku |
 | `welt` | W1–W7 | `C:\dev\Gothar7-welt` | `tools/worldgen/`, `assets/source/worlds/`, `docs/design/leonberg-pipeline.md` |
 | `figuren` | F1–F5 | `C:\dev\Gothar7-figuren` | `tools/chargen/`, `assets/source/characters/`, `docs/design/characters-pipeline.md`, `animation-list.md` |
 | `koordinator` | – | `C:\dev\Gothar7-koord` | Reviews, Merges, Roadmap-Gesamtstand, Schnittstellen, Konflikte (siehe `.claude/agents/koordinator.md`) |
@@ -49,6 +49,7 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 | Vob-Typ `water` (Box, Oberfläche = Oberkante, `kind` reserviert) – vereinbart, umgesetzt mit M5 Teil E | engine | welt (Glems) | `docs/modules/world.md` „Vob-Typen“ |
 | Autopilot: `route.json` v1, Protokoll `walk.jsonl` und `walk_summary.json` (`gothar --walk`) | welt (Routen), engine (Autopilot) | welt (W3-Begehung, Auswertung) | `docs/modules/tools.md` „Autopilot“ |
 | Wegnetz `waynet` in `.g7world` v1 (Punkte `WP_`, Freepoints `FP_<TYP>_`, ungerichtete Kanten per Name, `owner: "worldgen"` wie bei Vobs; vereinbart 2026-10-04) | engine | welt (Wegnetz-Vorschlag aus Straßenachsen, W-G), engine (KI M9, Editor M16) | `docs/modules/world.md` „Wegnetz“ |
+| Sprechtexte `assets/source/voice/lines.<sprache>.json` v1 (je Zeile: Text, Sprecher, `gender` m/f, `voice`, Regieanweisung, Kontext (Datei), Status offen/aufgenommen/abgenommen, `orphan`, Takes). **Schlüssel vergibt nur `gothar-voice scan`** aus den Skripten (Texte inline, E2): Dialog `<info>_NN` in Quelltext-Reihenfolge (`description`, `say`, `choice`, Antwort-Tabelle von `teach_menu`), Zurufe `svm_<stimme>_<m|f>_<anlass>_NN` für jede Stimme aus `data/voices.lua` (Projektinhaber: Stimme je Gilde und Geschlecht, `Npc.voice`/`Npc.gender`); geänderter Text → wieder offen, entfernter → nur `orphan`. Die Engine findet den Schlüssel über (Info, Text) bzw. (Stimme, Geschlecht, Text). Ins Repo nur der gewählte Take `voice/<sprache>/<key>.wav`; alle Takes lokal unter `DATA_ROOT/voice/takes/<sprache>/<key>__tNN.wav` (Projektinhaber). CI: `gothar-voice check` (Datenbank passt zu den Skripten). Vereinbart 2026-10-04, Schlüssel und Ablage 2026-10-05 | engine (Schema, Scan, Werkzeug) | Projektinhaber (Regie, TTS-Takes), engine (M10 Dialoge, M13 Sprachausgabe, M14 Untertitel/Lokalisierung, Cooker `.wav` → `.ogg`) | `tools/voice/README.md`, `docs/modules/audio.md` „Sprache“ |
 | Kollisionsmaße der Monster `[rig.collision]` in `data/monsters/<art>.toml`; Kapsel Mensch r 0,3 / h 1,8 / Hüfte 0,9 / Augen 1,62 m | figuren | engine (M5 C, M9) | `docs/modules/physics.md`, `characters-pipeline.md` §7.1 |
 
 ## Kommunikation

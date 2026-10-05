@@ -102,6 +102,7 @@ Result<void> Engine::initScripts()
     bindPerceptionFunctions();
     bindDialogFunctions();
     bindTradeFunctions();
+    loadVoiceLines();
     bindDiaryFunctions();
     m_scripts->loadAll();
     loadPerceptionSettings(); // data/perception.lua (M9 part C)

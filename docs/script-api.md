@@ -106,8 +106,8 @@ Ein NPC ist an seinem Ziel angekommen (npc_goto).
 ### `on("npc_blocked", fn(npc: string, target: string))`
 Ein NPC kommt nicht weiter und hat aufgegeben (nach mehrfachem Neuplanen).
 
-### `on("npc_said", fn(npc: string, text: string))`
-Ein NPC hat etwas gesagt (npc_say).
+### `on("npc_said", fn(npc: string, text: string, key: string))`
+Ein NPC hat etwas gesagt (npc_say, npc_shout); `key` ist der Sprach-Schlüssel des Zurufs (`svm_<stimme>_<m|f>_<anlass>_NN`, leer, wenn die Sprach-Datenbank den Text nicht kennt).
 
 ### `on("observe_player", fn(npc: string, distance: number))`
 Bei jedem Blick (5- bzw. 1-mal je Sekunde), solange der NPC den Spieler sieht.

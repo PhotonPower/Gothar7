@@ -159,6 +159,7 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
   Entscheidungen L1–L3). Beim Laden von Leonberg setzt `leonberg_people()` sie ein (`startup.lua`, L2).
 - Tätigkeiten an Freepoints: `zs_repair`, `zs_harvest`, `zs_smalltalk`, `zs_drink` (mit Krug), `zs_lean`, `zs_sit`,
   `zs_stand_shop`; nachts lehnen sie an ihrem Haus, bis NPCs mit M11 Betten benutzen.
+- **Stimme:** `gender` (`"m"`/`"f"`, Vorgabe `"m"`) und `voice` (Stimmgruppe, Vorgabe die Gilde) wählen die Stimme der Zurufe (`data/voices.lua`, audio.md „Sprache“).
 - **Figuren:** `figure` (eigenes Manifest) oder `figure_set` für Namenlose: eine Figur aus
   `data/figure_sets.toml` (`[sets] citizen = [...]`, figuren), stabil nach dem Namen gewählt. Fehlt die Figur, steht
   die Standardfigur ein (Warnung).

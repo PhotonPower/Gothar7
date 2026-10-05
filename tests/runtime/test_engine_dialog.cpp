@@ -78,14 +78,15 @@ TEST_CASE("Engine dialogue: important Info first, the menu, answers, Infos told 
 
     REQUIRE(run(engine, "talk('npc_gate_guard')").asBool());
     CHECK(engine.inDialog());
-    // The important greeting runs at once: the guard speaks first, keys count up per Info.
+    // The important greeting runs at once: the guard speaks first. The keys come from the voice database
+    // (voice/lines.de.json, gothar-voice scan): the Info and the line's text.
     CHECK(field(engine, "speaker") == "npc_gate_guard");
-    CHECK(field(engine, "key") == "dia_gate_guard_hello_00");
+    CHECK(field(engine, "key") == "dia_gate_guard_hello_01");
     CHECK(field(engine, "line").starts_with("Moment mal."));
     engine.dialogSkip();
     REQUIRE(engine.runFrame());
     CHECK(field(engine, "speaker") == "hero");
-    CHECK(field(engine, "key") == "dia_gate_guard_hello_01");
+    CHECK(field(engine, "key") == "dia_gate_guard_hello_02");
     // Lines also end by themselves (by their length).
     runSeconds(engine, 8.0f);
     CHECK(field(engine, "line").empty());
@@ -96,6 +97,7 @@ TEST_CASE("Engine dialogue: important Info first, the menu, answers, Infos told 
     run(engine, "dialog_choose(1)");
     CHECK(field(engine, "speaker") == "hero");
     CHECK(field(engine, "line") == "Gibt es hier Arbeit?");
+    CHECK(field(engine, "key") == "dia_gate_guard_work_01"); // the menu text is already a line of its Info
     skipLines(engine);
     CHECK(menu(engine) == "Dann gehe ich gleich zu ihr. | Feldarbeit ist nichts für mich.");
     run(engine, "dialog_choose(1)");
@@ -136,7 +138,7 @@ TEST_CASE("Engine dialogue: an important Info starts by itself; with approach th
     }
     REQUIRE(engine.inDialog());
     CHECK(run(engine, "npc_distance_to_player('npc_gate_guard')").asNumber() <= 3.0);
-    CHECK(field(engine, "key") == "dia_gate_guard_hello_00");
+    CHECK(field(engine, "key") == "dia_gate_guard_hello_01");
     engine.endDialog();
     // Told: it does not start again.
     runSeconds(engine, 3.0f);
@@ -254,4 +256,49 @@ TEST_CASE("Engine diary: quests with entries by status, notes by topic, chapters
     CHECK(run(engine, "chapter()").asInteger() == 2);
     CHECK(run(engine, "Story.changed").asInteger() == 2);
     CHECK(engine.diaryPanelData().chapter == "Kapitel 2");
+}
+
+TEST_CASE("Engine dialogue: voice keys - every branch its own key, shouts in the voice of guild and gender")
+{
+    Engine engine(dialogConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true");
+    // The two answers to the work question are different lines with different keys (before: both counted on
+    // from the same number). Keys in source order: 01 the question (description), 02 the guard, 03/04 the
+    // first answer, 05/06 the second.
+    REQUIRE(run(engine, "insert_npc('npc_gate_guard', 'wp_camp_center')").isString());
+    run(engine, "set_routine('npc_gate_guard', '') npc_clear('npc_gate_guard')");
+    run(engine, "teleport(9, 0, -4)");
+    runSeconds(engine, 0.2f);
+    REQUIRE(run(engine, "talk('npc_gate_guard')").asBool());
+    skipLines(engine);
+    run(engine, "dialog_choose(1)"); // work
+    skipLines(engine);
+    run(engine, "dialog_choose(2)"); // field work is not for me
+    CHECK(field(engine, "key") == "dia_gate_guard_work_05");
+    engine.dialogSkip();
+    REQUIRE(engine.runFrame());
+    CHECK(field(engine, "line") == "Dann wirst du hier nicht alt, Fremder.");
+    CHECK(field(engine, "key") == "dia_gate_guard_work_06");
+    skipLines(engine);
+    run(engine, "dialog_choose(2)"); // end
+    REQUIRE(engine.runFrame());
+
+    // Shouts (npc_said gets the key): the guard in the guards' voice, the farmer woman in a woman's voice of
+    // the farmers, the baker by her own voice group (Npc.voice = "craftsman").
+    run(engine,
+        "on('npc_said', function(npc, text, key) Story.said = Story.said or {} Story.said[npc] = key end)");
+    REQUIRE(run(engine, "insert_npc('npc_farmer_woman', 'wp_camp_center')").isString());
+    REQUIRE(run(engine, "insert_npc('npc_leo_baker', 'wp_camp_center')").isString());
+    for (const char* npc : {"npc_gate_guard", "npc_farmer_woman", "npc_leo_baker"})
+    {
+        run(engine, std::format("npc_shout('{}', Shouts.thief)", npc));
+    }
+    CHECK(run(engine, "Story.said.npc_gate_guard").asString() == "svm_guard_m_thief_01");
+    CHECK(run(engine, "Story.said.npc_farmer_woman").asString() == "svm_farmer_f_thief_01");
+    CHECK(run(engine, "Story.said.npc_leo_baker").asString() == "svm_craftsman_f_thief_01");
+    run(engine, "npc_shout('npc_gate_guard', Shouts.weapon_warn[2])");
+    CHECK(run(engine, "Story.said.npc_gate_guard").asString() == "svm_guard_m_weapon_warn_02");
+    run(engine, "npc_shout('npc_gate_guard', 'Ein Text, den keine Datenbank kennt.')");
+    CHECK(run(engine, "Story.said.npc_gate_guard").asString().empty());
 }

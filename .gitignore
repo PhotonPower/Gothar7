@@ -50,3 +50,6 @@ __pycache__/
 coverage.xml
 *.egg-info/
 /data/
+
+# Voice takes stay local (DATA_ROOT/voice/takes); only the chosen take per line is versioned.
+assets/source/voice/*/takes/

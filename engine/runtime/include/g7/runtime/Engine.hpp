@@ -12,6 +12,7 @@
 #include <g7/asset/MeshData.hpp>
 #include <g7/asset/TextureData.hpp>
 #include <g7/asset/Vfs.hpp>
+#include <g7/asset/VoiceLines.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Config.hpp>
 #include <g7/core/Result.hpp>
@@ -775,6 +776,11 @@ private:
         physics::ShapeId shape;
     };
     void loadMobTypes();
+    void loadVoiceLines(); // voice/lines.<language>.json: the keys of the spoken lines
+    /// Key of a spoken line: dialogue "<info>_NN", else the NPC's shout "svm_<voice>_<m|f>_<occasion>_NN";
+    /// empty if the voice database does not know the text.
+    [[nodiscard]] std::string voiceKey(std::string_view info, std::string_view npc,
+                                       std::string_view text) const;
     void rebuildMobs();
     void notice(std::string text);
     [[nodiscard]] std::string lockpickItem() const;
@@ -1082,6 +1088,7 @@ private:
     bool m_inventoryOpen = false;
     std::string m_inventoryMessage;
     gameplay::MobTypes m_mobTypes;
+    asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)
     void storeDoors(world::WorldFile& file) const; // doors closed in the file, components.mob.open
