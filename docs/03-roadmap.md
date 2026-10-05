@@ -239,7 +239,7 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 - [ ] Nahkampf: Angriffe mit Treffer-Fenstern aus Animations-Events, Kombos abhängig vom Talent, Parieren, Ausweichschritt
 - [ ] Trefferprüfung (Waffen-Shapecast entlang der Animation), Treffer-Reaktionen, Rückstoß
 - [x] Schadensmodell: Schadensarten × Schutzwerte, kritische Treffer abhängig vom Talent – Waffe + Stärke − Schutz, mindestens 5, kritisch 0/10/20 % (K2, K3; Teil A)
-- [ ] Fernkampf: Zielen, Projektile mit Ballistik, Munition
+- [x] Fernkampf: Zielen, Projektile mit Ballistik, Munition – Bogen und Armbrust des Helden, Trefferchance nach Talent auf das Ziel, Pfeile bleiben stecken bzw. liegen (R1–R4; E)
 - [x] Bewusstlosigkeit vs. Tod, Plündern – bewusstlos 30 s, Schlag auf Liegende tötet, Plündern, Zeugen (K7; A, C)
 - [x] Kampf-KI: Abstand halten, Angriffsmuster pro Gegnertyp, Gruppenkampf, Rückzug – `ai/combat.lua`: zwei zugleich, Flucht bei wenig Leben, Tiere jagen (D)
 - [ ] Ziel-Lock im Kampf

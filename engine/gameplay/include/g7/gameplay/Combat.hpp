@@ -39,6 +39,15 @@ struct CombatSettings
     f32 reach1h = 1.3f;
     f32 reach2h = 1.7f;
     f32 hitAngleDegrees = 50.0f; ///< half-angle of the swing in front of the attacker
+    // Ranged (M11 part E, owner decisions R1-R4).
+    f32 projectileSpeed = 40.0f;                       ///< m/s
+    f32 missSpreadDegrees = 5.0f;                      ///< R4: a missed shot goes this far aside
+    std::array<f32, 3> bowHitChance{0.3f, 0.6f, 0.9f}; ///< R4: on the focused target, per talent level
+    std::array<f32, 3> crossbowHitChance{0.3f, 0.6f, 0.9f};
+    f32 bowReload = 1.0f; ///< s between shots (reloading is automatic, R2)
+    f32 crossbowReload = 1.6f;
+    std::string bowAmmo = "it_arrow";
+    std::string crossbowAmmo = "it_bolt";
 
     /// `Combat` of data/combat.lua; missing values keep their defaults, wrong ones are errors.
     [[nodiscard]] static Result<CombatSettings> fromTable(const script::Table& table);
@@ -59,6 +68,16 @@ struct DamageResult
 [[nodiscard]] DamageResult meleeDamage(const DamageByType& weapon, i32 strength,
                                        const std::function<i32(std::string_view type)>& protection,
                                        i32 talentLevel, f32 roll, const CombatSettings& settings);
+
+/// R3: the damage of a projectile - per type max(weapon - protection, 0), no strength, no critical hit; at
+/// least `minDamage`.
+[[nodiscard]] i32 rangedDamage(const DamageByType& weapon,
+                               const std::function<i32(std::string_view type)>& protection,
+                               const CombatSettings& settings);
+
+/// The launch direction (unit) for `speed` that hits `to` from `from` under gravity - the flat of the two
+/// arcs; nullopt when out of reach.
+[[nodiscard]] std::optional<Vec3> ballisticDirection(const Vec3& from, const Vec3& to, f32 speed) noexcept;
 
 /// K6: the defender at `defender` looking along `defenderYaw` faces `attacker` within `angleDegrees`.
 /// Positions on the ground (x, z); yaw 0 = looking along -Z, positive turns left (as the movement).

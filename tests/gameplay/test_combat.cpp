@@ -186,3 +186,28 @@ TEST_CASE("Combat values: data/combat.lua")
     auto bad = script::makeTable({}, {{"combo_hits", script::makeTable({1.0, 2.0})}});
     CHECK_FALSE(CombatSettings::fromTable(*bad.asTable()).ok());
 }
+
+TEST_CASE("Ranged: point damage minus protection, at least 5; the flat ballistic arc reaches the target")
+{
+    const CombatSettings s;
+    CHECK(rangedDamage({{"point", 15}}, noProtection, s) == 15); // no strength (R3)
+    const auto leather = [](std::string_view type) { return type == "point" ? 12 : 0; };
+    CHECK(rangedDamage({{"point", 15}}, leather, s) == 5); // 3 -> the minimum
+    // Shot at 40 m/s at a point 30 m away and 2 m lower: flying it with gravity passes the point.
+    const Vec3 from(0.0f, 1.5f, 0.0f);
+    const Vec3 to(30.0f, -0.5f, 0.0f);
+    const auto dir = ballisticDirection(from, to, 40.0f);
+    REQUIRE(dir.has_value());
+    CHECK(glm::length(*dir) == doctest::Approx(1.0f));
+    Vec3 p = from;
+    Vec3 v = *dir * 40.0f;
+    f32 closest = 1e9f;
+    for (int i = 0; i < 600; ++i)
+    {
+        v.y -= kGravity / 600.0f;
+        p += v / 600.0f;
+        closest = std::min(closest, glm::length(p - to));
+    }
+    CHECK(closest < 0.1f);
+    CHECK_FALSE(ballisticDirection(from, Vec3(500.0f, 0.0f, 0.0f), 40.0f).has_value()); // out of reach
+}

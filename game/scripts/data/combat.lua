@@ -14,3 +14,13 @@ Combat = {
     reach_2h = 1.7,
     hit_angle = 50,                -- halber Winkel des Schlags vor dem Angreifer
 }
+
+-- Fernkampf (M11 Teil E, Entscheidungen R1-R4 wie Gothic 1).
+Combat.projectile_speed = 40                -- m/s
+Combat.miss_spread = 5                      -- R4: ein Fehlschuss geht so viel Grad daneben
+Combat.bow_hit_chance = { 0.3, 0.6, 0.9 }   -- R4: auf das fokussierte Ziel je Talentstufe
+Combat.crossbow_hit_chance = { 0.3, 0.6, 0.9 }
+Combat.bow_reload = 1.0                     -- s zwischen zwei Schüssen (Nachladen automatisch, R2)
+Combat.crossbow_reload = 1.6
+Combat.bow_ammo = "it_arrow"
+Combat.crossbow_ammo = "it_bolt"

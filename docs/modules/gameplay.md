@@ -326,7 +326,24 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
 - Gleiche Gilde trifft sich nicht (Rudel, Kameraden); der Held trifft jeden.
 - Engine-Hilfen: `npc_distance(npc, anderer)`, `npc_face(npc, anderer)`, `npc_reach(npc)` (`hero` für den Helden).
 
-**Weiter:** Kamera-Kampfprofil (K5, nach #206); E Fernkampf (K9); DoD-Szenario.
+**Teil E – Fernkampf (umgesetzt, `EngineRanged.cpp`; Entscheidungen R1–R4):**
+- **Ziehen (R1):** eigene Taste `draw_ranged` („2“) für den ausgerüsteten Bogen bzw. die Armbrust; ohne
+  Nahkampfwaffe nimmt auch die Leertaste den Bogen. Der Bogen sitzt an `socket_hand_l`, die Armbrust an
+  `socket_hand_r`. Waffenmodus 3, `player_weapon()` = `"ranged"`.
+- **Schießen (R2):** Strg + vor bzw. linke Maustaste; der Ziel-Lock reicht mit Bogen 30 m. Nachladen von selbst
+  (Bogen 1,0 s, Armbrust 1,6 s), solange Munition da ist (`it_arrow` bzw. `it_bolt`, `data/combat.lua`); ohne:
+  Hinweis „Keine Pfeile.“
+- **Treffer (R4):** auf das fokussierte bzw. gesperrte Ziel trifft der Schuss mit der Chance des Talents (`bow`,
+  `crossbow`: 30/60/90 %) – er fliegt dann auf dem flachen Bogen der Ballistik genau dorthin; ein Fehlschuss geht
+  5° zur Seite. Ohne Ziel fliegt er frei entlang des Blicks (40 m/s, Schwerkraft).
+- **Schaden (R3):** Stich der Waffe minus Schutz gegen Stich, mindestens 5, ohne Stärke und Krit. Fernkampf tötet
+  (K7); den Helden wirft er nur nieder (K8). Der Pfeil steckt danach im Ziel (Inventar, plünderbar); verfehlte
+  bleiben am Boden liegen und lassen sich aufheben.
+- **Geschosse** fliegen im festen Schritt (Strecke gegen Welt und Körper), gezeichnet mit dem Modell der Munition,
+  +Y entlang der Flugbahn (figurens Pfeil: Ursprung in der Schaftmitte, +Y zur Spitze). Ereignis `npc_shot`.
+- **Lua:** `draw_ranged()`, `hero_shoot()`. Inhalt: `it_crossbow`, `it_arrow`, `it_bolt` (Modelle folgen von figuren).
+
+**Weiter:** Kamera-Kampfprofil (K5, nach #206); Fernkampf für NPCs (Jäger); DoD-Szenario.
 
 ## Magie (M12)
 Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten

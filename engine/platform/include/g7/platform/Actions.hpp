@@ -32,6 +32,7 @@ enum class Action : u16
     Use,
     Parry, ///< M11: the second (mouse) assignment of the classic scheme
     DrawWeapon,
+    DrawRanged, ///< M11 (R1): the bow or crossbow
     DrawMagic,
     Inventory,
     Log,

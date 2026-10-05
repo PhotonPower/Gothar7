@@ -27,3 +27,27 @@ Item "it_bow_short" {
     damage = { point = 15 },
     requires = { dex = 15 },
 }
+
+Item "it_crossbow" {
+    name = "Leichte Armbrust",
+    category = "crossbow",
+    value = 120,
+    weight = 3.5,
+    damage = { point = 25 },
+    requires = { str = 20 },
+}
+
+-- Munition (M11 Teil E): Pfeile für Bögen, Bolzen für Armbrüste. Modelle kommen von figuren (F6).
+Item "it_arrow" {
+    name = "Pfeil",
+    category = "ammo",
+    value = 1,
+    weight = 0.05,
+}
+
+Item "it_bolt" {
+    name = "Bolzen",
+    category = "ammo",
+    value = 2,
+    weight = 0.08,
+}

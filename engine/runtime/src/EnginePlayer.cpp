@@ -213,6 +213,10 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
     {
         m_drawWeaponRequested = true; // until the next fixed step uses it (M9 part C)
     }
+    if (allowKeyboard && !m_flyMode && m_actions.pressed(m_input, Action::DrawRanged))
+    {
+        m_drawRangedRequested = true; // M11 (R1)
+    }
     if (allowKeyboard && !m_flyMode && m_weaponMode != 0)
     {
         readCombatInput(); // M11 (K1): fighting keys instead of moving while the action key is held

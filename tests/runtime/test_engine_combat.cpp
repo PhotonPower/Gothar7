@@ -326,3 +326,49 @@ TEST_CASE("Engine combat AI: a pack attacks two at a time, a wounded wolf flees,
     }
     CHECK(killed);
 }
+
+TEST_CASE(
+    "Engine ranged: the bow shoots the focused target by talent, reloads, needs arrows; ranged kills (R1-R4)")
+{
+    Engine engine(combatConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true");
+    run(engine,
+        "set_stat('dex', 20) give_item('it_bow_short') equip('it_bow_short') give_item('it_arrow', 3) "
+        "set_talent('bow', 2)");
+    // R1: no melee weapon equipped - the draw key takes the bow.
+    run(engine, "teleport(41.2, 0, 18.8)"); // looking along -X
+    runSeconds(engine, 0.3f);
+    CHECK(run(engine, "draw_weapon()").asString() == "ranged");
+    run(engine, "draw_ranged()"); // and away again
+    CHECK(run(engine, "player_weapon()").asString() == "none");
+    // An old man 12 m ahead (west), the bow drawn: locked.
+    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_center')").isString());
+    run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man') npc_teleport('npc_old_man', 29.2, "
+                "0, 18.8, 270)");
+    CHECK(run(engine, "draw_ranged()").asString() == "ranged");
+    runSeconds(engine, 0.5f);
+    REQUIRE(engine.heroCombatTarget().has_value());
+    const i64 before = hp(engine, "npc_old_man");
+    engine.setRandomSource([] { return 0.0f; }); // R4: the roll hits
+    REQUIRE(run(engine, "hero_shoot()").asBool());
+    CHECK_FALSE(run(engine, "hero_shoot()").asBool()); // reloading (R2)
+    runSeconds(engine, 1.0f);
+    CHECK(hp(engine, "npc_old_man") == before - 15); // bow point 15, no protection (R3)
+    CHECK(run(engine, "npc_item_count('npc_old_man', 'it_arrow')").asInteger() == 1); // stuck in him
+    // A missed roll goes 5 degrees aside: no hit.
+    engine.setRandomSource([] { return 0.99f; });
+    REQUIRE(run(engine, "hero_shoot()").asBool());
+    runSeconds(engine, 1.5f);
+    CHECK(hp(engine, "npc_old_man") == before - 15);
+    // The last arrow kills him (ranged combat kills, K7).
+    run(engine, "npc_set_stat('npc_old_man', 'hp', 5)");
+    engine.setRandomSource([] { return 0.0f; });
+    runSeconds(engine, 0.5f);
+    REQUIRE(run(engine, "hero_shoot()").asBool());
+    runSeconds(engine, 1.5f);
+    CHECK(state(engine, "npc_old_man") == "dead");
+    // Out of arrows.
+    CHECK(run(engine, "item_count('it_arrow')").asInteger() == 0);
+    CHECK_FALSE(run(engine, "hero_shoot()").asBool());
+}
