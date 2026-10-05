@@ -6,7 +6,9 @@
 #include <doctest/doctest.h>
 
 #include <cmath>
+#include <fstream>
 #include <ostream> // doctest needs it to print std::string operands
+#include <sstream>
 #include <string>
 
 using namespace g7;
@@ -145,6 +147,60 @@ TEST_CASE("Camera: moves closer in front of walls, never closer than the minimum
     CHECK(cam.distance() == doctest::Approx(0.6f));
     cam.update(1.0f / 60.0f, Vec3(0.0f), 0.0f, 0.0f, s, {});
     CHECK(cam.distance() == doctest::Approx(3.0f));
+}
+
+TEST_CASE("Camera: in at once in front of a wall, out again smoothly with return_lag")
+{
+    CameraSettings s;
+    s.returnLag = 0.25f;
+    ThirdPersonCamera cam;
+    cam.reset(Vec3(0.0f), 0.0f, s);
+    const ThirdPersonCamera::Obstruction wall = [](const Vec3&, const Vec3&, f32, f32 maxDistance)
+    { return maxDistance > 1.0f ? std::optional<f32>(1.0f) : std::nullopt; };
+    cam.update(1.0f / 60.0f, Vec3(0.0f), 0.0f, 0.0f, s, wall);
+    CHECK(cam.distance() == doctest::Approx(1.0f)); // in at once: never through the wall
+    cam.update(0.25f, Vec3(0.0f), 0.0f, 0.0f, s, {});
+    CHECK(cam.distance() == doctest::Approx(1.0f + 2.0f * (1.0f - std::exp(-1.0f))).epsilon(0.01));
+    CHECK(glm::length(cam.position() - cam.target()) == doctest::Approx(cam.distance()));
+    for (int i = 0; i < 120; ++i)
+    {
+        cam.update(1.0f / 60.0f, Vec3(0.0f), 0.0f, 0.0f, s, {});
+    }
+    CHECK(cam.distance() == doctest::Approx(3.0f).epsilon(0.01));
+}
+
+TEST_CASE("Camera: the indoor profile from [camera.indoor], blended")
+{
+    auto parsed = MovementSettings::parse(R"(
+[camera]
+distance = 3.0
+target_height = 1.55
+[camera.indoor]
+distance = 1.9
+target_height = 1.5
+ceiling = 3.5
+)",
+                                          "movement.toml");
+    REQUIRE_MESSAGE(parsed, (parsed ? "" : parsed.error().message));
+    const MovementSettings& m = parsed.value();
+    CHECK(m.indoor.camera.distance == doctest::Approx(1.9f));
+    CHECK(m.indoor.camera.minDistance == doctest::Approx(m.camera.minDistance)); // unset: as outside
+    CHECK(m.indoor.ceiling == doctest::Approx(3.5f));
+    CHECK(m.indoor.blendSeconds == doctest::Approx(0.5f));
+    const CameraSettings half = blendCamera(m.camera, m.indoor.camera, 0.5f);
+    CHECK(half.distance == doctest::Approx(2.45f));
+    CHECK(half.targetHeight == doctest::Approx(1.525f));
+    CHECK(blendCamera(m.camera, m.indoor.camera, 2.0f).distance == doctest::Approx(1.9f)); // clamped
+    CHECK_FALSE(MovementSettings::parse("[camera.indoor]\ndistance = 1\nmin_distance = 2\n", "m.toml"));
+
+    // The repository's values (data/movement.toml) parse.
+    std::ifstream file(G7_ASSET_SOURCE_DIR "/data/movement.toml");
+    REQUIRE(file.good());
+    std::stringstream text;
+    text << file.rdbuf();
+    auto real = MovementSettings::parse(text.str(), "movement.toml");
+    REQUIRE_MESSAGE(real, (real ? "" : real.error().message));
+    CHECK(real.value().indoor.camera.distance < real.value().camera.distance);
 }
 
 TEST_CASE("movement.toml: values, defaults and errors")

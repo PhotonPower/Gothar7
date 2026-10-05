@@ -63,3 +63,12 @@ yaw_lag = 0.25           # s, Trägheit beim Drehen hinter die Figur
 collision_radius = 0.2   # m
 min_distance = 0.6       # m
 mouse_degrees_per_pixel = 0.15
+return_lag = 0.25        # s: nach einer Wand weich zurück (hinein sofort, damit sie nie durch Wände schaut)
+
+[camera.indoor]          # unter einem Dach (Häuser, Höhle): näher und tiefer, weich überblendet
+distance = 1.9           # m (welts Räume sind 4-8 m breit)
+target_height = 1.5      # m
+min_distance = 0.4       # m
+collision_radius = 0.15  # m
+ceiling = 4.0            # m über den Füßen: ein Dach darunter heißt „drinnen“ (Räume 2,4-2,9 m hoch)
+blend_seconds = 0.5      # s, Zeitkonstante des Wechsels

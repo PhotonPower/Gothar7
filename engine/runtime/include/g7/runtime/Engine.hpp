@@ -465,6 +465,10 @@ public:
     /// Starts talking to an NPC: an important Info runs first, then the menu of Infos.
     [[nodiscard]] Result<void> startDialog(u32 npc);
     [[nodiscard]] bool inDialog() const noexcept { return m_dialog.has_value(); }
+    /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
+    /// target.
+    [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
+    [[nodiscard]] f32 playerCameraDistance() const noexcept { return m_playerCamera.distance(); }
     /// Picks the n-th entry (from 0) of the menu shown (an Info, an answer, "Ende").
     void dialogChoose(usize index);
     /// Skips the line being said.
@@ -957,6 +961,7 @@ private:
     physics::CharacterController m_player;
     gameplay::PlayerMovement m_movement;
     gameplay::ThirdPersonCamera m_playerCamera;
+    f32 m_indoorBlend = 0.0f; // 0 outside .. 1 inside (a roof above the hero): the camera's indoor profile
     gameplay::MovementSettings m_movementSettings;
     asset::Handle<gameplay::MovementSettings> m_movementData; // data/movement.toml, hot reload
     u32 m_movementVersion = 0;

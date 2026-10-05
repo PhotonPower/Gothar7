@@ -94,6 +94,7 @@ Result<MovementSettings> MovementSettings::parse(std::string_view toml, std::str
         {"camera.collision_radius", &cam.collisionRadius},
         {"camera.min_distance", &cam.minDistance},
         {"camera.mouse_degrees_per_pixel", &cam.mousePitchPerPixel},
+        {"camera.indoor.ceiling", &s.indoor.ceiling},
     };
     for (const auto& [key, value] : positive)
     {
@@ -111,6 +112,8 @@ Result<MovementSettings> MovementSettings::parse(std::string_view toml, std::str
         {"fall.damage_per_meter", &s.fall.damagePerMeter},
         {"camera.position_lag", &cam.positionLag},
         {"camera.yaw_lag", &cam.yawLag},
+        {"camera.return_lag", &cam.returnLag},
+        {"camera.indoor.blend_seconds", &s.indoor.blendSeconds},
     };
     for (const auto& [key, value] : nonNegative)
     {
@@ -147,6 +150,26 @@ Result<MovementSettings> MovementSettings::parse(std::string_view toml, std::str
     if (cam.minDistance > cam.distance)
     {
         return Error{std::string(source) + ": 'camera.min_distance' exceeds 'camera.distance'"};
+    }
+    // Indoors: what [camera.indoor] does not set is as outside.
+    CameraSettings& in = s.indoor.camera;
+    in = cam;
+    const std::pair<std::string_view, f32*> indoor[] = {
+        {"camera.indoor.distance", &in.distance},
+        {"camera.indoor.target_height", &in.targetHeight},
+        {"camera.indoor.min_distance", &in.minDistance},
+        {"camera.indoor.collision_radius", &in.collisionRadius},
+    };
+    for (const auto& [key, value] : indoor)
+    {
+        if (auto r = read(c, key, *value, source); !r)
+        {
+            return r.error();
+        }
+    }
+    if (in.minDistance > in.distance)
+    {
+        return Error{std::string(source) + ": 'camera.indoor.min_distance' exceeds 'camera.indoor.distance'"};
     }
     return s;
 }
@@ -327,6 +350,17 @@ void PlayerMovement::reset(f32 yaw)
     m_velocity = Vec3(0.0f);
 }
 
+CameraSettings blendCamera(const CameraSettings& outside, const CameraSettings& inside, f32 t) noexcept
+{
+    CameraSettings s = outside;
+    t = std::clamp(t, 0.0f, 1.0f);
+    s.distance = glm::mix(outside.distance, inside.distance, t);
+    s.targetHeight = glm::mix(outside.targetHeight, inside.targetHeight, t);
+    s.minDistance = glm::mix(outside.minDistance, inside.minDistance, t);
+    s.collisionRadius = glm::mix(outside.collisionRadius, inside.collisionRadius, t);
+    return s;
+}
+
 void ThirdPersonCamera::reset(const Vec3& feet, f32 yaw, const CameraSettings& settings)
 {
     m_target = feet + Vec3(0.0f, settings.targetHeight, 0.0f);
@@ -344,7 +378,16 @@ void ThirdPersonCamera::update(f32 seconds, const Vec3& feet, f32 yaw, f32 mouse
     m_yaw = wrapAngle(m_yaw + wrapAngle(yaw - m_yaw) * follow(seconds, settings.yawLag));
     m_pitch = std::clamp(m_pitch + mousePitchPixels * settings.mousePitchPerPixel, settings.minPitchDegrees,
                          settings.maxPitchDegrees);
+    const f32 before = m_distance;
     place(settings, obstruction ? &obstruction : nullptr);
+    if (m_distance > before && settings.returnLag > 0.0f)
+    {
+        // Free again (past a wall): back out smoothly; in at once (above), so it never looks through a wall.
+        m_distance = before + (m_distance - before) * follow(seconds, settings.returnLag);
+        const f32 pitch = glm::radians(m_pitch);
+        const Vec3 look = forwardOf(m_yaw) * std::cos(pitch) + Vec3(0.0f, -std::sin(pitch), 0.0f);
+        m_position = m_target - look * m_distance;
+    }
 }
 
 void ThirdPersonCamera::place(const CameraSettings& settings, const Obstruction* obstruction)
