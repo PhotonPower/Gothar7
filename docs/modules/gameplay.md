@@ -30,6 +30,13 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   - Position und Gieren folgen exponentiell gedämpft (0,12 s bzw. 0,25 s; kein Überschwingen; Drehen den
     kurzen Weg).
   - **Wände:** Ein `sphereCast` (r 0,2 m) vom Blickpunkt nach hinten verkürzt den Abstand, nie unter 0,6 m.
+    Hinein geht es sofort (nie durch die Wand), heraus weich mit `return_lag` (0,25 s), damit die Kamera an
+    Hauswänden und Türen nicht springt.
+  - **Drinnen** (`[camera.indoor]`, für welts begehbare Häuser): Liegt an mindestens vier von fünf Punkten (über
+    dem Helden und 1 m um ihn) ein Dach tiefer als 4 m (`ceiling`), wird weich (`blend_seconds` 0,5 s) auf das
+    Innenprofil überblendet: Abstand 1,9 m, Blickpunkt 1,5 m, Mindestabstand 0,4 m, Kugel 0,15 m. Die Neigung
+    bleibt die des Spielers. Unter einem vorkragenden Obergeschoss (0,5 m über der Straße) bleibt es draußen.
+    Werte zum Nachstellen durch den Projektinhaber.
   - Modi (Kampf, Dialog, Schwimmen) folgen mit ihren Phasen als weitere Datensätze.
 - **Springen, Klettern, Fallen (Teil D; Werte `[jump]`, `[climb]`, `[fall]`, Entscheidungen Projektinhaber):**
   - **Sprung** (Taste `jump`) aus Stand bzw. Gehen 0,9 m hoch, aus dem Rennen 1,1 m und damit weiter
