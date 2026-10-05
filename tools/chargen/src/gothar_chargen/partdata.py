@@ -13,6 +13,10 @@ by `gothar-chargen assemble` today and by the engine at run time later (armour/h
   ranges. Hidden: a ray along the vertex normal hits the garment within 3 cm from inside, or
   the body pokes out of the garment by up to 1.5 cm; all three vertices hidden -> triangle hidden.
   Holes in ragged garments, folds seen from behind and a 5 cm band at the neck seam keep the body.
+  Loose pieces with ``inside`` (long skirts, recipe ``[inside]``): a body vertex is hidden as well
+  when horizontal rays hit the garment from inside in at least two of four directions within that
+  distance – a vertex outside it never hits it from inside (thighs inside a skirt that hangs
+  away from them; crouching would push them through).
 * base bodies with clothing of their own (trousers, underwear): the skin under it is removed from
   the body part itself (`hide_own_skin`, same rule as the masks) – nobody needs it, and in motion
   it would show through the coarse cloth (F3o).
@@ -46,6 +50,7 @@ HEM_KEEP = 0.05
 # (armour trousers, boot shafts) leave them sticking out further
 POKE_THROUGH_CLOTH = 0.04
 _CHUNK = 512  # body vertices per vectorised batch
+INSIDE_DIRECTIONS = 2  # horizontal rays (of 4) that hit a loose garment from inside: within it
 
 
 class PartDataError(Exception):
@@ -255,6 +260,7 @@ def covered_triangles(
     ring: list[list[list[int]]],
     cover_distance: float = COVER_DISTANCE,
     keep_near: np.ndarray | None = None,
+    inside: float = 0.0,
 ) -> list[list[int]]:
     """Triangle ranges [primitive, first, end) of `body` hidden under `garment`; body vertices
     within HEM_KEEP of the points `keep_near` (hems of frayed garments) are never hidden."""
@@ -273,6 +279,14 @@ def covered_triangles(
         )
         poke = (np.linalg.norm(offset, axis=1) < limit) & (np.einsum("ij,ij->i", offset, n) < 0)
         covered = ray | poke
+        if inside > 0:  # inside a loose garment: hit horizontally all around (glTF: y up)
+            hits = sum(
+                _ray_hits(
+                    pos, np.broadcast_to(np.array(d, dtype=float), pos.shape), tri, inside
+                ).astype(int)
+                for d in ((1, 0, 0), (-1, 0, 0), (0, 0, 1), (0, 0, -1))
+            )
+            covered |= hits >= INSIDE_DIRECTIONS
         if ring_pos is not None:
             d = np.linalg.norm(pos[:, None, :] - ring_pos[None], axis=2).min(axis=1)
             covered &= d >= NECK_KEEP
@@ -395,7 +409,11 @@ def hem_points(mesh: LodMesh) -> np.ndarray:
 
 
 def garment_data(
-    garment: Gltf, body: Gltf, body_ref: str, hides: tuple[str, ...] = ()
+    garment: Gltf,
+    body: Gltf,
+    body_ref: str,
+    hides: tuple[str, ...] = (),
+    inside: float = 0.0,
 ) -> dict[str, Any]:
     """`covers` of a garment part on the body part it was fitted to (`body_ref`: its path) and
     the roles it `hides` while worn (hoods and helmets: the hair)."""
@@ -405,7 +423,7 @@ def garment_data(
     lods: dict[str, Any] = {}
     for _level, mesh in sorted(lod_meshes(body).items()):
         ring = body_data.get("neck", {}).get(mesh.node, [])
-        lods[mesh.node] = covered_triangles(mesh, garment_lod0, ring, keep_near=hems)
+        lods[mesh.node] = covered_triangles(mesh, garment_lod0, ring, keep_near=hems, inside=inside)
     data: dict[str, Any] = {
         "version": FORMAT_VERSION,
         "part": "cloth",
