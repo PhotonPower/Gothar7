@@ -39,7 +39,7 @@ from gothar_worldgen.config import (
 )
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.export.descents import dig_descents
-from gothar_worldgen.export.pads import apply_pads
+from gothar_worldgen.export.pads import apply_pads, room_pads
 from gothar_worldgen.export.splat import SplatPaths, composite, coverage, layer_masks, write_splat
 from gothar_worldgen.export.starts import DEFAULT_STARTS, load_starts
 from gothar_worldgen.export.terrain import ExportError, Grid, crop, export_terrain, load_grid
@@ -1008,7 +1008,7 @@ def _plan_uses(
 
     specs = {u: inside_spec(s, f"uses.{u}.inside") for u, s in doc.inside.items()}
     routine = {p.house: p.name for p in plan.places if p.kind == "wp"}
-    inside = plan_inside(doc.houses, specs, index, routine)
+    inside = plan_inside(doc.houses, specs, index, routine, [(b.owner, b.poly) for b in bodies])
     places["places"] += inside.places
     places["failed"] += inside.failed
     for h in places["houses"]:
@@ -1139,6 +1139,11 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             if dug["doors"] or dug["skippedForWays"]:
                 print(f"  descents: {dug['doors']} hillside doors, {dug['cells']} cells, "
                       f"{dug['skippedForWays']} left out (a way there)", file=out)  # fmt: skip
+            # W7 C1: the ground under the rooms of enterable houses stays below their floor
+            rooms = room_pads(entries, grid.cell)
+            if rooms:
+                grid, cut = apply_pads(grid, rooms)
+                print(f"  rooms: {len(rooms)} floors kept clear, {cut} cells", file=out)
         handmade_pads = handmade_pad_list(load_handmade(data_dir / "handmade.json"))
         if handmade_pads:  # level ground under hand-made objects (garden terraces, buildings)
             grid, padded = apply_pads(grid, handmade_pads)

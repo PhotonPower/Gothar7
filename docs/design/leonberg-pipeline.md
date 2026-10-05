@@ -922,6 +922,11 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   Engine NPCs Türen öffnen lässt; dann `false`.
 - **Kollision:** der Raum samt Türdurchgang wird aus dem Hüllkörper geschnitten (wie bei Durchgängen: Körper über
   der Decke, Wandprismen daneben), dazu eine feste Bodenplatte, wenn der Boden über der Basis liegt.
+- **Gelände unter dem Raum:** `export-terrain` senkt die Heightmap unter jedem Raum (Index `interior.ring`, um eine
+  Zelle vergrößert) auf 2 cm unter den Boden, nur absenkend (`export/pads.py` `room_pads`); sonst ragt am Hang das
+  Gelände bergseitig durch den Boden (vorher bis 1,1 m, Schmiede). Außen läuft die Senke über 1,5 m ins Gelände aus
+  (sanfte Mulde am Wandfuß statt einer Stufe). Löcher im Gelände (`holes`) wurden verworfen: bei 1-m-Zellen bliebe
+  das Gelände in den Zellen entlang der Wände im Raum stehen.
 - **Budget:** Innenraum-Dreiecke (Rollen `room_*`) zählen nicht gegen das Hausbudget; außen bleibt das Fachwerk.
 - Der Index-Eintrag bekommt `interior` (Boden, Decke, Raum-Ring, Tür mit Angeln, Achse, Normale, Maßen); daraus
   baut C2 Innen-Mobs, Möbel, Freepoints, Licht, Wegnetz und `trigger.owner`.
@@ -929,14 +934,21 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   `uses.<nutzung>.inside`: `mobs` `typ:N` bzw. `bed:R` = Bewohner, höchstens 3; `freepoints`; `hearth`):
   Betten und Truhen mit dem Rücken zur Wand (Slot frei, in den Raum blickend), ein Tisch (`mobs/table.glb`) mit je
   einer Bank an beiden Längsseiten (Mitte ±0,62 m, Vorderseite vom Tisch weg) in der freien Fläche nahe der
-  Raummitte, eine Feuerstelle (`props/hearth.glb`, kein Mob) an einer Wand mit warmem, flackerndem `light`-Vob
-  darüber; in großen Räumen (> 60 m²) ein zweites Licht über dem Tisch bzw. der Mitte. Der Weg von der Tür zur
-  Raummitte (1,3 m breit) und 1,4 m hinter der Tür bleiben frei. Freepoints im Raum: CAMPFIRE vor der Feuerstelle,
+  Raummitte, eine Feuerstelle (`props/hearth.glb`, kein Mob: gemauerter Herd 1,2 × 0,9 × 0,45 m mit Rückwand,
+  glühender Glut und Flammen über `emissiveFactor`, Rauchfang 1,9–2,5 m; Kollision nur der Block) mit warmem,
+  flackerndem `light`-Vob 0,9 m über dem Boden. Der Herd wird zuerst gesetzt, an die Wandstelle, deren Vorderseite am
+  meisten zur Tür zeigt und deren Feuerstelle vom Raum-Wegpunkt aus gerade erreichbar ist; die Gasse dorthin bleibt
+  frei (beim Eintreten sichtbar). In großen Räumen (> 60 m²) ein zweites Licht über dem Tisch bzw. der Mitte. Der Weg von der Tür zur
+  Raummitte (1,3 m breit), 1,4 m hinter der Tür und der Schwenkbereich des Türblatts bleiben frei; das offene
+  Türblatt zählt beim Prüfen der Wege als Hindernis. Freepoints im Raum: CAMPFIRE vor der Feuerstelle,
   STAND am Slot einer Truhe (Ladentheke), LEAN an Wänden, SMALLTALK paarweise; jeder vom Raum-Wegpunkt aus in
-  gerader Linie erreichbar. Wegpunkte: `WP_…_TUER` in der Mitte der Türöffnung (verbunden mit dem Routinen-Wegpunkt)
-  und `WP_…_INNEN` 1,2 m im Raum (verbunden mit `…_TUER`): die Figur richtet sich vor dem schmalen Durchgang aus.
+  gerader Linie erreichbar. Wegpunkte: `WP_…_VOR` 0,9 m vor der Tür auf dem Gelände (verbunden mit dem
+  Routinen-Wegpunkt: der Weg geht gerade durch die Öffnung statt schräg an der Laibung vorbei), `WP_…_TUER` in der
+  Mitte der Türöffnung (verbunden mit `…_VOR`) und `WP_…_INNEN` 1,2 m im Raum (verbunden mit `…_TUER`): die Figur richtet sich vor dem schmalen Durchgang aus.
   Innen-Punkte stehen auf dem Raumboden (`y`), nicht auf dem Gelände darunter. Mit `owner` in `uses.json` kommt ein
-  Box-Trigger über den Raum (`trigger.owner`, privater Bereich); ohne owner keiner. `assemble` schreibt allgemeine
+  Box-Trigger über den Raum (`trigger.owner`, privater Bereich); ohne owner keiner. Ragt ein fremder Körper in den Raum (Schmiede
+  ZnP: die Stadtmauer, an die sie gebaut ist), endet der Raum für die Einrichtung an dessen Wand; der Herd steht dort an
+  der Mauer. `assemble` schreibt allgemeine
   Vob-Angaben (mob, mesh, light, trigger) in die Gruppe `WORLDGEN_USES`.
 
 ### Vorhandene Werkzeuge (kein Eigenbau)

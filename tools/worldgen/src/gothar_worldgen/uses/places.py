@@ -331,6 +331,16 @@ def routine_table_md(places: dict[str, Any]) -> str:
 DOOR_IN_REVEAL_M = 0.06  # the door blade stands this far inside the room's wall face
 
 
+def door_hinge(d: dict[str, Any]) -> tuple[float, float]:
+    """The jamb a room's door (index ``interior.door``) turns about: the blade runs from it
+    along the model's +X across the opening, its front (+Z) facing out."""
+    a = math.atan2(d["normal"][0], d["normal"][1])
+    xdir = (math.cos(a), -math.sin(a))  # the model's +X in the world for that turn
+    f, t = d["from"], d["to"]
+    hinge = f if (t[0] - f[0]) * xdir[0] + (t[1] - f[1]) * xdir[1] > 0 else t
+    return float(hinge[0]), float(hinge[1])
+
+
 def door_mobs(index: dict[str, Any], opened: bool) -> list[dict[str, Any]]:
     """A door mob in the opening of every enterable house (index ``interior``): hinge at one
     jamb, the blade (``mobs/door.glb``, along +X) across the opening, its front (+Z) facing out.
@@ -343,9 +353,7 @@ def door_mobs(index: dict[str, Any], opened: bool) -> list[dict[str, Any]]:
         d = room["door"]
         nx, nz = d["normal"]
         a = math.atan2(nx, nz)
-        xdir = (math.cos(a), -math.sin(a))  # the model's +X in the world for that turn
-        f, t = d["from"], d["to"]
-        hinge = f if (t[0] - f[0]) * xdir[0] + (t[1] - f[1]) * xdir[1] > 0 else t
+        hinge = door_hinge(d)
         hx, hz = hinge[0] + nx * DOOR_IN_REVEAL_M, hinge[1] + nz * DOOR_IN_REVEAL_M
         turn = a + math.pi / 2 if opened else a
         name = f"MOB_LEO_TUER_{name_part(short_id(e['id']))}"

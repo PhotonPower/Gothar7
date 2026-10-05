@@ -71,7 +71,10 @@ def test_way_from_the_door_stays_clear_and_places_are_reachable():
         entry["pos"] == pytest.approx([6.0, -1.5]) and entry["link"] == "WP_LEO_WOHNHAUS_ZJV_TUER"
     )
     door = next(w for w in p.places if w["name"] == "WP_LEO_WOHNHAUS_ZJV_TUER")
-    assert door["pos"] == pytest.approx([6.0, -0.15]) and door["link"] == "WP_LEO_WOHNHAUS_ZJV"
+    assert door["pos"] == pytest.approx([6.0, -0.15]) and door["link"] == "WP_LEO_WOHNHAUS_ZJV_VOR"
+    front = next(w for w in p.places if w["name"] == "WP_LEO_WOHNHAUS_ZJV_VOR")
+    assert front["pos"] == pytest.approx([6.0, 0.6]) and front["link"] == "WP_LEO_WOHNHAUS_ZJV"
+    assert "y" not in front  # outside: on the terrain
 
 
 def test_private_area_with_an_owner():
@@ -88,3 +91,45 @@ def test_houses_without_room_or_spec():
     empty = plan_inside([House("X", "wohnhaus", inside=True)], SPEC, INDEX, {})
     assert empty.vobs == [] and empty.places == []  # no interior in the index
     assert plan(specs={"wohnhaus": InsideSpec()}).failed == []
+
+
+def test_hearth_comes_first_and_the_way_to_it_stays_clear():
+    p = plan(residents=3)
+    (prop,) = by_kind(p, "mesh")
+    entry = next(w for w in p.places if w["name"] == "WP_LEO_WOHNHAUS_ZJV_INNEN")
+    fire = next(f for f in p.places if f["name"].startswith("FP_CAMPFIRE"))
+    lane = LineString([entry["pos"], fire["pos"]]).buffer(0.5)
+    for v in by_kind(p, "mob"):
+        assert not lane.contains(Point(v["pos"][0], v["pos"][2])), v["name"]
+    (light,) = [v for v in by_kind(p, "light") if v["name"].endswith("_HERD")]
+    assert light["pos"][1] == pytest.approx(1.9)  # above the embers, below the hood
+    assert math.dist((light["pos"][0], light["pos"][2]), (prop["pos"][0], prop["pos"][2])) < 1e-6
+    # on the wall facing the door: seen on coming in, its front (+z of the model) towards it
+    assert prop["pos"][2] == pytest.approx(-6.7 + 0.05 + 0.45)
+    assert prop["rot"] == pytest.approx([0.0, 0.0, 0.0, 1.0])
+
+
+def test_door_swing_stays_free_and_the_open_blade_is_walked_around():
+    p = plan(residents=3)
+    sweep = Point(5.5, -0.3).buffer(1.0)  # hinge at "from": the blade turns in towards -z
+    for v in by_kind(p, "mob") + by_kind(p, "mesh"):
+        assert sweep.distance(Point(v["pos"][0], v["pos"][2])) > 0.4, v["name"]
+    blade = LineString([(5.5, -0.3), (5.5, -1.3)])
+    entry = next(w for w in p.places if w["name"] == "WP_LEO_WOHNHAUS_ZJV_INNEN")
+    for f in (f for f in p.places if f["kind"] == "fp"):
+        assert LineString([entry["pos"], f["pos"]]).distance(blade) >= 0.3, f["name"]
+
+
+def test_a_town_wall_through_the_room_is_its_back_wall():
+    wall = Polygon([(-1.0, -5.5), (11.0, -5.5), (11.0, -7.5), (-1.0, -7.5)])
+    bodies = [("CITYWALL_WALL_01", wall), ("BLD_DEBW_00100061ZjV", Polygon(ROOM["ring"])),
+              ("MOB_LEO_TUER_ZJV", Point(6.0, -1.0).buffer(0.3))]  # fmt: skip
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=3, inside=True)
+    p = plan_inside([house], SPEC, INDEX, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"}, bodies)
+    assert p.failed == []
+    for v in by_kind(p, "mob") + by_kind(p, "mesh"):
+        assert v["pos"][2] > -5.5, v["name"]  # nothing in or behind the wall
+    for f in (f for f in p.places if f["kind"] == "fp"):
+        assert not wall.buffer(0.2).contains(Point(f["pos"])), f["name"]
+    (prop,) = by_kind(p, "mesh")  # the hearth against the town wall, facing the door
+    assert prop["pos"][2] == pytest.approx(-5.5 + 0.05 + 0.05 + 0.45)  # gap to the wall, half depth

@@ -47,7 +47,11 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "linen": ("cloth", (0.5, 0.45, 0.36)),
     "fieldstone": ("stone", (0.24, 0.22, 0.2)),  # hearth (props)
     "ash": ("stone", (0.04, 0.035, 0.03)),
+    "ember": ("stone", (0.25, 0.05, 0.01)),  # glowing (EMISSIVE)
+    "flame": ("straw", (0.9, 0.45, 0.1)),
 }
+# materials that glow: the engine adds emissive after the light (render.md "Material")
+EMISSIVE = {"ember": (0.9, 0.28, 0.05), "flame": (1.0, 0.55, 0.15)}
 # the texture kind's grain runs along u (timber, straw) or v (boards); boxes map their grain axis so
 GRAIN_U = {"timber", "straw", "iron", "cloth"}
 Vec3 = tuple[float, float, float]
@@ -106,6 +110,7 @@ class Mesh:
             out.append(Primitive(
                 material, (*(min(c / scale, 1.0) for c in colour), 1.0), mesh,  # type: ignore[arg-type]
                 (f"{TEXTURE_DIR}/{kind}_albedo.png", f"{TEXTURE_DIR}/{kind}_normal.png"),
+                EMISSIVE.get(material),
             ))  # fmt: skip
         return out
 
@@ -319,22 +324,42 @@ BUILDERS = {"chest": chest, "anvil": anvil, "bed": bed, "door": door, "bench": b
             "table": table}  # fmt: skip
 
 
-HEARTH_W, HEARTH_H = 0.9, 0.25
+HEARTH_W, HEARTH_D, HEARTH_H = 1.2, 0.9, 0.45  # raised hearth: along the wall, depth, height
+HOOD_Y0, HOOD_Y1 = 1.9, 2.5  # smoke hood (above head height: no collision there)
 
 
 def hearth() -> MobModel:
-    """Open hearth (W7 rooms, a prop, not a mob): a low frame of field stones round a bed of ash
-    with two logs; the room's light hangs over it."""
+    """Raised hearth against a wall (W7 rooms, a prop, not a mob): a block of field stones with a
+    back wall, logs on glowing embers with flames (emissive), a smoke hood above; origin in the
+    middle on the floor, the open front +Z, the wall at -Z."""
     m = Mesh()
-    h, t = HEARTH_W / 2, 0.16  # half size, stone thickness
-    m.box("fieldstone", (-h, 0.0, -h), (h, HEARTH_H, -h + t))
-    m.box("fieldstone", (-h, 0.0, h - t), (h, HEARTH_H, h))
-    m.box("fieldstone", (-h, 0.0, -h + t), (-h + t, HEARTH_H, h - t))
-    m.box("fieldstone", (h - t, 0.0, -h + t), (h, HEARTH_H, h - t))
-    m.box("ash", (-h + t, 0.0, -h + t), (h - t, 0.05, h - t))
-    m.box("oak_beam", (-0.25, 0.05, -0.06), (0.25, 0.14, 0.04), grain=0)
-    m.box("oak_beam", (-0.05, 0.05, -0.25), (0.05, 0.13, 0.22), grain=1)
-    m.body("hearth", (-h, 0.0, -h), (h, HEARTH_H, h))
+    hw, hd = HEARTH_W / 2, HEARTH_D / 2
+    m.box("fieldstone", (-hw, 0.0, -hd), (hw, HEARTH_H, hd))  # the block
+    m.box("fieldstone", (-hw, HEARTH_H, -hd), (hw, HOOD_Y0, -hd + 0.12))  # back wall
+    for x in (-hw, hw - 0.1):  # side cheeks round the fire
+        m.box("fieldstone", (x, HEARTH_H, -hd + 0.12), (x + 0.1, HEARTH_H + 0.25, hd - 0.1))
+    m.box("ash", (-hw + 0.12, HEARTH_H, -hd + 0.14), (hw - 0.12, HEARTH_H + 0.02, hd - 0.12))
+    m.box("ember", (-0.3, HEARTH_H + 0.02, -0.18), (0.3, HEARTH_H + 0.06, 0.18))
+    m.box("oak_beam", (-0.32, HEARTH_H + 0.05, -0.06), (0.32, HEARTH_H + 0.14, 0.04), grain=0)
+    m.box("oak_beam", (-0.05, HEARTH_H + 0.05, -0.28), (0.05, HEARTH_H + 0.13, 0.22), grain=1)
+    for x, z, w in ((-0.12, 0.02, 0.1), (0.1, -0.04, 0.12), (0.0, 0.08, 0.08)):  # flames
+        h = 0.32 if w > 0.09 else 0.24
+        m.box(
+            "flame",
+            (x - w / 2, HEARTH_H + 0.08, z - 0.01),
+            (x + w / 2, HEARTH_H + 0.08 + h, z + 0.01),
+        )
+        m.box(
+            "flame",
+            (x - 0.01, HEARTH_H + 0.08, z - w / 2),
+            (x + 0.01, HEARTH_H + 0.08 + h * 0.8, z + w / 2),
+        )
+    # the hood: three tiers narrowing towards the wall and up
+    for k, (y0, y1, wf, df) in enumerate(((HOOD_Y0, 2.1, 1.0, 1.0), (2.1, 2.3, 0.8, 0.75),
+                                          (2.3, HOOD_Y1, 0.55, 0.5))):  # fmt: skip
+        w = hw * wf + 0.05 * (k == 0)
+        m.box("fieldstone", (-w, y0, -hd), (w, y1, -hd + HEARTH_D * df))
+    m.body("hearth", (-hw, 0.0, -hd), (hw, HEARTH_H, hd))
     return MobModel("hearth", m)
 
 
