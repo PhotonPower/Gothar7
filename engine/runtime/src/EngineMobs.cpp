@@ -138,9 +138,30 @@ void Engine::rebuildMobs()
             }
             const entt::entity e = m_scene.findById(vob.id);
             m.closedRotation = std::as_const(m_scene).get<Transform>(e)->rotation;
+            if (ref.open && m.type == "door")
+            {
+                // Open from the start (world file): turned to the open angle with the next swing step.
+                m.open = true;
+                m.doorFrom = kDoorOpenAngle;
+                m.doorTo = kDoorOpenAngle;
+                m.doorTime = 0.0f;
+            }
             mobs.emplace(vob.id.value, std::move(m));
         });
     m_mobs = std::move(mobs);
+}
+
+void Engine::storeDoors(world::WorldFile& file) const
+{
+    // Doors are written closed with their state (components.mob.open), not at the angle they stand at.
+    for (world::WorldFileVob& vob : file.vobs)
+    {
+        if (const auto it = m_mobs.find(vob.id.value); it != m_mobs.end() && it->second.type == "door")
+        {
+            vob.transform.rotation = it->second.closedRotation;
+            vob.mob.open = it->second.open;
+        }
+    }
 }
 
 std::optional<MobInfo> Engine::mobInfo(world::VobId vob) const

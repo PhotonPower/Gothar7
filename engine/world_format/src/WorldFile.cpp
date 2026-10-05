@@ -475,6 +475,15 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             return definition.error();
         }
         vob.mob.definition = std::move(definition).value();
+        const Json& mob = componentOf(v, "mob");
+        if (mob.contains("open"))
+        {
+            if (!mob["open"].is_boolean())
+            {
+                return r.error(std::format("{}.components.mob.open", where), "must be true or false");
+            }
+            vob.mob.open = mob["open"].get<bool>();
+        }
     }
     if (vob.type == VobType::Item)
     {
@@ -1177,6 +1186,10 @@ std::string writeWorldFile(const WorldFile& world)
         if (vob->type == VobType::Mob)
         {
             v["components"]["mob"] = Json{{"definition", vob->mob.definition}};
+            if (vob->mob.open)
+            {
+                v["components"]["mob"]["open"] = true; // after definition, only when true (welt: byte-equal)
+            }
         }
         if (vob->type == VobType::Item)
         {
