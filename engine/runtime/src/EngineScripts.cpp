@@ -103,11 +103,13 @@ Result<void> Engine::initScripts()
     bindDialogFunctions();
     bindTradeFunctions();
     loadVoiceLines();
+    bindCombatFunctions();
     bindDiaryFunctions();
     m_scripts->loadAll();
     loadPerceptionSettings(); // data/perception.lua (M9 part C)
     loadDialogPresentation(); // data/dialog.lua (M10 part B)
     loadTradeSettings();      // data/trade.lua (M10 part C)
+    loadCombat();             // data/combat.lua (M11)
     buildHero();
     for (const script::ScriptError& e : m_scripts->errors())
     {
