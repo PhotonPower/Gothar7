@@ -105,6 +105,7 @@ struct Creature
     usize routeIndex = 0;
     std::string routeGoal; ///< the way point or freepoint walked to
     bool running = false;
+    bool trotting = false; ///< the route at the trot speed (running wins)
     f32 stuckSeconds = 0.0f;
     u32 replans = 0;
     usize progressIndex = ~usize(0); ///< route point the progress is measured to
@@ -134,6 +135,7 @@ struct Creature
         f32 distance = 1.5f; ///< GoTo/Follow the player: how near
         Vec3 point{0.0f};    ///< GoToPoint
         bool run = false;
+        bool trot = false; ///< animals with a trot (wolf): between walking and running
     };
     std::deque<Command> commands;
     bool commandRunning = false;
@@ -186,8 +188,9 @@ struct Creature
     bool eat = false;
     bool sleep = false;
     bool dead = false;
-    f32 walkSpeed = 0.0f; ///< blend points of the graph's "move" state (showcase)
-    f32 runSpeed = 0.0f;
+    f32 walkSpeed = 0.0f; ///< blend points of the graph's "move" state: the first moving one, the last one,
+    f32 runSpeed = 0.0f;  ///< and one in between (animals with a trot, figuren #200); 0: none
+    f32 trotSpeed = 0.0f;
     bool showcase = false; ///< goes through all its actions in turn
     u32 showcaseStep = 0;
     f32 showcaseTime = 0.0f;

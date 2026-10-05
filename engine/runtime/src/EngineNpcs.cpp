@@ -162,6 +162,7 @@ Result<void> Engine::npcGoToPosition(u32 id, const Vec3& goal, std::string_view 
     c->routeIndex = 0;
     c->routeGoal = std::string(target);
     c->running = run;
+    c->trotting = false; // commands with a trot set it again
     c->stuckSeconds = 0.0f;
     c->progressIndex = ~usize(0);
     return {};
@@ -300,8 +301,10 @@ void Engine::walkNpc(Creature& c, f32 seconds)
             const f32 turn = wrapAngle(wanted - c.yaw);
             c.yaw = wrapAngle(c.yaw + std::clamp(turn, -kTurnRate * seconds, kTurnRate * seconds));
             // Walk once facing roughly the right way; turn on the spot before.
-            const f32 speed = c.running ? (c.runSpeed > 0.0f ? c.runSpeed : kNpcRunSpeed)
-                                        : (c.walkSpeed > 0.0f ? c.walkSpeed : kNpcWalkSpeed);
+            const f32 walk = c.walkSpeed > 0.0f ? c.walkSpeed : kNpcWalkSpeed;
+            const f32 speed = c.running    ? (c.runSpeed > 0.0f ? c.runSpeed : kNpcRunSpeed)
+                              : c.trotting ? (c.trotSpeed > 0.0f ? c.trotSpeed : walk)
+                                           : walk;
             const f32 facing = std::abs(turn) < 1.0f ? std::cos(turn) : 0.0f;
             velocity = gameplay::forwardOf(c.yaw) * speed * facing;
             // Blocked (another NPC, a door, a crate, a slope it slides down): the way to the next route point
@@ -325,6 +328,7 @@ void Engine::walkNpc(Creature& c, f32 seconds)
             {
                 const std::string goal = c.routeGoal;
                 const u32 replans = c.replans + 1;
+                const bool trotting = c.trotting;
                 if (replans > kMaxReplans || !npcGoTo(c.id, goal, c.running))
                 {
                     G7_LOG_WARN("engine", "{} gives up walking to {}", c.species, goal);
@@ -339,6 +343,7 @@ void Engine::walkNpc(Creature& c, f32 seconds)
                 else
                 {
                     c.replans = replans;
+                    c.trotting = trotting; // a new way at the same gait
                 }
             }
         }

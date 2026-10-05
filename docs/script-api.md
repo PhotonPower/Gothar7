@@ -234,25 +234,25 @@ Leert die Befehlsliste des NPCs (er bleibt, wo er ist).
 ### `npc_flee(npc: string, seconds?: number, from?: string)`
 Reiht ein: `seconds` Sekunden lang (Vorgabe 8) vor dem Spieler (bzw. dem NPC `from`) weglaufen – zum Wegpunkt im Umkreis von 30 m, der am weitesten von ihm weg ist, alle 2 s neu gewählt.
 
-### `npc_follow_npc(npc: string, target: string, distance?: number, seconds?: number, run?: boolean)`
+### `npc_follow_npc(npc: string, target: string, distance?: number, seconds?: number, run?: boolean|"trot")`
 Reiht ein: dem NPC `target` folgen (Rudel, Jagd) – auf etwa `distance` Meter (Vorgabe 2), `seconds` Sekunden lang (Vorgabe 10).
 
-### `npc_follow_player(npc: string, seconds?: number, distance?: number)`
+### `npc_follow_player(npc: string, seconds?: number, distance?: number, run?: boolean|"trot")`
 Reiht ein: dem Spieler `seconds` Sekunden lang (Vorgabe 10) auf etwa `distance` Meter (Vorgabe 2) folgen und ihn ansehen (Drohen, Begleiten).
 
 ### `npc_give_item(npc: string, item: string, count?: integer)`
 Gibt dem NPC Gegenstände (Übergaben im Dialog: der Held verliert sie mit remove_item).
 
-### `npc_goto(npc: string, target: string, run?: boolean)`
+### `npc_goto(npc: string, target: string, run?: boolean|"trot")`
 Reiht ein: Der NPC geht (oder rennt) über das Wegnetz zu einem Wegpunkt oder Freepoint (Name ohne Rücksicht auf Groß- und Kleinschreibung). Ankunft: Ereignis `npc_arrived`.
 
-### `npc_goto_freepoint(npc: string, type: string, radius?: number, run?: boolean)`
+### `npc_goto_freepoint(npc: string, type: string, radius?: number, run?: boolean|"trot")`
 Reiht ein: zum nächsten freien Freepoint dieses Typs (`"SIT"`, `"CAMPFIRE"` ...) im Umkreis (Vorgabe 10 m), reserviert ihn und dreht sich in seine Richtung. Gibt es keinen, bleibt er stehen.
 
-### `npc_goto_player(npc: string, distance?: number, run?: boolean)`
+### `npc_goto_player(npc: string, distance?: number, run?: boolean|"trot")`
 Reiht ein: zum Spieler gehen (bzw. rennen), bis auf `distance` Meter (Vorgabe 1,5).
 
-### `npc_goto_point(npc: string, x: number, y: number, z: number, run?: boolean)`
+### `npc_goto_point(npc: string, x: number, y: number, z: number, run?: boolean|"trot")`
 Reiht ein: zu einem Punkt gehen (bzw. rennen), über das Wegnetz, wo nötig.
 
 ### `npc_item_count(npc: string, item: string) -> integer`
@@ -261,7 +261,7 @@ Wie viele Stück eines Gegenstands der NPC hat.
 ### `npc_play(npc: string, ambient: string, item?: string)`
 Reiht ein: eine Tagesablauf-Animation (`"sit_ground"`, `"guard"` ... – Zustände amb_<x>_in, amb_<x>, amb_<x>_out des Menschen-Graphen; `"idle_look"` und `"react_warn"` usw. direkt), bis npc_stop oder Gehen sie beendet. `item` (`"it_broom"`) nimmt er bei `item_to_hand` in die rechte Hand und legt es bei `item_from_hand` bzw. am Ende weg.
 
-### `npc_roam(npc: string, centre: string, radius: number, run?: boolean)`
+### `npc_roam(npc: string, centre: string, radius: number, run?: boolean|"trot")`
 Reiht ein: zu einem zufälligen Punkt im Umkreis `radius` um den Wegpunkt `centre` gehen (Revier, Herumstreifen); gerade von dort erreichbar.
 
 ### `npc_say(npc: string, text: string)`

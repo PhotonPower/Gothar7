@@ -22,8 +22,8 @@ blend = "speed"
 root_motion = true
 points = [
     { value = 0.0, clip = "laufvogel/s_idle" },
-    { value = 0.49, clip = "laufvogel/s_walk" },
-    { value = 1.04, clip = "laufvogel/s_run" },
+    { value = 1.30, clip = "laufvogel/s_walk" },
+    { value = 6.50, clip = "laufvogel/s_run" },
 ]
 
 [[state]]
