@@ -11,7 +11,7 @@ mit Groß-/Kleinschreibung (in Namen groß geschrieben). „Innen“: in den beg
 |---|---|---|---|---|---|---|---|
 | ZhE | Gasthaus | Zur krummen Gans | 5 | `WP_LEO_GASTHAUS_ZHE` | `FP_SIT_LEO_GASTHAUS_ZHE_01`, `FP_SIT_LEO_GASTHAUS_ZHE_02`, `FP_SIT_LEO_GASTHAUS_ZHE_03`, `FP_DRINK_LEO_GASTHAUS_ZHE_01`, `FP_DRINK_LEO_GASTHAUS_ZHE_02`, `FP_SMALLTALK_LEO_GASTHAUS_ZHE_01`, `FP_SMALLTALK_LEO_GASTHAUS_ZHE_02`, `FP_SMALLTALK_LEO_GASTHAUS_ZHE_03`, `FP_SMALLTALK_LEO_GASTHAUS_ZHE_04` | `MOB_LEO_GASTHAUS_ZHE_BENCH_1` | `FP_CAMPFIRE_LEO_GASTHAUS_ZHE_INNEN_01`, `FP_SMALLTALK_LEO_GASTHAUS_ZHE_INNEN_01`, `FP_SMALLTALK_LEO_GASTHAUS_ZHE_INNEN_02`, `FP_STAND_LEO_GASTHAUS_ZHE_INNEN_01`, `WP_LEO_GASTHAUS_ZHE_INNEN` |
 | Zja | Gasthaus | Zum hölzernen Krug | 3 | `WP_LEO_GASTHAUS_ZJA` | `FP_SIT_LEO_GASTHAUS_ZJA_01`, `FP_SIT_LEO_GASTHAUS_ZJA_02`, `FP_SIT_LEO_GASTHAUS_ZJA_03`, `FP_DRINK_LEO_GASTHAUS_ZJA_01`, `FP_DRINK_LEO_GASTHAUS_ZJA_02`, `FP_SMALLTALK_LEO_GASTHAUS_ZJA_01`, `FP_SMALLTALK_LEO_GASTHAUS_ZJA_02`, `FP_SMALLTALK_LEO_GASTHAUS_ZJA_03`, `FP_SMALLTALK_LEO_GASTHAUS_ZJA_04` | `MOB_LEO_GASTHAUS_ZJA_BENCH_1` |  |
-| ZjW | Bäcker | Backstube am Markt | 4 | `WP_LEO_BAECKER_ZJW` | `FP_SWEEP_LEO_BAECKER_ZJW_01`, `FP_STAND_LEO_BAECKER_ZJW_01` | – |  |
+| ZjW | Bäcker | Backstube am Markt | 4 | `WP_LEO_BAECKER_ZJW` | `FP_SWEEP_LEO_BAECKER_ZJW_01` | – |  |
 | ZnQ | Metzger | Fleischbank an der Gasse | 4 | `WP_LEO_METZGER_ZNQ` | `FP_CHOP_LEO_METZGER_ZNQ_01`, `FP_STAND_LEO_METZGER_ZNQ_01` | – |  |
 | Zmr | Händler (goldschmied) | Goldschmied | 3 | `WP_LEO_GOLDSCHMIED_ZMR` | `FP_STAND_LEO_GOLDSCHMIED_ZMR_01`, `FP_STAND_LEO_GOLDSCHMIED_ZMR_02` | `MOB_LEO_GOLDSCHMIED_ZMR_CHEST_1` |  |
 | ZmA | Händler (tuchhaendler) | Tuchhandel | 3 | `WP_LEO_TUCHHAENDLER_ZMA` | `FP_STAND_LEO_TUCHHAENDLER_ZMA_01`, `FP_STAND_LEO_TUCHHAENDLER_ZMA_02` | – |  |
@@ -41,4 +41,5 @@ mit Groß-/Kleinschreibung (in Namen groß geschrieben). „Innen“: in den beg
 | ZhK | Wohnhaus | – | 5 | `WP_LEO_WOHNHAUS_ZHK` | `FP_LEAN_LEO_WOHNHAUS_ZHK_01` | – |  |
 
 Nicht platziert (zu wenig Platz vor dem Haus bzw. ein Weg zu nah): je eine zweite Bank an beiden Gasthäusern,
-die Truhe des Tuchhändlers, die Bank der Schusterei. Der Bericht steht in `generated/uses_places.json` (`failed`).
+die Truhe des Tuchhändlers, die Bank der Schusterei, der zweite Freepoint (STAND) des Bäckers (seit das Gelände
+unter dem Raum des Nachbarhauses ZjV abgesenkt ist, W7 C1). Der Bericht steht in `generated/uses_places.json` (`failed`).

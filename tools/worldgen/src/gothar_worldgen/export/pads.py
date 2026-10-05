@@ -8,7 +8,8 @@ it the edge is a step that a retaining wall of the model covers. With ``clampBel
 lowers: heights above ``y`` are cut down to it (the strips that put the heightmap's slope under a
 terrace ledge); ``exact`` takes only the cells whose centres lie inside (without it a half-cell
 margin rounds the polygon outwards). Like the water beds, the heightmap deliberately leaves the DGM
-there.
+there. ``room_pads`` lowers the ground under the rooms of enterable houses (W7 C1) below their
+floor.
 """
 
 from __future__ import annotations
@@ -53,3 +54,26 @@ def apply_pads(grid: Grid, pads: list[dict[str, Any]]) -> tuple[Grid, int]:
         heights[rr, cc] = heights[rr, cc] + (target - heights[rr, cc]) * w[keep]
         changed[rr, cc] = True
     return Grid(heights, grid.first_x, grid.first_z, grid.cell), int(changed.sum())
+
+
+ROOM_FLOOR_GAP_M = 0.02  # the ground just under a room's floor (it stays the walking surface)
+ROOM_FADE_M = 1.5  # outside, the cut eases back into the terrain: a gentle dip, not a step
+
+
+def room_pads(entries: list[dict[str, Any]], cell: float) -> list[dict[str, Any]]:
+    """Pads cutting the ground under every room (index ``interior``) down to just below its floor:
+    on a slope the heightmap otherwise rises through the floor on the uphill side. The room's ring
+    grows by one cell, so no cell crossing it lifts the interpolated ground above the floor;
+    outside the uphill wall the ground dips towards the wall's foot and eases back over
+    ``ROOM_FADE_M`` (compared on the five Leonberg houses: a step at the wall stood out more; holes
+    in the terrain cells would leave the ground in the cells along the walls inside the room)."""
+    out = []
+    for e in entries:
+        room = e.get("interior")
+        if not room:
+            continue
+        ring = Polygon(room["ring"]).buffer(cell, join_style="mitre", mitre_limit=3.0)
+        out.append({"polygon": [list(c) for c in ring.exterior.coords][:-1],
+                    "y": float(room["floor"]) - ROOM_FLOOR_GAP_M,
+                    "clampBelow": True, "fadeM": ROOM_FADE_M})  # fmt: skip
+    return out
