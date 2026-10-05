@@ -10,6 +10,10 @@ depends = ["none"]
 file = "AnimationLibrary_Godot_Standard.glb"
 mapping = "quaternius_ual1"
 
+[sources.ual2]
+file = "UAL2_Standard.glb"
+mapping = "quaternius_ual2"
+
 [[clip]]
 name = "1h/s_idle"
 from = "ual1:Sword_Idle"
@@ -87,3 +91,136 @@ markers = { draw = 10 }
 name = "1h/t_sheath"
 reverse = "1h/t_draw"
 markers = { sheath = 15 }
+
+# --- combat (M11, contract with engine 2026-10-05): every attack starts and ends in 1h/s_idle
+# (engine blends 0.1 s between hits; each clip also works as a single hit). Combo: hit_start/
+# hit_end, combo_start = hit_end .. combo_end at about 80 %, then recovery. Gothic 1 controls:
+# directional swings t_attack_l/r (hit events only), parry from the front, dodge backwards.
+
+[[clip]]
+name = "1h/t_combo1_src"
+concat = ["ual2:Sword_Regular_A", "ual2:Sword_Regular_A_Rec"]
+helper = true
+
+[[clip]]
+name = "1h/t_combo2_src"
+concat = ["ual2:Sword_Regular_B", "ual2:Sword_Regular_B_Rec"]
+helper = true
+
+
+[[clip]]
+name = "1h/t_combo4_src"
+from = "ual1:Sword_Attack"
+helper = true
+
+[[clip]]
+name = "1h/t_block_src"
+from = "ual2:Sword_Block[0:15]"           # ~0.6 s (engine sets the block window)
+helper = true
+
+[[clip]]
+name = "1h/t_attack_combo1"
+keyframe = "framed"
+markers = { hit_start = 17, hit_end = 23, combo_start = 23, combo_end = 34 }
+params = { base = "1h/t_combo1_src", stance = "1h/s_idle", fade_in = 3, fade_out = 8, soften = ["spine_03", "neck", "head"] }
+
+[[clip]]
+name = "1h/t_attack_combo2"
+keyframe = "framed"
+markers = { hit_start = 5, hit_end = 9, combo_start = 9, combo_end = 38 }
+params = { base = "1h/t_combo2_src", stance = "1h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head"] }
+
+# Own swings: key poses over the upright none/s_idle (hanging arms: the world axes act as written),
+# framed into the 1h stance at start and end.
+[[clip]]
+name = "1h/t_thrust"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [8, "draw_back"], [13, "thrust"], [17, "thrust"], [30, "rest"]]
+[clip.params.poses.draw_back]
+rotate = { upperarm_r = [["X", 25]], lowerarm_r = [["X", -95]], hand_r = [["X", 70], ["Z", 90], ["X", 75], ["Z", 90]], spine_02 = [["Z", -15]], spine_01 = [["Z", -8]] }
+move = { pelvis = [0, 0.04, -0.03] }
+[clip.params.poses.thrust]
+rotate = { upperarm_r = [["X", -80], ["Z", 8]], lowerarm_r = [["X", -10]], hand_r = [["X", 80], ["Z", 90], ["X", 75], ["Z", 90]], spine_02 = [["Z", 18], ["X", 6]], spine_01 = [["Z", 8]], upperarm_l = [["X", 25]] }
+move = { pelvis = [0, -0.14, -0.05] }
+
+[[clip]]
+name = "1h/t_swing_l"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [8, "wind"], [13, "cut"], [17, "through"], [30, "rest"]]
+[clip.params.poses.wind]
+rotate = { upperarm_r = [["X", -80], ["Z", -60]], lowerarm_r = [["X", -30]], spine_02 = [["Z", -25]], spine_01 = [["Z", -10]] }
+[clip.params.poses.cut]
+rotate = { upperarm_r = [["X", -85], ["Z", 5]], lowerarm_r = [["X", -5]], spine_02 = [["Z", 5]], spine_01 = [["Z", 2]] }
+move = { pelvis = [0, -0.05, -0.02] }
+[clip.params.poses.through]
+rotate = { upperarm_r = [["X", -75], ["Z", 65]], lowerarm_r = [["X", -40]], spine_02 = [["Z", 25]], spine_01 = [["Z", 10]] }
+move = { pelvis = [0, -0.04, -0.02] }
+
+[[clip]]
+name = "1h/t_swing_r"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [8, "wind"], [13, "cut"], [17, "through"], [30, "rest"]]
+[clip.params.poses.wind]
+rotate = { upperarm_r = [["X", -75], ["Z", 60]], lowerarm_r = [["X", -70]], spine_02 = [["Z", 25]], spine_01 = [["Z", 10]] }
+[clip.params.poses.cut]
+rotate = { upperarm_r = [["X", -85], ["Z", -5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", -5]], spine_01 = [["Z", -2]] }
+move = { pelvis = [0, -0.05, -0.02] }
+[clip.params.poses.through]
+rotate = { upperarm_r = [["X", -70], ["Z", -60]], lowerarm_r = [["X", -15]], spine_02 = [["Z", -25]], spine_01 = [["Z", -10]] }
+move = { pelvis = [0, -0.04, -0.02] }
+
+[[clip]]
+name = "1h/t_attack_combo3"       # thrust (own keyframes; UAL2 Sword_Regular_C is a spinning leap)
+keyframe = "framed"
+markers = { hit_start = 12, hit_end = 17, combo_start = 17, combo_end = 24 }
+params = { base = "1h/t_thrust", stance = "1h/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "1h/t_attack_l"            # directional swing (Gothic 1): from the right across to the left
+keyframe = "framed"
+markers = { hit_start = 11, hit_end = 16 }
+params = { base = "1h/t_swing_l", stance = "1h/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "1h/t_attack_r"            # directional swing: backhand from the left across to the right
+keyframe = "framed"
+markers = { hit_start = 11, hit_end = 16 }
+params = { base = "1h/t_swing_r", stance = "1h/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "1h/t_dodge_back"          # jump backwards, root motion 0.8 m (no events)
+keyframe = "keyposes"
+[clip.params]
+base = "1h/s_idle"
+keys = [[0, "rest"], [5, "crouch"], [11, "air"], [16, "land"], [24, "back"]]
+[clip.params.poses.crouch]
+rotate = { spine_02 = [["X", 10]], thigh_l = [["X", -20]], thigh_r = [["X", -20]], calf_l = [["X", 30]], calf_r = [["X", 30]] }
+move = { pelvis = [0, 0.02, -0.08] }
+[clip.params.poses.air]
+rotate = { spine_02 = [["X", -8]], thigh_l = [["X", -30]], thigh_r = [["X", -10]], calf_l = [["X", 40]], calf_r = [["X", 25]] }
+move = { root = [0, 0.4, 0], pelvis = [0, 0, 0.06] }
+[clip.params.poses.land]
+rotate = { spine_02 = [["X", 12]], thigh_l = [["X", -25]], thigh_r = [["X", -25]], calf_l = [["X", 35]], calf_r = [["X", 35]] }
+move = { root = [0, 0.8, 0], pelvis = [0, 0.02, -0.09] }
+[clip.params.poses.back]
+move = { root = [0, 0.8, 0] }
+
+[[clip]]
+name = "1h/t_attack_combo4"       # the heavy finisher
+keyframe = "framed"
+markers = { hit_start = 9, hit_end = 13, combo_start = 13, combo_end = 37 }
+params = { base = "1h/t_combo4_src", stance = "1h/s_idle", fade_in = 3, fade_out = 8, soften = ["spine_03", "neck", "head"] }
+
+[[clip]]
+name = "1h/t_parry"
+keyframe = "framed"
+params = { base = "1h/t_block_src", stance = "1h/s_idle", fade_in = 5, fade_out = 6, soften = ["spine_02", "spine_03", "neck", "head"] }

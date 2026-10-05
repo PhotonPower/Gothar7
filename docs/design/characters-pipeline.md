@@ -139,14 +139,27 @@ events = [
     { frame = 15, event = "footstep_r" },   # aufsteigend sortiert
 ]
 
-[clips."1h/t_attack_combo1_t2"]
+[clips."1h/t_attack_combo1"]
 events = [
     { frame = 2,  event = "sound:swing_light" },
-    { frame = 6,  event = "hit_start" },
-    { frame = 11, event = "hit_end" },
-    { frame = 14, event = "combo_window" },
+    { frame = 17, event = "hit_start" },
+    { frame = 23, event = "combo_start" },
+    { frame = 23, event = "hit_end" },
+    { frame = 34, event = "combo_end" },
 ]
 ```
+- **Kampf (M11, mit engine vereinbart 2026-10-05):** Jeder Angriff beginnt und endet in der Kampfhaltung seines
+  Modus (`<modus>/s_idle`); engine blendet 0,1 s zum nächsten Schlag, jeder Clip taugt als Einzelschlag.
+  - Angriffe tragen das Trefferfenster `hit_start`/`hit_end` (Fäuste: Aufprall der Faust) und das Kombo-Fenster
+    `combo_start` (= `hit_end`) bis `combo_end` (ca. 80 % des Clips), danach Erholung.
+  - Richtungshiebe `t_attack_l/r` nur mit `hit_*`.
+  - `t_parry` ohne Events, ca. 0,6 s (Blockfenster setzt engine).
+  - `t_dodge_back` mit Root Motion ca. 0,8 m rückwärts, ohne Events.
+  - `t_ko` endet in der Pose von `s_ko`, `t_ko_getup` beginnt dort; `t_die_front/back` enden liegend ohne Schleife.
+  - Talentstufen nur über die Abspielrate, je Name genau ein Clip.
+  - Werkzeug: Rezept `framed` (Clip aus der Haltung ein- und in sie ausblenden, `stance_frame` für eine feste Pose,
+    `soften` glättet Knochen, deren Quelle zu ruckartig ist), eigene Schläge über `none/s_idle` geschrieben
+    (hängende Arme: die Weltachsen wirken wie notiert) und mit `framed` in die Waffenhaltung gesetzt.
 - Event-Namen: `lower_snake_case`, optional mit Argument nach Doppelpunkt (`sound:<name>`).
   Bekannte Events siehe `docs/modules/animation.md` („Clip“); neue Events nach Absprache mit engine.
 - Clips ohne Events und ohne `speed` werden weggelassen; die Datei ist optional.

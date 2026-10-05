@@ -48,7 +48,7 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 |---|---|---|---|
 | Fortbewegung je Waffenmodus (`fist`, `1h`, `2h`, `bow`, `cbow`, `mag`) | ~60 | wie Prio A: s_idle, s_walk, s_run, s_walk_back, s_strafe_l/r, t_turn_l/r | Q/K |
 | Waffe ziehen/wegstecken | ~12 | `1h/t_draw`, `1h/t_sheath`, `2h/t_draw`, `bow/t_draw` … | MC/K |
-| Nahkampf 1h/2h je Talent t0–t2 | ~60 | `1h/t_attack_combo1..4_t2`, `t_attack_l/r`, `t_parry`, `t_dodge_back`, `t_hit_front`, `t_stumble` | MC/K |
+| Nahkampf 1h/2h (Talent nur über die Abspielrate) | ~20 | `1h/t_attack_combo1..4`, `t_attack_l/r`, `t_parry`, `t_dodge_back` | MC/K |
 | Faustkampf | ~10 | `fist/t_attack_combo1..2`, `fist/t_parry` | Q/MC |
 | Fernkampf | ~12 | `bow/s_aim`, `bow/t_shoot`, `bow/t_reload`, `cbow/…` | MC/K |
 | Treffer, Tod, Bewusstlos | ~15 | `none/t_hit_light`, `t_die_front/back`, `t_ko`, `s_ko`, `t_ko_getup` | Q/MC |
@@ -130,6 +130,33 @@ Additive Oberkörper-Clips (Vertrag `characters-pipeline.md` §3.2), Set `dlg` (
 | `dlg/a_greet`, `a_fist`, `a_bow` | grüßen (Hand heben), Faust (Ärger), Oberkörper zum Gruß neigen | 1,5–1,6 s | beat | K | platzhalter-K |
 | `dlg/a_arms_crossed_in`, `a_arms_crossed`, `a_arms_crossed_out` | Arme verschränken, halten, lösen | 0,5 s / Schleife | – | Q→ | platzhalter (UAL2 `Idle_FoldArms_Loop` ab spine_02) |
 | `dlg/a_hands_hips_in`, `a_hands_hips`, `a_hands_hips_out` | Hände in die Hüften, halten, lösen | 0,5 s / Schleife | – | K | platzhalter-K |
+
+### Prio B – Kampf für M11 (ausgeschrieben, Liste von engine)
+
+Vertrag mit engine (2026-10-05): Jeder Angriff beginnt und endet in der Kampfhaltung des Modus (`<modus>/s_idle`),
+engine blendet 0,1 s zum nächsten Schlag; Trefferfenster `hit_start`/`hit_end` (Fäuste: Aufprall der Faust),
+Kombo-Fenster `combo_start` (= `hit_end`) bis `combo_end` (ca. 80 %), danach Erholung. Talentstufen nur über die
+Abspielrate (keine Clips je Stufe). `2h`, `bow`, `cbow` folgen.
+
+| Name | Zweck | Länge | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `none/t_hit_light` | leichter Treffer (Zucken) | 0,33 s | – | Q | platzhalter (UAL1 `Hit_Chest`) |
+| `none/t_die_front` | Tod nach vorn, bleibt liegen (keine Schleife) | 1,7 s | – | K | platzhalter-K (taumeln, Knie, aufs Gesicht) |
+| `none/t_die_back` | Tod nach hinten, bleibt liegen | 2,4 s | – | Q | platzhalter (UAL1 `Death01`) |
+| `none/t_ko` | K.o. (Faustkampf verloren): rücklings hingeworfen, endet in der `s_ko`-Pose | 0,83 s | – | Q | platzhalter (UAL2 `Hit_Knockback`) |
+| `none/s_ko` | bewusstlos liegen (Schleife, atmet) | 2,0 s | – | K | platzhalter-K (letzte Pose von `t_ko`) |
+| `none/t_ko_getup` | aufstehen, beginnt in der `s_ko`-Pose | 1,5 s | – | Q | platzhalter (UAL2 `LayToIdle`, eingeblendet aus `s_ko`) |
+| `fist/t_attack_combo1` | Faust: Gerade links (Kombo 1) | 0,87 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL1 `Punch_Jab`, aus/in `fist/s_idle`) |
+| `fist/t_attack_combo2` | Faust: Gerade rechts (Kombo 2) | 1,0 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL1 `Punch_Cross`, aus/in `fist/s_idle`) |
+| `fist/t_parry` | Deckung: Unterarme vor dem Gesicht (Blockfenster setzt engine) | 0,6 s | – | K | platzhalter-K (Pose per Gittersuche) |
+| `1h/t_attack_combo1` | Kombo 1: Hieb von oben | 1,4 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL2 `Sword_Regular_A` + `_Rec`, aus/in `1h/s_idle`) |
+| `1h/t_attack_combo2` | Kombo 2: waagrechter Schnitt mit Ausfall | 1,6 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL2 `Sword_Regular_B` + `_Rec`) |
+| `1h/t_attack_combo3` | Kombo 3: Stich | 1,0 s | hit_start, hit_end, combo_start, combo_end | K | platzhalter-K (UAL2 `Sword_Regular_C` ist ein Drehsprung, unbrauchbar) |
+| `1h/t_attack_combo4` | Kombo 4: wuchtiger Abschluss | 1,5 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL1 `Sword_Attack`) |
+| `1h/t_attack_l` | Richtungshieb nach links (Gothic 1) | 1,0 s | hit_start, hit_end | K | platzhalter-K |
+| `1h/t_attack_r` | Richtungshieb nach rechts (Rückhand) | 1,0 s | hit_start, hit_end | K | platzhalter-K |
+| `1h/t_parry` | Parade von vorn (Blockfenster setzt engine) | 0,5 s | – | Q | platzhalter (UAL2 `Sword_Block`, gekürzt) |
+| `1h/t_dodge_back` | Sprung zurück, Root Motion 0,8 m | 0,8 s | – | K | platzhalter-K |
 
 ## Monster (F5, Vertrag `characters-pipeline.md` §7)
 

@@ -456,7 +456,8 @@ Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine�
 - [ ] Mocap-Workflow testen (2–3 Dienste), Entscheidung dokumentieren
 - [ ] Mob-Interaktionen, Item-Benutzung, Ambient-Routinen, Dialog-Gesten
   - Stand: Platzhalter für M8 (Mobs, Items) und M9 (Routinen und Reaktionen nach engines Liste: Set `amb` mit Sitzen, Wache, Anlehnen, Reden, Zuhören, Schlafen, Lagerfeuer, Fegen, Krug, Schwerttraining, Holzhacken, Ernten, Gießen, Reparieren; Bank als Mob; `none/s_idle_look`, `t_idle_scratch`, `t_warn`, `t_point`, `t_surprised`, `t_search`); Dialog-Gesten für M10 als additive Clips `dlg/a_*` gegen die Referenz `dlg/a_neutral` (Vertrag §3.2, Validator `anim.additive`)
-- [ ] Nahkampf je Talentstufe, Fernkampf, Magie, Treffer/Tod/Bewusstlos
+- [ ] Nahkampf (Talent über die Abspielrate), Fernkampf, Magie, Treffer/Tod/Bewusstlos
+  - Stand: Platzhalter für M11 Teil A (2026-10-05, Vertrag mit engine): `none/t_hit_light`, `t_die_front/back`, `t_ko`, `s_ko`, `t_ko_getup`; `fist/t_attack_combo1..2`, `t_parry`; `1h/t_attack_combo1..4`, `t_attack_l/r`, `t_parry`, `t_dodge_back` – Events `hit_*` und `combo_*`, jeder Angriff aus und in die Kampfhaltung (Rezept `framed`); als Nächstes `2h`, `bow`, `cbow`
 - [ ] Alle **Prio-B**-Animationen fertig
 
 **DoD:** Vertical Slice (Meilenstein B) ohne Platzhalter-Animationen.
