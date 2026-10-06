@@ -170,3 +170,14 @@ def test_light_prop_and_trigger_vobs_at_the_houses():
     assert names["LIGHT_X"]["components"]["light"]["flicker"] == 0.3
     assert names["PROP_X"]["type"] == "mesh" and "components" not in names["PROP_X"]
     assert names["TRIGGER_X"]["components"]["trigger"]["owner"] == "npc_a"
+
+
+def test_vob_numbers_as_the_engine_writes_them():
+    import numpy as np
+
+    from gothar_worldgen.assemble.world import _vob
+
+    v = _vob(1, "mob", "X", [-149.2988434, 0.0, 30.98411234])
+    for written, raw in zip(v["pos"], [-149.2988434, 0.0, 30.98411234], strict=True):
+        assert np.float32(written) == np.float32(raw)  # the same float32 the engine stores
+    assert v["pos"][0] == -149.29884 and v["pos"][2] == 30.984112  # its shortest text
