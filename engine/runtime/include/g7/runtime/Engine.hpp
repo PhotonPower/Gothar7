@@ -297,6 +297,9 @@ public:
     std::optional<u32> startEffect(std::string_view name, const Vec3& at,
                                    const Vec3& direction = Vec3(0, 1, 0));
     [[nodiscard]] const render::ParticleSystem& particles() const noexcept { return m_particles; }
+    /// The daylight (window) lights at the current time: the sky ambient's colour, intensity times its
+    /// brightness relative to noon (components.light.daylight, world.md).
+    [[nodiscard]] std::vector<render::PointLight> daylightLights() const;
     /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes; the renderer
     /// gives them the indoor ambient (environment.toml [indoor]).
     [[nodiscard]] std::vector<render::IndoorVolume> nearestIndoorVolumes(const Vec3& point) const;
@@ -1158,6 +1161,8 @@ private:
     render::Environment m_environment;
     render::LightList m_lights;
     render::LightList m_frameLights; // m_lights plus the effects' lights of this frame (M12)
+    std::vector<render::PointLight>
+        m_daylightLights; // window lights (components.light.daylight), as in the file
     render::ParticleSystem m_particles;
     std::optional<render::ParticleRenderer> m_particleRenderer;
     std::unordered_map<std::string, std::shared_ptr<const render::EmitterDef>> m_effects; // nullptr: missing

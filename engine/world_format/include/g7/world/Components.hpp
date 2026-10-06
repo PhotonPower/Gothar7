@@ -63,6 +63,9 @@ struct LightSource
     f32 range = 8.0f;
     f32 intensity = 3.0f;
     f32 flicker = 0.0f;
+    /// Daylight through a window (contract with welt, world.md): colour of the sky's ambient at the time of
+    /// day, intensity times the sky's brightness relative to noon (night: about 0), no flicker.
+    bool daylight = false;
 };
 
 /// Where the player (and, without a player, the camera) starts. The vob's placement is the feet; the
