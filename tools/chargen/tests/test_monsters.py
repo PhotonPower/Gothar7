@@ -170,7 +170,8 @@ def test_invalid_monster_sets(data, message):
 
 
 @pytest.mark.parametrize(
-    ("species", "bones", "clips"), [("wolf", 22, 13), ("keiler", 25, 12), ("laufvogel", 12, 12)]
+    ("species", "bones", "clips"),
+    [("wolf", 22, 13), ("keiler", 25, 12), ("laufvogel", 12, 12), ("schinder", 26, 15)],
 )
 def test_monster_files_pass(species, bones, clips):
     folder = REPO_ROOT / "assets/source/characters/monsters" / species
@@ -289,7 +290,12 @@ def test_validate_command_picks_rig_per_file(capsys):
 
 @pytest.mark.parametrize(
     ("species", "shape"),
-    [("wolf", "capsule_lying"), ("keiler", "capsule_lying"), ("laufvogel", "capsule_upright")],
+    [
+        ("wolf", "capsule_lying"),
+        ("keiler", "capsule_lying"),
+        ("laufvogel", "capsule_upright"),
+        ("schinder", "capsule_lying"),
+    ],
 )
 def test_collision_matches_mesh(species, shape):
     from gothar_chargen.collision import derive_collision
