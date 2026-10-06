@@ -18,6 +18,9 @@ namespace g7
 {
 namespace
 {
+/// Ground probes start this far above a point: low enough to stay under the ceiling of a room (welt's houses,
+/// 2.4 m and more), high enough for a way point in a hollow of the terrain model.
+constexpr f32 kGroundProbeAbove = 0.5f;
 // AI LOD: [ai] simulation_distance (80 m) from the player - farther NPCs are not simulated - and back 5 m
 // nearer (no flicker at the edge); m_simulationDistance.
 constexpr f32 kLoopInterval = 0.5f;     ///< seconds between calls of a state's loop()
@@ -263,6 +266,22 @@ void Engine::fixedUpdateAi(Creature& c, f32 seconds)
     if (c.simulated && distance > m_simulationDistance)
     {
         c.simulated = false;
+        if (c.route && !c.route->points.empty() && c.body)
+        {
+            // Out of the simulation while walking (welt #227): it does not stop silently - it is at its goal
+            // at once, as unsimulated NPCs jump to their routine places, and says so.
+            const std::string goal = c.routeGoal;
+            c.body->teleport(c.route->points.back());
+            c.position = c.positionBefore = c.body->feet();
+            G7_LOG_DEBUG("engine", "{} leaves the simulation walking to {}: put there", c.species, goal);
+            c.route.reset();
+            c.replans = 0;
+            if (m_scripts)
+            {
+                const script::Value args[] = {c.species, goal};
+                m_scripts->emit("npc_arrived", args);
+            }
+        }
         c.route.reset();
         c.commands.clear();
         c.commandRunning = false;
@@ -519,8 +538,9 @@ bool Engine::startCommand(Creature& c)
             const f32 angle = unit(m_rng) * 2.0f * glm::pi<f32>();
             const f32 r = std::sqrt(unit(m_rng)) * cmd.value;
             const Vec3 p = *centre + Vec3(std::cos(angle) * r, 0.0f, std::sin(angle) * r);
-            const auto hit = m_physics.raycast(p + Vec3(0.0f, 5.0f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), 10.0f,
-                                               physics::layerBit(physics::Layer::World));
+            const auto hit =
+                m_physics.raycast(p + Vec3(0.0f, kGroundProbeAbove, 0.0f), Vec3(0.0f, -1.0f, 0.0f),
+                                  kGroundProbeAbove + 6.0f, physics::layerBit(physics::Layer::World));
             if (hit && walkableLine(*centre, hit->position) &&
                 npcGoToPosition(c.id, hit->position, "roam", cmd.run).ok())
             {
@@ -673,7 +693,8 @@ void Engine::runCommands(Creature& c, f32 seconds)
                     const Vec3 p = c.position + dir * kFleeStep;
                     const auto ground =
                         m_physics.valid()
-                            ? m_physics.raycast(p + Vec3(0.0f, 3.0f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), 6.0f,
+                            ? m_physics.raycast(p + Vec3(0.0f, kGroundProbeAbove, 0.0f),
+                                                Vec3(0.0f, -1.0f, 0.0f), kGroundProbeAbove + 3.0f,
                                                 physics::layerBit(physics::Layer::World))
                             : std::nullopt;
                     if (ground && walkableLine(c.position, ground->position) &&
@@ -1041,12 +1062,14 @@ void Engine::bindAiFunctions()
                      return Error{std::format("no way point or freepoint \"{}\"", at)};
                  }
                  // On the ground: a way point may lie a little below it (welt: hollows of the terrain model).
+                 // The probe starts just above the point - from high up it would find the ceiling of a room
+                 // (welt's walkable houses) first.
                  Vec3 at3 = *target;
                  if (m_physics.valid())
                  {
-                     if (const auto hit =
-                             m_physics.raycast(at3 + Vec3(0.0f, 3.0f, 0.0f), Vec3(0.0f, -1.0f, 0.0f), 6.0f,
-                                               physics::layerBit(physics::Layer::World)))
+                     if (const auto hit = m_physics.raycast(at3 + Vec3(0.0f, kGroundProbeAbove, 0.0f),
+                                                            Vec3(0.0f, -1.0f, 0.0f), kGroundProbeAbove + 3.0f,
+                                                            physics::layerBit(physics::Layer::World)))
                      {
                          at3.y = std::max(at3.y, hit->position.y);
                      }

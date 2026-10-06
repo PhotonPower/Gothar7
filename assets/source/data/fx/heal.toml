@@ -1,0 +1,18 @@
+# Heilung (M12): aufsteigende helle Funken um den Wirkenden.
+version = 1
+sprite = "soft"
+blend = "additive"
+rate = 50
+duration = 1.2
+lifetime = [0.8, 1.2]
+speed = [0.3, 0.7]
+spread = 10
+radius = 0.5
+gravity = -0.5
+size = [0.12, 0.02]
+color_start = [0.8, 1.0, 0.7, 0.9]
+color_end = [0.6, 1.0, 0.8, 0.0]
+[light]
+color = [0.7, 1.0, 0.7]
+range = 4
+intensity = 2

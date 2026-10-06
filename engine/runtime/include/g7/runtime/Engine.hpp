@@ -34,6 +34,7 @@
 #include <g7/render/Device.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
+#include <g7/render/Particles.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/Terrain.hpp>
@@ -140,8 +141,9 @@ struct PlayerLanding
 
 namespace animation
 {
+class Animator;
 struct AnimGraph;
-}
+} // namespace animation
 namespace script
 {
 class ScriptVm;
@@ -295,6 +297,13 @@ public:
     [[nodiscard]] const render::Environment& environment() const noexcept { return m_environment; }
     /// The spell a rune or scroll casts (M12); nullopt for other items.
     [[nodiscard]] std::optional<gameplay::SpellInfo> spellOfItem(std::string_view item) const;
+    /// Starts the effect data/fx/<name>.toml (M12); nullopt if there is none.
+    std::optional<u32> startEffect(std::string_view name, const Vec3& at,
+                                   const Vec3& direction = Vec3(0, 1, 0));
+    [[nodiscard]] const render::ParticleSystem& particles() const noexcept { return m_particles; }
+    /// The daylight (window) lights at the current time: the sky ambient's colour, intensity times its
+    /// brightness relative to noon (components.light.daylight, world.md).
+    [[nodiscard]] std::vector<render::PointLight> daylightLights() const;
     /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes; the renderer
     /// gives them the indoor ambient (environment.toml [indoor]).
     [[nodiscard]] std::vector<render::IndoorVolume> nearestIndoorVolumes(const Vec3& point) const;
@@ -799,6 +808,10 @@ private:
     void loadMobTypes();
     // Magic (M12, EngineMagic.cpp).
     void bindMagicFunctions();
+    // Effects (M12 part A, EngineFx.cpp).
+    [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
+    void drawEffects();
+    void bindFxFunctions();
     // Combat (M11, EngineCombat.cpp).
     struct Combatant;
     void loadCombat();
@@ -813,6 +826,13 @@ private:
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
     void stopForFight(Creature& c);
+    // Combat clips (M11, figuren #217): the graph's weapon value and the fight states.
+    [[nodiscard]] i32 heroWeaponAnimation() const;
+    [[nodiscard]] f32 creatureWeaponAnimation(const Creature& c) const;
+    [[nodiscard]] animation::Animator* animatorOf(const Combatant& c);
+    /// Plays the fighter's current move (Fighter::clip) if the figure has it; else the fighter's timeline.
+    void playFight(Combatant& c);
+    void playReaction(Combatant& c, std::string_view clip); ///< hit, knocked out, up again, dead
     void readCombatInput(); // K1: Gothic 1 keys, the mouse as second assignment
     void fixedUpdateHeroFight(gameplay::MoveInput& input, f32 seconds); // moves, lock (K5)
     [[nodiscard]] std::optional<u32> pickCombatTarget() const;
@@ -1155,6 +1175,7 @@ private:
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
     std::vector<u32> m_heroHitThisSwing;
+    std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline
     struct CombatRequest
     {
         std::string move; ///< "attack", "parry", "dodge"
@@ -1199,6 +1220,14 @@ private:
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs
     render::Environment m_environment;
     render::LightList m_lights;
+    render::LightList m_frameLights; // m_lights plus the effects' lights of this frame (M12)
+    std::vector<render::PointLight>
+        m_daylightLights; // window lights (components.light.daylight), as in the file
+    render::ParticleSystem m_particles;
+    std::optional<render::ParticleRenderer> m_particleRenderer;
+    std::unordered_map<std::string, std::shared_ptr<const render::EmitterDef>> m_effects; // nullptr: missing
+    std::vector<render::ParticleInstance> m_particleAdditive;
+    std::vector<render::ParticleInstance> m_particleAlpha;
     render::ShadowMap m_shadowMap;
     std::vector<render::Cascade> m_cascades;
     /// The cascades as last drawn into the shadow map: far ones are redrawn every 2nd/4th frame

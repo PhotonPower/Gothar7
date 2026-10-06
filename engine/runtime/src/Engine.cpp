@@ -152,6 +152,10 @@ Result<void> Engine::init()
         G7_LOG_WARN("engine", "scripts: {}", scripts.error().message);
     }
 
+    if (m_config.headless || !m_config.render)
+    {
+        initEnvironment(); // the day cycle without a renderer too (daylight lights, tests)
+    }
     if (!m_config.headless)
     {
         platform::WindowDesc desc = m_config.window;
@@ -425,6 +429,7 @@ bool Engine::runFrame()
         fixedUpdateItemUse(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateMobs(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
+        m_particles.update(static_cast<f32>(m_fixedStep.step())); // effects (M12)
         fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateProjectiles(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateDialog(static_cast<f32>(m_fixedStep.step()));
@@ -536,6 +541,14 @@ Result<void> Engine::initShaders()
         return Error{"cannot create debug draw: " + debugRenderer.error().message};
     }
     m_debugRenderer = std::move(debugRenderer).value();
+    if (auto particles = render::ParticleRenderer::create(*m_device, *m_shaders); particles)
+    {
+        m_particleRenderer = std::move(particles).value();
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "particles: {} (no effects drawn)", particles.error().message);
+    }
     m_debugOverlay = m_config.settings.get<bool>("render.debug_draw", false);
     m_simulationDistance = static_cast<f32>(m_config.settings.get<f64>("ai.simulation_distance", 80.0));
 
@@ -1059,9 +1072,20 @@ Result<void> Engine::instantiateScene()
     rebuildWorldItems();
     rebuildMobs();
     m_lights.clear();
+    m_daylightLights.clear();
     m_scene.each<world::LightSource, world::WorldTransform>(
         [&](entt::entity, const world::LightSource& light, const world::WorldTransform& world)
-        { m_lights.add({Vec3(world.matrix[3]), light.range, light.color, light.intensity}); });
+        {
+            const render::PointLight point{Vec3(world.matrix[3]), light.range, light.color, light.intensity};
+            if (light.daylight)
+            {
+                m_daylightLights.push_back(point); // follows the sky each frame (window light, world.md)
+            }
+            else
+            {
+                m_lights.add(point);
+            }
+        });
     return {};
 }
 
@@ -1283,6 +1307,7 @@ void Engine::unloadWorld()
     m_cullGridDirty = true;
     m_physicsDirty = true;
     m_lights.clear();
+    m_daylightLights.clear();
     m_terrain = {};
     m_heightfield = {};
     m_hasTerrain = false;
@@ -1526,6 +1551,29 @@ std::vector<render::IndoorVolume> Engine::nearestIndoorVolumes(const Vec3& point
     return nearest;
 }
 
+std::vector<render::PointLight> Engine::daylightLights() const
+{
+    std::vector<render::PointLight> out;
+    if (m_daylightLights.empty())
+    {
+        return out;
+    }
+    const auto luminance = [](const Vec3& c) { return 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b; };
+    const Vec3 sky = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity).environment.ambientSky;
+    const Vec3 noon = m_dayCycle.evaluate(12.0f, m_fogBaseDensity).environment.ambientSky;
+    const f32 brightness =
+        luminance(noon) > 1e-5f ? std::clamp(luminance(sky) / luminance(noon), 0.0f, 1.5f) : 0.0f;
+    const f32 peak = std::max({sky.r, sky.g, sky.b});
+    const Vec3 colour = peak > 1e-5f ? sky / peak : Vec3(1.0f);
+    for (render::PointLight l : m_daylightLights)
+    {
+        l.color = colour;
+        l.intensity *= brightness;
+        out.push_back(l);
+    }
+    return out;
+}
+
 void Engine::updateEnvironment()
 {
     const f32 fogStart = m_environment.fogStart;
@@ -1675,11 +1723,26 @@ void Engine::drawScene(u32 width, u32 height)
     }
 
     // Main pass: terrain (culled and detailed per chunk), then the instances inside the view frustum.
-    m_meshRenderer.setLighting(*m_device, m_environment, m_lights, shadowFrame.map ? &shadowFrame : nullptr);
+    // The world's lights, daylight through windows and the effects' lights (fire, magic; M12).
+    m_frameLights = m_lights;
+    for (const render::PointLight& l : daylightLights())
+    {
+        m_frameLights.add(l);
+    }
+    {
+        std::vector<render::PointLight> effectLights;
+        m_particles.lights(effectLights);
+        for (const render::PointLight& l : effectLights)
+        {
+            m_frameLights.add(l);
+        }
+    }
+    m_meshRenderer.setLighting(*m_device, m_environment, m_frameLights,
+                               shadowFrame.map ? &shadowFrame : nullptr);
     if (m_hasTerrain)
     {
         m_meshRenderer.bindLighting(*m_device);
-        m_terrain.draw(*m_device, m_camera, &m_lights);
+        m_terrain.draw(*m_device, m_camera, &m_frameLights);
     }
     const Frustum view = m_camera.frustum();
     m_visibleInstances = 0;
@@ -1726,6 +1789,7 @@ void Engine::drawScene(u32 width, u32 height)
     {
         m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
     }
+    drawEffects(); // particles over the opaque scene, depth-tested (M12)
 }
 
 void Engine::updateBenchmark(f64 realSeconds)
@@ -2067,6 +2131,7 @@ void Engine::shutdown()
     G7_LOG_INFO("engine", "shutdown");
     m_debugUi = {}; // releases its GL textures
     m_debugRenderer = {};
+    m_particleRenderer.reset();
     m_debugDraw.clear();
     m_terrain = {};
     m_meshRenderer = {};

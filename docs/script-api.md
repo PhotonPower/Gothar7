@@ -41,6 +41,20 @@ Der Preis eines Stücks: kauft der Held (`true`) bzw. verkauft er.
 ### `trade_sell(item: string, count?: integer) -> boolean`
 Im Handel: verkauft an den Händler (zum Wert mal Trade.buy_factor).
 
+## Effekte
+
+### `fx(name: string, x: number, y: number, z: number, dx?: number, dy?: number, dz?: number) -> integer`
+Startet einen Effekt aus data/fx/<name>.toml an einem Ort (Richtung: Vorgabe nach oben); gibt seine Nummer zurück, nil wenn es ihn nicht gibt.
+
+### `fx_alive(id: integer) -> boolean`
+Ob ein Effekt noch läuft oder Teilchen hat.
+
+### `fx_move(id: integer, x: number, y: number, z: number)`
+Setzt einen laufenden Effekt an einen neuen Ort (seine Teilchen bleiben, wo sie sind).
+
+### `fx_stop(id: integer)`
+Beendet einen Effekt; seine Teilchen verglühen noch.
+
 ## Ereignisse
 
 ### `on("assess_enter_room", fn(npc: string, owner: string, area: string))`

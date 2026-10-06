@@ -684,7 +684,7 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     {
         toggleWeapon();
     }
-    a.setFloat("weapon", static_cast<f32>(m_weaponMode));
+    a.setFloat("weapon", static_cast<f32>(heroWeaponAnimation()));
     // Running is heard (Perception.noise.run), twice a second.
     m_runNoiseTimer -= seconds;
     if (onLand && !input.sneak && glm::length(Vec2(moved.x, moved.z)) > 3.0f && m_runNoiseTimer <= 0.0f)
@@ -707,6 +707,10 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
                  else if (event == "open" || event == "close" || event == "hit_anvil" || event == "use")
                  {
                      m_mobEvents.emplace_back(event); // lid or door moves, hammer strikes (M8 part C)
+                 }
+                 else if (event.starts_with("hit_") || event.starts_with("combo_"))
+                 {
+                     m_heroFighter.onEvent(event); // the combat clips time the blow (M11)
                  }
                  f.events.push_front(std::format(
                      "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));

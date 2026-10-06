@@ -114,6 +114,8 @@ public:
     /// Uniform block binding point (GLSL `layout(binding = slot)`).
     void bindUniformBuffer(u32 slot, const rhi::Buffer& buffer);
     void draw(u32 vertexCount, u32 firstVertex = 0);
+    /// `vertexCount` vertices `instanceCount` times (gl_InstanceID; per-instance attributes of binding 1).
+    void drawInstanced(u32 vertexCount, u32 instanceCount);
     /// `baseVertex` is added to every index (e.g. several meshes in one buffer with 16-bit indices).
     void drawIndexed(u32 indexCount, u32 firstIndex = 0, i32 baseVertex = 0);
     /// One draw call for `drawCount` indexed draws read from `commands` at `offset` (DrawIndexedIndirect

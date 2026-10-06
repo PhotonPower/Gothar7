@@ -74,6 +74,9 @@ void Device::multiDrawIndexedIndirect(const rhi::Buffer&, usize, u32, u32)
 void Device::draw(u32, u32)
 {
 }
+void Device::drawInstanced(u32, u32)
+{
+}
 void Device::setScissor(std::optional<PixelRect>)
 {
 }

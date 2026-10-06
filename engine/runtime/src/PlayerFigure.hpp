@@ -175,8 +175,10 @@ struct Creature
     u64 openedDoor = 0; ///< vob of the door it opened on its way (closes it behind itself)
     // Combat (M11, EngineCombat.cpp).
     gameplay::Fighter fighter;
-    std::vector<u32> hitThisSwing;         ///< targets of the current swing (each hit once)              ///<
-                                           ///< walks up to the player for an important Info (approach = true)
+    std::vector<u32> hitThisSwing; ///< targets of the current swing (each hit once)
+    std::string fightState;        ///< the graph state of its move (clip-timed), empty: timeline
+    f32 combatStance = 0.0f;       ///< seconds it keeps its weapon raised after fighting              ///<
+                                   ///< walks up to the player for an important Info (approach = true)
     const LoadedModel* handItem = nullptr; ///< drawn at socket_hand_r
     usize handBone = 0;
     std::unique_ptr<AnimatedFigure> figure;

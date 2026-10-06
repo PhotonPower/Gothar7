@@ -495,3 +495,20 @@ public:
     Proben als Rückfall.
   - **Echtes Raytracing** nur mit dem optionalen Vulkan-Backend (eigene ADR); OpenGL bietet kein Hardware-Raytracing.
   - Dazu ein Material-Merkmal „spiegelnd“ (Glas) in den Modellen der Welt-Spur.
+
+## Partikel (M12 Teil A, umgesetzt) – `Particles.hpp`
+- **Emitter als Daten:** `data/fx/<name>.toml` (Version 1): `sprite` (`soft`, `smoke`, `spark`), `blend` (`additive`,
+  `alpha`), `rate` je Sekunde und/oder `burst`, `duration` (0: bis gestoppt), `lifetime`, `speed` ([min, max]),
+  `direction` und `spread` (Kegel, Grad), `radius` (Startkugel), `gravity` (m/s² nach unten; negativ: steigt), `drag`,
+  `size` ([bei Geburt, beim Tod]), `color_start`/`color_end` (sRGB, Alpha); optional `[light]` (`color`, `range`,
+  `intensity`, `flicker`) – das Licht folgt dem Emitter und geht in die Punktlichter des Bildes ein. Fehler nennen
+  Datei und Schlüssel.
+- **Simulation** auf der CPU (`ParticleSystem`, im festen Schritt): Emitter starten (`spawn`), wandern (`move`, die
+  Teilchen bleiben), hören auf (`stop`; weg, wenn das letzte Teilchen vergeht); höchstens 2048 Teilchen je Emitter.
+- **Darstellung** (`ParticleRenderer`): ein Quad je Teilchen per Instancing (`Device::drawInstanced`, Ecken aus
+  `gl_VertexID`), zur Kamera gedreht; Funken längs ihrer Bewegung gestreckt. Erst Alpha-Teilchen (Rauch, von hinten
+  nach vorn sortiert), dann additive; tiefengetestet, ohne Tiefe zu schreiben, ins HDR-Ziel nach den Modellen.
+- **Sprites prozedural** (keine Textur-Assets): weicher Punkt, Rauch aus Rauschen, dünner Funke – ein Textur-Array.
+- **Engine/Lua:** `fx(name, x, y, z[, dx, dy, dz])` → Nummer, `fx_move`, `fx_stop`, `fx_alive`;
+  `Engine::startEffect`. Mitgeliefert: `fire`, `smoke`, `firebolt`, `impact_fire`, `heal`, `sleep`.
+
