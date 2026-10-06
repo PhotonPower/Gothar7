@@ -114,6 +114,7 @@ Result<MovementSettings> MovementSettings::parse(std::string_view toml, std::str
         {"camera.yaw_lag", &cam.yawLag},
         {"camera.return_lag", &cam.returnLag},
         {"camera.indoor.blend_seconds", &s.indoor.blendSeconds},
+        {"camera.combat.blend_seconds", &s.combatBlendSeconds},
     };
     for (const auto& [key, value] : nonNegative)
     {
@@ -170,6 +171,25 @@ Result<MovementSettings> MovementSettings::parse(std::string_view toml, std::str
     if (in.minDistance > in.distance)
     {
         return Error{std::string(source) + ": 'camera.indoor.min_distance' exceeds 'camera.indoor.distance'"};
+    }
+    // Fighting (M11, K5): what [camera.combat] does not set is as outside.
+    CameraSettings& fight = s.combat;
+    fight = cam;
+    const std::pair<std::string_view, f32*> combat[] = {
+        {"camera.combat.distance", &fight.distance},
+        {"camera.combat.target_height", &fight.targetHeight},
+        {"camera.combat.min_distance", &fight.minDistance},
+    };
+    for (const auto& [key, value] : combat)
+    {
+        if (auto r = read(c, key, *value, source); !r)
+        {
+            return r.error();
+        }
+    }
+    if (fight.minDistance > fight.distance)
+    {
+        return Error{std::string(source) + ": 'camera.combat.min_distance' exceeds 'camera.combat.distance'"};
     }
     return s;
 }

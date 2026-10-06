@@ -14,7 +14,7 @@ Npc "npc_bandit_leader" {
     guild = "outcast",
     level = 12,
     attributes = { str = 45, dex = 25, hp = 260 },
-    talents = { melee_1h = 2 },
+    talents = { melee_2h = 2 },
     protection = { edge = 15, blunt = 10 },
-    equipment = { "it_sword_old" },
+    equipment = { "it_sword_2h" }, -- Zweihänder (figuren baut das Modell)
 }

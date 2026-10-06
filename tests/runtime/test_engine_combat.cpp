@@ -199,6 +199,9 @@ TEST_CASE("Engine combat: with the weapon drawn the hero locks the nearest enemy
     runSeconds(engine, 1.0f);
     REQUIRE(engine.heroCombatTarget().has_value());
     CHECK(*engine.heroCombatTarget() == "npc_farmer_woman"); // the nearest ahead
+    // The camera's combat profile blends in (K5).
+    CHECK(engine.playerCombatBlend() > 0.9f);
+    CHECK(engine.playerCameraDistance() <= 2.45f);
     // Turned to her: a blow now hits her.
     const i64 before = hp(engine, "npc_farmer_woman");
     run(engine, "npc_teleport('npc_farmer_woman', 42, 0, 22)");
@@ -210,6 +213,8 @@ TEST_CASE("Engine combat: with the weapon drawn the hero locks the nearest enemy
     run(engine, "draw_weapon()");
     runSeconds(engine, 1.0f);
     CHECK_FALSE(engine.heroCombatTarget().has_value());
+    runSeconds(engine, 1.0f);
+    CHECK(engine.playerCombatBlend() < 0.1f); // and the camera back out
 }
 
 TEST_CASE(

@@ -51,3 +51,12 @@ Item "it_bolt" {
     value = 2,
     weight = 0.08,
 }
+
+Item "it_sword_2h" {
+    name = "Zweihänder",
+    category = "melee_2h",
+    value = 300,
+    weight = 6.0,
+    damage = { edge = 40 },
+    requires = { str = 40 },
+}

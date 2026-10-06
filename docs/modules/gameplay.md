@@ -37,7 +37,7 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
     Innenprofil überblendet: Abstand 1,9 m, Blickpunkt 1,5 m, Mindestabstand 0,4 m, Kugel 0,15 m. Die Neigung
     bleibt die des Spielers. Unter einem vorkragenden Obergeschoss (0,5 m über der Straße) bleibt es draußen.
     Werte zum Nachstellen durch den Projektinhaber.
-  - Modi (Kampf, Dialog, Schwimmen) folgen mit ihren Phasen als weitere Datensätze.
+  - Modi: drinnen `[camera.indoor]`, Kampf `[camera.combat]` (M11), Dialog `data/dialog.lua` (M10).
 - **Springen, Klettern, Fallen (Teil D; Werte `[jump]`, `[climb]`, `[fall]`, Entscheidungen Projektinhaber):**
   - **Sprung** (Taste `jump`) aus Stand bzw. Gehen 0,9 m hoch, aus dem Rennen 1,1 m und damit weiter
     (~3,8 m). Keine Luftsteuerung. Nach der Landung 0,2 s Sperre.
@@ -350,8 +350,11 @@ einen ungeübten Helden nieder und unterliegt einem geübten, gerüsteten. Werte
 (`stagger_share`, starke Gegner schütteln leichte Treffer ab), Tiere springen beim Biss vor (`animal_reach` 1,3 m).
 Ob es sich responsiv anfühlt, entscheidet der Projektinhaber beim Probespielen.
 
-**Weiter:** Kamera-Kampfprofil (K5); Fernkampf für NPCs (Jäger); Waffen-Kapsel entlang der Animation mit figurens
-Kampfclips.
+**Kamera-Kampfprofil (K5, umgesetzt):** Mit gezogener Waffe und einem Gegner im Ziel-Lock blendet die Kamera
+(`[camera.combat]`, 0,4 s) auf 2,4 m Abstand und 1,45 m Blickpunkt; drinnen gilt der nähere der beiden Abstände.
+`Engine::playerCombatBlend()`.
+
+**Weiter:** Fernkampf für NPCs (Jäger); Trefferfenster und Waffen-Kapsel aus figurens Kampfclips (#217).
 
 ## Magie (M12)
 Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten

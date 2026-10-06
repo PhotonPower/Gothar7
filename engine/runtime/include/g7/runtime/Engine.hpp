@@ -475,6 +475,8 @@ public:
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
+    /// 0 .. 1: the combat profile of the camera ([camera.combat], M11 K5).
+    [[nodiscard]] f32 playerCombatBlend() const noexcept { return m_combatBlend; }
     [[nodiscard]] f32 playerCameraDistance() const noexcept { return m_playerCamera.distance(); }
     /// K5: the enemy the hero has locked while his weapon is drawn (its Npc instance).
     [[nodiscard]] std::optional<std::string> heroCombatTarget() const;
@@ -1011,7 +1013,9 @@ private:
     physics::CharacterController m_player;
     gameplay::PlayerMovement m_movement;
     gameplay::ThirdPersonCamera m_playerCamera;
-    f32 m_indoorBlend = 0.0f; // 0 outside .. 1 inside (a roof above the hero): the camera's indoor profile
+    f32 m_indoorBlend = 0.0f;
+    f32 m_combatBlend = 0.0f; // 0 .. 1: weapon drawn and an enemy locked (M11, K5) // 0 outside .. 1 inside
+                              // (a roof above the hero): the camera's indoor profile
     gameplay::MovementSettings m_movementSettings;
     asset::Handle<gameplay::MovementSettings> m_movementData; // data/movement.toml, hot reload
     u32 m_movementVersion = 0;

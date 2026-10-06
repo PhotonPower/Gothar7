@@ -72,3 +72,9 @@ min_distance = 0.4       # m
 collision_radius = 0.15  # m
 ceiling = 4.0            # m über den Füßen: ein Dach darunter heißt „drinnen“ (Räume 2,4-2,9 m hoch)
 blend_seconds = 0.5      # s, Zeitkonstante des Wechsels
+
+[camera.combat]          # Kampf (M11, K5): Waffe gezogen und ein Gegner im Ziel-Lock – näher, etwas tiefer
+distance = 2.4           # m (drinnen gilt der nähere Abstand)
+target_height = 1.45     # m
+min_distance = 0.5       # m
+blend_seconds = 0.4      # s
