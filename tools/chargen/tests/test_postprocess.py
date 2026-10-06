@@ -97,7 +97,9 @@ def test_weapon_layers_have_no_seam_jumps():
                 v = g.accessor(anim["samplers"][ch["sampler"]]["output"]).astype(float)
                 dots = np.abs(np.sum(v[1:] * v[:-1], axis=1)).clip(0, 1)
                 step = float(np.degrees(2 * np.arccos(dots)).max())
-                assert step < 15.0, f"{anim['name']} {name}: {step:.1f}° per frame"
+                # strikes are fast by nature (a punch turns the spine ~450°/s): own limit
+                limit = 25.0 if "/t_attack" in anim["name"] else 15.0
+                assert step < limit, f"{anim['name']} {name}: {step:.1f}° per frame"
 
 
 def test_committed_anim_sets_are_clean(rig, reference):
@@ -107,7 +109,7 @@ def test_committed_anim_sets_are_clean(rig, reference):
         report = validate_gltf(g, rig, reference, path=glb)
         assert report.ok(strict=True), report.issues
     none = validate_gltf(Gltf.load(ANIM_SET), rig, reference, path=ANIM_SET)
-    assert none.stats["clips"] == 39
+    assert none.stats["clips"] == 45  # + hit, deaths, knock-out (M11)
     assert none.stats["events"] >= 15
 
 

@@ -475,6 +475,49 @@ def advance(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
     return to_curves(poses)
 
 
+SOFTEN_PASSES = 2  # framed: smoothing passes over the `soften` bones
+
+
+def framed(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
+    """A one-shot that starts and ends in a stance (combat contract M11: every attack begins and
+    ends in the mode's s_idle): ``base`` is faded in from ``stance`` over ``fade_in`` frames and
+    back into it over the last ``fade_out`` frames, then the stance is held ``hold`` frames.
+    ``stance_frame`` picks one frame of the stance (-1 = its last; default: the stance plays).
+    ``soften``: bones whose rotations are smoothed over time (sources whose head whips around)."""
+    base, stance = clips[params["base"]], clips[params["stance"]]
+    fade_in = int(params.get("fade_in", 4))
+    fade_out = int(params.get("fade_out", 8))
+    hold = int(params.get("hold", 0))
+    fixed = params.get("stance_frame")
+    n = int(length(base))
+    len_stance = length(stance) or 1.0
+    if fade_in < 0 or fade_out < 0 or hold < 0 or fade_in + fade_out > n:
+        raise ValueError("framed: fade_in + fade_out must fit into the base clip")
+    still = None if fixed is None else (len_stance if int(fixed) < 0 else float(fixed))
+    poses = []
+    for frame in range(n + hold + 1):
+        held = pose_at(stance, frame % len_stance if still is None else still, rig.bones)
+        if frame > n:
+            poses.append(held)
+            continue
+        pose = pose_at(base, frame, rig.bones)
+        w = 0.0
+        if fade_in and frame < fade_in:
+            w = 1.0 - _smooth(frame / fade_in)
+        if fade_out and frame > n - fade_out:
+            w = max(w, _smooth((frame - (n - fade_out)) / fade_out))
+        poses.append(mix(pose, held, w) if w > 0 else pose)
+    for bone in params.get("soften", []):
+        if bone not in rig.rest:
+            raise ValueError(f"framed: unknown bone '{bone}' in soften")
+        for _ in range(SOFTEN_PASSES):
+            qs = [pose[bone][0] for pose in poses]
+            for i in range(1, len(poses) - 1):
+                mid = qs[i - 1].slerp(qs[i + 1], 0.5)
+                poses[i][bone] = (qs[i].slerp(mid, 0.5), poses[i][bone][1])
+    return to_curves(poses)
+
+
 def _gait_body(rig: RigInfo, g: Gait, frame: int, dz: float = 0.0, phi: float = 0.0) -> Pose:
     """Root motion, body bob, vault (lowering ``dz``, pitch ``phi``) and the waves of a gait."""
     pose = rig.rest_pose()
@@ -588,4 +631,5 @@ RECIPES: dict[str, Callable[[RigInfo, dict, dict[str, Curves]], Curves]] = {
     "keyposes": keyposes,
     "advance": advance,
     "gait": gait,
+    "framed": framed,
 }
