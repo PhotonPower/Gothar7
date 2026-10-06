@@ -381,7 +381,26 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, 
   Wolfsgestalt (2, 20), Wolf rufen (3, 25, 60 s); Runen `it_rune_*`, Rollen `it_scroll_*`, `it_potion_mana_small`.
   Kreise kosten beim Lehrer 10/15/20/25/30/35 LP (`data/magic.lua`, Talentname „Kreis der Magie“).
 
-**Weiter:** C Wirken (Z4–Z8), D KI und Reaktionen, E DoD-Szenario.
+**Teil C1 – Wirken des Helden (umgesetzt, `EngineMagic.cpp`):**
+- **Ziehen (Z4):**
+  - „1“ (`draw_magic`) zieht die Rune bzw. Spruchrolle des zuletzt gewählten Runenplatzes, sonst des ersten belegten; Waffenmodus 4, Graph-Wert `weapon` 6.
+  - Die Tasten 4–9 (`rune_1` … `rune_6`) wählen einen Runenplatz. Ist nichts gezogen, ziehen sie ihn; mit gezogener Magie wechselt die Rune sofort in der Hand. Ist eine Waffe gezogen, steckt die Taste sie zuerst weg.
+  - Die Rune liegt in der rechten Hand. Ziel-Lock wie beim Bogen (30 m); auch ein verzauberter Schläfer bleibt Ziel.
+- **Wirken (Z5):**
+  - Strg + vor bzw. linke Maustaste gehalten: Ein Zauber mit `invest` lädt auf, je `Magic.charge_seconds` (1 s) eine Stufe, soweit das Mana reicht. Loslassen wirkt; einfache Zauber wirken sofort.
+  - Mana und Rolle werden beim Loslassen abgezogen. Die letzte Rolle weg: Die Hände sind leer.
+  - Fehlt Kreis oder Mana: `mag/t_cast_fail` und der Hinweis aus `castBlocked`, nichts wird verbraucht.
+  - Der Wurf-Clip je Art (`mag/t_cast_projectile`, `_target`, `_self`, `_area`, `_summon`) lässt den Zauber bei seinem Event `cast` wirken; ohne Clip nach 0,4 s. Beim Aufladen läuft `t_invest` → `s_invest`. Der Held steht beim Aufladen und Wirken.
+  - Jede Stufe wirkt noch einmal so stark (Schaden, Heilung, Dauer; Fläche: Radius +50 %).
+- **Wirkungen:**
+  - **Projektil:** Ein Geschoss aus M11 E, gerade ohne Schwerkraft mit `Magic.projectile_speed` (30 m/s), aufs Ziel bzw. entlang der Sicht. Mit dem Effekt `trail`, `impact` am Einschlag. Schaden − Schutz der Art, mindestens 5, kein Volltreffer. Magie tötet wie Fernkampf, die Getroffenen spielen `none/t_hit_magic`.
+  - **Selbst:** Heilung bis zum Höchstwert.
+  - **Fläche:** Schaden an allen im `radius`.
+  - **Ziel, Schlaf (Z6):** reicht bis `Magic.target_range` (25 m) und wirkt nur bis zur Stufe des Zaubernden, sonst „Der Zauber zeigt keine Wirkung.“. Der Schläfer liegt wie bewusstlos (Menschen `none/t_ko`, Tiere ihr Schlaf-Clip) mit dem Effekt `on_target` über dem Kopf. Er wacht nach der Dauer auf oder sobald er Schaden nimmt; ein Schlag auf ihn zählt dann wie auf einen Stehenden.
+- **Lua:** `draw_magic()`, `hero_rune(platz)`, `hero_cast(halten)`, `hero_casting()`; Ereignisse `npc_cast`, `npc_asleep`, `npc_woke`.
+- Beschwörung und Verwandlung folgen in C2; bis dahin gibt es einen Hinweis, nichts wird verbraucht.
+
+**Weiter:** C2 Beschwörung (Z8) und Verwandlung (Z7), D KI und Reaktionen (NPCs zaubern, Brennen, Furcht), E DoD-Szenario.
 
 ## Wirtschaft
 Handel: Händler-Inventar, Preisfaktor Verkauf (z. B. 0,5), Währung als Item (`ItMi_Ore`).

@@ -248,7 +248,7 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 
 ## M12 – Magie & Partikel
 - [x] Partikelsystem (GPU-Instancing, Emitter-Definitionen als Daten) – `data/fx/*.toml`, prozedurale Sprites, Lichter, `fx()` (A)
-- [ ] Runen/Spruchrollen, Mana, Kreise, Wirken mit Aufladung
+- [x] Runen/Spruchrollen, Mana, Kreise, Wirken mit Aufladung – `Spell`-Instanzen, `castBlocked` (B), Wirken des Helden mit Runenplätzen 4–9, Aufladen, Feuerpfeil/Heilung/Schlaf (C1)
 - [ ] Zaubertypen: Projektil, Fläche, Selbst, Verwandlung (in Tier), Kontrolle (Schlaf, Furcht, Telekinese), Beschwörung
 - [ ] Visuelle Effekte (Licht, Partikel, Shader) und Trefferwirkungen
 

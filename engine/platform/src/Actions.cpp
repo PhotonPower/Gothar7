@@ -10,11 +10,12 @@ namespace g7::platform
 namespace
 {
 constexpr std::array<std::string_view, static_cast<usize>(Action::Count)> kActionNames = {
-    "move_forward", "move_back",  "strafe_left", "strafe_right", "turn_left", "turn_right", "walk",
-    "sneak",        "jump",       "action",      "attack",       "use",       "parry",      "draw_weapon",
-    "draw_ranged",  "draw_magic", "inventory",   "log",          "status",    "map",        "quick_save",
-    "quick_load",   "console",    "pause",       "debug_draw",   "debug_ui",  "debug_fly",  "fly_forward",
-    "fly_back",     "fly_left",   "fly_right",   "fly_up",       "fly_down",  "fly_fast",   "copy_position",
+    "move_forward", "move_back",  "strafe_left", "strafe_right", "turn_left", "turn_right",    "walk",
+    "sneak",        "jump",       "action",      "attack",       "use",       "parry",         "draw_weapon",
+    "draw_ranged",  "draw_magic", "rune_1",      "rune_2",       "rune_3",    "rune_4",        "rune_5",
+    "rune_6",       "inventory",  "log",         "status",       "map",       "quick_save",    "quick_load",
+    "console",      "pause",      "debug_draw",  "debug_ui",     "debug_fly", "fly_forward",   "fly_back",
+    "fly_left",     "fly_right",  "fly_up",      "fly_down",     "fly_fast",  "copy_position",
 };
 
 std::string tablePath(std::string_view scheme)

@@ -206,9 +206,16 @@ void Engine::fixedUpdateProjectiles(f32 seconds)
     {
         p.seconds += seconds;
         const Vec3 from = p.position;
-        p.velocity.y -= gameplay::kGravity * seconds;
+        if (p.spell.empty())
+        {
+            p.velocity.y -= gameplay::kGravity * seconds; // a spell flies straight (M12)
+        }
         const Vec3 to = from + p.velocity * seconds;
         p.position = to;
+        if (p.trail)
+        {
+            m_particles.move(*p.trail, to, -glm::normalize(p.velocity));
+        }
         // What it flies into first: a body or the world.
         f32 nearest = glm::length(to - from);
         std::optional<u32> body;
@@ -245,10 +252,14 @@ void Engine::fixedUpdateProjectiles(f32 seconds)
                 : std::nullopt;
         if (wall && (!body || wall->distance < nearest) && !heroHit)
         {
+            if (!p.spell.empty())
+            {
+                spellImpact(p, wall->position + wall->normal * 0.1f);
+            }
             // R3: it lies where it landed and can be picked up.
-            if (auto item = spawnItem(p.ammo, 1, wall->position + wall->normal * 0.05f,
-                                      gameplay::yawOf(Vec3(dir.x, 0.0f, dir.z)));
-                !item)
+            else if (auto item = spawnItem(p.ammo, 1, wall->position + wall->normal * 0.05f,
+                                           gameplay::yawOf(Vec3(dir.x, 0.0f, dir.z)));
+                     !item)
             {
                 G7_LOG_WARN("engine", "projectile: {}", item.error().message);
             }
@@ -258,17 +269,36 @@ void Engine::fixedUpdateProjectiles(f32 seconds)
         if (body || heroHit)
         {
             projectileHit(p, heroHit ? kHeroShooter : *body);
+            if (!p.spell.empty())
+            {
+                spellImpact(p, p.position);
+            }
             p.seconds = kProjectileLife;
         }
     }
+    for (const Projectile& p : m_projectiles)
+    {
+        if (p.seconds >= kProjectileLife && p.trail)
+        {
+            m_particles.stop(*p.trail); // its sparks still glow out
+        }
+    }
     std::erase_if(m_projectiles, [](const Projectile& p) { return p.seconds >= kProjectileLife; });
+}
+
+void Engine::spellImpact(const Projectile& p, const Vec3& at)
+{
+    if (!p.impact.empty())
+    {
+        (void)startEffect(p.impact, at);
+    }
 }
 
 void Engine::drawProjectiles()
 {
     for (const Projectile& p : m_projectiles)
     {
-        const LoadedModel* model = itemModel(p.ammo);
+        const LoadedModel* model = p.ammo.empty() ? nullptr : itemModel(p.ammo); // spells: their trail only
         if (model == nullptr || glm::length(p.velocity) < 1e-3f)
         {
             continue;

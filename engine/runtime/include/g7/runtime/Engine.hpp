@@ -809,6 +809,21 @@ private:
     void loadMobTypes();
     // Magic (M12, EngineMagic.cpp).
     void bindMagicFunctions();
+    // Casting (M12 part C1, Z4-Z6): the magic drawn (weapon mode 4) is a rune or scroll of the rune places.
+    void toggleMagic();
+    void selectRune(u32 slot); ///< Z4: keys 4-9, 0-based rune place
+    [[nodiscard]] std::string runeInSlot(u32 slot) const;
+    void fixedUpdateHeroMagic(gameplay::MoveInput& input, f32 seconds);
+    void beginHeroCast();
+    void releaseHeroCast();
+    void applyHeroSpell(); ///< at the cast clip's "cast" event
+    /// A spell's harm on a creature or the hero (fire bolt, area): its damage minus protection, min 5 (as
+    /// R3).
+    void spellHit(const gameplay::DamageByType& damage, u32 targetId, std::string_view caster);
+    /// Z6: asleep until hurt or `seconds` are over.
+    bool castSleep(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect = {});
+    void wakeUp(u32 targetId);
+    void endSleep(Creature& c); ///< the sleep's effect and pose end (the fighter is up again)
     // Effects (M12 part A, EngineFx.cpp).
     [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
     void drawEffects();
@@ -847,6 +862,11 @@ private:
         u32 shooter = 0; ///< creature id, ~0: the hero
         gameplay::DamageByType damage;
         f32 seconds = 0.0f;
+        // A spell's projectile (M12): flies straight, no item stays; its trail and impact effects.
+        std::string spell;
+        u32 stages = 0;
+        std::optional<u32> trail;
+        std::string impact;
     };
     [[nodiscard]] std::string rangedWeapon() const; ///< the hero's equipped bow or crossbow
     [[nodiscard]] bool rangedIsCrossbow(std::string_view item) const;
@@ -855,6 +875,7 @@ private:
     Result<void> shootRanged();
     void fixedUpdateProjectiles(f32 seconds);
     void projectileHit(const Projectile& p, u32 targetId);
+    void spellImpact(const Projectile& p, const Vec3& at); ///< a spell projectile ends: its impact effect
     void drawProjectiles();
     void bindRangedFunctions();
     Result<void> lootFocus(); // opens the inventory with the lying NPC's belongings
@@ -1188,6 +1209,27 @@ private:
     std::vector<Projectile> m_projectiles;        // arrows and bolts in flight (M11 part E)
     f32 m_rangedReload = 0.0f;                    // R2: seconds until the next shot
     bool m_drawRangedRequested = false;
+    // Magic (M12 part C1).
+    bool m_drawMagicRequested = false;
+    std::optional<u32> m_runeRequested; // Z4: a rune key this frame
+    u32 m_runeSlot = 0;                 // the last chosen rune place
+    bool m_castHeld = false;            // Z5: the casting keys are held
+    bool m_castScripted = false;        // ... held by a script (hero_cast)
+    bool m_castWasHeld = false;         // in the step before
+    struct HeroCast
+    {
+        std::string item; ///< the rune or scroll
+        gameplay::SpellInfo spell;
+        bool scroll = false;
+        bool charging = false; ///< Z5: held, the stages grow
+        u32 stages = 0;
+        f32 seconds = 0.0f; ///< charging, or since the cast clip began
+        bool cast = false;  ///< released: the clip plays, the spell acts at its "cast" event
+        bool acted = false;
+        std::string state; ///< the graph state played
+        std::optional<u32> target;
+    };
+    std::optional<HeroCast> m_heroCast;
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)
