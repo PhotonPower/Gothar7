@@ -40,6 +40,7 @@ from gothar_chargen.blender.prepare_monster import (  # noqa: E402
 from gothar_chargen.creature import (  # noqa: E402
     CUTS,
     PIECES,
+    PLATES,
     Creature,
     Shape,
     bake_texture,
@@ -53,6 +54,7 @@ from gothar_chargen.creature import (  # noqa: E402
 )
 
 REST_FRAMES = 60
+PLATE_GROUP = "__plate"  # marks plate vertices until they are weighted
 
 
 def _parse_args() -> argparse.Namespace:
@@ -96,7 +98,7 @@ def _armature(c: Creature) -> bpy.types.Object:
 
 def _add_shape(bm: bmesh.types.BMesh, s: Shape, segments: tuple[int, int] = (32, 20)) -> list:
     """Adds the primitive to bm; returns its vertices."""
-    if s.kind in ("box", "cut_box"):
+    if s.kind in ("box", "cut_box", "plate"):
         rot = Matrix([list(r) for r in euler_matrix(s.rotate)]).to_4x4()
         m = Matrix.Translation(s.center) @ rot @ Matrix.Diagonal((*s.size, 1.0))
         return bmesh.ops.create_cube(bm, size=2.0, matrix=m, calc_uvs=True)["verts"]
@@ -172,7 +174,7 @@ def _cut(body: bpy.types.Object, cut: Shape) -> None:
 
 def _body(c: Creature) -> tuple[bpy.types.Object, bpy.types.Object]:
     """The reduced body (lod0) and its high-resolution source (for the normal bake)."""
-    union = [s for s in c.shapes if s.kind not in (*CUTS, *PIECES)]
+    union = [s for s in c.shapes if s.kind not in (*CUTS, *PIECES, *PLATES)]
     body = _mesh_object("body_lod0", union)
     _apply(body, "REMESH", mode="VOXEL", voxel_size=c.voxel)
     # cut: carved before the second remesh and smoothed with the body (sockets, ear cups);
@@ -186,17 +188,50 @@ def _body(c: Creature) -> tuple[bpy.types.Object, bpy.types.Object]:
         _apply(body, "SMOOTH", factor=0.5, iterations=c.smooth)
     for cut in [s for s in c.shapes if s.kind == "cut_box"]:
         _cut(body, cut)
+    plates = _plates(c)
     high = body.copy()
     high.data = body.data.copy()
     high.name = "high"
     bpy.context.scene.collection.objects.link(high)
+    if plates is not None:  # the bake sees the plates too
+        extra = plates.copy()
+        extra.data = plates.data.copy()
+        bpy.context.scene.collection.objects.link(extra)
+        _join(high, [extra])
     count = _triangles(body)
     _apply(body, "DECIMATE", decimate_type="COLLAPSE", ratio=min(1.0, c.triangles / count))
     _apply(body, "TRIANGULATE")
     for p in body.data.polygons:
         p.use_smooth = True
     print(f"[chargen] body: {count} -> {_triangles(body)} triangles")
+    if plates is not None:
+        n = _triangles(plates)
+        _join(body, [plates])
+        print(f"[chargen] plates: {len([s for s in c.shapes if s.kind in PLATES])} ({n} triangles)")
     return body, high
+
+
+def _join(target: bpy.types.Object, others: list[bpy.types.Object]) -> None:
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in others:
+        o.select_set(True)
+    target.select_set(True)
+    bpy.context.view_layer.objects.active = target
+    bpy.ops.object.join()
+
+
+def _plates(c: Creature) -> bpy.types.Object | None:
+    """Armour plates: chamfered boxes, smooth enough for the bake, marked by the group __plate."""
+    shapes = [s for s in c.shapes if s.kind in PLATES]
+    if not shapes:
+        return None
+    ob = _mesh_object("plates", shapes)
+    _apply(ob, "BEVEL", width=c.plate_bevel, segments=1, limit_method="NONE")
+    _apply(ob, "TRIANGULATE")
+    for p in ob.data.polygons:
+        p.use_smooth = False
+    ob.vertex_groups.new(name=PLATE_GROUP).add(list(range(len(ob.data.vertices))), 1.0, "REPLACE")
+    return ob
 
 
 def _unwrap(ob: bpy.types.Object) -> None:
@@ -408,6 +443,7 @@ def _add_pieces(c: Creature, body: bpy.types.Object, folder: Path) -> None:
     for kind, role, colour, rough in (
         ("eye", "eyes", c.eye_colour, 0.12),
         ("tooth", "teeth", c.teeth_colour, 0.4),
+        ("tongue", "tongue", c.tongue_colour, 0.3),
     ):
         shapes = [s for s in c.shapes if s.kind == kind]
         if not shapes:
@@ -415,7 +451,7 @@ def _add_pieces(c: Creature, body: bpy.types.Object, folder: Path) -> None:
         bm = bmesh.new()
         bm.loops.layers.uv.new("UVMap")
         for s in shapes:
-            _add_shape(bm, s, (12, 8) if kind == "eye" else (6, 1))
+            _add_shape(bm, s, {"eye": (12, 8), "tongue": (10, 6)}.get(kind, (6, 1)))
         me = bpy.data.meshes.new(role)
         bm.to_mesh(me)
         bm.free()
@@ -435,9 +471,9 @@ def _add_pieces(c: Creature, body: bpy.types.Object, folder: Path) -> None:
 
 
 def _weight_pieces(c: Creature, body: bpy.types.Object) -> None:
-    """Every vertex of an eye or tooth rigidly on the bone of its nearest piece."""
+    """Every vertex of an eye, tooth or tongue rigidly on the bone of its nearest piece."""
     pieces = [s for s in c.shapes if s.kind in PIECES]
-    roles = {i for i, m in enumerate(body.data.materials) if m.name in ("eyes", "teeth")}
+    roles = {i for i, m in enumerate(body.data.materials) if m.name in ("eyes", "teeth", "tongue")}
     verts = sorted({v for p in body.data.polygons if p.material_index in roles for v in p.vertices})
     if not verts:
         return
@@ -448,6 +484,23 @@ def _weight_pieces(c: Creature, body: bpy.types.Object) -> None:
         for g in list(body.data.vertices[i].groups):
             groups[g.group].remove([i])
         groups[pieces[k].bone].add([i], 1.0, "REPLACE")
+
+
+def _weight_plates(c: Creature, body: bpy.types.Object) -> None:
+    """Every plate vertex rigidly on the bone of its nearest plate (no bending, no stretching)."""
+    groups = body.vertex_groups
+    marker = groups.get(PLATE_GROUP)
+    if marker is None:
+        return
+    plates = [s for s in c.shapes if s.kind in PLATES]
+    verts = [v.index for v in body.data.vertices if any(g.group == marker.index for g in v.groups)]
+    co = np.array([body.data.vertices[i].co[:] for i in verts])
+    dist = np.stack([np.abs(shape_distance(s, co)) for s in plates], axis=1)
+    for i, k in zip(verts, dist.argmin(axis=1), strict=True):
+        for g in list(body.data.vertices[i].groups):
+            groups[g.group].remove([i])
+        groups[plates[k].bone].add([i], 1.0, "REPLACE")
+    groups.remove(marker)
 
 
 def _lods(c: Creature, body: bpy.types.Object) -> list[bpy.types.Object]:
@@ -499,6 +552,7 @@ def main() -> None:
     body.data.materials.append(_material(c.material, base, normal, 0.85))
     _skin(arm, body)
     _split_jaw(c, body)
+    _weight_plates(c, body)
     _add_pieces(c, body, folder)
     meshes = _lods(c, body)
     for ob in meshes:
@@ -524,7 +578,7 @@ def main() -> None:
         height,
         set(c.sockets),
         args.rig_out,
-        dict(_ORIENTATION),
+        {**_ORIENTATION, **c.orientation},
         f"build_creature.py from {args.spec.name} (own work)",
     )
     print(f"[chargen] {c.art}: height {height:.3f} m, {len(arm.data.bones)} bones")

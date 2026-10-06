@@ -33,6 +33,7 @@ Data (``[clip.params]`` of a ``keyframe = "gait"`` clip)::
     nod = { bone = "neck_01", degrees = 4.0, phase = 0.0 }       # neck counter motion (optional)
     tail = { bones = ["tail_01", "tail_02"], degrees = 8.0, lag = 0.1 }  # tail swing (optional)
     pose = { neck_01 = [["X", 20]], ear_l = [["X", 30]] }  # fixed posture, world axes at rest
+    in_place = true             # root stays; the feet still pass under the body at `speed`
 """
 
 from __future__ import annotations
@@ -55,6 +56,7 @@ KEYS = {
     "nod",
     "tail",
     "pose",
+    "in_place",
 }
 LEG_KEYS = {"upper", "lower", "foot", "phase", "reach", "curl"}
 REACH_MARGIN = 0.995  # a leg is never stretched beyond this share of its length (knee stays bent)
@@ -96,6 +98,12 @@ class Gait:
     nod: Wave | None = None
     tail: Wave | None = None
     pose: tuple[tuple[str, tuple[tuple[str, float], ...]], ...] = ()  # fixed posture
+    in_place: bool = False  # no root motion (s_charge); the natural speed comes from the feet
+
+    @property
+    def travel(self) -> float:
+        """m/s the root moves forward (0 in place)."""
+        return 0.0 if self.in_place else self.speed
 
     @property
     def stride(self) -> float:
@@ -143,6 +151,13 @@ def _posture(data: object) -> tuple[tuple[str, tuple[tuple[str, float], ...]], .
     return tuple(out)
 
 
+def _flag(data: dict, key: str) -> bool:
+    value = data.get(key, False)
+    if not isinstance(value, bool):
+        raise GaitError(f"gait: {key} must be true or false")
+    return value
+
+
 def parse_gait(params: dict) -> Gait:
     unknown = set(params) - KEYS - {"base"}
     if unknown:
@@ -187,6 +202,7 @@ def parse_gait(params: dict) -> Gait:
         nod=_wave(params.get("nod"), "nod"),
         tail=_wave(params.get("tail"), "tail", many=True),
         pose=_posture(params.get("pose")),
+        in_place=_flag(params, "in_place"),
     )
 
 

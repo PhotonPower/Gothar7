@@ -17,10 +17,13 @@ from pathlib import Path
 import numpy as np
 
 SHAPE_KINDS = (
-    "ellipsoid", "box", "capsule", "chain", "ridge", "cone", "cut", "cut_box", "eye", "tooth"
+    "ellipsoid", "box", "capsule", "chain", "ridge", "cone", "cut", "cut_box",
+    "eye", "tooth", "tongue",
+    "plate", "plate_shell",
 )  # fmt: skip
 CUTS = ("cut", "cut_box")  # removed from the body after the first remesh
-PIECES = ("eye", "tooth")  # separate geometry with their own material, not in the body union
+PIECES = ("eye", "tooth", "tongue")  # separate geometry with their own material (not in the union)
+PLATES = ("plate",)  # separate rigid geometry with the body material (armour plates)
 REQUIRED_BONES = ("pelvis", "neck_01", "head")
 ZONE_SOFTNESS = 0.012  # metres: zones blend over about this distance
 CHUNK = 65536  # texels per batch (memory)
@@ -44,7 +47,8 @@ class Shape:
     capsule/cone: a, b, r, r2 (radius at b; cone tip r2 = 0); cut: an ellipsoid removed from the
     body after the first remesh (eye sockets, ear cups), cut_box the same as a box (mouth slit).
     Pieces (eye: ellipsoid, tooth: cone) are separate geometry with the material eyes/teeth,
-    rigid on `bone`."""
+    rigid on `bone`. Plates (box) are separate rigid geometry with the body material and texture,
+    on `bone` or the nearest of `candidates`."""
 
     kind: str
     zone: str
@@ -56,6 +60,7 @@ class Shape:
     r: float = 0.0
     r2: float = 0.0
     bone: str = ""
+    candidates: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -72,6 +77,7 @@ class Zone:
     belly: float = 0.0  # lighter towards the underside
     wrinkles: float = 0.0  # fine skin creases
     relief: float = 1.0  # strength of the strands/creases in the normal map
+    strata: float = 0.0  # sandstone: layered bands and chisel marks (plates)
 
 
 @dataclass(frozen=True)
@@ -91,9 +97,12 @@ class Creature:
     zones: dict[str, Zone]
     stripe_spacing: float = 0.09
     normal_size: int = 512
+    plate_bevel: float = 0.012
+    orientation: dict = field(default_factory=dict)  # [rig.orientation] overrides
     normal_strength: float = 1.0
     eye_colour: str = "#140d09"
     teeth_colour: str = "#d8cdb0"
+    tongue_colour: str = "#7a4440"
     extra: dict = field(default_factory=dict)
 
     def bone(self, name: str) -> Bone:
@@ -142,6 +151,66 @@ def _parse_bones(items: list[dict]) -> list[Bone]:
     return bones
 
 
+def matrix_euler(m: np.ndarray) -> tuple[float, float, float]:
+    """Inverse of euler_matrix: Blender Euler XYZ degrees of a rotation matrix."""
+    ry = np.arcsin(np.clip(-m[2, 0], -1.0, 1.0))
+    rx = np.arctan2(m[2, 1], m[2, 2])
+    rz = np.arctan2(m[1, 0], m[0, 0])
+    return tuple(float(np.degrees(a)) for a in (rx, ry, rz))  # type: ignore[return-value]
+
+
+def _plate_shell(
+    it: dict, zone: str, bone: str, candidates: tuple[str, ...], at: str
+) -> list[Shape]:
+    """Armour plates in rows on an ellipsoid: `rows` (y offsets from the centre, m), `angles`
+    (degrees around the long axis, 0 = on top, positive towards +x), `plate` (half extents:
+    across, along, thickness), `sink` (m the plate centre lies below the surface), `jitter`,
+    `tilt` (degrees the rear edge is raised: roof tiles, each row overlapping the next)."""
+    centre, size = np.array(_v3(it["center"], at)), np.array(_v3(it["size"], at))
+    half = np.array(_v3(it["plate"], at))
+    sink = float(it.get("sink", half[2] * 0.4))
+    jitter = float(it.get("jitter", 0.0))
+    tilt = np.radians(float(it.get("tilt", 0.0)))
+    rng = np.random.default_rng(int(it.get("seed", 0)))
+    out = []
+    for y in it["rows"]:
+        wx = 1.0 - (float(y) / size[1]) ** 2
+        if wx <= 0.09:
+            continue
+        wx = float(np.sqrt(wx))
+        for ang in it["angles"]:
+            a = np.radians(float(ang))
+            local = np.array([size[0] * wx * np.sin(a), float(y), size[2] * wx * np.cos(a)])
+            normal = local / size**2
+            normal /= np.linalg.norm(normal)
+            along = np.array([0.0, 1.0, 0.0]) - normal[1] * normal
+            along /= np.linalg.norm(along)
+            across = np.cross(along, normal)
+            twist = np.radians(rng.uniform(-6, 6) * jitter / 0.15) if jitter else 0.0
+            c, s = np.cos(twist), np.sin(twist)
+            across, along = c * across + s * along, -s * across + c * along
+            c, s = (
+                np.cos(tilt),
+                np.sin(tilt),
+            )  # rear edge (+along) up, front edge under the row ahead
+            along, normal = c * along + s * normal, -s * along + c * normal
+            m = np.stack([across, along, normal], axis=1)  # columns: local x, y, z
+            scale = 1.0 + rng.uniform(-jitter, jitter, 3) if jitter else np.ones(3)
+            pos = centre + local - normal * sink + rng.uniform(-1, 1, 3) * jitter * half * 0.2
+            out.append(
+                Shape(
+                    "plate",
+                    zone,
+                    center=tuple(float(v) for v in pos),  # type: ignore[arg-type]
+                    size=tuple(float(v) for v in half * scale),  # type: ignore[arg-type]
+                    rotate=matrix_euler(m),
+                    bone=bone,
+                    candidates=candidates,
+                )
+            )
+    return out
+
+
 def _parse_shapes(items: list[dict], zones: dict[str, Zone]) -> list[Shape]:
     shapes: list[Shape] = []
     for i, it in enumerate(items):
@@ -150,17 +219,31 @@ def _parse_shapes(items: list[dict], zones: dict[str, Zone]) -> list[Shape]:
             raise CreatureError(f"shape {i}: kind {kind!r} not in {SHAPE_KINDS}")
         zone = it.get("zone", "")
         bone = it.get("bone", "")
-        if kind in PIECES:
-            if not bone:
-                raise CreatureError(f"shape {i}: {kind} needs a bone")
-        elif zone not in zones:
+        candidates = tuple(str(b) for b in it.get("bones", []))
+        if kind in PIECES and not bone:
+            raise CreatureError(f"shape {i}: {kind} needs a bone")
+        if kind in ("plate", "plate_shell") and not (bone or candidates):
+            raise CreatureError(f"shape {i}: {kind} needs a bone or bones")
+        if kind not in PIECES and zone not in zones:
             raise CreatureError(f"shape {i}: unknown zone {zone!r}")
         new: list[Shape] = []
         at = f"shape {i}"
         rot = _v3(it.get("rotate", [0, 0, 0]), at)
-        if kind in ("ellipsoid", "box", "cut", "cut_box", "eye"):
+        if kind in ("ellipsoid", "box", "cut", "cut_box", "eye", "tongue", "plate"):
             centre, size = _v3(it["center"], at), _v3(it["size"], at)
-            new.append(Shape(kind, zone, center=centre, size=size, rotate=rot, bone=bone))
+            new.append(
+                Shape(
+                    kind,
+                    zone,
+                    center=centre,
+                    size=size,
+                    rotate=rot,
+                    bone=bone,
+                    candidates=candidates,
+                )
+            )
+        elif kind == "plate_shell":
+            new += _plate_shell(it, zone, bone, candidates, at)
         elif kind in ("capsule", "cone", "tooth"):
             r = float(it["r"])
             r2 = 0.0 if kind in ("cone", "tooth") else float(it.get("r2", r))
@@ -213,9 +296,14 @@ def load_creature(path: Path) -> Creature:
     shapes = [replace(s, center=sh(s.center), a=sh(s.a), b=sh(s.b)) for s in shapes]
     sockets = data.get("sockets", {})
     names = {b.name for b in bones}
-    for s in shapes:
-        if s.bone and s.bone not in names:
-            raise CreatureError(f"{s.kind}: unknown bone {s.bone}")
+    for k, s in enumerate(shapes):
+        unknown = [b for b in (s.bone, *s.candidates) if b and b not in names]
+        if unknown:
+            raise CreatureError(f"{s.kind}: unknown bone {unknown[0]}")
+        if s.kind == "plate" and not s.bone:  # the nearest candidate carries the plate
+            centre = np.array(s.center)[None]
+            near = min(s.candidates, key=lambda b: _bone_distance(bones, b, centre))
+            shapes[k] = replace(s, bone=near, candidates=())
     for name, spec in sockets.items():
         if spec.get("parent") not in names:
             raise CreatureError(f"socket {name}: unknown parent {spec.get('parent')}")
@@ -240,9 +328,12 @@ def load_creature(path: Path) -> Creature:
         zones=zones,
         stripe_spacing=float(data.get("stripe_spacing", 0.09)),
         normal_size=int(data.get("normal_size", 512)),
+        plate_bevel=float(data.get("plate_bevel", 0.012)),
+        orientation=dict(data.get("orientation", {})),
         normal_strength=float(data.get("normal_strength", 1.0)),
         eye_colour=str(data.get("eye_colour", "#140d09")),
         teeth_colour=str(data.get("teeth_colour", "#d8cdb0")),
+        tongue_colour=str(data.get("tongue_colour", "#7a4440")),
     )
 
 
@@ -260,11 +351,11 @@ def euler_matrix(deg: tuple[float, float, float]) -> np.ndarray:
 
 def shape_distance(s: Shape, p: np.ndarray) -> np.ndarray:
     """Approximate signed distance of points p (N, 3) to the shape surface (negative inside)."""
-    if s.kind in ("box", "cut_box"):
+    if s.kind in ("box", "cut_box", "plate"):
         q = np.abs((p - np.array(s.center)) @ euler_matrix(s.rotate)) - np.array(s.size)
         outside = np.linalg.norm(np.maximum(q, 0.0), axis=1)
         return outside + np.minimum(q.max(axis=1), 0.0)
-    if s.kind in ("ellipsoid", "cut", "eye"):
+    if s.kind in ("ellipsoid", "cut", "eye", "tongue"):
         q = (p - np.array(s.center)) @ euler_matrix(s.rotate)  # into the local frame
         size = np.array(s.size)
         k = np.linalg.norm(q / size, axis=1)
@@ -274,6 +365,13 @@ def shape_distance(s: Shape, p: np.ndarray) -> np.ndarray:
     t = np.clip(((p - a) @ ab) / max(ab @ ab, 1e-12), 0.0, 1.0)
     closest = a + t[:, None] * ab
     return np.linalg.norm(p - closest, axis=1) - (s.r + (s.r2 - s.r) * t)
+
+
+def _bone_distance(bones: list[Bone], name: str, p: np.ndarray) -> float:
+    b = next(x for x in bones if x.name == name)
+    h, v = np.array(b.head), np.array(b.tail) - np.array(b.head)
+    t = np.clip(((p - h) @ v) / max(v @ v, 1e-12), 0.0, 1.0)
+    return float(np.linalg.norm(p - (h + t[:, None] * v), axis=1)[0])
 
 
 def bone_flow(bones: tuple[Bone, ...], p: np.ndarray) -> np.ndarray:
@@ -374,6 +472,12 @@ def surface(c: Creature, p: np.ndarray, n: np.ndarray) -> tuple[np.ndarray, np.n
         1 - np.abs(fractal3(p * np.array([25.0, 25.0, 90.0]), seed + 6, 2) - 0.5) / 0.05, 0, 1
     )
     under = np.clip(-n[:, 2] * 1.5, 0, 1)
+    # sandstone: warped horizontal layers and fine chisel marks
+    layers = 0.5 + 0.5 * np.cos(
+        2 * np.pi * (p[:, 2] / 0.045 + 1.2 * fractal3(p * 7.0, seed + 7, 2))
+    )
+    chisel = fractal3(p * np.array([140.0, 140.0, 35.0]), seed + 8, 2)
+    grain = fractal3(p * 350.0, seed + 9, 1)
     out = np.zeros((len(p), 3))
     height = np.zeros(len(p))
     for k, name in enumerate(names):
@@ -394,8 +498,13 @@ def surface(c: Creature, p: np.ndarray, n: np.ndarray) -> tuple[np.ndarray, np.n
             col += (1.0 - col) * (z.belly * under)[:, None] * 0.5
         if z.wrinkles:
             col *= (1 - z.wrinkles * 0.35 * crease)[:, None]
+        if z.strata:
+            col *= (1 - z.strata * (0.1 * layers + 0.1 * (1 - chisel) + 0.12 * (grain - 0.5)))[
+                :, None
+            ]
         out += w[:, k : k + 1] * col
         relief = z.strands * (strand - 0.5) * 2.0 - z.wrinkles * crease
+        relief = relief + z.strata * ((chisel - 0.5) * 1.2 + (grain - 0.5) * 0.8 - 0.3 * layers)
         height += w[:, k] * z.relief * relief
     return np.clip(out, 0, 1), height
 
