@@ -344,7 +344,8 @@ def door_hinge(d: dict[str, Any]) -> tuple[float, float]:
 def door_mobs(index: dict[str, Any], opened: bool) -> list[dict[str, Any]]:
     """A door mob in the opening of every enterable house (index ``interior``): hinge at one
     jamb, the blade (``mobs/door.glb``, along +X) across the opening, its front (+Z) facing out.
-    ``opened``: placed swung 90 degrees into the room, until NPCs open doors (W7, koordinator)."""
+    The vob is always turned closed; ``opened`` marks it open (``components.mob.open``, world.md:
+    the engine swings it 90 degrees into the room). Default closed (W7, project owner)."""
     out = []
     for e in index.get("entries", []):
         room = e.get("interior")
@@ -355,10 +356,13 @@ def door_mobs(index: dict[str, Any], opened: bool) -> list[dict[str, Any]]:
         a = math.atan2(nx, nz)
         hinge = door_hinge(d)
         hx, hz = hinge[0] + nx * DOOR_IN_REVEAL_M, hinge[1] + nz * DOOR_IN_REVEAL_M
-        turn = a + math.pi / 2 if opened else a
         name = f"MOB_LEO_TUER_{name_part(short_id(e['id']))}"
+        mob: dict[str, Any] = {"definition": "door"}
+        if opened:  # written only when open, after the definition (world.md)
+            mob["open"] = True
         out.append({"key": f"use:door:{e['id']}", "name": name, "pos": [hx, d["floor"], hz],
-                    "rot": [0.0, round(math.sin(turn / 2), 5) + 0.0, 0.0,
-                            round(math.cos(turn / 2), 5) + 0.0],
-                    "mesh": "mobs/door.glb", "definition": "door"})  # fmt: skip
+                    "rot": [0.0, round(math.sin(a / 2), 5) + 0.0, 0.0,
+                            round(math.cos(a / 2), 5) + 0.0],
+                    "mesh": "mobs/door.glb", "definition": "door",
+                    "components": {"mob": mob}})  # fmt: skip
     return out

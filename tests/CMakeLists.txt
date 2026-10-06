@@ -5,11 +5,32 @@ function(g7_add_test_suite name)
     target_link_libraries(g7_tests_${name} PRIVATE g7::${name} doctest::doctest)
     g7_set_warnings(g7_tests_${name})
     set_target_properties(g7_tests_${name} PROPERTIES FOLDER "tests")
-    add_test(NAME ${name} COMMAND g7_tests_${name})
+    if(NOT ARGV1 STREQUAL "NO_TEST") # NO_TEST: the caller adds the ctest entries (groups)
+        add_test(NAME ${name} COMMAND g7_tests_${name})
+    endif()
 endfunction()
 
 g7_add_test_suite(core)
-g7_add_test_suite(runtime)
+g7_add_test_suite(runtime NO_TEST)
+# The runtime suite runs whole engines with a world: several ctest entries over the one executable, grouped by source
+# file and measured run time, so each stays within its timeout in the coverage job (instrumented, about twice as
+# slow). Every test case runs in exactly one entry: `runtime` takes the files no group names.
+set(_g7_runtime_groups
+    "scenarios|*_scenario.cpp"
+    "npcs|*test_engine_scripts.cpp,*test_engine_monsters.cpp"
+    "fights|*test_engine_perception.cpp,*test_engine_dialog.cpp,*test_engine_combat.cpp"
+    "leonberg|*test_engine_leonberg.cpp")
+set(_g7_runtime_tests runtime)
+set(_g7_runtime_grouped "")
+foreach(_group IN LISTS _g7_runtime_groups)
+    string(REPLACE "|" ";" _parts "${_group}")
+    list(GET _parts 0 _name)
+    list(GET _parts 1 _files)
+    add_test(NAME runtime_${_name} COMMAND g7_tests_runtime "--source-file=${_files}")
+    list(APPEND _g7_runtime_tests runtime_${_name})
+    string(APPEND _g7_runtime_grouped "${_files},")
+endforeach()
+add_test(NAME runtime COMMAND g7_tests_runtime "--source-file-exclude=${_g7_runtime_grouped}")
 g7_add_test_suite(platform)
 g7_add_test_suite(asset)
 target_compile_definitions(g7_tests_asset PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
@@ -23,17 +44,19 @@ find_package(SDL3 CONFIG REQUIRED)
 target_link_libraries(g7_tests_platform PRIVATE SDL3::SDL3)
 
 # Window tests run without a display (CI, headless machines): SDL's offscreen video driver.
-set_tests_properties(platform runtime PROPERTIES ENVIRONMENT "SDL_VIDEO_DRIVER=offscreen")
+set_tests_properties(platform ${_g7_runtime_tests} PROPERTIES ENVIRONMENT "SDL_VIDEO_DRIVER=offscreen")
 # test_actions.cpp validates the shipped default configuration.
 target_compile_definitions(g7_tests_platform PRIVATE G7_GAME_CONFIG_DIR="${CMAKE_SOURCE_DIR}/game/config")
 # test_engine_input.cpp drives the engine with synthetic SDL events.
 target_link_libraries(g7_tests_runtime PRIVATE SDL3::SDL3)
-target_compile_definitions(g7_tests_runtime PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
+target_compile_definitions(g7_tests_runtime PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source"
+                                                   G7_GAME_CONFIG="${PROJECT_SOURCE_DIR}/game/config/engine.toml")
 
 g7_add_test_suite(render)
 g7_add_test_suite(physics)
 g7_add_test_suite(gameplay)
-target_compile_definitions(g7_tests_gameplay PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
+target_compile_definitions(g7_tests_gameplay PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source"
+                                                    G7_SCRIPT_DIR="${PROJECT_SOURCE_DIR}/game/scripts")
 g7_add_test_suite(animation)
 g7_add_test_suite(script)
 target_compile_definitions(g7_tests_animation PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")

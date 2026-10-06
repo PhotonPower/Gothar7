@@ -155,7 +155,7 @@
   },
   "socleM": 0.6,
   "interior": {
-    "note": "Begehbare Häuser (W7, Plan freigegeben 2026-10-04): Erdgeschoss als ein Raum. doorsOpen: Türen beginnen offen, bis die Engine NPCs Türen öffnen lässt (Entscheidung Koordinator, umschaltbar).",
+    "note": "Begehbare Häuser (W7, Plan freigegeben 2026-10-04): Erdgeschoss als ein Raum. doorsOpen: false = Türen geschlossen, NPCs öffnen sie (Entscheidung Projektinhaber 2026-10-05); true schreibt components.mob.open.",
     "materialsNote": "Innenraum aus vorhandenen Paletten-Einträgen (die Engine bündelt nach Material, höchstens 16): Wände plaster_white, Boden und Decke timber_dark, Steinboden stone.",
     "wallM": 0.3,
     "ceilingM": 0.15,
@@ -164,7 +164,7 @@
     "minAreaM2": 8.0,
     "minHeightM": 2.4,
     "stoneFloors": ["schmiede", "gasthaus"],
-    "doorsOpen": true
+    "doorsOpen": false
   },
   "roofPitch": {
     "note": "Modus medieval: Dächer flach/Pult oder unter minDeg werden Satteldächer; Traufe bleibt, First wächst (Entscheidung Koordinator, 2026-10-03)",

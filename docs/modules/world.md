@@ -104,7 +104,7 @@ daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vo
 - Weitere Vob-Typen (M4, Erweiterung von v1 nach dem Muster `components`, Abschnitt „Vob-Typen“ unten).
 - `waynet`: Wegnetz, verbindlich ab 2026-10-04 (Abschnitt „Wegnetz“ unten); seit M8 Teil A gelesen und geprüft
   (`WorldFile::waynet`, `world::WaynetData`, Fehler mit Eintrag) und sortiert, ein Eintrag je Zeile geschrieben.
-  `zones` wird bis zu seinem System unverändert gelesen und zurückgeschrieben. Unbekannte Schlüssel werden ignoriert (nicht
+  `zones`: Zonen vom Typ `indoor` gelesen und geprüft, andere unverändert erhalten (Abschnitt „Zonen“). Unbekannte Schlüssel werden ignoriert (nicht
   zurückgeschrieben).
 - **Schreiben** ist stabil: Kopf-Schlüssel je eine Zeile, dann **ein Vob pro Zeile** nach `id` sortiert – gleiche
   Welt, gleiche Bytes; Laden und Speichern ändert nichts.
@@ -224,6 +224,28 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   sechs Nachkommastellen. `dir` wird nur normiert, wenn es nicht waagrecht ist oder seine Länge um mehr als 1e-4
   von 1 abweicht.
 - Vorher stand hier eine Skizze mit Kanten per Index; sie wurde nie benutzt (das Spiel las den Block nicht).
+
+## Zonen – `zones`-Block (Typ `indoor`: Vertrag mit welt, 2026-10-05)
+- `zones` ist eine Liste; die Engine liest Zonen vom Typ **`indoor`** und prüft sie, andere Typen (`music` …) bleiben
+  unverändert erhalten (bis zu ihrem System). Fehler nennen den Eintrag (`zones[3].box.halfExtents: must be positive`).
+- **`indoor`** = ein Raum der begehbaren Häuser: `{"type":"indoor","value":"<Raum>","box":{"center":[x,y,z],
+  "halfExtents":[hx,hy,hz],"yaw":<Grad>}}`.
+  - `value` ist der Raum-Tag `LEO_<NUTZUNG>_<KÜRZEL>_INNEN` (passend zum Wegpunkt `WP_…_INNEN`). Ein Raum darf
+    **mehrere Boxen** mit gleichem `value` haben (die Schmiede ist ein Fünfeck).
+  - Die Box ist das **Innere** des Raums: von Boden bis Decke, an den Innenseiten der Wände.
+  - `yaw` = Grad um +Y wie bei der Vob-Drehung; das lokale +X zeigt nach (cos yaw, 0, −sin yaw), das lokale +Z nach
+    (sin yaw, 0, cos yaw). Beispiel: `yaw` 90 → lokales +X = Welt −Z, lokales +Z = Welt +X; eine Box mit
+    `halfExtents` [2, 1.5, 3] reicht dann in Welt-Z ±2 und in Welt-X ±3 um `center`.
+  - Zahlen nach float32-kürzest (wie Vobs und Wegnetz).
+- **Schreiben:** je Zone eine Zeile, sortiert nach `value`, bei Gleichstand nach `box.center` x, dann z; andere Typen
+  behalten bei gleichem `value` ihre Reihenfolge. Gleiche Welt, gleiche Bytes.
+- **Wirkung (render):** Jede Fläche im Raum bekommt das Innen-Ambient (`environment.toml` `[indoor] ambient`, Faktor
+  auf Himmels- und Boden-Ambient, Vorgabe 0,35) – je Pixel, nicht je Kamera: Von der Straße wirkt ein Raum dunkel, von
+  innen bleibt die Straße hell. Innenseiten von Wänden, Boden und Decke liegen auf dem Rand der Box und zählen ganz
+  (5 cm Toleranz); dahinter blendet es über 0,3 m (= welts Wandstärke) aus, die Außenseite der Wand ist draußen.
+  Die Engine reicht die 32 Räume nächst der Kamera an den Shader (`Engine::nearestIndoorVolumes`).
+- Sonne und Punktlichter bleiben unverändert (die Sonne fällt durch Tür und Fenster, Schatten kommen aus den
+  Schattenkarten); Nebel je Zone folgt später.
 
 ## Generator-Kopf (`generator`, optional, M4)
 ```json

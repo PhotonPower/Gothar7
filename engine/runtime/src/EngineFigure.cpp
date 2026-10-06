@@ -676,6 +676,10 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     a.setBool("sneak", onLand && input.sneak);
     // The weapon (M9 part C): drawn and put away on land; swimming and climbing put it away.
     const bool armsFree = onLand && !m_mobUse && !m_pickup;
+    if (std::exchange(m_drawRangedRequested, false) && armsFree && onLand)
+    {
+        toggleRanged(); // M11 (R1)
+    }
     if ((std::exchange(m_drawWeaponRequested, false) && armsFree) || (m_weaponMode != 0 && !onLand))
     {
         toggleWeapon();

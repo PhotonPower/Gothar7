@@ -217,6 +217,9 @@ struct GpuLighting; GpuLighting packLighting(const Environment&, const LightList
   Gelände-Meshes (M4) es verlangen.
 - **Lichtmodell (stilisiert):** Hemisphären-Ambient (Himmel/Boden nach Normalen-Y gemischt) + Lambert-Sonne +
   Punktlichter mit Abfall `saturate(1 − (d/r)⁴)² / (d² + 1)` (Meter; genau 0 am Radius). Keine Glanzlichter.
+- **Räume** (Zonen `indoor`, world.md „Zonen“): Das Ambient wird je Fläche in Räumen mit `[indoor] ambient`
+  multipliziert (`indoorAmount` in `common/lighting.glsl`, gleiche Formel `render::indoorAmount`); bis zu 32 gedrehte
+  Boxen im Lighting-UBO (`GpuLighting::indoorBoxes`).
 - Flackern von Fackeln ist Welt-/Spiellogik (ändert Lichtwerte pro Frame), kommt mit den Vobs (M4).
 - Ohne `setLighting` gilt neutrales Licht (weißes Ambient, keine Sonne).
 

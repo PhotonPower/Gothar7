@@ -918,8 +918,11 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   2,4 m, sonst Hinweis „room skipped“.
 - **Tür:** echte Öffnung mit Laibung über die ganze Wandstärke (keine Füllung); `assemble` setzt einen **Tür-Mob**
   (`mobs/door.glb`, Name `MOB_LEO_TUER_<KÜRZEL>`) an die Angel in der Laibung, Vorderseite nach außen.
-  `interior.doorsOpen` (Vorgabe `true`, Entscheidung Koordinator): offen, d. h. 90° in den Raum gedreht, bis die
-  Engine NPCs Türen öffnen lässt; dann `false`.
+  Der Vob steht immer geschlossen gedreht; `interior.doorsOpen` (Vorgabe `false`, Entscheidung Projektinhaber
+  2026-10-05: Türen zu, NPCs öffnen sie) schreibt bei `true` `components.mob.open: true` nach `definition` (world.md;
+  die Engine dreht die Tür 90° in den Raum). Prüfung innen: NPC-Probe mit `npc_goto` durch die geschlossenen Türen
+  (Wege zu jeder Innenstelle und zurück hinaus) sowie der Spieler-Autopilot auf einer Prüfkopie der Welt mit offenen
+  Türen (nur im Testlauf). Gerade Wege im Raum halten 0,4 m Abstand zu Möbeln (die Engine plant mit 0,3-m-Kugeln).
 - **Kollision:** der Raum samt Türdurchgang wird aus dem Hüllkörper geschnitten (wie bei Durchgängen: Körper über
   der Decke, Wandprismen daneben), dazu eine feste Bodenplatte, wenn der Boden über der Basis liegt.
 - **Gelände unter dem Raum:** `export-terrain` senkt die Heightmap unter jedem Raum (Index `interior.ring`, um eine

@@ -2,6 +2,7 @@
 // object (selected on the CPU). Layout must match render::GpuLighting (std140).
 
 const int kMaxPointLights = 256;
+const int kMaxIndoorVolumes = 32;
 const int kMaxLightsPerObject = 8;
 
 layout(std140, binding = 0) uniform Lighting
@@ -21,6 +22,8 @@ layout(std140, binding = 0) uniform Lighting
     vec4 cameraForward;
     vec4 fogColorStart;     // rgb linear, w start distance
     vec4 fogParams;         // x density
+    vec4 indoorParams;      // x rooms, y ambient factor inside, z edge (m)
+    vec4 indoorBoxes[2 * kMaxIndoorVolumes]; // per room: centre + cos yaw, half extents + sin yaw
     vec4 pointPositionRadius[kMaxPointLights];
     vec4 pointColor[kMaxPointLights];
 } uLighting;
@@ -112,10 +115,33 @@ vec3 shadowDebugTint(vec3 worldPosition)
     return cascade < 0 ? vec3(1.0) : colours[cascade];
 }
 
+// How much a point is inside the rooms (world.md "zones", indoor), 0..1: 1 in a box (5 cm tolerance: its
+// inner surfaces), fading to 0 at the edge beyond it (through the wall). As render::indoorAmount.
+float indoorAmount(vec3 p)
+{
+    float amount = 0.0;
+    const int rooms = int(uLighting.indoorParams.x);
+    for (int i = 0; i < rooms; ++i)
+    {
+        const vec4 a = uLighting.indoorBoxes[2 * i];
+        const vec4 b = uLighting.indoorBoxes[2 * i + 1];
+        const vec3 d = p - a.xyz;
+        const vec3 local = vec3(d.x * a.w - d.z * b.w, d.y, d.x * b.w + d.z * a.w);
+        const vec3 outside = max(abs(local) - b.xyz - vec3(0.05), vec3(0.0));
+        const float beyond = max(outside.x, max(outside.y, outside.z));
+        amount = max(amount, clamp(1.0 - beyond / max(uLighting.indoorParams.z, 1e-3), 0.0, 1.0));
+    }
+    return amount;
+}
+
 // Incoming light (to be multiplied by the albedo) at a surface point with normal n.
 vec3 incomingLight(vec3 worldPosition, vec3 n)
 {
     vec3 light = mix(uLighting.ambientGround.rgb, uLighting.ambientSky.rgb, n.y * 0.5 + 0.5);
+    if (uLighting.indoorParams.x > 0.5)
+    {
+        light *= mix(1.0, uLighting.indoorParams.y, indoorAmount(worldPosition)); // rooms: the indoor ambient
+    }
     light += uLighting.sunColor.rgb * max(dot(n, uLighting.sunDirection.xyz), 0.0) * sunShadow(worldPosition, n);
     for (int i = 0; i < lightCount(); ++i)
     {

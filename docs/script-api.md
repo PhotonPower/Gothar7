@@ -106,8 +106,26 @@ Ein NPC ist an seinem Ziel angekommen (npc_goto).
 ### `on("npc_blocked", fn(npc: string, target: string))`
 Ein NPC kommt nicht weiter und hat aufgegeben (nach mehrfachem Neuplanen).
 
+### `on("npc_hit", fn(attacker: string, target: string, damage: number, critical: boolean))`
+Ein Nahkampftreffer (M11; `hero` für den Helden).
+
+### `on("npc_killed", fn(target: string, attacker: string))`
+Getötet (M11, K7).
+
+### `on("npc_knocked_out", fn(target: string, attacker: string))`
+Bewusstlos geschlagen (M11, K7); auch der Held (K8: er steht am Ort wieder auf).
+
+### `on("npc_looted", fn(npc: string, item: string, count: integer))`
+Der Held hat einem Bewusstlosen oder Toten etwas abgenommen (M11).
+
+### `on("npc_parried", fn(defender: string, attacker: string))`
+Ein Schlag wurde pariert (M11).
+
 ### `on("npc_said", fn(npc: string, text: string, key: string))`
 Ein NPC hat etwas gesagt (npc_say, npc_shout); `key` ist der Sprach-Schlüssel des Zurufs (`svm_<stimme>_<m|f>_<anlass>_NN`, leer, wenn die Sprach-Datenbank den Text nicht kennt).
+
+### `on("npc_shot", fn(shooter: string, ammo: string))`
+Ein Schuss (M11, `hero`).
 
 ### `on("observe_player", fn(npc: string, distance: number))`
 Bei jedem Blick (5- bzw. 1-mal je Sekunde), solange der NPC den Spieler sieht.
@@ -212,6 +230,44 @@ Legt ab, was auf dem Platz `slot` ausgerüstet ist.
 ### `use_item(item: string)`
 Der Held benutzt ein Item aus dem Inventar (Nahrung, Trank, Schriftstück) – nur im Stand, sonst „Nicht jetzt.“. Die Wirkung (`effects`) kommt beim Event `use` des Clips.
 
+## Kampf
+
+### `draw_ranged() -> string`
+Zieht den ausgerüsteten Bogen bzw. die Armbrust bzw. steckt weg, wie die Taste draw_ranged (M11, R1); gibt zurück, was danach gezogen ist (wie player_weapon).
+
+### `fight_state(npc: string) -> string`
+Kampfzustand: ready, attack, parry, dodge, stagger, down (bewusstlos), dead; `hero` für den Helden.
+
+### `hero_attack(kind?: "front"|"left"|"right") -> boolean`
+Ein Schlag des Helden (sonst über die Steuerung).
+
+### `hero_parry() -> boolean`
+Parade des Helden.
+
+### `hero_shoot() -> boolean`
+Ein Schuss des Helden mit gezogenem Bogen bzw. Armbrust (sonst über die Steuerung); false beim Nachladen oder ohne Munition.
+
+### `loot(npc: string, item: string, count?: integer) -> integer`
+Nimmt einem bewusstlosen oder toten NPC in der Nähe des Helden `count` (ohne: alle) Stück ab (M11, K7); gibt die Zahl zurück.
+
+### `npc_attack(npc: string, kind?: "front"|"left"|"right") -> boolean`
+Ein Schlag (M11): `front` setzt die Kombo fort, soweit das Talent reicht; false, wenn er gerade nicht kann.
+
+### `npc_distance(npc: string, other: string) -> number`
+Abstand zweier Kämpfer auf dem Boden in Metern (`hero` für den Helden).
+
+### `npc_dodge(npc: string) -> boolean`
+Ausweichschritt zurück (M11).
+
+### `npc_face(npc: string, other: string)`
+Dreht ein NPC sofort zu einem anderen bzw. zum Helden (Kampf).
+
+### `npc_parry(npc: string) -> boolean`
+Parade (M11, K6): blockt Nahkampftreffer von vorn kurz nach ihrem Beginn.
+
+### `npc_reach(npc: string) -> number`
+Bis zu welchem Abstand (Mitte zu Mitte, m) die Schläge des Kämpfers treffen (`hero` für den Helden).
+
 ## Mobs
 
 ### `mob_state(vob: string) -> {definition, type, name, locked, open}`
@@ -267,11 +323,17 @@ Reiht ein: zu einem zufälligen Punkt im Umkreis `radius` um den Wegpunkt `centr
 ### `npc_say(npc: string, text: string)`
 Reiht ein: einen Satz sagen (bis zu den Dialogen in M10 eine Einblendung in der Nähe des Helden; Ereignis `npc_said`).
 
+### `npc_set_stat(npc: string, name: string, value: integer)`
+Setzt ein Attribut eines NPCs; `hp`/`mana` bleiben zwischen 0 und dem Maximum.
+
 ### `npc_shout(npc: string, text: string)`
 Ruft sofort (ohne Warteschlange, z. B. beim Weglaufen); sonst wie npc_say.
 
 ### `npc_start_state(npc: string, state: string, at?: string)`
 Unterbricht: beendet den laufenden Zustand (finish) und startet einen anderen. Endet er ("done"), greift wieder der Tagesablauf.
+
+### `npc_stat(npc: string, name: string) -> integer`
+Ein Attribut eines NPCs (hp, hp_max, str, dex ...).
 
 ### `npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, x, y, z}`
 Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des Animationsgraphen, ob er gerade geht, und seine Position.
@@ -281,6 +343,9 @@ Reiht ein: die laufende Tagesablauf-Animation beenden (_out).
 
 ### `npc_take_item(npc: string, item: string, count?: integer) -> boolean`
 Nimmt dem NPC Gegenstände weg; `false`, wenn er weniger hat.
+
+### `npc_teleport(npc: string, x: number, y: number, z: number, yaw?: number)`
+Setzt ein NPC sofort an einen Ort (Meter) und dreht es (Grad, 0 = Blick nach -Z, positiv links).
 
 ### `npc_turn(npc: string, point: string)`
 Reiht ein: in die Richtung (`dir`) eines Wegpunkts oder Freepoints drehen.

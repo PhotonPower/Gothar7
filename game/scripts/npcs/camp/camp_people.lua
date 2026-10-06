@@ -15,6 +15,7 @@ Npc "npc_farmer_woman" {
     name = "Bäuerin",
     guild = "farmer",
     level = 2,
+    attributes = { str = 10, hp = 60 }, -- Kampf (M11): Platzhalterwerte
     figure = "characters/figures/peasant_woman.figure.toml",
     inventory = { it_apple = 5, it_bread = 2, it_letter_farm = 1 },
     pickpocket_dex = 15, -- leicht zu bestehlen
@@ -25,6 +26,7 @@ Npc "npc_woodcutter" {
     name = "Holzfäller",
     guild = "farmer",
     level = 4,
+    attributes = { str = 25, hp = 90 }, -- Kampf (M11): Platzhalterwerte
     figure = "characters/figures/laborer.figure.toml",
     equipment = { "it_club" },
     routine = "rtn_woodcutter",
@@ -34,6 +36,7 @@ Npc "npc_old_man" {
     name = "Alter Mann",
     guild = "outcast",
     level = 1,
+    attributes = { str = 8, hp = 50 }, -- Kampf (M11): Platzhalterwerte
     figure = "characters/figures/old_man.figure.toml",
     routine = "rtn_old_man",
     -- Er handelt mit allerlei Kram (M10): seine Waren und Gulden zum Bezahlen.

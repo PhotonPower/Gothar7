@@ -26,6 +26,8 @@ Armour kits (F3g) keep the colour textures of their pieces and may rename and de
     mail_tunic = [[0.16, 0.24, 0.26, 0.345, 0.48, 0.0]]
     [hides]                             # roles a piece hides while worn (hoods, helmets)
     hood = ["hair"]
+    [inside]                            # skin inside a loose piece is hidden too (long skirts):
+    toigo_long_full_skirt = 0.3         # horizontally up to this far from it (metres)
     [derive.leather_vest]               # own simple piece derived from a fitted CC0 garment
     from = "clothes/elvs_crude_t-shirt_male/elvs_crude_t-shirt_male.mhclo"  # or "basemesh"
     cut = ["upperarm"]                  # drop vertices bound mostly to bones with these prefixes
@@ -192,6 +194,7 @@ class Human:
     budget: dict[str, int] = field(default_factory=dict)  # part name -> lod0 triangles
     derive: tuple[Derive, ...] = ()
     hides: dict[str, tuple[str, ...]] = field(default_factory=dict)  # part name -> roles
+    inside: dict[str, float] = field(default_factory=dict)  # part name -> metres (skirts)
     # part name -> patches [x0, y0, x1, y1, dx, dy] (texture fractions, top left): the rectangle
     # gets the texture shifted by (dx, dy), e.g. to remove a mark of the source
     retouch: dict[str, tuple[tuple[float, ...], ...]] = field(default_factory=dict)
@@ -246,7 +249,7 @@ def parse_human(data: dict, name: str, base: Human | None = None) -> Human:
         raise HumanError(f"version must be {FORMAT_VERSION}, got {data.get('version')!r}")
     allowed_keys = {
         "version", "triangles", "parts", "macro", "assets", "tint", "shape", "fit_to",
-        "neutral", "names", "budget", "derive", "hides", "retouch",
+        "neutral", "names", "budget", "derive", "hides", "retouch", "inside",
     }  # fmt: skip
     unknown = set(data) - allowed_keys
     if unknown:
@@ -324,7 +327,7 @@ def parse_human(data: dict, name: str, base: Human | None = None) -> Human:
         if not isinstance(value, int | float) or not 0.0 < value <= 1.0:
             raise HumanError(f"shape '{target}' must be in (0, 1]")
 
-    kit_keys = {"neutral", "names", "budget", "derive", "hides", "retouch"} & set(data)
+    kit_keys = {"neutral", "names", "budget", "derive", "hides", "retouch", "inside"} & set(data)
     hair_kit_ok = bool(hairs or beards) and kit_keys <= {"neutral", "names", "budget"}
     if kit_keys and parts != ["cloth"] and not hair_kit_ok:
         raise HumanError(f'{sorted(kit_keys)}: only for garment kits (parts = ["cloth"])')
@@ -357,6 +360,14 @@ def parse_human(data: dict, name: str, base: Human | None = None) -> Human:
         raise HumanError(f"[hides] maps part names to lists of roles from {HIDEABLE}")
     if set(hides) - set(pieces):
         raise HumanError(f"[hides] for unknown pieces: {sorted(set(hides) - set(pieces))}")
+    inside = data.get("inside", {})
+    if not isinstance(inside, dict) or not all(
+        isinstance(v, int | float) and not isinstance(v, bool) and 0.05 <= v <= 0.5
+        for v in inside.values()
+    ):
+        raise HumanError("[inside] maps part names to metres (0.05..0.5)")
+    if set(inside) - set(pieces):
+        raise HumanError(f"[inside] for unknown pieces: {sorted(set(inside) - set(pieces))}")
     retouch = data.get("retouch", {})
     if not isinstance(retouch, dict) or not all(
         isinstance(v, list) and v and all(_patch_ok(r) for r in v) for v in retouch.values()
@@ -400,6 +411,7 @@ def parse_human(data: dict, name: str, base: Human | None = None) -> Human:
         budget=dict(budget),
         derive=derive,
         hides={k: tuple(v) for k, v in hides.items()},
+        inside={k: float(v) for k, v in inside.items()},
         retouch={k: tuple(tuple(float(x) for x in r) for r in v) for k, v in retouch.items()},
     )
     known = {"skin"} | {asset_stem(p) for _, p in human.assets()}

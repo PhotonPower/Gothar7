@@ -256,7 +256,12 @@ void Engine::fixedUpdateCreatures(f32 seconds)
             }
         }
 
-        if (c.body || c.character)
+        const gameplay::FightState fight = c.fighter.state();
+        if (fight == gameplay::FightState::Down || fight == gameplay::FightState::Dead)
+        {
+            c.speed = 0.0f; // knocked out or dead (M11): no routine, no walking
+        }
+        else if (c.body || c.character)
         {
             fixedUpdateAi(c, seconds); // routine, state, commands (M9 part B)
             if (!c.simulated)

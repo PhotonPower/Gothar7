@@ -139,14 +139,31 @@ events = [
     { frame = 15, event = "footstep_r" },   # aufsteigend sortiert
 ]
 
-[clips."1h/t_attack_combo1_t2"]
+[clips."1h/t_attack_combo1"]
 events = [
     { frame = 2,  event = "sound:swing_light" },
-    { frame = 6,  event = "hit_start" },
-    { frame = 11, event = "hit_end" },
-    { frame = 14, event = "combo_window" },
+    { frame = 17, event = "hit_start" },
+    { frame = 23, event = "combo_start" },
+    { frame = 23, event = "hit_end" },
+    { frame = 34, event = "combo_end" },
 ]
 ```
+- **Kampf (M11, mit engine vereinbart 2026-10-05):** Jeder Angriff beginnt und endet in der Kampfhaltung seines
+  Modus (`<modus>/s_idle`); engine blendet 0,1 s zum nächsten Schlag, jeder Clip taugt als Einzelschlag.
+  - Angriffe tragen das Trefferfenster `hit_start`/`hit_end` (Fäuste: Aufprall der Faust) und das Kombo-Fenster
+    `combo_start` (= `hit_end`) bis `combo_end` (ca. 80 % des Clips), danach Erholung.
+  - Richtungshiebe `t_attack_l/r` nur mit `hit_*`.
+  - `t_parry` ohne Events, ca. 0,6 s (Blockfenster setzt engine).
+  - `t_dodge_back` mit Root Motion ca. 0,8 m rückwärts, ohne Events.
+  - `t_ko` endet in der Pose von `s_ko`, `t_ko_getup` beginnt dort; `t_die_front/back` enden liegend ohne Schleife.
+  - Talentstufen nur über die Abspielrate, je Name genau ein Clip.
+  - Werkzeug: Rezept `framed` (Clip aus der Haltung ein- und in sie ausblenden, `stance_frame` für eine feste Pose,
+    `soften` glättet Knochen, deren Quelle zu ruckartig ist), eigene Schläge über `none/s_idle` geschrieben
+    (hängende Arme: die Weltachsen wirken wie notiert) und mit `framed` in die Waffenhaltung gesetzt.
+  - Zweihänder: Rezept `two_hands` setzt die linke Hand je Bild auf den Griff unter der rechten (`grip` Meter gegen
+    +Y von `socket_hand_r`, CCD über Ober- und Unterarm, Warmstart aus dem Vorbild – stetige Lösung) und dreht sie wie
+    die rechte. Fernkampf: `s_aim` (Schleife), `t_shoot` mit Event `release`, `t_reload`; Bogen-Posen per Gittersuche
+    (Bogenarm gestreckt, Bogen aufrecht mit der Sehne zum Körper, Sehnenhand an der Wange, Köcher hinter der Schulter).
 - Event-Namen: `lower_snake_case`, optional mit Argument nach Doppelpunkt (`sound:<name>`).
   Bekannte Events siehe `docs/modules/animation.md` („Clip“); neue Events nach Absprache mit engine.
 - Clips ohne Events und ohne `speed` werden weggelassen; die Datei ist optional.
@@ -318,7 +335,10 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   Knoten `cloth_<stück>_lod<n>`). `assemble` löscht die Körperflächen darunter (Strahl entlang der Normalen trifft das
   Stück innerhalb 3 cm von innen, oder der Körper ragt bis 1,5 cm heraus – bis 4 cm, wo der Körper selbst Kleidung
   trägt, z. B. die eingebaute Hose unter enger Rüstungshose; Löcher in zerrissener Kleidung und ein
-  5-cm-Streifen an der Halsnaht bleiben). Kit-Texturen sind **neutral grau** (halber Kontrast, Helligkeit 0,55) und
+  5-cm-Streifen an der Halsnaht bleiben). Weite Stücke mit `[inside]` im Kit-Rezept (Stück → Meter; der lange Rock:
+  0,3) verdecken zusätzlich die Haut in ihrem Inneren – waagrechte Strahlen treffen das Stück von innen in mindestens
+  zwei von vier Richtungen –, damit Oberschenkel beim Hocken nicht durch den weit abstehenden Rock stechen
+  (2026-10-05; vorher bis 25 cm² an schlanken Frauen). Kit-Texturen sind **neutral grau** (halber Kontrast, Helligkeit 0,55) und
   von allen Staturen geteilt; die Farbe gibt die Palette der Figur als glTF `baseColorFactor`.
 - **Schultern in Bewegung (geprüft in M6, 2026-10-03; Bilder `DATA_ROOT\review\f3k-shoulders`):** Die frühere Falte
   an den Schulterblättern in der T-Pose ist seit den neu berechneten Masken (F3g) weg; beim Gehen und Rennen sitzen
@@ -387,8 +407,10 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   - Sauber für Leonberg: `coat_clean`, `tunic_clean` – dieselbe Geometrie (zweites `derive` mit gleichen Werten),
     anderes Bild (`wear` 0,25). Nur diese Stücke doppelt (Größe); Hemd und Stufenrock sind gleich sauber.
   - **Eigene Geometrie:** `apron` (Leinwand, ambientCG „Fabric 063“) und `apron_leather` (Handwerker, „Leather 014“)
-    als Tafel vor dem Körper vom Knie bis zur Taille (`panel = breite`): Sie folgt der Körperfront und hängt unterhalb
-    des Bauchs gerade herab statt den Beinen zu folgen, weitet sich zum Saum (über Röcken), Ränder mit `rim`.
+    als Stoffbahn vor dem Körper vom Knie bis zur Taille (`panel = breite`): Auf dem Körper (Taille, Hüfte) ist sie so
+    breit wie er und legt sich um die Hüften, darunter hängt sie gerade herab statt den Beinen zu folgen, wird zum
+    Saum 15 % schmaler und steht etwas ab (über Röcken); leichte Wölbung, nach unten tiefer werdende Falten, die
+    Seiten fallen zurück, der Saum hängt in den Falten länger (2026-10-05, vorher eine steife Tafel). Ränder mit `rim`.
     `belt`: Ring der Haut an der Taille, abgesetzt, mit Rand. `straw_hat`: Kuppel mit breiter Krempe wie
     `kettle_helm`, flacher (ambientCG „Wicker 013“), blendet das Haar aus.
   - Werkzeug: `band = [unten, oben]` mit `band_at = "<gelenk>"` oder `["<gelenk unten>", "<gelenk oben>"]` –
@@ -521,6 +543,8 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_broom` (Besen, Ursprung im oberen Griff, +Y zum Reisig) | 1,4 m | Holz, Reisig (prozedural), Bindung |
   | `it_mug` (Krug, Ursprung am Henkel, +Y nach oben) | 12 cm | dunkles Holz (Wood 060) |
   | `it_axe` (Axt, Ursprung am unteren Stiel, Schneide zu +Z) | 0,74 m | Holz, Schmiedeeisen |
+  | `it_arrow`, `it_bolt` (Pfeil, Armbrustbolzen; Ursprung in der Schaftmitte, +Y zur Spitze, +Z Federebene – Projektil, steckend: engine setzt um halbe Länge − 7 cm zurück; Nocke −0,375 bzw. −0,175 m; mit engine abgestimmt 2026-10-05) | 0,75 / 0,35 m | Holz, Schmiedeeisen, Federn (prozedural); 92 / 76 Dreiecke |
+  | `it_crossbow` (Armbrust, Ursprung am Griff bzw. Abzug, Schaft +Y nach vorn, Bogen quer, +Z oben; an `socket_hand_r`, die `cbow`-Clips halten den Schaft in der Faust) | 0,8 m | Holz, Schmiedeeisen, Sehne |
 
   Alle Schlüssel-Items (`it_key_chest_hut`, …) nutzen dasselbe Modell `it_key.glb`; die Lua-Items und die Pfade
   legt engine an.
@@ -550,8 +574,7 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
 - **Kombinationsregeln** (aus den Prüfbildern und `poke`):
   - Das Mieder liegt nur ohne Hemd über dem langen Rock sauber, nicht über Hemden oder dem Stufenrock.
   - Die Lederweste nur über dem groben Hemd oder dem Pullover (aus dem groben Hemd abgeleitet).
-  - Den langen Rock nicht an schlanken Frauen (`cloth_f_thin`): Beim Schleichen und Aufheben stechen die Oberschenkel
-    durch (25 cm²).
+  - Der lange Rock passt seit `[inside]` auch schlanken Frauen (vorher stachen beim Hocken die Oberschenkel durch).
   - Keine Schürze über dem vollen langen Rock kräftiger Frauen.
 - **Prüfung:** Jedes Manifest wird beim Bauen zusammengesetzt (`assemble`); `poke` bleibt für alle Gilden-Figuren unter
   der Schwelle. Der Test `test_figure_sets` prüft, dass jedes gelistete Manifest existiert, in genau einem
