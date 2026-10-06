@@ -536,6 +536,7 @@ def _lods(c: Creature, body: bpy.types.Object) -> list[bpy.types.Object]:
         bpy.context.scene.collection.objects.link(ob)
         ob.modifiers.clear()
         _apply(ob, "DECIMATE", decimate_type="COLLAPSE", ratio=ratio)
+        _close_holes(ob)
         _apply(ob, "TRIANGULATE")
         bpy.ops.object.select_all(action="DESELECT")
         ob.select_set(True)

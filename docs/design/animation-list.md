@@ -280,6 +280,26 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `quaderbuckel/t_warn` | Warnen: mit den Vorderfüßen stampfen, Platten knirschen | – | footstep_front_l/r, sound:quaderbuckel_grind | K | platzhalter-K (mit engine 2026-10-07) |
 | `quaderbuckel/t_block_in`, `s_block`, `t_block_out` | Kopf unter den Stirnschild ziehen, halten, wieder heraus (Klingen prallen von vorn ab) | – | – | K | platzhalter-K (mit engine 2026-10-07) |
 
+### Glemsmahr (`glemsmahr`, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `glemsmahr/s_idle` | Geduckt lauschen, Kopf schief, Ohren drehen | – | – | K | platzhalter-K |
+| `glemsmahr/s_walk` | Knöchelgang (Kreuzgang) | ✓ 1,4 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `glemsmahr/s_run` | Galopp auf allen vieren | ✓ 6,5 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `glemsmahr/s_sneak` | Anschleichen, sehr tief, Kopf vor, Ohren zurück | ✓ 0,9 m/s | footstep_front/back_l/r | K | platzhalter-K (`gait` mit fester Haltung; mit engine 2026-10-07) |
+| `glemsmahr/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K |
+| `glemsmahr/t_rise`, `s_upright`, `t_lower` | Aufrichten auf die Hinterbeine, aufrecht wittern und umschauen, wieder auf alle viere | – | – | K | platzhalter-K (mit engine 2026-10-07: aufrecht nur Drohen bzw. Wittern) |
+| `glemsmahr/t_attack_1` | Krallenhieb: Vorderleib hebt sich, rechter Arm schlägt quer | – | hit_start, hit_end | K | platzhalter-K |
+| `glemsmahr/t_attack_2` | Biss nach vorn mit den Nadelzähnen | – | hit_start, hit_end | K | platzhalter-K |
+| `glemsmahr/t_leap` | Sprung auf den Helden, **am Ort** (engine fährt ~3 m) | – | leap_start, leap_land, hit_start, hit_end | K | platzhalter-K (mit engine 2026-10-07) |
+| `glemsmahr/t_jump_back` | Satz zurück ins Dunkel, **am Ort** (engine fährt ~2,5 m) | – | leap_start, leap_land | K | platzhalter-K (mit engine 2026-10-07) |
+| `glemsmahr/t_recoil` | Zurückweichen vor Licht bzw. Feuer: Arm vor den Augen, fauchen | – | recoil, sound:glemsmahr_hiss | K | platzhalter-K (mit engine 2026-10-07) |
+| `glemsmahr/t_hit` | Treffer | – | – | K | platzhalter-K |
+| `glemsmahr/t_die` | Tod: bricht auf die Seite zusammen | – | – | K | platzhalter-K |
+| `glemsmahr/s_eat`, `s_sleep` | Geduckt reißen und Brocken zum Maul führen / zusammengerollt schlafen | – | – | K | platzhalter-K |
+| `glemsmahr/t_threaten` | Drohen: halb aufgerichtet, Arme gespreizt, fauchen | – | sound:glemsmahr_hiss | K | platzhalter-K |
+
 ## Prio C – später
 
 Akrobatik-Varianten, Gangarten (Militär, Frauen, Entspannt) als Varianten-Sets, zusätzliche

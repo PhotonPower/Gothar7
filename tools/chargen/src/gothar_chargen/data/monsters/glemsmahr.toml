@@ -6,7 +6,7 @@
 name = "glemsmahr_reference"
 kind = "monster"
 species = "glemsmahr"
-height = 1.605
+height = 1.532
 bind_pose = "natural"
 max_bones = 64
 max_influences = 4
@@ -21,8 +21,8 @@ left = ["front_foot_r", "front_foot_l"]
 [rig.collision]            # engine character capsule (§7.1), derived from the mesh
 shape = "capsule_upright"
 radius = 0.34
-length = 1.61
-offset = [0.00, 0.80, 0.50]
+length = 1.53
+offset = [0.00, 0.77, 0.50]
 
 [[bone]]
 name = "root"
@@ -253,14 +253,14 @@ roll = 0.000000
 name = "ear_l"
 parent = "head"
 head = [0.090000, -0.870000, 1.470000]
-tail = [0.150000, -0.840000, 1.600000]
+tail = [0.210000, -0.740000, 1.530000]
 roll = 0.000000
 
 [[bone]]
 name = "ear_r"
 parent = "head"
 head = [-0.090000, -0.870000, 1.470000]
-tail = [-0.150000, -0.840000, 1.600000]
+tail = [-0.210000, -0.740000, 1.530000]
 roll = 0.000000
 
 [[bone]]

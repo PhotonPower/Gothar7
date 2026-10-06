@@ -21,9 +21,9 @@ seed = 31
 ao = 0.6
 normal_size = 512
 normal_strength = 0.8
-eye_colour = "#3a4026"
-eye_glow = 0.55
-eye_glow_colour = "#c8e890"
+eye_colour = "#4a4632"
+eye_glow = 0.35
+eye_glow_colour = "#e6dca8"           # pale, yellowish
 teeth_colour = "#d6cfba"
 tongue_colour = "#5a3036"
 
@@ -90,7 +90,7 @@ name = "ear_l"
 parent = "head"
 mirror = true
 head = [0.09, -0.87, 1.47]
-tail = [0.15, -0.84, 1.60]
+tail = [0.21, -0.74, 1.53]
 
 [[bone]]
 name = "front_shoulder_l"
@@ -308,43 +308,69 @@ center = [0, -0.91, 1.30]
 size = [0.03, 0.035, 0.016]
 
 [[shape]]
-kind = "cut"                 # eye sockets
+kind = "cut"                 # deep, sunken eye sockets
 zone = "eye_rim"
 mirror = true
-center = [0.058, -0.99, 1.415]
-size = [0.032, 0.022, 0.031]
+center = [0.056, -0.985, 1.415]
+size = [0.03, 0.03, 0.028]
 
 [[shape]]
-kind = "eye"                 # big eyes that glow in the light
+kind = "eye"                 # small eyes deep in the sockets, pale glow
 mirror = true
 bone = "head"
-center = [0.055, -0.982, 1.413]
-size = [0.022, 0.015, 0.021]
+center = [0.054, -0.968, 1.413]
+size = [0.015, 0.011, 0.014]
 
 [[shape]]
-kind = "ellipsoid"           # heavy upper lid
+kind = "ellipsoid"           # overhanging brow over the sockets
 zone = "face"
 mirror = true
-center = [0.056, -0.982, 1.435]
-size = [0.034, 0.022, 0.012]
-rotate = [0, 0, 0]
+center = [0.052, -0.975, 1.448]
+size = [0.04, 0.026, 0.014]
 
 [[shape]]
-kind = "capsule"             # pointed ears (a narrow tip survives the reduction)
+kind = "ellipsoid"           # prominent cheekbones
 zone = "face"
 mirror = true
-a = [0.08, -0.87, 1.47]
-b = [0.145, -0.832, 1.60]
-r = 0.032
-r2 = 0.008
+center = [0.078, -0.955, 1.372]
+size = [0.03, 0.04, 0.018]
+rotate = [0, 0, -20]
 
 [[shape]]
-kind = "cut"                 # inside of the ears
+kind = "cut"                 # hollow cheeks below the cheekbones
+zone = "face"
+mirror = true
+center = [0.09, -0.925, 1.335]
+size = [0.018, 0.035, 0.02]
+
+[[shape]]
+kind = "cut"                 # nostril slits in the flat face
+zone = "eye_rim"
+mirror = true
+center = [0.012, -0.993, 1.36]
+size = [0.005, 0.012, 0.01]
+
+[[shape]]
+kind = "ridge"               # long, flat ears laid back along the skull, tapering
+zone = "face"
+mirror = true
+points = [[0.08, -0.87, 1.465], [0.205, -0.745, 1.525]]
+sizes = [[0.03, 0.03, 0.013], [0.012, 0.012, 0.009]]
+count = 11
+
+[[shape]]
+kind = "cut"                 # ragged notches in the ears
 zone = "ear_inner"
 mirror = true
-center = [0.105, -0.866, 1.52]
-size = [0.016, 0.008, 0.04]
-rotate = [0, -25, 0]
+center = [0.135, -0.808, 1.517]
+size = [0.012, 0.012, 0.014]
+
+[[shape]]
+kind = "cut"
+zone = "ear_inner"
+mirror = true
+center = [0.172, -0.775, 1.527]
+size = [0.01, 0.01, 0.012]
 
 [[shape]]
 kind = "tooth"               # needle teeth, upper row
@@ -398,7 +424,7 @@ kind = "chain"
 zone = "skin"
 mirror = true
 points = [[0.20, -0.54, 1.24], [0.30, -0.73, 0.76], [0.28, -0.94, 0.14]]
-radii = [0.06, 0.047, 0.034]
+radii = [0.042, 0.032, 0.026]
 
 [[shape]]
 kind = "ellipsoid"           # sinewy forearm muscle below the elbow
@@ -489,7 +515,7 @@ kind = "chain"
 zone = "skin"
 mirror = true
 points = [[0.12, 0.0, 0.86], [0.17, -0.24, 0.50], [0.17, 0.02, 0.24], [0.17, -0.10, 0.04]]
-radii = [0.075, 0.05, 0.035, 0.03]
+radii = [0.06, 0.036, 0.026, 0.024]
 
 [[shape]]
 kind = "capsule"             # toes
@@ -507,3 +533,118 @@ mirror = true
 a = [0.17, -0.18, 0.02]
 b = [0.17, -0.22, 0.003]
 r = 0.009
+
+# sinew and bone under the skin: muscle strands, knobby joints, shoulder blades, ribs, hip bones
+[[shape]]
+kind = "capsule"             # biceps strand, front of the upper arm
+zone = "skin"
+mirror = true
+a = [0.205, -0.585, 1.16]
+b = [0.284, -0.716, 0.86]
+r = 0.03
+r2 = 0.02
+
+[[shape]]
+kind = "capsule"             # triceps strand, back of the upper arm
+zone = "skin"
+mirror = true
+a = [0.218, -0.548, 1.16]
+b = [0.307, -0.712, 0.84]
+r = 0.032
+r2 = 0.02
+
+[[shape]]
+kind = "ellipsoid"           # bony, pointed elbow
+zone = "skin"
+mirror = true
+center = [0.31, -0.705, 0.775]
+size = [0.032, 0.036, 0.04]
+
+[[shape]]
+kind = "capsule"             # forearm strands
+zone = "skin"
+mirror = true
+a = [0.29, -0.765, 0.68]
+b = [0.283, -0.905, 0.22]
+r = 0.026
+r2 = 0.016
+
+[[shape]]
+kind = "capsule"
+zone = "skin"
+mirror = true
+a = [0.315, -0.735, 0.66]
+b = [0.29, -0.895, 0.22]
+r = 0.022
+r2 = 0.014
+
+[[shape]]
+kind = "ellipsoid"           # knobby wrist
+zone = "skin"
+mirror = true
+center = [0.28, -0.938, 0.15]
+size = [0.036, 0.03, 0.028]
+
+[[shape]]
+kind = "ridge"               # knuckles
+zone = "skin"
+mirror = true
+points = [[0.255, -0.995, 0.04], [0.325, -0.995, 0.04]]
+sizes = [[0.016, 0.016, 0.016], [0.016, 0.016, 0.016]]
+count = 3
+
+[[shape]]
+kind = "ellipsoid"           # knobby knee
+zone = "skin"
+mirror = true
+center = [0.17, -0.255, 0.50]
+size = [0.04, 0.038, 0.042]
+
+[[shape]]
+kind = "capsule"             # calf strand behind the shin
+zone = "skin"
+mirror = true
+a = [0.175, -0.19, 0.46]
+b = [0.172, -0.02, 0.29]
+r = 0.03
+r2 = 0.016
+
+[[shape]]
+kind = "ellipsoid"           # sharp hock
+zone = "skin"
+mirror = true
+center = [0.17, 0.035, 0.24]
+size = [0.026, 0.03, 0.03]
+
+[[shape]]
+kind = "capsule"             # front thigh strand
+zone = "skin"
+mirror = true
+a = [0.13, -0.06, 0.82]
+b = [0.168, -0.22, 0.55]
+r = 0.035
+r2 = 0.024
+
+[[shape]]
+kind = "ellipsoid"           # shoulder blades
+zone = "skin"
+mirror = true
+center = [0.095, -0.47, 1.335]
+size = [0.06, 0.085, 0.018]
+rotate = [-30, 10, 0]
+
+[[shape]]
+kind = "ridge"               # ribs, lying flat on the flank
+zone = "skin"
+mirror = true
+points = [[0.158, -0.33, 1.15], [0.166, -0.48, 1.20]]
+sizes = [[0.009, 0.012, 0.06], [0.009, 0.012, 0.06]]
+count = 4
+rotate = [-35, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # hip bones
+zone = "skin"
+mirror = true
+center = [0.105, 0.03, 0.955]
+size = [0.035, 0.05, 0.026]
