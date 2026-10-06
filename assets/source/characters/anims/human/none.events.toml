@@ -2,6 +2,12 @@
 version = 1
 fps = 30
 
+[clips."none/s_burn"]
+events = [
+    { frame = 1, event = "footstep_l" },
+    { frame = 15, event = "footstep_r" },
+]
+
 [clips."none/s_run"]
 speed = 5.90
 events = [

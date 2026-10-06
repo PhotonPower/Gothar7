@@ -544,6 +544,10 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_mug` (Krug, Ursprung am Henkel, +Y nach oben) | 12 cm | dunkles Holz (Wood 060) |
   | `it_axe` (Axt, Ursprung am unteren Stiel, Schneide zu +Z) | 0,74 m | Holz, Schmiedeeisen |
   | `it_arrow`, `it_bolt` (Pfeil, Armbrustbolzen; Ursprung in der Schaftmitte, +Y zur Spitze, +Z Federebene – Projektil, steckend: engine setzt um halbe Länge − 7 cm zurück; Nocke −0,375 bzw. −0,175 m; mit engine abgestimmt 2026-10-05) | 0,75 / 0,35 m | Holz, Schmiedeeisen, Federn (prozedural); 92 / 76 Dreiecke |
+  | `it_sword_2h` (Zweihänder; Ursprung am Griffpunkt der rechten Hand unter der Parierstange, die linke Hand 10 cm darunter per `two_hands`, +Y zur Klinge, +Z Schneide) | 1,43 m | Schmiedeeisen, Ledergriff; 708 Dreiecke |
+  | `it_rune_firebolt`, `it_rune_heal`, `it_rune_sleep`, `it_rune_transform_wolf`, `it_rune_summon_wolf` (Runen, M12: eine Geometrie, flacher Stein, Ursprung Mitte, +Y lange Achse, +Z Zeichen-Seite; je Rune eigenes Material `rune_<zauber>` mit eingeritztem Zeichen in der Farbe des Zaubers – Flamme, Kreuz, Mondsichel, Spirale, Ring mit Stern) | 6 cm | Stein, Zeichen (prozedural); 180 Dreiecke |
+  | `it_scroll` (Spruchrolle, Ursprung Mitte, +Y Rollenachse, Siegel zu +Z) | 20 cm | Pergament, Kordel, Wachs |
+  | `it_potion_mana_small` (wie der Heiltrank, blaues Glas) | 17 cm | prozedural |
   | `it_crossbow` (Armbrust, Ursprung am Griff bzw. Abzug, Schaft +Y nach vorn, Bogen quer, +Z oben; an `socket_hand_r`, die `cbow`-Clips halten den Schaft in der Faust) | 0,8 m | Holz, Schmiedeeisen, Sehne |
 
   Alle Schlüssel-Items (`it_key_chest_hut`, …) nutzen dasselbe Modell `it_key.glb`; die Lua-Items und die Pfade

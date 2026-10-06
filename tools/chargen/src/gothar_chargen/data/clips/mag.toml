@@ -55,3 +55,170 @@ name = "mag/t_turn_r"
 layer = ["none/t_turn_r", "mag/s_idle"]
 from_bone = ["clavicle_l", "clavicle_r", "neck"]
 events = "footsteps"
+
+# --- magic (M12, agreed with engine 2026-10-06): the rune or scroll in the right hand
+# (socket_hand_r); every one-shot starts and ends in mag/s_idle; event `cast` = the effect starts
+# (the projectile leaves the hand). Five casting variants; transformation uses t_cast_self, sleep
+# the knock-out clips of `none`. Own key poses over the upright none/s_idle (hand targets by grid
+# search), framed into the stance.
+
+[[clip]]
+name = "mag/s_reach"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "reach"], [10, "reach"]]
+[clip.params.poses.reach]
+rotate = { spine_02 = [["Z", -10], ["X", 6]], neck = [["X", 15]], upperarm_r = [["X", -10], ["Z", -10]], lowerarm_r = [["X", -45]] }
+
+[[clip]]
+name = "mag/t_reach"
+blend = ["none/s_idle", "mag/s_reach"]
+frames = 10
+helper = true
+
+[[clip]]
+name = "mag/t_lift"
+blend = ["mag/s_reach", "mag/s_idle"]
+frames = 14
+helper = true
+
+[[clip]]
+name = "mag/t_draw"               # from the pouch on the belt into the hand (event draw)
+chain = ["mag/t_reach", "mag/t_lift"]
+markers = { draw = 10 }
+
+[[clip]]
+name = "mag/t_sheath"             # back into the pouch (event sheath)
+reverse = "mag/t_draw"
+markers = { sheath = 15 }
+
+[[clip]]
+name = "mag/t_invest_src"
+from = "ual1:Spell_Simple_Enter"
+helper = true
+
+[[clip]]
+name = "mag/t_invest"             # start charging (ends in the s_invest pose)
+keyframe = "framed"
+params = { base = "mag/t_invest_src", stance = "mag/s_idle", fade_in = 5, fade_out = 0 }
+
+[[clip]]
+name = "mag/s_invest"             # charging while the key is held (the effect shows the level)
+keyframe = "hold"
+params = { base = "mag/t_invest", frame = -1, frames = 60 }
+
+[[clip]]
+name = "mag/t_cast_projectile_src"
+from = "ual1:Spell_Simple_Shoot"
+helper = true
+
+[[clip]]
+name = "mag/t_cast_projectile"  # thrust forward (fire arrow)
+keyframe = "framed"
+markers = { cast = 8 }
+params = { base = "mag/t_cast_projectile_src", stance = "mag/s_idle", fade_in = 4, fade_out = 8 }
+
+[[clip]]
+name = "mag/t_point"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [10, "point"], [22, "point"], [32, "rest"]]
+[clip.params.poses.point]
+rotate = { upperarm_r = [["X", -90], ["Y", 15], ["Z", 40]], spine_02 = [["Z", -6]], neck = [["Z", -5]] }
+
+[[clip]]
+name = "mag/t_cast_target"  # point at the target (sleep, fear, control)
+keyframe = "framed"
+markers = { cast = 11 }
+params = { base = "mag/t_point", stance = "mag/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "mag/t_chest"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [10, "chest"], [22, "chest"], [32, "rest"]]
+[clip.params.poses.chest]
+rotate = { upperarm_r = [["X", -45], ["Y", -30], ["Z", 15]], lowerarm_r = [["Y", -90]], upperarm_l = [["X", -45], ["Y", 30], ["Z", -15]], lowerarm_l = [["Y", 90]], neck = [["X", 12]] }
+
+[[clip]]
+name = "mag/t_cast_self"  # hands to the chest (heal, own transformation)
+keyframe = "framed"
+markers = { cast = 12 }
+params = { base = "mag/t_chest", stance = "mag/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "mag/t_spread"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [12, "up"], [18, "spread"], [26, "spread"], [36, "rest"]]
+[clip.params.poses.up]
+rotate = { upperarm_r = [["X", -160]], upperarm_l = [["X", -160]], lowerarm_r = [["X", -20]], lowerarm_l = [["X", -20]], spine_02 = [["X", -8]], neck = [["X", -10]] }
+[clip.params.poses.spread]
+rotate = { upperarm_r = [["X", -50], ["Z", -55]], upperarm_l = [["X", -50], ["Z", 55]], spine_02 = [["X", 10]] }
+move = { pelvis = [0, 0, -0.05] }
+
+[[clip]]
+name = "mag/t_cast_area"  # arms up, then flung out (area spells)
+keyframe = "framed"
+markers = { cast = 17 }
+params = { base = "mag/t_spread", stance = "mag/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "mag/t_summon"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [12, "raise"], [20, "down"], [28, "down"], [38, "rest"]]
+[clip.params.poses.raise]
+rotate = { upperarm_r = [["X", -155], ["Z", 10]], lowerarm_r = [["X", -15]], neck = [["X", -12]] }
+[clip.params.poses.down]
+rotate = { upperarm_r = [["X", -45], ["Z", 10]], lowerarm_r = [["X", -5]], spine_02 = [["X", 15]], neck = [["X", 15]] }
+
+[[clip]]
+name = "mag/t_cast_summon"  # arm raised, then down to the ground ahead
+keyframe = "framed"
+markers = { cast = 19 }
+params = { base = "mag/t_summon", stance = "mag/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "mag/s_cast_loop"          # continuous spell (telekinesis, control): the arm stretched out
+keyframe = "keyposes"
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "point"], [37, "point2"], [75, "point"]]
+[clip.params.poses.point]
+rotate = { upperarm_r = [["X", -90], ["Y", 15], ["Z", 40]], spine_02 = [["Z", -6]], neck = [["Z", -5]] }
+[clip.params.poses.point2]
+rotate = { upperarm_r = [["X", -94], ["Y", 15], ["Z", 40]], spine_02 = [["Z", -6]], neck = [["Z", -5]] }
+
+[[clip]]
+name = "mag/t_cast_loop_end"      # from the continuous spell back into the stance
+blend = ["mag/s_cast_loop", "mag/s_idle"]
+frames = 12
+
+[[clip]]
+name = "mag/t_fizzle"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [5, "jerk"], [9, "shake"], [13, "jerk"], [22, "rest"]]
+[clip.params.poses.jerk]
+rotate = { upperarm_r = [["X", -60]], lowerarm_r = [["X", -40]], hand_r = [["X", 30]], neck = [["X", 10]] }
+[clip.params.poses.shake]
+rotate = { upperarm_r = [["X", -50]], lowerarm_r = [["X", -30]], hand_r = [["X", -20]], neck = [["X", 10]] }
+
+[[clip]]
+name = "mag/t_cast_fail"  # no mana: the hand twitches
+keyframe = "framed"
+params = { base = "mag/t_fizzle", stance = "mag/s_idle", fade_in = 4, fade_out = 6 }
+
