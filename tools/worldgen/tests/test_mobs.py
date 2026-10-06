@@ -27,6 +27,7 @@ from gothar_worldgen.mobs import (
 REPO = Path(__file__).resolve().parents[3]
 ASSETS = REPO / "assets" / "source" / "mobs"
 PROP_ASSETS = REPO / "assets" / "source" / "props"
+TEXTURES = REPO / "assets" / "source" / "furniture" / "textures"  # shared by mobs and props
 
 
 def _bounds(model) -> tuple[np.ndarray, np.ndarray]:
@@ -90,7 +91,7 @@ def test_models_budget_collision_and_textures(kind):
     bodies = list(m.main.collision) + [c for _, _, p in m.parts for c in p.collision]
     assert bodies and all(body_is_closed(b) for b in bodies)
     doc, binary = read_glb(m.glb())
-    assert all(i["uri"].startswith("textures/") for i in doc["images"])
+    assert all(i["uri"].startswith("../furniture/textures/") for i in doc["images"])
     for mesh in doc["meshes"]:
         for prim in mesh["primitives"]:
             if "material" in prim:
@@ -99,13 +100,18 @@ def test_models_budget_collision_and_textures(kind):
 
 
 def test_versioned_models_are_current(tmp_path: Path):
-    write_mobs(tmp_path)
+    write_mobs(tmp_path / "mobs")
+    write_mobs(tmp_path / "props", tuple(PROPS), PROPS)
     for kind in TYPES:
-        assert (tmp_path / f"{kind}.glb").read_bytes() == (ASSETS / f"{kind}.glb").read_bytes(), (
-            kind
-        )
-    for png in (tmp_path / "textures").glob("*.png"):
-        assert (ASSETS / "textures" / png.name).is_file()
+        made = (tmp_path / "mobs" / f"{kind}.glb").read_bytes()
+        assert made == (ASSETS / f"{kind}.glb").read_bytes(), kind
+    shared = sorted(p.name for p in (tmp_path / "furniture" / "textures").glob("*.png"))
+    assert shared == sorted(p.name for p in TEXTURES.glob("*.png"))  # one folder, nothing else
+    for name in shared:
+        assert (tmp_path / "furniture" / "textures" / name).read_bytes() == (
+            TEXTURES / name
+        ).read_bytes(), name
+    assert not (ASSETS / "textures").exists() and not (PROP_ASSETS / "textures").exists()
 
 
 def _find_cook() -> Path | None:
@@ -147,6 +153,7 @@ def test_hearth_glows_with_hood_and_collision_only_at_the_block():
 
 
 def test_versioned_props_are_current(tmp_path: Path):
+    tmp_path = tmp_path / "props"
     write_mobs(tmp_path, tuple(PROPS), PROPS)
     for kind in PROPS:
         assert (tmp_path / f"{kind}.glb").read_bytes() == (PROP_ASSETS / f"{kind}.glb").read_bytes()
