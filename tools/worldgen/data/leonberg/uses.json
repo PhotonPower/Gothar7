@@ -34,11 +34,11 @@
   {"id": "DEBW_00100061ZhK", "use": "wohnhaus", "residents": 5}
  ],
  "uses": {
-  "gasthaus": {"freepoints": ["SIT:3", "DRINK:2", "SMALLTALK:2"], "mobs": ["bench:2"], "inside": {"mobs": ["table:2", "chest:1", "bed:1"], "freepoints": ["SMALLTALK:1", "STAND:1"], "hearth": true, "props": ["barrel_rack:1", "barrel:3", "shelf:2", "crate:1", "sausages:2"]}},
+  "gasthaus": {"freepoints": ["SIT:3", "DRINK:2", "SMALLTALK:2"], "mobs": ["bench:2"], "inside": {"mobs": ["table:2", "chest:1", "bed:1"], "freepoints": ["SMALLTALK:1", "STAND:1"], "hearth": true, "props": ["barrel_rack:1", "barrel:3", "shelf:2", "crate:1", "sausages:2", "stool:3", "bucket:1", "broom:1", "wall_hanging:1", "basket:1"]}},
   "baecker": {"freepoints": ["SWEEP:1", "STAND:1"]},
   "metzger": {"freepoints": ["CHOP:1", "STAND:1"]},
-  "haendler": {"freepoints": ["STAND:2"], "mobs": ["chest:1"], "inside": {"mobs": ["chest:1", "table:1", "bed:1"], "freepoints": ["STAND:1"], "props": ["counter:1", "shelf:1", "sacks:2", "crate_stack:1", "herbs:2"]}},
-  "schmiede": {"freepoints": ["REPAIR:1", "CHOP:1"], "mobs": ["anvil:1"], "inside": {"mobs": ["bed:1", "chest:1", "table:1"], "freepoints": ["LEAN:1"], "hearth": true, "props": ["bellows:1", "quench_trough:1", "weapon_board:1", "tool_board:1", "workbench:1", "barrel:1"]}},
+  "haendler": {"freepoints": ["STAND:2"], "mobs": ["chest:1"], "inside": {"mobs": ["chest:1", "table:1", "bed:1"], "freepoints": ["STAND:1"], "props": ["counter:1", "shelf:1", "sacks:2", "crate_stack:1", "herbs:2", "basket:3", "broom:1", "wall_hanging:1", "stool:1", "fur:1"]}},
+  "schmiede": {"freepoints": ["REPAIR:1", "CHOP:1"], "mobs": ["anvil:1"], "inside": {"mobs": ["bed:1", "chest:1", "table:1"], "freepoints": ["LEAN:1"], "hearth": true, "props": ["bellows:1", "quench_trough:1", "weapon_board:1", "tool_board:1", "workbench:1", "barrel:1", "bucket:2", "stool:1", "broom:1", "fur:1", "crate:1"]}},
   "werkstatt": {"freepoints": ["REPAIR:1", "SWEEP:1"], "mobs": ["bench:1"]},
   "bader": {"freepoints": ["STAND:1", "SIT:1"]},
   "kraeuter": {"freepoints": ["STAND:1"]},
@@ -46,6 +46,6 @@
   "wache": {"freepoints": ["STAND:2", "LEAN:1"]},
   "pfarrhaus": {"freepoints": ["SWEEP:1"]},
   "bauer": {"freepoints": ["CHOP:1", "HARVEST:1"]},
-  "wohnhaus": {"freepoints": ["LEAN:1"], "inside": {"mobs": ["bed:R", "chest:1", "table:1"], "freepoints": ["LEAN:1"], "hearth": true, "props": ["shelf:1", "sacks:1", "crate:1", "herbs:1", "sausages:1"]}}
+  "wohnhaus": {"freepoints": ["LEAN:1"], "inside": {"mobs": ["bed:R", "chest:1", "table:1"], "freepoints": ["LEAN:1"], "hearth": true, "props": ["shelf:1", "sacks:2", "crate:2", "herbs:1", "sausages:1", "basket:3", "fur:3", "wall_hanging:3", "stool:2", "bucket:1", "broom:1", "barrel:1"]}}
  }
 }

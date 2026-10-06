@@ -37,6 +37,7 @@ TILE_M = {  # metres covered by one texture (u, v)
     "cloth": (1.0, 1.0),  # a window wide, 0.6 m down from the sill (stretched to it)
     "clay": (0.5, 0.5),  # jugs, bowls, plates (household, W7)
     "meat": (0.3, 0.3),  # sausages, hams
+    "fur": (0.6, 0.6),  # fur rugs
 }
 
 
@@ -466,6 +467,17 @@ def meat(size: int, rng: np.random.Generator) -> Texture:
     return Texture("meat", _mean_one(albedo), 0.5 * skin + 0.3 * fat, 1.2)
 
 
+def fur(size: int, rng: np.random.Generator) -> Texture:
+    """A sheepskin or a hide: long tufts, darker roots, lighter tips, a few matted spots."""
+    yy, xx = np.mgrid[0:size, 0:size]
+    tufts = periodic_noise((size, size), rng, beta=1.0)
+    locks = np.sin((xx + 8 * periodic_noise((size, size), rng, beta=2.2) * size / 64) / (size / 96)
+                   * np.pi) ** 2  # fmt: skip
+    mats = np.clip((periodic_noise((size, size), rng, beta=2.6) - 0.6) / 0.2, 0.0, 1.0)
+    val = 0.8 + 0.3 * (tufts - 0.5) + 0.15 * locks - 0.2 * mats + 0.0 * yy
+    return Texture("fur", _mean_one(val), 0.6 * tufts + 0.4 * locks, 1.8)
+
+
 TERRAIN_KINDS = {"cobbles": cobbles}
 # materials of the mobs (assets/source/mobs, not tied to a place); boards and timber come from KINDS
 MOB_KINDS = {
@@ -474,6 +486,7 @@ MOB_KINDS = {
     "cloth": cloth,
     "clay": clay,
     "meat": meat,
+    "fur": fur,
 }  # baked into the terrain layer albedos (export/splat.py)
 
 
