@@ -200,6 +200,7 @@ def _body(c: Creature) -> tuple[bpy.types.Object, bpy.types.Object]:
         _join(high, [extra])
     count = _triangles(body)
     _apply(body, "DECIMATE", decimate_type="COLLAPSE", ratio=min(1.0, c.triangles / count))
+    _close_holes(body)
     _apply(body, "TRIANGULATE")
     for p in body.data.polygons:
         p.use_smooth = True
@@ -209,6 +210,19 @@ def _body(c: Creature) -> tuple[bpy.types.Object, bpy.types.Object]:
         _join(body, [plates])
         print(f"[chargen] plates: {len([s for s in c.shapes if s.kind in PLATES])} ({n} triangles)")
     return body, high
+
+
+def _close_holes(ob: bpy.types.Object) -> None:
+    """The reduction can tear tiny holes at thin tips (ears, ribs): weld and fill them."""
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0002)
+    border = [e for e in bm.edges if e.is_boundary]
+    if border:
+        bmesh.ops.holes_fill(bm, edges=border, sides=8)
+        print(f"[chargen] closed {len(border)} border edges after the reduction")
+    bm.to_mesh(ob.data)
+    bm.free()
 
 
 def _join(target: bpy.types.Object, others: list[bpy.types.Object]) -> None:
@@ -429,6 +443,11 @@ def _split_jaw(c: Creature, body: bpy.types.Object) -> None:
     print(f"[chargen] jaw split along the mouth cut: {moved} vertices")
 
 
+def _linear(colour: str) -> tuple[float, float, float]:
+    s = srgb(colour)
+    return tuple(float(v) for v in np.where(s <= 0.04045, s / 12.92, ((s + 0.055) / 1.055) ** 2.4))
+
+
 def _piece_texture(role: str, colour: str, folder: Path) -> bpy.types.Image:
     """Small shared texture of an eye or tooth colour: textures/<material>/<role>_<rrggbb>.jpg."""
     rng = np.random.default_rng(7)
@@ -460,7 +479,12 @@ def _add_pieces(c: Creature, body: bpy.types.Object, folder: Path) -> None:
         ob = bpy.data.objects.new(role, me)
         bpy.context.scene.collection.objects.link(ob)
         img = _piece_texture(role, colour, folder)
-        me.materials.append(_material(role, img, None, rough))
+        mat = _material(role, img, None, rough)
+        if kind == "eye" and c.eye_glow > 0:  # glTF emissiveFactor = colour * strength
+            bsdf = mat.node_tree.nodes["Principled BSDF"]
+            bsdf.inputs["Emission Color"].default_value = (*_linear(c.eye_glow_colour), 1.0)
+            bsdf.inputs["Emission Strength"].default_value = min(1.0, c.eye_glow)
+        me.materials.append(mat)
         bpy.ops.object.select_all(action="DESELECT")
         ob.select_set(True)
         body.select_set(True)

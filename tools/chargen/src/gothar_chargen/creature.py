@@ -103,6 +103,8 @@ class Creature:
     eye_colour: str = "#140d09"
     teeth_colour: str = "#d8cdb0"
     tongue_colour: str = "#7a4440"
+    eye_glow: float = 0.0  # emissive strength of the eyes (0..1; glowing in the dark)
+    eye_glow_colour: str = "#b0d890"
     extra: dict = field(default_factory=dict)
 
     def bone(self, name: str) -> Bone:
@@ -334,6 +336,8 @@ def load_creature(path: Path) -> Creature:
         eye_colour=str(data.get("eye_colour", "#140d09")),
         teeth_colour=str(data.get("teeth_colour", "#d8cdb0")),
         tongue_colour=str(data.get("tongue_colour", "#7a4440")),
+        eye_glow=float(data.get("eye_glow", 0.0)),
+        eye_glow_colour=str(data.get("eye_glow_colour", "#b0d890")),
     )
 
 
