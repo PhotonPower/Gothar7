@@ -36,6 +36,7 @@ DOOR_ZONE_M = 1.4  # nothing within this distance inside the door
 MOVE_M = 0.45  # room to walk past furniture
 STEP_M = 0.25  # placement search step
 INSIDE_WP_M = 1.2  # the room's waypoint this far inside the door
+REACH_R_M = 0.4  # straight walks keep this clear (engine: 0.3 m spheres, ai.md; models overhang)
 DOOR_WP_IN_M = 0.15  # the door's waypoint in the middle of the opening (half the wall)
 OUTSIDE_WP_M = 0.9  # the waypoint in front of the door, outside
 LIGHT = {
@@ -91,6 +92,7 @@ class _Room:
     inward: tuple[float, float]
     taken: list[Polygon] = field(default_factory=list)
     stands: list[tuple[tuple[float, float], tuple[float, float]]] = field(default_factory=list)
+    spots: list[Polygon] = field(default_factory=list)  # freepoints: kept apart, walked through
 
     @property
     def entry(self) -> tuple[float, float]:
@@ -100,13 +102,13 @@ class _Room:
 
     def reachable(self, p: tuple[float, float]) -> bool:
         """A straight walk from the room's waypoint to ``p`` past all furniture."""
-        lane = LineString([self.entry, p]).buffer(0.3)
+        lane = LineString([self.entry, p]).buffer(REACH_R_M)
         return not any(lane.intersects(t) for t in self.taken)
 
     def fits(self, shape: Polygon, margin: float = MOVE_M) -> bool:
         if not self.poly.buffer(-0.02).contains(shape) or shape.intersects(self.keep):
             return False
-        return not any(shape.distance(t) < margin for t in self.taken)
+        return not any(shape.distance(t) < margin for t in [*self.taken, *self.spots])
 
 
 def _room(e: dict[str, Any], obstacles: Sequence[Polygon] = ()) -> _Room:
@@ -248,7 +250,7 @@ class _House:
         self.plan.places.append({"kind": "fp", "name": name,
                                  "house": self.h.id, "pos": [pos[0], pos[1]], "dir": [d[0], d[1]],
                                  "y": self.room.floor})  # fmt: skip
-        self.room.taken.append(Point(pos).buffer(0.3))
+        self.room.spots.append(Point(pos).buffer(0.3))
 
     def fail(self, what: str) -> None:
         self.plan.failed.append({"house": self.h.id, "what": what, "reason": "no room"})

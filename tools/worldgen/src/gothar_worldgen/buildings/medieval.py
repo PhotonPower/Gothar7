@@ -906,7 +906,7 @@ def _top_outline(f: Frame, roof: _Roof, crease: LineString | None, y: float,
 
 def _room_spec(rules: Rules) -> dict[str, Any]:
     spec = {"wallM": 0.3, "ceilingM": 0.15, "beamM": 0.16, "beamEveryM": 1.0, "minAreaM2": 8.0,
-            "minHeightM": 2.4, "stoneFloors": [], "doorsOpen": True}  # fmt: skip
+            "minHeightM": 2.4, "stoneFloors": [], "doorsOpen": False}  # fmt: skip
     spec.update(rules.data.get("interior", {}))
     return spec
 

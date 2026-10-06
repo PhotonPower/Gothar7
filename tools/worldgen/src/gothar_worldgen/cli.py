@@ -1056,7 +1056,7 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
         uses_path = data_dir / "uses.json"
         places = None
         rules_doc = json.loads((data_dir.parent / "building_rules.json").read_text("utf-8"))
-        opened = bool(rules_doc.get("interior", {}).get("doorsOpen", True))
+        opened = bool(rules_doc.get("interior", {}).get("doorsOpen", False))
         doors = door_mobs(index, opened)  # W7: the doors of the enterable houses
         if doors:
             res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
