@@ -23,6 +23,7 @@ from typing import Any
 
 from gothar_worldgen.export.starts import DEFAULT_STARTS, StartPoint, add_start_points
 from gothar_worldgen.export.terrain import ExportError, world_text
+from gothar_worldgen.waynet.write import tidy
 
 IDS_FORMAT = "gothar-vob-ids"
 IDS_VERSION = 1
@@ -80,7 +81,10 @@ class VobIds:
 
 
 def _tidy(v: float) -> float:
-    return round(float(v), 5) + 0.0
+    """As the engine writes a number (float32, shortest text; waynet ``tidy``): an editor save of
+    the world gives the same bytes (the double rounded to 5 decimals could differ in the last
+    digit)."""
+    return tidy(v)
 
 
 def _vob(vid: int, kind: str, name: str, pos: list[float], parent: int | None = None,

@@ -953,6 +953,13 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   ZnP: die Stadtmauer, an die sie gebaut ist), endet der Raum für die Einrichtung an dessen Wand; der Herd steht dort an
   der Mauer. `assemble` schreibt allgemeine
   Vob-Angaben (mob, mesh, light, trigger) in die Gruppe `WORLDGEN_USES`.
+- **Innen-Ambient** (`gothar_worldgen/uses/zones.py`, Vertrag world.md „Zonen“, engine #207): `assemble` schreibt je Raum
+  `indoor`-Zonen mit `value` = Raum-Tag `LEO_<NUTZUNG>_<KÜRZEL>_INNEN` (wie `WP_…_INNEN`), Boden bis Decke an den
+  Innenseiten der Wände. Rechteckige Räume sind eine Box; schiefe Räume deckt eine gierige Überdeckung auf einem
+  5-cm-Raster ab (Boxen dürfen sich überlappen): bis alles, was weiter als 0,15 m von den Wänden liegt, in einer Box
+  ist, höchstens 8 Boxen je Raum (die Engine reicht die 32 Boxen nächst der Kamera an den Shader). Eine schiefe Wand
+  behält so etwa zwei Drittel des Innen-Ambients; an ihr bleiben leichte Helligkeitsstufen. Leonberg: 24 Boxen für
+  5 Räume. Andere Zonen der Welt bleiben erhalten, die eigenen (`LEO_…_INNEN`) werden ersetzt.
 
 ### Vorhandene Werkzeuge (kein Eigenbau)
 Blender (+ Add-on BlenderGIS zum Gegenprüfen), COLMAP / RealityScan / Postshot (Photogrammetrie bzw.
