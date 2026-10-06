@@ -696,24 +696,44 @@ def _band_heights(d: Derive, joints: dict[str, np.ndarray]) -> tuple[float, floa
 PANEL_GRID = (12, 16)  # columns, rows of an own front panel
 PANEL_REACH = (0.03, 0.025)  # metres: skin points per grid point, across and up/down
 PANEL_FLARE = 0.04  # metres: the hem stands this much further out than the top (over skirts)
+PANEL_HUG = 0.95  # share of the body's half width the panel covers where it lies on the body
+PANEL_TAPER = 0.15  # the hem is this share narrower than the panel at the hips
+PANEL_ARCH = 0.015  # metres: the middle stands further out than the sides (cloth, not a board)
+PANEL_WRAP = 0.03  # metres the side edges fall back around the hips
+PANEL_FOLDS = (3.0, 5.0)  # soft vertical folds (two overlaid waves: uneven), deepening downwards
+PANEL_FOLD_DEPTH = 0.02  # metres at the hem
+PANEL_HEM = 0.012  # metres: the hem is uneven (cloth hangs a little longer in the folds)
 
 
 def _panel(obj: bpy.types.Object, width: float, low: float, high: float) -> None:
-    """Own geometry: replace the skin copy by a panel in front of the body between the heights
-    `low` and `high`, `width` wide – it follows the front of the body and, below the most
-    forward point (belly, hips), hangs straight down instead of following the legs (aprons).
+    """Own geometry: replace the skin copy by a cloth panel in front of the body between the
+    heights `low` and `high`, at most `width` wide. On the body (waist, hips) it is as wide as the
+    body and follows its front around the hips; below the widest row it hangs straight down
+    (instead of following the legs), tapering towards the hem, with a slight arch and soft folds.
     Every grid point takes the bone weights of the nearest skin vertex."""
     co = _coords(obj)
     mesh = obj.data
     torso = co[np.abs(co[:, 0]) < width]  # no arms or hands
     cols, rows = PANEL_GRID
-    xs = np.linspace(-width / 2, width / 2, cols)
     zs = np.linspace(high, low, rows)  # top row first
+    # half width per row: the body's where the panel lies on it, tapering below the widest row
+    half = np.full(rows, width / 2)
+    for r, z in enumerate(zs):
+        level = torso[np.abs(torso[:, 2] - z) < PANEL_REACH[1]]
+        if len(level):
+            front = level[level[:, 1] <= level[:, 1].mean()]  # the front half of the section
+            half[r] = min(width / 2, PANEL_HUG * float(np.abs(front[:, 0]).max()))
+    widest = int(np.argmax(half[: rows // 2]))
+    below = np.arange(rows) > widest
+    share = (np.arange(rows) - widest) / max(1, rows - 1 - widest)
+    half = np.where(below, half[widest] * (1.0 - PANEL_TAPER * share), half)
+    across = np.linspace(-1.0, 1.0, cols)
+    xs = half[:, None] * across[None, :]
     ys = np.empty((rows, cols))
     for r, z in enumerate(zs):
-        for c, x in enumerate(xs):
+        for c in range(cols):
             near = torso[
-                (np.abs(torso[:, 0] - x) < PANEL_REACH[0])
+                (np.abs(torso[:, 0] - xs[r, c]) < PANEL_REACH[0])
                 & (np.abs(torso[:, 2] - z) < PANEL_REACH[1])
             ]
             front = float(near[:, 1].min()) if len(near) else np.inf  # the figure faces -Y
@@ -721,13 +741,22 @@ def _panel(obj: bpy.types.Object, width: float, low: float, high: float) -> None
         valid = np.isfinite(ys[r])
         if not valid.any():
             raise SystemExit(f"panel: no skin at height {z:.2f} m")
-        # columns beside the body take their nearest column with skin: the sides wrap the hips
+        # columns beside the body take their nearest column with skin
         idx = np.arange(cols)
         nearest = idx[valid][np.abs(idx[:, None] - idx[valid][None, :]).argmin(axis=1)]
         ys[r] = ys[r, nearest]
     for _ in range(2):  # even out the columns a little (no single-column dents)
         ys[:, 1:-1] = np.minimum(ys[:, 1:-1], (ys[:, :-2] + ys[:, 1:-1] + ys[:, 2:]) / 3)
-    ys -= PANEL_FLARE * (high - zs[:, None]) / (high - low)  # a little flare towards the hem
+    drape = ((high - zs) / (high - low))[:, None]  # 0 at the waist .. 1 at the hem
+    wave = (across + 1.0) / 2
+    folds = 0.6 * (0.5 - 0.5 * np.cos(2 * np.pi * PANEL_FOLDS[0] * wave)) + 0.4 * (
+        0.5 - 0.5 * np.cos(2 * np.pi * PANEL_FOLDS[1] * wave + 1.3)
+    )
+    ys -= PANEL_FLARE * drape  # a little flare towards the hem
+    ys -= PANEL_ARCH * (1.0 - across[None, :] ** 2) + PANEL_FOLD_DEPTH * drape * folds[None, :]
+    ys += PANEL_WRAP * across[None, :] ** 2 * (1.0 - 0.5 * drape)  # the sides fall back
+    hem = np.where(np.arange(rows) == rows - 1, 1.0, 0.0)[:, None]
+    zs_grid = zs[:, None] - PANEL_HEM * hem * folds[None, :]  # longer in the folds
     # bone weights of the nearest skin vertex
     weights: list[dict[int, float]] = [{} for _ in range(len(mesh.vertices))]
     for v in mesh.vertices:
@@ -735,10 +764,13 @@ def _panel(obj: bpy.types.Object, width: float, low: float, high: float) -> None
     bm = bmesh.new()
     uv = bm.loops.layers.uv.new()
     deform = bm.verts.layers.deform.verify()
-    grid = [[bm.verts.new((x, ys[r, c], zs[r])) for c, x in enumerate(xs)] for r in range(rows)]
+    grid = [
+        [bm.verts.new((xs[r, c], ys[r, c], zs_grid[r, c])) for c in range(cols)]
+        for r in range(rows)
+    ]
     for r in range(rows):
         for c in range(cols):
-            p = np.array([xs[c], ys[r, c], zs[r]])
+            p = np.array([xs[r, c], ys[r, c], zs_grid[r, c]])
             nearest = int(np.argmin(np.linalg.norm(co - p, axis=1)))
             for group, w in weights[nearest].items():
                 grid[r][c][deform][group] = w
@@ -750,14 +782,16 @@ def _panel(obj: bpy.types.Object, width: float, low: float, high: float) -> None
             for loop, (rr, cc) in zip(
                 f.loops, ((r, c), (r + 1, c), (r + 1, c + 1), (r, c + 1)), strict=True
             ):
-                loop[uv].uv = (xs[cc] / width + 0.5, 1.0 - (high - zs[rr]) / (high - low))
+                loop[uv].uv = ((across[cc] + 1.0) / 2, 1.0 - (high - zs[rr]) / (high - low))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     for f in bm.faces:
         if f.normal.y > 0:  # face the front
             f.normal_flip()
     bm.to_mesh(mesh)
     bm.free()
-    print(f"[chargen] panel {width:.2f} m wide, {high - low:.2f} m long")
+    print(
+        f"[chargen] panel {2 * half.min():.2f}-{2 * half.max():.2f} m wide, {high - low:.2f} m long"
+    )
 
 
 FLATTEN_BUMP = 0.01  # metres in front of the first fit that count as a bump, not torso

@@ -388,8 +388,33 @@ void Engine::updatePlayerCamera(f64 realSeconds)
                                               physics::layerBit(physics::Layer::World));
         return hit ? std::optional<f32>(hit->distance) : std::nullopt;
     };
+    // Inside (a roof above the hero, welt's walkable houses): the closer indoor camera, blended in and out. A
+    // roof above the hero and around him (4 of 5 points, 1 m apart): walking along a house under its jettied
+    // upper floor (half a metre over the street) is still outside.
+    const gameplay::IndoorCameraSettings& indoor = m_movementSettings.indoor;
+    int covered = 0;
+    if (m_physics.valid())
+    {
+        for (const Vec2 offset :
+             {Vec2(0.0f), Vec2(1.0f, 0.0f), Vec2(-1.0f, 0.0f), Vec2(0.0f, 1.0f), Vec2(0.0f, -1.0f)})
+        {
+            covered += m_physics
+                               .raycast(feet + Vec3(offset.x, 1.0f, offset.y), Vec3(0.0f, 1.0f, 0.0f),
+                                        std::max(indoor.ceiling - 1.0f, 0.1f),
+                                        physics::layerBit(physics::Layer::World))
+                               .has_value()
+                           ? 1
+                           : 0;
+        }
+    }
+    const bool roof = covered >= 4;
+    const f32 towards = indoor.blendSeconds > 0.0f
+                            ? 1.0f - std::exp(-static_cast<f32>(realSeconds) / indoor.blendSeconds)
+                            : 1.0f;
+    m_indoorBlend += ((roof ? 1.0f : 0.0f) - m_indoorBlend) * towards;
     m_playerCamera.update(static_cast<f32>(realSeconds), feet, m_movement.yaw(), m_playerPitchPixels,
-                          m_movementSettings.camera, obstruction);
+                          gameplay::blendCamera(m_movementSettings.camera, indoor.camera, m_indoorBlend),
+                          obstruction);
     m_playerPitchPixels = 0.0f;
     Vec3 eye = m_playerCamera.position();
     // Above the water while swimming: no under-water view until M17.

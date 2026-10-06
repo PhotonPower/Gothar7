@@ -10,6 +10,20 @@
 
 namespace g7::render
 {
+/// A room (world.md "zones", type indoor): a box turned by `yaw` about +Y; local +X points to
+/// (cos yaw, 0, -sin yaw). Surfaces in it get the indoor ambient.
+struct IndoorVolume
+{
+    Vec3 center{0.0f};
+    Vec3 halfExtents{1.0f};
+    f32 yaw = 0.0f; ///< radians
+};
+
+/// How much a point is inside the rooms, 0..1: 1 within a box (5 cm tolerance, so its inner wall, floor and
+/// ceiling surfaces count), fading to 0 at `edge` beyond it - through the wall, whose outer face stays
+/// outside. Same formula as common/lighting.glsl.
+[[nodiscard]] f32 indoorAmount(const Vec3& point, std::span<const IndoorVolume> volumes, f32 edge) noexcept;
+
 /// Global lighting of a frame. Driven by the time of day from M4 (sky colours, sun path).
 struct Environment
 {
@@ -23,7 +37,13 @@ struct Environment
     Vec3 fogColor{0.08f, 0.04f, 0.033f};
     f32 fogStart = 30.0f;
     f32 fogDensity = 0.0f;
+    /// Rooms of the world near the camera (at most kMaxIndoorVolumes; the engine picks the nearest).
+    std::vector<IndoorVolume> indoor;
+    f32 indoorAmbient = 1.0f; ///< ambient factor inside them (environment.toml [indoor])
+    f32 indoorEdge = 0.3f;    ///< m, the fade beyond a room's box (welt's walls are 0.3 m thick)
 };
+
+inline constexpr u32 kMaxIndoorVolumes = 32;
 
 /// Sky of the background pass: colour from the horizon (= fog colour) to `zenith`, sun and moon discs,
 /// stars. Linear colours.
@@ -96,11 +116,14 @@ struct GpuLighting
     Vec4 cameraForward;
     Vec4 fogColorStart; ///< rgb linear, w start
     Vec4 fogParams;     ///< x density
+    Vec4 indoorParams;  ///< x rooms, y ambient factor inside, z edge (m)
+    std::array<Vec4, 2 * kMaxIndoorVolumes>
+        indoorBoxes; ///< per room: centre + cos yaw, half extents + sin yaw
     std::array<Vec4, LightList::kMaxPerFrame> pointPositionRadius;
     std::array<Vec4, LightList::kMaxPerFrame> pointColor; ///< rgb * intensity
 };
-static_assert(sizeof(GpuLighting) ==
-                  5 * 16 + 4 * 64 + 16 + 4 * 16 + 7 * 16 + 2 * 16 * LightList::kMaxPerFrame,
+static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 8 * 16 + 2 * 16 * kMaxIndoorVolumes +
+                                         2 * 16 * LightList::kMaxPerFrame,
               "must match std140 (common/lighting.glsl)");
 
 [[nodiscard]] GpuLighting packLighting(const Environment& environment, const LightList& lights) noexcept;

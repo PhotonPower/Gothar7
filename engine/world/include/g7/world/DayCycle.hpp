@@ -66,10 +66,13 @@ public:
     [[nodiscard]] DaySample evaluate(f32 hour, f32 fogDensity) const;
 
     [[nodiscard]] const Orbit& orbit() const noexcept { return m_orbit; }
+    /// [indoor] ambient: factor on the ambient inside rooms (zones of type indoor), 0..1.
+    [[nodiscard]] f32 indoorAmbient() const noexcept { return m_indoorAmbient; }
     [[nodiscard]] const std::vector<EnvironmentKey>& keys() const noexcept { return m_keys; }
 
 private:
     Orbit m_orbit;
     std::vector<EnvironmentKey> m_keys; // sorted by hour, at least one
+    f32 m_indoorAmbient = 0.35f;
 };
 } // namespace g7::world

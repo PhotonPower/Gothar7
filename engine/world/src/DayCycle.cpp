@@ -139,6 +139,12 @@ Result<DayCycle> DayCycle::parse(std::string_view toml, std::string_view source)
     }
     std::sort(cycle.m_keys.begin(), cycle.m_keys.end(),
               [](const EnvironmentKey& a, const EnvironmentKey& b) { return a.hour < b.hour; });
+    const f64 indoor = c.get<f64>("indoor.ambient", cycle.m_indoorAmbient);
+    if (indoor < 0.0 || indoor > 1.0)
+    {
+        return error("indoor.ambient", "must be 0..1 (a factor on the ambient)");
+    }
+    cycle.m_indoorAmbient = static_cast<f32>(indoor);
     for (usize i = 1; i < cycle.m_keys.size(); ++i)
     {
         if (cycle.m_keys[i].hour == cycle.m_keys[i - 1].hour)

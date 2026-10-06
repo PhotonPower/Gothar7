@@ -5,6 +5,7 @@ Npc "mon_wolf" {
     level = 6,
     species = "wolf",
     attributes = { str = 20, dex = 20, hp = 60 },
+    damage = { edge = 0 },      -- Biss: Stärke als Klingen-Schaden (M11; Platzhalterwerte)
     routine = "rtn_mon_wolf",
     senses = { angle = 220 }, -- Tiere bemerken fast ringsum
 }
@@ -15,6 +16,7 @@ Npc "mon_keiler" {
     level = 5,
     species = "keiler",
     attributes = { str = 25, hp = 80 },
+    damage = { edge = 5 },      -- Hauer
     routine = "rtn_mon_keiler",
     senses = { angle = 220 },
 }
@@ -25,6 +27,7 @@ Npc "mon_laufvogel" {
     level = 3,
     species = "laufvogel",
     attributes = { str = 10, dex = 15, hp = 40 },
+    damage = { blunt = 0 },     -- Schnabel, Tritt
     routine = "rtn_mon_laufvogel",
     senses = { angle = 220 },
 }

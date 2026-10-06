@@ -55,6 +55,23 @@ struct WorldFileVob
     ItemRef item;                             ///< Item vobs only
 };
 
+/// A room's box (zone type "indoor", world.md "Zonen"): turned by `yaw` degrees about +Y like a vob; local +X
+/// points to (cos yaw, 0, -sin yaw).
+struct ZoneBox
+{
+    Vec3 center{0.0f};
+    Vec3 halfExtents{1.0f};
+    f32 yawDegrees = 0.0f;
+};
+
+struct Zone
+{
+    std::string type;           ///< "indoor"; other types (music, ...) are kept unread
+    std::string value;          ///< indoor: the room tag LEO_<USE>_<CODE>_INNEN (several boxes may share it)
+    std::optional<ZoneBox> box; ///< indoor zones
+    std::string json;           ///< other types: the entry as it was (written back unchanged)
+};
+
 struct WorldFile
 {
     std::string name;
@@ -65,9 +82,9 @@ struct WorldFile
     std::vector<WorldFileVob> vobs;
     /// Optional "waynet" block (v1, world.md "Wegnetz"): checked and sorted when read.
     std::optional<WaynetData> waynet;
-    /// Zones are kept as JSON text until their system exists (read and written back unchanged); empty =
-    /// absent.
-    std::string zonesJson;
+    /// Optional "zones" block (world.md "Zonen"): indoor zones checked and read, the other types kept as they
+    /// are; written one per line, sorted by value (indoor ties by box centre x, then z).
+    std::vector<Zone> zones;
     /// Optional "generator" head (world.md): written by gothar-worldgen, kept unchanged. `generatorOwned`
     /// holds its "owned" ids as closed ranges - a hint for the editor that such vobs are rewritten by the
     /// next generator run.

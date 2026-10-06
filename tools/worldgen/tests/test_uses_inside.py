@@ -5,7 +5,13 @@ import math
 import pytest
 from shapely.geometry import LineString, Point, Polygon
 
-from gothar_worldgen.uses.inside import BENCH_OFF_M, InsideSpec, inside_spec, plan_inside
+from gothar_worldgen.uses.inside import (
+    BENCH_OFF_M,
+    REACH_R_M,
+    InsideSpec,
+    inside_spec,
+    plan_inside,
+)
 from gothar_worldgen.uses.places import House, UsesError
 
 # a room 9.4 x 6.4 m (a house 10 x 7 with 0.3 m walls), door in the south wall, facing out (+z)
@@ -65,6 +71,13 @@ def test_way_from_the_door_stays_clear_and_places_are_reachable():
     for v in by_kind(p, "mob") + by_kind(p, "mesh"):
         assert not path.contains(Point(v["pos"][0], v["pos"][2])), v["name"]
     fps = [f for f in p.places if f["kind"] == "fp"]
+    for f in fps:  # a straight walk from the room's waypoint, clear of every piece of furniture
+        lane = LineString([entry["pos"], f["pos"]])
+        for v in by_kind(p, "mob") + by_kind(p, "mesh"):
+            assert lane.distance(Point(v["pos"][0], v["pos"][2])) >= REACH_R_M, (
+                f["name"],
+                v["name"],
+            )
     assert {f["name"].split("_")[1] for f in fps} >= {"CAMPFIRE", "LEAN"}
     assert all(f["y"] == 1.0 for f in fps)
     assert (
