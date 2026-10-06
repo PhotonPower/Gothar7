@@ -35,6 +35,8 @@ TILE_M = {  # metres covered by one texture (u, v)
     "iron": (0.5, 0.5),
     "straw": (1.0, 1.0),
     "cloth": (1.0, 1.0),  # a window wide, 0.6 m down from the sill (stretched to it)
+    "clay": (0.5, 0.5),  # jugs, bowls, plates (household, W7)
+    "meat": (0.3, 0.3),  # sausages, hams
 }
 
 
@@ -443,12 +445,35 @@ def cloth(size: int, rng: np.random.Generator) -> Texture:
     return Texture("cloth", _mean_one(val), 0.6 * weave + 0.4 * felt, 1.5)
 
 
+def clay(size: int, rng: np.random.Generator) -> Texture:
+    """Glazed earthenware: smooth with fine speckle, faint turning rings, a few glaze runs."""
+    yy, _ = np.mgrid[0:size, 0:size]
+    speckle = periodic_noise((size, size), rng, beta=0.6)
+    cloud = periodic_noise((size, size), rng, beta=2.6)
+    rings = np.sin(yy / (size / 48) * 2 * np.pi) * 0.5 + 0.5  # thrown on the wheel: along v
+    runs = np.clip((periodic_noise((size, size), rng, beta=3.0) - 0.7) / 0.15, 0.0, 1.0)
+    val = 0.92 + 0.12 * (cloud - 0.5) + 0.06 * (speckle - 0.5) + 0.04 * rings - 0.12 * runs
+    return Texture("clay", _mean_one(val), 0.3 * rings + 0.1 * speckle, 0.6)
+
+
+def meat(size: int, rng: np.random.Generator) -> Texture:
+    """Smoked meat: dark red with marbled fat and a rough, dry skin."""
+    fat = np.clip((periodic_noise((size, size), rng, beta=2.0) - 0.62) / 0.12, 0.0, 1.0)
+    skin = periodic_noise((size, size), rng, beta=1.2)
+    tone = periodic_noise((size, size), rng, beta=2.8)
+    red = 0.85 + 0.25 * (tone - 0.5) + 0.1 * (skin - 0.5)
+    albedo = np.stack([red + 0.9 * fat, red * 0.75 + 1.2 * fat, red * 0.6 + 1.1 * fat], axis=2)
+    return Texture("meat", _mean_one(albedo), 0.5 * skin + 0.3 * fat, 1.2)
+
+
 TERRAIN_KINDS = {"cobbles": cobbles}
 # materials of the mobs (assets/source/mobs, not tied to a place); boards and timber come from KINDS
 MOB_KINDS = {
     "iron": iron,
     "straw": straw,
     "cloth": cloth,
+    "clay": clay,
+    "meat": meat,
 }  # baked into the terrain layer albedos (export/splat.py)
 
 

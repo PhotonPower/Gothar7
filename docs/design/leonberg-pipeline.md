@@ -953,6 +953,20 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   ZnP: die Stadtmauer, an die sie gebaut ist), endet der Raum für die Einrichtung an dessen Wand; der Herd steht dort an
   der Mauer. `assemble` schreibt allgemeine
   Vob-Angaben (mob, mesh, light, trigger) in die Gruppe `WORLDGEN_USES`.
+- **Hausrat** (B, `inside.props` je Nutzung, Modelle `props/*.glb` aus `mobs.py` `PROPS`, keine Mobs): Fässer, Schanktheke
+  mit liegenden Fässern, Ladentheke, Regale mit Krügen, Tellern und Schalen, Kisten, Säcke, Werkbank, Werkzeug- und
+  Waffenbrett, Löschtrog, Blasebalg, hängende Würste und Kräuter. Gestellt nach Möbeln und Freepoints, mit dem
+  Rücken zur Wand, untereinander 0,12 m Abstand; frei bleiben Türzone, Schwenkbereich, die Gasse zum Herd und die
+  geraden Wege vom Raum-Wegpunkt zu jeder Innenstelle und jedem Mob-Slot (0,4 m). Besonderheiten: Die **Ladentheke**
+  (Krämer) steht mit einem Regal dahinter und 0,9 m Gang dazwischen; das offene Ende des Gangs bekommt den Wegpunkt
+  `WP_…_INNEN_THEKE` (verbunden mit `WP_…_INNEN`), der Krämer steht (STAND) im Gang hinter der Theke. Der Wirt steht
+  an den Zapfhähnen der **Schanktheke**. **Blasebalg** (Düse zum Feuer) und **Löschtrog** neben dem Herd (der Trog
+  sonst an einer freien Wand). **Waffenbrett** der Schmiede: zwei Leisten, daran hängen figurens Gegenstände
+  (`items/it_sword_old`, `it_sword_crude`, `it_axe`) als Mesh-Vobs, Spitze nach unten, flach an der Wand.
+  **Hängendes** (Würste, Kräuter) an der Decke 0,45 m vor einer Wand, mindestens 2 m über dem Boden, nicht über dem
+  Herd und nicht an der Tür. Was keinen Platz findet, steht im Bericht (`failed`). Neue Paletteneinträge (gemeinsam
+  für Mobs und Props): `clay`, `clay_glaze`, `meat` (eigene prozedurale Texturen), `leather`, `herb`, `water`,
+  `sackcloth`, `pine`.
 - **Innen-Ambient** (`gothar_worldgen/uses/zones.py`, Vertrag world.md „Zonen“, engine #207): `assemble` schreibt je Raum
   `indoor`-Zonen mit `value` = Raum-Tag `LEO_<NUTZUNG>_<KÜRZEL>_INNEN` (wie `WP_…_INNEN`), Boden bis Decke an den
   Innenseiten der Wände. Rechteckige Räume sind eine Box; schiefe Räume deckt eine gierige Überdeckung auf einem
