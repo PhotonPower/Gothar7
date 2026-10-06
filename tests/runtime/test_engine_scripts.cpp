@@ -872,6 +872,26 @@ TEST_CASE("Engine NPCs: doors - planned through when unlocked, opened on the way
         REQUIRE(engine.runFrame());
     }
     CHECK_FALSE(engine.mobInfo(door)->open); // and closed it behind himself
+
+    // Back again: now on the side the leaf swings to (welt #227, going out of an inward door). He waits
+    // outside its arc while it opens instead of being pushed aside behind it, and gets through.
+    run(engine, "Story.through = nil");
+    run(engine, "npc_goto_point('npc_old_man', 31, 0, -6.5)");
+    opened = false;
+    for (int i = 0; i < 60 * 40 && run(engine, "Story.through").isNil(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+        const auto info = engine.mobInfo(door);
+        opened = opened || info->open;
+    }
+    CHECK(opened);
+    CHECK(run(engine, "Story.through").asString() == "point");
+    CHECK(run(engine, "npc_state('npc_old_man').z").asNumber() > -7.0);
+    for (int i = 0; i < 60 * 3; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK_FALSE(engine.mobInfo(door)->open); // closed behind himself again
 }
 
 TEST_CASE("Engine world: a door open in the world file stands open and is saved closed with open = true")

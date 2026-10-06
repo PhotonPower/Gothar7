@@ -669,7 +669,8 @@ private:
     [[nodiscard]] bool passableDoor(u64 vob) const;
     [[nodiscard]] std::optional<Vec3> doorLeafCentre(u64 vob) const;
     /// Opens a closed door ahead of the walking NPC, closes the one behind it; true while it waits for one.
-    bool npcDoors(Creature& c);
+    /// Opens doors on c's way; true while it waits. backOff: where to step out of a swinging leaf's arc.
+    bool npcDoors(Creature& c, Vec3& backOff);
     /// Spawns an Npc instance with its figure, capsule, values and routine.
     [[nodiscard]] Result<u32> spawnNpc(std::string_view name, const Vec3& at, f32 yaw);
     // Behaviour (EngineAi.cpp)
