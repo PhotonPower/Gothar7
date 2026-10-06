@@ -61,7 +61,9 @@ TEST_CASE("WorldFile: reads vobs, components and the id counter")
     CHECK(world.vobs[2].transform.rotation.y == doctest::Approx(0.7071068f));
     REQUIRE(world.waynet.has_value());
     CHECK(world.waynet->points.size() == 1);
-    CHECK_FALSE(world.zonesJson.empty());
+    REQUIRE(world.zones.size() == 1);
+    CHECK(world.zones[0].type == "music");
+    CHECK_FALSE(world.zones[0].box.has_value());
 }
 
 TEST_CASE("WorldFile: writing is stable and round-trips")
@@ -76,7 +78,8 @@ TEST_CASE("WorldFile: writing is stable and round-trips")
     // Waynet and zones come back unchanged.
     REQUIRE(parse(text).waynet.has_value());
     CHECK(parse(text).waynet->points[0].name == "WP_CAMP");
-    CHECK(parse(text).zonesJson == world.zonesJson);
+    REQUIRE(parse(text).zones.size() == 1);
+    CHECK(parse(text).zones[0].json == world.zones[0].json);
 }
 
 TEST_CASE("WorldFile: the id counter lies above every id")
@@ -306,10 +309,10 @@ TEST_CASE("WorldFile: numbers are written with the fewest digits, as Python writ
         R"(1000000000000000.0,1e+16,1.7976931348623157e+308,5e-324,0.6666666666666666,-0.0,)"
         R"(0.30000000000000004,1234567890123456.0,9.999999999999999e-05]}])";
     WorldFile world = parse(kCamp);
-    world.zonesJson = std::string(kNumbers);
+    world.zones = {Zone{"numbers", "", std::nullopt, std::string(kNumbers).substr(1, kNumbers.size() - 2)}};
     world.waynet->points[0].position = Vec3(24.12317f, 0.0001f, -0.00001f);
     const std::string text = writeWorldFile(world);
-    CHECK(text.find(std::string(kPython)) != std::string::npos);
+    CHECK(text.find(std::string(kPython).substr(1, kPython.size() - 2)) != std::string::npos);
     CHECK(text.find(R"("pos":[24.12317,0.0001,-1e-05])") != std::string::npos);
     CHECK(writeWorldFile(parse(text)) == text);
 }
@@ -338,4 +341,50 @@ TEST_CASE("WorldFile: positions and rotations come back as welt's generator wrot
     WorldFile scaled = parse(
         R"({"version":1,"name":"w","nextVobId":2,"vobs":[{"id":1,"type":"empty","name":"Q","rot":[0,0,0,2]}]})");
     CHECK(scaled.vobs[0].transform.rotation.w == doctest::Approx(1.0f));
+}
+
+TEST_CASE("WorldFile: indoor zones - turned boxes read, checked, written one per line in order")
+{
+    // welt's rooms: several boxes per room (a pentagonal smithy), sorted by value, then box centre x, then z.
+    WorldFile world = parse(kCamp);
+    std::string text = writeWorldFile(world);
+    const std::string zones =
+        R"([{"type":"indoor","value":"LEO_SCHMIEDE_ZNP_INNEN","box":{"center":[5.0,1.2,1.0],"halfExtents":[2.0,1.2,1.5],"yaw":30.0}},)"
+        R"({"type":"music","value":"CAMP"},)"
+        R"({"type":"indoor","value":"LEO_SCHMIEDE_ZNP_INNEN","box":{"center":[2.0,1.2,4.0],"halfExtents":[1.0,1.2,1.0],"yaw":30.0}},)"
+        R"({"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-90.5,0.1,28.0],"halfExtents":[3.1,1.45,2.6],"yaw":-71.86}}])";
+    const auto at = text.find("\"zones\":");
+    REQUIRE(at != std::string::npos);
+    const auto end = text.find("\n}", at);
+    const std::string base = text;
+    text = base.substr(0, at) + "\"zones\": " + zones + base.substr(end);
+    const WorldFile read = parse(text);
+    REQUIRE(read.zones.size() == 4);
+    REQUIRE(read.zones[0].box.has_value());
+    CHECK(read.zones[0].box->yawDegrees == doctest::Approx(30.0f));
+    CHECK(read.zones[0].box->halfExtents == Vec3(2.0f, 1.2f, 1.5f));
+    const std::string written = writeWorldFile(read);
+    const auto gasthaus = written.find("LEO_GASTHAUS_ZHE_INNEN");
+    const auto smithyWest = written.find(R"("center":[2.0,1.2,4.0])");
+    const auto smithyEast = written.find(R"("center":[5.0,1.2,1.0])");
+    CHECK(written.find(R"({"type":"music","value":"CAMP"})") != std::string::npos);
+    CHECK(gasthaus < smithyWest);
+    CHECK(smithyWest < smithyEast); // same room: by x
+    CHECK(
+        written.find(
+            R"({"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-90.5,0.1,28.0],"halfExtents":[3.1,1.45,2.6],"yaw":-71.86}})") !=
+        std::string::npos);
+    CHECK(writeWorldFile(parse(written)) == written); // stable
+
+    const auto fails = [&](const char* zone, const char* expected)
+    {
+        std::string bad = base.substr(0, at) + "\"zones\": [" + zone + "]" + base.substr(end);
+        auto r = parseWorldFile(bad, "w.g7world");
+        REQUIRE_FALSE(r.ok());
+        CHECK_MESSAGE(r.error().message.find(expected) != std::string::npos, r.error().message);
+    };
+    fails(R"({"type":"indoor","box":{"center":[0,0,0],"halfExtents":[1,1,1]}})", "zones[0]");
+    fails(R"({"type":"indoor","value":"R"})", "box");
+    fails(R"({"type":"indoor","value":"R","box":{"center":[0,0,0],"halfExtents":[1,0,1]}})", "halfExtents");
+    fails(R"({"value":"R"})", "type");
 }

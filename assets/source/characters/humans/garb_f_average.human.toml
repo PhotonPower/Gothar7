@@ -37,7 +37,7 @@ band_at = ["calf_l", "spine_01"]
 band = [0.0, -0.01]
 panel = 0.36
 offset = 0.035
-rim = 0.004
+rim = 0.002
 texture = "gothar/ambientcg/Fabric063/Fabric063_1K-JPG_Color.jpg"
 
 [derive.apron_leather]
@@ -47,7 +47,7 @@ band_at = ["calf_l", "spine_01"]
 band = [0.0, -0.01]
 panel = 0.36
 offset = 0.035
-rim = 0.004
+rim = 0.002
 texture = "gothar/ambientcg/Leather014/Leather014_1K-JPG_Color.jpg"
 normal = "gothar/ambientcg/Leather014/Leather014_1K-JPG_NormalGL.jpg"
 uv_scale = 2.0

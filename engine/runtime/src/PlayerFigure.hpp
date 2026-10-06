@@ -172,8 +172,11 @@ struct Creature
     bool followPlayer = false;    ///< Follow command running
     bool talking = false;         ///< in a dialogue with the player (M10): stands, faces him
     bool approaching = false;
-    u64 openedDoor = 0; ///< vob of the door it opened on its way (closes it behind itself)              ///<
-                        ///< walks up to the player for an important Info (approach = true)
+    u64 openedDoor = 0; ///< vob of the door it opened on its way (closes it behind itself)
+    // Combat (M11, EngineCombat.cpp).
+    gameplay::Fighter fighter;
+    std::vector<u32> hitThisSwing;         ///< targets of the current swing (each hit once)              ///<
+                                           ///< walks up to the player for an important Info (approach = true)
     const LoadedModel* handItem = nullptr; ///< drawn at socket_hand_r
     usize handBone = 0;
     std::unique_ptr<AnimatedFigure> figure;

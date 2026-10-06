@@ -25,7 +25,23 @@ struct CameraSettings
     f32 collisionRadius = 0.2f;     ///< m, the camera's sphere for wall tests
     f32 minDistance = 0.6f;         ///< m, never closer to the target
     f32 mousePitchPerPixel = 0.15f; ///< degrees
+    /// s, time constant of moving back out after a wall pushed the camera in (in at once, out smoothly: no
+    /// popping along walls); 0: at once
+    f32 returnLag = 0.0f;
 };
+
+/// Inside (a roof above the hero; welt's rooms 4-8 m wide, 2.4-2.9 m high): a closer camera, blended in.
+struct IndoorCameraSettings
+{
+    CameraSettings camera;   ///< distance, target height, min distance, collision radius used indoors
+    f32 ceiling = 4.0f;      ///< m above the feet: a roof lower than this means inside
+    f32 blendSeconds = 0.5f; ///< time constant of the change between outside and inside
+};
+
+/// `outside` blended towards `inside` by `t` (0..1): distance, target height, min distance, collision radius;
+/// the rest stays as outside.
+[[nodiscard]] CameraSettings blendCamera(const CameraSettings& outside, const CameraSettings& inside,
+                                         f32 t) noexcept;
 
 /// Gravity of the physics world (m/s^2), for jump speeds.
 inline constexpr f32 kGravity = 9.81f;
@@ -88,6 +104,7 @@ struct MovementSettings
     FallSettings fall;
     SwimSettings swim;
     CameraSettings camera;
+    IndoorCameraSettings indoor; ///< [camera.indoor]; unset values as outside
 
     /// From data/movement.toml; missing keys keep their defaults, wrong types or values are errors.
     [[nodiscard]] static Result<MovementSettings> parse(std::string_view toml, std::string_view source);

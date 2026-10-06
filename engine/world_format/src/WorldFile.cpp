@@ -814,6 +814,65 @@ Result<WaynetPoint> readWaynetPoint(const Reader& r, const Json& p, const std::s
     return point;
 }
 
+/// "zones" (world.md "Zonen"): indoor zones with a turned box, checked; other types kept as they are.
+Result<std::vector<Zone>> readZones(const Reader& r, const Json& z)
+{
+    if (!z.is_array())
+    {
+        return r.error("zones", "must be a list");
+    }
+    std::vector<Zone> zones;
+    for (usize i = 0; i < z.size(); ++i)
+    {
+        const std::string where = std::format("zones[{}]", i);
+        const Json& e = z[i];
+        if (!e.is_object() || !e.contains("type") || !e["type"].is_string())
+        {
+            return r.error(where, "needs 'type'");
+        }
+        Zone zone;
+        zone.type = e["type"].get<std::string>();
+        if (e.contains("value") && e["value"].is_string())
+        {
+            zone.value = e["value"].get<std::string>();
+        }
+        if (zone.type != "indoor")
+        {
+            zone.json = e.dump();
+            zones.push_back(std::move(zone));
+            continue;
+        }
+        if (zone.value.empty())
+        {
+            return r.error(where, "an indoor zone needs 'value' (the room)");
+        }
+        if (!e.contains("box") || !e["box"].is_object())
+        {
+            return r.error(where, "an indoor zone needs 'box'");
+        }
+        const Json& b = e["box"];
+        const std::string at = where + ".box";
+        if (!b.contains("center") || !b.contains("halfExtents"))
+        {
+            return r.error(at, "needs 'center' and 'halfExtents'");
+        }
+        auto center = r.vec3(b, "center", at, Vec3(0.0f));
+        auto half = r.vec3(b, "halfExtents", at, Vec3(0.0f));
+        auto yaw = r.number(b, "yaw", at, 0.0f);
+        if (!center || !half || !yaw)
+        {
+            return !center ? center.error() : !half ? half.error() : yaw.error();
+        }
+        if (half.value().x <= 0.0f || half.value().y <= 0.0f || half.value().z <= 0.0f)
+        {
+            return r.error(at + ".halfExtents", "must be positive");
+        }
+        zone.box = ZoneBox{center.value(), half.value(), yaw.value()};
+        zones.push_back(std::move(zone));
+    }
+    return zones;
+}
+
 Result<WaynetData> readWaynet(const Reader& r, const Json& w)
 {
     if (!w.is_object())
@@ -997,7 +1056,12 @@ Result<WorldFile> parseWorldFile(std::string_view text, std::string_view source)
     }
     if (root.contains("zones"))
     {
-        world.zonesJson = root["zones"].dump();
+        auto zones = readZones(r, root["zones"]);
+        if (!zones)
+        {
+            return zones.error();
+        }
+        world.zones = std::move(zones).value();
     }
     if (root.contains("generator"))
     {
@@ -1277,9 +1341,54 @@ std::string writeWorldFile(const WorldFile& world)
         out += ",\n  \"waynet\": {\n    \"points\": " + list(points) + ",\n    \"edges\": " + list(edges) +
                ",\n    \"freepoints\": " + list(freepoints) + "\n  }";
     }
-    if (!world.zonesJson.empty())
+    if (!world.zones.empty())
     {
-        out += ",\n  \"zones\": " + dumpJson(Json::parse(world.zonesJson, nullptr, false));
+        // One zone per line, sorted by value; rooms of several boxes by the box centre (x, then z).
+        std::vector<const Zone*> zones;
+        for (const Zone& z : world.zones)
+        {
+            zones.push_back(&z);
+        }
+        std::stable_sort(zones.begin(), zones.end(),
+                         [](const Zone* a, const Zone* b)
+                         {
+                             if (a->value != b->value)
+                             {
+                                 return a->value < b->value;
+                             }
+                             if (!a->box || !b->box)
+                             {
+                                 return false;
+                             }
+                             return a->box->center.x != b->box->center.x
+                                        ? a->box->center.x < b->box->center.x
+                                        : a->box->center.z < b->box->center.z;
+                         });
+        out += ",\n  \"zones\": [";
+        for (usize i = 0; i < zones.size(); ++i)
+        {
+            const Zone& z = *zones[i];
+            std::string line;
+            if (z.box)
+            {
+                const Vec3& c = z.box->center;
+                const Vec3& h = z.box->halfExtents;
+                Json box = Json::object();
+                box["center"] = numbers({c.x, c.y, c.z});
+                box["halfExtents"] = numbers({h.x, h.y, h.z});
+                box["yaw"] = numbers({z.box->yawDegrees})[0];
+                line = "{\"type\":" + Json(z.type).dump() + ",\"value\":" + Json(z.value).dump() +
+                       ",\"box\":{\"center\":" + dumpJson(box["center"]) +
+                       ",\"halfExtents\":" + dumpJson(box["halfExtents"]) +
+                       ",\"yaw\":" + dumpJson(box["yaw"]) + "}}";
+            }
+            else
+            {
+                line = dumpJson(Json::parse(z.json, nullptr, false));
+            }
+            out += (i == 0 ? "\n    " : ",\n    ") + line;
+        }
+        out += "\n  ]";
     }
     out += "\n}\n";
     return out;

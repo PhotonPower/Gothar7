@@ -231,3 +231,28 @@ def test_mesh_names_follow_node_names():
         for node in g.doc["nodes"]:
             if "mesh" in node:
                 assert g.doc["meshes"][node["mesh"]].get("name") == node["name"], path
+
+
+def test_no_body_primitive_is_hidden_completely():
+    """The C++ figure assembly (engine) keeps the vertices of a body primitive whose triangles are
+    all hidden, assemble.py drops the primitive: both must stay equal, so no figure may hide a
+    whole body primitive (e.g. the body's underwear under a long skirt with `[inside]`)."""
+    from gothar_chargen.partdata import lod_meshes
+
+    for manifest in sorted((CHARACTERS / "figures").glob("*.figure.toml")):
+        figure = load_figure(manifest)
+        if "body" not in figure.parts:
+            continue
+        body = Gltf.load(CHARACTERS / figure.parts["body"])
+        garments = [
+            Gltf.load(CHARACTERS / p) for r, p in figure.parts.items() if r.startswith("cloth")
+        ]
+        for mesh in lod_meshes(body).values():
+            hidden = [np.zeros(len(t), dtype=bool) for t in mesh.triangles]
+            for g in garments:
+                for prim, first, end in (
+                    data_of(g).get("covers", {}).get("lods", {}).get(mesh.node, [])
+                ):
+                    hidden[prim][first:end] = True
+            for prim, flags in enumerate(hidden):
+                assert not (len(flags) and flags.all()), (manifest.stem, mesh.node, prim)

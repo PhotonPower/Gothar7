@@ -15,3 +15,6 @@ clothes = [
     "clothes/toigo_flats/toigo_flats.mhclo",
     "clothes/toigo_ankle_boots_female/toigo_ankle_boots_female.mhclo",
 ]
+
+[inside]  # thighs inside the full skirt stay hidden (crouching would push them through)
+toigo_long_full_skirt = 0.3

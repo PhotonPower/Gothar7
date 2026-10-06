@@ -72,3 +72,35 @@ TEST_CASE("Lighting: frame limit and GPU packing")
     CHECK(gpu.pointPositionRadius[3] == Vec4(3, 0, 0, 2));
     CHECK(nearlyEqual(Vec3(gpu.pointColor[3]), Vec3(2, 1, 0)));
 }
+
+TEST_CASE(
+    "Lighting: rooms (indoor zones) - inside incl. inner surfaces, fading through the wall, turned boxes")
+{
+    // A room 4 x 3 x 6 m (half extents 2, 1.5, 3) at the origin, turned 90 degrees: local +X points to -Z.
+    const IndoorVolume room{Vec3(0.0f, 1.5f, 0.0f), Vec3(2.0f, 1.5f, 3.0f), glm::radians(90.0f)};
+    const IndoorVolume rooms[] = {room};
+    CHECK(indoorAmount(Vec3(0.0f, 1.5f, 0.0f), rooms, 0.3f) == doctest::Approx(1.0f));
+    // Local X runs along world Z: the inner wall face at local x = 2 is world z = -2, fully inside.
+    CHECK(indoorAmount(Vec3(0.0f, 1.5f, -2.0f), rooms, 0.3f) == doctest::Approx(1.0f));
+    CHECK(indoorAmount(Vec3(0.0f, 1.5f, -2.15f), rooms, 0.3f) == doctest::Approx(1.0f - 0.1f / 0.3f));
+    CHECK(indoorAmount(Vec3(0.0f, 1.5f, -2.35f), rooms, 0.3f) == doctest::Approx(0.0f)); // the outer face
+    // Local Z (half 3) runs along world X.
+    CHECK(indoorAmount(Vec3(2.9f, 1.5f, 0.0f), rooms, 0.3f) == doctest::Approx(1.0f));
+    CHECK(indoorAmount(Vec3(3.5f, 1.5f, 0.0f), rooms, 0.3f) == doctest::Approx(0.0f));
+    // Floor and ceiling surfaces count; the ground under the floor slab not.
+    CHECK(indoorAmount(Vec3(0.0f, 0.0f, 0.0f), rooms, 0.3f) == doctest::Approx(1.0f));
+    CHECK(indoorAmount(Vec3(0.0f, -0.5f, 0.0f), rooms, 0.3f) == doctest::Approx(0.0f));
+    CHECK(indoorAmount(Vec3(0.0f, 1.5f, 0.0f), {}, 0.3f) == doctest::Approx(0.0f));
+
+    // Packed for the shader: centre + cos yaw, half extents + sin yaw; count, factor and edge.
+    Environment environment;
+    environment.indoor = {room};
+    environment.indoorAmbient = 0.35f;
+    const GpuLighting gpu = packLighting(environment, LightList{});
+    CHECK(gpu.indoorParams.x == 1.0f);
+    CHECK(gpu.indoorParams.y == doctest::Approx(0.35f));
+    CHECK(gpu.indoorParams.z == doctest::Approx(0.3f));
+    CHECK(gpu.indoorBoxes[0].w == doctest::Approx(0.0f).epsilon(1e-6));
+    CHECK(gpu.indoorBoxes[1].w == doctest::Approx(1.0f));
+    CHECK(Vec3(gpu.indoorBoxes[1]) == Vec3(2.0f, 1.5f, 3.0f));
+}

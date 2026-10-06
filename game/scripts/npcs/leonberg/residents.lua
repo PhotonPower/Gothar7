@@ -16,6 +16,7 @@ Npc "npc_leo_innkeeper" {
     name = "Bertold, Wirt der Krummen Gans",
     guild = "citizen",
     level = 4,
+    attributes = { str = 20, hp = 80 }, -- Kampf (M11): Platzhalterwerte
     figure = "characters/figures/innkeeper.figure.toml",
     routine = "rtn_leo_innkeeper",
 }
@@ -26,6 +27,7 @@ Npc "npc_leo_baker" {
     name = "Gertrud die Bäckerin",
     guild = "citizen",
     level = 3,
+    attributes = { str = 12, hp = 60 }, -- Kampf (M11): Platzhalterwerte
     figure_set = "citizen_f",
     inventory = { it_gulden = 80, it_bread = 12, it_apple = 6 },
     routine = "rtn_leo_baker",
@@ -36,6 +38,7 @@ Npc "npc_leo_market" {
     name = "Agnes vom Krämerladen",
     guild = "citizen",
     level = 3,
+    attributes = { str = 10, hp = 60 }, -- Kampf (M11): Platzhalterwerte
     figure = "characters/figures/market_woman.figure.toml",
     inventory = { it_gulden = 100, it_lockpick = 2, it_mug = 3, it_broom = 2, it_potion_heal_small = 3, it_apple = 5 },
     routine = "rtn_leo_market",
@@ -65,6 +68,7 @@ Npc "npc_leo_farmer" {
     name = "Veit vom Scheunenhof",
     guild = "farmer",
     level = 3,
+    attributes = { str = 25, hp = 90 }, -- Kampf (M11): Platzhalterwerte
     figure = "characters/figures/farmer.figure.toml",
     routine = "rtn_leo_farmer",
 }
@@ -73,6 +77,7 @@ Npc "npc_leo_citizen" {
     name = "Matthis der Ratsdiener",
     guild = "citizen",
     level = 2,
+    attributes = { str = 12, hp = 70 }, -- Kampf (M11): Platzhalterwerte
     figure_set = "citizen",
     routine = "rtn_leo_citizen",
 }

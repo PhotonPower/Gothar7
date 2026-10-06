@@ -33,7 +33,8 @@ target_compile_definitions(g7_tests_runtime PRIVATE G7_ASSET_SOURCE_DIR="${PROJE
 g7_add_test_suite(render)
 g7_add_test_suite(physics)
 g7_add_test_suite(gameplay)
-target_compile_definitions(g7_tests_gameplay PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
+target_compile_definitions(g7_tests_gameplay PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source"
+                                                    G7_SCRIPT_DIR="${PROJECT_SOURCE_DIR}/game/scripts")
 g7_add_test_suite(animation)
 g7_add_test_suite(script)
 target_compile_definitions(g7_tests_animation PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")

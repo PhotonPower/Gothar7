@@ -18,6 +18,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 #include <g7/gameplay/Character.hpp>
+#include <g7/gameplay/Combat.hpp>
 #include <g7/gameplay/Focus.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
@@ -152,6 +153,9 @@ struct Creature;       // an animal (EngineCreatures.cpp)
 struct EngineConfig
 {
     std::string appName = "Gothar";
+    /// Seeds the engine's random numbers and Lua's math.random (tests: the same run every time); unset:
+    /// random.
+    std::optional<u32> randomSeed;
     f64 simulationHz = 60.0; ///< Fixed simulation rate.
     u64 maxFrames = 0;       ///< 0 = unlimited. Used by tests and headless runs.
     f64 maxFps = 0.0;        ///< Frame-rate cap with a window; 0 = unlimited. Headless is never capped.
@@ -288,6 +292,9 @@ public:
     [[nodiscard]] world::GameTime& gameTime() noexcept { return m_gameTime; }
     /// Light, fog and sky of the last frame (from the day cycle).
     [[nodiscard]] const render::Environment& environment() const noexcept { return m_environment; }
+    /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes; the renderer
+    /// gives them the indoor ambient (environment.toml [indoor]).
+    [[nodiscard]] std::vector<render::IndoorVolume> nearestIndoorVolumes(const Vec3& point) const;
     [[nodiscard]] const render::Sky& sky() const noexcept { return m_sky; }
     /// Writes the scene's world vobs with the loaded world's terrain, waynet, zones and generator head as
     /// .g7world (--save-world, editor).
@@ -465,6 +472,10 @@ public:
     /// Starts talking to an NPC: an important Info runs first, then the menu of Infos.
     [[nodiscard]] Result<void> startDialog(u32 npc);
     [[nodiscard]] bool inDialog() const noexcept { return m_dialog.has_value(); }
+    /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
+    /// target.
+    [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
+    [[nodiscard]] f32 playerCameraDistance() const noexcept { return m_playerCamera.distance(); }
     /// Picks the n-th entry (from 0) of the menu shown (an Info, an answer, "Ende").
     void dialogChoose(usize index);
     /// Skips the line being said.
@@ -776,6 +787,18 @@ private:
         physics::ShapeId shape;
     };
     void loadMobTypes();
+    // Combat (M11, EngineCombat.cpp).
+    struct Combatant;
+    void loadCombat();
+    void bindCombatFunctions();
+    void fixedUpdateCombat(f32 seconds);
+    [[nodiscard]] std::optional<Combatant> combatant(u32 id);
+    [[nodiscard]] std::string
+    meleeWeapon(const Combatant& c) const; ///< drawn/equipped melee item, empty: fists
+    [[nodiscard]] std::string fightMode(const Combatant& c) const; ///< "fist", "1h", "2h"
+    bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
+    void resolveHit(Combatant& attacker, Combatant& target);
+    void stopForFight(Creature& c);
     void loadVoiceLines(); // voice/lines.<language>.json: the keys of the spoken lines
     /// Key of a spoken line: dialogue "<info>_NN", else the NPC's shout "svm_<voice>_<m|f>_<occasion>_NN";
     /// empty if the voice database does not know the text.
@@ -957,6 +980,7 @@ private:
     physics::CharacterController m_player;
     gameplay::PlayerMovement m_movement;
     gameplay::ThirdPersonCamera m_playerCamera;
+    f32 m_indoorBlend = 0.0f; // 0 outside .. 1 inside (a roof above the hero): the camera's indoor profile
     gameplay::MovementSettings m_movementSettings;
     asset::Handle<gameplay::MovementSettings> m_movementData; // data/movement.toml, hot reload
     u32 m_movementVersion = 0;
@@ -1088,6 +1112,9 @@ private:
     bool m_inventoryOpen = false;
     std::string m_inventoryMessage;
     gameplay::MobTypes m_mobTypes;
+    gameplay::CombatSettings m_combat; // data/combat.lua (M11)
+    gameplay::Fighter m_heroFighter;
+    std::vector<u32> m_heroHitThisSwing;
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)
