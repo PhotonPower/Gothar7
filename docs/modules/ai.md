@@ -171,9 +171,13 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
 - Unverschlossene Tür-Mobs sind für die Wegeplanung kein Hindernis (`walkableLine` geht am Türblatt vorbei weiter,
   höchstens zwei Türen je Linie; ein Türblatt ist kein Boden).
 - Ein gehender NPC öffnet eine geschlossene Tür, deren Blatt näher als 1,6 m vor ihm ist (ohne Animation, bis NPCs
-  mit M11 Mobs benutzen), wartet, während sie aufschwingt, und schließt sie wieder, sobald er 1,8 m von der Angel
-  weg ist. Verschlossene Türen öffnet nur der Besitzer (`owner` des Mobs: NPC oder Gilde); für die Planung sind sie
-  Wände.
+  mit M11 Mobs benutzen), wartet, während sie aufschwingt, und schließt sie wieder, sobald er auf der anderen Seite
+  1,8 m von der Angel weg ist (oder 3,6 m weit weg). Verschlossene Türen öffnet nur der Besitzer (`owner` des Mobs:
+  NPC oder Gilde); für die Planung sind sie Wände.
+- Steht der NPC auf der Seite, zu der das Blatt aufschwingt (welt #227: aus einem Haus mit nach innen öffnender Tür
+  hinaus), öffnet er sie schon aus 2,15 m Abstand zur Angel. Dann wartet er außerhalb des Schwenkbereichs (Blatt 1 m
+  plus Kapsel plus 0,25 m) und tritt zurück, falls er drinsteht, bis sie offen steht. Sonst schiebt ihn das Blatt
+  neben die Angel.
 - Türen, die laut Weltdatei offen stehen (`components.mob.open`, world.md), stehen beim Laden offen.
 
 ## Debug (M9 Teil E, umgesetzt) – `runtime/EngineAiDebug.cpp`
