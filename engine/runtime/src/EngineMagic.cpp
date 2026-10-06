@@ -141,7 +141,7 @@ void Engine::beginHeroCast()
     }
     const script::Instance* def = m_scripts->findInstance("Item", m_weaponDrawn);
     const bool scroll = def != nullptr && def->fields["category"].asString() == "scroll";
-    if (spell->kind == gameplay::SpellKind::Summon || spell->kind == gameplay::SpellKind::Transform)
+    if (spell->kind == gameplay::SpellKind::Transform)
     {
         notice("Dieser Zauber lässt sich noch nicht wirken."); // M12 part C2
         return;
@@ -304,8 +304,81 @@ void Engine::applyHeroSpell()
         break;
     }
     case gameplay::SpellKind::Summon:
+        (void)summonForHero(spell, spell.duration * strength);
+        break;
     case gameplay::SpellKind::Transform:
         break; // M12 part C2
+    }
+}
+
+std::optional<u32> Engine::summonForHero(const gameplay::SpellInfo& spell, f32 seconds)
+{
+    if (spell.summon.empty() || !m_player.valid())
+    {
+        return std::nullopt;
+    }
+    // Z8: one at a time - the one called before goes.
+    if (Creature* before = m_heroSummon ? creature(*m_heroSummon) : nullptr;
+        before != nullptr && !before->vanished)
+    {
+        vanish(*before);
+    }
+    const Vec3 forward = gameplay::forwardOf(m_movement.yaw());
+    const Vec3 at = m_player.feet() + forward * 2.0f + Vec3(0.0f, 0.3f, 0.0f);
+    auto spawned = spawnNpc(spell.summon, at, m_movement.yaw());
+    if (!spawned)
+    {
+        G7_LOG_WARN("engine", "summon {}: {}", spell.summon, spawned.error().message);
+        return std::nullopt;
+    }
+    Creature& c = *creature(spawned.value());
+    c.summoned = true;
+    c.summonSeconds = seconds;
+    m_heroSummon = c.id;
+    const auto fx = spell.fx.find("on_target");
+    (void)startEffect(fx != spell.fx.end() ? fx->second : std::string("summon"), at);
+    G7_LOG_INFO("engine", "hero summons {} for {:.0f} s", c.species, seconds);
+    if (m_scripts)
+    {
+        const script::Value args[] = {c.species, std::string("hero")};
+        m_scripts->emit("npc_summoned", args); // ai/summons.lua: it follows and fights for the hero
+    }
+    return c.id;
+}
+
+void Engine::vanish(Creature& c)
+{
+    if (c.vanished)
+    {
+        return;
+    }
+    (void)startEffect("summon", c.position + Vec3(0.0f, 0.5f, 0.0f));
+    if (!c.dead)
+    {
+        c.fighter.die();
+        c.dead = true;
+    }
+    stopForFight(c);
+    c.vanished = true;
+    c.body.reset(); // no more collision
+    if (c.sleepEffect)
+    {
+        m_particles.stop(*c.sleepEffect);
+        c.sleepEffect.reset();
+    }
+    if (m_heroSummon == c.id)
+    {
+        m_heroSummon.reset();
+    }
+    if (m_combatTarget == c.id)
+    {
+        m_combatTarget.reset();
+    }
+    G7_LOG_INFO("engine", "{} vanishes", c.species);
+    if (m_scripts)
+    {
+        const script::Value args[] = {c.species};
+        m_scripts->emit("npc_vanished", args);
     }
 }
 
@@ -451,6 +524,30 @@ void Engine::bindMagicFunctions()
              }
              return Value(std::format("{} {}", m_heroCast->spell.instance, m_heroCast->stages));
          }});
+    vm.bind({"hero_target", "hero_target() -> string | nil",
+             "Das Ziel, das der Held mit gezogener Waffe bzw. Magie anvisiert (Lock, K5); nil ohne.", "Magie",
+             [this](std::span<const Value>) -> Result<Value>
+             {
+                 const auto target = heroCombatTarget();
+                 return target ? Value(*target) : Value();
+             }});
+    vm.bind({"hero_summon", "hero_summon() -> string | nil",
+             "Das vom Helden beschworene Wesen, solange es da ist (Z8); nil ohne.", "Magie",
+             [this](std::span<const Value>) -> Result<Value>
+             {
+                 const Creature* c = m_heroSummon ? creature(*m_heroSummon) : nullptr;
+                 return c != nullptr && !c->vanished ? Value(c->species) : Value();
+             }});
+    vm.bind({"npc_summoned",
+             "on(\"npc_summoned\", fn(npc: string, caster: string))",
+             "Ein Wesen wurde beschworen (M12, Z8); es verschwindet nach seiner Zeit bzw. nach seinem Tod.",
+             "Ereignisse",
+             {}});
+    vm.bind({"npc_vanished",
+             "on(\"npc_vanished\", fn(npc: string))",
+             "Ein beschworenes Wesen verschwindet (Zeit um, tot, ein neues beschworen).",
+             "Ereignisse",
+             {}});
     vm.bind({"npc_cast",
              "on(\"npc_cast\", fn(caster: string, spell: string))",
              "Ein Zauber wird gewirkt (M12, `hero`).",

@@ -376,7 +376,8 @@ void Engine::fixedUpdateCombat(f32 seconds)
             }
             // A pack or comrades of one guild do not hit each other (Gothic); the hero hits anyone.
             if (id != kHeroId && other != kHeroId && !attacker->character->guild().empty() &&
-                attacker->character->guild() == target->character->guild())
+                attacker->character->guild() == target->character->guild() &&
+                attacker->creature->summoned == target->creature->summoned) // a summoned wolf bites wild ones
             {
                 continue;
             }
@@ -755,9 +756,10 @@ std::optional<u32> Engine::pickCombatTarget() const
     f32 bestDistance = 2.0f * range;
     for (const auto& c : m_creatures)
     {
-        // The knocked out are not locked; one asleep by a spell is (M12: a blow or a bolt wakes it).
+        // The knocked out are not locked; one asleep by a spell is (M12: a blow or a bolt wakes it); his own
+        // summon not.
         if (!c->character || c->fighter.state() == FightState::Dead ||
-            (c->fighter.state() == FightState::Down && !c->asleep))
+            (c->fighter.state() == FightState::Down && !c->asleep) || c->id == m_heroSummon)
         {
             continue;
         }

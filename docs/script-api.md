@@ -147,6 +147,12 @@ Ein NPC hat etwas gesagt (npc_say, npc_shout); `key` ist der Sprach-Schlüssel d
 ### `on("npc_shot", fn(shooter: string, ammo: string))`
 Ein Schuss (M11, `hero`).
 
+### `on("npc_summoned", fn(npc: string, caster: string))`
+Ein Wesen wurde beschworen (M12, Z8); es verschwindet nach seiner Zeit bzw. nach seinem Tod.
+
+### `on("npc_vanished", fn(npc: string))`
+Ein beschworenes Wesen verschwindet (Zeit um, tot, ein neues beschworen).
+
 ### `on("npc_woke", fn(npc: string))`
 Ein verzauberter Schläfer wacht auf (Zeit um oder Schaden).
 
@@ -307,6 +313,12 @@ Der Zauber, den der Held gerade auflädt bzw. wirkt, mit der Aufladestufe ("spl_
 
 ### `hero_rune(place: integer)`
 Wählt den Runenplatz 1-7 wie die Tasten 4-9 (Z4): zieht ihn bzw. wechselt die Rune in der Hand.
+
+### `hero_summon() -> string | nil`
+Das vom Helden beschworene Wesen, solange es da ist (Z8); nil ohne.
+
+### `hero_target() -> string | nil`
+Das Ziel, das der Held mit gezogener Waffe bzw. Magie anvisiert (Lock, K5); nil ohne.
 
 ## Mobs
 

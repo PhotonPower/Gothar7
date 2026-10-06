@@ -824,6 +824,9 @@ private:
     bool castSleep(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect = {});
     void wakeUp(u32 targetId);
     void endSleep(Creature& c); ///< the sleep's effect and pose end (the fighter is up again)
+    /// Z8: calls the spell's creature beside the hero for `seconds`; the one called before vanishes.
+    std::optional<u32> summonForHero(const gameplay::SpellInfo& spell, f32 seconds);
+    void vanish(Creature& c); ///< a summoned creature goes (effect); dead and gone for scripts
     // Effects (M12 part A, EngineFx.cpp).
     [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
     void drawEffects();
@@ -1230,6 +1233,7 @@ private:
         std::optional<u32> target;
     };
     std::optional<HeroCast> m_heroCast;
+    std::optional<u32> m_heroSummon; // Z8: the hero's summoned creature (one at a time)
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)

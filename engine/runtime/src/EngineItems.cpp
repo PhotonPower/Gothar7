@@ -344,6 +344,10 @@ void Engine::updateFocus()
         });
     for (const auto& c : m_creatures)
     {
+        if (c->vanished)
+        {
+            continue; // a summon that went (M12)
+        }
         // The knocked out and the dead can be looted (M11, K7): focused where they lie.
         const bool lying = c->fighter.state() == gameplay::FightState::Down ||
                            c->fighter.state() == gameplay::FightState::Dead;

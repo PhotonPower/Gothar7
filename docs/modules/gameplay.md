@@ -398,9 +398,20 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, 
   - **Fläche:** Schaden an allen im `radius`.
   - **Ziel, Schlaf (Z6):** reicht bis `Magic.target_range` (25 m) und wirkt nur bis zur Stufe des Zaubernden, sonst „Der Zauber zeigt keine Wirkung.“. Der Schläfer liegt wie bewusstlos (Menschen `none/t_ko`, Tiere ihr Schlaf-Clip) mit dem Effekt `on_target` über dem Kopf. Er wacht nach der Dauer auf oder sobald er Schaden nimmt; ein Schlag auf ihn zählt dann wie auf einen Stehenden.
 - **Lua:** `draw_magic()`, `hero_rune(platz)`, `hero_cast(halten)`, `hero_casting()`; Ereignisse `npc_cast`, `npc_asleep`, `npc_woke`.
-- Beschwörung und Verwandlung folgen in C2; bis dahin gibt es einen Hinweis, nichts wird verbraucht.
+- Verwandlung folgt in C2; bis dahin gibt es einen Hinweis, nichts wird verbraucht.
 
-**Weiter:** C2 Beschwörung (Z8) und Verwandlung (Z7), D KI und Reaktionen (NPCs zaubern, Brennen, Furcht), E DoD-Szenario.
+**Teil C2 – Beschwörung (umgesetzt, Z8):**
+- Ein `summon`-Zauber ruft das Npc des Zaubers (Wolf rufen: `mon_wolf`) 2 m vor den Helden, mit dem Effekt `summon`, für `duration` Sekunden (jede Aufladestufe noch einmal so lange).
+- Es gibt nur eines: Ein neues lässt das alte verschwinden. Nach seiner Zeit, bzw. 2 s nach seinem Tod, verschwindet es im Effekt.
+- Ein verschwundenes Wesen bleibt für Skripte als tot bestehen (Namen wie `mon_wolf#2` bleiben gültig). Es wird nicht mehr gezeichnet, nicht aktualisiert, hat keine Kollision und ist weder fokussierbar noch plünderbar.
+- **Verhalten** (`ai/summons.lua`, Zustand `zs_summoned`):
+  - Es folgt dem Helden auf 2,5 m.
+  - Es kämpft gegen dessen Ziel (`hero_target()`) bzw. gegen jeden, der ihn im Umkreis von 15 m angreift.
+  - Es reagiert nicht auf den Helden wie ein wildes Tier, und schlägt nicht zurück, wenn der Held es versehentlich trifft.
+- Der Held visiert sein eigenes Wesen nicht an. Die Gilden-Regel (ein Rudel beißt sich nicht) gilt nicht zwischen gerufenen und wilden Tieren.
+- **Lua:** `hero_summon()`, `hero_target()`; Ereignisse `npc_summoned(npc, caster)`, `npc_vanished(npc)`.
+
+**Weiter:** C2 Verwandlung (Z7), D KI und Reaktionen (NPCs zaubern, Brennen, Furcht), E DoD-Szenario.
 
 ## Wirtschaft
 Handel: Händler-Inventar, Preisfaktor Verkauf (z. B. 0,5), Währung als Item (`ItMi_Ore`).
