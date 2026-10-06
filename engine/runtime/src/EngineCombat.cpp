@@ -193,13 +193,109 @@ bool Engine::startFight(Combatant& c, std::string_view move, AttackKind kind)
     {
         return false;
     }
-    // The human combat clips are not there yet: the fighter's timeline; animals show their attack clip.
-    c.fighter->useTimeline();
+    playFight(c); // the combat clip (figuren #217), else the fighter's timeline
     if (c.creature != nullptr && c.animal && move == "attack")
     {
         c.creature->action = c.fighter->comboHit() % 2 == 1 ? 1 : 2;
     }
     return true;
+}
+
+i32 Engine::heroWeaponAnimation() const
+{
+    // The graph's weapon value (human.animgraph.toml): 1 one-handed, 2 fists, 3 bow, 4 crossbow, 5
+    // two-handed.
+    switch (m_weaponMode)
+    {
+    case 1:
+    {
+        const script::Instance* item =
+            m_scripts && !m_weaponDrawn.empty() ? m_scripts->findInstance("Item", m_weaponDrawn) : nullptr;
+        return item != nullptr && item->fields["category"].asString() == "melee_2h" ? 5 : 1;
+    }
+    case 2:
+        return 2;
+    case 3:
+        return rangedIsCrossbow(m_weaponDrawn) ? 4 : 3;
+    default:
+        return 0;
+    }
+}
+
+f32 Engine::creatureWeaponAnimation(const Creature& c) const
+{
+    // People keep their weapon raised a little while after fighting.
+    if (c.combatStance <= 0.0f || !c.character)
+    {
+        return 0.0f;
+    }
+    const std::string weapon = c.character->equipped(gameplay::EquipSlot::Melee);
+    const script::Instance* item =
+        m_scripts && !weapon.empty() ? m_scripts->findInstance("Item", weapon) : nullptr;
+    if (item == nullptr)
+    {
+        return 2.0f;
+    }
+    return item->fields["category"].asString() == "melee_2h" ? 5.0f : 1.0f;
+}
+
+animation::Animator* Engine::animatorOf(const Combatant& c)
+{
+    if (c.animal)
+    {
+        return nullptr; // animals play their own action clips
+    }
+    if (c.id == kHeroId)
+    {
+        return m_figure ? &m_figure->animator : nullptr;
+    }
+    return c.creature != nullptr && c.creature->figure ? &c.creature->figure->animator : nullptr;
+}
+
+void Engine::playFight(Combatant& c)
+{
+    std::string& state = c.id == kHeroId ? m_heroFightState : c.creature->fightState;
+    if (c.creature != nullptr)
+    {
+        c.creature->combatStance = 5.0f;
+    }
+    std::string name = c.fighter->clip(fightMode(c));
+    std::replace(name.begin(), name.end(), '/', '_');
+    animation::Animator* a = animatorOf(c);
+    if (a != nullptr && !name.empty() && a->hasState(name))
+    {
+        a->enter(name, 0.1f);
+        state = name;
+        return;
+    }
+    state.clear();
+    c.fighter->useTimeline();
+}
+
+void Engine::playReaction(Combatant& c, std::string_view clip)
+{
+    std::string& state = c.id == kHeroId ? m_heroFightState : c.creature->fightState;
+    std::string name(clip);
+    std::replace(name.begin(), name.end(), '/', '_');
+    animation::Animator* a = animatorOf(c);
+    if (a != nullptr && a->hasState(name))
+    {
+        a->enter(name, 0.08f);
+        // A stagger is timed by its clip; lying and dying are held by the fighter.
+        state = c.fighter->state() == FightState::Stagger ? name : std::string();
+        if (!state.empty())
+        {
+            return;
+        }
+    }
+    else
+    {
+        state.clear();
+    }
+    if (c.fighter->state() == FightState::Stagger)
+    {
+        c.fighter->useTimeline();
+    }
 }
 
 void Engine::fixedUpdateCombat(f32 seconds)
@@ -225,6 +321,25 @@ void Engine::fixedUpdateCombat(f32 seconds)
         }
         const FightState before = attacker->fighter->state();
         attacker->fighter->update(seconds, m_combat);
+        // A clip-timed move ends when its graph state does (the graph went back to the movement).
+        std::string& clipState = id == kHeroId ? m_heroFightState : attacker->creature->fightState;
+        if (!clipState.empty())
+        {
+            const animation::Animator* a = animatorOf(*attacker);
+            if (a == nullptr || a->state() != clipState)
+            {
+                clipState.clear();
+                attacker->fighter->onClipDone();
+            }
+        }
+        if (attacker->creature != nullptr)
+        {
+            attacker->creature->combatStance = std::max(0.0f, attacker->creature->combatStance - seconds);
+        }
+        if (before == FightState::Down && attacker->fighter->state() == FightState::Ready)
+        {
+            playReaction(*attacker, "none/t_ko_getup"); // up again
+        }
         if (attacker->fighter->takeNewSwing())
         {
             attacker->hitThisSwing->clear();
@@ -294,7 +409,7 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
                                 Vec2(attacker.position.x, attacker.position.z), m_combat.parryAngleDegrees))
     {
         attacker.fighter->stagger(); // the blow bounces off
-        attacker.fighter->useTimeline();
+        playReaction(attacker, "none/t_hit_light");
         emit("npc_parried", {target.name, attacker.name});
         return;
     }
@@ -335,7 +450,7 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
         if (hit.damage >= m_combat.staggerShare * static_cast<f32>(target.character->attribute("hp_max")))
         {
             target.fighter->stagger();
-            target.fighter->useTimeline();
+            playReaction(target, "none/t_hit_light");
             if (target.creature != nullptr && target.animal)
             {
                 target.creature->action = 3; // the hit clip
@@ -349,6 +464,7 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
     {
         (void)target.character->setAttribute("hp", 1);
         target.fighter->knockOut(kHeroDownSeconds);
+        playReaction(target, "none/t_ko");
         emit("npc_knocked_out", {target.name, attacker.name});
         return;
     }
@@ -357,11 +473,13 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
     {
         (void)target.character->setAttribute("hp", 1);
         target.fighter->knockOut(m_combat.knockoutSeconds);
+        playReaction(target, "none/t_ko");
         stopForFight(*target.creature);
         emit("npc_knocked_out", {target.name, attacker.name});
         return;
     }
     target.fighter->die();
+    playReaction(target, "none/t_die_front");
     target.creature->dead = true;
     stopForFight(*target.creature);
     emit("npc_killed", {target.name, attacker.name});
@@ -886,7 +1004,7 @@ void Engine::projectileHit(const Projectile& p, u32 targetId)
     if (hp > 0)
     {
         target->fighter->stagger();
-        target->fighter->useTimeline();
+        playReaction(*target, "none/t_hit_light");
         if (target->creature != nullptr && target->animal)
         {
             target->creature->action = 3;
@@ -897,10 +1015,12 @@ void Engine::projectileHit(const Projectile& p, u32 targetId)
     {
         (void)target->character->setAttribute("hp", 1); // K8: the hero gets up again
         target->fighter->knockOut(5.0f);
+        playReaction(*target, "none/t_ko");
         return;
     }
     // K7: ranged combat kills.
     target->fighter->die();
+    playReaction(*target, "none/t_die_front");
     target->creature->dead = true;
     stopForFight(*target->creature);
     if (m_scripts)

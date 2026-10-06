@@ -438,6 +438,14 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             return r.error(at, "'range' must be positive");
         }
         vob.light = {color.value(), range.value(), intensity.value(), flicker.value()};
+        if (light.contains("daylight"))
+        {
+            if (!light["daylight"].is_boolean())
+            {
+                return r.error(at + ".daylight", "must be true or false");
+            }
+            vob.light.daylight = light["daylight"].get<bool>();
+        }
     }
     if (vob.type == VobType::Sound)
     {
@@ -1191,10 +1199,15 @@ std::string writeWorldFile(const WorldFile& world)
         if (vob->type == VobType::Light)
         {
             const LightSource& l = vob->light;
-            v["components"]["light"] = Json{{"color", numbers({l.color.r, l.color.g, l.color.b})},
-                                            {"range", tidy(l.range)},
-                                            {"intensity", tidy(l.intensity)},
-                                            {"flicker", tidy(l.flicker)}};
+            Json light = Json{{"color", numbers({l.color.r, l.color.g, l.color.b})},
+                              {"range", tidy(l.range)},
+                              {"intensity", tidy(l.intensity)}};
+            if (l.daylight)
+            {
+                light["daylight"] = true; // after intensity, only when true (contract with welt)
+            }
+            light["flicker"] = tidy(l.flicker);
+            v["components"]["light"] = std::move(light);
         }
         if (vob->type == VobType::Sound)
         {

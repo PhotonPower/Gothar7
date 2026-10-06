@@ -7,6 +7,8 @@ from shapely.geometry import LineString, Point, Polygon
 
 from gothar_worldgen.uses.inside import (
     BENCH_OFF_M,
+    GROUP_D,
+    PROP_SIZE,
     REACH_R_M,
     InsideSpec,
     inside_spec,
@@ -146,3 +148,164 @@ def test_a_town_wall_through_the_room_is_its_back_wall():
         assert not wall.buffer(0.2).contains(Point(f["pos"])), f["name"]
     (prop,) = by_kind(p, "mesh")  # the hearth against the town wall, facing the door
     assert prop["pos"][2] == pytest.approx(-5.5 + 0.05 + 0.05 + 0.45)  # gap to the wall, half depth
+
+
+HOUSEHOLD = {"mobs": ["bed:1"], "freepoints": ["STAND:1", "LEAN:1"], "hearth": True,
+             "props": ["counter:1", "bellows:1", "quench_trough:1", "barrel:2", "shelf:1",
+                       "weapon_board:1", "sausages:1", "herbs:1"]}  # fmt: skip
+
+
+def household(spec: dict = HOUSEHOLD):  # noqa: ANN201
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=1, inside=True)
+    specs = {"wohnhaus": inside_spec(spec, "x")}
+    return plan_inside([house], specs, INDEX, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+
+
+def props_of(p, kind: str) -> list[dict]:  # noqa: ANN001
+    return [v for v in by_kind(p, "mesh") if v["mesh"] == f"props/{kind}.glb"]
+
+
+def test_props_are_checked():
+    assert inside_spec({"props": ["barrel:2", "counter:1"]}, "x").props == [
+        ("barrel", 2),
+        ("counter", 1),
+    ]
+    for bad in ({"props": ["throne:1"]}, {"props": ["barrel:many"]}):
+        with pytest.raises(UsesError):
+            inside_spec(bad, "x")
+
+
+def test_household_props_leave_the_ways_free():
+    p = household()
+    assert p.failed == []
+    entry = next(w for w in p.places if w["name"] == "WP_LEO_WOHNHAUS_ZJV_INNEN")
+    floor_props = [v for v in by_kind(p, "mesh")
+                   if v["mesh"].startswith("props/") and v["pos"][1] == 1.0
+                   and not v["mesh"].endswith(("hearth.glb", "_board.glb"))]  # fmt: skip
+    assert len(floor_props) >= 6  # counter, shelves, bellows, trough, barrels
+    room = Polygon(ROOM["ring"])
+    for v in floor_props:
+        assert room.contains(Point(v["pos"][0], v["pos"][2])), v["name"]
+    for f in (f for f in p.places if f["kind"] == "fp" and "STAND" not in f["name"]):
+        lane = LineString([entry["pos"], f["pos"]])
+        for v in floor_props:
+            assert lane.distance(Point(v["pos"][0], v["pos"][2])) >= REACH_R_M, (
+                f["name"],
+                v["name"],
+            )
+
+
+def test_counter_with_shelf_aisle_and_waypoint():
+    p = household()
+    (counter,) = props_of(p, "counter")
+    shelf = min(props_of(p, "shelf"), key=lambda v: math.dist(v["pos"], counter["pos"]))
+    theke = next(w for w in p.places if w["name"] == "WP_LEO_WOHNHAUS_ZJV_INNEN_THEKE")
+    assert theke["link"] == "WP_LEO_WOHNHAUS_ZJV_INNEN" and theke["y"] == 1.0
+    stand = next(f for f in p.places if f["name"].startswith("FP_STAND"))
+    c, s, t = (
+        (counter["pos"][0], counter["pos"][2]),
+        (shelf["pos"][0], shelf["pos"][2]),
+        stand["pos"],
+    )
+    assert math.dist(c, s) == pytest.approx(GROUP_D - 0.32 - PROP_SIZE["shelf"][1] / 2, abs=1e-6)
+    # the trader stands between shelf and counter, facing the customers
+    assert math.dist(t, s) < math.dist(c, s) and math.dist(t, c) < math.dist(c, s)
+    assert LineString([theke["pos"], t]).distance(Point(c)) > 0.3  # along the aisle
+    # the aisle's open end lies behind the counter (towards the shelf), not among the customers
+    behind = (s[0] - c[0], s[1] - c[1])
+    to_wp = (theke["pos"][0] - c[0], theke["pos"][1] - c[1])
+    assert behind[0] * to_wp[0] + behind[1] * to_wp[1] > 0
+
+
+def test_smithy_things_beside_the_hearth_and_blades_on_the_wall():
+    p = household()
+    (hearth,) = props_of(p, "hearth")
+    (bellows,) = props_of(p, "bellows")
+    hx, hz = hearth["pos"][0], hearth["pos"][2]
+    a = 2 * math.atan2(bellows["rot"][1], bellows["rot"][3])
+    nozzle = (-math.cos(a), math.sin(a))  # the model's -X in the world
+    to_fire = (hx - bellows["pos"][0], hz - bellows["pos"][2])
+    assert nozzle[0] * to_fire[0] + nozzle[1] * to_fire[1] > 0.9 * math.hypot(*to_fire)
+    assert math.dist((hx, hz), (bellows["pos"][0], bellows["pos"][2])) < 1.5
+    blades = [v for v in by_kind(p, "mesh") if v["mesh"].startswith("items/")]
+    assert [v["mesh"] for v in blades] == [
+        "items/it_sword_old.glb",
+        "items/it_sword_crude.glb",
+        "items/it_axe.glb",
+    ]
+    x, y, z, w = blades[0]["rot"]  # item +Y points down
+    assert 1 - 2 * (x * x + z * z) == pytest.approx(-1.0, abs=1e-4)
+
+
+def test_hanging_things_above_heads_off_the_hearth():
+    p = household()
+    (hearth,) = props_of(p, "hearth")
+    for kind in ("sausages", "herbs"):
+        (v,) = props_of(p, kind)
+        assert v["pos"][1] == pytest.approx(ROOM["ceiling"] - 0.02)
+        assert math.dist((v["pos"][0], v["pos"][2]), (hearth["pos"][0], hearth["pos"][2])) > 1.0
+
+
+# the same room divided at x = 4.0: the chamber on the west, the room with the door on the east
+DIVIDED = {"entries": [{"id": "DEBW_00100061ZjV", "interior": {**ROOM, "rooms": [
+    {"name": "INNEN", "ring": [[4.075, -0.3], [4.075, -6.7], [9.7, -6.7], [9.7, -0.3]]},
+    {"name": "KAMMER", "ring": [[0.3, -0.3], [0.3, -6.7], [3.925, -6.7], [3.925, -0.3]]}],
+    "passages": [{"rooms": ["KAMMER", "INNEN"], "mid": [4.0, -3.5], "axis": [1.0, 0.0],
+                  "w": 0.9, "h": 2.0}]}}]}  # fmt: skip
+
+
+def test_a_divided_storey_puts_beds_in_the_chamber():
+    spec = {"wohnhaus": inside_spec({"mobs": ["bed:R", "chest:1", "table:1"], "hearth": True,
+                                     "freepoints": ["LEAN:1"],
+                                     "props": ["shelf:1", "sacks:1"]}, "x")}  # fmt: skip
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=2, inside=True)
+    p = plan_inside([house], spec, DIVIDED, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+    assert p.failed == []
+    kammer = Polygon(DIVIDED["entries"][0]["interior"]["rooms"][1]["ring"])
+    where = {v["name"]: kammer.contains(Point(v["pos"][0], v["pos"][2])) for v in p.vobs
+             if v["type"] in ("mob", "mesh")}  # fmt: skip
+    beds = [n for n in where if "_BED_" in n]
+    assert len(beds) == 2 and all(where[n] for n in beds)
+    assert all(n.startswith("MOB_LEO_WOHNHAUS_ZJV_KAMMER_") for n in beds)
+    assert where["MOB_LEO_WOHNHAUS_ZJV_KAMMER_CHEST_1"]
+    assert where["PROP_LEO_WOHNHAUS_ZJV_KAMMER_SACKS_1"]  # stores go to the chamber
+    assert not where["PROP_LEO_WOHNHAUS_ZJV_INNEN_HERD"]
+    assert not where["MOB_LEO_WOHNHAUS_ZJV_INNEN_TABLE_1"]
+    names = {w["name"]: w for w in p.places if w["kind"] == "wp"}
+    through = names["WP_LEO_WOHNHAUS_ZJV_KAMMER_DURCHGANG"]
+    assert (
+        through["pos"] == pytest.approx([4.0, -3.5])
+        and through["link"] == "WP_LEO_WOHNHAUS_ZJV_INNEN"
+    )
+    chamber = names["WP_LEO_WOHNHAUS_ZJV_KAMMER"]
+    assert chamber["link"] == through["name"] and chamber["pos"] == pytest.approx([2.8, -3.5])
+    lights = [v["name"] for v in by_kind(p, "light")]
+    assert "LIGHT_LEO_WOHNHAUS_ZJV_KAMMER_1" in lights  # every room has its light
+
+
+def test_a_divided_storey_has_a_zone_per_room():
+    from gothar_worldgen.uses.zones import indoor_zones
+
+    house = House("DEBW_00100061ZjV", "wohnhaus", inside=True)
+    values = {z["value"] for z in indoor_zones([house], DIVIDED)}
+    assert values == {"LEO_WOHNHAUS_ZJV_INNEN", "LEO_WOHNHAUS_ZJV_KAMMER"}
+
+
+def test_windows_keep_tall_things_off_and_let_the_day_in():
+    # a window in the north wall, just where the hearth faces the door
+    window = {
+        "from": [5.6, -6.7],
+        "to": [6.4, -6.7],
+        "sill": 1.9,
+        "top": 2.9,
+        "normal": [0.0, -1.0],
+    }
+    index = {"entries": [{"id": "DEBW_00100061ZjV", "interior": {**ROOM, "windows": [window]}}]}
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=2, inside=True)
+    p = plan_inside([house], SPEC, index, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+    (hearth,) = [v for v in by_kind(p, "mesh") if v["mesh"] == "props/hearth.glb"]
+    assert abs(hearth["pos"][0] - 6.0) > 0.4 + 0.6 + 0.3 or hearth["pos"][2] > -6.7 + 0.8 + 0.3
+    (light,) = [v for v in by_kind(p, "light") if "_FENSTER_" in v["name"]]
+    assert light["pos"] == pytest.approx([6.0, 2.4, -6.7 + 0.8])
+    comp = light["components"]["light"]
+    assert list(comp) == ["color", "range", "intensity", "daylight"] and comp["daylight"] is True
