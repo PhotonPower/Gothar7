@@ -473,6 +473,6 @@ Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine�
 ## F6 – Waffen & Handgegenstände  (benötigt F1; für M8–M11)
 - [x] Erste Stücke, realistisch und texturiert: `it_sword_old` (rostig, schartig), `it_sword_crude` (frisch geschmiedet), `it_club`, `it_bow_short`, `it_apple`, `it_bread`, `it_potion_heal_small`, `it_lockpick`, `it_key` (ein Modell für alle Schlüssel) – `gothar-chargen build-items` (eigene Geometrie per Code, ambientCG-Texturen), Socket-Ausrichtung mit engine abgestimmt (characters-pipeline.md §3.1, §6.3), Validator `item.*` in CI, Prüfbilder jedes Stücks am Socket einer Testfigur
 - [ ] Weitere Waffen und Gegenstände nach Bedarf von M10/M11 (Zweihänder, Armbrust, Pfeile, Fackel, Spruchrollen …)
-  - Stand: `it_arrow`, `it_bolt` (Ursprung Schaftmitte, mit engine abgestimmt), `it_crossbow` (2026-10-05, M11), `it_sword_2h` (Zweihänder, 2026-10-06)
+  - Stand: `it_arrow`, `it_bolt` (Ursprung Schaftmitte, mit engine abgestimmt), `it_crossbow` (2026-10-05, M11), `it_sword_2h` (Zweihänder, 2026-10-06); für M12 die Runen `it_rune_firebolt`, `_heal`, `_sleep`, `_transform_wolf`, `_summon_wolf`, `it_scroll`, `it_potion_mana_small`
 
 **DoD:** Die Gegenstände liegen in der Welt (M8) und sitzen in der Hand bzw. am Gürtel und Rücken (M10/M11).
