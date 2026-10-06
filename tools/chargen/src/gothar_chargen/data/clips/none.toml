@@ -280,3 +280,30 @@ params = { base = "none/t_ko", frame = -1, frames = 60 }
 name = "none/t_ko_getup"          # gets up from the s_ko pose
 keyframe = "framed"
 params = { base = "none/t_getup_src", stance = "none/s_ko", stance_frame = 0, fade_in = 8, fade_out = 0 }
+
+# --- hit by magic (M12) ---
+
+[[clip]]
+name = "none/t_hit_magic"         # thrown back, the arms up before the face
+keyframe = "keyposes"
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [4, "hit"], [10, "stagger"], [26, "rest"]]
+[clip.params.poses.hit]
+rotate = { spine_02 = [["X", -18]], neck = [["X", -12]], upperarm_r = [["X", -90], ["Z", 30]], upperarm_l = [["X", -90], ["Z", -30]], lowerarm_r = [["Y", -90]], lowerarm_l = [["Y", 90]] }
+move = { pelvis = [0, 0.12, -0.03] }
+[clip.params.poses.stagger]
+rotate = { spine_02 = [["X", -8]], neck = [["X", -5]], upperarm_r = [["X", -60], ["Z", 20]], upperarm_l = [["X", -60], ["Z", -20]], lowerarm_r = [["Y", -60]], lowerarm_l = [["Y", 60]] }
+move = { pelvis = [0, 0.08, -0.05] }
+
+[[clip]]
+name = "none/s_burn"              # burning (loop): running with flailing arms (engine moves him)
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "none/s_run"
+keys = [[0, "a"], [7, "b"], [14, "a"], [21, "b"], [28, "a"]]
+[clip.params.poses.a]
+rotate = { upperarm_l = [["X", -150], ["Z", -20]], upperarm_r = [["X", -70], ["Z", 40]], lowerarm_l = [["X", -30]], lowerarm_r = [["X", -60]], neck = [["Z", 20], ["X", -10]] }
+[clip.params.poses.b]
+rotate = { upperarm_l = [["X", -70], ["Z", -40]], upperarm_r = [["X", -150], ["Z", 20]], lowerarm_l = [["X", -60]], lowerarm_r = [["X", -30]], neck = [["Z", -20], ["X", -10]] }

@@ -37,6 +37,41 @@ events = [
     { frame = 29, event = "footstep_l" },
 ]
 
+[clips."mag/t_cast_area"]
+events = [
+    { frame = 17, event = "cast" },
+]
+
+[clips."mag/t_cast_projectile"]
+events = [
+    { frame = 8, event = "cast" },
+]
+
+[clips."mag/t_cast_self"]
+events = [
+    { frame = 12, event = "cast" },
+]
+
+[clips."mag/t_cast_summon"]
+events = [
+    { frame = 19, event = "cast" },
+]
+
+[clips."mag/t_cast_target"]
+events = [
+    { frame = 11, event = "cast" },
+]
+
+[clips."mag/t_draw"]
+events = [
+    { frame = 10, event = "draw" },
+]
+
+[clips."mag/t_sheath"]
+events = [
+    { frame = 15, event = "sheath" },
+]
+
 [clips."mag/t_turn_l"]
 events = [
     { frame = 18, event = "footstep_r" },
