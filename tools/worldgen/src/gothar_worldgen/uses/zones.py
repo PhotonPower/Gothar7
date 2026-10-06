@@ -34,9 +34,11 @@ MIN_GAIN_M2 = 0.02  # a box covering less of what is left is not added
 
 
 def is_room_zone(zone: dict[str, Any]) -> bool:
-    """An indoor zone written by worldgen (``LEO_…_INNEN``): assemble replaces those."""
+    """An indoor zone written by worldgen (``LEO_…_INNEN``, ``LEO_…_KAMMER…``): assemble
+    replaces those."""
     value = str(zone.get("value", ""))
-    return zone.get("type") == "indoor" and value.startswith("LEO_") and value.endswith("_INNEN")
+    room = value.endswith("_INNEN") or "_KAMMER" in value
+    return zone.get("type") == "indoor" and value.startswith("LEO_") and room
 
 
 def _cover(local: Polygon) -> list[tuple[float, float, float, float]]:
@@ -166,7 +168,13 @@ def indoor_zones(houses: Sequence[Any], index: dict[str, Any]) -> list[dict[str,
     for h in houses:
         if h.inside and h.id in rooms:
             r = rooms[h.id]
-            out += room_boxes(room_tag(h), r["ring"], float(r["floor"]), float(r["ceiling"]))
+            floor, ceiling = float(r["floor"]), float(r["ceiling"])
+            if not r.get("rooms"):
+                out += room_boxes(room_tag(h), r["ring"], floor, ceiling)
+                continue
+            base = room_tag(h)[: -len("_INNEN")]  # divided: a zone per room, as its waypoint
+            for part in r["rooms"]:
+                out += room_boxes(f"{base}_{part['name']}", part["ring"], floor, ceiling)
     return out
 
 

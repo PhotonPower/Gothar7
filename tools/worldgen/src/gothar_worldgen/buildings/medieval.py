@@ -884,6 +884,7 @@ class _Context:
     passages_now: list[_PassagePlan] = field(default_factory=list)  # in the current mass
     carve: list[tuple[Polygon, float]] = field(default_factory=list)  # for the collision
     floors: list[tuple[Polygon, float]] = field(default_factory=list)  # solid room floors (W7)
+    inner_walls: list[tuple[Polygon, float, float]] = field(default_factory=list)  # partitions
     dirt_m: float = 0.0  # > 0: textured house, plaster walls get a dirty foot band this high
     lod: int = 0  # 1: simplified for the distance (flat openings, flat timber, no dormers)
 
@@ -906,7 +907,9 @@ def _top_outline(f: Frame, roof: _Roof, crease: LineString | None, y: float,
 
 def _room_spec(rules: Rules) -> dict[str, Any]:
     spec = {"wallM": 0.3, "ceilingM": 0.15, "beamM": 0.16, "beamEveryM": 1.0, "minAreaM2": 8.0,
-            "minHeightM": 2.4, "stoneFloors": [], "doorsOpen": False}  # fmt: skip
+            "minHeightM": 2.4, "stoneFloors": [], "doorsOpen": False, "maxRoomM2": 0.0,
+            "maxRoomM2ByUse": {}, "minRoomWidthM": 3.0, "partitionM": 0.15,
+            "passage": [0.9, 2.0]}  # fmt: skip
     spec.update(rules.data.get("interior", {}))
     return spec
 
@@ -995,6 +998,11 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
                 continue
             (x0, z0), (x1, z1) = g.coords[0], g.coords[-1]
             _room_beam(b["room_beam"], (x0, z0), (x1, z1), ceiling, bw)
+    # big ground storeys are divided: the room with the door (its hearth, table) and chambers
+    use = str((ctx.interior or {}).get("use", ""))
+    rooms, cuts = _partition_plan(inner, ((d0[0] + d1[0]) / 2, (d0[1] + d1[1]) / 2), spec, use)
+    for cut in cuts:
+        _partition(ctx, cut, floor, ceiling, spec)
     # the collision: walls beside the room and the door, a solid floor, the body above
     corridor = inner.union(_door_corridor(f, op, wall))
     ctx.carve.append((corridor, ceiling))
@@ -1011,6 +1019,143 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
                  "axis": [round(ax, 4), round(az, 4)], "normal": [round(nx, 4), round(nz, 4)],
                  "floor": round(door_lo, 3), "w": round(op.w, 3), "h": round(op.h, 3)},
     }  # fmt: skip
+    if len(rooms) > 1:  # (W7 rooms) the first is the one with the door
+        ctx.room["rooms"] = [{"name": name, "ring": [[round(x, 3), round(z, 3)] for x, z in
+                                                     list(poly.exterior.coords)[:-1]]}
+                             for name, poly in rooms]  # fmt: skip
+        ctx.room["passages"] = [{"rooms": list(c["rooms"]),
+                                 "mid": [round(c["mid"][0], 3), round(c["mid"][1], 3)],
+                                 "axis": [round(c["u"][0], 4), round(c["u"][1], 4)],
+                                 "w": c["w"], "h": c["h"]} for c in cuts]  # fmt: skip
+
+
+_Rooms = tuple[list[tuple[str, Polygon]], list[dict[str, Any]]]
+
+
+def _partition_plan(inner: Polygon, door: tuple[float, float], spec: dict[str, Any],
+                    use: str) -> _Rooms:  # fmt: skip
+    """Rooms of a ground storey (W7): above ``maxRoomM2`` (per use ``maxRoomM2ByUse`` for the
+    room with the door) it is cut across its long axis. The room with the door (``INNEN``) lies
+    around the door; the parts beside it become chambers (``KAMMER``, ``KAMMER_2`` …) of equal
+    width, none narrower than ``minRoomWidthM``. Returns (name, polygon) per room and the cuts:
+    position along the axis, the two rooms, the passage's middle, axis, width, height."""
+    first_max = float(spec.get("maxRoomM2ByUse", {}).get(use, spec["maxRoomM2"]))
+    other_max = float(spec["maxRoomM2"])
+    if other_max <= 0 or inner.area <= first_max:
+        return [("INNEN", inner)], []
+    rect = list(inner.minimum_rotated_rectangle.exterior.coords)[:4]
+    e1 = (rect[1][0] - rect[0][0], rect[1][1] - rect[0][1])
+    e2 = (rect[2][0] - rect[1][0], rect[2][1] - rect[1][1])
+    long = e1 if math.hypot(*e1) >= math.hypot(*e2) else e2
+    ln = math.hypot(*long)
+    ux, uz = long[0] / ln, long[1] / ln
+    ts = [x * ux + z * uz for x, z in inner.exterior.coords]
+    t0, t1 = min(ts), max(ts)
+    length = t1 - t0
+    depth = inner.area / length
+    min_w = float(spec["minRoomWidthM"])
+    td = door[0] * ux + door[1] * uz
+    if length - min_w < min_w:  # no room for a chamber beside it
+        return [("INNEN", inner)], []
+    w_first = min(max(min_w, first_max / depth), length - min_w)
+    # the room with the door around the door; where that leaves a strip too narrow for a chamber
+    # it moves to the end of the storey (still holding the door), so one side is a chamber
+    a = min(max(td - w_first / 2, t0), t1 - w_first)
+    if 0 < a - t0 < min_w or 0 < t1 - (a + w_first) < min_w:
+        ends = [x for x in (t0, t1 - w_first) if x <= td <= x + w_first]
+        if ends:
+            a = min(ends, key=lambda x: abs(td - (x + w_first / 2)))
+    b = a + w_first
+    if a - t0 < min_w:  # too narrow for a chamber: the room with the door takes it
+        a = t0
+    if t1 - b < min_w:
+        b = t1
+    rooms_t: list[tuple[float, float]] = [(a, b)]
+    for lo, hi in ((t0, a), (b, t1)):
+        if hi - lo < min_w:
+            continue
+        n = max(1, min(math.ceil((hi - lo) * depth / other_max), int((hi - lo) // min_w)))
+        for k in range(n):
+            rooms_t.append((lo + (hi - lo) * k / n, lo + (hi - lo) * (k + 1) / n))
+    if len(rooms_t) == 1:
+        return [("INNEN", inner)], []
+    # order: the room with the door, then outwards on each side
+    first = rooms_t[0]
+    others = sorted(rooms_t[1:], key=lambda r: min(abs(r[0] - first[1]), abs(r[1] - first[0])))
+    names = ["INNEN"] + ["KAMMER" if k == 0 else f"KAMMER_{k + 1}" for k in range(len(others))]
+    ordered = [first, *others]
+    half = float(spec["partitionM"]) / 2
+    vx, vz = -uz, ux
+    big = 1e3
+
+    def strip(lo: float, hi: float) -> Polygon:
+        return Polygon([(ux * lo + vx * -big, uz * lo + vz * -big),
+                        (ux * hi + vx * -big, uz * hi + vz * -big),
+                        (ux * hi + vx * big, uz * hi + vz * big),
+                        (ux * lo + vx * big, uz * lo + vz * big)])  # fmt: skip
+
+    rooms: list[tuple[str, Polygon]] = []
+    for name, (lo, hi) in zip(names, ordered, strict=True):
+        piece = inner.intersection(strip(lo + (half if lo > t0 + 1e-6 else 0.0),
+                                         hi - (half if hi < t1 - 1e-6 else 0.0)))  # fmt: skip
+        parts = [g for g in getattr(piece, "geoms", [piece]) if isinstance(g, Polygon)]
+        rooms.append((name, shapely.orient_polygons(max(parts, key=lambda g: g.area))))
+    pw, ph = (float(x) for x in spec["passage"])
+    cuts = []
+    for i, (_, hi_i) in enumerate(ordered):
+        for j, (lo_j, _) in enumerate(ordered):
+            if i != j and abs(hi_i - lo_j) < 1e-6:  # i on the low side of the cut at hi_i
+                t = hi_i
+                line = LineString([(ux * t - vx * big, uz * t - vz * big),
+                                   (ux * t + vx * big, uz * t + vz * big)])  # fmt: skip
+                chord = inner.intersection(line)
+                segs = [g for g in getattr(chord, "geoms", [chord]) if isinstance(g, LineString)]
+                seg = max(segs, key=lambda g: g.length)
+                (ax, az), (bx, bz) = seg.coords[0], seg.coords[-1]
+                cuts.append({"t": t, "rooms": (names[i], names[j]), "a": (ax, az), "b": (bx, bz),
+                             "mid": ((ax + bx) / 2, (az + bz) / 2), "u": (ux, uz),
+                             "w": min(pw, seg.length - 0.6), "h": ph})  # fmt: skip
+    return rooms, cuts
+
+
+def _partition(ctx: _Context, cut: dict[str, Any], floor: float, ceiling: float,
+               spec: dict[str, Any]) -> None:  # fmt: skip
+    """A partition wall across the room with an open passage in its middle: plastered on both
+    sides, the passage's jambs and head, and its collision (``ctx.inner_walls``)."""
+    b = ctx.builders["room_wall"]
+    half = float(spec["partitionM"]) / 2
+    ux, uz = cut["u"]
+    (ax, az), (bx, bz) = cut["a"], cut["b"]
+    length = math.dist((ax, az), (bx, bz))
+    sx, sz = (bx - ax) / length, (bz - az) / length  # along the wall
+    pw, ph = cut["w"], cut["h"]
+    s0, s1 = (length - pw) / 2, (length + pw) / 2
+    top = min(floor + ph, ceiling - 0.05)
+
+    def at(s: float, y: float, side: float) -> tuple[float, float, float]:
+        return (ax + sx * s + ux * half * side, y, az + sz * s + uz * half * side)
+
+    face = shapely.box(0.0, floor, length, ceiling).difference(shapely.box(s0, floor, s1, top))
+    for side in (-1.0, 1.0):
+        for tri in shapely.constrained_delaunay_triangles(face).geoms:
+            pts = list(tri.exterior.coords)[:3]
+            b.polygon([at(su, y, side) for su, y in pts], [(su, y) for su, y in pts],
+                      (ux * side, 0.0, uz * side))  # fmt: skip
+    for s_, n in ((s0, 1.0), (s1, -1.0)):  # jambs, facing into the passage
+        b.polygon([at(s_, floor, -1), at(s_, floor, 1), at(s_, top, 1), at(s_, top, -1)],
+                  [(0.0, floor), (2 * half, floor), (2 * half, top), (0.0, top)],
+                  (sx * n, 0.0, sz * n))  # fmt: skip
+    b.polygon([at(s0, top, -1), at(s1, top, -1), at(s1, top, 1), at(s0, top, 1)],
+              [(s0, 0.0), (s1, 0.0), (s1, 2 * half), (s0, 2 * half)], (0.0, -1.0, 0.0))  # fmt: skip
+
+    def foot(sa: float, sb: float) -> Polygon:
+        pts = [at(sa, 0, -1), at(sb, 0, -1), at(sb, 0, 1), at(sa, 0, 1)]
+        return Polygon([(x, z) for x, _, z in pts])
+
+    # the collision: the wall beside the passage; open to the ceiling above it, like the house
+    # door (the engine probes the ground of a way from above)
+    ctx.inner_walls.append((foot(0.0, s0), floor, ceiling))
+    ctx.inner_walls.append((foot(s1, length), floor, ceiling))
 
 
 def _door_corridor(f: Frame, op: Any, wall: float) -> Polygon:  # noqa: ANN401
@@ -1899,6 +2044,9 @@ def build_house(
         origin3 = (origin_xz[0], base_y, origin_xz[1])
         floors = [prism_body(piece, base_y, top, origin3, "COL_HULL_F")
                   for poly, top in ctx.floors for piece in convex_pieces(poly)]  # fmt: skip
+        floors += [prism_body(piece, y0, y1, origin3, "COL_HULL_W")
+                   for poly, y0, y1 in ctx.inner_walls
+                   for piece in convex_pieces(poly)]  # fmt: skip
         if ctx.screens or floors:
             parts = [*collision.parts, *ctx.screens, *floors]
             parts = [

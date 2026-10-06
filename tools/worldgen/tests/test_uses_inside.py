@@ -244,3 +244,48 @@ def test_hanging_things_above_heads_off_the_hearth():
         (v,) = props_of(p, kind)
         assert v["pos"][1] == pytest.approx(ROOM["ceiling"] - 0.02)
         assert math.dist((v["pos"][0], v["pos"][2]), (hearth["pos"][0], hearth["pos"][2])) > 1.0
+
+
+# the same room divided at x = 4.0: the chamber on the west, the room with the door on the east
+DIVIDED = {"entries": [{"id": "DEBW_00100061ZjV", "interior": {**ROOM, "rooms": [
+    {"name": "INNEN", "ring": [[4.075, -0.3], [4.075, -6.7], [9.7, -6.7], [9.7, -0.3]]},
+    {"name": "KAMMER", "ring": [[0.3, -0.3], [0.3, -6.7], [3.925, -6.7], [3.925, -0.3]]}],
+    "passages": [{"rooms": ["KAMMER", "INNEN"], "mid": [4.0, -3.5], "axis": [1.0, 0.0],
+                  "w": 0.9, "h": 2.0}]}}]}  # fmt: skip
+
+
+def test_a_divided_storey_puts_beds_in_the_chamber():
+    spec = {"wohnhaus": inside_spec({"mobs": ["bed:R", "chest:1", "table:1"], "hearth": True,
+                                     "freepoints": ["LEAN:1"],
+                                     "props": ["shelf:1", "sacks:1"]}, "x")}  # fmt: skip
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=2, inside=True)
+    p = plan_inside([house], spec, DIVIDED, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+    assert p.failed == []
+    kammer = Polygon(DIVIDED["entries"][0]["interior"]["rooms"][1]["ring"])
+    where = {v["name"]: kammer.contains(Point(v["pos"][0], v["pos"][2])) for v in p.vobs
+             if v["type"] in ("mob", "mesh")}  # fmt: skip
+    beds = [n for n in where if "_BED_" in n]
+    assert len(beds) == 2 and all(where[n] for n in beds)
+    assert all(n.startswith("MOB_LEO_WOHNHAUS_ZJV_KAMMER_") for n in beds)
+    assert where["MOB_LEO_WOHNHAUS_ZJV_KAMMER_CHEST_1"]
+    assert where["PROP_LEO_WOHNHAUS_ZJV_KAMMER_SACKS_1"]  # stores go to the chamber
+    assert not where["PROP_LEO_WOHNHAUS_ZJV_INNEN_HERD"]
+    assert not where["MOB_LEO_WOHNHAUS_ZJV_INNEN_TABLE_1"]
+    names = {w["name"]: w for w in p.places if w["kind"] == "wp"}
+    through = names["WP_LEO_WOHNHAUS_ZJV_KAMMER_DURCHGANG"]
+    assert (
+        through["pos"] == pytest.approx([4.0, -3.5])
+        and through["link"] == "WP_LEO_WOHNHAUS_ZJV_INNEN"
+    )
+    chamber = names["WP_LEO_WOHNHAUS_ZJV_KAMMER"]
+    assert chamber["link"] == through["name"] and chamber["pos"] == pytest.approx([2.8, -3.5])
+    lights = [v["name"] for v in by_kind(p, "light")]
+    assert "LIGHT_LEO_WOHNHAUS_ZJV_KAMMER_1" in lights  # every room has its light
+
+
+def test_a_divided_storey_has_a_zone_per_room():
+    from gothar_worldgen.uses.zones import indoor_zones
+
+    house = House("DEBW_00100061ZjV", "wohnhaus", inside=True)
+    values = {z["value"] for z in indoor_zones([house], DIVIDED)}
+    assert values == {"LEO_WOHNHAUS_ZJV_INNEN", "LEO_WOHNHAUS_ZJV_KAMMER"}
