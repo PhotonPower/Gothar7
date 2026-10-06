@@ -266,6 +266,22 @@ void Engine::fixedUpdateAi(Creature& c, f32 seconds)
     if (c.simulated && distance > m_simulationDistance)
     {
         c.simulated = false;
+        if (c.route && !c.route->points.empty() && c.body)
+        {
+            // Out of the simulation while walking (welt #227): it does not stop silently - it is at its goal
+            // at once, as unsimulated NPCs jump to their routine places, and says so.
+            const std::string goal = c.routeGoal;
+            c.body->teleport(c.route->points.back());
+            c.position = c.positionBefore = c.body->feet();
+            G7_LOG_DEBUG("engine", "{} leaves the simulation walking to {}: put there", c.species, goal);
+            c.route.reset();
+            c.replans = 0;
+            if (m_scripts)
+            {
+                const script::Value args[] = {c.species, goal};
+                m_scripts->emit("npc_arrived", args);
+            }
+        }
         c.route.reset();
         c.commands.clear();
         c.commandRunning = false;
