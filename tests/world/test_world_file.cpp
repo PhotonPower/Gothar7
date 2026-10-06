@@ -388,3 +388,24 @@ TEST_CASE("WorldFile: indoor zones - turned boxes read, checked, written one per
     fails(R"({"type":"indoor","value":"R","box":{"center":[0,0,0],"halfExtents":[1,0,1]}})", "halfExtents");
     fails(R"({"value":"R"})", "type");
 }
+
+TEST_CASE("WorldFile: daylight lights - read, written after intensity and only when true")
+{
+    const char* text =
+        R"({"version":1,"name":"d","nextVobId":3,"vobs":[)"
+        R"({"id":1,"type":"light","name":"WINDOW","components":{"light":{"color":[1.0,1.0,1.0],"range":4.0,"intensity":2.0,"daylight":true,"flicker":0.0}}},)"
+        R"({"id":2,"type":"light","name":"LAMP","components":{"light":{"color":[1.0,0.6,0.3],"range":6.0,"intensity":3.0,"flicker":0.2}}}]})";
+    auto file = parseWorldFile(text, "d.g7world");
+    REQUIRE_MESSAGE(file.ok(), (file.ok() ? "" : file.error().message));
+    CHECK(file.value().vobs[0].light.daylight);
+    CHECK_FALSE(file.value().vobs[1].light.daylight);
+    const std::string written = writeWorldFile(file.value());
+    CHECK(written.find(R"("intensity":2.0,"daylight":true,"flicker":0.0)") != std::string::npos);
+    CHECK(written.find(R"("intensity":3.0,"flicker":0.2)") != std::string::npos); // not written when false
+    CHECK(writeWorldFile(parseWorldFile(written, "d.g7world").value()) == written);
+    CHECK_FALSE(
+        parseWorldFile(
+            R"({"version":1,"name":"d","nextVobId":2,"vobs":[{"id":1,"type":"light","name":"W","components":{"light":{"daylight":"yes"}}}]})",
+            "d")
+            .ok());
+}

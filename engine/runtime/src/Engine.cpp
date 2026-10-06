@@ -152,6 +152,10 @@ Result<void> Engine::init()
         G7_LOG_WARN("engine", "scripts: {}", scripts.error().message);
     }
 
+    if (m_config.headless || !m_config.render)
+    {
+        initEnvironment(); // the day cycle without a renderer too (daylight lights, tests)
+    }
     if (!m_config.headless)
     {
         platform::WindowDesc desc = m_config.window;
@@ -1068,9 +1072,20 @@ Result<void> Engine::instantiateScene()
     rebuildWorldItems();
     rebuildMobs();
     m_lights.clear();
+    m_daylightLights.clear();
     m_scene.each<world::LightSource, world::WorldTransform>(
         [&](entt::entity, const world::LightSource& light, const world::WorldTransform& world)
-        { m_lights.add({Vec3(world.matrix[3]), light.range, light.color, light.intensity}); });
+        {
+            const render::PointLight point{Vec3(world.matrix[3]), light.range, light.color, light.intensity};
+            if (light.daylight)
+            {
+                m_daylightLights.push_back(point); // follows the sky each frame (window light, world.md)
+            }
+            else
+            {
+                m_lights.add(point);
+            }
+        });
     return {};
 }
 
@@ -1292,6 +1307,7 @@ void Engine::unloadWorld()
     m_cullGridDirty = true;
     m_physicsDirty = true;
     m_lights.clear();
+    m_daylightLights.clear();
     m_terrain = {};
     m_heightfield = {};
     m_hasTerrain = false;
@@ -1535,6 +1551,29 @@ std::vector<render::IndoorVolume> Engine::nearestIndoorVolumes(const Vec3& point
     return nearest;
 }
 
+std::vector<render::PointLight> Engine::daylightLights() const
+{
+    std::vector<render::PointLight> out;
+    if (m_daylightLights.empty())
+    {
+        return out;
+    }
+    const auto luminance = [](const Vec3& c) { return 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b; };
+    const Vec3 sky = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity).environment.ambientSky;
+    const Vec3 noon = m_dayCycle.evaluate(12.0f, m_fogBaseDensity).environment.ambientSky;
+    const f32 brightness =
+        luminance(noon) > 1e-5f ? std::clamp(luminance(sky) / luminance(noon), 0.0f, 1.5f) : 0.0f;
+    const f32 peak = std::max({sky.r, sky.g, sky.b});
+    const Vec3 colour = peak > 1e-5f ? sky / peak : Vec3(1.0f);
+    for (render::PointLight l : m_daylightLights)
+    {
+        l.color = colour;
+        l.intensity *= brightness;
+        out.push_back(l);
+    }
+    return out;
+}
+
 void Engine::updateEnvironment()
 {
     const f32 fogStart = m_environment.fogStart;
@@ -1684,8 +1723,12 @@ void Engine::drawScene(u32 width, u32 height)
     }
 
     // Main pass: terrain (culled and detailed per chunk), then the instances inside the view frustum.
-    // The world's lights and those of the effects (fire, magic; M12).
+    // The world's lights, daylight through windows and the effects' lights (fire, magic; M12).
     m_frameLights = m_lights;
+    for (const render::PointLight& l : daylightLights())
+    {
+        m_frameLights.add(l);
+    }
     {
         std::vector<render::PointLight> effectLights;
         m_particles.lights(effectLights);

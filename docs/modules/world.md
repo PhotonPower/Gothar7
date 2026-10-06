@@ -100,7 +100,10 @@ daraus; beim Zusammenführen von Teilwelten werden IDs neu vergeben. Laufzeit-Vo
   in der Datei nach den Kindern stehen), `pos` [x,y,z] (Meter, relativ zum Elternteil), `rot` Quaternion **[x,y,z,w]**,
   `scale` [x,y,z] (Vorgabe 1). `mesh`-Vobs: `mesh` (VFS-Pfad ab Wurzel, `.g7mesh`; ein `.glb`-Pfad lädt die gekochte
   `.g7mesh`, wenn vorhanden). `light`-Vobs: `components.light` mit `color` (linear), `range` (> 0), `intensity` (Vorgabe 3),
-  `flicker` (0–1, Vorgabe 0).
+  `flicker` (0–1, Vorgabe 0). **`daylight`** (Vertrag mit welt, 2026-10-06): `true` = Tageslicht durchs Fenster – Farbe
+  ist das Himmels-Ambient der Tageszeit (auf 1 normiert), Intensität `intensity` mal die Helligkeit des Himmels-Ambients
+  relativ zu Mittag (nachts nahe 0), ohne Flackern; die eigene `color` gilt dann nicht. Geschrieben direkt nach
+  `intensity` und nur, wenn `true` (Reihenfolge `color`, `range`, `intensity`, `daylight`, `flicker`).
 - Weitere Vob-Typen (M4, Erweiterung von v1 nach dem Muster `components`, Abschnitt „Vob-Typen“ unten).
 - `waynet`: Wegnetz, verbindlich ab 2026-10-04 (Abschnitt „Wegnetz“ unten); seit M8 Teil A gelesen und geprüft
   (`WorldFile::waynet`, `world::WaynetData`, Fehler mit Eintrag) und sortiert, ein Eintrag je Zeile geschrieben.
