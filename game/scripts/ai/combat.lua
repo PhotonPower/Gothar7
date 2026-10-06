@@ -16,10 +16,14 @@ local attackers = {} -- Ziel -> { npc = true }
 local round = {}     -- npc -> Nummer des Kampfes: ein neuer Kampf überlebt das Ende des alten Zustands
 local begun = {}     -- npc -> die Nummer, mit der der laufende Kampfzustand begann
 
+--- Wie viele von ihnen noch kämpfen können (Liegende und Tote geben ihren Platz frei).
 local function count(t)
     local n = 0
-    for _ in pairs(t or {}) do
-        n = n + 1
+    for npc in pairs(t or {}) do
+        local s = fight_state(npc)
+        if s ~= "dead" and s ~= "down" then
+            n = n + 1
+        end
     end
     return n
 end
@@ -131,10 +135,12 @@ function fight_step(npc)
     local reach = npc_reach(npc)
     if distance > reach then -- the bodies touch at about 1.4 m: the full reach counts
         local gait = animal(npc) and animal(npc).chase_gait or "run" -- Tiere: nah im Trab, ab 8 m rennend
+        -- Folgen setzt erst 1 m über dem Wunschabstand neu an: so nah, dass es danach sicher in Reichweite ist.
+        local near = math.max(0.5, reach - 1.2)
         if target == "hero" then
-            npc_follow_player(npc, 0.5, reach * 0.7, gait)
+            npc_follow_player(npc, 0.5, near, gait)
         else
-            npc_follow_npc(npc, target, reach * 0.7, 0.5, gait)
+            npc_follow_npc(npc, target, near, 0.5, gait)
         end
         return
     end

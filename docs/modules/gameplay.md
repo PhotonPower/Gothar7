@@ -37,7 +37,7 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
     Innenprofil überblendet: Abstand 1,9 m, Blickpunkt 1,5 m, Mindestabstand 0,4 m, Kugel 0,15 m. Die Neigung
     bleibt die des Spielers. Unter einem vorkragenden Obergeschoss (0,5 m über der Straße) bleibt es draußen.
     Werte zum Nachstellen durch den Projektinhaber.
-  - Modi (Kampf, Dialog, Schwimmen) folgen mit ihren Phasen als weitere Datensätze.
+  - Modi: drinnen `[camera.indoor]`, Kampf `[camera.combat]` (M11), Dialog `data/dialog.lua` (M10).
 - **Springen, Klettern, Fallen (Teil D; Werte `[jump]`, `[climb]`, `[fall]`, Entscheidungen Projektinhaber):**
   - **Sprung** (Taste `jump`) aus Stand bzw. Gehen 0,9 m hoch, aus dem Rennen 1,1 m und damit weiter
     (~3,8 m). Keine Luftsteuerung. Nach der Landung 0,2 s Sperre.
@@ -326,7 +326,35 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
 - Gleiche Gilde trifft sich nicht (Rudel, Kameraden); der Held trifft jeden.
 - Engine-Hilfen: `npc_distance(npc, anderer)`, `npc_face(npc, anderer)`, `npc_reach(npc)` (`hero` für den Helden).
 
-**Weiter:** Kamera-Kampfprofil (K5, nach #206); E Fernkampf (K9); DoD-Szenario.
+**Teil E – Fernkampf (umgesetzt, `EngineRanged.cpp`; Entscheidungen R1–R4):**
+- **Ziehen (R1):** eigene Taste `draw_ranged` („2“) für den ausgerüsteten Bogen bzw. die Armbrust; ohne
+  Nahkampfwaffe nimmt auch die Leertaste den Bogen. Der Bogen sitzt an `socket_hand_l`, die Armbrust an
+  `socket_hand_r`. Waffenmodus 3, `player_weapon()` = `"ranged"`.
+- **Schießen (R2):** Strg + vor bzw. linke Maustaste; der Ziel-Lock reicht mit Bogen 30 m. Nachladen von selbst
+  (Bogen 1,0 s, Armbrust 1,6 s), solange Munition da ist (`it_arrow` bzw. `it_bolt`, `data/combat.lua`); ohne:
+  Hinweis „Keine Pfeile.“
+- **Treffer (R4):** auf das fokussierte bzw. gesperrte Ziel trifft der Schuss mit der Chance des Talents (`bow`,
+  `crossbow`: 30/60/90 %) – er fliegt dann auf dem flachen Bogen der Ballistik genau dorthin; ein Fehlschuss geht
+  5° zur Seite. Ohne Ziel fliegt er frei entlang des Blicks (40 m/s, Schwerkraft).
+- **Schaden (R3):** Stich der Waffe minus Schutz gegen Stich, mindestens 5, ohne Stärke und Krit. Fernkampf tötet
+  (K7); den Helden wirft er nur nieder (K8). Der Pfeil steckt danach im Ziel (Inventar, plünderbar); verfehlte
+  bleiben am Boden liegen und lassen sich aufheben.
+- **Geschosse** fliegen im festen Schritt (Strecke gegen Welt und Körper), gezeichnet mit dem Modell der Munition,
+  +Y entlang der Flugbahn (figurens Pfeil: Ursprung in der Schaftmitte, +Y zur Spitze). Ereignis `npc_shot`.
+- **Lua:** `draw_ranged()`, `hero_shoot()`. Inhalt: `it_crossbow`, `it_arrow`, `it_bolt` (Modelle folgen von figuren).
+
+**DoD-Szenario** (`tests/runtime/test_engine_m11_scenario.cpp`, Gegner-Platzhalter `npcs/camp/bandits.lua`): ein
+Bot spielt den Helden (Waffe gezogen, schlägt, pariert ab und zu). Ein Wegelagerer fällt mit Talent 2 deutlich
+schneller als mit Talent 0; ein Wolfsrudel zu dritt (zwei zugleich) wird besiegt; der starke Gegner (Rotbart) wirft
+einen ungeübten Helden nieder und unterliegt einem geübten, gerüsteten. Werte dazu: Taumeln nur ab 15 % des Lebens
+(`stagger_share`, starke Gegner schütteln leichte Treffer ab), Tiere springen beim Biss vor (`animal_reach` 1,3 m).
+Ob es sich responsiv anfühlt, entscheidet der Projektinhaber beim Probespielen.
+
+**Kamera-Kampfprofil (K5, umgesetzt):** Mit gezogener Waffe und einem Gegner im Ziel-Lock blendet die Kamera
+(`[camera.combat]`, 0,4 s) auf 2,4 m Abstand und 1,45 m Blickpunkt; drinnen gilt der nähere der beiden Abstände.
+`Engine::playerCombatBlend()`.
+
+**Weiter:** Fernkampf für NPCs (Jäger); Trefferfenster und Waffen-Kapsel aus figurens Kampfclips (#217).
 
 ## Magie (M12)
 Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten

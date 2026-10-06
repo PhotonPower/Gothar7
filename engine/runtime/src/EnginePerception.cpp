@@ -170,7 +170,7 @@ void Engine::perceive(Creature& c, f32 seconds)
     {
         c.reportedFighter = true;
         const script::Value args[] = {c.species, static_cast<f64>(distance),
-                                      std::string(m_weaponMode == 1 ? "weapon" : "fists")};
+                                      std::string(m_weaponMode == 2 ? "fists" : "weapon")};
         m_scripts->emit("assess_fighter", args);
     }
 
@@ -257,6 +257,11 @@ void Engine::toggleWeapon()
     }
     const gameplay::Character* h = hero();
     const std::string weapon = h != nullptr ? h->equipped(gameplay::EquipSlot::Melee) : std::string();
+    if (weapon.empty() && !rangedWeapon().empty())
+    {
+        toggleRanged(); // R1: without a melee weapon the draw key takes the bow
+        return;
+    }
     m_weaponMode = weapon.empty() ? 2 : 1;
     m_weaponDrawn = weapon; // in the hand at the clip's "draw" event
     if (!m_figure->animator.hasState("draw_1h"))
@@ -276,6 +281,19 @@ void Engine::weaponEvent(std::string_view event)
     if (event == "sheath" && m_weaponMode == 0)
     {
         detachFromPlayer("socket_hand_r");
+        detachFromPlayer("socket_hand_l"); // a bow (M11)
+    }
+    else if (event == "draw" && m_weaponMode == 3 && !m_weaponDrawn.empty())
+    {
+        // The bow in the left hand, the crossbow in the right (figuren, F6).
+        if (const LoadedModel* model = itemModel(m_weaponDrawn))
+        {
+            const char* socket = rangedIsCrossbow(m_weaponDrawn) ? "socket_hand_r" : "socket_hand_l";
+            if (auto attached = attachModel(socket, model, nullptr); !attached)
+            {
+                G7_LOG_WARN("engine", "draw ranged: {}", attached.error().message);
+            }
+        }
     }
     else if (event == "draw" && m_weaponMode == 1 && !m_weaponDrawn.empty())
     {
@@ -355,13 +373,15 @@ void Engine::bindPerceptionFunctions()
                  }
                  return script::makeTable(std::move(list), {});
              }});
-    vm.bind(
-        {"player_weapon", "player_weapon() -> string",
-         "Was der Held gezogen hat: `\"none\"`, `\"weapon\"` (Nahkampfwaffe) oder `\"fists\"`.",
-         "Wahrnehmung", [this](std::span<const Value>) -> Result<Value>
-         {
-             return Value(std::string(m_weaponMode == 0 ? "none" : m_weaponMode == 1 ? "weapon" : "fists"));
-         }});
+    vm.bind({"player_weapon", "player_weapon() -> string",
+             "Was der Held gezogen hat: `\"none\"`, `\"weapon\"` (Nahkampfwaffe) oder `\"fists\"`.",
+             "Wahrnehmung", [this](std::span<const Value>) -> Result<Value>
+             {
+                 return Value(std::string(m_weaponMode == 0   ? "none"
+                                          : m_weaponMode == 1 ? "weapon"
+                                          : m_weaponMode == 3 ? "ranged"
+                                                              : "fists"));
+             }});
     vm.bind({"player_inside", "player_inside(area: string) -> boolean",
              "Ob der Spieler im Trigger `area` (Vob-Name, z. B. ein privater Bereich) steht.", "Wahrnehmung",
              [this](std::span<const Value> a) -> Result<Value>
@@ -387,15 +407,17 @@ void Engine::bindPerceptionFunctions()
                  }
                  return Value(inside);
              }});
-    vm.bind(
-        {"draw_weapon", "draw_weapon() -> string",
-         "Zieht die ausgerüstete Nahkampfwaffe (ohne sie die Fäuste) bzw. steckt sie weg, wie die Taste "
-         "draw_weapon; gibt zurück, was danach gezogen ist (wie player_weapon).",
-         "Wahrnehmung", [this](std::span<const Value>) -> Result<Value>
-         {
-             toggleWeapon();
-             return Value(std::string(m_weaponMode == 0 ? "none" : m_weaponMode == 1 ? "weapon" : "fists"));
-         }});
+    vm.bind({"draw_weapon", "draw_weapon() -> string",
+             "Zieht die ausgerüstete Nahkampfwaffe (ohne sie die Fäuste) bzw. steckt sie weg, wie die Taste "
+             "draw_weapon; gibt zurück, was danach gezogen ist (wie player_weapon).",
+             "Wahrnehmung", [this](std::span<const Value>) -> Result<Value>
+             {
+                 toggleWeapon();
+                 return Value(std::string(m_weaponMode == 0   ? "none"
+                                          : m_weaponMode == 1 ? "weapon"
+                                          : m_weaponMode == 3 ? "ranged"
+                                                              : "fists"));
+             }});
     // Events (documentation only).
     vm.bind({"assess_player",
              "on(\"assess_player\", fn(npc: string, distance: number))",

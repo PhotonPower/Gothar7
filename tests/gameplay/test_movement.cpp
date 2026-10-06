@@ -201,6 +201,10 @@ ceiling = 3.5
     auto real = MovementSettings::parse(text.str(), "movement.toml");
     REQUIRE_MESSAGE(real, (real ? "" : real.error().message));
     CHECK(real.value().indoor.camera.distance < real.value().camera.distance);
+    // [camera.combat] (M11, K5): unset values as outside.
+    CHECK(real.value().combat.distance < real.value().camera.distance);
+    CHECK(real.value().combat.collisionRadius == doctest::Approx(real.value().camera.collisionRadius));
+    CHECK_FALSE(MovementSettings::parse("[camera.combat]\ndistance = 1\nmin_distance = 2\n", "m.toml"));
 }
 
 TEST_CASE("movement.toml: values, defaults and errors")

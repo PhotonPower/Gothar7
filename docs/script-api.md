@@ -124,6 +124,9 @@ Ein Schlag wurde pariert (M11).
 ### `on("npc_said", fn(npc: string, text: string, key: string))`
 Ein NPC hat etwas gesagt (npc_say, npc_shout); `key` ist der Sprach-Schlüssel des Zurufs (`svm_<stimme>_<m|f>_<anlass>_NN`, leer, wenn die Sprach-Datenbank den Text nicht kennt).
 
+### `on("npc_shot", fn(shooter: string, ammo: string))`
+Ein Schuss (M11, `hero`).
+
 ### `on("observe_player", fn(npc: string, distance: number))`
 Bei jedem Blick (5- bzw. 1-mal je Sekunde), solange der NPC den Spieler sieht.
 
@@ -229,6 +232,9 @@ Der Held benutzt ein Item aus dem Inventar (Nahrung, Trank, Schriftstück) – n
 
 ## Kampf
 
+### `draw_ranged() -> string`
+Zieht den ausgerüsteten Bogen bzw. die Armbrust bzw. steckt weg, wie die Taste draw_ranged (M11, R1); gibt zurück, was danach gezogen ist (wie player_weapon).
+
 ### `fight_state(npc: string) -> string`
 Kampfzustand: ready, attack, parry, dodge, stagger, down (bewusstlos), dead; `hero` für den Helden.
 
@@ -237,6 +243,9 @@ Ein Schlag des Helden (sonst über die Steuerung).
 
 ### `hero_parry() -> boolean`
 Parade des Helden.
+
+### `hero_shoot() -> boolean`
+Ein Schuss des Helden mit gezogenem Bogen bzw. Armbrust (sonst über die Steuerung); false beim Nachladen oder ohne Munition.
 
 ### `loot(npc: string, item: string, count?: integer) -> integer`
 Nimmt einem bewusstlosen oder toten NPC in der Nähe des Helden `count` (ohne: alle) Stück ab (M11, K7); gibt die Zahl zurück.

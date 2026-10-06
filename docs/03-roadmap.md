@@ -234,15 +234,15 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 **Meilenstein B vom Projektinhaber abgenommen, 2026-10-05** („Testlager ist ok“).
 
 ## M11 – Kampf
-- [ ] Waffenmodi (Faust, Einhand, Zweihand, Bogen, Armbrust), Ziehen/Wegstecken
-- [ ] Kameramodus „Kampf“ der Third-Person-Kamera (aus M5: näher, Blick auf den Gegner bei Ziel-Lock)
-- [ ] Nahkampf: Angriffe mit Treffer-Fenstern aus Animations-Events, Kombos abhängig vom Talent, Parieren, Ausweichschritt
+- [x] Waffenmodi (Faust, Einhand, Zweihand, Bogen, Armbrust), Ziehen/Wegstecken – Fernkampfwaffen mit eigener Taste (R1)
+- [x] Kameramodus „Kampf“ der Third-Person-Kamera (aus M5: näher, Blick auf den Gegner bei Ziel-Lock) – `[camera.combat]`, weich überblendet, drinnen der nähere Abstand (K5)
+- [x] Nahkampf: Angriffe mit Treffer-Fenstern aus Animations-Events, Kombos abhängig vom Talent, Parieren, Ausweichschritt – Gothic-1-Tasten, Maus als Zweitbelegung; bis zu den Clips eine Zeitleiste (A, B)
 - [ ] Trefferprüfung (Waffen-Shapecast entlang der Animation), Treffer-Reaktionen, Rückstoß
 - [x] Schadensmodell: Schadensarten × Schutzwerte, kritische Treffer abhängig vom Talent – Waffe + Stärke − Schutz, mindestens 5, kritisch 0/10/20 % (K2, K3; Teil A)
-- [ ] Fernkampf: Zielen, Projektile mit Ballistik, Munition
+- [x] Fernkampf: Zielen, Projektile mit Ballistik, Munition – Bogen und Armbrust des Helden, Trefferchance nach Talent auf das Ziel, Pfeile bleiben stecken bzw. liegen (R1–R4; E)
 - [x] Bewusstlosigkeit vs. Tod, Plündern – bewusstlos 30 s, Schlag auf Liegende tötet, Plündern, Zeugen (K7; A, C)
 - [x] Kampf-KI: Abstand halten, Angriffsmuster pro Gegnertyp, Gruppenkampf, Rückzug – `ai/combat.lua`: zwei zugleich, Flucht bei wenig Leben, Tiere jagen (D)
-- [ ] Ziel-Lock im Kampf
+- [x] Ziel-Lock im Kampf – das nächste NPC, das fokussierte zuerst, vor dem Helden bevorzugt (K5; B)
 
 **DoD:** Kampf gegen Mensch, Wolfsrudel und einen starken Gegner fühlt sich responsiv an; Talentstufen sind spürbar.
 

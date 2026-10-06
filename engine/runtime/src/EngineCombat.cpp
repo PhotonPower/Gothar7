@@ -164,6 +164,10 @@ std::string Engine::fightMode(const Combatant& c) const
 
 f32 Engine::reachOf(const Combatant& c) const
 {
+    if (c.animal)
+    {
+        return m_combat.animalReach;
+    }
     const std::string mode = fightMode(c);
     return mode == "2h" ? m_combat.reach2h : mode == "1h" ? m_combat.reach1h : m_combat.fistReach;
 }
@@ -327,11 +331,15 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
                 hit.critical ? " (critical)" : "", std::max(hp, 0));
     if (hp > 0)
     {
-        target.fighter->stagger();
-        target.fighter->useTimeline();
-        if (target.creature != nullptr && target.animal)
+        // A hard hit staggers (breaks off an attack); a strong one shrugs off light ones.
+        if (hit.damage >= m_combat.staggerShare * static_cast<f32>(target.character->attribute("hp_max")))
         {
-            target.creature->action = 3; // the hit clip
+            target.fighter->stagger();
+            target.fighter->useTimeline();
+            if (target.creature != nullptr && target.animal)
+            {
+                target.creature->action = 3; // the hit clip
+            }
         }
         return;
     }
@@ -583,6 +591,7 @@ namespace
 constexpr u64 kCreatureFocusBit = 1ull << 62; ///< as in Engine.cpp: the focus is a creature
 constexpr f32 kLockRange = 8.0f;              ///< K5: an enemy this near (and ahead) is locked when drawing
 constexpr f32 kLockKeepRange = 12.0f;         ///< ... and kept until farther
+constexpr f32 kRangedLockRange = 30.0f;       ///< with a bow or crossbow drawn (R2)
 constexpr f32 kLockTurnRate = 6.0f;           ///< rad/s: the hero turns to the locked enemy
 constexpr f32 kDodgeBackwardInput = -1.0f;    ///< until the dodge clip (root motion): a quick step back
 } // namespace
@@ -605,7 +614,8 @@ void Engine::readCombatInput()
 
 std::optional<u32> Engine::pickCombatTarget() const
 {
-    // K5 (Gothic 1): the nearest living NPC ahead within reach of the lock - the focused one first.
+    // K5 (Gothic 1): the nearest living NPC within reach of the lock - the focused one first, then those
+    // ahead.
     if (!m_player.valid())
     {
         return std::nullopt;
@@ -613,7 +623,8 @@ std::optional<u32> Engine::pickCombatTarget() const
     const Vec3 hero = m_player.feet();
     const Vec3 forward = gameplay::forwardOf(m_movement.yaw());
     std::optional<u32> best;
-    f32 bestDistance = kLockRange;
+    const f32 range = m_weaponMode == 3 ? kRangedLockRange : kLockRange;
+    f32 bestDistance = 2.0f * range;
     for (const auto& c : m_creatures)
     {
         if (!c->character || c->fighter.state() == FightState::Dead || c->fighter.state() == FightState::Down)
@@ -622,14 +633,16 @@ std::optional<u32> Engine::pickCombatTarget() const
         }
         const Vec3 to = c->position - hero;
         const f32 distance = glm::length(Vec2(to.x, to.z));
-        if (distance > kLockRange ||
-            (distance > 0.5f && glm::dot(Vec2(to.x, to.z) / distance, Vec2(forward.x, forward.z)) < 0.0f))
+        if (distance > range)
         {
             continue;
         }
+        // The focused one first, then ahead; one behind only when nobody is ahead (circling wolves).
+        const bool ahead =
+            distance <= 0.5f || glm::dot(Vec2(to.x, to.z) / distance, Vec2(forward.x, forward.z)) >= 0.0f;
         const bool focused = m_focus && m_focus->kind == gameplay::FocusKind::Npc &&
                              static_cast<u32>(m_focus->id & ~kCreatureFocusBit) == c->id;
-        const f32 score = focused ? 0.0f : distance;
+        const f32 score = focused ? 0.0f : distance + (ahead ? 0.0f : range);
         if (!best || score < bestDistance)
         {
             best = c->id;
@@ -643,7 +656,14 @@ void Engine::fixedUpdateHeroFight(gameplay::MoveInput& input, f32 seconds)
 {
     if (m_combatRequest)
     {
-        if (auto hero = combatant(kHeroId); hero && m_weaponMode != 0)
+        if (m_weaponMode == 3)
+        {
+            if (m_combatRequest->move == "attack")
+            {
+                (void)shootRanged(); // R2: the fighting keys shoot with a bow drawn
+            }
+        }
+        else if (auto hero = combatant(kHeroId); hero && m_weaponMode != 0)
         {
             (void)startFight(*hero, m_combatRequest->move, m_combatRequest->kind);
         }
@@ -659,8 +679,9 @@ void Engine::fixedUpdateHeroFight(gameplay::MoveInput& input, f32 seconds)
         const Creature* target = m_combatTarget ? creature(*m_combatTarget) : nullptr;
         if (target == nullptr || target->fighter.state() == FightState::Dead ||
             target->fighter.state() == FightState::Down ||
-            glm::length(Vec2(target->position.x - m_player.feet().x,
-                             target->position.z - m_player.feet().z)) > kLockKeepRange)
+            glm::length(
+                Vec2(target->position.x - m_player.feet().x, target->position.z - m_player.feet().z)) >
+                (m_weaponMode == 3 ? kRangedLockRange + 5.0f : kLockKeepRange))
         {
             m_combatTarget = pickCombatTarget();
             target = m_combatTarget ? creature(*m_combatTarget) : nullptr;
@@ -836,4 +857,57 @@ void Engine::bindLootFunctions()
              "Ereignisse",
              {}});
 }
+} // namespace g7
+
+namespace g7
+{
+/// A projectile hit (M11 part E, EngineRanged.cpp): R3 damage, the arrow stays in the target, K7 ranged
+/// kills.
+void Engine::projectileHit(const Projectile& p, u32 targetId)
+{
+    auto target = combatant(targetId);
+    if (!target)
+    {
+        return;
+    }
+    const i32 damage = gameplay::rangedDamage(
+        p.damage, [&](std::string_view type) { return target->character->protection(type); }, m_combat);
+    const i32 hp = target->character->attribute("hp") - damage;
+    (void)target->character->setAttribute("hp", std::max(hp, 0));
+    target->character->addItem(p.ammo, 1); // R3: it stays in the target (looting)
+    const std::string shooter = p.shooter == kHeroId ? std::string("hero") : creature(p.shooter)->species;
+    G7_LOG_INFO("engine", "{} shoots {}: {} damage ({} left)", shooter, target->name, damage,
+                std::max(hp, 0));
+    if (m_scripts)
+    {
+        const Value args[] = {shooter, target->name, Value(static_cast<i64>(damage)), Value(false)};
+        m_scripts->emit("npc_hit", args);
+    }
+    if (hp > 0)
+    {
+        target->fighter->stagger();
+        target->fighter->useTimeline();
+        if (target->creature != nullptr && target->animal)
+        {
+            target->creature->action = 3;
+        }
+        return;
+    }
+    if (target->id == kHeroId)
+    {
+        (void)target->character->setAttribute("hp", 1); // K8: the hero gets up again
+        target->fighter->knockOut(5.0f);
+        return;
+    }
+    // K7: ranged combat kills.
+    target->fighter->die();
+    target->creature->dead = true;
+    stopForFight(*target->creature);
+    if (m_scripts)
+    {
+        const Value args[] = {target->name, shooter};
+        m_scripts->emit("npc_killed", args);
+    }
+}
+
 } // namespace g7

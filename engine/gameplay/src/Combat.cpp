@@ -62,19 +62,27 @@ Result<CombatSettings> CombatSettings::fromTable(const script::Table& t)
 {
     CombatSettings s;
     f32 minDamage = static_cast<f32>(s.minDamage);
-    for (auto r :
-         {readNumber(t, "min_damage", minDamage, 0.0, 1000.0),
-          readNumber(t, "crit_factor", s.critFactor, 1.0, 10.0),
-          readNumber(t, "parry_seconds", s.parrySeconds, 0.0, 5.0),
-          readNumber(t, "parry_angle", s.parryAngleDegrees, 0.0, 180.0),
-          readNumber(t, "knockout_seconds", s.knockoutSeconds, 0.0, 600.0),
-          readNumber(t, "stagger_seconds", s.staggerSeconds, 0.0, 5.0),
-          readNumber(t, "fist_reach", s.fistReach, 0.1, 5.0), readNumber(t, "reach_1h", s.reach1h, 0.1, 5.0),
-          readNumber(t, "reach_2h", s.reach2h, 0.1, 5.0),
-          readNumber(t, "hit_angle", s.hitAngleDegrees, 1.0, 180.0),
-          readLevels(t, "crit_chance", s.critChance, 0.0, 1.0),
-          readLevels(t, "combo_hits", s.comboHits, 1.0, 10.0),
-          readLevels(t, "attack_speed", s.attackSpeed, 0.25, 4.0)})
+    for (auto r : {readNumber(t, "min_damage", minDamage, 0.0, 1000.0),
+                   readNumber(t, "crit_factor", s.critFactor, 1.0, 10.0),
+                   readNumber(t, "parry_seconds", s.parrySeconds, 0.0, 5.0),
+                   readNumber(t, "parry_angle", s.parryAngleDegrees, 0.0, 180.0),
+                   readNumber(t, "knockout_seconds", s.knockoutSeconds, 0.0, 600.0),
+                   readNumber(t, "stagger_seconds", s.staggerSeconds, 0.0, 5.0),
+                   readNumber(t, "stagger_share", s.staggerShare, 0.0, 1.0),
+                   readNumber(t, "fist_reach", s.fistReach, 0.1, 5.0),
+                   readNumber(t, "reach_1h", s.reach1h, 0.1, 5.0),
+                   readNumber(t, "reach_2h", s.reach2h, 0.1, 5.0),
+                   readNumber(t, "animal_reach", s.animalReach, 0.1, 5.0),
+                   readNumber(t, "hit_angle", s.hitAngleDegrees, 1.0, 180.0),
+                   readLevels(t, "crit_chance", s.critChance, 0.0, 1.0),
+                   readLevels(t, "combo_hits", s.comboHits, 1.0, 10.0),
+                   readLevels(t, "attack_speed", s.attackSpeed, 0.25, 4.0),
+                   readNumber(t, "projectile_speed", s.projectileSpeed, 5.0, 200.0),
+                   readNumber(t, "miss_spread", s.missSpreadDegrees, 0.0, 45.0),
+                   readNumber(t, "bow_reload", s.bowReload, 0.1, 10.0),
+                   readNumber(t, "crossbow_reload", s.crossbowReload, 0.1, 10.0),
+                   readLevels(t, "bow_hit_chance", s.bowHitChance, 0.0, 1.0),
+                   readLevels(t, "crossbow_hit_chance", s.crossbowHitChance, 0.0, 1.0)})
     {
         if (!r)
         {
@@ -82,6 +90,18 @@ Result<CombatSettings> CombatSettings::fromTable(const script::Table& t)
         }
     }
     s.minDamage = static_cast<i32>(minDamage);
+    for (const auto& [key, target] :
+         {std::pair{"bow_ammo", &s.bowAmmo}, std::pair{"crossbow_ammo", &s.crossbowAmmo}})
+    {
+        if (const auto it = t.fields.find(key); it != t.fields.end())
+        {
+            if (!it->second.isString())
+            {
+                return Error{std::format("Combat.{}: must be an Item name", key)};
+            }
+            *target = std::string(it->second.asString());
+        }
+    }
     return s;
 }
 
@@ -116,6 +136,38 @@ DamageResult meleeDamage(const DamageByType& weapon, i32 strength,
     }
     result.damage = std::max(total, settings.minDamage);
     return result;
+}
+
+i32 rangedDamage(const DamageByType& weapon, const std::function<i32(std::string_view type)>& protection,
+                 const CombatSettings& settings)
+{
+    i32 total = 0;
+    for (const auto& [type, value] : weapon)
+    {
+        total += std::max(value - protection(type), 0);
+    }
+    return std::max(total, settings.minDamage);
+}
+
+std::optional<Vec3> ballisticDirection(const Vec3& from, const Vec3& to, f32 speed) noexcept
+{
+    const Vec3 d = to - from;
+    const f32 x = glm::length(Vec2(d.x, d.z));
+    const f32 y = d.y;
+    if (x < 1e-3f)
+    {
+        return glm::length(d) > 1e-3f ? std::optional<Vec3>(glm::normalize(d)) : std::nullopt;
+    }
+    constexpr f32 g = kGravity;
+    const f32 v2 = speed * speed;
+    const f32 disc = v2 * v2 - g * (g * x * x + 2.0f * y * v2);
+    if (disc < 0.0f)
+    {
+        return std::nullopt;
+    }
+    const f32 angle = std::atan2(v2 - std::sqrt(disc), g * x); // the flat arc
+    const Vec2 horizontal = Vec2(d.x, d.z) / x;
+    return Vec3(horizontal.x * std::cos(angle), std::sin(angle), horizontal.y * std::cos(angle));
 }
 
 bool facesAttacker(f32 defenderYaw, const Vec2& defender, const Vec2& attacker, f32 angleDegrees) noexcept
