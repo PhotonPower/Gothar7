@@ -117,6 +117,7 @@ def _find_cook() -> Path | None:
     return None
 
 
+@pytest.mark.timeout(600)  # the real cooker compresses textures (minutes)
 @pytest.mark.skipif(_find_cook() is None, reason="g7-cook not built")
 def test_mobs_cook(tmp_path: Path):
     src = tmp_path / "source"

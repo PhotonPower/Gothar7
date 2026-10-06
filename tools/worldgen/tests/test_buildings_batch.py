@@ -128,6 +128,7 @@ def test_medieval_mode(tmp_path: Path):
         generate(blds, GRID, tmp_path, "v", mode="baroque")
 
 
+@pytest.mark.timeout(600)  # the real cooker compresses textures (minutes)
 @pytest.mark.skipif(_find_cook() is None, reason="g7-cook not built (set G7_COOK)")
 @pytest.mark.parametrize("mode", ["massing", "medieval"])
 def test_generated_glb_cooks_with_g7_cook(tmp_path: Path, mode: str):
