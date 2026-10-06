@@ -5,7 +5,7 @@ Erzeugt von `gothar-worldgen assemble leonberg` aus `tools/worldgen/data/leonber
 neu erzeugen und kopieren). Je Haus: Routinen-Wegpunkt vor der Tür (Ziel für `at` in Routinen), Freepoints vor
 dem Haus (`npc_goto_freepoint(npc, "<TYP>", r)` findet sie über den Typ) und Mobs neben der Tür. Freepoint- und
 Mob-Namen enthalten Nutzung bzw. Gewerk und Kürzel. Das Kürzel ist die LoD2-ID ohne gemeinsamen Präfix,
-mit Groß-/Kleinschreibung (in Namen groß geschrieben). „Innen“: in den begehbaren Häusern der Wegpunkt im Raum (`…_INNEN`, über `…_TUER` in der Türöffnung und `…_VOR` davor mit dem Routinen-Wegpunkt verbunden) und die Freepoints im Raum.
+mit Groß-/Kleinschreibung (in Namen groß geschrieben). „Innen“: in den begehbaren Häusern der Wegpunkt im Raum (`…_INNEN`, über `…_TUER` in der Türöffnung und `…_VOR` davor mit dem Routinen-Wegpunkt verbunden) und die Freepoints im Raum; beim Krämer zusätzlich `…_INNEN_THEKE` am offenen Ende des Gangs hinter der Ladentheke.
 
 | Kürzel | Nutzung | Name | Bewohner | Routinen-Wegpunkt | Freepoints | Mobs | Innen |
 |---|---|---|---|---|---|---|---|

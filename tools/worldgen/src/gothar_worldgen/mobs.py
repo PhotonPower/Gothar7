@@ -49,6 +49,15 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "ash": ("stone", (0.04, 0.035, 0.03)),
     "ember": ("stone", (0.25, 0.05, 0.01)),  # glowing (EMISSIVE)
     "flame": ("straw", (0.9, 0.45, 0.1)),
+    # household (W7 B, shared palette of mobs and props)
+    "clay": ("clay", (0.42, 0.22, 0.12)),  # terracotta
+    "clay_glaze": ("clay", (0.16, 0.11, 0.07)),  # brown glaze
+    "meat": ("meat", (0.3, 0.1, 0.06)),
+    "leather": ("cloth", (0.085, 0.05, 0.03)),
+    "herb": ("straw", (0.15, 0.2, 0.07)),
+    "water": ("stone", (0.015, 0.02, 0.025)),
+    "sackcloth": ("cloth", (0.2, 0.15, 0.09)),  # coarse jute
+    "pine": ("boards", (0.22, 0.15, 0.08)),  # lighter wood: wall boards (what hangs on it shows)
 }
 # materials that glow: the engine adds emissive after the light (render.md "Material")
 EMISSIVE = {"ember": (0.9, 0.28, 0.05), "flame": (1.0, 0.55, 0.15)}
@@ -92,6 +101,40 @@ class Mesh:
             for k in range(1, sides - 1):
                 tri = [ring[0], ring[k], ring[k + 1]]
                 b.polygon([(x, y, z) for x, z in tri], [(x, z) for x, z in tri], (0.0, n, 0.0))
+
+    def cyl(self, material: str, axis: int, centre: Vec3, radius: float, length: float,
+            sides: int = 10) -> None:  # fmt: skip
+        """Prism with ``sides`` faces along ``axis`` (0 x, 1 y, 2 z), ``centre`` in its middle;
+        both ends closed. Barrels, jugs, sausages."""
+        b = self.b(material)
+        others = [k for k in range(3) if k != axis]
+
+        def at(t: float, ang: float) -> Vec3:
+            p = list(centre)
+            p[axis] += t
+            p[others[0]] += radius * math.cos(ang)
+            p[others[1]] += radius * math.sin(ang)
+            return (p[0], p[1], p[2])
+
+        angs = [2 * math.pi * (k + 0.5) / sides for k in range(sides)]
+        h = length / 2
+        u = 0.0
+        w = 2 * radius * math.sin(math.pi / sides)
+        for k in range(sides):
+            a0, a1 = angs[k], angs[(k + 1) % sides]
+            mid = [0.0, 0.0, 0.0]
+            mid[others[0]] = math.cos((a0 + a1) / 2 + (math.pi if k == sides - 1 else 0.0))
+            mid[others[1]] = math.sin((a0 + a1) / 2 + (math.pi if k == sides - 1 else 0.0))
+            pts = [at(-h, a0), at(-h, a1), at(h, a1), at(h, a0)]
+            b.polygon(pts, [(-h, u), (-h, u + w), (h, u + w), (h, u)], (mid[0], mid[1], mid[2]))
+            u += w
+        for t, n in ((h, 1.0), (-h, -1.0)):
+            nv = [0.0, 0.0, 0.0]
+            nv[axis] = n
+            for k in range(1, sides - 1):
+                tri = [at(t, angs[0]), at(t, angs[k]), at(t, angs[k + 1])]
+                uvs = [(p[others[0]], p[others[1]]) for p in tri]
+                b.polygon(tri, uvs, (nv[0], nv[1], nv[2]))
 
     def body(self, name: str, lo: Vec3, hi: Vec3) -> None:
         self.collision.append(box_body(f"COL_HULL_{name}", lo, hi))
@@ -363,7 +406,269 @@ def hearth() -> MobModel:
     return MobModel("hearth", m)
 
 
-PROPS = {"hearth": hearth}  # placed as plain mesh vobs (assets/source/props)
+# --- household (W7 B): props against the walls; origin on the floor in the middle, front +Z, wall
+# at -Z (hanging ones: origin at the hook, hanging down) -------------------------------------
+BARREL_R, BARREL_H = 0.3, 0.9
+
+
+def _barrel(
+    m: Mesh, axis: int, centre: Vec3, r: float = BARREL_R, length: float = BARREL_H
+) -> None:
+    """A barrel along ``axis``: bulging staves, two iron hoops near each end."""
+    for t, rr, ln in ((0.0, r, length * 0.66), (length * 0.415, r * 0.9, length * 0.17),
+                      (-length * 0.415, r * 0.9, length * 0.17)):  # fmt: skip
+        c = list(centre)
+        c[axis] += t
+        m.cyl("oak", axis, (c[0], c[1], c[2]), rr, ln, sides=12)
+    for t in (length * 0.3, -length * 0.3, length * 0.45, -length * 0.45):
+        c = list(centre)
+        c[axis] += t
+        rr = r * (1.01 if abs(t) < length * 0.4 else 0.92)
+        m.cyl("iron", axis, (c[0], c[1], c[2]), rr, 0.035, sides=12)
+
+
+def barrel() -> MobModel:
+    m = Mesh()
+    _barrel(m, 1, (0.0, BARREL_H / 2, 0.0))
+    m.body("barrel", (-BARREL_R, 0.0, -BARREL_R), (BARREL_R, BARREL_H, BARREL_R))
+    return MobModel("barrel", m)
+
+
+RACK_W, RACK_D, RACK_H = 1.6, 0.85, 1.15
+
+
+def barrel_rack() -> MobModel:
+    """The tavern's tap: a trestle with two barrels lying front to back, taps at the front."""
+    m = Mesh()
+    hw, hd, top = RACK_W / 2, RACK_D / 2, 0.42
+    for x in (-hw + 0.05, hw - 0.05, 0.0):  # three trestles
+        m.box("oak_beam", (x - 0.05, 0.0, -hd), (x + 0.05, top, -hd + 0.1), grain=1)
+        m.box("oak_beam", (x - 0.05, 0.0, hd - 0.1), (x + 0.05, top, hd), grain=1)
+        m.box("oak_beam", (x - 0.06, top - 0.08, -hd), (x + 0.06, top, hd), grain=2)
+    r = (RACK_H - top) / 2
+    for x in (-hw / 2, hw / 2):
+        _barrel(m, 2, (x, top + r, -0.02), r=r, length=RACK_D - 0.04)
+        y = top + r * 0.6
+        m.box("oak_beam", (x - 0.02, y, hd - 0.02), (x + 0.02, y + 0.03, hd + 0.08), grain=2)  # tap
+        m.box("iron", (x - 0.015, top + r * 0.45, hd + 0.05), (x + 0.015, y, hd + 0.08))
+    m.body("rack", (-hw, 0.0, -hd), (hw, RACK_H, hd))
+    return MobModel("barrel_rack", m)
+
+
+def _ware(m: Mesh, kind: str, at: Vec3) -> None:
+    """Earthenware standing at ``at`` (its foot): jug, mug, bowl, plate stack."""
+    x, y, z = at
+    if kind == "jug":
+        m.cyl("clay", 1, (x, y + 0.1, z), 0.075, 0.2, sides=8)
+        m.cyl("clay", 1, (x, y + 0.23, z), 0.045, 0.06, sides=8)
+        m.box("clay", (x + 0.07, y + 0.08, z - 0.01), (x + 0.1, y + 0.2, z + 0.01))  # handle
+    elif kind == "mug":
+        m.cyl("clay_glaze", 1, (x, y + 0.06, z), 0.045, 0.12, sides=8)
+    elif kind == "bowl":
+        m.cyl("clay_glaze", 1, (x, y + 0.02, z), 0.06, 0.04, sides=8)
+        m.cyl("clay_glaze", 1, (x, y + 0.055, z), 0.1, 0.03, sides=8)
+    else:  # plates, stacked
+        m.cyl("clay", 1, (x, y + 0.03, z), 0.12, 0.06, sides=10)
+
+
+COUNTER_W, COUNTER_D, COUNTER_H = 1.8, 0.6, 1.0
+
+
+def counter() -> MobModel:
+    """Shop or bar counter: boarded front (+Z, the customers' side), a thick top, jugs on it."""
+    m = Mesh()
+    hw, hd = COUNTER_W / 2, COUNTER_D / 2
+    m.box("oak", (-hw + 0.03, 0.0, hd - 0.06), (hw - 0.03, COUNTER_H - 0.06, hd - 0.02), grain=1)
+    for x in (-hw + 0.03, hw - 0.09):  # sides
+        m.box("oak", (x, 0.0, -hd + 0.05), (x + 0.06, COUNTER_H - 0.06, hd - 0.02), grain=1)
+    m.box("oak", (-hw + 0.09, 0.45, -hd + 0.08), (hw - 0.09, 0.48, hd - 0.06), grain=0)  # shelf
+    m.box("oak_beam", (-hw, COUNTER_H - 0.06, -hd), (hw, COUNTER_H, hd + 0.04), grain=0)
+    for x, kind in ((-0.6, "jug"), (-0.42, "mug"), (0.5, "bowl")):
+        _ware(m, kind, (x, COUNTER_H, 0.0))
+    m.body("counter", (-hw, 0.0, -hd), (hw, COUNTER_H, hd + 0.04))
+    return MobModel("counter", m)
+
+
+SHELF_W, SHELF_D, SHELF_H = 1.2, 0.35, 1.8
+SHELF_BOARDS = (0.12, 0.6, 1.08, 1.56)
+
+
+def shelf() -> MobModel:
+    """Open shelf against a wall with jugs, mugs, bowls and plates."""
+    m = Mesh()
+    hw, hd = SHELF_W / 2, SHELF_D / 2
+    for x in (-hw, hw - 0.04):
+        m.box("oak", (x, 0.0, -hd), (x + 0.04, SHELF_H, hd), grain=1)
+    for y in SHELF_BOARDS:
+        m.box("oak", (-hw + 0.04, y - 0.025, -hd), (hw - 0.04, y, hd), grain=0)
+    rows = (("jug", -0.35), ("plates", 0.0), ("jug", 0.32), ("mug", 0.12), ("bowl", -0.15),
+            ("mug", 0.42), ("plates", -0.38), ("bowl", 0.25), ("jug", -0.05))  # fmt: skip
+    for k, (kind, x) in enumerate(rows):
+        _ware(m, kind, (x, SHELF_BOARDS[1 + k % 3], 0.0))
+    m.body("shelf", (-hw, 0.0, -hd), (hw, SHELF_H, hd))
+    return MobModel("shelf", m)
+
+
+CRATE_W, CRATE_D, CRATE_H = 0.6, 0.5, 0.45
+
+
+def _crate(m: Mesh, at: Vec3) -> None:
+    x, y, z = at
+    hw, hd = CRATE_W / 2, CRATE_D / 2
+    m.box("oak", (x - hw, y, z - hd), (x + hw, y + CRATE_H, z + hd), grain=0)
+    for sx in (-1, 1):  # corner battens
+        for sz in (-1, 1):
+            cx, cz = x + sx * (hw - 0.02), z + sz * (hd - 0.02)
+            m.box(
+                "oak_beam", (cx - 0.03, y, cz - 0.03), (cx + 0.03, y + CRATE_H, cz + 0.03), grain=1
+            )
+
+
+def crate() -> MobModel:
+    m = Mesh()
+    _crate(m, (0.0, 0.0, 0.0))
+    m.body("crate", (-CRATE_W / 2 - 0.01, 0.0, -CRATE_D / 2 - 0.01),
+           (CRATE_W / 2 + 0.01, CRATE_H, CRATE_D / 2 + 0.01))  # fmt: skip
+    return MobModel("crate", m)
+
+
+def crate_stack() -> MobModel:
+    """Two crates side by side, a third on top."""
+    m = Mesh()
+    for x in (-0.31, 0.31):
+        _crate(m, (x, 0.0, 0.0))
+    _crate(m, (-0.12, CRATE_H, -0.02))
+    m.body("crates", (-0.62, 0.0, -0.26), (0.62, CRATE_H, 0.26))
+    m.body("crate_top", (-0.43, CRATE_H, -0.28), (0.19, 2 * CRATE_H, 0.24))
+    return MobModel("crate_stack", m)
+
+
+def sacks() -> MobModel:
+    """Three full sacks, tied at the top."""
+    m = Mesh()
+    for x, z, h in ((-0.25, 0.0, 0.55), (0.22, -0.03, 0.5), (0.0, 0.12, 0.45)):
+        m.cyl("sackcloth", 1, (x, h * 0.42, z), 0.2, h * 0.84, sides=8)
+        m.cyl("sackcloth", 1, (x, h * 0.9, z), 0.12, h * 0.12, sides=8)
+        m.cyl("sackcloth", 1, (x, h * 0.98, z), 0.05, h * 0.06, sides=6)
+    m.body("sacks", (-0.45, 0.0, -0.23), (0.42, 0.55, 0.32))
+    return MobModel("sacks", m)
+
+
+WORKBENCH_W, WORKBENCH_D, WORKBENCH_H = 1.8, 0.65, 0.85
+
+
+def workbench() -> MobModel:
+    """A heavy work bench: thick top, four legs, a low shelf, a vice and some tools."""
+    m = Mesh()
+    hw, hd, top = WORKBENCH_W / 2, WORKBENCH_D / 2, WORKBENCH_H
+    m.box("oak_beam", (-hw, top - 0.09, -hd), (hw, top, hd), grain=0)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            x, z = sx * (hw - 0.1), sz * (hd - 0.08)
+            m.box("oak_beam", (x - 0.05, 0.0, z - 0.05), (x + 0.05, top - 0.09, z + 0.05), grain=1)
+    m.box("oak", (-hw + 0.1, 0.2, -hd + 0.05), (hw - 0.1, 0.23, hd - 0.05), grain=0)
+    m.box("iron", (hw - 0.22, top, hd - 0.12), (hw - 0.06, top + 0.1, hd), grain=0)  # vice
+    m.box("iron", (-0.5, top, 0.05), (-0.2, top + 0.02, 0.1), grain=0)  # a blade
+    m.box("oak", (0.1, top, -0.1), (0.35, top + 0.03, -0.05), grain=0)  # a handle
+    m.box("iron", (0.35, top, -0.12), (0.43, top + 0.05, -0.03), grain=0)  # its head
+    m.body("bench", (-hw, 0.0, -hd), (hw, top, hd))
+    return MobModel("workbench", m)
+
+
+def tool_board() -> MobModel:
+    """Board on the wall (1.1 to 1.9 m) with tongs, hammers and files; no collision."""
+    m = Mesh()
+    for y in (1.12, 1.74):  # two rails: the wall shows between them
+        m.box("pine", (-0.6, y, -0.04), (0.6, y + 0.1, 0.0), grain=0)
+    for k, x in enumerate((-0.45, -0.25, -0.05, 0.15, 0.35, 0.5)):
+        m.box("iron", (x - 0.01, 1.78, 0.0), (x + 0.01, 1.8, 0.05))  # peg
+        if k % 3 == 0:  # tongs: two long arms
+            for dx in (-0.015, 0.015):
+                m.box("iron", (x + dx - 0.008, 1.3, 0.02), (x + dx + 0.008, 1.78, 0.035))
+        elif k % 3 == 1:  # hammer: handle and head
+            m.box("oak", (x - 0.012, 1.42, 0.02), (x + 0.012, 1.78, 0.045), grain=1)
+            m.box("iron", (x - 0.06, 1.38, 0.015), (x + 0.06, 1.44, 0.05))
+        else:  # file or chisel
+            m.box("iron", (x - 0.012, 1.5, 0.02), (x + 0.012, 1.78, 0.032))
+    return MobModel("tool_board", m)
+
+
+TROUGH_W, TROUGH_D, TROUGH_H = 1.0, 0.5, 0.6
+
+
+def quench_trough() -> MobModel:
+    """Stone trough of water to quench the iron."""
+    m = Mesh()
+    hw, hd, t = TROUGH_W / 2, TROUGH_D / 2, 0.08
+    m.box("fieldstone", (-hw, 0.0, -hd), (hw, 0.12, hd))
+    for z0, z1 in ((-hd, -hd + t), (hd - t, hd)):
+        m.box("fieldstone", (-hw, 0.12, z0), (hw, TROUGH_H, z1))
+    for x0, x1 in ((-hw, -hw + t), (hw - t, hw)):
+        m.box("fieldstone", (x0, 0.12, -hd + t), (x1, TROUGH_H, hd - t))
+    m.box("water", (-hw + t, TROUGH_H - 0.1, -hd + t), (hw - t, TROUGH_H - 0.08, hd - t))
+    m.body("trough", (-hw, 0.0, -hd), (hw, TROUGH_H, hd))
+    return MobModel("quench_trough", m)
+
+
+def bellows() -> MobModel:
+    """Bellows on a low frame, the nozzle towards -X (the hearth beside it)."""
+    m = Mesh()
+    for x in (-0.35, 0.35):
+        for z in (-0.18, 0.18):
+            m.box("oak_beam", (x - 0.04, 0.0, z - 0.04), (x + 0.04, 0.45, z + 0.04), grain=1)
+    m.box("oak", (-0.4, 0.45, -0.22), (0.45, 0.48, 0.22), grain=0)  # lower board
+    m.box("leather", (-0.3, 0.48, -0.2), (0.4, 0.62, 0.2), grain=0)  # the bag
+    m.box("oak", (-0.35, 0.62, -0.22), (0.45, 0.65, 0.22), grain=0)  # upper board
+    m.box("oak_beam", (0.45, 0.6, -0.03), (0.75, 0.64, 0.03), grain=0)  # handle
+    m.box("iron", (-0.6, 0.5, -0.03), (-0.3, 0.56, 0.03), grain=0)  # nozzle
+    m.body("bellows", (-0.45, 0.0, -0.22), (0.45, 0.65, 0.22))
+    return MobModel("bellows", m)
+
+
+def sausages() -> MobModel:
+    """Pole with sausages and a ham, hanging from the hook (origin) down to -0.5 m."""
+    m = Mesh()
+    m.box("oak_beam", (-0.5, -0.05, -0.025), (0.5, 0.0, 0.025), grain=0)
+    for k, x in enumerate((-0.4, -0.28, -0.16, 0.12, 0.24, 0.36)):
+        ln = (0.32, 0.26, 0.38, 0.3, 0.36, 0.28)[k]
+        m.box("linen", (x - 0.004, -0.09, -0.004), (x + 0.004, -0.05, 0.004))  # string
+        m.cyl("meat", 1, (x, -0.09 - ln / 2, 0.0), 0.024, ln, sides=6)
+    m.box("linen", (-0.004, -0.12, -0.004), (0.004, -0.05, 0.004))
+    m.cyl("meat", 1, (0.0, -0.27, 0.0), 0.07, 0.3, sides=8)  # the ham
+    return MobModel("sausages", m)
+
+
+def herbs() -> MobModel:
+    """Bundles of herbs drying on a string, hanging down to -0.4 m."""
+    m = Mesh()
+    m.box("linen", (-0.45, -0.01, -0.005), (0.45, 0.0, 0.005), grain=0)
+    for k, x in enumerate((-0.35, -0.12, 0.1, 0.32)):
+        m.box("linen", (x - 0.004, -0.06, -0.004), (x + 0.004, -0.01, 0.004))
+        m.cyl("herb", 1, (x, -0.1, 0.0), 0.025, 0.08, sides=6)  # the tied stems
+        m.cyl("herb", 1, (x, -0.24 - 0.02 * (k % 2), 0.0), 0.06, 0.2, sides=6)  # the leaves
+    return MobModel("herbs", m)
+
+
+# the smithy's weapon wall: a board with pegs; the blades are the items' own models (F6), set as
+# mesh vobs hanging point down, flat against the wall (WEAPON_PEGS: x, y of the grip)
+WEAPON_PEGS = ((-0.32, 1.95), (0.0, 1.95), (0.32, 1.95))
+WEAPON_ITEMS = ("items/it_sword_old.glb", "items/it_sword_crude.glb", "items/it_axe.glb")
+
+
+def weapon_board() -> MobModel:
+    m = Mesh()
+    for y in (1.0, 1.92):  # two rails: the wall shows behind the blades
+        m.box("pine", (-0.6, y, -0.04), (0.6, y + 0.12, 0.0), grain=0)
+    for x, y in WEAPON_PEGS:
+        m.box("iron", (x - 0.06, y - 0.01, 0.0), (x + 0.06, y + 0.01, 0.06))
+    return MobModel("weapon_board", m)
+
+
+PROPS = {"hearth": hearth, "barrel": barrel, "barrel_rack": barrel_rack, "counter": counter,
+         "shelf": shelf, "crate": crate, "crate_stack": crate_stack, "sacks": sacks,
+         "workbench": workbench, "tool_board": tool_board, "quench_trough": quench_trough,
+         "bellows": bellows, "sausages": sausages, "herbs": herbs,
+         "weapon_board": weapon_board}  # plain mesh vobs (assets/source/props)  # fmt: skip
 
 
 def write_mobs(folder: Path, types: Sequence[str] = TYPES,

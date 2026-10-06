@@ -4,15 +4,18 @@ the room's waypoint and its private area.
 The room comes from the buildings index (``interior``: floor, ceiling, ring, door). What stands
 inside: per use (``uses.json`` ``uses.<use>.inside``) beds and chests against the walls, a table
 with a bench on both long sides in the open floor, an open hearth against a wall with a warm
-light over it, freepoints on free floor; the way from the door to the middle of the room stays
-clear. A waypoint just inside the door is linked to the house's routine waypoint outside; a box
-trigger over the room marks it private once ``uses.json`` names its ``owner``.
+light over it, freepoints on free floor, then household props (``props``: barrels, shelves,
+crates, sacks, a counter with a shelf behind it, the smithy's tools beside the hearth, sausages
+and herbs hanging from the ceiling); the way from the door to the middle of the room, the way to
+the hearth and the straight walks to every place inside stay clear. A waypoint just inside the
+door is linked to the house's routine waypoint outside; a box trigger over the room marks it
+private once ``uses.json`` names its ``owner``.
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -28,7 +31,26 @@ from gothar_worldgen.waynet.generate import name_part
 # footprint (along the wall or the table axis, depth) of what stands in a room, and the slot
 SIZE = {"bed": (2.0, 0.9), "chest": (0.9, 0.6), "bench": (1.5, 0.35), "table": (1.6, 0.8),
         "anvil": (0.8, 0.5), "hearth": (1.2, 0.9)}  # fmt: skip
-SLOT = {"bed": 0.75, "chest": 0.65, "bench": 0.38, "anvil": 0.6, "hearth": 0.6}
+SLOT = {"bed": 0.75, "chest": 0.65, "bench": 0.38, "anvil": 0.6, "hearth": 0.6,
+        "barrel_rack": 0.6}  # fmt: skip
+# household props (W7 B, assets/source/props): footprint along the wall, depth; how they stand
+PROP_SIZE = {"barrel": (0.62, 0.62), "barrel_rack": (1.62, 0.95), "shelf": (1.22, 0.37),
+             "crate": (0.64, 0.54), "crate_stack": (1.26, 0.58), "sacks": (0.9, 0.58),
+             "workbench": (1.82, 0.67), "quench_trough": (1.02, 0.52), "bellows": (1.2, 0.46),
+             "tool_board": (1.2, 0.1), "weapon_board": (1.2, 0.1),
+             "sausages": (1.0, 0.1), "herbs": (0.9, 0.1)}  # fmt: skip
+WALL_BOARDS = {"tool_board", "weapon_board"}  # on the wall, nothing on the floor
+HANGING = {"sausages": 0.55, "herbs": 0.45}  # from the ceiling: how far they hang down
+HANG_OUT_M = 0.45  # hanging things this far from the wall
+HEAD_M = 2.0  # hanging things end above this (over the floor)
+BY_HEARTH = {"bellows", "quench_trough"}  # beside the hearth, on either side
+PROP_GAP_M = 0.12  # props stand this close to each other (furniture keeps MOVE_M)
+# the counter group (a trader's): shelf at the wall, an aisle, the counter; the open end of the
+# aisle gets a waypoint, the trader stands behind the counter
+GROUP_L, GROUP_D = 3.0, 1.9  # along the wall, depth
+AISLE_M = 0.9
+COUNTER_ALONG_M = 0.6  # counter and shelf off the middle: the aisle opens at the other end
+STAND_BEHIND_M = 0.45  # the trader's place in front of the shelf
 BENCH_OFF_M = 0.62  # bench middles beside the table axis (engine's table slots, #197)
 WALL_GAP_M = 0.05
 PATH_W_M = 1.3  # the way from the door to the middle of the room stays this wide
@@ -51,11 +73,12 @@ class InsideSpec:
     mobs: list[tuple[str, str]] = field(default_factory=list)  # (type, count or "R" residents)
     freepoints: list[tuple[str, int]] = field(default_factory=list)
     hearth: bool = False
+    props: list[tuple[str, int]] = field(default_factory=list)  # (prop or "counter", count)
 
 
 def inside_spec(spec: dict[str, Any], where: str) -> InsideSpec:
     """``uses.<use>.inside`` checked: mobs ``type:N`` (``N`` may be ``R``: the residents, at most
-    3), freepoints ``TYPE:N``, ``hearth``."""
+    3), freepoints ``TYPE:N``, ``hearth``, props ``prop:N`` (``PROP_SIZE`` or ``counter``)."""
     out = InsideSpec(hearth=bool(spec.get("hearth", False)))
     for item in spec.get("mobs", []):
         kind, _, n = str(item).partition(":")
@@ -67,6 +90,13 @@ def inside_spec(spec: dict[str, Any], where: str) -> InsideSpec:
         if kind.upper() not in FP_TYPES or not n.isdigit():
             raise UsesError(f"{where}: {item!r} must be TYPE:N")
         out.freepoints.append((kind.upper(), int(n)))
+    for item in spec.get("props", []):
+        kind, _, n = str(item).partition(":")
+        if kind not in {*PROP_SIZE, "counter"} or not n.isdigit():
+            raise UsesError(
+                f"{where}: {item!r} must be prop:N (one of {sorted(PROP_SIZE)}, counter)"
+            )
+        out.props.append((kind, int(n)))
     return out
 
 
@@ -74,6 +104,26 @@ def _rect(cx: float, cz: float, ax: float, az: float, length: float, depth: floa
     """Rectangle centred at (cx, cz), ``length`` along (ax, az), ``depth`` across."""
     r = box(-length / 2, -depth / 2, length / 2, depth / 2)
     return affinity.translate(affinity.rotate(r, math.atan2(az, ax), use_radians=True), cx, cz)
+
+
+def _matrix_quat(m: tuple[tuple[float, float, float], ...]) -> list[float]:
+    """Unit quaternion (x, y, z, w) of a rotation matrix given by rows."""
+    tr = m[0][0] + m[1][1] + m[2][2]
+    if tr > 0:
+        s4 = math.sqrt(tr + 1.0) * 2
+        q = ((m[2][1] - m[1][2]) / s4, (m[0][2] - m[2][0]) / s4, (m[1][0] - m[0][1]) / s4, s4 / 4)
+    elif m[0][0] > m[1][1] and m[0][0] > m[2][2]:
+        s4 = math.sqrt(1.0 + m[0][0] - m[1][1] - m[2][2]) * 2
+        q = (s4 / 4, (m[0][1] + m[1][0]) / s4, (m[0][2] + m[2][0]) / s4, (m[2][1] - m[1][2]) / s4)
+    elif m[1][1] > m[2][2]:
+        s4 = math.sqrt(1.0 + m[1][1] - m[0][0] - m[2][2]) * 2
+        q = ((m[0][1] + m[1][0]) / s4, s4 / 4, (m[1][2] + m[2][1]) / s4, (m[0][2] - m[2][0]) / s4)
+    else:
+        s4 = math.sqrt(1.0 + m[2][2] - m[0][0] - m[1][1]) * 2
+        q = ((m[0][2] + m[2][0]) / s4, (m[1][2] + m[2][1]) / s4, s4 / 4, (m[1][0] - m[0][1]) / s4)
+    if q[3] < 0:
+        q = (-q[0], -q[1], -q[2], -q[3])
+    return [round(c, 5) + 0.0 for c in q]
 
 
 def _quat(fx: float, fz: float) -> list[float]:
@@ -93,6 +143,8 @@ class _Room:
     taken: list[Polygon] = field(default_factory=list)
     stands: list[tuple[tuple[float, float], tuple[float, float]]] = field(default_factory=list)
     spots: list[Polygon] = field(default_factory=list)  # freepoints: kept apart, walked through
+    props: list[Polygon] = field(default_factory=list)  # household props: close to each other
+    hanging: list[Polygon] = field(default_factory=list)  # under the ceiling
 
     @property
     def entry(self) -> tuple[float, float]:
@@ -105,8 +157,14 @@ class _Room:
         lane = LineString([self.entry, p]).buffer(REACH_R_M)
         return not any(lane.intersects(t) for t in self.taken)
 
+    def reachable_from(self, a: tuple[float, float], p: tuple[float, float]) -> bool:
+        lane = LineString([a, p]).buffer(REACH_R_M)
+        return not any(lane.intersects(t) for t in [*self.taken, *self.props])
+
     def fits(self, shape: Polygon, margin: float = MOVE_M) -> bool:
         if not self.poly.buffer(-0.02).contains(shape) or shape.intersects(self.keep):
+            return False
+        if any(shape.distance(t) < PROP_GAP_M for t in self.props):
             return False
         return not any(shape.distance(t) < margin for t in [*self.taken, *self.spots])
 
@@ -155,12 +213,17 @@ def _walls(room: _Room) -> list[tuple[tuple[float, float], tuple[float, float], 
 
 
 def _against_wall(
-    room: _Room, kind: str, facing: tuple[float, float] | None = None
+    room: _Room,
+    kind: str,
+    facing: tuple[float, float] | None = None,
+    size: tuple[float, float] | None = None,
+    accept: Callable[[Polygon, tuple[float, float], tuple[float, float]], bool] | None = None,
 ) -> tuple[Polygon, tuple[float, float], tuple[float, float]] | None:
     """A spot with the back to a wall: (footprint, centre, front direction into the room); the
     first along the longest walls, or with ``facing`` the one turned most towards that point
-    (the hearth towards the door: seen on coming in) and reached from the room's waypoint."""
-    length, depth = SIZE[kind]
+    (the hearth towards the door: seen on coming in) and reached from the room's waypoint;
+    ``size`` overrides the footprint, ``accept`` may turn a spot down."""
+    length, depth = size or SIZE.get(kind) or PROP_SIZE[kind]
     best: tuple[float, Polygon, tuple[float, float], tuple[float, float]] | None = None
     for a, (ux, uz), wall_len in _walls(room):
         nx, nz = -uz, ux  # into the room (counter-clockwise ring)
@@ -175,6 +238,8 @@ def _against_wall(
             if not (room.fits(shape) and room.poly.contains(Point(slot))):
                 continue
             if room.keep.contains(Point(slot)):
+                continue
+            if accept is not None and not accept(shape, (cx, cz), (nx, nz)):
                 continue
             if facing is None:
                 return shape, (cx, cz), (nx, nz)
@@ -260,6 +325,149 @@ class _House:
     def fail(self, what: str) -> None:
         self.plan.failed.append({"house": self.h.id, "what": what, "reason": "no room"})
 
+    def taps_reached(self, _shape: Polygon, c: tuple[float, float], n: tuple[float, float]) -> bool:
+        """The innkeeper's place at the taps of a rack is reached from the room's waypoint."""
+        reach = PROP_SIZE["barrel_rack"][1] / 2 + SLOT["barrel_rack"]
+        return self.room.reachable((c[0] + n[0] * reach, c[1] + n[1] * reach))
+
+    def keep_way(self, p: tuple[float, float]) -> None:
+        """The straight walk from the room's waypoint to ``p`` (and a figure at it) stays free."""
+        room = self.room
+        lane = LineString([room.entry, p]).buffer(REACH_R_M).union(Point(p).buffer(0.35))
+        room.keep = room.keep.union(lane)
+
+    def prop(self, kind: str, centre: tuple[float, float], front: tuple[float, float],
+             shape: Polygon | None, height: float | None = None) -> str:  # fmt: skip
+        """A household prop (a plain mesh vob, ``props/<kind>.glb``)."""
+        key = f"PROP_{kind}"
+        self.counts[key] = self.counts.get(key, 0) + 1
+        name = f"PROP_{self.tag}_{name_part(kind)}_{self.counts[key]}"
+        self.vob("mesh", name, centre, front, height=height, mesh=f"props/{kind}.glb")
+        if shape is not None:
+            self.room.props.append(shape)
+        return name
+
+    def place_prop(self, kind: str, hearth_at: Any) -> None:  # noqa: ANN401
+        room = self.room
+        if kind in HANGING:
+            self.hang(kind, hearth_at)
+            return
+        if kind in BY_HEARTH and hearth_at is not None and self.by_hearth(kind, hearth_at):
+            return
+        if kind == "bellows":  # only where it can blow into the fire
+            self.fail(f"prop {kind}")
+            return
+        spot = _against_wall(room, kind)
+        if spot is None:
+            self.fail(f"prop {kind}")
+            return
+        shape, centre, front = spot
+        self.prop(kind, centre, front, shape)
+        if kind == "weapon_board":
+            self.weapons(centre, front)
+
+    def by_hearth(self, kind: str, hearth_at: Any) -> bool:  # noqa: ANN401
+        """Bellows (the nozzle towards the fire) or trough beside the hearth, on either side."""
+        room = self.room
+        (hx, hz), (nx, nz) = hearth_at
+        ux, uz = nz, -nx  # along the wall: the model's +X when its front is (nx, nz)
+        length, depth = PROP_SIZE[kind]
+        back = SIZE["hearth"][1] / 2 - depth / 2  # both against the same wall
+        # the bellows' nozzle (its -X) points at the fire only from the +u side
+        for side in (1.0,) if kind == "bellows" else (-1.0, 1.0):
+            off = side * (SIZE["hearth"][0] / 2 + length / 2 + 0.2)
+            c = (hx + ux * off - nx * back, hz + uz * off - nz * back)
+            shape = _rect(c[0], c[1], ux, uz, length, depth)
+            if room.fits(shape, PROP_GAP_M):
+                self.prop(kind, c, (nx, nz), shape)
+                return True
+        return False
+
+    def hang(self, kind: str, hearth_at: Any) -> None:  # noqa: ANN401
+        """Sausages or herbs from the ceiling near a wall, above head height, off the hearth's
+        hood and the door."""
+        room = self.room
+        if room.ceiling - HANGING[kind] - room.floor < HEAD_M:
+            self.fail(f"prop {kind}")
+            return
+        length = PROP_SIZE[kind][0]
+        hood = None
+        if hearth_at is not None:
+            (hx, hz), (nx, nz) = hearth_at
+            hood = _rect(hx, hz, nz, -nx, SIZE["hearth"][0], SIZE["hearth"][1]).buffer(0.4)
+        door = Point(room.door_mid).buffer(DOOR_ZONE_M)
+        for a, (ux, uz), wall_len in _walls(room):
+            nx, nz = -uz, ux
+            t = length / 2 + 0.3
+            while t <= wall_len - length / 2 - 0.3:
+                c = (a[0] + ux * t + nx * HANG_OUT_M, a[1] + uz * t + nz * HANG_OUT_M)
+                t += STEP_M
+                shape = _rect(c[0], c[1], ux, uz, length, 0.3)
+                if not room.poly.buffer(-0.05).contains(shape) or shape.intersects(door):
+                    continue
+                if hood is not None and shape.intersects(hood):
+                    continue
+                if any(shape.distance(q) < 0.6 for q in room.hanging):
+                    continue
+                room.hanging.append(shape)
+                self.prop(kind, c, (nx, nz), None, height=room.ceiling - 0.02)
+                return
+        self.fail(f"prop {kind}")
+
+    def weapons(self, centre: tuple[float, float], front: tuple[float, float]) -> None:
+        """The blades on the weapon board: the items' own models (F6), point down, flat against
+        the wall (item +Y down, its flat side +X towards the room, its edge +Z along the wall)."""
+        from gothar_worldgen.mobs import WEAPON_ITEMS, WEAPON_PEGS
+
+        nx, nz = front
+        ux, uz = nz, -nx
+        # rotation with columns item X -> (nx, 0, nz), item Y -> (0, -1, 0), item Z -> (ux, 0, uz)
+        m = ((nx, 0.0, ux), (0.0, -1.0, 0.0), (nz, 0.0, uz))
+        rot = _matrix_quat(m)
+        for k, ((px, py), item) in enumerate(zip(WEAPON_PEGS, WEAPON_ITEMS, strict=True)):
+            pos = (centre[0] + ux * px + nx * 0.03, centre[1] + uz * px + nz * 0.03)
+            name = f"PROP_{self.tag}_WAFFE_{k + 1}"
+            self.plan.vobs.append({"key": f"use:{name}", "name": name, "type": "mesh",
+                                   "pos": [pos[0], self.room.floor + py, pos[1]], "rot": rot,
+                                   "mesh": item})  # fmt: skip
+
+    def counter_group(self) -> None:
+        """A trader's counter: a shelf at the wall, an aisle, the counter facing the room; the
+        aisle opens at one end (``WP_…_THEKE``), the trader stands behind the counter."""
+        room = self.room
+
+        def parts(
+            c: tuple[float, float], n: tuple[float, float]
+        ) -> tuple[tuple[float, float], float]:
+            """The aisle's open end (the waypoint) and the aisle's offset behind the middle."""
+            ux, uz = n[1], -n[0]
+            aisle = GROUP_D / 2 - PROP_SIZE["shelf"][1] - AISLE_M / 2
+            wp = (c[0] - ux * (GROUP_L / 2 - 0.45) - n[0] * aisle,
+                  c[1] - uz * (GROUP_L / 2 - 0.45) - n[1] * aisle)  # fmt: skip
+            return wp, aisle
+
+        spot = _against_wall(room, "counter", facing=room.door_mid, size=(GROUP_L, GROUP_D),
+                             accept=lambda _s, c, n: room.reachable(parts(c, n)[0]))  # fmt: skip
+        if spot is None:
+            self.fail("prop counter")
+            return
+        shape, c, (nx, nz) = spot
+        wp, aisle = parts(c, (nx, nz))
+        ux, uz = nz, -nx
+        along = (c[0] + ux * COUNTER_ALONG_M, c[1] + uz * COUNTER_ALONG_M)
+        sd = PROP_SIZE["shelf"][1]
+        shelf_c = (along[0] - nx * (GROUP_D / 2 - sd / 2), along[1] - nz * (GROUP_D / 2 - sd / 2))
+        counter_c = (along[0] + nx * (GROUP_D / 2 - 0.32), along[1] + nz * (GROUP_D / 2 - 0.32))
+        self.prop("shelf", shelf_c, (nx, nz), _rect(*shelf_c, ux, uz, *PROP_SIZE["shelf"]))
+        self.prop("counter", counter_c, (nx, nz), _rect(*counter_c, ux, uz, 1.82, 0.66))
+        stand = (along[0] - nx * aisle, along[1] - nz * aisle)
+        room.stands.insert(0, (stand, (nx, nz)))
+        room.keep = room.keep.union(LineString([wp, stand]).buffer(AISLE_M / 2 - 0.05))
+        name = f"WP_{self.tag}_THEKE"
+        self.plan.places.append({"kind": "wp", "name": name, "house": self.h.id,
+                                 "pos": [wp[0], wp[1]], "dir": [ux, uz], "y": room.floor,
+                                 "link": f"WP_{self.tag}"})  # fmt: skip
+
     def build(self, spec: InsideSpec, routine_wp: str) -> None:
         room, h = self.room, self.h
         table_at, hearth_at = None, None
@@ -302,10 +510,25 @@ class _House:
                 shape, centre, front = wall_spot
                 self.mob(kind, centre, front)
                 room.taken.append(shape)
+                reach = (SIZE.get(kind) or (0.0, 0.6))[1] / 2 + SLOT.get(kind, 0.6)
+                self.keep_way((centre[0] + front[0] * reach, centre[1] + front[1] * reach))
                 if kind == "chest":  # a counter: the trader stands at its slot
                     reach = SIZE["chest"][1] / 2 + SLOT["chest"]
                     slot = (centre[0] + front[0] * reach, centre[1] + front[1] * reach)
                     room.stands.append((slot, (-front[0], -front[1])))
+        props = dict(spec.props)
+        if props.pop("counter", 0):
+            self.counter_group()
+        reach = PROP_SIZE["barrel_rack"][1] / 2 + SLOT["barrel_rack"]
+        for _ in range(props.pop("barrel_rack", 0)):  # the innkeeper stands at the taps
+            spot = _against_wall(room, "barrel_rack", accept=self.taps_reached)
+            if spot is None:
+                self.fail("prop barrel_rack")
+                continue
+            shape, centre, front = spot
+            self.prop("barrel_rack", centre, front, shape)
+            room.stands.insert(0, ((centre[0] + front[0] * reach, centre[1] + front[1] * reach),
+                                   (-front[0], -front[1])))  # fmt: skip
         want = 2 if room.poly.area > BIG_ROOM_M2 else 1
         c = room.poly.centroid
         for k in range(want - (1 if hearth_at else 0)):
@@ -329,6 +552,11 @@ class _House:
                     continue
                 for pos, d in spots:
                     self.fp(kind, pos, d)
+        for place in [p for p in self.plan.places if p["house"] == h.id and p["kind"] == "fp"]:
+            self.keep_way((place["pos"][0], place["pos"][1]))
+        for kind, n in props.items():
+            for _ in range(n):
+                self.place_prop(kind, hearth_at)
         # waypoints: in the middle of the door (linked to the routine waypoint outside), then
         # just inside it (linked to the door's): a figure lines up before the narrow passage
         # in front of it first (on the ground outside): through the opening straight, not across
