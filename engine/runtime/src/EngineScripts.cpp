@@ -107,6 +107,7 @@ Result<void> Engine::initScripts()
     bindLootFunctions();
     bindRangedFunctions();
     bindDiaryFunctions();
+    bindMagicFunctions();
     bindFxFunctions();
     if (m_config.randomSeed)
     {

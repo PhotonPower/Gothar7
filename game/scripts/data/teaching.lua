@@ -4,7 +4,7 @@
 
 Teaching = {
     attribute_names = { str = "Stärke", dex = "Geschick", mana_max = "Mana" },
-    talent_names = { picklock = "Schlösser öffnen", pickpocket = "Taschendiebstahl", smithing = "Schmieden",
+    talent_names = { magic_circle = "Kreis der Magie", picklock = "Schlösser öffnen", pickpocket = "Taschendiebstahl", smithing = "Schmieden",
                      sneak = "Schleichen", ["1h"] = "Einhand" },
     limit = 100, -- höchster Wert eines Attributs beim Lehrer
 }
