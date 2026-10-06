@@ -54,7 +54,7 @@ def codes(report, level="error"):
 
 
 def test_packaged_wolf_rig(wolf_rig):
-    assert packaged_species() == ["keiler", "laufvogel", "wolf"]
+    assert packaged_species() == ["keiler", "laufvogel", "schinder", "wolf"]
     assert wolf_rig.is_monster and wolf_rig.species == "wolf"
     assert set(MONSTER_REQUIRED) <= set(wolf_rig.names)
     assert len(wolf_rig.bones) <= wolf_rig.max_bones == 64

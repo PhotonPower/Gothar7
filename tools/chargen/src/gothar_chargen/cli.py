@@ -17,6 +17,7 @@ from gothar_chargen.blender_run import (
     BlenderError,
     bake_fabrics,
     bake_item_textures,
+    build_creature,
     build_mpfb_human,
     build_placeholder,
     build_reference_rig,
@@ -31,6 +32,7 @@ from gothar_chargen.blender_run import (
 from gothar_chargen.clipfix import repair_set
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
 from gothar_chargen.collision import CollisionError, derive_collision, write_collision
+from gothar_chargen.creature import CreatureError, load_creature
 from gothar_chargen.events import update_speeds
 from gothar_chargen.fabrics import apply_fray_materials, load_fabrics
 from gothar_chargen.figure import SUFFIX as FIGURE_SUFFIX
@@ -295,6 +297,37 @@ def _cmd_monster(args: argparse.Namespace, out: TextIO) -> int:
             if line.startswith("[chargen]"):
                 print(line[10:], file=out)
         glb = monster_reference(characters, species)
+        write_collision(MONSTER_DATA / f"{species}.toml", derive_collision(Gltf.load(glb)))
+        rig = load_rig(MONSTER_DATA / f"{species}.toml")
+        report = validate_file(glb, rig, reference_pose(Gltf.load(glb)))
+        _print_report(report, out)
+        ok = ok and report.ok(strict=True)
+    return EXIT_OK if ok else EXIT_ERROR
+
+
+def _cmd_creature(args: argparse.Namespace, out: TextIO) -> int:
+    """Own monster from its body description (F5): rig, textured mesh with LODs, rest clip."""
+    characters = _characters_dir(args)
+    blender = find_blender(args.blender)
+    ok = True
+    for species in args.species:
+        spec = MONSTER_DATA / f"{species}.creature.toml"
+        if not spec.is_file():
+            print(f"error: no body description {spec.name} in data/monsters/", file=out)
+            return EXIT_ERROR
+        load_creature(spec)  # fails early on an invalid description
+        log = build_creature(
+            blender,
+            spec,
+            characters,
+            args.sources / f"{species}_clips.blend",
+            MONSTER_DATA / f"{species}.toml",
+        )
+        for line in log.splitlines():
+            if line.startswith("[chargen]"):
+                print(line[10:], file=out)
+        glb = monster_reference(characters, species)
+        finish_textures(glb, characters / "textures")  # external file, relative URI (§2.3)
         write_collision(MONSTER_DATA / f"{species}.toml", derive_collision(Gltf.load(glb)))
         rig = load_rig(MONSTER_DATA / f"{species}.toml")
         report = validate_file(glb, rig, reference_pose(Gltf.load(glb)))
@@ -702,6 +735,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
     p.set_defaults(func=_cmd_monster)
 
+    p = sub.add_parser("creature", help="own monster from data/monsters/<art>.creature.toml (F5)")
+    p.add_argument("species", nargs="+", help="species with data/monsters/<species>.creature.toml")
+    p.add_argument(
+        "--sources",
+        type=Path,
+        required=True,
+        help="DATA_ROOT/characters/monsters (clip source out)",
+    )
+    p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
+    p.set_defaults(func=_cmd_creature)
+
     p = sub.add_parser("collision", help="monster collision capsules from the reference meshes")
     p.add_argument("species", nargs="*", help="default: all packaged monster rigs")
     p.add_argument(
@@ -734,6 +778,7 @@ def main(argv: Sequence[str] | None = None, out: TextIO | None = None) -> int:
         AssembleError,
         BlenderError,
         ClipSpecError,
+        CreatureError,
         PartDataError,
         CollisionError,
         FigureError,
