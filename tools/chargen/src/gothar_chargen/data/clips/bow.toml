@@ -72,3 +72,41 @@ name = "bow/t_turn_r"
 layer = ["none/t_turn_r", "bow/s_idle"]
 from_bone = ["clavicle_l", "clavicle_r", "neck"]
 events = "footsteps"
+
+# --- combat (M11): aiming, shooting, reloading – own key poses over the upright none/s_idle;
+# aim pose by grid search (left arm stretched forward at shoulder height, the bow upright with the
+# string towards the body, the string hand at the right cheek, the torso turned side-on).
+
+[[clip]]
+name = "bow/s_aim"
+keyframe = "keyposes"
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "aim"], [75, "aim"]]   # none/s_idle is 75 frames: the loop closes
+[clip.params.poses.aim]
+rotate = { spine_02 = [["Z", -30]], spine_01 = [["Z", -10]], neck = [["Z", 25]], head = [["Z", 10]], upperarm_l = [["X", -30], ["Y", -75]], lowerarm_l = [["X", -15]], hand_l = [["X", -75], ["Y", 15], ["Z", 30]], upperarm_r = [["X", -105], ["Y", 30], ["Z", 15]], lowerarm_r = [["Y", -90]] }
+
+[[clip]]
+name = "bow/t_shoot"              # release (event), the string hand flies back, then aims again
+keyframe = "keyposes"
+markers = { release = 3 }
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "aim"], [3, "release"], [9, "release"], [20, "aim"]]
+[clip.params.poses.aim]
+rotate = { spine_02 = [["Z", -30]], spine_01 = [["Z", -10]], neck = [["Z", 25]], head = [["Z", 10]], upperarm_l = [["X", -30], ["Y", -75]], lowerarm_l = [["X", -15]], hand_l = [["X", -75], ["Y", 15], ["Z", 30]], upperarm_r = [["X", -105], ["Y", 30], ["Z", 15]], lowerarm_r = [["Y", -90]] }
+[clip.params.poses.release]
+rotate = { spine_02 = [["Z", -33]], spine_01 = [["Z", -10]], neck = [["Z", 25]], head = [["Z", 10]], upperarm_l = [["X", -28], ["Y", -75]], lowerarm_l = [["X", -15]], hand_l = [["X", -75], ["Y", 15], ["Z", 30]], upperarm_r = [["X", -95], ["Y", 30], ["Z", 35]], lowerarm_r = [["Y", -90], ["X", 20]] }
+
+[[clip]]
+name = "bow/t_reload"             # to the quiver over the right shoulder, nock at the bow, aim
+keyframe = "keyposes"
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "aim"], [10, "quiver"], [16, "quiver"], [26, "nock"], [36, "aim"]]
+[clip.params.poses.aim]
+rotate = { spine_02 = [["Z", -30]], spine_01 = [["Z", -10]], neck = [["Z", 25]], head = [["Z", 10]], upperarm_l = [["X", -30], ["Y", -75]], lowerarm_l = [["X", -15]], hand_l = [["X", -75], ["Y", 15], ["Z", 30]], upperarm_r = [["X", -105], ["Y", 30], ["Z", 15]], lowerarm_r = [["Y", -90]] }
+[clip.params.poses.quiver]
+rotate = { spine_02 = [["Z", -20]], spine_01 = [["Z", -8]], neck = [["Z", 15]], upperarm_l = [["X", -20], ["Y", -60]], lowerarm_l = [["X", -25]], hand_l = [["X", -75], ["Y", 15], ["Z", 30]], upperarm_r = [["X", -15], ["Y", 60], ["Z", -90]], lowerarm_r = [["X", -75], ["Y", 90]] }  # grid search: hand behind the right shoulder
+[clip.params.poses.nock]
+rotate = { spine_02 = [["Z", -28]], spine_01 = [["Z", -10]], neck = [["Z", 22]], head = [["Z", 8]], upperarm_l = [["X", -30], ["Y", -75]], lowerarm_l = [["X", -15]], hand_l = [["X", -75], ["Y", 15], ["Z", 30]], upperarm_r = [["X", -80], ["Z", 40]], lowerarm_r = [["X", -40], ["Y", -45]] }

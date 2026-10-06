@@ -37,6 +37,11 @@ events = [
     { frame = 29, event = "footstep_l" },
 ]
 
+[clips."bow/t_shoot"]
+events = [
+    { frame = 3, event = "release" },
+]
+
 [clips."bow/t_turn_l"]
 events = [
     { frame = 18, event = "footstep_r" },

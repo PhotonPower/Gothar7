@@ -139,8 +139,10 @@ def test_weapon_sets_depend_on_none():
         spec = load_set_spec(mode)
         assert spec.depends == ("none",)
         # 8 locomotion clips per mode, plus drawing and sheathing for 1h and fist (M9)
-        # fist and 1h: + combat clips of M11 (fist 3, 1h 8)
-        assert len(spec.names) == {"fist": 13, "1h": 18}.get(mode, 8)
+        # + combat clips of M11 (fist 3, 1h 8, 2h 8, bow 3, cbow 3)
+        assert len(spec.names) == {"fist": 13, "1h": 18, "2h": 16, "bow": 11, "cbow": 11}.get(
+            mode, 8
+        )
         layered = [c for c in spec.clips if c.op == "layer" and not c.name.endswith("/s_idle")]
         assert len(layered) == 7
         assert all(c.bones == ("clavicle_l", "clavicle_r", "neck") for c in layered)
@@ -271,7 +273,7 @@ def test_real_list_is_consistent_with_files():
     counts = list(result.section_counts().values())
     # Prio-B item use + mobs (M8), per mode, Prio-C routines (M9), dialogue (M10), combat (M11),
     # 3 monsters
-    expected = [(17, 17), (48, 48), (43, 43), (22, 22), (17, 17), (13, 13), (12, 12), (12, 12)]
+    expected = [(17, 17), (48, 48), (43, 43), (22, 22), (31, 31), (13, 13), (12, 12), (12, 12)]
     assert counts == expected
     # without the monsters folder the wolf rows are reported as out of date
     assert progress(text, ANIMS).stale

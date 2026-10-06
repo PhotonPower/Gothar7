@@ -10,6 +10,10 @@ depends = ["none"]
 file = "AnimationLibrary_Godot_Standard.glb"
 mapping = "quaternius_ual1"
 
+[sources.ual2]
+file = "UAL2_Standard.glb"
+mapping = "quaternius_ual2"
+
 [[clip]]
 name = "2h/s_stance"
 keyframe = "pose"
@@ -71,3 +75,175 @@ name = "2h/t_turn_r"
 layer = ["none/t_turn_r", "2h/s_idle"]
 from_bone = ["clavicle_l", "clavicle_r", "neck"]
 events = "footsteps"
+
+# --- combat (M11, contract with engine 2026-10-05): as 1h (every attack starts and ends in
+# 2h/s_idle; hit_start/hit_end, combo_start = hit_end .. combo_end ~80 %), the left hand on the grip
+# below the right one (recipe two_hands), wider and heavier swings.
+
+[[clip]]
+name = "2h/t_combo1_src"
+concat = ["ual2:Sword_Regular_A", "ual2:Sword_Regular_A_Rec"]
+helper = true
+
+[[clip]]
+name = "2h/t_combo1_grip"
+keyframe = "two_hands"
+params = { base = "2h/t_combo1_src" }
+helper = true
+
+[[clip]]
+name = "2h/t_attack_combo1"
+keyframe = "framed"
+markers = { hit_start = 17, hit_end = 23, combo_start = 23, combo_end = 34 }
+params = { base = "2h/t_combo1_grip", stance = "2h/s_idle", fade_in = 5, fade_out = 8, soften = ["spine_03", "neck", "head", "upperarm_l", "lowerarm_l"] }
+
+[[clip]]
+name = "2h/t_block_src"
+from = "ual2:Sword_Block[0:15]"
+helper = true
+
+[[clip]]
+name = "2h/t_block_grip"
+keyframe = "two_hands"
+params = { base = "2h/t_block_src" }
+helper = true
+
+[[clip]]
+name = "2h/t_parry"               # ~0.6 s (engine sets the block window)
+keyframe = "framed"
+params = { base = "2h/t_block_grip", stance = "2h/s_idle", fade_in = 5, fade_out = 6, soften = ["spine_02", "spine_03", "neck", "head"] }
+
+[[clip]]
+name = "2h/t_combo2_src"
+concat = ["ual2:Sword_Regular_B", "ual2:Sword_Regular_B_Rec"]
+helper = true
+
+[[clip]]
+name = "2h/t_combo2_grip"
+keyframe = "two_hands"
+params = { base = "2h/t_combo2_src" }
+helper = true
+
+[[clip]]
+name = "2h/t_attack_combo2"       # wide horizontal cut
+keyframe = "framed"
+markers = { hit_start = 5, hit_end = 9, combo_start = 9, combo_end = 38 }
+params = { base = "2h/t_combo2_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head", "upperarm_l", "lowerarm_l"] }
+
+# own swings over the upright none/s_idle (right arm; the left hand follows on the grip)
+[[clip]]
+name = "2h/t_chop"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [12, "raise"], [19, "chop"], [24, "chop"], [40, "rest"]]
+[clip.params.poses.raise]
+rotate = { upperarm_r = [["X", -150], ["Z", -25]], lowerarm_r = [["X", -60]], spine_02 = [["Z", -20], ["X", -8]], spine_01 = [["Z", -8]] }
+move = { pelvis = [0, 0.04, -0.02] }
+[clip.params.poses.chop]
+rotate = { upperarm_r = [["X", -40], ["Z", 20]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 15], ["X", 18]], spine_01 = [["Z", 6], ["X", 8]] }
+move = { pelvis = [0, -0.12, -0.08] }
+
+[[clip]]
+name = "2h/t_swing_l"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [10, "wind"], [16, "cut"], [21, "through"], [38, "rest"]]
+[clip.params.poses.wind]
+rotate = { upperarm_r = [["X", -80], ["Z", -75]], lowerarm_r = [["X", -40]], spine_02 = [["Z", -35]], spine_01 = [["Z", -15]] }
+[clip.params.poses.cut]
+rotate = { upperarm_r = [["X", -85], ["Z", 5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 5]], spine_01 = [["Z", 2]] }
+move = { pelvis = [0, -0.06, -0.03] }
+[clip.params.poses.through]
+rotate = { upperarm_r = [["X", -70], ["Z", 70]], lowerarm_r = [["X", -40]], spine_02 = [["Z", 35]], spine_01 = [["Z", 15]] }
+move = { pelvis = [0, -0.05, -0.03] }
+
+[[clip]]
+name = "2h/t_swing_r"
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [10, "wind"], [16, "cut"], [21, "through"], [38, "rest"]]
+[clip.params.poses.wind]
+rotate = { upperarm_r = [["X", -75], ["Z", 65]], lowerarm_r = [["X", -70]], spine_02 = [["Z", 35]], spine_01 = [["Z", 15]] }
+[clip.params.poses.cut]
+rotate = { upperarm_r = [["X", -85], ["Z", -5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", -5]], spine_01 = [["Z", -2]] }
+move = { pelvis = [0, -0.06, -0.03] }
+[clip.params.poses.through]
+rotate = { upperarm_r = [["X", -70], ["Z", -70]], lowerarm_r = [["X", -15]], spine_02 = [["Z", -35]], spine_01 = [["Z", -15]] }
+move = { pelvis = [0, -0.05, -0.03] }
+
+[[clip]]
+name = "2h/t_t_chop_grip"
+keyframe = "two_hands"
+params = { base = "2h/t_chop" }
+helper = true
+
+[[clip]]
+name = "2h/t_attack_combo3"  # diagonal overhead chop
+keyframe = "framed"
+markers = { hit_start = 16, hit_end = 21, combo_start = 21, combo_end = 32 }
+params = { base = "2h/t_t_chop_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "2h/t_t_swing_l_grip"
+keyframe = "two_hands"
+params = { base = "2h/t_swing_l" }
+helper = true
+
+[[clip]]
+name = "2h/t_attack_l"  # directional swing to the left
+keyframe = "framed"
+markers = { hit_start = 14, hit_end = 19 }
+params = { base = "2h/t_t_swing_l_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "2h/t_t_swing_r_grip"
+keyframe = "two_hands"
+params = { base = "2h/t_swing_r" }
+helper = true
+
+[[clip]]
+name = "2h/t_attack_r"  # directional swing to the right
+keyframe = "framed"
+markers = { hit_start = 14, hit_end = 19 }
+params = { base = "2h/t_t_swing_r_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "2h/t_combo4_src"
+from = "ual1:Sword_Attack"
+helper = true
+
+[[clip]]
+name = "2h/t_combo4_grip"
+keyframe = "two_hands"
+params = { base = "2h/t_combo4_src" }
+helper = true
+
+[[clip]]
+name = "2h/t_attack_combo4"       # heavy finisher
+keyframe = "framed"
+markers = { hit_start = 9, hit_end = 13, combo_start = 13, combo_end = 37 }
+params = { base = "2h/t_combo4_grip", stance = "2h/s_idle", fade_in = 5, fade_out = 8, soften = ["spine_03", "neck", "head", "upperarm_l", "lowerarm_l"] }
+
+[[clip]]
+name = "2h/t_dodge_back"          # jump backwards, root motion 0.8 m (no events)
+keyframe = "keyposes"
+[clip.params]
+base = "2h/s_idle"
+keys = [[0, "rest"], [5, "crouch"], [11, "air"], [16, "land"], [24, "back"]]
+[clip.params.poses.crouch]
+rotate = { spine_02 = [["X", 10]], thigh_l = [["X", -20]], thigh_r = [["X", -20]], calf_l = [["X", 30]], calf_r = [["X", 30]] }
+move = { pelvis = [0, 0.02, -0.08] }
+[clip.params.poses.air]
+rotate = { spine_02 = [["X", -8]], thigh_l = [["X", -30]], thigh_r = [["X", -10]], calf_l = [["X", 40]], calf_r = [["X", 25]] }
+move = { root = [0, 0.4, 0], pelvis = [0, 0, 0.06] }
+[clip.params.poses.land]
+rotate = { spine_02 = [["X", 12]], thigh_l = [["X", -25]], thigh_r = [["X", -25]], calf_l = [["X", 35]], calf_r = [["X", 35]] }
+move = { root = [0, 0.8, 0], pelvis = [0, 0.02, -0.09] }
+[clip.params.poses.back]
+move = { root = [0, 0.8, 0] }

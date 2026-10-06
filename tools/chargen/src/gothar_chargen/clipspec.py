@@ -109,6 +109,7 @@ RECIPES: dict[str, tuple[str, ...]] = {
     "hold": ("base",),
     "gait": (),
     "framed": ("base", "stance"),
+    "two_hands": ("base",),
 }
 # optional parameters naming earlier clips
 RECIPE_OPTIONAL: dict[str, tuple[str, ...]] = {"keyposes": ("base",)}

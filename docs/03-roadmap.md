@@ -457,7 +457,7 @@ Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine�
 - [ ] Mob-Interaktionen, Item-Benutzung, Ambient-Routinen, Dialog-Gesten
   - Stand: Platzhalter für M8 (Mobs, Items) und M9 (Routinen und Reaktionen nach engines Liste: Set `amb` mit Sitzen, Wache, Anlehnen, Reden, Zuhören, Schlafen, Lagerfeuer, Fegen, Krug, Schwerttraining, Holzhacken, Ernten, Gießen, Reparieren; Bank als Mob; `none/s_idle_look`, `t_idle_scratch`, `t_warn`, `t_point`, `t_surprised`, `t_search`); Dialog-Gesten für M10 als additive Clips `dlg/a_*` gegen die Referenz `dlg/a_neutral` (Vertrag §3.2, Validator `anim.additive`)
 - [ ] Nahkampf (Talent über die Abspielrate), Fernkampf, Magie, Treffer/Tod/Bewusstlos
-  - Stand: Platzhalter für M11 Teil A (2026-10-05, Vertrag mit engine): `none/t_hit_light`, `t_die_front/back`, `t_ko`, `s_ko`, `t_ko_getup`; `fist/t_attack_combo1..2`, `t_parry`; `1h/t_attack_combo1..4`, `t_attack_l/r`, `t_parry`, `t_dodge_back` – Events `hit_*` und `combo_*`, jeder Angriff aus und in die Kampfhaltung (Rezept `framed`); als Nächstes `2h`, `bow`, `cbow`
+  - Stand: Platzhalter für M11 Teil A (2026-10-05, Vertrag mit engine): `none/t_hit_light`, `t_die_front/back`, `t_ko`, `s_ko`, `t_ko_getup`; `fist/t_attack_combo1..2`, `t_parry`; `1h/t_attack_combo1..4`, `t_attack_l/r`, `t_parry`, `t_dodge_back` – Events `hit_*` und `combo_*`, jeder Angriff aus und in die Kampfhaltung (Rezept `framed`); Teil B: `2h` (dieselben Namen, linke Hand per `two_hands` am Griff), `bow/s_aim`, `t_shoot` (Event `release`), `t_reload`, `cbow` ebenso – damit alle 31 Kampf-Clips von engines Liste als Platzhalter
 - [ ] Alle **Prio-B**-Animationen fertig
 
 **DoD:** Vertical Slice (Meilenstein B) ohne Platzhalter-Animationen.
@@ -473,5 +473,6 @@ Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine�
 ## F6 – Waffen & Handgegenstände  (benötigt F1; für M8–M11)
 - [x] Erste Stücke, realistisch und texturiert: `it_sword_old` (rostig, schartig), `it_sword_crude` (frisch geschmiedet), `it_club`, `it_bow_short`, `it_apple`, `it_bread`, `it_potion_heal_small`, `it_lockpick`, `it_key` (ein Modell für alle Schlüssel) – `gothar-chargen build-items` (eigene Geometrie per Code, ambientCG-Texturen), Socket-Ausrichtung mit engine abgestimmt (characters-pipeline.md §3.1, §6.3), Validator `item.*` in CI, Prüfbilder jedes Stücks am Socket einer Testfigur
 - [ ] Weitere Waffen und Gegenstände nach Bedarf von M10/M11 (Zweihänder, Armbrust, Pfeile, Fackel, Spruchrollen …)
+  - Stand: `it_arrow`, `it_bolt` (Ursprung Schaftmitte, mit engine abgestimmt), `it_crossbow` (2026-10-05, M11)
 
 **DoD:** Die Gegenstände liegen in der Welt (M8) und sitzen in der Hand bzw. am Gürtel und Rücken (M10/M11).
