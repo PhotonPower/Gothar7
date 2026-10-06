@@ -1,0 +1,13 @@
+# Schlaf (M12): blaue Schwebeteilchen über dem Schlafenden.
+version = 1
+sprite = "soft"
+blend = "additive"
+rate = 12
+lifetime = [1.5, 2.5]
+speed = [0.1, 0.3]
+spread = 25
+radius = 0.4
+gravity = -0.1
+size = [0.15, 0.05]
+color_start = [0.5, 0.6, 1.0, 0.7]
+color_end = [0.4, 0.5, 1.0, 0.0]

@@ -57,7 +57,7 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 | Lockpicking, Taschendiebstahl | ~4 | `mob/chest/s_picklock`, `none/t_pickpocket` | K |
 | Ambient / Routinen | ~30 | `amb/s_guard_arms_crossed`, `amb/s_sit_ground`, `amb/s_sleep_ground`, `amb/s_sweep`, `amb/s_campfire_warm`, `amb/s_drink_mug`, `amb/s_train_sword`, `amb/s_lean_wall` | MC |
 | Dialog-Gesten (additiv Oberkörper) | ~20 | `dlg/a_talk_neutral1..4`, `dlg/a_gesture_shrug`, `a_point`, `a_dismiss`, `a_threaten`, `a_greet` | MC |
-| Magie | ~12 | `mag/t_invest`, `mag/s_invest_loop`, `mag/t_cast_projectile`, `t_cast_area`, `t_cast_self` | MC/K |
+| Magie | ~14 | `mag/t_draw`, `t_invest`, `s_invest`, `t_cast_projectile/target/self/area/summon`, `s_cast_loop` (ausgeschrieben unten) | MC/K |
 
 ### Prio B – Item-Benutzung und Mobs für M8 (ausgeschrieben, Vertrag „Mobs“ §3.1)
 
@@ -172,6 +172,29 @@ Fernkampf: Event `release` beim Lösen des Schusses.
 | `cbow/s_aim` | zielen (Schleife), beide Hände vorn | 2,0 s | – | Q | platzhalter (UAL1 `Pistol_Aim_Neutral`, gehalten) |
 | `cbow/t_shoot` | Schuss mit Rückstoß | 0,63 s | release | Q | platzhalter (UAL1 `Pistol_Shoot`) |
 | `cbow/t_reload` | nachladen | 1,7 s | – | Q | platzhalter (UAL1 `Pistol_Reload`) |
+
+### Prio B – Magie für M12 (ausgeschrieben, Liste von engine)
+
+Vertrag mit engine (2026-10-06): Rune bzw. Spruchrolle in der rechten Hand (`socket_hand_r`); jeder Einmal-Clip
+beginnt und endet in `mag/s_idle`; Event `cast` = der Effekt startet. Fünf Wirk-Varianten; Verwandlung nutzt
+`t_cast_self`, Schlaf die K.o.-Clips von `none`. Kreise bzw. Talent nur über Abspielrate und Effekt.
+
+| Name | Zweck | Länge | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `mag/t_draw` | Rune bzw. Spruchrolle aus dem Beutel am Gürtel in die Hand | 0,8 s | draw | K | platzhalter-K |
+| `mag/t_sheath` | zurück in den Beutel | 0,8 s | sheath | K | platzhalter-K (rückwärts) |
+| `mag/t_invest` | Aufladen beginnen | 0,6 s | – | Q | platzhalter (UAL1 `Spell_Simple_Enter`) |
+| `mag/s_invest` | Aufladen, solange die Taste gehalten wird (Schleife; Stufen zeigt der Effekt) | 2,0 s | – | K | platzhalter-K (Endpose von `t_invest`) |
+| `mag/t_cast_projectile` | Stoß nach vorn (Feuerpfeil) | 0,9 s | cast | Q | platzhalter (UAL1 `Spell_Simple_Shoot`) |
+| `mag/t_cast_target` | auf ein Ziel zeigen (Schlaf, Furcht, Kontrolle) | 1,1 s | cast | K | platzhalter-K (Pose per Gittersuche) |
+| `mag/t_cast_self` | Hände zur Brust (Heilung, eigene Verwandlung) | 1,1 s | cast | K | platzhalter-K (Pose per Gittersuche) |
+| `mag/t_cast_area` | Arme hoch, dann ausgebreitet (Flächenzauber) | 1,2 s | cast | K | platzhalter-K |
+| `mag/t_cast_summon` | Arm hoch, dann zum Boden vor sich (Beschwörung) | 1,3 s | cast | K | platzhalter-K |
+| `mag/s_cast_loop` | Dauerzauber: Arm ausgestreckt (Schleife) | 2,5 s | – | K | platzhalter-K |
+| `mag/t_cast_loop_end` | vom Dauerzauber zurück in die Haltung | 0,4 s | – | K | platzhalter-K |
+| `mag/t_cast_fail` | misslingt (kein Mana): die Hand zuckt | 0,7 s | – | K | platzhalter-K |
+| `none/t_hit_magic` | Treffer durch Magie: zurückgeworfen, Arme vor dem Gesicht | 0,9 s | – | K | platzhalter-K |
+| `none/s_burn` | brennt (Schleife): rennt mit schlagenden Armen, engine bewegt ihn | 0,93 s | footstep_l/r | K | platzhalter-K (über `none/s_run`) |
 
 ## Monster (F5, Vertrag `characters-pipeline.md` §7)
 
