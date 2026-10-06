@@ -357,8 +357,23 @@ Ob es sich responsiv anfühlt, entscheidet der Projektinhaber beim Probespielen.
 **Weiter:** Fernkampf für NPCs (Jäger); Trefferfenster und Waffen-Kapsel aus figurens Kampfclips (#217).
 
 ## Magie (M12)
-Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten
-(`invest` zum Aufladen, `cast`, Projektil/Fläche/Verwandlung/Kontrolle/Beschwörung).
+Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, wie Gothic 1).
+
+**Teil B – Zauber als Inhalt (umgesetzt, `gameplay/Magic.hpp`):**
+- **`Spell`-Instanzen** (`game/scripts/magic/`): `name`, `circle` (1–6), `mana`, `kind` (`projectile`, `area`,
+  `self`, `target`, `summon`, `transform`), `invest` (`{ stages, mana }`: Aufladestufen, Z5), `damage` (Art),
+  `radius`, `heal`, `effect` (`sleep`, `fear`), `duration`, `summon` (Npc), `species`, `fx` (`cast`, `trail`,
+  `impact`, `on_target`: Effekte aus `data/fx`), `on_cast`.
+- **Runen und Spruchrollen** sind Items der Kategorien `rune` bzw. `scroll` mit `spell` (`items/magic.lua`); die
+  sieben Rune-Plätze gibt es seit M8.
+- **Wer wirken darf** (`castBlocked`): eine Rune braucht den Kreis des Zaubers (Talent `magic_circle`, Z2), eine
+  Spruchrolle nicht (Z3); beide kosten das Mana des Zaubers plus die Aufladestufen. Mana erholt sich nicht von
+  selbst (Z1: Tränke, Schlaf, Stufe). Lua `cast_check(item, stages?)` → nil oder der Grund.
+- **Startsatz (Z9):** Feuerpfeil (Kreis 1, 10 Mana, Feuer 25), Heilung (1, 10, +50 LP), Schlaf (2, 15, 20 s),
+  Wolfsgestalt (2, 20), Wolf rufen (3, 25, 60 s); Runen `it_rune_*`, Rollen `it_scroll_*`, `it_potion_mana_small`.
+  Kreise kosten beim Lehrer 10/15/20/25/30/35 LP (`data/magic.lua`, Talentname „Kreis der Magie“).
+
+**Weiter:** C Wirken (Z4–Z8), D KI und Reaktionen, E DoD-Szenario.
 
 ## Wirtschaft
 Handel: Händler-Inventar, Preisfaktor Verkauf (z. B. 0,5), Währung als Item (`ItMi_Ore`).

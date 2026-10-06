@@ -268,6 +268,11 @@ Parade (M11, K6): blockt Nahkampftreffer von vorn kurz nach ihrem Beginn.
 ### `npc_reach(npc: string) -> number`
 Bis zu welchem Abstand (Mitte zu Mitte, m) die Schläge des Kämpfers treffen (`hero` für den Helden).
 
+## Magie
+
+### `cast_check(item: string, stages?: integer) -> string | nil`
+Ob der Held die Rune bzw. Spruchrolle wirken kann (M12, Z1-Z3): nil, sonst der Grund (fehlender Kreis, zu wenig Mana, nicht im Inventar).
+
 ## Mobs
 
 ### `mob_state(vob: string) -> {definition, type, name, locked, open}`

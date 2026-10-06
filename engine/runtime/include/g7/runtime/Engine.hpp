@@ -20,6 +20,7 @@
 #include <g7/gameplay/Character.hpp>
 #include <g7/gameplay/Combat.hpp>
 #include <g7/gameplay/Focus.hpp>
+#include <g7/gameplay/Magic.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
 #include <g7/physics/Character.hpp>
@@ -292,6 +293,8 @@ public:
     [[nodiscard]] world::GameTime& gameTime() noexcept { return m_gameTime; }
     /// Light, fog and sky of the last frame (from the day cycle).
     [[nodiscard]] const render::Environment& environment() const noexcept { return m_environment; }
+    /// The spell a rune or scroll casts (M12); nullopt for other items.
+    [[nodiscard]] std::optional<gameplay::SpellInfo> spellOfItem(std::string_view item) const;
     /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes; the renderer
     /// gives them the indoor ambient (environment.toml [indoor]).
     [[nodiscard]] std::vector<render::IndoorVolume> nearestIndoorVolumes(const Vec3& point) const;
@@ -794,6 +797,8 @@ private:
         physics::ShapeId shape;
     };
     void loadMobTypes();
+    // Magic (M12, EngineMagic.cpp).
+    void bindMagicFunctions();
     // Combat (M11, EngineCombat.cpp).
     struct Combatant;
     void loadCombat();

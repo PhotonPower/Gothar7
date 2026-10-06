@@ -54,6 +54,7 @@ Item "it_bolt" {
 
 Item "it_sword_2h" {
     name = "Zweihänder",
+    mesh = "items/it_sword_2h.glb",
     category = "melee_2h",
     value = 300,
     weight = 6.0,

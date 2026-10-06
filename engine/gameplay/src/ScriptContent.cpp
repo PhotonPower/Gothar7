@@ -27,6 +27,7 @@ void defineContentKinds(script::ScriptVm& vm)
              {"text", Type::String},     // documents: what reading shows
              {"on_use", Type::Function}, // fn(item): after the effects
              {"tags", Type::StringList},
+             {"spell", Type::String, false, none, none, "Spell"}, // runes and scrolls: what they cast (M12)
          },
          false});
 
@@ -123,6 +124,37 @@ void defineContentKinds(script::ScriptVm& vm)
                        {"finish", Type::Function},
                    },
                    false});
+
+    // Spell "spl_firebolt" { name = "Feuerpfeil", circle = 1, mana = 10, kind = "projectile", damage = { fire
+    // = 25 },
+    //                     fx = { trail = "firebolt", impact = "impact_fire" } }: what a rune or a scroll
+    //                     casts
+    // (M12 part B, owner decisions Z1-Z3). kind: projectile, area, self, target, summon, transform.
+    vm.defineKind(
+        {"Spell",
+         {
+             {"name", Type::String, true},
+             {"circle", Type::Integer, true, 1.0, 6.0},  // Z2: the rune needs this magic circle
+             {"mana", Type::Integer, true, 0.0, 1000.0}, // Z1/Z3: cost of a cast (also from a scroll)
+             {"kind",
+              Type::String,
+              true,
+              none,
+              none,
+              {},
+              std::vector<std::string>{"projectile", "area", "self", "target", "summon", "transform"}},
+             {"invest", Type::Table}, // Z5: { stages = 3, mana = 5 } more per second of charging
+             {"damage", Type::Table}, // { fire = 25 } (projectile, area)
+             {"radius", Type::Number, false, 0.0, 50.0},         // area
+             {"heal", Type::Integer, false, 0.0, 10000.0},       // self
+             {"effect", Type::String},                           // target: sleep, fear
+             {"duration", Type::Number, false, 0.0, 3600.0},     // target, summon (seconds)
+             {"summon", Type::String, false, none, none, "Npc"}, // summon: the creature
+             {"species", Type::String},                          // transform: wolf, keiler, laufvogel
+             {"fx", Type::Table},                                // { cast, trail, impact, on_target }
+             {"on_cast", Type::Function},                        // fn(caster, target): after the engine
+         },
+         false});
 
     // Routine "rtn_x" { { from = "08:00", to = "22:00", state = "zs_x", at = "wp_x" } }: entries checked with
     // M9.
