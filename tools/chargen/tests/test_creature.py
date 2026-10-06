@@ -228,6 +228,7 @@ def test_schinder_description():
     teeth = [s for s in c.shapes if s.kind == "tooth"]
     assert len(eyes) == 2 and {s.bone for s in eyes} == {"head"}
     assert {s.bone for s in teeth} == {"head", "jaw"} and len(teeth) == 10
+    assert [s.bone for s in c.shapes if s.kind == "tongue"] == ["jaw"]  # mouth interior
 
 
 def test_creature_descriptions_are_no_rigs():
@@ -256,11 +257,17 @@ def test_schinder_reference_passes():
     folder = "../../../textures/fur/"
     assert uris == sorted(
         folder + f
-        for f in ("schinder.jpg", "schinder_normal.png", "eyes_140d09.jpg", "teeth_d8cdb0.jpg")
+        for f in (
+            "schinder.jpg",
+            "schinder_normal.png",
+            "eyes_140d09.jpg",
+            "teeth_d8cdb0.jpg",
+            "tongue_7a4440.jpg",
+        )
     )
     assert all((SCHINDER_REF.parent / u).is_file() for u in uris)
     materials = {m["name"]: m for m in gltf.list("materials")}
-    assert set(materials) == {"fur", "eyes", "teeth"}
+    assert set(materials) == {"fur", "eyes", "teeth", "tongue"}
     assert "normalTexture" in materials["fur"]
 
 
