@@ -1,6 +1,6 @@
 # Creature "schinder" (F5, own work): carrion eater of the knacker's yard - hyena/badger build,
 # high shoulders, sloping back, bald neck and head, dark bristly crest. Shoulder 0.8 m.
-# Built by `gothar-chargen creature schinder` (blender/build_creature.py, creature.py).
+# Eyes and teeth are separate pieces (materials eyes/teeth). Built by `gothar-chargen creature schinder` (blender/build_creature.py, creature.py).
 #
 # Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. The tool
 # moves everything so that root lies on the ground below the pelvis head. `mirror = true` adds the
@@ -9,10 +9,12 @@
 
 art = "schinder"
 material = "fur"
-voxel = 0.005          # remesh voxel (surface detail before reduction)
+voxel = 0.004          # remesh voxel (surface detail before reduction)
 smooth = 12
 ao = 0.6             # ambient occlusion baked into the texture (0 = none)
-triangles = 7500       # lod0
+normal_size = 512    # normal map (PNG): shape of the high mesh + fur relief
+normal_strength = 0.8
+triangles = 7300       # lod0 body; eyes and teeth add ~400
 lods = [1.0, 0.5, 0.25]
 texture = 1024
 seed = 11
@@ -56,13 +58,13 @@ tail = [0, -0.98, 0.78]
 name = "head"
 parent = "neck_02"
 head = [0, -0.98, 0.78]
-tail = [0, -1.28, 0.70]
+tail = [0, -1.26, 0.71]
 
 [[bone]]
 name = "jaw"
 parent = "head"
-head = [0, -1.02, 0.70]
-tail = [0, -1.27, 0.66]
+head = [0, -1.04, 0.69]
+tail = [0, -1.24, 0.655]
 
 [[bone]]
 name = "ear_l"
@@ -176,10 +178,6 @@ wrinkles = 0.6
 colour = "#1c1716"
 variation = 0.05
 
-[zone.eye]
-colour = "#160f0b"
-variation = 0.02
-
 [zone.ear]
 colour = "#5c4b40"
 variation = 0.12
@@ -204,12 +202,18 @@ colour = "#221c16"
 strands = 0.9
 
 [zone.mouth]
-colour = "#5e2d2a"
+colour = "#4a2522"
 variation = 0.1
 
-[zone.teeth]
-colour = "#cbbf9f"
-variation = 0.05
+[zone.eye_rim]
+colour = "#2a201c"
+variation = 0.08
+
+[zone.ear_inner]
+colour = "#9a8077"
+colour2 = "#7d655d"
+variation = 0.12
+strands = 0.2
 
 # --- body shapes ---
 
@@ -379,69 +383,132 @@ center = [0, -1.02, 0.785]
 size = [0.08, 0.10, 0.075]
 
 [[shape]]
-kind = "ellipsoid"           # cheeks
+kind = "ellipsoid"           # heavy jaw muscles behind the eyes
 zone = "head"
 mirror = true
-center = [0.045, -1.06, 0.75]
-size = [0.042, 0.07, 0.045]
+center = [0.058, -1.035, 0.735]
+size = [0.042, 0.075, 0.055]
 
 [[shape]]
-kind = "ellipsoid"           # brow
+kind = "ellipsoid"           # brow ridge
 zone = "head"
-center = [0, -1.09, 0.80]
-size = [0.065, 0.05, 0.03]
+center = [0, -1.085, 0.805]
+size = [0.068, 0.045, 0.028]
 
 [[shape]]
-kind = "capsule"             # snout
+kind = "capsule"             # nose bridge, broad and flat on top
 zone = "muzzle"
-a = [0, -1.08, 0.74]
-b = [0, -1.30, 0.695]
-r = 0.052
-r2 = 0.032
+a = [0, -1.08, 0.745]
+b = [0, -1.245, 0.718]
+r = 0.032
+r2 = 0.022
+
+[[shape]]
+kind = "capsule"             # upper jaw: two capsules side by side - square, strong section
+zone = "muzzle"
+mirror = true
+a = [0.022, -1.075, 0.712]
+b = [0.016, -1.25, 0.697]
+r = 0.036
+r2 = 0.025
 
 [[shape]]
 kind = "ellipsoid"
 zone = "nose"
-center = [0, -1.318, 0.70]
-size = [0.026, 0.02, 0.02]
+center = [0, -1.262, 0.712]
+size = [0.03, 0.02, 0.022]
 
 [[shape]]
-kind = "capsule"             # lower jaw
+kind = "capsule"             # strong lower jaw, a little narrower (the lips overhang it)
 zone = "muzzle"
-a = [0, -1.05, 0.675]
-b = [0, -1.28, 0.662]
-r = 0.042
-r2 = 0.027
-
-[[shape]]
-kind = "ellipsoid"
-zone = "eye"
 mirror = true
-center = [0.052, -1.115, 0.795]
-size = [0.014, 0.012, 0.012]
+a = [0.021, -1.06, 0.655]
+b = [0.014, -1.235, 0.655]
+r = 0.03
+r2 = 0.022
 
 [[shape]]
-kind = "ellipsoid"           # rounded ears, tilted outwards
+kind = "cut_box"             # mouth: through the whole snout to the tip, opens with the jaw
+zone = "mouth"
+center = [0, -1.20, 0.6755]
+size = [0.08, 0.12, 0.0035]
+
+[[shape]]
+kind = "ellipsoid"           # lower lid
+zone = "eye_rim"
+mirror = true
+center = [0.05, -1.103, 0.775]
+size = [0.019, 0.014, 0.008]
+
+[[shape]]
+kind = "cut"                 # eye socket
+zone = "eye_rim"
+mirror = true
+center = [0.054, -1.107, 0.79]
+size = [0.017, 0.015, 0.014]
+
+[[shape]]
+kind = "eye"                 # dark, glossy eyeball in the socket
+mirror = true
+bone = "head"
+center = [0.047, -1.103, 0.79]
+size = [0.0115, 0.0105, 0.0105]
+
+[[shape]]
+kind = "ellipsoid"           # rounded ears with a rim ...
 zone = "ear"
 mirror = true
-center = [0.07, -1.0, 0.875]
-size = [0.028, 0.014, 0.045]
+center = [0.068, -1.0, 0.875]
+size = [0.034, 0.012, 0.05]
 rotate = [0, 20, 0]
 
 [[shape]]
-kind = "cone"                # upper canines
-zone = "teeth"
+kind = "cut"                 # ... and a cupped inside facing forward
+zone = "ear_inner"
 mirror = true
-a = [0.021, -1.255, 0.682]
-b = [0.021, -1.26, 0.652]
-r = 0.008
+center = [0.069, -1.011, 0.878]
+size = [0.025, 0.009, 0.04]
+rotate = [0, 20, 0]
 
 [[shape]]
-kind = "cut"                 # mouth slit (opens with the jaw)
-zone = "mouth"
-center = [0, -1.19, 0.682]
-size = [0.03, 0.11, 0.007]
-rotate = [-4, 0, 0]
+kind = "tooth"               # upper canines, tips beside the lower lip
+mirror = true
+bone = "head"
+a = [0.034, -1.215, 0.68]
+b = [0.036, -1.22, 0.648]
+r = 0.0065
+
+[[shape]]
+kind = "tooth"               # lower canines
+mirror = true
+bone = "jaw"
+a = [0.026, -1.205, 0.664]
+b = [0.027, -1.21, 0.69]
+r = 0.006
+
+[[shape]]
+kind = "tooth"               # upper incisors
+mirror = true
+bone = "head"
+a = [0.008, -1.252, 0.68]
+b = [0.008, -1.255, 0.666]
+r = 0.0045
+
+[[shape]]
+kind = "tooth"
+mirror = true
+bone = "head"
+a = [0.02, -1.245, 0.68]
+b = [0.02, -1.248, 0.665]
+r = 0.0045
+
+[[shape]]
+kind = "tooth"               # lower incisors
+mirror = true
+bone = "jaw"
+a = [0.011, -1.24, 0.666]
+b = [0.011, -1.243, 0.678]
+r = 0.004
 
 # dark bristly crest from the head along the neck to the loins
 [[shape]]
@@ -451,16 +518,23 @@ points = [[0, -1.00, 0.84], [0, -0.80, 0.85], [0, -0.62, 0.84], [0, -0.40, 0.77]
 sizes = [[0.012, 0.03, 0.025], [0.016, 0.035, 0.045], [0.018, 0.04, 0.05], [0.016, 0.04, 0.04], [0.01, 0.03, 0.025]]
 count = 18
 
-# tail with a dark tip
+# bushy, tapering tail, darker towards the tip
 [[shape]]
 kind = "chain"
 zone = "tail"
-points = [[0, 0.10, 0.56], [0, 0.21, 0.48], [0, 0.29, 0.40], [0, 0.34, 0.32]]
-radii = [0.045, 0.06, 0.065, 0.055]
+points = [[0, 0.10, 0.56], [0, 0.20, 0.49], [0, 0.28, 0.41], [0, 0.335, 0.32], [0, 0.365, 0.22]]
+radii = [0.04, 0.052, 0.06, 0.05, 0.016]
 
 [[shape]]
-kind = "ellipsoid"
+kind = "ridge"               # tufts along both sides make the outline bushy
+zone = "tail"
+mirror = true
+points = [[0.022, 0.17, 0.51], [0.028, 0.26, 0.43], [0.024, 0.32, 0.34], [0.012, 0.35, 0.26]]
+sizes = [[0.03, 0.035, 0.035], [0.036, 0.04, 0.04], [0.032, 0.035, 0.035], [0.016, 0.02, 0.02]]
+count = 7
+
+[[shape]]
+kind = "chain"               # dark tip: same volume, the zone darkens it
 zone = "tailtip"
-center = [0, 0.365, 0.285]
-size = [0.06, 0.06, 0.08]
-rotate = [-30, 0, 0]
+points = [[0, 0.335, 0.32], [0, 0.365, 0.22]]
+radii = [0.047, 0.015]

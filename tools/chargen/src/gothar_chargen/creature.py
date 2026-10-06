@@ -11,12 +11,16 @@ moves everything so that ``root`` (origin) lies on the ground below the pelvis h
 from __future__ import annotations
 
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 import numpy as np
 
-SHAPE_KINDS = ("ellipsoid", "capsule", "chain", "ridge", "cone", "cut")
+SHAPE_KINDS = (
+    "ellipsoid", "box", "capsule", "chain", "ridge", "cone", "cut", "cut_box", "eye", "tooth"
+)  # fmt: skip
+CUTS = ("cut", "cut_box")  # removed from the body after the first remesh
+PIECES = ("eye", "tooth")  # separate geometry with their own material, not in the body union
 REQUIRED_BONES = ("pelvis", "neck_01", "head")
 ZONE_SOFTNESS = 0.012  # metres: zones blend over about this distance
 CHUNK = 65536  # texels per batch (memory)
@@ -36,9 +40,11 @@ class Bone:
 
 @dataclass(frozen=True)
 class Shape:
-    """A primitive. ellipsoid: center, size (half axes), rotate (Euler XYZ degrees);
+    """A primitive. ellipsoid/box: center, size (half axes), rotate (Euler XYZ degrees);
     capsule/cone: a, b, r, r2 (radius at b; cone tip r2 = 0); cut: an ellipsoid removed from the
-    body after the first remesh (mouth slit)."""
+    body after the first remesh (eye sockets, ear cups), cut_box the same as a box (mouth slit).
+    Pieces (eye: ellipsoid, tooth: cone) are separate geometry with the material eyes/teeth,
+    rigid on `bone`."""
 
     kind: str
     zone: str
@@ -49,6 +55,7 @@ class Shape:
     b: tuple[float, float, float] = (0.0, 0.0, 0.0)
     r: float = 0.0
     r2: float = 0.0
+    bone: str = ""
 
 
 @dataclass(frozen=True)
@@ -64,6 +71,7 @@ class Zone:
     spots: float = 0.0  # dark mottling
     belly: float = 0.0  # lighter towards the underside
     wrinkles: float = 0.0  # fine skin creases
+    relief: float = 1.0  # strength of the strands/creases in the normal map
 
 
 @dataclass(frozen=True)
@@ -82,6 +90,10 @@ class Creature:
     shapes: tuple[Shape, ...]
     zones: dict[str, Zone]
     stripe_spacing: float = 0.09
+    normal_size: int = 512
+    normal_strength: float = 1.0
+    eye_colour: str = "#140d09"
+    teeth_colour: str = "#d8cdb0"
     extra: dict = field(default_factory=dict)
 
     def bone(self, name: str) -> Bone:
@@ -137,21 +149,24 @@ def _parse_shapes(items: list[dict], zones: dict[str, Zone]) -> list[Shape]:
         if kind not in SHAPE_KINDS:
             raise CreatureError(f"shape {i}: kind {kind!r} not in {SHAPE_KINDS}")
         zone = it.get("zone", "")
-        if zone not in zones:
+        bone = it.get("bone", "")
+        if kind in PIECES:
+            if not bone:
+                raise CreatureError(f"shape {i}: {kind} needs a bone")
+        elif zone not in zones:
             raise CreatureError(f"shape {i}: unknown zone {zone!r}")
         new: list[Shape] = []
         at = f"shape {i}"
         rot = _v3(it.get("rotate", [0, 0, 0]), at)
-        if kind in ("ellipsoid", "cut"):
-            new.append(
-                Shape(
-                    kind, zone, center=_v3(it["center"], at), size=_v3(it["size"], at), rotate=rot
-                )
-            )
-        elif kind in ("capsule", "cone"):
+        if kind in ("ellipsoid", "box", "cut", "cut_box", "eye"):
+            centre, size = _v3(it["center"], at), _v3(it["size"], at)
+            new.append(Shape(kind, zone, center=centre, size=size, rotate=rot, bone=bone))
+        elif kind in ("capsule", "cone", "tooth"):
             r = float(it["r"])
-            r2 = 0.0 if kind == "cone" else float(it.get("r2", r))
-            new.append(Shape("capsule", zone, a=_v3(it["a"], at), b=_v3(it["b"], at), r=r, r2=r2))
+            r2 = 0.0 if kind in ("cone", "tooth") else float(it.get("r2", r))
+            name = "tooth" if kind == "tooth" else "capsule"
+            a, b = _v3(it["a"], at), _v3(it["b"], at)
+            new.append(Shape(name, zone, a=a, b=b, r=r, r2=r2, bone=bone))
         elif kind == "chain":
             pts = [_v3(p, at) for p in it["points"]]
             radii = [float(r) for r in it["radii"]]
@@ -174,20 +189,10 @@ def _parse_shapes(items: list[dict], zones: dict[str, Zone]) -> list[Shape]:
         shapes += new
         if it.get("mirror"):
             for s in new:
-                mirrored_rot = (s.rotate[0], -s.rotate[1], -s.rotate[2])
-                shapes.append(
-                    Shape(
-                        s.kind,
-                        s.zone,
-                        _mx(s.center),
-                        s.size,
-                        mirrored_rot,
-                        _mx(s.a),
-                        _mx(s.b),
-                        s.r,
-                        s.r2,
-                    )
-                )
+                rot_m = (s.rotate[0], -s.rotate[1], -s.rotate[2])
+                bone = _mirror_name(s.bone) if s.bone.endswith("_l") else s.bone
+                mirrored = replace(s, center=_mx(s.center), rotate=rot_m, a=_mx(s.a), b=_mx(s.b))
+                shapes.append(replace(mirrored, bone=bone))
     return shapes
 
 
@@ -205,12 +210,12 @@ def load_creature(path: Path) -> Creature:
         return tuple(float(x) for x in np.array(v) - shift)  # type: ignore[return-value]
 
     bones = [Bone(b.name, b.parent, sh(b.head), sh(b.tail)) for b in bones]
-    shapes = [
-        Shape(s.kind, s.zone, sh(s.center), s.size, s.rotate, sh(s.a), sh(s.b), s.r, s.r2)
-        for s in shapes
-    ]
+    shapes = [replace(s, center=sh(s.center), a=sh(s.a), b=sh(s.b)) for s in shapes]
     sockets = data.get("sockets", {})
     names = {b.name for b in bones}
+    for s in shapes:
+        if s.bone and s.bone not in names:
+            raise CreatureError(f"{s.kind}: unknown bone {s.bone}")
     for name, spec in sockets.items():
         if spec.get("parent") not in names:
             raise CreatureError(f"socket {name}: unknown parent {spec.get('parent')}")
@@ -234,6 +239,10 @@ def load_creature(path: Path) -> Creature:
         shapes=tuple(shapes),
         zones=zones,
         stripe_spacing=float(data.get("stripe_spacing", 0.09)),
+        normal_size=int(data.get("normal_size", 512)),
+        normal_strength=float(data.get("normal_strength", 1.0)),
+        eye_colour=str(data.get("eye_colour", "#140d09")),
+        teeth_colour=str(data.get("teeth_colour", "#d8cdb0")),
     )
 
 
@@ -251,7 +260,11 @@ def euler_matrix(deg: tuple[float, float, float]) -> np.ndarray:
 
 def shape_distance(s: Shape, p: np.ndarray) -> np.ndarray:
     """Approximate signed distance of points p (N, 3) to the shape surface (negative inside)."""
-    if s.kind in ("ellipsoid", "cut"):
+    if s.kind in ("box", "cut_box"):
+        q = np.abs((p - np.array(s.center)) @ euler_matrix(s.rotate)) - np.array(s.size)
+        outside = np.linalg.norm(np.maximum(q, 0.0), axis=1)
+        return outside + np.minimum(q.max(axis=1), 0.0)
+    if s.kind in ("ellipsoid", "cut", "eye"):
         q = (p - np.array(s.center)) @ euler_matrix(s.rotate)  # into the local frame
         size = np.array(s.size)
         k = np.linalg.norm(q / size, axis=1)
@@ -283,10 +296,11 @@ def zone_weights(c: Creature, p: np.ndarray) -> tuple[list[str], np.ndarray]:
     """Soft zone weights (N, Z) at surface points: nearer shapes count more."""
     names = list(c.zones)
     w = np.zeros((len(p), len(names)))
-    dists = np.stack([np.abs(shape_distance(s, p)) for s in c.shapes], axis=1)
+    shapes = [s for s in c.shapes if s.kind not in PIECES]
+    dists = np.stack([np.abs(shape_distance(s, p)) for s in shapes], axis=1)
     near = dists.min(axis=1, keepdims=True)
     contrib = np.exp(-(dists - near) / ZONE_SOFTNESS)
-    for k, s in enumerate(c.shapes):
+    for k, s in enumerate(shapes):
         w[:, names.index(s.zone)] += contrib[:, k]
     return names, w / w.sum(axis=1, keepdims=True)
 
@@ -336,6 +350,11 @@ def srgb(hex_colour: str) -> np.ndarray:
 
 def surface_colour(c: Creature, p: np.ndarray, n: np.ndarray) -> np.ndarray:
     """sRGB colour (N, 3) of surface points p with normals n."""
+    return surface(c, p, n)[0]
+
+
+def surface(c: Creature, p: np.ndarray, n: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """sRGB colour (N, 3) and relief height (N,) in about -1..1 of surface points."""
     names, w = zone_weights(c, p)
     flow = bone_flow(c.bones, p)
     seed = c.seed
@@ -356,6 +375,7 @@ def surface_colour(c: Creature, p: np.ndarray, n: np.ndarray) -> np.ndarray:
     )
     under = np.clip(-n[:, 2] * 1.5, 0, 1)
     out = np.zeros((len(p), 3))
+    height = np.zeros(len(p))
     for k, name in enumerate(names):
         z = c.zones[name]
         if not w[:, k].any():
@@ -375,7 +395,9 @@ def surface_colour(c: Creature, p: np.ndarray, n: np.ndarray) -> np.ndarray:
         if z.wrinkles:
             col *= (1 - z.wrinkles * 0.35 * crease)[:, None]
         out += w[:, k : k + 1] * col
-    return np.clip(out, 0, 1)
+        relief = z.strands * (strand - 0.5) * 2.0 - z.wrinkles * crease
+        height += w[:, k] * z.relief * relief
+    return np.clip(out, 0, 1), height
 
 
 # --- texture baking -------------------------------------------------------------------------------
@@ -442,15 +464,42 @@ def dilate(img: np.ndarray, mask: np.ndarray, steps: int = 8) -> np.ndarray:
 
 def bake_texture(
     c: Creature, tri_uv: np.ndarray, tri_pos: np.ndarray, tri_nrm: np.ndarray
-) -> np.ndarray:
-    """sRGB fur texture (S, S, 3) in 0..1 for the UV layout of the body mesh."""
+) -> tuple[np.ndarray, np.ndarray]:
+    """sRGB fur texture (S, S, 3) in 0..1 and relief height (S, S) for the body's UV layout."""
     size = c.texture
     pos, nrm, mask = rasterize(tri_uv, tri_pos, tri_nrm, size)
     img = np.zeros((size, size, 3))
+    height = np.zeros((size, size))
     idx = np.flatnonzero(mask.ravel())
     flat_p, flat_n = pos.reshape(-1, 3), nrm.reshape(-1, 3)
-    out = img.reshape(-1, 3)
+    out, out_h = img.reshape(-1, 3), height.reshape(-1)
     for start in range(0, len(idx), CHUNK):
         sel = idx[start : start + CHUNK]
-        out[sel] = surface_colour(c, flat_p[sel], flat_n[sel])
-    return dilate(img, mask)
+        out[sel], out_h[sel] = surface(c, flat_p[sel], flat_n[sel])
+    return dilate(img, mask), dilate(height[..., None], mask)[..., 0]
+
+
+def height_normal(height: np.ndarray, strength: float) -> np.ndarray:
+    """Tangent-space normals (S, S, 3), unit vectors, from a height field in image space.
+
+    glTF tangent space follows the UVs (tangent +u, bitangent +v); image row 0 is v = 1, so the
+    v derivative is the negative row derivative. `strength` = slope per height unit and texel.
+    """
+    du = (np.roll(height, -1, axis=1) - np.roll(height, 1, axis=1)) * 0.5
+    dv = -(np.roll(height, -1, axis=0) - np.roll(height, 1, axis=0)) * 0.5
+    n = np.stack([-strength * du, -strength * dv, np.ones_like(height)], axis=-1)
+    return n / np.linalg.norm(n, axis=-1, keepdims=True)
+
+
+def blend_normals(base: np.ndarray, detail: np.ndarray) -> np.ndarray:
+    """Whiteout blend of two tangent-space normal fields (unit vectors)."""
+    n = np.concatenate(
+        [base[..., :2] + detail[..., :2], (base[..., 2] * detail[..., 2])[..., None]], -1
+    )
+    return n / np.linalg.norm(n, axis=-1, keepdims=True)
+
+
+def downsample(img: np.ndarray, size: int) -> np.ndarray:
+    """Box-filters an (S, S, C) image to (size, size, C); S must be a multiple of size."""
+    k = img.shape[0] // size
+    return img.reshape(size, k, size, k, -1).mean(axis=(1, 3))

@@ -13,10 +13,13 @@ from gothar_chargen.creature import (
     CreatureError,
     Shape,
     bake_texture,
+    blend_normals,
     bone_flow,
     dilate,
+    downsample,
     euler_matrix,
     fractal3,
+    height_normal,
     load_creature,
     rasterize,
     shape_distance,
@@ -115,6 +118,11 @@ def test_minimal_description(tmp_path):
         ('kind = "ellipsoid"', 'kind = "torus"', "kind"),
         ("radii = [0.05, 0.04, 0.03]", "radii = [0.05, 0.04]", "one radius per point"),
         ('name = "front_upper_l"', 'name = "front_upper"', "must end in _l"),
+        (
+            'kind = "ridge"',
+            'kind = "tooth"\nr = 0.01\na = [0, 0, 0]\nb = [0, 0, 0.1]',
+            "needs a bone",
+        ),
         ("triangles = 1000", "triangles = 1000\nlods = [1.0, 0.6, 0.7]", "decrease"),
     ],
 )
@@ -195,7 +203,8 @@ def test_bake_texture_small(tmp_path):
     tri_uv = np.array([[[0.1, 0.1], [0.9, 0.1], [0.1, 0.9]]])
     tri_pos = np.array([[[0.0, -0.2, 0.7], [0.0, 0.2, 0.7], [0.0, -0.2, 0.69]]])
     tri_nrm = np.tile([0.0, 0.0, 1.0], (1, 3, 1))
-    tex = bake_texture(c, tri_uv, tri_pos, tri_nrm)
+    tex, height = bake_texture(c, tri_uv, tri_pos, tri_nrm)
+    assert height.shape == (32, 32) and np.abs(height).max() <= 2.0
     assert tex.shape == (32, 32, 3) and (tex >= 0).all() and (tex <= 1).all()
     assert tex[31, 16].sum() > 0  # dilated below the triangle (v < 0.1)
     assert tex[0, -1].sum() == 0  # far corner out of reach, no wrap-around
@@ -203,7 +212,7 @@ def test_bake_texture_small(tmp_path):
 
 def test_schinder_description():
     c = load_creature(SCHINDER)
-    assert c.art == "schinder" and c.material == "fur" and c.triangles == 7500
+    assert c.art == "schinder" and c.material == "fur" and c.triangles == 7300
     assert {"pelvis", "spine_01", "spine_02", "neck_01", "neck_02", "head", "jaw"} <= {
         b.name for b in c.bones
     }
@@ -212,7 +221,11 @@ def test_schinder_description():
             assert {f"{leg}_{part}_{side}" for part in ("upper", "lower", "foot")} <= {
                 b.name for b in c.bones
             }
-    assert any(s.kind == "cut" for s in c.shapes)  # mouth slit
+    assert any(s.kind == "cut_box" for s in c.shapes)  # mouth slit
+    eyes = [s for s in c.shapes if s.kind == "eye"]
+    teeth = [s for s in c.shapes if s.kind == "tooth"]
+    assert len(eyes) == 2 and {s.bone for s in eyes} == {"head"}
+    assert {s.bone for s in teeth} == {"head", "jaw"} and len(teeth) == 10
 
 
 def test_creature_descriptions_are_no_rigs():
@@ -236,7 +249,67 @@ def test_schinder_reference_passes():
     gltf = Gltf.load(SCHINDER_REF)
     report = validate_gltf(gltf, rig, reference_pose(gltf), path=SCHINDER_REF)
     assert report.ok(strict=True), report.issues
-    assert report.stats["triangles"] <= 7500 and report.stats["lods"] == 3
-    uris = [img.get("uri", "") for img in gltf.list("images")]
-    assert uris == ["../../../textures/fur/schinder.jpg"]
-    assert (SCHINDER_REF.parent / uris[0]).is_file()
+    assert report.stats["triangles"] <= 8000 and report.stats["lods"] == 3  # engine: lod0 <= 8 k
+    uris = sorted(img.get("uri", "") for img in gltf.list("images"))
+    folder = "../../../textures/fur/"
+    assert uris == sorted(
+        folder + f
+        for f in ("schinder.jpg", "schinder_normal.png", "eyes_140d09.jpg", "teeth_d8cdb0.jpg")
+    )
+    assert all((SCHINDER_REF.parent / u).is_file() for u in uris)
+    materials = {m["name"]: m for m in gltf.list("materials")}
+    assert set(materials) == {"fur", "eyes", "teeth"}
+    assert "normalTexture" in materials["fur"]
+
+
+def test_pieces_and_boxes(tmp_path):
+    extra = (
+        MINIMAL
+        + """
+[[shape]]
+kind = "eye"
+mirror = true
+bone = "head"
+center = [0.05, -0.25, 0.62]
+size = [0.01, 0.01, 0.01]
+[[shape]]
+kind = "tooth"
+bone = "front_upper_l"
+mirror = true
+a = [0.1, 0.0, 0.05]
+b = [0.1, -0.01, 0.0]
+r = 0.005
+[[shape]]
+kind = "cut_box"
+zone = "dark"
+center = [0, -0.3, 0.6]
+size = [0.05, 0.1, 0.005]
+"""
+    )
+    c = load_creature(_write(tmp_path, extra))
+    eyes = [s for s in c.shapes if s.kind == "eye"]
+    teeth = [s for s in c.shapes if s.kind == "tooth"]
+    assert [s.bone for s in eyes] == ["head", "head"]
+    assert sorted(s.bone for s in teeth) == ["front_upper_l", "front_upper_r"]
+    assert teeth[0].r2 == 0.0
+    # pieces take no part in the colour zones
+    names, w = zone_weights(c, np.array([[0.05, -0.55, 0.62]]))
+    assert w.shape == (1, len(names))
+    box = Shape("box", "fur", center=(0, 0, 0), size=(0.1, 0.2, 0.3))
+    d = shape_distance(box, np.array([[0, 0, 0], [0.1, 0, 0], [0.2, 0, 0], [0.2, 0.3, 0.0]]))
+    assert d == pytest.approx([-0.1, 0.0, 0.1, np.hypot(0.1, 0.1)])
+
+
+def test_normals_from_height():
+    flat = height_normal(np.zeros((8, 8)), 1.0)
+    assert flat == pytest.approx(np.tile([0, 0, 1.0], (8, 8, 1)))
+    ramp = np.tile(np.arange(8.0), (8, 1))  # rises towards +u (image x)
+    n = height_normal(ramp, 1.0)[4, 4]
+    assert n[0] < 0 and abs(n[1]) < 1e-12 and n[2] > 0  # tilts away from the slope
+    rows = np.tile(np.arange(8.0)[:, None], (1, 8))  # rises downwards in the image = towards -v
+    assert height_normal(rows, 1.0)[4, 4][1] > 0
+    up = np.tile([0, 0, 1.0], (2, 2, 1))
+    tilted = np.tile(np.array([0.6, 0.0, 0.8]), (2, 2, 1))
+    assert blend_normals(up, tilted) == pytest.approx(tilted)
+    big = np.arange(16.0).reshape(4, 4, 1)
+    assert downsample(big, 2)[..., 0] == pytest.approx(np.array([[2.5, 4.5], [10.5, 12.5]]))

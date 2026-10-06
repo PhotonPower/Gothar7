@@ -6,7 +6,7 @@
 name = "schinder_reference"
 kind = "monster"
 species = "schinder"
-height = 0.914
+height = 0.920
 bind_pose = "natural"
 max_bones = 64
 max_influences = 4
@@ -20,9 +20,9 @@ left = ["front_foot_r", "front_foot_l"]
 
 [rig.collision]            # engine character capsule (§7.1), derived from the mesh
 shape = "capsule_lying"
-radius = 0.31
-length = 1.46
-offset = [0.00, 0.60, 0.61]
+radius = 0.32
+length = 1.40
+offset = [0.00, 0.60, 0.58]
 
 [[bone]]
 name = "root"
@@ -153,7 +153,7 @@ roll = 0.000000
 name = "head"
 parent = "neck_02"
 head = [0, -0.980000, 0.780000]
-tail = [0, -1.280000, 0.700000]
+tail = [0, -1.260000, 0.710000]
 roll = 0.000000
 
 [[bone]]
@@ -173,16 +173,16 @@ roll = 0.000000
 [[bone]]
 name = "jaw"
 parent = "head"
-head = [0, -1.020000, 0.700000]
-tail = [0, -1.270000, 0.660000]
+head = [0, -1.040000, 0.690000]
+tail = [0, -1.240000, 0.655000]
 roll = 0.000000
 
 [[bone]]
 name = "socket_mouth"
 parent = "head"
 socket = true
-head = [0, -1.280000, 0.700000]
-tail = [0, -1.318649, 0.689694]
+head = [0, -1.260000, 0.710000]
+tail = [0, -1.298806, 0.700299]
 roll = 0.000000
 
 [[bone]]
