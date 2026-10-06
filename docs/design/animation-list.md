@@ -245,6 +245,23 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `laufvogel/s_eat`, `s_sleep` | Picken am Boden, Schlafen (auf gefalteten Beinen sitzend) | – | – | K | platzhalter-K |
 | `laufvogel/t_threaten` | Drohen: aufrichten, Hals vor, Fauch-Nicken | – | – | K | platzhalter-K |
 
+### Schinder (`schinder`, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `schinder/s_idle` | Stehen, Kopf tief, schnüffeln und umschauen | – | – | K | platzhalter-K |
+| `schinder/s_walk` | Gehen (Kreuzgang) | ✓ 1,3 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `schinder/s_run` | Rennen (Galopp, Rücken beugt sich) | ✓ 6,5 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `schinder/s_sneak` | Schleichen: Beute umkreisen, geduckt, Kopf vor, Ohren zurück | ✓ 0,7 m/s | footstep_front/back_l/r | K | platzhalter-K (`gait` mit fester Haltung; mit engine 2026-10-07) |
+| `schinder/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `schinder/t_attack_1`, `t_attack_2` | Schneller Biss nach vorn / Zubeißen und mit Kopfschütteln reißen | – | hit_start, hit_end | K | platzhalter-K |
+| `schinder/t_hit` | Treffer | – | – | K | platzhalter-K |
+| `schinder/t_die` | Tod: taumeln, auf die Seite fallen | – | – | K | platzhalter-K |
+| `schinder/s_eat`, `s_sleep` | An der Leiche zerren und kauen / Schlafen (zusammengerollt, atmet) | – | – | K | platzhalter-K |
+| `schinder/t_threaten` | Drohen: geduckt, Kopf tief, fauchen und kichern (Kiefer klappert) | – | – | K | platzhalter-K |
+| `schinder/t_call` | Rudelruf: Kopf hochgeworfen, heulen | – | call, sound:schinder_call | K | platzhalter-K (mit engine 2026-10-07) |
+| `schinder/s_cower` | Unterlegen: tief geduckt, Ohren flach, Schwanz eingezogen, zittert | – | – | K | platzhalter-K (mit engine 2026-10-07) |
+
 ## Prio C – später
 
 Akrobatik-Varianten, Gangarten (Militär, Frauen, Entspannt) als Varianten-Sets, zusätzliche

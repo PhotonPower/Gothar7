@@ -158,6 +158,25 @@ def prepare_monster(
     )
 
 
+def build_creature(
+    blender: Path, spec: Path, characters: Path, clips_out: Path, rig_out: Path
+) -> str:
+    return run_script(
+        blender,
+        "build_creature.py",
+        [
+            "--spec",
+            str(spec),
+            "--characters",
+            str(characters),
+            "--clips-out",
+            str(clips_out),
+            "--rig-out",
+            str(rig_out),
+        ],
+    )
+
+
 def build_set(blender: Path, set_name: str, sources: Path, out_dir: Path) -> str:
     return run_script(
         blender,

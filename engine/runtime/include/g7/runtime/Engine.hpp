@@ -20,6 +20,7 @@
 #include <g7/gameplay/Character.hpp>
 #include <g7/gameplay/Combat.hpp>
 #include <g7/gameplay/Focus.hpp>
+#include <g7/gameplay/Magic.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
 #include <g7/physics/Character.hpp>
@@ -294,6 +295,8 @@ public:
     [[nodiscard]] world::GameTime& gameTime() noexcept { return m_gameTime; }
     /// Light, fog and sky of the last frame (from the day cycle).
     [[nodiscard]] const render::Environment& environment() const noexcept { return m_environment; }
+    /// The spell a rune or scroll casts (M12); nullopt for other items.
+    [[nodiscard]] std::optional<gameplay::SpellInfo> spellOfItem(std::string_view item) const;
     /// Starts the effect data/fx/<name>.toml (M12); nullopt if there is none.
     std::optional<u32> startEffect(std::string_view name, const Vec3& at,
                                    const Vec3& direction = Vec3(0, 1, 0));
@@ -666,7 +669,8 @@ private:
     [[nodiscard]] bool passableDoor(u64 vob) const;
     [[nodiscard]] std::optional<Vec3> doorLeafCentre(u64 vob) const;
     /// Opens a closed door ahead of the walking NPC, closes the one behind it; true while it waits for one.
-    bool npcDoors(Creature& c);
+    /// Opens doors on c's way; true while it waits. backOff: where to step out of a swinging leaf's arc.
+    bool npcDoors(Creature& c, Vec3& backOff);
     /// Spawns an Npc instance with its figure, capsule, values and routine.
     [[nodiscard]] Result<u32> spawnNpc(std::string_view name, const Vec3& at, f32 yaw);
     // Behaviour (EngineAi.cpp)
@@ -803,6 +807,8 @@ private:
         physics::ShapeId shape;
     };
     void loadMobTypes();
+    // Magic (M12, EngineMagic.cpp).
+    void bindMagicFunctions();
     // Effects (M12 part A, EngineFx.cpp).
     [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
     void drawEffects();
