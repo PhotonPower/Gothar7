@@ -139,8 +139,9 @@ struct PlayerLanding
 
 namespace animation
 {
+class Animator;
 struct AnimGraph;
-}
+} // namespace animation
 namespace script
 {
 class ScriptVm;
@@ -808,6 +809,13 @@ private:
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
     void stopForFight(Creature& c);
+    // Combat clips (M11, figuren #217): the graph's weapon value and the fight states.
+    [[nodiscard]] i32 heroWeaponAnimation() const;
+    [[nodiscard]] f32 creatureWeaponAnimation(const Creature& c) const;
+    [[nodiscard]] animation::Animator* animatorOf(const Combatant& c);
+    /// Plays the fighter's current move (Fighter::clip) if the figure has it; else the fighter's timeline.
+    void playFight(Combatant& c);
+    void playReaction(Combatant& c, std::string_view clip); ///< hit, knocked out, up again, dead
     void readCombatInput(); // K1: Gothic 1 keys, the mouse as second assignment
     void fixedUpdateHeroFight(gameplay::MoveInput& input, f32 seconds); // moves, lock (K5)
     [[nodiscard]] std::optional<u32> pickCombatTarget() const;
@@ -1150,6 +1158,7 @@ private:
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
     std::vector<u32> m_heroHitThisSwing;
+    std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline
     struct CombatRequest
     {
         std::string move; ///< "attack", "parry", "dodge"

@@ -354,7 +354,15 @@ Ob es sich responsiv anfühlt, entscheidet der Projektinhaber beim Probespielen.
 (`[camera.combat]`, 0,4 s) auf 2,4 m Abstand und 1,45 m Blickpunkt; drinnen gilt der nähere der beiden Abstände.
 `Engine::playerCombatBlend()`.
 
-**Weiter:** Fernkampf für NPCs (Jäger); Trefferfenster und Waffen-Kapsel aus figurens Kampfclips (#217).
+**Kampfclips (umgesetzt, figuren #217):** Der Menschen-Graph lädt `2h`, `bow`, `cbow` und `mag`; für jeden einmaligen
+Clip gibt es einen Zustand gleichen Namens (`1h/t_attack_combo1` → `1h_t_attack_combo1`), aus dem es am Ende in die
+Fortbewegung der gezogenen Waffe zurückgeht (Graph-Parameter `weapon`: 1 Einhand, 2 Fäuste, 3 Bogen, 4 Armbrust,
+5 Zweihand, 6 Magie). Die Engine betritt den Zustand des Kampfzugs (`Fighter::clip`); seine Events `hit_start`,
+`hit_end`, `combo_start`, `combo_end` treiben den Kämpfer, sein Ende beendet den Zug. Treffer, Bewusstlosigkeit,
+Aufstehen und Tod spielen `none/t_hit_light`, `t_ko` → `s_ko`, `t_ko_getup`, `t_die_front`. Fehlt einer Figur ein
+Clip, bleibt die Zeitleiste. Menschen halten nach einem Kampf 5 s die Kampfhaltung ihrer Waffe.
+
+**Weiter:** Fernkampf für NPCs (Jäger); Waffen-Kapsel entlang der Animation; Bogen-Clips beim Schießen.
 
 ## Magie (M12)
 Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten
