@@ -289,3 +289,23 @@ def test_a_divided_storey_has_a_zone_per_room():
     house = House("DEBW_00100061ZjV", "wohnhaus", inside=True)
     values = {z["value"] for z in indoor_zones([house], DIVIDED)}
     assert values == {"LEO_WOHNHAUS_ZJV_INNEN", "LEO_WOHNHAUS_ZJV_KAMMER"}
+
+
+def test_windows_keep_tall_things_off_and_let_the_day_in():
+    # a window in the north wall, just where the hearth faces the door
+    window = {
+        "from": [5.6, -6.7],
+        "to": [6.4, -6.7],
+        "sill": 1.9,
+        "top": 2.9,
+        "normal": [0.0, -1.0],
+    }
+    index = {"entries": [{"id": "DEBW_00100061ZjV", "interior": {**ROOM, "windows": [window]}}]}
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=2, inside=True)
+    p = plan_inside([house], SPEC, index, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+    (hearth,) = [v for v in by_kind(p, "mesh") if v["mesh"] == "props/hearth.glb"]
+    assert abs(hearth["pos"][0] - 6.0) > 0.4 + 0.6 + 0.3 or hearth["pos"][2] > -6.7 + 0.8 + 0.3
+    (light,) = [v for v in by_kind(p, "light") if "_FENSTER_" in v["name"]]
+    assert light["pos"] == pytest.approx([6.0, 2.4, -6.7 + 0.8])
+    comp = light["components"]["light"]
+    assert list(comp) == ["color", "range", "intensity", "daylight"] and comp["daylight"] is True

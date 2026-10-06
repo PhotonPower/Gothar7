@@ -885,6 +885,8 @@ class _Context:
     carve: list[tuple[Polygon, float]] = field(default_factory=list)  # for the collision
     floors: list[tuple[Polygon, float]] = field(default_factory=list)  # solid room floors (W7)
     inner_walls: list[tuple[Polygon, float, float]] = field(default_factory=list)  # partitions
+    room_storey: bool = False  # building the storey that gets the room: its windows open (W7)
+    room_windows: list[tuple[Any, Any]] = field(default_factory=list)  # (frame, opening)
     dirt_m: float = 0.0  # > 0: textured house, plaster walls get a dirty foot band this high
     lod: int = 0  # 1: simplified for the distance (flat openings, flat timber, no dormers)
 
@@ -912,6 +914,59 @@ def _room_spec(rules: Rules) -> dict[str, Any]:
             "passage": [0.9, 2.0]}  # fmt: skip
     spec.update(rules.data.get("interior", {}))
     return spec
+
+
+def _room_fits(ctx: _Context, ring: Sequence[tuple[float, float]], storey: float) -> bool:
+    """``_room`` will build a room in this storey (its checks, ahead of the facades)."""
+    spec = _room_spec(ctx.rules)
+    inner = Polygon(ring).buffer(-float(spec["wallM"]), join_style="mitre", mitre_limit=3.0)
+    high = storey - float(spec["ceilingM"]) >= float(spec["minHeightM"])
+    return isinstance(inner, Polygon) and inner.area >= float(spec["minAreaM2"]) and high
+
+
+def _frame_box(b: _Builder, f: Frame, u0: float, u1: float, v0: float, v1: float, d0: float,
+               d1: float, back: bool = True) -> None:  # fmt: skip
+    """A box in the facade's frame (u along, v up, d out of the wall); ``back=False`` leaves out
+    the face towards the wall (it lies on it)."""
+    n = f.n3()
+    ax = (float(f.axis[0]), 0.0, float(f.axis[1]))
+    faces = [
+        ([(u0, v0, d1), (u1, v0, d1), (u1, v1, d1), (u0, v1, d1)], n),
+        ([(u0, v0, d0), (u1, v0, d0), (u1, v1, d0), (u0, v1, d0)], (-n[0], -n[1], -n[2])),
+        ([(u0, v1, d0), (u1, v1, d0), (u1, v1, d1), (u0, v1, d1)], (0.0, 1.0, 0.0)),
+        ([(u0, v0, d0), (u1, v0, d0), (u1, v0, d1), (u0, v0, d1)], (0.0, -1.0, 0.0)),
+        ([(u1, v0, d0), (u1, v1, d0), (u1, v1, d1), (u1, v0, d1)], ax),
+        ([(u0, v0, d0), (u0, v1, d0), (u0, v1, d1), (u0, v0, d1)], (-ax[0], 0.0, -ax[2])),
+    ]
+    for k, (corners, want) in enumerate(faces):
+        if k == 1 and not back:
+            continue
+        b.polygon([f.point(u, v, d) for u, v, d in corners], [(u, v) for u, v, _ in corners],
+                  want)  # fmt: skip
+
+
+WINDOW_BAR_M = 0.05  # the window cross: oak bars this wide
+OPEN_EVERY = 2  # in the room storey every second window is open (W7)
+
+
+def _window_cross(b: _Builder, f: Frame, op: Any, depth: float) -> None:  # noqa: ANN401
+    """A wooden cross in an open window, in the middle of the wall's depth."""
+    h, um, vm = WINDOW_BAR_M / 2, op.u + op.w / 2, op.v + op.h * 0.6
+    _frame_box(b, f, um - h, um + h, op.v, op.v + op.h, -depth - h, -depth + h)
+    _frame_box(b, f, op.u, op.u + op.w, vm - h, vm + h, -depth - h, -depth + h)
+
+
+SHUTTER_M = 0.03  # thickness of the open shutters
+
+
+def _shutters(b: _Builder, f: Frame, op: Any) -> None:  # noqa: ANN401
+    """Two shutters, open: folded back flat against the facade beside the window."""
+    half = op.w / 2
+    for u0, u1 in (
+        (op.u - half - 0.02, op.u - 0.02),
+        (op.u + op.w + 0.02, op.u + op.w + half + 0.02),
+    ):
+        _frame_box(b, f, u0, u1, op.v, op.v + op.h, 0.02, 0.02 + SHUTTER_M, back=False)
 
 
 def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, storey: float,
@@ -954,23 +1009,23 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
                 dz: float = uz) -> float:  # fmt: skip
             return abs((q[0] - ax) * dz - (q[1] - az) * dx)
 
-        cuts: list[tuple[float, float, float]] = []  # (from, to, bottom of the wall above)
-        if off(d0) < 0.05 and off(d1) < 0.05:  # the door wall: a hole for the door
-            t0, t1 = sorted((along(d0), along(d1)))
-            if t1 > 0.0 and t0 < length:
-                cuts.append((max(0.0, t0), min(length, t1), door_hi))
-        spans = [(0.0, length, floor)]
-        for t0, t1, top in cuts:
-            spans = [(0.0, t0, floor), (t0, t1, top), (t1, length, floor)]
-        for t0, t1, bottom in spans:
-            if t1 - t0 < 1e-3 or ceiling - bottom < 1e-3:
+        face = shapely.box(0.0, floor, length, ceiling)
+        holes = [(d0, d1, floor, door_hi)]  # the door, then the windows of this storey
+        for fw, ow in ctx.room_windows:
+            w0, w1 = fw.point(ow.u, ow.v, -wall), fw.point(ow.u + ow.w, ow.v, -wall)
+            holes.append(((w0[0], w0[2]), (w1[0], w1[2]), float(w0[1]), float(w0[1]) + ow.h))
+        for h0, h1, y0, y1 in holes:
+            if off(h0) < 0.05 and off(h1) < 0.05:  # on this wall
+                t0, t1 = sorted((along(h0), along(h1)))
+                if t1 > 0.0 and t0 < length:
+                    face = face.difference(shapely.box(max(0.0, t0), y0, min(length, t1), y1))
+        for g in getattr(face, "geoms", [face]):
+            if not isinstance(g, Polygon) or g.area < 1e-4:
                 continue
-            p0 = (a[0] + ux * t0, a[1] + uz * t0)
-            p1 = (a[0] + ux * t1, a[1] + uz * t1)
-            quad = [(p0[0], bottom, p0[1]), (p1[0], bottom, p1[1]), (p1[0], ceiling, p1[1]),
-                    (p0[0], ceiling, p0[1])]  # fmt: skip
-            uvs = [(t0, bottom), (t1, bottom), (t1, ceiling), (t0, ceiling)]
-            b["room_wall"].polygon(quad, uvs, want)
+            for tri in shapely.constrained_delaunay_triangles(g).geoms:
+                pts = list(tri.exterior.coords)[:3]
+                b["room_wall"].polygon([(a[0] + ux * t, y, a[1] + uz * t) for t, y in pts],
+                                       [(t, y) for t, y in pts], want)  # fmt: skip
     for tri in shapely.constrained_delaunay_triangles(inner).geoms:
         pts = list(tri.exterior.coords)[:3]
         b["room_floor"].polygon([(x, floor, z) for x, z in pts], [(x, z) for x, z in pts],
@@ -1019,6 +1074,16 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
                  "axis": [round(ax, 4), round(az, 4)], "normal": [round(nx, 4), round(nz, 4)],
                  "floor": round(door_lo, 3), "w": round(op.w, 3), "h": round(op.h, 3)},
     }  # fmt: skip
+    windows = []
+    for fw, ow in ctx.room_windows:  # (W7) on the inner face: for the furnishing and the light
+        w0, w1 = fw.point(ow.u, ow.v, -wall), fw.point(ow.u + ow.w, ow.v, -wall)
+        windows.append({"from": [round(w0[0], 3), round(w0[2], 3)],
+                        "to": [round(w1[0], 3), round(w1[2], 3)],
+                        "sill": round(float(w0[1]), 3), "top": round(float(w0[1]) + ow.h, 3),
+                        "normal": [round(float(fw.nx), 4), round(float(fw.nz), 4)]})  # fmt: skip
+    if windows:
+        ctx.room["windows"] = windows
+    ctx.room_storey = False
     if len(rooms) > 1:  # (W7 rooms) the first is the one with the door
         ctx.room["rooms"] = [{"name": name, "ring": [[round(x, 3), round(z, 3)] for x, z in
                                                      list(poly.exterior.coords)[:-1]]}
@@ -1232,12 +1297,22 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
                     _wall_banded(ctx, role, f, g, plan, s)
     else:
         _wall_banded(ctx, "infill", f, poly, plan, s)
+    # (W7) of the room storey's windows every second one is open (the first from the left): the
+    # walls between keep room for shelves and counters; the others stay closed
+    windows = sorted((op for op in plan if op.kind == "window"), key=lambda op: op.u)
+    open_windows = windows[::OPEN_EVERY] if ctx.room_storey and s == 0 else []
     for op in plan:
         if op.kind == "passage":  # open: the tunnel walls are its jambs
             continue
         if door and ctx.interior is not None and not ctx.lod and op.kind in ("door", "gate"):
             ctx.door_op = (f, op)  # through the wall into the room (``_room``)
             _reveal(ctx.builders["frame"], f, op, _room_spec(rules)["wallM"], panel=False)
+        elif ctx.room_storey and s == 0 and op in open_windows:  # W7: daylight into the room
+            wall = float(_room_spec(rules)["wallM"])
+            _reveal(ctx.builders["frame"], f, op, wall, panel=False)
+            _window_cross(ctx.builders["room_beam"], f, op, wall / 2)  # with the room's wood:
+            _shutters(ctx.builders["room_beam"], f, op)  # outside the house budget
+            ctx.room_windows.append((f, op))
         elif ctx.lod:
             _flat_opening(ctx.builders["frame"], f, op)
         else:
@@ -1884,6 +1959,9 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
         ring_s = outlines[s]
         ns = _outward_normals([p for p, _ in ring_s])
         below = y - ctx.base_y if s == 0 else 0.0  # the ground storey reaches down to the base
+        ctx.room_storey = (s == 0 and ctx.interior is not None and not ctx.lod
+                           and ctx.door_storey == 0 and not ctx.door_blocked and ctx.room is None
+                           and door_edge is not None and _room_fits(ctx, ring, h))  # fmt: skip
         for k, (a, edge) in enumerate(ring_s):
             f = make_frame(a, ring_s[(k + 1) % len(ring_s)][0], ns[k], y)
             if f.width < 1e-3:

@@ -64,8 +64,16 @@ OUTSIDE_WP_M = 0.9  # the waypoint in front of the door, outside
 LIGHT = {
     "hearth": {"color": [1.0, 0.62, 0.32], "range": 6.5, "intensity": 2.6, "flicker": 0.3},
     "candle": {"color": [1.0, 0.75, 0.45], "range": 5.0, "intensity": 1.8, "flicker": 0.1},
+    # the day falling in at a window: the engine takes colour and brightness from the sky
+    # (``daylight``, world.md), so it is dark at night; no flicker
+    "window": {"color": [1.0, 1.0, 1.0], "range": 4.5, "intensity": 1.4, "daylight": True},
 }
+WINDOW_LIGHTS = 2  # per room at most (the engine's 8 lights per object: hearth, candles, ...)
+WINDOW_LIGHT_IN_M = 0.8  # the window's light this far inside
+WINDOW_FREE_M = 0.8  # tall things keep this far from a window (into the room), and 0.3 beside it
+TALL = {"hearth", "shelf", "barrel_rack", "tool_board", "weapon_board", "crate_stack"}
 BIG_ROOM_M2 = 60.0  # a second light in rooms bigger than this
+Pt = tuple[float, float]
 # divided ground storeys (index ``interior.rooms``): what goes into the chambers, round the rooms
 CHAMBER_MOBS = {"bed", "chest"}
 CHAMBER_PROPS = {"barrel", "crate", "crate_stack", "sacks"}
@@ -146,6 +154,7 @@ class _Room:
     taken: list[Polygon] = field(default_factory=list)
     stands: list[tuple[tuple[float, float], tuple[float, float]]] = field(default_factory=list)
     spots: list[Polygon] = field(default_factory=list)  # freepoints: kept apart, walked through
+    windows: list[dict[str, Any]] = field(default_factory=list)  # index ``interior.windows``
     props: list[Polygon] = field(default_factory=list)  # household props: close to each other
     hanging: list[Polygon] = field(default_factory=list)  # under the ceiling
 
@@ -159,6 +168,18 @@ class _Room:
         """A straight walk from the room's waypoint to ``p`` past all furniture."""
         lane = LineString([self.entry, p]).buffer(REACH_R_M)
         return not any(lane.intersects(t) for t in self.taken)
+
+    def before_window(self, shape: Polygon) -> bool:
+        """``shape`` stands in front of one of the room's windows (keeping out the day)."""
+        for w in self.windows:
+            (fx, fz), (tx, tz) = w["from"], w["to"]
+            nx, nz = w["normal"]
+            d = WINDOW_FREE_M
+            inside = [(fx, fz), (tx, tz), (tx - nx * d, tz - nz * d), (fx - nx * d, fz - nz * d)]
+            zone = Polygon(inside).buffer(0.3)  # in front of it and 0.3 m beside it
+            if shape.intersects(zone):
+                return True
+        return False
 
     def reachable_from(self, a: tuple[float, float], p: tuple[float, float]) -> bool:
         lane = LineString([a, p]).buffer(REACH_R_M)
@@ -195,7 +216,9 @@ def _chamber(r: dict[str, Any], ring: Sequence[Sequence[float]], mid: tuple[floa
     c = poly.centroid
     path = LineString([mid, (c.x, c.y)]).buffer(PATH_W_M / 2, cap_style="flat")
     keep = path.union(Point(mid).buffer(DOOR_ZONE_M))
-    return _Room(poly, float(r["floor"]), float(r["ceiling"]), keep, mid, inward)
+    room = _Room(poly, float(r["floor"]), float(r["ceiling"]), keep, mid, inward)
+    room.windows = _windows_of(r, poly)
+    return room
 
 
 def _room(e: dict[str, Any], obstacles: Sequence[Polygon] = (),
@@ -223,7 +246,17 @@ def _room(e: dict[str, Any], obstacles: Sequence[Polygon] = (),
     sweep = Point(hx, hz).buffer(w).intersection(quarter)
     blade = LineString([(hx, hz), (hx + inward[0] * w, hz + inward[1] * w)]).buffer(0.06)
     keep = path.union(zone).union(sweep)
-    return _Room(poly, float(r["floor"]), float(r["ceiling"]), keep, mid, inward, [blade])
+    room = _Room(poly, float(r["floor"]), float(r["ceiling"]), keep, mid, inward, [blade])
+    room.windows = _windows_of(r, poly)
+    return room
+
+
+def _windows_of(r: dict[str, Any], poly: Polygon) -> list[dict[str, Any]]:
+    """The windows (index ``interior.windows``) on the walls of the room ``poly``."""
+    edge = poly.exterior.buffer(0.1)
+    return [w for w in r.get("windows", [])
+            if edge.contains(Point((w["from"][0] + w["to"][0]) / 2,
+                                   (w["from"][1] + w["to"][1]) / 2))]  # fmt: skip
 
 
 def _walls(room: _Room) -> list[tuple[tuple[float, float], tuple[float, float], float]]:
@@ -266,6 +299,8 @@ def _against_wall(
             if room.keep.contains(Point(slot)):
                 continue
             if accept is not None and not accept(shape, (cx, cz), (nx, nz)):
+                continue
+            if kind in TALL and room.before_window(shape):
                 continue
             if facing is None:
                 return shape, (cx, cz), (nx, nz)
@@ -355,6 +390,23 @@ class _House:
         """The innkeeper's place at the taps of a rack is reached from the room's waypoint."""
         reach = PROP_SIZE["barrel_rack"][1] / 2 + SLOT["barrel_rack"]
         return self.room.reachable((c[0] + n[0] * reach, c[1] + n[1] * reach))
+
+    def window_lights(self) -> None:
+        """Daylight in at up to ``WINDOW_LIGHTS`` windows, on different walls where it can."""
+        chosen: list[dict[str, Any]] = []
+        for w in sorted(self.room.windows, key=lambda w: (w["normal"], w["from"])):
+            if len(chosen) < WINDOW_LIGHTS and all(c["normal"] != w["normal"] for c in chosen):
+                chosen.append(w)
+        for w in self.room.windows:
+            if len(chosen) < WINDOW_LIGHTS and w not in chosen:
+                chosen.append(w)
+        for k, w in enumerate(chosen):
+            nx, nz = w["normal"]
+            mx = (w["from"][0] + w["to"][0]) / 2 - nx * WINDOW_LIGHT_IN_M
+            mz = (w["from"][1] + w["to"][1]) / 2 - nz * WINDOW_LIGHT_IN_M
+            self.vob("light", f"LIGHT_{self.tag}_FENSTER_{k + 1}", (mx, mz), (-nx, -nz),
+                     height=(w["sill"] + w["top"]) / 2,
+                     components={"light": dict(LIGHT["window"])})  # fmt: skip
 
     def keep_way(self, p: tuple[float, float]) -> None:
         """The straight walk from the room's waypoint to ``p`` (and a figure at it) stays free."""
@@ -486,8 +538,18 @@ class _House:
                   c[1] - uz * (GROUP_L / 2 - 0.45) - n[1] * aisle)  # fmt: skip
             return wp, aisle
 
-        spot = _against_wall(room, "counter", facing=room.door_mid, size=(GROUP_L, GROUP_D),
-                             accept=lambda _s, c, n: room.reachable(parts(c, n)[0]))  # fmt: skip
+        def shelf_at(c: Pt, n: Pt) -> Polygon:  # the tall part: it alone keeps off the windows
+            ux, uz = n[1], -n[0]
+            back = GROUP_D / 2 - PROP_SIZE["shelf"][1] / 2
+            x = c[0] + ux * COUNTER_ALONG_M - n[0] * back
+            z = c[1] + uz * COUNTER_ALONG_M - n[1] * back
+            return _rect(x, z, ux, uz, *PROP_SIZE["shelf"])
+
+        def ok(_s: Polygon, c: Pt, n: Pt) -> bool:
+            return room.reachable(parts(c, n)[0]) and not room.before_window(shelf_at(c, n))
+
+        spot = _against_wall(room, "counter_group", facing=room.door_mid,
+                             size=(GROUP_L, GROUP_D), accept=ok)  # fmt: skip
         if spot is None:
             self.fail("prop counter")
             return
@@ -538,6 +600,23 @@ class _House:
                 reach = SIZE["hearth"][1] / 2 + SLOT["hearth"]
                 fire = (centre[0] + front[0] * reach, centre[1] + front[1] * reach)
                 room.keep = room.keep.union(LineString([room.entry, fire]).buffer(0.6))
+        props = dict(spec.props)
+        for kind in sorted(BY_HEARTH):  # the smithy's bellows and trough belong to the hearth
+            for _ in range(props.pop(kind, 0)):
+                self.place_prop(kind, hearth_at)
+        # the counter and the taps next: the shop's or tavern's heart, before table and beds
+        if props.pop("counter", 0):
+            self.counter_group()
+        reach = PROP_SIZE["barrel_rack"][1] / 2 + SLOT["barrel_rack"]
+        for _ in range(props.pop("barrel_rack", 0)):  # the innkeeper stands at the taps
+            spot = _against_wall(room, "barrel_rack", accept=self.taps_reached)
+            if spot is None:
+                self.fail("prop barrel_rack")
+                continue
+            shape, centre, front = spot
+            self.prop("barrel_rack", centre, front, shape)
+            room.stands.insert(0, ((centre[0] + front[0] * reach, centre[1] + front[1] * reach),
+                                   (-front[0], -front[1])))  # fmt: skip
         for kind, n in spec.mobs:
             for _ in range(min(3, max(1, h.residents)) if n == "R" else int(n)):
                 if kind == "table":
@@ -566,19 +645,6 @@ class _House:
                     reach = SIZE["chest"][1] / 2 + SLOT["chest"]
                     slot = (centre[0] + front[0] * reach, centre[1] + front[1] * reach)
                     room.stands.append((slot, (-front[0], -front[1])))
-        props = dict(spec.props)
-        if props.pop("counter", 0):
-            self.counter_group()
-        reach = PROP_SIZE["barrel_rack"][1] / 2 + SLOT["barrel_rack"]
-        for _ in range(props.pop("barrel_rack", 0)):  # the innkeeper stands at the taps
-            spot = _against_wall(room, "barrel_rack", accept=self.taps_reached)
-            if spot is None:
-                self.fail("prop barrel_rack")
-                continue
-            shape, centre, front = spot
-            self.prop("barrel_rack", centre, front, shape)
-            room.stands.insert(0, ((centre[0] + front[0] * reach, centre[1] + front[1] * reach),
-                                   (-front[0], -front[1])))  # fmt: skip
         want = 2 if room.poly.area > BIG_ROOM_M2 else 1
         c = room.poly.centroid
         for k in range(want - (1 if hearth_at else 0)):
@@ -586,6 +652,7 @@ class _House:
             light = {"light": dict(LIGHT["candle"])}
             self.vob("light", f"LIGHT_{self.tag}_{k + 1}", where, (0.0, 1.0),
                      height=room.ceiling - 0.6, components=light)  # fmt: skip
+        self.window_lights()
         if hearth_at:
             (hx, hz), (fx, fz) = hearth_at
             reach = SIZE["hearth"][1] / 2 + SLOT["hearth"]
