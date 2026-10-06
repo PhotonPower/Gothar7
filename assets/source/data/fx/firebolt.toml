@@ -1,0 +1,16 @@
+# Feuerpfeil im Flug (M12): eine Glutspur hinter dem Geschoss (der Effekt wandert mit fx_move).
+version = 1
+sprite = "soft"
+blend = "additive"
+rate = 120
+lifetime = [0.15, 0.35]
+speed = [0.0, 0.4]
+spread = 180
+size = [0.3, 0.02]
+color_start = [1.0, 0.75, 0.35, 1.0]
+color_end = [1.0, 0.2, 0.02, 0.0]
+[light]
+color = [1.0, 0.55, 0.25]
+range = 6
+intensity = 5
+flicker = 0.15
