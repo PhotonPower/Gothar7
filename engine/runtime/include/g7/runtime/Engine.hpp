@@ -33,6 +33,7 @@
 #include <g7/render/Device.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
+#include <g7/render/Particles.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/Terrain.hpp>
@@ -292,6 +293,10 @@ public:
     [[nodiscard]] world::GameTime& gameTime() noexcept { return m_gameTime; }
     /// Light, fog and sky of the last frame (from the day cycle).
     [[nodiscard]] const render::Environment& environment() const noexcept { return m_environment; }
+    /// Starts the effect data/fx/<name>.toml (M12); nullopt if there is none.
+    std::optional<u32> startEffect(std::string_view name, const Vec3& at,
+                                   const Vec3& direction = Vec3(0, 1, 0));
+    [[nodiscard]] const render::ParticleSystem& particles() const noexcept { return m_particles; }
     /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes; the renderer
     /// gives them the indoor ambient (environment.toml [indoor]).
     [[nodiscard]] std::vector<render::IndoorVolume> nearestIndoorVolumes(const Vec3& point) const;
@@ -794,6 +799,10 @@ private:
         physics::ShapeId shape;
     };
     void loadMobTypes();
+    // Effects (M12 part A, EngineFx.cpp).
+    [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
+    void drawEffects();
+    void bindFxFunctions();
     // Combat (M11, EngineCombat.cpp).
     struct Combatant;
     void loadCombat();
@@ -1194,6 +1203,12 @@ private:
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs
     render::Environment m_environment;
     render::LightList m_lights;
+    render::LightList m_frameLights; // m_lights plus the effects' lights of this frame (M12)
+    render::ParticleSystem m_particles;
+    std::optional<render::ParticleRenderer> m_particleRenderer;
+    std::unordered_map<std::string, std::shared_ptr<const render::EmitterDef>> m_effects; // nullptr: missing
+    std::vector<render::ParticleInstance> m_particleAdditive;
+    std::vector<render::ParticleInstance> m_particleAlpha;
     render::ShadowMap m_shadowMap;
     std::vector<render::Cascade> m_cascades;
     /// The cascades as last drawn into the shadow map: far ones are redrawn every 2nd/4th frame

@@ -209,9 +209,19 @@ Result<Pipeline> Device::createPipeline(const PipelineDesc& desc)
     {
         return Error{"pipeline needs a shader program"};
     }
-    if (!desc.attributes.empty() && desc.vertexStride == 0)
+    // Per-vertex attributes need a vertex stride; per-instance ones (binding 1) the instance stride. A
+    // pipeline with only instance attributes (particles: quads from gl_VertexID) has no vertex buffer.
+    const bool perVertex = std::any_of(desc.attributes.begin(), desc.attributes.end(),
+                                       [](const VertexAttribute& a) { return a.binding == 0; });
+    const bool perInstance = std::any_of(desc.attributes.begin(), desc.attributes.end(),
+                                         [](const VertexAttribute& a) { return a.binding == 1; });
+    if (perVertex && desc.vertexStride == 0)
     {
         return Error{"pipeline with vertex attributes needs a vertex stride"};
+    }
+    if (perInstance && desc.instanceStride == 0)
+    {
+        return Error{"pipeline with instance attributes needs an instance stride"};
     }
     GLuint vao = 0;
     glCreateVertexArrays(1, &vao);

@@ -251,6 +251,18 @@ void Device::multiDrawIndexedIndirect(const Buffer& commands, usize offset, u32 
     m_stats.triangles += triangles;
 }
 
+void Device::drawInstanced(u32 vertexCount, u32 instanceCount)
+{
+    G7_ASSERT(m_cache.valid, "draw needs a bound pipeline");
+    glDrawArraysInstanced(gl::topology(m_cache.topology), 0, static_cast<GLsizei>(vertexCount),
+                          static_cast<GLsizei>(instanceCount));
+    ++m_stats.drawCalls;
+    if (m_cache.topology == Topology::Triangles)
+    {
+        m_stats.triangles += vertexCount / 3 * instanceCount;
+    }
+}
+
 void Device::draw(u32 vertexCount, u32 firstVertex)
 {
     G7_ASSERT(m_cache.valid, "draw needs a bound pipeline");

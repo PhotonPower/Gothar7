@@ -247,7 +247,7 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 **DoD:** Kampf gegen Mensch, Wolfsrudel und einen starken Gegner fühlt sich responsiv an; Talentstufen sind spürbar.
 
 ## M12 – Magie & Partikel
-- [ ] Partikelsystem (GPU-Instancing, Emitter-Definitionen als Daten)
+- [x] Partikelsystem (GPU-Instancing, Emitter-Definitionen als Daten) – `data/fx/*.toml`, prozedurale Sprites, Lichter, `fx()` (A)
 - [ ] Runen/Spruchrollen, Mana, Kreise, Wirken mit Aufladung
 - [ ] Zaubertypen: Projektil, Fläche, Selbst, Verwandlung (in Tier), Kontrolle (Schlaf, Furcht, Telekinese), Beschwörung
 - [ ] Visuelle Effekte (Licht, Partikel, Shader) und Trefferwirkungen

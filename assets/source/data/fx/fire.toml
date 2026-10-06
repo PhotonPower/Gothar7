@@ -1,0 +1,19 @@
+# Lagerfeuer bzw. Fackel (M12): aufsteigende Glut, warmes flackerndes Licht. Farben sRGB 0..1, Alpha 0..1.
+version = 1
+sprite = "soft"
+blend = "additive"
+rate = 60
+lifetime = [0.5, 0.9]
+speed = [0.4, 1.0]
+spread = 18
+radius = 0.15
+gravity = -1.5          # steigt
+drag = 1.0
+size = [0.35, 0.05]
+color_start = [1.0, 0.65, 0.25, 0.9]
+color_end = [0.9, 0.15, 0.02, 0.0]
+[light]
+color = [1.0, 0.62, 0.3]
+range = 7
+intensity = 4
+flicker = 0.25
