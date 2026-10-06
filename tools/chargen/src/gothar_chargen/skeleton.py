@@ -192,7 +192,7 @@ def packaged_species() -> list[str]:
     return sorted(
         p.name[:-5]
         for p in folder.iterdir()
-        if p.name.endswith(".toml") and not p.name.endswith(".build.toml")
+        if p.name.endswith(".toml") and not p.name.endswith((".build.toml", ".creature.toml"))
     )
 
 

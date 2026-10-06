@@ -110,3 +110,15 @@ def test_required_drop_and_smoothing():
     smooth = smooth_cyclic(values)
     assert all(s >= v - 1e-12 for s, v in zip(smooth, values, strict=True))  # never below
     assert smooth[-1] == smooth[0]
+
+
+def test_fixed_posture_and_stepping_in_place():
+    g = parse_gait(
+        {**TROT, "speed": 0.0, "pose": {"neck_01": [["X", 20]], "ear_l": [["X", 30], ["Z", 5]]}}
+    )
+    assert g.speed == 0.0 and g.stride == 0.0
+    assert g.pose == (("neck_01", (("X", 20.0),)), ("ear_l", (("X", 30.0), ("Z", 5.0))))
+    with pytest.raises(GaitError, match="pose"):
+        parse_gait({**TROT, "pose": {"neck_01": [["W", 20]]}})
+    with pytest.raises(GaitError, match="pose"):
+        parse_gait({**TROT, "pose": [1, 2]})

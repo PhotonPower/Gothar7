@@ -574,6 +574,8 @@ def _gait_body(rig: RigInfo, g: Gait, frame: int, dz: float = 0.0, phi: float = 
                 rig.rotate(
                     pose, bone, [("X", wave.degrees * math.sin(cycle + 2 * math.pi * wave.phase))]
                 )
+    for bone, rotations in g.pose:  # fixed posture (head low, ears back ...)
+        rig.rotate(pose, bone, list(rotations))
     if g.tail is not None:
         for i, bone in enumerate(g.tail.bones):
             angle = g.tail.degrees * math.sin(cycle - 2 * math.pi * g.tail.phase * (i + 1))

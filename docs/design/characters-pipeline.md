@@ -668,6 +668,33 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 | `keiler` | Quaternius „Lowpoly Animated Farm Animal Pack“, Schwein (dunkel eingefärbt) | Rig 25 Knochen (mit Schulter-/Hüftknochen), 0,95 m, 562 Dreiecke; 12/12 Clips (Idle/Walk/Death aus der Quelle, Rest `platzhalter-K`) |
 | `laufvogel` | Quaternius „5 Low poly animals“, Küken (auf 1,6 m vergrößert, eingefärbt) | Rig 12 Knochen (Vogel-Namen `thigh/calf/foot`), 1,6 m, 250 Dreiecke; 12/12 Clips (Gehen/Rennen aus dem Quell-Schritt am Ort, Rest `platzhalter-K`) |
 
+### 7.4 Eigene Arten (`gothar-chargen creature`, ab 2026-10-07)
+
+Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer Körperbeschreibung
+`tools/chargen/src/gothar_chargen/data/monsters/<art>.creature.toml` (Koordinaten wie die Rig-TOMLs: x links,
+−y vorn, z oben; `mirror = true` ergänzt die rechte Seite):
+
+- **Knochen** (`[[bone]]`, Namen nach §7.1; `root` und Sockets setzt das Werkzeug) und `[sockets]`.
+- **Formen** (`[[shape]]`): `ellipsoid`, `box`, `capsule`/`cone`, `chain` (Kapselkette), `ridge` (Ellipsoide entlang
+  einer Linie, z. B. Borstenkamm); `cut` (Ellipsoid, vor dem zweiten Remesh abgezogen: Augenhöhlen, Ohrmuscheln),
+  `cut_box` (dünner Spalt in die fertige Oberfläche: Maul); Einzelteile `eye` und `tooth` mit `bone` (eigene
+  Geometrie und Materialien `eyes`/`teeth`, starr am Knochen).
+- **Farbzonen** (`[zone.<name>]`): Farbe, Zweitfarbe, Fellstrich, Querstreifen, Flecken, hellerer Bauch,
+  Hautfalten, Relief-Stärke.
+- **Ablauf** (`blender/build_creature.py`): Formen vereinigen (Voxel-Remesh), Schnitte, glätten, aufs Budget
+  reduzieren, UV; Fell-Textur aus der Körperbeschreibung (`creature.py`, 3D-Rauschen, nahtlos über UV-Nähte) mit
+  eingebackener Umgebungsverdeckung; Normal-Map aus dem hochaufgelösten Mesh plus Fellstrich-Relief; automatische
+  Gewichte (≤ 4), Kiefer entlang des Maul-Schnitts getrennt; LOD-Stufen; Rig-TOML, Kollision und Prüfung wie bei
+  `gothar-chargen monster`. Texturen extern (§2.3): `textures/fur/<art>.jpg`, `<art>_normal.png`, geteilte
+  `eyes_<rgb>.jpg`/`teeth_<rgb>.jpg`. Clip-Quelle `<art>_clips.blend` (lokal) mit der Ruhe-Aktion `rest`.
+- **Clips:** Gangarten mit dem Rezept `gait` (neu: `pose` = feste Haltung, z. B. Kopf tief beim Schleichen;
+  `speed = 0` = Treten am Ort als Basis der Drehungen), sonst `keyposes` über `<art>/s_rest`.
+  Schritte (`phase · period`, `duty · period`) auf ganzen Bildern, sonst passt `repair-clips` das Tempo falsch an.
+
+| Art | Stand |
+|---|---|
+| `schinder` | Rig 26 Knochen, 0,92 m, lod0 7834 / 3916 / 1958 Dreiecke, Fell 1024² + Normal-Map 512²; 15 Clips (Mindest-Set + `s_sneak`, `t_call`, `s_cower`); Tempo 1,3 / 6,5 / Schleichen 0,7 m/s (mit engine 2026-10-07) |
+
 ## 8. Ablauf pro Animation
 
 1. Eintrag in `animation-list.md` (Name, Zweck, Loop/Root Motion, Events, Quelle, Priorität).
