@@ -946,6 +946,14 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   Fensterhöhe, möglichst an verschiedenen Wänden, mit `components.light.daylight` (engine #225: Farbe und
   Helligkeit vom Himmel, nachts aus). Blasebalg und Löschtrog werden direkt nach dem Herd gestellt, Ladentheke und
   Schanktheke vor Tisch und Betten.
+- **Mehr Licht** (Schritt 3): Jeder Raum ist ein eigener Mesh-Vob `BLD_<id>_RAUM_<NAME>` (eigenes Modell
+  `<haus>_room_<name>.glb`, Index `interior.meshes`), damit er sein eigenes Budget von 8 Punktlichtern hat (render.md);
+  Wände sind an den Zwischenwänden geteilt, Boden und Decke je Raum, die Dreiecke gehen an den nächsten Raum. Licht:
+  auf jedem Tisch ein Kerzenständer (`props/candlestick.glb`, Talgkerze, leuchtende Flamme) mit Kerzenlicht; an den
+  Wänden Laternen (`props/lantern.glb`, Eisenkäfig auf Halter, 1,95 m) bis der Raum nachts ein Licht je 15 m² hat
+  (der Herd zählt), höchstens 6 Lichter je Raum (zwei der 8 bleiben für die Nachbarräume), mindestens 2,5 m von
+  anderen Lichtern und 1,2 m von Türen, Durchgängen und Fenstern, nicht über Hohem. Das frühere freie Kerzenlicht
+  unter der Decke entfällt. Leonberg: 14 Raum-Vobs, 2–6 Lichter je Raum.
 - **Gelände unter dem Raum:** `export-terrain` senkt die Heightmap unter jedem Raum (Index `interior.ring`, um eine
   Zelle vergrößert) auf 2 cm unter den Boden, nur absenkend (`export/pads.py` `room_pads`); sonst ragt am Hang das
   Gelände bergseitig durch den Boden (vorher bis 1,1 m, Schmiede). Außen läuft die Senke über 1,5 m ins Gelände aus

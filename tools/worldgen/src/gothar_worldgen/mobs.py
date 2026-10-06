@@ -58,6 +58,7 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "water": ("stone", (0.015, 0.02, 0.025)),
     "sackcloth": ("cloth", (0.2, 0.15, 0.09)),  # coarse jute
     "pine": ("boards", (0.22, 0.15, 0.08)),  # lighter wood: wall boards (what hangs on it shows)
+    "wax": ("clay", (0.6, 0.55, 0.42)),  # tallow candles
 }
 # materials that glow: the engine adds emissive after the light (render.md "Material")
 EMISSIVE = {"ember": (0.9, 0.28, 0.05), "flame": (1.0, 0.55, 0.15)}
@@ -664,7 +665,49 @@ def weapon_board() -> MobModel:
     return MobModel("weapon_board", m)
 
 
-PROPS = {"hearth": hearth, "barrel": barrel, "barrel_rack": barrel_rack, "counter": counter,
+CANDLE_TOP = 0.26  # the flame of the candlestick, above its foot
+
+
+def candlestick() -> MobModel:
+    """An iron candlestick with a tallow candle and its flame (on a table; no collision)."""
+    m = Mesh()
+    m.cyl("iron", 1, (0.0, 0.01, 0.0), 0.06, 0.02, sides=8)  # foot
+    m.cyl("iron", 1, (0.0, 0.06, 0.0), 0.012, 0.09, sides=6)  # stem
+    m.cyl("iron", 1, (0.0, 0.11, 0.0), 0.035, 0.015, sides=8)  # drip pan
+    m.cyl("wax", 1, (0.0, 0.17, 0.0), 0.018, 0.1, sides=8)  # the candle
+    m.box("flame", (-0.008, 0.22, -0.002), (0.008, CANDLE_TOP, 0.002))
+    m.box("flame", (-0.002, 0.22, -0.008), (0.002, CANDLE_TOP, 0.008))
+    return MobModel("candlestick", m)
+
+
+LANTERN_Y = 1.95  # the lantern's light, above the floor (on the wall)
+
+
+def lantern() -> MobModel:
+    """A wall lantern: iron bracket from the wall (-Z) and a small iron cage with a candle
+    glowing inside; origin on the floor at the wall, no collision."""
+    m = Mesh()
+    y = LANTERN_Y
+    m.box("iron", (-0.02, y + 0.18, 0.0), (0.02, y + 0.21, 0.24), grain=2)  # bracket
+    m.box("iron", (-0.04, y + 0.1, -0.01), (0.04, y + 0.26, 0.0))  # wall plate
+    c = 0.2  # the cage's middle, out from the wall
+    for dx in (-0.07, 0.07):  # corner posts
+        for dz in (-0.07, 0.07):
+            m.box(
+                "iron",
+                (dx - 0.008, y - 0.12, c + dz - 0.008),
+                (dx + 0.008, y + 0.12, c + dz + 0.008),
+            )
+    m.box("iron", (-0.08, y + 0.12, c - 0.08), (0.08, y + 0.15, c + 0.08))  # top
+    m.box("iron", (-0.08, y - 0.15, c - 0.08), (0.08, y - 0.12, c + 0.08))  # bottom
+    m.cyl("wax", 1, (0.0, y - 0.07, c), 0.02, 0.1, sides=6)
+    m.box("flame", (-0.01, y - 0.02, c - 0.003), (0.01, y + 0.05, c + 0.003))
+    m.box("flame", (-0.003, y - 0.02, c - 0.01), (0.003, y + 0.05, c + 0.01))
+    return MobModel("lantern", m)
+
+
+PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "barrel": barrel,
+         "barrel_rack": barrel_rack, "counter": counter,
          "shelf": shelf, "crate": crate, "crate_stack": crate_stack, "sacks": sacks,
          "workbench": workbench, "tool_board": tool_board, "quench_trough": quench_trough,
          "bellows": bellows, "sausages": sausages, "herbs": herbs,

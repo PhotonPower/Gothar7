@@ -169,6 +169,10 @@ def assemble(
             else f"CELLMESH_{e['id']}".upper().replace("-", "M")
         )
         fresh[vid] = _vob(vid, "mesh", vob_name, e["pos"], gid, mesh=e["mesh"])
+        for name, path in sorted(e.get("interior", {}).get("meshes", {}).items()):
+            # W7: the rooms of an enterable house as own mesh vobs (each its own lights)
+            rid = ids.get(f"room:{e['id']}:{name}", floor)
+            fresh[rid] = _vob(rid, "mesh", f"{vob_name}_RAUM_{name}", e["pos"], gid, mesh=path)
 
     if citywall and citywall.get("entries"):
         # City wall (W6): gameplay category, never culled for size (orientation).

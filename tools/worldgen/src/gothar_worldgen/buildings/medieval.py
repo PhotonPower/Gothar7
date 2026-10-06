@@ -39,7 +39,7 @@ from gothar_worldgen.buildings.collision import (
     convex_pieces,
     prism_body,
 )
-from gothar_worldgen.buildings.gltf import CollisionPart, Primitive
+from gothar_worldgen.buildings.gltf import CollisionPart, MeshData, Primitive
 from gothar_worldgen.buildings.massing import (
     Mass,
     _add_mass,
@@ -731,6 +731,7 @@ class HouseResult:
     doors: list[list[Any]] = field(default_factory=list)  # x, z in front, floor, kind, nx, nz
     masses: list[Mass] = field(default_factory=list)  # the (steepened) masses, for lod 2
     room: dict[str, Any] | None = None  # W7: the enterable ground storey (door, floor, ceiling)
+    room_prims: dict[str, list[Primitive]] = field(default_factory=dict)  # W7: per room
 
 
 class _SagRoof(_Roof):
@@ -887,6 +888,7 @@ class _Context:
     inner_walls: list[tuple[Polygon, float, float]] = field(default_factory=list)  # partitions
     room_storey: bool = False  # building the storey that gets the room: its windows open (W7)
     room_windows: list[tuple[Any, Any]] = field(default_factory=list)  # (frame, opening)
+    room_parts: list[tuple[str, Polygon]] = field(default_factory=list)  # the rooms built
     dirt_m: float = 0.0  # > 0: textured house, plaster walls get a dirty foot band this high
     lod: int = 0  # 1: simplified for the distance (flat openings, flat timber, no dormers)
 
@@ -914,6 +916,26 @@ def _room_spec(rules: Rules) -> dict[str, Any]:
             "passage": [0.9, 2.0]}  # fmt: skip
     spec.update(rules.data.get("interior", {}))
     return spec
+
+
+def _split_by_room(mesh: MeshData, rooms: Sequence[tuple[str, Polygon]],
+                   origin: tuple[float, float, float]) -> dict[str, MeshData]:  # fmt: skip
+    """The triangles of ``mesh`` (positions relative to ``origin``) by the room nearest to each
+    (walls, floors and partitions are already cut where rooms meet)."""
+    tri = mesh.indices.reshape(-1, 3)
+    centre = mesh.positions[tri].mean(axis=1)
+    pts = shapely.points(centre[:, 0] + origin[0], centre[:, 2] + origin[2])
+    dist = np.stack([shapely.distance(poly, pts) for _, poly in rooms])
+    which = np.argmin(dist, axis=0)
+    out = {}
+    for k, (name, _) in enumerate(rooms):
+        pick = tri[which == k]
+        if not len(pick):
+            continue
+        used, inverse = np.unique(pick.ravel(), return_inverse=True)
+        out[name] = MeshData(mesh.positions[used], mesh.normals[used], mesh.uvs[used],
+                             inverse.astype(np.uint32))  # fmt: skip
+    return out
 
 
 def _room_fits(ctx: _Context, ring: Sequence[tuple[float, float]], storey: float) -> bool:
@@ -991,6 +1013,11 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
     hinge_side = (f.point(op.u, op.v, -wall), f.point(op.u + op.w, op.v, -wall))
     d0 = (hinge_side[0][0], hinge_side[0][2])
     d1 = (hinge_side[1][0], hinge_side[1][2])
+    # big ground storeys are divided: the room with the door (its hearth, table) and chambers
+    use = str((ctx.interior or {}).get("use", ""))
+    rooms, cuts = _partition_plan(inner, ((d0[0] + d1[0]) / 2, (d0[1] + d1[1]) / 2), spec, use)
+    ctx.room_parts = rooms  # (W7) each room becomes its own mesh vob (its own lights)
+    half = float(spec["partitionM"]) / 2
     ring_in = list(inner.exterior.coords)[:-1]
     for k, a in enumerate(ring_in):
         c = ring_in[(k + 1) % len(ring_in)]
@@ -1019,19 +1046,29 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
                 t0, t1 = sorted((along(h0), along(h1)))
                 if t1 > 0.0 and t0 < length:
                     face = face.difference(shapely.box(max(0.0, t0), y0, min(length, t1), y1))
-        for g in getattr(face, "geoms", [face]):
+        marks = [along(q) for c in cuts for q in (c["a"], c["b"]) if off(q) < 0.05]
+        edges = sorted({0.0, length, *(t for t in marks if 0.0 < t < length)})
+        for lo, hi in zip(edges, edges[1:], strict=False):  # one piece per room it bounds
+            piece = face.intersection(shapely.box(lo, floor - 1.0, hi, ceiling + 1.0))
+            for g in getattr(piece, "geoms", [piece]):
+                if not isinstance(g, Polygon) or g.area < 1e-4:
+                    continue
+                for tri in shapely.constrained_delaunay_triangles(g).geoms:
+                    pts = list(tri.exterior.coords)[:3]
+                    b["room_wall"].polygon([(a[0] + ux * t, y, a[1] + uz * t) for t, y in pts],
+                                           [(t, y) for t, y in pts], want)  # fmt: skip
+    for _, part in rooms:  # floor and ceiling per room, up to the middle of the partitions
+        whole = part if len(rooms) == 1 else inner.intersection(
+            part.buffer(half, join_style="mitre", mitre_limit=3.0))  # fmt: skip
+        for g in getattr(whole, "geoms", [whole]):
             if not isinstance(g, Polygon) or g.area < 1e-4:
                 continue
             for tri in shapely.constrained_delaunay_triangles(g).geoms:
                 pts = list(tri.exterior.coords)[:3]
-                b["room_wall"].polygon([(a[0] + ux * t, y, a[1] + uz * t) for t, y in pts],
-                                       [(t, y) for t, y in pts], want)  # fmt: skip
-    for tri in shapely.constrained_delaunay_triangles(inner).geoms:
-        pts = list(tri.exterior.coords)[:3]
-        b["room_floor"].polygon([(x, floor, z) for x, z in pts], [(x, z) for x, z in pts],
-                                (0.0, 1.0, 0.0))  # fmt: skip
-        b["room_ceiling"].polygon([(x, ceiling, z) for x, z in pts], [(x, z) for x, z in pts],
-                                  (0.0, -1.0, 0.0))  # fmt: skip
+                b["room_floor"].polygon([(x, floor, z) for x, z in pts], [(x, z) for x, z in pts],
+                                        (0.0, 1.0, 0.0))  # fmt: skip
+                b["room_ceiling"].polygon([(x, ceiling, z) for x, z in pts],
+                                          [(x, z) for x, z in pts], (0.0, -1.0, 0.0))  # fmt: skip
     # beams under the ceiling across the shorter side of the room
     rect = inner.minimum_rotated_rectangle
     rc = list(rect.exterior.coords)[:4]
@@ -1053,9 +1090,6 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
                 continue
             (x0, z0), (x1, z1) = g.coords[0], g.coords[-1]
             _room_beam(b["room_beam"], (x0, z0), (x1, z1), ceiling, bw)
-    # big ground storeys are divided: the room with the door (its hearth, table) and chambers
-    use = str((ctx.interior or {}).get("use", ""))
-    rooms, cuts = _partition_plan(inner, ((d0[0] + d1[0]) / 2, (d0[1] + d1[1]) / 2), spec, use)
     for cut in cuts:
         _partition(ctx, cut, floor, ceiling, spec)
     # the collision: walls beside the room and the door, a solid floor, the body above
@@ -2111,8 +2145,20 @@ def build_house(
                 return materials[role] + STREAK_SUFFIX
             return materials[role]
 
+        split = bool(ctx.room_parts) and not lod  # W7: each room its own mesh (its own lights)
         prims = [Primitive(name(r), rules.color(materials[r]), builders[r].mesh())
-                 for r in ROLES if builders[r].idx]  # fmt: skip
+                 for r in ROLES if builders[r].idx and not (split and r in ROOM_ROLES)]  # fmt: skip
+        room_prims: dict[str, list[Primitive]] = {}
+        if split:
+            origin3 = (origin_xz[0], base_y, origin_xz[1])
+            for r in ROOM_ROLES:
+                if not builders[r].idx:
+                    continue
+                for room_name, mesh in _split_by_room(builders[r].mesh(), ctx.room_parts,
+                                                      origin3).items():  # fmt: skip
+                    room_prims.setdefault(room_name, []).append(
+                        Primitive(name(r), rules.color(materials[r]), mesh)
+                    )
         # the weathering splits walls into a few more triangles and the room (W7) lies outside
         # the house budget: neither costs timber
         tris = sum(len(builders[r].idx) // 3 for r in ROLES
@@ -2136,7 +2182,7 @@ def build_house(
             col = CollisionResult(parts, collision.fallback, collision.decomposed)
         result = HouseResult(prims, tris, [*notes, *massing.notes, *level_notes], level, style,
                              steepened, round(ctx.max_sag, 3), dormers, chimneys,
-                             col, list(ctx.doors), list(masses), ctx.room)  # fmt: skip
+                             col, list(ctx.doors), list(masses), ctx.room, room_prims)  # fmt: skip
         if lod or tris <= budget or not style.timber:
             break
     assert result is not None

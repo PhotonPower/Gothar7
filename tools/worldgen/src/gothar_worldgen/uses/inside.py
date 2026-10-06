@@ -63,12 +63,17 @@ DOOR_WP_IN_M = 0.15  # the door's waypoint in the middle of the opening (half th
 OUTSIDE_WP_M = 0.9  # the waypoint in front of the door, outside
 LIGHT = {
     "hearth": {"color": [1.0, 0.62, 0.32], "range": 6.5, "intensity": 2.6, "flicker": 0.3},
-    "candle": {"color": [1.0, 0.75, 0.45], "range": 5.0, "intensity": 1.8, "flicker": 0.1},
+    "candle": {"color": [1.0, 0.75, 0.45], "range": 4.0, "intensity": 1.4, "flicker": 0.15},
+    "lantern": {"color": [1.0, 0.72, 0.4], "range": 5.0, "intensity": 1.6, "flicker": 0.12},
     # the day falling in at a window: the engine takes colour and brightness from the sky
     # (``daylight``, world.md), so it is dark at night; no flicker
     "window": {"color": [1.0, 1.0, 1.0], "range": 4.5, "intensity": 1.4, "daylight": True},
 }
 WINDOW_LIGHTS = 2  # per room at most (the engine's 8 lights per object: hearth, candles, ...)
+ROOM_LIGHTS = 6  # lights of a room at most: two of the engine's 8 stay for the neighbours'
+NIGHT_M2 = 15.0  # a light burning at night per this much floor (hearth, candles, lanterns)
+LANTERN_APART_M = 2.5  # lanterns this far from other lights at least
+LANTERN_CLEAR_M = 1.2  # and this far from doors, passages and windows
 WINDOW_LIGHT_IN_M = 0.8  # the window's light this far inside
 WINDOW_FREE_M = 0.8  # tall things keep this far from a window (into the room), and 0.3 beside it
 TALL = {"hearth", "shelf", "barrel_rack", "tool_board", "weapon_board", "crate_stack"}
@@ -155,6 +160,8 @@ class _Room:
     stands: list[tuple[tuple[float, float], tuple[float, float]]] = field(default_factory=list)
     spots: list[Polygon] = field(default_factory=list)  # freepoints: kept apart, walked through
     windows: list[dict[str, Any]] = field(default_factory=list)  # index ``interior.windows``
+    exits: list[tuple[float, float]] = field(default_factory=list)  # passages to the chambers
+    tall: list[Polygon] = field(default_factory=list)  # shelves, boards, ...: no lantern above
     props: list[Polygon] = field(default_factory=list)  # household props: close to each other
     hanging: list[Polygon] = field(default_factory=list)  # under the ceiling
 
@@ -355,6 +362,7 @@ class _House:
         self.plan, self.h, self.room = plan, h, room
         self.tag = tag or room_tag(h)
         self.counts: dict[str, int] = {}
+        self.tables: list[tuple[float, float]] = []
 
     def vob(self, kind: str, name: str, pos: tuple[float, float], front: tuple[float, float],
             height: float | None = None, **comp: object) -> None:  # fmt: skip
@@ -391,6 +399,63 @@ class _House:
         reach = PROP_SIZE["barrel_rack"][1] / 2 + SLOT["barrel_rack"]
         return self.room.reachable((c[0] + n[0] * reach, c[1] + n[1] * reach))
 
+    def lights_so_far(self) -> list[tuple[float, float]]:
+        prefix = f"LIGHT_{self.tag}_"
+        return [(v["pos"][0], v["pos"][2]) for v in self.plan.vobs
+                if v["type"] == "light" and v["name"].startswith(prefix)]  # fmt: skip
+
+    def candles(self) -> None:
+        """A candlestick on every table; lanterns on the walls until the room has a light at
+        night per ``NIGHT_M2`` (the hearth counts), within ``ROOM_LIGHTS`` and spread out."""
+        from gothar_worldgen.mobs import CANDLE_TOP, LANTERN_Y
+
+        room = self.room
+        for k, (x, z) in enumerate(self.tables):
+            self.prop("candlestick", (x, z), (0.0, 1.0), None, height=room.floor + 0.75)
+            self.vob("light", f"LIGHT_{self.tag}_KERZE_{k + 1}", (x, z), (0.0, 1.0),
+                     height=room.floor + 0.75 + CANDLE_TOP + 0.1,
+                     components={"light": dict(LIGHT["candle"])})  # fmt: skip
+        lights = self.lights_so_far()
+        windows = sum(
+            1 for v in self.plan.vobs if v["name"].startswith(f"LIGHT_{self.tag}_FENSTER")
+        )
+        night = len(lights) - windows
+        want = max(1, round(room.poly.area / NIGHT_M2))
+        n = max(0, min(want - night, ROOM_LIGHTS - len(lights)))
+        clear = [room.door_mid, *room.exits] + [
+            ((w["from"][0] + w["to"][0]) / 2, (w["from"][1] + w["to"][1]) / 2) for w in room.windows
+        ]
+        spots = []
+        for a, (ux, uz), wall_len in _walls(room):
+            nx, nz = -uz, ux
+            t = 0.4
+            while t <= wall_len - 0.4:
+                p = (a[0] + ux * t, a[1] + uz * t)
+                t += STEP_M
+                if any(math.dist(p, q) < LANTERN_CLEAR_M for q in clear):
+                    continue
+                if any(Point(p).distance(q) < 0.4 for q in room.tall):
+                    continue
+                spots.append((p, (nx, nz)))
+        for k in range(n):  # the spot farthest from every light so far
+            best = max(spots, key=lambda sp: min((math.dist(sp[0], q) for q in lights),
+                                                 default=1e9), default=None)  # fmt: skip
+            if best is None or (lights and min(math.dist(best[0], q) for q in lights)
+                                < LANTERN_APART_M):  # fmt: skip
+                break
+            (px, pz), (nx, nz) = best
+            self.prop("lantern", (px, pz), (nx, nz), None, height=room.floor)
+            at = (px + nx * 0.2, pz + nz * 0.2)
+            self.vob(
+                "light",
+                f"LIGHT_{self.tag}_LATERNE_{k + 1}",
+                at,
+                (nx, nz),
+                height=room.floor + LANTERN_Y,
+                components={"light": dict(LIGHT["lantern"])},
+            )
+            lights.append(at)
+
     def window_lights(self) -> None:
         """Daylight in at up to ``WINDOW_LIGHTS`` windows, on different walls where it can."""
         chosen: list[dict[str, Any]] = []
@@ -423,6 +488,8 @@ class _House:
         self.vob("mesh", name, centre, front, height=height, mesh=f"props/{kind}.glb")
         if shape is not None:
             self.room.props.append(shape)
+            if kind in TALL or kind in WALL_BOARDS:
+                self.room.tall.append(shape)
         return name
 
     def place_prop(self, kind: str, hearth_at: Any) -> None:  # noqa: ANN401
@@ -575,7 +642,7 @@ class _House:
         """Furnish the room; its waypoints: through the house door (linked to ``routine_wp``) or,
         for a chamber, ``through`` the passage (the waypoint it is linked to, the passage)."""
         room, h = self.room, self.h
-        table_at, hearth_at = None, None
+        hearth_at = None
         # the hearth first: the furniture keeps out of its way and out of the view on it
         if spec.hearth:
             room_beside = (
@@ -595,6 +662,7 @@ class _House:
                 self.vob("light", f"LIGHT_{self.tag}_HERD", centre, front,
                          height=room.floor + 0.9, components=light)  # fmt: skip
                 room.taken.append(shape)
+                room.tall.append(shape)
                 hearth_at = (centre, front)
                 # keep the way to the fire and the view on it from the door free of furniture
                 reach = SIZE["hearth"][1] / 2 + SLOT["hearth"]
@@ -630,7 +698,7 @@ class _House:
                     self.mob("bench", (cx + nx * BENCH_OFF_M, cz + nz * BENCH_OFF_M), (nx, nz))
                     self.mob("bench", (cx - nx * BENCH_OFF_M, cz - nz * BENCH_OFF_M), (-nx, -nz))
                     room.taken.append(block)
-                    table_at = (cx, cz)
+                    self.tables.append((cx, cz))
                     continue
                 wall_spot = _against_wall(room, kind)
                 if wall_spot is None:
@@ -645,14 +713,6 @@ class _House:
                     reach = SIZE["chest"][1] / 2 + SLOT["chest"]
                     slot = (centre[0] + front[0] * reach, centre[1] + front[1] * reach)
                     room.stands.append((slot, (-front[0], -front[1])))
-        want = 2 if room.poly.area > BIG_ROOM_M2 else 1
-        c = room.poly.centroid
-        for k in range(want - (1 if hearth_at else 0)):
-            where = table_at if (table_at and k == 0) else (c.x, c.y)
-            light = {"light": dict(LIGHT["candle"])}
-            self.vob("light", f"LIGHT_{self.tag}_{k + 1}", where, (0.0, 1.0),
-                     height=room.ceiling - 0.6, components=light)  # fmt: skip
-        self.window_lights()
         if hearth_at:
             (hx, hz), (fx, fz) = hearth_at
             reach = SIZE["hearth"][1] / 2 + SLOT["hearth"]
@@ -674,6 +734,9 @@ class _House:
         for kind, n in props.items():
             for _ in range(n):
                 self.place_prop(kind, hearth_at)
+        # the lights last: windows, candles on the tables, lanterns where nothing tall stands
+        self.window_lights()
+        self.candles()
         if through is not None:
             self.chamber_waypoints(*through)
             return
@@ -795,6 +858,7 @@ def _divided(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, ro
         ring = next(q["ring"] for q in parts if q["name"] == b)
         built[b] = _chamber(r, ring, mid, (float(p["axis"][0]), float(p["axis"][1])), others)
         before = built[a]
+        before.exits.append(mid)
         lane = LineString([before.entry, mid]).buffer(REACH_R_M)
         before.keep = before.keep.union(lane).union(Point(mid).buffer(DOOR_ZONE_M))
         entered[b] = (f"WP_{base}_{a}", mid)

@@ -57,7 +57,7 @@ def test_furniture_hearth_and_light():
     for b in benches:  # beside the table, fronts facing away from it
         d = math.dist((b["pos"][0], b["pos"][2]), (table["pos"][0], table["pos"][2]))
         assert d == pytest.approx(BENCH_OFF_M, abs=1e-6)
-    (prop,) = by_kind(p, "mesh")
+    (prop,) = [v for v in by_kind(p, "mesh") if v["mesh"] == "props/hearth.glb"]
     assert prop["mesh"] == "props/hearth.glb"
     lights = by_kind(p, "light")
     assert lights and lights[0]["components"]["light"]["flicker"] > 0  # the hearth's fire
@@ -110,7 +110,7 @@ def test_houses_without_room_or_spec():
 
 def test_hearth_comes_first_and_the_way_to_it_stays_clear():
     p = plan(residents=3)
-    (prop,) = by_kind(p, "mesh")
+    (prop,) = [v for v in by_kind(p, "mesh") if v["mesh"] == "props/hearth.glb"]
     entry = next(w for w in p.places if w["name"] == "WP_LEO_WOHNHAUS_ZJV_INNEN")
     fire = next(f for f in p.places if f["name"].startswith("FP_CAMPFIRE"))
     lane = LineString([entry["pos"], fire["pos"]]).buffer(0.5)
@@ -146,13 +146,18 @@ def test_a_town_wall_through_the_room_is_its_back_wall():
         assert v["pos"][2] > -5.5, v["name"]  # nothing in or behind the wall
     for f in (f for f in p.places if f["kind"] == "fp"):
         assert not wall.buffer(0.2).contains(Point(f["pos"])), f["name"]
-    (prop,) = by_kind(p, "mesh")  # the hearth against the town wall, facing the door
+    (prop,) = [
+        v for v in by_kind(p, "mesh") if v["mesh"] == "props/hearth.glb"
+    ]  # the hearth against the town wall, facing the door
     assert prop["pos"][2] == pytest.approx(-5.5 + 0.05 + 0.05 + 0.45)  # gap to the wall, half depth
 
 
 HOUSEHOLD = {"mobs": ["bed:1"], "freepoints": ["STAND:1", "LEAN:1"], "hearth": True,
              "props": ["counter:1", "bellows:1", "quench_trough:1", "barrel:2", "shelf:1",
                        "weapon_board:1", "sausages:1", "herbs:1"]}  # fmt: skip
+
+
+ON_WALL_OR_TABLE = ("hearth.glb", "_board.glb", "lantern.glb", "candlestick.glb")
 
 
 def household(spec: dict = HOUSEHOLD):  # noqa: ANN201
@@ -181,7 +186,7 @@ def test_household_props_leave_the_ways_free():
     entry = next(w for w in p.places if w["name"] == "WP_LEO_WOHNHAUS_ZJV_INNEN")
     floor_props = [v for v in by_kind(p, "mesh")
                    if v["mesh"].startswith("props/") and v["pos"][1] == 1.0
-                   and not v["mesh"].endswith(("hearth.glb", "_board.glb"))]  # fmt: skip
+                   and not v["mesh"].endswith(ON_WALL_OR_TABLE)]  # fmt: skip
     assert len(floor_props) >= 6  # counter, shelves, bellows, trough, barrels
     room = Polygon(ROOM["ring"])
     for v in floor_props:
@@ -280,7 +285,7 @@ def test_a_divided_storey_puts_beds_in_the_chamber():
     chamber = names["WP_LEO_WOHNHAUS_ZJV_KAMMER"]
     assert chamber["link"] == through["name"] and chamber["pos"] == pytest.approx([2.8, -3.5])
     lights = [v["name"] for v in by_kind(p, "light")]
-    assert "LIGHT_LEO_WOHNHAUS_ZJV_KAMMER_1" in lights  # every room has its light
+    assert "LIGHT_LEO_WOHNHAUS_ZJV_KAMMER_LATERNE_1" in lights  # every room has its light
 
 
 def test_a_divided_storey_has_a_zone_per_room():
@@ -309,3 +314,36 @@ def test_windows_keep_tall_things_off_and_let_the_day_in():
     assert light["pos"] == pytest.approx([6.0, 2.4, -6.7 + 0.8])
     comp = light["components"]["light"]
     assert list(comp) == ["color", "range", "intensity", "daylight"] and comp["daylight"] is True
+
+
+def test_candles_on_tables_lanterns_on_walls_within_the_budget():
+    from gothar_worldgen.uses.inside import LANTERN_APART_M, LANTERN_CLEAR_M, NIGHT_M2, ROOM_LIGHTS
+
+    window = {
+        "from": [2.0, -6.7],
+        "to": [2.8, -6.7],
+        "sill": 1.9,
+        "top": 2.9,
+        "normal": [0.0, -1.0],
+    }
+    index = {"entries": [{"id": "DEBW_00100061ZjV", "interior": {**ROOM, "windows": [window]}}]}
+    spec = {"wohnhaus": inside_spec({"mobs": ["table:1"]}, "x")}  # no hearth: lanterns light it
+    house = House("DEBW_00100061ZjV", "wohnhaus", inside=True)
+    p = plan_inside([house], spec, index, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+    (table,) = [v for v in by_kind(p, "mob") if v["mesh"] == "mobs/table.glb"]
+    (stick,) = [v for v in by_kind(p, "mesh") if v["mesh"] == "props/candlestick.glb"]
+    assert stick["pos"] == pytest.approx([table["pos"][0], 1.75, table["pos"][2]])
+    lights = by_kind(p, "light")
+    assert len(lights) <= ROOM_LIGHTS
+    night = [v for v in lights if not v["components"]["light"].get("daylight")]
+    assert len(night) >= round(Polygon(ROOM["ring"]).area / NIGHT_M2)
+    lanterns = [v for v in lights if "_LATERNE_" in v["name"]]
+    assert lanterns and all(v["components"]["light"]["flicker"] > 0 for v in lanterns)
+    for v in lanterns:
+        x, z = v["pos"][0], v["pos"][2]
+        assert math.dist((x, z), (6.0, -0.3)) >= LANTERN_CLEAR_M - 0.2  # the door
+        assert math.dist((x, z), (2.4, -6.7)) >= LANTERN_CLEAR_M - 0.2  # the window
+        others = [w for w in night if w is not v]
+        assert min(math.dist((x, z), (w["pos"][0], w["pos"][2])) for w in others) >= (
+            LANTERN_APART_M - 0.2
+        )

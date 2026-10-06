@@ -22,6 +22,11 @@ def house(interior=None, lod=0):  # noqa: ANN001, ANN201
                        ground_at=lambda x, z: 0.0, interior=interior, lod=lod)  # fmt: skip
 
 
+def all_prims(result) -> list:  # noqa: ANN001
+    """The house's primitives and those of its rooms (each room its own mesh, W7)."""
+    return [*result.primitives, *(q for room in result.room_prims.values() for q in room)]
+
+
 def solid(result, x: float, y: float, z: float) -> bool:  # noqa: ANN001
     """Inside one of the convex collision bodies."""
     q = np.array([x, y, z])
@@ -46,7 +51,10 @@ def test_room_geometry_and_record():
     d = room["door"]
     assert d["normal"] == pytest.approx([0.0, 1.0]) and d["w"] == pytest.approx(1.0)
     assert d["from"][1] == pytest.approx(-wall) and d["to"][1] == pytest.approx(-wall)
-    assert len(r.primitives) >= len(plain.primitives) + 3  # walls, floor, ceiling, beams
+    assert len(all_prims(r)) >= len(plain.primitives) + 3  # walls, floor, ceiling, beams
+    # every room is its own mesh; none of the room's geometry stays in the house's
+    assert sorted(r.room_prims) == sorted(q["name"] for q in room["rooms"])
+    assert not {q.material for q in r.primitives} & {"plaster_white"}
     # the room lies outside the house budget: the outside keeps its timber level; its open
     # windows only lose their panes (two triangles each)
     panes = 2 * len(room["windows"])
@@ -54,7 +62,7 @@ def test_room_geometry_and_record():
 
 
 def stone_tris(result) -> int:  # noqa: ANN001
-    return sum(p.mesh.triangle_count for p in result.primitives if p.material == "stone")
+    return sum(p.mesh.triangle_count for p in all_prims(result) if p.material == "stone")
 
 
 def test_stone_floor_for_smithy_and_tavern():
@@ -188,7 +196,7 @@ def solid_mesh(result, x: float, y: float, z: float, nx: float, nz: float) -> bo
     """A ray from inside the room outwards along the window's normal hits geometry before 0.4 m."""
     o = np.array([x - nx * 0.06, y, z - nz * 0.06]) - ORIGIN
     d = np.array([nx, 0.0, nz])
-    for p in result.primitives:
+    for p in all_prims(result):
         pts = p.mesh.positions.astype(float)
         tri = pts[p.mesh.indices.reshape(-1, 3)]
         e1, e2 = tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]
