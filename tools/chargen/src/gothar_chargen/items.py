@@ -223,6 +223,27 @@ def sword(seg: int, rust: bool) -> list[Mesh]:
     return [metal, grip]
 
 
+def sword_2h(seg: int) -> list[Mesh]:
+    """Two-handed sword: the origin where the right hand holds it (top of the long grip, under the
+    cross-guard), the left hand 10 cm below (two_hands); grip, wide guard, long straight blade."""
+    rng = np.random.default_rng(37)
+    metal = Mesh("iron_forged")
+    grip = Mesh("leather")
+    loft(grip, np.array([[0, y, 0] for y in np.linspace(-0.27, 0.05, 8)]),
+         [circle(0.017, seg)] * 8, tile=0.08)  # fmt: skip
+    pommel = [(0.0, -0.33), (0.02, -0.325), (0.03, -0.305), (0.026, -0.285), (0.016, -0.27)]
+    lathe(metal, pommel, seg, tile=0.1)
+    loft(  # cross-guard in the plane of the edges, the ends bent slightly towards the blade
+        metal,
+        np.array([[0, 0.06 + 0.012 * (z / 0.15) ** 2, z] for z in np.linspace(-0.15, 0.15, 9)]),
+        [np.array([[-0.01, -0.013], [-0.01, 0.013], [0.01, 0.013], [0.01, -0.013]])] * 9,
+        tile=0.1,
+    )
+    _blade(metal, 0.07, 1.1, width=0.034, thick=0.006, seg_len=18 + 2 * seg, rng=rng,
+           nicks=0, uneven=0.08)  # fmt: skip
+    return [metal, grip]
+
+
 def club(seg: int) -> list[Mesh]:
     rng = np.random.default_rng(5)
     ys = np.linspace(-0.12, 0.62, 18)
@@ -476,6 +497,7 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_arrow": (arrow, 5),
     "it_bolt": (bolt, 5),
     "it_crossbow": (crossbow, 10),
+    "it_sword_2h": (sword_2h, 12),
 }
 
 # textures: name -> (source below the item sources folder, size, colour factor) or procedural
@@ -658,6 +680,7 @@ LENGTHS = {
     "it_potion_heal_small": (0.12, 0.2), "it_lockpick": (0.1, 0.2), "it_key": (0.07, 0.15),
     "it_broom": (1.2, 1.6), "it_mug": (0.09, 0.15), "it_axe": (0.6, 0.9),
     "it_arrow": (0.7, 0.8), "it_bolt": (0.3, 0.4), "it_crossbow": (0.75, 0.9),
+    "it_sword_2h": (1.3, 1.55),
 }  # fmt: skip
 
 
