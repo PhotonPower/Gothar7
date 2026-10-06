@@ -188,6 +188,12 @@ def world_text(doc: dict[str, Any]) -> str:
 
             tail += f',\n  "waynet": {waynet_text(doc[key])}'
             continue
+        zones = doc[key] if key == "zones" else None
+        if zones and all(isinstance(z, dict) for z in zones):  # engine layout, zone per line
+            from gothar_worldgen.uses.zones import zones_text
+
+            tail += f',\n  "zones": {zones_text(doc[key])}'
+            continue
         tail += f',\n  "{key}": {json.dumps(doc[key], separators=(",", ":"), ensure_ascii=False)}'
     return "\n".join(lines) + "\n" + tail + "\n}\n"
 

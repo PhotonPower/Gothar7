@@ -9171,5 +9171,31 @@
       {"name":"FP_WATER_LEO_GARTEN_07","pos":[-202.9541,-7.499998,28.700039],"owner":"worldgen"},
       {"name":"FP_WATER_LEO_GARTEN_08","pos":[-197.51828,-7.499998,32.530754],"owner":"worldgen"}
     ]
-  }
+  },
+  "zones": [
+    {"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-87.35798,0.148,23.299322],"halfExtents":[5.25,1.458,5.275],"yaw":161.85568}},
+    {"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-86.9066,0.148,23.447243],"halfExtents":[4.725,1.458,5.425],"yaw":161.85568}},
+    {"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-86.59422,0.148,21.129261],"halfExtents":[5.45,1.458,2.975],"yaw":161.85568}},
+    {"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-85.70302,0.148,22.263174],"halfExtents":[4.15,1.458,4.075],"yaw":161.85568}},
+    {"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-83.93706,0.148,21.28971],"halfExtents":[2.925,1.458,2.9],"yaw":161.85568}},
+    {"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-82.91054,0.148,21.047329],"halfExtents":[2.075,1.458,2.55],"yaw":161.85568}},
+    {"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-81.78521,0.148,20.021772],"halfExtents":[1.475,1.458,1.375],"yaw":161.85568}},
+    {"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-80.99585,0.148,19.780594],"halfExtents":[0.85,1.458,1.05],"yaw":161.85568}},
+    {"type":"indoor","value":"LEO_KRAEMER_ZKX_INNEN","box":{"center":[-14.918426,2.621,-56.361732],"halfExtents":[1.35,1.388,3.475],"yaw":-20.735514}},
+    {"type":"indoor","value":"LEO_KRAEMER_ZKX_INNEN","box":{"center":[-13.535795,2.621,-55.918495],"halfExtents":[2.8,1.388,3.4],"yaw":-20.735514}},
+    {"type":"indoor","value":"LEO_KRAEMER_ZKX_INNEN","box":{"center":[-12.153166,2.621,-55.475258],"halfExtents":[4.25,1.388,3.325],"yaw":-20.735514}},
+    {"type":"indoor","value":"LEO_KRAEMER_ZKX_INNEN","box":{"center":[-11.51839,2.621,-53.55086],"halfExtents":[5.525,1.388,1.6],"yaw":-20.735514}},
+    {"type":"indoor","value":"LEO_KRAEMER_ZKX_INNEN","box":{"center":[-11.092855,2.621,-54.88673],"halfExtents":[5.45,1.388,3.0],"yaw":-20.735514}},
+    {"type":"indoor","value":"LEO_KRAEMER_ZKX_INNEN","box":{"center":[-11.027722,2.621,-55.129387],"halfExtents":[5.425,1.388,3.25],"yaw":-20.735514}},
+    {"type":"indoor","value":"LEO_SCHMIEDE_ZNP_INNEN","box":{"center":[-88.726974,-2.272,-154.04715],"halfExtents":[5.975,1.458,2.875],"yaw":-112.534424}},
+    {"type":"indoor","value":"LEO_SCHMIEDE_ZNP_INNEN","box":{"center":[-88.66206,-2.272,-156.9434],"halfExtents":[3.375,1.458,2.075],"yaw":-112.534424}},
+    {"type":"indoor","value":"LEO_SCHMIEDE_ZNP_INNEN","box":{"center":[-88.3995,-2.272,-154.96687],"halfExtents":[5.0,1.458,2.925],"yaw":-112.534424}},
+    {"type":"indoor","value":"LEO_SCHMIEDE_ZNP_INNEN","box":{"center":[-87.44189,-2.272,-157.601],"halfExtents":[2.2,1.458,3.05],"yaw":-112.534424}},
+    {"type":"indoor","value":"LEO_WOHNHAUS_ZJV_INNEN","box":{"center":[27.481287,0.7555,-13.347762],"halfExtents":[10.6,1.4445,1.325],"yaw":-174.67264}},
+    {"type":"indoor","value":"LEO_WOHNHAUS_ZJV_INNEN","box":{"center":[27.661057,0.7555,-11.958452],"halfExtents":[10.5,1.4445,2.725],"yaw":-174.67264}},
+    {"type":"indoor","value":"LEO_WOHNHAUS_ZJV_INNEN","box":{"center":[27.843145,0.7555,-10.54425],"halfExtents":[10.4,1.4445,4.15],"yaw":-174.67264}},
+    {"type":"indoor","value":"LEO_WOHNHAUS_ZJV_INNEN","box":{"center":[27.95392,0.7555,-9.62557],"halfExtents":[10.325,1.4445,5.075],"yaw":-174.67264}},
+    {"type":"indoor","value":"LEO_WOHNHAUS_ZL2_T2_INNEN","box":{"center":[-18.35871,0.536,7.68246],"halfExtents":[3.275,1.466,6.675],"yaw":179.09842}},
+    {"type":"indoor","value":"LEO_WOHNHAUS_ZL2_T2_INNEN","box":{"center":[-18.191776,0.536,9.78535],"halfExtents":[3.475,1.466,4.575],"yaw":179.09842}}
+  ]
 }

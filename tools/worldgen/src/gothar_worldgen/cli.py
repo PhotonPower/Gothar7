@@ -966,8 +966,8 @@ def _cmd_kirche(args: argparse.Namespace, out: TextIO) -> int:
 def _plan_uses(
     path: Path, world: dict[str, Any], index: dict[str, Any], assets: Path,
     streets: list[dict[str, Any]],
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:  # fmt: skip
-    """Routine places and mobs of ``uses.json`` on the assembled world (W7)."""
+) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:  # fmt: skip
+    """Routine places, mobs and the rooms' indoor zones of ``uses.json`` (W7)."""
     from shapely.geometry import Point
     from shapely.strtree import STRtree
 
@@ -1015,7 +1015,9 @@ def _plan_uses(
         mine = [p["name"] for p in inside.places if p["house"] == h["id"]]
         if mine:
             h["insidePlaces"] = mine
-    return places, [*vobs, *inside.vobs]
+    from gothar_worldgen.uses.zones import indoor_zones
+
+    return places, [*vobs, *inside.vobs], indoor_zones(doc.houses, index)
 
 
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
@@ -1063,10 +1065,13 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
                            handmade, water, starts, doors)  # fmt: skip
         if uses_path.is_file():  # W7: mobs and routine places at the houses with a use
             street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
-            places, mobs = _plan_uses(uses_path, res.world, index, folder.parents[1],
-                                      street_doc.get("streets", []))  # fmt: skip
+            places, mobs, zones = _plan_uses(uses_path, res.world, index, folder.parents[1],
+                                             street_doc.get("streets", []))  # fmt: skip
             res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
                            handmade, water, starts, [*doors, *mobs])  # fmt: skip
+            from gothar_worldgen.uses.zones import with_room_zones
+
+            with_room_zones(res.world, zones)  # W7: the rooms' indoor ambient (world.md "Zonen")
     except (AssembleError, OverrideError, OSError, json.JSONDecodeError, HandmadeError,
             UsesError) as e:  # fmt: skip
         print(f"error: {e}", file=sys.stderr)

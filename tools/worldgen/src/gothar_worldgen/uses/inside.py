@@ -217,12 +217,17 @@ class InsidePlan:
     failed: list[dict[str, Any]] = field(default_factory=list)
 
 
+def room_tag(h: House) -> str:
+    """The room's name in places, mobs and its indoor zone: ``LEO_<USE>_<SHORT>_INNEN``."""
+    return f"LEO_{h.token}_{name_part(short_id(h.id))}_INNEN"
+
+
 class _House:
     """Places in the room of one house."""
 
     def __init__(self, plan: InsidePlan, h: House, room: _Room) -> None:
         self.plan, self.h, self.room = plan, h, room
-        self.tag = f"LEO_{h.token}_{name_part(short_id(h.id))}_INNEN"
+        self.tag = room_tag(h)
         self.counts: dict[str, int] = {}
 
     def vob(self, kind: str, name: str, pos: tuple[float, float], front: tuple[float, float],
