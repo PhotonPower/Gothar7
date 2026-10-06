@@ -7,7 +7,9 @@
 #include "PlayerFigure.hpp"
 
 #include <g7/core/Log.hpp>
+#include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
+#include <g7/runtime/CombatInput.hpp>
 #include <g7/runtime/Engine.hpp>
 
 #include <algorithm>
@@ -160,6 +162,12 @@ std::string Engine::fightMode(const Combatant& c) const
     return item != nullptr ? "1h" : "fist";
 }
 
+f32 Engine::reachOf(const Combatant& c) const
+{
+    const std::string mode = fightMode(c);
+    return mode == "2h" ? m_combat.reach2h : mode == "1h" ? m_combat.reach1h : m_combat.fistReach;
+}
+
 bool Engine::startFight(Combatant& c, std::string_view move, AttackKind kind)
 {
     const std::string mode = fightMode(c);
@@ -227,9 +235,7 @@ void Engine::fixedUpdateCombat(f32 seconds)
         {
             continue;
         }
-        const f32 reach = fightMode(*attacker) == "2h"   ? m_combat.reach2h
-                          : fightMode(*attacker) == "1h" ? m_combat.reach1h
-                                                         : m_combat.fistReach;
+        const f32 reach = reachOf(*attacker);
         const Vec3 forward = gameplay::forwardOf(attacker->yaw);
         for (const u32 other : ids)
         {
@@ -240,6 +246,12 @@ void Engine::fixedUpdateCombat(f32 seconds)
             }
             auto target = combatant(other);
             if (!target || target->fighter->state() == FightState::Dead)
+            {
+                continue;
+            }
+            // A pack or comrades of one guild do not hit each other (Gothic); the hero hits anyone.
+            if (id != kHeroId && other != kHeroId && !attacker->character->guild().empty() &&
+                attacker->character->guild() == target->character->guild())
             {
                 continue;
             }
@@ -473,6 +485,59 @@ void Engine::bindCombatFunctions()
              }
              return Value();
          }});
+    // Who a fighter is: an NPC or "hero".
+    const auto fighterOf = [this](const Value& v) -> std::optional<Combatant>
+    {
+        if (!v.isString())
+        {
+            return std::nullopt;
+        }
+        const std::optional<u32> id =
+            v.asString() == "hero" ? std::optional<u32>(kHeroId) : npcByInstance(v.asString());
+        return id ? combatant(*id) : std::nullopt;
+    };
+    vm.bind({"npc_distance", "npc_distance(npc: string, other: string) -> number",
+             "Abstand zweier Kämpfer auf dem Boden in Metern (`hero` für den Helden).", "Kampf",
+             [fighterOf](std::span<const Value> a) -> Result<Value>
+             {
+                 auto x = a.size() >= 2 ? fighterOf(a[0]) : std::nullopt;
+                 auto y = a.size() >= 2 ? fighterOf(a[1]) : std::nullopt;
+                 if (!x || !y)
+                 {
+                     return Error{"expects (npc, other) in the world (\"hero\" for the hero)"};
+                 }
+                 const Vec3 d = y->position - x->position;
+                 return Value(static_cast<f64>(glm::length(Vec2(d.x, d.z))));
+             }});
+    vm.bind({"npc_face", "npc_face(npc: string, other: string)",
+             "Dreht ein NPC sofort zu einem anderen bzw. zum Helden (Kampf).", "Kampf",
+             [this, fighterOf](std::span<const Value> a) -> Result<Value>
+             {
+                 auto x = a.size() >= 2 ? fighterOf(a[0]) : std::nullopt;
+                 auto y = a.size() >= 2 ? fighterOf(a[1]) : std::nullopt;
+                 if (!x || !y || x->creature == nullptr)
+                 {
+                     return Error{"expects (npc, other) in the world"};
+                 }
+                 const Vec3 d = y->position - x->position;
+                 if (glm::length(Vec2(d.x, d.z)) > 1e-3f)
+                 {
+                     x->creature->yaw = gameplay::yawOf(glm::normalize(Vec3(d.x, 0.0f, d.z)));
+                 }
+                 return Value();
+             }});
+    vm.bind({"npc_reach", "npc_reach(npc: string) -> number",
+             "Bis zu welchem Abstand (Mitte zu Mitte, m) die Schläge des Kämpfers treffen (`hero` für den "
+             "Helden).",
+             "Kampf", [this, fighterOf](std::span<const Value> a) -> Result<Value>
+             {
+                 auto x = !a.empty() ? fighterOf(a[0]) : std::nullopt;
+                 if (!x)
+                 {
+                     return Error{"expects an NPC in the world"};
+                 }
+                 return Value(static_cast<f64>(reachOf(*x) + 2.0f * kBodyRadius));
+             }});
     vm.bind({"hero_attack", "hero_attack(kind?: \"front\"|\"left\"|\"right\") -> boolean",
              "Ein Schlag des Helden (sonst über die Steuerung).", "Kampf", heroMove("attack")});
     vm.bind({"hero_parry", "hero_parry() -> boolean", "Parade des Helden.", "Kampf", heroMove("parry")});
@@ -508,5 +573,267 @@ void Engine::bindCombatFunctions()
     {
         vm.bind({name, signature, text, "Ereignisse", {}});
     }
+}
+} // namespace g7
+
+namespace g7
+{
+namespace
+{
+constexpr u64 kCreatureFocusBit = 1ull << 62; ///< as in Engine.cpp: the focus is a creature
+constexpr f32 kLockRange = 8.0f;              ///< K5: an enemy this near (and ahead) is locked when drawing
+constexpr f32 kLockKeepRange = 12.0f;         ///< ... and kept until farther
+constexpr f32 kLockTurnRate = 6.0f;           ///< rad/s: the hero turns to the locked enemy
+constexpr f32 kDodgeBackwardInput = -1.0f;    ///< until the dodge clip (root motion): a quick step back
+} // namespace
+
+void Engine::readCombatInput()
+{
+    const runtime::CombatInput asked = runtime::combatInput(m_actions, m_input);
+    if (asked.move)
+    {
+        m_combatRequest = CombatRequest{asked.move->first, asked.move->second};
+    }
+    if (asked.holdsAction)
+    {
+        m_playerInput.forward = 0.0f;
+        m_playerInput.strafe = 0.0f;
+        m_playerInput.turn = 0.0f;
+        m_playerInput.jump = false;
+    }
+}
+
+std::optional<u32> Engine::pickCombatTarget() const
+{
+    // K5 (Gothic 1): the nearest living NPC ahead within reach of the lock - the focused one first.
+    if (!m_player.valid())
+    {
+        return std::nullopt;
+    }
+    const Vec3 hero = m_player.feet();
+    const Vec3 forward = gameplay::forwardOf(m_movement.yaw());
+    std::optional<u32> best;
+    f32 bestDistance = kLockRange;
+    for (const auto& c : m_creatures)
+    {
+        if (!c->character || c->fighter.state() == FightState::Dead || c->fighter.state() == FightState::Down)
+        {
+            continue;
+        }
+        const Vec3 to = c->position - hero;
+        const f32 distance = glm::length(Vec2(to.x, to.z));
+        if (distance > kLockRange ||
+            (distance > 0.5f && glm::dot(Vec2(to.x, to.z) / distance, Vec2(forward.x, forward.z)) < 0.0f))
+        {
+            continue;
+        }
+        const bool focused = m_focus && m_focus->kind == gameplay::FocusKind::Npc &&
+                             static_cast<u32>(m_focus->id & ~kCreatureFocusBit) == c->id;
+        const f32 score = focused ? 0.0f : distance;
+        if (!best || score < bestDistance)
+        {
+            best = c->id;
+            bestDistance = score;
+        }
+    }
+    return best;
+}
+
+void Engine::fixedUpdateHeroFight(gameplay::MoveInput& input, f32 seconds)
+{
+    if (m_combatRequest)
+    {
+        if (auto hero = combatant(kHeroId); hero && m_weaponMode != 0)
+        {
+            (void)startFight(*hero, m_combatRequest->move, m_combatRequest->kind);
+        }
+        m_combatRequest.reset();
+    }
+    // K5: with the weapon drawn the hero keeps the enemy in view - turning to it, the turn keys strafe.
+    if (m_weaponMode == 0)
+    {
+        m_combatTarget.reset();
+    }
+    else
+    {
+        const Creature* target = m_combatTarget ? creature(*m_combatTarget) : nullptr;
+        if (target == nullptr || target->fighter.state() == FightState::Dead ||
+            target->fighter.state() == FightState::Down ||
+            glm::length(Vec2(target->position.x - m_player.feet().x,
+                             target->position.z - m_player.feet().z)) > kLockKeepRange)
+        {
+            m_combatTarget = pickCombatTarget();
+            target = m_combatTarget ? creature(*m_combatTarget) : nullptr;
+        }
+        if (target != nullptr)
+        {
+            const Vec3 to = target->position - m_player.feet();
+            if (glm::length(Vec2(to.x, to.z)) > 0.1f)
+            {
+                const f32 wanted = gameplay::yawOf(glm::normalize(Vec3(to.x, 0.0f, to.z)));
+                const f32 turn = std::remainder(wanted - m_movement.yaw(), 2.0f * glm::pi<f32>());
+                m_movement.setYaw(m_movement.yaw() +
+                                  std::clamp(turn, -kLockTurnRate * seconds, kLockTurnRate * seconds));
+            }
+            input.strafe = std::clamp(input.strafe + input.turn, -1.0f, 1.0f);
+            input.turn = 0.0f;
+            input.mouseTurn = 0.0f;
+        }
+    }
+    // The hero stands while striking, parrying, staggering or lying; a dodge is a quick step back.
+    switch (m_heroFighter.state())
+    {
+    case FightState::Ready:
+        break;
+    case FightState::Dodge:
+        input = {};
+        input.forward = kDodgeBackwardInput;
+        break;
+    default:
+        input = {};
+        break;
+    }
+}
+
+std::optional<std::string> Engine::heroCombatTarget() const
+{
+    const Creature* c = m_combatTarget ? creature(*m_combatTarget) : nullptr;
+    return c != nullptr ? std::optional<std::string>(c->species) : std::nullopt;
+}
+} // namespace g7
+
+namespace g7::runtime
+{
+CombatInput combatInput(const platform::ActionMap& actions, const platform::Input& input)
+{
+    using platform::Action;
+    const auto pressed = [&](Action a) { return actions.pressed(input, a); };
+    const auto down = [&](Action a) { return actions.isDown(input, a); };
+    CombatInput result;
+    if (down(Action::Action))
+    {
+        result.holdsAction = true;
+        if (pressed(Action::MoveForward))
+        {
+            result.move = {"attack", AttackKind::Front};
+        }
+        else if (pressed(Action::TurnLeft) || pressed(Action::StrafeLeft))
+        {
+            result.move = {"attack", AttackKind::Left};
+        }
+        else if (pressed(Action::TurnRight) || pressed(Action::StrafeRight))
+        {
+            result.move = {"attack", AttackKind::Right};
+        }
+        else if (pressed(Action::MoveBack))
+        {
+            result.move = {"parry", AttackKind::Front};
+        }
+        else if (pressed(Action::Jump))
+        {
+            result.move = {"dodge", AttackKind::Front};
+        }
+        return result;
+    }
+    if (pressed(Action::Attack))
+    {
+        const bool left = down(Action::TurnLeft) || down(Action::StrafeLeft);
+        const bool right = down(Action::TurnRight) || down(Action::StrafeRight);
+        result.move = {"attack", left ? AttackKind::Left : right ? AttackKind::Right : AttackKind::Front};
+    }
+    else if (pressed(Action::Parry))
+    {
+        result.move = {"parry", AttackKind::Front};
+    }
+    return result;
+}
+} // namespace g7::runtime
+
+namespace g7
+{
+namespace
+{
+constexpr f32 kLootReach = 3.0f; ///< m: the hero takes from a lying NPC this near
+} // namespace
+
+bool Engine::focusedNpcLying() const
+{
+    if (!m_focus || m_focus->kind != gameplay::FocusKind::Npc)
+    {
+        return false;
+    }
+    const Creature* c = creature(static_cast<u32>(m_focus->id & ~kCreatureFocusBit));
+    return c != nullptr && (c->fighter.state() == FightState::Down || c->fighter.state() == FightState::Dead);
+}
+
+Result<void> Engine::lootFocus()
+{
+    if (!focusedNpcLying())
+    {
+        return Error{"nobody lying in focus"};
+    }
+    m_lootTarget = static_cast<u32>(m_focus->id & ~kCreatureFocusBit);
+    m_inventoryMessage.clear();
+    setInventoryOpen(true);
+    return {};
+}
+
+Result<u32> Engine::loot(std::string_view npc, std::string_view item, u32 count)
+{
+    const auto id = npcByInstance(npc);
+    Creature* c = id ? creature(*id) : nullptr;
+    if (c == nullptr || !c->character || !m_hero || !m_player.valid())
+    {
+        return Error{std::format("no NPC {} in the world", npc)};
+    }
+    if (c->fighter.state() != FightState::Down && c->fighter.state() != FightState::Dead)
+    {
+        return Error{"Nur Bewusstlose und Tote lassen sich plündern."};
+    }
+    if (glm::length(c->position - m_player.feet()) > kLootReach)
+    {
+        return Error{"Zu weit weg."};
+    }
+    const u32 have = c->character->itemCount(item);
+    const u32 take = count == 0 ? have : std::min(count, have);
+    if (take == 0 || !c->character->removeItem(item, take))
+    {
+        return Error{std::format("{} hat kein {}.", c->character->name(), item)};
+    }
+    m_hero->addItem(item, take);
+    if (m_scripts)
+    {
+        const script::Value args[] = {std::string(npc), std::string(item), Value(static_cast<i64>(take))};
+        m_scripts->emit("npc_looted", args);
+    }
+    return take;
+}
+
+void Engine::bindLootFunctions()
+{
+    script::ScriptVm& vm = *m_scripts;
+    vm.bind(
+        {"loot", "loot(npc: string, item: string, count?: integer) -> integer",
+         "Nimmt einem bewusstlosen oder toten NPC in der Nähe des Helden `count` (ohne: alle) Stück ab (M11, "
+         "K7); gibt die Zahl zurück.",
+         "Kampf", [this](std::span<const Value> a) -> Result<Value>
+         {
+             if (a.size() < 2 || !a[0].isString() || !a[1].isString())
+             {
+                 return Error{"expects (npc, item, count?)"};
+             }
+             auto taken = loot(a[0].asString(), a[1].asString(),
+                               a.size() > 2 ? static_cast<u32>(std::max<i64>(a[2].asInteger(), 0)) : 0u);
+             if (!taken)
+             {
+                 return taken.error();
+             }
+             return Value(static_cast<i64>(taken.value()));
+         }});
+    vm.bind({"npc_looted",
+             "on(\"npc_looted\", fn(npc: string, item: string, count: integer))",
+             "Der Held hat einem Bewusstlosen oder Toten etwas abgenommen (M11).",
+             "Ereignisse",
+             {}});
 }
 } // namespace g7

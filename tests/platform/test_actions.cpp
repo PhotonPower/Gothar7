@@ -171,7 +171,9 @@ TEST_CASE("Shipped engine.toml: both schemes list every action with valid inputs
 
     const ActionMap classic = ActionMap::fromConfig(settings, "classic");
     CHECK(classic.bindings(Action::Action).size() >= 1);
-    CHECK(classic.bindings(Action::Attack).empty());
+    CHECK(classic.bindings(Action::Attack).size() == 1); // M11 (K1): the mouse as second assignment
+    CHECK(classic.bindings(Action::Parry).size() == 1);
+    CHECK(classic.bindings(Action::Use).empty());
     const ActionMap modern = ActionMap::fromConfig(settings, "modern");
     CHECK(modern.bindings(Action::Attack).size() >= 1);
     CHECK(modern.bindings(Action::Use).size() >= 1);

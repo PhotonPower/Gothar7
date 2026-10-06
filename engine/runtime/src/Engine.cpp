@@ -376,7 +376,8 @@ bool Engine::runFrame()
             {
                 mobInput();
             }
-            else if (actionKey && !m_inventoryOpen && m_player.valid() && !m_flyMode && m_focus)
+            else if (actionKey && !m_inventoryOpen && m_player.valid() && !m_flyMode && m_focus &&
+                     m_weaponMode == 0) // with the weapon drawn the action key fights (M11, K1)
             {
                 if (m_focus->kind == gameplay::FocusKind::Item)
                 {
@@ -385,6 +386,11 @@ bool Engine::runFrame()
                 else if (m_focus->kind == gameplay::FocusKind::Mob)
                 {
                     (void)useFocusedMob();
+                }
+                else if (m_focus->kind == gameplay::FocusKind::Npc &&
+                         focusedNpcLying()) // M11: the knocked out and the dead are looted
+                {
+                    (void)lootFocus();
                 }
                 else if (m_focus->kind == gameplay::FocusKind::Npc && m_playerInput.sneak)
                 {

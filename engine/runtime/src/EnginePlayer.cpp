@@ -213,6 +213,10 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
     {
         m_drawWeaponRequested = true; // until the next fixed step uses it (M9 part C)
     }
+    if (allowKeyboard && !m_flyMode && m_weaponMode != 0)
+    {
+        readCombatInput(); // M11 (K1): fighting keys instead of moving while the action key is held
+    }
     if (m_playerMouse)
     {
         m_playerInput.mouseTurn += m_input.mouseDelta().x;
@@ -236,7 +240,8 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     {
         input = {}; // the hero stands while picking something up or looking into his bag (Gothic)
     }
-    m_playerInput.mouseTurn = 0.0f; // used up by this step
+    fixedUpdateHeroFight(input, seconds); // M11: the fighting moves and the target lock
+    m_playerInput.mouseTurn = 0.0f;       // used up by this step
     m_playerInput.jump = false;
     m_playerYawBefore = m_movement.yaw();
     m_playerFeetBefore = m_playerFeet;

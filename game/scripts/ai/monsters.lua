@@ -91,20 +91,26 @@ State "zs_mm_threaten" {
 State "zs_mm_attack" {
     begin = function(npc)
         npc_clear(npc)
-        npc_follow_player(npc, 20, 1.5, animal(npc).chase_gait) -- bis zum Kampf (M11): verfolgen (weiter weg rennend)
+        fight_begin(npc, "hero") -- M11: der Kampf (ai/combat.lua)
     end,
-    loop = function()
-        return "done"
+    loop = function(npc)
+        return fight_step(npc)
+    end,
+    finish = function(npc)
+        fight_end(npc)
     end,
 }
 
 State "zs_mm_hunt" {
     begin = function(npc, prey)
         npc_clear(npc)
-        npc_follow_npc(npc, prey, 1.2, 15, true)
+        fight_begin(npc, prey) -- M11: jagt und reißt die Beute
     end,
-    loop = function()
-        return "done"
+    loop = function(npc)
+        return fight_step(npc)
+    end,
+    finish = function(npc)
+        fight_end(npc)
     end,
 }
 

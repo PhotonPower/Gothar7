@@ -293,8 +293,40 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
   `fight_state(npc|"hero")`, `npc_stat`, `npc_set_stat`, `npc_teleport`; Ereignisse `npc_hit(angreifer, ziel,
   schaden, kritisch)`, `npc_parried`, `npc_knocked_out`, `npc_killed`.
 
-**Weiter:** B Steuerung des Helden (K1 Gothic-1-Tasten, Maus als Zweitbelegung), Ziel-Lock und Kamera-Kampfprofil
-(K5); C Plündern, Einstellung nach dem Niederschlagen, Zeugen; D Kampf-KI; E Fernkampf (K9).
+**Teil B – der Held (umgesetzt bis auf das Kamera-Kampfprofil):**
+- **Tasten (K1, `runtime/CombatInput.hpp`):** mit gezogener Waffe wie Gothic 1 – Aktionstaste (Strg) gehalten und
+  vor = Schlag (erneut im Kombofenster: der nächste), links/rechts = Seitenhieb, zurück = Parade, Sprung =
+  Ausweichschritt; solange Strg gehalten ist, geht der Held nicht. Zweitbelegung Maus: links Schlag (mit
+  links/rechts gehalten: Seitenhieb), rechts Parade (neue Aktion `parry`, `engine.toml`). Mit gezogener Waffe
+  nimmt die Aktionstaste nichts auf und spricht niemanden an.
+- **Ziel-Lock (K5):** Beim Ziehen nimmt der Held das nächste lebende NPC vor sich bis 8 m (das fokussierte zuerst),
+  hält es bis 12 m und dreht sich zu ihm (6 rad/s); die Drehtasten gehen dann seitwärts. Bewusstlos, tot, zu weit
+  oder Waffe weg: neues Ziel bzw. keins. `Engine::heroCombatTarget()`.
+- Der Held steht beim Schlagen, Parieren, Taumeln und Liegen; der Ausweichschritt geht bis zum Clip rückwärts.
+
+**Teil C – Folgen (umgesetzt):**
+- **Plündern (K7):** Bewusstlose und Tote bleiben im Fokus (tiefer, wo sie liegen); die Aktionstaste öffnet statt
+  Dialog oder Taschendiebstahl das Inventar mit ihren Sachen daneben (nur nehmen). `loot(npc, item, count?)` (bis 3 m),
+  Ereignis `npc_looted(npc, item, count)`.
+- **Einstellung (K7, Inhalt in `ai/perceptions.lua`):** Wen der Held niederschlägt, ist ihm dauerhaft eine Stufe
+  schlechter gesinnt (freundlich → neutral → verärgert). Wer es sieht (20 m, sieht den Helden) und dem Opfer
+  nahesteht – gleiche oder befreundete Gilde, Wachen –, wird verärgert; ein Totschlag macht Zeugen feindlich, sie
+  rufen Hilfe. Ereignis `npc_witnessed(zeuge, opfer, einstellung)`.
+
+**Teil D – Kampf-KI (umgesetzt, Inhalt `ai/combat.lua`, Werte `CombatAi`):**
+- `fight(npc, ziel)` startet `zs_attack` gegen den Helden oder ein NPC; je Schleife (0,5 s) ein Schritt
+  (`fight_step`): in Reichweite gehen (`npc_reach`, Tiere in ihrer Gangart), zum Ziel drehen (`npc_face`), schlagen
+  (Kombos nach Talent, ein Viertel Seitenhiebe), parieren, wenn das Ziel schlägt (10/30/50 % je Talent).
+- Höchstens zwei greifen dasselbe Ziel an, die übrigen warten in 3,5 m (`fight_attackers`). Liegende lässt er in Ruhe
+  (K7, K8), über 30 m gibt er auf. Tiere fliehen unter 20 % Leben, Feiglinge (Bauern, Ausgestoßene bis Stufe 3) unter
+  50 %.
+- Wer getroffen wird, schlägt zurück (`npc_hit`). Wer angreifen würde (Waffe, Eindringling, feindlich), greift jetzt
+  an statt nur zu drohen; Gerufene helfen gegen den Feind des Rufers. Tiere: `zs_mm_attack` und die Jagd
+  (`zs_mm_hunt`) kämpfen mit demselben Schritt – ein Wolf reißt den Laufvogel.
+- Gleiche Gilde trifft sich nicht (Rudel, Kameraden); der Held trifft jeden.
+- Engine-Hilfen: `npc_distance(npc, anderer)`, `npc_face(npc, anderer)`, `npc_reach(npc)` (`hero` für den Helden).
+
+**Weiter:** Kamera-Kampfprofil (K5, nach #206); E Fernkampf (K9); DoD-Szenario.
 
 ## Magie (M12)
 Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten

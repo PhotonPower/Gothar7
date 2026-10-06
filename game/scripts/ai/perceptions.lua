@@ -6,6 +6,7 @@
 local function busy(npc)
     local s = npc_state(npc).state
     return s == "zs_sleep" or s == "zs_warn_weapon" or s == "zs_threaten" or s == "zs_intruder" or s == "zs_flee"
+        or s == "zs_attack" or fight_state(npc) == "down" or fight_state(npc) == "dead"
 end
 
 --- Tiere reagieren nach ai/monsters.lua.
@@ -41,12 +42,12 @@ local function alarm(npc)
     end
 end
 
---- Würde angreifen: verärgert, ruft Hilfe, meldet es und droht (Kampf ab M11).
+--- Greift an: verärgert, ruft Hilfe, meldet es (npc_would_attack) und kämpft (M11, ai/combat.lua).
 local function would_attack(npc, reason)
     set_temp_attitude(npc, "angry")
     emit("npc_would_attack", npc, reason)
     alarm(npc)
-    npc_start_state(npc, "zs_threaten")
+    fight(npc, "hero")
 end
 
 -- Wie oft ein NPC schon wegen der Waffe gewarnt hat (vergisst es, wenn sie weg ist).
@@ -122,7 +123,7 @@ on("assess_call", function(helper, caller)
     end
     set_temp_attitude(helper, "angry")
     npc_say(helper, Shouts.help)
-    npc_start_state(helper, "zs_threaten")
+    fight(helper, Fights[caller] or "hero")
 end)
 
 on("assess_player", function(npc, distance)
@@ -178,4 +179,40 @@ on("assess_noise", function(npc, kind)
     if human(npc) and not busy(npc) and npc_state(npc).state ~= "zs_look_around" then
         npc_start_state(npc, "zs_look_around")
     end
+end)
+
+-- Kampf (M11 Teil C, Entscheidung K7 wie Gothic 1): Wen der Held niederschlägt, der ist ihm danach dauerhaft eine Stufe
+-- schlechter gesinnt. Wer es sieht und dem Opfer nahesteht (gleiche oder befreundete Gilde, Wachen), wird verärgert;
+-- wer einen Totschlag sieht, wird feindlich und ruft Hilfe.
+local worse = { friendly = "neutral", neutral = "angry", angry = "angry", hostile = "hostile" }
+
+local function witnesses(victim, attitude_after)
+    for _, near in ipairs(npcs_near(victim, 20)) do
+        local close = near.guild == guild_of(victim) or attitude(near.guild, guild_of(victim)) == "friendly"
+            or is_guard(near.npc)
+        if human(near.npc) and close and npc_sees_player(near.npc) then
+            if attitude_after == "hostile" then
+                set_attitude(near.npc, "hostile")
+                alarm(near.npc)
+            else
+                set_temp_attitude(near.npc, attitude_after)
+            end
+            emit("npc_witnessed", near.npc, victim, attitude_after)
+        end
+    end
+end
+
+on("npc_knocked_out", function(target, attacker)
+    if attacker ~= "hero" or not human(target) then
+        return
+    end
+    set_attitude(target, worse[npc_attitude(target)])
+    witnesses(target, "angry")
+end)
+
+on("npc_killed", function(target, attacker)
+    if attacker ~= "hero" or not human(target) then
+        return
+    end
+    witnesses(target, "hostile")
 end)

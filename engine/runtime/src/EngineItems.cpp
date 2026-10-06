@@ -344,10 +344,13 @@ void Engine::updateFocus()
         });
     for (const auto& c : m_creatures)
     {
-        if (!c->dead)
+        // The knocked out and the dead can be looted (M11, K7): focused where they lie.
+        const bool lying = c->fighter.state() == gameplay::FightState::Down ||
+                           c->fighter.state() == gameplay::FightState::Dead;
+        if (!c->dead || c->character)
         {
-            m_focusCandidates.push_back(
-                {c->id | kCreatureFocusBit, gameplay::FocusKind::Npc, c->position + Vec3(0.0f, 1.2f, 0.0f)});
+            m_focusCandidates.push_back({c->id | kCreatureFocusBit, gameplay::FocusKind::Npc,
+                                         c->position + Vec3(0.0f, lying ? 0.4f : 1.2f, 0.0f)});
         }
     }
     const auto visible = [&](const gameplay::FocusCandidate& c)
@@ -531,7 +534,25 @@ void Engine::inventoryUi()
     panel.message = m_inventoryMessage;
     const MobRuntime* chest =
         m_mobUse && m_mobUse->containerOpen ? &m_mobs.at(m_mobUse->vob.value) : nullptr; // M8 part C
-    if (chest != nullptr)
+    const Creature* looted = m_lootTarget ? creature(*m_lootTarget) : nullptr;           // M11 part C
+    if (looted != nullptr && looted->character)
+    {
+        panel.container = true;
+        panel.containerTitle =
+            std::format("{} ({})", looted->character->name(),
+                        looted->fighter.state() == gameplay::FightState::Dead ? "tot" : "bewusstlos");
+        for (const gameplay::ItemStack& stack : looted->character->inventory(items))
+        {
+            const auto info = items(stack.item);
+            panel.containerRows.push_back({stack.item,
+                                           info ? info->name : stack.item,
+                                           info ? info->category : "misc",
+                                           stack.count,
+                                           {},
+                                           false});
+        }
+    }
+    else if (chest != nullptr)
     {
         panel.container = true;
         panel.containerTitle = chest->name;
@@ -546,6 +567,14 @@ void Engine::inventoryUi()
     if (!panel.open)
     {
         m_inventoryOpen = false;
+        m_lootTarget.reset();
+    }
+    if (looted != nullptr && (panel.action == "take" || panel.action == "put"))
+    {
+        auto taken = panel.action == "take" ? loot(looted->species, panel.actionItem, 0)
+                                            : Result<u32>(Error{"Hier wird nur genommen."});
+        m_inventoryMessage = taken ? std::string() : taken.error().message;
+        return;
     }
     if (panel.action == "equip")
     {
