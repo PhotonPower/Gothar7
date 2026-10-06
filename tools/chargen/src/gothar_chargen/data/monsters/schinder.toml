@@ -20,9 +20,9 @@ left = ["front_foot_r", "front_foot_l"]
 
 [rig.collision]            # engine character capsule (§7.1), derived from the mesh
 shape = "capsule_lying"
-radius = 0.32
+radius = 0.46
 length = 1.40
-offset = [0.00, 0.60, 0.58]
+offset = [0.00, 0.46, 0.58]
 
 [[bone]]
 name = "root"

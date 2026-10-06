@@ -1,6 +1,6 @@
 # Creature "schinder" (F5, own work): carrion eater of the knacker's yard - hyena/badger build,
 # high shoulders, sloping back, bald neck and head, dark bristly crest. Shoulder 0.8 m.
-# Eyes and teeth are separate pieces (materials eyes/teeth). Built by `gothar-chargen creature schinder` (blender/build_creature.py, creature.py).
+# Eyes, teeth and tongue are separate pieces (materials eyes/teeth/tongue). Built by `gothar-chargen creature schinder` (blender/build_creature.py, creature.py).
 #
 # Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. The tool
 # moves everything so that root lies on the ground below the pelvis head. `mirror = true` adds the
@@ -201,9 +201,15 @@ strands = 0.9
 colour = "#221c16"
 strands = 0.9
 
-[zone.mouth]
-colour = "#4a2522"
-variation = 0.1
+[zone.mouth]                 # palate with ridges
+colour = "#5a2c29"
+colour2 = "#4a2422"
+variation = 0.12
+wrinkles = 0.8
+
+[zone.throat]
+colour = "#140a08"
+variation = 0.05
 
 [zone.eye_rim]
 colour = "#2a201c"
@@ -396,36 +402,42 @@ center = [0, -1.085, 0.805]
 size = [0.068, 0.045, 0.028]
 
 [[shape]]
-kind = "capsule"             # nose bridge, broad and flat on top
+kind = "capsule"             # nose bridge
 zone = "muzzle"
-a = [0, -1.08, 0.745]
-b = [0, -1.245, 0.718]
-r = 0.032
-r2 = 0.022
+a = [0, -1.08, 0.748]
+b = [0, -1.24, 0.722]
+r = 0.026
+r2 = 0.02
 
 [[shape]]
-kind = "capsule"             # upper jaw: two capsules side by side - square, strong section
+kind = "ellipsoid"           # muzzle: tapering, rounded, a little lower at the front
+zone = "muzzle"
+center = [0, -1.165, 0.712]
+size = [0.04, 0.10, 0.036]
+rotate = [8, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # upper lips hanging over the lower jaw at the sides
 zone = "muzzle"
 mirror = true
-a = [0.022, -1.075, 0.712]
-b = [0.016, -1.25, 0.697]
-r = 0.036
-r2 = 0.025
+center = [0.028, -1.16, 0.69]
+size = [0.021, 0.075, 0.021]
+rotate = [4, 0, 0]
 
 [[shape]]
-kind = "ellipsoid"
+kind = "ellipsoid"           # rounded nose pad
 zone = "nose"
-center = [0, -1.262, 0.712]
-size = [0.03, 0.02, 0.022]
+center = [0, -1.262, 0.714]
+size = [0.032, 0.022, 0.024]
 
 [[shape]]
-kind = "capsule"             # strong lower jaw, a little narrower (the lips overhang it)
+kind = "capsule"             # lower jaw, narrowing to the chin
 zone = "muzzle"
 mirror = true
-a = [0.021, -1.06, 0.655]
-b = [0.014, -1.235, 0.655]
-r = 0.03
-r2 = 0.022
+a = [0.02, -1.06, 0.655]
+b = [0.012, -1.235, 0.656]
+r = 0.029
+r2 = 0.02
 
 [[shape]]
 kind = "cut_box"             # mouth: through the whole snout to the tip, opens with the jaw
@@ -437,22 +449,41 @@ size = [0.08, 0.12, 0.0035]
 kind = "ellipsoid"           # lower lid
 zone = "eye_rim"
 mirror = true
-center = [0.05, -1.103, 0.775]
-size = [0.019, 0.014, 0.008]
+center = [0.047, -1.101, 0.779]
+size = [0.018, 0.013, 0.006]
+
+[[shape]]
+kind = "ellipsoid"           # heavy upper lid over the eye
+zone = "head"
+mirror = true
+center = [0.045, -1.10, 0.80]
+size = [0.02, 0.016, 0.007]
 
 [[shape]]
 kind = "cut"                 # eye socket
 zone = "eye_rim"
 mirror = true
-center = [0.054, -1.107, 0.79]
-size = [0.017, 0.015, 0.014]
+center = [0.05, -1.105, 0.79]
+size = [0.015, 0.013, 0.012]
 
 [[shape]]
-kind = "eye"                 # dark, glossy eyeball in the socket
+kind = "eye"                 # small, dark, deep-set eyeball
 mirror = true
 bone = "head"
-center = [0.047, -1.103, 0.79]
-size = [0.0115, 0.0105, 0.0105]
+center = [0.044, -1.10, 0.79]
+size = [0.009, 0.0085, 0.0085]
+
+[[shape]]
+kind = "cut"                 # dark throat behind the mouth (a cavity the slit opens up)
+zone = "throat"
+center = [0, -1.07, 0.677]
+size = [0.022, 0.04, 0.016]
+
+[[shape]]
+kind = "tongue"
+bone = "jaw"
+center = [0, -1.16, 0.6705]
+size = [0.02, 0.06, 0.006]
 
 [[shape]]
 kind = "ellipsoid"           # rounded ears with a rim ...

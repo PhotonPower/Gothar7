@@ -26,9 +26,9 @@ Hals und Kopf, dunkler Borstenkamm, quer gestreifte Flanken, buschiger Schwanz m
 - **Tempo (mit engine, 2026-10-07):** Gehen 1,3, Rennen 6,5, Schleichen 0,7 m/s.
 - **Technik:** 26 Knochen (Wolf-Benennung plus `spine_02`, `neck_02`, `jaw`, `ear_l/r`), lod0 7834 Dreiecke
   (Körper, Augen, Zähne), Fell 1024² mit Normal-Map 512²; Beschreibung `data/monsters/schinder.creature.toml`.
-- **Für später notiert** (Projektinhaber): Der Kopf wirkt noch etwas nagetierhaft (runde Augen, kastenförmige
-  Schnauze, hohles offenes Maul) – Feinschliff, wenn das Werkzeug für Quaderbuckel bzw. Glemsmahr ohnehin
-  erweitert wird.
+- **Kopf-Feinschliff** (2026-10-07, auf Hinweis des Projektinhabers „noch etwas nagetierhaft“): Augen kleiner und
+  tiefer unter einem Oberlid, rundlichere Schnauze mit überhängenden Lefzen und rundem Nasenspiegel, Maul mit
+  Gaumen, Zunge und dunklem Rachen (wie beim Quaderbuckel).
 
 ## Quaderbuckel
 
