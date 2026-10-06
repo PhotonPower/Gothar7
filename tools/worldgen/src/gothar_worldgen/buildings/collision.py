@@ -82,13 +82,16 @@ def _cut_pieces(poly: Polygon, depth: int = 0) -> list[Polygon]:
     return [q for g in best[1] for q in _cut_pieces(g, depth + 1)]
 
 
-def convex_pieces(poly: Polygon) -> list[Polygon]:
+def convex_pieces(poly: Polygon, slivers: bool = True) -> list[Polygon]:
     """Convex pieces that cover ``poly``: its hull if nearly convex, else the better of cuts at
-    reflex corners and merged triangles (fewer pieces)."""
+    reflex corners and merged triangles (fewer pieces). ``slivers=False`` keeps small pieces as
+    they are instead of joining them to a neighbour: for the thin walls left round a carved room
+    (W7), whose small pieces would otherwise grow a hull far into the room."""
     if _convex_enough(poly, CONVEX_TOLERANCE):
         return [poly.convex_hull]
-    cut = _merge_slivers(_cut_pieces(poly))
-    merged = _merge_slivers(_merged_triangles(poly))
+    keep = _merge_slivers if slivers else (lambda pieces: pieces)
+    cut = keep(_cut_pieces(poly))
+    merged = keep(_merged_triangles(poly))
     best = (
         cut
         if len(cut) <= len(merged) and all(_convex_enough(p, MERGE_TOLERANCE) for p in cut)
@@ -240,7 +243,7 @@ def collision_for(masses: Sequence[Mass], base_y: float, origin_xz: tuple[float,
             rest = piece.difference(corridor)
             for g in getattr(rest, "geoms", [rest]):
                 if isinstance(g, Polygon) and g.area > 0.05:
-                    for sub in convex_pieces(g):
+                    for sub in convex_pieces(g, slivers=False):
                         parts.append(prism_body(sub, base_y, top, origin,
                                                 f"COL_HULL_{len(parts)}"))  # fmt: skip
     result = CollisionResult(parts, False, decomposed)

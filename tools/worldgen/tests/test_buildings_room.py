@@ -103,3 +103,63 @@ def test_door_mob_in_the_opening():
     ends = [room["door"]["from"], room["door"]["to"]]
     assert min(math.dist(far, e) for e in ends) == pytest.approx(0.06, abs=0.02)
     assert door_mobs({"entries": [{"id": "X"}]}, True) == []
+
+
+def test_a_big_ground_storey_is_divided_with_an_open_passage():
+    r = house({"use": "wohnhaus"})  # 9.4 x 6.4 m inside: above maxRoomM2 (45)
+    rooms = r.room["rooms"]
+    assert [q["name"] for q in rooms] == ["INNEN", "KAMMER"]
+    from shapely.geometry import Point, Polygon
+
+    first = Polygon(rooms[0]["ring"])
+    d = r.room["door"]
+    door = ((d["from"][0] + d["to"][0]) / 2, (d["from"][1] + d["to"][1]) / 2)
+    assert first.buffer(0.05).contains(Point(door))  # the house door opens into the first
+    whole = Polygon(r.room["ring"]).area
+    part = RULES.data["interior"]["partitionM"]
+    assert sum(Polygon(q["ring"]).area for q in rooms) == pytest.approx(whole - 6.4 * part, abs=0.1)
+    (p,) = r.room["passages"]
+    assert p["rooms"] in (["INNEN", "KAMMER"], ["KAMMER", "INNEN"]) and p["w"] == 0.9
+    mx, mz = p["mid"]
+    ax, az = p["axis"]
+    # the partition is solid beside the passage; the passage is open (up to the ceiling, like
+    # the house door: the engine probes the ground from above)
+    sx, sz = -az, ax
+    assert solid(r, mx + sx * 1.5, 1.0, mz + sz * 1.5)
+    assert not solid(r, mx, 2.4, mz)
+    assert not solid(r, mx, 1.0, mz) and not solid(r, mx + ax * 0.5, 1.0, mz + az * 0.5)
+
+
+def test_rooms_stay_whole_under_the_limit():
+    rules = load_rules(Path(__file__).resolve().parents[1] / "data" / "building_rules.json")
+    rules.data["interior"]["maxRoomM2"] = 80.0
+    r = build_house(HOUSE, -0.5, (5.0, -3.5), rules, STREET_SOUTH, ground_at=lambda x, z: 0.0,
+                    interior={"use": "wohnhaus"})  # fmt: skip
+    assert "rooms" not in r.room and "passages" not in r.room
+
+
+def test_no_collision_reaches_into_a_skewed_room():
+    """The walls left round a carved room stay walls: no convex piece reaches into the room (a
+    five-cornered house, like the smithy at the town wall)."""
+    from shapely.geometry import Polygon
+
+    ring = [[0.0, 0.0], [11.0, 0.0], [11.0, -6.0], [4.0, -9.5], [0.0, -7.0]]
+    h = {**HOUSE, "footprint": ring}
+    r = build_house(h, -0.5, (5.0, -4.0), RULES, STREET_SOUTH, ground_at=lambda x, z: 0.0,
+                    interior={"use": "schmiede"})  # fmt: skip
+    assert r.room is not None
+    rooms = [Polygon(q["ring"]) for q in r.room.get("rooms", [])] or [Polygon(r.room["ring"])]
+    global ORIGIN
+    keep, ORIGIN = ORIGIN, np.array([5.0, -0.5, -4.0])
+    try:
+        for room in rooms:
+            inner = room.buffer(-0.15)
+            x0, z0, x1, z1 = inner.bounds
+            for x in np.arange(x0, x1, 0.25):
+                for z in np.arange(z0, z1, 0.25):
+                    from shapely.geometry import Point
+
+                    if inner.contains(Point(x, z)):
+                        assert not solid(r, float(x), 1.0, float(z)), (x, z)
+    finally:
+        ORIGIN = keep

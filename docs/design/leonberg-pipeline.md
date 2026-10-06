@@ -925,6 +925,16 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   Türen (nur im Testlauf). Gerade Wege im Raum halten 0,4 m Abstand zu Möbeln (die Engine plant mit 0,3-m-Kugeln).
 - **Kollision:** der Raum samt Türdurchgang wird aus dem Hüllkörper geschnitten (wie bei Durchgängen: Körper über
   der Decke, Wandprismen daneben), dazu eine feste Bodenplatte, wenn der Boden über der Basis liegt.
+- **Räume teilen** (Entscheidung Koordinator 2026-10-06): Ist das Erdgeschoss größer als `interior.maxRoomM2` (45 m²;
+  für den Raum mit der Haustür je Nutzung `maxRoomM2ByUse`, Gasthaus 70 m²), teilen Zwischenwände es quer zur
+  Längsachse: der Raum mit der Haustür (`INNEN`, Herd, Tisch) um die Tür, daneben Kammern (`KAMMER`, `KAMMER_2` …)
+  gleicher Breite, keine schmaler als `minRoomWidthM` (3 m; schmalere Reste gehören zum Nachbarraum). Zwischenwand
+  `partitionM` 0,15 m, beidseitig verputzt, mittig ein offener Durchgang `passage` 0,9 × 2,0 m mit Laibung, ohne
+  Innentür. Kollision: die Wand neben dem Durchgang; über ihm bis zur Decke offen wie bei der Haustür. Der Index
+  bekommt `interior.rooms` (Name, Ring je Raum, der erste mit der Haustür) und `interior.passages` (die zwei Räume,
+  Mitte, Achse, Breite, Höhe). Leonberg: Gasthaus 72 + 51 m², Krämer 45 + 30, Schmiede 44 + 28, Zl2-T2 45 + 23 + 22,
+  ZjV 44 + 4 × 42 m². Die Wände, die nach dem Ausschneiden des Raums stehen bleiben, zerfallen in konvexe
+  Kollisionsteile ohne Splitter-Zusammenlegung (sonst wuchs etwa in der Schmiede eine Hülle 1 m in den Raum).
 - **Gelände unter dem Raum:** `export-terrain` senkt die Heightmap unter jedem Raum (Index `interior.ring`, um eine
   Zelle vergrößert) auf 2 cm unter den Boden, nur absenkend (`export/pads.py` `room_pads`); sonst ragt am Hang das
   Gelände bergseitig durch den Boden (vorher bis 1,1 m, Schmiede). Außen läuft die Senke über 1,5 m ins Gelände aus
@@ -953,6 +963,12 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   ZnP: die Stadtmauer, an die sie gebaut ist), endet der Raum für die Einrichtung an dessen Wand; der Herd steht dort an
   der Mauer. `assemble` schreibt allgemeine
   Vob-Angaben (mob, mesh, light, trigger) in die Gruppe `WORLDGEN_USES`.
+- **Geteilte Erdgeschosse** (C2): Betten, Truhen und Vorräte (Fässer, Kisten, Säcke) gehen reihum in die Kammern,
+  alles andere (Herd, Tisch, Theken, Freepoints, Hängendes) bleibt im Raum mit der Haustür. Je Kammer ein Licht, ein
+  Wegpunkt im Durchgang `WP_…_KAMMER_DURCHGANG` (verbunden mit dem Wegpunkt des Raums davor) und `WP_…_KAMMER` 1,2 m
+  dahinter; der Durchgang und der gerade Weg dorthin bleiben in beiden Räumen frei. Je Raum eine indoor-Zone
+  (`LEO_…_INNEN`, `LEO_…_KAMMER` …). Mob- und Prop-Namen tragen den Raum (`MOB_LEO_…_KAMMER_BED_1`). Beim Herd einer
+  Schmiede bleibt Platz für den Blasebalg (sonst steht er auf der anderen Seite, umgedreht).
 - **Hausrat** (B, `inside.props` je Nutzung, Modelle `props/*.glb` aus `mobs.py` `PROPS`, keine Mobs): Fässer, Schanktheke
   mit liegenden Fässern, Ladentheke, Regale mit Krügen, Tellern und Schalen, Kisten, Säcke, Werkbank, Werkzeug- und
   Waffenbrett, Löschtrog, Blasebalg, hängende Würste und Kräuter. Gestellt nach Möbeln und Freepoints, mit dem

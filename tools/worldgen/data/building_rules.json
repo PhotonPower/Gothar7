@@ -164,7 +164,13 @@
     "minAreaM2": 8.0,
     "minHeightM": 2.4,
     "stoneFloors": ["schmiede", "gasthaus"],
-    "doorsOpen": false
+    "doorsOpen": false,
+    "roomsNote": "Große Erdgeschosse werden quer geteilt (W7, Entscheidung Koordinator 2026-10-06): Raum mit der Tür (Stube) höchstens maxRoomM2ByUse bzw. maxRoomM2, dahinter Kammern; offene Durchgänge ohne Innentüren.",
+    "maxRoomM2": 45.0,
+    "maxRoomM2ByUse": {"gasthaus": 70.0},
+    "minRoomWidthM": 3.0,
+    "partitionM": 0.15,
+    "passage": [0.9, 2.0]
   },
   "roofPitch": {
     "note": "Modus medieval: Dächer flach/Pult oder unter minDeg werden Satteldächer; Traufe bleibt, First wächst (Entscheidung Koordinator, 2026-10-03)",
