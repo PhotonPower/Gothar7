@@ -669,6 +669,22 @@ TEST_CASE("Engine NPCs: walking over the camp's waynet through the gate to the f
     }
     CHECK_FALSE(engine.npcWalking(*id));
     CHECK(run(engine, "Story.arrived").asString() == "npc_farmer_woman fp_stand_gate_01");
+
+    // welt #227: the player goes out of range while she walks. She does not stop silently on the way: she is
+    // put at her goal and arrives.
+    run(engine, "Story.arrived = nil");
+    REQUIRE(engine.npcGoTo(*id, "wp_camp_fire").ok());
+    REQUIRE(engine.runFrame());
+    REQUIRE(engine.npcWalking(*id));
+    run(engine, "teleport(400, 0, 400)");
+    for (int i = 0; i < 10; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK_FALSE(engine.npcWalking(*id));
+    CHECK(run(engine, "Story.arrived").asString() == "npc_farmer_woman wp_camp_fire");
+    const Vec3 there = *engine.creaturePosition(*id);
+    CHECK(glm::length(Vec3(there.x - fire.x, 0.0f, there.z - fire.z)) < 0.5f);
 }
 
 namespace
