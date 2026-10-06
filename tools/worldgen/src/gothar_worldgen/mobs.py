@@ -2,7 +2,8 @@
 
 Built by script like the houses, in the style of leonberg-stil.md (oak, forged iron, wool and
 straw), with the textures of ``textures.procedural``; the files are not tied to a place:
-``assets/source/mobs/<type>.glb`` with their images in ``assets/source/mobs/textures/``.
+``assets/source/mobs/<type>.glb`` (and the props in ``assets/source/props/``) with their images in
+one shared folder, ``assets/source/furniture/textures/`` (engine: ``../`` in image URIs is fine).
 
 Axes (contract): Y up, origin on the ground, the front faces +Z, metres. The figure stands in front
 (slots in mobs.toml, maintained by figuren) and looks towards -Z.
@@ -35,7 +36,8 @@ from gothar_worldgen.textures.procedural import TILE_M, albedo_scale, make, to_p
 
 TYPES = ("chest", "anvil", "bed", "door", "bench", "table")
 TEXTURE_SIZE = 512
-TEXTURE_DIR = "textures"  # next to the models, relative URIs like glTF wants
+TEXTURE_DIR = "../furniture/textures"  # shared by mobs and props, relative to the models
+TEXTURE_FOLDER = ("furniture", "textures")  # where they are written, beside mobs/ and props/
 BUDGET = 1500  # triangles per model (render)
 # material -> (texture kind, linear colour); the colour is the tint like the palette of the houses
 MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
@@ -836,7 +838,8 @@ PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "fire
 
 def write_mobs(folder: Path, types: Sequence[str] = TYPES,
                builders: dict[str, Any] | None = None) -> list[str]:  # fmt: skip
-    """Writes ``<type>.glb`` and the textures they use into ``folder``; returns report lines."""
+    """Writes ``<type>.glb`` into ``folder`` and the textures they use into the shared folder
+    beside it (``TEXTURE_FOLDER``); returns report lines."""
     folder.mkdir(parents=True, exist_ok=True)
     kinds: set[str] = set()
     lines = []
@@ -851,8 +854,9 @@ def write_mobs(folder: Path, types: Sequence[str] = TYPES,
             kinds.update(MATERIALS[mat][0] for mat in mesh.builders)
         nodes = ", ".join(n for n, _, _ in model.parts) or "-"
         lines.append(f"{t}: {model.triangles()} triangles, parts {nodes}")
+    shared = folder.parent.joinpath(*TEXTURE_FOLDER)
     for kind in sorted(kinds):
         tex = make(kind, TEXTURE_SIZE)
-        to_png(tex.albedo, folder / TEXTURE_DIR / f"{kind}_albedo.png", True, albedo_scale(kind))
-        to_png(tex.normal(), folder / TEXTURE_DIR / f"{kind}_normal.png", False)
+        to_png(tex.albedo, shared / f"{kind}_albedo.png", True, albedo_scale(kind))
+        to_png(tex.normal(), shared / f"{kind}_normal.png", False)
     return lines
