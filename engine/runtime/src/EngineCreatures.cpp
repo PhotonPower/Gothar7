@@ -274,6 +274,10 @@ void Engine::fixedUpdateCreatures(f32 seconds)
         a.setFloat("speed", c.speed);
         a.setFloat("turn", c.turn);
         a.setFloat("action", static_cast<f32>(c.action));
+        if (c.character && !c.dead)
+        {
+            a.setFloat("weapon", creatureWeaponAnimation(c)); // fighting: the stance of its weapon (M11)
+        }
         a.setBool("eat", c.eat);
         a.setBool("sleep", c.sleep);
         a.setBool("dead", c.dead);
@@ -281,6 +285,10 @@ void Engine::fixedUpdateCreatures(f32 seconds)
                  [&](std::string_view clip, std::string_view event)
                  {
                      handEvent(c, event); // broom, mug (M9 part B)
+                     if (event.starts_with("hit_") || event.starts_with("combo_"))
+                     {
+                         c.fighter.onEvent(event); // the combat clips time the blow (M11)
+                     }
                      f.events.push_front(std::format(
                          "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));
                      if (f.events.size() > kShownEvents)

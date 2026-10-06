@@ -392,21 +392,18 @@ TEST_CASE("Animator with the real data: reference rig, clip sets, human.animgrap
     REQUIRE(rig.ok());
     const Skeleton skeleton = Skeleton::create(rig.value().skeleton).value();
     std::vector<asset::AnimationSetData> data;
-    for (const char* set : {"characters/anims/human/none.glb", "characters/anims/human/swim.glb",
-                            "characters/anims/human/amb.glb", "characters/anims/human/dive.glb",
-                            "characters/anims/human/mob.glb", "characters/anims/human/1h.glb",
-                            "characters/anims/human/fist.glb", "characters/anims/human/dlg.glb"})
-    {
-        auto loaded = asset::loadAnimationGltf(read(set), {}, set);
-        REQUIRE(loaded.ok());
-        data.push_back(std::move(loaded).value());
-    }
     const std::vector<u8> graphText = read("data/anim/human.animgraph.toml");
     auto graph =
         AnimGraph::parse(std::string_view(reinterpret_cast<const char*>(graphText.data()), graphText.size()),
                          "human.animgraph.toml");
     REQUIRE_MESSAGE(graph.ok(), (graph.ok() ? "" : graph.error().message));
-    CHECK(graph.value().sets.size() == 8);
+    CHECK(graph.value().sets.size() == 12);           // with 2h, bow, cbow and mag (M11/M12)
+    for (const std::string& set : graph.value().sets) // every set the graph names
+    {
+        auto loaded = asset::loadAnimationGltf(read(set.c_str()), {}, set);
+        REQUIRE_MESSAGE(loaded.ok(), set);
+        data.push_back(std::move(loaded).value());
+    }
     std::vector<const asset::AnimationSetData*> sets;
     for (const auto& d : data)
     {

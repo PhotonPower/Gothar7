@@ -7,7 +7,7 @@
 #   climb   Kantenklasse 1/2/3 (0 = nicht)
 #   swim    an der Oberfläche (bool)                dive    unter Wasser (bool)        slide  rutscht (bool)
 #   pickup  hebt einen Gegenstand auf (bool, bis das Event „pickup“ ihn genommen hat; M8)
-#   weapon  gezogene Waffe: 0 keine, 1 Einhandwaffe, 2 Fäuste (M9 Teil C)
+#   weapon  gezogene Waffe: 0 keine, 1 Einhand, 2 Fäuste (M9 Teil C), 3 Bogen, 4 Armbrust, 5 Zweihand, 6 Magie
 # Übergänge: erster passender in Dateireihenfolge; Bedingungen: "name", "!name", "name > 1.5", "end".
 version = 1
 sets = [
@@ -18,6 +18,10 @@ sets = [
     "characters/anims/human/amb.glb",
     "characters/anims/human/1h.glb",
     "characters/anims/human/fist.glb",
+    "characters/anims/human/2h.glb",
+    "characters/anims/human/bow.glb",
+    "characters/anims/human/cbow.glb",
+    "characters/anims/human/mag.glb",
     "characters/anims/human/dlg.glb",
 ]
 start = "move"
@@ -662,3 +666,629 @@ from = "turn_r"
 to = "move"
 when = ["speed > 0.1"]
 blend = 0.15
+
+# --- Kampf und Magie (M11/M12, generiert aus figurens Clip-Sets; Zustände heißen wie ihr Clip mit _ statt /) ---
+# weapon: 1 Einhand, 2 Fäuste, 3 Bogen, 4 Armbrust, 5 Zweihand, 6 Magie. Die Engine betritt die einmaligen Zustände
+# direkt (Animator::enter); am Ende geht es zurück in die Fortbewegung der gezogenen Waffe.
+
+[[state]]
+name = "move_bow"
+blend = "speed"
+rate = "speed"
+points = [
+    { value = -1.4, clip = "bow/s_walk_back" },
+    { value = 0.0, clip = "bow/s_idle" },
+    { value = 1.6, clip = "bow/s_walk" },
+    { value = 4.0, clip = "bow/s_run" },
+]
+
+[[state]]
+name = "move_cbow"
+blend = "speed"
+rate = "speed"
+points = [
+    { value = -1.4, clip = "cbow/s_walk_back" },
+    { value = 0.0, clip = "cbow/s_idle" },
+    { value = 1.6, clip = "cbow/s_walk" },
+    { value = 4.0, clip = "cbow/s_run" },
+]
+
+[[state]]
+name = "move_2h"
+blend = "speed"
+rate = "speed"
+points = [
+    { value = -1.4, clip = "2h/s_walk_back" },
+    { value = 0.0, clip = "2h/s_idle" },
+    { value = 1.6, clip = "2h/s_walk" },
+    { value = 4.0, clip = "2h/s_run" },
+]
+
+[[state]]
+name = "move_mag"
+blend = "speed"
+rate = "speed"
+points = [
+    { value = -1.4, clip = "mag/s_walk_back" },
+    { value = 0.0, clip = "mag/s_idle" },
+    { value = 1.6, clip = "mag/s_walk" },
+    { value = 4.0, clip = "mag/s_run" },
+]
+
+[[state]]
+name = "draw_2h"
+clip = "1h/t_draw"
+
+[[state]]
+name = "sheath_2h"
+clip = "1h/t_sheath"
+
+[[state]]
+name = "draw_mag"
+clip = "mag/t_draw"
+
+[[state]]
+name = "sheath_mag"
+clip = "mag/t_sheath"
+
+[[state]]
+name = "1h_t_attack_combo1"
+clip = "1h/t_attack_combo1"
+
+[[state]]
+name = "1h_t_attack_combo2"
+clip = "1h/t_attack_combo2"
+
+[[state]]
+name = "1h_t_attack_combo3"
+clip = "1h/t_attack_combo3"
+
+[[state]]
+name = "1h_t_attack_combo4"
+clip = "1h/t_attack_combo4"
+
+[[state]]
+name = "1h_t_attack_l"
+clip = "1h/t_attack_l"
+
+[[state]]
+name = "1h_t_attack_r"
+clip = "1h/t_attack_r"
+
+[[state]]
+name = "1h_t_dodge_back"
+clip = "1h/t_dodge_back"
+
+[[state]]
+name = "1h_t_parry"
+clip = "1h/t_parry"
+
+[[state]]
+name = "2h_t_attack_combo1"
+clip = "2h/t_attack_combo1"
+
+[[state]]
+name = "2h_t_attack_combo2"
+clip = "2h/t_attack_combo2"
+
+[[state]]
+name = "2h_t_attack_combo3"
+clip = "2h/t_attack_combo3"
+
+[[state]]
+name = "2h_t_attack_combo4"
+clip = "2h/t_attack_combo4"
+
+[[state]]
+name = "2h_t_attack_l"
+clip = "2h/t_attack_l"
+
+[[state]]
+name = "2h_t_attack_r"
+clip = "2h/t_attack_r"
+
+[[state]]
+name = "2h_t_dodge_back"
+clip = "2h/t_dodge_back"
+
+[[state]]
+name = "2h_t_parry"
+clip = "2h/t_parry"
+
+[[state]]
+name = "fist_t_attack_combo1"
+clip = "fist/t_attack_combo1"
+
+[[state]]
+name = "fist_t_attack_combo2"
+clip = "fist/t_attack_combo2"
+
+[[state]]
+name = "fist_t_parry"
+clip = "fist/t_parry"
+
+[[state]]
+name = "bow_t_reload"
+clip = "bow/t_reload"
+
+[[state]]
+name = "bow_t_shoot"
+clip = "bow/t_shoot"
+
+[[state]]
+name = "cbow_t_reload"
+clip = "cbow/t_reload"
+
+[[state]]
+name = "cbow_t_shoot"
+clip = "cbow/t_shoot"
+
+[[state]]
+name = "mag_t_cast_area"
+clip = "mag/t_cast_area"
+
+[[state]]
+name = "mag_t_cast_fail"
+clip = "mag/t_cast_fail"
+
+[[state]]
+name = "mag_t_cast_loop_end"
+clip = "mag/t_cast_loop_end"
+
+[[state]]
+name = "mag_t_cast_projectile"
+clip = "mag/t_cast_projectile"
+
+[[state]]
+name = "mag_t_cast_self"
+clip = "mag/t_cast_self"
+
+[[state]]
+name = "mag_t_cast_summon"
+clip = "mag/t_cast_summon"
+
+[[state]]
+name = "mag_t_cast_target"
+clip = "mag/t_cast_target"
+
+[[state]]
+name = "mag_t_invest"
+clip = "mag/t_invest"
+
+[[state]]
+name = "bow_s_aim"
+clip = "bow/s_aim"
+
+[[state]]
+name = "cbow_s_aim"
+clip = "cbow/s_aim"
+
+[[state]]
+name = "mag_s_invest"
+clip = "mag/s_invest"
+
+[[state]]
+name = "mag_s_cast_loop"
+clip = "mag/s_cast_loop"
+
+[[state]]
+name = "none_t_hit_light"
+clip = "none/t_hit_light"
+
+[[state]]
+name = "none_t_hit_magic"
+clip = "none/t_hit_magic"
+
+[[state]]
+name = "none_t_ko"
+clip = "none/t_ko"
+
+[[state]]
+name = "none_s_ko"
+clip = "none/s_ko"
+
+[[state]]
+name = "none_t_ko_getup"
+clip = "none/t_ko_getup"
+
+[[state]]
+name = "none_t_die_front"
+clip = "none/t_die_front"
+
+[[state]]
+name = "none_t_die_back"
+clip = "none/t_die_back"
+
+[[state]]
+name = "none_s_burn"
+clip = "none/s_burn"
+
+[[transition]]
+from = "move"
+to = "move_bow"
+when = ["weapon == 3"]
+blend = 0.2
+
+[[transition]]
+from = "move_bow"
+to = "move"
+when = ["weapon < 0.5"]
+blend = 0.2
+
+[[transition]]
+from = "move"
+to = "move_cbow"
+when = ["weapon == 4"]
+blend = 0.2
+
+[[transition]]
+from = "move_cbow"
+to = "move"
+when = ["weapon < 0.5"]
+blend = 0.2
+
+[[transition]]
+from = "move"
+to = "draw_2h"
+when = ["weapon == 5"]
+blend = 0.12
+
+[[transition]]
+from = "draw_2h"
+to = "move_2h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "move_2h"
+to = "sheath_2h"
+when = ["weapon < 0.5"]
+blend = 0.12
+
+[[transition]]
+from = "sheath_2h"
+to = "move"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "move"
+to = "draw_mag"
+when = ["weapon == 6"]
+blend = 0.12
+
+[[transition]]
+from = "draw_mag"
+to = "move_mag"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "move_mag"
+to = "sheath_mag"
+when = ["weapon < 0.5"]
+blend = 0.12
+
+[[transition]]
+from = "sheath_mag"
+to = "move"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "1h_t_attack_combo1"
+to = "move_1h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "1h_t_attack_combo2"
+to = "move_1h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "1h_t_attack_combo3"
+to = "move_1h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "1h_t_attack_combo4"
+to = "move_1h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "1h_t_attack_l"
+to = "move_1h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "1h_t_attack_r"
+to = "move_1h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "1h_t_dodge_back"
+to = "move_1h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "1h_t_parry"
+to = "move_1h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "2h_t_attack_combo1"
+to = "move_2h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "2h_t_attack_combo2"
+to = "move_2h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "2h_t_attack_combo3"
+to = "move_2h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "2h_t_attack_combo4"
+to = "move_2h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "2h_t_attack_l"
+to = "move_2h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "2h_t_attack_r"
+to = "move_2h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "2h_t_dodge_back"
+to = "move_2h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "2h_t_parry"
+to = "move_2h"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "fist_t_attack_combo1"
+to = "move_fist"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "fist_t_attack_combo2"
+to = "move_fist"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "fist_t_parry"
+to = "move_fist"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "bow_t_reload"
+to = "move_bow"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "bow_t_shoot"
+to = "move_bow"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "cbow_t_reload"
+to = "move_cbow"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "cbow_t_shoot"
+to = "move_cbow"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "mag_t_cast_area"
+to = "move_mag"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "mag_t_cast_fail"
+to = "move_mag"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "mag_t_cast_loop_end"
+to = "move_mag"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "mag_t_cast_projectile"
+to = "move_mag"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "mag_t_cast_self"
+to = "move_mag"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "mag_t_cast_summon"
+to = "move_mag"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "mag_t_cast_target"
+to = "move_mag"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "mag_t_invest"
+to = "move_mag"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_ko"
+to = "none_s_ko"
+when = ["end"]
+blend = 0.05
+
+[[transition]]
+from = "none_t_hit_light"
+to = "move_1h"
+when = ["end", "weapon == 1"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_light"
+to = "move_fist"
+when = ["end", "weapon == 2"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_light"
+to = "move_bow"
+when = ["end", "weapon == 3"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_light"
+to = "move_cbow"
+when = ["end", "weapon == 4"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_light"
+to = "move_2h"
+when = ["end", "weapon == 5"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_light"
+to = "move_mag"
+when = ["end", "weapon == 6"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_light"
+to = "move"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_magic"
+to = "move_1h"
+when = ["end", "weapon == 1"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_magic"
+to = "move_fist"
+when = ["end", "weapon == 2"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_magic"
+to = "move_bow"
+when = ["end", "weapon == 3"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_magic"
+to = "move_cbow"
+when = ["end", "weapon == 4"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_magic"
+to = "move_2h"
+when = ["end", "weapon == 5"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_magic"
+to = "move_mag"
+when = ["end", "weapon == 6"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_hit_magic"
+to = "move"
+when = ["end"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_ko_getup"
+to = "move_1h"
+when = ["end", "weapon == 1"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_ko_getup"
+to = "move_fist"
+when = ["end", "weapon == 2"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_ko_getup"
+to = "move_bow"
+when = ["end", "weapon == 3"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_ko_getup"
+to = "move_cbow"
+when = ["end", "weapon == 4"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_ko_getup"
+to = "move_2h"
+when = ["end", "weapon == 5"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_ko_getup"
+to = "move_mag"
+when = ["end", "weapon == 6"]
+blend = 0.12
+
+[[transition]]
+from = "none_t_ko_getup"
+to = "move"
+when = ["end"]
+blend = 0.12
