@@ -37,6 +37,50 @@ events = [
     { frame = 29, event = "footstep_l" },
 ]
 
+[clips."2h/t_attack_combo1"]
+events = [
+    { frame = 17, event = "hit_start" },
+    { frame = 23, event = "combo_start" },
+    { frame = 23, event = "hit_end" },
+    { frame = 34, event = "combo_end" },
+]
+
+[clips."2h/t_attack_combo2"]
+events = [
+    { frame = 5, event = "hit_start" },
+    { frame = 9, event = "combo_start" },
+    { frame = 9, event = "hit_end" },
+    { frame = 38, event = "combo_end" },
+]
+
+[clips."2h/t_attack_combo3"]
+events = [
+    { frame = 16, event = "hit_start" },
+    { frame = 21, event = "combo_start" },
+    { frame = 21, event = "hit_end" },
+    { frame = 32, event = "combo_end" },
+]
+
+[clips."2h/t_attack_combo4"]
+events = [
+    { frame = 9, event = "hit_start" },
+    { frame = 13, event = "combo_start" },
+    { frame = 13, event = "hit_end" },
+    { frame = 37, event = "combo_end" },
+]
+
+[clips."2h/t_attack_l"]
+events = [
+    { frame = 14, event = "hit_start" },
+    { frame = 19, event = "hit_end" },
+]
+
+[clips."2h/t_attack_r"]
+events = [
+    { frame = 14, event = "hit_start" },
+    { frame = 19, event = "hit_end" },
+]
+
 [clips."2h/t_turn_l"]
 events = [
     { frame = 18, event = "footstep_r" },

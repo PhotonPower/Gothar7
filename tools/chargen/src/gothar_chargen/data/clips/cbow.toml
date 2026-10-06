@@ -10,9 +10,22 @@ depends = ["none"]
 file = "AnimationLibrary_Godot_Standard.glb"
 mapping = "quaternius_ual1"
 
+# The crossbow is held by its stock in the fist (item +Y = stock forward): the pistol grip of the
+# UAL clips (fist axis down) turned at the right hand by a constant offset (grid search: socket +Y
+# forward, +Z up in cbow/s_aim).
+[[clip]]
+name = "cbow/s_idle_src"
+from = "ual1:Pistol_Idle_Loop"
+helper = true
+
 [[clip]]
 name = "cbow/s_idle"
-from = "ual1:Pistol_Idle_Loop"
+keyframe = "keyposes"
+[clip.params]
+base = "cbow/s_idle_src"
+keys = [[0, "grip"], [50, "grip"]]
+[clip.params.poses.grip]
+rotate = { hand_r = [["X", 30], ["Y", 30], ["Z", -105]] }
 
 [[clip]]
 name = "cbow/s_walk"
@@ -55,3 +68,54 @@ name = "cbow/t_turn_r"
 layer = ["none/t_turn_r", "cbow/s_idle"]
 from_bone = ["clavicle_l", "clavicle_r", "neck"]
 events = "footsteps"
+
+# --- combat (M11): aiming, shooting, reloading – Quaternius UAL1 pistol clips (both hands forward)
+
+[[clip]]
+name = "cbow/t_aim_src"
+from = "ual1:Pistol_Aim_Neutral"
+helper = true
+
+[[clip]]
+name = "cbow/t_aim_hold"
+keyframe = "hold"
+params = { base = "cbow/t_aim_src", frame = 0, frames = 60 }
+helper = true
+
+[[clip]]
+name = "cbow/t_shoot_src"
+from = "ual1:Pistol_Shoot"
+helper = true
+
+[[clip]]
+name = "cbow/t_reload_src"
+from = "ual1:Pistol_Reload"
+helper = true
+
+[[clip]]
+name = "cbow/s_aim"
+keyframe = "keyposes"
+[clip.params]
+base = "cbow/t_aim_hold"
+keys = [[0, "grip"], [60, "grip"]]
+[clip.params.poses.grip]
+rotate = { hand_r = [["X", 30], ["Y", 30], ["Z", -105]] }
+
+[[clip]]
+name = "cbow/t_shoot"
+markers = { release = 2 }
+keyframe = "keyposes"
+[clip.params]
+base = "cbow/t_shoot_src"
+keys = [[0, "grip"], [19, "grip"]]
+[clip.params.poses.grip]
+rotate = { hand_r = [["X", 30], ["Y", 30], ["Z", -105]] }
+
+[[clip]]
+name = "cbow/t_reload"
+keyframe = "keyposes"
+[clip.params]
+base = "cbow/t_reload_src"
+keys = [[0, "grip"], [50, "grip"]]
+[clip.params.poses.grip]
+rotate = { hand_r = [["X", 30], ["Y", 30], ["Z", -105]] }

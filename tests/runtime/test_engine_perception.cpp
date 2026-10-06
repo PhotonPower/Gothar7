@@ -110,7 +110,7 @@ TEST_CASE("Engine perception: a drawn weapon, the guard warns, then would attack
     runSeconds(engine, 3.5f);
     CHECK(stateOf(engine, "npc_gate_guard").empty());
 
-    // Drawn again and kept: each warning, then 4 s; after the second he would attack (and threatens,
+    // Drawn again and kept: each warning, then 4 s; after the second he attacks (M11; before: threatened,
     // following).
     runSeconds(engine, 2.0f); // his "calm" line
     run(engine, "give_item('it_sword_old') equip('it_sword_old')");
@@ -119,7 +119,7 @@ TEST_CASE("Engine perception: a drawn weapon, the guard warns, then would attack
     CHECK(run(engine, "player_weapon()").asString() == "weapon");
     runSeconds(engine, 15.0f);
     CHECK(run(engine, "Story.attack").asString() == "npc_gate_guard weapon");
-    CHECK(stateOf(engine, "npc_gate_guard") == "zs_threaten");
+    CHECK(stateOf(engine, "npc_gate_guard") == "zs_attack"); // M11: he attacks (ai/combat.lua)
 }
 
 TEST_CASE("Engine perception: the owner notices the player in his private area")
@@ -195,8 +195,8 @@ TEST_CASE("Engine attitudes: a hostile guard would attack, his friends come to h
     run(engine, "teleport(7, 0, -11)");
     runSeconds(engine, 1.0f);
     CHECK(run(engine, "Story.attack").asString() == "npc_gate_guard hostile");
-    CHECK(stateOf(engine, "npc_gate_guard") == "zs_threaten");
-    CHECK(stateOf(engine, "npc_woodcutter") == "zs_threaten"); // came to help
+    CHECK(stateOf(engine, "npc_gate_guard") == "zs_attack");
+    CHECK(stateOf(engine, "npc_woodcutter") == "zs_attack"); // came to help
     CHECK(run(engine, "npc_attitude('npc_woodcutter')").asString() == "angry");
     CHECK(stateOf(engine, "npc_old_man") == "zs_flee");
     const f64 before = run(engine, "npc_distance_to_player('npc_old_man')").asNumber();

@@ -72,3 +72,45 @@ frames = 15
 name = "fist/t_sheath"
 blend = ["fist/s_idle", "none/s_idle"]
 frames = 15
+
+# --- combat (M11, contract with engine 2026-10-05): every attack starts and ends in fist/s_idle
+# (engine blends 0.1 s between hits; each clip also works as a single hit); hit_start/hit_end on
+# the impact of the fist, combo_start = hit_end .. combo_end at about 80 %, then recovery.
+
+[[clip]]
+name = "fist/t_jab"
+from = "ual1:Punch_Jab"
+helper = true
+
+[[clip]]
+name = "fist/t_cross"
+from = "ual1:Punch_Cross"
+helper = true
+
+[[clip]]
+name = "fist/t_attack_combo1"     # jab, left fist
+keyframe = "framed"
+markers = { hit_start = 6, hit_end = 9, combo_start = 9, combo_end = 21 }
+params = { base = "fist/t_jab", stance = "fist/s_idle", fade_in = 3, fade_out = 6 }
+
+[[clip]]
+name = "fist/t_attack_combo2"     # cross, right fist
+keyframe = "framed"
+markers = { hit_start = 9, hit_end = 14, combo_start = 14, combo_end = 24 }
+params = { base = "fist/t_cross", stance = "fist/s_idle", fade_in = 5, fade_out = 6 }
+
+[[clip]]
+name = "fist/t_cover"             # forearms raised in front of the face (over the upright none/s_idle)
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [5, "cover"], [13, "cover"], [18, "rest"]]
+[clip.params.poses.cover]
+rotate = { upperarm_l = [["X", -90], ["Z", -30]], upperarm_r = [["X", -90], ["Z", 30]], lowerarm_l = [["X", -15], ["Y", 90]], lowerarm_r = [["X", -15], ["Y", -90]], spine_02 = [["X", -6]], neck = [["X", 8]] }  # grid search: fists before the face
+move = { pelvis = [0, 0.04, -0.03] }
+
+[[clip]]
+name = "fist/t_parry"             # ~0.6 s, ends in fist/s_idle (engine sets the block window)
+keyframe = "framed"
+params = { base = "fist/t_cover", stance = "fist/s_idle", fade_in = 3, fade_out = 4 }

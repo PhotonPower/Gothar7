@@ -104,6 +104,8 @@ Result<void> Engine::initScripts()
     bindTradeFunctions();
     loadVoiceLines();
     bindCombatFunctions();
+    bindLootFunctions();
+    bindRangedFunctions();
     bindDiaryFunctions();
     if (m_config.randomSeed)
     {

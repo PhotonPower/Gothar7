@@ -105,6 +105,10 @@ struct MovementSettings
     SwimSettings swim;
     CameraSettings camera;
     IndoorCameraSettings indoor; ///< [camera.indoor]; unset values as outside
+    /// [camera.combat] (M11, K5): with the weapon drawn and an enemy locked; unset values as outside. Indoors
+    /// the nearer of the two counts.
+    CameraSettings combat;
+    f32 combatBlendSeconds = 0.4f;
 
     /// From data/movement.toml; missing keys keep their defaults, wrong types or values are errors.
     [[nodiscard]] static Result<MovementSettings> parse(std::string_view toml, std::string_view source);

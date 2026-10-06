@@ -398,6 +398,68 @@ def axe(seg: int) -> list[Mesh]:
     return [handle, head]
 
 
+def _vanes(mesh: Mesh, y0: float, y1: float, r0: float, r1: float, count: int) -> None:
+    """Thin flat vanes standing off the shaft (feathers of an arrow, vanes of a bolt): one flat
+    section per vane, rotated about +Y; the first lies in the item +Z plane."""
+    path = np.array([[0.0, y0, 0.0], [0.0, y1, 0.0]])
+    for k in range(count):
+        a = 2 * np.pi * k / count
+        rot = np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]])
+        flat = np.array([[r0, -0.0004], [r1, -0.0004], [r1, 0.0004], [r0, 0.0004]]) @ rot.T
+        loft(mesh, path, [flat, flat], ref=(1.0, 0.0, 0.0), tile=0.05)
+
+
+def _projectile(length: float, radius: float, head: float, vanes: int, vane_len: float,
+                vane_width: float, seg: int) -> list[Mesh]:  # fmt: skip
+    """Arrow or bolt: shaft along +Y, the origin in the middle (centre of mass: projectile,
+    stuck in a target, held in the middle), an iron head at +Y and vanes at the back end."""
+    half = length / 2
+    shaft = Mesh("wood")
+    loft(shaft, np.array([[0, -half, 0], [0, half - head, 0]]),
+         [circle(radius, max(4, seg))] * 2, tile=0.3)  # fmt: skip
+    tip = Mesh("iron_forged")
+    loft(tip, np.array([[0, half - head - 0.004, 0], [0, half - head * 0.45, 0], [0, half, 0]]),
+         [circle(radius * 1.2, 4), circle(radius * 2.0, 4, phase=0.0), circle(radius * 0.08, 4)],
+         tile=0.05)  # fmt: skip
+    feather = Mesh("feather")
+    _vanes(feather, -half + 0.015, -half + 0.015 + vane_len, radius, radius + vane_width, vanes)
+    return [shaft, tip, feather]
+
+
+def arrow(seg: int) -> list[Mesh]:
+    return _projectile(0.75, 0.004, 0.05, 3, 0.11, 0.012, seg)
+
+
+def bolt(seg: int) -> list[Mesh]:
+    return _projectile(0.35, 0.006, 0.045, 2, 0.07, 0.011, seg)
+
+
+def crossbow(seg: int) -> list[Mesh]:
+    """Crossbow: origin at the grip (right hand, trigger), the stock along +Y to the front
+    (contract: the longest axis), the prod across it (item X) at the front end, the string spanned
+    across, +Z up. The cbow clips hold the stock in the fist (socket +Y forward)."""
+    stock = Mesh("wood")
+    ys = np.array([-0.3, -0.12, -0.02, 0.1, 0.42, 0.5])
+    width = np.array([0.04, 0.035, 0.03, 0.032, 0.03, 0.034])
+    height = np.array([0.1, 0.06, 0.05, 0.04, 0.035, 0.04])
+    zoff = np.array([-0.03, -0.01, 0.0, 0.02, 0.02, 0.02])
+    path = np.stack([np.zeros_like(ys), ys, zoff], axis=1)
+    sections = [np.array([[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]])
+                for w, h in zip(width, height, strict=True)]  # fmt: skip
+    loft(stock, path, sections, ref=(0.0, 0.0, 1.0), tile=0.3)
+    prod = Mesh("iron_forged")
+    xs = np.linspace(-0.3, 0.3, 11)
+    bend = 0.06 * (xs / 0.3) ** 2  # the limb tips bend back towards the shooter
+    limb = circle(1.0, max(4, seg // 2)) * np.array([0.008, 0.012])
+    loft(prod, np.stack([xs, 0.47 - bend, np.full_like(xs, 0.035)], axis=1),
+         [limb * (1 - 0.4 * abs(x) / 0.3) for x in xs], ref=(0.0, 0.0, 1.0), tile=0.1)  # fmt: skip
+    string = Mesh("leather")
+    for side in (-1, 1):
+        loft(string, np.array([[side * 0.3, 0.41, 0.035], [0.0, 0.16, 0.04]]),
+             [circle(0.0015, 4)] * 2, tile=0.05)  # fmt: skip
+    return [stock, prod, string]
+
+
 ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_sword_old": (lambda s: sword(s, rust=True), 12),
     "it_sword_crude": (lambda s: sword(s, rust=False), 12),
@@ -411,6 +473,9 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_broom": (broom, 12),
     "it_mug": (mug, 14),
     "it_axe": (axe, 12),
+    "it_arrow": (arrow, 5),
+    "it_bolt": (bolt, 5),
+    "it_crossbow": (crossbow, 10),
 }
 
 # textures: name -> (source below the item sources folder, size, colour factor) or procedural
@@ -421,7 +486,7 @@ TEXTURES: dict[str, tuple[str, int, tuple[float, float, float]]] = {
     "bark": ("Bark012/Bark012_1K-JPG_Color.jpg", 512, (0.62, 0.5, 0.4)),  # darker, browner
     "wood_dark": ("Wood060/Wood060_1K-JPG_Color.jpg", 256, (0.85, 0.8, 0.75)),
 }
-PROCEDURAL = ("iron_forged", "apple", "bread", "glass_red", "cork", "straw")
+PROCEDURAL = ("iron_forged", "apple", "bread", "glass_red", "cork", "straw", "feather")
 
 
 def procedural_texture(name: str, size: int = 256) -> np.ndarray:
@@ -450,6 +515,10 @@ def procedural_texture(name: str, size: int = 256) -> np.ndarray:
         streak = value_noise(size, 64, rng)[:, :1].repeat(size, axis=1).T
         c = np.array([0.62, 0.5, 0.3])[None, None] * (0.6 + 0.6 * streak[..., None])
         return np.clip(c * (0.85 + 0.3 * n2[..., None]), 0, 1)
+    if name == "feather":  # grey-brown vanes with fine streaks along v
+        streak = value_noise(size, 96, rng)[:, :1].repeat(size, axis=1).T
+        c = np.array([0.66, 0.6, 0.52])[None, None] * (0.75 + 0.35 * streak[..., None])
+        return np.clip(c * (0.9 + 0.2 * n2[..., None]), 0, 1)
     if name == "cork":
         return np.clip(np.array([0.55, 0.4, 0.24])[None, None] * (0.7 + 0.5 * n2[..., None]), 0, 1)
     raise ValueError(f"unknown procedural texture {name}")
@@ -588,6 +657,7 @@ LENGTHS = {
     "it_bow_short": (1.0, 1.4), "it_apple": (0.06, 0.1), "it_bread": (0.15, 0.3),
     "it_potion_heal_small": (0.12, 0.2), "it_lockpick": (0.1, 0.2), "it_key": (0.07, 0.15),
     "it_broom": (1.2, 1.6), "it_mug": (0.09, 0.15), "it_axe": (0.6, 0.9),
+    "it_arrow": (0.7, 0.8), "it_bolt": (0.3, 0.4), "it_crossbow": (0.75, 0.9),
 }  # fmt: skip
 
 

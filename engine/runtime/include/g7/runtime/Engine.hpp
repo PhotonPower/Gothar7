@@ -475,7 +475,14 @@ public:
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
+    /// 0 .. 1: the combat profile of the camera ([camera.combat], M11 K5).
+    [[nodiscard]] f32 playerCombatBlend() const noexcept { return m_combatBlend; }
     [[nodiscard]] f32 playerCameraDistance() const noexcept { return m_playerCamera.distance(); }
+    /// K5: the enemy the hero has locked while his weapon is drawn (its Npc instance).
+    [[nodiscard]] std::optional<std::string> heroCombatTarget() const;
+    /// K7: takes `count` (0: all) of `item` from a knocked out or dead NPC next to the hero; returns how
+    /// many.
+    Result<u32> loot(std::string_view npc, std::string_view item, u32 count);
     /// Picks the n-th entry (from 0) of the menu shown (an Info, an answer, "Ende").
     void dialogChoose(usize index);
     /// Skips the line being said.
@@ -791,15 +798,41 @@ private:
     struct Combatant;
     void loadCombat();
     void bindCombatFunctions();
+    void bindLootFunctions();
     void fixedUpdateCombat(f32 seconds);
     [[nodiscard]] std::optional<Combatant> combatant(u32 id);
     [[nodiscard]] std::string
     meleeWeapon(const Combatant& c) const; ///< drawn/equipped melee item, empty: fists
     [[nodiscard]] std::string fightMode(const Combatant& c) const; ///< "fist", "1h", "2h"
+    [[nodiscard]] f32 reachOf(const Combatant& c) const;           ///< m beyond the bodies
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
     void stopForFight(Creature& c);
-    void loadVoiceLines(); // voice/lines.<language>.json: the keys of the spoken lines
+    void readCombatInput(); // K1: Gothic 1 keys, the mouse as second assignment
+    void fixedUpdateHeroFight(gameplay::MoveInput& input, f32 seconds); // moves, lock (K5)
+    [[nodiscard]] std::optional<u32> pickCombatTarget() const;
+    [[nodiscard]] bool focusedNpcLying() const;
+    // Ranged (M11 part E, EngineRanged.cpp).
+    struct Projectile
+    {
+        Vec3 position{0.0f};
+        Vec3 velocity{0.0f};
+        std::string ammo;
+        u32 shooter = 0; ///< creature id, ~0: the hero
+        gameplay::DamageByType damage;
+        f32 seconds = 0.0f;
+    };
+    [[nodiscard]] std::string rangedWeapon() const; ///< the hero's equipped bow or crossbow
+    [[nodiscard]] bool rangedIsCrossbow(std::string_view item) const;
+    void toggleRanged();
+    [[nodiscard]] std::optional<Vec3> aimPoint(u32 creatureId) const;
+    Result<void> shootRanged();
+    void fixedUpdateProjectiles(f32 seconds);
+    void projectileHit(const Projectile& p, u32 targetId);
+    void drawProjectiles();
+    void bindRangedFunctions();
+    Result<void> lootFocus(); // opens the inventory with the lying NPC's belongings
+    void loadVoiceLines();    // voice/lines.<language>.json: the keys of the spoken lines
     /// Key of a spoken line: dialogue "<info>_NN", else the NPC's shout "svm_<voice>_<m|f>_<occasion>_NN";
     /// empty if the voice database does not know the text.
     [[nodiscard]] std::string voiceKey(std::string_view info, std::string_view npc,
@@ -980,7 +1013,9 @@ private:
     physics::CharacterController m_player;
     gameplay::PlayerMovement m_movement;
     gameplay::ThirdPersonCamera m_playerCamera;
-    f32 m_indoorBlend = 0.0f; // 0 outside .. 1 inside (a roof above the hero): the camera's indoor profile
+    f32 m_indoorBlend = 0.0f;
+    f32 m_combatBlend = 0.0f; // 0 .. 1: weapon drawn and an enemy locked (M11, K5) // 0 outside .. 1 inside
+                              // (a roof above the hero): the camera's indoor profile
     gameplay::MovementSettings m_movementSettings;
     asset::Handle<gameplay::MovementSettings> m_movementData; // data/movement.toml, hot reload
     u32 m_movementVersion = 0;
@@ -1115,6 +1150,17 @@ private:
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
     std::vector<u32> m_heroHitThisSwing;
+    struct CombatRequest
+    {
+        std::string move; ///< "attack", "parry", "dodge"
+        gameplay::AttackKind kind = gameplay::AttackKind::Front;
+    };
+    std::optional<CombatRequest> m_combatRequest; // read per frame, used by the next fixed step
+    std::optional<u32> m_combatTarget;            // K5: the locked enemy while the weapon is drawn
+    std::optional<u32> m_lootTarget;              // K7: whose belongings the inventory window shows
+    std::vector<Projectile> m_projectiles;        // arrows and bolts in flight (M11 part E)
+    f32 m_rangedReload = 0.0f;                    // R2: seconds until the next shot
+    bool m_drawRangedRequested = false;
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)

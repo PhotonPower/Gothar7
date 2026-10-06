@@ -376,7 +376,8 @@ bool Engine::runFrame()
             {
                 mobInput();
             }
-            else if (actionKey && !m_inventoryOpen && m_player.valid() && !m_flyMode && m_focus)
+            else if (actionKey && !m_inventoryOpen && m_player.valid() && !m_flyMode && m_focus &&
+                     m_weaponMode == 0) // with the weapon drawn the action key fights (M11, K1)
             {
                 if (m_focus->kind == gameplay::FocusKind::Item)
                 {
@@ -385,6 +386,11 @@ bool Engine::runFrame()
                 else if (m_focus->kind == gameplay::FocusKind::Mob)
                 {
                     (void)useFocusedMob();
+                }
+                else if (m_focus->kind == gameplay::FocusKind::Npc &&
+                         focusedNpcLying()) // M11: the knocked out and the dead are looted
+                {
+                    (void)lootFocus();
                 }
                 else if (m_focus->kind == gameplay::FocusKind::Npc && m_playerInput.sneak)
                 {
@@ -420,6 +426,7 @@ bool Engine::runFrame()
         fixedUpdateMobs(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateProjectiles(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateDialog(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {
@@ -1713,6 +1720,7 @@ void Engine::drawScene(u32 width, u32 height)
     // The player before the batched pass: that one ends with the translucent water, which must lie over
     // the figure's parts below the surface.
     drawPlayer(false, 0);
+    drawProjectiles(); // arrows and bolts in flight (M11)
     drawCreatures(false, 0);
     if (m_multiDraw)
     {

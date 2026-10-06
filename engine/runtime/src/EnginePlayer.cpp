@@ -213,6 +213,14 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
     {
         m_drawWeaponRequested = true; // until the next fixed step uses it (M9 part C)
     }
+    if (allowKeyboard && !m_flyMode && m_actions.pressed(m_input, Action::DrawRanged))
+    {
+        m_drawRangedRequested = true; // M11 (R1)
+    }
+    if (allowKeyboard && !m_flyMode && m_weaponMode != 0)
+    {
+        readCombatInput(); // M11 (K1): fighting keys instead of moving while the action key is held
+    }
     if (m_playerMouse)
     {
         m_playerInput.mouseTurn += m_input.mouseDelta().x;
@@ -236,7 +244,8 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     {
         input = {}; // the hero stands while picking something up or looking into his bag (Gothic)
     }
-    m_playerInput.mouseTurn = 0.0f; // used up by this step
+    fixedUpdateHeroFight(input, seconds); // M11: the fighting moves and the target lock
+    m_playerInput.mouseTurn = 0.0f;       // used up by this step
     m_playerInput.jump = false;
     m_playerYawBefore = m_movement.yaw();
     m_playerFeetBefore = m_playerFeet;
@@ -412,9 +421,22 @@ void Engine::updatePlayerCamera(f64 realSeconds)
                             ? 1.0f - std::exp(-static_cast<f32>(realSeconds) / indoor.blendSeconds)
                             : 1.0f;
     m_indoorBlend += ((roof ? 1.0f : 0.0f) - m_indoorBlend) * towards;
+    // Fighting (M11, K5): weapon drawn and an enemy locked - the combat profile; indoors the nearer one.
+    const bool fighting = m_weaponMode != 0 && m_combatTarget.has_value();
+    const f32 combatTowards =
+        m_movementSettings.combatBlendSeconds > 0.0f
+            ? 1.0f - std::exp(-static_cast<f32>(realSeconds) / m_movementSettings.combatBlendSeconds)
+            : 1.0f;
+    m_combatBlend += ((fighting ? 1.0f : 0.0f) - m_combatBlend) * combatTowards;
+    const gameplay::CameraSettings around =
+        gameplay::blendCamera(m_movementSettings.camera, indoor.camera, m_indoorBlend);
+    gameplay::CameraSettings combat = m_movementSettings.combat;
+    combat.distance = std::min(combat.distance, around.distance);
+    combat.minDistance = std::min(combat.minDistance, combat.distance);
+    combat.targetHeight = std::min(combat.targetHeight, around.targetHeight);
+    combat.collisionRadius = around.collisionRadius;
     m_playerCamera.update(static_cast<f32>(realSeconds), feet, m_movement.yaw(), m_playerPitchPixels,
-                          gameplay::blendCamera(m_movementSettings.camera, indoor.camera, m_indoorBlend),
-                          obstruction);
+                          gameplay::blendCamera(around, combat, m_combatBlend), obstruction);
     m_playerPitchPixels = 0.0f;
     Vec3 eye = m_playerCamera.position();
     // Above the water while swimming: no under-water view until M17.

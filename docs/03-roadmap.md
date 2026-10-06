@@ -234,15 +234,15 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 **Meilenstein B vom Projektinhaber abgenommen, 2026-10-05** („Testlager ist ok“).
 
 ## M11 – Kampf
-- [ ] Waffenmodi (Faust, Einhand, Zweihand, Bogen, Armbrust), Ziehen/Wegstecken
-- [ ] Kameramodus „Kampf“ der Third-Person-Kamera (aus M5: näher, Blick auf den Gegner bei Ziel-Lock)
-- [ ] Nahkampf: Angriffe mit Treffer-Fenstern aus Animations-Events, Kombos abhängig vom Talent, Parieren, Ausweichschritt
+- [x] Waffenmodi (Faust, Einhand, Zweihand, Bogen, Armbrust), Ziehen/Wegstecken – Fernkampfwaffen mit eigener Taste (R1)
+- [x] Kameramodus „Kampf“ der Third-Person-Kamera (aus M5: näher, Blick auf den Gegner bei Ziel-Lock) – `[camera.combat]`, weich überblendet, drinnen der nähere Abstand (K5)
+- [x] Nahkampf: Angriffe mit Treffer-Fenstern aus Animations-Events, Kombos abhängig vom Talent, Parieren, Ausweichschritt – Gothic-1-Tasten, Maus als Zweitbelegung; bis zu den Clips eine Zeitleiste (A, B)
 - [ ] Trefferprüfung (Waffen-Shapecast entlang der Animation), Treffer-Reaktionen, Rückstoß
 - [x] Schadensmodell: Schadensarten × Schutzwerte, kritische Treffer abhängig vom Talent – Waffe + Stärke − Schutz, mindestens 5, kritisch 0/10/20 % (K2, K3; Teil A)
-- [ ] Fernkampf: Zielen, Projektile mit Ballistik, Munition
-- [ ] Bewusstlosigkeit vs. Tod, Plündern
-- [ ] Kampf-KI: Abstand halten, Angriffsmuster pro Gegnertyp, Gruppenkampf, Rückzug
-- [ ] Ziel-Lock im Kampf
+- [x] Fernkampf: Zielen, Projektile mit Ballistik, Munition – Bogen und Armbrust des Helden, Trefferchance nach Talent auf das Ziel, Pfeile bleiben stecken bzw. liegen (R1–R4; E)
+- [x] Bewusstlosigkeit vs. Tod, Plündern – bewusstlos 30 s, Schlag auf Liegende tötet, Plündern, Zeugen (K7; A, C)
+- [x] Kampf-KI: Abstand halten, Angriffsmuster pro Gegnertyp, Gruppenkampf, Rückzug – `ai/combat.lua`: zwei zugleich, Flucht bei wenig Leben, Tiere jagen (D)
+- [x] Ziel-Lock im Kampf – das nächste NPC, das fokussierte zuerst, vor dem Helden bevorzugt (K5; B)
 
 **DoD:** Kampf gegen Mensch, Wolfsrudel und einen starken Gegner fühlt sich responsiv an; Talentstufen sind spürbar.
 
@@ -456,7 +456,8 @@ Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine�
 - [ ] Mocap-Workflow testen (2–3 Dienste), Entscheidung dokumentieren
 - [ ] Mob-Interaktionen, Item-Benutzung, Ambient-Routinen, Dialog-Gesten
   - Stand: Platzhalter für M8 (Mobs, Items) und M9 (Routinen und Reaktionen nach engines Liste: Set `amb` mit Sitzen, Wache, Anlehnen, Reden, Zuhören, Schlafen, Lagerfeuer, Fegen, Krug, Schwerttraining, Holzhacken, Ernten, Gießen, Reparieren; Bank als Mob; `none/s_idle_look`, `t_idle_scratch`, `t_warn`, `t_point`, `t_surprised`, `t_search`); Dialog-Gesten für M10 als additive Clips `dlg/a_*` gegen die Referenz `dlg/a_neutral` (Vertrag §3.2, Validator `anim.additive`)
-- [ ] Nahkampf je Talentstufe, Fernkampf, Magie, Treffer/Tod/Bewusstlos
+- [ ] Nahkampf (Talent über die Abspielrate), Fernkampf, Magie, Treffer/Tod/Bewusstlos
+  - Stand: Platzhalter für M11 Teil A (2026-10-05, Vertrag mit engine): `none/t_hit_light`, `t_die_front/back`, `t_ko`, `s_ko`, `t_ko_getup`; `fist/t_attack_combo1..2`, `t_parry`; `1h/t_attack_combo1..4`, `t_attack_l/r`, `t_parry`, `t_dodge_back` – Events `hit_*` und `combo_*`, jeder Angriff aus und in die Kampfhaltung (Rezept `framed`); Teil B: `2h` (dieselben Namen, linke Hand per `two_hands` am Griff), `bow/s_aim`, `t_shoot` (Event `release`), `t_reload`, `cbow` ebenso – damit alle 31 Kampf-Clips von engines Liste als Platzhalter
 - [ ] Alle **Prio-B**-Animationen fertig
 
 **DoD:** Vertical Slice (Meilenstein B) ohne Platzhalter-Animationen.
@@ -472,5 +473,6 @@ Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine�
 ## F6 – Waffen & Handgegenstände  (benötigt F1; für M8–M11)
 - [x] Erste Stücke, realistisch und texturiert: `it_sword_old` (rostig, schartig), `it_sword_crude` (frisch geschmiedet), `it_club`, `it_bow_short`, `it_apple`, `it_bread`, `it_potion_heal_small`, `it_lockpick`, `it_key` (ein Modell für alle Schlüssel) – `gothar-chargen build-items` (eigene Geometrie per Code, ambientCG-Texturen), Socket-Ausrichtung mit engine abgestimmt (characters-pipeline.md §3.1, §6.3), Validator `item.*` in CI, Prüfbilder jedes Stücks am Socket einer Testfigur
 - [ ] Weitere Waffen und Gegenstände nach Bedarf von M10/M11 (Zweihänder, Armbrust, Pfeile, Fackel, Spruchrollen …)
+  - Stand: `it_arrow`, `it_bolt` (Ursprung Schaftmitte, mit engine abgestimmt), `it_crossbow` (2026-10-05, M11)
 
 **DoD:** Die Gegenstände liegen in der Welt (M8) und sitzen in der Hand bzw. am Gürtel und Rücken (M10/M11).

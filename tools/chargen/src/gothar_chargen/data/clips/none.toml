@@ -222,3 +222,61 @@ params = { base = "none/s_idle", keys = [[0, "rest"], [6, "jolt"], [30, "jolt"],
 name = "none/t_search"
 keyframe = "keyposes"
 params = { base = "none/s_idle", keys = [[0, "rest"], [22, "left"], [50, "left"], [80, "right"], [108, "right"], [130, "rest"]], poses = { left = { rotate = { spine_02 = [["Z", 25], ["X", 8]], neck = [["Z", 20]], head = [["Z", 10]] } }, right = { rotate = { spine_02 = [["Z", -25], ["X", 8]], neck = [["Z", -20]], head = [["Z", -10]] } } } }
+
+# --- hits, death, knock-out (M11) ---
+
+[[clip]]
+name = "none/t_hit_light"
+from = "ual1:Hit_Chest"
+
+[[clip]]
+name = "none/t_die_src"
+from = "ual1:Death01"
+helper = true
+
+[[clip]]
+name = "none/t_knock_src"
+from = "ual2:Hit_Knockback"
+helper = true
+
+[[clip]]
+name = "none/t_getup_src"
+from = "ual2:LayToIdle"
+helper = true
+
+[[clip]]
+name = "none/t_die_back"          # falls onto the back and stays lying (no loop)
+from = "ual1:Death01"
+
+[[clip]]
+name = "none/t_die_front"         # own keyframes: staggers, sinks to the knees, falls on the face
+keyframe = "keyposes"
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [6, "hit"], [16, "knees"], [26, "fall"], [32, "prone"], [50, "prone"]]
+[clip.params.poses.hit]
+rotate = { spine_01 = [["X", 12]], spine_02 = [["X", 10]], neck = [["X", 10]] }
+move = { pelvis = [0, -0.05, -0.05] }
+[clip.params.poses.knees]
+rotate = { pelvis = [["X", 15]], spine_02 = [["X", 15]], thigh_l = [["X", -75]], thigh_r = [["X", -70]], calf_l = [["X", 110]], calf_r = [["X", 105]], upperarm_l = [["X", -20]], upperarm_r = [["X", -20]] }
+move = { pelvis = [0, -0.1, -0.45] }
+[clip.params.poses.fall]
+rotate = { pelvis = [["X", 65]], spine_02 = [["X", 5]], thigh_l = [["X", -30]], thigh_r = [["X", -25]], calf_l = [["X", 50]], calf_r = [["X", 45]], upperarm_l = [["X", -70]], upperarm_r = [["X", -70]] }
+move = { pelvis = [0, -0.35, -0.7] }
+[clip.params.poses.prone]
+rotate = { pelvis = [["X", 88]], neck = [["Z", 30]], thigh_l = [["X", -5]], thigh_r = [["X", 0]], calf_l = [["X", 10]], calf_r = [["X", 5]], upperarm_l = [["X", -150], ["Z", 20]], upperarm_r = [["X", -150], ["Z", -20]] }
+move = { pelvis = [0, -0.55, -0.82] }
+
+[[clip]]
+name = "none/t_ko"                # knocked out: thrown back onto the back, ends in the s_ko pose
+from = "ual2:Hit_Knockback"
+
+[[clip]]
+name = "none/s_ko"                # lying unconscious, breathing (the last pose of t_ko)
+keyframe = "hold"
+params = { base = "none/t_ko", frame = -1, frames = 60 }
+
+[[clip]]
+name = "none/t_ko_getup"          # gets up from the s_ko pose
+keyframe = "framed"
+params = { base = "none/t_getup_src", stance = "none/s_ko", stance_frame = 0, fade_in = 8, fade_out = 0 }
