@@ -935,6 +935,17 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   Mitte, Achse, Breite, Höhe). Leonberg: Gasthaus 72 + 51 m², Krämer 45 + 30, Schmiede 44 + 28, Zl2-T2 45 + 23 + 22,
   ZjV 44 + 4 × 42 m². Die Wände, die nach dem Ausschneiden des Raums stehen bleiben, zerfallen in konvexe
   Kollisionsteile ohne Splitter-Zusammenlegung (sonst wuchs etwa in der Schmiede eine Hülle 1 m in den Raum).
+- **Fenster mit Tageslicht** (Schritt 2, Entscheidung Koordinator 2026-10-06): Im Raumgeschoss ist jedes zweite Fenster
+  einer Fassade offen (das erste von links; die Wände dazwischen bleiben für Regale und Theken frei), die übrigen
+  bleiben geschlossen wie bisher. Offen heißt: Laibung durch die ganze Wand ohne Scheibe, in der Wandmitte ein
+  Fensterkreuz aus Eichenleisten, außen zwei offene Läden flach an der Fassade; die Innenwand des Raums hat dort ein
+  Loch (die Wände sind jetzt Polygone mit Tür- und Fensterlöchern). Kreuz und Läden gehören zum Raum (außerhalb des
+  Hausbudgets), nur in lod0. Der Index bekommt `interior.windows` (Innenkante von–bis, Brüstung, Sturz, Normale nach
+  außen). C2: Hohe Dinge (Herd, Regale, Schanktheke, Wandbretter, Kistenstapel, das Regal der Ladentheke) halten
+  0,8 m vor und 0,3 m neben einem offenen Fenster frei; je Raum bis zu zwei Fenster-Lichter 0,8 m innen auf halber
+  Fensterhöhe, möglichst an verschiedenen Wänden, mit `components.light.daylight` (engine #225: Farbe und
+  Helligkeit vom Himmel, nachts aus). Blasebalg und Löschtrog werden direkt nach dem Herd gestellt, Ladentheke und
+  Schanktheke vor Tisch und Betten.
 - **Gelände unter dem Raum:** `export-terrain` senkt die Heightmap unter jedem Raum (Index `interior.ring`, um eine
   Zelle vergrößert) auf 2 cm unter den Boden, nur absenkend (`export/pads.py` `room_pads`); sonst ragt am Hang das
   Gelände bergseitig durch den Boden (vorher bis 1,1 m, Schmiede). Außen läuft die Senke über 1,5 m ins Gelände aus

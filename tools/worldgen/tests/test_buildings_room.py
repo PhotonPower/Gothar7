@@ -47,8 +47,10 @@ def test_room_geometry_and_record():
     assert d["normal"] == pytest.approx([0.0, 1.0]) and d["w"] == pytest.approx(1.0)
     assert d["from"][1] == pytest.approx(-wall) and d["to"][1] == pytest.approx(-wall)
     assert len(r.primitives) >= len(plain.primitives) + 3  # walls, floor, ceiling, beams
-    # the room lies outside the house budget: the outside keeps its timber level
-    assert abs(r.triangles - plain.triangles) <= 4 and r.timber_level == plain.timber_level
+    # the room lies outside the house budget: the outside keeps its timber level; its open
+    # windows only lose their panes (two triangles each)
+    panes = 2 * len(room["windows"])
+    assert abs(r.triangles - plain.triangles) <= panes + 4 and r.timber_level == plain.timber_level
 
 
 def stone_tris(result) -> int:  # noqa: ANN001
@@ -163,3 +165,42 @@ def test_no_collision_reaches_into_a_skewed_room():
                         assert not solid(r, float(x), 1.0, float(z)), (x, z)
     finally:
         ORIGIN = keep
+
+
+def test_windows_of_the_room_are_open():
+    r = house({"use": "wohnhaus"})
+    wins = r.room["windows"]
+    assert len(wins) >= 4
+    wall = RULES.data["interior"]["wallM"]
+    for w in wins:
+        assert w["top"] - w["sill"] == pytest.approx(1.0, abs=0.05) and w["sill"] > 0.5
+        (fx, fz), (tx, tz) = w["from"], w["to"]
+        mx, mz = (fx + tx) / 2, (fz + tz) / 2
+        nx, nz = w["normal"]  # outwards
+        y = (w["sill"] + w["top"]) / 2 - 0.25  # below the cross bar
+        # open through the whole wall, from the room's face out to the facade
+        for d in (0.05, wall / 2 + 0.06, wall - 0.05):
+            px, pz = mx + nx * d + (tx - fx) * 0.2, mz + nz * d + (tz - fz) * 0.2
+            assert not solid_mesh(r, px, y, pz, nx, nz), (w, d)
+
+
+def solid_mesh(result, x: float, y: float, z: float, nx: float, nz: float) -> bool:  # noqa: ANN001
+    """A ray from inside the room outwards along the window's normal hits geometry before 0.4 m."""
+    o = np.array([x - nx * 0.06, y, z - nz * 0.06]) - ORIGIN
+    d = np.array([nx, 0.0, nz])
+    for p in result.primitives:
+        pts = p.mesh.positions.astype(float)
+        tri = pts[p.mesh.indices.reshape(-1, 3)]
+        e1, e2 = tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]
+        h = np.cross(d, e2)
+        det = np.einsum("ij,ij->i", e1, h)
+        ok = np.abs(det) > 1e-9
+        f = np.where(ok, 1 / np.where(ok, det, 1), 0)
+        s_ = o - tri[:, 0]
+        u = f * np.einsum("ij,ij->i", s_, h)
+        q = np.cross(s_, e1)
+        v = f * (q @ d)
+        t = f * np.einsum("ij,ij->i", e2, q)
+        if np.any(ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 0) & (t < 0.12)):
+            return True
+    return False
