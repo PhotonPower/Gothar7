@@ -242,7 +242,7 @@ def generate(
         list[tuple[list[Primitive], list[CollisionPart], tuple[float, float, float]]],
     ] = defaultdict(list)
     by_hash: dict[str, str] = {}
-    rooms_out: list[tuple[dict[str, Any], str, dict[str, list[Primitive]]]] = []  # W7
+    rooms_out: list[Any] = []  # W7: (entry, stem, prims and COL_ box per room)
     deferred: list[tuple[dict[str, Any], str, list[Primitive], list[CollisionPart],
                          tuple[float, float, float]]] = []  # fmt: skip
     lod_spec = rules.data.get("lod", {}) if (mode == "medieval" and rules is not None) else {}
@@ -403,7 +403,7 @@ def generate(
                 entry["doors"] = [list(d) for d in house.doors]
             if mode == "medieval" and house.room:  # W7: the room of an enterable house
                 entry["interior"] = house.room
-                rooms_out.append((entry, stem, room_prims))
+                rooms_out.append((entry, stem, room_prims, dict(house.room_cols)))
             entries.append(entry)
         else:
             cells[(math.floor(c.x / CELL_M), math.floor(c.y / CELL_M))].append(
@@ -441,10 +441,10 @@ def generate(
             if preview and lod_prims[preview - 1]:
                 prims, lod_prims = lod_prims[preview - 1], []
         entry["mesh"] = emit(stem, prims, parts, lod_prims)
-    for entry, stem, by_room in rooms_out:  # W7: each room its own mesh (its own lights)
+    for entry, stem, by_room, cols in rooms_out:  # W7: each room its own mesh (its own lights)
         if by_room:
             entry["interior"]["meshes"] = {
-                name: emit(f"{stem}_room_{name.lower()}", room, [])
+                name: emit(f"{stem}_room_{name.lower()}", room, cols.get(name, []))
                 for name, room in by_room.items()
             }
 

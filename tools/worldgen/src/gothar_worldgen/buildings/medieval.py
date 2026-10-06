@@ -732,6 +732,7 @@ class HouseResult:
     masses: list[Mass] = field(default_factory=list)  # the (steepened) masses, for lod 2
     room: dict[str, Any] | None = None  # W7: the enterable ground storey (door, floor, ceiling)
     room_prims: dict[str, list[Primitive]] = field(default_factory=dict)  # W7: per room
+    room_cols: dict[str, list[CollisionPart]] = field(default_factory=dict)  # their COL_ box
 
 
 class _SagRoof(_Roof):
@@ -2149,6 +2150,7 @@ def build_house(
         prims = [Primitive(name(r), rules.color(materials[r]), builders[r].mesh())
                  for r in ROLES if builders[r].idx and not (split and r in ROOM_ROLES)]  # fmt: skip
         room_prims: dict[str, list[Primitive]] = {}
+        room_cols: dict[str, list[CollisionPart]] = {}
         if split:
             origin3 = (origin_xz[0], base_y, origin_xz[1])
             for r in ROOM_ROLES:
@@ -2159,6 +2161,15 @@ def build_house(
                     room_prims.setdefault(room_name, []).append(
                         Primitive(name(r), rules.color(materials[r]), mesh)
                     )
+            # a model without COL_ collides with all its triangles (asset.md): each room gets one
+            # small box just above its ceiling, inside the house's solid storey above
+            top = float((ctx.room or {}).get("ceiling", base_y))
+            for room_name, poly in ctx.room_parts:
+                c = poly.representative_point()
+                square = Polygon([(c.x - 0.1, c.y - 0.1), (c.x + 0.1, c.y - 0.1),
+                                  (c.x + 0.1, c.y + 0.1), (c.x - 0.1, c.y + 0.1)])  # fmt: skip
+                room_cols[room_name] = [prism_body(square, top + 0.05, top + 0.12, origin3,
+                                                   "COL_BOX_0")]  # fmt: skip
         # the weathering splits walls into a few more triangles and the room (W7) lies outside
         # the house budget: neither costs timber
         tris = sum(len(builders[r].idx) // 3 for r in ROLES
@@ -2182,7 +2193,8 @@ def build_house(
             col = CollisionResult(parts, collision.fallback, collision.decomposed)
         result = HouseResult(prims, tris, [*notes, *massing.notes, *level_notes], level, style,
                              steepened, round(ctx.max_sag, 3), dormers, chimneys,
-                             col, list(ctx.doors), list(masses), ctx.room, room_prims)  # fmt: skip
+                             col, list(ctx.doors), list(masses), ctx.room, room_prims,
+                             room_cols)  # fmt: skip
         if lod or tris <= budget or not style.timber:
             break
     assert result is not None

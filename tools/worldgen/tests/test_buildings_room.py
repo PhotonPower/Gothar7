@@ -212,3 +212,16 @@ def solid_mesh(result, x: float, y: float, z: float, nx: float, nz: float) -> bo
         if np.any(ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 0) & (t < 0.12)):
             return True
     return False
+
+
+def test_room_meshes_collide_only_with_a_box_inside_the_house():
+    """A model without COL_ collides with all its triangles (asset.md): the room meshes carry one
+    small box above the ceiling, inside the house's own solid storey above the room."""
+    r = house({"use": "wohnhaus"})
+    assert sorted(r.room_cols) == sorted(r.room_prims)
+    for (box,) in r.room_cols.values():
+        assert box.name.startswith("COL_BOX_")
+        pts = box.positions.astype(float) + ORIGIN
+        assert pts[:, 1].min() > r.room["ceiling"]
+        x, y, z = pts.mean(axis=0)
+        assert solid(r, float(x), float(y), float(z))  # already solid: changes nothing
