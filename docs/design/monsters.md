@@ -9,7 +9,7 @@ Neue Rigs (Glemsmahr, Bergleu) sind Verträge mit engine und werden vorher über
 | Art (ID) | Rolle | Größe | Gefahr | Skelett | Stand |
 |---|---|---|---|---|---|
 | **Schinder** (`schinder`) | Aasfresser im Rudel | 0,8 m Schulter | gering, im Rudel mittel | vom Wolf abgeleitet | Mesh, Rig, 15 Clips (2026-10-07) |
-| **Quaderbuckel** (`quaderbuckel`) | gepanzerter Steinbruch-Bewohner | 1,8 m lang, 0,9 m hoch | mittel | vom Keiler abgeleitet + Stirnschild | offen |
+| **Quaderbuckel** (`quaderbuckel`) | gepanzerter Steinbruch-Bewohner | 1,8 m lang, 0,84 m hoch | mittel | vom Keiler abgeleitet + Stirnschild | Mesh, Rig, 17 Clips (2026-10-07) |
 | **Glemsmahr** (`glemsmahr`) | Nachtjäger im Glemswald | geduckt 1,5 m, aufgerichtet 2,3 m | hoch (früh) | neues Rig (~45 Knochen) | offen |
 | **Bergleu** (`bergleu`) | Boss: das Wappentier vom Engelberg | 1,6 m Schulter, 3,2 m lang | sehr hoch | neues Katzen-Rig (~50 Knochen) | offen |
 
@@ -35,7 +35,20 @@ Hals und Kopf, dunkler Borstenkamm, quer gestreifte Flanken, buschiger Schwanz m
 Gepanzerter Bewohner der alten Sandsteinbrüche: Rücken aus Platten, die wie behauene Sandsteinquader aussehen.
 Friedlich, bis man ihm zu nahe kommt; warnt mit Stampfen und Knirschen, dann Rammstoß, der umwirft. Von vorn zieht
 er den Kopf unter den Stirnschild – Klingen prallen ab; Flanke und Bauch sind verwundbar, stumpfe Waffen und Magie
-wirken besser. Beute: Panzerplatten (Schild-Handwerk), Fleisch. Sonderclips: `s_block`, `t_ram`.
+wirken besser. Beute: Panzerplatten (Schild-Handwerk), Fleisch.
+
+- **Tempo (mit engine, 2026-10-07):** Gehen 0,8, Rennen 3,5 (langsamer als der Held: man kann ihm davonlaufen),
+  Anrennen `s_charge` 4,5 m/s am Ort (ohne Root Motion), beim Aufprall `t_attack_1` (Rammstoß, `hit_start`/`hit_end`;
+  das Umwerfen setzt engine).
+- **Stirnschild (Vertrag mit engine, 2026-10-07):** Knochen `brow_shield` unter `chest` (nicht unter `neck_01`):
+  Translation gibt es nur auf root und pelvis, der Kopf taucht durch Beugen des Halses unter den stehenden Schild
+  (`t_block_in`, `s_block`, `t_block_out`). Dreht der Kopf zur Seite (`t_attack_2`), dreht der Schild nur etwas mit.
+  `socket_shield` ist Kind von `brow_shield` (Funken und Klang); ob ein Treffer „von vorn“ kommt, prüft engine über
+  den Winkel (±60°), kein eigener Kollisionskörper.
+- **Warnen:** `t_warn` (Stampfen, Plattenknirschen `sound:quaderbuckel_grind`) vor dem Angriff.
+- **Technik:** 29 Knochen, lod0 7956 Dreiecke: Körper, 60 starre Sandstein-Platten (Dachziegel-Reihen, die beim
+  Biegen überlappen), Stirnschild aus drei Blöcken, Steinknauf am Schwanz, kleine tiefliegende Augen, Maul mit
+  Gaumen, Zunge, dunklem Rachen und Hornkanten; Beschreibung `data/monsters/quaderbuckel.creature.toml`.
 
 ## Glemsmahr
 

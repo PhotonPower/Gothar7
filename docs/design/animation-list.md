@@ -262,6 +262,24 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `schinder/t_call` | Rudelruf: Kopf hochgeworfen, heulen | – | call, sound:schinder_call | K | platzhalter-K (mit engine 2026-10-07) |
 | `schinder/s_cower` | Unterlegen: tief geduckt, Ohren flach, Schwanz eingezogen, zittert | – | – | K | platzhalter-K (mit engine 2026-10-07) |
 
+### Quaderbuckel (`quaderbuckel`, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `quaderbuckel/s_idle` | Schwer stehen, atmen, Kopf pendelt | – | – | K | platzhalter-K |
+| `quaderbuckel/s_walk` | Gehen (stapfend, Kreuzgang) | ✓ 0,8 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `quaderbuckel/s_run` | Rennen (schwerfälliger Trab, langsamer als der Held) | ✓ 3,5 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `quaderbuckel/s_charge` | Anrennen mit gesenktem Schild, **am Ort** (Eigengeschwindigkeit) | 4,5 m/s | footstep_front/back_l/r | K | platzhalter-K (`gait` am Ort; mit engine 2026-10-07) |
+| `quaderbuckel/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K |
+| `quaderbuckel/t_attack_1` | Rammstoß: zurücksetzen, Stoß mit dem Schild (engine wirft um) | – | hit_start, hit_end | K | platzhalter-K |
+| `quaderbuckel/t_attack_2` | Kopf- und Hauerhieb zur Seite, dann Zuschnappen | – | hit_start, hit_end | K | platzhalter-K |
+| `quaderbuckel/t_hit` | Treffer | – | – | K | platzhalter-K |
+| `quaderbuckel/t_die` | Tod: Beine knicken weg, sinkt auf den Bauch | – | – | K | platzhalter-K |
+| `quaderbuckel/s_eat`, `s_sleep` | Flechten vom Stein schaben / eingegraben schlafen, Kopf unter dem Schild | – | – | K | platzhalter-K |
+| `quaderbuckel/t_threaten` | Drohen: Vorderleib hoch, Maul offen, Schwanz peitscht | – | – | K | platzhalter-K |
+| `quaderbuckel/t_warn` | Warnen: mit den Vorderfüßen stampfen, Platten knirschen | – | footstep_front_l/r, sound:quaderbuckel_grind | K | platzhalter-K (mit engine 2026-10-07) |
+| `quaderbuckel/t_block_in`, `s_block`, `t_block_out` | Kopf unter den Stirnschild ziehen, halten, wieder heraus (Klingen prallen von vorn ab) | – | – | K | platzhalter-K (mit engine 2026-10-07) |
+
 ## Prio C – später
 
 Akrobatik-Varianten, Gangarten (Militär, Frauen, Entspannt) als Varianten-Sets, zusätzliche

@@ -21,9 +21,11 @@ from gothar_chargen.creature import (
     fractal3,
     height_normal,
     load_creature,
+    matrix_euler,
     rasterize,
     shape_distance,
     srgb,
+    surface,
     surface_colour,
     zone_weights,
 )
@@ -313,3 +315,79 @@ def test_normals_from_height():
     assert blend_normals(up, tilted) == pytest.approx(tilted)
     big = np.arange(16.0).reshape(4, 4, 1)
     assert downsample(big, 2)[..., 0] == pytest.approx(np.array([[2.5, 4.5], [10.5, 12.5]]))
+
+
+QUADERBUCKEL = DATA / "quaderbuckel.creature.toml"
+QUADERBUCKEL_REF = (
+    REPO_ROOT / "assets/source/characters/monsters/quaderbuckel/rig/quaderbuckel_reference.glb"
+)
+
+
+def test_plate_shell(tmp_path):
+    extra = (
+        MINIMAL
+        + """
+[[shape]]
+kind = "plate_shell"
+zone = "dark"
+center = [0, 0.1, 0.5]
+size = [0.2, 0.4, 0.2]
+rows = [-0.2, 0.0, 0.2, 0.39]
+angles = [-40, 0, 40]
+plate = [0.05, 0.06, 0.01]
+tilt = 10
+bones = ["pelvis", "neck_01"]
+"""
+    )
+    c = load_creature(_write(tmp_path, extra))
+    plates = [s for s in c.shapes if s.kind == "plate"]
+    assert len(plates) == 9  # the row at 0.39 lies beyond the shell's rounded end
+    assert {s.bone for s in plates} <= {"pelvis", "neck_01"}
+    assert not any(s.candidates for s in plates)
+    # the plate on top in the middle row: lies on the shell, faces up, rear edge raised by the tilt
+    top = min(plates, key=lambda s: abs(s.center[1] + 0.2) + abs(s.center[0]))  # pelvis shift
+    normal = euler_matrix(top.rotate) @ np.array([0, 0, 1.0])
+    along = euler_matrix(top.rotate) @ np.array([0, 1.0, 0])
+    assert normal[2] > 0.95 and along[2] == pytest.approx(np.sin(np.radians(10)), abs=1e-6)
+    with pytest.raises(CreatureError, match="bone or bones"):
+        load_creature(_write(tmp_path, extra.replace('bones = ["pelvis", "neck_01"]', "")))
+
+
+def test_matrix_euler_roundtrip():
+    for e in ((10, 20, 30), (-40, 5, 170), (80, -30, -60)):
+        m = euler_matrix(e)
+        assert euler_matrix(matrix_euler(m)) == pytest.approx(m)
+
+
+def test_strata_relief_and_tongue(tmp_path):
+    dark = '[zone.dark]\ncolour = "#202020"'
+    text = MINIMAL.replace(dark, '[zone.dark]\ncolour = "#a08060"\nstrata = 1.0')
+    text += """
+[[shape]]
+kind = "tongue"
+bone = "head"
+center = [0, -0.4, 0.58]
+size = [0.02, 0.04, 0.008]
+"""
+    c = load_creature(_write(tmp_path, text))
+    assert [s.bone for s in c.shapes if s.kind == "tongue"] == ["head"]
+    p = np.random.default_rng(2).random((400, 3)) * 0.02 + np.array([0.14, -0.3, 0.25])  # leg
+    _, height = surface(c, p, np.tile([1.0, 0, 0], (400, 1)))
+    assert height.std() > 0.05  # sandstone grain and chisel marks show in the relief
+
+
+def test_quaderbuckel_reference_passes():
+    c = load_creature(QUADERBUCKEL)
+    shield = c.bone("brow_shield")
+    # on the chest: stays when the neck bends the head under it (agreed with engine 2026-10-07)
+    assert shield.parent == "chest"
+    assert "socket_shield" in c.sockets and c.sockets["socket_shield"]["parent"] == "brow_shield"
+    plates = [s for s in c.shapes if s.kind == "plate"]
+    assert len(plates) == 60 and {"brow_shield", "tail_02"} <= {s.bone for s in plates}
+    rig = load_rig(species="quaderbuckel")
+    gltf = Gltf.load(QUADERBUCKEL_REF)
+    report = validate_gltf(gltf, rig, reference_pose(gltf), path=QUADERBUCKEL_REF)
+    assert report.ok(strict=True), report.issues
+    assert report.stats["triangles"] <= 8000 and report.stats["lods"] == 3
+    materials = {m["name"] for m in gltf.list("materials")}
+    assert materials == {"fur", "eyes", "teeth", "tongue"}
