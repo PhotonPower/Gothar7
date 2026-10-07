@@ -168,6 +168,10 @@ def test_props_budget_and_collision(kind):
         assert hi[1] <= 1e-6 and not m.main.collision
     elif kind in ("tool_board", "weapon_board"):  # on the wall, above the floor
         assert lo[1] > 0.8 and hi[2] <= 0.07 and not m.main.collision
+    elif kind == "lantern":  # on the wall above heads, reaching out from it
+        assert lo[1] > 1.7 and lo[2] >= -0.02 and hi[2] <= 0.3 and not m.main.collision
+    elif kind == "candlestick":  # on a table, small, nothing to bump into
+        assert lo[1] == pytest.approx(0.0) and hi[1] < 0.3 and not m.main.collision
     else:  # standing on the floor, against the wall at -Z
         assert lo[1] == pytest.approx(0.0) and m.main.collision
         assert lo[2] >= -0.5  # no deeper than half a metre behind the origin

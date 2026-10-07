@@ -242,6 +242,7 @@ def generate(
         list[tuple[list[Primitive], list[CollisionPart], tuple[float, float, float]]],
     ] = defaultdict(list)
     by_hash: dict[str, str] = {}
+    rooms_out: list[Any] = []  # W7: (entry, stem, prims and COL_ box per room)
     deferred: list[tuple[dict[str, Any], str, list[Primitive], list[CollisionPart],
                          tuple[float, float, float]]] = []  # fmt: skip
     lod_spec = rules.data.get("lod", {}) if (mode == "medieval" and rules is not None) else {}
@@ -344,9 +345,11 @@ def generate(
                 windows = [q for q in h1.primitives if q.material == "frame"]
                 masses = lod2_primitives(house, base, (c.x, c.y), rules)
                 lod_prims = [h1.primitives, masses + windows]
+            room_prims = dict(house.room_prims) if mode == "medieval" else {}
             if textured_all or bid in textured_ids:  # W5 textures
                 prims = texture_house(prims, texture_root, bid)
                 lod_prims = [texture_house(level, texture_root, bid) for level in lod_prims]
+                room_prims = {n: texture_house(q, texture_root, bid) for n, q in room_prims.items()}
             if lod_prims:
                 lods[bid] = lod_prims
             col = house.collision or CollisionResult([])
@@ -400,6 +403,7 @@ def generate(
                 entry["doors"] = [list(d) for d in house.doors]
             if mode == "medieval" and house.room:  # W7: the room of an enterable house
                 entry["interior"] = house.room
+                rooms_out.append((entry, stem, room_prims, dict(house.room_cols)))
             entries.append(entry)
         else:
             cells[(math.floor(c.x / CELL_M), math.floor(c.y / CELL_M))].append(
@@ -437,6 +441,12 @@ def generate(
             if preview and lod_prims[preview - 1]:
                 prims, lod_prims = lod_prims[preview - 1], []
         entry["mesh"] = emit(stem, prims, parts, lod_prims)
+    for entry, stem, by_room, cols in rooms_out:  # W7: each room its own mesh (its own lights)
+        if by_room:
+            entry["interior"]["meshes"] = {
+                name: emit(f"{stem}_room_{name.lower()}", room, cols.get(name, []))
+                for name, room in by_room.items()
+            }
 
     for (i, j), parts in sorted(cells.items()):
         origin = ((i + 0.5) * CELL_M, min(o[1] for _, _, o in parts), (j + 0.5) * CELL_M)
@@ -456,6 +466,8 @@ def generate(
     )
     # Files of buildings that no longer exist (or moved into a cell) would be stale: remove them.
     referenced = {e["mesh"].rsplit("/", 1)[-1] for e in entries}
+    referenced |= {path.rsplit("/", 1)[-1] for e in entries
+                   for path in e.get("interior", {}).get("meshes", {}).values()}  # fmt: skip
     for stale in out_dir.glob("*.glb"):
         if stale.name not in referenced:
             stale.unlink()

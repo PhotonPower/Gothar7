@@ -181,3 +181,18 @@ def test_vob_numbers_as_the_engine_writes_them():
     for written, raw in zip(v["pos"], [-149.2988434, 0.0, 30.98411234], strict=True):
         assert np.float32(written) == np.float32(raw)  # the same float32 the engine stores
     assert v["pos"][0] == -149.29884 and v["pos"][2] == 30.984112  # its shortest text
+
+
+def test_rooms_of_an_enterable_house_are_own_mesh_vobs():
+    idx = index("A")
+    idx["entries"][0]["interior"] = {"meshes": {"INNEN": "m/a_room_innen.glb",
+                                                "KAMMER": "m/a_room_kammer.glb"}}  # fmt: skip
+    ids = VobIds({}, 1)
+    names = by_name(run(idx, None, ids))
+    house = names["BLD_A"]
+    for name, mesh in (("INNEN", "m/a_room_innen.glb"), ("KAMMER", "m/a_room_kammer.glb")):
+        room = names[f"BLD_A_RAUM_{name}"]
+        assert (room["type"], room["mesh"], room["pos"]) == ("mesh", mesh, house["pos"])
+        assert room["parent"] == house["parent"]  # beside the house: its own lights
+    again = by_name(run(idx, None, ids))  # stable ids
+    assert again["BLD_A_RAUM_KAMMER"]["id"] == names["BLD_A_RAUM_KAMMER"]["id"]
