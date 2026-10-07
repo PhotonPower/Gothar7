@@ -42,4 +42,5 @@ Spell "spl_summon_wolf" {
     kind = "summon",
     summon = "mon_wolf",
     duration = 60,           -- Z8: ein Begleiter für 60 s
+    fx = { on_target = "summon" },
 }

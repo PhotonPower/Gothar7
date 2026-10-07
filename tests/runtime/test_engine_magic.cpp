@@ -222,3 +222,53 @@ TEST_CASE(
     CHECK(stat(engine, "hero", "mana") == 0);
     CHECK(stat(engine, "hero", "hp") == 31); // heal 10, three times as strong at stage 2
 }
+
+TEST_CASE(
+    "Engine casting: a summoned wolf follows the hero, fights his attacker, vanishes after its time; one at "
+    "a time (Z8)")
+{
+    Engine engine(castConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "on('npc_vanished', function(npc) Story.vanished = npc end)");
+    run(engine, "give_item('it_rune_summon_wolf') equip('it_rune_summon_wolf') set_talent('magic_circle', 3) "
+                "set_stat('mana_max', 100) set_stat('mana', 100) teleport(41.2, 0, 18.8)");
+    runSeconds(engine, 0.3f);
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_summon_wolf");
+    runSeconds(engine, 1.0f);
+    cast(engine);
+    const std::string wolf(run(engine, "hero_summon()").asString());
+    REQUIRE_FALSE(wolf.empty());
+    CHECK(stat(engine, "hero", "mana") == 75);
+    CHECK(run(engine, std::format("npc_state('{}').state", wolf)).asString() == "zs_summoned");
+    CHECK_FALSE(engine.heroCombatTarget().has_value()); // the hero does not lock his own wolf
+
+    // It follows the hero.
+    run(engine, "draw_magic() teleport(33.2, 0, 18.8)");
+    runSeconds(engine, 8.0f);
+    CHECK(run(engine, std::format("npc_distance('{}', 'hero')", wolf)).asNumber() < 5.0);
+
+    // An old man attacks the hero: the wolf goes for him.
+    run(engine, "Story.met_gate_guard = true");
+    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_center')").isString());
+    run(engine,
+        "set_routine('npc_old_man', '') npc_clear('npc_old_man') npc_teleport('npc_old_man', 32.0, 0, "
+        "18.8, 270) fight('npc_old_man', 'hero')"); // beside the hero, facing him
+    const i64 before = stat(engine, "npc_old_man", "hp");
+    runSeconds(engine, 10.0f);
+    CHECK(stat(engine, "npc_old_man", "hp") < before);
+
+    // A second call: the first wolf goes, a new one comes.
+    run(engine, "set_stat('mana', 100)");
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_summon_wolf");
+    runSeconds(engine, 1.0f);
+    cast(engine);
+    CHECK(run(engine, "Story.vanished").asString() == wolf);
+    CHECK(run(engine, std::format("fight_state('{}')", wolf)).asString() == "dead");
+    const std::string second(run(engine, "hero_summon()").asString());
+    CHECK_FALSE(second.empty());
+    CHECK(second != wolf);
+    // After 60 s it goes too.
+    runSeconds(engine, 61.0f);
+    CHECK(run(engine, "Story.vanished").asString() == second);
+    CHECK(run(engine, "hero_summon()").isNil());
+}
