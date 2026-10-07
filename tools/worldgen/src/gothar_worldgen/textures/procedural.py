@@ -38,6 +38,8 @@ TILE_M = {  # metres covered by one texture (u, v)
     "clay": (0.5, 0.5),  # jugs, bowls, plates (household, W7)
     "meat": (0.3, 0.3),  # sausages, hams
     "fur": (0.6, 0.6),  # fur rugs
+    "leaves": (1.0, 1.0),  # tree crowns, bushes, grass (W6 streets)
+    "bark": (1.0, 2.0),  # around the trunk, up it
 }
 
 
@@ -478,6 +480,27 @@ def fur(size: int, rng: np.random.Generator) -> Texture:
     return Texture("fur", _mean_one(val), 0.6 * tufts + 0.4 * locks, 1.8)
 
 
+def leaves(size: int, rng: np.random.Generator) -> Texture:
+    """A crown seen from outside: fine speckles of single leaves, darker hollows between clumps,
+    a few lighter sunlit tips (no cells: they read as cobbles)."""
+    fine = periodic_noise((size, size), rng, beta=0.6, low_cut=24.0)
+    mid = periodic_noise((size, size), rng, beta=1.2, low_cut=6.0)
+    clumps = periodic_noise((size, size), rng, beta=2.4)
+    hollow = np.clip((0.42 - clumps) / 0.2, 0.0, 1.0)
+    tips = np.clip((fine - 0.72) / 0.15, 0.0, 1.0)
+    val = (0.85 + 0.45 * (fine - 0.5) + 0.3 * (mid - 0.5)) * (1 - 0.5 * hollow) + 0.25 * tips
+    return Texture("leaves", _mean_one(np.clip(val, 0.15, None)), 0.5 * fine + 0.5 * mid, 2.0)
+
+
+def bark(size: int, rng: np.random.Generator) -> Texture:
+    """Furrowed bark: ridges up the trunk (along v), broken across, a little moss low down."""
+    ridges = periodic_noise((size, size), rng, beta=1.2, low_cut=4.0, aniso=(10.0, 1.0))
+    breaks = periodic_noise((size, size), rng, beta=1.8, aniso=(1.0, 4.0))
+    furrows = np.clip((ridges - 0.35) / 0.4, 0.0, 1.0)
+    val = 0.6 + 0.6 * furrows * (0.8 + 0.2 * breaks) + 0.1 * (breaks - 0.5)
+    return Texture("bark", _mean_one(val), 0.8 * furrows + 0.2 * breaks, 3.0)
+
+
 TERRAIN_KINDS = {"cobbles": cobbles}
 # materials of the mobs (assets/source/mobs, not tied to a place); boards and timber come from KINDS
 MOB_KINDS = {
@@ -487,6 +510,8 @@ MOB_KINDS = {
     "clay": clay,
     "meat": meat,
     "fur": fur,
+    "leaves": leaves,
+    "bark": bark,
 }  # baked into the terrain layer albedos (export/splat.py)
 
 

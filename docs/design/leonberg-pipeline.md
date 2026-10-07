@@ -819,6 +819,30 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   - Je 1–2 Kollisionskästen; ca. 70–300 Dreiecke je Modell (Budget 1500).
   - Platzierung in Leonberg folgt mit Ausstattung bzw. Innenräumen.
 
+#### Gassen beleben (W6, Plan freigegeben 2026-10-07)
+`assemble` setzt nach den Nutzungen Requisiten, Bäume, Büsche und Gras als reine Mesh-Vobs (Kategorie deco) in die
+Gruppe `WORLDGEN_GASSEN`. Mechanik in `gothar_worldgen/outdoor.py`, Regeln in `data/<ort>/outdoor.json`, Bericht in
+`generated/outdoor.json`. Modelle: `gothar-worldgen mobs` schreibt zusätzlich `assets/source/vegetation/` (Linde,
+Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `cart`, `woodpile`, `dung_heap`.
+- **Freihalten** (Vorrang vor allem): je Straßenachse ein Korridor (mindestens 1,2 m zu jeder Seite, breite Straßen
+  bis 0,9 m vor ihrem Rand, Treppen ganz); vor jeder Tür Schwenk und Ausgang (1,8 × 2,2 m) samt Weg zur Achse; um
+  Routinen-Orte und Freepoints 1,3 m; entlang der Wegnetz-Kanten 1,2 m. Das Wegnetz dafür baut `assemble` vorher aus
+  der Welt ohne die Gassen-Vobs (dieselbe Funktion wie `waynet`); danach neu erzeugt bleibt es **gleich**. Die
+  Handmodelle (Schlossgarten, Kirche) bleiben 3 m frei, nichts steht auf Hängen über 0,25 m.
+- **Requisiten** stehen an einer Hauswand, Vorderseite von ihr weg. Eine Wand bis 4 m vor einer Straße ist die
+  Vorderseite, sonst Hof. Häuser mit Nutzung bekommen ihre Liste (`uses.<nutzung>.front/back`: Taverne Fässer und
+  Kisten, Schmiede Trog und Holz, Krämer Kisten, Säcke, Karren …), übrige Häuser mit 65 % 1–3 Dinge vorn und mit
+  40 % etwas im Hof; mehrere stehen als Gruppe beisammen (3 m). Ohne Platz vorn geht es in den Hof.
+- **Bäume** aus OSM (`natural=tree`), in Gärten und Parks Obstbäume, sonst Linde oder Eiche; bis 2 m verschoben,
+  wenn der Stamm im Weg stünde; die Krone hält 75 % ihres Radius Abstand zu Häusern. Dazu **Obstbäume und Büsche**
+  aus einem 3-m-Raster über den Höfen (nicht an Straßen) und **Gras und Unkraut** an den Wandfüßen.
+- **Modelle:** Bäume mit Detailstufen (`_lod1`, `_lod2`), Kollision nur am Stamm. Büsche und Gras kollidieren nicht
+  (kleiner `COL_`-Kasten 1 m unter dem Boden; ohne `COL_` würde das ganze Mesh kollidieren). Kronen sind
+  geschlossene Low-Poly-Blobs mit der Textur `leaves` und gerundeten Normalen (keine Alpha-Ausschnitte).
+- **Zufall** je Haus bzw. Ort mit festem Seed: Ändert sich ein Haus, bleiben die Dinge der anderen stehen.
+- **Leonberg (Stand des PR):** rund 3700 Vobs – etwa 2000 Requisiten, 340 Bäume, 180 Büsche, 1100 Gras- und
+  Unkrautbüschel. Wegnetz unverändert, Autopilot wie ohne Gassen-Vobs.
+
 ### W-G Welt-Assembler & Wegnetz-Vorschlag
 - Terrain + Gebäude + Straßen + Ausstattung → `.g7world` (Zellen), Kollision, Validierung, Credits.
 - **Umgesetzt (W3 Teil 1):** `gothar-worldgen assemble <ort>` erzeugt `assets/source/worlds/<ort>/<ort>.g7world`

@@ -67,6 +67,15 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "wool_blue": ("cloth", (0.06, 0.09, 0.22)),
     "wool_green": ("cloth", (0.07, 0.15, 0.06)),
     "wool_ochre": ("cloth", (0.36, 0.24, 0.07)),
+    # lanes and yards (W6 streets): vegetation.py and the street props
+    "bark": ("bark", (0.11, 0.085, 0.065)),
+    "leaves_linden": ("leaves", (0.04, 0.075, 0.022)),
+    "leaves_oak": ("leaves", (0.032, 0.058, 0.018)),
+    "leaves_fruit": ("leaves", (0.05, 0.09, 0.026)),
+    "leaves_box": ("leaves", (0.022, 0.05, 0.016)),
+    "grass": ("leaves", (0.07, 0.11, 0.032)),
+    "grass_dry": ("leaves", (0.14, 0.13, 0.055)),
+    "dung": ("straw", (0.09, 0.065, 0.04)),
 }
 # materials that glow: the engine adds emissive after the light (render.md "Material")
 EMISSIVE = {"ember": (0.9, 0.28, 0.05), "flame": (1.0, 0.55, 0.15)}
@@ -213,12 +222,21 @@ class MobModel:
     name: str
     main: Mesh
     parts: list[tuple[str, Vec3, Mesh]] = field(default_factory=list)  # (node, pivot, mesh)
+    lods: list[Mesh] = field(default_factory=list)  # coarser levels: nodes <name>_lod1, _lod2
 
     def triangles(self) -> int:
+        """Of the finest level (what the budget counts)."""
         return self.main.triangles() + sum(m.triangles() for _, _, m in self.parts)
+
+    def meshes(self) -> list[Mesh]:
+        return [self.main, *(m for _, _, m in self.parts), *self.lods]
 
     def glb(self) -> bytes:
         parts = [Part(n, pivot, m.primitives(), m.collision) for n, pivot, m in self.parts]
+        parts += [
+            Part(f"{self.name}_lod{k + 1}", (0.0, 0.0, 0.0), m.primitives())
+            for k, m in enumerate(self.lods)
+        ]  # asset.md "Detailstufen": same origin
         return glb_bytes_multi(self.main.primitives(), self.name, self.main.collision, parts)
 
 
@@ -785,6 +803,63 @@ def tableware() -> MobModel:
     return MobModel("tableware", m)
 
 
+# --- lanes and yards (W6 streets): outside the houses -----------------------------------------
+
+
+def cart() -> MobModel:
+    """A two-wheeled handcart, shafts towards +X resting on the ground, bed 1.3 x 0.8 m."""
+    m = Mesh()
+    y0 = 0.55  # bed floor
+    m.box("oak", (-0.65, y0, -0.4), (0.65, y0 + 0.05, 0.4))
+    for z in (-0.4, 0.37):  # sides
+        m.box("oak", (-0.65, y0 + 0.05, z), (0.65, y0 + 0.32, z + 0.03), grain=0)
+    for x in (-0.65, 0.62):  # ends
+        m.box("oak", (x, y0 + 0.05, -0.37), (x + 0.03, y0 + 0.28, 0.37), grain=2)
+    for z in (-0.3, 0.3):  # shafts down to the ground in front
+        m.box("oak_beam", (0.65, y0 - 0.06, z - 0.03), (1.45, y0, z + 0.03), grain=0)
+        m.box("oak_beam", (1.4, 0.0, z - 0.03), (1.46, y0 - 0.06, z + 0.03), grain=1)
+    m.box("oak_beam", (-0.05, 0.42, -0.5), (0.05, y0, 0.5), grain=2)  # axle block
+    for z in (-0.46, 0.46):
+        m.cyl("oak", 2, (0.0, 0.42, z), 0.42, 0.06, sides=12)
+        m.cyl("iron", 2, (0.0, 0.42, z), 0.08, 0.08, sides=6)
+    m.body("cart", (-0.65, 0.0, -0.5), (1.46, y0 + 0.32, 0.5))
+    return MobModel("cart", m)
+
+
+def woodpile() -> MobModel:
+    """Split logs stacked against a wall, 2 x 1 m, 0.5 m deep, ends towards +Z; under a board.
+    Thick logs: a street has hundreds of these (about 640 triangles, the coarse level 24)."""
+    m = Mesh()
+    rng = np.random.default_rng(71)
+    for x in (-0.7, 0.7):  # two squared timbers keep the logs off the ground
+        m.box("oak_beam", (x - 0.05, 0.0, -0.25), (x + 0.05, 0.04, 0.25), grain=2)
+    for row in range(4):
+        y = 0.165 + row * 0.235
+        n = 8 - (row % 2)
+        for k in range(n):
+            x = -0.875 + (k + 0.5 * (row % 2)) * 0.25
+            m.cyl("oak_beam", 2, (x, y, 0.0), 0.12 + rng.uniform(-0.01, 0.005),
+                  0.5 - rng.uniform(0, 0.06), sides=6)  # fmt: skip
+    m.box("oak", (-1.05, 1.0, -0.3), (1.05, 1.04, 0.32), grain=0)  # the board on top
+    m.body("woodpile", (-1.0, 0.0, -0.27), (1.0, 1.04, 0.27))
+    lod1 = Mesh()
+    lod1.box("oak_beam", (-1.0, 0.0, -0.25), (1.0, 0.98, 0.25), grain=0)
+    lod1.box("oak", (-1.05, 1.0, -0.3), (1.05, 1.04, 0.32), grain=0)
+    return MobModel("woodpile", m, lods=[lod1])
+
+
+def dung_heap() -> MobModel:
+    """A heap of dung and straw in a back yard, about 2 m across."""
+    from gothar_worldgen.vegetation import blob
+
+    m = Mesh()
+    rng = np.random.default_rng(73)
+    blob(m, "dung", (0.0, 0.0, 0.0), (1.0, 0.5, 0.85), 1, rng, 0.25)
+    blob(m, "straw", (0.25, 0.25, -0.1), (0.4, 0.22, 0.35), 0, rng, 0.3)
+    m.body("dung", (-0.9, 0.0, -0.75), (0.9, 0.4, 0.75))
+    return MobModel("dung_heap", m)
+
+
 CANDLE_TOP = 0.26  # the flame of the candlestick, above its foot
 
 
@@ -833,7 +908,8 @@ PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "fire
          "shelf": shelf, "crate": crate, "crate_stack": crate_stack, "sacks": sacks,
          "workbench": workbench, "tool_board": tool_board, "quench_trough": quench_trough,
          "bellows": bellows, "sausages": sausages, "herbs": herbs,
-         "weapon_board": weapon_board}  # plain mesh vobs (assets/source/props)  # fmt: skip
+         "weapon_board": weapon_board, "cart": cart, "woodpile": woodpile,
+         "dung_heap": dung_heap}  # plain mesh vobs (assets/source/props)  # fmt: skip
 
 
 def write_mobs(folder: Path, types: Sequence[str] = TYPES,
@@ -849,11 +925,11 @@ def write_mobs(folder: Path, types: Sequence[str] = TYPES,
         path = folder / f"{t}.glb"
         if not path.is_file() or path.read_bytes() != data:
             path.write_bytes(data)
-        kinds.update(MATERIALS[mat][0] for mat in model.main.builders)
-        for _, _, mesh in model.parts:
+        for mesh in model.meshes():
             kinds.update(MATERIALS[mat][0] for mat in mesh.builders)
         nodes = ", ".join(n for n, _, _ in model.parts) or "-"
-        lines.append(f"{t}: {model.triangles()} triangles, parts {nodes}")
+        lods = "".join(f" / {m.triangles()}" for m in model.lods)
+        lines.append(f"{t}: {model.triangles()}{lods} triangles, parts {nodes}")
     shared = folder.parent.joinpath(*TEXTURE_FOLDER)
     for kind in sorted(kinds):
         tex = make(kind, TEXTURE_SIZE)
