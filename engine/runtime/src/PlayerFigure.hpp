@@ -194,6 +194,8 @@ struct Creature
     bool eat = false;
     bool sleep = false;
     bool dead = false;
+    bool asleep = false;            ///< M12 (Z6): put to sleep by a spell, until hurt or the time is over
+    std::optional<u32> sleepEffect; ///< its effect over the head
     f32 walkSpeed = 0.0f; ///< blend points of the graph's "move" state: the first moving one, the last one,
     f32 runSpeed = 0.0f;  ///< and one in between (animals with a trot, figuren #200); 0: none
     f32 trotSpeed = 0.0f;

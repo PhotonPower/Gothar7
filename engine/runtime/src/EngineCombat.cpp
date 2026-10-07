@@ -217,6 +217,8 @@ i32 Engine::heroWeaponAnimation() const
         return 2;
     case 3:
         return rangedIsCrossbow(m_weaponDrawn) ? 4 : 3;
+    case 4:
+        return 6; // magic (M12)
     default:
         return 0;
     }
@@ -338,6 +340,10 @@ void Engine::fixedUpdateCombat(f32 seconds)
         }
         if (before == FightState::Down && attacker->fighter->state() == FightState::Ready)
         {
+            if (attacker->creature != nullptr && attacker->creature->asleep)
+            {
+                endSleep(*attacker->creature); // the spell's time is over (Z6)
+            }
             playReaction(*attacker, "none/t_ko_getup"); // up again
         }
         if (attacker->fighter->takeNewSwing())
@@ -394,6 +400,10 @@ void Engine::fixedUpdateCombat(f32 seconds)
 
 void Engine::resolveHit(Combatant& attacker, Combatant& target)
 {
+    if (target.creature != nullptr && target.creature->asleep)
+    {
+        wakeUp(target.id); // Z6: hurt, it wakes - the blow then counts as on one standing
+    }
     const auto emit = [&](const char* event, std::initializer_list<Value> args)
     {
         if (m_scripts)
@@ -741,11 +751,13 @@ std::optional<u32> Engine::pickCombatTarget() const
     const Vec3 hero = m_player.feet();
     const Vec3 forward = gameplay::forwardOf(m_movement.yaw());
     std::optional<u32> best;
-    const f32 range = m_weaponMode == 3 ? kRangedLockRange : kLockRange;
+    const f32 range = m_weaponMode == 3 || m_weaponMode == 4 ? kRangedLockRange : kLockRange;
     f32 bestDistance = 2.0f * range;
     for (const auto& c : m_creatures)
     {
-        if (!c->character || c->fighter.state() == FightState::Dead || c->fighter.state() == FightState::Down)
+        // The knocked out are not locked; one asleep by a spell is (M12: a blow or a bolt wakes it).
+        if (!c->character || c->fighter.state() == FightState::Dead ||
+            (c->fighter.state() == FightState::Down && !c->asleep))
         {
             continue;
         }
@@ -781,6 +793,10 @@ void Engine::fixedUpdateHeroFight(gameplay::MoveInput& input, f32 seconds)
                 (void)shootRanged(); // R2: the fighting keys shoot with a bow drawn
             }
         }
+        else if (m_weaponMode == 4)
+        {
+            // Magic: the held keys charge and cast (fixedUpdateHeroMagic, Z5).
+        }
         else if (auto hero = combatant(kHeroId); hero && m_weaponMode != 0)
         {
             (void)startFight(*hero, m_combatRequest->move, m_combatRequest->kind);
@@ -796,10 +812,10 @@ void Engine::fixedUpdateHeroFight(gameplay::MoveInput& input, f32 seconds)
     {
         const Creature* target = m_combatTarget ? creature(*m_combatTarget) : nullptr;
         if (target == nullptr || target->fighter.state() == FightState::Dead ||
-            target->fighter.state() == FightState::Down ||
+            (target->fighter.state() == FightState::Down && !target->asleep) ||
             glm::length(
                 Vec2(target->position.x - m_player.feet().x, target->position.z - m_player.feet().z)) >
-                (m_weaponMode == 3 ? kRangedLockRange + 5.0f : kLockKeepRange))
+                (m_weaponMode == 3 || m_weaponMode == 4 ? kRangedLockRange + 5.0f : kLockKeepRange))
         {
             m_combatTarget = pickCombatTarget();
             target = m_combatTarget ? creature(*m_combatTarget) : nullptr;
@@ -983,10 +999,22 @@ namespace g7
 /// kills.
 void Engine::projectileHit(const Projectile& p, u32 targetId)
 {
+    if (!p.spell.empty())
+    {
+        // A spell's projectile (M12): its damage, no arrow stays.
+        const Creature* shooterCreature = p.shooter == kHeroId ? nullptr : creature(p.shooter);
+        spellHit(p.damage, targetId,
+                 shooterCreature != nullptr ? shooterCreature->species : std::string("hero"));
+        return;
+    }
     auto target = combatant(targetId);
     if (!target)
     {
         return;
+    }
+    if (target->creature != nullptr && target->creature->asleep)
+    {
+        wakeUp(targetId); // Z6
     }
     const i32 damage = gameplay::rangedDamage(
         p.damage, [&](std::string_view type) { return target->character->protection(type); }, m_combat);
@@ -1030,4 +1058,127 @@ void Engine::projectileHit(const Projectile& p, u32 targetId)
     }
 }
 
+// Spells on creatures and the hero (M12 part C1).
+void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::string_view caster)
+{
+    auto target = combatant(targetId);
+    if (!target)
+    {
+        return;
+    }
+    if (target->creature != nullptr && target->creature->asleep)
+    {
+        wakeUp(targetId); // Z6: hurt, it wakes
+    }
+    // As a projectile (R3): damage minus protection, at least the minimum, no critical hit.
+    const i32 dealt = gameplay::rangedDamage(
+        damage, [&](std::string_view type) { return target->character->protection(type); }, m_combat);
+    const i32 hp = target->character->attribute("hp") - dealt;
+    (void)target->character->setAttribute("hp", std::max(hp, 0));
+    G7_LOG_INFO("engine", "{}'s spell hits {}: {} damage ({} left)", caster, target->name, dealt,
+                std::max(hp, 0));
+    if (m_scripts)
+    {
+        const Value args[] = {std::string(caster), target->name, Value(static_cast<i64>(dealt)),
+                              Value(false)};
+        m_scripts->emit("npc_hit", args);
+    }
+    if (hp > 0)
+    {
+        target->fighter->stagger();
+        playReaction(*target, "none/t_hit_magic");
+        if (target->creature != nullptr && target->animal)
+        {
+            target->creature->action = 3;
+        }
+        return;
+    }
+    if (target->id == kHeroId)
+    {
+        (void)target->character->setAttribute("hp", 1); // K8: the hero gets up again
+        target->fighter->knockOut(kHeroDownSeconds);
+        playReaction(*target, "none/t_ko");
+        return;
+    }
+    // Magic kills, as ranged combat (K7).
+    target->fighter->die();
+    playReaction(*target, "none/t_die_back");
+    target->creature->dead = true;
+    stopForFight(*target->creature);
+    if (m_scripts)
+    {
+        const Value args[] = {target->name, std::string(caster)};
+        m_scripts->emit("npc_killed", args);
+    }
+}
+
+bool Engine::castSleep(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect)
+{
+    auto target = combatant(targetId);
+    if (!target || target->creature == nullptr || target->creature->dead ||
+        target->fighter->state() == FightState::Down || target->fighter->state() == FightState::Dead)
+    {
+        return false;
+    }
+    // Z6: up to the caster's level.
+    const gameplay::Character* by =
+        caster == "hero"
+            ? hero()
+            : (npcByInstance(caster) ? creature(*npcByInstance(caster))->character.get() : nullptr);
+    if (by != nullptr && target->character->level() > by->level())
+    {
+        return false;
+    }
+    Creature& c = *target->creature;
+    c.asleep = true;
+    target->fighter->knockOut(seconds);
+    stopForFight(c);
+    if (target->animal)
+    {
+        c.sleep = true; // its sleeping clip
+    }
+    else
+    {
+        playReaction(*target, "none/t_ko");
+    }
+    if (!effect.empty())
+    {
+        c.sleepEffect = startEffect(effect, c.position + Vec3(0.0f, target->animal ? 0.9f : 1.9f, 0.0f));
+    }
+    G7_LOG_INFO("engine", "{} falls asleep for {:.0f} s ({})", target->name, seconds, caster);
+    if (m_scripts)
+    {
+        const Value args[] = {target->name, std::string(caster)};
+        m_scripts->emit("npc_asleep", args);
+    }
+    return true;
+}
+
+void Engine::endSleep(Creature& c)
+{
+    c.asleep = false;
+    c.sleep = false;
+    if (c.sleepEffect)
+    {
+        m_particles.stop(*c.sleepEffect);
+        c.sleepEffect.reset();
+    }
+    if (m_scripts)
+    {
+        const Value args[] = {c.species};
+        m_scripts->emit("npc_woke", args);
+    }
+}
+
+void Engine::wakeUp(u32 targetId)
+{
+    auto target = combatant(targetId);
+    if (!target || target->creature == nullptr || !target->creature->asleep)
+    {
+        return;
+    }
+    target->fighter->reset();
+    endSleep(*target->creature);
+    playReaction(*target, "none/t_ko_getup");
+}
 } // namespace g7

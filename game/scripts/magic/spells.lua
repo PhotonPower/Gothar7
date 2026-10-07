@@ -5,7 +5,7 @@ Spell "spl_firebolt" {
     mana = 10,
     kind = "projectile",
     damage = { fire = 25 },
-    fx = { cast = "heal", trail = "firebolt", impact = "impact_fire" },
+    fx = { trail = "firebolt", impact = "impact_fire" },
 }
 
 Spell "spl_heal" {

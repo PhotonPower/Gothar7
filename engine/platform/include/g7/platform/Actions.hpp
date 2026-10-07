@@ -34,6 +34,12 @@ enum class Action : u16
     DrawWeapon,
     DrawRanged, ///< M11 (R1): the bow or crossbow
     DrawMagic,
+    Rune1, ///< M12 (Z4): rune places 1-6 (keys 4-9)
+    Rune2,
+    Rune3,
+    Rune4,
+    Rune5,
+    Rune6,
     Inventory,
     Log,
     Status,
