@@ -804,7 +804,8 @@ Regelbasiertes Verteilen von Requisiten (Fässer, Karren, Zäune, Holzstapel, Mi
 und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im Editor (M16).
 
 - **Mob-Modelle umgesetzt (M8-Vertrag, characters-pipeline.md §3.1, `mobs.toml` v1):** `gothar-worldgen mobs` →
-  `assets/source/mobs/{chest,anvil,bed,door}.glb`, Texturen daneben unter `textures/` (ortsunabhängig, 512²,
+  `assets/source/mobs/{chest,anvil,bed,door}.glb`, Texturen im gemeinsamen Ordner für Mobs und Props
+  `assets/source/furniture/textures/` (Bild-URIs `../furniture/textures/…`; ortsunabhängig, 512²,
   relativ verlinkt; Eiche, Eisen, Stroh, Wolle aus dem Textur-Werkzeug). Werkzeug `gothar_worldgen/mobs.py`.
   - Ursprung am Boden, Vorderseite +Z, Meter.
   - Truhe 0,9 × 0,6 × 0,6 m, Vorderseite z = +0,3, Korpus 0,5 m. Der Deckel ist der Knoten `MOB_LID` mit Pivot am
