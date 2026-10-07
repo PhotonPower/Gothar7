@@ -482,8 +482,12 @@ class _Planner:
                 row = self._row(kinds, start, u, n, 0.0)
                 face = (-n[0], -n[1])  # the things look onto the street
                 if row is not None:
-                    self._put(row, face, f"kerb:{sid or i}:{round(here)}",
-                              f"RAND_{(sid or str(i)).upper()}_{round(here)}")
+                    self._put(
+                        row,
+                        face,
+                        f"kerb:{sid or i}:{round(here)}",
+                        f"RAND_{(sid or str(i)).upper()}_{round(here)}",
+                    )
 
     # --- the market ------------------------------------------------------------------------------
 
