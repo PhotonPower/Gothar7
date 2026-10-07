@@ -217,6 +217,22 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
     {
         m_drawRangedRequested = true; // M11 (R1)
     }
+    if (allowKeyboard && !m_flyMode && m_actions.pressed(m_input, Action::DrawMagic))
+    {
+        m_drawMagicRequested = true; // M12 (Z4)
+    }
+    for (u32 i = 0; i < 6 && allowKeyboard && !m_flyMode; ++i)
+    {
+        if (m_actions.pressed(m_input, static_cast<Action>(static_cast<u16>(Action::Rune1) + i)))
+        {
+            m_runeRequested = i; // Z4: a rune place
+        }
+    }
+    // Z5: with magic drawn the fighting keys held charge, released cast.
+    m_castHeld =
+        allowKeyboard && !m_flyMode && m_weaponMode == 4 &&
+        ((m_actions.isDown(m_input, Action::Action) && m_actions.isDown(m_input, Action::MoveForward)) ||
+         m_actions.isDown(m_input, Action::Attack));
     if (allowKeyboard && !m_flyMode && m_weaponMode != 0)
     {
         readCombatInput(); // M11 (K1): fighting keys instead of moving while the action key is held
@@ -245,6 +261,7 @@ void Engine::fixedUpdatePlayer(f32 seconds)
         input = {}; // the hero stands while picking something up or looking into his bag (Gothic)
     }
     fixedUpdateHeroFight(input, seconds); // M11: the fighting moves and the target lock
+    fixedUpdateHeroMagic(input, seconds); // M12: charging and casting
     m_playerInput.mouseTurn = 0.0f;       // used up by this step
     m_playerInput.jump = false;
     m_playerYawBefore = m_movement.yaw();

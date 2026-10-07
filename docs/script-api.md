@@ -61,7 +61,7 @@ Beendet einen Effekt; seine Teilchen verglühen noch.
 Der Spieler betritt einen privaten Bereich (Trigger mit `owner`) des NPCs bzw. seiner Gilde; der NPC sieht ihn oder ist in der Nähe.
 
 ### `on("assess_fighter", fn(npc: string, distance: number, what: string))`
-Der NPC sieht den Spieler mit gezogener Waffe (`what`: `"weapon"` oder `"fists"`); einmal je Ziehen.
+Der NPC sieht den Spieler mit gezogener Waffe (`what`: `"weapon"`, `"fists"` oder `"magic"`); einmal je Ziehen.
 
 ### `on("assess_noise", fn(npc: string, kind: string, x, y, z))`
 Der NPC hört ein Geräusch (`kind`: `"run"`, `"lockpick"`, `"lock_broken"` … oder aus noise()).
@@ -117,8 +117,14 @@ Der Held hat ein Mob benutzt (Truhe offen, Tür bewegt); `mob` ist die Mob-Insta
 ### `on("npc_arrived", fn(npc: string, target: string))`
 Ein NPC ist an seinem Ziel angekommen (npc_goto).
 
+### `on("npc_asleep", fn(npc: string, caster: string))`
+Ein NPC bzw. Tier schläft durch einen Zauber ein (M12, Z6).
+
 ### `on("npc_blocked", fn(npc: string, target: string))`
 Ein NPC kommt nicht weiter und hat aufgegeben (nach mehrfachem Neuplanen).
+
+### `on("npc_cast", fn(caster: string, spell: string))`
+Ein Zauber wird gewirkt (M12, `hero`).
 
 ### `on("npc_hit", fn(attacker: string, target: string, damage: number, critical: boolean))`
 Ein Nahkampftreffer (M11; `hero` für den Helden).
@@ -140,6 +146,15 @@ Ein NPC hat etwas gesagt (npc_say, npc_shout); `key` ist der Sprach-Schlüssel d
 
 ### `on("npc_shot", fn(shooter: string, ammo: string))`
 Ein Schuss (M11, `hero`).
+
+### `on("npc_summoned", fn(npc: string, caster: string))`
+Ein Wesen wurde beschworen (M12, Z8); es verschwindet nach seiner Zeit bzw. nach seinem Tod.
+
+### `on("npc_vanished", fn(npc: string))`
+Ein beschworenes Wesen verschwindet (Zeit um, tot, ein neues beschworen).
+
+### `on("npc_woke", fn(npc: string))`
+Ein verzauberter Schläfer wacht auf (Zeit um oder Schaden).
 
 ### `on("observe_player", fn(npc: string, distance: number))`
 Bei jedem Blick (5- bzw. 1-mal je Sekunde), solange der NPC den Spieler sieht.
@@ -287,6 +302,24 @@ Bis zu welchem Abstand (Mitte zu Mitte, m) die Schläge des Kämpfers treffen (`
 ### `cast_check(item: string, stages?: integer) -> string | nil`
 Ob der Held die Rune bzw. Spruchrolle wirken kann (M12, Z1-Z3): nil, sonst der Grund (fehlender Kreis, zu wenig Mana, nicht im Inventar).
 
+### `draw_magic() -> string`
+Zieht die Rune bzw. Spruchrolle des zuletzt gewählten Runenplatzes bzw. steckt weg, wie die Taste draw_magic (M12, Z4); gibt zurück, was danach gezogen ist (das Item, sonst "none").
+
+### `hero_cast(hold: boolean)`
+Hält die Zaubertasten gedrückt (true: aufladen bzw. sofort wirken) bzw. lässt sie los (false: wirken), wie Strg+vor bzw. die linke Maustaste mit gezogener Magie (Z5).
+
+### `hero_casting() -> string | nil`
+Der Zauber, den der Held gerade auflädt bzw. wirkt, mit der Aufladestufe ("spl_firebolt 0"); nil ohne.
+
+### `hero_rune(place: integer)`
+Wählt den Runenplatz 1-7 wie die Tasten 4-9 (Z4): zieht ihn bzw. wechselt die Rune in der Hand.
+
+### `hero_summon() -> string | nil`
+Das vom Helden beschworene Wesen, solange es da ist (Z8); nil ohne.
+
+### `hero_target() -> string | nil`
+Das Ziel, das der Held mit gezogener Waffe bzw. Magie anvisiert (Lock, K5); nil ohne.
+
 ## Mobs
 
 ### `mob_state(vob: string) -> {definition, type, name, locked, open}`
@@ -402,7 +435,7 @@ Die anderen simulierten NPCs im Umkreis des NPCs, nach Abstand sortiert (Hilferu
 Ob der Spieler im Trigger `area` (Vob-Name, z. B. ein privater Bereich) steht.
 
 ### `player_weapon() -> string`
-Was der Held gezogen hat: `"none"`, `"weapon"` (Nahkampfwaffe) oder `"fists"`.
+Was der Held gezogen hat: `"none"`, `"weapon"` (Nahkampfwaffe), `"fists"`, `"ranged"` (Bogen, Armbrust) oder `"magic"` (Rune, Spruchrolle).
 
 ## Welt
 

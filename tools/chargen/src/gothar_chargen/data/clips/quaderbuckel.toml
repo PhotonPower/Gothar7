@@ -1,0 +1,298 @@
+# Set "quaderbuckel" (monster contract, characters-pipeline.md §7) -> monsters/quaderbuckel/anims/
+# Own creature (gothar-chargen creature quaderbuckel): the clip source only holds the still action
+# "rest". Gaits are own cycles (gait), everything else keyframe placeholders.
+# Agreed with engine (2026-10-07): walk 0.8, run 3.5 m/s (root motion), s_charge 4.5 m/s in place
+# (natural speed from the feet); t_attack_1 = ram (hit_start/hit_end, engine knocks down);
+# t_block_in, s_block, t_block_out = head pulled under the brow shield; t_warn = stamping and
+# grinding plates.
+#
+# Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches the head
+# down, opens the jaw, swings a leg back and lifts the tail, +Z turns left) and move root/pelvis.
+
+set = "quaderbuckel"
+rig = "quaderbuckel"
+
+[sources.src]
+file = "quaderbuckel_clips.blend"
+mapping = "identity"
+
+[[clip]]
+name = "quaderbuckel/s_rest"
+from = "src:rest"
+helper = true
+
+[[clip]]
+name = "quaderbuckel/s_idle"       # standing heavily, slow breathing, head swaying
+keyframe = "keyposes"
+[clip.params]
+base = "quaderbuckel/s_rest"
+keys = [[0, "stand"], [20, "breathe"], [40, "look"], [60, "stand"]]
+[clip.params.poses.stand]
+rotate = { neck_01 = [["X", 4]], tail_01 = [["X", -4]] }
+[clip.params.poses.breathe]
+move = { pelvis = [0, 0, 0.006] }
+rotate = { chest = [["X", -1]], neck_01 = [["X", 2]], head = [["X", -2]], tail_01 = [["X", -2]] }
+[clip.params.poses.look]
+rotate = { neck_01 = [["X", 4], ["Z", 14]], head = [["Z", 6]], brow_shield = [["Z", 6]], tail_01 = [["Z", -6]] }
+
+# --- locomotion ---
+
+[[clip]]
+name = "quaderbuckel/s_walk"       # heavy, plodding walk (lateral sequence)
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 0.8
+period = 24                         # phases and duty on whole frames
+duty = 0.6667
+lift = 0.06
+crouch = 0.01
+bob = 0.012
+pitch = 1.5
+nod = { bone = "neck_01", degrees = 2.0, phase = 0.0 }
+tail = { bones = ["tail_01", "tail_02"], degrees = 4, lag = 0.1 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 20 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -30 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 20 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -30 },
+]
+
+[[clip]]
+name = "quaderbuckel/s_run"        # lumbering trot, quick short steps (slower than the hero)
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 3.5
+period = 8
+duty = 0.375
+lift = 0.08
+crouch = 0.02
+bob = 0.02
+pitch = 2.0
+nod = { bone = "neck_01", degrees = 3.0, phase = 0.25 }
+tail = { bones = ["tail_01", "tail_02"], degrees = 6, lag = 0.1 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 20 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.0, curl = -30 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 20 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.5, curl = -30 },
+]
+
+[[clip]]
+name = "quaderbuckel/s_charge"     # charging with the shield lowered, in place (natural speed 4.5)
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 4.5
+in_place = true
+period = 8
+duty = 0.25
+lift = 0.1
+crouch = 0.03
+bob = 0.025
+bob_cycles = 1
+pitch = 3.0
+flex = { bone = "spine_01", degrees = 4.0, phase = 0.25 }
+tail = { bones = ["tail_01", "tail_02"], degrees = 8, lag = 0.1 }
+pose = { chest = [["X", 5]], neck_01 = [["X", 18]], head = [["X", -8]], tail_01 = [["X", 10]] }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 20 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.125, curl = 20 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.5, curl = -30 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.625, curl = -30 },
+]
+
+[[clip]]
+name = "quaderbuckel/s_step_inplace"   # base of the turns
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 30
+duty = 0.7
+lift = 0.05
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 20 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -30 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 20 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -30 },
+]
+
+[[clip]]
+name = "quaderbuckel/t_turn_l"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "quaderbuckel/s_step_inplace"
+keys = [[0, "rest"], [30, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", 90]] }
+
+[[clip]]
+name = "quaderbuckel/t_turn_r"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "quaderbuckel/s_step_inplace"
+keys = [[0, "rest"], [30, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", -90]] }
+
+# --- combat ---
+
+[[clip]]
+name = "quaderbuckel/t_attack_1"   # ram: back up, then a thrust with the shield (engine knocks down)
+keyframe = "keyposes"
+markers = { hit_start = 12, hit_end = 17 }
+[clip.params]
+base = "quaderbuckel/s_idle"
+keys = [[0, "rest"], [8, "back"], [12, "thrust"], [17, "impact"], [30, "rest"]]
+[clip.params.poses.back]
+move = { pelvis = [0, 0.1, -0.03] }
+rotate = { chest = [["X", 4]], neck_01 = [["X", 14]], head = [["X", -6]], front_upper_l = [["X", 12]], front_upper_r = [["X", 12]], tail_01 = [["X", 8]] }
+[clip.params.poses.thrust]
+move = { pelvis = [0, -0.16, -0.02] }
+rotate = { chest = [["X", 8]], neck_01 = [["X", 18]], head = [["X", -8]], front_upper_l = [["X", -22]], front_upper_r = [["X", -22]], back_upper_l = [["X", 15]], back_upper_r = [["X", 15]], tail_01 = [["X", -6]] }
+[clip.params.poses.impact]
+move = { pelvis = [0, -0.14, -0.03] }
+rotate = { chest = [["X", 10]], neck_01 = [["X", 16]], head = [["X", -6]], front_upper_l = [["X", -18]], front_upper_r = [["X", -18]], back_upper_l = [["X", 12]], back_upper_r = [["X", 12]] }
+
+[[clip]]
+name = "quaderbuckel/t_attack_2"   # swipe of the head and tusks to the side, then a snap
+keyframe = "keyposes"
+markers = { hit_start = 10, hit_end = 14 }
+[clip.params]
+base = "quaderbuckel/s_idle"
+keys = [[0, "rest"], [7, "wind_up"], [11, "swipe"], [14, "snap"], [26, "rest"]]
+[clip.params.poses.wind_up]
+rotate = { spine_02 = [["Z", 5]], neck_01 = [["Z", 30], ["X", 5]], head = [["Z", 10]], brow_shield = [["Z", 18]], jaw = [["X", 10]] }
+[clip.params.poses.swipe]
+move = { pelvis = [0, -0.04, 0] }
+rotate = { spine_02 = [["Z", -7]], neck_01 = [["Z", -35], ["X", 8]], head = [["Z", -15], ["X", 6]], brow_shield = [["Z", -22]], jaw = [["X", 22]] }
+[clip.params.poses.snap]
+move = { pelvis = [0, -0.04, 0] }
+rotate = { spine_02 = [["Z", -7]], neck_01 = [["Z", -33], ["X", 8]], head = [["Z", -15], ["X", 8]], brow_shield = [["Z", -20]], jaw = [["X", 1]] }
+
+[[clip]]
+name = "quaderbuckel/t_hit"
+keyframe = "keyposes"
+[clip.params]
+base = "quaderbuckel/s_idle"
+keys = [[0, "rest"], [4, "flinch"], [18, "rest"]]
+[clip.params.poses.flinch]
+move = { pelvis = [0, 0.05, 0.01] }
+rotate = { chest = [["X", -5], ["Z", 4]], neck_01 = [["X", -12]], head = [["X", -8]], jaw = [["X", 12]], tail_01 = [["X", 15]] }
+
+[[clip]]
+name = "quaderbuckel/t_die"        # legs give way, it sinks onto its belly, head on the ground
+keyframe = "keyposes"
+[clip.params]
+keys = [[0, "rest"], [10, "sag"], [24, "down"], [40, "limp"]]
+[clip.params.poses.sag]
+move = { pelvis = [0, 0.03, -0.07] }
+rotate = { chest = [["X", 6], ["Z", 4]], neck_01 = [["X", 12]], jaw = [["X", 10]], front_upper_l = [["Y", -25], ["X", -10]], front_lower_l = [["Y", 15]], front_upper_r = [["Y", 15], ["X", -8]], front_lower_r = [["Y", -10]], back_upper_l = [["Y", -15]], back_upper_r = [["Y", 12]] }
+[clip.params.poses.down]
+move = { pelvis = [0, 0.04, -0.16] }
+rotate = { chest = [["X", 10], ["Y", 6]], neck_01 = [["X", 0], ["Z", 10]], head = [["X", -12]], jaw = [["X", 2]], front_upper_l = [["Y", -75]], front_lower_l = [["Y", 20]], front_upper_r = [["Y", 75]], front_lower_r = [["Y", -20]], back_upper_l = [["Y", -72]], back_lower_l = [["Y", 18]], back_upper_r = [["Y", 72]], back_lower_r = [["Y", -18]], tail_01 = [["X", 10], ["Z", 15]] }
+[clip.params.poses.limp]
+move = { pelvis = [0, 0.04, -0.165] }
+rotate = { chest = [["X", 10], ["Y", 8]], neck_01 = [["X", 1], ["Z", 14]], head = [["X", -11], ["Z", 8]], jaw = [["X", 4]], front_upper_l = [["Y", -75]], front_lower_l = [["Y", 20]], front_upper_r = [["Y", 75]], front_lower_r = [["Y", -20]], back_upper_l = [["Y", -72]], back_lower_l = [["Y", 18]], back_upper_r = [["Y", 72]], back_lower_r = [["Y", -18]], tail_01 = [["X", 10], ["Z", 20]] }
+
+# --- behaviour ---
+
+[[clip]]
+name = "quaderbuckel/s_eat"        # scraping lichen off the stone, head low, jaw working
+keyframe = "keyposes"
+[clip.params]
+base = "quaderbuckel/s_idle"
+keys = [[0, "scrape_l"], [15, "scrape_r"], [30, "scrape_l"], [45, "scrape_r"], [60, "scrape_l"]]
+[clip.params.poses.scrape_l]
+move = { pelvis = [0, 0, -0.02] }
+rotate = { chest = [["X", 4]], neck_01 = [["X", 30], ["Z", 8]], head = [["X", 18], ["Z", 6]], jaw = [["X", 14]], front_upper_l = [["X", -6]], front_upper_r = [["X", -6]] }
+[clip.params.poses.scrape_r]
+move = { pelvis = [0, 0, -0.02] }
+rotate = { chest = [["X", 4]], neck_01 = [["X", 30], ["Z", -8]], head = [["X", 20], ["Z", -6]], jaw = [["X", 3]], front_upper_l = [["X", -6]], front_upper_r = [["X", -6]] }
+
+[[clip]]
+name = "quaderbuckel/s_sleep"      # dug in on its belly, head pulled under the shield, slow breathing
+keyframe = "keyposes"
+[clip.params]
+keys = [[0, "dug_in"], [30, "dug_in_breathe"], [60, "dug_in"]]
+[clip.params.poses.dug_in]
+move = { pelvis = [0, 0.03, -0.16] }
+rotate = { chest = [["X", 6]], neck_01 = [["X", 10]], head = [["X", -18]], front_upper_l = [["Y", -75]], front_lower_l = [["Y", 20]], front_upper_r = [["Y", 75]], front_lower_r = [["Y", -20]], back_upper_l = [["Y", -72]], back_lower_l = [["Y", 18]], back_upper_r = [["Y", 72]], back_lower_r = [["Y", -18]], tail_01 = [["X", 12], ["Z", 20]] }
+[clip.params.poses.dug_in_breathe]
+move = { pelvis = [0, 0.03, -0.152] }
+rotate = { chest = [["X", 5]], neck_01 = [["X", 9]], head = [["X", -18]], front_upper_l = [["Y", -75]], front_lower_l = [["Y", 20]], front_upper_r = [["Y", 75]], front_lower_r = [["Y", -20]], back_upper_l = [["Y", -72]], back_lower_l = [["Y", 18]], back_upper_r = [["Y", 72]], back_lower_r = [["Y", -18]], tail_01 = [["X", 12], ["Z", 20]] }
+
+[[clip]]
+name = "quaderbuckel/t_threaten"   # front raised, jaw open hissing, tail lashing
+keyframe = "keyposes"
+[clip.params]
+base = "quaderbuckel/s_idle"
+keys = [[0, "rest"], [10, "rear"], [18, "hiss"], [26, "rear"], [34, "hiss"], [46, "rest"]]
+[clip.params.poses.rear]
+move = { pelvis = [0, 0.04, 0.01] }
+rotate = { chest = [["X", -6]], neck_01 = [["X", -14]], head = [["X", 8]], jaw = [["X", 18]], tail_01 = [["X", 15], ["Z", 15]], tail_02 = [["Z", 10]] }
+[clip.params.poses.hiss]
+move = { pelvis = [0, 0.04, 0.01] }
+rotate = { chest = [["X", -7]], neck_01 = [["X", -16]], head = [["X", 6]], jaw = [["X", 26]], tail_01 = [["X", 15], ["Z", -15]], tail_02 = [["Z", -10]] }
+
+[[clip]]
+name = "quaderbuckel/t_warn"       # warning: stamping with the front feet, plates grinding
+keyframe = "keyposes"
+markers = { "sound:quaderbuckel_grind" = 4, footstep_front_l = 12, footstep_front_r = 24 }
+[clip.params]
+base = "quaderbuckel/s_idle"
+keys = [[0, "rest"], [4, "brace"], [8, "lift_l"], [12, "stamp_l"], [20, "lift_r"], [24, "stamp_r"], [36, "rest"]]
+[clip.params.poses.brace]
+move = { pelvis = [0, 0.02, -0.02] }
+rotate = { chest = [["X", 3]], neck_01 = [["X", 10]], head = [["X", -6]], tail_01 = [["X", 6]] }
+[clip.params.poses.lift_l]
+move = { pelvis = [0, 0.03, 0.0] }
+rotate = { chest = [["X", -3], ["Y", -4]], neck_01 = [["X", 8]], head = [["X", -6]], front_upper_l = [["X", -40]], front_lower_l = [["X", 55]], tail_01 = [["X", 6]] }
+[clip.params.poses.stamp_l]
+move = { pelvis = [0, 0.02, -0.03] }
+rotate = { chest = [["X", 4]], neck_01 = [["X", 12]], head = [["X", -8]], tail_01 = [["X", 6]] }
+[clip.params.poses.lift_r]
+move = { pelvis = [0, 0.03, 0.0] }
+rotate = { chest = [["X", -3], ["Y", 4]], neck_01 = [["X", 8]], head = [["X", -6]], front_upper_r = [["X", -40]], front_lower_r = [["X", 55]], tail_01 = [["X", 6]] }
+[clip.params.poses.stamp_r]
+move = { pelvis = [0, 0.02, -0.03] }
+rotate = { chest = [["X", 4]], neck_01 = [["X", 12]], head = [["X", -8]], tail_01 = [["X", 6]] }
+
+# --- block: the head pulled under the brow shield (blades glance off from the front) ---
+
+[[clip]]
+name = "quaderbuckel/t_block_in"
+keyframe = "keyposes"
+[clip.params]
+base = "quaderbuckel/s_rest"
+keys = [[0, "rest"], [8, "block"]]
+[clip.params.poses.block]
+move = { pelvis = [0, 0.02, -0.04] }
+rotate = { chest = [["X", 6]], neck_01 = [["X", 35]], head = [["X", -15]], front_upper_l = [["X", -10]], front_upper_r = [["X", -10]], back_upper_l = [["X", 8]], back_upper_r = [["X", 8]], tail_01 = [["X", -10]] }
+
+[[clip]]
+name = "quaderbuckel/s_block"      # holding the block (loop)
+keyframe = "keyposes"
+[clip.params]
+base = "quaderbuckel/s_rest"
+keys = [[0, "block"], [30, "block_breathe"], [60, "block"]]
+[clip.params.poses.block]
+move = { pelvis = [0, 0.02, -0.04] }
+rotate = { chest = [["X", 6]], neck_01 = [["X", 35]], head = [["X", -15]], front_upper_l = [["X", -10]], front_upper_r = [["X", -10]], back_upper_l = [["X", 8]], back_upper_r = [["X", 8]], tail_01 = [["X", -10]] }
+[clip.params.poses.block_breathe]
+move = { pelvis = [0, 0.02, -0.035] }
+rotate = { chest = [["X", 5]], neck_01 = [["X", 34]], head = [["X", -15]], front_upper_l = [["X", -10]], front_upper_r = [["X", -10]], back_upper_l = [["X", 8]], back_upper_r = [["X", 8]], tail_01 = [["X", -10]] }
+
+[[clip]]
+name = "quaderbuckel/t_block_out"
+keyframe = "keyposes"
+[clip.params]
+base = "quaderbuckel/s_rest"
+keys = [[0, "block"], [10, "rest"]]
+[clip.params.poses.block]
+move = { pelvis = [0, 0.02, -0.04] }
+rotate = { chest = [["X", 6]], neck_01 = [["X", 35]], head = [["X", -15]], front_upper_l = [["X", -10]], front_upper_r = [["X", -10]], back_upper_l = [["X", 8]], back_upper_r = [["X", 8]], tail_01 = [["X", -10]] }

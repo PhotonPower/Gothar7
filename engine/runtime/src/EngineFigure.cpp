@@ -680,6 +680,14 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     {
         toggleRanged(); // M11 (R1)
     }
+    if (std::exchange(m_drawMagicRequested, false) && armsFree)
+    {
+        toggleMagic(); // M12 (Z4)
+    }
+    if (const auto rune = std::exchange(m_runeRequested, std::nullopt); rune && armsFree)
+    {
+        selectRune(*rune);
+    }
     if ((std::exchange(m_drawWeaponRequested, false) && armsFree) || (m_weaponMode != 0 && !onLand))
     {
         toggleWeapon();
@@ -711,6 +719,10 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
                  else if (event.starts_with("hit_") || event.starts_with("combo_"))
                  {
                      m_heroFighter.onEvent(event); // the combat clips time the blow (M11)
+                 }
+                 else if (event == "cast")
+                 {
+                     applyHeroSpell(); // the spell leaves the hand (M12)
                  }
                  f.events.push_front(std::format(
                      "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));

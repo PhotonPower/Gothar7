@@ -172,5 +172,8 @@ on("npc_hit", function(attacker, target)
     if target == "hero" or Fights[target] or fight_state(target) == "down" or fight_state(target) == "dead" then
         return
     end
+    if Summoned and Summoned[target] == attacker then -- ein Versehen des Rufenden (M12): kein Zurückschlagen
+        return
+    end
     fight(target, attacker)
 end)

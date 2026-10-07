@@ -9,8 +9,8 @@ Neue Rigs (Glemsmahr, Bergleu) sind Verträge mit engine und werden vorher über
 | Art (ID) | Rolle | Größe | Gefahr | Skelett | Stand |
 |---|---|---|---|---|---|
 | **Schinder** (`schinder`) | Aasfresser im Rudel | 0,8 m Schulter | gering, im Rudel mittel | vom Wolf abgeleitet | Mesh, Rig, 15 Clips (2026-10-07) |
-| **Quaderbuckel** (`quaderbuckel`) | gepanzerter Steinbruch-Bewohner | 1,8 m lang, 0,9 m hoch | mittel | vom Keiler abgeleitet + Stirnschild | offen |
-| **Glemsmahr** (`glemsmahr`) | Nachtjäger im Glemswald | geduckt 1,5 m, aufgerichtet 2,3 m | hoch (früh) | neues Rig (~45 Knochen) | offen |
+| **Quaderbuckel** (`quaderbuckel`) | gepanzerter Steinbruch-Bewohner | 1,8 m lang, 0,84 m hoch | mittel | vom Keiler abgeleitet + Stirnschild | Mesh, Rig, 17 Clips (2026-10-07) |
+| **Glemsmahr** (`glemsmahr`) | Nachtjäger im Glemswald | geduckt 1,5 m, aufgerichtet ~2,1 m | hoch (früh) | neues Rig (37 Knochen) | Mesh, Rig, 19 Clips (2026-10-07) |
 | **Bergleu** (`bergleu`) | Boss: das Wappentier vom Engelberg | 1,6 m Schulter, 3,2 m lang | sehr hoch | neues Katzen-Rig (~50 Knochen) | offen |
 
 ## Schinder
@@ -26,23 +26,50 @@ Hals und Kopf, dunkler Borstenkamm, quer gestreifte Flanken, buschiger Schwanz m
 - **Tempo (mit engine, 2026-10-07):** Gehen 1,3, Rennen 6,5, Schleichen 0,7 m/s.
 - **Technik:** 26 Knochen (Wolf-Benennung plus `spine_02`, `neck_02`, `jaw`, `ear_l/r`), lod0 7834 Dreiecke
   (Körper, Augen, Zähne), Fell 1024² mit Normal-Map 512²; Beschreibung `data/monsters/schinder.creature.toml`.
-- **Für später notiert** (Projektinhaber): Der Kopf wirkt noch etwas nagetierhaft (runde Augen, kastenförmige
-  Schnauze, hohles offenes Maul) – Feinschliff, wenn das Werkzeug für Quaderbuckel bzw. Glemsmahr ohnehin
-  erweitert wird.
+- **Kopf-Feinschliff** (2026-10-07, auf Hinweis des Projektinhabers „noch etwas nagetierhaft“): Augen kleiner und
+  tiefer unter einem Oberlid, rundlichere Schnauze mit überhängenden Lefzen und rundem Nasenspiegel, Maul mit
+  Gaumen, Zunge und dunklem Rachen (wie beim Quaderbuckel).
 
 ## Quaderbuckel
 
 Gepanzerter Bewohner der alten Sandsteinbrüche: Rücken aus Platten, die wie behauene Sandsteinquader aussehen.
 Friedlich, bis man ihm zu nahe kommt; warnt mit Stampfen und Knirschen, dann Rammstoß, der umwirft. Von vorn zieht
 er den Kopf unter den Stirnschild – Klingen prallen ab; Flanke und Bauch sind verwundbar, stumpfe Waffen und Magie
-wirken besser. Beute: Panzerplatten (Schild-Handwerk), Fleisch. Sonderclips: `s_block`, `t_ram`.
+wirken besser. Beute: Panzerplatten (Schild-Handwerk), Fleisch.
+
+- **Tempo (mit engine, 2026-10-07):** Gehen 0,8, Rennen 3,5 (langsamer als der Held: man kann ihm davonlaufen),
+  Anrennen `s_charge` 4,5 m/s am Ort (ohne Root Motion), beim Aufprall `t_attack_1` (Rammstoß, `hit_start`/`hit_end`;
+  das Umwerfen setzt engine).
+- **Stirnschild (Vertrag mit engine, 2026-10-07):** Knochen `brow_shield` unter `chest` (nicht unter `neck_01`):
+  Translation gibt es nur auf root und pelvis, der Kopf taucht durch Beugen des Halses unter den stehenden Schild
+  (`t_block_in`, `s_block`, `t_block_out`). Dreht der Kopf zur Seite (`t_attack_2`), dreht der Schild nur etwas mit.
+  `socket_shield` ist Kind von `brow_shield` (Funken und Klang); ob ein Treffer „von vorn“ kommt, prüft engine über
+  den Winkel (±60°), kein eigener Kollisionskörper.
+- **Warnen:** `t_warn` (Stampfen, Plattenknirschen `sound:quaderbuckel_grind`) vor dem Angriff.
+- **Technik:** 29 Knochen, lod0 7956 Dreiecke: Körper, 60 starre Sandstein-Platten (Dachziegel-Reihen, die beim
+  Biegen überlappen), Stirnschild aus drei Blöcken, Steinknauf am Schwanz, kleine tiefliegende Augen, Maul mit
+  Gaumen, Zunge, dunklem Rachen und Hornkanten; Beschreibung `data/monsters/quaderbuckel.creature.toml`.
 
 ## Glemsmahr
 
 Hagerer Nachtjäger mit überlangen Armen, läuft auf den Knöcheln, flaches Gesicht mit großen, im Licht leuchtenden
 Augen. Nur nachts im Wald; tagsüber schläft er in Baumhöhlen und Ruinen. Einzelgänger, folgt dem Helden außer
 Sicht, greift von hinten an und springt zurück ins Dunkel; scheut Fackeln und Feuer. Lehrt „Nachts nicht ohne
-Licht in den Wald“. Beute: Augen (Alchemie). Sonderclips: Schleichen, Aufrichten, Sprung, Zurückweichen vor Licht.
+Licht in den Wald“. Beute: Augen (Alchemie).
+
+- **Rig (Vertrag mit engine, 2026-10-07):** 37 Knochen mit Sockets – Rumpf `spine_01..03`, `neck_01/02`, `head`,
+  `jaw`, `ear_l/r`; Arme als Vorderbeine (`front_shoulder` → `front_upper` → `front_lower` → `front_foot` = Hand,
+  dazu `front_finger_1/2/3`, ein Glied je Finger); zehengängige Hinterbeine (`back_upper` → `back_lower` →
+  `back_foot` = Mittelfuß → `back_toes`); kein Schwanz. Sockets `socket_mouth`, `socket_eyes` (Leuchten),
+  `socket_hand_l/r` (Krallen). Eine Kapsel nach der geduckten Gestalt.
+- **Tempo:** Knöchelgang 1,4, Galopp 6,5, Anschleichen 0,9 m/s (Root Motion). `t_leap` (~3 m) und `t_jump_back`
+  (~2,5 m) laufen am Ort, engine fährt die Kapsel; Events `leap_start`, `leap_land`, beim Sprung `hit_start`/`hit_end`
+  um die Landung. Aufrecht (`t_rise`, `s_upright`, `t_lower`) nur zum Drohen und Wittern, gekämpft wird auf vier
+  Gliedmaßen. `t_recoil` vor Licht und Feuer mit `recoil` und `sound:glemsmahr_hiss`.
+- **Aussehen (nach Rückmeldung des Projektinhabers):** sehnige Glieder mit knotigen Ellbogen, Knien und Handgelenken,
+  Muskelsträngen, Schulterblättern, Rippen und Hüftknochen unter blassgrauer, kahler Haut; schädelhaftes,
+  eingefallenes Gesicht mit Wangenknochen, kleine Augen tief in den Höhlen mit fahl-gelblichem Leuchten (emissiv),
+  lange, zurückgelegte Ohren, breites Maul mit Nadelzähnen; lod0 7636 Dreiecke.
 
 ## Bergleu
 

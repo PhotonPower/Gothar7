@@ -122,3 +122,11 @@ def test_fixed_posture_and_stepping_in_place():
         parse_gait({**TROT, "pose": {"neck_01": [["W", 20]]}})
     with pytest.raises(GaitError, match="pose"):
         parse_gait({**TROT, "pose": [1, 2]})
+
+
+def test_in_place():
+    g = parse_gait({**TROT, "in_place": True})
+    assert g.in_place and g.travel == 0.0 and g.stride == pytest.approx(3.0 * 0.4 * 10 / 30)
+    assert parse_gait(TROT).travel == 3.0
+    with pytest.raises(GaitError, match="in_place"):
+        parse_gait({**TROT, "in_place": "yes"})
