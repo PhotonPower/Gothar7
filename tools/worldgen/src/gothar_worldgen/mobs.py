@@ -61,6 +61,12 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "sackcloth": ("cloth", (0.2, 0.15, 0.09)),  # coarse jute
     "pine": ("boards", (0.22, 0.15, 0.08)),  # lighter wood: wall boards (what hangs on it shows)
     "wax": ("clay", (0.6, 0.55, 0.42)),  # tallow candles
+    "fur_light": ("fur", (0.5, 0.45, 0.36)),  # sheepskin
+    "fur_dark": ("fur", (0.14, 0.09, 0.06)),  # a hide
+    "wool_red": ("cloth", (0.32, 0.06, 0.04)),  # rugs and hangings
+    "wool_blue": ("cloth", (0.06, 0.09, 0.22)),
+    "wool_green": ("cloth", (0.07, 0.15, 0.06)),
+    "wool_ochre": ("cloth", (0.36, 0.24, 0.07)),
 }
 # materials that glow: the engine adds emissive after the light (render.md "Material")
 EMISSIVE = {"ember": (0.9, 0.28, 0.05), "flame": (1.0, 0.55, 0.15)}
@@ -667,6 +673,118 @@ def weapon_board() -> MobModel:
     return MobModel("weapon_board", m)
 
 
+# --- denser rooms (W7 step 4): small things and textiles -------------------------------------
+
+
+def firewood() -> MobModel:
+    """A stack of split logs beside the hearth."""
+    m = Mesh()
+    for y, n in ((0.07, 5), (0.2, 4), (0.33, 3)):
+        for k in range(n):
+            x = (k - (n - 1) / 2) * 0.15
+            m.cyl("oak_beam", 2, (x, y, 0.0), 0.07, 0.4 - 0.03 * (k % 2), sides=6)
+    m.body("firewood", (-0.4, 0.0, -0.21), (0.4, 0.42, 0.21))
+    return MobModel("firewood", m)
+
+
+def pot() -> MobModel:
+    """An iron cooking pot with a bail (set on the hearth's fire)."""
+    m = Mesh()
+    m.cyl("iron", 1, (0.0, 0.1, 0.0), 0.15, 0.2, sides=10)
+    m.cyl("iron", 1, (0.0, 0.205, 0.0), 0.16, 0.015, sides=10)
+    for x in (-0.16, 0.16):
+        m.box("iron", (x - 0.008, 0.2, -0.008), (x + 0.008, 0.33, 0.008))
+    m.box("iron", (-0.16, 0.32, -0.008), (0.16, 0.335, 0.008))
+    return MobModel("pot", m)
+
+
+def stool() -> MobModel:
+    """A three-legged stool."""
+    m = Mesh()
+    m.cyl("oak", 1, (0.0, 0.43, 0.0), 0.17, 0.04, sides=10)
+    for k in range(3):
+        a = 2 * math.pi * k / 3
+        m.cyl("oak_beam", 1, (0.11 * math.cos(a), 0.205, 0.11 * math.sin(a)), 0.022, 0.41, sides=6)
+    m.body("stool", (-0.17, 0.0, -0.17), (0.17, 0.45, 0.17))
+    return MobModel("stool", m)
+
+
+def bucket() -> MobModel:
+    """A wooden bucket with two iron hoops and a rope handle."""
+    m = Mesh()
+    m.cyl("oak", 1, (0.0, 0.17, 0.0), 0.15, 0.34, sides=10)
+    for y in (0.06, 0.28):
+        m.cyl("iron", 1, (0.0, y, 0.0), 0.155, 0.025, sides=10)
+    m.cyl("water", 1, (0.0, 0.3, 0.0), 0.135, 0.01, sides=10)
+    m.box("linen", (-0.15, 0.34, -0.006), (0.15, 0.36, 0.006))
+    m.body("bucket", (-0.16, 0.0, -0.16), (0.16, 0.36, 0.16))
+    return MobModel("bucket", m)
+
+
+def basket() -> MobModel:
+    """A round wicker basket with a few apples and onions in it."""
+    m = Mesh()
+    m.cyl("straw", 1, (0.0, 0.14, 0.0), 0.22, 0.28, sides=12)
+    m.cyl("straw", 1, (0.0, 0.29, 0.0), 0.235, 0.03, sides=12)
+    for x, z in ((-0.08, 0.02), (0.06, -0.06), (0.04, 0.08)):
+        m.cyl("wool_red", 1, (x, 0.29, z), 0.04, 0.06, sides=6)
+    m.body("basket", (-0.24, 0.0, -0.24), (0.24, 0.31, 0.24))
+    return MobModel("basket", m)
+
+
+def fur() -> MobModel:
+    """A sheepskin on the floor (flat, nothing to bump into); a darker hide under it."""
+    m = Mesh()
+    m.box("fur_dark", (-0.75, 0.0, -0.48), (0.75, 0.012, 0.48))
+    m.box("fur_light", (-0.6, 0.012, -0.38), (0.6, 0.03, 0.38))
+    return MobModel("fur", m)
+
+
+def rug() -> MobModel:
+    """A rag rug in stripes under a table (flat)."""
+    m = Mesh()
+    colours = ("wool_red", "linen", "wool_blue", "sackcloth", "wool_ochre", "linen", "wool_green")
+    w, d = 2.6, 2.1
+    for k, c in enumerate(colours):
+        x0 = -w / 2 + w * k / len(colours)
+        m.box(c, (x0, 0.0, -d / 2), (x0 + w / len(colours), 0.012, d / 2))
+    m.box("sackcloth", (-w / 2 - 0.04, 0.0, -d / 2 - 0.04), (w / 2 + 0.04, 0.006, d / 2 + 0.04))
+    return MobModel("rug", m)
+
+
+def wall_hanging() -> MobModel:
+    """A woven hanging on a rod, 1.25 to 2.25 m above the floor (on the wall; no collision)."""
+    m = Mesh()
+    m.box("oak_beam", (-0.7, 2.24, -0.02), (0.7, 2.28, 0.02), grain=0)
+    bands = (
+        "wool_red",
+        "wool_ochre",
+        "wool_red",
+        "wool_blue",
+        "wool_red",
+        "wool_green",
+        "wool_red",
+    )
+    for k, c in enumerate(bands):
+        y0 = 2.24 - (k + 1) * 0.14
+        m.box(c, (-0.6, y0, -0.012), (0.6, y0 + 0.14, -0.004))
+    return MobModel("wall_hanging", m)
+
+
+def tableware() -> MobModel:
+    """Plates, bowls and a jug set out along a table (its middle stays free for the candle)."""
+    m = Mesh()
+    for x, kind in (
+        (-0.55, "plates"),
+        (-0.3, "bowl"),
+        (0.3, "plates"),
+        (0.55, "jug"),
+        (0.05, "bowl"),
+    ):
+        _ware(m, kind, (x, 0.0, 0.12 if kind == "bowl" and x > 0 else -0.12))
+    return MobModel("tableware", m)
+
+
 CANDLE_TOP = 0.26  # the flame of the candlestick, above its foot
 
 
@@ -708,7 +826,9 @@ def lantern() -> MobModel:
     return MobModel("lantern", m)
 
 
-PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "barrel": barrel,
+PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "firewood": firewood,
+         "pot": pot, "stool": stool, "bucket": bucket, "basket": basket, "fur": fur, "rug": rug,
+         "wall_hanging": wall_hanging, "tableware": tableware, "barrel": barrel,
          "barrel_rack": barrel_rack, "counter": counter,
          "shelf": shelf, "crate": crate, "crate_stack": crate_stack, "sacks": sacks,
          "workbench": workbench, "tool_board": tool_board, "quench_trough": quench_trough,

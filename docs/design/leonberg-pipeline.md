@@ -955,6 +955,18 @@ und Vegetation (Bäume, Büsche, Gras) über Masken; Feinarbeit mit Pinseln im E
   (der Herd zählt), höchstens 6 Lichter je Raum (zwei der 8 bleiben für die Nachbarräume), mindestens 2,5 m von
   anderen Lichtern und 1,2 m von Türen, Durchgängen und Fenstern, nicht über Hohem. Das frühere freie Kerzenlicht
   unter der Decke entfällt. Leonberg: 14 Raum-Vobs, 2–6 Lichter je Raum.
+- **Dichter eingerichtet** (Schritt 4): neue Props `firewood` (Holzstapel), `pot` (Kessel), `stool`, `bucket`, `basket`,
+  `fur` (Fell, neue prozedurale Textur `fur`), `rug` (Flickenteppich), `wall_hanging` (Wandbehang, 1,25–2,25 m),
+  `tableware` (Teller, Schalen, Krug). Selbsttätig: unter jedem Tisch ein Teppich, darauf Geschirr und figurens
+  `it_mug` (2), `it_bread`, `it_apple` als Mesh-Vobs; auf jedem Herd ein Kessel, daneben Holz (falls Platz).
+  Je Nutzung (`inside.props`): Hocker zuerst an die Tischenden, sonst an eine Wand; Felle vor Betten (sonst auf
+  freien Boden); Besen (`it_broom`, Borsten unten) an eine Wand; Körbe, Felle und Wandbehänge gehen mit Betten,
+  Truhen und Vorräten reihum in die Kammern (die ZjV-Kammern sind damit eingerichtet). Wandbretter und -behänge
+  brauchen nur freie Wand (über Kopfhöhe), halten aber Abstand zu Fenstern, Tür, Hohem und Freepoints. Wege-Regeln:
+  der Weg zur Schanktheke und zum Gangende der Ladentheke wird beim Stellen sofort freigehalten (später gestellte
+  Tische blieben sonst darin stehen), „gerader Weg frei“ zählt auch Props, und der Schwenkbereich der Haustür bleibt
+  innen samt 0,3 m frei (engine #232). Raum-Vobs haben einen kleinen `COL_BOX` über der Decke: ohne `COL_` würde ihr
+  ganzes Render-Mesh kollidieren (asset.md).
 - **Gelände unter dem Raum:** `export-terrain` senkt die Heightmap unter jedem Raum (Index `interior.ring`, um eine
   Zelle vergrößert) auf 2 cm unter den Boden, nur absenkend (`export/pads.py` `room_pads`); sonst ragt am Hang das
   Gelände bergseitig durch den Boden (vorher bis 1,1 m, Schmiede). Außen läuft die Senke über 1,5 m ins Gelände aus

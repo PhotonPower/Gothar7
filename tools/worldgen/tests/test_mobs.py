@@ -170,8 +170,12 @@ def test_props_budget_and_collision(kind):
         assert lo[1] > 0.8 and hi[2] <= 0.07 and not m.main.collision
     elif kind == "lantern":  # on the wall above heads, reaching out from it
         assert lo[1] > 1.7 and lo[2] >= -0.02 and hi[2] <= 0.3 and not m.main.collision
-    elif kind == "candlestick":  # on a table, small, nothing to bump into
-        assert lo[1] == pytest.approx(0.0) and hi[1] < 0.3 and not m.main.collision
+    elif kind in ("candlestick", "pot", "tableware"):  # on a table or hearth, small
+        assert lo[1] == pytest.approx(0.0) and hi[1] < 0.4 and not m.main.collision
+    elif kind in ("fur", "rug"):  # flat on the floor, walked over
+        assert lo[1] == pytest.approx(0.0) and hi[1] <= 0.03 and not m.main.collision
+    elif kind == "wall_hanging":  # on the wall above heads' shoulders
+        assert lo[1] > 1.2 and hi[2] <= 0.03 and not m.main.collision
     else:  # standing on the floor, against the wall at -Z
         assert lo[1] == pytest.approx(0.0) and m.main.collision
         assert lo[2] >= -0.5  # no deeper than half a metre behind the origin

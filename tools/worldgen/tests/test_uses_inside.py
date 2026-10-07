@@ -347,3 +347,49 @@ def test_candles_on_tables_lanterns_on_walls_within_the_budget():
         assert min(math.dist((x, z), (w["pos"][0], w["pos"][2])) for w in others) >= (
             LANTERN_APART_M - 0.2
         )
+
+
+def test_tables_set_hearth_kept_and_small_things():
+    spec = {"wohnhaus": inside_spec({"mobs": ["bed:R", "table:1"], "hearth": True,
+                                     "props": ["stool:2", "fur:1", "broom:1", "wall_hanging:1",
+                                               "basket:1"]}, "x")}  # fmt: skip
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=1, inside=True)
+    p = plan_inside([house], spec, INDEX, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+    assert p.failed == []
+    meshes = by_kind(p, "mesh")
+    (table,) = [v for v in by_kind(p, "mob") if v["mesh"] == "mobs/table.glb"]
+    tx, tz = table["pos"][0], table["pos"][2]
+    (rug,) = props_of(p, "rug")
+    assert rug["pos"] == pytest.approx([tx, 1.0, tz])  # under the table
+    (ware,) = props_of(p, "tableware")
+    assert ware["pos"] == pytest.approx([tx, 1.75, tz])
+    items = sorted(
+        v["mesh"] for v in meshes if v["mesh"].startswith("items/it_") and "broom" not in v["mesh"]
+    )
+    assert items == [
+        "items/it_apple.glb",
+        "items/it_bread.glb",
+        "items/it_mug.glb",
+        "items/it_mug.glb",
+    ]
+    for v in meshes:
+        if v["mesh"] in ("items/it_mug.glb", "items/it_apple.glb"):
+            assert v["pos"][1] in (pytest.approx(1.8), pytest.approx(1.75))  # on the top
+            assert math.dist((v["pos"][0], v["pos"][2]), (tx, tz)) < 0.6
+    stools = props_of(p, "stool")
+    assert len(stools) == 2
+    # at the table's ends where there is room, else at a wall
+    assert any(abs(math.dist((v["pos"][0], v["pos"][2]), (tx, tz)) - 1.15) < 1e-6 for v in stools)
+    (hearth,) = props_of(p, "hearth")
+    (pot,) = props_of(p, "pot")
+    assert pot["pos"][::2] == pytest.approx(hearth["pos"][::2]) and pot["pos"][1] > 1.4
+    (wood,) = props_of(p, "firewood")
+    assert math.dist(wood["pos"][::2], hearth["pos"][::2]) < 1.5
+    (broom,) = [v for v in meshes if v["mesh"] == "items/it_broom.glb"]
+    assert broom["pos"][1] == pytest.approx(1.0 + 1.2) and broom["rot"] == [0.0, 0.0, 1.0, 0.0]
+    (fur,) = props_of(p, "fur")
+    (bed,) = [v for v in by_kind(p, "mob") if v["mesh"] == "mobs/bed.glb"]
+    assert math.dist(fur["pos"][::2], bed["pos"][::2]) == pytest.approx(0.45 + 0.48 + 0.05)
+    (hanging,) = props_of(p, "wall_hanging")
+    room = Polygon(ROOM["ring"])
+    assert room.exterior.distance(Point(hanging["pos"][0], hanging["pos"][2])) < 0.2  # on a wall

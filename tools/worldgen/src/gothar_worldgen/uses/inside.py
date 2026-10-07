@@ -19,6 +19,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
 from shapely import affinity
 from shapely.geometry import LineString, Point, Polygon, box
 from shapely.geometry.polygon import orient
@@ -38,12 +39,16 @@ PROP_SIZE = {"barrel": (0.62, 0.62), "barrel_rack": (1.62, 0.95), "shelf": (1.22
              "crate": (0.64, 0.54), "crate_stack": (1.26, 0.58), "sacks": (0.9, 0.58),
              "workbench": (1.82, 0.67), "quench_trough": (1.02, 0.52), "bellows": (1.2, 0.46),
              "tool_board": (1.2, 0.1), "weapon_board": (1.2, 0.1),
-             "sausages": (1.0, 0.1), "herbs": (0.9, 0.1)}  # fmt: skip
-WALL_BOARDS = {"tool_board", "weapon_board"}  # on the wall, nothing on the floor
+             "sausages": (1.0, 0.1), "herbs": (0.9, 0.1),
+             # denser rooms (W7 step 4)
+             "stool": (0.36, 0.36), "bucket": (0.34, 0.34), "basket": (0.5, 0.5),
+             "broom": (0.3, 0.25), "wall_hanging": (1.4, 0.1), "firewood": (0.82, 0.44),
+             "fur": (1.5, 0.96)}  # fmt: skip
+WALL_BOARDS = {"tool_board", "weapon_board", "wall_hanging"}  # on the wall, nothing below
 HANGING = {"sausages": 0.55, "herbs": 0.45}  # from the ceiling: how far they hang down
 HANG_OUT_M = 0.45  # hanging things this far from the wall
 HEAD_M = 2.0  # hanging things end above this (over the floor)
-BY_HEARTH = {"bellows", "quench_trough"}  # beside the hearth, on either side
+BY_HEARTH = {"bellows", "quench_trough", "firewood"}  # beside the hearth, on either side
 PROP_GAP_M = 0.12  # props stand this close to each other (furniture keeps MOVE_M)
 # the counter group (a trader's): shelf at the wall, an aisle, the counter; the open end of the
 # aisle gets a waypoint, the trader stands behind the counter
@@ -55,6 +60,7 @@ BENCH_OFF_M = 0.62  # bench middles beside the table axis (engine's table slots,
 WALL_GAP_M = 0.05
 PATH_W_M = 1.3  # the way from the door to the middle of the room stays this wide
 DOOR_ZONE_M = 1.4  # nothing within this distance inside the door
+DOOR_SWEEP_EXTRA_M = 0.3  # the door's sweep stays free and this much round it (engine #232)
 MOVE_M = 0.45  # room to walk past furniture
 STEP_M = 0.25  # placement search step
 INSIDE_WP_M = 1.2  # the room's waypoint this far inside the door
@@ -76,12 +82,19 @@ LANTERN_APART_M = 2.5  # lanterns this far from other lights at least
 LANTERN_CLEAR_M = 1.2  # and this far from doors, passages and windows
 WINDOW_LIGHT_IN_M = 0.8  # the window's light this far inside
 WINDOW_FREE_M = 0.8  # tall things keep this far from a window (into the room), and 0.3 beside it
-TALL = {"hearth", "shelf", "barrel_rack", "tool_board", "weapon_board", "crate_stack"}
+TALL = {"hearth", "shelf", "barrel_rack", "tool_board", "weapon_board", "crate_stack",
+        "wall_hanging"}  # fmt: skip
+# what is set out on every table: (item, along the table, across it, height over the top, rot)
+TABLE_ITEMS = (("items/it_mug.glb", 0.45, 0.2, 0.05, None),
+               ("items/it_mug.glb", -0.45, -0.2, 0.05, None),
+               ("items/it_bread.glb", -0.2, -0.28, 0.068, [0.0, 0.0, 0.70711, 0.70711]),
+               ("items/it_apple.glb", 0.25, 0.26, 0.0, None))  # fmt: skip
+BROOM_GRIP_M = 1.2  # the broom hangs bristles down from its grip (it_broom: grip at the origin)
 BIG_ROOM_M2 = 60.0  # a second light in rooms bigger than this
 Pt = tuple[float, float]
 # divided ground storeys (index ``interior.rooms``): what goes into the chambers, round the rooms
 CHAMBER_MOBS = {"bed", "chest"}
-CHAMBER_PROPS = {"barrel", "crate", "crate_stack", "sacks"}
+CHAMBER_PROPS = {"barrel", "crate", "crate_stack", "sacks", "basket", "fur", "wall_hanging"}
 
 
 @dataclass
@@ -174,7 +187,18 @@ class _Room:
     def reachable(self, p: tuple[float, float]) -> bool:
         """A straight walk from the room's waypoint to ``p`` past all furniture."""
         lane = LineString([self.entry, p]).buffer(REACH_R_M)
-        return not any(lane.intersects(t) for t in self.taken)
+        return not any(lane.intersects(t) for t in [*self.taken, *self.props])
+
+    def on_wall_free(self, shape: Polygon) -> bool:
+        """A wall-mounted ``shape`` (boards, hangings): on the wall, off the door and away from
+        other tall or wall-mounted things."""
+        if not self.poly.buffer(-0.02).contains(shape):
+            return False
+        if shape.distance(Point(self.door_mid)) < DOOR_ZONE_M:
+            return False
+        if any(shape.distance(q) < 0.45 for q in self.spots):  # a figure leaning there
+            return False
+        return not any(shape.distance(q) < 0.15 for q in self.tall)
 
     def before_window(self, shape: Polygon) -> bool:
         """``shape`` stands in front of one of the room's windows (keeping out the day)."""
@@ -250,7 +274,11 @@ def _room(e: dict[str, Any], obstacles: Sequence[Polygon] = (),
     quarter = Polygon([(hx, hz), (hx + ux * w, hz + uz * w),
                        (hx + (ux + inward[0]) * w, hz + (uz + inward[1]) * w),
                        (hx + inward[0] * w, hz + inward[1] * w)])  # fmt: skip
-    sweep = Point(hx, hz).buffer(w).intersection(quarter)
+    sweep = (
+        Point(hx, hz)
+        .buffer(w + DOOR_SWEEP_EXTRA_M)
+        .intersection(quarter.buffer(DOOR_SWEEP_EXTRA_M))
+    )
     blade = LineString([(hx, hz), (hx + inward[0] * w, hz + inward[1] * w)]).buffer(0.06)
     keep = path.union(zone).union(sweep)
     room = _Room(poly, float(r["floor"]), float(r["ceiling"]), keep, mid, inward, [blade])
@@ -299,6 +327,10 @@ def _against_wall(
             cz = a[1] + uz * t + nz * (WALL_GAP_M + depth / 2)
             t += STEP_M
             shape = _rect(cx, cz, ux, uz, length, depth)
+            if kind in WALL_BOARDS:  # above heads: only the wall must be free (no floor room)
+                if room.on_wall_free(shape) and not room.before_window(shape):
+                    return shape, (cx, cz), (nx, nz)
+                continue
             reach = depth / 2 + SLOT.get(kind, 0.6)
             slot = (cx + nx * reach, cz + nz * reach)
             if not (room.fits(shape) and room.poly.contains(Point(slot))):
@@ -363,6 +395,8 @@ class _House:
         self.tag = tag or room_tag(h)
         self.counts: dict[str, int] = {}
         self.tables: list[tuple[float, float]] = []
+        self.table_axes: list[tuple[float, float]] = []
+        self.beds: list[tuple[tuple[float, float], tuple[float, float]]] = []
 
     def vob(self, kind: str, name: str, pos: tuple[float, float], front: tuple[float, float],
             height: float | None = None, **comp: object) -> None:  # fmt: skip
@@ -492,8 +526,81 @@ class _House:
                 self.room.tall.append(shape)
         return name
 
+    def set_tables(self, stools: int) -> int:
+        """A rug under every table, plates, mugs, bread and an apple on it, stools at its ends;
+        returns the stools that found no place there."""
+        room = self.room
+        top = room.floor + 0.75
+        for t, ((cx, cz), (ax, az)) in enumerate(zip(self.tables, self.table_axes, strict=True)):
+            nx, nz = -az, ax
+            self.prop("rug", (cx, cz), (nx, nz), None)
+            self.prop("tableware", (cx, cz), (nx, nz), None, height=top)
+            for k, (item, along, across, up, rot) in enumerate(TABLE_ITEMS):
+                x, z = cx + ax * along + nx * across, cz + az * along + nz * across
+                name = f"PROP_{self.tag}_TISCH_{t + 1}_{k + 1}"
+                spec = {"key": f"use:{name}", "name": name, "type": "mesh",
+                        "pos": [x, top + up, z], "rot": rot or _quat(nx, nz),
+                        "mesh": item}  # fmt: skip
+                self.plan.vobs.append(spec)
+            for sign in (1.0, -1.0):  # at the table's ends
+                if stools <= 0:
+                    break
+                reach = SIZE["table"][0] / 2 + 0.35
+                x, z = cx + ax * reach * sign, cz + az * reach * sign
+                spot = Point(x, z).buffer(0.2)
+                free = room.poly.buffer(-0.05).contains(spot) and not spot.intersects(room.keep)
+                if free and not any(spot.intersects(t) for t in [*room.props, *room.spots]):
+                    self.prop("stool", (x, z), (ax * sign, az * sign), spot)
+                    stools -= 1
+        return stools
+
+    def free_floor_rect(self, length: float, depth: float) -> tuple[Pt, Pt] | None:
+        """Free floor for something flat (a fur): nearest the room's middle, on nothing."""
+        room = self.room
+        (_, (ux, uz), _) = _walls(room)[0]
+        c = room.poly.centroid
+        x0, z0, x1, z1 = room.poly.bounds
+        best = None
+        for x in np.arange(x0, x1, STEP_M):
+            for z in np.arange(z0, z1, STEP_M):
+                shape = _rect(float(x), float(z), ux, uz, length, depth)
+                if not room.poly.buffer(-0.1).contains(shape):
+                    continue
+                if any(shape.intersects(q) for q in [*room.taken, *room.props]):
+                    continue
+                d = math.dist((x, z), (c.x, c.y))
+                if best is None or d < best[0]:
+                    best = (d, (float(x), float(z)))
+        return None if best is None else (best[1], (-uz, ux))
+
     def place_prop(self, kind: str, hearth_at: Any) -> None:  # noqa: ANN401
         room = self.room
+        if kind == "fur":  # before a bed, else on free floor: flat, walked over
+            if self.beds:
+                (bx, bz), (fx, fz) = self.beds.pop(0)
+                reach = SIZE["bed"][1] / 2 + PROP_SIZE["fur"][1] / 2 + 0.05
+                self.prop("fur", (bx + fx * reach, bz + fz * reach), (fx, fz), None)
+                return
+            spot = self.free_floor_rect(*PROP_SIZE["fur"])
+            if spot is None:
+                self.fail(f"prop {kind}")
+                return
+            self.prop("fur", spot[0], spot[1], None)
+            return
+        if kind == "broom":  # figuren's broom, leaning on a wall bristles down
+            spot = _against_wall(room, "broom")
+            if spot is None:
+                self.fail(f"prop {kind}")
+                return
+            shape, (x, z), _ = spot
+            self.counts["BESEN"] = self.counts.get("BESEN", 0) + 1
+            name = f"PROP_{self.tag}_BESEN_{self.counts['BESEN']}"
+            self.plan.vobs.append({"key": f"use:{name}", "name": name, "type": "mesh",
+                                   "pos": [x, room.floor + BROOM_GRIP_M, z],
+                                   "rot": [0.0, 0.0, 1.0, 0.0],
+                                   "mesh": "items/it_broom.glb"})  # fmt: skip
+            room.props.append(shape)
+            return
         if kind in HANGING:
             self.hang(kind, hearth_at)
             return
@@ -631,6 +738,7 @@ class _House:
         self.prop("counter", counter_c, (nx, nz), _rect(*counter_c, ux, uz, 1.82, 0.66))
         stand = (along[0] - nx * aisle, along[1] - nz * aisle)
         room.stands.insert(0, (stand, (nx, nz)))
+        self.keep_way(wp)  # the way to the aisle's open end stays free of table and beds
         room.keep = room.keep.union(LineString([wp, stand]).buffer(AISLE_M / 2 - 0.05))
         name = f"WP_{self.tag}_THEKE"
         self.plan.places.append({"kind": "wp", "name": name, "house": self.h.id,
@@ -672,6 +780,12 @@ class _House:
         for kind in sorted(BY_HEARTH):  # the smithy's bellows and trough belong to the hearth
             for _ in range(props.pop(kind, 0)):
                 self.place_prop(kind, hearth_at)
+        if hearth_at is not None:  # every hearth: a pot on the fire, firewood beside it
+            from gothar_worldgen.mobs import HEARTH_H
+
+            (hx, hz), front = hearth_at
+            self.prop("pot", (hx, hz), front, None, height=room.floor + HEARTH_H + 0.05)
+            self.by_hearth("firewood", hearth_at)
         # the counter and the taps next: the shop's or tavern's heart, before table and beds
         if props.pop("counter", 0):
             self.counter_group()
@@ -685,6 +799,7 @@ class _House:
             self.prop("barrel_rack", centre, front, shape)
             room.stands.insert(0, ((centre[0] + front[0] * reach, centre[1] + front[1] * reach),
                                    (-front[0], -front[1])))  # fmt: skip
+            self.keep_way((centre[0] + front[0] * reach, centre[1] + front[1] * reach))
         for kind, n in spec.mobs:
             for _ in range(min(3, max(1, h.residents)) if n == "R" else int(n)):
                 if kind == "table":
@@ -699,6 +814,7 @@ class _House:
                     self.mob("bench", (cx - nx * BENCH_OFF_M, cz - nz * BENCH_OFF_M), (-nx, -nz))
                     room.taken.append(block)
                     self.tables.append((cx, cz))
+                    self.table_axes.append((ax, az))
                     continue
                 wall_spot = _against_wall(room, kind)
                 if wall_spot is None:
@@ -707,6 +823,8 @@ class _House:
                 shape, centre, front = wall_spot
                 self.mob(kind, centre, front)
                 room.taken.append(shape)
+                if kind == "bed":
+                    self.beds.append((centre, front))
                 reach = (SIZE.get(kind) or (0.0, 0.6))[1] / 2 + SLOT.get(kind, 0.6)
                 self.keep_way((centre[0] + front[0] * reach, centre[1] + front[1] * reach))
                 if kind == "chest":  # a counter: the trader stands at its slot
@@ -731,6 +849,7 @@ class _House:
                     self.fp(kind, pos, d)
         for place in [p for p in self.plan.places if p["house"] == h.id and p["kind"] == "fp"]:
             self.keep_way((place["pos"][0], place["pos"][1]))
+        props["stool"] = self.set_tables(props.get("stool", 0))
         for kind, n in props.items():
             for _ in range(n):
                 self.place_prop(kind, hearth_at)
@@ -892,13 +1011,15 @@ def _free_floor(
     while x <= maxx - 0.5:
         z = minz + 0.5
         while z <= maxz - 0.5:
-            if kind == "SMALLTALK":
-                p, q = (x - 0.6, z), (x + 0.6, z)
-                if (room.fits(Point(p).buffer(0.3)) and room.fits(Point(q).buffer(0.3))
-                        and room.reachable(p) and room.reachable(q)):  # fmt: skip
-                    d = math.dist((x, z), (c.x, c.y))
-                    if best is None or d < best[0]:
-                        best = (d, [(p, (1.0, 0.0)), (q, (-1.0, 0.0))])
+            if kind == "SMALLTALK":  # a pair facing each other, side by side along x or z
+                for dx, dz in ((0.6, 0.0), (0.0, 0.6)):
+                    p, q = (x - dx, z - dz), (x + dx, z + dz)
+                    if (room.fits(Point(p).buffer(0.3)) and room.fits(Point(q).buffer(0.3))
+                            and room.reachable(p) and room.reachable(q)):  # fmt: skip
+                        d = math.dist((x, z), (c.x, c.y))
+                        if best is None or d < best[0]:
+                            f = (dx / 0.6, dz / 0.6)
+                            best = (d, [(p, f), (q, (-f[0], -f[1]))])
             elif room.fits(Point(x, z).buffer(0.3)) and room.reachable((x, z)):
                 d = math.dist((x, z), (c.x, c.y))
                 if best is None or d > best[0]:  # out of the way: away from the middle
