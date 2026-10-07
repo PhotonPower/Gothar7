@@ -149,10 +149,10 @@ def test_street_edge_groups_face_the_street_outside_its_corridor():
     plan = plan_outdoor(_rules(kerb=True, kerb__chance=1.0), _site())
     kerb = _props(plan, "outdoor:kerb:")
     assert kerb
-    corridor = _corridor()
+    surface = LineString(STREET["points"]).buffer(STREET["widthM"] / 2)
     for v in kerb:
         foot = _foot(v)
-        assert not foot.intersects(corridor), v["name"]
+        assert not foot.intersects(surface), v["name"]  # beside the street, never on it
         assert not foot.intersects(HOUSE_A) and not foot.intersects(HOUSE_B), v["name"]
         x, _, z = v["pos"]
         fx, fz = _front(v)
@@ -235,3 +235,13 @@ def test_keys_and_names_are_unique():
     assert any(n.startswith("GASSE_Zh_") for n in names)
     assert any(n.startswith("GASSE_ZH_") for n in names)
     assert any(n.startswith("GRAS_T_1_") for n in names)  # the second part's edges
+
+
+def test_paths_and_tracks_stay_free_over_their_whole_width():
+    # a field track (3 m) passing right along house B's yard wall
+    track = {"highway": "track", "widthM": 3.0, "points": [[15.0, 9.5], [35.0, 9.5]], "osmId": "w2"}
+    plan = plan_outdoor(_rules(kerb=True, kerb__chance=1.0), _site(streets=[STREET, track]))
+    surface = LineString(track["points"]).buffer(1.5)
+    for v in _props(plan):
+        assert not _foot(v).intersects(surface), v["name"]
+    assert any(v["key"].startswith("outdoor:kerb:w2:") for v in plan.vobs)  # at its edge instead

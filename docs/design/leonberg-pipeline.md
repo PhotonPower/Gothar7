@@ -825,7 +825,7 @@ Gruppe `WORLDGEN_GASSEN`. Mechanik in `gothar_worldgen/outdoor.py`, Regeln in `d
 `generated/outdoor.json`. Modelle: `gothar-worldgen mobs` schreibt zusätzlich `assets/source/vegetation/` (Linde,
 Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `cart`, `woodpile`, `dung_heap`.
 - **Freihalten** (Vorrang vor allem): je Straßenachse ein Korridor (mindestens 1,2 m zu jeder Seite, breite Straßen
-  bis 1,5 m vor ihrem Rand, Treppen ganz); vor jeder Tür Schwenk und Ausgang (1,8 × 2,2 m) samt Weg zur Achse; um
+  bis 1,5 m vor ihrem Rand; Treppen, Pfade und Feldwege (`pathKinds`) ganz); vor jeder Tür Schwenk und Ausgang (1,8 × 2,2 m) samt Weg zur Achse; um
   Routinen-Orte und Freepoints 1,3 m; entlang der Wegnetz-Kanten 1,0 m. Das Wegnetz dafür baut `assemble` vorher aus
   der Welt ohne die Gassen-Vobs (dieselbe Funktion wie `waynet`); danach neu erzeugt bleibt es **gleich**. Die
   Handmodelle (Schlossgarten, Kirche) bleiben 3 m frei, nichts steht auf Hängen über 0,25 m.
@@ -834,13 +834,15 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   (0,15 m) an einer Hauswand, Vorderseite von ihr weg. Als Wand gilt der um 8 cm vereinfachte Umriss der
   Kollisionskörper (sonst zu viele kurze Kanten), die Dinge stehen 12 cm davor. Eine Wand bis 6 m vor einer Straße ist
   die Vorderseite, sonst Hof. Häuser mit Nutzung bekommen ihre Gruppen (`uses.<nutzung>.front/back`), übrige mit 90 %
-  eine Gruppe vorn (30 % eine zweite) und mit 25 % eine im Hof. Passt eine Gruppe nicht am Stück (Türen teilen die
+  eine Gruppe vorn (30 % eine zweite) und mit 40 % eine im Hof. Passt eine Gruppe nicht am Stück (Türen teilen die
   Fronten), geht der Rest an eine andere Stelle derselben Seite, ohne Platz vorn in den Hof.
-- **Am Straßenrand** (`kerb`): alle 10 m mit 20 % eine Gruppe dicht außerhalb des Korridors, Blick zur Straße, wo
-  keine Wand steht (offene Seiten, Ränder breiter Straßen; bis 1,5 m über den Rand hinaus).
+- **Am Straßenrand** (`kerb`): alle 10 m mit 20 % eine Gruppe neben der Straße, Blick zu ihr, wo keine Wand steht
+  (offene Seiten). Sie steht nie auf einer Fahrbahn: 1,6 m jenseits des Rands, so weit wie die Splat-Karte den Belag
+  verwischt (`edgeGapM`), auch von anderen Straßen; Tunnel zählen nicht.
 - **Marktstände** (`market`): 12 Stände (`market_stall_a/b/c`: Lebensmittel, Tuch, Töpferware; Tuchdach gestreift,
   Theke mit Waren, Vorrat dahinter) auf dem Marktplatz (OSM-Platz `Marktplatz`), 3–9 m vom Rand, die Theke zur
-  Platzmitte, 1,2 m Abstand untereinander; Kollision nur Theke, hintere Pfosten und Vorrat.
+  Platzmitte, 1,2 m Abstand untereinander; Kollision nur Theke, hintere Pfosten und Vorrat; das Tuchdach hat einen Holzrahmen (von der Seite sonst nur eine
+  Linie).
 - **Bäume** aus OSM (`natural=tree`), in Gärten und Parks Obstbäume, sonst Linde oder Eiche; bis 2 m verschoben,
   wenn der Stamm im Weg stünde; die Krone hält 75 % ihres Radius Abstand zu Häusern. Dazu **Obstbäume und Büsche**
   aus einem 3-m-Raster über den Höfen (nicht an Straßen) und **Gras und Unkraut** an den Wandfüßen.
@@ -848,8 +850,8 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   (kleiner `COL_`-Kasten 1 m unter dem Boden; ohne `COL_` würde das ganze Mesh kollidieren). Kronen sind
   geschlossene Low-Poly-Blobs mit der Textur `leaves` und gerundeten Normalen (keine Alpha-Ausschnitte).
 - **Zufall** je Haus bzw. Ort mit festem Seed: Ändert sich ein Haus, bleiben die Dinge der anderen stehen.
-- **Leonberg (Stand nach der Verdichtung):** rund 9400 Vobs – etwa 6600 Requisiten (3,2-mal so viele wie im ersten
-  Schritt, davon 2700 am Straßenrand), 12 Marktstände, 400 Bäume, 300 Büsche, 2100 Gras- und Unkrautbüschel.
+- **Leonberg (Stand nach der Verdichtung):** rund 8900 Vobs – etwa 6150 Requisiten (3,0-mal so viele wie im ersten
+  Schritt, davon 1900 frei am Straßenrand), 12 Marktstände, 400 Bäume, 300 Büsche, 2000 Gras- und Unkrautbüschel.
   Wegnetz unverändert, Autopilot wie ohne Gassen-Vobs.
 
 ### W-G Welt-Assembler & Wegnetz-Vorschlag

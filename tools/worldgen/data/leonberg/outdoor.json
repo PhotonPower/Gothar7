@@ -6,6 +6,8 @@
     "minCorridorM": 1.2,
     "streetMarginM": 1.5,
     "stepsExtraM": 0.3,
+    "pathKinds": ["track", "path", "footway", "cycleway", "bridleway"],
+    "pathExtraM": 0.2,
     "doorLane": [1.8, 2.2],
     "approachM": 0.7,
     "placeRadiusM": 1.3,
@@ -45,13 +47,14 @@
   },
   "houses": {
     "front": {"chance": 0.9, "more": [0.3], "pick": {"holz": 4, "holz_klein": 2, "faesser": 2, "faesser_klein": 2, "kisten": 2, "kisten_hoch": 1, "karren": 2}},
-    "back": {"chance": 0.25, "more": [0.3], "pick": {"holz": 3, "hof": 2, "faesser_klein": 1, "karren": 1, "kisten": 1}}
+    "back": {"chance": 0.4, "more": [0.3], "pick": {"holz": 3, "hof": 2, "faesser_klein": 1, "karren": 1, "kisten": 1}}
   },
   "kerb": {
     "minWidthM": 3.0,
     "stepM": 10.0,
     "chance": 0.2,
-    "beyondEdgeM": 1.5,
+    "edgeGapM": 1.6,
+    "beyondEdgeM": 3.2,
     "pick": {"faesser": 2, "kisten": 2, "kisten_hoch": 1, "karren": 2, "holz": 1}
   },
   "market": {

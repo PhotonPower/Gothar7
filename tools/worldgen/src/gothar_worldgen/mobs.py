@@ -922,6 +922,14 @@ def _stall_frame(m: Mesh, colours: tuple[str, str], stripes: int, lod: bool = Fa
         if not lod:  # the valance along the front
             flap = [(x0, yf, zf), (x1, yf, zf), (x1, yf - 0.3, zf), (x0, yf - 0.3, zf)]
             _cloth(m, colours[(k + 1) % 2], flap)
+    if not lod:  # a wooden rim round the cloth: seen edge-on the roof is a frame, not a hairline
+        from gothar_worldgen.vegetation import frustum
+
+        x0, x1, yb = -hw - 0.1, hw + 0.1, back_y - 0.01
+        m.box("oak_beam", (x0, yf - 0.06, zf - 0.03), (x1, yf, zf + 0.03), grain=0)
+        m.box("oak_beam", (x0, yb - 0.03, zb - 0.03), (x1, yb + 0.03, zb + 0.03), grain=0)
+        for x in (-hw - 0.1, hw + 0.1):
+            frustum(m, "oak_beam", (x, back_y - 0.01, zb), (x, yf - 0.03, zf), 0.035, 0.035, 4)
     # the counter at the front: top at 0.86 m, a board down to the ground
     m.box("oak", (-hw + 0.05, 0.8, hd - 0.55), (hw - 0.05, 0.86, hd - 0.05), grain=0)
     m.box("oak", (-hw + 0.05, 0.05, hd - 0.1), (hw - 0.05, 0.8, hd - 0.06), grain=0)

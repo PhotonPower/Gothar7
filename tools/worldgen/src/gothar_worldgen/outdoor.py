@@ -5,7 +5,8 @@ Everything stands on the ground beside the houses' collision bodies and keeps cl
 player and the NPCs need:
 
 - a corridor along every walkable street axis (at least ``minCorridorM`` to each side, wider streets
-  up to ``streetMarginM`` short of their edge; steps over their whole width),
+  up to ``streetMarginM`` short of their edge; steps, paths and tracks (``pathKinds``) over their
+  whole width),
 - before every door its swing and a lane out (``doorLane`` wide x deep) plus the way from there to
   the street axis, and around the routine places of the uses and the waynet's freepoints a disc of
   ``placeRadiusM``,
@@ -246,7 +247,7 @@ class _Planner:
         self.max_slope = float(keep["maxSlopeM"])
         self.plan = Plan()
         self.placed = _Placed()
-        axes, corridors, widths = [], [], []
+        axes, corridors, widths, surfaces = [], [], [], []
         self.streets: list[tuple[LineString, float, float, str]] = []  # axis, width, half, id
         for s in site.streets:
             pts = s.get("points") or []
@@ -258,13 +259,20 @@ class _Planner:
             line = LineString(pts)
             if s.get("highway") in STAIRS:
                 half = w / 2 + float(keep["stepsExtraM"])
+            elif s.get("highway") in set(keep.get("pathKinds", [])):  # paths: wholly free
+                half = w / 2 + float(keep.get("pathExtraM", 0.2))
             else:
                 half = max(float(keep["minCorridorM"]), w / 2 - float(keep["streetMarginM"]))
             axes.append(line)
             widths.append(w)
             corridors.append(line.buffer(half))
             self.streets.append((line, w, half, str(s.get("osmId", ""))))
+            # as it looks: the splat map blurs the street's edge by 1.5 m (export/splat.py)
+            surfaces.append(
+                line.buffer(w / 2 + float(rules.data.get("kerb", {}).get("edgeGapM", 0.0)))
+            )
         self.axes = _Shapes(axes)
+        self.surfaces = _Shapes(surfaces)  # the streets' whole width: free-standing things stay off
         self.widths = widths
         lane_w, lane_d = (float(v) for v in keep["doorLane"])
         lanes = []
@@ -475,11 +483,15 @@ class _Planner:
                 side = rng.choice((1.0, -1.0))
                 n = (-u[1] * side, u[0] * side)  # from the axis outwards
                 depth = max(footprint(k)[1] for k in kinds)
-                if half + 0.15 + depth > w / 2 + float(spec.get("beyondEdgeM", 0.5)):
-                    continue  # the strip beside the corridor is too narrow
-                start = (p0.x + n[0] * (half + 0.15) - u[0] * need / 2,
-                         p0.y + n[1] * (half + 0.15) - u[1] * need / 2)  # fmt: skip
+                # beside the street's surface (its edge plus a little), never on it
+                off = max(half + 0.15, w / 2 + float(spec.get("edgeGapM", 0.1)) + 0.05)
+                if off + depth > w / 2 + float(spec.get("beyondEdgeM", 1.5)):
+                    continue
+                start = (p0.x + n[0] * off - u[0] * need / 2,
+                         p0.y + n[1] * off - u[1] * need / 2)  # fmt: skip
                 row = self._row(kinds, start, u, n, 0.0)
+                if row is not None and any(self.surfaces.hits(r) for _, _, r in row):
+                    row = None  # on another street's surface (a crossing, a lane close by)
                 face = (-n[0], -n[1])  # the things look onto the street
                 if row is not None:
                     self._put(
