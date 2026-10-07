@@ -100,8 +100,11 @@ def test_models_budget_collision_and_textures(kind):
 
 
 def test_versioned_models_are_current(tmp_path: Path):
+    from gothar_worldgen.vegetation import VEGETATION
+
     write_mobs(tmp_path / "mobs")
     write_mobs(tmp_path / "props", tuple(PROPS), PROPS)
+    write_mobs(tmp_path / "vegetation", tuple(VEGETATION), VEGETATION)  # the same texture folder
     for kind in TYPES:
         made = (tmp_path / "mobs" / f"{kind}.glb").read_bytes()
         assert made == (ASSETS / f"{kind}.glb").read_bytes(), kind
@@ -176,6 +179,8 @@ def test_props_budget_and_collision(kind):
         assert lo[1] == pytest.approx(0.0) and hi[1] <= 0.03 and not m.main.collision
     elif kind == "wall_hanging":  # on the wall above heads' shoulders
         assert lo[1] > 1.2 and hi[2] <= 0.03 and not m.main.collision
+    elif kind == "dung_heap":  # a heap in the yard, sunk into the ground, low enough to see over
+        assert lo[1] < 0.0 < hi[1] <= 0.6 and m.main.collision
     else:  # standing on the floor, against the wall at -Z
         assert lo[1] == pytest.approx(0.0) and m.main.collision
         assert lo[2] >= -0.5  # no deeper than half a metre behind the origin

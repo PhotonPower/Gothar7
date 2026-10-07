@@ -32,6 +32,7 @@ CITYWALL_NAME = "WORLDGEN_CITYWALL"
 HANDMADE_NAME = "WORLDGEN_HANDMADE"
 USES_NAME = "WORLDGEN_USES"  # group of the mobs at the houses with a use (W7)
 WATER_NAME = "WORLDGEN_WATER"
+OUTDOOR_NAME = "WORLDGEN_GASSEN"  # props, trees, bushes and grass in the lanes and yards (W6)
 GROUP_CELL_M = 64.0
 IDENTITY = [0.0, 0.0, 0.0, 1.0]
 
@@ -126,6 +127,7 @@ def assemble(
     water: dict[str, Any] | None = None,
     starts: tuple[StartPoint, ...] = DEFAULT_STARTS,
     mobs: Sequence[dict[str, Any]] = (),
+    outdoor: Sequence[dict[str, Any]] = (),
 ) -> AssembleResult:
     if "terrain" not in terrain_world:
         raise AssembleError("the terrain world has no terrain block (run export-terrain)")
@@ -217,6 +219,14 @@ def assemble(
             if components:
                 v["components"] = components
             fresh[vid] = v
+
+    if outdoor:
+        # Lanes and yards (W6, outdoor.json): plain mesh vobs, deco (culled when small).
+        group = ids.get("group:outdoor", floor)
+        fresh[group] = _vob(group, "empty", OUTDOOR_NAME, [0.0, 0.0, 0.0])
+        for m in outdoor:
+            vid = ids.get(m["key"], floor)
+            fresh[vid] = _vob(vid, "mesh", m["name"], m["pos"], group, rot=m["rot"], mesh=m["mesh"])
 
     # Owned groups that editor vobs still hang on survive even if empty of buildings.
     editor = {i: v for i, v in old.items() if i not in owned}

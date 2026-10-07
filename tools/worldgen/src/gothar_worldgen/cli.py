@@ -83,6 +83,7 @@ from gothar_worldgen.handmade import load as load_handmade
 from gothar_worldgen.handmade import pads as handmade_pad_list
 from gothar_worldgen.handmade import save as save_handmade
 from gothar_worldgen.importer import run_import
+from gothar_worldgen.outdoor import OutdoorError
 from gothar_worldgen.owner_models import (
     OwnerModelError,
     fitted_placement,
@@ -394,6 +395,12 @@ def _cmd_mobs(args: argparse.Namespace, out: TextIO) -> int:
     for line in write_mobs(props, tuple(PROPS), PROPS):
         print(f"  {line}", file=out)
     print(f"  {props}", file=out)
+    from gothar_worldgen.vegetation import VEGETATION
+
+    plants = folder.parent / "vegetation"  # W6 streets: trees, bushes, grass
+    for line in write_mobs(plants, tuple(VEGETATION), VEGETATION):
+        print(f"  {line}", file=out)
+    print(f"  {plants}", file=out)
     return EXIT_OK
 
 
@@ -519,45 +526,58 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
-def _cmd_waynet(args: argparse.Namespace, out: TextIO) -> int:
-    """Waynet proposal from the street axes into the assembled world (W6)."""
-    from gothar_worldgen.export.terrain import world_text
+def _build_waynet(
+    site: SiteConfig,
+    folder: Path,
+    data_dir: Path,
+    work: Path,
+    world: dict[str, Any],
+    places: list[dict[str, Any]],
+) -> Any:  # noqa: ANN401  waynet.generate result
+    """The waynet of ``world`` (its collision bodies), as ``gothar-worldgen waynet`` builds it."""
     from gothar_worldgen.qa.begehung import Character, game_grid, load_bodies
     from gothar_worldgen.waynet.generate import build_waynet
     from gothar_worldgen.waynet.landmarks import garden_beds, garden_links, landmarks
+
+    assets = folder.parents[1]
+    streets = json.loads((work / "streets.json").read_text(encoding="utf-8"))["streets"]
+    index = json.loads((folder / "generated" / "buildings_index.json").read_text("utf-8"))
+    ch = Character.load(assets / "data" / "movement.toml")
+    grid = game_grid(world, assets)
+    bodies = load_bodies(world, assets, grid, ch)
+    ann_path = data_dir / "waynet.json"
+    ann = json.loads(ann_path.read_text(encoding="utf-8")) if ann_path.is_file() else {}
+    gates = json.loads((data_dir / "city_wall.json").read_text(encoding="utf-8"))
+    castle = folder / "handmade" / "schloss" / "schloss_built.json"
+    posterns = [(float(g["at"][0]), float(g["at"][1])) for g in gates.get("gates", [])
+                if g.get("wall") == "zwinger"]  # fmt: skip
+    spec = json.loads(castle.read_text("utf-8")) if castle.is_file() else {}
+    links = garden_links(spec, posterns) if spec else []
+    marks = landmarks(world, gates)
+    marks["beds"] = garden_beds(spec) if spec else []
+    return build_waynet(site.name, streets, index.get("entries", []), bodies, grid.height_at, ch,
+                        site.core_half_extent_m, marks, world.get("waynet"), ann, links,
+                        places)  # fmt: skip
+
+
+def _cmd_waynet(args: argparse.Namespace, out: TextIO) -> int:
+    """Waynet proposal from the street axes into the assembled world (W6)."""
+    from gothar_worldgen.export.terrain import world_text
 
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
     paths = DataPaths(local.data_root, site.name)
     folder, data_dir = _site_dirs(args, site.name)
-    assets = folder.parents[1]
     world_path = folder / f"{site.name}.g7world"
     try:
         world = json.loads(world_path.read_text(encoding="utf-8"))
-        streets = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))["streets"]
-        index = json.loads((folder / "generated" / "buildings_index.json").read_text("utf-8"))
-        ch = Character.load(assets / "data" / "movement.toml")
-        grid = game_grid(world, assets)
-        bodies = load_bodies(world, assets, grid, ch)
         places_path = folder / "generated" / "uses_places.json"
         places = (
             json.loads(places_path.read_text(encoding="utf-8")).get("places", [])
             if places_path.is_file()
             else []
         )
-        ann_path = data_dir / "waynet.json"
-        ann = json.loads(ann_path.read_text(encoding="utf-8")) if ann_path.is_file() else {}
-        gates = json.loads((data_dir / "city_wall.json").read_text(encoding="utf-8"))
-        castle = folder / "handmade" / "schloss" / "schloss_built.json"
-        posterns = [(float(g["at"][0]), float(g["at"][1])) for g in gates.get("gates", [])
-                    if g.get("wall") == "zwinger"]  # fmt: skip
-        spec = json.loads(castle.read_text("utf-8")) if castle.is_file() else {}
-        links = garden_links(spec, posterns) if spec else []
-        marks = landmarks(world, gates)
-        marks["beds"] = garden_beds(spec) if spec else []
-        res = build_waynet(site.name, streets, index.get("entries", []), bodies, grid.height_at,
-                           ch, site.core_half_extent_m, marks,
-                           world.get("waynet"), ann, links, places)  # fmt: skip
+        res = _build_waynet(site, folder, data_dir, paths.work, world, places)
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -1020,6 +1040,45 @@ def _plan_uses(
     return places, [*vobs, *inside.vobs], indoor_zones(doc.houses, index)
 
 
+def _plan_outdoor(
+    path: Path,
+    world: dict[str, Any],
+    index: dict[str, Any],
+    places: dict[str, Any],
+    streets: list[dict[str, Any]],
+    site_spec: SiteConfig,
+    folder: Path,
+    data_dir: Path,
+    work: Path,
+) -> Any:  # noqa: ANN401  outdoor.Plan
+    """Props, trees, bushes and grass in the lanes and yards (W6, ``outdoor.json``), clear of the
+    waynet the world has without them."""
+    from gothar_worldgen.outdoor import Rules, Site, plan_outdoor
+    from gothar_worldgen.qa.begehung import Character, game_grid, load_bodies
+
+    rules = Rules.load(path)
+    assets = folder.parents[1]
+    ways = _build_waynet(site_spec, folder, data_dir, work, world, places.get("places", []))
+    block = ways.block()
+    at = {q["name"]: (float(q["pos"][0]), float(q["pos"][2])) for q in block["points"]}
+    grid = game_grid(world, assets)
+    bodies = load_bodies(world, assets, grid, Character.load(assets / "data" / "movement.toml"))
+    feats = work / "features.json"
+    features = json.loads(feats.read_text("utf-8")).get("features", []) if feats.is_file() else []
+    site = Site(
+        entries=index.get("entries", []),
+        uses={h["id"]: h["use"] for h in places.get("houses", [])},
+        places=[(float(p["pos"][0]), float(p["pos"][1])) for p in places.get("places", [])],
+        bodies=[(b.owner, b.poly) for b in bodies],
+        streets=streets,
+        features=features,
+        height_at=grid.height_at,
+        ways=[(at[e[0]], at[e[1]]) for e in block["edges"] if e[0] in at and e[1] in at],
+        spots=[(float(f["pos"][0]), float(f["pos"][2])) for f in block.get("freepoints", [])],
+    )
+    return plan_outdoor(rules, site)
+
+
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -1071,9 +1130,22 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
                            handmade, water, starts, [*doors, *mobs])  # fmt: skip
             from gothar_worldgen.uses.zones import with_room_zones
 
+            outdoor_path = data_dir / "outdoor.json"
+            if outdoor_path.is_file():  # W6: lanes and yards come alive
+                outdoor = _plan_outdoor(outdoor_path, res.world, index, places,
+                                        street_doc.get("streets", []), site, folder, data_dir,
+                                        paths.work)  # fmt: skip
+                res = assemble(terrain_world, index, existing, ids, name, locked, ground,
+                               citywall, handmade, water, starts, [*doors, *mobs],
+                               outdoor.vobs)  # fmt: skip
+                target = folder / "generated" / "outdoor.json"
+                target.write_text(json.dumps(outdoor.json(), indent=1) + "\n", "utf-8")
+                print(f"  outdoor: {len(outdoor.vobs)} vobs "
+                      f"({', '.join(f'{k} {n}' for k, n in sorted(outdoor.counts.items()))}), "
+                      f"{len(outdoor.failed)} not placed ({target.name})", file=out)  # fmt: skip
             with_room_zones(res.world, zones)  # W7: the rooms' indoor ambient (world.md "Zonen")
     except (AssembleError, OverrideError, OSError, json.JSONDecodeError, HandmadeError,
-            UsesError) as e:  # fmt: skip
+            UsesError, OutdoorError) as e:  # fmt: skip
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
     write_world(folder / f"{name}.g7world", res.world)

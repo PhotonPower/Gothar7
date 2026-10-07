@@ -196,3 +196,19 @@ def test_rooms_of_an_enterable_house_are_own_mesh_vobs():
         assert room["parent"] == house["parent"]  # beside the house: its own lights
     again = by_name(run(idx, None, ids))  # stable ids
     assert again["BLD_A_RAUM_KAMMER"]["id"] == names["BLD_A_RAUM_KAMMER"]["id"]
+
+
+def test_lanes_and_yards_are_own_group_of_deco_meshes():
+    tree = {"key": "outdoor:tree:n1", "name": "BAUM_N1", "type": "mesh", "pos": [5.0, 2.0, 1.0],
+            "rot": [0.0, 0.38268, 0.0, 0.92388], "mesh": "vegetation/tree_linden.glb"}  # fmt: skip
+    ids = VobIds({}, 1)
+    w = run(index("A"), None, ids, outdoor=[tree])
+    names = by_name(w)
+    v = names["BAUM_N1"]
+    assert v["type"] == "mesh" and v["mesh"] == "vegetation/tree_linden.glb"
+    assert v["parent"] == names["WORLDGEN_GASSEN"]["id"] and v["rot"] == tree["rot"]
+    assert "category" not in v  # deco (the default): culled when small on screen
+    w2 = run(index("A"), w, ids, outdoor=[tree])
+    assert by_name(w2)["BAUM_N1"]["id"] == v["id"]  # stable id
+    w3 = run(index("A"), w2, ids)
+    assert "BAUM_N1" not in by_name(w3) and "WORLDGEN_GASSEN" not in by_name(w3)
