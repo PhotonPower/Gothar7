@@ -17,7 +17,7 @@ recipe ``gait`` in ``blender/keyframes.py`` applies it to the rig.
 
 Data (``[clip.params]`` of a ``keyframe = "gait"`` clip)::
 
-    speed = 6.0                 # m/s: root motion = the clip's natural speed
+    speed = 6.0                 # m/s: root motion = the clip's natural speed (0: stepping in place)
     period = 10                 # frames per cycle (30 fps)
     duty = 0.3                  # share of the cycle a foot is planted
     lift = 0.08                 # m: swing height of the foot
@@ -32,6 +32,8 @@ Data (``[clip.params]`` of a ``keyframe = "gait"`` clip)::
     flex = { bone = "spine_01", degrees = 12.0, phase = 0.25 }   # spine flexion (optional)
     nod = { bone = "neck_01", degrees = 4.0, phase = 0.0 }       # neck counter motion (optional)
     tail = { bones = ["tail_01", "tail_02"], degrees = 8.0, lag = 0.1 }  # tail swing (optional)
+    pose = { neck_01 = [["X", 20]], ear_l = [["X", 30]] }  # fixed posture, world axes at rest
+    in_place = true             # root stays; the feet still pass under the body at `speed`
 """
 
 from __future__ import annotations
@@ -53,6 +55,8 @@ KEYS = {
     "flex",
     "nod",
     "tail",
+    "pose",
+    "in_place",
 }
 LEG_KEYS = {"upper", "lower", "foot", "phase", "reach", "curl"}
 REACH_MARGIN = 0.995  # a leg is never stretched beyond this share of its length (knee stays bent)
@@ -93,6 +97,13 @@ class Gait:
     flex: Wave | None = None
     nod: Wave | None = None
     tail: Wave | None = None
+    pose: tuple[tuple[str, tuple[tuple[str, float], ...]], ...] = ()  # fixed posture
+    in_place: bool = False  # no root motion (s_charge); the natural speed comes from the feet
+
+    @property
+    def travel(self) -> float:
+        """m/s the root moves forward (0 in place)."""
+        return 0.0 if self.in_place else self.speed
 
     @property
     def stride(self) -> float:
@@ -121,6 +132,30 @@ def _wave(data: object, key: str, many: bool = False) -> Wave | None:
         _number(data, "degrees", -45.0, 45.0),
         _number(data, "lag" if many else "phase", -1.0, 1.0, 0.0),
     )
+
+
+def _posture(data: object) -> tuple[tuple[str, tuple[tuple[str, float], ...]], ...]:
+    """{bone: [[axis, degrees], ...]} -> fixed rotations about world axes at rest."""
+    if data is None:
+        return ()
+    if not isinstance(data, dict):
+        raise GaitError("gait: pose must be a table {bone = [[axis, degrees], ...]}")
+    out = []
+    for bone, rots in data.items():
+        ok = isinstance(rots, list) and all(
+            isinstance(r, list) and len(r) == 2 and r[0] in ("X", "Y", "Z") for r in rots
+        )
+        if not ok:
+            raise GaitError(f"gait: pose of {bone} must be [[axis, degrees], ...]")
+        out.append((str(bone), tuple((str(a), float(d)) for a, d in rots)))
+    return tuple(out)
+
+
+def _flag(data: dict, key: str) -> bool:
+    value = data.get(key, False)
+    if not isinstance(value, bool):
+        raise GaitError(f"gait: {key} must be true or false")
+    return value
 
 
 def parse_gait(params: dict) -> Gait:
@@ -154,7 +189,7 @@ def parse_gait(params: dict) -> Gait:
     if cycles not in (1, 2):
         raise GaitError("gait: bob_cycles must be 1 or 2")
     return Gait(
-        speed=_number(params, "speed", 0.1, 20.0),
+        speed=_number(params, "speed", 0.0, 20.0),  # 0: stepping in place (turn base)
         period=period,
         duty=_number(params, "duty", 0.1, 0.9),
         lift=_number(params, "lift", 0.0, 0.5),
@@ -166,6 +201,8 @@ def parse_gait(params: dict) -> Gait:
         flex=_wave(params.get("flex"), "flex"),
         nod=_wave(params.get("nod"), "nod"),
         tail=_wave(params.get("tail"), "tail", many=True),
+        pose=_posture(params.get("pose")),
+        in_place=_flag(params, "in_place"),
     )
 
 

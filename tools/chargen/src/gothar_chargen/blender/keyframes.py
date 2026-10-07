@@ -561,7 +561,7 @@ def _gait_body(rig: RigInfo, g: Gait, frame: int, dz: float = 0.0, phi: float = 
     """Root motion, body bob, vault (lowering ``dz``, pitch ``phi``) and the waves of a gait."""
     pose = rig.rest_pose()
     cycle = 2 * math.pi * frame / g.period
-    rig.move(pose, "root", Vector((0.0, -g.speed * frame / FPS, 0.0)))
+    rig.move(pose, "root", Vector((0.0, -g.travel * frame / FPS, 0.0)))
     height = g.bob * math.cos(g.bob_cycles * cycle) - g.crouch - dz
     if height:
         rig.move(pose, "pelvis", Vector((0.0, 0.0, height)))
@@ -574,6 +574,8 @@ def _gait_body(rig: RigInfo, g: Gait, frame: int, dz: float = 0.0, phi: float = 
                 rig.rotate(
                     pose, bone, [("X", wave.degrees * math.sin(cycle + 2 * math.pi * wave.phase))]
                 )
+    for bone, rotations in g.pose:  # fixed posture (head low, ears back ...)
+        rig.rotate(pose, bone, list(rotations))
     if g.tail is not None:
         for i, bone in enumerate(g.tail.bones):
             angle = g.tail.degrees * math.sin(cycle - 2 * math.pi * g.tail.phase * (i + 1))
@@ -610,7 +612,7 @@ def gait(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
         forward, up, planted = foot_offset(g, leg, frame)
         rest_hip, foot = hips[leg.upper], ground[leg.upper]
         # stride centre: below the hip at rest, `reach` ahead (forward = -Y)
-        y = rest_hip.y - leg.reach - forward - g.speed * frame / FPS
+        y = rest_hip.y - leg.reach - forward - g.travel * frame / FPS
         return Vector((foot.x, y, foot.z + up)), planted
 
     drops: dict[str, list[float]] = {"front": [], "rear": []}

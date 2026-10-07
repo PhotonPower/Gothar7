@@ -219,6 +219,21 @@ void Engine::fixedUpdateCreatures(f32 seconds)
     for (usize index = 0; index < creatureCount; ++index)
     {
         Creature& c = *m_creatures[index];
+        if (c.vanished)
+        {
+            continue; // a summon that went (M12): kept only for the scripts' names
+        }
+        if (c.summoned)
+        {
+            // Z8: its time runs out; dead, it lies a moment and goes.
+            c.summonSeconds = c.dead ? std::min(c.summonSeconds, 2.0f) : c.summonSeconds;
+            c.summonSeconds -= seconds;
+            if (c.summonSeconds <= 0.0f)
+            {
+                vanish(c);
+                continue;
+            }
+        }
         AnimatedFigure& f = *c.figure;
         c.positionBefore = c.position;
         c.yawBefore = c.yaw;
@@ -344,7 +359,7 @@ void Engine::drawCreatures(bool shadow, u32 cascade)
     for (const auto& owned : m_creatures)
     {
         Creature& c = *owned;
-        if (!c.figure->uploaded)
+        if (!c.figure->uploaded || c.vanished)
         {
             continue;
         }

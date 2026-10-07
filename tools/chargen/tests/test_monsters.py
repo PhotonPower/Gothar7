@@ -54,7 +54,14 @@ def codes(report, level="error"):
 
 
 def test_packaged_wolf_rig(wolf_rig):
-    assert packaged_species() == ["keiler", "laufvogel", "wolf"]
+    assert packaged_species() == [
+        "glemsmahr",
+        "keiler",
+        "laufvogel",
+        "quaderbuckel",
+        "schinder",
+        "wolf",
+    ]
     assert wolf_rig.is_monster and wolf_rig.species == "wolf"
     assert set(MONSTER_REQUIRED) <= set(wolf_rig.names)
     assert len(wolf_rig.bones) <= wolf_rig.max_bones == 64
@@ -170,7 +177,15 @@ def test_invalid_monster_sets(data, message):
 
 
 @pytest.mark.parametrize(
-    ("species", "bones", "clips"), [("wolf", 22, 13), ("keiler", 25, 12), ("laufvogel", 12, 12)]
+    ("species", "bones", "clips"),
+    [
+        ("wolf", 22, 13),
+        ("keiler", 25, 12),
+        ("laufvogel", 12, 12),
+        ("schinder", 26, 15),
+        ("quaderbuckel", 29, 17),
+        ("glemsmahr", 37, 19),
+    ],
 )
 def test_monster_files_pass(species, bones, clips):
     folder = REPO_ROOT / "assets/source/characters/monsters" / species
@@ -289,7 +304,14 @@ def test_validate_command_picks_rig_per_file(capsys):
 
 @pytest.mark.parametrize(
     ("species", "shape"),
-    [("wolf", "capsule_lying"), ("keiler", "capsule_lying"), ("laufvogel", "capsule_upright")],
+    [
+        ("wolf", "capsule_lying"),
+        ("keiler", "capsule_lying"),
+        ("laufvogel", "capsule_upright"),
+        ("schinder", "capsule_lying"),
+        ("quaderbuckel", "capsule_lying"),
+        ("glemsmahr", "capsule_upright"),
+    ],
 )
 def test_collision_matches_mesh(species, shape):
     from gothar_chargen.collision import derive_collision

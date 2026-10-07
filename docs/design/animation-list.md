@@ -245,6 +245,61 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `laufvogel/s_eat`, `s_sleep` | Picken am Boden, Schlafen (auf gefalteten Beinen sitzend) | – | – | K | platzhalter-K |
 | `laufvogel/t_threaten` | Drohen: aufrichten, Hals vor, Fauch-Nicken | – | – | K | platzhalter-K |
 
+### Schinder (`schinder`, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `schinder/s_idle` | Stehen, Kopf tief, schnüffeln und umschauen | – | – | K | platzhalter-K |
+| `schinder/s_walk` | Gehen (Kreuzgang) | ✓ 1,3 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `schinder/s_run` | Rennen (Galopp, Rücken beugt sich) | ✓ 6,5 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `schinder/s_sneak` | Schleichen: Beute umkreisen, geduckt, Kopf vor, Ohren zurück | ✓ 0,7 m/s | footstep_front/back_l/r | K | platzhalter-K (`gait` mit fester Haltung; mit engine 2026-10-07) |
+| `schinder/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `schinder/t_attack_1`, `t_attack_2` | Schneller Biss nach vorn / Zubeißen und mit Kopfschütteln reißen | – | hit_start, hit_end | K | platzhalter-K |
+| `schinder/t_hit` | Treffer | – | – | K | platzhalter-K |
+| `schinder/t_die` | Tod: taumeln, auf die Seite fallen | – | – | K | platzhalter-K |
+| `schinder/s_eat`, `s_sleep` | An der Leiche zerren und kauen / Schlafen (zusammengerollt, atmet) | – | – | K | platzhalter-K |
+| `schinder/t_threaten` | Drohen: geduckt, Kopf tief, fauchen und kichern (Kiefer klappert) | – | – | K | platzhalter-K |
+| `schinder/t_call` | Rudelruf: Kopf hochgeworfen, heulen | – | call, sound:schinder_call | K | platzhalter-K (mit engine 2026-10-07) |
+| `schinder/s_cower` | Unterlegen: tief geduckt, Ohren flach, Schwanz eingezogen, zittert | – | – | K | platzhalter-K (mit engine 2026-10-07) |
+
+### Quaderbuckel (`quaderbuckel`, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `quaderbuckel/s_idle` | Schwer stehen, atmen, Kopf pendelt | – | – | K | platzhalter-K |
+| `quaderbuckel/s_walk` | Gehen (stapfend, Kreuzgang) | ✓ 0,8 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `quaderbuckel/s_run` | Rennen (schwerfälliger Trab, langsamer als der Held) | ✓ 3,5 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `quaderbuckel/s_charge` | Anrennen mit gesenktem Schild, **am Ort** (Eigengeschwindigkeit) | 4,5 m/s | footstep_front/back_l/r | K | platzhalter-K (`gait` am Ort; mit engine 2026-10-07) |
+| `quaderbuckel/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K |
+| `quaderbuckel/t_attack_1` | Rammstoß: zurücksetzen, Stoß mit dem Schild (engine wirft um) | – | hit_start, hit_end | K | platzhalter-K |
+| `quaderbuckel/t_attack_2` | Kopf- und Hauerhieb zur Seite, dann Zuschnappen | – | hit_start, hit_end | K | platzhalter-K |
+| `quaderbuckel/t_hit` | Treffer | – | – | K | platzhalter-K |
+| `quaderbuckel/t_die` | Tod: Beine knicken weg, sinkt auf den Bauch | – | – | K | platzhalter-K |
+| `quaderbuckel/s_eat`, `s_sleep` | Flechten vom Stein schaben / eingegraben schlafen, Kopf unter dem Schild | – | – | K | platzhalter-K |
+| `quaderbuckel/t_threaten` | Drohen: Vorderleib hoch, Maul offen, Schwanz peitscht | – | – | K | platzhalter-K |
+| `quaderbuckel/t_warn` | Warnen: mit den Vorderfüßen stampfen, Platten knirschen | – | footstep_front_l/r, sound:quaderbuckel_grind | K | platzhalter-K (mit engine 2026-10-07) |
+| `quaderbuckel/t_block_in`, `s_block`, `t_block_out` | Kopf unter den Stirnschild ziehen, halten, wieder heraus (Klingen prallen von vorn ab) | – | – | K | platzhalter-K (mit engine 2026-10-07) |
+
+### Glemsmahr (`glemsmahr`, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `glemsmahr/s_idle` | Geduckt lauschen, Kopf schief, Ohren drehen | – | – | K | platzhalter-K |
+| `glemsmahr/s_walk` | Knöchelgang (Kreuzgang) | ✓ 1,4 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `glemsmahr/s_run` | Galopp auf allen vieren | ✓ 6,5 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `glemsmahr/s_sneak` | Anschleichen, sehr tief, Kopf vor, Ohren zurück | ✓ 0,9 m/s | footstep_front/back_l/r | K | platzhalter-K (`gait` mit fester Haltung; mit engine 2026-10-07) |
+| `glemsmahr/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K |
+| `glemsmahr/t_rise`, `s_upright`, `t_lower` | Aufrichten auf die Hinterbeine, aufrecht wittern und umschauen, wieder auf alle viere | – | – | K | platzhalter-K (mit engine 2026-10-07: aufrecht nur Drohen bzw. Wittern) |
+| `glemsmahr/t_attack_1` | Krallenhieb: Vorderleib hebt sich, rechter Arm schlägt quer | – | hit_start, hit_end | K | platzhalter-K |
+| `glemsmahr/t_attack_2` | Biss nach vorn mit den Nadelzähnen | – | hit_start, hit_end | K | platzhalter-K |
+| `glemsmahr/t_leap` | Sprung auf den Helden, **am Ort** (engine fährt ~3 m) | – | leap_start, leap_land, hit_start, hit_end | K | platzhalter-K (mit engine 2026-10-07) |
+| `glemsmahr/t_jump_back` | Satz zurück ins Dunkel, **am Ort** (engine fährt ~2,5 m) | – | leap_start, leap_land | K | platzhalter-K (mit engine 2026-10-07) |
+| `glemsmahr/t_recoil` | Zurückweichen vor Licht bzw. Feuer: Arm vor den Augen, fauchen | – | recoil, sound:glemsmahr_hiss | K | platzhalter-K (mit engine 2026-10-07) |
+| `glemsmahr/t_hit` | Treffer | – | – | K | platzhalter-K |
+| `glemsmahr/t_die` | Tod: bricht auf die Seite zusammen | – | – | K | platzhalter-K |
+| `glemsmahr/s_eat`, `s_sleep` | Geduckt reißen und Brocken zum Maul führen / zusammengerollt schlafen | – | – | K | platzhalter-K |
+| `glemsmahr/t_threaten` | Drohen: halb aufgerichtet, Arme gespreizt, fauchen | – | sound:glemsmahr_hiss | K | platzhalter-K |
+
 ## Prio C – später
 
 Akrobatik-Varianten, Gangarten (Militär, Frauen, Entspannt) als Varianten-Sets, zusätzliche

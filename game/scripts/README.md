@@ -14,6 +14,7 @@ scripts/
   states/       KI-Zustaende (zs_*) – Begin/Loop/End-Funktionen (M9)
   dialogs/      Dialog-Infos pro NPC (Bedingung, Text, Auswahl)
   quests/       Quests / Tagebuch-Eintraege
+  magic/        Zauber (Spell, M12) – Runen und Spruchrollen in items/magic.lua
   startup.lua   Hilfen fuer die Konsole, Reaktion auf world_loaded
 ```
 

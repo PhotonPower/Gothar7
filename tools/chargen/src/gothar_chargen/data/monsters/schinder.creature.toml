@@ -1,0 +1,571 @@
+# Creature "schinder" (F5, own work): carrion eater of the knacker's yard - hyena/badger build,
+# high shoulders, sloping back, bald neck and head, dark bristly crest. Shoulder 0.8 m.
+# Eyes, teeth and tongue are separate pieces (materials eyes/teeth/tongue). Built by `gothar-chargen creature schinder` (blender/build_creature.py, creature.py).
+#
+# Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. The tool
+# moves everything so that root lies on the ground below the pelvis head. `mirror = true` adds the
+# right side (x negated, names _l -> _r). Euler rotations in degrees (XYZ); a negative X rotation
+# lifts the front (-y) end of a shape.
+
+art = "schinder"
+material = "fur"
+voxel = 0.004          # remesh voxel (surface detail before reduction)
+smooth = 12
+ao = 0.6             # ambient occlusion baked into the texture (0 = none)
+normal_size = 512    # normal map (PNG): shape of the high mesh + fur relief
+normal_strength = 0.8
+triangles = 7300       # lod0 body; eyes and teeth add ~400
+lods = [1.0, 0.5, 0.25]
+texture = 1024
+seed = 11
+stripe_spacing = 0.085
+
+[sockets]
+socket_mouth = { parent = "head", length = 0.04 }
+
+# --- rig (wolf naming, plus spine_02, neck_02, jaw and ears) ---
+
+[[bone]]
+name = "pelvis"
+head = [0, 0, 0.52]
+tail = [0, -0.22, 0.58]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0, -0.22, 0.58]
+tail = [0, -0.45, 0.68]
+
+[[bone]]
+name = "spine_02"
+parent = "spine_01"
+head = [0, -0.45, 0.68]
+tail = [0, -0.66, 0.74]
+
+[[bone]]
+name = "neck_01"
+parent = "spine_02"
+head = [0, -0.66, 0.74]
+tail = [0, -0.84, 0.77]
+
+[[bone]]
+name = "neck_02"
+parent = "neck_01"
+head = [0, -0.84, 0.77]
+tail = [0, -0.98, 0.78]
+
+[[bone]]
+name = "head"
+parent = "neck_02"
+head = [0, -0.98, 0.78]
+tail = [0, -1.26, 0.71]
+
+[[bone]]
+name = "jaw"
+parent = "head"
+head = [0, -1.04, 0.69]
+tail = [0, -1.24, 0.655]
+
+[[bone]]
+name = "ear_l"
+parent = "head"
+mirror = true
+head = [0.06, -1.00, 0.84]
+tail = [0.10, -0.98, 0.95]
+
+[[bone]]
+name = "front_upper_l"
+parent = "spine_02"
+mirror = true
+head = [0.12, -0.68, 0.62]
+tail = [0.13, -0.64, 0.38]
+
+[[bone]]
+name = "front_lower_l"
+parent = "front_upper_l"
+mirror = true
+head = [0.13, -0.64, 0.38]
+tail = [0.13, -0.67, 0.06]
+
+[[bone]]
+name = "front_foot_l"
+parent = "front_lower_l"
+mirror = true
+head = [0.13, -0.67, 0.06]
+tail = [0.13, -0.75, 0.03]
+
+[[bone]]
+name = "back_upper_l"
+parent = "pelvis"
+mirror = true
+head = [0.12, 0.0, 0.50]
+tail = [0.135, -0.10, 0.28]
+
+[[bone]]
+name = "back_lower_l"
+parent = "back_upper_l"
+mirror = true
+head = [0.135, -0.10, 0.28]
+tail = [0.13, 0.05, 0.05]
+
+[[bone]]
+name = "back_foot_l"
+parent = "back_lower_l"
+mirror = true
+head = [0.13, 0.05, 0.05]
+tail = [0.13, -0.04, 0.03]
+
+[[bone]]
+name = "tail_01"
+parent = "pelvis"
+head = [0, 0.12, 0.55]
+tail = [0, 0.21, 0.48]
+
+[[bone]]
+name = "tail_02"
+parent = "tail_01"
+head = [0, 0.21, 0.48]
+tail = [0, 0.29, 0.40]
+
+[[bone]]
+name = "tail_03"
+parent = "tail_02"
+head = [0, 0.29, 0.40]
+tail = [0, 0.35, 0.31]
+
+# --- colour zones (sRGB) ---
+
+[zone.fur]
+colour = "#8b7a5f"
+colour2 = "#6e604c"
+variation = 0.14
+strands = 0.7
+stripes = 0.5
+stripe_colour = "#3a2f24"
+spots = 0.15
+belly = 0.35
+
+[zone.crest]
+colour = "#2b241d"
+colour2 = "#3a3027"
+variation = 0.1
+strands = 0.9
+
+[zone.neck]
+colour = "#7b675a"
+colour2 = "#8a7466"
+variation = 0.12
+strands = 0.25
+spots = 0.35
+stripe_colour = "#4a3a32"
+
+[zone.head]
+colour = "#86706a"
+colour2 = "#6f5b55"
+variation = 0.1
+strands = 0.1
+spots = 0.2
+stripe_colour = "#4b3b36"
+wrinkles = 0.3
+
+[zone.muzzle]
+colour = "#4a3b36"
+colour2 = "#3a2e2a"
+variation = 0.1
+wrinkles = 0.6
+
+[zone.nose]
+colour = "#1c1716"
+variation = 0.05
+
+[zone.ear]
+colour = "#5c4b40"
+variation = 0.12
+strands = 0.3
+
+[zone.paw]
+colour = "#463a30"
+variation = 0.1
+strands = 0.3
+
+[zone.claw]
+colour = "#221d18"
+variation = 0.05
+
+[zone.tail]
+colour = "#5a4b3b"
+colour2 = "#6f5f4a"
+strands = 0.9
+
+[zone.tailtip]
+colour = "#221c16"
+strands = 0.9
+
+[zone.mouth]                 # palate with ridges
+colour = "#5a2c29"
+colour2 = "#4a2422"
+variation = 0.12
+wrinkles = 0.8
+
+[zone.throat]
+colour = "#140a08"
+variation = 0.05
+
+[zone.eye_rim]
+colour = "#2a201c"
+variation = 0.08
+
+[zone.ear_inner]
+colour = "#9a8077"
+colour2 = "#7d655d"
+variation = 0.12
+strands = 0.2
+
+# --- body shapes ---
+
+# torso
+[[shape]]
+kind = "ellipsoid"
+zone = "fur"
+center = [0, -0.40, 0.58]
+size = [0.17, 0.30, 0.20]
+rotate = [-8, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # chest
+zone = "fur"
+center = [0, -0.60, 0.645]
+size = [0.16, 0.21, 0.19]
+rotate = [-10, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # tucked belly
+zone = "fur"
+center = [0, -0.20, 0.53]
+size = [0.14, 0.22, 0.15]
+rotate = [-6, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # loins
+zone = "fur"
+center = [0, 0.0, 0.535]
+size = [0.14, 0.17, 0.14]
+
+[[shape]]
+kind = "ellipsoid"           # rump
+zone = "fur"
+center = [0, 0.06, 0.53]
+size = [0.12, 0.10, 0.10]
+
+[[shape]]
+kind = "ellipsoid"           # withers (hump)
+zone = "fur"
+center = [0, -0.62, 0.74]
+size = [0.11, 0.17, 0.10]
+
+[[shape]]
+kind = "ellipsoid"           # shoulder blades, top tilted back
+zone = "fur"
+mirror = true
+center = [0.10, -0.64, 0.67]
+size = [0.065, 0.12, 0.15]
+rotate = [-25, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # brisket
+zone = "fur"
+center = [0, -0.74, 0.58]
+size = [0.08, 0.07, 0.09]
+
+[[shape]]
+kind = "ellipsoid"           # thigh
+zone = "fur"
+mirror = true
+center = [0.085, 0.01, 0.44]
+size = [0.055, 0.11, 0.13]
+rotate = [-20, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # upper arm
+zone = "fur"
+mirror = true
+center = [0.125, -0.66, 0.50]
+size = [0.06, 0.07, 0.12]
+
+# legs
+[[shape]]
+kind = "chain"
+zone = "fur"
+mirror = true
+points = [[0.11, -0.68, 0.62], [0.13, -0.64, 0.38], [0.13, -0.665, 0.10], [0.13, -0.68, 0.05]]
+radii = [0.065, 0.055, 0.04, 0.034]
+
+[[shape]]
+kind = "ellipsoid"
+zone = "paw"
+mirror = true
+center = [0.13, -0.72, 0.03]
+size = [0.042, 0.06, 0.03]
+
+[[shape]]
+kind = "ridge"               # front toes
+zone = "paw"
+mirror = true
+points = [[0.10, -0.77, 0.02], [0.16, -0.77, 0.02]]
+sizes = [[0.014, 0.018, 0.016], [0.014, 0.018, 0.016]]
+count = 4
+
+[[shape]]
+kind = "chain"
+zone = "fur"
+mirror = true
+points = [[0.09, 0.0, 0.50], [0.125, -0.10, 0.28], [0.13, 0.07, 0.13], [0.13, 0.04, 0.045]]
+radii = [0.06, 0.05, 0.035, 0.03]
+
+[[shape]]
+kind = "ellipsoid"
+zone = "paw"
+mirror = true
+center = [0.13, 0.0, 0.028]
+size = [0.038, 0.055, 0.028]
+
+[[shape]]
+kind = "ridge"               # back toes
+zone = "paw"
+mirror = true
+points = [[0.105, -0.045, 0.02], [0.155, -0.045, 0.02]]
+sizes = [[0.013, 0.017, 0.015], [0.013, 0.017, 0.015]]
+count = 4
+
+[[shape]]
+kind = "cone"                # claws, front
+zone = "claw"
+mirror = true
+a = [0.11, -0.785, 0.024]
+b = [0.11, -0.805, 0.006]
+r = 0.007
+
+[[shape]]
+kind = "cone"
+zone = "claw"
+mirror = true
+a = [0.15, -0.785, 0.024]
+b = [0.15, -0.805, 0.006]
+r = 0.007
+
+[[shape]]
+kind = "cone"                # claws, back
+zone = "claw"
+mirror = true
+a = [0.115, -0.058, 0.022]
+b = [0.115, -0.076, 0.006]
+r = 0.006
+
+[[shape]]
+kind = "cone"
+zone = "claw"
+mirror = true
+a = [0.145, -0.058, 0.022]
+b = [0.145, -0.076, 0.006]
+r = 0.006
+
+# neck and head
+[[shape]]
+kind = "chain"
+zone = "neck"
+points = [[0, -0.68, 0.72], [0, -0.86, 0.76], [0, -0.98, 0.76]]
+radii = [0.115, 0.09, 0.08]
+
+[[shape]]
+kind = "ellipsoid"           # throat
+zone = "neck"
+center = [0, -0.88, 0.70]
+size = [0.07, 0.09, 0.06]
+
+[[shape]]
+kind = "ellipsoid"           # skull
+zone = "head"
+center = [0, -1.02, 0.785]
+size = [0.08, 0.10, 0.075]
+
+[[shape]]
+kind = "ellipsoid"           # heavy jaw muscles behind the eyes
+zone = "head"
+mirror = true
+center = [0.058, -1.035, 0.735]
+size = [0.042, 0.075, 0.055]
+
+[[shape]]
+kind = "ellipsoid"           # brow ridge
+zone = "head"
+center = [0, -1.085, 0.805]
+size = [0.068, 0.045, 0.028]
+
+[[shape]]
+kind = "capsule"             # nose bridge
+zone = "muzzle"
+a = [0, -1.08, 0.748]
+b = [0, -1.24, 0.722]
+r = 0.026
+r2 = 0.02
+
+[[shape]]
+kind = "ellipsoid"           # muzzle: tapering, rounded, a little lower at the front
+zone = "muzzle"
+center = [0, -1.165, 0.712]
+size = [0.04, 0.10, 0.036]
+rotate = [8, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # upper lips hanging over the lower jaw at the sides
+zone = "muzzle"
+mirror = true
+center = [0.028, -1.16, 0.69]
+size = [0.021, 0.075, 0.021]
+rotate = [4, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # rounded nose pad
+zone = "nose"
+center = [0, -1.262, 0.714]
+size = [0.032, 0.022, 0.024]
+
+[[shape]]
+kind = "capsule"             # lower jaw, narrowing to the chin
+zone = "muzzle"
+mirror = true
+a = [0.02, -1.06, 0.655]
+b = [0.012, -1.235, 0.656]
+r = 0.029
+r2 = 0.02
+
+[[shape]]
+kind = "cut_box"             # mouth: through the whole snout to the tip, opens with the jaw
+zone = "mouth"
+center = [0, -1.20, 0.6755]
+size = [0.08, 0.12, 0.0035]
+
+[[shape]]
+kind = "ellipsoid"           # lower lid
+zone = "eye_rim"
+mirror = true
+center = [0.047, -1.101, 0.779]
+size = [0.018, 0.013, 0.006]
+
+[[shape]]
+kind = "ellipsoid"           # heavy upper lid over the eye
+zone = "head"
+mirror = true
+center = [0.045, -1.10, 0.80]
+size = [0.02, 0.016, 0.007]
+
+[[shape]]
+kind = "cut"                 # eye socket
+zone = "eye_rim"
+mirror = true
+center = [0.05, -1.105, 0.79]
+size = [0.015, 0.013, 0.012]
+
+[[shape]]
+kind = "eye"                 # small, dark, deep-set eyeball
+mirror = true
+bone = "head"
+center = [0.044, -1.10, 0.79]
+size = [0.009, 0.0085, 0.0085]
+
+[[shape]]
+kind = "cut"                 # dark throat behind the mouth (a cavity the slit opens up)
+zone = "throat"
+center = [0, -1.07, 0.677]
+size = [0.022, 0.04, 0.016]
+
+[[shape]]
+kind = "tongue"
+bone = "jaw"
+center = [0, -1.16, 0.6705]
+size = [0.02, 0.06, 0.006]
+
+[[shape]]
+kind = "ellipsoid"           # rounded ears with a rim ...
+zone = "ear"
+mirror = true
+center = [0.068, -1.0, 0.875]
+size = [0.034, 0.012, 0.05]
+rotate = [0, 20, 0]
+
+[[shape]]
+kind = "cut"                 # ... and a cupped inside facing forward
+zone = "ear_inner"
+mirror = true
+center = [0.069, -1.011, 0.878]
+size = [0.025, 0.009, 0.04]
+rotate = [0, 20, 0]
+
+[[shape]]
+kind = "tooth"               # upper canines, tips beside the lower lip
+mirror = true
+bone = "head"
+a = [0.034, -1.215, 0.68]
+b = [0.036, -1.22, 0.648]
+r = 0.0065
+
+[[shape]]
+kind = "tooth"               # lower canines
+mirror = true
+bone = "jaw"
+a = [0.026, -1.205, 0.664]
+b = [0.027, -1.21, 0.69]
+r = 0.006
+
+[[shape]]
+kind = "tooth"               # upper incisors
+mirror = true
+bone = "head"
+a = [0.008, -1.252, 0.68]
+b = [0.008, -1.255, 0.666]
+r = 0.0045
+
+[[shape]]
+kind = "tooth"
+mirror = true
+bone = "head"
+a = [0.02, -1.245, 0.68]
+b = [0.02, -1.248, 0.665]
+r = 0.0045
+
+[[shape]]
+kind = "tooth"               # lower incisors
+mirror = true
+bone = "jaw"
+a = [0.011, -1.24, 0.666]
+b = [0.011, -1.243, 0.678]
+r = 0.004
+
+# dark bristly crest from the head along the neck to the loins
+[[shape]]
+kind = "ridge"
+zone = "crest"
+points = [[0, -1.00, 0.84], [0, -0.80, 0.85], [0, -0.62, 0.84], [0, -0.40, 0.77], [0, -0.15, 0.68]]
+sizes = [[0.012, 0.03, 0.025], [0.016, 0.035, 0.045], [0.018, 0.04, 0.05], [0.016, 0.04, 0.04], [0.01, 0.03, 0.025]]
+count = 18
+
+# bushy, tapering tail, darker towards the tip
+[[shape]]
+kind = "chain"
+zone = "tail"
+points = [[0, 0.10, 0.56], [0, 0.20, 0.49], [0, 0.28, 0.41], [0, 0.335, 0.32], [0, 0.365, 0.22]]
+radii = [0.04, 0.052, 0.06, 0.05, 0.016]
+
+[[shape]]
+kind = "ridge"               # tufts along both sides make the outline bushy
+zone = "tail"
+mirror = true
+points = [[0.022, 0.17, 0.51], [0.028, 0.26, 0.43], [0.024, 0.32, 0.34], [0.012, 0.35, 0.26]]
+sizes = [[0.03, 0.035, 0.035], [0.036, 0.04, 0.04], [0.032, 0.035, 0.035], [0.016, 0.02, 0.02]]
+count = 7
+
+[[shape]]
+kind = "chain"               # dark tip: same volume, the zone darkens it
+zone = "tailtip"
+points = [[0, 0.335, 0.32], [0, 0.365, 0.22]]
+radii = [0.047, 0.015]

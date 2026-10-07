@@ -170,7 +170,9 @@ void Engine::perceive(Creature& c, f32 seconds)
     {
         c.reportedFighter = true;
         const script::Value args[] = {c.species, static_cast<f64>(distance),
-                                      std::string(m_weaponMode == 2 ? "fists" : "weapon")};
+                                      std::string(m_weaponMode == 2   ? "fists"
+                                                  : m_weaponMode == 4 ? "magic"
+                                                                      : "weapon")};
         m_scripts->emit("assess_fighter", args);
     }
 
@@ -202,7 +204,8 @@ void Engine::witnessed(std::string_view event, std::span<const script::Value> ar
     for (const auto& owned : m_creatures)
     {
         // `alsoNpc` notices it anyway (the victim of a failed pickpocketing).
-        if (owned->character && (owned->species == alsoNpc || (owned->simulated && seesPlayer(*owned))) &&
+        if (owned->character && !owned->vanished &&
+            (owned->species == alsoNpc || (owned->simulated && seesPlayer(*owned))) &&
             std::ranges::find(witnesses, owned->species) == witnesses.end())
         {
             witnesses.push_back(owned->species);
@@ -227,7 +230,7 @@ void Engine::enteredPrivateArea(std::string_view owner, std::string_view area)
     {
         const Creature& c = *owned;
         // The owner notices if he sees the player or is near (in the room, behind the door).
-        if (c.character && c.simulated && ownedBy(c, owner) &&
+        if (c.character && c.simulated && !c.vanished && ownedBy(c, owner) &&
             (seesPlayer(c) || glm::length(m_player.feet() - c.position) < m_perception.roomDistance))
         {
             owners.push_back(c.species);
@@ -295,6 +298,17 @@ void Engine::weaponEvent(std::string_view event)
             }
         }
     }
+    else if (event == "draw" && m_weaponMode == 4 && !m_weaponDrawn.empty())
+    {
+        // The rune or scroll in the right hand (M12).
+        if (const LoadedModel* model = itemModel(m_weaponDrawn))
+        {
+            if (auto attached = attachModel("socket_hand_r", model, nullptr); !attached)
+            {
+                G7_LOG_WARN("engine", "draw magic: {}", attached.error().message);
+            }
+        }
+    }
     else if (event == "draw" && m_weaponMode == 1 && !m_weaponDrawn.empty())
     {
         if (const LoadedModel* model = itemModel(m_weaponDrawn))
@@ -358,7 +372,8 @@ void Engine::bindPerceptionFunctions()
                  for (const auto& owned : m_creatures)
                  {
                      const f32 d = glm::length(owned->position - self.position);
-                     if (owned.get() != &self && owned->character && owned->simulated && d <= radius)
+                     if (owned.get() != &self && owned->character && owned->simulated && !owned->vanished &&
+                         d <= radius)
                      {
                          near.emplace_back(d, owned.get());
                      }
@@ -374,12 +389,14 @@ void Engine::bindPerceptionFunctions()
                  return script::makeTable(std::move(list), {});
              }});
     vm.bind({"player_weapon", "player_weapon() -> string",
-             "Was der Held gezogen hat: `\"none\"`, `\"weapon\"` (Nahkampfwaffe) oder `\"fists\"`.",
+             "Was der Held gezogen hat: `\"none\"`, `\"weapon\"` (Nahkampfwaffe), `\"fists\"`, `\"ranged\"` "
+             "(Bogen, Armbrust) oder `\"magic\"` (Rune, Spruchrolle).",
              "Wahrnehmung", [this](std::span<const Value>) -> Result<Value>
              {
                  return Value(std::string(m_weaponMode == 0   ? "none"
                                           : m_weaponMode == 1 ? "weapon"
                                           : m_weaponMode == 3 ? "ranged"
+                                          : m_weaponMode == 4 ? "magic"
                                                               : "fists"));
              }});
     vm.bind({"player_inside", "player_inside(area: string) -> boolean",
@@ -416,6 +433,7 @@ void Engine::bindPerceptionFunctions()
                  return Value(std::string(m_weaponMode == 0   ? "none"
                                           : m_weaponMode == 1 ? "weapon"
                                           : m_weaponMode == 3 ? "ranged"
+                                          : m_weaponMode == 4 ? "magic"
                                                               : "fists"));
              }});
     // Events (documentation only).
@@ -429,13 +447,13 @@ void Engine::bindPerceptionFunctions()
              "Bei jedem Blick (5- bzw. 1-mal je Sekunde), solange der NPC den Spieler sieht.",
              "Ereignisse",
              {}});
-    vm.bind(
-        {"assess_fighter",
-         "on(\"assess_fighter\", fn(npc: string, distance: number, what: string))",
-         "Der NPC sieht den Spieler mit gezogener Waffe (`what`: `\"weapon\"` oder `\"fists\"`); einmal je "
-         "Ziehen.",
-         "Ereignisse",
-         {}});
+    vm.bind({"assess_fighter",
+             "on(\"assess_fighter\", fn(npc: string, distance: number, what: string))",
+             "Der NPC sieht den Spieler mit gezogener Waffe (`what`: `\"weapon\"`, `\"fists\"` oder "
+             "`\"magic\"`); einmal je "
+             "Ziehen.",
+             "Ereignisse",
+             {}});
     vm.bind({"assess_noise",
              "on(\"assess_noise\", fn(npc: string, kind: string, x, y, z))",
              "Der NPC hört ein Geräusch (`kind`: `\"run\"`, `\"lockpick\"`, `\"lock_broken\"` … oder aus "

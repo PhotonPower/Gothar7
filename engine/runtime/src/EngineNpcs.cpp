@@ -31,6 +31,11 @@ constexpr f32 kDoorSkip = 0.6f;  ///< metres past a door leaf where the check go
 constexpr f32 kDoorReach = 1.6f; ///< an NPC opens a closed door whose leaf is this near and ahead
 constexpr f32 kDoorWait = 1.3f;  ///< ... and waits while it swings if this near
 constexpr f32 kDoorLeave = 1.8f; ///< closes it again once this far from the hinge (the leaf is 1 m)
+/// On the side the leaf swings to (welt #227: going out of an inward door) the swinging leaf would push the
+/// NPC aside behind it: it opens the door from further away and waits outside the leaf's arc - the leaf (1 m)
+/// plus its capsule and some room -, backing away if it is inside.
+constexpr f32 kDoorSwingClear = 1.0f + kWalkableRadius + 0.25f;
+constexpr f32 kDoorSwingReach = kDoorSwingClear + 0.6f;
 // Ground under a straight line (welt #171: shortcuts over steep slopes): probed every kGroundStep, no step
 // may rise or fall more than tan 35 degrees (as welt's waynet check), and the ground must be there (no drop).
 constexpr f32 kGroundStep = 0.5f;
@@ -203,10 +208,11 @@ std::optional<Vec3> Engine::doorLeafCentre(u64 vob) const
     return Vec3(m_scene.worldMatrix(e) * Vec4(0.5f, 0.0f, 0.0f, 1.0f));
 }
 
-bool Engine::npcDoors(Creature& c)
+bool Engine::npcDoors(Creature& c, Vec3& backOff)
 {
     const Vec3 ahead = gameplay::forwardOf(c.yaw);
     bool wait = false;
+    backOff = Vec3(0.0f);
     for (auto& [id, m] : m_mobs)
     {
         if (m.type != "door")
@@ -220,14 +226,22 @@ bool Engine::npcDoors(Creature& c)
         }
         const Vec3 to = *leaf - c.position;
         const f32 distance = glm::length(Vec2(to.x, to.z));
-        // Behind it again (measured to the hinge: the open leaf may swing towards it): close the door it
-        // opened.
+        // The side the leaf swings to when an NPC opens it: the open leaf's direction from the hinge.
+        const entt::entity e = m_scene.findById(world::VobId{id});
+        const Mat4 world = e != entt::null ? m_scene.worldMatrix(e) : Mat4(1.0f);
+        const Vec3 hinge(world[3]);
+        const Vec3 openLeaf =
+            Mat3(world) * (glm::angleAxis(kDoorOpenAngleNpc - m.doorAngle, Vec3(0.0f, 1.0f, 0.0f)) *
+                           Vec3(1.0f, 0.0f, 0.0f));
+        const Vec2 fromHinge(c.position.x - hinge.x, c.position.z - hinge.z);
+        const f32 hingeDistance = glm::length(fromHinge);
+        const bool swingSide = glm::dot(fromHinge, Vec2(openLeaf.x, openLeaf.z)) > 0.0f;
+        // Behind it again - on the other side than it opened it from, or far away (measured to the hinge: the
+        // open leaf may swing towards it): close the door it opened. Waiting in front of it is not behind it.
         if (c.openedDoor == id)
         {
-            const entt::entity e = m_scene.findById(world::VobId{id});
-            const Vec3 hinge = e != entt::null ? Vec3(m_scene.worldMatrix(e)[3]) : *leaf;
-            if (glm::length(Vec2(hinge.x - c.position.x, hinge.z - c.position.z)) > kDoorLeave && m.open &&
-                m.doorTime < 0.0f)
+            const bool behind = swingSide != c.openedFromSwingSide || hingeDistance > 2.0f * kDoorLeave;
+            if (behind && hingeDistance > kDoorLeave && m.open && m.doorTime < 0.0f)
             {
                 m.open = false;
                 m.doorFrom = m.doorAngle;
@@ -235,14 +249,20 @@ bool Engine::npcDoors(Creature& c)
                 m.doorTime = 0.0f;
                 c.openedDoor = 0;
             }
-            continue;
+            if (!c.route || m.doorTime < 0.0f)
+            {
+                continue; // still swinging open: it waits for it as below
+            }
         }
         if (!c.route)
         {
             continue; // standing: opens nothing
         }
+        const bool settled = m.open && m.doorTime < 0.0f;
+        const bool towards = glm::dot(Vec2(-fromHinge.x, -fromHinge.y), Vec2(ahead.x, ahead.z)) > 0.0f;
         const bool inFront =
-            distance < kDoorReach && glm::dot(Vec2(to.x, to.z), Vec2(ahead.x, ahead.z)) > 0.0f;
+            (distance < kDoorReach && glm::dot(Vec2(to.x, to.z), Vec2(ahead.x, ahead.z)) > 0.0f) ||
+            (swingSide && !settled && hingeDistance < kDoorSwingReach && towards);
         if (!inFront)
         {
             continue;
@@ -255,6 +275,17 @@ bool Engine::npcDoors(Creature& c)
             m.doorTo = kDoorOpenAngleNpc;
             m.doorTime = 0.0f;
             c.openedDoor = id;
+            c.openedFromSwingSide = swingSide;
+        }
+        if (swingSide && !settled && (m.open || !m.locked || ownedBy(c, m.owner)))
+        {
+            // Outside the arc until it stands open; inside it: back off.
+            if (hingeDistance < kDoorSwingClear && hingeDistance > 1e-3f)
+            {
+                backOff = Vec3(fromHinge.x, 0.0f, fromHinge.y) / hingeDistance;
+            }
+            wait = true;
+            continue;
         }
         wait = wait || (m.doorTime >= 0.0f && distance < kDoorWait);
     }
@@ -290,9 +321,10 @@ void Engine::walkNpc(Creature& c, f32 seconds)
                 m_scripts->emit("npc_arrived", args);
             }
         }
-        else if (npcDoors(c))
+        else if (Vec3 backOff; npcDoors(c, backOff))
         {
             c.stuckSeconds = 0.0f; // waiting for a door to open is no blockage
+            velocity = backOff * (c.walkSpeed > 0.0f ? c.walkSpeed : kNpcWalkSpeed) * 0.6f;
         }
         else
         {
@@ -350,7 +382,8 @@ void Engine::walkNpc(Creature& c, f32 seconds)
     }
     if (!c.route && c.openedDoor != 0)
     {
-        (void)npcDoors(c); // arrived behind a door: close it once away from it
+        Vec3 backOff;
+        (void)npcDoors(c, backOff); // arrived behind a door: close it once away from it
     }
     c.body->update(seconds, velocity);
     c.position = c.body->feet();

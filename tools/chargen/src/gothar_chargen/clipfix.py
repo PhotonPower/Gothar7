@@ -103,11 +103,11 @@ def _is_root_motion_locomotion(clips: Gltf, animation: dict) -> bool:
     name = str(animation.get("name", "")).split("/")[-1]
     if not name.startswith(LOCOMOTION):
         return False
-    root = [n for n, x in enumerate(clips.doc["nodes"]) if x.get("name") == "root"]
-    return bool(root) and any(
-        c["target"]["node"] == root[0] and c["target"]["path"] == "translation"
-        for c in animation["channels"]
-    )
+    channel = _channel(clips, animation, "root", "translation")
+    if channel is None:
+        return False
+    keys = np.asarray(clips.accessor(channel[1]), dtype=np.float64)
+    return bool(np.ptp(keys[:, [0, 2]], axis=0).max() > 1e-4)  # in place (s_charge): no travel
 
 
 def foot_slide(clips: Gltf, animation: dict) -> tuple[float, float]:

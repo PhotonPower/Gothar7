@@ -668,6 +668,42 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 | `keiler` | Quaternius „Lowpoly Animated Farm Animal Pack“, Schwein (dunkel eingefärbt) | Rig 25 Knochen (mit Schulter-/Hüftknochen), 0,95 m, 562 Dreiecke; 12/12 Clips (Idle/Walk/Death aus der Quelle, Rest `platzhalter-K`) |
 | `laufvogel` | Quaternius „5 Low poly animals“, Küken (auf 1,6 m vergrößert, eingefärbt) | Rig 12 Knochen (Vogel-Namen `thigh/calf/foot`), 1,6 m, 250 Dreiecke; 12/12 Clips (Gehen/Rennen aus dem Quell-Schritt am Ort, Rest `platzhalter-K`) |
 
+### 7.4 Eigene Arten (`gothar-chargen creature`, ab 2026-10-07)
+
+Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer Körperbeschreibung
+`tools/chargen/src/gothar_chargen/data/monsters/<art>.creature.toml` (Koordinaten wie die Rig-TOMLs: x links,
+−y vorn, z oben; `mirror = true` ergänzt die rechte Seite):
+
+- **Knochen** (`[[bone]]`, Namen nach §7.1; `root` und Sockets setzt das Werkzeug) und `[sockets]`.
+- **Formen** (`[[shape]]`): `ellipsoid`, `box`, `capsule`/`cone`, `chain` (Kapselkette), `ridge` (Ellipsoide entlang
+  einer Linie, z. B. Borstenkamm); `cut` (Ellipsoid, vor dem zweiten Remesh abgezogen: Augenhöhlen, Ohrmuscheln),
+  `cut_box` (dünner Spalt in die fertige Oberfläche: Maul); Einzelteile `eye`, `tooth` und `tongue` mit `bone`
+  (eigene Geometrie und Materialien `eyes`/`teeth`/`tongue`, starr am Knochen; `eye_glow` macht die Augen
+  emissiv); Panzerplatten `plate` (abgeschrägte
+  Quader mit dem Körpermaterial, starr am Knochen) und `plate_shell` (Platten in Reihen auf einem Ellipsoid, je
+  Platte am nächsten Knochen aus `bones`; `tilt` hebt die Hinterkante – Dachziegel, jede Reihe liegt über der
+  nächsten).
+- **Farbzonen** (`[zone.<name>]`): Farbe, Zweitfarbe, Fellstrich, Querstreifen, Flecken, hellerer Bauch,
+  Hautfalten, Sandstein (`strata`: Schichtung, Korn, Meißelspuren), Relief-Stärke.
+- `[orientation]` überschreibt einzelne Paare von `[rig.orientation]` (Quaderbuckel: `up = ["root", "pelvis"]`, der
+  Kopf hängt tief vorn).
+- **Ablauf** (`blender/build_creature.py`): Formen vereinigen (Voxel-Remesh), Schnitte, glätten, aufs Budget
+  reduzieren, UV; Fell-Textur aus der Körperbeschreibung (`creature.py`, 3D-Rauschen, nahtlos über UV-Nähte) mit
+  eingebackener Umgebungsverdeckung; Normal-Map aus dem hochaufgelösten Mesh plus Fellstrich-Relief; automatische
+  Gewichte (≤ 4), Kiefer entlang des Maul-Schnitts getrennt; LOD-Stufen; Rig-TOML, Kollision und Prüfung wie bei
+  `gothar-chargen monster`. Texturen extern (§2.3): `textures/fur/<art>.jpg`, `<art>_normal.png`, geteilte
+  `eyes_<rgb>.jpg`/`teeth_<rgb>.jpg`. Clip-Quelle `<art>_clips.blend` (lokal) mit der Ruhe-Aktion `rest`.
+- **Clips:** Gangarten mit dem Rezept `gait` (neu: `pose` = feste Haltung, z. B. Kopf tief beim Schleichen;
+  `speed = 0` = Treten am Ort als Basis der Drehungen; `in_place = true` = Lauf am Ort, die Eigengeschwindigkeit
+  kommt aus den Füßen, z. B. `quaderbuckel/s_charge`), sonst `keyposes` über `<art>/s_rest`.
+  Schritte (`phase · period`, `duty · period`) auf ganzen Bildern, sonst passt `repair-clips` das Tempo falsch an.
+
+| Art | Stand |
+|---|---|
+| `glemsmahr` | Rig 37 Knochen (neues Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Arme als Vorderbeine mit Schulter, Hand und je drei Fingern, zehengängige Hinterbeine mit Zehen; Sockets `socket_mouth`, `socket_eyes`, `socket_hand_l/r`), geduckt 1,53 m, Kapsel stehend, lod0 7636 / 3758 / 1848 Dreiecke, emissive Augen (`eye_glow`); 19 Clips (Mindest-Set + `s_sneak`, `t_rise`/`s_upright`/`t_lower`, `t_leap` und `t_jump_back` am Ort mit `leap_start`/`leap_land`, `t_recoil`); Tempo 1,4 / 6,5 / Schleichen 0,9 m/s (mit engine 2026-10-07) |
+| `quaderbuckel` | Rig 29 Knochen (Keiler-Benennung mit Schulter-/Hüftknochen, dazu `jaw` und `brow_shield` unter `chest`; Sockets `socket_mouth`, `socket_shield` am Schild), 0,84 m, lod0 7956 / 3978 / 1988 Dreiecke (60 starre Sandstein-Platten), Fell 1024² + Normal-Map 512²; 17 Clips (Mindest-Set + `s_charge` am Ort, `t_warn`, `t_block_in`/`s_block`/`t_block_out`); Tempo 0,8 / 3,5 / Anrennen 4,5 m/s (mit engine 2026-10-07) |
+| `schinder` | Rig 26 Knochen, 0,92 m, lod0 7834 / 3916 / 1958 Dreiecke, Fell 1024² + Normal-Map 512²; 15 Clips (Mindest-Set + `s_sneak`, `t_call`, `s_cower`); Tempo 1,3 / 6,5 / Schleichen 0,7 m/s (mit engine 2026-10-07) |
+
 ## 8. Ablauf pro Animation
 
 1. Eintrag in `animation-list.md` (Name, Zweck, Loop/Root Motion, Events, Quelle, Priorität).

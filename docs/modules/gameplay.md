@@ -365,8 +365,53 @@ Clip, bleibt die Zeitleiste. Menschen halten nach einem Kampf 5 s die Kampfhaltu
 **Weiter:** Fernkampf für NPCs (Jäger); Waffen-Kapsel entlang der Animation; Bogen-Clips beim Schießen.
 
 ## Magie (M12)
-Rune (unendlich) vs. Spruchrolle (verbraucht), Mana-Kosten, Kreise; Zauber als Skript + Effekt-Daten
-(`invest` zum Aufladen, `cast`, Projektil/Fläche/Verwandlung/Kontrolle/Beschwörung).
+Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, wie Gothic 1).
+
+**Teil B – Zauber als Inhalt (umgesetzt, `gameplay/Magic.hpp`):**
+- **`Spell`-Instanzen** (`game/scripts/magic/`): `name`, `circle` (1–6), `mana`, `kind` (`projectile`, `area`,
+  `self`, `target`, `summon`, `transform`), `invest` (`{ stages, mana }`: Aufladestufen, Z5), `damage` (Art),
+  `radius`, `heal`, `effect` (`sleep`, `fear`), `duration`, `summon` (Npc), `species`, `fx` (`cast`, `trail`,
+  `impact`, `on_target`: Effekte aus `data/fx`), `on_cast`.
+- **Runen und Spruchrollen** sind Items der Kategorien `rune` bzw. `scroll` mit `spell` (`items/magic.lua`); die
+  sieben Rune-Plätze gibt es seit M8.
+- **Wer wirken darf** (`castBlocked`): eine Rune braucht den Kreis des Zaubers (Talent `magic_circle`, Z2), eine
+  Spruchrolle nicht (Z3); beide kosten das Mana des Zaubers plus die Aufladestufen. Mana erholt sich nicht von
+  selbst (Z1: Tränke, Schlaf, Stufe). Lua `cast_check(item, stages?)` → nil oder der Grund.
+- **Startsatz (Z9):** Feuerpfeil (Kreis 1, 10 Mana, Feuer 25), Heilung (1, 10, +50 LP), Schlaf (2, 15, 20 s),
+  Wolfsgestalt (2, 20), Wolf rufen (3, 25, 60 s); Runen `it_rune_*`, Rollen `it_scroll_*`, `it_potion_mana_small`.
+  Kreise kosten beim Lehrer 10/15/20/25/30/35 LP (`data/magic.lua`, Talentname „Kreis der Magie“).
+
+**Teil C1 – Wirken des Helden (umgesetzt, `EngineMagic.cpp`):**
+- **Ziehen (Z4):**
+  - „1“ (`draw_magic`) zieht die Rune bzw. Spruchrolle des zuletzt gewählten Runenplatzes, sonst des ersten belegten; Waffenmodus 4, Graph-Wert `weapon` 6.
+  - Die Tasten 4–9 (`rune_1` … `rune_6`) wählen einen Runenplatz. Ist nichts gezogen, ziehen sie ihn; mit gezogener Magie wechselt die Rune sofort in der Hand. Ist eine Waffe gezogen, steckt die Taste sie zuerst weg.
+  - Die Rune liegt in der rechten Hand. Ziel-Lock wie beim Bogen (30 m); auch ein verzauberter Schläfer bleibt Ziel.
+- **Wirken (Z5):**
+  - Strg + vor bzw. linke Maustaste gehalten: Ein Zauber mit `invest` lädt auf, je `Magic.charge_seconds` (1 s) eine Stufe, soweit das Mana reicht. Loslassen wirkt; einfache Zauber wirken sofort.
+  - Mana und Rolle werden beim Loslassen abgezogen. Die letzte Rolle weg: Die Hände sind leer.
+  - Fehlt Kreis oder Mana: `mag/t_cast_fail` und der Hinweis aus `castBlocked`, nichts wird verbraucht.
+  - Der Wurf-Clip je Art (`mag/t_cast_projectile`, `_target`, `_self`, `_area`, `_summon`) lässt den Zauber bei seinem Event `cast` wirken; ohne Clip nach 0,4 s. Beim Aufladen läuft `t_invest` → `s_invest`. Der Held steht beim Aufladen und Wirken.
+  - Jede Stufe wirkt noch einmal so stark (Schaden, Heilung, Dauer; Fläche: Radius +50 %).
+- **Wirkungen:**
+  - **Projektil:** Ein Geschoss aus M11 E, gerade ohne Schwerkraft mit `Magic.projectile_speed` (30 m/s), aufs Ziel bzw. entlang der Sicht. Mit dem Effekt `trail`, `impact` am Einschlag. Schaden − Schutz der Art, mindestens 5, kein Volltreffer. Magie tötet wie Fernkampf, die Getroffenen spielen `none/t_hit_magic`.
+  - **Selbst:** Heilung bis zum Höchstwert.
+  - **Fläche:** Schaden an allen im `radius`.
+  - **Ziel, Schlaf (Z6):** reicht bis `Magic.target_range` (25 m) und wirkt nur bis zur Stufe des Zaubernden, sonst „Der Zauber zeigt keine Wirkung.“. Der Schläfer liegt wie bewusstlos (Menschen `none/t_ko`, Tiere ihr Schlaf-Clip) mit dem Effekt `on_target` über dem Kopf. Er wacht nach der Dauer auf oder sobald er Schaden nimmt; ein Schlag auf ihn zählt dann wie auf einen Stehenden.
+- **Lua:** `draw_magic()`, `hero_rune(platz)`, `hero_cast(halten)`, `hero_casting()`; Ereignisse `npc_cast`, `npc_asleep`, `npc_woke`.
+- Verwandlung folgt in C2; bis dahin gibt es einen Hinweis, nichts wird verbraucht.
+
+**Teil C2 – Beschwörung (umgesetzt, Z8):**
+- Ein `summon`-Zauber ruft das Npc des Zaubers (Wolf rufen: `mon_wolf`) 2 m vor den Helden, mit dem Effekt `summon`, für `duration` Sekunden (jede Aufladestufe noch einmal so lange).
+- Es gibt nur eines: Ein neues lässt das alte verschwinden. Nach seiner Zeit, bzw. 2 s nach seinem Tod, verschwindet es im Effekt.
+- Ein verschwundenes Wesen bleibt für Skripte als tot bestehen (Namen wie `mon_wolf#2` bleiben gültig). Es wird nicht mehr gezeichnet, nicht aktualisiert, hat keine Kollision und ist weder fokussierbar noch plünderbar.
+- **Verhalten** (`ai/summons.lua`, Zustand `zs_summoned`):
+  - Es folgt dem Helden auf 2,5 m.
+  - Es kämpft gegen dessen Ziel (`hero_target()`) bzw. gegen jeden, der ihn im Umkreis von 15 m angreift.
+  - Es reagiert nicht auf den Helden wie ein wildes Tier, und schlägt nicht zurück, wenn der Held es versehentlich trifft.
+- Der Held visiert sein eigenes Wesen nicht an. Die Gilden-Regel (ein Rudel beißt sich nicht) gilt nicht zwischen gerufenen und wilden Tieren.
+- **Lua:** `hero_summon()`, `hero_target()`; Ereignisse `npc_summoned(npc, caster)`, `npc_vanished(npc)`.
+
+**Weiter:** C2 Verwandlung (Z7), D KI und Reaktionen (NPCs zaubern, Brennen, Furcht), E DoD-Szenario.
 
 ## Wirtschaft
 Handel: Händler-Inventar, Preisfaktor Verkauf (z. B. 0,5), Währung als Item (`ItMi_Ore`).

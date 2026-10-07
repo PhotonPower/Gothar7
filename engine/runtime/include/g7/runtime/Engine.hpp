@@ -20,6 +20,7 @@
 #include <g7/gameplay/Character.hpp>
 #include <g7/gameplay/Combat.hpp>
 #include <g7/gameplay/Focus.hpp>
+#include <g7/gameplay/Magic.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
 #include <g7/physics/Character.hpp>
@@ -294,6 +295,8 @@ public:
     [[nodiscard]] world::GameTime& gameTime() noexcept { return m_gameTime; }
     /// Light, fog and sky of the last frame (from the day cycle).
     [[nodiscard]] const render::Environment& environment() const noexcept { return m_environment; }
+    /// The spell a rune or scroll casts (M12); nullopt for other items.
+    [[nodiscard]] std::optional<gameplay::SpellInfo> spellOfItem(std::string_view item) const;
     /// Starts the effect data/fx/<name>.toml (M12); nullopt if there is none.
     std::optional<u32> startEffect(std::string_view name, const Vec3& at,
                                    const Vec3& direction = Vec3(0, 1, 0));
@@ -666,7 +669,8 @@ private:
     [[nodiscard]] bool passableDoor(u64 vob) const;
     [[nodiscard]] std::optional<Vec3> doorLeafCentre(u64 vob) const;
     /// Opens a closed door ahead of the walking NPC, closes the one behind it; true while it waits for one.
-    bool npcDoors(Creature& c);
+    /// Opens doors on c's way; true while it waits. backOff: where to step out of a swinging leaf's arc.
+    bool npcDoors(Creature& c, Vec3& backOff);
     /// Spawns an Npc instance with its figure, capsule, values and routine.
     [[nodiscard]] Result<u32> spawnNpc(std::string_view name, const Vec3& at, f32 yaw);
     // Behaviour (EngineAi.cpp)
@@ -803,6 +807,26 @@ private:
         physics::ShapeId shape;
     };
     void loadMobTypes();
+    // Magic (M12, EngineMagic.cpp).
+    void bindMagicFunctions();
+    // Casting (M12 part C1, Z4-Z6): the magic drawn (weapon mode 4) is a rune or scroll of the rune places.
+    void toggleMagic();
+    void selectRune(u32 slot); ///< Z4: keys 4-9, 0-based rune place
+    [[nodiscard]] std::string runeInSlot(u32 slot) const;
+    void fixedUpdateHeroMagic(gameplay::MoveInput& input, f32 seconds);
+    void beginHeroCast();
+    void releaseHeroCast();
+    void applyHeroSpell(); ///< at the cast clip's "cast" event
+    /// A spell's harm on a creature or the hero (fire bolt, area): its damage minus protection, min 5 (as
+    /// R3).
+    void spellHit(const gameplay::DamageByType& damage, u32 targetId, std::string_view caster);
+    /// Z6: asleep until hurt or `seconds` are over.
+    bool castSleep(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect = {});
+    void wakeUp(u32 targetId);
+    void endSleep(Creature& c); ///< the sleep's effect and pose end (the fighter is up again)
+    /// Z8: calls the spell's creature beside the hero for `seconds`; the one called before vanishes.
+    std::optional<u32> summonForHero(const gameplay::SpellInfo& spell, f32 seconds);
+    void vanish(Creature& c); ///< a summoned creature goes (effect); dead and gone for scripts
     // Effects (M12 part A, EngineFx.cpp).
     [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
     void drawEffects();
@@ -841,6 +865,11 @@ private:
         u32 shooter = 0; ///< creature id, ~0: the hero
         gameplay::DamageByType damage;
         f32 seconds = 0.0f;
+        // A spell's projectile (M12): flies straight, no item stays; its trail and impact effects.
+        std::string spell;
+        u32 stages = 0;
+        std::optional<u32> trail;
+        std::string impact;
     };
     [[nodiscard]] std::string rangedWeapon() const; ///< the hero's equipped bow or crossbow
     [[nodiscard]] bool rangedIsCrossbow(std::string_view item) const;
@@ -849,6 +878,7 @@ private:
     Result<void> shootRanged();
     void fixedUpdateProjectiles(f32 seconds);
     void projectileHit(const Projectile& p, u32 targetId);
+    void spellImpact(const Projectile& p, const Vec3& at); ///< a spell projectile ends: its impact effect
     void drawProjectiles();
     void bindRangedFunctions();
     Result<void> lootFocus(); // opens the inventory with the lying NPC's belongings
@@ -1182,6 +1212,28 @@ private:
     std::vector<Projectile> m_projectiles;        // arrows and bolts in flight (M11 part E)
     f32 m_rangedReload = 0.0f;                    // R2: seconds until the next shot
     bool m_drawRangedRequested = false;
+    // Magic (M12 part C1).
+    bool m_drawMagicRequested = false;
+    std::optional<u32> m_runeRequested; // Z4: a rune key this frame
+    u32 m_runeSlot = 0;                 // the last chosen rune place
+    bool m_castHeld = false;            // Z5: the casting keys are held
+    bool m_castScripted = false;        // ... held by a script (hero_cast)
+    bool m_castWasHeld = false;         // in the step before
+    struct HeroCast
+    {
+        std::string item; ///< the rune or scroll
+        gameplay::SpellInfo spell;
+        bool scroll = false;
+        bool charging = false; ///< Z5: held, the stages grow
+        u32 stages = 0;
+        f32 seconds = 0.0f; ///< charging, or since the cast clip began
+        bool cast = false;  ///< released: the clip plays, the spell acts at its "cast" event
+        bool acted = false;
+        std::string state; ///< the graph state played
+        std::optional<u32> target;
+    };
+    std::optional<HeroCast> m_heroCast;
+    std::optional<u32> m_heroSummon; // Z8: the hero's summoned creature (one at a time)
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)

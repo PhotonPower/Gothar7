@@ -139,7 +139,7 @@ end
 
 on("observe_player", function(npc, distance)
     local c = animal(npc)
-    if not c or reacting(npc) or state(npc) == "zs_mm_sleep" then
+    if not c or reacting(npc) or state(npc) == "zs_mm_sleep" or (Summoned and Summoned[npc]) then
         return
     end
     if c.threaten_distance and distance <= c.threaten_distance then

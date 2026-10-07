@@ -1157,7 +1157,7 @@ blend = 0.12
 
 [[transition]]
 from = "mag_t_invest"
-to = "move_mag"
+to = "mag_s_invest" # charging goes on until the engine casts (M12, Z5)
 when = ["end"]
 blend = 0.12
 
