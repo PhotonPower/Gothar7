@@ -78,6 +78,11 @@ Regeln:
 3. Nachricht an `koordinator` → Review (Architekturregeln, Verträge, Tests, Doku) → Merge oder Rückmeldung.
    Der Koordinator merged **ohne** `--delete-branch`: `gh` würde sonst den Worktree der Autor-Sitzung entfernen, in dem
    der Branch ausgecheckt ist. Jede Sitzung löscht ihre Branches nach dem Merge selbst (lokal und auf `origin`).
+   Seit 2026-10-05 ist `main` geschützt (8 Pflicht-Checks: build ×2, coverage, worldgen ×2, chargen ×2, voice) und Auto-Merge
+   eingeschaltet: Der Koordinator setzt nach dem Review `gh pr merge <nr> --auto --merge`; GitHub merged, sobald alle Checks
+   grün sind. Abgebrochene oder nie gestartete Jobs startet `.github/workflows/rerun-cancelled.yml` bis zu dreimal neu
+   (nicht bei echten Fehlern) – vor einem manuellen Neustart etwa 3 Minuten abwarten. Gestapelte PRs dürfen Auto-Merge haben.
+   Ein neuer CI-Job muss in die Pflicht-Checks aufgenommen werden (Repo-Einstellung → nur mit Zustimmung des Menschen).
 4. Nach dem Merge: betroffene Sitzungen holen `main` beim nächsten Branch-Start (`git fetch` + neuer Branch von `origin/main`).
    Achtung: Alle Worktrees teilen sich die `origin/*`-Refs. Ein `git fetch` einer anderen Sitzung kann `origin/main`
    jederzeit weiterschieben. Vor `git reset --soft origin/main` (Commits zusammenfassen) daher erst `origin/main`

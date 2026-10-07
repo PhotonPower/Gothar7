@@ -32,6 +32,8 @@ engine/runtime/                      Engine-Klasse, Hauptschleife, verbindet all
 game/src/                            Spiel-Executable (gothar)
 game/scripts/                        Spielinhalt in Lua (ab M7)
 tools/worldgen/                      Python-Werkzeuge der Welt-Spur (Leonberg → Spielort)
+tools/chargen/                       Python-Werkzeuge der Figuren-Spur (Figuren, Monster, Clips)
+tools/voice/                         Sprechtext-Schlüssel und TTS-Takes (`gothar-voice`)
 tools/asset-cooker/                  g7-cook (ab M3)      tools/editor/  Editor-Modus (ab M4)
 tests/<modul>/                       doctest-Suiten, eine pro Modul
 assets/source/  assets/cooked/       Quell- bzw. gekochte Assets (cooked nicht versioniert)
@@ -125,13 +127,21 @@ Phase **M8** abgeschlossen: Werte/Talente/Inventar, Wegnetz-Format (Vertrag), Fo
 `assets/source/data/mobs.toml` (Truhe/Tür mit Schloss und Dietrich, Amboss, Bett/Schlaf), Benutzen, Taschendiebstahl, Besitz.
 Phase **M9** abgeschlossen: Wegnetz-Pfadsuche, Tagesabläufe mit Freepoints, Wahrnehmung, Waffe ziehen, private Bereiche,
 Einstellungen, Kameraden, Fliehen, Tier-KI (Rudel, Revier); Fenster „AI“; LOD-Auswahl statischer Modelle (`--lod`).
-Aktuelle Phase: **M10** (Dialoge und Quests → Meilenstein B), Währung „Gulden“.
+Phase **M10** abgeschlossen (Meilenstein B vom Projektinhaber abgenommen): Dialoge (Infos, Antworten, Kamera, Gesten),
+Handel in Gulden, Lehrer, Tagebuch, Kapitel, Platzhalter-Geschichte im Testlager; Sprechtext-Schlüssel (`tools/voice`).
+Phase **M11** weitgehend abgeschlossen: Nahkampf nach Clip-Events, Parade, Bewusstlosigkeit, Plündern, Kampf-KI,
+Fernkampf (Bogen, Armbrust), Kampfkamera; offen: Waffen-Shapecast.
+Aktuelle Phase: **M12** (Magie und Partikel): Partikel als Daten, Runen/Spruchrollen/Mana, Wirken des Helden, Beschwörung;
+als Nächstes Verwandlung, Zauber-KI. NPCs öffnen Türen, Innenkamera, Raum-Ambient, Tageslicht-Fenster.
 Werkzeug: `gothar --fly`, F3 Flugmodus, F6 Position kopieren (`--cam/--yaw/--pitch`), `--walk` Autopilot.
 Welt-Spur: **W1–W3** abgeschlossen (Maßstab 1:1); **W4** wartet auf Aufnahmen; **W5/W6** laufen (Fachwerk-Leonberg,
 Stil `docs/design/leonberg-stil.md`, prozedurale Texturen auf allen Häusern, Kopfsteinpflaster, Stadtmauer, Schloss, Kirche,
-Pomeranzengarten, Marktbrunnen, Mob-Modelle in `assets/source/mobs/`, Häuser-LOD-Stufen, Wegnetz, Gebäudenutzungen in Arbeit).
+Pomeranzengarten, Marktbrunnen, Mob-Modelle in `assets/source/mobs/`, Häuser-LOD-Stufen, Wegnetz); **W7** läuft: 30 Häuser mit
+Nutzung und Routinen-Orten, begehbare Häuser mit Räumen, Türen, Herd, Hausrat, Innenzonen und Fenstern mit Tageslicht.
 Figuren-Spur: **F1**, **F2** abgeschlossen; **F3** weit fortgeschritten (Körper, Köpfe, abgetragene Kleidung, Rüstung
 leicht/mittel/schwer, Kopfbedeckungen; Figuren beim Bauen bzw. zur Laufzeit); **F6** Waffen und Handgegenstände in
-`assets/source/items/`; Platzhalter-Clips für Mobs und Item-Benutzung; **F5**-Platzhalter fertig.
+`assets/source/items/` (auch Zweihänder, Armbrust, Pfeile, Runen); Figurenvielfalt (`figure_sets.toml`); Platzhalter-Clips
+für Mobs, Items, Routinen, Dialog, Kampf und Magie; **F5** eigene Monster (`docs/design/monsters.md`): Schinder,
+Quaderbuckel, Glemsmahr fertig, Bergleu als Nächstes.
 Lizenzen: Das Repo ist **öffentlich** – nur CC0/eigene bzw. weitergabefähig lizenzierte Assets einchecken.
 Details siehe `docs/03-roadmap.md`.
