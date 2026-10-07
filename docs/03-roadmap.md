@@ -392,6 +392,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
   - Stand: Stadtkirche aus dem Modell des Projektinhabers statt des LoD2-Gebäudes (W-E6; mittig auf dem LoD2-Grundriss, Entscheidung K1)
   - Stand: Bodenregel für alle Handmodelle – nichts versinkt im Gelände; Garten auf drei waagrechten Terrassen mit Stützmauern und Treppen, Kirche mit Fundament, Prüfung `qa/grounding.py` (#131, #132)
   - Stand: Gassen belebt (`outdoor.json`, `outdoor.py`): ca. 2000 Requisiten an den Hauswänden nach Nutzung, Bäume aus OSM, Obstbäume und Büsche in den Höfen, Gras an den Wandfüßen (~3700 Mesh-Vobs, deco); Wege, Türen, Routinen-Orte und Wegnetz bleiben frei, das Wegnetz bleibt gleich
+  - Stand: Gassen dichter: Gruppen (Fassstapel, Holzstöße, Kistenstapel, Karren) an den Wänden und am Straßenrand, ca. 6600 Requisiten, 12 Marktstände auf dem Marktplatz (~9400 Gassen-Vobs)
 - [x] Wegnetz-Vorschlag aus Straßenachsen – `gothar-worldgen waynet`: ca. 3200 Punkte (1245 an Türen), Hauptnetz 94 %, Freepoints an Brunnen, Markt, Toren, Beeten; Pforte am Schlosshang und bei (−137, 76); Autopilot 30 Wege A→B (Spieler und NPCs)
 
 **DoD:** Die komplette Altstadt ist ausgestattet und hat ein vorläufiges Wegnetz.

@@ -439,26 +439,48 @@ BARREL_R, BARREL_H = 0.3, 0.9
 
 
 def _barrel(
-    m: Mesh, axis: int, centre: Vec3, r: float = BARREL_R, length: float = BARREL_H
-) -> None:
-    """A barrel along ``axis``: bulging staves, two iron hoops near each end."""
+    m: Mesh, axis: int, centre: Vec3, r: float = BARREL_R, length: float = BARREL_H,
+    sides: int = 12, hoops: int = 4,
+) -> None:  # fmt: skip
+    """A barrel along ``axis``: bulging staves, iron hoops near each end (``hoops`` 4 or 2)."""
     for t, rr, ln in ((0.0, r, length * 0.66), (length * 0.415, r * 0.9, length * 0.17),
                       (-length * 0.415, r * 0.9, length * 0.17)):  # fmt: skip
         c = list(centre)
         c[axis] += t
-        m.cyl("oak", axis, (c[0], c[1], c[2]), rr, ln, sides=12)
-    for t in (length * 0.3, -length * 0.3, length * 0.45, -length * 0.45):
+        m.cyl("oak", axis, (c[0], c[1], c[2]), rr, ln, sides=sides)
+    at = (length * 0.3, -length * 0.3, length * 0.45, -length * 0.45)
+    for t in at if hoops == 4 else at[:2]:
         c = list(centre)
         c[axis] += t
         rr = r * (1.01 if abs(t) < length * 0.4 else 0.92)
-        m.cyl("iron", axis, (c[0], c[1], c[2]), rr, 0.035, sides=12)
+        m.cyl("iron", axis, (c[0], c[1], c[2]), rr, 0.035, sides=sides)
 
 
 def barrel() -> MobModel:
     m = Mesh()
     _barrel(m, 1, (0.0, BARREL_H / 2, 0.0))
     m.body("barrel", (-BARREL_R, 0.0, -BARREL_R), (BARREL_R, BARREL_H, BARREL_R))
-    return MobModel("barrel", m)
+    lod1 = Mesh()  # the lanes have hundreds: a plain prism from afar
+    lod1.cyl("oak", 1, (0.0, BARREL_H / 2, 0.0), BARREL_R * 0.95, BARREL_H, sides=7)
+    return MobModel("barrel", m, lods=[lod1])
+
+
+def barrel_stack() -> MobModel:
+    """Five barrels lying in a pyramid (three below, two on top) on two beams, ends to +Z."""
+    m = Mesh()
+    lod1 = Mesh()
+    r, length, beam = 0.3, 0.8, 0.06
+    for z in (-0.25, 0.25):
+        m.box("oak_beam", (-0.95, 0.0, z - 0.04), (0.95, beam, z + 0.04), grain=0)
+    lod1.box("oak_beam", (-0.95, 0.0, -0.29), (0.95, beam, 0.29), grain=0)
+    low = beam + r
+    for x, y in ((-0.62, low), (0.0, low), (0.62, low), (-0.31, low + 0.535), (0.31, low + 0.535)):
+        _barrel(m, 2, (x, y, 0.0), r=r, length=length, sides=10, hoops=2)
+        lod1.cyl("oak", 2, (x, y, 0.0), r * 0.95, length, sides=6)
+    top = low + 0.535 + r
+    m.body("barrels", (-0.93, 0.0, -0.4), (0.93, low + r * 0.5, 0.4))
+    m.body("barrels_top", (-0.62, low + r * 0.5, -0.4), (0.62, top, 0.4))
+    return MobModel("barrel_stack", m, lods=[lod1])
 
 
 RACK_W, RACK_D, RACK_H = 1.6, 0.85, 1.15
@@ -573,12 +595,14 @@ def crate_stack() -> MobModel:
 def sacks() -> MobModel:
     """Three full sacks, tied at the top."""
     m = Mesh()
+    lod1 = Mesh()
     for x, z, h in ((-0.25, 0.0, 0.55), (0.22, -0.03, 0.5), (0.0, 0.12, 0.45)):
         m.cyl("sackcloth", 1, (x, h * 0.42, z), 0.2, h * 0.84, sides=8)
         m.cyl("sackcloth", 1, (x, h * 0.9, z), 0.12, h * 0.12, sides=8)
         m.cyl("sackcloth", 1, (x, h * 0.98, z), 0.05, h * 0.06, sides=6)
+        lod1.cyl("sackcloth", 1, (x, h * 0.48, z), 0.19, h * 0.96, sides=5)
     m.body("sacks", (-0.45, 0.0, -0.23), (0.42, 0.55, 0.32))
-    return MobModel("sacks", m)
+    return MobModel("sacks", m, lods=[lod1])
 
 
 WORKBENCH_W, WORKBENCH_D, WORKBENCH_H = 1.8, 0.65, 0.85
@@ -860,6 +884,89 @@ def dung_heap() -> MobModel:
     return MobModel("dung_heap", m)
 
 
+# --- market stalls (W6 streets, the market square) ---------------------------------------------
+
+STALL_W, STALL_D = 3.0, 2.0  # frame; the cloth roof reaches 0.25 m beyond it at the front
+STALL_COLOURS = {"a": ("wool_red", "linen"), "b": ("wool_blue", "linen"),
+                 "c": ("wool_green", "wool_ochre")}  # fmt: skip
+
+
+def _cloth(m: Mesh, material: str, pts: list[Vec3]) -> None:
+    """A cloth quad seen from both sides (no double-sided material needed)."""
+    b = m.b(material)
+    (x0, y0, z0), (x1, y1, z1), (x2, y2, z2) = pts[0], pts[1], pts[2]
+    u = math.dist(pts[0], pts[1])
+    v = math.dist(pts[1], pts[2])
+    uvs = [(0.0, 0.0), (u, 0.0), (u, v), (0.0, v)]
+    nx = (y1 - y0) * (z2 - z0) - (z1 - z0) * (y2 - y0)
+    ny = (z1 - z0) * (x2 - x0) - (x1 - x0) * (z2 - z0)
+    nz = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0)
+    b.polygon(pts, uvs, (nx, ny, nz))
+    b.polygon(pts, uvs, (-nx, -ny, -nz))
+
+
+def _stall_frame(m: Mesh, colours: tuple[str, str], stripes: int, lod: bool = False) -> None:
+    hw, hd = STALL_W / 2, STALL_D / 2
+    front_y, back_y = 2.2, 2.6
+    for x in (-hw, hw):
+        for z, h in ((hd - 0.05, front_y), (-hd + 0.05, back_y)):
+            m.box("oak_beam", (x - 0.05, 0.0, z - 0.05), (x + 0.05, h, z + 0.05), grain=1)
+    zf, zb = hd + 0.25, -hd - 0.1  # the cloth hangs over the front
+    yf = front_y - 0.25 * (back_y - front_y) / STALL_D
+    n = 1 if lod else stripes
+    for k in range(n):
+        x0 = -hw - 0.1 + (STALL_W + 0.2) * k / n
+        x1 = -hw - 0.1 + (STALL_W + 0.2) * (k + 1) / n
+        roof = [(x0, back_y + 0.02, zb), (x1, back_y + 0.02, zb), (x1, yf, zf), (x0, yf, zf)]
+        _cloth(m, colours[k % 2], roof)
+        if not lod:  # the valance along the front
+            flap = [(x0, yf, zf), (x1, yf, zf), (x1, yf - 0.3, zf), (x0, yf - 0.3, zf)]
+            _cloth(m, colours[(k + 1) % 2], flap)
+    # the counter at the front: top at 0.86 m, a board down to the ground
+    m.box("oak", (-hw + 0.05, 0.8, hd - 0.55), (hw - 0.05, 0.86, hd - 0.05), grain=0)
+    m.box("oak", (-hw + 0.05, 0.05, hd - 0.1), (hw - 0.05, 0.8, hd - 0.06), grain=0)
+
+
+def market_stall(variant: str) -> MobModel:
+    """A market stall 3 x 2 m: four posts, a striped cloth roof sloping to the front (2.2 m), a
+    counter with goods; front (customers) towards +Z. Variants a (food), b (cloth), c (pottery)."""
+    m = Mesh()
+    colours = STALL_COLOURS[variant]
+    _stall_frame(m, colours, 6)
+    hw, hd = STALL_W / 2, STALL_D / 2
+    top, zc = 0.86, hd - 0.3
+    rng = np.random.default_rng(ord(variant))
+    if variant == "a":  # baskets of apples and onions, loaves
+        for x in (-1.0, -0.3, 0.45):
+            m.cyl("straw", 1, (x, top + 0.09, zc), 0.2, 0.18, sides=10)
+            fruit = "wool_red" if x < 0 else "wool_ochre"
+            for dx, dz in ((-0.06, 0.02), (0.06, -0.04), (0.0, 0.07)):
+                m.cyl(fruit, 1, (x + dx, top + 0.2, zc + dz), 0.045, 0.06, sides=6)
+        for k in range(4):
+            m.cyl("clay", 0, (1.0, top + 0.05 + 0.09 * (k % 2), zc - 0.15 + 0.1 * k), 0.05, 0.25,
+                  sides=6)  # fmt: skip
+    elif variant == "b":  # bolts of cloth
+        for k, c in enumerate(("wool_red", "wool_blue", "linen", "wool_green", "wool_ochre")):
+            x = -1.1 + 0.52 * k
+            m.cyl(c, 2, (x, top + 0.08, zc), 0.08, 0.45, sides=8)
+            if k % 2 == 0:
+                m.cyl(c, 2, (x + 0.12, top + 0.22, zc - 0.02), 0.07, 0.4, sides=8)
+    else:  # pottery
+        kinds = ("jug", "bowl", "plates", "jug", "mug", "bowl", "plates", "jug", "mug")
+        for k, kind in enumerate(kinds):
+            _ware(m, kind, (-1.2 + 0.3 * k, top, zc + rng.uniform(-0.12, 0.12)))
+    # stock behind the counter
+    _crate(m, (-0.8, 0.0, -hd + 0.4))
+    m.cyl("sackcloth", 1, (0.6, 0.25, -hd + 0.35), 0.2, 0.5, sides=8)
+    m.body("counter", (-hw, 0.0, hd - 0.55), (hw, 0.86, hd))
+    m.body("post_back_l", (-hw - 0.05, 0.0, -hd), (-hw + 0.05, 2.6, -hd + 0.1))
+    m.body("post_back_r", (hw - 0.05, 0.0, -hd), (hw + 0.05, 2.6, -hd + 0.1))
+    m.body("stock", (-1.1, 0.0, -hd + 0.1), (0.8, 0.6, -hd + 0.7))
+    lod1 = Mesh()
+    _stall_frame(lod1, colours, 1, lod=True)
+    return MobModel(f"market_stall_{variant}", m, lods=[lod1])
+
+
 CANDLE_TOP = 0.26  # the flame of the candlestick, above its foot
 
 
@@ -909,7 +1016,10 @@ PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "fire
          "workbench": workbench, "tool_board": tool_board, "quench_trough": quench_trough,
          "bellows": bellows, "sausages": sausages, "herbs": herbs,
          "weapon_board": weapon_board, "cart": cart, "woodpile": woodpile,
-         "dung_heap": dung_heap}  # plain mesh vobs (assets/source/props)  # fmt: skip
+         "dung_heap": dung_heap, "barrel_stack": barrel_stack,
+         "market_stall_a": lambda: market_stall("a"), "market_stall_b": lambda: market_stall("b"),
+         "market_stall_c": lambda: market_stall("c"),
+         }  # plain mesh vobs (assets/source/props)  # fmt: skip
 
 
 def write_mobs(folder: Path, types: Sequence[str] = TYPES,
