@@ -398,3 +398,23 @@ def test_quaderbuckel_reference_passes():
     assert report.stats["triangles"] <= 8000 and report.stats["lods"] == 3
     materials = {m["name"] for m in gltf.list("materials")}
     assert materials == {"fur", "eyes", "teeth", "tongue"}
+
+
+GLEMSMAHR_REF = (
+    REPO_ROOT / "assets/source/characters/monsters/glemsmahr/rig/glemsmahr_reference.glb"
+)
+
+
+def test_glemsmahr_reference_passes():
+    c = load_creature(DATA / "glemsmahr.creature.toml")
+    assert c.eye_glow > 0 and {"socket_eyes", "socket_hand_l", "socket_hand_r"} <= set(c.sockets)
+    names = {b.name for b in c.bones}
+    assert {f"front_finger_{k}_{s}" for k in (1, 2, 3) for s in "lr"} <= names
+    assert {"back_toes_l", "back_toes_r", "spine_03", "neck_02"} <= names
+    rig = load_rig(species="glemsmahr")
+    gltf = Gltf.load(GLEMSMAHR_REF)
+    report = validate_gltf(gltf, rig, reference_pose(gltf), path=GLEMSMAHR_REF)
+    assert report.ok(strict=True), report.issues
+    assert report.stats["triangles"] <= 8000 and report.stats["lods"] == 3
+    eyes = next(m for m in gltf.list("materials") if m["name"] == "eyes")
+    assert max(eyes.get("emissiveFactor", [0, 0, 0])) > 0.1  # glowing in the dark

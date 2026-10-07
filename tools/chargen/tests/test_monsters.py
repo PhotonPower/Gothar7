@@ -54,7 +54,14 @@ def codes(report, level="error"):
 
 
 def test_packaged_wolf_rig(wolf_rig):
-    assert packaged_species() == ["keiler", "laufvogel", "quaderbuckel", "schinder", "wolf"]
+    assert packaged_species() == [
+        "glemsmahr",
+        "keiler",
+        "laufvogel",
+        "quaderbuckel",
+        "schinder",
+        "wolf",
+    ]
     assert wolf_rig.is_monster and wolf_rig.species == "wolf"
     assert set(MONSTER_REQUIRED) <= set(wolf_rig.names)
     assert len(wolf_rig.bones) <= wolf_rig.max_bones == 64
@@ -177,6 +184,7 @@ def test_invalid_monster_sets(data, message):
         ("laufvogel", 12, 12),
         ("schinder", 26, 15),
         ("quaderbuckel", 29, 17),
+        ("glemsmahr", 37, 19),
     ],
 )
 def test_monster_files_pass(species, bones, clips):
@@ -302,6 +310,7 @@ def test_validate_command_picks_rig_per_file(capsys):
         ("laufvogel", "capsule_upright"),
         ("schinder", "capsule_lying"),
         ("quaderbuckel", "capsule_lying"),
+        ("glemsmahr", "capsule_upright"),
     ],
 )
 def test_collision_matches_mesh(species, shape):
