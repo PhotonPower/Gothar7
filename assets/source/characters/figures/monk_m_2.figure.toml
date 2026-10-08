@@ -1,0 +1,18 @@
+# monk_m_2: set 'monk': grey robe, rope belt, cloth shoes (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_farmer/head.glb"
+hair = "parts/hair_m_farmer/hair_short.glb"
+cloth = [
+    "parts/garb_m_heavy/coat.glb",
+    "parts/garb_m_heavy/belt.glb",
+    "parts/cloth_m_heavy/toigo_mj_cloth_shoes.glb",
+]
+
+[palette]
+hair = "#7a7672"
+cloth_coat = "#7a7266"
+cloth_belt = "#8a7a5a"
+cloth_toigo_mj_cloth_shoes = "#4a3a2c"

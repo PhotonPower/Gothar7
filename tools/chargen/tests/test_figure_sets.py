@@ -20,8 +20,8 @@ NAMED |= {
     "tailor",
     "joiner",
 }
-NAMED |= {"potter", "herbalist"}  # Leonberg's trades (2026-10-08)
-GUILDS_MEN_ONLY = {"guard", "hunter"}  # owner decision 2026-10-04, as in Gothic
+NAMED |= {"potter", "herbalist", "priest", "musician"}  # Leonberg's trades, priest, musician
+GUILDS_MEN_ONLY = {"guard", "hunter", "monk"}  # owner decision 2026-10-04, as in Gothic
 
 
 def _sets() -> dict[str, list[str]]:

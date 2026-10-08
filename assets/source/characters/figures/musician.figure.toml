@@ -1,0 +1,25 @@
+# musician: lute player in Leonberg's inn (named), dyed tunic, beret, purse (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_young/head.glb"
+hair = "parts/hair_m_young/hair_long_shaggy.glb"
+cloth = [
+    "parts/garb_m_average/tunic_clean.glb",
+    "parts/garb_m_average/belt.glb",
+    "parts/garb_m_average/purse.glb",
+    "parts/headgear_m_average/beret.glb",
+    "parts/cloth_m_average/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#7a4a2c"
+cloth_tunic_clean = "#7a4a5a"
+cloth_belt = "#3a2a1e"
+cloth_purse = "#5a3d28"
+cloth_beret = "#2e4a3a"
+cloth_culturalibre_male_boots = "#3a2c22"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "relaxed"

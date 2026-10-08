@@ -596,6 +596,7 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_rune_firebolt`, `it_rune_heal`, `it_rune_sleep`, `it_rune_transform_wolf`, `it_rune_summon_wolf` (Runen, M12: eine Geometrie, flacher Stein, Ursprung Mitte, +Y lange Achse, +Z Zeichen-Seite; je Rune eigenes Material `rune_<zauber>` mit eingeritztem Zeichen in der Farbe des Zaubers – Flamme, Kreuz, Mondsichel, Spirale, Ring mit Stern) | 6 cm | Stein, Zeichen (prozedural); 180 Dreiecke |
   | `it_scroll` (Spruchrolle, Ursprung Mitte, +Y Rollenachse, Siegel zu +Z) | 20 cm | Pergament, Kordel, Wachs |
   | `it_torch` (Fackel, F6 2026-10-08: krummer Holzstab, Kopf aus gewickelten Pechlumpen mit Schnur; Ursprung = Griff nahe dem unteren Ende, +Y zum Kopf; leerer Knoten `socket_flame` an der Kopfspitze (0, 0,60, 0), +Y nach oben, für Flamme und Licht der engine; linke Hand, Clips im Set `torch`) | 72 cm | Holz dunkel, Pech (prozedural), Kordel; 564 Dreiecke |
+  | `it_lute` (Laute für den Musiker im Gasthof, 2026-10-08: birnenförmiger Korpus aus Spänen (Rücken −Z), flache Decke mit dunkler Rosette, Hals entlang +Y, Wirbelkasten nach hinten geknickt, sechs Darmsaiten, Steg; Ursprung = rechte Hand über den Saiten am Steg (0, 0,17, 0,012 vom Korpusende), +Z = Decke; rechte Hand, Clips im Set `music`) | 81 cm | Holz dunkel und hell, Pergament (Saiten); 400 Dreiecke |
   | Waren für Händler und Handwerker (2026-10-08, Namen mit engine abgestimmt): Essen `it_ham` (Schinken, am Knochenende gehalten), `it_sausage`, `it_cheese` (Laib, Ursprung Bodenmitte), `it_pretzel`, `it_beer` (Steinzeugflasche), `it_wine` (grünes Glas); Tränke `it_potion_heal_medium`, `it_potion_mana_medium` (größere Flasche), `it_potion_speed` (grün), `it_potion_strength` (bernsteinfarben); `it_cloth_bolt` (Tuchballen, Bodenmitte), `it_jug` (Tonkrug, am Henkel wie `it_mug`), `it_bowl` (Schüssel, Bodenmitte). Laib, Schüssel und Brezel sind von Natur breiter als hoch: `AXIS_FREE` nimmt sie von der Regel „längste Achse +Y“ aus | 7–50 cm | prozedural: Schinken, Knochen, Wurst, Käse, Ton, Glas grün/bernstein, Leinen; 144–588 Dreiecke |
   | `it_potion_mana_small` (wie der Heiltrank, blaues Glas) | 17 cm | prozedural |
   | `it_crossbow` (Armbrust, Ursprung am Griff bzw. Abzug, Schaft +Y nach vorn, Bogen quer, +Z oben; an `socket_hand_r`, die `cbow`-Clips halten den Schaft in der Faust) | 0,8 m | Holz, Schmiedeeisen, Sehne |
@@ -621,11 +622,13 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
 - **Sets:** `citizen` (7) und `craftsman` (5) für Leonberg (sauber), `guard` (5, nur Männer wie in Gothic, mittlere
   Rüstung mit Helm), `farmer` (7, abgetragen, Strohhüte, Schürzen), `hunter` (4, nur Männer, Leder, gewickelte Hosen
   und Stiefel), `outcast` (5, Lumpen; barfuß oder in Stoffschuhen), `merchant` (8, besser gekleidete Bürger
-  Leonbergs in gefärbtem Tuch, alle mit Geldbeutel, dazu Barett, Haube oder Weste; 2026-10-08). Manifeste `figures/<set>_<m|f>_<n>.figure.toml`;
+  Leonbergs in gefärbtem Tuch, alle mit Geldbeutel, dazu Barett, Haube oder Weste; 2026-10-08), `monk` (2, nur
+  Männer; Kutte, Strick als Gürtel, mit Kapuze bzw. barfuß) und `beggar` (3; Lumpen, barfuß; 2026-10-08). Manifeste `figures/<set>_<m|f>_<n>.figure.toml`;
   sie mischen Kopf, Frisur und Bart, Statur, Kleidung und Palette.
 - **Benannte Figuren** (je ein NPC, in keinem Set): `smith` (Lederschürze), `innkeeper` (sauber, Schürze),
   `market_woman` (Mieder über dem langen Rock), `gate_guard` (mittlere Rüstung, Kesselhelm), `guard_captain`
-  (schwere Rüstung).
+  (schwere Rüstung), `priest` (alt; dunkle, saubere Kutte; 2026-10-08), `musician` (Lautenspieler im Gasthof; Tunika
+  in Beere, Barett, Geldbeutel; 2026-10-08).
 - **Handwerker und Händler Leonbergs** (benannte Figuren, 2026-10-08; Rollen, Geschlecht, Alter und Statur vom
   Koordinator, Personennamen vergibt engine im Inhalt): `baker` (m, kräftig; Latzschürze mit Mehl, Leinenmütze),
   `baker_wife` (w; Latzschürze mit Mehl, Haube), `butcher` (m, kräftig; Leder-Latzschürze, Stoppeln), `bather`

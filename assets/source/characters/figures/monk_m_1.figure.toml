@@ -1,0 +1,18 @@
+# monk_m_1: set 'monk': worn robe with hood, rope belt, barefoot (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_thin/body.glb"
+head = "parts/head_m_bald/head.glb"
+hair = "parts/hair_m_bald/hair_buzz.glb"
+cloth = [
+    "parts/garb_m_thin/coat.glb",
+    "parts/garb_m_thin/belt.glb",
+    "parts/headgear_m_thin/hood.glb",
+]
+
+[palette]
+hair = "#5a3a28"
+cloth_coat = "#5a4a38"
+cloth_belt = "#8a7a5a"
+cloth_hood = "#8a7a64"

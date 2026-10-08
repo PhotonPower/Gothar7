@@ -493,6 +493,66 @@ def torch(seg: int) -> list[Mesh]:
     return [stick, head, cord]
 
 
+LUTE_GRIP = (0.0, 0.17, 0.012)  # origin: the right hand over the strings near the bridge
+
+
+def _lute_section(w: float, d: float, n: int) -> np.ndarray:
+    """Bowl section (x, z): the back half of an ellipse from -x through -z to +x, closed by the
+    flat soundboard at z = 0 (the loft joins the last point to the first)."""
+    a = np.linspace(np.pi, 0.0, n)
+    return np.stack([w * np.cos(a), -d * np.sin(a)], axis=1)
+
+
+def lute(seg: int) -> list[Mesh]:
+    """Lute held at the soundboard where the right hand plucks (the origin, LUTE_GRIP): a
+    pear-shaped bowl of staves (back, -Z) with a flat soundboard (+Z) and a dark rosette, the neck
+    along +Y and the pegbox bent back; pale gut strings over the board."""
+    o = np.array(LUTE_GRIP)
+    n = max(7, seg // 2 + 1)
+    ys = np.array([0.0, 0.015, 0.05, 0.1, 0.17, 0.24, 0.31, 0.37, 0.42, 0.45])
+    ws = np.array([0.02, 0.07, 0.115, 0.148, 0.16, 0.155, 0.13, 0.095, 0.055, 0.032])
+    bowl = Mesh("wood_dark")
+    path = np.stack([np.zeros_like(ys), ys, np.zeros_like(ys)], axis=1) - o
+    loft(bowl, path, [_lute_section(w, 0.85 * w, n) for w in ws], tile=0.12)
+    board = Mesh("wood")  # the soundboard a little proud of the bowl's rim
+    loft(board, path[1:-1] + np.array([0.0, 0.0, 0.002]),
+         [np.array([[-w * 0.97, -0.001], [w * 0.97, -0.001], [w * 0.97, 0.001], [-w * 0.97, 0.001]])
+          for w in ws[1:-1]], tile=0.2)  # fmt: skip
+    rose = Mesh("wood_dark")
+    loft(
+        rose,
+        np.array([[0.0, 0.26, 0.0032], [0.0, 0.26, 0.0036]]) - o,
+        [circle(0.035, seg, ry=1.0)] * 2,
+        ref=(0.0, 1.0, 0.0),
+        tile=0.05,
+    )
+    neck = Mesh("wood_dark")
+    ny = np.array([0.44, 0.75])
+    loft(
+        neck,
+        np.stack([np.zeros(2), ny, np.zeros(2)], axis=1) - o,
+        [np.array([[-w, -0.024], [w, -0.024], [w, 0.004], [-w, 0.004]]) for w in (0.03, 0.022)],
+        tile=0.1,
+    )
+    peg = np.array([[0.0, 0.745, 0.0], [0.0, 0.785, -0.03], [0.0, 0.81, -0.08]]) - o
+    loft(neck, peg, [np.array([[-w, -0.012], [w, -0.012], [w, 0.012], [-w, 0.012]]) for w in
+                     (0.022, 0.02, 0.016)], ref=(1.0, 0.0, 0.0), tile=0.1)  # fmt: skip
+    strings = Mesh("parchment")
+    for x in np.linspace(-0.014, 0.014, 6):
+        sx = x * np.array([2.2, 1.0])  # wider at the bridge
+        path_s = np.array([[sx[0], 0.1, 0.008], [sx[1], 0.745, 0.008]]) - o
+        loft(strings, path_s, [circle(0.0008, 3)] * 2, ref=(0.0, 0.0, 1.0), tile=0.5, caps=False)
+    bridge = Mesh("wood_dark")
+    loft(
+        bridge,
+        np.array([[-0.045, 0.1, 0.004], [0.045, 0.1, 0.004]]) - o,
+        [np.array([[-0.004, -0.002], [0.004, -0.002], [0.004, 0.004], [-0.004, 0.004]])] * 2,
+        ref=(0.0, 0.0, 1.0),
+        tile=0.05,
+    )
+    return [bowl, board, rose, neck, strings, bridge]
+
+
 # empty marker nodes per item (name -> position in item space), e.g. where engine puts the flame
 MARKERS: dict[str, dict[str, tuple[float, float, float]]] = {
     "it_torch": {"socket_flame": TORCH_FLAME},  # engine: flame and light, +Y up out of the head
@@ -737,6 +797,7 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_jug": (jug, 16),
     "it_bowl": (bowl, 20),
     "it_torch": (torch, 12),
+    "it_lute": (lute, 16),
     **{f"it_rune_{spell}": ((lambda sp: lambda s: rune(s, sp))(spell), 12) for spell in RUNES},
 }
 
@@ -1032,6 +1093,7 @@ LENGTHS = {
     "it_potion_speed": (0.12, 0.2), "it_potion_strength": (0.12, 0.2),
     "it_cloth_bolt": (0.45, 0.55), "it_jug": (0.22, 0.28), "it_bowl": (0.06, 0.08),
     "it_potion_mana_small": (0.12, 0.2), "it_scroll": (0.18, 0.24), "it_torch": (0.65, 0.75),
+    "it_lute": (0.75, 0.9),
     **{f"it_rune_{spell}": (0.05, 0.08) for spell in RUNES},
 }  # fmt: skip
 

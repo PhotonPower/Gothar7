@@ -1,0 +1,49 @@
+# Set "music" -> assets/source/characters/anims/human/music.glb (lute player in the inn, 2026-10-08,
+# agreed with engine via the koordinator): own file, clips named amb/... (engine finds them by their
+# full name in all sets). it_lute in the right hand (socket_hand_r) via item_to_hand / item_from_hand
+# in the in/out clips (like amb/t_drink_mug_in/out); sound:lute_play at the start of every loop.
+# Standing at the freepoint, or sitting on a bench or stool behind it (pelvis 0.3 m back, as
+# mob/bench). The hand's turn is computed from the posed rig so that the neck points to the
+# player's left and up and the soundboard to the front; the arm poses were searched so that the
+# right hand is in front of the belly and the left one on the neck (placeholder, mocap in F4).
+#
+# Key poses rotate about world axes at rest (Blender: X = the figure's left, -Y = forward, Z = up;
+# +X pitches the head down and swings a limb back, +Z turns left); twist turns a bone about its
+# own length axis.
+
+set = "music"
+depends = ["none"]
+
+[[clip]]
+name = "amb/t_play_lute_in"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [25, "a"]], poses = { a = { rotate = { spine_01 = [["X", 3]], head = [["X", 14], ["Z", 3]], upperarm_r = [["X", -20], ["Z", 30]], lowerarm_r = [["Z", 40], ["X", 0]], hand_r = [["X", 131.1], ["Y", -30.4], ["Z", -35.3]], upperarm_l = [["X", 30], ["Z", -30]], lowerarm_l = [["X", -70], ["Z", -105]] } } } }
+markers = { item_to_hand = 2 }
+
+[[clip]]
+name = "amb/t_play_lute_out"
+reverse = "amb/t_play_lute_in"
+markers = { item_from_hand = 23 }
+
+[[clip]]
+name = "amb/s_play_lute"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "a"], [20, "b"], [40, "a"], [60, "c"], [80, "a"], [100, "b"], [120, "a"]], poses = { a = { rotate = { spine_01 = [["X", 3]], head = [["X", 14], ["Z", 3]], upperarm_r = [["X", -20], ["Z", 30]], lowerarm_r = [["Z", 40], ["X", 0]], hand_r = [["X", 131.1], ["Y", -30.4], ["Z", -35.3]], upperarm_l = [["X", 30], ["Z", -30]], lowerarm_l = [["X", -70], ["Z", -105]] } }, b = { rotate = { spine_01 = [["X", 3]], head = [["X", 14], ["Z", 3]], upperarm_r = [["X", -20], ["Z", 30]], lowerarm_r = [["Z", 32], ["X", 0]], hand_r = [["X", 131.1], ["Y", -30.4], ["Z", -35.3]], upperarm_l = [["X", 30], ["Z", -30]], lowerarm_l = [["X", -70], ["Z", -105]] } }, c = { rotate = { spine_01 = [["X", 3]], head = [["X", 14], ["Z", -4]], upperarm_r = [["X", -20], ["Z", 30]], lowerarm_r = [["Z", 46], ["X", 0]], hand_r = [["X", 131.1], ["Y", -30.4], ["Z", -35.3]], upperarm_l = [["X", 30], ["Z", -30]], lowerarm_l = [["X", -70], ["Z", -105]] } } } }
+markers = { "sound:lute_play" = 0 }
+
+[[clip]]
+name = "amb/t_play_lute_sit_in"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [20, "seat"], [40, "a"]], poses = { seat = { rotate = { thigh_l = [["X", -90], ["Y", -6]], thigh_r = [["X", -90], ["Y", 6]], calf_l = [["X", 88]], calf_r = [["X", 88]], spine_01 = [["X", 6]] }, move = { pelvis = [0.0, 0.3, -0.42] } }, a = { rotate = { thigh_l = [["X", -90], ["Y", -6]], thigh_r = [["X", -90], ["Y", 6]], calf_l = [["X", 88]], calf_r = [["X", 88]], spine_01 = [["X", 6]], head = [["X", 14], ["Z", 3]], upperarm_r = [["X", -20], ["Z", 40]], lowerarm_r = [["Z", 40], ["X", -10]], hand_r = [["X", 134.2], ["Y", -28.3], ["Z", -37.7]], upperarm_l = [["X", 10], ["Z", 0]], lowerarm_l = [["X", -30], ["Z", -90]] }, move = { pelvis = [0.0, 0.3, -0.42] } } } }
+markers = { item_to_hand = 22 }
+
+[[clip]]
+name = "amb/t_play_lute_sit_out"
+reverse = "amb/t_play_lute_sit_in"
+markers = { item_from_hand = 18 }
+
+[[clip]]
+name = "amb/s_play_lute_sit"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "a"], [20, "b"], [40, "a"], [60, "c"], [80, "a"], [100, "b"], [120, "a"]], poses = { a = { rotate = { thigh_l = [["X", -90], ["Y", -6]], thigh_r = [["X", -90], ["Y", 6]], calf_l = [["X", 88]], calf_r = [["X", 88]], spine_01 = [["X", 6]], head = [["X", 14], ["Z", 3]], upperarm_r = [["X", -20], ["Z", 40]], lowerarm_r = [["Z", 40], ["X", -10]], hand_r = [["X", 134.2], ["Y", -28.3], ["Z", -37.7]], upperarm_l = [["X", 10], ["Z", 0]], lowerarm_l = [["X", -30], ["Z", -90]] }, move = { pelvis = [0.0, 0.3, -0.42] } }, b = { rotate = { thigh_l = [["X", -90], ["Y", -6]], thigh_r = [["X", -90], ["Y", 6]], calf_l = [["X", 88]], calf_r = [["X", 88]], spine_01 = [["X", 6]], head = [["X", 14], ["Z", 3]], upperarm_r = [["X", -20], ["Z", 40]], lowerarm_r = [["Z", 32], ["X", -10]], hand_r = [["X", 134.2], ["Y", -28.3], ["Z", -37.7]], upperarm_l = [["X", 10], ["Z", 0]], lowerarm_l = [["X", -30], ["Z", -90]] }, move = { pelvis = [0.0, 0.3, -0.42] } }, c = { rotate = { thigh_l = [["X", -90], ["Y", -6]], thigh_r = [["X", -90], ["Y", 6]], calf_l = [["X", 88]], calf_r = [["X", 88]], spine_01 = [["X", 6]], head = [["X", 14], ["Z", -4]], upperarm_r = [["X", -20], ["Z", 40]], lowerarm_r = [["Z", 46], ["X", -10]], hand_r = [["X", 134.2], ["Y", -28.3], ["Z", -37.7]], upperarm_l = [["X", 10], ["Z", 0]], lowerarm_l = [["X", -30], ["Z", -90]] }, move = { pelvis = [0.0, 0.3, -0.42] } } } }
+markers = { "sound:lute_play" = 0 }

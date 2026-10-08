@@ -31,12 +31,14 @@ def test_packaged_sets_are_valid():
         "amb",
         "bow",
         "cbow",
+        "church",
         "dive",
         "dlg",
         "fist",
         "gait",
         "mag",
         "mob",
+        "music",
         "none",
         "swim",
         "torch",
@@ -49,7 +51,7 @@ def test_packaged_sets_are_valid():
         spec = load_set_spec(name)
         assert spec.set == name
         # own files for none clips (none.glb unchanged)
-        mode = {"torch": "none", "gait": "none"}.get(name, name)
+        mode = {"torch": "none", "gait": "none", "church": "amb", "music": "amb"}.get(name, name)
         assert all(n.startswith(f"{mode}/") for n in spec.names)  # helpers may differ
         for source in spec.sources.values():
             load_mapping(source.mapping)
@@ -307,6 +309,8 @@ def test_real_list_is_consistent_with_files():
         (16, 16),
         (6, 6),
         (10, 10),
+        (8, 8),
+        (6, 6),
         (15, 15),
         (12, 12),
         (12, 12),
