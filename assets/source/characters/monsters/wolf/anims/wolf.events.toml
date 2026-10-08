@@ -3,7 +3,7 @@ version = 1
 fps = 30
 
 [clips."wolf/s_run"]
-speed = 6.00
+speed = 5.99
 events = [
     { frame = 0, event = "footstep_back_l" },
     { frame = 1, event = "footstep_back_r" },
@@ -41,20 +41,37 @@ events = [
     { frame = 13, event = "hit_end" },
 ]
 
+[clips."wolf/t_transform_out"]
+events = [
+    { frame = 12, event = "swap" },
+]
+
 [clips."wolf/t_turn_l"]
 events = [
     { frame = 0, event = "footstep_back_l" },
-    { frame = 0, event = "footstep_front_l" },
+    { frame = 0, event = "footstep_back_r" },
     { frame = 0, event = "footstep_front_r" },
+    { frame = 4, event = "footstep_front_l" },
     { frame = 8, event = "footstep_back_r" },
-    { frame = 22, event = "footstep_front_r" },
+    { frame = 12, event = "footstep_front_r" },
+    { frame = 16, event = "footstep_back_l" },
+    { frame = 20, event = "footstep_front_l" },
+    { frame = 24, event = "footstep_back_r" },
+    { frame = 28, event = "footstep_front_r" },
+    { frame = 32, event = "footstep_back_l" },
 ]
 
 [clips."wolf/t_turn_r"]
 events = [
     { frame = 0, event = "footstep_back_l" },
-    { frame = 0, event = "footstep_front_l" },
+    { frame = 0, event = "footstep_back_r" },
     { frame = 0, event = "footstep_front_r" },
+    { frame = 4, event = "footstep_front_l" },
     { frame = 8, event = "footstep_back_r" },
-    { frame = 22, event = "footstep_front_r" },
+    { frame = 12, event = "footstep_front_r" },
+    { frame = 16, event = "footstep_back_l" },
+    { frame = 20, event = "footstep_front_l" },
+    { frame = 24, event = "footstep_back_r" },
+    { frame = 28, event = "footstep_front_r" },
+    { frame = 32, event = "footstep_back_l" },
 ]

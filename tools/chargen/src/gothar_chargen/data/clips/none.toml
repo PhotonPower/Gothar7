@@ -307,3 +307,39 @@ keys = [[0, "a"], [7, "b"], [14, "a"], [21, "b"], [28, "a"]]
 rotate = { upperarm_l = [["X", -150], ["Z", -20]], upperarm_r = [["X", -70], ["Z", 40]], lowerarm_l = [["X", -30]], lowerarm_r = [["X", -60]], neck = [["Z", 20], ["X", -10]] }
 [clip.params.poses.b]
 rotate = { upperarm_l = [["X", -70], ["Z", -40]], upperarm_r = [["X", -150], ["Z", 20]], lowerarm_l = [["X", -60]], lowerarm_r = [["X", -30]], neck = [["Z", -20], ["X", -10]] }
+
+# --- transformation (M12, agreed with engine 2026-10-08): 0.8 s each; at "swap" engine replaces the
+# model (none <-> wolf); the hero stands on the spot; _in ends in the normal stance ---
+
+[[clip]]
+name = "none/t_transform_out"     # cramps, doubles over and drops onto all fours
+keyframe = "keyposes"
+markers = { swap = 12 }
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [5, "cramp"], [12, "crouch"], [24, "all_fours"]]
+[clip.params.poses.cramp]
+rotate = { spine_01 = [["X", 14]], spine_02 = [["X", 16]], neck = [["X", 12]], upperarm_l = [["X", -40], ["Z", -25]], upperarm_r = [["X", -40], ["Z", 25]], lowerarm_l = [["Y", 80]], lowerarm_r = [["Y", -80]] }
+move = { pelvis = [0, 0.03, -0.06] }
+[clip.params.poses.crouch]
+rotate = { pelvis = [["X", 35]], spine_02 = [["X", 15]], neck = [["X", -15]], thigh_l = [["X", -70]], thigh_r = [["X", -65]], calf_l = [["X", 95]], calf_r = [["X", 90]], upperarm_l = [["X", -60]], upperarm_r = [["X", -60]] }
+move = { pelvis = [0, -0.05, -0.38] }
+[clip.params.poses.all_fours]
+rotate = { pelvis = [["X", 55]], spine_02 = [["X", 10]], neck = [["X", -30]], thigh_l = [["X", -80]], thigh_r = [["X", -75]], calf_l = [["X", 110]], calf_r = [["X", 105]], upperarm_l = [["X", -85]], upperarm_r = [["X", -85]] }
+move = { pelvis = [0, -0.1, -0.5] }
+
+[[clip]]
+name = "none/t_transform_in"      # rises from all fours, shakes it off, ends standing (s_idle)
+keyframe = "keyposes"
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "all_fours"], [8, "crouch"], [16, "straighten"], [24, "rest"]]
+[clip.params.poses.all_fours]
+rotate = { pelvis = [["X", 55]], spine_02 = [["X", 10]], neck = [["X", -30]], thigh_l = [["X", -80]], thigh_r = [["X", -75]], calf_l = [["X", 110]], calf_r = [["X", 105]], upperarm_l = [["X", -85]], upperarm_r = [["X", -85]] }
+move = { pelvis = [0, -0.1, -0.5] }
+[clip.params.poses.crouch]
+rotate = { pelvis = [["X", 35]], spine_02 = [["X", 15]], neck = [["X", -10]], thigh_l = [["X", -70]], thigh_r = [["X", -65]], calf_l = [["X", 95]], calf_r = [["X", 90]], upperarm_l = [["X", -40]], upperarm_r = [["X", -40]] }
+move = { pelvis = [0, -0.05, -0.38] }
+[clip.params.poses.straighten]
+rotate = { spine_01 = [["X", 6]], spine_02 = [["X", 4]], neck = [["X", 8], ["Z", 15]], upperarm_l = [["Z", -10]], upperarm_r = [["Z", 10]] }
+move = { pelvis = [0, 0.01, -0.03] }

@@ -138,10 +138,14 @@ def test_wolf_set():
         "t_threaten",
         "t_turn_l",
         "t_turn_r",
-    }  # fmt: skip  (s_trot: wolf only, agreed with engine 2026-10-05)
+        "t_transform_in",
+        "t_transform_out",
+    }  # fmt: skip  (s_trot: wolf only, 2026-10-05; transformation for M12, 2026-10-08)
     assert {n.split("/")[1] for n in spec.names} == contract
     attack = next(c for c in spec.clips if c.name == "wolf/t_attack_1")
     assert dict(attack.markers) == {"hit_start": 13, "hit_end": 17}
+    out = next(c for c in spec.clips if c.name == "wolf/t_transform_out")
+    assert dict(out.markers) == {"swap": 12}
 
 
 @pytest.mark.parametrize(
@@ -180,7 +184,7 @@ def test_invalid_monster_sets(data, message):
 @pytest.mark.parametrize(
     ("species", "bones", "clips"),
     [
-        ("wolf", 22, 13),
+        ("wolf", 25, 15),
         ("keiler", 25, 12),
         ("laufvogel", 12, 12),
         ("schinder", 26, 15),

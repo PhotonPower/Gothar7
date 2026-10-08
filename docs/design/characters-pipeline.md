@@ -664,7 +664,6 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 
 | Art | Quelle (CC0) | Stand |
 |---|---|---|
-| `wolf` (Rudeltier) | Quaternius „Animated Animales Low Poly“ (Animal Pack Vol.2), Wolf | Rig 22 Knochen, 0,85 m, 622 Dreiecke; 12/12 Clips (Idle/Walking aus der Quelle, Rest `platzhalter-K`) |
 | `keiler` | Quaternius „Lowpoly Animated Farm Animal Pack“, Schwein (dunkel eingefärbt) | Rig 25 Knochen (mit Schulter-/Hüftknochen), 0,95 m, 562 Dreiecke; 12/12 Clips (Idle/Walk/Death aus der Quelle, Rest `platzhalter-K`) |
 | `laufvogel` | Quaternius „5 Low poly animals“, Küken (auf 1,6 m vergrößert, eingefärbt) | Rig 12 Knochen (Vogel-Namen `thigh/calf/foot`), 1,6 m, 250 Dreiecke; 12/12 Clips (Gehen/Rennen aus dem Quell-Schritt am Ort, Rest `platzhalter-K`) |
 
@@ -703,6 +702,7 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
 | `bergleu` | Boss: Rig 41 Knochen (Katzen-Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Mähne `mane_back/l/r`, `tail_01..05`, zehengängige Beine mit Schulterblättern und Zehen; Sockets `socket_mouth`, `socket_paw_l/r`, `socket_tail`), Schulter 1,6 m, lod0 11096 / 5488 / 2714 Dreiecke (Boss-Budget bis 12 k), Mähne aus Strähnen (`tuft_shell`); 19 Clips (Mindest-Set + `s_stalk`, `t_pounce` am Ort, `t_tail_lash`, `t_roar`, `t_rage`, `t_stagger`, `t_turn_back`); Tempo 1,5 / 8,0 / Anpirschen 1,0 m/s (mit engine 2026-10-08) |
 | `glemsmahr` | Rig 37 Knochen (neues Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Arme als Vorderbeine mit Schulter, Hand und je drei Fingern, zehengängige Hinterbeine mit Zehen; Sockets `socket_mouth`, `socket_eyes`, `socket_hand_l/r`), geduckt 1,53 m, Kapsel stehend, lod0 7636 / 3758 / 1848 Dreiecke, emissive Augen (`eye_glow`); 19 Clips (Mindest-Set + `s_sneak`, `t_rise`/`s_upright`/`t_lower`, `t_leap` und `t_jump_back` am Ort mit `leap_start`/`leap_land`, `t_recoil`); Tempo 1,4 / 6,5 / Schleichen 0,9 m/s (mit engine 2026-10-07) |
 | `quaderbuckel` | Rig 29 Knochen (Keiler-Benennung mit Schulter-/Hüftknochen, dazu `jaw` und `brow_shield` unter `chest`; Sockets `socket_mouth`, `socket_shield` am Schild), 0,84 m, lod0 7956 / 3978 / 1988 Dreiecke (60 starre Sandstein-Platten), Fell 1024² + Normal-Map 512²; 17 Clips (Mindest-Set + `s_charge` am Ort, `t_warn`, `t_block_in`/`s_block`/`t_block_out`); Tempo 0,8 / 3,5 / Anrennen 4,5 m/s (mit engine 2026-10-07) |
+| `wolf` (Rudeltier) | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 25 Knochen (bisherige 22 mit gleichen Namen, dazu `jaw` und `ear_l/r` mit engine), 0,80 m, lod0 7376 / 3688 / 1844 Dreiecke, Fell 1024² + Normal-Map 512²; graues Fell mit dunklem Sattel, Halskrause, buschiger Schwanz; 13/13 Clips mit denselben Namen, Events und Tempo (1,2 / 3,0 / 6,0 m/s), alle eigen; dazu `t_transform_in/out` für die Verwandlung (M12) |
 | `schinder` | Rig 26 Knochen, 0,92 m, lod0 7834 / 3916 / 1958 Dreiecke, Fell 1024² + Normal-Map 512²; 15 Clips (Mindest-Set + `s_sneak`, `t_call`, `s_cower`); Tempo 1,3 / 6,5 / Schleichen 0,7 m/s (mit engine 2026-10-07) |
 
 ## 8. Ablauf pro Animation
