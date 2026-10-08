@@ -87,8 +87,8 @@ gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name
                                               & REM Kleidungs-Kits (fit_to, parts = ["cloth"]): ein Teil je Stück und Statur;
                                               & REM Rüstungs-Kits zusätzlich neutral = false, [names], [budget], [derive.x],
                                               & REM [retouch]; Kopf-Kits [hides], derive from = "basemesh" + dome/nasal, heads
-gothar-chargen monster keiler --sources C:\GotharData\characters\monsters
-                                              & REM Monster-Rig + Referenz + Clip-Quelle keiler_clips.blend (§7.2);
+gothar-chargen monster laufvogel --sources C:\GotharData\characters\monsters
+                                              & REM Monster-Rig + Referenz + Clip-Quelle laufvogel_clips.blend (§7.2);
                                               & REM meldet je Aktion Beckenabsenkung und Fuß-/Gelenkabweichung
 gothar-chargen build-set wolf --sources C:\GotharData\characters\monsters
                                               & REM Monster-Clips → monsters/wolf/anims/wolf.glb
@@ -146,7 +146,6 @@ Die „Standard“-Pakete der Universal Animation Library 1 und 2 (CC0) liegen a
 
 ## Monster-Quellen (für `monster`)
 Quaternius-Tierpakete (CC0, opengameart.org), entpackt nach `DATA_ROOT\characters\monsters\` (nicht ins Repo):
-- https://opengameart.org/content/lowpoly-animated-farm-animal-pack (Schwein → `keiler`)
 - https://opengameart.org/content/5-low-poly-animals (Küken → `laufvogel`)
 
 ## Tests

@@ -185,7 +185,7 @@ def test_invalid_monster_sets(data, message):
     ("species", "bones", "clips"),
     [
         ("wolf", 25, 15),
-        ("keiler", 25, 12),
+        ("keiler", 28, 12),
         ("laufvogel", 12, 12),
         ("schinder", 26, 15),
         ("quaderbuckel", 29, 17),
@@ -208,12 +208,14 @@ def test_monster_files_pass(species, bones, clips):
 def test_keiler_rig():
     rig = load_rig(species="keiler")
     parents = rig.parents
-    # IK-target feet of the source hang below the lower legs; shoulder/hip bones above the legs
+    # contract of the placeholder: feet below the lower legs, shoulder/hip bones above the legs;
+    # the own boar (2026-10-08) adds jaw and ears under the head
     assert parents["front_foot_l"] == "front_lower_l" and parents["back_foot_r"] == "back_lower_r"
     assert (
         parents["front_upper_l"] == "front_shoulder_l" and parents["back_upper_r"] == "back_hip_r"
     )
-    assert rig.height == pytest.approx(0.95, abs=0.01)
+    assert parents["jaw"] == parents["ear_l"] == "head"
+    assert rig.height == pytest.approx(0.84, abs=0.01)
 
 
 def test_laufvogel_rig():

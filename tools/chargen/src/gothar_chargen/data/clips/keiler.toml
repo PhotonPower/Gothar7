@@ -1,7 +1,7 @@
 # Set "keiler" (wild boar; monster contract, characters-pipeline.md §7) -> monsters/keiler/anims/keiler.glb
-# Source: Quaternius "Lowpoly Animated Farm Animal Pack", Pig, CC0 1.0 – Idle, Walk and Death are
-# used (gothar-chargen monster turns them into keiler_clips.blend on the contract rig); everything
-# else is a keyframe placeholder (animation-list.md status "platzhalter-K").
+# Own boar (gothar-chargen creature keiler, 2026-10-08): the clip source only holds the still
+# action "rest". Walk and gallop are own gait cycles (gait); everything else is keyframed. jaw and
+# ear_l/r were added with engine; clip names, events and speeds stay as agreed.
 #
 # Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches the
 # head down and swings a leg back, +Z turns left) and move root/pelvis in metres.
@@ -16,13 +16,27 @@ mapping = "identity"
 # --- locomotion (root moves forward: contract §7) ---
 
 [[clip]]
-name = "keiler/s_idle"
-from = "src:idle"
+name = "keiler/s_rest"
+from = "src:rest"
+helper = true
 
 [[clip]]
-name = "keiler/s_walk_inplace"
-from = "src:walk[0:40]"           # the source cycle ends at its frame 32 (24 fps)
-helper = true
+name = "keiler/s_idle"            # breathing, sniffing, ears and tail flick
+keyframe = "keyposes"
+[clip.params]
+base = "keiler/s_rest"
+keys = [[0, "stand"], [15, "breathe"], [28, "sniff"], [36, "sniff_up"], [44, "ear_flick"], [60, "stand"]]
+[clip.params.poses.stand]
+rotate = { neck_01 = [["X", 3]], rump = [["Z", 8]] }
+[clip.params.poses.breathe]
+move = { pelvis = [0, 0, 0.005] }
+rotate = { chest = [["X", -1.5]], neck_01 = [["X", 2]], rump = [["Z", -8]] }
+[clip.params.poses.sniff]
+rotate = { neck_01 = [["X", 8], ["Z", 12]], head = [["X", -6], ["Z", 6]], jaw = [["X", 3]], ear_l = [["X", 10]], rump = [["Z", 10]] }
+[clip.params.poses.sniff_up]
+rotate = { neck_01 = [["X", 2], ["Z", 14]], head = [["X", -12], ["Z", 6]], ear_l = [["X", 10]], ear_r = [["X", -10]], rump = [["Z", -12]] }
+[clip.params.poses.ear_flick]
+rotate = { neck_01 = [["X", 3], ["Z", 4]], ear_r = [["X", 25]], rump = [["Z", 14]] }
 
 # Own gait cycles (gaits.py): feet planted at exactly the clip speed, legs solved with IK.
 # Speeds agreed with engine (2026-10-05): walk 1.0, run (gallop) 5.0 m/s.
@@ -66,12 +80,28 @@ legs = [
 ]
 
 [[clip]]
+name = "keiler/s_step_inplace"    # base of the turns: stepping on the spot
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 16
+duty = 0.625
+lift = 0.045
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 30 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -50 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 30 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -50 },
+]
+
+[[clip]]
 name = "keiler/t_turn_l"
 keyframe = "keyposes"
 events = "footsteps"
 [clip.params]
-base = "keiler/s_walk_inplace"
-keys = [[0, "rest"], [30, "turned"]]
+base = "keiler/s_step_inplace"
+keys = [[0, "rest"], [32, "turned"]]
 [clip.params.poses.turned]
 rotate = { root = [["Z", 90]] }
 
@@ -80,8 +110,8 @@ name = "keiler/t_turn_r"
 keyframe = "keyposes"
 events = "footsteps"
 [clip.params]
-base = "keiler/s_walk_inplace"
-keys = [[0, "rest"], [30, "turned"]]
+base = "keiler/s_step_inplace"
+keys = [[0, "rest"], [32, "turned"]]
 [clip.params.poses.turned]
 rotate = { root = [["Z", -90]] }
 
@@ -96,13 +126,13 @@ base = "keiler/s_idle"
 keys = [[0, "rest"], [8, "lower"], [12, "thrust"], [16, "hook"], [28, "rest"]]
 [clip.params.poses.lower]
 move = { pelvis = [0, 0.05, -0.03] }
-rotate = { neck_01 = [["X", 20]], head = [["X", 15]], rump = [["X", -8]] }
+rotate = { neck_01 = [["X", 20]], head = [["X", 15]], ear_l = [["X", 30]], ear_r = [["X", 30]], rump = [["X", -8]] }
 [clip.params.poses.thrust]
 move = { pelvis = [0, -0.2, 0.02] }
-rotate = { neck_01 = [["X", 15]], head = [["X", 10]], front_upper_l = [["X", -30]], front_upper_r = [["X", -25]], back_upper_l = [["X", 20]], back_upper_r = [["X", 20]] }
+rotate = { neck_01 = [["X", 15]], head = [["X", 10]], jaw = [["X", 12]], ear_l = [["X", 30]], ear_r = [["X", 30]], front_upper_l = [["X", -30]], front_upper_r = [["X", -25]], back_upper_l = [["X", 20]], back_upper_r = [["X", 20]] }
 [clip.params.poses.hook]
 move = { pelvis = [0, -0.18, 0.03] }
-rotate = { neck_01 = [["X", -10]], head = [["X", -25]], front_upper_l = [["X", -15]], front_upper_r = [["X", -15]] }
+rotate = { neck_01 = [["X", -10]], head = [["X", -25]], jaw = [["X", 4]], ear_l = [["X", 25]], ear_r = [["X", 25]], front_upper_l = [["X", -15]], front_upper_r = [["X", -15]] }
 
 [[clip]]
 name = "keiler/t_attack_2"        # sideways tusk swipe
@@ -118,7 +148,7 @@ move = { pelvis = [0, -0.05, 0] }
 rotate = { neck_01 = [["Z", -25], ["X", 5]], head = [["Z", -15], ["X", -10]], chest = [["Z", -6]] }
 [clip.params.poses.swipe_up]
 move = { pelvis = [0, -0.05, 0] }
-rotate = { neck_01 = [["Z", -25], ["X", -5]], head = [["Z", -15], ["X", -25]], chest = [["Z", -6]] }
+rotate = { neck_01 = [["Z", -25], ["X", -5]], head = [["Z", -15], ["X", -25]], jaw = [["X", 10]], ear_l = [["X", 25]], ear_r = [["X", 25]], chest = [["Z", -6]] }
 
 [[clip]]
 name = "keiler/t_hit"
@@ -128,11 +158,25 @@ base = "keiler/s_idle"
 keys = [[0, "rest"], [4, "flinch"], [16, "rest"]]
 [clip.params.poses.flinch]
 move = { pelvis = [0, 0.06, 0.02] }
-rotate = { chest = [["X", -6], ["Z", 5]], neck_01 = [["X", -15]], head = [["X", -15], ["Z", 10]], rump = [["X", 10]] }
+rotate = { chest = [["X", -6], ["Z", 5]], neck_01 = [["X", -15]], head = [["X", -15], ["Z", 10]], jaw = [["X", 18]], ear_l = [["X", 35]], ear_r = [["X", 35]], rump = [["X", 10]] }
 
 [[clip]]
-name = "keiler/t_die"
-from = "src:die"
+name = "keiler/t_die"             # staggers, the front legs buckle, rolls onto the side
+keyframe = "keyposes"
+[clip.params]
+keys = [[0, "rest"], [8, "stagger"], [16, "knees"], [28, "fallen"], [44, "fallen_limp"]]
+[clip.params.poses.stagger]
+move = { pelvis = [0, 0.04, -0.04] }
+rotate = { neck_01 = [["X", 15]], head = [["X", 10]], jaw = [["X", 15]], back_upper_l = [["X", 12]], back_lower_l = [["X", -15]] }
+[clip.params.poses.knees]
+move = { pelvis = [0, 0.02, -0.14] }
+rotate = { chest = [["X", 12]], neck_01 = [["X", 15]], head = [["X", 10]], jaw = [["X", 20]], front_upper_l = [["X", -55]], front_upper_r = [["X", -50]], front_lower_l = [["X", 95]], front_lower_r = [["X", 90]], rump = [["X", -10]] }
+[clip.params.poses.fallen]
+move = { root = [0, 0, 0.18] }
+rotate = { root = [["Y", 86]], neck_01 = [["X", -5]], head = [["X", 5]], jaw = [["X", 18]], front_upper_l = [["X", -20]], front_upper_r = [["X", -30]], back_upper_l = [["X", 15]], back_upper_r = [["X", 25]], rump = [["Z", -15]] }
+[clip.params.poses.fallen_limp]
+move = { root = [0, 0, 0.17] }
+rotate = { root = [["Y", 88]], neck_01 = [["X", -8]], head = [["X", 8]], jaw = [["X", 22]], ear_l = [["X", 20]], front_upper_l = [["X", -25]], front_upper_r = [["X", -35]], front_lower_l = [["X", 15]], back_upper_l = [["X", 20]], back_upper_r = [["X", 30]], back_lower_r = [["X", -15]], rump = [["Z", -20]] }
 
 # --- behaviour ---
 
@@ -140,13 +184,14 @@ from = "src:die"
 name = "keiler/s_eat"             # rooting in the ground (loop)
 keyframe = "keyposes"
 [clip.params]
+base = "keiler/s_rest"
 keys = [[0, "root_low"], [10, "root_dig"], [20, "root_low"], [30, "root_dig"], [40, "root_low"]]
 [clip.params.poses.root_low]
-move = { pelvis = [0, 0, -0.03] }
-rotate = { chest = [["X", 5]], neck_01 = [["X", 18]], head = [["X", 12]], front_upper_l = [["X", -6]], front_upper_r = [["X", -6]] }
+move = { pelvis = [0, 0, 0] }
+rotate = { chest = [["X", 3]], neck_01 = [["X", 13]], head = [["X", 9]], jaw = [["X", 10]], front_upper_l = [["X", -6]], front_upper_r = [["X", -6]] }
 [clip.params.poses.root_dig]
-move = { pelvis = [0, -0.02, -0.03] }
-rotate = { chest = [["X", 5]], neck_01 = [["X", 20]], head = [["X", 22], ["Z", 6]], front_upper_l = [["X", -6]], front_upper_r = [["X", -6]] }
+move = { pelvis = [0, -0.02, 0] }
+rotate = { chest = [["X", 3]], neck_01 = [["X", 14]], head = [["X", 15], ["Z", 6]], jaw = [["X", 2]], front_upper_l = [["X", -6]], front_upper_r = [["X", -6]] }
 
 [[clip]]
 name = "keiler/s_sleep"           # lying on the side, slow breathing
@@ -154,10 +199,10 @@ keyframe = "keyposes"
 [clip.params]
 keys = [[0, "lie"], [40, "lie_in"], [80, "lie"]]
 [clip.params.poses.lie]
-move = { root = [0, 0, 0.3] }
+move = { root = [0, 0, 0.18] }
 rotate = { root = [["Y", 88]], neck_01 = [["X", 5]], head = [["X", 10]], front_upper_l = [["X", -20]], front_upper_r = [["X", -30]], back_upper_l = [["X", 15]], back_upper_r = [["X", 25]] }
 [clip.params.poses.lie_in]
-move = { root = [0, 0, 0.3] }
+move = { root = [0, 0, 0.18] }
 rotate = { root = [["Y", 88]], spine_02 = [["X", -2]], neck_01 = [["X", 5]], head = [["X", 10]], front_upper_l = [["X", -20]], front_upper_r = [["X", -30]], back_upper_l = [["X", 15]], back_upper_r = [["X", 25]] }
 
 [[clip]]
@@ -168,10 +213,10 @@ base = "keiler/s_idle"
 keys = [[0, "rest"], [8, "low"], [14, "paw_fwd"], [20, "paw_back"], [26, "paw_fwd"], [32, "paw_back"], [44, "rest"]]
 [clip.params.poses.low]
 move = { pelvis = [0, 0.03, -0.03] }
-rotate = { neck_01 = [["X", 20]], head = [["X", 5]], rump = [["X", -10]] }
+rotate = { neck_01 = [["X", 20]], head = [["X", 5]], jaw = [["X", 6]], ear_l = [["X", 40]], ear_r = [["X", 40]], rump = [["X", -10]] }
 [clip.params.poses.paw_fwd]
 move = { pelvis = [0, 0.03, -0.03] }
-rotate = { neck_01 = [["X", 20]], head = [["X", 5]], rump = [["X", -10]], front_upper_r = [["X", -25]], front_lower_r = [["X", 15]] }
+rotate = { neck_01 = [["X", 20]], head = [["X", 5]], jaw = [["X", 10]], ear_l = [["X", 40]], ear_r = [["X", 40]], rump = [["X", -10]], front_upper_r = [["X", -25]], front_lower_r = [["X", 15]] }
 [clip.params.poses.paw_back]
 move = { pelvis = [0, 0.03, -0.03] }
-rotate = { neck_01 = [["X", 22]], head = [["X", 8]], rump = [["X", -10]], front_upper_r = [["X", 15]], front_lower_r = [["X", 10]] }
+rotate = { neck_01 = [["X", 22]], head = [["X", 8]], jaw = [["X", 3]], ear_l = [["X", 40]], ear_r = [["X", 40]], rump = [["X", -10]], front_upper_r = [["X", 15]], front_lower_r = [["X", 10]] }
