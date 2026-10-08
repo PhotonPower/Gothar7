@@ -76,6 +76,8 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "grass": ("leaves", (0.07, 0.11, 0.032)),
     "grass_dry": ("leaves", (0.14, 0.13, 0.055)),
     "dung": ("straw", (0.09, 0.065, 0.04)),
+    # guild signs (W6): gilded symbols on the brackets
+    "gilt": ("iron", (0.42, 0.29, 0.07)),
 }
 # materials that glow: the engine adds emissive after the light (render.md "Material")
 EMISSIVE = {"ember": (0.9, 0.28, 0.05), "flame": (1.0, 0.55, 0.15)}
@@ -1054,6 +1056,181 @@ def lantern() -> MobModel:
     return MobModel("lantern", m)
 
 
+# --- guild signs (W6, coordinator 2026-10-08): a bracket over the door, a symbol of the trade -----
+SIGN_ARM_Y = 2.95  # the bracket's arm, above the door's threshold (origin: on the wall at it)
+SIGN_ARM_L = 0.95  # out from the wall (+Z)
+SIGN_MID_Z = 0.62  # the symbol's middle, out from the wall
+SIGN_TOP_Y = 2.78  # its top, under the chains
+SIGN_SCALE = 1.35  # the symbols drawn in metres below, enlarged about where they hang (readable
+# from the street; their lowest point stays above 2 m)
+
+
+class _Scaled:
+    """Draws into ``mesh`` enlarged by ``k`` about ``pivot`` (boxes and prisms, as Mesh)."""
+
+    def __init__(self, mesh: Mesh, pivot: Vec3, k: float) -> None:
+        self.mesh, self.pivot, self.k = mesh, pivot, k
+
+    def _p(self, v: Vec3) -> Vec3:
+        return tuple(c0 + (c - c0) * self.k for c, c0 in zip(v, self.pivot, strict=True))  # type: ignore[return-value]
+
+    def box(self, material: str, lo: Vec3, hi: Vec3, grain: int = 0) -> None:
+        self.mesh.box(material, self._p(lo), self._p(hi), grain)
+
+    def cyl(self, material: str, axis: int, centre: Vec3, radius: float, length: float,
+            sides: int = 10) -> None:  # fmt: skip
+        self.mesh.cyl(material, axis, self._p(centre), radius * self.k, length * self.k, sides)
+
+
+def _ring(m: Mesh, material: str, cy: float, cz: float, r: float, n: int = 12,
+          size: float = 0.035, arc: tuple[float, float] = (0.0, 360.0)) -> None:  # fmt: skip
+    """A ring (or an arc) of small blocks in the sign's plane (YZ), seen from along the street."""
+    a0, a1 = arc
+    for k in range(n):
+        a = math.radians(a0 + (a1 - a0) * k / max(1, n - (0 if a1 - a0 < 360 else 0)))
+        y, z = cy + r * math.sin(a), cz + r * math.cos(a)
+        m.box(material, (-0.02, y - size / 2, z - size / 2), (0.02, y + size / 2, z + size / 2))
+
+
+def _bracket(m: Mesh) -> None:
+    """The iron bracket: a plate on the wall, the arm out, a stay under it, two short chains."""
+    y, ln = SIGN_ARM_Y, SIGN_ARM_L
+    m.box("iron", (-0.04, y - 0.4, -0.01), (0.04, y + 0.06, 0.02))  # wall plate
+    m.box("iron", (-0.018, y - 0.02, 0.0), (0.018, y + 0.02, ln), grain=2)  # arm
+    for k in range(6):  # the stay, stepping down to the wall
+        z0 = 0.05 + k * 0.07
+        dy = 0.06 * (6 - k)
+        m.box("iron", (-0.012, y - dy - 0.012, z0), (0.012, y - dy + 0.012, z0 + 0.07))
+    m.box("iron", (-0.025, y - 0.03, ln - 0.03), (0.025, y + 0.03, ln + 0.02))  # the end, a knob
+    for z in (SIGN_MID_Z - 0.17, SIGN_MID_Z + 0.17):  # chains
+        m.box("iron", (-0.006, SIGN_TOP_Y, z - 0.006), (0.006, y - 0.02, z + 0.006))
+
+
+def _sign_tankard(m: Mesh) -> None:
+    cz, top = SIGN_MID_Z, SIGN_TOP_Y
+    m.box("oak", (-0.06, top - 0.45, cz - 0.15), (0.06, top - 0.05, cz + 0.12), grain=1)  # body
+    for y in (top - 0.4, top - 0.12):
+        m.box("iron", (-0.065, y, cz - 0.155), (0.065, y + 0.03, cz + 0.125))  # hoops
+    m.box("iron", (-0.07, top - 0.05, cz - 0.17), (0.07, top, cz + 0.14))  # lid
+    m.box("oak", (-0.03, top - 0.35, cz + 0.12), (0.03, top - 0.3, cz + 0.22))  # handle
+    m.box("oak", (-0.03, top - 0.35, cz + 0.17), (0.03, top - 0.12, cz + 0.22))
+    m.box("oak", (-0.03, top - 0.17, cz + 0.12), (0.03, top - 0.12, cz + 0.22))
+
+
+def _sign_pretzel(m: Mesh) -> None:
+    cz, cy = SIGN_MID_Z, SIGN_TOP_Y - 0.25
+    _ring(m, "gilt", cy, cz, 0.2, n=20, size=0.045)
+    _ring(m, "gilt", cy - 0.03, cz - 0.09, 0.09, n=10, size=0.04)
+    _ring(m, "gilt", cy - 0.03, cz + 0.09, 0.09, n=10, size=0.04)
+
+
+def _sign_cleaver(m: Mesh) -> None:
+    cz, top = SIGN_MID_Z, SIGN_TOP_Y
+    m.box("iron", (-0.012, top - 0.3, cz - 0.2), (0.012, top - 0.04, cz + 0.12))  # blade
+    m.box("iron", (-0.016, top - 0.31, cz - 0.21), (0.016, top - 0.27, cz + 0.12))  # its edge
+    m.box("oak", (-0.025, top - 0.13, cz + 0.12), (0.025, top - 0.07, cz + 0.3), grain=2)  # handle
+
+
+def _sign_horseshoe(m: Mesh) -> None:
+    cz, cy = SIGN_MID_Z, SIGN_TOP_Y - 0.22
+    _ring(m, "iron", cy, cz, 0.17, n=14, size=0.05, arc=(200.0, 520.0))  # open at the top
+
+
+def _sign_basin(m: Mesh) -> None:  # the bather's brass basin (Bader)
+    cz, cy = SIGN_MID_Z, SIGN_TOP_Y - 0.2
+    m.cyl("gilt", 0, (0.0, cy, cz), 0.2, 0.03, sides=16)
+    m.cyl("iron", 0, (0.0, cy, cz), 0.08, 0.035, sides=10)  # the dip in its middle
+
+
+def _sign_mortar(m: Mesh) -> None:  # the herbalist's mortar and pestle
+    cz, top = SIGN_MID_Z, SIGN_TOP_Y
+    m.cyl("fieldstone", 1, (0.0, top - 0.33, cz), 0.13, 0.2, sides=10)
+    m.cyl("fieldstone", 1, (0.0, top - 0.44, cz), 0.08, 0.04, sides=10)  # foot
+    m.box("oak", (-0.02, top - 0.3, cz + 0.02), (0.02, top - 0.02, cz + 0.06), grain=1)  # pestle
+    m.box("herb", (-0.025, top - 0.24, cz - 0.1), (0.025, top - 0.2, cz - 0.02))  # a sprig
+
+
+def _sign_halberd(m: Mesh) -> None:  # the guard: a halberd on the bracket (no shield, no arms)
+    cz, top = SIGN_MID_Z, SIGN_TOP_Y
+    m.box("oak", (-0.015, top - 0.55, cz - 0.015), (0.015, top - 0.02, cz + 0.015), grain=1)
+    m.box("iron", (-0.012, top - 0.18, cz + 0.015), (0.012, top - 0.04, cz + 0.17))  # axe blade
+    m.box("iron", (-0.01, top - 0.14, cz - 0.1), (0.01, top - 0.1, cz - 0.015))  # back spike
+    m.box("iron", (-0.01, top - 0.02, cz - 0.01), (0.01, top + 0.0, cz + 0.01))
+
+
+def _sign_goblet(m: Mesh) -> None:
+    cz, top = SIGN_MID_Z, SIGN_TOP_Y
+    m.cyl("gilt", 1, (0.0, top - 0.43, cz), 0.09, 0.03, sides=12)  # foot
+    m.cyl("gilt", 1, (0.0, top - 0.33, cz), 0.025, 0.17, sides=8)  # stem
+    m.cyl("gilt", 1, (0.0, top - 0.2, cz), 0.07, 0.1, sides=12)  # cup
+    m.cyl("gilt", 1, (0.0, top - 0.1, cz), 0.1, 0.1, sides=12)
+
+
+def _sign_cloth(m: Mesh) -> None:  # bolts of cloth, end on
+    cz, top = SIGN_MID_Z, SIGN_TOP_Y
+    for (dy, dz), c in zip(((-0.12, -0.1), (-0.12, 0.1), (-0.3, 0.0)),
+                           ("wool_red", "wool_blue", "wool_ochre"), strict=True):  # fmt: skip
+        m.cyl(c, 0, (0.0, top + dy, cz + dz), 0.09, 0.2, sides=12)
+
+
+def _sign_scales(m: Mesh) -> None:
+    cz, top = SIGN_MID_Z, SIGN_TOP_Y
+    m.box("gilt", (-0.012, top - 0.12, cz - 0.012), (0.012, top, cz + 0.012))  # post
+    m.box("gilt", (-0.012, top - 0.14, cz - 0.24), (0.012, top - 0.11, cz + 0.24))  # beam
+    for z in (cz - 0.22, cz + 0.22):
+        m.box("iron", (-0.004, top - 0.32, z - 0.004), (0.004, top - 0.14, z + 0.004))  # cords
+        m.cyl("gilt", 1, (0.0, top - 0.34, z), 0.08, 0.03, sides=10)  # pans
+
+
+def _sign_shears(m: Mesh) -> None:
+    cz, cy = SIGN_MID_Z, SIGN_TOP_Y - 0.25
+    for k in range(9):  # two blades crossing, blocks along the diagonals
+        t = (k - 4) * 0.045
+        for sz in (1.0, -1.0):
+            m.box("iron", (-0.012, cy + t - 0.02, cz + sz * t - 0.02),
+                  (0.012, cy + t + 0.02, cz + sz * t + 0.02))  # fmt: skip
+    _ring(m, "iron", cy - 0.24, cz - 0.17, 0.05, n=8, size=0.025)  # the bows
+    _ring(m, "iron", cy - 0.24, cz + 0.17, 0.05, n=8, size=0.025)
+
+
+def _sign_boot(m: Mesh) -> None:
+    cz, top = SIGN_MID_Z, SIGN_TOP_Y
+    m.box("leather", (-0.05, top - 0.36, cz - 0.12), (0.05, top - 0.02, cz + 0.02))  # shaft
+    m.box("leather", (-0.05, top - 0.46, cz - 0.12), (0.05, top - 0.34, cz + 0.2))  # foot
+    m.box("oak", (-0.052, top - 0.48, cz - 0.12), (0.052, top - 0.45, cz + 0.2))  # sole
+
+
+def _sign_saw(m: Mesh) -> None:
+    cz, top = SIGN_MID_Z, SIGN_TOP_Y
+    m.box("iron", (-0.006, top - 0.22, cz - 0.25), (0.006, top - 0.1, cz + 0.12))  # blade
+    for k in range(9):  # teeth
+        z = cz - 0.24 + k * 0.04
+        m.box("iron", (-0.006, top - 0.25, z), (0.006, top - 0.22, z + 0.02))
+    m.box("oak", (-0.03, top - 0.2, cz + 0.12), (0.03, top - 0.06, cz + 0.24))  # handle
+
+
+def _sign_jug(m: Mesh) -> None:
+    _ware(m, "jug", (0.0, SIGN_TOP_Y - 0.36, SIGN_MID_Z))
+    m.cyl("clay", 1, (0.0, SIGN_TOP_Y - 0.18, SIGN_MID_Z), 0.1, 0.12, sides=10)
+
+
+SIGNS = {"tankard": _sign_tankard, "pretzel": _sign_pretzel, "cleaver": _sign_cleaver,
+         "horseshoe": _sign_horseshoe, "basin": _sign_basin, "mortar": _sign_mortar,
+         "halberd": _sign_halberd, "goblet": _sign_goblet, "cloth": _sign_cloth,
+         "scales": _sign_scales, "shears": _sign_shears, "boot": _sign_boot, "saw": _sign_saw,
+         "jug": _sign_jug}  # fmt: skip
+
+
+def guild_sign(symbol: str) -> MobModel:
+    """A guild sign: the bracket over the door, the symbol hanging from it (on the wall, front +Z
+    out of it; no collision, above heads)."""
+    m = Mesh()
+    _bracket(m)
+    SIGNS[symbol](_Scaled(m, (0.0, SIGN_TOP_Y, SIGN_MID_Z), SIGN_SCALE))  # type: ignore[arg-type]
+    m.collision.append(box_body("COL_HULL_NONE", (-0.02, -1.04, -0.02), (0.02, -1.0, 0.02)))
+    return MobModel(f"sign_{symbol}", m)
+
+
 PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "firewood": firewood,
          "pot": pot, "stool": stool, "bucket": bucket, "basket": basket, "fur": fur, "rug": rug,
          "wall_hanging": wall_hanging, "tableware": tableware, "barrel": barrel,
@@ -1066,6 +1243,7 @@ PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "fire
          "market_stall_a": lambda: market_stall("a"), "market_stall_b": lambda: market_stall("b"),
          "market_stall_c": lambda: market_stall("c"),
          "washstand": washstand, "clothes_hooks": clothes_hooks,
+         **{f"sign_{k}": (lambda k=k: guild_sign(k)) for k in SIGNS},
          }  # plain mesh vobs (assets/source/props)  # fmt: skip
 
 

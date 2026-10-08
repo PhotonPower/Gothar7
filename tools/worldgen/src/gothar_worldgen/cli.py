@@ -1035,9 +1035,11 @@ def _plan_uses(
         mine = [p["name"] for p in inside.places if p["house"] == h["id"]]
         if mine:
             h["insidePlaces"] = mine
+    from gothar_worldgen.uses.places import sign_vobs
     from gothar_worldgen.uses.zones import indoor_zones
 
-    return places, [*vobs, *inside.vobs], indoor_zones(doc.houses, index)
+    signs = sign_vobs(doc.houses, index)  # W6: guild signs over the doors
+    return places, [*vobs, *inside.vobs, *signs], indoor_zones(doc.houses, index)
 
 
 def _plan_outdoor(

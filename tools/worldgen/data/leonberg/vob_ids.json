@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 35178,
+ "nextVobId": 35194,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -35179,6 +35179,22 @@
   "use:PROP_LEO_WOHNHAUS_ZJV_OBEN_KAMMER_4_CLOTHES_HOOKS_1": 35174,
   "use:PROP_LEO_WOHNHAUS_ZJV_OBEN_KAMMER_4_FUR_1": 35175,
   "use:PROP_LEO_WOHNHAUS_ZJV_OBEN_KAMMER_4_CANDLESTICK_1": 35176,
-  "use:LIGHT_LEO_WOHNHAUS_ZJV_OBEN_KAMMER_4_TALGLICHT": 35177
+  "use:LIGHT_LEO_WOHNHAUS_ZJV_OBEN_KAMMER_4_TALGLICHT": 35177,
+  "use:sign:DEBW_00100061ZhE": 35178,
+  "use:sign:DEBW_00100061Zja": 35179,
+  "use:sign:DEBW_00100061ZjW": 35180,
+  "use:sign:DEBW_00100061ZnQ": 35181,
+  "use:sign:DEBW_00100061Zmr": 35182,
+  "use:sign:DEBW_00100061ZmA": 35183,
+  "use:sign:DEBW_00100061Zkx": 35184,
+  "use:sign:DEBW_00100061Zkv": 35185,
+  "use:sign:DEBW_00100061ZnP": 35186,
+  "use:sign:DEBW_00100061ZkB-H4": 35187,
+  "use:sign:DEBW_00100061ZjR": 35188,
+  "use:sign:DEBW_00100061ZkT": 35189,
+  "use:sign:DEBW_00100061Zhk": 35190,
+  "use:sign:DEBW_00100061ZkQ-T1": 35191,
+  "use:sign:DEBW_00100061Zh5": 35192,
+  "use:sign:DEBW_00100061Zj7-T1": 35193
  }
 }

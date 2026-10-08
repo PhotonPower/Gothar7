@@ -848,6 +848,19 @@ Werkzeug aus W-E5 (`data/<ort>/kirche.json`); die Quelle liegt unverändert unte
   `porch_arch_glass`, `tower_door_glass`), verglaste Schallöffnungen im Glockengeschoss (`belfry_opening_glass`,
   `bell_louvre_glass`) und verglaste Turmschlitze. Die Turmuhr mit Minutenzeiger ist um 1700 möglich.
 
+### Zunftschilder (W6)
+Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-08): Ausleger mit Symbol über der Tür, eigene Gestaltung,
+keine echten Wappen oder Logos. Code: `mobs.guild_sign` (Modelle `props/sign_<symbol>.glb`), `uses/places.sign_vobs`.
+- **Wer:** jedes Haus aus `uses.json`, dessen Gewerbe (`trade`) oder Nutzung ein Symbol hat:
+  - Gasthaus Krug, Bäcker Brezel, Metzger Hackbeil, Schmiede Hufeisen, Bader Becken, Kräuterkammer Mörser, Wache Hellebarde;
+  - Goldschmied Pokal, Tuchhändler Tuchballen, Krämer Waage, Gewandschneider Schere;
+  - Schuster Stiefel, Schreiner Säge, Töpfer Krug.
+  - Wohnhäuser, Bauern, Rathaus und Pfarrhaus bekommen keines. Leonberg: 16 Schilder.
+- **Wo:** über der ersten benutzbaren Tür (Index `doors`), am Wandfuß an der Schwelle verankert, Ausleger 0,95 m aus der Wand in
+  2,95 m Höhe, das Symbol an zwei kurzen Ketten in der Ebene des Auslegers (von der Straße her lesbar), 1,35-fach vergrößert,
+  tiefster Punkt über 2 m.
+- **Kollision:** keine (nur das winzige `COL_HULL_NONE` unter dem Boden).
+
 ### Bodenregel für handgemachte Modelle (W6)
 Entscheidung Projektinhaber (2026-10-03): Kein sichtbarer Teil eines handgemachten Modells darf im Gelände stecken.
 - Ein Modell steht auf dem höchsten Gelände unter seinem Grundriss. Talseitig gibt es Sockel oder Fundament aus Stein,
