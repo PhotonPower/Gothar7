@@ -155,6 +155,7 @@ void defineContentKinds(script::ScriptVm& vm)
              {"species", Type::String},                          // transform: wolf, keiler, laufvogel
              {"fx", Type::Table},                                // { cast, trail, impact, on_target }
              {"burn", Type::Boolean},     // its fire sets the target burning (owner decision B, as Gothic)
+             {"sounds", Type::Table},     // { cast, impact }: sounds of data/sounds.toml (M13)
              {"on_cast", Type::Function}, // fn(caster, target): after the engine
          },
          false});

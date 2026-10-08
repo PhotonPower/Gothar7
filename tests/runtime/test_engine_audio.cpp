@@ -7,7 +7,9 @@
 #include <doctest/doctest.h>
 
 #include <cmath>
+#include <filesystem>
 #include <format>
+#include <fstream>
 #include <optional>
 #include <ostream> // doctest needs it to print std::string operands
 #include <string>
@@ -144,4 +146,44 @@ TEST_CASE(
     runSeconds(engine, 0.3f);
     CHECK(engine.soundMuffle(static_cast<audio::SoundId>(walled.asInteger())) > 0.5f);
     CHECK(engine.soundMuffle(static_cast<audio::SoundId>(clear.asInteger())) < 0.01f);
+}
+
+TEST_CASE("Engine audio: in a room the ambience innen, the outside one quiet and muffled behind it; a "
+          "smaller ambient "
+          "box in the room wins (the forge)")
+{
+    // A floor, the forest around, a room (indoor zone) and in its corner the forge (an ambient box smaller
+    // than the room).
+    const std::filesystem::path world = std::filesystem::temp_directory_path() / "g7_audio_rooms.g7world";
+    {
+        std::ofstream out(world, std::ios::binary);
+        out << R"({"version":1,"name":"rooms","nextVobId":3,"vobs":[)"
+            << R"({"id":1,"type":"mesh","name":"FLOOR","pos":[0.0,-0.75,0.0],"rot":[0.0,0.0,0.0,1.0],)"
+            << R"("scale":[200.0,1.0,200.0],"mesh":"mobs/table.glb"},)"
+            << R"({"id":2,"type":"start","name":"START","pos":[30.0,0.1,0.0],"rot":[0.0,0.0,0.0,1.0]}],)"
+            << R"("zones":[)"
+            << R"({"type":"ambient","value":"wald","box":{"center":[0.0,5.0,0.0],"halfExtents":[100.0,50.0,100.0],"yaw":0.0}},)"
+            << R"({"type":"indoor","value":"ROOM","box":{"center":[0.0,1.5,0.0],"halfExtents":[4.0,1.5,4.0],"yaw":0.0}},)"
+            << R"({"type":"ambient","value":"schmiede_esse","box":{"center":[3.0,1.5,3.0],"halfExtents":[1.0,1.5,1.0],"yaw":0.0}}]})";
+    }
+    EngineConfig config = audioConfig();
+    config.world = world;
+    config.start = "START";
+    Engine engine(std::move(config));
+    REQUIRE(engine.init().ok());
+    run(engine, "time(12, 0)");
+    runSeconds(engine, 0.5f);
+    CHECK(engine.ambience() == "wald"); // outside
+    CHECK(engine.ambienceOutside().empty());
+    run(engine, "teleport(-2, 0.1, -2)"); // in the room
+    runSeconds(engine, 0.5f);
+    CHECK(engine.ambience() == "innen");
+    CHECK(engine.ambienceOutside() == "wald"); // the forest behind the walls
+    CHECK(engine.soundsPlayed("amb_room") == 1);
+    CHECK(engine.soundsPlayed("amb_wind") == 2); // once outside, once muffled from inside
+    run(engine, "teleport(3, 0.1, 3)");          // at the forge
+    runSeconds(engine, 0.5f);
+    CHECK(engine.ambience() == "schmiede_esse");
+    CHECK(engine.ambienceOutside().empty());
+    std::filesystem::remove(world);
 }

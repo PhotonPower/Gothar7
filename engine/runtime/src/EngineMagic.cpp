@@ -228,6 +228,10 @@ void Engine::applyHeroSpell()
     {
         (void)startEffect(cast, hand);
     }
+    if (const auto sound = spell.sounds.find("cast"); sound != spell.sounds.end())
+    {
+        (void)playSound(sound->second, hand); // M13
+    }
     const Creature* target = m_heroCast->target ? creature(*m_heroCast->target) : nullptr;
     switch (spell.kind)
     {
@@ -253,6 +257,10 @@ void Engine::applyHeroSpell()
         }
         p.impact = fx("impact");
         p.burn = spell.burn;
+        if (const auto sound = spell.sounds.find("impact"); sound != spell.sounds.end())
+        {
+            p.impactSound = sound->second;
+        }
         m_projectiles.push_back(std::move(p));
         break;
     }
@@ -577,6 +585,10 @@ void Engine::applyNpcSpell(Creature& c)
     {
         (void)startEffect(cast, hand);
     }
+    if (const auto sound = spell.sounds.find("cast"); sound != spell.sounds.end())
+    {
+        (void)playSound(sound->second, hand); // M13
+    }
     const std::optional<u32> target = c.cast->target;
     switch (spell.kind)
     {
@@ -602,6 +614,10 @@ void Engine::applyNpcSpell(Creature& c)
         }
         p.impact = fx("impact");
         p.burn = spell.burn;
+        if (const auto sound = spell.sounds.find("impact"); sound != spell.sounds.end())
+        {
+            p.impactSound = sound->second;
+        }
         m_projectiles.push_back(std::move(p));
         break;
     }

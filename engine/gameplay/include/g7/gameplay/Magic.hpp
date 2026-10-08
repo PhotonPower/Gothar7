@@ -42,10 +42,11 @@ struct SpellInfo
     i32 heal = 0;
     std::string effect; ///< target spells: sleep, fear
     f32 duration = 0.0f;
-    std::string summon;                                 ///< the Npc a summon calls
-    std::string species;                                ///< what a transformation turns into
-    std::map<std::string, std::string, std::less<>> fx; ///< cast, trail, impact, on_target
-    bool burn = false;                                  ///< sets the target burning (decision B)
+    std::string summon;                                     ///< the Npc a summon calls
+    std::string species;                                    ///< what a transformation turns into
+    std::map<std::string, std::string, std::less<>> fx;     ///< cast, trail, impact, on_target
+    bool burn = false;                                      ///< sets the target burning (decision B)
+    std::map<std::string, std::string, std::less<>> sounds; ///< cast, impact (data/sounds.toml, M13)
 };
 
 /// The Spell instance's fields.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import wave
 from pathlib import Path
 
@@ -34,6 +35,7 @@ def test_wav_file(tmp_path: Path) -> None:
 
 
 def test_loops_are_seamless() -> None:
-    for name in ("amb_wind", "amb_camp", "amb_night"):
+    for name in [n for n in SOUNDS if n.startswith("amb_")]:
         s = generate(name)
-        assert abs(s[0] - s[-1]) < 0.2, name  # the end runs into the start without a jump
+        inner = max(abs(b - a) for a, b in itertools.pairwise(s))
+        assert abs(s[0] - s[-1]) <= inner, name  # the seam jumps no more than the sound itself does

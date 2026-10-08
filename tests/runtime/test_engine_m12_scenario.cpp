@@ -83,8 +83,8 @@ TEST_CASE(
     run(engine, "set_talent('magic_circle', 3) add_xp(10000) set_stat('mana_max', 400) set_stat('mana', 400) "
                 "set_stat('hp_max', 300) set_stat('hp', 300) teleport(41.2, 0, 18.8)");
     // West of him (he looks west): the herb witch 12 m away, a bandit beside her.
-    place(engine, "npc_camp_hexer", 29.2, 18.8, 270);
-    place(engine, "npc_bandit", 30.2, 21.8, 270);
+    place(engine, "npc_camp_hexer", 29.2f, 18.8f, 270.0f);
+    place(engine, "npc_bandit", 30.2f, 21.8f, 270.0f);
     runSeconds(engine, 0.5f);
 
     // Sleep (Z6): the bandit, nearest and so locked, lies down.
@@ -136,9 +136,9 @@ TEST_CASE(
     runSeconds(engine, 0.5f);
     cast(engine);
     REQUIRE(run(engine, "tostring(hero_shape())").asString() == "wolf");
-    run(engine, "teleport(10, 0, 6)");              // into the camp
-    place(engine, "npc_old_man", 6.0, 6.0, 270);    // looking east, at him
-    place(engine, "npc_gate_guard", 14.0, 6.0, 90); // looking west, at him
+    run(engine, "teleport(10, 0, 6)");                   // into the camp
+    place(engine, "npc_old_man", 6.0f, 6.0f, 270.0f);    // looking east, at him
+    place(engine, "npc_gate_guard", 14.0f, 6.0f, 90.0f); // looking west, at him
     runSeconds(engine, 3.0f);
     CHECK(run(engine, "npc_state('npc_old_man').state").asString() == "zs_flee");
     CHECK(run(engine, "npc_state('npc_gate_guard').state").asString() == "zs_attack");

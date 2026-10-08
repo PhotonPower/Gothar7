@@ -133,6 +133,8 @@ TEST_CASE(
     CHECK(run(engine, "Story.cast").asString() == "hero spl_firebolt");
     CHECK(stat(engine, "hero", "mana") == 20);
     CHECK(stat(engine, "npc_old_man", "hp") == before - 25); // fire 25, no protection; no arrow stays
+    CHECK(engine.soundsPlayed("spell_cast") == 1);           // its sounds (M13)
+    CHECK(engine.soundsPlayed("fire_impact") == 1);
     CHECK(run(engine, "npc_item_count('npc_old_man', 'it_rune_firebolt')").asInteger() == 0);
     CHECK(run(engine, "hero_casting()").isNil());
 

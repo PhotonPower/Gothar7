@@ -18,3 +18,73 @@ randoms = ["bird"]
 randoms_night = ["owl"]
 interval = [10, 25]
 distance = [10, 25]
+
+# Leonberg (Zonen von welt: world.md „Zonen“) - feld ist die Vorgabe-Box über die Welt.
+[feld]
+loop = "amb_field"
+loop_night = "amb_night"
+randoms = ["bird", "crow"]
+randoms_night = ["owl"]
+interval = [8, 20]
+distance = [10, 30]
+
+[stadt_gasse]
+loop = "amb_town"
+loop_night = "amb_wind"
+randoms = ["dog_bark", "wood_creak"]
+randoms_night = ["dog_bark"]
+interval = [12, 30]
+distance = [8, 20]
+
+[stadt_markt]
+loop = "amb_market"
+loop_night = "amb_wind"
+randoms = ["dog_bark", "bird"]
+randoms_night = ["owl"]
+interval = [10, 25]
+distance = [8, 20]
+
+[schlossgarten]
+loop = "amb_field"
+loop_night = "amb_night"
+randoms = ["bird"]
+randoms_night = ["owl"]
+interval = [4, 10]
+distance = [6, 18]
+
+[ufer]
+loop = "amb_water"
+randoms = ["frog", "bird"]
+randoms_night = ["frog"]
+interval = [6, 15]
+distance = [5, 15]
+
+[brunnen]
+loop = "amb_fountain"
+
+[stadtmauer]
+loop = "amb_wind"
+randoms = ["crow"]
+randoms_night = ["owl"]
+interval = [10, 25]
+distance = [10, 30]
+
+# Räume: schmiede_esse und gasthaus_stube als eigene ambient-Boxen von welt (kleiner als der Raum: sie gehen vor);
+# alle anderen Räume (indoor-Zonen) bekommen „innen“, das Ambiente von draußen leise und gedämpft dahinter.
+[schmiede_esse]
+loop = "amb_fire"
+randoms = ["anvil_hit"]
+interval = [6, 14]
+distance = [1, 3]
+
+[gasthaus_stube]
+loop = "amb_tavern"
+randoms = ["mug_clink", "wood_creak"]
+interval = [5, 12]
+distance = [2, 5]
+
+[innen]
+loop = "amb_room"
+randoms = ["wood_creak"]
+interval = [15, 40]
+distance = [1, 4]

@@ -146,8 +146,144 @@ def owl(rng: random.Random) -> Samples:
     return normalise(hoot + silence(0.25) + fade(lowpass(tone(360.0, 0.6), 900.0), 0.05, 0.3), 0.6)
 
 
+LOOP = 4.5  # s generated for the newer loops (4 s after the seamless overlap): smaller files
+
+
+def scatter(length: int, count: int, make: Callable[[], Samples], rng: random.Random) -> Samples:
+    """`count` short sounds made by `make`, at random places in `length` samples."""
+    out = [0.0] * length
+    for _ in range(count):
+        s = make()
+        at = rng.randrange(max(1, length - len(s)))
+        for i, x in enumerate(s):
+            out[at + i] += x
+    return out
+
+
+def murmur(seconds: float, voices: int, rng: random.Random) -> Samples:
+    """People talking further away: band-limited noise in syllables."""
+    n = int(seconds * 22050)
+    out = [0.0] * n
+    for _ in range(voices):
+        talk = highpass(lowpass(noise(seconds, rng), rng.uniform(700.0, 1100.0)), 200.0)
+        t = 0
+        gain = [0.0] * n
+        while t < n:  # syllables of 0.1-0.25 s, pauses between phrases
+            d = int(rng.uniform(0.1, 0.25) * 22050)
+            level = rng.uniform(0.4, 1.0) if rng.random() > 0.2 else 0.0
+            for i in range(t, min(n, t + d)):
+                gain[i] = level * math.sin(math.pi * (i - t) / d)
+            t += d
+        out = [o + x * g for o, x, g in zip(out, talk, gain, strict=True)]
+    return out
+
+
+def crackles(seconds: float, count: int, rng: random.Random) -> Samples:
+    return scatter(
+        int(seconds * 22050),
+        count,
+        lambda: [
+            x * rng.uniform(0.3, 1.0) for x in envelope(highpass(noise(0.05, rng), 1500.0), 0.0005, 0.008)
+        ],
+        rng,
+    )
+
+
+def amb_field(rng: random.Random) -> Samples:
+    air = lowpass(noise(LOOP, rng), 350.0)
+    insects = [
+        x * (0.5 + 0.5 * math.sin(2 * math.pi * 0.4 * i / 22050)) for i, x in enumerate(tone(3100.0, LOOP))
+    ]
+    return normalise(seamless(mix((air, 0.7), (insects, 0.02))), 0.45)
+
+
+def amb_town(rng: random.Random) -> Samples:
+    return normalise(
+        seamless(mix((murmur(LOOP, 3, rng), 0.5), (lowpass(noise(LOOP, rng), 300.0), 0.6))), 0.45
+    )
+
+
+def amb_market(rng: random.Random) -> Samples:
+    return normalise(
+        seamless(mix((murmur(LOOP, 8, rng), 0.6), (lowpass(noise(LOOP, rng), 400.0), 0.3))), 0.55
+    )
+
+
+def amb_water(rng: random.Random) -> Samples:
+    babble = lowpass(highpass(noise(LOOP, rng), 400.0), 2500.0)
+    wobble = [
+        x * (0.6 + 0.4 * math.sin(2 * math.pi * 3.1 * i / 22050 + math.sin(i / 9000.0)))
+        for i, x in enumerate(babble)
+    ]
+    return normalise(seamless(wobble), 0.45)
+
+
+def amb_fountain(rng: random.Random) -> Samples:
+    splash = highpass(noise(LOOP, rng), 1200.0)
+    drops = scatter(
+        int(LOOP * 22050), 60, lambda: envelope(tone(rng.uniform(900, 1600), 0.04), 0.001, 0.01), rng
+    )
+    return normalise(seamless(mix((splash, 0.5), (drops, 0.4))), 0.5)
+
+
+def amb_fire(rng: random.Random) -> Samples:
+    roar = lowpass(noise(LOOP, rng), 180.0)
+    return normalise(seamless(mix((roar, 1.0), (crackles(LOOP, 50, rng), 0.5))), 0.55)
+
+
+def amb_tavern(rng: random.Random) -> Samples:
+    return normalise(seamless(mix((murmur(LOOP, 5, rng), 0.6), (crackles(LOOP, 25, rng), 0.3))), 0.5)
+
+
+def amb_room(rng: random.Random) -> Samples:
+    return normalise(seamless(lowpass(noise(LOOP, rng), 150.0)), 0.5)  # quiet by its volume in sounds.toml
+
+
+def crow(rng: random.Random) -> Samples:
+    caw = lowpass(tone(lambda t: 700.0 - 300.0 * t / 0.3, 0.3, "saw"), 1800.0)
+    one = fade(mix((caw, 1.0), (lowpass(noise(0.3, rng), 1500.0), 0.3)), 0.02, 0.1)
+    return normalise(one + silence(0.15) + one, 0.6)
+
+
+def dog_bark(rng: random.Random) -> Samples:
+    woof = envelope(lowpass(tone(lambda t: 420.0 - 200.0 * t / 0.18, 0.18, "saw"), 1400.0), 0.005, 0.06)
+    return normalise(woof + silence(0.2) + woof, 0.7)
+
+
+def wood_creak(rng: random.Random) -> Samples:
+    creak = lowpass(tone(lambda t: 180.0 + 60.0 * math.sin(2 * math.pi * 1.5 * t), 0.7, "saw"), 900.0)
+    return normalise(fade(creak, 0.1, 0.2), 0.5)
+
+
+def mug_clink(rng: random.Random) -> Samples:
+    ring = mix(
+        *[(envelope(tone(f, 0.4), 0.001, 0.08), g) for f, g in ((2100.0, 1.0), (3400.0, 0.5), (5200.0, 0.3))]
+    )
+    return normalise(ring, 0.5)
+
+
+def frog(rng: random.Random) -> Samples:
+    croak = [
+        x * (1.0 if (i // 300) % 2 else 0.3) for i, x in enumerate(lowpass(tone(240.0, 0.35, "saw"), 1200.0))
+    ]
+    return normalise(fade(croak, 0.02, 0.1), 0.6)
+
+
 #: name -> generator; the file is sounds/<name>.wav
 SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
+    "amb_field": amb_field,
+    "amb_town": amb_town,
+    "amb_market": amb_market,
+    "amb_water": amb_water,
+    "amb_fountain": amb_fountain,
+    "amb_fire": amb_fire,
+    "amb_tavern": amb_tavern,
+    "amb_room": amb_room,
+    "crow": crow,
+    "dog_bark": dog_bark,
+    "wood_creak": wood_creak,
+    "mug_clink": mug_clink,
+    "frog": frog,
     "amb_wind": amb_wind,
     "amb_camp": amb_camp,
     "amb_night": amb_night,

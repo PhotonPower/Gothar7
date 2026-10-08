@@ -88,3 +88,87 @@ bus = "ambient"
 volume = 0.6
 pitch_jitter = 0.05
 max_distance = 50
+
+# Leonberg (welts Zonen-Namen, M13 Teil B) und Innenräume.
+[amb_field]
+files = ["sounds/amb_field.wav"]
+bus = "ambient"
+loop = true
+volume = 0.5
+
+[amb_town]
+files = ["sounds/amb_town.wav"]
+bus = "ambient"
+loop = true
+volume = 0.6
+
+[amb_market]
+files = ["sounds/amb_market.wav"]
+bus = "ambient"
+loop = true
+volume = 0.7
+
+[amb_water]
+files = ["sounds/amb_water.wav"]
+bus = "ambient"
+loop = true
+volume = 0.6
+
+[amb_fountain]
+files = ["sounds/amb_fountain.wav"]
+bus = "ambient"
+loop = true
+volume = 0.6
+
+[amb_fire]
+files = ["sounds/amb_fire.wav"]
+bus = "ambient"
+loop = true
+volume = 0.7
+
+[amb_tavern]
+files = ["sounds/amb_tavern.wav"]
+bus = "ambient"
+loop = true
+volume = 0.7
+
+[amb_room]
+files = ["sounds/amb_room.wav"]
+bus = "ambient"
+loop = true
+volume = 0.35
+
+[crow]
+files = ["sounds/crow.wav"]
+bus = "ambient"
+volume = 0.6
+pitch_jitter = 0.1
+max_distance = 60
+
+[dog_bark]
+files = ["sounds/dog_bark.wav"]
+bus = "ambient"
+volume = 0.7
+pitch_jitter = 0.1
+max_distance = 60
+
+[wood_creak]
+files = ["sounds/wood_creak.wav"]
+bus = "ambient"
+volume = 0.5
+pitch_jitter = 0.1
+max_distance = 15
+
+[mug_clink]
+files = ["sounds/mug_clink.wav"]
+bus = "ambient"
+volume = 0.5
+pitch_jitter = 0.15
+max_distance = 12
+
+[frog]
+files = ["sounds/frog.wav"]
+bus = "ambient"
+volume = 0.6
+pitch_jitter = 0.15
+max_distance = 30

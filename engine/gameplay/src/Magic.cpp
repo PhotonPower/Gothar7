@@ -39,6 +39,13 @@ SpellInfo spellInfo(const script::Instance& spell)
     }
     s.radius = static_cast<f32>(spell.fields["radius"].asNumber(0.0));
     s.burn = spell.fields["burn"].asBool();
+    if (const script::Table* sounds = spell.fields["sounds"].asTable())
+    {
+        for (const auto& [role, name] : sounds->fields)
+        {
+            s.sounds[role] = std::string(name.asString());
+        }
+    }
     s.heal = static_cast<i32>(spell.fields["heal"].asInteger(0));
     s.effect = std::string(spell.fields["effect"].asString());
     s.duration = static_cast<f32>(spell.fields["duration"].asNumber(0.0));
