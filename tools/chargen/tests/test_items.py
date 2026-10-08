@@ -173,3 +173,28 @@ def test_cli_build_items_geometry_only(tmp_path: Path, capsys: pytest.CaptureFix
     assert rc == 0
     assert (tmp_path / "it_apple.glb").is_file() and not (tmp_path / "it_key.glb").exists()
     assert "it_apple.glb" in capsys.readouterr().out
+
+
+def test_trade_goods():
+    """Goods for Leonberg's traders (2026-10-08): medium potions are the small bottle scaled up;
+    the wide items (cheese wheel, bowl, pretzel) pass without the longest-axis rule."""
+    from gothar_chargen.items import AXIS_FREE, glb_bytes, validate_item
+
+    def height(item: str) -> float:
+        doc, binary = item_gltf(item, lambda name: name)
+        g = Gltf.from_bytes(glb_bytes(doc, binary))
+        node = next(n for n in g.list("nodes") if n.get("name") == f"{item}_lod0")
+        pos = np.concatenate(
+            [
+                np.asarray(g.accessor(p["attributes"]["POSITION"]))
+                for p in g.doc["meshes"][node["mesh"]]["primitives"]
+            ]
+        )
+        return float(np.ptp(pos[:, 1]))
+
+    assert height("it_potion_heal_medium") > 1.25 * height("it_potion_heal_small")
+    assert set(ITEMS) >= AXIS_FREE
+    items_dir = REPO_ROOT / "assets" / "source" / "items"
+    for item in sorted(AXIS_FREE):
+        report = validate_item(items_dir / f"{item}.glb")
+        assert not report.errors, item

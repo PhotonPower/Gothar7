@@ -356,16 +356,18 @@ def bread(seg: int) -> list[Mesh]:
     return [crust]
 
 
-def potion(seg: int, glass_material: str = "glass_red") -> list[Mesh]:
+def potion(seg: int, glass_material: str = "glass_red", scale: float = 1.0) -> list[Mesh]:
+    """Small bottle held at its body (the origin); `scale` for the medium potions."""
     glass = Mesh(glass_material)
     profile = [
         (0.0, -0.06), (0.03, -0.058), (0.035, -0.05), (0.035, 0.02), (0.03, 0.036),
         (0.014, 0.05), (0.011, 0.056), (0.011, 0.082), (0.014, 0.085), (0.014, 0.09),
         (0.0, 0.09),
     ]  # fmt: skip
-    lathe(glass, profile, seg, tile=0.1)
+    lathe(glass, [(r * scale, y * scale) for r, y in profile], seg, tile=0.1)
     cork = Mesh("cork")
-    lathe(cork, [(0.0, 0.088), (0.0105, 0.088), (0.0115, 0.108), (0.0, 0.11)], seg, tile=0.05)
+    plug = [(0.0, 0.088), (0.0105, 0.088), (0.0115, 0.108), (0.0, 0.11)]
+    lathe(cork, [(r * scale, y * scale) for r, y in plug], seg, tile=0.05)
     return [glass, cork]
 
 
@@ -497,6 +499,147 @@ MARKERS: dict[str, dict[str, tuple[float, float, float]]] = {
 }
 
 
+# --- goods for Leonberg's traders (2026-10-08) ----------------------------------------------------
+
+
+def ham(seg: int) -> list[Mesh]:
+    """Leg of ham held at its bone end (the origin), the thick end along +Y (bites reach the mouth
+    as with bread); the shank bone sticks out below the grip."""
+    meat = Mesh("ham")
+    ys = np.array([0.0, 0.02, 0.06, 0.11, 0.16, 0.2, 0.235, 0.26, 0.275, 0.28])
+    rs = np.array([0.022, 0.03, 0.045, 0.06, 0.068, 0.068, 0.06, 0.045, 0.025, 0.0])
+    lathe(meat, list(zip(rs, ys, strict=True)), seg, fit_uv=True, squash=0.78)
+    bone = Mesh("bone")
+    lathe(bone, [(0.0, -0.06), (0.014, -0.058), (0.012, -0.045), (0.01, 0.01), (0.0, 0.012)],
+          max(6, seg // 2), tile=0.05)  # fmt: skip
+    return [meat, bone]
+
+
+def sausage(seg: int) -> list[Mesh]:
+    """A bent sausage tied at both ends, held near one end (the origin), the other end up (+Y)."""
+    skin = Mesh("sausage")
+    a = np.linspace(0.0, 1.0, 13)
+    path = np.stack([0.045 * np.sin(np.pi * a), -0.02 + 0.23 * a, np.zeros_like(a)], axis=1)
+    r = 0.017 * np.clip(np.sin(np.pi * a) * 3.0, 0.25, 1.0)  # pinched where it is tied
+    loft(skin, path, [circle(ri, max(6, seg // 2)) for ri in r], ref=(0.0, 0.0, 1.0), fit_uv=True)
+    string = Mesh("cork")
+    for y in (-0.016, 0.206):
+        x = 0.004 if y > 0 else 0.0
+        ends = np.array([[x, y, 0.0], [x, y + 0.006, 0.0]])
+        loft(string, ends, [circle(0.006, 6)] * 2, tile=0.05)
+    return [skin, string]
+
+
+def cheese(seg: int) -> list[Mesh]:
+    """Wheel of cheese standing on its flat side, the origin in the middle of the bottom (+Y up)."""
+    rind = Mesh("cheese")
+    profile = [(0.0, 0.0), (0.095, 0.0), (0.108, 0.01), (0.112, 0.04), (0.108, 0.07), (0.095, 0.08),
+               (0.0, 0.08)]  # fmt: skip
+    lathe(rind, profile, seg, fit_uv=True)
+    return [rind]
+
+
+PRETZEL = [  # (x, y, z) of the dough strand, the knot crosses at (0, 0.08) with a little z
+    (-0.032, 0.045, 0.0), (-0.012, 0.065, 0.006), (0.0, 0.08, 0.008), (0.03, 0.11, 0.004),
+    (0.062, 0.112, 0.0), (0.085, 0.085, 0.0), (0.085, 0.045, 0.0), (0.06, 0.012, 0.0),
+    (0.0, 0.0, 0.0), (-0.06, 0.012, 0.0), (-0.085, 0.045, 0.0), (-0.085, 0.085, 0.0),
+    (-0.062, 0.112, 0.0), (-0.03, 0.11, -0.004), (0.0, 0.08, -0.008), (0.012, 0.065, -0.006),
+    (0.032, 0.045, 0.0),
+]  # fmt: skip
+
+
+def pretzel(seg: int) -> list[Mesh]:
+    """Pretzel held at the middle of its thick bottom arc (the origin), the knot up (+Y)."""
+    crust = Mesh("bread")
+    pts = np.array(PRETZEL)
+    fine = []  # Catmull-Rom through the points, 3 steps per span
+    for i in range(len(pts) - 1):
+        p0, p1 = pts[max(i - 1, 0)], pts[i]
+        p2, p3 = pts[i + 1], pts[min(i + 2, len(pts) - 1)]
+        for s in np.linspace(0.0, 1.0, 3, endpoint=False):
+            fine.append(0.5 * ((2 * p1) + (-p0 + p2) * s + (2 * p0 - 5 * p1 + 4 * p2 - p3) * s**2
+                               + (-p0 + 3 * p1 - 3 * p2 + p3) * s**3))  # fmt: skip
+    fine.append(pts[-1])
+    path = np.array(fine)
+    low = np.clip(1.0 - path[:, 1] / 0.08, 0.0, 1.0)  # thick at the bottom, thin arms
+    sections = [circle(0.008 + 0.007 * lo, max(6, seg // 2)) * np.array([1.0, 0.85]) for lo in low]
+    loft(crust, path, sections, ref=(0.0, 0.0, 1.0), fit_uv=True)
+    return [crust]
+
+
+def beer(seg: int) -> list[Mesh]:
+    """Beer in a stoneware bottle with a wooden stopper, held at its body (the origin), +Y up."""
+    jug = Mesh("clay")
+    profile = [(0.0, -0.11), (0.045, -0.108), (0.055, -0.08), (0.058, -0.02), (0.05, 0.04),
+               (0.03, 0.07), (0.017, 0.085), (0.016, 0.11), (0.019, 0.115),
+               (0.0, 0.115)]  # fmt: skip
+    lathe(jug, profile, seg, tile=0.1)
+    stopper = Mesh("wood_dark")
+    lathe(stopper, [(0.0, 0.112), (0.014, 0.112), (0.015, 0.135), (0.0, 0.138)], max(6, seg // 2),
+          tile=0.05)  # fmt: skip
+    return [jug, stopper]
+
+
+def wine(seg: int) -> list[Mesh]:
+    """Wine in a green glass bottle with a cork, held at its body (the origin), +Y up."""
+    glass = Mesh("glass_green")
+    profile = [(0.0, -0.1), (0.036, -0.098), (0.038, 0.06), (0.03, 0.09), (0.013, 0.13),
+               (0.012, 0.185), (0.015, 0.19), (0.0, 0.19)]  # fmt: skip
+    lathe(glass, profile, seg, tile=0.1)
+    cork = Mesh("cork")
+    lathe(cork, [(0.0, 0.188), (0.011, 0.188), (0.0115, 0.205), (0.0, 0.207)], max(6, seg // 2),
+          tile=0.05)  # fmt: skip
+    return [glass, cork]
+
+
+def cloth_bolt(seg: int) -> list[Mesh]:
+    """Bolt of cloth: a roll of undyed linen standing on one end, the origin in the middle of
+    the bottom (+Y up); the outer turn ends in a slightly raised edge."""
+    cloth = Mesh("linen")
+    r = 0.07
+    profile = [(0.0, 0.0), (r, 0.0), (r + 0.002, 0.25), (r, 0.5), (0.0, 0.5)]
+    lathe(cloth, profile, seg, tile=0.12)
+    edge = Mesh("linen")
+    a = np.linspace(0.0, 0.5, 2)
+    loft(edge, np.stack([np.full(2, r + 0.0015), a, np.zeros(2)], axis=1),
+         [np.array([[-0.002, -0.004], [0.002, -0.004], [0.002, 0.004], [-0.002, 0.004]])] * 2,
+         ref=(1.0, 0.0, 0.0), tile=0.12)  # fmt: skip
+    return [cloth, edge]
+
+
+def jug(seg: int) -> list[Mesh]:
+    """Clay jug with a handle, held by its handle (the origin) like it_mug; +Y up, the jug on +Z."""
+    body = Mesh("clay")
+    profile = [(0.0, -0.1), (0.05, -0.1), (0.062, -0.06), (0.066, 0.0), (0.055, 0.06), (0.04, 0.09),
+               (0.042, 0.13), (0.046, 0.135), (0.038, 0.135), (0.035, 0.1), (0.0, 0.1)]  # fmt: skip
+    path = np.array([[0.0, y, 0.085] for _, y in profile])
+    loft(body, path, [circle(max(r, 1e-6), seg) for r, _ in profile], tile=0.1)
+    handle = [
+        [0.0, 0.03 + 0.07 * np.sin(a), 0.085 - 0.062 - 0.03 * np.cos(a)]
+        for a in np.linspace(-np.pi / 2, np.pi / 2, 7)
+    ]
+    loft(body, np.array(handle), [circle(1.0, 6) * np.array([0.007, 0.013])] * 7,
+         ref=(1.0, 0.0, 0.0), tile=0.05)  # fmt: skip
+    return [body]
+
+
+def bowl(seg: int) -> list[Mesh]:
+    """Clay bowl standing on its foot, the origin in the middle of the bottom (+Y up). Outer wall,
+    inner wall and rim are separate surfaces; the inner wall's sections run the other way round
+    so its normals face into the bowl (a profile going out and back in faces the clay inside)."""
+    clay = Mesh("clay")
+
+    def ring(profile: list[tuple[float, float]], inside: bool = False) -> None:
+        path = np.array([[0.0, y, 0.0] for _, y in profile])
+        sections = [circle(max(r, 1e-6), seg)[:: -1 if inside else 1] for r, _ in profile]
+        loft(clay, path, sections, tile=0.1, caps=False)
+
+    ring([(0.0, 0.0), (0.04, 0.0), (0.045, 0.008), (0.075, 0.03), (0.09, 0.065), (0.092, 0.07)])
+    ring([(0.0, 0.014), (0.04, 0.016), (0.068, 0.036), (0.084, 0.07)], inside=True)
+    ring([(0.084, 0.07), (0.092, 0.07)])
+    return [clay]
+
+
 def _vanes(mesh: Mesh, y0: float, y1: float, r0: float, r1: float, count: int) -> None:
     """Thin flat vanes standing off the shaft (feathers of an arrow, vanes of a bolt): one flat
     section per vane, rotated about +Y; the first lies in the item +Z plane."""
@@ -580,6 +723,19 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_sword_2h": (sword_2h, 12),
     "it_potion_mana_small": (lambda s: potion(s, "glass_blue"), 16),
     "it_scroll": (scroll, 12),
+    "it_ham": (ham, 14),
+    "it_sausage": (sausage, 12),
+    "it_cheese": (cheese, 20),
+    "it_pretzel": (pretzel, 10),
+    "it_beer": (beer, 16),
+    "it_wine": (wine, 16),
+    "it_potion_heal_medium": (lambda s: potion(s, "glass_red", 1.3), 16),
+    "it_potion_mana_medium": (lambda s: potion(s, "glass_blue", 1.3), 16),
+    "it_potion_speed": (lambda s: potion(s, "glass_green"), 16),
+    "it_potion_strength": (lambda s: potion(s, "glass_amber"), 16),
+    "it_cloth_bolt": (cloth_bolt, 16),
+    "it_jug": (jug, 16),
+    "it_bowl": (bowl, 20),
     "it_torch": (torch, 12),
     **{f"it_rune_{spell}": ((lambda sp: lambda s: rune(s, sp))(spell), 12) for spell in RUNES},
 }
@@ -595,6 +751,7 @@ TEXTURES: dict[str, tuple[str, int, tuple[float, float, float]]] = {
 PROCEDURAL = (
     "iron_forged", "apple", "bread", "glass_red", "glass_blue", "cork", "straw", "feather",
     "stone", "parchment", "wax_red", "pitch", *(f"rune_{spell}" for spell in RUNES),
+    "ham", "bone", "sausage", "cheese", "clay", "glass_green", "glass_amber", "linen",
 )  # fmt: skip
 
 
@@ -656,6 +813,40 @@ def procedural_texture(name: str, size: int = 256) -> np.ndarray:
         c = red[None, None] * (1 - 0.6 * streak[..., None]) + green * 0.6 * streak[..., None]
         speck = (rng.random((size, size)) > 0.985)[..., None] * 0.25
         return np.clip(c + speck, 0, 1)
+    if name == "ham":  # smoked crust: dark red-brown with lighter fat streaks along v
+        streak = value_noise(size, 24, rng)[:, :1].repeat(size, axis=1).T
+        c = np.array([0.45, 0.2, 0.13])[None, None] * (0.75 + 0.35 * n1[..., None])
+        return np.clip(c + 0.18 * (streak[..., None] > 0.7) * np.array([0.9, 0.7, 0.55]), 0, 1)
+    if name == "bone":  # pale, slightly yellow bone
+        return np.clip(
+            np.array([0.82, 0.77, 0.66])[None, None] * (0.85 + 0.2 * n1[..., None]), 0, 1
+        )
+    if name == "sausage":  # red-brown skin with pale fat specks
+        c = np.array([0.5, 0.2, 0.14])[None, None] * (0.8 + 0.3 * n1[..., None])
+        speck = (rng.random((size, size)) > 0.94)[..., None] * np.array([0.3, 0.25, 0.2])
+        return np.clip(c + speck, 0, 1)
+    if name == "cheese":  # waxed yellow-orange rind, mottled
+        c = np.array([0.78, 0.58, 0.22])[None, None] * (0.8 + 0.3 * n1[..., None])
+        return np.clip(c * (0.92 + 0.15 * n2[..., None]), 0, 1)
+    if name == "clay":  # fired clay, red-brown, with a darker glaze band
+        band = 0.5 + 0.5 * np.sin(np.linspace(0, 4 * np.pi, size))[:, None]
+        c = np.array([0.52, 0.3, 0.18])[None, None] * (0.8 + 0.3 * n1[..., None])
+        return np.clip(c * (0.85 + 0.2 * band[..., None]), 0, 1)
+    if name == "glass_green":  # dark green bottle glass (wine, speed potion)
+        band = 0.5 + 0.5 * np.sin(np.linspace(0, 6 * np.pi, size))[None, :]
+        c = np.array([0.08, 0.28, 0.1])[None, None] * (0.8 + 0.4 * band[..., None] * n1[..., None])
+        return np.clip(c, 0, 1)
+    if name == "glass_amber":  # amber glass (strength potion)
+        band = 0.5 + 0.5 * np.sin(np.linspace(0, 6 * np.pi, size))[None, :]
+        c = np.array([0.55, 0.3, 0.05])[None, None] * (0.8 + 0.4 * band[..., None] * n1[..., None])
+        return np.clip(c, 0, 1)
+    if name == "linen":  # undyed linen weave: fine checker of threads
+        y, x = np.mgrid[0:size, 0:size]
+        weave = 0.5 + 0.5 * np.sign(np.sin(x * np.pi / 3) * np.sin(y * np.pi / 3))
+        c = np.array([0.78, 0.72, 0.6])[None, None] * (
+            0.85 + 0.1 * weave[..., None] + 0.1 * n1[..., None]
+        )
+        return np.clip(c, 0, 1)
     if name == "bread":  # baked crust: darker on top (v = along the loaf, u = around)
         u = np.linspace(0, 1, size)[None, :]
         top = 0.5 + 0.5 * np.cos(2 * np.pi * (u - 0.25))
@@ -835,6 +1026,11 @@ LENGTHS = {
     "it_broom": (1.2, 1.6), "it_mug": (0.09, 0.15), "it_axe": (0.6, 0.9),
     "it_arrow": (0.7, 0.8), "it_bolt": (0.3, 0.4), "it_crossbow": (0.75, 0.9),
     "it_sword_2h": (1.3, 1.55),
+    "it_ham": (0.3, 0.38), "it_sausage": (0.2, 0.28), "it_cheese": (0.07, 0.09),
+    "it_pretzel": (0.11, 0.15), "it_beer": (0.22, 0.28), "it_wine": (0.27, 0.33),
+    "it_potion_heal_medium": (0.18, 0.24), "it_potion_mana_medium": (0.18, 0.24),
+    "it_potion_speed": (0.12, 0.2), "it_potion_strength": (0.12, 0.2),
+    "it_cloth_bolt": (0.45, 0.55), "it_jug": (0.22, 0.28), "it_bowl": (0.06, 0.08),
     "it_potion_mana_small": (0.12, 0.2), "it_scroll": (0.18, 0.24), "it_torch": (0.65, 0.75),
     **{f"it_rune_{spell}": (0.05, 0.08) for spell in RUNES},
 }  # fmt: skip
@@ -847,6 +1043,10 @@ def _lod0_geometry(g: Gltf, item: str) -> tuple[np.ndarray, int] | None:
     prims = g.doc["meshes"][lod0["mesh"]]["primitives"]
     pos = np.concatenate([np.asarray(g.accessor(p["attributes"]["POSITION"])) for p in prims])
     return pos, sum(g.doc["accessors"][p["indices"]]["count"] // 3 for p in prims)
+
+
+# wider than tall by nature (standing on their bottom, +Y up): no longest-axis rule
+AXIS_FREE = {"it_cheese", "it_bowl", "it_pretzel"}
 
 
 def validate_item(path: Path) -> Report:
@@ -882,7 +1082,7 @@ def validate_item(path: Path) -> Report:
     if not (np.all(lo <= 0.02) and np.all(hi >= -0.02)):
         report.error("item.origin", f"the origin (grip) lies outside the item ({lo}, {hi})")
     extent = hi - lo
-    if extent[1] < max(extent[0], extent[2]) * 0.9:
+    if item not in AXIS_FREE and extent[1] < max(extent[0], extent[2]) * 0.9:
         report.error("item.axis", f"the item is not longest along +Y (extent {extent.round(3)})")
     if item in LENGTHS:
         a, b = LENGTHS[item]
