@@ -1,0 +1,27 @@
+# merchant_f_4: set 'merchant' (figure_sets.toml) - better-dressed Leonberg citizen (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_f_average/body.glb"
+head = "parts/head_f_mid/head.glb"
+hair = "parts/hair_f_mid/hair_ponytail.glb"
+cloth = [
+    "parts/garb_f_average/shirt.glb",
+    "parts/garb_f_average/skirt_tiered.glb",
+    "parts/garb_f_average/belt.glb",
+    "parts/garb_f_average/purse.glb",
+    "parts/headgear_f_average/coif.glb",
+    "parts/cloth_f_average/toigo_flats.glb",
+]
+
+[palette]
+hair = "#5a3a28"
+cloth_shirt = "#e4dccb"
+cloth_skirt_tiered = "#3e5a6a"
+cloth_belt = "#2e2018"
+cloth_purse = "#5a3d28"
+cloth_coif = "#e6dcc4"
+cloth_toigo_flats = "#3e3024"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "woman"
