@@ -34,10 +34,11 @@ MIN_GAIN_M2 = 0.02  # a box covering less of what is left is not added
 
 
 def is_room_zone(zone: dict[str, Any]) -> bool:
-    """An indoor zone written by worldgen (``LEO_…_INNEN``, ``LEO_…_KAMMER…``): assemble
-    replaces those."""
+    """An indoor zone written by worldgen (``LEO_…_INNEN``, ``LEO_…_KAMMER…``, upstairs
+    ``LEO_…_OBEN…`` and the stairs ``LEO_…_TREPPE``): assemble replaces those."""
     value = str(zone.get("value", ""))
-    room = value.endswith("_INNEN") or "_KAMMER" in value
+    room = (value.endswith(("_INNEN", "_TREPPE")) or "_KAMMER" in value
+            or "_OBEN" in value)  # fmt: skip
     return zone.get("type") == "indoor" and value.startswith("LEO_") and room
 
 
@@ -175,6 +176,19 @@ def indoor_zones(houses: Sequence[Any], index: dict[str, Any]) -> list[dict[str,
             base = room_tag(h)[: -len("_INNEN")]  # divided: a zone per room, as its waypoint
             for part in r["rooms"]:
                 out += room_boxes(f"{base}_{part['name']}", part["ring"], floor, ceiling)
+    for h in houses:  # upstairs (W7): its own zones at its height, the stairs over both storeys
+        r = rooms.get(h.id) if h.inside else None
+        if not r or "upper" not in r or "stairs" not in r:
+            continue
+        base = room_tag(h)[: -len("_INNEN")]
+        up = r["upper"]
+        for part in up["rooms"]:
+            out += room_boxes(f"{base}_{part['name']}", part["ring"], float(up["floor"]),
+                              float(up["ceiling"]))  # fmt: skip
+        st = r["stairs"]
+        well = Polygon(st["footprint"]).union(Polygon(st["opening"])).convex_hull
+        out += room_boxes(f"{base}_TREPPE", list(well.exterior.coords)[:-1], float(r["floor"]),
+                          float(up["ceiling"]))  # fmt: skip
     return out
 
 

@@ -890,6 +890,11 @@ class _Context:
     room_storey: bool = False  # building the storey that gets the room: its windows open (W7)
     room_windows: list[tuple[Any, Any]] = field(default_factory=list)  # (frame, opening)
     room_parts: list[tuple[str, Polygon]] = field(default_factory=list)  # the rooms built
+    room_levels: dict[str, tuple[float, float]] = field(default_factory=dict)  # y range per room
+    upper_h: float | None = None  # height of the storey above the room (stairs, W7)
+    stair: Any = None  # stairs.Stair up from the room (W7)
+    room_inner: Polygon | None = None  # the room storey's inner outline (the upper room's too)
+    upper_windows: list[tuple[Any, Any, float]] = field(default_factory=list)  # + reveal depth
     dirt_m: float = 0.0  # > 0: textured house, plaster walls get a dirty foot band this high
     lod: int = 0  # 1: simplified for the distance (flat openings, flat timber, no dormers)
 
@@ -916,17 +921,28 @@ def _room_spec(rules: Rules) -> dict[str, Any]:
             "maxRoomM2ByUse": {}, "minRoomWidthM": 3.0, "partitionM": 0.15,
             "passage": [0.9, 2.0]}  # fmt: skip
     spec.update(rules.data.get("interior", {}))
+    from gothar_worldgen.buildings.stairs import DEFAULTS
+
+    spec["stairs"] = {**DEFAULTS, **spec.get("stairs", {})}
     return spec
 
 
 def _split_by_room(mesh: MeshData, rooms: Sequence[tuple[str, Polygon]],
-                   origin: tuple[float, float, float]) -> dict[str, MeshData]:  # fmt: skip
+                   origin: tuple[float, float, float],
+                   levels: dict[str, tuple[float, float]] | None = None,
+                   ) -> dict[str, MeshData]:  # fmt: skip
     """The triangles of ``mesh`` (positions relative to ``origin``) by the room nearest to each
-    (walls, floors and partitions are already cut where rooms meet)."""
+    (walls, floors and partitions are already cut where rooms meet); ``levels``: y range per room
+    (storeys), a triangle goes to a room of its height."""
     tri = mesh.indices.reshape(-1, 3)
     centre = mesh.positions[tri].mean(axis=1)
     pts = shapely.points(centre[:, 0] + origin[0], centre[:, 2] + origin[2])
+    ys = centre[:, 1] + origin[1]
     dist = np.stack([shapely.distance(poly, pts) for _, poly in rooms])
+    if levels:
+        for k, (name, _) in enumerate(rooms):
+            lo, hi = levels.get(name, (-math.inf, math.inf))
+            dist[k][(ys < lo) | (ys >= hi)] = np.inf
     which = np.argmin(dist, axis=0)
     out = {}
     for k, (name, _) in enumerate(rooms):
@@ -1009,7 +1025,6 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
         return
     inner = shapely.orient_polygons(inner)  # counter-clockwise (x, z)
     f, op = ctx.door_op  # type: ignore[misc]
-    b = ctx.builders
     door_lo, door_hi = floor + op.v, floor + op.v + op.h
     hinge_side = (f.point(op.u, op.v, -wall), f.point(op.u + op.w, op.v, -wall))
     d0 = (hinge_side[0][0], hinge_side[0][2])
@@ -1018,79 +1033,53 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
     use = str((ctx.interior or {}).get("use", ""))
     rooms, cuts = _partition_plan(inner, ((d0[0] + d1[0]) / 2, (d0[1] + d1[1]) / 2), spec, use)
     ctx.room_parts = rooms  # (W7) each room becomes its own mesh vob (its own lights)
-    half = float(spec["partitionM"]) / 2
+    holes = [(d0, d1, floor, door_hi)]  # the door, then the windows of this storey
+    for fw, ow in ctx.room_windows:
+        w0, w1 = fw.point(ow.u, ow.v, -wall), fw.point(ow.u + ow.w, ow.v, -wall)
+        holes.append(((w0[0], w0[2]), (w1[0], w1[2]), float(w0[1]), float(w0[1]) + ow.h))
+    _room_walls(ctx, inner, floor, ceiling, holes, cuts)
     ring_in = list(inner.exterior.coords)[:-1]
-    for k, a in enumerate(ring_in):
-        c = ring_in[(k + 1) % len(ring_in)]
-        ex, ez = c[0] - a[0], c[1] - a[1]
-        length = math.hypot(ex, ez)
-        if length < 1e-3:
-            continue
-        ux, uz = ex / length, ez / length
-        want = (-uz, 0.0, ux)  # inward for a counter-clockwise ring (x, z)
+    # W7: stairs to the storey above (if it is high enough for a room)
+    stair_cut = None
+    if ctx.upper_h is None:
+        notes.append("no stairs (a single storey)")
+    elif ctx.upper_h - thick < float(spec["stairs"]["upperMinHeightM"]):  # upstairs is low
+        notes.append("no stairs (the storey above is too low for a room)")
+    else:
+        from gothar_worldgen.buildings.stairs import plan_stair
 
-        def along(q: tuple[float, float], ax: float = a[0], az: float = a[1], dx: float = ux,
-                  dz: float = uz) -> float:  # fmt: skip
-            return (q[0] - ax) * dx + (q[1] - az) * dz
+        door_way = _door_corridor(f, op, wall).buffer(float(spec["stairs"]["doorClearM"]))
+        door_mid0 = ((d0[0] + d1[0]) / 2, (d0[1] + d1[1]) / 2)
+        clear = [door_way, *(Point(c["mid"]).buffer(float(spec["stairs"]["passageClearM"]))
+                             for c in cuts)]  # fmt: skip
+        if ctx.wall is not None and ctx.wall.ring.exterior.distance(Point(door_mid0)) < 40.0:
+            clear.append(ctx.wall.ring.exterior.buffer(1.6))  # the town wall reaches into rooms
+        win_lines = [(LineString([(w0[0], w0[1]), (w1[0], w1[1])]), y0)
+                     for w0, w1, y0, _ in holes[1:]]  # fmt: skip
+        door_mid = ((d0[0] + d1[0]) / 2, (d0[1] + d1[1]) / 2)
+        # a chamber first (with the beds upstairs it keeps only stores), then the room with the
+        # door (its hearth, tables, counter need the room); clear of the windows, then passing
+        # them (stairs often run past a window)
+        order = [poly for _, poly in rooms[1:]] + [rooms[0][1]]
+        tries = [(poly, win_lines) for poly in order] + [(poly, []) for poly in order]
+        for where, wins in tries:
+            ctx.stair = plan_stair(where, inner, floor, floor + storey, clear, wins, door_mid,
+                                   spec["stairs"])  # fmt: skip
+            if ctx.stair is not None:
+                break
+        if ctx.stair is None:
+            notes.append("no stairs (no wall for them in the room with the door)")
+        else:
+            stair_cut = ctx.stair.opening(
+                storey - (ceiling - floor), float(spec["stairs"]["headroomM"])
+            )
+    _room_slabs(ctx, inner, rooms, floor, None, None, spec)
+    _room_slabs(ctx, inner, rooms, None, ceiling, stair_cut, spec)
+    _room_beams(ctx, inner, ceiling, spec, stair_cut)
+    if ctx.stair is not None:
+        from gothar_worldgen.buildings.stairs import stair_mesh
 
-        def off(q: tuple[float, float], ax: float = a[0], az: float = a[1], dx: float = ux,
-                dz: float = uz) -> float:  # fmt: skip
-            return abs((q[0] - ax) * dz - (q[1] - az) * dx)
-
-        face = shapely.box(0.0, floor, length, ceiling)
-        holes = [(d0, d1, floor, door_hi)]  # the door, then the windows of this storey
-        for fw, ow in ctx.room_windows:
-            w0, w1 = fw.point(ow.u, ow.v, -wall), fw.point(ow.u + ow.w, ow.v, -wall)
-            holes.append(((w0[0], w0[2]), (w1[0], w1[2]), float(w0[1]), float(w0[1]) + ow.h))
-        for h0, h1, y0, y1 in holes:
-            if off(h0) < 0.05 and off(h1) < 0.05:  # on this wall
-                t0, t1 = sorted((along(h0), along(h1)))
-                if t1 > 0.0 and t0 < length:
-                    face = face.difference(shapely.box(max(0.0, t0), y0, min(length, t1), y1))
-        marks = [along(q) for c in cuts for q in (c["a"], c["b"]) if off(q) < 0.05]
-        edges = sorted({0.0, length, *(t for t in marks if 0.0 < t < length)})
-        for lo, hi in zip(edges, edges[1:], strict=False):  # one piece per room it bounds
-            piece = face.intersection(shapely.box(lo, floor - 1.0, hi, ceiling + 1.0))
-            for g in getattr(piece, "geoms", [piece]):
-                if not isinstance(g, Polygon) or g.area < 1e-4:
-                    continue
-                for tri in shapely.constrained_delaunay_triangles(g).geoms:
-                    pts = list(tri.exterior.coords)[:3]
-                    b["room_wall"].polygon([(a[0] + ux * t, y, a[1] + uz * t) for t, y in pts],
-                                           [(t, y) for t, y in pts], want)  # fmt: skip
-    for _, part in rooms:  # floor and ceiling per room, up to the middle of the partitions
-        whole = part if len(rooms) == 1 else inner.intersection(
-            part.buffer(half, join_style="mitre", mitre_limit=3.0))  # fmt: skip
-        for g in getattr(whole, "geoms", [whole]):
-            if not isinstance(g, Polygon) or g.area < 1e-4:
-                continue
-            for tri in shapely.constrained_delaunay_triangles(g).geoms:
-                pts = list(tri.exterior.coords)[:3]
-                b["room_floor"].polygon([(x, floor, z) for x, z in pts], [(x, z) for x, z in pts],
-                                        (0.0, 1.0, 0.0))  # fmt: skip
-                b["room_ceiling"].polygon([(x, ceiling, z) for x, z in pts],
-                                          [(x, z) for x, z in pts], (0.0, -1.0, 0.0))  # fmt: skip
-    # beams under the ceiling across the shorter side of the room
-    rect = inner.minimum_rotated_rectangle
-    rc = list(rect.exterior.coords)[:4]
-    e1 = (rc[1][0] - rc[0][0], rc[1][1] - rc[0][1])
-    e2 = (rc[2][0] - rc[1][0], rc[2][1] - rc[1][1])
-    span, run = (e1, e2) if math.hypot(*e1) < math.hypot(*e2) else (e2, e1)
-    run_len = math.hypot(*run)
-    bw = float(spec["beamM"])
-    n_beams = int(run_len // float(spec["beamEveryM"]))
-    start = rc[0] if run is e1 else rc[1]
-    for j in range(1, n_beams):
-        t = j / n_beams
-        o = (start[0] + run[0] * t, start[1] + run[1] * t)
-        line = LineString([(o[0] - span[0] * 3, o[1] - span[1] * 3),
-                           (o[0] + span[0] * 3, o[1] + span[1] * 3)])  # fmt: skip
-        seg = line.intersection(inner)
-        for g in getattr(seg, "geoms", [seg]):
-            if not isinstance(g, LineString) or g.length < 0.5:
-                continue
-            (x0, z0), (x1, z1) = g.coords[0], g.coords[-1]
-            _room_beam(b["room_beam"], (x0, z0), (x1, z1), ceiling, bw)
+        stair_mesh(ctx.builders["room_beam"], ctx.stair, float(spec["stairs"]["railM"]))
     for cut in cuts:
         _partition(ctx, cut, floor, ceiling, spec)
     # the collision: walls beside the room and the door, a solid floor, the body above
@@ -1100,6 +1089,9 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
         ctx.floors.append((inner, floor))
     nx, nz = float(f.nx), float(f.nz)
     ax, az = float(f.ax), float(f.az)
+    ctx.room_inner = inner
+    for name, _ in rooms:
+        ctx.room_levels[name] = (-math.inf, floor + storey - 0.02)
     ctx.room = {
         "floor": round(floor, 3),
         "ceiling": round(ceiling, 3),
@@ -1127,6 +1119,205 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
                                  "mid": [round(c["mid"][0], 3), round(c["mid"][1], 3)],
                                  "axis": [round(c["u"][0], 4), round(c["u"][1], 4)],
                                  "w": c["w"], "h": c["h"]} for c in cuts]  # fmt: skip
+
+
+def _room_walls(ctx: _Context, inner: Polygon, floor: float, ceiling: float,
+                holes: Sequence[tuple[tuple[float, float], tuple[float, float], float, float]],
+                cuts: Sequence[dict[str, Any]]) -> None:  # fmt: skip
+    """The inner faces of a room storey's outer walls with the door and window holes, split where
+    partitions meet them (one piece per room)."""
+    b = ctx.builders
+    ring_in = list(inner.exterior.coords)[:-1]
+    for k, a in enumerate(ring_in):
+        c = ring_in[(k + 1) % len(ring_in)]
+        ex, ez = c[0] - a[0], c[1] - a[1]
+        length = math.hypot(ex, ez)
+        if length < 1e-3:
+            continue
+        ux, uz = ex / length, ez / length
+        want = (-uz, 0.0, ux)  # inward for a counter-clockwise ring (x, z)
+
+        def along(q: tuple[float, float], ax: float = a[0], az: float = a[1], dx: float = ux,
+                  dz: float = uz) -> float:  # fmt: skip
+            return (q[0] - ax) * dx + (q[1] - az) * dz
+
+        def off(q: tuple[float, float], ax: float = a[0], az: float = a[1], dx: float = ux,
+                dz: float = uz) -> float:  # fmt: skip
+            return abs((q[0] - ax) * dz - (q[1] - az) * dx)
+
+        face = shapely.box(0.0, floor, length, ceiling)
+        for h0, h1, y0, y1 in holes:
+            if off(h0) < 0.05 and off(h1) < 0.05:  # on this wall
+                t0, t1 = sorted((along(h0), along(h1)))
+                if t1 > 0.0 and t0 < length:
+                    face = face.difference(shapely.box(max(0.0, t0), y0, min(length, t1), y1))
+        marks = [along(q) for c in cuts for q in (c["a"], c["b"]) if off(q) < 0.05]
+        edges = sorted({0.0, length, *(t for t in marks if 0.0 < t < length)})
+        for lo, hi in zip(edges, edges[1:], strict=False):  # one piece per room it bounds
+            piece = face.intersection(shapely.box(lo, floor - 1.0, hi, ceiling + 1.0))
+            for g in getattr(piece, "geoms", [piece]):
+                if not isinstance(g, Polygon) or g.area < 1e-4:
+                    continue
+                for tri in shapely.constrained_delaunay_triangles(g).geoms:
+                    pts = list(tri.exterior.coords)[:3]
+                    b["room_wall"].polygon([(a[0] + ux * t, y, a[1] + uz * t) for t, y in pts],
+                                           [(t, y) for t, y in pts], want)  # fmt: skip
+
+
+def _room_slabs(ctx: _Context, inner: Polygon, rooms: Sequence[tuple[str, Polygon]],
+                floor: float | None, ceiling: float | None, hole: Polygon | None,
+                spec: dict[str, Any], boards: bool = False) -> None:  # fmt: skip
+    """Floor and ceiling per room up to the middle of the partitions, without ``hole`` (the stair
+    opening); ``None`` leaves that slab out. ``boards``: the floor of boards like the ceilings
+    (upstairs: a stone floor below stays below)."""
+    b = ctx.builders
+    half = float(spec["partitionM"]) / 2
+    floor_role = "room_ceiling" if boards else "room_floor"
+    for _, part in rooms:
+        whole = part if len(rooms) == 1 else inner.intersection(
+            part.buffer(half, join_style="mitre", mitre_limit=3.0))  # fmt: skip
+        for y, role, up in ((floor, floor_role, 1.0), (ceiling, "room_ceiling", -1.0)):
+            if y is None:
+                continue
+            area = whole if hole is None else whole.difference(hole)
+            for g in getattr(area, "geoms", [area]):
+                if not isinstance(g, Polygon) or g.area < 1e-4:
+                    continue
+                for tri in shapely.constrained_delaunay_triangles(g).geoms:
+                    pts = list(tri.exterior.coords)[:3]
+                    b[role].polygon([(x, y, z) for x, z in pts], [(x, z) for x, z in pts],
+                                    (0.0, up, 0.0))  # fmt: skip
+
+
+def _room_beams(ctx: _Context, inner: Polygon, ceiling: float, spec: dict[str, Any],
+                hole: Polygon | None = None) -> None:  # fmt: skip
+    """Beams under the ceiling across the shorter side of the room (not over the stair hole)."""
+    b = ctx.builders
+    free = inner if hole is None else inner.difference(hole.buffer(0.1))
+    rect = inner.minimum_rotated_rectangle
+    rc = list(rect.exterior.coords)[:4]
+    e1 = (rc[1][0] - rc[0][0], rc[1][1] - rc[0][1])
+    e2 = (rc[2][0] - rc[1][0], rc[2][1] - rc[1][1])
+    span, run = (e1, e2) if math.hypot(*e1) < math.hypot(*e2) else (e2, e1)
+    run_len = math.hypot(*run)
+    bw = float(spec["beamM"])
+    n_beams = int(run_len // float(spec["beamEveryM"]))
+    start = rc[0] if run is e1 else rc[1]
+    for j in range(1, n_beams):
+        t = j / n_beams
+        o = (start[0] + run[0] * t, start[1] + run[1] * t)
+        line = LineString([(o[0] - span[0] * 3, o[1] - span[1] * 3),
+                           (o[0] + span[0] * 3, o[1] + span[1] * 3)])  # fmt: skip
+        seg = line.intersection(free)
+        for g in getattr(seg, "geoms", [seg]):
+            if not isinstance(g, LineString) or g.length < 0.5:
+                continue
+            (x0, z0), (x1, z1) = g.coords[0], g.coords[-1]
+            _room_beam(b["room_beam"], (x0, z0), (x1, z1), ceiling, bw)
+
+
+def _slab_pieces(inner: Polygon, hole: Polygon) -> list[Polygon]:
+    """The slab between the storeys without the stair opening, in convex pieces: first cut along
+    the opening's four edges (a big nearly convex piece with the notch would pass as convex and
+    its hull close the opening), then decomposed."""
+    from gothar_worldgen.buildings.collision import convex_pieces
+
+    pieces = [inner]
+    ring = list(hole.exterior.coords)
+    for (xa, za), (xb, zb) in zip(ring, ring[1:], strict=False):
+        dx, dz = xb - xa, zb - za
+        line = LineString([(xa - dx * 100, za - dz * 100), (xb + dx * 100, zb + dz * 100)])
+        nxt = []
+        for g in pieces:
+            parts = split(g, line)
+            nxt += [q for q in parts.geoms if isinstance(q, Polygon)]
+        pieces = nxt
+    out = []
+    for g in pieces:
+        if g.representative_point().within(hole) or g.area < 0.01:
+            continue
+        out += convex_pieces(g, slivers=False)
+    return out
+
+
+def _upper_room(ctx: _Context, floor: float, storey: float, notes: list[str]) -> None:
+    """The storey above the room (W7): reached by the stairs, its own rooms (``OBEN``,
+    ``OBEN_KAMMER`` …) with open windows, the rail round the stair opening; the collision gets
+    the slab between the storeys and this storey carved out too."""
+    from gothar_worldgen.buildings.stairs import opening_faces, opening_rail, ramp_body
+
+    spec = _room_spec(ctx.rules)
+    st = ctx.stair
+    room = ctx.room
+    inner = ctx.room_inner
+    assert st is not None and room is not None and inner is not None
+    thick = float(spec["ceilingM"])
+    ceiling = floor + storey - thick
+    below = float(room["ceiling"])
+    hole = st.opening(floor - below, float(spec["stairs"]["headroomM"]))
+    # the room upstairs lies round the opening and the head of the stairs (no partition there)
+    centre = hole.union(st.head_landing).centroid
+    plan, cuts = _partition_plan(inner, (centre.x, centre.y), spec, "oben")
+    stairs_zone = hole.union(st.head_landing).buffer(0.3)
+    if any(LineString([c["a"], c["b"]]).intersects(stairs_zone) for c in cuts):
+        plan, cuts = [("INNEN", inner)], []  # a partition would cross the stairs: one room
+        notes.append("upper storey not divided (the stair opening is in the way)")
+
+    def upstairs(name: str) -> str:  # INNEN -> OBEN, KAMMER_2 -> OBEN_KAMMER_2
+        return "OBEN" if name == "INNEN" else f"OBEN_{name}"
+
+    rooms = [(upstairs(name), poly) for name, poly in plan]
+    for c in cuts:
+        c["rooms"] = tuple(upstairs(r) for r in c["rooms"])
+    wall = float(spec["wallM"])
+    holes = []
+    for fw, ow, depth in ctx.upper_windows:
+        w0, w1 = fw.point(ow.u, ow.v, -depth), fw.point(ow.u + ow.w, ow.v, -depth)
+        holes.append(((w0[0], w0[2]), (w1[0], w1[2]), float(w0[1]), float(w0[1]) + ow.h))
+    _room_walls(ctx, inner, floor, ceiling, holes, cuts)
+    _room_slabs(ctx, inner, rooms, floor, ceiling, hole, spec, boards=True)
+    if ceiling - floor >= float(spec["stairs"]["beamsFromM"]):  # low upstairs: no beams to duck
+        _room_beams(ctx, inner, ceiling, spec)
+    for cut in cuts:
+        _partition(ctx, cut, floor, ceiling, spec)
+    opening_faces(ctx.builders["room_ceiling"], hole, below, floor)
+    rail = float(spec["stairs"]["railM"])
+    for foot in opening_rail(ctx.builders["room_beam"], st, hole, rail):
+        ctx.inner_walls.append((foot, floor, floor + rail))
+    # the collision: this storey carved out as well (the body above starts at its ceiling), the
+    # slab between the storeys without the opening, the wall above the house door closed, the
+    # stairs as one smooth ramp
+    ctx.carve = [(cor, ceiling if abs(top - below) < 2e-3 else top) for cor, top in ctx.carve]
+    for piece in _slab_pieces(inner, hole):
+        ctx.inner_walls.append((piece, below, floor))
+    f, op = ctx.door_op  # type: ignore[misc]
+    above_door = _door_corridor(f, op, wall).difference(inner)
+    for g in getattr(above_door, "geoms", [above_door]):
+        if isinstance(g, Polygon) and g.area > 0.01:
+            ctx.inner_walls.append((g, float(room["door"]["floor"]) + op.h, ceiling))
+    wood = ctx.builders["room_beam"]
+    ctx.screens.append(ramp_body(st, (wood.ox, wood.oy, wood.oz), "COL_HULL_RAMP"))
+    ctx.room_parts += rooms
+    for name, _ in rooms:
+        ctx.room_levels[name] = (floor - 0.02, math.inf)
+    windows = []
+    for fw, ow, depth in ctx.upper_windows:
+        w0, w1 = fw.point(ow.u, ow.v, -depth), fw.point(ow.u + ow.w, ow.v, -depth)
+        windows.append({"from": [round(w0[0], 3), round(w0[2], 3)],
+                        "to": [round(w1[0], 3), round(w1[2], 3)],
+                        "sill": round(float(w0[1]), 3), "top": round(float(w0[1]) + ow.h, 3),
+                        "normal": [round(float(fw.nx), 4), round(float(fw.nz), 4)]})  # fmt: skip
+    room["stairs"] = st.json(floor - below, float(spec["stairs"]["headroomM"]))
+    room["upper"] = {
+        "floor": round(floor, 3), "ceiling": round(ceiling, 3), "windows": windows,
+        "rooms": [{"name": name, "ring": [[round(x, 3), round(z, 3)]
+                                          for x, z in list(poly.exterior.coords)[:-1]]}
+                  for name, poly in rooms],
+        "passages": [{"rooms": list(c["rooms"]), "mid": [round(c["mid"][0], 3),
+                                                         round(c["mid"][1], 3)],
+                      "axis": [round(c["u"][0], 4), round(c["u"][1], 4)], "w": c["w"],
+                      "h": c["h"]} for c in cuts],
+    }  # fmt: skip
 
 
 _Rooms = tuple[list[tuple[str, Polygon]], list[dict[str, Any]]]
@@ -1335,19 +1526,26 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
     # (W7) of the room storey's windows every second one is open (the first from the left): the
     # walls between keep room for shelves and counters; the others stay closed
     windows = sorted((op for op in plan if op.kind == "window"), key=lambda op: op.u)
-    open_windows = windows[::OPEN_EVERY] if ctx.room_storey and s == 0 else []
+    open_windows = windows[::OPEN_EVERY] if ctx.room_storey else []
     for op in plan:
         if op.kind == "passage":  # open: the tunnel walls are its jambs
             continue
         if door and ctx.interior is not None and not ctx.lod and op.kind in ("door", "gate"):
             ctx.door_op = (f, op)  # through the wall into the room (``_room``)
             _reveal(ctx.builders["frame"], f, op, _room_spec(rules)["wallM"], panel=False)
-        elif ctx.room_storey and s == 0 and op in open_windows:  # W7: daylight into the room
+        elif ctx.room_storey and op in open_windows:  # W7: daylight into the room
             wall = float(_room_spec(rules)["wallM"])
-            _reveal(ctx.builders["frame"], f, op, wall, panel=False)
+            depth = wall
+            if s > 0 and ctx.room_inner is not None:  # upstairs: through to the room's walls
+                mid = f.point(op.u + op.w / 2, op.v + op.h / 2)
+                depth = max(wall, float(ctx.room_inner.exterior.distance(Point(mid[0], mid[2]))))
+            _reveal(ctx.builders["frame"], f, op, depth, panel=False)
             _window_cross(ctx.builders["room_beam"], f, op, wall / 2)  # with the room's wood:
             _shutters(ctx.builders["room_beam"], f, op)  # outside the house budget
-            ctx.room_windows.append((f, op))
+            if s == 0:
+                ctx.room_windows.append((f, op))
+            else:
+                ctx.upper_windows.append((f, op, depth))
         elif ctx.lod:
             _flat_opening(ctx.builders["frame"], f, op)
         else:
@@ -1990,13 +2188,16 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
     crease = roof.crease(top_poly)
 
     y = ground
+    ctx.upper_h = heights[1] if len(heights) > 1 else None
     for s, h in enumerate(heights):
         ring_s = outlines[s]
         ns = _outward_normals([p for p, _ in ring_s])
         below = y - ctx.base_y if s == 0 else 0.0  # the ground storey reaches down to the base
         ctx.room_storey = (s == 0 and ctx.interior is not None and not ctx.lod
                            and ctx.door_storey == 0 and not ctx.door_blocked and ctx.room is None
-                           and door_edge is not None and _room_fits(ctx, ring, h))  # fmt: skip
+                           and door_edge is not None and _room_fits(ctx, ring, h)
+                           ) or (s == 1 and ctx.stair is not None and ctx.room is not None
+                                 and "upper" not in ctx.room)  # fmt: skip
         for k, (a, edge) in enumerate(ring_s):
             f = make_frame(a, ring_s[(k + 1) % len(ring_s)][0], ns[k], y)
             if f.width < 1e-3:
@@ -2016,6 +2217,8 @@ def _mass(ctx: _Context, mass: Mass, ground: float, override: Any,  # noqa: ANN4
                 _passage_tunnel(ctx, pp, Polygon([p for p, _ in ring_s]))
             if ctx.door_op is not None and ctx.door_storey == 0 and ctx.room is None:
                 _room(ctx, ring, y, h, notes)
+        if s == 1 and ctx.room_storey:
+            _upper_room(ctx, y, h, notes)
         y += h
     cuts = []  # no roof overhang over the outward sides of a wall house
     top_n = _outward_normals(top_ring)
@@ -2156,19 +2359,27 @@ def build_house(
             for r in ROOM_ROLES:
                 if not builders[r].idx:
                     continue
-                for room_name, mesh in _split_by_room(builders[r].mesh(), ctx.room_parts,
-                                                      origin3).items():  # fmt: skip
+                pieces = _split_by_room(
+                    builders[r].mesh(), ctx.room_parts, origin3, ctx.room_levels
+                )
+                for room_name, mesh in pieces.items():
                     room_prims.setdefault(room_name, []).append(
                         Primitive(name(r), rules.color(materials[r]), mesh)
                     )
             # a model without COL_ collides with all its triangles (asset.md): each room gets one
             # small box just above its ceiling, inside the house's solid storey above
             top = float((ctx.room or {}).get("ceiling", base_y))
+            upper = (ctx.room or {}).get("upper")
+            hole = None
+            if ctx.stair is not None and upper is not None:
+                hole = Polygon((ctx.room or {})["stairs"]["opening"]).buffer(0.3)
             for room_name, poly in ctx.room_parts:
-                c = poly.representative_point()
+                over = float(upper["ceiling"]) if upper and room_name.startswith("OBEN") else top
+                free = poly.difference(hole) if hole is not None else poly
+                c = (free if not free.is_empty else poly).representative_point()
                 square = Polygon([(c.x - 0.1, c.y - 0.1), (c.x + 0.1, c.y - 0.1),
                                   (c.x + 0.1, c.y + 0.1), (c.x - 0.1, c.y + 0.1)])  # fmt: skip
-                room_cols[room_name] = [prism_body(square, top + 0.05, top + 0.12, origin3,
+                room_cols[room_name] = [prism_body(square, over + 0.05, over + 0.12, origin3,
                                                    "COL_BOX_0")]  # fmt: skip
         # the weathering splits walls into a few more triangles and the room (W7) lies outside
         # the house budget: neither costs timber

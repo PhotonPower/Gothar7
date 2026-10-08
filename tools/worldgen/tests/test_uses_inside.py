@@ -1,6 +1,7 @@
 """Inside the enterable houses (W7 C2): furniture, hearth, light, freepoints, waypoints, trigger."""
 
 import math
+from pathlib import Path
 
 import pytest
 from shapely.geometry import LineString, Point, Polygon
@@ -393,3 +394,76 @@ def test_tables_set_hearth_kept_and_small_things():
     (hanging,) = props_of(p, "wall_hanging")
     room = Polygon(ROOM["ring"])
     assert room.exterior.distance(Point(hanging["pos"][0], hanging["pos"][2])) < 0.2  # on a wall
+
+
+def _two_storeys():  # noqa: ANN202
+    """A real room record with stairs and an upper storey (the room tests' house)."""
+    from gothar_worldgen.buildings.medieval import StreetIndex, build_house, load_rules
+
+    rules = load_rules(Path(__file__).resolve().parents[1] / "data" / "building_rules.json")
+    ring = [[0.0, 0.0], [10.0, 0.0], [10.0, -7.0], [0.0, -7.0]]
+    roof = {"type": "saddle", "eaveY": 8.4, "ridgeY": 13.0, "ridgeDir": [1.0, 0.0]}
+    h = {"id": "H1", "groundY": 0.0, "footprint": ring, "roof": roof}
+    street = StreetIndex([{"points": [[-20.0, 5.0], [30.0, 5.0]]}])
+    r = build_house(h, -0.5, (5.0, -3.5), rules, street, ground_at=lambda x, z: 0.0,
+                    interior={"use": "wohnhaus"})  # fmt: skip
+    assert r.room is not None and "upper" in r.room
+    return {"entries": [{"id": "DEBW_00100061ZjV", "interior": r.room}]}
+
+
+def test_beds_go_upstairs_and_the_stairs_stay_free():
+    index = _two_storeys()
+    room = index["entries"][0]["interior"]
+    up, st = room["upper"], room["stairs"]
+    spec = {"wohnhaus": inside_spec({"mobs": ["bed:R", "chest:1", "table:1"], "hearth": True,
+                                     "freepoints": ["LEAN:1"],
+                                     "props": ["shelf:1", "sacks:1", "fur:1"]}, "x")}  # fmt: skip
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=2, inside=True)
+    p = plan_inside([house], spec, index, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+    assert p.failed == []
+    beds = [v for v in p.vobs if "_BED_" in v["name"]]
+    chests = [v for v in p.vobs if "_CHEST_" in v["name"]]
+    assert len(beds) == 2 and chests
+    for v in [*beds, *chests]:  # upstairs, on its floor
+        assert "_OBEN" in v["name"] and v["pos"][1] == pytest.approx(up["floor"], abs=0.01)
+    table = next(v for v in p.vobs if "_TABLE_" in v["name"])
+    assert table["pos"][1] == pytest.approx(room["floor"], abs=0.01)  # the table stays below
+    steps = Polygon(st["footprint"]).union(Polygon(st["footLanding"]))
+    hole = Polygon(st["opening"])
+    for v in p.vobs:
+        if v["type"] in ("mob", "mesh"):
+            q = Point(v["pos"][0], v["pos"][2])
+            below = v["pos"][1] < up["floor"] - 0.5
+            assert not (below and steps.contains(q)), v["name"]  # nothing on the stairs
+            assert below or not hole.contains(q), v["name"]  # nothing in the opening
+    names = {w["name"]: w for w in p.places if w["kind"] == "wp"}
+    foot, head = names["WP_LEO_WOHNHAUS_ZJV_TREPPE"], names["WP_LEO_WOHNHAUS_ZJV_TREPPE_OBEN"]
+    assert foot["y"] == pytest.approx(room["floor"]) and head["y"] == pytest.approx(up["floor"])
+    assert head["link"] == foot["name"] and foot["link"].startswith("WP_LEO_WOHNHAUS_ZJV_")
+    oben = names["WP_LEO_WOHNHAUS_ZJV_OBEN"]
+    assert oben["link"] == head["name"] and oben["y"] == pytest.approx(up["floor"])
+    lights = [v for v in by_kind(p, "light") if "_OBEN" in v["name"]]
+    assert lights and all(v["pos"][1] > up["floor"] for v in lights)  # upstairs has light
+
+
+def test_upstairs_zones_are_apart_and_the_stairs_span_both():
+    from gothar_worldgen.uses.zones import indoor_zones
+
+    index = _two_storeys()
+    room = index["entries"][0]["interior"]
+    up = room["upper"]
+    house = House("DEBW_00100061ZjV", "wohnhaus", inside=True)
+    zones = indoor_zones([house], index)
+    values = {z["value"] for z in zones}
+    assert "LEO_WOHNHAUS_ZJV_OBEN" in values and "LEO_WOHNHAUS_ZJV_TREPPE" in values
+    for z in zones:
+        b = z["box"]
+        y0, y1 = b["center"][1] - b["halfExtents"][1], b["center"][1] + b["halfExtents"][1]
+        if "_OBEN" in z["value"]:
+            assert y0 == pytest.approx(up["floor"], abs=0.01)
+            assert y1 == pytest.approx(up["ceiling"], abs=0.01)
+        elif z["value"].endswith("_TREPPE"):
+            assert y0 == pytest.approx(room["floor"], abs=0.01)
+            assert y1 == pytest.approx(up["ceiling"], abs=0.01)
+        else:
+            assert y1 == pytest.approx(room["ceiling"], abs=0.01)  # downstairs stays below
