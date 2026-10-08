@@ -8,7 +8,7 @@
 version = 1
 fit_to = "body_f_average"
 parts = ["cloth"]
-triangles = 3000
+triangles = 4200
 neutral = false
 
 [budget]
@@ -17,6 +17,7 @@ leather_cap = 800
 iron_cap = 800
 nasal_helmet = 800
 kettle_helm = 900
+coif = 1200
 
 [hides]
 hood = ["hair"]
@@ -24,6 +25,7 @@ leather_cap = ["hair"]
 iron_cap = ["hair"]
 nasal_helmet = ["hair"]
 kettle_helm = ["hair"]
+coif = ["hair"]
 
 [derive.hood]
 heads = "head_f_*"
@@ -79,3 +81,11 @@ brim = 0.045
 texture = "gothar/ambientcg/Metal021/Metal021_1K-JPG_Color.jpg"
 normal = "gothar/ambientcg/Metal021/Metal021_1K-JPG_NormalGL.jpg"
 uv_scale = 3.0
+
+[derive.coif]
+heads = "head_f_*"
+from = "clothes/donitz_monk_robe_hood/donitz_monk_robe_hood.mhclo"
+cut = ["spine", "clavicle", "upperarm"]
+offset = -0.004
+texture = "gothar/ambientcg/Fabric066/Fabric066_1K-JPG_Color.jpg"
+uv_scale = 4.0

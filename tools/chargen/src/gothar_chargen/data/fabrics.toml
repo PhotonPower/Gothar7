@@ -163,3 +163,29 @@ part = "parts/garb_f_average/skirt_tiered.glb"
 material = "cloth_skirt_tiered"
 tile = "fine_weave"
 wear = 0.25
+
+# --- trades (2026-10-08): bib aprons with the marks of the trade (soil), own panels -------------
+
+[textures."fabric066_neutral.jpg"]  # baker's bib apron: linen, flour dust
+part = "parts/garb_m_average/apron_bib_flour.glb"
+material = "cloth_apron_bib_flour"
+tile = "linen"
+wear = 0.3
+soil = "flour"
+soil_amount = 0.7
+
+[textures."fabric045_neutral.jpg"]  # potter's bib apron: canvas, clay smears
+part = "parts/garb_m_average/apron_bib_clay.glb"
+material = "cloth_apron_bib_clay"
+tile = "canvas"
+wear = 0.6
+soil = "clay"
+soil_amount = 0.8
+
+[textures."leather033a_neutral.jpg"]  # butcher's leather bib apron: restrained dark stains
+part = "parts/garb_m_average/apron_bib_leather.glb"
+material = "cloth_apron_bib_leather"
+tile = "leather"
+wear = 0.5
+soil = "dark"
+soil_amount = 0.35
