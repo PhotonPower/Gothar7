@@ -1,6 +1,6 @@
 # audio
 
-**Zweck:** Klangwelt. Bibliothek: **miniaudio** (ADR 0007), privat.
+**Zweck:** Klangwelt. Bibliothek: **miniaudio** mit stb_vorbis (ADR 0007, angenommen 2026-10-08), privat.
 
 ## Bestandteile
 - **Mixer-Busse**: Master → Musik, Effekte, Sprache, Ambient, UI; Lautstärken aus Optionen; Ducking (Musik leiser bei Sprache).
@@ -24,6 +24,23 @@
   - **Pflege:** Texte ändern → `gothar-voice scan --write` (neue Zeilen offen, geänderte wieder offen und ohne
     gewählten Take, entfernte nur `orphan`). CI prüft mit `gothar-voice check`, dass die Datenbank zu den Skripten
     passt.
+
+## Umsetzung Teil A (M13, ADR 0007 angenommen)
+- **Modul `audio`** (`g7/audio/Audio.hpp`, miniaudio und stb_vorbis privat, PImpl):
+  - `parseSoundDefs` liest Klänge als Daten.
+  - `AudioSystem` hat einen Mixer mit einer Gruppe je Bus (`music`, `effects`, `voice`, `ambient`, `ui`) unter dem Master.
+  - Clips werden einmal zu Float-PCM in der Mixerrate dekodiert (WAV, FLAC, MP3, OGG Vorbis); jeder Klang liest sie über eine eigene Referenz.
+  - `play(def, ort?, verzögerung?)`: Ohne Ort ist es ein 2D-Klang, mit Ort ein 3D-Klang mit linearer Abschwächung zwischen `min_distance` und `max_distance`, ohne Doppler (Entscheidung). Die Verzögerung gilt Sample-genau auf der Mixer-Uhr (für die Musik in Teil C).
+  - Dazu `stop` (mit Ausblenden), `setVolume` (mit Überblenden), `setListener`, Bus- und Master-Lautstärke.
+- **Ohne Ausgabegerät** (headless, CI, `[audio] device = false` bzw. wenn keins aufgeht): `update(sekunden)` rendert die Frames selbst. Tests hören so in jedem Lauf dasselbe; `lastPeak()` meldet den lautesten Wert.
+- **Klänge als Daten:** `assets/source/data/sounds.toml`, je Name `files` (eine zufällig), `volume`, `volume_jitter`, `pitch_jitter`, `min_distance`, `max_distance`, `bus`, `loop`. Clips lädt die Engine beim ersten Abspielen aus dem VFS.
+- **Engine:**
+  - `[audio]` in `engine.toml`: `enabled`, `device`, `sample_rate`, `master`, je Bus eine Lautstärke. Das Menü folgt mit M14.
+  - Der Hörer sitzt an der Kamera.
+  - Anim-Events `sound:<name>` der Clips spielen an der Figur (Held und NPCs).
+  - Lua: `sound(name, x?, y?, z?)`, `sound_stop(id, fade?)`, `sound_playing(id)`.
+- **Platzhalter** (Entscheidung Projektinhaber): `tools/audio` (`gothar-audio placeholders`) erzeugt synthetische WAVs unter `assets/source/sounds/`; echte Klänge ersetzen sie unter gleichem Namen.
+- **Folgt:** Spruch-Klänge (`Spell`-Feld `sounds`), B Raum (Verdeckung, Ambient-Zonen), C Musik, D Sprache, E Fußschritte.
 
 ## Dynamisches Musiksystem (Gothic: DirectMusic)
 - Musik-Zone (aus world) → **Thema** (z. B. `CAMP`, `FOREST`, `MINE`).

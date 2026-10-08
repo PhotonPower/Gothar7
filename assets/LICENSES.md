@@ -49,6 +49,7 @@ Jede Fremdquelle, die in Assets oder abgeleitete Daten einfließt, wird hier ein
 | Texturen der Leonberger Häuser und Gelände-Schichten: `assets/source/worlds/leonberg/generated/textures/*.png` (erzeugt, nicht versioniert) und `assets/source/worlds/leonberg/layers/*.png` (Putz, Bruchstein, Balken, Ziegel, Bretter, Kopfsteinpflaster u. a.) | eigene Arbeit: prozedural erzeugt von `tools/worldgen/src/gothar_worldgen/textures/` und `export/splat.py`, ohne Foto- oder Fremdquellen | eigene Arbeit (Projekt) | keine |
 | `assets/source/testscene/nature/*` (Bäume, Felsen, Büsche, Lagerfeuer, Holzstapel, Zelt) | Kenney „Nature Kit“ 2.1, kenney.nl/assets/nature-kit | CC0 1.0 (Lizenztext `nature/License.txt`) | keine (Nennung „Kenney“ freiwillig) |
 | `assets/source/items/textures/metal_rust.jpg`, `leather.jpg`, `wood.jpg`, `bark.jpg`, `wood_dark.jpg` (Waffen und Handgegenstände, F6; verkleinert, Rinde dunkler getönt; Geometrie aller `items/*.glb` und die übrigen Texturen sind eigene Arbeit, per Code erzeugt) | ambientCG „Metal 021“, „Leather 014“, „Wood 049“, „Bark 012“, „Wood 060“, ambientcg.com (1K-JPG) | CC0 1.0 | keine (Nennung „ambientCG.com“ freiwillig) |
+| `assets/source/sounds/*.wav` (Platzhalter-Klänge, M13) | eigene Arbeit: synthetisch erzeugt mit `tools/audio` (`gothar-audio placeholders`), ohne Fremdmaterial | wie das Repository | keine |
 
 ## Engine-eingebettete Daten
 | Daten | Quelle | Lizenz | Verwendung |

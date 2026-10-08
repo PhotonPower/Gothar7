@@ -300,6 +300,10 @@ void Engine::fixedUpdateCreatures(f32 seconds)
                  [&](std::string_view clip, std::string_view event)
                  {
                      handEvent(c, event); // broom, mug (M9 part B)
+                     if (event.starts_with("sound:"))
+                     {
+                         (void)playSound(event.substr(6), c.position + Vec3(0.0f, 0.8f, 0.0f)); // M13
+                     }
                      if (event == "cast" && c.cast && !c.cast->acted)
                      {
                          applyNpcSpell(c); // the spell leaves its hand (M12 part D)

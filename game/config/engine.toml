@@ -19,6 +19,17 @@ far = 1500.0             # Meter
 mouse_sensitivity = 0.1  # Grad pro Pixel
 fly_speed = 10.0         # m/s
 
+[audio]
+# Klang (M13, ADR 0007). Lautstärken 0..1 je Bus; das Optionsmenü folgt mit M14. device = false: ohne Ausgabe
+# (wie headless). Klänge als Daten: data/sounds.toml.
+enabled = true
+master = 1.0
+music = 0.8
+effects = 1.0
+voice = 1.0
+ambient = 0.8
+ui = 1.0
+
 [render]
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
 # shader_hot_reload = true

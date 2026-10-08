@@ -311,6 +311,17 @@ Parade (M11, K6): blockt Nahkampftreffer von vorn kurz nach ihrem Beginn.
 ### `npc_reach(npc: string) -> number`
 Bis zu welchem Abstand (Mitte zu Mitte, m) die Schläge des Kämpfers treffen (`hero` für den Helden).
 
+## Klang
+
+### `sound(name: string, x?: number, y?: number, z?: number) -> integer | nil`
+Spielt einen Klang aus data/sounds.toml (M13), mit Ort als 3D-Klang; gibt seine Nummer zurück, nil wenn es ihn nicht gibt bzw. kein Ton läuft.
+
+### `sound_playing(id: integer) -> boolean`
+Ob ein Klang noch läuft.
+
+### `sound_stop(id: integer, fade?: number)`
+Beendet einen Klang, über `fade` Sekunden ausgeblendet.
+
 ## Magie
 
 ### `cast_check(item: string, stages?: integer) -> string | nil`
