@@ -382,7 +382,8 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 **DoD:** Der Marktplatz ist mittelalterlich und stilistisch geschlossen in der Engine zu sehen.
 
 ## W6 – Straßen, Mauer, Ausstattung  (benötigt W5, M4-Editor)
-- [ ] Straßen/Plätze aus OSM → Splatmap, Rinnen, Stufen, Stützmauern
+- [x] Straßen/Plätze aus OSM → Splatmap, Rinnen, Stufen, Stützmauern
+  - Stand: `gothar-worldgen streetworks` (W-E): 54 Steintreppen auf gleichmäßig steigendem Gelände, ca. 12,5 km Rinnen (Mitte unter 6 m Breite, sonst seitlich), ca. 140 Stützmauern (trocken, an Haus und Stadtmauer gemörtelt; Bergseite hält den Hang, Talseite mit Brüstung) mit eingeebneter Straßenhälfte; Türen behalten ihren Zugang, Wegnetz besser als vorher (116 statt 121 Teile)
 - [ ] Stadtmauer mit Toren
   - Stand: Ring mit Türmen, Tortürmen, Pforten, Treppen und Kollision umgesetzt (`gothar-worldgen citywall`, W-E2), Mauerhäuser auf der Linie (Außenseite als Mauer), Schloss als eigenes Modell (Blender-Skript, W-E3)
   - Stand: Pforte in der Zwingermauer vor dem Garten-Westtor; Durchgang (Override `passages`) durch das Haus an der Pforte Zwerchstraße Nord

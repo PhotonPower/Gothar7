@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, TextIO
 
-from shapely.geometry import LineString, box
+from shapely.geometry import LineString, Polygon, box
 from shapely.ops import unary_union
 
 from gothar_worldgen import __version__
@@ -1081,6 +1081,104 @@ def _plan_outdoor(
     return plan_outdoor(rules, site)
 
 
+def _retaining_walls(grid: Any, works: dict[str, Any], street_doc: dict[str, Any], work: Path,  # noqa: ANN401
+                     folder: Path, data_dir: Path, pads: list[dict[str, Any]], half: float,
+                     out: TextIO) -> Any:  # noqa: ANN401  # fmt: skip
+    """Plans the retaining walls (``generated/retaining_walls.json``) and levels the streets
+    beside them; houses, doors, landmarks, squares and steps keep their ground."""
+    import shapely
+    from shapely.geometry import MultiPoint
+
+    from gothar_worldgen.export.retaining import plan_walls, write_plan
+    from gothar_worldgen.qa.begehung import collision_parts
+
+    buildings = json.loads((work / "buildings.json").read_text(encoding="utf-8"))
+    houses = [shapely.make_valid(Polygon(b["footprint"])) for b in buildings.get("buildings", [])
+              if len(b.get("footprint") or []) >= 3]  # fmt: skip
+    index_path = folder / "generated" / "buildings_index.json"
+    entries = (
+        json.loads(index_path.read_text("utf-8")).get("entries", []) if index_path.is_file() else []
+    )
+    doors = [(float(d[0]), float(d[1])) for e in entries for d in e.get("doors", [])]
+    keep = [Polygon(p["polygon"]).buffer(0) for p in pads]
+    keep += [shapely.make_valid(Polygon(q["polygon"])) for q in street_doc.get("squares", [])
+             if len(q.get("polygon") or []) >= 3]  # fmt: skip
+    keep += [LineString(s["points"]).buffer(2.0) for s in street_doc.get("streets", [])
+             if s.get("highway") == "steps" and len(s.get("points") or []) >= 2]  # fmt: skip
+    town = []
+    wall_path = folder / "generated" / "citywall_index.json"
+    if wall_path.is_file():
+        assets = folder.parents[1]
+        for e in json.loads(wall_path.read_text("utf-8")).get("entries", []):
+            glb = assets / e["mesh"]
+            if not glb.is_file():
+                continue
+            ox, _, oz = e["pos"]
+            for _, pos, _ in collision_parts(glb.read_bytes()):
+                hull = MultiPoint([(float(x) + ox, float(z) + oz) for x, _, z in pos]).convex_hull
+                if isinstance(hull, Polygon):
+                    town.append(hull)
+    grid, walls, stats = plan_walls(grid, street_doc.get("streets", []),
+                                    box(-half, -half, half, half), houses, doors, keep, town,
+                                    works["walls"])  # fmt: skip
+    write_plan(folder / "generated" / "retaining_walls.json", walls, stats)
+    print(f"  walls: {stats['walls']} retaining walls, {stats['wallM']} m ({stats['high']} holding "
+          f"the slope, {stats['low']} with a parapet, {stats['mortared']} mortared), "
+          f"{stats['cellsLevelled']} cells levelled", file=out)  # fmt: skip
+    return grid
+
+
+def _cmd_streetworks(args: argparse.Namespace, out: TextIO) -> int:
+    """Steps, gutters and retaining walls of the old town (W6, ``streetworks.json``): meshes on
+    the final heightmap into generated/streetworks (run after export-terrain, before assemble)."""
+    from shapely.geometry import box as rect
+
+    from gothar_worldgen.buildings.medieval import load_rules as load_house_rules
+    from gothar_worldgen.qa.begehung import game_grid
+    from gothar_worldgen.streetworks import (
+        StreetworksError,
+        plan_streetworks,
+        write_index,
+        write_pieces,
+    )
+    from gothar_worldgen.streetworks import load_rules as load_works
+
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    try:
+        terrain = load_world(folder / f"{site.name}_terrain.g7world")
+        if terrain is None:
+            raise StreetworksError(f"{site.name}_terrain.g7world not found (run export-terrain)")
+        grid = game_grid(terrain, folder.parents[1])
+        rules = load_works(data_dir / "streetworks.json")
+        house_rules = load_house_rules(data_dir.parent / "building_rules.json")
+        street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+        buildings = json.loads((paths.work / "buildings.json").read_text(encoding="utf-8"))
+        houses = [Polygon(b["footprint"]) for b in buildings.get("buildings", [])
+                  if len(b.get("footprint") or []) >= 3]  # fmt: skip
+        half = site.core_half_extent_m
+        core = rect(-half, -half, half, half)
+        plan_path = folder / "generated" / "retaining_walls.json"
+        walls = json.loads(plan_path.read_text("utf-8"))["walls"] if plan_path.is_file() else []
+        pieces, stats = plan_streetworks(street_doc.get("streets", []),
+                                         street_doc.get("squares", []), houses, core,
+                                         grid.height_at, rules, walls)  # fmt: skip
+        vfs = f"worlds/{site.name}/generated/streetworks"
+        entries = write_pieces(pieces, house_rules.color, folder / "generated" / "streetworks", vfs)
+        stats["triangles"] = sum(e["triangles"] for e in entries)
+        write_index(folder / "generated" / "streetworks_index.json", entries, stats)
+    except (StreetworksError, OSError, json.JSONDecodeError, KeyError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    print(f"  steps: {stats['steps']} ({stats['stepsM']} m); walls {stats['walls']}; gutters "
+          f"{stats['gutterM']} m in {stats['gutterFiles']} files; {stats['triangles']} triangles",
+          file=out)  # fmt: skip
+    print(f"  {folder / 'generated' / 'streetworks_index.json'}", file=out)
+    return EXIT_OK
+
+
 def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -1112,10 +1210,12 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
         citywall = (
             json.loads(wall_path.read_text(encoding="utf-8")) if wall_path.is_file() else None
         )
+        works_path = folder / "generated" / "streetworks_index.json"
+        works = json.loads(works_path.read_text("utf-8")) if works_path.is_file() else None
         existing = load_world(folder / f"{name}.g7world")
         starts = DEFAULT_STARTS + load_starts(data_dir / "starts.json")
         res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
-                       handmade, water, starts)  # fmt: skip
+                       handmade, water, starts, streetworks=works)  # fmt: skip
         uses_path = data_dir / "uses.json"
         places = None
         rules_doc = json.loads((data_dir.parent / "building_rules.json").read_text("utf-8"))
@@ -1123,13 +1223,15 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
         doors = door_mobs(index, opened)  # W7: the doors of the enterable houses
         if doors:
             res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
-                           handmade, water, starts, doors)  # fmt: skip
+                           handmade, water, starts, doors,
+                           streetworks=works)  # fmt: skip
         if uses_path.is_file():  # W7: mobs and routine places at the houses with a use
             street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
             places, mobs, zones = _plan_uses(uses_path, res.world, index, folder.parents[1],
                                              street_doc.get("streets", []))  # fmt: skip
             res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
-                           handmade, water, starts, [*doors, *mobs])  # fmt: skip
+                           handmade, water, starts, [*doors, *mobs],
+                           streetworks=works)  # fmt: skip
             from gothar_worldgen.uses.zones import with_room_zones
 
             outdoor_path = data_dir / "outdoor.json"
@@ -1140,7 +1242,7 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
                                         paths.work)  # fmt: skip
                 res = assemble(terrain_world, index, existing, ids, name, locked, ground,
                                citywall, handmade, water, starts, [*doors, *mobs],
-                               outdoor.vobs)  # fmt: skip
+                               outdoor.vobs, streetworks=works)  # fmt: skip
                 target = folder / "generated" / "outdoor.json"
                 target.write_text(json.dumps(outdoor.json(), indent=1) + "\n", "utf-8")
                 print(f"  outdoor: {len(outdoor.vobs)} vobs "
@@ -1239,6 +1341,22 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
                   f"(steepest {smoothed['maxDegBefore']} deg), {smoothed['cellsChanged']} cells, "
                   f"{smoothed['remaining']} left after the last pass", file=out)  # fmt: skip
             if handmade_pads:  # the smoothing must not lift the terraces or fill under ledges
+                grid, _ = apply_pads(grid, handmade_pads)
+        works_doc = data_dir / "streetworks.json"
+        if works_doc.is_file():  # W6: the ground under the steps rises evenly (stone steps)
+            from gothar_worldgen.export.ways import shape_steps
+
+            works = json.loads(works_doc.read_text(encoding="utf-8"))
+            street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+            half = site.core_half_extent_m
+            grid, shaped = shape_steps(grid, street_doc.get("streets", []),
+                                       box(-half, -half, half, half), works["steps"])  # fmt: skip
+            print(f"  steps: {shaped['steps']} ways shaped evenly rising, "
+                  f"{shaped['cellsChanged']} cells", file=out)  # fmt: skip
+            if "walls" in works:  # W6: retaining walls where a street is cut into a slope
+                grid = _retaining_walls(grid, works, street_doc, paths.work, folder, data_dir,
+                                        handmade_pads, half, out)  # fmt: skip
+            if handmade_pads:
                 grid, _ = apply_pads(grid, handmade_pads)
         splat = None
         if not args.no_splat:
@@ -1394,6 +1512,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_kirche)
+
+    p = sub.add_parser("streetworks", help="steps, gutters, retaining walls (W6), before assemble")
+    p.add_argument("site")
+    p.add_argument("--assets-dir", type=Path, default=None)
+    p.set_defaults(func=_cmd_streetworks)
 
     p = sub.add_parser("assemble", help="terrain + buildings -> <site>.g7world with stable VobIds")
     p.add_argument("site")

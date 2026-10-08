@@ -33,6 +33,7 @@ HANDMADE_NAME = "WORLDGEN_HANDMADE"
 USES_NAME = "WORLDGEN_USES"  # group of the mobs at the houses with a use (W7)
 WATER_NAME = "WORLDGEN_WATER"
 OUTDOOR_NAME = "WORLDGEN_GASSEN"  # props, trees, bushes and grass in the lanes and yards (W6)
+STREETWORKS_NAME = "WORLDGEN_STRASSENBAU"  # steps, gutters, retaining walls (W6)
 GROUP_CELL_M = 64.0
 IDENTITY = [0.0, 0.0, 0.0, 1.0]
 
@@ -128,6 +129,7 @@ def assemble(
     starts: tuple[StartPoint, ...] = DEFAULT_STARTS,
     mobs: Sequence[dict[str, Any]] = (),
     outdoor: Sequence[dict[str, Any]] = (),
+    streetworks: dict[str, Any] | None = None,
 ) -> AssembleResult:
     if "terrain" not in terrain_world:
         raise AssembleError("the terrain world has no terrain block (run export-terrain)")
@@ -219,6 +221,15 @@ def assemble(
             if components:
                 v["components"] = components
             fresh[vid] = v
+
+    if streetworks and streetworks.get("entries"):
+        # Steps, gutters, retaining walls (W6, streetworks_index.json): walls are gameplay.
+        group = ids.get("group:streetworks", floor)
+        fresh[group] = _vob(group, "empty", STREETWORKS_NAME, [0.0, 0.0, 0.0])
+        for e in streetworks["entries"]:
+            vid = ids.get(f"streetworks:{e['id']}", floor)
+            fresh[vid] = _vob(vid, "mesh", f"STRASSE_{e['id']}".upper(), e["pos"], group,
+                              mesh=e["mesh"], category=e.get("category"))  # fmt: skip
 
     if outdoor:
         # Lanes and yards (W6, outdoor.json): plain mesh vobs, deco (culled when small).

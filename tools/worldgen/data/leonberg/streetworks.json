@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "note": "Rinnen, Stufen, Stützmauern (W6, Plan freigegeben 2026-10-08; Stil: Koordinator im Auftrag des Projektinhabers). Mechanik in gothar_worldgen/streetworks.py und export/ways.py, Werte hier.",
+  "steps": {
+    "riseM": 0.18,
+    "minDropM": 0.4,
+    "sinkM": 0.25,
+    "cheekM": 0.35,
+    "cheekWidthM": 0.25,
+    "cheekAboveM": 0.15,
+    "halfWidthM": 1.5,
+    "fadeM": 1.5
+  },
+  "walls": {
+    "highways": ["residential", "living_street", "pedestrian", "service", "unclassified", "tertiary", "secondary", "footway", "path", "track"],
+    "crossFallM": 1.0,
+    "probeM": 1.5,
+    "minRunM": 3.0,
+    "offsetM": 0.2,
+    "minAxisM": 1.0,
+    "fadeM": 3.0,
+    "behindM": 0.6,
+    "parapetM": 0.6,
+    "maxM": 3.5,
+    "houseM": 1.2,
+    "doorM": 3.0,
+    "keepM": 2.0,
+    "laneM": 1.2,
+    "laneReachM": 15.0,
+    "doorReachM": 30.0,
+    "junctionM": 1.5,
+    "mortarM": 1.5,
+    "thicknessM": 0.5
+  },
+  "gutters": {
+    "highways": ["residential", "living_street", "pedestrian", "service", "unclassified", "tertiary", "secondary"],
+    "centreBelowM": 6.0,
+    "widthM": 0.5,
+    "depthM": 0.03,
+    "liftM": 0.05,
+    "sideOffsetM": 0.45,
+    "sampleM": 1.0,
+    "clearM": 0.4,
+    "cellM": 64.0
+  }
+}

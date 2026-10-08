@@ -9,7 +9,8 @@ of licences. A texture is a pair of images that tile seamlessly:
 
 Kinds (``KINDS``) and the metres one texture covers (``TILE_M``): plaster, plaster with dirt at the
 foot of the wall (``plaster_low``, tiles only along u), rubble stone, timber grain (along u), plain
-tiles (Biberschwanz), boards. Coordinates: u to the right, v up (row 0 of an image is the top).
+tiles (Biberschwanz), boards, the flat slabs of the street gutters. Coordinates: u to the right,
+v up (row 0 of an image is the top).
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ TILE_M = {  # metres covered by one texture (u, v)
     "fur": (0.6, 0.6),  # fur rugs
     "leaves": (1.0, 1.0),  # tree crowns, bushes, grass (W6 streets)
     "bark": (1.0, 2.0),  # around the trunk, up it
+    "slab": (0.5, 2.0),  # a gutter of flat slabs: across it (one slab wide), along it (W6)
 }
 
 
@@ -376,6 +378,37 @@ def plaster_streak(size: int, rng: np.random.Generator) -> Texture:
     return Texture("plaster_streak", rgb, base.height[:h], base.normal_strength)
 
 
+def slab(size: int, rng: np.random.Generator) -> Texture:
+    """Flat stone slabs of a street gutter (W6, coordinator 2026-10-08): one slab across the tile
+    (u), slabs of 35..80 cm along it (v) with visible joints of dirty sand between them (darker
+    than the stone, not black) - no joints along the gutter's edges; worn faces of different
+    shade, a slight bevel at the joints."""
+    px_m = size / TILE_M["slab"][1]  # pixels per metre along
+    lengths = _courses(rng, size, int(0.35 * px_m), int(0.8 * px_m))
+    grain = periodic_noise((size, size), rng, beta=1.4, low_cut=8.0)
+    wear = periodic_noise((size, size), rng, beta=2.6)
+    shade = np.ones((size, size))
+    warm = np.zeros((size, size))
+    dist = np.full((size, size), 1e3)  # pixels to the nearest joint along v
+    y0 = 0
+    for n in lengths:
+        ys = np.arange(y0, y0 + n)
+        shade[ys, :] = rng.uniform(0.82, 1.1)
+        warm[ys, :] = rng.uniform(-0.02, 0.05)
+        local = np.minimum(ys - y0, y0 + n - 1 - ys).astype(float)
+        dist[ys, :] = local[:, None]
+        y0 += n
+    wobble = 1.2 * (periodic_noise((size, size), rng, beta=2.0) - 0.5)
+    joint = np.clip(1.0 - (dist + wobble - 2.0) / 1.5, 0.0, 1.0)  # about 1 cm, ragged
+    bevel = np.clip((dist + wobble) / 6.0, 0.0, 1.0) ** 0.5
+    val = shade * (0.92 + 0.3 * (grain - 0.5) - 0.12 * (wear - 0.5)) * (0.85 + 0.15 * bevel)
+    rgb = np.stack([val * (1 + warm), val, val * (1 - warm)], axis=-1)
+    sand = np.array([0.62, 0.58, 0.5]) * (0.9 + 0.2 * grain[:, :, None])  # dirty sand
+    rgb = rgb * (1 - joint[:, :, None]) + sand * joint[:, :, None]
+    height = 0.8 * bevel * (1 - joint) + 0.1 * grain
+    return Texture("slab", _mean_one(rgb), height - height.min(), 2.0)
+
+
 def cobbles(size: int, rng: np.random.Generator) -> Texture:
     """Cobblestones (Kopfsteinpflaster) for the terrain: round, irregular stones of different
     size, not in rows, with sandy gaps; the terrain has no normal maps, so the roundness is in
@@ -411,6 +444,7 @@ KINDS: dict[str, Callable[[int, np.random.Generator], Texture]] = {
     "boards": boards,
     "roof_moss": roof_moss,
     "plaster_streak": plaster_streak,
+    "slab": slab,
 }
 
 
