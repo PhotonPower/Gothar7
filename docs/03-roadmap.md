@@ -456,6 +456,7 @@ F6 läuft: 12 Waffen und Handgegenstände (`gothar-chargen build-items`, Validat
 - [x] Baukasten-Werkzeug: Zusammensetzen, Passform-Prüfung, LODs, Farbvarianten – `gothar-chargen assemble` (Manifest `figures/<name>.figure.toml`, Palette), `fit.*`/`lod.*`/`mesh.budget` im Validator, LOD-Vertrag mit engine (characters-pipeline.md §2.2); getestet mit eigenen Testteilen (`parts/test`, Figuren `test_plain`, `test_rags`). ADR 0018 (MPFB2) angenommen. Seit 2026-10-03 Figuren beim Bauen statt im Repo: Teile mit LODs und Zusammenbau-Daten, `assemble` in reinem Python (Vertrag §6.2)
 - [ ] Stil-Referenzblatt Figuren (gemeinsam mit W5)
   - Stand: Stilentscheidung Figuren gefallen (Stufe A realistisch mit Texturen, 2026-10-03; Stilproben-Seite für den Projektinhaber)
+  - Stand 2026-10-08: `docs/design/figuren-stil.md` (Proportionen, Farbwelt, Texturdichte, Alterung, Budgets, Namensregeln, was wir bewusst nicht machen; zwei Übersichtsbilder) liegt dem Projektinhaber vor; große Blätter in `C:\GotharData\review\stil\`. Abhaken nach seiner Freigabe.
 
 **DoD:** 5 unterscheidbare NPCs in der Engine, alle auf dem Referenz-Rig.
 Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine“ hängt an M6 (Skin/Clips kochen).
