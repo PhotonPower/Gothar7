@@ -256,3 +256,17 @@ def test_no_body_primitive_is_hidden_completely():
                     hidden[prim][first:end] = True
             for prim, flags in enumerate(hidden):
                 assert not (len(flags) and flags.all()), (manifest.stem, mesh.node, prim)
+
+
+def test_baked_head_beards_do_not_take_the_kit_beard_material():
+    """A beard baked into a head part is called beard_head: assemble merges materials by name with
+    the head first, so a head material "beard" would replace a kit beard's (fixed 2026-10-08)."""
+    for head in sorted((CHARACTERS / "parts").glob("head_*/head.glb")):
+        names = [m.get("name") for m in Gltf.load(head).list("materials")]
+        assert "beard" not in names, head.parent.name
+    for name in ("head_m_mid", "head_m_old"):
+        names = [
+            m.get("name")
+            for m in Gltf.load(CHARACTERS / f"parts/{name}/head.glb").list("materials")
+        ]
+        assert "beard_head" in names, name
