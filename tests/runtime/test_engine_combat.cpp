@@ -370,6 +370,8 @@ TEST_CASE(
     CHECK(hp(engine, "npc_old_man") == before - 15);
     // The last arrow kills him (ranged combat kills, K7).
     run(engine, "npc_set_stat('npc_old_man', 'hp', 5)");
+    // Back to 12 m: where he got to depends on his speed (his gait trots slowly, figuren #269).
+    run(engine, "npc_teleport('npc_old_man', 29.2, 0, 18.8, 270)");
     engine.setRandomSource([] { return 0.0f; });
     runSeconds(engine, 0.5f);
     REQUIRE(run(engine, "hero_shoot()").asBool());

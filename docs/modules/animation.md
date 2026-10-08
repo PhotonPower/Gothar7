@@ -135,6 +135,20 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
 - Grenzen: `body_hash` der Masken prüft erst `gothar-chargen` (die Engine vergleicht nur den Pfad des Körpers);
   die Rollen-Reihenfolge (body, head, hair, beard, Kleidung) ist fest, in `gothar-chargen assemble` ebenso (#123).
 
+## Gangarten-Varianten (umgesetzt; Entscheidung Projektinhaber, figuren #269)
+- **Manifest:** Ein Figuren-Manifest mit `[anim] variant = "<v>"` (`woman`, `military`, `old`, `relaxed`) gibt der
+  Figur ihre Gangart. `asset::FigureManifest::animVariant` liest es. Bei einer von `g7_figures` gebauten `.glb` gilt
+  das Manifest daneben (`figures/<name>.figure.toml`).
+- **Clips:** `animation::applyVariant(graph, variant, sets)` ersetzt vor `Animator::create` jeden Clip X der Zustände
+  durch `X_<v>`, wenn ein Set ihn hat (Set `characters/anims/human/gait.glb` im Graphen). Sonst bleibt der
+  Grundclip.
+- **Tempo:** Hat der Variant-Clip ein anderes Eigentempo als der Grundclip, wandert sein Blend-Punkt dorthin. So trabt
+  „old“ mit 2,94 m/s statt zu rennen; NPCs übernehmen das als Renntempo.
+- **Lua:** `npc_state(npc).gait`.
+- **Tests:** `tests/animation/test_animation.cpp` (Ersetzen, Rückfall, Tempo) und
+  `tests/runtime/test_engine_gait.cpp` (der alte Mann trabt mit 2,94 m/s, der Holzfäller ohne Variante rennt mit
+  4,0 m/s).
+
 ## Attachments, Gesicht, Look-At (M6 Teil D1, umgesetzt)
 - **Attachments:** `Engine::attachToPlayer(socket, modelPath)` bzw. mit einem in Code erzeugten `MeshData`
   (Tests, Debug-UI), `detachFromPlayer(socket)`; je Socket ein Modell. Gezeichnet mit der Figur (Weltmatrix =

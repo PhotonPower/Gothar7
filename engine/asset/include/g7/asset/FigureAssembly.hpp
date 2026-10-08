@@ -28,6 +28,8 @@ struct FigureManifest
     std::vector<Part> parts;
     /// Material name -> linear RGB (the manifest has sRGB "#rrggbb").
     std::vector<std::pair<std::string, Vec3>> palette;
+    /// `[anim] variant`: the gait (woman, military, old, relaxed; characters-pipeline.md §6.2), empty: none.
+    std::string animVariant;
 
     [[nodiscard]] static Result<FigureManifest> parse(std::string_view toml, std::string_view source);
 

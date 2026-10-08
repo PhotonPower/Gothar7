@@ -73,6 +73,12 @@ struct AnimGraph
     [[nodiscard]] static Result<AnimGraph> parse(std::string_view toml, std::string_view source);
 };
 
+/// Gait variants (owner decision; figure manifest `[anim] variant`): every clip X the graph's states play
+/// becomes X_<variant> where a set has one, else X stays. A variant clip whose own speed differs from X's
+/// takes its blend point along ("old" trots at 2.94 m/s instead of running). Returns the clips replaced.
+usize applyVariant(AnimGraph& graph, std::string_view variant,
+                   std::span<const asset::AnimationSetData* const> sets);
+
 class Animator
 {
 public:
