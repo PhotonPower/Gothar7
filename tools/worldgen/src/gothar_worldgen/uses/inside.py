@@ -971,9 +971,10 @@ def _split_upstairs(spec: InsideSpec, residents: int) -> tuple[InsideSpec, Insid
     return down, up
 
 
-DETOUR_CLEAR_M = 0.2  # a way round the stairs or their opening keeps this far from them (the
-# room's waypoint at the head of the stairs is right at the opening's edge)
-DETOUR_CORNER_M = 0.9  # its corners this far out from them
+DETOUR_CLEAR_M = 0.6  # a way round the stairs or their opening keeps this far from them (rails)
+DETOUR_START_M = 0.2  # its first and last leg less: the waypoint at the stairs' head is at the
+# edge, a passage may be close
+DETOUR_CORNER_M = 1.0  # its corners this far out from them
 
 
 def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
@@ -982,7 +983,8 @@ def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
     in the floor above them) inside ``room``; empty if the straight way is clear (the engine
     walks the waynet's edges as they are, unchecked)."""
     zone = obstacle.buffer(DETOUR_CLEAR_M)
-    if not LineString([a, b]).intersects(zone):
+    near = obstacle.buffer(DETOUR_START_M)
+    if not LineString([a, b]).intersects(near):
         return []
     inside = room.buffer(-0.3)
     ring = obstacle.buffer(DETOUR_CORNER_M, join_style="mitre").exterior.coords[:-1]
@@ -990,7 +992,8 @@ def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
 
     def clear(p: tuple[float, float], q: tuple[float, float]) -> bool:
         seg = LineString([p, q])
-        return not seg.intersects(zone) and room.buffer(0.15).contains(seg)  # ends at passages
+        keep = near if p == a or q == b else zone  # legs at the ends may pass close
+        return not seg.intersects(keep) and room.buffer(0.15).contains(seg)  # ends at passages
 
     best: tuple[float, list[tuple[float, float]]] | None = None
     for c in corners:

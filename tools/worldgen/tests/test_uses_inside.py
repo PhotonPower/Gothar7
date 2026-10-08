@@ -467,3 +467,17 @@ def test_upstairs_zones_are_apart_and_the_stairs_span_both():
             assert y1 == pytest.approx(up["ceiling"], abs=0.01)
         else:
             assert y1 == pytest.approx(room["ceiling"], abs=0.01)  # downstairs stays below
+
+
+def test_a_way_past_the_stair_opening_goes_round_it():
+    from gothar_worldgen.uses.inside import _detour
+
+    room = Polygon([(0, 0), (8, 0), (8, 6), (0, 6)])
+    hole = Polygon([(2, 0), (6, 0), (6, 1.0), (2, 1.0)])  # at the wall, like the opening
+    a, b = (6.4, 0.6), (1.5, 0.6)  # from beside its head to beyond its foot end
+    corners = _detour(a, b, hole, room)
+    assert corners
+    path = LineString([a, *corners, b])
+    assert not path.intersects(hole.buffer(0.15))
+    assert room.buffer(0.15).contains(path)
+    assert _detour((6.4, 3.0), (1.5, 3.0), hole, room) == []  # a clear way stays straight

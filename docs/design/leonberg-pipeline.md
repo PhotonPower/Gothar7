@@ -1089,6 +1089,10 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
 - **Wegnetz:** `WP_…_TREPPE` vor der ersten Stufe (verbunden mit dem Raum, in dem die Treppe steht),
   `WP_…_TREPPE_OBEN` am Kopf (y = oberer Boden), `WP_…_OBEN` im Raum oben, die oberen Kammern über ihre Durchgänge.
   Obere Wegpunkte liegen auf dem Boden: Einsetzen und KI-LOD landen oben (engine 2026-10-08).
+  Führte die gerade Kante zu einem Durchgang über den Ausschnitt (oben) oder durch die Treppe (unten), geht sie über
+  Eckpunkte `WP_…_<Raum>_UM_<Kammer>` (1 m vor dem Hindernis, die Kanten dazwischen 0,6 m vom Geländer, nur die erste
+  und letzte dürfen näher); die Engine prüft Kanten nicht. Verknüpft wird erst, wenn alle Punkte stehen; eine Brücke
+  zwischen Teilen des Netzes steigt höchstens 0,4 m mehr als die Steigung erlaubt, also nie durch eine Decke.
 - **Zonen:** je Raum oben eine indoor-Zone in seiner Höhe; die Treppe eine Zone über beide Geschosse
   (`LEO_…_TREPPE`), damit die Innenkamera unter dem Ausschnitt drinnen bleibt (engine #243).
 
