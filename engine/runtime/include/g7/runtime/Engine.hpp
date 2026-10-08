@@ -824,6 +824,13 @@ private:
     bool castSleep(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect = {});
     void wakeUp(u32 targetId);
     void endSleep(Creature& c); ///< the sleep's effect and pose end (the fighter is up again)
+    /// Z6: `targetId` flees from the caster for `seconds` (ai: zs_fear).
+    bool castFear(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect = {});
+    /// M12 part D: an NPC casts `spell` (its mana and circle) at `target` (creature id, ~0: the hero;
+    /// nullopt: itself). Why not, as text; nullopt: it casts.
+    std::optional<std::string> npcCast(Creature& c, std::string_view spell, std::optional<u32> target);
+    void applyNpcSpell(Creature& c);
+    void fixedUpdateNpcCast(Creature& c, f32 seconds);
     /// Z8: calls the spell's creature beside the hero for `seconds`; the one called before vanishes.
     std::optional<u32> summonForHero(const gameplay::SpellInfo& spell, f32 seconds);
     void vanish(Creature& c); ///< a summoned creature goes (effect); dead and gone for scripts
@@ -1245,6 +1252,7 @@ private:
         std::unique_ptr<PlayerFigure> human;         ///< the hero's own figure, kept for the way back
         std::unique_ptr<gameplay::Character> animal; ///< the animal's values and life (Z7)
         gameplay::MovementSettings humanMovement;
+        f32 cameraScale = 1.0f; ///< the camera's height (and distance) for the animal: its height / 1.8 m
     };
     std::optional<HeroTransform> m_transform; // Z7: the hero in an animal's shape
     std::string m_transformRequested;         // ... becomes this species at the next player step

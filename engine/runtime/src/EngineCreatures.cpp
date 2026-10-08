@@ -300,6 +300,10 @@ void Engine::fixedUpdateCreatures(f32 seconds)
                  [&](std::string_view clip, std::string_view event)
                  {
                      handEvent(c, event); // broom, mug (M9 part B)
+                     if (event == "cast" && c.cast && !c.cast->acted)
+                     {
+                         applyNpcSpell(c); // the spell leaves its hand (M12 part D)
+                     }
                      if (event.starts_with("hit_") || event.starts_with("combo_"))
                      {
                          c.fighter.onEvent(event); // the combat clips time the blow (M11)

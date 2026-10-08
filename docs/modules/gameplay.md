@@ -421,9 +421,25 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, 
   - Treffer gehen aufs Leben des Tiers; das Leben des Menschen bleibt unberührt.
 - **Zurück:** mit „1“ (`draw_magic`, `hero_transform_back()`), wenn das Leben des Tiers aufgebraucht ist (statt bewusstlos), im Wasser und beim Weltwechsel.
 - **Lua:** `hero_shape()`; Ereignis `hero_transformed(species)` (leer: wieder Mensch).
-- **Offen:** Die Kamera bleibt auf Menschenhöhe. Ob NPCs den verwandelten Helden wie ein Tier behandeln, folgt mit Teil D.
+- Die Kamera sinkt auf die Höhe des Tiers (Teil D).
 
-**Weiter:** D KI und Reaktionen (NPCs zaubern, Brennen, Furcht, Reaktion auf den verwandelten Helden), E DoD-Szenario.
+**Teil D – KI und Reaktionen (umgesetzt, ohne Brennen):**
+- **Kamera in Tiergestalt:** Blickhöhe mal Kapselhöhe / 1,8 m, Abstand mal mindestens 0,6. `creatures.toml` `[<art>] camera_height` kann die Blickhöhe festlegen.
+- **Reaktion auf den verwandelten Helden** (`assess_fighter` mit `"animal"`, `observe_player`):
+  - Menschen: Wachen, wer Nahkampf gelernt hat, und ab Stufe 5 greifen an; die anderen fliehen.
+  - Tiere: die eigene Art lässt ihn in Ruhe; wer ihn als Räuber kennt (`predators`), flieht; wer ihn als Beute kennt (`prey`), greift an.
+  - Niemand spricht ihn an.
+- **Furcht (Z6):** Zielzauber mit `effect = "fear"`: Der Getroffene flieht `duration` (Vorgabe 10) Sekunden vor dem Zaubernden (Zustand `zs_fear`, Ereignis `npc_feared`). Einen Furcht-Spruch im Startsatz gibt es noch nicht (Frage an den Projektinhaber).
+- **NPCs zaubern:**
+  - `Npc`-Feld `spells` (Liste von Sprüchen) mit dem Mana und Kreis (Talent `magic_circle`) des NPC.
+  - `npc_cast_spell(npc, spell, ziel?)` spielt den Wurf-Clip und lässt den Spruch bei `cast` wirken: Geschoss vom NPC aus, Heilung auf sich, Schlaf bzw. Furcht auf NPCs (nicht auf den Helden), Fläche.
+  - Ein Treffer bricht den Spruch ab; das Mana ist dann weg.
+  - Die Kampf-KI heilt unter 30 % Leben (`CombatAi.heal_below`) und wirkt Angriffssprüche, solange das Ziel weiter als 3 m (`cast_distance`) entfernt ist und das Mana reicht; danach Nahkampf.
+  - Lua: `npc_can_cast`, `npc_casting`.
+  - Wer im Spiel zaubert, entscheidet der Projektinhaber; bisher nur ein Test-NPC.
+- **Offen** (Fragen an den Projektinhaber): Brennen durch Feuer, Furcht-Spruch im Startsatz, zaubernde NPCs im Lager.
+
+**Weiter:** Brennen nach Entscheidung, E DoD-Szenario.
 
 ## Wirtschaft
 Handel: Händler-Inventar, Preisfaktor Verkauf (z. B. 0,5), Währung als Item (`ItMi_Ore`).
