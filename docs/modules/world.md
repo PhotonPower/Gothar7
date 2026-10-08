@@ -149,6 +149,16 @@ Texte kommen aus Inhalt/Definitionen (lokalisiert, M14). Konvention der Engine: 
 | `item` (M8 Teil B, umgesetzt) | `item`: `instance` (Pflicht, Name einer `Item`-Instanz der Skripte), `count` (1…1 000 000, Vorgabe 1, wird bei 1 nicht geschrieben), `owner` (optional, Npc-Instanz oder Gilde; Aufheben ist dann Diebstahl, M8 D) | Gegenstand, der in der Welt liegt. Kein `mesh` in der Datei: Die Engine zeichnet das `mesh` des Items bzw. einen Platzhalter seiner Kategorie, ohne Kollision (wie Gothic), und nimmt ihn in den Fokus. Aufgehoben, verschwindet der Vob; zur Laufzeit gelegte Items (`insert`, `drop_item`) haben Laufzeit-IDs und werden nicht gespeichert (Spielstand mit M14). |
 | `water` (M5 Teil E, umgesetzt) | `water`: `halfExtents` [x,y,z] > 0, `kind` (**reserviert**, z. B. Fluss/Sumpf) | Wasserkörper als Box um `pos`, nur um Y gedreht; **Oberfläche = Oberkante** (pos.y + hy). Schwimmen ab Wassertiefe > Hüfthöhe (0,9 m), Tauchen mit Luftvorrat. Boxen dürfen sich überlappen (Flussabschnitte, Stufen an den Überlappungen). Darstellung der Fläche mit M17, bis dahin Debug-Draw. Ein Gefälle-Feld ist für M17 vorgemerkt. Mit welt abgestimmt. Fehler: fehlende oder nicht positive `halfExtents`, Drehung nicht nur um Y, Skalierung ≠ 1. Abfrage: `world::WaterBodies` (`Water.hpp`): `surfaceAt(punkt)` = höchste Oberfläche der Boxen, deren Grundfläche den Punkt enthält und die von unter ihm bis höchstens 0,5 m unter ihn reichen (eine Brücke hoch über dem Fluss ist trocken). |
 
+**Oberfläche (`components.surface`, M13 E, Vertrag mit welt 2026-10-08):** `mesh`- und `mob`-Vobs haben optional
+`"components": {"surface": {"footstep": "<material>"}}`. Gemeint ist das Fußschritt-Material dessen, worauf man in
+diesem Modell läuft (`stone`, `wood`, `grass`, `dirt`, `gravel`, `water`; `data/footsteps.toml`).
+- Ohne das Feld gilt das erste passende Pfad-Muster aus `footsteps.toml`, sonst die Vorgabe für Modelle (`stone`)
+  bzw. Mobs (`wood`).
+- welt setzt es an den Raum-Vobs `BLD_<id>_RAUM_<RAUM>` (Dielen `wood`, Stein im EG von Schmiede und Gasthaus).
+- Geschrieben wird es nur, wenn gesetzt, nach den übrigen Komponenten des Vobs; bestehende Welten bleiben bytegleich.
+- Fehler: `surface` ohne `footstep` bzw. mit leerem `footstep`.
+- In der Szene ist es `world::SurfaceRef`.
+
 **Kategorie (`category`, M4 Sichtbarkeit):** `mesh`-Vobs haben optional `"category": "deco" | "gameplay"`, Vorgabe
 `deco` – geschrieben wird es nur bei `gameplay` (bestehende Welten bleiben bytegleich). `deco` darf ausgeblendet werden,
 wenn es auf dem Bildschirm klein wird (`size_cull`), `gameplay` nie wegen der Größe (Wegweiser, Questobjekte) – für

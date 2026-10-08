@@ -53,6 +53,10 @@ struct WorldFileVob
     MobRef mob;                               ///< Mob vobs only
     WaterVolume water;                        ///< Water vobs only
     ItemRef item;                             ///< Item vobs only
+    /// `components.surface.footstep` (M13 E, contract with welt): the footstep material of what one walks on
+    /// in this mesh or mob ("wood", "stone" ...); empty: from the engine's path patterns
+    /// (data/footsteps.toml).
+    std::string footstep;
 };
 
 /// A room's box (zone type "indoor", world.md "Zonen"): turned by `yaw` degrees about +Y like a vob; local +X

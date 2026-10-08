@@ -333,6 +333,12 @@ Bis zu welchem Abstand (Mitte zu Mitte, m) die Schläge des Kämpfers treffen (`
 
 ## Klang
 
+### `footstep_material(x: number, y: number, z: number) -> string`
+Das Fußschritt-Material an einem Punkt (M13: water, Modell darunter, Gelände; data/footsteps.toml).
+
+### `last_footstep() -> string`
+Das Material des zuletzt gespielten Schritts (Held oder NPC); leer vor dem ersten.
+
 ### `sound(name: string, x?: number, y?: number, z?: number) -> integer | nil`
 Spielt einen Klang aus data/sounds.toml (M13), mit Ort als 3D-Klang; gibt seine Nummer zurück, nil wenn es ihn nicht gibt bzw. kein Ton läuft.
 

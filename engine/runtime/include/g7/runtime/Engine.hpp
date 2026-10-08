@@ -891,6 +891,29 @@ private:
     [[nodiscard]] bool night() const noexcept; ///< 20:00 - 06:00 (ambience, music)
     void updateAmbience(f32 seconds);
     void updateOcclusion(f32 seconds);
+    // Footsteps (M13 part E, EngineFootsteps.cpp).
+    struct FootstepRules
+    {
+        std::string terrainDefault = "dirt";
+        std::string model = "stone";
+        std::string mob = "wood";
+        f32 waterDepth = 0.05f;
+        f32 slowVolume = 0.45f;
+        f32 walkVolume = 0.8f;
+        f32 runVolume = 1.0f;
+        std::map<std::string, std::string, std::less<>> layers;  ///< splat layer -> material
+        std::vector<std::pair<std::string, std::string>> models; ///< path pattern -> material, in order
+    };
+    void loadFootsteps();
+    void loadFootstepTerrain();
+    [[nodiscard]] std::string terrainLayerAt(f32 x, f32 z) const;
+    [[nodiscard]] std::string footstepMaterial(const Vec3& feet) const;
+    void footstep(const Vec3& feet, f32 speed);
+    [[nodiscard]] bool nearListener(const Vec3& point) const;
+    void bindFootstepFunctions();
+    std::optional<FootstepRules> m_footsteps;
+    std::vector<asset::ImageData> m_splatImages; // the terrain's splat weights on the CPU
+    std::string m_lastFootstep;
     audio::AmbientDefs m_ambientDefs; // data/ambient.toml (M13 part B)
     struct Ambience
     {

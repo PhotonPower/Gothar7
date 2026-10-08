@@ -47,6 +47,11 @@ struct TextureData
 [[nodiscard]] Result<TextureData> decodeKtx2(std::span<const u8> bytes,
                                              std::string_view debugName = "<memory>");
 
+/// Level 0 of a KTX2 file as plain RGBA8 on the CPU (data looked up by game code: the terrain's splat weights
+/// for footsteps, M13 E). Same support as decodeKtx2.
+[[nodiscard]] Result<ImageData> decodeKtx2Rgba(std::span<const u8> bytes,
+                                               std::string_view debugName = "<memory>");
+
 /// True if decodeKtx2 is available in this build.
 [[nodiscard]] bool hasKtx2Support() noexcept;
 } // namespace g7::asset

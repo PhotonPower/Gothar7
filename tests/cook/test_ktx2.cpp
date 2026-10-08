@@ -205,6 +205,21 @@ TEST_CASE("KTX2 colour texture: BC7 sRGB with full mip chain and the right colou
     CHECK(rgba[3] == 255);
 }
 
+TEST_CASE("KTX2 data texture read back as RGBA8 on the CPU (footsteps: splat weights, M13 E)")
+{
+    auto ktx = cook::encodeKtx2(solid(32, 16, 255, 0, 40, 0), cook::TextureUsage::Data);
+    REQUIRE(ktx);
+    auto image = asset::decodeKtx2Rgba(ktx.value(), "splat0.ktx2");
+    REQUIRE_MESSAGE(image, (image ? "" : image.error().message));
+    CHECK(image.value().width == 32);
+    CHECK(image.value().height == 16);
+    REQUIRE(image.value().rgba8.size() == 32u * 16u * 4u);
+    CHECK(int(image.value().rgba8[0]) > 240); // the strongest layer stays the strongest
+    CHECK(int(image.value().rgba8[1]) < 15);
+    CHECK(std::abs(int(image.value().rgba8[2]) - 40) <= 6);
+    CHECK_FALSE(asset::decodeKtx2Rgba(std::vector<u8>{1, 2, 3}, "junk").ok());
+}
+
 TEST_CASE("KTX2 normal map: two channels, linear, BC5 with X in R and Y in G")
 {
     // X = 200, Y = 60 (Z is dropped): BC5 must carry X in the first (R) and Y in the second (G) half.

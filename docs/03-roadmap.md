@@ -261,7 +261,8 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 - [ ] Sprachausgabe mit Lippensync-Daten, Untertitel-Synchronisation
   - Quelle: gewählte Takes `assets/source/voice/<sprache>/<key>.wav` → Cooker `voice/<sprache>/<key>.ogg`; fehlt die Datei, nur Untertitel mit Lesedauer aus der Textlänge
 - [ ] **Dynamisches Musiksystem**: Musik-Zonen, Zustände (Standard/Bedrohung/Kampf) × Tag/Nacht, musikalische Übergänge auf Taktgrenzen, Stingers
-- [ ] Fußschritt-Sounds nach Material
+- [x] Fußschritt-Sounds nach Material
+  - Teil E: `data/footsteps.toml` (Gelände-Schichten, Modell-Pfadmuster, Vorgaben), `components.surface.footstep` an Vobs (world.md, mit welt), Wasser; Held und Menschen-NPCs bis 25 m, leiser beim Schleichen; Platzhalter `footstep_<material>_1..4`
 
 **DoD:** Musik wechselt hörbar sauber beim Betreten des Lagers, bei Gefahr und im Kampf.
 

@@ -304,3 +304,30 @@ TEST_CASE("Vob types: an item vob spawns as ItemRef without a mesh and is captur
     CHECK(captured.vobs[0].type == VobType::Item);
     CHECK(captured.vobs[0].item.count == 2);
 }
+
+TEST_CASE("Vob surface: components.surface.footstep on mesh and mob vobs, read, spawned, captured, written")
+{
+    const WorldFile file = parse(R"({"version": 1, "vobs": [
+      {"id": 1, "type": "mesh", "name": "BLD_1_RAUM_INNEN", "mesh": "room.glb", "components": {"surface": {"footstep": "wood"}}},
+      {"id": 2, "type": "mesh", "name": "HOUSE", "mesh": "house.glb"},
+      {"id": 3, "type": "mob", "name": "TABLE", "mesh": "table.glb",
+       "components": {"mob": {"definition": "TABLE"}, "surface": {"footstep": "stone"}}}]})");
+    CHECK(file.vobs[0].footstep == "wood");
+    CHECK(file.vobs[1].footstep.empty());
+    CHECK(file.vobs[2].footstep == "stone");
+    Scene scene;
+    REQUIRE(spawnWorld(scene, file).ok());
+    REQUIRE(scene.get<SurfaceRef>(scene.findById(VobId{1})) != nullptr);
+    CHECK(scene.get<SurfaceRef>(scene.findById(VobId{1}))->footstep == "wood");
+    CHECK(scene.get<SurfaceRef>(scene.findById(VobId{2})) == nullptr);
+    // Written only where set (worlds without it stay byte for byte), after the other components.
+    const std::string written = writeWorldFile(captureWorld(scene, "w"));
+    CHECK(written.find(R"("mesh":"room.glb","components":{"surface":{"footstep":"wood"}}})") !=
+          std::string::npos);
+    CHECK(written.find(R"("mesh":"house.glb"})") != std::string::npos);
+    CHECK(written.find(R"({"mob":{"definition":"TABLE"},"surface":{"footstep":"stone"}})") !=
+          std::string::npos);
+    CHECK(writeWorldFile(parse(written)) == written);
+    CHECK(errorOf(R"({"id": 1, "type": "mesh", "mesh": "a.glb", "components": {"surface": {}}})") ==
+          "w.g7world: vobs[0]: 'components.surface' needs 'footstep' (a footstep material, e.g. \"wood\")");
+}

@@ -304,6 +304,11 @@ void Engine::fixedUpdateCreatures(f32 seconds)
                      {
                          (void)playSound(event.substr(6), c.position + Vec3(0.0f, 0.8f, 0.0f)); // M13
                      }
+                     if ((event == "footstep_l" || event == "footstep_r") && c.body &&
+                         nearListener(c.position))
+                     {
+                         footstep(c.position, c.speed); // M13 E: people (animals' steps follow)
+                     }
                      if (event == "cast" && c.cast && !c.cast->acted)
                      {
                          applyNpcSpell(c); // the spell leaves its hand (M12 part D)
