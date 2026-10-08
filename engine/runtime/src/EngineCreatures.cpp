@@ -322,24 +322,21 @@ void Engine::fixedUpdateCreatures(f32 seconds)
         c.action = 0; // a trigger: one step
 
         // Root motion: turn first, then the movement in the turned frame (model -> world). NPCs with a
-        // capsule move by it instead.
-        if (c.body)
+        // capsule move by it instead (their head and face below still move: M13 D found them still).
+        if (!c.body)
         {
-            f.posePrevious = std::move(f.poseNow);
-            f.poseNow = a.pose();
-            continue;
-        }
-        c.yaw = std::remainder(c.yaw + a.rootMotionYaw(), 2.0f * glm::pi<f32>());
-        const Vec3 ahead = Vec3(creatureMatrix(Vec3(0.0f), c.yaw) * Vec4(a.rootMotion(), 0.0f));
-        c.position += Vec3(ahead.x, 0.0f, ahead.z);
-        if (m_physics.valid())
-        {
-            // On the ground below (terrain and solid models); keeps its height over holes.
-            const Vec3 from = c.position + Vec3(0.0f, 1.5f, 0.0f);
-            if (const auto hit = m_physics.raycast(from, Vec3(0.0f, -1.0f, 0.0f), 30.0f,
-                                                   physics::layerBit(physics::Layer::World)))
+            c.yaw = std::remainder(c.yaw + a.rootMotionYaw(), 2.0f * glm::pi<f32>());
+            const Vec3 ahead = Vec3(creatureMatrix(Vec3(0.0f), c.yaw) * Vec4(a.rootMotion(), 0.0f));
+            c.position += Vec3(ahead.x, 0.0f, ahead.z);
+            if (m_physics.valid())
             {
-                c.position.y = hit->position.y;
+                // On the ground below (terrain and solid models); keeps its height over holes.
+                const Vec3 from = c.position + Vec3(0.0f, 1.5f, 0.0f);
+                if (const auto hit = m_physics.raycast(from, Vec3(0.0f, -1.0f, 0.0f), 30.0f,
+                                                       physics::layerBit(physics::Layer::World)))
+                {
+                    c.position.y = hit->position.y;
+                }
             }
         }
         f.posePrevious = std::move(f.poseNow);

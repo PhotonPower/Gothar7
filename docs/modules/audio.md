@@ -63,6 +63,32 @@
   - Neue Einzelklänge: `crow`, `dog_bark`, `wood_creak`, `mug_clink`, `frog`.
 - **Spruch-Klänge:** `Spell`-Feld `sounds = { cast, impact }`; das Wirken klingt an der Hand, der Einschlag am Treffpunkt.
 
+## Sprache (Teil D, umgesetzt) – `runtime/EngineVoice.cpp`
+Entscheidungen Projektinhaber 2026-10-08: WAV vorerst (OGG-Umwandlung im Cooker erst mit echten Takes und eigener
+ADR), Ducking −6 dB mit 0,3 s Blende, Dialogstimme 3D am Sprecher, keine Platzhalter-Stimmen im Repo.
+- **Take:** `voice/<sprache>/<key>.wav` (oder `.ogg`), `[voice] language` (Vorgabe `de`). Der Schlüssel kommt wie bisher
+  aus `voiceKey` (Dialogzeilen `dia_…`, Zurufe `svm_…`).
+- **Dialog:** Wird eine Zeile gezeigt und es gibt ihren Take, spricht ihn der Sprecher.
+  - 3D am Kopf (1,6 m), voll bis 4 m, still ab 40 m, Bus `voice`; die Stimme folgt dem Sprecher.
+  - Die Zeile dauert dann Take + 0,3 s, die Untertitel folgen der Stimme. Ohne Take bleibt die Lesedauer aus der
+    Textlänge.
+  - Überspringen und das Gesprächsende brechen die Stimme ab. Je Sprecher spricht eine Stimme.
+- **Zurufe** (`npc_said`) sprechen ebenso, wenn ihr Take existiert; aus der Ferne leiser (3D).
+- **Lippensync aus der Lautstärke** (Entscheidung 7):
+  - `AudioSystem::clipEnvelope` liefert RMS je 1/30 s, auf das lauteste Fenster normiert; `AudioSystem::position(id)`
+    die Abspielposition.
+  - Solange die Stimme läuft, setzt die Engine `FaceAnimator::setMouthOpen(hüllkurve[position])`.
+  - Der Mund öffnet `vis_aa` bis `talkWeight`, über 40 ms geglättet; `vis_oh` rundet ihn leicht mit 2,5 Hz. Danach
+    gibt `nullopt` den Mund an die grobe Sprechbewegung zurück.
+- **Ducking:** Solange jemand spricht, steht der Musik-Bus auf `[audio] duck` (0,5 = −6 dB) mal `music`, über 0,3 s
+  geblendet.
+- **Lua:** `voice_playing(npc)`, Ereignis `voice_line(npc, key, seconds)`.
+- **Nebenbei behoben:** NPCs mit Kapsel (alle Menschen) übersprangen Blick und Gesicht; jetzt blinzeln sie, sprechen
+  und schauen den Helden im Gespräch an.
+- **Tests:** `tests/runtime/test_engine_voice.cpp` mit einem synthetischen Take aus einem temporären Mount:
+  Mund offen im Laut und zu in der Pause, Dauer, Ducking, Überspringen. Dazu audio (Hüllkurve, Position) und
+  animation (`setMouthOpen`).
+
 ## Dynamisches Musiksystem (Teil C, umgesetzt; Gothic: DirectMusic)
 Entscheidungen Projektinhaber 4 und 5 sowie zu (a)–(c) vom 2026-10-08.
 - **Daten:** `data/music.toml` (`audio::parseMusicDefs`).

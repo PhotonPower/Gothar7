@@ -155,6 +155,7 @@ void Engine::updateAudio(f64 realSeconds)
     updateAmbience(static_cast<f32>(realSeconds));
     updateOcclusion(static_cast<f32>(realSeconds));
     updateMusic(static_cast<f32>(realSeconds));
+    updateVoices(static_cast<f32>(realSeconds)); // M13 D: lip sync, ducking
     m_audio->update(static_cast<f32>(realSeconds));
 }
 

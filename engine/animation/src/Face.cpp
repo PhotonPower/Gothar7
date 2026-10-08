@@ -136,6 +136,18 @@ void FaceAnimator::update(f32 seconds)
     {
         m_weights[i] = 0.0f;
     }
+    // A voice plays: its loudness opens the mouth (smoothed over ~40 ms), vis_oh rounding it now and then.
+    const f32 follow = 1.0f - std::exp(-seconds / 0.04f);
+    m_mouth += (m_mouthTarget.value_or(0.0f) - m_mouth) * follow;
+    if (m_mouthTarget)
+    {
+        m_mouthPhase += seconds * 2.0f * 3.14159265f * 2.5f;
+        const f32 open = std::clamp(m_mouth, 0.0f, 1.0f) * s.talkWeight;
+        m_weights[static_cast<usize>(FaceMorph::VisAa)] = open;
+        m_weights[static_cast<usize>(FaceMorph::VisOh)] =
+            open * 0.3f * (0.5f + 0.5f * std::sin(m_mouthPhase));
+        return;
+    }
     if (m_visemeFrom >= 0)
     {
         m_weights[static_cast<usize>(m_visemeFrom)] += m_visemeWeightFrom * (1.0f - t);

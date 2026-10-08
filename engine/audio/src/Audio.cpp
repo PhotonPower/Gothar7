@@ -38,6 +38,7 @@ struct Voice
     std::unique_ptr<ma_lpf_node> lpf; ///< 3D sounds: between the sound and its bus (occlusion)
     f32 muffle = 0.0f;
     u64 startFrame = 0;     ///< on the mixer's clock: before it, a delayed sound waits
+    u64 playedFrom = 0;     ///< the mixer's clock when play() was called (sounds without a delay)
     bool cancelled = false; ///< stopped before its start
 };
 } // namespace
@@ -313,6 +314,44 @@ bool AudioSystem::hasClip(std::string_view name) const noexcept
     return m_impl->clips.contains(std::string(name));
 }
 
+std::vector<f32> AudioSystem::clipEnvelope(std::string_view name, f32 hz) const
+{
+    const auto it = m_impl->clips.find(std::string(name));
+    if (it == m_impl->clips.end() || hz <= 0.0f)
+    {
+        return {};
+    }
+    const Clip& clip = *it->second;
+    const auto window = std::max<u64>(1, static_cast<u64>(std::llround(m_impl->config.sampleRate / hz)));
+    std::vector<f32> out;
+    out.reserve(static_cast<usize>(clip.frames / window + 1));
+    f32 loudest = 0.0f;
+    for (u64 start = 0; start < clip.frames; start += window)
+    {
+        const u64 end = std::min(clip.frames, start + window);
+        f64 sum = 0.0;
+        for (u64 f = start; f < end; ++f)
+        {
+            for (u32 c = 0; c < clip.channels; ++c)
+            {
+                const f64 s = clip.samples[static_cast<usize>(f * clip.channels + c)];
+                sum += s * s;
+            }
+        }
+        const auto rms = static_cast<f32>(std::sqrt(sum / static_cast<f64>((end - start) * clip.channels)));
+        out.push_back(rms);
+        loudest = std::max(loudest, rms);
+    }
+    if (loudest > 0.0f)
+    {
+        for (f32& v : out)
+        {
+            v /= loudest;
+        }
+    }
+    return out;
+}
+
 u64 AudioSystem::clipFrames(std::string_view name) const noexcept
 {
     const auto it = m_impl->clips.find(std::string(name));
@@ -396,6 +435,7 @@ Result<SoundId> AudioSystem::play(const SoundDef& def, std::optional<Vec3> posit
         ma_sound_set_start_time_in_pcm_frames(v.sound.get(), at);
         v.startFrame = at;
     }
+    v.playedFrom = ma_engine_get_time_in_pcm_frames(&m_impl->engine);
     ma_sound_start(v.sound.get());
     const SoundId id = m_impl->nextId++;
     m_impl->voices.emplace(id, std::move(v));
@@ -454,6 +494,18 @@ void AudioSystem::stop(SoundId id, f32 fadeSeconds)
     {
         ma_sound_stop(v->sound.get());
     }
+}
+
+std::optional<f32> AudioSystem::position(SoundId id) const noexcept
+{
+    const auto it = m_impl->voices.find(id);
+    if (it == m_impl->voices.end() || !m_impl->alive(it->second))
+    {
+        return std::nullopt;
+    }
+    const u64 now = ma_engine_get_time_in_pcm_frames(&m_impl->engine);
+    const u64 start = it->second.startFrame != 0 ? it->second.startFrame : it->second.playedFrom;
+    return now <= start ? 0.0f : static_cast<f32>(now - start) / static_cast<f32>(m_impl->config.sampleRate);
 }
 
 bool AudioSystem::playing(SoundId id) const noexcept

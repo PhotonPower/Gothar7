@@ -90,6 +90,39 @@ loop = true
     CHECK(busName(Bus::Music) == "music");
 }
 
+TEST_CASE("audio: a clip's loudness envelope and a sound's position (lip sync, M13 D)")
+{
+    AudioSystem audio = mixer();
+    // 0.5 s loud, 0.5 s silent, 0.5 s half as loud.
+    auto wav = sineWav(1.5f);
+    const usize header = 44;
+    const usize frames = (wav.size() - header) / 2;
+    for (usize i = 0; i < frames; ++i)
+    {
+        i16 s = 0;
+        std::memcpy(&s, &wav[header + i * 2], 2);
+        s = i < frames / 3 ? s : i < 2 * frames / 3 ? i16(0) : static_cast<i16>(s / 2);
+        std::memcpy(&wav[header + i * 2], &s, 2);
+    }
+    REQUIRE(audio.addClip("voice/de/x.wav", wav).ok());
+    const auto env = audio.clipEnvelope("voice/de/x.wav", 10.0f);
+    REQUIRE(env.size() == 15);
+    CHECK(env[2] == doctest::Approx(1.0f).epsilon(0.05));
+    CHECK(env[7] < 0.01f);
+    CHECK(env[12] == doctest::Approx(0.5f).epsilon(0.05));
+    CHECK(audio.clipEnvelope("voice/de/none.wav").empty());
+
+    SoundDef def;
+    def.files = {"voice/de/x.wav"};
+    auto id = audio.play(def);
+    REQUIRE(id);
+    CHECK(audio.position(id.value()) == doctest::Approx(0.0f));
+    audio.update(0.25f);
+    CHECK(audio.position(id.value()).value_or(-1.0f) == doctest::Approx(0.25f).epsilon(0.01));
+    audio.update(1.5f);
+    CHECK_FALSE(audio.position(id.value()).has_value()); // ended
+}
+
 TEST_CASE("audio: a clip plays to its end; buses and the master turn it down; a broken file is refused")
 {
     AudioSystem audio = mixer();
