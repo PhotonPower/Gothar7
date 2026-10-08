@@ -438,7 +438,7 @@ void Engine::dialogPerception(Creature& c, f32 distance, bool sees)
     // Important Infos: the NPC speaks to the player when he sees him close; with approach = true it walks up
     // to him first (owner decision E1).
     if (m_dialog || !sees || c.talking || distance > kApproachDistance || !m_player.valid() ||
-        !heroStanding())
+        !heroStanding() || m_transform) // nobody talks to a beast (M12, Z7)
     {
         return;
     }

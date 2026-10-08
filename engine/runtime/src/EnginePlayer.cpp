@@ -472,8 +472,16 @@ void Engine::updatePlayerCamera(f64 realSeconds)
     combat.minDistance = std::min(combat.minDistance, combat.distance);
     combat.targetHeight = std::min(combat.targetHeight, around.targetHeight);
     combat.collisionRadius = around.collisionRadius;
-    m_playerCamera.update(static_cast<f32>(realSeconds), feet, m_movement.yaw(), m_playerPitchPixels,
-                          gameplay::blendCamera(around, combat, m_combatBlend), obstruction);
+    gameplay::CameraSettings view = gameplay::blendCamera(around, combat, m_combatBlend);
+    if (m_transform)
+    {
+        // In an animal's shape (Z7): lower, and a little nearer.
+        view.targetHeight *= m_transform->cameraScale;
+        view.distance *= std::max(0.6f, m_transform->cameraScale);
+        view.minDistance = std::min(view.minDistance, view.distance);
+    }
+    m_playerCamera.update(static_cast<f32>(realSeconds), feet, m_movement.yaw(), m_playerPitchPixels, view,
+                          obstruction);
     m_playerPitchPixels = 0.0f;
     Vec3 eye = m_playerCamera.position();
     // Above the water while swimming: no under-water view until M17.

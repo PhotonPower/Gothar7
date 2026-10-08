@@ -142,6 +142,21 @@ on("observe_player", function(npc, distance)
     if not c or reacting(npc) or state(npc) == "zs_mm_sleep" or (Summoned and Summoned[npc]) then
         return
     end
+    -- Der Held in Tiergestalt (M12, Z7): die eigene Art lässt ihn in Ruhe; Beute flieht, Räuber jagen ihn.
+    local shape = hero_shape()
+    if shape then
+        if shape == instance("Npc", npc).species then
+            return
+        elseif c.predators and c.predators[shape] then
+            if distance <= (c.flee_distance or 12) then
+                npc_start_state(npc, "zs_mm_flee")
+            end
+            return
+        elseif c.prey and c.prey[shape] then
+            npc_start_state(npc, "zs_mm_attack")
+            return
+        end
+    end
     if c.threaten_distance and distance <= c.threaten_distance then
         npc_start_state(npc, "zs_mm_threaten")
         with_pack(npc, "zs_mm_threaten")
