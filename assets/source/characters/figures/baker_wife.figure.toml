@@ -1,0 +1,25 @@
+# baker_wife: Leonberg baker's wife: light linen, floury bib apron, coif (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_f_average/body.glb"
+head = "parts/head_f_mature/head.glb"
+hair = "parts/hair_f_mature/hair_braid.glb"
+cloth = [
+    "parts/garb_f_average/shirt.glb",
+    "parts/garb_f_average/skirt_tiered.glb",
+    "parts/garb_f_average/apron_bib_flour.glb",
+    "parts/headgear_f_average/coif.glb",
+    "parts/cloth_f_average/toigo_flats.glb",
+]
+
+[palette]
+hair = "#5a3a28"
+cloth_shirt = "#efe6d2"
+cloth_skirt_tiered = "#c4b494"
+cloth_apron_bib_flour = "#ebe2cc"
+cloth_coif = "#e6dcc4"
+cloth_toigo_flats = "#3e3024"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "woman"

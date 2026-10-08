@@ -805,6 +805,10 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
                  {
                      (void)playSound(event.substr(6), m_playerFeet + Vec3(0.0f, 1.0f, 0.0f)); // M13
                  }
+                 else if (event == "footstep_l" || event == "footstep_r")
+                 {
+                     footstep(m_playerFeet, std::abs(m_figure->animator.param("speed"))); // M13 E
+                 }
                  f.events.push_front(std::format(
                      "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));
                  if (f.events.size() > kShownEvents)

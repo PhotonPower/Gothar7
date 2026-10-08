@@ -1143,7 +1143,8 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
         }
         m_heightfield = std::move(heightfield).value();
         m_hasTerrain = true;
-        if (m_device) // without one (--no-render) the terrain only collides
+        loadFootstepTerrain(); // M13 E: the splat weights on the CPU
+        if (m_device)          // without one (--no-render) the terrain only collides
         {
             auto terrain = render::TerrainRenderer::create(*m_device, *m_shaders, m_heightfield.renderDesc(),
                                                            m_shadowMap.settings());

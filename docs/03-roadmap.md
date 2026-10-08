@@ -263,7 +263,8 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
   - Quelle: gewählte Takes `assets/source/voice/<sprache>/<key>.wav` → Cooker `voice/<sprache>/<key>.ogg`; fehlt die Datei, nur Untertitel mit Lesedauer aus der Textlänge
 - [x] **Dynamisches Musiksystem**: Musik-Zonen, Zustände (Standard/Bedrohung/Kampf) × Tag/Nacht, musikalische Übergänge auf Taktgrenzen, Stingers
   - Teil C: `data/music.toml`, `audio::MusicPlayer` (Sample-genau verkettet, Wechsel auf der nächsten Taktgrenze bzw. am Segmentende), Zustand aus echten Feinden mit 5 s Hysterese, außerhalb der Zonen Stille (Bedrohung und Kampf mit `common`), Stinger quest/level_up/death/chapter, Platzhalter `gothar-audio music`; DoD-Szenario F in `tests/runtime/test_engine_m13_music.cpp`
-- [ ] Fußschritt-Sounds nach Material
+- [x] Fußschritt-Sounds nach Material
+  - Teil E: `data/footsteps.toml` (Gelände-Schichten, Modell-Pfadmuster, Vorgaben), `components.surface.footstep` an Vobs (world.md, mit welt), Wasser; Held und Menschen-NPCs bis 25 m, leiser beim Schleichen; Platzhalter `footstep_<material>_1..4`
 
 **DoD:** Musik wechselt hörbar sauber beim Betreten des Lagers, bei Gefahr und im Kampf.
 

@@ -63,6 +63,30 @@
   - Neue Einzelklänge: `crow`, `dog_bark`, `wood_creak`, `mug_clink`, `frog`.
 - **Spruch-Klänge:** `Spell`-Feld `sounds = { cast, impact }`; das Wirken klingt an der Hand, der Einschlag am Treffpunkt.
 
+## Fußschritte (Teil E, umgesetzt) – `runtime/EngineFootsteps.cpp`, `data/footsteps.toml`
+Entscheidung Projektinhaber 6; die Zuordnungen sind mit welt abgestimmt (2026-10-08).
+- **Wann:** bei jedem Event `footstep_l`/`footstep_r` der Clips. Das gilt für den Helden und für Menschen-NPCs bis
+  25 m von der Kamera; Tierschritte folgen.
+- **Material** unter dem Fuß, in dieser Reihenfolge:
+  1. Wasser, wenn die Oberfläche (`WaterBodies::surfaceAt`) mehr als `water_depth` (5 cm) über dem Fuß liegt.
+  2. Ein Modell darunter (Strahl von 0,5 m über dem Fuß 1 m nach unten; `userData` = Vob-ID):
+     `components.surface.footstep` (world.md), sonst das erste passende Pfadmuster `[[models]]` (`*` = beliebige
+     Zeichen), sonst `mob` (wood) bzw. `model` (stone).
+  3. Das Gelände: die stärkste Splat-Schicht am Fußpunkt, nach `[layers]`; sonst `default` (dirt).
+- **Gelände-Daten:** Die Splat-Karten liegen beim Laden der Welt auch auf der CPU, als PNG oder gekochtes KTX2
+  (`asset::decodeKtx2Rgba`).
+- **Zuordnung:**
+  - Testlager: grass→grass, earth→dirt, rock→stone, path→gravel.
+  - Leonberg: Wiese→grass, Kopfstein→stone, Kies→gravel, Matsch/Waldboden/Acker→dirt, Fels→stone.
+  - Muster: streetworks→stone, Räume `*_room_*`→wood (welt setzt Stein am Vob), Holzhütten, Stände, Stämme und Stümpfe
+    im Testlager→wood.
+- **Klang:** `footstep_<material>` aus `sounds.toml`, je 4 Varianten mit Lautstärke- und Tonhöhenstreuung, 3D bis 20 m.
+  - Lautstärke nach Tempo: `slow` 0,45 bis 1,2 m/s (Schleichen), `walk` 0,8, `run` 1,0 ab 3 m/s.
+  - Platzhalter aus `gothar-audio placeholders` (`footstep_<material>_<n>`).
+- **Lua:** `footstep_material(x, y, z)`, `last_footstep()`.
+- **Tests:** `tests/runtime/test_engine_footsteps.cpp` (Teich, Truhe, Stumpf-Muster, Vob-Oberfläche, Gelände, der
+  laufende Held), `tests/world/test_vob_types.cpp` (Vertrag), `tests/cook/test_ktx2.cpp` (`decodeKtx2Rgba`).
+
 ## Sprache (Teil D, umgesetzt) – `runtime/EngineVoice.cpp`
 Entscheidungen Projektinhaber 2026-10-08: WAV vorerst (OGG-Umwandlung im Cooker erst mit echten Takes und eigener
 ADR), Ducking −6 dB mit 0,3 s Blende, Dialogstimme 3D am Sprecher, keine Platzhalter-Stimmen im Repo.

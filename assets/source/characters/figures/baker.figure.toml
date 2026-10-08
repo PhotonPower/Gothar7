@@ -1,0 +1,22 @@
+# baker: Leonberg baker: light linen, floury bib apron, linen cap (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_mid/head.glb"
+hair = "parts/hair_m_mid/hair_short.glb"
+cloth = [
+    "parts/garb_m_heavy/shirt.glb",
+    "parts/garb_m_heavy/wide_trousers.glb",
+    "parts/garb_m_heavy/apron_bib_flour.glb",
+    "parts/headgear_m_heavy/cap_cloth.glb",
+    "parts/cloth_m_heavy/toigo_mj_cloth_shoes.glb",
+]
+
+[palette]
+hair = "#3a2a1e"
+cloth_shirt = "#efe6d2"
+cloth_wide_trousers = "#d6c8a8"
+cloth_apron_bib_flour = "#ebe2cc"
+cloth_cap_cloth = "#e6dcc4"
+cloth_toigo_mj_cloth_shoes = "#6a5440"

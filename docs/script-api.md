@@ -342,6 +342,12 @@ Bis zu welchem Abstand (Mitte zu Mitte, m) die Schläge des Kämpfers treffen (`
 
 ## Klang
 
+### `footstep_material(x: number, y: number, z: number) -> string`
+Das Fußschritt-Material an einem Punkt (M13: water, Modell darunter, Gelände; data/footsteps.toml).
+
+### `last_footstep() -> string`
+Das Material des zuletzt gespielten Schritts (Held oder NPC); leer vor dem ersten.
+
 ### `music_force(theme?: string, state?: string)`
 Zum Testen: erzwingt Thema ("" = Stille) und Zustand (std, thr, fgt); ohne Argumente gilt wieder die Welt.
 

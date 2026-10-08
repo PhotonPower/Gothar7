@@ -88,6 +88,10 @@ Result<void> spawnWorld(Scene& scene, const WorldFile& world)
             scene.set<ItemRef>(e.value(), vob->item);
             break;
         }
+        if (!vob->footstep.empty())
+        {
+            scene.set<SurfaceRef>(e.value(), {vob->footstep}); // M13 E: the footstep material
+        }
     }
     if (world.nextVobId > scene.nextVobId())
     {
@@ -157,6 +161,11 @@ WorldFile captureWorld(const Scene& scene, std::string_view name)
             {
                 out.type = VobType::Water;
                 out.water = *water;
+            }
+            if (const SurfaceRef* surface = scene.get<SurfaceRef>(e);
+                surface != nullptr && (out.type == VobType::Mesh || out.type == VobType::Mob))
+            {
+                out.footstep = surface->footstep;
             }
             world.vobs.push_back(std::move(out));
         });
