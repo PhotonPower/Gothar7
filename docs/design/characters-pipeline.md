@@ -478,7 +478,9 @@ Rezepte und Manifeste; `figures/<name>.glb` entsteht beim Bauen und ist git-igno
   `asset.extras.gothar = {figure, inputs}` mit einem Hash über Manifest und Teile. Die CI (Job `chargen`) baut
   und validiert alle Figuren; engines CMake-Ziel `g7_figures` (optional, nicht in ALL) ruft denselben Befehl.
 - **Manifest** `figures/<name>.figure.toml` (Format v1): `[parts]` mit `body`, `head`, optional `hair`/`beard` und
-  `cloth = [...]` (Rollen `cloth_<stück>`), `[palette]` Materialname → `#rrggbb` (wird `baseColorFactor`). Die
+  `cloth = [...]` (Rollen `cloth_<stück>`), `[palette]` Materialname → `#rrggbb` (wird `baseColorFactor`),
+  optional `[anim] variant = "woman" | "military" | "old" | "relaxed"` (Gangart-Variante, mit engine
+  2026-10-08: engine spielt `none/X_<v>` aus `anims/human/gait.glb` statt `none/X`, wenn es den Clip gibt). Die
   LOD-Stufen bringen die Teile mit (kein `lods` mehr im Manifest).
 - **Teile** tragen ihre LOD-Stufen (`<rolle>_lod0..2`, Nahtränder fest; Haare und Kleidung frei reduziert) und in
   `asset.extras.gothar` (Format v1, `partdata.py`) die Daten für den Zusammenbau – damit kann engine später

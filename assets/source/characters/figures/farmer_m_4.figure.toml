@@ -15,3 +15,6 @@ cloth = [
 cloth_toigo_fisherman_sweater = "#7a6e5a"
 cloth_straw_hat = "#c8b070"
 cloth_culturalibre_male_boots = "#3a2c22"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "old"

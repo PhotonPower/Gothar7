@@ -16,3 +16,6 @@ hair = "#7a7672"
 cloth_joepal_crude_t-shirt_female = "#7e725c"
 cloth_toigo_long_full_skirt = "#46403a"
 cloth_toigo_flats = "#4a4034"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "old"

@@ -19,3 +19,6 @@ cloth_toigo_long_full_skirt = "#4e4636"
 cloth_straw_hat = "#d0b878"
 cloth_toigo_flats = "#4a3b2e"
 cloth_wolgade_female_top_01 = "#ddd3bc"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "old"
