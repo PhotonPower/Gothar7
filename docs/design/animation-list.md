@@ -300,6 +300,26 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `glemsmahr/s_eat`, `s_sleep` | Geduckt reißen und Brocken zum Maul führen / zusammengerollt schlafen | – | – | K | platzhalter-K |
 | `glemsmahr/t_threaten` | Drohen: halb aufgerichtet, Arme gespreizt, fauchen | – | sound:glemsmahr_hiss | K | platzhalter-K |
 
+### Bergleu (`bergleu`, Boss, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `bergleu/s_idle` | Schwer atmend, Mähne und Schwanz pendeln, umschauen | – | – | K | platzhalter-K |
+| `bergleu/s_walk` | Pirschgang (Kreuzgang) | ✓ 1,5 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `bergleu/s_run` | Sprunggalopp, Rücken beugt sich | ✓ 8,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `bergleu/s_stalk` | Anpirschen: tief geduckt, Kopf vor | ✓ 1,0 m/s | footstep_front/back_l/r | K | platzhalter-K (`gait` mit fester Haltung; mit engine 2026-10-08) |
+| `bergleu/t_turn_l/r`, `t_turn_back` | Drehen 90° bzw. schnelle 180°-Wende | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K |
+| `bergleu/t_attack_1` | Prankenhieb von rechts (Treffer an `socket_paw_r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `bergleu/t_attack_2` | Biss mit Schütteln | – | hit_start, hit_end | K | platzhalter-K |
+| `bergleu/t_tail_lash` | Schwanzschlag: Hüfte schwingt, Schwanz fegt nach hinten bzw. zur Seite (Treffer an `socket_tail`) | – | hit_start, hit_end | K | platzhalter-K (mit engine 2026-10-08) |
+| `bergleu/t_pounce` | Sprung auf den Helden, **am Ort** (engine fährt ~5 m) | – | leap_start, leap_land, hit_start, hit_end | K | platzhalter-K (mit engine 2026-10-08) |
+| `bergleu/t_roar` | Brüllen: Vorderleib hoch, Maul weit auf, Mähne gesträubt (Held taumelt, Begleiter fliehen) | – | roar, sound:bergleu_roar | K | platzhalter-K (mit engine 2026-10-08) |
+| `bergleu/t_rage` | Übergang in die Raserei: Kopf schütteln, scharren, brüllen; danach normale Clips mit Rate ~1,3 | – | rage, sound:bergleu_roar | K | platzhalter-K (mit engine 2026-10-08) |
+| `bergleu/t_hit`, `t_stagger` | Treffer / schwerer Treffer bzw. parierter Prankenhieb | – | – | K | platzhalter-K |
+| `bergleu/t_die` | Langer Tod: taumelt, sinkt auf den Bauch, Kopf zu Boden | – | – | K | platzhalter-K |
+| `bergleu/s_eat`, `s_sleep` | Liegend am Riss fressen / auf der Seite schlafen | – | – | K | platzhalter-K |
+| `bergleu/t_threaten` | Drohen: geduckt, fauchen, Ohren flach, Schwanz peitscht | – | – | K | platzhalter-K |
+
 ## Prio C – später
 
 Akrobatik-Varianten, Gangarten (Militär, Frauen, Entspannt) als Varianten-Sets, zusätzliche

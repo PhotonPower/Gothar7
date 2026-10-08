@@ -682,7 +682,7 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
   emissiv); Panzerplatten `plate` (abgeschrägte
   Quader mit dem Körpermaterial, starr am Knochen) und `plate_shell` (Platten in Reihen auf einem Ellipsoid, je
   Platte am nächsten Knochen aus `bones`; `tilt` hebt die Hinterkante – Dachziegel, jede Reihe liegt über der
-  nächsten).
+  nächsten); `tuft_shell` (dieselben Reihen als Haarsträhnen, die in den Körper verschmelzen, z. B. eine Mähne).
 - **Farbzonen** (`[zone.<name>]`): Farbe, Zweitfarbe, Fellstrich, Querstreifen, Flecken, hellerer Bauch,
   Hautfalten, Sandstein (`strata`: Schichtung, Korn, Meißelspuren), Relief-Stärke.
 - `[orientation]` überschreibt einzelne Paare von `[rig.orientation]` (Quaderbuckel: `up = ["root", "pelvis"]`, der
@@ -700,6 +700,7 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
 
 | Art | Stand |
 |---|---|
+| `bergleu` | Boss: Rig 41 Knochen (Katzen-Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Mähne `mane_back/l/r`, `tail_01..05`, zehengängige Beine mit Schulterblättern und Zehen; Sockets `socket_mouth`, `socket_paw_l/r`, `socket_tail`), Schulter 1,6 m, lod0 11096 / 5488 / 2714 Dreiecke (Boss-Budget bis 12 k), Mähne aus Strähnen (`tuft_shell`); 19 Clips (Mindest-Set + `s_stalk`, `t_pounce` am Ort, `t_tail_lash`, `t_roar`, `t_rage`, `t_stagger`, `t_turn_back`); Tempo 1,5 / 8,0 / Anpirschen 1,0 m/s (mit engine 2026-10-08) |
 | `glemsmahr` | Rig 37 Knochen (neues Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Arme als Vorderbeine mit Schulter, Hand und je drei Fingern, zehengängige Hinterbeine mit Zehen; Sockets `socket_mouth`, `socket_eyes`, `socket_hand_l/r`), geduckt 1,53 m, Kapsel stehend, lod0 7636 / 3758 / 1848 Dreiecke, emissive Augen (`eye_glow`); 19 Clips (Mindest-Set + `s_sneak`, `t_rise`/`s_upright`/`t_lower`, `t_leap` und `t_jump_back` am Ort mit `leap_start`/`leap_land`, `t_recoil`); Tempo 1,4 / 6,5 / Schleichen 0,9 m/s (mit engine 2026-10-07) |
 | `quaderbuckel` | Rig 29 Knochen (Keiler-Benennung mit Schulter-/Hüftknochen, dazu `jaw` und `brow_shield` unter `chest`; Sockets `socket_mouth`, `socket_shield` am Schild), 0,84 m, lod0 7956 / 3978 / 1988 Dreiecke (60 starre Sandstein-Platten), Fell 1024² + Normal-Map 512²; 17 Clips (Mindest-Set + `s_charge` am Ort, `t_warn`, `t_block_in`/`s_block`/`t_block_out`); Tempo 0,8 / 3,5 / Anrennen 4,5 m/s (mit engine 2026-10-07) |
 | `schinder` | Rig 26 Knochen, 0,92 m, lod0 7834 / 3916 / 1958 Dreiecke, Fell 1024² + Normal-Map 512²; 15 Clips (Mindest-Set + `s_sneak`, `t_call`, `s_cower`); Tempo 1,3 / 6,5 / Schleichen 0,7 m/s (mit engine 2026-10-07) |

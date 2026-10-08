@@ -6,7 +6,7 @@
 name = "bergleu_reference"
 kind = "monster"
 species = "bergleu"
-height = 2.192
+height = 2.215
 bind_pose = "natural"
 max_bones = 64
 max_influences = 4
@@ -20,9 +20,9 @@ left = ["front_foot_r", "front_foot_l"]
 
 [rig.collision]            # engine character capsule (§7.1), derived from the mesh
 shape = "capsule_lying"
-radius = 1.10
+radius = 1.11
 length = 2.97
-offset = [0.00, 1.09, 1.18]
+offset = [0.00, 1.10, 1.18]
 
 [[bone]]
 name = "root"

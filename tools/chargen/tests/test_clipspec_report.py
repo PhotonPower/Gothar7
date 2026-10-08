@@ -27,7 +27,7 @@ SOURCES = {"ual1": {"file": "a.glb", "mapping": "quaternius_ual1"}}
 def test_packaged_sets_are_valid():
     humans = ["1h", "2h", "amb", "bow", "cbow", "dive", "dlg", "fist", "mag", "mob", "none", "swim"]
     assert packaged_sets(monsters=False) == humans
-    monsters = ["glemsmahr", "keiler", "laufvogel", "quaderbuckel", "schinder", "wolf"]
+    monsters = ["bergleu", "glemsmahr", "keiler", "laufvogel", "quaderbuckel", "schinder", "wolf"]
     assert packaged_sets(monsters=True) == monsters
     assert packaged_sets() == sorted(humans + monsters)
     for name in packaged_sets():
@@ -278,7 +278,7 @@ def test_real_list_is_consistent_with_files():
     assert result.missing == []
     counts = list(result.section_counts().values())
     # Prio-B item use + mobs (M8), per mode, Prio-C routines (M9), dialogue (M10), combat (M11),
-    # 6 monsters (3 placeholders, schinder 15, quaderbuckel 17, glemsmahr 19)
+    # 7 monsters (3 placeholders, schinder 15, quaderbuckel 17, glemsmahr 19, bergleu 19)
     expected = [
         (17, 17),
         (48, 48),
@@ -291,6 +291,7 @@ def test_real_list_is_consistent_with_files():
         (12, 12),
         (15, 15),
         (17, 17),
+        (19, 19),
         (19, 19),
     ]
     assert counts == expected
