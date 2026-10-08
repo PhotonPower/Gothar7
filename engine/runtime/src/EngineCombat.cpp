@@ -232,6 +232,10 @@ i32 Engine::heroWeaponAnimation() const
 
 f32 Engine::creatureWeaponAnimation(const Creature& c) const
 {
+    if (c.magicStance > 0.0f)
+    {
+        return 6.0f; // magic (M12 part D)
+    }
     // People keep their weapon raised a little while after fighting.
     if (c.combatStance <= 0.0f || !c.character)
     {
@@ -282,6 +286,10 @@ void Engine::playFight(Combatant& c)
 
 void Engine::playReaction(Combatant& c, std::string_view clip)
 {
+    if (c.creature != nullptr && c.creature->cast && !c.creature->cast->acted)
+    {
+        c.creature->cast.reset(); // hit or down: the spell is lost (its mana too)
+    }
     if (c.id == kHeroId && m_transform)
     {
         // Z7: the animal's own clips (a hit; it is not knocked out - it turns back).
@@ -356,6 +364,7 @@ void Engine::fixedUpdateCombat(f32 seconds)
         if (attacker->creature != nullptr)
         {
             attacker->creature->combatStance = std::max(0.0f, attacker->creature->combatStance - seconds);
+            fixedUpdateNpcCast(*attacker->creature, seconds);
         }
         if (before == FightState::Down && attacker->fighter->state() == FightState::Ready)
         {

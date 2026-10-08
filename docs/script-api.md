@@ -129,6 +129,9 @@ Ein NPC kommt nicht weiter und hat aufgegeben (nach mehrfachem Neuplanen).
 ### `on("npc_cast", fn(caster: string, spell: string))`
 Ein Zauber wird gewirkt (M12, `hero`).
 
+### `on("npc_feared", fn(npc: string, caster: string, seconds: number))`
+Ein Furcht-Zauber trifft einen NPC bzw. ein Tier (M12, Z6): er flieht `seconds` Sekunden.
+
 ### `on("npc_hit", fn(attacker: string, target: string, damage: number, critical: boolean))`
 Ein Nahkampftreffer (M11; `hero` für den Helden).
 
@@ -328,6 +331,15 @@ Das Ziel, das der Held mit gezogener Waffe bzw. Magie anvisiert (Lock, K5); nil 
 
 ### `hero_transform_back()`
 Der Held wird wieder Mensch (wie die Taste „1“ in Tiergestalt).
+
+### `npc_can_cast(npc: string, spell: string) -> boolean`
+Ob ein NPC den Spruch jetzt wirken könnte (Kreis, Mana, nicht beschäftigt).
+
+### `npc_cast_spell(npc: string, spell: string, target?: string) -> boolean`
+Ein NPC wirkt einen Spruch (M12 Teil D) mit seinem Mana und Kreis (Talent magic_circle): auf `target` ("hero" oder ein NPC), ohne Ziel auf sich selbst; false, wenn er es nicht kann.
+
+### `npc_casting(npc: string) -> boolean`
+Ob ein NPC gerade einen Spruch wirkt.
 
 ## Mobs
 

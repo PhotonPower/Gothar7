@@ -845,6 +845,8 @@ TEST_CASE("Engine NPCs: doors - planned through when unlocked, opened on the way
     CHECK_FALSE(engine.mobInfo(door)->open);
     // A closed but unlocked door is no wall for planning.
     CHECK(engine.walkableLine(Vec3(31.0f, 0.0f, -7.0f), Vec3(31.0f, 0.0f, -11.0f)));
+    // welt #246: a point 3 m up (an upper floor) is not reached along the ground below it.
+    CHECK_FALSE(engine.walkableLine(Vec3(31.0f, 0.0f, -7.0f), Vec3(31.0f, 3.0f, -11.0f)));
 
     REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_guard_bed')").isString());
     run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man')");

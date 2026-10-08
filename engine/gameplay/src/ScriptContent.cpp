@@ -57,6 +57,8 @@ void defineContentKinds(script::ScriptVm& vm)
              {"pickpocket_dex", Type::Integer, false, 0.0, 200.0},
              // What a successful pickpocket takes first while the NPC has it (a quest item; M10)
              {"pickpocket_item", Type::String, false, none, none, "Item"},
+             // Spells it casts in a fight (M12 part D: ai/combat.lua), with its mana and magic circle
+             {"spells", Type::StringList, false, none, none, "Spell"},
          },
          false});
 

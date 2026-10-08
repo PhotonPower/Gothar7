@@ -134,8 +134,25 @@ on("assess_player", function(npc, distance)
     end
 end)
 
+--- Wer gegen ein wildes Tier kämpft statt zu fliehen: Wachen, wer Nahkampf gelernt hat, ab Stufe 5.
+local function beast_fighter(npc)
+    local n = instance("Npc", npc)
+    local t = n.talents or {}
+    return is_guard(npc) or (n.level or 0) >= 5 or (t.melee_1h or 0) > 0 or (t.melee_2h or 0) > 0
+end
+
 on("assess_fighter", function(npc, distance, what)
     if not human(npc) or busy(npc) then
+        return
+    end
+    -- Der Held in Tiergestalt (M12, Z7): ein wildes Tier - Kämpfer greifen an, die anderen fliehen.
+    if what == "animal" then
+        if beast_fighter(npc) then
+            emit("npc_would_attack", npc, "beast")
+            fight(npc, "hero")
+        else
+            npc_start_state(npc, "zs_flee")
+        end
         return
     end
     if coward(npc) then
