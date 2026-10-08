@@ -213,6 +213,7 @@ void Engine::dialogSkip()
 {
     if (m_dialog && !m_dialog->lines.empty())
     {
+        stopVoice(m_dialog->lines.front().speaker); // M13 D: skipped, the voice stops too
         m_dialog->lines.pop_front();
         m_dialog->lineTime = 0.0f;
         m_dialog->linePresented = false;
@@ -291,6 +292,8 @@ void Engine::endDialog()
     }
     const std::string npc = m_dialog->npcName;
     stopTalking();
+    stopVoice(npc);
+    stopVoice("hero");
     m_trade.reset();
     if (Creature* c = creature(m_dialog->npc))
     {
@@ -327,6 +330,12 @@ void Engine::fixedUpdateDialog(f32 seconds)
         {
             m_dialog->linePresented = true;
             presentLine({m_dialog->lines.front().speaker});
+            // M13 D: with its take the line is spoken and lasts as long (the subtitles follow the voice).
+            DialogLine& line = m_dialog->lines.front();
+            if (const auto spoken = speak(line.speaker, line.key))
+            {
+                line.seconds = *spoken;
+            }
         }
         m_dialog->lineTime += seconds;
         if (m_dialog->lineTime >= m_dialog->lines.front().seconds)

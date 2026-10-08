@@ -1,12 +1,13 @@
 #pragma once
 
 // Facial animation (M6 part D): weights of the 15 face morph targets of characters-pipeline.md §6.1 -
-// automatic blinking, expressions faded in and out, a rough lip movement while talking. Lipsync from audio
-// follows with M13.
+// automatic blinking, expressions faded in and out, a rough lip movement while talking - or, while a voice
+// plays (M13 D, owner decision 7), the mouth opened by the voice's loudness.
 
 #include <g7/core/Types.hpp>
 
 #include <array>
+#include <optional>
 #include <span>
 #include <string_view>
 
@@ -60,6 +61,10 @@ public:
     [[nodiscard]] std::string_view expression() const noexcept;
     void setTalking(bool talking) noexcept { m_talking = talking; }
     [[nodiscard]] bool talking() const noexcept { return m_talking; }
+    /// Lip sync from loudness: 0 (closed) .. 1 (open as far as talkWeight) drives vis_aa (and a little
+    /// vis_oh) instead of the random mouth shapes, smoothed; nullopt hands the mouth back to setTalking.
+    void setMouthOpen(std::optional<f32> open) noexcept { m_mouthTarget = open; }
+    [[nodiscard]] bool mouthDriven() const noexcept { return m_mouthTarget.has_value(); }
 
     void update(f32 seconds);
 
@@ -86,5 +91,9 @@ private:
     i32 m_visemeTo = -1;
     f32 m_visemeWeightFrom = 0.0f;
     f32 m_visemeWeightTo = 0.0f;
+    // Lip sync from loudness.
+    std::optional<f32> m_mouthTarget;
+    f32 m_mouth = 0.0f;
+    f32 m_mouthPhase = 0.0f;
 };
 } // namespace g7::animation

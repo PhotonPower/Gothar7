@@ -98,6 +98,7 @@ void Engine::npcSays(const Creature& c, std::string_view text)
 {
     const std::string key = voiceKey({}, c.species, text); // shouts: svm_<voice>_<m|f>_<occasion>_NN
     G7_LOG_INFO("engine", "{}: \"{}\" [{}]", c.species, text, key);
+    (void)speak(c.species, key); // M13 D: in its voice if the take exists (from afar quieter: 3D)
     if (m_scripts)
     {
         const script::Value args[] = {c.species, std::string(text), key};

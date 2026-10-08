@@ -144,6 +144,7 @@ namespace animation
 {
 class Animator;
 struct AnimGraph;
+class FaceAnimator;
 } // namespace animation
 namespace script
 {
@@ -304,6 +305,8 @@ public:
     [[nodiscard]] const render::ParticleSystem& particles() const noexcept { return m_particles; }
     /// The mixer (M13); nullptr when audio is off.
     [[nodiscard]] const audio::AudioSystem* audio() const noexcept { return m_audio ? &*m_audio : nullptr; }
+    /// A face morph's weight ("vis_aa" ...) of the hero ("hero") or an NPC; 0 without a face (tests, debug).
+    [[nodiscard]] f32 faceWeight(std::string_view who, std::string_view morph);
     /// How often the sound `name` was started (tests, diagnostics).
     /// The ambience playing now (M13 part B); empty: none.
     [[nodiscard]] const std::string& ambience() const noexcept { return m_ambience.name; }
@@ -734,6 +737,28 @@ private:
     bool startCommand(Creature& c);
     void releaseFreepoint(Creature& c);
     void npcSays(const Creature& c, std::string_view text); ///< log, npc_said, shown near the player
+    // Voices (M13 part D, EngineVoice.cpp).
+    [[nodiscard]] std::string
+    voiceFile(std::string_view key) const; ///< voice/<language>/<key>.wav; empty: none
+    /// Speaks `key` in the voice of `speaker` ("hero" or an NPC instance) if its take exists: the seconds the
+    /// line then lasts (take + pause); nullopt: no take (subtitles only).
+    std::optional<f32> speak(std::string_view speaker, std::string_view key);
+    void stopVoice(std::string_view speaker); ///< empty: every voice
+    [[nodiscard]] bool voicePlaying(std::string_view speaker) const;
+    [[nodiscard]] std::optional<Vec3> speakerHead(std::string_view speaker) const;
+    [[nodiscard]] animation::FaceAnimator* speakerFace(std::string_view speaker);
+    void updateVoices(f32 seconds);
+    void bindVoiceFunctions();
+    struct SpokenVoice
+    {
+        std::string speaker;
+        std::string key;
+        audio::SoundId sound = 0;
+        std::vector<f32> envelope; ///< loudness at 30 Hz (lip sync)
+        f32 seconds = 0.0f;
+    };
+    std::vector<SpokenVoice> m_voices;
+    f32 m_musicDuck = 1.0f; // 1 .. [audio] duck while a voice speaks
     /// "@player" (or empty): the player's feet; otherwise the position of the NPC of that instance.
     [[nodiscard]] std::optional<Vec3> targetPosition(std::string_view target) const;
     /// What the window "AI" shows (M9 part E): every NPC's state, queue, perception.

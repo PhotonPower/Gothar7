@@ -258,7 +258,8 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 - [ ] miniaudio-Integration (ADR 0007), Mixer-Busse (Musik, Effekte, Sprache, Ambient)
 - [ ] 3D-Sound mit Abschwächung, Verdeckung (einfacher Raycast-Filter)
 - [ ] Ambient-Zonen (Wind, Sumpf, Höhle), Zufalls-Einzelgeräusche
-- [ ] Sprachausgabe mit Lippensync-Daten, Untertitel-Synchronisation
+- [x] Sprachausgabe mit Lippensync-Daten, Untertitel-Synchronisation
+  - Teil D: gewählter Take `voice/<sprache>/<key>.wav` (WAV vorerst, OGG mit echten Takes und ADR) als 3D-Stimme am Sprecher (voll bis 4 m); die Zeile dauert Take + 0,3 s, Untertitel folgen; Mund `vis_aa` aus der Lautstärke (30 Hz); Musik −6 dB beim Sprechen; Zurufe ebenso; ohne Take wie bisher
   - Quelle: gewählte Takes `assets/source/voice/<sprache>/<key>.wav` → Cooker `voice/<sprache>/<key>.ogg`; fehlt die Datei, nur Untertitel mit Lesedauer aus der Textlänge
 - [ ] **Dynamisches Musiksystem**: Musik-Zonen, Zustände (Standard/Bedrohung/Kampf) × Tag/Nacht, musikalische Übergänge auf Taktgrenzen, Stingers
 - [ ] Fußschritt-Sounds nach Material

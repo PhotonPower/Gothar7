@@ -29,6 +29,7 @@ effects = 1.0
 voice = 1.0
 ambient = 0.8
 ui = 1.0
+duck = 0.5 # die Musik, solange jemand spricht (M13 D, Projektinhaber: -6 dB, 0,3 s Blende)
 
 [render]
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).

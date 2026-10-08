@@ -94,6 +94,9 @@ public:
     Result<void> addClip(std::string_view name, std::span<const u8> bytes);
     [[nodiscard]] bool hasClip(std::string_view name) const noexcept;
     [[nodiscard]] f32 clipSeconds(std::string_view name) const noexcept; ///< 0: unknown
+    /// The clip's loudness over time (M13 D, lip sync from loudness): RMS per window of 1/`hz` s, normalised
+    /// so the loudest window is 1; empty for an unknown clip.
+    [[nodiscard]] std::vector<f32> clipEnvelope(std::string_view name, f32 hz = 30.0f) const;
 
     /// Plays one of the definition's files (all must have been added); at `position` it is a 3D sound.
     /// `delaySeconds` starts it later on the mixer's clock (sample exact: music on bar boundaries).
@@ -101,6 +104,8 @@ public:
     /// Stops a sound, fading out over `fadeSeconds`.
     void stop(SoundId id, f32 fadeSeconds = 0.0f);
     [[nodiscard]] bool playing(SoundId id) const noexcept;
+    /// Seconds a sound has played (0 before its start; nullopt once it is gone).
+    [[nodiscard]] std::optional<f32> position(SoundId id) const noexcept;
     void setPosition(SoundId id, const Vec3& position);
     /// A sound's own volume (on top of its definition's), faded over `fadeSeconds`.
     void setVolume(SoundId id, f32 volume, f32 fadeSeconds = 0.0f);

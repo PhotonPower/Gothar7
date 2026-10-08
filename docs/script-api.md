@@ -191,6 +191,9 @@ Der Held hat im Bett bis zu dieser Stunde geschlafen (8, 12, 20 oder 0); LP und 
 ### `on("theft", fn(owner: string, item: string, count: integer))`
 Der Held hat fremden Besitz genommen (Item-Vob mit owner, Truhe eines anderen).
 
+### `on("voice_line", fn(npc: string, key: string, seconds: number))`
+Eine Zeile wird gesprochen (es gibt ihren Take voice/<sprache>/<key>.wav).
+
 ### `on("world_loaded", fn(world: string))`
 Nachdem eine Welt geladen ist (auch nach einem Weltwechsel); `world` ist ihr Pfad.
 
@@ -324,6 +327,9 @@ Ob ein Klang noch läuft.
 
 ### `sound_stop(id: integer, fade?: number)`
 Beendet einen Klang, über `fade` Sekunden ausgeblendet.
+
+### `voice_playing(npc: string) -> boolean`
+Ob die Stimme eines NPCs (oder "hero") gerade spricht (M13: gewählter Take vorhanden).
 
 ## Magie
 
