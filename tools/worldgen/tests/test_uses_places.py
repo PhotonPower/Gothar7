@@ -127,3 +127,6 @@ def test_a_guild_sign_hangs_over_the_door_of_workshops_shops_and_taverns():
     assert boot["pos"] == [3.0, 0.6, 4.0] and boot["type"] == "mesh"  # the usable door
     assert boot["rot"] == pytest.approx([0.0, 0.70711, 0.0, 0.70711])  # facing +X, out of the wall
     assert boot["name"] == "SCHILD_LEO_ZKB_H4"
+    # a door down in the ground: the sign hangs over the street's level before it
+    sunk = {v["mesh"]: v for v in sign_vobs(houses, index, lambda x, z: 3.0)}
+    assert sunk["props/sign_boot.glb"]["pos"][1] == 3.0

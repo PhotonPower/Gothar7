@@ -856,9 +856,11 @@ keine echten Wappen oder Logos. Code: `mobs.guild_sign` (Modelle `props/sign_<sy
   - Goldschmied Pokal, Tuchhändler Tuchballen, Krämer Waage, Gewandschneider Schere;
   - Schuster Stiefel, Schreiner Säge, Töpfer Krug.
   - Wohnhäuser, Bauern, Rathaus und Pfarrhaus bekommen keines. Leonberg: 16 Schilder.
-- **Wo:** über der ersten benutzbaren Tür (Index `doors`), am Wandfuß an der Schwelle verankert, Ausleger 0,95 m aus der Wand in
-  2,95 m Höhe, das Symbol an zwei kurzen Ketten in der Ebene des Auslegers (von der Straße her lesbar), 1,35-fach vergrößert,
-  tiefster Punkt über 2 m.
+- **Wo:** über der ersten benutzbaren Tür (Index `doors`), an der Schwelle verankert; bei einer Tür tief im Gelände
+  (Hangtür) auf Höhe des Bodens 1 m davor.
+- **Gestalt** (Koordinator 2026-10-08: von der Straße her erkennbar): Ausleger 1,2 m aus der Wand in 2,95 m Höhe, daran an
+  zwei Ketten ein hell bemaltes Brett von 0,9 × 0,75 m im Eichenrahmen (Unterkante 2,05 m), das Symbol 1,4-fach auf beiden
+  Seiten, in der Ebene des Auslegers (entlang der Straße lesbar).
 - **Kollision:** keine (nur das winzige `COL_HULL_NONE` unter dem Boden).
 
 ### Bodenregel für handgemachte Modelle (W6)

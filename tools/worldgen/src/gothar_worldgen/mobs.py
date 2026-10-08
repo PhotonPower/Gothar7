@@ -78,6 +78,7 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "dung": ("straw", (0.09, 0.065, 0.04)),
     # guild signs (W6): gilded symbols on the brackets
     "gilt": ("iron", (0.42, 0.29, 0.07)),
+    "paint_board": ("boards", (0.55, 0.47, 0.33)),  # a sign's board, painted light
 }
 # materials that glow: the engine adds emissive after the light (render.md "Material")
 EMISSIVE = {"ember": (0.9, 0.28, 0.05), "flame": (1.0, 0.55, 0.15)}
@@ -1058,21 +1059,26 @@ def lantern() -> MobModel:
 
 # --- guild signs (W6, coordinator 2026-10-08): a bracket over the door, a symbol of the trade -----
 SIGN_ARM_Y = 2.95  # the bracket's arm, above the door's threshold (origin: on the wall at it)
-SIGN_ARM_L = 0.95  # out from the wall (+Z)
-SIGN_MID_Z = 0.62  # the symbol's middle, out from the wall
-SIGN_TOP_Y = 2.78  # its top, under the chains
-SIGN_SCALE = 1.35  # the symbols drawn in metres below, enlarged about where they hang (readable
-# from the street; their lowest point stays above 2 m)
+SIGN_ARM_L = 1.2  # out from the wall (+Z)
+SIGN_MID_Z = 0.62  # where the symbols below are drawn (their middle out from the wall) ...
+SIGN_TOP_Y = 2.78  # ... and their top
+BOARD_W, BOARD_H = 0.9, 0.75  # the painted board they are put on, along the arm and high
+BOARD_Z = 0.7  # its middle, out from the wall
+BOARD_TOP = 2.8  # its top under the chains (its bottom 2.05 m: above heads)
+SIGN_SCALE = 1.4  # the symbols enlarged onto the board, on both its faces (coordinator: readable
+# from the street, 0.8 to 1 m, bright)
 
 
 class _Scaled:
-    """Draws into ``mesh`` enlarged by ``k`` about ``pivot`` (boxes and prisms, as Mesh)."""
+    """Draws into ``mesh`` enlarged by ``k`` about ``pivot``, moved to ``to`` (boxes and prisms,
+    as Mesh)."""
 
-    def __init__(self, mesh: Mesh, pivot: Vec3, k: float) -> None:
+    def __init__(self, mesh: Mesh, pivot: Vec3, k: float, to: Vec3 | None = None) -> None:
         self.mesh, self.pivot, self.k = mesh, pivot, k
+        self.to = to or pivot
 
     def _p(self, v: Vec3) -> Vec3:
-        return tuple(c0 + (c - c0) * self.k for c, c0 in zip(v, self.pivot, strict=True))  # type: ignore[return-value]
+        return tuple(t + (c - c0) * self.k for c, c0, t in zip(v, self.pivot, self.to, strict=True))  # type: ignore[return-value]
 
     def box(self, material: str, lo: Vec3, hi: Vec3, grain: int = 0) -> None:
         self.mesh.box(material, self._p(lo), self._p(hi), grain)
@@ -1093,7 +1099,8 @@ def _ring(m: Mesh, material: str, cy: float, cz: float, r: float, n: int = 12,
 
 
 def _bracket(m: Mesh) -> None:
-    """The iron bracket: a plate on the wall, the arm out, a stay under it, two short chains."""
+    """The iron bracket: a plate on the wall, the arm out, a stay under it, two short chains, the
+    painted board hanging from them (in an oak frame)."""
     y, ln = SIGN_ARM_Y, SIGN_ARM_L
     m.box("iron", (-0.04, y - 0.4, -0.01), (0.04, y + 0.06, 0.02))  # wall plate
     m.box("iron", (-0.018, y - 0.02, 0.0), (0.018, y + 0.02, ln), grain=2)  # arm
@@ -1102,8 +1109,15 @@ def _bracket(m: Mesh) -> None:
         dy = 0.06 * (6 - k)
         m.box("iron", (-0.012, y - dy - 0.012, z0), (0.012, y - dy + 0.012, z0 + 0.07))
     m.box("iron", (-0.025, y - 0.03, ln - 0.03), (0.025, y + 0.03, ln + 0.02))  # the end, a knob
-    for z in (SIGN_MID_Z - 0.17, SIGN_MID_Z + 0.17):  # chains
-        m.box("iron", (-0.006, SIGN_TOP_Y, z - 0.006), (0.006, y - 0.02, z + 0.006))
+    for z in (BOARD_Z - BOARD_W / 2 + 0.08, BOARD_Z + BOARD_W / 2 - 0.08):  # chains
+        m.box("iron", (-0.006, BOARD_TOP, z - 0.006), (0.006, y - 0.02, z + 0.006))
+    z0, z1, y0 = BOARD_Z - BOARD_W / 2, BOARD_Z + BOARD_W / 2, BOARD_TOP - BOARD_H
+    m.box("paint_board", (-0.015, y0, z0), (0.015, BOARD_TOP, z1), grain=2)  # the board
+    for lo, hi in (((-0.022, BOARD_TOP - 0.05, z0), (0.022, BOARD_TOP, z1)),  # its frame
+                   ((-0.022, y0, z0), (0.022, y0 + 0.05, z1)),
+                   ((-0.022, y0, z0), (0.022, BOARD_TOP, z0 + 0.05)),
+                   ((-0.022, y0, z1 - 0.05), (0.022, BOARD_TOP, z1))):  # fmt: skip
+        m.box("oak", lo, hi, grain=2)
 
 
 def _sign_tankard(m: Mesh) -> None:
@@ -1222,11 +1236,14 @@ SIGNS = {"tankard": _sign_tankard, "pretzel": _sign_pretzel, "cleaver": _sign_cl
 
 
 def guild_sign(symbol: str) -> MobModel:
-    """A guild sign: the bracket over the door, the symbol hanging from it (on the wall, front +Z
-    out of it; no collision, above heads)."""
+    """A guild sign: the bracket over the door, a painted board hanging from it with the symbol on
+    both faces (on the wall, front +Z out of it; no collision, above heads)."""
     m = Mesh()
     _bracket(m)
-    SIGNS[symbol](_Scaled(m, (0.0, SIGN_TOP_Y, SIGN_MID_Z), SIGN_SCALE))  # type: ignore[arg-type]
+    centre = (0.0, SIGN_TOP_Y - 0.26, SIGN_MID_Z)  # the symbols' middle as drawn
+    for side in (1.0, -1.0):  # on both faces of the board, seen from both ways along the street
+        to = (side * 0.04, BOARD_TOP - BOARD_H / 2, BOARD_Z)
+        SIGNS[symbol](_Scaled(m, centre, SIGN_SCALE, to))  # type: ignore[arg-type]
     m.collision.append(box_body("COL_HULL_NONE", (-0.02, -1.04, -0.02), (0.02, -1.0, 0.02)))
     return MobModel(f"sign_{symbol}", m)
 

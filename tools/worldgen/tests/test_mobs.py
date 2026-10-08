@@ -178,7 +178,7 @@ def test_props_budget_and_collision(kind):
     elif kind in ("fur", "rug"):  # flat on the floor, walked over
         assert lo[1] == pytest.approx(0.0) and hi[1] <= 0.03 and not m.main.collision
     elif kind.startswith("sign_"):  # a guild sign over the door: above heads, out of the wall
-        assert lo[1] > 2.0 and hi[1] < 3.1 and lo[2] >= -0.02 and hi[2] <= 1.05
+        assert lo[1] > 2.0 and hi[1] < 3.1 and lo[2] >= -0.02 and hi[2] <= 1.3
         assert all(b.positions[:, 1].max() <= -0.99 for b in m.main.collision)  # none to bump
     elif kind == "clothes_hooks":  # on the wall, the clothes down to about a metre
         assert 0.9 < lo[1] < 1.1 and hi[1] < 1.7 and hi[2] <= 0.1

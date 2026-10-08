@@ -336,11 +336,15 @@ SIGN_OF = {"gasthaus": "tankard", "baecker": "pretzel", "metzger": "cleaver",
            "goldschmied": "goblet", "tuchhaendler": "cloth", "kraemer": "scales",
            "gewandschneider": "shears", "schuster": "boot", "schreiner": "saw",
            "toepfer": "jug"}  # fmt: skip
+SIGN_GROUND_M = 1.0  # the ground this far before the door: a sign hangs above it at least
 
 
-def sign_vobs(houses: Sequence[Any], index: dict[str, Any]) -> list[dict[str, Any]]:
+def sign_vobs(houses: Sequence[Any], index: dict[str, Any],
+              height: Callable[[float, float], float] | None = None,
+              ) -> list[dict[str, Any]]:  # fmt: skip
     """A guild sign over the first usable door of every house whose trade or use has one: on the
-    wall at the door's threshold, the bracket out of it (``props/sign_<symbol>.glb``)."""
+    wall at the door's threshold, the bracket out of it (``props/sign_<symbol>.glb``); at a door
+    down in the ground (a hillside door) at the street's level in front of it instead."""
     entries = {e["id"]: e for e in index.get("entries", [])}
     out = []
     for h in houses:
@@ -352,6 +356,8 @@ def sign_vobs(houses: Sequence[Any], index: dict[str, Any]) -> list[dict[str, An
         if not doors:
             continue
         x, z, y, _, nx, nz = doors[0][:6]
+        if height is not None:  # never under the ground before the door
+            y = max(float(y), height(x + nx * SIGN_GROUND_M, z + nz * SIGN_GROUND_M))
         a = math.atan2(nx, nz)
         out.append({"key": f"use:sign:{h.id}", "name": f"SCHILD_LEO_{name_part(short_id(h.id))}",
                     "type": "mesh", "pos": [float(x), float(y), float(z)],

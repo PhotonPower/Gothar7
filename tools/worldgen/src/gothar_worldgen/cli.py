@@ -1038,7 +1038,7 @@ def _plan_uses(
     from gothar_worldgen.uses.places import sign_vobs
     from gothar_worldgen.uses.zones import indoor_zones
 
-    signs = sign_vobs(doc.houses, index)  # W6: guild signs over the doors
+    signs = sign_vobs(doc.houses, index, grid.height_at)  # W6: guild signs over the doors
     return places, [*vobs, *inside.vobs, *signs], indoor_zones(doc.houses, index)
 
 
