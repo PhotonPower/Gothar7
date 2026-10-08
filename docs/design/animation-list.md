@@ -137,7 +137,8 @@ Vertrag mit engine (2026-10-05): Jeder Angriff beginnt und endet in der Kampfhal
 engine blendet 0,1 s zum nächsten Schlag; Trefferfenster `hit_start`/`hit_end` (Fäuste: Aufprall der Faust),
 Kombo-Fenster `combo_start` (= `hit_end`) bis `combo_end` (ca. 80 %), danach Erholung. Talentstufen nur über die
 Abspielrate (keine Clips je Stufe). Zweihänder: linke Hand per Rezept `two_hands` am Griff unter der rechten.
-Fernkampf: Event `release` beim Lösen des Schusses.
+Fernkampf: Event `release` beim Lösen des Schusses. Schwung-Laut (M13, Wunsch engine 2026-10-08): `sound:swing` in jedem
+Schlag-Clip von `1h`, `2h` und `fist`, 4 Bilder vor `hit_start` (Ziehen, Wegstecken und Treffer setzt engine selbst).
 
 | Name | Zweck | Länge | Events | Quelle | Status |
 |---|---|---|---|---|---|

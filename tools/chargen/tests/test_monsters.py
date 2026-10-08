@@ -143,7 +143,7 @@ def test_wolf_set():
     }  # fmt: skip  (s_trot: wolf only, 2026-10-05; transformation for M12, 2026-10-08)
     assert {n.split("/")[1] for n in spec.names} == contract
     attack = next(c for c in spec.clips if c.name == "wolf/t_attack_1")
-    assert dict(attack.markers) == {"hit_start": 13, "hit_end": 17}
+    assert dict(attack.markers) == {"hit_start": 13, "hit_end": 17, "sound:wolf_attack": 7}
     out = next(c for c in spec.clips if c.name == "wolf/t_transform_out")
     assert dict(out.markers) == {"swap": 12}
 
@@ -374,3 +374,23 @@ def test_stale_collision_warns(wolf_reference):
     data["rig"]["collision"]["radius"] = 0.6
     report = validate_gltf(Gltf.load(WOLF_REF), parse_rig(data), wolf_reference, path=WOLF_REF)
     assert "collision.stale" in codes(report, "warning")
+
+
+def test_sound_events_for_m13():
+    """Engine's wish for M13 (2026-10-08): animal sounds as sound:<art>_<occasion> events, a
+    swing sound in every human strike clip."""
+    species = ("wolf", "keiler", "laufvogel", "schinder", "quaderbuckel", "glemsmahr", "bergleu")
+    for art in species:
+        clips = {c.name: dict(c.markers) for c in load_set_spec(art).clips}
+        for name, markers in clips.items():
+            if "hit_start" in markers:
+                assert f"sound:{art}_attack" in markers, name
+                assert markers[f"sound:{art}_attack"] <= markers["hit_start"], name
+        assert f"sound:{art}_hit" in clips[f"{art}/t_hit"]
+        assert f"sound:{art}_die" in clips[f"{art}/t_die"]
+        assert f"sound:{art}_threaten" in clips[f"{art}/t_threaten"]
+    for mode in ("1h", "2h", "fist"):
+        for clip in load_set_spec(mode).clips:
+            markers = dict(clip.markers)
+            if "hit_start" in markers:
+                assert markers.get("sound:swing", 99) < markers["hit_start"], clip.name

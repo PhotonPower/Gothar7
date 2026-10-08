@@ -22,14 +22,31 @@ events = [
 
 [clips."keiler/t_attack_1"]
 events = [
+    { frame = 6, event = "sound:keiler_attack" },
     { frame = 12, event = "hit_start" },
     { frame = 16, event = "hit_end" },
 ]
 
 [clips."keiler/t_attack_2"]
 events = [
+    { frame = 3, event = "sound:keiler_attack" },
     { frame = 9, event = "hit_start" },
     { frame = 13, event = "hit_end" },
+]
+
+[clips."keiler/t_die"]
+events = [
+    { frame = 2, event = "sound:keiler_die" },
+]
+
+[clips."keiler/t_hit"]
+events = [
+    { frame = 1, event = "sound:keiler_hit" },
+]
+
+[clips."keiler/t_threaten"]
+events = [
+    { frame = 8, event = "sound:keiler_threaten" },
 ]
 
 [clips."keiler/t_turn_l"]

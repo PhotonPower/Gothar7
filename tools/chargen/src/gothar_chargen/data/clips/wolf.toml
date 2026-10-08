@@ -143,7 +143,7 @@ rotate = { root = [["Z", -90]] }
 [[clip]]
 name = "wolf/t_attack_1"          # lunge and bite forward
 keyframe = "keyposes"
-markers = { hit_start = 13, hit_end = 17 }
+markers = { hit_start = 13, hit_end = 17, "sound:wolf_attack" = 7 }
 [clip.params]
 base = "wolf/s_idle"
 keys = [[0, "rest"], [8, "crouch"], [13, "lunge"], [16, "bite"], [28, "rest"]]
@@ -160,7 +160,7 @@ rotate = { neck_01 = [["X", 5]], head = [["X", 20]], jaw = [["X", 2]], ear_l = [
 [[clip]]
 name = "wolf/t_attack_2"          # quick snap to the side
 keyframe = "keyposes"
-markers = { hit_start = 9, hit_end = 13 }
+markers = { hit_start = 9, hit_end = 13, "sound:wolf_attack" = 3 }
 [clip.params]
 base = "wolf/s_idle"
 keys = [[0, "rest"], [6, "wind_up"], [10, "snap"], [13, "snap_close"], [22, "rest"]]
@@ -175,6 +175,7 @@ rotate = { neck_01 = [["Z", -25], ["X", 8]], head = [["Z", -15], ["X", 12]], jaw
 
 [[clip]]
 name = "wolf/t_hit"
+markers = { "sound:wolf_hit" = 1 }
 keyframe = "keyposes"
 [clip.params]
 base = "wolf/s_idle"
@@ -185,6 +186,7 @@ rotate = { spine_01 = [["X", -8], ["Z", 6]], neck_01 = [["X", -20]], head = [["X
 
 [[clip]]
 name = "wolf/t_die"               # stagger, then roll onto the side and lie still
+markers = { "sound:wolf_die" = 2 }
 keyframe = "keyposes"
 [clip.params]
 keys = [[0, "rest"], [8, "stagger"], [22, "fallen"], [36, "fallen_limp"]]
@@ -227,6 +229,7 @@ rotate = { spine_01 = [["X", -2]], neck_01 = [["X", 23]], head = [["X", 15]], fr
 
 [[clip]]
 name = "wolf/t_threaten"          # head low, hackles up, growling bob
+markers = { "sound:wolf_threaten" = 10 }
 keyframe = "keyposes"
 [clip.params]
 base = "wolf/s_idle"

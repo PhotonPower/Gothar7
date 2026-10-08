@@ -18,14 +18,31 @@ events = [
 
 [clips."laufvogel/t_attack_1"]
 events = [
+    { frame = 5, event = "sound:laufvogel_attack" },
     { frame = 11, event = "hit_start" },
     { frame = 15, event = "hit_end" },
 ]
 
 [clips."laufvogel/t_attack_2"]
 events = [
+    { frame = 4, event = "sound:laufvogel_attack" },
     { frame = 10, event = "hit_start" },
     { frame = 14, event = "hit_end" },
+]
+
+[clips."laufvogel/t_die"]
+events = [
+    { frame = 2, event = "sound:laufvogel_die" },
+]
+
+[clips."laufvogel/t_hit"]
+events = [
+    { frame = 1, event = "sound:laufvogel_hit" },
+]
+
+[clips."laufvogel/t_threaten"]
+events = [
+    { frame = 10, event = "sound:laufvogel_threaten" },
 ]
 
 [clips."laufvogel/t_turn_l"]

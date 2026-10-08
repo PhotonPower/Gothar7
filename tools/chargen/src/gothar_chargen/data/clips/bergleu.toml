@@ -156,7 +156,7 @@ rotate = { root = [["Z", 180]] }
 [[clip]]
 name = "bergleu/t_attack_1"        # paw swipe from the right (hits around socket_paw_r)
 keyframe = "keyposes"
-markers = { hit_start = 14, hit_end = 19 }
+markers = { hit_start = 14, hit_end = 19, "sound:bergleu_attack" = 8 }
 [clip.params]
 base = "bergleu/s_idle"
 keys = [[0, "rest"], [9, "raise"], [15, "swipe"], [19, "follow"], [32, "rest"]]
@@ -173,7 +173,7 @@ rotate = { spine_03 = [["Z", -10]], front_upper_r = [["X", 0], ["Y", -35]], neck
 [[clip]]
 name = "bergleu/t_attack_2"        # bite and shake
 keyframe = "keyposes"
-markers = { hit_start = 11, hit_end = 22 }
+markers = { hit_start = 11, hit_end = 22, "sound:bergleu_attack" = 5 }
 [clip.params]
 base = "bergleu/s_idle"
 keys = [[0, "rest"], [7, "lunge"], [11, "bite"], [15, "shake_l"], [19, "shake_r"], [22, "shake_l"], [34, "rest"]]
@@ -193,7 +193,7 @@ rotate = { neck_01 = [["X", 10], ["Z", -22]], head = [["Z", -14], ["X", 8]], jaw
 [[clip]]
 name = "bergleu/t_tail_lash"       # the hips swing, the tail sweeps behind and to the side
 keyframe = "keyposes"
-markers = { hit_start = 12, hit_end = 18 }
+markers = { hit_start = 12, hit_end = 18, "sound:bergleu_attack" = 6 }
 [clip.params]
 base = "bergleu/s_idle"
 keys = [[0, "rest"], [8, "wind_up"], [14, "lash"], [18, "follow"], [32, "rest"]]
@@ -207,7 +207,7 @@ rotate = { pelvis = [["Z", 10]], spine_01 = [["Z", 4]], tail_01 = [["Z", 40], ["
 [[clip]]
 name = "bergleu/t_pounce"          # leap onto the hero, in place (engine moves ~5 m)
 keyframe = "keyposes"
-markers = { leap_start = 12, hit_start = 23, leap_land = 24, hit_end = 28 }
+markers = { leap_start = 12, hit_start = 23, leap_land = 24, hit_end = 28, "sound:bergleu_attack" = 12 }
 [clip.params]
 base = "bergleu/s_rest"
 keys = [[0, "rest"], [10, "crouch"], [12, "launch"], [18, "air"], [24, "land"], [34, "absorb"], [46, "rest"]]
@@ -269,6 +269,7 @@ rotate = { spine_03 = [["X", -12]], neck_01 = [["X", -18]], head = [["X", -20]],
 
 [[clip]]
 name = "bergleu/t_hit"
+markers = { "sound:bergleu_hit" = 1 }
 keyframe = "keyposes"
 [clip.params]
 base = "bergleu/s_idle"
@@ -279,6 +280,7 @@ rotate = { spine_03 = [["X", -6], ["Z", 5]], neck_01 = [["X", -12]], head = [["X
 
 [[clip]]
 name = "bergleu/t_stagger"         # heavy hit or parried swipe: thrown back, legs buckle
+markers = { "sound:bergleu_hit" = 1 }
 keyframe = "keyposes"
 [clip.params]
 base = "bergleu/s_idle"
@@ -295,6 +297,7 @@ rotate = { neck_01 = [["X", 8]], head = [["X", -5]], jaw = [["X", 12]], ear_l = 
 
 [[clip]]
 name = "bergleu/t_die"             # long death: staggers, sinks onto the belly, the head goes down
+markers = { "sound:bergleu_die" = 2 }
 keyframe = "keyposes"
 [clip.params]
 keys = [[0, "rest"], [12, "stagger"], [30, "belly"], [50, "head_down"], [70, "last_breath"]]
@@ -339,6 +342,7 @@ rotate = { root = [["Y", 85]], spine_03 = [["X", -1.5]], neck_01 = [["X", 10], [
 
 [[clip]]
 name = "bergleu/t_threaten"        # crouched, snarling, ears flat, the tail lashing
+markers = { "sound:bergleu_threaten" = 10 }
 keyframe = "keyposes"
 [clip.params]
 base = "bergleu/s_rest"
