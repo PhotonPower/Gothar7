@@ -840,25 +840,26 @@ def amulet(seg: int) -> list[Mesh]:
 
 
 def chain(seg: int) -> list[Mesh]:
-    """Gold chain of 26 alternating links hanging as a loop, held at its top (the origin), the
-    loop hanging down (-Y)."""
+    """Gold chain of 28 closed links, each turned by 90 degrees against its neighbours and long
+    enough to reach into them (interlocking), hanging as a loop held at its top (the origin)."""
     gold = Mesh("gold")
-    n = 26
+    n = 28
     a = np.linspace(0, 2 * np.pi, n, endpoint=False)
-    centres = np.stack([0.06 * np.sin(a), -0.17 * (1 - np.cos(a)), np.zeros_like(a)], axis=1)
+    centres = np.stack([0.055 * np.sin(a), -0.165 * (1 - np.cos(a)), np.zeros_like(a)], axis=1)
+    spacing = float(np.mean(np.linalg.norm(np.roll(centres, -1, axis=0) - centres, axis=1)))
+    half = 0.66 * spacing  # half the link's length: the ends pass through the neighbours
     for i in range(n):
-        p, q = centres[i], centres[(i + 1) % n]
-        along = (q - p) / np.linalg.norm(q - p)
-        across = np.array([0.0, 0.0, 1.0]) if i % 2 else np.cross(along, [0.0, 0.0, 1.0])
-        across = across / np.linalg.norm(across)
-        b = np.linspace(0, 2 * np.pi, 7, endpoint=False)
-        mid = (p + q) / 2
+        prev, nxt = centres[i - 1], centres[(i + 1) % n]
+        along = (nxt - prev) / np.linalg.norm(nxt - prev)
+        flat = np.cross(along, [0.0, 0.0, 1.0])
+        across = np.array([0.0, 0.0, 1.0]) if i % 2 else flat / np.linalg.norm(flat)
+        b = np.linspace(0, 2 * np.pi, 8, endpoint=False)
         link = (
-            mid
-            + along[None] * (0.011 * np.cos(b))[:, None]
-            + across[None] * (0.006 * np.sin(b))[:, None]
+            centres[i]
+            + along[None] * (half * np.cos(b))[:, None]
+            + across[None] * (0.45 * half * np.sin(b))[:, None]
         )
-        loft(gold, link, [circle(0.0011, 3)] * len(link), ref=tuple(np.cross(along, across)),
+        loft(gold, link, [circle(0.0013, 3)] * len(link), ref=tuple(np.cross(along, across)),
              closed_path=True, tile=0.02)  # fmt: skip
     return [gold]
 
@@ -883,25 +884,31 @@ def hammer(seg: int) -> list[Mesh]:
     return [handle, head]
 
 
+SAW_GRIP = np.array([0.0, -0.09, -0.02])  # the origin: the rear bar of the handle (item y, z)
+
+
 def saw(seg: int) -> list[Mesh]:
-    """Hand saw: a wooden grip (the origin) and a tapering steel blade along +Y, thin along X, the
-    teeth on its +Z edge (contract: item +Z = edge)."""
+    """Hand saw: an open wooden handle with a hand hole (a closed loop; the rear bar is the grip,
+    the origin) and a steel blade along +Y, 45 cm long, tapering from 10 to 4 cm, thin along X,
+    its straight toothed edge on +Z (contract: item +Z = edge), fine teeth every 4 mm."""
     grip = Mesh("wood")
-    loft(grip, np.array([[0, -0.06, 0.01], [0, 0.06, 0.01]]),
-         [np.array([[-0.012, -0.03], [0.012, -0.03], [0.012, 0.035], [-0.012, 0.035]])] * 2,
-         ref=(0.0, 0.0, 1.0), tile=0.1)  # fmt: skip
+    outline = np.array([  # (y, z) round the hand hole, the front against the blade's heel
+        (0.0, 0.045), (-0.045, 0.052), (-0.085, 0.035), (-0.1, -0.015), (-0.088, -0.062),
+        (-0.045, -0.078), (0.0, -0.068), (0.012, -0.012),
+    ])  # fmt: skip
+    path = np.stack([np.zeros(len(outline)), outline[:, 0], outline[:, 1]], axis=1) - SAW_GRIP
+    square = np.array([[-0.011, -0.011], [0.011, -0.011], [0.011, 0.011], [-0.011, 0.011]])
+    loft(grip, path, [square] * len(path), ref=(1.0, 0.0, 0.0), closed_path=True, tile=0.1)
     blade = Mesh("iron_forged")
-    ys = np.linspace(0.05, 0.55, 26)
-    top = 0.045 - 0.025 * (ys - 0.05) / 0.5
-    teeth = np.where(np.arange(len(ys)) % 2 == 0, 0.0, -0.006)
-    outline_front = np.stack(
-        [np.zeros_like(ys), ys, top + 0.005 + teeth], axis=1
-    )  # toothed +Z edge
-    outline_back = np.stack([np.zeros_like(ys), ys, np.full_like(ys, -0.035)], axis=1)
+    ys = np.arange(0.0, 0.4501, 0.004)
+    back = -0.055 + 0.06 * ys / 0.45  # the back edge rises: 10 cm at the heel, 4 cm at the tip
+    teeth = 0.045 + np.where(np.arange(len(ys)) % 2 == 0, 0.0, 0.004)
+    front = np.stack([np.zeros_like(ys), ys, teeth], axis=1) - SAW_GRIP
+    rear = np.stack([np.zeros_like(ys), ys, back], axis=1) - SAW_GRIP
+    n = len(ys)
     for x, flip in ((0.0008, False), (-0.0008, True)):
-        pos = np.concatenate([outline_back, outline_front]) + np.array([x, 0.0, 0.0])
-        n = len(ys)
-        uv = np.stack([pos[:, 1] / 0.5, (pos[:, 2] + 0.035) / 0.09], axis=1)
+        pos = np.concatenate([rear, front]) + np.array([x, 0.0, 0.0])
+        uv = np.stack([pos[:, 1] / 0.45, (pos[:, 2] + 0.055) / 0.1], axis=1)
         tris = []
         for i in range(n - 1):
             a, b, c, d = i, i + 1, n + i, n + i + 1
@@ -911,21 +918,21 @@ def saw(seg: int) -> list[Mesh]:
 
 
 def shears(seg: int) -> list[Mesh]:
-    """Spring shears (tailor's shears of the time): two blades along +Y joined by a bow-shaped
-    spring at the grip end (the origin), their edges facing each other across X."""
+    """Spring shears (tailor's shears of the time), flat in the item X-Y plane: two blades along
+    +Y on tapering arms joined by a U-shaped spring bow at the bottom; held at the arms above the
+    bow (the origin)."""
     iron = Mesh("iron_forged")
-    a = np.linspace(-np.pi, 0.0, 9)
-    bow = np.stack([0.022 * np.cos(a), -0.04 + 0.03 * np.sin(a), np.zeros_like(a)], axis=1)
-    loft(iron, bow, [circle(1.0, 4) * np.array([0.002, 0.006])] * len(bow), ref=(0.0, 0.0, 1.0),
-         tile=0.05)  # fmt: skip
+    a = np.linspace(np.pi, 2 * np.pi, 11)
+    bow = np.stack([0.022 * np.cos(a), -0.03 + 0.022 * np.sin(a), np.zeros_like(a)], axis=1)
+    strip = np.array([[-0.0022, -0.006], [0.0022, -0.006], [0.0022, 0.006], [-0.0022, 0.006]])
+    loft(iron, bow, [strip] * len(bow), ref=(0.0, 0.0, 1.0), tile=0.05)
     for s in (1.0, -1.0):
-        ys = np.array([-0.04, 0.0, 0.06, 0.12, 0.155])
-        xs = s * np.array([0.022, 0.012, 0.006, 0.003, 0.0005])
-        widths = np.array([0.006, 0.009, 0.012, 0.009, 0.003])
+        ys = np.array([-0.03, 0.0, 0.03, 0.06, 0.1, 0.14, 0.165])
+        xs = s * np.array([0.022, 0.017, 0.012, 0.009, 0.005, 0.002, 0.0005])
+        widths = np.array([0.0035, 0.004, 0.006, 0.008, 0.006, 0.004, 0.001])  # half widths in X
         path = np.stack([xs, ys, np.zeros_like(ys)], axis=1)
-        blade = [np.array([[-0.0012, -w], [0.0012, -w], [0.0012, w], [-0.0012, w]]) for w in widths]
-        loft(iron, path, blade,
-             ref=(0.0, 0.0, 1.0), tile=0.05)  # fmt: skip
+        loft(iron, path, [np.array([[-w, -0.0013], [w, -0.0013], [w, 0.0013], [-w, 0.0013]])
+                          for w in widths], ref=(0.0, 0.0, 1.0), tile=0.05)  # fmt: skip
     return [iron]
 
 
@@ -1359,7 +1366,7 @@ LENGTHS = {
     "it_herb_sage": (0.15, 0.22), "it_herb_nettle": (0.2, 0.28), "it_herb_chamomile": (0.15, 0.22),
     "it_herbs_dried": (0.18, 0.26), "it_ring_gold": (0.02, 0.03), "it_ring_silver": (0.02, 0.03),
     "it_amulet": (0.24, 0.3), "it_chain_gold": (0.3, 0.4), "it_hammer": (0.28, 0.34),
-    "it_saw": (0.58, 0.65), "it_shears": (0.18, 0.24),
+    "it_saw": (0.5, 0.6), "it_shears": (0.18, 0.24),
     "it_potion_mana_small": (0.12, 0.2), "it_scroll": (0.18, 0.24), "it_torch": (0.65, 0.75),
     "it_lute": (0.75, 0.9),
     **{f"it_rune_{spell}": (0.05, 0.08) for spell in RUNES},
