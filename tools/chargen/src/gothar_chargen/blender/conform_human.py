@@ -648,6 +648,8 @@ def _derive(
             )
             bm.to_mesh(mesh)
             bm.free()
+    if d.rim_smooth:
+        _smooth_rim(obj, d.rim_smooth)
     if d.flatten:
         _flatten_front(obj, d.flatten)
     if d.smooth:
@@ -806,6 +808,55 @@ def _panel(
     print(
         f"[chargen] panel {2 * half.min():.2f}-{2 * half.max():.2f} m wide, {high - low:.2f} m long"
     )
+
+
+RIM_WEIGHT = 0.5  # share of the neighbours' average per pass (the open edge only)
+RIM_INNER = 0.5  # the first row inside follows half of its rim vertex's move (no fold at the edge)
+
+
+def _smooth_rim(obj: bpy.types.Object, passes: int) -> None:
+    """Smooths the open edges of a cut piece along the edge itself (a jagged cut along bone
+    weights, e.g. the armholes of a vest), leaving the cloth's folds alone: every rim vertex moves
+    towards the average of its two rim neighbours, but only outwards (away from the piece), so the
+    notches fill up to the line of the tips and the piece covers more, never less; its inner
+    neighbours follow by half."""
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.verts.ensure_lookup_table()
+    rim: dict[int, list[int]] = {}
+    for e in bm.edges:
+        if e.is_boundary:
+            a, b = e.verts[0].index, e.verts[1].index
+            rim.setdefault(a, []).append(b)
+            rim.setdefault(b, []).append(a)
+    chain = {v: n for v, n in rim.items() if len(n) == 2}
+    start = {v: bm.verts[v].co.copy() for v in chain}
+    inward = {}  # per rim vertex: towards the piece (its inner neighbours)
+    for v in chain:
+        inner = [e.other_vert(bm.verts[v]).co for e in bm.verts[v].link_edges
+                 if e.other_vert(bm.verts[v]).index not in rim]  # fmt: skip
+        if inner:
+            inward[v] = (sum(inner, start[v] * 0) / len(inner) - start[v]).normalized()
+    for _ in range(passes):
+        new = {}
+        for v, (a, b) in chain.items():
+            avg = (bm.verts[a].co + bm.verts[b].co) / 2
+            step = (avg - bm.verts[v].co) * RIM_WEIGHT
+            if v in inward and step.dot(inward[v]) > 0:  # outwards only: fill the notches
+                step -= inward[v] * step.dot(inward[v])
+            new[v] = bm.verts[v].co + step
+        for v, co in new.items():
+            bm.verts[v].co = co
+    moved = {v: bm.verts[v].co - start[v] for v in chain}
+    for v, delta in moved.items():
+        for e in bm.verts[v].link_edges:
+            other = e.other_vert(bm.verts[v])
+            if other.index not in rim:
+                other.co += delta * RIM_INNER
+    bm.to_mesh(mesh)
+    bm.free()
+    print(f"[chargen] rim smoothed: {len(chain)} edge vertices, {passes} passes")
 
 
 POUCH_SIDE = (-0.8, -0.6)  # x, y: right front side (the figure faces -Y, its right is -X)

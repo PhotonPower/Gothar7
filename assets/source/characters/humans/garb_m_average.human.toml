@@ -146,6 +146,7 @@ uv_scale = 2.0
 [derive.vest_cloth]
 from = "clothes/toigo_basic_tucked_t-shirt/toigo_basic_tucked_t-shirt.mhclo"
 cut = ["upperarm", "lowerarm"]
+rim_smooth = 12
 offset = 0.012
 texture = "gothar/ambientcg/Fabric031/Fabric031_1K-JPG_Color.jpg"
 uv_scale = 3.0

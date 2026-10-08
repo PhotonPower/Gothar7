@@ -88,7 +88,8 @@ gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name
                                               & REM Kleidungs-Kits (fit_to, parts = ["cloth"]): ein Teil je Stück und Statur;
                                               & REM Rüstungs-Kits zusätzlich neutral = false, [names], [budget], [derive.x],
                                               & REM [retouch]; Kopf-Kits [hides], derive from = "basemesh" + dome/nasal, heads
-                                              & REM eigene Stücke: panel (+ bib: Latzschürze), pouch (Beutel am Gürtel)
+                                              & REM eigene Stücke: panel (+ bib: Latzschürze), pouch (Beutel am Gürtel);
+                                              & REM rim_smooth: zackige Schnittkanten glätten (Westen-Armlöcher)
 gothar-chargen creature wolf --sources C:\GotharData\characters\monsters
                                               & REM eigene Art aus data/monsters/wolf.creature.toml: Rig, Referenz mit
                                               & REM LODs, Texturen, Clip-Quelle wolf_clips.blend (Ruhepose „rest“; §7.4)

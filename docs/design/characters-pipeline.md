@@ -445,7 +445,9 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
       Brust (`band_at = ["calf_l", "spine_03"]`) mit **`bib`** = Breite über der Taille (0,20 m). Der Latz liegt
       auf der Brust (folgt dem Körper bis zur Taille, dort gebunden), darunter hängt die Schürze wie `apron`.
     - `vest_cloth` (Schneider, Goldschmied; Wollstoff „Fabric 031“): das saubere CC0-Hemd (`shirt`) ohne Ärmel,
-      darüber (das grobe Hemd hat Löcher in der Geometrie).
+      darüber (das grobe Hemd hat Löcher in der Geometrie). Die Armlöcher glättet **`rim_smooth`** (Durchgänge):
+      Die offenen Kanten eines nach Knochengewichten geschnittenen Stücks werden entlang der Kante geglättet, nur
+      nach außen (die Kerben füllen sich bis zur Linie der Spitzen), so deckt das Stück mehr statt weniger.
     - `purse` (Geldbeutel, m/w; „Leather 014“): **`pouch = [breite, höhe, tiefe]`** – eigene Geometrie, ein kleiner
       Beutel am Gürtel vorn rechts (oben voller, unten gerafft), steif auf `pelvis`; gut lesbar für den
       Taschendiebstahl.
