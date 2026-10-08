@@ -103,6 +103,9 @@ den Validator und Cooker prüfen bzw. ablegen.
   `eyelashes`, `teeth`, `tongue`): Haut ≤ 2048², Kleidung ≤ 1024², Haare ≤ 1024², Augen/Brauen/Wimpern/Zähne/Zunge
   ≤ 256²; Normal-Maps ≤ der
   zugehörigen Basisfarbe; Seitenlängen Zweierpotenzen (quadratisch nicht nötig).
+- **Rolle aus dem ersten Wort des Materialnamens** (`beard_head`, `beard_stubble` → Rolle `beard`). Ein in den Kopf
+  eingebauter Bart (`head_m_mid`, `head_m_old`) heißt `beard_head` (seit 2026-10-08), damit ein Kit-Bart `beard`
+  im Zusammenbau sein eigenes Material behält (assemble führt Materialien nach Namen zusammen, der Kopf zuerst).
 - **Formate:** Basisfarbe sRGB; Normal-Maps linear (Tangentenraum, OpenGL-Konvention +Y), bevorzugt PNG.
   Deckende Basisfarben dürfen JPEG sein. **Haare, Brauen, Wimpern:** glTF `alphaMode` MASK mit `alphaCutoff` 0,5
   (nicht BLEND – keine Sortierung, korrekte Schatten), Textur als PNG mit Alphakanal.

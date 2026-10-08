@@ -1076,6 +1076,8 @@ def _rebuild_material(obj: bpy.types.Object, role: str, stem: str, human: Human,
     )
     piece = human.part_name(stem) if kit else stem  # our file/material name for the piece
     mat_name = role if role != "cloth" else f"cloth_{piece}"
+    if role == "beard" and not kit:  # baked into a head part: assemble merges materials by name and
+        mat_name = "beard_head"  # the head's would replace a kit beard's (role stays "beard")
     texture_name = piece
     old = obj.material_slots[0].material if obj.material_slots else None
     diffuse, normal = _source_images(old)
