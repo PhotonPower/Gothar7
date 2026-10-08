@@ -3,6 +3,14 @@
 Erzeugt aus den Bindings der Engine (`gothar --script-api=docs/script-api.md`) – nicht von Hand bearbeiten.
 Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
+## Debug
+
+### `npc_debug_hold(npc: string, seconds: number)`
+Debug: hält einen NPC so lange an Ort und Stelle, ohne seine Route zu löschen – wie eine verkeilte Kapsel (Test des Neuplanens). Nicht für Inhaltsskripte.
+
+### `npc_route(npc: string) -> table`
+Debug: die Punkte der Route, die ein NPC gerade geht ({ {x, y, z}, ... }; leer, wenn er steht). Nicht für Inhaltsskripte.
+
 ## Dialoge
 
 ### `choice(text: string, fn: function)`
