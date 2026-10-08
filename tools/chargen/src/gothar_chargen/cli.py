@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import sys
 import tempfile
@@ -62,7 +63,13 @@ from gothar_chargen.skeleton import (
     packaged_species,
     species_of,
 )
-from gothar_chargen.validate import ReferencePose, Report, reference_pose, validate_file
+from gothar_chargen.validate import (
+    ReferencePose,
+    Report,
+    duplicate_clips,
+    reference_pose,
+    validate_file,
+)
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -181,6 +188,18 @@ def _cmd_validate(args: argparse.Namespace, out: TextIO) -> int:
             else:
                 report = validate_file(f, rig, reference)
             reports.append(report)
+
+    by_file = {r.path: r for r in reports}
+    clips = {}
+    for f in files:
+        if f.suffix.lower() == ".glb" and "anims" in f.parts:
+            with contextlib.suppress(GltfError):
+                clips[f] = [str(a.get("name", "")) for a in Gltf.load(f).list("animations")]
+    for f, name, other in duplicate_clips(clips):
+        by_file[f].error(
+            "anim.duplicate",
+            f"clip '{name}' is also in {other.name} (the engine finds clips by name in all sets)",
+        )
 
     if args.json:
         json.dump([r.to_dict() for r in reports], out, indent=2)

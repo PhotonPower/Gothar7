@@ -1070,3 +1070,17 @@ def validate_file(
         report.error("gltf.parse", str(e))
         return report
     return validate_gltf(gltf, rig, reference, tolerances, path)
+
+
+def duplicate_clips(clips_by_file: dict[Path, list[str]]) -> list[tuple[Path, str, Path]]:
+    """Clip names that occur in more than one animation file: (file, name, first file). The engine
+    looks clips up by their full name across all sets (2026-10-08) and would silently keep one."""
+    first: dict[str, Path] = {}
+    found = []
+    for path in sorted(clips_by_file):
+        for name in clips_by_file[path]:
+            if name in first and first[name] != path:
+                found.append((path, name, first[name]))
+            else:
+                first.setdefault(name, path)
+    return found

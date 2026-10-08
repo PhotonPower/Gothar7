@@ -461,6 +461,42 @@ def axe(seg: int) -> list[Mesh]:
     return [handle, head]
 
 
+TORCH_FLAME = (0.0, 0.6, 0.0)  # flame: top of the pitch head (marker socket_flame, +Y = item +Y)
+
+
+def torch(seg: int) -> list[Mesh]:
+    """Torch: a slightly crooked wooden stick held near its lower end (the origin) and a head of
+    pitch-soaked rags wound round its top, bound with a cord; the flame sits above (TORCH_FLAME)."""
+    rng = np.random.default_rng(41)
+    stick = Mesh("wood_dark")
+    ys = np.linspace(-0.13, 0.47, 7)
+    t = (ys + 0.13) / 0.6
+    path = np.stack([0.008 * np.sin(np.pi * t), ys, 0.005 * np.sin(2 * np.pi * t)], axis=1)
+    loft(stick, path, [circle(0.015 + 0.004 * ti, max(6, seg // 2)) for ti in t], tile=0.3)
+    head = Mesh("pitch")
+    ys = np.linspace(0.33, 0.585, 16)
+    t = (ys - 0.33) / 0.255
+    radius = 0.021 + 0.017 * np.sin(np.pi * np.clip(t * 1.15, 0, 1)) ** 0.6
+    radius[-1] = 0.006  # charred, rounded top
+    radius[-2] *= 0.8
+    wraps = 1 + 0.07 * np.sin(t * 2 * np.pi * 5.5)  # the rag wound in turns
+    sections = []
+    for i, r in enumerate(radius):
+        lumpy = 1 + 0.08 * (rng.random(seg) - 0.5) * (0.4 + t[i])
+        sections.append(circle(r * wraps[i], seg) * lumpy[:, None])
+    loft(head, np.stack([np.zeros_like(ys), ys, np.zeros_like(ys)], axis=1), sections, tile=0.08)
+    cord = Mesh("cork")
+    for y in (0.34, 0.355):
+        loft(cord, np.array([[0, y, 0], [0, y + 0.009, 0]]), [circle(0.0235, seg)] * 2, tile=0.05)
+    return [stick, head, cord]
+
+
+# empty marker nodes per item (name -> position in item space), e.g. where engine puts the flame
+MARKERS: dict[str, dict[str, tuple[float, float, float]]] = {
+    "it_torch": {"socket_flame": TORCH_FLAME},  # engine: flame and light, +Y up out of the head
+}
+
+
 def _vanes(mesh: Mesh, y0: float, y1: float, r0: float, r1: float, count: int) -> None:
     """Thin flat vanes standing off the shaft (feathers of an arrow, vanes of a bolt): one flat
     section per vane, rotated about +Y; the first lies in the item +Z plane."""
@@ -544,6 +580,7 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_sword_2h": (sword_2h, 12),
     "it_potion_mana_small": (lambda s: potion(s, "glass_blue"), 16),
     "it_scroll": (scroll, 12),
+    "it_torch": (torch, 12),
     **{f"it_rune_{spell}": ((lambda sp: lambda s: rune(s, sp))(spell), 12) for spell in RUNES},
 }
 
@@ -557,7 +594,7 @@ TEXTURES: dict[str, tuple[str, int, tuple[float, float, float]]] = {
 }
 PROCEDURAL = (
     "iron_forged", "apple", "bread", "glass_red", "glass_blue", "cork", "straw", "feather",
-    "stone", "parchment", "wax_red", *(f"rune_{spell}" for spell in RUNES),
+    "stone", "parchment", "wax_red", "pitch", *(f"rune_{spell}" for spell in RUNES),
 )  # fmt: skip
 
 
@@ -650,6 +687,11 @@ def procedural_texture(name: str, size: int = 256) -> np.ndarray:
         return np.clip(np.array([0.55, 0.06, 0.05])[None, None] * (0.8 + 0.4 * n2[..., None]), 0, 1)
     if name.startswith("rune_"):  # stone with the carved, coloured sign of the spell
         return _rune_face(name[5:], size, n1, n2)
+    if name == "pitch":  # rags soaked in pitch: tarry dark brown, wound bands along v, glossy spots
+        band = 0.5 + 0.5 * np.sin(np.linspace(0, 22 * np.pi, size))[:, None]
+        c = np.array([0.16, 0.11, 0.07])[None, None] * (0.7 + 0.5 * n1[..., None])
+        c = c * (0.8 + 0.35 * band[..., None])
+        return np.clip(c + 0.06 * (n2[..., None] > 0.72), 0, 1)
     if name == "cork":
         return np.clip(np.array([0.55, 0.4, 0.24])[None, None] * (0.7 + 0.5 * n2[..., None]), 0, 1)
     raise ValueError(f"unknown procedural texture {name}")
@@ -744,6 +786,9 @@ def item_gltf(item: str, texture_uri: Callable[[str], str]) -> tuple[dict, bytes
         doc["meshes"].append({"name": f"{item}_lod{level}", "primitives": prims})
         doc["nodes"].append({"name": f"{item}_lod{level}", "mesh": len(doc["meshes"]) - 1})
         doc["scenes"][0]["nodes"].append(len(doc["nodes"]) - 1)
+    for name, at in MARKERS.get(item, {}).items():
+        doc["nodes"].append({"name": name, "translation": [float(v) for v in at]})
+        doc["scenes"][0]["nodes"].append(len(doc["nodes"]) - 1)
     doc["buffers"].append({"byteLength": len(blob)})
     return doc, bytes(blob)
 
@@ -790,7 +835,7 @@ LENGTHS = {
     "it_broom": (1.2, 1.6), "it_mug": (0.09, 0.15), "it_axe": (0.6, 0.9),
     "it_arrow": (0.7, 0.8), "it_bolt": (0.3, 0.4), "it_crossbow": (0.75, 0.9),
     "it_sword_2h": (1.3, 1.55),
-    "it_potion_mana_small": (0.12, 0.2), "it_scroll": (0.18, 0.24),
+    "it_potion_mana_small": (0.12, 0.2), "it_scroll": (0.18, 0.24), "it_torch": (0.65, 0.75),
     **{f"it_rune_{spell}": (0.05, 0.08) for spell in RUNES},
 }  # fmt: skip
 
@@ -820,6 +865,9 @@ def validate_item(path: Path) -> Report:
     for level in range(len(LOD_SEGMENTS)):
         if f"{item}_lod{level}" not in names:
             report.error("item.lod", f"node {item}_lod{level} missing")
+    for marker in MARKERS.get(item, {}):
+        if marker not in names:
+            report.error("item.marker", f"marker node {marker} missing")
     for image in g.list("images"):
         if "uri" in image and not (path.parent / image["uri"]).is_file():
             report.error("item.texture", f"texture {image['uri']} missing")

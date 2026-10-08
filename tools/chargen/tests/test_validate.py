@@ -407,3 +407,13 @@ def test_report_to_dict(figure, rig, reference):
     assert d["path"] == "x.glb"
     assert d["ok"] is False
     assert {"level", "code", "message"} <= set(d["issues"][0])
+
+
+def test_duplicate_clips_across_files():
+    from gothar_chargen.validate import duplicate_clips
+
+    a, b, c = Path("anims/human/none.glb"), Path("anims/human/torch.glb"), Path("anims/human/x.glb")
+    found = duplicate_clips({a: ["none/s_idle", "none/s_walk"], b: ["none/a_torch_hold"], c: []})
+    assert found == []
+    found = duplicate_clips({a: ["none/s_idle"], b: ["none/a_torch_hold", "none/s_idle"]})
+    assert found == [(b, "none/s_idle", a)]

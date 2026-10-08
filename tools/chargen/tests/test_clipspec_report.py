@@ -25,7 +25,21 @@ SOURCES = {"ual1": {"file": "a.glb", "mapping": "quaternius_ual1"}}
 
 
 def test_packaged_sets_are_valid():
-    humans = ["1h", "2h", "amb", "bow", "cbow", "dive", "dlg", "fist", "mag", "mob", "none", "swim"]
+    humans = [
+        "1h",
+        "2h",
+        "amb",
+        "bow",
+        "cbow",
+        "dive",
+        "dlg",
+        "fist",
+        "mag",
+        "mob",
+        "none",
+        "swim",
+        "torch",
+    ]
     assert packaged_sets(monsters=False) == humans
     monsters = ["bergleu", "glemsmahr", "keiler", "laufvogel", "quaderbuckel", "schinder", "wolf"]
     assert packaged_sets(monsters=True) == monsters
@@ -33,7 +47,8 @@ def test_packaged_sets_are_valid():
     for name in packaged_sets():
         spec = load_set_spec(name)
         assert spec.set == name
-        assert all(n.startswith(f"{name}/") for n in spec.names)  # helpers may differ
+        mode = {"torch": "none"}.get(name, name)  # own files for none clips (none.glb unchanged)
+        assert all(n.startswith(f"{mode}/") for n in spec.names)  # helpers may differ
         for source in spec.sources.values():
             load_mapping(source.mapping)
 
@@ -278,8 +293,8 @@ def test_real_list_is_consistent_with_files():
     assert result.missing == []
     counts = list(result.section_counts().values())
     # Prio-B item use + mobs (M8), per mode, Prio-C routines (M9), dialogue (M10), combat (M11),
-    # magic (M12, with the human transformation), 7 monsters (own wolf 15 with transformation,
-    # 2 placeholders, schinder 15, quaderbuckel 17, glemsmahr 19, bergleu 19)
+    # magic (M12, with the human transformation), torch (F6), 7 monsters (own wolf 15 with the
+    # transformation, keiler/laufvogel 12, schinder 15, quaderbuckel 17, glemsmahr/bergleu 19)
     expected = [
         (17, 17),
         (48, 48),
@@ -287,6 +302,7 @@ def test_real_list_is_consistent_with_files():
         (22, 22),
         (31, 31),
         (16, 16),
+        (6, 6),
         (15, 15),
         (12, 12),
         (12, 12),
