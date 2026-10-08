@@ -1,0 +1,18 @@
+# beggar_m_2: set 'beggar': worn tunic, stubble, barefoot (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_gaunt/head.glb"
+hair = "parts/hair_m_gaunt/hair_messy.glb"
+beard = "parts/hair_m_gaunt/beard_stubble.glb"
+cloth = [
+    "parts/garb_m_average/tunic.glb",
+    "parts/garb_m_average/belt.glb",
+]
+
+[palette]
+hair = "#5a4c3a"
+beard_stubble = "#2e2219"
+cloth_tunic = "#8a8070"
+cloth_belt = "#3a2a1e"

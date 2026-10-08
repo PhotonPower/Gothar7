@@ -1,0 +1,18 @@
+# beggar_m_1: set 'beggar': rags and hood, barefoot (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_thin/body.glb"
+head = "parts/head_m_rough/head.glb"
+hair = "parts/hair_m_rough/hair_long_shaggy.glb"
+beard = "parts/hair_m_rough/beard_faun.glb"
+cloth = [
+    "parts/cloth_m_thin/elvs_crude_t-shirt_male.glb",
+    "parts/headgear_m_thin/hood.glb",
+]
+
+[palette]
+hair = "#3a2a1e"
+beard = "#3a2a1e"
+cloth_elvs_crude_t-shirt_male = "#6e6452"
+cloth_hood = "#7a7060"

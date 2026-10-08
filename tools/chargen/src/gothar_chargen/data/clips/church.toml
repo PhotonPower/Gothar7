@@ -1,0 +1,58 @@
+# Set "church" -> assets/source/characters/anims/human/church.glb (church and the poor, 2026-10-08,
+# agreed with engine and welt via the koordinator): own file so amb.glb stays untouched; the clips
+# are named amb/... and engine finds them by their full name in all sets. Freepoints from welt:
+# FP_PRAY (in the church, facing the altar, 0.6 m free in front), FP_PREACH (altar, pulpit, market),
+# FP_BEG (church door, fountain, gate; a wall behind is fine). Origin = foot point at the freepoint,
+# facing +Z (the freepoint's direction), no root motion; keyframe placeholders (mocap in F4).
+#
+# Key poses rotate about world axes at rest (Blender: X = the figure's left, -Y = forward, Z = up;
+# +X pitches the head down and swings a limb back, +Z turns left); twist turns a bone about its
+# own length axis.
+
+set = "church"
+depends = ["none"]
+
+# --- pray (kneeling on both knees, hands folded before the chest; FP_PRAY) ---------------------
+
+[[clip]]
+name = "amb/t_pray_in"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [22, "down"], [45, "pray"]], poses = { down = { move = { pelvis = [0.0, -0.08, -0.33] }, rotate = { thigh_l = [["X", -80]], calf_l = [["X", 80]], thigh_r = [["X", 10]], calf_r = [["X", 90]], foot_r = [["X", 40]], spine_01 = [["X", 10]], head = [["X", 10]] } }, pray = { move = { pelvis = [0.0, -0.05, -0.4] }, rotate = { thigh_l = [["X", -8]], thigh_r = [["X", -8]], calf_l = [["X", 92]], calf_r = [["X", 92]], foot_l = [["X", 40]], foot_r = [["X", 40]], spine_01 = [["X", 6]], head = [["X", 22]], upperarm_l = [["X", -30], ["Z", -15]], upperarm_r = [["X", -30], ["Z", 15]], lowerarm_l = [["Z", -90]], lowerarm_r = [["Z", 90]] } } } }
+
+[[clip]]
+name = "amb/t_pray_out"
+reverse = "amb/t_pray_in"
+
+[[clip]]
+name = "amb/s_pray"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "pray"], [50, "pray_b"], [70, "pray_b"], [120, "pray"]], poses = { pray = { move = { pelvis = [0.0, -0.05, -0.4] }, rotate = { thigh_l = [["X", -8]], thigh_r = [["X", -8]], calf_l = [["X", 92]], calf_r = [["X", 92]], foot_l = [["X", 40]], foot_r = [["X", 40]], spine_01 = [["X", 6]], head = [["X", 22]], upperarm_l = [["X", -30], ["Z", -15]], upperarm_r = [["X", -30], ["Z", 15]], lowerarm_l = [["Z", -90]], lowerarm_r = [["Z", 90]] } }, pray_b = { move = { pelvis = [0.0, -0.05, -0.4] }, rotate = { thigh_l = [["X", -8]], thigh_r = [["X", -8]], calf_l = [["X", 92]], calf_r = [["X", 92]], foot_l = [["X", 40]], foot_r = [["X", 40]], spine_01 = [["X", 10]], head = [["X", 8]], upperarm_l = [["X", -30], ["Z", -15]], upperarm_r = [["X", -30], ["Z", 15]], lowerarm_l = [["Z", -90]], lowerarm_r = [["Z", 90]] } } } }
+
+[[clip]]
+name = "amb/s_pray_stand"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "p"], [60, "p_b"], [120, "p"]], poses = { p = { rotate = { spine_01 = [["X", 4]], head = [["X", 25]], upperarm_l = [["X", -30], ["Z", -15]], upperarm_r = [["X", -30], ["Z", 15]], lowerarm_l = [["Z", -90]], lowerarm_r = [["Z", 90]] } }, p_b = { rotate = { spine_01 = [["X", 6]], head = [["X", 15]], upperarm_l = [["X", -30], ["Z", -15]], upperarm_r = [["X", -30], ["Z", 15]], lowerarm_l = [["Z", -90]], lowerarm_r = [["Z", 90]] } } } }
+
+# --- preach (standing; FP_PREACH; beat on the stressed gestures) -----------------------------
+
+[[clip]]
+name = "amb/s_preach"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "b"], [30, "a"], [60, "a"], [90, "c"], [130, "b"], [160, "c"], [180, "b"]], poses = { a = { rotate = { spine_01 = [["X", -4]], head = [["Z", 10]], upperarm_r = [["X", -130]], lowerarm_r = [["X", -10]], upperarm_l = [["X", -60]], lowerarm_l = [["Z", -25]] }, twist = { lowerarm_l = -90 } }, b = { rotate = { spine_01 = [["X", 4]], head = [["Z", -10]], upperarm_r = [["X", -60]], lowerarm_r = [["Z", 25]], upperarm_l = [["X", -60]], lowerarm_l = [["Z", -25]] }, twist = { lowerarm_l = -90, lowerarm_r = 90 } }, c = { rotate = { spine_01 = [["X", 0]], head = [["X", -5]], upperarm_r = [["X", -45], ["Z", -30]], lowerarm_r = [["Z", 20]], upperarm_l = [["X", -45], ["Z", 30]], lowerarm_l = [["Z", -20]] }, twist = { lowerarm_l = -90, lowerarm_r = 90 } } } }
+markers = { beat = 30 }
+
+# --- beg (sitting on the ground, right hand held out; FP_BEG, a wall behind is fine) ----------
+
+[[clip]]
+name = "amb/t_beg_in"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [20, "down"], [45, "beg"]], poses = { down = { move = { pelvis = [0.0, 0.05, -0.45] }, rotate = { thigh_l = [["X", -70]], calf_l = [["X", 90]], thigh_r = [["X", -40]], calf_r = [["X", 110]], spine_01 = [["X", 25]] } }, beg = { move = { pelvis = [0.0, 0.0, -0.8] }, rotate = { thigh_l = [["X", -125], ["Y", -12]], calf_l = [["X", 140]], thigh_r = [["X", -88], ["Y", 8]], calf_r = [["X", -2]], spine_01 = [["X", 8]], head = [["X", 12]], upperarm_l = [["X", -40]], lowerarm_l = [["X", -40]], upperarm_r = [["X", -50]], lowerarm_r = [["X", -20]] }, twist = { lowerarm_r = 90 } } } }
+
+[[clip]]
+name = "amb/t_beg_out"
+reverse = "amb/t_beg_in"
+
+[[clip]]
+name = "amb/s_beg"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "beg"], [40, "beg"], [60, "beg_b"], [80, "beg_b"], [120, "beg"]], poses = { beg = { move = { pelvis = [0.0, 0.0, -0.8] }, rotate = { thigh_l = [["X", -125], ["Y", -12]], calf_l = [["X", 140]], thigh_r = [["X", -88], ["Y", 8]], calf_r = [["X", -2]], spine_01 = [["X", 8]], head = [["X", 12]], upperarm_l = [["X", -40]], lowerarm_l = [["X", -40]], upperarm_r = [["X", -50]], lowerarm_r = [["X", -20]] }, twist = { lowerarm_r = 90 } }, beg_b = { move = { pelvis = [0.0, 0.0, -0.8] }, rotate = { thigh_l = [["X", -125], ["Y", -12]], calf_l = [["X", 140]], thigh_r = [["X", -88], ["Y", 8]], calf_r = [["X", -2]], spine_01 = [["X", 12]], head = [["X", 4], ["Z", 8]], upperarm_l = [["X", -40]], lowerarm_l = [["X", -40]], upperarm_r = [["X", -62]], lowerarm_r = [["X", -30]] }, twist = { lowerarm_r = 90 } } } }

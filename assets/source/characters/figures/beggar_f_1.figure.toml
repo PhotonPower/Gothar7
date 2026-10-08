@@ -1,0 +1,21 @@
+# beggar_f_1: set 'beggar': old woman in rags with a dirty coif, barefoot (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_f_thin/body.glb"
+head = "parts/head_f_old/head.glb"
+hair = "parts/hair_f_old/hair_braid.glb"
+cloth = [
+    "parts/cloth_f_thin/joepal_crude_t-shirt_female.glb",
+    "parts/cloth_f_thin/toigo_long_full_skirt.glb",
+    "parts/headgear_f_thin/coif.glb",
+]
+
+[palette]
+hair = "#8f8a84"
+cloth_joepal_crude_t-shirt_female = "#7a6e58"
+cloth_toigo_long_full_skirt = "#4a4034"
+cloth_coif = "#8a7e66"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "old"

@@ -1,0 +1,21 @@
+# priest: Leonberg priest (named): dark clean robe, old (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_old/head.glb"
+hair = "parts/hair_m_old/hair_short.glb"
+cloth = [
+    "parts/garb_m_average/coat_clean.glb",
+    "parts/garb_m_average/belt.glb",
+    "parts/cloth_m_average/toigo_mj_cloth_shoes.glb",
+]
+
+[palette]
+hair = "#c8c4bc"
+cloth_coat_clean = "#1e1a18"
+cloth_belt = "#1e1812"
+cloth_toigo_mj_cloth_shoes = "#2e2620"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "old"

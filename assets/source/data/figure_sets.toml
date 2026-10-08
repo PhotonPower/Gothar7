@@ -1,8 +1,8 @@
 # Figure sets (contract figuren -> engine, F3v): an NPC with `figure_set` and without its own
 # `figure` gets one of these manifests, chosen at random but stable per NPC. Paths relative to
-# assets/source. <set>_m and <set>_f hold one sex (Npc has no sex field; guard and hunter are men
-# only, so <set>_m equals <set>); <set> is their union (kept for existing NPCs). Named figures
-# (smith, innkeeper, market_woman, gate_guard, guard_captain and the trades baker ... herbalist) are in
+# assets/source. <set>_m and <set>_f hold one sex (Npc has no sex field; guard, hunter and monk are
+# men only, so <set>_m equals <set>); <set> is their union (kept for existing NPCs). Named figures
+# (smith, innkeeper, market_woman, gate_guard, guard_captain, priest and the trades baker ... herbalist) are in
 # no set: one NPC each. merchant: better-dressed citizens (beret, coif, vest, purse; 2026-10-08).
 
 [sets]
@@ -125,4 +125,24 @@ merchant_f = [
     "characters/figures/merchant_f_2.figure.toml",
     "characters/figures/merchant_f_3.figure.toml",
     "characters/figures/merchant_f_4.figure.toml",
+]
+monk = [
+    "characters/figures/monk_m_1.figure.toml",
+    "characters/figures/monk_m_2.figure.toml",
+]
+monk_m = [
+    "characters/figures/monk_m_1.figure.toml",
+    "characters/figures/monk_m_2.figure.toml",
+]
+beggar = [
+    "characters/figures/beggar_m_1.figure.toml",
+    "characters/figures/beggar_m_2.figure.toml",
+    "characters/figures/beggar_f_1.figure.toml",
+]
+beggar_m = [
+    "characters/figures/beggar_m_1.figure.toml",
+    "characters/figures/beggar_m_2.figure.toml",
+]
+beggar_f = [
+    "characters/figures/beggar_f_1.figure.toml",
 ]

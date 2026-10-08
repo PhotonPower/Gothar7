@@ -230,6 +230,38 @@ des Grundclips (`events.toml`), alt trabt langsam (`s_run` mit halber Geschwindi
 | `none/s_idle_old`, `s_walk_old`, `s_run_old` | Alt: gebeugt, Kopf vor, linke Hand im Kreuz; langsamer Trab | – / 0,98 / 2,94 m/s | footstep_l/r | K | platzhalter-K |
 | `none/s_idle_relaxed`, `s_walk_relaxed` | Entspannt: Hände hinter dem Rücken, Kopf leicht gesenkt | – / 0,98 m/s | footstep_l/r | K | platzhalter-K |
 
+### Prio B – Kirche und Arme (ausgeschrieben, mit engine und welt 2026-10-08)
+
+Eigene Datei `anims/human/church.glb` (Satz `church`, `amb.glb` bleibt unverändert; engine sucht die Clips über den vollen
+Namen in allen Sätzen). Freepoints von welt: `FP_PRAY_…` (in der Kirche, Blick zum Altar, 0,6 m frei nach vorn),
+`FP_PREACH_…` (Altar, Kanzel, Markt), `FP_BEG_…` (Kirchentür, Brunnen, Tor; Wand dahinter möglich). Ursprung =
+Fußpunkt am Freepoint, Blick +Z, ohne Root Motion. Figuren: `priest` (benannt), Sets `monk` (nur Männer) und
+`beggar` (`_m`/`_f`).
+
+| Name | Zweck | Länge | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `amb/t_pray_in`, `amb/t_pray_out` | auf beide Knie sinken (über ein Knie), Hände vor der Brust falten; aufstehen rückwärts | 1,5 s | – | K | platzhalter-K |
+| `amb/s_pray` | kniend beten (Schleife): Kopf gesenkt, ab und zu gehoben | 4 s | – | K | platzhalter-K (Handhaltung per Gittersuche) |
+| `amb/s_pray_stand` | stehend beten (Mönche), Hände gefaltet | 4 s | – | K | platzhalter-K |
+| `amb/s_preach` | predigen (Schleife): rechte Hand erhoben, mit der linken erklären, beide Hände offen | 6 s | beat | K | platzhalter-K |
+| `amb/t_beg_in`, `amb/t_beg_out` | sich auf den Boden setzen (linkes Knie hoch, rechtes Bein ausgestreckt); aufstehen rückwärts | 1,5 s | – | K | platzhalter-K |
+| `amb/s_beg` | sitzend betteln (Schleife): rechte Hand offen nach vorn, ab und zu gehoben | 4 s | – | K | platzhalter-K |
+
+### Prio B – Musiker im Gasthof (ausgeschrieben, mit engine 2026-10-08)
+
+Eigene Datei `anims/human/music.glb` (Satz `music`, Clips heißen `amb/…`). `it_lute` in der rechten Hand
+(`socket_hand_r`) über `item_to_hand` bzw. `item_from_hand` in den Ein- und Ausstiegen; `sound:lute_play` am Anfang
+jeder Schleife. Stehend am Freepoint oder sitzend auf Bank bzw. Hocker dahinter (Becken 0,3 m zurück wie `mob/bench`).
+Die Armhaltungen sind gesucht: rechte Hand vor dem Bauch über den Saiten, die Laute per Hand so gedreht, dass der Hals
+nach links oben und die Decke nach vorn zeigt, linke Hand am Hals (je 1–3 cm genau).
+
+| Name | Zweck | Länge | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `amb/t_play_lute_in`, `amb/t_play_lute_out` | Laute nehmen und in Spielhaltung bringen; zurück | 0,8 s | item_to_hand, item_from_hand | K | platzhalter-K |
+| `amb/s_play_lute` | stehend spielen (Schleife): rechter Unterarm zupft, Kopf wiegt | 4 s | sound:lute_play | K | platzhalter-K |
+| `amb/t_play_lute_sit_in`, `amb/t_play_lute_sit_out` | hinsetzen und Laute nehmen; zurück | 1,3 s | item_to_hand, item_from_hand | K | platzhalter-K |
+| `amb/s_play_lute_sit` | sitzend spielen (Schleife) | 4 s | sound:lute_play | K | platzhalter-K |
+
 ## Monster (F5, Vertrag `characters-pipeline.md` §7)
 
 Mindestumfang je Art. Clips liegen in `assets/source/characters/monsters/<art>/anims/<art>.glb`, Herkunft je
