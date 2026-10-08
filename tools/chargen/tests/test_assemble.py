@@ -112,6 +112,7 @@ def test_stale_mask_is_an_error(tmp_path):
     shutil.copytree(CHARACTERS / "parts" / "cloth_m_heavy", parts / "cloth_m_heavy")
     shutil.copytree(CHARACTERS / "parts" / "body_m_heavy", parts / "body_m_heavy")
     shutil.copytree(CHARACTERS / "parts" / "head_m_young", parts / "head_m_young")
+    shutil.copytree(CHARACTERS / "parts" / "hair_m_young", parts / "hair_m_young")  # stubble
     shirt = parts / "cloth_m_heavy/elvs_crude_t-shirt_male.glb"
     g = Gltf.load(shirt)
     g.doc["asset"]["extras"]["gothar"]["covers"]["body_hash"] = "0" * 16

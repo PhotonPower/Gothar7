@@ -97,6 +97,8 @@ gothar-chargen build-set wolf --sources C:\GotharData\characters\monsters
                                               & REM Monster-Clips → monsters/wolf/anims/wolf.glb
 gothar-chargen build-set --events-only wolf 1h & REM nur <set>.events.toml aus den Markern der Specs (ohne
                                               & REM Blender; .blend bleiben unverändert)
+gothar-chargen stubble [köpfe]                & REM eigene Stoppeln für die Männerköpfe → parts/hair_m_<kopf>/
+                                              & REM beard_stubble.glb (+ textures/hair/beard_stubble_neutral.png)
 gothar-chargen collision [wolf]               & REM [rig.collision] aus der Referenz ableiten (ohne Blender)
 ```
 Exit-Code 0 = alles in Ordnung, 1 = Fehler.

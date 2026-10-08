@@ -319,6 +319,18 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   Ein Kopf passt auf jeden Grundkörper desselben Geschlechts: `assemble` zieht den Halsring des Körpers auf den des
   Kopfes (beide aus derselben MPFB-Topologie, Paarung über die Randkante; Hals und Kragen folgen weich bis 5 cm
   darunter) und verwendet die **Haut-Textur des Kopfes auch für den Körper** (eine Haut je Figur, gleiche UV).
+- **Stoppeln (eigene Arbeit, 2026-10-08, Entscheidung Projektinhaber):** `gothar-chargen stubble [köpfe]` baut für
+  die 8 Männerköpfe `parts/hair_m_<kopf>/beard_stubble.glb` (Rolle `beard`; Blender-Skript `build_stubble.py`,
+  Einstellungen und Textur `stubble.py`). Eine Hülle 0,8 mm über der Haut der Bartzone (aus der Nasenspitze: unter
+  der Nase bis zur oberen Kehle, nach hinten bis zu den Koteletten, Lippen frei, weiche Ränder); je LOD aus der
+  vollen Zone reduziert (600 / 300 / 120 Dreiecke). Textur `textures/hair/beard_stubble_neutral.png` (512², neutral
+  grau, Mittel 0,55, 2×2-px-Härchen, Alpha MASK) mit vier Dichtebändern (13 / 9 / 5 / 2 %): jede Fläche nimmt
+  die UVs aus dem Band ihrer Zonendichte, so dünnen die Stoppeln zum Rand hin aus. Gewichte und die 15 Morphs
+  (nur lod0) vom nächsten Hautpunkt – die Stoppeln gehen mit `vis_aa` mit. **Material und Palettenschlüssel
+  `beard_stubble`** (Rolle `beard` über das erste Wort): nicht `beard`, weil `head_m_mid` und `head_m_old` selbst
+  ein Material `beard` tragen, das beim Zusammenbau gewinnt. Die Dichte ist für die Nahansicht abgestimmt; engine
+  erhält die Alpha-Bedeckung über die Mip-Stufen (Castaño). Ein eigener **Vollbart** ist zurückgestellt
+  (Projektinhaber 2026-10-08: später mit besserer Technik).
 - **Haare/Bärte:** eigene Meshes, an Köpfe angepasst. **Frisur-Kits (F3v):** Rezept `humans/hair_<kopf>` mit
   `fit_to = "head_<kopf>"`, `parts = ["hair", "beard"]` und `[assets] hairs = [...]`, `beards = [...]` → je
   Stil ein Teil `parts/hair_<kopf>/hair_<stil>.glb` bzw. `beard_<stil>.glb` (Rollen `hair`, `beard` im Manifest;
@@ -328,7 +340,7 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   Frisur `triangles` (1200), je Bart 600; Bärte tragen die 15 Gesichts-Morphs (§6.1). 13 Köpfe (8 m, 5 w),
   Frisuren: Männer `hair_messy`, `hair_long_shaggy`, `hair_tousled`, `hair_buzz`, `hair_short`, `hair_cropped`,
   `hair_long`, `hair_ponytail`, `hair_curly`; Frauen dazu `hair_braid`, `hair_bob`; Bärte `beard_goatee`,
-  `beard_moustache`, `beard_faun`. **Nur CC0 laut Datei-Kopf:** Viele Stücke der Pakete Hair 01 und Bodyparts 05
+  `beard_moustache`, `beard_faun`, dazu eigene **Stoppeln** `beard_stubble` (unten). **Nur CC0 laut Datei-Kopf:** Viele Stücke der Pakete Hair 01 und Bodyparts 05
   tragen im `.mhclo`-Kopf AGPL3 oder CC BY und werden nicht verwendet (Paketseite allein genügt nicht).
   **Automatisch geprüft:** `gothar-chargen human` (vor dem Blender-Lauf) und `gothar-chargen licences` lesen die
   `license`-Zeile jedes Assets eines Rezepts (`.mhclo`, `.mhmat`, das vom `.mhclo` genannte Material) und lehnen

@@ -107,6 +107,15 @@ def bake_item_textures(blender: Path, out: Path, sources: Path) -> str:
     )
 
 
+def build_stubble(blender: Path, head: Path, texture: Path, out: Path) -> str:
+    """Stubble beard of one head part (blender/build_stubble.py)."""
+    return run_script(
+        blender,
+        "build_stubble.py",
+        ["--head", str(head), "--texture", str(texture), "--out", str(out)],
+    )
+
+
 def build_test_parts(blender: Path, out_dir: Path) -> None:
     run_script(blender, "build_test_parts.py", ["--out", str(out_dir)])
 
