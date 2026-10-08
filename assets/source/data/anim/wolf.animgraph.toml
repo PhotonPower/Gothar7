@@ -168,3 +168,19 @@ from = "threaten"
 to = "move"
 when = ["end"]
 blend = 0.2
+
+# --- Verwandlung (M12 Z7, figuren #255): wolf_t_transform_in nach dem Tausch; wolf_t_transform_out mit Event swap
+# zurück zum Menschen.
+[[state]]
+name = "wolf_t_transform_in"
+clip = "wolf/t_transform_in"
+
+[[state]]
+name = "wolf_t_transform_out"
+clip = "wolf/t_transform_out"
+
+[[transition]]
+from = "wolf_t_transform_in"
+to = "move"
+when = ["end"]
+blend = 0.15

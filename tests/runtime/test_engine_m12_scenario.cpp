@@ -143,6 +143,6 @@ TEST_CASE(
     CHECK(run(engine, "npc_state('npc_old_man').state").asString() == "zs_flee");
     CHECK(run(engine, "npc_state('npc_gate_guard').state").asString() == "zs_attack");
     run(engine, "draw_magic()");
-    REQUIRE(engine.runFrame());
+    runSeconds(engine, 1.0f); // the transition clips (figuren #255)
     CHECK(run(engine, "hero_shape()").isNil());
 }
