@@ -111,6 +111,7 @@ Result<void> Engine::initScripts()
     bindFxFunctions();
     bindAudioFunctions();
     bindMusicFunctions();
+    bindFootstepFunctions();
     bindTorchFunctions();
     bindVoiceFunctions();
     if (m_config.randomSeed)

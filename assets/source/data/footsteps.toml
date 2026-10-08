@@ -1,0 +1,53 @@
+# Fußschritte (M13 Teil E, Entscheidung Projektinhaber 6; Zuordnungen mit welt abgestimmt 2026-10-08).
+# Bei jedem Schritt-Event (footstep_l/r) sucht die Engine das Material unter dem Fuß:
+#   1. Wasser (knöcheltief bis Waten) -> water
+#   2. ein Modell darunter (Strahl nach unten): `components.surface.footstep` am Vob (world.md), sonst das erste
+#      passende Muster aus [[models]] (Pfad des Modells, * = beliebige Zeichen), sonst `mob` bzw. `model`
+#   3. das Gelände: die stärkste Splat-Schicht am Fußpunkt, nach [layers]; unbekannte Schicht -> `default`
+# Klang: footstep_<material> aus data/sounds.toml. Materialien: stone, wood, grass, dirt, gravel, water.
+version = 1
+default = "dirt"  # Gelände ohne Zuordnung
+model = "stone"   # Modelle ohne Muster (Häuser außen, Mauer, Schloss, Kirche, Brunnen)
+mob = "wood"      # Mobs ohne Muster (Bänke, Truhen, Betten, Tische)
+water_depth = 0.05 # m Wasser über dem Fuß, ab dem es platscht
+
+# Lautstärke nach Tempo (m/s): Schleichen leiser, Rennen lauter.
+[volume]
+slow = 0.45   # bis 1,2 m/s (Schleichen)
+walk = 0.8
+run = 1.0     # ab 3 m/s
+
+[layers]
+# Testlager
+grass = "grass"
+earth = "dirt"
+rock = "stone"
+path = "gravel"
+# Leonberg (welt: leonberg_terrain.g7world splat.layers)
+Wiese = "grass"
+Kopfstein = "stone"
+Kies = "gravel"
+Matsch = "dirt"
+Waldboden = "dirt"
+Acker = "dirt"
+Fels = "stone"
+
+# Muster in dieser Reihenfolge; das erste passende gilt.
+[[models]]
+pattern = "worlds/leonberg/generated/streetworks/*" # Rinnen, Stufen, Stützmauern
+material = "stone"
+[[models]]
+pattern = "worlds/leonberg/generated/buildings/*_room_*" # Räume: Holzdielen (welt setzt Stein am Vob)
+material = "wood"
+[[models]]
+pattern = "*/town/wall-wood*" # Testlager: Holzhütten
+material = "wood"
+[[models]]
+pattern = "*/town/stall*"
+material = "wood"
+[[models]]
+pattern = "*/nature/log*"
+material = "wood"
+[[models]]
+pattern = "*/nature/stump*"
+material = "wood"

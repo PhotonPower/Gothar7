@@ -142,6 +142,7 @@ void Engine::initAudio()
     }
     G7_LOG_INFO("engine", "audio: {} sounds, {} ambiences", m_soundDefs.size(), m_ambientDefs.size());
     initMusic(); // M13 part C
+    loadFootsteps(); // M13 E
 }
 
 void Engine::updateAudio(f64 realSeconds)
