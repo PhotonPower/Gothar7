@@ -194,6 +194,34 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
   neben die Angel.
 - Türen, die laut Weltdatei offen stehen (`components.mob.open`, world.md), stehen beim Laden offen.
 
+## NPCs benutzen Mobs (umgesetzt; Plan freigegeben 2026-10-08, wie Gothics AI_UseMob) – `runtime/EngineNpcMobs.cpp`
+- **Befehl** `npc_use_mob(npc, typ, umkreis = 10, schleife?)`.
+  - Er nimmt den passendsten Mob des Typs mit freiem Platz im Umkreis: (0) eigener (`owner` der Mob-Definition =
+    NPC oder seine Gilde), (1) einer im selben Haus wie der Ort seines Zustands (`stateAt`), (2) der nächste.
+  - „Selbes Haus“ heißt: Die indoor-Zonen von Mob und Ort haben dasselbe `LEO_<NUTZUNG>_<KÜRZEL>` (world.md
+    Raum-Tag); dafür braucht es keinen Vertrag.
+  - Er geht übers Wegnetz bis 0,3 m vor den Slot (die Kapsel berührt sonst die Bank), wird auf den Slot gesetzt,
+    dreht sich und spielt `<typ>_enter`, dann `<typ>_loop` oder die Schleife `<typ>_<schleife>` (`table_drink` mit
+    `it_mug` bei `item_to_hand`, `table_talk`, `bench_talk`).
+  - Der Befehl endet, wenn er sitzt bzw. liegt. Ohne freien Platz endet er sofort.
+- **Aufstehen:** `npc_leave_mob(npc)` spielt `<typ>_leave`. Gehen, andere Animationen oder ein anderes Mob reihen das
+  selbst vorn ein, wie `Stop` bei Ambient-Animationen; Warten, Sagen und Drehen nicht, der NPC bleibt sitzen.
+  - Der Becher verschwindet beim Aufstehen (figuren: `s_sit_drink` setzt ihn nur).
+  - Danach steht der NPC frei am Slot (Variante A von figuren).
+  - Tote geben ihren Platz sofort frei.
+- **Plätze:** Held und NPCs teilen sie (`MobRuntime::occupants`).
+  - Der Held setzt sich an einen freien Slot neben Sitzende (Entscheidung Projektinhaber).
+  - Ist alles belegt: „Hier ist kein Platz.“, Ereignis `mob_full(mob)`.
+- **Zustände** (`ai/states.lua`):
+  - `zs_sit_table`, `zs_drink_table`, `zs_talk_table`, `zs_sit_bench`, `zs_smith_anvil`; ohne freien Mob die bisherige
+    Freepoint-Tätigkeit.
+  - `zs_sleep` (Entscheidung Projektinhaber): eigenes Bett → freies Bett in 12 m → am Boden.
+  - Wer sitzt oder liegt, wird nicht alle 5 s neu gestartet.
+- **Lua:** `npc_state(npc).mob` (Typ, solange er sitzt bzw. liegt).
+- **Testlager:** Tisch `LAGER_TISCH` mit zwei Bänken als Modelle; Bank `LAGER_BANK`; das Bett der Torwache
+  `LAGER_WACHE_BETT` (`mob_camp_guard_bed`, owner) neben dem bestehenden `LAGER_BETT`.
+- **Tests:** `tests/runtime/test_engine_npc_mobs.cpp`.
+
 ## Debug (M9 Teil E, umgesetzt) – `runtime/EngineAiDebug.cpp`
 - **Fenster „AI“** (Debug-UI, F1): je NPC Name, Zustand, Abstand zum Spieler, „sees you“, „(far)“ außerhalb der
   KI-LOD; aufgeklappt Tagesablauf und Ort, Animation (Graph-Zustand und Tagesablauf-Animation), Einstellung zum

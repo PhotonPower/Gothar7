@@ -85,8 +85,8 @@ TEST_CASE("Test world: a .g7world loads, renders and saves back identically")
         auto result = engine.init();
         REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
         // 169 objects, 4 starts, sound, 2 triggers, 10 climbing blocks, cave mouth 7, pond; M8: 9 items, 6
-        // mobs
-        CHECK(engine.scene().vobCount() == 210);
+        // mobs; NPCs using mobs: table, bench, the guard's bed, the table's two benches
+        CHECK(engine.scene().vobCount() == 215);
         CHECK(engine.worldItems().size() == 9);
         CHECK(engine.sceneObjectCount() > 160); // mesh vobs + ground plate
         CHECK(engine.runFrame());

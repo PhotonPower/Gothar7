@@ -29,14 +29,67 @@ State "zs_stand_guarding" {
     loop = retry,
 }
 
---- Am Wegpunkt am Boden schlafen (Betten benutzen NPCs mit M11).
+-- Ein Mob benutzen (npc_use_mob, wie Gothics AI_UseMob); ohne freien Platz die Tätigkeit wie bisher am
+-- Freepoint bzw. Wegpunkt. Wer sitzt oder liegt, bleibt, bis der Tagesablauf weiterzieht.
+local without_mob = {} -- npc -> true: kein Platz frei, die Ersatz-Tätigkeit läuft
+
+local function mob_or(npc, seconds, fallback)
+    local s = npc_state(npc)
+    if s.mob ~= "" or s.commands > 0 then
+        return nil -- sitzt, liegt oder ist auf dem Weg
+    end
+    if not without_mob[npc] then
+        without_mob[npc] = true
+        fallback(npc)
+        return nil
+    end
+    return retry(npc, seconds)
+end
+
+local function at_mob(mob, loop, freepoint, ambient, item)
+    return {
+        begin = function(npc, at)
+            without_mob[npc] = nil
+            npc_goto(npc, at)
+            npc_use_mob(npc, mob, 15, loop)
+        end,
+        loop = function(npc, seconds)
+            return mob_or(npc, seconds, function(n)
+                if freepoint then
+                    npc_goto_freepoint(n, freepoint, 15)
+                end
+                npc_play(n, ambient, item)
+            end)
+        end,
+        finish = function(npc)
+            without_mob[npc] = nil
+        end,
+    }
+end
+
+--- Schlafen (Entscheidung Projektinhaber): zuerst im eigenen Bett (Besitzer bzw. im Haus des Schlafplatzes), sonst
+--- in einem freien Bett in der Nähe, sonst am Wegpunkt am Boden.
 State "zs_sleep" {
     begin = function(npc, at)
+        without_mob[npc] = nil
         npc_goto(npc, at)
-        npc_play(npc, "sleep_ground")
+        npc_use_mob(npc, "bed", 12)
     end,
-    loop = retry,
+    loop = function(npc, seconds)
+        return mob_or(npc, seconds, function(n)
+            npc_play(n, "sleep_ground")
+        end)
+    end,
+    finish = function(npc)
+        without_mob[npc] = nil
+    end,
 }
+
+State "zs_sit_table" (at_mob("table", nil, "SIT", "sit_ground"))                -- am Tisch sitzen
+State "zs_drink_table" (at_mob("table", "drink", "DRINK", "drink_mug", "it_mug")) -- am Tisch trinken (Krug)
+State "zs_talk_table" (at_mob("table", "talk", "SMALLTALK", "talk_a"))          -- am Tisch reden
+State "zs_sit_bench" (at_mob("bench", nil, "SIT", "sit_ground"))                -- auf der Bank sitzen
+State "zs_smith_anvil" (at_mob("anvil", nil, "REPAIR", "repair_kneel"))         -- am Amboss schmieden
 
 --- Sich an einen freien Sitzplatz in der Nähe setzen; ohne einen stehen bleiben.
 State "zs_sit_campfire" {

@@ -459,6 +459,9 @@ Reiht ein: zu einem Punkt gehen (bzw. rennen), über das Wegnetz, wo nötig.
 ### `npc_item_count(npc: string, item: string) -> integer`
 Wie viele Stück eines Gegenstands der NPC hat.
 
+### `npc_leave_mob(npc: string)`
+Reiht ein: vom benutzten Mob aufstehen (<typ>_leave); Gehen und andere Animationen tun das von selbst.
+
 ### `npc_play(npc: string, ambient: string, item?: string)`
 Reiht ein: eine Tagesablauf-Animation (`"sit_ground"`, `"guard"` ... – Zustände amb_<x>_in, amb_<x>, amb_<x>_out des Menschen-Graphen; `"idle_look"` und `"react_warn"` usw. direkt), bis npc_stop oder Gehen sie beendet. `item` (`"it_broom"`) nimmt er bei `item_to_hand` in die rechte Hand und legt es bei `item_from_hand` bzw. am Ende weg.
 
@@ -480,8 +483,8 @@ Unterbricht: beendet den laufenden Zustand (finish) und startet einen anderen. E
 ### `npc_stat(npc: string, name: string) -> integer`
 Ein Attribut eines NPCs (hp, hp_max, str, dex ...).
 
-### `npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, gait, x, y, z}`
-Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des Animationsgraphen, ob er gerade geht, seine Gangart ([anim] variant der Figur) und seine Position.
+### `npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, gait, mob, x, y, z}`
+Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des Animationsgraphen, ob er gerade geht, seine Gangart ([anim] variant der Figur), das Mob, auf dem er sitzt bzw. liegt (Typ), und seine Position.
 
 ### `npc_stop(npc: string)`
 Reiht ein: die laufende Tagesablauf-Animation beenden (_out).
@@ -497,6 +500,9 @@ Reiht ein: in die Richtung (`dir`) eines Wegpunkts oder Freepoints drehen.
 
 ### `npc_turn_to_player(npc: string)`
 Reiht ein: sich zum Spieler drehen.
+
+### `npc_use_mob(npc: string, type: string, radius?: number, loop?: string)`
+Reiht ein: ein Mob des Typs benutzen (wie Gothics AI_UseMob) - zuerst ein eigenes (owner = NPC bzw. Gilde), dann eines im selben Haus wie der Ort seines Zustands, sonst das nächste mit freiem Platz im Umkreis (Vorgabe 10 m). Er geht hin, dreht sich und spielt <typ>_enter, dann die Schleife bzw. `loop` ("drink" -> table_drink mit Krug, "talk"), bis er geht oder npc_leave_mob. Ohne freien Platz endet der Befehl sofort (npc_state(npc).mob bleibt leer).
 
 ### `npc_wait(npc: string, seconds: number)`
 Reiht ein: warten.

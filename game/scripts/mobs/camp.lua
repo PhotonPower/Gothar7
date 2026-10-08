@@ -36,3 +36,20 @@ Mob "mob_camp_bed" {
     name = "Bett",
     type = "bed",
 }
+
+-- Zum Sitzen, Trinken und Schlafen (NPCs benutzen Mobs): Tisch und Bank am Südplatz, das Bett der Torwache.
+Mob "mob_camp_table" {
+    name = "Tisch",
+    type = "table",
+}
+
+Mob "mob_camp_bench" {
+    name = "Bank",
+    type = "bench",
+}
+
+Mob "mob_camp_guard_bed" {
+    name = "Bett",
+    type = "bed",
+    owner = "npc_gate_guard", -- sein eigenes (Schlafen: zuerst das eigene Bett)
+}

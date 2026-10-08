@@ -814,6 +814,7 @@ private:
         bool open = false;
         std::map<std::string, u32, std::less<>> contents;
         Quat closedRotation{1.0f, 0.0f, 0.0f, 0.0f}; ///< local rotation as loaded (doors turn from here)
+        std::map<u32, std::string> occupants;        ///< slot -> who uses it ("hero" or an NPC instance)
         f32 doorAngle = 0.0f;
         f32 doorFrom = 0.0f;
         f32 doorTo = 0.0f;
@@ -1065,6 +1066,16 @@ private:
     [[nodiscard]] bool mobClipDone(const MobUse& use) const;
     void startMobPhase(MobUse& use, MobUse::Phase phase);
     void finishMobUse();
+    [[nodiscard]] Mat4 mobRestMatrix(world::VobId vob); ///< the mob's world matrix as at rest (slots)
+    /// Bit i: slot i is used by someone other than `except` ("hero" or an NPC instance).
+    [[nodiscard]] u32 busySlots(const MobRuntime& m, std::string_view except) const;
+    // NPCs using mobs (EngineNpcMobs.cpp; Gothic's AI_UseMob).
+    /// "LEO_<USE>_<CODE>" of the indoor zone around `point` (world.md room tags), empty outside the houses.
+    [[nodiscard]] std::string houseAt(const Vec3& point) const;
+    bool startNpcMob(Creature& c, std::string_view type, f32 radius, std::string_view variant);
+    bool stepNpcMob(Creature& c, f32 seconds); ///< true: the command is done
+    bool startLeaveNpcMob(Creature& c);
+    void releaseNpcMob(Creature& c); ///< frees its slot at once (dead, gone, world change)
     void approachMob(f32 seconds);
     void fixedUpdateMobs(f32 seconds);
     void swingDoors(f32 seconds);

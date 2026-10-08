@@ -362,6 +362,16 @@ bool Engine::startCommand(Creature& c)
         c.commands.push_front({Kind::Stop});
         return startCommand(c);
     }
+    // Going somewhere, another animation or another mob: first stand up from the mob in use.
+    const bool sameMob = cmd.kind == Kind::UseMob && c.mob && c.mob->type == cmd.text &&
+                         c.mob->phase == Creature::MobUse::Phase::Loop;
+    const bool leavesMob = cmd.kind != Kind::LeaveMob && cmd.kind != Kind::Wait && cmd.kind != Kind::Say &&
+                           cmd.kind != Kind::Turn && !sameMob;
+    if (leavesMob && c.mob && c.mob->phase != Creature::MobUse::Phase::Leave)
+    {
+        c.commands.push_front({Kind::LeaveMob});
+        return startCommand(c);
+    }
     animation::Animator* a = c.figure ? &c.figure->animator : nullptr;
     switch (cmd.kind)
     {
@@ -427,8 +437,34 @@ bool Engine::startCommand(Creature& c)
         }
         return true;
     }
+    case Kind::UseMob:
+        if (sameMob)
+        {
+            // Seated already: perhaps another loop (talk -> drink), no getting up.
+            if (c.mob->variant != cmd.item && a != nullptr)
+            {
+                const std::string state =
+                    cmd.item.empty() ? c.mob->type + "_loop" : std::format("{}_{}", c.mob->type, cmd.item);
+                if (a->hasState(state))
+                {
+                    c.handItem = nullptr;
+                    c.handItemWanted = cmd.item == "drink" ? std::string("it_mug") : std::string();
+                    a->enter(state, 0.2f);
+                    c.mob->state = state;
+                }
+                c.mob->variant = cmd.item;
+            }
+            return false;
+        }
+        return startNpcMob(c, cmd.text, cmd.value, cmd.item);
+    case Kind::LeaveMob:
+        return startLeaveNpcMob(c);
     case Kind::Turn:
     {
+        if (c.mob)
+        {
+            return false; // seated: it does not turn on the bench
+        }
         std::optional<Vec3> dir;
         if (cmd.text == kPlayerTarget && m_player.valid())
         {
@@ -562,6 +598,10 @@ void Engine::runCommands(Creature& c, f32 seconds)
 {
     using Kind = Creature::Command::Kind;
     animation::Animator* a = c.figure ? &c.figure->animator : nullptr;
+    if (c.mob && c.dead)
+    {
+        releaseNpcMob(c); // the dead free their seat
+    }
     // A few commands may finish at once in one step (play without _in, stop without _out ...).
     for (int guard = 0; guard < 8; ++guard)
     {
@@ -633,6 +673,10 @@ void Engine::runCommands(Creature& c, f32 seconds)
         case Kind::Wait:
         case Kind::Say:
             done = c.commandTime >= cmd.value;
+            break;
+        case Kind::UseMob:
+        case Kind::LeaveMob:
+            done = stepNpcMob(c, seconds);
             break;
         case Kind::Follow:
         {
@@ -968,6 +1012,31 @@ void Engine::bindAiFunctions()
     vm.bind({"npc_stop", "npc_stop(npc: string)",
              "Reiht ein: die laufende Tagesablauf-Animation beenden (_out).", "NPCs",
              queue(Kind::Stop, false)});
+    vm.bind(
+        {"npc_use_mob", "npc_use_mob(npc: string, type: string, radius?: number, loop?: string)",
+         "Reiht ein: ein Mob des Typs benutzen (wie Gothics AI_UseMob) - zuerst ein eigenes (owner = NPC "
+         "bzw. Gilde), dann eines im selben Haus wie der Ort seines Zustands, sonst das nächste mit freiem "
+         "Platz im Umkreis (Vorgabe 10 m). Er geht hin, dreht sich und spielt <typ>_enter, dann die Schleife "
+         "bzw. `loop` (\"drink\" -> table_drink mit Krug, \"talk\"), bis er geht oder npc_leave_mob. "
+         "Ohne freien Platz endet der Befehl sofort (npc_state(npc).mob bleibt leer).",
+         "NPCs", [npc](std::span<const Value> a) -> Result<Value>
+         {
+             auto c = npc(a);
+             if (!c || a.size() < 2 || !a[1].isString())
+             {
+                 return !c ? c.error() : Error{"expects (npc, type, radius?, loop?)"};
+             }
+             Creature::Command cmd{Kind::UseMob};
+             cmd.text = std::string(a[1].asString());
+             cmd.value = static_cast<f32>(a.size() > 2 ? a[2].asNumber(10.0) : 10.0);
+             cmd.item = a.size() > 3 && a[3].isString() ? std::string(a[3].asString()) : std::string();
+             c.value()->commands.push_back(std::move(cmd));
+             return Value();
+         }});
+    vm.bind({"npc_leave_mob", "npc_leave_mob(npc: string)",
+             "Reiht ein: vom benutzten Mob aufstehen (<typ>_leave); Gehen und andere Animationen tun das "
+             "von selbst.",
+             "NPCs", queue(Kind::LeaveMob, false)});
     vm.bind({"npc_wait", "npc_wait(npc: string, seconds: number)", "Reiht ein: warten.", "NPCs",
              queue(Kind::Wait, false)});
     vm.bind(
@@ -1020,10 +1089,11 @@ void Engine::bindAiFunctions()
              }});
     vm.bind(
         {"npc_state",
-         "npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, gait, x, y, "
-         "z}",
+         "npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, gait, mob, "
+         "x, y, z}",
          "Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des "
-         "Animationsgraphen, ob er gerade geht, seine Gangart ([anim] variant der Figur) und seine Position.",
+         "Animationsgraphen, ob er gerade geht, seine Gangart ([anim] variant der Figur), das Mob, auf dem "
+         "er sitzt bzw. liegt (Typ), und seine Position.",
          "NPCs", [npc](std::span<const Value> a) -> Result<Value>
          {
              auto c = npc(a);
@@ -1041,6 +1111,9 @@ void Engine::bindAiFunctions()
                        c.value()->figure ? std::string(c.value()->figure->animator.state()) : std::string()},
                       {"walking", c.value()->route.has_value()},
                       {"gait", c.value()->figure ? c.value()->figure->variant : std::string()},
+                      {"mob", c.value()->mob && c.value()->mob->phase == Creature::MobUse::Phase::Loop
+                                  ? c.value()->mob->type
+                                  : std::string()},
                       {"x", static_cast<f64>(c.value()->position.x)},
                       {"y", static_cast<f64>(c.value()->position.y)},
                       {"z", static_cast<f64>(c.value()->position.z)}});

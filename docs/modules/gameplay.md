@@ -191,6 +191,9 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   `move`. Während der Benutzung steht der Held fest auf dem Slot. Ohne Zustand im Graphen dauert eine Phase 0,6 s.
   Events `open`/`close` (sonst spät im Clip) öffnen bzw. schließen; Skripte bekommen `mob_used(mob, type)` und den
   Hook `on_use(mob)` am Ende des Einstiegs.
+- **Plätze** (NPCs benutzen Mobs, ai.md): Held und NPCs teilen die Slots. Der Held nimmt den nächsten freien, auch neben
+  Sitzenden; ist keiner frei: „Hier ist kein Platz.“, Ereignis `mob_full(mob)`. Bank und Tisch haben Zustände im
+  Graphen (`bench_*`, `table_*`, Clips von figuren).
 - **Truhen:** offen zeigt das Inventar-Fenster ihren Inhalt neben dem des Helden (nehmen / hineinlegen).
 - **Türen:** Der Tür-Mob ist das Türblatt (Ursprung an der Angel); derselbe Clip öffnet und schließt, die Tür dreht
   sich in 0,8 s um 90° um +Y, die Kollision dreht mit (der Körper wird je Schritt neu gesetzt). Die Slots gehören zur
