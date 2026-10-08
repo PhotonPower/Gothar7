@@ -249,8 +249,8 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 ## M12 – Magie & Partikel
 - [x] Partikelsystem (GPU-Instancing, Emitter-Definitionen als Daten) – `data/fx/*.toml`, prozedurale Sprites, Lichter, `fx()` (A)
 - [x] Runen/Spruchrollen, Mana, Kreise, Wirken mit Aufladung – `Spell`-Instanzen, `castBlocked` (B), Wirken des Helden mit Runenplätzen 4–9, Aufladen, Feuerpfeil/Heilung/Schlaf (C1)
-- [ ] Zaubertypen: Projektil, Fläche, Selbst, Verwandlung (in Tier), Kontrolle (Schlaf, Furcht, Telekinese), Beschwörung
-- [ ] Visuelle Effekte (Licht, Partikel, Shader) und Trefferwirkungen
+- [x] Zaubertypen: Projektil, Fläche, Selbst, Verwandlung (in Tier), Kontrolle (Schlaf, Furcht), Beschwörung – Wolfsgestalt (C2), Wolf rufen (C2), Schlaf/Schrecken (C1, D), zaubernde NPCs (D); Telekinese nach M17 verschoben
+- [x] Visuelle Effekte (Licht, Partikel) und Trefferwirkungen – Schweif, Einschlag, Beschwörungswirbel, Brennen (D2), `none/t_hit_magic`; Shader-Effekte nach M17 verschoben; Meilenstein-Szenario `test_engine_m12_scenario.cpp` (E)
 
 **DoD:** Feuerpfeil, Heilung, Schlaf, Verwandlung und Beschwörung funktionieren inkl. KI-Reaktion.
 
@@ -308,6 +308,8 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 - [ ] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info
 - [ ] Gekochtes Format für Figuren und Animationen (`.g7skin`/`.g7anim`, ADR 0019 Folgearbeit) – spätestens vor dem ersten reinen `.g7pak`-Release; bis dahin laden Figuren und Clips aus losen glTF (`asset.md`)
 - [ ] Optional: Vulkan-Backend hinter der RHI (ADR)
+- [ ] Magie: Telekinese (Zaubertyp „Kontrolle“) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
+- [ ] Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 
