@@ -1536,7 +1536,7 @@ std::vector<render::IndoorVolume> Engine::nearestIndoorVolumes(const Vec3& point
     std::vector<std::pair<f32, render::IndoorVolume>> rooms;
     for (const world::Zone& z : m_worldFile.zones)
     {
-        if (z.box)
+        if (z.box && z.type == "indoor") // music and ambient zones have boxes too (M13)
         {
             const render::IndoorVolume v{z.box->center, z.box->halfExtents, glm::radians(z.box->yawDegrees)};
             rooms.emplace_back(glm::length(v.center - point), v);

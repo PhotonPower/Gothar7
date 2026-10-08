@@ -179,3 +179,53 @@ TEST_CASE(
     audio.update(0.3f);
     CHECK(audio.lastPeak() > 0.3f);
 }
+
+TEST_CASE("audio: occlusion - a muffled 3D sound loses its highs")
+{
+    AudioSystem audio = mixer();
+    REQUIRE(audio.addClip("sounds/high.wav", sineWav(1.0f, 6000.0f)).ok());
+    audio.setListener(Vec3(0.0f), Vec3(0.0f, 0.0f, -1.0f));
+    SoundDef high;
+    high.files = {"sounds/high.wav"};
+    high.loop = true;
+    auto id = audio.play(high, Vec3(0.0f, 0.0f, -1.0f));
+    REQUIRE(id.ok());
+    audio.update(0.2f);
+    audio.update(0.1f);
+    const f32 open = audio.lastPeak();
+    audio.setMuffle(id.value(), 1.0f);
+    CHECK(audio.muffle(id.value()) == doctest::Approx(1.0f));
+    audio.update(0.1f);
+    audio.update(0.1f);
+    CHECK(audio.lastPeak() < open * 0.2f); // 6 kHz through a cut at about 600 Hz
+    audio.setMuffle(id.value(), 0.0f);
+    audio.update(0.1f);
+    audio.update(0.1f);
+    CHECK(audio.lastPeak() > open * 0.8f);
+}
+
+TEST_CASE("audio: ambiences as data and their errors")
+{
+    auto defs = parseAmbientDefs(R"(
+[camp]
+loop = "amb_camp"
+loop_night = "amb_night"
+randoms = ["bird"]
+randoms_night = ["owl", "cricket"]
+interval = [8, 20]
+distance = [5.5, 15]
+[wind]
+loop = "amb_wind"
+)",
+                                 "ambient.toml");
+    REQUIRE_MESSAGE(defs.ok(), (defs.ok() ? "" : defs.error().message));
+    const AmbientDef& camp = defs.value().at("camp");
+    CHECK(camp.loopNight == "amb_night");
+    CHECK(camp.randomsNight.size() == 2);
+    CHECK(camp.intervalMin == doctest::Approx(8.0f));
+    CHECK(camp.intervalMax == doctest::Approx(20.0f));
+    CHECK(camp.distanceMin == doctest::Approx(5.5f));
+    CHECK(defs.value().at("wind").randoms.empty());
+    CHECK_FALSE(parseAmbientDefs("[x]\nfade = 1\n", "a").ok());
+    CHECK_FALSE(parseAmbientDefs("[x]\nloop = \"a\"\ninterval = [20, 8]\n", "a").ok());
+}

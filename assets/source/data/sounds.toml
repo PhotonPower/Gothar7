@@ -55,3 +55,36 @@ max_distance = 15
 files = ["sounds/summon.wav"]
 volume = 0.8
 max_distance = 30
+
+# Ambiente (M13 Teil B): Schleifen im Bus ambient, Einzelklänge drumherum (data/ambient.toml).
+[amb_wind]
+files = ["sounds/amb_wind.wav"]
+bus = "ambient"
+loop = true
+volume = 0.6
+
+[amb_camp]
+files = ["sounds/amb_camp.wav"]
+bus = "ambient"
+loop = true
+volume = 0.6
+
+[amb_night]
+files = ["sounds/amb_night.wav"]
+bus = "ambient"
+loop = true
+volume = 0.5
+
+[bird]
+files = ["sounds/bird.wav"]
+bus = "ambient"
+volume = 0.6
+pitch_jitter = 0.15
+max_distance = 40
+
+[owl]
+files = ["sounds/owl.wav"]
+bus = "ambient"
+volume = 0.6
+pitch_jitter = 0.05
+max_distance = 50

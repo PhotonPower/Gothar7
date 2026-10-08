@@ -53,6 +53,23 @@ using SoundDefs = std::map<std::string, SoundDef, std::less<>>;
 /// `[name] files = [...] volume = ... bus = "effects" ...` - all tables of the file; errors name the sound.
 [[nodiscard]] Result<SoundDefs> parseSoundDefs(std::string_view toml, std::string_view source);
 
+/// An ambience (data/ambient.toml, M13 part B): a loop and single sounds now and then around the listener, by
+/// day and by night; the names are sounds of data/sounds.toml.
+struct AmbientDef
+{
+    std::string loop;      ///< by day (and by night without loop_night); empty: none
+    std::string loopNight; ///< empty: `loop`
+    std::vector<std::string> randoms;
+    std::vector<std::string> randomsNight; ///< empty: `randoms`
+    f32 intervalMin = 8.0f;                ///< s between single sounds
+    f32 intervalMax = 20.0f;
+    f32 distanceMin = 4.0f; ///< m from the listener
+    f32 distanceMax = 15.0f;
+    f32 fade = 2.0f; ///< s cross-fade when the ambience changes
+};
+using AmbientDefs = std::map<std::string, AmbientDef, std::less<>>;
+[[nodiscard]] Result<AmbientDefs> parseAmbientDefs(std::string_view toml, std::string_view source);
+
 struct AudioConfig
 {
     bool device = true;     ///< false: no output device, update() renders (headless, tests)
@@ -87,6 +104,9 @@ public:
     void setPosition(SoundId id, const Vec3& position);
     /// A sound's own volume (on top of its definition's), faded over `fadeSeconds`.
     void setVolume(SoundId id, f32 volume, f32 fadeSeconds = 0.0f);
+    /// 3D sounds: a low-pass cut, 0 (open) .. 1 (strongly muffled) - occlusion (owner decision 8).
+    void setMuffle(SoundId id, f32 amount);
+    [[nodiscard]] f32 muffle(SoundId id) const noexcept;
 
     void setListener(const Vec3& position, const Vec3& forward, const Vec3& up = Vec3(0.0f, 1.0f, 0.0f));
     void setMasterVolume(f32 volume);

@@ -27,7 +27,8 @@ TEST_CASE("Engine lighting: the rooms of the world file, nearest first, with the
                 << R"(","box":{"center":[)" << i * 5
                 << R"(,1.2,10.0],"halfExtents":[2.0,1.2,2.0],"yaw":0.0}})";
         }
-        out << R"(,{"type":"music","value":"CAMP"}]})";
+        // A music zone (M13) right here: a box too, but no room.
+        out << R"(,{"type":"music","value":"CAMP","box":{"center":[0.0,1.0,0.0],"halfExtents":[50.0,10.0,50.0],"yaw":0.0}}]})";
     }
     EngineConfig config;
     config.appName = "rooms";
@@ -45,7 +46,7 @@ TEST_CASE("Engine lighting: the rooms of the world file, nearest first, with the
         farthest = std::max(farthest, v.center.x);
     }
     CHECK(farthest < 160.0f); // the far rooms (x 160 .. 195) are left out
-    CHECK(near[0].halfExtents == Vec3(2.0f, 1.2f, 2.0f));
+    CHECK(near[0].halfExtents == Vec3(2.0f, 1.2f, 2.0f)); // the nearest is a room, not the music zone
     CHECK(engine.nearestIndoorVolumes(Vec3(195.0f, 0.0f, 10.0f))[0].center.x == doctest::Approx(195.0f));
     std::filesystem::remove(world);
 }

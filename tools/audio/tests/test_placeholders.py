@@ -12,7 +12,7 @@ from gothar_audio.synth import RATE, write_wav
 def test_every_sound_is_audible_in_range_and_short() -> None:
     for name in SOUNDS:
         s = generate(name)
-        assert 0.05 * RATE < len(s) < 3.0 * RATE, name
+        assert 0.05 * RATE < len(s) < 7.0 * RATE, name
         peak = max(abs(x) for x in s)
         assert 0.3 < peak <= 1.0, name
 
@@ -31,3 +31,9 @@ def test_wav_file(tmp_path: Path) -> None:
         assert w.getsampwidth() == 2
         assert w.getframerate() == RATE
         assert w.getnframes() == len(samples)
+
+
+def test_loops_are_seamless() -> None:
+    for name in ("amb_wind", "amb_camp", "amb_night"):
+        s = generate(name)
+        assert abs(s[0] - s[-1]) < 0.2, name  # the end runs into the start without a jump

@@ -822,7 +822,8 @@ Result<WaynetPoint> readWaynetPoint(const Reader& r, const Json& p, const std::s
     return point;
 }
 
-/// "zones" (world.md "Zonen"): indoor zones with a turned box, checked; other types kept as they are.
+/// "zones" (world.md "Zonen"): indoor, music and ambient zones with a turned box, checked; other types kept
+/// as they are.
 Result<std::vector<Zone>> readZones(const Reader& r, const Json& z)
 {
     if (!z.is_array())
@@ -844,7 +845,7 @@ Result<std::vector<Zone>> readZones(const Reader& r, const Json& z)
         {
             zone.value = e["value"].get<std::string>();
         }
-        if (zone.type != "indoor")
+        if (zone.type != "indoor" && zone.type != "music" && zone.type != "ambient")
         {
             zone.json = e.dump();
             zones.push_back(std::move(zone));
@@ -852,11 +853,16 @@ Result<std::vector<Zone>> readZones(const Reader& r, const Json& z)
         }
         if (zone.value.empty())
         {
-            return r.error(where, "an indoor zone needs 'value' (the room)");
+            return r.error(where, std::format("a{} {} zone needs 'value' ({})",
+                                              zone.type == "indoor" ? "n" : "", zone.type,
+                                              zone.type == "indoor"  ? "the room"
+                                              : zone.type == "music" ? "the music theme"
+                                                                     : "the ambience"));
         }
         if (!e.contains("box") || !e["box"].is_object())
         {
-            return r.error(where, "an indoor zone needs 'box'");
+            return r.error(
+                where, std::format("a{} {} zone needs 'box'", zone.type == "indoor" ? "n" : "", zone.type));
         }
         const Json& b = e["box"];
         const std::string at = where + ".box";

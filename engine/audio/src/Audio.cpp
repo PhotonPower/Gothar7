@@ -35,7 +35,9 @@ struct Voice
     std::unique_ptr<ma_audio_buffer_ref> source;
     std::unique_ptr<ma_sound> sound;
     std::shared_ptr<const Clip> clip; ///< kept while it plays
-    u64 startFrame = 0;               ///< on the mixer's clock: before it, a delayed sound waits
+    std::unique_ptr<ma_lpf_node> lpf; ///< 3D sounds: between the sound and its bus (occlusion)
+    f32 muffle = 0.0f;
+    u64 startFrame = 0; ///< on the mixer's clock: before it, a delayed sound waits
 };
 } // namespace
 
@@ -106,6 +108,63 @@ Result<SoundDefs> parseSoundDefs(std::string_view toml, std::string_view source)
     return defs;
 }
 
+Result<AmbientDefs> parseAmbientDefs(std::string_view toml, std::string_view source)
+{
+    auto parsed = Config::parse(toml, source);
+    if (!parsed)
+    {
+        return parsed.error();
+    }
+    const Config& c = parsed.value();
+    AmbientDefs defs;
+    for (const std::string& name : c.keys())
+    {
+        AmbientDef d;
+        d.loop = c.get<std::string>(name + ".loop", "");
+        d.loopNight = c.get<std::string>(name + ".loop_night", "");
+        d.randoms = c.get<std::vector<std::string>>(name + ".randoms", {});
+        d.randomsNight = c.get<std::vector<std::string>>(name + ".randoms_night", {});
+        const auto pair = [&](std::string_view key, f32& lo, f32& hi) -> bool
+        {
+            const std::string k = name + "." + std::string(key);
+            if (!c.contains(k))
+            {
+                return true;
+            }
+            if (c.arraySize(k) != 2)
+            {
+                return false;
+            }
+            const auto list = c.get<std::vector<f64>>(k, {});
+            if (list.size() != 2 || list[0] < 0.0 || list[1] < list[0])
+            {
+                return false;
+            }
+            lo = static_cast<f32>(list[0]);
+            hi = static_cast<f32>(list[1]);
+            return true;
+        };
+        if (!pair("interval", d.intervalMin, d.intervalMax) ||
+            !pair("distance", d.distanceMin, d.distanceMax))
+        {
+            return Error{
+                std::format("{}: ambience '{}': interval and distance are [min, max] with 0 <= min <= max",
+                            source, name)};
+        }
+        if (d.intervalMin <= 0.0f && (!d.randoms.empty() || !d.randomsNight.empty()))
+        {
+            return Error{std::format("{}: ambience '{}': interval must be above 0", source, name)};
+        }
+        d.fade = static_cast<f32>(c.get<f64>(name + ".fade", 2.0));
+        if (d.loop.empty() && d.loopNight.empty() && d.randoms.empty() && d.randomsNight.empty())
+        {
+            return Error{std::format("{}: ambience '{}' has neither a loop nor single sounds", source, name)};
+        }
+        defs.emplace(name, std::move(d));
+    }
+    return defs;
+}
+
 struct AudioSystem::Impl
 {
     AudioConfig config;
@@ -125,8 +184,7 @@ struct AudioSystem::Impl
     {
         for (auto& [id, v] : voices)
         {
-            ma_sound_uninit(v.sound.get());
-            ma_audio_buffer_ref_uninit(v.source.get());
+            release(v);
         }
         voices.clear();
         for (usize i = 0; i < groupsReady; ++i)
@@ -137,6 +195,23 @@ struct AudioSystem::Impl
         {
             ma_engine_uninit(&engine);
         }
+    }
+
+    void release(Voice& v)
+    {
+        ma_sound_uninit(v.sound.get());
+        if (v.lpf)
+        {
+            ma_lpf_node_uninit(v.lpf.get(), nullptr);
+        }
+        ma_audio_buffer_ref_uninit(v.source.get());
+    }
+
+    [[nodiscard]] ma_lpf_node_config lpfConfig(f32 muffle) const
+    {
+        // Open at 20 kHz, strongly muffled (1) at about 600 Hz.
+        const f64 cutoff = 20000.0 * std::pow(0.03, static_cast<f64>(std::clamp(muffle, 0.0f, 1.0f)));
+        return ma_lpf_node_config_init(2, config.sampleRate, cutoff, 2);
     }
 
     /// Waiting for its start, or playing and not at its end.
@@ -280,6 +355,19 @@ Result<SoundId> AudioSystem::play(const SoundDef& def, std::optional<Vec3> posit
     ma_sound_set_looping(v.sound.get(), def.loop ? MA_TRUE : MA_FALSE);
     if (position)
     {
+        // The low-pass for occlusion between the sound and its bus.
+        v.lpf = std::make_unique<ma_lpf_node>();
+        const ma_lpf_node_config lc = m_impl->lpfConfig(0.0f);
+        if (ma_lpf_node_init(ma_engine_get_node_graph(&m_impl->engine), &lc, nullptr, v.lpf.get()) ==
+            MA_SUCCESS)
+        {
+            ma_node_attach_output_bus(v.sound.get(), 0, v.lpf.get(), 0);
+            ma_node_attach_output_bus(v.lpf.get(), 0, &m_impl->groups[static_cast<usize>(def.bus)], 0);
+        }
+        else
+        {
+            v.lpf.reset();
+        }
         ma_sound_set_position(v.sound.get(), position->x, position->y, position->z);
         ma_sound_set_attenuation_model(v.sound.get(), ma_attenuation_model_linear);
         ma_sound_set_min_distance(v.sound.get(), def.minDistance);
@@ -341,6 +429,24 @@ void AudioSystem::setVolume(SoundId id, f32 volume, f32 fadeSeconds)
     }
 }
 
+void AudioSystem::setMuffle(SoundId id, f32 amount)
+{
+    Voice* v = m_impl->voice(id);
+    if (v == nullptr || !v->lpf || std::abs(v->muffle - amount) < 1e-3f)
+    {
+        return;
+    }
+    v->muffle = amount;
+    const ma_lpf_node_config lc = m_impl->lpfConfig(amount);
+    ma_lpf_node_reinit(&lc.lpf, v->lpf.get());
+}
+
+f32 AudioSystem::muffle(SoundId id) const noexcept
+{
+    const auto it = m_impl->voices.find(id);
+    return it != m_impl->voices.end() ? it->second.muffle : 0.0f;
+}
+
 void AudioSystem::setListener(const Vec3& position, const Vec3& forward, const Vec3& up)
 {
     ma_engine_listener_set_position(&m_impl->engine, 0, position.x, position.y, position.z);
@@ -399,11 +505,9 @@ void AudioSystem::update(f32 seconds)
     // Free what ended (or was stopped and faded out).
     for (auto it = m_impl->voices.begin(); it != m_impl->voices.end();)
     {
-        ma_sound* s = it->second.sound.get();
         if (!m_impl->alive(it->second))
         {
-            ma_sound_uninit(s);
-            ma_audio_buffer_ref_uninit(it->second.source.get());
+            m_impl->release(it->second);
             it = m_impl->voices.erase(it);
             continue;
         }

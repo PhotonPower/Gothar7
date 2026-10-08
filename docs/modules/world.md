@@ -228,9 +228,19 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   von 1 abweicht.
 - Vorher stand hier eine Skizze mit Kanten per Index; sie wurde nie benutzt (das Spiel las den Block nicht).
 
-## Zonen – `zones`-Block (Typ `indoor`: Vertrag mit welt, 2026-10-05)
-- `zones` ist eine Liste; die Engine liest Zonen vom Typ **`indoor`** und prüft sie, andere Typen (`music` …) bleiben
-  unverändert erhalten (bis zu ihrem System). Fehler nennen den Eintrag (`zones[3].box.halfExtents: must be positive`).
+## Zonen – `zones`-Block (Vertrag mit welt: `indoor` 2026-10-05; `music`, `ambient` 2026-10-08)
+- `zones` ist eine Liste; die Engine liest Zonen vom Typ **`indoor`**, **`music`** und **`ambient`** und prüft sie,
+  andere Typen bleiben unverändert erhalten (bis zu ihrem System). Fehler nennen den Eintrag
+  (`zones[3].box.halfExtents: must be positive`).
+- **`music`** und **`ambient`** (M13, Entscheidung Projektinhaber) haben dasselbe Format wie `indoor`, eine gedrehte Box
+  (siehe unten); mehrere Boxen dürfen denselben `value` haben.
+  - `music`: `value` ist das **Musik-Thema** (Großbuchstaben, z. B. `LAGER`, `STADT`, `WALD`), dessen Segmente in
+    `data/music.toml` stehen (Teil C).
+  - `ambient`: `value` ist eine **Ambiente** aus `data/ambient.toml` (Kleinbuchstaben, z. B. `camp`, `wald`,
+    `stadt_gasse`): Schleife und Einzelklänge, bei Tag und bei Nacht.
+  - **Ineinander liegende Zonen** eines Typs: Es gilt die **kleinste** Box (nach Volumen), die den Hörer enthält; so
+    liegt ein Lager in einem Wald. Eine große Box über die ganze Welt ist die Vorgabe.
+  - Gemessen wird am Helden (Hüfthöhe), ohne Spielfigur an der Kamera.
 - **`indoor`** = ein Raum der begehbaren Häuser: `{"type":"indoor","value":"<Raum>","box":{"center":[x,y,z],
   "halfExtents":[hx,hy,hz],"yaw":<Grad>}}`.
   - `value` ist der Raum-Tag `LEO_<NUTZUNG>_<KÜRZEL>_INNEN` (passend zum Wegpunkt `WP_…_INNEN`). Ein Raum darf
