@@ -820,7 +820,12 @@ private:
     void applyHeroSpell(); ///< at the cast clip's "cast" event
     /// A spell's harm on a creature or the hero (fire bolt, area): its damage minus protection, min 5 (as
     /// R3).
-    void spellHit(const gameplay::DamageByType& damage, u32 targetId, std::string_view caster);
+    /// `burn`: it sets the target burning (decision B); `reaction`: the target staggers (not for burning).
+    void spellHit(const gameplay::DamageByType& damage, u32 targetId, std::string_view caster,
+                  bool burn = false, bool reaction = true);
+    /// Decision B: burning for Magic.burn_seconds, Magic.burn_damage fire damage a second; water puts it out.
+    void setBurning(u32 targetId, std::string_view caster);
+    void fixedUpdateBurning(f32 seconds);
     /// Z6: asleep until hurt or `seconds` are over.
     bool castSleep(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect = {});
     void wakeUp(u32 targetId);
@@ -831,6 +836,8 @@ private:
     /// nullopt: itself). Why not, as text; nullopt: it casts.
     std::optional<std::string> npcCast(Creature& c, std::string_view spell, std::optional<u32> target);
     void applyNpcSpell(Creature& c);
+    /// A scroll of `spell` that `who` carries; empty: none.
+    [[nodiscard]] std::string npcScrollFor(const gameplay::Character& who, std::string_view spell) const;
     void fixedUpdateNpcCast(Creature& c, f32 seconds);
     /// Z8: calls the spell's creature beside the hero for `seconds`; the one called before vanishes.
     std::optional<u32> summonForHero(const gameplay::SpellInfo& spell, f32 seconds);
@@ -882,6 +889,7 @@ private:
         u32 stages = 0;
         std::optional<u32> trail;
         std::string impact;
+        bool burn = false;
     };
     [[nodiscard]] std::string rangedWeapon() const; ///< the hero's equipped bow or crossbow
     [[nodiscard]] bool rangedIsCrossbow(std::string_view item) const;
@@ -1246,6 +1254,14 @@ private:
     };
     std::optional<HeroCast> m_heroCast;
     std::optional<u32> m_heroSummon; // Z8: the hero's summoned creature (one at a time)
+    struct Burning
+    {
+        f32 seconds = 0.0f; ///< left
+        f32 tick = 0.0f;    ///< until the next damage
+        std::optional<u32> effect;
+        std::string caster;
+    };
+    std::map<u32, Burning> m_burning; // decision B: who burns (creature id, ~0: the hero)
     struct HeroTransform
     {
         std::string species;                         ///< "wolf"

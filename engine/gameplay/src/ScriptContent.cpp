@@ -154,7 +154,8 @@ void defineContentKinds(script::ScriptVm& vm)
              {"summon", Type::String, false, none, none, "Npc"}, // summon: the creature
              {"species", Type::String},                          // transform: wolf, keiler, laufvogel
              {"fx", Type::Table},                                // { cast, trail, impact, on_target }
-             {"on_cast", Type::Function},                        // fn(caster, target): after the engine
+             {"burn", Type::Boolean},     // its fire sets the target burning (owner decision B, as Gothic)
+             {"on_cast", Type::Function}, // fn(caster, target): after the engine
          },
          false});
 

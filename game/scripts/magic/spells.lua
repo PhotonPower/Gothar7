@@ -44,3 +44,14 @@ Spell "spl_summon_wolf" {
     duration = 60,           -- Z8: ein Begleiter für 60 s
     fx = { on_target = "summon" },
 }
+
+-- Entscheidung C: Furcht als Spruchrolle im Startsatz (Z6: 10 s Flucht vor dem Zaubernden).
+Spell "spl_fear" {
+    name = "Schrecken",
+    circle = 1,
+    mana = 10,
+    kind = "target",
+    effect = "fear",
+    duration = 10,
+    fx = { on_target = "smoke" },
+}

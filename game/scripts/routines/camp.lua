@@ -16,3 +16,8 @@ Routine "rtn_old_man" {
     { from = "08:00", to = "20:00", state = "zs_stand", at = "wp_camp_south" },
     { from = "20:00", to = "08:00", state = "zs_sleep", at = "wp_camp_south" },
 }
+
+Routine "rtn_camp_hexer" {
+    { from = "07:00", to = "21:00", state = "zs_stand", at = "wp_camp_west" },
+    { from = "21:00", to = "07:00", state = "zs_sleep", at = "wp_camp_west" },
+}

@@ -4,9 +4,12 @@ Npc "npc_bandit" {
     name = "Wegelagerer",
     guild = "outcast",
     level = 4,
-    attributes = { str = 20, dex = 15, hp = 80 },
+    attributes = { str = 20, dex = 15, hp = 80, mana = 10 },
     talents = { melee_1h = 1 },
     equipment = { "it_club" },
+    -- Entscheidung A: eine Spruchrolle Feuerpfeil, die er im Kampf auf Abstand liest (ohne Kreis, verbraucht).
+    inventory = { it_scroll_firebolt = 1 },
+    spells = { "spl_firebolt" },
 }
 
 Npc "npc_bandit_leader" {

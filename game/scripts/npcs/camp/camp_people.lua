@@ -45,3 +45,17 @@ Npc "npc_old_man" {
     pickpocket_dex = 20,
     pickpocket_item = "it_ring_family", -- wer ihn bestiehlt, erwischt den Ring
 }
+
+-- Der Kräuterhexer (M12, Entscheidung A des Projektinhabers): zaubert im Kampf Feuerpfeile auf Abstand und heilt
+-- sich (ai/combat.lua, Feld spells). Figur vorerst die des alten Mannes (Platzhalter).
+Npc "npc_camp_hexer" {
+    name = "Kräuterhexer",
+    guild = "outcast",
+    level = 8,
+    attributes = { str = 10, hp = 80, mana = 60 },
+    talents = { magic_circle = 1 },
+    spells = { "spl_heal", "spl_firebolt" },
+    figure = "characters/figures/old_man.figure.toml",
+    inventory = { it_potion_mana_small = 2 },
+    routine = "rtn_camp_hexer",
+}
