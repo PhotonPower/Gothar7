@@ -401,6 +401,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [ ] Handarbeit im Editor, Zellen/Streaming, Performance-Budget
 - [ ] Credits (LGL, OSM, Asset-Lizenzen) im Spiel
 - [x] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …) – `uses-suggest` (OSM/ALKIS), Auswahl des Koordinators in `data/leonberg/uses.json` (30 Häuser), Routinen-Wegpunkte, Freepoints und Mobs (`docs/design/leonberg-routinen-orte.md`)
+  - Stand: Treppen ins Obergeschoss der 5 begehbaren Häuser (höchstens 35°, Kollision als glatte Rampe, Deckenausschnitt mit Geländer), Obergeschoss mit eigenen Räumen, Fenstern und Licht; Betten und Truhen oben, Wegpunkte `…_TREPPE`, `…_TREPPE_OBEN`, `…_OBEN…`, Innenzonen je Geschoss und über der Treppe
 
 **DoD:** Leonberg ist als fertiger Spielort im Vertical Slice / Kapitel nutzbar.
 

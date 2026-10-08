@@ -44,6 +44,7 @@ DOOR_OUT_M = 0.6  # door points: this much beyond the generator's door probe
 DOOR_REACH_M = 30.0  # a door point connects to a street point at most this far away
 DOOR_CANDIDATES = 16
 GRADE_SAMPLE_M = 0.5  # the slope check looks at pieces this long
+BRIDGE_STEP_M = 0.4  # a bridge between parts climbs at most this much more than its slope allows
 NPC_SLOPE_DEG = 35.0  # steeper pieces stop a running character (autopilot, W6; begehung "steep")
 SKIP_HIGHWAYS = {"motorway", "motorway_link", "trunk", "trunk_link"}
 STAIRS = {"steps"}
@@ -500,6 +501,7 @@ def build_waynet(
 
     # --- routine places of the houses with a use (W7, uses_places.json) ---------------------------
     use_points = 0
+    links: list[tuple[str, dict[str, Any]]] = []
     for pl in places:
         if pl.get("kind") != "wp":
             continue
@@ -512,16 +514,18 @@ def build_waynet(
         if "y" in pl:  # inside a house: on its floor, not on the terrain under it
             p = points[name]
             points[name] = Wp(name, (p.pos[0], float(pl["y"]), p.pos[2]), p.dir)
-        if pl.get("link"):  # through a door: tied to its routine waypoint as it is
-            if pl["link"] in points:
-                add_edge(name, pl["link"])
-            else:
-                why = f"link {pl['link']} missing"
-                report["usesUnconnected"].append({"point": name, "house": pl.get("house"),
-                                                  "reason": why})  # fmt: skip
+        if pl.get("link"):  # through a door: tied to its routine waypoint as it is, once all
+            links.append((name, pl))  # are there (a detour comes before the point it leads to)
             continue
         if not connect(name, spot):
             why = "no reachable point or way within 30 m"
+            report["usesUnconnected"].append({"point": name, "house": pl.get("house"),
+                                              "reason": why})  # fmt: skip
+    for name, pl in links:
+        if pl["link"] in points:
+            add_edge(name, pl["link"])
+        else:
+            why = f"link {pl['link']} missing"
             report["usesUnconnected"].append({"point": name, "house": pl.get("house"),
                                               "reason": why})  # fmt: skip
 
@@ -550,6 +554,9 @@ def build_waynet(
                         continue
                     tried[j] += 1
                     t = (float(xy_all[k, 0]), float(xy_all[k, 1]))
+                    rise = abs(points[n].pos[1] - points[other].pos[1])
+                    if rise > BRIDGE_STEP_M + checks.max_grade * float(dist[k]):
+                        continue  # another storey right above or below: no way up there
                     if checks.line_free(q, t) is None and checks.grade_ok(q, t):
                         best = (float(dist[k]), n, other)
                         break

@@ -53,11 +53,12 @@ def test_room_geometry_and_record():
     assert d["from"][1] == pytest.approx(-wall) and d["to"][1] == pytest.approx(-wall)
     assert len(all_prims(r)) >= len(plain.primitives) + 3  # walls, floor, ceiling, beams
     # every room is its own mesh; none of the room's geometry stays in the house's
-    assert sorted(r.room_prims) == sorted(q["name"] for q in room["rooms"])
+    names = [q["name"] for q in room["rooms"]] + [q["name"] for q in room["upper"]["rooms"]]
+    assert sorted(r.room_prims) == sorted(names)
     assert not {q.material for q in r.primitives} & {"plaster_white"}
     # the room lies outside the house budget: the outside keeps its timber level; its open
     # windows only lose their panes (two triangles each)
-    panes = 2 * len(room["windows"])
+    panes = 2 * (len(room["windows"]) + len(room["upper"]["windows"]))
     assert abs(r.triangles - plain.triangles) <= panes + 4 and r.timber_level == plain.timber_level
 
 
@@ -77,7 +78,9 @@ def test_collision_has_a_hollow_room_and_an_open_door():
         for h in (0.3, 1.0, 1.7):
             assert not solid(r, mid[0], h, z), (mid[0], h, z)
     assert solid(r, 2.0, 1.0, -0.15)  # inside the wall beside the door
-    assert solid(r, 5.0, r.room["ceiling"] + 0.6, -3.5)  # above the ceiling
+    up = r.room["upper"]  # the slab between the storeys, the body above the upper storey
+    assert solid(r, 5.0, (r.room["ceiling"] + up["floor"]) / 2, -3.5)
+    assert solid(r, 5.0, up["ceiling"] + 0.6, -3.5)
     assert solid(r, 5.0, -0.2, -3.5)  # the floor slab
     assert not solid(r, 5.0, 1.0, -3.5)  # the room
     assert solid(house(), 5.0, 1.0, -3.5)  # without a room: solid as before
@@ -159,6 +162,7 @@ def test_no_collision_reaches_into_a_skewed_room():
                     interior={"use": "schmiede"})  # fmt: skip
     assert r.room is not None
     rooms = [Polygon(q["ring"]) for q in r.room.get("rooms", [])] or [Polygon(r.room["ring"])]
+    stairs = Polygon(r.room["stairs"]["footprint"]).buffer(0.1) if "stairs" in r.room else None
     global ORIGIN
     keep, ORIGIN = ORIGIN, np.array([5.0, -0.5, -4.0])
     try:
@@ -169,7 +173,8 @@ def test_no_collision_reaches_into_a_skewed_room():
                 for z in np.arange(z0, z1, 0.25):
                     from shapely.geometry import Point
 
-                    if inner.contains(Point(x, z)):
+                    q = Point(x, z)
+                    if inner.contains(q) and not (stairs is not None and stairs.contains(q)):
                         assert not solid(r, float(x), 1.0, float(z)), (x, z)
     finally:
         ORIGIN = keep
@@ -225,3 +230,72 @@ def test_room_meshes_collide_only_with_a_box_inside_the_house():
         assert pts[:, 1].min() > r.room["ceiling"]
         x, y, z = pts.mean(axis=0)
         assert solid(r, float(x), float(y), float(z))  # already solid: changes nothing
+
+
+def test_stairs_lead_to_an_upper_storey():
+    """W7: stairs at most 35 degrees along a wall, the opening above them, the upper storey with
+    its own rooms, floor, ceiling and open windows; collision: the ramp, the slab, upstairs free."""
+    from shapely.geometry import Point, Polygon
+
+    r = house({"use": "wohnhaus"})
+    room = r.room
+    st, up = room["stairs"], room["upper"]
+    assert math.degrees(math.atan(st["rise"] / st["tread"])) <= 35.0
+    assert st["floor"] == pytest.approx(room["floor"]) and st["top"] == pytest.approx(up["floor"])
+    assert up["floor"] > room["ceiling"] and up["ceiling"] - up["floor"] >= 2.1
+    assert [q["name"] for q in up["rooms"]][0] == "OBEN"
+    assert up["windows"]  # daylight upstairs too
+    ring = Polygon(room["ring"]).buffer(0.01)
+    opening = Polygon(st["opening"])
+    assert ring.contains(Polygon(st["footprint"]))
+    assert opening.intersection(ring).area > 0.8 * opening.area  # over the room (into the wall)
+    assert ring.contains(Polygon(st["headLanding"]))
+    # headroom over the ramp under the opening's far end: at least 2 m to the ceiling
+    tread, rise = st["tread"], st["rise"]
+    back = opening.exterior.distance(Point(st["headPoint"]))  # roughly the landing
+    assert back >= 0.0
+    # collision: the slab between the storeys is solid beside the opening, open in it; upstairs
+    # (a metre over its floor) is free; the ramp carries you up half-way
+    hall = Polygon(up["rooms"][0]["ring"]).difference(opening.buffer(0.5))
+    p = hall.representative_point()
+    mid_slab = (room["ceiling"] + up["floor"]) / 2
+    assert solid(r, p.x, mid_slab, p.y)
+    o = opening.centroid
+    assert not solid(r, o.x, mid_slab, o.y)
+    assert not solid(r, p.x, up["floor"] + 1.0, p.y)
+    fx, fz = st["foot"]
+    ux, uz = st["up"]
+    sx, sz = st["side"]
+    half = (st["steps"] - 1) * tread / 2
+    x, z = fx + ux * half + sx * st["width"] / 2, fz + uz * half + sz * st["width"] / 2
+    under = st["floor"] + (half + tread) * rise / tread - 0.1
+    assert solid(r, x, under, z) and not solid(r, x, under + 0.4, z)
+    # each storey's rooms are their own meshes, upstairs ones above the slab
+    for name, prims in r.room_prims.items():
+        ys = np.concatenate([q.mesh.positions[:, 1] for q in prims]) + ORIGIN[1]
+        if name.startswith("OBEN"):  # (the top of the stair rail may reach into it)
+            assert np.percentile(ys, 5) >= up["floor"] - 0.05, name
+
+
+def test_no_stairs_in_a_single_storey():
+    low = {**HOUSE, "roof": {**ROOF, "eaveY": 3.2, "ridgeY": 7.0}}
+    r = build_house(low, -0.5, (5.0, -3.5), RULES, STREET_SOUTH, ground_at=lambda x, z: 0.0,
+                    interior={"use": "wohnhaus"})  # fmt: skip
+    assert r.room is not None and "stairs" not in r.room and "upper" not in r.room
+    assert any("no stairs" in n for n in r.notes)
+
+
+def test_the_slab_keeps_the_stair_opening_free_in_a_big_room():
+    """A big nearly convex slab piece with the opening's notch must not close it (its hull)."""
+    from shapely.geometry import MultiPoint, box
+
+    from gothar_worldgen.buildings.medieval import _slab_pieces
+
+    inner = box(0.0, 0.0, 20.0, 11.0)
+    hole = box(0.0, 3.0, 1.05, 6.8)  # at the wall, like the stairs' opening
+    pieces = _slab_pieces(inner, hole)
+    for piece in pieces:
+        hull = MultiPoint(list(piece.exterior.coords)).convex_hull
+        assert hull.intersection(hole).area < 1e-6
+    total = sum(q.area for q in pieces)
+    assert total == pytest.approx(inner.area - hole.area, rel=1e-6)

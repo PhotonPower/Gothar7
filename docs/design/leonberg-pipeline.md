@@ -1058,6 +1058,44 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   behält so etwa zwei Drittel des Innen-Ambients; an ihr bleiben leichte Helligkeitsstufen. Leonberg: 24 Boxen für
   5 Räume. Andere Zonen der Welt bleiben erhalten, die eigenen (`LEO_…_INNEN`) werden ersetzt.
 
+#### Treppen und Obergeschoss (W7, Plan freigegeben 2026-10-08)
+- **Wann:** Ein begehbares Haus mit einem zweiten Stockwerk bekommt eine Treppe dorthin, wenn dessen Raum mindestens
+  `stairs.upperMinHeightM` (2,1 m) hoch ist (Obergeschosse sind niedrig; Figuren 1,8 m). Werkzeug
+  `buildings/stairs.py`, Werte `interior.stairs` (Vorgaben dort): Steigung höchstens `riseM` 0,18 m, Auftritt `runM`
+  0,26 m (ca. 34,5°; die Bodenprüfung der Engine lässt etwa 38,7° zu, engine 2026-10-08), Breite 0,95 m.
+- **Wo:** gerade an einer Wand, zuerst in einer Kammer (die Betten wandern nach oben, unten bleiben Vorräte), sonst im
+  Raum mit der Tür; erst frei von Fenstern, dann an Fenstern vorbei, solange die Stufen unter der Brüstung bleiben.
+  Frei bleiben der Weg von der Tür (1,3 m) und die Durchgänge (1,2 m); vor der ersten Stufe ein Absatz von 0,8 m, in
+  einem kurzen Raum seitlich daneben (`sideEntry`, dann ein Wegpunkt `WP_…_TREPPE_FUSS` auf der ersten Stufe, damit
+  der Weg nicht schräg über die Rampenseite führt). Oben endet sie auf einem freien Absatz.
+- **Geometrie:** Stufen als Blöcke, Handlauf auf der offenen Seite. Über dem oberen Lauf ist die Decke offen
+  (Kopfhöhe 2,4 m über der Rampe: die Physik-Figur ist ein Zylinder von 1,8 m Höhe und 0,3 m Radius, ihre
+  Vorderkante kommt früher unter die Deckenkante als ihre Mitte), der Ausschnitt reicht in die Wand (kein Streifen Decke, den ein konvexes
+  Kollisionsstück verschlucken würde); oben ein Geländer an den zwei geschlossenen Seiten (die Wand schließt die
+  dritte, der Kopf ist der Weg).
+- **Kollision:** die Treppe als **eine glatte Rampe** (ab einem Auftritt vor der ersten Stufe, damit genau
+  Steigung/Auftritt), die Decke zwischen den Geschossen als Platten ohne Ausschnitt, das Obergeschoss ausgehöhlt (der
+  Körper darüber beginnt an seiner Decke), die Wand über der Haustür geschlossen, das Geländer als dünne Wände.
+- **Obergeschoss:** gleicher Innenumriss wie unten, Räume `OBEN`, `OBEN_KAMMER` … (geteilt wie unten, der Raum
+  `OBEN` liegt um Ausschnitt und Treppenkopf; liefe eine Wand durch den Ausschnitt, bleibt es ein Raum), Boden aus
+  Brettern (auch über einem Steinboden), offene Fenster mit Tageslicht (Laibung bis zur Innenwand), Balken nur ab
+  `beamsFromM` 2,3 m Raumhöhe. Jeder Raum ein eigener Mesh-Vob (Licht-Budget); die Aufteilung der Dreiecke auf die Räume
+  beachtet die Höhe.
+- **Index:** `interior.stairs` (Fuß, Richtung, Stufen, Absätze, Ausschnitt, `footPoint`, `headPoint`, `sideEntry`) und
+  `interior.upper` (Boden, Decke, Räume, Durchgänge, Fenster).
+- **Einrichtung:** Betten und Truhen, Felle und Wandbehänge gehen nach oben (Kammern zuerst), unten bleiben Herd,
+  Tische, Theke, Freepoints und Vorräte. Die Treppe samt Absatz und Weg dorthin bleibt frei, im Ausschnitt steht nichts.
+  Laternen und Fensterlicht oben wie unten.
+- **Wegnetz:** `WP_…_TREPPE` vor der ersten Stufe (verbunden mit dem Raum, in dem die Treppe steht),
+  `WP_…_TREPPE_OBEN` am Kopf (y = oberer Boden), `WP_…_OBEN` im Raum oben, die oberen Kammern über ihre Durchgänge.
+  Obere Wegpunkte liegen auf dem Boden: Einsetzen und KI-LOD landen oben (engine 2026-10-08).
+  Führte die gerade Kante zu einem Durchgang über den Ausschnitt (oben) oder durch die Treppe (unten), geht sie über
+  Eckpunkte `WP_…_<Raum>_UM_<Kammer>` (1 m vor dem Hindernis, die Kanten dazwischen 0,6 m vom Geländer, nur die erste
+  und letzte dürfen näher); die Engine prüft Kanten nicht. Verknüpft wird erst, wenn alle Punkte stehen; eine Brücke
+  zwischen Teilen des Netzes steigt höchstens 0,4 m mehr als die Steigung erlaubt, also nie durch eine Decke.
+- **Zonen:** je Raum oben eine indoor-Zone in seiner Höhe; die Treppe eine Zone über beide Geschosse
+  (`LEO_…_TREPPE`), damit die Innenkamera unter dem Ausschnitt drinnen bleibt (engine #243).
+
 ### Vorhandene Werkzeuge (kein Eigenbau)
 Blender (+ Add-on BlenderGIS zum Gegenprüfen), COLMAP / RealityScan / Postshot (Photogrammetrie bzw.
 Gaussian Splatting für 3D-Referenzen einzelner Objekte wie Brunnen, Treppen, Mauerreste),
