@@ -167,6 +167,13 @@ events = [
 - Event-Namen: `lower_snake_case`, optional mit Argument nach Doppelpunkt (`sound:<name>`).
   Bekannte Events siehe `docs/modules/animation.md` („Clip“); neue Events nach Absprache mit engine.
 - Clips ohne Events und ohne `speed` werden weggelassen; die Datei ist optional.
+- **Quelle der Events (Koordinator 2026-10-08):** die Specs (`data/clips/<set>.toml`, `markers`) bzw. die daraus
+  erzeugte `<set>.events.toml`; erkannte Events (`footstep_*`, `land`) und `speed` misst der Bau aus der Bewegung.
+  Ändern sich nur Marker, schreibt `gothar-chargen build-set --events-only <set>` die `events.toml` neu (ohne
+  Blender; erkannte Events und `speed` bleiben). Die Pose-Marker in den `.blend` sind nur Hilfe und dürfen veralten,
+  bis die `.blend` aus einem echten Grund neu gebaut wird; Validator und Tests stützen sich nicht auf sie (Test
+  `test_events_files_hold_the_spec_markers` prüft Specs gegen `events.toml`). `.blend` nur committen, wenn sich
+  Geometrie oder Keys ändern.
 - **`speed` (Eigengeschwindigkeit, additiv, abgestimmt mit engine 2026-10-03):** für Fortbewegungs-Clips
   (`s_walk*`, `s_run*`, `s_sneak*`, `s_strafe*`) die Geschwindigkeit in m/s, bei der die Füße nicht gleiten –
   Clips am Ort (Menschen): Geschwindigkeit des Standfußes relativ zur Figur; Clips mit Root Motion (Monster, §7):
@@ -455,6 +462,8 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
 - **Format:** Namen in `mesh.extras.targetNames`, Positionen **und Normalen**, keine Tangenten; sparse Accessoren;
   Standardgewichte 0. Gewichte 0–1, additiv, beliebig viele gleichzeitig (Lippensync + Blinzeln + Ausdruck).
 - **Seiten:** `blink_l` = linkes Auge der Figur (+X), wie `*_l` im Rig.
+- **„Mund offen“ für Lippensync nach Lautstärke (M13, mit engine 2026-10-08):** `vis_aa` – in allen Köpfen und in
+  den Bärten gleich benannt (Bärte tragen dieselbe Target-Liste, der Bart geht mit dem Kiefer mit).
 - **Halsnaht:** Morphs bewegen den Nahtring nicht (kein Spalt beim Sprechen).
 - **Gilt für alle Teile mit Morphs**, z. B. `beard` (Frisur-Kits, F3v): dieselben 15 Namen; der Bart folgt so dem
   Kiefer. Bis M10 ordnete engine nach Index zu, seit #188 nach Namen (Absprache 2026-10-04).
@@ -628,7 +637,10 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
   bringen (`anim.ground`). `gothar-chargen repair-clips` (auch beim Export) setzt die Root-Geschwindigkeit auf die
   Schrittlänge und hebt `pelvis` je Key gerade so weit an; `speed` in `events.toml` folgt.
 - **Events:** `footstep_front_l/r`, `footstep_back_l/r` (Vierbeiner; Zweibeiner `footstep_l/r`), `hit_start`/`hit_end`
-  im Angriff, `sound:<name>`.
+  im Angriff, `sound:<name>`. **Tierlaute (M13, Wunsch engine 2026-10-08):** in allen Arten `sound:<art>_attack`
+  am Angriffsbeginn (6 Bilder vor `hit_start`; beim Sprung des Bergleu bei `leap_start`), `sound:<art>_hit` im
+  Treffer-Clip (Bild 1; Bergleu auch `t_stagger`), `sound:<art>_die` im Sterbe-Clip (Bild 2), `sound:<art>_threaten`
+  im Drohen (erste Pose). Die vorhandenen `sound:<art>_call`, `_roar`, `_hiss`, `_grind` bleiben.
 - **Material/Texturen:** Rolle `fur` (≤ 1024², §2.3); Platzhalter ohne Textur.
 - **Kollision (engine M5/M9, abgestimmt 2026-10-03):** `[rig.collision]` im Rig-TOML mit `shape`
   (`capsule_upright` | `capsule_lying`, liegend = Achse entlang +Z), `radius`, `length` (ganze Kapsel inkl.

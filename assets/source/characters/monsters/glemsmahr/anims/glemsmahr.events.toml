@@ -31,14 +31,26 @@ events = [
 
 [clips."glemsmahr/t_attack_1"]
 events = [
+    { frame = 7, event = "sound:glemsmahr_attack" },
     { frame = 13, event = "hit_start" },
     { frame = 18, event = "hit_end" },
 ]
 
 [clips."glemsmahr/t_attack_2"]
 events = [
+    { frame = 5, event = "sound:glemsmahr_attack" },
     { frame = 11, event = "hit_start" },
     { frame = 15, event = "hit_end" },
+]
+
+[clips."glemsmahr/t_die"]
+events = [
+    { frame = 2, event = "sound:glemsmahr_die" },
+]
+
+[clips."glemsmahr/t_hit"]
+events = [
+    { frame = 1, event = "sound:glemsmahr_hit" },
 ]
 
 [clips."glemsmahr/t_jump_back"]
@@ -50,6 +62,7 @@ events = [
 [clips."glemsmahr/t_leap"]
 events = [
     { frame = 10, event = "leap_start" },
+    { frame = 15, event = "sound:glemsmahr_attack" },
     { frame = 21, event = "hit_start" },
     { frame = 22, event = "leap_land" },
     { frame = 25, event = "hit_end" },
@@ -64,6 +77,7 @@ events = [
 [clips."glemsmahr/t_threaten"]
 events = [
     { frame = 12, event = "sound:glemsmahr_hiss" },
+    { frame = 12, event = "sound:glemsmahr_threaten" },
 ]
 
 [clips."glemsmahr/t_turn_l"]

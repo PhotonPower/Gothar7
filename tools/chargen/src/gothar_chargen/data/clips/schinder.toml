@@ -143,7 +143,7 @@ rotate = { root = [["Z", -90]] }
 [[clip]]
 name = "schinder/t_attack_1"       # quick lunge and bite
 keyframe = "keyposes"
-markers = { hit_start = 13, hit_end = 17 }
+markers = { hit_start = 13, hit_end = 17, "sound:schinder_attack" = 7 }
 [clip.params]
 base = "schinder/s_idle"
 keys = [[0, "rest"], [8, "crouch"], [13, "lunge"], [16, "bite"], [28, "rest"]]
@@ -160,7 +160,7 @@ rotate = { neck_01 = [["X", 6]], head = [["X", 18]], jaw = [["X", 2]], front_upp
 [[clip]]
 name = "schinder/t_attack_2"       # bite, then tear with the head shaking from side to side
 keyframe = "keyposes"
-markers = { hit_start = 10, hit_end = 20 }
+markers = { hit_start = 10, hit_end = 20, "sound:schinder_attack" = 4 }
 [clip.params]
 base = "schinder/s_idle"
 keys = [[0, "rest"], [6, "grab"], [10, "clamp"], [14, "tear_l"], [18, "tear_r"], [22, "tear_l"], [34, "rest"]]
@@ -179,6 +179,7 @@ rotate = { spine_02 = [["Z", -6]], neck_01 = [["X", 15], ["Z", -25]], head = [["
 
 [[clip]]
 name = "schinder/t_hit"
+markers = { "sound:schinder_hit" = 1 }
 keyframe = "keyposes"
 [clip.params]
 base = "schinder/s_idle"
@@ -189,6 +190,7 @@ rotate = { spine_01 = [["X", -8], ["Z", 6]], neck_01 = [["X", -20]], head = [["X
 
 [[clip]]
 name = "schinder/t_die"            # stagger, then roll onto the side and lie still
+markers = { "sound:schinder_die" = 2 }
 keyframe = "keyposes"
 [clip.params]
 keys = [[0, "rest"], [8, "stagger"], [22, "fallen"], [36, "fallen_limp"]]
@@ -234,6 +236,7 @@ rotate = { spine_01 = [["X", 8]], spine_02 = [["X", 8]], neck_01 = [["X", 8], ["
 
 [[clip]]
 name = "schinder/t_threaten"       # hunched, head low, snarling and cackling (jaw chatters)
+markers = { "sound:schinder_threaten" = 10 }
 keyframe = "keyposes"
 [clip.params]
 base = "schinder/s_idle"
