@@ -1089,7 +1089,7 @@ def _retaining_walls(grid: Any, works: dict[str, Any], street_doc: dict[str, Any
     import shapely
     from shapely.geometry import MultiPoint
 
-    from gothar_worldgen.export.retaining import plan_walls, write_plan
+    from gothar_worldgen.export.retaining import GapSteps, plan_walls, write_plan
     from gothar_worldgen.qa.begehung import collision_parts
 
     buildings = json.loads((work / "buildings.json").read_text(encoding="utf-8"))
@@ -1118,13 +1118,16 @@ def _retaining_walls(grid: Any, works: dict[str, Any], street_doc: dict[str, Any
                 hull = MultiPoint([(float(x) + ox, float(z) + oz) for x, _, z in pos]).convex_hull
                 if isinstance(hull, Polygon):
                     town.append(hull)
+    gap_steps: list[GapSteps] = []
+    spec = dict(works["walls"], minDropM=works["steps"]["minDropM"])
     grid, walls, stats = plan_walls(grid, street_doc.get("streets", []),
                                     box(-half, -half, half, half), houses, doors, keep, town,
-                                    works["walls"])  # fmt: skip
-    write_plan(folder / "generated" / "retaining_walls.json", walls, stats)
+                                    spec, gap_steps)  # fmt: skip
+    write_plan(folder / "generated" / "retaining_walls.json", walls, stats, gap_steps)
     print(f"  walls: {stats['walls']} retaining walls, {stats['wallM']} m ({stats['high']} holding "
           f"the slope, {stats['low']} with a parapet, {stats['mortared']} mortared), "
-          f"{stats['cellsLevelled']} cells levelled", file=out)  # fmt: skip
+          f"{stats['cellsLevelled']} cells levelled, {stats['gapSteps']} steps in the gaps before "
+          f"doors", file=out)  # fmt: skip
     return grid
 
 
@@ -1161,10 +1164,11 @@ def _cmd_streetworks(args: argparse.Namespace, out: TextIO) -> int:
         half = site.core_half_extent_m
         core = rect(-half, -half, half, half)
         plan_path = folder / "generated" / "retaining_walls.json"
-        walls = json.loads(plan_path.read_text("utf-8"))["walls"] if plan_path.is_file() else []
+        plan = json.loads(plan_path.read_text("utf-8")) if plan_path.is_file() else {}
         pieces, stats = plan_streetworks(street_doc.get("streets", []),
                                          street_doc.get("squares", []), houses, core,
-                                         grid.height_at, rules, walls)  # fmt: skip
+                                         grid.height_at, rules, plan.get("walls", []),
+                                         plan.get("steps", []))  # fmt: skip
         vfs = f"worlds/{site.name}/generated/streetworks"
         entries = write_pieces(pieces, house_rules.color, folder / "generated" / "streetworks", vfs)
         stats["triangles"] = sum(e["triangles"] for e in entries)
@@ -1172,7 +1176,8 @@ def _cmd_streetworks(args: argparse.Namespace, out: TextIO) -> int:
     except (StreetworksError, OSError, json.JSONDecodeError, KeyError) as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
-    print(f"  steps: {stats['steps']} ({stats['stepsM']} m); walls {stats['walls']}; gutters "
+    print(f"  steps: {stats['steps']} ({stats['stepsM']} m), {stats['gapSteps']} in wall gaps; "
+          f"walls {stats['walls']}; gutters "
           f"{stats['gutterM']} m in {stats['gutterFiles']} files; {stats['triangles']} triangles",
           file=out)  # fmt: skip
     print(f"  {folder / 'generated' / 'streetworks_index.json'}", file=out)

@@ -619,6 +619,14 @@ Koordinator im Auftrag des Projektinhabers). Werte in `tools/worldgen/data/<ort>
     - nicht an Häusern (`houseM`), Türen (`doorM`), Plätzen, Stufen und Handmodellen (`keepM`), Einmündungen (`junctionM`).
   - **Türen** behalten eine Lücke (`laneM`) zur nächsten Straße bis `doorReachM` 30 m (so weit bindet das Wegnetz Türen an)
     und zu jeder Straße bis `laneReachM` 15 m.
+  - **Stufen in den Lücken** (Koordinator 2026-10-08):
+    - Wo eine Mauer für den Weg einer Tür aussetzt und die Böschung steil ist, führen Steinstufen vom Straßenrand gerade
+      hinaus bis zur Oberkante der Böschung (`gapSteps`).
+    - Die Oberkante liegt dort, wo das Gelände wieder begehbar wird, nach mindestens 0,4 m Höhe.
+    - Höchstens 30° steil; ist die Böschung steiler, schneiden die Stufen in das Gelände dahinter ein.
+    - Das Gelände darunter wird eine gerade Rampe, 1,2 m breit, 1 m weich eingeblendet.
+    - Keine Stufen an sanften Hängen unter 15° im Mittel und wo der Hang dahinter steiler weitersteigt.
+    - Leonberg: 18 geplant, 14 gebaut (bei 4 bleibt nach den übrigen Geländeschritten weniger als 0,4 m Höhe).
   - **Bergseite:** hält das Gelände, oben bündig mit ihm. **Talseite:** trägt die Straße, mit Brüstung `parapetM` 0,6 m.
   - **Material:** Trockenmauer (`stone_dry`); gemörtelt wie die Sockel (`stone`), wo sie an ein Haus oder die Stadtmauer
     stößt (`mortarM`).
