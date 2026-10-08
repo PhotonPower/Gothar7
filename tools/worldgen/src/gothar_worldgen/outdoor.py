@@ -5,7 +5,8 @@ Everything stands on the ground beside the houses' collision bodies and keeps cl
 player and the NPCs need:
 
 - a corridor along every walkable street axis (at least ``minCorridorM`` to each side, wider streets
-  up to ``streetMarginM`` short of their edge; steps over their whole width),
+  up to ``streetMarginM`` short of their edge; steps, paths and tracks (``pathKinds``) over their
+  whole width),
 - before every door its swing and a lane out (``doorLane`` wide x deep) plus the way from there to
   the street axis, and around the routine places of the uses and the waynet's freepoints a disc of
   ``placeRadiusM``,
@@ -38,6 +39,8 @@ from shapely.strtree import STRtree
 
 FORMAT_VERSION = 1
 GROUP_NAME = "WORLDGEN_GASSEN"
+OUTLINE_M = 0.08  # house outlines simplified by this much for the walls props stand at
+WALL_GAP_M = 0.12  # props this far off the (simplified) wall: never into the house
 Pt = tuple[float, float]
 
 
@@ -69,11 +72,19 @@ class Rules:
 
 def _all_kinds(doc: dict[str, Any]) -> set[str]:
     kinds: set[str] = set()
+    groups = doc.get("groups", {})
+    names: set[str] = set()
     for spec in doc.get("uses", {}).values():
         for side in ("front", "back"):
-            kinds.update(spec.get(side, []))
+            names.update(spec.get(side, []))
     for side in ("front", "back"):
-        kinds.update(doc.get("houses", {}).get(side, {}).get("pick", {}))
+        names.update(doc.get("houses", {}).get(side, {}).get("pick", {}))
+    names.update(doc.get("kerb", {}).get("pick", {}))
+    for name in names:
+        kinds.update(groups.get(name, [name]))
+    for members in groups.values():
+        kinds.update(members)
+    kinds.update(doc.get("market", {}).get("pick", {}))
     kinds.update(doc.get("trees", {}).get("pick", {}))
     kinds.update(doc.get("trees", {}).get("garden", {}))
     kinds.update(doc.get("yards", {}).get("bush", {}).get("pick", {}))
@@ -194,12 +205,28 @@ class Site:
     features: Sequence[dict[str, Any]]  # features.json entries
     height_at: Callable[[float, float], float]
     ways: Sequence[tuple[Pt, Pt]] = ()  # waynet edges of the world without these things
+    squares: Sequence[dict[str, Any]] = ()  # streets.json squares (the market)
     spots: Sequence[Pt] = ()  # its freepoints
+
+
+def _steps(lo: float, hi: float, step: float) -> list[float]:
+    out = []
+    t = lo
+    while t <= hi + 1e-9:
+        out.append(t)
+        t += step
+    return out
 
 
 def _pick(rng: random.Random, weights: dict[str, float]) -> str:
     kinds = sorted(weights)
     return rng.choices(kinds, [weights[k] for k in kinds])[0]
+
+
+def _label(prefix: str, house: str, key: str) -> str:
+    """``GASSE_<house>_<group>_<part>`` from a key ``<house>:<side>:<group>:<part>`` (B: yard)."""
+    _, side, group, part = key.split(":")
+    return f"{prefix}_{house.replace('-', 'M')}_{'B' if side == 'back' else ''}{group}_{part}"
 
 
 def _name(prefix: str, house: str, *parts: str) -> str:
@@ -220,7 +247,8 @@ class _Planner:
         self.max_slope = float(keep["maxSlopeM"])
         self.plan = Plan()
         self.placed = _Placed()
-        axes, corridors, widths = [], [], []
+        axes, corridors, widths, surfaces = [], [], [], []
+        self.streets: list[tuple[LineString, float, float, str]] = []  # axis, width, half, id
         for s in site.streets:
             pts = s.get("points") or []
             if s.get("highway") in SKIP_HIGHWAYS or len(pts) < 2:
@@ -231,12 +259,20 @@ class _Planner:
             line = LineString(pts)
             if s.get("highway") in STAIRS:
                 half = w / 2 + float(keep["stepsExtraM"])
+            elif s.get("highway") in set(keep.get("pathKinds", [])):  # paths: wholly free
+                half = w / 2 + float(keep.get("pathExtraM", 0.2))
             else:
                 half = max(float(keep["minCorridorM"]), w / 2 - float(keep["streetMarginM"]))
             axes.append(line)
             widths.append(w)
             corridors.append(line.buffer(half))
+            self.streets.append((line, w, half, str(s.get("osmId", ""))))
+            # as it looks: the splat map blurs the street's edge by 1.5 m (export/splat.py)
+            surfaces.append(
+                line.buffer(w / 2 + float(rules.data.get("kerb", {}).get("edgeGapM", 0.0)))
+            )
         self.axes = _Shapes(axes)
+        self.surfaces = _Shapes(surfaces)  # the streets' whole width: free-standing things stay off
         self.widths = widths
         lane_w, lane_d = (float(v) for v in keep["doorLane"])
         lanes = []
@@ -266,6 +302,8 @@ class _Planner:
             elif owner.startswith("CITYWALL_"):
                 walls.append(poly)
         self.houses = {k: unary_union(v) for k, v in houses.items()}
+        # the outlines of the collision pieces are ragged (many short edges): walls to stand at
+        self.outlines = {k: v.simplify(OUTLINE_M) for k, v in self.houses.items()}
         self.house_shapes = _Shapes(list(self.houses.values()), list(self.houses))
         margin = float(keep["handmadeM"])
         self.landmarks = _Shapes([unary_union(v).convex_hull.buffer(margin)
@@ -300,57 +338,84 @@ class _Planner:
                                "mesh": mesh_path(kind)})  # fmt: skip
         self.plan.counts[kind] += 1
 
-    # --- props at the walls --------------------------------------------------------------------
+    # --- props at the walls, in groups ---------------------------------------------------------
 
-    def wall_spots(self, hid: str, kind: str, side: str) -> list[tuple[Pt, Pt, Polygon]]:
-        poly = self.houses.get(hid)
+    def group(self, name: str) -> list[str]:
+        """The kinds of a group recipe (``groups``), or the single kind ``name``."""
+        return list(self.rules.get("groups", {}).get(name, [name]))
+
+    def _row(self, kinds: Sequence[str], start: Pt, u: Pt, n: Pt,
+             back: float) -> list[tuple[str, Pt, Polygon]] | None:  # fmt: skip
+        """The group side by side from ``start`` along ``u``, backs ``back`` off the line, facing
+        ``n``; None if any of them is in the way of something."""
+        gap = float(self.rules.get("groupGapM", 0.15))
+        out = []
+        t = 0.0
+        for kind in kinds:
+            w, d = footprint(kind)
+            c = (start[0] + u[0] * (t + w / 2) + n[0] * (back + d / 2),
+                 start[1] + u[1] * (t + w / 2) + n[1] * (back + d / 2))  # fmt: skip
+            t += w + gap
+            rect = _rect(c, u, w, d)
+            if self.keep.hits(rect) or self.bodies.hits(rect) or self.landmarks.hits(rect):
+                return None
+            if not self.placed.clear(rect, self.gap):
+                return None
+            out.append((kind, c, rect))
+        return out
+
+    def _length(self, kinds: Sequence[str]) -> float:
+        gap = float(self.rules.get("groupGapM", 0.15))
+        return sum(footprint(k)[0] for k in kinds) + gap * (len(kinds) - 1)
+
+    def _put(self, row: list[tuple[str, Pt, Polygon]], n: Pt, key: str, label: str) -> bool:
+        """Places a row if the ground allows; ``key`` and ``label`` + index name its things."""
+        ys = [self.ground(rect) for _, _, rect in row]
+        if any(y is None for y in ys):
+            return False
+        for k, ((kind, c, rect), y) in enumerate(zip(row, ys, strict=True), start=1):
+            self.placed.add(rect)
+            assert y is not None
+            self.add(f"{key}:{k}", f"{label}_{k}_{kind.upper()}", kind, (c[0], y, c[1]),
+                     yaw_quat(*n))  # fmt: skip
+        return True
+
+    def wall_edges(self, hid: str, side: str) -> list[tuple[Pt, Pt, Pt, float]]:
+        """(start, along, out, length) of the house's walls on ``side`` (front: within ``frontM``
+        of a street)."""
+        poly = self.outlines.get(hid)
         if poly is None:
             return []
-        w, d = footprint(kind)
         front_m = float(self.rules["frontM"])
         out = []
         for part in getattr(poly, "geoms", [poly]):
             ring = list(orient(part, 1.0).exterior.coords)  # counter-clockwise: outside right
             for a, b in zip(ring, ring[1:], strict=False):
                 length = math.dist(a, b)
-                if length < w + 0.3:
+                if length < 0.8:
                     continue
-                ux, uz = (b[0] - a[0]) / length, (b[1] - a[1]) / length
-                nx, nz = uz, -ux
-                mid = Point((a[0] + b[0]) / 2 + nx * 1.5, (a[1] + b[1]) / 2 + nz * 1.5)
-                is_front = self.street_gap(mid) <= front_m
-                if is_front != (side == "front"):
-                    continue
-                t = w / 2 + 0.15
-                while t <= length - w / 2 - 0.15:
-                    c = (a[0] + ux * t + nx * (d / 2 + 0.06), a[1] + uz * t + nz * (d / 2 + 0.06))
-                    t += 0.4
-                    rect = _rect(c, (ux, uz), w, d)
-                    if self.keep.hits(rect) or self.bodies.hits(rect) or self.landmarks.hits(rect):
-                        continue
-                    if not self.placed.clear(rect, self.gap):
-                        continue
-                    out.append((c, (nx, nz), rect))
+                u = ((b[0] - a[0]) / length, (b[1] - a[1]) / length)
+                n = (u[1], -u[0])
+                mid = Point((a[0] + b[0]) / 2 + n[0] * 1.5, (a[1] + b[1]) / 2 + n[1] * 1.5)
+                if (self.street_gap(mid) <= front_m) == (side == "front"):
+                    out.append(((a[0], a[1]), u, n, length))
         return out
 
-    def wall_prop(self, hid: str, kind: str, side: str, rng: random.Random, k: int,
-                  near: Pt | None = None) -> Pt | None:  # fmt: skip
-        """Places one prop at the house's wall; beside ``near`` (a group) if there is room."""
-        spots = self.wall_spots(hid, kind, side)
-        rng.shuffle(spots)
-        if near is not None:
-            group = float(self.rules.get("groupM", 3.0))
-            close = [s for s in spots if math.dist(s[0], near) <= group]
-            spots = sorted(close, key=lambda s: math.dist(s[0], near)) or spots
-        for c, (nx, nz), rect in spots:
-            y = self.ground(rect)
-            if y is None:
-                continue
-            self.placed.add(rect)
-            self.add(f"{hid}:{side}:{k}", _name("GASSE", hid, kind, str(k)), kind,
-                     (c[0], y, c[1]), yaw_quat(nx, nz))  # fmt: skip
-            return c
-        return None
+    def wall_group(self, hid: str, kinds: list[str], side: str, rng: random.Random,
+                   key: str) -> int:  # fmt: skip
+        """Places the group at one of the house's walls; drops things from its end until it
+        fits. Returns how many were placed."""
+        edges = self.wall_edges(hid, side)
+        while kinds:
+            need = self._length(kinds)
+            spots = [(e, t) for e in edges for t in _steps(0.15, e[3] - need - 0.15, 0.4)]
+            rng.shuffle(spots)
+            for (a, u, n, _), t in spots:
+                row = self._row(kinds, (a[0] + u[0] * t, a[1] + u[1] * t), u, n, WALL_GAP_M)
+                if row is not None and self._put(row, n, key, _label("GASSE", hid, key)):
+                    return len(kinds)
+            kinds = kinds[:-1]
+        return 0
 
     def props(self) -> None:
         houses = self.rules.get("houses", {})
@@ -361,27 +426,136 @@ class _Planner:
             wanted: list[tuple[str, str]] = []
             if use is not None:
                 spec = self.rules["uses"].get(use, {})
-                wanted += [("front", k) for k in spec.get("front", [])]
-                wanted += [("back", k) for k in spec.get("back", [])]
+                wanted += [("front", g) for g in spec.get("front", [])]
+                wanted += [("back", g) for g in spec.get("back", [])]
             else:
                 for side in ("front", "back"):
                     s = houses.get(side)
                     if s and rng.random() < float(s["chance"]):
-                        more = s.get("more", [])  # chances of a second, third ... thing
+                        more = s.get("more", [])  # chances of a second, third ... group
                         n = 1 + sum(1 for c in more if rng.random() < float(c))
                         wanted += [(side, _pick(rng, s["pick"])) for _ in range(n)]
-            last: dict[str, Pt] = {}
-            for k, (side, kind) in enumerate(wanted, start=1):
-                at = self.wall_prop(hid, kind, side, rng, k, last.get(side))
-                if at is None and side == "front":  # no room (or no street front): the yard
-                    at = self.wall_prop(hid, kind, "back", rng, k, last.get("back"))
-                    side = "back"
-                if at is not None:
-                    last[side] = at
-                elif use is not None:
-                    self.plan.failed.append({"what": f"{side} {kind}", "house": hid})
-                else:
-                    self.plan.counts[f"{side} (no room)"] += 1
+            for k, (side, name) in enumerate(wanted, start=1):
+                kinds = self.group(name)
+                # a group that does not fit in one piece goes in parts (doors split the fronts),
+                # what finds no room at the front goes into the yard
+                sides = [side, "back"] if side == "front" else [side]
+                left, part = kinds, 0
+                for where in sides:
+                    while left:
+                        part += 1
+                        got = self.wall_group(hid, left, where, rng, f"{hid}:{side}:{k}:{part}")
+                        if got == 0:
+                            break
+                        left = left[got:]
+                if len(left) == len(kinds):
+                    if use is not None:
+                        self.plan.failed.append({"what": f"{side} {name}", "house": hid})
+                    else:
+                        self.plan.counts[f"{side} (no room)"] += 1
+                elif left:
+                    self.plan.counts["group (shortened)"] += 1
+
+    def kerb(self) -> None:
+        """Groups at the edge of wide streets where no wall stands, facing the street, outside
+        its corridor."""
+        spec = self.rules.get("kerb")
+        if not spec:
+            return
+        step, chance = float(spec["stepM"]), float(spec["chance"])
+        for i, (axis, w, half, sid) in enumerate(self.streets):
+            if w < float(spec["minWidthM"]):
+                continue
+            rng = random.Random(f"{self.rules['seed']}:kerb:{sid or i}")
+            t = step / 2
+            while t < axis.length - step / 2:
+                here, t = t, t + step
+                if rng.random() >= chance:
+                    continue
+                name = _pick(rng, spec["pick"])
+                kinds = self.group(name)
+                need = self._length(kinds)
+                p0, p1 = axis.interpolate(here), axis.interpolate(min(here + 0.5, axis.length))
+                length = math.dist((p0.x, p0.y), (p1.x, p1.y))
+                if length < 1e-6:
+                    continue
+                u = ((p1.x - p0.x) / length, (p1.y - p0.y) / length)
+                side = rng.choice((1.0, -1.0))
+                n = (-u[1] * side, u[0] * side)  # from the axis outwards
+                depth = max(footprint(k)[1] for k in kinds)
+                # beside the street's surface (its edge plus a little), never on it
+                off = max(half + 0.15, w / 2 + float(spec.get("edgeGapM", 0.1)) + 0.05)
+                if off + depth > w / 2 + float(spec.get("beyondEdgeM", 1.5)):
+                    continue
+                start = (p0.x + n[0] * off - u[0] * need / 2,
+                         p0.y + n[1] * off - u[1] * need / 2)  # fmt: skip
+                row = self._row(kinds, start, u, n, 0.0)
+                if row is not None and any(self.surfaces.hits(r) for _, _, r in row):
+                    row = None  # on another street's surface (a crossing, a lane close by)
+                face = (-n[0], -n[1])  # the things look onto the street
+                if row is not None:
+                    self._put(
+                        row,
+                        face,
+                        f"kerb:{sid or i}:{round(here)}",
+                        f"RAND_{(sid or str(i)).upper()}_{round(here)}",
+                    )
+
+    # --- the market ------------------------------------------------------------------------------
+
+    def market(self) -> None:
+        """Market stalls on the market square: near its edge, the counter towards the middle."""
+        spec = self.rules.get("market")
+        if not spec:
+            return
+        name = spec["square"]
+        squares = [Polygon(q["polygon"]) for q in self.site.squares
+                   if q.get("name") == name and len(q.get("polygon", [])) >= 3]  # fmt: skip
+        if not squares:
+            self.plan.failed.append({"what": "market square", "house": spec["square"]})
+            return
+        square = squares[0]
+        rng = random.Random(f"{self.rules['seed']}:market")
+        lo, hi = (float(v) for v in spec["edgeM"])
+        gap = float(spec["gapM"])
+        ring = list(orient(square, 1.0).exterior.coords)
+        cells = []
+        x0, z0, x1, z1 = square.bounds
+        for i in range(math.floor(x0), math.ceil(x1)):
+            for j in range(math.floor(z0), math.ceil(z1)):
+                q = Point(i + 0.5, j + 0.5)
+                if square.contains(q) and lo <= square.exterior.distance(q) <= hi:
+                    cells.append((i + 0.5, j + 0.5))
+        rng.shuffle(cells)
+        placed = 0
+        for c in cells:
+            if placed >= int(spec["stalls"]):
+                break
+            # the nearest edge of the square: the stall's back towards it, its front inwards
+            best = min(zip(ring, ring[1:], strict=False),
+                       key=lambda e: LineString(e).distance(Point(c)))  # fmt: skip
+            (ax, az), (bx, bz) = best
+            length = math.dist((ax, az), (bx, bz))
+            u = ((bx - ax) / length, (bz - az) / length)
+            inward = (-u[1], u[0])  # counter-clockwise ring: the inside is on the left
+            kind = _pick(rng, spec["pick"])
+            w, d = footprint(kind)
+            rect = _rect(c, u, w, d)
+            if not square.contains(rect):
+                continue
+            if self.keep.hits(rect) or self.bodies.hits(rect) or self.landmarks.hits(rect):
+                continue
+            if not self.placed.clear(rect, gap):
+                continue
+            hs = [self.site.height_at(x, z) for x, z in list(rect.exterior.coords)[:-1]]
+            if max(hs) - min(hs) > float(spec["maxSlopeM"]):
+                continue
+            self.placed.add(rect)
+            placed += 1
+            self.add(f"market:{placed}", f"MARKT_STAND_{placed}", kind, (c[0], min(hs), c[1]),
+                     yaw_quat(*inward))  # fmt: skip
+        if placed < int(spec["stalls"]):
+            self.plan.counts["market stall (no room)"] += int(spec["stalls"]) - placed
 
     # --- trees, bushes, grass ------------------------------------------------------------------
 
@@ -536,9 +710,12 @@ class _Planner:
 
 
 def plan_outdoor(rules: Rules, site: Site) -> Plan:
-    """Props first (they need the wall), then trees, yards and the grass between them."""
+    """The market stalls first (they need the most room), the props at the walls and the
+    street edges, then trees, yards and the grass between them."""
     p = _Planner(rules, site)
+    p.market()
     p.props()
+    p.kerb()
     p.trees()
     p.yards()
     p.grass()

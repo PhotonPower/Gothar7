@@ -1,39 +1,69 @@
 {
   "version": 1,
-  "note": "Gassen beleben (W6, Plan freigegeben 2026-10-07): Requisiten vor und hinter den Häusern, Bäume, Büsche, Gras. Mechanik in gothar_worldgen/outdoor.py, Regeln hier.",
+  "note": "Gassen beleben (W6, Plan freigegeben 2026-10-07; dichter nach Wunsch des Projektinhabers): Gruppen vor und hinter den Häusern und am Straßenrand, Marktstände, Bäume, Büsche, Gras. Mechanik in gothar_worldgen/outdoor.py, Regeln hier.",
   "seed": 7,
   "keep": {
     "minCorridorM": 1.2,
-    "streetMarginM": 0.9,
+    "streetMarginM": 1.5,
     "stepsExtraM": 0.3,
+    "pathKinds": ["track", "path", "footway", "cycleway", "bridleway"],
+    "pathExtraM": 0.2,
     "doorLane": [1.8, 2.2],
     "approachM": 0.7,
     "placeRadiusM": 1.3,
-    "waynetM": 1.2,
+    "waynetM": 1.0,
     "propGapM": 0.4,
     "maxSlopeM": 0.25,
     "handmadeM": 3.0
   },
-  "frontM": 4.0,
-  "groupM": 3.0,
+  "frontM": 6.0,
+  "groupGapM": 0.15,
+  "groups": {
+    "holz": ["woodpile", "woodpile"],
+    "holz_klein": ["woodpile", "bucket"],
+    "faesser": ["barrel_stack", "barrel", "barrel"],
+    "faesser_klein": ["barrel", "barrel", "bucket"],
+    "kisten": ["crate_stack", "crate", "sacks"],
+    "kisten_hoch": ["crate_stack", "crate_stack", "barrel"],
+    "karren": ["cart", "sacks", "basket"],
+    "kraeuter": ["basket", "sacks", "basket"],
+    "schmiede": ["quench_trough", "woodpile", "crate"],
+    "hof": ["dung_heap", "woodpile"]
+  },
   "uses": {
-    "gasthaus": {"front": ["barrel", "barrel", "crate", "woodpile"]},
-    "baecker": {"front": ["woodpile", "sacks", "basket"]},
-    "metzger": {"front": ["barrel", "bucket", "crate"]},
-    "haendler": {"front": ["crate_stack", "sacks", "barrel", "cart"]},
-    "schmiede": {"front": ["quench_trough", "woodpile", "crate"]},
-    "werkstatt": {"front": ["woodpile", "crate", "cart"]},
-    "bader": {"front": ["bucket", "barrel"]},
-    "kraeuter": {"front": ["basket", "sacks"]},
-    "bauer": {"front": ["cart", "basket"], "back": ["dung_heap", "woodpile"]},
-    "wache": {"front": ["barrel", "crate"]},
+    "gasthaus": {"front": ["faesser", "faesser_klein", "holz"]},
+    "baecker": {"front": ["holz", "kisten"]},
+    "metzger": {"front": ["faesser_klein", "kisten"]},
+    "haendler": {"front": ["kisten_hoch", "karren", "faesser"]},
+    "schmiede": {"front": ["schmiede", "holz"]},
+    "werkstatt": {"front": ["holz", "karren", "kisten"]},
+    "bader": {"front": ["faesser_klein"]},
+    "kraeuter": {"front": ["kraeuter"]},
+    "bauer": {"front": ["karren"], "back": ["hof", "holz"]},
+    "wache": {"front": ["faesser", "kisten"]},
     "amtshaus": {"front": []},
-    "pfarrhaus": {"front": ["woodpile"]},
-    "wohnhaus": {"front": ["woodpile", "bucket"]}
+    "pfarrhaus": {"front": ["holz"]},
+    "wohnhaus": {"front": ["holz_klein"]}
   },
   "houses": {
-    "front": {"chance": 0.65, "more": [0.6, 0.35], "pick": {"woodpile": 3, "barrel": 3, "bucket": 2, "crate": 2, "basket": 1, "sacks": 1, "cart": 1}},
-    "back": {"chance": 0.4, "more": [0.3], "pick": {"woodpile": 3, "barrel": 1, "bucket": 1, "dung_heap": 1, "cart": 1, "crate": 1}}
+    "front": {"chance": 0.9, "more": [0.3], "pick": {"holz": 4, "holz_klein": 2, "faesser": 2, "faesser_klein": 2, "kisten": 2, "kisten_hoch": 1, "karren": 2}},
+    "back": {"chance": 0.4, "more": [0.3], "pick": {"holz": 3, "hof": 2, "faesser_klein": 1, "karren": 1, "kisten": 1}}
+  },
+  "kerb": {
+    "minWidthM": 3.0,
+    "stepM": 10.0,
+    "chance": 0.2,
+    "edgeGapM": 1.6,
+    "beyondEdgeM": 3.2,
+    "pick": {"faesser": 2, "kisten": 2, "kisten_hoch": 1, "karren": 2, "holz": 1}
+  },
+  "market": {
+    "square": "Marktplatz",
+    "stalls": 12,
+    "edgeM": [3.0, 9.0],
+    "gapM": 1.2,
+    "maxSlopeM": 0.45,
+    "pick": {"market_stall_a": 2, "market_stall_b": 1, "market_stall_c": 1}
   },
   "trees": {
     "osm": true,
@@ -46,12 +76,12 @@
   },
   "yards": {
     "gridM": 3.0,
-    "fruitTree": {"chance": 0.02, "houseM": 3.2, "streetM": 3.0, "apartM": 7.0},
-    "bush": {"chance": 0.07, "houseM": [0.9, 3.0], "streetM": 2.0, "pick": {"bush_hazel": 2, "bush_box": 1}}
+    "fruitTree": {"chance": 0.03, "houseM": 3.2, "streetM": 3.0, "apartM": 7.0},
+    "bush": {"chance": 0.12, "houseM": [0.9, 3.0], "streetM": 2.0, "pick": {"bush_hazel": 2, "bush_box": 1}}
   },
   "grass": {
     "stepM": 1.5,
-    "chance": 0.07,
+    "chance": 0.14,
     "wallM": 0.18,
     "pick": {"grass_tuft": 7, "weeds": 3}
   }

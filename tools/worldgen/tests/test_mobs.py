@@ -179,6 +179,9 @@ def test_props_budget_and_collision(kind):
         assert lo[1] == pytest.approx(0.0) and hi[1] <= 0.03 and not m.main.collision
     elif kind == "wall_hanging":  # on the wall above heads' shoulders
         assert lo[1] > 1.2 and hi[2] <= 0.03 and not m.main.collision
+    elif kind.startswith("market_stall_"):  # free-standing on the square, roof above heads
+        assert lo[1] == pytest.approx(0.0) and hi[1] > 2.4 and m.main.collision
+        assert all(b.positions[:, 1].max() <= 2.65 for b in m.main.collision)
     elif kind == "dung_heap":  # a heap in the yard, sunk into the ground, low enough to see over
         assert lo[1] < 0.0 < hi[1] <= 0.6 and m.main.collision
     else:  # standing on the floor, against the wall at -Z

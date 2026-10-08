@@ -1046,6 +1046,7 @@ def _plan_outdoor(
     index: dict[str, Any],
     places: dict[str, Any],
     streets: list[dict[str, Any]],
+    squares: list[dict[str, Any]],
     site_spec: SiteConfig,
     folder: Path,
     data_dir: Path,
@@ -1075,6 +1076,7 @@ def _plan_outdoor(
         height_at=grid.height_at,
         ways=[(at[e[0]], at[e[1]]) for e in block["edges"] if e[0] in at and e[1] in at],
         spots=[(float(f["pos"][0]), float(f["pos"][2])) for f in block.get("freepoints", [])],
+        squares=squares,
     )
     return plan_outdoor(rules, site)
 
@@ -1133,7 +1135,8 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
             outdoor_path = data_dir / "outdoor.json"
             if outdoor_path.is_file():  # W6: lanes and yards come alive
                 outdoor = _plan_outdoor(outdoor_path, res.world, index, places,
-                                        street_doc.get("streets", []), site, folder, data_dir,
+                                        street_doc.get("streets", []),
+                                        street_doc.get("squares", []), site, folder, data_dir,
                                         paths.work)  # fmt: skip
                 res = assemble(terrain_world, index, existing, ids, name, locked, ground,
                                citywall, handmade, water, starts, [*doors, *mobs],
