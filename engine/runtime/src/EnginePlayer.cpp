@@ -450,7 +450,10 @@ void Engine::updatePlayerCamera(f64 realSeconds)
                            : 0;
         }
     }
-    const bool roof = covered >= 4;
+    // In a room of the world file (zones of type indoor) it stays inside even without the roof hits: on a
+    // stair under the open ceiling the slanted roof may be higher than the probes reach (welt, W7 stairs).
+    const Vec3 body = feet + Vec3(0.0f, 0.9f, 0.0f);
+    const bool roof = covered >= 4 || render::indoorAmount(body, nearestIndoorVolumes(body), 0.0f) > 0.5f;
     const f32 towards = indoor.blendSeconds > 0.0f
                             ? 1.0f - std::exp(-static_cast<f32>(realSeconds) / indoor.blendSeconds)
                             : 1.0f;

@@ -36,6 +36,8 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
     dem Helden und 1 m um ihn) ein Dach tiefer als 4 m (`ceiling`), wird weich (`blend_seconds` 0,5 s) auf das
     Innenprofil überblendet: Abstand 1,9 m, Blickpunkt 1,5 m, Mindestabstand 0,4 m, Kugel 0,15 m. Die Neigung
     bleibt die des Spielers. Unter einem vorkragenden Obergeschoss (0,5 m über der Straße) bleibt es draußen.
+    In einem Raum der Weltdatei (Zone `indoor`, world.md) bleibt es auch ohne Dach-Treffer drinnen, etwa auf
+    einer Treppe unter dem Deckenausschnitt, wo das schräge Dach höher liegt (welt, W7).
     Werte zum Nachstellen durch den Projektinhaber.
   - Modi: drinnen `[camera.indoor]`, Kampf `[camera.combat]` (M11), Dialog `data/dialog.lua` (M10).
 - **Springen, Klettern, Fallen (Teil D; Werte `[jump]`, `[climb]`, `[fall]`, Entscheidungen Projektinhaber):**
