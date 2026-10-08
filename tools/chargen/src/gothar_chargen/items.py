@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from gothar_chargen.fabrics import fractal, value_noise
 from gothar_chargen.gltf import Gltf, GltfError
@@ -700,6 +701,234 @@ def bowl(seg: int) -> list[Mesh]:
     return [clay]
 
 
+LEAF_GAP = 0.0002  # metres each face of a leaf stands off its middle
+
+
+def _leaf(
+    mesh: Mesh,
+    base: ArrayLike,
+    direction: ArrayLike,
+    side: ArrayLike,
+    length: float,
+    width: float,
+    n: int = 5,
+) -> None:
+    """A flat leaf (lens shape) from `base` along `direction`, `side` across; both faces have their
+    own vertices (no alpha in items: the leaf is geometry, seen from either side)."""
+    base, direction, side = (np.asarray(v, dtype=np.float64) for v in (base, direction, side))
+    direction = direction / np.linalg.norm(direction)
+    side = side / np.linalg.norm(side)
+    ts = np.linspace(0.0, 1.0, n + 1)
+    half = 0.5 * width * np.sin(np.pi * ts) ** 0.8
+    centre = base + direction[None, :] * (length * ts)[:, None]
+    left, right = centre + side * half[:, None], centre - side * half[:, None]
+    pos = np.empty((2 * (n + 1), 3))
+    pos[0::2], pos[1::2] = left, right
+    uv = np.stack([np.tile([0.0, 1.0], n + 1), np.repeat(ts, 2)], axis=1)
+    tris = []
+    for i in range(n):
+        a, b, c, d = 2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 3
+        tris += [(a, b, c), (b, d, c)]
+    tris = np.array(tris)
+    normal = np.cross(direction, side)
+    normal /= max(float(np.linalg.norm(normal)), 1e-9)
+    mesh.add(pos + normal * LEAF_GAP, uv, tris)  # the two faces apart: no z-fighting
+    mesh.add(pos - normal * LEAF_GAP, uv.copy(), tris[:, ::-1].copy())
+
+
+def _stem(mesh: Mesh, points: ArrayLike, radius: float, seg: int = 5) -> None:
+    pts = np.asarray(points, dtype=np.float64)
+    loft(mesh, pts, [circle(radius, seg)] * len(pts), ref=(0.0, 0.0, 1.0), tile=0.05)
+
+
+def _root(seg: int) -> Mesh:
+    root = Mesh("root")
+    lathe(root, [(0.0, -0.03), (0.006, -0.025), (0.012, -0.012), (0.01, 0.0), (0.0, 0.002)],
+          max(6, seg // 2), tile=0.05)  # fmt: skip
+    return root
+
+
+def herb(seg: int, kind: str) -> list[Mesh]:
+    """A whole plant held at the stem above its root (the origin), +Y up: sage (grey-green oval
+    leaves in pairs), nettle (taller, dark pointed leaves), chamomile (thin stems, white
+    flowers)."""
+    rng = np.random.default_rng({"sage": 5, "nettle": 7, "chamomile": 9}[kind])
+    stem = Mesh("leaf_dry" if kind == "sage" else "leaf_green")
+    leaves = Mesh("leaf_sage" if kind == "sage" else "leaf_green")
+    meshes = [stem, leaves, _root(seg)]
+    if kind == "chamomile":
+        petals, hearts = Mesh("flower_white"), Mesh("flower_yellow")
+        for i in range(3):
+            a = 2 * np.pi * i / 3 + 0.4
+            top = np.array([0.025 * np.cos(a), 0.13 + 0.02 * i, 0.025 * np.sin(a)])
+            _stem(stem, [[0, 0, 0], top * np.array([0.4, 0.5, 0.4]), top], 0.0012, 4)
+            for k in range(8):  # petals around the flower head, facing up
+                b = 2 * np.pi * k / 8
+                d = np.array([np.cos(b), 0.15, np.sin(b)])
+                _leaf(petals, top, d, np.cross(d, [0, 1, 0]), 0.011, 0.004, 3)
+            heart = [(0.0, -0.002), (0.0045, 0.0), (0.0035, 0.003), (0.0, 0.0045)]
+            path = np.array([top + np.array([0.0, y, 0.0]) for _, y in heart])
+            loft(hearts, path, [circle(max(r, 1e-6), 6) for r, _ in heart], tile=0.02)
+            for y in (0.04, 0.07):  # fine leaves on the stem
+                p = top * y / top[1]
+                _leaf(leaves, p, [np.cos(a + 1.2), 0.6, np.sin(a + 1.2)], [0, 0, 1], 0.03, 0.004, 3)
+        meshes += [petals, hearts]
+        return meshes
+    height = 0.15 if kind == "sage" else 0.2
+    _stem(stem, [[0, 0, 0], [0.004, height * 0.5, 0.0], [0.0, height, 0.003]], 0.0025)
+    pairs = 5 if kind == "sage" else 6
+    for i in range(pairs):
+        y = height * (0.2 + 0.75 * i / pairs)
+        a = i * np.pi / 2 + rng.uniform(-0.2, 0.2)  # opposite pairs, crossed
+        size = 1.0 - 0.45 * i / pairs
+        for s in (1.0, -1.0):
+            d = np.array([s * np.cos(a), 0.5, s * np.sin(a)])
+            length = (0.05 if kind == "sage" else 0.06) * size
+            width = (0.022 if kind == "sage" else 0.028) * size
+            _leaf(leaves, [0.0, y, 0.0], d, np.cross(d, [0, 1, 0]) + [0, 0.001, 0], length, width)
+    return meshes
+
+
+def herbs_dried(seg: int) -> list[Mesh]:
+    """A bundle of dried herbs tied with a cord (the origin at the cord), the heads up (+Y)."""
+    rng = np.random.default_rng(13)
+    stems, leaves = Mesh("straw"), Mesh("leaf_dry")
+    for i in range(9):
+        a = 2 * np.pi * i / 9
+        x, z = 0.006 * np.cos(a), 0.006 * np.sin(a)
+        spread = 0.25 + 0.15 * rng.random()
+        top = np.array([x * 6 * spread / 0.25, 0.14 + 0.03 * rng.random(), z * 6 * spread / 0.25])
+        _stem(stems, [[x, -0.06, z], [x, 0.0, z], top], 0.0015, 4)
+        for k in range(3):
+            p = top * (0.55 + 0.15 * k)
+            d = np.array([np.cos(a + k), 0.4, np.sin(a + k)])
+            _leaf(leaves, p, d, np.cross(d, [0, 1, 0]), 0.03, 0.01, 3)
+    cord = Mesh("cork")
+    loft(cord, np.array([[0, -0.006, 0], [0, 0.006, 0]]), [circle(0.012, 8)] * 2, tile=0.05)
+    return [stems, leaves, cord]
+
+
+def ring(seg: int, metal: str) -> list[Mesh]:
+    """Finger ring standing upright (+Y), the origin in its middle."""
+    band = Mesh(metal)
+    a = np.linspace(0, 2 * np.pi, seg, endpoint=False)
+    path = np.stack([0.0105 * np.cos(a), 0.0105 * np.sin(a), np.zeros_like(a)], axis=1)
+    loft(band, path, [circle(1.0, 6) * np.array([0.0012, 0.0022])] * len(a), ref=(0.0, 0.0, 1.0),
+         closed_path=True, tile=0.02)  # fmt: skip
+    return [band]
+
+
+def amulet(seg: int) -> list[Mesh]:
+    """Amulet: a gold pendant with a set stone on a leather cord loop; held at the pendant (the
+    origin), the loop up (+Y)."""
+    gold, stone, cord = Mesh("gold"), Mesh("stone"), Mesh("leather")
+    loft(gold, np.array([[0, 0, -0.003], [0, 0, 0.003]]), [circle(0.02, seg, ry=1.25)] * 2,
+         ref=(0.0, 1.0, 0.0), tile=0.03)  # fmt: skip
+    loft(stone, np.array([[0, 0, 0.0028], [0, 0, 0.0045]]), [circle(0.011, seg, ry=1.25)] * 2,
+         ref=(0.0, 1.0, 0.0), tile=0.02)  # fmt: skip
+    a = np.linspace(-np.pi / 2, 1.5 * np.pi, 17)[:-1]
+    loop = np.stack([0.05 * np.cos(a), 0.025 + 0.11 * (1 + np.sin(a)), np.zeros_like(a)], axis=1)
+    loft(
+        cord,
+        loop,
+        [circle(0.0015, 4)] * len(loop),
+        ref=(0.0, 0.0, 1.0),
+        closed_path=True,
+        tile=0.05,
+    )
+    return [gold, stone, cord]
+
+
+def chain(seg: int) -> list[Mesh]:
+    """Gold chain of 26 alternating links hanging as a loop, held at its top (the origin), the
+    loop hanging down (-Y)."""
+    gold = Mesh("gold")
+    n = 26
+    a = np.linspace(0, 2 * np.pi, n, endpoint=False)
+    centres = np.stack([0.06 * np.sin(a), -0.17 * (1 - np.cos(a)), np.zeros_like(a)], axis=1)
+    for i in range(n):
+        p, q = centres[i], centres[(i + 1) % n]
+        along = (q - p) / np.linalg.norm(q - p)
+        across = np.array([0.0, 0.0, 1.0]) if i % 2 else np.cross(along, [0.0, 0.0, 1.0])
+        across = across / np.linalg.norm(across)
+        b = np.linspace(0, 2 * np.pi, 7, endpoint=False)
+        mid = (p + q) / 2
+        link = (
+            mid
+            + along[None] * (0.011 * np.cos(b))[:, None]
+            + across[None] * (0.006 * np.sin(b))[:, None]
+        )
+        loft(gold, link, [circle(0.0011, 3)] * len(link), ref=tuple(np.cross(along, across)),
+             closed_path=True, tile=0.02)  # fmt: skip
+    return [gold]
+
+
+def hammer(seg: int) -> list[Mesh]:
+    """Smith's and joiner's hammer: handle along +Y (held near its end, the origin), the iron head
+    across at the top, its striking face to +Z (contract: item +Z = edge/front)."""
+    handle = Mesh("wood")
+    ys = np.linspace(-0.05, 0.26, 5)
+    loft(
+        handle,
+        np.stack([np.zeros_like(ys), ys, np.zeros_like(ys)], axis=1),
+        [circle(0.012 - 0.002 * (y + 0.05) / 0.31, max(6, seg // 2), ry=1.3) for y in ys],
+        tile=0.2,
+    )
+    head = Mesh("iron_forged")
+    zs = np.array([-0.05, -0.03, 0.02, 0.05, 0.055])
+    size = np.array([0.012, 0.02, 0.022, 0.024, 0.02])
+    loft(head, np.stack([np.zeros_like(zs), np.full_like(zs, 0.255), zs], axis=1),
+         [np.array([[-s, -s], [s, -s], [s, s], [-s, s]]) * 0.9 for s in size], ref=(0.0, 1.0, 0.0),
+         tile=0.05)  # fmt: skip
+    return [handle, head]
+
+
+def saw(seg: int) -> list[Mesh]:
+    """Hand saw: a wooden grip (the origin) and a tapering steel blade along +Y, thin along X, the
+    teeth on its +Z edge (contract: item +Z = edge)."""
+    grip = Mesh("wood")
+    loft(grip, np.array([[0, -0.06, 0.01], [0, 0.06, 0.01]]),
+         [np.array([[-0.012, -0.03], [0.012, -0.03], [0.012, 0.035], [-0.012, 0.035]])] * 2,
+         ref=(0.0, 0.0, 1.0), tile=0.1)  # fmt: skip
+    blade = Mesh("iron_forged")
+    ys = np.linspace(0.05, 0.55, 26)
+    top = 0.045 - 0.025 * (ys - 0.05) / 0.5
+    teeth = np.where(np.arange(len(ys)) % 2 == 0, 0.0, -0.006)
+    outline_front = np.stack(
+        [np.zeros_like(ys), ys, top + 0.005 + teeth], axis=1
+    )  # toothed +Z edge
+    outline_back = np.stack([np.zeros_like(ys), ys, np.full_like(ys, -0.035)], axis=1)
+    for x, flip in ((0.0008, False), (-0.0008, True)):
+        pos = np.concatenate([outline_back, outline_front]) + np.array([x, 0.0, 0.0])
+        n = len(ys)
+        uv = np.stack([pos[:, 1] / 0.5, (pos[:, 2] + 0.035) / 0.09], axis=1)
+        tris = []
+        for i in range(n - 1):
+            a, b, c, d = i, i + 1, n + i, n + i + 1
+            tris += [(a, c, b), (b, c, d)] if not flip else [(a, b, c), (b, d, c)]
+        blade.add(pos, uv, np.array(tris))
+    return [grip, blade]
+
+
+def shears(seg: int) -> list[Mesh]:
+    """Spring shears (tailor's shears of the time): two blades along +Y joined by a bow-shaped
+    spring at the grip end (the origin), their edges facing each other across X."""
+    iron = Mesh("iron_forged")
+    a = np.linspace(-np.pi, 0.0, 9)
+    bow = np.stack([0.022 * np.cos(a), -0.04 + 0.03 * np.sin(a), np.zeros_like(a)], axis=1)
+    loft(iron, bow, [circle(1.0, 4) * np.array([0.002, 0.006])] * len(bow), ref=(0.0, 0.0, 1.0),
+         tile=0.05)  # fmt: skip
+    for s in (1.0, -1.0):
+        ys = np.array([-0.04, 0.0, 0.06, 0.12, 0.155])
+        xs = s * np.array([0.022, 0.012, 0.006, 0.003, 0.0005])
+        widths = np.array([0.006, 0.009, 0.012, 0.009, 0.003])
+        path = np.stack([xs, ys, np.zeros_like(ys)], axis=1)
+        blade = [np.array([[-0.0012, -w], [0.0012, -w], [0.0012, w], [-0.0012, w]]) for w in widths]
+        loft(iron, path, blade,
+             ref=(0.0, 0.0, 1.0), tile=0.05)  # fmt: skip
+    return [iron]
+
+
 def _vanes(mesh: Mesh, y0: float, y1: float, r0: float, r1: float, count: int) -> None:
     """Thin flat vanes standing off the shaft (feathers of an arrow, vanes of a bolt): one flat
     section per vane, rotated about +Y; the first lies in the item +Z plane."""
@@ -796,6 +1025,17 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_cloth_bolt": (cloth_bolt, 16),
     "it_jug": (jug, 16),
     "it_bowl": (bowl, 20),
+    "it_herb_sage": (lambda s: herb(s, "sage"), 8),
+    "it_herb_nettle": (lambda s: herb(s, "nettle"), 8),
+    "it_herb_chamomile": (lambda s: herb(s, "chamomile"), 8),
+    "it_herbs_dried": (herbs_dried, 8),
+    "it_ring_gold": (lambda s: ring(s, "gold"), 16),
+    "it_ring_silver": (lambda s: ring(s, "silver"), 16),
+    "it_amulet": (amulet, 14),
+    "it_chain_gold": (chain, 8),
+    "it_hammer": (hammer, 12),
+    "it_saw": (saw, 8),
+    "it_shears": (shears, 8),
     "it_torch": (torch, 12),
     "it_lute": (lute, 16),
     **{f"it_rune_{spell}": ((lambda sp: lambda s: rune(s, sp))(spell), 12) for spell in RUNES},
@@ -813,6 +1053,8 @@ PROCEDURAL = (
     "iron_forged", "apple", "bread", "glass_red", "glass_blue", "cork", "straw", "feather",
     "stone", "parchment", "wax_red", "pitch", *(f"rune_{spell}" for spell in RUNES),
     "ham", "bone", "sausage", "cheese", "clay", "glass_green", "glass_amber", "linen",
+    "root", "leaf_sage", "leaf_green", "leaf_dry", "flower_white", "flower_yellow",
+    "gold", "silver",
 )  # fmt: skip
 
 
@@ -874,6 +1116,28 @@ def procedural_texture(name: str, size: int = 256) -> np.ndarray:
         c = red[None, None] * (1 - 0.6 * streak[..., None]) + green * 0.6 * streak[..., None]
         speck = (rng.random((size, size)) > 0.985)[..., None] * 0.25
         return np.clip(c + speck, 0, 1)
+    if name in ("leaf_sage", "leaf_green", "leaf_dry"):  # leaf with a lighter midrib along v
+        base = {"leaf_sage": (0.45, 0.52, 0.42), "leaf_green": (0.16, 0.32, 0.12),
+                "leaf_dry": (0.5, 0.45, 0.32)}[name]  # fmt: skip
+        u = np.linspace(0, 1, size)[None, :]
+        rib = np.exp(-(((u - 0.5) / 0.05) ** 2))
+        c = np.array(base)[None, None] * (0.8 + 0.3 * n1[..., None]) + 0.12 * rib[..., None]
+        return np.clip(c, 0, 1)
+    if name == "root":
+        return np.clip(np.array([0.32, 0.24, 0.16])[None, None] * (0.7 + 0.5 * n1[..., None]), 0, 1)
+    if name == "flower_white":
+        return np.clip(np.array([0.93, 0.92, 0.86])[None, None] * (0.9 + 0.1 * n1[..., None]), 0, 1)
+    if name == "flower_yellow":
+        return np.clip(
+            np.array([0.85, 0.65, 0.12])[None, None] * (0.85 + 0.2 * n1[..., None]), 0, 1
+        )
+    if name in ("gold", "silver"):  # polished metal with soft bright streaks
+        base = (0.78, 0.6, 0.22) if name == "gold" else (0.72, 0.73, 0.75)
+        streak = 0.5 + 0.5 * np.sin(np.linspace(0, 10 * np.pi, size))[None, :]
+        c = np.array(base)[None, None] * (
+            0.75 + 0.3 * streak[..., None] * n1[..., None] + 0.1 * n2[..., None]
+        )
+        return np.clip(c, 0, 1)
     if name == "ham":  # smoked crust: dark red-brown with lighter fat streaks along v
         streak = value_noise(size, 24, rng)[:, :1].repeat(size, axis=1).T
         c = np.array([0.45, 0.2, 0.13])[None, None] * (0.75 + 0.35 * n1[..., None])
@@ -1092,6 +1356,10 @@ LENGTHS = {
     "it_potion_heal_medium": (0.18, 0.24), "it_potion_mana_medium": (0.18, 0.24),
     "it_potion_speed": (0.12, 0.2), "it_potion_strength": (0.12, 0.2),
     "it_cloth_bolt": (0.45, 0.55), "it_jug": (0.22, 0.28), "it_bowl": (0.06, 0.08),
+    "it_herb_sage": (0.15, 0.22), "it_herb_nettle": (0.2, 0.28), "it_herb_chamomile": (0.15, 0.22),
+    "it_herbs_dried": (0.18, 0.26), "it_ring_gold": (0.02, 0.03), "it_ring_silver": (0.02, 0.03),
+    "it_amulet": (0.24, 0.3), "it_chain_gold": (0.3, 0.4), "it_hammer": (0.28, 0.34),
+    "it_saw": (0.58, 0.65), "it_shears": (0.18, 0.24),
     "it_potion_mana_small": (0.12, 0.2), "it_scroll": (0.18, 0.24), "it_torch": (0.65, 0.75),
     "it_lute": (0.75, 0.9),
     **{f"it_rune_{spell}": (0.05, 0.08) for spell in RUNES},

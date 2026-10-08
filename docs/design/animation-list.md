@@ -70,7 +70,7 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 | `none/t_pickpocket` | Taschendiebstahl | – | – | Q | platzhalter (UAL1 `Interact`) |
 | `mob/chest/t_open`, `s_open`, `t_close` | Truhe öffnen, hineinsehen, schließen | – | open, close | Q | platzhalter (UAL2 `Chest_Open`; `s_open` hält die Pose mit offenem Deckel, `t_close` rückwärts) |
 | `mob/chest/s_picklock` | Schloss knacken | – | (picklock_l/r) | Q | platzhalter (UAL1 `Fixing_Kneeling`) |
-| `mob/anvil/t_start`, `s_work`, `t_stop` | Am Amboss schmieden | – | hit_anvil, sound:anvil_hit | Q | platzhalter (UAL2 `TreeChopping_Loop`, Überblendung 12 Frames) |
+| `mob/anvil/t_start`, `s_work`, `t_stop` | Am Amboss schmieden (`it_hammer` in der rechten Hand) | – | item_to_hand (t_start), hit_anvil, sound:anvil_hit, item_from_hand (t_stop) | Q | platzhalter (UAL2 `TreeChopping_Loop`, Überblendung 12 Frames) |
 | `mob/bed/t_lie_down`, `s_lie`, `t_stand_up` | Ins Bett legen, liegen, aufstehen | ja (nur t_) | lie, stand | Q→ | platzhalter (UAL2 `LayToIdle` + Root Motion aufs Bett; `t_lie_down` rückwärts, `s_lie` hält das Liegen; liegt entlang der Längsseite, Kopfende −X des Betts, Drehung im Becken) |
 | `mob/door/t_open` | Tür öffnen/schließen | – | open | Q | platzhalter (UAL1 `Interact`) |
 | `mob/table/t_sit`, `s_sit`, `t_stand` | Am Tisch sitzen (welts Tisch mit Bänken): hinter der Bank, rechtes Bein zuerst hinübersteigen, sitzen mit den Unterarmen auf der Platte, aufstehen rückwärts | – | – | K | platzhalter-K (Slot 1,10 m von der Tischachse, Hüfte über der Sitzmitte; Armhaltung per Gittersuche; mit engine 2026-10-08) |

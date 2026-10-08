@@ -8,6 +8,16 @@ events = [
     { frame = 8, event = "sound:anvil_hit" },
 ]
 
+[clips."mob/anvil/t_start"]
+events = [
+    { frame = 1, event = "item_to_hand" },
+]
+
+[clips."mob/anvil/t_stop"]
+events = [
+    { frame = 11, event = "item_from_hand" },
+]
+
 [clips."mob/bed/t_lie_down"]
 events = [
     { frame = 43, event = "lie" },
