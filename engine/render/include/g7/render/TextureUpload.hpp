@@ -5,6 +5,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
+#include <optional>
 #include <span>
 
 namespace g7::render
@@ -15,6 +16,10 @@ struct TextureUpload
 {
     bool srgb = true;    ///< Colour data (base colour, emissive); false for data maps (normals, masks).
     bool mipmaps = true; ///< Full mip chain generated on the GPU.
+    /// The colour texture of an alpha-tested material: the chain is built on the CPU, every level keeping the
+    /// alpha coverage at this cutoff (asset::preserveAlphaCoverage), so the surface does not thin out with
+    /// distance.
+    std::optional<f32> alphaCutoff;
 };
 
 /// Uploads a decoded image as RGBA8(_SRGB). Rows are uploaded in file order, so UV (0,0) samples
@@ -27,7 +32,9 @@ struct TextureUpload
 ///   maps; the mip chain is generated on the GPU unless the data brings more than one level;
 /// - BC7 (cooked colour): sRGB as recorded in the data, every level uploaded;
 /// - BC5 (cooked two-channel normal map): linear, every level uploaded.
-[[nodiscard]] Result<rhi::Texture> createTexture(Device& device, const asset::TextureData& data, bool colour);
+/// `alphaCutoff` as in TextureUpload, for a single RGBA8 level (cooked chains bring theirs).
+[[nodiscard]] Result<rhi::Texture> createTexture(Device& device, const asset::TextureData& data, bool colour,
+                                                 std::optional<f32> alphaCutoff = {});
 
 enum class TextureArrayUsage : u8
 {

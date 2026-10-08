@@ -111,7 +111,7 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
 ## Items & Inventar (M8 Teil A, umgesetzt)
 - Item-Instanz aus dem Skript (`gameplay::itemInfo`) + Laufzeit-Menge (`ItemStack`). `category` ist eine von
   `kItemCategories` (das Schema prüft sie): `melee_1h`, `melee_2h`, `bow`, `crossbow`, `ammo`, `armor`, `helmet`,
-  `ring`, `amulet`, `belt`, `rune`, `scroll`, `potion`, `food`, `document`, `key`, `misc`.
+  `ring`, `amulet`, `belt`, `rune`, `scroll`, `potion`, `food`, `document`, `key`, `torch`, `misc`.
 - Inventar ohne Gewichtslimit (wie Gothic), sortiert nach Kategorie (diese Reihenfolge), dann nach Name.
 - Ausrüstungs-Plätze (`EquipSlot`, Skriptnamen): `melee`, `ranged`, `armor`, `helmet`, `ring1`/`ring2`, `amulet`,
   `belt`, `rune1`–`rune7`. Ringe nehmen den freien der zwei Plätze (sonst den ersten), Runen/Spruchrollen den ersten
@@ -139,6 +139,14 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   im Fokus (`Engine::pickUpFocus`): Der Held bleibt stehen und spielt `none/t_pickup_ground` (Zustand `pickup` im
   Graphen, Parameter `pickup`); beim Event `pickup` wandert das Item ins Inventar, der Vob verschwindet, Skripte
   bekommen `item_taken(item, count)`. Ohne `pickup`-Zustand im Graphen geht es nach 0,35 s.
+- **Fackel** (Entscheidung Projektinhaber 2026-10-08, wie Gothic 1; `runtime/EngineTorch.cpp`): Kategorie `torch`
+  (`it_torch`, Modell von figuren mit `socket_flame` 0,6 m den Schaft hinauf), ohne Ausrüstungsplatz. Benutzen zündet
+  sie an (`none/t_torch_light`: Event `torch_take` nimmt sie in die linke Hand, `torch_light` startet Flamme und Licht
+  `data/fx/torch.toml`), danach die additive Haltung `none/a_torch_hold` über `clavicle_l` (Bezug `none/a_neutral`).
+  Nochmal Benutzen steckt sie weg. Sie brennt ohne Grenze, solange sie gehalten wird; sichtbar mit Fäusten und
+  Einhandwaffe. Zweihandwaffe, Bogen, Armbrust, Magie und Verwandlung stecken sie weg; Wasser löscht sie.
+  Fallen gelassen (`hero_torch_drop`, `none/t_torch_drop`, Event `torch_drop`) liegt sie brennend am Boden, bis sie
+  aufgehoben wird. Lua: `hero_torch()`, `hero_torch_drop()`, `hero_torch_lit()`, Ereignisse `torch_lit`/`torch_out`.
 - **Inventar-Fenster** (Tab, bis zum Inventar-Bildschirm in M13): Werte, Schutz, Inhalt nach Kategorie,
   Ausrüsten/Ablegen/Wegwerfen; solange es offen ist, steht der Held und die Maus ist frei.
 

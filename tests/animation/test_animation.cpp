@@ -271,6 +271,24 @@ blend = 0
     again.update(0.1f);
     CHECK(again.activeClips().back().clip == "none/t_jump");
     CHECK(again.activeClips().back().weight == doctest::Approx(1.0f));
+    CHECK(again.overlayClip() == "none/t_jump");
+
+    // Played through, it fades out; looped, it stays until stopped (held poses such as none/a_torch_hold).
+    for (int i = 0; i < 100; ++i)
+    {
+        again.update(0.1f);
+    }
+    CHECK_FALSE(again.overlayPlaying());
+    CHECK(again.overlayClip().empty());
+    again.playOverlay("none/t_jump", "arm", 0.1f, false, {}, true);
+    for (int i = 0; i < 100; ++i)
+    {
+        again.update(0.1f);
+    }
+    CHECK(again.overlayClip() == "none/t_jump");
+    CHECK(again.activeClips().back().weight == doctest::Approx(1.0f));
+    again.stopOverlay(0.1f);
+    CHECK(again.overlayClip().empty()); // fading out
 }
 
 TEST_CASE("Animator: playback rate follows the clips' own speed, weighted in blends, within rate_range")
@@ -397,7 +415,7 @@ TEST_CASE("Animator with the real data: reference rig, clip sets, human.animgrap
         AnimGraph::parse(std::string_view(reinterpret_cast<const char*>(graphText.data()), graphText.size()),
                          "human.animgraph.toml");
     REQUIRE_MESSAGE(graph.ok(), (graph.ok() ? "" : graph.error().message));
-    CHECK(graph.value().sets.size() == 12);           // with 2h, bow, cbow and mag (M11/M12)
+    CHECK(graph.value().sets.size() == 14);           // with 2h, bow, cbow, mag (M11/M12), torch and gait
     for (const std::string& set : graph.value().sets) // every set the graph names
     {
         auto loaded = asset::loadAnimationGltf(read(set.c_str()), {}, set);
@@ -450,4 +468,55 @@ TEST_CASE("Animator with the real data: reference rig, clip sets, human.animgrap
     a.setBool("dive", true);
     a.update(0.1f);
     CHECK(a.state() == "dive");
+}
+
+TEST_CASE("Animator: gait variants replace clips where the sets have them, a slower trot moves its point")
+{
+    const Skeleton s = Skeleton::create(threeBones()).value();
+    asset::AnimationSetData base;
+    for (const char* name : {"none/s_idle", "none/s_walk", "none/s_run", "none/s_sneak"})
+    {
+        base.clips.push_back(armSwing(name));
+    }
+    base.clips[1].speed = 0.98f;
+    base.clips[2].speed = 5.9f;
+    asset::AnimationSetData gait; // gait.glb: the old one walks at the same speed, trots at half
+    gait.clips.push_back(armSwing("none/s_idle_old"));
+    gait.clips.push_back(armSwing("none/s_walk_old"));
+    gait.clips.back().speed = 0.98f;
+    gait.clips.push_back(armSwing("none/s_run_old"));
+    gait.clips.back().speed = 2.94f;
+    gait.clips.push_back(armSwing("none/s_walk_military"));
+    gait.clips.back().speed = 0.98f;
+    const asset::AnimationSetData* sets[] = {&base, &gait};
+    const char* toml = R"(
+version = 1
+sets = ["none.glb", "gait.glb"]
+start = "move"
+[[state]]
+name = "move"
+blend = "speed"
+rate = "speed"
+points = [{ value = 0.0, clip = "none/s_idle" }, { value = 1.6, clip = "none/s_walk" }, { value = 4.0, clip = "none/s_run" }]
+[[state]]
+name = "sneak"
+clip = "none/s_sneak"
+)";
+    AnimGraph old = AnimGraph::parse(toml, "g.toml").value();
+    CHECK(applyVariant(old, "old", sets) == 3);
+    const auto& points = old.states[0].points;
+    CHECK(points[0].second == "none/s_idle_old");
+    CHECK(points[1].second == "none/s_walk_old");
+    CHECK(points[1].first == doctest::Approx(1.6f)); // same speed as the base walk: the point stays
+    CHECK(points[2].second == "none/s_run_old");
+    CHECK(points[2].first == doctest::Approx(2.94f));        // the slow trot (owner decision)
+    CHECK(old.states[1].points[0].second == "none/s_sneak"); // no variant: the base clip
+    CHECK(Animator::create(old, s, sets).ok());
+
+    AnimGraph military = AnimGraph::parse(toml, "g.toml").value();
+    CHECK(applyVariant(military, "military", sets) == 1); // only the walk has a military variant
+    CHECK(military.states[0].points[0].second == "none/s_idle");
+    CHECK(military.states[0].points[2].first == doctest::Approx(4.0f));
+    AnimGraph none = AnimGraph::parse(toml, "g.toml").value();
+    CHECK(applyVariant(none, "", sets) == 0);
 }

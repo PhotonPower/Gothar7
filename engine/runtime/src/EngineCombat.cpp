@@ -441,6 +441,10 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
             m_scripts->emit(event, values);
         }
     };
+    if (attacker.id == kHeroId || target.id == kHeroId)
+    {
+        noteHeroFight(); // fight music (M13 C), parried blows too
+    }
     // K6: a parry from the front blocks - not against animals, and fists do not block weapons.
     const bool weaponVsFists = !meleeWeapon(attacker).empty() && meleeWeapon(target).empty();
     if (target.fighter->parrying(m_combat) && !attacker.animal && !weaponVsFists &&
@@ -1112,6 +1116,10 @@ void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::s
     if (target->creature != nullptr && target->creature->asleep)
     {
         wakeUp(targetId); // Z6: hurt, it wakes
+    }
+    if (targetId == kHeroId || caster == "hero")
+    {
+        noteHeroFight(); // fight music (M13 C)
     }
     // As a projectile (R3): damage minus protection, at least the minimum, no critical hit.
     const i32 dealt = gameplay::rangedDamage(

@@ -6,6 +6,7 @@ version = 1
 [parts]
 body = "parts/body_m_heavy/body.glb"
 head = "parts/head_m_young/head.glb"
+beard = "parts/hair_m_young/beard_stubble.glb"
 hair = "parts/head_m_young/hair.glb"
 cloth = [
     "parts/cloth_m_heavy/elvs_crude_t-shirt_male.glb",
@@ -13,5 +14,6 @@ cloth = [
 ]
 
 [palette]
+beard_stubble = "#3a2a1e"
 cloth_elvs_crude_t-shirt_male = "#8a8070"
 cloth_culturalibre_male_boots = "#4a3a2c"

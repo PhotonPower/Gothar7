@@ -37,7 +37,8 @@ struct AnimGraph { sets; start; states; transitions; static Result<AnimGraph> pa
 class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton&, span<const asset::AnimationSetData*>);
     void setFloat(name, v); void setBool(name, b); void enter(state, blend);
     void update(f32 seconds, const EventCallback& = {});
-    void playOverlay(clip, maskBone, blendIn, additive = false, reference = ""); void stopOverlay(blendOut);  // reference: additive gegen den ersten Frame dieses Clips (dlg/a_neutral, M10)
+    void playOverlay(clip, maskBone, blendIn, additive = false, reference = "", loop = false); void stopOverlay(blendOut);
+    std::string_view overlayClip();  // leer, wenn keins spielt oder es ausblendet  // reference: additive gegen den ersten Frame dieses Clips (dlg/a_neutral, M10)
     const Pose& pose() const; Vec3 rootMotion() const; state(); previousState(); fadeWeight(); stateProgress();
     stateEnded(); std::vector<ClipWeight> activeClips() const; };     // activeClips: Debug-UI
 }
@@ -71,7 +72,8 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
   mitteln nach Gewicht. Die Engine bewegt damit die Figur (Klettern beim Helden, Gehen/Rennen/Drehen bei Tieren).
   Fortbewegungs-Clips der Menschen sind In-Place (`root` bleibt bei 0, geprüft).
 - **Overlay:** ein Clip über einer Knochenmaske (`maskBelow("spine_02")` = Oberkörper), normal oder additiv
-  (Änderung gegen Frame 0), ein- und ausgeblendet. Einmal-Clips blenden am Ende selbst aus.
+  (Änderung gegen Frame 0), ein- und ausgeblendet. Einmal-Clips blenden am Ende selbst aus; mit `loop` wiederholt
+  sich auch ein `a_`-Clip bis `stopOverlay` (Haltungen wie `none/a_torch_hold`).
 - **Morph-Targets** gibt es nur auf `head_lod0` (Vertrag §6.1). Gewichte für LOD 1 und 2 werden still
   ignoriert (Hinweis figuren, M6 A).
 - **Graph der Menschen** (`human.animgraph.toml`):
@@ -132,6 +134,20 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
   Kits zur Statur des Körpers (`cloth_`, `armor_`, `headgear_<g>_<statur>`) an- und ablegen.
 - Grenzen: `body_hash` der Masken prüft erst `gothar-chargen` (die Engine vergleicht nur den Pfad des Körpers);
   die Rollen-Reihenfolge (body, head, hair, beard, Kleidung) ist fest, in `gothar-chargen assemble` ebenso (#123).
+
+## Gangarten-Varianten (umgesetzt; Entscheidung Projektinhaber, figuren #269)
+- **Manifest:** Ein Figuren-Manifest mit `[anim] variant = "<v>"` (`woman`, `military`, `old`, `relaxed`) gibt der
+  Figur ihre Gangart. `asset::FigureManifest::animVariant` liest es. Bei einer von `g7_figures` gebauten `.glb` gilt
+  das Manifest daneben (`figures/<name>.figure.toml`).
+- **Clips:** `animation::applyVariant(graph, variant, sets)` ersetzt vor `Animator::create` jeden Clip X der Zustände
+  durch `X_<v>`, wenn ein Set ihn hat (Set `characters/anims/human/gait.glb` im Graphen). Sonst bleibt der
+  Grundclip.
+- **Tempo:** Hat der Variant-Clip ein anderes Eigentempo als der Grundclip, wandert sein Blend-Punkt dorthin. So trabt
+  „old“ mit 2,94 m/s statt zu rennen; NPCs übernehmen das als Renntempo.
+- **Lua:** `npc_state(npc).gait`.
+- **Tests:** `tests/animation/test_animation.cpp` (Ersetzen, Rückfall, Tempo) und
+  `tests/runtime/test_engine_gait.cpp` (der alte Mann trabt mit 2,94 m/s, der Holzfäller ohne Variante rennt mit
+  4,0 m/s).
 
 ## Attachments, Gesicht, Look-At (M6 Teil D1, umgesetzt)
 - **Attachments:** `Engine::attachToPlayer(socket, modelPath)` bzw. mit einem in Code erzeugten `MeshData`

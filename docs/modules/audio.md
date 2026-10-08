@@ -89,21 +89,57 @@ ADR), Ducking −6 dB mit 0,3 s Blende, Dialogstimme 3D am Sprecher, keine Platz
   Mund offen im Laut und zu in der Pause, Dauer, Ducking, Überspringen. Dazu audio (Hüllkurve, Position) und
   animation (`setMouthOpen`).
 
-## Dynamisches Musiksystem (Gothic: DirectMusic)
-- Musik-Zone (aus world) → **Thema** (z. B. `CAMP`, `FOREST`, `MINE`).
-- Zustand: `Std` | `Thr` (Bedrohung: Feind nimmt Spieler wahr) | `Fgt` (Kampf) – ermittelt aus gameplay/ai.
-- Tageszeit: `Day` | `Ngt`.
-- Pro Thema × Zustand × Tageszeit eine Menge von Segmenten (Loops) mit Takt-/Tempo-Info.
-- Übergänge **auf Taktgrenzen**, Überblendung oder Übergangs-Segment; Stinger (z. B. Quest gelöst).
-- Hysterese: Kampf → Standard erst nach X Sekunden ohne Kampf.
-
-```toml
-# music/camp.toml
-[theme.CAMP]
-bpm = 96
-[theme.CAMP.std.day]
-segments = ["music/camp_day_a.ogg", "music/camp_day_b.ogg"]
-[theme.CAMP.fgt]
-segments = ["music/fight_generic_a.ogg"]
-transition = "next_bar"
-```
+## Dynamisches Musiksystem (Teil C, umgesetzt; Gothic: DirectMusic)
+Entscheidungen Projektinhaber 4 und 5 sowie zu (a)–(c) vom 2026-10-08.
+- **Daten:** `data/music.toml` (`audio::parseMusicDefs`).
+  - `[theme.<THEMA>]` mit `bpm`, `beats` (je Takt) und `volume`.
+  - Mengen `[theme.<THEMA>.<std|thr|fgt>]` gelten für Tag und Nacht, `[theme.<THEMA>.<zustand>.<day|ngt>]` getrennt.
+  - Felder einer Menge: `segments` (Dateien), optional `intro`, `transition` (`"next_bar"` als Vorgabe oder `"end"`),
+    `fade` in s, eigenes `bpm`/`beats`.
+  - Das Thema `common` gehört zu keiner Zone; es liefert die gemeinsame Bedrohungs- und Kampfmusik.
+  - Stinger: `[stinger.<name>] files, volume`.
+- **Thema:** die kleinste Box `music` um den Helden (1 m über den Füßen; world.md „Zonen“).
+- **Wahl** (`chooseMusic`): Thema.Zustand.Tageszeit → Thema.Zustand → dasselbe in `common` → der nächstniedrigere
+  Zustand.
+- **Außerhalb jeder Musik-Box** ist Stille (Projektinhaber (a)). Ausnahme: die Zustände aus `outside`
+  (`["thr", "fgt"]`, Projektinhaber, Möglichkeit 2) spielen dort die Musik von `common` und blenden danach auf einer
+  Taktgrenze zu Stille aus. Ein Thema ohne Musik zählt wie keine Zone.
+- **Zustand** (`runtime/EngineMusic.cpp`), alle 0,25 s geprüft, nur durch echte Feinde (Projektinhaber (c)):
+  - `fgt`: Der Held hat in den letzten `fight_memory` s (4) getroffen oder wurde getroffen (auch pariert, auch Sprüche).
+    Oder ein NPC bis `fight_range` (20 m), der ihn sieht, steht in einem der `fight_states`
+    (`zs_attack`, `zs_mm_attack`, `zs_mm_hunt`) und kämpft gegen ihn (`fight_target(npc) == "hero"` in
+    `ai/combat.lua`).
+  - `thr`: Ein NPC bis `threat_range` (25 m), der ihn sieht, steht in `threat_states` (`zs_threaten`,
+    `zs_mm_threaten`). Warnungen wegen der Waffe oder der Hütte zählen nicht.
+  - Hysterese (`MusicStateFilter`): Nach oben wechselt der Zustand sofort, nach unten erst nach `hysteresis` s (5)
+    ohne Anlass.
+  - Tag und Nacht wie die Ambiente (Nacht 20–6 Uhr).
+- **Abspielen** (`audio::MusicPlayer`, auf der Mixer-Uhr in Frames):
+  - Segmente laufen einzeln und werden Sample-genau verkettet: Das nächste wird schon beim Start des laufenden für
+    dessen Ende eingeplant. Gewählt wird zufällig, nicht zweimal dasselbe.
+  - Ein Wechsel beginnt auf der nächsten Taktgrenze des laufenden Segments (`next_bar`, nach dessen Tempo) oder an
+    seinem Ende (`end`; die Standard-Musik nach einem Kampf und beim Themenwechsel).
+  - Das alte Segment blendet über `fade` s bis genau dorthin aus (miniaudio stop_time_with_fade); das neue beginnt dort,
+    gegebenenfalls mit seinem `intro`.
+  - Ändert sich der Wunsch vor dem Wechsel, klingt das geplante Segment nie. Aus der Stille beginnt die Musik sofort,
+    nach einem Ausblenden erst an dessen Ende.
+  - `AudioSystem` hat dafür `playAtFrame`, `stopAtFrame`, `clipFrames` und `frame`.
+- **Stinger** auf dem nächsten Schlag über der Musik (`lib/music.lua`, Projektinhaber (b)):
+  - `quest`: Ereignis `quest_success`;
+  - `level_up`;
+  - `chapter`: `chapter_changed`;
+  - `death`: Der Held geht nieder, `npc_knocked_out`/`npc_killed` mit `"hero"`; er stirbt nicht, K8.
+- **Lua:** `music_state()` (theme, state, night, set, segment, stinger), `music_stinger(name)`,
+  `music_force(theme?, state?)` (zum Testen), Ereignis `music_changed(theme, state)`. Lautstärke über den Bus `music`
+  aus engine.toml.
+- **Platzhalter** (Projektinhaber 2): `gothar-audio music` (tools/audio).
+  - Themen: LAGER (96 BPM, D-Dur-Pentatonik, gezupft) und STADT (120 BPM), jeweils Tag und Nacht.
+  - `common`: Bedrohung (80 BPM, d-Moll-Bordun mit Herzschlag) und Kampf (150 BPM, Trommeln und Riff).
+  - Dazu vier Stinger; zusammen 2,6 MB WAV unter `assets/source/music/`.
+  - Die Tempi legen jeden Takt auf ganze Frames bei 22,05 und 48 kHz. Nachklänge laufen an den Anfang um, deshalb
+    schließen die Schleifen ohne Knacken.
+  - Echte Musik ersetzt die Dateien unter gleichem Namen; LAND hat keine Musik mehr (außerhalb Stille).
+- **Tests:**
+  - `tests/audio/test_music.cpp`: Daten, Wahl, Hysterese, Verkettung, Takt- und Endwechsel, Stille, Stinger.
+  - `tests/runtime/test_engine_m13_music.cpp`, DoD-Szenario F: das Lager betreten; ein Bandit droht, dann greift er an;
+    5 s danach wieder Lager-Musik am Segmentende; das Lager verlassen; Kampf draußen.

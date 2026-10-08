@@ -557,7 +557,11 @@ void Animator::update(f32 seconds, const EventCallback& onEvent)
         {
             clip.fireEvents(before, o.time, onEvent);
         }
-        if (!clip.loops() && o.time >= clip.duration())
+        if (o.loop && !clip.loops() && clip.duration() > 0.0f)
+        {
+            o.time = std::fmod(o.time, clip.duration()); // a held pose: again from the start
+        }
+        else if (!clip.loops() && o.time >= clip.duration())
         {
             o.target = 0.0f; // played through: fade out
         }
@@ -582,8 +586,17 @@ void Animator::update(f32 seconds, const EventCallback& onEvent)
     }
 }
 
+std::string_view Animator::overlayClip() const noexcept
+{
+    if (!m_overlay || m_overlay->target <= 0.0f)
+    {
+        return {};
+    }
+    return m_clips[m_overlay->clip].name();
+}
+
 void Animator::playOverlay(std::string_view clip, std::string_view maskBone, f32 blendIn, bool additive,
-                           std::string_view reference)
+                           std::string_view reference, bool loop)
 {
     i32 referenceClip = -1;
     for (usize i = 0; i < m_clips.size() && !reference.empty(); ++i)
@@ -601,6 +614,7 @@ void Animator::playOverlay(std::string_view clip, std::string_view maskBone, f32
             o.clip = i;
             o.mask = m_skeleton->maskBelow(maskBone);
             o.additive = additive;
+            o.loop = loop;
             o.reference = referenceClip;
             o.rate = blendIn > 0.0f ? 1.0f / blendIn : 1e6f;
             m_overlay = std::move(o);
@@ -679,5 +693,57 @@ std::vector<Animator::ClipWeight> Animator::activeClips() const
         out.push_back({m_clips[m_overlay->clip].name(), m_overlay->weight});
     }
     return out;
+}
+} // namespace g7::animation
+
+namespace g7::animation
+{
+usize applyVariant(AnimGraph& graph, std::string_view variant,
+                   std::span<const asset::AnimationSetData* const> sets)
+{
+    if (variant.empty())
+    {
+        return 0;
+    }
+    const auto find = [&](std::string_view name) -> const asset::ClipData*
+    {
+        for (const asset::AnimationSetData* set : sets)
+        {
+            if (const asset::ClipData* clip = set->find(name))
+            {
+                return clip;
+            }
+        }
+        return nullptr;
+    };
+    usize replaced = 0;
+    for (AnimGraphState& state : graph.states)
+    {
+        bool moved = false;
+        for (auto& [value, name] : state.points)
+        {
+            const std::string own = std::format("{}_{}", name, variant);
+            const asset::ClipData* base = find(name);
+            const asset::ClipData* other = find(own);
+            if (other == nullptr)
+            {
+                continue;
+            }
+            // A different own speed (the old one's slow trot): its point moves to that speed.
+            if (!state.blendParam.empty() && value > 0.0f && base != nullptr && base->speed > 0.0f &&
+                other->speed > 0.0f && std::abs(other->speed - base->speed) > 1e-3f)
+            {
+                value = other->speed;
+                moved = true;
+            }
+            name = own;
+            ++replaced;
+        }
+        if (moved)
+        {
+            std::ranges::sort(state.points, {}, [](const auto& p) { return p.first; });
+        }
+    }
+    return replaced;
 }
 } // namespace g7::animation

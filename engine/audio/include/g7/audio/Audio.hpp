@@ -94,6 +94,8 @@ public:
     Result<void> addClip(std::string_view name, std::span<const u8> bytes);
     [[nodiscard]] bool hasClip(std::string_view name) const noexcept;
     [[nodiscard]] f32 clipSeconds(std::string_view name) const noexcept; ///< 0: unknown
+    [[nodiscard]] u64 clipFrames(std::string_view name) const noexcept;  ///< at the mixer's rate; 0: unknown
+    [[nodiscard]] u32 sampleRate() const noexcept;
     /// The clip's loudness over time (M13 D, lip sync from loudness): RMS per window of 1/`hz` s, normalised
     /// so the loudest window is 1; empty for an unknown clip.
     [[nodiscard]] std::vector<f32> clipEnvelope(std::string_view name, f32 hz = 30.0f) const;
@@ -101,8 +103,12 @@ public:
     /// Plays one of the definition's files (all must have been added); at `position` it is a 3D sound.
     /// `delaySeconds` starts it later on the mixer's clock (sample exact: music on bar boundaries).
     Result<SoundId> play(const SoundDef& def, std::optional<Vec3> position = {}, f32 delaySeconds = 0.0f);
-    /// Stops a sound, fading out over `fadeSeconds`.
+    /// A 2D sound starting at `frame` of the mixer's clock (music: segments chained sample exact, M13 C).
+    Result<SoundId> playAtFrame(const SoundDef& def, u64 frame);
+    /// Stops a sound, fading out over `fadeSeconds`. A sound still waiting for its start never sounds.
     void stop(SoundId id, f32 fadeSeconds = 0.0f);
+    /// Stops it at `frame` of the mixer's clock, the fade ending there (music on a bar boundary).
+    void stopAtFrame(SoundId id, u64 frame, f32 fadeSeconds = 0.0f);
     [[nodiscard]] bool playing(SoundId id) const noexcept;
     /// Seconds a sound has played (0 before its start; nullopt once it is gone).
     [[nodiscard]] std::optional<f32> position(SoundId id) const noexcept;
@@ -121,6 +127,7 @@ public:
 
     /// The mixer's clock in seconds (frames rendered or played).
     [[nodiscard]] f64 time() const noexcept;
+    [[nodiscard]] u64 frame() const noexcept; ///< the same in frames
     /// Without a device: renders `seconds` of audio. Always: frees the sounds that ended.
     void update(f32 seconds);
     [[nodiscard]] usize playingCount() const noexcept;

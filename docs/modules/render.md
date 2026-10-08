@@ -158,7 +158,7 @@ void MeshRenderer::drawShadowSkinned(..., std::span<const Mat4> bones, const Cas
 
 ### Texturen – `TextureUpload.hpp`
 ```cpp
-struct TextureUpload { bool srgb = true; bool mipmaps = true; };
+struct TextureUpload { bool srgb = true; bool mipmaps = true; std::optional<f32> alphaCutoff; };
 Result<rhi::Texture> createTexture(Device&, const asset::ImageData&, TextureUpload = {});   // RGBA8(_SRGB), volle Mip-Kette
 Result<rhi::Texture> createSolidTexture(Device&, u8 r, u8 g, u8 b, u8 a, bool srgb = true);  // 1x1, Ersatz
 std::vector<u8> Device::readTexture(const rhi::Texture&, u32 level) const;                 // RGBA8, Tests/Debug
@@ -166,6 +166,14 @@ std::vector<u8> Device::readTexture(const rhi::Texture&, u32 level) const;      
 - Zeilen in Dateireihenfolge hochgeladen: UV (0,0) liest das Texel oben links – wie glTF, ohne Spiegeln.
 - Farbtexturen sind sRGB (Hardware dekodiert beim Sampeln), Datentexturen (Normalen, Masken) linear.
 - Mipmaps auf der GPU erzeugt; Materialsampler mit anisotroper Filterung aus `[render] anisotropy` (Standard 8).
+- **Alpha-Test mit erhaltener Bedeckung** (Hinweis figuren zu Stoppel-Bärten, 2026-10-08): Die Farbtextur eines
+  Materials mit `alphaMode` MASK bekommt ihre Mip-Kette auf der CPU (`asset::buildMipChain`). Jede Stufe skaliert ihr
+  Alpha so, dass der Anteil der Texel über `alphaCutoff` dem der Stufe 0 gleicht (`asset::preserveAlphaCoverage`,
+  nach Castaño). So dünnen Bärte, Haare und Blätter in der Ferne nicht aus; feine Punkte verschmelzen dabei zu einer
+  gleich dichten Fläche.
+  - Gilt für ungekochte Texturen (`MaterialSet` → `TextureUpload::alphaCutoff`, Cache-Schlüssel mit Cutoff) und für
+    gekochte (`g7-cook` Version 4 schreibt die Kette so ins KTX2).
+  - Ohne MSAA gibt es kein alpha-to-coverage.
 - **Farbraum:** Alle Szenen-Shader rechnen und schreiben **linear** (HDR, Werte über 1 erlaubt) in das
   `SceneTarget`; erst der Post-Pass tonemappt und kodiert nach sRGB (siehe „Nebel, HDR und Tonemapping“).
 

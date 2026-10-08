@@ -79,6 +79,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
         }
         assembled = std::move(built).value();
         dataPtr = &assembled;
+        figure->variant = manifest.value().animVariant;
         figure->manifest = std::move(manifest).value();
     }
     else
@@ -90,6 +91,22 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
             return Error{std::format("{}: {}", path, model.error())};
         }
         dataPtr = model.get();
+        // A figure built by g7_figures: its gait from the manifest beside it (figures/<name>.figure.toml).
+        if (path.ends_with(".glb"))
+        {
+            const std::string sibling =
+                std::string(path.substr(0, path.size() - 4)) + std::string(kManifestSuffix);
+            auto bytes = m_vfs.exists(sibling) ? m_vfs.read(sibling) : Result<std::vector<u8>>(Error{"none"});
+            auto manifest = bytes ? asset::FigureManifest::parse(
+                                        std::string_view(reinterpret_cast<const char*>(bytes.value().data()),
+                                                         bytes.value().size()),
+                                        sibling)
+                                  : Result<asset::FigureManifest>(bytes.error());
+            if (manifest)
+            {
+                figure->variant = manifest.value().animVariant;
+            }
+        }
     }
     std::vector<asset::Handle<asset::AnimationSetData>> setHandles;
     for (const std::string& set : graph.value().sets)
@@ -113,6 +130,12 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
         return Error{std::format("{}: {}", path, skeleton.error().message)};
     }
     figure->skeleton = std::move(skeleton).value();
+    // The gait variant (owner decision): its clips instead of the base ones where gait.glb has them.
+    if (!figure->variant.empty())
+    {
+        const usize replaced = animation::applyVariant(graph.value(), figure->variant, sets);
+        G7_LOG_DEBUG("engine", "figure {}: gait '{}', {} clips", path, figure->variant, replaced);
+    }
     auto animator = animation::Animator::create(graph.value(), figure->skeleton, sets);
     if (!animator)
     {
@@ -453,6 +476,11 @@ std::string_view Engine::playerAnimationState() const noexcept
     return m_figure ? m_figure->animator.state() : std::string_view();
 }
 
+std::string_view Engine::playerOverlayClip() const noexcept
+{
+    return m_figure ? m_figure->animator.overlayClip() : std::string_view();
+}
+
 std::string_view Engine::playerFigurePath() const noexcept
 {
     return m_figure ? std::string_view(m_figure->path) : std::string_view();
@@ -755,6 +783,10 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
                  else if (event == "cast")
                  {
                      applyHeroSpell(); // the spell leaves the hand (M12)
+                 }
+                 else if (event.starts_with("torch_"))
+                 {
+                     torchEvent(event); // in the hand, lit, dropped
                  }
                  else if (event == "swap" && m_transformOut)
                  {
