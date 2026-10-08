@@ -231,6 +231,43 @@ clip = "mob/bed/s_lie"
 name = "bed_leave"
 clip = "mob/bed/t_stand_up"
 
+# Bank und Tisch (Held und NPCs, npc_use_mob); die Tisch-Clips von figuren #281, table_drink mit Krug (item_to_hand).
+[[state]]
+name = "bench_enter"
+clip = "mob/bench/t_sit"
+
+[[state]]
+name = "bench_loop"
+clip = "mob/bench/s_sit"
+
+[[state]]
+name = "bench_talk"
+clip = "mob/bench/s_sit_talk"
+
+[[state]]
+name = "bench_leave"
+clip = "mob/bench/t_stand"
+
+[[state]]
+name = "table_enter"
+clip = "mob/table/t_sit"
+
+[[state]]
+name = "table_loop"
+clip = "mob/table/s_sit"
+
+[[state]]
+name = "table_talk"
+clip = "mob/table/s_sit_talk"
+
+[[state]]
+name = "table_drink"
+clip = "mob/table/s_sit_drink"
+
+[[state]]
+name = "table_leave"
+clip = "mob/table/t_stand"
+
 [[state]]
 name = "swim"
 blend = "speed"

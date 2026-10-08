@@ -227,15 +227,17 @@ Result<void> Engine::useMob(world::VobId vob)
     {
         return Error{std::format("mob type \"{}\" has no slots (data/mobs.toml)", m.type)};
     }
-    m_scene.updateTransforms();
-    // The slots belong to the mob at rest: an open door's slots stay where the closed door has them.
-    Transform closed = *std::as_const(m_scene).get<Transform>(e);
-    closed.rotation = m.closedRotation;
-    const entt::entity parent = m_scene.parent(e);
-    const Mat4 world = (parent != entt::null ? m_scene.worldMatrix(parent) : Mat4(1.0f)) * closed.toMatrix();
-    const auto place = gameplay::chooseSlot(*type, world, m_player.feet());
+    const Mat4 world = mobRestMatrix(vob);
+    // Slots NPCs sit on are taken (the hero sits down beside them where one is free).
+    const auto place = gameplay::chooseSlot(*type, world, m_player.feet(), busySlots(m, "hero"));
     if (!place)
     {
+        notice("Hier ist kein Platz.");
+        if (m_scripts)
+        {
+            const script::Value args[] = {m.definition};
+            m_scripts->emit("mob_full", args);
+        }
         return Error{"no free slot"};
     }
     bool picklock = false;
@@ -273,9 +275,39 @@ Result<void> Engine::useMob(world::VobId vob)
     {
         use.lockpick.emplace(m.lock);
     }
+    m.occupants[static_cast<u32>(place->index)] = "hero";
     m_mobUse = std::move(use);
     m_mobEvents.clear();
     return {};
+}
+
+Mat4 Engine::mobRestMatrix(world::VobId vob)
+{
+    // The slots belong to the mob at rest: an open door's slots stay where the closed door has them.
+    const entt::entity e = m_scene.findById(vob);
+    const auto it = m_mobs.find(vob.value);
+    if (e == entt::null || it == m_mobs.end())
+    {
+        return Mat4(1.0f);
+    }
+    m_scene.updateTransforms();
+    Transform closed = *std::as_const(m_scene).get<Transform>(e);
+    closed.rotation = it->second.closedRotation;
+    const entt::entity parent = m_scene.parent(e);
+    return (parent != entt::null ? m_scene.worldMatrix(parent) : Mat4(1.0f)) * closed.toMatrix();
+}
+
+u32 Engine::busySlots(const MobRuntime& m, std::string_view except) const
+{
+    u32 busy = 0;
+    for (const auto& [slot, who] : m.occupants)
+    {
+        if (who != except && slot < 32)
+        {
+            busy |= 1u << slot;
+        }
+    }
+    return busy;
 }
 
 std::string Engine::lockpickItem() const
@@ -429,6 +461,10 @@ void Engine::finishMobUse()
     if (m_player.valid())
     {
         m_player.teleport(m_player.feet()); // back into the physics, settled on the ground
+    }
+    if (const auto it = m_mobs.find(m_mobUse->vob.value); it != m_mobs.end())
+    {
+        std::erase_if(it->second.occupants, [](const auto& o) { return o.second == "hero"; });
     }
     m_mobUse.reset();
 }

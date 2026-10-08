@@ -1,7 +1,7 @@
 {
   "version": 1,
   "name": "camp",
-  "nextVobId": 211,
+  "nextVobId": 216,
   "staticMeshes": [],
   "terrain": {"version":1,"heightmap":"testworld/terrain.r16","width":257,"height":257,"cellSize":2.0,"firstSample":[-256.0,-256.0],"minY":-20.0,"maxY":60.0,"splat":{"maps":["testworld/splat0.png"],"layers":[{"name":"grass","albedo":"testworld/layer_grass.png","tile":4.0},{"name":"earth","albedo":"testworld/layer_earth.png","tile":4.0},{"name":"rock","albedo":"testworld/layer_rock.png","tile":6.0},{"name":"path","albedo":"testworld/layer_path.png","tile":3.0}]},"holes":"testworld/holes.r8"},
   "vobs": [
@@ -214,7 +214,12 @@
     {"id":207,"type":"item","name":"LAGER_TRANK","pos":[29.1,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_potion_heal_small"}}},
     {"id":208,"type":"item","name":"LAGER_DIETRICH","pos":[30.0,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_lockpick"}}},
     {"id":209,"type":"item","name":"LAGER_SCHLUESSEL","pos":[30.9,0.0,2.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_key"}}},
-    {"id":210,"type":"trigger","name":"TRG_PRIVAT_WACHE","pos":[29.0,0.0,-4.5],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[3.0,1.5,3.5],"filter":"player","once":false,"owner":"npc_gate_guard"}}}
+    {"id":210,"type":"trigger","name":"TRG_PRIVAT_WACHE","pos":[29.0,0.0,-4.5],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[3.0,1.5,3.5],"filter":"player","once":false,"owner":"npc_gate_guard"}}},
+    {"id":211,"type":"mob","name":"LAGER_TISCH","pos":[11.7,0.0,14.5],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/table.glb","components":{"mob":{"definition":"mob_camp_table"}}},
+    {"id":212,"type":"mob","name":"LAGER_BANK","pos":[17.5,0.0,-5.5],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/bench.glb","components":{"mob":{"definition":"mob_camp_bench"}}},
+    {"id":213,"type":"mob","name":"LAGER_WACHE_BETT","pos":[27.3,0.0,-6.8],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/bed.glb","components":{"mob":{"definition":"mob_camp_guard_bed"}}},
+    {"id":214,"type":"mesh","name":"LAGER_TISCH_BANK_N","pos":[11.7,0.0,13.88],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/bench.glb"},
+    {"id":215,"type":"mesh","name":"LAGER_TISCH_BANK_S","pos":[11.7,0.0,15.12],"rot":[0.0,1.0,0.0,0.0],"mesh":"mobs/bench.glb"}
   ],
   "waynet": {
     "points": [

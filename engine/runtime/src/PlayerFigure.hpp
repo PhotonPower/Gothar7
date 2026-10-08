@@ -129,6 +129,9 @@ struct Creature
             Flee,      ///< away from `text` (the player or an NPC), running, for `value` seconds
             GoToPoint, ///< to `point`
             Roam,      ///< to a random point within `value` metres of the way point `text`
+            UseMob,    ///< a mob of type `text` within `value` m: to its slot, sit/lie/work; `item`: loop
+                       ///< variant
+            LeaveMob,  ///< stand up from the mob in use (its leave clip)
         };
         Kind kind = Kind::Wait;
         std::string text;    ///< target, ambient, freepoint type, words
@@ -157,7 +160,29 @@ struct Creature
         Loop,
         Out,
     } ambientPhase = AmbientPhase::None;
-    i32 freepoint = -1;        ///< reserved freepoint index
+    i32 freepoint = -1; ///< reserved freepoint index
+    /// A mob in use (M13+: NPCs at tables, benches, anvils, beds; like Gothic's AI_UseMob).
+    struct MobUse
+    {
+        enum class Phase : u8
+        {
+            Approach,
+            Turn,
+            Enter,
+            Loop,
+            Leave,
+        };
+        u64 vob = 0;
+        u32 slot = 0;
+        Vec3 feet{0.0f};
+        f32 yaw = 0.0f;
+        std::string type;
+        std::string variant; ///< loop variant ("drink", "talk"), empty: the plain loop
+        Phase phase = Phase::Approach;
+        std::string state; ///< the graph state played, empty: timed
+        f32 time = 0.0f;
+    };
+    std::optional<MobUse> mob;
     std::optional<f32> turnTo; ///< yaw to turn to
     bool simulated = true;     ///< near enough to the player (AI LOD)
     /// The item of the ambient animation: taken at its event item_to_hand, put away at item_from_hand.
