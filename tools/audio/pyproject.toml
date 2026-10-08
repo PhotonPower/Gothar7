@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gothar-audio"
+version = "0.1.0"
+description = "Placeholder sounds and music for Gothar (M13): synthesised, deterministic, standard library only"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+gothar-audio = "gothar_audio.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gothar_audio"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110

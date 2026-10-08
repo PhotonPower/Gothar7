@@ -145,6 +145,7 @@ Result<void> Engine::init()
     m_physics = std::move(collision).value();
 
     initPlayer();
+    initAudio(); // M13
     // Scripts before the world: their handlers hear world_loaded (M7).
     mountScripts();
     if (auto scripts = initScripts(); !scripts)
@@ -459,6 +460,7 @@ bool Engine::runFrame()
     m_assets->update();
     refreshMovementSettings();
     updatePlayerCamera(realSeconds); // after the steps: the drawn feet are interpolated between them
+    updateAudio(realSeconds);        // the listener at the camera (M13)
     if (m_device)
     {
         refreshReloadedModels();
