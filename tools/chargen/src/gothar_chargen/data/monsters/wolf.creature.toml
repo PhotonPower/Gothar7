@@ -1,0 +1,466 @@
+# Creature "wolf" (F5, own work): grey pack wolf - replaces the CC0 placeholder (Quaternius) with the
+# same rig contract: bone names, hierarchy and positions as before (symmetric), so pack AI, summon
+# and transformation (M12) keep working. Grey coat with a darker saddle, pale face mask and belly,
+# ruff, pointed ears, bushy tail. Built by `gothar-chargen creature wolf`.
+#
+# Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. The tool
+# moves everything so that root lies on the ground below the pelvis head. `mirror = true` adds the
+# right side.
+
+art = "wolf"
+material = "fur"
+voxel = 0.004
+smooth = 10
+triangles = 7000
+lods = [1.0, 0.5, 0.25]
+texture = 1024
+seed = 53
+ao = 0.6
+normal_size = 512
+normal_strength = 0.9
+eye_colour = "#b08428"
+teeth_colour = "#e0d8c4"
+tongue_colour = "#7a3c40"
+
+[sockets]
+socket_mouth = { parent = "head", length = 0.06 }
+
+# --- rig: the contract of the placeholder (characters-pipeline.md §7.3) plus jaw and ears ---
+
+[[bone]]
+name = "pelvis"
+head = [0, 0, 0.52]
+tail = [0, -0.21, 0.47]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0, -0.21, 0.47]
+tail = [0, -0.55, 0.47]
+
+[[bone]]
+name = "neck_01"
+parent = "spine_01"
+head = [0, -0.55, 0.47]
+tail = [0, -0.85, 0.66]
+
+[[bone]]
+name = "head"
+parent = "neck_01"
+head = [0, -0.85, 0.66]
+tail = [0, -1.06, 0.655]
+
+[[bone]]
+name = "jaw"                 # added with engine (2026-10-08): bite and growl
+parent = "head"
+head = [0, -0.93, 0.632]
+tail = [0, -1.045, 0.618]
+
+[[bone]]
+name = "ear_l"
+parent = "head"
+mirror = true
+head = [0.038, -0.876, 0.725]
+tail = [0.047, -0.869, 0.795]
+
+[[bone]]
+name = "front_upper_l"
+parent = "spine_01"
+mirror = true
+head = [0.095, -0.56, 0.39]
+tail = [0.092, -0.575, 0.17]
+
+[[bone]]
+name = "front_lower_l"
+parent = "front_upper_l"
+mirror = true
+head = [0.092, -0.575, 0.17]
+tail = [0.09, -0.565, 0.03]
+
+[[bone]]
+name = "front_foot_l"
+parent = "front_lower_l"
+mirror = true
+head = [0.09, -0.565, 0.03]
+tail = [0.09, -0.63, 0.03]
+
+[[bone]]
+name = "back_upper_l"
+parent = "pelvis"
+mirror = true
+head = [0.095, 0.007, 0.40]
+tail = [0.10, 0.038, 0.205]
+
+[[bone]]
+name = "back_lower_l"
+parent = "back_upper_l"
+mirror = true
+head = [0.10, 0.038, 0.205]
+tail = [0.095, 0.165, 0.03]
+
+[[bone]]
+name = "back_foot_l"
+parent = "back_lower_l"
+mirror = true
+head = [0.095, 0.165, 0.03]
+tail = [0.095, 0.05, 0.03]
+
+[[bone]]
+name = "tail_01"
+parent = "pelvis"
+head = [0, 0.10, 0.51]
+tail = [0, 0.18, 0.44]
+
+[[bone]]
+name = "tail_02"
+parent = "tail_01"
+head = [0, 0.18, 0.44]
+tail = [0, 0.26, 0.34]
+
+[[bone]]
+name = "tail_03"
+parent = "tail_02"
+head = [0, 0.26, 0.34]
+tail = [0, 0.36, 0.28]
+
+[[bone]]
+name = "tail_04"
+parent = "tail_03"
+head = [0, 0.36, 0.28]
+tail = [0, 0.49, 0.25]
+
+# --- colour zones (sRGB): grey wolf ---
+
+[zone.fur]
+colour = "#8a8580"
+colour2 = "#78716a"
+variation = 0.12
+strands = 0.8
+belly = 0.55
+spots = 0.1
+stripe_colour = "#5a5550"
+
+[zone.saddle]                # darker saddle along the back
+colour = "#4e4a46"
+colour2 = "#5e5852"
+variation = 0.12
+strands = 0.9
+
+[zone.ruff]                  # long fur on neck and chest
+colour = "#8c867e"
+colour2 = "#a09890"
+variation = 0.07
+strands = 1.0
+belly = 0.4
+
+[zone.mask]                  # pale face mask
+colour = "#d6cfc2"
+colour2 = "#c4bbac"
+variation = 0.08
+strands = 0.5
+
+[zone.head]
+colour = "#7e7872"
+colour2 = "#6a645e"
+variation = 0.1
+strands = 0.6
+
+[zone.nose]
+colour = "#1e1a18"
+variation = 0.05
+wrinkles = 0.4
+
+[zone.ear]
+colour = "#5a5450"
+variation = 0.1
+strands = 0.6
+
+[zone.ear_inner]
+colour = "#b0a49a"
+variation = 0.1
+strands = 0.4
+
+[zone.eye_rim]
+colour = "#221e1c"
+variation = 0.05
+
+[zone.paw]
+colour = "#6a645e"
+variation = 0.1
+strands = 0.5
+
+[zone.claw]
+colour = "#1e1a18"
+variation = 0.05
+
+[zone.tailtip]
+colour = "#2e2a26"
+strands = 0.9
+
+[zone.mouth]
+colour = "#3e2224"
+variation = 0.1
+
+# --- body: lean, deep-chested ---
+
+[[shape]]
+kind = "ellipsoid"           # deep chest
+zone = "fur"
+center = [0, -0.45, 0.46]
+size = [0.115, 0.21, 0.15]
+rotate = [-5, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # tucked belly
+zone = "fur"
+center = [0, -0.24, 0.47]
+size = [0.10, 0.19, 0.115]
+rotate = [-4, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # loins
+zone = "fur"
+center = [0, -0.03, 0.485]
+size = [0.095, 0.13, 0.10]
+
+[[shape]]
+kind = "ellipsoid"           # croup
+zone = "fur"
+center = [0, 0.06, 0.49]
+size = [0.09, 0.08, 0.09]
+
+[[shape]]
+kind = "ellipsoid"           # shoulders
+zone = "fur"
+mirror = true
+center = [0.07, -0.53, 0.47]
+size = [0.048, 0.09, 0.11]
+rotate = [-20, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # thighs
+zone = "fur"
+mirror = true
+center = [0.08, 0.03, 0.38]
+size = [0.05, 0.10, 0.11]
+rotate = [-25, 0, 0]
+
+[[shape]]
+kind = "ridge"               # darker saddle along the back
+zone = "saddle"
+points = [[0, -0.60, 0.575], [0, -0.40, 0.575], [0, -0.15, 0.555], [0, 0.06, 0.55]]
+sizes = [[0.07, 0.06, 0.03], [0.085, 0.08, 0.03], [0.08, 0.08, 0.028], [0.06, 0.05, 0.025]]
+count = 16
+
+# legs
+[[shape]]
+kind = "chain"               # front legs: shoulder, elbow, wrist, pastern
+zone = "fur"
+mirror = true
+points = [[0.085, -0.56, 0.42], [0.09, -0.535, 0.30], [0.092, -0.572, 0.10], [0.09, -0.578, 0.045]]
+radii = [0.045, 0.032, 0.02, 0.019]
+
+[[shape]]
+kind = "ellipsoid"           # upper arm muscle
+zone = "fur"
+mirror = true
+center = [0.085, -0.55, 0.36]
+size = [0.038, 0.06, 0.075]
+rotate = [15, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # elbow
+zone = "fur"
+mirror = true
+center = [0.088, -0.52, 0.30]
+size = [0.024, 0.028, 0.03]
+
+[[shape]]
+kind = "ellipsoid"           # front paws
+zone = "paw"
+mirror = true
+center = [0.09, -0.595, 0.024]
+size = [0.027, 0.042, 0.021]
+
+[[shape]]
+kind = "ridge"               # front toes
+zone = "paw"
+mirror = true
+points = [[0.07, -0.625, 0.015], [0.11, -0.625, 0.015]]
+sizes = [[0.011, 0.013, 0.012], [0.011, 0.013, 0.012]]
+count = 4
+
+[[shape]]
+kind = "chain"               # hind legs: knee, hock, paw
+zone = "fur"
+mirror = true
+points = [[0.095, 0.0, 0.42], [0.10, 0.035, 0.21], [0.10, 0.13, 0.11], [0.097, 0.11, 0.035]]
+radii = [0.048, 0.03, 0.022, 0.02]
+
+[[shape]]
+kind = "ellipsoid"           # hind paws
+zone = "paw"
+mirror = true
+center = [0.097, 0.075, 0.022]
+size = [0.028, 0.045, 0.021]
+
+[[shape]]
+kind = "ridge"               # hind toes
+zone = "paw"
+mirror = true
+points = [[0.077, 0.04, 0.015], [0.117, 0.04, 0.015]]
+sizes = [[0.01, 0.012, 0.011], [0.01, 0.012, 0.011]]
+count = 4
+
+# neck with a ruff
+[[shape]]
+kind = "chain"
+zone = "fur"
+points = [[0, -0.55, 0.50], [0, -0.72, 0.58], [0, -0.85, 0.645]]
+radii = [0.08, 0.065, 0.058]
+
+[[shape]]
+kind = "ellipsoid"           # ruff on the neck and chest
+zone = "ruff"
+center = [0, -0.68, 0.55]
+size = [0.10, 0.12, 0.115]
+rotate = [-25, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # ruff behind the head and cheeks
+zone = "ruff"
+center = [0, -0.80, 0.64]
+size = [0.085, 0.07, 0.085]
+rotate = [-35, 0, 0]
+
+[[shape]]
+kind = "tuft_shell"          # shaggy fur of the ruff
+zone = "ruff"
+center = [0, -0.68, 0.55]
+size = [0.10, 0.12, 0.115]
+rows = [-0.06, -0.02, 0.02, 0.06]
+angles = [-140, -110, -80, -50, -20, 20, 50, 80, 110, 140]
+tuft = [0.025, 0.05, 0.012]
+sink = 0.008
+tilt = 10
+jitter = 0.3
+seed = 3
+
+# head: long muzzle, pointed ears, amber eyes
+[[shape]]
+kind = "ellipsoid"           # skull
+zone = "head"
+center = [0, -0.89, 0.68]
+size = [0.076, 0.085, 0.066]
+
+[[shape]]
+kind = "ellipsoid"           # cheeks with the pale mask
+zone = "mask"
+mirror = true
+center = [0.045, -0.925, 0.655]
+size = [0.032, 0.05, 0.036]
+
+[[shape]]
+kind = "capsule"             # muzzle
+zone = "mask"
+a = [0, -0.95, 0.668]
+b = [0, -1.06, 0.645]
+r = 0.038
+r2 = 0.025
+
+[[shape]]
+kind = "capsule"             # nose bridge
+zone = "head"
+a = [0, -0.93, 0.695]
+b = [0, -1.045, 0.662]
+r = 0.026
+r2 = 0.018
+
+[[shape]]
+kind = "ellipsoid"
+zone = "nose"
+center = [0, -1.078, 0.65]
+size = [0.016, 0.012, 0.013]
+
+[[shape]]
+kind = "capsule"             # lower jaw
+zone = "mask"
+mirror = true
+a = [0.022, -0.93, 0.626]
+b = [0.01, -1.048, 0.622]
+r = 0.022
+r2 = 0.015
+
+[[shape]]
+kind = "cut_box"             # lip line
+zone = "mouth"
+center = [0, -1.01, 0.634]
+size = [0.06, 0.07, 0.002]
+
+[[shape]]
+kind = "cut"                 # eye sockets
+zone = "eye_rim"
+mirror = true
+center = [0.036, -0.968, 0.69]
+size = [0.012, 0.01, 0.009]
+
+[[shape]]
+kind = "eye"                 # amber eyes
+mirror = true
+bone = "head"
+center = [0.034, -0.964, 0.69]
+size = [0.0085, 0.006, 0.006]
+rotate = [0, -15, 0]
+
+[[shape]]
+kind = "ellipsoid"           # brow over the eyes
+zone = "head"
+mirror = true
+center = [0.033, -0.962, 0.698]
+size = [0.016, 0.012, 0.005]
+rotate = [0, -15, 0]
+
+[[shape]]
+kind = "capsule"             # pointed ears
+zone = "ear"
+mirror = true
+a = [0.036, -0.875, 0.72]
+b = [0.048, -0.868, 0.80]
+r = 0.022
+r2 = 0.005
+
+[[shape]]
+kind = "cut"                 # inside of the ears, facing forward
+zone = "ear_inner"
+mirror = true
+center = [0.04, -0.884, 0.748]
+size = [0.012, 0.006, 0.026]
+
+[[shape]]
+kind = "tooth"               # canines, visible at the lips
+mirror = true
+bone = "head"
+a = [0.017, -1.04, 0.638]
+b = [0.017, -1.043, 0.624]
+r = 0.0035
+
+# bushy tail with a dark tip
+[[shape]]
+kind = "chain"
+zone = "fur"
+points = [[0, 0.10, 0.51], [0, 0.18, 0.44], [0, 0.26, 0.34], [0, 0.36, 0.28], [0, 0.49, 0.25]]
+radii = [0.03, 0.042, 0.046, 0.04, 0.02]
+
+[[shape]]
+kind = "ridge"               # bushy sides of the tail
+zone = "fur"
+mirror = true
+points = [[0.012, 0.17, 0.45], [0.016, 0.27, 0.34], [0.012, 0.37, 0.28], [0.006, 0.46, 0.255]]
+sizes = [[0.025, 0.03, 0.03], [0.03, 0.035, 0.034], [0.026, 0.03, 0.03], [0.012, 0.016, 0.016]]
+count = 8
+
+[[shape]]
+kind = "chain"               # dark tip
+zone = "tailtip"
+points = [[0, 0.40, 0.27], [0, 0.49, 0.25]]
+radii = [0.036, 0.019]

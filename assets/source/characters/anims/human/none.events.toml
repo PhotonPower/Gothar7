@@ -92,6 +92,11 @@ events = [
     { frame = 45, event = "use" },
 ]
 
+[clips."none/t_transform_out"]
+events = [
+    { frame = 12, event = "swap" },
+]
+
 [clips."none/t_turn_l"]
 events = [
     { frame = 18, event = "footstep_r" },
