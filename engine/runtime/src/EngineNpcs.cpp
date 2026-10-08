@@ -46,8 +46,12 @@ constexpr f32 kMaxStraightLine = 50.0f; ///< longer lines are not checked (cost)
 constexpr f32 kProgressDistance = 0.3f; ///< the way to the next route point must shrink this much ...
 constexpr f32 kStuckSeconds = 1.5f;     ///< ... within this long, else plan again (sliding is no progress)
 constexpr u32 kMaxReplans = 3;          ///< then give up
-constexpr f32 kCloseEnough = 1.2f;      ///< stuck this near the goal (something stands on it): arrived
-constexpr f32 kNpcWalkSpeed = 1.6f;     ///< m/s without blend points in the graph
+/// After being stuck the new route follows the waynet: no straight line longer than this (welt #246: a
+/// shortcut out of a doorway past the jamb's corner jammed the capsule there, and the same shortcut again
+/// after it).
+constexpr f32 kStrictLine = 3.0f;
+constexpr f32 kCloseEnough = 1.2f;  ///< stuck this near the goal (something stands on it): arrived
+constexpr f32 kNpcWalkSpeed = 1.6f; ///< m/s without blend points in the graph
 constexpr f32 kNpcRunSpeed = 4.5f;
 
 f32 wrapAngle(f32 a)
@@ -160,8 +164,10 @@ Result<void> Engine::npcGoToPosition(u32 id, const Vec3& goal, std::string_view 
     {
         return Error{std::format("creature {} cannot walk (no NPC)", id)};
     }
-    auto route = m_waynet.route(c->position, goal,
-                                [this](const Vec3& a, const Vec3& b) { return walkableLine(a, b); });
+    const bool strict = std::exchange(m_strictRoute, false);
+    auto route =
+        m_waynet.route(c->position, goal, [this, strict](const Vec3& a, const Vec3& b)
+                       { return (!strict || glm::length(b - a) <= kStrictLine) && walkableLine(a, b); });
     if (!route)
     {
         return Error{std::format("no way from ({:.1f}, {:.1f}, {:.1f}) to \"{}\"", c->position.x,
@@ -365,6 +371,11 @@ void Engine::walkNpc(Creature& c, f32 seconds)
                 const std::string goal = c.routeGoal;
                 const u32 replans = c.replans + 1;
                 const bool trotting = c.trotting;
+                // The capsule may be wedged (welt #246: at a door jamb it did not move at all in any
+                // direction): put it down again where it is, which clears its contacts; then the way along
+                // the waynet.
+                c.body->teleport(c.position + Vec3(0.0f, 0.02f, 0.0f));
+                m_strictRoute = replans <= kMaxReplans; // the new way along the waynet, no shortcuts
                 if (replans > kMaxReplans || !npcGoTo(c.id, goal, c.running))
                 {
                     G7_LOG_WARN("engine", "{} gives up walking to {}", c.species, goal);
