@@ -50,6 +50,7 @@ Armour kits (F3g) keep the colour textures of their pieces and may rename and de
                                         # this wide, hanging straight below the belly
     bib = 0.26                          # with panel: only this wide above the waist (bib apron)
     pouch = [0.11, 0.14, 0.05]          # from basemesh: own pouch at the belt (w, h, d metres)
+    rim_smooth = 12                     # passes smoothing the open edges of a cut (jagged armholes)
     bones = ["spine_02", "spine_03"]    # weights only on these bones (stiff plates)
     dome = true                         # with from = "basemesh": smooth dome fitted to the skull
     heads = "head_f_*"                  # these head parts fit under it (dome grows, others bulge)
@@ -134,6 +135,7 @@ DERIVE_KEYS = {
     "panel",
     "bib",
     "pouch",
+    "rim_smooth",
 }
 
 
@@ -170,6 +172,7 @@ class Derive:
     panel: float = 0.0  # own front panel this wide (metres) between the band heights
     bib: float = 0.0  # with panel: this wide above the waist (spine_01), a bib apron; 0 = none
     pouch: tuple[float, float, float] | None = None  # own pouch at the belt: width, height, depth
+    rim_smooth: int = 0  # passes smoothing the open edges after the cuts (jagged armholes)
     bones: tuple[str, ...] = ()  # limit the weights to bones with these prefixes (stiff plates)
     heads: str | None = None  # head parts that must fit under the piece, e.g. "head_f_*"
 
@@ -585,6 +588,7 @@ def _parse_derive(raw: object) -> tuple[Derive, ...]:
                 panel=_number(d, "panel", where, 0.0, 1.0, 0.0),
                 bib=_number(d, "bib", where, 0.0, 0.6, 0.0),
                 pouch=(float(pouch[0]), float(pouch[1]), float(pouch[2])) if pouch else None,
+                rim_smooth=int(_number(d, "rim_smooth", where, 0, 50, 0)),
                 bones=_names(d, "bones", where),
             )
         )
