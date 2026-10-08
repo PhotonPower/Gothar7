@@ -1,0 +1,24 @@
+# merchant_m_3: set 'merchant' (figure_sets.toml) - better-dressed Leonberg citizen (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_thin/body.glb"
+head = "parts/head_m_gaunt/head.glb"
+hair = "parts/hair_m_gaunt/hair_long.glb"
+beard = "parts/hair_m_gaunt/beard_goatee.glb"
+cloth = [
+    "parts/garb_m_thin/tunic_clean.glb",
+    "parts/garb_m_thin/belt.glb",
+    "parts/garb_m_thin/purse.glb",
+    "parts/headgear_m_thin/beret.glb",
+    "parts/cloth_m_thin/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#3a2a1e"
+beard = "#3a2a1e"
+cloth_tunic_clean = "#7a4a5a"
+cloth_belt = "#2e2018"
+cloth_purse = "#4a3424"
+cloth_beret = "#3a2a1e"
+cloth_culturalibre_male_boots = "#3a2c22"

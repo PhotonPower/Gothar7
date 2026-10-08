@@ -617,7 +617,8 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   bestehen. `guard` und `hunter` sind nur Männer (`guard_m` = `guard`, kein `_f`).
 - **Sets:** `citizen` (7) und `craftsman` (5) für Leonberg (sauber), `guard` (5, nur Männer wie in Gothic, mittlere
   Rüstung mit Helm), `farmer` (7, abgetragen, Strohhüte, Schürzen), `hunter` (4, nur Männer, Leder, gewickelte Hosen
-  und Stiefel), `outcast` (5, Lumpen; barfuß oder in Stoffschuhen). Manifeste `figures/<set>_<m|f>_<n>.figure.toml`;
+  und Stiefel), `outcast` (5, Lumpen; barfuß oder in Stoffschuhen), `merchant` (8, besser gekleidete Bürger
+  Leonbergs in gefärbtem Tuch, alle mit Geldbeutel, dazu Barett, Haube oder Weste; 2026-10-08). Manifeste `figures/<set>_<m|f>_<n>.figure.toml`;
   sie mischen Kopf, Frisur und Bart, Statur, Kleidung und Palette.
 - **Benannte Figuren** (je ein NPC, in keinem Set): `smith` (Lederschürze), `innkeeper` (sauber, Schürze),
   `market_woman` (Mieder über dem langen Rock), `gate_guard` (mittlere Rüstung, Kesselhelm), `guard_captain`
