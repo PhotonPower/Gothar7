@@ -48,11 +48,13 @@ markers = { hit_anvil = 8, "sound:anvil_hit" = 8 }
 name = "mob/anvil/t_start"
 blend = ["none/s_idle", "mob/anvil/s_work"]
 frames = 12
+markers = { item_to_hand = 1 }  # it_hammer in socket_hand_r (engine, 2026-10-08)
 
 [[clip]]
 name = "mob/anvil/t_stop"
 blend = ["mob/anvil/s_work", "none/s_idle"]
 frames = 12
+markers = { item_from_hand = 11 }
 
 # --- bed -----------------------------------------------------------------------------------------
 
