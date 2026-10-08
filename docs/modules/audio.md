@@ -40,7 +40,20 @@
   - Anim-Events `sound:<name>` der Clips spielen an der Figur (Held und NPCs).
   - Lua: `sound(name, x?, y?, z?)`, `sound_stop(id, fade?)`, `sound_playing(id)`.
 - **Platzhalter** (Entscheidung Projektinhaber): `tools/audio` (`gothar-audio placeholders`) erzeugt synthetische WAVs unter `assets/source/sounds/`; echte Klänge ersetzen sie unter gleichem Namen.
-- **Folgt:** Spruch-Klänge (`Spell`-Feld `sounds`), B Raum (Verdeckung, Ambient-Zonen), C Musik, D Sprache, E Fußschritte.
+- **Folgt:** Spruch-Klänge (`Spell`-Feld `sounds`), C Musik, D Sprache, E Fußschritte.
+
+## Umsetzung Teil B: Raum
+- **Verdeckung** (Entscheidung 8): Jeder 3D-Klang läuft über einen eigenen Tiefpass (`setMuffle`, 0 offen … 1 stark,
+  Grenzfrequenz 20 kHz bis etwa 600 Hz).
+  - Die Engine prüft zehnmal je Sekunde einen Strahl von der Kamera zum Klang (Welt-Kollision). Liegt etwas dazwischen,
+    wird der Klang auf 0,8 gedämpft, sonst wieder offen.
+- **Ambiente** (`assets/source/data/ambient.toml`): je Name `loop` und `loop_night`, Einzelklänge `randoms` und
+  `randoms_night`, `interval` und `distance` als [min, max], `fade`.
+  - Es gilt die Zone vom Typ `ambient`, in der der Held steht (world.md „Zonen“, die kleinste).
+  - Wechselt die Zone oder Tag/Nacht (20–6 Uhr), blendet die alte Schleife aus und die neue ein.
+  - Die Einzelklänge kommen zufällig verteilt 4–15 m um den Hörer, als 3D-Klänge.
+- **Test-Lager:** die Ambiente `camp` im Zaun, `wald` als große Box drumherum, schon die Musik-Zone `LAGER` (Teil C).
+  Platzhalter `amb_wind`, `amb_camp`, `amb_night` (nahtlose Schleifen), `bird`, `owl`.
 
 ## Dynamisches Musiksystem (Gothic: DirectMusic)
 - Musik-Zone (aus world) → **Thema** (z. B. `CAMP`, `FOREST`, `MINE`).

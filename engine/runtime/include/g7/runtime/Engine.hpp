@@ -305,6 +305,13 @@ public:
     /// The mixer (M13); nullptr when audio is off.
     [[nodiscard]] const audio::AudioSystem* audio() const noexcept { return m_audio ? &*m_audio : nullptr; }
     /// How often the sound `name` was started (tests, diagnostics).
+    /// The ambience playing now (M13 part B); empty: none.
+    [[nodiscard]] const std::string& ambience() const noexcept { return m_ambience.name; }
+    /// The occlusion of a 3D sound the engine started (0 open .. 1 muffled).
+    [[nodiscard]] f32 soundMuffle(audio::SoundId id) const noexcept
+    {
+        return m_audio ? m_audio->muffle(id) : 0.0f;
+    }
     [[nodiscard]] u32 soundsPlayed(std::string_view name) const
     {
         const auto it = m_soundsPlayed.find(name);
@@ -865,6 +872,22 @@ private:
     /// Plays the sound `name` of data/sounds.toml (at `position`: in 3D); nullopt if unknown or no audio.
     std::optional<audio::SoundId> playSound(std::string_view name, std::optional<Vec3> position = {});
     std::map<std::string, u32, std::less<>> m_soundsPlayed; // per sound name (tests, diagnostics)
+    /// The value of the smallest zone of `type` (world.md "Zonen") that holds `point`; nullopt: none.
+    [[nodiscard]] std::optional<std::string> zoneAt(std::string_view type, const Vec3& point) const;
+    [[nodiscard]] bool night() const noexcept; ///< 20:00 - 06:00 (ambience, music)
+    void updateAmbience(f32 seconds);
+    void updateOcclusion(f32 seconds);
+    audio::AmbientDefs m_ambientDefs; // data/ambient.toml (M13 part B)
+    struct Ambience
+    {
+        std::string name; ///< the zone's ambience now, empty: none
+        bool night = false;
+        std::optional<audio::SoundId> loop;
+        f32 nextRandom = 0.0f;
+    };
+    Ambience m_ambience;
+    std::map<audio::SoundId, Vec3> m_spatialSounds; // where the 3D sounds play (occlusion)
+    f32 m_occlusionTimer = 0.0f;
     void bindAudioFunctions();
     // Combat (M11, EngineCombat.cpp).
     struct Combatant;

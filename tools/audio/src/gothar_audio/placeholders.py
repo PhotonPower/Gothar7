@@ -91,8 +91,68 @@ def summon(rng: random.Random) -> Samples:
     return normalise(mix((swell, 1.0), (air, 0.4)))
 
 
+def seamless(samples: Samples, overlap: float = 0.5) -> Samples:
+    """A loop without a click: the last `overlap` seconds are faded into the start."""
+    n = int(overlap * 22050)
+    body = samples[: len(samples) - n]
+    tail = samples[len(samples) - n :]
+    for i in range(n):
+        w = i / n
+        body[i] = body[i] * w + tail[i] * (1.0 - w)
+    return body
+
+
+def amb_wind(rng: random.Random) -> Samples:
+    gust = [0.6 + 0.4 * math.sin(2 * math.pi * 0.15 * i / 22050) for i in range(int(6.5 * 22050))]
+    air = lowpass(noise(6.5, rng), 500.0)
+    return normalise(seamless([a * g for a, g in zip(air, gust, strict=True)]), 0.5)
+
+
+def amb_camp(rng: random.Random) -> Samples:
+    air = lowpass(noise(6.5, rng), 400.0)
+    crackle = [0.0] * len(air)
+    for _ in range(40):  # a fire somewhere: short crackles
+        at = rng.randrange(len(air) - 2000)
+        pop = envelope(highpass(noise(0.05, rng), 1500.0), 0.0005, 0.008)
+        for i, x in enumerate(pop):
+            crackle[at + i] += x * rng.uniform(0.3, 1.0)
+    return normalise(seamless(mix((air, 0.6), (crackle, 0.5))), 0.5)
+
+
+def amb_night(rng: random.Random) -> Samples:
+    air = lowpass(noise(6.5, rng), 300.0)
+    chirps = [0.0] * len(air)
+    t = 0
+    while t < len(air) - 4000:  # crickets: bursts of a high chirp
+        burst = mix(
+            *[(silence(0.035 * k) + envelope(tone(4400.0, 0.03), 0.002, 0.008), 1.0) for k in range(3)]
+        )
+        for i, x in enumerate(burst):
+            chirps[t + i] += x
+        t += int(rng.uniform(0.25, 0.7) * 22050)
+    return normalise(seamless(mix((air, 0.4), (chirps, 0.25))), 0.4)
+
+
+def bird(rng: random.Random) -> Samples:
+    notes = [(rng.uniform(2200, 3400), rng.uniform(0.05, 0.12)) for _ in range(rng.randint(3, 5))]
+    out: Samples = []
+    for f, d in notes:  # each a short rising whistle
+        out += envelope(tone(lambda t, f=f, d=d: f * (1.0 + 0.3 * t / d), d), 0.005, d / 3) + silence(0.04)
+    return normalise(out, 0.6)
+
+
+def owl(rng: random.Random) -> Samples:
+    hoot = fade(lowpass(tone(380.0, 0.35), 900.0), 0.05, 0.15)
+    return normalise(hoot + silence(0.25) + fade(lowpass(tone(360.0, 0.6), 900.0), 0.05, 0.3), 0.6)
+
+
 #: name -> generator; the file is sounds/<name>.wav
 SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
+    "amb_wind": amb_wind,
+    "amb_camp": amb_camp,
+    "amb_night": amb_night,
+    "bird": bird,
+    "owl": owl,
     "anvil_hit": anvil_hit,
     "wood_chop": wood_chop,
     "schinder_call": schinder_call,

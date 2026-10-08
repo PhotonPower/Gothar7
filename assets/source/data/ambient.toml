@@ -1,0 +1,20 @@
+# Ambiente (M13 Teil B): je Name eine Schleife (bei Nacht loop_night) und Einzelklänge um den Hörer (bei Nacht
+# randoms_night), alle Namen aus data/sounds.toml. Welche gilt, sagt die Zone vom Typ ambient der Weltdatei (world.md
+# „Zonen“; ineinander liegende: die kleinste). Nacht: 20-6 Uhr. Felder: loop, loop_night, randoms, randoms_night,
+# interval = [min, max] s zwischen Einzelklängen (8-20), distance = [min, max] m vom Hörer (4-15), fade = s Überblenden (2).
+
+[wald]
+loop = "amb_wind"
+loop_night = "amb_night"
+randoms = ["bird"]
+randoms_night = ["owl"]
+interval = [6, 16]
+distance = [8, 25]
+
+[camp]
+loop = "amb_camp"
+loop_night = "amb_night"
+randoms = ["bird"]
+randoms_night = ["owl"]
+interval = [10, 25]
+distance = [10, 25]

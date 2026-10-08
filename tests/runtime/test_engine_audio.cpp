@@ -6,7 +6,9 @@
 
 #include <doctest/doctest.h>
 
+#include <cmath>
 #include <format>
+#include <optional>
 #include <ostream> // doctest needs it to print std::string operands
 #include <string>
 
@@ -71,4 +73,75 @@ TEST_CASE("Engine audio: the woodcutter's axe sounds at its clip's event (sound:
     REQUIRE(run(engine, "return insert_npc('npc_woodcutter')").isString()); // 07-18: chopping wood
     runSeconds(engine, 30.0f);
     CHECK(engine.soundsPlayed("wood_chop") > 0);
+}
+
+TEST_CASE(
+    "Engine audio: the ambience of the zone - the camp in the forest (the smallest box), by night another "
+    "loop; single sounds around the listener (M13 part B)")
+{
+    Engine engine(audioConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "time(12, 0) teleport(8, 0, 4)"); // in the camp
+    runSeconds(engine, 0.5f);
+    CHECK(engine.ambience() == "camp");
+    CHECK(engine.soundsPlayed("amb_camp") == 1);
+    run(engine, "teleport(60, 0, 0)"); // outside the fence: the forest around it
+    runSeconds(engine, 0.5f);
+    CHECK(engine.ambience() == "wald");
+    CHECK(engine.soundsPlayed("amb_wind") == 1);
+    runSeconds(engine, 40.0f); // birds now and then (every 6-16 s)
+    CHECK(engine.soundsPlayed("bird") >= 2);
+    run(engine, "time(23, 0)");
+    runSeconds(engine, 0.5f);
+    CHECK(engine.soundsPlayed("amb_night") == 1); // the night's loop
+}
+
+TEST_CASE(
+    "Engine audio: a wall between the camera and a sound muffles it, in the open it is clear (M13 part B)")
+{
+    Engine engine(audioConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "time(12, 0)");
+    runSeconds(engine, 0.5f);
+    const Vec3 ear = engine.camera().transform.position;
+    const auto blocked = [&](const Vec3& p)
+    {
+        const Vec3 to = p - ear;
+        return engine.physics()
+            .raycast(ear, glm::normalize(to), glm::length(to) - 0.3f,
+                     physics::layerBit(physics::Layer::World))
+            .has_value();
+    };
+    // Somewhere around the camera behind something solid (the camp's houses, fences, trees), and one in the
+    // open.
+    std::optional<Vec3> hidden;
+    std::optional<Vec3> seen;
+    for (f32 r = 6.0f; r < 40.0f && (!hidden || !seen); r += 2.0f)
+    {
+        for (f32 a = 0.0f; a < 6.28f && (!hidden || !seen); a += 0.2f)
+        {
+            const Vec3 p(ear.x + std::cos(a) * r, 1.5f, ear.z + std::sin(a) * r);
+            if (blocked(p))
+            {
+                hidden = hidden.value_or(p);
+            }
+            else
+            {
+                seen = seen.value_or(p);
+            }
+        }
+    }
+    REQUIRE(hidden.has_value());
+    REQUIRE(seen.has_value());
+    const Vec3 inside = *hidden;
+    const Vec3 open = *seen;
+    const auto walled =
+        run(engine, std::format("return sound('anvil_hit', {}, {}, {})", inside.x, inside.y, inside.z));
+    const auto clear =
+        run(engine, std::format("return sound('anvil_hit', {}, {}, {})", open.x, open.y, open.z));
+    REQUIRE(walled.isNumber());
+    REQUIRE(clear.isNumber());
+    runSeconds(engine, 0.3f);
+    CHECK(engine.soundMuffle(static_cast<audio::SoundId>(walled.asInteger())) > 0.5f);
+    CHECK(engine.soundMuffle(static_cast<audio::SoundId>(clear.asInteger())) < 0.01f);
 }

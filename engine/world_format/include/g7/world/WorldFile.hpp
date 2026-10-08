@@ -66,9 +66,9 @@ struct ZoneBox
 
 struct Zone
 {
-    std::string type;           ///< "indoor"; other types (music, ...) are kept unread
-    std::string value;          ///< indoor: the room tag LEO_<USE>_<CODE>_INNEN (several boxes may share it)
-    std::optional<ZoneBox> box; ///< indoor zones
+    std::string type;  ///< "indoor", "music", "ambient"; other types are kept unread
+    std::string value; ///< indoor: the room tag LEO_<USE>_<CODE>_INNEN; music: the theme; ambient: its name
+    std::optional<ZoneBox> box; ///< indoor, music and ambient zones (several boxes may share a value)
     std::string json;           ///< other types: the entry as it was (written back unchanged)
 };
 
