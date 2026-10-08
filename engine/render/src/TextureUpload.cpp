@@ -1,3 +1,4 @@
+#include <g7/asset/ImageMips.hpp>
 #include <g7/render/Device.hpp>
 #include <g7/render/TextureUpload.hpp>
 
@@ -48,6 +49,30 @@ Result<bool> checkLevels(const asset::TextureData& data)
     return data.format == asset::TextureFormat::RGBA8 && data.levels.size() == 1;
 }
 
+/// An alpha-tested colour texture: the chain on the CPU, its alpha coverage kept in every level.
+Result<rhi::Texture> createCoverageTexture(Device& device, const asset::ImageData& image, bool srgb,
+                                           f32 cutoff)
+{
+    std::vector<asset::ImageData> chain =
+        asset::buildMipChain(image, srgb ? asset::MipFilter::Srgb : asset::MipFilter::Linear);
+    asset::preserveAlphaCoverage(chain, cutoff);
+    auto texture =
+        device.createTexture({image.width, image.height, srgb ? rhi::Format::RGBA8_SRGB : rhi::Format::RGBA8,
+                              static_cast<u32>(chain.size())});
+    if (!texture)
+    {
+        return texture.error();
+    }
+    for (usize level = 0; level < chain.size(); ++level)
+    {
+        if (auto upload = texture.value().upload(static_cast<u32>(level), chain[level].rgba8); !upload)
+        {
+            return upload.error();
+        }
+    }
+    return texture;
+}
+
 Result<void> uploadLevels(rhi::Texture& texture, const asset::TextureData& data, u32 layer)
 {
     for (usize level = 0; level < data.levels.size(); ++level)
@@ -68,6 +93,10 @@ Result<rhi::Texture> createTexture(Device& device, const asset::ImageData& image
     {
         return Error{"invalid image data"};
     }
+    if (options.mipmaps && options.alphaCutoff)
+    {
+        return createCoverageTexture(device, image, options.srgb, *options.alphaCutoff);
+    }
     auto texture = device.createTexture({image.width, image.height,
                                          options.srgb ? rhi::Format::RGBA8_SRGB : rhi::Format::RGBA8,
                                          options.mipmaps ? 0u : 1u});
@@ -86,12 +115,21 @@ Result<rhi::Texture> createTexture(Device& device, const asset::ImageData& image
     return texture;
 }
 
-Result<rhi::Texture> createTexture(Device& device, const asset::TextureData& data, bool colour)
+Result<rhi::Texture> createTexture(Device& device, const asset::TextureData& data, bool colour,
+                                   std::optional<f32> alphaCutoff)
 {
     auto generate = checkLevels(data);
     if (!generate)
     {
         return generate.error();
+    }
+    if (generate.value() && alphaCutoff)
+    {
+        asset::ImageData image;
+        image.width = data.width();
+        image.height = data.height();
+        image.rgba8 = data.levels[0].data;
+        return createCoverageTexture(device, image, colour, *alphaCutoff);
     }
     auto texture = device.createTexture({data.width(), data.height(), formatFor(data, colour),
                                          generate.value() ? 0u : static_cast<u32>(data.levels.size())});

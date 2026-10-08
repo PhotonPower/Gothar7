@@ -10,6 +10,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -23,8 +24,10 @@ public:
     /// The texture of `data` (sRGB or linear) under `key` (the image's VFS path) and `version` (asset
     /// version: a hot-reloaded image gets a new texture, the old one stays with the models not yet updated).
     /// Uploads on the first request.
-    [[nodiscard]] Result<std::shared_ptr<const rhi::Texture>>
-    get(Device& device, std::string_view key, u64 version, const asset::TextureData& data, bool srgb);
+    [[nodiscard]] Result<std::shared_ptr<const rhi::Texture>> get(Device& device, std::string_view key,
+                                                                  u64 version, const asset::TextureData& data,
+                                                                  bool srgb,
+                                                                  std::optional<f32> alphaCutoff = {});
     /// Textures still in use (expired entries are dropped).
     [[nodiscard]] usize size();
     /// Uploads done so far (tests, statistics).
