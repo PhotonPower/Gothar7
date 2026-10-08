@@ -825,6 +825,46 @@ void Engine::bindAiFunctions()
             return Value();
         };
     };
+    // Debug (tests, the console): not for content scripts.
+    vm.bind(
+        {"npc_route", "npc_route(npc: string) -> table",
+         "Debug: die Punkte der Route, die ein NPC gerade geht ({ {x, y, z}, ... }; leer, wenn er steht). "
+         "Nicht für Inhaltsskripte.",
+         "Debug", [npc](std::span<const Value> a) -> Result<Value>
+         {
+             auto c = npc(a);
+             if (!c)
+             {
+                 return c.error();
+             }
+             std::vector<Value> points;
+             if (c.value()->route)
+             {
+                 for (usize i = c.value()->routeIndex; i < c.value()->route->points.size(); ++i)
+                 {
+                     const Vec3& p = c.value()->route->points[i];
+                     points.push_back(
+                         script::makeTable({Value(static_cast<f64>(p.x)), Value(static_cast<f64>(p.y)),
+                                            Value(static_cast<f64>(p.z))},
+                                           {}));
+                 }
+             }
+             return script::makeTable(std::move(points), {});
+         }});
+    vm.bind(
+        {"npc_debug_hold", "npc_debug_hold(npc: string, seconds: number)",
+         "Debug: hält einen NPC so lange an Ort und Stelle, ohne seine Route zu löschen – wie eine verkeilte "
+         "Kapsel (Test des Neuplanens). Nicht für Inhaltsskripte.",
+         "Debug", [npc](std::span<const Value> a) -> Result<Value>
+         {
+             auto c = npc(a);
+             if (!c || a.size() < 2 || !a[1].isNumber())
+             {
+                 return !c ? c.error() : Error{"expects (npc, seconds)"};
+             }
+             c.value()->debugHold = static_cast<f32>(a[1].asNumber());
+             return Value();
+         }});
     vm.bind({"npc_flee", "npc_flee(npc: string, seconds?: number, from?: string)",
              "Reiht ein: `seconds` Sekunden lang (Vorgabe 8) vor dem Spieler (bzw. dem NPC `from`) weglaufen "
              "– zum "

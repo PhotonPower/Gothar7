@@ -211,6 +211,7 @@ struct Creature
         bool acted = false;
     };
     std::optional<Cast> cast;
+    f32 debugHold = 0.0f;   ///< debug (npc_debug_hold): seconds it stays put although it walks, as if wedged
     f32 magicStance = 0.0f; ///< seconds it keeps the magic stance after casting
     f32 walkSpeed = 0.0f;   ///< blend points of the graph's "move" state: the first moving one, the last one,
     f32 runSpeed = 0.0f;    ///< and one in between (animals with a trot, figuren #200); 0: none
