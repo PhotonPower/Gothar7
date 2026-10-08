@@ -53,10 +53,17 @@ Result<void> Engine::useItem(std::string_view item)
         }
         return {};
     }
-    const char* state = category == "food"       ? "use_eat"
-                        : category == "potion"   ? "use_drink"
-                        : category == "document" ? "use_read"
-                                                 : nullptr;
+    // Drinks among the food (tag "drink": beer, wine) are drunk, not eaten.
+    bool drink = false;
+    if (const script::Table* tags = def->fields["tags"].asTable())
+    {
+        drink =
+            std::ranges::any_of(tags->array, [](const script::Value& t) { return t.asString() == "drink"; });
+    }
+    const char* state = category == "food" && !drink                 ? "use_eat"
+                        : category == "food" || category == "potion" ? "use_drink"
+                        : category == "document"                     ? "use_read"
+                                                                     : nullptr;
     if (state == nullptr)
     {
         return Error{std::format("\"{}\" cannot be used", item)};
@@ -98,6 +105,18 @@ void Engine::applyItemUse(ItemUse& use)
         {
             (void)m_hero->setAttribute(attribute,
                                        m_hero->attribute(attribute) + static_cast<i32>(amount.asInteger()));
+        }
+    }
+    if (const script::Table* boost = def->fields["boost"].asTable())
+    {
+        // For a while (the speed potion): a new one starts the time again, it does not add up.
+        const auto factor =
+            static_cast<f32>(boost->fields.contains("speed") ? boost->fields.at("speed").asNumber(1.0) : 1.0);
+        const auto secs = static_cast<f32>(
+            boost->fields.contains("seconds") ? boost->fields.at("seconds").asNumber(0.0) : 0.0);
+        if (factor > 0.0f && secs > 0.0f)
+        {
+            m_speedBoost = SpeedBoost{factor, secs};
         }
     }
     if (use.category == "food" || use.category == "potion")
@@ -296,10 +315,59 @@ void Engine::documentUi()
     }
 }
 
+gameplay::MovementSettings Engine::boostedMovement() const
+{
+    gameplay::MovementSettings s = m_movementSettings;
+    if (m_speedBoost && !m_transform)
+    {
+        const f32 f = m_speedBoost->factor;
+        s.walkSpeed *= f;
+        s.runSpeed *= f;
+        s.sneakSpeed *= f;
+        s.strafeSpeed *= f;
+        s.backwardSpeed *= f;
+    }
+    return s;
+}
+
+void Engine::fixedUpdateBoost(f32 seconds)
+{
+    if (!m_speedBoost)
+    {
+        return;
+    }
+    m_speedBoost->seconds -= seconds;
+    if (m_speedBoost->seconds <= 0.0f)
+    {
+        m_speedBoost.reset();
+        if (m_scripts)
+        {
+            m_scripts->emit("boost_ended");
+        }
+    }
+}
+
 void Engine::bindUseFunctions()
 {
     using script::Value;
     script::ScriptVm& vm = *m_scripts;
+    vm.bind({"hero_boost", "hero_boost() -> {speed, seconds} | nil",
+             "Die laufende Wirkung eines Tempo-Tranks (`boost` am Item): Faktor und verbleibende Sekunden; "
+             "nil ohne.",
+             "Held", [this](std::span<const Value>) -> Result<Value>
+             {
+                 if (!m_speedBoost)
+                 {
+                     return Value();
+                 }
+                 return script::makeTable({}, {{"speed", static_cast<f64>(m_speedBoost->factor)},
+                                               {"seconds", static_cast<f64>(m_speedBoost->seconds)}});
+             }});
+    vm.bind({"boost_ended",
+             "on(\"boost_ended\", fn())",
+             "Die Wirkung eines Tempo-Tranks ist vorbei.",
+             "Ereignisse",
+             {}});
     vm.bind(
         {"use_item", "use_item(item: string)",
          "Der Held benutzt ein Item aus dem Inventar (Nahrung, Trank, Schriftstück) – nur im Stand, sonst "

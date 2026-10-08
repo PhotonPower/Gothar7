@@ -315,11 +315,12 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     movePlayer(seconds, input);
     animatePlayer(seconds, input);
     fixedUpdateTorch(seconds);
+    fixedUpdateBoost(seconds);
 }
 
 void Engine::movePlayer(f32 seconds, const gameplay::MoveInput& input)
 {
-    const gameplay::MovementSettings& s = m_movementSettings;
+    const gameplay::MovementSettings s = boostedMovement(); // a speed potion runs faster for a while
 
     if (m_mobUse)
     {
