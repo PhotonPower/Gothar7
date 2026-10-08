@@ -235,19 +235,19 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `keiler/s_eat`, `s_sleep` | Wühlen (Schnauze am Boden, Kiefer arbeitet), Schlafen (Seitenlage, atmet) | – | – | K | platzhalter-K |
 | `keiler/t_threaten` | Drohen: Kopf tief, Ohren flach, schnaubt, scharrt mit dem Vorderhuf | – | – | K | platzhalter-K |
 
-### Laufvogel (`laufvogel`, Platzhalter aus Quaternius „5 Low poly animals“ – Küken, vergrößert, CC0)
+### Laufvogel (`laufvogel`, eigene Art, `gothar-chargen creature`; ersetzt den Quaternius-Platzhalter 2026-10-08)
 
 | Name | Zweck | RM | Events | Quelle | Status |
 |---|---|---|---|---|---|
-| `laufvogel/s_idle` | Stehen, umschauen | – | – | K | platzhalter-K |
+| `laufvogel/s_idle` | Stehen, ruckartig umschauen, Flügel schütteln | – | – | K | platzhalter-K |
 | `laufvogel/s_walk` | Gehen (Kopf nickt mit) | ✓ 1,3 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt)) |
-| `laufvogel/s_run` | Rennen (mit Flugphase) | ✓ 6,5 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt)) |
+| `laufvogel/s_run` | Rennen (mit Flugphase, Hals vorgestreckt, Flügel abgespreizt) | ✓ 6,5 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt)) |
 | `laufvogel/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_l/r | K | platzhalter-K |
-| `laufvogel/t_attack_1`, `t_attack_2` | Schnabelhieb nach vorn / Tritt mit dem rechten Fuß | – | hit_start, hit_end | K | platzhalter-K |
+| `laufvogel/t_attack_1`, `t_attack_2` | Hakenschnabel-Hieb nach vorn / Tritt mit dem rechten Fuß, Flügel zum Ausgleich | – | hit_start, hit_end | K | platzhalter-K |
 | `laufvogel/t_hit` | Treffer | – | – | K | platzhalter-K |
 | `laufvogel/t_die` | Tod: taumeln, auf die Seite fallen | – | – | K | platzhalter-K |
-| `laufvogel/s_eat`, `s_sleep` | Picken am Boden, Schlafen (auf gefalteten Beinen sitzend) | – | – | K | platzhalter-K |
-| `laufvogel/t_threaten` | Drohen: aufrichten, Hals vor, Fauch-Nicken | – | – | K | platzhalter-K |
+| `laufvogel/s_eat`, `s_sleep` | Picken am Boden, Schlafen (auf gefalteten Beinen sitzend, Kopf nach hinten gelegt) | – | – | K | platzhalter-K |
+| `laufvogel/t_threaten` | Drohen: aufrichten, Flügel spreizen, Schnabel auf, Fauch-Nicken | – | – | K | platzhalter-K |
 
 ### Schinder (`schinder`, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
 

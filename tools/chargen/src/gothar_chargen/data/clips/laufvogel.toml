@@ -1,11 +1,12 @@
 # Set "laufvogel" (large running bird; monster contract, characters-pipeline.md §7)
 # -> monsters/laufvogel/anims/laufvogel.glb
-# Source: Quaternius "5 Low poly animals" (Animals Pack), Chick, CC0 1.0 – only one action, a
-# walk cycle in place (gothar-chargen monster turns it into laufvogel_clips.blend on the contract
-# rig); everything else is a keyframe placeholder (animation-list.md status "platzhalter-K").
+# Own bird (gothar-chargen creature laufvogel, 2026-10-08): the clip source only holds the still
+# action "rest". Walk and run are own gait cycles (gait); everything else is keyframed. neck_02,
+# jaw (beak) and wing_l/r were added with engine; clip names, events and speeds stay as agreed.
 #
 # Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches the
-# head down and swings a leg back, +Z turns left) and move root/pelvis in metres.
+# head down, opens the beak and swings a leg back, +Z turns left; +Y on wing_l lifts the left
+# wing) and move root/pelvis in metres.
 
 set = "laufvogel"
 rig = "laufvogel"
@@ -14,22 +15,27 @@ rig = "laufvogel"
 file = "laufvogel_clips.blend"
 mapping = "identity"
 
+[[clip]]
+name = "laufvogel/s_rest"
+from = "src:rest"
+helper = true
+
 # --- locomotion (root moves forward: contract §7) ---
 
 [[clip]]
-name = "laufvogel/s_walk_inplace"
-from = "src:walk"
-helper = true
-
-[[clip]]
-name = "laufvogel/s_idle"         # breathing, looking around
+name = "laufvogel/s_idle"         # breathing, jerky looks around, ruffling the wings
 keyframe = "keyposes"
 [clip.params]
-keys = [[0, "rest"], [20, "look_l"], [40, "rest"], [60, "look_r"], [80, "rest"]]
+base = "laufvogel/s_rest"
+keys = [[0, "rest"], [14, "look_l"], [26, "look_l2"], [40, "rest"], [54, "look_r"], [64, "ruffle"], [80, "rest"]]
 [clip.params.poses.look_l]
-rotate = { spine_01 = [["X", -2]], neck_01 = [["Z", 12]], head = [["Z", 10], ["X", -5]] }
+rotate = { spine_01 = [["X", -2]], neck_01 = [["Z", 10]], neck_02 = [["Z", 8]], head = [["Z", 12], ["X", -5]] }
+[clip.params.poses.look_l2]
+rotate = { spine_01 = [["X", -2]], neck_01 = [["Z", 10]], neck_02 = [["Z", 8]], head = [["Z", 20], ["Y", 12]] }
 [clip.params.poses.look_r]
-rotate = { spine_01 = [["X", -2]], neck_01 = [["Z", -12]], head = [["Z", -10], ["X", 5]] }
+rotate = { spine_01 = [["X", -2]], neck_01 = [["Z", -12]], neck_02 = [["Z", -8]], head = [["Z", -10], ["X", 5]] }
+[clip.params.poses.ruffle]
+rotate = { neck_01 = [["Z", -6]], wing_l = [["Y", 12]], wing_r = [["Y", -12]] }
 
 # Own gait cycles (gaits.py): feet planted at exactly the clip speed, legs solved with IK.
 # Speeds agreed with engine (2026-10-05): walk 1.3, run 6.5 m/s.
@@ -44,14 +50,14 @@ period = 16
 duty = 0.625
 lift = 0.08
 bob = 0.015
-nod = { bone = "neck_01", degrees = 5.0, phase = 0.25 }
+nod = { bone = "neck_02", degrees = 5.0, phase = 0.25 }
 legs = [
     { upper = "thigh_l", lower = "calf_l", foot = "foot_l", phase = 0.0, curl = 50 },
     { upper = "thigh_r", lower = "calf_r", foot = "foot_r", phase = 0.5, curl = 50 },
 ]
 
 [[clip]]
-name = "laufvogel/s_run"          # running with a flight phase, body leaning forward
+name = "laufvogel/s_run"          # running with a flight phase, body and neck stretched forward
 keyframe = "gait"
 events = "footsteps"
 [clip.params]
@@ -61,7 +67,22 @@ duty = 0.3
 lift = 0.18
 bob = 0.03
 pitch = 3.0
-nod = { bone = "neck_01", degrees = 6.0, phase = 0.5 }
+nod = { bone = "neck_02", degrees = 6.0, phase = 0.5 }
+pose = { neck_01 = [["X", 18]], neck_02 = [["X", 8]], head = [["X", -14]], wing_l = [["Y", 15]], wing_r = [["Y", -15]] }
+legs = [
+    { upper = "thigh_l", lower = "calf_l", foot = "foot_l", phase = 0.0, curl = 50 },
+    { upper = "thigh_r", lower = "calf_r", foot = "foot_r", phase = 0.5, curl = 50 },
+]
+
+[[clip]]
+name = "laufvogel/s_step_inplace" # base of the turns: stepping on the spot
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 16
+duty = 0.625
+lift = 0.07
 legs = [
     { upper = "thigh_l", lower = "calf_l", foot = "foot_l", phase = 0.0, curl = 50 },
     { upper = "thigh_r", lower = "calf_r", foot = "foot_r", phase = 0.5, curl = 50 },
@@ -72,8 +93,8 @@ name = "laufvogel/t_turn_l"
 keyframe = "keyposes"
 events = "footsteps"
 [clip.params]
-base = "laufvogel/s_walk_inplace"
-keys = [[0, "rest"], [30, "turned"]]
+base = "laufvogel/s_step_inplace"
+keys = [[0, "rest"], [32, "turned"]]
 [clip.params.poses.turned]
 rotate = { root = [["Z", 90]] }
 
@@ -82,62 +103,71 @@ name = "laufvogel/t_turn_r"
 keyframe = "keyposes"
 events = "footsteps"
 [clip.params]
-base = "laufvogel/s_walk_inplace"
-keys = [[0, "rest"], [30, "turned"]]
+base = "laufvogel/s_step_inplace"
+keys = [[0, "rest"], [32, "turned"]]
 [clip.params.poses.turned]
 rotate = { root = [["Z", -90]] }
 
 # --- combat ---
 
 [[clip]]
-name = "laufvogel/t_attack_1"     # beak strike forward
+name = "laufvogel/t_attack_1"     # hooked beak strike forward
 keyframe = "keyposes"
 markers = { hit_start = 11, hit_end = 15 }
 [clip.params]
-keys = [[0, "rest"], [8, "wind_up"], [12, "strike"], [15, "strike"], [26, "rest"]]
+base = "laufvogel/s_rest"
+keys = [[0, "rest"], [8, "wind_up"], [12, "strike"], [15, "strike_close"], [26, "rest"]]
 [clip.params.poses.wind_up]
 move = { pelvis = [0, 0.06, 0] }
-rotate = { spine_01 = [["X", -10]], neck_01 = [["X", -20]], head = [["X", -10]] }
+rotate = { spine_01 = [["X", -10]], neck_01 = [["X", -20]], neck_02 = [["X", -10]], head = [["X", -10]], jaw = [["X", 25]], wing_l = [["Y", 20]], wing_r = [["Y", -20]] }
 [clip.params.poses.strike]
 move = { pelvis = [0, -0.12, -0.03] }
-rotate = { spine_01 = [["X", 15]], neck_01 = [["X", 35]], head = [["X", 15]] }
+rotate = { spine_01 = [["X", 15]], neck_01 = [["X", 35]], neck_02 = [["X", 10]], head = [["X", 15]], jaw = [["X", 20]], wing_l = [["Y", 10]], wing_r = [["Y", -10]] }
+[clip.params.poses.strike_close]
+move = { pelvis = [0, -0.12, -0.03] }
+rotate = { spine_01 = [["X", 15]], neck_01 = [["X", 35]], neck_02 = [["X", 12]], head = [["X", 18]], jaw = [["X", 2]], wing_l = [["Y", 8]], wing_r = [["Y", -8]] }
 
 [[clip]]
-name = "laufvogel/t_attack_2"     # kick with the right foot
+name = "laufvogel/t_attack_2"     # kick with the right foot, wings spread for balance
 keyframe = "keyposes"
 markers = { hit_start = 10, hit_end = 14 }
 [clip.params]
+base = "laufvogel/s_rest"
 keys = [[0, "rest"], [7, "lift"], [11, "kick"], [14, "kick"], [24, "rest"]]
 [clip.params.poses.lift]
 move = { pelvis = [0, 0.05, 0] }
-rotate = { spine_01 = [["X", -8]], thigh_r = [["X", -45]], calf_r = [["X", 60]], neck_01 = [["X", -10]] }
+rotate = { spine_01 = [["X", -8]], thigh_r = [["X", -45]], calf_r = [["X", 60]], neck_01 = [["X", -10]], wing_l = [["Y", 25]], wing_r = [["Y", -25]] }
 [clip.params.poses.kick]
 move = { pelvis = [0, 0.03, 0] }
-rotate = { spine_01 = [["X", -12]], thigh_r = [["X", -60]], calf_r = [["X", -10]], foot_r = [["X", -20]], neck_01 = [["X", -15]] }
+rotate = { spine_01 = [["X", -12]], thigh_r = [["X", -60]], calf_r = [["X", -10]], foot_r = [["X", -20]], neck_01 = [["X", -15]], jaw = [["X", 15]], wing_l = [["Y", 35]], wing_r = [["Y", -35]] }
 
 [[clip]]
 name = "laufvogel/t_hit"
 keyframe = "keyposes"
 [clip.params]
+base = "laufvogel/s_rest"
 keys = [[0, "rest"], [4, "flinch"], [16, "rest"]]
 [clip.params.poses.flinch]
 move = { pelvis = [0, 0.06, 0.02] }
-rotate = { spine_01 = [["X", -10], ["Z", 6]], neck_01 = [["X", -20], ["Z", 10]], head = [["X", -15]] }
+rotate = { spine_01 = [["X", -10], ["Z", 6]], neck_01 = [["X", -20], ["Z", 10]], neck_02 = [["X", -8]], head = [["X", -15]], jaw = [["X", 25]], wing_l = [["Y", 30]], wing_r = [["Y", -30]] }
 
 [[clip]]
-name = "laufvogel/t_die"          # stagger, fall onto the side
+name = "laufvogel/t_die"          # staggers, sinks down and falls onto the side, the neck sprawled
 keyframe = "keyposes"
 [clip.params]
-keys = [[0, "rest"], [8, "stagger"], [22, "fallen"], [36, "fallen_limp"]]
+keys = [[0, "rest"], [8, "stagger"], [18, "sink"], [30, "fallen"], [44, "fallen_limp"]]
 [clip.params.poses.stagger]
 move = { pelvis = [0, 0.04, -0.08] }
-rotate = { root = [["Y", 12]], neck_01 = [["X", 25]], head = [["X", 15]], thigh_l = [["X", -20]], calf_l = [["X", 30]] }
+rotate = { root = [["Y", 10]], neck_01 = [["X", 20]], neck_02 = [["X", 10]], head = [["X", 15]], jaw = [["X", 15]], thigh_l = [["X", -20]], calf_l = [["X", 30]], wing_l = [["Y", 20]], wing_r = [["Y", -20]] }
+[clip.params.poses.sink]
+move = { pelvis = [0, 0.04, -0.35] }
+rotate = { root = [["Y", 20]], neck_01 = [["X", 35]], neck_02 = [["X", 20]], head = [["X", 15]], jaw = [["X", 18]], thigh_l = [["X", -60]], thigh_r = [["X", -55]], calf_l = [["X", 120]], calf_r = [["X", 110]], wing_l = [["Y", 15]], wing_r = [["Y", -10]] }
 [clip.params.poses.fallen]
-move = { root = [0, 0, 0.45] }
-rotate = { root = [["Y", 88]], neck_01 = [["X", 40], ["Z", -20]], head = [["X", 10]], thigh_l = [["X", -30]], thigh_r = [["X", -10]], calf_l = [["X", 40]], calf_r = [["X", 20]] }
+move = { root = [0, 0, 0.22] }
+rotate = { root = [["Y", 86]], neck_01 = [["X", 30], ["Z", -25]], neck_02 = [["X", 15], ["Z", -15]], head = [["X", 10]], jaw = [["X", 15]], thigh_l = [["X", -30]], thigh_r = [["X", -10]], calf_l = [["X", 40]], calf_r = [["X", 20]], wing_l = [["Y", 25]] }
 [clip.params.poses.fallen_limp]
-move = { root = [0, 0, 0.44] }
-rotate = { root = [["Y", 90]], neck_01 = [["X", 50], ["Z", -25]], head = [["X", 15]], thigh_l = [["X", -35]], thigh_r = [["X", -15]], calf_l = [["X", 45]], calf_r = [["X", 25]] }
+move = { root = [0, 0, 0.21] }
+rotate = { root = [["Y", 88]], neck_01 = [["X", 40], ["Z", -30]], neck_02 = [["X", 20], ["Z", -20]], head = [["X", 15]], jaw = [["X", 20]], thigh_l = [["X", -35]], thigh_r = [["X", -15]], calf_l = [["X", 45]], calf_r = [["X", 25]], wing_l = [["Y", 30]] }
 
 # --- behaviour ---
 
@@ -145,34 +175,36 @@ rotate = { root = [["Y", 90]], neck_01 = [["X", 50], ["Z", -25]], head = [["X", 
 name = "laufvogel/s_eat"          # pecking at the ground (loop)
 keyframe = "keyposes"
 [clip.params]
-keys = [[0, "low"], [8, "peck"], [16, "low"], [24, "peck"], [40, "low"]]
+base = "laufvogel/s_rest"
+keys = [[0, "low"], [8, "peck"], [12, "low"], [24, "peck"], [28, "low"], [40, "low"]]
 [clip.params.poses.low]
 move = { pelvis = [0, 0.02, 0] }
-rotate = { spine_01 = [["X", 20]], neck_01 = [["X", 45]], head = [["X", 20]] }
+rotate = { spine_01 = [["X", 18]], neck_01 = [["X", 45]], neck_02 = [["X", 20]], head = [["X", 10]], jaw = [["X", 10]] }
 [clip.params.poses.peck]
 move = { pelvis = [0, 0, 0] }
-rotate = { spine_01 = [["X", 22]], neck_01 = [["X", 50]], head = [["X", 25]] }
+rotate = { spine_01 = [["X", 20]], neck_01 = [["X", 50]], neck_02 = [["X", 25]], head = [["X", 18]], jaw = [["X", 2]] }
 
 [[clip]]
-name = "laufvogel/s_sleep"        # sitting on folded legs, head tucked, breathing
+name = "laufvogel/s_sleep"        # sitting on folded legs, head tucked onto the back, breathing
 keyframe = "keyposes"
 [clip.params]
 keys = [[0, "sit"], [40, "sit_in"], [80, "sit"]]
 [clip.params.poses.sit]
-move = { pelvis = [0, 0, -0.27] }
-rotate = { thigh_l = [["X", -70]], thigh_r = [["X", -70]], calf_l = [["X", 150]], calf_r = [["X", 150]], foot_l = [["X", -60]], foot_r = [["X", -60]], neck_01 = [["X", 30]], head = [["X", 20]] }
+move = { pelvis = [0, 0.0, -0.60] }
+rotate = { thigh_l = [["X", 43]], thigh_r = [["X", 43]], calf_l = [["X", -123]], calf_r = [["X", -123]], foot_l = [["X", 80]], foot_r = [["X", 80]], neck_01 = [["X", -40], ["Z", 70]], neck_02 = [["X", 60]], head = [["X", 10], ["Z", 60]] }
 [clip.params.poses.sit_in]
-move = { pelvis = [0, 0, -0.26] }
-rotate = { thigh_l = [["X", -70]], thigh_r = [["X", -70]], calf_l = [["X", 150]], calf_r = [["X", 150]], foot_l = [["X", -60]], foot_r = [["X", -60]], spine_01 = [["X", -2]], neck_01 = [["X", 28]], head = [["X", 20]] }
+move = { pelvis = [0, 0.0, -0.595] }
+rotate = { thigh_l = [["X", 43]], thigh_r = [["X", 43]], calf_l = [["X", -123]], calf_r = [["X", -123]], foot_l = [["X", 80]], foot_r = [["X", 80]], spine_01 = [["X", -2]], neck_01 = [["X", -39], ["Z", 70]], neck_02 = [["X", 59]], head = [["X", 10], ["Z", 60]], wing_l = [["Y", 4]], wing_r = [["Y", -4]] }
 
 [[clip]]
-name = "laufvogel/t_threaten"     # stretch tall, neck forward, hissing bob
+name = "laufvogel/t_threaten"     # stretch tall, wings spread, crest up, hissing with the beak open
 keyframe = "keyposes"
 [clip.params]
+base = "laufvogel/s_rest"
 keys = [[0, "rest"], [10, "tall"], [18, "hiss"], [26, "tall"], [34, "hiss"], [44, "rest"]]
 [clip.params.poses.tall]
 move = { pelvis = [0, 0, 0.05] }
-rotate = { spine_01 = [["X", -12]], neck_01 = [["X", 15]], head = [["X", -15]] }
+rotate = { spine_01 = [["X", -12]], neck_01 = [["X", 15]], neck_02 = [["X", -5]], head = [["X", -15]], jaw = [["X", 15]], wing_l = [["Y", 40]], wing_r = [["Y", -40]] }
 [clip.params.poses.hiss]
 move = { pelvis = [0, -0.03, 0.04] }
-rotate = { spine_01 = [["X", -10]], neck_01 = [["X", 25]], head = [["X", -25]] }
+rotate = { spine_01 = [["X", -10]], neck_01 = [["X", 25]], neck_02 = [["X", 5]], head = [["X", -25]], jaw = [["X", 30]], wing_l = [["Y", 45]], wing_r = [["Y", -45]] }
