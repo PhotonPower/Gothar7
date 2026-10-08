@@ -1,0 +1,475 @@
+# Creature "keiler" (F5, own work): old wild boar - replaces the CC0 placeholder (Quaternius pig)
+# with the same rig contract: bone names and hierarchy as before (keiler naming with shoulder and
+# hip bones, rump = tail stub), plus jaw and ear_l/r (agreed with engine 2026-10-08). Massive
+# shoulders with a bristle crest, wedge head, snout disc, tusks curving up, short slim legs with
+# hooves; dark grey-brown bristly coat. Built by `gothar-chargen creature keiler`.
+#
+# Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. The tool
+# moves everything so that root lies on the ground below the pelvis head. `mirror = true` adds the
+# right side.
+
+art = "keiler"
+material = "fur"
+voxel = 0.005
+smooth = 10
+triangles = 7000
+lods = [1.0, 0.5, 0.25]
+texture = 1024
+seed = 61
+ao = 0.6
+normal_size = 512
+normal_strength = 1.0
+eye_colour = "#140d09"
+teeth_colour = "#e2d8c2"
+tongue_colour = "#6e3c38"
+
+[orientation]          # the head hangs low: up is root -> pelvis
+up = ["root", "pelvis"]
+
+[sockets]
+socket_mouth = { parent = "head", length = 0.05 }
+
+# --- rig: the contract of the placeholder (characters-pipeline.md §7.3) plus jaw and ears ---
+
+[[bone]]
+name = "pelvis"
+head = [0, 0, 0.42]
+tail = [0, 0, 0.62]
+
+[[bone]]
+name = "rump"                # tail stub
+parent = "pelvis"
+head = [0, 0.56, 0.52]
+tail = [0, 0.66, 0.38]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0, 0.44, 0.58]
+tail = [0, 0.08, 0.62]
+
+[[bone]]
+name = "spine_02"
+parent = "spine_01"
+head = [0, 0.08, 0.62]
+tail = [0, -0.24, 0.7]
+
+[[bone]]
+name = "chest"
+parent = "pelvis"
+head = [0, -0.15, 0.48]
+tail = [0, -0.4, 0.5]
+
+[[bone]]
+name = "neck_01"
+parent = "chest"
+head = [0, -0.4, 0.5]
+tail = [0, -0.64, 0.47]
+
+[[bone]]
+name = "head"
+parent = "neck_01"
+head = [0, -0.64, 0.47]
+tail = [0, -0.99, 0.314]
+
+[[bone]]
+name = "jaw"                 # added with engine (2026-10-08)
+parent = "head"
+head = [0, -0.82, 0.27]
+tail = [0, -0.96, 0.25]
+
+[[bone]]
+name = "ear_l"
+parent = "head"
+mirror = true
+head = [0.07, -0.65, 0.58]
+tail = [0.11, -0.61, 0.68]
+
+[[bone]]
+name = "front_shoulder_l"
+parent = "pelvis"
+mirror = true
+head = [0.06, -0.4, 0.42]
+tail = [0.13, -0.4, 0.38]
+
+[[bone]]
+name = "front_upper_l"
+parent = "front_shoulder_l"
+mirror = true
+head = [0.13, -0.4, 0.38]
+tail = [0.13, -0.43, 0.17]
+
+[[bone]]
+name = "front_lower_l"
+parent = "front_upper_l"
+mirror = true
+head = [0.13, -0.43, 0.17]
+tail = [0.13, -0.41, 0.03]
+
+[[bone]]
+name = "front_foot_l"
+parent = "front_lower_l"
+mirror = true
+head = [0.13, -0.41, 0.03]
+tail = [0.13, -0.5, 0.02]
+
+[[bone]]
+name = "back_hip_l"
+parent = "pelvis"
+mirror = true
+head = [0.06, 0.45, 0.42]
+tail = [0.12, 0.45, 0.4]
+
+[[bone]]
+name = "back_upper_l"
+parent = "back_hip_l"
+mirror = true
+head = [0.12, 0.45, 0.4]
+tail = [0.12, 0.4, 0.218]
+
+[[bone]]
+name = "back_lower_l"
+parent = "back_upper_l"
+mirror = true
+head = [0.12, 0.4, 0.218]
+tail = [0.12, 0.48, 0.03]
+
+[[bone]]
+name = "back_foot_l"
+parent = "back_lower_l"
+mirror = true
+head = [0.12, 0.48, 0.03]
+tail = [0.12, 0.39, 0.02]
+
+# --- colour zones (sRGB): dark grey-brown wild boar ---
+
+[zone.fur]
+colour = "#3e352e"
+colour2 = "#2c2520"
+variation = 0.14
+strands = 1.0
+belly = 0.25
+spots = 0.1
+stripe_colour = "#5a4e44"
+
+[zone.crest]                 # bristle crest along the back, grizzled tips
+colour = "#4a4038"
+colour2 = "#6e6458"
+variation = 0.15
+strands = 1.0
+
+[zone.head]
+colour = "#463c34"
+colour2 = "#5c5046"
+variation = 0.12
+strands = 0.8
+
+[zone.cheek]                 # paler grizzled cheeks
+colour = "#6a5e52"
+colour2 = "#544a40"
+variation = 0.12
+strands = 0.8
+
+[zone.snout]
+colour = "#3a302a"
+variation = 0.1
+strands = 0.4
+wrinkles = 0.4
+
+[zone.disc]                  # bare nose disc
+colour = "#5e4a44"
+colour2 = "#4a3a36"
+variation = 0.1
+wrinkles = 0.8
+
+[zone.ear]
+colour = "#2e2622"
+variation = 0.1
+strands = 0.7
+
+[zone.ear_inner]
+colour = "#5a4842"
+strands = 0.4
+
+[zone.eye_rim]
+colour = "#1e1814"
+
+[zone.hoof]
+colour = "#1c1816"
+colour2 = "#2a2420"
+variation = 0.08
+strata = 0.3
+
+[zone.mouth]                 # gums and palate
+colour = "#5a2e2a"
+colour2 = "#4a2422"
+variation = 0.12
+wrinkles = 0.8
+
+[zone.throat]
+colour = "#140a08"
+variation = 0.05
+
+[zone.tailtip]
+colour = "#1e1a16"
+strands = 1.0
+
+# --- body: massive front, smaller hindquarters ---
+
+[[shape]]
+kind = "ellipsoid"           # deep chest and shoulders
+zone = "fur"
+center = [0, -0.28, 0.485]
+size = [0.19, 0.34, 0.275]
+
+[[shape]]
+kind = "ellipsoid"           # shoulder hump
+zone = "fur"
+center = [0, -0.28, 0.62]
+size = [0.14, 0.26, 0.13]
+
+[[shape]]
+kind = "ellipsoid"           # belly
+zone = "fur"
+center = [0, 0.04, 0.46]
+size = [0.17, 0.38, 0.225]
+
+[[shape]]
+kind = "ellipsoid"           # hindquarters
+zone = "fur"
+center = [0, 0.33, 0.485]
+size = [0.15, 0.23, 0.165]
+
+[[shape]]
+kind = "ellipsoid"           # hams
+zone = "fur"
+mirror = true
+center = [0.085, 0.4, 0.362]
+size = [0.07, 0.12, 0.13]
+
+[[shape]]
+kind = "ellipsoid"           # shoulder muscles
+zone = "fur"
+mirror = true
+center = [0.105, -0.39, 0.38]
+size = [0.07, 0.12, 0.14]
+
+[[shape]]
+kind = "tuft_shell"          # bristle crest from the neck to the middle of the back
+zone = "crest"
+center = [0, -0.26, 0.575]
+size = [0.13, 0.34, 0.215]
+rows = [-0.29, -0.255, -0.22, -0.185, -0.15, -0.115, -0.08, -0.045, -0.01, 0.025, 0.06, 0.095, 0.13]
+angles = [-27, -18, -9, 0, 9, 18, 27]
+tuft = [0.014, 0.075, 0.018]
+sink = 0.008
+tilt = 22
+jitter = 0.35
+seed = 4
+
+# legs: short and slim, with hooves
+[[shape]]
+kind = "chain"               # front legs: shoulder, knee, fetlock
+zone = "fur"
+mirror = true
+points = [[0.12, -0.41, 0.346], [0.13, -0.43, 0.17], [0.13, -0.415, 0.066]]
+radii = [0.078, 0.052, 0.038]
+
+[[shape]]
+kind = "ellipsoid"           # carpal joints
+zone = "fur"
+mirror = true
+center = [0.13, -0.425, 0.17]
+size = [0.045, 0.05, 0.045]
+
+[[shape]]
+kind = "ellipsoid"           # front hooves (two toes)
+zone = "hoof"
+mirror = true
+center = [0.13, -0.44, 0.026]
+size = [0.033, 0.05, 0.028]
+rotate = [12, 0, 0]
+
+[[shape]]
+kind = "cut_box"             # cleft between the toes
+zone = "hoof"
+mirror = true
+center = [0.13, -0.46, 0.03]
+size = [0.0025, 0.03, 0.04]
+
+[[shape]]
+kind = "chain"               # hind legs: ham, stifle, hock, fetlock
+zone = "fur"
+mirror = true
+points = [[0.11, 0.44, 0.362], [0.12, 0.4, 0.226], [0.12, 0.47, 0.122], [0.12, 0.47, 0.066]]
+radii = [0.085, 0.056, 0.042, 0.036]
+
+[[shape]]
+kind = "ellipsoid"           # hocks
+zone = "fur"
+mirror = true
+center = [0.12, 0.48, 0.146]
+size = [0.042, 0.05, 0.05]
+
+[[shape]]
+kind = "ellipsoid"           # hind hooves
+zone = "hoof"
+mirror = true
+center = [0.12, 0.445, 0.026]
+size = [0.032, 0.048, 0.027]
+rotate = [12, 0, 0]
+
+[[shape]]
+kind = "cut_box"
+zone = "hoof"
+mirror = true
+center = [0.12, 0.43, 0.03]
+size = [0.0025, 0.03, 0.04]
+
+# thick neck and wedge head
+[[shape]]
+kind = "chain"
+zone = "fur"
+points = [[0, -0.42, 0.54], [0, -0.6, 0.48]]
+radii = [0.18, 0.15]
+
+[[shape]]
+kind = "capsule"             # wedge head
+zone = "head"
+a = [0, -0.6, 0.47]
+b = [0, -0.86, 0.346]
+r = 0.14
+r2 = 0.088
+
+[[shape]]
+kind = "ellipsoid"           # grizzled cheeks
+zone = "cheek"
+mirror = true
+center = [0.075, -0.7, 0.39]
+size = [0.06, 0.11, 0.08]
+rotate = [-20, 0, 0]
+
+[[shape]]
+kind = "capsule"             # snout: round, narrowing towards the disc
+zone = "snout"
+a = [0, -0.8, 0.362]
+b = [0, -1, 0.31]
+r = 0.078
+r2 = 0.05
+
+[[shape]]
+kind = "ellipsoid"           # nose disc
+zone = "disc"
+center = [0, -1.035, 0.306]
+size = [0.048, 0.014, 0.044]
+rotate = [-15, 0, 0]
+
+[[shape]]
+kind = "cut"                 # nostrils
+zone = "disc"
+mirror = true
+center = [0.017, -1.05, 0.306]
+size = [0.008, 0.012, 0.012]
+
+[[shape]]
+kind = "capsule"             # lower jaw, round
+zone = "snout"
+a = [0, -0.64, 0.30]
+b = [0, -0.95, 0.245]
+r = 0.062
+r2 = 0.032
+
+[[shape]]
+kind = "cut_box"             # mouth: through the snout past its tip, opens with the jaw
+zone = "mouth"
+center = [0, -0.93, 0.268]
+size = [0.08, 0.15, 0.003]
+rotate = [-8, 0, 0]
+
+[[shape]]
+kind = "cut"                 # dark throat behind the mouth (a cavity the slit opens up)
+zone = "throat"
+center = [0, -0.81, 0.28]
+size = [0.045, 0.06, 0.03]
+
+[[shape]]
+kind = "tongue"
+bone = "jaw"
+center = [0, -0.89, 0.262]
+size = [0.034, 0.07, 0.01]
+
+[[shape]]
+kind = "cut"                 # eye sockets
+zone = "eye_rim"
+mirror = true
+center = [0.088, -0.74, 0.445]
+size = [0.016, 0.013, 0.012]
+
+[[shape]]
+kind = "eye"                 # small dark eyes
+mirror = true
+bone = "head"
+center = [0.085, -0.738, 0.445]
+size = [0.011, 0.008, 0.008]
+rotate = [0, -20, 0]
+
+[[shape]]
+kind = "capsule"             # ears
+zone = "ear"
+mirror = true
+a = [0.07, -0.65, 0.58]
+b = [0.11, -0.61, 0.68]
+r = 0.035
+r2 = 0.009
+
+[[shape]]
+kind = "cut"                 # inside of the ears, facing sideways and forward
+zone = "ear_inner"
+mirror = true
+center = [0.09, -0.645, 0.62]
+size = [0.012, 0.016, 0.03]
+
+[[shape]]
+kind = "tooth"               # lower tusks: three nested cones bending out, up and back
+mirror = true
+bone = "jaw"
+a = [0.045, -0.915, 0.262]
+b = [0.068, -0.921, 0.317]
+r = 0.015
+
+[[shape]]
+kind = "tooth"
+mirror = true
+bone = "jaw"
+a = [0.056, -0.918, 0.287]
+b = [0.079, -0.908, 0.347]
+r = 0.012
+
+[[shape]]
+kind = "tooth"
+mirror = true
+bone = "jaw"
+a = [0.068, -0.915, 0.322]
+b = [0.088, -0.893, 0.382]
+r = 0.009
+
+[[shape]]
+kind = "tooth"               # upper tusks
+mirror = true
+bone = "head"
+a = [0.05, -0.895, 0.306]
+b = [0.075, -0.87, 0.334]
+r = 0.009
+
+# tail stub with a tuft
+[[shape]]
+kind = "chain"
+zone = "fur"
+points = [[0, 0.55, 0.54], [0, 0.62, 0.45], [0, 0.66, 0.38]]
+radii = [0.022, 0.014, 0.011]
+
+[[shape]]
+kind = "ellipsoid"
+zone = "tailtip"
+center = [0, 0.67, 0.354]
+size = [0.018, 0.016, 0.04]
