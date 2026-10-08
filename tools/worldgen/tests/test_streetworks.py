@@ -7,7 +7,7 @@ import pytest
 from shapely.geometry import LineString, box
 
 from gothar_worldgen.export.ways import monotone_profile
-from gothar_worldgen.streetworks import gutter_strips, steps_piece, wall_piece
+from gothar_worldgen.streetworks import gutter_pieces, gutter_strips, steps_piece, wall_piece
 
 RULES = json.loads(
     (Path(__file__).parents[1] / "data" / "leonberg" / "streetworks.json").read_text("utf-8")
@@ -77,3 +77,17 @@ def test_a_retaining_wall_collides_and_is_dry_or_mortared():
     mortared = wall_piece(dict(plan, style="mortared"), RULES["walls"])
     assert mortared is not None and set(mortared.builders) == {"stone"}
     assert wall_piece(dict(plan, points=pts[:1]), RULES["walls"]) is None
+
+
+def test_a_gutter_lies_on_a_street_falling_across_with_its_bottom_above_the_ground():
+    spec = RULES["gutters"]
+    fall = lambda x, z: 0.12 * z  # noqa: E731  the street falls 12 % across
+    (piece,) = gutter_pieces([LineString([(0, 0), (10, 0)])], fall, spec)
+    b = piece.builders["stone_slab"]
+    tops = [(x + b.ox, y + b.oy, z + b.oz) for x, y, z in b.pos]
+    surface = [p for p in tops if p[1] > fall(p[0], p[2]) - 0.01]  # the slabs, not their skirts
+    assert surface and all(y >= fall(x, z) + spec["liftM"] - spec["depthM"] - 1e-6
+                           for x, y, z in surface)  # fmt: skip
+    edges = [p for p in surface if abs(abs(p[2]) - spec["widthM"] / 2) < 1e-6]
+    assert all(y == pytest.approx(fall(x, z) + spec["liftM"]) for x, y, z in edges)
+    assert min(y - fall(x, z) for x, y, z in tops) < 0  # the skirts reach into the ground

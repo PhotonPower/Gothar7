@@ -286,7 +286,8 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     - Wiese (Rückfall)
     - Kopfstein: Straßen und Plätze im Kernbereich
     - Kies: Straßen und Plätze außerhalb, Bahnlinien
-    - Matsch: unter Gebäuden plus 1,5 m Rand, an Bächen und Gräben
+    - Matsch: unter Gebäuden plus 1,5 m Rand, an Bächen und Gräben; dazu Böschungen an Straßen: Pflaster und Kies
+      blenden zwischen 28° und 32° Neigung aus und werden Erde (W6, Koordinator 2026-10-08: kein verzerrtes Pflaster)
     - Waldboden: Wald, Gebüsch, Einzelbäume mit 3 m Radius
     - Acker: Ackerland, Kleingärten, Gärten
     - Fels: Neigung über 35–45°, weich eingeblendet
@@ -601,7 +602,11 @@ Koordinator im Auftrag des Projektinhabers). Werte in `tools/worldgen/data/<ort>
     nie durchstößt.
   - Wange, wo das Gelände daneben tiefer liegt als `cheekM`.
   - Keine Kollision, das Gelände trägt.
-- **Rinnen** aus flachen Steinen (flaches V, 0,5 m breit) an den gepflasterten Straßen im Kern:
+- **Rinnen** als Plattenrinne an den gepflasterten Straßen im Kern (Koordinator 2026-10-08):
+  - ein Band aus flachen Steinplatten, 0,5 m breit, im Pflasterton (`stone_slab`, Textur `slab`: Platten von
+    35–80 cm Länge, Fugen aus schmutzigem Sand quer, keine dunklen Kanten);
+  - das flache V (3 cm) sieht man nur an der Schattierung; jeder Rand liegt 5 cm über dem Gelände neben ihm, mit einer
+    kurzen Schürze in den Boden, der Grund des V über dem Gelände;
   - in der Mitte von Straßen unter `centreBelowM` 6 m Breite, sonst an beiden Seiten;
   - nicht unter Häusern, auf Plätzen und Stufen;
   - nur Dekoration, eine Datei je 64-m-Zelle.

@@ -40,6 +40,8 @@ def kind_of(material: str) -> str | None:
         if material.endswith(STREAK):
             return "plaster_streak"
         return "plaster_low" if material.endswith(LOW) else "plaster"
+    if name == "stone_slab":  # the street gutters (W6)
+        return "slab"
     if name in ("stone", "brick") or name.startswith("stone_"):
         return "stone"
     if name.startswith("timber"):
@@ -97,7 +99,14 @@ def textured(prim: Primitive, uri_root: str, offset: tuple[float, float] = (0.0,
     )
 
 
-SHIFTED = {"plaster", "stone", "roof", "roof_moss", "boards"}  # shifted per house (texture_house)
+SHIFTED = {
+    "plaster",
+    "stone",
+    "roof",
+    "roof_moss",
+    "boards",
+    "slab",
+}  # shifted per house (texture_house)
 
 
 def texture_house(prims: Sequence[Primitive], uri_root: str, key: str = "") -> list[Primitive]:

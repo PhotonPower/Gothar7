@@ -10,7 +10,8 @@ them as vobs (group ``WORLDGEN_STRASSENBAU``).
   the evenly rising ground a figure's feet lie at most one riser under the tread). Where the
   ground beside the steps lies lower than ``cheekM`` a cheek wall closes the side. They do not
   collide (the ground carries).
-- **Gutters** of flat stones (a shallow V, ``widthM`` wide) along the paved streets of the core:
+- **Gutters** of flat slabs (a shallow V, ``widthM`` wide, a little lighter than the cobbles, the
+  V seen only in its shading) along the paved streets of the core:
   in the middle of streets narrower than ``centreBelowM``, at both sides of wider ones; not under
   houses, on squares or on steps. Decoration only: one file per ``cellM`` cell.
 - **Retaining walls** where a street is cut into a slope, as ``export-terrain`` planned them
@@ -209,12 +210,13 @@ def gutter_pieces(strips: Sequence[LineString], height: Height,
         m = g.interpolate(g.length / 2)
         by_cell[(math.floor(m.x / cell), math.floor(m.y / cell))].append(g)
     half, depth, lift = float(spec["widthM"]) / 2, float(spec["depthM"]), float(spec["liftM"])
+    skirt = lift + 0.05
     step = float(spec["sampleM"])
     pieces = []
     for (i, j), lines in sorted(by_cell.items()):
         cx, cz = (i + 0.5) * cell, (j + 0.5) * cell
         piece = Piece(f"gutter_{i}_{j}".replace("-", "m"), "gutter", (cx, height(cx, cz), cz))
-        b = piece.b("stone_dark")  # darker than the cobbles: wet, dirty
+        b = piece.b("stone_slab")  # flat slabs a little lighter than the cobbles, the V shaded
         for g in lines:
             n = max(2, int(g.length / step) + 1)
             ts = np.linspace(0.0, g.length, n)
@@ -226,16 +228,26 @@ def gutter_pieces(strips: Sequence[LineString], height: Height,
                 dx, dz = q.x - r.x, q.y - r.y
                 ln = math.hypot(dx, dz) or 1.0
                 nx, nz = -dz / ln, dx / ln
-                y = height(p.x, p.y) + lift
-                rows.append([(p.x + nx * half, y, p.y + nz * half), (p.x, y - depth, p.y),
-                             (p.x - nx * half, y, p.y - nz * half), float(t)])  # fmt: skip
-            for (l0, c0, r0, t0), (l1, c1, r1, t1) in zip(rows, rows[1:], strict=False):
+                # each edge on the ground beside it (a street falling across), the V's bottom
+                # above the ground in the middle: no cobbles showing through
+                lx, lz, rx, rz = p.x + nx * half, p.y + nz * half, p.x - nx * half, p.y - nz * half
+                yl, yr = height(lx, lz) + lift, height(rx, rz) + lift
+                yc = max((yl + yr) / 2 - depth, height(p.x, p.y) + lift - depth)
+                rows.append([(lx, yl, lz), (p.x, yc, p.y), (rx, yr, rz), float(t), (nx, nz)])
+            for (l0, c0, r0, t0, n0), (l1, c1, r1, t1, _) in zip(rows, rows[1:], strict=False):
                 for e0, e1, f0, f1, u0, u1 in (
                     (l0, l1, c0, c1, 0.0, half),
                     (c0, c1, r0, r1, half, 2 * half),
                 ):
                     b.polygon([e0, e1, f1, f0], [(u0, t0), (u0, t1), (u1, t1), (u1, t0)],
                               (0.0, 1.0, 0.0))  # fmt: skip
+                for e0, e1, sx in (
+                    (l0, l1, 1.0),
+                    (r0, r1, -1.0),
+                ):  # the slabs' edges into the ground
+                    d0, d1 = (e0[0], e0[1] - skirt, e0[2]), (e1[0], e1[1] - skirt, e1[2])
+                    b.polygon([e0, e1, d1, d0], [(0.0, t0), (0.0, t1), (skirt, t1), (skirt, t0)],
+                              (n0[0] * sx, 0.0, n0[1] * sx))  # fmt: skip
         _no_collision(piece)
         if piece.triangles():
             pieces.append(piece)
