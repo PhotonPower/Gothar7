@@ -43,8 +43,11 @@ PROP_SIZE = {"barrel": (0.62, 0.62), "barrel_rack": (1.62, 0.95), "shelf": (1.22
              # denser rooms (W7 step 4)
              "stool": (0.36, 0.36), "bucket": (0.34, 0.34), "basket": (0.5, 0.5),
              "broom": (0.3, 0.25), "wall_hanging": (1.4, 0.1), "firewood": (0.82, 0.44),
-             "fur": (1.5, 0.96)}  # fmt: skip
-WALL_BOARDS = {"tool_board", "weapon_board", "wall_hanging"}  # on the wall, nothing below
+             "fur": (1.5, 0.96),
+             # bedrooms upstairs (owner 2026-10-08)
+             "washstand": (0.55, 0.4), "clothes_hooks": (1.04, 0.1)}  # fmt: skip
+WALL_BOARDS = {"tool_board", "weapon_board", "wall_hanging", "clothes_hooks"}  # nothing below
+LOW_BOARDS = {"clothes_hooks"}  # what hangs from them reaches down to a metre: free floor below
 HANGING = {"sausages": 0.55, "herbs": 0.45}  # from the ceiling: how far they hang down
 HANG_OUT_M = 0.45  # hanging things this far from the wall
 HEAD_M = 2.0  # hanging things end above this (over the floor)
@@ -94,6 +97,11 @@ BIG_ROOM_M2 = 60.0  # a second light in rooms bigger than this
 Pt = tuple[float, float]
 # divided ground storeys (index ``interior.rooms``): what goes into the chambers, round the rooms
 CHAMBER_MOBS = {"bed", "chest"}
+# the chambers upstairs are bedrooms (owner 2026-10-08): besides the beds and chests a stool with
+# a candle on it, a washstand, clothes on hooks, a fur on the floor; a clothes chest where none is;
+# the room at the head of the stairs a stool with a candle and a fur
+BEDROOM_PROPS = (("stool", 1), ("washstand", 1), ("clothes_hooks", 1), ("fur", 1))
+HALL_PROPS = (("stool", 1), ("fur", 1))
 CHAMBER_PROPS = {"barrel", "crate", "crate_stack", "sacks", "basket", "fur", "wall_hanging"}
 
 
@@ -103,6 +111,7 @@ class InsideSpec:
     freepoints: list[tuple[str, int]] = field(default_factory=list)
     hearth: bool = False
     props: list[tuple[str, int]] = field(default_factory=list)  # (prop or "counter", count)
+    bedside: bool = False  # a candle on a stool (the bedrooms upstairs)
 
 
 def inside_spec(spec: dict[str, Any], where: str) -> InsideSpec:
@@ -190,11 +199,13 @@ class _Room:
         return not any(lane.intersects(t) for t in [*self.taken, *self.props])
 
     def on_wall_free(self, shape: Polygon) -> bool:
-        """A wall-mounted ``shape`` (boards, hangings): on the wall, off the door and away from
-        other tall or wall-mounted things."""
+        """A wall-mounted ``shape`` (boards, hangings): on the wall, off the door and the passages
+        and away from other tall or wall-mounted things."""
         if not self.poly.buffer(-0.02).contains(shape):
             return False
         if shape.distance(Point(self.door_mid)) < DOOR_ZONE_M:
+            return False
+        if any(shape.distance(Point(e)) < DOOR_ZONE_M for e in self.exits):  # the passages
             return False
         if any(shape.distance(q) < 0.45 for q in self.spots):  # a figure leaning there
             return False
@@ -328,7 +339,10 @@ def _against_wall(
             t += STEP_M
             shape = _rect(cx, cz, ux, uz, length, depth)
             if kind in WALL_BOARDS:  # above heads: only the wall must be free (no floor room)
-                if room.on_wall_free(shape) and not room.before_window(shape):
+                low = kind in LOW_BOARDS and any(  # clothes down to a metre: not over furniture
+                    shape.buffer(0.35).intersects(t) for t in [*room.taken, *room.props]
+                )
+                if room.on_wall_free(shape) and not room.before_window(shape) and not low:
                     return shape, (cx, cz), (nx, nz)
                 continue
             reach = depth / 2 + SLOT.get(kind, 0.6)
@@ -397,6 +411,7 @@ class _House:
         self.tables: list[tuple[float, float]] = []
         self.table_axes: list[tuple[float, float]] = []
         self.beds: list[tuple[tuple[float, float], tuple[float, float]]] = []
+        self.stools: list[tuple[float, float]] = []  # stools against a wall (a candle on one)
 
     def vob(self, kind: str, name: str, pos: tuple[float, float], front: tuple[float, float],
             height: float | None = None, **comp: object) -> None:  # fmt: skip
@@ -489,6 +504,20 @@ class _House:
                 components={"light": dict(LIGHT["lantern"])},
             )
             lights.append(at)
+
+    def bedside_candle(self) -> None:
+        """A tallow candle on a stool by the wall: the bedroom's light at night (it counts, so
+        no lantern goes up where it is enough)."""
+        from gothar_worldgen.mobs import CANDLE_TOP
+
+        if not self.stools:
+            return
+        x, z = self.stools[0]
+        seat = self.room.floor + 0.45
+        self.prop("candlestick", (x, z), (0.0, 1.0), None, height=seat)
+        light = {"light": dict(LIGHT["candle"])}
+        self.vob("light", f"LIGHT_{self.tag}_TALGLICHT", (x, z), (0.0, 1.0),
+                 height=seat + CANDLE_TOP + 0.1, components=light)  # fmt: skip
 
     def window_lights(self) -> None:
         """Daylight in at up to ``WINDOW_LIGHTS`` windows, on different walls where it can."""
@@ -617,6 +646,8 @@ class _House:
         self.prop(kind, centre, front, shape)
         if kind == "weapon_board":
             self.weapons(centre, front)
+        if kind == "stool":
+            self.stools.append(centre)
 
     def beside_hearth(self, c: tuple[float, float], n: tuple[float, float]) -> bool:
         """Room for the bellows on one side of a hearth at ``c`` facing ``n``."""
@@ -855,6 +886,8 @@ class _House:
                 self.place_prop(kind, hearth_at)
         # the lights last: windows, candles on the tables, lanterns where nothing tall stands
         self.window_lights()
+        if spec.bedside:
+            self.bedside_candle()
         self.candles()
         if through is not None:
             self.chamber_waypoints(*through)
@@ -1122,6 +1155,18 @@ def _upper(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, st: 
         for _ in range(n):
             shares[rooms_for[k % len(rooms_for)]].props.append((kind, 1))
             k += 1
+    for k, name in enumerate(order):  # the bedrooms' set, the hall's lighter one
+        sh = shares[name]
+        sh.bedside = True
+        if (k > 0 and name in rooms_for) or not order[1:]:  # a bedroom (or the only room)
+            if any(kind == "bed" for kind, _ in sh.mobs) and not any(
+                kind == "chest" for kind, _ in sh.mobs
+            ):
+                sh.mobs.append(("chest", "1"))  # a clothes chest
+            have = {kind for kind, _ in sh.props}
+            sh.props += [(kind, n) for kind, n in BEDROOM_PROPS if kind not in have]
+        else:
+            sh.props += [(kind, n) for kind, n in HALL_PROPS]
     for name in order:
         if name not in built:
             continue

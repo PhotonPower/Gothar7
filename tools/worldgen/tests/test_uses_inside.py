@@ -481,3 +481,35 @@ def test_a_way_past_the_stair_opening_goes_round_it():
     assert not path.intersects(hole.buffer(0.15))
     assert room.buffer(0.15).contains(path)
     assert _detour((6.4, 3.0), (1.5, 3.0), hole, room) == []  # a clear way stays straight
+
+
+def test_the_bedrooms_upstairs_are_furnished_like_downstairs():
+    index = _two_storeys()
+    room = index["entries"][0]["interior"]
+    up, st = room["upper"], room["stairs"]
+    spec = {"wohnhaus": inside_spec({"mobs": ["bed:R", "table:1"], "hearth": True,
+                                     "props": ["shelf:1"]}, "x")}  # fmt: skip
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=2, inside=True)
+    p = plan_inside([house], spec, index, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+    assert p.failed == []
+    names = [v["name"] for v in p.vobs if "_OBEN" in v["name"]]
+    beds = {n.split("_BED_")[0].removeprefix("MOB_") for n in names if "_BED_" in n}
+    assert beds
+    for tag in beds:  # every bedroom: a clothes chest, stool, washstand, hooks, fur, a candle
+        mine = [n for n in names if n.split("_", 1)[1].startswith(tag + "_")]
+        for part in ("_CHEST_", "_STOOL_", "_WASHSTAND_", "_CLOTHES_HOOKS_", "_FUR_",
+                     "_CANDLESTICK_"):  # fmt: skip
+            assert any(part in n for n in mine), (tag, part)
+    light = next(v for v in p.vobs if v["name"].endswith("_TALGLICHT"))
+    stool = min((v for v in p.vobs if "_STOOL_" in v["name"] and "_OBEN" in v["name"]),
+                key=lambda v: math.dist(v["pos"][::2], light["pos"][::2]))  # fmt: skip
+    assert math.dist(stool["pos"][::2], light["pos"][::2]) < 1e-6  # the candle on the stool
+    assert light["pos"][1] > up["floor"] + 0.45
+    mids = [Point(q["mid"]) for q in up.get("passages", [])]
+    for v in p.vobs:  # clothes hang off the passages (they reach down to a metre)
+        if "_CLOTHES_HOOKS_" in v["name"]:
+            assert all(m.distance(Point(v["pos"][0], v["pos"][2])) > 1.2 for m in mids)
+    hole = Polygon(st["opening"]).buffer(0.15).union(Polygon(st["headLanding"]))
+    for v in p.vobs:  # the opening and its landing stay free upstairs
+        if v["type"] in ("mob", "mesh") and v["pos"][1] >= up["floor"] - 0.01:
+            assert not hole.contains(Point(v["pos"][0], v["pos"][2])), v["name"]
