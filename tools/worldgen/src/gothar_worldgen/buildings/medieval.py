@@ -466,8 +466,10 @@ def _flat_opening(frame_b: _Builder, f: Frame, op: Opening) -> None:
     frame_b.polygon(pts, [(u0, v0), (u1, v0), (u1, v1), (u0, v1)], f.n3())
 
 
-def _reveal(frame_b: _Builder, f: Frame, op: Opening, depth: float, panel: bool = True) -> None:
-    """Recessed panel (window/door) with the four reveal faces; ``panel=False``: open through."""
+def _reveal(frame_b: _Builder, f: Frame, op: Opening, depth: float, panel: bool = True,
+            start: float = 0.0) -> None:  # fmt: skip
+    """Recessed panel (window/door) with the four reveal faces; ``panel=False``: open through;
+    ``start``: the faces begin this deep in the wall (a niche continued)."""
     u0, u1, v0, v1 = op.u, op.u + op.w, op.v, op.v + op.h
     n = f.n3()
     if panel:
@@ -482,7 +484,8 @@ def _reveal(frame_b: _Builder, f: Frame, op: Opening, depth: float, panel: bool 
         ((u1, v0), (u1, v1), (-ax[0], 0.0, -ax[2])),
     ]
     for (ua, va), (ub, vb), want in sides:
-        quad = [f.point(ua, va), f.point(ub, vb), f.point(ub, vb, -depth), f.point(ua, va, -depth)]
+        quad = [f.point(ua, va, -start), f.point(ub, vb, -start), f.point(ub, vb, -depth),
+                f.point(ua, va, -depth)]  # fmt: skip
         frame_b.polygon(quad, [(0, 0), (1, 0), (1, 1), (0, 1)], want)
 
 
@@ -1280,7 +1283,10 @@ def _upper_room(ctx: _Context, floor: float, storey: float, notes: list[str]) ->
         _room_beams(ctx, inner, ceiling, spec)
     for cut in cuts:
         _partition(ctx, cut, floor, ceiling, spec)
-    opening_faces(ctx.builders["room_ceiling"], hole, below, floor)
+    # the slab's height at the walls: the walls run on through it (the facade's inner side is not
+    # drawn: through the opening one would look outside); the opening's cut edges in the room
+    _room_walls(ctx, inner, below, floor, [], [])
+    opening_faces(ctx.builders["room_ceiling"], hole, below, floor, inner)
     rail = float(spec["stairs"]["railM"])
     for foot in opening_rail(ctx.builders["room_beam"], st, hole, rail):
         ctx.inner_walls.append((foot, floor, floor + rail))
@@ -1539,7 +1545,9 @@ def _facade(ctx: _Context, f: Frame, edge: int, s: int, heights: Sequence[float]
             if s > 0 and ctx.room_inner is not None:  # upstairs: through to the room's walls
                 mid = f.point(op.u + op.w / 2, op.v + op.h / 2)
                 depth = max(wall, float(ctx.room_inner.exterior.distance(Point(mid[0], mid[2]))))
-            _reveal(ctx.builders["frame"], f, op, depth, panel=False)
+            _reveal(ctx.builders["frame"], f, op, wall, panel=False)
+            if depth > wall + 0.01:  # upstairs over a jetty: the rest of the niche plastered
+                _reveal(ctx.builders["room_wall"], f, op, depth, panel=False, start=wall)
             _window_cross(ctx.builders["room_beam"], f, op, wall / 2)  # with the room's wood:
             _shutters(ctx.builders["room_beam"], f, op)  # outside the house budget
             if s == 0:

@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Point, Polygon
 
 from gothar_worldgen.buildings.gltf import CollisionPart
 
@@ -192,8 +192,6 @@ def _blocks(st: Stair, window: LineString, sill: float, clear: float) -> bool:
 
 
 def _point(p: Pt) -> Any:  # noqa: ANN401
-    from shapely.geometry import Point
-
     return Point(p)
 
 
@@ -274,11 +272,18 @@ def opening_rail(b: Any, st: Stair, opening: Polygon, rail: float) -> list[Polyg
     return feet
 
 
-def opening_faces(b: Any, opening: Polygon, y0: float, y1: float) -> None:  # noqa: ANN401
-    """The cut edges of the slab round the opening (facing into it)."""
-    ring = list(Polygon(opening).exterior.coords)
-    c = opening.centroid
+def opening_faces(b: Any, opening: Polygon, y0: float, y1: float,  # noqa: ANN401
+                  room: Polygon | None = None) -> None:  # fmt: skip
+    """The cut edges of the slab round the opening (facing into it); with ``room`` only those in
+    the room (the opening reaches into the wall: there the wall's own face closes it)."""
+    hole = Polygon(opening) if room is None else Polygon(opening).intersection(room)
+    if hole.is_empty or not isinstance(hole, Polygon):
+        return
+    ring = list(hole.exterior.coords)
+    c = hole.centroid
     for (xa, za), (xb, zb) in zip(ring, ring[1:], strict=False):
+        if room is not None and room.exterior.distance(Point((xa + xb) / 2, (za + zb) / 2)) < 0.01:
+            continue
         w = math.dist((xa, za), (xb, zb))
         inward = (c.x - (xa + xb) / 2, 0.0, c.y - (za + zb) / 2)
         b.polygon([(xa, y0, za), (xb, y0, zb), (xb, y1, zb), (xa, y1, za)],
