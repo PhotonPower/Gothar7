@@ -24,6 +24,7 @@ void defineContentKinds(script::ScriptVm& vm)
              {"protection", Type::Table},
              {"requires", Type::Table},
              {"effects", Type::Table},   // using it: { hp = 20, mana = 10 } (food, potions)
+             {"boost", Type::Table},     // using it: for a while { speed = 1.3, seconds = 120 } (potions)
              {"text", Type::String},     // documents: what reading shows
              {"on_use", Type::Function}, // fn(item): after the effects
              {"tags", Type::StringList},

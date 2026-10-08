@@ -552,6 +552,88 @@ TEST_CASE("Engine use: eating, drinking, reading - only standing, effects at the
     CHECK(engine.lastNotice() == "Nicht jetzt.");
 }
 
+TEST_CASE("Engine use: beer is drunk, the strength elixir lasts, the speed potion runs faster for a while")
+{
+    Engine engine(scriptConfig());
+    auto result = engine.init();
+    REQUIRE_MESSAGE(result.ok(), (result.ok() ? "" : result.error().message));
+    for (int i = 0; i < 20; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    const auto use = [&](const char* item)
+    {
+        run(engine, std::format("give_item('{}')", item));
+        REQUIRE(engine.useItem(item).ok());
+        std::string clip;
+        for (int i = 0; i < 400 && engine.usingItem(); ++i)
+        {
+            REQUIRE(engine.runFrame());
+            if (engine.playerAnimationState().starts_with("use_"))
+            {
+                clip = std::string(engine.playerAnimationState());
+            }
+        }
+        return clip;
+    };
+    // Beer and wine (food tagged "drink") are drunk, ham eaten.
+    CHECK(use("it_beer") == "use_drink");
+    CHECK(use("it_ham") == "use_eat");
+    // The strength elixir: +3 for good (owner).
+    const i32 strength = engine.hero()->attribute("str");
+    CHECK(use("it_potion_strength") == "use_drink");
+    CHECK(engine.hero()->attribute("str") == strength + 3);
+
+    // The speed potion: x1.3 for 120 s (owner).
+    const auto speed = [&]
+    {
+        gameplay::MoveInput forward;
+        forward.forward = 1.0f;
+        engine.setPlayerInputOverride(forward);
+        for (int i = 0; i < 60; ++i) // up to speed
+        {
+            REQUIRE(engine.runFrame());
+        }
+        const Vec3 from = engine.player()->feet();
+        for (int i = 0; i < 60; ++i)
+        {
+            REQUIRE(engine.runFrame());
+        }
+        const Vec3 to = engine.player()->feet();
+        engine.setPlayerInputOverride(std::nullopt);
+        for (int i = 0; i < 60; ++i) // stand again
+        {
+            REQUIRE(engine.runFrame());
+        }
+        return glm::length(Vec2(to.x - from.x, to.z - from.z));
+    };
+    run(engine, "teleport(40, 0, 30)");
+    const f32 normal = speed();
+    run(engine, "teleport(40, 0, 30)");
+    for (int i = 0; i < 30; ++i) // landed: using needs standing
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(use("it_potion_speed") == "use_drink");
+    REQUIRE_FALSE(run(engine, "hero_boost()").isNil());
+    CHECK(run(engine, "hero_boost().speed").asNumber() == doctest::Approx(1.3));
+    CHECK(run(engine, "hero_boost().seconds").asNumber() > 115.0);
+    const f32 boosted = speed();
+    MESSAGE("running ", normal, " m/s, with the potion ", boosted, " m/s");
+    CHECK(boosted == doctest::Approx(normal * 1.3f).epsilon(0.05));
+    // Its end (a short potion of the same kind, defined here).
+    run(engine, "on('boost_ended', function() Story.boost_ended = true end)");
+    run(engine,
+        "Item 'it_test_boost' { name = 'Test', category = 'potion', boost = { speed = 1.3, seconds = 1 } }");
+    use("it_test_boost");
+    for (int i = 0; i < 90; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(run(engine, "hero_boost()").isNil());
+    CHECK(run(engine, "Story.boost_ended").asBool());
+}
+
 TEST_CASE("Engine use: pickpocketing as in Gothic 1 - talent, then dexterity, once per NPC")
 {
     Engine engine(scriptConfig());

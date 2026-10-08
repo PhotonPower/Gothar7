@@ -41,3 +41,12 @@ Item "it_potion_mana_small" {
     weight = 0.3,
     effects = { mana = 30 },
 }
+
+Item "it_potion_mana_medium" {
+    name = "Manatrank",
+    mesh = "items/it_potion_mana_medium.glb",
+    category = "potion",
+    value = 60,
+    weight = 0.3,
+    effects = { mana = 50 },
+}
