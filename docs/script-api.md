@@ -61,7 +61,7 @@ Beendet einen Effekt; seine Teilchen verglühen noch.
 Der Spieler betritt einen privaten Bereich (Trigger mit `owner`) des NPCs bzw. seiner Gilde; der NPC sieht ihn oder ist in der Nähe.
 
 ### `on("assess_fighter", fn(npc: string, distance: number, what: string))`
-Der NPC sieht den Spieler mit gezogener Waffe (`what`: `"weapon"`, `"fists"` oder `"magic"`); einmal je Ziehen.
+Der NPC sieht den Spieler mit gezogener Waffe (`what`: `"weapon"`, `"fists"`, `"magic"` oder `"animal"` in Tiergestalt); einmal je Ziehen.
 
 ### `on("assess_noise", fn(npc: string, kind: string, x, y, z))`
 Der NPC hört ein Geräusch (`kind`: `"run"`, `"lockpick"`, `"lock_broken"` … oder aus noise()).
@@ -83,6 +83,9 @@ Ein Dialog ist vorbei.
 
 ### `on("dialog_started", fn(npc: string))`
 Ein Dialog beginnt.
+
+### `on("hero_transformed", fn(species: string))`
+Der Held nimmt eine Tiergestalt an (M12, Z7) bzw. wird wieder Mensch (`species` leer).
 
 ### `on("item_bought", fn(npc: string, item: string, count: integer, price: integer))`
 Der Held hat beim Händler gekauft.
@@ -314,11 +317,17 @@ Der Zauber, den der Held gerade auflädt bzw. wirkt, mit der Aufladestufe ("spl_
 ### `hero_rune(place: integer)`
 Wählt den Runenplatz 1-7 wie die Tasten 4-9 (Z4): zieht ihn bzw. wechselt die Rune in der Hand.
 
+### `hero_shape() -> string | nil`
+Die Tiergestalt des Helden (Z7: "wolf" ...); nil als Mensch.
+
 ### `hero_summon() -> string | nil`
 Das vom Helden beschworene Wesen, solange es da ist (Z8); nil ohne.
 
 ### `hero_target() -> string | nil`
 Das Ziel, das der Held mit gezogener Waffe bzw. Magie anvisiert (Lock, K5); nil ohne.
+
+### `hero_transform_back()`
+Der Held wird wieder Mensch (wie die Taste „1“ in Tiergestalt).
 
 ## Mobs
 
@@ -435,7 +444,7 @@ Die anderen simulierten NPCs im Umkreis des NPCs, nach Abstand sortiert (Hilferu
 Ob der Spieler im Trigger `area` (Vob-Name, z. B. ein privater Bereich) steht.
 
 ### `player_weapon() -> string`
-Was der Held gezogen hat: `"none"`, `"weapon"` (Nahkampfwaffe), `"fists"`, `"ranged"` (Bogen, Armbrust) oder `"magic"` (Rune, Spruchrolle).
+Was der Held gezogen hat: `"none"`, `"weapon"` (Nahkampfwaffe), `"fists"`, `"ranged"` (Bogen, Armbrust), `"magic"` (Rune, Spruchrolle) oder `"animal"` (in Tiergestalt, Z7).
 
 ## Welt
 

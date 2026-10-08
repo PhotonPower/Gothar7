@@ -827,6 +827,10 @@ private:
     /// Z8: calls the spell's creature beside the hero for `seconds`; the one called before vanishes.
     std::optional<u32> summonForHero(const gameplay::SpellInfo& spell, f32 seconds);
     void vanish(Creature& c); ///< a summoned creature goes (effect); dead and gone for scripts
+    /// Z7: the hero becomes an animal (`species`: wolf, keiler, laufvogel) - its figure, capsule, gaits and
+    /// values; and back. Both happen at the start of a player step (never inside an animation or a hit).
+    bool beginTransform(std::string_view species);
+    void endTransform();
     // Effects (M12 part A, EngineFx.cpp).
     [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
     void drawEffects();
@@ -1234,6 +1238,18 @@ private:
     };
     std::optional<HeroCast> m_heroCast;
     std::optional<u32> m_heroSummon; // Z8: the hero's summoned creature (one at a time)
+    struct HeroTransform
+    {
+        std::string species;                         ///< "wolf"
+        std::string npc;                             ///< the Npc instance with its values ("mon_wolf")
+        std::unique_ptr<PlayerFigure> human;         ///< the hero's own figure, kept for the way back
+        std::unique_ptr<gameplay::Character> animal; ///< the animal's values and life (Z7)
+        gameplay::MovementSettings humanMovement;
+    };
+    std::optional<HeroTransform> m_transform; // Z7: the hero in an animal's shape
+    std::string m_transformRequested;         // ... becomes this species at the next player step
+    bool m_transformBackRequested = false;    // ... back at the next player step ("1", no life left, water)
+    i32 m_heroAnimalAction = 0;               // transformed: the animal graph's "action" for one step
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)
