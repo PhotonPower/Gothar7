@@ -452,7 +452,15 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, 
   - Ereignis `npc_burning(npc, caster)`; auch der Held kann brennen.
 - **C – Furcht-Rolle im Startsatz:** `spl_fear` „Schrecken“ (Ziel, 10 Mana, 10 s Flucht), Spruchrolle `it_scroll_fear`.
 
-**Weiter:** E DoD-Szenario.
+**Teil E – Meilenstein-Szenario** (`tests/runtime/test_engine_m12_scenario.cpp`): Ein Magier-Held mit dem Startsatz kämpft
+gegen den Kräuterhexer und einen Wegelagerer:
+- Schlaf legt den Wegelagerer hin.
+- Ein Feuerpfeil trifft den Hexer, der mit eigenen Sprüchen antwortet.
+- Ein gerufener Wolf greift ein.
+- Heilung heilt genau 50 abzüglich der Treffer währenddessen.
+- In Wolfsgestalt greift die Torwache an, der alte Mann flieht; „1“ macht den Helden wieder zum Menschen.
+
+**Nicht umgesetzt** (aus der Roadmap-Zeile): Telekinese und Shader-Effekte. Offen, ob sie zu M12 gehören.
 
 ## Wirtschaft
 Handel: Händler-Inventar, Preisfaktor Verkauf (z. B. 0,5), Währung als Item (`ItMi_Ore`).
