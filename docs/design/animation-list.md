@@ -198,6 +198,23 @@ beginnt und endet in `mag/s_idle`; Event `cast` = der Effekt startet. Fünf Wirk
 | `none/t_transform_out` | Verwandlung Mensch → Wolf: krümmt sich, sinkt auf alle viere; bei `swap` tauscht engine das Modell | 0,8 s | swap (Bild 12) | K | platzhalter-K (mit engine 2026-10-08) |
 | `none/t_transform_in` | Rückverwandlung Wolf → Mensch: richtet sich aus der Hocke auf, endet in `none/s_idle` | 0,8 s | – | K | platzhalter-K (mit engine 2026-10-08) |
 
+### Prio B – Fackel (F6, ausgeschrieben, mit engine 2026-10-08)
+
+Eigene Datei `anims/human/torch.glb` (Set `torch`, `none.glb` bleibt unverändert; engine sucht Clips über den vollen
+Namen in allen Sätzen, Namen über alle Dateien eindeutig, Validator `anim.duplicate`). `it_torch` in der linken Hand
+(`socket_hand_l`), Flamme am Knoten `socket_flame` des Items. Entscheidung Projektinhaber (wie Gothic 1): sichtbar
+beim Gehen, Rennen und Schleichen, auch mit Fäusten oder Einhandwaffe rechts; bei Zweihänder, Bogen, Armbrust und
+Magie weggesteckt; brennt unbegrenzt, Wasser löscht sie. `a_torch_hold` bewegt nur Schulter und Arm links und passt
+deshalb additiv über `none`-, `fist`- und `1h`-Clips (Referenz `none/a_neutral`).
+
+| Name | Zweck | Länge | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `none/a_neutral` | Referenzpose der `none`-Overlays (1 Frame, erster Frame von `none/s_idle` ohne Atmung) | – | – | K | platzhalter-K |
+| `none/a_torch_hold` | Fackel tragen: linker Arm angewinkelt, Fackel aufrecht neben dem Körper, leicht vor (Schleife) | 1 s | – | K | platzhalter-K (Haltung per Gittersuche) |
+| `none/a_torch_hold_in`, `a_torch_hold_out` | in die Tragehaltung bzw. zurück zum freien Arm | 0,33 s | – | K | platzhalter-K |
+| `none/t_torch_light` | Fackel vom Gürtel nehmen, hochheben, mit rechts anzünden; endet in der Tragehaltung | 1,2 s | torch_take, torch_light | K | platzhalter-K |
+| `none/t_torch_drop` | Fackel nach vorn links wegwerfen (liegt brennend am Boden) | 0,67 s | torch_drop | K | platzhalter-K |
+
 ## Monster (F5, Vertrag `characters-pipeline.md` §7)
 
 Mindestumfang je Art. Clips liegen in `assets/source/characters/monsters/<art>/anims/<art>.glb`, Herkunft je

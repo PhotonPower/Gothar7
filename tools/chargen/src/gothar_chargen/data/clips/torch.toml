@@ -1,0 +1,88 @@
+# Set "torch" -> assets/source/characters/anims/human/torch.glb (F6 torch, contract with engine
+# 2026-10-08): own file so none.glb stays untouched; engine finds clips by their full name in all
+# sets. it_torch in the left hand (socket_hand_l), flame at its marker node socket_flame.
+# Owner's decision (like Gothic 1): visible while walking, running and sneaking and also with fists
+# or a one-handed weapon on the right; put away for 2h, bow, crossbow and magic; burns forever,
+# water puts it out. Hence a_torch_hold touches only the left shoulder and arm, so it fits over
+# none, fist and 1h clips. The hold was found by a grid search: grip beside the left hip, a
+# little forward, the torch upright and slightly outwards.
+#
+# Key poses rotate about world axes at rest (Blender: X = the figure's left, -Y = forward, Z = up;
+# +X pitches the head down and swings a limb back, +Z turns left); twist turns a bone about its
+# own length axis.
+
+set = "torch"
+depends = ["none"]
+
+[[clip]]
+name = "none/s_torch_ref"         # still reference pose (first frame of none/s_idle, no breathing)
+keyframe = "hold"
+params = { base = "none/s_idle", frame = 0, frames = 30, breathe = 0.0 }
+helper = true
+
+[[clip]]
+name = "none/a_neutral"           # reference of the none overlays (like dlg/a_neutral)
+keyframe = "hold"
+params = { base = "none/s_idle", frame = 0, frames = 0, breathe = 0.0 }
+additive = true
+
+[[clip]]
+name = "none/a_torch_hold"        # left arm bent, the torch held upright in front (loop)
+keyframe = "keyposes"
+additive = true
+[clip.params]
+base = "none/s_torch_ref"
+keys = [[0, "hold"], [30, "hold"]]
+[clip.params.poses.hold]
+rotate = { clavicle_l = [["Y", -4]], upperarm_l = [["X", -30], ["Y", -10], ["Z", -15]], lowerarm_l = [["X", -60]], index_01_l = [["Y", 50]], index_02_l = [["Y", 60]], middle_01_l = [["Y", 50]], middle_02_l = [["Y", 60]], ring_01_l = [["Y", 50]], ring_02_l = [["Y", 60]], pinky_01_l = [["Y", 50]], pinky_02_l = [["Y", 60]], thumb_02_l = [["Z", -30]] }
+
+[[clip]]
+name = "none/a_torch_hold_in"     # from the free arm into the hold (e.g. back from a 2h weapon)
+keyframe = "keyposes"
+additive = true
+[clip.params]
+base = "none/s_torch_ref"
+keys = [[0, "rest"], [10, "hold"]]
+[clip.params.poses.hold]
+rotate = { clavicle_l = [["Y", -4]], upperarm_l = [["X", -30], ["Y", -10], ["Z", -15]], lowerarm_l = [["X", -60]], index_01_l = [["Y", 50]], index_02_l = [["Y", 60]], middle_01_l = [["Y", 50]], middle_02_l = [["Y", 60]], ring_01_l = [["Y", 50]], ring_02_l = [["Y", 60]], pinky_01_l = [["Y", 50]], pinky_02_l = [["Y", 60]], thumb_02_l = [["Z", -30]] }
+
+[[clip]]
+name = "none/a_torch_hold_out"    # from the hold back to the free arm
+keyframe = "keyposes"
+additive = true
+[clip.params]
+base = "none/s_torch_ref"
+keys = [[0, "hold"], [10, "rest"]]
+[clip.params.poses.hold]
+rotate = { clavicle_l = [["Y", -4]], upperarm_l = [["X", -30], ["Y", -10], ["Z", -15]], lowerarm_l = [["X", -60]], index_01_l = [["Y", 50]], index_02_l = [["Y", 60]], middle_01_l = [["Y", 50]], middle_02_l = [["Y", 60]], ring_01_l = [["Y", 50]], ring_02_l = [["Y", 60]], pinky_01_l = [["Y", 50]], pinky_02_l = [["Y", 60]], thumb_02_l = [["Z", -30]] }
+
+[[clip]]
+name = "none/t_torch_light"       # takes the torch from the belt, raises it, the right hand strikes a light
+keyframe = "keyposes"
+markers = { torch_take = 10, torch_light = 26 }
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "rest"], [10, "belt"], [20, "raise"], [26, "light"], [36, "hold"]]
+[clip.params.poses.belt]
+rotate = { spine_02 = [["Z", 10]], neck = [["X", 10]], upperarm_l = [["X", 15], ["Z", -10]], lowerarm_l = [["X", -30]], index_01_l = [["Y", 50]], middle_01_l = [["Y", 50]], ring_01_l = [["Y", 50]], pinky_01_l = [["Y", 50]] }
+[clip.params.poses.raise]
+rotate = { spine_02 = [["Z", 4]], neck = [["X", 8]], upperarm_l = [["X", -30], ["Y", -10], ["Z", -15]], lowerarm_l = [["X", -60]], index_01_l = [["Y", 50]], index_02_l = [["Y", 60]], middle_01_l = [["Y", 50]], middle_02_l = [["Y", 60]], ring_01_l = [["Y", 50]], ring_02_l = [["Y", 60]], pinky_01_l = [["Y", 50]], pinky_02_l = [["Y", 60]], thumb_02_l = [["Z", -30]], upperarm_r = [["X", -40], ["Z", 10]], lowerarm_r = [["X", -60]] }
+[clip.params.poses.light]
+rotate = { spine_02 = [["Z", 4]], neck = [["X", 10]], upperarm_l = [["X", -30], ["Y", -10], ["Z", -15]], lowerarm_l = [["X", -60]], index_01_l = [["Y", 50]], index_02_l = [["Y", 60]], middle_01_l = [["Y", 50]], middle_02_l = [["Y", 60]], ring_01_l = [["Y", 50]], ring_02_l = [["Y", 60]], pinky_01_l = [["Y", 50]], pinky_02_l = [["Y", 60]], thumb_02_l = [["Z", -30]], upperarm_r = [["X", -55], ["Z", 20]], lowerarm_r = [["X", -80]] }
+[clip.params.poses.hold]
+rotate = { clavicle_l = [["Y", -4]], upperarm_l = [["X", -30], ["Y", -10], ["Z", -15]], lowerarm_l = [["X", -60]], index_01_l = [["Y", 50]], index_02_l = [["Y", 60]], middle_01_l = [["Y", 50]], middle_02_l = [["Y", 60]], ring_01_l = [["Y", 50]], ring_02_l = [["Y", 60]], pinky_01_l = [["Y", 50]], pinky_02_l = [["Y", 60]], thumb_02_l = [["Z", -30]] }
+
+[[clip]]
+name = "none/t_torch_drop"        # throws the torch away to the front left (it lies burning on the ground)
+keyframe = "keyposes"
+markers = { torch_drop = 9 }
+[clip.params]
+base = "none/s_idle"
+keys = [[0, "hold"], [6, "swing"], [10, "throw"], [20, "rest"]]
+[clip.params.poses.hold]
+rotate = { clavicle_l = [["Y", -4]], upperarm_l = [["X", -30], ["Y", -10], ["Z", -15]], lowerarm_l = [["X", -60]], index_01_l = [["Y", 50]], index_02_l = [["Y", 60]], middle_01_l = [["Y", 50]], middle_02_l = [["Y", 60]], ring_01_l = [["Y", 50]], ring_02_l = [["Y", 60]], pinky_01_l = [["Y", 50]], pinky_02_l = [["Y", 60]], thumb_02_l = [["Z", -30]] }
+[clip.params.poses.swing]
+rotate = { spine_02 = [["Z", -6]], upperarm_l = [["X", -20], ["Z", -25]], lowerarm_l = [["X", -70]] }
+twist = { lowerarm_l = 20 }
+[clip.params.poses.throw]
+rotate = { spine_02 = [["Z", 8]], upperarm_l = [["X", -75], ["Z", 10]], lowerarm_l = [["X", -10]] }

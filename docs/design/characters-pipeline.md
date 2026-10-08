@@ -547,6 +547,7 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_sword_2h` (Zweihänder; Ursprung am Griffpunkt der rechten Hand unter der Parierstange, die linke Hand 10 cm darunter per `two_hands`, +Y zur Klinge, +Z Schneide) | 1,43 m | Schmiedeeisen, Ledergriff; 708 Dreiecke |
   | `it_rune_firebolt`, `it_rune_heal`, `it_rune_sleep`, `it_rune_transform_wolf`, `it_rune_summon_wolf` (Runen, M12: eine Geometrie, flacher Stein, Ursprung Mitte, +Y lange Achse, +Z Zeichen-Seite; je Rune eigenes Material `rune_<zauber>` mit eingeritztem Zeichen in der Farbe des Zaubers – Flamme, Kreuz, Mondsichel, Spirale, Ring mit Stern) | 6 cm | Stein, Zeichen (prozedural); 180 Dreiecke |
   | `it_scroll` (Spruchrolle, Ursprung Mitte, +Y Rollenachse, Siegel zu +Z) | 20 cm | Pergament, Kordel, Wachs |
+  | `it_torch` (Fackel, F6 2026-10-08: krummer Holzstab, Kopf aus gewickelten Pechlumpen mit Schnur; Ursprung = Griff nahe dem unteren Ende, +Y zum Kopf; leerer Knoten `socket_flame` an der Kopfspitze (0, 0,60, 0), +Y nach oben, für Flamme und Licht der engine; linke Hand, Clips im Set `torch`) | 72 cm | Holz dunkel, Pech (prozedural), Kordel; 564 Dreiecke |
   | `it_potion_mana_small` (wie der Heiltrank, blaues Glas) | 17 cm | prozedural |
   | `it_crossbow` (Armbrust, Ursprung am Griff bzw. Abzug, Schaft +Y nach vorn, Bogen quer, +Z oben; an `socket_hand_r`, die `cbow`-Clips halten den Schaft in der Faust) | 0,8 m | Holz, Schmiedeeisen, Sehne |
 
