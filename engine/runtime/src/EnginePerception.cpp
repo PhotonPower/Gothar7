@@ -172,6 +172,7 @@ void Engine::perceive(Creature& c, f32 seconds)
         const script::Value args[] = {c.species, static_cast<f64>(distance),
                                       std::string(m_weaponMode == 2   ? "fists"
                                                   : m_weaponMode == 4 ? "magic"
+                                                  : m_weaponMode == 5 ? "animal"
                                                                       : "weapon")};
         m_scripts->emit("assess_fighter", args);
     }
@@ -245,9 +246,9 @@ void Engine::enteredPrivateArea(std::string_view owner, std::string_view area)
 
 void Engine::toggleWeapon()
 {
-    if (!m_figure)
+    if (!m_figure || m_transform)
     {
-        return;
+        return; // Z7: no weapons in an animal's shape
     }
     if (m_weaponMode != 0)
     {
@@ -390,13 +391,14 @@ void Engine::bindPerceptionFunctions()
              }});
     vm.bind({"player_weapon", "player_weapon() -> string",
              "Was der Held gezogen hat: `\"none\"`, `\"weapon\"` (Nahkampfwaffe), `\"fists\"`, `\"ranged\"` "
-             "(Bogen, Armbrust) oder `\"magic\"` (Rune, Spruchrolle).",
+             "(Bogen, Armbrust), `\"magic\"` (Rune, Spruchrolle) oder `\"animal\"` (in Tiergestalt, Z7).",
              "Wahrnehmung", [this](std::span<const Value>) -> Result<Value>
              {
                  return Value(std::string(m_weaponMode == 0   ? "none"
                                           : m_weaponMode == 1 ? "weapon"
                                           : m_weaponMode == 3 ? "ranged"
                                           : m_weaponMode == 4 ? "magic"
+                                          : m_weaponMode == 5 ? "animal"
                                                               : "fists"));
              }});
     vm.bind({"player_inside", "player_inside(area: string) -> boolean",
@@ -434,6 +436,7 @@ void Engine::bindPerceptionFunctions()
                                           : m_weaponMode == 1 ? "weapon"
                                           : m_weaponMode == 3 ? "ranged"
                                           : m_weaponMode == 4 ? "magic"
+                                          : m_weaponMode == 5 ? "animal"
                                                               : "fists"));
              }});
     // Events (documentation only).
@@ -449,9 +452,8 @@ void Engine::bindPerceptionFunctions()
              {}});
     vm.bind({"assess_fighter",
              "on(\"assess_fighter\", fn(npc: string, distance: number, what: string))",
-             "Der NPC sieht den Spieler mit gezogener Waffe (`what`: `\"weapon\"`, `\"fists\"` oder "
-             "`\"magic\"`); einmal je "
-             "Ziehen.",
+             "Der NPC sieht den Spieler mit gezogener Waffe (`what`: `\"weapon\"`, `\"fists\"`, `\"magic\"` "
+             "oder `\"animal\"` in Tiergestalt); einmal je Ziehen.",
              "Ereignisse",
              {}});
     vm.bind({"assess_noise",

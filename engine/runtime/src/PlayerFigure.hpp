@@ -88,6 +88,8 @@ struct PlayerFigure : AnimatedFigure
     Vec3 climbMoved{0.0f}; ///< root motion summed up in the current climb
     f32 airSeconds = 0.0f;
     f32 fallSeconds = 0.0f;
+    f32 moveWalk = 0.0f; ///< the graph's "move" state: its first forward blend point (m/s), 0: none
+    f32 moveRun = 0.0f;  ///< ... and its last (a transformation takes the animal's gaits, M12)
     bool jumped = false; ///< a jump started in this fixed step
 };
 

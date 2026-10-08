@@ -494,7 +494,7 @@ Result<void> Engine::dropItem(std::string_view instance, u32 count)
 
 void Engine::setInventoryOpen(bool open) noexcept
 {
-    m_inventoryOpen = open && m_hero != nullptr;
+    m_inventoryOpen = open && m_hero != nullptr && !m_transform; // Z7: an animal carries nothing
     m_inventoryMessage.clear();
 }
 

@@ -272,3 +272,63 @@ TEST_CASE(
     CHECK(run(engine, "Story.vanished").asString() == second);
     CHECK(run(engine, "hero_summon()").isNil());
 }
+
+TEST_CASE(
+    "Engine casting: in a wolf's shape the hero runs and bites as the wolf, with its life; back with 1 or "
+    "when that life is gone (Z7)")
+{
+    Engine engine(castConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "on('hero_transformed', function(species) Story.shape = species end)");
+    run(engine,
+        "give_item('it_rune_transform_wolf') equip('it_rune_transform_wolf') set_talent('magic_circle', 2) "
+        "set_stat('mana_max', 100) set_stat('mana', 100) set_stat('hp', 40)");
+    oldManAhead(engine);
+    const f32 humanRun = engine.movementSettings().runSpeed;
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_transform_wolf");
+    runSeconds(engine, 1.0f);
+    cast(engine);
+    REQUIRE(run(engine, "hero_shape()").isString());
+    CHECK(run(engine, "hero_shape()").asString() == "wolf");
+    CHECK(run(engine, "Story.shape").asString() == "wolf");
+    CHECK(stat(engine, "hero", "mana") == 80);
+    CHECK(engine.movementSettings().runSpeed == doctest::Approx(6.0f)); // the wolf's run (its clips)
+    CHECK(engine.playerFigurePath().find("wolf") != std::string_view::npos);
+    // No weapons, no magic, no bag in its paws.
+    CHECK(run(engine, "player_weapon()").asString() == "animal");
+    CHECK(run(engine, "draw_weapon()").asString() == "animal");
+    engine.setInventoryOpen(true);
+    CHECK_FALSE(engine.inventoryOpen());
+
+    // It bites with the wolf's values: strength 20 + edge 0, no protection.
+    run(engine, "npc_teleport('npc_old_man', 40.0, 0, 18.8, 270)"); // 1.2 m ahead
+    runSeconds(engine, 0.5f);
+    const i64 before = stat(engine, "npc_old_man", "hp");
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    runSeconds(engine, 1.5f);
+    CHECK(stat(engine, "npc_old_man", "hp") == before - 20);
+
+    // "1": human again, with his own life (the old man, bitten, fights back from now on).
+    run(engine, "draw_magic()");
+    REQUIRE(engine.runFrame());
+    CHECK(run(engine, "hero_shape()").isNil());
+    CHECK(run(engine, "Story.shape").asString().empty());
+    CHECK(engine.movementSettings().runSpeed == doctest::Approx(humanRun));
+    CHECK(run(engine, "player_weapon()").asString() == "none");
+    CHECK(stat(engine, "hero", "hp") == 40);
+
+    // Again a wolf; the old man beats it until its life is gone: human again, his own life untouched.
+    run(engine, "set_stat('mana', 100)");
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_transform_wolf");
+    runSeconds(engine, 1.0f);
+    cast(engine);
+    REQUIRE(run(engine, "hero_shape()").isString());
+    const i64 human = stat(engine, "hero", "hp");
+    run(engine, "fight('npc_old_man', 'hero')");
+    for (int i = 0; i < 60 * 60 && run(engine, "hero_shape()").isString(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(run(engine, "hero_shape()").isNil());
+    CHECK(stat(engine, "hero", "hp") == human); // the wolf's life was beaten, not his
+}
