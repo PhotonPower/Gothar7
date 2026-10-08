@@ -51,7 +51,9 @@ def rng() -> random.Random:
 def test_rules_file_is_decided():
     assert RULES.data["status"].startswith("festgelegt") and "2026-10-03" in RULES.data["status"]
     palette = {k for k in RULES.data["palette"] if k != "note"}
-    assert len(palette) <= 16  # engine batches by material value
+    # a budget, no engine limit: it batches per mesh and material value, each value costs a few
+    # draw batches per visible cell (engine 2026-10-08)
+    assert len(palette) <= 20
     patterns = set(RULES.data["timber"]["patterns"]) - {"note"}
     assert {"mann", "halber_mann", "einfach", "andreaskreuz", "feuerbock", "raute"} <= patterns
     assert "roof_slate" not in palette  # slate is untypical in Württemberg
