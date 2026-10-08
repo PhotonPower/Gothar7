@@ -182,8 +182,11 @@ Modellpfade sind relativ zur Szenendatei (VFS-Pfade, `..` erlaubt). Fehler nenne
 `scene.toml: 'object[3].position' must be a list of 3 numbers`.
 
 ## CI (GitHub Actions)
-`.github/workflows/ci.yml`: Jobs `build (ubuntu-24.04)`, `build (windows-2022)` und `coverage` bei Push auf `main` und bei
-Pull Requests. GPU-Tests laufen unter Linux mit Xvfb + Mesa llvmpipe, Windows schließt sie aus (`-LE gpu`).
+`.github/workflows/ci.yml`: Jobs `build (ubuntu-24.04)`, `build (windows-2022)`, `release (ubuntu-24.04)` und `coverage` bei
+Push auf `main` und bei Pull Requests. GPU-Tests laufen unter Linux mit Xvfb + Mesa llvmpipe, Windows schließt sie aus
+(`-LE gpu`). Der Release-Job baut mit dem Preset `release` (RelWithDebInfo) und testet ohne GPU-Tests und ohne gebaute
+Figuren (`ctest --preset release -LE gpu`): Physik und Zeitverhalten können sich vom Debug-Build unterscheiden (welt #246:
+eine NPC-Kapsel verkeilte sich nur im Release-Build).
 **vcpkg-Binärcache:** `VCPKG_BINARY_SOURCES=files,<workspace>/vcpkg-binary-cache` + `actions/cache` – jeder Lauf
 speichert einen neuen Eintrag, PRs lesen die Einträge von `main`. Ohne Treffer baut vcpkg alle Abhängigkeiten neu
 (SDL3, simdjson, fastgltf … – mehrere Minuten pro Job). Das Repository ist öffentlich; Actions-Minuten auf
