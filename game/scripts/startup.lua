@@ -17,7 +17,11 @@ end
 --- Setzt die Bewohner Leonbergs an die Orte ihres Tagesablaufs (Leonberg lebt; Konsole oder automatisch beim Laden).
 function leonberg_people()
     for _, npc in ipairs({ "npc_leo_smith", "npc_leo_innkeeper", "npc_leo_baker", "npc_leo_market",
-                           "npc_leo_guard_lower", "npc_leo_guard_upper", "npc_leo_farmer", "npc_leo_citizen" }) do
+                           "npc_leo_guard_lower", "npc_leo_guard_upper", "npc_leo_farmer", "npc_leo_citizen",
+                           -- welt Phase 1: die Handwerker und Händler
+                           "npc_leo_baker_husband", "npc_leo_butcher", "npc_leo_joiner", "npc_leo_potter",
+                           "npc_leo_goldsmith", "npc_leo_cloth_merchant", "npc_leo_tailor", "npc_leo_herbalist",
+                           "npc_leo_bather", "npc_leo_merchant_m", "npc_leo_merchant_f" }) do
         insert_npc(npc)
     end
 end

@@ -99,3 +99,166 @@ Info "dia_leo_citizen_hello" {
         say(npc, "Laufen. Vom Rathaus zum Markt, vom Markt zum Rathaus. Und zuhören, was die Leute reden.")
     end,
 }
+
+-- --- welt Phase 1: Handwerker und Händler (eigene Texte; wer etwas verkauft, handelt mit dem, was er im Inventar hat)
+Info "dia_leo_baker_husband_hello" {
+    npc = "npc_leo_baker_husband",
+    nr = 1,
+    permanent = true,
+    description = "Du bist der Bäcker?",
+    run = function(npc)
+        say(npc, "Seit ich denken kann. Um vier am Ofen, um eins im Gasthaus. Dazwischen Mehl.")
+        say(npc, "Brot kaufst du bei meiner Frau. Ich backe nur.")
+    end,
+}
+
+Info "dia_leo_butcher_trade" {
+    npc = "npc_leo_butcher",
+    nr = 1,
+    permanent = true,
+    trade = true,
+    description = "Was hast du heute?",
+    run = function(npc)
+        say(npc, "Schinken und Würste, alles vom eigenen Schwein. Wer bei mir kauft, kommt satt durch den Winter.")
+    end,
+}
+
+Info "dia_leo_joiner_hello" {
+    npc = "npc_leo_joiner",
+    nr = 1,
+    permanent = true,
+    description = "Was baust du da?",
+    run = function(npc)
+        say(npc, "Truhen, Bänke, Fensterläden. Und Särge, wenn einer bestellt. Holz fragt nicht, wofür.")
+    end,
+}
+
+Info "dia_leo_joiner_trade" {
+    npc = "npc_leo_joiner",
+    nr = 2,
+    permanent = true,
+    trade = true,
+    description = "Verkaufst du Werkzeug?",
+    run = function(npc)
+        say(npc, "Ein altes Stück habe ich übrig. Gut gepflegt, versteht sich.")
+    end,
+}
+
+Info "dia_leo_potter_trade" {
+    npc = "npc_leo_potter",
+    nr = 1,
+    permanent = true,
+    trade = true,
+    description = "Zeig mir deine Töpferwaren.",
+    run = function(npc)
+        say(npc, "Kannen, Schüsseln, Krüge. Was zerbricht, verkaufe ich dir gern noch einmal.")
+    end,
+}
+
+Info "dia_leo_goldsmith_trade" {
+    npc = "npc_leo_goldsmith",
+    nr = 1,
+    permanent = true,
+    trade = true,
+    description = "Was hast du an Schmuck?",
+    run = function(npc)
+        say(npc, "Ringe, ein Amulett, eine Kette. Gute Arbeit hat ihren Preis, und ich arbeite gut.")
+    end,
+}
+
+Info "dia_leo_cloth_merchant_trade" {
+    npc = "npc_leo_cloth_merchant",
+    nr = 1,
+    permanent = true,
+    trade = true,
+    description = "Was kostet dein Tuch?",
+    run = function(npc)
+        say(npc, "Wolle aus dem Gäu, gefärbt am Glemsufer. Fass es ruhig an, es hält, was es verspricht.")
+    end,
+}
+
+Info "dia_leo_tailor_hello" {
+    npc = "npc_leo_tailor",
+    nr = 1,
+    permanent = true,
+    trade = true,
+    description = "Kannst du mir etwas nähen?",
+    run = function(npc)
+        say(npc, "Bring mir Tuch und Geduld. Bis dahin verkaufe ich dir, was ich übrig habe.")
+    end,
+}
+
+Info "dia_leo_herbalist_trade" {
+    npc = "npc_leo_herbalist",
+    nr = 1,
+    permanent = true,
+    trade = true,
+    description = "Was hast du an Kräutern und Tränken?",
+    run = function(npc)
+        say(npc, "Salbei, Kamille, Nesseln. Und was man daraus kocht, wenn man es kann.")
+        say(npc, "Für den Trank der Stärke musst du tief in den Beutel greifen. Er wirkt dafür ein Leben lang.")
+    end,
+}
+
+Info "dia_leo_bather_hello" {
+    npc = "npc_leo_bather",
+    nr = 1,
+    permanent = true,
+    description = "Was macht ein Bader?",
+    run = function(npc)
+        say(npc, "Baden, scheren, Zähne ziehen, Wunden flicken. Wer in Leonberg blutet, kommt zu mir.")
+    end,
+}
+
+Info "dia_leo_bather_heal" {
+    npc = "npc_leo_bather",
+    nr = 2,
+    permanent = true,
+    description = "Kannst du mich heilen?",
+    run = function(npc)
+        say(npc, "Zeig her. Für zwanzig Gulden flicke ich dich zusammen.")
+        choice("Hier sind zwanzig Gulden.", function()
+            if item_count("it_gulden") >= 20 then
+                remove_item("it_gulden", 20)
+                set_stat("hp", stat("hp_max"))
+                say(npc, "So. Das hält wieder eine Weile.")
+            else
+                say(npc, "Ohne Geld keine Salbe.")
+            end
+        end)
+        choice("Später vielleicht.", function()
+            say(npc, "Wie du willst. Verblute nur nicht vor meiner Tür.")
+        end)
+    end,
+}
+
+Info "dia_leo_bather_trade" {
+    npc = "npc_leo_bather",
+    nr = 3,
+    permanent = true,
+    trade = true,
+    description = "Verkaufst du Heiltränke?",
+    run = function(npc)
+        say(npc, "Ein paar habe ich da. Für die Reise.")
+    end,
+}
+
+Info "dia_leo_merchant_m_hello" {
+    npc = "npc_leo_merchant_m",
+    nr = 1,
+    permanent = true,
+    description = "Was führt dich nach Leonberg?",
+    run = function(npc)
+        say(npc, "Der Handel, was sonst. Tuch nach Stuttgart, Wein zurück. Und der Rat will auch noch seinen Zoll.")
+    end,
+}
+
+Info "dia_leo_merchant_f_hello" {
+    npc = "npc_leo_merchant_f",
+    nr = 1,
+    permanent = true,
+    description = "Schöner Tag heute.",
+    run = function(npc)
+        say(npc, "Für dich vielleicht. Mein Mann hat schon wieder das halbe Lager verkauft, bevor ich den Preis kannte.")
+    end,
+}

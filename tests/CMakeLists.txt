@@ -19,7 +19,8 @@ set(_g7_runtime_groups
     "scenarios|*_scenario.cpp"
     "npcs|*test_engine_scripts.cpp,*test_engine_monsters.cpp"
     "fights|*test_engine_perception.cpp,*test_engine_dialog.cpp,*test_engine_combat.cpp"
-    "leonberg|*test_engine_leonberg.cpp")
+    "leonberg|*test_engine_leonberg.cpp"
+    "leonberg_residents|*test_engine_leonberg_residents.cpp")
 set(_g7_runtime_tests runtime)
 set(_g7_runtime_grouped "")
 foreach(_group IN LISTS _g7_runtime_groups)

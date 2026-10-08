@@ -157,19 +157,29 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
 ```
 
 ## Leonberg lebt (Inhalt nach M10)
-- Acht Bewohner mit Tagesabläufen auf welts Routinen-Orten (`docs/design/leonberg-routinen-orte.md`):
+- Neunzehn Bewohner mit Tagesabläufen auf welts Routinen-Orten (`docs/design/leonberg-routinen-orte.md`):
   Schmied, Wirt, Bäckerin und Marktfrau (handeln), zwei Torwachen (Tag- bzw. Nachtschicht), Bauer, Ratsdiener;
   `npcs/leonberg/residents.lua`, `routines/leonberg.lua`, `dialogs/leonberg.lua` (eigene Namen und Plauder-Dialoge,
   Entscheidungen L1–L3). Beim Laden von Leonberg setzt `leonberg_people()` sie ein (`startup.lua`, L2).
+- **Handwerker und Händler** (welt Phase 1, begehbare Erdgeschosse; Figuren von figuren nach Rollen):
+  - Konrad der Bäcker (am Ofen ab vier), Hans der Metzger, Lorenz der Schreiner, Michel der Töpfer, Ruprecht der
+    Goldschmied, Elsbeth die Tuchhändlerin, Jörg der Gewandschneider, Mechthild die Kräuterfrau, Meister Wendel der
+    Bader, dazu ein Kaufmann und eine Kaufmannsfrau (`figure_set` `merchant_m`/`merchant_f`).
+  - Sie arbeiten an den Freepoints ihres Hauses (`…_INNEN`) und verkaufen, was ihr Inventar hat (Waren von figuren F6).
+  - Der Bader heilt für 20 Gulden.
+  - Bäckerin, Krämerin und die Wache am Unteren Tor arbeiten jetzt drinnen.
 - Tätigkeiten an Freepoints: `zs_repair`, `zs_harvest`, `zs_smalltalk`, `zs_drink` (mit Krug), `zs_lean`, `zs_sit`,
-  `zs_stand_shop`; nachts lehnen sie an ihrem Haus, bis NPCs mit M11 Betten benutzen.
+  `zs_stand_shop`, `zs_campfire` (am Ofen bzw. Herd).
+  - **Nachts** `zs_sleep` in der Kammer ihres Hauses: eigenes Bett, freies Bett oder der Boden (Abschnitt „NPCs benutzen
+    Mobs“). Wer im Haus keinen Schlafplatz hat (Ratsdiener, Hauptmann am Oberen Tor), lehnt weiter am Haus.
 - **Stimme:** `gender` (`"m"`/`"f"`, Vorgabe `"m"`) und `voice` (Stimmgruppe, Vorgabe die Gilde) wählen die Stimme der Zurufe (`data/voices.lua`, audio.md „Sprache“).
 - **Figuren:** `figure` (eigenes Manifest) oder `figure_set` für Namenlose: eine Figur aus
   `data/figure_sets.toml` (`[sets] citizen = [...]`, figuren), stabil nach dem Namen gewählt. Fehlt die Figur, steht
   die Standardfigur ein (Warnung).
 - `route_length(von, nach)`: Weglänge zwischen zwei Punkten bzw. `nil` (Prüfung der Routinen-Orte).
-- Tests: Die Orte aller `rtn_leo_*` stehen in Leonbergs Wegnetz (auch in der CI); mit den erzeugten Daten (lokal)
-  ein Spieltag in Leonberg, jeder zur rechten Zeit am rechten Ort.
+- Tests (`test_engine_leonberg_residents.cpp`, eigener ctest-Eintrag wegen der Laufzeit): Die Orte aller `rtn_leo_*`
+  stehen in Leonbergs Wegnetz (auch in der CI); mit den erzeugten Daten (lokal) ein Spieltag mit allen neunzehn, jeder
+  zur rechten Zeit am rechten Ort.
 
 ## Türen (für welts begehbare Häuser)
 - Unverschlossene Tür-Mobs sind für die Wegeplanung kein Hindernis (`walkableLine` geht am Türblatt vorbei weiter,
