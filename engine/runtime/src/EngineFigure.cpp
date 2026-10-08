@@ -453,6 +453,11 @@ std::string_view Engine::playerAnimationState() const noexcept
     return m_figure ? m_figure->animator.state() : std::string_view();
 }
 
+std::string_view Engine::playerOverlayClip() const noexcept
+{
+    return m_figure ? m_figure->animator.overlayClip() : std::string_view();
+}
+
 std::string_view Engine::playerFigurePath() const noexcept
 {
     return m_figure ? std::string_view(m_figure->path) : std::string_view();

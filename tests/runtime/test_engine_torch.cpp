@@ -57,13 +57,16 @@ TEST_CASE("Engine torch: lit by using it, put away by using it again; flame and 
     CHECK(run(engine, "return hero_torch_lit()").asBool());
     CHECK(engine.playerHolds("socket_hand_l"));
     CHECK(engine.particles().emitterCount() == before + 1); // the flame (with its light)
-    // Walking with it: still burning.
-    runSeconds(engine, 2.0f);
+    // Held up for as long as it burns: the 1 s pose loops.
+    CHECK(engine.playerOverlayClip() == "none/a_torch_hold");
+    runSeconds(engine, 4.0f);
     CHECK(run(engine, "return hero_torch_lit()").asBool());
+    CHECK(engine.playerOverlayClip() == "none/a_torch_hold");
     run(engine, "use_item('it_torch')"); // out and away
     REQUIRE(engine.runFrame());
     CHECK_FALSE(run(engine, "return hero_torch_lit()").asBool());
     CHECK_FALSE(engine.playerHolds("socket_hand_l"));
+    CHECK(engine.playerOverlayClip().empty());
     CHECK(run(engine, "return item_count('it_torch')").asInteger() == 1); // not used up
 }
 

@@ -37,7 +37,8 @@ struct AnimGraph { sets; start; states; transitions; static Result<AnimGraph> pa
 class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton&, span<const asset::AnimationSetData*>);
     void setFloat(name, v); void setBool(name, b); void enter(state, blend);
     void update(f32 seconds, const EventCallback& = {});
-    void playOverlay(clip, maskBone, blendIn, additive = false, reference = ""); void stopOverlay(blendOut);  // reference: additive gegen den ersten Frame dieses Clips (dlg/a_neutral, M10)
+    void playOverlay(clip, maskBone, blendIn, additive = false, reference = "", loop = false); void stopOverlay(blendOut);
+    std::string_view overlayClip();  // leer, wenn keins spielt oder es ausblendet  // reference: additive gegen den ersten Frame dieses Clips (dlg/a_neutral, M10)
     const Pose& pose() const; Vec3 rootMotion() const; state(); previousState(); fadeWeight(); stateProgress();
     stateEnded(); std::vector<ClipWeight> activeClips() const; };     // activeClips: Debug-UI
 }
@@ -71,7 +72,8 @@ class Animator { static Result<Animator> create(const AnimGraph&, const Skeleton
   mitteln nach Gewicht. Die Engine bewegt damit die Figur (Klettern beim Helden, Gehen/Rennen/Drehen bei Tieren).
   Fortbewegungs-Clips der Menschen sind In-Place (`root` bleibt bei 0, geprüft).
 - **Overlay:** ein Clip über einer Knochenmaske (`maskBelow("spine_02")` = Oberkörper), normal oder additiv
-  (Änderung gegen Frame 0), ein- und ausgeblendet. Einmal-Clips blenden am Ende selbst aus.
+  (Änderung gegen Frame 0), ein- und ausgeblendet. Einmal-Clips blenden am Ende selbst aus; mit `loop` wiederholt
+  sich auch ein `a_`-Clip bis `stopOverlay` (Haltungen wie `none/a_torch_hold`).
 - **Morph-Targets** gibt es nur auf `head_lod0` (Vertrag §6.1). Gewichte für LOD 1 und 2 werden still
   ignoriert (Hinweis figuren, M6 A).
 - **Graph der Menschen** (`human.animgraph.toml`):

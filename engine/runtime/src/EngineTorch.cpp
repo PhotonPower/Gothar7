@@ -21,7 +21,17 @@ constexpr std::string_view kHand = "socket_hand_l";
 constexpr std::string_view kFlameEffect = "torch";
 const Vec4 kFlame(0.0f, 0.6f, 0.0f, 1.0f);  ///< socket_flame in the item (figuren #268): 0.6 m up the shaft
 constexpr f32 kLightFallbackSeconds = 1.2f; ///< no clip: lit after this long
+constexpr std::string_view kHoldClip = "none/a_torch_hold";
 } // namespace
+
+void Engine::holdTorch(f32 blend)
+{
+    // The carrying pose, held until the torch is put away (an "a_" clip of 1 s: looped).
+    if (m_figure && m_figure->animator.hasClip(kHoldClip))
+    {
+        m_figure->animator.playOverlay(kHoldClip, "clavicle_l", blend, true, "none/a_neutral", true);
+    }
+}
 
 bool Engine::torchLit() const noexcept
 {
@@ -86,10 +96,7 @@ void Engine::torchEvent(std::string_view event)
         const auto hand = playerSocketTransform(kHand);
         m_torch->flame =
             startEffect(kFlameEffect, hand ? Vec3(*hand * kFlame) : m_playerFeet + Vec3(0.0f, 1.5f, 0.0f));
-        if (m_figure && m_figure->animator.hasClip("none/a_torch_hold"))
-        {
-            m_figure->animator.playOverlay("none/a_torch_hold", "clavicle_l", 0.25f, true, "none/a_neutral");
-        }
+        holdTorch(0.25f);
         if (m_scripts)
         {
             const Value args[] = {m_torch->item};
@@ -188,6 +195,12 @@ void Engine::fixedUpdateTorch(f32 seconds)
         }
         return;
     }
+    // Back into the carrying pose once another overlay (a dialogue gesture) has taken its place.
+    if (m_figure && m_figure->animator.overlayClip().empty() &&
+        m_figure->animator.state() != "none_t_torch_drop")
+    {
+        holdTorch(0.25f);
+    }
     // The flame follows the hand.
     if (t.flame)
     {
@@ -225,6 +238,7 @@ void Engine::bindTorchFunctions()
                  {
                      if (m_figure && m_figure->animator.hasState("none_t_torch_drop"))
                      {
+                         m_figure->animator.stopOverlay(0.1f); // the throw moves the arm itself
                          m_figure->animator.enter("none_t_torch_drop", 0.1f);
                      }
                      else
