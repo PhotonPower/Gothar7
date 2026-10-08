@@ -1,7 +1,7 @@
 # Set "wolf" (monster contract, characters-pipeline.md §7) -> monsters/wolf/anims/wolf.glb
-# Source: Quaternius "Animated Animales Low Poly" (Animal Pack Vol.2), CC0 1.0 – only Idle and
-# Walking exist; gothar-chargen monster turns them into wolf_clips.blend on the contract rig.
-# Walk, trot and gallop are own gait cycles (gait); everything else is a keyframe placeholder.
+# Own wolf (gothar-chargen creature wolf, 2026-10-08): the clip source only holds the still action
+# "rest". Walk, trot and gallop are own gait cycles (gait); everything else is keyframed. jaw and
+# ear_l/r were added with engine; clip names, events and speeds stay as agreed.
 #
 # Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches the
 # head down and swings a leg back, +Z turns left) and move root/pelvis in metres.
@@ -16,13 +16,25 @@ mapping = "identity"
 # --- locomotion (root moves forward: contract §7) ---
 
 [[clip]]
-name = "wolf/s_idle"
-from = "src:idle"
+name = "wolf/s_rest"
+from = "src:rest"
+helper = true
 
 [[clip]]
-name = "wolf/s_walk_inplace"
-from = "src:walk"
-helper = true
+name = "wolf/s_idle"              # breathing, ears flick, looking about, tail sways
+keyframe = "keyposes"
+[clip.params]
+base = "wolf/s_rest"
+keys = [[0, "stand"], [15, "breathe"], [30, "look"], [42, "ear_flick"], [60, "stand"]]
+[clip.params.poses.stand]
+rotate = { neck_01 = [["X", 3]], tail_01 = [["X", 4]], tail_03 = [["Z", 6]] }
+[clip.params.poses.breathe]
+move = { pelvis = [0, 0, 0.004] }
+rotate = { spine_01 = [["X", -1.5]], neck_01 = [["X", 1]], tail_01 = [["X", 2]], tail_03 = [["Z", -6]] }
+[clip.params.poses.look]
+rotate = { neck_01 = [["X", 1], ["Z", 20]], head = [["Z", 10]], ear_l = [["Z", 12]], tail_01 = [["X", 3], ["Z", -6]], tail_03 = [["Z", 8]] }
+[clip.params.poses.ear_flick]
+rotate = { neck_01 = [["X", 2], ["Z", 8]], head = [["Z", 4]], ear_r = [["X", 25]], tail_03 = [["Z", -4]] }
 
 # Own gait cycles (gaits.py): feet planted at exactly the clip speed, legs solved with IK.
 # Speeds agreed with engine (2026-10-05): walk 1.2, trot 3.0, run (gallop) 6.0 m/s.
@@ -91,12 +103,28 @@ legs = [
 ]
 
 [[clip]]
+name = "wolf/s_step_inplace"      # base of the turns: stepping on the spot
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 16
+duty = 0.625
+lift = 0.05
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 35 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -70 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 35 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -70 },
+]
+
+[[clip]]
 name = "wolf/t_turn_l"
 keyframe = "keyposes"
 events = "footsteps"
 [clip.params]
-base = "wolf/s_walk_inplace"
-keys = [[0, "rest"], [30, "turned"]]
+base = "wolf/s_step_inplace"
+keys = [[0, "rest"], [32, "turned"]]
 [clip.params.poses.turned]
 rotate = { root = [["Z", 90]] }
 
@@ -105,8 +133,8 @@ name = "wolf/t_turn_r"
 keyframe = "keyposes"
 events = "footsteps"
 [clip.params]
-base = "wolf/s_walk_inplace"
-keys = [[0, "rest"], [30, "turned"]]
+base = "wolf/s_step_inplace"
+keys = [[0, "rest"], [32, "turned"]]
 [clip.params.poses.turned]
 rotate = { root = [["Z", -90]] }
 
@@ -121,13 +149,13 @@ base = "wolf/s_idle"
 keys = [[0, "rest"], [8, "crouch"], [13, "lunge"], [16, "bite"], [28, "rest"]]
 [clip.params.poses.crouch]
 move = { pelvis = [0, 0.05, -0.03] }
-rotate = { spine_01 = [["X", 6]], neck_01 = [["X", 18]], head = [["X", -12]], tail_01 = [["X", 15]] }
+rotate = { spine_01 = [["X", 6]], neck_01 = [["X", 18]], head = [["X", -12]], jaw = [["X", 12]], ear_l = [["X", 35]], ear_r = [["X", 35]], tail_01 = [["X", 15]] }
 [clip.params.poses.lunge]
 move = { pelvis = [0, -0.16, 0.03] }
-rotate = { spine_01 = [["X", -4]], neck_01 = [["X", -10]], head = [["X", -15]], front_upper_l = [["X", -35]], front_upper_r = [["X", -30]], tail_01 = [["X", -10]] }
+rotate = { spine_01 = [["X", -4]], neck_01 = [["X", -10]], head = [["X", -15]], jaw = [["X", 40]], ear_l = [["X", 35]], ear_r = [["X", 35]], front_upper_l = [["X", -35]], front_upper_r = [["X", -30]], tail_01 = [["X", -10]] }
 [clip.params.poses.bite]
 move = { pelvis = [0, -0.14, 0.01] }
-rotate = { neck_01 = [["X", 5]], head = [["X", 20]], front_upper_l = [["X", -20]], front_upper_r = [["X", -15]] }
+rotate = { neck_01 = [["X", 5]], head = [["X", 20]], jaw = [["X", 2]], ear_l = [["X", 30]], ear_r = [["X", 30]], front_upper_l = [["X", -20]], front_upper_r = [["X", -15]] }
 
 [[clip]]
 name = "wolf/t_attack_2"          # quick snap to the side
@@ -140,10 +168,10 @@ keys = [[0, "rest"], [6, "wind_up"], [10, "snap"], [13, "snap_close"], [22, "res
 rotate = { neck_01 = [["Z", 20], ["X", 10]], head = [["Z", 10]], spine_01 = [["Z", 6]] }
 [clip.params.poses.snap]
 move = { pelvis = [0, -0.06, 0] }
-rotate = { neck_01 = [["Z", -25], ["X", 5]], head = [["Z", -15], ["X", -15]], spine_01 = [["Z", -6]] }
+rotate = { neck_01 = [["Z", -25], ["X", 5]], head = [["Z", -15], ["X", -15]], jaw = [["X", 35]], ear_l = [["X", 30]], ear_r = [["X", 30]], spine_01 = [["Z", -6]] }
 [clip.params.poses.snap_close]
 move = { pelvis = [0, -0.06, 0] }
-rotate = { neck_01 = [["Z", -25], ["X", 8]], head = [["Z", -15], ["X", 12]], spine_01 = [["Z", -6]] }
+rotate = { neck_01 = [["Z", -25], ["X", 8]], head = [["Z", -15], ["X", 12]], jaw = [["X", 2]], ear_l = [["X", 30]], ear_r = [["X", 30]], spine_01 = [["Z", -6]] }
 
 [[clip]]
 name = "wolf/t_hit"
@@ -153,7 +181,7 @@ base = "wolf/s_idle"
 keys = [[0, "rest"], [4, "flinch"], [16, "rest"]]
 [clip.params.poses.flinch]
 move = { pelvis = [0, 0.07, 0.02] }
-rotate = { spine_01 = [["X", -8], ["Z", 6]], neck_01 = [["X", -20]], head = [["X", -15], ["Z", 10]], tail_01 = [["X", 25]] }
+rotate = { spine_01 = [["X", -8], ["Z", 6]], neck_01 = [["X", -20]], head = [["X", -15], ["Z", 10]], jaw = [["X", 20]], ear_l = [["X", 40]], ear_r = [["X", 40]], tail_01 = [["X", 25]] }
 
 [[clip]]
 name = "wolf/t_die"               # stagger, then roll onto the side and lie still
@@ -173,17 +201,17 @@ rotate = { root = [["Y", 90]], neck_01 = [["X", -10]], head = [["X", 10]], front
 # --- behaviour ---
 
 [[clip]]
-name = "wolf/s_eat"               # head down, chewing (loop over the idle cycle)
+name = "wolf/s_eat"               # head down at the kill, tearing and chewing
 keyframe = "keyposes"
 [clip.params]
-base = "wolf/s_idle"
+base = "wolf/s_rest"
 keys = [[0, "graze"], [12, "chew"], [25, "graze"], [37, "chew"], [50, "graze"]]
 [clip.params.poses.graze]
-move = { pelvis = [0, 0.02, -0.02] }
-rotate = { spine_01 = [["X", 8]], neck_01 = [["X", 45]], head = [["X", 25]], front_upper_l = [["X", -8]], front_upper_r = [["X", -8]] }
+move = { pelvis = [0, 0.03, 0] }
+rotate = { neck_01 = [["X", 50]], head = [["X", 25]], jaw = [["X", 18]], ear_l = [["X", 10]], ear_r = [["X", 10]], front_upper_l = [["X", -6]], front_upper_r = [["X", -6]], tail_01 = [["X", 8]] }
 [clip.params.poses.chew]
-move = { pelvis = [0, 0.02, -0.02] }
-rotate = { spine_01 = [["X", 8]], neck_01 = [["X", 40]], head = [["X", 15]], front_upper_l = [["X", -8]], front_upper_r = [["X", -8]] }
+move = { pelvis = [0, 0.03, 0] }
+rotate = { neck_01 = [["X", 46]], head = [["X", 15], ["Z", 6]], jaw = [["X", 2]], ear_l = [["X", 10]], ear_r = [["X", 10]], front_upper_l = [["X", -6]], front_upper_r = [["X", -6]], tail_01 = [["X", 8]] }
 
 [[clip]]
 name = "wolf/s_sleep"             # lying (sphinx pose), slow breathing
@@ -205,7 +233,48 @@ base = "wolf/s_idle"
 keys = [[0, "rest"], [10, "growl"], [18, "growl_bob"], [26, "growl"], [34, "growl_bob"], [44, "rest"]]
 [clip.params.poses.growl]
 move = { pelvis = [0, 0.04, -0.04] }
-rotate = { spine_01 = [["X", 5]], neck_01 = [["X", 25]], head = [["X", -25]], tail_01 = [["X", 20]] }
+rotate = { spine_01 = [["X", 5]], neck_01 = [["X", 25]], head = [["X", -25]], jaw = [["X", 14]], ear_l = [["X", 45]], ear_r = [["X", 45]], tail_01 = [["X", 20]] }
 [clip.params.poses.growl_bob]
 move = { pelvis = [0, 0.02, -0.04] }
-rotate = { spine_01 = [["X", 5]], neck_01 = [["X", 20]], head = [["X", -20]], tail_01 = [["X", 20]] }
+rotate = { spine_01 = [["X", 5]], neck_01 = [["X", 20]], head = [["X", -20]], jaw = [["X", 8]], ear_l = [["X", 45]], ear_r = [["X", 45]], tail_01 = [["X", 20]] }
+
+# --- transformation (M12, agreed with engine 2026-10-08): 0.8 s each; at "swap" engine replaces the
+# model (wolf <-> none); _in ends in the s_idle stance ---
+
+[[clip]]
+name = "wolf/t_transform_in"      # crouched and trembling, rises and shakes its fur, ends as s_idle
+keyframe = "keyposes"
+[clip.params]
+base = "wolf/s_rest"
+keys = [[0, "huddle"], [8, "rise"], [14, "shake_l"], [18, "shake_r"], [24, "stand"]]
+[clip.params.poses.huddle]
+move = { pelvis = [0, 0.02, -0.14] }
+rotate = { spine_01 = [["X", 4]], neck_01 = [["X", 35]], head = [["X", 15]], ear_l = [["X", 40]], ear_r = [["X", 40]], front_upper_l = [["X", -35]], front_upper_r = [["X", -35]], front_lower_l = [["X", 40]], front_lower_r = [["X", 40]], back_upper_l = [["X", -40]], back_upper_r = [["X", -40]], back_lower_l = [["X", 70]], back_lower_r = [["X", 70]], back_foot_l = [["X", -30]], back_foot_r = [["X", -30]], tail_01 = [["X", 35]] }
+[clip.params.poses.rise]
+move = { pelvis = [0, 0.01, -0.04] }
+rotate = { neck_01 = [["X", 15]], head = [["X", 5]], ear_l = [["X", 20]], ear_r = [["X", 20]], front_upper_l = [["X", -10]], front_upper_r = [["X", -10]], front_lower_l = [["X", 12]], front_lower_r = [["X", 12]], back_upper_l = [["X", -12]], back_upper_r = [["X", -12]], back_lower_l = [["X", 20]], back_lower_r = [["X", 20]], tail_01 = [["X", 15]] }
+[clip.params.poses.shake_l]
+rotate = { spine_01 = [["Y", 8]], neck_01 = [["Y", 18], ["X", 3]], head = [["Y", 12]], ear_l = [["Z", 15]], ear_r = [["Z", 15]], tail_01 = [["Z", 20]] }
+[clip.params.poses.shake_r]
+rotate = { spine_01 = [["Y", -8]], neck_01 = [["Y", -18], ["X", 3]], head = [["Y", -12]], ear_l = [["Z", -15]], ear_r = [["Z", -15]], tail_01 = [["Z", -20]] }
+[clip.params.poses.stand]
+rotate = { neck_01 = [["X", 3]], tail_01 = [["X", 4]], tail_03 = [["Z", 6]] }
+
+[[clip]]
+name = "wolf/t_transform_out"     # rears up onto the hind legs, head thrown back (swap while upright)
+keyframe = "keyposes"
+markers = { swap = 12 }
+[clip.params]
+base = "wolf/s_rest"
+keys = [[0, "stand"], [5, "crouch"], [12, "rear"], [24, "rear_high"]]
+[clip.params.poses.stand]
+rotate = { neck_01 = [["X", 3]], tail_01 = [["X", 4]], tail_03 = [["Z", 6]] }
+[clip.params.poses.crouch]
+move = { pelvis = [0, 0.02, -0.06] }
+rotate = { neck_01 = [["X", 20]], head = [["X", 10]], ear_l = [["X", 35]], ear_r = [["X", 35]], front_upper_l = [["X", -15]], front_upper_r = [["X", -15]], front_lower_l = [["X", 20]], front_lower_r = [["X", 20]], back_upper_l = [["X", -18]], back_upper_r = [["X", -18]], back_lower_l = [["X", 30]], back_lower_r = [["X", 30]], tail_01 = [["X", 25]] }
+[clip.params.poses.rear]
+move = { pelvis = [0, 0.04, -0.015] }
+rotate = { pelvis = [["X", -28]], neck_01 = [["X", -12]], head = [["X", -18]], jaw = [["X", 25]], back_upper_l = [["X", 28]], back_upper_r = [["X", 28]], front_upper_l = [["X", 25]], front_upper_r = [["X", 30]], front_lower_l = [["X", -45]], front_lower_r = [["X", -40]], tail_01 = [["X", 40]], tail_02 = [["X", 10]] }
+[clip.params.poses.rear_high]
+move = { pelvis = [0, 0.05, -0.02] }
+rotate = { pelvis = [["X", -36]], neck_01 = [["X", -16]], head = [["X", -22]], jaw = [["X", 30]], back_upper_l = [["X", 36]], back_upper_r = [["X", 36]], front_upper_l = [["X", 35]], front_upper_r = [["X", 40]], front_lower_l = [["X", -55]], front_lower_r = [["X", -50]], tail_01 = [["X", 48]], tail_02 = [["X", 12]] }

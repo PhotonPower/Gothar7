@@ -252,6 +252,7 @@ void Engine::applyHeroSpell()
             p.trail = startEffect(trail, hand, -direction);
         }
         p.impact = fx("impact");
+        p.burn = spell.burn;
         m_projectiles.push_back(std::move(p));
         break;
     }
@@ -304,7 +305,7 @@ void Engine::applyHeroSpell()
         }
         for (const u32 id : hit)
         {
-            spellHit(damage, id, "hero");
+            spellHit(damage, id, "hero", spell.burn);
         }
         break;
     }
@@ -464,6 +465,20 @@ bool Engine::castFear(u32 targetId, f32 seconds, std::string_view caster, std::s
     return true;
 }
 
+std::string Engine::npcScrollFor(const gameplay::Character& who, std::string_view spell) const
+{
+    for (const gameplay::ItemStack& stack : who.inventory(itemLookup()))
+    {
+        const script::Instance* item = m_scripts ? m_scripts->findInstance("Item", stack.item) : nullptr;
+        if (item != nullptr && item->fields["category"].asString() == "scroll" &&
+            item->fields["spell"].asString() == spell)
+        {
+            return stack.item;
+        }
+    }
+    return {};
+}
+
 std::optional<std::string> Engine::npcCast(Creature& c, std::string_view spell, std::optional<u32> target)
 {
     const script::Instance* def = m_scripts ? m_scripts->findInstance("Spell", spell) : nullptr;
@@ -480,9 +495,15 @@ std::optional<std::string> Engine::npcCast(Creature& c, std::string_view spell, 
     {
         return std::string("NPCs do not summon or transform yet");
     }
+    // With its circle (a rune it knows), else from a scroll it carries (no circle; used up; decision A).
+    const std::string scroll = npcScrollFor(*c.character, info.instance);
     if (const auto blocked = gameplay::castBlocked(*c.character, info, false); blocked)
     {
-        return *blocked;
+        if (scroll.empty() || gameplay::castBlocked(*c.character, info, true))
+        {
+            return *blocked;
+        }
+        (void)c.character->removeItem(scroll, 1);
     }
     (void)c.character->setAttribute("mana", c.character->attribute("mana") - info.mana);
     Creature::Cast cast;
@@ -580,6 +601,7 @@ void Engine::applyNpcSpell(Creature& c)
             p.trail = startEffect(trail, hand, -direction);
         }
         p.impact = fx("impact");
+        p.burn = spell.burn;
         m_projectiles.push_back(std::move(p));
         break;
     }
@@ -628,13 +650,101 @@ void Engine::applyNpcSpell(Creature& c)
         }
         for (const u32 id : hit)
         {
-            spellHit(damage, id, c.species);
+            spellHit(damage, id, c.species, spell.burn);
         }
         break;
     }
     case gameplay::SpellKind::Summon:
     case gameplay::SpellKind::Transform:
         break;
+    }
+}
+
+void Engine::setBurning(u32 targetId, std::string_view caster)
+{
+    const bool hero = targetId == kHeroShooter;
+    Creature* c = hero ? nullptr : creature(targetId);
+    if ((!hero && (c == nullptr || c->dead || c->vanished)) || (hero && !m_player.valid()))
+    {
+        return;
+    }
+    Burning& b = m_burning[targetId];
+    const bool already = b.seconds > 0.0f;
+    b.seconds = magicValue(m_scripts.get(), "burn_seconds", 3.0f);
+    b.caster = std::string(caster);
+    if (!already)
+    {
+        b.tick = 1.0f;
+        const Vec3 at = (hero ? m_player.feet() : c->position) + Vec3(0.0f, 0.9f, 0.0f);
+        b.effect = startEffect("fire", at);
+        if (c != nullptr && c->figure && c->figure->animator.hasState("none_s_burn"))
+        {
+            c->figure->animator.enter("none_s_burn", 0.15f);
+        }
+        G7_LOG_INFO("engine", "{} burns ({})", hero ? std::string("hero") : c->species, caster);
+        if (m_scripts)
+        {
+            const script::Value args[] = {hero ? std::string("hero") : c->species, std::string(caster)};
+            m_scripts->emit("npc_burning", args);
+        }
+    }
+}
+
+void Engine::fixedUpdateBurning(f32 seconds)
+{
+    if (m_burning.empty())
+    {
+        return;
+    }
+    const f32 damagePerTick = magicValue(m_scripts.get(), "burn_damage", 5.0f);
+    std::vector<std::pair<u32, std::string>> ticks;
+    for (auto it = m_burning.begin(); it != m_burning.end();)
+    {
+        const u32 id = it->first;
+        Burning& b = it->second;
+        const bool hero = id == kHeroShooter;
+        Creature* c = hero ? nullptr : creature(id);
+        bool out = (hero && !m_player.valid()) || (!hero && (c == nullptr || c->dead || c->vanished));
+        if (!out)
+        {
+            const Vec3 feet = hero ? m_player.feet() : c->position;
+            // Water puts it out: swimming, or standing in water above the knees.
+            const auto surface = m_water.surfaceAt(feet);
+            const bool wet = hero ? m_swimmer.mode() != gameplay::WaterMode::Land
+                                  : surface.has_value() && *surface > feet.y + 0.4f;
+            if (b.effect)
+            {
+                m_particles.move(*b.effect, feet + Vec3(0.0f, 0.9f, 0.0f), Vec3(0.0f, 1.0f, 0.0f));
+            }
+            // A second's damage at the end of each second (the last one too), unless water put it out.
+            b.tick -= seconds;
+            b.seconds -= seconds;
+            if (!wet && b.tick <= 1e-4f)
+            {
+                b.tick += 1.0f;
+                ticks.emplace_back(id, b.caster);
+            }
+            out = wet || b.seconds <= 1e-4f;
+        }
+        if (out)
+        {
+            if (b.effect)
+            {
+                m_particles.stop(*b.effect);
+            }
+            if (c != nullptr && !c->dead && c->figure && c->figure->animator.state() == "none_s_burn")
+            {
+                c->figure->animator.enter(c->figure->startState, 0.2f); // back on its feet
+            }
+            it = m_burning.erase(it);
+            continue;
+        }
+        ++it;
+    }
+    // The fire's damage (after the loop: a death may change the burning ones).
+    for (const auto& [id, caster] : ticks)
+    {
+        spellHit({{"fire", static_cast<i32>(damagePerTick)}}, id, caster, false, false);
     }
 }
 
@@ -908,8 +1018,10 @@ void Engine::bindMagicFunctions()
                  {
                      return Value(false);
                  }
-                 return Value(
-                     !gameplay::castBlocked(*c->character, gameplay::spellInfo(*def), false).has_value());
+                 const gameplay::SpellInfo info = gameplay::spellInfo(*def);
+                 const bool scroll = !npcScrollFor(*c->character, info.instance).empty();
+                 return Value(!gameplay::castBlocked(*c->character, info, false).has_value() ||
+                              (scroll && !gameplay::castBlocked(*c->character, info, true).has_value()));
              }});
     vm.bind({"npc_casting", "npc_casting(npc: string) -> boolean", "Ob ein NPC gerade einen Spruch wirkt.",
              "Magie", [this](std::span<const Value> a) -> Result<Value>
@@ -919,6 +1031,12 @@ void Engine::bindMagicFunctions()
                  const Creature* c = id ? creature(*id) : nullptr;
                  return Value(c != nullptr && c->cast.has_value());
              }});
+    vm.bind({"npc_burning",
+             "on(\"npc_burning\", fn(npc: string, caster: string))",
+             "Ein NPC, ein Tier bzw. der Held (`hero`) gerät in Brand (M12, Entscheidung B: nur Sprüche mit "
+             "burn).",
+             "Ereignisse",
+             {}});
     vm.bind({"npc_feared",
              "on(\"npc_feared\", fn(npc: string, caster: string, seconds: number))",
              "Ein Furcht-Zauber trifft einen NPC bzw. ein Tier (M12, Z6): er flieht `seconds` Sekunden.",

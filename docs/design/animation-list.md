@@ -195,6 +195,8 @@ beginnt und endet in `mag/s_idle`; Event `cast` = der Effekt startet. Fünf Wirk
 | `mag/t_cast_fail` | misslingt (kein Mana): die Hand zuckt | 0,7 s | – | K | platzhalter-K |
 | `none/t_hit_magic` | Treffer durch Magie: zurückgeworfen, Arme vor dem Gesicht | 0,9 s | – | K | platzhalter-K |
 | `none/s_burn` | brennt (Schleife): rennt mit schlagenden Armen, engine bewegt ihn | 0,93 s | footstep_l/r | K | platzhalter-K (über `none/s_run`) |
+| `none/t_transform_out` | Verwandlung Mensch → Wolf: krümmt sich, sinkt auf alle viere; bei `swap` tauscht engine das Modell | 0,8 s | swap (Bild 12) | K | platzhalter-K (mit engine 2026-10-08) |
+| `none/t_transform_in` | Rückverwandlung Wolf → Mensch: richtet sich aus der Hocke auf, endet in `none/s_idle` | 0,8 s | – | K | platzhalter-K (mit engine 2026-10-08) |
 
 ## Monster (F5, Vertrag `characters-pipeline.md` §7)
 
@@ -202,20 +204,22 @@ Mindestumfang je Art. Clips liegen in `assets/source/characters/monsters/<art>/a
 Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `root` vorwärts, `t_turn_l/r` drehen
 `root` um die Hochachse (Wunsch engine); alle anderen Clips bleiben am Ort.
 
-### Wolf (`wolf`, Platzhalter aus Quaternius Animal Pack Vol.2, CC0)
+### Wolf (`wolf`, eigene Art, `gothar-chargen creature`; ersetzt den Quaternius-Platzhalter 2026-10-08)
 
 | Name | Zweck | RM | Events | Quelle | Status |
 |---|---|---|---|---|---|
-| `wolf/s_idle` | Stehen | – | – | Q | platzhalter (`Idle`) |
+| `wolf/s_idle` | Stehen: atmen, Ohren zucken, umschauen, Schwanz pendelt | – | – | K | platzhalter-K |
 | `wolf/s_walk` | Gehen (Kreuzgang) | ✓ 1,2 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt)) |
 | `wolf/s_trot` | Traben (diagonale Paare; Rudel folgen, drohend annähern) | ✓ 3,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt); mit engine vereinbart 2026-10-05) |
 | `wolf/s_run` | Rennen (Rotationsgalopp, Rücken beugt sich) | ✓ 6,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`: Füße stehen, Beine per IK, Körper federt)) |
 | `wolf/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Schritte + root-Drehung) |
-| `wolf/t_attack_1`, `t_attack_2` | Biss nach vorn (Ducken, Satz) / Schnappen zur Seite | – | hit_start, hit_end | K | platzhalter-K |
+| `wolf/t_attack_1`, `t_attack_2` | Biss nach vorn (Ducken, Satz) / Schnappen zur Seite; Kiefer auf und zu, Ohren angelegt | – | hit_start, hit_end | K | platzhalter-K |
 | `wolf/t_hit` | Treffer | – | – | K | platzhalter-K |
 | `wolf/t_die` | Tod: taumeln, auf die Seite kippen | – | – | K | platzhalter-K |
-| `wolf/s_eat`, `s_sleep` | Fressen (Kopf tief, kauen), Schlafen (liegend, atmet) | – | – | K | platzhalter-K |
-| `wolf/t_threaten` | Drohen: Kopf tief, Knurr-Nicken | – | – | K | platzhalter-K |
+| `wolf/s_eat`, `s_sleep` | Fressen (Kopf tief, Kiefer kaut), Schlafen (liegend, atmet) | – | – | K | platzhalter-K |
+| `wolf/t_threaten` | Drohen: Kopf tief, Zähne gefletscht, Ohren flach, Knurr-Nicken | – | – | K | platzhalter-K |
+| `wolf/t_transform_in` | Verwandlung Mensch → Wolf: aus der Hocke aufrichten, Fell schütteln, endet in `wolf/s_idle` (0,8 s) | – | – | K | platzhalter-K (mit engine 2026-10-08) |
+| `wolf/t_transform_out` | Rückverwandlung: steigt auf die Hinterbeine, Kopf nach oben; bei `swap` tauscht engine das Modell (0,8 s) | – | swap (Bild 12) | K | platzhalter-K (mit engine 2026-10-08) |
 
 ### Keiler (`keiler`, Platzhalter aus Quaternius Farm Animal Pack „Pig“, CC0)
 
@@ -323,6 +327,6 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 ## Prio C – später
 
 Akrobatik-Varianten, Gangarten (Militär, Frauen, Entspannt) als Varianten-Sets, zusätzliche
-Ambient-Routinen, Tanz/Musizieren, Verwandlungs-Übergänge, Spezialaktionen für Story-Szenen.
+Ambient-Routinen, Tanz/Musizieren, weitere Verwandlungs-Übergänge (Wolf: siehe Magie und Wolf), Spezialaktionen für Story-Szenen.
 
 **Gesamtumfang Menschen (Schätzung): ~400 Clips.** Monster je Art ~15–25 Clips (siehe characters-pipeline.md §7).

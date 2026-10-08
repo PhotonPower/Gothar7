@@ -381,6 +381,7 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, 
   selbst (Z1: Tränke, Schlaf, Stufe). Lua `cast_check(item, stages?)` → nil oder der Grund.
 - **Startsatz (Z9):** Feuerpfeil (Kreis 1, 10 Mana, Feuer 25), Heilung (1, 10, +50 LP), Schlaf (2, 15, 20 s),
   Wolfsgestalt (2, 20), Wolf rufen (3, 25, 60 s); Runen `it_rune_*`, Rollen `it_scroll_*`, `it_potion_mana_small`.
+  Dazu (Entscheidung C) Schrecken (Spruchrolle `it_scroll_fear`, 10 Mana, 10 s Furcht).
   Kreise kosten beim Lehrer 10/15/20/25/30/35 LP (`data/magic.lua`, Talentname „Kreis der Magie“).
 
 **Teil C1 – Wirken des Helden (umgesetzt, `EngineMagic.cpp`):**
@@ -439,9 +440,27 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, 
   - Die Kampf-KI heilt unter 30 % Leben (`CombatAi.heal_below`) und wirkt Angriffssprüche, solange das Ziel weiter als 3 m (`cast_distance`) entfernt ist und das Mana reicht; danach Nahkampf.
   - Lua: `npc_can_cast`, `npc_casting`.
   - Wer im Spiel zaubert, entscheidet der Projektinhaber; bisher nur ein Test-NPC.
-- **Offen** (Fragen an den Projektinhaber): Brennen durch Feuer, Furcht-Spruch im Startsatz, zaubernde NPCs im Lager.
+**Teil D2 – Entscheidungen A–C des Projektinhabers (umgesetzt):**
+- **A – Zaubernde NPCs:**
+  - Der Kräuterhexer `npc_camp_hexer` steht im Lager (`rtn_camp_hexer` am Westpunkt, in `camp_people()`). Im Kampf heilt er sich bzw. wirkt Feuerpfeile; die Figur ist vorerst die des alten Mannes.
+  - Der Wegelagerer trägt eine Spruchrolle Feuerpfeil und liest sie auf Abstand. NPCs ohne den nötigen Kreis wirken einen Spruch aus einer mitgeführten Rolle, die dabei verbraucht wird (`npcScrollFor`).
+- **B – Brennen wie Gothic:**
+  - Nur Sprüche mit `burn = true` setzen in Brand; der Feuerpfeil nicht.
+  - Der Getroffene brennt `Magic.burn_seconds` (3 s) mit dem Effekt `fire` und nimmt am Ende jeder Sekunde `Magic.burn_damage` (5) Feuerschaden, ohne zu taumeln.
+  - Menschen bleiben stehen und spielen `none/s_burn`.
+  - Wasser löscht (schwimmen bzw. Wasser über den Knien).
+  - Ereignis `npc_burning(npc, caster)`; auch der Held kann brennen.
+- **C – Furcht-Rolle im Startsatz:** `spl_fear` „Schrecken“ (Ziel, 10 Mana, 10 s Flucht), Spruchrolle `it_scroll_fear`.
 
-**Weiter:** Brennen nach Entscheidung, E DoD-Szenario.
+**Teil E – Meilenstein-Szenario** (`tests/runtime/test_engine_m12_scenario.cpp`): Ein Magier-Held mit dem Startsatz kämpft
+gegen den Kräuterhexer und einen Wegelagerer:
+- Schlaf legt den Wegelagerer hin.
+- Ein Feuerpfeil trifft den Hexer, der mit eigenen Sprüchen antwortet.
+- Ein gerufener Wolf greift ein.
+- Heilung heilt genau 50 abzüglich der Treffer währenddessen.
+- In Wolfsgestalt greift die Torwache an, der alte Mann flieht; „1“ macht den Helden wieder zum Menschen.
+
+**Nicht umgesetzt** (aus der Roadmap-Zeile): Telekinese und Shader-Effekte. Offen, ob sie zu M12 gehören.
 
 ## Wirtschaft
 Handel: Händler-Inventar, Preisfaktor Verkauf (z. B. 0,5), Währung als Item (`ItMi_Ore`).

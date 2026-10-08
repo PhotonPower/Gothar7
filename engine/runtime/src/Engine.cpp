@@ -433,6 +433,7 @@ bool Engine::runFrame()
         m_particles.update(static_cast<f32>(m_fixedStep.step())); // effects (M12)
         fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateProjectiles(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateBurning(static_cast<f32>(m_fixedStep.step())); // M12, decision B
         fixedUpdateDialog(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {

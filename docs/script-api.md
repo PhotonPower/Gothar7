@@ -134,6 +134,9 @@ Ein NPC bzw. Tier schläft durch einen Zauber ein (M12, Z6).
 ### `on("npc_blocked", fn(npc: string, target: string))`
 Ein NPC kommt nicht weiter und hat aufgegeben (nach mehrfachem Neuplanen).
 
+### `on("npc_burning", fn(npc: string, caster: string))`
+Ein NPC, ein Tier bzw. der Held (`hero`) gerät in Brand (M12, Entscheidung B: nur Sprüche mit burn).
+
 ### `on("npc_cast", fn(caster: string, spell: string))`
 Ein Zauber wird gewirkt (M12, `hero`).
 

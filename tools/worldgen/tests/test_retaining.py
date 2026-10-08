@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from shapely.geometry import LineString, Point, box
 
-from gothar_worldgen.export.retaining import plan_walls
+from gothar_worldgen.export.retaining import GapSteps, plan_walls
 from gothar_worldgen.export.terrain import Grid
 
 SPEC = {
@@ -25,6 +25,8 @@ SPEC = {
     "junctionM": 1.5,
     "mortarM": 1.5,
     "thicknessM": 0.5,
+    "minDropM": 0.4,
+    "gapSteps": {"maxDeg": 33.0, "widthM": 1.2, "fadeM": 1.0, "maxLenM": 12.0},
 }
 AREA = box(-60, -60, 60, 60)
 
@@ -89,3 +91,50 @@ def test_no_wall_on_the_inside_of_a_tight_bend_and_room_on_a_narrow_path():
     for w in walls:
         for p in w.points:  # a metre from the path wherever it is, not only from its own leg
             assert line.distance(Point(p)) > SPEC["minAxisM"] - 0.1
+
+
+def test_steps_lead_up_the_bank_in_a_wall_gap_before_a_door():
+    g = grid(lambda x, z: min(max(z - 2.5, 0.0), 2.0))  # a 45 degree bank behind the edge
+    door = (0.0, 12.0)  # up on the bank: its way comes down through the wall
+    steps: list[GapSteps] = []
+    levelled, walls, stats = plan_walls(g, [STREET], AREA, [], [door], [], [], SPEC, steps)
+    assert stats["gapSteps"] == 1 and len([w for w in walls if w.side == "high"]) == 2
+    (st,) = steps
+    (ax, az), (bx, bz) = st.points
+    assert abs(ax) < 1.5 and az == pytest.approx(2.2, abs=0.05) and bz > az  # out from the edge
+    rise = levelled.height_at(bx, bz) - levelled.height_at(ax, az)
+    run = bz - az
+    assert rise >= SPEC["minDropM"] and rise <= np.tan(np.radians(33.0)) * run + 0.05
+    # the ground under them a straight ramp
+    mid = levelled.height_at((ax + bx) / 2, (az + bz) / 2)
+    assert mid == pytest.approx(
+        (levelled.height_at(ax, az) + levelled.height_at(bx, bz)) / 2, abs=0.08
+    )
+    # a hill rising on behind the bank: the steps get longer, never steeper
+    hill: list[GapSteps] = []
+    hg = grid(lambda x, z: max(z - 2.5, 0.0) if z < 4.5 else 2.0 + 0.4 * (z - 4.5))
+    hl, _, _ = plan_walls(hg, [STREET], AREA, [], [door], [], [], SPEC, hill)
+    (hs,) = hill
+    (hx, hz), (kx, kz) = hs.points
+    assert (
+        hl.height_at(kx, kz) - hl.height_at(hx, hz) <= np.tan(np.radians(33.0)) * (kz - hz) + 0.05
+    )
+    # no steps where no wall stands beside the gap (a door on a gentle slope)
+    gentle: list[GapSteps] = []
+    plan_walls(grid(lambda x, z: 0.1 * z), [STREET], AREA, [], [door], [], [], SPEC, gentle)
+    assert gentle == []
+
+
+def test_no_teeth_of_old_ground_in_front_of_a_wall_on_a_diagonal_street():
+    g = grid(lambda x, z: 0.5 * (z - x) / np.sqrt(2.0))  # rises across a street at 45 degrees
+    diagonal = {"osmId": "w3", "highway": "residential", "widthM": 4.0,
+                "points": [[-30, -30], [30, 30]]}  # fmt: skip
+    levelled, walls, _ = plan(g, [diagonal])
+    high = next(w for w in walls if w.side == "high")
+    (ox, oz) = high.outward[len(high.points) // 2]
+    worst = 0.0
+    for t in np.arange(-15.0, 15.0, 0.13):  # just in front of the face, all along the middle
+        x, z = t / np.sqrt(2.0), t / np.sqrt(2.0)
+        px, pz = x + ox * (2.2 - 0.15), z + oz * (2.2 - 0.15)
+        worst = max(worst, abs(levelled.height_at(px, pz) - levelled.height_at(x, z)))
+    assert worst < 0.05

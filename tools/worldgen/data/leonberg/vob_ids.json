@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 35080,
+ "nextVobId": 35105,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -35081,6 +35081,31 @@
   "outdoor:grass:wall81:6:2": 35076,
   "streetworks:wall_w19910564_0_r_12": 35077,
   "streetworks:wall_w49681641_0_l_17": 35078,
-  "streetworks:wall_w719993898_0_r_120": 35079
+  "streetworks:wall_w719993898_0_r_120": 35079,
+  "streetworks:steps_w19736946_0_l_gap27": 35080,
+  "streetworks:steps_w19910564_0_r_gap10": 35081,
+  "streetworks:steps_w730885031_0_l_gap15": 35082,
+  "streetworks:steps_w893960212_0_r_gap71": 35083,
+  "streetworks:steps_w1508812090_0_l_gap11": 35084,
+  "streetworks:steps_w1508812090_0_l_gap19": 35085,
+  "streetworks:steps_w1533447639_0_l_gap20": 35086,
+  "streetworks:steps_w15259058_0_r_gap17": 35087,
+  "streetworks:steps_w15259058_0_r_gap53": 35088,
+  "streetworks:steps_w23195925_0_l_gap60": 35089,
+  "streetworks:steps_w23198604_0_l_gap34": 35090,
+  "streetworks:steps_w23198604_0_l_gap62": 35091,
+  "streetworks:steps_w23198604_0_l_gap76": 35092,
+  "streetworks:steps_w23198604_0_l_gap85": 35093,
+  "streetworks:steps_w49681641_0_l_gap15": 35094,
+  "streetworks:steps_w49682025_0_l_gap68": 35095,
+  "streetworks:steps_w66404740_0_l_gap34": 35096,
+  "streetworks:steps_w301978920_0_l_gap104": 35097,
+  "streetworks:steps_w719993898_0_r_gap119": 35098,
+  "streetworks:steps_w719993898_0_r_gap229": 35099,
+  "streetworks:steps_w1270145548_0_r_gap36": 35100,
+  "outdoor:DEBW_00100061ZOR:front:1:3:1": 35101,
+  "outdoor:grass:DEBW_001000620uQ:14:1": 35102,
+  "outdoor:grass:DEBW_001000620uQ:14:3": 35103,
+  "outdoor:grass:DEBW_00100061Zhq:10:2": 35104
  }
 }
