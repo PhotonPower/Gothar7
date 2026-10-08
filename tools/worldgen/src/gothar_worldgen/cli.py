@@ -8,7 +8,7 @@ import math
 import subprocess
 import sys
 import webbrowser
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -1035,9 +1035,63 @@ def _plan_uses(
         mine = [p["name"] for p in inside.places if p["house"] == h["id"]]
         if mine:
             h["insidePlaces"] = mine
+    from gothar_worldgen.uses.places import sign_vobs
     from gothar_worldgen.uses.zones import indoor_zones
 
-    return places, [*vobs, *inside.vobs], indoor_zones(doc.houses, index)
+    signs = sign_vobs(doc.houses, index, grid.height_at)  # W6: guild signs over the doors
+    return places, [*vobs, *inside.vobs, *signs], indoor_zones(doc.houses, index)
+
+
+def _sound_zones(path: Path, world: dict[str, Any], data_dir: Path, folder: Path, work: Path,
+                 street_doc: dict[str, Any], rooms: list[dict[str, Any]],
+                 ground: Callable[[float, float], float], out: TextIO) -> None:  # fmt: skip
+    """The site's music and ambient zones (``sound_zones.json``, M13) into ``world``."""
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+
+    from gothar_worldgen.export.splat import FOREST_KINDS
+    from gothar_worldgen.handmade import splat_areas
+    from gothar_worldgen.uses.sound import sound_zones, with_sound_zones
+    from gothar_worldgen.walls.citywall import load_course
+
+    spec = json.loads(path.read_text(encoding="utf-8"))
+    features = json.loads((work / "features.json").read_text(encoding="utf-8")).get("features", [])
+    course = load_course(json.loads((data_dir / "city_wall.json").read_text("utf-8")), features)
+    rules = json.loads((data_dir.parent / "building_rules.json").read_text("utf-8"))["cityWall"]
+    gardens = []
+    for area in splat_areas(load_handmade(data_dir / "handmade.json")):
+        polys = [Polygon(q) for k in ("gravel", "lawn") for q in area.get(k, []) if len(q) >= 3]
+        if polys:
+            gardens.append(unary_union(polys).convex_hull)
+    water_path = folder / "generated" / "water_index.json"
+    water = json.loads(water_path.read_text("utf-8"))["entries"] if water_path.is_file() else []
+    world_half = float(world["terrain"]["width"]) * float(world["terrain"]["cellSize"]) / 2
+    bound = Polygon([(-world_half, -world_half), (world_half, -world_half),
+                     (world_half, world_half), (-world_half, world_half)])  # fmt: skip
+    forests = []
+    for f in features:
+        if f.get("kind") in FOREST_KINDS and f.get("geometry") == "polygon":
+            poly = Polygon(f["polygon"]).buffer(0).intersection(bound)
+            forests += [g for g in getattr(poly, "geoms", [poly]) if isinstance(g, Polygon)]
+    fountains = [(float(v["pos"][0]), float(v["pos"][1]), float(v["pos"][2]))
+                 for v in world.get("vobs", []) if str(v.get("name", "")).startswith("HANDMADE_")
+                 and "BRUNNEN" in v["name"]]  # fmt: skip
+    walk = float(rules["heightM"]) - float(rules["parapetM"])
+
+    def wall_y(x: float, z: float) -> float:
+        return ground(x, z) + walk
+
+    squares = [
+        q["polygon"] for q in street_doc.get("squares", []) if len(q.get("polygon") or []) >= 3
+    ]
+    zones = sound_zones(spec, world_half, course.ring, squares, gardens, water, forests, fountains,
+                        wall_y, rooms)  # fmt: skip
+    with_sound_zones(world, zones, spec)
+    counts: dict[str, int] = {}
+    for z in zones:
+        counts[f"{z['type']} {z['value']}"] = counts.get(f"{z['type']} {z['value']}", 0) + 1
+    print(f"  sound zones: {len(zones)} boxes ("
+          f"{', '.join(f'{k} {n}' for k, n in sorted(counts.items()))})", file=out)  # fmt: skip
 
 
 def _plan_outdoor(
@@ -1254,6 +1308,10 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
                       f"({', '.join(f'{k} {n}' for k, n in sorted(outdoor.counts.items()))}), "
                       f"{len(outdoor.failed)} not placed ({target.name})", file=out)  # fmt: skip
             with_room_zones(res.world, zones)  # W7: the rooms' indoor ambient (world.md "Zonen")
+            sound_path = data_dir / "sound_zones.json"
+            if sound_path.is_file() and ground is not None:  # M13: music and ambient zones
+                _sound_zones(sound_path, res.world, data_dir, folder, paths.work, street_doc,
+                             zones, ground, out)  # fmt: skip
     except (AssembleError, OverrideError, OSError, json.JSONDecodeError, HandmadeError,
             UsesError, OutdoorError) as e:  # fmt: skip
         print(f"error: {e}", file=sys.stderr)

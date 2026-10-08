@@ -848,6 +848,45 @@ Werkzeug aus W-E5 (`data/<ort>/kirche.json`); die Quelle liegt unverändert unte
   `porch_arch_glass`, `tower_door_glass`), verglaste Schallöffnungen im Glockengeschoss (`belfry_opening_glass`,
   `bell_louvre_glass`) und verglaste Turmschlitze. Die Turmuhr mit Minutenzeiger ist um 1700 möglich.
 
+### Musik- und Ambiente-Zonen (M13)
+Vertrag `docs/modules/world.md` „Zonen“ (Typen `music`, `ambient`; gedrehte Boxen wie `indoor`; bei verschachtelten Zonen
+eines Typs gilt die kleinste Box). Namen vom Koordinator festgelegt (2026-10-08). Werte in
+`tools/worldgen/data/<ort>/sound_zones.json`, Code `uses/sound.py`; `assemble` schreibt sie nach den indoor-Zonen und
+ersetzt nur die eigenen (Wert aus der Liste).
+- **Musik:** `LAND` als Box über die ganze Welt (Vorgabe), `STADT` über die Altstadt: innerhalb der Stadtmauer, der
+  Zwingerstreifen (15 m) und der Schlossgarten.
+- **Ambiente:**
+  - `feld` über die ganze Welt (Vorgabe);
+  - `stadt_gasse` innerhalb der Stadtmauer;
+  - `stadt_markt` über deren Plätze (OSM, 2 m Rand);
+  - `schlossgarten` über den Pomeranzengarten;
+  - `ufer` an Glems und Parksee (die Wasser-Boxen, 8 m breiter);
+  - `wald` über die Waldflächen ab 2000 m²;
+  - `brunnen` um die Handmodell-Brunnen (5 m);
+  - `stadtmauer` auf dem Wehrgang (Band von 3 m über dem Gang, in Stücken von etwa 20 m);
+  - Raum-Ambiente in den indoor-Boxen eines Raums: `schmiede_esse` (Schmiede ZnP), `gasthaus_stube` (Zur krummen Gans);
+  - `innen` leitet engine aus den indoor-Zonen ab.
+- **Boxen:** Große Flächen werden mit Rechtecken aus ganzen Zellen bedeckt (Stadt 5 m, Wald 10 m, längs ihres kleinsten
+  gedrehten Rechtecks); am Rand innerhalb einer Zelle gilt die nächstgrößere Zone. Alle Außenboxen reichen gleich hoch
+  (300 m), damit „die kleinste gewinnt“ nach der Fläche entscheidet; Brunnen, Wehrgang und Räume sind niedrig und
+  gehen vor.
+- **Leonberg:** 358 Boxen; `stadt_gasse` deckt 93 % der Altstadt, `STADT` alles.
+
+### Zunftschilder (W6)
+Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-08): Ausleger mit Symbol über der Tür, eigene Gestaltung,
+keine echten Wappen oder Logos. Code: `mobs.guild_sign` (Modelle `props/sign_<symbol>.glb`), `uses/places.sign_vobs`.
+- **Wer:** jedes Haus aus `uses.json`, dessen Gewerbe (`trade`) oder Nutzung ein Symbol hat:
+  - Gasthaus Krug, Bäcker Brezel, Metzger Hackbeil, Schmiede Hufeisen, Bader Becken, Kräuterkammer Mörser, Wache Hellebarde;
+  - Goldschmied Pokal, Tuchhändler Tuchballen, Krämer Waage, Gewandschneider Schere;
+  - Schuster Stiefel, Schreiner Säge, Töpfer Krug.
+  - Wohnhäuser, Bauern, Rathaus und Pfarrhaus bekommen keines. Leonberg: 16 Schilder.
+- **Wo:** über der ersten benutzbaren Tür (Index `doors`), an der Schwelle verankert; bei einer Tür tief im Gelände
+  (Hangtür) auf Höhe des Bodens 1 m davor.
+- **Gestalt** (Koordinator 2026-10-08: von der Straße her erkennbar): Ausleger 1,2 m aus der Wand in 2,95 m Höhe, daran an
+  zwei Ketten ein hell bemaltes Brett von 0,9 × 0,75 m im Eichenrahmen (Unterkante 2,05 m), das Symbol 1,4-fach auf beiden
+  Seiten, in der Ebene des Auslegers (entlang der Straße lesbar).
+- **Kollision:** keine (nur das winzige `COL_HULL_NONE` unter dem Boden).
+
 ### Bodenregel für handgemachte Modelle (W6)
 Entscheidung Projektinhaber (2026-10-03): Kein sichtbarer Teil eines handgemachten Modells darf im Gelände stecken.
 - Ein Modell steht auf dem höchsten Gelände unter seinem Grundriss. Talseitig gibt es Sockel oder Fundament aus Stein,
