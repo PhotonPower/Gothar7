@@ -106,5 +106,10 @@ void Engine::bindDiaryFunctions()
              "Das Kapitel hat gewechselt (set_chapter in lib/diary.lua).",
              "Ereignisse",
              {}});
+    vm.bind({"quest_success",
+             "on(\"quest_success\", fn(quest: string))",
+             "Ein Auftrag ist gelungen (quest_success in lib/diary.lua).",
+             "Ereignisse",
+             {}});
 }
 } // namespace g7

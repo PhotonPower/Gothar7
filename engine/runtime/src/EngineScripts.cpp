@@ -110,6 +110,7 @@ Result<void> Engine::initScripts()
     bindMagicFunctions();
     bindFxFunctions();
     bindAudioFunctions();
+    bindMusicFunctions();
     bindTorchFunctions();
     if (m_config.randomSeed)
     {

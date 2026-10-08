@@ -94,12 +94,18 @@ public:
     Result<void> addClip(std::string_view name, std::span<const u8> bytes);
     [[nodiscard]] bool hasClip(std::string_view name) const noexcept;
     [[nodiscard]] f32 clipSeconds(std::string_view name) const noexcept; ///< 0: unknown
+    [[nodiscard]] u64 clipFrames(std::string_view name) const noexcept;  ///< at the mixer's rate; 0: unknown
+    [[nodiscard]] u32 sampleRate() const noexcept;
 
     /// Plays one of the definition's files (all must have been added); at `position` it is a 3D sound.
     /// `delaySeconds` starts it later on the mixer's clock (sample exact: music on bar boundaries).
     Result<SoundId> play(const SoundDef& def, std::optional<Vec3> position = {}, f32 delaySeconds = 0.0f);
-    /// Stops a sound, fading out over `fadeSeconds`.
+    /// A 2D sound starting at `frame` of the mixer's clock (music: segments chained sample exact, M13 C).
+    Result<SoundId> playAtFrame(const SoundDef& def, u64 frame);
+    /// Stops a sound, fading out over `fadeSeconds`. A sound still waiting for its start never sounds.
     void stop(SoundId id, f32 fadeSeconds = 0.0f);
+    /// Stops it at `frame` of the mixer's clock, the fade ending there (music on a bar boundary).
+    void stopAtFrame(SoundId id, u64 frame, f32 fadeSeconds = 0.0f);
     [[nodiscard]] bool playing(SoundId id) const noexcept;
     void setPosition(SoundId id, const Vec3& position);
     /// A sound's own volume (on top of its definition's), faded over `fadeSeconds`.
@@ -116,6 +122,7 @@ public:
 
     /// The mixer's clock in seconds (frames rendered or played).
     [[nodiscard]] f64 time() const noexcept;
+    [[nodiscard]] u64 frame() const noexcept; ///< the same in frames
     /// Without a device: renders `seconds` of audio. Always: frees the sounds that ended.
     void update(f32 seconds);
     [[nodiscard]] usize playingCount() const noexcept;
