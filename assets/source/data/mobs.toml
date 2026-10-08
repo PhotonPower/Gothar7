@@ -65,24 +65,24 @@ name = "back"
 pos = [0.5, 0.0, -0.6]
 facing = [0.0, 0.0, 1.0]
 
-[mobs.table]                 # welt's table (#197): top 1.6 x 0.8 m, 0.75 m high; benches with their middle at
-clips = "mob/bench"          # z = +-0.62 m. Sitting at the table with the bench clips: the pelvis lands 0.33 m
-enter = "t_sit"              # behind the feet, so the feet stand at z = +-0.29, facing the middle (the knees pass
-loop = "s_sit"               # under the top while sitting down - a placeholder until a clip of its own)
-leave = "t_stand"
+[mobs.table]                 # welt's table (#197): top 1.6 x 0.8 m, 0.75 m high; benches (own vobs) with their
+clips = "mob/table"          # middle at z = +-0.62 m, seat 0.45 m high, 0.35 m deep. The figure stands behind
+enter = "t_sit"              # the bench facing the middle (feet 1.10 m from the axis: bench back edge 0.795 m
+loop = "s_sit"               # + capsule radius 0.3 m, engine 2026-10-08), steps over it and sits with forearms
+leave = "t_stand"            # on the top; loops at FP_SIT/FP_DRINK: s_sit, s_sit_drink (it_mug), s_sit_talk
 [[mobs.table.slots]]
 name = "front_left"
-pos = [-0.4, 0.0, 0.29]
+pos = [-0.4, 0.0, 1.1]
 facing = [0.0, 0.0, -1.0]
 [[mobs.table.slots]]
 name = "front_right"
-pos = [0.4, 0.0, 0.29]
+pos = [0.4, 0.0, 1.1]
 facing = [0.0, 0.0, -1.0]
 [[mobs.table.slots]]
 name = "back_left"
-pos = [-0.4, 0.0, -0.29]
+pos = [-0.4, 0.0, -1.1]
 facing = [0.0, 0.0, 1.0]
 [[mobs.table.slots]]
 name = "back_right"
-pos = [0.4, 0.0, -0.29]
+pos = [0.4, 0.0, -1.1]
 facing = [0.0, 0.0, 1.0]

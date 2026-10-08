@@ -32,3 +32,8 @@ events = [
 events = [
     { frame = 10, event = "open" },
 ]
+
+[clips."mob/table/s_sit_drink"]
+events = [
+    { frame = 1, event = "item_to_hand" },
+]
