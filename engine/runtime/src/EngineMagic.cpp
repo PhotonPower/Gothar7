@@ -102,6 +102,7 @@ void Engine::toggleMagic()
         notice("Keine Rune und keine Spruchrolle angelegt.");
         return;
     }
+    putTorchAway(); // magic takes both hands
     m_weaponMode = kMagicMode;
     m_weaponDrawn = item; // in the hand at the clip's "draw" event
     if (!m_figure->animator.hasState("draw_mag"))
@@ -365,7 +366,8 @@ bool Engine::beginTransform(std::string_view species)
         G7_LOG_WARN("engine", "transformation: {}", body.error().message);
         return false;
     }
-    // No weapons, no magic in the paws (Z7).
+    // No weapons, no magic, no torch in the paws (Z7).
+    putTorchAway();
     m_heroCast.reset();
     m_weaponMode = 0;
     m_weaponDrawn.clear();

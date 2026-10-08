@@ -753,6 +753,10 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
                  {
                      applyHeroSpell(); // the spell leaves the hand (M12)
                  }
+                 else if (event.starts_with("torch_"))
+                 {
+                     torchEvent(event); // in the hand, lit, dropped
+                 }
                  else if (event.starts_with("sound:"))
                  {
                      (void)playSound(event.substr(6), m_playerFeet + Vec3(0.0f, 1.0f, 0.0f)); // M13

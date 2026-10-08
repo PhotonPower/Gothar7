@@ -108,6 +108,7 @@ void Engine::toggleRanged()
         notice("Kein Bogen und keine Armbrust ausgerüstet.");
         return;
     }
+    putTorchAway(); // the bow takes the left hand
     m_weaponMode = kRangedMode;
     m_weaponDrawn = weapon;
     m_rangedReload = 0.0f;

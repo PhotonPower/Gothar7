@@ -49,3 +49,13 @@ Item "it_gulden" {
     category = "misc",
     value = 1,
 }
+
+-- Die Fackel (Entscheidung Projektinhaber, wie Gothic 1): Benutzen zündet sie an bzw. steckt sie weg; sie brennt,
+-- solange sie gehalten wird, Wasser löscht sie. Modell von figuren (#268, socket_flame an der Spitze).
+Item "it_torch" {
+    name = "Fackel",
+    mesh = "items/it_torch.glb",
+    category = "torch",
+    value = 5,
+    weight = 0.5,
+}

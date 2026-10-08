@@ -899,6 +899,24 @@ private:
     std::map<audio::SoundId, Vec3> m_spatialSounds; // where the 3D sounds play (occlusion)
     f32 m_occlusionTimer = 0.0f;
     void bindAudioFunctions();
+    // The torch (owner decision, EngineTorch.cpp).
+    [[nodiscard]] bool torchLit() const noexcept;
+    void lightTorch(std::string_view item);
+    void torchEvent(std::string_view event); ///< torch_take, torch_light, torch_drop (figuren's clips)
+    void putTorchAway();
+    void dropTorch();
+    void fixedUpdateTorch(f32 seconds);
+    void bindTorchFunctions();
+    struct Torch
+    {
+        std::string item;
+        bool lighting = false; ///< none/t_torch_light plays
+        bool lit = false;
+        std::optional<u32> flame; ///< the effect at socket_flame (with its light)
+        f32 seconds = 0.0f;
+    };
+    std::optional<Torch> m_torch;
+    std::map<u64, u32> m_burningItems; // dropped torches: item vob -> their flame
     // Combat (M11, EngineCombat.cpp).
     struct Combatant;
     void loadCombat();
