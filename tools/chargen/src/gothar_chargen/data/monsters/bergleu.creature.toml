@@ -1,0 +1,603 @@
+# Creature "bergleu" (F5, boss, own work): a huge, old, scarred cave lion that lives in the old
+# quarry above the town - natural build (no heraldic or logo lion), dark mane, sabre teeth, short
+# stone horn stubs, scars. Shoulder 1.6 m, body 3.2 m. Design: docs/design/monsters.md.
+# Rig proposed to engine (2026-10-08): cat skeleton with spine_01..03, neck_01/02, jaw, ears, mane
+# bones, five tail bones, digitigrade legs with toes; sockets socket_mouth, socket_paw_l/r,
+# socket_tail. Built by `gothar-chargen creature bergleu`.
+#
+# Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. The tool
+# moves everything so that root lies on the ground below the pelvis head. `mirror = true` adds the
+# right side.
+
+art = "bergleu"
+material = "fur"
+voxel = 0.009
+smooth = 10
+triangles = 10500      # lod0 body; boss budget up to 12 k (engine 2026-10-08)
+lods = [1.0, 0.5, 0.25]
+texture = 1024
+seed = 41
+ao = 0.6
+normal_size = 512
+normal_strength = 0.9
+stripe_spacing = 0.2
+eye_colour = "#6a4a18"
+eye_glow = 0.3
+eye_glow_colour = "#e0a040"
+teeth_colour = "#d8ccae"
+tongue_colour = "#6e3a36"
+
+[sockets]
+socket_mouth = { parent = "head", length = 0.06 }
+socket_paw_l = { parent = "front_toes_l", length = 0.06 }
+socket_paw_r = { parent = "front_toes_r", length = 0.06 }
+socket_tail = { parent = "tail_05", length = 0.08 }
+
+# --- rig ---
+
+[[bone]]
+name = "pelvis"
+head = [0, 0, 1.25]
+tail = [0, -0.35, 1.30]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0, -0.35, 1.30]
+tail = [0, -0.85, 1.35]
+
+[[bone]]
+name = "spine_02"
+parent = "spine_01"
+head = [0, -0.85, 1.35]
+tail = [0, -1.30, 1.40]
+
+[[bone]]
+name = "spine_03"
+parent = "spine_02"
+head = [0, -1.30, 1.40]
+tail = [0, -1.65, 1.42]
+
+[[bone]]
+name = "neck_01"
+parent = "spine_03"
+head = [0, -1.65, 1.42]
+tail = [0, -1.95, 1.52]
+
+[[bone]]
+name = "neck_02"
+parent = "neck_01"
+head = [0, -1.95, 1.52]
+tail = [0, -2.15, 1.58]
+
+[[bone]]
+name = "head"
+parent = "neck_02"
+head = [0, -2.15, 1.58]
+tail = [0, -2.62, 1.50]
+
+[[bone]]
+name = "jaw"
+parent = "head"
+head = [0, -2.25, 1.42]
+tail = [0, -2.58, 1.36]
+
+[[bone]]
+name = "ear_l"
+parent = "head"
+mirror = true
+head = [0.16, -2.22, 1.80]
+tail = [0.20, -2.20, 1.90]
+
+[[bone]]
+name = "mane_back"           # mane: swings after and bristles when roaring
+parent = "neck_02"
+head = [0, -1.95, 1.78]
+tail = [0, -1.72, 1.90]
+
+[[bone]]
+name = "mane_l"
+parent = "neck_02"
+mirror = true
+head = [0.26, -2.0, 1.55]
+tail = [0.40, -1.88, 1.48]
+
+[[bone]]
+name = "front_shoulder_l"    # shoulder blade
+parent = "spine_03"
+mirror = true
+head = [0.12, -1.50, 1.45]
+tail = [0.30, -1.62, 1.20]
+
+[[bone]]
+name = "front_upper_l"
+parent = "front_shoulder_l"
+mirror = true
+head = [0.30, -1.62, 1.20]
+tail = [0.32, -1.45, 0.75]
+
+[[bone]]
+name = "front_lower_l"
+parent = "front_upper_l"
+mirror = true
+head = [0.32, -1.45, 0.75]
+tail = [0.32, -1.55, 0.22]
+
+[[bone]]
+name = "front_foot_l"        # metacarpus
+parent = "front_lower_l"
+mirror = true
+head = [0.32, -1.55, 0.22]
+tail = [0.32, -1.62, 0.08]
+
+[[bone]]
+name = "front_toes_l"        # the paw
+parent = "front_foot_l"
+mirror = true
+head = [0.32, -1.62, 0.08]
+tail = [0.32, -1.78, 0.04]
+
+[[bone]]
+name = "back_upper_l"
+parent = "pelvis"
+mirror = true
+head = [0.25, 0.05, 1.25]
+tail = [0.30, -0.30, 0.80]
+
+[[bone]]
+name = "back_lower_l"
+parent = "back_upper_l"
+mirror = true
+head = [0.30, -0.30, 0.80]
+tail = [0.30, 0.05, 0.42]
+
+[[bone]]
+name = "back_foot_l"         # metatarsus: the hock stays high
+parent = "back_lower_l"
+mirror = true
+head = [0.30, 0.05, 0.42]
+tail = [0.30, -0.05, 0.08]
+
+[[bone]]
+name = "back_toes_l"
+parent = "back_foot_l"
+mirror = true
+head = [0.30, -0.05, 0.08]
+tail = [0.30, -0.20, 0.04]
+
+[[bone]]
+name = "tail_01"
+parent = "pelvis"
+head = [0, 0.28, 1.33]
+tail = [0, 0.55, 1.15]
+
+[[bone]]
+name = "tail_02"
+parent = "tail_01"
+head = [0, 0.55, 1.15]
+tail = [0, 0.78, 0.92]
+
+[[bone]]
+name = "tail_03"
+parent = "tail_02"
+head = [0, 0.78, 0.92]
+tail = [0, 0.98, 0.72]
+
+[[bone]]
+name = "tail_04"
+parent = "tail_03"
+head = [0, 0.98, 0.72]
+tail = [0, 1.15, 0.58]
+
+[[bone]]
+name = "tail_05"
+parent = "tail_04"
+head = [0, 1.15, 0.58]
+tail = [0, 1.32, 0.52]
+
+# --- colour zones (sRGB) ---
+
+[zone.fur]                   # tawny, short coat, faint rosettes of an old cave lion
+colour = "#a07a48"
+colour2 = "#8a6638"
+variation = 0.12
+strands = 0.7
+belly = 0.35
+spots = 0.12
+stripe_colour = "#6a4a2a"
+
+[zone.mane]                  # dark, matted mane
+colour = "#3a2414"
+colour2 = "#5a3a20"
+variation = 0.15
+strands = 1.0
+
+[zone.muzzle]                # paler muzzle and chin
+colour = "#c0a47c"
+colour2 = "#a88c64"
+variation = 0.1
+strands = 0.3
+wrinkles = 0.3
+
+[zone.nose]
+colour = "#2a1e1a"
+variation = 0.06
+wrinkles = 0.5
+
+[zone.horn]                  # stone horn stubs
+colour = "#9a948a"
+colour2 = "#86807a"
+variation = 0.12
+strata = 0.6
+
+[zone.scar]
+colour = "#b8907a"
+variation = 0.08
+wrinkles = 0.6
+
+[zone.claw]
+colour = "#2a2420"
+variation = 0.05
+
+[zone.eye_rim]
+colour = "#2a1e16"
+variation = 0.06
+
+[zone.ear_inner]
+colour = "#6a4e3a"
+variation = 0.1
+strands = 0.3
+
+[zone.mouth]
+colour = "#5a2c29"
+colour2 = "#4a2422"
+variation = 0.12
+wrinkles = 0.8
+
+[zone.throat]
+colour = "#140a08"
+variation = 0.05
+
+# --- body ---
+
+[[shape]]
+kind = "ellipsoid"           # deep chest
+zone = "fur"
+center = [0, -1.30, 1.15]
+size = [0.40, 0.50, 0.46]
+rotate = [-5, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # belly, tucked towards the hips
+zone = "fur"
+center = [0, -0.75, 1.15]
+size = [0.35, 0.55, 0.34]
+
+[[shape]]
+kind = "ellipsoid"           # loins and hips
+zone = "fur"
+center = [0, -0.15, 1.20]
+size = [0.32, 0.36, 0.34]
+
+[[shape]]
+kind = "ellipsoid"           # rump
+zone = "fur"
+center = [0, 0.15, 1.23]
+size = [0.28, 0.20, 0.26]
+
+[[shape]]
+kind = "ellipsoid"           # powerful shoulders
+zone = "fur"
+mirror = true
+center = [0.22, -1.50, 1.25]
+size = [0.13, 0.25, 0.28]
+rotate = [-20, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # upper arm
+zone = "fur"
+mirror = true
+center = [0.29, -1.50, 0.95]
+size = [0.14, 0.17, 0.24]
+
+[[shape]]
+kind = "chain"               # thick forelegs
+zone = "fur"
+mirror = true
+points = [[0.31, -1.47, 0.80], [0.32, -1.53, 0.30], [0.32, -1.57, 0.16]]
+radii = [0.145, 0.115, 0.10]
+
+[[shape]]
+kind = "ellipsoid"           # front paws
+zone = "fur"
+mirror = true
+center = [0.32, -1.67, 0.08]
+size = [0.13, 0.17, 0.085]
+
+[[shape]]
+kind = "ridge"               # front toes
+zone = "fur"
+mirror = true
+points = [[0.24, -1.80, 0.05], [0.40, -1.80, 0.05]]
+sizes = [[0.045, 0.05, 0.045], [0.045, 0.05, 0.045]]
+count = 4
+
+[[shape]]
+kind = "ellipsoid"           # thighs
+zone = "fur"
+mirror = true
+center = [0.22, -0.08, 1.02]
+size = [0.14, 0.30, 0.33]
+rotate = [-25, 0, 0]
+
+[[shape]]
+kind = "chain"               # hind legs: knee, hock, paw
+zone = "fur"
+mirror = true
+points = [[0.29, -0.28, 0.80], [0.30, 0.05, 0.44], [0.30, -0.02, 0.15]]
+radii = [0.13, 0.085, 0.08]
+
+[[shape]]
+kind = "ellipsoid"           # back paws
+zone = "fur"
+mirror = true
+center = [0.30, -0.10, 0.07]
+size = [0.11, 0.15, 0.075]
+
+[[shape]]
+kind = "ridge"               # back toes
+zone = "fur"
+mirror = true
+points = [[0.235, -0.22, 0.045], [0.365, -0.22, 0.045]]
+sizes = [[0.04, 0.045, 0.04], [0.04, 0.045, 0.04]]
+count = 4
+
+[[shape]]
+kind = "chain"               # tail
+zone = "fur"
+points = [[0, 0.28, 1.33], [0, 0.55, 1.15], [0, 0.78, 0.92], [0, 0.98, 0.72], [0, 1.15, 0.58], [0, 1.30, 0.52]]
+radii = [0.09, 0.07, 0.06, 0.05, 0.045, 0.04]
+
+[[shape]]
+kind = "ellipsoid"           # tail tuft
+zone = "mane"
+center = [0, 1.38, 0.50]
+size = [0.08, 0.13, 0.08]
+rotate = [-15, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # scar on the shoulder
+zone = "scar"
+mirror = true
+center = [0.385, -1.40, 1.25]
+size = [0.014, 0.18, 0.018]
+rotate = [25, 0, 0]
+
+# --- neck and mane ---
+
+[[shape]]
+kind = "chain"
+zone = "fur"
+points = [[0, -1.60, 1.40], [0, -1.95, 1.52], [0, -2.12, 1.58]]
+radii = [0.32, 0.25, 0.22]
+
+[[shape]]
+kind = "ellipsoid"           # mane volume around the neck and over the shoulders
+zone = "mane"
+center = [0, -1.92, 1.62]
+size = [0.44, 0.48, 0.50]
+
+[[shape]]
+kind = "tuft_shell"          # long strands lying flat, flowing back (variant B, owner 2026-10-08)
+zone = "mane"
+center = [0, -1.92, 1.62]
+size = [0.44, 0.48, 0.50]
+rows = [-0.32, -0.24, -0.16, -0.08, 0.0, 0.08, 0.16, 0.24, 0.32]
+angles = [-155, -138, -121, -104, -87, -70, -53, -36, -19, 0, 19, 36, 53, 70, 87, 104, 121, 138, 155]
+tuft = [0.06, 0.21, 0.035]
+sink = 0.035
+tilt = 8
+jitter = 0.35
+seed = 9
+
+[[shape]]
+kind = "ridge"               # ruff framing the face (behind the cheeks)
+zone = "mane"
+mirror = true
+points = [[0, -2.13, 1.98], [0.27, -2.15, 1.82], [0.33, -2.16, 1.56], [0.25, -2.15, 1.30], [0, -2.15, 1.20]]
+sizes = [[0.07, 0.06, 0.10], [0.07, 0.06, 0.11], [0.07, 0.06, 0.11], [0.07, 0.06, 0.10], [0.06, 0.06, 0.09]]
+count = 13
+
+[[shape]]
+kind = "ridge"               # mane hanging down the chest
+zone = "mane"
+points = [[0, -2.05, 1.08], [0, -1.82, 0.96], [0, -1.58, 0.92]]
+sizes = [[0.13, 0.11, 0.14], [0.12, 0.11, 0.12], [0.08, 0.10, 0.08]]
+count = 7
+
+# --- head: broad skull, heavy muzzle, sabre teeth, stone horn stubs, scars ---
+
+[[shape]]
+kind = "ellipsoid"           # skull
+zone = "fur"
+center = [0, -2.26, 1.62]
+size = [0.27, 0.29, 0.25]
+
+[[shape]]
+kind = "ellipsoid"           # jaw muscles
+zone = "fur"
+mirror = true
+center = [0.16, -2.33, 1.51]
+size = [0.115, 0.18, 0.135]
+
+[[shape]]
+kind = "ellipsoid"           # brow ridge
+zone = "fur"
+center = [0, -2.39, 1.71]
+size = [0.21, 0.09, 0.06]
+
+[[shape]]
+kind = "capsule"             # broad nose bridge
+zone = "fur"
+a = [0, -2.30, 1.66]
+b = [0, -2.58, 1.56]
+r = 0.09
+r2 = 0.07
+
+[[shape]]
+kind = "ellipsoid"           # heavy muzzle
+zone = "muzzle"
+center = [0, -2.48, 1.49]
+size = [0.16, 0.16, 0.11]
+rotate = [10, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # upper lips over the lower jaw
+zone = "muzzle"
+mirror = true
+center = [0.085, -2.52, 1.43]
+size = [0.07, 0.12, 0.06]
+
+[[shape]]
+kind = "ellipsoid"           # nose pad
+zone = "nose"
+center = [0, -2.625, 1.53]
+size = [0.07, 0.045, 0.05]
+
+[[shape]]
+kind = "capsule"             # lower jaw
+zone = "muzzle"
+mirror = true
+a = [0.08, -2.28, 1.36]
+b = [0.05, -2.56, 1.37]
+r = 0.07
+r2 = 0.05
+
+[[shape]]
+kind = "cut_box"             # mouth through the snout past its tip
+zone = "mouth"
+center = [0, -2.47, 1.405]
+size = [0.20, 0.22, 0.006]
+
+[[shape]]
+kind = "cut"                 # throat
+zone = "throat"
+center = [0, -2.28, 1.42]
+size = [0.07, 0.08, 0.04]
+
+[[shape]]
+kind = "cut"                 # eye sockets
+zone = "eye_rim"
+mirror = true
+center = [0.112, -2.545, 1.665]
+size = [0.034, 0.028, 0.028]
+
+[[shape]]
+kind = "eye"                 # amber, a faint glow
+mirror = true
+bone = "head"
+center = [0.11, -2.525, 1.662]
+size = [0.024, 0.015, 0.014]
+rotate = [0, -12, 0]
+
+[[shape]]
+kind = "ellipsoid"           # heavy upper lid
+zone = "fur"
+mirror = true
+center = [0.11, -2.535, 1.681]
+size = [0.042, 0.03, 0.013]
+rotate = [0, -12, 0]
+
+[[shape]]
+kind = "ellipsoid"           # small rounded ears, half in the mane
+zone = "fur"
+mirror = true
+center = [0.17, -2.20, 1.80]
+size = [0.06, 0.025, 0.06]
+rotate = [0, 25, 0]
+
+[[shape]]
+kind = "cut"
+zone = "ear_inner"
+mirror = true
+center = [0.172, -2.215, 1.80]
+size = [0.04, 0.012, 0.04]
+rotate = [0, 25, 0]
+
+[[shape]]
+kind = "capsule"             # short stone horn stubs
+zone = "horn"
+mirror = true
+a = [0.12, -2.32, 1.80]
+b = [0.23, -2.20, 2.08]
+r = 0.07
+r2 = 0.03
+
+[[shape]]
+kind = "ellipsoid"           # scars across the face
+zone = "scar"
+mirror = true
+center = [0.17, -2.40, 1.60]
+size = [0.012, 0.10, 0.012]
+rotate = [0, 0, -30]
+
+[[shape]]
+kind = "ellipsoid"
+zone = "scar"
+center = [-0.05, -2.36, 1.73]
+size = [0.08, 0.012, 0.01]
+rotate = [0, 0, 20]
+
+[[shape]]
+kind = "tooth"               # sabre teeth, reaching below the chin
+mirror = true
+bone = "head"
+a = [0.06, -2.55, 1.42]
+b = [0.066, -2.57, 1.22]
+r = 0.018
+
+[[shape]]
+kind = "tooth"               # lower canines
+mirror = true
+bone = "jaw"
+a = [0.055, -2.53, 1.39]
+b = [0.056, -2.535, 1.455]
+r = 0.012
+
+[[shape]]
+kind = "tooth"               # incisors
+mirror = true
+bone = "head"
+a = [0.02, -2.62, 1.41]
+b = [0.02, -2.625, 1.385]
+r = 0.007
+
+[[shape]]
+kind = "tooth"
+mirror = true
+bone = "head"
+a = [0.04, -2.605, 1.41]
+b = [0.04, -2.61, 1.385]
+r = 0.007
+
+[[shape]]
+kind = "tongue"
+bone = "jaw"
+center = [0, -2.45, 1.40]
+size = [0.06, 0.11, 0.012]
+
+[[shape]]
+kind = "cone"                # claws, front
+zone = "claw"
+mirror = true
+a = [0.27, -1.84, 0.05]
+b = [0.27, -1.90, 0.01]
+r = 0.016
+
+[[shape]]
+kind = "cone"
+zone = "claw"
+mirror = true
+a = [0.37, -1.84, 0.05]
+b = [0.37, -1.90, 0.01]
+r = 0.016

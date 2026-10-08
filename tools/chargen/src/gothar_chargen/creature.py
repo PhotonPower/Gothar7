@@ -19,7 +19,7 @@ import numpy as np
 SHAPE_KINDS = (
     "ellipsoid", "box", "capsule", "chain", "ridge", "cone", "cut", "cut_box",
     "eye", "tooth", "tongue",
-    "plate", "plate_shell",
+    "plate", "plate_shell", "tuft_shell",
 )  # fmt: skip
 CUTS = ("cut", "cut_box")  # removed from the body after the first remesh
 PIECES = ("eye", "tooth", "tongue")  # separate geometry with their own material (not in the union)
@@ -162,14 +162,18 @@ def matrix_euler(m: np.ndarray) -> tuple[float, float, float]:
 
 
 def _plate_shell(
-    it: dict, zone: str, bone: str, candidates: tuple[str, ...], at: str
+    it: dict, zone: str, bone: str, candidates: tuple[str, ...], at: str, piece: str = "plate"
 ) -> list[Shape]:
     """Armour plates in rows on an ellipsoid: `rows` (y offsets from the centre, m), `angles`
     (degrees around the long axis, 0 = on top, positive towards +x), `plate` (half extents:
     across, along, thickness), `sink` (m the plate centre lies below the surface), `jitter`,
-    `tilt` (degrees the rear edge is raised: roof tiles, each row overlapping the next)."""
+    `tilt` (degrees the rear edge is raised: roof tiles, each row overlapping the next).
+    With piece "ellipsoid" (tuft_shell, half extents `tuft`) the same frames give shaggy tufts
+    of hair flowing backwards; they join the body union and scatter more."""
     centre, size = np.array(_v3(it["center"], at)), np.array(_v3(it["size"], at))
-    half = np.array(_v3(it["plate"], at))
+    half = np.array(_v3(it["plate" if piece == "plate" else "tuft"], at))
+    spread = 6.0 if piece == "plate" else 25.0  # random twist (degrees at jitter 0.15)
+    wobble = 0.2 if piece == "plate" else 0.6  # random offset (share of the half extents)
     sink = float(it.get("sink", half[2] * 0.4))
     jitter = float(it.get("jitter", 0.0))
     tilt = np.radians(float(it.get("tilt", 0.0)))
@@ -188,20 +192,18 @@ def _plate_shell(
             along = np.array([0.0, 1.0, 0.0]) - normal[1] * normal
             along /= np.linalg.norm(along)
             across = np.cross(along, normal)
-            twist = np.radians(rng.uniform(-6, 6) * jitter / 0.15) if jitter else 0.0
+            twist = np.radians(rng.uniform(-spread, spread) * jitter / 0.15) if jitter else 0.0
             c, s = np.cos(twist), np.sin(twist)
             across, along = c * across + s * along, -s * across + c * along
-            c, s = (
-                np.cos(tilt),
-                np.sin(tilt),
-            )  # rear edge (+along) up, front edge under the row ahead
+            lift = tilt + (np.radians(rng.uniform(-10, 10)) if piece != "plate" and jitter else 0.0)
+            c, s = np.cos(lift), np.sin(lift)  # rear edge (+along) up, under the row ahead
             along, normal = c * along + s * normal, -s * along + c * normal
             m = np.stack([across, along, normal], axis=1)  # columns: local x, y, z
             scale = 1.0 + rng.uniform(-jitter, jitter, 3) if jitter else np.ones(3)
-            pos = centre + local - normal * sink + rng.uniform(-1, 1, 3) * jitter * half * 0.2
+            pos = centre + local - normal * sink + rng.uniform(-1, 1, 3) * jitter * half * wobble
             out.append(
                 Shape(
-                    "plate",
+                    piece,
                     zone,
                     center=tuple(float(v) for v in pos),  # type: ignore[arg-type]
                     size=tuple(float(v) for v in half * scale),  # type: ignore[arg-type]
@@ -246,6 +248,8 @@ def _parse_shapes(items: list[dict], zones: dict[str, Zone]) -> list[Shape]:
             )
         elif kind == "plate_shell":
             new += _plate_shell(it, zone, bone, candidates, at)
+        elif kind == "tuft_shell":
+            new += _plate_shell(it, zone, "", (), at, piece="ellipsoid")
         elif kind in ("capsule", "cone", "tooth"):
             r = float(it["r"])
             r2 = 0.0 if kind in ("cone", "tooth") else float(it.get("r2", r))

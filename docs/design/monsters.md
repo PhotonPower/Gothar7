@@ -11,7 +11,7 @@ Neue Rigs (Glemsmahr, Bergleu) sind Verträge mit engine und werden vorher über
 | **Schinder** (`schinder`) | Aasfresser im Rudel | 0,8 m Schulter | gering, im Rudel mittel | vom Wolf abgeleitet | Mesh, Rig, 15 Clips (2026-10-07) |
 | **Quaderbuckel** (`quaderbuckel`) | gepanzerter Steinbruch-Bewohner | 1,8 m lang, 0,84 m hoch | mittel | vom Keiler abgeleitet + Stirnschild | Mesh, Rig, 17 Clips (2026-10-07) |
 | **Glemsmahr** (`glemsmahr`) | Nachtjäger im Glemswald | geduckt 1,5 m, aufgerichtet ~2,1 m | hoch (früh) | neues Rig (37 Knochen) | Mesh, Rig, 19 Clips (2026-10-07) |
-| **Bergleu** (`bergleu`) | Boss: das Wappentier vom Engelberg | 1,6 m Schulter, 3,2 m lang | sehr hoch | neues Katzen-Rig (~50 Knochen) | offen |
+| **Bergleu** (`bergleu`) | Boss: das Wappentier vom Engelberg | 1,6 m Schulter, 3,2 m lang | sehr hoch | neues Katzen-Rig (41 Knochen) | Mesh, Rig, 19 Clips (2026-10-08) |
 
 ## Schinder
 
@@ -77,3 +77,17 @@ Das verwilderte Wappentier Leonbergs („Löwenberg“): alt, vernarbt, mit dunk
 steinernen Hornstümpfen; einmalig in der Welt, haust in einer Höhle im alten Bruch oberhalb der Stadt.
 Prankenhieb, Sprung, Schwanzschlag; das Gebrüll lässt den Helden taumeln und Begleiter fliehen; unter halben
 Lebenspunkten rasend. Quest-Boss (verschollene Jäger, Kopfgeld der Stadt). Trophäe: Mähne.
+
+- **Stil:** ein natürlicher, alter Höhlenlöwe – keine Ähnlichkeit mit Wappen- oder Logo-Löwen bestehender Marken; die
+  eigenen Merkmale sind die steinernen Hornstümpfe (groß, hellgrau), Narben und Säbelzähne. Mähne aus langen, flach
+  nach hinten fallenden Strähnen (Variante B, vom Projektinhaber gewählt 2026-10-08).
+- **Rig (Vertrag mit engine, 2026-10-08):** 41 Knochen mit Sockets – `spine_01..03`, `neck_01/02`, `head`, `jaw`,
+  `ear_l/r`, Mähne `mane_back`, `mane_l/r` (nur in den Clips bewegt, kein Nachschwingen in der Engine), `tail_01..05`,
+  zehengängige Beine mit Schulterblättern (`front_shoulder`) und Zehen. Sockets `socket_mouth`, `socket_paw_l/r`
+  (Prankenhieb), `socket_tail` (Schwanzschlag). Eine Kapsel nach Schulterhöhe und Breite; Treffer prüft engine über eine
+  Strecke entlang des Rumpfs.
+- **Kampf:** Pirschgang 1,5, Galopp 8,0, Anpirschen 1,0 m/s; `t_pounce` (~5 m) am Ort mit `leap_start`/`leap_land` und
+  Treffern um die Landung; `t_tail_lash`; `t_roar` (Event `roar`: Held taumelt, Begleiter fliehen); `t_rage` leitet die
+  zweite Phase ein, danach spielt engine die normalen Clips mit Rate ~1,3; `t_stagger` nach schwerem Treffer bzw.
+  pariertem Prankenhieb.
+- **Technik:** lod0 11096 Dreiecke (Boss-Budget bis 12 k), Beschreibung `data/monsters/bergleu.creature.toml`.

@@ -1,0 +1,351 @@
+# Set "bergleu" (monster contract, characters-pipeline.md §7) -> monsters/bergleu/anims/bergleu.glb
+# Boss (gothar-chargen creature bergleu): the clip source only holds the still action "rest". Gaits
+# are own cycles (gait), everything else keyframe placeholders.
+# Agreed with engine (2026-10-08): walk 1.5, run 8.0, s_stalk 1.0 m/s (root motion); t_pounce in
+# place (~5 m, leap_start / leap_land, hit_start/hit_end around the landing); t_tail_lash with
+# hit_start/hit_end (hits around socket_tail); the mane moves only in the clips (mane_*); t_rage
+# then the normal clips at ~1.3 times the rate; t_hit and t_stagger (also after a parried swipe).
+#
+# Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches the head
+# down, opens the jaw, swings a leg back and lifts the tail, +Z turns left) and move root/pelvis.
+
+set = "bergleu"
+rig = "bergleu"
+
+[sources.src]
+file = "bergleu_clips.blend"
+mapping = "identity"
+
+[[clip]]
+name = "bergleu/s_rest"
+from = "src:rest"
+helper = true
+
+[[clip]]
+name = "bergleu/s_idle"            # heavy breathing, mane and tail swaying, looking about
+keyframe = "keyposes"
+[clip.params]
+base = "bergleu/s_rest"
+keys = [[0, "stand"], [20, "breathe"], [40, "look"], [60, "stand"]]
+[clip.params.poses.stand]
+rotate = { neck_01 = [["X", 4]], tail_01 = [["X", -6]], tail_04 = [["Z", 10]], tail_05 = [["Z", 15]] }
+[clip.params.poses.breathe]
+move = { pelvis = [0, 0, 0.01] }
+rotate = { spine_03 = [["X", -1.5]], neck_01 = [["X", 2]], mane_back = [["X", -3]], tail_01 = [["X", -4]], tail_04 = [["Z", -8]], tail_05 = [["Z", -14]] }
+[clip.params.poses.look]
+rotate = { neck_01 = [["X", 2], ["Z", 18]], head = [["Z", 8]], mane_l = [["Z", 5]], tail_01 = [["X", -6], ["Z", -8]], tail_04 = [["Z", 12]], tail_05 = [["Z", 18]] }
+
+# --- locomotion ---
+
+[[clip]]
+name = "bergleu/s_walk"            # heavy prowl (lateral sequence)
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 1.5
+period = 32                         # phases and duty on whole frames
+duty = 0.625
+lift = 0.10
+crouch = 0.02
+bob = 0.02
+pitch = 1.5
+nod = { bone = "neck_01", degrees = 3.0, phase = 0.0 }
+tail = { bones = ["tail_01", "tail_02", "tail_03", "tail_04", "tail_05"], degrees = 4, lag = 0.08 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 25 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -45 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 25 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -45 },
+]
+
+[[clip]]
+name = "bergleu/s_run"             # bounding gallop, the spine flexes
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 8.0
+period = 16
+duty = 0.25
+lift = 0.2
+crouch = 0.08
+bob = 0.06
+bob_cycles = 1
+pitch = 5.0
+flex = { bone = "spine_02", degrees = 10.0, phase = 0.25 }
+nod = { bone = "neck_01", degrees = 5.0, phase = 0.5 }
+tail = { bones = ["tail_01", "tail_02", "tail_03", "tail_04", "tail_05"], degrees = 8, lag = 0.08 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 25 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.0625, curl = 25 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.5, curl = -45 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.5625, curl = -45 },
+]
+
+[[clip]]
+name = "bergleu/s_stalk"           # stalking low, head forward, shoulders rolling
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 1.0
+period = 40
+duty = 0.7
+lift = 0.08
+crouch = 0.24
+bob = 0.01
+nod = { bone = "neck_01", degrees = 2.0, phase = 0.0 }
+tail = { bones = ["tail_01", "tail_02", "tail_03", "tail_04", "tail_05"], degrees = 3, lag = 0.08 }
+pose = { spine_03 = [["X", 4]], neck_01 = [["X", 14]], head = [["X", -18]], ear_l = [["X", 25]], ear_r = [["X", 25]], tail_01 = [["X", -18]], tail_05 = [["X", 15]] }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 25 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -45 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 25 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -45 },
+]
+
+[[clip]]
+name = "bergleu/s_step_inplace"    # base of the turns
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 32
+duty = 0.625
+lift = 0.08
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 25 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -45 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 25 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -45 },
+]
+
+[[clip]]
+name = "bergleu/t_turn_l"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "bergleu/s_step_inplace"
+keys = [[0, "rest"], [32, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", 90]] }
+
+[[clip]]
+name = "bergleu/t_turn_r"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "bergleu/s_step_inplace"
+keys = [[0, "rest"], [32, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", -90]] }
+
+[[clip]]
+name = "bergleu/t_turn_back"       # quick 180 degree turn
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "bergleu/s_step_inplace"
+keys = [[0, "rest"], [12, "half"], [24, "turned"]]
+[clip.params.poses.half]
+move = { pelvis = [0, 0, -0.05] }
+rotate = { root = [["Z", 95]], spine_02 = [["Z", 12]], neck_01 = [["Z", 20]], tail_01 = [["Z", -25]] }
+[clip.params.poses.turned]
+rotate = { root = [["Z", 180]] }
+
+# --- combat ---
+
+[[clip]]
+name = "bergleu/t_attack_1"        # paw swipe from the right (hits around socket_paw_r)
+keyframe = "keyposes"
+markers = { hit_start = 14, hit_end = 19 }
+[clip.params]
+base = "bergleu/s_idle"
+keys = [[0, "rest"], [9, "raise"], [15, "swipe"], [19, "follow"], [32, "rest"]]
+[clip.params.poses.raise]
+move = { pelvis = [0, 0.05, 0.02] }
+rotate = { spine_03 = [["X", -8], ["Z", 6]], front_upper_r = [["X", -70], ["Y", 25]], front_lower_r = [["X", -40]], front_toes_r = [["X", -30]], neck_01 = [["X", 5], ["Z", 10]], jaw = [["X", 15]], tail_01 = [["Z", -15]] }
+[clip.params.poses.swipe]
+move = { pelvis = [0, -0.12, -0.02] }
+rotate = { spine_03 = [["X", -2], ["Z", -8]], front_upper_r = [["X", -25], ["Y", -30]], front_lower_r = [["X", -10]], neck_01 = [["X", 8], ["Z", -12]], jaw = [["X", 25]], tail_01 = [["Z", 18]] }
+[clip.params.poses.follow]
+move = { pelvis = [0, -0.12, -0.03] }
+rotate = { spine_03 = [["Z", -10]], front_upper_r = [["X", 0], ["Y", -35]], neck_01 = [["X", 8], ["Z", -14]], jaw = [["X", 10]], tail_01 = [["Z", 20]] }
+
+[[clip]]
+name = "bergleu/t_attack_2"        # bite and shake
+keyframe = "keyposes"
+markers = { hit_start = 11, hit_end = 22 }
+[clip.params]
+base = "bergleu/s_idle"
+keys = [[0, "rest"], [7, "lunge"], [11, "bite"], [15, "shake_l"], [19, "shake_r"], [22, "shake_l"], [34, "rest"]]
+[clip.params.poses.lunge]
+move = { pelvis = [0, -0.18, -0.02] }
+rotate = { spine_03 = [["X", -4]], neck_01 = [["X", -8]], head = [["X", -14]], jaw = [["X", 38]], front_upper_l = [["X", -15]], front_upper_r = [["X", -15]], ear_l = [["X", 30]], ear_r = [["X", 30]] }
+[clip.params.poses.bite]
+move = { pelvis = [0, -0.22, -0.04] }
+rotate = { neck_01 = [["X", 8]], head = [["X", 10]], jaw = [["X", 3]], front_upper_l = [["X", -18]], front_upper_r = [["X", -18]], ear_l = [["X", 30]], ear_r = [["X", 30]] }
+[clip.params.poses.shake_l]
+move = { pelvis = [0, -0.18, -0.04] }
+rotate = { neck_01 = [["X", 10], ["Z", 22]], head = [["Z", 14], ["X", 8]], jaw = [["X", 3]], mane_l = [["Z", -10]], mane_r = [["Z", -10]], ear_l = [["X", 30]], ear_r = [["X", 30]] }
+[clip.params.poses.shake_r]
+move = { pelvis = [0, -0.16, -0.04] }
+rotate = { neck_01 = [["X", 10], ["Z", -22]], head = [["Z", -14], ["X", 8]], jaw = [["X", 3]], mane_l = [["Z", 10]], mane_r = [["Z", 10]], ear_l = [["X", 30]], ear_r = [["X", 30]] }
+
+[[clip]]
+name = "bergleu/t_tail_lash"       # the hips swing, the tail sweeps behind and to the side
+keyframe = "keyposes"
+markers = { hit_start = 12, hit_end = 18 }
+[clip.params]
+base = "bergleu/s_idle"
+keys = [[0, "rest"], [8, "wind_up"], [14, "lash"], [18, "follow"], [32, "rest"]]
+[clip.params.poses.wind_up]
+rotate = { pelvis = [["Z", -12]], spine_01 = [["Z", -6]], tail_01 = [["Z", -45], ["X", 15]], tail_02 = [["Z", -20]], tail_03 = [["Z", -15]], tail_04 = [["Z", -10]], neck_01 = [["Z", 15]] }
+[clip.params.poses.lash]
+rotate = { pelvis = [["Z", 14]], spine_01 = [["Z", 6]], tail_01 = [["Z", 55], ["X", 20]], tail_02 = [["Z", 25]], tail_03 = [["Z", 20]], tail_04 = [["Z", 15]], tail_05 = [["Z", 10]], neck_01 = [["Z", -10]] }
+[clip.params.poses.follow]
+rotate = { pelvis = [["Z", 10]], spine_01 = [["Z", 4]], tail_01 = [["Z", 40], ["X", 10]], tail_02 = [["Z", 30]], tail_03 = [["Z", 25]], tail_04 = [["Z", 20]], tail_05 = [["Z", 18]] }
+
+[[clip]]
+name = "bergleu/t_pounce"          # leap onto the hero, in place (engine moves ~5 m)
+keyframe = "keyposes"
+markers = { leap_start = 12, hit_start = 23, leap_land = 24, hit_end = 28 }
+[clip.params]
+base = "bergleu/s_rest"
+keys = [[0, "rest"], [10, "crouch"], [12, "launch"], [18, "air"], [24, "land"], [34, "absorb"], [46, "rest"]]
+[clip.params.poses.crouch]
+move = { pelvis = [0, 0.1, -0.3] }
+rotate = { spine_03 = [["X", 6]], neck_01 = [["X", 12]], head = [["X", -18]], back_upper_l = [["X", -30]], back_upper_r = [["X", -30]], back_lower_l = [["X", 35]], back_lower_r = [["X", 35]], front_upper_l = [["X", 20]], front_upper_r = [["X", 20]], ear_l = [["X", 30]], ear_r = [["X", 30]], tail_01 = [["X", -15]] }
+[clip.params.poses.launch]
+move = { pelvis = [0, -0.1, 0.1] }
+rotate = { pelvis = [["X", -18]], back_upper_l = [["X", 50]], back_upper_r = [["X", 50]], back_lower_l = [["X", -10]], back_lower_r = [["X", -10]], front_upper_l = [["X", -60]], front_upper_r = [["X", -60]], neck_01 = [["X", 4]], head = [["X", -12]], jaw = [["X", 25]], ear_l = [["X", 35]], ear_r = [["X", 35]], mane_back = [["X", 10]] }
+[clip.params.poses.air]
+move = { pelvis = [0, -0.1, 0.45] }
+rotate = { pelvis = [["X", -8]], back_upper_l = [["X", 55]], back_upper_r = [["X", 55]], back_lower_l = [["X", -20]], back_lower_r = [["X", -20]], front_upper_l = [["X", -100]], front_upper_r = [["X", -100]], front_lower_l = [["X", -20]], front_lower_r = [["X", -20]], front_toes_l = [["X", -40]], front_toes_r = [["X", -40]], head = [["X", -10]], jaw = [["X", 40]], ear_l = [["X", 35]], ear_r = [["X", 35]], mane_back = [["X", 15]], tail_01 = [["X", 20]] }
+[clip.params.poses.land]
+move = { pelvis = [0, -0.04, -0.12] }
+rotate = { pelvis = [["X", 8]], back_upper_l = [["X", -12]], back_upper_r = [["X", -12]], back_lower_l = [["X", 22]], back_lower_r = [["X", 22]], front_upper_l = [["X", -10]], front_upper_r = [["X", -10]], neck_01 = [["X", 15]], head = [["X", 6]], jaw = [["X", 8]], mane_back = [["X", -8]] }
+[clip.params.poses.absorb]
+move = { pelvis = [0, 0.0, -0.06] }
+rotate = { pelvis = [["X", 4]], back_upper_l = [["X", -6]], back_upper_r = [["X", -6]], neck_01 = [["X", 10]], jaw = [["X", 12]] }
+
+[[clip]]
+name = "bergleu/t_roar"            # front up, jaws wide, mane bristling (hero staggers, companions flee)
+keyframe = "keyposes"
+markers = { roar = 14, "sound:bergleu_roar" = 14 }
+[clip.params]
+base = "bergleu/s_rest"
+keys = [[0, "rest"], [10, "draw_in"], [14, "roar"], [32, "roar_hold"], [50, "rest"]]
+[clip.params.poses.draw_in]
+move = { pelvis = [0, 0.06, -0.04] }
+rotate = { spine_03 = [["X", 4]], neck_01 = [["X", 15]], head = [["X", 6]], jaw = [["X", 6]], ear_l = [["X", 30]], ear_r = [["X", 30]] }
+[clip.params.poses.roar]
+move = { pelvis = [0, -0.04, 0.06] }
+rotate = { spine_03 = [["X", -12]], neck_01 = [["X", -18]], head = [["X", -20]], jaw = [["X", 45]], mane_back = [["X", -25]], mane_l = [["Z", 20], ["Y", -15]], mane_r = [["Z", -20], ["Y", 15]], ear_l = [["X", 40]], ear_r = [["X", 40]], tail_01 = [["X", 15]] }
+[clip.params.poses.roar_hold]
+move = { pelvis = [0, -0.04, 0.07] }
+rotate = { spine_03 = [["X", -13]], neck_01 = [["X", -16]], head = [["X", -22]], jaw = [["X", 42]], mane_back = [["X", -22]], mane_l = [["Z", 18], ["Y", -12]], mane_r = [["Z", -18], ["Y", 12]], ear_l = [["X", 40]], ear_r = [["X", 40]], tail_01 = [["X", 18]] }
+
+[[clip]]
+name = "bergleu/t_rage"            # into rage: head shaking, mane bristling, pawing the ground, a roar
+keyframe = "keyposes"
+markers = { rage = 30, "sound:bergleu_roar" = 34 }
+[clip.params]
+base = "bergleu/s_rest"
+keys = [[0, "rest"], [6, "shake_l"], [12, "shake_r"], [18, "shake_l"], [24, "paw_back"], [30, "paw_scrape"], [36, "roar"], [52, "roar"], [64, "rest"]]
+[clip.params.poses.shake_l]
+move = { pelvis = [0, 0, -0.03] }
+rotate = { neck_01 = [["X", 15], ["Z", 25]], head = [["Z", 18]], mane_back = [["X", -15]], mane_l = [["Z", -12]], mane_r = [["Z", -12]], ear_l = [["X", 35]], ear_r = [["X", 35]], tail_01 = [["Z", 20]] }
+[clip.params.poses.shake_r]
+move = { pelvis = [0, 0, -0.03] }
+rotate = { neck_01 = [["X", 15], ["Z", -25]], head = [["Z", -18]], mane_back = [["X", -15]], mane_l = [["Z", 12]], mane_r = [["Z", 12]], ear_l = [["X", 35]], ear_r = [["X", 35]], tail_01 = [["Z", -20]] }
+[clip.params.poses.paw_back]
+move = { pelvis = [0, 0.03, -0.02] }
+rotate = { neck_01 = [["X", 18]], head = [["X", -10]], front_upper_r = [["X", -35]], front_lower_r = [["X", -40]], mane_back = [["X", -18]], ear_l = [["X", 35]], ear_r = [["X", 35]] }
+[clip.params.poses.paw_scrape]
+move = { pelvis = [0, 0.03, -0.03] }
+rotate = { neck_01 = [["X", 18]], head = [["X", -10]], front_upper_r = [["X", 20]], front_lower_r = [["X", 10]], mane_back = [["X", -18]], ear_l = [["X", 35]], ear_r = [["X", 35]] }
+[clip.params.poses.roar]
+move = { pelvis = [0, -0.04, 0.06] }
+rotate = { spine_03 = [["X", -12]], neck_01 = [["X", -18]], head = [["X", -20]], jaw = [["X", 45]], mane_back = [["X", -28]], mane_l = [["Z", 22], ["Y", -15]], mane_r = [["Z", -22], ["Y", 15]], ear_l = [["X", 40]], ear_r = [["X", 40]], tail_01 = [["X", 20]] }
+
+[[clip]]
+name = "bergleu/t_hit"
+keyframe = "keyposes"
+[clip.params]
+base = "bergleu/s_idle"
+keys = [[0, "rest"], [4, "flinch"], [18, "rest"]]
+[clip.params.poses.flinch]
+move = { pelvis = [0, 0.06, 0.02] }
+rotate = { spine_03 = [["X", -6], ["Z", 5]], neck_01 = [["X", -12]], head = [["X", -10], ["Z", 8]], jaw = [["X", 20]], ear_l = [["X", 30]], ear_r = [["X", 30]], tail_01 = [["X", 15]] }
+
+[[clip]]
+name = "bergleu/t_stagger"         # heavy hit or parried swipe: thrown back, legs buckle
+keyframe = "keyposes"
+[clip.params]
+base = "bergleu/s_idle"
+keys = [[0, "rest"], [5, "thrown"], [14, "buckle"], [24, "recover"], [36, "rest"]]
+[clip.params.poses.thrown]
+move = { pelvis = [0, 0.2, 0.0] }
+rotate = { spine_03 = [["X", -12], ["Z", 8]], neck_01 = [["X", -25], ["Z", 15]], head = [["X", -18], ["Z", 12]], jaw = [["X", 30]], front_upper_l = [["X", -30]], front_upper_r = [["X", -20]], ear_l = [["X", 35]], ear_r = [["X", 35]], mane_back = [["X", 12]], tail_01 = [["X", 25]] }
+[clip.params.poses.buckle]
+move = { pelvis = [0, 0.18, -0.12] }
+rotate = { spine_03 = [["X", 6], ["Z", 4]], neck_01 = [["X", 12], ["Z", 8]], head = [["X", 5]], jaw = [["X", 15]], front_upper_l = [["X", 15]], front_lower_l = [["X", -25]], back_upper_l = [["X", -15]], back_lower_l = [["X", 20]], ear_l = [["X", 30]], ear_r = [["X", 30]] }
+[clip.params.poses.recover]
+move = { pelvis = [0, 0.08, -0.03] }
+rotate = { neck_01 = [["X", 8]], head = [["X", -5]], jaw = [["X", 12]], ear_l = [["X", 25]], ear_r = [["X", 25]] }
+
+[[clip]]
+name = "bergleu/t_die"             # long death: staggers, sinks onto the belly, the head goes down
+keyframe = "keyposes"
+[clip.params]
+keys = [[0, "rest"], [12, "stagger"], [30, "belly"], [50, "head_down"], [70, "last_breath"]]
+[clip.params.poses.stagger]
+move = { pelvis = [0, 0.05, -0.12] }
+rotate = { neck_01 = [["X", 20]], head = [["X", 10]], jaw = [["X", 15]], front_upper_l = [["X", 10]], front_lower_l = [["X", -20]], back_upper_r = [["X", -15]], back_lower_r = [["X", 25]] }
+[clip.params.poses.belly]
+move = { pelvis = [0, 0.05, -0.55] }
+rotate = { spine_03 = [["Z", 4]], neck_01 = [["X", 22]], head = [["X", 5]], jaw = [["X", 18]], front_upper_l = [["X", -50]], front_upper_r = [["X", -40]], front_lower_l = [["X", -40]], front_lower_r = [["X", -45]], back_upper_l = [["X", -60]], back_upper_r = [["X", -60]], back_lower_l = [["X", 70]], back_lower_r = [["X", 70]], tail_01 = [["X", 25], ["Z", 30]] }
+[clip.params.poses.head_down]
+move = { pelvis = [0, 0.05, -0.58] }
+rotate = { spine_03 = [["Z", 6]], neck_01 = [["X", 40], ["Z", 12]], head = [["X", 12], ["Y", 25]], jaw = [["X", 22]], ear_l = [["X", 20]], front_upper_l = [["X", -50]], front_upper_r = [["X", -40]], front_lower_l = [["X", -40]], front_lower_r = [["X", -45]], back_upper_l = [["X", -60]], back_upper_r = [["X", -60]], back_lower_l = [["X", 70]], back_lower_r = [["X", 70]], tail_01 = [["X", 25], ["Z", 40]] }
+[clip.params.poses.last_breath]
+move = { pelvis = [0, 0.05, -0.59] }
+rotate = { spine_03 = [["Z", 6], ["X", 1.5]], neck_01 = [["X", 42], ["Z", 12]], head = [["X", 12], ["Y", 28]], jaw = [["X", 24]], ear_l = [["X", 22]], ear_r = [["X", 10]], front_upper_l = [["X", -50]], front_upper_r = [["X", -40]], front_lower_l = [["X", -40]], front_lower_r = [["X", -45]], back_upper_l = [["X", -60]], back_upper_r = [["X", -60]], back_lower_l = [["X", 70]], back_lower_r = [["X", 70]], tail_01 = [["X", 22], ["Z", 45]] }
+
+# --- behaviour ---
+
+[[clip]]
+name = "bergleu/s_eat"             # lying at a kill in the den, tearing and chewing
+keyframe = "keyposes"
+[clip.params]
+keys = [[0, "tear"], [20, "chew"], [40, "tear"], [60, "chew"], [80, "tear"]]
+[clip.params.poses.tear]
+move = { pelvis = [0, 0.05, -0.55] }
+rotate = { neck_01 = [["X", 40]], head = [["X", 18], ["Z", 10]], jaw = [["X", 25]], front_upper_l = [["X", -50]], front_upper_r = [["X", -40]], front_lower_l = [["X", -40]], front_lower_r = [["X", -45]], back_upper_l = [["X", -60]], back_upper_r = [["X", -60]], back_lower_l = [["X", 70]], back_lower_r = [["X", 70]], tail_01 = [["X", 28], ["Z", 40]], tail_02 = [["X", -10], ["Z", 15]] }
+[clip.params.poses.chew]
+move = { pelvis = [0, 0.05, -0.55] }
+rotate = { neck_01 = [["X", 32]], head = [["X", 8], ["Z", -6]], jaw = [["X", 6]], front_upper_l = [["X", -50]], front_upper_r = [["X", -40]], front_lower_l = [["X", -40]], front_lower_r = [["X", -45]], back_upper_l = [["X", -60]], back_upper_r = [["X", -60]], back_lower_l = [["X", 70]], back_lower_r = [["X", 70]], tail_01 = [["X", 28], ["Z", 45]], tail_02 = [["X", -10], ["Z", 15]] }
+
+[[clip]]
+name = "bergleu/s_sleep"           # lying on its side in the den, slow breathing
+keyframe = "keyposes"
+[clip.params]
+keys = [[0, "lie"], [40, "lie_in"], [80, "lie"]]
+[clip.params.poses.lie]
+move = { root = [0, 0, 0.26], pelvis = [0, 0.05, -0.76] }
+rotate = { root = [["Y", 85]], neck_01 = [["X", 10], ["Z", -10]], head = [["X", 10]], front_upper_l = [["X", -25]], front_upper_r = [["X", -35]], front_lower_l = [["X", -30]], back_upper_l = [["X", -35]], back_upper_r = [["X", -25]], back_lower_l = [["X", 40]], back_lower_r = [["X", 30]], tail_01 = [["Z", -30]], tail_02 = [["Z", -20]] }
+[clip.params.poses.lie_in]
+move = { root = [0, 0, 0.26], pelvis = [0, 0.05, -0.75] }
+rotate = { root = [["Y", 85]], spine_03 = [["X", -1.5]], neck_01 = [["X", 10], ["Z", -10]], head = [["X", 10]], front_upper_l = [["X", -25]], front_upper_r = [["X", -35]], front_lower_l = [["X", -30]], back_upper_l = [["X", -35]], back_upper_r = [["X", -25]], back_lower_l = [["X", 40]], back_lower_r = [["X", 30]], tail_01 = [["Z", -30]], tail_02 = [["Z", -20]] }
+
+[[clip]]
+name = "bergleu/t_threaten"        # crouched, snarling, ears flat, the tail lashing
+keyframe = "keyposes"
+[clip.params]
+base = "bergleu/s_rest"
+keys = [[0, "rest"], [10, "snarl_l"], [20, "snarl_r"], [30, "snarl_l"], [40, "snarl_r"], [52, "rest"]]
+[clip.params.poses.snarl_l]
+move = { pelvis = [0, 0.06, -0.12] }
+rotate = { spine_03 = [["X", 6]], neck_01 = [["X", 15]], head = [["X", -22]], jaw = [["X", 25]], ear_l = [["X", 40]], ear_r = [["X", 40]], mane_back = [["X", -12]], tail_01 = [["X", 10], ["Z", 25]], tail_03 = [["Z", 20]] }
+[clip.params.poses.snarl_r]
+move = { pelvis = [0, 0.06, -0.13] }
+rotate = { spine_03 = [["X", 6]], neck_01 = [["X", 16]], head = [["X", -24]], jaw = [["X", 30]], ear_l = [["X", 40]], ear_r = [["X", 40]], mane_back = [["X", -14]], tail_01 = [["X", 10], ["Z", -25]], tail_03 = [["Z", -20]] }
