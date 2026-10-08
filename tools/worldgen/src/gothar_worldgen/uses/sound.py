@@ -5,7 +5,7 @@ the smallest box wins (engine), so the outdoor boxes all reach over the same hei
 ones - a fountain, the wall walk, a room - win where they are:
 
 - **music:** ``STADT`` over the old town (inside the town wall, its Zwinger strip and the castle
-  garden), ``LAND`` over the whole world (the default box).
+  garden); outside it silence (owner 2026-10-08; ``music.land`` would add a box over the world).
 - **ambient:** ``feld`` over the whole world; ``stadt_gasse`` inside the town wall; ``stadt_markt``
   over its squares; ``schlossgarten`` over the formal garden; ``ufer`` along the rivers and lakes
   (their water boxes, widened); ``wald`` over the larger forests; ``brunnen`` round the fountains;
@@ -73,9 +73,11 @@ def sound_zones(spec: dict[str, Any], half_extent: float, town_ring: Sequence[Se
     ``rooms``: the indoor zones (a room named in ``spec["rooms"]`` gets its own ambient)."""
     mus, amb = spec["music"], spec["ambient"]
     hy = float(spec["heightM"]) / 2
-    out = [box_zone("music", mus["land"], (0.0, 0.0, 0.0), (half_extent, hy, half_extent), 0.0),
-           box_zone("ambient", amb["default"], (0.0, 0.0, 0.0), (half_extent, hy, half_extent),
+    out = [box_zone("ambient", amb["default"], (0.0, 0.0, 0.0), (half_extent, hy, half_extent),
                     0.0)]  # fmt: skip
+    if mus.get("land"):  # music over the whole world: none, silence outside the town
+        out.append(box_zone("music", mus["land"], (0.0, 0.0, 0.0),
+                            (half_extent, hy, half_extent), 0.0))  # fmt: skip
     town = Polygon(town_ring).buffer(0)
     cell = float(spec["townCellM"])
     old_town = unary_union([town.buffer(float(spec["zwingerM"])), *gardens])

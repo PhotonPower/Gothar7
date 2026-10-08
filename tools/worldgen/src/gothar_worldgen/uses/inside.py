@@ -45,7 +45,10 @@ PROP_SIZE = {"barrel": (0.62, 0.62), "barrel_rack": (1.62, 0.95), "shelf": (1.22
              "broom": (0.3, 0.25), "wall_hanging": (1.4, 0.1), "firewood": (0.82, 0.44),
              "fur": (1.5, 0.96),
              # bedrooms upstairs (owner 2026-10-08)
-             "washstand": (0.55, 0.4), "clothes_hooks": (1.04, 0.1)}  # fmt: skip
+             "washstand": (0.55, 0.4), "clothes_hooks": (1.04, 0.1),
+             # workshops and shops (W7 phase 1)
+             "chopping_block": (0.6, 0.6), "potter_wheel": (0.7, 0.75),
+             "cloth_shelf": (1.22, 0.4), "bathtub": (1.62, 0.87)}  # fmt: skip
 WALL_BOARDS = {"tool_board", "weapon_board", "wall_hanging", "clothes_hooks"}  # nothing below
 LOW_BOARDS = {"clothes_hooks"}  # what hangs from them reaches down to a metre: free floor below
 HANGING = {"sausages": 0.55, "herbs": 0.45}  # from the ceiling: how far they hang down
@@ -86,7 +89,12 @@ LANTERN_CLEAR_M = 1.2  # and this far from doors, passages and windows
 WINDOW_LIGHT_IN_M = 0.8  # the window's light this far inside
 WINDOW_FREE_M = 0.8  # tall things keep this far from a window (into the room), and 0.3 beside it
 TALL = {"hearth", "shelf", "barrel_rack", "tool_board", "weapon_board", "crate_stack",
-        "wall_hanging"}  # fmt: skip
+        "wall_hanging", "cloth_shelf"}  # fmt: skip
+WORK_AT = {"workbench": "REPAIR", "potter_wheel": "REPAIR", "chopping_block": "CHOP"}
+WORK_PROPS = ("workbench", "potter_wheel", "chopping_block", "cloth_shelf", "bathtub")  # first
+SLOT_ON_WAY = {"counter_group", "workbench"}  # customers, a craftsman may stand on the way
+HEARTHS = {"hearth", "oven"}  # what stands where the fire is (the baker's, the potter's oven)
+OVEN_STAND_M = 1.0  # the baker's STAND beside the place before the oven
 # what is set out on every table: (item, along the table, across it, height over the top, rot)
 TABLE_ITEMS = (("items/it_mug.glb", 0.45, 0.2, 0.05, None),
                ("items/it_mug.glb", -0.45, -0.2, 0.05, None),
@@ -112,12 +120,16 @@ class InsideSpec:
     hearth: bool = False
     props: list[tuple[str, int]] = field(default_factory=list)  # (prop or "counter", count)
     bedside: bool = False  # a candle on a stool (the bedrooms upstairs)
+    hearth_model: str = "hearth"  # what the fire is: an open hearth or an oven
 
 
 def inside_spec(spec: dict[str, Any], where: str) -> InsideSpec:
     """``uses.<use>.inside`` checked: mobs ``type:N`` (``N`` may be ``R``: the residents, at most
     3), freepoints ``TYPE:N``, ``hearth``, props ``prop:N`` (``PROP_SIZE`` or ``counter``)."""
-    out = InsideSpec(hearth=bool(spec.get("hearth", False)))
+    fire = spec.get("hearth", False)
+    if isinstance(fire, str) and fire not in HEARTHS:
+        raise UsesError(f"{where}: hearth {fire!r} must be true or one of {sorted(HEARTHS)}")
+    out = InsideSpec(hearth=bool(fire), hearth_model=fire if isinstance(fire, str) else "hearth")
     for item in spec.get("mobs", []):
         kind, _, n = str(item).partition(":")
         if kind not in MOB_TYPES | {"table"} or not (n.isdigit() or n == "R"):
@@ -186,6 +198,17 @@ class _Room:
     tall: list[Polygon] = field(default_factory=list)  # shelves, boards, ...: no lantern above
     props: list[Polygon] = field(default_factory=list)  # household props: close to each other
     hanging: list[Polygon] = field(default_factory=list)  # under the ceiling
+    cover: Polygon | None = field(default=None, repr=False)  # its indoor boxes (zones), lazily
+
+    def covered(self, p: Pt) -> bool:
+        """``p`` lies in the room's indoor boxes (as ``indoor_zones`` writes them): a figure
+        there counts as inside (a sharp corner of the room may lie outside them)."""
+        if self.cover is None:
+            from gothar_worldgen.uses.zones import room_boxes
+
+            ring = list(self.poly.exterior.coords)[:-1]
+            self.cover = unary_union([_box_foot(z) for z in room_boxes("", ring, 0.0, 1.0)])
+        return self.cover.buffer(-COVER_IN_M).contains(Point(p))
 
     @property
     def entry(self) -> tuple[float, float]:
@@ -349,7 +372,7 @@ def _against_wall(
             slot = (cx + nx * reach, cz + nz * reach)
             if not (room.fits(shape) and room.poly.contains(Point(slot))):
                 continue
-            if room.keep.contains(Point(slot)):
+            if room.keep.contains(Point(slot)) and kind not in SLOT_ON_WAY:
                 continue
             if accept is not None and not accept(shape, (cx, cz), (nx, nz)):
                 continue
@@ -602,7 +625,8 @@ class _House:
                     best = (d, (float(x), float(z)))
         return None if best is None else (best[1], (-uz, ux))
 
-    def place_prop(self, kind: str, hearth_at: Any) -> None:  # noqa: ANN401
+    def place_prop(self, kind: str, hearth_at: Any) -> tuple[Pt, Pt] | None:  # noqa: ANN401
+        """Places a prop; returns (centre, front) of one standing against a wall."""
         room = self.room
         if kind == "fur":  # before a bed, else on free floor: flat, walked over
             if self.beds:
@@ -638,7 +662,12 @@ class _House:
         if kind == "bellows":  # only where it can blow into the fire
             self.fail(f"prop {kind}")
             return
-        spot = _against_wall(room, kind)
+        reach = PROP_SIZE[kind][1] / 2 + SLOT.get(kind, 0.6)
+
+        def worked_at(_s: Polygon, c: Pt, n: Pt) -> bool:  # its work place reached from the door
+            return room.reachable((c[0] + n[0] * reach, c[1] + n[1] * reach))
+
+        spot = _against_wall(room, kind, accept=worked_at if kind in WORK_AT else None)
         if spot is None:
             self.fail(f"prop {kind}")
             return
@@ -648,6 +677,7 @@ class _House:
             self.weapons(centre, front)
         if kind == "stool":
             self.stools.append(centre)
+        return centre, front
 
     def beside_hearth(self, c: tuple[float, float], n: tuple[float, float]) -> bool:
         """Room for the bellows on one side of a hearth at ``c`` facing ``n``."""
@@ -730,42 +760,60 @@ class _House:
 
     def counter_group(self) -> None:
         """A trader's counter: a shelf at the wall, an aisle, the counter facing the room; the
-        aisle opens at one end (``WP_…_THEKE``), the trader stands behind the counter."""
+        aisle opens at one end (``WP_…_THEKE``), the trader stands behind the counter. Shelf and
+        counter sit off the middle towards the other end; mirrored where the shelf would stand
+        before a window. Where the group has no room, the counter without the shelf (the
+        trader's back to the wall)."""
         room = self.room
+        sd = PROP_SIZE["shelf"][1]
 
-        def parts(
-            c: tuple[float, float], n: tuple[float, float]
-        ) -> tuple[tuple[float, float], float]:
+        def axis(n: Pt, side: float) -> Pt:  # along the wall, towards the shelf's end
+            return side * n[1], -side * n[0]
+
+        def parts(c: Pt, n: Pt, side: float, back: float) -> tuple[Pt, float]:
             """The aisle's open end (the waypoint) and the aisle's offset behind the middle."""
-            ux, uz = n[1], -n[0]
-            aisle = GROUP_D / 2 - PROP_SIZE["shelf"][1] - AISLE_M / 2
+            ux, uz = axis(n, side)
+            aisle = (GROUP_D - sd + back) / 2 - back - AISLE_M / 2
             wp = (c[0] - ux * (GROUP_L / 2 - 0.45) - n[0] * aisle,
                   c[1] - uz * (GROUP_L / 2 - 0.45) - n[1] * aisle)  # fmt: skip
             return wp, aisle
 
-        def shelf_at(c: Pt, n: Pt) -> Polygon:  # the tall part: it alone keeps off the windows
-            ux, uz = n[1], -n[0]
-            back = GROUP_D / 2 - PROP_SIZE["shelf"][1] / 2
-            x = c[0] + ux * COUNTER_ALONG_M - n[0] * back
-            z = c[1] + uz * COUNTER_ALONG_M - n[1] * back
+        def shelf_at(c: Pt, n: Pt, side: float) -> Polygon:  # the tall part: off the windows
+            ux, uz = axis(n, side)
+            x = c[0] + ux * COUNTER_ALONG_M - n[0] * (GROUP_D / 2 - sd / 2)
+            z = c[1] + uz * COUNTER_ALONG_M - n[1] * (GROUP_D / 2 - sd / 2)
             return _rect(x, z, ux, uz, *PROP_SIZE["shelf"])
 
-        def ok(_s: Polygon, c: Pt, n: Pt) -> bool:
-            return room.reachable(parts(c, n)[0]) and not room.before_window(shelf_at(c, n))
+        sides: dict[Pt, float] = {}  # the side that fits, by the spot's centre
+        spot, back = None, sd
+        for back in (sd, 0.0):  # with the shelf, else without
 
-        spot = _against_wall(room, "counter_group", facing=room.door_mid,
-                             size=(GROUP_L, GROUP_D), accept=ok)  # fmt: skip
+            def ok(_s: Polygon, c: Pt, n: Pt, back: float = back) -> bool:
+                for side in (1.0, -1.0):
+                    if room.reachable(parts(c, n, side, back)[0]) and not (
+                        back and room.before_window(shelf_at(c, n, side))
+                    ):
+                        sides[c] = side
+                        return True
+                return False
+
+            spot = _against_wall(room, "counter_group", facing=room.door_mid,
+                                 size=(GROUP_L, GROUP_D - sd + back), accept=ok)  # fmt: skip
+            if spot is not None:
+                break
         if spot is None:
             self.fail("prop counter")
             return
         shape, c, (nx, nz) = spot
-        wp, aisle = parts(c, (nx, nz))
-        ux, uz = nz, -nx
+        depth = GROUP_D - sd + back
+        side = sides[c]
+        wp, aisle = parts(c, (nx, nz), side, back)
+        ux, uz = axis((nx, nz), side)
         along = (c[0] + ux * COUNTER_ALONG_M, c[1] + uz * COUNTER_ALONG_M)
-        sd = PROP_SIZE["shelf"][1]
-        shelf_c = (along[0] - nx * (GROUP_D / 2 - sd / 2), along[1] - nz * (GROUP_D / 2 - sd / 2))
-        counter_c = (along[0] + nx * (GROUP_D / 2 - 0.32), along[1] + nz * (GROUP_D / 2 - 0.32))
-        self.prop("shelf", shelf_c, (nx, nz), _rect(*shelf_c, ux, uz, *PROP_SIZE["shelf"]))
+        if back:
+            shelf_c = (along[0] - nx * (depth / 2 - sd / 2), along[1] - nz * (depth / 2 - sd / 2))
+            self.prop("shelf", shelf_c, (nx, nz), _rect(*shelf_c, ux, uz, *PROP_SIZE["shelf"]))
+        counter_c = (along[0] + nx * (depth / 2 - 0.32), along[1] + nz * (depth / 2 - 0.32))
         self.prop("counter", counter_c, (nx, nz), _rect(*counter_c, ux, uz, 1.82, 0.66))
         stand = (along[0] - nx * aisle, along[1] - nz * aisle)
         room.stands.insert(0, (stand, (nx, nz)))
@@ -796,7 +844,8 @@ class _House:
                 self.fail("hearth")
             else:
                 shape, centre, front = hearth_spot
-                self.vob("mesh", f"PROP_{self.tag}_HERD", centre, front, mesh="props/hearth.glb")
+                model = spec.hearth_model
+                self.vob("mesh", f"PROP_{self.tag}_HERD", centre, front, mesh=f"props/{model}.glb")
                 light = {"light": dict(LIGHT["hearth"])}
                 self.vob("light", f"LIGHT_{self.tag}_HERD", centre, front,
                          height=room.floor + 0.9, components=light)  # fmt: skip
@@ -807,15 +856,28 @@ class _House:
                 reach = SIZE["hearth"][1] / 2 + SLOT["hearth"]
                 fire = (centre[0] + front[0] * reach, centre[1] + front[1] * reach)
                 room.keep = room.keep.union(LineString([room.entry, fire]).buffer(0.6))
+                if model == "oven":  # the baker sells beside the oven, facing the room
+                    ux, uz = front[1], -front[0]
+                    for side in (1.0, -1.0):
+                        at = (
+                            fire[0] + side * ux * OVEN_STAND_M,
+                            fire[1] + side * uz * OVEN_STAND_M,
+                        )
+                        if room.poly.buffer(-0.4).contains(Point(at)) and not any(
+                            t.distance(Point(at)) < 0.4 for t in room.taken
+                        ):
+                            room.stands.append((at, front))
+                            break
         props = dict(spec.props)
         for kind in sorted(BY_HEARTH):  # the smithy's bellows and trough belong to the hearth
             for _ in range(props.pop(kind, 0)):
                 self.place_prop(kind, hearth_at)
-        if hearth_at is not None:  # every hearth: a pot on the fire, firewood beside it
+        if hearth_at is not None:  # every fire: firewood beside it, a pot on an open hearth
             from gothar_worldgen.mobs import HEARTH_H
 
             (hx, hz), front = hearth_at
-            self.prop("pot", (hx, hz), front, None, height=room.floor + HEARTH_H + 0.05)
+            if spec.hearth_model == "hearth":
+                self.prop("pot", (hx, hz), front, None, height=room.floor + HEARTH_H + 0.05)
             self.by_hearth("firewood", hearth_at)
         # the counter and the taps next: the shop's or tavern's heart, before table and beds
         if props.pop("counter", 0):
@@ -866,7 +928,23 @@ class _House:
             (hx, hz), (fx, fz) = hearth_at
             reach = SIZE["hearth"][1] / 2 + SLOT["hearth"]
             self.fp("CAMPFIRE", (hx + fx * reach, hz + fz * reach), (-fx, -fz))
+        # the trade's work furniture before the freepoints (their ways would take its walls);
+        # the work freepoint in front of it (the craftsman at the bench, the butcher at the block)
+        work: dict[str, int] = {}
         for kind, n in spec.freepoints:
+            work[kind] = work.get(kind, 0) + n
+        for kind in WORK_PROPS:
+            for _ in range(props.pop(kind, 0)):
+                at = self.place_prop(kind, hearth_at)
+                fp_kind = WORK_AT.get(kind)
+                if at is None or fp_kind is None or work.get(fp_kind, 0) < 1:
+                    continue
+                (cx, cz), (nx, nz) = at
+                reach = PROP_SIZE[kind][1] / 2 + SLOT.get(kind, 0.6)
+                self.fp(fp_kind, (cx + nx * reach, cz + nz * reach), (-nx, -nz))
+                work[fp_kind] -= 1
+        for kind, _ in spec.freepoints:
+            n, work[kind] = work.get(kind, 0), 0
             for _ in range(n):
                 if kind == "STAND" and room.stands:
                     pos, d = room.stands.pop(0)
@@ -967,7 +1045,7 @@ def plan_inside(houses: Sequence[House], specs: dict[str, InsideSpec],
                 for owner, poly in bodies
                 if owner != own and not owner.startswith(("MOB_", "PROP_"))
             ]
-            spec = specs.get(h.use, InsideSpec())
+            spec = specs.get(f"{h.use}:{h.trade}") or specs.get(h.use, InsideSpec())
             e = rooms[h.id]
             r = e["interior"]
             st = stair_from_json(r["stairs"]) if r.get("stairs") and r.get("upper") else None
@@ -975,16 +1053,19 @@ def plan_inside(houses: Sequence[House], specs: dict[str, InsideSpec],
             if st is not None:
                 ground, upstairs = _split_upstairs(spec, h.residents)
             parts = r.get("rooms")
+            before = len(plan.failed)
             if not parts:
                 built = {"INNEN": _room(e, others)}
-                _with_stairs(built, st, "INNEN")
+                stair_way = _with_stairs(built, st, "INNEN")
                 house = _House(plan, h, built["INNEN"])
                 house.build(ground, routine_wps.get(h.id, ""))
                 stairs_room = f"WP_{room_tag(h)}"
             else:
-                stairs_room = _divided(plan, h, e, ground, routine_wps.get(h.id, ""), others, st)
+                stairs_room, stair_way = _divided(plan, h, e, ground, routine_wps.get(h.id, ""),
+                                                  others, st)  # fmt: skip
             if st is not None and upstairs is not None:
-                _upper(plan, h, e, upstairs, st, stairs_room, others)
+                _to_chamber(plan, h, before, upstairs, freepoints=False)  # no room below: up
+                _upper(plan, h, e, upstairs, st, stairs_room, others, stair_way)
     return plan
 
 
@@ -995,7 +1076,8 @@ UPSTAIRS_PROPS = {"fur", "wall_hanging"}
 def _split_upstairs(spec: InsideSpec, residents: int) -> tuple[InsideSpec, InsideSpec]:
     """Downstairs keeps the hearth, the tables, the freepoints and the stores; beds, chests,
     furs and hangings go upstairs."""
-    down = InsideSpec(freepoints=list(spec.freepoints), hearth=spec.hearth)
+    down = InsideSpec(freepoints=list(spec.freepoints), hearth=spec.hearth,
+                      hearth_model=spec.hearth_model)  # fmt: skip
     up = InsideSpec()
     for kind, n in spec.mobs:
         (up if kind in UPSTAIRS_MOBS else down).mobs.append((kind, n))
@@ -1005,6 +1087,9 @@ def _split_upstairs(spec: InsideSpec, residents: int) -> tuple[InsideSpec, Insid
 
 
 DETOUR_CLEAR_M = 0.6  # a way round the stairs or their opening keeps this far from them (rails)
+STAIRS_FRONT_M = 0.7  # the place before the stairs' foot: this far out from the steps
+COVER_IN_M = 0.1  # a freepoint this far inside the room's indoor boxes
+PASSAGE_FRONT_M = 0.7  # the place before a passage: this far out from it (straight through)
 DETOUR_START_M = 0.2  # its first and last leg less: the waypoint at the stairs' head is at the
 # edge, a passage may be close
 DETOUR_CORNER_M = 1.0  # its corners this far out from them
@@ -1023,9 +1108,14 @@ def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
     ring = obstacle.buffer(DETOUR_CORNER_M, join_style="mitre").exterior.coords[:-1]
     corners = [(x, z) for x, z in ring if inside.contains(Point(x, z))]
 
+    # legs at the ends may pass close; an end on the obstacle's edge (the head of the stairs) is
+    # left by them, so a small circle round it does not count
+    keep_a = near.difference(Point(a).buffer(DETOUR_START_M + 0.1))
+    keep_b = near.difference(Point(b).buffer(DETOUR_START_M + 0.1))
+
     def clear(p: tuple[float, float], q: tuple[float, float]) -> bool:
         seg = LineString([p, q])
-        keep = near if p == a or q == b else zone  # legs at the ends may pass close
+        keep = keep_a if p == a else keep_b if q == b else zone
         return not seg.intersects(keep) and room.buffer(0.15).contains(seg)  # ends at passages
 
     best: tuple[float, list[tuple[float, float]]] | None = None
@@ -1045,17 +1135,51 @@ def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
 
 def _round_about(plan: InsidePlan, h: House, base: str, a: str, b: str, start: tuple[float, float],
                  mid: tuple[float, float], obstacle: Polygon | None, room: _Room,
-                 floor: float) -> str:  # fmt: skip
+                 floor: float, axis: Pt | None = None) -> str:  # fmt: skip
     """The waypoint a chamber's passage links to: the room's own, or the last of the corners
-    round the ``obstacle`` (``WP_…_<a>_UM_<b>``) when the straight way would cross it; the way
-    along them stays clear of furniture."""
+    round the ``obstacle`` (``WP_…_<a>_UM_<b>``) when the straight way would cross it, then the
+    place square before the passage (``WP_…_<b>_DURCHGANG_VOR``, with its ``axis``): a figure
+    goes through the opening straight, not across a jamb; the way stays clear of furniture."""
     link = f"WP_{base}_{a}"
-    corners = _detour(start, mid, obstacle, room.poly) if obstacle is not None else []
-    path = [start, *corners, mid]
+    corners: list[tuple[float, float]] = []
+    front = None
+    if axis is not None:  # the axis points into b where room a lies behind the passage
+        side = (
+            1.0
+            if room.poly.contains(Point(mid[0] - axis[0] * 0.5, mid[1] - axis[1] * 0.5))
+            else -1.0
+        )
+        q = (mid[0] - side * axis[0] * PASSAGE_FRONT_M, mid[1] - side * axis[1] * PASSAGE_FRONT_M)
+        if room.poly.buffer(-0.2).contains(Point(q)) and math.dist(q, start) > 0.3:
+            front = q
+    goal = front or mid
+    near = obstacle.buffer(DETOUR_START_M) if obstacle is not None else None
+    if near is not None and LineString([start, goal]).intersects(near):
+        s = start
+        if near.contains(Point(start)):  # on the top steps: first off them onto the landing
+            for k in range(1, 40):
+                q = (start[0] + room.inward[0] * 0.1 * k, start[1] + room.inward[1] * 0.1 * k)
+                if not obstacle.buffer(DETOUR_START_M + 0.1).contains(Point(q)):
+                    s = q
+                    corners.append(q)
+                    break
+        corners += _detour(s, goal, obstacle, room.poly)
+        last = corners[-1] if corners else start
+        if LineString([last, goal]).intersects(obstacle.buffer(-0.05)):
+            plan.failed.append({"house": h.id, "what": f"way {a} to {b}",
+                                "reason": "round the stairs"})  # fmt: skip
+    path = [start, *corners, *([front] if front else []), mid]
     for k, c in enumerate(corners, start=1):
         name = f"WP_{base}_{a}_UM_{b}" + (f"_{k}" if k > 1 else "")
         plan.places.append({"kind": "wp", "name": name, "house": h.id, "pos": [c[0], c[1]],
                             "dir": [0.0, 1.0], "y": floor, "link": link})  # fmt: skip
+        link = name
+    if front is not None:
+        name = f"WP_{base}_{b}_DURCHGANG_VOR"
+        d = (mid[0] - front[0], mid[1] - front[1])
+        n = math.hypot(*d)
+        plan.places.append({"kind": "wp", "name": name, "house": h.id, "pos": [front[0], front[1]],
+                            "dir": [d[0] / n, d[1] / n], "y": floor, "link": link})  # fmt: skip
         link = name
     for p, q in zip(path, path[1:], strict=False):
         room.keep = room.keep.union(LineString([p, q]).buffer(REACH_R_M))
@@ -1070,26 +1194,74 @@ def _stairs_room(r: dict[str, Any], st: Any) -> str:  # noqa: ANN401  stairs.Sta
     return min(parts, key=lambda q: Polygon(q["ring"]).distance(here))["name"]
 
 
-def _with_stairs(built: dict[str, _Room], st: Any, where: str = "INNEN") -> None:  # noqa: ANN401
+def _with_stairs(built: dict[str, _Room], st: Any,  # noqa: ANN401  stairs.Stair
+                 where: str = "INNEN") -> list[tuple[str, Pt]]:  # fmt: skip
     """The stairs stand in the room ``where`` they rise in: their steps taken, the landing before
-    them and the way to it kept clear."""
+    them and the way to it kept clear. Returns the places of that way: corners (``UM``) where
+    the straight one would leave the room or cross the steps, then the place square before the
+    foot (``VOR``): a figure steps onto the stairs straight, not along their edge."""
     if st is None:
-        return
+        return []
     foot = Point(st.foot_point)
     for name, room in built.items():
         if name == where:
             room.taken.append(st.footprint)
             room.tall.append(st.footprint)
-            lane = LineString([room.entry, st.foot_point]).buffer(REACH_R_M)
-            room.keep = room.keep.union(st.foot_landing).union(lane).union(foot.buffer(0.6))
-            return
+            edge = st.footprint.exterior.interpolate(st.footprint.exterior.project(foot))
+            away = (foot.x - edge.x, foot.y - edge.y)
+            d = math.hypot(*away)
+            away = (away[0] / d, away[1] / d) if d > 1e-6 else (-st.up[0], -st.up[1])
+            # a foot beside the stairs (entered from the side) whose straight way would run along
+            # their edge: a place before the foot, straight out from the steps, else across
+            front = None
+            brush = LineString([room.entry, st.foot_point]).buffer(REACH_R_M)
+            dirs = (away, (-away[1], away[0]), (away[1], -away[0]))
+            for ax, az in dirs if st.side_entry and brush.intersects(st.footprint) else ():
+                q = (foot.x + ax * STAIRS_FRONT_M, foot.y + az * STAIRS_FRONT_M)
+                ok = room.poly.buffer(-0.25).contains(Point(q))
+                if (
+                    ok
+                    and st.footprint.distance(Point(q)) >= 0.3
+                    and not LineString([q, st.foot_point]).intersects(st.footprint)
+                ):
+                    front = q
+                    break
+            goal = front or st.foot_point
+            corners = _inside_way(room.entry, goal, room.poly, st.footprint)
+            way = [("UM", c) for c in corners] + ([("VOR", front)] if front else [])
+            path = [room.entry, *(c for _, c in way), st.foot_point]
+            for a, b in zip(path, path[1:], strict=False):
+                room.keep = room.keep.union(LineString([a, b]).buffer(REACH_R_M))
+            room.keep = room.keep.union(st.foot_landing).union(foot.buffer(0.6))
+            return way
+    return []
 
 
-def _stairs_waypoints(plan: InsidePlan, h: House, st: Any, link: str) -> str:  # noqa: ANN401
-    """Before the first step (linked to the room's waypoint) and at the head of the stairs;
-    returns the head's name."""
+def _inside_way(a: Pt, b: Pt, poly: Polygon, steps: Polygon) -> list[Pt]:
+    """Corners of a way from ``a`` to the stairs' foot ``b`` inside ``poly``: round the
+    ``steps`` (stairs rising towards the door) and the inner corner of an L-shaped room."""
+    lane = LineString([a, b]).buffer(REACH_R_M)
+    hit = [steps] if lane.intersects(steps) else []
+    if not poly.buffer(-REACH_R_M).contains(LineString([a, b])):
+        outside = poly.convex_hull.difference(poly)
+        pieces = [g for g in getattr(outside, "geoms", [outside]) if isinstance(g, Polygon)]
+        hit += [g for g in pieces if g.intersects(lane)]
+    return _detour(a, b, unary_union(hit), poly) if hit else []
+
+
+def _stairs_waypoints(plan: InsidePlan, h: House, st: Any, link: str,  # noqa: ANN401
+                      way: Sequence[tuple[str, Pt]] = ()) -> str:  # fmt: skip
+    """Before the first step (linked to the room's waypoint, or the places of the ``way`` to it)
+    and at the head of the stairs; returns the head's name."""
     base = f"WP_{room_tag(h)[: -len('_INNEN')]}"
     up = [st.up[0], st.up[1]]
+    k = 0
+    for kind, c in way:
+        k += kind == "UM"
+        name = f"{base}_TREPPE_{kind}" + (f"_{k}" if kind == "UM" and k > 1 else "")
+        plan.places.append({"kind": "wp", "name": name, "house": h.id, "pos": [c[0], c[1]],
+                            "dir": up, "y": st.floor, "link": link})  # fmt: skip
+        link = name
     plan.places.append({"kind": "wp", "name": f"{base}_TREPPE", "house": h.id,
                         "pos": list(st.foot_point), "dir": up, "y": st.floor,
                         "link": link})  # fmt: skip
@@ -1107,12 +1279,13 @@ def _stairs_waypoints(plan: InsidePlan, h: House, st: Any, link: str) -> str:  #
 
 
 def _upper(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, st: Any,  # noqa: ANN401
-           link: str, others: Sequence[Polygon]) -> None:  # fmt: skip
+           link: str, others: Sequence[Polygon],
+           way: Sequence[tuple[str, Pt]] = ()) -> None:  # fmt: skip
     """The upper storey: the room at the head of the stairs (the opening and its rail taken),
     its chambers through their passages; beds and chests round the rooms, chambers first."""
     r = e["interior"]
     up = dict(r["upper"])
-    head = _stairs_waypoints(plan, h, st, link)
+    head = _stairs_waypoints(plan, h, st, link, way)
     parts = up["rooms"]
     order = [p["name"] for p in parts]
     base = room_tag(h)[: -len("_INNEN")]
@@ -1135,12 +1308,13 @@ def _upper(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, st: 
         a, b = sorted(p["rooms"], key=order.index)
         mid = (float(p["mid"][0]), float(p["mid"][1]))
         ring = next(q["ring"] for q in parts if q["name"] == b)
-        built[b] = _chamber(up, ring, mid, (float(p["axis"][0]), float(p["axis"][1])), others)
+        axis = (float(p["axis"][0]), float(p["axis"][1]))
+        built[b] = _chamber(up, ring, mid, axis, others)
         before = built[a]
         before.exits.append(mid)
         before.keep = before.keep.union(Point(mid).buffer(DOOR_ZONE_M))
         link = _round_about(plan, h, base, a, b, before.entry, mid, hole, before,
-                            float(up["floor"]))  # fmt: skip
+                            float(up["floor"]), axis)  # fmt: skip
         entered[b] = (link, mid)
     # beds and chests: the chambers first, the room at the stairs only without chambers
     rooms_for = order[1:] or order[:1]
@@ -1177,7 +1351,8 @@ def _upper(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, st: 
 def _share(spec: InsideSpec, residents: int, chambers: int) -> list[InsideSpec]:
     """The spec of the room with the door, then of each chamber: beds and chests and the stores
     (barrels, crates, sacks) go round the chambers, everything else stays in the first room."""
-    first = InsideSpec(freepoints=list(spec.freepoints), hearth=spec.hearth)
+    first = InsideSpec(freepoints=list(spec.freepoints), hearth=spec.hearth,
+                       hearth_model=spec.hearth_model)  # fmt: skip
     rest = [InsideSpec() for _ in range(chambers)]
     k = 0
     for kind, n in spec.mobs:
@@ -1199,12 +1374,15 @@ def _share(spec: InsideSpec, residents: int, chambers: int) -> list[InsideSpec]:
 
 
 MOVABLE_PROPS = {"workbench", "shelf", "crate", "crate_stack", "barrel", "sacks", "basket", "stool",
-                 "bucket", "broom", "tool_board", "weapon_board", "wall_hanging"}  # fmt: skip
+                 "bucket", "broom", "tool_board", "weapon_board", "wall_hanging", "cloth_shelf",
+                 "clothes_hooks", "chopping_block", "potter_wheel", "bathtub"}  # fmt: skip
 
 
-def _to_chamber(plan: InsidePlan, h: House, since: int, chamber: InsideSpec) -> None:
-    """Tables and movable props that found no room (``plan.failed`` from ``since``) go to the
-    chamber instead (stairs can take much of the room with the door)."""
+def _to_chamber(plan: InsidePlan, h: House, since: int, chamber: InsideSpec,
+                freepoints: bool = True) -> None:  # fmt: skip
+    """Tables, movable props and (with ``freepoints``) freepoints that found no room
+    (``plan.failed`` from ``since``) go to the chamber instead (stairs can take much of the room
+    with the door), or upstairs."""
     keep = plan.failed[:since]
     for f in plan.failed[since:]:
         what = f["what"]
@@ -1212,16 +1390,18 @@ def _to_chamber(plan: InsidePlan, h: House, since: int, chamber: InsideSpec) -> 
             chamber.mobs.append(("table", "1"))
         elif f["house"] == h.id and what.startswith("prop ") and what[5:] in MOVABLE_PROPS:
             chamber.props.append((what[5:], 1))
+        elif f["house"] == h.id and freepoints and what.startswith("FP_"):
+            chamber.freepoints.append((what[3:], 1))
         else:
             keep.append(f)
     plan.failed[:] = keep
 
 
 def _divided(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, routine_wp: str,
-             others: Sequence[Polygon], st: Any = None) -> str:  # noqa: ANN401  # fmt: skip
+             others: Sequence[Polygon], st: Any = None) -> tuple[str, list[tuple[str, Pt]]]:  # noqa: ANN401  # fmt: skip
     """A divided ground storey (index ``interior.rooms``, the first with the house door): the
     passages are kept clear on both sides, each chamber is entered from the room before it.
-    Returns the waypoint of the room the stairs ``st`` rise in."""
+    Returns the waypoint of the room the stairs ``st`` rise in and the way's corners to them."""
     r = e["interior"]
     parts = r["rooms"]
     order = [p["name"] for p in parts]
@@ -1232,16 +1412,17 @@ def _divided(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, ro
         a, b = sorted(p["rooms"], key=order.index)  # from the room nearer the door
         mid = (float(p["mid"][0]), float(p["mid"][1]))
         ring = next(q["ring"] for q in parts if q["name"] == b)
-        built[b] = _chamber(r, ring, mid, (float(p["axis"][0]), float(p["axis"][1])), others)
+        axis = (float(p["axis"][0]), float(p["axis"][1]))
+        built[b] = _chamber(r, ring, mid, axis, others)
         before = built[a]
         before.exits.append(mid)
         before.keep = before.keep.union(Point(mid).buffer(DOOR_ZONE_M))
         steps = st.footprint if st is not None and _stairs_room(r, st) == a else None
         link = _round_about(plan, h, base, a, b, before.entry, mid, steps, before,
-                            float(r["floor"]))  # fmt: skip
+                            float(r["floor"]), axis)  # fmt: skip
         entered[b] = (link, mid)
     stairs_in = _stairs_room(r, st) if st is not None else order[0]
-    _with_stairs(built, st, stairs_in)
+    stair_way = _with_stairs(built, st, stairs_in)
     shares = _share(spec, h.residents, len(order) - 1)
     for k, (name, share) in enumerate(zip(order, shares, strict=True)):
         if name not in built:
@@ -1249,9 +1430,19 @@ def _divided(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, ro
         before = len(plan.failed)
         house = _House(plan, h, built[name], f"{base}_{name}")
         house.build(share, routine_wp, entered.get(name))
-        if k == 0 and len(shares) > 1:  # what the room with the door had no room for: a chamber
-            _to_chamber(plan, h, before, shares[1])
-    return f"WP_{base}_{stairs_in}"
+        if k + 1 < len(shares):  # what a room had no room for: the next chamber
+            _to_chamber(plan, h, before, shares[k + 1])
+    return f"WP_{base}_{stairs_in}", stair_way
+
+
+def _box_foot(z: dict[str, Any]) -> Polygon:
+    """An indoor zone's footprint (local +X = (cos yaw, -sin yaw), +Z = (sin yaw, cos yaw))."""
+    b = z["box"]
+    a = math.radians(float(b.get("yaw", 0.0)))
+    (cx, _, cz), (hx, _, hz) = b["center"], b["halfExtents"]
+    ux, uz, vx, vz = math.cos(a), -math.sin(a), math.sin(a), math.cos(a)
+    return Polygon([(cx + sx * hx * ux + sz * hz * vx, cz + sx * hx * uz + sz * hz * vz)
+                    for sx, sz in ((-1, -1), (1, -1), (1, 1), (-1, 1))])  # fmt: skip
 
 
 def _free_floor(
@@ -1266,7 +1457,7 @@ def _free_floor(
             t = 0.6
             while t <= wall_len - 0.6:
                 p = (a[0] + ux * t + nx * 0.4, a[1] + uz * t + nz * 0.4)
-                if room.fits(Point(p).buffer(0.25)) and room.reachable(p):
+                if room.fits(Point(p).buffer(0.25)) and room.covered(p) and room.reachable(p):
                     return [(p, (nx, nz))]
                 t += STEP_M
         return None
@@ -1280,12 +1471,14 @@ def _free_floor(
                 for dx, dz in ((0.6, 0.0), (0.0, 0.6)):
                     p, q = (x - dx, z - dz), (x + dx, z + dz)
                     if (room.fits(Point(p).buffer(0.3)) and room.fits(Point(q).buffer(0.3))
+                            and room.covered(p) and room.covered(q)
                             and room.reachable(p) and room.reachable(q)):  # fmt: skip
                         d = math.dist((x, z), (c.x, c.y))
                         if best is None or d < best[0]:
                             f = (dx / 0.6, dz / 0.6)
                             best = (d, [(p, f), (q, (-f[0], -f[1]))])
-            elif room.fits(Point(x, z).buffer(0.3)) and room.reachable((x, z)):
+            elif (room.fits(Point(x, z).buffer(0.3)) and room.covered((x, z))
+                  and room.reachable((x, z))):  # fmt: skip
                 d = math.dist((x, z), (c.x, c.y))
                 if best is None or d > best[0]:  # out of the way: away from the middle
                     dx, dz = c.x - x, c.y - z

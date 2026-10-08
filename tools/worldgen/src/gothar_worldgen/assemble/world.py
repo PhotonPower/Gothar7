@@ -177,6 +177,9 @@ def assemble(
             # W7: the rooms of an enterable house as own mesh vobs (each its own lights)
             rid = ids.get(f"room:{e['id']}:{name}", floor)
             fresh[rid] = _vob(rid, "mesh", f"{vob_name}_RAUM_{name}", e["pos"], gid, mesh=path)
+            step = e["interior"].get("footstep")
+            if step and not name.startswith("OBEN"):  # a stone floor downstairs; else wood
+                fresh[rid]["components"] = {"surface": {"footstep": step}}
 
     if citywall and citywall.get("entries"):
         # City wall (W6): gameplay category, never culled for size (orientation).

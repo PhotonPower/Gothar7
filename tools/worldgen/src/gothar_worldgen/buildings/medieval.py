@@ -58,6 +58,7 @@ LOW_SUFFIX = "~low"  # material name of the foot band (textures.apply.LOW)
 MOSS_SUFFIX = "~moss"  # shady roof side of a textured house (textures.apply.MOSS)
 STREAK_SUFFIX = "~streak"  # plaster under a window with a rain streak (textures.apply.STREAK)
 STREAK_M = 0.6  # how far a streak runs down from the sill
+DOOR_PARTITION_M = 0.5  # (W7) a partition keeps this far from the house door's edge
 STREAK_SHARE = 0.65  # share of windows with a streak (deterministic per window)
 STREAK_VARIANTS = 4  # textures.procedural.STREAK_VARIANTS
 # Front faces of beams lie at slightly different depths: no coplanar overlaps where they cross.
@@ -1034,7 +1035,8 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
     d1 = (hinge_side[1][0], hinge_side[1][2])
     # big ground storeys are divided: the room with the door (its hearth, table) and chambers
     use = str((ctx.interior or {}).get("use", ""))
-    rooms, cuts = _partition_plan(inner, ((d0[0] + d1[0]) / 2, (d0[1] + d1[1]) / 2), spec, use)
+    rooms, cuts = _partition_plan(inner, ((d0[0] + d1[0]) / 2, (d0[1] + d1[1]) / 2), spec, use,
+                                  op.w / 2 + DOOR_PARTITION_M)  # fmt: skip
     ctx.room_parts = rooms  # (W7) each room becomes its own mesh vob (its own lights)
     holes = [(d0, d1, floor, door_hi)]  # the door, then the windows of this storey
     for fw, ow in ctx.room_windows:
@@ -1046,6 +1048,8 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
     stair_cut = None
     if ctx.upper_h is None:
         notes.append("no stairs (a single storey)")
+    elif not (ctx.interior or {}).get("upper", True):  # uses.json "upper": false
+        notes.append("no stairs (the upper storey is not enterable yet)")
     elif ctx.upper_h - thick < float(spec["stairs"]["upperMinHeightM"]):  # upstairs is low
         notes.append("no stairs (the storey above is too low for a room)")
     else:
@@ -1330,11 +1334,12 @@ _Rooms = tuple[list[tuple[str, Polygon]], list[dict[str, Any]]]
 
 
 def _partition_plan(inner: Polygon, door: tuple[float, float], spec: dict[str, Any],
-                    use: str) -> _Rooms:  # fmt: skip
+                    use: str, door_clear: float = 0.0) -> _Rooms:  # fmt: skip
     """Rooms of a ground storey (W7): above ``maxRoomM2`` (per use ``maxRoomM2ByUse`` for the
     room with the door) it is cut across its long axis. The room with the door (``INNEN``) lies
-    around the door; the parts beside it become chambers (``KAMMER``, ``KAMMER_2`` …) of equal
-    width, none narrower than ``minRoomWidthM``. Returns (name, polygon) per room and the cuts:
+    around the door, no cut nearer its middle than ``door_clear``; the parts beside it become
+    chambers (``KAMMER``, ``KAMMER_2`` …) of equal width, none narrower than ``minRoomWidthM``.
+    Returns (name, polygon) per room and the cuts:
     position along the axis, the two rooms, the passage's middle, axis, width, height."""
     first_max = float(spec.get("maxRoomM2ByUse", {}).get(use, spec["maxRoomM2"]))
     other_max = float(spec["maxRoomM2"])
@@ -1363,6 +1368,7 @@ def _partition_plan(inner: Polygon, door: tuple[float, float], spec: dict[str, A
         if ends:
             a = min(ends, key=lambda x: abs(td - (x + w_first / 2)))
     b = a + w_first
+    a, b = min(a, td - door_clear), max(b, td + door_clear)  # no partition against the door
     if a - t0 < min_w:  # too narrow for a chamber: the room with the door takes it
         a = t0
     if t1 - b < min_w:
@@ -2410,6 +2416,8 @@ def build_house(
                 for i, p in enumerate(parts)
             ]
             col = CollisionResult(parts, collision.fallback, collision.decomposed)
+        if ctx.room is not None and materials.get("room_floor") == "stone":
+            ctx.room["footstep"] = "stone"  # the ground storey's floor (world.md "Oberfläche")
         result = HouseResult(prims, tris, [*notes, *massing.notes, *level_notes], level, style,
                              steepened, round(ctx.max_sag, 3), dormers, chimneys,
                              col, list(ctx.doors), list(masses), ctx.room, room_prims,

@@ -103,6 +103,28 @@ def test_props_stand_at_the_walls_clear_of_street_and_door():
         assert near < 0.25, v["name"]  # against a wall (12 cm off the simplified outline)
 
 
+def test_no_props_inside_an_enterable_house():
+    """Its collision: pieces of wall round the room, open at the door and between them (W7)."""
+    walls = [box(20.0, 7.7, 25.0, 8.0), box(20.0, 0.0, 20.3, 3.0), box(27.7, 4.0, 28.0, 8.0),
+             box(20.0, 0.0, 23.5, 0.3), box(24.5, 0.0, 28.0, 0.3)]  # gaps up to 3 m  # fmt: skip
+    room = box(20.3, 0.3, 27.7, 7.7)
+    town_wall = box(26.0, -1.0, 26.6, 12.0)  # through the room: no grass at its foot inside
+    bodies = [("BLD_A", HOUSE_A), *(("BLD_B", w) for w in walls), ("CITYWALL_1", town_wall)]
+    door_b = [24.0, 0.0, 0.0, "ground", 0.0, -1.0]
+    entries = [
+        {"id": "A", "doors": [DOOR_A]},
+        {"id": "B", "doors": [door_b], "interior": {"ring": list(room.exterior.coords)[:-1]}},
+    ]
+    site = _site(bodies=bodies, entries=entries, uses={"A": "gasthaus", "B": "gasthaus"})
+    plan = plan_outdoor(_rules(grass__chance=1.0), site)
+    props = _props(plan, "outdoor:B:")
+    assert props  # its groups stand outside
+    for v in props:
+        assert not _foot(v).intersects(room), v["name"]
+    grass = [v for v in plan.vobs if v["name"].startswith("GRAS_")]
+    assert grass and not any(room.contains(Point(v["pos"][0], v["pos"][2])) for v in grass)
+
+
 def test_the_tavern_gets_its_groups_facing_away_from_the_wall():
     plan = plan_outdoor(_rules(), _site())
     mine = _props(plan, "outdoor:A:")

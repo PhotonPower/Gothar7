@@ -54,6 +54,7 @@ class House:
     residents: int = 0
     inside: bool = False
     owner: str = ""
+    upper: bool = True  # an enterable house: its upper storey too (stairs), where it has one
 
     @property
     def token(self) -> str:
@@ -94,6 +95,8 @@ def load_uses(path: Path) -> UsesDoc:
     for use, spec in (doc.get("uses") or {}).items():
         if "inside" in spec:
             inside[use] = dict(spec["inside"])
+        for trade, t_spec in (spec.get("insideByTrade") or {}).items():  # a trade's own (W7):
+            inside[f"{use}:{trade}"] = {**spec.get("inside", {}), **t_spec}  # overrides keys
         if use not in USES:
             raise UsesError(f"{path.name}: uses.{use}: unknown use")
         uses[use] = {
@@ -112,7 +115,7 @@ def load_uses(path: Path) -> UsesDoc:
         seen.add(h["id"])
         houses.append(House(h["id"], h["use"], h.get("name", ""), h.get("trade", ""),
                             int(h.get("residents", 0)), bool(h.get("inside", False)),
-                            h.get("owner", "")))  # fmt: skip
+                            h.get("owner", ""), bool(h.get("upper", True))))  # fmt: skip
     return UsesDoc(houses, uses, inside)
 
 

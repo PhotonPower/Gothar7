@@ -466,7 +466,8 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
     uses_path = data_dir / "uses.json"
     if args.mode == "medieval" and uses_path.is_file():  # W7: enterable houses
         try:
-            interiors = {h.id: {"use": h.use} for h in load_uses(uses_path).houses if h.inside}
+            interiors = {h.id: {"use": h.use, "upper": h.upper}
+                         for h in load_uses(uses_path).houses if h.inside}  # fmt: skip
         except UsesError as e:
             print(f"error: {e}", file=sys.stderr)
             return EXIT_ERROR

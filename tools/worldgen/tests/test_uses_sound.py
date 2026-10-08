@@ -25,21 +25,23 @@ def footprint(z: dict) -> Polygon:
                     for sx, sz in ((-1, -1), (1, -1), (1, 1), (-1, 1))])  # fmt: skip
 
 
-def plan() -> list[dict]:
+def plan(spec: dict = SPEC) -> list[dict]:
     square = [[-20.0, -10.0], [20.0, -10.0], [20.0, 10.0], [-20.0, 10.0]]
     garden = Polygon([(120, 0), (160, 0), (160, 30), (120, 30)])
     water = [
         {"pos": [300.0, -5.0, 0.0], "rot": [0.0, 0.0, 0.0, 1.0], "halfExtents": [20.0, 1.0, 4.0]}
     ]
     forest = Polygon([(400, 300), (520, 300), (520, 420), (400, 420)])
-    return sound_zones(SPEC, 1000.0, TOWN, [square], [garden], water, [forest], [(0.0, 2.0, 40.0)],
+    return sound_zones(spec, 1000.0, TOWN, [square], [garden], water, [forest], [(0.0, 2.0, 40.0)],
                        lambda x, z: 10.0, [ROOM])  # fmt: skip
 
 
 def test_the_old_town_has_its_music_and_lanes_and_the_world_its_defaults():
     zones = plan()
     world = [z for z in zones if z["box"]["halfExtents"][0] == 1000.0]
-    assert {(z["type"], z["value"]) for z in world} == {("music", "LAND"), ("ambient", "feld")}
+    assert {(z["type"], z["value"]) for z in world} == {("ambient", "feld")}  # silence outside
+    land = {**SPEC, "music": {**SPEC["music"], "land": "LAND"}}  # a site may have land music
+    assert ("music", "LAND") in {(z["type"], z["value"]) for z in plan(land)}
     town = Polygon(TOWN)
     lanes = unary_union([footprint(z) for z in zones if z["value"] == "stadt_gasse"])
     assert lanes.difference(town).area < 1.0 and lanes.intersection(town).area > 0.85 * town.area
@@ -86,6 +88,8 @@ def test_only_worldgens_sound_zones_are_replaced_and_written_like_indoor_ones():
     )  # the old one gone
     text = zones_text(world["zones"])
     lines = text.strip("[]\n ").split(",\n    ")
-    assert lines[0].startswith('{"type":"music","value":"LAND","box":{"center"')
+    assert any(
+        line.startswith('{"type":"ambient","value":"feld","box":{"center"') for line in lines
+    )
     values = [json.loads(line)["value"] for line in lines]
     assert values == sorted(values)

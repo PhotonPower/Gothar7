@@ -409,6 +409,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [ ] Credits (LGL, OSM, Asset-Lizenzen) im Spiel
 - [x] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …) – `uses-suggest` (OSM/ALKIS), Auswahl des Koordinators in `data/leonberg/uses.json` (30 Häuser), Routinen-Wegpunkte, Freepoints und Mobs (`docs/design/leonberg-routinen-orte.md`)
   - Stand: Treppen ins Obergeschoss der 5 begehbaren Häuser (höchstens 35°, Kollision als glatte Rampe, Deckenausschnitt mit Geländer), Obergeschoss mit eigenen Räumen, Fenstern und Licht; Betten und Truhen oben, Wegpunkte `…_TREPPE`, `…_TREPPE_OBEN`, `…_OBEN…`, Innenzonen je Geschoss und über der Treppe
+  - Stand: begehbare Häuser Phase 1 – zehn weitere Häuser begehbar (Bäcker, Metzger, Schreiner, Töpfer, Goldschmied, Tuchhändler, Gewandschneider, Kräuterkammer, Badstube, Wachstube am Unteren Tor), eingerichtet nach Nutzung bzw. Gewerk (`uses.<use>.inside`, `insideByTrade`; Ofen, Hackklotz, Töpferscheibe, Tuchregal, Badewanne; Arbeits-Freepoints vor dem Werkstück); Steinböden mit Fußschritt-Hinweis (`surface`); Metzger, Töpfer, Wache und Schreiner vorerst ohne Obergeschoss (`upper: false`, Treppenplatzierung folgt in Phase 2); Wege gerade durch Durchgänge und um Treppen geprüft mit Autopilot-Rundgang und NPC-Probe
 
 **DoD:** Leonberg ist als fertiger Spielort im Vertical Slice / Kapitel nutzbar.
 

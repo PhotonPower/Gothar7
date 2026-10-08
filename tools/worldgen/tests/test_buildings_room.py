@@ -143,6 +143,20 @@ def test_a_big_ground_storey_is_divided_with_an_open_passage():
     assert not solid(r, mx, 1.0, mz) and not solid(r, mx + ax * 0.5, 1.0, mz + az * 0.5)
 
 
+def test_no_partition_against_the_house_door():
+    from shapely.geometry import box
+
+    from gothar_worldgen.buildings.medieval import _partition_plan
+
+    spec = {**RULES.data["interior"], "maxRoomM2": 20.0, "minRoomWidthM": 2.5}
+    inner = box(0.0, -6.0, 12.0, 0.0)  # 12 x 6 m: three or four rooms
+    for x in [k * 0.25 for k in range(4, 45)]:  # the door anywhere along the long wall
+        rooms, cuts = _partition_plan(inner, (x, 0.0), spec, "wohnhaus", 1.0)
+        assert len(rooms) > 1 and all(abs(c["t"] - x) >= 1.0 - 1e-9 for c in cuts), x
+        widths = [q.bounds[2] - q.bounds[0] for _, q in rooms]  # less the partitions' halves
+        assert min(widths) >= 2.5 - spec["partitionM"] - 1e-6, (x, widths)
+
+
 def test_rooms_stay_whole_under_the_limit():
     rules = load_rules(Path(__file__).resolve().parents[1] / "data" / "building_rules.json")
     rules.data["interior"]["maxRoomM2"] = 80.0
@@ -230,6 +244,16 @@ def test_room_meshes_collide_only_with_a_box_inside_the_house():
         assert pts[:, 1].min() > r.room["ceiling"]
         x, y, z = pts.mean(axis=0)
         assert solid(r, float(x), float(y), float(z))  # already solid: changes nothing
+
+
+def test_stone_floors_by_use():
+    assert house({"use": "schmiede"}).room["footstep"] == "stone"
+    assert "footstep" not in house({"use": "wohnhaus"}).room  # boards: wood by the path
+
+
+def test_no_stairs_where_the_upper_storey_is_not_enterable_yet():
+    r = house({"use": "wohnhaus", "upper": False})  # uses.json "upper": false
+    assert "stairs" not in r.room and "upper" not in r.room and r.room["rooms"]
 
 
 def test_stairs_lead_to_an_upper_storey():

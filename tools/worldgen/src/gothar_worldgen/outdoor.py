@@ -40,6 +40,7 @@ from shapely.strtree import STRtree
 FORMAT_VERSION = 1
 GROUP_NAME = "WORLDGEN_GASSEN"
 OUTLINE_M = 0.08  # house outlines simplified by this much for the walls props stand at
+ROOM_WALL_M = 0.3  # an enterable house's wall round its room (building_rules interior.wallM)
 WALL_GAP_M = 0.12  # props this far off the (simplified) wall: never into the house
 Pt = tuple[float, float]
 
@@ -125,6 +126,15 @@ def yaw_quat(fx: float, fz: float) -> list[float]:
     """Rotation about +Y turning the model's front (+Z) into (fx, fz) (as ``uses.inside``)."""
     a = math.atan2(fx, fz)
     return [0.0, round(math.sin(a / 2), 5) + 0.0, 0.0, round(math.cos(a / 2), 5) + 0.0]
+
+
+def _solid(house: Any, room: Polygon) -> Any:  # noqa: ANN401  a shapely geometry
+    """An enterable house's walls (its room carved out, open at the door and between the
+    pieces) as the solid block it stands in the street as: its room (index ``interior.ring``,
+    the inner wall faces) and walls filled in (W7)."""
+    whole = unary_union([house, room.buffer(ROOM_WALL_M, join_style="mitre")])
+    parts = [g for g in getattr(whole, "geoms", [whole]) if isinstance(g, Polygon)]
+    return unary_union([Polygon(g.exterior) for g in parts]) if parts else house
 
 
 def _rect(c: Pt, u: Pt, w: float, d: float) -> Polygon:
@@ -294,6 +304,8 @@ class _Planner:
         houses: dict[str, list[Polygon]] = defaultdict(list)
         landmarks: dict[str, list[Polygon]] = defaultdict(list)
         walls: list[Polygon] = []
+        rooms = {e["id"]: Polygon(e["interior"]["ring"]) for e in site.entries
+                 if (e.get("interior") or {}).get("ring")}  # W7: enterable houses  # fmt: skip
         for owner, poly in site.bodies:
             if owner.startswith("BLD_") and "_RAUM_" not in owner:
                 houses[owner[4:]].append(poly)
@@ -301,10 +313,13 @@ class _Planner:
                 landmarks[owner].append(poly)
             elif owner.startswith("CITYWALL_"):
                 walls.append(poly)
-        self.houses = {k: unary_union(v) for k, v in houses.items()}
+        self.houses = {k: _solid(unary_union(v), rooms[k]) if k in rooms else unary_union(v)
+                       for k, v in houses.items()}  # fmt: skip
         # the outlines of the collision pieces are ragged (many short edges): walls to stand at
         self.outlines = {k: v.simplify(OUTLINE_M) for k, v in self.houses.items()}
         self.house_shapes = _Shapes(list(self.houses.values()), list(self.houses))
+        # their collision has gaps (windows, door): nothing of a neighbour's stands in their rooms
+        self.enterable = _Shapes([self.houses[k] for k in rooms if k in self.houses])
         margin = float(keep["handmadeM"])
         self.landmarks = _Shapes([unary_union(v).convex_hull.buffer(margin)
                                   for v in landmarks.values()])  # fmt: skip
@@ -358,6 +373,8 @@ class _Planner:
             t += w + gap
             rect = _rect(c, u, w, d)
             if self.keep.hits(rect) or self.bodies.hits(rect) or self.landmarks.hits(rect):
+                return None
+            if self.enterable.hits(rect):
                 return None
             if not self.placed.clear(rect, self.gap):
                 return None
@@ -698,6 +715,7 @@ class _Planner:
                             self.keep.hits(spot)
                             or self.bodies.hits(spot)
                             or self.landmarks.hits(spot)
+                            or self.enterable.hits(spot)  # through a room's floor (W7)
                         ):
                             continue
                         if not self.placed.clear(spot, 0.05):
