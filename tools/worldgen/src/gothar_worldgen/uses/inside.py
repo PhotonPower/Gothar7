@@ -971,6 +971,61 @@ def _split_upstairs(spec: InsideSpec, residents: int) -> tuple[InsideSpec, Insid
     return down, up
 
 
+DETOUR_CLEAR_M = 0.2  # a way round the stairs or their opening keeps this far from them (the
+# room's waypoint at the head of the stairs is right at the opening's edge)
+DETOUR_CORNER_M = 0.9  # its corners this far out from them
+
+
+def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
+            room: Polygon) -> list[tuple[float, float]]:  # fmt: skip
+    """Corners a straight way from ``a`` to ``b`` takes round ``obstacle`` (stairs, the opening
+    in the floor above them) inside ``room``; empty if the straight way is clear (the engine
+    walks the waynet's edges as they are, unchecked)."""
+    zone = obstacle.buffer(DETOUR_CLEAR_M)
+    if not LineString([a, b]).intersects(zone):
+        return []
+    inside = room.buffer(-0.3)
+    ring = obstacle.buffer(DETOUR_CORNER_M, join_style="mitre").exterior.coords[:-1]
+    corners = [(x, z) for x, z in ring if inside.contains(Point(x, z))]
+
+    def clear(p: tuple[float, float], q: tuple[float, float]) -> bool:
+        seg = LineString([p, q])
+        return not seg.intersects(zone) and room.buffer(0.15).contains(seg)  # ends at passages
+
+    best: tuple[float, list[tuple[float, float]]] | None = None
+    for c in corners:
+        if clear(a, c) and clear(c, b):
+            d = math.dist(a, c) + math.dist(c, b)
+            if best is None or d < best[0]:
+                best = (d, [c])
+    for c in corners:
+        for e in corners:
+            if c != e and clear(a, c) and clear(c, e) and clear(e, b):
+                d = math.dist(a, c) + math.dist(c, e) + math.dist(e, b)
+                if best is None or d < best[0]:
+                    best = (d, [c, e])
+    return [] if best is None else best[1]
+
+
+def _round_about(plan: InsidePlan, h: House, base: str, a: str, b: str, start: tuple[float, float],
+                 mid: tuple[float, float], obstacle: Polygon | None, room: _Room,
+                 floor: float) -> str:  # fmt: skip
+    """The waypoint a chamber's passage links to: the room's own, or the last of the corners
+    round the ``obstacle`` (``WP_…_<a>_UM_<b>``) when the straight way would cross it; the way
+    along them stays clear of furniture."""
+    link = f"WP_{base}_{a}"
+    corners = _detour(start, mid, obstacle, room.poly) if obstacle is not None else []
+    path = [start, *corners, mid]
+    for k, c in enumerate(corners, start=1):
+        name = f"WP_{base}_{a}_UM_{b}" + (f"_{k}" if k > 1 else "")
+        plan.places.append({"kind": "wp", "name": name, "house": h.id, "pos": [c[0], c[1]],
+                            "dir": [0.0, 1.0], "y": floor, "link": link})  # fmt: skip
+        link = name
+    for p, q in zip(path, path[1:], strict=False):
+        room.keep = room.keep.union(LineString([p, q]).buffer(REACH_R_M))
+    return link
+
+
 def _stairs_room(r: dict[str, Any], st: Any) -> str:  # noqa: ANN401  stairs.Stair
     """The room (index name) the stairs rise in: by the rooms' outlines in the index (the rooms
     built may be cut back at walls)."""
@@ -1034,8 +1089,9 @@ def _upper(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, st: 
     c = poly.centroid
     path = LineString([arrive, (c.x, c.y)]).buffer(PATH_W_M / 2, cap_style="flat")
     keep = st.head_landing.union(Point(arrive).buffer(DOOR_ZONE_M)).union(path)
+    hole = Polygon(r["stairs"]["opening"])
     hall = _Room(poly, float(up["floor"]), float(up["ceiling"]), keep, arrive, inward,
-                 [Polygon(r["stairs"]["opening"]).buffer(0.15)])  # fmt: skip
+                 [hole.buffer(0.15)])  # fmt: skip
     hall.windows = _windows_of(up, poly)
     built: dict[str, _Room] = {order[0]: hall}
     entered: dict[str, tuple[str, Any]] = {order[0]: (head, None)}
@@ -1046,9 +1102,10 @@ def _upper(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, st: 
         built[b] = _chamber(up, ring, mid, (float(p["axis"][0]), float(p["axis"][1])), others)
         before = built[a]
         before.exits.append(mid)
-        lane = LineString([before.entry, mid]).buffer(REACH_R_M)
-        before.keep = before.keep.union(lane).union(Point(mid).buffer(DOOR_ZONE_M))
-        entered[b] = (f"WP_{base}_{a}", mid)
+        before.keep = before.keep.union(Point(mid).buffer(DOOR_ZONE_M))
+        link = _round_about(plan, h, base, a, b, before.entry, mid, hole, before,
+                            float(up["floor"]))  # fmt: skip
+        entered[b] = (link, mid)
     # beds and chests: the chambers first, the room at the stairs only without chambers
     rooms_for = order[1:] or order[:1]
     shares = {name: InsideSpec() for name in order}
@@ -1130,9 +1187,11 @@ def _divided(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, ro
         built[b] = _chamber(r, ring, mid, (float(p["axis"][0]), float(p["axis"][1])), others)
         before = built[a]
         before.exits.append(mid)
-        lane = LineString([before.entry, mid]).buffer(REACH_R_M)
-        before.keep = before.keep.union(lane).union(Point(mid).buffer(DOOR_ZONE_M))
-        entered[b] = (f"WP_{base}_{a}", mid)
+        before.keep = before.keep.union(Point(mid).buffer(DOOR_ZONE_M))
+        steps = st.footprint if st is not None and _stairs_room(r, st) == a else None
+        link = _round_about(plan, h, base, a, b, before.entry, mid, steps, before,
+                            float(r["floor"]))  # fmt: skip
+        entered[b] = (link, mid)
     stairs_in = _stairs_room(r, st) if st is not None else order[0]
     _with_stairs(built, st, stairs_in)
     shares = _share(spec, h.residents, len(order) - 1)

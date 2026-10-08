@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 34742,
+ "nextVobId": 34746,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -34743,6 +34743,10 @@
   "use:PROP_LEO_SCHMIEDE_ZNP_KAMMER_TISCH_1_4": 34738,
   "use:PROP_LEO_SCHMIEDE_ZNP_KAMMER_WORKBENCH_1": 34739,
   "use:PROP_LEO_SCHMIEDE_ZNP_KAMMER_CANDLESTICK_1": 34740,
-  "use:LIGHT_LEO_SCHMIEDE_ZNP_KAMMER_KERZE_1": 34741
+  "use:LIGHT_LEO_SCHMIEDE_ZNP_KAMMER_KERZE_1": 34741,
+  "outdoor:DEBW_00100061Zj7-T10:front:1:2:1": 34742,
+  "outdoor:DEBW_00100061Zj7-T10:back:3:1:1": 34743,
+  "outdoor:DEBW_00100061ZmE:front:1:3:1": 34744,
+  "outdoor:grass:DEBW_00100061ZlD:1:6": 34745
  }
 }
