@@ -87,9 +87,12 @@ gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name
                                               & REM Kleidungs-Kits (fit_to, parts = ["cloth"]): ein Teil je Stück und Statur;
                                               & REM Rüstungs-Kits zusätzlich neutral = false, [names], [budget], [derive.x],
                                               & REM [retouch]; Kopf-Kits [hides], derive from = "basemesh" + dome/nasal, heads
-gothar-chargen monster laufvogel --sources C:\GotharData\characters\monsters
-                                              & REM Monster-Rig + Referenz + Clip-Quelle laufvogel_clips.blend (§7.2);
-                                              & REM meldet je Aktion Beckenabsenkung und Fuß-/Gelenkabweichung
+gothar-chargen creature wolf --sources C:\GotharData\characters\monsters
+                                              & REM eigene Art aus data/monsters/wolf.creature.toml: Rig, Referenz mit
+                                              & REM LODs, Texturen, Clip-Quelle wolf_clips.blend (Ruhepose „rest“; §7.4)
+gothar-chargen monster <art> --sources C:\GotharData\characters\monsters
+                                              & REM CC0-Tier auf ein Monster-Rig umbauen (data/monsters/<art>.build.toml;
+                                              & REM derzeit keine Art, alle eigen seit 2026-10-08)
 gothar-chargen build-set wolf --sources C:\GotharData\characters\monsters
                                               & REM Monster-Clips → monsters/wolf/anims/wolf.glb
 gothar-chargen collision [wolf]               & REM [rig.collision] aus der Referenz ableiten (ohne Blender)
@@ -144,9 +147,9 @@ Die „Standard“-Pakete der Universal Animation Library 1 und 2 (CC0) liegen a
 - https://opengameart.org/sites/default/files/universal_animation_librarystandard.zip (UAL1, Rigify-Namen)
 - https://opengameart.org/sites/default/files/universal_animation_library_2standard.zip (UAL2, Mannequin)
 
-## Monster-Quellen (für `monster`)
-Quaternius-Tierpakete (CC0, opengameart.org), entpackt nach `DATA_ROOT\characters\monsters\` (nicht ins Repo):
-- https://opengameart.org/content/5-low-poly-animals (Küken → `laufvogel`)
+## Monster-Quellen
+Alle Arten sind eigen (`creature`, seit 2026-10-08); die früheren Quaternius-Tierpakete werden nicht mehr gebraucht.
+Unter `DATA_ROOT\characters\monsters\` liegen nur die erzeugten Clip-Quellen `<art>_clips.blend`.
 
 ## Tests
 ```cmd

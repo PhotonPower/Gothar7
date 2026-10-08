@@ -186,7 +186,7 @@ def test_invalid_monster_sets(data, message):
     [
         ("wolf", 25, 15),
         ("keiler", 28, 12),
-        ("laufvogel", 12, 12),
+        ("laufvogel", 16, 12),
         ("schinder", 26, 15),
         ("quaderbuckel", 29, 17),
         ("glemsmahr", 37, 19),
@@ -223,7 +223,10 @@ def test_laufvogel_rig():
     # bird naming (§7.1): thigh/calf/foot; left/right hint from the feet
     assert {"thigh_l", "calf_r", "foot_l", "foot_r"} <= set(rig.names)
     assert dict(rig.orientation)["left"] == ("foot_r", "foot_l")
-    assert rig.height == pytest.approx(1.6, abs=0.01)
+    # own bird (2026-10-08): neck_02, beak (jaw) and stubby wings added with engine
+    assert rig.parents["neck_02"] == "neck_01" and rig.parents["head"] == "neck_02"
+    assert rig.parents["jaw"] == "head" and rig.parents["wing_l"] == "spine_01"
+    assert rig.height == pytest.approx(1.66, abs=0.01)
 
 
 def test_human_rig_rejects_wolf(rig, reference):
