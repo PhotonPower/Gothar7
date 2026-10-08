@@ -271,6 +271,24 @@ blend = 0
     again.update(0.1f);
     CHECK(again.activeClips().back().clip == "none/t_jump");
     CHECK(again.activeClips().back().weight == doctest::Approx(1.0f));
+    CHECK(again.overlayClip() == "none/t_jump");
+
+    // Played through, it fades out; looped, it stays until stopped (held poses such as none/a_torch_hold).
+    for (int i = 0; i < 100; ++i)
+    {
+        again.update(0.1f);
+    }
+    CHECK_FALSE(again.overlayPlaying());
+    CHECK(again.overlayClip().empty());
+    again.playOverlay("none/t_jump", "arm", 0.1f, false, {}, true);
+    for (int i = 0; i < 100; ++i)
+    {
+        again.update(0.1f);
+    }
+    CHECK(again.overlayClip() == "none/t_jump");
+    CHECK(again.activeClips().back().weight == doctest::Approx(1.0f));
+    again.stopOverlay(0.1f);
+    CHECK(again.overlayClip().empty()); // fading out
 }
 
 TEST_CASE("Animator: playback rate follows the clips' own speed, weighted in blends, within rate_range")

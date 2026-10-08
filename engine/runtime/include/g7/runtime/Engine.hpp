@@ -395,6 +395,8 @@ public:
     void teleportPlayer(const Vec3& feet, f32 yaw);
     /// State of the hero's animation state machine ("move", "jump" ...); empty without an animated figure.
     [[nodiscard]] std::string_view playerAnimationState() const noexcept;
+    /// The clip of the hero's overlay (gesture, torch pose) while it plays; empty otherwise.
+    [[nodiscard]] std::string_view playerOverlayClip() const noexcept;
     /// VFS path of the animated hero figure; empty without one.
     [[nodiscard]] std::string_view playerFigurePath() const noexcept;
     /// Hangs the model at `modelPath` (VFS) at a socket bone of the hero ("socket_hand_r" ...), replacing
@@ -904,6 +906,7 @@ private:
     void lightTorch(std::string_view item);
     void torchEvent(std::string_view event); ///< torch_take, torch_light, torch_drop (figuren's clips)
     void putTorchAway();
+    void holdTorch(f32 blend); ///< the carrying pose none/a_torch_hold, looped
     void dropTorch();
     void fixedUpdateTorch(f32 seconds);
     void bindTorchFunctions();

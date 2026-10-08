@@ -92,11 +92,14 @@ public:
     /// Plays `clip` over the bones below `maskBone` ("spine_02": upper body) - weapons, gestures. Additive:
     /// the difference to `reference` (a clip's first frame; empty: `clip`'s own) is added to the pose -
     /// dialogue gestures use "dlg/a_neutral" so that held poses (arms crossed) keep their difference
-    /// (figuren, option A).
+    /// (figuren, option A). `loop`: repeats until stopOverlay even if the clip is no "s_" clip - held poses
+    /// such as none/a_torch_hold.
     void playOverlay(std::string_view clip, std::string_view maskBone, f32 blendIn = 0.15f,
-                     bool additive = false, std::string_view reference = {});
+                     bool additive = false, std::string_view reference = {}, bool loop = false);
     /// Whether an overlay plays (and has not faded out).
     [[nodiscard]] bool overlayPlaying() const noexcept { return m_overlay.has_value(); }
+    /// The overlay's clip while one plays and is not fading out, else empty.
+    [[nodiscard]] std::string_view overlayClip() const noexcept;
     /// Whether a clip of this name is loaded.
     [[nodiscard]] bool hasClip(std::string_view clip) const noexcept;
     void stopOverlay(f32 blendOut = 0.15f);
@@ -143,6 +146,7 @@ private:
         usize clip = 0;
         std::vector<f32> mask;
         bool additive = false;
+        bool loop = false;  ///< repeats until stopOverlay
         i32 reference = -1; ///< clip whose first frame is the additive reference; -1: the overlay clip
         f32 time = 0.0f;
         f32 weight = 0.0f;
