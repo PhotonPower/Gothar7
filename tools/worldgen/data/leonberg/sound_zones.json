@@ -1,8 +1,8 @@
 {
   "format": "gothar-sound-zones",
   "version": 1,
-  "note": "Musik- und Ambiente-Zonen Leonbergs (M13, Vertrag world.md \"Zonen\"; Namen vom Koordinator festgelegt 2026-10-08). Mechanik in gothar_worldgen/uses/sound.py, Werte hier. Das Ambiente innen leitet engine aus den indoor-Zonen ab.",
-  "music": {"town": "STADT", "land": "LAND"},
+  "note": "Musik- und Ambiente-Zonen Leonbergs (M13, Vertrag world.md \"Zonen\"; Namen vom Koordinator festgelegt 2026-10-08). Mechanik in gothar_worldgen/uses/sound.py, Werte hier. Das Ambiente innen leitet engine aus den indoor-Zonen ab. Außerhalb der Musik-Zonen herrscht Stille (Projektinhaber 2026-10-08, keine Musik-Box LAND).",
+  "music": {"town": "STADT"},
   "ambient": {
     "default": "feld",
     "town": "stadt_gasse",

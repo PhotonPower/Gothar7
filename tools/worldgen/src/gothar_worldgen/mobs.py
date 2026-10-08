@@ -816,6 +816,89 @@ def wall_hanging() -> MobModel:
     return MobModel("wall_hanging", m)
 
 
+# --- the workshops and shops (W7 phase 1, enterable houses) -------------------------------------
+OVEN_W, OVEN_D, OVEN_H = 1.2, 0.9, 1.55  # the baker's and potter's oven, on the hearth's footprint
+
+
+def oven() -> MobModel:
+    """A brick oven on a stone base: the domed baking chamber, its dark mouth with embers, the flue
+    at the back (front +Z, its back to the wall; it stands where a hearth would)."""
+    m = Mesh()
+    hw, hd = OVEN_W / 2, OVEN_D / 2
+    m.box("fieldstone", (-hw, 0.0, -hd), (hw, 0.75, hd))  # base
+    m.cyl("clay", 1, (0.0, 0.95, 0.0), 0.5, 0.4, sides=12)  # the dome, in courses
+    m.cyl("clay", 1, (0.0, 1.22, 0.0), 0.38, 0.15, sides=12)
+    m.cyl("clay", 1, (0.0, 1.33, 0.0), 0.22, 0.08, sides=10)
+    m.box("ash", (-0.2, 0.78, hd - 0.12), (0.2, 1.05, hd - 0.02))  # the mouth
+    m.box("ember", (-0.14, 0.78, hd - 0.14), (0.14, 0.86, hd - 0.1))
+    m.box("fieldstone", (-0.25, 0.75, hd - 0.05), (0.25, 0.8, hd + 0.08))  # sill
+    m.box("clay", (-0.1, 1.2, -hd), (0.1, OVEN_H, -hd + 0.2))  # flue
+    m.body("oven", (-hw, 0.0, -hd), (hw, 1.4, hd))
+    return MobModel("oven", m)
+
+
+def chopping_block() -> MobModel:
+    """The butcher's block: a short trunk with a cleaver struck into it."""
+    m = Mesh()
+    m.cyl("bark", 1, (0.0, 0.36, 0.0), 0.28, 0.72, sides=12)
+    m.cyl("oak", 1, (0.0, 0.725, 0.0), 0.26, 0.01, sides=12)  # the cut top
+    m.box("iron", (-0.012, 0.64, -0.05), (0.012, 0.8, 0.12))  # the cleaver's blade, struck in
+    m.box("oak", (-0.02, 0.76, 0.12), (0.02, 0.8, 0.3), grain=2)  # its handle
+    m.body("chopping_block", (-0.28, 0.0, -0.28), (0.28, 0.73, 0.28))
+    return MobModel("chopping_block", m)
+
+
+def potter_wheel() -> MobModel:
+    """A kick wheel: a low frame with a seat board, the heavy wheel below, the head with clay."""
+    m = Mesh()
+    m.box("oak", (-0.32, 0.0, -0.35), (0.32, 0.06, 0.35), grain=2)  # floor frame
+    m.box("oak", (-0.3, 0.4, -0.35), (0.3, 0.45, -0.15), grain=0)  # the seat board at the back
+    for x in (-0.27, 0.27):
+        m.box("oak_beam", (x - 0.03, 0.0, -0.35), (x + 0.03, 0.42, -0.29), grain=1)
+    m.cyl("oak", 1, (0.0, 0.14, 0.1), 0.26, 0.06, sides=14)  # the kick wheel
+    m.cyl("iron", 1, (0.0, 0.42, 0.1), 0.02, 0.56, sides=6)  # shaft
+    m.cyl("oak", 1, (0.0, 0.7, 0.1), 0.16, 0.03, sides=12)  # the head
+    m.cyl("clay", 1, (0.0, 0.78, 0.1), 0.08, 0.12, sides=10)  # a pot thrown on it
+    m.body("potter_wheel", (-0.32, 0.0, -0.35), (0.32, 0.72, 0.35))
+    return MobModel("potter_wheel", m)
+
+
+def cloth_shelf() -> MobModel:
+    """A tall shelf with bolts of cloth lying on its boards (front +Z, back to the wall)."""
+    m = Mesh()
+    w, d, h = 1.2, 0.38, 1.8
+    for x in (-w / 2 + 0.03, w / 2 - 0.03):
+        m.box("oak_beam", (x - 0.03, 0.0, -d / 2), (x + 0.03, h, d / 2), grain=1)
+    m.box("oak", (-w / 2, h - 0.03, -d / 2), (w / 2, h, d / 2))
+    colours = ("wool_red", "wool_blue", "linen", "wool_green", "wool_ochre", "sackcloth")
+    for k, y in enumerate((0.08, 0.66, 1.24)):
+        m.box("oak", (-w / 2, y - 0.03, -d / 2), (w / 2, y, d / 2))  # board
+        for j in range(4):  # bolts lying along the board, end on to the room
+            c = colours[(k * 4 + j) % len(colours)]
+            x = -0.42 + j * 0.28
+            m.cyl(c, 2, (x, y + 0.1, 0.0), 0.1, 0.32, sides=8)
+    m.body("cloth_shelf", (-w / 2, 0.0, -d / 2), (w / 2, h, d / 2))
+    return MobModel("cloth_shelf", m)
+
+
+def bathtub() -> MobModel:
+    """A wooden bathing tub of staves with two iron hoops, water in it (the bather's)."""
+    m = Mesh()
+    w, d, h, t = 1.6, 0.85, 0.62, 0.05
+    m.box("oak", (-w / 2, 0.0, -d / 2), (w / 2, 0.06, d / 2))  # bottom
+    hw, hd = w / 2, d / 2
+    walls = (((-hw, 0.0, -hd), (hw, h, -hd + t)), ((-hw, 0.0, hd - t), (hw, h, hd)),
+             ((-hw, 0.0, -hd), (-hw + t, h, hd)), ((hw - t, 0.0, -hd), (hw, h, hd)))  # fmt: skip
+    for lo, hi in walls:  # the staves
+        m.box("oak", lo, hi, grain=1)
+    for y in (0.12, 0.5):  # hoops
+        m.box("iron", (-w / 2 - 0.01, y, -d / 2 - 0.01), (w / 2 + 0.01, y + 0.03, -d / 2))
+        m.box("iron", (-w / 2 - 0.01, y, d / 2), (w / 2 + 0.01, y + 0.03, d / 2 + 0.01))
+    m.box("water", (-w / 2 + t, 0.45, -d / 2 + t), (w / 2 - t, 0.46, d / 2 - t))
+    m.body("bathtub", (-w / 2, 0.0, -d / 2), (w / 2, h, d / 2))
+    return MobModel("bathtub", m)
+
+
 WASHSTAND_W, WASHSTAND_D, WASHSTAND_H = 0.55, 0.4, 0.78
 
 
@@ -1260,6 +1343,8 @@ PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "fire
          "market_stall_a": lambda: market_stall("a"), "market_stall_b": lambda: market_stall("b"),
          "market_stall_c": lambda: market_stall("c"),
          "washstand": washstand, "clothes_hooks": clothes_hooks,
+         "oven": oven, "chopping_block": chopping_block, "potter_wheel": potter_wheel,
+         "cloth_shelf": cloth_shelf, "bathtub": bathtub,
          **{f"sign_{k}": (lambda k=k: guild_sign(k)) for k in SIGNS},
          }  # plain mesh vobs (assets/source/props)  # fmt: skip
 

@@ -9,9 +9,16 @@ from shapely.geometry import LineString, Point, Polygon
 from gothar_worldgen.uses.inside import (
     BENCH_OFF_M,
     GROUP_D,
+    OVEN_STAND_M,
+    PASSAGE_FRONT_M,
     PROP_SIZE,
     REACH_R_M,
+    STAIRS_FRONT_M,
+    InsidePlan,
     InsideSpec,
+    _share,
+    _split_upstairs,
+    _to_chamber,
     inside_spec,
     plan_inside,
 )
@@ -201,6 +208,110 @@ def test_household_props_leave_the_ways_free():
             )
 
 
+def test_an_oven_stands_where_the_hearth_would():
+    p = household({"hearth": "oven"})
+    assert p.failed == []
+    assert props_of(p, "hearth") == [] and len(props_of(p, "oven")) == 1
+    assert props_of(p, "pot") == []  # nothing cooks on an oven
+    assert props_of(p, "firewood")  # but it burns wood
+    assert [v for v in by_kind(p, "light") if v["name"].endswith("_HERD")]
+    assert any(f["name"].startswith("FP_CAMPFIRE") for f in p.places)
+    with pytest.raises(UsesError, match="hearth"):
+        inside_spec({"hearth": "kiln"}, "x")
+    oven = inside_spec({"hearth": "oven", "mobs": ["bed:1"]}, "x")
+    down, _ = _split_upstairs(oven, 1)  # the oven stays an oven downstairs and beside chambers
+    assert down.hearth and down.hearth_model == "oven"
+    assert _share(oven, 1, 1)[0].hearth_model == "oven"
+
+
+def test_the_baker_stands_beside_the_oven():
+    p = household({"hearth": "oven", "freepoints": ["STAND:1"]})
+    fire = next(f for f in p.places if f["name"].startswith("FP_CAMPFIRE"))
+    stand = next(f for f in p.places if f["name"].startswith("FP_STAND"))
+    assert math.dist(fire["pos"], stand["pos"]) == pytest.approx(OVEN_STAND_M)
+    assert stand["dir"] == pytest.approx([-d for d in fire["dir"]])  # facing the room
+
+
+def test_work_furniture_first_with_the_work_place_before_it():
+    spec = {"freepoints": ["REPAIR:1", "CHOP:1", "STAND:1"],
+            "props": ["workbench:1", "chopping_block:1", "shelf:1"]}  # fmt: skip
+    p = household(spec)
+    assert p.failed == []
+    for kind, fp in (("workbench", "FP_REPAIR"), ("chopping_block", "FP_CHOP")):
+        (v,) = props_of(p, kind)
+        (f,) = [f for f in p.places if f["name"].startswith(fp)]
+        at = (v["pos"][0], v["pos"][2])
+        assert math.dist(at, f["pos"]) == pytest.approx(PROP_SIZE[kind][1] / 2 + 0.6)
+        to_it = (at[0] - f["pos"][0], at[1] - f["pos"][1])
+        assert f["dir"][0] * to_it[0] + f["dir"][1] * to_it[1] > 0.99 * math.hypot(*to_it)
+    assert len([f for f in p.places if f["kind"] == "fp"]) == 3  # no second REPAIR or CHOP
+
+
+def test_a_counter_without_its_shelf_where_the_room_is_shallow():
+    shallow = {**ROOM, "ring": [[0.3, -0.3], [0.3, -3.3], [9.7, -3.3], [9.7, -0.3]]}
+    index = {"entries": [{"id": "DEBW_00100061ZjV", "interior": shallow}]}
+    house = House("DEBW_00100061ZjV", "haendler", residents=1, inside=True)
+    specs = {"haendler": inside_spec({"props": ["counter:1"], "freepoints": ["STAND:1"]}, "x")}
+    p = plan_inside([house], specs, index, {"DEBW_00100061ZjV": "WP_LEO_X_ZJV"})
+    assert p.failed == []
+    assert props_of(p, "shelf") == [] and len(props_of(p, "counter")) == 1
+    (counter,) = props_of(p, "counter")
+    stand = next(f for f in p.places if f["name"].startswith("FP_STAND"))
+    assert stand["pos"][1] < counter["pos"][2]  # behind it, the back to the wall
+    assert any(w["name"].endswith("_THEKE") for w in p.places)
+
+
+def test_from_the_top_steps_round_the_opening_to_a_chamber():
+    from shapely.geometry import box
+
+    from gothar_worldgen.uses.inside import _Room, _round_about
+
+    hole = box(5.0, -1.6, 9.0, -0.4)  # the opening along the north wall, the head at its east
+    hall = _Room(box(0.0, -6.0, 12.0, 0.0), 4.0, 6.5, Polygon(), (8.6, -1.0), (1.0, 0.0))
+    plan = InsidePlan()
+    h = House("H1", "wohnhaus")
+    link = _round_about(plan, h, "LEO_X", "OBEN", "OBEN_KAMMER", (8.6, -1.0), (0.0, -1.0), hole,
+                        hall, 4.0)  # fmt: skip
+    ways = [p for p in plan.places if "_UM_" in p["name"]]
+    assert plan.failed == [] and link == ways[-1]["name"] and len(ways) >= 2
+    assert ways[0]["pos"][0] > 9.0  # first off the steps onto the landing
+    path = [(8.6, -1.0), *(tuple(w["pos"]) for w in ways), (0.0, -1.0)]
+    for p, q in zip(path[1:], path[2:], strict=False):  # then round it, never over it
+        assert not LineString([p, q]).intersects(hole), (p, q)
+
+
+def test_what_finds_no_room_goes_on_to_the_next_room():
+    plan = InsidePlan()
+    h = House("H1", "wache")
+    plan.failed = [{"house": "H0", "what": "table", "reason": "no room"}]
+    for what in ("table", "prop workbench", "prop counter", "FP_SIT", "hearth"):
+        plan.failed.append({"house": "H1", "what": what, "reason": "no room"})
+    chamber = InsideSpec()
+    _to_chamber(plan, h, 1, chamber)
+    assert chamber.mobs == [("table", "1")] and chamber.props == [("workbench", 1)]
+    assert chamber.freepoints == [("SIT", 1)]
+    assert [f["what"] for f in plan.failed] == ["table", "prop counter", "hearth"]  # H0's stays
+    up = InsideSpec()
+    plan.failed.append({"house": "H1", "what": "FP_STAND", "reason": "no room"})
+    _to_chamber(plan, h, 3, up, freepoints=False)  # upstairs: no freepoints
+    assert up.freepoints == [] and plan.failed[-1]["what"] == "FP_STAND"
+
+
+def test_a_trade_has_its_own_inside():
+    specs = {
+        "haendler": inside_spec({"mobs": ["bed:1"]}, "x"),
+        "haendler:goldschmied": inside_spec({"mobs": ["chest:2"]}, "y"),
+    }
+
+    def mobs_of(trade: str) -> list[str]:
+        house = House("DEBW_00100061ZjV", "haendler", trade=trade, residents=1, inside=True)
+        p = plan_inside([house], specs, INDEX, {"DEBW_00100061ZjV": "WP_LEO_X_ZJV"})
+        return sorted(v["components"]["mob"]["definition"] for v in by_kind(p, "mob"))
+
+    assert mobs_of("goldschmied") == ["chest", "chest"]
+    assert mobs_of("kraemer") == ["bed"]  # no spec of its own: the use's
+
+
 def test_counter_with_shelf_aisle_and_waypoint():
     p = household()
     (counter,) = props_of(p, "counter")
@@ -279,10 +390,10 @@ def test_a_divided_storey_puts_beds_in_the_chamber():
     assert not where["MOB_LEO_WOHNHAUS_ZJV_INNEN_TABLE_1"]
     names = {w["name"]: w for w in p.places if w["kind"] == "wp"}
     through = names["WP_LEO_WOHNHAUS_ZJV_KAMMER_DURCHGANG"]
-    assert (
-        through["pos"] == pytest.approx([4.0, -3.5])
-        and through["link"] == "WP_LEO_WOHNHAUS_ZJV_INNEN"
-    )
+    front = names["WP_LEO_WOHNHAUS_ZJV_KAMMER_DURCHGANG_VOR"]  # square before it: straight through
+    assert through["pos"] == pytest.approx([4.0, -3.5]) and through["link"] == front["name"]
+    assert front["pos"] == pytest.approx([4.0 + PASSAGE_FRONT_M, -3.5], abs=1e-6)
+    assert front["link"] == "WP_LEO_WOHNHAUS_ZJV_INNEN" and front["dir"] == pytest.approx([-1, 0])
     chamber = names["WP_LEO_WOHNHAUS_ZJV_KAMMER"]
     assert chamber["link"] == through["name"] and chamber["pos"] == pytest.approx([2.8, -3.5])
     lights = [v["name"] for v in by_kind(p, "light")]
@@ -513,3 +624,52 @@ def test_the_bedrooms_upstairs_are_furnished_like_downstairs():
     for v in p.vobs:  # the opening and its landing stay free upstairs
         if v["type"] in ("mob", "mesh") and v["pos"][1] >= up["floor"] - 0.01:
             assert not hole.contains(Point(v["pos"][0], v["pos"][2])), v["name"]
+
+
+def test_beside_stairs_entered_from_the_side_the_way_comes_straight_to_the_foot():
+    from types import SimpleNamespace
+
+    from shapely.geometry import box
+
+    from gothar_worldgen.uses.inside import _Room, _with_stairs
+
+    steps = box(4.0, -5.0, 9.0, -4.0)  # rising west, entered from the north at the east end
+    foot = (8.6, -3.7)  # 0.3 m off their edge: the straight way from the door runs along it
+    st = SimpleNamespace(footprint=steps, foot_point=foot, up=(-1.0, 0.0), side_entry=True,
+                         foot_landing=Point(foot).buffer(0.4))  # fmt: skip
+    room = _Room(box(0.0, -6.0, 12.0, 0.0), 0.0, 2.5, Polygon(), (0.0, -3.7), (1.0, 0.0))
+    way = _with_stairs({"INNEN": room}, st)
+    kind, front = way[-1]
+    assert kind == "VOR" and math.dist(front, foot) == pytest.approx(STAIRS_FRONT_M)
+    assert steps.distance(Point(front)) >= 0.3 + STAIRS_FRONT_M - 1e-6  # straight out
+    assert not LineString([room.entry, front]).buffer(0.25).intersects(steps)
+
+
+def test_every_bed_room_waypoint_and_freepoint_lies_in_an_indoor_box_of_its_house():
+    """engine's own bed (2026-10-08): bed and sleeping waypoint in indoor boxes whose value
+    starts with the house's tag, downstairs, upstairs and in the chambers."""
+    from gothar_worldgen.uses.zones import indoor_zones
+
+    def in_box(z: dict, x: float, y: float, zz: float) -> bool:
+        b = z["box"]
+        a = math.radians(b["yaw"])
+        (cx, cy, cz), (hx, hy, hz) = b["center"], b["halfExtents"]
+        dx, dz = x - cx, zz - cz
+        lx = dx * math.cos(a) - dz * math.sin(a)  # local +X = (cos yaw, -sin yaw)
+        lz = dx * math.sin(a) + dz * math.cos(a)  # local +Z = (sin yaw, cos yaw)
+        return abs(lx) <= hx + 1e-6 and abs(lz) <= hz + 1e-6 and abs(y - cy) <= hy
+
+    spec = {"wohnhaus": inside_spec({"mobs": ["bed:R", "chest:1", "table:1"], "hearth": True,
+                                     "freepoints": ["LEAN:1"]}, "x")}  # fmt: skip
+    for index in (DIVIDED, _two_storeys()):
+        house = House("DEBW_00100061ZjV", "wohnhaus", residents=3, inside=True)
+        p = plan_inside([house], spec, index, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+        zones = [
+            z for z in indoor_zones([house], index) if z["value"].startswith("LEO_WOHNHAUS_ZJV")
+        ]
+        beds = [(v["name"], v["pos"]) for v in p.vobs if "_BED_" in v["name"]]
+        rooms = [(w["name"], [w["pos"][0], w["y"], w["pos"][1]]) for w in p.places
+                 if "y" in w and not w["name"].endswith(("_TUER", "_DURCHGANG"))]  # fmt: skip
+        assert len(beds) == 3 and rooms
+        for name, (x, y, zz) in beds + rooms:
+            assert any(in_box(z, x, y + 0.3, zz) for z in zones), name

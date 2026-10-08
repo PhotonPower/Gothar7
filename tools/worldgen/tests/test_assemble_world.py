@@ -198,6 +198,18 @@ def test_rooms_of_an_enterable_house_are_own_mesh_vobs():
     assert again["BLD_A_RAUM_KAMMER"]["id"] == names["BLD_A_RAUM_KAMMER"]["id"]
 
 
+def test_a_stone_floor_downstairs_sounds_like_stone():
+    idx = index("A")
+    meshes = {"INNEN": "m/i.glb", "KAMMER": "m/k.glb", "OBEN": "m/o.glb"}
+    idx["entries"][0]["interior"] = {"meshes": meshes, "footstep": "stone"}
+    names = by_name(run(idx, None, VobIds({}, 1)))
+    for name in ("INNEN", "KAMMER"):
+        assert names[f"BLD_A_RAUM_{name}"]["components"] == {"surface": {"footstep": "stone"}}
+    assert "components" not in names["BLD_A_RAUM_OBEN"]  # boards upstairs: the path's wood
+    del idx["entries"][0]["interior"]["footstep"]
+    assert "components" not in by_name(run(idx, None, VobIds({}, 1)))["BLD_A_RAUM_INNEN"]
+
+
 def test_lanes_and_yards_are_own_group_of_deco_meshes():
     tree = {"key": "outdoor:tree:n1", "name": "BAUM_N1", "type": "mesh", "pos": [5.0, 2.0, 1.0],
             "rot": [0.0, 0.38268, 0.0, 0.92388], "mesh": "vegetation/tree_linden.glb"}  # fmt: skip

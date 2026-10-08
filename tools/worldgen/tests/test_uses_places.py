@@ -52,6 +52,19 @@ def test_uses_file_is_checked(tmp_path: Path):
             load_uses(write(tmp_path, houses, uses))
 
 
+def test_a_trade_inside_overrides_the_uses(tmp_path: Path):
+    base = {"mobs": ["chest:1", "bed:1"], "freepoints": ["STAND:1"], "props": ["shelf:1"]}
+    uses = {"haendler": {"inside": base, "insideByTrade": {"goldschmied": {"props": ["fur:1"]}}}}
+    doc = load_uses(write(tmp_path, [{"id": "H1", "use": "haendler"}], uses))
+    assert doc.inside["haendler"] == base
+    assert doc.inside["haendler:goldschmied"] == {**base, "props": ["fur:1"]}
+    houses = [
+        {"id": "H1", "use": "wache", "inside": True, "upper": False},
+        {"id": "H2", "use": "wache"},
+    ]
+    assert [h.upper for h in load_uses(write(tmp_path, houses, {})).houses] == [False, True]
+
+
 def test_smithy_gets_its_waypoint_anvil_and_places(tmp_path: Path):
     spec = {"schmiede": {"freepoints": ["REPAIR:1", "CHOP:1"], "mobs": ["anvil:1"]}}
     doc = load_uses(write(tmp_path, [{"id": "DEBW_00100061ZnP", "use": "schmiede"}], spec))
