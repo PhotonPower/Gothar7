@@ -29,6 +29,7 @@ LOCOMOTION = (
     "s_sneak",
     "s_strafe",
     "s_charge",
+    "s_stalk",
 )  # clip name prefixes (after "<set>/")
 HUMAN_FEET = ("ball_l", "ball_r")
 ANIMAL_FEET = ("front_foot_l", "front_foot_r", "back_foot_l", "back_foot_r")
