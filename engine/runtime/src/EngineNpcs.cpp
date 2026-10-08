@@ -400,6 +400,11 @@ void Engine::walkNpc(Creature& c, f32 seconds)
         Vec3 backOff;
         (void)npcDoors(c, backOff); // arrived behind a door: close it once away from it
     }
+    if (c.debugHold > 0.0f)
+    {
+        c.debugHold -= seconds; // debug: held in place, the route and the stuck count go on
+        velocity = Vec3(0.0f);
+    }
     c.body->update(seconds, velocity);
     c.position = c.body->feet();
     c.speed = glm::length(Vec3(c.body->velocity().x, 0.0f, c.body->velocity().z));
