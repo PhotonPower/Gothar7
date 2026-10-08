@@ -1,0 +1,20 @@
+# tailor: Leonberg tailor: shirt and vest (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_thin/body.glb"
+head = "parts/head_m_young/head.glb"
+hair = "parts/hair_m_young/hair_tousled.glb"
+cloth = [
+    "parts/garb_m_thin/shirt.glb",
+    "parts/garb_m_thin/vest_cloth.glb",
+    "parts/garb_m_thin/wide_trousers.glb",
+    "parts/cloth_m_thin/toigo_mj_cloth_shoes.glb",
+]
+
+[palette]
+hair = "#7a4a2c"
+cloth_shirt = "#e4dccb"
+cloth_vest_cloth = "#7a4a5a"
+cloth_wide_trousers = "#3e3024"
+cloth_toigo_mj_cloth_shoes = "#4a3a2c"

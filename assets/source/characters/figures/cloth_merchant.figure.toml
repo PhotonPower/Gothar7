@@ -1,0 +1,25 @@
+# cloth_merchant: Leonberg cloth merchant (woman): bodice over the long skirt in dyed cloth, coif, purse (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_f_average/body.glb"
+head = "parts/head_f_mid/head.glb"
+hair = "parts/hair_f_mid/hair_braid.glb"
+cloth = [
+    "parts/cloth_f_average/toigo_bodice-style_top.glb",
+    "parts/cloth_f_average/toigo_long_full_skirt.glb",
+    "parts/headgear_f_average/coif.glb",
+    "parts/garb_f_average/purse.glb",
+    "parts/cloth_f_average/toigo_flats.glb",
+]
+
+[palette]
+hair = "#3a2a1e"
+cloth_toigo_bodice-style_top = "#3e5a6a"
+cloth_toigo_long_full_skirt = "#7a4a5a"
+cloth_coif = "#ddd3bc"
+cloth_purse = "#5a3d28"
+cloth_toigo_flats = "#3e3024"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "woman"

@@ -622,6 +622,14 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
 - **Benannte Figuren** (je ein NPC, in keinem Set): `smith` (Lederschürze), `innkeeper` (sauber, Schürze),
   `market_woman` (Mieder über dem langen Rock), `gate_guard` (mittlere Rüstung, Kesselhelm), `guard_captain`
   (schwere Rüstung).
+- **Handwerker und Händler Leonbergs** (benannte Figuren, 2026-10-08; Rollen, Geschlecht, Alter und Statur vom
+  Koordinator, Personennamen vergibt engine im Inhalt): `baker` (m, kräftig; Latzschürze mit Mehl, Leinenmütze),
+  `baker_wife` (w; Latzschürze mit Mehl, Haube), `butcher` (m, kräftig; Leder-Latzschürze, Stoppeln), `bather`
+  (m; sauberes Hemd, Leinenschürze, Geldbeutel), `goldsmith` (m, alt, dünn; grüne Tunika, Weste, Barett,
+  Geldbeutel), `cloth_merchant` (w; Mieder und langer Rock in gefärbtem Tuch, Haube, Geldbeutel), `tailor` (m,
+  dünn; Hemd und Weste), `joiner` (m; Lederschürze, Lederkappe, Stoppeln), `potter` (m, dünn; Latzschürze mit
+  Ton, Leinenmütze, Ziegenbart), `herbalist` (w, alt, dünn; Mieder in Moosgrün, brauner Rock, Kapuze,
+  Geldbeutel). Gangart: Frauen `woman`, die Alten `old`.
 - **Kombinationsregeln** (aus den Prüfbildern und `poke`):
   - Das Mieder liegt nur ohne Hemd über dem langen Rock sauber, nicht über Hemden oder dem Stufenrock.
   - Die Lederweste nur über dem groben Hemd oder dem Pullover (aus dem groben Hemd abgeleitet).
