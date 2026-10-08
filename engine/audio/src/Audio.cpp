@@ -353,21 +353,20 @@ Result<SoundId> AudioSystem::play(const SoundDef& def, std::optional<Vec3> posit
                         std::max(0.0f, def.volume * (1.0f + def.volumeJitter * spread(m_impl->rng))));
     ma_sound_set_pitch(v.sound.get(), 1.0f + def.pitchJitter * spread(m_impl->rng));
     ma_sound_set_looping(v.sound.get(), def.loop ? MA_TRUE : MA_FALSE);
+    // A low-pass between the sound and its bus: occlusion (3D), the outside heard from a room (2D).
+    v.lpf = std::make_unique<ma_lpf_node>();
+    const ma_lpf_node_config lc = m_impl->lpfConfig(0.0f);
+    if (ma_lpf_node_init(ma_engine_get_node_graph(&m_impl->engine), &lc, nullptr, v.lpf.get()) == MA_SUCCESS)
+    {
+        ma_node_attach_output_bus(v.sound.get(), 0, v.lpf.get(), 0);
+        ma_node_attach_output_bus(v.lpf.get(), 0, &m_impl->groups[static_cast<usize>(def.bus)], 0);
+    }
+    else
+    {
+        v.lpf.reset();
+    }
     if (position)
     {
-        // The low-pass for occlusion between the sound and its bus.
-        v.lpf = std::make_unique<ma_lpf_node>();
-        const ma_lpf_node_config lc = m_impl->lpfConfig(0.0f);
-        if (ma_lpf_node_init(ma_engine_get_node_graph(&m_impl->engine), &lc, nullptr, v.lpf.get()) ==
-            MA_SUCCESS)
-        {
-            ma_node_attach_output_bus(v.sound.get(), 0, v.lpf.get(), 0);
-            ma_node_attach_output_bus(v.lpf.get(), 0, &m_impl->groups[static_cast<usize>(def.bus)], 0);
-        }
-        else
-        {
-            v.lpf.reset();
-        }
         ma_sound_set_position(v.sound.get(), position->x, position->y, position->z);
         ma_sound_set_attenuation_model(v.sound.get(), ma_attenuation_model_linear);
         ma_sound_set_min_distance(v.sound.get(), def.minDistance);

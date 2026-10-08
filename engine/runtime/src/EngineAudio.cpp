@@ -21,6 +21,9 @@ constexpr f32 kNightFrom = 20.0f;        ///< hours: night ambience and music fr
 constexpr f32 kNightTo = 6.0f;           ///< ... until here
 constexpr f32 kOcclusionInterval = 0.1f; ///< s between the occlusion rays
 constexpr f32 kOccludedMuffle = 0.8f;    ///< a wall between: this muffled (owner decision 8: a low-pass)
+constexpr std::string_view kIndoorAmbience = "innen"; ///< in a room (indoor zone): this ambience ...
+constexpr f32 kOutsideVolume = 0.3f;                  ///< ... with the outside one this loud ...
+constexpr f32 kOutsideMuffle = 0.8f;                  ///< ... and this muffled behind it
 
 /// Whether `p` lies in the turned box (world.md: local +X = (cos yaw, 0, -sin yaw), +Z = (sin yaw, 0, cos
 /// yaw)).
@@ -36,7 +39,7 @@ bool inBox(const world::ZoneBox& b, const Vec3& p)
 }
 } // namespace
 
-std::optional<std::string> Engine::zoneAt(std::string_view type, const Vec3& point) const
+const world::Zone* Engine::smallestZoneAt(std::string_view type, const Vec3& point, f32* volume) const
 {
     // Nested zones: the smallest box wins (a camp inside a forest).
     const world::Zone* best = nullptr;
@@ -47,14 +50,24 @@ std::optional<std::string> Engine::zoneAt(std::string_view type, const Vec3& poi
         {
             continue;
         }
-        const f32 volume = z.box->halfExtents.x * z.box->halfExtents.y * z.box->halfExtents.z;
-        if (best == nullptr || volume < bestVolume)
+        const f32 v = z.box->halfExtents.x * z.box->halfExtents.y * z.box->halfExtents.z;
+        if (best == nullptr || v < bestVolume)
         {
             best = &z;
-            bestVolume = volume;
+            bestVolume = v;
         }
     }
-    return best != nullptr ? std::optional<std::string>(best->value) : std::nullopt;
+    if (volume != nullptr)
+    {
+        *volume = bestVolume;
+    }
+    return best;
+}
+
+std::optional<std::string> Engine::zoneAt(std::string_view type, const Vec3& point) const
+{
+    const world::Zone* z = smallestZoneAt(type, point, nullptr);
+    return z != nullptr ? std::optional<std::string>(z->value) : std::nullopt;
 }
 
 bool Engine::night() const noexcept
@@ -143,40 +156,81 @@ void Engine::updateAudio(f64 realSeconds)
     m_audio->update(static_cast<f32>(realSeconds));
 }
 
+std::optional<audio::SoundId> Engine::startAmbienceLoop(std::string_view ambience, bool isNight, f32 volume,
+                                                        f32 muffle)
+{
+    const auto def = m_ambientDefs.find(ambience);
+    if (def == m_ambientDefs.end())
+    {
+        return std::nullopt;
+    }
+    const std::string& loop =
+        isNight && !def->second.loopNight.empty() ? def->second.loopNight : def->second.loop;
+    if (loop.empty())
+    {
+        return std::nullopt;
+    }
+    const auto id = playSound(loop);
+    if (id)
+    {
+        m_audio->setMuffle(*id, muffle);
+        m_audio->setVolume(*id, 0.0f);
+        m_audio->setVolume(*id, volume, def->second.fade); // faded in
+    }
+    return id;
+}
+
 void Engine::updateAmbience(f32 seconds)
 {
-    // The ambience of the zone the hero stands in (or the camera without one); by day or by night.
+    // The ambience of the zone the hero stands in (or the camera without one); by day or by night. In a room
+    // (an indoor zone) the ambience "innen" with the outside one muffled behind it - unless an ambient zone
+    // smaller than the room says otherwise (a smithy's forge).
     const Vec3 at = m_player.valid() ? m_playerFeet + Vec3(0.0f, 1.0f, 0.0f) : m_camera.transform.position;
-    const std::string name = zoneAt("ambient", at).value_or(std::string());
+    f32 ambientVolume = 0.0f;
+    f32 roomVolume = 0.0f;
+    const world::Zone* ambient = smallestZoneAt("ambient", at, &ambientVolume);
+    const world::Zone* room = smallestZoneAt("indoor", at, &roomVolume);
+    std::string name = ambient != nullptr ? ambient->value : std::string();
+    std::string outside;
+    if (room != nullptr && (ambient == nullptr || ambientVolume >= roomVolume) &&
+        m_ambientDefs.contains(kIndoorAmbience))
+    {
+        outside = name;
+        name = kIndoorAmbience;
+    }
     const bool isNight = night();
     const auto def = m_ambientDefs.find(name);
+    if (outside != m_ambience.outside || isNight != m_ambience.night)
+    {
+        if (m_ambience.outsideLoop)
+        {
+            m_audio->stop(*m_ambience.outsideLoop, 1.0f);
+            m_ambience.outsideLoop.reset();
+        }
+        m_ambience.outside = outside;
+        if (!outside.empty())
+        {
+            m_ambience.outsideLoop = startAmbienceLoop(outside, isNight, kOutsideVolume, kOutsideMuffle);
+        }
+    }
     if (name != m_ambience.name || isNight != m_ambience.night)
     {
         const f32 fade = def != m_ambientDefs.end() ? def->second.fade : 2.0f;
         if (m_ambience.loop)
         {
-            m_audio->stop(*m_ambience.loop, fade); // the old one fades out ...
+            m_audio->stop(*m_ambience.loop, fade); // the old one fades out while the new one fades in
             m_ambience.loop.reset();
         }
         m_ambience.name = name;
         m_ambience.night = isNight;
         if (def != m_ambientDefs.end())
         {
-            const std::string& loop =
-                isNight && !def->second.loopNight.empty() ? def->second.loopNight : def->second.loop;
-            if (!loop.empty())
-            {
-                m_ambience.loop = playSound(loop);
-                if (m_ambience.loop)
-                {
-                    m_audio->setVolume(*m_ambience.loop, 0.0f);
-                    m_audio->setVolume(*m_ambience.loop, 1.0f, fade); // ... while the new one fades in
-                }
-            }
+            m_ambience.loop = startAmbienceLoop(name, isNight, 1.0f, 0.0f);
             m_ambience.nextRandom =
                 std::uniform_real_distribution<f32>(def->second.intervalMin, def->second.intervalMax)(m_rng);
         }
-        G7_LOG_DEBUG("engine", "ambience: '{}' ({})", name, isNight ? "night" : "day");
+        G7_LOG_DEBUG("engine", "ambience: '{}' ({}){}", name, isNight ? "night" : "day",
+                     outside.empty() ? std::string() : std::format(", outside '{}' muffled", outside));
     }
     if (def == m_ambientDefs.end())
     {

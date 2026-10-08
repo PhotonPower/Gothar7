@@ -307,6 +307,8 @@ public:
     /// How often the sound `name` was started (tests, diagnostics).
     /// The ambience playing now (M13 part B); empty: none.
     [[nodiscard]] const std::string& ambience() const noexcept { return m_ambience.name; }
+    /// In a room: the ambience outside, heard quietly and muffled; empty outside.
+    [[nodiscard]] const std::string& ambienceOutside() const noexcept { return m_ambience.outside; }
     /// The occlusion of a 3D sound the engine started (0 open .. 1 muffled).
     [[nodiscard]] f32 soundMuffle(audio::SoundId id) const noexcept
     {
@@ -874,6 +876,12 @@ private:
     std::map<std::string, u32, std::less<>> m_soundsPlayed; // per sound name (tests, diagnostics)
     /// The value of the smallest zone of `type` (world.md "Zonen") that holds `point`; nullopt: none.
     [[nodiscard]] std::optional<std::string> zoneAt(std::string_view type, const Vec3& point) const;
+    /// The smallest zone of `type` holding `point` and its box volume (nested zones: the smallest wins).
+    [[nodiscard]] const world::Zone* smallestZoneAt(std::string_view type, const Vec3& point,
+                                                    f32* volume) const;
+    /// Starts an ambience's loop (by day or night), faded in to `volume`, muffled by `muffle`.
+    std::optional<audio::SoundId> startAmbienceLoop(std::string_view ambience, bool night, f32 volume,
+                                                    f32 muffle);
     [[nodiscard]] bool night() const noexcept; ///< 20:00 - 06:00 (ambience, music)
     void updateAmbience(f32 seconds);
     void updateOcclusion(f32 seconds);
@@ -884,6 +892,8 @@ private:
         bool night = false;
         std::optional<audio::SoundId> loop;
         f32 nextRandom = 0.0f;
+        std::string outside; ///< in a room: the ambience outside, heard muffled
+        std::optional<audio::SoundId> outsideLoop;
     };
     Ambience m_ambience;
     std::map<audio::SoundId, Vec3> m_spatialSounds; // where the 3D sounds play (occlusion)
@@ -928,6 +938,7 @@ private:
         u32 stages = 0;
         std::optional<u32> trail;
         std::string impact;
+        std::string impactSound; ///< M13
         bool burn = false;
     };
     [[nodiscard]] std::string rangedWeapon() const; ///< the hero's equipped bow or crossbow

@@ -104,7 +104,8 @@ public:
     void setPosition(SoundId id, const Vec3& position);
     /// A sound's own volume (on top of its definition's), faded over `fadeSeconds`.
     void setVolume(SoundId id, f32 volume, f32 fadeSeconds = 0.0f);
-    /// 3D sounds: a low-pass cut, 0 (open) .. 1 (strongly muffled) - occlusion (owner decision 8).
+    /// A low-pass cut, 0 (open) .. 1 (strongly muffled) - occlusion (owner decision 8), the outside from a
+    /// room.
     void setMuffle(SoundId id, f32 amount);
     [[nodiscard]] f32 muffle(SoundId id) const noexcept;
 

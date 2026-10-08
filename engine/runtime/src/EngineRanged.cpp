@@ -292,6 +292,10 @@ void Engine::spellImpact(const Projectile& p, const Vec3& at)
     {
         (void)startEffect(p.impact, at);
     }
+    if (!p.impactSound.empty())
+    {
+        (void)playSound(p.impactSound, at); // M13
+    }
 }
 
 void Engine::drawProjectiles()

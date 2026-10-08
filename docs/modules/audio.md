@@ -40,7 +40,7 @@
   - Anim-Events `sound:<name>` der Clips spielen an der Figur (Held und NPCs).
   - Lua: `sound(name, x?, y?, z?)`, `sound_stop(id, fade?)`, `sound_playing(id)`.
 - **Platzhalter** (Entscheidung Projektinhaber): `tools/audio` (`gothar-audio placeholders`) erzeugt synthetische WAVs unter `assets/source/sounds/`; echte Klänge ersetzen sie unter gleichem Namen.
-- **Folgt:** Spruch-Klänge (`Spell`-Feld `sounds`), C Musik, D Sprache, E Fußschritte.
+- **Folgt:** C Musik, D Sprache, E Fußschritte.
 
 ## Umsetzung Teil B: Raum
 - **Verdeckung** (Entscheidung 8): Jeder 3D-Klang läuft über einen eigenen Tiefpass (`setMuffle`, 0 offen … 1 stark,
@@ -54,6 +54,14 @@
   - Die Einzelklänge kommen zufällig verteilt 4–15 m um den Hörer, als 3D-Klänge.
 - **Test-Lager:** die Ambiente `camp` im Zaun, `wald` als große Box drumherum, schon die Musik-Zone `LAGER` (Teil C).
   Platzhalter `amb_wind`, `amb_camp`, `amb_night` (nahtlose Schleifen), `bird`, `owl`.
+- **Innenräume** (abgeleitet aus den indoor-Zonen, mit dem Koordinator abgestimmt; welt braucht keine eigenen Boxen):
+  - In einem Raum gilt `innen` (leiser Raumklang, ab und zu Holzknacken).
+  - Das Ambiente von draußen läuft gedämpft weiter, mit 30 % Lautstärke und Tiefpass 0,8.
+  - Eine ambient-Box, die kleiner ist als der Raum, geht vor: `schmiede_esse` (Feuer, Amboss), `gasthaus_stube` (Gemurmel, Krüge).
+- **Leonberg** (welts Namen): `feld` (Vorgabe), `stadt_gasse`, `stadt_markt`, `schlossgarten`, `ufer`, `wald`, `brunnen`, `stadtmauer`, dazu die Räume oben.
+  - Neue Platzhalter-Schleifen (4 s): `amb_field`, `amb_town`, `amb_market`, `amb_water`, `amb_fountain`, `amb_fire`, `amb_tavern`, `amb_room`.
+  - Neue Einzelklänge: `crow`, `dog_bark`, `wood_creak`, `mug_clink`, `frog`.
+- **Spruch-Klänge:** `Spell`-Feld `sounds = { cast, impact }`; das Wirken klingt an der Hand, der Einschlag am Treffpunkt.
 
 ## Dynamisches Musiksystem (Gothic: DirectMusic)
 - Musik-Zone (aus world) → **Thema** (z. B. `CAMP`, `FOREST`, `MINE`).
