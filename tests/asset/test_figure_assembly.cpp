@@ -1,6 +1,8 @@
 // Figures assembled at run time (M6 part D2): manifest parsing, part data from asset.extras.gothar, and the
 // C++ assembly compared with `gothar-chargen assemble` (the figures g7_figures builds). Configured with
-// -DG7_REQUIRE_FIGURES=ON (CI), missing figures are an error instead of a skip.
+// -DG7_REQUIRE_FIGURES=ON (CI), missing figures are an error instead of a skip. A figure built from older
+// parts (its asset.extras.gothar.inputs hash differs, figuren's algorithm) is reported as outdated, not
+// compared.
 
 #include <g7/asset/FigureAssembly.hpp>
 #include <g7/asset/SkinnedModel.hpp>
@@ -9,9 +11,13 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <array>
+#include <cstring>
 #include <filesystem>
+#include <format>
 #include <map>
 #include <ostream> // doctest needs it to print std::string operands
+#include <span>
 #include <string>
 #include <vector>
 
@@ -43,6 +49,140 @@ std::string figureImage(const std::string& uri)
 {
     std::filesystem::path p = std::filesystem::path("characters/figures") / uri;
     return p.lexically_normal().generic_string();
+}
+
+/// SHA-256 (FIPS 180-4), for the figures' inputs hash.
+class Sha256
+{
+public:
+    void update(std::span<const u8> data)
+    {
+        for (const u8 b : data)
+        {
+            m_block[m_used++] = b;
+            m_bits += 8;
+            if (m_used == 64)
+            {
+                compress();
+                m_used = 0;
+            }
+        }
+    }
+    void update(std::string_view s) { update(std::span(reinterpret_cast<const u8*>(s.data()), s.size())); }
+    [[nodiscard]] std::string hex()
+    {
+        const u64 bits = m_bits;
+        const u8 one = 0x80;
+        update(std::span(&one, 1));
+        const u8 zero = 0;
+        while (m_used != 56)
+        {
+            update(std::span(&zero, 1));
+        }
+        for (int i = 7; i >= 0; --i)
+        {
+            const auto b = static_cast<u8>(bits >> (i * 8));
+            update(std::span(&b, 1));
+        }
+        std::string out;
+        for (const u32 h : m_h)
+        {
+            out += std::format("{:08x}", h);
+        }
+        return out;
+    }
+
+private:
+    static u32 rotr(u32 x, int n) { return (x >> n) | (x << (32 - n)); }
+    void compress()
+    {
+        static constexpr std::array<u32, 64> k = {
+            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
+        std::array<u32, 64> w{};
+        for (int i = 0; i < 16; ++i)
+        {
+            w[i] = u32(m_block[i * 4]) << 24 | u32(m_block[i * 4 + 1]) << 16 | u32(m_block[i * 4 + 2]) << 8 |
+                   u32(m_block[i * 4 + 3]);
+        }
+        for (int i = 16; i < 64; ++i)
+        {
+            const u32 s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >> 3);
+            const u32 s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >> 10);
+            w[i] = w[i - 16] + s0 + w[i - 7] + s1;
+        }
+        auto [a, b, c, d, e, f, g, h] = m_h;
+        for (int i = 0; i < 64; ++i)
+        {
+            const u32 t1 = h + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + k[i] + w[i];
+            const u32 t2 = (rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c));
+            h = g;
+            g = f;
+            f = e;
+            e = d + t1;
+            d = c;
+            c = b;
+            b = a;
+            a = t1 + t2;
+        }
+        const std::array<u32, 8> add = {a, b, c, d, e, f, g, h};
+        for (int i = 0; i < 8; ++i)
+        {
+            m_h[i] += add[i];
+        }
+    }
+    std::array<u32, 8> m_h = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+                              0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
+    std::array<u8, 64> m_block{};
+    usize m_used = 0;
+    u64 m_bits = 0;
+};
+
+/// figuren's inputs hash (gothar-chargen assemble): SHA-256 over the manifest's bytes, then per role in ASCII
+/// order the role name and the part file's bytes; the first 16 hex digits.
+std::string inputsHash(const std::filesystem::path& manifest, const FigureManifest& figure)
+{
+    Sha256 sha;
+    sha.update(text(manifest));
+    std::vector<const FigureManifest::Part*> parts;
+    for (const FigureManifest::Part& p : figure.parts)
+    {
+        parts.push_back(&p);
+    }
+    std::ranges::sort(parts, {}, [](const FigureManifest::Part* p) { return p->role; });
+    for (const FigureManifest::Part* p : parts)
+    {
+        sha.update(p->role);
+        sha.update(text(kCharacters / p->path));
+    }
+    return sha.hex().substr(0, 16);
+}
+
+/// asset.extras.gothar.inputs of a built figure (the glTF JSON chunk of the .glb); empty if it has none.
+std::string recordedInputs(const std::filesystem::path& glb)
+{
+    const std::string bytes = text(glb);
+    if (bytes.size() < 20)
+    {
+        return {};
+    }
+    u32 length = 0;
+    std::memcpy(&length, bytes.data() + 12, 4);
+    const std::string_view json(bytes.data() + 20, std::min<usize>(length, bytes.size() - 20));
+    constexpr std::string_view kKey = "\"inputs\":\"";
+    const usize at = json.find(kKey);
+    if (at == std::string_view::npos)
+    {
+        return {};
+    }
+    const usize end = json.find('"', at + kKey.size());
+    return std::string(json.substr(at + kKey.size(), end - at - kKey.size()));
 }
 
 bool requireFigures()
@@ -133,6 +273,13 @@ TEST_CASE("Figure parts carry their assembly data (asset.extras.gothar)")
 
 TEST_CASE("Figure assembly in C++ matches gothar-chargen assemble (all figure manifests)")
 {
+    {
+        Sha256 abc; // FIPS 180-4 test vector
+        abc.update("abc");
+        CHECK(abc.hex() == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+        Sha256 empty;
+        CHECK(empty.hex() == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    }
     usize compared = 0;
     for (const auto& entry : std::filesystem::directory_iterator(kCharacters / "figures"))
     {
@@ -154,6 +301,15 @@ TEST_CASE("Figure assembly in C++ matches gothar-chargen assemble (all figure ma
         }
         auto manifest = FigureManifest::parse(text(entry.path()), file);
         REQUIRE_MESSAGE(manifest.ok(), (manifest.ok() ? "" : manifest.error().message));
+        // Built from older parts or an older manifest: no point comparing vertex by vertex.
+        if (const std::string recorded = recordedInputs(python);
+            !recorded.empty() && recorded != inputsHash(entry.path(), manifest.value()))
+        {
+            FAIL_CHECK("figure outdated (its parts or manifest changed since it was built) - rebuild it: "
+                       "cmake --build --preset debug --target g7_figures: "
+                       << name);
+            continue;
+        }
         std::vector<SkinnedModelData> loaded;
         loaded.reserve(manifest.value().parts.size());
         std::vector<FigurePart> parts;
