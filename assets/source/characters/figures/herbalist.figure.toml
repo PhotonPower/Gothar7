@@ -1,0 +1,25 @@
+# herbalist: Leonberg herbalist (old woman): moss bodice, brown skirt, hood, purse (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_f_thin/body.glb"
+head = "parts/head_f_old/head.glb"
+hair = "parts/hair_f_old/hair_bob.glb"
+cloth = [
+    "parts/cloth_f_thin/toigo_bodice-style_top.glb",
+    "parts/cloth_f_thin/toigo_long_full_skirt.glb",
+    "parts/headgear_f_thin/hood.glb",
+    "parts/garb_f_thin/purse.glb",
+    "parts/cloth_f_thin/toigo_flats.glb",
+]
+
+[palette]
+hair = "#c8c4bc"
+cloth_toigo_bodice-style_top = "#4e5a3a"
+cloth_toigo_long_full_skirt = "#5a4232"
+cloth_hood = "#b4bc9c"
+cloth_purse = "#5a3d28"
+cloth_toigo_flats = "#3e3024"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "old"

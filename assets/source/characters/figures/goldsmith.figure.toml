@@ -1,0 +1,27 @@
+# goldsmith: Leonberg goldsmith (old): green tunic, dark vest, beret, purse (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_thin/body.glb"
+head = "parts/head_m_old/head.glb"
+hair = "parts/hair_m_old/hair_short.glb"
+cloth = [
+    "parts/garb_m_thin/tunic_clean.glb",
+    "parts/garb_m_thin/vest_cloth.glb",
+    "parts/garb_m_thin/belt.glb",
+    "parts/garb_m_thin/purse.glb",
+    "parts/headgear_m_thin/beret.glb",
+    "parts/cloth_m_thin/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#c8c4bc"
+cloth_tunic_clean = "#2e4a3a"
+cloth_vest_cloth = "#2e2620"
+cloth_belt = "#2e2018"
+cloth_purse = "#5a3d28"
+cloth_beret = "#2e2219"
+cloth_culturalibre_male_boots = "#3a2c22"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "old"

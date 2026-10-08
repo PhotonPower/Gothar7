@@ -1,0 +1,26 @@
+# joiner: Leonberg joiner: shirt, leather apron, leather cap, stubble (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_stubble/head.glb"
+hair = "parts/hair_m_stubble/hair_short.glb"
+beard = "parts/hair_m_stubble/beard_stubble.glb"
+cloth = [
+    "parts/garb_m_average/shirt.glb",
+    "parts/garb_m_average/wide_trousers.glb",
+    "parts/garb_m_average/apron_leather.glb",
+    "parts/garb_m_average/belt.glb",
+    "parts/headgear_m_average/leather_cap.glb",
+    "parts/cloth_m_average/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#5a4c3a"
+beard_stubble = "#2e2219"
+cloth_shirt = "#d6c8a8"
+cloth_wide_trousers = "#5a4a3a"
+cloth_apron_leather = "#5a3d28"
+cloth_belt = "#3a2a1e"
+cloth_leather_cap = "#5a3d28"
+cloth_culturalibre_male_boots = "#3a2c22"
