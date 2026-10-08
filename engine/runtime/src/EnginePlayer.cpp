@@ -314,6 +314,7 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     m_playerFeetBefore = m_playerFeet;
     movePlayer(seconds, input);
     animatePlayer(seconds, input);
+    fixedUpdateTorch(seconds);
 }
 
 void Engine::movePlayer(f32 seconds, const gameplay::MoveInput& input)

@@ -756,6 +756,10 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
                  {
                      applyHeroSpell(); // the spell leaves the hand (M12)
                  }
+                 else if (event.starts_with("torch_"))
+                 {
+                     torchEvent(event); // in the hand, lit, dropped
+                 }
                  else if (event == "swap" && m_transformOut)
                  {
                      // The transition clip's middle: the shape changes at the next player step (Z7).

@@ -110,6 +110,7 @@ Result<void> Engine::initScripts()
     bindMagicFunctions();
     bindFxFunctions();
     bindAudioFunctions();
+    bindTorchFunctions();
     if (m_config.randomSeed)
     {
         m_rng.seed(*m_config.randomSeed); // tests: reproducible roaming, eating, combat rolls

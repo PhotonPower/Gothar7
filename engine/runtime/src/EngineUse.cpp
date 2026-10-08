@@ -40,6 +40,19 @@ Result<void> Engine::useItem(std::string_view item)
         return Error{std::format("unknown item \"{}\"", item)};
     }
     const std::string category(def->fields["category"].asString());
+    if (category == "torch")
+    {
+        // Lights it, or puts it out and away (owner decision, as Gothic 1).
+        if (m_torch)
+        {
+            putTorchAway();
+        }
+        else
+        {
+            lightTorch(item);
+        }
+        return {};
+    }
     const char* state = category == "food"       ? "use_eat"
                         : category == "potion"   ? "use_drink"
                         : category == "document" ? "use_read"

@@ -267,6 +267,11 @@ void Engine::toggleWeapon()
         return;
     }
     m_weaponMode = weapon.empty() ? 2 : 1;
+    if (m_torch && !weapon.empty() && m_scripts && m_scripts->findInstance("Item", weapon) != nullptr &&
+        m_scripts->findInstance("Item", weapon)->fields["category"].asString() == "melee_2h")
+    {
+        putTorchAway(); // both hands for the two-handed weapon
+    }
     m_weaponDrawn = weapon; // in the hand at the clip's "draw" event
     if (!m_figure->animator.hasState("draw_1h"))
     {
@@ -285,7 +290,10 @@ void Engine::weaponEvent(std::string_view event)
     if (event == "sheath" && m_weaponMode == 0)
     {
         detachFromPlayer("socket_hand_r");
-        detachFromPlayer("socket_hand_l"); // a bow (M11)
+        if (!m_torch)
+        {
+            detachFromPlayer("socket_hand_l"); // a bow (M11) - not a torch held in it
+        }
     }
     else if (event == "draw" && m_weaponMode == 3 && !m_weaponDrawn.empty())
     {

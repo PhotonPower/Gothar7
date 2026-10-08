@@ -191,8 +191,25 @@ Der Held hat im Bett bis zu dieser Stunde geschlafen (8, 12, 20 oder 0); LP und 
 ### `on("theft", fn(owner: string, item: string, count: integer))`
 Der Held hat fremden Besitz genommen (Item-Vob mit owner, Truhe eines anderen).
 
+### `on("torch_lit", fn(item: string))`
+Der Held hat seine Fackel angezündet.
+
+### `on("torch_out", fn(item: string))`
+Die Fackel des Helden ist aus (weggesteckt, fallen gelassen, im Wasser).
+
 ### `on("world_loaded", fn(world: string))`
 Nachdem eine Welt geladen ist (auch nach einem Weltwechsel); `world` ist ihr Pfad.
+
+## Gegenstände
+
+### `hero_torch() -> boolean`
+Zündet die Fackel an bzw. steckt sie weg, wie Benutzen im Inventar (Entscheidung Projektinhaber); gibt zurück, ob sie danach brennt bzw. gerade angezündet wird.
+
+### `hero_torch_drop()`
+Lässt die brennende Fackel fallen (none/t_torch_drop); sie brennt am Boden weiter.
+
+### `hero_torch_lit() -> boolean`
+Ob der Held eine brennende Fackel hält.
 
 ## Grundlagen
 
