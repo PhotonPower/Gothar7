@@ -144,9 +144,9 @@ texture = "gothar/ambientcg/Leather033A/Leather033A_1K-JPG_Color.jpg"
 uv_scale = 2.0
 
 [derive.vest_cloth]
-from = "clothes/elvs_crude_t-shirt_male/elvs_crude_t-shirt_male.mhclo"
+from = "clothes/toigo_basic_tucked_t-shirt/toigo_basic_tucked_t-shirt.mhclo"
 cut = ["upperarm", "lowerarm"]
-offset = 0.008
+offset = 0.012
 texture = "gothar/ambientcg/Fabric031/Fabric031_1K-JPG_Color.jpg"
 uv_scale = 3.0
 

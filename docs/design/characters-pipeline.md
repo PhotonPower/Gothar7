@@ -444,8 +444,8 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
       Tonflecken), `apron_bib_leather` (Metzger; „Leather 033 A“, zurückhaltende dunkle Flecken): `panel` bis zur
       Brust (`band_at = ["calf_l", "spine_03"]`) mit **`bib`** = Breite über der Taille (0,20 m). Der Latz liegt
       auf der Brust (folgt dem Körper bis zur Taille, dort gebunden), darunter hängt die Schürze wie `apron`.
-    - `vest_cloth` (Schneider, Goldschmied; Wollstoff „Fabric 031“): wie das Lederwams aus dem groben Hemd ohne
-      Ärmel.
+    - `vest_cloth` (Schneider, Goldschmied; Wollstoff „Fabric 031“): das saubere CC0-Hemd (`shirt`) ohne Ärmel,
+      darüber (das grobe Hemd hat Löcher in der Geometrie).
     - `purse` (Geldbeutel, m/w; „Leather 014“): **`pouch = [breite, höhe, tiefe]`** – eigene Geometrie, ein kleiner
       Beutel am Gürtel vorn rechts (oben voller, unten gerafft), steif auf `pelvis`; gut lesbar für den
       Taschendiebstahl.
