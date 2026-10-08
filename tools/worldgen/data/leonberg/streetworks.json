@@ -30,7 +30,8 @@
     "doorReachM": 30.0,
     "junctionM": 1.5,
     "mortarM": 1.5,
-    "thicknessM": 0.5
+    "thicknessM": 0.5,
+    "gapSteps": {"maxDeg": 30.0, "widthM": 1.2, "fadeM": 1.0, "maxLenM": 12.0}
   },
   "gutters": {
     "highways": ["residential", "living_street", "pedestrian", "service", "unclassified", "tertiary", "secondary"],

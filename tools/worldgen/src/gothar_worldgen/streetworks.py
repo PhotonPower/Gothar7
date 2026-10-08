@@ -14,6 +14,7 @@ them as vobs (group ``WORLDGEN_STRASSENBAU``).
   V seen only in its shading) along the paved streets of the core:
   in the middle of streets narrower than ``centreBelowM``, at both sides of wider ones; not under
   houses, on squares or on steps. Decoration only: one file per ``cellM`` cell.
+- **Steps in the walls' gaps** before doors, up or down the bank (planned with the walls).
 - **Retaining walls** where a street is cut into a slope, as ``export-terrain`` planned them
   (``export/retaining.py``, ``generated/retaining_walls.json``): dry stone, mortared like the
   socles where they meet a house or the town wall; they collide (prisms of about two metres).
@@ -353,13 +354,21 @@ def plan_streetworks(streets: Sequence[dict[str, Any]], squares: Sequence[dict[s
                      houses: Sequence[Polygon], area: Polygon, height: Height,
                      rules: dict[str, Any],
                      walls: Sequence[dict[str, Any]] = (),
+                     gap_steps: Sequence[dict[str, Any]] = (),
                      ) -> tuple[list[Piece], dict[str, Any]]:  # fmt: skip
-    """All pieces and statistics; ``walls``: the retaining walls planned by export-terrain."""
+    """All pieces and statistics; ``walls`` and ``gap_steps`` (in the walls' gaps before doors):
+    planned by export-terrain."""
     pieces: list[Piece] = []
     for w in walls:
         wp = wall_piece(w, rules["walls"])
         if wp is not None:
             pieces.append(wp)
+    for g in gap_steps:
+        sp = steps_piece(
+            g["id"], LineString(g["points"]), float(g["width"]), height, rules["steps"]
+        )
+        if sp is not None:
+            pieces.append(sp)
     steps_m = 0.0
     step_lines = []
     for s in streets:
@@ -387,7 +396,9 @@ def plan_streetworks(streets: Sequence[dict[str, Any]], squares: Sequence[dict[s
     strips = gutter_strips(streets, area, blocked, rules["gutters"])
     gutters = gutter_pieces(strips, height, rules["gutters"])
     pieces += gutters
-    stats = {"steps": sum(1 for p in pieces if p.kind == "steps"), "stepsM": round(steps_m, 1),
+    stats = {"steps": sum(1 for p in pieces if p.kind == "steps" and "_gap" not in p.key),
+             "gapSteps": sum(1 for p in pieces if p.kind == "steps" and "_gap" in p.key),
+             "stepsM": round(steps_m, 1),
              "walls": sum(1 for p in pieces if p.kind == "wall"),
              "gutterM": round(sum(g.length for g in strips), 1),
              "gutterFiles": len(gutters)}  # fmt: skip
