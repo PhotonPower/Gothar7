@@ -1152,6 +1152,12 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
 - **Einrichtung:** Betten und Truhen, Felle und Wandbehänge gehen nach oben (Kammern zuerst), unten bleiben Herd,
   Tische, Theke, Freepoints und Vorräte. Die Treppe samt Absatz und Weg dorthin bleibt frei, im Ausschnitt steht nichts.
   Laternen und Fensterlicht oben wie unten.
+- **Schlafkammern oben** (Projektinhaber 2026-10-08), dichter wie unten:
+  - Jede Kammer mit Bett bekommt dazu eine Kleidertruhe (falls keine Truhe da ist), einen Hocker mit Talglicht darauf
+    (zählt als Nachtlicht, spart eine Laterne), einen Waschtisch mit Schüssel und Krug (`washstand`), Wandhaken mit
+    Umhang, Hemd und Gugel (`clothes_hooks`, nur über freiem Boden) und ein Fell vor dem Bett.
+  - Der Raum am Treppenkopf: Hocker mit Talglicht und ein Fell.
+  - Türschwenk, Durchgänge, Ausschnitt mit Treppenkopf und Fensternischen bleiben frei.
 - **Wegnetz:** `WP_…_TREPPE` vor der ersten Stufe (verbunden mit dem Raum, in dem die Treppe steht),
   `WP_…_TREPPE_OBEN` am Kopf (y = oberer Boden), `WP_…_OBEN` im Raum oben, die oberen Kammern über ihre Durchgänge.
   Obere Wegpunkte liegen auf dem Boden: Einsetzen und KI-LOD landen oben (engine 2026-10-08).

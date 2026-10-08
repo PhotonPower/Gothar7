@@ -813,6 +813,44 @@ def wall_hanging() -> MobModel:
     return MobModel("wall_hanging", m)
 
 
+WASHSTAND_W, WASHSTAND_D, WASHSTAND_H = 0.55, 0.4, 0.78
+
+
+def washstand() -> MobModel:
+    """A small oak washstand: a top with the wash bowl let into it, a shelf with the jug below
+    (front +Z, its back to the wall)."""
+    m = Mesh()
+    hw, hd, h = WASHSTAND_W / 2, WASHSTAND_D / 2, WASHSTAND_H
+    for x in (-hw + 0.03, hw - 0.03):  # four legs
+        for z in (-hd + 0.03, hd - 0.03):
+            m.box("oak_beam", (x - 0.025, 0.0, z - 0.025), (x + 0.025, h, z + 0.025), grain=1)
+    m.box("oak", (-hw, h - 0.04, -hd), (hw, h, hd), grain=0)  # top
+    m.box("oak", (-hw + 0.03, 0.22, -hd + 0.03), (hw - 0.03, 0.25, hd - 0.03), grain=0)  # shelf
+    m.cyl("clay_glaze", 1, (0.0, h + 0.03, 0.0), 0.17, 0.06, sides=12)  # the wash bowl
+    m.cyl("water", 1, (0.0, h + 0.05, 0.0), 0.15, 0.01, sides=12)
+    _ware(m, "jug", (0.1, 0.25, 0.0))
+    m.box("linen", (hw - 0.005, h - 0.32, -0.1), (hw + 0.005, h - 0.02, 0.1))  # towel at the side
+    m.body("washstand", (-hw, 0.0, -hd), (hw, h + 0.06, hd))
+    return MobModel("washstand", m)
+
+
+def clothes_hooks() -> MobModel:
+    """A board with pegs on the wall (1.55 to 1.65 m), a cloak, a shirt and a hood hanging from
+    them, down to about a metre; on the wall (+Z into the room), no collision."""
+    m = Mesh()
+    m.box("pine", (-0.5, 1.55, -0.04), (0.5, 1.65, 0.0), grain=0)
+    for x in (-0.35, 0.0, 0.35):
+        m.box("oak_beam", (x - 0.012, 1.58, 0.0), (x + 0.012, 1.61, 0.07))  # peg
+    m.box("wool_blue", (-0.52, 0.98, 0.02), (-0.18, 1.6, 0.07))  # the cloak, long
+    m.box("wool_blue", (-0.46, 1.5, 0.07), (-0.24, 1.6, 0.09))  # its collar over the peg
+    m.box("linen", (-0.13, 1.18, 0.02), (0.13, 1.6, 0.05))  # a shirt
+    m.box("wool_ochre", (0.26, 1.3, 0.02), (0.44, 1.6, 0.08))  # a hood
+    # nothing to bump into: without a COL_ node every triangle would collide (asset.md), a tiny
+    # box under the floor instead (the clothes give way)
+    m.collision.append(box_body("COL_HULL_NONE", (-0.02, -1.04, -0.02), (0.02, -1.0, 0.02)))
+    return MobModel("clothes_hooks", m)
+
+
 def tableware() -> MobModel:
     """Plates, bowls and a jug set out along a table (its middle stays free for the candle)."""
     m = Mesh()
@@ -1027,6 +1065,7 @@ PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "fire
          "dung_heap": dung_heap, "barrel_stack": barrel_stack,
          "market_stall_a": lambda: market_stall("a"), "market_stall_b": lambda: market_stall("b"),
          "market_stall_c": lambda: market_stall("c"),
+         "washstand": washstand, "clothes_hooks": clothes_hooks,
          }  # plain mesh vobs (assets/source/props)  # fmt: skip
 
 
