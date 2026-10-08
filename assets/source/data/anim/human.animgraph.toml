@@ -1292,3 +1292,19 @@ from = "none_t_ko_getup"
 to = "move"
 when = ["end"]
 blend = 0.12
+
+# --- Verwandlung (M12 Z7, figuren #255): die Engine betritt none_t_transform_out; bei dessen Event swap tauscht sie
+# die Figur. Zurück: none_t_transform_in, am Ende in die Fortbewegung.
+[[state]]
+name = "none_t_transform_out"
+clip = "none/t_transform_out"
+
+[[state]]
+name = "none_t_transform_in"
+clip = "none/t_transform_in"
+
+[[transition]]
+from = "none_t_transform_in"
+to = "move"
+when = ["end"]
+blend = 0.15

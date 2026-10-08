@@ -424,7 +424,12 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, 
   - Treffer gehen aufs Leben des Tiers; das Leben des Menschen bleibt unberührt.
 - **Zurück:** mit „1“ (`draw_magic`, `hero_transform_back()`), wenn das Leben des Tiers aufgebraucht ist (statt bewusstlos), im Wasser und beim Weltwechsel.
 - **Lua:** `hero_shape()`; Ereignis `hero_transformed(species)` (leer: wieder Mensch).
-- Die Kamera sinkt auf die Höhe des Tiers (Teil D).
+- Die Kamera sinkt auf die Höhe des Tiers (Teil D); beim Wolf schaut sie auf 0,8 m (`creatures.toml` `camera_height`).
+- **Übergang** (figuren #255):
+  - Hin: Der Mensch spielt `none/t_transform_out`. Bei dessen Event `swap` tauscht die Engine Figur, Kapsel und Werte; der Wolf beginnt in `wolf/t_transform_in`.
+  - Zurück mit „1“: `wolf/t_transform_out` → Tausch → `none/t_transform_in`.
+  - Während des Übergangs steht der Held.
+  - Fehlt ein Clip bzw. das Event, wird sofort bzw. nach 2 s getauscht. Im Wasser und ohne Leben des Tiers geht es sofort zurück.
 
 **Teil D – KI und Reaktionen (umgesetzt, ohne Brennen):**
 - **Kamera in Tiergestalt:** Blickhöhe mal Kapselhöhe / 1,8 m, Abstand mal mindestens 0,6. `creatures.toml` `[<art>] camera_height` kann die Blickhöhe festlegen.

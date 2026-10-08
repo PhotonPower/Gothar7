@@ -5,10 +5,11 @@ radius = 0.35
 height = 0.9
 step_height = 0.35
 max_slope_degrees = 50.0
+camera_height = 0.8 # Verwandlung (Z7): die Kamera schaut knapp über den Kopf (0,75 m, figuren #255)
 
 [keiler]
-radius = 0.45
-height = 1.0
+radius = 0.42 # figurens eigener Keiler (#263): 0,84 m mit Kamm, 1,74 m lang
+height = 0.9
 step_height = 0.35
 max_slope_degrees = 45.0
 
