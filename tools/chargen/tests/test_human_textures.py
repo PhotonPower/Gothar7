@@ -637,9 +637,35 @@ def test_garb_derive_keys():
         ({"panel": 2.0}, "panel"),
         ({"from": "c/s.mhclo", "group": None}, "panel needs"),
         ({"band": None, "band_at": None}, "panel needs"),
+        ({"panel": None, "bib": 0.26}, "bib needs panel"),
+        ({"bib": 0.9}, "bib"),
     ],
 )
 def test_invalid_garb_derive(change, message):
     piece = {k: v for k, v in {**APRON, **change}.items() if v is not None}
     with pytest.raises(HumanError, match=message):
         parse_human(_garb_kit({"derive": {"apron": piece}}), "garb_x")
+
+
+def test_bib_apron_derive():
+    """A bib apron: the panel narrows to `bib` above the waist (trades, 2026-10-08)."""
+    human = parse_human(_garb_kit({"derive": {"apron_bib": {**APRON, "bib": 0.26}}}), "garb_x")
+    (d,) = human.derive
+    assert d.panel == APRON["panel"] and d.bib == 0.26
+
+
+@pytest.mark.parametrize(
+    ("pouch", "message"),
+    [([0.1, 0.1], "pouch ="), ([0.1, 0.5, 0.05], "pouch ="), ("big", "pouch =")],
+)
+def test_invalid_pouch(pouch, message):
+    piece = {"from": "basemesh", "group": "body", "pouch": pouch}
+    with pytest.raises(HumanError, match=message):
+        parse_human(_garb_kit({"derive": {"purse": piece}}), "garb_x")
+
+
+def test_pouch_derive():
+    """A purse: own pouch geometry at the belt (trades, 2026-10-08)."""
+    piece = {"from": "basemesh", "group": "body", "pouch": [0.11, 0.14, 0.05], "bones": ["pelvis"]}
+    (d,) = parse_human(_garb_kit({"derive": {"purse": piece}}), "garb_x").derive
+    assert d.pouch == (0.11, 0.14, 0.05) and d.bones == ("pelvis",)

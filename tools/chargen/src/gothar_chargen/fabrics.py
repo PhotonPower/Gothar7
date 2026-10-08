@@ -18,6 +18,8 @@ Data (version 1)::
     wear = 0.8                                         # 0 clean .. 1 worn out
     tint = "#b5a68a"                                   # optional: coloured instead of neutral grey
     fray = 0.6                                         # optional: frayed hems 0..1 (file .png)
+    soil = "flour"                                     # optional: flour | clay | dark (trades)
+    soil_amount = 0.6                                  # 0..1 (default 0.5)
 
 Frayed hems (alpha test, contract with engine: MASK, cutoff 0.5, double-sided): the texture gets
 an alpha channel that cuts an irregular, jagged band out of the cloth along its hems – the open
@@ -46,6 +48,8 @@ PAD = 8  # pixels of colour bled outside the UV islands (mipmaps)
 SEAM = 9  # pixels: widest dirty band along seams and hems at wear 1
 FRAY = 14  # pixels: deepest fraying cut into a hem at fray 1 (512 px: about 4 cm on a shirt)
 ALPHA_CUTOFF = 0.5  # contract with engine (§2.3)
+SOILS = ("flour", "clay", "dark")  # trade soiling: baker's flour, potter's clay, dark stains
+CLAY = (0.66, 0.54, 0.46)  # relative colour of dried clay on neutral cloth (the palette tints it)
 _COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
@@ -69,6 +73,8 @@ class Target:
     wear: float
     tint: tuple[float, float, float] | None = None
     fray: float = 0.0
+    soil: str | None = None
+    soil_amount: float = 0.5
 
 
 @dataclass(frozen=True)
@@ -93,7 +99,7 @@ def parse_fabrics(data: dict) -> FabricData:
         where = f"texture {file}"
         if not file.endswith((".jpg", ".png")) or "/" in file:
             raise FabricError(f"{where}: a file name in textures/cloth/")
-        keys = {"part", "material", "tile", "wear", "tint", "fray"}
+        keys = {"part", "material", "tile", "wear", "tint", "fray", "soil", "soil_amount"}
         if set(t) - keys:
             raise FabricError(f"{where}: unknown keys {sorted(set(t) - keys)}")
         if t.get("tile") not in tiles:
@@ -109,6 +115,14 @@ def parse_fabrics(data: dict) -> FabricData:
             raise FabricError(f"{where}: fray must be 0..1")
         if fray > 0 and not file.endswith(".png"):
             raise FabricError(f"{where}: frayed textures need an alpha channel (.png)")
+        soil = t.get("soil")
+        if soil is not None and soil not in SOILS:
+            raise FabricError(f"{where}: soil must be one of {', '.join(SOILS)}")
+        soil_amount = t.get("soil_amount", 0.5)
+        if "soil_amount" in t and soil is None:
+            raise FabricError(f"{where}: soil_amount needs soil")
+        if not isinstance(soil_amount, int | float) or not 0.0 <= soil_amount <= 1.0:
+            raise FabricError(f"{where}: soil_amount must be 0..1")
         if not isinstance(t.get("part"), str) or not isinstance(t.get("material"), str):
             raise FabricError(f"{where}: needs part and material")
         targets.append(
@@ -120,6 +134,8 @@ def parse_fabrics(data: dict) -> FabricData:
                 float(wear),
                 tuple(int(tint[i : i + 2], 16) / 255 for i in (1, 3, 5)) if tint else None,
                 float(fray),
+                soil,
+                float(soil_amount),
             )
         )
     return FabricData(tiles, tuple(targets))
@@ -265,8 +281,11 @@ def bake(
     seed: int,
     tint: tuple[float, float, float] | None = None,
     size: int = SIZE,
+    soil: str | None = None,
+    soil_amount: float = 0.5,
 ) -> np.ndarray:
-    """(size, size, 3) colour in 0..1, row = v * size (glTF). `tile` is the fabric's luminance."""
+    """(size, size, 3) colour in 0..1, row = v * size (glTF). `tile` is the fabric's luminance.
+    `soil` adds a trade's marks after the wear (drawn last, so other textures stay the same)."""
     rng = np.random.default_rng(seed)
     covered = rasterize(garment, size)
     repeats = metres_per_uv(garment) / tile_size  # tile repeats per UV unit
@@ -287,7 +306,30 @@ def bake(
     lum *= 1 - 0.35 * wear * band
     lum = np.clip(lum, 0, 1)
     colour = lum[:, :, None] * (np.array(tint)[None, None, :] if tint else np.ones(3))
+    if soil is not None:
+        colour = _soil(colour, soil, soil_amount, rng, size)
     return bleed(colour, covered, PAD)
+
+
+def _soil(
+    colour: np.ndarray, soil: str, amount: float, rng: np.random.Generator, size: int
+) -> np.ndarray:
+    """Trade marks on the cloth: flour (light dust and specks), clay (reddish-grey smears),
+    dark (darker, warm blotches, kept restrained - no blood red)."""
+    if soil == "flour":
+        dust = np.clip((fractal(size, rng, base=8) - 0.42) / 0.3, 0, 1) * amount
+        specks = (rng.random((size, size)) < 0.18 * dust).astype(float)
+        light = np.clip(0.45 * dust + 0.5 * specks, 0, 0.85)[:, :, None]
+        return colour + (0.97 - colour) * light
+    blot = np.clip((fractal(size, rng, base=10) - (0.72 - 0.2 * amount)) / 0.1, 0, 1)
+    if soil == "clay":
+        k = (0.65 * amount * blot)[:, :, None]
+        return (
+            colour * (1 - k)
+            + np.array(CLAY)[None, None, :] * colour.mean(2, keepdims=True) * 1.25 * k
+        )
+    k = (0.4 * amount * blot)[:, :, None]  # dark
+    return colour * (1 - k * np.array([0.9, 1.0, 1.15])[None, None, :])
 
 
 def hem_lines(g: Garment, size: int = SIZE) -> np.ndarray:

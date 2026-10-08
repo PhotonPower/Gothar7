@@ -438,6 +438,24 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   - Werkzeug: `band = [unten, oben]` mit `band_at = "<gelenk>"` oder `["<gelenk unten>", "<gelenk oben>"]` –
     saubere Schnitte in festen Höhen relativ zu Gelenken des Referenz-Rigs (Säume, Gürtel), statt nach
     Knochengewichten (zackig); `panel` (s. o.).
+  - **Handwerker und Händler (Leonberg, 2026-10-08, Outfit-Liste vom Projektinhaber freigegeben):** eigene Teile je
+    Statur, Texturen ambientCG (CC0):
+    - Latzschürzen `apron_bib_flour` (Bäcker, m/w; „Fabric 066“, Mehlstaub), `apron_bib_clay` (Töpfer; „Fabric 045“,
+      Tonflecken), `apron_bib_leather` (Metzger; „Leather 033 A“, zurückhaltende dunkle Flecken): `panel` bis zur
+      Brust (`band_at = ["calf_l", "spine_03"]`) mit **`bib`** = Breite über der Taille (0,20 m). Der Latz liegt
+      auf der Brust (folgt dem Körper bis zur Taille, dort gebunden), darunter hängt die Schürze wie `apron`.
+    - `vest_cloth` (Schneider, Goldschmied; Wollstoff „Fabric 031“): das saubere CC0-Hemd (`shirt`) ohne Ärmel,
+      darüber (das grobe Hemd hat Löcher in der Geometrie).
+    - `purse` (Geldbeutel, m/w; „Leather 014“): **`pouch = [breite, höhe, tiefe]`** – eigene Geometrie, ein kleiner
+      Beutel am Gürtel vorn rechts (oben voller, unten gerafft), steif auf `pelvis`; gut lesbar für den
+      Taschendiebstahl.
+    - Kopf-Kits, alle aus der CC0-Kapuze (`donitz_monk_robe_hood`), damit sie weich mit Falten fallen (die eigene
+      Kuppel wirkt wie ein Helm): `cap_cloth` (Leinenmütze des Bäckers, m; Kapuze oben, `depth` 0,14, Leinen
+      „Fabric 066“), `beret` (Barett, m; flache Filzkappe, `depth` 0,09, „Fabric 068“), `coif` (Haube bzw. Kopftuch, w;
+      die Kapuze enger gezogen, „Fabric 066“). Alle blenden das Haar aus.
+    - Texturen: abgeleitete Teile teilen ihre Textur über den Namen der Quelle, deshalb hat jede verschmutzte
+      Schürze eine eigene ambientCG-Quelle (`fabric066_neutral.jpg`, `fabric045_neutral.jpg`,
+      `leather033a_neutral.jpg`), gebacken mit `soil` (unten).
 - **Texturen – abgetragene Stoffe (F3n, Entscheidung Projektinhaber 2026-10-04: Gothic-Kolonie, abgetragen und
   schmutzig):** Ein echtes Trim-Sheet (mehrere kachelnde Stoffe in einer Textur) kann der Renderer nicht
   (Wiederholung innerhalb einer Kachel bräuchte UV-Versatz je Material im Shader), und Flecken würden sich auf
@@ -449,7 +467,9 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   **Alterung `wear` 0–1**: verblichen (weniger Kontrast), Flecken (Rauschen), schmutzige, unregelmäßig breite Säume
   und Nähte entlang der UV-Inselränder. Daten in `tools/chargen/src/gothar_chargen/data/fabrics.toml` (Kachel,
   Größe, je Textur Teil/Material/Kachel/`wear`/optional `tint`); saubere Figuren (Bürger) später mit kleinerem
-  `wear`. Die Texturen behalten ihre Namen, die Teile ändern sich nicht. Kit-Texturen bleiben neutral grau (die
+  `wear`. **Spuren des Handwerks** (2026-10-08): `soil = "flour" | "clay" | "dark"` mit `soil_amount` 0–1 –
+  Mehlstaub (hell gesprenkelt), Ton (rötlich-grau), dunkle Flecken (zurückhaltend, kein Blutrot); nach der Alterung
+  gezeichnet, Texturen ohne `soil` bleiben unverändert. Die Texturen behalten ihre Namen, die Teile ändern sich nicht. Kit-Texturen bleiben neutral grau (die
   Palette färbt), die Kleidung der Grundkörper getönt wie bisher.
 - **Ausgefranste Säume (F3o, mit engine abgestimmt):** `fray` 0–1 je Textur in `fabrics.toml` schneidet ein
   unregelmäßiges, gezacktes Band entlang der **Säume** aus dem Stoff (Alpha 0; bis 14 px bei 512², etwa 4 cm
