@@ -23,6 +23,7 @@ from gothar_chargen.blender_run import (
     build_placeholder,
     build_reference_rig,
     build_set,
+    build_stubble,
     build_test_parts,
     conform_human,
     export_glb,
@@ -514,6 +515,38 @@ def _cmd_human(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK if ok else EXIT_ERROR
 
 
+def _cmd_stubble(args: argparse.Namespace, out: TextIO) -> int:
+    """Own stubble beards for the male heads (F3): parts/hair_m_<head>/beard_stubble.glb."""
+    from gothar_chargen.stubble import MALE_HEADS, PART, TEXTURE, write_texture
+
+    characters = _characters_dir(args)
+    heads = args.heads or list(MALE_HEADS)
+    unknown = sorted(set(heads) - set(MALE_HEADS))
+    if unknown:
+        print(f"error: unknown heads {unknown} (male heads: {', '.join(MALE_HEADS)})", file=out)
+        return EXIT_ERROR
+    blender = find_blender(args.blender)
+    texture = write_texture(characters / "textures" / "hair" / TEXTURE)
+    rig = load_rig(args.rig)
+    ok = True
+    for name in heads:
+        glb = characters / "parts" / f"hair_m_{name}" / f"{PART}.glb"
+        log = build_stubble(
+            blender, characters / "parts" / f"head_m_{name}" / "head.glb", texture, glb
+        )
+        for line in log.splitlines():
+            if line.startswith("[chargen]"):
+                print(line[10:], file=out)
+        finish_textures(glb, characters / "textures")
+        g = Gltf.load(glb)
+        name_meshes(g)
+        glb.write_bytes(g.to_bytes())
+        report = validate_file(glb, rig, None)
+        _print_report(report, out)
+        ok = ok and report.ok(strict=True)
+    return EXIT_OK if ok else EXIT_ERROR
+
+
 def _cmd_build_test_parts(args: argparse.Namespace, out: TextIO) -> int:
     characters = _characters_dir(args)
     folder = characters / "parts" / "test"
@@ -706,6 +739,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
     )
     p.set_defaults(func=_cmd_licences)
+
+    p = sub.add_parser("stubble", help="own stubble beards for the male heads (F3)")
+    p.add_argument("heads", nargs="*", help="head names (bald, farmer, ...; default: all)")
+    p.add_argument(
+        "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
+    )
+    p.set_defaults(func=_cmd_stubble)
 
     p = sub.add_parser("build-test-parts", help="own simple test parts for the figure kit")
     p.add_argument(

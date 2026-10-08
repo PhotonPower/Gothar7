@@ -4,6 +4,7 @@ version = 1
 [parts]
 body = "parts/body_m_thin/body.glb"
 head = "parts/head_m_young/head.glb"
+beard = "parts/hair_m_young/beard_stubble.glb"
 hair = "parts/hair_m_young/hair_messy.glb"
 cloth = [
     "parts/garb_m_thin/tunic.glb",
@@ -12,6 +13,7 @@ cloth = [
 ]
 
 [palette]
+beard_stubble = "#5a4c3a"
 hair = "#8a7a62"
 cloth_tunic = "#7a6448"
 cloth_belt = "#3a2a1e"
