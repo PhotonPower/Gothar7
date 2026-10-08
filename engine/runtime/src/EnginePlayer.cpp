@@ -159,6 +159,14 @@ void Engine::steerPlayer(f32 yaw)
 
 void Engine::removePlayer()
 {
+    if (m_transform)
+    {
+        // Leaving the world in an animal's shape: human again (the new world starts with him).
+        m_movementSettings = m_transform->humanMovement;
+        m_figure = std::move(m_transform->human);
+        m_transform.reset();
+        m_weaponMode = 0;
+    }
     m_player = {};
     m_climb.reset();
     m_jumpCooldown = 0.0f;
@@ -249,6 +257,15 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     if (!m_player.valid())
     {
         return;
+    }
+    // Z7: the shape changes here, between steps.
+    if (std::exchange(m_transformBackRequested, false))
+    {
+        endTransform();
+    }
+    if (const std::string species = std::exchange(m_transformRequested, std::string()); !species.empty())
+    {
+        (void)beginTransform(species);
     }
     gameplay::MoveInput input = m_playerInputOverride.value_or(m_playerInput);
     if (m_playerInputOverride)
@@ -363,7 +380,7 @@ void Engine::movePlayer(f32 seconds, const gameplay::MoveInput& input)
         const auto ledge = m_player.findLedge(gameplay::forwardOf(m_movement.yaw()), s.stepHeight,
                                               s.climb.highMax, s.climb.reach);
         const auto kind = ledge ? gameplay::classifyLedge(ledge->height, s.climb) : std::nullopt;
-        if (ledge && kind)
+        if (ledge && kind && !m_transform) // an animal does not climb (Z7)
         {
             startClimb(m_player.feet(), ledge->feet, *kind);
             m_movement.stop();

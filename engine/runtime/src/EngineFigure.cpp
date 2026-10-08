@@ -164,6 +164,23 @@ Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, 
         player, path, graphPath,
         [&](const animation::AnimGraph& graph, std::span<const asset::AnimationSetData* const> sets)
         {
+            // Its gaits: the forward blend points of "move".
+            for (const animation::AnimGraphState& s : graph.states)
+            {
+                if (s.name != "move")
+                {
+                    continue;
+                }
+                for (const auto& point : s.points)
+                {
+                    if (point.first > 0.0f)
+                    {
+                        player.moveWalk =
+                            player.moveWalk > 0.0f ? std::min(player.moveWalk, point.first) : point.first;
+                        player.moveRun = std::max(player.moveRun, point.first);
+                    }
+                }
+            }
             // Climb clips: how far their root moves, to scale it to the ledge found.
             for (usize ledge = 0; ledge < kClimbStates.size(); ++ledge)
             {
@@ -676,21 +693,33 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     a.setBool("sneak", onLand && input.sneak);
     // The weapon (M9 part C): drawn and put away on land; swimming and climbing put it away.
     const bool armsFree = onLand && !m_mobUse && !m_pickup;
-    if (std::exchange(m_drawRangedRequested, false) && armsFree && onLand)
+    if (m_transform)
     {
-        toggleRanged(); // M11 (R1)
+        // Z7: in an animal's shape no weapons and no magic; "1" or water make him human again.
+        const bool back = std::exchange(m_drawMagicRequested, false) || (water != gameplay::WaterMode::Land);
+        m_drawRangedRequested = m_drawWeaponRequested = false;
+        m_runeRequested.reset();
+        m_transformBackRequested = m_transformBackRequested || back;
+        a.setFloat("action", static_cast<f32>(std::exchange(m_heroAnimalAction, 0)));
     }
-    if (std::exchange(m_drawMagicRequested, false) && armsFree)
+    else
     {
-        toggleMagic(); // M12 (Z4)
-    }
-    if (const auto rune = std::exchange(m_runeRequested, std::nullopt); rune && armsFree)
-    {
-        selectRune(*rune);
-    }
-    if ((std::exchange(m_drawWeaponRequested, false) && armsFree) || (m_weaponMode != 0 && !onLand))
-    {
-        toggleWeapon();
+        if (std::exchange(m_drawRangedRequested, false) && armsFree && onLand)
+        {
+            toggleRanged(); // M11 (R1)
+        }
+        if (std::exchange(m_drawMagicRequested, false) && armsFree)
+        {
+            toggleMagic(); // M12 (Z4)
+        }
+        if (const auto rune = std::exchange(m_runeRequested, std::nullopt); rune && armsFree)
+        {
+            selectRune(*rune);
+        }
+        if ((std::exchange(m_drawWeaponRequested, false) && armsFree) || (m_weaponMode != 0 && !onLand))
+        {
+            toggleWeapon();
+        }
     }
     a.setFloat("weapon", static_cast<f32>(heroWeaponAnimation()));
     // Running is heard (Perception.noise.run), twice a second.

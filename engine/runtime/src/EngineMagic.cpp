@@ -70,6 +70,11 @@ std::string Engine::runeInSlot(u32 slot) const
 
 void Engine::toggleMagic()
 {
+    if (m_transform)
+    {
+        m_transformBackRequested = true; // Z7: "1" makes him human again
+        return;
+    }
     if (!m_figure || !m_hero)
     {
         return;
@@ -141,11 +146,6 @@ void Engine::beginHeroCast()
     }
     const script::Instance* def = m_scripts->findInstance("Item", m_weaponDrawn);
     const bool scroll = def != nullptr && def->fields["category"].asString() == "scroll";
-    if (spell->kind == gameplay::SpellKind::Transform)
-    {
-        notice("Dieser Zauber lässt sich noch nicht wirken."); // M12 part C2
-        return;
-    }
     if (const auto blocked = gameplay::castBlocked(*m_hero, *spell, scroll); blocked)
     {
         notice(*blocked); // Z5: the attempt fails
@@ -307,7 +307,124 @@ void Engine::applyHeroSpell()
         (void)summonForHero(spell, spell.duration * strength);
         break;
     case gameplay::SpellKind::Transform:
-        break; // M12 part C2
+        m_transformRequested = spell.species; // the shape changes at the next player step
+        break;
+    }
+}
+
+bool Engine::beginTransform(std::string_view species)
+{
+    if (m_transform || !m_player.valid() || !m_hero || !m_figure || !m_scripts)
+    {
+        return false;
+    }
+    // The animal's values: the first Npc of that species (mon_wolf ...).
+    const script::Instance* npc = nullptr;
+    for (const script::Instance& i : m_scripts->instances())
+    {
+        if (i.kind == "Npc" && i.fields["species"].asString() == species)
+        {
+            npc = &i;
+            break;
+        }
+    }
+    auto values = npc != nullptr
+                      ? gameplay::Character::fromInstance(*npc, itemLookup())
+                      : Result<gameplay::Character>(Error{std::format("no Npc of species {}", species)});
+    if (!values)
+    {
+        G7_LOG_WARN("engine", "transformation: {}", values.error().message);
+        return false;
+    }
+    auto figure = loadFigure(std::format("characters/monsters/{0}/rig/{0}_reference.glb", species),
+                             std::format("data/anim/{}.animgraph.toml", species));
+    if (!figure)
+    {
+        G7_LOG_WARN("engine", "transformation: {}", figure.error().message);
+        return false;
+    }
+    physics::CharacterDesc desc = creatureBody(species);
+    const Vec3 feet = m_player.feet() + Vec3(0.0f, 0.05f, 0.0f);
+    auto body = physics::CharacterController::create(m_physics, desc, feet);
+    if (!body)
+    {
+        G7_LOG_WARN("engine", "transformation: {}", body.error().message);
+        return false;
+    }
+    // No weapons, no magic in the paws (Z7).
+    m_heroCast.reset();
+    m_weaponMode = 0;
+    m_weaponDrawn.clear();
+    detachFromPlayer("socket_hand_r");
+    detachFromPlayer("socket_hand_l");
+    m_combatTarget.reset();
+    m_heroFighter.reset();
+
+    HeroTransform t;
+    t.species = std::string(species);
+    t.npc = npc->name;
+    t.human = std::move(m_figure);
+    t.animal = std::make_unique<gameplay::Character>(std::move(values).value());
+    t.humanMovement = m_movementSettings;
+    m_figure = std::move(figure).value();
+    if (m_figure->moveRun > 0.0f)
+    {
+        // Its gaits: walk and run from its clips, sneaking as walking.
+        m_movementSettings.walkSpeed = m_figure->moveWalk;
+        m_movementSettings.runSpeed = m_figure->moveRun;
+        m_movementSettings.sneakSpeed = m_figure->moveWalk;
+        m_movementSettings.strafeSpeed = m_figure->moveWalk;
+        m_movementSettings.backwardSpeed = m_figure->moveWalk;
+    }
+    m_player = std::move(body).value();
+    m_playerFeet = m_playerFeetBefore = m_player.visualFeet();
+    m_transform = std::move(t);
+    m_weaponMode = 5; // the animal's fighting keys; the action key does nothing else (no items, no talk)
+    resetPlayerAnimation();
+    (void)startEffect("summon", feet + Vec3(0.0f, 0.5f, 0.0f));
+    G7_LOG_INFO("engine", "the hero becomes a {} ({})", species, m_transform->npc);
+    if (m_scripts)
+    {
+        const script::Value args[] = {std::string(species)};
+        m_scripts->emit("hero_transformed", args);
+    }
+    return true;
+}
+
+void Engine::endTransform()
+{
+    if (!m_transform)
+    {
+        return;
+    }
+    HeroTransform t = std::move(*m_transform);
+    m_transform.reset();
+    m_movementSettings = t.humanMovement;
+    m_figure = std::move(t.human);
+    m_weaponMode = 0;
+    m_heroFighter.reset();
+    m_combatTarget.reset();
+    m_heroAnimalAction = 0;
+    if (m_player.valid())
+    {
+        const Vec3 feet = m_player.feet() + Vec3(0.0f, 0.05f, 0.0f);
+        physics::CharacterDesc desc;
+        desc.maxSlopeDegrees = m_movementSettings.maxSlopeDegrees;
+        desc.stepHeight = m_movementSettings.stepHeight;
+        desc.stickToFloor = m_movementSettings.stickToFloor;
+        if (auto body = physics::CharacterController::create(m_physics, desc, feet))
+        {
+            m_player = std::move(body).value();
+            m_playerFeet = m_playerFeetBefore = m_player.visualFeet();
+        }
+        (void)startEffect("summon", feet + Vec3(0.0f, 0.8f, 0.0f));
+    }
+    resetPlayerAnimation();
+    G7_LOG_INFO("engine", "the hero is human again");
+    if (m_scripts)
+    {
+        const script::Value args[] = {std::string()};
+        m_scripts->emit("hero_transformed", args);
     }
 }
 
@@ -531,6 +648,22 @@ void Engine::bindMagicFunctions()
                  const auto target = heroCombatTarget();
                  return target ? Value(*target) : Value();
              }});
+    vm.bind({"hero_shape", "hero_shape() -> string | nil",
+             "Die Tiergestalt des Helden (Z7: \"wolf\" ...); nil als Mensch.", "Magie",
+             [this](std::span<const Value>) -> Result<Value>
+             { return m_transform ? Value(m_transform->species) : Value(); }});
+    vm.bind({"hero_transform_back", "hero_transform_back()",
+             "Der Held wird wieder Mensch (wie die Taste „1“ in Tiergestalt).", "Magie",
+             [this](std::span<const Value>) -> Result<Value>
+             {
+                 m_transformBackRequested = m_transform.has_value();
+                 return Value();
+             }});
+    vm.bind({"hero_transformed",
+             "on(\"hero_transformed\", fn(species: string))",
+             "Der Held nimmt eine Tiergestalt an (M12, Z7) bzw. wird wieder Mensch (`species` leer).",
+             "Ereignisse",
+             {}});
     vm.bind({"hero_summon", "hero_summon() -> string | nil",
              "Das vom Helden beschworene Wesen, solange es da ist (Z8); nil ohne.", "Magie",
              [this](std::span<const Value>) -> Result<Value>
