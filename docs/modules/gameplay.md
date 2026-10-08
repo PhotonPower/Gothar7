@@ -122,6 +122,17 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
   Schriftstücke `use_read` (`t_read_scroll`). Beim Event `use` wirken `effects = { hp = …, mana = … }` (bis zum
   Maximum), dann `on_use(item)` und das Ereignis `item_used`; Nahrung und Tränke sind verbraucht. Schriftstücke öffnen
   ihren `text` im Fenster „Document“ und bleiben im Inventar. Werte: Apfel +5, Brot +10, kleiner Heiltrank +40 LP.
+- **Waren der Leonberger Händler** (figuren F6, Werte Projektinhaber 2026-10-08): Die Modelle kommen von figuren, bis
+  dahin gelten die Platzhalter der Kategorie.
+  - Essen: Schinken +20, Wurst +12, Käse +10, Brezel +8.
+  - Getränke unter `food` mit Tag `"drink"` werden getrunken (`use_drink`): Bier +5, Wein +6, vorerst ohne Rausch.
+  - Kräuter: Salbei +6, Kamille +4, Brennnessel +3; getrocknete Kräuter sind Handelsware und Zutat.
+  - Tränke: Heiltrank +70, Manatrank +50.
+  - Trank der Schnelligkeit: Item-Feld `boost = { speed = 1.3, seconds = 120 }`; Gehen, Laufen, Schleichen und
+    Seitwärts sind 120 s ×1,3, ein neuer Trank startet die Zeit neu. Lua `hero_boost()`, Ereignis `boost_ended`.
+  - Elixier der Stärke: +3 Stärke dauerhaft, 800 Gulden.
+  - Schmuck (Ringe, Amulett, Goldkette) vorerst ohne Wirkung; Hausrat (Tuchballen, Kanne, Schüssel) als Handelsware;
+    Werkzeug (Hammer, Säge, Schere) für die Hand.
 - **Taschendiebstahl** (Teil D, wie Gothic 1): Aktionstaste beim Schleichen auf einen NPC im Fokus. Nur mit dem
   Talent `pickpocket` („Das kann ich nicht.“); mit Geschick ≥ `pickpocket_dex` des NPCs (Vorgabe
   `Pickpocketing.default_dex` = 30) gelingt er sicher: ein nicht getragenes Stück eines zufälligen Stapels, Ereignis
