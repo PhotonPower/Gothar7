@@ -14,6 +14,7 @@ from gothar_worldgen.uses.places import (
     load_uses,
     mob_vobs,
     plan_places,
+    sign_vobs,
 )
 
 HOUSE = box(0.0, -7.0, 10.0, 0.0)  # door on the south side (z = 0), outward +z
@@ -106,3 +107,26 @@ def test_mob_vobs_face_out_of_the_house(tmp_path: Path):
         assert (math.sin(ang), math.cos(ang)) == pytest.approx((1.0, 0.0), abs=1e-4)
         assert v["pos"][1] == 2.0 and v["mesh"] == "mobs/bench.glb"
         assert v["key"] == f"use:{v['name']}" and v["name"].startswith("MOB_LEO_GASTHAUS_H1_BENCH_")
+
+
+def test_a_guild_sign_hangs_over_the_door_of_workshops_shops_and_taverns():
+    from gothar_worldgen.uses.places import House
+
+    index = {"entries": [
+        {"id": "DEBW_00100061ZkB-H4", "doors": [[1.0, 2.0, 0.5, "blocked", 0.0, 1.0],
+                                               [3.0, 4.0, 0.6, "ground", 1.0, 0.0]]},
+        {"id": "DEBW_00100061ZhE", "doors": [[0.0, 0.0, 0.0, "ground", 0.0, -1.0]]},
+        {"id": "DEBW_00100061ZiU", "doors": [[0.0, 0.0, 0.0, "ground", 0.0, 1.0]]},
+    ]}  # fmt: skip
+    houses = [House("DEBW_00100061ZkB-H4", "werkstatt", trade="schuster"),
+              House("DEBW_00100061ZhE", "gasthaus"),
+              House("DEBW_00100061ZiU", "pfarrhaus")]  # fmt: skip
+    signs = {v["mesh"]: v for v in sign_vobs(houses, index)}
+    assert set(signs) == {"props/sign_boot.glb", "props/sign_tankard.glb"}  # not the parsonage
+    boot = signs["props/sign_boot.glb"]
+    assert boot["pos"] == [3.0, 0.6, 4.0] and boot["type"] == "mesh"  # the usable door
+    assert boot["rot"] == pytest.approx([0.0, 0.70711, 0.0, 0.70711])  # facing +X, out of the wall
+    assert boot["name"] == "SCHILD_LEO_ZKB_H4"
+    # a door down in the ground: the sign hangs over the street's level before it
+    sunk = {v["mesh"]: v for v in sign_vobs(houses, index, lambda x, z: 3.0)}
+    assert sunk["props/sign_boot.glb"]["pos"][1] == 3.0

@@ -287,7 +287,9 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     - Kopfstein: Straßen und Plätze im Kernbereich
     - Kies: Straßen und Plätze außerhalb, Bahnlinien
     - Matsch: unter Gebäuden plus 1,5 m Rand, an Bächen und Gräben; dazu Böschungen an Straßen: Pflaster und Kies
-      blenden zwischen 28° und 32° Neigung aus und werden Erde (W6, Koordinator 2026-10-08: kein verzerrtes Pflaster)
+      blenden zwischen 28° und 32° Neigung aus und werden Erde (W6, Koordinator 2026-10-08: kein verzerrtes Pflaster);
+      ebenso, wo der Boden in der Straßenbreite 0,25–0,5 m über oder unter der Achse daneben liegt (Pflaster nur auf der
+      Straßenfläche, nicht auf Höckern und Böschungen)
     - Waldboden: Wald, Gebüsch, Einzelbäume mit 3 m Radius
     - Acker: Ackerland, Kleingärten, Gärten
     - Fels: Neigung über 35–45°, weich eingeblendet
@@ -622,17 +624,27 @@ Koordinator im Auftrag des Projektinhabers). Werte in `tools/worldgen/data/<ort>
   - **Stufen in den Lücken** (Koordinator 2026-10-08):
     - Wo eine Mauer für den Weg einer Tür aussetzt und die Böschung steil ist, führen Steinstufen vom Straßenrand gerade
       hinaus bis zur Oberkante der Böschung (`gapSteps`).
-    - Die Oberkante liegt dort, wo das Gelände wieder begehbar wird, nach mindestens 0,4 m Höhe.
+    - Die Straßenhälfte wird durch die Lücke weiter eingeebnet (kein Höcker auf der Straße); die Stufen beginnen auf ihr.
+    - Die Oberkante ist das Plateau: dort wird das Gelände nach mindestens 0,4 m Höhe sanft (höchstens 12°); steigt es
+      danach nur noch begehbar weiter, bis dorthin, wo es begehbar wird.
     - Höchstens 30° steil; ist die Böschung steiler, schneiden die Stufen in das Gelände dahinter ein.
-    - Das Gelände darunter wird eine gerade Rampe, 1,2 m breit, 1 m weich eingeblendet.
-    - Keine Stufen an sanften Hängen unter 15° im Mittel und wo der Hang dahinter steiler weitersteigt.
-    - Leonberg: 18 geplant, 14 gebaut (bei 4 bleibt nach den übrigen Geländeschritten weniger als 0,4 m Höhe).
+    - Die ganze Böschung in der Lücke wird eine gerade Rampe bis zur Oberkante, die Stufen in ihrer Mitte (keine Buckel
+      neben den Stufen), 1 m weich eingeblendet.
+    - Keine Stufen an sanften Hängen unter 15° im Mittel.
+    - Leonberg: 25 geplant, 23 gebaut (bei 2 bleibt nach den übrigen Geländeschritten weniger als 0,4 m Höhe).
   - **Bergseite:** hält das Gelände, oben bündig mit ihm. **Talseite:** trägt die Straße, mit Brüstung `parapetM` 0,6 m.
   - **Material:** Trockenmauer (`stone_dry`); gemörtelt wie die Sockel (`stone`), wo sie an ein Haus oder die Stadtmauer
     stößt (`mortarM`).
-  - **Einebnung:** Die Straßenhälfte an der Mauer wird quer eingeebnet, jede Zelle auf die Achshöhe neben ihr (keine
-    Terrassen auf steigenden Wegen). Von den Mauerenden her setzt das über `fadeM` 3 m ein (keine Kante, wo der Einschnitt
-    endet; jenseits der Enden bleibt das Gelände).
+  - **Einebnung:**
+    - Die Straßenhälfte an der Mauer wird quer eingeebnet, jede Zelle auf die Achshöhe neben ihr (keine Terrassen auf
+      steigenden Wegen).
+    - Von den Mauerenden her setzt das über `fadeM` 3 m ein, mit gleitendem Gewicht entlang der Mauer (keine Kante, wo der
+      Einschnitt endet, keine Zacken; jenseits der Enden bleibt das Gelände).
+    - Sie reicht bis 0,15 m vor die Rückseite unter die Mauer: Eine Ecke des 1-m-Geländerasters unter der Mauer auf
+      Böschungshöhe stünde sonst als Zacke vor der Mauerfront.
+    - Nicht näher als 1 m an Häusern und Handmodellen.
+  - **Mauer:** 1 m stark (`thicknessM`), Oberkante nach dem Gelände 1,2 m dahinter (`behindM`); der Fuß reicht 0,3 m unter den
+    tiefsten Boden davor, darunter und dahinter (nach dem Einebnen).
   - **Kollision:** Prismen von etwa 2 m.
 - **Wegnetz:** Eine Insel, die keinen Punkt eines anderen Teils erreicht, wird an die nächste erreichbare Stelle einer Kante
   gebunden (die Kante dort geteilt), wie es einzelne Türen schon wurden. So erreichen Türen oberhalb einer eingeschnittenen
@@ -835,6 +847,45 @@ Werkzeug aus W-E5 (`data/<ort>/kirche.json`); die Quelle liegt unverändert unte
 - **Anachronismen für 1700** (nur gemeldet, nichts entfernt): verglaste Türen (`door_aisle_glass`,
   `porch_arch_glass`, `tower_door_glass`), verglaste Schallöffnungen im Glockengeschoss (`belfry_opening_glass`,
   `bell_louvre_glass`) und verglaste Turmschlitze. Die Turmuhr mit Minutenzeiger ist um 1700 möglich.
+
+### Musik- und Ambiente-Zonen (M13)
+Vertrag `docs/modules/world.md` „Zonen“ (Typen `music`, `ambient`; gedrehte Boxen wie `indoor`; bei verschachtelten Zonen
+eines Typs gilt die kleinste Box). Namen vom Koordinator festgelegt (2026-10-08). Werte in
+`tools/worldgen/data/<ort>/sound_zones.json`, Code `uses/sound.py`; `assemble` schreibt sie nach den indoor-Zonen und
+ersetzt nur die eigenen (Wert aus der Liste).
+- **Musik:** `LAND` als Box über die ganze Welt (Vorgabe), `STADT` über die Altstadt: innerhalb der Stadtmauer, der
+  Zwingerstreifen (15 m) und der Schlossgarten.
+- **Ambiente:**
+  - `feld` über die ganze Welt (Vorgabe);
+  - `stadt_gasse` innerhalb der Stadtmauer;
+  - `stadt_markt` über deren Plätze (OSM, 2 m Rand);
+  - `schlossgarten` über den Pomeranzengarten;
+  - `ufer` an Glems und Parksee (die Wasser-Boxen, 8 m breiter);
+  - `wald` über die Waldflächen ab 2000 m²;
+  - `brunnen` um die Handmodell-Brunnen (5 m);
+  - `stadtmauer` auf dem Wehrgang (Band von 3 m über dem Gang, in Stücken von etwa 20 m);
+  - Raum-Ambiente in den indoor-Boxen eines Raums: `schmiede_esse` (Schmiede ZnP), `gasthaus_stube` (Zur krummen Gans);
+  - `innen` leitet engine aus den indoor-Zonen ab.
+- **Boxen:** Große Flächen werden mit Rechtecken aus ganzen Zellen bedeckt (Stadt 5 m, Wald 10 m, längs ihres kleinsten
+  gedrehten Rechtecks); am Rand innerhalb einer Zelle gilt die nächstgrößere Zone. Alle Außenboxen reichen gleich hoch
+  (300 m), damit „die kleinste gewinnt“ nach der Fläche entscheidet; Brunnen, Wehrgang und Räume sind niedrig und
+  gehen vor.
+- **Leonberg:** 358 Boxen; `stadt_gasse` deckt 93 % der Altstadt, `STADT` alles.
+
+### Zunftschilder (W6)
+Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-08): Ausleger mit Symbol über der Tür, eigene Gestaltung,
+keine echten Wappen oder Logos. Code: `mobs.guild_sign` (Modelle `props/sign_<symbol>.glb`), `uses/places.sign_vobs`.
+- **Wer:** jedes Haus aus `uses.json`, dessen Gewerbe (`trade`) oder Nutzung ein Symbol hat:
+  - Gasthaus Krug, Bäcker Brezel, Metzger Hackbeil, Schmiede Hufeisen, Bader Becken, Kräuterkammer Mörser, Wache Hellebarde;
+  - Goldschmied Pokal, Tuchhändler Tuchballen, Krämer Waage, Gewandschneider Schere;
+  - Schuster Stiefel, Schreiner Säge, Töpfer Krug.
+  - Wohnhäuser, Bauern, Rathaus und Pfarrhaus bekommen keines. Leonberg: 16 Schilder.
+- **Wo:** über der ersten benutzbaren Tür (Index `doors`), an der Schwelle verankert; bei einer Tür tief im Gelände
+  (Hangtür) auf Höhe des Bodens 1 m davor.
+- **Gestalt** (Koordinator 2026-10-08: von der Straße her erkennbar): Ausleger 1,2 m aus der Wand in 2,95 m Höhe, daran an
+  zwei Ketten ein hell bemaltes Brett von 0,9 × 0,75 m im Eichenrahmen (Unterkante 2,05 m), das Symbol 1,4-fach auf beiden
+  Seiten, in der Ebene des Auslegers (entlang der Straße lesbar).
+- **Kollision:** keine (nur das winzige `COL_HULL_NONE` unter dem Boden).
 
 ### Bodenregel für handgemachte Modelle (W6)
 Entscheidung Projektinhaber (2026-10-03): Kein sichtbarer Teil eines handgemachten Modells darf im Gelände stecken.
@@ -1140,6 +1191,12 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
 - **Einrichtung:** Betten und Truhen, Felle und Wandbehänge gehen nach oben (Kammern zuerst), unten bleiben Herd,
   Tische, Theke, Freepoints und Vorräte. Die Treppe samt Absatz und Weg dorthin bleibt frei, im Ausschnitt steht nichts.
   Laternen und Fensterlicht oben wie unten.
+- **Schlafkammern oben** (Projektinhaber 2026-10-08), dichter wie unten:
+  - Jede Kammer mit Bett bekommt dazu eine Kleidertruhe (falls keine Truhe da ist), einen Hocker mit Talglicht darauf
+    (zählt als Nachtlicht, spart eine Laterne), einen Waschtisch mit Schüssel und Krug (`washstand`), Wandhaken mit
+    Umhang, Hemd und Gugel (`clothes_hooks`, nur über freiem Boden) und ein Fell vor dem Bett.
+  - Der Raum am Treppenkopf: Hocker mit Talglicht und ein Fell.
+  - Türschwenk, Durchgänge, Ausschnitt mit Treppenkopf und Fensternischen bleiben frei.
 - **Wegnetz:** `WP_…_TREPPE` vor der ersten Stufe (verbunden mit dem Raum, in dem die Treppe steht),
   `WP_…_TREPPE_OBEN` am Kopf (y = oberer Boden), `WP_…_OBEN` im Raum oben, die oberen Kammern über ihre Durchgänge.
   Obere Wegpunkte liegen auf dem Boden: Einsetzen und KI-LOD landen oben (engine 2026-10-08).

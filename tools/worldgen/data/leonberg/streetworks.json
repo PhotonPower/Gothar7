@@ -19,7 +19,7 @@
     "offsetM": 0.2,
     "minAxisM": 1.0,
     "fadeM": 3.0,
-    "behindM": 0.6,
+    "behindM": 1.2,
     "parapetM": 0.6,
     "maxM": 3.5,
     "houseM": 1.2,
@@ -30,7 +30,7 @@
     "doorReachM": 30.0,
     "junctionM": 1.5,
     "mortarM": 1.5,
-    "thicknessM": 0.5,
+    "thicknessM": 1.0,
     "gapSteps": {"maxDeg": 30.0, "widthM": 1.2, "fadeM": 1.0, "maxLenM": 12.0}
   },
   "gutters": {

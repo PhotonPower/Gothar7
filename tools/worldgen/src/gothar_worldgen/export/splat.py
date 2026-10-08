@@ -62,6 +62,9 @@ ROCK_SLOPE_DEG = (35.0, 45.0)  # rock fades in between these slopes
 # Paving fades out between these slopes and earth takes its place: a street is level across now
 # (W6), the bank beside it is no street (coordinator 2026-10-08: no stretched cobbles there).
 BANK_SLOPE_DEG = (28.0, 32.0)
+# Paving only on the street's surface: where the ground lies this much above or below its axis
+# beside it (a bank or a hump left in the street's width), it fades out and earth takes its place.
+OFF_STREET_M = (0.25, 0.5)
 BLUR_M = 1.5
 
 
@@ -123,6 +126,31 @@ def _inside(rect: dict[str, float] | None, points: Iterable[Sequence[float]]) ->
     return False
 
 
+def _off_surface(
+    grid: Grid, points: Sequence[Sequence[float]], width: float, off: npt.NDArray[np.float32]
+) -> None:
+    """Into ``off`` per sample within the street's width (and a metre of its blurred edge): how far
+    the ground lies above or below its axis beside it; the smallest a sample gets from any street
+    counts (a crossing street's surface is a surface)."""
+    pts = np.asarray(points, dtype=np.float64)
+    half = width / 2 + 1.0
+    for (x0, z0), (x1, z1) in zip(pts, pts[1:], strict=False):
+        seg = math.hypot(x1 - x0, z1 - z0)
+        if seg < 1e-6:
+            continue
+        ux, uz = (x1 - x0) / seg, (z1 - z0) / seg
+        for t in np.arange(0.0, seg + 1e-6, grid.cell / 2):
+            ax, az = x0 + ux * t, z0 + uz * t
+            h = grid.height_at(ax, az)
+            for d in np.arange(-half, half + 1e-6, grid.cell / 2):
+                x, z = ax - uz * d, az + ux * d
+                c = int(round((x - grid.first_x) / grid.cell))
+                r = int(round((z - grid.first_z) / grid.cell))
+                if 0 <= r < off.shape[0] and 0 <= c < off.shape[1]:
+                    dev = abs(float(grid.heights[r, c]) - h)
+                    off[r, c] = dev if off[r, c] == 0.0 else min(off[r, c], dev)
+
+
 def slope_fade(grid: Grid, lo: float, hi: float) -> npt.NDArray[np.float32]:
     """0 below ``lo`` degrees of slope, 1 above ``hi``, linear between."""
     gz, gx = np.gradient(grid.heights, grid.cell)
@@ -156,11 +184,14 @@ def layer_masks(
     beds (``lawn``, meadow layer) left out; no field layer there.
     """
     canvases = {i: _Canvas(grid) for i in (KOPFSTEIN, KIES, MATSCH, WALDBODEN, ACKER)}
+    off = np.zeros((grid.height, grid.width), dtype=np.float32)  # off the street's surface
     for s in streets:
         if s.get("highway") in NO_SURFACE_HIGHWAYS:
             continue
         layer = KOPFSTEIN if _inside(core, s["points"]) else KIES
-        canvases[layer].line(s["points"], float(s.get("widthM") or DEFAULT_STREET_WIDTH_M))
+        width = float(s.get("widthM") or DEFAULT_STREET_WIDTH_M)
+        canvases[layer].line(s["points"], width)
+        _off_surface(grid, s["points"], width, off)
     for q in squares:
         layer = KOPFSTEIN if _inside(core, q["polygon"]) else KIES
         canvases[layer].polygon(q["polygon"])
@@ -188,7 +219,8 @@ def layer_masks(
         for bed in g.get("lawn", []):
             canvases[KIES].erase(bed)
     masks = {i: c.weights() for i, c in canvases.items()}
-    bank = slope_fade(grid, *BANK_SLOPE_DEG)
+    lo, hi = OFF_STREET_M
+    bank = np.maximum(slope_fade(grid, *BANK_SLOPE_DEG), np.clip((off - lo) / (hi - lo), 0, 1))
     for paved in (KOPFSTEIN, KIES):  # steep banks beside the streets: earth, not paving
         masks[MATSCH] = np.maximum(masks[MATSCH], masks[paved] * bank)
         masks[paved] = masks[paved] * (1.0 - bank)

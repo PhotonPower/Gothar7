@@ -328,6 +328,45 @@ def routine_table_md(places: dict[str, Any]) -> str:
     return "\n".join(rows) + "\n"
 
 
+# Guild signs (W6, coordinator 2026-10-08): a bracket with a symbol over the house door of every
+# workshop, shop, tavern and guard house; own designs, no coats of arms (mobs.guild_sign). The
+# trade decides where there is one, else the use; dwellings, farms, town hall, parsonage: none.
+SIGN_OF = {"gasthaus": "tankard", "baecker": "pretzel", "metzger": "cleaver",
+           "schmiede": "horseshoe", "bader": "basin", "kraeuter": "mortar", "wache": "halberd",
+           "goldschmied": "goblet", "tuchhaendler": "cloth", "kraemer": "scales",
+           "gewandschneider": "shears", "schuster": "boot", "schreiner": "saw",
+           "toepfer": "jug"}  # fmt: skip
+SIGN_GROUND_M = 1.0  # the ground this far before the door: a sign hangs above it at least
+
+
+def sign_vobs(houses: Sequence[Any], index: dict[str, Any],
+              height: Callable[[float, float], float] | None = None,
+              ) -> list[dict[str, Any]]:  # fmt: skip
+    """A guild sign over the first usable door of every house whose trade or use has one: on the
+    wall at the door's threshold, the bracket out of it (``props/sign_<symbol>.glb``); at a door
+    down in the ground (a hillside door) at the street's level in front of it instead."""
+    entries = {e["id"]: e for e in index.get("entries", [])}
+    out = []
+    for h in houses:
+        symbol = SIGN_OF.get(h.trade) or SIGN_OF.get(h.use)
+        e = entries.get(h.id)
+        if symbol is None or e is None:
+            continue
+        doors = [d for d in e.get("doors", []) if d[3] != "blocked"]
+        if not doors:
+            continue
+        x, z, y, _, nx, nz = doors[0][:6]
+        if height is not None:  # never under the ground before the door
+            y = max(float(y), height(x + nx * SIGN_GROUND_M, z + nz * SIGN_GROUND_M))
+        a = math.atan2(nx, nz)
+        out.append({"key": f"use:sign:{h.id}", "name": f"SCHILD_LEO_{name_part(short_id(h.id))}",
+                    "type": "mesh", "pos": [float(x), float(y), float(z)],
+                    "rot": [0.0, round(math.sin(a / 2), 5) + 0.0, 0.0,
+                            round(math.cos(a / 2), 5) + 0.0],
+                    "mesh": f"props/sign_{symbol}.glb"})  # fmt: skip
+    return out
+
+
 DOOR_IN_REVEAL_M = 0.06  # the door blade stands this far inside the room's wall face
 
 
