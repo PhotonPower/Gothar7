@@ -217,6 +217,17 @@ def _close_holes(ob: bpy.types.Object) -> None:
     bm = bmesh.new()
     bm.from_mesh(ob.data)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0002)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=0.0005)
+    removed = 0
+    while True:  # flaps: faces hanging on at most one edge (a cut grazing a surface leaves them)
+        flaps = [f for f in bm.faces if sum(e.is_boundary for e in f.edges) >= 2]
+        if not flaps:
+            break
+        bmesh.ops.delete(bm, geom=flaps, context="FACES")
+        removed += len(flaps)
+    if removed:
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+        print(f"[chargen] removed {removed} sliver faces")
     border = [e for e in bm.edges if e.is_boundary]
     if border:
         bmesh.ops.holes_fill(bm, edges=border, sides=8)

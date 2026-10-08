@@ -418,3 +418,19 @@ def test_glemsmahr_reference_passes():
     assert report.stats["triangles"] <= 8000 and report.stats["lods"] == 3
     eyes = next(m for m in gltf.list("materials") if m["name"] == "eyes")
     assert max(eyes.get("emissiveFactor", [0, 0, 0])) > 0.1  # glowing in the dark
+
+
+BERGLEU_REF = REPO_ROOT / "assets/source/characters/monsters/bergleu/rig/bergleu_reference.glb"
+
+
+def test_tuft_shell_and_bergleu_reference():
+    c = load_creature(DATA / "bergleu.creature.toml")
+    tufts = [s for s in c.shapes if s.zone == "mane" and s.kind == "ellipsoid"]
+    assert len(tufts) > 80  # shaggy mane from the tuft shell
+    assert {"mane_back", "mane_l", "mane_r", "tail_05"} <= {b.name for b in c.bones}
+    assert {"socket_paw_l", "socket_paw_r", "socket_tail"} <= set(c.sockets)
+    rig = load_rig(species="bergleu")
+    gltf = Gltf.load(BERGLEU_REF)
+    report = validate_gltf(gltf, rig, reference_pose(gltf), path=BERGLEU_REF)
+    assert report.ok(strict=True), report.issues
+    assert report.stats["triangles"] <= 12000 and report.stats["lods"] == 3  # boss budget
