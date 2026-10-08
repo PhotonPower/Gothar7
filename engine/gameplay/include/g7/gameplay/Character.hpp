@@ -19,9 +19,9 @@
 namespace g7::gameplay
 {
 /// Item categories (Item.category), in the order the inventory lists them.
-inline constexpr std::array<std::string_view, 17> kItemCategories = {
-    "melee_1h", "melee_2h", "bow",    "crossbow", "ammo", "armor",    "helmet", "ring", "amulet",
-    "belt",     "rune",     "scroll", "potion",   "food", "document", "key",    "misc"};
+inline constexpr std::array<std::string_view, 18> kItemCategories = {
+    "melee_1h", "melee_2h", "bow",    "crossbow", "ammo", "armor",    "helmet", "ring",  "amulet",
+    "belt",     "rune",     "scroll", "potion",   "food", "document", "key",    "torch", "misc"};
 /// Attributes a character has (Npc.attributes); hp_max/mana_max bound hp/mana.
 inline constexpr std::array<std::string_view, 6> kAttributes = {"hp",       "hp_max", "mana",
                                                                 "mana_max", "str",    "dex"};

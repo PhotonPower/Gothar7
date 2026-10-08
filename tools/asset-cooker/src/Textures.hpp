@@ -6,6 +6,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 
+#include <optional>
 #include <vector>
 
 namespace g7::cook
@@ -25,9 +26,10 @@ enum class TextureUsage : u8
 
 /// Encodes an RGBA8 image as KTX2: full mip chain, UASTC (level 0 = fastest .. 4 = best) with
 /// zstd supercompression. Colour is stored as sRGB RGBA, normal maps as linear RG (X, Y), data
-/// as linear RGBA.
+/// as linear RGBA. `alphaCutoff`: the colour texture of an alpha-tested material (glTF MASK) - its mips keep
+/// the alpha coverage at that cutoff (asset::preserveAlphaCoverage).
 [[nodiscard]] Result<std::vector<u8>> encodeKtx2(const asset::ImageData& image, TextureUsage usage,
-                                                 u32 uastcLevel = 2);
+                                                 u32 uastcLevel = 2, std::optional<f32> alphaCutoff = {});
 
 /// False in builds without libktx (nodeps preset).
 [[nodiscard]] bool hasKtx2Encoder() noexcept;

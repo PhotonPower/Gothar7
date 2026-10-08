@@ -181,3 +181,36 @@ def update_speeds(glb: Path) -> dict[str, float]:
         return speeds
     path.write_text(header + format_events(fps, clips, speeds), encoding="utf-8", newline="\n")
     return speeds
+
+
+# events the Blender build detects from the motion (build_set.py: footsteps, landing)
+DETECTED_EVENTS = frozenset(
+    {"footstep_l", "footstep_r", "land"}
+    | {f"footstep_{e}_{s}" for e in ("front", "back") for s in ("l", "r")}
+)
+
+
+def sync_marker_events(
+    clips: list[tuple[str, tuple[tuple[str, int], ...], str | None]], path: Path
+) -> dict[str, list[Event]]:
+    """Rewrites ``path`` with the fixed events (markers) from the specs, without rebuilding the
+    set in Blender (``build-set --events-only``, characters-pipeline.md §3). ``clips`` = (name,
+    markers, events recipe) of the exported clips. Detected events (DETECTED_EVENTS, from clips with
+    an events recipe) and the speeds stay as measured; the clips' motion must be unchanged."""
+    parsed, errors = load_events(path)
+    if parsed is None or errors:
+        raise ValueError(f"{path.name}: {errors}")
+    text = path.read_text(encoding="utf-8")
+    header = "".join(line + "\n" for line in text.splitlines() if line.startswith("#"))
+    out: dict[str, list[Event]] = {}
+    for name, markers, recipe in clips:
+        kept = {
+            (e.frame, e.name)
+            for e in parsed.clips.get(name, ())
+            if recipe is not None and e.name in DETECTED_EVENTS
+        }
+        kept |= {(int(frame), event) for event, frame in markers}
+        out[name] = [Event(f, n) for f, n in sorted(kept)]
+    speeds = {c: s for c, s in parsed.speeds.items() if c in out}
+    path.write_text(header + format_events(parsed.fps, out, speeds), encoding="utf-8", newline="\n")
+    return out

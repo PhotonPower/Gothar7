@@ -94,7 +94,7 @@ helper = true
 [[clip]]
 name = "2h/t_attack_combo1"
 keyframe = "framed"
-markers = { hit_start = 17, hit_end = 23, combo_start = 23, combo_end = 34 }
+markers = { hit_start = 17, hit_end = 23, combo_start = 23, combo_end = 34, "sound:swing" = 13 }
 params = { base = "2h/t_combo1_grip", stance = "2h/s_idle", fade_in = 5, fade_out = 8, soften = ["spine_03", "neck", "head", "upperarm_l", "lowerarm_l"] }
 
 [[clip]]
@@ -127,7 +127,7 @@ helper = true
 [[clip]]
 name = "2h/t_attack_combo2"       # wide horizontal cut
 keyframe = "framed"
-markers = { hit_start = 5, hit_end = 9, combo_start = 9, combo_end = 38 }
+markers = { hit_start = 5, hit_end = 9, combo_start = 9, combo_end = 38, "sound:swing" = 1 }
 params = { base = "2h/t_combo2_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head", "upperarm_l", "lowerarm_l"] }
 
 # own swings over the upright none/s_idle (right arm; the left hand follows on the grip)
@@ -186,7 +186,7 @@ helper = true
 [[clip]]
 name = "2h/t_attack_combo3"  # diagonal overhead chop
 keyframe = "framed"
-markers = { hit_start = 16, hit_end = 21, combo_start = 21, combo_end = 32 }
+markers = { hit_start = 16, hit_end = 21, combo_start = 21, combo_end = 32, "sound:swing" = 12 }
 params = { base = "2h/t_t_chop_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
 
 [[clip]]
@@ -198,7 +198,7 @@ helper = true
 [[clip]]
 name = "2h/t_attack_l"  # directional swing to the left
 keyframe = "framed"
-markers = { hit_start = 14, hit_end = 19 }
+markers = { hit_start = 14, hit_end = 19, "sound:swing" = 10 }
 params = { base = "2h/t_t_swing_l_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
 
 [[clip]]
@@ -210,7 +210,7 @@ helper = true
 [[clip]]
 name = "2h/t_attack_r"  # directional swing to the right
 keyframe = "framed"
-markers = { hit_start = 14, hit_end = 19 }
+markers = { hit_start = 14, hit_end = 19, "sound:swing" = 10 }
 params = { base = "2h/t_t_swing_r_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
 
 [[clip]]
@@ -227,7 +227,7 @@ helper = true
 [[clip]]
 name = "2h/t_attack_combo4"       # heavy finisher
 keyframe = "framed"
-markers = { hit_start = 9, hit_end = 13, combo_start = 13, combo_end = 37 }
+markers = { hit_start = 9, hit_end = 13, combo_start = 13, combo_end = 37, "sound:swing" = 5 }
 params = { base = "2h/t_combo4_grip", stance = "2h/s_idle", fade_in = 5, fade_out = 8, soften = ["spine_03", "neck", "head", "upperarm_l", "lowerarm_l"] }
 
 [[clip]]

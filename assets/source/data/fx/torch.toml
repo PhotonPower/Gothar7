@@ -1,0 +1,20 @@
+# Fackel (Entscheidung Projektinhaber, Gothic 1): kleine Flamme an socket_flame des Items it_torch, warmes
+# flackerndes Licht. Farben sRGB 0..1, Alpha 0..1.
+version = 1
+sprite = "soft"
+blend = "additive"
+rate = 45
+lifetime = [0.3, 0.6]
+speed = [0.3, 0.7]
+spread = 12
+radius = 0.04
+gravity = -1.8          # steigt
+drag = 1.0
+size = [0.16, 0.03]
+color_start = [1.0, 0.68, 0.28, 0.9]
+color_end = [0.9, 0.2, 0.03, 0.0]
+[light]
+color = [1.0, 0.64, 0.32]
+range = 9
+intensity = 3.5
+flicker = 0.3

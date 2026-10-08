@@ -184,7 +184,7 @@ rotate = { pelvis = [["X", -25]], back_upper_l = [["X", 25]], back_upper_r = [["
 [[clip]]
 name = "glemsmahr/t_attack_1"      # claw swipe: front half rises, right arm swings down across
 keyframe = "keyposes"
-markers = { hit_start = 13, hit_end = 18 }
+markers = { hit_start = 13, hit_end = 18, "sound:glemsmahr_attack" = 7 }
 [clip.params]
 base = "glemsmahr/s_idle"
 keys = [[0, "rest"], [8, "raise"], [14, "swipe"], [18, "follow"], [30, "rest"]]
@@ -201,7 +201,7 @@ rotate = { pelvis = [["X", -6]], back_upper_l = [["X", 6]], back_upper_r = [["X"
 [[clip]]
 name = "glemsmahr/t_attack_2"      # lunging bite with the needle teeth
 keyframe = "keyposes"
-markers = { hit_start = 11, hit_end = 15 }
+markers = { hit_start = 11, hit_end = 15, "sound:glemsmahr_attack" = 5 }
 [clip.params]
 base = "glemsmahr/s_idle"
 keys = [[0, "rest"], [7, "draw_back"], [11, "lunge"], [14, "bite"], [26, "rest"]]
@@ -218,7 +218,7 @@ rotate = { spine_03 = [["X", -4]], neck_01 = [["X", -2]], head = [["X", 8]], jaw
 [[clip]]
 name = "glemsmahr/t_leap"          # leap onto the hero, in place (engine moves ~3 m)
 keyframe = "keyposes"
-markers = { leap_start = 10, hit_start = 21, leap_land = 22, hit_end = 25 }
+markers = { leap_start = 10, hit_start = 21, leap_land = 22, hit_end = 25, "sound:glemsmahr_attack" = 15 }
 [clip.params]
 base = "glemsmahr/s_rest"
 keys = [[0, "rest"], [8, "crouch"], [10, "launch"], [16, "air"], [22, "land"], [30, "absorb"], [40, "rest"]]
@@ -274,6 +274,7 @@ rotate = { pelvis = [["X", -16]], back_upper_l = [["X", 16]], back_upper_r = [["
 
 [[clip]]
 name = "glemsmahr/t_hit"
+markers = { "sound:glemsmahr_hit" = 1 }
 keyframe = "keyposes"
 [clip.params]
 base = "glemsmahr/s_idle"
@@ -284,6 +285,7 @@ rotate = { spine_02 = [["X", -8], ["Z", 6]], neck_01 = [["X", -18]], head = [["X
 
 [[clip]]
 name = "glemsmahr/t_die"           # collapses onto its side, limbs limp
+markers = { "sound:glemsmahr_die" = 2 }
 keyframe = "keyposes"
 [clip.params]
 keys = [[0, "rest"], [8, "stagger"], [22, "fallen"], [36, "limp"]]
@@ -327,7 +329,7 @@ rotate = { root = [["Y", 80]], spine_01 = [["X", 14]], spine_02 = [["X", 14]], s
 [[clip]]
 name = "glemsmahr/t_threaten"      # rears half up, arms spread wide, hissing with open jaws
 keyframe = "keyposes"
-markers = { "sound:glemsmahr_hiss" = 12 }
+markers = { "sound:glemsmahr_hiss" = 12, "sound:glemsmahr_threaten" = 12 }
 [clip.params]
 base = "glemsmahr/s_rest"
 keys = [[0, "rest"], [12, "spread"], [20, "hiss"], [28, "spread"], [36, "hiss"], [50, "rest"]]

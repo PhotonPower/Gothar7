@@ -23,6 +23,7 @@ from gothar_chargen.blender_run import (
     build_placeholder,
     build_reference_rig,
     build_set,
+    build_stubble,
     build_test_parts,
     conform_human,
     export_glb,
@@ -34,7 +35,7 @@ from gothar_chargen.clipfix import repair_set
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
 from gothar_chargen.collision import CollisionError, derive_collision, write_collision
 from gothar_chargen.creature import CreatureError, load_creature
-from gothar_chargen.events import update_speeds
+from gothar_chargen.events import events_path_for, sync_marker_events, update_speeds
 from gothar_chargen.fabrics import apply_fray_materials, load_fabrics
 from gothar_chargen.figure import SUFFIX as FIGURE_SUFFIX
 from gothar_chargen.figure import FigureError
@@ -282,6 +283,16 @@ def _cmd_build_set(args: argparse.Namespace, out: TextIO) -> int:
     out_dir = _characters_dir(args)
     names = packaged_sets(monsters=False) if args.set == ["all"] else args.set
     specs = [load_set_spec(n) for n in names]  # fail early on a bad list
+    if args.events_only:
+        for spec in specs:
+            path = events_path_for(spec.blend_path(out_dir).with_suffix(".glb"))
+            clips = [(c.name, c.markers, c.events) for c in spec.clips if not c.helper]
+            events = sync_marker_events(clips, path)
+            print(f"events {path}  ({sum(map(len, events.values()))} events)", file=out)
+        return EXIT_OK
+    if args.sources is None:
+        print("error: --sources is required (except with --events-only)", file=out)
+        return EXIT_ERROR
     blender = find_blender(args.blender)
     blends = []
     for spec in specs:
@@ -504,6 +515,38 @@ def _cmd_human(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK if ok else EXIT_ERROR
 
 
+def _cmd_stubble(args: argparse.Namespace, out: TextIO) -> int:
+    """Own stubble beards for the male heads (F3): parts/hair_m_<head>/beard_stubble.glb."""
+    from gothar_chargen.stubble import MALE_HEADS, PART, TEXTURE, write_texture
+
+    characters = _characters_dir(args)
+    heads = args.heads or list(MALE_HEADS)
+    unknown = sorted(set(heads) - set(MALE_HEADS))
+    if unknown:
+        print(f"error: unknown heads {unknown} (male heads: {', '.join(MALE_HEADS)})", file=out)
+        return EXIT_ERROR
+    blender = find_blender(args.blender)
+    texture = write_texture(characters / "textures" / "hair" / TEXTURE)
+    rig = load_rig(args.rig)
+    ok = True
+    for name in heads:
+        glb = characters / "parts" / f"hair_m_{name}" / f"{PART}.glb"
+        log = build_stubble(
+            blender, characters / "parts" / f"head_m_{name}" / "head.glb", texture, glb
+        )
+        for line in log.splitlines():
+            if line.startswith("[chargen]"):
+                print(line[10:], file=out)
+        finish_textures(glb, characters / "textures")
+        g = Gltf.load(glb)
+        name_meshes(g)
+        glb.write_bytes(g.to_bytes())
+        report = validate_file(glb, rig, None)
+        _print_report(report, out)
+        ok = ok and report.ok(strict=True)
+    return EXIT_OK if ok else EXIT_ERROR
+
+
 def _cmd_build_test_parts(args: argparse.Namespace, out: TextIO) -> int:
     characters = _characters_dir(args)
     folder = characters / "parts" / "test"
@@ -697,6 +740,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(func=_cmd_licences)
 
+    p = sub.add_parser("stubble", help="own stubble beards for the male heads (F3)")
+    p.add_argument("heads", nargs="*", help="head names (bald, farmer, ...; default: all)")
+    p.add_argument(
+        "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
+    )
+    p.set_defaults(func=_cmd_stubble)
+
     p = sub.add_parser("build-test-parts", help="own simple test parts for the figure kit")
     p.add_argument(
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
@@ -777,10 +827,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--sources",
         type=Path,
-        required=True,
         help=sources_help + "; monster sets: the folder with <species>_clips.blend",
     )
     p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
+    p.add_argument(
+        "--events-only",
+        action="store_true",
+        help="only rewrite <set>.events.toml from the markers in the specs (no Blender; the .blend "
+        "pose markers may stay out of date until a real rebuild)",
+    )
     p.set_defaults(func=_cmd_build_set)
     return parser
 

@@ -144,7 +144,7 @@ rotate = { root = [["Z", -90]] }
 [[clip]]
 name = "quaderbuckel/t_attack_1"   # ram: back up, then a thrust with the shield (engine knocks down)
 keyframe = "keyposes"
-markers = { hit_start = 12, hit_end = 17 }
+markers = { hit_start = 12, hit_end = 17, "sound:quaderbuckel_attack" = 6 }
 [clip.params]
 base = "quaderbuckel/s_idle"
 keys = [[0, "rest"], [8, "back"], [12, "thrust"], [17, "impact"], [30, "rest"]]
@@ -161,7 +161,7 @@ rotate = { chest = [["X", 10]], neck_01 = [["X", 16]], head = [["X", -6]], front
 [[clip]]
 name = "quaderbuckel/t_attack_2"   # swipe of the head and tusks to the side, then a snap
 keyframe = "keyposes"
-markers = { hit_start = 10, hit_end = 14 }
+markers = { hit_start = 10, hit_end = 14, "sound:quaderbuckel_attack" = 4 }
 [clip.params]
 base = "quaderbuckel/s_idle"
 keys = [[0, "rest"], [7, "wind_up"], [11, "swipe"], [14, "snap"], [26, "rest"]]
@@ -176,6 +176,7 @@ rotate = { spine_02 = [["Z", -7]], neck_01 = [["Z", -33], ["X", 8]], head = [["Z
 
 [[clip]]
 name = "quaderbuckel/t_hit"
+markers = { "sound:quaderbuckel_hit" = 1 }
 keyframe = "keyposes"
 [clip.params]
 base = "quaderbuckel/s_idle"
@@ -186,6 +187,7 @@ rotate = { chest = [["X", -5], ["Z", 4]], neck_01 = [["X", -12]], head = [["X", 
 
 [[clip]]
 name = "quaderbuckel/t_die"        # legs give way, it sinks onto its belly, head on the ground
+markers = { "sound:quaderbuckel_die" = 2 }
 keyframe = "keyposes"
 [clip.params]
 keys = [[0, "rest"], [10, "sag"], [24, "down"], [40, "limp"]]
@@ -228,6 +230,7 @@ rotate = { chest = [["X", 5]], neck_01 = [["X", 9]], head = [["X", -18]], front_
 
 [[clip]]
 name = "quaderbuckel/t_threaten"   # front raised, jaw open hissing, tail lashing
+markers = { "sound:quaderbuckel_threaten" = 10 }
 keyframe = "keyposes"
 [clip.params]
 base = "quaderbuckel/s_idle"

@@ -398,6 +398,8 @@ public:
     void teleportPlayer(const Vec3& feet, f32 yaw);
     /// State of the hero's animation state machine ("move", "jump" ...); empty without an animated figure.
     [[nodiscard]] std::string_view playerAnimationState() const noexcept;
+    /// The clip of the hero's overlay (gesture, torch pose) while it plays; empty otherwise.
+    [[nodiscard]] std::string_view playerOverlayClip() const noexcept;
     /// VFS path of the animated hero figure; empty without one.
     [[nodiscard]] std::string_view playerFigurePath() const noexcept;
     /// Hangs the model at `modelPath` (VFS) at a socket bone of the hero ("socket_hand_r" ...), replacing
@@ -867,6 +869,10 @@ private:
     /// values; and back. Both happen at the start of a player step (never inside an animation or a hit).
     bool beginTransform(std::string_view species);
     void endTransform();
+    /// With the figure's transition clip (<species|none>_t_transform_out, figuren #255) the shape changes at
+    /// its "swap" event; without it at once. `species` empty: back to the human.
+    void requestTransform(std::string_view species);
+    void requestTransformBack();
     // Effects (M12 part A, EngineFx.cpp).
     [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
     void drawEffects();
@@ -916,6 +922,25 @@ private:
     std::map<audio::SoundId, Vec3> m_spatialSounds; // where the 3D sounds play (occlusion)
     f32 m_occlusionTimer = 0.0f;
     void bindAudioFunctions();
+    // The torch (owner decision, EngineTorch.cpp).
+    [[nodiscard]] bool torchLit() const noexcept;
+    void lightTorch(std::string_view item);
+    void torchEvent(std::string_view event); ///< torch_take, torch_light, torch_drop (figuren's clips)
+    void putTorchAway();
+    void holdTorch(f32 blend); ///< the carrying pose none/a_torch_hold, looped
+    void dropTorch();
+    void fixedUpdateTorch(f32 seconds);
+    void bindTorchFunctions();
+    struct Torch
+    {
+        std::string item;
+        bool lighting = false; ///< none/t_torch_light plays
+        bool lit = false;
+        std::optional<u32> flame; ///< the effect at socket_flame (with its light)
+        f32 seconds = 0.0f;
+    };
+    std::optional<Torch> m_torch;
+    std::map<u64, u32> m_burningItems; // dropped torches: item vob -> their flame
     // Combat (M11, EngineCombat.cpp).
     struct Combatant;
     void loadCombat();
@@ -1341,7 +1366,14 @@ private:
     std::optional<HeroTransform> m_transform; // Z7: the hero in an animal's shape
     std::string m_transformRequested;         // ... becomes this species at the next player step
     bool m_transformBackRequested = false;    // ... back at the next player step ("1", no life left, water)
-    i32 m_heroAnimalAction = 0;               // transformed: the animal graph's "action" for one step
+    struct TransformOut
+    {
+        std::string species; ///< the shape to come; empty: human
+        std::string state;   ///< the graph state of the transition clip
+        f32 seconds = 0.0f;  ///< playing the transition clip (a swap event missing: at 2 s)
+    };
+    std::optional<TransformOut> m_transformOut; // the transition clip plays, the swap follows
+    i32 m_heroAnimalAction = 0;                 // transformed: the animal graph's "action" for one step
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)

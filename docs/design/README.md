@@ -7,6 +7,8 @@ Vorhanden:
 - `leonberg-pipeline.md` – Daten, Werkzeuge und Regeln für den Spielort Leonberg
 - `characters-pipeline.md` – Rig, Konventionen, Quellen und Werkzeuge für Figuren und Animationen
 - `animation-list.md` – benötigte Animationen mit Priorität und Status
+- `figuren-stil.md` – Stil-Referenzblatt der Figuren, Monster und Gegenstände (Proportionen, Farbwelt, Alterung,
+  Budgets, Namen)
 
 Vorgeschlagene Dateien (bei Bedarf anlegen):
 - `world.md` – Karte, Orte, Lager, Dungeons

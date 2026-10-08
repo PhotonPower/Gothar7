@@ -22,6 +22,8 @@ sets = [
     "characters/anims/human/bow.glb",
     "characters/anims/human/cbow.glb",
     "characters/anims/human/mag.glb",
+    "characters/anims/human/torch.glb",
+    "characters/anims/human/gait.glb",
     "characters/anims/human/dlg.glb",
 ]
 start = "move"
@@ -1292,3 +1294,50 @@ from = "none_t_ko_getup"
 to = "move"
 when = ["end"]
 blend = 0.12
+
+# --- Fackel (Entscheidung Projektinhaber, figuren #268): die Engine betritt none_t_torch_light bzw. none_t_torch_drop;
+# die Tragehaltung ist ein additives Overlay (none/a_torch_hold über clavicle_l, Bezug none/a_neutral). Die Zustände
+# der Overlay-Clips laden sie nur (sie werden nie betreten).
+[[state]]
+name = "none_t_torch_light"
+clip = "none/t_torch_light"
+
+[[state]]
+name = "none_t_torch_drop"
+clip = "none/t_torch_drop"
+
+[[state]]
+name = "none_a_torch_hold"
+clip = "none/a_torch_hold"
+
+[[state]]
+name = "none_a_neutral"
+clip = "none/a_neutral"
+
+[[transition]]
+from = "none_t_torch_light"
+to = "move"
+when = ["end"]
+blend = 0.2
+
+[[transition]]
+from = "none_t_torch_drop"
+to = "move"
+when = ["end"]
+blend = 0.2
+
+# --- Verwandlung (M12 Z7, figuren #255): die Engine betritt none_t_transform_out; bei dessen Event swap tauscht sie
+# die Figur. Zurück: none_t_transform_in, am Ende in die Fortbewegung.
+[[state]]
+name = "none_t_transform_out"
+clip = "none/t_transform_out"
+
+[[state]]
+name = "none_t_transform_in"
+clip = "none/t_transform_in"
+
+[[transition]]
+from = "none_t_transform_in"
+to = "move"
+when = ["end"]
+blend = 0.15

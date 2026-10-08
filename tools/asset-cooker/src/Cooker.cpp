@@ -280,8 +280,9 @@ private:
         const auto usage = normal ? TextureUsage::Normal : data ? TextureUsage::Data : TextureUsage::Color;
         // Encoded ahead on the workers (startKtx2Encoding), or here if it was not expected to be cooked.
         const auto ahead = m_ktx2Ahead.find(relative);
-        auto ktx =
-            ahead != m_ktx2Ahead.end() ? ahead->second.get() : encodeKtx2(image, usage, m_options.uastcLevel);
+        auto ktx = ahead != m_ktx2Ahead.end()
+                       ? ahead->second.get()
+                       : encodeKtx2(image, usage, m_options.uastcLevel, alphaCutoffOf(relative));
         if (ahead != m_ktx2Ahead.end())
         {
             m_ktx2Ahead.erase(ahead);
@@ -334,6 +335,7 @@ private:
             job->bytes = std::move(bytes).value();
             job->name = relative;
             job->usage = normal ? TextureUsage::Normal : data ? TextureUsage::Data : TextureUsage::Color;
+            job->alphaCutoff = alphaCutoffOf(relative);
             m_ktx2Ahead.emplace(relative, job->result.get_future());
             m_ktx2Jobs.push_back(std::move(job));
         }
@@ -353,9 +355,9 @@ private:
                     {
                         Ktx2Job& job = *m_ktx2Jobs[i];
                         auto decoded = asset::decodeImage(job.bytes, job.name);
-                        job.result.set_value(
-                            decoded ? encodeKtx2(decoded.value(), job.usage, m_options.uastcLevel)
-                                    : Result<std::vector<u8>>(decoded.error()));
+                        job.result.set_value(decoded ? encodeKtx2(decoded.value(), job.usage,
+                                                                  m_options.uastcLevel, job.alphaCutoff)
+                                                     : Result<std::vector<u8>>(decoded.error()));
                         job.bytes = {};
                     }
                 });
@@ -481,6 +483,16 @@ private:
                     noteUsage(mesh, location, m.normalImage, m_normalImages);
                     noteUsage(mesh, location, m.baseColorImage, m_colorImages);
                     noteUsage(mesh, location, m.emissiveImage, m_colorImages);
+                    if (m.alphaMode == asset::AlphaMode::Mask && m.baseColorImage >= 0 &&
+                        static_cast<usize>(m.baseColorImage) < mesh.images.size())
+                    {
+                        // Alpha-tested: its mips keep the alpha coverage (beards, hair, leaves).
+                        if (auto path = resolveTexture(location,
+                                                       mesh.images[static_cast<usize>(m.baseColorImage)].uri))
+                        {
+                            m_alphaCutoffs[std::move(path).value()] = m.alphaCutoff;
+                        }
+                    }
                 }
             }
             m_meshes.emplace(relative, std::move(loaded));
@@ -533,10 +545,15 @@ private:
         const auto idx = static_cast<i32>(index);
         bool asNormal = false;
         bool asColor = false;
+        std::optional<f32> alphaCutoff;
         for (const asset::MaterialInfo& m : mesh.materials)
         {
             asNormal = asNormal || m.normalImage == idx;
             asColor = asColor || m.baseColorImage == idx || m.emissiveImage == idx;
+            if (m.baseColorImage == idx && m.alphaMode == asset::AlphaMode::Mask)
+            {
+                alphaCutoff = m.alphaCutoff;
+            }
         }
         if (asNormal && asColor)
         {
@@ -547,7 +564,8 @@ private:
         {
             return decoded.error();
         }
-        return encodeKtx2(decoded.value(), asNormal ? TextureUsage::Normal : TextureUsage::Color, uastcLevel);
+        return encodeKtx2(decoded.value(), asNormal ? TextureUsage::Normal : TextureUsage::Color, uastcLevel,
+                          alphaCutoff);
     }
 
     bool emit(const std::string& source, std::string path, std::vector<u8> data)
@@ -658,7 +676,16 @@ private:
         const bool normal = m_normalImages.contains(relative);
         const bool color = m_colorImages.contains(relative);
         const bool data = m_dataImages.contains(relative);
-        return std::string(normal ? "normal" : "") + (color ? "color" : "") + (data ? "data" : "");
+        const auto cutoff = alphaCutoffOf(relative);
+        return std::string(normal ? "normal" : "") + (color ? "color" : "") + (data ? "data" : "") +
+               (cutoff ? std::format("mask{}", *cutoff) : std::string());
+    }
+
+    /// The cutoff of the alpha-tested material using `relative` as its colour texture, if one does.
+    [[nodiscard]] std::optional<f32> alphaCutoffOf(const std::string& relative) const
+    {
+        const auto it = m_alphaCutoffs.find(relative);
+        return it != m_alphaCutoffs.end() ? std::optional<f32>(it->second) : std::nullopt;
     }
 
     u64 sourceKey(const std::string& relative, std::span<const u8> bytes,
@@ -817,6 +844,7 @@ private:
     std::set<std::string> m_normalImages;                    // VFS paths used as normal maps
     std::set<std::string> m_colorImages;                     // VFS paths used as colour textures
     std::set<std::string> m_dataImages;                      // VFS paths used as terrain splat maps
+    std::map<std::string, f32> m_alphaCutoffs;               // colour textures of alpha-tested materials
     std::map<std::string, std::string> m_keys;               // lower-case path -> path (collisions)
     CookReport m_report;
     struct Ktx2Job
@@ -824,6 +852,7 @@ private:
         std::string name;
         std::vector<u8> bytes;
         TextureUsage usage = TextureUsage::Color;
+        std::optional<f32> alphaCutoff;
         std::promise<Result<std::vector<u8>>> result;
     };
     std::vector<std::unique_ptr<Ktx2Job>> m_ktx2Jobs;                        // fixed once workers start

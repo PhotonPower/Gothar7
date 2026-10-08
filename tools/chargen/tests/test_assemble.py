@@ -112,6 +112,7 @@ def test_stale_mask_is_an_error(tmp_path):
     shutil.copytree(CHARACTERS / "parts" / "cloth_m_heavy", parts / "cloth_m_heavy")
     shutil.copytree(CHARACTERS / "parts" / "body_m_heavy", parts / "body_m_heavy")
     shutil.copytree(CHARACTERS / "parts" / "head_m_young", parts / "head_m_young")
+    shutil.copytree(CHARACTERS / "parts" / "hair_m_young", parts / "hair_m_young")  # stubble
     shirt = parts / "cloth_m_heavy/elvs_crude_t-shirt_male.glb"
     g = Gltf.load(shirt)
     g.doc["asset"]["extras"]["gothar"]["covers"]["body_hash"] = "0" * 16
@@ -256,3 +257,17 @@ def test_no_body_primitive_is_hidden_completely():
                     hidden[prim][first:end] = True
             for prim, flags in enumerate(hidden):
                 assert not (len(flags) and flags.all()), (manifest.stem, mesh.node, prim)
+
+
+def test_baked_head_beards_do_not_take_the_kit_beard_material():
+    """A beard baked into a head part is called beard_head: assemble merges materials by name with
+    the head first, so a head material "beard" would replace a kit beard's (fixed 2026-10-08)."""
+    for head in sorted((CHARACTERS / "parts").glob("head_*/head.glb")):
+        names = [m.get("name") for m in Gltf.load(head).list("materials")]
+        assert "beard" not in names, head.parent.name
+    for name in ("head_m_mid", "head_m_old"):
+        names = [
+            m.get("name")
+            for m in Gltf.load(CHARACTERS / f"parts/{name}/head.glb").list("materials")
+        ]
+        assert "beard_head" in names, name
