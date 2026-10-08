@@ -14,6 +14,7 @@
 #include <g7/asset/Vfs.hpp>
 #include <g7/asset/VoiceLines.hpp>
 #include <g7/audio/Audio.hpp>
+#include <g7/audio/Music.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Config.hpp>
 #include <g7/core/Result.hpp>
@@ -304,6 +305,8 @@ public:
     [[nodiscard]] const render::ParticleSystem& particles() const noexcept { return m_particles; }
     /// The mixer (M13); nullptr when audio is off.
     [[nodiscard]] const audio::AudioSystem* audio() const noexcept { return m_audio ? &*m_audio : nullptr; }
+    /// The music (M13 C); null without sound or data/music.toml.
+    [[nodiscard]] const audio::MusicPlayer* music() const noexcept { return m_music ? &*m_music : nullptr; }
     /// How often the sound `name` was started (tests, diagnostics).
     /// The ambience playing now (M13 part B); empty: none.
     [[nodiscard]] const std::string& ambience() const noexcept { return m_ambience.name; }
@@ -885,6 +888,20 @@ private:
     [[nodiscard]] bool night() const noexcept; ///< 20:00 - 06:00 (ambience, music)
     void updateAmbience(f32 seconds);
     void updateOcclusion(f32 seconds);
+    // Dynamic music (M13 part C, EngineMusic.cpp).
+    void initMusic();
+    void updateMusic(f32 seconds);
+    void bindMusicFunctions();
+    void noteHeroFight(); ///< the hero hit or was hit: fight music for a while
+    [[nodiscard]] audio::MusicState musicCause();
+    std::optional<audio::MusicPlayer> m_music;
+    audio::MusicStateFilter m_musicFilter;
+    audio::MusicState m_musicCause = audio::MusicState::Std; // the enemies around, before the hysteresis
+    f32 m_musicCauseTimer = 0.0f;
+    f32 m_musicFightSeconds = 0.0f;
+    std::string m_musicSet; // what plays (MusicChoice::id), for music_changed
+    std::optional<std::string> m_musicForcedTheme;
+    std::optional<audio::MusicState> m_musicForcedState;
     audio::AmbientDefs m_ambientDefs; // data/ambient.toml (M13 part B)
     struct Ambience
     {

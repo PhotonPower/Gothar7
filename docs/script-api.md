@@ -125,6 +125,9 @@ Der Held wollte ein verschlossenes Mob benutzen, ohne Schlüssel und Dietrich.
 ### `on("mob_used", fn(mob: string, type: string))`
 Der Held hat ein Mob benutzt (Truhe offen, Tür bewegt); `mob` ist die Mob-Instanz.
 
+### `on("music_changed", fn(theme: string, state: string))`
+Die Musik wechselt (Thema bzw. Zustand); Thema leer: Stille.
+
 ### `on("npc_arrived", fn(npc: string, target: string))`
 Ein NPC ist an seinem Ziel angekommen (npc_goto).
 
@@ -181,6 +184,9 @@ Der Held hat einem NPC etwas aus der Tasche gezogen.
 
 ### `on("pickpocket_failed", fn(npc: string))`
 Der NPC hat den Taschendiebstahl bemerkt (die Reaktion folgt mit M9).
+
+### `on("quest_success", fn(quest: string))`
+Ein Auftrag ist gelungen (quest_success in lib/diary.lua).
 
 ### `on("scripts_reloaded", fn())`
 Nachdem geänderte Skripte neu geladen wurden (Entwicklung); die Story-Variablen bleiben erhalten.
@@ -315,6 +321,15 @@ Parade (M11, K6): blockt Nahkampftreffer von vorn kurz nach ihrem Beginn.
 Bis zu welchem Abstand (Mitte zu Mitte, m) die Schläge des Kämpfers treffen (`hero` für den Helden).
 
 ## Klang
+
+### `music_force(theme?: string, state?: string)`
+Zum Testen: erzwingt Thema ("" = Stille) und Zustand (std, thr, fgt); ohne Argumente gilt wieder die Welt.
+
+### `music_state() -> {theme, state, night, set, segment, stinger}`
+Was die Musik gerade spielt (M13): Thema der Musik-Zone (leer: Stille), Zustand std/thr/fgt, Nacht, gespielte Menge (Thema/Schlüssel, z. B. common/fgt), Datei und der letzte Stinger.
+
+### `music_stinger(name: string) -> boolean`
+Spielt einen Stinger aus data/music.toml auf dem nächsten Schlag über der Musik (gelöste Quest, Stufenaufstieg, Tod, neues Kapitel).
 
 ### `sound(name: string, x?: number, y?: number, z?: number) -> integer | nil`
 Spielt einen Klang aus data/sounds.toml (M13), mit Ort als 3D-Klang; gibt seine Nummer zurück, nil wenn es ihn nicht gibt bzw. kein Ton läuft.

@@ -141,6 +141,7 @@ void Engine::initAudio()
         }
     }
     G7_LOG_INFO("engine", "audio: {} sounds, {} ambiences", m_soundDefs.size(), m_ambientDefs.size());
+    initMusic(); // M13 part C
 }
 
 void Engine::updateAudio(f64 realSeconds)
@@ -153,6 +154,7 @@ void Engine::updateAudio(f64 realSeconds)
     m_audio->setListener(m_camera.transform.position, forward);
     updateAmbience(static_cast<f32>(realSeconds));
     updateOcclusion(static_cast<f32>(realSeconds));
+    updateMusic(static_cast<f32>(realSeconds));
     m_audio->update(static_cast<f32>(realSeconds));
 }
 
