@@ -864,6 +864,10 @@ private:
     /// values; and back. Both happen at the start of a player step (never inside an animation or a hit).
     bool beginTransform(std::string_view species);
     void endTransform();
+    /// With the figure's transition clip (<species|none>_t_transform_out, figuren #255) the shape changes at
+    /// its "swap" event; without it at once. `species` empty: back to the human.
+    void requestTransform(std::string_view species);
+    void requestTransformBack();
     // Effects (M12 part A, EngineFx.cpp).
     [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
     void drawEffects();
@@ -1342,7 +1346,14 @@ private:
     std::optional<HeroTransform> m_transform; // Z7: the hero in an animal's shape
     std::string m_transformRequested;         // ... becomes this species at the next player step
     bool m_transformBackRequested = false;    // ... back at the next player step ("1", no life left, water)
-    i32 m_heroAnimalAction = 0;               // transformed: the animal graph's "action" for one step
+    struct TransformOut
+    {
+        std::string species; ///< the shape to come; empty: human
+        std::string state;   ///< the graph state of the transition clip
+        f32 seconds = 0.0f;  ///< playing the transition clip (a swap event missing: at 2 s)
+    };
+    std::optional<TransformOut> m_transformOut; // the transition clip plays, the swap follows
+    i32 m_heroAnimalAction = 0;                 // transformed: the animal graph's "action" for one step
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)

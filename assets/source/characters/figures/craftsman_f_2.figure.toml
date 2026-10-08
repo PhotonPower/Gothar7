@@ -20,3 +20,6 @@ cloth_skirt_tiered = "#5a6a4a"
 cloth_apron = "#d4c8ac"
 cloth_belt = "#3a2a1e"
 cloth_toigo_flats = "#3e3024"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "woman"

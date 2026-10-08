@@ -137,7 +137,8 @@ Vertrag mit engine (2026-10-05): Jeder Angriff beginnt und endet in der Kampfhal
 engine blendet 0,1 s zum nächsten Schlag; Trefferfenster `hit_start`/`hit_end` (Fäuste: Aufprall der Faust),
 Kombo-Fenster `combo_start` (= `hit_end`) bis `combo_end` (ca. 80 %), danach Erholung. Talentstufen nur über die
 Abspielrate (keine Clips je Stufe). Zweihänder: linke Hand per Rezept `two_hands` am Griff unter der rechten.
-Fernkampf: Event `release` beim Lösen des Schusses.
+Fernkampf: Event `release` beim Lösen des Schusses. Schwung-Laut (M13, Wunsch engine 2026-10-08): `sound:swing` in jedem
+Schlag-Clip von `1h`, `2h` und `fist`, 4 Bilder vor `hit_start` (Ziehen, Wegstecken und Treffer setzt engine selbst).
 
 | Name | Zweck | Länge | Events | Quelle | Status |
 |---|---|---|---|---|---|
@@ -214,6 +215,20 @@ deshalb additiv über `none`-, `fist`- und `1h`-Clips (Referenz `none/a_neutral`
 | `none/a_torch_hold_in`, `a_torch_hold_out` | in die Tragehaltung bzw. zurück zum freien Arm | 0,33 s | – | K | platzhalter-K |
 | `none/t_torch_light` | Fackel vom Gürtel nehmen, hochheben, mit rechts anzünden; endet in der Tragehaltung | 1,2 s | torch_take, torch_light | K | platzhalter-K |
 | `none/t_torch_drop` | Fackel nach vorn links wegwerfen (liegt brennend am Boden) | 0,67 s | torch_drop | K | platzhalter-K |
+
+### Prio C – Gangarten-Varianten für NPC-Vielfalt (ausgeschrieben, mit engine 2026-10-08)
+
+Eigene Datei `anims/human/gait.glb` (Set `gait`, `none.glb` bleibt unverändert). Eine Figur mit `[anim] variant = "<v>"`
+im Manifest (`characters-pipeline.md` §6.2) spielt `none/X_<v>` statt `none/X`, wenn es den Clip gibt, sonst den
+Grundclip. Die Varianten sind feste Haltungen oberhalb des Beckens über den Grundclips; Füße und Tempo bleiben die
+des Grundclips (`events.toml`), alt trabt langsam (`s_run` mit halber Geschwindigkeit). Armhaltungen per Gittersuche.
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `none/s_idle_woman`, `s_walk_woman`, `s_run_woman` | Frau: aufrecht, Arme nah am Körper | – / 0,98 / 5,90 m/s | footstep_l/r | K | platzhalter-K (über `none/s_idle`, `s_walk`, `s_run`) |
+| `none/s_idle_military`, `s_walk_military` | Wache: aufrecht, Brust raus, Kinn hoch, Fäuste | – / 0,98 m/s | footstep_l/r | K | platzhalter-K |
+| `none/s_idle_old`, `s_walk_old`, `s_run_old` | Alt: gebeugt, Kopf vor, linke Hand im Kreuz; langsamer Trab | – / 0,98 / 2,94 m/s | footstep_l/r | K | platzhalter-K |
+| `none/s_idle_relaxed`, `s_walk_relaxed` | Entspannt: Hände hinter dem Rücken, Kopf leicht gesenkt | – / 0,98 m/s | footstep_l/r | K | platzhalter-K |
 
 ## Monster (F5, Vertrag `characters-pipeline.md` §7)
 
@@ -343,7 +358,7 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 
 ## Prio C – später
 
-Akrobatik-Varianten, Gangarten (Militär, Frauen, Entspannt) als Varianten-Sets, zusätzliche
+Akrobatik-Varianten, weitere Gangarten-Varianten (erste vier siehe oben), zusätzliche
 Ambient-Routinen, Tanz/Musizieren, weitere Verwandlungs-Übergänge (Wolf: siehe Magie und Wolf), Spezialaktionen für Story-Szenen.
 
 **Gesamtumfang Menschen (Schätzung): ~400 Clips.** Monster je Art ~15–25 Clips (siehe characters-pipeline.md §7).

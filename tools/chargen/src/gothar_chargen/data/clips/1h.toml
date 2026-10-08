@@ -121,13 +121,13 @@ helper = true
 [[clip]]
 name = "1h/t_attack_combo1"
 keyframe = "framed"
-markers = { hit_start = 17, hit_end = 23, combo_start = 23, combo_end = 34 }
+markers = { hit_start = 17, hit_end = 23, combo_start = 23, combo_end = 34, "sound:swing" = 13 }
 params = { base = "1h/t_combo1_src", stance = "1h/s_idle", fade_in = 3, fade_out = 8, soften = ["spine_03", "neck", "head"] }
 
 [[clip]]
 name = "1h/t_attack_combo2"
 keyframe = "framed"
-markers = { hit_start = 5, hit_end = 9, combo_start = 9, combo_end = 38 }
+markers = { hit_start = 5, hit_end = 9, combo_start = 9, combo_end = 38, "sound:swing" = 1 }
 params = { base = "1h/t_combo2_src", stance = "1h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head"] }
 
 # Own swings: key poses over the upright none/s_idle (hanging arms: the world axes act as written),
@@ -181,19 +181,19 @@ move = { pelvis = [0, -0.04, -0.02] }
 [[clip]]
 name = "1h/t_attack_combo3"       # thrust (own keyframes; UAL2 Sword_Regular_C is a spinning leap)
 keyframe = "framed"
-markers = { hit_start = 12, hit_end = 17, combo_start = 17, combo_end = 24 }
+markers = { hit_start = 12, hit_end = 17, combo_start = 17, combo_end = 24, "sound:swing" = 8 }
 params = { base = "1h/t_thrust", stance = "1h/s_idle", fade_in = 6, fade_out = 8 }
 
 [[clip]]
 name = "1h/t_attack_l"            # directional swing (Gothic 1): from the right across to the left
 keyframe = "framed"
-markers = { hit_start = 11, hit_end = 16 }
+markers = { hit_start = 11, hit_end = 16, "sound:swing" = 7 }
 params = { base = "1h/t_swing_l", stance = "1h/s_idle", fade_in = 6, fade_out = 8 }
 
 [[clip]]
 name = "1h/t_attack_r"            # directional swing: backhand from the left across to the right
 keyframe = "framed"
-markers = { hit_start = 11, hit_end = 16 }
+markers = { hit_start = 11, hit_end = 16, "sound:swing" = 7 }
 params = { base = "1h/t_swing_r", stance = "1h/s_idle", fade_in = 6, fade_out = 8 }
 
 [[clip]]
@@ -217,7 +217,7 @@ move = { root = [0, 0.8, 0] }
 [[clip]]
 name = "1h/t_attack_combo4"       # the heavy finisher
 keyframe = "framed"
-markers = { hit_start = 9, hit_end = 13, combo_start = 13, combo_end = 37 }
+markers = { hit_start = 9, hit_end = 13, combo_start = 13, combo_end = 37, "sound:swing" = 5 }
 params = { base = "1h/t_combo4_src", stance = "1h/s_idle", fade_in = 3, fade_out = 8, soften = ["spine_03", "neck", "head"] }
 
 [[clip]]

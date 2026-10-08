@@ -31,14 +31,31 @@ events = [
 
 [clips."wolf/t_attack_1"]
 events = [
+    { frame = 7, event = "sound:wolf_attack" },
     { frame = 13, event = "hit_start" },
     { frame = 17, event = "hit_end" },
 ]
 
 [clips."wolf/t_attack_2"]
 events = [
+    { frame = 3, event = "sound:wolf_attack" },
     { frame = 9, event = "hit_start" },
     { frame = 13, event = "hit_end" },
+]
+
+[clips."wolf/t_die"]
+events = [
+    { frame = 2, event = "sound:wolf_die" },
+]
+
+[clips."wolf/t_hit"]
+events = [
+    { frame = 1, event = "sound:wolf_hit" },
+]
+
+[clips."wolf/t_threaten"]
+events = [
+    { frame = 10, event = "sound:wolf_threaten" },
 ]
 
 [clips."wolf/t_transform_out"]

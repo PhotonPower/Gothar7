@@ -15,3 +15,6 @@ cloth = [
 cloth_coat_clean = "#3e4a3a"
 cloth_belt = "#2e2018"
 cloth_culturalibre_male_boots = "#2e241c"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "old"

@@ -31,19 +31,32 @@ events = [
 
 [clips."bergleu/t_attack_1"]
 events = [
+    { frame = 8, event = "sound:bergleu_attack" },
     { frame = 14, event = "hit_start" },
     { frame = 19, event = "hit_end" },
 ]
 
 [clips."bergleu/t_attack_2"]
 events = [
+    { frame = 5, event = "sound:bergleu_attack" },
     { frame = 11, event = "hit_start" },
     { frame = 22, event = "hit_end" },
+]
+
+[clips."bergleu/t_die"]
+events = [
+    { frame = 2, event = "sound:bergleu_die" },
+]
+
+[clips."bergleu/t_hit"]
+events = [
+    { frame = 1, event = "sound:bergleu_hit" },
 ]
 
 [clips."bergleu/t_pounce"]
 events = [
     { frame = 12, event = "leap_start" },
+    { frame = 12, event = "sound:bergleu_attack" },
     { frame = 23, event = "hit_start" },
     { frame = 24, event = "leap_land" },
     { frame = 28, event = "hit_end" },
@@ -61,10 +74,21 @@ events = [
     { frame = 14, event = "sound:bergleu_roar" },
 ]
 
+[clips."bergleu/t_stagger"]
+events = [
+    { frame = 1, event = "sound:bergleu_hit" },
+]
+
 [clips."bergleu/t_tail_lash"]
 events = [
+    { frame = 6, event = "sound:bergleu_attack" },
     { frame = 12, event = "hit_start" },
     { frame = 18, event = "hit_end" },
+]
+
+[clips."bergleu/t_threaten"]
+events = [
+    { frame = 10, event = "sound:bergleu_threaten" },
 ]
 
 [clips."bergleu/t_turn_back"]

@@ -197,3 +197,50 @@ def test_stale_speed_is_an_error(tmp_path):
     (tmp_path / "none.events.toml").write_text(text.replace("speed = 0.98", "speed = 1.60"))
     report = validate_file(tmp_path / "none.glb", load_rig())
     assert "events.speed" in {i.code for i in report.issues if i.level == "error"}
+
+
+def test_events_files_hold_the_spec_markers():
+    """The events side-cars are the source of the events (characters-pipeline.md §3): every fixed
+    event (marker) of a spec is in its events.toml; the .blend pose markers may lag behind."""
+    from gothar_chargen.clipspec import load_set_spec, packaged_sets
+    from gothar_chargen.events import events_path_for, load_events
+
+    characters = Path(__file__).resolve().parents[3] / "assets" / "source" / "characters"
+    for name in packaged_sets():
+        spec = load_set_spec(name)
+        path = events_path_for(spec.blend_path(characters).with_suffix(".glb"))
+        if not path.is_file():  # a set without events (dive)
+            assert not any(c.markers for c in spec.clips if not c.helper), name
+            continue
+        parsed, errors = load_events(path)
+        assert parsed is not None and not errors, name
+        for clip in spec.clips:
+            if clip.helper:
+                continue
+            have = {(e.frame, e.name) for e in parsed.clips.get(clip.name, ())}
+            for event, frame in clip.markers:
+                assert (frame, event) in have, (clip.name, event, frame)
+
+
+def test_sync_marker_events(tmp_path):
+    from gothar_chargen.events import sync_marker_events
+
+    path = tmp_path / "x.events.toml"
+    path.write_text(
+        "# header\nversion = 1\nfps = 30\n\n"
+        '[clips."wolf/s_walk"]\nspeed = 1.20\nevents = [\n'
+        '    { frame = 0, event = "footstep_back_l" },\n'
+        '    { frame = 3, event = "old_marker" },\n]\n'
+        '\n[clips."wolf/t_gone"]\nevents = [\n    { frame = 1, event = "x" },\n]\n',
+        encoding="utf-8",
+    )
+    out = sync_marker_events(
+        [("wolf/s_walk", (("sound:wolf_x", 5),), "footsteps"), ("wolf/t_hit", (("y", 1),), None)],
+        path,
+    )
+    assert [(e.frame, e.name) for e in out["wolf/s_walk"]] == [
+        (0, "footstep_back_l"),
+        (5, "sound:wolf_x"),
+    ]  # detected footstep kept, the old marker replaced by the spec's
+    text = path.read_text(encoding="utf-8")
+    assert text.startswith("# header\n") and "speed = 1.20" in text and "t_gone" not in text

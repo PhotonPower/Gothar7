@@ -16,3 +16,6 @@ hair = "#3a2a1e"
 cloth_coat_clean = "#6a2a2a"
 cloth_belt = "#2a1e16"
 cloth_culturalibre_male_boots = "#3a2c22"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "relaxed"

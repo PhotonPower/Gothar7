@@ -696,10 +696,13 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     if (m_transform)
     {
         // Z7: in an animal's shape no weapons and no magic; "1" or water make him human again.
-        const bool back = std::exchange(m_drawMagicRequested, false) || (water != gameplay::WaterMode::Land);
+        if (std::exchange(m_drawMagicRequested, false))
+        {
+            requestTransformBack(); // with its transition clip
+        }
         m_drawRangedRequested = m_drawWeaponRequested = false;
         m_runeRequested.reset();
-        m_transformBackRequested = m_transformBackRequested || back;
+        m_transformBackRequested = m_transformBackRequested || water != gameplay::WaterMode::Land; // at once
         a.setFloat("action", static_cast<f32>(std::exchange(m_heroAnimalAction, 0)));
     }
     else
@@ -756,6 +759,19 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
                  else if (event.starts_with("torch_"))
                  {
                      torchEvent(event); // in the hand, lit, dropped
+                 }
+                 else if (event == "swap" && m_transformOut)
+                 {
+                     // The transition clip's middle: the shape changes at the next player step (Z7).
+                     if (m_transformOut->species.empty())
+                     {
+                         m_transformBackRequested = true;
+                     }
+                     else
+                     {
+                         m_transformRequested = m_transformOut->species;
+                     }
+                     m_transformOut.reset();
                  }
                  else if (event.starts_with("sound:"))
                  {
