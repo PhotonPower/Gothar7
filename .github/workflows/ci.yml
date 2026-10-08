@@ -98,6 +98,48 @@ jobs:
           SDL_VIDEO_DRIVER: offscreen
         run: ./build/debug/game/gothar --frames=10 --no-render
 
+  # The tests in an optimised build (RelWithDebInfo): physics and timing can differ from debug (welt #246: an NPC
+  # capsule wedged at a door jamb only in release). Without GPU tests and without the assembled figures.
+  release:
+    name: release (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg-binary-cache,readwrite"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-binary-cache
+          key: vcpkg-${{ runner.os }}-${{ github.job }}-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-${{ github.job }}-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-${{ runner.os }}-${{ github.job }}-
+            vcpkg-${{ runner.os }}-
+
+      - name: Setup vcpkg
+        run: |
+          mkdir -p vcpkg-binary-cache  # relative to the workspace (the working directory)
+          git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+
+      - name: Install Ninja and SDL3 build dependencies
+        run: sudo apt-get update && sudo apt-get install -y ninja-build pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libudev-dev
+
+      - name: Configure
+        run: cmake --preset release
+
+      - name: Build
+        run: cmake --build --preset release
+
+      - name: Test (without GPU tests)
+        run: ctest --preset release -LE gpu
+
+      - name: Smoke test
+        run: ./build/release/game/gothar --smoke-test
+
   # Test coverage of core (M0 DoD: > 80 % lines). Fails below the threshold.
   coverage:
     runs-on: ubuntu-24.04
