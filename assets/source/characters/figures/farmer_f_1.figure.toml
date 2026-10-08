@@ -18,3 +18,6 @@ cloth_joepal_crude_t-shirt_female = "#d6c8a8"
 cloth_toigo_long_full_skirt = "#6a5440"
 cloth_apron = "#c4b494"
 cloth_toigo_flats = "#4a3b2e"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "woman"

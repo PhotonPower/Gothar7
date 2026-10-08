@@ -34,6 +34,7 @@ def test_packaged_sets_are_valid():
         "dive",
         "dlg",
         "fist",
+        "gait",
         "mag",
         "mob",
         "none",
@@ -47,7 +48,8 @@ def test_packaged_sets_are_valid():
     for name in packaged_sets():
         spec = load_set_spec(name)
         assert spec.set == name
-        mode = {"torch": "none"}.get(name, name)  # own files for none clips (none.glb unchanged)
+        # own files for none clips (none.glb unchanged)
+        mode = {"torch": "none", "gait": "none"}.get(name, name)
         assert all(n.startswith(f"{mode}/") for n in spec.names)  # helpers may differ
         for source in spec.sources.values():
             load_mapping(source.mapping)
@@ -293,8 +295,9 @@ def test_real_list_is_consistent_with_files():
     assert result.missing == []
     counts = list(result.section_counts().values())
     # Prio-B item use + mobs (M8), per mode, Prio-C routines (M9), dialogue (M10), combat (M11),
-    # magic (M12, with the human transformation), torch (F6), 7 monsters (own wolf 15 with the
-    # transformation, keiler/laufvogel 12, schinder 15, quaderbuckel 17, glemsmahr/bergleu 19)
+    # magic (M12, with the human transformation), torch (F6), gait variants, 7 monsters (own
+    # wolf 15 with the transformation, keiler/laufvogel 12, schinder 15, quaderbuckel 17,
+    # glemsmahr/bergleu 19)
     expected = [
         (17, 17),
         (48, 48),
@@ -303,6 +306,7 @@ def test_real_list_is_consistent_with_files():
         (31, 31),
         (16, 16),
         (6, 6),
+        (10, 10),
         (15, 15),
         (12, 12),
         (12, 12),

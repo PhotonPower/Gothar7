@@ -16,3 +16,6 @@ hair = "#8a7a62"
 cloth_tunic = "#7a6448"
 cloth_belt = "#3a2a1e"
 cloth_toigo_mj_cloth_shoes = "#4a3a2c"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "relaxed"

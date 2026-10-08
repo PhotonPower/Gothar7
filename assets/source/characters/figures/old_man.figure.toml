@@ -15,3 +15,6 @@ cloth = [
 [palette]
 cloth_elvs_crude_t-shirt_male = "#b0a184"
 cloth_toigo_mj_cloth_shoes = "#5a4b3b"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "old"
