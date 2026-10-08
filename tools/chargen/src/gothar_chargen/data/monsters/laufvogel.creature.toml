@@ -1,0 +1,425 @@
+# Creature "laufvogel" (F5, own work): large flightless runner of the meadows - replaces the CC0
+# placeholder (Quaternius chick) with the same rig contract: bird naming thigh/calf/foot, bone names
+# as before, plus neck_02, jaw (beak) and wing_l/r (agreed with engine 2026-10-08). Own silhouette,
+# no real bird copied: heavy body with slate-blue plumage lying back, rust-red neck ruff, fan crest
+# on the head, strong hooked beak, stubby wings, long tail plume, scaly legs with three clawed toes.
+# Built by `gothar-chargen creature laufvogel`.
+#
+# Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. The tool
+# moves everything so that root lies on the ground below the pelvis head. `mirror = true` adds the
+# right side.
+
+art = "laufvogel"
+material = "fur"
+voxel = 0.0045
+smooth = 10
+triangles = 6500
+lods = [1.0, 0.5, 0.25]
+texture = 1024
+seed = 71
+ao = 0.6
+normal_size = 512
+normal_strength = 0.9
+eye_colour = "#d07a20"
+teeth_colour = "#2a2420"                # claws
+
+[orientation]          # bird naming: left/right from the feet
+left = ["foot_r", "foot_l"]
+
+[sockets]
+socket_mouth = { parent = "head", length = 0.05 }
+
+# --- rig: the contract of the placeholder plus neck_02, jaw and wings ---
+
+[[bone]]
+name = "pelvis"
+head = [0, 0.10, 0.95]
+tail = [0, -0.25, 0.95]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0, -0.25, 0.95]
+tail = [0, -0.55, 1.05]
+
+[[bone]]
+name = "neck_01"
+parent = "spine_01"
+head = [0, -0.55, 1.05]
+tail = [0, -0.72, 1.24]
+
+[[bone]]
+name = "neck_02"             # added with engine (2026-10-08)
+parent = "neck_01"
+head = [0, -0.72, 1.24]
+tail = [0, -0.71, 1.51]
+
+[[bone]]
+name = "head"
+parent = "neck_02"
+head = [0, -0.71, 1.51]
+tail = [0, -0.95, 1.49]
+
+[[bone]]
+name = "jaw"                 # lower beak, hinged at the corner of the beak
+parent = "head"
+head = [0, -0.79, 1.50]
+tail = [0, -0.92, 1.47]
+
+[[bone]]
+name = "wing_l"
+parent = "spine_01"
+mirror = true
+head = [0.17, -0.40, 1.02]
+tail = [0.21, -0.12, 0.98]
+
+[[bone]]
+name = "thigh_l"
+parent = "pelvis"
+mirror = true
+head = [0.12, -0.20, 0.85]
+tail = [0.14, -0.12, 0.43]
+
+[[bone]]
+name = "calf_l"
+parent = "thigh_l"
+mirror = true
+head = [0.14, -0.12, 0.43]
+tail = [0.15, -0.19, 0.04]
+
+[[bone]]
+name = "foot_l"
+parent = "calf_l"
+mirror = true
+head = [0.15, -0.19, 0.04]
+tail = [0.15, -0.35, 0.02]
+
+# --- colour zones (sRGB) ---
+
+[zone.plumage]               # slate-blue body plumage
+colour = "#3c4450"
+colour2 = "#2c323a"
+variation = 0.12
+strands = 1.0
+belly = 0.35
+
+[zone.belly]
+colour = "#a89e8a"
+colour2 = "#8e8472"
+variation = 0.1
+strands = 0.9
+
+[zone.ruff]                  # rust-red neck ruff
+colour = "#8e4a28"
+colour2 = "#a85e32"
+variation = 0.12
+strands = 1.0
+
+[zone.crest]                 # fan crest, rust with dark tips
+colour = "#9a5430"
+colour2 = "#3a2a22"
+variation = 0.15
+strands = 1.0
+
+[zone.neck]
+colour = "#46505c"
+colour2 = "#3a424c"
+variation = 0.1
+strands = 0.8
+
+[zone.face]                  # bare blue-grey skin around the eyes
+colour = "#6a7a88"
+colour2 = "#5a6876"
+variation = 0.08
+wrinkles = 0.5
+
+[zone.beak]
+colour = "#c4ac6c"
+colour2 = "#a89058"
+variation = 0.08
+strata = 0.3
+
+[zone.beaktip]
+colour = "#3a3026"
+variation = 0.05
+
+[zone.eye_rim]
+colour = "#2a2a2e"
+
+[zone.leg]                   # scaly legs
+colour = "#7a7058"
+colour2 = "#5e5644"
+variation = 0.1
+wrinkles = 0.8
+strata = 0.5
+
+[zone.claw]
+colour = "#221c18"
+variation = 0.05
+
+[zone.mouth]
+colour = "#5a2c2c"
+
+[zone.tail]                  # tail plume, darker
+colour = "#2a3038"
+colour2 = "#4a5260"
+variation = 0.15
+strands = 1.0
+
+# --- body ---
+
+[[shape]]
+kind = "ellipsoid"           # body, front slightly raised
+zone = "plumage"
+center = [0, -0.22, 0.96]
+size = [0.21, 0.36, 0.23]
+rotate = [-8, 0, 0]
+
+[[shape]]
+kind = "ellipsoid"           # pale belly
+zone = "belly"
+center = [0, -0.24, 0.81]
+size = [0.17, 0.28, 0.17]
+
+[[shape]]
+kind = "ellipsoid"           # rump
+zone = "plumage"
+center = [0, 0.08, 0.99]
+size = [0.15, 0.16, 0.15]
+
+[[shape]]
+kind = "tuft_shell"          # body feathers lying back
+zone = "plumage"
+center = [0, -0.22, 0.97]
+size = [0.21, 0.36, 0.23]
+rows = [-0.28, -0.21, -0.14, -0.07, 0.0, 0.07, 0.14, 0.21, 0.28]
+angles = [-110, -88, -66, -44, -22, 0, 22, 44, 66, 88, 110]
+tuft = [0.05, 0.11, 0.02]
+sink = 0.02
+tilt = 6
+jitter = 0.3
+seed = 5
+
+[[shape]]
+kind = "tuft_shell"          # tail plume, long feathers falling back and down
+zone = "tail"
+center = [0, 0.16, 1.0]
+size = [0.10, 0.10, 0.10]
+rows = [0.0, 0.035, 0.07]
+angles = [-70, -45, -20, 0, 20, 45, 70]
+tuft = [0.03, 0.17, 0.012]
+sink = 0.01
+tilt = 18
+jitter = 0.3
+seed = 6
+
+[[shape]]
+kind = "ellipsoid"           # stubby wings
+zone = "plumage"
+mirror = true
+center = [0.19, -0.24, 1.0]
+size = [0.035, 0.19, 0.085]
+rotate = [-8, 0, 6]
+
+[[shape]]
+kind = "ridge"               # long quills at the wing's rear edge
+zone = "tail"
+mirror = true
+points = [[0.20, -0.12, 0.97], [0.21, -0.04, 0.93]]
+sizes = [[0.02, 0.05, 0.04], [0.012, 0.05, 0.025]]
+count = 4
+
+# neck with the rust ruff
+[[shape]]
+kind = "chain"
+zone = "neck"
+points = [[0, -0.50, 1.04], [0, -0.68, 1.20], [0, -0.73, 1.36], [0, -0.71, 1.50]]
+radii = [0.11, 0.075, 0.065, 0.058]
+
+[[shape]]
+kind = "ellipsoid"
+zone = "ruff"
+center = [0, -0.58, 1.12]
+size = [0.12, 0.11, 0.13]
+rotate = [-25, 0, 0]
+
+[[shape]]
+kind = "tuft_shell"          # neck feathers lying down the neck
+zone = "neck"
+center = [0, -0.70, 1.33]
+size = [0.07, 0.07, 0.17]
+rows = [-0.04, 0.0, 0.04]
+angles = [-150, -110, -70, -35, 0, 35, 70, 110, 150]
+tuft = [0.025, 0.05, 0.01]
+sink = 0.008
+tilt = 4
+jitter = 0.3
+seed = 9
+
+[[shape]]
+kind = "tuft_shell"          # rust ruff feathers
+zone = "ruff"
+center = [0, -0.58, 1.12]
+size = [0.12, 0.11, 0.13]
+rows = [-0.06, -0.03, 0.0, 0.03, 0.06]
+angles = [-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150]
+tuft = [0.03, 0.08, 0.014]
+sink = 0.01
+tilt = 10
+jitter = 0.3
+seed = 7
+
+# head: bare face, orange eyes, fan crest, hooked beak
+[[shape]]
+kind = "ellipsoid"
+zone = "neck"
+center = [0, -0.74, 1.53]
+size = [0.055, 0.075, 0.058]
+
+[[shape]]
+kind = "ellipsoid"           # bare face around the eyes
+zone = "face"
+mirror = true
+center = [0.03, -0.775, 1.53]
+size = [0.03, 0.045, 0.032]
+
+[[shape]]
+kind = "tuft_shell"          # fan crest sweeping back and up
+zone = "crest"
+center = [0, -0.715, 1.56]
+size = [0.035, 0.075, 0.042]
+rows = [-0.04, -0.02, 0.0, 0.02, 0.04]
+angles = [-25, 0, 25]
+tuft = [0.009, 0.09, 0.006]
+sink = 0.004
+tilt = 22
+jitter = 0.25
+seed = 8
+
+[[shape]]
+kind = "capsule"             # upper beak
+zone = "beak"
+a = [0, -0.785, 1.53]
+b = [0, -0.94, 1.49]
+r = 0.034
+r2 = 0.012
+
+[[shape]]
+kind = "ellipsoid"           # hooked tip
+zone = "beaktip"
+center = [0, -0.948, 1.478]
+size = [0.011, 0.018, 0.02]
+rotate = [20, 0, 0]
+
+[[shape]]
+kind = "capsule"             # lower beak
+zone = "beak"
+a = [0, -0.79, 1.495]
+b = [0, -0.92, 1.472]
+r = 0.024
+r2 = 0.01
+
+[[shape]]
+kind = "cut_box"             # beak line, past the tip
+zone = "mouth"
+center = [0, -0.88, 1.49]
+size = [0.05, 0.13, 0.0015]
+rotate = [-10, 0, 0]
+
+[[shape]]
+kind = "cut"                 # nostrils
+zone = "beaktip"
+mirror = true
+center = [0.014, -0.84, 1.535]
+size = [0.005, 0.012, 0.004]
+
+[[shape]]
+kind = "cut"                 # eye sockets
+zone = "eye_rim"
+mirror = true
+center = [0.047, -0.775, 1.548]
+size = [0.014, 0.012, 0.011]
+
+[[shape]]
+kind = "eye"
+mirror = true
+bone = "head"
+center = [0.045, -0.775, 1.548]
+size = [0.011, 0.009, 0.009]
+rotate = [0, -35, 0]
+
+# legs: feathered drumsticks, scaly tarsi, three clawed toes
+[[shape]]
+kind = "chain"
+zone = "plumage"
+mirror = true
+points = [[0.11, -0.20, 0.86], [0.13, -0.15, 0.62], [0.138, -0.125, 0.47]]
+radii = [0.095, 0.07, 0.035]
+
+[[shape]]
+kind = "ellipsoid"           # ankle joint
+zone = "leg"
+mirror = true
+center = [0.14, -0.12, 0.43]
+size = [0.032, 0.034, 0.038]
+
+[[shape]]
+kind = "chain"               # tarsus
+zone = "leg"
+mirror = true
+points = [[0.14, -0.12, 0.42], [0.15, -0.19, 0.05]]
+radii = [0.026, 0.021]
+
+[[shape]]
+kind = "capsule"             # middle toe
+zone = "leg"
+mirror = true
+a = [0.15, -0.19, 0.03]
+b = [0.15, -0.34, 0.016]
+r = 0.017
+r2 = 0.01
+
+[[shape]]
+kind = "capsule"             # outer toe
+zone = "leg"
+mirror = true
+a = [0.15, -0.19, 0.03]
+b = [0.195, -0.31, 0.016]
+r = 0.015
+r2 = 0.009
+
+[[shape]]
+kind = "capsule"             # inner toe
+zone = "leg"
+mirror = true
+a = [0.15, -0.19, 0.03]
+b = [0.105, -0.31, 0.016]
+r = 0.015
+r2 = 0.009
+
+[[shape]]
+kind = "capsule"             # claws
+zone = "claw"
+mirror = true
+a = [0.15, -0.34, 0.016]
+b = [0.15, -0.37, 0.006]
+r = 0.009
+r2 = 0.003
+
+[[shape]]
+kind = "capsule"
+zone = "claw"
+mirror = true
+a = [0.195, -0.31, 0.016]
+b = [0.205, -0.335, 0.006]
+r = 0.008
+r2 = 0.003
+
+[[shape]]
+kind = "capsule"
+zone = "claw"
+mirror = true
+a = [0.105, -0.31, 0.016]
+b = [0.095, -0.335, 0.006]
+r = 0.008
+r2 = 0.003

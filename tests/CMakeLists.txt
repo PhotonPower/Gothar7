@@ -33,6 +33,7 @@ endforeach()
 add_test(NAME runtime COMMAND g7_tests_runtime "--source-file-exclude=${_g7_runtime_grouped}")
 g7_add_test_suite(platform)
 g7_add_test_suite(asset)
+g7_add_test_suite(audio)
 target_compile_definitions(g7_tests_asset PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
 # CI builds g7_figures first: then the C++ figure assembly must be compared with every assembled figure (M6 D2).
 option(G7_REQUIRE_FIGURES "Asset tests fail when assembled figures (g7_figures) are missing" OFF)

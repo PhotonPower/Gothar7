@@ -1,0 +1,90 @@
+# Klänge (M13 Teil A, ADR 0007): Name -> Dateien (eine zufällig), Lautstärke, Streuung, Reichweite, Bus.
+# Die Namen sind die der Anim-Events `sound:<name>` (figuren) und der Sprüche (sounds = { cast, impact }).
+# Alle Dateien sind vorerst Platzhalter aus tools/audio (Entscheidung Projektinhaber); echte Klänge ersetzen sie unter
+# gleichem Namen. Felder: files, volume (1), volume_jitter, pitch_jitter (Anteil), min_distance (1 m),
+# max_distance (30 m; ab da still), bus (music, effects, voice, ambient, ui; Vorgabe effects), loop.
+
+[anvil_hit]
+files = ["sounds/anvil_hit.wav"]
+volume = 0.8
+pitch_jitter = 0.06
+max_distance = 30
+
+[wood_chop]
+files = ["sounds/wood_chop.wav"]
+volume = 0.8
+pitch_jitter = 0.08
+max_distance = 25
+
+[schinder_call]
+files = ["sounds/schinder_call.wav"]
+pitch_jitter = 0.08
+max_distance = 60
+
+[quaderbuckel_grind]
+files = ["sounds/quaderbuckel_grind.wav"]
+max_distance = 25
+
+[glemsmahr_hiss]
+files = ["sounds/glemsmahr_hiss.wav"]
+volume = 0.7
+max_distance = 20
+
+[bergleu_roar]
+files = ["sounds/bergleu_roar.wav"]
+max_distance = 80
+
+[spell_cast]
+files = ["sounds/spell_cast.wav"]
+volume = 0.6
+pitch_jitter = 0.05
+max_distance = 25
+
+[fire_impact]
+files = ["sounds/fire_impact.wav"]
+volume = 0.9
+pitch_jitter = 0.08
+max_distance = 40
+
+[heal]
+files = ["sounds/heal.wav"]
+volume = 0.6
+max_distance = 15
+
+[summon]
+files = ["sounds/summon.wav"]
+volume = 0.8
+max_distance = 30
+
+# Ambiente (M13 Teil B): Schleifen im Bus ambient, Einzelklänge drumherum (data/ambient.toml).
+[amb_wind]
+files = ["sounds/amb_wind.wav"]
+bus = "ambient"
+loop = true
+volume = 0.6
+
+[amb_camp]
+files = ["sounds/amb_camp.wav"]
+bus = "ambient"
+loop = true
+volume = 0.6
+
+[amb_night]
+files = ["sounds/amb_night.wav"]
+bus = "ambient"
+loop = true
+volume = 0.5
+
+[bird]
+files = ["sounds/bird.wav"]
+bus = "ambient"
+volume = 0.6
+pitch_jitter = 0.15
+max_distance = 40
+
+[owl]
+files = ["sounds/owl.wav"]
+bus = "ambient"
+volume = 0.6
+pitch_jitter = 0.05
+max_distance = 50

@@ -3,7 +3,7 @@ version = 1
 fps = 30
 
 [clips."laufvogel/s_run"]
-speed = 6.50
+speed = 6.48
 events = [
     { frame = 0, event = "footstep_l" },
     { frame = 5, event = "footstep_r" },
@@ -30,10 +30,20 @@ events = [
 
 [clips."laufvogel/t_turn_l"]
 events = [
+    { frame = 0, event = "footstep_l" },
     { frame = 0, event = "footstep_r" },
+    { frame = 8, event = "footstep_r" },
+    { frame = 16, event = "footstep_l" },
+    { frame = 24, event = "footstep_r" },
+    { frame = 32, event = "footstep_l" },
 ]
 
 [clips."laufvogel/t_turn_r"]
 events = [
+    { frame = 0, event = "footstep_l" },
     { frame = 0, event = "footstep_r" },
+    { frame = 8, event = "footstep_r" },
+    { frame = 16, event = "footstep_l" },
+    { frame = 24, event = "footstep_r" },
+    { frame = 32, event = "footstep_l" },
 ]

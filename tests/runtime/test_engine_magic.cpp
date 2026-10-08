@@ -380,10 +380,10 @@ TEST_CASE("Engine reactions: people see a beast in the wolf-hero - guards attack
             std::format("set_routine('{0}', '') npc_clear('{0}') npc_teleport('{0}', {1}, 0, {2}, {3})", npc,
                         x, z, yaw));
     };
-    place("npc_old_man", 36.2, 18.8, 270);
-    place("npc_gate_guard", 41.2, 13.8, 180);
-    place("mon_wolf", 41.2, 23.8, 0);
-    place("mon_laufvogel", 46.2, 18.8, 90);
+    place("npc_old_man", 36.2f, 18.8f, 270.0f);
+    place("npc_gate_guard", 41.2f, 13.8f, 180.0f);
+    place("mon_wolf", 41.2f, 23.8f, 0.0f);
+    place("mon_laufvogel", 46.2f, 18.8f, 90.0f);
     runSeconds(engine, 3.0f);
     CHECK(run(engine, "npc_state('npc_old_man').state").asString() == "zs_flee");
     CHECK(run(engine, "npc_state('npc_gate_guard').state").asString() == "zs_attack");

@@ -3,7 +3,7 @@ version = 1
 fps = 30
 
 [clips."keiler/s_run"]
-speed = 4.98
+speed = 4.97
 events = [
     { frame = 0, event = "footstep_back_l" },
     { frame = 1, event = "footstep_back_r" },
@@ -35,19 +35,29 @@ events = [
 [clips."keiler/t_turn_l"]
 events = [
     { frame = 0, event = "footstep_back_l" },
-    { frame = 0, event = "footstep_front_l" },
+    { frame = 0, event = "footstep_back_r" },
     { frame = 0, event = "footstep_front_r" },
-    { frame = 5, event = "footstep_back_r" },
-    { frame = 26, event = "footstep_back_l" },
-    { frame = 27, event = "footstep_front_r" },
+    { frame = 4, event = "footstep_front_l" },
+    { frame = 8, event = "footstep_back_r" },
+    { frame = 12, event = "footstep_front_r" },
+    { frame = 16, event = "footstep_back_l" },
+    { frame = 20, event = "footstep_front_l" },
+    { frame = 24, event = "footstep_back_r" },
+    { frame = 28, event = "footstep_front_r" },
+    { frame = 32, event = "footstep_back_l" },
 ]
 
 [clips."keiler/t_turn_r"]
 events = [
     { frame = 0, event = "footstep_back_l" },
-    { frame = 0, event = "footstep_front_l" },
+    { frame = 0, event = "footstep_back_r" },
     { frame = 0, event = "footstep_front_r" },
-    { frame = 5, event = "footstep_back_r" },
-    { frame = 26, event = "footstep_back_l" },
-    { frame = 27, event = "footstep_front_r" },
+    { frame = 4, event = "footstep_front_l" },
+    { frame = 8, event = "footstep_back_r" },
+    { frame = 12, event = "footstep_front_r" },
+    { frame = 16, event = "footstep_back_l" },
+    { frame = 20, event = "footstep_front_l" },
+    { frame = 24, event = "footstep_back_r" },
+    { frame = 28, event = "footstep_front_r" },
+    { frame = 32, event = "footstep_back_l" },
 ]

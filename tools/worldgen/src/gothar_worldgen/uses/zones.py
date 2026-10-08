@@ -31,6 +31,7 @@ GRID_M = 0.05  # cover grid (rectangles of whole cells inside the room)
 MAX_BOXES = 8  # per room (the engine passes the 32 boxes nearest the camera)
 AXES = 3  # wall directions tried
 MIN_GAIN_M2 = 0.02  # a box covering less of what is left is not added
+BOXED = ("indoor", "music", "ambient")  # zone types with a box (world.md "Zonen")
 
 
 def is_room_zone(zone: dict[str, Any]) -> bool:
@@ -42,9 +43,12 @@ def is_room_zone(zone: dict[str, Any]) -> bool:
     return zone.get("type") == "indoor" and value.startswith("LEO_") and room
 
 
-def _cover(local: Polygon) -> list[tuple[float, float, float, float]]:
-    """Rectangles (a0, a1, b0, b1) of whole grid cells inside ``local`` (the room in the frame of
-    one wall), added greedily until no cell farther than ``SLANT_M`` from the walls is left."""
+def _cover(local: Polygon, grid: float = GRID_M, slant: float = SLANT_M,
+           max_boxes: int = MAX_BOXES,
+           min_gain: float = MIN_GAIN_M2) -> list[tuple[float, float, float, float]]:  # fmt: skip
+    """Rectangles (a0, a1, b0, b1) of whole ``grid`` cells inside ``local`` (the room in the frame
+    of one wall), added greedily until no cell farther than ``slant`` from the walls is left."""
+    GRID_M, SLANT_M, MAX_BOXES, MIN_GAIN_M2 = grid, slant, max_boxes, min_gain  # noqa: N806
     a_lo, b_lo, a_hi, b_hi = local.bounds
     na = math.ceil((a_hi - a_lo) / GRID_M - 1e-6)
     nb = math.ceil((b_hi - b_lo) / GRID_M - 1e-6)
@@ -84,6 +88,29 @@ def _cover(local: Polygon) -> list[tuple[float, float, float, float]]:
         todo[r0 : r1 + 1, c0 : c1 + 1] = False
         out.append((a_lo + c0 * GRID_M, a_lo + (c1 + 1) * GRID_M,
                     b_lo + r0 * GRID_M, b_lo + (r1 + 1) * GRID_M))  # fmt: skip
+    return out
+
+
+def cover_boxes(area: Polygon, cell: float, max_boxes: int = 40,
+                ) -> list[tuple[tuple[float, float], tuple[float, float], float]]:  # fmt: skip
+    """Boxes (centre, half extents along local X and Z, yaw in degrees) of whole ``cell`` squares
+    inside a large ``area`` (a town, a forest: music and ambient zones), along the longer side of
+    its smallest rotated rectangle; its rim within a cell stays out."""
+    rect = area.minimum_rotated_rectangle
+    c = list(rect.exterior.coords)[:3]
+    e0 = (c[1][0] - c[0][0], c[1][1] - c[0][1])
+    e1 = (c[2][0] - c[1][0], c[2][1] - c[1][1])
+    ex, ez = e0 if math.hypot(*e0) >= math.hypot(*e1) else e1
+    ln = math.hypot(ex, ez) or 1.0
+    ux, uz = ex / ln, ez / ln
+    pts = [(x * ux + z * uz, -x * uz + z * ux) for x, z in area.exterior.coords]
+    strips = _cover(Polygon(pts).buffer(0), cell, cell, max_boxes, cell * cell * 4)
+    vx, vz = -uz, ux
+    yaw = math.degrees(math.atan2(-uz, ux))
+    out = []
+    for a0, a1, b0, b1 in strips:
+        ca, cb = (a0 + a1) / 2, (b0 + b1) / 2
+        out.append(((ca * ux + cb * vx, ca * uz + cb * vz), ((a1 - a0) / 2, (b1 - b0) / 2), yaw))
     return out
 
 
@@ -136,7 +163,7 @@ def _order(p: dict[str, Any], q: dict[str, Any]) -> int:
     a, b = str(p.get("value", "")), str(q.get("value", ""))
     if a != b:
         return -1 if a < b else 1
-    if "box" not in p or "box" not in q or p.get("type") != "indoor" or q.get("type") != "indoor":
+    if "box" not in p or "box" not in q or p.get("type") not in BOXED or q.get("type") not in BOXED:
         return 0
     (px, _, pz), (qx, _, qz) = p["box"]["center"], q["box"]["center"]
     if px != qx:
@@ -148,9 +175,9 @@ def zones_text(zones: Sequence[dict[str, Any]]) -> str:
     """The ``zones`` list in the engine's layout: one zone per line, sorted."""
     lines = []
     for z in sorted(zones, key=functools.cmp_to_key(_order)):
-        if z.get("type") == "indoor" and "box" in z:
+        if z.get("type") in BOXED and "box" in z:
             bx = z["box"]
-            line = {"type": "indoor", "value": z["value"],
+            line = {"type": z["type"], "value": z["value"],
                     "box": {"center": [tidy(c) for c in bx["center"]],
                             "halfExtents": [tidy(c) for c in bx["halfExtents"]],
                             "yaw": tidy(bx.get("yaw", 0.0))}}  # fmt: skip

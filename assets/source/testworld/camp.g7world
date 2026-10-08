@@ -265,5 +265,10 @@
       {"name":"FP_SWEEP_CAMP_01","pos":[8.5,0.0,-2.5],"dir":[1.0,0.0,0.0]},
       {"name":"FP_SWEEP_CAMP_02","pos":[5.5,0.0,-6.0],"dir":[0.0,0.0,1.0]}
     ]
-  }
+  },
+  "zones": [
+    {"type":"music","value":"LAGER","box":{"center":[8.0,5.0,4.0],"halfExtents":[20.0,15.0,20.0],"yaw":0.0}},
+    {"type":"ambient","value":"camp","box":{"center":[8.0,5.0,4.0],"halfExtents":[20.0,15.0,20.0],"yaw":0.0}},
+    {"type":"ambient","value":"wald","box":{"center":[0.0,5.0,0.0],"halfExtents":[400.0,100.0,400.0],"yaw":0.0}}
+  ]
 }

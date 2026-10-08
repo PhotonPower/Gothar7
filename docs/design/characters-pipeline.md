@@ -662,10 +662,8 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
 
 ### 7.3 Platzhalter-Arten
 
-| Art | Quelle (CC0) | Stand |
-|---|---|---|
-| `keiler` | Quaternius „Lowpoly Animated Farm Animal Pack“, Schwein (dunkel eingefärbt) | Rig 25 Knochen (mit Schulter-/Hüftknochen), 0,95 m, 562 Dreiecke; 12/12 Clips (Idle/Walk/Death aus der Quelle, Rest `platzhalter-K`) |
-| `laufvogel` | Quaternius „5 Low poly animals“, Küken (auf 1,6 m vergrößert, eingefärbt) | Rig 12 Knochen (Vogel-Namen `thigh/calf/foot`), 1,6 m, 250 Dreiecke; 12/12 Clips (Gehen/Rennen aus dem Quell-Schritt am Ort, Rest `platzhalter-K`) |
+Keine mehr: Die CC0-Platzhalter `wolf`, `keiler` und `laufvogel` (Quaternius) sind seit 2026-10-08 durch eigene Arten
+mit denselben Verträgen ersetzt (§7.4). `gothar-chargen monster` bleibt für spätere CC0-Importe erhalten.
 
 ### 7.4 Eigene Arten (`gothar-chargen creature`, ab 2026-10-07)
 
@@ -703,6 +701,8 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
 | `glemsmahr` | Rig 37 Knochen (neues Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Arme als Vorderbeine mit Schulter, Hand und je drei Fingern, zehengängige Hinterbeine mit Zehen; Sockets `socket_mouth`, `socket_eyes`, `socket_hand_l/r`), geduckt 1,53 m, Kapsel stehend, lod0 7636 / 3758 / 1848 Dreiecke, emissive Augen (`eye_glow`); 19 Clips (Mindest-Set + `s_sneak`, `t_rise`/`s_upright`/`t_lower`, `t_leap` und `t_jump_back` am Ort mit `leap_start`/`leap_land`, `t_recoil`); Tempo 1,4 / 6,5 / Schleichen 0,9 m/s (mit engine 2026-10-07) |
 | `quaderbuckel` | Rig 29 Knochen (Keiler-Benennung mit Schulter-/Hüftknochen, dazu `jaw` und `brow_shield` unter `chest`; Sockets `socket_mouth`, `socket_shield` am Schild), 0,84 m, lod0 7956 / 3978 / 1988 Dreiecke (60 starre Sandstein-Platten), Fell 1024² + Normal-Map 512²; 17 Clips (Mindest-Set + `s_charge` am Ort, `t_warn`, `t_block_in`/`s_block`/`t_block_out`); Tempo 0,8 / 3,5 / Anrennen 4,5 m/s (mit engine 2026-10-07) |
 | `wolf` (Rudeltier) | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 25 Knochen (bisherige 22 mit gleichen Namen, dazu `jaw` und `ear_l/r` mit engine), 0,80 m, lod0 7376 / 3688 / 1844 Dreiecke, Fell 1024² + Normal-Map 512²; graues Fell mit dunklem Sattel, Halskrause, buschiger Schwanz; 13/13 Clips mit denselben Namen, Events und Tempo (1,2 / 3,0 / 6,0 m/s), alle eigen; dazu `t_transform_in/out` für die Verwandlung (M12) |
+| `keiler` | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 28 Knochen (bisherige 25 mit gleichen Namen und Hierarchie, dazu `jaw` und `ear_l/r` mit engine), 0,84 m mit Borstenkamm, lod0 7590 / 3734 / 1836 Dreiecke, Fell 1024² + Normal-Map 512²; dunkles Borstenfell, Borstenkamm (`tuft_shell`), Rüsselscheibe, gebogene Hauer am Unterkiefer, Maul mit Innenraum, kurze kräftige Läufe; 12/12 Clips mit denselben Namen, Events und Tempo (1,0 / 5,0 m/s), alle eigen |
+| `laufvogel` | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 16 Knochen (bisherige 12 mit Vogel-Namen `thigh/calf/foot`, dazu `neck_02`, `jaw` (Schnabel) und `wing_l/r` mit engine), 1,66 m (Kopf mit Federkamm), lod0 6824 / 3412 / 1706 Dreiecke, Federn 1024² + Normal-Map 512²; eigene Silhouette: schieferblaues Gefieder, rostroter Halskragen, Federkamm, Hakenschnabel, Stummelflügel, Schwanzbusch, Schuppenläufe mit drei Krallenzehen; 12/12 Clips mit denselben Namen, Events und Tempo (1,3 / 6,5 m/s), alle eigen |
 | `schinder` | Rig 26 Knochen, 0,92 m, lod0 7834 / 3916 / 1958 Dreiecke, Fell 1024² + Normal-Map 512²; 15 Clips (Mindest-Set + `s_sneak`, `t_call`, `s_cower`); Tempo 1,3 / 6,5 / Schleichen 0,7 m/s (mit engine 2026-10-07) |
 
 ## 8. Ablauf pro Animation

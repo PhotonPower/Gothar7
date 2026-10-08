@@ -145,6 +145,7 @@ Result<void> Engine::init()
     m_physics = std::move(collision).value();
 
     initPlayer();
+    initAudio(); // M13
     // Scripts before the world: their handlers hear world_loaded (M7).
     mountScripts();
     if (auto scripts = initScripts(); !scripts)
@@ -459,6 +460,7 @@ bool Engine::runFrame()
     m_assets->update();
     refreshMovementSettings();
     updatePlayerCamera(realSeconds); // after the steps: the drawn feet are interpolated between them
+    updateAudio(realSeconds);        // the listener at the camera (M13)
     if (m_device)
     {
         refreshReloadedModels();
@@ -1535,7 +1537,7 @@ std::vector<render::IndoorVolume> Engine::nearestIndoorVolumes(const Vec3& point
     std::vector<std::pair<f32, render::IndoorVolume>> rooms;
     for (const world::Zone& z : m_worldFile.zones)
     {
-        if (z.box)
+        if (z.box && z.type == "indoor") // music and ambient zones have boxes too (M13)
         {
             const render::IndoorVolume v{z.box->center, z.box->halfExtents, glm::radians(z.box->yawDegrees)};
             rooms.emplace_back(glm::length(v.center - point), v);

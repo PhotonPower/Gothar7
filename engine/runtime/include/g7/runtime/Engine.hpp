@@ -13,6 +13,7 @@
 #include <g7/asset/TextureData.hpp>
 #include <g7/asset/Vfs.hpp>
 #include <g7/asset/VoiceLines.hpp>
+#include <g7/audio/Audio.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Config.hpp>
 #include <g7/core/Result.hpp>
@@ -301,6 +302,21 @@ public:
     std::optional<u32> startEffect(std::string_view name, const Vec3& at,
                                    const Vec3& direction = Vec3(0, 1, 0));
     [[nodiscard]] const render::ParticleSystem& particles() const noexcept { return m_particles; }
+    /// The mixer (M13); nullptr when audio is off.
+    [[nodiscard]] const audio::AudioSystem* audio() const noexcept { return m_audio ? &*m_audio : nullptr; }
+    /// How often the sound `name` was started (tests, diagnostics).
+    /// The ambience playing now (M13 part B); empty: none.
+    [[nodiscard]] const std::string& ambience() const noexcept { return m_ambience.name; }
+    /// The occlusion of a 3D sound the engine started (0 open .. 1 muffled).
+    [[nodiscard]] f32 soundMuffle(audio::SoundId id) const noexcept
+    {
+        return m_audio ? m_audio->muffle(id) : 0.0f;
+    }
+    [[nodiscard]] u32 soundsPlayed(std::string_view name) const
+    {
+        const auto it = m_soundsPlayed.find(name);
+        return it != m_soundsPlayed.end() ? it->second : 0;
+    }
     /// The daylight (window) lights at the current time: the sky ambient's colour, intensity times its
     /// brightness relative to noon (components.light.daylight, world.md).
     [[nodiscard]] std::vector<render::PointLight> daylightLights() const;
@@ -854,6 +870,29 @@ private:
     [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
     void drawEffects();
     void bindFxFunctions();
+    // Sound (M13 part A, EngineAudio.cpp): the mixer, data/sounds.toml, clips loaded on first use.
+    void initAudio();
+    void updateAudio(f64 realSeconds);
+    /// Plays the sound `name` of data/sounds.toml (at `position`: in 3D); nullopt if unknown or no audio.
+    std::optional<audio::SoundId> playSound(std::string_view name, std::optional<Vec3> position = {});
+    std::map<std::string, u32, std::less<>> m_soundsPlayed; // per sound name (tests, diagnostics)
+    /// The value of the smallest zone of `type` (world.md "Zonen") that holds `point`; nullopt: none.
+    [[nodiscard]] std::optional<std::string> zoneAt(std::string_view type, const Vec3& point) const;
+    [[nodiscard]] bool night() const noexcept; ///< 20:00 - 06:00 (ambience, music)
+    void updateAmbience(f32 seconds);
+    void updateOcclusion(f32 seconds);
+    audio::AmbientDefs m_ambientDefs; // data/ambient.toml (M13 part B)
+    struct Ambience
+    {
+        std::string name; ///< the zone's ambience now, empty: none
+        bool night = false;
+        std::optional<audio::SoundId> loop;
+        f32 nextRandom = 0.0f;
+    };
+    Ambience m_ambience;
+    std::map<audio::SoundId, Vec3> m_spatialSounds; // where the 3D sounds play (occlusion)
+    f32 m_occlusionTimer = 0.0f;
+    void bindAudioFunctions();
     // Combat (M11, EngineCombat.cpp).
     struct Combatant;
     void loadCombat();
@@ -1323,6 +1362,8 @@ private:
     std::vector<render::PointLight>
         m_daylightLights; // window lights (components.light.daylight), as in the file
     render::ParticleSystem m_particles;
+    std::optional<audio::AudioSystem> m_audio; // M13: absent when switched off ([audio] enabled = false)
+    audio::SoundDefs m_soundDefs;              // data/sounds.toml
     std::optional<render::ParticleRenderer> m_particleRenderer;
     std::unordered_map<std::string, std::shared_ptr<const render::EmitterDef>> m_effects; // nullptr: missing
     std::vector<render::ParticleInstance> m_particleAdditive;

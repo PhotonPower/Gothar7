@@ -25,7 +25,7 @@ constexpr std::string_view kCamp = R"({
     { "id": 10, "type": "empty", "name": "CAMP", "pos": [100, 0, 50], "rot": [0, 0.7071068, 0, 0.7071068], "scale": [2, 2, 2] }
   ],
   "waynet": { "points": [ { "name": "WP_CAMP", "pos": [0, 0, 0] } ], "edges": [] },
-  "zones": [ { "type": "music", "value": "CAMP" } ]
+  "zones": [ { "type": "music", "value": "CAMP", "box": { "center": [0, 0, 0], "halfExtents": [40, 20, 40] } } ]
 })";
 
 WorldFile parse(std::string_view text)
@@ -63,7 +63,8 @@ TEST_CASE("WorldFile: reads vobs, components and the id counter")
     CHECK(world.waynet->points.size() == 1);
     REQUIRE(world.zones.size() == 1);
     CHECK(world.zones[0].type == "music");
-    CHECK_FALSE(world.zones[0].box.has_value());
+    REQUIRE(world.zones[0].box.has_value()); // music zones are boxes (M13)
+    CHECK(world.zones[0].box->halfExtents == Vec3(40.0f, 20.0f, 40.0f));
 }
 
 TEST_CASE("WorldFile: writing is stable and round-trips")
@@ -350,7 +351,7 @@ TEST_CASE("WorldFile: indoor zones - turned boxes read, checked, written one per
     std::string text = writeWorldFile(world);
     const std::string zones =
         R"([{"type":"indoor","value":"LEO_SCHMIEDE_ZNP_INNEN","box":{"center":[5.0,1.2,1.0],"halfExtents":[2.0,1.2,1.5],"yaw":30.0}},)"
-        R"({"type":"music","value":"CAMP"},)"
+        R"({"type":"fog","value":"CAMP"},)"
         R"({"type":"indoor","value":"LEO_SCHMIEDE_ZNP_INNEN","box":{"center":[2.0,1.2,4.0],"halfExtents":[1.0,1.2,1.0],"yaw":30.0}},)"
         R"({"type":"indoor","value":"LEO_GASTHAUS_ZHE_INNEN","box":{"center":[-90.5,0.1,28.0],"halfExtents":[3.1,1.45,2.6],"yaw":-71.86}}])";
     const auto at = text.find("\"zones\":");
@@ -367,7 +368,7 @@ TEST_CASE("WorldFile: indoor zones - turned boxes read, checked, written one per
     const auto gasthaus = written.find("LEO_GASTHAUS_ZHE_INNEN");
     const auto smithyWest = written.find(R"("center":[2.0,1.2,4.0])");
     const auto smithyEast = written.find(R"("center":[5.0,1.2,1.0])");
-    CHECK(written.find(R"({"type":"music","value":"CAMP"})") != std::string::npos);
+    CHECK(written.find(R"({"type":"fog","value":"CAMP"})") != std::string::npos); // an unknown type: kept
     CHECK(gasthaus < smithyWest);
     CHECK(smithyWest < smithyEast); // same room: by x
     CHECK(
@@ -387,6 +388,21 @@ TEST_CASE("WorldFile: indoor zones - turned boxes read, checked, written one per
     fails(R"({"type":"indoor","value":"R"})", "box");
     fails(R"({"type":"indoor","value":"R","box":{"center":[0,0,0],"halfExtents":[1,0,1]}})", "halfExtents");
     fails(R"({"value":"R"})", "type");
+
+    // Music and ambient zones (M13): boxes as indoor zones, the value their theme or ambience.
+    std::string sound =
+        base.substr(0, at) + "\"zones\": " +
+        R"([{"type":"music","value":"LAGER","box":{"center":[0.0,0.0,0.0],"halfExtents":[40.0,20.0,40.0],"yaw":0.0}},)"
+        R"({"type":"ambient","value":"camp","box":{"center":[5.0,0.0,0.0],"halfExtents":[30.0,20.0,30.0],"yaw":15.0}}])" +
+        base.substr(end);
+    const WorldFile soundWorld = parse(sound);
+    REQUIRE(soundWorld.zones.size() == 2);
+    CHECK(soundWorld.zones[0].type == "music");
+    REQUIRE(soundWorld.zones[1].box.has_value());
+    CHECK(soundWorld.zones[1].box->yawDegrees == doctest::Approx(15.0f));
+    CHECK(writeWorldFile(parse(writeWorldFile(soundWorld))) == writeWorldFile(soundWorld));
+    fails(R"({"type":"music","value":"LAGER"})", "box");
+    fails(R"({"type":"ambient","box":{"center":[0,0,0],"halfExtents":[1,1,1]}})", "ambience");
 }
 
 TEST_CASE("WorldFile: daylight lights - read, written after intensity and only when true")
