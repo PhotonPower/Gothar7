@@ -436,3 +436,81 @@ TEST_CASE(
     CHECK(run(engine, "npc_stat('npc_test_caster', 'mana')").asInteger() < 10); // spent
     CHECK(run(engine, "npc_stat('npc_test_caster', 'hp')").asInteger() >= 70);
 }
+
+TEST_CASE(
+    "Engine burning: only a spell with burn sets on fire - three seconds, five a second; the fire bolt does "
+    "not (owner decision B)")
+{
+    Engine engine(castConfig());
+    REQUIRE(engine.init().ok());
+    run(engine,
+        "Spell 'spl_test_burn' { name = 'Test', circle = 1, mana = 5, kind = 'projectile', "
+        "damage = { fire = 10 }, burn = true, fx = { trail = 'firebolt' } } "
+        "Item 'it_rune_test_burn' { name = 'Test', category = 'rune', spell = 'spl_test_burn', value = 1 }");
+    run(engine, "on('npc_burning', function(npc, caster) Story.burning = npc .. ' ' .. caster end)");
+    run(engine, "give_item('it_rune_firebolt') equip('it_rune_firebolt') give_item('it_rune_test_burn') "
+                "equip('it_rune_test_burn') set_talent('magic_circle', 1) set_stat('mana_max', 100) "
+                "set_stat('mana', 100)");
+    oldManAhead(engine);
+    run(engine, "npc_set_stat('npc_old_man', 'hp_max', 100) npc_set_stat('npc_old_man', 'hp', 100)");
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_firebolt");
+    run(engine, "hero_rune(2)"); // the burning test spell
+    runSeconds(engine, 1.0f);
+    cast(engine); // 1.5 s after the cast: hit (10), burning about one second (5)
+    CHECK(run(engine, "Story.burning").asString() == "npc_old_man hero");
+    runSeconds(engine, 3.0f);
+    CHECK(stat(engine, "npc_old_man", "hp") == 100 - 10 - 3 * 5); // three seconds of fire
+    runSeconds(engine, 2.0f);
+    CHECK(stat(engine, "npc_old_man", "hp") == 100 - 10 - 3 * 5); // out
+
+    // The fire bolt does not set on fire (he is put back 12 m ahead: hit, he runs at the hero).
+    run(engine, "Story.burning = nil hero_rune(1) npc_teleport('npc_old_man', 29.2, 0, 18.8, 270)");
+    runSeconds(engine, 0.3f);
+    run(engine, "npc_teleport('npc_old_man', 29.2, 0, 18.8, 270)");
+    cast(engine);
+    CHECK(stat(engine, "npc_old_man", "hp") == 75 - 25);
+    CHECK(run(engine, "Story.burning").isNil());
+}
+
+TEST_CASE(
+    "Engine NPC magic: the camp's herb witch and a bandit with a scroll cast fire bolts; the fear scroll "
+    "(owner decisions A, C)")
+{
+    Engine engine(castConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "on('npc_cast', function(caster, spell) Story.casts = (Story.casts or '') .. caster .. ':' "
+                ".. spell .. ' ' "
+                "end)");
+    run(engine,
+        "Story.met_gate_guard = true teleport(41.2, 0, 18.8) set_stat('hp_max', 500) set_stat('hp', 500)");
+    for (const char* npc : {"npc_camp_hexer", "npc_bandit"})
+    {
+        REQUIRE(run(engine, std::format("insert_npc('{}', 'wp_camp_center')", npc)).isString());
+        run(engine, std::format("set_routine('{0}', '') npc_clear('{0}')", npc));
+    }
+    run(engine,
+        "npc_teleport('npc_camp_hexer', 31.2, 0, 18.8, 270) npc_teleport('npc_bandit', 31.2, 0, 21.8, 270)");
+    CHECK(run(engine, "npc_item_count('npc_bandit', 'it_scroll_firebolt')").asInteger() == 1);
+    run(engine, "fight('npc_camp_hexer', 'hero') fight('npc_bandit', 'hero')");
+    runSeconds(engine, 3.0f);
+    const std::string casts(run(engine, "tostring(Story.casts)").asString());
+    INFO(casts);
+    CHECK(casts.find("npc_camp_hexer:spl_firebolt") != std::string::npos);
+    CHECK(casts.find("npc_bandit:spl_firebolt") != std::string::npos); // read from his scroll (no circle)
+    CHECK(run(engine, "npc_item_count('npc_bandit', 'it_scroll_firebolt')").asInteger() == 0); // used up
+
+    // C: the fear scroll of the starting set.
+    run(engine,
+        "give_item('it_scroll_fear') equip('it_scroll_fear') set_stat('mana_max', 50) set_stat('mana', 50)");
+    run(engine, "npc_teleport('npc_camp_hexer', 0, 0, 0, 0)"); // out of the way
+    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_center')").isString());
+    run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man') npc_teleport('npc_old_man', 33.2, "
+                "0, 18.8, 270) "
+                "fight('npc_bandit', 'npc_old_man')");
+    runSeconds(engine, 0.5f);
+    CHECK(run(engine, "draw_magic()").asString() == "it_scroll_fear");
+    runSeconds(engine, 1.0f);
+    cast(engine);
+    CHECK(run(engine, "item_count('it_scroll_fear')").asInteger() == 0);
+    CHECK(stat(engine, "hero", "mana") == 40);
+}

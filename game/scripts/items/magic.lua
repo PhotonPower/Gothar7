@@ -31,6 +31,7 @@ rune("it_rune_summon_wolf", "spl_summon_wolf", "Wolf rufen", 450)
 scroll("it_scroll_firebolt", "spl_firebolt", "Feuerpfeil", 25)
 scroll("it_scroll_heal", "spl_heal", "Heilung", 25)
 scroll("it_scroll_sleep", "spl_sleep", "Schlaf", 50)
+scroll("it_scroll_fear", "spl_fear", "Schrecken", 40)
 
 Item "it_potion_mana_small" {
     name = "Kleiner Manatrank",

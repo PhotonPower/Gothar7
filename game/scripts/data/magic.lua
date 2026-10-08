@@ -7,4 +7,8 @@ Magic = {
     charge_seconds = 1.0,
     projectile_speed = 30,
     target_range = 25,
+    -- Brennen (Entscheidung B, wie Gothic): nur Sprüche mit burn = true setzen in Brand; so lange, so viel Schaden
+    -- je Sekunde; Wasser löscht.
+    burn_seconds = 3,
+    burn_damage = 5,
 }

@@ -400,6 +400,11 @@ void Engine::walkNpc(Creature& c, f32 seconds)
         Vec3 backOff;
         (void)npcDoors(c, backOff); // arrived behind a door: close it once away from it
     }
+    if (m_burning.contains(c.id))
+    {
+        velocity = Vec3(0.0f); // burning: it stands and burns (decision B)
+        c.stuckSeconds = 0.0f;
+    }
     if (c.debugHold > 0.0f)
     {
         c.debugHold -= seconds; // debug: held in place, the route and the stuck count go on

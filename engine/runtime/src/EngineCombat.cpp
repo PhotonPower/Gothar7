@@ -1041,7 +1041,7 @@ void Engine::projectileHit(const Projectile& p, u32 targetId)
         // A spell's projectile (M12): its damage, no arrow stays.
         const Creature* shooterCreature = p.shooter == kHeroId ? nullptr : creature(p.shooter);
         spellHit(p.damage, targetId,
-                 shooterCreature != nullptr ? shooterCreature->species : std::string("hero"));
+                 shooterCreature != nullptr ? shooterCreature->species : std::string("hero"), p.burn);
         return;
     }
     auto target = combatant(targetId);
@@ -1101,7 +1101,8 @@ void Engine::projectileHit(const Projectile& p, u32 targetId)
 }
 
 // Spells on creatures and the hero (M12 part C1).
-void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::string_view caster)
+void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::string_view caster, bool burn,
+                      bool reaction)
 {
     auto target = combatant(targetId);
     if (!target)
@@ -1127,11 +1128,18 @@ void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::s
     }
     if (hp > 0)
     {
-        target->fighter->stagger();
-        playReaction(*target, "none/t_hit_magic");
-        if (target->creature != nullptr && target->animal)
+        if (burn)
         {
-            target->creature->action = 3;
+            setBurning(targetId, caster);
+        }
+        if (reaction)
+        {
+            target->fighter->stagger();
+            playReaction(*target, "none/t_hit_magic");
+            if (target->creature != nullptr && target->animal)
+            {
+                target->creature->action = 3;
+            }
         }
         return;
     }
