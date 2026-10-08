@@ -83,6 +83,9 @@ Der NPC sieht, wie der Spieler etwas stiehlt bzw. beim Taschendiebstahl erwischt
 ### `on("assess_use_mob", fn(npc: string, owner: string, mob: string))`
 Der NPC sieht, wie der Spieler einen fremden Mob (Truhe, Tür …) benutzt oder knackt.
 
+### `on("boost_ended", fn())`
+Die Wirkung eines Tempo-Tranks ist vorbei.
+
 ### `on("chapter_changed", fn(chapter: integer))`
 Das Kapitel hat gewechselt (set_chapter in lib/diary.lua).
 
@@ -271,6 +274,9 @@ Gibt dem Helden `count` (Vorgabe 1) Stück eines Items; gibt die neue Anzahl zur
 
 ### `hero() -> {name, guild, level, xp, next_xp, learn_points}`
 Name, Gilde, Stufe, Erfahrung, Erfahrung bis zur nächsten Stufe und Lernpunkte des Helden.
+
+### `hero_boost() -> {speed, seconds} | nil`
+Die laufende Wirkung eines Tempo-Tranks (`boost` am Item): Faktor und verbleibende Sekunden; nil ohne.
 
 ### `inventory() -> {{item, count, name, category}}`
 Das Inventar des Helden, nach Kategorie sortiert (Waffen zuerst, wie in Gothic), ohne Gewichtsgrenze.

@@ -445,7 +445,9 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
       Brust (`band_at = ["calf_l", "spine_03"]`) mit **`bib`** = Breite über der Taille (0,20 m). Der Latz liegt
       auf der Brust (folgt dem Körper bis zur Taille, dort gebunden), darunter hängt die Schürze wie `apron`.
     - `vest_cloth` (Schneider, Goldschmied; Wollstoff „Fabric 031“): das saubere CC0-Hemd (`shirt`) ohne Ärmel,
-      darüber (das grobe Hemd hat Löcher in der Geometrie).
+      darüber (das grobe Hemd hat Löcher in der Geometrie). Die Armlöcher glättet **`rim_smooth`** (Durchgänge):
+      Die offenen Kanten eines nach Knochengewichten geschnittenen Stücks werden entlang der Kante geglättet, nur
+      nach außen (die Kerben füllen sich bis zur Linie der Spitzen), so deckt das Stück mehr statt weniger.
     - `purse` (Geldbeutel, m/w; „Leather 014“): **`pouch = [breite, höhe, tiefe]`** – eigene Geometrie, ein kleiner
       Beutel am Gürtel vorn rechts (oben voller, unten gerafft), steif auf `pelvis`; gut lesbar für den
       Taschendiebstahl.
@@ -595,6 +597,7 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_scroll` (Spruchrolle, Ursprung Mitte, +Y Rollenachse, Siegel zu +Z) | 20 cm | Pergament, Kordel, Wachs |
   | `it_torch` (Fackel, F6 2026-10-08: krummer Holzstab, Kopf aus gewickelten Pechlumpen mit Schnur; Ursprung = Griff nahe dem unteren Ende, +Y zum Kopf; leerer Knoten `socket_flame` an der Kopfspitze (0, 0,60, 0), +Y nach oben, für Flamme und Licht der engine; linke Hand, Clips im Set `torch`) | 72 cm | Holz dunkel, Pech (prozedural), Kordel; 564 Dreiecke |
   | `it_lute` (Laute für den Musiker im Gasthof, 2026-10-08: birnenförmiger Korpus aus Spänen (Rücken −Z), flache Decke mit dunkler Rosette, Hals entlang +Y, Wirbelkasten nach hinten geknickt, sechs Darmsaiten, Steg; Ursprung = rechte Hand über den Saiten am Steg (0, 0,17, 0,012 vom Korpusende), +Z = Decke; rechte Hand, Clips im Set `music`) | 81 cm | Holz dunkel und hell, Pergament (Saiten); 400 Dreiecke |
+  | Waren für Händler und Handwerker (2026-10-08, Namen mit engine abgestimmt): Essen `it_ham` (Schinken, am Knochenende gehalten), `it_sausage`, `it_cheese` (Laib, Ursprung Bodenmitte), `it_pretzel`, `it_beer` (Steinzeugflasche), `it_wine` (grünes Glas); Tränke `it_potion_heal_medium`, `it_potion_mana_medium` (größere Flasche), `it_potion_speed` (grün), `it_potion_strength` (bernsteinfarben); `it_cloth_bolt` (Tuchballen, Bodenmitte), `it_jug` (Tonkrug, am Henkel wie `it_mug`), `it_bowl` (Schüssel, Bodenmitte). Laib, Schüssel und Brezel sind von Natur breiter als hoch: `AXIS_FREE` nimmt sie von der Regel „längste Achse +Y“ aus | 7–50 cm | prozedural: Schinken, Knochen, Wurst, Käse, Ton, Glas grün/bernstein, Leinen; 144–588 Dreiecke |
   | `it_potion_mana_small` (wie der Heiltrank, blaues Glas) | 17 cm | prozedural |
   | `it_crossbow` (Armbrust, Ursprung am Griff bzw. Abzug, Schaft +Y nach vorn, Bogen quer, +Z oben; an `socket_hand_r`, die `cbow`-Clips halten den Schaft in der Faust) | 0,8 m | Holz, Schmiedeeisen, Sehne |
 

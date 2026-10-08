@@ -669,3 +669,12 @@ def test_pouch_derive():
     piece = {"from": "basemesh", "group": "body", "pouch": [0.11, 0.14, 0.05], "bones": ["pelvis"]}
     (d,) = parse_human(_garb_kit({"derive": {"purse": piece}}), "garb_x").derive
     assert d.pouch == (0.11, 0.14, 0.05) and d.bones == ("pelvis",)
+
+
+def test_rim_smooth_derive():
+    """Jagged cuts along bone weights (vest armholes) get their open edges smoothed (2026-10-08)."""
+    piece = {"from": "c/s.mhclo", "cut": ["upperarm", "lowerarm"], "rim_smooth": 12}
+    (d,) = parse_human(_garb_kit({"derive": {"vest": piece}}), "garb_x").derive
+    assert d.rim_smooth == 12
+    with pytest.raises(HumanError, match="rim_smooth"):
+        parse_human(_garb_kit({"derive": {"vest": {**piece, "rim_smooth": 99}}}), "garb_x")

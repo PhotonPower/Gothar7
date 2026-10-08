@@ -978,6 +978,16 @@ private:
     void holdTorch(f32 blend); ///< the carrying pose none/a_torch_hold, looped
     void dropTorch();
     void fixedUpdateTorch(f32 seconds);
+    // A timed boost from a potion (owner decision 2026-10-08: speed potion x1.3 for 120 s, EngineUse.cpp).
+    struct SpeedBoost
+    {
+        f32 factor = 1.0f;
+        f32 seconds = 0.0f; ///< left
+    };
+    std::optional<SpeedBoost> m_speedBoost;
+    /// The movement values of this step: m_movementSettings with a running boost applied.
+    [[nodiscard]] gameplay::MovementSettings boostedMovement() const;
+    void fixedUpdateBoost(f32 seconds);
     void bindTorchFunctions();
     struct Torch
     {

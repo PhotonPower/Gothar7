@@ -73,6 +73,8 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 | `mob/anvil/t_start`, `s_work`, `t_stop` | Am Amboss schmieden | – | hit_anvil, sound:anvil_hit | Q | platzhalter (UAL2 `TreeChopping_Loop`, Überblendung 12 Frames) |
 | `mob/bed/t_lie_down`, `s_lie`, `t_stand_up` | Ins Bett legen, liegen, aufstehen | ja (nur t_) | lie, stand | Q→ | platzhalter (UAL2 `LayToIdle` + Root Motion aufs Bett; `t_lie_down` rückwärts, `s_lie` hält das Liegen; liegt entlang der Längsseite, Kopfende −X des Betts, Drehung im Becken) |
 | `mob/door/t_open` | Tür öffnen/schließen | – | open | Q | platzhalter (UAL1 `Interact`) |
+| `mob/table/t_sit`, `s_sit`, `t_stand` | Am Tisch sitzen (welts Tisch mit Bänken): hinter der Bank, rechtes Bein zuerst hinübersteigen, sitzen mit den Unterarmen auf der Platte, aufstehen rückwärts | – | – | K | platzhalter-K (Slot 1,10 m von der Tischachse, Hüfte über der Sitzmitte; Armhaltung per Gittersuche; mit engine 2026-10-08) |
+| `mob/table/s_sit_drink`, `s_sit_talk` | Am Tisch trinken (`it_mug`, rechte Hand) bzw. reden (Gesten mit beiden Händen) – Schleifen für FP_SIT/FP_DRINK | – | item_to_hand (trinken) | K | platzhalter-K |
 
 ### Prio B – Fortbewegung je Waffenmodus (ausgeschrieben, F2)
 
