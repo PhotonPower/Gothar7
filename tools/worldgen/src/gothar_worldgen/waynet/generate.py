@@ -530,9 +530,39 @@ def build_waynet(
                                               "reason": why})  # fmt: skip
 
     # --- bridges: each island tied to the nearest other part a free, walkable line reaches -----
+    # (a point of it, else a spot on one of its edges: doors above a cut street reach the street
+    # between its points, where a retaining wall leaves room - W6)
     bridges = 0
     names_all = sorted(points)
     xy_all = np.array([points[n].pos[::2] for n in names_all])
+    hopeless: set[frozenset[str]] = set()  # islands no edge of another part is reachable from
+
+    def onto_edge(comp: set[str], cid: dict[str, int], i: int) -> tuple[Any, ...] | None:
+        keys = list(edges)
+        lines = [LineString([points[a].pos[::2], points[b].pos[::2]]) for a, b in keys]
+        tree = STRtree(lines)
+        best: tuple[Any, ...] | None = None
+        for n in comp:
+            q = points[n].pos[::2]
+            sp = Point(q)
+            for k in tree.query(sp, predicate="dwithin", distance=DOOR_REACH_M):
+                a, b = keys[int(k)]
+                if cid.get(a, i) == i:
+                    continue
+                line = lines[int(k)]
+                d = line.distance(sp)
+                if best is not None and d >= best[0]:
+                    continue
+                f = line.interpolate(line.project(sp))
+                t = (f.x, f.y)
+                if min(math.dist(t, points[a].pos[::2]), math.dist(t, points[b].pos[::2])) < 1.0:
+                    continue
+                if abs(points[n].pos[1] - height(*t)) > BRIDGE_STEP_M + checks.max_grade * d:
+                    continue  # another storey: no way up there
+                if checks.free(*t) and checks.line_free(q, t) is None and checks.grade_ok(q, t):
+                    best = (d, n, a, b, t)
+        return best
+
     for _ in range(200):
         comps = _groups(points, [(a, b, True) for a, b in edges])
         if len(comps) < 2:
@@ -565,6 +595,24 @@ def build_waynet(
                 bridges += 1
                 added = True
                 break  # the parts changed: group again
+            key = frozenset(comp)
+            if key in hopeless:
+                continue
+            split = onto_edge(comp, cid, i)
+            if split is None:
+                hopeless.add(key)
+                continue
+            _, n, a, b, t = split
+            splits += 1
+            mid = f"{a}_S{splits}"
+            points[mid] = wp(mid, *t)
+            del edges[(a, b)]
+            add_edge(a, mid)
+            add_edge(mid, b)
+            add_edge(n, mid)
+            bridges += 1
+            added = True
+            break
         if not added:
             break
 

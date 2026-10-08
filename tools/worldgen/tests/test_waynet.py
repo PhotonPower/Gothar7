@@ -283,3 +283,23 @@ def test_a_link_may_come_before_its_point_and_no_bridge_climbs_a_storey():
     cut = run(places=[door, inside, lost])
     assert not any("WP_LEO_SCHMIEDE_ZNA_OBEN_X" in e[:2] for e in cut.edges)
     assert cut.report["usesUnconnected"][0]["point"] == "WP_LEO_SCHMIEDE_ZNA_OBEN_X"
+
+
+def test_an_island_reaches_an_edge_between_its_points():
+    # two linked points above a fence along the street; only a gap at x = 31..33 lets them down,
+    # where no street point is: the bridge splits the street's edge at the foot (W6)
+    fence = [Body("STRASSE_WALL_A", box(10, 9.8, 31, 10.2)),
+             Body("STRASSE_WALL_B", box(33, 9.8, 60, 10.2))]  # fmt: skip
+    places = [
+        {"kind": "wp", "name": "WP_LEO_INSEL_A", "house": "H", "pos": [32.0, 20.0],
+         "dir": [0.0, 1.0], "link": "WP_LEO_INSEL_B"},
+        {"kind": "wp", "name": "WP_LEO_INSEL_B", "house": "H", "pos": [32.5, 24.0],
+         "dir": [0.0, 1.0], "link": "WP_LEO_INSEL_A"},
+    ]  # fmt: skip
+    res = run(bodies=[HOUSE, *fence], places=places)
+    assert res.report["components"] == 1
+    split = [b for a, b, _ in res.edges if a == "WP_LEO_INSEL_A" and "_S" in b]
+    split += [a for a, b, _ in res.edges if b == "WP_LEO_INSEL_A" and "_S" in a]
+    assert split and split[0].startswith("WP_LEO_MARKTSTRASSE_")
+    foot = next(p for p in res.points if p.name == split[0])
+    assert foot.pos[0] == pytest.approx(32.0) and foot.pos[2] == pytest.approx(0.0)

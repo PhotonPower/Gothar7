@@ -40,7 +40,7 @@ def kind_of(material: str) -> str | None:
         if material.endswith(STREAK):
             return "plaster_streak"
         return "plaster_low" if material.endswith(LOW) else "plaster"
-    if name in ("stone", "brick"):
+    if name in ("stone", "brick") or name.startswith("stone_"):
         return "stone"
     if name.startswith("timber"):
         return "timber"

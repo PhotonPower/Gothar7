@@ -137,6 +137,8 @@
   "palette": {
     "note": "baseColorFactor (linear); exakt gleiche Werte in allen Häusern, die Engine bündelt nach Materialwerten",
     "stone": [0.45, 0.4, 0.33, 1.0],
+    "stone_dry": [0.36, 0.32, 0.26, 1.0],
+    "stone_dark": [0.16, 0.15, 0.14, 1.0],
     "plaster_white": [0.609, 0.5497, 0.4549, 1.0],
     "plaster_ochre": [0.4648, 0.3436, 0.1953, 1.0],
     "plaster_grey": [0.37, 0.34, 0.29, 1.0],

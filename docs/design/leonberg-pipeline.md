@@ -588,6 +588,47 @@ unabhängig von der Oberfläche:
 OSM-Achsen + Breite → Splatmap-Schichten (Kopfstein in der Stadt, Matsch/Kies außerhalb), Mittelrinne,
 Stufen und Stützmauern an Höhensprüngen; moderne Bordsteine/Markierungen entfallen.
 
+**Rinnen, Stufen, Stützmauern** (`gothar-worldgen streetworks <ort>`, W6; Plan freigegeben 2026-10-08, Stil vom
+Koordinator im Auftrag des Projektinhabers). Werte in `tools/worldgen/data/<ort>/streetworks.json`, Code in
+`streetworks.py`, `export/ways.py` (Stufenprofil) und `export/retaining.py` (Mauerplan).
+- **Ablauf:** `export-terrain` formt das Gelände (Stufenprofil, Stützmauer-Plan nach
+  `generated/retaining_walls.json`, Straßenhälfte eingeebnet); `streetworks` baut auf dem fertigen Gelände die Modelle nach
+  `generated/streetworks/` mit `streetworks_index.json`; `assemble` setzt sie als Vobs (Gruppe `WORLDGEN_STRASSENBAU`,
+  Namen `STRASSE_…`). Reihenfolge: buildings → citywall → export-terrain → streetworks → assemble → waynet.
+- **Stufen** an jedem OSM-`steps`-Weg im Kern:
+  - Das Gelände darunter steigt gleichmäßig vom unteren zum oberen Ende (ohne Buckel und Mulden).
+  - Steinblöcke mit Steigung höchstens `riseM` 0,18 m; jeder Auftritt so hoch wie das Gelände an seinem oberen Ende, damit es
+    nie durchstößt.
+  - Wange, wo das Gelände daneben tiefer liegt als `cheekM`.
+  - Keine Kollision, das Gelände trägt.
+- **Rinnen** aus flachen Steinen (flaches V, 0,5 m breit) an den gepflasterten Straßen im Kern:
+  - in der Mitte von Straßen unter `centreBelowM` 6 m Breite, sonst an beiden Seiten;
+  - nicht unter Häusern, auf Plätzen und Stufen;
+  - nur Dekoration, eine Datei je 64-m-Zelle.
+- **Stützmauern**, wo eine Straße in den Hang geschnitten ist:
+  - **Wann:** Das Gelände `probeM` neben dem Rand liegt auf mindestens `minRunM` 3 m Länge mehr als `crossFallM` 1 m höher
+    oder tiefer als die Achse.
+  - **Wo:**
+    - am Rand, mindestens `minAxisM` 1 m von der Achse (Platz auf schmalen Pfaden);
+    - nicht auf der Innenseite enger Kurven;
+    - nicht an Häusern (`houseM`), Türen (`doorM`), Plätzen, Stufen und Handmodellen (`keepM`), Einmündungen (`junctionM`).
+  - **Türen** behalten eine Lücke (`laneM`) zur nächsten Straße bis `doorReachM` 30 m (so weit bindet das Wegnetz Türen an)
+    und zu jeder Straße bis `laneReachM` 15 m.
+  - **Bergseite:** hält das Gelände, oben bündig mit ihm. **Talseite:** trägt die Straße, mit Brüstung `parapetM` 0,6 m.
+  - **Material:** Trockenmauer (`stone_dry`); gemörtelt wie die Sockel (`stone`), wo sie an ein Haus oder die Stadtmauer
+    stößt (`mortarM`).
+  - **Einebnung:** Die Straßenhälfte an der Mauer wird quer eingeebnet, jede Zelle auf die Achshöhe neben ihr (keine
+    Terrassen auf steigenden Wegen). Von den Mauerenden her setzt das über `fadeM` 3 m ein (keine Kante, wo der Einschnitt
+    endet; jenseits der Enden bleibt das Gelände).
+  - **Kollision:** Prismen von etwa 2 m.
+- **Wegnetz:** Eine Insel, die keinen Punkt eines anderen Teils erreicht, wird an die nächste erreichbare Stelle einer Kante
+  gebunden (die Kante dort geteilt), wie es einzelne Türen schon wurden. So erreichen Türen oberhalb einer eingeschnittenen
+  Straße diese zwischen ihren Punkten.
+- **Prüfung** gegen das Gelände vor W6:
+  - Bodenregel: Häuser stehen, kein Handmodell versinkt, keine Türschwelle ändert sich.
+  - Wegnetz-Kennzahlen.
+  - Autopilot.
+
 ### W-E2 Stadtmauer (`gothar-worldgen citywall <ort>`, W6)
 Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03); Werte in `building_rules.json` → `cityWall`,
 Verlauf in `tools/worldgen/data/<ort>/city_wall.json` (versioniert, von Hand korrigierbar). Code: `walls/citywall.py`.
