@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -92,9 +92,14 @@ def plan_walls(grid: Grid, streets: Sequence[dict[str, Any]], area: Polygon,
     walls' gaps before doors go to ``steps_out``."""
     kinds = set(spec["highways"])
     fall_m, probe, run_m = float(spec["crossFallM"]), float(spec["probeM"]), float(spec["minRunM"])
-    offset, behind = float(spec["offsetM"]), float(spec["behindM"])
+    offset = float(spec["offsetM"])
     near_house, near_door = _Near(houses), _Near([Point(d) for d in doors])
     near_keep, near_town = _Near(keep_out), _Near(walls_of_town)
+
+    def protect(x: float, z: float) -> bool:  # ground the levelling under a wall leaves alone
+        q = Point(x, z)
+        return near_house.within(q, PROTECT_M) or near_keep.within(q, PROTECT_M)
+
     # every walkable way (junctions stay open) and the way from each door to its street
     from gothar_worldgen.qa.begehung import WALKABLE
 
@@ -179,6 +184,7 @@ def plan_walls(grid: Grid, streets: Sequence[dict[str, Any]], area: Polygon,
                         )
                 samples.append((p, hc, row, (nx, nz), gap))
             walled: dict[float, set[int]] = {1.0: set(), -1.0: set()}
+            spacing = part.length / max(1, n - 1)
             for side in (1.0, -1.0):
                 k = 0
                 while k < len(samples):
@@ -189,35 +195,26 @@ def plan_walls(grid: Grid, streets: Sequence[dict[str, Any]], area: Polygon,
                     j = k
                     while j + 1 < len(samples) and samples[j + 1][2].get(side, (None,))[0] == kind:
                         j += 1
-                    spacing = part.length / max(1, n - 1)
                     if (j - k) * spacing >= run_m:
                         key = f"wall_{s.get('osmId', 'x')}_{part_no}_{'l' if side > 0 else 'r'}_{k}"
-                        wall = Wall(key.lower(), kind, "dry")
-                        fade = float(spec["fadeM"]) / spacing + 1.0
-                        walled[side] |= set(range(k, j + 1))
-                        for i, (p, hc, row, _, _) in enumerate(samples[k : j + 1]):
-                            _, (ex, ez), (ox, oz) = row[side]
-                            gb = grid.height_at(ex + ox * behind, ez + oz * behind)
-                            if kind == "high":
-                                base, top = hc - 0.3, max(gb + 0.1, hc + 0.4)
-                            else:
-                                base, top = min(gb, hc) - 0.3, hc + float(spec["parapetM"])
-                            wall.points.append((ex, ez))
-                            wall.base.append(base)
-                            wall.top.append(min(top, hc + float(spec["maxM"])))
-                            wall.outward.append((ox, oz))
-                            weight = min(1.0, (i + 1) / fade, (j - k - i + 1) / fade)
-                            levelled += _level(grid, heights, p, (ox, oz), reach, weight)
-                        ends = (Point(wall.points[0]), Point(wall.points[-1]))
+                        walls.append(_wall(key, kind, samples[k : j + 1], side, grid, spec))
+                        ends = (Point(walls[-1].points[0]), Point(walls[-1].points[-1]))
                         mortar = float(spec["mortarM"])
                         if any(near_house.within(e, mortar) or near_town.within(e, mortar)
                                for e in ends):  # fmt: skip
-                            wall.style = "mortared"
-                        walls.append(wall)
+                            walls[-1].style = "mortared"
+                        walled[side] |= set(range(k, j + 1))
                     k = j + 1
+                levelled += _level_runs(grid, heights, samples, walled[side], side, reach,
+                                        float(spec["fadeM"]) / spacing + 1.0, spacing,
+                                        float(spec["thicknessM"]), protect)  # fmt: skip
             if steps_out is not None:
                 prefix = f"steps_{s.get('osmId', 'x')}_{part_no}".lower()
-                steps_out.extend(_gap_steps(grid, heights, samples, walled, prefix, spec))
+                level = Grid(heights, grid.first_x, grid.first_z, grid.cell)
+                steps_out.extend(_gap_steps(grid, level, heights, samples, walled, prefix, spec))
+    final = Grid(heights, grid.first_x, grid.first_z, grid.cell)
+    for wall in walls:  # founded below the ground before and behind it, wherever it stands
+        _found(wall, final, float(spec["thicknessM"]))
     length = sum(LineString(w.points).length for w in walls if len(w.points) > 1)
     stats = {"walls": len(walls), "wallM": round(length, 1),
              "high": sum(1 for w in walls if w.side == "high"),
@@ -228,19 +225,97 @@ def plan_walls(grid: Grid, streets: Sequence[dict[str, Any]], area: Polygon,
     return Grid(heights, grid.first_x, grid.first_z, grid.cell), walls, stats
 
 
-UNDER_WALL_M = 0.25  # the levelling reaches this far under the wall (it covers that ground)
+FOUND_M = 0.3  # a wall reaches this far under the lowest ground at its foot
+PROTECT_M = 1.0  # under a wall nothing is levelled this near a house or a hand-made landmark
 
 
-def _level(grid: Grid, heights: np.ndarray, p: Point, out: tuple[float, float],
-           reach: float, weight: float = 1.0) -> int:  # fmt: skip
-    """The cells from the axis at ``p`` out to the wall (``reach``, a metre along) and a little
-    under it (``UNDER_WALL_M``): each to the axis' height beside it (``grid`` unlevelled), so a
-    climbing way keeps its even slope; with ``weight`` below one only that part of the way there
-    (near a wall's end). Sampled at half the cell size both ways: no cell at the wall's face is
-    missed (no teeth of the old ground in front of it on a diagonal street)."""
+def _wall(key: str, kind: str, run: Sequence[Any], side: float, grid: Grid,
+          spec: dict[str, Any]) -> Wall:  # fmt: skip
+    """The wall along a run of samples: base and top from the ground beside the street."""
+    behind = float(spec["behindM"])
+    wall = Wall(key.lower(), kind, "dry")
+    for _, hc, row, _, _ in run:
+        _, (ex, ez), (ox, oz) = row[side]
+        gb = grid.height_at(ex + ox * behind, ez + oz * behind)
+        if kind == "high":
+            base, top = hc - FOUND_M, max(gb + 0.1, hc + 0.4)
+        else:
+            base, top = min(gb, hc) - FOUND_M, hc + float(spec["parapetM"])
+        wall.points.append((ex, ez))
+        wall.base.append(base)
+        wall.top.append(min(top, hc + float(spec["maxM"])))
+        wall.outward.append((ox, oz))
+    return wall
+
+
+def _found(wall: Wall, ground: Grid, thick: float) -> None:
+    """The base ``FOUND_M`` below the lowest ground at the wall's foot: before its face, under it
+    and behind it (the levelled street, a fading end): no ground pokes out under the stones."""
+    for i, ((x, z), (ox, oz)) in enumerate(zip(wall.points, wall.outward, strict=True)):
+        reach = (-0.3, 0.0, thick / 2, thick, thick + 0.3)
+        low = min(ground.height_at(x + ox * d, z + oz * d) for d in reach)
+        wall.base[i] = min(wall.base[i], low - FOUND_M)
+
+
+def _level_runs(grid: Grid, heights: np.ndarray, samples: Sequence[Any], walled: set[int],
+                side: float, reach: float, fade: float, spacing: float, thick: float,
+                protect: Callable[[float, float], bool] | None = None) -> int:  # fmt: skip
+    """The street's half levelled along every wall and on through the gaps a door's way leaves
+    in it (no hump in the street there); setting in over ``fade`` samples from where the walls
+    and gaps end, the weight changing smoothly along (no teeth a sample long)."""
+    run_of = set(walled)
+    for i in sorted(walled):  # on through the gaps beside the walls
+        for step in (1, -1):
+            k = i + step
+            while 0 <= k < len(samples) and k not in run_of and side in samples[k][4]:
+                run_of.add(k)
+                k += step
+    count = 0
+    order = sorted(run_of)
+    a = 0
+    while a < len(order):
+        b = a
+        while b + 1 < len(order) and order[b + 1] == order[b] + 1:
+            b += 1
+        first, last = order[a], order[b]
+
+        def weight(i: int, first: int = first, last: int = last) -> float:
+            if i < first or i > last:
+                return 0.0
+            return min(1.0, (i - first + 1) / fade, (last - i + 1) / fade)
+
+        for i in range(first, last + 1):
+            p, _, row, _, gap = samples[i]
+            out = row[side][2] if side in row else gap[side][1]
+            back, ahead = weight(i - 1), weight(i + 1)
+            q0, q1 = samples[max(i - 1, 0)][0], samples[min(i + 1, len(samples) - 1)][0]
+            if -out[1] * (q1.x - q0.x) + out[0] * (q1.y - q0.y) < 0:  # _level's along runs back
+                back, ahead = ahead, back
+            under = thick - UNDER_BACK_M if i in walled else UNDER_GAP_M
+            count += _level(grid, heights, p, out, reach, (back, weight(i), ahead), spacing,
+                            under, protect)  # fmt: skip
+        a = b + 1
+    return count
+
+
+UNDER_GAP_M = 0.25  # in a gap the levelling reaches this far past the street's edge
+UNDER_BACK_M = 0.15  # under a wall up to this short of its back (the terrain's cells are a metre:
+# a vertex under the wall still at the bank's height would poke out in front of its face)
+
+
+def _level(grid: Grid, heights: np.ndarray, p: Point, out: tuple[float, float], reach: float,
+           weights: tuple[float, float, float] = (1.0, 1.0, 1.0), spacing: float = 1.0,
+           under: float = UNDER_GAP_M,
+           protect: Callable[[float, float], bool] | None = None) -> int:  # fmt: skip
+    """The cells from the axis at ``p`` out to the wall (``reach``, a metre along) and ``under``
+    it: each to the axis' height beside it (``grid`` unlevelled), so a
+    climbing way keeps its even slope; with weights below one only that part of the way there
+    (near a wall's end): the sample's own, the one before and after it in between. Sampled at
+    half the cell size both ways: no cell at the wall's face is missed (no teeth of the old
+    ground in front of it on a diagonal street)."""
     count = 0
     steps = max(2, 2 * int(math.ceil(1.0 / grid.cell)))
-    for d in np.arange(0.0, reach + UNDER_WALL_M + 1e-6, grid.cell / 2):
+    for d in np.arange(0.0, reach + under + 1e-6, grid.cell / 2):
         for j in range(-steps, steps + 1):
             along = 0.5 * j / steps
             ax, az = p.x - out[1] * along, p.y + out[0] * along
@@ -253,7 +328,11 @@ def _level(grid: Grid, heights: np.ndarray, p: Point, out: tuple[float, float],
             h = grid.height_at(p.x - out[1] * on, p.y + out[0] * on)
             if not (0 <= r < heights.shape[0] and 0 <= c < heights.shape[1]):
                 continue
+            if d > reach and protect is not None and protect(cx, cz):
+                continue  # under the wall, but a house or a landmark stands by: its ground stays
             was = float(grid.heights[r, c])  # the strongest levelling of a cell counts, once
+            w0, w1, w2 = weights
+            weight = w1 + ((w0 if along < 0 else w2) - w1) * min(abs(along) / spacing, 1.0)
             new = was + (h - was) * weight
             if abs(new - was) > abs(heights[r, c] - was) + 1e-3:
                 heights[r, c] = new
@@ -261,10 +340,12 @@ def _level(grid: Grid, heights: np.ndarray, p: Point, out: tuple[float, float],
     return count
 
 
-def _gap_steps(grid: Grid, heights: np.ndarray, samples: list[Any], walled: dict[float, set[int]],
-               prefix: str, spec: dict[str, Any]) -> list[GapSteps]:  # fmt: skip
+def _gap_steps(grid: Grid, level: Grid, heights: np.ndarray, samples: list[Any],
+               walled: dict[float, set[int]], prefix: str,
+               spec: dict[str, Any]) -> list[GapSteps]:  # fmt: skip
     """Steps in each run of gap samples beside a wall: at its middle, straight out from the street
-    to the top (or foot) of the bank, at most ``maxDeg`` steep; the ground under them a ramp."""
+    (levelled: ``level``) to the top (or foot) of the bank where it flattens, at most ``maxDeg``
+    steep; the whole bank in the gap a ramp up to there, the steps in its middle."""
     g = spec["gapSteps"]
     slope = math.tan(math.radians(float(g["maxDeg"])))
     width, fade = float(g["widthM"]), float(g["fadeM"])
@@ -281,9 +362,12 @@ def _gap_steps(grid: Grid, heights: np.ndarray, samples: list[Any], walled: dict
             if (k - 1) in walled[side] or (j + 1) in walled[side]:  # a gap in a wall
                 m = (k + j) // 2
                 (ex, ez), (ox, oz) = samples[m][4][side]
-                foot = grid.height_at(ex, ez)
-                rise, d = _bank_top(grid, (ex, ez), (ox, oz), foot, float(g["maxLenM"]),
-                                    float(spec["minDropM"]), slope)  # fmt: skip
+                foot = level.height_at(ex, ez)
+                drop, longest = float(spec["minDropM"]), float(g["maxLenM"])
+                rise, d = _bank_top(grid, (ex, ez), (ox, oz), foot, longest, drop, PLATEAU_GRADE)
+                if rise is None:  # a hill rising on: up to where it gets walkable
+                    rise, d = _bank_top(grid, (ex, ez), (ox, oz), foot, longest, drop, slope)
+                gap_half = math.dist(samples[k][4][side][0], samples[j][4][side][0]) / 2
                 if rise is not None and abs(rise) >= BANK_MIN_GRADE * d:  # a bank, not a slope
                     for _ in range(30):  # as long as the slope needs: cut into the ground above
                         end = (ex + ox * d, ez + oz * d)
@@ -295,7 +379,8 @@ def _gap_steps(grid: Grid, heights: np.ndarray, samples: list[Any], walled: dict
                         rise = None  # the hill rises on steeper than steps may: none
                     big = rise is not None and abs(rise) >= float(spec["minDropM"])
                     if big and d <= float(g["maxLenM"]):
-                        _ramp(grid, heights, (ex, ez), end, foot, foot + rise, width / 2, fade)
+                        half = max(width / 2, gap_half + 0.5)  # the bank across the gap
+                        _ramp(grid, heights, (ex, ez), end, foot, foot + rise, half, fade)
                         key = f"{prefix}_{'l' if side > 0 else 'r'}_gap{m}"
                         out.append(GapSteps(key, [(ex, ez), end], width))
             k = j + 1
@@ -303,14 +388,15 @@ def _gap_steps(grid: Grid, heights: np.ndarray, samples: list[Any], walled: dict
 
 
 BANK_MIN_GRADE = math.tan(math.radians(15.0))  # gentler on average: a slope, no bank for steps
+PLATEAU_GRADE = math.tan(math.radians(12.0))  # the bank's top: the ground on it this gentle
 
 
 def _bank_top(grid: Grid, edge: tuple[float, float], out: tuple[float, float], foot: float,
               max_len: float, min_drop: float,
               walkable: float) -> tuple[float | None, float]:  # fmt: skip
     """(rise, distance) from the street's edge out to the top (or foot) of the bank, where the
-    ground gets walkable (no steeper than ``walkable``) after it rose (or fell) at least
-    ``min_drop``; (None, 0) if it does not within ``max_len``."""
+    ground gets as gentle as ``walkable`` after it rose (or fell) at least ``min_drop``: the
+    plateau the steps lead onto; (None, 0) if it does not within ``max_len``."""
     step = 0.25
     prev = foot
     for d in np.arange(step, max_len + 1e-6, step):

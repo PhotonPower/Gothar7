@@ -287,7 +287,9 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     - Kopfstein: Straßen und Plätze im Kernbereich
     - Kies: Straßen und Plätze außerhalb, Bahnlinien
     - Matsch: unter Gebäuden plus 1,5 m Rand, an Bächen und Gräben; dazu Böschungen an Straßen: Pflaster und Kies
-      blenden zwischen 28° und 32° Neigung aus und werden Erde (W6, Koordinator 2026-10-08: kein verzerrtes Pflaster)
+      blenden zwischen 28° und 32° Neigung aus und werden Erde (W6, Koordinator 2026-10-08: kein verzerrtes Pflaster);
+      ebenso, wo der Boden in der Straßenbreite 0,25–0,5 m über oder unter der Achse daneben liegt (Pflaster nur auf der
+      Straßenfläche, nicht auf Höckern und Böschungen)
     - Waldboden: Wald, Gebüsch, Einzelbäume mit 3 m Radius
     - Acker: Ackerland, Kleingärten, Gärten
     - Fels: Neigung über 35–45°, weich eingeblendet
@@ -622,17 +624,27 @@ Koordinator im Auftrag des Projektinhabers). Werte in `tools/worldgen/data/<ort>
   - **Stufen in den Lücken** (Koordinator 2026-10-08):
     - Wo eine Mauer für den Weg einer Tür aussetzt und die Böschung steil ist, führen Steinstufen vom Straßenrand gerade
       hinaus bis zur Oberkante der Böschung (`gapSteps`).
-    - Die Oberkante liegt dort, wo das Gelände wieder begehbar wird, nach mindestens 0,4 m Höhe.
+    - Die Straßenhälfte wird durch die Lücke weiter eingeebnet (kein Höcker auf der Straße); die Stufen beginnen auf ihr.
+    - Die Oberkante ist das Plateau: dort wird das Gelände nach mindestens 0,4 m Höhe sanft (höchstens 12°); steigt es
+      danach nur noch begehbar weiter, bis dorthin, wo es begehbar wird.
     - Höchstens 30° steil; ist die Böschung steiler, schneiden die Stufen in das Gelände dahinter ein.
-    - Das Gelände darunter wird eine gerade Rampe, 1,2 m breit, 1 m weich eingeblendet.
-    - Keine Stufen an sanften Hängen unter 15° im Mittel und wo der Hang dahinter steiler weitersteigt.
-    - Leonberg: 18 geplant, 14 gebaut (bei 4 bleibt nach den übrigen Geländeschritten weniger als 0,4 m Höhe).
+    - Die ganze Böschung in der Lücke wird eine gerade Rampe bis zur Oberkante, die Stufen in ihrer Mitte (keine Buckel
+      neben den Stufen), 1 m weich eingeblendet.
+    - Keine Stufen an sanften Hängen unter 15° im Mittel.
+    - Leonberg: 25 geplant, 23 gebaut (bei 2 bleibt nach den übrigen Geländeschritten weniger als 0,4 m Höhe).
   - **Bergseite:** hält das Gelände, oben bündig mit ihm. **Talseite:** trägt die Straße, mit Brüstung `parapetM` 0,6 m.
   - **Material:** Trockenmauer (`stone_dry`); gemörtelt wie die Sockel (`stone`), wo sie an ein Haus oder die Stadtmauer
     stößt (`mortarM`).
-  - **Einebnung:** Die Straßenhälfte an der Mauer wird quer eingeebnet, jede Zelle auf die Achshöhe neben ihr (keine
-    Terrassen auf steigenden Wegen). Von den Mauerenden her setzt das über `fadeM` 3 m ein (keine Kante, wo der Einschnitt
-    endet; jenseits der Enden bleibt das Gelände).
+  - **Einebnung:**
+    - Die Straßenhälfte an der Mauer wird quer eingeebnet, jede Zelle auf die Achshöhe neben ihr (keine Terrassen auf
+      steigenden Wegen).
+    - Von den Mauerenden her setzt das über `fadeM` 3 m ein, mit gleitendem Gewicht entlang der Mauer (keine Kante, wo der
+      Einschnitt endet, keine Zacken; jenseits der Enden bleibt das Gelände).
+    - Sie reicht bis 0,15 m vor die Rückseite unter die Mauer: Eine Ecke des 1-m-Geländerasters unter der Mauer auf
+      Böschungshöhe stünde sonst als Zacke vor der Mauerfront.
+    - Nicht näher als 1 m an Häusern und Handmodellen.
+  - **Mauer:** 1 m stark (`thicknessM`), Oberkante nach dem Gelände 1,2 m dahinter (`behindM`); der Fuß reicht 0,3 m unter den
+    tiefsten Boden davor, darunter und dahinter (nach dem Einebnen).
   - **Kollision:** Prismen von etwa 2 m.
 - **Wegnetz:** Eine Insel, die keinen Punkt eines anderen Teils erreicht, wird an die nächste erreichbare Stelle einer Kante
   gebunden (die Kante dort geteilt), wie es einzelne Türen schon wurden. So erreichen Türen oberhalb einer eingeschnittenen
