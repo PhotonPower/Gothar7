@@ -98,6 +98,7 @@ void Engine::npcSays(const Creature& c, std::string_view text)
 {
     const std::string key = voiceKey({}, c.species, text); // shouts: svm_<voice>_<m|f>_<occasion>_NN
     G7_LOG_INFO("engine", "{}: \"{}\" [{}]", c.species, text, key);
+    (void)speak(c.species, key); // M13 D: in its voice if the take exists (from afar quieter: 3D)
     if (m_scripts)
     {
         const script::Value args[] = {c.species, std::string(text), key};
@@ -1086,35 +1087,37 @@ void Engine::bindAiFunctions()
                  beginState(*c.value(), a[1].asString(), a.size() > 2 ? a[2].asString() : c.value()->stateAt);
                  return Value();
              }});
-    vm.bind({"npc_state",
-             "npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, mob, x, "
-             "y, z}",
-             "Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des "
-             "Animationsgraphen, ob er gerade geht, das Mob, auf dem er sitzt bzw. liegt (Typ), und seine "
-             "Position.",
-             "NPCs", [npc](std::span<const Value> a) -> Result<Value>
+    vm.bind(
+        {"npc_state",
+         "npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, gait, mob, "
+         "x, y, z}",
+         "Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des "
+         "Animationsgraphen, ob er gerade geht, seine Gangart ([anim] variant der Figur), das Mob, auf dem "
+         "er sitzt bzw. liegt (Typ), und seine Position.",
+         "NPCs", [npc](std::span<const Value> a) -> Result<Value>
+         {
+             auto c = npc(a);
+             if (!c)
              {
-                 auto c = npc(a);
-                 if (!c)
-                 {
-                     return c.error();
-                 }
-                 return script::makeTable(
-                     {}, {{"state", c.value()->state},
-                          {"routine", c.value()->routine},
-                          {"ambient", c.value()->ambient},
-                          {"at", c.value()->stateAt},
-                          {"commands", static_cast<i64>(c.value()->commands.size())},
-                          {"animation", c.value()->figure ? std::string(c.value()->figure->animator.state())
-                                                          : std::string()},
-                          {"walking", c.value()->route.has_value()},
-                          {"mob", c.value()->mob && c.value()->mob->phase == Creature::MobUse::Phase::Loop
-                                      ? c.value()->mob->type
-                                      : std::string()},
-                          {"x", static_cast<f64>(c.value()->position.x)},
-                          {"y", static_cast<f64>(c.value()->position.y)},
-                          {"z", static_cast<f64>(c.value()->position.z)}});
-             }});
+                 return c.error();
+             }
+             return script::makeTable(
+                 {}, {{"state", c.value()->state},
+                      {"routine", c.value()->routine},
+                      {"ambient", c.value()->ambient},
+                      {"at", c.value()->stateAt},
+                      {"commands", static_cast<i64>(c.value()->commands.size())},
+                      {"animation",
+                       c.value()->figure ? std::string(c.value()->figure->animator.state()) : std::string()},
+                      {"walking", c.value()->route.has_value()},
+                      {"gait", c.value()->figure ? c.value()->figure->variant : std::string()},
+                      {"mob", c.value()->mob && c.value()->mob->phase == Creature::MobUse::Phase::Loop
+                                  ? c.value()->mob->type
+                                  : std::string()},
+                      {"x", static_cast<f64>(c.value()->position.x)},
+                      {"y", static_cast<f64>(c.value()->position.y)},
+                      {"z", static_cast<f64>(c.value()->position.z)}});
+         }});
     vm.bind({"set_routine", "set_routine(npc: string, routine: string)",
              "Wechselt den Tagesablauf (Kapitelwechsel); der passende Eintrag beginnt sofort. `\"\"` "
              "schaltet ihn ab "

@@ -33,6 +33,7 @@ struct AnimatedFigure
 {
     std::string path;      ///< VFS path of the figure (.glb or .figure.toml)
     std::string graphPath; ///< VFS path of the animation graph
+    std::string variant;   ///< gait variant from the figure manifest ([anim] variant), empty: none
     std::string startState;
     /// Figures assembled at run time (*.figure.toml): the parts worn now (D2).
     std::optional<asset::FigureManifest> manifest;

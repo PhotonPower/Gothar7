@@ -48,6 +48,8 @@ Armour kits (F3g) keep the colour textures of their pieces and may rename and de
     # band_at = ["calf_l", "spine_01"]  # two joints: low cut from the first, high from the second
     panel = 0.42                        # from basemesh, with band: own front panel (aprons),
                                         # this wide, hanging straight below the belly
+    bib = 0.26                          # with panel: only this wide above the waist (bib apron)
+    pouch = [0.11, 0.14, 0.05]          # from basemesh: own pouch at the belt (w, h, d metres)
     bones = ["spine_02", "spine_03"]    # weights only on these bones (stiff plates)
     dome = true                         # with from = "basemesh": smooth dome fitted to the skull
     heads = "head_f_*"                  # these head parts fit under it (dome grows, others bulge)
@@ -130,6 +132,8 @@ DERIVE_KEYS = {
     "band",
     "band_at",
     "panel",
+    "bib",
+    "pouch",
 }
 
 
@@ -164,6 +168,8 @@ class Derive:
     band: tuple[float, float] | None = None  # keep between these heights above `band_at`
     band_at: tuple[str, str] | None = None  # joints of the reference rig for the low/high cut
     panel: float = 0.0  # own front panel this wide (metres) between the band heights
+    bib: float = 0.0  # with panel: this wide above the waist (spine_01), a bib apron; 0 = none
+    pouch: tuple[float, float, float] | None = None  # own pouch at the belt: width, height, depth
     bones: tuple[str, ...] = ()  # limit the weights to bones with these prefixes (stiff plates)
     heads: str | None = None  # head parts that must fit under the piece, e.g. "head_f_*"
 
@@ -513,6 +519,18 @@ def _parse_derive(raw: object) -> tuple[Derive, ...]:
             band_at = (band_at[0], band_at[1])
         if d.get("panel") and (band is None or d["from"] != BASEMESH):
             raise HumanError(f'{where}: panel needs from = "basemesh" and band')
+        if d.get("bib") and not d.get("panel"):
+            raise HumanError(f"{where}: bib needs panel")
+        pouch = d.get("pouch")
+        if pouch is not None and (
+            d["from"] != BASEMESH
+            or not isinstance(pouch, list)
+            or len(pouch) != 3
+            or not all(isinstance(x, int | float) and 0.02 <= x <= 0.3 for x in pouch)
+        ):
+            raise HumanError(
+                f'{where}: pouch = [width, height, depth] 0.02..0.3 m, from = "basemesh"'
+            )
         nasal = d.get("nasal")
         if nasal is not None and (
             depth is None
@@ -565,6 +583,8 @@ def _parse_derive(raw: object) -> tuple[Derive, ...]:
                 band=band,
                 band_at=band_at,
                 panel=_number(d, "panel", where, 0.0, 1.0, 0.0),
+                bib=_number(d, "bib", where, 0.0, 0.6, 0.0),
+                pouch=(float(pouch[0]), float(pouch[1]), float(pouch[2])) if pouch else None,
                 bones=_names(d, "bones", where),
             )
         )

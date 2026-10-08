@@ -78,11 +78,14 @@ def main() -> None:
             seed=seed,
             tint=target.tint,
             size=SIZE,
+            soil=target.soil,
+            soil_amount=target.soil_amount,
         )
         out = args.characters / "textures" / "cloth" / target.file
         alpha = fray_alpha(garment, target.fray, seed, SIZE) if target.fray > 0 else None
         _save(colour, out, alpha)
         fray = f", fray {target.fray}" if target.fray > 0 else ""
+        fray += f", soil {target.soil} {target.soil_amount}" if target.soil else ""
         print(f"[chargen] baked {out.name} ({target.tile}, wear {target.wear}{fray})")
 
 

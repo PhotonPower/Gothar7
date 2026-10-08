@@ -55,6 +55,7 @@ function quest_success(name, text)
     q.status = "success"
     add(q, text)
     notice("Auftrag erledigt: " .. instance("Quest", name).name)
+    emit("quest_success", name)
 end
 
 --- Ein Auftrag ist gescheitert.

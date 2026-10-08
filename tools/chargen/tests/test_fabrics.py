@@ -124,6 +124,40 @@ def test_wear_darkens_seams_and_is_deterministic():
             },
             "fray",
         ),
+        (
+            {
+                "version": 1,
+                "tiles": {"a": {"source": "x.jpg", "size": 0.2}},
+                "textures": {"t.jpg": {"tile": "a", "part": "p", "material": "m", "soil": "mud"}},
+            },
+            "soil must be",
+        ),
+        (
+            {
+                "version": 1,
+                "tiles": {"a": {"source": "x.jpg", "size": 0.2}},
+                "textures": {
+                    "t.jpg": {"tile": "a", "part": "p", "material": "m", "soil_amount": 0.5}
+                },
+            },
+            "needs soil",
+        ),
+        (
+            {
+                "version": 1,
+                "tiles": {"a": {"source": "x.jpg", "size": 0.2}},
+                "textures": {
+                    "t.jpg": {
+                        "tile": "a",
+                        "part": "p",
+                        "material": "m",
+                        "soil": "clay",
+                        "soil_amount": 2,
+                    }
+                },
+            },
+            "soil_amount",
+        ),
     ],
 )
 def test_invalid_fabric_data(data, message):
@@ -187,3 +221,21 @@ def test_apply_fray_materials(tmp_path):
     assert shirt["alphaMode"] == "MASK" and shirt["alphaCutoff"] == 0.5 and shirt["doubleSided"]
     assert "alphaMode" not in skin
     assert apply_fray_materials(tmp_path, target) == []  # nothing left to change
+
+
+def test_soil_marks_the_trades():
+    """Trade soiling (2026-10-08): flour lightens, clay shifts towards red-grey, dark darkens -
+    drawn after the wear, so a texture without soil stays the same."""
+    tile = np.full((16, 16), 0.5)
+    g = square(1.0)
+    inside = rasterize(g, 128)
+    plain = bake(tile, 0.25, g, wear=0.3, seed=5, size=128)
+    flour = bake(tile, 0.25, g, wear=0.3, seed=5, size=128, soil="flour", soil_amount=0.8)
+    clay = bake(tile, 0.25, g, wear=0.3, seed=5, size=128, soil="clay", soil_amount=0.8)
+    dark = bake(tile, 0.25, g, wear=0.3, seed=5, size=128, soil="dark", soil_amount=0.8)
+    assert np.array_equal(plain, bake(tile, 0.25, g, wear=0.3, seed=5, size=128, soil=None))
+    assert flour[inside].mean() > plain[inside].mean() + 0.02
+    assert (clay[inside][:, 0] - clay[inside][:, 2]).max() > 0.05  # reddish, the rest grey
+    assert np.allclose(plain[inside][:, 0], plain[inside][:, 2])
+    assert dark[inside].mean() < plain[inside].mean() - 0.005
+    assert dark[inside].min() > 0.1 * plain[inside].min()  # restrained, no black

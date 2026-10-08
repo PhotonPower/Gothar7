@@ -63,21 +63,107 @@
   - Neue Einzelklänge: `crow`, `dog_bark`, `wood_creak`, `mug_clink`, `frog`.
 - **Spruch-Klänge:** `Spell`-Feld `sounds = { cast, impact }`; das Wirken klingt an der Hand, der Einschlag am Treffpunkt.
 
-## Dynamisches Musiksystem (Gothic: DirectMusic)
-- Musik-Zone (aus world) → **Thema** (z. B. `CAMP`, `FOREST`, `MINE`).
-- Zustand: `Std` | `Thr` (Bedrohung: Feind nimmt Spieler wahr) | `Fgt` (Kampf) – ermittelt aus gameplay/ai.
-- Tageszeit: `Day` | `Ngt`.
-- Pro Thema × Zustand × Tageszeit eine Menge von Segmenten (Loops) mit Takt-/Tempo-Info.
-- Übergänge **auf Taktgrenzen**, Überblendung oder Übergangs-Segment; Stinger (z. B. Quest gelöst).
-- Hysterese: Kampf → Standard erst nach X Sekunden ohne Kampf.
+## Fußschritte (Teil E, umgesetzt) – `runtime/EngineFootsteps.cpp`, `data/footsteps.toml`
+Entscheidung Projektinhaber 6; die Zuordnungen sind mit welt abgestimmt (2026-10-08).
+- **Wann:** bei jedem Event `footstep_l`/`footstep_r` der Clips. Das gilt für den Helden und für Menschen-NPCs bis
+  25 m von der Kamera; Tierschritte folgen.
+- **Material** unter dem Fuß, in dieser Reihenfolge:
+  1. Wasser, wenn die Oberfläche (`WaterBodies::surfaceAt`) mehr als `water_depth` (5 cm) über dem Fuß liegt.
+  2. Ein Modell darunter (Strahl von 0,5 m über dem Fuß 1 m nach unten; `userData` = Vob-ID):
+     `components.surface.footstep` (world.md), sonst das erste passende Pfadmuster `[[models]]` (`*` = beliebige
+     Zeichen), sonst `mob` (wood) bzw. `model` (stone).
+  3. Das Gelände: die stärkste Splat-Schicht am Fußpunkt, nach `[layers]`; sonst `default` (dirt).
+- **Gelände-Daten:** Die Splat-Karten liegen beim Laden der Welt auch auf der CPU, als PNG oder gekochtes KTX2
+  (`asset::decodeKtx2Rgba`).
+- **Zuordnung:**
+  - Testlager: grass→grass, earth→dirt, rock→stone, path→gravel.
+  - Leonberg: Wiese→grass, Kopfstein→stone, Kies→gravel, Matsch/Waldboden/Acker→dirt, Fels→stone.
+  - Muster: streetworks→stone, Räume `*_room_*`→wood (welt setzt Stein am Vob), Holzhütten, Stände, Stämme und Stümpfe
+    im Testlager→wood.
+- **Klang:** `footstep_<material>` aus `sounds.toml`, je 4 Varianten mit Lautstärke- und Tonhöhenstreuung, 3D bis 20 m.
+  - Lautstärke nach Tempo: `slow` 0,45 bis 1,2 m/s (Schleichen), `walk` 0,8, `run` 1,0 ab 3 m/s.
+  - Platzhalter aus `gothar-audio placeholders` (`footstep_<material>_<n>`).
+- **Lua:** `footstep_material(x, y, z)`, `last_footstep()`.
+- **Tests:** `tests/runtime/test_engine_footsteps.cpp` (Teich, Truhe, Stumpf-Muster, Vob-Oberfläche, Gelände, der
+  laufende Held), `tests/world/test_vob_types.cpp` (Vertrag), `tests/cook/test_ktx2.cpp` (`decodeKtx2Rgba`).
 
-```toml
-# music/camp.toml
-[theme.CAMP]
-bpm = 96
-[theme.CAMP.std.day]
-segments = ["music/camp_day_a.ogg", "music/camp_day_b.ogg"]
-[theme.CAMP.fgt]
-segments = ["music/fight_generic_a.ogg"]
-transition = "next_bar"
-```
+## Sprache (Teil D, umgesetzt) – `runtime/EngineVoice.cpp`
+Entscheidungen Projektinhaber 2026-10-08: WAV vorerst (OGG-Umwandlung im Cooker erst mit echten Takes und eigener
+ADR), Ducking −6 dB mit 0,3 s Blende, Dialogstimme 3D am Sprecher, keine Platzhalter-Stimmen im Repo.
+- **Take:** `voice/<sprache>/<key>.wav` (oder `.ogg`), `[voice] language` (Vorgabe `de`). Der Schlüssel kommt wie bisher
+  aus `voiceKey` (Dialogzeilen `dia_…`, Zurufe `svm_…`).
+- **Dialog:** Wird eine Zeile gezeigt und es gibt ihren Take, spricht ihn der Sprecher.
+  - 3D am Kopf (1,6 m), voll bis 4 m, still ab 40 m, Bus `voice`; die Stimme folgt dem Sprecher.
+  - Die Zeile dauert dann Take + 0,3 s, die Untertitel folgen der Stimme. Ohne Take bleibt die Lesedauer aus der
+    Textlänge.
+  - Überspringen und das Gesprächsende brechen die Stimme ab. Je Sprecher spricht eine Stimme.
+- **Zurufe** (`npc_said`) sprechen ebenso, wenn ihr Take existiert; aus der Ferne leiser (3D).
+- **Lippensync aus der Lautstärke** (Entscheidung 7):
+  - `AudioSystem::clipEnvelope` liefert RMS je 1/30 s, auf das lauteste Fenster normiert; `AudioSystem::position(id)`
+    die Abspielposition.
+  - Solange die Stimme läuft, setzt die Engine `FaceAnimator::setMouthOpen(hüllkurve[position])`.
+  - Der Mund öffnet `vis_aa` bis `talkWeight`, über 40 ms geglättet; `vis_oh` rundet ihn leicht mit 2,5 Hz. Danach
+    gibt `nullopt` den Mund an die grobe Sprechbewegung zurück.
+- **Ducking:** Solange jemand spricht, steht der Musik-Bus auf `[audio] duck` (0,5 = −6 dB) mal `music`, über 0,3 s
+  geblendet.
+- **Lua:** `voice_playing(npc)`, Ereignis `voice_line(npc, key, seconds)`.
+- **Nebenbei behoben:** NPCs mit Kapsel (alle Menschen) übersprangen Blick und Gesicht; jetzt blinzeln sie, sprechen
+  und schauen den Helden im Gespräch an.
+- **Tests:** `tests/runtime/test_engine_voice.cpp` mit einem synthetischen Take aus einem temporären Mount:
+  Mund offen im Laut und zu in der Pause, Dauer, Ducking, Überspringen. Dazu audio (Hüllkurve, Position) und
+  animation (`setMouthOpen`).
+
+## Dynamisches Musiksystem (Teil C, umgesetzt; Gothic: DirectMusic)
+Entscheidungen Projektinhaber 4 und 5 sowie zu (a)–(c) vom 2026-10-08.
+- **Daten:** `data/music.toml` (`audio::parseMusicDefs`).
+  - `[theme.<THEMA>]` mit `bpm`, `beats` (je Takt) und `volume`.
+  - Mengen `[theme.<THEMA>.<std|thr|fgt>]` gelten für Tag und Nacht, `[theme.<THEMA>.<zustand>.<day|ngt>]` getrennt.
+  - Felder einer Menge: `segments` (Dateien), optional `intro`, `transition` (`"next_bar"` als Vorgabe oder `"end"`),
+    `fade` in s, eigenes `bpm`/`beats`.
+  - Das Thema `common` gehört zu keiner Zone; es liefert die gemeinsame Bedrohungs- und Kampfmusik.
+  - Stinger: `[stinger.<name>] files, volume`.
+- **Thema:** die kleinste Box `music` um den Helden (1 m über den Füßen; world.md „Zonen“).
+- **Wahl** (`chooseMusic`): Thema.Zustand.Tageszeit → Thema.Zustand → dasselbe in `common` → der nächstniedrigere
+  Zustand.
+- **Außerhalb jeder Musik-Box** ist Stille (Projektinhaber (a)). Ausnahme: die Zustände aus `outside`
+  (`["thr", "fgt"]`, Projektinhaber, Möglichkeit 2) spielen dort die Musik von `common` und blenden danach auf einer
+  Taktgrenze zu Stille aus. Ein Thema ohne Musik zählt wie keine Zone.
+- **Zustand** (`runtime/EngineMusic.cpp`), alle 0,25 s geprüft, nur durch echte Feinde (Projektinhaber (c)):
+  - `fgt`: Der Held hat in den letzten `fight_memory` s (4) getroffen oder wurde getroffen (auch pariert, auch Sprüche).
+    Oder ein NPC bis `fight_range` (20 m), der ihn sieht, steht in einem der `fight_states`
+    (`zs_attack`, `zs_mm_attack`, `zs_mm_hunt`) und kämpft gegen ihn (`fight_target(npc) == "hero"` in
+    `ai/combat.lua`).
+  - `thr`: Ein NPC bis `threat_range` (25 m), der ihn sieht, steht in `threat_states` (`zs_threaten`,
+    `zs_mm_threaten`). Warnungen wegen der Waffe oder der Hütte zählen nicht.
+  - Hysterese (`MusicStateFilter`): Nach oben wechselt der Zustand sofort, nach unten erst nach `hysteresis` s (5)
+    ohne Anlass.
+  - Tag und Nacht wie die Ambiente (Nacht 20–6 Uhr).
+- **Abspielen** (`audio::MusicPlayer`, auf der Mixer-Uhr in Frames):
+  - Segmente laufen einzeln und werden Sample-genau verkettet: Das nächste wird schon beim Start des laufenden für
+    dessen Ende eingeplant. Gewählt wird zufällig, nicht zweimal dasselbe.
+  - Ein Wechsel beginnt auf der nächsten Taktgrenze des laufenden Segments (`next_bar`, nach dessen Tempo) oder an
+    seinem Ende (`end`; die Standard-Musik nach einem Kampf und beim Themenwechsel).
+  - Das alte Segment blendet über `fade` s bis genau dorthin aus (miniaudio stop_time_with_fade); das neue beginnt dort,
+    gegebenenfalls mit seinem `intro`.
+  - Ändert sich der Wunsch vor dem Wechsel, klingt das geplante Segment nie. Aus der Stille beginnt die Musik sofort,
+    nach einem Ausblenden erst an dessen Ende.
+  - `AudioSystem` hat dafür `playAtFrame`, `stopAtFrame`, `clipFrames` und `frame`.
+- **Stinger** auf dem nächsten Schlag über der Musik (`lib/music.lua`, Projektinhaber (b)):
+  - `quest`: Ereignis `quest_success`;
+  - `level_up`;
+  - `chapter`: `chapter_changed`;
+  - `death`: Der Held geht nieder, `npc_knocked_out`/`npc_killed` mit `"hero"`; er stirbt nicht, K8.
+- **Lua:** `music_state()` (theme, state, night, set, segment, stinger), `music_stinger(name)`,
+  `music_force(theme?, state?)` (zum Testen), Ereignis `music_changed(theme, state)`. Lautstärke über den Bus `music`
+  aus engine.toml.
+- **Platzhalter** (Projektinhaber 2): `gothar-audio music` (tools/audio).
+  - Themen: LAGER (96 BPM, D-Dur-Pentatonik, gezupft) und STADT (120 BPM), jeweils Tag und Nacht.
+  - `common`: Bedrohung (80 BPM, d-Moll-Bordun mit Herzschlag) und Kampf (150 BPM, Trommeln und Riff).
+  - Dazu vier Stinger; zusammen 2,6 MB WAV unter `assets/source/music/`.
+  - Die Tempi legen jeden Takt auf ganze Frames bei 22,05 und 48 kHz. Nachklänge laufen an den Anfang um, deshalb
+    schließen die Schleifen ohne Knacken.
+  - Echte Musik ersetzt die Dateien unter gleichem Namen; LAND hat keine Musik mehr (außerhalb Stille).
+- **Tests:**
+  - `tests/audio/test_music.cpp`: Daten, Wahl, Hysterese, Verkettung, Takt- und Endwechsel, Stille, Stinger.
+  - `tests/runtime/test_engine_m13_music.cpp`, DoD-Szenario F: das Lager betreten; ein Bandit droht, dann greift er an;
+    5 s danach wieder Lager-Musik am Segmentende; das Lager verlassen; Kampf draußen.

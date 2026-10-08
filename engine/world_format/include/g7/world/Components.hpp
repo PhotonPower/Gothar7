@@ -155,6 +155,12 @@ struct ItemRef
     std::string owner; ///< Npc instance or guild it belongs to (taking it is theft); empty: nobody's
 };
 
+/// What one walks on in a mesh or mob vob (M13 E, `components.surface`): its footstep material.
+struct SurfaceRef
+{
+    std::string footstep; ///< "wood", "stone" ... (data/footsteps.toml)
+};
+
 /// World matrix of a vob (parent world * local), kept up to date by Scene::updateTransforms().
 struct WorldTransform
 {

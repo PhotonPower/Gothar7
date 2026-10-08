@@ -269,6 +269,63 @@ def frog(rng: random.Random) -> Samples:
     return normalise(fade(croak, 0.02, 0.1), 0.6)
 
 
+# --- Footsteps (M13 E): six materials, four variants each (footstep_<material>_<n>) --------------------------
+
+
+def footstep_stone(rng: random.Random) -> Samples:
+    heel = envelope(tone(rng.uniform(90.0, 120.0), 0.12), 0.001, 0.025)
+    click = envelope(highpass(noise(0.08, rng), 2500.0), 0.0005, 0.012)
+    scrape = envelope(highpass(noise(0.12, rng), 1200.0), 0.01, 0.04)
+    return normalise(mix((heel, 0.8), (click, 0.7), (scrape, 0.15)), rng.uniform(0.6, 0.8))
+
+
+def footstep_wood(rng: random.Random) -> Samples:
+    knock = envelope(tone(rng.uniform(150.0, 210.0), 0.2), 0.001, 0.05)
+    body = envelope(tone(rng.uniform(380.0, 460.0), 0.15), 0.001, 0.03)
+    tap = envelope(lowpass(noise(0.1, rng), 3000.0), 0.0005, 0.015)
+    return normalise(mix((knock, 1.0), (body, 0.4), (tap, 0.5)), rng.uniform(0.6, 0.8))
+
+
+def footstep_grass(rng: random.Random) -> Samples:
+    rustle = envelope(highpass(lowpass(noise(0.2, rng), 5000.0), 900.0), 0.02, 0.07)
+    thud = envelope(tone(rng.uniform(70.0, 90.0), 0.1), 0.003, 0.03)
+    return normalise(mix((rustle, 1.0), (thud, 0.35)), rng.uniform(0.45, 0.6))
+
+
+def footstep_dirt(rng: random.Random) -> Samples:
+    thud = envelope(tone(rng.uniform(60.0, 85.0), 0.15), 0.002, 0.04)
+    crunch = envelope(lowpass(noise(0.14, rng), 1800.0), 0.004, 0.04)
+    return normalise(mix((thud, 1.0), (crunch, 0.6)), rng.uniform(0.5, 0.7))
+
+
+def footstep_gravel(rng: random.Random) -> Samples:
+    bits = crackles(0.16, rng.randint(9, 14), rng)
+    base = envelope(lowpass(noise(0.16, rng), 2500.0), 0.005, 0.05)
+    return normalise(mix((bits, 1.0), (base, 0.5)), rng.uniform(0.55, 0.7))
+
+
+def footstep_water(rng: random.Random) -> Samples:
+    out = envelope(highpass(lowpass(noise(0.35, rng), 4000.0), 400.0), 0.01, 0.12)
+    for _ in range(3):
+        f = rng.uniform(500.0, 900.0)
+        bubble = envelope(tone(lambda t, f=f: f * (1.0 + 2.0 * t), 0.06), 0.002, 0.02)
+        at = rng.randrange(len(out) - len(bubble))
+        for i, x in enumerate(bubble):
+            out[at + i] += 0.3 * x
+    return normalise(fade(out, 0.005, 0.1), rng.uniform(0.5, 0.65))
+
+
+FOOTSTEP_MATERIALS: dict[str, Callable[[random.Random], Samples]] = {
+    "stone": footstep_stone,
+    "wood": footstep_wood,
+    "grass": footstep_grass,
+    "dirt": footstep_dirt,
+    "gravel": footstep_gravel,
+    "water": footstep_water,
+}
+FOOTSTEP_VARIANTS = 4
+
+
 #: name -> generator; the file is sounds/<name>.wav
 SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "amb_field": amb_field,
@@ -300,6 +357,13 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "heal": heal,
     "summon": summon,
 }
+SOUNDS.update(
+    {
+        f"footstep_{material}_{n}": make
+        for material, make in FOOTSTEP_MATERIALS.items()
+        for n in range(1, FOOTSTEP_VARIANTS + 1)
+    }
+)
 
 
 def generate(name: str, seed: int = 7) -> Samples:

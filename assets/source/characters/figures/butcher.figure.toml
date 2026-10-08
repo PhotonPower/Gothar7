@@ -1,0 +1,22 @@
+# butcher: Leonberg butcher: leather bib apron with restrained stains, stubble (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_heavy/body.glb"
+head = "parts/head_m_rough/head.glb"
+hair = "parts/hair_m_rough/hair_buzz.glb"
+beard = "parts/hair_m_rough/beard_stubble.glb"
+cloth = [
+    "parts/cloth_m_heavy/elvs_crude_t-shirt_male.glb",
+    "parts/garb_m_heavy/wide_trousers.glb",
+    "parts/garb_m_heavy/apron_bib_leather.glb",
+    "parts/cloth_m_heavy/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#2e2219"
+beard_stubble = "#2e2219"
+cloth_elvs_crude_t-shirt_male = "#8a8070"
+cloth_wide_trousers = "#3e3024"
+cloth_apron_bib_leather = "#6a4a30"
+cloth_culturalibre_male_boots = "#3a2c22"

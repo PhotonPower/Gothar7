@@ -1,0 +1,70 @@
+# Dynamische Musik (M13 Teil C, Entscheidungen Projektinhaber 4 und 5): Die kleinste Musik-Box um den Helden gibt
+# das Thema (world.md „Zonen“), außerhalb jeder Box ist Stille. Zustand std (Standard), thr (Bedrohung: ein Feind
+# sieht den Helden und droht bzw. jagt), fgt (Kampf); Tageszeit day/ngt (Nacht 20–6 Uhr). Je Thema und Zustand
+# eine Menge Segmente, wahlweise getrennt nach Tageszeit ([theme.X.std.day]) oder für beide ([theme.X.thr]).
+# Fehlt eine Menge, gilt: Thema → common → der nächstniedrigere Zustand.
+# Wechsel auf der nächsten Taktgrenze des laufenden Segments (transition = "next_bar", Vorgabe) oder an seinem
+# Ende ("end"); das alte blendet bis dahin über `fade` Sekunden aus. Optional `intro`: einmal vor den Segmenten.
+# Platzhalter: gothar-audio music (tools/audio); echte Musik später, Dateinamen bleiben.
+version = 1
+
+# NPC-Zustände, die eine Bedrohung bzw. einen Kampf bedeuten (Feinde, die den Helden sehen; Kampf nur, wenn
+# fight_target(npc) in den Skripten "hero" ist).
+threat_states = ["zs_threaten", "zs_mm_threaten"] # Warnungen (Waffe, Hütte) sind keine Feinde
+fight_states = ["zs_attack", "zs_mm_attack", "zs_mm_hunt"]
+threat_range = 25.0 # m
+fight_range = 20.0  # m
+fight_memory = 4.0  # s: eigene Schläge (gegeben, eingesteckt) halten den Kampf
+hysteresis = 5.0    # s ohne Anlass, bis der Zustand sinkt (Entscheidung 4)
+# Außerhalb jeder Musik-Box ist Stille (Projektinhaber) - außer in diesen Zuständen, mit der Musik von common.
+outside = ["thr", "fgt"]
+
+# --- Testlager -----------------------------------------------------------------------------------------------
+[theme.LAGER]
+bpm = 96
+beats = 4
+volume = 0.8
+[theme.LAGER.std.day]
+segments = ["music/lager_std_day.wav"]
+transition = "end"
+[theme.LAGER.std.ngt]
+segments = ["music/lager_std_ngt.wav"]
+transition = "end"
+
+# --- Leonberg (welts Musik-Zonen) ---------------------------------------------------------------------------
+[theme.STADT]
+bpm = 120
+beats = 4
+volume = 0.8
+[theme.STADT.std.day]
+segments = ["music/stadt_std_day.wav"]
+transition = "end"
+[theme.STADT.std.ngt]
+segments = ["music/stadt_std_ngt.wav"]
+transition = "end"
+
+# --- Gemeinsam: Bedrohung und Kampf für jedes Thema ohne eigene --------------------------------------------
+# Eine Menge kann ihr eigenes Tempo haben (bpm, beats); die Taktgrenzen folgen dem Segment, das gerade spielt.
+[theme.common]
+bpm = 80
+beats = 4
+volume = 0.85
+[theme.common.thr]
+segments = ["music/common_thr.wav"]
+fade = 0.5
+[theme.common.fgt]
+segments = ["music/common_fgt.wav"]
+bpm = 150
+fade = 0.15
+
+# --- Stinger (über der Musik auf dem nächsten Schlag) -------------------------------------------------------
+[stinger.quest]
+files = ["music/stinger_quest.wav"]
+volume = 0.9
+[stinger.level_up]
+files = ["music/stinger_level_up.wav"]
+volume = 0.9
+[stinger.death]
+files = ["music/stinger_death.wav"]
+[stinger.chapter]
+files = ["music/stinger_chapter.wav"]

@@ -172,3 +172,47 @@ bus = "ambient"
 volume = 0.6
 pitch_jitter = 0.15
 max_distance = 30
+
+# --- Fußschritte (M13 Teil E): footstep_<material>, je 4 Varianten; data/footsteps.toml wählt das Material.
+
+[footstep_stone]
+files = ["sounds/footstep_stone_1.wav", "sounds/footstep_stone_2.wav", "sounds/footstep_stone_3.wav", "sounds/footstep_stone_4.wav"]
+volume = 0.6
+volume_jitter = 0.15
+pitch_jitter = 0.08
+max_distance = 20
+
+[footstep_wood]
+files = ["sounds/footstep_wood_1.wav", "sounds/footstep_wood_2.wav", "sounds/footstep_wood_3.wav", "sounds/footstep_wood_4.wav"]
+volume = 0.65
+volume_jitter = 0.15
+pitch_jitter = 0.08
+max_distance = 20
+
+[footstep_grass]
+files = ["sounds/footstep_grass_1.wav", "sounds/footstep_grass_2.wav", "sounds/footstep_grass_3.wav", "sounds/footstep_grass_4.wav"]
+volume = 0.45
+volume_jitter = 0.15
+pitch_jitter = 0.08
+max_distance = 20
+
+[footstep_dirt]
+files = ["sounds/footstep_dirt_1.wav", "sounds/footstep_dirt_2.wav", "sounds/footstep_dirt_3.wav", "sounds/footstep_dirt_4.wav"]
+volume = 0.5
+volume_jitter = 0.15
+pitch_jitter = 0.08
+max_distance = 20
+
+[footstep_gravel]
+files = ["sounds/footstep_gravel_1.wav", "sounds/footstep_gravel_2.wav", "sounds/footstep_gravel_3.wav", "sounds/footstep_gravel_4.wav"]
+volume = 0.6
+volume_jitter = 0.15
+pitch_jitter = 0.08
+max_distance = 20
+
+[footstep_water]
+files = ["sounds/footstep_water_1.wav", "sounds/footstep_water_2.wav", "sounds/footstep_water_3.wav", "sounds/footstep_water_4.wav"]
+volume = 0.6
+volume_jitter = 0.15
+pitch_jitter = 0.08
+max_distance = 20

@@ -1,0 +1,24 @@
+# bather: Leonberg bather (Bader): clean shirt, linen apron, purse (F3, 2026-10-08)
+version = 1
+
+[parts]
+body = "parts/body_m_average/body.glb"
+head = "parts/head_m_gaunt/head.glb"
+hair = "parts/hair_m_gaunt/hair_messy.glb"
+cloth = [
+    "parts/garb_m_average/shirt.glb",
+    "parts/garb_m_average/wide_trousers.glb",
+    "parts/garb_m_average/apron.glb",
+    "parts/garb_m_average/belt.glb",
+    "parts/garb_m_average/purse.glb",
+    "parts/cloth_m_average/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#5a3a28"
+cloth_shirt = "#e4dccb"
+cloth_wide_trousers = "#4a5560"
+cloth_apron = "#d6d0c0"
+cloth_belt = "#3a2a1e"
+cloth_purse = "#5a3d28"
+cloth_culturalibre_male_boots = "#3a2c22"

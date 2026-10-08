@@ -9,7 +9,7 @@
 version = 1
 fit_to = "body_m_heavy"
 parts = ["cloth"]
-triangles = 12700
+triangles = 17900
 
 [assets]
 clothes = [
@@ -32,6 +32,11 @@ apron = 900
 apron_leather = 900
 belt = 400
 straw_hat = 900
+apron_bib_flour = 1100
+apron_bib_clay = 1100
+apron_bib_leather = 1100
+vest_cloth = 1500
+purse = 400
 
 [hides]
 straw_hat = ["hair"]
@@ -101,3 +106,55 @@ brim = 0.085
 texture = "gothar/ambientcg/Wicker013/Wicker013_1K-JPG_Color.jpg"
 normal = "gothar/ambientcg/Wicker013/Wicker013_1K-JPG_NormalGL.jpg"
 uv_scale = 2.0
+
+[derive.apron_bib_flour]
+from = "basemesh"
+group = "body"
+band_at = ["calf_l", "spine_03"]
+band = [0.0, 0.06]
+panel = 0.4
+bib = 0.2
+offset = 0.035
+rim = 0.002
+texture = "gothar/ambientcg/Fabric066/Fabric066_1K-JPG_Color.jpg"
+uv_scale = 2.0
+
+[derive.apron_bib_clay]
+from = "basemesh"
+group = "body"
+band_at = ["calf_l", "spine_03"]
+band = [0.0, 0.06]
+panel = 0.4
+bib = 0.2
+offset = 0.035
+rim = 0.002
+texture = "gothar/ambientcg/Fabric045/Fabric045_1K-JPG_Color.jpg"
+uv_scale = 2.0
+
+[derive.apron_bib_leather]
+from = "basemesh"
+group = "body"
+band_at = ["calf_l", "spine_03"]
+band = [0.0, 0.06]
+panel = 0.4
+bib = 0.2
+offset = 0.035
+rim = 0.002
+texture = "gothar/ambientcg/Leather033A/Leather033A_1K-JPG_Color.jpg"
+uv_scale = 2.0
+
+[derive.vest_cloth]
+from = "clothes/toigo_basic_tucked_t-shirt/toigo_basic_tucked_t-shirt.mhclo"
+cut = ["upperarm", "lowerarm"]
+offset = 0.012
+texture = "gothar/ambientcg/Fabric031/Fabric031_1K-JPG_Color.jpg"
+uv_scale = 3.0
+
+[derive.purse]
+from = "basemesh"
+group = "body"
+pouch = [0.11, 0.14, 0.05]
+bones = ["pelvis"]
+texture = "gothar/ambientcg/Leather014/Leather014_1K-JPG_Color.jpg"
+normal = "gothar/ambientcg/Leather014/Leather014_1K-JPG_NormalGL.jpg"
+uv_scale = 3.0

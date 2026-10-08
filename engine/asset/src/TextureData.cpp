@@ -48,6 +48,47 @@ bool hasKtx2Support() noexcept
     return true;
 }
 
+Result<ImageData> decodeKtx2Rgba(std::span<const u8> bytes, std::string_view debugName)
+{
+    KtxTexture tex;
+    const KTX_error_code created = ktxTexture2_CreateFromMemory(
+        bytes.data(), bytes.size(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &tex.ptr);
+    if (created != KTX_SUCCESS)
+    {
+        return ktxError(debugName, "not a readable KTX2 file", created);
+    }
+    ktxTexture2* t = tex.ptr;
+    if (ktxTexture2_NeedsTranscoding(t))
+    {
+        if (const KTX_error_code transcoded = ktxTexture2_TranscodeBasis(t, KTX_TTF_RGBA32, 0);
+            transcoded != KTX_SUCCESS)
+        {
+            return ktxError(debugName, "cannot transcode", transcoded);
+        }
+    }
+    else if (t->vkFormat != kVkR8G8B8A8Unorm && t->vkFormat != kVkR8G8B8A8Srgb)
+    {
+        return Error{std::string(debugName) + ": unsupported KTX2 format (vkFormat " +
+                     std::to_string(t->vkFormat) + ")"};
+    }
+    ktx_size_t offset = 0;
+    if (ktxTexture_GetImageOffset(ktxTexture(t), 0, 0, 0, &offset) != KTX_SUCCESS)
+    {
+        return Error{std::string(debugName) + ": broken mip level 0"};
+    }
+    const ktx_size_t size = ktxTexture_GetImageSize(ktxTexture(t), 0);
+    const u8* data = ktxTexture_GetData(ktxTexture(t)) + offset;
+    ImageData image;
+    image.width = t->baseWidth;
+    image.height = t->baseHeight;
+    if (size < static_cast<ktx_size_t>(image.width) * image.height * 4)
+    {
+        return Error{std::string(debugName) + ": level 0 too small"};
+    }
+    image.rgba8.assign(data, data + static_cast<usize>(image.width) * image.height * 4);
+    return image;
+}
+
 Result<TextureData> decodeKtx2(std::span<const u8> bytes, std::string_view debugName)
 {
     KtxTexture tex;
@@ -118,6 +159,11 @@ bool hasKtx2Support() noexcept
 }
 
 Result<TextureData> decodeKtx2(std::span<const u8>, std::string_view debugName)
+{
+    return Error{std::string(debugName) + ": this build has no KTX2 support (libktx missing)"};
+}
+
+Result<ImageData> decodeKtx2Rgba(std::span<const u8>, std::string_view debugName)
 {
     return Error{std::string(debugName) + ": this build has no KTX2 support (libktx missing)"};
 }

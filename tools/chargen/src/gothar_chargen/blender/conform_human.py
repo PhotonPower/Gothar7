@@ -592,7 +592,10 @@ def _derive(
     if d.dome:
         _dome(obj, heads)
     if d.panel and d.band is not None and d.band_at is not None:
-        _panel(obj, d.panel, *_band_heights(d, joints))
+        waist = float(joints["spine_01"][2]) if d.bib else None
+        _panel(obj, d.panel, *_band_heights(d, joints), bib=d.bib, waist=waist)
+    if d.pouch is not None:
+        _pouch(obj, d.pouch, float(joints["spine_01"][2]))
     # bones only: the skin copy also carries MPFB selection groups ("body" = 1 everywhere)
     groups = {g.index: g.name for g in obj.vertex_groups if not joints or g.name in joints}
     centres = np.array([joints[j] for j in d.near]) if d.near else None
@@ -705,11 +708,19 @@ PANEL_FOLD_DEPTH = 0.02  # metres at the hem
 PANEL_HEM = 0.012  # metres: the hem is uneven (cloth hangs a little longer in the folds)
 
 
-def _panel(obj: bpy.types.Object, width: float, low: float, high: float) -> None:
+def _panel(
+    obj: bpy.types.Object,
+    width: float,
+    low: float,
+    high: float,
+    bib: float = 0.0,
+    waist: float | None = None,
+) -> None:
     """Own geometry: replace the skin copy by a cloth panel in front of the body between the
     heights `low` and `high`, at most `width` wide. On the body (waist, hips) it is as wide as the
     body and follows its front around the hips; below the widest row it hangs straight down
     (instead of following the legs), tapering towards the hem, with a slight arch and soft folds.
+    With `bib`, the rows above `waist` are at most `bib` wide (a bib apron over the chest).
     Every grid point takes the bone weights of the nearest skin vertex."""
     co = _coords(obj)
     mesh = obj.data
@@ -723,6 +734,8 @@ def _panel(obj: bpy.types.Object, width: float, low: float, high: float) -> None
         if len(level):
             front = level[level[:, 1] <= level[:, 1].mean()]  # the front half of the section
             half[r] = min(width / 2, PANEL_HUG * float(np.abs(front[:, 0]).max()))
+    if bib and waist is not None:
+        half = np.where(zs > waist, np.minimum(half, bib / 2), half)
     widest = int(np.argmax(half[: rows // 2]))
     below = np.arange(rows) > widest
     share = (np.arange(rows) - widest) / max(1, rows - 1 - widest)
@@ -737,7 +750,8 @@ def _panel(obj: bpy.types.Object, width: float, low: float, high: float) -> None
                 & (np.abs(torso[:, 2] - z) < PANEL_REACH[1])
             ]
             front = float(near[:, 1].min()) if len(near) else np.inf  # the figure faces -Y
-            ys[r, c] = front if r == 0 else min(front, ys[r - 1, c])  # hangs, never recedes
+            follows = r == 0 or (bib and waist is not None and z > waist)  # a bib lies on the chest
+            ys[r, c] = front if follows else min(front, ys[r - 1, c])  # hangs, never recedes
         valid = np.isfinite(ys[r])
         if not valid.any():
             raise SystemExit(f"panel: no skin at height {z:.2f} m")
@@ -792,6 +806,50 @@ def _panel(obj: bpy.types.Object, width: float, low: float, high: float) -> None
     print(
         f"[chargen] panel {2 * half.min():.2f}-{2 * half.max():.2f} m wide, {high - low:.2f} m long"
     )
+
+
+POUCH_SIDE = (-0.8, -0.6)  # x, y: right front side (the figure faces -Y, its right is -X)
+POUCH_BELT = 0.03  # metres the pouch hangs in front of the skin (over the belt)
+POUCH_SEGMENTS = (10, 8)  # around, up
+
+
+def _pouch(obj: bpy.types.Object, size: tuple[float, float, float], waist: float) -> None:
+    """Own geometry: replace the skin copy by a small pouch (width, height, depth) hanging
+    from the belt at the right front side - a squashed ball, fuller at the bottom and gathered
+    at the top. Every vertex takes the bone weights of the nearest skin vertex."""
+    co = _coords(obj)
+    mesh = obj.data
+    side = np.array(POUCH_SIDE) / np.linalg.norm(POUCH_SIDE)
+    ring = co[(np.abs(co[:, 2] - waist) < 0.02) & (np.abs(co[:, 0]) < 0.25)]
+    if not len(ring):
+        raise SystemExit(f"pouch: no skin at the waist ({waist:.2f} m)")
+    skin = ring[int(np.argmax(ring[:, :2] @ side))]
+    width, height, depth = size
+    across = np.array([side[1], -side[0], 0.0])  # horizontal, along the body surface
+    out = np.array([side[0], side[1], 0.0])
+    centre = skin + out * (POUCH_BELT + depth / 2) - np.array([0.0, 0.0, 0.01 + height / 2])
+    weights: list[dict[int, float]] = [{g.group: g.weight for g in v.groups} for v in mesh.vertices]
+    bm = bmesh.new()
+    bm.loops.layers.uv.new()  # calc_uvs below fills it
+    deform = bm.verts.layers.deform.verify()  # layers before the geometry (as in _panel)
+    bmesh.ops.create_uvsphere(
+        bm, u_segments=POUCH_SEGMENTS[0], v_segments=POUCH_SEGMENTS[1], radius=1.0, calc_uvs=True
+    )
+    for v in bm.verts:
+        x, y, z = v.co
+        full = 1.12 if z < 0 else 1.0 - 0.45 * max(0.0, z - 0.4)  # full bottom, gathered top
+        p = centre + across * (x * full * width / 2) + out * (y * full * depth / 2)
+        p = p + np.array([0.0, 0.0, z * height / 2])
+        v.co = p.tolist()
+        nearest = int(np.argmin(np.linalg.norm(co - p, axis=1)))
+        for group, w in weights[nearest].items():
+            v[deform][group] = w
+    for f in bm.faces:
+        f.smooth = True
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    bm.to_mesh(mesh)
+    bm.free()
+    print(f"[chargen] pouch {width:.2f} x {height:.2f} x {depth:.2f} m at the belt")
 
 
 FLATTEN_BUMP = 0.01  # metres in front of the first fit that count as a bump, not torso
@@ -937,8 +995,8 @@ def _limit_weights(obj: bpy.types.Object, prefixes: tuple[str, ...]) -> None:
     for v in mesh.vertices:
         weights = {g.group: g.weight for g in v.groups if g.group in keep and g.weight > 0}
         total = sum(weights.values())
-        for g in list(v.groups):
-            obj.vertex_groups[g.group].remove([v.index])
+        for gi in [g.group for g in v.groups]:  # indices first: remove() frees the elements
+            obj.vertex_groups[gi].remove([v.index])
         if total <= 0:
             fallback.add([v.index], 1.0, "REPLACE")
             continue

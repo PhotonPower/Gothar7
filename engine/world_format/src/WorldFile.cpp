@@ -415,6 +415,17 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
         {
             vob.category = VobCategory::Gameplay;
         }
+        if (v.contains("components") && v["components"].contains("surface"))
+        {
+            const Json& surface = v["components"]["surface"];
+            if (!surface.is_object() || !surface.contains("footstep") || !surface["footstep"].is_string() ||
+                surface["footstep"].get<std::string>().empty())
+            {
+                return r.error(where,
+                               "'components.surface' needs 'footstep' (a footstep material, e.g. \"wood\")");
+            }
+            vob.footstep = surface["footstep"].get<std::string>();
+        }
     }
     if (vob.type == VobType::Light)
     {
@@ -1286,6 +1297,10 @@ std::string writeWorldFile(const WorldFile& world)
                 item["owner"] = vob->item.owner;
             }
             v["components"]["item"] = std::move(item);
+        }
+        if ((vob->type == VobType::Mesh || vob->type == VobType::Mob) && !vob->footstep.empty())
+        {
+            v["components"]["surface"] = Json{{"footstep", vob->footstep}}; // only when set (byte-equal)
         }
         if (vob->type == VobType::Water)
         {

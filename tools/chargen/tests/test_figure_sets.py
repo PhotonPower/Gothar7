@@ -10,6 +10,17 @@ from gothar_chargen.figure import load_figure
 SOURCE = Path(__file__).resolve().parents[3] / "assets" / "source"
 SETS_FILE = SOURCE / "data" / "figure_sets.toml"
 NAMED = {"smith", "innkeeper", "market_woman", "gate_guard", "guard_captain"}  # one NPC each
+NAMED |= {
+    "baker",
+    "baker_wife",
+    "butcher",
+    "bather",
+    "goldsmith",
+    "cloth_merchant",
+    "tailor",
+    "joiner",
+}
+NAMED |= {"potter", "herbalist"}  # Leonberg's trades (2026-10-08)
 GUILDS_MEN_ONLY = {"guard", "hunter"}  # owner decision 2026-10-04, as in Gothic
 
 

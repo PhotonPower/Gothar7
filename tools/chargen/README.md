@@ -73,6 +73,7 @@ gothar-chargen repair-clips                   & REM Root Motion = Schrittlänge,
 gothar-chargen fabrics --sources C:\GotharData\characters\ambientcg\fabric
                                               & REM abgetragene Kleidungstexturen aus data/fabrics.toml (F3n, lokal;
                                               & REM mit `fray`: ausgefranste Säume, Material MASK; danach part-data)
+                                              & REM `soil`: Spuren des Handwerks (Mehl, Ton, dunkle Flecken)
 gothar-chargen poke [figures\x.glb]           & REM Haut durch Kleidung in Bewegung (fit.poke_motion; Standard: Test-NPCs)
 gothar-chargen build-items --sources C:\GotharData\characters\ambientcg\items
                                               & REM Waffen und Handgegenstände → assets/source/items (F6, §6.3;
@@ -87,6 +88,7 @@ gothar-chargen human [humans\x.human.toml]    & REM MPFB2-Mensch → parts/<name
                                               & REM Kleidungs-Kits (fit_to, parts = ["cloth"]): ein Teil je Stück und Statur;
                                               & REM Rüstungs-Kits zusätzlich neutral = false, [names], [budget], [derive.x],
                                               & REM [retouch]; Kopf-Kits [hides], derive from = "basemesh" + dome/nasal, heads
+                                              & REM eigene Stücke: panel (+ bib: Latzschürze), pouch (Beutel am Gürtel)
 gothar-chargen creature wolf --sources C:\GotharData\characters\monsters
                                               & REM eigene Art aus data/monsters/wolf.creature.toml: Rig, Referenz mit
                                               & REM LODs, Texturen, Clip-Quelle wolf_clips.blend (Ruhepose „rest“; §7.4)
