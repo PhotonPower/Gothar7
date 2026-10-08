@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 35105,
+ "nextVobId": 35111,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -35106,6 +35106,12 @@
   "outdoor:DEBW_00100061ZOR:front:1:3:1": 35101,
   "outdoor:grass:DEBW_001000620uQ:14:1": 35102,
   "outdoor:grass:DEBW_001000620uQ:14:3": 35103,
-  "outdoor:grass:DEBW_00100061Zhq:10:2": 35104
+  "outdoor:grass:DEBW_00100061Zhq:10:2": 35104,
+  "streetworks:steps_w14787513_0_r_gap73": 35105,
+  "streetworks:steps_w15259058_0_r_gap35": 35106,
+  "streetworks:steps_w23792367_0_l_gap41": 35107,
+  "streetworks:steps_w949181276_0_l_gap30": 35108,
+  "streetworks:steps_w1533447661_0_r_gap10": 35109,
+  "outdoor:DEBW_00100061ZgZ:front:2:2:1": 35110
  }
 }

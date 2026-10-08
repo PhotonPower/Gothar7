@@ -138,3 +138,40 @@ def test_no_teeth_of_old_ground_in_front_of_a_wall_on_a_diagonal_street():
         px, pz = x + ox * (2.2 - 0.15), z + oz * (2.2 - 0.15)
         worst = max(worst, abs(levelled.height_at(px, pz) - levelled.height_at(x, z)))
     assert worst < 0.05
+
+
+def test_walls_are_founded_below_the_ground_on_both_sides():
+    g = grid(lambda x, z: 0.5 * z + 0.3 * x)  # a climbing street, the walls' ends fade
+    levelled, walls, _ = plan(g, [STREET])
+    for w in walls:
+        for (x, z), (ox, oz), base in zip(w.points, w.outward, w.base, strict=True):
+            for d in (-0.3, 0.0, 0.25, 0.5, 0.8):
+                assert base <= levelled.height_at(x + ox * d, z + oz * d) - 0.3 + 1e-6
+
+
+def test_the_levelling_fades_smoothly_along_a_wall():
+    g = grid(lambda x, z: 0.5 * z)
+    levelled, walls, _ = plan(g, [STREET])
+    high = next(w for w in walls if w.side == "high")
+    x0 = min(x for x, _ in high.points)
+    hs = [levelled.height_at(x, 1.8) for x in np.arange(x0 - 1.0, x0 + 4.0, 0.25)]
+    assert max(abs(b - a) for a, b in zip(hs, hs[1:], strict=False)) < 0.12  # no teeth
+
+
+def test_a_gap_before_a_door_is_level_and_its_bank_an_even_ramp_up_to_the_plateau():
+    # a 45 degree bank, then a gentle rise (about 14 degrees) for two metres, then flat
+    def bank(x: float, z: float) -> float:
+        return min(max(z - 2.5, 0.0), 2.0) + min(max(z - 4.5, 0.0), 2.0) * 0.25
+
+    door = (0.0, 12.0)
+    steps: list[GapSteps] = []
+    levelled, walls, _ = plan_walls(grid(bank), [STREET], AREA, [], [door], [], [], SPEC, steps)
+    (st,) = steps
+    (ax, az), (bx, bz) = st.points
+    assert bz >= 6.5 - 0.3  # up to the plateau, not only to where it gets walkable
+    for x in (-1.5, 0.0, 1.5):  # the street before the gap level with its axis: no hump
+        assert levelled.height_at(x, 1.5) == pytest.approx(levelled.height_at(x, 0.0), abs=0.05)
+    mid = (az + bz) / 2
+    centre = levelled.height_at(0.0, mid)
+    for x in (-1.0, 1.0):  # the bank beside the steps as high as under them: an even ramp
+        assert levelled.height_at(x, mid) == pytest.approx(centre, abs=0.1)
