@@ -18,7 +18,9 @@ namespace g7
 namespace
 {
 constexpr f32 kArriveDistance = 0.35f; ///< metres to a route point that count as reached
-constexpr f32 kTurnRate = 6.0f;        ///< radians per second an NPC turns while walking
+/// ... and at most this far above or below it: under a point of the upper floor is not there (welt #246).
+constexpr f32 kArriveHeight = 1.2f;
+constexpr f32 kTurnRate = 6.0f; ///< radians per second an NPC turns while walking
 /// A walkable line is checked with spheres at these heights above the feet: low obstacles (below the step
 /// height) are walked over, fences with gaps between their rails still block.
 constexpr f32 kWalkableHeights[] = {0.5f, 1.0f, 1.5f};
@@ -118,7 +120,9 @@ bool Engine::walkableLine(const Vec3& a, const Vec3& b) const
         }
         ground = hit->position.y;
     }
-    return true;
+    // The ground walked along must end at the goal's height: a line from below a floor up to a point on it
+    // follows the floor below (welt #246, upper floors).
+    return std::abs(ground - b.y) <= kArriveHeight;
 }
 
 std::optional<Vec3> Engine::navigationTarget(std::string_view name) const
@@ -305,7 +309,7 @@ void Engine::walkNpc(Creature& c, f32 seconds)
         while (c.routeIndex < c.route->points.size())
         {
             const Vec3 to = c.route->points[c.routeIndex] - c.position;
-            if (glm::length(Vec3(to.x, 0.0f, to.z)) > kArriveDistance)
+            if (glm::length(Vec3(to.x, 0.0f, to.z)) > kArriveDistance || std::abs(to.y) > kArriveHeight)
             {
                 break;
             }
@@ -349,7 +353,7 @@ void Engine::walkNpc(Creature& c, f32 seconds)
                 c.progressDistance = left;
                 c.stuckSeconds = 0.0f;
             }
-            if (c.stuckSeconds > kStuckSeconds && left < kCloseEnough)
+            if (c.stuckSeconds > kStuckSeconds && left < kCloseEnough && std::abs(to.y) <= kArriveHeight)
             {
                 // Near enough to a point it cannot reach: a crate or a stool on the goal, a way point too
                 // close to a house corner (welt #171). On to the next one.
