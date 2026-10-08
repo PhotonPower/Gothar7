@@ -22,7 +22,8 @@
   Punkt gilt in 0,35 m (waagerecht) und höchstens 1,2 m darüber bzw. darunter als erreicht – unter einem Punkt des
   Obergeschosses ist man nicht dort. **Blockiert**: Wird der Weg zum nächsten Routenpunkt 1,5 s lang nicht um 0,3 m
   kürzer (Hindernis, oder er rutscht am Hang ab – Bewegung allein zählt nicht), wird neu geplant, höchstens dreimal,
-  dann `npc_blocked`. Ist er dabei schon näher als 1,2 m am Punkt (Kiste auf dem Ziel, Wegpunkt zu nah an einer
+  dann `npc_blocked`. Vor dem Neuplanen wird die Kapsel an ihrer Stelle neu abgesetzt (das löst eine verkeilte
+  Kapsel, welt #246: an einem Türpfosten), und der neue Weg folgt dem Wegnetz ohne Abkürzungen über 3 m. Ist er dabei schon näher als 1,2 m am Punkt (Kiste auf dem Ziel, Wegpunkt zu nah an einer
   Hausecke), gilt der Punkt als erreicht. Ankunft: Ereignis `npc_arrived(npc, ziel)`.
 - **Debug** (F2): Kanten, Wegpunkte mit Namen (bis 40 m), Freepoints mit Blickrichtung, die Routen gehender NPCs.
 - Testlager: Wegnetz mit 11 Punkten und 4 Freepoints (um das Südende des Zauns herum; das Tor ist zu).
