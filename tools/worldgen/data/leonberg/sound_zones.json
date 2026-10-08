@@ -1,0 +1,32 @@
+{
+  "format": "gothar-sound-zones",
+  "version": 1,
+  "note": "Musik- und Ambiente-Zonen Leonbergs (M13, Vertrag world.md \"Zonen\"; Namen vom Koordinator festgelegt 2026-10-08). Mechanik in gothar_worldgen/uses/sound.py, Werte hier. Das Ambiente innen leitet engine aus den indoor-Zonen ab.",
+  "music": {"town": "STADT", "land": "LAND"},
+  "ambient": {
+    "default": "feld",
+    "town": "stadt_gasse",
+    "squares": "stadt_markt",
+    "garden": "schlossgarten",
+    "water": "ufer",
+    "forest": "wald",
+    "fountain": "brunnen",
+    "wall": "stadtmauer"
+  },
+  "rooms": {
+    "LEO_SCHMIEDE_ZNP_INNEN": "schmiede_esse",
+    "LEO_GASTHAUS_ZHE_INNEN": "gasthaus_stube"
+  },
+  "townCellM": 5.0,
+  "zwingerM": 15.0,
+  "forestCellM": 10.0,
+  "forestMinM2": 2000.0,
+  "squareMarginM": 2.0,
+  "waterMarginM": 8.0,
+  "fountainHalfM": 5.0,
+  "fountainHighM": 4.0,
+  "wallPieceM": 20.0,
+  "wallHalfM": 2.0,
+  "wallBandM": 3.0,
+  "heightM": 300.0
+}

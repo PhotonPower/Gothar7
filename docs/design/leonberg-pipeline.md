@@ -848,6 +848,30 @@ Werkzeug aus W-E5 (`data/<ort>/kirche.json`); die Quelle liegt unverändert unte
   `porch_arch_glass`, `tower_door_glass`), verglaste Schallöffnungen im Glockengeschoss (`belfry_opening_glass`,
   `bell_louvre_glass`) und verglaste Turmschlitze. Die Turmuhr mit Minutenzeiger ist um 1700 möglich.
 
+### Musik- und Ambiente-Zonen (M13)
+Vertrag `docs/modules/world.md` „Zonen“ (Typen `music`, `ambient`; gedrehte Boxen wie `indoor`; bei verschachtelten Zonen
+eines Typs gilt die kleinste Box). Namen vom Koordinator festgelegt (2026-10-08). Werte in
+`tools/worldgen/data/<ort>/sound_zones.json`, Code `uses/sound.py`; `assemble` schreibt sie nach den indoor-Zonen und
+ersetzt nur die eigenen (Wert aus der Liste).
+- **Musik:** `LAND` als Box über die ganze Welt (Vorgabe), `STADT` über die Altstadt: innerhalb der Stadtmauer, der
+  Zwingerstreifen (15 m) und der Schlossgarten.
+- **Ambiente:**
+  - `feld` über die ganze Welt (Vorgabe);
+  - `stadt_gasse` innerhalb der Stadtmauer;
+  - `stadt_markt` über deren Plätze (OSM, 2 m Rand);
+  - `schlossgarten` über den Pomeranzengarten;
+  - `ufer` an Glems und Parksee (die Wasser-Boxen, 8 m breiter);
+  - `wald` über die Waldflächen ab 2000 m²;
+  - `brunnen` um die Handmodell-Brunnen (5 m);
+  - `stadtmauer` auf dem Wehrgang (Band von 3 m über dem Gang, in Stücken von etwa 20 m);
+  - Raum-Ambiente in den indoor-Boxen eines Raums: `schmiede_esse` (Schmiede ZnP), `gasthaus_stube` (Zur krummen Gans);
+  - `innen` leitet engine aus den indoor-Zonen ab.
+- **Boxen:** Große Flächen werden mit Rechtecken aus ganzen Zellen bedeckt (Stadt 5 m, Wald 10 m, längs ihres kleinsten
+  gedrehten Rechtecks); am Rand innerhalb einer Zelle gilt die nächstgrößere Zone. Alle Außenboxen reichen gleich hoch
+  (300 m), damit „die kleinste gewinnt“ nach der Fläche entscheidet; Brunnen, Wehrgang und Räume sind niedrig und
+  gehen vor.
+- **Leonberg:** 358 Boxen; `stadt_gasse` deckt 93 % der Altstadt, `STADT` alles.
+
 ### Zunftschilder (W6)
 Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-08): Ausleger mit Symbol über der Tür, eigene Gestaltung,
 keine echten Wappen oder Logos. Code: `mobs.guild_sign` (Modelle `props/sign_<symbol>.glb`), `uses/places.sign_vobs`.
