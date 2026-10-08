@@ -671,6 +671,7 @@ private:
     /// Opens a closed door ahead of the walking NPC, closes the one behind it; true while it waits for one.
     /// Opens doors on c's way; true while it waits. backOff: where to step out of a swinging leaf's arc.
     bool npcDoors(Creature& c, Vec3& backOff);
+    bool m_strictRoute = false; // the next route planned follows the waynet (a replan after being stuck)
     /// Spawns an Npc instance with its figure, capsule, values and routine.
     [[nodiscard]] Result<u32> spawnNpc(std::string_view name, const Vec3& at, f32 yaw);
     // Behaviour (EngineAi.cpp)
@@ -824,9 +825,20 @@ private:
     bool castSleep(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect = {});
     void wakeUp(u32 targetId);
     void endSleep(Creature& c); ///< the sleep's effect and pose end (the fighter is up again)
+    /// Z6: `targetId` flees from the caster for `seconds` (ai: zs_fear).
+    bool castFear(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect = {});
+    /// M12 part D: an NPC casts `spell` (its mana and circle) at `target` (creature id, ~0: the hero;
+    /// nullopt: itself). Why not, as text; nullopt: it casts.
+    std::optional<std::string> npcCast(Creature& c, std::string_view spell, std::optional<u32> target);
+    void applyNpcSpell(Creature& c);
+    void fixedUpdateNpcCast(Creature& c, f32 seconds);
     /// Z8: calls the spell's creature beside the hero for `seconds`; the one called before vanishes.
     std::optional<u32> summonForHero(const gameplay::SpellInfo& spell, f32 seconds);
     void vanish(Creature& c); ///< a summoned creature goes (effect); dead and gone for scripts
+    /// Z7: the hero becomes an animal (`species`: wolf, keiler, laufvogel) - its figure, capsule, gaits and
+    /// values; and back. Both happen at the start of a player step (never inside an animation or a hit).
+    bool beginTransform(std::string_view species);
+    void endTransform();
     // Effects (M12 part A, EngineFx.cpp).
     [[nodiscard]] std::shared_ptr<const render::EmitterDef> effect(std::string_view name);
     void drawEffects();
@@ -1234,6 +1246,19 @@ private:
     };
     std::optional<HeroCast> m_heroCast;
     std::optional<u32> m_heroSummon; // Z8: the hero's summoned creature (one at a time)
+    struct HeroTransform
+    {
+        std::string species;                         ///< "wolf"
+        std::string npc;                             ///< the Npc instance with its values ("mon_wolf")
+        std::unique_ptr<PlayerFigure> human;         ///< the hero's own figure, kept for the way back
+        std::unique_ptr<gameplay::Character> animal; ///< the animal's values and life (Z7)
+        gameplay::MovementSettings humanMovement;
+        f32 cameraScale = 1.0f; ///< the camera's height (and distance) for the animal: its height / 1.8 m
+    };
+    std::optional<HeroTransform> m_transform; // Z7: the hero in an animal's shape
+    std::string m_transformRequested;         // ... becomes this species at the next player step
+    bool m_transformBackRequested = false;    // ... back at the next player step ("1", no life left, water)
+    i32 m_heroAnimalAction = 0;               // transformed: the animal graph's "action" for one step
     asset::VoiceLines m_voiceLines;
     std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
     void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)

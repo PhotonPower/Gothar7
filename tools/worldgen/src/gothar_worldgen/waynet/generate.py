@@ -44,6 +44,7 @@ DOOR_OUT_M = 0.6  # door points: this much beyond the generator's door probe
 DOOR_REACH_M = 30.0  # a door point connects to a street point at most this far away
 DOOR_CANDIDATES = 16
 GRADE_SAMPLE_M = 0.5  # the slope check looks at pieces this long
+BRIDGE_STEP_M = 0.4  # a bridge between parts climbs at most this much more than its slope allows
 NPC_SLOPE_DEG = 35.0  # steeper pieces stop a running character (autopilot, W6; begehung "steep")
 SKIP_HIGHWAYS = {"motorway", "motorway_link", "trunk", "trunk_link"}
 STAIRS = {"steps"}
@@ -500,6 +501,7 @@ def build_waynet(
 
     # --- routine places of the houses with a use (W7, uses_places.json) ---------------------------
     use_points = 0
+    links: list[tuple[str, dict[str, Any]]] = []
     for pl in places:
         if pl.get("kind") != "wp":
             continue
@@ -512,23 +514,55 @@ def build_waynet(
         if "y" in pl:  # inside a house: on its floor, not on the terrain under it
             p = points[name]
             points[name] = Wp(name, (p.pos[0], float(pl["y"]), p.pos[2]), p.dir)
-        if pl.get("link"):  # through a door: tied to its routine waypoint as it is
-            if pl["link"] in points:
-                add_edge(name, pl["link"])
-            else:
-                why = f"link {pl['link']} missing"
-                report["usesUnconnected"].append({"point": name, "house": pl.get("house"),
-                                                  "reason": why})  # fmt: skip
+        if pl.get("link"):  # through a door: tied to its routine waypoint as it is, once all
+            links.append((name, pl))  # are there (a detour comes before the point it leads to)
             continue
         if not connect(name, spot):
             why = "no reachable point or way within 30 m"
             report["usesUnconnected"].append({"point": name, "house": pl.get("house"),
                                               "reason": why})  # fmt: skip
+    for name, pl in links:
+        if pl["link"] in points:
+            add_edge(name, pl["link"])
+        else:
+            why = f"link {pl['link']} missing"
+            report["usesUnconnected"].append({"point": name, "house": pl.get("house"),
+                                              "reason": why})  # fmt: skip
 
     # --- bridges: each island tied to the nearest other part a free, walkable line reaches -----
+    # (a point of it, else a spot on one of its edges: doors above a cut street reach the street
+    # between its points, where a retaining wall leaves room - W6)
     bridges = 0
     names_all = sorted(points)
     xy_all = np.array([points[n].pos[::2] for n in names_all])
+    hopeless: set[frozenset[str]] = set()  # islands no edge of another part is reachable from
+
+    def onto_edge(comp: set[str], cid: dict[str, int], i: int) -> tuple[Any, ...] | None:
+        keys = list(edges)
+        lines = [LineString([points[a].pos[::2], points[b].pos[::2]]) for a, b in keys]
+        tree = STRtree(lines)
+        best: tuple[Any, ...] | None = None
+        for n in comp:
+            q = points[n].pos[::2]
+            sp = Point(q)
+            for k in tree.query(sp, predicate="dwithin", distance=DOOR_REACH_M):
+                a, b = keys[int(k)]
+                if cid.get(a, i) == i:
+                    continue
+                line = lines[int(k)]
+                d = line.distance(sp)
+                if best is not None and d >= best[0]:
+                    continue
+                f = line.interpolate(line.project(sp))
+                t = (f.x, f.y)
+                if min(math.dist(t, points[a].pos[::2]), math.dist(t, points[b].pos[::2])) < 1.0:
+                    continue
+                if abs(points[n].pos[1] - height(*t)) > BRIDGE_STEP_M + checks.max_grade * d:
+                    continue  # another storey: no way up there
+                if checks.free(*t) and checks.line_free(q, t) is None and checks.grade_ok(q, t):
+                    best = (d, n, a, b, t)
+        return best
+
     for _ in range(200):
         comps = _groups(points, [(a, b, True) for a, b in edges])
         if len(comps) < 2:
@@ -550,6 +584,9 @@ def build_waynet(
                         continue
                     tried[j] += 1
                     t = (float(xy_all[k, 0]), float(xy_all[k, 1]))
+                    rise = abs(points[n].pos[1] - points[other].pos[1])
+                    if rise > BRIDGE_STEP_M + checks.max_grade * float(dist[k]):
+                        continue  # another storey right above or below: no way up there
                     if checks.line_free(q, t) is None and checks.grade_ok(q, t):
                         best = (float(dist[k]), n, other)
                         break
@@ -558,6 +595,24 @@ def build_waynet(
                 bridges += 1
                 added = True
                 break  # the parts changed: group again
+            key = frozenset(comp)
+            if key in hopeless:
+                continue
+            split = onto_edge(comp, cid, i)
+            if split is None:
+                hopeless.add(key)
+                continue
+            _, n, a, b, t = split
+            splits += 1
+            mid = f"{a}_S{splits}"
+            points[mid] = wp(mid, *t)
+            del edges[(a, b)]
+            add_edge(a, mid)
+            add_edge(mid, b)
+            add_edge(n, mid)
+            bridges += 1
+            added = True
+            break
         if not added:
             break
 

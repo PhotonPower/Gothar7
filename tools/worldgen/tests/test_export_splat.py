@@ -173,3 +173,16 @@ def test_formal_garden_gravel_paths_lawn_beds_and_no_field():
     assert w[ACKER].max() < 1e-6  # the garden feature holding the parterre is lawn, not a field
     plain = layer_masks(GRID, [], [], [], [field], CORE)
     assert plain[ACKER][px(11, -10)] > 0.9  # without the parterre it stays a field
+
+
+def test_steep_banks_beside_streets_are_earth_not_cobbles():
+    # a street in the old town running over a 45 degree bank (x 0..10) and on flat ground
+    heights = np.zeros((61, 101))
+    heights[:, 50:61] = np.arange(11) * 1.0
+    heights[:, 61:] = 10.0
+    grid = Grid(heights, GRID.first_x, GRID.first_z, GRID.cell)
+    street = {"highway": "residential", "widthM": 6.0, "points": [[-40, 0], [40, 0]]}
+    core = {"minX": -50.0, "minZ": -30.0, "maxX": 50.0, "maxZ": 30.0}
+    w = composite(layer_masks(grid, [], [street], [], [], core), heights.shape)
+    assert dominant(w, -20, 0) == KOPFSTEIN and dominant(w, 30, 0) == KOPFSTEIN
+    assert dominant(w, 5, 0) == MATSCH

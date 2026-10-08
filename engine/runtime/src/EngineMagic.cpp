@@ -70,6 +70,11 @@ std::string Engine::runeInSlot(u32 slot) const
 
 void Engine::toggleMagic()
 {
+    if (m_transform)
+    {
+        m_transformBackRequested = true; // Z7: "1" makes him human again
+        return;
+    }
     if (!m_figure || !m_hero)
     {
         return;
@@ -141,11 +146,6 @@ void Engine::beginHeroCast()
     }
     const script::Instance* def = m_scripts->findInstance("Item", m_weaponDrawn);
     const bool scroll = def != nullptr && def->fields["category"].asString() == "scroll";
-    if (spell->kind == gameplay::SpellKind::Transform)
-    {
-        notice("Dieser Zauber lässt sich noch nicht wirken."); // M12 part C2
-        return;
-    }
     if (const auto blocked = gameplay::castBlocked(*m_hero, *spell, scroll); blocked)
     {
         notice(*blocked); // Z5: the attempt fails
@@ -279,6 +279,11 @@ void Engine::applyHeroSpell()
         {
             notice("Der Zauber zeigt keine Wirkung."); // Z6: stronger than the caster
         }
+        else if (spell.effect == "fear")
+        {
+            (void)castFear(target->id, spell.duration > 0.0f ? spell.duration * strength : 10.0f, "hero",
+                           fx("on_target"));
+        }
         break;
     }
     case gameplay::SpellKind::Area:
@@ -307,7 +312,329 @@ void Engine::applyHeroSpell()
         (void)summonForHero(spell, spell.duration * strength);
         break;
     case gameplay::SpellKind::Transform:
-        break; // M12 part C2
+        m_transformRequested = spell.species; // the shape changes at the next player step
+        break;
+    }
+}
+
+bool Engine::beginTransform(std::string_view species)
+{
+    if (m_transform || !m_player.valid() || !m_hero || !m_figure || !m_scripts)
+    {
+        return false;
+    }
+    // The animal's values: the first Npc of that species (mon_wolf ...).
+    const script::Instance* npc = nullptr;
+    for (const script::Instance& i : m_scripts->instances())
+    {
+        if (i.kind == "Npc" && i.fields["species"].asString() == species)
+        {
+            npc = &i;
+            break;
+        }
+    }
+    auto values = npc != nullptr
+                      ? gameplay::Character::fromInstance(*npc, itemLookup())
+                      : Result<gameplay::Character>(Error{std::format("no Npc of species {}", species)});
+    if (!values)
+    {
+        G7_LOG_WARN("engine", "transformation: {}", values.error().message);
+        return false;
+    }
+    auto figure = loadFigure(std::format("characters/monsters/{0}/rig/{0}_reference.glb", species),
+                             std::format("data/anim/{}.animgraph.toml", species));
+    if (!figure)
+    {
+        G7_LOG_WARN("engine", "transformation: {}", figure.error().message);
+        return false;
+    }
+    physics::CharacterDesc desc = creatureBody(species);
+    const Vec3 feet = m_player.feet() + Vec3(0.0f, 0.05f, 0.0f);
+    auto body = physics::CharacterController::create(m_physics, desc, feet);
+    if (!body)
+    {
+        G7_LOG_WARN("engine", "transformation: {}", body.error().message);
+        return false;
+    }
+    // No weapons, no magic in the paws (Z7).
+    m_heroCast.reset();
+    m_weaponMode = 0;
+    m_weaponDrawn.clear();
+    detachFromPlayer("socket_hand_r");
+    detachFromPlayer("socket_hand_l");
+    m_combatTarget.reset();
+    m_heroFighter.reset();
+
+    HeroTransform t;
+    t.species = std::string(species);
+    t.npc = npc->name;
+    t.human = std::move(m_figure);
+    t.animal = std::make_unique<gameplay::Character>(std::move(values).value());
+    t.humanMovement = m_movementSettings;
+    // The camera at the animal's height: data/creatures.toml [<species>] camera_height (m the camera looks
+    // at), else scaled by its capsule (human 1.8 m).
+    const physics::CharacterDesc human;
+    const f32 lookAt =
+        m_creatureBodies
+            ? static_cast<f32>(m_creatureBodies->get<f64>(std::string(species) + ".camera_height", 0.0))
+            : 0.0f;
+    t.cameraScale = std::clamp(lookAt > 0.0f ? lookAt / m_movementSettings.camera.targetHeight
+                                             : desc.height / human.height,
+                               0.3f, 1.5f);
+    m_figure = std::move(figure).value();
+    if (m_figure->moveRun > 0.0f)
+    {
+        // Its gaits: walk and run from its clips, sneaking as walking.
+        m_movementSettings.walkSpeed = m_figure->moveWalk;
+        m_movementSettings.runSpeed = m_figure->moveRun;
+        m_movementSettings.sneakSpeed = m_figure->moveWalk;
+        m_movementSettings.strafeSpeed = m_figure->moveWalk;
+        m_movementSettings.backwardSpeed = m_figure->moveWalk;
+    }
+    m_player = std::move(body).value();
+    m_playerFeet = m_playerFeetBefore = m_player.visualFeet();
+    m_transform = std::move(t);
+    m_weaponMode = 5; // the animal's fighting keys; the action key does nothing else (no items, no talk)
+    resetPlayerAnimation();
+    (void)startEffect("summon", feet + Vec3(0.0f, 0.5f, 0.0f));
+    G7_LOG_INFO("engine", "the hero becomes a {} ({})", species, m_transform->npc);
+    if (m_scripts)
+    {
+        const script::Value args[] = {std::string(species)};
+        m_scripts->emit("hero_transformed", args);
+    }
+    return true;
+}
+
+void Engine::endTransform()
+{
+    if (!m_transform)
+    {
+        return;
+    }
+    HeroTransform t = std::move(*m_transform);
+    m_transform.reset();
+    m_movementSettings = t.humanMovement;
+    m_figure = std::move(t.human);
+    m_weaponMode = 0;
+    m_heroFighter.reset();
+    m_combatTarget.reset();
+    m_heroAnimalAction = 0;
+    if (m_player.valid())
+    {
+        const Vec3 feet = m_player.feet() + Vec3(0.0f, 0.05f, 0.0f);
+        physics::CharacterDesc desc;
+        desc.maxSlopeDegrees = m_movementSettings.maxSlopeDegrees;
+        desc.stepHeight = m_movementSettings.stepHeight;
+        desc.stickToFloor = m_movementSettings.stickToFloor;
+        if (auto body = physics::CharacterController::create(m_physics, desc, feet))
+        {
+            m_player = std::move(body).value();
+            m_playerFeet = m_playerFeetBefore = m_player.visualFeet();
+        }
+        (void)startEffect("summon", feet + Vec3(0.0f, 0.8f, 0.0f));
+    }
+    resetPlayerAnimation();
+    G7_LOG_INFO("engine", "the hero is human again");
+    if (m_scripts)
+    {
+        const script::Value args[] = {std::string()};
+        m_scripts->emit("hero_transformed", args);
+    }
+}
+
+bool Engine::castFear(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect)
+{
+    Creature* c = creature(targetId);
+    if (c == nullptr || !c->character || c->dead || c->vanished ||
+        c->fighter.state() == gameplay::FightState::Down || c->fighter.state() == gameplay::FightState::Dead)
+    {
+        return false;
+    }
+    if (!effect.empty())
+    {
+        (void)startEffect(effect, c->position + Vec3(0.0f, 1.0f, 0.0f));
+    }
+    G7_LOG_INFO("engine", "{} is afraid of {} for {:.0f} s", c->species, caster, seconds);
+    if (m_scripts)
+    {
+        const script::Value args[] = {c->species, std::string(caster), static_cast<f64>(seconds)};
+        m_scripts->emit("npc_feared", args); // ai/summons.lua: zs_fear
+    }
+    return true;
+}
+
+std::optional<std::string> Engine::npcCast(Creature& c, std::string_view spell, std::optional<u32> target)
+{
+    const script::Instance* def = m_scripts ? m_scripts->findInstance("Spell", spell) : nullptr;
+    if (def == nullptr)
+    {
+        return std::format("no Spell \"{}\"", spell);
+    }
+    if (!c.character || c.dead || c.vanished || c.cast || c.fighter.state() != gameplay::FightState::Ready)
+    {
+        return std::string("busy");
+    }
+    const gameplay::SpellInfo info = gameplay::spellInfo(*def);
+    if (info.kind == gameplay::SpellKind::Summon || info.kind == gameplay::SpellKind::Transform)
+    {
+        return std::string("NPCs do not summon or transform yet");
+    }
+    if (const auto blocked = gameplay::castBlocked(*c.character, info, false); blocked)
+    {
+        return *blocked;
+    }
+    (void)c.character->setAttribute("mana", c.character->attribute("mana") - info.mana);
+    Creature::Cast cast;
+    cast.spell = info;
+    cast.target = target;
+    // Facing it; its cast clip (no draw clip: the magic is in the hand at once).
+    if (target)
+    {
+        const Vec3 to =
+            (*target == kHeroShooter ? m_player.feet() : creaturePosition(*target).value_or(c.position)) -
+            c.position;
+        if (glm::length(Vec2(to.x, to.z)) > 0.1f)
+        {
+            c.yaw = gameplay::yawOf(glm::normalize(Vec3(to.x, 0.0f, to.z)));
+        }
+    }
+    const char* state = castState(info.kind);
+    if (c.figure && c.figure->animator.hasState(state))
+    {
+        c.figure->animator.enter(state, 0.1f);
+        cast.state = state;
+    }
+    c.magicStance = 3.0f;
+    c.cast = std::move(cast);
+    G7_LOG_INFO("engine", "{} casts {}", c.species, info.instance);
+    if (m_scripts)
+    {
+        const script::Value args[] = {c.species, info.instance};
+        m_scripts->emit("npc_cast", args);
+    }
+    return std::nullopt;
+}
+
+void Engine::fixedUpdateNpcCast(Creature& c, f32 seconds)
+{
+    c.magicStance = std::max(0.0f, c.magicStance - (c.cast ? 0.0f : seconds));
+    if (!c.cast)
+    {
+        return;
+    }
+    Creature::Cast& cast = *c.cast;
+    cast.seconds += seconds;
+    const bool clipOver = cast.state.empty() || !c.figure || c.figure->animator.state() != cast.state;
+    const bool due = cast.state.empty() ? cast.seconds >= kCastFallbackSeconds
+                                        : clipOver || cast.seconds >= kCastMaxSeconds;
+    if (!cast.acted && due)
+    {
+        applyNpcSpell(c);
+    }
+    if (c.cast && c.cast->acted && (clipOver || c.cast->seconds >= kCastMaxSeconds))
+    {
+        c.cast.reset();
+    }
+}
+
+void Engine::applyNpcSpell(Creature& c)
+{
+    if (!c.cast || c.cast->acted)
+    {
+        return;
+    }
+    c.cast->acted = true;
+    const gameplay::SpellInfo& spell = c.cast->spell;
+    const Vec3 hand = c.position + Vec3(0.0f, 1.4f, 0.0f) + gameplay::forwardOf(c.yaw) * 0.5f;
+    const auto fx = [&](std::string_view role) -> std::string
+    {
+        const auto it = spell.fx.find(role);
+        return it != spell.fx.end() ? it->second : std::string();
+    };
+    if (const std::string cast = fx("cast"); !cast.empty())
+    {
+        (void)startEffect(cast, hand);
+    }
+    const std::optional<u32> target = c.cast->target;
+    switch (spell.kind)
+    {
+    case gameplay::SpellKind::Projectile:
+    {
+        const std::optional<Vec3> aim = !target ? std::nullopt
+                                        : *target == kHeroShooter
+                                            ? std::optional<Vec3>(m_player.feet() + Vec3(0.0f, 1.3f, 0.0f))
+                                            : aimPoint(*target);
+        const Vec3 direction = aim ? glm::normalize(*aim - hand) : gameplay::forwardOf(c.yaw);
+        Projectile p;
+        p.position = hand;
+        p.velocity = direction * magicValue(m_scripts.get(), "projectile_speed", 30.0f);
+        p.shooter = c.id;
+        p.spell = spell.instance;
+        for (const auto& [type, value] : spell.damage)
+        {
+            p.damage[type] = value;
+        }
+        if (const std::string trail = fx("trail"); !trail.empty())
+        {
+            p.trail = startEffect(trail, hand, -direction);
+        }
+        p.impact = fx("impact");
+        m_projectiles.push_back(std::move(p));
+        break;
+    }
+    case gameplay::SpellKind::Self:
+        (void)c.character->setAttribute(
+            "hp", std::min(c.character->attribute("hp_max"), c.character->attribute("hp") + spell.heal));
+        if (const std::string on = fx("on_target"); !on.empty())
+        {
+            (void)startEffect(on, c.position);
+        }
+        break;
+    case gameplay::SpellKind::Target:
+        // On NPCs and animals; the hero is not put to sleep or frightened (Gothic 1).
+        if (target && *target != kHeroShooter)
+        {
+            if (spell.effect == "sleep")
+            {
+                (void)castSleep(*target, spell.duration, c.species, fx("on_target"));
+            }
+            else if (spell.effect == "fear")
+            {
+                (void)castFear(*target, spell.duration > 0.0f ? spell.duration : 10.0f, c.species,
+                               fx("on_target"));
+            }
+        }
+        break;
+    case gameplay::SpellKind::Area:
+    {
+        std::vector<u32> hit;
+        for (const auto& other : m_creatures)
+        {
+            if (other.get() != &c && other->character && !other->dead &&
+                glm::length(other->position - c.position) <= spell.radius)
+            {
+                hit.push_back(other->id);
+            }
+        }
+        if (m_player.valid() && glm::length(m_player.feet() - c.position) <= spell.radius)
+        {
+            hit.push_back(kHeroShooter);
+        }
+        gameplay::DamageByType damage;
+        for (const auto& [type, value] : spell.damage)
+        {
+            damage[type] = value;
+        }
+        for (const u32 id : hit)
+        {
+            spellHit(damage, id, c.species);
+        }
+        break;
+    }
+    case gameplay::SpellKind::Summon:
+    case gameplay::SpellKind::Transform:
+        break;
     }
 }
 
@@ -531,6 +858,84 @@ void Engine::bindMagicFunctions()
                  const auto target = heroCombatTarget();
                  return target ? Value(*target) : Value();
              }});
+    vm.bind({"hero_shape", "hero_shape() -> string | nil",
+             "Die Tiergestalt des Helden (Z7: \"wolf\" ...); nil als Mensch.", "Magie",
+             [this](std::span<const Value>) -> Result<Value>
+             { return m_transform ? Value(m_transform->species) : Value(); }});
+    vm.bind({"npc_cast_spell", "npc_cast_spell(npc: string, spell: string, target?: string) -> boolean",
+             "Ein NPC wirkt einen Spruch (M12 Teil D) mit seinem Mana und Kreis (Talent magic_circle): auf "
+             "`target` (\"hero\" oder ein NPC), ohne Ziel auf sich selbst; false, wenn er es nicht kann.",
+             "Magie", [this](std::span<const Value> a) -> Result<Value>
+             {
+                 if (a.size() < 2 || !a[0].isString() || !a[1].isString())
+                 {
+                     return Error{"expects (npc, spell, target?)"};
+                 }
+                 const auto id = npcByInstance(a[0].asString());
+                 if (!id)
+                 {
+                     return Error{std::format("no {} in the world", a[0].asString())};
+                 }
+                 std::optional<u32> target;
+                 if (a.size() > 2 && a[2].isString())
+                 {
+                     target = a[2].asString() == "hero" ? std::optional<u32>(kHeroShooter)
+                                                        : npcByInstance(a[2].asString());
+                     if (!target)
+                     {
+                         return Error{std::format("no {} in the world", a[2].asString())};
+                     }
+                 }
+                 const auto why = npcCast(*creature(*id), a[1].asString(), target);
+                 if (why)
+                 {
+                     G7_LOG_DEBUG("engine", "{} cannot cast {}: {}", a[0].asString(), a[1].asString(), *why);
+                 }
+                 return Value(!why.has_value());
+             }});
+    vm.bind({"npc_can_cast", "npc_can_cast(npc: string, spell: string) -> boolean",
+             "Ob ein NPC den Spruch jetzt wirken könnte (Kreis, Mana, nicht beschäftigt).", "Magie",
+             [this](std::span<const Value> a) -> Result<Value>
+             {
+                 if (a.size() < 2 || !a[0].isString() || !a[1].isString())
+                 {
+                     return Error{"expects (npc, spell)"};
+                 }
+                 const auto id = npcByInstance(a[0].asString());
+                 const Creature* c = id ? creature(*id) : nullptr;
+                 const script::Instance* def = m_scripts->findInstance("Spell", a[1].asString());
+                 if (c == nullptr || def == nullptr || !c->character || c->cast)
+                 {
+                     return Value(false);
+                 }
+                 return Value(
+                     !gameplay::castBlocked(*c->character, gameplay::spellInfo(*def), false).has_value());
+             }});
+    vm.bind({"npc_casting", "npc_casting(npc: string) -> boolean", "Ob ein NPC gerade einen Spruch wirkt.",
+             "Magie", [this](std::span<const Value> a) -> Result<Value>
+             {
+                 const auto id =
+                     !a.empty() && a[0].isString() ? npcByInstance(a[0].asString()) : std::nullopt;
+                 const Creature* c = id ? creature(*id) : nullptr;
+                 return Value(c != nullptr && c->cast.has_value());
+             }});
+    vm.bind({"npc_feared",
+             "on(\"npc_feared\", fn(npc: string, caster: string, seconds: number))",
+             "Ein Furcht-Zauber trifft einen NPC bzw. ein Tier (M12, Z6): er flieht `seconds` Sekunden.",
+             "Ereignisse",
+             {}});
+    vm.bind({"hero_transform_back", "hero_transform_back()",
+             "Der Held wird wieder Mensch (wie die Taste „1“ in Tiergestalt).", "Magie",
+             [this](std::span<const Value>) -> Result<Value>
+             {
+                 m_transformBackRequested = m_transform.has_value();
+                 return Value();
+             }});
+    vm.bind({"hero_transformed",
+             "on(\"hero_transformed\", fn(species: string))",
+             "Der Held nimmt eine Tiergestalt an (M12, Z7) bzw. wird wieder Mensch (`species` leer).",
+             "Ereignisse",
+             {}});
     vm.bind({"hero_summon", "hero_summon() -> string | nil",
              "Das vom Helden beschworene Wesen, solange es da ist (Z8); nil ohne.", "Magie",
              [this](std::span<const Value>) -> Result<Value>

@@ -272,3 +272,167 @@ TEST_CASE(
     CHECK(run(engine, "Story.vanished").asString() == second);
     CHECK(run(engine, "hero_summon()").isNil());
 }
+
+TEST_CASE(
+    "Engine casting: in a wolf's shape the hero runs and bites as the wolf, with its life; back with 1 or "
+    "when that life is gone (Z7)")
+{
+    Engine engine(castConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "on('hero_transformed', function(species) Story.shape = species end)");
+    run(engine,
+        "give_item('it_rune_transform_wolf') equip('it_rune_transform_wolf') set_talent('magic_circle', 2) "
+        "set_stat('mana_max', 100) set_stat('mana', 100) set_stat('hp', 40)");
+    oldManAhead(engine);
+    const f32 humanRun = engine.movementSettings().runSpeed;
+    const f32 humanCamera = engine.playerCameraDistance();
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_transform_wolf");
+    runSeconds(engine, 1.0f);
+    cast(engine);
+    REQUIRE(run(engine, "hero_shape()").isString());
+    CHECK(run(engine, "hero_shape()").asString() == "wolf");
+    CHECK(run(engine, "Story.shape").asString() == "wolf");
+    CHECK(stat(engine, "hero", "mana") == 80);
+    CHECK(engine.movementSettings().runSpeed == doctest::Approx(6.0f)); // the wolf's run (its clips)
+    CHECK(engine.playerFigurePath().find("wolf") != std::string_view::npos);
+    runSeconds(engine, 1.0f);
+    CHECK(engine.playerCameraDistance() < 0.7f * humanCamera); // the camera at the wolf's height, nearer
+    // No weapons, no magic, no bag in its paws.
+    CHECK(run(engine, "player_weapon()").asString() == "animal");
+    CHECK(run(engine, "draw_weapon()").asString() == "animal");
+    engine.setInventoryOpen(true);
+    CHECK_FALSE(engine.inventoryOpen());
+
+    // It bites with the wolf's values: strength 20 + edge 0, no protection.
+    run(engine, "npc_teleport('npc_old_man', 40.0, 0, 18.8, 270)"); // 1.2 m ahead
+    runSeconds(engine, 0.5f);
+    const i64 before = stat(engine, "npc_old_man", "hp");
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    runSeconds(engine, 1.5f);
+    CHECK(stat(engine, "npc_old_man", "hp") == before - 20);
+
+    // "1": human again, with his own life (the old man, bitten, fights back from now on).
+    run(engine, "draw_magic()");
+    REQUIRE(engine.runFrame());
+    CHECK(run(engine, "hero_shape()").isNil());
+    CHECK(run(engine, "Story.shape").asString().empty());
+    CHECK(engine.movementSettings().runSpeed == doctest::Approx(humanRun));
+    CHECK(run(engine, "player_weapon()").asString() == "none");
+    CHECK(stat(engine, "hero", "hp") == 40);
+
+    // Again a wolf; the old man beats it until its life is gone: human again, his own life untouched.
+    run(engine, "set_stat('mana', 100)");
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_transform_wolf");
+    runSeconds(engine, 1.0f);
+    cast(engine);
+    REQUIRE(run(engine, "hero_shape()").isString());
+    const i64 human = stat(engine, "hero", "hp");
+    run(engine, "fight('npc_old_man', 'hero')");
+    for (int i = 0; i < 60 * 60 && run(engine, "hero_shape()").isString(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(run(engine, "hero_shape()").isNil());
+    CHECK(stat(engine, "hero", "hp") == human); // the wolf's life was beaten, not his
+}
+
+TEST_CASE("Engine reactions: people see a beast in the wolf-hero - guards attack, the old man flees; a wolf "
+          "leaves him alone, the runner bird flees (M12 part D)")
+{
+    Engine engine(castConfig());
+    REQUIRE(engine.init().ok());
+    run(engine,
+        "Story.met_gate_guard = true give_item('it_rune_transform_wolf') equip('it_rune_transform_wolf') "
+        "set_talent('magic_circle', 2) set_stat('mana_max', 100) set_stat('mana', 100) "
+        "teleport(41.2, 0, 18.8)");
+    runSeconds(engine, 0.3f);
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_transform_wolf");
+    runSeconds(engine, 1.0f);
+    cast(engine);
+    REQUIRE(run(engine, "hero_shape()").isString());
+    // Around him, all looking at him (he looks west, along -X).
+    const auto place = [&](const char* npc, f32 x, f32 z, f32 yaw)
+    {
+        const bool animal = std::string_view(npc).starts_with("mon_");
+        REQUIRE(run(engine,
+                    std::format("{}('{}', 'wp_camp_center')", animal ? "insert_animal" : "insert_npc", npc))
+                    .isString());
+        run(engine,
+            std::format("set_routine('{0}', '') npc_clear('{0}') npc_teleport('{0}', {1}, 0, {2}, {3})", npc,
+                        x, z, yaw));
+    };
+    place("npc_old_man", 36.2, 18.8, 270);
+    place("npc_gate_guard", 41.2, 13.8, 180);
+    place("mon_wolf", 41.2, 23.8, 0);
+    place("mon_laufvogel", 46.2, 18.8, 90);
+    runSeconds(engine, 3.0f);
+    CHECK(run(engine, "npc_state('npc_old_man').state").asString() == "zs_flee");
+    CHECK(run(engine, "npc_state('npc_gate_guard').state").asString() == "zs_attack");
+    CHECK(run(engine, "Fights['npc_gate_guard']").asString() == "hero");
+    CHECK(run(engine, "npc_state('mon_wolf').state").asString() != "zs_mm_attack"); // his own kind
+    CHECK(run(engine, "npc_state('mon_wolf').state").asString() != "zs_mm_threaten");
+    CHECK(run(engine, "npc_state('mon_laufvogel').state").asString() == "zs_mm_flee");
+}
+
+TEST_CASE("Engine casting: fear makes the target flee for its time (Z6)")
+{
+    Engine engine(castConfig());
+    REQUIRE(engine.init().ok());
+    run(engine,
+        "Spell 'spl_test_fear' { name = 'Test', circle = 1, mana = 5, kind = 'target', effect = 'fear', "
+        "duration = 5 } "
+        "Item 'it_rune_test_fear' { name = 'Test', category = 'rune', spell = 'spl_test_fear', value = 1 }");
+    run(engine, "on('npc_feared', function(npc, caster, seconds) Story.feared = npc .. ' ' .. seconds end)");
+    run(engine, "give_item('it_rune_test_fear') equip('it_rune_test_fear') set_talent('magic_circle', 1) "
+                "set_stat('mana_max', 20) set_stat('mana', 20)");
+    oldManAhead(engine);
+    CHECK(run(engine, "draw_magic()").asString() == "it_rune_test_fear");
+    runSeconds(engine, 1.0f);
+    cast(engine);
+    CHECK(run(engine, "Story.feared").asString().starts_with("npc_old_man 5"));
+    CHECK(run(engine, "npc_state('npc_old_man').state").asString() == "zs_fear");
+    runSeconds(engine, 3.0f);
+    CHECK(run(engine, "npc_state('npc_old_man').state").asString() == "zs_fear"); // still fleeing
+    runSeconds(engine, 3.0f);
+    CHECK(run(engine, "npc_state('npc_old_man').state").asString() != "zs_fear");
+}
+
+TEST_CASE(
+    "Engine NPC magic: a caster fights with fire bolts from afar, heals itself when low; its mana runs out "
+    "(M12 part D)")
+{
+    Engine engine(castConfig());
+    REQUIRE(engine.init().ok());
+    // A test caster (no fixed content in the camp yet: the owner decides who casts).
+    run(engine, "Npc 'npc_test_caster' { name = 'Zauberer', guild = 'bandit', level = 10, "
+                "attributes = { hp = 100, mana = 45 }, talents = { magic_circle = 1 }, "
+                "spells = { 'spl_heal', 'spl_firebolt' } }");
+    run(engine,
+        "on('npc_cast', function(caster, spell) Story.casts = (Story.casts or '') .. spell .. ' ' end)");
+    run(engine,
+        "Story.met_gate_guard = true teleport(41.2, 0, 18.8) set_stat('hp_max', 400) set_stat('hp', 400)");
+    REQUIRE(run(engine, "insert_npc('npc_test_caster', 'wp_camp_center')").isString());
+    run(engine, "set_routine('npc_test_caster', '') npc_clear('npc_test_caster') "
+                "npc_teleport('npc_test_caster', 31.2, 0, 18.8, 270)");
+    runSeconds(engine, 0.3f);
+    // Directly: a fire bolt at the hero, 10 m away.
+    REQUIRE(run(engine, "npc_cast_spell('npc_test_caster', 'spl_firebolt', 'hero')").asBool());
+    CHECK(run(engine, "npc_casting('npc_test_caster')").asBool());
+    CHECK_FALSE(run(engine, "npc_cast_spell('npc_test_caster', 'spl_firebolt', 'hero')").asBool()); // busy
+    runSeconds(engine, 2.0f);
+    CHECK(run(engine, "stat('hp')").asInteger() == 400 - 25);
+    CHECK(run(engine, "npc_stat('npc_test_caster', 'mana')").asInteger() == 35);
+    CHECK_FALSE(run(engine, "npc_casting('npc_test_caster')").asBool());
+
+    // In a fight: low on life it heals itself first, then bolts at the hero while its mana lasts; then it
+    // walks up to strike.
+    run(engine, "npc_set_stat('npc_test_caster', 'hp', 20) Story.casts = ''");
+    run(engine, "fight('npc_test_caster', 'hero')");
+    runSeconds(engine, 12.0f);
+    const std::string casts(run(engine, "Story.casts").asString());
+    INFO(casts);
+    CHECK(casts.starts_with("spl_heal"));
+    CHECK(casts.find("spl_firebolt") != std::string::npos);
+    CHECK(run(engine, "npc_stat('npc_test_caster', 'mana')").asInteger() < 10); // spent
+    CHECK(run(engine, "npc_stat('npc_test_caster', 'hp')").asInteger() >= 70);
+}

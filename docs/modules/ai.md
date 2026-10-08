@@ -13,13 +13,17 @@
 - **Gehbar** (Engine, `walkableLine`): Kugeln mit dem Radius der NPC-Kapsel (0,3 m) in 0,5 / 1,0 / 1,5 m Höhe
   treffen auf der Linie nichts – Zäune mit Lücken zwischen den Latten zählen als Hindernis, niedrige Stufen nicht.
   Dazu Bodenproben alle 0,5 m: kein Schritt steiler als 35° (wie welts Wegnetzprüfung), kein fehlender Boden
-  (Abgrund). Linien über 50 m gelten nicht als gehbar (Aufwand); sie gehen über das Wegnetz (welt #171).
+  (Abgrund). Der so abgegangene Boden muss am Ende auf der Höhe des Ziels liegen (±1,2 m): Eine Linie vom Boden
+  unter einem Obergeschoss zu einem Punkt darauf ist nicht gehbar (welt #246). Linien über 50 m gelten nicht als
+  gehbar (Aufwand); sie gehen über das Wegnetz (welt #171).
 - **NPCs** (eingefügte `Npc`-Instanzen) haben eine eigene Kapsel wie der Held (`physics::CharacterController`):
   Schwerkraft, Stufen, Kollision mit der Welt. `npc_goto(npc, ziel, rennen)` bzw. `Engine::npcGoTo`: drehen sich zum
   nächsten Routenpunkt (6 rad/s), gehen (Geschwindigkeit aus den Blendpunkten des Menschen-Graphen) oder rennen, ein
-  Punkt gilt in 0,35 m als erreicht. **Blockiert**: Wird der Weg zum nächsten Routenpunkt 1,5 s lang nicht um 0,3 m
+  Punkt gilt in 0,35 m (waagerecht) und höchstens 1,2 m darüber bzw. darunter als erreicht – unter einem Punkt des
+  Obergeschosses ist man nicht dort. **Blockiert**: Wird der Weg zum nächsten Routenpunkt 1,5 s lang nicht um 0,3 m
   kürzer (Hindernis, oder er rutscht am Hang ab – Bewegung allein zählt nicht), wird neu geplant, höchstens dreimal,
-  dann `npc_blocked`. Ist er dabei schon näher als 1,2 m am Punkt (Kiste auf dem Ziel, Wegpunkt zu nah an einer
+  dann `npc_blocked`. Vor dem Neuplanen wird die Kapsel an ihrer Stelle neu abgesetzt (das löst eine verkeilte
+  Kapsel, welt #246: an einem Türpfosten), und der neue Weg folgt dem Wegnetz ohne Abkürzungen über 3 m. Ist er dabei schon näher als 1,2 m am Punkt (Kiste auf dem Ziel, Wegpunkt zu nah an einer
   Hausecke), gilt der Punkt als erreicht. Ankunft: Ereignis `npc_arrived(npc, ziel)`.
 - **Debug** (F2): Kanten, Wegpunkte mit Namen (bis 40 m), Freepoints mit Blickrichtung, die Routen gehender NPCs.
 - Testlager: Wegnetz mit 11 Punkten und 4 Freepoints (um das Südende des Zauns herum; das Tor ist zu).

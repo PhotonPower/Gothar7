@@ -159,6 +159,14 @@ void Engine::steerPlayer(f32 yaw)
 
 void Engine::removePlayer()
 {
+    if (m_transform)
+    {
+        // Leaving the world in an animal's shape: human again (the new world starts with him).
+        m_movementSettings = m_transform->humanMovement;
+        m_figure = std::move(m_transform->human);
+        m_transform.reset();
+        m_weaponMode = 0;
+    }
     m_player = {};
     m_climb.reset();
     m_jumpCooldown = 0.0f;
@@ -249,6 +257,15 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     if (!m_player.valid())
     {
         return;
+    }
+    // Z7: the shape changes here, between steps.
+    if (std::exchange(m_transformBackRequested, false))
+    {
+        endTransform();
+    }
+    if (const std::string species = std::exchange(m_transformRequested, std::string()); !species.empty())
+    {
+        (void)beginTransform(species);
     }
     gameplay::MoveInput input = m_playerInputOverride.value_or(m_playerInput);
     if (m_playerInputOverride)
@@ -363,7 +380,7 @@ void Engine::movePlayer(f32 seconds, const gameplay::MoveInput& input)
         const auto ledge = m_player.findLedge(gameplay::forwardOf(m_movement.yaw()), s.stepHeight,
                                               s.climb.highMax, s.climb.reach);
         const auto kind = ledge ? gameplay::classifyLedge(ledge->height, s.climb) : std::nullopt;
-        if (ledge && kind)
+        if (ledge && kind && !m_transform) // an animal does not climb (Z7)
         {
             startClimb(m_player.feet(), ledge->feet, *kind);
             m_movement.stop();
@@ -433,7 +450,10 @@ void Engine::updatePlayerCamera(f64 realSeconds)
                            : 0;
         }
     }
-    const bool roof = covered >= 4;
+    // In a room of the world file (zones of type indoor) it stays inside even without the roof hits: on a
+    // stair under the open ceiling the slanted roof may be higher than the probes reach (welt, W7 stairs).
+    const Vec3 body = feet + Vec3(0.0f, 0.9f, 0.0f);
+    const bool roof = covered >= 4 || render::indoorAmount(body, nearestIndoorVolumes(body), 0.0f) > 0.5f;
     const f32 towards = indoor.blendSeconds > 0.0f
                             ? 1.0f - std::exp(-static_cast<f32>(realSeconds) / indoor.blendSeconds)
                             : 1.0f;
@@ -452,8 +472,16 @@ void Engine::updatePlayerCamera(f64 realSeconds)
     combat.minDistance = std::min(combat.minDistance, combat.distance);
     combat.targetHeight = std::min(combat.targetHeight, around.targetHeight);
     combat.collisionRadius = around.collisionRadius;
-    m_playerCamera.update(static_cast<f32>(realSeconds), feet, m_movement.yaw(), m_playerPitchPixels,
-                          gameplay::blendCamera(around, combat, m_combatBlend), obstruction);
+    gameplay::CameraSettings view = gameplay::blendCamera(around, combat, m_combatBlend);
+    if (m_transform)
+    {
+        // In an animal's shape (Z7): lower, and a little nearer.
+        view.targetHeight *= m_transform->cameraScale;
+        view.distance *= std::max(0.6f, m_transform->cameraScale);
+        view.minDistance = std::min(view.minDistance, view.distance);
+    }
+    m_playerCamera.update(static_cast<f32>(realSeconds), feet, m_movement.yaw(), m_playerPitchPixels, view,
+                          obstruction);
     m_playerPitchPixels = 0.0f;
     Vec3 eye = m_playerCamera.position();
     // Above the water while swimming: no under-water view until M17.

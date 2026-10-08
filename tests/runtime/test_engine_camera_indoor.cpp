@@ -86,3 +86,32 @@ TEST_CASE("Engine camera: under a jettied upper floor along a house it stays the
     CHECK(engine.playerIndoorBlend() < 0.05f);
     std::filesystem::remove(world);
 }
+
+TEST_CASE(
+    "Engine camera: in a room of the world file it stays inside without a roof above (a stair under the "
+    "open ceiling)")
+{
+    // The jetty's world, but the hero stands in a zone of type indoor (welt: the stair box over both
+    // storeys).
+    const std::filesystem::path world = std::filesystem::temp_directory_path() / "g7_indoor_stair.g7world";
+    {
+        std::ofstream out(world, std::ios::binary);
+        out << R"({"version":1,"name":"stair","nextVobId":4,"vobs":[)"
+            << R"({"id":1,"type":"mesh","name":"FLOOR","pos":[0.0,-0.75,0.0],"rot":[0.0,0.0,0.0,1.0],)"
+            << R"("scale":[20.0,1.0,20.0],"mesh":"mobs/table.glb"},)"
+            << R"({"id":3,"type":"start","name":"START_STAIR","pos":[0.0,0.1,0.0],"rot":[0.0,0.0,0.0,1.0]}],)"
+            << R"("zones":[{"type":"indoor","value":"LEO_TEST_TREPPE_INNEN","box":{"center":[0.0,2.5,0.0],)"
+            << R"("halfExtents":[1.0,2.6,2.0],"yaw":0.0}}]})";
+    }
+    EngineConfig config = worldConfig("", "START_STAIR");
+    config.world = world;
+    Engine engine(std::move(config));
+    REQUIRE(engine.init().ok());
+    runSeconds(engine, 3.0f);
+    CHECK(engine.playerIndoorBlend() > 0.95f);
+    // Out of the box: outside again.
+    REQUIRE(engine.runConsoleLine("teleport(6, 0.1, 0)").ok());
+    runSeconds(engine, 3.0f);
+    CHECK(engine.playerIndoorBlend() < 0.05f);
+    std::filesystem::remove(world);
+}

@@ -3,6 +3,14 @@
 Erzeugt aus den Bindings der Engine (`gothar --script-api=docs/script-api.md`) – nicht von Hand bearbeiten.
 Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
+## Debug
+
+### `npc_debug_hold(npc: string, seconds: number)`
+Debug: hält einen NPC so lange an Ort und Stelle, ohne seine Route zu löschen – wie eine verkeilte Kapsel (Test des Neuplanens). Nicht für Inhaltsskripte.
+
+### `npc_route(npc: string) -> table`
+Debug: die Punkte der Route, die ein NPC gerade geht ({ {x, y, z}, ... }; leer, wenn er steht). Nicht für Inhaltsskripte.
+
 ## Dialoge
 
 ### `choice(text: string, fn: function)`
@@ -61,7 +69,7 @@ Beendet einen Effekt; seine Teilchen verglühen noch.
 Der Spieler betritt einen privaten Bereich (Trigger mit `owner`) des NPCs bzw. seiner Gilde; der NPC sieht ihn oder ist in der Nähe.
 
 ### `on("assess_fighter", fn(npc: string, distance: number, what: string))`
-Der NPC sieht den Spieler mit gezogener Waffe (`what`: `"weapon"`, `"fists"` oder `"magic"`); einmal je Ziehen.
+Der NPC sieht den Spieler mit gezogener Waffe (`what`: `"weapon"`, `"fists"`, `"magic"` oder `"animal"` in Tiergestalt); einmal je Ziehen.
 
 ### `on("assess_noise", fn(npc: string, kind: string, x, y, z))`
 Der NPC hört ein Geräusch (`kind`: `"run"`, `"lockpick"`, `"lock_broken"` … oder aus noise()).
@@ -83,6 +91,9 @@ Ein Dialog ist vorbei.
 
 ### `on("dialog_started", fn(npc: string))`
 Ein Dialog beginnt.
+
+### `on("hero_transformed", fn(species: string))`
+Der Held nimmt eine Tiergestalt an (M12, Z7) bzw. wird wieder Mensch (`species` leer).
 
 ### `on("item_bought", fn(npc: string, item: string, count: integer, price: integer))`
 Der Held hat beim Händler gekauft.
@@ -125,6 +136,9 @@ Ein NPC kommt nicht weiter und hat aufgegeben (nach mehrfachem Neuplanen).
 
 ### `on("npc_cast", fn(caster: string, spell: string))`
 Ein Zauber wird gewirkt (M12, `hero`).
+
+### `on("npc_feared", fn(npc: string, caster: string, seconds: number))`
+Ein Furcht-Zauber trifft einen NPC bzw. ein Tier (M12, Z6): er flieht `seconds` Sekunden.
 
 ### `on("npc_hit", fn(attacker: string, target: string, damage: number, critical: boolean))`
 Ein Nahkampftreffer (M11; `hero` für den Helden).
@@ -314,11 +328,26 @@ Der Zauber, den der Held gerade auflädt bzw. wirkt, mit der Aufladestufe ("spl_
 ### `hero_rune(place: integer)`
 Wählt den Runenplatz 1-7 wie die Tasten 4-9 (Z4): zieht ihn bzw. wechselt die Rune in der Hand.
 
+### `hero_shape() -> string | nil`
+Die Tiergestalt des Helden (Z7: "wolf" ...); nil als Mensch.
+
 ### `hero_summon() -> string | nil`
 Das vom Helden beschworene Wesen, solange es da ist (Z8); nil ohne.
 
 ### `hero_target() -> string | nil`
 Das Ziel, das der Held mit gezogener Waffe bzw. Magie anvisiert (Lock, K5); nil ohne.
+
+### `hero_transform_back()`
+Der Held wird wieder Mensch (wie die Taste „1“ in Tiergestalt).
+
+### `npc_can_cast(npc: string, spell: string) -> boolean`
+Ob ein NPC den Spruch jetzt wirken könnte (Kreis, Mana, nicht beschäftigt).
+
+### `npc_cast_spell(npc: string, spell: string, target?: string) -> boolean`
+Ein NPC wirkt einen Spruch (M12 Teil D) mit seinem Mana und Kreis (Talent magic_circle): auf `target` ("hero" oder ein NPC), ohne Ziel auf sich selbst; false, wenn er es nicht kann.
+
+### `npc_casting(npc: string) -> boolean`
+Ob ein NPC gerade einen Spruch wirkt.
 
 ## Mobs
 
@@ -435,7 +464,7 @@ Die anderen simulierten NPCs im Umkreis des NPCs, nach Abstand sortiert (Hilferu
 Ob der Spieler im Trigger `area` (Vob-Name, z. B. ein privater Bereich) steht.
 
 ### `player_weapon() -> string`
-Was der Held gezogen hat: `"none"`, `"weapon"` (Nahkampfwaffe), `"fists"`, `"ranged"` (Bogen, Armbrust) oder `"magic"` (Rune, Spruchrolle).
+Was der Held gezogen hat: `"none"`, `"weapon"` (Nahkampfwaffe), `"fists"`, `"ranged"` (Bogen, Armbrust), `"magic"` (Rune, Spruchrolle) oder `"animal"` (in Tiergestalt, Z7).
 
 ## Welt
 

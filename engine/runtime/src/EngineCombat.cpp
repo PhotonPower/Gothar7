@@ -99,12 +99,14 @@ std::optional<Engine::Combatant> Engine::combatant(u32 id)
         {
             return std::nullopt;
         }
-        c.character = m_hero.get();
+        // Z7: in an animal's shape it fights with the animal's values and life.
+        c.character = m_transform ? m_transform->animal.get() : m_hero.get();
         c.fighter = &m_heroFighter;
         c.hitThisSwing = &m_heroHitThisSwing;
         c.position = m_player.feet();
         c.yaw = m_movement.yaw();
         c.name = "hero";
+        c.animal = m_transform.has_value();
         return c;
     }
     Creature* creature = this->creature(id);
@@ -198,6 +200,10 @@ bool Engine::startFight(Combatant& c, std::string_view move, AttackKind kind)
     {
         c.creature->action = c.fighter->comboHit() % 2 == 1 ? 1 : 2;
     }
+    else if (c.id == kHeroId && c.animal && move == "attack")
+    {
+        m_heroAnimalAction = c.fighter->comboHit() % 2 == 1 ? 1 : 2; // Z7: its bite
+    }
     return true;
 }
 
@@ -226,6 +232,10 @@ i32 Engine::heroWeaponAnimation() const
 
 f32 Engine::creatureWeaponAnimation(const Creature& c) const
 {
+    if (c.magicStance > 0.0f)
+    {
+        return 6.0f; // magic (M12 part D)
+    }
     // People keep their weapon raised a little while after fighting.
     if (c.combatStance <= 0.0f || !c.character)
     {
@@ -276,6 +286,23 @@ void Engine::playFight(Combatant& c)
 
 void Engine::playReaction(Combatant& c, std::string_view clip)
 {
+    if (c.creature != nullptr && c.creature->cast && !c.creature->cast->acted)
+    {
+        c.creature->cast.reset(); // hit or down: the spell is lost (its mana too)
+    }
+    if (c.id == kHeroId && m_transform)
+    {
+        // Z7: the animal's own clips (a hit; it is not knocked out - it turns back).
+        if (clip.find("hit") != std::string_view::npos)
+        {
+            m_heroAnimalAction = 3;
+        }
+        if (c.fighter->state() == FightState::Stagger)
+        {
+            c.fighter->useTimeline();
+        }
+        return;
+    }
     std::string& state = c.id == kHeroId ? m_heroFightState : c.creature->fightState;
     std::string name(clip);
     std::replace(name.begin(), name.end(), '/', '_');
@@ -337,6 +364,7 @@ void Engine::fixedUpdateCombat(f32 seconds)
         if (attacker->creature != nullptr)
         {
             attacker->creature->combatStance = std::max(0.0f, attacker->creature->combatStance - seconds);
+            fixedUpdateNpcCast(*attacker->creature, seconds);
         }
         if (before == FightState::Down && attacker->fighter->state() == FightState::Ready)
         {
@@ -430,7 +458,9 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
     const std::string item = meleeWeapon(attacker);
     const script::Instance* def =
         !m_scripts     ? nullptr
-        : item.empty() ? m_scripts->findInstance("Npc", attacker.id == kHeroId ? "pc_hero" : attacker.name)
+        : item.empty() ? m_scripts->findInstance("Npc", attacker.id == kHeroId
+                                                            ? (m_transform ? m_transform->npc : "pc_hero")
+                                                            : attacker.name)
                        : m_scripts->findInstance("Item", item);
     if (def != nullptr && (attacker.animal || !item.empty()))
     {
@@ -471,6 +501,11 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
     }
     // K7: people beaten in melee by people fall unconscious; a blow on the one lying, animals and the
     // hero's foes die. K8: the hero is never killed - he gets up again at the spot.
+    if (target.id == kHeroId && m_transform)
+    {
+        m_transformBackRequested = true; // Z7: no life left in the animal's shape - human again
+        return;
+    }
     if (target.id == kHeroId)
     {
         (void)target.character->setAttribute("hp", 1);
@@ -1041,6 +1076,11 @@ void Engine::projectileHit(const Projectile& p, u32 targetId)
         }
         return;
     }
+    if (target->id == kHeroId && m_transform)
+    {
+        m_transformBackRequested = true; // Z7: no life left in the animal's shape - human again
+        return;
+    }
     if (target->id == kHeroId)
     {
         (void)target->character->setAttribute("hp", 1); // K8: the hero gets up again
@@ -1093,6 +1133,11 @@ void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::s
         {
             target->creature->action = 3;
         }
+        return;
+    }
+    if (target->id == kHeroId && m_transform)
+    {
+        m_transformBackRequested = true; // Z7: no life left in the animal's shape - human again
         return;
     }
     if (target->id == kHeroId)

@@ -9,6 +9,8 @@ CombatAi = {
     parry_chance = { 0.1, 0.3, 0.5 },   -- je Talentstufe: pariert einen Schlag des Ziels
     side_chance = 0.25,                 -- Anteil der Seitenhiebe
     flee_below = { animal = 0.2, coward = 0.5 }, -- Anteil des Lebens: Tiere bzw. Feiglinge fliehen darunter
+    cast_distance = 3,                  -- m: Zauberkundige wirken Angriffssprüche erst weiter weg (M12)
+    heal_below = 0.3,                   -- Anteil des Lebens: darunter heilen sie sich
 }
 
 Fights = {}          -- npc -> Ziel
@@ -75,6 +77,27 @@ local function talent(npc)
     return math.min(math.max(t.melee_1h or 0, t.melee_2h or 0), 2)
 end
 
+--- Welchen Spruch ein Zauberkundiger jetzt wirkt: Heilung unter CombatAi.heal_below seines Lebens, sonst einen
+--- Angriffsspruch, solange das Ziel weiter als CombatAi.cast_distance weg ist; nil: keinen.
+function caster_spell(npc, distance)
+    local n = instance("Npc", npc)
+    if not n or not n.spells then
+        return nil
+    end
+    local hp, max = npc_stat(npc, "hp"), npc_stat(npc, "hp_max")
+    for _, name in ipairs(n.spells) do
+        local s = instance("Spell", name)
+        if s and npc_can_cast(npc, name) then
+            if s.kind == "self" and s.heal and max > 0 and hp < max * CombatAi.heal_below then
+                return { name = name, self = true }
+            elseif (s.kind == "projectile" or s.kind == "target") and distance > CombatAi.cast_distance then
+                return { name = name }
+            end
+        end
+    end
+    return nil
+end
+
 local function fleeing(npc)
     local hp, max = npc_stat(npc, "hp"), npc_stat(npc, "hp_max")
     if max <= 0 then
@@ -114,8 +137,19 @@ function fight_step(npc)
         end
         return "done"
     end
-    if fight_state(npc) ~= "ready" then
-        return -- mitten in einem Schlag, einer Parade, taumelnd
+    if fight_state(npc) ~= "ready" or npc_casting(npc) then
+        return -- mitten in einem Schlag, einer Parade, taumelnd, einem Zauber
+    end
+    -- Zauberkundige (M12 Teil D, Npc-Feld spells): heilen sich bei wenig Leben, zaubern auf Abstand.
+    local spell = caster_spell(npc, distance)
+    if spell then
+        npc_face(npc, target)
+        if spell.self then
+            npc_cast_spell(npc, spell.name)
+        else
+            npc_cast_spell(npc, spell.name, target)
+        end
+        return
     end
     attackers[target] = attackers[target] or {}
     if not attackers[target][npc] and count(attackers[target]) >= CombatAi.max_attackers then

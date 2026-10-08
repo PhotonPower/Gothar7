@@ -59,6 +59,9 @@ BUILDING_MARGIN_M = 1.5
 WATER_WIDTH_M = 3.0
 RAIL_WIDTH_M = 4.0
 ROCK_SLOPE_DEG = (35.0, 45.0)  # rock fades in between these slopes
+# Paving fades out between these slopes and earth takes its place: a street is level across now
+# (W6), the bank beside it is no street (coordinator 2026-10-08: no stretched cobbles there).
+BANK_SLOPE_DEG = (28.0, 32.0)
 BLUR_M = 1.5
 
 
@@ -120,11 +123,15 @@ def _inside(rect: dict[str, float] | None, points: Iterable[Sequence[float]]) ->
     return False
 
 
-def slope_rock(grid: Grid) -> npt.NDArray[np.float32]:
+def slope_fade(grid: Grid, lo: float, hi: float) -> npt.NDArray[np.float32]:
+    """0 below ``lo`` degrees of slope, 1 above ``hi``, linear between."""
     gz, gx = np.gradient(grid.heights, grid.cell)
     slope = np.degrees(np.arctan(np.hypot(gx, gz)))
-    lo, hi = ROCK_SLOPE_DEG
     return np.clip((slope - lo) / (hi - lo), 0.0, 1.0).astype(np.float32)
+
+
+def slope_rock(grid: Grid) -> npt.NDArray[np.float32]:
+    return slope_fade(grid, *ROCK_SLOPE_DEG)
 
 
 def _holds_parterre(polygon: Sequence[Sequence[float]], gardens: Sequence[dict[str, Any]]) -> bool:
@@ -181,6 +188,10 @@ def layer_masks(
         for bed in g.get("lawn", []):
             canvases[KIES].erase(bed)
     masks = {i: c.weights() for i, c in canvases.items()}
+    bank = slope_fade(grid, *BANK_SLOPE_DEG)
+    for paved in (KOPFSTEIN, KIES):  # steep banks beside the streets: earth, not paving
+        masks[MATSCH] = np.maximum(masks[MATSCH], masks[paved] * bank)
+        masks[paved] = masks[paved] * (1.0 - bank)
     masks[FELS] = slope_rock(grid)
     return masks
 

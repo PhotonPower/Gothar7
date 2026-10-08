@@ -286,7 +286,8 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
     - Wiese (Rückfall)
     - Kopfstein: Straßen und Plätze im Kernbereich
     - Kies: Straßen und Plätze außerhalb, Bahnlinien
-    - Matsch: unter Gebäuden plus 1,5 m Rand, an Bächen und Gräben
+    - Matsch: unter Gebäuden plus 1,5 m Rand, an Bächen und Gräben; dazu Böschungen an Straßen: Pflaster und Kies
+      blenden zwischen 28° und 32° Neigung aus und werden Erde (W6, Koordinator 2026-10-08: kein verzerrtes Pflaster)
     - Waldboden: Wald, Gebüsch, Einzelbäume mit 3 m Radius
     - Acker: Ackerland, Kleingärten, Gärten
     - Fels: Neigung über 35–45°, weich eingeblendet
@@ -588,6 +589,51 @@ unabhängig von der Oberfläche:
 OSM-Achsen + Breite → Splatmap-Schichten (Kopfstein in der Stadt, Matsch/Kies außerhalb), Mittelrinne,
 Stufen und Stützmauern an Höhensprüngen; moderne Bordsteine/Markierungen entfallen.
 
+**Rinnen, Stufen, Stützmauern** (`gothar-worldgen streetworks <ort>`, W6; Plan freigegeben 2026-10-08, Stil vom
+Koordinator im Auftrag des Projektinhabers). Werte in `tools/worldgen/data/<ort>/streetworks.json`, Code in
+`streetworks.py`, `export/ways.py` (Stufenprofil) und `export/retaining.py` (Mauerplan).
+- **Ablauf:** `export-terrain` formt das Gelände (Stufenprofil, Stützmauer-Plan nach
+  `generated/retaining_walls.json`, Straßenhälfte eingeebnet); `streetworks` baut auf dem fertigen Gelände die Modelle nach
+  `generated/streetworks/` mit `streetworks_index.json`; `assemble` setzt sie als Vobs (Gruppe `WORLDGEN_STRASSENBAU`,
+  Namen `STRASSE_…`). Reihenfolge: buildings → citywall → export-terrain → streetworks → assemble → waynet.
+- **Stufen** an jedem OSM-`steps`-Weg im Kern:
+  - Das Gelände darunter steigt gleichmäßig vom unteren zum oberen Ende (ohne Buckel und Mulden).
+  - Steinblöcke mit Steigung höchstens `riseM` 0,18 m; jeder Auftritt so hoch wie das Gelände an seinem oberen Ende, damit es
+    nie durchstößt.
+  - Wange, wo das Gelände daneben tiefer liegt als `cheekM`.
+  - Keine Kollision, das Gelände trägt.
+- **Rinnen** als Plattenrinne an den gepflasterten Straßen im Kern (Koordinator 2026-10-08):
+  - ein Band aus flachen Steinplatten, 0,5 m breit, im Pflasterton (`stone_slab`, Textur `slab`: Platten von
+    35–80 cm Länge, Fugen aus schmutzigem Sand quer, keine dunklen Kanten);
+  - das flache V (3 cm) sieht man nur an der Schattierung; jeder Rand liegt 5 cm über dem Gelände neben ihm, mit einer
+    kurzen Schürze in den Boden, der Grund des V über dem Gelände;
+  - in der Mitte von Straßen unter `centreBelowM` 6 m Breite, sonst an beiden Seiten;
+  - nicht unter Häusern, auf Plätzen und Stufen;
+  - nur Dekoration, eine Datei je 64-m-Zelle.
+- **Stützmauern**, wo eine Straße in den Hang geschnitten ist:
+  - **Wann:** Das Gelände `probeM` neben dem Rand liegt auf mindestens `minRunM` 3 m Länge mehr als `crossFallM` 1 m höher
+    oder tiefer als die Achse.
+  - **Wo:**
+    - am Rand, mindestens `minAxisM` 1 m von der Achse (Platz auf schmalen Pfaden);
+    - nicht auf der Innenseite enger Kurven;
+    - nicht an Häusern (`houseM`), Türen (`doorM`), Plätzen, Stufen und Handmodellen (`keepM`), Einmündungen (`junctionM`).
+  - **Türen** behalten eine Lücke (`laneM`) zur nächsten Straße bis `doorReachM` 30 m (so weit bindet das Wegnetz Türen an)
+    und zu jeder Straße bis `laneReachM` 15 m.
+  - **Bergseite:** hält das Gelände, oben bündig mit ihm. **Talseite:** trägt die Straße, mit Brüstung `parapetM` 0,6 m.
+  - **Material:** Trockenmauer (`stone_dry`); gemörtelt wie die Sockel (`stone`), wo sie an ein Haus oder die Stadtmauer
+    stößt (`mortarM`).
+  - **Einebnung:** Die Straßenhälfte an der Mauer wird quer eingeebnet, jede Zelle auf die Achshöhe neben ihr (keine
+    Terrassen auf steigenden Wegen). Von den Mauerenden her setzt das über `fadeM` 3 m ein (keine Kante, wo der Einschnitt
+    endet; jenseits der Enden bleibt das Gelände).
+  - **Kollision:** Prismen von etwa 2 m.
+- **Wegnetz:** Eine Insel, die keinen Punkt eines anderen Teils erreicht, wird an die nächste erreichbare Stelle einer Kante
+  gebunden (die Kante dort geteilt), wie es einzelne Türen schon wurden. So erreichen Türen oberhalb einer eingeschnittenen
+  Straße diese zwischen ihren Punkten.
+- **Prüfung** gegen das Gelände vor W6:
+  - Bodenregel: Häuser stehen, kein Handmodell versinkt, keine Türschwelle ändert sich.
+  - Wegnetz-Kennzahlen.
+  - Autopilot.
+
 ### W-E2 Stadtmauer (`gothar-worldgen citywall <ort>`, W6)
 Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03); Werte in `building_rules.json` → `cityWall`,
 Verlauf in `tools/worldgen/data/<ort>/city_wall.json` (versioniert, von Hand korrigierbar). Code: `walls/citywall.py`.
@@ -825,14 +871,24 @@ Gruppe `WORLDGEN_GASSEN`. Mechanik in `gothar_worldgen/outdoor.py`, Regeln in `d
 `generated/outdoor.json`. Modelle: `gothar-worldgen mobs` schreibt zusätzlich `assets/source/vegetation/` (Linde,
 Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `cart`, `woodpile`, `dung_heap`.
 - **Freihalten** (Vorrang vor allem): je Straßenachse ein Korridor (mindestens 1,2 m zu jeder Seite, breite Straßen
-  bis 0,9 m vor ihrem Rand, Treppen ganz); vor jeder Tür Schwenk und Ausgang (1,8 × 2,2 m) samt Weg zur Achse; um
-  Routinen-Orte und Freepoints 1,3 m; entlang der Wegnetz-Kanten 1,2 m. Das Wegnetz dafür baut `assemble` vorher aus
+  bis 1,5 m vor ihrem Rand; Treppen, Pfade und Feldwege (`pathKinds`) ganz); vor jeder Tür Schwenk und Ausgang (1,8 × 2,2 m) samt Weg zur Achse; um
+  Routinen-Orte und Freepoints 1,3 m; entlang der Wegnetz-Kanten 1,0 m. Das Wegnetz dafür baut `assemble` vorher aus
   der Welt ohne die Gassen-Vobs (dieselbe Funktion wie `waynet`); danach neu erzeugt bleibt es **gleich**. Die
   Handmodelle (Schlossgarten, Kirche) bleiben 3 m frei, nichts steht auf Hängen über 0,25 m.
-- **Requisiten** stehen an einer Hauswand, Vorderseite von ihr weg. Eine Wand bis 4 m vor einer Straße ist die
-  Vorderseite, sonst Hof. Häuser mit Nutzung bekommen ihre Liste (`uses.<nutzung>.front/back`: Taverne Fässer und
-  Kisten, Schmiede Trog und Holz, Krämer Kisten, Säcke, Karren …), übrige Häuser mit 65 % 1–3 Dinge vorn und mit
-  40 % etwas im Hof; mehrere stehen als Gruppe beisammen (3 m). Ohne Platz vorn geht es in den Hof.
+- **Requisiten in Gruppen** (dichter nach Wunsch des Projektinhabers): Rezepte in `groups` (z. B. `holz` = zwei
+  Holzstöße, `faesser` = Fassstapel und zwei Fässer, `kisten_hoch`, `karren` = Karren, Säcke, Korb), Seite an Seite
+  (0,15 m) an einer Hauswand, Vorderseite von ihr weg. Als Wand gilt der um 8 cm vereinfachte Umriss der
+  Kollisionskörper (sonst zu viele kurze Kanten), die Dinge stehen 12 cm davor. Eine Wand bis 6 m vor einer Straße ist
+  die Vorderseite, sonst Hof. Häuser mit Nutzung bekommen ihre Gruppen (`uses.<nutzung>.front/back`), übrige mit 90 %
+  eine Gruppe vorn (30 % eine zweite) und mit 40 % eine im Hof. Passt eine Gruppe nicht am Stück (Türen teilen die
+  Fronten), geht der Rest an eine andere Stelle derselben Seite, ohne Platz vorn in den Hof.
+- **Am Straßenrand** (`kerb`): alle 10 m mit 20 % eine Gruppe neben der Straße, Blick zu ihr, wo keine Wand steht
+  (offene Seiten). Sie steht nie auf einer Fahrbahn: 1,6 m jenseits des Rands, so weit wie die Splat-Karte den Belag
+  verwischt (`edgeGapM`), auch von anderen Straßen; Tunnel zählen nicht.
+- **Marktstände** (`market`): 12 Stände (`market_stall_a/b/c`: Lebensmittel, Tuch, Töpferware; Tuchdach gestreift,
+  Theke mit Waren, Vorrat dahinter) auf dem Marktplatz (OSM-Platz `Marktplatz`), 3–9 m vom Rand, die Theke zur
+  Platzmitte, 1,2 m Abstand untereinander; Kollision nur Theke, hintere Pfosten und Vorrat; das Tuchdach hat einen Holzrahmen (von der Seite sonst nur eine
+  Linie).
 - **Bäume** aus OSM (`natural=tree`), in Gärten und Parks Obstbäume, sonst Linde oder Eiche; bis 2 m verschoben,
   wenn der Stamm im Weg stünde; die Krone hält 75 % ihres Radius Abstand zu Häusern. Dazu **Obstbäume und Büsche**
   aus einem 3-m-Raster über den Höfen (nicht an Straßen) und **Gras und Unkraut** an den Wandfüßen.
@@ -840,8 +896,9 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   (kleiner `COL_`-Kasten 1 m unter dem Boden; ohne `COL_` würde das ganze Mesh kollidieren). Kronen sind
   geschlossene Low-Poly-Blobs mit der Textur `leaves` und gerundeten Normalen (keine Alpha-Ausschnitte).
 - **Zufall** je Haus bzw. Ort mit festem Seed: Ändert sich ein Haus, bleiben die Dinge der anderen stehen.
-- **Leonberg (Stand des PR):** rund 3700 Vobs – etwa 2000 Requisiten, 340 Bäume, 180 Büsche, 1100 Gras- und
-  Unkrautbüschel. Wegnetz unverändert, Autopilot wie ohne Gassen-Vobs.
+- **Leonberg (Stand nach der Verdichtung):** rund 8900 Vobs – etwa 6150 Requisiten (3,0-mal so viele wie im ersten
+  Schritt, davon 1900 frei am Straßenrand), 12 Marktstände, 400 Bäume, 300 Büsche, 2000 Gras- und Unkrautbüschel.
+  Wegnetz unverändert, Autopilot wie ohne Gassen-Vobs.
 
 ### W-G Welt-Assembler & Wegnetz-Vorschlag
 - Terrain + Gebäude + Straßen + Ausstattung → `.g7world` (Zellen), Kollision, Validierung, Credits.
@@ -1046,6 +1103,44 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   ist, höchstens 8 Boxen je Raum (die Engine reicht die 32 Boxen nächst der Kamera an den Shader). Eine schiefe Wand
   behält so etwa zwei Drittel des Innen-Ambients; an ihr bleiben leichte Helligkeitsstufen. Leonberg: 24 Boxen für
   5 Räume. Andere Zonen der Welt bleiben erhalten, die eigenen (`LEO_…_INNEN`) werden ersetzt.
+
+#### Treppen und Obergeschoss (W7, Plan freigegeben 2026-10-08)
+- **Wann:** Ein begehbares Haus mit einem zweiten Stockwerk bekommt eine Treppe dorthin, wenn dessen Raum mindestens
+  `stairs.upperMinHeightM` (2,1 m) hoch ist (Obergeschosse sind niedrig; Figuren 1,8 m). Werkzeug
+  `buildings/stairs.py`, Werte `interior.stairs` (Vorgaben dort): Steigung höchstens `riseM` 0,18 m, Auftritt `runM`
+  0,26 m (ca. 34,5°; die Bodenprüfung der Engine lässt etwa 38,7° zu, engine 2026-10-08), Breite 0,95 m.
+- **Wo:** gerade an einer Wand, zuerst in einer Kammer (die Betten wandern nach oben, unten bleiben Vorräte), sonst im
+  Raum mit der Tür; erst frei von Fenstern, dann an Fenstern vorbei, solange die Stufen unter der Brüstung bleiben.
+  Frei bleiben der Weg von der Tür (1,3 m) und die Durchgänge (1,2 m); vor der ersten Stufe ein Absatz von 0,8 m, in
+  einem kurzen Raum seitlich daneben (`sideEntry`, dann ein Wegpunkt `WP_…_TREPPE_FUSS` auf der ersten Stufe, damit
+  der Weg nicht schräg über die Rampenseite führt). Oben endet sie auf einem freien Absatz.
+- **Geometrie:** Stufen als Blöcke, Handlauf auf der offenen Seite. Über dem oberen Lauf ist die Decke offen
+  (Kopfhöhe 2,4 m über der Rampe: die Physik-Figur ist ein Zylinder von 1,8 m Höhe und 0,3 m Radius, ihre
+  Vorderkante kommt früher unter die Deckenkante als ihre Mitte), der Ausschnitt reicht in die Wand (kein Streifen Decke, den ein konvexes
+  Kollisionsstück verschlucken würde); oben ein Geländer an den zwei geschlossenen Seiten (die Wand schließt die
+  dritte, der Kopf ist der Weg).
+- **Kollision:** die Treppe als **eine glatte Rampe** (ab einem Auftritt vor der ersten Stufe, damit genau
+  Steigung/Auftritt), die Decke zwischen den Geschossen als Platten ohne Ausschnitt, das Obergeschoss ausgehöhlt (der
+  Körper darüber beginnt an seiner Decke), die Wand über der Haustür geschlossen, das Geländer als dünne Wände.
+- **Obergeschoss:** gleicher Innenumriss wie unten, Räume `OBEN`, `OBEN_KAMMER` … (geteilt wie unten, der Raum
+  `OBEN` liegt um Ausschnitt und Treppenkopf; liefe eine Wand durch den Ausschnitt, bleibt es ein Raum), Boden aus
+  Brettern (auch über einem Steinboden), offene Fenster mit Tageslicht (Laibung bis zur Innenwand), Balken nur ab
+  `beamsFromM` 2,3 m Raumhöhe. Jeder Raum ein eigener Mesh-Vob (Licht-Budget); die Aufteilung der Dreiecke auf die Räume
+  beachtet die Höhe.
+- **Index:** `interior.stairs` (Fuß, Richtung, Stufen, Absätze, Ausschnitt, `footPoint`, `headPoint`, `sideEntry`) und
+  `interior.upper` (Boden, Decke, Räume, Durchgänge, Fenster).
+- **Einrichtung:** Betten und Truhen, Felle und Wandbehänge gehen nach oben (Kammern zuerst), unten bleiben Herd,
+  Tische, Theke, Freepoints und Vorräte. Die Treppe samt Absatz und Weg dorthin bleibt frei, im Ausschnitt steht nichts.
+  Laternen und Fensterlicht oben wie unten.
+- **Wegnetz:** `WP_…_TREPPE` vor der ersten Stufe (verbunden mit dem Raum, in dem die Treppe steht),
+  `WP_…_TREPPE_OBEN` am Kopf (y = oberer Boden), `WP_…_OBEN` im Raum oben, die oberen Kammern über ihre Durchgänge.
+  Obere Wegpunkte liegen auf dem Boden: Einsetzen und KI-LOD landen oben (engine 2026-10-08).
+  Führte die gerade Kante zu einem Durchgang über den Ausschnitt (oben) oder durch die Treppe (unten), geht sie über
+  Eckpunkte `WP_…_<Raum>_UM_<Kammer>` (1 m vor dem Hindernis, die Kanten dazwischen 0,6 m vom Geländer, nur die erste
+  und letzte dürfen näher); die Engine prüft Kanten nicht. Verknüpft wird erst, wenn alle Punkte stehen; eine Brücke
+  zwischen Teilen des Netzes steigt höchstens 0,4 m mehr als die Steigung erlaubt, also nie durch eine Decke.
+- **Zonen:** je Raum oben eine indoor-Zone in seiner Höhe; die Treppe eine Zone über beide Geschosse
+  (`LEO_…_TREPPE`), damit die Innenkamera unter dem Ausschnitt drinnen bleibt (engine #243).
 
 ### Vorhandene Werkzeuge (kein Eigenbau)
 Blender (+ Add-on BlenderGIS zum Gegenprüfen), COLMAP / RealityScan / Postshot (Photogrammetrie bzw.

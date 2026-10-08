@@ -249,3 +249,57 @@ def test_inside_places_hang_on_their_door_and_stand_on_the_floor():
     assert by["WP_LEO_SCHMIEDE_ZNA_INNEN"].pos[1] == 0.4
     fp = next(f for f in res.freepoints if f.name.endswith("_INNEN_01"))
     assert fp.pos == (12.0, 0.4, -9.0)
+
+
+def test_a_link_may_come_before_its_point_and_no_bridge_climbs_a_storey():
+    door = {"kind": "wp", "name": "WP_LEO_SCHMIEDE_ZNA", "house": "H", "pos": [15.0, -3.0],
+            "dir": [0.0, -1.0]}  # fmt: skip
+    inside = {"kind": "wp", "name": "WP_LEO_SCHMIEDE_ZNA_INNEN", "house": "H", "pos": [15.0, -7.5],
+              "dir": [0.0, -1.0], "y": 0.4, "link": "WP_LEO_SCHMIEDE_ZNA"}  # fmt: skip
+    round_about = {
+        "kind": "wp",
+        "name": "WP_LEO_SCHMIEDE_ZNA_OBEN_UM",
+        "house": "H",
+        "pos": [14.0, -7.5],
+        "dir": [0.0, 1.0],
+        "y": 3.4,
+        "link": "WP_LEO_SCHMIEDE_ZNA_OBEN",
+    }  # a detour, written before its point
+    upstairs = {
+        "kind": "wp",
+        "name": "WP_LEO_SCHMIEDE_ZNA_OBEN",
+        "house": "H",
+        "pos": [16.0, -7.5],
+        "dir": [0.0, 1.0],
+        "y": 3.4,
+        "link": "WP_LEO_SCHMIEDE_ZNA_INNEN",
+    }
+    res = run(places=[door, inside, round_about, upstairs])  # fmt: skip
+    edges = {frozenset((a, b)) for a, b, _ in res.edges}
+    assert frozenset(("WP_LEO_SCHMIEDE_ZNA_OBEN_UM", "WP_LEO_SCHMIEDE_ZNA_OBEN")) in edges
+    assert res.report["usesUnconnected"] == []
+    # a point upstairs right above one downstairs, its link lost: not tied through the ceiling
+    lost = dict(upstairs, name="WP_LEO_SCHMIEDE_ZNA_OBEN_X", pos=[15.0, -7.5], link="WP_GONE")
+    cut = run(places=[door, inside, lost])
+    assert not any("WP_LEO_SCHMIEDE_ZNA_OBEN_X" in e[:2] for e in cut.edges)
+    assert cut.report["usesUnconnected"][0]["point"] == "WP_LEO_SCHMIEDE_ZNA_OBEN_X"
+
+
+def test_an_island_reaches_an_edge_between_its_points():
+    # two linked points above a fence along the street; only a gap at x = 31..33 lets them down,
+    # where no street point is: the bridge splits the street's edge at the foot (W6)
+    fence = [Body("STRASSE_WALL_A", box(10, 9.8, 31, 10.2)),
+             Body("STRASSE_WALL_B", box(33, 9.8, 60, 10.2))]  # fmt: skip
+    places = [
+        {"kind": "wp", "name": "WP_LEO_INSEL_A", "house": "H", "pos": [32.0, 20.0],
+         "dir": [0.0, 1.0], "link": "WP_LEO_INSEL_B"},
+        {"kind": "wp", "name": "WP_LEO_INSEL_B", "house": "H", "pos": [32.5, 24.0],
+         "dir": [0.0, 1.0], "link": "WP_LEO_INSEL_A"},
+    ]  # fmt: skip
+    res = run(bodies=[HOUSE, *fence], places=places)
+    assert res.report["components"] == 1
+    split = [b for a, b, _ in res.edges if a == "WP_LEO_INSEL_A" and "_S" in b]
+    split += [a for a, b, _ in res.edges if b == "WP_LEO_INSEL_A" and "_S" in a]
+    assert split and split[0].startswith("WP_LEO_MARKTSTRASSE_")
+    foot = next(p for p in res.points if p.name == split[0])
+    assert foot.pos[0] == pytest.approx(32.0) and foot.pos[2] == pytest.approx(0.0)

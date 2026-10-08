@@ -36,6 +36,8 @@ class ThirdPersonCamera { void reset(feet, yaw, const CameraSettings&);
     dem Helden und 1 m um ihn) ein Dach tiefer als 4 m (`ceiling`), wird weich (`blend_seconds` 0,5 s) auf das
     Innenprofil überblendet: Abstand 1,9 m, Blickpunkt 1,5 m, Mindestabstand 0,4 m, Kugel 0,15 m. Die Neigung
     bleibt die des Spielers. Unter einem vorkragenden Obergeschoss (0,5 m über der Straße) bleibt es draußen.
+    In einem Raum der Weltdatei (Zone `indoor`, world.md) bleibt es auch ohne Dach-Treffer drinnen, etwa auf
+    einer Treppe unter dem Deckenausschnitt, wo das schräge Dach höher liegt (welt, W7).
     Werte zum Nachstellen durch den Projektinhaber.
   - Modi: drinnen `[camera.indoor]`, Kampf `[camera.combat]` (M11), Dialog `data/dialog.lua` (M10).
 - **Springen, Klettern, Fallen (Teil D; Werte `[jump]`, `[climb]`, `[fall]`, Entscheidungen Projektinhaber):**
@@ -411,7 +413,35 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, 
 - Der Held visiert sein eigenes Wesen nicht an. Die Gilden-Regel (ein Rudel beißt sich nicht) gilt nicht zwischen gerufenen und wilden Tieren.
 - **Lua:** `hero_summon()`, `hero_target()`; Ereignisse `npc_summoned(npc, caster)`, `npc_vanished(npc)`.
 
-**Weiter:** C2 Verwandlung (Z7), D KI und Reaktionen (NPCs zaubern, Brennen, Furcht), E DoD-Szenario.
+**Teil C2 – Verwandlung (umgesetzt, Z7):**
+- Ein `transform`-Zauber macht den Held zum Tier seiner `species`; Wolfsgestalt: `wolf`.
+- Die Werte kommen vom ersten Npc dieser Art (`mon_wolf`): Stärke, Schaden und ein eigenes Leben. Der Held bekommt dazu Figur und Graph der Art (`characters/monsters/<art>/…`, `data/anim/<art>.animgraph.toml`), die Kapsel aus `creatures.toml` und die Gangarten aus den Mischpunkten des Zustands `move` (Wolf: gehen 1,19, rennen 6,0 m/s).
+- Der Wechsel geschieht zu Beginn des nächsten Spieler-Schritts, nie mitten in einer Animation oder einem Treffer; dabei erscheint der Effekt `summon`.
+- In Tiergestalt:
+  - Die Kampftasten beißen (Waffenmodus 5, `player_weapon()` = `"animal"`, `assess_fighter` mit `"animal"`).
+  - Keine Waffen, keine Magie, kein Inventar; die Aktionstaste nimmt, benutzt und spricht nichts. Klettern geht nicht.
+  - Treffer gehen aufs Leben des Tiers; das Leben des Menschen bleibt unberührt.
+- **Zurück:** mit „1“ (`draw_magic`, `hero_transform_back()`), wenn das Leben des Tiers aufgebraucht ist (statt bewusstlos), im Wasser und beim Weltwechsel.
+- **Lua:** `hero_shape()`; Ereignis `hero_transformed(species)` (leer: wieder Mensch).
+- Die Kamera sinkt auf die Höhe des Tiers (Teil D).
+
+**Teil D – KI und Reaktionen (umgesetzt, ohne Brennen):**
+- **Kamera in Tiergestalt:** Blickhöhe mal Kapselhöhe / 1,8 m, Abstand mal mindestens 0,6. `creatures.toml` `[<art>] camera_height` kann die Blickhöhe festlegen.
+- **Reaktion auf den verwandelten Helden** (`assess_fighter` mit `"animal"`, `observe_player`):
+  - Menschen: Wachen, wer Nahkampf gelernt hat, und ab Stufe 5 greifen an; die anderen fliehen.
+  - Tiere: die eigene Art lässt ihn in Ruhe; wer ihn als Räuber kennt (`predators`), flieht; wer ihn als Beute kennt (`prey`), greift an.
+  - Niemand spricht ihn an.
+- **Furcht (Z6):** Zielzauber mit `effect = "fear"`: Der Getroffene flieht `duration` (Vorgabe 10) Sekunden vor dem Zaubernden (Zustand `zs_fear`, Ereignis `npc_feared`). Einen Furcht-Spruch im Startsatz gibt es noch nicht (Frage an den Projektinhaber).
+- **NPCs zaubern:**
+  - `Npc`-Feld `spells` (Liste von Sprüchen) mit dem Mana und Kreis (Talent `magic_circle`) des NPC.
+  - `npc_cast_spell(npc, spell, ziel?)` spielt den Wurf-Clip und lässt den Spruch bei `cast` wirken: Geschoss vom NPC aus, Heilung auf sich, Schlaf bzw. Furcht auf NPCs (nicht auf den Helden), Fläche.
+  - Ein Treffer bricht den Spruch ab; das Mana ist dann weg.
+  - Die Kampf-KI heilt unter 30 % Leben (`CombatAi.heal_below`) und wirkt Angriffssprüche, solange das Ziel weiter als 3 m (`cast_distance`) entfernt ist und das Mana reicht; danach Nahkampf.
+  - Lua: `npc_can_cast`, `npc_casting`.
+  - Wer im Spiel zaubert, entscheidet der Projektinhaber; bisher nur ein Test-NPC.
+- **Offen** (Fragen an den Projektinhaber): Brennen durch Feuer, Furcht-Spruch im Startsatz, zaubernde NPCs im Lager.
+
+**Weiter:** Brennen nach Entscheidung, E DoD-Szenario.
 
 ## Wirtschaft
 Handel: Händler-Inventar, Preisfaktor Verkauf (z. B. 0,5), Währung als Item (`ItMi_Ore`).

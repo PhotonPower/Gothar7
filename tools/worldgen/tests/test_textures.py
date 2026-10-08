@@ -58,6 +58,7 @@ def test_palette_entries_choose_their_texture():
     assert kind_of("roof_old_moss") == kind_of("roof_red~moss") == "roof_moss"
     assert kind_of("plaster_grey~streak") == "plaster_streak"
     assert kind_of("frame") == "boards" and kind_of("hedge") is None
+    assert kind_of("stone_slab") == "slab" and kind_of("stone_dry") == "stone"  # W6
 
 
 def _quad(points, normal):
@@ -176,3 +177,13 @@ def test_neighbouring_houses_get_different_offsets_of_the_repeating_textures():
     assert not np.allclose(a[0].mesh.uvs, b[0].mesh.uvs)  # the stones move
     assert np.allclose(a[1].mesh.uvs, b[1].mesh.uvs)  # streak variants stay where they are
     assert np.allclose(texture_house(prims, "t", "A")[0].mesh.uvs, a[0].mesh.uvs)  # stable
+
+
+def test_gutter_slabs_have_joints_across_and_none_along_the_edges():
+    tex = make("slab", 256, 3)
+    lum = tex.albedo.mean(axis=2)
+    rows = lum.mean(axis=1)  # along v: joints between slabs are darker rows
+    cols = lum.mean(axis=0)  # across u: no joint along the gutter's edges
+    assert rows.min() < 0.8 * np.median(rows)
+    assert cols.max() - cols.min() < 0.1 * np.median(cols)
+    assert lum.min() > 0.4 * lum.mean()  # dirty sand, not black lines

@@ -833,6 +833,47 @@ TEST_CASE("Engine NPCs: a straight line is walkable only over gentle ground")
     CHECK_FALSE(engine.walkableLine(Vec3(-30.0f, 0.0f, 30.0f), Vec3(30.0f, 0.0f, -30.0f)));
 }
 
+TEST_CASE("Engine NPCs: stuck on a shortcut, the new way follows the waynet (welt #246)")
+{
+    // From the camp's south point to the west one the way is a straight shortcut. Held in place (as a capsule
+    // wedged at a door jamb), the walker plans again after 1.5 s: along the waynet over the fire, not the
+    // same shortcut; let go, it arrives.
+    Engine engine(scriptConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "teleport(10, 0, 2)"); // near (simulated), off the way
+    const auto point = [&](const char* name)
+    { return engine.waynet().points()[*engine.waynet().find(name)].position; };
+    const Vec3 fire = point("wp_camp_fire");
+    REQUIRE(engine.walkableLine(point("wp_camp_south"), point("wp_camp_west")));
+    REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_south')").isString());
+    run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man')");
+    run(engine, "on('npc_arrived', function(npc, target) if npc == 'npc_old_man' then Story.way = 'arrived' "
+                "end end)");
+    run(engine, "on('npc_blocked', function(npc, target) if npc == 'npc_old_man' then Story.way = 'blocked' "
+                "end end)");
+    runSeconds(engine, 1.0f);
+    run(engine, "npc_goto('npc_old_man', 'wp_camp_west')");
+    runSeconds(engine, 0.1f);
+    const auto passesFire = [&]
+    {
+        return run(engine,
+                   std::format("for _, q in ipairs(npc_route('npc_old_man')) do if math.abs(q[1] - {}) < 0.3 "
+                               "and math.abs(q[3] - {}) < 0.3 then return true end end return false",
+                               fire.x, fire.z))
+            .asBool();
+    };
+    CHECK(run(engine, "#npc_route('npc_old_man')").asInteger() == 1); // straight to the west point
+    CHECK_FALSE(passesFire());
+    run(engine, "npc_debug_hold('npc_old_man', 2.0)");
+    runSeconds(engine, 1.8f);
+    CHECK(passesFire()); // planned again: over the fire
+    for (int i = 0; i < 60 * 40 && run(engine, "Story.way").isNil(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK(run(engine, "tostring(Story.way)").asString() == "arrived");
+}
+
 TEST_CASE("Engine NPCs: doors - planned through when unlocked, opened on the way, closed behind")
 {
     // The test camp's door LAGER_TUER (vob 200): hinge at (30.5, 0, -9), the leaf along +X, closed.
@@ -845,6 +886,8 @@ TEST_CASE("Engine NPCs: doors - planned through when unlocked, opened on the way
     CHECK_FALSE(engine.mobInfo(door)->open);
     // A closed but unlocked door is no wall for planning.
     CHECK(engine.walkableLine(Vec3(31.0f, 0.0f, -7.0f), Vec3(31.0f, 0.0f, -11.0f)));
+    // welt #246: a point 3 m up (an upper floor) is not reached along the ground below it.
+    CHECK_FALSE(engine.walkableLine(Vec3(31.0f, 0.0f, -7.0f), Vec3(31.0f, 3.0f, -11.0f)));
 
     REQUIRE(run(engine, "insert_npc('npc_old_man', 'wp_camp_guard_bed')").isString());
     run(engine, "set_routine('npc_old_man', '') npc_clear('npc_old_man')");

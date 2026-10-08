@@ -382,7 +382,8 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 **DoD:** Der Marktplatz ist mittelalterlich und stilistisch geschlossen in der Engine zu sehen.
 
 ## W6 – Straßen, Mauer, Ausstattung  (benötigt W5, M4-Editor)
-- [ ] Straßen/Plätze aus OSM → Splatmap, Rinnen, Stufen, Stützmauern
+- [x] Straßen/Plätze aus OSM → Splatmap, Rinnen, Stufen, Stützmauern
+  - Stand: `gothar-worldgen streetworks` (W-E): 54 Steintreppen auf gleichmäßig steigendem Gelände, ca. 12,5 km Rinnen (Mitte unter 6 m Breite, sonst seitlich), ca. 140 Stützmauern (trocken, an Haus und Stadtmauer gemörtelt; Bergseite hält den Hang, Talseite mit Brüstung) mit eingeebneter Straßenhälfte; Türen behalten ihren Zugang, Wegnetz besser als vorher (116 statt 121 Teile)
 - [ ] Stadtmauer mit Toren
   - Stand: Ring mit Türmen, Tortürmen, Pforten, Treppen und Kollision umgesetzt (`gothar-worldgen citywall`, W-E2), Mauerhäuser auf der Linie (Außenseite als Mauer), Schloss als eigenes Modell (Blender-Skript, W-E3)
   - Stand: Pforte in der Zwingermauer vor dem Garten-Westtor; Durchgang (Override `passages`) durch das Haus an der Pforte Zwerchstraße Nord
@@ -392,6 +393,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
   - Stand: Stadtkirche aus dem Modell des Projektinhabers statt des LoD2-Gebäudes (W-E6; mittig auf dem LoD2-Grundriss, Entscheidung K1)
   - Stand: Bodenregel für alle Handmodelle – nichts versinkt im Gelände; Garten auf drei waagrechten Terrassen mit Stützmauern und Treppen, Kirche mit Fundament, Prüfung `qa/grounding.py` (#131, #132)
   - Stand: Gassen belebt (`outdoor.json`, `outdoor.py`): ca. 2000 Requisiten an den Hauswänden nach Nutzung, Bäume aus OSM, Obstbäume und Büsche in den Höfen, Gras an den Wandfüßen (~3700 Mesh-Vobs, deco); Wege, Türen, Routinen-Orte und Wegnetz bleiben frei, das Wegnetz bleibt gleich
+  - Stand: Gassen dichter: Gruppen (Fassstapel, Holzstöße, Kistenstapel, Karren) an den Wänden und am Straßenrand, ca. 6150 Requisiten, 12 Marktstände auf dem Marktplatz (~8900 Gassen-Vobs); Pfade und Fahrbahnen bleiben frei
 - [x] Wegnetz-Vorschlag aus Straßenachsen – `gothar-worldgen waynet`: ca. 3200 Punkte (1245 an Türen), Hauptnetz 94 %, Freepoints an Brunnen, Markt, Toren, Beeten; Pforte am Schlosshang und bei (−137, 76); Autopilot 30 Wege A→B (Spieler und NPCs)
 
 **DoD:** Die komplette Altstadt ist ausgestattet und hat ein vorläufiges Wegnetz.
@@ -400,6 +402,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [ ] Handarbeit im Editor, Zellen/Streaming, Performance-Budget
 - [ ] Credits (LGL, OSM, Asset-Lizenzen) im Spiel
 - [x] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …) – `uses-suggest` (OSM/ALKIS), Auswahl des Koordinators in `data/leonberg/uses.json` (30 Häuser), Routinen-Wegpunkte, Freepoints und Mobs (`docs/design/leonberg-routinen-orte.md`)
+  - Stand: Treppen ins Obergeschoss der 5 begehbaren Häuser (höchstens 35°, Kollision als glatte Rampe, Deckenausschnitt mit Geländer), Obergeschoss mit eigenen Räumen, Fenstern und Licht; Betten und Truhen oben, Wegpunkte `…_TREPPE`, `…_TREPPE_OBEN`, `…_OBEN…`, Innenzonen je Geschoss und über der Treppe
 
 **DoD:** Leonberg ist als fertiger Spielort im Vertical Slice / Kapitel nutzbar.
 

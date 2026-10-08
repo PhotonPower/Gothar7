@@ -67,3 +67,23 @@ every(0.5, function()
         end
     end
 end)
+
+-- Furcht (M12, Z6): Der Getroffene läuft `seconds` Sekunden vor dem Zaubernden weg; ein Kampf endet damit.
+local feared = {} -- npc -> { seconds, caster }
+
+State "zs_fear" {
+    begin = function(npc)
+        local f = feared[npc] or { seconds = 10, caster = "hero" }
+        npc_clear(npc)
+        npc_flee(npc, f.seconds, f.caster ~= "hero" and f.caster or nil)
+    end,
+    loop = function(npc)
+        feared[npc] = nil -- die Flucht (npc_flee) lief die ganze Zeit; danach ist es vorbei
+        return "done"
+    end,
+}
+
+on("npc_feared", function(npc, caster, seconds)
+    feared[npc] = { seconds = seconds, caster = caster }
+    npc_start_state(npc, "zs_fear")
+end)

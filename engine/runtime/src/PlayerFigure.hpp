@@ -88,6 +88,8 @@ struct PlayerFigure : AnimatedFigure
     Vec3 climbMoved{0.0f}; ///< root motion summed up in the current climb
     f32 airSeconds = 0.0f;
     f32 fallSeconds = 0.0f;
+    f32 moveWalk = 0.0f; ///< the graph's "move" state: its first forward blend point (m/s), 0: none
+    f32 moveRun = 0.0f;  ///< ... and its last (a transformation takes the animal's gaits, M12)
     bool jumped = false; ///< a jump started in this fixed step
 };
 
@@ -199,8 +201,20 @@ struct Creature
     bool summoned = false;          ///< M12 (Z8): called by a spell; vanishes when its time is over
     f32 summonSeconds = 0.0f;       ///< ... in this many seconds (2 s after its death)
     bool vanished = false;          ///< gone: not drawn, not updated, no body (scripts still find it dead)
-    f32 walkSpeed = 0.0f; ///< blend points of the graph's "move" state: the first moving one, the last one,
-    f32 runSpeed = 0.0f;  ///< and one in between (animals with a trot, figuren #200); 0: none
+    /// M12 part D: a spell it casts - acts at the cast clip's "cast" event (or after a moment without one).
+    struct Cast
+    {
+        gameplay::SpellInfo spell;
+        std::optional<u32> target; ///< creature id, kHeroId (~0) for the hero; nullopt: itself
+        std::string state;         ///< the graph state played, empty: none
+        f32 seconds = 0.0f;
+        bool acted = false;
+    };
+    std::optional<Cast> cast;
+    f32 debugHold = 0.0f;   ///< debug (npc_debug_hold): seconds it stays put although it walks, as if wedged
+    f32 magicStance = 0.0f; ///< seconds it keeps the magic stance after casting
+    f32 walkSpeed = 0.0f;   ///< blend points of the graph's "move" state: the first moving one, the last one,
+    f32 runSpeed = 0.0f;    ///< and one in between (animals with a trot, figuren #200); 0: none
     f32 trotSpeed = 0.0f;
     bool showcase = false; ///< goes through all its actions in turn
     u32 showcaseStep = 0;
