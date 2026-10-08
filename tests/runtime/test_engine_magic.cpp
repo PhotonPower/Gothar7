@@ -290,8 +290,20 @@ TEST_CASE(
     const f32 humanCamera = engine.playerCameraDistance();
     CHECK(run(engine, "draw_magic()").asString() == "it_rune_transform_wolf");
     runSeconds(engine, 1.0f);
-    cast(engine);
+    // The transition (figuren #255): the man's clip until its swap event, then the wolf's.
+    run(engine, "hero_cast(true)");
+    runSeconds(engine, 0.1f);
+    run(engine, "hero_cast(false)");
+    bool humanOut = false;
+    for (int i = 0; i < 180 && run(engine, "hero_shape()").isNil(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+        humanOut = humanOut || engine.playerAnimationState() == "none_t_transform_out";
+    }
+    CHECK(humanOut);
     REQUIRE(run(engine, "hero_shape()").isString());
+    CHECK(engine.playerAnimationState() == "wolf_t_transform_in");
+    runSeconds(engine, 1.5f);
     CHECK(run(engine, "hero_shape()").asString() == "wolf");
     CHECK(run(engine, "Story.shape").asString() == "wolf");
     CHECK(stat(engine, "hero", "mana") == 80);
@@ -313,10 +325,17 @@ TEST_CASE(
     runSeconds(engine, 1.5f);
     CHECK(stat(engine, "npc_old_man", "hp") == before - 20);
 
-    // "1": human again, with his own life (the old man, bitten, fights back from now on).
+    // "1": human again, with his own life (the old man, bitten, fights back from now on) - after the wolf's
+    // transition clip (its swap event, figuren #255), then the human's.
     run(engine, "draw_magic()");
     REQUIRE(engine.runFrame());
+    CHECK(engine.playerAnimationState() == "wolf_t_transform_out");
+    for (int i = 0; i < 120 && run(engine, "hero_shape()").isString(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
     CHECK(run(engine, "hero_shape()").isNil());
+    CHECK(engine.playerAnimationState() == "none_t_transform_in");
     CHECK(run(engine, "Story.shape").asString().empty());
     CHECK(engine.movementSettings().runSpeed == doctest::Approx(humanRun));
     CHECK(run(engine, "player_weapon()").asString() == "none");

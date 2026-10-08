@@ -34,7 +34,7 @@ from gothar_chargen.clipfix import repair_set
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
 from gothar_chargen.collision import CollisionError, derive_collision, write_collision
 from gothar_chargen.creature import CreatureError, load_creature
-from gothar_chargen.events import update_speeds
+from gothar_chargen.events import events_path_for, sync_marker_events, update_speeds
 from gothar_chargen.fabrics import apply_fray_materials, load_fabrics
 from gothar_chargen.figure import SUFFIX as FIGURE_SUFFIX
 from gothar_chargen.figure import FigureError
@@ -282,6 +282,16 @@ def _cmd_build_set(args: argparse.Namespace, out: TextIO) -> int:
     out_dir = _characters_dir(args)
     names = packaged_sets(monsters=False) if args.set == ["all"] else args.set
     specs = [load_set_spec(n) for n in names]  # fail early on a bad list
+    if args.events_only:
+        for spec in specs:
+            path = events_path_for(spec.blend_path(out_dir).with_suffix(".glb"))
+            clips = [(c.name, c.markers, c.events) for c in spec.clips if not c.helper]
+            events = sync_marker_events(clips, path)
+            print(f"events {path}  ({sum(map(len, events.values()))} events)", file=out)
+        return EXIT_OK
+    if args.sources is None:
+        print("error: --sources is required (except with --events-only)", file=out)
+        return EXIT_ERROR
     blender = find_blender(args.blender)
     blends = []
     for spec in specs:
@@ -777,10 +787,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--sources",
         type=Path,
-        required=True,
         help=sources_help + "; monster sets: the folder with <species>_clips.blend",
     )
     p.add_argument("--out-dir", type=Path, help="default: assets/source/characters")
+    p.add_argument(
+        "--events-only",
+        action="store_true",
+        help="only rewrite <set>.events.toml from the markers in the specs (no Blender; the .blend "
+        "pose markers may stay out of date until a real rebuild)",
+    )
     p.set_defaults(func=_cmd_build_set)
     return parser
 

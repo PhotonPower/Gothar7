@@ -20,3 +20,6 @@ cloth_toigo_fisherman_sweater = "#6e6a5e"
 cloth_apron_leather = "#4e3624"
 cloth_belt = "#2a1e16"
 cloth_culturalibre_male_boots = "#3a2c22"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "relaxed"

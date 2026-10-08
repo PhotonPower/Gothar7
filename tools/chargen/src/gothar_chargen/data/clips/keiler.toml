@@ -120,7 +120,7 @@ rotate = { root = [["Z", -90]] }
 [[clip]]
 name = "keiler/t_attack_1"        # charge and hook the tusks upwards
 keyframe = "keyposes"
-markers = { hit_start = 12, hit_end = 16 }
+markers = { hit_start = 12, hit_end = 16, "sound:keiler_attack" = 6 }
 [clip.params]
 base = "keiler/s_idle"
 keys = [[0, "rest"], [8, "lower"], [12, "thrust"], [16, "hook"], [28, "rest"]]
@@ -137,7 +137,7 @@ rotate = { neck_01 = [["X", -10]], head = [["X", -25]], jaw = [["X", 4]], ear_l 
 [[clip]]
 name = "keiler/t_attack_2"        # sideways tusk swipe
 keyframe = "keyposes"
-markers = { hit_start = 9, hit_end = 13 }
+markers = { hit_start = 9, hit_end = 13, "sound:keiler_attack" = 3 }
 [clip.params]
 base = "keiler/s_idle"
 keys = [[0, "rest"], [6, "wind_up"], [10, "swipe"], [13, "swipe_up"], [22, "rest"]]
@@ -152,6 +152,7 @@ rotate = { neck_01 = [["Z", -25], ["X", -5]], head = [["Z", -15], ["X", -25]], j
 
 [[clip]]
 name = "keiler/t_hit"
+markers = { "sound:keiler_hit" = 1 }
 keyframe = "keyposes"
 [clip.params]
 base = "keiler/s_idle"
@@ -162,6 +163,7 @@ rotate = { chest = [["X", -6], ["Z", 5]], neck_01 = [["X", -15]], head = [["X", 
 
 [[clip]]
 name = "keiler/t_die"             # staggers, the front legs buckle, rolls onto the side
+markers = { "sound:keiler_die" = 2 }
 keyframe = "keyposes"
 [clip.params]
 keys = [[0, "rest"], [8, "stagger"], [16, "knees"], [28, "fallen"], [44, "fallen_limp"]]
@@ -207,6 +209,7 @@ rotate = { root = [["Y", 88]], spine_02 = [["X", -2]], neck_01 = [["X", 5]], hea
 
 [[clip]]
 name = "keiler/t_threaten"        # head low, pawing the ground, snorting
+markers = { "sound:keiler_threaten" = 8 }
 keyframe = "keyposes"
 [clip.params]
 base = "keiler/s_idle"

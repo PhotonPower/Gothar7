@@ -31,14 +31,31 @@ events = [
 
 [clips."quaderbuckel/t_attack_1"]
 events = [
+    { frame = 6, event = "sound:quaderbuckel_attack" },
     { frame = 12, event = "hit_start" },
     { frame = 17, event = "hit_end" },
 ]
 
 [clips."quaderbuckel/t_attack_2"]
 events = [
+    { frame = 4, event = "sound:quaderbuckel_attack" },
     { frame = 10, event = "hit_start" },
     { frame = 14, event = "hit_end" },
+]
+
+[clips."quaderbuckel/t_die"]
+events = [
+    { frame = 2, event = "sound:quaderbuckel_die" },
+]
+
+[clips."quaderbuckel/t_hit"]
+events = [
+    { frame = 1, event = "sound:quaderbuckel_hit" },
+]
+
+[clips."quaderbuckel/t_threaten"]
+events = [
+    { frame = 10, event = "sound:quaderbuckel_threaten" },
 ]
 
 [clips."quaderbuckel/t_turn_l"]

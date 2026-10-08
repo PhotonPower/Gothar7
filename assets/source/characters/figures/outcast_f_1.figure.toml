@@ -14,3 +14,6 @@ cloth = [
 hair = "#3a2a1e"
 cloth_joepal_crude_t-shirt_female = "#8a7e66"
 cloth_toigo_long_full_skirt = "#4e4434"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "woman"

@@ -17,3 +17,6 @@ cloth_toigo_bodice-style_top = "#2e4a3a"
 cloth_toigo_long_full_skirt = "#8a7a5a"
 cloth_toigo_flats = "#4a3a2c"
 cloth_wolgade_female_top_01 = "#ddd3bc"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "woman"

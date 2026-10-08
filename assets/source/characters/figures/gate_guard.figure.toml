@@ -17,3 +17,6 @@ cloth = [
 hair = "#5a3a28"
 beard = "#5a3a28"
 cloth_wrapped_trousers = "#6a2e28"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "military"

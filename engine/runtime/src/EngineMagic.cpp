@@ -72,7 +72,7 @@ void Engine::toggleMagic()
 {
     if (m_transform)
     {
-        m_transformBackRequested = true; // Z7: "1" makes him human again
+        requestTransformBack(); // Z7: "1" makes him human again
         return;
     }
     if (!m_figure || !m_hero)
@@ -322,7 +322,7 @@ void Engine::applyHeroSpell()
         (void)summonForHero(spell, spell.duration * strength);
         break;
     case gameplay::SpellKind::Transform:
-        m_transformRequested = spell.species; // the shape changes at the next player step
+        requestTransform(spell.species); // the transition clip, then the swap
         break;
     }
 }
@@ -415,6 +415,37 @@ bool Engine::beginTransform(std::string_view species)
         m_scripts->emit("hero_transformed", args);
     }
     return true;
+}
+
+void Engine::requestTransform(std::string_view species)
+{
+    if (m_transformOut)
+    {
+        return;
+    }
+    if (m_figure && m_figure->animator.hasState("none_t_transform_out"))
+    {
+        m_figure->animator.enter("none_t_transform_out", 0.15f);
+        m_transformOut = TransformOut{std::string(species), "none_t_transform_out", 0.0f};
+        return;
+    }
+    m_transformRequested = std::string(species);
+}
+
+void Engine::requestTransformBack()
+{
+    if (!m_transform || m_transformOut)
+    {
+        return;
+    }
+    const std::string out = m_transform->species + "_t_transform_out";
+    if (m_figure && m_figure->animator.hasState(out))
+    {
+        m_figure->animator.enter(out, 0.15f);
+        m_transformOut = TransformOut{std::string(), out, 0.0f};
+        return;
+    }
+    m_transformBackRequested = true;
 }
 
 void Engine::endTransform()
@@ -1064,7 +1095,10 @@ void Engine::bindMagicFunctions()
              "Der Held wird wieder Mensch (wie die Taste „1“ in Tiergestalt).", "Magie",
              [this](std::span<const Value>) -> Result<Value>
              {
-                 m_transformBackRequested = m_transform.has_value();
+                 if (m_transform)
+                 {
+                     requestTransformBack();
+                 }
                  return Value();
              }});
     vm.bind({"hero_transformed",

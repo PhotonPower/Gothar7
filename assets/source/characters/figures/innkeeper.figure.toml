@@ -22,3 +22,6 @@ cloth_wide_trousers = "#5a4a3a"
 cloth_apron = "#e6dcc4"
 cloth_belt = "#4a3424"
 cloth_toigo_mj_cloth_shoes = "#4a3a2c"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "relaxed"

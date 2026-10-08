@@ -62,3 +62,29 @@ def test_men_only_sets():
     for name in GUILDS_MEN_ONLY & set(sets):
         assert f"{name}_f" not in sets, f"{name} is men only"
         assert sorted(sets[name]) == sorted(sets[f"{name}_m"])
+
+
+def test_walk_style_variants():
+    """[anim] variant (contract with engine 2026-10-08): every variant in use has its clips in the
+    gait set, women walk as woman, guards as military; the parser rejects unknown variants."""
+    import pytest
+
+    from gothar_chargen.clipspec import load_set_spec
+    from gothar_chargen.figure import VARIANTS, FigureError, parse_figure
+
+    gait = set(load_set_spec("gait").names)
+    for v in VARIANTS:
+        assert {f"none/s_idle_{v}", f"none/s_walk_{v}"} <= gait, v
+    used = {}
+    for path in sorted((SOURCE / "characters" / "figures").glob("*.figure.toml")):
+        used[path.name.removesuffix(".figure.toml")] = load_figure(path).variant
+    assert used["guard_m_1"] == used["guard_captain"] == "military"
+    assert used["peasant_woman"] == used["citizen_f_1"] == "woman"
+    assert used["old_man"] == "old" and used["innkeeper"] == "relaxed"
+    assert used["test_plain"] is None
+    base = {"version": 1, "parts": {"body": "parts/b/body.glb", "head": "parts/h/head.glb"}}
+    assert parse_figure({**base, "anim": {"variant": "old"}}, "x").variant == "old"
+    with pytest.raises(FigureError, match="variant"):
+        parse_figure({**base, "anim": {"variant": "dancer"}}, "x")
+    with pytest.raises(FigureError, match="only hold"):
+        parse_figure({**base, "anim": {"gait": "old"}}, "x")

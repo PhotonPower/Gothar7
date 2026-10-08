@@ -15,3 +15,6 @@ cloth = [
 [palette]
 cloth_toigo_fisherman_sweater = "#6f7378"
 cloth_culturalibre_male_boots = "#2e2620"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "military"

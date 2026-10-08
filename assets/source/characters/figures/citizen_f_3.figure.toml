@@ -18,3 +18,6 @@ cloth_shirt = "#e0d8c4"
 cloth_skirt_tiered = "#3a3a4a"
 cloth_apron = "#ddd2b8"
 cloth_toigo_ankle_boots_female = "#2e241c"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "old"

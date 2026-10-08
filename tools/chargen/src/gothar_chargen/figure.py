@@ -47,6 +47,11 @@ def cloth_role(path: str) -> str:
     return CLOTH_PREFIX + re.sub(r"[^a-z0-9]+", "_", stem).strip("_")
 
 
+# walk-style variants (contract with engine 2026-10-08): [anim] variant = "<v>" makes the engine
+# play none/X_<v> (anims/human/gait.glb) instead of none/X when that clip exists
+VARIANTS = ("woman", "military", "old", "relaxed")
+
+
 class FigureError(Exception):
     """The figure manifest is malformed."""
 
@@ -56,6 +61,7 @@ class Figure:
     name: str
     parts: dict[str, str]  # role -> part path (relative to the characters folder)
     palette: dict[str, tuple[float, float, float]] = field(default_factory=dict)  # linear RGB
+    variant: str | None = None  # [anim] variant: walk-style variant (VARIANTS)
 
     def part_paths(self, characters_dir: Path) -> dict[str, Path]:
         return {role: characters_dir / rel for role, rel in self.parts.items()}
@@ -79,7 +85,7 @@ def parse_figure(data: dict, name: str) -> Figure:
         raise FigureError(f"version must be {FORMAT_VERSION}, got {data.get('version')!r}")
     if "lods" in data:
         raise FigureError("lods: LOD levels come from the parts now (§6.2), remove the key")
-    unknown = set(data) - {"version", "parts", "palette"}
+    unknown = set(data) - {"version", "parts", "palette", "anim"}
     if unknown:
         raise FigureError(f"unknown keys: {sorted(unknown)}")
 
@@ -116,7 +122,14 @@ def parse_figure(data: dict, name: str) -> Figure:
         if not isinstance(color, str) or not _COLOR.match(color):
             raise FigureError(f"palette '{material}': expected '#rrggbb', got {color!r}")
         palette[material] = srgb_to_linear(color)
-    return Figure(name, dict(parts), palette)
+
+    anim = data.get("anim", {})
+    if not isinstance(anim, dict) or set(anim) - {"variant"}:
+        raise FigureError("[anim] may only hold 'variant'")
+    variant = anim.get("variant")
+    if variant is not None and variant not in VARIANTS:
+        raise FigureError(f"[anim] variant {variant!r}: expected one of {', '.join(VARIANTS)}")
+    return Figure(name, dict(parts), palette, variant)
 
 
 def load_figure(path: Path) -> Figure:

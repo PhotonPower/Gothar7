@@ -90,13 +90,13 @@ helper = true
 [[clip]]
 name = "fist/t_attack_combo1"     # jab, left fist
 keyframe = "framed"
-markers = { hit_start = 6, hit_end = 9, combo_start = 9, combo_end = 21 }
+markers = { hit_start = 6, hit_end = 9, combo_start = 9, combo_end = 21, "sound:swing" = 2 }
 params = { base = "fist/t_jab", stance = "fist/s_idle", fade_in = 3, fade_out = 6 }
 
 [[clip]]
 name = "fist/t_attack_combo2"     # cross, right fist
 keyframe = "framed"
-markers = { hit_start = 9, hit_end = 14, combo_start = 14, combo_end = 24 }
+markers = { hit_start = 9, hit_end = 14, combo_start = 14, combo_end = 24, "sound:swing" = 5 }
 params = { base = "fist/t_cross", stance = "fist/s_idle", fade_in = 5, fade_out = 6 }
 
 [[clip]]

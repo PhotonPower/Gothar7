@@ -258,14 +258,39 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     {
         return;
     }
-    // Z7: the shape changes here, between steps.
+    // Z7: the shape changes here, between steps; the transition clips play on both sides (figuren #255).
+    if (m_transformOut)
+    {
+        m_transformOut->seconds += seconds;
+        // No swap event (2 s), or the clip broken off before it (a hit's reaction): change anyway.
+        const bool brokenOff = m_figure && m_figure->animator.state() != m_transformOut->state;
+        if (m_transformOut->seconds > 2.0f || brokenOff)
+        {
+            if (m_transformOut->species.empty())
+            {
+                m_transformBackRequested = true;
+            }
+            else
+            {
+                m_transformRequested = m_transformOut->species;
+            }
+            m_transformOut.reset();
+        }
+    }
     if (std::exchange(m_transformBackRequested, false))
     {
         endTransform();
+        if (m_figure && m_figure->animator.hasState("none_t_transform_in"))
+        {
+            m_figure->animator.enter("none_t_transform_in", 0.05f);
+        }
     }
     if (const std::string species = std::exchange(m_transformRequested, std::string()); !species.empty())
     {
-        (void)beginTransform(species);
+        if (beginTransform(species) && m_figure && m_figure->animator.hasState(species + "_t_transform_in"))
+        {
+            m_figure->animator.enter(species + "_t_transform_in", 0.05f);
+        }
     }
     gameplay::MoveInput input = m_playerInputOverride.value_or(m_playerInput);
     if (m_playerInputOverride)
@@ -279,7 +304,11 @@ void Engine::fixedUpdatePlayer(f32 seconds)
     }
     fixedUpdateHeroFight(input, seconds); // M11: the fighting moves and the target lock
     fixedUpdateHeroMagic(input, seconds); // M12: charging and casting
-    m_playerInput.mouseTurn = 0.0f;       // used up by this step
+    if (m_transformOut || (m_figure && m_figure->animator.state().ends_with("_t_transform_in")))
+    {
+        input = {}; // standing while the shape changes (Z7)
+    }
+    m_playerInput.mouseTurn = 0.0f; // used up by this step
     m_playerInput.jump = false;
     m_playerYawBefore = m_movement.yaw();
     m_playerFeetBefore = m_playerFeet;
