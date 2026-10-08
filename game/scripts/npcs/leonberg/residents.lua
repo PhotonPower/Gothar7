@@ -28,8 +28,8 @@ Npc "npc_leo_baker" {
     guild = "citizen",
     level = 3,
     attributes = { str = 12, hp = 60 }, -- Kampf (M11): Platzhalterwerte
-    figure_set = "citizen_f",
-    inventory = { it_gulden = 80, it_bread = 12, it_apple = 6 },
+    figure = "characters/figures/baker_wife.figure.toml",
+    inventory = { it_gulden = 80, it_bread = 12, it_pretzel = 10, it_apple = 6 },
     routine = "rtn_leo_baker",
 }
 
@@ -80,4 +80,129 @@ Npc "npc_leo_citizen" {
     attributes = { str = 12, hp = 70 }, -- Kampf (M11): Platzhalterwerte
     figure_set = "citizen",
     routine = "rtn_leo_citizen",
+}
+
+-- Neue Bewohner (welt Phase 1: Handwerkerhäuser; figurens Rollen-Figuren). Was sie verkaufen, steht in ihrem Inventar.
+Npc "npc_leo_baker_husband" {
+    voice = "craftsman",
+    name = "Konrad der Bäcker",
+    guild = "citizen",
+    level = 4,
+    attributes = { str = 22, hp = 80 },
+    figure = "characters/figures/baker.figure.toml",
+    inventory = { it_gulden = 60, it_bread = 6 },
+    routine = "rtn_leo_baker_husband",
+}
+
+Npc "npc_leo_butcher" {
+    voice = "craftsman",
+    name = "Hans der Metzger",
+    guild = "citizen",
+    level = 6,
+    attributes = { str = 35, hp = 120 },
+    figure = "characters/figures/butcher.figure.toml",
+    inventory = { it_gulden = 120, it_ham = 6, it_sausage = 12 },
+    routine = "rtn_leo_butcher",
+}
+
+Npc "npc_leo_joiner" {
+    voice = "craftsman",
+    name = "Lorenz der Schreiner",
+    guild = "citizen",
+    level = 4,
+    attributes = { str = 24, hp = 90 },
+    figure = "characters/figures/joiner.figure.toml",
+    inventory = { it_gulden = 70, it_saw = 1, it_hammer = 1 },
+    routine = "rtn_leo_joiner",
+}
+
+Npc "npc_leo_potter" {
+    voice = "craftsman",
+    name = "Michel der Töpfer",
+    guild = "citizen",
+    level = 3,
+    attributes = { str = 18, hp = 70 },
+    figure = "characters/figures/potter.figure.toml",
+    inventory = { it_gulden = 60, it_jug = 5, it_bowl = 8, it_mug = 6 },
+    routine = "rtn_leo_potter",
+}
+
+Npc "npc_leo_goldsmith" {
+    voice = "craftsman",
+    name = "Ruprecht der Goldschmied",
+    guild = "citizen",
+    level = 5,
+    attributes = { str = 14, hp = 70 },
+    figure = "characters/figures/goldsmith.figure.toml",
+    inventory = { it_gulden = 400, it_ring_silver = 3, it_ring_gold = 2, it_amulet = 1, it_chain_gold = 1 },
+    routine = "rtn_leo_goldsmith",
+}
+
+Npc "npc_leo_cloth_merchant" {
+    gender = "f",
+    voice = "citizen",
+    name = "Elsbeth die Tuchhändlerin",
+    guild = "citizen",
+    level = 3,
+    attributes = { str = 10, hp = 60 },
+    figure = "characters/figures/cloth_merchant.figure.toml",
+    inventory = { it_gulden = 200, it_cloth_bolt = 8 },
+    routine = "rtn_leo_cloth_merchant",
+}
+
+Npc "npc_leo_tailor" {
+    voice = "craftsman",
+    name = "Jörg der Gewandschneider",
+    guild = "citizen",
+    level = 3,
+    attributes = { str = 14, hp = 65 },
+    figure = "characters/figures/tailor.figure.toml",
+    inventory = { it_gulden = 90, it_cloth_bolt = 2, it_shears = 1 },
+    routine = "rtn_leo_tailor",
+}
+
+Npc "npc_leo_herbalist" {
+    gender = "f",
+    voice = "citizen",
+    name = "Mechthild die Kräuterfrau",
+    guild = "citizen",
+    level = 4,
+    attributes = { str = 8, hp = 55, mana = 20 },
+    figure = "characters/figures/herbalist.figure.toml",
+    inventory = { it_gulden = 150, it_herb_sage = 8, it_herb_chamomile = 8, it_herb_nettle = 10,
+                  it_herbs_dried = 4, it_potion_heal_small = 4, it_potion_heal_medium = 2,
+                  it_potion_mana_small = 2, it_potion_speed = 1, it_potion_strength = 1 },
+    routine = "rtn_leo_herbalist",
+}
+
+Npc "npc_leo_bather" {
+    voice = "citizen",
+    name = "Meister Wendel, der Bader",
+    guild = "citizen",
+    level = 5,
+    attributes = { str = 16, hp = 80 },
+    figure = "characters/figures/bather.figure.toml",
+    inventory = { it_gulden = 120, it_potion_heal_small = 3 },
+    routine = "rtn_leo_bather",
+}
+
+Npc "npc_leo_merchant_m" {
+    name = "Hieronymus der Kaufmann",
+    guild = "citizen",
+    level = 4,
+    attributes = { str = 12, hp = 70 },
+    figure_set = "merchant_m",
+    inventory = { it_gulden = 300 },
+    routine = "rtn_leo_merchant_m",
+}
+
+Npc "npc_leo_merchant_f" {
+    gender = "f",
+    name = "Margarete, die Kaufmannsfrau",
+    guild = "citizen",
+    level = 3,
+    attributes = { str = 9, hp = 60 },
+    figure_set = "merchant_f",
+    inventory = { it_gulden = 150, it_ring_gold = 1 },
+    routine = "rtn_leo_merchant_f",
 }
