@@ -12,6 +12,7 @@
 
 #include <map>
 #include <string>
+#include <tuple>
 #include <utility>
 
 namespace g7::render
@@ -87,14 +88,16 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
         return Error{"cannot create fallback textures"};
     }
 
-    std::map<std::pair<i32, bool>, const rhi::Texture*> uploaded; // (image, sRGB) -> texture
-    const auto textureFor = [&](i32 image, bool srgb, const rhi::Texture* fallback) -> const rhi::Texture*
+    // (image, sRGB, alpha cutoff of an alpha-tested material or -1) -> texture
+    std::map<std::tuple<i32, bool, f32>, const rhi::Texture*> uploaded;
+    const auto textureFor = [&](i32 image, bool srgb, const rhi::Texture* fallback,
+                                std::optional<f32> alphaCutoff = {}) -> const rhi::Texture*
     {
         if (image < 0 || static_cast<usize>(image) >= mesh.images.size())
         {
             return fallback;
         }
-        const auto key = std::make_pair(image, srgb);
+        const auto key = std::make_tuple(image, srgb, alphaCutoff.value_or(-1.0f));
         if (const auto it = uploaded.find(key); it != uploaded.end())
         {
             return it->second;
@@ -104,7 +107,7 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
         if (!source.encoded.empty())
         {
             auto decoded = asset::decodeImage(source.encoded, "embedded image");
-            texture = decoded ? own(createTexture(device, decoded.value(), {srgb, true}))
+            texture = decoded ? own(createTexture(device, decoded.value(), {srgb, true, alphaCutoff}))
                               : Result<const rhi::Texture*>(decoded.error());
         }
         else if (const ExternalImage external = lookup ? lookup(source) : ExternalImage{};
@@ -112,7 +115,8 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
         {
             if (cache != nullptr && !external.cacheKey.empty())
             {
-                auto shared = cache->get(device, external.cacheKey, external.version, *external.data, srgb);
+                auto shared = cache->get(device, external.cacheKey, external.version, *external.data, srgb,
+                                         alphaCutoff);
                 if (shared)
                 {
                     set.m_textures.push_back(shared.value());
@@ -125,7 +129,7 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
             }
             else
             {
-                texture = own(createTexture(device, *external.data, srgb));
+                texture = own(createTexture(device, *external.data, srgb, alphaCutoff));
             }
         }
         const rhi::Texture* result = fallback;
@@ -144,7 +148,10 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
     for (const asset::MaterialInfo& info : mesh.materials)
     {
         Material material;
-        material.baseColor = textureFor(info.baseColorImage, true, white.value());
+        // Alpha-tested (beards, hair, leaves): mips that keep the coverage (figuren's stubble).
+        material.baseColor = textureFor(
+            info.baseColorImage, true, white.value(),
+            info.alphaMode == asset::AlphaMode::Mask ? std::optional<f32>(info.alphaCutoff) : std::nullopt);
         material.normal = textureFor(info.normalImage, false, flatNormal.value());
         material.emissive = textureFor(info.emissiveImage, true, white.value());
         material.baseColorFactor = info.baseColor;

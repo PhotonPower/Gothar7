@@ -126,16 +126,16 @@ u8 bc4FirstTexel(const u8* block)
 }
 
 #if G7_HAS_KTX
-/// Decodes a .ktx2 to RGBA8 pixels of level 0 through libktx (independent of the BC formats).
-std::vector<u8> toRgba(const std::vector<u8>& ktx2)
+/// Decodes a .ktx2 to RGBA8 pixels of `level` through libktx (independent of the BC formats).
+std::vector<u8> toRgba(const std::vector<u8>& ktx2, u32 level = 0)
 {
     ktxTexture2* tex = nullptr;
     REQUIRE(ktxTexture2_CreateFromMemory(ktx2.data(), ktx2.size(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
                                          &tex) == KTX_SUCCESS);
     REQUIRE(ktxTexture2_TranscodeBasis(tex, KTX_TTF_RGBA32, 0) == KTX_SUCCESS);
     ktx_size_t offset = 0;
-    REQUIRE(ktxTexture_GetImageOffset(ktxTexture(tex), 0, 0, 0, &offset) == KTX_SUCCESS);
-    const ktx_size_t size = ktxTexture_GetImageSize(ktxTexture(tex), 0);
+    REQUIRE(ktxTexture_GetImageOffset(ktxTexture(tex), level, 0, 0, &offset) == KTX_SUCCESS);
+    const ktx_size_t size = ktxTexture_GetImageSize(ktxTexture(tex), level);
     const u8* data = ktxTexture_GetData(ktxTexture(tex)) + offset;
     std::vector<u8> pixels(data, data + size);
     ktxTexture2_Destroy(tex);
@@ -218,6 +218,36 @@ TEST_CASE("KTX2 data texture read back as RGBA8 on the CPU (footsteps: splat wei
     CHECK(int(image.value().rgba8[1]) < 15);
     CHECK(std::abs(int(image.value().rgba8[2]) - 40) <= 6);
     CHECK_FALSE(asset::decodeKtx2Rgba(std::vector<u8>{1, 2, 3}, "junk").ok());
+}
+
+TEST_CASE("KTX2 colour texture of an alpha-tested material: its mips keep the alpha coverage")
+{
+    // Stubble: a quarter of the texels opaque at random. Plain mips average it towards alpha 0.25 - an alpha
+    // test at 0.5 sees almost nothing three levels down; with the material's cutoff about a quarter stays.
+    asset::ImageData stubble{64, 64, {}};
+    u32 seed = 12345;
+    for (u32 i = 0; i < 64 * 64; ++i)
+    {
+        seed = seed * 1664525u + 1013904223u;
+        const u8 a = (seed >> 24) < 64 ? 255 : 0;
+        stubble.rgba8.insert(stubble.rgba8.end(), {70, 50, 35, a});
+    }
+    const auto covered = [](const std::vector<u8>& rgba)
+    {
+        usize n = 0;
+        for (usize i = 3; i < rgba.size(); i += 4)
+        {
+            n += rgba[i] >= 128 ? 1 : 0;
+        }
+        return static_cast<f32>(n) / static_cast<f32>(rgba.size() / 4);
+    };
+    auto plain = cook::encodeKtx2(stubble, cook::TextureUsage::Color);
+    auto kept = cook::encodeKtx2(stubble, cook::TextureUsage::Color, 2, 0.5f);
+    REQUIRE(plain);
+    REQUIRE(kept);
+    CHECK(covered(toRgba(plain.value(), 3)) < 0.05f);
+    CHECK(std::abs(covered(toRgba(kept.value(), 3)) - 0.25f) < 0.1f);
+    CHECK(std::abs(covered(toRgba(kept.value(), 0)) - 0.25f) < 0.03f); // level 0 unchanged
 }
 
 TEST_CASE("KTX2 normal map: two channels, linear, BC5 with X in R and Y in G")

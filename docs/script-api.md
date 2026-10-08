@@ -125,6 +125,9 @@ Der Held wollte ein verschlossenes Mob benutzen, ohne Schlüssel und Dietrich.
 ### `on("mob_used", fn(mob: string, type: string))`
 Der Held hat ein Mob benutzt (Truhe offen, Tür bewegt); `mob` ist die Mob-Instanz.
 
+### `on("music_changed", fn(theme: string, state: string))`
+Die Musik wechselt (Thema bzw. Zustand); Thema leer: Stille.
+
 ### `on("npc_arrived", fn(npc: string, target: string))`
 Ein NPC ist an seinem Ziel angekommen (npc_goto).
 
@@ -182,6 +185,9 @@ Der Held hat einem NPC etwas aus der Tasche gezogen.
 ### `on("pickpocket_failed", fn(npc: string))`
 Der NPC hat den Taschendiebstahl bemerkt (die Reaktion folgt mit M9).
 
+### `on("quest_success", fn(quest: string))`
+Ein Auftrag ist gelungen (quest_success in lib/diary.lua).
+
 ### `on("scripts_reloaded", fn())`
 Nachdem geänderte Skripte neu geladen wurden (Entwicklung); die Story-Variablen bleiben erhalten.
 
@@ -196,6 +202,9 @@ Der Held hat seine Fackel angezündet.
 
 ### `on("torch_out", fn(item: string))`
 Die Fackel des Helden ist aus (weggesteckt, fallen gelassen, im Wasser).
+
+### `on("voice_line", fn(npc: string, key: string, seconds: number))`
+Eine Zeile wird gesprochen (es gibt ihren Take voice/<sprache>/<key>.wav).
 
 ### `on("world_loaded", fn(world: string))`
 Nachdem eine Welt geladen ist (auch nach einem Weltwechsel); `world` ist ihr Pfad.
@@ -339,6 +348,15 @@ Das Fußschritt-Material an einem Punkt (M13: water, Modell darunter, Gelände; 
 ### `last_footstep() -> string`
 Das Material des zuletzt gespielten Schritts (Held oder NPC); leer vor dem ersten.
 
+### `music_force(theme?: string, state?: string)`
+Zum Testen: erzwingt Thema ("" = Stille) und Zustand (std, thr, fgt); ohne Argumente gilt wieder die Welt.
+
+### `music_state() -> {theme, state, night, set, segment, stinger}`
+Was die Musik gerade spielt (M13): Thema der Musik-Zone (leer: Stille), Zustand std/thr/fgt, Nacht, gespielte Menge (Thema/Schlüssel, z. B. common/fgt), Datei und der letzte Stinger.
+
+### `music_stinger(name: string) -> boolean`
+Spielt einen Stinger aus data/music.toml auf dem nächsten Schlag über der Musik (gelöste Quest, Stufenaufstieg, Tod, neues Kapitel).
+
 ### `sound(name: string, x?: number, y?: number, z?: number) -> integer | nil`
 Spielt einen Klang aus data/sounds.toml (M13), mit Ort als 3D-Klang; gibt seine Nummer zurück, nil wenn es ihn nicht gibt bzw. kein Ton läuft.
 
@@ -347,6 +365,9 @@ Ob ein Klang noch läuft.
 
 ### `sound_stop(id: integer, fade?: number)`
 Beendet einen Klang, über `fade` Sekunden ausgeblendet.
+
+### `voice_playing(npc: string) -> boolean`
+Ob die Stimme eines NPCs (oder "hero") gerade spricht (M13: gewählter Take vorhanden).
 
 ## Magie
 
@@ -453,8 +474,8 @@ Unterbricht: beendet den laufenden Zustand (finish) und startet einen anderen. E
 ### `npc_stat(npc: string, name: string) -> integer`
 Ein Attribut eines NPCs (hp, hp_max, str, dex ...).
 
-### `npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, x, y, z}`
-Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des Animationsgraphen, ob er gerade geht, und seine Position.
+### `npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, gait, x, y, z}`
+Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des Animationsgraphen, ob er gerade geht, seine Gangart ([anim] variant der Figur) und seine Position.
 
 ### `npc_stop(npc: string)`
 Reiht ein: die laufende Tagesablauf-Animation beenden (_out).

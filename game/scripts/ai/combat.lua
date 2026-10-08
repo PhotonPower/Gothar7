@@ -38,6 +38,11 @@ local function leave(npc)
     Fights[npc] = nil
 end
 
+--- Gegen wen `npc` kämpft ("hero", ein NPC oder nil). Die Engine fragt es für die Kampfmusik (M13).
+function fight_target(npc)
+    return Fights[npc]
+end
+
 --- Wie viele gerade dasselbe Ziel angreifen (höchstens CombatAi.max_attackers).
 function fight_attackers(target)
     return count(attackers[target])

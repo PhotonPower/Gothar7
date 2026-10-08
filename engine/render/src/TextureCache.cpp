@@ -8,9 +8,10 @@ namespace g7::render
 {
 Result<std::shared_ptr<const rhi::Texture>> TextureCache::get(Device& device, std::string_view key,
                                                               u64 version, const asset::TextureData& data,
-                                                              bool srgb)
+                                                              bool srgb, std::optional<f32> alphaCutoff)
 {
-    const std::string id = std::format("{}|{}|{}", key, srgb ? "srgb" : "linear", version);
+    const std::string id = std::format("{}|{}|{}|{}", key, srgb ? "srgb" : "linear", version,
+                                       alphaCutoff ? std::format("mask{}", *alphaCutoff) : std::string());
     if (const auto it = m_entries.find(id); it != m_entries.end())
     {
         if (auto texture = it->second.lock())
@@ -18,7 +19,7 @@ Result<std::shared_ptr<const rhi::Texture>> TextureCache::get(Device& device, st
             return std::shared_ptr<const rhi::Texture>(std::move(texture));
         }
     }
-    auto texture = createTexture(device, data, srgb);
+    auto texture = createTexture(device, data, srgb, alphaCutoff);
     if (!texture)
     {
         return texture.error();

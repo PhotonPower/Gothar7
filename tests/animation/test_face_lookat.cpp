@@ -9,6 +9,7 @@
 #include <doctest/doctest.h>
 
 #include <cmath>
+#include <optional>
 #include <ostream> // doctest needs it to print std::string operands
 #include <string>
 
@@ -120,6 +121,26 @@ TEST_CASE("Face: morph names in contract order, blinking, expressions, talking")
     {
         CHECK(face.weights()[v] == doctest::Approx(0.0f));
     }
+
+    // Lip sync from loudness (M13 D): the voice opens vis_aa (as far as talkWeight), smoothed; closed again
+    // when it is quiet; nullopt hands the mouth back to talking.
+    face.setTalking(true);
+    face.setMouthOpen(1.0f);
+    CHECK(face.mouthDriven());
+    for (int i = 0; i < 12; ++i)
+    {
+        face.update(1.0f / 60.0f);
+    }
+    CHECK(face.weight(FaceMorph::VisAa) == doctest::Approx(FaceSettings{}.talkWeight).epsilon(0.05));
+    CHECK(face.weight(FaceMorph::VisEe) == 0.0f); // no random shapes while a voice drives the mouth
+    face.setMouthOpen(0.0f);
+    for (int i = 0; i < 12; ++i)
+    {
+        face.update(1.0f / 60.0f);
+    }
+    CHECK(face.weight(FaceMorph::VisAa) < 0.05f);
+    face.setMouthOpen(std::nullopt);
+    CHECK_FALSE(face.mouthDriven());
 }
 
 TEST_CASE("LookAt: turns neck and head towards the target within limits, at limited speed")

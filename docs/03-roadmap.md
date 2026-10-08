@@ -258,9 +258,11 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 - [ ] miniaudio-Integration (ADR 0007), Mixer-Busse (Musik, Effekte, Sprache, Ambient)
 - [ ] 3D-Sound mit Abschwächung, Verdeckung (einfacher Raycast-Filter)
 - [ ] Ambient-Zonen (Wind, Sumpf, Höhle), Zufalls-Einzelgeräusche
-- [ ] Sprachausgabe mit Lippensync-Daten, Untertitel-Synchronisation
+- [x] Sprachausgabe mit Lippensync-Daten, Untertitel-Synchronisation
+  - Teil D: gewählter Take `voice/<sprache>/<key>.wav` (WAV vorerst, OGG mit echten Takes und ADR) als 3D-Stimme am Sprecher (voll bis 4 m); die Zeile dauert Take + 0,3 s, Untertitel folgen; Mund `vis_aa` aus der Lautstärke (30 Hz); Musik −6 dB beim Sprechen; Zurufe ebenso; ohne Take wie bisher
   - Quelle: gewählte Takes `assets/source/voice/<sprache>/<key>.wav` → Cooker `voice/<sprache>/<key>.ogg`; fehlt die Datei, nur Untertitel mit Lesedauer aus der Textlänge
-- [ ] **Dynamisches Musiksystem**: Musik-Zonen, Zustände (Standard/Bedrohung/Kampf) × Tag/Nacht, musikalische Übergänge auf Taktgrenzen, Stingers
+- [x] **Dynamisches Musiksystem**: Musik-Zonen, Zustände (Standard/Bedrohung/Kampf) × Tag/Nacht, musikalische Übergänge auf Taktgrenzen, Stingers
+  - Teil C: `data/music.toml`, `audio::MusicPlayer` (Sample-genau verkettet, Wechsel auf der nächsten Taktgrenze bzw. am Segmentende), Zustand aus echten Feinden mit 5 s Hysterese, außerhalb der Zonen Stille (Bedrohung und Kampf mit `common`), Stinger quest/level_up/death/chapter, Platzhalter `gothar-audio music`; DoD-Szenario F in `tests/runtime/test_engine_m13_music.cpp`
 - [x] Fußschritt-Sounds nach Material
   - Teil E: `data/footsteps.toml` (Gelände-Schichten, Modell-Pfadmuster, Vorgaben), `components.surface.footstep` an Vobs (world.md, mit welt), Wasser; Held und Menschen-NPCs bis 25 m, leiser beim Schleichen; Platzhalter `footstep_<material>_1..4`
 
@@ -457,6 +459,7 @@ F6 läuft: 12 Waffen und Handgegenstände (`gothar-chargen build-items`, Validat
 - [x] Baukasten-Werkzeug: Zusammensetzen, Passform-Prüfung, LODs, Farbvarianten – `gothar-chargen assemble` (Manifest `figures/<name>.figure.toml`, Palette), `fit.*`/`lod.*`/`mesh.budget` im Validator, LOD-Vertrag mit engine (characters-pipeline.md §2.2); getestet mit eigenen Testteilen (`parts/test`, Figuren `test_plain`, `test_rags`). ADR 0018 (MPFB2) angenommen. Seit 2026-10-03 Figuren beim Bauen statt im Repo: Teile mit LODs und Zusammenbau-Daten, `assemble` in reinem Python (Vertrag §6.2)
 - [ ] Stil-Referenzblatt Figuren (gemeinsam mit W5)
   - Stand: Stilentscheidung Figuren gefallen (Stufe A realistisch mit Texturen, 2026-10-03; Stilproben-Seite für den Projektinhaber)
+  - Stand 2026-10-08: `docs/design/figuren-stil.md` (Proportionen, Farbwelt, Texturdichte, Alterung, Budgets, Namensregeln, was wir bewusst nicht machen; zwei Übersichtsbilder) liegt dem Projektinhaber vor; große Blätter in `C:\GotharData\review\stil\`. Abhaken nach seiner Freigabe.
 
 **DoD:** 5 unterscheidbare NPCs in der Engine, alle auf dem Referenz-Rig.
 Stand: die 5 Test-NPCs liegen als `.glb` vor (strikt gültig); „in der Engine“ hängt an M6 (Skin/Clips kochen).

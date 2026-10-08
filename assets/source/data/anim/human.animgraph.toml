@@ -23,6 +23,7 @@ sets = [
     "characters/anims/human/cbow.glb",
     "characters/anims/human/mag.glb",
     "characters/anims/human/torch.glb",
+    "characters/anims/human/gait.glb",
     "characters/anims/human/dlg.glb",
 ]
 start = "move"

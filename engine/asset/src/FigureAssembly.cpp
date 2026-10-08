@@ -292,6 +292,12 @@ Result<FigureManifest> FigureManifest::parse(std::string_view toml, std::string_
         }
         manifest.palette.emplace_back(material, srgbToLinear(*colour));
     }
+    manifest.animVariant = c.get<std::string>("anim.variant", "");
+    if (manifest.animVariant.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789_") != std::string::npos)
+    {
+        return fail(source, std::format("[anim] variant '{}': lower-case letters, digits and _",
+                                        manifest.animVariant));
+    }
     return manifest;
 }
 
