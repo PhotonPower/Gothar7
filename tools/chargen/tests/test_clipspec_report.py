@@ -295,9 +295,9 @@ def test_real_list_is_consistent_with_files():
     assert result.missing == []
     counts = list(result.section_counts().values())
     # Prio-B item use + mobs (M8, with the table), per mode, Prio-C routines (M9), dialogue (M10),
-    # combat (M11), magic (M12, with the human transformation), torch (F6), gait variants, 7 monsters (own
-    # wolf 15 with the transformation, keiler/laufvogel 12, schinder 15, quaderbuckel 17,
-    # glemsmahr/bergleu 19)
+    # combat (M11), magic (M12, with the human transformation), torch (F6), gait variants,
+    # 7 monsters (own wolf 15 with the transformation, keiler/laufvogel 12, schinder 15,
+    # quaderbuckel 17, glemsmahr/bergleu 19)
     expected = [
         (22, 22),
         (48, 48),
