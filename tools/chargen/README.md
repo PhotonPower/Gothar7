@@ -78,6 +78,9 @@ gothar-chargen poke [figures\x.glb]           & REM Haut durch Kleidung in Beweg
 gothar-chargen build-items --sources C:\GotharData\characters\ambientcg\items
                                               & REM Waffen und Handgegenstände → assets/source/items (F6, §6.3;
                                               & REM --skip-textures: nur Geometrie, ohne Blender)
+gothar-chargen inventory-sheet --out C:\GotharData\review\m14-inventar
+                                              & REM Prüfblatt der Inventar-Ansichten je Zelle
+                                              & REM (data/inventory_views.toml, M14; Cycles auf der CPU)
 gothar-chargen assemble [figures\x.figure.toml] & REM Figuren aus Manifesten + Teilen (reines Python, ohne Blender;
                                               & REM nicht versioniert; ohne Argument alle, entfernt veraltete)
 gothar-chargen part-data [parts\x]            & REM Zusammenbau-Daten der Teile (Halsring, Masken; §6.2)

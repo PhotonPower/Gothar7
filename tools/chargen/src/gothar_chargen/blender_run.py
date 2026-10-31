@@ -107,6 +107,14 @@ def bake_item_textures(blender: Path, out: Path, sources: Path) -> str:
     )
 
 
+def inventory_sheet(blender: Path, root: Path, out: Path, only: list[str] | None = None) -> str:
+    """Inventory cell views of all item models and the review sheet (blender/inventory_sheet.py)."""
+    args = ["--root", str(root), "--out", str(out)]
+    if only:
+        args += ["--only", *only]
+    return run_script(blender, "inventory_sheet.py", args)
+
+
 def build_stubble(blender: Path, head: Path, texture: Path, out: Path) -> str:
     """Stubble beard of one head part (blender/build_stubble.py)."""
     return run_script(

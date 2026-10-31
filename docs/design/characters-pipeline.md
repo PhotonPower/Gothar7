@@ -611,6 +611,10 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
 - **Prüfung:** jedes Stück am Socket einer Testfigur in passender Haltung (`1h/s_idle`, `1h/s_run`, `bow/s_idle`,
   `none/t_eat`, `none/t_drink`, `mob/chest/s_picklock`, Gürtel `socket_hip_1h`, Rücken `socket_back_bow`).
 
+- **Inventar-Ansicht** (M14, Vorschlag): jedes Modell braucht eine Zellen-Ansicht in
+  `assets/source/data/inventory_views.toml` (über seine Lua-Kategorie oder einen Eintrag `[model."items/<id>.glb"]`);
+  Format und Regel in `docs/modules/ui.md` „Inventar-Ansichten“, Prüfblatt `gothar-chargen inventory-sheet`.
+
 ### 6.4 Figuren-Sets und Gilden-Figuren (Vertrag mit engine, F3v, vereinbart 2026-10-04)
 
 - **Datei:** `assets/source/data/figure_sets.toml`, gepflegt von figuren:
