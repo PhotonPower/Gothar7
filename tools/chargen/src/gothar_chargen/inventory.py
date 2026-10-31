@@ -3,20 +3,28 @@
 Contract with engine (docs/modules/ui.md "Inventar-Ansichten", proposal): the data file
 ``assets/source/data/inventory_views.toml`` holds a view per item category (the categories of the
 Lua items, ``category = "melee_1h"`` …) and overrides per model (the Lua ``mesh`` path). A view is
-yaw/pitch/roll in degrees plus ``fill``, the share of the cell the bounding box takes. Resolution:
-``[default]`` <- ``[category.<c>]`` <- ``[model."<mesh>"]``, field by field; ``<c>`` is the model
-entry's own ``category`` if it has one, else the category of the item.
+yaw/pitch/roll in degrees plus ``fill``, the share of the cell the model's contour takes (version 2;
+in version 1 it was the front of the rotated bounding box). Resolution: ``[default]`` <-
+``[category.<c>]`` <- ``[model."<mesh>"]``, field by field; ``<c>`` is the model entry's own
+``category`` if it has one, else the category of the item.
 
 Cell geometry (item axes as in the glTF: +Y up = grip axis, +Z = edge/front; view axes: +X right,
 +Y up, the camera on +Z looking down -Z, square cell, perspective with ``[camera] fov``):
 
-1. rotate the model by ``R = Rz(roll) * Rx(pitch) * Ry(yaw)`` (yaw spins it about its own +Y, pitch
-   tilts its top towards the viewer - seen from above -, roll turns it in the image plane, positive
-   counter-clockwise),
-2. take the 8 corners of its local bounding box (LOD 0), rotated; their box has centre ``c`` and
-   half sizes ``h`` - the model is moved by ``-c`` (centred on the box),
-3. camera distance ``d = h.z + max(h.x, h.y) / (fill * tan(fov / 2))`` - the front of the box fills
-   ``fill`` of the cell in its larger direction.
+1. rotate the vertices ``v`` of the model (LOD 0) by ``R = Rz(roll) * Rx(pitch) * Ry(yaw)`` (yaw
+   spins it about its own +Y, pitch tilts its top towards the viewer - seen from above -, roll
+   turns it in the image plane, positive counter-clockwise),
+2. the rotated vertices span the box ``[a, b]``; the model is moved by ``-c``, ``c = (a + b) / 2``,
+   so ``p = R v - c``,
+3. camera distance ``d = max over all vertices of (p.z + max(|p.x|, |p.y|) / tan(fov / 2))`` - the
+   perspective of a model that just fits the full ``fov``; every vertex lies in front of the camera
+   and inside the view, the outermost one on its edge (independent of ``fill``, so every item is
+   seen with the same perspective),
+4. image positions ``u = p.xy / ((d - p.z) * tan(fov / 2))`` (-1..1 = the full view); their box
+   ``[m, M]`` is the projected contour (a segment in front of the camera projects to a segment, so
+   the vertices bound the whole mesh). The cell shows the image window with centre
+   ``w = (m + M) / 2`` and half size ``e = max(M - m) / (2 * fill)`` - an off-axis projection:
+   the contour is centred and fills ``fill`` of the cell in its larger direction, exactly.
 
 This module is the reference implementation of that rule (the review sheet uses it) and reads the
 Lua item instances (``Item "<id>" { mesh = ..., category = ... }``) for the category of a model.
@@ -37,7 +45,7 @@ from gothar_chargen.gltf import Gltf
 VIEWS_FILE = Path("assets/source/data/inventory_views.toml")
 SCRIPTS_ITEMS_DIR = Path("game/scripts/items")
 ITEMS_DIR = Path("assets/source/items")
-VERSION = 1
+VERSION = 2
 FIELDS = ("yaw", "pitch", "roll", "fill")
 # the Lua item categories (engine: gameplay/Character.hpp kItemCategories)
 CATEGORIES = (
@@ -211,29 +219,44 @@ def rotation(view: View) -> np.ndarray:
 class Cell:
     matrix: np.ndarray  # 4x4 model -> view space (rotation, then centring)
     distance: float  # camera on +Z at this distance, looking down -Z
-    fov: float
+    fov: float  # degrees, the full view before the window
+    window: np.ndarray  # (2,) centre w of the cell's image window, in units of the full view
+    half: float  # half size e of the window, in units of the full view
 
 
-def cell(view: View, lo: np.ndarray, hi: np.ndarray, fov: float) -> Cell:
-    """Model matrix and camera distance for a model with local bounding box (lo, hi)."""
+def _image(matrix: np.ndarray, distance: float, fov: float, vertices: np.ndarray) -> np.ndarray:
+    p = np.c_[np.asarray(vertices, dtype=float), np.ones(len(vertices))] @ matrix.T
+    return p[:, :2] / ((distance - p[:, 2:3]) * math.tan(math.radians(fov) / 2))
+
+
+def cell(view: View, vertices: np.ndarray, fov: float) -> Cell:
+    """Model matrix, camera distance and image window for a model with the (N, 3) vertex
+    positions of its LOD 0."""
     rot = rotation(view)
-    corners = np.array(
-        [[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])]
-    )
-    turned = corners @ rot.T
-    a, b = turned.min(axis=0), turned.max(axis=0)
-    centre, half = (a + b) / 2, (b - a) / 2
+    turned = np.asarray(vertices, dtype=float) @ rot.T
+    centre = (turned.min(axis=0) + turned.max(axis=0)) / 2
+    p = turned - centre
+    t = math.tan(math.radians(fov) / 2)
+    distance = float(np.max(p[:, 2] + np.maximum(np.abs(p[:, 0]), np.abs(p[:, 1])) / t))
+    if not distance > p[:, 2].max():
+        raise ValueError("degenerate model: no extent across the view")
     matrix = np.eye(4)
     matrix[:3, :3] = rot
     matrix[:3, 3] = -centre
-    distance = half[2] + max(half[0], half[1]) / (view.fill * math.tan(math.radians(fov) / 2))
-    return Cell(matrix, float(distance), fov)
+    u = _image(matrix, distance, fov, vertices)
+    lo, hi = u.min(axis=0), u.max(axis=0)
+    half = float(np.max(hi - lo)) / (2 * view.fill)
+    return Cell(matrix, distance, fov, (lo + hi) / 2, half)
 
 
-def model_bounds(path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """Local bounding box of LOD 0 (node ``<id>_lod0``; nodes of items carry no transform)."""
+def project(c: Cell, vertices: np.ndarray) -> np.ndarray:
+    """(N, 2) positions of the vertices in the cell: -1..1 is the whole cell."""
+    return (_image(c.matrix, c.distance, c.fov, vertices) - c.window) / c.half
+
+
+def model_vertices(path: Path) -> np.ndarray:
+    """(N, 3) vertex positions of LOD 0 (node ``<id>_lod0``; nodes of items carry no transform)."""
     g = Gltf.load(path)
     lod0 = next(n for n in g.list("nodes") if n.get("name") == f"{path.stem}_lod0")
     prims = g.doc["meshes"][lod0["mesh"]]["primitives"]
-    pos = np.concatenate([np.asarray(g.accessor(p["attributes"]["POSITION"])) for p in prims])
-    return pos.min(axis=0), pos.max(axis=0)
+    return np.concatenate([np.asarray(g.accessor(p["attributes"]["POSITION"])) for p in prims])

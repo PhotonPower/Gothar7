@@ -1,15 +1,16 @@
 # Inventory cell views (M14) - proposal, contract figuren -> engine: docs/modules/ui.md "Inventar-Ansichten".
-# Every item model is shown as a 3D model in its cell, centred on its bounding box. The view of a
+# Every item model is shown as a 3D model in its cell, centred on its projected contour. The view of a
 # model: [default] <- [category.<c>] <- [model."<mesh>"], field by field. <c> = the model's own
 # `category` if it has one, else the Lua item's category; <mesh> = the Lua `mesh` path.
 #   yaw   degrees about the item's own +Y (grip axis); 90 turns its +X side (the flat of a blade)
 #         towards the viewer and its +Z (edge, front) to the right
 #   pitch degrees about the view X axis; positive tilts the top towards the viewer (seen from above)
 #   roll  degrees in the image plane, positive counter-clockwise; -45 = diagonal, tip upper right
-#   fill  share of the cell the front of the rotated bounding box takes in its larger direction
+#   fill  share of the cell the model's projected contour (all LOD 0 vertices) takes in its
+#         larger direction (version 2; version 1 measured the front of the rotated bounding box)
 # Order: R = Rz(roll) * Rx(pitch) * Ry(yaw). Reference implementation: tools/chargen inventory.py;
 # review sheet: gothar-chargen inventory-sheet.
-version = 1
+version = 2
 
 [camera]
 fov = 30.0 # degrees, square cell, perspective; camera on view +Z looking down -Z
@@ -18,7 +19,7 @@ fov = 30.0 # degrees, square cell, perspective; camera on view +Z looking down -
 yaw = 25.0
 pitch = 15.0
 roll = 0.0
-fill = 0.85
+fill = 0.75
 
 # --- per category (all Lua item categories; armor, helmet, belt have no item model yet) ----------
 
@@ -26,26 +27,26 @@ fill = 0.85
 yaw = 90.0
 pitch = 0.0
 roll = -45.0
-fill = 0.95
+fill = 0.97
 
 [category.melee_2h]
 yaw = 90.0
 pitch = 0.0
 roll = -45.0
-fill = 0.95
+fill = 0.97
 
 [category.bow]
 yaw = 0.0
 pitch = 0.0
 roll = -45.0
-fill = 0.95
+fill = 0.97
 
 # seen from above onto the plane of the prod, diagonal like the other weapons: stock, prod and string
 [category.crossbow]
 yaw = 0.0
 pitch = 10.0
 roll = -45.0
-fill = 1.0
+fill = 0.97
 
 [category.ammo]
 yaw = 90.0
@@ -68,35 +69,39 @@ pitch = 25.0
 [category.ring]
 yaw = 0.0
 pitch = -60.0
-fill = 0.7
+fill = 0.6
 
 [category.amulet]
 yaw = 0.0
 pitch = 10.0
+fill = 0.75
 
 [category.rune]
 yaw = 20.0
 pitch = 10.0
-fill = 0.75
+fill = 0.68
 
 [category.scroll]
 yaw = 0.0
 pitch = 10.0
 roll = -45.0
+fill = 0.85
 
 [category.potion]
 yaw = 0.0
 pitch = 15.0
-fill = 0.8
+fill = 0.72
 
 [category.food]
 yaw = 20.0
 pitch = 20.0
+fill = 0.7
 
 [category.document]
 yaw = 0.0
 pitch = 10.0
 roll = -45.0
+fill = 0.85
 
 [category.key]
 yaw = 90.0
@@ -108,7 +113,7 @@ fill = 0.85
 yaw = 0.0
 pitch = 10.0
 roll = -45.0
-fill = 0.95
+fill = 0.97
 
 [category.misc]
 yaw = 25.0
@@ -121,45 +126,48 @@ pitch = 20.0
 yaw = 90.0
 pitch = 0.0
 roll = -45.0
-fill = 0.95
+fill = 0.97
 
 [model."items/it_hammer.glb"]
 yaw = 90.0
 pitch = 0.0
 roll = -45.0
+fill = 0.9
 
 [model."items/it_saw.glb"]
 yaw = 90.0
 pitch = 0.0
 roll = -45.0
-fill = 0.95
+fill = 0.97
 
 [model."items/it_broom.glb"]
 yaw = 0.0
 pitch = 0.0
 roll = -45.0
-fill = 0.95
+fill = 0.97
 
 [model."items/it_lockpick.glb"]
 yaw = 90.0
 pitch = 0.0
 roll = -45.0
+fill = 0.85
 
 [model."items/it_shears.glb"]
 yaw = 0.0
 pitch = 0.0
 roll = -45.0
+fill = 0.9
 
 # vessels: handle (the origin, at -Z of the body) on the right, a little from above
 [model."items/it_mug.glb"]
 yaw = -70.0
 pitch = 15.0
-fill = 0.8
+fill = 0.72
 
 [model."items/it_jug.glb"]
 yaw = -70.0
 pitch = 15.0
-fill = 0.8
+fill = 0.72
 
 # wide items (AXIS_FREE): more from above
 [model."items/it_bowl.glb"]
@@ -190,4 +198,4 @@ category = "misc"
 yaw = 0.0
 pitch = 10.0
 roll = -40.0
-fill = 0.95
+fill = 0.97

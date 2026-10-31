@@ -28,8 +28,8 @@ from gothar_chargen.inventory import (  # noqa: E402
     cell,
     load_views,
     lua_items,
-    model_bounds,
     model_categories,
+    model_vertices,
 )
 
 GLTF_TO_BLENDER = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
@@ -115,8 +115,8 @@ def render_cells(args: argparse.Namespace) -> list[tuple[str, str, str]]:
         own = sorted(categories[mesh])
         category = views.category_of(mesh, own[0] if own else None)
         view = views.resolve(mesh, category)
-        lo, hi = model_bounds(root / "assets/source" / mesh)
-        geometry = cell(view, lo, hi, views.fov)
+        vertices = model_vertices(root / "assets/source" / mesh)
+        geometry = cell(view, vertices, views.fov)
         before = set(bpy.data.objects)
         bpy.ops.import_scene.gltf(filepath=str(root / "assets/source" / mesh))
         new = [o for o in bpy.data.objects if o not in before]
@@ -127,7 +127,12 @@ def render_cells(args: argparse.Namespace) -> list[tuple[str, str, str]]:
             if o.parent is None:
                 o.matrix_world = place @ o.matrix_world
         camera.location = (0.0, -geometry.distance, 0.0)
-        camera.data.angle = math.radians(geometry.fov)
+        # the cell's image window: half size e and centre w in units of the full view (off-axis);
+        # Blender's shift is in units of the (square) image width
+        tan_half = geometry.half * math.tan(math.radians(geometry.fov) / 2)
+        camera.data.angle = 2 * math.atan(tan_half)
+        camera.data.shift_x = float(geometry.window[0]) / (2 * geometry.half)
+        camera.data.shift_y = float(geometry.window[1]) / (2 * geometry.half)
         scene.render.filepath = str(cells_dir / f"{item}.png")
         bpy.ops.render.render(write_still=True)
         for o in new:
@@ -181,7 +186,7 @@ def compose_sheet(args: argparse.Namespace, cells: list[tuple[str, str, str]]) -
         scene.collection.objects.link(obj)
 
     curve = bpy.data.curves.new("title", "FONT")
-    curve.body = "Inventar-Ansichten (data/inventory_views.toml) - Zelle = Bounding-Box zentriert"
+    curve.body = "Inventar-Ansichten (data/inventory_views.toml) - Kontur zentriert, fill v2"
     curve.size = 0.26
     head = bpy.data.objects.new("title", curve)
     head.location = (0.1, height - 0.45, 0.02)
