@@ -975,27 +975,33 @@ def bolt(seg: int) -> list[Mesh]:
 def crossbow(seg: int) -> list[Mesh]:
     """Crossbow: origin at the grip (right hand, trigger), the stock along +Y to the front
     (contract: the longest axis), the prod across it (item X) at the front end, the string spanned
-    across, +Z up. The cbow clips hold the stock in the fist (socket +Y forward)."""
+    across, +Z up, an iron stirrup in front. The cbow clips hold the stock in the fist (socket +Y
+    forward). Sized to read in an inventory cell: a broad, flat wooden prod and a light string."""
     stock = Mesh("wood")
     ys = np.array([-0.3, -0.12, -0.02, 0.1, 0.42, 0.5])
-    width = np.array([0.04, 0.035, 0.03, 0.032, 0.03, 0.034])
+    width = np.array([0.05, 0.044, 0.038, 0.042, 0.042, 0.046])
     height = np.array([0.1, 0.06, 0.05, 0.04, 0.035, 0.04])
     zoff = np.array([-0.03, -0.01, 0.0, 0.02, 0.02, 0.02])
     path = np.stack([np.zeros_like(ys), ys, zoff], axis=1)
     sections = [np.array([[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]])
                 for w, h in zip(width, height, strict=True)]  # fmt: skip
     loft(stock, path, sections, ref=(0.0, 0.0, 1.0), tile=0.3)
-    prod = Mesh("iron_forged")
+    prod = Mesh("wood")  # a flat wooden limb: 36 mm broad (item Y) at the stock, 18 mm at the tips
     xs = np.linspace(-0.3, 0.3, 11)
     bend = 0.06 * (xs / 0.3) ** 2  # the limb tips bend back towards the shooter
-    limb = circle(1.0, max(4, seg // 2)) * np.array([0.008, 0.012])
+    limb = circle(1.0, max(4, seg // 2)) * np.array([0.018, 0.011])
     loft(prod, np.stack([xs, 0.47 - bend, np.full_like(xs, 0.035)], axis=1),
-         [limb * (1 - 0.4 * abs(x) / 0.3) for x in xs], ref=(0.0, 0.0, 1.0), tile=0.1)  # fmt: skip
-    string = Mesh("leather")
+         [limb * np.array([1 - 0.5 * abs(x) / 0.3, 1 - 0.3 * abs(x) / 0.3]) for x in xs],
+         ref=(0.0, 0.0, 1.0), tile=0.1)  # fmt: skip
+    iron = Mesh("iron_forged")
+    a = np.linspace(0.0, np.pi, 9)
+    stirrup = np.stack([0.045 * np.cos(a), 0.49 + 0.07 * np.sin(a), np.full_like(a, 0.02)], axis=1)
+    loft(iron, stirrup, [circle(0.005, 6)] * len(a), ref=(0.0, 0.0, 1.0), tile=0.05)
+    string = Mesh("linen")
     for side in (-1, 1):
-        loft(string, np.array([[side * 0.3, 0.41, 0.035], [0.0, 0.16, 0.04]]),
-             [circle(0.0015, 4)] * 2, tile=0.05)  # fmt: skip
-    return [stock, prod, string]
+        loft(string, np.array([[side * 0.295, 0.41, 0.035], [0.0, 0.16, 0.045]]),
+             [circle(0.003, 4)] * 2, tile=0.05)  # fmt: skip
+    return [stock, prod, iron, string]
 
 
 RUNES = ("firebolt", "heal", "sleep", "transform_wolf", "summon_wolf")  # it_rune_<spell> (M12)

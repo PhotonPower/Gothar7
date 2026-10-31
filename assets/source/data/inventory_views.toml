@@ -40,11 +40,12 @@ pitch = 0.0
 roll = -45.0
 fill = 0.95
 
+# seen from above onto the plane of the prod, diagonal like the other weapons: stock, prod and string
 [category.crossbow]
 yaw = 0.0
-pitch = 20.0
-roll = -20.0
-fill = 0.9
+pitch = 10.0
+roll = -45.0
+fill = 1.0
 
 [category.ammo]
 yaw = 90.0

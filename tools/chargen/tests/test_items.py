@@ -198,3 +198,17 @@ def test_trade_goods():
     for item in sorted(AXIS_FREE):
         report = validate_item(items_dir / f"{item}.glb")
         assert not report.errors, item
+
+
+def test_crossbow_reads_in_its_inventory_cell():
+    """The crossbow (2026-10-31): a broad wooden prod across the stock, a light string and an
+    iron stirrup in front, so stock, prod and string read in a small inventory cell."""
+    from gothar_chargen.items import crossbow
+
+    stock, prod, iron, string = (m.arrays()[0] for m in crossbow(10))
+    assert [m.material for m in crossbow(10)] == ["wood", "wood", "iron_forged", "linen"]
+    assert np.ptp(prod[:, 0]) > 0.55  # the prod spans the stock (item X)
+    limb = prod[(np.abs(prod[:, 0]) > 0.05) & (np.abs(prod[:, 0]) < 0.07)]
+    assert np.ptp(limb[:, 1]) > 0.025  # broad seen from above, not a thin rod
+    assert np.ptp(string[:, 0]) > 0.55 and string[:, 1].min() < 0.17  # spanned back to the nut
+    assert iron[:, 1].max() > stock[:, 1].max() + 0.05  # the stirrup in front of the stock

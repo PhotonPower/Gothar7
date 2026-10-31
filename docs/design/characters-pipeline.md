@@ -219,6 +219,8 @@ events = [
 - **Gegenstände (`items/<id>.glb`, F6):** Ursprung = Griffpunkt; Item-+Y auf Socket-+Y (aus der Faust zur Klinge
   bzw. Spitze), Item-+Z auf Socket-+Z; die Engine übernimmt die volle Drehung des Sockets. Einzelheiten,
   Stücke und Prüfregeln: §6.3.
+- **Werkzeug in der Hand (engine #297):** optionales Feld `item` je Mob-Typ in `mobs.toml` nennt das Item, das die
+  Figur von `item_to_hand` bis `item_from_hand` an `socket_hand_r` hält (Amboss: `it_hammer`).
 
 **Animationskanäle (Vertrag):** Clips enthalten **Rotation** für beliebige Knochen, **Translation nur für
 `root` und `pelvis`** (Root Motion bzw. Hüfthöhe) und **keine Skalierung** – so behält jede Figur ihre eigenen
@@ -600,7 +602,7 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | Waren für Händler und Handwerker (2026-10-08, Namen mit engine abgestimmt): Essen `it_ham` (Schinken, am Knochenende gehalten), `it_sausage`, `it_cheese` (Laib, Ursprung Bodenmitte), `it_pretzel`, `it_beer` (Steinzeugflasche), `it_wine` (grünes Glas); Tränke `it_potion_heal_medium`, `it_potion_mana_medium` (größere Flasche), `it_potion_speed` (grün), `it_potion_strength` (bernsteinfarben); `it_cloth_bolt` (Tuchballen, Bodenmitte), `it_jug` (Tonkrug, am Henkel wie `it_mug`), `it_bowl` (Schüssel, Bodenmitte). Laib, Schüssel und Brezel sind von Natur breiter als hoch: `AXIS_FREE` nimmt sie von der Regel „längste Achse +Y“ aus | 7–50 cm | prozedural: Schinken, Knochen, Wurst, Käse, Ton, Glas grün/bernstein, Leinen; 144–588 Dreiecke |
   | Waren Teil B (2026-10-08): Kräuter `it_herb_sage`, `it_herb_nettle`, `it_herb_chamomile` (ganze Pflanze mit Wurzel, am Stängel gehalten; Blätter als dünne Flächen mit zwei Seiten 0,4 mm auseinander, ohne Alpha), `it_herbs_dried` (Bündel, an der Schnur); Schmuck `it_ring_gold`, `it_ring_silver` (Mitte), `it_amulet` (Anhänger mit Stein an Lederschnur, am Anhänger), `it_chain_gold` (28 geschlossene Glieder, abwechselnd um 90° gedreht und ineinandergreifend, oben gehalten); Werkzeug wie die F6-Waffen (Ursprung am Griffpunkt, +Y entlang des Griffs, +Z = Schlag- bzw. Schneidseite) für die Arbeit in der Hand per `item_to_hand`: `it_hammer` (Amboss), `it_saw` (Schreiner: Handsäge, Blatt 45 cm, von 10 auf 4 cm verjüngt, feine Zähne alle 4 mm auf +Z, offener Holzgriff mit Griffloch, Ursprung am hinteren Griffholm), `it_shears` (Bügelschere des Schneiders, flach in X-Y: zwei Klingen und U-förmiger Federbügel) | 2–60 cm | prozedural: Blatt, Wurzel, Blüte, Gold, Silber; Holz, Leder, Schmiedeeisen; 100–1344 Dreiecke |
   | `it_potion_mana_small` (wie der Heiltrank, blaues Glas) | 17 cm | prozedural |
-  | `it_crossbow` (Armbrust, Ursprung am Griff bzw. Abzug, Schaft +Y nach vorn, Bogen quer, +Z oben; an `socket_hand_r`, die `cbow`-Clips halten den Schaft in der Faust) | 0,8 m | Holz, Schmiedeeisen, Sehne |
+  | `it_crossbow` (Armbrust, Ursprung am Griff bzw. Abzug, Schaft +Y nach vorn, Bogen quer, +Z oben; an `socket_hand_r`, die `cbow`-Clips halten den Schaft in der Faust; seit 2026-10-31 für die Inventar-Zelle lesbarer: breiter, flacher Holzbogen, helle Hanfsehne, Spannbügel aus Eisen vorn) | 0,87 m | Holz, Schmiedeeisen, Leinen; 298 Dreiecke |
 
   Alle Schlüssel-Items (`it_key_chest_hut`, …) nutzen dasselbe Modell `it_key.glb`; die Lua-Items und die Pfade
   legt engine an.
