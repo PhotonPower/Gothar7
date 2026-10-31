@@ -444,11 +444,49 @@ void Engine::startMobPhase(MobUse& use, MobUse::Phase phase)
     use.animated = playMobState(use.state);
 }
 
+void Engine::mobHandEvent(std::string_view event)
+{
+    if (!m_mobUse)
+    {
+        return;
+    }
+    if (event == "item_from_hand")
+    {
+        if (std::exchange(m_mobUse->handItem, false))
+        {
+            detachFromPlayer("socket_hand_r");
+        }
+        return;
+    }
+    const gameplay::MobType* type = m_mobTypes.find(m_mobUse->type);
+    // Only with free hands: a drawn weapon stays where it is.
+    if (event != "item_to_hand" || type == nullptr || type->item.empty() || m_mobUse->handItem || !m_figure ||
+        m_weaponMode != 0 || playerHolds("socket_hand_r"))
+    {
+        return;
+    }
+    if (const LoadedModel* model = itemModel(type->item))
+    {
+        if (auto attached = attachModel("socket_hand_r", model, nullptr); attached)
+        {
+            m_mobUse->handItem = true;
+        }
+        else
+        {
+            G7_LOG_WARN("engine", "{}: {}", type->item, attached.error().message);
+        }
+    }
+}
+
 void Engine::finishMobUse()
 {
     if (!m_mobUse)
     {
         return;
+    }
+    if (m_mobUse->handItem)
+    {
+        detachFromPlayer("socket_hand_r"); // in case the clip has no item_from_hand
     }
     if (m_figure && m_figure->animator.hasState("move"))
     {

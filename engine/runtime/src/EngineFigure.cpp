@@ -776,6 +776,10 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
                  {
                      m_mobEvents.emplace_back(event); // lid or door moves, hammer strikes (M8 part C)
                  }
+                 else if (event == "item_to_hand" || event == "item_from_hand")
+                 {
+                     mobHandEvent(event); // the hammer at the anvil
+                 }
                  else if (event.starts_with("hit_") || event.starts_with("combo_"))
                  {
                      m_heroFighter.onEvent(event); // the combat clips time the blow (M11)

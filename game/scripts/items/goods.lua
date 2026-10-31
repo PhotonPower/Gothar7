@@ -81,3 +81,11 @@ Item "it_shears" {
     value = 12,
     weight = 0.4,
 }
+
+Item "it_lute" { -- der Musiker spielt sie (zs_play_lute); Wert und Gewicht Platzhalter
+    name = "Laute",
+    mesh = "items/it_lute.glb",
+    category = "misc",
+    value = 40,
+    weight = 1.5,
+}

@@ -176,3 +176,65 @@ TEST_CASE("Engine NPC mobs: sleepers take their own bed first, then a free one n
     waitSeated(engine, {"npc_old_man"}, "bed", 15.0f);
     CHECK(mobOf(engine, "npc_old_man") == "bed");
 }
+
+TEST_CASE("Engine NPC mobs: the hammer is in the hand at the anvil from t_start's item_to_hand to t_stop's "
+          "item_from_hand")
+{
+    Engine engine(mobConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true teleport(5, 0, 12)"); // the hero aside
+    place(engine, "npc_woodcutter", 31.0f, -0.5f);                 // beside the anvil (slot at 29.6, -1.5)
+    CHECK(run(engine, "npc_state('npc_woodcutter').hand").asString().empty());
+    run(engine, "npc_use_mob('npc_woodcutter', 'anvil', 15)");
+    waitSeated(engine, {"npc_woodcutter"}, "anvil", 20.0f);
+    REQUIRE(mobOf(engine, "npc_woodcutter") == "anvil");
+    CHECK(run(engine, "npc_state('npc_woodcutter').animation").asString() == "anvil_loop");
+    CHECK(run(engine, "npc_state('npc_woodcutter').hand").asString() == "it_hammer");
+    // Leaving: t_stop puts it away at its event (frame 11), not at once.
+    run(engine, "npc_leave_mob('npc_woodcutter')");
+    runSeconds(engine, 0.1f);
+    CHECK(run(engine, "npc_state('npc_woodcutter').animation").asString() == "anvil_leave");
+    CHECK(run(engine, "npc_state('npc_woodcutter').hand").asString() == "it_hammer");
+    runSeconds(engine, 3.0f);
+    CHECK(mobOf(engine, "npc_woodcutter").empty());
+    CHECK(run(engine, "npc_state('npc_woodcutter').hand").asString().empty());
+}
+
+TEST_CASE(
+    "Engine NPC states: church, beggar and lute (figuren's church.glb, music.glb), tools at the freepoints")
+{
+    Engine engine(mobConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true teleport(30, 0, 30)"); // the hero aside
+    // The camp has no FP_MUSIC, FP_PRAY ...: the state plays at its way point.
+    place(engine, "npc_leo_musician", 7.0f, -4.0f);
+    const auto state = [&](const char* field)
+    { return std::string(run(engine, std::format("npc_state('npc_leo_musician').{}", field)).asString()); };
+    run(engine, "npc_start_state('npc_leo_musician', 'zs_play_lute', 'wp_camp_center')");
+    runSeconds(engine, 3.0f);
+    CHECK(state("ambient") == "play_lute");
+    CHECK(state("animation") == "amb_play_lute");
+    CHECK(state("hand") == "it_lute"); // taken at item_to_hand of t_play_lute_in
+    CHECK(
+        glm::length(Vec2(positionOf(engine, "npc_leo_musician").x, positionOf(engine, "npc_leo_musician").z) -
+                    Vec2(7.0f, -4.0f)) < 1.0f);
+    // Another state: t_play_lute_out puts the lute away, then he kneels to pray.
+    for (const auto& [zs, loop] :
+         {std::pair{"zs_pray", "amb_pray"}, std::pair{"zs_pray_stand", "amb_pray_stand"},
+          std::pair{"zs_preach", "amb_preach"}, std::pair{"zs_beg", "amb_beg"}})
+    {
+        CAPTURE(zs);
+        run(engine, std::format("npc_start_state('npc_leo_musician', '{}', 'wp_camp_center')", zs));
+        runSeconds(engine, 4.0f);
+        CHECK(state("animation") == loop);
+        CHECK(state("hand").empty());
+    }
+    // The joiner's saw and the tailor's shears at their REPAIR freepoint (no _in clip: in the hand at once).
+    run(engine, "npc_start_state('npc_leo_musician', 'zs_repair_saw', 'wp_camp_center')");
+    runSeconds(engine, 3.0f);
+    CHECK(state("animation") == "amb_repair_kneel");
+    CHECK(state("hand") == "it_saw");
+    run(engine, "npc_start_state('npc_leo_musician', 'zs_repair_shears', 'wp_camp_center')");
+    runSeconds(engine, 3.0f);
+    CHECK(state("hand") == "it_shears");
+}

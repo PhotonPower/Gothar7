@@ -25,13 +25,16 @@ const std::string kWorld = std::string(G7_ASSET_SOURCE_DIR) + "/worlds/leonberg/
 const std::string kGenerated =
     std::string(G7_ASSET_SOURCE_DIR) + "/worlds/leonberg/generated/leonberg_terrain.r16";
 
-constexpr std::array<const char*, 19> kResidents = {
+constexpr std::array<const char*, 25> kResidents = {
     "npc_leo_smith", "npc_leo_innkeeper", "npc_leo_baker", "npc_leo_market", "npc_leo_guard_lower",
     "npc_leo_guard_upper", "npc_leo_farmer", "npc_leo_citizen",
     // welt phase 1: the craftsmen and merchants
     "npc_leo_baker_husband", "npc_leo_butcher", "npc_leo_joiner", "npc_leo_potter", "npc_leo_goldsmith",
     "npc_leo_cloth_merchant", "npc_leo_tailor", "npc_leo_herbalist", "npc_leo_bather", "npc_leo_merchant_m",
-    "npc_leo_merchant_f"};
+    "npc_leo_merchant_f",
+    // church, beggars and music
+    "npc_leo_priest", "npc_leo_monk_1", "npc_leo_monk_2", "npc_leo_beggar_m", "npc_leo_beggar_f",
+    "npc_leo_musician"};
 
 script::Value run(Engine& engine, std::string_view line)
 {
@@ -77,7 +80,7 @@ TEST_CASE("Leonberg residents: every routine place is in Leonberg's waynet, ever
             ++entries;
         }
     }
-    CHECK(entries >= 70);
+    CHECK(entries >= 95);
 }
 
 TEST_CASE(

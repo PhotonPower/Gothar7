@@ -483,8 +483,8 @@ Unterbricht: beendet den laufenden Zustand (finish) und startet einen anderen. E
 ### `npc_stat(npc: string, name: string) -> integer`
 Ein Attribut eines NPCs (hp, hp_max, str, dex ...).
 
-### `npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, gait, mob, x, y, z}`
-Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des Animationsgraphen, ob er gerade geht, seine Gangart ([anim] variant der Figur), das Mob, auf dem er sitzt bzw. liegt (Typ), und seine Position.
+### `npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, gait, mob, hand, x, y, z}`
+Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des Animationsgraphen, ob er gerade geht, seine Gangart ([anim] variant der Figur), das Mob, auf dem er sitzt bzw. liegt (Typ), der Gegenstand in seiner rechten Hand (`"it_lute"`, sonst leer) und seine Position.
 
 ### `npc_stop(npc: string)`
 Reiht ein: die laufende Tagesablauf-Animation beenden (_out).

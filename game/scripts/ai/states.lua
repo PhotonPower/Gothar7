@@ -166,11 +166,20 @@ local function at_freepoint(kind, ambient, item)
 end
 
 State "zs_repair" (at_freepoint("REPAIR", "repair_kneel"))   -- ausbessern, kniend (Schmied, Handwerker)
+State "zs_repair_saw" (at_freepoint("REPAIR", "repair_kneel", "it_saw"))       -- sägen (Schreiner)
+State "zs_repair_shears" (at_freepoint("REPAIR", "repair_kneel", "it_shears")) -- zuschneiden (Schneider)
 State "zs_harvest" (at_freepoint("HARVEST", "harvest"))      -- ernten (Bauer)
 State "zs_smalltalk" (at_freepoint("SMALLTALK", "talk_a"))   -- plaudern
 State "zs_drink" (at_freepoint("DRINK", "drink_mug", "it_mug")) -- aus dem Krug trinken
 State "zs_lean" (at_freepoint("LEAN", "lean_wall"))          -- an der Wand lehnen (abends, nachts vor dem Haus)
 State "zs_sit" (at_freepoint("SIT", "sit_ground"))           -- sitzen (bis M11 am Boden neben der Bank)
+
+-- Kirche und Musik (figurens church.glb und music.glb; welts Freepoints FP_PRAY, FP_PREACH, FP_BEG, FP_MUSIC).
+State "zs_pray" (at_freepoint("PRAY", "pray"))                 -- kniend beten (Pfarrer)
+State "zs_pray_stand" (at_freepoint("PRAY", "pray_stand"))     -- stehend beten (Mönche)
+State "zs_preach" (at_freepoint("PREACH", "preach"))           -- predigen (Altar, Kanzel, Markt)
+State "zs_beg" (at_freepoint("BEG", "beg"))                    -- am Boden sitzend betteln (Kirchentür, Brunnen, Tor)
+State "zs_play_lute" (at_freepoint("MUSIC", "play_lute", "it_lute")) -- stehend Laute spielen (Musiker)
 
 --- Am Laden stehen und sich ab und zu umsehen (Händler).
 State "zs_stand_shop" {

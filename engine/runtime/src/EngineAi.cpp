@@ -1090,10 +1090,11 @@ void Engine::bindAiFunctions()
     vm.bind(
         {"npc_state",
          "npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, gait, mob, "
-         "x, y, z}",
+         "hand, x, y, z}",
          "Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des "
          "Animationsgraphen, ob er gerade geht, seine Gangart ([anim] variant der Figur), das Mob, auf dem "
-         "er sitzt bzw. liegt (Typ), und seine Position.",
+         "er sitzt bzw. liegt (Typ), der Gegenstand in seiner rechten Hand (`\"it_lute\"`, sonst leer) und "
+         "seine Position.",
          "NPCs", [npc](std::span<const Value> a) -> Result<Value>
          {
              auto c = npc(a);
@@ -1114,6 +1115,7 @@ void Engine::bindAiFunctions()
                       {"mob", c.value()->mob && c.value()->mob->phase == Creature::MobUse::Phase::Loop
                                   ? c.value()->mob->type
                                   : std::string()},
+                      {"hand", c.value()->handItem != nullptr ? c.value()->handItemWanted : std::string()},
                       {"x", static_cast<f64>(c.value()->position.x)},
                       {"y", static_cast<f64>(c.value()->position.y)},
                       {"z", static_cast<f64>(c.value()->position.z)}});

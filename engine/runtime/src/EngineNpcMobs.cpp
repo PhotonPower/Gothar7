@@ -20,7 +20,7 @@ namespace
 constexpr f32 kTurnRate = 4.0f;          ///< rad/s turning to the slot
 constexpr f32 kUnanimatedSeconds = 0.6f; ///< a phase without a clip in the graph
 constexpr f32 kArriveDistance = 0.6f;    ///< m: near enough to the slot to sit down (then placed exactly)
-constexpr f32 kApproachMargin = 0.3f; ///< m outside the slot the way ends (the capsule's radius)
+constexpr f32 kApproachMargin = 0.3f;    ///< m outside the slot the way ends (the capsule's radius)
 constexpr std::string_view kDrinkItem = "it_mug"; ///< in the hand in table_drink (figuren #281)
 
 f32 wrap(f32 a)
@@ -178,7 +178,14 @@ bool Engine::stepNpcMob(Creature& c, f32 seconds)
         {
             c.yaw = use.yaw;
             use.phase = Creature::MobUse::Phase::Enter;
+            // The type's item (the anvil's hammer): the _enter clip's item_to_hand takes it.
+            const gameplay::MobType* type = m_mobTypes.find(use.type);
+            c.handItemWanted = type != nullptr ? type->item : std::string();
             play(use.type + "_enter");
+            if (use.state.empty() && !c.handItemWanted.empty())
+            {
+                handEvent(c, "item_to_hand"); // no clip to take it with
+            }
         }
         return false;
     }
@@ -212,6 +219,8 @@ bool Engine::stepNpcMob(Creature& c, f32 seconds)
         {
             a->enter("move", 0.25f);
         }
+        c.handItem = nullptr; // in case the _leave clip has no item_from_hand
+        c.handItemWanted.clear();
         releaseNpcMob(c);
         return true;
     }
@@ -231,9 +240,14 @@ bool Engine::startLeaveNpcMob(Creature& c)
         releaseNpcMob(c); // not seated yet: nothing to stand up from
         return false;
     }
-    // The mug goes (figuren: s_sit_drink only puts it into the hand); then stand up.
-    c.handItem = nullptr;
-    c.handItemWanted.clear();
+    // The mug goes (figuren: s_sit_drink only puts it into the hand); the type's item (the hammer) stays
+    // until the _leave clip's item_from_hand. Then stand up.
+    const gameplay::MobType* type = m_mobTypes.find(use.type);
+    if (type == nullptr || type->item.empty() || c.handItemWanted != type->item)
+    {
+        c.handItem = nullptr;
+        c.handItemWanted.clear();
+    }
     use.phase = Creature::MobUse::Phase::Leave;
     animation::Animator* a = c.figure ? &c.figure->animator : nullptr;
     const std::string leave = use.type + "_leave";

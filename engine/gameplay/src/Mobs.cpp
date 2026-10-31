@@ -41,6 +41,7 @@ Result<MobTypes> MobTypes::parse(std::string_view toml, std::string_view source)
         type.enter = c.get<std::string>(at + ".enter", "");
         type.loop = c.get<std::string>(at + ".loop", "");
         type.leave = c.get<std::string>(at + ".leave", "");
+        type.item = c.get<std::string>(at + ".item", "");
         for (const std::string& key : c.keys(at + ".extra"))
         {
             const auto clip = c.find<std::string>(at + ".extra." + key);

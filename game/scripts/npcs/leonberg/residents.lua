@@ -206,3 +206,66 @@ Npc "npc_leo_merchant_f" {
     inventory = { it_gulden = 150, it_ring_gold = 1 },
     routine = "rtn_leo_merchant_f",
 }
+
+-- Kirche, Bettler und Musik (figurens church.glb und music.glb). Namen und Werte sind Platzhalter.
+Npc "npc_leo_priest" {
+    voice = "citizen",
+    name = "Pfarrer Johannes",
+    guild = "citizen",
+    level = 5,
+    attributes = { str = 10, hp = 70, mana = 30 },
+    figure = "characters/figures/priest.figure.toml",
+    routine = "rtn_leo_priest",
+}
+
+Npc "npc_leo_monk_1" {
+    voice = "citizen",
+    name = "Bruder Anselm",
+    guild = "citizen",
+    level = 3,
+    attributes = { str = 14, hp = 65 },
+    figure_set = "monk",
+    routine = "rtn_leo_monk_1",
+}
+
+Npc "npc_leo_monk_2" {
+    voice = "citizen",
+    name = "Bruder Kilian",
+    guild = "citizen",
+    level = 3,
+    attributes = { str = 14, hp = 65 },
+    figure_set = "monk",
+    routine = "rtn_leo_monk_2",
+}
+
+Npc "npc_leo_beggar_m" {
+    name = "Lumpen-Hannes",
+    guild = "outcast",
+    level = 1,
+    attributes = { str = 8, hp = 40 },
+    figure_set = "beggar_m",
+    inventory = { it_gulden = 3 },
+    routine = "rtn_leo_beggar_m",
+}
+
+Npc "npc_leo_beggar_f" {
+    gender = "f",
+    name = "Die alte Grete",
+    guild = "outcast",
+    level = 1,
+    attributes = { str = 6, hp = 35 },
+    figure_set = "beggar_f",
+    inventory = { it_gulden = 2 },
+    routine = "rtn_leo_beggar_f",
+}
+
+Npc "npc_leo_musician" {
+    voice = "citizen",
+    name = "Florian der Spielmann",
+    guild = "citizen",
+    level = 2,
+    attributes = { str = 10, hp = 55 },
+    figure = "characters/figures/musician.figure.toml",
+    inventory = { it_gulden = 25, it_lute = 1 },
+    routine = "rtn_leo_musician",
+}

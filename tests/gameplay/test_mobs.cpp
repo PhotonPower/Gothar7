@@ -22,6 +22,7 @@ enter = "t_open"
 loop = "s_open"
 leave = "t_close"
 extra = { picklock = "s_picklock" }
+item = "it_lockpick"
 [[mobs.chest.slots]]
 name = "front"
 pos = [0.0, 0.0, 0.65]
@@ -50,11 +51,13 @@ TEST_CASE("Mobs: mobs.toml types, clips and slots")
     REQUIRE(chest != nullptr);
     CHECK(chest->clip(chest->enter) == "mob/chest/t_open");
     CHECK(chest->clip(chest->extra.at("picklock")) == "mob/chest/s_picklock");
+    CHECK(chest->item == "it_lockpick");
     REQUIRE(chest->slots.size() == 1);
     CHECK(chest->slots[0].position.z == doctest::Approx(0.65f));
     const MobType* door = mobs.find("door");
     REQUIRE(door != nullptr);
     CHECK(door->clip(door->loop).empty());
+    CHECK(door->item.empty()); // no item in the hand
     CHECK(door->slots.size() == 2);
     CHECK(mobs.find("throne") == nullptr);
 
@@ -82,6 +85,8 @@ TEST_CASE("Mobs: the contract file in the repository parses")
         REQUIRE_MESSAGE(mobs.value().find(type) != nullptr, type);
         CHECK_FALSE(mobs.value().find(type)->slots.empty());
     }
+    // The smith's hammer at the anvil (item_to_hand of t_start, item_from_hand of t_stop).
+    CHECK(mobs.value().find("anvil")->item == "it_hammer");
     // The table: four seats facing its middle (welt #197).
     const MobType& table = *mobs.value().find("table");
     REQUIRE(table.slots.size() == 4);

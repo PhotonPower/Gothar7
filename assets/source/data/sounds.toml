@@ -216,3 +216,9 @@ volume = 0.6
 volume_jitter = 0.15
 pitch_jitter = 0.08
 max_distance = 20
+
+# Musiker (figurens music.glb: sound:lute_play am Anfang jeder Schleife von amb/s_play_lute, 4 s).
+[lute_play]
+files = ["sounds/lute_play.wav"]
+volume = 0.7
+max_distance = 25

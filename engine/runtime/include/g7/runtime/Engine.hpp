@@ -850,6 +850,7 @@ private:
         u32 strikesLeft = 0; ///< anvil: hammer blows still to come
         f32 strikeTimer = 0.0f;
         std::string choiceMessage;
+        bool handItem = false; ///< the type's item hangs at the hero's socket_hand_r
     };
     struct MobBody
     {
@@ -1066,6 +1067,9 @@ private:
     [[nodiscard]] bool mobClipDone(const MobUse& use) const;
     void startMobPhase(MobUse& use, MobUse::Phase phase);
     void finishMobUse();
+    /// item_to_hand / item_from_hand of the hero's mob clips: the mob type's item (mobs.toml `item`, the
+    /// anvil's hammer) appears in or leaves his right hand.
+    void mobHandEvent(std::string_view event);
     [[nodiscard]] Mat4 mobRestMatrix(world::VobId vob); ///< the mob's world matrix as at rest (slots)
     /// Bit i: slot i is used by someone other than `except` ("hero" or an NPC instance).
     [[nodiscard]] u32 busySlots(const MobRuntime& m, std::string_view except) const;
