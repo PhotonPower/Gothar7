@@ -415,7 +415,7 @@ TEST_CASE("Animator with the real data: reference rig, clip sets, human.animgrap
         AnimGraph::parse(std::string_view(reinterpret_cast<const char*>(graphText.data()), graphText.size()),
                          "human.animgraph.toml");
     REQUIRE_MESSAGE(graph.ok(), (graph.ok() ? "" : graph.error().message));
-    CHECK(graph.value().sets.size() == 14);           // with 2h, bow, cbow, mag (M11/M12), torch and gait
+    CHECK(graph.value().sets.size() == 16); // with 2h, bow, cbow, mag (M11/M12), torch, gait, church and music
     for (const std::string& set : graph.value().sets) // every set the graph names
     {
         auto loaded = asset::loadAnimationGltf(read(set.c_str()), {}, set);
