@@ -180,8 +180,9 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
     Krummen Gans). Ihre Orte sind welts Freepoints (#298): beten in einer Reihe vor dem Kirchenportal (die Kirche
     bleibt ohne Innenraum, Entscheidung Projektinhaber 2026-10-31), predigen am Portal und am Marktbrunnen, betteln
     an Kirche, Marktbrunnen und beiden Toren, Laute in der Stube der Krummen Gans.
-  - Die sitzende Lautenvariante (`amb_play_lute_sit…`) steht im Graphen, ein Zustand dafür fehlt noch (braucht Bank
-    bzw. Hocker).
+  - Sitzend spielt er auf einer Bank (Entscheidung Projektinhaber 2026-10-31): `zs_play_lute_bench` =
+    `npc_use_mob(npc, "bench", 15, "lute")`, ohne freie Bank stehend am `FP_MUSIC`. Abends wechselt er von stehend
+    (17–21 Uhr) auf eine Bank der Gasthof-Stube (21–2 Uhr).
   - **Nachts** `zs_sleep` in der Kammer ihres Hauses: eigenes Bett, freies Bett oder der Boden (Abschnitt „NPCs benutzen
     Mobs“). Wer im Haus keinen Schlafplatz hat (Ratsdiener, Hauptmann am Oberen Tor), lehnt weiter am Haus.
 - **Stimme:** `gender` (`"m"`/`"f"`, Vorgabe `"m"`) und `voice` (Stimmgruppe, Vorgabe die Gilde) wählen die Stimme der Zurufe (`data/voices.lua`, audio.md „Sprache“).
@@ -214,7 +215,11 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
     Raum-Tag); dafür braucht es keinen Vertrag.
   - Er geht übers Wegnetz bis 0,3 m vor den Slot (die Kapsel berührt sonst die Bank), wird auf den Slot gesetzt,
     dreht sich und spielt `<typ>_enter`, dann `<typ>_loop` oder die Schleife `<typ>_<schleife>` (`table_drink` mit
-    `it_mug` bei `item_to_hand`, `table_talk`, `bench_talk`).
+    `it_mug` bei `item_to_hand`, `table_talk`, `bench_talk`, `bench_lute`).
+  - Eine Schleife kann sich eigens hinsetzen und aufstehen (`<typ>_<schleife>_enter`/`_leave`, z. B. `bench_lute_*`
+    mit der Laute aus figurens `music.glb`).
+  - Gegenstände in der Hand stehen in `mobs.toml`: `item` je Typ (Amboss: `it_hammer`), `variant_items` je Schleife
+    (`drink` → `it_mug`, `lute` → `it_lute`). Er nimmt sie bei `item_to_hand` und legt sie bei `item_from_hand` weg.
   - Der Befehl endet, wenn er sitzt bzw. liegt. Ohne freien Platz endet er sofort.
 - **Aufstehen:** `npc_leave_mob(npc)` spielt `<typ>_leave`. Gehen, andere Animationen oder ein anderes Mob reihen das
   selbst vorn ein, wie `Stop` bei Ambient-Animationen; Warten, Sagen und Drehen nicht, der NPC bleibt sitzen.

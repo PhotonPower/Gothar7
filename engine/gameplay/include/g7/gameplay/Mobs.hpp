@@ -35,10 +35,14 @@ struct MobType
     /// Item instance in the user's right hand (socket_hand_r) from the clips' item_to_hand to item_from_hand
     /// ("it_hammer" at the anvil); empty: none.
     std::string item;
+    /// Items of loop variants (`variant_items`, "drink" -> "it_mug"); a variant without one has `item`.
+    std::map<std::string, std::string, std::less<>> variantItems;
     std::vector<MobSlot> slots;
 
     /// "mob/chest/t_open" for "t_open"; empty for an empty name.
     [[nodiscard]] std::string clip(std::string_view name) const;
+    /// The item in the hand for a loop variant ("" = the plain loop): its own, else `item`.
+    [[nodiscard]] const std::string& itemFor(std::string_view variant) const;
 };
 
 struct MobTypes

@@ -447,10 +447,15 @@ bool Engine::startCommand(Creature& c)
                     cmd.item.empty() ? c.mob->type + "_loop" : std::format("{}_{}", c.mob->type, cmd.item);
                 if (a->hasState(state))
                 {
+                    const gameplay::MobType* type = m_mobTypes.find(c.mob->type);
                     c.handItem = nullptr;
-                    c.handItemWanted = cmd.item == "drink" ? std::string("it_mug") : std::string();
+                    c.handItemWanted = type != nullptr ? type->itemFor(cmd.item) : std::string();
                     a->enter(state, 0.2f);
                     c.mob->state = state;
+                    if (a->hasState(std::format("{}_{}_enter", c.mob->type, cmd.item)))
+                    {
+                        handEvent(c, "item_to_hand"); // its own sitting down takes the item; seated already
+                    }
                 }
                 c.mob->variant = cmd.item;
             }

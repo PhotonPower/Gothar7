@@ -90,6 +90,7 @@ State "zs_drink_table" (at_mob("table", "drink", "DRINK", "drink_mug", "it_mug")
 State "zs_talk_table" (at_mob("table", "talk", "SMALLTALK", "talk_a"))          -- am Tisch reden
 State "zs_sit_bench" (at_mob("bench", nil, "SIT", "sit_ground"))                -- auf der Bank sitzen
 State "zs_smith_anvil" (at_mob("anvil", nil, "REPAIR", "repair_kneel"))         -- am Amboss schmieden
+State "zs_play_lute_bench" (at_mob("bench", "lute", "MUSIC", "play_lute", "it_lute")) -- auf der Bank Laute spielen
 
 --- Sich an einen freien Sitzplatz in der Nähe setzen; ohne einen stehen bleiben.
 State "zs_sit_campfire" {

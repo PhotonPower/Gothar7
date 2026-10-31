@@ -23,6 +23,7 @@ loop = "s_open"
 leave = "t_close"
 extra = { picklock = "s_picklock" }
 item = "it_lockpick"
+variant_items = { peek = "it_key" }
 [[mobs.chest.slots]]
 name = "front"
 pos = [0.0, 0.0, 0.65]
@@ -52,6 +53,9 @@ TEST_CASE("Mobs: mobs.toml types, clips and slots")
     CHECK(chest->clip(chest->enter) == "mob/chest/t_open");
     CHECK(chest->clip(chest->extra.at("picklock")) == "mob/chest/s_picklock");
     CHECK(chest->item == "it_lockpick");
+    CHECK(chest->itemFor("peek") == "it_key");       // the variant's own
+    CHECK(chest->itemFor("") == "it_lockpick");      // the plain loop
+    CHECK(chest->itemFor("other") == "it_lockpick"); // a variant without one
     REQUIRE(chest->slots.size() == 1);
     CHECK(chest->slots[0].position.z == doctest::Approx(0.65f));
     const MobType* door = mobs.find("door");
@@ -87,6 +91,9 @@ TEST_CASE("Mobs: the contract file in the repository parses")
     }
     // The smith's hammer at the anvil (item_to_hand of t_start, item_from_hand of t_stop).
     CHECK(mobs.value().find("anvil")->item == "it_hammer");
+    CHECK(mobs.value().find("table")->itemFor("drink") == "it_mug");
+    CHECK(mobs.value().find("bench")->itemFor("lute") == "it_lute"); // owner decision 2026-10-31
+    CHECK(mobs.value().find("bench")->itemFor("").empty());
     // The table: four seats facing its middle (welt #197).
     const MobType& table = *mobs.value().find("table");
     REQUIRE(table.slots.size() == 4);

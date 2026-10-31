@@ -251,6 +251,20 @@ clip = "mob/bench/s_sit_talk"
 name = "bench_leave"
 clip = "mob/bench/t_stand"
 
+# Laute auf der Bank (Entscheidung Projektinhaber 2026-10-31): eigenes Hinsetzen und Aufstehen mit der Laute
+# (music.glb, Becken 0,3 m zurück wie mob/bench; item_to_hand bzw. item_from_hand).
+[[state]]
+name = "bench_lute_enter"
+clip = "amb/t_play_lute_sit_in"
+
+[[state]]
+name = "bench_lute"
+clip = "amb/s_play_lute_sit"
+
+[[state]]
+name = "bench_lute_leave"
+clip = "amb/t_play_lute_sit_out"
+
 [[state]]
 name = "table_enter"
 clip = "mob/table/t_sit"

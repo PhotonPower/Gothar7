@@ -178,9 +178,10 @@ Routine "rtn_leo_beggar_f" { -- an den Toren
     { from = "22:00", to = "08:00", state = "zs_sleep", at = "wp_leo_bei_der_stadtkirche_006" },
 }
 
-Routine "rtn_leo_musician" { -- spielt mittags am Markt, abends in der Krummen Gans; schläft oben, wo Platz ist
+Routine "rtn_leo_musician" { -- mittags am Markt, abends in der Krummen Gans: stehend, später auf einer Bank der Stube
     { from = "10:00", to = "13:00", state = "zs_play_lute", at = "wp_leo_marktplatz_001" },
     { from = "13:00", to = "17:00", state = "zs_drink", at = "wp_leo_gasthaus_zhe" },
-    { from = "17:00", to = "02:00", state = "zs_play_lute", at = "fp_music_leo_gasthaus_zhe_innen_01" },
+    { from = "17:00", to = "21:00", state = "zs_play_lute", at = "fp_music_leo_gasthaus_zhe_innen_01" },
+    { from = "21:00", to = "02:00", state = "zs_play_lute_bench", at = "wp_leo_gasthaus_zhe_innen" },
     { from = "02:00", to = "10:00", state = "zs_sleep", at = "wp_leo_gasthaus_zhe_oben_kammer" },
 }

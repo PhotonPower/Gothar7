@@ -238,3 +238,42 @@ TEST_CASE(
     runSeconds(engine, 3.0f);
     CHECK(state("hand") == "it_shears");
 }
+
+TEST_CASE(
+    "Engine NPC mobs: the musician sits down on the bench with the lute and stands up with it (bench_lute)")
+{
+    Engine engine(mobConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true teleport(30, 0, 30)"); // the hero aside
+    place(engine, "npc_leo_musician", 17.5f, -3.5f); // in front of the camp's bench (17.5, -5.5)
+    run(engine, "npc_use_mob('npc_leo_musician', 'bench', 15, 'lute')");
+    for (f32 t = 0.0f; t < 10.0f; t += 0.1f)
+    {
+        if (run(engine, "npc_state('npc_leo_musician').animation").asString() == "bench_lute_enter")
+        {
+            break;
+        }
+        runSeconds(engine, 0.1f);
+    }
+    CHECK(run(engine, "npc_state('npc_leo_musician').animation").asString() == "bench_lute_enter"); // its own
+    waitSeated(engine, {"npc_leo_musician"}, "bench", 10.0f);
+    REQUIRE(mobOf(engine, "npc_leo_musician") == "bench");
+    CHECK(run(engine, "npc_state('npc_leo_musician').animation").asString() == "bench_lute");
+    CHECK(run(engine, "npc_state('npc_leo_musician').hand").asString() == "it_lute");
+    // Seated already, another loop: the lute goes; back to the lute: in the hand at once.
+    run(engine, "npc_use_mob('npc_leo_musician', 'bench', 15, 'talk')");
+    runSeconds(engine, 0.5f);
+    CHECK(run(engine, "npc_state('npc_leo_musician').animation").asString() == "bench_talk");
+    CHECK(run(engine, "npc_state('npc_leo_musician').hand").asString().empty());
+    run(engine, "npc_use_mob('npc_leo_musician', 'bench', 15, 'lute')");
+    runSeconds(engine, 0.5f);
+    CHECK(run(engine, "npc_state('npc_leo_musician').hand").asString() == "it_lute");
+    // Standing up its own way; the lute stays until item_from_hand of t_play_lute_sit_out (frame 18).
+    run(engine, "npc_leave_mob('npc_leo_musician')");
+    runSeconds(engine, 0.1f);
+    CHECK(run(engine, "npc_state('npc_leo_musician').animation").asString() == "bench_lute_leave");
+    CHECK(run(engine, "npc_state('npc_leo_musician').hand").asString() == "it_lute");
+    runSeconds(engine, 3.0f);
+    CHECK(mobOf(engine, "npc_leo_musician").empty());
+    CHECK(run(engine, "npc_state('npc_leo_musician').hand").asString().empty());
+}
