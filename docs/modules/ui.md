@@ -49,3 +49,47 @@ Ladebildschirm, Konsole (Debug), Bildschirmmeldungen.
 ## Lokalisierung
 Alle Texte über Schlüssel (`DIA_Ruvin_Hello_11_01`, `UI_INVENTORY_TITLE`) aus Tabellen pro Sprache;
 fehlende Übersetzung → Schlüssel sichtbar + Warnung im Log. Zahlen-/Datumsformat je Sprache.
+
+## Inventar-Ansichten (Vorschlag figuren, M14-Vorarbeit)
+Festgelegt vom Projektinhaber: Inventar wie Gothic, **jede Zelle zeigt das 3D-Modell**, zentriert auf seine
+Bounding-Box, Standardansicht je Kategorie, keine PNG-Symbole. figuren liefert die Daten, engine baut die
+Darstellung. Status: **Vorschlag** – Vertrag figuren → engine, bis engine zustimmt.
+
+- **Datei:** `assets/source/data/inventory_views.toml` (gepflegt von figuren), Version 1:
+  ```toml
+  version = 1
+  [camera]
+  fov = 30.0                          # Grad, quadratische Zelle, perspektivisch
+  [default]                           # alle vier Felder Pflicht
+  yaw = 25.0
+  pitch = 15.0
+  roll = 0.0
+  fill = 0.85
+  [category.melee_1h]                 # je Item-Kategorie (kItemCategories), Felder optional
+  yaw = 90.0
+  roll = -45.0
+  [model."items/it_mug.glb"]          # je Modell = Lua-Feld `mesh`, Felder optional
+  yaw = -70.0
+  [model."items/it_lute.glb"]
+  category = "misc"                   # optional: Kategorie der Ansicht (Modell ohne Lua-Item)
+  ```
+- **Auflösung je Feld:** `[default]` ← `[category.<c>]` ← `[model."<mesh>"]`. `<c>` ist das `category` des
+  Modell-Eintrags, sonst die Kategorie des Lua-Items. Modelle teilen sich Ansichten über ihren Pfad (alle Schlüssel
+  zeigen `items/it_key.glb`). Ohne `mesh` (Platzhalter) gilt die Kategorie-Ansicht.
+- **Felder:** `yaw` (Grad um die eigene +Y-Achse = Griffachse; 90 dreht die +X-Seite, also die Klingenfläche, zum
+  Betrachter und +Z, die Schneide, nach rechts), `pitch` (Grad um die Bild-X-Achse; positiv kippt die Oberseite zum
+  Betrachter = Sicht von oben), `roll` (Grad in der Bildebene, positiv gegen den Uhrzeigersinn; −45 = diagonal, Spitze
+  oben rechts), `fill` (0,1–1: Anteil der Zelle, den die Vorderseite der gedrehten Bounding-Box in ihrer größeren
+  Richtung einnimmt).
+- **Zellen-Geometrie** (Achsen wie im glTF: +Y oben, +Z vorn; Bildraum: +X rechts, +Y oben, Kamera auf +Z blickt
+  nach −Z):
+  1. Drehung `R = Rz(roll) · Rx(pitch) · Ry(yaw)` (Spaltenvektoren),
+  2. die 8 Ecken der lokalen Bounding-Box (LOD 0) mit `R` drehen; deren achsparallele Box hat Mitte `c` und halbe
+     Größen `h` – das Modell wird um `−c` verschoben (zentriert),
+  3. Kameraabstand `d = h.z + max(h.x, h.y) / (fill · tan(fov / 2))`.
+  Referenz-Implementierung: `tools/chargen/src/gothar_chargen/inventory.py` (`cell()`); Tests in
+  `tools/chargen/tests/test_inventory.py` prüfen, dass jedes Modell unter `assets/source/items` eine Ansicht hat.
+- **Offen für engine:** Licht der Zelle (Prüfblatt: Sonne von links oben vorn, helles Umgebungslicht), Drehen des
+  gewählten Items (Gothic dreht es langsam; Vorschlag: um die Bild-Y-Achse, Ansicht als Startlage), Größe der Zelle.
+- **Prüfblatt:** `gothar-chargen inventory-sheet --out <ordner>` rendert jede Zelle mit dieser Regel (Blender,
+  Cycles auf der CPU) und setzt ein Raster mit Beschriftung (Modell, Kategorie, Quelle der Ansicht) zusammen.

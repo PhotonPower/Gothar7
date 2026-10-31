@@ -29,6 +29,7 @@ from gothar_chargen.blender_run import (
     export_glb,
     find_blender,
     finish_textures,
+    inventory_sheet,
     prepare_monster,
 )
 from gothar_chargen.clipfix import repair_set
@@ -614,6 +615,19 @@ def _cmd_build_items(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK if ok else EXIT_ERROR
 
 
+def _cmd_inventory_sheet(args: argparse.Namespace, out: TextIO) -> int:
+    """Review sheet of the inventory cell views (M14): data/inventory_views.toml, Blender."""
+    root = find_repo_root()
+    if root is None:
+        print("error: repository not found", file=out)
+        return EXIT_ERROR
+    log = inventory_sheet(find_blender(args.blender), root, args.out, args.only or None)
+    for line in log.splitlines():
+        if line.startswith("[chargen] sheet"):
+            print(line[10:], file=out)
+    return EXIT_OK
+
+
 def _cmd_fabrics(args: argparse.Namespace, out: TextIO) -> int:
     """Worn cloth textures from data/fabrics.toml (F3n; fabric sources in DATA_ROOT, Blender)."""
     characters = _characters_dir(args)
@@ -769,6 +783,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--only", nargs="*", default=[], help="item ids (default: all)")
     p.add_argument("--out-dir", type=Path, help="items folder (default: repository)")
     p.set_defaults(func=_cmd_build_items)
+
+    p = sub.add_parser("inventory-sheet", help="inventory cell views of all items -> review sheet")
+    p.add_argument("--out", type=Path, required=True, help="folder for cells/ and the sheet")
+    p.add_argument("--only", nargs="*", default=[], help="item ids (default: all)")
+    p.set_defaults(func=_cmd_inventory_sheet)
 
     p = sub.add_parser("fabrics", help="worn cloth textures from data/fabrics.toml (local, F3n)")
     p.add_argument(

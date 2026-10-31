@@ -1,0 +1,192 @@
+# Inventory cell views (M14) - proposal, contract figuren -> engine: docs/modules/ui.md "Inventar-Ansichten".
+# Every item model is shown as a 3D model in its cell, centred on its bounding box. The view of a
+# model: [default] <- [category.<c>] <- [model."<mesh>"], field by field. <c> = the model's own
+# `category` if it has one, else the Lua item's category; <mesh> = the Lua `mesh` path.
+#   yaw   degrees about the item's own +Y (grip axis); 90 turns its +X side (the flat of a blade)
+#         towards the viewer and its +Z (edge, front) to the right
+#   pitch degrees about the view X axis; positive tilts the top towards the viewer (seen from above)
+#   roll  degrees in the image plane, positive counter-clockwise; -45 = diagonal, tip upper right
+#   fill  share of the cell the front of the rotated bounding box takes in its larger direction
+# Order: R = Rz(roll) * Rx(pitch) * Ry(yaw). Reference implementation: tools/chargen inventory.py;
+# review sheet: gothar-chargen inventory-sheet.
+version = 1
+
+[camera]
+fov = 30.0 # degrees, square cell, perspective; camera on view +Z looking down -Z
+
+[default]
+yaw = 25.0
+pitch = 15.0
+roll = 0.0
+fill = 0.85
+
+# --- per category (all Lua item categories; armor, helmet, belt have no item model yet) ----------
+
+[category.melee_1h]
+yaw = 90.0
+pitch = 0.0
+roll = -45.0
+fill = 0.95
+
+[category.melee_2h]
+yaw = 90.0
+pitch = 0.0
+roll = -45.0
+fill = 0.95
+
+[category.bow]
+yaw = 0.0
+pitch = 0.0
+roll = -45.0
+fill = 0.95
+
+[category.crossbow]
+yaw = 0.0
+pitch = 20.0
+roll = -20.0
+fill = 0.9
+
+[category.ammo]
+yaw = 90.0
+pitch = 0.0
+roll = -45.0
+fill = 0.95
+
+[category.armor]
+yaw = 0.0
+pitch = 5.0
+
+[category.helmet]
+yaw = 20.0
+pitch = 10.0
+
+[category.belt]
+yaw = 0.0
+pitch = 25.0
+
+[category.ring]
+yaw = 0.0
+pitch = -60.0
+fill = 0.7
+
+[category.amulet]
+yaw = 0.0
+pitch = 10.0
+
+[category.rune]
+yaw = 20.0
+pitch = 10.0
+fill = 0.75
+
+[category.scroll]
+yaw = 0.0
+pitch = 10.0
+roll = -45.0
+
+[category.potion]
+yaw = 0.0
+pitch = 15.0
+fill = 0.8
+
+[category.food]
+yaw = 20.0
+pitch = 20.0
+
+[category.document]
+yaw = 0.0
+pitch = 10.0
+roll = -45.0
+
+[category.key]
+yaw = 90.0
+pitch = 0.0
+roll = -45.0
+fill = 0.85
+
+[category.torch]
+yaw = 0.0
+pitch = 10.0
+roll = -45.0
+fill = 0.95
+
+[category.misc]
+yaw = 25.0
+pitch = 20.0
+
+# --- per model, where the category view does not fit -----------------------------------------------
+
+# long tools like weapons: the flat side, diagonal
+[model."items/it_axe.glb"]
+yaw = 90.0
+pitch = 0.0
+roll = -45.0
+fill = 0.95
+
+[model."items/it_hammer.glb"]
+yaw = 90.0
+pitch = 0.0
+roll = -45.0
+
+[model."items/it_saw.glb"]
+yaw = 90.0
+pitch = 0.0
+roll = -45.0
+fill = 0.95
+
+[model."items/it_broom.glb"]
+yaw = 0.0
+pitch = 0.0
+roll = -45.0
+fill = 0.95
+
+[model."items/it_lockpick.glb"]
+yaw = 90.0
+pitch = 0.0
+roll = -45.0
+
+[model."items/it_shears.glb"]
+yaw = 0.0
+pitch = 0.0
+roll = -45.0
+
+# vessels: handle (the origin, at -Z of the body) on the right, a little from above
+[model."items/it_mug.glb"]
+yaw = -70.0
+pitch = 15.0
+fill = 0.8
+
+[model."items/it_jug.glb"]
+yaw = -70.0
+pitch = 15.0
+fill = 0.8
+
+# wide items (AXIS_FREE): more from above
+[model."items/it_bowl.glb"]
+yaw = 0.0
+pitch = 35.0
+
+[model."items/it_cheese.glb"]
+yaw = 20.0
+pitch = 30.0
+
+[model."items/it_pretzel.glb"]
+yaw = 0.0
+pitch = 10.0
+
+[model."items/it_cloth_bolt.glb"]
+yaw = 20.0
+pitch = 15.0
+roll = -60.0
+
+[model."items/it_sausage.glb"]
+yaw = 0.0
+pitch = 10.0
+roll = -30.0
+
+# lute: no Lua item yet (proposal in the M14 report: it_lute, category misc)
+[model."items/it_lute.glb"]
+category = "misc"
+yaw = 0.0
+pitch = 10.0
+roll = -40.0
+fill = 0.95
