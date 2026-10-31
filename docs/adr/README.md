@@ -13,7 +13,7 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | [0006](0006-scripting-lua.md) | Skriptsprache: Lua 5.4 + sol2 | Vorgeschlagen | M7 |
 | [0007](0007-audio-miniaudio.md) | Audio: miniaudio | Vorgeschlagen | M13 |
 | [0008](0008-no-original-formats.md) | Keine Original-Gothic-Formate im Spiel | Akzeptiert | – |
-| [0009](0009-game-ui.md) | Spiel-UI: eigenes System | Vorgeschlagen | M14 |
+| [0009](0009-game-ui.md) | Spiel-UI: eigenes System (RmlUi verworfen) | Akzeptiert (Projektinhaber, 2026-10-31) | M14 |
 | [0010](0010-config-toml.md) | Konfigurationsformat: TOML mit toml++ | Akzeptiert | M0 |
 | [0011](0011-platform-sdl3.md) | Plattformschicht: SDL3 | Akzeptiert | M1 |
 | [0012](0012-geodata-sources.md) | Geodaten: LGL Open GeoData + OSM statt Google | Akzeptiert | W1 |
@@ -24,3 +24,4 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | [0017](0017-json-world-format.md) | JSON-Bibliothek für `.g7world`: nlohmann-json | Akzeptiert | M4 |
 | [0018](0018-character-base-mpfb2.md) | Ausgangskörper für Figuren: MPFB2 (Werkzeug lokal, Ergebnisse CC0) | Akzeptiert | F3 |
 | [0019](0019-animation-runtime.md) | Animations-Laufzeit: eigene Implementierung (statt ozz-animation) | Akzeptiert | M6 |
+| [0020](0020-font-msdf-atlas.md) | Schrift: MSDF-Atlas im Cooker mit msdfgen (Kern) und stb_truetype | Vorgeschlagen | M14 |
