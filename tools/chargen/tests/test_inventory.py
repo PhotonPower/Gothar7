@@ -20,9 +20,10 @@ from gothar_chargen.inventory import (
     cell,
     load_views,
     lua_items,
-    model_bounds,
     model_categories,
+    model_vertices,
     parse_views,
+    project,
     rotation,
 )
 from gothar_chargen.items import ITEMS
@@ -98,7 +99,7 @@ def test_repository_lua_items_are_found():
 
 def test_resolve_merges_default_category_and_model():
     views = parse_views(
-        "version = 1\n[camera]\nfov = 30\n"
+        "version = 2\n[camera]\nfov = 30\n"
         "[default]\nyaw = 1\npitch = 2\nroll = 3\nfill = 0.8\n"
         "[category.food]\npitch = 20\n[category.misc]\nroll = -45\n"
         '[model."items/it_x.glb"]\ncategory = "misc"\nfill = 0.5\n'
@@ -108,14 +109,14 @@ def test_resolve_merges_default_category_and_model():
     assert views.resolve("items/it_x.glb", "food") == View(1, 2, -45, 0.5)  # own category wins
 
 
-HEAD = "version = 1\n[camera]\nfov = 30\n[default]\nyaw = 0\npitch = 0\nroll = 0\n"
+HEAD = "version = 2\n[camera]\nfov = 30\n[default]\nyaw = 0\npitch = 0\nroll = 0\n"
 
 
 @pytest.mark.parametrize(
     ("text", "message"),
     [
-        ("version = 2", "version"),
-        ("version = 1\n[default]\nyaw = 0\npitch = 0\nroll = 0\nfill = 0.8", "fov"),
+        ("version = 1", "version"),
+        ("version = 2\n[default]\nyaw = 0\npitch = 0\nroll = 0\nfill = 0.8", "fov"),
         (HEAD, "default"),
         (HEAD + "fill = 2", "fill"),
         (HEAD + "fill = 0.8\n[category.food]\nzoom = 1", "zoom"),
@@ -143,25 +144,82 @@ def test_rotation_axes():
     np.testing.assert_allclose(r @ r.T, np.eye(3), atol=1e-12)
 
 
-def test_cell_centres_the_box_and_fits_its_front():
-    lo, hi = np.array([-0.1, -0.2, 0.0]), np.array([0.3, 0.6, 0.1])
-    c = cell(View(0, 0, 0, 0.8), lo, hi, 30.0)
-    corners = np.array(
-        [[x, y, z, 1] for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (0, 0.1)]
+TAN15 = math.tan(math.radians(15))
+
+
+def box(lo: tuple[float, float, float], hi: tuple[float, float, float]) -> np.ndarray:
+    return np.array(
+        [[x, y, z] for x in (lo[0], hi[0]) for y in (lo[1], hi[1]) for z in (lo[2], hi[2])]
     )
-    moved = (corners @ c.matrix.T)[:, :3]
-    np.testing.assert_allclose(moved.min(axis=0), -moved.max(axis=0), atol=1e-12)
-    # the front face (z = +0.05) seen from the camera: half height 0.4 fills 0.8 of the half cell
-    half_cell = (c.distance - 0.05) * math.tan(math.radians(15))
-    assert math.isclose(0.4 / half_cell, 0.8)
 
 
-def test_cell_of_every_model_is_finite_and_in_front_of_the_camera():
+def test_cell_distance_of_simple_shapes():
+    """d = max over the vertices of p.z + max(|p.x|, |p.y|) / tan(fov / 2), after centring."""
+    # a flat segment across the view: both ends on the edge of the full view
+    c = cell(View(0, 0, 0, 0.8), np.array([[0.0, 0, 0], [2, 0, 0]]), 30.0)
+    np.testing.assert_allclose(c.matrix[:3, 3], [-1, 0, 0])
+    assert math.isclose(c.distance, 1 / TAN15)
+    np.testing.assert_allclose(c.window, [0, 0], atol=1e-12)
+    # a point in the middle sticking out towards the camera does not matter, it is not outermost
+    c = cell(View(0, 0, 0, 0.8), np.array([[-1.0, 0, 0], [1, 0, 0], [0, 0, 0.5]]), 30.0)
+    assert math.isclose(c.distance, 1 / TAN15 - 0.25)
+    # the nearer end sets the distance; it looks larger, so the window moves towards it
+    c = cell(View(0, 0, 0, 1.0), np.array([[1.0, 0, 0.5], [-1, 0, -0.5]]), 30.0)
+    assert math.isclose(c.distance, 0.5 + 1 / TAN15)
+    near, far = 1.0, -1 / ((c.distance + 0.5) * TAN15)
+    np.testing.assert_allclose(c.window, [(near + far) / 2, 0])
+    assert math.isclose(c.half, (near - far) / 2)
+
+
+@pytest.mark.parametrize(
+    "view",
+    [View(0, 0, 0, 0.8), View(25, 15, 0, 0.85), View(90, 0, -45, 0.95), View(37, -12, 81, 0.6)],
+)
+def test_cell_centres_the_contour_and_fits_fill(view: View):
+    shape = np.r_[box((-0.1, -0.2, 0.0), (0.3, 0.6, 0.1)), [[0.5, 0.7, 0.4], [-0.3, 0.1, -0.2]]]
+    c = cell(view, shape, 30.0)
+    view_z = (np.c_[shape, np.ones(len(shape))] @ c.matrix.T)[:, 2]
+    assert (c.distance - view_z > 0).all()  # all in front of the camera
+    u = project(c, shape)
+    lo, hi = u.min(axis=0), u.max(axis=0)
+    np.testing.assert_allclose(lo, -hi, atol=1e-12)  # centred on the projected contour
+    assert math.isclose(float(np.max(hi - lo)) / 2, view.fill)  # fills `fill` of the cell
+
+
+def diagonal_share(u: np.ndarray) -> float:
+    """Length of the image along the cell diagonal (lower left - upper right) / the diagonal."""
+    along = u @ np.array([1.0, 1.0]) / math.sqrt(2)
+    return float(along.max() - along.min()) / (2 * math.sqrt(2))
+
+
+def test_diagonal_blade_fills_the_diagonal():
+    """A sword at roll -45 reaches along the cell diagonal: its crossguard widens the local
+    bounding box (the version 1 rule shrank this one to 79 %), not its contour."""
+    sword = np.r_[
+        box((-0.004, 0.0, -0.02), (0.004, 0.9, 0.02)),  # grip and blade along +Y
+        box((-0.01, 0.15, -0.09), (0.01, 0.17, 0.09)),  # crossguard across, along Z
+    ]
+    view = View(90, 0, -45, 0.95)
+    assert diagonal_share(project(cell(view, sword, 30.0), sword)) >= 0.85
+    views = load_views(VIEWS)
+    categories = model_categories(lua_items(REPO_ROOT / SCRIPTS_ITEMS_DIR), MODELS)
+    for name in ("it_sword_old", "it_sword_crude", "it_sword_2h", "it_bow_short", "it_torch"):
+        mesh = f"items/{name}.glb"
+        vertices = model_vertices(REPO_ROOT / "assets/source" / mesh)
+        c = cell(views.resolve(mesh, min(categories[mesh])), vertices, views.fov)
+        assert diagonal_share(project(c, vertices)) >= 0.85, mesh
+
+
+def test_cell_of_every_model_is_finite_centred_and_fills_its_view():
     views = load_views(VIEWS)
     categories = model_categories(lua_items(REPO_ROOT / SCRIPTS_ITEMS_DIR), MODELS)
     for mesh in MODELS:
         own = sorted(categories[mesh])
         view = views.resolve(mesh, views.category_of(mesh, own[0] if own else None))
-        lo, hi = model_bounds(REPO_ROOT / "assets/source" / mesh)
-        c = cell(view, lo, hi, views.fov)
-        assert np.isfinite(c.matrix).all() and c.distance > 0, mesh
+        vertices = model_vertices(REPO_ROOT / "assets/source" / mesh)
+        c = cell(view, vertices, views.fov)
+        assert np.isfinite(c.matrix).all() and c.distance > 0 and c.half > 0, mesh
+        u = project(c, vertices)
+        lo, hi = u.min(axis=0), u.max(axis=0)
+        np.testing.assert_allclose(lo, -hi, atol=1e-9, err_msg=mesh)
+        assert math.isclose(float(np.max(hi - lo)) / 2, view.fill), mesh
