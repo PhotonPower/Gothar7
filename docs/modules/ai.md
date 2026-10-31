@@ -177,7 +177,9 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
     `item_from_hand`, Klang `lute_play`). Ohne Freepoint des Typs im Umkreis von 15 m spielen sie am Wegpunkt.
   - Pfarrer Johannes (`priest`), die Brüder Anselm und Kilian (Set `monk`), Lumpen-Hannes und die alte Grete
     (Sets `beggar_m`/`beggar_f`, Gilde `outcast`), Florian der Spielmann (`musician`; mittags am Markt, abends in der
-    Krummen Gans). Bis die Kirche begehbar ist, sind die Wegpunkte östlich der Kirche ihr Anker.
+    Krummen Gans). Ihre Orte sind welts Freepoints (#298): beten in einer Reihe vor dem Kirchenportal (die Kirche
+    bleibt ohne Innenraum, Entscheidung Projektinhaber 2026-10-31), predigen am Portal und am Marktbrunnen, betteln
+    an Kirche, Marktbrunnen und beiden Toren, Laute in der Stube der Krummen Gans.
   - Die sitzende Lautenvariante (`amb_play_lute_sit…`) steht im Graphen, ein Zustand dafür fehlt noch (braucht Bank
     bzw. Hocker).
   - **Nachts** `zs_sleep` in der Kammer ihres Hauses: eigenes Bett, freies Bett oder der Boden (Abschnitt „NPCs benutzen

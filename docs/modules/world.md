@@ -211,10 +211,11 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   `dir` vom Wegpunkt weg), `FP_SWEEP_` (fegen), `FP_DRINK_` (aus dem Krug trinken), `FP_TRAIN_` (Schwertübung) sowie
   die Arbeitsplätze `FP_CHOP_` (Holz hacken), `FP_HARVEST_` (ernten), `FP_WATER_` (gießen), `FP_REPAIR_` (kniend
   ausbessern), dazu für Kirche und Musik (bestätigt 2026-10-08, Clips von figuren in `church.glb`/`music.glb`)
-  `FP_PRAY_` (beten: kniend `zs_pray`, stehend `zs_pray_stand`; in der Kirche, Blick zum Altar, 0,6 m frei nach
-  vorn), `FP_PREACH_` (predigen; Altar, Kanzel, Markt), `FP_BEG_` (am Boden sitzend betteln; Kirchentür, Brunnen,
-  Tor; Wand dahinter möglich) und `FP_MUSIC_` (stehend Laute spielen, `zs_play_lute`). Andere Typen sind erlaubt und
-  werden bis zu ihrer Verwendung ignoriert.
+  `FP_PRAY_` (beten: kniend `zs_pray`, stehend `zs_pray_stand`; vor dem Kirchenportal, Blick zum Portal, 0,6 m
+  frei nach vorn; die Kirche bleibt ohne Innenraum, Entscheidung Projektinhaber 2026-10-31), `FP_PREACH_`
+  (predigen; Kirchenportal, Markt), `FP_BEG_` (am Boden sitzend betteln; Kirchentür, Brunnen, Tor; Wand dahinter
+  möglich) und `FP_MUSIC_` (stehend Laute spielen, `zs_play_lute`). Andere Typen sind erlaubt und werden bis zu
+  ihrer Verwendung ignoriert.
 - **Nachschlagen** (M9): Skripte nennen Punkte in Kleinschreibung (`at = "wp_camp_gate"`); die Engine sucht Namen
   ohne Rücksicht auf Groß- und Kleinschreibung.
 - **Kanten** (`edges`): ungerichtet, `[name_a, name_b]` bzw. `[name_a, name_b, "worldgen"]`; beide Namen müssen
