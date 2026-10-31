@@ -207,6 +207,7 @@ class _Room:
     props: list[Polygon] = field(default_factory=list)  # household props: close to each other
     hanging: list[Polygon] = field(default_factory=list)  # under the ceiling
     cover: Polygon | None = field(default=None, repr=False)  # its indoor boxes (zones), lazily
+    steps: Polygon | None = None  # the stairs rising in this room (their footprint)
 
     def covered(self, p: Pt) -> bool:
         """``p`` lies in the room's indoor boxes (as ``indoor_zones`` writes them): a figure
@@ -964,6 +965,7 @@ class _House:
                     continue
                 for pos, d in spots:
                     self.fp(kind, pos, d)
+        self.round_the_stairs()
         for place in [p for p in self.plan.places if p["house"] == h.id and p["kind"] == "fp"]:
             self.keep_way((place["pos"][0], place["pos"][1]))
         props["stool"] = self.set_tables(props.get("stool", 0))
@@ -1005,6 +1007,36 @@ class _House:
                                  "y": room.floor, "link": door_name})  # fmt: skip
         if h.owner:
             self.private_area()
+
+    def round_the_stairs(self) -> None:
+        """In a room with stairs, a freepoint its waypoint does not see (past the steps or round
+        the inner corner of an L-shaped room) gets corners (``WP_…_UM_<TYPE>``, linked to the
+        room's waypoint): the engine walks to a freepoint from the nearest waypoint with a free
+        line to it."""
+        room = self.room
+        if room.steps is None:
+            return
+        tag = f"_{self.tag}_"
+        for place in [p for p in self.plan.places if p["kind"] == "fp" and tag in p["name"]]:
+            at = (place["pos"][0], place["pos"][1])
+            line = LineString([room.entry, at])
+            hit = [room.steps] if line.buffer(0.35).intersects(room.steps) else []
+            if not room.poly.buffer(-0.35).contains(line):
+                outside = room.poly.convex_hull.difference(room.poly)
+                pieces = [g for g in getattr(outside, "geoms", [outside]) if isinstance(g, Polygon)]
+                hit += [g for g in pieces if g.intersects(line.buffer(0.35))]
+            if not hit:
+                continue
+            corners = _detour(room.entry, at, unary_union([*hit, room.steps]), room.poly,
+                              sample=True, clear_m=FP_CLEAR_M)  # fmt: skip
+            kind = place["name"][3:].split("_LEO_")[0]
+            prev = f"WP_{self.tag}"
+            for k, c in enumerate(corners, start=1):
+                name = f"WP_{self.tag}_UM_{kind}" + (f"_{k}" if k > 1 else "")
+                self.plan.places.append({"kind": "wp", "name": name, "house": self.h.id,
+                                         "pos": [c[0], c[1]], "dir": [0.0, 1.0],
+                                         "y": room.floor, "link": prev})  # fmt: skip
+                prev = name
 
     def chamber_waypoints(self, link: str, mid: tuple[float, float]) -> None:
         """In the passage (linked to the room before it), then just inside the chamber; up the
@@ -1106,16 +1138,19 @@ PASSAGE_FRONT_M = 0.7  # the place before a passage: this far out from it (strai
 DETOUR_START_M = 0.2  # its first and last leg less: the waypoint at the stairs' head is at the
 # edge, a passage may be close
 DETOUR_CORNER_M = 1.0  # its corners this far out from them
+FP_CLEAR_M = 0.4  # a way to a freepoint round solid steps (no rail): this far from them
 DETOUR_SAMPLE_M = 0.5  # without a way over the corners: places this far apart along the sides
 
 
 def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
-            room: Polygon, sample: bool = False) -> list[tuple[float, float]]:  # fmt: skip
+            room: Polygon, sample: bool = False,
+            clear_m: float = DETOUR_CLEAR_M) -> list[tuple[float, float]]:  # fmt: skip
     """Corners a straight way from ``a`` to ``b`` takes round ``obstacle`` (stairs, the opening
     in the floor above them) inside ``room``; empty if the straight way is clear (the engine
     walks the waynet's edges as they are, unchecked). With ``sample``, where no way over the
-    corners is found, places along the sides too (a corner beyond a wall)."""
-    zone = obstacle.buffer(DETOUR_CLEAR_M)
+    corners is found, places along the sides too (a corner beyond a wall). ``clear_m``: how far
+    the legs keep from it (less round solid steps than round a rail)."""
+    zone = obstacle.buffer(clear_m)
     near = obstacle.buffer(DETOUR_START_M)
     if not LineString([a, b]).intersects(near):
         return []
@@ -1135,7 +1170,8 @@ def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
 
     best = _shortest(a, b, corners, clear)
     if best is None and sample:  # a corner beyond a wall (a head at the wall): along the sides
-        rim = obstacle.buffer(DETOUR_CORNER_M, join_style="mitre").exterior
+        rim = obstacle.buffer(max(clear_m + 0.1, DETOUR_START_M + 0.3) if clear_m < DETOUR_CLEAR_M
+                              else DETOUR_CORNER_M, join_style="mitre").exterior  # fmt: skip
         n = max(4, int(rim.length / DETOUR_SAMPLE_M))
         along = [rim.interpolate(k * rim.length / n) for k in range(n)]
         more = [(q.x, q.y) for q in along if inside.contains(q)]
@@ -1236,6 +1272,7 @@ def _with_stairs(built: dict[str, _Room], st: Any,  # noqa: ANN401  stairs.Stair
     for name, room in built.items():
         if name == where:
             room.taken.append(st.footprint)
+            room.steps = st.footprint
             room.tall.append(st.footprint)
             edge = st.footprint.exterior.interpolate(st.footprint.exterior.project(foot))
             away = (foot.x - edge.x, foot.y - edge.y)

@@ -733,3 +733,22 @@ def test_to_a_foot_behind_the_flight_the_way_goes_round_its_side():
     way = _inside_way(a, foot, room, steps)
     assert way and not LineString([a, *way, foot]).intersects(steps)
     assert _inside_way((1.0, 1.0), (8.45, 1.0), room, steps) == []  # clear of it
+
+
+def test_a_freepoint_hidden_round_the_corner_by_the_stairs_gets_corners():
+    from shapely.geometry import box
+
+    from gothar_worldgen.uses.inside import _House, _Room
+
+    poly = box(0.0, 0.0, 8.0, 4.0).union(box(8.0, 2.0, 11.0, 4.0))  # an L: the wing at the east
+    room = _Room(poly, 0.0, 2.8, Polygon(), (0.0, 0.5), (1.0, 0.0))  # the door in the west wall
+    room.steps = box(3.0, 3.0, 7.5, 3.95)
+    p = InsidePlan()
+    house = _House(p, House("DEBW_00100061ZjV", "wohnhaus", residents=1, inside=True), room)
+    house.fp("REPAIR", (10.5, 2.4), (0.0, 1.0))  # behind the inner corner
+    house.round_the_stairs()
+    (wp,) = [q for q in p.places if q["kind"] == "wp"]
+    assert wp["name"] == "WP_LEO_WOHNHAUS_ZJV_INNEN_UM_REPAIR"
+    assert wp["link"] == "WP_LEO_WOHNHAUS_ZJV_INNEN"
+    legs = LineString([room.entry, wp["pos"], (10.5, 2.4)])
+    assert not legs.intersects(room.steps) and poly.buffer(0.01).contains(legs)
