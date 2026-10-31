@@ -4,6 +4,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 using namespace g7;
 
@@ -48,4 +49,46 @@ TEST_CASE("StringUtil: case-insensitive unordered_map")
     CHECK(guilds.size() == 1);
     CHECK(guilds.at("Diego") == 2);
     CHECK(IgnoreCaseHash{}("Milten") == IgnoreCaseHash{}("MILTEN"));
+}
+
+namespace
+{
+std::vector<u32> decodeAll(std::string_view s)
+{
+    std::vector<u32> out;
+    for (usize pos = 0; pos < s.size();)
+    {
+        out.push_back(nextCodepoint(s, pos));
+    }
+    return out;
+}
+} // namespace
+
+TEST_CASE("StringUtil: UTF-8 decoding")
+{
+    CHECK(decodeAll("Ab") == std::vector<u32>{'A', 'b'});
+    CHECK(decodeAll("\xC3\xA4\xC3\x9F") == std::vector<u32>{0xE4, 0xDF});             // ä ß
+    CHECK(decodeAll("\xE2\x80\xA6\xE2\x82\xAC") == std::vector<u32>{0x2026, 0x20AC}); // … €
+    CHECK(decodeAll("\xF0\x9F\x98\x80") == std::vector<u32>{0x1F600});
+    // Malformed input: one replacement per bad byte, the rest still decodes.
+    CHECK(decodeAll("a\xFFz") == std::vector<u32>{'a', kReplacementCharacter, 'z'});
+    CHECK(decodeAll("\xC3") == std::vector<u32>{kReplacementCharacter});       // truncated
+    CHECK(decodeAll("\xC3(") == std::vector<u32>{kReplacementCharacter, '('}); // bad continuation
+    CHECK(decodeAll("\xC0\xAF") ==
+          std::vector<u32>{kReplacementCharacter, kReplacementCharacter}); // overlong
+    CHECK(decodeAll("\xED\xA0\x80").front() == kReplacementCharacter);     // surrogate
+}
+
+TEST_CASE("StringUtil: UTF-8 encoding round trip")
+{
+    std::string s;
+    for (const u32 c : {0x41u, 0xE4u, 0x2026u, 0x1F600u})
+    {
+        appendUtf8(s, c);
+    }
+    CHECK(s == "A\xC3\xA4\xE2\x80\xA6\xF0\x9F\x98\x80");
+    CHECK(decodeAll(s) == std::vector<u32>{0x41, 0xE4, 0x2026, 0x1F600});
+    std::string bad;
+    appendUtf8(bad, 0xD800);
+    CHECK(bad == "\xEF\xBF\xBD");
 }

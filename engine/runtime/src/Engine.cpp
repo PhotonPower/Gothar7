@@ -562,6 +562,7 @@ Result<void> Engine::initShaders()
     }
     m_debugUi = std::move(debugUi).value();
     m_debugUiVisible = m_config.settings.get<bool>("render.debug_ui", false);
+    initGameUi();
     const auto size = m_window->pixelSize();
     auto target = render::SceneTarget::create(*m_device, size.width, size.height);
     if (!target)
@@ -1623,7 +1624,8 @@ void Engine::renderScene(u32 width, u32 height)
         drawNotice(height);  // fly mode hint, "position copied" ...
         m_debugRenderer.render(*m_device, m_debugDraw, m_camera, &m_sceneTarget.depth(), width, height);
     }
-    // ImGui last, on top of everything.
+    // The game UI over the scene, ImGui last, on top of everything.
+    drawGameUi(width, height);
     if (m_debugUiFrame)
     {
         m_debugUi.endFrame(m_device.get());
