@@ -131,17 +131,22 @@ Phase **M10** abgeschlossen (Meilenstein B vom Projektinhaber abgenommen): Dialo
 Handel in Gulden, Lehrer, Tagebuch, Kapitel, Platzhalter-Geschichte im Testlager; Sprechtext-Schlüssel (`tools/voice`).
 Phase **M11** weitgehend abgeschlossen: Nahkampf nach Clip-Events, Parade, Bewusstlosigkeit, Plündern, Kampf-KI,
 Fernkampf (Bogen, Armbrust), Kampfkamera; offen: Waffen-Shapecast.
-Aktuelle Phase: **M12** (Magie und Partikel): Partikel als Daten, Runen/Spruchrollen/Mana, Wirken des Helden, Beschwörung;
-als Nächstes Verwandlung, Zauber-KI. NPCs öffnen Türen, Innenkamera, Raum-Ambient, Tageslicht-Fenster.
+Phase **M12** abgeschlossen: Partikel als Daten, Runen/Spruchrollen/Mana, Wirken des Helden, Beschwörung, Wolfsgestalt,
+Zauber-KI, Brennen; Telekinese und Shader-Effekte nach M17 verschoben.
+Phase **M13** abgeschlossen: miniaudio-Mixer mit Bussen, 3D-Klang mit Verdeckung, Musik- und Ambiente-Zonen, dynamische Musik,
+Stimmen mit Lippensync, Fußschritte nach Material. Dazu: Fackel, Gangarten, NPCs benutzen Mobs (Tisch, Bank, Amboss, Bett),
+Leonberger Handwerker und Händler mit Waren.
+Aktuelle Phase: **M14** (UI und Menüs; zuerst ADR 0009 bestätigen). Inventar mit 3D-Vorschau je Zelle, keine Symbole.
 Werkzeug: `gothar --fly`, F3 Flugmodus, F6 Position kopieren (`--cam/--yaw/--pitch`), `--walk` Autopilot.
 Welt-Spur: **W1–W3** abgeschlossen (Maßstab 1:1); **W4** wartet auf Aufnahmen; **W5/W6** laufen (Fachwerk-Leonberg,
 Stil `docs/design/leonberg-stil.md`, prozedurale Texturen auf allen Häusern, Kopfsteinpflaster, Stadtmauer, Schloss, Kirche,
-Pomeranzengarten, Marktbrunnen, Mob-Modelle in `assets/source/mobs/`, Häuser-LOD-Stufen, Wegnetz); **W7** läuft: 30 Häuser mit
-Nutzung und Routinen-Orten, begehbare Häuser mit Räumen, Türen, Herd, Hausrat, Innenzonen und Fenstern mit Tageslicht.
+Pomeranzengarten, Marktbrunnen, Mob-Modelle in `assets/source/mobs/`, Häuser-LOD-Stufen, Wegnetz, Gassen-Ausstattung, Rinnen/Stufen/Mauern,
+Zunftschilder, Klangzonen); **W7** läuft: 30 Häuser mit Nutzung und Routinen-Orten, begehbare Häuser (Phase 1) mit Räumen,
+Türen, Herd, Hausrat, Innenzonen, Fenstern, Treppen und Obergeschossen.
 Figuren-Spur: **F1**, **F2** abgeschlossen; **F3** weit fortgeschritten (Körper, Köpfe, abgetragene Kleidung, Rüstung
 leicht/mittel/schwer, Kopfbedeckungen; Figuren beim Bauen bzw. zur Laufzeit); **F6** Waffen und Handgegenstände in
 `assets/source/items/` (auch Zweihänder, Armbrust, Pfeile, Runen); Figurenvielfalt (`figure_sets.toml`); Platzhalter-Clips
-für Mobs, Items, Routinen, Dialog, Kampf und Magie; **F5** eigene Monster (`docs/design/monsters.md`): Schinder,
-Quaderbuckel, Glemsmahr fertig, Bergleu als Nächstes.
+für Mobs, Items, Routinen, Dialog, Kampf, Magie, Tisch, Kirche und Laute (bleiben vorerst); **F5** alle eigenen Tiere und
+Monster (`docs/design/monsters.md`); Kleidung und Figuren der Leonberger Gewerbe; Waren der Händler; Stil `docs/design/figuren-stil.md`.
 Lizenzen: Das Repo ist **öffentlich** – nur CC0/eigene bzw. weitergabefähig lizenzierte Assets einchecken.
 Details siehe `docs/03-roadmap.md`.
