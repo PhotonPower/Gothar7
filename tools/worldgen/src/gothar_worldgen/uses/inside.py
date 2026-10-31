@@ -1276,7 +1276,9 @@ def _inside_way(a: Pt, b: Pt, poly: Polygon, steps: Polygon) -> list[Pt]:
         outside = poly.convex_hull.difference(poly)
         pieces = [g for g in getattr(outside, "geoms", [outside]) if isinstance(g, Polygon)]
         hit += [g for g in pieces if g.intersects(lane)]
-    return _detour(a, b, unary_union(hit), poly) if hit else []
+    # through the flight itself (not only over its toe or edge): round it along its sides too
+    through = LineString([a, b]).intersects(steps.buffer(-0.3))
+    return _detour(a, b, unary_union(hit), poly, sample=through) if hit else []
 
 
 def _stairs_waypoints(plan: InsidePlan, h: House, st: Any, link: str,  # noqa: ANN401

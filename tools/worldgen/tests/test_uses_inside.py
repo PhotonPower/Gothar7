@@ -721,3 +721,15 @@ def test_from_a_head_at_the_end_wall_the_way_goes_along_the_opening():
     assert way and all(room.contains(Point(c)) for c in way)
     legs = LineString([a, *way, b])
     assert not legs.intersects(hole)
+
+
+def test_to_a_foot_behind_the_flight_the_way_goes_round_its_side():
+    from shapely.geometry import box
+
+    from gothar_worldgen.uses.inside import _inside_way
+
+    room, steps = box(0.0, 0.0, 9.0, 4.0), box(3.5, 3.0, 7.9, 3.95)  # foot at the east end
+    a, foot = (1.0, 3.4), (8.45, 3.45)  # the straight way runs through the whole flight
+    way = _inside_way(a, foot, room, steps)
+    assert way and not LineString([a, *way, foot]).intersects(steps)
+    assert _inside_way((1.0, 1.0), (8.45, 1.0), room, steps) == []  # clear of it
