@@ -21,7 +21,6 @@ constexpr f32 kTurnRate = 4.0f;          ///< rad/s turning to the slot
 constexpr f32 kUnanimatedSeconds = 0.6f; ///< a phase without a clip in the graph
 constexpr f32 kArriveDistance = 0.6f;    ///< m: near enough to the slot to sit down (then placed exactly)
 constexpr f32 kApproachMargin = 0.3f;    ///< m outside the slot the way ends (the capsule's radius)
-constexpr std::string_view kDrinkItem = "it_mug"; ///< in the hand in table_drink (figuren #281)
 
 f32 wrap(f32 a)
 {
@@ -178,10 +177,12 @@ bool Engine::stepNpcMob(Creature& c, f32 seconds)
         {
             c.yaw = use.yaw;
             use.phase = Creature::MobUse::Phase::Enter;
-            // The type's item (the anvil's hammer): the _enter clip's item_to_hand takes it.
+            // The item (the anvil's hammer, the lute of bench_lute_enter): the clip's item_to_hand takes it.
+            // A variant may sit down its own way (<type>_<variant>_enter).
             const gameplay::MobType* type = m_mobTypes.find(use.type);
-            c.handItemWanted = type != nullptr ? type->item : std::string();
-            play(use.type + "_enter");
+            c.handItemWanted = type != nullptr ? type->itemFor(use.variant) : std::string();
+            const std::string own = std::format("{}_{}_enter", use.type, use.variant);
+            play(!use.variant.empty() && a != nullptr && a->hasState(own) ? own : use.type + "_enter");
             if (use.state.empty() && !c.handItemWanted.empty())
             {
                 handEvent(c, "item_to_hand"); // no clip to take it with
@@ -197,10 +198,9 @@ bool Engine::stepNpcMob(Creature& c, f32 seconds)
         use.phase = Creature::MobUse::Phase::Loop;
         if (!use.variant.empty() && a != nullptr && a->hasState(std::format("{}_{}", use.type, use.variant)))
         {
-            if (use.variant == "drink")
-            {
-                c.handItemWanted = std::string(kDrinkItem); // the clip's item_to_hand takes it
-            }
+            // The variant's item (table_drink: the mug at the clip's item_to_hand).
+            const gameplay::MobType* type = m_mobTypes.find(use.type);
+            c.handItemWanted = type != nullptr ? type->itemFor(use.variant) : std::string();
             play(std::format("{}_{}", use.type, use.variant));
         }
         else
@@ -240,17 +240,23 @@ bool Engine::startLeaveNpcMob(Creature& c)
         releaseNpcMob(c); // not seated yet: nothing to stand up from
         return false;
     }
-    // The mug goes (figuren: s_sit_drink only puts it into the hand); the type's item (the hammer) stays
-    // until the _leave clip's item_from_hand. Then stand up.
+    // The mug goes (figuren: s_sit_drink only puts it into the hand); the hammer, or the lute of a variant
+    // that stands up its own way (<type>_<variant>_leave), stays until the clip's item_from_hand. Then stand
+    // up.
+    animation::Animator* a = c.figure ? &c.figure->animator : nullptr;
     const gameplay::MobType* type = m_mobTypes.find(use.type);
-    if (type == nullptr || type->item.empty() || c.handItemWanted != type->item)
+    const std::string own = std::format("{}_{}_leave", use.type, use.variant);
+    const bool ownLeave = !use.variant.empty() && a != nullptr && a->hasState(own);
+    const bool keep = type != nullptr && !c.handItemWanted.empty() &&
+                      c.handItemWanted == type->itemFor(use.variant) &&
+                      (ownLeave || c.handItemWanted == type->item);
+    if (!keep)
     {
         c.handItem = nullptr;
         c.handItemWanted.clear();
     }
     use.phase = Creature::MobUse::Phase::Leave;
-    animation::Animator* a = c.figure ? &c.figure->animator : nullptr;
-    const std::string leave = use.type + "_leave";
+    const std::string leave = ownLeave ? own : use.type + "_leave";
     use.time = 0.0f;
     use.state = a != nullptr && a->hasState(leave) ? leave : std::string();
     if (!use.state.empty())

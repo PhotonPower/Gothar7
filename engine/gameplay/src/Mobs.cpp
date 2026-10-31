@@ -12,6 +12,12 @@ std::string MobType::clip(std::string_view name) const
     return name.empty() ? std::string() : std::format("{}/{}", clips, name);
 }
 
+const std::string& MobType::itemFor(std::string_view variant) const
+{
+    const auto it = variantItems.find(variant);
+    return it != variantItems.end() ? it->second : item;
+}
+
 const MobType* MobTypes::find(std::string_view type) const noexcept
 {
     const auto it = types.find(type);
@@ -42,6 +48,15 @@ Result<MobTypes> MobTypes::parse(std::string_view toml, std::string_view source)
         type.loop = c.get<std::string>(at + ".loop", "");
         type.leave = c.get<std::string>(at + ".leave", "");
         type.item = c.get<std::string>(at + ".item", "");
+        for (const std::string& key : c.keys(at + ".variant_items"))
+        {
+            const auto item = c.find<std::string>(at + ".variant_items." + key);
+            if (!item)
+            {
+                return fail(at + ".variant_items." + key, "must be an item instance");
+            }
+            type.variantItems[key] = *item;
+        }
         for (const std::string& key : c.keys(at + ".extra"))
         {
             const auto clip = c.find<std::string>(at + ".extra." + key);
