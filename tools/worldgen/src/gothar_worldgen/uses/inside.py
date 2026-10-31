@@ -1445,22 +1445,29 @@ def _box_foot(z: dict[str, Any]) -> Polygon:
                     for sx, sz in ((-1, -1), (1, -1), (1, 1), (-1, 1))])  # fmt: skip
 
 
+WALL_FP_M = {"LEAN": 0.4, "MUSIC": 0.6}  # freepoints at a wall: their distance from it
+
+
 def _free_floor(
     room: _Room, kind: str
 ) -> list[tuple[tuple[float, float], tuple[float, float]]] | None:
-    """Where a freepoint of ``kind`` goes: LEAN at a wall facing in, SMALLTALK as a pair facing
-    each other, others on free floor facing the middle of the room."""
+    """Where a freepoint of ``kind`` goes: LEAN at a wall facing in, MUSIC a little off a wall
+    facing in (room for a stool behind the player) where one is free and reached, else like the
+    others; SMALLTALK as a pair facing each other, others on free floor facing the middle of the
+    room."""
     c = room.poly.centroid
-    if kind == "LEAN":
+    if kind in WALL_FP_M:
+        off = WALL_FP_M[kind]
         for a, (ux, uz), wall_len in _walls(room):
             nx, nz = -uz, ux
             t = 0.6
             while t <= wall_len - 0.6:
-                p = (a[0] + ux * t + nx * 0.4, a[1] + uz * t + nz * 0.4)
+                p = (a[0] + ux * t + nx * off, a[1] + uz * t + nz * off)
                 if room.fits(Point(p).buffer(0.25)) and room.covered(p) and room.reachable(p):
                     return [(p, (nx, nz))]
                 t += STEP_M
-        return None
+        if kind == "LEAN":
+            return None
     minx, minz, maxx, maxz = room.poly.bounds
     best = None
     x = minx + 0.5

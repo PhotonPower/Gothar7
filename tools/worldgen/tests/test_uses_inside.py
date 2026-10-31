@@ -673,3 +673,17 @@ def test_every_bed_room_waypoint_and_freepoint_lies_in_an_indoor_box_of_its_hous
         assert len(beds) == 3 and rooms
         for name, (x, y, zz) in beds + rooms:
             assert any(in_box(z, x, y + 0.3, zz) for z in zones), name
+
+
+def test_the_musician_stands_off_a_wall_facing_into_the_room():
+    spec = {"wohnhaus": inside_spec({"mobs": ["table:1"], "freepoints": ["LEAN:1", "MUSIC:1"],
+                                     "hearth": True}, "x")}  # fmt: skip
+    p = plan(specs=spec)
+    (music,) = [f for f in p.places if f["name"].startswith("FP_MUSIC_")]
+    assert music["name"] == "FP_MUSIC_LEO_WOHNHAUS_ZJV_INNEN_01" and music["y"] == 1.0
+    room = Polygon(ROOM["ring"])
+    at = Point(music["pos"])
+    assert room.exterior.distance(at) == pytest.approx(0.6, abs=1e-6)  # a stool fits behind
+    c = room.centroid  # facing in: the room lies ahead
+    ahead = (music["pos"][0] + music["dir"][0], music["pos"][1] + music["dir"][1])
+    assert math.dist(ahead, (c.x, c.y)) < math.dist(music["pos"], (c.x, c.y))

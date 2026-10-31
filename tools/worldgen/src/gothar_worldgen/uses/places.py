@@ -21,7 +21,8 @@ from gothar_worldgen.waynet.generate import name_part
 
 MOB_TYPES = {"chest", "anvil", "bed", "bench", "door"}
 FP_TYPES = {"SIT", "STAND", "SMALLTALK", "ROAM", "SLEEP", "CAMPFIRE", "LEAN", "SWEEP", "DRINK",
-            "TRAIN", "CHOP", "HARVEST", "WATER", "REPAIR"}  # fmt: skip
+            "TRAIN", "CHOP", "HARVEST", "WATER", "REPAIR", "PRAY", "PREACH", "BEG",
+            "MUSIC"}  # fmt: skip
 # mob footprint (half width along the wall, depth from the wall) and the slot in front (mobs.toml)
 MOB_SIZE = {"chest": (0.45, 0.6), "anvil": (0.4, 0.5), "bench": (0.75, 0.35), "bed": (1.0, 0.9)}
 MOB_SLOT = {"chest": 0.65, "anvil": 0.6, "bench": 0.38, "bed": 0.75}
@@ -37,7 +38,8 @@ FP_ROW = {"LEAN": (0.45, False), "STAND": (1.6, False), "SWEEP": (1.4, False),
           "SIT": (2.4, True), "DRINK": (2.0, False), "SMALLTALK": (3.0, None), "CHOP": (2.2, False),
           "HARVEST": (3.0, False), "REPAIR": (1.6, True), "ROAM": (3.5, False),
           "WATER": (2.0, False), "TRAIN": (3.0, False), "SLEEP": (1.0, True),
-          "CAMPFIRE": (3.0, True)}  # fmt: skip
+          "CAMPFIRE": (3.0, True), "PRAY": (2.4, True), "PREACH": (2.0, False),
+          "BEG": (0.45, False), "MUSIC": (2.0, False)}  # fmt: skip
 OFFSETS_M = (1.6, -1.6, 2.8, -2.8, 4.0, -4.0, 5.2, -5.2, 6.4, -6.4)  # along the wall from the door
 
 
