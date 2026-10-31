@@ -12,6 +12,12 @@ FOUNTAINS = {
     "HANDMADE_GARTENBRUNNEN_O": ("gartenbrunnen_o", 1.88),
 }
 SQUARE_R = 9.0  # small talk on a ring around the market fountain
+# the church's main portal (the porch arch) in model space: the middle of the arch on the front
+# of the porch's collision body and its outward normal (assets/.../handmade/kirche/kirche.glb)
+CHURCH = {"HANDMADE_KIRCHE": ((9.34, 9.43), (0.0, 1.0))}
+# a beggar beside the portal, back to the aisle wall west of the porch (model space)
+CHURCH_BEG = (5.5, 8.6)
+FOUNTAIN_STEP = {"marktbrunnen": (3.0, 0.36)}  # top step of the basin: (radius, height)
 
 
 def landmarks(world: dict[str, Any], city_wall: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -27,7 +33,33 @@ def landmarks(world: dict[str, Any], city_wall: dict[str, Any] | None = None) ->
     for g in (city_wall or {}).get("gates", []):
         if g.get("wall", "ring") == "ring":
             out["gates"][g["key"]] = (float(g["at"][0]), float(g["at"][1]))
+            if g.get("kind") == "tower":  # the town gates proper: a beggar beside each
+                out.setdefault("towers", []).append(g["key"])
+    for v in world.get("vobs", []):
+        if v.get("name") in CHURCH:
+            out["church"] = church_frame(v)
+        if v.get("name") == "HANDMADE_MARKTBRUNNEN":
+            r, h = FOUNTAIN_STEP["marktbrunnen"]
+            out["fountainStep"] = (float(v["pos"][1]) + h, r)
     return out
+
+
+def church_frame(v: dict[str, Any]) -> dict[str, Any]:
+    """The church's portal in the world: its middle, the outward normal, and a map from model
+    (x, z) to the world (the vob turns about +Y only)."""
+    import math
+
+    q = v.get("rot", [0.0, 0.0, 0.0, 1.0])
+    a = 2.0 * math.atan2(float(q[1]), float(q[3]))
+    px, pz = float(v["pos"][0]), float(v["pos"][2])
+    ca, sa = math.cos(a), math.sin(a)
+
+    def world(x: float, z: float) -> tuple[float, float]:
+        return (px + x * ca + z * sa, pz - x * sa + z * ca)
+
+    (mx, mz), (nx, nz) = CHURCH[v["name"]]
+    return {"portal": world(mx, mz), "normal": (nx * ca + nz * sa, -nx * sa + nz * ca),
+            "beg": world(*CHURCH_BEG)}  # fmt: skip
 
 
 def garden_beds(spec: dict[str, Any]) -> list[tuple[float, float]]:

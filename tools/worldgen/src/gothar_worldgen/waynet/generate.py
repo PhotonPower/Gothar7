@@ -12,7 +12,9 @@ landmarks into the ``waynet`` block of the world:
   ways excepted); a blocked edge gets a detour point beside it or is left out (reported);
 - **freepoints** (``FP_``) the site data gives: sitting (on the rim) and drinking at the fountains,
   small talk and roaming on the market square, standing at the gates, watering the garden beds
-  (``FP_WATER`` is watering plants, world.md).
+  (``FP_WATER`` is watering plants, world.md); praying (kneeling, facing the portal) and preaching
+  in front of the church, preaching on the market fountain's step, begging (sitting, back to a
+  wall) beside the church portal, at the market fountain and inside the town gates.
 
 Everything carries ``owner: "worldgen"``. Hand-made entries of the existing block (without owner)
 stay; the generator never creates a name a hand-made point already has, but connects that point.
@@ -32,6 +34,7 @@ from typing import Any
 import numpy as np
 import shapely
 from shapely.geometry import LineString, MultiLineString, Point, Polygon, box
+from shapely.ops import nearest_points
 from shapely.strtree import STRtree
 
 OWNER = "worldgen"
@@ -45,6 +48,13 @@ DOOR_REACH_M = 30.0  # a door point connects to a street point at most this far 
 DOOR_CANDIDATES = 16
 GRADE_SAMPLE_M = 0.5  # the slope check looks at pieces this long
 BRIDGE_STEP_M = 0.4  # a bridge between parts climbs at most this much more than its slope allows
+BEG_GAP_M = 0.4  # a beggar's foot point this far off the wall behind it (sitting, back to it)
+PREACH_GAP_M = 0.4  # the preacher on the fountain's step: this far off the basin
+PRAY_FREE_M = 0.6  # a kneeling figure keeps this much free in front of it
+PRAY_N = 4  # praying places in a row in front of the church portal
+PRAY_OUT_M = 3.4  # ... this far out from the portal, ``PRAY_STEP_M`` apart
+PRAY_STEP_M = 1.1
+PREACH_OUT_M = 0.9  # the preacher this far in front of the portal, facing the praying row
 NPC_SLOPE_DEG = 35.0  # steeper pieces stop a running character (autopilot, W6; begehung "steep")
 SKIP_HIGHWAYS = {"motorway", "motorway_link", "trunk", "trunk_link"}
 STAIRS = {"steps"}
@@ -142,6 +152,41 @@ class _Checks:
                 if self.free(x + dx * d, z + dz * d):
                     return (x + dx * d, z + dz * d)
         return None
+
+    def against_wall(
+        self,
+        spot: tuple[float, float],
+        gap: float,
+        owner: str = "",
+        facing: tuple[tuple[float, float], float] | None = None,
+    ) -> tuple[tuple[float, float], tuple[float, float]] | None:
+        """The place ``gap`` in front of the body nearest to ``spot`` (whose owner starts with
+        ``owner``), facing away from it: nothing else nearer, the ground ahead free. ``facing``
+        (direction, least cosine) limits which way the place may face."""
+        if self.tree is None:
+            return None
+        p = Point(spot)
+        near = [int(i) for i in self.tree.query(p.buffer(1.5)) if self.owners[i].startswith(owner)]
+        if not near:
+            return None
+        k = min(near, key=lambda i: self.polys[i].distance(p))
+        if self.polys[k].contains(p):
+            return None
+        q = nearest_points(self.polys[k].exterior, p)[0]
+        dx, dz = spot[0] - q.x, spot[1] - q.y
+        ln = math.hypot(dx, dz)
+        if ln < 1e-6:
+            return None
+        n = (dx / ln, dz / ln)
+        if facing is not None and n[0] * facing[0][0] + n[1] * facing[0][1] < facing[1]:
+            return None
+        at = (q.x + n[0] * gap, q.y + n[1] * gap)
+        pa = Point(at)
+        if any(self.polys[i].distance(pa) < gap - 0.02 for i in self.tree.query(pa.buffer(gap))):
+            return None
+        if not self.free(at[0] + n[0] * 1.0, at[1] + n[1] * 1.0):
+            return None
+        return at, n
 
     def line_free(self, a: tuple[float, float], b: tuple[float, float]) -> str | None:
         """None if the walk a -> b is fine, else the reason."""
@@ -620,12 +665,48 @@ def build_waynet(
     freepoints: dict[str, Wp] = {}
     for fp in _freepoints(fprefix, landmarks or {}):
         x, z = fp.pos[0], fp.pos[2]
-        if checks.free(x, z):
+        ahead = fp.free_ahead
+        if checks.free(x, z) and (
+            ahead == 0.0
+            or fp.dir is None
+            or checks.free(x + fp.dir[0] * ahead, z + fp.dir[2] * ahead)
+        ):
             freepoints[fp.name] = Wp(fp.name, (x, height(x, z), z), fp.dir)
         else:
             report["droppedPoints"].append(
                 {"at": [round(x, 2), round(z, 2)], "freepoint": fp.name, "reason": "blocked"}
             )
+    wp_names = sorted(points)
+    wp_xy = np.array([points[n].pos[::2] for n in wp_names]) if wp_names else np.zeros((0, 2))
+
+    def reachable(at: tuple[float, float]) -> bool:
+        """A waypoint within reach that a free, walkable line leads to (the way onto the place)."""
+        dist = np.hypot(wp_xy[:, 0] - at[0], wp_xy[:, 1] - at[1])
+        for k in np.argsort(dist)[:DOOR_CANDIDATES]:
+            t = (float(wp_xy[k, 0]), float(wp_xy[k, 1]))
+            if (
+                dist[k] <= DOOR_REACH_M
+                and checks.line_free(at, t) is None
+                and checks.grade_ok(at, t)
+            ):
+                return True
+        return False
+
+    for wall in _wall_freepoints(fprefix, landmarks or {}):
+        found = None
+        for spot in wall.spots:
+            got = checks.against_wall(spot, wall.gap, wall.owner, wall.facing)
+            if got is not None and reachable(got[0]):
+                found = got
+                break
+        if found is None:
+            at = [round(c, 2) for c in wall.spots[0]]
+            why = {"at": at, "freepoint": wall.name, "reason": "no free wall"}
+            report["droppedPoints"].append(why)
+            continue
+        (x, z), (nx, nz) = found
+        y = height(x, z) if wall.y is None else wall.y
+        freepoints[wall.name] = Wp(wall.name, (x, y, z), (nx, 0.0, nz))
 
     for pl in places:  # their freepoints (no edges, as every freepoint)
         if pl.get("kind") == "fp":
@@ -769,6 +850,19 @@ class _Fp:
     name: str
     pos: tuple[float, float, float]
     dir: tuple[float, float, float] | None
+    free_ahead: float = 0.0  # this much ground in front of it stays free too (kneeling)
+
+
+@dataclass
+class _WallFp:
+    """A freepoint with a wall right behind it: the first of ``spots`` that finds one."""
+
+    name: str
+    spots: list[tuple[float, float]]
+    gap: float
+    owner: str = ""  # only bodies whose owner starts with this
+    facing: tuple[tuple[float, float], float] | None = None
+    y: float | None = None  # its height where not the terrain's (the fountain's step)
 
 
 def _ring(
@@ -814,4 +908,46 @@ def _freepoints(site: str, lm: dict[str, Any]) -> list[_Fp]:
         d = d / (np.linalg.norm(d) or 1.0)
         p = (x - d[0] * 4.0, 0.0, z - d[1] * 4.0)  # inside the gate, facing out of town
         out.append(_Fp(f"FP_STAND_{site}_{name_part(key)}", p, (float(d[0]), 0.0, float(d[1]))))
+    if "church" in lm:  # praying in a row facing the portal, the preacher before it facing them
+        (px, pz), (nx, nz) = lm["church"]["portal"], lm["church"]["normal"]
+        tx, tz = -nz, nx
+        at = (px + nx * PREACH_OUT_M, 0.0, pz + nz * PREACH_OUT_M)
+        out.append(_Fp(f"FP_PREACH_{site}_KIRCHE_01", at, (nx, 0.0, nz)))
+        for k in range(PRAY_N):
+            s = (k - (PRAY_N - 1) / 2) * PRAY_STEP_M
+            p = (px + nx * PRAY_OUT_M + tx * s, 0.0, pz + nz * PRAY_OUT_M + tz * s)
+            out.append(_Fp(f"FP_PRAY_{site}_KIRCHE_{k + 1:02d}", p, (-nx, 0.0, -nz), PRAY_FREE_M))
+    return out
+
+
+FOUNTAIN_BEG_A = 0.3 + math.pi / 6 + math.pi  # between two rim seats, across from the preacher
+FOUNTAIN_PREACH_A = 0.3 + math.pi / 6
+
+
+def _wall_freepoints(site: str, lm: dict[str, Any]) -> list[_WallFp]:
+    """Places with a wall right behind them: beggars (sitting, back to the wall) beside the church
+    portal, on the market fountain's step and inside the town gates; the preacher on the
+    fountain's step, the basin behind him."""
+    out: list[_WallFp] = []
+    if "church" in lm:
+        out.append(_WallFp(f"FP_BEG_{site}_KIRCHE_01", [lm["church"]["beg"]], BEG_GAP_M))
+    if "marktbrunnen" in lm.get("fountains", {}) and "fountainStep" in lm:
+        x, z, _ = lm["fountains"]["marktbrunnen"]
+        y, r = lm["fountainStep"]
+        for kind, a in (("BEG", FOUNTAIN_BEG_A), ("PREACH", FOUNTAIN_PREACH_A)):
+            spot = (x + math.cos(a) * r, z + math.sin(a) * r)
+            gap = BEG_GAP_M if kind == "BEG" else PREACH_GAP_M
+            out.append(_WallFp(f"FP_{kind}_{site}_MARKTBRUNNEN_01", [spot], gap,
+                               "HANDMADE_MARKTBRUNNEN", y=y))  # fmt: skip
+    cx, cz = lm.get("centre", (0.0, 0.0))
+    for key in sorted(lm.get("towers", [])):
+        x, z = lm["gates"][key]
+        d = np.array([cx - x, cz - z])
+        d = d / (np.linalg.norm(d) or 1.0)  # into the town
+        t = (-d[1], d[0])
+        spots = [(x + d[0] * s + t[0] * a, z + d[1] * s + t[1] * a)
+                 for a in (2.5, -2.5, 3.5, -3.5, 4.5, -4.5) for s in (4.5, 5.5, 6.5)]  # fmt: skip
+        out.append(_WallFp(f"FP_BEG_{site}_{name_part(key)}_01",
+                           [(float(p), float(q)) for p, q in spots], BEG_GAP_M, "CITYWALL_",
+                           ((float(d[0]), float(d[1])), 0.5)))  # fmt: skip
     return out

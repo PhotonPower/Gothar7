@@ -1007,7 +1007,13 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
     Schlosses und die Zwinger-Pforte davor (Treppenrampen sind Kollisionskörper).
   - **Freepoints:** `FP_SIT` auf dem Brunnenrand (nach außen), `FP_DRINK` an den Brunnen,
     `FP_SMALLTALK` paarweise und `FP_ROAM` auf dem Marktplatz, `FP_STAND` innen an den Toren,
-    `FP_WATER` (Pflanzen gießen) an den Beeten des Pomeranzengartens.
+    `FP_WATER` (Pflanzen gießen) an den Beeten des Pomeranzengartens. Kirche (W7, Entscheidung Projektinhaber
+    2026-10-31: die Kirche bleibt ohne Innenraum): 4 `FP_PRAY_LEO_KIRCHE_NN` in einer Reihe 3,4 m vor dem Hauptportal
+    (Vorhalle), Blick zum Portal, je 0,6 m frei nach vorn; `FP_PREACH_LEO_KIRCHE_01` 0,9 m vor dem Portal mit Blick
+    zur Reihe; `FP_PREACH_LEO_MARKTBRUNNEN_01` auf der oberen Brunnenstufe, Becken im Rücken. `FP_BEG_…_01` sitzend,
+    Fußpunkt 0,4 m vor einer Wand (nächster Kollisionskörper, nichts anderes näher, 1 m davor frei, von einem
+    Wegpunkt aus gerade erreichbar): neben dem Kirchenportal (Seitenschiff-Wand), auf der Marktbrunnen-Stufe
+    gegenüber dem Prediger und innen an Oberem und Unterem Tor (Turm- bzw. Mauerseite, Blick in die Stadt).
   - **Eigentum:** alles Erzeugte mit `owner: "worldgen"`; Hand-Punkte, -Freepoints und -Kanten
     bleiben (ihre Namen vergibt der Generator nicht, er bindet sie an). Dauerhafte Korrekturen in
     `data/leonberg/waynet.json` (`remove`, `add`).
@@ -1126,7 +1132,8 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   frei (beim Eintreten sichtbar). In großen Räumen (> 60 m²) ein zweites Licht über dem Tisch bzw. der Mitte. Der Weg von der Tür zur
   Raummitte (1,3 m breit), 1,4 m hinter der Tür und der Schwenkbereich des Türblatts bleiben frei; das offene
   Türblatt zählt beim Prüfen der Wege als Hindernis. Freepoints im Raum: CAMPFIRE vor der Feuerstelle,
-  STAND am Slot einer Truhe (Ladentheke), LEAN an Wänden, SMALLTALK paarweise; jeder vom Raum-Wegpunkt aus in
+  STAND am Slot einer Truhe (Ladentheke), LEAN an Wänden, MUSIC 0,6 m vor einer Wand (Platz für einen Hocker
+  dahinter), sonst auf freiem Boden (Gasthof-Stube), SMALLTALK paarweise; jeder vom Raum-Wegpunkt aus in
   gerader Linie erreichbar. Wegpunkte: `WP_…_VOR` 0,9 m vor der Tür auf dem Gelände (verbunden mit dem
   Routinen-Wegpunkt: der Weg geht gerade durch die Öffnung statt schräg an der Laibung vorbei), `WP_…_TUER` in der
   Mitte der Türöffnung (verbunden mit `…_VOR`) und `WP_…_INNEN` 1,2 m im Raum (verbunden mit `…_TUER`): die Figur richtet sich vor dem schmalen Durchgang aus.

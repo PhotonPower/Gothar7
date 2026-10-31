@@ -1,8 +1,9 @@
 import json
+import math
 from dataclasses import dataclass
 
 import pytest
-from shapely.geometry import box
+from shapely.geometry import Point, box
 
 from gothar_worldgen.waynet.generate import build_waynet, building_short, name_part
 from gothar_worldgen.waynet.write import normalized, tidy, waynet_text
@@ -303,3 +304,82 @@ def test_an_island_reaches_an_edge_between_its_points():
     assert split and split[0].startswith("WP_LEO_MARKTSTRASSE_")
     foot = next(p for p in res.points if p.name == split[0])
     assert foot.pos[0] == pytest.approx(32.0) and foot.pos[2] == pytest.approx(0.0)
+
+
+def _church_and_gate():  # noqa: ANN202
+    """A church north of the street (portal on its south side at (30, 20)), the market fountain
+    (a basin ring) and a gate tower pair in a wall across the footway's end."""
+    church = Body("HANDMADE_KIRCHE", box(20, 20, 40, 32))
+    basin = Body(
+        "HANDMADE_MARKTBRUNNEN",
+        Point(-30.0, 20.0).buffer(2.6).difference(Point(-30, 20).buffer(2.4)),
+    )
+    tower_w = Body("CITYWALL_GATE_OBERES_TOR", box(-6, 44, -1.5, 50))
+    tower_e = Body("CITYWALL_GATE_OBERES_TOR", box(1.5, 44, 6, 50))
+    wall_w = Body("CITYWALL_WALL_00_00", box(-30, 46, -6, 48))
+    lm = {
+        "fountains": {"marktbrunnen": (-30.0, 20.0, 3.5)},
+        "fountainStep": (1.36, 3.0),
+        "gates": {"oberes_tor": (0.0, 47.0)},
+        "towers": ["oberes_tor"],
+        "centre": (0.0, 0.0),
+        "church": {"portal": (30.0, 20.0), "normal": (0.0, -1.0), "beg": (25.0, 19.6)},
+    }
+    return [HOUSE, church, basin, tower_w, tower_e, wall_w], lm
+
+
+def test_praying_row_faces_the_portal_and_the_preacher_faces_them():
+
+    bodies, lm = _church_and_gate()
+    res = run(bodies=bodies, landmarks=lm)
+    by = {p.name: p for p in res.freepoints}
+    pray = [by[f"FP_PRAY_LEO_KIRCHE_{k:02d}"] for k in range(1, 5)]
+    for p in pray:
+        assert p.dir == pytest.approx((0.0, 0.0, 1.0))  # towards the portal
+        ahead = Point(p.pos[0], p.pos[2] + 0.6)  # 0.6 m free in front: no body, no other place
+        assert all(b.poly.distance(ahead) > 0.3 for b in bodies)
+        assert all(math.dist(p.pos[::2], q.pos[::2]) >= 1.0 for q in pray if q is not p)
+    preach = by["FP_PREACH_LEO_KIRCHE_01"]
+    assert preach.dir == pytest.approx((0.0, 0.0, -1.0))  # the portal behind, the row ahead
+    assert all(p.pos[2] < preach.pos[2] < 20.0 for p in pray)
+
+
+def test_beggars_and_the_fountain_preacher_have_a_wall_right_behind():
+
+    bodies, lm = _church_and_gate()
+    res = run(bodies=bodies, landmarks=lm)
+    by = {p.name: p for p in res.freepoints}
+    names = ["FP_BEG_LEO_KIRCHE_01", "FP_BEG_LEO_MARKTBRUNNEN_01", "FP_BEG_LEO_OBERES_TOR_01",
+             "FP_PREACH_LEO_MARKTBRUNNEN_01"]  # fmt: skip
+    for n in names:
+        p = by[n]
+        at = Point(p.pos[0], p.pos[2])
+        near = min(b.poly.distance(at) for b in bodies)
+        assert near == pytest.approx(0.4, abs=0.02), n
+        behind = Point(p.pos[0] - p.dir[0] * 0.45, p.pos[2] - p.dir[2] * 0.45)
+        assert min(b.poly.distance(behind) for b in bodies) < 0.06, n  # the wall at the back
+    assert by["FP_BEG_LEO_KIRCHE_01"].dir == pytest.approx((0.0, 0.0, -1.0))
+    assert by["FP_BEG_LEO_OBERES_TOR_01"].dir[2] < -0.5  # into the town, back to the wall
+    for n in ("FP_BEG_LEO_MARKTBRUNNEN_01", "FP_PREACH_LEO_MARKTBRUNNEN_01"):
+        assert by[n].pos[1] == 1.36  # up on the fountain's step
+    assert math.dist(by[names[1]].pos[::2], by[names[3]].pos[::2]) > 5.0  # across the basin
+    assert not [d for d in res.report["droppedPoints"] if "BEG" in d.get("freepoint", "")]
+
+
+def test_a_beggar_without_a_free_wall_is_dropped_and_reported():
+    bodies, lm = _church_and_gate()
+    lm["church"]["beg"] = (30.0, 10.0)  # out on the open street: no wall near
+    res = run(bodies=bodies, landmarks=lm)
+    assert not any(p.name == "FP_BEG_LEO_KIRCHE_01" for p in res.freepoints)
+    assert any(d.get("freepoint") == "FP_BEG_LEO_KIRCHE_01" for d in res.report["droppedPoints"])
+
+
+def test_church_frame_turns_the_model_portal_into_the_world():
+    from gothar_worldgen.waynet.landmarks import CHURCH, church_frame
+
+    (mx, mz), _ = CHURCH["HANDMADE_KIRCHE"]
+    s = math.sqrt(0.5)  # a quarter turn about +Y: model +Z -> world +X
+    v = {"name": "HANDMADE_KIRCHE", "pos": [100.0, 0.0, 50.0], "rot": [0.0, s, 0.0, s]}
+    f = church_frame(v)
+    assert f["normal"] == pytest.approx((1.0, 0.0), abs=1e-9)
+    assert f["portal"] == pytest.approx((100.0 + mz, 50.0 - mx), abs=1e-9)
