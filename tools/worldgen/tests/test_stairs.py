@@ -1,11 +1,12 @@
 import math
+from pathlib import Path
 
 import numpy as np
 import pytest
 from shapely.geometry import LineString, box
 
 from gothar_worldgen.buildings.collision import body_is_closed
-from gothar_worldgen.buildings.stairs import plan_stair, ramp_body, stair_from_json
+from gothar_worldgen.buildings.stairs import plan_stair, ramp_body, reachable, stair_from_json
 
 ROOM = box(0.0, 0.0, 7.0, 6.0)  # counter-clockwise from shapely's box
 DOOR = (3.5, 0.0)  # in the middle of the south wall
@@ -68,3 +69,40 @@ def test_json_round_trip():
     back = stair_from_json(d)
     assert back.steps == st.steps and back.side_entry == st.side_entry
     assert np.allclose(back.foot, st.foot, atol=1e-3) and np.allclose(back.up, st.up, atol=1e-4)
+
+
+def test_with_the_storeys_walls_the_flight_keeps_off_partitions():
+    inner = box(0.0, 0.0, 9.0, 6.0)
+    chamber = box(4.0, 0.0, 9.0, 6.0)  # its west side is a partition, no wall upstairs
+    st = plan_stair(chamber, inner, 0.0, 3.0, [], [], (9.0, 3.0), walls=inner)
+    assert st is not None
+    along = LineString([st.at(-st.tread, 0.0), st.at(st.run, 0.0)])
+    assert inner.exterior.buffer(0.05).contains(along)  # along an outer wall all the way
+    assert plan_stair(chamber, inner, 0.0, 3.0, [], [], (9.0, 3.0), accept=lambda s: False) is None
+
+
+def test_reachable_needs_one_part_with_the_goals_and_most_of_the_floor():
+    walk = box(0.0, 0.0, 6.0, 4.0).union(box(7.0, 0.0, 8.0, 1.0))  # a corner cut off
+    assert reachable(walk, (1.0, 1.0), [(5.9, 3.9)])
+    assert not reachable(walk, (7.5, 0.5), [])  # the small part
+    assert not reachable(walk, (1.0, 1.0), [(7.5, 0.5)])  # a goal in the other part
+    assert not reachable(walk, (20.0, 20.0), [])
+
+
+def test_the_ways_to_the_foot_and_from_the_head():
+    from gothar_worldgen.buildings.medieval import _room_spec, _stair_ways, load_rules
+    from gothar_worldgen.buildings.stairs import Stair
+
+    spec = _room_spec(
+        load_rules(Path(__file__).resolve().parents[1] / "data" / "building_rules.json")
+    )
+    flight = Stair((10.0, 3.98), (-1.0, 0.0), (0.0, -1.0), 0.95, 16, 0.18, 0.26, 0.0, 2.88)
+    # a 1.4 m wide wing: beside the steps 0.45 m, too narrow to reach the foot at its end
+    narrow = box(0.0, 0.0, 6.0, 4.0).union(box(5.9, 2.6, 11.2, 4.0))
+    assert not _stair_ways(narrow, [], (3.0, 0.0), 0.3, spec)(flight)
+    wide = box(0.0, 0.0, 6.0, 4.0).union(box(5.9, 1.5, 11.2, 4.0))
+    assert _stair_ways(wide, [], (3.0, 0.0), 0.3, spec)(flight)
+    # upstairs the head in a corner cut off by the opening: no way into the storey
+    corner = Stair((6.0, 3.98), (1.0, 0.0), (0.0, -1.0), 0.95, 16, 0.18, 0.26, 0.0, 2.88)
+    hall = box(0.0, 0.0, 11.2, 4.0).difference(box(10.0, 0.0, 11.2, 2.9))
+    assert not _stair_ways(hall, [], (3.0, 0.0), 0.3, spec)(corner)

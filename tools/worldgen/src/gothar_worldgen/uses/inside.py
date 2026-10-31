@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -121,11 +121,14 @@ class InsideSpec:
     props: list[tuple[str, int]] = field(default_factory=list)  # (prop or "counter", count)
     bedside: bool = False  # a candle on a stool (the bedrooms upstairs)
     hearth_model: str = "hearth"  # what the fire is: an open hearth or an oven
+    stock: list[tuple[str, int]] = field(default_factory=list)  # each chamber's, as many as fit
 
 
 def inside_spec(spec: dict[str, Any], where: str) -> InsideSpec:
     """``uses.<use>.inside`` checked: mobs ``type:N`` (``N`` may be ``R``: the residents, at most
-    3), freepoints ``TYPE:N``, ``hearth``, props ``prop:N`` (``PROP_SIZE`` or ``counter``)."""
+    3), freepoints ``TYPE:N``, ``hearth``, props ``prop:N`` (``PROP_SIZE`` or ``counter``),
+    ``chamber``: props ``prop:N`` every chamber of a divided ground storey gets besides its
+    share (the trade's stores and tools; as many as fit, no failure for the rest)."""
     fire = spec.get("hearth", False)
     if isinstance(fire, str) and fire not in HEARTHS:
         raise UsesError(f"{where}: hearth {fire!r} must be true or one of {sorted(HEARTHS)}")
@@ -147,6 +150,11 @@ def inside_spec(spec: dict[str, Any], where: str) -> InsideSpec:
                 f"{where}: {item!r} must be prop:N (one of {sorted(PROP_SIZE)}, counter)"
             )
         out.props.append((kind, int(n)))
+    for item in spec.get("chamber", []):
+        kind, _, n = str(item).partition(":")
+        if kind not in PROP_SIZE or not n.isdigit():
+            raise UsesError(f"{where}: chamber {item!r} must be prop:N ({sorted(PROP_SIZE)})")
+        out.stock.append((kind, int(n)))
     return out
 
 
@@ -962,6 +970,11 @@ class _House:
         for kind, n in props.items():
             for _ in range(n):
                 self.place_prop(kind, hearth_at)
+        failed = len(self.plan.failed)
+        for kind, n in spec.stock:  # a chamber's stores: as many as fit
+            for _ in range(n):
+                self.place_prop(kind, hearth_at)
+        del self.plan.failed[failed:]
         # the lights last: windows, candles on the tables, lanterns where nothing tall stands
         self.window_lights()
         if spec.bedside:
@@ -1058,7 +1071,7 @@ def plan_inside(houses: Sequence[House], specs: dict[str, InsideSpec],
                 built = {"INNEN": _room(e, others)}
                 stair_way = _with_stairs(built, st, "INNEN")
                 house = _House(plan, h, built["INNEN"])
-                house.build(ground, routine_wps.get(h.id, ""))
+                house.build(replace(ground, stock=[]), routine_wps.get(h.id, ""))  # no chamber
                 stairs_room = f"WP_{room_tag(h)}"
             else:
                 stairs_room, stair_way = _divided(plan, h, e, ground, routine_wps.get(h.id, ""),
@@ -1077,7 +1090,7 @@ def _split_upstairs(spec: InsideSpec, residents: int) -> tuple[InsideSpec, Insid
     """Downstairs keeps the hearth, the tables, the freepoints and the stores; beds, chests,
     furs and hangings go upstairs."""
     down = InsideSpec(freepoints=list(spec.freepoints), hearth=spec.hearth,
-                      hearth_model=spec.hearth_model)  # fmt: skip
+                      hearth_model=spec.hearth_model, stock=list(spec.stock))  # fmt: skip
     up = InsideSpec()
     for kind, n in spec.mobs:
         (up if kind in UPSTAIRS_MOBS else down).mobs.append((kind, n))
@@ -1093,13 +1106,15 @@ PASSAGE_FRONT_M = 0.7  # the place before a passage: this far out from it (strai
 DETOUR_START_M = 0.2  # its first and last leg less: the waypoint at the stairs' head is at the
 # edge, a passage may be close
 DETOUR_CORNER_M = 1.0  # its corners this far out from them
+DETOUR_SAMPLE_M = 0.5  # without a way over the corners: places this far apart along the sides
 
 
 def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
-            room: Polygon) -> list[tuple[float, float]]:  # fmt: skip
+            room: Polygon, sample: bool = False) -> list[tuple[float, float]]:  # fmt: skip
     """Corners a straight way from ``a`` to ``b`` takes round ``obstacle`` (stairs, the opening
     in the floor above them) inside ``room``; empty if the straight way is clear (the engine
-    walks the waynet's edges as they are, unchecked)."""
+    walks the waynet's edges as they are, unchecked). With ``sample``, where no way over the
+    corners is found, places along the sides too (a corner beyond a wall)."""
     zone = obstacle.buffer(DETOUR_CLEAR_M)
     near = obstacle.buffer(DETOUR_START_M)
     if not LineString([a, b]).intersects(near):
@@ -1118,19 +1133,34 @@ def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
         keep = keep_a if p == a else keep_b if q == b else zone
         return not seg.intersects(keep) and room.buffer(0.15).contains(seg)  # ends at passages
 
-    best: tuple[float, list[tuple[float, float]]] | None = None
+    best = _shortest(a, b, corners, clear)
+    if best is None and sample:  # a corner beyond a wall (a head at the wall): along the sides
+        rim = obstacle.buffer(DETOUR_CORNER_M, join_style="mitre").exterior
+        n = max(4, int(rim.length / DETOUR_SAMPLE_M))
+        along = [rim.interpolate(k * rim.length / n) for k in range(n)]
+        more = [(q.x, q.y) for q in along if inside.contains(q)]
+        best = _shortest(a, b, corners + [q for q in more if q not in corners], clear)
+    return [] if best is None else best
+
+
+def _shortest(a: Pt, b: Pt, corners: Sequence[Pt],
+              clear: Callable[[Pt, Pt], bool]) -> list[Pt] | None:  # fmt: skip
+    """The shortest way from ``a`` to ``b`` over one or two of ``corners`` with ``clear`` legs."""
+    best: tuple[float, list[Pt]] | None = None
     for c in corners:
         if clear(a, c) and clear(c, b):
             d = math.dist(a, c) + math.dist(c, b)
             if best is None or d < best[0]:
                 best = (d, [c])
     for c in corners:
+        if not clear(a, c):
+            continue
         for e in corners:
-            if c != e and clear(a, c) and clear(c, e) and clear(e, b):
+            if c != e and clear(c, e) and clear(e, b):
                 d = math.dist(a, c) + math.dist(c, e) + math.dist(e, b)
                 if best is None or d < best[0]:
                     best = (d, [c, e])
-    return [] if best is None else best[1]
+    return None if best is None else best[1]
 
 
 def _round_about(plan: InsidePlan, h: House, base: str, a: str, b: str, start: tuple[float, float],
@@ -1163,7 +1193,7 @@ def _round_about(plan: InsidePlan, h: House, base: str, a: str, b: str, start: t
                     s = q
                     corners.append(q)
                     break
-        corners += _detour(s, goal, obstacle, room.poly)
+        corners += _detour(s, goal, obstacle, room.poly, sample=True)
         last = corners[-1] if corners else start
         if LineString([last, goal]).intersects(obstacle.buffer(-0.05)):
             plan.failed.append({"house": h.id, "what": f"way {a} to {b}",
@@ -1424,6 +1454,8 @@ def _divided(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, ro
     stairs_in = _stairs_room(r, st) if st is not None else order[0]
     stair_way = _with_stairs(built, st, stairs_in)
     shares = _share(spec, h.residents, len(order) - 1)
+    for share in shares[1:]:
+        share.stock = list(spec.stock)
     for k, (name, share) in enumerate(zip(order, shares, strict=True)):
         if name not in built:
             continue
