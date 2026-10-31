@@ -21,7 +21,10 @@ function leonberg_people()
                            -- welt Phase 1: die Handwerker und Händler
                            "npc_leo_baker_husband", "npc_leo_butcher", "npc_leo_joiner", "npc_leo_potter",
                            "npc_leo_goldsmith", "npc_leo_cloth_merchant", "npc_leo_tailor", "npc_leo_herbalist",
-                           "npc_leo_bather", "npc_leo_merchant_m", "npc_leo_merchant_f" }) do
+                           "npc_leo_bather", "npc_leo_merchant_m", "npc_leo_merchant_f",
+                           -- Kirche, Bettler und Musik
+                           "npc_leo_priest", "npc_leo_monk_1", "npc_leo_monk_2", "npc_leo_beggar_m",
+                           "npc_leo_beggar_f", "npc_leo_musician" }) do
         insert_npc(npc)
     end
 end

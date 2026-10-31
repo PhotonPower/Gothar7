@@ -168,8 +168,18 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
   - Sie arbeiten an den Freepoints ihres Hauses (`…_INNEN`) und verkaufen, was ihr Inventar hat (Waren von figuren F6).
   - Der Bader heilt für 20 Gulden.
   - Bäckerin, Krämerin und die Wache am Unteren Tor arbeiten jetzt drinnen.
-- Tätigkeiten an Freepoints: `zs_repair`, `zs_harvest`, `zs_smalltalk`, `zs_drink` (mit Krug), `zs_lean`, `zs_sit`,
-  `zs_stand_shop`, `zs_campfire` (am Ofen bzw. Herd).
+- Tätigkeiten an Freepoints: `zs_repair`, `zs_repair_saw` (Schreiner, `it_saw`), `zs_repair_shears` (Schneider,
+  `it_shears`), `zs_harvest`, `zs_smalltalk`, `zs_drink` (mit Krug), `zs_lean`, `zs_sit`, `zs_stand_shop`,
+  `zs_campfire` (am Ofen bzw. Herd).
+- **Kirche, Bettler, Musik** (figurens `church.glb`/`music.glb`, Freepoint-Typen world.md „Wegnetz“):
+  - Zustände `zs_pray` (kniend, `FP_PRAY`), `zs_pray_stand` (Mönche, `FP_PRAY`), `zs_preach` (`FP_PREACH`; Event
+    `beat` ohne Wirkung), `zs_beg` (`FP_BEG`), `zs_play_lute` (`FP_MUSIC`, `it_lute` bei `item_to_hand` bzw.
+    `item_from_hand`, Klang `lute_play`). Ohne Freepoint des Typs im Umkreis von 15 m spielen sie am Wegpunkt.
+  - Pfarrer Johannes (`priest`), die Brüder Anselm und Kilian (Set `monk`), Lumpen-Hannes und die alte Grete
+    (Sets `beggar_m`/`beggar_f`, Gilde `outcast`), Florian der Spielmann (`musician`; mittags am Markt, abends in der
+    Krummen Gans). Bis die Kirche begehbar ist, sind die Wegpunkte östlich der Kirche ihr Anker.
+  - Die sitzende Lautenvariante (`amb_play_lute_sit…`) steht im Graphen, ein Zustand dafür fehlt noch (braucht Bank
+    bzw. Hocker).
   - **Nachts** `zs_sleep` in der Kammer ihres Hauses: eigenes Bett, freies Bett oder der Boden (Abschnitt „NPCs benutzen
     Mobs“). Wer im Haus keinen Schlafplatz hat (Ratsdiener, Hauptmann am Oberen Tor), lehnt weiter am Haus.
 - **Stimme:** `gender` (`"m"`/`"f"`, Vorgabe `"m"`) und `voice` (Stimmgruppe, Vorgabe die Gilde) wählen die Stimme der Zurufe (`data/voices.lua`, audio.md „Sprache“).
@@ -178,7 +188,7 @@ class AiSystem { public: void fixedUpdate(world::World&, script::ScriptVm&, f64 
   die Standardfigur ein (Warnung).
 - `route_length(von, nach)`: Weglänge zwischen zwei Punkten bzw. `nil` (Prüfung der Routinen-Orte).
 - Tests (`test_engine_leonberg_residents.cpp`, eigener ctest-Eintrag wegen der Laufzeit): Die Orte aller `rtn_leo_*`
-  stehen in Leonbergs Wegnetz (auch in der CI); mit den erzeugten Daten (lokal) ein Spieltag mit allen neunzehn, jeder
+  stehen in Leonbergs Wegnetz (auch in der CI); mit den erzeugten Daten (lokal) ein Spieltag mit allen 25, jeder
   zur rechten Zeit am rechten Ort.
 
 ## Türen (für welts begehbare Häuser)

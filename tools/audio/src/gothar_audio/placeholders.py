@@ -262,6 +262,39 @@ def mug_clink(rng: random.Random) -> Samples:
     return normalise(ring, 0.5)
 
 
+def pluck(hz: float, seconds: float, rng: random.Random, damping: float = 0.996) -> Samples:
+    """A plucked string (Karplus-Strong): a burst of noise circulating in a delay line of one period."""
+    period = max(2, round(22050 / hz))
+    line = [rng.uniform(-1.0, 1.0) for _ in range(period)]
+    out: Samples = []
+    for i in range(int(seconds * 22050)):
+        x = line[i % period]
+        line[i % period] = damping * 0.5 * (x + line[(i + 1) % period])
+        out.append(x)
+    return fade(out, 0.002, 0.05)
+
+
+def lute_play(rng: random.Random) -> Samples:
+    """Four seconds of lute (one loop of amb/s_play_lute): sixteen plucked eighths in D dorian, 120 BPM."""
+    scale = [146.83, 164.81, 174.61, 196.0, 220.0, 246.94, 261.63, 293.66, 329.63, 349.23]
+    step = 0.25
+    out = [0.0] * int(4.0 * 22050)
+    degree = 4
+    for n in range(16):
+        if n % 4 == 0:
+            degree = [0, 3, 4, 0][n // 4] + 2  # a chord tone on each beat: D, G, A, D
+        else:
+            degree = min(max(degree + rng.choice([-2, -1, 1, 2]), 0), len(scale) - 1)
+        tail = min(1.2, 4.0 - n * step)  # rings on, but the loop ends after four seconds
+        note = pluck(scale[degree], tail, rng)
+        if n % 4 == 0:  # the bass string under the beat
+            note = mix((note, 1.0), (pluck(scale[[0, 3, 4, 0][n // 4]] / 2.0, tail, rng), 0.6))
+        at = int(n * step * 22050)
+        for i, x in enumerate(note):
+            out[at + i] += x * (1.0 if n % 4 == 0 else 0.7)
+    return normalise(fade(lowpass(out, 3500.0), 0.005, 0.05), 0.7)
+
+
 def frog(rng: random.Random) -> Samples:
     croak = [
         x * (1.0 if (i // 300) % 2 else 0.3) for i, x in enumerate(lowpass(tone(240.0, 0.35, "saw"), 1200.0))
@@ -340,6 +373,7 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "dog_bark": dog_bark,
     "wood_creak": wood_creak,
     "mug_clink": mug_clink,
+    "lute_play": lute_play,
     "frog": frog,
     "amb_wind": amb_wind,
     "amb_camp": amb_camp,

@@ -425,9 +425,11 @@ TEST_CASE("Engine mobs: forging at the anvil, sleeping in the bed")
     const auto anvil = engine.findMob("LAGER_AMBOSS");
     REQUIRE(anvil.has_value());
     run(engine, "on('item_crafted', function(recipe) Story.crafted = recipe end)");
+    CHECK_FALSE(engine.playerHolds("socket_hand_r"));
     REQUIRE(engine.useMob(*anvil).ok());
     REQUIRE(runUntilPhase(engine, "loop"));
     CHECK(engine.playerAnimationState() == "anvil_loop");
+    CHECK(engine.playerHolds("socket_hand_r")); // the hammer (mobs.toml item, item_to_hand of t_start)
     REQUIRE(engine.mobChoices() == std::vector<std::string>{"Grobes Schwert"});
     const auto missing = engine.chooseMobOption(0);
     REQUIRE_FALSE(missing.ok());
@@ -445,6 +447,7 @@ TEST_CASE("Engine mobs: forging at the anvil, sleeping in the bed")
     CHECK(engine.mobChoices().size() == 1); // again
     engine.mobCommand(MobCommand::Leave);
     CHECK(runMobUse(engine, "leave"));
+    CHECK_FALSE(engine.playerHolds("socket_hand_r")); // put away at item_from_hand of t_stop
 
     // Bed: at 22:00 hurt, sleep until morning: day after, 08:00, hit points full; he gets up by himself.
     run(engine, "time(22, 0)");

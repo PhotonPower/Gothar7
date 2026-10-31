@@ -32,6 +32,9 @@ struct MobType
     std::string leave; ///< "t_close"
     /// Further loops the mechanics choose ("picklock").
     std::map<std::string, std::string, std::less<>> extra;
+    /// Item instance in the user's right hand (socket_hand_r) from the clips' item_to_hand to item_from_hand
+    /// ("it_hammer" at the anvil); empty: none.
+    std::string item;
     std::vector<MobSlot> slots;
 
     /// "mob/chest/t_open" for "t_open"; empty for an empty name.

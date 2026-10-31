@@ -25,6 +25,8 @@ sets = [
     "characters/anims/human/torch.glb",
     "characters/anims/human/gait.glb",
     "characters/anims/human/dlg.glb",
+    "characters/anims/human/church.glb",
+    "characters/anims/human/music.glb",
 ]
 start = "move"
 # Abspielrate = Parameter / Eigengeschwindigkeit der Clips (`speed` in <set>.events.toml), damit die Füße nicht
@@ -287,6 +289,19 @@ points = [{ value = 0.0, clip = "dive/s_idle" }, { value = 1.6, clip = "dive/s_f
 
 # Tagesabläufe (M9 Teil B): Die Engine schaltet diese Zustände selbst (npc_play): amb_<x>_in, amb_<x>, amb_<x>_out;
 # ohne _in/_out direkt die Schleife. Reaktionen und Stand-Varianten ebenso.
+# Kirche (figuren church.glb): betteln am Boden; beten und predigen weiter unten.
+[[state]]
+name = "amb_beg_in"
+clip = "amb/t_beg_in"
+
+[[state]]
+name = "amb_beg"
+clip = "amb/s_beg"
+
+[[state]]
+name = "amb_beg_out"
+clip = "amb/t_beg_out"
+
 [[state]]
 name = "amb_campfire_warm"
 clip = "amb/s_campfire_warm"
@@ -346,6 +361,52 @@ clip = "amb/t_lean_wall_out"
 [[state]]
 name = "amb_listen"
 clip = "amb/s_listen"
+
+# Musiker (figuren music.glb): die Laute (it_lute) per item_to_hand/item_from_hand, stehend oder sitzend.
+[[state]]
+name = "amb_play_lute_in"
+clip = "amb/t_play_lute_in"
+
+[[state]]
+name = "amb_play_lute"
+clip = "amb/s_play_lute"
+
+[[state]]
+name = "amb_play_lute_out"
+clip = "amb/t_play_lute_out"
+
+[[state]]
+name = "amb_play_lute_sit_in"
+clip = "amb/t_play_lute_sit_in"
+
+[[state]]
+name = "amb_play_lute_sit"
+clip = "amb/s_play_lute_sit"
+
+[[state]]
+name = "amb_play_lute_sit_out"
+clip = "amb/t_play_lute_sit_out"
+
+# Kirche: kniend beten, stehend beten (Mönche), predigen (Event beat ohne Wirkung).
+[[state]]
+name = "amb_pray_in"
+clip = "amb/t_pray_in"
+
+[[state]]
+name = "amb_pray"
+clip = "amb/s_pray"
+
+[[state]]
+name = "amb_pray_out"
+clip = "amb/t_pray_out"
+
+[[state]]
+name = "amb_pray_stand"
+clip = "amb/s_pray_stand"
+
+[[state]]
+name = "amb_preach"
+clip = "amb/s_preach"
 
 [[state]]
 name = "amb_repair_kneel"
