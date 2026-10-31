@@ -135,43 +135,45 @@ Routine "rtn_leo_merchant_f" {
 }
 
 -- --- Kirche, Bettler und Musik (figurens church.glb und music.glb) --------------------------------------------
--- Die Kirche ist noch nicht begehbar: Anker ist der Wegpunkt östlich der Kirche; sobald welts Freepoints FP_PRAY,
--- FP_PREACH, FP_BEG und FP_MUSIC da sind, gehen die Leute im Umkreis dorthin, sonst tun sie es am Wegpunkt.
--- Das Pfarrhaus hat noch keinen Schlafplatz: zs_sleep fällt dort auf den Boden zurück.
+-- Orte sind welts Freepoints (#298): Die Kirche hat keinen Innenraum (Entscheidung Projektinhaber 2026-10-31); man
+-- betet in einer Reihe vor dem Hauptportal (FP_PRAY), gepredigt wird am Portal und am Marktbrunnen (FP_PREACH),
+-- gebettelt an Kirche, Marktbrunnen und den Toren (FP_BEG), gespielt in der Stube der Krummen Gans (FP_MUSIC).
+-- Ist der genannte Freepoint belegt, nimmt npc_goto_freepoint den nächsten freien des Typs (15 m).
+-- Das Pfarrhaus hat noch keinen Schlafplatz: zs_sleep fällt dort auf den Boden zurück (bis welt es begehbar macht).
 Routine "rtn_leo_priest" {
-    { from = "06:00", to = "08:00", state = "zs_pray", at = "wp_leo_bei_der_stadtkirche_004" },
-    { from = "08:00", to = "11:00", state = "zs_preach", at = "wp_leo_bei_der_stadtkirche_004" },
-    { from = "11:00", to = "13:00", state = "zs_preach", at = "wp_leo_marktplatz_013" },
+    { from = "06:00", to = "08:00", state = "zs_pray", at = "fp_pray_leo_kirche_01" },
+    { from = "08:00", to = "11:00", state = "zs_preach", at = "fp_preach_leo_kirche_01" },
+    { from = "11:00", to = "13:00", state = "zs_preach", at = "fp_preach_leo_marktbrunnen_01" },
     { from = "13:00", to = "17:00", state = "zs_sweep", at = "wp_leo_pfarrhaus_ziu" },
-    { from = "17:00", to = "20:00", state = "zs_pray", at = "wp_leo_bei_der_stadtkirche_004" },
+    { from = "17:00", to = "20:00", state = "zs_pray", at = "fp_pray_leo_kirche_01" },
     { from = "20:00", to = "06:00", state = "zs_sleep", at = "wp_leo_pfarrhaus_ziu" },
 }
 
 Routine "rtn_leo_monk_1" {
-    { from = "05:00", to = "09:00", state = "zs_pray_stand", at = "wp_leo_bei_der_stadtkirche_003" },
+    { from = "05:00", to = "09:00", state = "zs_pray_stand", at = "fp_pray_leo_kirche_02" },
     { from = "09:00", to = "13:00", state = "zs_sweep", at = "wp_leo_pfarrhaus_ziu" },
-    { from = "13:00", to = "18:00", state = "zs_pray_stand", at = "wp_leo_bei_der_stadtkirche_003" },
+    { from = "13:00", to = "18:00", state = "zs_pray_stand", at = "fp_pray_leo_kirche_02" },
     { from = "18:00", to = "21:00", state = "zs_stand", at = "wp_leo_pfarrhaus_ziu" },
     { from = "21:00", to = "05:00", state = "zs_sleep", at = "wp_leo_pfarrhaus_ziu" },
 }
 
 Routine "rtn_leo_monk_2" {
-    { from = "05:00", to = "12:00", state = "zs_pray_stand", at = "wp_leo_bei_der_stadtkirche_005" },
+    { from = "05:00", to = "12:00", state = "zs_pray_stand", at = "fp_pray_leo_kirche_03" },
     { from = "12:00", to = "16:00", state = "zs_stand", at = "wp_leo_marktplatz_013" },
-    { from = "16:00", to = "20:00", state = "zs_pray_stand", at = "wp_leo_bei_der_stadtkirche_005" },
+    { from = "16:00", to = "20:00", state = "zs_pray_stand", at = "fp_pray_leo_kirche_03" },
     { from = "20:00", to = "05:00", state = "zs_sleep", at = "wp_leo_pfarrhaus_ziu" },
 }
 
 Routine "rtn_leo_beggar_m" { -- schläft an der Kirchenmauer
-    { from = "07:00", to = "12:00", state = "zs_beg", at = "wp_leo_bei_der_stadtkirche_004" },
-    { from = "12:00", to = "18:00", state = "zs_beg", at = "wp_leo_marktplatz_013" },
+    { from = "07:00", to = "12:00", state = "zs_beg", at = "fp_beg_leo_kirche_01" },
+    { from = "12:00", to = "18:00", state = "zs_beg", at = "fp_beg_leo_marktbrunnen_01" },
     { from = "18:00", to = "22:00", state = "zs_sit", at = "fp_sit_leo_marktbrunnen_04" },
     { from = "22:00", to = "07:00", state = "zs_sleep", at = "wp_leo_bei_der_stadtkirche_006" },
 }
 
-Routine "rtn_leo_beggar_f" {
-    { from = "08:00", to = "13:00", state = "zs_beg", at = "wp_leo_marktplatz_013" },
-    { from = "13:00", to = "19:00", state = "zs_beg", at = "wp_leo_wache_zh5" }, -- am Unteren Tor
+Routine "rtn_leo_beggar_f" { -- an den Toren
+    { from = "08:00", to = "13:00", state = "zs_beg", at = "fp_beg_leo_oberes_tor_01" },
+    { from = "13:00", to = "19:00", state = "zs_beg", at = "fp_beg_leo_unteres_tor_01" },
     { from = "19:00", to = "22:00", state = "zs_sit", at = "fp_sit_leo_obeliskbrunnen_02" },
     { from = "22:00", to = "08:00", state = "zs_sleep", at = "wp_leo_bei_der_stadtkirche_006" },
 }
@@ -179,6 +181,6 @@ Routine "rtn_leo_beggar_f" {
 Routine "rtn_leo_musician" { -- spielt mittags am Markt, abends in der Krummen Gans; schläft oben, wo Platz ist
     { from = "10:00", to = "13:00", state = "zs_play_lute", at = "wp_leo_marktplatz_001" },
     { from = "13:00", to = "17:00", state = "zs_drink", at = "wp_leo_gasthaus_zhe" },
-    { from = "17:00", to = "02:00", state = "zs_play_lute", at = "wp_leo_gasthaus_zhe_innen" },
+    { from = "17:00", to = "02:00", state = "zs_play_lute", at = "fp_music_leo_gasthaus_zhe_innen_01" },
     { from = "02:00", to = "10:00", state = "zs_sleep", at = "wp_leo_gasthaus_zhe_oben_kammer" },
 }
