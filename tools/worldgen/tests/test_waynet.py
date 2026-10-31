@@ -3,7 +3,7 @@ import math
 from dataclasses import dataclass
 
 import pytest
-from shapely.geometry import Point, box
+from shapely.geometry import LineString, Point, box
 
 from gothar_worldgen.waynet.generate import build_waynet, building_short, name_part
 from gothar_worldgen.waynet.write import normalized, tidy, waynet_text
@@ -359,7 +359,11 @@ def test_beggars_and_the_fountain_preacher_have_a_wall_right_behind():
         behind = Point(p.pos[0] - p.dir[0] * 0.45, p.pos[2] - p.dir[2] * 0.45)
         assert min(b.poly.distance(behind) for b in bodies) < 0.06, n  # the wall at the back
     assert by["FP_BEG_LEO_KIRCHE_01"].dir == pytest.approx((0.0, 0.0, -1.0))
-    assert by["FP_BEG_LEO_OBERES_TOR_01"].dir[2] < -0.5  # into the town, back to the wall
+    gate = by["FP_BEG_LEO_OBERES_TOR_01"]
+    assert gate.dir[2] < -0.5  # into the town, back to the wall
+    sight = LineString([(gate.pos[0], gate.pos[2]), (0.0, 43.0)])  # the passage's town end
+    assert not any(b.poly.intersects(sight) for b in bodies)
+    assert math.dist(gate.pos[::2], (0.0, 43.0)) < 4.0  # beside it, not somewhere along the wall
     for n in ("FP_BEG_LEO_MARKTBRUNNEN_01", "FP_PREACH_LEO_MARKTBRUNNEN_01"):
         assert by[n].pos[1] == 1.36  # up on the fountain's step
     assert math.dist(by[names[1]].pos[::2], by[names[3]].pos[::2]) > 5.0  # across the basin

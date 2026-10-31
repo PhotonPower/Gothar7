@@ -19526,8 +19526,8 @@
     "freepoints": [
       {"name":"FP_BEG_LEO_KIRCHE_01","pos":[-133.56773,-0.23794,-39.75128],"dir":[-0.00436,0.0,0.99999],"owner":"worldgen"},
       {"name":"FP_BEG_LEO_MARKTBRUNNEN_01","pos":[-2.05031,0.407,-2.22328],"dir":[-0.45703,0.0,-0.88945],"owner":"worldgen"},
-      {"name":"FP_BEG_LEO_OBERES_TOR_01","pos":[91.07498,-3.150591,46.91892],"dir":[-0.99228,0.0,-0.12404],"owner":"worldgen"},
-      {"name":"FP_BEG_LEO_UNTERES_TOR_01","pos":[-99.93333,-4.14505,-153.6564],"dir":[0.56149,0.0,0.82748],"owner":"worldgen"},
+      {"name":"FP_BEG_LEO_OBERES_TOR_01","pos":[87.41578,-3.259986,49.92456],"dir":[-0.9728,0.0,0.23165],"owner":"worldgen"},
+      {"name":"FP_BEG_LEO_UNTERES_TOR_01","pos":[-99.07003,-4.13244,-154.35516],"dir":[0.96192,0.0,0.27333],"owner":"worldgen"},
       {"name":"FP_CAMPFIRE_LEO_BADER_ZHK_INNEN_01","pos":[35.55855,-3.302,46.39029],"dir":[-0.998368,0.0,-0.05711],"owner":"worldgen"},
       {"name":"FP_CAMPFIRE_LEO_BAECKER_ZJW_INNEN_01","pos":[26.803474,0.11,-16.632643],"dir":[-0.995627,0.0,0.09342],"owner":"worldgen"},
       {"name":"FP_CAMPFIRE_LEO_GASTHAUS_ZHE_INNEN_01","pos":[-89.34812,-1.31,22.974167],"dir":[0.31137,0.0,-0.95029],"owner":"worldgen"},

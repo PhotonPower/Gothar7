@@ -694,11 +694,18 @@ def build_waynet(
 
     for wall in _wall_freepoints(fprefix, landmarks or {}):
         found = None
+        best = math.inf
         for spot in wall.spots:
             got = checks.against_wall(spot, wall.gap, wall.owner, wall.facing)
-            if got is not None and reachable(got[0]):
+            if got is None or not reachable(got[0]):
+                continue
+            if wall.near is None:
                 found = got
                 break
+            d = math.dist(got[0], wall.near)  # the nearest place in sight of ``near``
+            seen = checks.line_free(got[0], wall.near) is None
+            if d < best and seen and checks.grade_ok(got[0], wall.near):
+                found, best = got, d
         if found is None:
             at = [round(c, 2) for c in wall.spots[0]]
             why = {"at": at, "freepoint": wall.name, "reason": "no free wall"}
@@ -863,6 +870,7 @@ class _WallFp:
     owner: str = ""  # only bodies whose owner starts with this
     facing: tuple[tuple[float, float], float] | None = None
     y: float | None = None  # its height where not the terrain's (the fountain's step)
+    near: tuple[float, float] | None = None  # else the place nearest this, in a free line
 
 
 def _ring(
@@ -944,10 +952,11 @@ def _wall_freepoints(site: str, lm: dict[str, Any]) -> list[_WallFp]:
         x, z = lm["gates"][key]
         d = np.array([cx - x, cz - z])
         d = d / (np.linalg.norm(d) or 1.0)  # into the town
-        t = (-d[1], d[0])
-        spots = [(x + d[0] * s + t[0] * a, z + d[1] * s + t[1] * a)
-                 for a in (2.5, -2.5, 3.5, -3.5, 4.5, -4.5) for s in (4.5, 5.5, 6.5)]  # fmt: skip
-        out.append(_WallFp(f"FP_BEG_{site}_{name_part(key)}_01",
-                           [(float(p), float(q)) for p, q in spots], BEG_GAP_M, "CITYWALL_",
-                           ((float(d[0]), float(d[1])), 0.5)))  # fmt: skip
+        # beside the passage's town end (where FP_STAND is), in sight of it, facing the town
+        near = (float(x + d[0] * 4.0), float(z + d[1] * 4.0))
+        turns = np.linspace(0, 2 * math.pi, 36, endpoint=False)
+        spots = [(near[0] + math.cos(a) * r, near[1] + math.sin(a) * r)
+                 for r in np.arange(1.0, 8.01, 0.5) for a in turns]  # fmt: skip
+        out.append(_WallFp(f"FP_BEG_{site}_{name_part(key)}_01", spots, BEG_GAP_M, "CITYWALL_",
+                           ((float(d[0]), float(d[1])), 0.5), near=near))  # fmt: skip
     return out
