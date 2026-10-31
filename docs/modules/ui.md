@@ -41,11 +41,13 @@ public:
   Vob-Liste, generischer Inspektor aus `EditorField`s, Modell-Liste, Gizmo-Einstellungen, Aktionen; der Editor
   (`tools/editor`) füllt und liest sie.
 
-## Plan M14 (Vorschlag engine, 2026-11-01 – wartet auf Freigabe)
-Grundlage: ADR 0009 (angenommen: eigenes Retained-Mode-UI, RmlUi verworfen, ImGui nur Debug/Editor) und die
-Festlegungen des Projektinhabers vom 2026-10-31 (Inventar mit 3D-Vorschau je Zelle nach `inventory_views.toml` v2,
-keine PNG-Symbole; Lautstärken im Optionsmenü). Offene Gestaltungsfragen stehen am Ende („Fragen an den
-Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelten die als Platzhalter markierten Werte.
+## Plan M14 (freigegeben, 2026-11-01)
+Grundlage: ADR 0009 (angenommen: eigenes Retained-Mode-UI, RmlUi verworfen, ImGui nur Debug/Editor), ADR 0020
+(angenommen: MSDF-Atlas mit msdfgen im Cooker) und die Festlegungen des Projektinhabers vom 2026-10-31
+(Inventar mit 3D-Vorschau je Zelle nach `inventory_views.toml` v2, keine PNG-Symbole; Lautstärken im Optionsmenü)
+und vom 2026-11-01 (Gestaltung, siehe „Festlegungen des Projektinhabers“ am Ende; im Text als F1–F12 zitiert).
+Zahlenwerte in den Beispielen (Farben, Größen, Zellgröße) sind Startwerte von engine und bleiben in den Daten
+einstellbar.
 
 ### Grundsätze
 - **Schichten:** Alles Neue liegt in `ui` (abhängig nur von `core`, `platform`, `render` – die Tabelle in
@@ -69,7 +71,7 @@ Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelte
   |---|---|---|
   | `assets/source/ui/style.toml` | Farben, Schriften und Größen je Textrolle, Rahmen (9-Slice), Balkenfarben, Klänge je UI-Ereignis, Licht der Item-Vorschau | engine (Werte nach Wunsch des Projektinhabers) |
   | `assets/source/ui/layout.toml` | je Bildschirm Anker, Größen, Abstände, Spalten, Zellgröße, Reiter des Inventars | engine |
-  | `assets/source/ui/frames/*.png` | 9-Slice-Rahmen, Balken, Hintergründe (Platzhalter bis zur Stilentscheidung) | engine bzw. Projektinhaber |
+  | `assets/source/ui/frames/*.png` | 9-Slice-Rahmen, Balken, Hintergründe – dunkel wie Gothic (Holz, Leder, Pergament; F2): erst Platzhalter von engine, später eigene Vorlagen | engine, später Projektinhaber |
   | `assets/source/fonts/<name>.ttf` + `<name>.font.toml` + `OFL.txt` | Schrift und Erzeugungsparameter (Zeichensatz, Größe, Distanzbereich) | engine |
   | `assets/source/text/ui.<sprache>.toml` | UI-Texte nach Schlüssel (`UI_INVENTORY_TITLE = "Inventar"`) | engine |
   | `assets/source/text/script.<sprache>.json` | Übersetzungen der Inhaltstexte aus Lua (Teil G, Vorschlag) | `gothar-voice scan` (engine) |
@@ -114,7 +116,7 @@ Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelte
   anchor = "right"
   columns = 5
   cell = 104                  # UI-Einheiten, quadratisch
-  tabs = [                    # Platzhalter, Gruppierung siehe Frage 4
+  tabs = [                    # Reiter wie Gothic 1 (F4); Gruppierung als Startwert
     { key = "UI_TAB_WEAPONS", categories = ["melee_1h", "melee_2h", "bow", "crossbow", "ammo"] },
     { key = "UI_TAB_ARMOR", categories = ["armor", "helmet"] },
     { key = "UI_TAB_MAGIC", categories = ["rune", "scroll"] },
@@ -170,10 +172,9 @@ Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelte
   Umrisse und Kerning liest `stb_truetype`, gepackt wird mit `stb_rect_pack` (beide aus `stb`, schon Abhängigkeit).
   Ausgabe `fonts/<name>.g7font` (Atlas unkomprimiert + zstd; BC7/UASTC würde die Distanzwerte zerstören). Die
   Laufzeit braucht keine neue Bibliothek. Zeichensatz: Basis-Latein, Latin-1 (ä ö ü ß …), „ “ ‚ ‘ – — … · €;
-  fehlende Glyphe → Ersatzzeichen und einmal Warnung. Wird ADR 0020 abgelehnt: Einkanal-SDF über
-  `stbtt_GetGlyphSDF` (keine neue Abhängigkeit, etwas weichere Ecken in großen Überschriften), gleiches Format mit
-  `kind = "sdf"`.
-- **Schrift (Vorschlag, Entscheidung Projektinhaber, Frage 1):** **Alegreya** (Fließtext) und **Alegreya SC**
+  fehlende Glyphe → Ersatzzeichen und einmal Warnung. ADR 0020 ist angenommen (F12); `msdfgen` kommt in
+  `vcpkg.json` und `docs/05-build.md`, gelinkt nur an `g7-cook`.
+- **Schrift (F1, festgelegt):** **Alegreya** (Fließtext) und **Alegreya SC**
   (Überschriften), beide SIL Open Font License 1.1, Quelle github.com/huertatipografica/Alegreya. Lizenztext
   `assets/source/fonts/OFL.txt`, Eintrag in `assets/LICENSES.md` (neuer Abschnitt „Schriften“). Die OFL erlaubt das
   Bündeln mit dem Spiel; der erzeugte Atlas ist eine abgeleitete Fassung und bleibt unter OFL (kein reservierter
@@ -221,7 +222,7 @@ Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelte
   Bild↑/Bild↓ bzw. Q/E Reiter), Gamepad (Steuerkreuz und linker Stick mit `stick_deadzone`, Süd bestätigt, Ost
   zurück, Schultertasten Reiter, Start Menü), Maus (Zeigen setzt den Fokus, Klick bestätigt, Rad scrollt). Halten
   wiederholt nach `nav_repeat_delay` (0,35 s) alle `nav_repeat_rate` (0,08 s). Das zuletzt benutzte Gerät bestimmt
-  die Tastenhinweise (zunächst Text wie „[Strg] Benutzen“ bzw. „(A) Benutzen“, Frage 11).
+  die Tastenhinweise (vorerst als Text wie „[Strg] Benutzen“ bzw. „(A) Benutzen“, F11).
 - **Tests:** `test_layout.cpp` (Anker, Skalierung, Clipping), `test_navigation.cpp` (Raster, Listen mit Scrollen,
   räumliche Suche, Wiederholung), `test_screens.cpp` (Stapel, Sperren der Spielsteuerung, Esc schließt den
   obersten Bildschirm).
@@ -234,25 +235,28 @@ Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelte
   `docs/script-api.md` generiert).
 - **Modelle (Skizze):**
   ```cpp
-  struct HudModel { f32 hp, hpMax, mana, manaMax;
+  struct HudModel { f32 hp, hpMax; std::optional<Vec2> mana;  // (mana, max), nur mit Magie (F3)
                     std::optional<f32> air;                // nur beim Tauchen
                     std::optional<EnemyBar> enemy;         // Name + Leben des Ziels im Kampf
                     std::optional<FocusLabel> focus; };    // Name + Bildschirmposition
   struct DialogModel { std::string speaker, line; std::vector<std::string> options; i32 selected; };
   struct SubtitleModel { std::string speaker, text; bool ambient; };   // ambient: Zurufe (SVM)
   ```
-- **HUD:** Platzhalter-Lage nach Gothic 1 (Leben unten links, Mana unten rechts, Gegnerleben oben mittig, Luft
-  über dem Lebensbalken; alles in `layout.toml`, Frage 3). Der Fokusname über dem Ziel ersetzt
-  `DebugUi::focusLabel`.
-- **Meldungen:** Warteschlange mit den Arten `center` („Erfahrung +50“, „Stufe 3“) und `log` („Apfel erhalten“);
-  Lua: `screen_message(text: string, kind?: string, seconds?: number)`. Die Texte bleiben Inhalt in Lua
-  (Ereignisse `level_up`, `item_taken` …), die Engine zeigt nur an (Frage 7).
+- **HUD (F3):** wie Gothic 1 – Leben unten links, Mana unten rechts **nur, wenn der Held Magie hat**
+  (Magiekreis ≥ 1 oder eine Rune bzw. Spruchrolle; das Modell bekommt `std::optional` für Mana), Gegnerleben oben
+  mittig; Luft beim Tauchen über dem Lebensbalken; **keine Uhr, kein Kompass**. Lage in `layout.toml`. Der
+  Fokusname über dem Ziel ersetzt `DebugUi::focusLabel`.
+- **Meldungen (F7):** **oben mittig, 3 s** je Meldung (`layout.toml`/`style.toml`), mehrere untereinander, die
+  älteste zuerst ausgeblendet („Erfahrung +50“, „Stufe 3“, „Apfel erhalten“). Lua:
+  `screen_message(text: string, seconds?: number)` (Vorgabe 3 s). Die Texte bleiben Inhalt in Lua (Ereignisse
+  `level_up`, `item_taken` …), die Engine zeigt nur an.
 - **Dialog:** ersetzt `DialogPanel`; Entscheidung E3 aus M10 bleibt (wie Gothic 1: Pfeiltasten oder Maus, die
   Aktion wählt). Die Auswahl steht als Liste unten, die gesprochene Zeile als Untertitel mit Sprechername.
   Dialogkamera, Gesten, Lippensync und das Absenken der Musik (M10/M13) bleiben unverändert; ein Untertitel steht so
   lange wie der Take, ohne Take wie heute nach Textlänge.
-- **Untertitel:** `[ui] subtitles = true` (Optionsmenü); Text aus `lines.<sprache>.json`, sonst der Quelltext.
-  Ob auch Zurufe und Umgebungsgespräche Untertitel bekommen, entscheidet der Projektinhaber (Frage 6).
+- **Untertitel (F6):** **standardmäßig an** (`[ui] subtitles = true`, Optionsmenü), **mit Sprechername**,
+  **unten mittig**, **auch für Zurufe** (SVM) und Umgebungsgespräche in Hörweite; Text aus `lines.<sprache>.json`,
+  sonst der Quelltext. Liegt die Dialogauswahl unten, steht der Untertitel darüber.
 - **Dokument, Auswahl, Dietrich:** ersetzen `DocumentPanel` (Pergament; Bücher zweiseitig mit Blättern),
   `ChoicePanel` (Amboss, Bett) und `LockpickPanel`.
 - **Tests:** Modelle → Widgets ohne GPU (Balkenanteile, Gegnerbalken nur im Kampf, Luft nur unter Wasser),
@@ -270,12 +274,14 @@ Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelte
      Modellpfad, im Cache) – keine Formatänderung an `.g7mesh`. Abweichungen durch die Quantisierung im Cooker
      bleiben unter einem Pixel.
   2. **Drehen des gewählten Items:** um die Bild-Y-Achse durch die Mitte `c`, eine Umdrehung in
-     `style.toml [item_preview] spin_seconds` (Platzhalter 6 s), Start in der Ansicht. Das **Bildfenster der
+     `style.toml [item_preview] spin_seconds` (Startwert 6 s), Start in der Ansicht. Das **Bildfenster der
      Startlage bleibt** (Vorschlag figuren übernommen); was darüber hinausragt, schneidet die Zelle ab (Clipping).
      Der Abstand `d` bleibt; alle Vertices liegen auch gedreht vor der Kamera (Test).
   3. **Licht:** feste Studio-Beleuchtung aus `style.toml [item_preview]` (Sonne von links oben vorn, helles
      Hemisphären-Umgebungslicht, keine Schatten, kein Nebel, feste Belichtung) – wie im Prüfblatt.
-  4. **Zellgröße:** `layout.toml [inventory] cell` (Platzhalter 104 UI-Einheiten, in 1080p 104 px).
+  4. **Zellgröße:** `layout.toml [inventory] cell` (Startwert 104 UI-Einheiten, in 1080p 104 px). Dazu
+     eine **große Vorschau im Infokasten** (F4): dieselbe Ansicht und Drehung in einer größeren Kachel
+     (`layout.toml [inventory] preview`).
 - **Rendering (Entscheidung engine): Render-to-Texture in einen Zellen-Atlas** statt Viewport und Scissor im
   Fensterbild. Gründe: Der Material-Shader schreibt lineares HDR, das erst das Tonemapping richtig macht – direkt
   ins fertige Bild gezeichnet stimmten Farben und Belichtung nicht; der Atlas wird nur bei Änderungen neu gezeichnet
@@ -308,10 +314,13 @@ Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelte
       const rhi::Texture& texture() const;
   };
   ```
-- **Inventar-Bildschirm** (wie Gothic): Raster mit Reitern nach Kategorie-Gruppen (`layout.toml`), Stapelzahl in
-  der Zelle, angelegte Items markiert, darunter ein Infokasten (Name, Werte wie Schaden, Schutz, Wirkung, Wert in
-  Gulden, Anzahl). Aktionen: Benutzen bzw. Anlegen (bestätigen), Ablegen auf den Boden (eigene Taste), Reiter
-  wechseln. **Handel:** Händler links, Held rechts, Preis im Infokasten, Gulden beider Seiten. **Truhe** und
+- **Inventar-Bildschirm** (wie Gothic 1, F4): Raster mit Kategorie-Reitern (`layout.toml`), Stapelzahl in der
+  Zelle, angelegte Items markiert, darunter ein Infokasten mit dem **gewählten Item groß** (drehend) sowie Name,
+  Werten (Schaden, Schutz, Wirkung), Wert in Gulden und Anzahl. Aktionen: Benutzen bzw. Anlegen (bestätigen),
+  Ablegen auf den Boden (eigene Taste), Reiter wechseln. **Die Welt läuft weiter** (kein Pausieren, Flag
+  `pausesGame = false`). **Handel (F5):** Händler links, Held rechts, Preis im Infokasten, Gulden beider Seiten;
+  bei Stapeln eine **Mengenwahl** (links/rechts ±1, Reiter-Tasten ±10, bestätigen kauft bzw. verkauft die Menge,
+  Gesamtpreis sichtbar, begrenzt durch Gulden und Vorrat). **Truhe** und
   **Plündern:** Behälter links, Held rechts, Nehmen und Hineinlegen. Die Logik (Preise, Besitz, Diebstahl) bleibt
   in `runtime`/`gameplay` wie in M8/M10.
 - **Tests:** `test_inventory_views.cpp` (Auflösung default ← Kategorie ← Modell, Fehler bei fehlenden
@@ -326,15 +335,20 @@ Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelte
 ### Teil E – Charakter, Tagebuch, Karte
 - **Charakter** (`status`, B): Stufe, Erfahrung bis zur nächsten Stufe, Lernpunkte, Attribute, Talente mit Stufe,
   Schutzwerte, Gilde. **Tagebuch** (`log`, N): Reiter laufende, erledigte und gescheiterte Aufträge sowie
-  Allgemeines, Einträge mit Umbruch und Scrollen (ersetzt `DiaryPanel`). **Karte** (`map`, M): nur, wenn der Held
-  ein Karten-Item besitzt; das Item nennt ein Bild (Lua-Feld `map = "ui/maps/<name>.png"`) – Bild und Item fehlen
-  noch (Frage 9).
+  Allgemeines, Einträge mit Umbruch und Scrollen (ersetzt `DiaryPanel`). **Karte** (`map`, M, F9): nur, wenn der
+  Held ein Karten-Item besitzt; das Item nennt ein Bild (Lua-Feld `map = "ui/maps/<name>.png"`). Für Leonberg
+  erzeugt welt einen Stadtplan aus den OSM-Daten (Auftrag über den Koordinator; Nennung
+  „© OpenStreetMap-Mitwirkende“ in `assets/LICENSES.md`); **ohne Spielerposition**, wie Gothic 1. Bis dahin ein
+  Testbild im Testlager.
 - **Tests:** Modell → Zeilen (Talente nach `kTalents`, Reiter des Tagebuchs, Scrollen langer Einträge);
   Runtime-Test öffnet beide Bildschirme im Testlager.
 - **DoD:** Charakter und Tagebuch im Testlager vollständig bedienbar; die Karte, sobald ein Karten-Item existiert.
 
 ### Teil F – Hauptmenü, Pause, Optionen, Ladebildschirm
-- **Hauptmenü:** Neues Spiel, Fortsetzen (im Spiel), Laden und Speichern (bis M15 ausgegraut), Optionen, Beenden.
+- **Hauptmenü (F8):** Neues Spiel, Fortsetzen (im Spiel), Laden und Speichern (bis M15 ausgegraut), Optionen,
+  Beenden. Hintergrund: **langsame Kamerafahrt durch Leonberg** (Wegpunkte als Daten, `ui/menu_flight.toml`, Welt
+  ohne Held, Simulation steht), dazu ein **eigenes Musikthema** (`data/music.toml`, Thema `menu`; Platzhalter über
+  `gothar-audio music`, bis es eigene Musik gibt).
 - **Optionen:** Grafik (Auflösung, Vollbild, VSync, Bildratenlimit, Sichtweite und Schatten, soweit einstellbar),
   **Audio** (Lautstärken `master`, `music`, `effects`, `voice`, `ambient`, `ui` aus `engine.toml [audio]`, wirken
   sofort), Steuerung (Schema classic/modern, Tasten neu belegen mit „Taste drücken“, Mausempfindlichkeit), Spiel
@@ -344,7 +358,7 @@ Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelte
 - **Ladebildschirm:** beim Start und beim Weltwechsel ein Bild mit Weltnamen und Fortschritt (offene Ladeaufträge
   des `AssetManager`); solange der Weltwechsel synchron lädt, wird vorher mindestens ein Frame gezeichnet.
 - **Pause:** `pause` (Esc/Start) öffnet das Menü und pausiert die Simulation (`Engine::setPaused`), statt wie bis
-  M13 direkt umzuschalten (Frage 8).
+  M13 direkt umzuschalten (F8).
 - **Tests:** Optionen schreiben und lesen (nur Abweichungen, atomisch, fremde Schlüssel bleiben erhalten),
   Lautstärke-Regler ändert den Bus (Mixer headless), Tastenbelegung mit Konflikterkennung, Menü-Stapel (Esc aus
   den Optionen zurück ins Menü, aus dem Menü zurück ins Spiel).
@@ -358,8 +372,8 @@ Projektinhaber“) und werden nicht von engine festgelegt; bis zur Antwort gelte
   (`description`), Tagebuch-Einträge und Meldungen stehen deutsch inline in Lua (E2). `gothar-voice scan` sammelt
   sie zusätzlich in `assets/source/text/script.<sprache>.json` (Schlüssel = Instanz und Feld bzw. Info und Nummer,
   wie bei den Sprechtexten); die Engine sucht bei Sprache ≠ `de` die Übersetzung, sonst bleibt der deutsche Text
-  (einmal Warnung). Gesprochene Zeilen: Untertitel aus `lines.en.json`, die Stimmen bleiben deutsch, bis es
-  englische Takes gibt. Das erweitert den Vertrag „Sprechtexte“ (Werkzeug von engine) und wird vor der Umsetzung
+  (einmal Warnung). Gesprochene Zeilen: Untertitel aus `lines.en.json`, die Stimmen bleiben deutsch (F10). Die
+  englischen Texte entwirft Claude, der Projektinhaber nimmt sie ab. Das erweitert den Vertrag „Sprechtexte“ (Werkzeug von engine) und wird vor der Umsetzung
   in `docs/coordination.md` eingetragen.
 - **Aufräumen:** Die ImGui-Spielfenster (`InventoryPanel`, `TradePanel`, `DialogPanel`, `DiaryPanel`,
   `DocumentPanel`, `ChoicePanel`, `LockpickPanel`, `focusLabel`) entfallen; Konsole, „AI“, „Creatures“,
@@ -374,39 +388,32 @@ Zellen-Atlas, dann die Bildschirme). Jeder Teil hält das Spiel lauffähig: Bis 
 sein ImGui-Fenster.
 
 ### Neue Abhängigkeiten und ADRs
-- **ADR 0020 (Vorschlag):** `msdfgen` (nur Kern, MIT) im Cooker für den MSDF-Atlas – braucht Freigabe; bei Annahme
-  Eintrag in `vcpkg.json` (`{ "name": "msdfgen", "default-features": false }`) und in `docs/05-build.md`.
-  Rückfallebene ohne Abhängigkeit: Einkanal-SDF mit `stb_truetype`.
+- **ADR 0020 (angenommen, 2026-11-01):** `msdfgen` (nur Kern, MIT) im Cooker für den MSDF-Atlas; Eintrag in
+  `vcpkg.json` (`{ "name": "msdfgen", "default-features": false }`) und in `docs/05-build.md` mit Teil A.
 - Sonst keine neue Bibliothek: Layout, Text, Navigation und Atlas sind eigener Code; TOML über toml++, Bilder über
   stb/KTX wie bisher.
-- Neue Assets: eine OFL-Schrift (Lizenztext und `assets/LICENSES.md`), Platzhalter-Rahmen (eigene Arbeit),
+- Neue Assets: Alegreya und Alegreya SC (Lizenztext und `assets/LICENSES.md`), Platzhalter-Rahmen (eigene Arbeit),
   Platzhalter-Klänge über `tools/audio` (`ui_select`, `ui_accept`, `ui_back`, `ui_open`, `ui_close`).
 
-### Fragen an den Projektinhaber
-1. **Schrift:** Vorschlag Alegreya + Alegreya SC (OFL; lesbare Buchschrift mit kalligrafischem Zug). Alternativen:
-   EB Garamond (klassisch), IM Fell English (alter Buchdruck, unruhiger), für Überschriften Uncial Antiqua
-   (Unziale) oder UnifrakturMaguntia (Fraktur). Welche Richtung?
-2. **Menü- und Rahmenstil:** Gothic-artig dunkel (Holz, Eisen, Pergament für Dokumente) oder heller? Woher die
-   Rahmen: prozedurale Platzhalter von engine, ein CC0-Paket (z. B. Kenney „Fantasy UI Borders“) oder eigene
-   Vorlagen des Projektinhabers?
-3. **HUD:** Lage wie Gothic 1 (Leben unten links, Mana unten rechts, Gegnerleben oben mittig)? Immer sichtbar oder
-   nur bei Bedarf (Mana nur mit Magie, Leben nur nach Schaden)? Zusätzlich Uhrzeit oder Kompass (Gothic 1: nein)?
-4. **Inventar:** Reiter nach Kategorie-Gruppen (Vorschlag oben) oder eine durchgehende Liste? Spalten und
-   Zellgröße? Das gewählte Item zusätzlich groß im Infokasten zeigen? Läuft die Welt bei offenem Inventar weiter
-   (Gothic 1: ja; Vorschlag: ja)?
-5. **Handel:** Kauf einzeln je Bestätigen (wie in M10) oder Mengenwahl bei Stapeln?
-6. **Untertitel:** standardmäßig an? Mit Sprechername? Auch für Zurufe und Umgebungsgespräche der NPCs? Lage
-   unten mittig oder oben?
-7. **Bildschirmmeldungen:** „Erfahrung +50“ groß in der Mitte, „Apfel erhalten“ als kleine Zeile – wo und wie
-   lange?
-8. **Hauptmenü:** Hintergrund als langsame Kamerafahrt durch Leonberg oder als Standbild? Eigenes Musikthema?
-   Öffnet Esc im Spiel das Hauptmenü mit „Fortsetzen“ und pausiert dabei?
-9. **Karte:** Soll es ein Karten-Item für Leonberg geben (z. B. ein von welt aus den OSM-Daten gezeichneter
-   Stadtplan, mit Nennung „© OpenStreetMap-Mitwirkende“)? Spielerposition anzeigen (Gothic 1: nein)?
-10. **Englisch:** Englische Untertitel zu deutschen Stimmen vorerst in Ordnung? Übersetzung als Entwurf von Claude
-    mit Abnahme durch den Projektinhaber?
-11. **Tastenhinweise fürs Gamepad:** zunächst Text („(A)“, „[Strg]“) oder eigene Symbole?
-12. **ADR 0020:** `msdfgen` (Kern) als Werkzeug-Abhängigkeit freigeben oder Einkanal-SDF ohne neue Abhängigkeit?
+### Festlegungen des Projektinhabers (2026-11-01, über den Koordinator)
+1. **F1 Schrift:** Alegreya (Fließtext) und Alegreya SC (Überschriften), SIL OFL 1.1.
+2. **F2 Rahmenstil:** dunkel wie Gothic (Holz, Leder, Pergament); zuerst Platzhalter von engine, später eigene
+   Vorlagen des Projektinhabers.
+3. **F3 HUD:** wie Gothic 1 – Leben unten links, Mana unten rechts (nur, wenn der Held Magie hat), Gegnerleben oben
+   mittig; keine Uhr, kein Kompass.
+4. **F4 Inventar:** Kategorie-Reiter wie Gothic 1 mit Raster; das gewählte Item groß im Infokasten; die Welt läuft
+   bei offenem Inventar weiter.
+5. **F5 Handel:** Mengenwahl bei Stapeln.
+6. **F6 Untertitel:** standardmäßig an, mit Sprechername, unten mittig, auch für Zurufe.
+7. **F7 Bildschirmmeldungen:** oben mittig, 3 s.
+8. **F8 Hauptmenü:** langsame Kamerafahrt durch Leonberg mit eigener Musik; Esc öffnet im Spiel das Menü und
+   pausiert.
+9. **F9 Karte:** Stadtplan-Item, das welt aus OSM erzeugt (Auftrag an welt über den Koordinator), ohne
+   Spielerposition.
+10. **F10 Englisch:** englische Untertitel zu deutschen Stimmen sind in Ordnung; die Übersetzung entwirft Claude,
+    der Projektinhaber nimmt sie ab.
+11. **F11 Gamepad-Hinweise:** vorerst als Text.
+12. **F12 ADR 0020:** angenommen (msdfgen, nur im Cooker).
 
 ## Bildschirme
 HUD (Leben, Mana, Gegnerleben, Fokusname, Luft), Dialog-Auswahl + Untertitel, Inventar, Handel,

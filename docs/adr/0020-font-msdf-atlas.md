@@ -1,7 +1,7 @@
 # 0020 – Schrift: MSDF-Atlas im Cooker mit msdfgen (Kern) und stb_truetype
 
-- **Status:** Vorgeschlagen (vor M14 Teil A bestätigen)
-- **Datum:** 2026-10-31
+- **Status:** Angenommen (Projektinhaber, 2026-11-01)
+- **Datum:** 2026-10-31 (Vorschlag), 2026-11-01 (Entscheidung)
 - **Phase:** M14
 
 ## Kontext
@@ -28,15 +28,15 @@ SIL Open Font License (OFL), Quelle in `assets/LICENSES.md`.
 4. **Eigene MSDF-Implementierung** – keine Abhängigkeit; ~800 Zeilen heikler Geometrie-Code (Kantenfärbung,
    Vorzeichen-Korrektur), die msdfgen bereits gut löst.
 
-## Entscheidung (Vorschlag)
+## Entscheidung
 **Option 1.** `g7-cook` erzeugt aus `assets/source/fonts/<name>.ttf|otf` und einer Beschreibung
 `<name>.font.toml` (Zeichensatz, Erzeugungsgröße, Distanzbereich) eine Datei `fonts/<name>.g7font`
 (Kopf, Metriken, Glyphen, Kerning-Paare, Atlas als unkomprimiertes RGB8/RGBA8 mit zstd – keine verlustbehaftete
 Texturkompression, sie zerstört die Distanzwerte). Die Laufzeit (`ui`) liest nur `.g7font`. Ein CMake-Ziel
 `g7_fonts` kocht die Schriften beim Bauen (wie `g7_figures`), damit auch Entwicklungs-Builds ohne Pak laufen.
 
-Rückfallebene ohne neue Abhängigkeit: Option 3 hinter derselben `.g7font`-Datei (Feld `kind = sdf|msdf`); die
-Laufzeit unterstützt beide Shader-Varianten. Wird Option 1 abgelehnt, startet Teil A mit Option 3.
+Die `.g7font`-Datei trägt ein Feld `kind = sdf|msdf`, damit Option 3 als Rückfallebene möglich bleibt; die
+Laufzeit liest zunächst nur `msdf`.
 
 ## Konsequenzen
 - Neue Abhängigkeit `msdfgen` (Kern, MIT) **nur in `tools/asset-cooker`**: Eintrag in `vcpkg.json`
