@@ -1274,8 +1274,9 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
         works = json.loads(works_path.read_text("utf-8")) if works_path.is_file() else None
         existing = load_world(folder / f"{name}.g7world")
         starts = DEFAULT_STARTS + load_starts(data_dir / "starts.json")
+        known = frozenset(k for k in ids.ids if k.startswith("start:"))  # before the passes
         res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
-                       handmade, water, starts, streetworks=works)  # fmt: skip
+                       handmade, water, starts, streetworks=works, known_starts=known)  # fmt: skip
         uses_path = data_dir / "uses.json"
         places = None
         rules_doc = json.loads((data_dir.parent / "building_rules.json").read_text("utf-8"))
@@ -1284,14 +1285,14 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
         if doors:
             res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
                            handmade, water, starts, doors,
-                           streetworks=works)  # fmt: skip
+                           streetworks=works, known_starts=known)  # fmt: skip
         if uses_path.is_file():  # W7: mobs and routine places at the houses with a use
             street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
             places, mobs, zones = _plan_uses(uses_path, res.world, index, folder.parents[1],
                                              street_doc.get("streets", []))  # fmt: skip
             res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
                            handmade, water, starts, [*doors, *mobs],
-                           streetworks=works)  # fmt: skip
+                           streetworks=works, known_starts=known)  # fmt: skip
             from gothar_worldgen.uses.zones import with_room_zones
 
             outdoor_path = data_dir / "outdoor.json"
@@ -1302,7 +1303,7 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
                                         paths.work)  # fmt: skip
                 res = assemble(terrain_world, index, existing, ids, name, locked, ground,
                                citywall, handmade, water, starts, [*doors, *mobs],
-                               outdoor.vobs, streetworks=works)  # fmt: skip
+                               outdoor.vobs, streetworks=works, known_starts=known)  # fmt: skip
                 target = folder / "generated" / "outdoor.json"
                 target.write_text(json.dumps(outdoor.json(), indent=1) + "\n", "utf-8")
                 print(f"  outdoor: {len(outdoor.vobs)} vobs "
