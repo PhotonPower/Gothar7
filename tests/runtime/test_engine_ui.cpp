@@ -4,6 +4,7 @@
 #include <g7/runtime/Engine.hpp>
 #include <g7/ui/GameScreens.hpp>
 #include <g7/ui/ItemScreen.hpp>
+#include <g7/ui/JournalScreens.hpp>
 #include <g7/ui/SamplePage.hpp>
 
 #include <SDL3/SDL.h>
@@ -248,6 +249,43 @@ TEST_CASE("Engine UI: character sheet, diary and map with their keys")
     CHECK(engine.screenMessages().messages().back().text == "Ich habe keine Karte.");
     CHECK_FALSE(engine.runConsoleLine("map_open('ui/maps/none.png')").ok());
     REQUIRE(engine.runConsoleLine("map_open('ui/maps/placeholder.png', 'Karte')").ok());
+    REQUIRE(engine.runFrame());
+    CHECK(engine.screens().find("map") != nullptr);
+    tapKey(engine, SDL_SCANCODE_M);
+    CHECK_FALSE(engine.mapOpen());
+}
+
+TEST_CASE("Engine UI: the map of Leonberg - Agnes sells it, using it or M shows welt's town plan (F9)")
+{
+    g7::Engine engine(campWithWindow());
+    REQUIRE(engine.init().ok());
+    REQUIRE(engine.runFrame());
+    // Agnes vom Krämerladen has it for 50 Gulden.
+    CHECK(engine.runConsoleLine("instance('Npc', 'npc_leo_market').inventory.it_map_leonberg")
+              .value()
+              .asInteger() == 1);
+    CHECK(engine.runConsoleLine("instance('Item', 'it_map_leonberg').value").value().asInteger() == 50);
+    // Bought: using it opens the map screen with the plan, its aspect kept (2048 x 1446).
+    REQUIRE(engine.runConsoleLine("give_item('it_map_leonberg')").ok());
+    for (int i = 0; i < 60; ++i) // standing on the ground (use_item: "only standing")
+    {
+        REQUIRE(engine.runFrame());
+    }
+    const auto used = engine.runConsoleLine("use_item('it_map_leonberg')");
+    REQUIRE_MESSAGE(used.ok(), (used.ok() ? "" : used.error().message));
+    REQUIRE(runUntil(engine, [&] { return engine.screens().find("map") != nullptr; }));
+    REQUIRE(engine.runFrame());
+    auto* map = dynamic_cast<g7::ui::MapScreen*>(engine.screens().find("map"));
+    REQUIRE(map != nullptr);
+    const g7::ui::Rect r = map->imageRect();
+    REQUIRE(r.height() > 0.0f);
+    CHECK(r.width() / r.height() == doctest::Approx(2048.0f / 1446.0f).epsilon(0.01));
+    CHECK(engine.hero()->itemCount("it_map_leonberg") == 1); // a map stays in the bag
+    tapKey(engine, SDL_SCANCODE_ESCAPE);
+    CHECK_FALSE(engine.mapOpen());
+    // M opens it too, now that the hero has a map; M again closes it.
+    tapKey(engine, SDL_SCANCODE_M);
+    CHECK(engine.mapOpen());
     REQUIRE(engine.runFrame());
     CHECK(engine.screens().find("map") != nullptr);
     tapKey(engine, SDL_SCANCODE_M);

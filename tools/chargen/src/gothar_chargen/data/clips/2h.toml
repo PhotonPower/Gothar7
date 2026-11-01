@@ -93,7 +93,7 @@ helper = true
 base = "2h/t_combo1_src"
 keys = [[0, "rest"], [22, "rest"], [31, "low"], [35, "low"], [43, "rest"]]
 [clip.params.poses.low]
-rotate = { spine_02 = [["X", 15]], hand_r = [["X", 13], ["Y", 3], ["Z", -18]] }
+rotate = { spine_02 = [["X", 20]], hand_r = [["X", 20], ["Y", 5], ["Z", -31]] }
 
 [[clip]]
 name = "2h/t_combo1_grip"
@@ -129,9 +129,19 @@ concat = ["ual2:Sword_Regular_B", "ual2:Sword_Regular_B_Rec"]
 helper = true
 
 [[clip]]
+name = "2h/t_combo2_low"         # the slash bent down to wolf height (animals' bodies, sweep M11)
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "2h/t_combo2_src"
+keys = [[0, "rest"], [4, "rest"], [7, "low"], [10, "low"], [16, "rest"], [48, "rest"]]
+[clip.params.poses.low]
+rotate = { spine_02 = [["X", 12]], hand_r = [["X", 10], ["Y", -13], ["Z", 8]] }
+
+[[clip]]
 name = "2h/t_combo2_grip"
 keyframe = "two_hands"
-params = { base = "2h/t_combo2_src" }
+params = { base = "2h/t_combo2_low" }
 helper = true
 
 [[clip]]
@@ -152,7 +162,7 @@ keys = [[0, "rest"], [12, "raise"], [19, "chop"], [24, "chop"], [40, "rest"]]
 rotate = { upperarm_r = [["X", -150], ["Z", -25]], lowerarm_r = [["X", -60]], spine_02 = [["Z", -20], ["X", -8]], spine_01 = [["Z", -8]], hand_r = [["X", 37], ["Y", 45], ["Z", -78]] }
 move = { pelvis = [0, 0.04, -0.02], root = [0, -0.1, 0] }
 [clip.params.poses.chop]
-rotate = { upperarm_r = [["X", -40], ["Z", 20]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 15], ["X", 18]], spine_01 = [["Z", 6], ["X", 8]], hand_r = [["X", 49], ["Y", -92], ["Z", -102]] }
+rotate = { upperarm_r = [["X", -40], ["Z", 20]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 15], ["X", 18]], spine_01 = [["Z", 6], ["X", 8]], hand_r = [["X", 1], ["Y", -93], ["Z", -62]] }
 move = { pelvis = [0, -0.12, -0.08], root = [0, -0.45, 0] }  # lunge: reach 1.8 m
 
 [[clip]]
@@ -166,10 +176,10 @@ keys = [[0, "rest"], [10, "wind"], [16, "cut"], [21, "through"], [38, "rest"]]
 rotate = { upperarm_r = [["X", -80], ["Z", -75]], lowerarm_r = [["X", -40]], spine_02 = [["Z", -35]], spine_01 = [["Z", -15]], hand_r = [["X", 115], ["Y", 37], ["Z", 91]] }
 move = { root = [0, -0.12, 0] }  # lunge (reach of the AI's fighting distance)
 [clip.params.poses.cut]
-rotate = { upperarm_r = [["X", -85], ["Z", 5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 5]], spine_01 = [["Z", 2]], hand_r = [["X", 143], ["Y", -11], ["Z", 59]] }
+rotate = { upperarm_r = [["X", -85], ["Z", 5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 5], ["X", 15]], spine_01 = [["Z", 2]], hand_r = [["X", 145], ["Y", -16], ["Z", 60]] }
 move = { pelvis = [0, -0.06, -0.03], root = [0, -0.7, 0] }
 [clip.params.poses.through]
-rotate = { upperarm_r = [["X", -70], ["Z", 70]], lowerarm_r = [["X", -40]], spine_02 = [["Z", 35]], spine_01 = [["Z", 15]], hand_r = [["X", 157], ["Y", -46], ["Z", 63]] }
+rotate = { upperarm_r = [["X", -70], ["Z", 70]], lowerarm_r = [["X", -40]], spine_02 = [["Z", 35], ["X", 15]], spine_01 = [["Z", 15]], hand_r = [["X", 5], ["Y", -119], ["Z", -143]] }
 move = { pelvis = [0, -0.05, -0.03], root = [0, -0.7, 0] }
 
 [[clip]]
@@ -183,10 +193,10 @@ keys = [[0, "rest"], [10, "wind"], [16, "cut"], [21, "through"], [38, "rest"]]
 rotate = { upperarm_r = [["X", -75], ["Z", 65]], lowerarm_r = [["X", -70]], spine_02 = [["Z", 35]], spine_01 = [["Z", 15]], hand_r = [["X", 75], ["Y", 29], ["Z", -65]] }
 move = { root = [0, -0.12, 0] }  # lunge (reach of the AI's fighting distance)
 [clip.params.poses.cut]
-rotate = { upperarm_r = [["X", -85], ["Z", -5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", -5]], spine_01 = [["Z", -2]], hand_r = [["X", 34], ["Y", 29], ["Z", -144]] }
+rotate = { upperarm_r = [["X", -85], ["Z", -5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", -5], ["X", 15]], spine_01 = [["Z", -2]], hand_r = [["X", 33], ["Y", 29], ["Z", -144]] }
 move = { pelvis = [0, -0.06, -0.03], root = [0, -0.7, 0] }
 [clip.params.poses.through]
-rotate = { upperarm_r = [["X", -70], ["Z", -70]], lowerarm_r = [["X", -15]], spine_02 = [["Z", -35]], spine_01 = [["Z", -15]], hand_r = [["X", 58], ["Y", 29], ["Z", -126]] }
+rotate = { upperarm_r = [["X", -70], ["Z", -70]], lowerarm_r = [["X", -15]], spine_02 = [["Z", -35], ["X", 15]], spine_01 = [["Z", -15]], hand_r = [["X", 65], ["Y", 34], ["Z", -139]] }
 move = { pelvis = [0, -0.05, -0.03], root = [0, -0.7, 0] }
 
 [[clip]]

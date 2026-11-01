@@ -237,7 +237,7 @@ def test_site_start_points(tmp_path):
     assert (s.name, s.x, s.z, s.height_above_ground) == ("START_X", 1.0, 2.0, 0.0)
     assert s.rot == pytest.approx((0.0, 0.707107, 0.0, 0.707107))
     real = load_starts(Path(__file__).parents[1] / "data" / "leonberg" / "starts.json")
-    assert len(real) >= 9 and all(p.name.startswith("START_BG_") for p in real)
+    assert len(real) >= 9 and all(p.name.startswith(("START_BG_", "START_LEO_")) for p in real)
 
 
 def test_data_start_points_follow_the_ground_unless_moved():

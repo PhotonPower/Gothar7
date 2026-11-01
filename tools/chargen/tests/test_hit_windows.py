@@ -100,13 +100,14 @@ def test_directional_swings_cross_the_front(paths, mode):
         assert tips[:, 1].min() <= 1.0 and tips[:, 1].max() <= 1.8, clip
 
 
-ANIMAL_LOW, ANIMAL_HIGH = 0.5, 1.0  # animals are capsules up to 1.0 m (engine animal_height)
+WOLF_HEIGHT = 0.6  # m: the blade comes down to this height (wolf backs 0.8 m, engine2 2026-11-01)
+WOLF_BAND = {"1h": (1.2, 1.8), "2h": (1.4, 2.0), "fist": (0.5, 1.0)}  # m ahead: where the body is
 
 
-def _animal_points(path, markers) -> int:
+def _low_points(path, markers, mode) -> int:
     p = path.points[markers["hit_start"] : markers["hit_end"] + 1].reshape(-1, 3)
-    low = (p[:, 2] >= ZONE_FRONT) & (p[:, 1] >= ANIMAL_LOW) & (p[:, 1] <= ANIMAL_HIGH)
-    return int(low.sum())
+    near, far = WOLF_BAND[mode]
+    return int(((p[:, 2] >= near) & (p[:, 2] <= far) & (p[:, 1] <= WOLF_HEIGHT)).sum())
 
 
 @pytest.mark.parametrize(
@@ -115,18 +116,18 @@ def _animal_points(path, markers) -> int:
     ids=[s[1] for s in STRIKES if s[0] != "fist"],
 )
 def test_weapon_strikes_reach_animals(paths, mode, name, markers):
-    """Every weapon strike passes the space in front of the body at animal height within its
-    window (wolves, boars: capsules up to 1.0 m; engine2 2026-11-01)."""
-    assert _animal_points(paths[mode][name], markers) >= 5, name
+    """Every weapon strike brings the blade down to wolf height where the animal's body is (1.2-1.8
+    m ahead with 1h, 1.4-2.0 m with 2h) within its window - the lowest point of the path, the strike
+    may start high (engine2 2026-11-01: animals hit with their real collision bodies)."""
+    assert _low_points(paths[mode][name], markers, mode) >= 1, name  # the sweep is continuous
 
 
 def test_fists_reach_animals(paths):
-    """Fists: at least one combo hit is a low blow at animal height (owner 2026-11-01: the low
-    cross, combo 2), so an unarmed hero can fight a wolf with two hits."""
+    """Fists: the crouched low cross (combo 2) comes down to wolf height in front of the body."""
     low = {
         name
         for mode, name, m in STRIKES
-        if mode == "fist" and _animal_points(paths[mode][name], m) >= 5
+        if mode == "fist" and _low_points(paths[mode][name], m, mode) >= 3
     }
     assert "fist/t_attack_combo2" in low
 

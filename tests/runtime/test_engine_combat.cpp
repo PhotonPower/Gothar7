@@ -116,7 +116,8 @@ TEST_CASE("Engine combat: a parry from the front blocks and the blow bounces off
     runSeconds(engine, 1.8f); // a blow: its clip (up to 1.6 s)
     CHECK(hp(engine, "npc_old_man") == before);
     CHECK(run(engine, "Story.parried").asString() == "npc_old_man");
-    // Turned away: the parry does not help.
+    // Turned away: the parry does not help. (The parry pushed her back: she steps in to 1.2 m again.)
+    run(engine, "npc_teleport('npc_farmer_woman', 40, 0, 20, 0)");
     run(engine, "npc_teleport('npc_old_man', 40, 0, 18.8, 0)");
     runSeconds(engine, 0.1f);
     REQUIRE(run(engine, "npc_attack('npc_farmer_woman')").asBool());
@@ -167,6 +168,10 @@ TEST_CASE("Engine combat: animals die; the hero falls and gets up at the spot wi
     run(engine, "teleport(10, 0, 30)");
     run(engine, "on('npc_killed', function(t, a) Story.killed = t end)");
     face(engine, "npc_gate_guard", "mon_wolf");
+    // Its body (Creatures.wolf.body: middle 0.48 m ahead of its feet) 1.2 m in front of the guard, not its
+    // feet.
+    run(engine, "npc_teleport('mon_wolf', 40, 0, 18.32, 180)");
+    runSeconds(engine, 0.2f);
     run(engine, "npc_set_stat('mon_wolf', 'hp', 3)");
     REQUIRE(run(engine, "npc_attack('npc_gate_guard')").asBool());
     runSeconds(engine, 1.8f);                   // a blow: its clip (up to 1.6 s)

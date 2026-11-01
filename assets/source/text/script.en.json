@@ -1040,6 +1040,12 @@
       "context": "items/goods.lua",
       "status": "entwurf"
     },
+    "it_map_leonberg.name": {
+      "de": "Stadtplan von Leonberg",
+      "text": "Map of Leonberg",
+      "context": "items/documents.lua",
+      "status": "entwurf"
+    },
     "it_mug.name": {
       "de": "Krug",
       "text": "Mug",
