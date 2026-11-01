@@ -165,12 +165,13 @@ base = "none/s_idle"
 keys = [[0, "rest"], [8, "wind"], [13, "cut"], [17, "through"], [30, "rest"]]
 [clip.params.poses.wind]
 rotate = { upperarm_r = [["X", -80], ["Z", -60]], lowerarm_r = [["X", -30]], spine_02 = [["Z", -25]], spine_01 = [["Z", -10]], hand_r = [["X", -29], ["Y", 156], ["Z", -65]] }
+move = { root = [0, -0.12, 0] }  # lunge (reach of the AI's fighting distance)
 [clip.params.poses.cut]
 rotate = { upperarm_r = [["X", -85], ["Z", 5]], lowerarm_r = [["X", -5]], spine_02 = [["Z", 5]], spine_01 = [["Z", 2]], hand_r = [["X", 144], ["Y", -6], ["Z", 58]] }
-move = { pelvis = [0, -0.05, -0.02] }
+move = { pelvis = [0, -0.05, -0.02], root = [0, -0.6, 0] }
 [clip.params.poses.through]
 rotate = { upperarm_r = [["X", -75], ["Z", 65]], lowerarm_r = [["X", -40]], spine_02 = [["Z", 25]], spine_01 = [["Z", 10]], hand_r = [["X", 135], ["Y", -52], ["Z", 66]] }
-move = { pelvis = [0, -0.04, -0.02] }
+move = { pelvis = [0, -0.04, -0.02], root = [0, -0.6, 0] }
 
 [[clip]]
 name = "1h/t_swing_r"
@@ -181,12 +182,13 @@ base = "none/s_idle"
 keys = [[0, "rest"], [8, "wind"], [13, "cut"], [17, "through"], [30, "rest"]]
 [clip.params.poses.wind]
 rotate = { upperarm_r = [["X", -75], ["Z", 60]], lowerarm_r = [["X", -70]], spine_02 = [["Z", 25]], spine_01 = [["Z", 10]], hand_r = [["X", 89], ["Y", 26], ["Z", -74]] }
+move = { root = [0, -0.12, 0] }  # lunge (reach of the AI's fighting distance)
 [clip.params.poses.cut]
 rotate = { upperarm_r = [["X", -85], ["Z", -5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", -5]], spine_01 = [["Z", -2]], hand_r = [["X", 35], ["Y", 29], ["Z", -144]] }
-move = { pelvis = [0, -0.05, -0.02] }
+move = { pelvis = [0, -0.05, -0.02], root = [0, -0.6, 0] }
 [clip.params.poses.through]
 rotate = { upperarm_r = [["X", -70], ["Z", -60]], lowerarm_r = [["X", -15]], spine_02 = [["Z", -25]], spine_01 = [["Z", -10]], hand_r = [["X", 35], ["Y", 19], ["Z", -142]] }
-move = { pelvis = [0, -0.04, -0.02] }
+move = { pelvis = [0, -0.04, -0.02], root = [0, -0.6, 0] }
 
 [[clip]]
 name = "1h/t_attack_combo3"       # thrust (own keyframes; UAL2 Sword_Regular_C is a spinning leap)
