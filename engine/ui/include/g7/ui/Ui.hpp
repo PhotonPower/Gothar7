@@ -5,7 +5,7 @@
 // Spezifikation: docs/modules/ui.md   |   Roadmap: M14
 //
 // Status: Debug-UI umgesetzt (DebugUi.hpp, M2); Spiel-UI M14 Teil A: Font, Text, Style, Strings, Canvas,
-// UiResources, SamplePage.
+// UiResources; Teil B: Layout, Navigation, Widget, Screen, SamplePage (SampleScreen).
 
 #include <string_view>
 

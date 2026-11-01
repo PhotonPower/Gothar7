@@ -32,3 +32,115 @@ scale = 0.5
 image = "ui/frames/parchment.png"
 slice = [40, 40, 40, 40]
 scale = 0.5
+
+# Further frames by figuren (`gothar-chargen ui-frames --style`, PR #305). The names stay stable: screens of parts
+# B-F use them. bg_* are tiles; until the canvas can tile they are not used.
+[frames.leather]  # inventory background, embossed seam
+image = "ui/frames/leather.png"
+slice = [32, 32, 32, 32]
+scale = 0.5
+
+[frames.tooltip]  # info box / tooltip: dark, brass line
+image = "ui/frames/tooltip.png"
+slice = [32, 32, 32, 32]
+scale = 0.5
+
+[frames.cell]  # inventory cell
+image = "ui/frames/cell.png"
+slice = [24, 24, 24, 24]
+scale = 0.5
+
+[frames.cell_selected]  # inventory cell, selected
+image = "ui/frames/cell_selected.png"
+slice = [24, 24, 24, 24]
+scale = 0.5
+
+[frames.cell_equipped]  # inventory cell, equipped item
+image = "ui/frames/cell_equipped.png"
+slice = [24, 24, 24, 24]
+scale = 0.5
+
+[frames.tab]  # tab, inactive
+image = "ui/frames/tab.png"
+slice = [28, 24, 28, 8]
+scale = 0.5
+
+[frames.tab_active]  # tab, active (open towards the panel)
+image = "ui/frames/tab_active.png"
+slice = [28, 24, 28, 8]
+scale = 0.5
+
+[frames.button]  # button
+image = "ui/frames/button.png"
+slice = [32, 24, 32, 24]
+scale = 0.5
+
+[frames.button_focus]  # button, focused
+image = "ui/frames/button_focus.png"
+slice = [32, 24, 32, 24]
+scale = 0.5
+
+[frames.button_pressed]  # button, pressed
+image = "ui/frames/button_pressed.png"
+slice = [32, 24, 32, 24]
+scale = 0.5
+
+[frames.bar]  # HUD bar frame (centre transparent)
+image = "ui/frames/bar.png"
+slice = [24, 16, 24, 16]
+scale = 0.5
+
+[frames.bar_hp]  # bar fill: health (red)
+image = "ui/frames/bar_hp.png"
+slice = [6, 6, 6, 6]
+scale = 0.5
+
+[frames.bar_mana]  # bar fill: mana (blue)
+image = "ui/frames/bar_mana.png"
+slice = [6, 6, 6, 6]
+scale = 0.5
+
+[frames.bar_enemy]  # bar fill: enemy health
+image = "ui/frames/bar_enemy.png"
+slice = [6, 6, 6, 6]
+scale = 0.5
+
+[frames.bar_air]  # bar fill: air while diving
+image = "ui/frames/bar_air.png"
+slice = [6, 6, 6, 6]
+scale = 0.5
+
+[frames.subtitle]  # subtitle backdrop, soft and subtle
+image = "ui/frames/subtitle.png"
+slice = [56, 32, 56, 32]
+scale = 0.5
+
+[frames.highlight]  # selected list entry (dialog, menus)
+image = "ui/frames/highlight.png"
+slice = [16, 16, 16, 16]
+scale = 0.5
+
+[frames.slider_track]  # options: slider groove
+image = "ui/frames/slider_track.png"
+slice = [16, 12, 16, 12]
+scale = 0.5
+
+[frames.slider_knob]  # options: slider knob, drawn at its size
+image = "ui/frames/slider_knob.png"
+slice = [20, 20, 20, 20]
+scale = 0.5
+
+[frames.bg_wood]  # tile: dark wooden boards
+image = "ui/frames/bg_wood.png"
+slice = [0, 0, 0, 0]
+scale = 0.5
+
+[frames.bg_leather]  # tile: dark leather
+image = "ui/frames/bg_leather.png"
+slice = [0, 0, 0, 0]
+scale = 0.5
+
+[frames.bg_parchment]  # tile: parchment
+image = "ui/frames/bg_parchment.png"
+slice = [0, 0, 0, 0]
+scale = 0.5

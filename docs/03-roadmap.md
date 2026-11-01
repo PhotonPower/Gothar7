@@ -272,10 +272,13 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 Plan (Teile A–G, freigegeben 2026-11-01, Gestaltung F1–F12 vom Projektinhaber): `docs/modules/ui.md` „Plan M14“. ADR 0009 angenommen
 (Projektinhaber, 2026-10-31: eigenes UI, RmlUi verworfen); ADR 0020 (MSDF-Atlas mit msdfgen im Cooker) angenommen (2026-11-01).
 
-- [ ] Spiel-UI-Framework (ADR 0009): Layout, Texturen-Rahmen (9-Slice), Schrift (MSDF), Gamepad-Navigation
-  - Teil A: Schrift (MSDF-Atlas mit `g7-cook --font`, `.g7font`, Alegreya und Alegreya SC), Textsatz (UTF-8, Umbruch,
-    Kerning, Kürzen), Stil `ui/style.toml`, UI-Texte `text/ui.<sprache>.toml` (DE/EN), Canvas mit 9-Slice und Clip,
-    Musterseite `--ui-sample`; offen: Widgets, Layout, Navigation (Teil B)
+- [x] Spiel-UI-Framework (ADR 0009): Layout, Texturen-Rahmen (9-Slice), Schrift (MSDF), Gamepad-Navigation
+  - Teil A (#304): Schrift (MSDF-Atlas mit `g7-cook --font`, `.g7font`, Alegreya und Alegreya SC), Textsatz (UTF-8,
+    Umbruch, Kerning, Kürzen), Stil `ui/style.toml`, UI-Texte `text/ui.<sprache>.toml` (DE/EN), Canvas mit 9-Slice
+    und Clip, Musterseite `--ui-sample`
+  - Teil B: Layout `ui/layout.toml` (Anker, Kästen), Widgets (Panel, Label, Bar, Button, Stack, List, Grid),
+    Navigation mit Tastatur, Gamepad und Maus (`ui_*`-Aktionen, Wiederholung, räumliche Fokus-Suche),
+    Bildschirm-Stapel (sperrt die Spielsteuerung, kann pausieren), Hot-Reload aller UI-Dateien, Rahmen von figuren (#305)
 - [ ] HUD: Leben, Mana, Gegner-Leben, Fokus-Namen, Luftanzeige
 - [ ] Inventar-Bildschirm (Kategorien, Item-Vorschau als 3D-Modell), Handel, Truhe
 - [ ] Charakterbildschirm, Tagebuch-Bildschirm, Karte (falls Karten-Item)
