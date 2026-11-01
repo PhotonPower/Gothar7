@@ -1069,9 +1069,10 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
         # them (stairs often run past a window)
         order = [poly for _, poly in rooms[1:]] + [rooms[0][1]]
         tries = [(poly, win_lines) for poly in order] + [(poly, []) for poly in order]
+        accept = _stair_ways(inner, cuts, door_mid, storey - (ceiling - floor), spec)
         for where, wins in tries:
             ctx.stair = plan_stair(where, inner, floor, floor + storey, clear, wins, door_mid,
-                                   spec["stairs"])  # fmt: skip
+                                   spec["stairs"], accept, inner)  # fmt: skip
             if ctx.stair is not None:
                 break
         if ctx.stair is None:
@@ -1126,6 +1127,55 @@ def _room(ctx: _Context, ring: Sequence[tuple[float, float]], floor: float, stor
                                  "mid": [round(c["mid"][0], 3), round(c["mid"][1], 3)],
                                  "axis": [round(c["u"][0], 4), round(c["u"][1], 4)],
                                  "w": c["w"], "h": c["h"]} for c in cuts]  # fmt: skip
+
+
+STAIR_WALK_R = 0.35  # half the width a figure needs to pass (cylinder 0.3 m, a little play)
+
+
+def _walls_of(cuts: Sequence[dict[str, Any]], spec: dict[str, Any]) -> list[Any]:
+    """The partitions of a storey beside their passages (x, z), as in ``_partition``."""
+    half = float(spec["partitionM"]) / 2
+    out = []
+    for c in cuts:
+        line = LineString([c["a"], c["b"]])
+        s0, s1 = (line.length - c["w"]) / 2, (line.length + c["w"]) / 2
+        for lo, hi in ((0.0, s0), (s1, line.length)):
+            if hi - lo > 1e-3:
+                piece = LineString([line.interpolate(lo), line.interpolate(hi)])
+                out.append(piece.buffer(half, cap_style="flat"))
+    return out
+
+
+def _stair_ways(inner: Polygon, cuts: Sequence[dict[str, Any]], door: tuple[float, float],
+                slab: float, spec: dict[str, Any]) -> Callable[[Any], bool]:  # fmt: skip
+    """(W7) Whether a place for the stairs keeps the ways: downstairs its foot reachable from
+    the door and every passage, upstairs its head joined with every room of the storey (as
+    ``_upper_room`` will divide it) - no step beside a niche too narrow to pass, no landing in
+    a corner cut off by the opening, no opening across the way between the rooms."""
+    from gothar_worldgen.buildings.stairs import reachable
+
+    r = STAIR_WALK_R
+    floor_walk = inner.buffer(-r, join_style="mitre", mitre_limit=3.0)
+    walls_below = shapely.union_all([w.buffer(r) for w in _walls_of(cuts, spec)])
+    below = floor_walk.difference(walls_below)
+    entries = [door, *(c["mid"] for c in cuts)]
+    headroom = float(spec["stairs"]["headroomM"])
+
+    def ok(st: Any) -> bool:  # noqa: ANN401
+        walk = below.difference(st.footprint.buffer(r))
+        if not reachable(walk, st.foot_point, entries):
+            return False
+        hole = st.opening(slab, headroom)
+        centre = hole.union(st.head_landing).centroid
+        plan, up_cuts = _partition_plan(inner, (centre.x, centre.y), spec, "oben")
+        zone = hole.union(st.head_landing).buffer(0.3)
+        if any(LineString([c["a"], c["b"]]).intersects(zone) for c in up_cuts):
+            up_cuts = []  # one room upstairs (``_upper_room``)
+        walls = [hole, *_walls_of(up_cuts, spec)]
+        walk = floor_walk.difference(shapely.union_all([w.buffer(r) for w in walls]))
+        return reachable(walk, st.head_point, [c["mid"] for c in up_cuts])
+
+    return ok
 
 
 def _room_walls(ctx: _Context, inner: Polygon, floor: float, ceiling: float,

@@ -1143,7 +1143,11 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   der Mauer. `assemble` schreibt allgemeine
   Vob-Angaben (mob, mesh, light, trigger) in die Gruppe `WORLDGEN_USES`.
 - **Geteilte Erdgeschosse** (C2): Betten, Truhen und Vorräte (Fässer, Kisten, Säcke) gehen reihum in die Kammern,
-  alles andere (Herd, Tisch, Theken, Freepoints, Hängendes) bleibt im Raum mit der Haustür. Je Kammer ein Licht, ein
+  alles andere (Herd, Tisch, Theken, Freepoints, Hängendes) bleibt im Raum mit der Haustür. Dazu bekommt jede Kammer
+  das Lager- und Werkstattzeug des Gewerbes aus `uses.<use>.inside.chamber` (bzw. `insideByTrade`), so viel Platz
+  ist, ohne Fehlschlag für den Rest (Phase 2: die Kammern wirkten leer). Beispiele: Metzger Würste, Fässer, Eimer;
+  Töpfer Regale, Kistenstapel, Tonsäcke; Wache Waffenbrett, Kisten, Fass; Schreiner Hobelbank, Werkzeugbrett,
+  Brennholz. Je Kammer ein Licht, ein
   Wegpunkt im Durchgang `WP_…_KAMMER_DURCHGANG` (verbunden mit dem Wegpunkt des Raums davor) und `WP_…_KAMMER` 1,2 m
   dahinter; der Durchgang und der gerade Weg dorthin bleiben in beiden Räumen frei. Je Raum eine indoor-Zone
   (`LEO_…_INNEN`, `LEO_…_KAMMER` …). Mob- und Prop-Namen tragen den Raum (`MOB_LEO_…_KAMMER_BED_1`). Beim Herd einer
@@ -1180,6 +1184,14 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   Frei bleiben der Weg von der Tür (1,3 m) und die Durchgänge (1,2 m); vor der ersten Stufe ein Absatz von 0,8 m, in
   einem kurzen Raum seitlich daneben (`sideEntry`, dann ein Wegpunkt `WP_…_TREPPE_FUSS` auf der ersten Stufe, damit
   der Weg nicht schräg über die Rampenseite führt). Oben endet sie auf einem freien Absatz.
+- **Wege zur Treppe und von ihr** (Phase 2, 2026-10-31): Die Treppe steht an einer Außenwand des Geschosses, nie an
+  einer Trennwand (oben gibt es die nicht, der Ausschnitt läge dort offen). Ein Platz zählt nur, wenn eine Figur
+  (Zylinder 0,3 m, mit Spiel `STAIR_WALK_R` 0,35 m) unten vom Absatz zur Haustür und zu allen Durchgängen kommt und
+  oben vom Kopf zu allen Durchgängen der Räume, wie `_upper_room` sie teilt; das Stück mit dem Absatz muss dazu
+  mindestens 90 % der freien Fläche halten (`stairs.reachable`, `medieval._stair_ways`). Damit fallen weg: ein Fuß
+  hinter einer Nische neben den Stufen (Schreiner ZjR, 0,36 m), ein Kopf in einer spitzen Ecke (Metzger ZnQ) und ein
+  Ausschnitt quer über dem Weg zwischen den Räumen. Liegt der Kopf an einer Stirnwand, gehen die Wege oben über Punkte
+  entlang der Seiten des Ausschnitts (`DETOUR_SAMPLE_M` 0,5 m), wenn keine Ecke im Raum liegt.
 - **Geometrie:** Stufen als Blöcke, Handlauf auf der offenen Seite. Über dem oberen Lauf ist die Decke offen
   (Kopfhöhe 2,4 m über der Rampe: die Physik-Figur ist ein Zylinder von 1,8 m Höhe und 0,3 m Radius, ihre
   Vorderkante kommt früher unter die Deckenkante als ihre Mitte), der Ausschnitt reicht in die Wand (kein Streifen Decke, den ein konvexes
