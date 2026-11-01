@@ -21,12 +21,14 @@ subtitle = { font = "fonts/alegreya.g7font", size = 28, color = "text", outline 
 message = { font = "fonts/alegreya_sc.g7font", size = 30, color = "text", outline = 2.0, outline_color = "shadow" }
 document = { font = "fonts/alegreya.g7font", size = 24, color = "ink" }
 
+# Frames: own procedural designs by figuren (`gothar-chargen ui-frames`), drawn at 2 image pixels per UI
+# unit (sharp at 4K), hence slices in image pixels and scale = 0.5.
 [frames.panel]
 image = "ui/frames/panel.png"
-slice = [24, 24, 24, 24]
-scale = 1.0
+slice = [48, 48, 48, 48]
+scale = 0.5
 
 [frames.parchment]
 image = "ui/frames/parchment.png"
-slice = [20, 20, 20, 20]
-scale = 1.0
+slice = [40, 40, 40, 40]
+scale = 0.5

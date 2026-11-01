@@ -65,6 +65,7 @@ from gothar_chargen.skeleton import (
     packaged_species,
     species_of,
 )
+from gothar_chargen.ui_frames import FRAMES_DIR, SPECS, style_toml, write_frames
 from gothar_chargen.validate import (
     ReferencePose,
     Report,
@@ -628,6 +629,35 @@ def _cmd_inventory_sheet(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _cmd_ui_frames(args: argparse.Namespace, out: TextIO) -> int:
+    """Own UI frames for M14 (procedural, numpy) and optionally the review sheets (Pillow)."""
+    if args.style:
+        print(style_toml(), file=out, end="")
+        return EXIT_OK
+    root = find_repo_root()
+    if args.out is None and root is None:
+        print("error: repository not found; use --out", file=out)
+        return EXIT_ERROR
+    target = args.out or root / FRAMES_DIR
+    unknown = sorted(set(args.only) - {s.name for s in SPECS})
+    if unknown:
+        print(f"error: unknown frames: {', '.join(unknown)}", file=out)
+        return EXIT_ERROR
+    paths = write_frames(target, args.seed, args.only or None)
+    total = sum(p.stat().st_size for p in paths)
+    for p in paths:
+        print(f"wrote {p.name} ({p.stat().st_size} bytes)", file=out)
+    print(f"{len(paths)} frame(s), {total} bytes", file=out)
+    if args.sheet is not None:
+        from gothar_chargen.ui_sheet import mockup, parts_sheet
+
+        fonts = args.fonts or (root / "assets/source/fonts" if root else None)
+        sheet = mockup(target, args.sheet / "mockup.png", fonts, args.items, args.background)
+        print(f"sheet {sheet}", file=out)
+        print(f"sheet {parts_sheet(target, args.sheet / 'teile.png', fonts)}", file=out)
+    return EXIT_OK
+
+
 def _cmd_fabrics(args: argparse.Namespace, out: TextIO) -> int:
     """Worn cloth textures from data/fabrics.toml (F3n; fabric sources in DATA_ROOT, Blender)."""
     characters = _characters_dir(args)
@@ -788,6 +818,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out", type=Path, required=True, help="folder for cells/ and the sheet")
     p.add_argument("--only", nargs="*", default=[], help="item ids (default: all)")
     p.set_defaults(func=_cmd_inventory_sheet)
+
+    p = sub.add_parser("ui-frames", help="own UI frames (9-slice PNGs) -> assets/source/ui/frames")
+    p.add_argument("--out", type=Path, help="frames folder (default: repository)")
+    p.add_argument("--seed", type=int, default=7, help="random seed (default 7)")
+    p.add_argument("--only", nargs="*", default=[], help="frame names (default: all)")
+    p.add_argument(
+        "--style", action="store_true", help="print the [frames.*] entries for style.toml"
+    )
+    p.add_argument("--sheet", type=Path, help="also write mockup.png and teile.png here (Pillow)")
+    p.add_argument("--fonts", type=Path, help="folder with Alegreya*.ttf (default: repository)")
+    p.add_argument("--items", type=Path, help="inventory cell images <item>.png for the mock-up")
+    p.add_argument("--background", type=Path, help="screenshot behind the mock-up")
+    p.set_defaults(func=_cmd_ui_frames)
 
     p = sub.add_parser("fabrics", help="worn cloth textures from data/fabrics.toml (local, F3n)")
     p.add_argument(
