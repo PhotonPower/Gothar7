@@ -12,13 +12,15 @@ f32 distanceTo(const AABB& box, const Vec3& point) noexcept
     return glm::length(glm::clamp(point, box.min, box.max) - point);
 }
 
-u32 selectLod(f32 distance, u32 current, const LodSettings& settings) noexcept
+u32 selectLod(f32 distance, u32 current, const LodSettings& settings, f32 radius) noexcept
 {
     if (settings.forced >= 0)
     {
         return static_cast<u32>(settings.forced);
     }
-    const f32 thresholds[] = {settings.lod1Distance, settings.lod2Distance}; // level n+1 from thresholds[n]
+    const f32 scale = radius >= 0.0f && radius < settings.smallRadius ? settings.smallScale : 1.0f;
+    const f32 thresholds[] = {settings.lod1Distance * scale,
+                              settings.lod2Distance * scale}; // level n+1 from thresholds[n]
     u32 level = std::min<u32>(current, 2);
     while (level < 2 && distance > thresholds[level] * (1.0f + settings.hysteresis))
     {

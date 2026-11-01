@@ -34,11 +34,18 @@ struct LodSettings
     f32 lod2Distance = 150.0f;
     f32 hysteresis = 0.1f; ///< share of a threshold to go past it before switching back (no flicker)
     i32 forced = -1;       ///< 0, 1, 2: every object at this level (--lod, debug UI); -1: by distance
+    /// Small objects (props: bounding radius below smallRadius m) switch sooner: their thresholds times
+    /// smallScale.
+    f32 smallRadius = 0.0f; ///< 0: all alike
+    f32 smallScale = 1.0f;
 };
 
 /// The level for `distance`, starting from `current`: coarser beyond threshold * (1 + hysteresis), finer
 /// below threshold * (1 - hysteresis); between them the current level stays.
-[[nodiscard]] u32 selectLod(f32 distance, u32 current, const LodSettings& settings) noexcept;
+/// `radius`: of the object's bounds (small ones switch sooner, LodSettings::smallRadius); negative: not
+/// small.
+[[nodiscard]] u32 selectLod(f32 distance, u32 current, const LodSettings& settings,
+                            f32 radius = -1.0f) noexcept;
 
 /// Distance and size test for bounds seen from `eye`; frustum tests are separate.
 [[nodiscard]] CullResult cullByDistance(const AABB& bounds, const Vec3& eye, const CullSettings& settings,

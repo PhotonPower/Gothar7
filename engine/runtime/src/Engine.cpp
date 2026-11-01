@@ -633,6 +633,9 @@ Result<void> Engine::initSceneRendering()
     m_lodSettings.lod1Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod1_distance", 60.0));
     m_lodSettings.lod2Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod2_distance", 150.0));
     m_lodSettings.hysteresis = static_cast<f32>(m_config.settings.get<f64>("render.lod_hysteresis", 0.1));
+    // Props and other small things (bounding radius below lod_small_radius) switch sooner (render.md "LOD").
+    m_lodSettings.smallRadius = static_cast<f32>(m_config.settings.get<f64>("render.lod_small_radius", 1.5));
+    m_lodSettings.smallScale = static_cast<f32>(m_config.settings.get<f64>("render.lod_small_scale", 0.35));
     // Lights per frame (render.md "Lichter je Bild"): effects first, then the nearest visible up to
     // max_lights.
     m_lightBudget.maxLights = static_cast<u32>(std::clamp<i64>(
@@ -1816,9 +1819,9 @@ void Engine::drawScene(u32 width, u32 height)
         if (cull == render::CullResult::Kept && view.intersects(instance.bounds))
         {
             // Level of detail by the distance to the centre of the bounds (with hysteresis).
-            instance.lod =
-                render::selectLod(glm::length(instance.bounds.center() - m_camera.transform.position),
-                                  instance.lod, m_lodSettings);
+            instance.lod = render::selectLod(
+                glm::length(instance.bounds.center() - m_camera.transform.position), instance.lod,
+                m_lodSettings, glm::length(instance.bounds.max - instance.bounds.min) * 0.5f);
             ++m_lodCounts[std::min<u32>(instance.lod, 2)];
             if (m_multiDraw)
             {
