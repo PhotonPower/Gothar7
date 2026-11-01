@@ -147,9 +147,11 @@ Trefferfenster für den Waffen-Sweep (2026-11-01, gameplay.md „Trefferprüfung
 ab 0,5 m vorn). Werkzeug `gothar_chargen.hitreach`, Prüfung `tests/test_hit_windows.py`. Die Richtungshiebe
 `t_attack_l`/`_r` (1h, 2h) schwingen die Klinge mit gedrehter Hand (`hand_r` je Schlüsselpose, 2026-11-01) schräg
 abwärts quer vor dem Körper: `_l` von rechts nach links, `_r` von links nach rechts, die Spitze von etwa 1,5 m bis
-unter 1 m. Damit Tiere (Kapseln bis 1,0 m) getroffen werden, zieht Kombo 1 (1h, 2h; Hilfsclip `t_combo1_low`) den Hieb
+unter 1 m, mit Ausfallschritt (`root` 0,6 m bzw. 0,7 m vor): Spitze im Fenster mindestens 1,5 m (1h) bzw. 1,8 m (2h)
+vor der Körpermitte, passend zum Kampfabstand der KI. Damit Tiere (Kapseln bis 1,0 m) getroffen werden, zieht Kombo 1 (1h, 2h; Hilfsclip `t_combo1_low`) den Hieb
 von oben bis Hüfthöhe durch, ebenso der 2h-Schlag von oben (Kombo 3). Jeder Waffenschlag erreicht im Fenster den Bereich
-vor dem Körper in 0,5–1,0 m Höhe (Test); die Fausthiebe (Gerade auf Kopfhöhe) nicht.
+vor dem Körper in 0,5–1,0 m Höhe (Test); bei den Fäusten der tiefe
+Körperhaken (Kombo 2, Hilfsclip `fist/t_cross_low`, vorgebeugt, Faust 0,7 m vorn auf 0,9 m Höhe).
 
 | Name | Zweck | Länge | Events | Quelle | Status |
 |---|---|---|---|---|---|
@@ -160,7 +162,7 @@ vor dem Körper in 0,5–1,0 m Höhe (Test); die Fausthiebe (Gerade auf Kopfhöh
 | `none/s_ko` | bewusstlos liegen (Schleife, atmet) | 2,0 s | – | K | platzhalter-K (letzte Pose von `t_ko`) |
 | `none/t_ko_getup` | aufstehen, beginnt in der `s_ko`-Pose | 1,5 s | – | Q | platzhalter (UAL2 `LayToIdle`, eingeblendet aus `s_ko`) |
 | `fist/t_attack_combo1` | Faust: Gerade links (Kombo 1) | 0,87 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL1 `Punch_Jab`, aus/in `fist/s_idle`) |
-| `fist/t_attack_combo2` | Faust: Gerade rechts (Kombo 2) | 1,0 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL1 `Punch_Cross`, aus/in `fist/s_idle`) |
+| `fist/t_attack_combo2` | Faust: tiefe Rechte zum Körper (Kombo 2, trifft auch Tiere) | 1,0 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL1 `Punch_Cross`, vorgebeugt tiefer, aus/in `fist/s_idle`) |
 | `fist/t_parry` | Deckung: Unterarme vor dem Gesicht (Blockfenster setzt engine) | 0,6 s | – | K | platzhalter-K (Pose per Gittersuche) |
 | `1h/t_attack_combo1` | Kombo 1: Hieb von oben | 1,4 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL2 `Sword_Regular_A` + `_Rec`, aus/in `1h/s_idle`) |
 | `1h/t_attack_combo2` | Kombo 2: waagrechter Schnitt mit Ausfall | 1,6 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL2 `Sword_Regular_B` + `_Rec`) |

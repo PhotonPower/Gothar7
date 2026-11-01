@@ -967,7 +967,6 @@ class _House:
                     continue
                 for pos, d in spots:
                     self.fp(kind, pos, d)
-        self.round_the_stairs()
         for place in [p for p in self.plan.places if p["house"] == h.id and p["kind"] == "fp"]:
             self.keep_way((place["pos"][0], place["pos"][1]))
         props["stool"] = self.set_tables(props.get("stool", 0))
@@ -986,6 +985,7 @@ class _House:
         self.candles()
         if through is not None:
             self.chamber_waypoints(*through)
+            self.near_waypoints()
             return
         # waypoints: in the middle of the door (linked to the routine waypoint outside), then
         # just inside it (linked to the door's): a figure lines up before the narrow passage
@@ -1007,39 +1007,67 @@ class _House:
         self.plan.places.append({"kind": "wp", "name": f"WP_{self.tag}", "house": h.id,
                                  "pos": [wx, wz], "dir": [room.inward[0], room.inward[1]],
                                  "y": room.floor, "link": door_name})  # fmt: skip
+        self.near_waypoints()
         if h.owner:
             self.private_area()
 
-    def round_the_stairs(self) -> None:
-        """In a room with stairs, a freepoint its waypoint does not see (past the steps or round
-        the inner corner of an L-shaped room) gets corners (``WP_…_UM_<TYPE>``, linked to the
-        room's waypoint): the engine walks to a freepoint from the nearest waypoint with a free
-        line to it."""
+    def sees(self, a: Pt, b: Pt) -> bool:
+        """A figure walks from ``a`` straight to the freepoint ``b``: inside the room, past the
+        stairs and the furniture (the freepoint's own furniture just behind it does not count)."""
         room = self.room
-        if room.steps is None:
-            return
+        line = LineString([a, b])
+        if not room.poly.buffer(-0.2).contains(line):
+            return False
+        lane = line.buffer(FP_LANE_M).difference(Point(b).buffer(FP_LANE_M + 0.15))
+        steps = [room.steps] if room.steps is not None else []
+        return not any(lane.intersects(t) for t in [*steps, *room.taken, *room.props])
+
+    def near_waypoints(self) -> None:
+        """Every freepoint of the room gets a waypoint at most ``FP_NEAR_M`` from it in a free
+        line (the engine plans again from the waynet after a figure got stuck and walks to a
+        freepoint only from such a waypoint): if none of the room's is near enough, one on the
+        way from the room's waypoint (``WP_…_VOR_<TYPE>_<NN>``), round the stairs and the
+        furniture over corners (``…_UM``) where the straight way is blocked."""
+        room, h = self.room, self.h
         tag = f"_{self.tag}_"
+        mine = [p for p in self.plan.places if p["house"] == h.id and p["kind"] == "wp"
+                and abs(p.get("y", math.inf) - room.floor) < 0.05
+                and room.poly.buffer(0.05).contains(Point(p["pos"]))]  # fmt: skip
         for place in [p for p in self.plan.places if p["kind"] == "fp" and tag in p["name"]]:
             at = (place["pos"][0], place["pos"][1])
-            line = LineString([room.entry, at])
-            hit = [room.steps] if line.buffer(0.35).intersects(room.steps) else []
-            if not room.poly.buffer(-0.35).contains(line):
-                outside = room.poly.convex_hull.difference(room.poly)
-                pieces = [g for g in getattr(outside, "geoms", [outside]) if isinstance(g, Polygon)]
-                hit += [g for g in pieces if g.intersects(line.buffer(0.35))]
-            if not hit:
+            near = [w for w in mine if math.dist(w["pos"], at) <= FP_NEAR_M
+                    and self.sees((w["pos"][0], w["pos"][1]), at)]  # fmt: skip
+            if near:
                 continue
-            things = [*hit, room.steps, *room.taken, *room.props]  # the furniture too (bodies)
-            corners = _detour(room.entry, at, unary_union(things), room.poly, sample=True,
-                              clear_m=FP_CLEAR_M)  # fmt: skip
-            kind = place["name"][3:].split("_LEO_")[0]
-            prev = f"WP_{self.tag}"
+            kind, nn = place["name"][3:].split("_LEO_")[0], place["name"].rsplit("_", 1)[1]
+            base = f"WP_{self.tag}_VOR_{kind}_{nn}"
+            start, link = room.entry, f"WP_{self.tag}"
+            corners: list[Pt] = []
+            if not self.sees(start, at):
+                outside = room.poly.convex_hull.difference(room.poly)  # inner corners
+                things = [*([room.steps] if room.steps is not None else []), *room.taken,
+                          *room.props, outside]  # fmt: skip
+                corners = _detour(start, at, unary_union(things), room.poly, sample=True,
+                                  clear_m=FP_CLEAR_M)  # fmt: skip
+            last = corners[-1] if corners else start
+            d = math.dist(last, at)
             for k, c in enumerate(corners, start=1):
-                name = f"WP_{self.tag}_UM_{kind}" + (f"_{k}" if k > 1 else "")
-                self.plan.places.append({"kind": "wp", "name": name, "house": self.h.id,
-                                         "pos": [c[0], c[1]], "dir": [0.0, 1.0],
-                                         "y": room.floor, "link": prev})  # fmt: skip
-                prev = name
+                name = f"{base}_UM" + (f"_{k}" if k > 1 else "")
+                self.add_wp(name, c, link)
+                link = name
+            if d > FP_NEAR_M - 0.2:  # one more on the last leg, before the freepoint
+                t = (d - (FP_NEAR_M - 0.5)) / d
+                last = (last[0] + (at[0] - last[0]) * t, last[1] + (at[1] - last[1]) * t)
+                self.add_wp(base, last, link)
+                mine.append(self.plan.places[-1])
+            if not self.sees(last, at):
+                self.plan.failed.append({"house": h.id, "what": f"way to {place['name']}",
+                                         "reason": "no free line"})  # fmt: skip
+
+    def add_wp(self, name: str, pos: Pt, link: str) -> None:
+        self.plan.places.append({"kind": "wp", "name": name, "house": self.h.id,
+                                 "pos": [pos[0], pos[1]], "dir": [0.0, 1.0],
+                                 "y": self.room.floor, "link": link})  # fmt: skip
 
     def chamber_waypoints(self, link: str, mid: tuple[float, float]) -> None:
         """In the passage (linked to the room before it), then just inside the chamber; up the
@@ -1141,6 +1169,8 @@ PASSAGE_FRONT_M = 0.7  # the place before a passage: this far out from it (strai
 DETOUR_START_M = 0.2  # its first and last leg less: the waypoint at the stairs' head is at the
 # edge, a passage may be close
 DETOUR_CORNER_M = 1.0  # its corners this far out from them
+FP_NEAR_M = 3.0  # a freepoint has a waypoint this near in a free line (engine's strict replan)
+FP_LANE_M = 0.3  # the engine's walkable line: spheres this wide (EngineNpcs.cpp)
 FP_CLEAR_M = 0.4  # a way to a freepoint round solid steps (no rail): this far from them
 DETOUR_SAMPLE_M = 0.5  # without a way over the corners: places this far apart along the sides
 

@@ -1004,6 +1004,66 @@ def crossbow(seg: int) -> list[Mesh]:
     return [stock, prod, iron, string]
 
 
+COIN = (0.013, 0.0024)  # Gulden: radius, thickness (metres)
+
+
+def _coin(
+    mesh: Mesh, seg: int, at: ArrayLike, tilt: tuple[float, float] = (0.0, 0.0), spin: float = 0.0
+) -> None:
+    """One coin with a raised rim, its face up (+Y) at `at`; tilt = degrees about X and Z."""
+    r, t = COIN
+    tmp = Mesh(mesh.material)
+    profile = [(0.0, t * 0.78), (r * 0.82, t * 0.78), (r * 0.86, t), (r, t * 0.9), (r, t * 0.1),
+               (r * 0.9, 0.0), (0.0, 0.0)][::-1]  # fmt: skip
+    lathe(tmp, profile, seg, tile=0.03)
+    pos, uv, tris = tmp.arrays()
+    ax, az = np.radians(tilt[0]), np.radians(tilt[1])
+    cs, sn = np.cos(np.radians(spin)), np.sin(np.radians(spin))
+    rot = (
+        np.array([[np.cos(az), -np.sin(az), 0], [np.sin(az), np.cos(az), 0], [0, 0, 1]])
+        @ np.array([[1, 0, 0], [0, np.cos(ax), -np.sin(ax)], [0, np.sin(ax), np.cos(ax)]])
+        @ np.array([[cs, 0, sn], [0, 1, 0], [-sn, 0, cs]])
+    )
+    mesh.add(pos @ rot.T + np.asarray(at, dtype=np.float64), uv, tris)
+
+
+def gulden(seg: int) -> list[Mesh]:
+    """Gulden (the currency, M10): a small stack of five gold coins with two beside it, one of them
+    leaning against the stack; the origin in the middle under the stack, +Y up."""
+    rng = np.random.default_rng(41)
+    gold = Mesh("gold")
+    t = COIN[1]
+    for i in range(5):
+        jitter = (rng.random(2) - 0.5) * 0.003
+        _coin(gold, seg, (jitter[0], i * t, jitter[1]), spin=float(rng.random() * 360))
+    _coin(gold, seg, (0.03, 0.0, 0.006), spin=40.0)
+    _coin(gold, seg, (-0.012, 0.004, 0.024), tilt=(-62.0, 0.0), spin=10.0)  # leaning on the stack
+    return [gold]
+
+
+def blank_hot(seg: int) -> list[Mesh]:
+    """Glowing sword blank from the anvil (M8 smithing, it_blank_hot): a flat, roughly forged bar
+    with a tang, held at the tang (the origin, tongs); +Y along the bar, +Z the later edge. The
+    bar glows (emissive), hottest towards the tip; the tang is cooler iron."""
+    rng = np.random.default_rng(43)
+    hot, tang = Mesh("iron_hot"), Mesh("iron_forged")
+    ys = np.linspace(-0.12, 0.02, 4)
+    bar = np.array([[-0.004, -0.008], [0.004, -0.008], [0.004, 0.008], [-0.004, 0.008]])
+    loft(tang, np.stack([np.zeros_like(ys), ys, np.zeros_like(ys)], axis=1), [bar] * 4, tile=0.05)
+    n = 10 + seg
+    ys = np.linspace(0.0, 0.64, n)
+    tt = ys / ys[-1]
+    width = (0.024 - 0.008 * tt) * (1 + 0.06 * (rng.random(n) - 0.5))
+    width[-1] *= 0.55  # blunt, rounded end
+    thick = (0.0055 - 0.0015 * tt) * (1 + 0.1 * (rng.random(n) - 0.5))
+    sections = [np.array([[-thick[i], -width[i]], [thick[i], -width[i]], [thick[i] * 1.1, 0.0],
+                          [thick[i], width[i]], [-thick[i], width[i]], [-thick[i] * 1.1, 0.0]])
+                for i in range(n)]  # fmt: skip
+    loft(hot, np.stack([np.zeros_like(ys), ys, np.zeros_like(ys)], axis=1), sections,
+         ref=(1.0, 0.0, 0.0), fit_uv=True)  # fmt: skip
+    return [hot, tang]
+
+
 RUNES = ("firebolt", "heal", "sleep", "transform_wolf", "summon_wolf")  # it_rune_<spell> (M12)
 
 ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
@@ -1051,6 +1111,8 @@ ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_shears": (shears, 8),
     "it_torch": (torch, 12),
     "it_lute": (lute, 16),
+    "it_gulden": (gulden, 14),
+    "it_blank_hot": (blank_hot, 8),
     **{f"it_rune_{spell}": ((lambda sp: lambda s: rune(s, sp))(spell), 12) for spell in RUNES},
 }
 
@@ -1067,8 +1129,11 @@ PROCEDURAL = (
     "stone", "parchment", "wax_red", "pitch", *(f"rune_{spell}" for spell in RUNES),
     "ham", "bone", "sausage", "cheese", "clay", "glass_green", "glass_amber", "linen",
     "root", "leaf_sage", "leaf_green", "leaf_dry", "flower_white", "flower_yellow",
-    "gold", "silver",
+    "gold", "silver", "iron_hot",
 )  # fmt: skip
+
+
+EMISSIVE = {"iron_hot": (1.0, 1.0, 1.0)}  # material -> glTF emissiveFactor (with its texture)
 
 
 RUNE_COLOURS = {  # sign colour per spell
@@ -1221,6 +1286,18 @@ def procedural_texture(name: str, size: int = 256) -> np.ndarray:
         c = np.array([0.16, 0.11, 0.07])[None, None] * (0.7 + 0.5 * n1[..., None])
         c = c * (0.8 + 0.35 * band[..., None])
         return np.clip(c + 0.06 * (n2[..., None] > 0.72), 0, 1)
+    if name == "iron_hot":  # glowing iron: dark red at the tang end (v = 0), orange to yellow
+        v = np.linspace(0, 1, size)[:, None, None]  # towards the tip, with dark scale flakes
+        cool, warm, hot = (
+            np.array([0.45, 0.06, 0.02]),
+            np.array([1.0, 0.38, 0.06]),
+            np.array([1.0, 0.72, 0.3]),
+        )
+        c = np.where(
+            v < 0.25, cool + (warm - cool) * (v / 0.25), warm + (hot - warm) * ((v - 0.25) / 0.75)
+        )
+        c = c * (0.85 + 0.25 * n1[..., None])
+        return np.clip(c * np.where(n2[..., None] > 0.68, 0.45, 1.0), 0, 1)
     if name == "cork":
         return np.clip(np.array([0.55, 0.4, 0.24])[None, None] * (0.7 + 0.5 * n2[..., None]), 0, 1)
     raise ValueError(f"unknown procedural texture {name}")
@@ -1294,6 +1371,9 @@ def item_gltf(item: str, texture_uri: Callable[[str], str]) -> tuple[dict, bytes
                     "roughnessFactor": 0.8,
                 },
             })  # fmt: skip
+            if name in EMISSIVE:  # glows: emissive = the colour texture times the factor
+                doc["materials"][-1]["emissiveTexture"] = {"index": len(doc["textures"]) - 1}
+                doc["materials"][-1]["emissiveFactor"] = list(EMISSIVE[name])
             material_of[name] = len(doc["materials"]) - 1
         return material_of[name]
 
@@ -1374,7 +1454,7 @@ LENGTHS = {
     "it_amulet": (0.24, 0.3), "it_chain_gold": (0.3, 0.4), "it_hammer": (0.28, 0.34),
     "it_saw": (0.5, 0.6), "it_shears": (0.18, 0.24),
     "it_potion_mana_small": (0.12, 0.2), "it_scroll": (0.18, 0.24), "it_torch": (0.65, 0.75),
-    "it_lute": (0.75, 0.9),
+    "it_lute": (0.75, 0.9), "it_gulden": (0.01, 0.03), "it_blank_hot": (0.7, 0.8),
     **{f"it_rune_{spell}": (0.05, 0.08) for spell in RUNES},
 }  # fmt: skip
 
@@ -1389,7 +1469,7 @@ def _lod0_geometry(g: Gltf, item: str) -> tuple[np.ndarray, int] | None:
 
 
 # wider than tall by nature (standing on their bottom, +Y up): no longest-axis rule
-AXIS_FREE = {"it_cheese", "it_bowl", "it_pretzel"}
+AXIS_FREE = {"it_cheese", "it_bowl", "it_pretzel", "it_gulden"}
 
 
 def validate_item(path: Path) -> Report:
