@@ -25,6 +25,7 @@
 #include <g7/gameplay/Magic.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
+#include <g7/gameplay/WeaponSweep.hpp>
 #include <g7/physics/Character.hpp>
 #include <g7/physics/Physics.hpp>
 #include <g7/platform/Actions.hpp>
@@ -1015,6 +1016,14 @@ private:
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
     void stopForFight(Creature& c);
+    /// The striking parts of the attacker's weapon (socket_hand_r) or fists (both hands) in the last step's
+    /// pose; none for animals, figures without the sockets, moves without a clip and with Combat.weapon_sweep
+    /// off (they hit by reach and angle).
+    [[nodiscard]] std::vector<gameplay::Blade> weaponBlades(const Combatant& c);
+    /// The hits of one fixed step of an attack's hit window (weapon sweep or reach and angle).
+    void strike(Combatant& attacker, std::span<const u32> ids);
+    /// Something solid between the two points (walls, mobs) - a blow does not pass it.
+    [[nodiscard]] bool blowBlocked(const Vec3& from, const Vec3& to) const;
     // Combat clips (M11, figuren #217): the graph's weapon value and the fight states.
     [[nodiscard]] i32 heroWeaponAnimation() const;
     [[nodiscard]] f32 creatureWeaponAnimation(const Creature& c) const;
@@ -1384,7 +1393,8 @@ private:
     gameplay::MobTypes m_mobTypes;
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
-    std::vector<u32> m_heroHitThisSwing;
+    gameplay::Swing m_heroSwing;
+    gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline
     struct CombatRequest
     {

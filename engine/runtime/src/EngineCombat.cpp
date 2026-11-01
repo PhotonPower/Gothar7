@@ -1,8 +1,10 @@
-// Combat (M11 part A, docs/modules/gameplay.md "Kampf"): fighters for the hero and every NPC
-// (gameplay::Fighter), hits within reach and angle during an attack's hit window - once per swing and target
-// -, the parry (K6), the damage (K2, K3), and what a hit does: stagger, knocked out or dead (K7); the hero
-// gets up again at the spot with little life (K8). Values in data/combat.lua. Until the human combat clips
-// arrive (figuren) the moves follow the fighter's fallback timeline.
+// Combat (M11, docs/modules/gameplay.md "Kampf"): fighters for the hero and every NPC (gameplay::Fighter); in
+// an attack's hit window, with Combat.weapon_sweep on, the weapon (or the fists) is swept along the clip from
+// step to step and hits the bodies it touches - once per swing and target, stopped by walls
+// (gameplay/WeaponSweep.hpp) -; animals, moves without a clip and the sweep off hit within reach and angle,
+// not through walls. Then the parry (K6), the damage (K2, K3), and what a hit does: stagger with a knockback,
+// knocked out or dead (K7); the hero gets up again at the spot with little life (K8). Values in
+// data/combat.lua.
 
 #include "PlayerFigure.hpp"
 
@@ -26,9 +28,21 @@ using gameplay::FightState;
 using script::Value;
 
 constexpr u32 kHeroId = ~u32(0);
-constexpr f32 kBodyRadius = 0.35f;     ///< reach counts from the body's front, to the target's
 constexpr f32 kHeroDownSeconds = 5.0f; ///< K8: the hero lies this long, then gets up
 constexpr f32 kHeroUpLife = 0.1f;      ///< ... with this share of his life
+constexpr f32 kStrikeRange = 4.0f;     ///< m: bodies farther away are not tested for a blow
+constexpr f32 kFloorNormal = 0.7f;     ///< a surface facing up more than this stops no blade (a floor)
+constexpr f32 kPersonChest = 1.3f;     ///< m above the feet: a blow without a blade aims from here to here
+constexpr f32 kAnimalChest = 0.5f;
+/// What stops a blow: walls and other static geometry, mobs (doors, chests).
+constexpr physics::LayerMask kBlowBlockers =
+    physics::layerBit(physics::Layer::World) | physics::layerBit(physics::Layer::Mob);
+
+Mat4 creatureMatrix(const Vec3& feet, f32 yaw)
+{
+    // Models face +Z, yaw 0 looks along -Z: half a turn more (as the player).
+    return glm::translate(Mat4(1.0f), feet) * glm::rotate(Mat4(1.0f), yaw + glm::pi<f32>(), Vec3(0, 1, 0));
+}
 
 std::string_view stateName(FightState s) noexcept
 {
@@ -82,7 +96,8 @@ struct Engine::Combatant
     Creature* creature = nullptr;
     gameplay::Character* character = nullptr;
     gameplay::Fighter* fighter = nullptr;
-    std::vector<u32>* hitThisSwing = nullptr;
+    gameplay::Swing* swing = nullptr;
+    gameplay::Knockback* knockback = nullptr;
     Vec3 position{0.0f};
     f32 yaw = 0.0f;
     std::string name; ///< Npc instance, "hero"
@@ -102,7 +117,8 @@ std::optional<Engine::Combatant> Engine::combatant(u32 id)
         // Z7: in an animal's shape it fights with the animal's values and life.
         c.character = m_transform ? m_transform->animal.get() : m_hero.get();
         c.fighter = &m_heroFighter;
-        c.hitThisSwing = &m_heroHitThisSwing;
+        c.swing = &m_heroSwing;
+        c.knockback = &m_heroKnockback;
         c.position = m_player.feet();
         c.yaw = m_movement.yaw();
         c.name = "hero";
@@ -117,7 +133,8 @@ std::optional<Engine::Combatant> Engine::combatant(u32 id)
     c.creature = creature;
     c.character = creature->character.get();
     c.fighter = &creature->fighter;
-    c.hitThisSwing = &creature->hitThisSwing;
+    c.swing = &creature->swing;
+    c.knockback = &creature->knockback;
     c.position = creature->position;
     c.yaw = creature->yaw;
     c.name = creature->species;
@@ -376,7 +393,7 @@ void Engine::fixedUpdateCombat(f32 seconds)
         }
         if (attacker->fighter->takeNewSwing())
         {
-            attacker->hitThisSwing->clear();
+            attacker->swing->reset();
         }
         if (id == kHeroId && before == FightState::Down && attacker->fighter->state() == FightState::Ready)
         {
@@ -386,32 +403,162 @@ void Engine::fixedUpdateCombat(f32 seconds)
         }
         if (!attacker->fighter->hitWindow())
         {
+            attacker->swing->blades.clear(); // the next window sweeps from its own first pose
             continue;
         }
-        const f32 reach = reachOf(*attacker);
-        const Vec3 forward = gameplay::forwardOf(attacker->yaw);
-        for (const u32 other : ids)
+        strike(*attacker, ids);
+    }
+}
+
+std::vector<gameplay::Blade> Engine::weaponBlades(const Combatant& c)
+{
+    const std::string& clipState = c.id == kHeroId ? m_heroFightState : c.creature->fightState;
+    const AnimatedFigure* figure = c.id == kHeroId ? m_figure.get() : c.creature->figure.get();
+    if (!m_combat.weaponSweep || c.animal || clipState.empty() || figure == nullptr)
+    {
+        return {}; // a bite lunges; a move on the fallback timeline has no swing to follow
+    }
+    const std::string weapon = meleeWeapon(c);
+    std::vector<Mat4> modelSpace(figure->skeleton.size());
+    figure->skeleton.modelSpace(figure->poseNow, modelSpace);
+    const Mat4 body = creatureMatrix(c.id == kHeroId ? m_playerFeet : c.position, c.yaw);
+    std::vector<gameplay::Blade> blades;
+    // Fists punch with either hand; a weapon is held in the right one.
+    for (const char* socketName : weapon.empty()
+                                      ? std::initializer_list<const char*>{"socket_hand_l", "socket_hand_r"}
+                                      : std::initializer_list<const char*>{"socket_hand_r"})
+    {
+        const i32 bone = figure->skeleton.find(socketName);
+        if (bone < 0)
         {
-            if (other == id || std::find(attacker->hitThisSwing->begin(), attacker->hitThisSwing->end(),
-                                         other) != attacker->hitThisSwing->end())
+            return {};
+        }
+        const Mat4 socket = body * modelSpace[static_cast<usize>(bone)];
+        const Vec3 grip(socket[3]);
+        const Vec3 axis =
+            glm::length(Vec3(socket[1])) > 1e-6f ? glm::normalize(Vec3(socket[1])) : Vec3(0.0f, 1.0f, 0.0f);
+        if (weapon.empty())
+        {
+            const Vec3 half = axis * (m_combat.fistLength * 0.5f); // a short capsule around the fist
+            blades.push_back({grip - half, grip + half});
+            continue;
+        }
+        // Item +Y runs from the fist along the blade (characters-pipeline.md §3.1): the model's extent there,
+        // else the data's length per mode.
+        f32 length = fightMode(c) == "2h" ? m_combat.blade2h : m_combat.blade1h;
+        if (const LoadedModel* model = itemModel(weapon); model != nullptr && model->bounds.max.y > 0.05f)
+        {
+            length = model->bounds.max.y;
+        }
+        blades.push_back({grip, grip + axis * length});
+    }
+    return blades;
+}
+
+bool Engine::blowBlocked(const Vec3& from, const Vec3& to) const
+{
+    const Vec3 d = to - from;
+    const f32 length = glm::length(d);
+    return m_physics.valid() && length > 1e-3f &&
+           m_physics.raycast(from, d / length, length, kBlowBlockers).has_value();
+}
+
+void Engine::strike(Combatant& attacker, std::span<const u32> ids)
+{
+    gameplay::Swing& swing = *attacker.swing;
+    if (swing.blocked)
+    {
+        return; // the blade stopped at a wall
+    }
+    // Who can be hit at all: alive, not hit by this swing, not a comrade, near enough.
+    std::vector<Combatant> targets;
+    for (const u32 other : ids)
+    {
+        if (other == attacker.id || std::ranges::find(swing.hit, other) != swing.hit.end())
+        {
+            continue;
+        }
+        auto target = combatant(other);
+        if (!target || target->fighter->state() == FightState::Dead)
+        {
+            continue;
+        }
+        // A pack or comrades of one guild do not hit each other (Gothic); the hero hits anyone.
+        if (attacker.id != kHeroId && other != kHeroId && !attacker.character->guild().empty() &&
+            attacker.character->guild() == target->character->guild() &&
+            attacker.creature->summoned == target->creature->summoned) // a summoned wolf bites wild ones
+        {
+            continue;
+        }
+        const Vec3 to = target->position - attacker.position;
+        if (std::abs(to.y) > 1.5f || glm::length(Vec2(to.x, to.z)) > kStrikeRange)
+        {
+            continue;
+        }
+        targets.push_back(std::move(*target));
+    }
+
+    std::vector<u32> hits;
+    if (const std::vector<gameplay::Blade> blades = weaponBlades(attacker); !blades.empty())
+    {
+        // The weapon along the clip: swept from its pose in the last step to the one now.
+        std::vector<gameplay::SweepTarget> bodies;
+        for (const Combatant& t : targets)
+        {
+            bodies.push_back({t.id, t.position, t.animal ? m_combat.animalHeight : m_combat.bodyHeight,
+                              m_combat.bodyRadius});
+        }
+        const f32 radius = meleeWeapon(attacker).empty() ? m_combat.fistRadius : m_combat.weaponRadius;
+        const auto blocker = [this](const gameplay::Blade& from, f32 r,
+                                    const Vec3& motion) -> std::optional<f32>
+        {
+            if (!m_physics.valid())
             {
-                continue;
+                return std::nullopt;
             }
-            auto target = combatant(other);
-            if (!target || target->fighter->state() == FightState::Dead)
+            const f32 length = glm::length(motion);
+            for (const physics::RayHit& hit :
+                 m_physics.capsuleCast(from.grip, from.tip, r, motion, kBlowBlockers))
             {
-                continue;
+                if (hit.normal.y < kFloorNormal) // a floor does not stop a blade, a wall does
+                {
+                    return length > 1e-5f ? hit.distance / length : 0.0f;
+                }
             }
-            // A pack or comrades of one guild do not hit each other (Gothic); the hero hits anyone.
-            if (id != kHeroId && other != kHeroId && !attacker->character->guild().empty() &&
-                attacker->character->guild() == target->character->guild() &&
-                attacker->creature->summoned == target->creature->summoned) // a summoned wolf bites wild ones
+            return std::nullopt;
+        };
+        for (usize i = 0; i < blades.size(); ++i)
+        {
+            const gameplay::Blade& from = i < swing.blades.size() ? swing.blades[i] : blades[i];
+            const gameplay::SweepResult result =
+                gameplay::sweepBlade(from, blades[i], radius, bodies, blocker);
+            for (const u32 id : result.hits)
             {
-                continue;
+                if (std::ranges::find(hits, id) == hits.end())
+                {
+                    hits.push_back(id);
+                }
             }
-            const Vec3 to = target->position - attacker->position;
+            swing.blocked = swing.blocked || result.blocked;
+        }
+        swing.blades = blades;
+        if (swing.blocked)
+        {
+            G7_LOG_DEBUG("engine", "{}: the blow hits a wall", attacker.name);
+        }
+    }
+    else
+    {
+        // Animals, moves without a clip, the sweep off: within reach and angle in front, nothing solid
+        // between.
+        const f32 reach = reachOf(attacker);
+        const Vec3 forward = gameplay::forwardOf(attacker.yaw);
+        const Vec3 chest(0.0f, attacker.animal ? kAnimalChest : kPersonChest, 0.0f);
+        for (const Combatant& t : targets)
+        {
+            const Vec3 to = t.position - attacker.position;
             const f32 distance = glm::length(Vec2(to.x, to.z));
-            if (std::abs(to.y) > 1.5f || distance - 2.0f * kBodyRadius > reach)
+            if (distance - 2.0f * m_combat.bodyRadius > reach)
             {
                 continue;
             }
@@ -421,9 +568,23 @@ void Engine::fixedUpdateCombat(f32 seconds)
             {
                 continue;
             }
-            attacker->hitThisSwing->push_back(other);
-            resolveHit(*attacker, *target);
+            if (blowBlocked(attacker.position + chest,
+                            t.position + Vec3(0.0f, t.animal ? kAnimalChest : kPersonChest, 0.0f)))
+            {
+                continue;
+            }
+            hits.push_back(t.id);
         }
+    }
+    for (const u32 id : hits)
+    {
+        auto target = combatant(id); // a blow before in this step may have changed it
+        if (!target || target->fighter->state() == FightState::Dead)
+        {
+            continue;
+        }
+        swing.hit.push_back(id);
+        resolveHit(attacker, *target);
     }
 }
 
@@ -496,6 +657,9 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
         {
             target.fighter->stagger();
             playReaction(target, "none/t_hit_light");
+            // ... and pushes it back along the blow (people with a body, the hero).
+            target.knockback->start(target.position - attacker.position, m_combat.knockback,
+                                    m_combat.knockbackSeconds);
             if (target.creature != nullptr && target.animal)
             {
                 target.creature->action = 3; // the hit clip
@@ -712,8 +876,26 @@ void Engine::bindCombatFunctions()
                  {
                      return Error{"expects an NPC in the world"};
                  }
-                 return Value(static_cast<f64>(reachOf(*x) + 2.0f * kBodyRadius));
+                 return Value(static_cast<f64>(reachOf(*x) + 2.0f * m_combat.bodyRadius));
              }});
+    vm.bind(
+        {"combat_reload", "combat_reload()",
+         "Liest die Kampfwerte aus der Tabelle `Combat` neu (nach Änderungen in der Konsole, zum Abstimmen).",
+         "Kampf", [this](std::span<const Value>) -> Result<Value>
+         {
+             const script::Value table = m_scripts->global("Combat");
+             if (table.asTable() == nullptr)
+             {
+                 return Error{"no Combat table"};
+             }
+             auto settings = gameplay::CombatSettings::fromTable(*table.asTable());
+             if (!settings)
+             {
+                 return settings.error();
+             }
+             m_combat = settings.value();
+             return Value();
+         }});
     vm.bind({"hero_attack", "hero_attack(kind?: \"front\"|\"left\"|\"right\") -> boolean",
              "Ein Schlag des Helden (sonst über die Steuerung).", "Kampf", heroMove("attack")});
     vm.bind({"hero_parry", "hero_parry() -> boolean", "Parade des Helden.", "Kampf", heroMove("parry")});

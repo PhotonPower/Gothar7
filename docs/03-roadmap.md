@@ -237,7 +237,7 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 - [x] Waffenmodi (Faust, Einhand, Zweihand, Bogen, Armbrust), Ziehen/Wegstecken – Fernkampfwaffen mit eigener Taste (R1)
 - [x] Kameramodus „Kampf“ der Third-Person-Kamera (aus M5: näher, Blick auf den Gegner bei Ziel-Lock) – `[camera.combat]`, weich überblendet, drinnen der nähere Abstand (K5)
 - [x] Nahkampf: Angriffe mit Treffer-Fenstern aus Animations-Events, Kombos abhängig vom Talent, Parieren, Ausweichschritt – Gothic-1-Tasten, Maus als Zweitbelegung; bis zu den Clips eine Zeitleiste (A, B)
-- [ ] Trefferprüfung (Waffen-Shapecast entlang der Animation), Treffer-Reaktionen, Rückstoß
+- [x] Trefferprüfung (Waffen-Shapecast entlang der Animation), Treffer-Reaktionen, Rückstoß – Klinge bzw. Fäuste als Kapsel je Schritt entlang des Clips gefegt (`capsuleCast`, Wände und Türen halten auf), Rückstoß 0,3 m (Vorschlag); `weapon_sweep` vorerst aus, bis die Trefferfenster der Platzhalter-Clips passen (gameplay.md „Trefferprüfung“)
 - [x] Schadensmodell: Schadensarten × Schutzwerte, kritische Treffer abhängig vom Talent – Waffe + Stärke − Schutz, mindestens 5, kritisch 0/10/20 % (K2, K3; Teil A)
 - [x] Fernkampf: Zielen, Projektile mit Ballistik, Munition – Bogen und Armbrust des Helden, Trefferchance nach Talent auf das Ziel, Pfeile bleiben stecken bzw. liegen (R1–R4; E)
 - [x] Bewusstlosigkeit vs. Tod, Plündern – bewusstlos 30 s, Schlag auf Liegende tötet, Plündern, Zeugen (K7; A, C)

@@ -303,8 +303,8 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
 - **Kombos (K4):** Talent 0 Einzelschläge, 1 bis 3, 2 bis 4 und 1,25-mal schneller; der nächste Schlag nur im
   Kombofenster. Seitenhiebe ketten nicht. Talent: `melee_2h` für Zweihänder, sonst `melee_1h` (auch Fäuste).
 - **Treffer:** im Trefferfenster jedes Ziel höchstens einmal je Schlag, in Reichweite (ab den Körpern: Faust 0,9 m,
-  Einhand 1,3 m, Zweihand 1,7 m) und im Winkel (±50°) vor dem Angreifer. Eine Waffen-Kapsel entlang der Animation
-  folgt mit den Clips.
+  Einhand 1,3 m, Zweihand 1,7 m) und im Winkel (±50°) vor dem Angreifer, ohne Wand oder Mob dazwischen. Mit
+  `weapon_sweep` fegt stattdessen die Waffe entlang des Clips (siehe „Trefferprüfung“ unten).
 - **Schaden (K2, K3):** je Schadensart max(Waffe − Schutz, 0), die Stärke zur Hauptart der Waffe (Fäuste: stumpf),
   mindestens 5; kritisch nach Talent 0/10/20 % mit doppeltem Waffenschaden. Tiere: `Npc.damage` (Art) plus Stärke.
 - **Parade (K6):** blockt 0,4 s ab Beginn Schläge von vorn (±60°); der Schlag prallt ab (der Angreifer taumelt).
@@ -386,7 +386,38 @@ Fortbewegung der gezogenen Waffe zurückgeht (Graph-Parameter `weapon`: 1 Einhan
 Aufstehen und Tod spielen `none/t_hit_light`, `t_ko` → `s_ko`, `t_ko_getup`, `t_die_front`. Fehlt einer Figur ein
 Clip, bleibt die Zeitleiste. Menschen halten nach einem Kampf 5 s die Kampfhaltung ihrer Waffe.
 
-**Weiter:** Fernkampf für NPCs (Jäger); Waffen-Kapsel entlang der Animation; Bogen-Clips beim Schießen.
+**Trefferprüfung, Treffer-Reaktion, Rückstoß (umgesetzt, `gameplay/WeaponSweep.hpp`, `EngineCombat.cpp`):**
+- **Waffen-Sweep** (`Combat.weapon_sweep`): Im Trefferfenster (`hit_start` … `hit_end`) eines Zugs mit Clip ist die
+  Waffe eine Kapsel vom Griff (`socket_hand_r`) entlang Socket-+Y; ihre Länge ist die Ausdehnung des Item-Modells
+  in +Y (Vertrag §3.1), ohne Modell `blade_1h` 0,9 m bzw. `blade_2h` 1,3 m; Dicke `weapon_radius` 0,08 m. Fäuste
+  sind kurze Kapseln (`fist_length` 0,12 m, `fist_radius` 0,1 m) um beide Hand-Sockets (Kombo 1 ist die Linke).
+  Je Simulationsschritt fegt sie von der Lage des letzten Schritts zur jetzigen, in Teilschritten von höchstens
+  0,1 m Weg von Griff oder Spitze (der Griff geht je Teilschritt gerade, die Klinge dreht sich).
+- **Ziele** sind stehende Kapseln (`body_radius` 0,35 m, Höhe `body_height` 1,8 m bzw. Tiere `animal_height`
+  1,0 m); getroffen ist, was die Klinge berührt, jedes Ziel höchstens einmal je Schlag. Die Spielregeln danach
+  (Parade, Schaden, kritisch, Bewusstlosigkeit, gleiche Gilde) bleiben unverändert.
+- **Wände:** Jeder Teilschritt ist ein `PhysicsWorld::capsuleCast` gegen `World` und `Mob`; trifft die Klinge
+  eine Fläche, die nicht nach oben zeigt (Normale y < 0,7 – Böden halten sie nicht auf), endet der Schlag dort:
+  Ziele bis dahin zählen, danach trifft er nichts mehr. Steckt die Klinge schon in der Wand, trifft sie nichts.
+- **Ohne Sweep** treffen Tiere (Biss mit Sprung), Züge ohne Clip (Zeitleiste) und alle bei `weapon_sweep = false`
+  weiter nach Reichweite und Winkel (oben); ein Strahl von Brust zu Brust (1,3 m, Tiere 0,5 m) gegen `World` und
+  `Mob` hält auch dort den Schlag durch Wände und geschlossene Türen auf.
+- **Stand:** `weapon_sweep` ist vorerst **aus**. Gemessen mit den Platzhalter-Clips liegt das Trefferfenster
+  mehrerer Züge vor dem eigentlichen Hieb: `1h`/`2h t_attack_combo1` halten die Klinge im Fenster noch erhoben
+  (Spitze ≥ 1,6 m hoch, vorn höchstens 1,1–1,2 m; der Hieb nach vorn bis 1,9–2,3 m kommt erst nach `hit_end`),
+  `t_attack_l`/`t_attack_r` (Platzhalter-K) erreichen im Fenster nichts vor dem Körper. Mit Sweep fallen dann
+  Talent-0-Kämpfe (nur Kombo 1) aus der Reichweite der Kampf-KI. Einschalten, sobald figuren die Fenster an die
+  Clips angepasst hat; `combat_reload()` liest geänderte Werte aus der Konsole neu.
+- **Treffer-Reaktion:** wie bisher (Taumeln mit `none/t_hit_light` ab `stagger_share`, Tiere ihr Treffer-Clip).
+- **Rückstoß** (Vorschlag, Spielgefühl offen): Ein Treffer, der taumeln lässt, schiebt das Ziel `knockback` 0,3 m
+  in `knockback_seconds` 0,2 s entlang der Richtung Angreifer → Ziel, mit Kollision (Menschen und Held; Tiere ohne
+  Körper nicht). `knockback = 0` schaltet ihn ab.
+- Tests: `tests/gameplay/test_weapon_sweep.cpp` (Bogen, außerhalb, Wand, einmal je Schlag, Rückstoß, Werte),
+  `tests/physics/test_physics.cpp` (Kapsel-Cast), `tests/runtime/test_engine_weapon_sweep.cpp` (echte Clips:
+  Treffer vorn einmal je Schlag, keiner hinten, Tür blockt mit und ohne Sweep, Rückstoß).
+
+**Weiter:** Fernkampf für NPCs (Jäger); Bogen-Clips beim Schießen; `weapon_sweep` einschalten, wenn die
+Trefferfenster der Clips passen (figuren).
 
 ## Magie (M12)
 Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, wie Gothic 1).

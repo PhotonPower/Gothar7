@@ -10,6 +10,7 @@
 #include <g7/core/Log.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
+#include <g7/gameplay/WeaponSweep.hpp>
 #include <g7/runtime/Engine.hpp>
 
 #include <algorithm>
@@ -29,53 +30,6 @@ constexpr f32 kHitRadius = 0.4f;      ///< m around a body's axis
 constexpr f32 kHumanHeight = 1.8f;
 constexpr f32 kAnimalHeight = 1.0f;
 constexpr u32 kHeroShooter = ~u32(0);
-
-/// Shortest distance between the segments [p0, p1] and [q0, q1].
-f32 segmentDistance(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& q1)
-{
-    const Vec3 d1 = p1 - p0;
-    const Vec3 d2 = q1 - q0;
-    const Vec3 r = p0 - q0;
-    const f32 a = glm::dot(d1, d1);
-    const f32 e = glm::dot(d2, d2);
-    const f32 f = glm::dot(d2, r);
-    f32 s = 0.0f;
-    f32 t = 0.0f;
-    if (a <= 1e-8f && e <= 1e-8f)
-    {
-        return glm::length(r);
-    }
-    if (a <= 1e-8f)
-    {
-        t = std::clamp(f / e, 0.0f, 1.0f);
-    }
-    else
-    {
-        const f32 c = glm::dot(d1, r);
-        if (e <= 1e-8f)
-        {
-            s = std::clamp(-c / a, 0.0f, 1.0f);
-        }
-        else
-        {
-            const f32 b = glm::dot(d1, d2);
-            const f32 denom = a * e - b * b;
-            s = denom != 0.0f ? std::clamp((b * f - c * e) / denom, 0.0f, 1.0f) : 0.0f;
-            t = (b * s + f) / e;
-            if (t < 0.0f)
-            {
-                t = 0.0f;
-                s = std::clamp(-c / a, 0.0f, 1.0f);
-            }
-            else if (t > 1.0f)
-            {
-                t = 1.0f;
-                s = std::clamp((b - c) / a, 0.0f, 1.0f);
-            }
-        }
-    }
-    return glm::length((p0 + d1 * s) - (q0 + d2 * t));
-}
 } // namespace
 
 std::string Engine::rangedWeapon() const
@@ -229,7 +183,8 @@ void Engine::fixedUpdateProjectiles(f32 seconds)
             }
             const auto point = aimPoint(c->id);
             const f32 height = point && point->y - c->position.y < 1.0f ? kAnimalHeight : kHumanHeight;
-            if (segmentDistance(from, to, c->position, c->position + Vec3(0.0f, height, 0.0f)) < kHitRadius)
+            if (gameplay::segmentDistance(from, to, c->position, c->position + Vec3(0.0f, height, 0.0f)) <
+                kHitRadius)
             {
                 const f32 along = glm::length(c->position + Vec3(0.0f, height * 0.5f, 0.0f) - from);
                 if (along <= nearest + kHitRadius)
@@ -240,8 +195,8 @@ void Engine::fixedUpdateProjectiles(f32 seconds)
             }
         }
         if (p.shooter != kHeroShooter && m_player.valid() &&
-            segmentDistance(from, to, m_player.feet(), m_player.feet() + Vec3(0.0f, kHumanHeight, 0.0f)) <
-                kHitRadius)
+            gameplay::segmentDistance(from, to, m_player.feet(),
+                                      m_player.feet() + Vec3(0.0f, kHumanHeight, 0.0f)) < kHitRadius)
         {
             heroHit = true;
         }

@@ -310,6 +310,9 @@ Der Held benutzt ein Item aus dem Inventar (Nahrung, Trank, Schriftstück) – n
 
 ## Kampf
 
+### `combat_reload()`
+Liest die Kampfwerte aus der Tabelle `Combat` neu (nach Änderungen in der Konsole, zum Abstimmen).
+
 ### `draw_ranged() -> string`
 Zieht den ausgerüsteten Bogen bzw. die Armbrust bzw. steckt weg, wie die Taste draw_ranged (M11, R1); gibt zurück, was danach gezogen ist (wie player_weapon).
 

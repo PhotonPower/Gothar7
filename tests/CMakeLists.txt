@@ -18,7 +18,7 @@ g7_add_test_suite(runtime NO_TEST)
 set(_g7_runtime_groups
     "scenarios|*_scenario.cpp"
     "npcs|*test_engine_scripts.cpp,*test_engine_monsters.cpp"
-    "fights|*test_engine_perception.cpp,*test_engine_dialog.cpp,*test_engine_combat.cpp"
+    "fights|*test_engine_perception.cpp,*test_engine_dialog.cpp,*test_engine_combat.cpp,*test_engine_weapon_sweep.cpp"
     "leonberg|*test_engine_leonberg.cpp"
     "leonberg_residents|*test_engine_leonberg_residents.cpp")
 set(_g7_runtime_tests runtime)
