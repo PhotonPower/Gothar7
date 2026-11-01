@@ -23,9 +23,10 @@ void defineContentKinds(script::ScriptVm& vm)
              {"damage", Type::Table},
              {"protection", Type::Table},
              {"requires", Type::Table},
-             {"effects", Type::Table},   // using it: { hp = 20, mana = 10 } (food, potions)
-             {"boost", Type::Table},     // using it: for a while { speed = 1.3, seconds = 120 } (potions)
-             {"text", Type::String},     // documents: what reading shows
+             {"effects", Type::Table}, // using it: { hp = 20, mana = 10 } (food, potions)
+             {"boost", Type::Table},   // using it: for a while { speed = 1.3, seconds = 120 } (potions)
+             {"text", Type::String},   // documents: what reading shows
+             {"map", Type::String},    // map items (documents): the picture in the VFS shown instead (M14 E)
              {"on_use", Type::Function}, // fn(item): after the effects
              {"tags", Type::StringList},
              {"spell", Type::String, false, none, none, "Spell"}, // runes and scrolls: what they cast (M12)

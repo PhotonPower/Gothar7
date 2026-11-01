@@ -376,6 +376,14 @@ bool Engine::runFrame()
             {
                 m_diaryOpen = !m_diaryOpen; // the diary (M10)
             }
+            if (m_actions.pressed(m_input, platform::Action::Status) && m_player.valid())
+            {
+                m_statusOpen = !m_statusOpen; // the character sheet (M14 part E)
+            }
+            if (m_actions.pressed(m_input, platform::Action::Map) && m_player.valid() && m_gameUi)
+            {
+                openMapOfHero(); // only with a map item (F9)
+            }
             // The action key (classic: Ctrl, modern: E) acts on the focus: items are picked up, mobs used
             // (M8).
             const bool actionKey = m_actions.pressed(m_input, platform::Action::Action) ||
@@ -1918,9 +1926,10 @@ void Engine::runDebugUi(f64 realSeconds)
     // The game UI (M14) shows the focus name, dialogue, documents, mob choices and lockpicking; without it
     // (failed to load) the ImGui windows of M8-M10 do.
     const bool legacy = !m_gameUi;
-    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen || m_diaryOpen ||
-                      (legacy && (m_inventoryOpen || m_focus || m_mobUse || m_document || m_dialog))) &&
-                     m_debugUi.valid();
+    m_debugUiFrame =
+        (m_debugUiVisible || m_consoleOpen ||
+         (legacy && (m_inventoryOpen || m_diaryOpen || m_focus || m_mobUse || m_document || m_dialog))) &&
+        m_debugUi.valid();
     m_window->setTextInput(m_debugUiFrame && m_debugUi.wantsText());
     if (!m_debugUiFrame)
     {
@@ -1945,7 +1954,10 @@ void Engine::runDebugUi(f64 realSeconds)
         documentUi();
     }
     dialogUi(); // M10: without the game UI the dialogue and trading windows
-    diaryUi();
+    if (legacy)
+    {
+        diaryUi(); // the game UI's diary screen since M14 part E
+    }
     if (!m_debugUiVisible)
     {
         return;

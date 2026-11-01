@@ -217,3 +217,35 @@ TEST_CASE("Engine UI: inventory and chest as item screens")
     REQUIRE(engine.runFrame());
     CHECK(engine.screens().find("container") == nullptr);
 }
+
+TEST_CASE("Engine UI: character sheet, diary and map with their keys")
+{
+    g7::Engine engine(campWithWindow());
+    REQUIRE(engine.init().ok());
+    REQUIRE(engine.runFrame());
+    tapKey(engine, SDL_SCANCODE_B); // status
+    CHECK(engine.statusOpen());
+    REQUIRE(engine.screens().find("status") != nullptr);
+    tapKey(engine, SDL_SCANCODE_B); // closes it again
+    CHECK_FALSE(engine.statusOpen());
+    REQUIRE(engine.runFrame());
+    CHECK(engine.screens().find("status") == nullptr);
+
+    tapKey(engine, SDL_SCANCODE_N); // log
+    CHECK(engine.diaryOpen());
+    CHECK(engine.screens().find("diary") != nullptr);
+    tapKey(engine, SDL_SCANCODE_ESCAPE);
+    CHECK_FALSE(engine.diaryOpen());
+    CHECK_FALSE(engine.paused());
+
+    // Without a map item the map key only says so (F9); a map picture opens the map screen.
+    tapKey(engine, SDL_SCANCODE_M);
+    CHECK_FALSE(engine.mapOpen());
+    CHECK(engine.screenMessages().messages().back().text == "Ich habe keine Karte.");
+    CHECK_FALSE(engine.runConsoleLine("map_open('ui/maps/none.png')").ok());
+    REQUIRE(engine.runConsoleLine("map_open('ui/maps/placeholder.png', 'Karte')").ok());
+    REQUIRE(engine.runFrame());
+    CHECK(engine.screens().find("map") != nullptr);
+    tapKey(engine, SDL_SCANCODE_M);
+    CHECK_FALSE(engine.mapOpen());
+}

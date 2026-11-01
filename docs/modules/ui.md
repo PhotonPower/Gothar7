@@ -288,6 +288,26 @@ std::vector<ItemTab> itemTabs(const Layout&);                                   
   GPU `test_item_preview.cpp` (Deckung in der Kachel mittig und `fill`), `tests/runtime/test_engine_ui.cpp` (Inventar
   per Tab schließen, Truhe per Enter ausräumen).
 
+## Spiel-UI Teil E (umgesetzt, M14) – Charakter, Tagebuch, Karte
+`JournalScreens.hpp` (`StatusScreen`, `DiaryScreen`, `MapScreen`, Widget `TextView`); Engine
+`runtime/EngineUiJournal.cpp`; Lua-Feld `map` an Items.
+
+- **Charakter** (Taste `status`, B): Name und Gilde, vier Blöcke – Allgemein (Stufe, Erfahrung / nächste Stufe,
+  Lernpunkte), Attribute (Leben, Mana, Stärke, Geschick), Talente (alle aus `kTalents`, „–“ = nicht gelernt), Schutz
+  (Klinge, Wucht, Pfeile, Feuer, Magie). Kästen `status.*`, Überschriften in der neuen Textrolle `heading`.
+- **Tagebuch** (Taste `log`, N; ersetzt `DiaryPanel`): Pergament mit dem Kapitel, Reitern Laufende Aufträge /
+  Erledigt / Gescheitert / Allgemeines (Reiter-Tasten oder Klick), links die Aufträge bzw. Themen, rechts ihre
+  Einträge als scrollender Text (`TextView`: Hoch/Runter, Rad). Daten aus `Story` wie bisher (`diaryPanelData`).
+- **Karte** (Taste `map`, M; F9): nur mit einem Karten-Item – ein Item der Kategorie `document` mit dem Feld
+  `map = "ui/maps/<name>.png"`; Benutzen oder M zeigt sein Bild auf Pergament, eingepasst, ohne Spielerposition.
+  Ohne Karte meldet M „Ich habe keine Karte.“. Das Stadtplan-Item für Leonberg liefert welt; bis dahin
+  `ui/maps/placeholder.png` (eigene Arbeit, nur für Tests und Konsole: `map_open(image, title?)`).
+- Die drei Tasten schließen ihren Bildschirm wieder, Zurück ebenso. Lua für Konsole und Tests: `status_open(open?)`,
+  `map_open(image, title?)`, `diary_open(open?)` (seit M10).
+- **Nacharbeit Teil D:** Reiter-Titel in der neuen Textrolle `tab` (16 statt 19): acht Reiter passen ungekürzt.
+- **Tests:** `tests/ui/test_journal_screens.cpp` (Charakter, Tagebuch-Abschnitte und -Einträge, Scrollen, Karte
+  eingepasst), `tests/runtime/test_engine_ui.cpp` (B, N, M öffnen und schließen; ohne Karten-Item eine Meldung).
+
 ## Plan M14 (freigegeben, 2026-11-01)
 Grundlage: ADR 0009 (angenommen: eigenes Retained-Mode-UI, RmlUi verworfen, ImGui nur Debug/Editor), ADR 0020
 (angenommen: MSDF-Atlas mit msdfgen im Cooker) und die Festlegungen des Projektinhabers vom 2026-10-31
