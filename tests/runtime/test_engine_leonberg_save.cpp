@@ -53,7 +53,11 @@ TEST_CASE("Leonberg save state: the living town captured, applied to a fresh eng
         CHECK(residents >= 25);
         first = save::toJson(state.value());
     }
-    Engine engine(leonbergConfig());
+    // The loading engine starts without a world (as from the main menu): Leonberg loads once, from the state.
+    EngineConfig empty = leonbergConfig();
+    empty.world.clear();
+    empty.start.clear();
+    Engine engine(std::move(empty));
     REQUIRE(engine.init().ok());
     REQUIRE(engine.runFrame());
     auto state = save::fromJson(first);
