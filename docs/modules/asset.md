@@ -115,6 +115,18 @@ TOC    je Eintrag: pfadHash u64 (StringId::hashOf), offset u64, size u64 (gespei
   Eintrags auf und liefert dann einen `Result`-Fehler.
 - Der Leser (`src/PakArchive.hpp`) ist intern. Daten werden bei Bedarf gelesen, jeder Aufruf öffnet einen eigenen Stream.
 
+### `FontFile.hpp` – gekochte Schriften `.g7font` (M14, ADR 0020)
+```cpp
+struct FontGlyph { u32 codepoint; f32 advance, planeLeft, planeBottom, planeRight, planeTop; u16 atlasX, atlasY, atlasWidth, atlasHeight; };
+struct FontData { FontKind kind; f32 emPixels, distanceRange, ascender, descender, lineGap; u32 atlasWidth, atlasHeight;
+                  std::vector<u8> pixels; std::vector<FontGlyph> glyphs; std::vector<FontKerning> kerning; };
+std::vector<u8> serializeFont(const FontData&);
+Result<FontData> deserializeFont(std::span<const u8>, std::string_view debugName = "<memory>");
+```
+- Version 1: Kopf (`G7FN`, Art msdf/sdf, Metriken in em), Glyphen nach Codepoint sortiert (Ebene in em relativ zum
+  Stift auf der Grundlinie, +Y oben; Atlas-Rechteck in Pixeln, oben links), Kerning-Paare sortiert, Atlas RGBA8 mit zstd.
+  Geschrieben von `g7-cook --font`, gelesen von `ui::Font`; geprüft werden Größen, Sortierung und Atlas-Grenzen.
+
 ### `MeshFile.hpp` – gekochte Meshes `.g7mesh` (ADR 0016)
 ```cpp
 std::vector<u8> serializeMesh(const MeshData&);

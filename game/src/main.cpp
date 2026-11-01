@@ -48,6 +48,7 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --view-mesh=<path>      show a model (.gltf/.glb/.g7mesh) at the origin
   --benchmark             visit every viewpoint, log frame times, exit
   --screenshot=<file.png> save the last frame (with --frames or --benchmark)
+  --ui-sample             draw the game UI's sample page (text roles, frames, bars) over the scene
   --lod=auto|0|1|2        level of detail of static models: by distance (default) or forced (test images)
   --no-ground             no ground plate under the model or scene
   --no-sun                no sunlight
@@ -75,6 +76,7 @@ struct CommandLine
     std::vector<std::string> exec;
     std::string screenshot;
     bool benchmark = false;
+    bool uiSample = false;
     int lod = -1; // --lod: -1 = auto
     bool editor = false;
     std::string walk;
@@ -155,6 +157,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
                 return std::nullopt;
             }
             cli.viewpoint = index;
+        }
+        else if (arg == "--ui-sample")
+        {
+            cli.uiSample = true;
         }
         else if (arg == "--benchmark")
         {
@@ -366,6 +372,7 @@ int main(int argc, char** argv)
         config.viewpoint = *cli->viewpoint;
     }
     config.forcedLod = cli->lod;
+    config.uiSample = cli->uiSample;
     if (cli->benchmark)
     {
         // Measure what the GPU can do: no VSync, no frame cap.

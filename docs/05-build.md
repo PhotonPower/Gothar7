@@ -107,7 +107,7 @@ das Spiel dort mit `--no-render` starten.
 ## Konfigurationsdateien
 | Datei | Inhalt |
 |---|---|
-| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[assets]` (VFS-Mounts, Hot-Reload), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird bei jedem Build neben die Executable kopiert (Target `gothar_data`) |
+| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[assets]` (VFS-Mounts, Hot-Reload), `[ui]` (Sprache der UI-Texte, UI-Skalierung; M14), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird bei jedem Build neben die Executable kopiert (Target `gothar_data`) |
 | `config.toml` im Benutzerverzeichnis (Windows `%APPDATA%\Gothar\Gothar`) | optionale eigene Einstellungen; überschreibt `engine.toml` Schlüssel für Schlüssel |
 | `engine/render/shaders/` → `<build>/game/shaders/` | Engine-Shader (GLSL); werden bei jedem Build neben die Executable kopiert (Target `gothar_data`, auch wenn nur ein Shader geändert wurde) – Änderungen dort gehen beim nächsten Build verloren, zum Bearbeiten `[render] shader_dir` auf die Quellen zeigen lassen |
 
@@ -139,6 +139,7 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--viewpoint=N` | mit Viewpoint N der Szene starten (Standard 0) |
 | `--benchmark` | VSync und Frame-Limit aus, jeden Viewpoint der Szene 300 Frames lang ansteuern (die ersten 30 zum Einschwingen), Frame-Zeiten (Mittel, p95, p99, schlechtester) sowie Draws, Pufferbindungen, Pipeline-Wechsel und Dreiecke je Viewpoint loggen, dann beenden |
 | `--screenshot=<datei.png>` | letztes Bild als PNG speichern (mit `--frames` oder `--benchmark`) |
+| `--ui-sample` | Musterseite der Spiel-UI über der Szene (alle Textrollen, Rahmen, HUD-Balken; M14 Teil A) – zum Prüfen von Schrift, Größen und Farben, z. B. mit `--frames=60 --screenshot=…`; Sprache und Skalierung aus `[ui]` |
 | `--no-ground` | Bodenplatte unter dem Modell bzw. der Szene weglassen |
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |
 | `--walk=<route.json>` | Autopilot: die Spielfigur läuft die Route ab (mit `--world`), schreibt Protokoll und Screenshots, beendet sich (`docs/modules/tools.md`); mit `--no-render` ohne Grafikgerät und ohne Bilder |
@@ -208,7 +209,7 @@ Standard-Runnern sind damit kostenlos.
 | glad (GL 4.6) | `glad` | render | M2 |
 | Dear ImGui (+ ImGuizmo) | `imgui` (ADR 0015), `imguizmo` | ui | M2/M4 |
 | fastgltf | `fastgltf` | asset/tools | M2/M3 |
-| stb (image, truetype, vorbis) | `stb` | asset/ui, audio (stb_vorbis, ADR 0007) | M2/M13 |
+| stb (image, truetype, rect_pack, vorbis) | `stb` | asset, audio (stb_vorbis, ADR 0007), tools/asset-cooker (stb_truetype, stb_rect_pack: Schriften, ADR 0020) | M2/M13/M14 |
 | KTX (libktx, UASTC → BC7/BC5) | `ktx` (ADR 0016) | asset/tools | M3 |
 | zstd | `zstd` (ADR 0016) | asset/tools | M3 |
 | EnTT 3.16 (MIT) | `entt` (ADR 0005) | world (öffentlich; Registry nicht in der API) | M4 |
@@ -216,4 +217,5 @@ Standard-Runnern sind damit kostenlos.
 | Jolt Physics 5.6 (MIT) | `joltphysics` (ADR 0004; `nodeps`: FetchContent v5.6.0 mit SHA256) | physics (privat) | M5 |
 | Lua 5.4.7 (MIT) + sol2 3.5.0 (MIT) | `lua` (per `overrides` auf 5.4.7, die Baseline brächte 5.5), `sol2` (ADR 0006; `nodeps`: FetchContent mit SHA256) | script (privat) | M7 |
 | miniaudio (MIT-0) | `miniaudio` (ADR 0007) | audio (privat) | M13 |
+| msdfgen 1.13 (MIT), nur der Kern | `msdfgen` mit `default-features: false` (ADR 0020; ohne FreeType, libpng, Skia) | tools/asset-cooker (privat; Schrift-Atlanten, `g7-cook --font`); fehlt er (`nodeps`), lehnt g7-cook Schriften ab | M14 |
 | Tracy | `tracy` | core | M17 |

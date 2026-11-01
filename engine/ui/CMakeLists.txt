@@ -21,4 +21,4 @@ if(NOT imgui_FOUND)
     add_library(imgui::imgui ALIAS g7_imgui)
 endif()
 
-g7_add_module(ui DEPS core platform render PRIVATE_LIBS imgui::imgui)
+g7_add_module(ui DEPS core platform asset render PRIVATE_LIBS imgui::imgui)

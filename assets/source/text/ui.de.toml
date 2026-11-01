@@ -1,0 +1,11 @@
+# UI-Texte (M14), Deutsch. Schlüssel wie in ui.en.toml (Test: beide Tabellen haben dieselben Schlüssel).
+# Platzhalter in geschweiften Klammern: {xp}, {amount} ...
+UI_SAMPLE_TITLE = "Musterseite"
+UI_SAMPLE_BODY = "Der Wind strich über die Dächer von Leonberg. Am Marktbrunnen wartete ein Händler mit Äpfeln, Brot und einem Krug Bier – „Nur drei Gulden!“, rief er."
+UI_SAMPLE_SMALL = "Kleine Schrift für Hinweise und Werte"
+UI_SAMPLE_SUBTITLE = "Florian: Hört, hört! Ein Lied vom Glemstal …"
+UI_SAMPLE_DOCUMENT = "Werter Meister Hannes,\nanbei die versprochenen Nägel. Zahlt dem Boten bitte zwölf Gulden."
+UI_XP_GAINED = "Erfahrung +{xp}"
+UI_MONEY = "{amount} Gulden"
+UI_HP = "Leben"
+UI_MANA = "Mana"

@@ -70,6 +70,8 @@ g7_add_test_suite(ui)
 # test_debug_ui.cpp inspects ImGui's state directly.
 find_package(imgui CONFIG QUIET)
 target_link_libraries(g7_tests_ui PRIVATE imgui::imgui)
+# test_strings.cpp checks the shipped text tables (assets/source/text).
+target_compile_definitions(g7_tests_ui PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
 
 # Tests that need a real OpenGL 4.5+ driver. Label "gpu": CI runs them on Linux under Xvfb with
 # Mesa llvmpipe and excludes them on Windows (ctest -LE gpu), whose runners have no OpenGL.
@@ -99,7 +101,12 @@ set(_g7_gpu_tests render_gpu render_gpu_water render_gpu_player render_gpu_creat
     render_gpu_engine)
 set_tests_properties(${_g7_gpu_tests} PROPERTIES LABELS gpu)
 target_compile_definitions(g7_tests_render_gpu PRIVATE G7_SHADER_DIR="${PROJECT_SOURCE_DIR}/engine/render/shaders"
-    G7_TESTSCENE="${PROJECT_SOURCE_DIR}/assets/source/testscene/scene.toml")
+    G7_TESTSCENE="${PROJECT_SOURCE_DIR}/assets/source/testscene/scene.toml"
+    G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
+# test_ui_canvas.cpp draws text from the generated fonts (ADR 0020).
+if(TARGET g7_fonts)
+    add_dependencies(g7_tests_render_gpu g7_fonts)
+endif()
 # test_image.cpp encodes PNG/JPEG with stb_image_write.
 target_link_libraries(g7_tests_asset PRIVATE g7_stb)
 target_link_libraries(g7_tests_render_gpu PRIVATE g7_stb) # test_material.cpp encodes PNGs
@@ -112,6 +119,8 @@ if(TARGET g7_cook_lib)
     g7_set_warnings(g7_tests_cook)
     set_target_properties(g7_tests_cook PROPERTIES FOLDER "tests")
     add_test(NAME cook COMMAND g7_tests_cook)
+    # test_fonts.cpp cooks the shipped fonts (assets/source/fonts).
+    target_compile_definitions(g7_tests_cook PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
     # test_ktx2.cpp checks transcoded pixels with libktx directly (vcpkg builds only).
     find_package(Ktx CONFIG QUIET)
     if(Ktx_FOUND)

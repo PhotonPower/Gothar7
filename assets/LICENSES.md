@@ -50,6 +50,16 @@ Jede Fremdquelle, die in Assets oder abgeleitete Daten einfließt, wird hier ein
 | `assets/source/items/textures/metal_rust.jpg`, `leather.jpg`, `wood.jpg`, `bark.jpg`, `wood_dark.jpg` (Waffen und Handgegenstände, F6; verkleinert, Rinde dunkler getönt; Geometrie aller `items/*.glb` und die übrigen Texturen sind eigene Arbeit, per Code erzeugt) | ambientCG „Metal 021“, „Leather 014“, „Wood 049“, „Bark 012“, „Wood 060“, ambientcg.com (1K-JPG) | CC0 1.0 | keine (Nennung „ambientCG.com“ freiwillig) |
 | `assets/source/sounds/*.wav` (Platzhalter-Klänge, M13) | eigene Arbeit: synthetisch erzeugt mit `tools/audio` (`gothar-audio placeholders`), ohne Fremdmaterial | wie das Repository | keine |
 | `assets/source/music/*.wav` (Platzhalter-Musik und Stinger, M13 Teil C) | eigene Arbeit: synthetisch erzeugt mit `tools/audio` (`gothar-audio music`), ohne Fremdmaterial | wie das Repository | keine |
+| `assets/source/ui/frames/panel.png`, `parchment.png` (Platzhalter-Rahmen der Spiel-UI, M14) | eigene Arbeit: per Skript erzeugt (Pillow, prozedural), ohne Fremdmaterial | wie das Repository | keine |
+
+## Schriften
+| Datei | Quelle | Lizenz | Pflichtangabe |
+|---|---|---|---|
+| `assets/source/fonts/Alegreya-Regular.ttf` (Fließtext der Spiel-UI, M14; statische Instanz Gewicht 400 von Alegreya 2.009, wie Google Fonts sie ausliefert: fonts.gstatic.com) und die daraus erzeugte `alegreya.g7font` | Alegreya, Juan Pablo del Peral / Huerta Tipográfica, github.com/huertatipografica/Alegreya, fonts.google.com/specimen/Alegreya | SIL Open Font License 1.1 (Lizenztext `assets/source/fonts/OFL.txt`, wird mit dem Spiel ausgeliefert) | Copyright 2011 The Alegreya Project Authors (steht in `OFL.txt`) |
+| `assets/source/fonts/AlegreyaSC-Regular.ttf` (Überschriften der Spiel-UI, M14) und die daraus erzeugte `alegreya_sc.g7font` | Alegreya SC, Huerta Tipográfica, github.com/google/fonts (`ofl/alegreyasc`) | SIL Open Font License 1.1 (`assets/source/fonts/OFL.txt`) | Copyright 2011 The Alegreya Project Authors |
+
+Die OFL erlaubt das Bündeln mit dem Spiel; die Schriften werden nicht einzeln verkauft und nicht umbenannt, der
+erzeugte Atlas bleibt unter der OFL. Reservierte Schriftnamen hat Alegreya nicht.
 
 ## Engine-eingebettete Daten
 | Daten | Quelle | Lizenz | Verwendung |

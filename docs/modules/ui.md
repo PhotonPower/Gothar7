@@ -41,6 +41,78 @@ public:
   Vob-Liste, generischer Inspektor aus `EditorField`s, Modell-Liste, Gizmo-Einstellungen, Aktionen; der Editor
   (`tools/editor`) füllt und liest sie.
 
+## Spiel-UI Teil A (umgesetzt, M14) – Schrift, Text, Stil, Texte, Canvas
+`Font.hpp`, `Text.hpp`, `Style.hpp`, `Strings.hpp`, `Canvas.hpp`, `UiResources.hpp`, `SamplePage.hpp`; Shader
+`ui.vert`/`ui.frag`; Schriften nach ADR 0020 (`asset/FontFile.hpp`, `g7-cook --font`). `ui` hängt dafür zusätzlich von
+`asset` ab (`.g7font`, Bilder dekodieren; Tabelle in `docs/02-architecture.md`).
+
+```cpp
+namespace g7::ui {
+class Font {                                   // .g7font: Glyphen, Kerning, MSDF-Atlas
+    static Result<Font> load(std::span<const u8> g7font, std::string name);
+    static Result<Font> fromData(asset::FontData, std::string name);
+    const asset::FontGlyph* find(u32 codepoint) const;     // nullptr: fehlt
+    const asset::FontGlyph& glyph(u32 codepoint) const;    // fehlt: U+FFFD, '?', erste Glyphe; einmal Warnung
+    f32 kerning(u32 left, u32 right) const;                 // em
+    f32 ascender() const, descender() const, lineHeight() const;          // em
+    f32 screenPixelRange(f32 pixelSize) const;              // Distanzbereich in Bildschirm-Pixeln, >= 1
+    Result<void> upload(render::Device&); const rhi::Texture* texture() const;
+};
+struct TextOptions { f32 size; f32 wrapWidth = 0; u32 maxLines = 0; Align align = Align::Left; };
+TextLayout layoutText(const Font&, std::string_view utf8, const TextOptions&);  // rein, ohne GPU
+f32 measureText(const Font&, std::string_view utf8, f32 size);
+Result<Style> loadStyle(std::string_view toml, std::string_view source);       // ui/style.toml v1
+class Strings { static Result<Strings> load(std::string language, std::string_view toml, std::string_view source);
+                std::string_view get(key) const; std::string format(key, {{"xp", "50"}}) const; };
+std::string formatNumber(i64, std::string_view language);  // de 1.234.567, en 1,234,567
+class Canvas {                                  // Rechtecke, Bilder, 9-Slice, Text; Pixel, Ursprung oben links
+    static Result<Canvas> create(render::Device*, render::ShaderLibrary*);   // ohne Device: nur sammeln (Tests)
+    void begin(Vec2 pixels, f32 uiScale); void rect(...); void image(...); void frame(Rect, NineSlice, Color);
+    void text(Vec2 topLeft, const TextLayout&, const TextStyle&); void pushClip(Rect); void popClip();
+    void end(render::Device*);
+};
+class UiResources {                             // Stil, Texte einer Sprache, Schriften, Rahmenbilder aus dem VFS
+    static Result<UiResources> load(const ReadFile&, std::string language, render::Device*);
+    TextStyle textStyle(role, uiScale) const; f32 textSize(role, uiScale) const;
+    TextLayout layout(role, utf8, uiScale, TextOptions = {}) const; NineSlice frame(name, uiScale) const;
+};
+void drawSamplePage(Canvas&, const UiResources&);           // gothar --ui-sample
+}
+```
+- **Koordinaten:** Canvas in Framebuffer-Pixeln, +Y unten. Bildschirme rechnen in **UI-Einheiten** (Pixel bei
+  1080 px Höhe) und multiplizieren mit `uiScale` = Fensterhöhe / 1080 × `[ui] scale` (0,5–2).
+- **Zeichnen:** alle Quads eines Frames in einem Vertex-/Index-Puffer (32-Byte-Vertex: Position, UV, Farbe,
+  Distanzbereich, Kontur, Konturfarbe), ein Draw je Folge mit gleicher Textur und gleichem Clip; Alpha-Blending, ohne
+  Tiefe, nach dem Tonemapping und vor ImGui. Farben sind Anzeigewerte. Bilder (Rahmen, später Symbole) werden als
+  sRGB-Texturen gelesen und im Shader zurück in Anzeigewerte kodiert – PNG in der Entwicklung und BC7-KTX2 aus dem Pak
+  sehen gleich aus. Der Schriftatlas ist linear (Distanzwerte).
+- **Text:** UTF-8 (`core::nextCodepoint`), Umbruch an `\n`, nach Leerzeichen und Bindestrichen bzw. Gedankenstrichen,
+  zu lange Wörter zwischen Zeichen; Leerzeichen am Zeilenende und nach automatischem Umbruch entfallen; Ausrichtung
+  links/mittig/rechts innerhalb der Umbruchbreite; `maxLines` kürzt mit „…“. Kerning paarweise aus der Schrift.
+- **MSDF-Shader:** Median der drei Kanäle, Kante bei 0,5, Kantenglättung über `screenPixelRange` (Distanzbereich ×
+  Größe / Atlasgröße). Kontur in Pixeln (`outline` der Textrolle × `uiScale`); sie ist durch den halben Distanzbereich
+  begrenzt (Schriften: `range = 8` bei 48 px je em).
+- **9-Slice:** Ränder in Bildpixeln × `scale` der Rahmen-Definition × `uiScale`; Ränder breiter als das Rechteck
+  schrumpfen anteilig. Ohne Bild wird der Rahmen eine Fläche in seiner Tönung.
+- **Fehlende Daten:** fehlende Schrift oder fehlendes Rahmenbild → Warnung, Text wird nicht bzw. Rahmen als Fläche
+  gezeichnet; fehlender Text-Schlüssel → der Schlüssel erscheint (einmal Warnung); unbekannte Textrolle, Farbe oder
+  Rahmen → Warnung, Magenta bzw. Vorgabe. Ein kaputter Stil oder eine kaputte Texttabelle → keine Spiel-UI, Fehler im Log.
+- **Daten:** `ui/style.toml` (Farben, Textrollen `body`, `small`, `title`, `subtitle`, `message`, `document`, Rahmen
+  `panel` und `parchment`), `text/ui.de.toml` und `text/ui.en.toml` (Test: gleiche Schlüssel), Schriften
+  `fonts/alegreya.g7font` und `fonts/alegreya_sc.g7font` (Alegreya bzw. Alegreya SC, OFL, F1), Platzhalter-Rahmen
+  `ui/frames/panel.png` (dunkles Holz mit Eisenrand) und `parchment.png` (F2).
+- **Engine** (`runtime/EngineUi.cpp`): `initGameUi()` lädt Canvas und Ressourcen beim Start (nur mit Renderer),
+  `drawGameUi()` zeichnet nach der Szene. Bis Teil B zeigt sie nur die Musterseite (`--ui-sample`); `engine.toml [ui]`
+  `language` (de/en) und `scale`.
+- **Noch nicht (Teil B):** Neu laden von Stil, Texten und Schriften im laufenden Spiel; Widgets, Layout aus
+  `layout.toml`, Navigation.
+- **Abweichung vom Plan:** Alegreya liegt als statische Instanz (Gewicht 400) bei, wie Google Fonts sie ausliefert:
+  stb_truetype liest das Kerning der variablen Schrift nicht (0 Paare), das der statischen Instanz schon (6205 Paare).
+- **Tests:** `tests/ui/test_text.cpp`, `test_style.cpp`, `test_strings.cpp`, `test_canvas.cpp` (synthetische Schrift,
+  ohne GPU), `tests/asset/test_font_file.cpp`, `tests/cook/test_fonts.cpp` (Atlas von Alegreya: Stamm innen, Punze
+  außen, Kerning „AV“, deterministisch), `tests/core/test_stringutil.cpp` (UTF-8), GPU: `test_ui_canvas.cpp` (Farben,
+  Clip, sRGB-Bild, Text aus der ausgelieferten Schrift).
+
 ## Plan M14 (freigegeben, 2026-11-01)
 Grundlage: ADR 0009 (angenommen: eigenes Retained-Mode-UI, RmlUi verworfen, ImGui nur Debug/Editor), ADR 0020
 (angenommen: MSDF-Atlas mit msdfgen im Cooker) und die Festlegungen des Projektinhabers vom 2026-10-31

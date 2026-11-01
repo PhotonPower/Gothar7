@@ -1,0 +1,32 @@
+# Look of the game UI (M14, docs/modules/ui.md "Plan M14"): colours, text roles, frames, UI sounds.
+# Sizes in UI units = pixels at 1080p (scaled with the window height and [ui] scale). Colours are display
+# values. Dark like Gothic (owner decision F2); the frames are placeholders until the owner's own designs.
+version = 1
+
+[colors]
+text = "#e8dcc0"      # parchment white
+text_dim = "#a89c80"
+highlight = "#ffd36b" # selected entries, headings
+shadow = "#000000c0"
+hp = "#a81c1c"
+mana = "#2a48b8"
+bar_back = "#1a120cd8"
+ink = "#3a2a18"       # text on parchment
+
+[fonts]
+body = { font = "fonts/alegreya.g7font", size = 24, color = "text" }
+small = { font = "fonts/alegreya.g7font", size = 19, color = "text_dim" }
+title = { font = "fonts/alegreya_sc.g7font", size = 38, color = "highlight", outline = 1.5, outline_color = "shadow" }
+subtitle = { font = "fonts/alegreya.g7font", size = 28, color = "text", outline = 2.0, outline_color = "shadow" }
+message = { font = "fonts/alegreya_sc.g7font", size = 30, color = "text", outline = 2.0, outline_color = "shadow" }
+document = { font = "fonts/alegreya.g7font", size = 24, color = "ink" }
+
+[frames.panel]
+image = "ui/frames/panel.png"
+slice = [24, 24, 24, 24]
+scale = 1.0
+
+[frames.parchment]
+image = "ui/frames/parchment.png"
+slice = [20, 20, 20, 20]
+scale = 1.0

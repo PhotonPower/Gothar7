@@ -21,6 +21,16 @@ namespace g7
 [[nodiscard]] std::string toLower(std::string_view s);
 [[nodiscard]] std::string toUpper(std::string_view s);
 
+/// Unicode replacement character, returned for malformed UTF-8.
+inline constexpr u32 kReplacementCharacter = 0xFFFD;
+
+/// Decodes the codepoint at `pos` and advances `pos` past it. Malformed or truncated sequences, overlong
+/// forms, surrogates and values above U+10FFFF yield U+FFFD and advance by one byte. `pos` must be < size.
+[[nodiscard]] u32 nextCodepoint(std::string_view utf8, usize& pos) noexcept;
+
+/// Appends `codepoint` as UTF-8 (invalid values as U+FFFD).
+void appendUtf8(std::string& out, u32 codepoint);
+
 [[nodiscard]] constexpr bool equalsIgnoreCase(std::string_view a, std::string_view b) noexcept
 {
     if (a.size() != b.size())

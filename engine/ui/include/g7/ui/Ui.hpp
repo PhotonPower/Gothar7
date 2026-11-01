@@ -4,7 +4,8 @@
 // Spiel-UI (HUD, Menues, Inventar, Dialogauswahl), Lokalisierung, Debug-UI (ImGui).
 // Spezifikation: docs/modules/ui.md   |   Roadmap: M14
 //
-// Status: Debug-UI umgesetzt (DebugUi.hpp, M2); die Spiel-UI folgt in M14.
+// Status: Debug-UI umgesetzt (DebugUi.hpp, M2); Spiel-UI M14 Teil A: Font, Text, Style, Strings, Canvas,
+// UiResources, SamplePage.
 
 #include <string_view>
 

@@ -53,7 +53,9 @@
   - `std::hash` und `std::formatter` (Klartext oder `#<16 Hex-Ziffern>`)
 - `StringUtil.hpp` – ASCII-Groß-/Kleinschreibung (andere Bytes, z. B. UTF-8-Umlaute, bleiben unverändert):
   `toLowerAscii`/`toUpperAscii`, `toLower`/`toUpper`, `equalsIgnoreCase`, `startsWithIgnoreCase`,
-  transparente `IgnoreCaseHash`/`IgnoreCaseEqual` für `std::unordered_map<std::string, T, …>`.
+  transparente `IgnoreCaseHash`/`IgnoreCaseEqual` für `std::unordered_map<std::string, T, …>`; UTF-8 (M14):
+  `nextCodepoint(text, pos)` (fehlerhafte Folgen, Überlangformen, Surrogate → U+FFFD, ein Byte weiter),
+  `appendUtf8(out, codepoint)`.
 - `Config.hpp` – `Config` (ADR 0010; toml++ PRIVATE hinter PImpl, header-only mit `TOML_EXCEPTIONS=0`):
   - `Config::parse(text, sourceName)`, `Config::load(path)` → `Result<Config>`; Syntaxfehler als
     `"<quelle>:<zeile>:<spalte>: <beschreibung>"`. `save(path)` schreibt atomisch, `toToml()`.

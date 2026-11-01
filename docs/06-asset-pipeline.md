@@ -17,7 +17,8 @@
 | Sounds/Musik/Sprache | `.ogg`/`.wav` (Sprache: `assets/source/voice/`, siehe `tools/voice`) | `.ogg` |
 | Welten | `.g7world` (JSON, vom Editor) | `.g7worldc` (binär) |
 | Skripte | `.lua` | `.lua` (ggf. vorkompiliert) |
-| Lokalisierung | `.csv`/`.toml` | Text-Tabelle |
+| Schriften (Spiel-UI, M14) | `.ttf`/`.otf` + `<name>.font.toml` | `.g7font` (MSDF-Atlas, Metriken, Kerning; ADR 0020) |
+| UI-Texte, Stil (M14) | `text/ui.<sprache>.toml`, `ui/style.toml` | unverändert (TOML) |
 
 ## Konventionen für Blender-Exporte
 - Einheiten: **1 Einheit = 1 Meter**, +Y oben in der Engine (glTF-Standard).
@@ -31,6 +32,7 @@
 ```
 g7-cook [--source assets/source] [--out assets/cooked] [--pack data.g7pak] [--level 19]
         [--textures ktx2|copy] [--uastc-level 2] [--full] [--clean]
+g7-cook --font <name>.font.toml <name>.g7font      # Schrift-Atlas (ADR 0020)
 ```
 Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_lib`
 (`tools/asset-cooker/src/Cooker.hpp`, `g7::cook::cook(options)`); `g7-cook` ist die Kommandozeile dazu.
@@ -59,7 +61,16 @@ Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_
   - Bildverweise in `.g7mesh` zeigen dann auf `.ktx2` (`mimeType` `image/ktx2`), auch für herausgelöste
     eingebettete Bilder.
   - Benötigt libktx (vcpkg); ein Build ohne libktx lehnt `--textures ktx2` ab.
-- **Übersprungen** werden versteckte Dateien (`.xyz`), Blender-Dateien (`.blend`, `.blend1`) und glTF-Puffer
+- **Schriften** (M14, ADR 0020): `g7-cook --font <name>.font.toml <name>.g7font` erzeugt aus der Schrift-Datei einen
+  MSDF-Atlas (msdfgen-Kern, Umrisse und Kerning über stb_truetype, Packen mit stb_rect_pack; 1024 Pixel breit,
+  Höhe die kleinste passende Zweierpotenz, Atlas unkomprimiert + zstd). Format `asset/FontFile.hpp` (`.g7font` v1).
+  Das CMake-Ziel `g7_fonts` (in `ALL`) legt jede `assets/source/fonts/<name>.font.toml` als `<name>.g7font` daneben
+  (git-ignoriert); der normale Kochlauf kopiert die `.g7font` und überspringt `.ttf`, `.otf` und `.font.toml`.
+  Beschreibung: `version = 1`, `source` (Schrift-Datei), `kind` (`msdf`/`sdf`), `size` (Pixel je em im Atlas, 8–256),
+  `range` (Distanzbereich in Atlas-Pixeln), `charset` (`ascii`, `latin1`, `typography`), `extra` (weitere Zeichen).
+  Zeichen, die der Schrift fehlen, werden mit Warnung ausgelassen. Builds ohne msdfgen (`nodeps`) lehnen `--font` ab.
+- **Übersprungen** werden versteckte Dateien (`.xyz`), Blender-Dateien (`.blend`, `.blend1`), Schrift-Quellen (`.ttf`, `.otf`,
+  `.font.toml`) und glTF-Puffer
   (`.bin`, die über die `.gltf` gelesen werden). **Alles andere** (Skripte, Konfiguration, Sounds) wird kopiert.
 - **Ausgabe:** lose Dateien unter `--out` (Ordnerstruktur wie die Quelle) oder mit `--pack` ein einziges
   Archiv `<out>/<datei>` (`.g7pak` v2, zstd pro Eintrag; `--level 1..22`, Vorgabe 19, 1–3 für schnelle Entwicklungsläufe). Gleiche Quellen ergeben byte-gleiche Ausgaben. `--clean` leert `--out` vorher.

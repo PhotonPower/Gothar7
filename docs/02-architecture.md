@@ -33,7 +33,7 @@
 | world | core, asset, render, physics, world_format |
 | ai | core, world, script |
 | gameplay | core, world, animation, script, ai |
-| ui | core, platform, render |
+| ui | core, platform, asset, render |
 | save | core, world, script, gameplay |
 | runtime | alle |
 | tools/editor (`g7_editor`, im Spiel gelinkt) | runtime, world, ui, render, core – die Engine kennt nur `EngineTool` |

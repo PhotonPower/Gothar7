@@ -1,6 +1,7 @@
 // g7-cook: converts source assets (glTF, images, other files) into runtime formats and packs
 // them into .g7pak archives (ADR 0016, docs/06-asset-pipeline.md).
 #include "Cooker.hpp"
+#include "Fonts.hpp"
 #include "Textures.hpp"
 
 #include <g7/core/Log.hpp>
@@ -15,6 +16,7 @@ void printUsage()
 {
     std::puts("usage: g7-cook [--source <dir>] [--out <dir>] [--pack <file.g7pak>] [--level <1-22>]\n"
               "               [--textures copy|ktx2] [--uastc-level <0-4>] [--full] [--clean]\n"
+              "       g7-cook --font <name.font.toml> <out.g7font>\n"
               "  --source  source assets (default: assets/source)\n"
               "  --out     output directory (default: assets/cooked)\n"
               "  --pack    write one archive <out>/<file> instead of loose files (zstd per entry)\n"
@@ -22,12 +24,23 @@ void printUsage()
               "  --textures     ktx2 (default with libktx) writes UASTC + zstd with mips, copy keeps images\n"
               "  --uastc-level  KTX2 quality vs. speed, 0-4 (default 2)\n"
               "  --full    ignore the manifest and cook everything\n"
-              "  --clean   delete the output directory first");
+              "  --clean   delete the output directory first\n"
+              "  --font    generate a distance-field font (ADR 0020) from its description and font file");
 }
 } // namespace
 
 int main(int argc, char** argv)
 {
+    if (argc == 4 && std::string_view(argv[1]) == "--font")
+    {
+        auto cooked = g7::cook::cookFont(g7::fs::fromUtf8(argv[2]), g7::fs::fromUtf8(argv[3]));
+        if (!cooked)
+        {
+            G7_LOG_ERROR("cook", "{}", cooked.error().message);
+            return 1;
+        }
+        return 0;
+    }
     g7::cook::CookOptions options{.source = "assets/source", .out = "assets/cooked"};
     // The renderer uploads BC7/BC5 since M3 (#37): cook textures to KTX2 unless this build lacks libktx.
     options.textures = g7::cook::hasKtx2Encoder() ? g7::cook::TextureMode::Ktx2 : g7::cook::TextureMode::Copy;

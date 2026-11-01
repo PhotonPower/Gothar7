@@ -28,8 +28,9 @@ namespace
 {
 constexpr std::string_view kMeshExtensions[] = {".glb", ".gltf"};
 constexpr std::string_view kImageExtensions[] = {".png", ".jpg", ".jpeg", ".tga", ".bmp"};
-/// Not game data: Blender sources and their backups, glTF buffers (read through the .gltf).
-constexpr std::string_view kSkippedExtensions[] = {".blend", ".blend1", ".bin"};
+/// Not game data: Blender sources and their backups, glTF buffers (read through the .gltf), font sources (the
+/// game reads the .g7font that `g7-cook --font` generates next to the description, ADR 0020).
+constexpr std::string_view kSkippedExtensions[] = {".blend", ".blend1", ".bin", ".ttf", ".otf"};
 
 bool contains(std::span<const std::string_view> list, std::string_view value)
 {
@@ -198,7 +199,7 @@ private:
     void cookFile(const std::string& relative, const fs::Path& location)
     {
         const std::string ext = extensionOf(relative);
-        if (isHidden(relative) || contains(kSkippedExtensions, ext))
+        if (isHidden(relative) || contains(kSkippedExtensions, ext) || relative.ends_with(".font.toml"))
         {
             ++m_report.skipped;
             return;

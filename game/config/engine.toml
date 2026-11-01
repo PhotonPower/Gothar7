@@ -31,6 +31,12 @@ ambient = 0.8
 ui = 1.0
 duck = 0.5 # die Musik, solange jemand spricht (M13 D, Projektinhaber: -6 dB, 0,3 s Blende)
 
+[ui]
+# Spiel-UI (M14, docs/modules/ui.md): Sprache der Texte (text/ui.<sprache>.toml: de, en) und Skalierung
+# (1 = Größen wie bei 1080p, mit der Fensterhöhe skaliert; 0,5-2).
+language = "de"
+scale = 1.0
+
 [render]
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
 # shader_hot_reload = true

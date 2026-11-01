@@ -46,7 +46,9 @@
 #include <g7/runtime/SceneFile.hpp>
 #include <g7/runtime/StartView.hpp>
 #include <g7/script/ScriptVm.hpp>
+#include <g7/ui/Canvas.hpp>
 #include <g7/ui/DebugUi.hpp>
+#include <g7/ui/UiResources.hpp>
 #include <g7/world/DayCycle.hpp>
 #include <g7/world/GameTime.hpp>
 #include <g7/world/Scene.hpp>
@@ -204,6 +206,8 @@ struct EngineConfig
     u32 benchmarkFrames = 300;
     /// Level of detail for every static model (--lod=0|1|2, test images); -1 = by distance (--lod=auto).
     i32 forcedLod = -1;
+    /// The game UI's sample page over the scene (--ui-sample, M14 part A): every text role, frame and bar.
+    bool uiSample = false;
     /// Saves the last rendered frame as PNG (--screenshot=<file>), e.g. with --frames or --benchmark.
     fs::Path screenshot;
     platform::WindowDesc window; ///< Used unless headless.
@@ -1177,6 +1181,9 @@ private:
     [[nodiscard]] bool noticeVisible() const noexcept;
     void drawNotice(u32 height);
     void runDebugUi(f64 realSeconds);
+    // Game UI (EngineUi.cpp, M14)
+    void initGameUi();
+    void drawGameUi(u32 width, u32 height);
 
     EngineConfig m_config;
     // Assets: the manager is destroyed before the VFS it reads from (member order).
@@ -1198,9 +1205,11 @@ private:
     bool m_debugOverlay = false;
     ui::DebugUi m_debugUi; // invalid without rendering
     bool m_debugUiVisible = false;
-    bool m_debugUiFrame = false;      // an ImGui frame was begun this frame and awaits rendering
-    f64 m_frameSeconds = 0.0;         // real duration of the last frame
-    f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
+    bool m_debugUiFrame = false;             // an ImGui frame was begun this frame and awaits rendering
+    ui::Canvas m_canvas;                     // game UI drawing (M14)
+    std::optional<ui::UiResources> m_gameUi; // style, texts, fonts, frames; empty if they failed to load
+    f64 m_frameSeconds = 0.0;                // real duration of the last frame
+    f64 m_smoothedFrameSeconds = 0.0;        // for the overlay's FPS display
     // Scene: --view-mesh (one model) or --scene (test scene); models are shared by instances.
     world::Scene m_scene;       // world vobs (--world, --scene); render instances are built from it
     world::GameTime m_gameTime; // global: runs across level changes (save game: save.md)

@@ -1,0 +1,10 @@
+# UI texts (M14), English. Same keys as ui.de.toml (a test checks it). Placeholders in braces: {xp}, {amount} ...
+UI_SAMPLE_TITLE = "Sample page"
+UI_SAMPLE_BODY = "The wind swept over the roofs of Leonberg. At the market fountain a trader waited with apples, bread and a jug of beer – “Only three guilders!” he called."
+UI_SAMPLE_SMALL = "Small print for hints and values"
+UI_SAMPLE_SUBTITLE = "Florian: Hear, hear! A song of the Glems valley …"
+UI_SAMPLE_DOCUMENT = "Dear Master Hannes,\nenclosed are the promised nails. Please pay the messenger twelve guilders."
+UI_XP_GAINED = "Experience +{xp}"
+UI_MONEY = "{amount} guilders"
+UI_HP = "Health"
+UI_MANA = "Mana"

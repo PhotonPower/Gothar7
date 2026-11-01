@@ -1,0 +1,8 @@
+# Alegreya SC (headings of the game UI, M14; SIL OFL 1.1, OFL.txt) as a distance-field atlas (ADR 0020).
+# The build generates alegreya_sc.g7font next to this file (g7_fonts: g7-cook --font).
+version = 1
+source = "AlegreyaSC-Regular.ttf"
+kind = "msdf"
+size = 48
+range = 8
+charset = ["ascii", "latin1", "typography"]
