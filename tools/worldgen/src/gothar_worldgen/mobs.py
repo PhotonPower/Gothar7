@@ -581,7 +581,9 @@ def crate() -> MobModel:
     _crate(m, (0.0, 0.0, 0.0))
     m.body("crate", (-CRATE_W / 2 - 0.01, 0.0, -CRATE_D / 2 - 0.01),
            (CRATE_W / 2 + 0.01, CRATE_H, CRATE_D / 2 + 0.01))  # fmt: skip
-    return MobModel("crate", m)
+    lod1 = Mesh()  # from afar a plain box (W7 phase 3: the lanes have hundreds)
+    lod1.box("oak", (-CRATE_W / 2, 0.0, -CRATE_D / 2), (CRATE_W / 2, CRATE_H, CRATE_D / 2))
+    return MobModel("crate", m, lods=[lod1])
 
 
 def crate_stack() -> MobModel:
@@ -592,7 +594,10 @@ def crate_stack() -> MobModel:
     _crate(m, (-0.12, CRATE_H, -0.02))
     m.body("crates", (-0.62, 0.0, -0.26), (0.62, CRATE_H, 0.26))
     m.body("crate_top", (-0.43, CRATE_H, -0.28), (0.19, 2 * CRATE_H, 0.24))
-    return MobModel("crate_stack", m)
+    lod1 = Mesh()
+    lod1.box("oak", (-0.61, 0.0, -CRATE_D / 2), (0.61, CRATE_H, CRATE_D / 2))
+    lod1.box("oak", (-0.42, CRATE_H, -0.27), (0.18, 2 * CRATE_H, 0.23))
+    return MobModel("crate_stack", m, lods=[lod1])
 
 
 def sacks() -> MobModel:
@@ -763,7 +768,9 @@ def bucket() -> MobModel:
     m.cyl("water", 1, (0.0, 0.3, 0.0), 0.135, 0.01, sides=10)
     m.box("linen", (-0.15, 0.34, -0.006), (0.15, 0.36, 0.006))
     m.body("bucket", (-0.16, 0.0, -0.16), (0.16, 0.36, 0.16))
-    return MobModel("bucket", m)
+    lod1 = Mesh()
+    lod1.cyl("oak", 1, (0.0, 0.17, 0.0), 0.15, 0.34, sides=6)
+    return MobModel("bucket", m, lods=[lod1])
 
 
 def basket() -> MobModel:
@@ -774,7 +781,9 @@ def basket() -> MobModel:
     for x, z in ((-0.08, 0.02), (0.06, -0.06), (0.04, 0.08)):
         m.cyl("wool_red", 1, (x, 0.29, z), 0.04, 0.06, sides=6)
     m.body("basket", (-0.24, 0.0, -0.24), (0.24, 0.31, 0.24))
-    return MobModel("basket", m)
+    lod1 = Mesh()
+    lod1.cyl("straw", 1, (0.0, 0.15, 0.0), 0.225, 0.3, sides=6)
+    return MobModel("basket", m, lods=[lod1])
 
 
 def fur() -> MobModel:
@@ -971,23 +980,29 @@ def cart() -> MobModel:
         m.cyl("oak", 2, (0.0, 0.42, z), 0.42, 0.06, sides=12)
         m.cyl("iron", 2, (0.0, 0.42, z), 0.08, 0.08, sides=6)
     m.body("cart", (-0.65, 0.0, -0.5), (1.46, y0 + 0.32, 0.5))
-    return MobModel("cart", m)
+    lod1 = Mesh()  # the bed as a box, the wheels as hexagons, the shafts as one plank
+    lod1.box("oak", (-0.65, y0, -0.4), (0.65, y0 + 0.32, 0.4))
+    lod1.box("oak_beam", (0.65, y0 - 0.06, -0.33), (1.45, y0, 0.33), grain=0)
+    for z in (-0.46, 0.46):
+        lod1.cyl("oak", 2, (0.0, 0.42, z), 0.42, 0.06, sides=6)
+    return MobModel("cart", m, lods=[lod1])
 
 
 def woodpile() -> MobModel:
     """Split logs stacked against a wall, 2 x 1 m, 0.5 m deep, ends towards +Z; under a board.
-    Thick logs: a street has hundreds of these (about 640 triangles, the coarse level 24)."""
+    Thick logs in three rows of five-sided prisms: a street has hundreds of these (about 360
+    triangles, W7 phase 3; the coarse level 24)."""
     m = Mesh()
     rng = np.random.default_rng(71)
     for x in (-0.7, 0.7):  # two squared timbers keep the logs off the ground
         m.box("oak_beam", (x - 0.05, 0.0, -0.25), (x + 0.05, 0.04, 0.25), grain=2)
-    for row in range(4):
-        y = 0.165 + row * 0.235
-        n = 8 - (row % 2)
+    for row in range(3):
+        y = 0.185 + row * 0.3
+        n = 7 - (row % 2)
         for k in range(n):
-            x = -0.875 + (k + 0.5 * (row % 2)) * 0.25
-            m.cyl("oak_beam", 2, (x, y, 0.0), 0.12 + rng.uniform(-0.01, 0.005),
-                  0.5 - rng.uniform(0, 0.06), sides=6)  # fmt: skip
+            x = -0.84 + (k + 0.5 * (row % 2)) * 0.28
+            m.cyl("oak_beam", 2, (x, y, 0.0), 0.145 + rng.uniform(-0.01, 0.005),
+                  0.5 - rng.uniform(0, 0.06), sides=5)  # fmt: skip
     m.box("oak", (-1.05, 1.0, -0.3), (1.05, 1.04, 0.32), grain=0)  # the board on top
     m.body("woodpile", (-1.0, 0.0, -0.27), (1.0, 1.04, 0.27))
     lod1 = Mesh()
