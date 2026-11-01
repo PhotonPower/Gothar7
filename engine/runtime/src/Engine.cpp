@@ -190,7 +190,16 @@ Result<void> Engine::init()
             {
                 return result;
             }
-            if (!m_config.world.empty() || !m_config.scene.empty() || !m_config.viewMesh.empty())
+            if (m_config.mainMenu && m_config.world.empty() && m_config.scene.empty() &&
+                m_config.viewMesh.empty())
+            {
+                // The main menu loads its world behind the loading screen (M14 part F).
+                if (auto result = initSceneRendering(); !result)
+                {
+                    return result;
+                }
+            }
+            else if (!m_config.world.empty() || !m_config.scene.empty() || !m_config.viewMesh.empty())
             {
                 auto result = initSceneRendering();
                 if (result)
@@ -259,6 +268,11 @@ Result<void> Engine::init()
         {
             G7_LOG_WARN("engine", "--exec {}: {}", line, r.error().message);
         }
+    }
+    if (m_config.mainMenu && m_window && m_config.world.empty() && m_config.scene.empty() &&
+        m_config.viewMesh.empty())
+    {
+        startMainMenu();
     }
     m_initialized = true;
     return {};
@@ -330,6 +344,7 @@ bool Engine::runFrame()
         // away, so the key that closes it does not also act in the game.
         const bool gameUiBlocks = m_screens.blocksGameInput();
         updateGameUi(realSeconds, !debugMouse, !debugKeyboard);
+        updateMenu(realSeconds); // menu choices, the loading screen (M14 part F)
         const bool uiMouse = debugMouse || gameUiBlocks;
         const bool uiKeyboard = debugKeyboard || gameUiBlocks;
         if (m_config.benchmark)
@@ -347,7 +362,11 @@ bool Engine::runFrame()
                 copyViewToClipboard();
             }
             updatePlayerInput(!uiMouse && !m_dialog, !uiKeyboard && !m_dialog); // talking: standing still
-            if (!playerCameraActive())
+            if (m_menuMode && !m_flyMode)
+            {
+                updateMenuFlight(realSeconds); // behind the main menu (F8)
+            }
+            else if (!playerCameraActive())
             {
                 updateDebugCamera(realSeconds, !uiMouse, !uiKeyboard);
             }
@@ -359,10 +378,17 @@ bool Engine::runFrame()
 
         if (!uiKeyboard)
         {
-            // Interim until the menu exists (M14): the pause action toggles the pause directly.
+            // The pause menu (M14 part F, F8); without the game UI the pause action toggles the pause.
             if (m_actions.pressed(m_input, platform::Action::Pause))
             {
-                setPaused(!m_paused);
+                if (m_gameUi)
+                {
+                    openPauseMenu();
+                }
+                else
+                {
+                    setPaused(!m_paused);
+                }
             }
             if (m_actions.pressed(m_input, platform::Action::DebugDraw))
             {
@@ -1362,9 +1388,12 @@ void Engine::performWorldChange()
         }
         target = std::move(file).value();
     }
-    const bool hasStart = std::any_of(
-        target.vobs.begin(), target.vobs.end(), [&](const world::WorldFileVob& vob)
-        { return vob.type == world::VobType::Start && equalsIgnoreCase(vob.name, change.start); });
+    // No start name: the first start point, as when a world is loaded at the start (main menu).
+    const bool hasStart =
+        change.start.empty() ||
+        std::any_of(
+            target.vobs.begin(), target.vobs.end(), [&](const world::WorldFileVob& vob)
+            { return vob.type == world::VobType::Start && equalsIgnoreCase(vob.name, change.start); });
     if (!hasStart)
     {
         G7_LOG_WARN("engine", "level change to {} failed, staying here: no start point '{}'", change.world,
@@ -1379,7 +1408,10 @@ void Engine::performWorldChange()
     storeDoors(captured);
     leaving.vobs = captured.vobs;
     leaving.nextVobId = captured.nextVobId;
-    m_leftWorlds[toLower(leftPath)] = LeftWorld{leaving, m_triggers.spentTriggers()};
+    if (!leftPath.empty()) // nothing loaded yet (main menu)
+    {
+        m_leftWorlds[toLower(leftPath)] = LeftWorld{leaving, m_triggers.spentTriggers()};
+    }
 
     G7_LOG_INFO("engine", "level change: {} -> {} ({})", leftPath, change.world, change.start);
     unloadWorld();

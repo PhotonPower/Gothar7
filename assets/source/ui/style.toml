@@ -30,6 +30,8 @@ document_title = { font = "fonts/alegreya_sc.g7font", size = 34, color = "ink" }
 document_hint = { font = "fonts/alegreya.g7font", size = 18, color = "ink" }
 tab = { font = "fonts/alegreya.g7font", size = 16, color = "text_dim" }   # tab titles (8 tabs fit)
 heading = { font = "fonts/alegreya_sc.g7font", size = 26, color = "highlight" } # sections of the character sheet
+menu = { font = "fonts/alegreya_sc.g7font", size = 32, color = "text", outline = 1.0, outline_color = "shadow" }   # main and pause menu (M14 F)
+menu_title = { font = "fonts/alegreya_sc.g7font", size = 110, color = "highlight", outline = 2.5, outline_color = "shadow", shadow = 3.0 } # the game title over the menu flight
 
 # Frames: own procedural designs by figuren (`gothar-chargen ui-frames`), drawn at 2 image pixels per UI
 # unit (sharp at 4K), hence slices in image pixels and scale = 0.5.

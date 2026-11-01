@@ -86,6 +86,15 @@ void Engine::reloadGameUiIfChanged(f64 realSeconds)
         return;
     }
     m_gameUiStamp = std::move(stamp);
+    reloadGameUi();
+}
+
+void Engine::reloadGameUi()
+{
+    if (!m_gameUi)
+    {
+        return;
+    }
     const std::string language = m_config.settings.get<std::string>("ui.language", "de");
     auto resources = ui::UiResources::load([this](std::string_view path) { return m_vfs.read(path); },
                                            language, m_device.get());
@@ -96,7 +105,7 @@ void Engine::reloadGameUiIfChanged(f64 realSeconds)
         return;
     }
     m_gameUi = std::move(resources).value();
-    G7_LOG_INFO("ui", "game UI reloaded");
+    G7_LOG_INFO("ui", "game UI reloaded ({})", language);
 }
 
 void Engine::updateGameUi(f64 realSeconds, bool allowMouse, bool allowKeyboard)
@@ -140,6 +149,12 @@ void Engine::updateGameUi(f64 realSeconds, bool allowMouse, bool allowKeyboard)
     {
         setInventoryOpen(false);
         m_lootTarget.reset();
+    }
+    // The pause action closes the pause menu again (Start on the gamepad; Esc is also ui_back).
+    if (allowKeyboard && !m_menuMode && m_screens.top() != nullptr && m_screens.top()->name() == "menu" &&
+        m_actions.pressed(m_input, platform::Action::Pause))
+    {
+        m_menuCommand = "resume";
     }
     if (allowKeyboard)
     {
@@ -403,6 +418,25 @@ void Engine::bindUiFunctions()
                      return Error{"no hero"};
                  }
                  setInventoryOpen(a.empty() || a[0].asBool(true));
+                 return script::Value{};
+             }});
+    vm.bind({"menu_open", "menu_open(page?: string)",
+             "Öffnet das Pausenmenü wie Esc, mit `\"options\"` gleich die Optionen darüber (Konsole, "
+             "Prüfbilder).",
+             "Bildschirm", [this](std::span<const script::Value> a) -> Result<script::Value>
+             {
+                 if (!m_gameUi)
+                 {
+                     return Error{"no game UI"};
+                 }
+                 if (!m_menuMode)
+                 {
+                     openPauseMenu();
+                 }
+                 if (!a.empty() && a[0].asString() == "options")
+                 {
+                     m_menuCommand = "options"; // opened after this frame's screen update
+                 }
                  return script::Value{};
              }});
     vm.bind({"screen_message", "screen_message(text: string, seconds?: number)",

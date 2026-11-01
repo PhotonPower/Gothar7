@@ -285,6 +285,97 @@ void Config::set(std::string_view key, std::type_identity_t<T> value)
     insertValue(*table, parts.back(), std::move(value));
 }
 
+bool Config::erase(std::string_view key)
+{
+    if (key.empty())
+    {
+        return false;
+    }
+    const std::vector<std::string_view> parts = splitKey(key);
+    std::vector<toml::table*> tables{&m_impl->table};
+    for (usize i = 0; i + 1 < parts.size(); ++i)
+    {
+        auto* child = tables.back()->get_as<toml::table>(parts[i]);
+        if (!child)
+        {
+            return false;
+        }
+        tables.push_back(child);
+    }
+    if (tables.back()->erase(parts.back()) == 0)
+    {
+        return false;
+    }
+    // Tables emptied by the removal go too ([bindings.classic] without entries is noise in a user config).
+    for (usize i = tables.size() - 1; i > 0 && tables[i]->empty(); --i)
+    {
+        tables[i - 1]->erase(parts[i - 1]);
+    }
+    return true;
+}
+
+bool Config::sameValue(std::string_view key, const Config& other) const
+{
+    const toml::node* mine = lookup(m_impl->table, key);
+    const toml::node* theirs = lookup(other.m_impl->table, key);
+    if (mine == nullptr || theirs == nullptr)
+    {
+        return mine == theirs;
+    }
+    // Integers and floats compare by value (1 == 1.0), like get<f64> reads them.
+    const auto number = [](const toml::node& n) -> std::optional<f64>
+    {
+        if (const auto* i = n.as_integer())
+        {
+            return static_cast<f64>(i->get());
+        }
+        if (const auto* f = n.as_floating_point())
+        {
+            return f->get();
+        }
+        return std::nullopt;
+    };
+    if (const auto a = number(*mine), b = number(*theirs); a && b)
+    {
+        return *a == *b;
+    }
+    if (mine->type() != theirs->type())
+    {
+        return false;
+    }
+    // Same type: compare the TOML text (tables and arrays deeply, strings with their escapes).
+    const auto text = [](const toml::node& n)
+    {
+        std::ostringstream out;
+        n.visit([&](const auto& v) { out << v; });
+        return out.str();
+    };
+    return text(*mine) == text(*theirs);
+}
+
+void Config::copyValue(std::string_view key, const Config& source)
+{
+    G7_ASSERT(!key.empty(), "Config::copyValue needs a key");
+    const toml::node* node = lookup(source.m_impl->table, key);
+    if (node == nullptr)
+    {
+        (void)erase(key);
+        return;
+    }
+    const std::vector<std::string_view> parts = splitKey(key);
+    toml::table* table = &m_impl->table;
+    for (usize i = 0; i + 1 < parts.size(); ++i)
+    {
+        auto* child = table->get_as<toml::table>(parts[i]);
+        if (!child)
+        {
+            child = table->insert_or_assign(parts[i], toml::table{}).first->second.as_table();
+        }
+        table = child;
+    }
+    node->visit([&](const auto& value) { table->insert_or_assign(parts.back(), value); });
+}
+
 usize Config::arraySize(std::string_view key) const
 {
     const toml::node* node = lookup(m_impl->table, key);

@@ -247,8 +247,11 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
     }
     if (m_playerMouse)
     {
-        m_playerInput.mouseTurn += m_input.mouseDelta().x;
-        m_playerPitchPixels += m_input.mouseDelta().y;
+        // [input] mouse_sensitivity scales the mouse (options, M14 part F).
+        const f32 sensitivity = static_cast<f32>(
+            std::clamp(m_config.settings.get<f64>("input.mouse_sensitivity", 1.0), 0.1, 4.0));
+        m_playerInput.mouseTurn += m_input.mouseDelta().x * sensitivity;
+        m_playerPitchPixels += m_input.mouseDelta().y * sensitivity;
     }
 }
 

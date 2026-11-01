@@ -9,6 +9,7 @@
 #include <SDL3/SDL.h>
 #include <doctest/doctest.h>
 
+#include <filesystem>
 #include <functional>
 
 namespace
@@ -66,8 +67,11 @@ ui_back = ["Escape"]
     tapKey(engine, SDL_SCANCODE_ESCAPE); // ui_back: the screen closes, the game does not pause
     CHECK(engine.screens().empty());
     CHECK_FALSE(engine.paused());
-    tapKey(engine, SDL_SCANCODE_ESCAPE); // now the game has the key
-    CHECK(engine.paused());
+    tapKey(engine, SDL_SCANCODE_ESCAPE); // now the game has the key: the pause menu (part F)
+    CHECK(engine.screens().find("menu") != nullptr);
+    CHECK(engine.screens().pausesGame());
+    tapKey(engine, SDL_SCANCODE_ESCAPE); // and back into the game
+    CHECK(engine.screens().empty());
 }
 
 TEST_CASE("Engine UI: screen messages from Lua")
@@ -248,4 +252,77 @@ TEST_CASE("Engine UI: character sheet, diary and map with their keys")
     CHECK(engine.screens().find("map") != nullptr);
     tapKey(engine, SDL_SCANCODE_M);
     CHECK_FALSE(engine.mapOpen());
+}
+
+TEST_CASE("Engine UI: main menu, new game, pause menu and options (part F)")
+{
+    auto settings = g7::Config::load(g7::fs::fromUtf8(G7_GAME_CONFIG));
+    REQUIRE(settings.ok());
+    const g7::Config defaults = settings.value();
+    g7::Config merged = std::move(settings).value();
+    merged.set<std::string>("menu.world", "testworld/camp.g7world"); // Leonberg is too big for this test
+    merged.set<std::string>("menu.flight", "");                      // no flight: the camera stays
+    const std::filesystem::path user = std::filesystem::temp_directory_path() / "g7_menu_user_config.toml";
+    REQUIRE(g7::fs::writeTextAtomic(user, "[game]\nunrelated = 7\n").ok());
+
+    g7::EngineConfig config;
+    config.window.size = {640, 360};
+    config.render = false;
+    config.fixedFrameSeconds = 1.0 / 60.0;
+    config.mainMenu = true;
+    config.defaultSettings = defaults;
+    config.userConfig = user;
+    config.settings = merged;
+    g7::Engine engine(config);
+    REQUIRE(engine.init().ok());
+    REQUIRE(engine.gameUi() != nullptr);
+    CHECK(engine.screens().find("loading") != nullptr);
+    REQUIRE(runUntil(engine, [&] { return engine.screens().find("menu") != nullptr; }));
+    CHECK(engine.inMainMenu());
+    CHECK(engine.player() == nullptr); // the menu world has nobody in it
+    CHECK(engine.screens().pausesGame());
+    tapKey(engine, SDL_SCANCODE_ESCAPE); // the main menu stays
+    CHECK(engine.screens().find("menu") != nullptr);
+
+    // Options from the main menu: music volume one step down, saved on leaving (only what differs).
+    tapKey(engine, SDL_SCANCODE_DOWN);
+    tapKey(engine, SDL_SCANCODE_DOWN); // past "Load" (greyed out) to "Options"
+    tapKey(engine, SDL_SCANCODE_RETURN);
+    auto* options = dynamic_cast<g7::ui::OptionsScreen*>(engine.screens().find("options"));
+    REQUIRE(options != nullptr);
+    tapKey(engine, SDL_SCANCODE_PAGEDOWN); // the audio page
+    CHECK(options->page() == 1);
+    tapKey(engine, SDL_SCANCODE_DOWN);
+    tapKey(engine, SDL_SCANCODE_LEFT); // music 0.8 -> 0.75
+    CHECK(engine.settings().get<g7::f64>("audio.music", 0.0) == doctest::Approx(0.75));
+    tapKey(engine, SDL_SCANCODE_DOWN);
+    tapKey(engine, SDL_SCANCODE_RIGHT); // effects stay at 1.0 (clamped): not written
+    tapKey(engine, SDL_SCANCODE_ESCAPE);
+    CHECK(engine.screens().find("options") == nullptr);
+    auto saved = g7::Config::load(user);
+    REQUIRE(saved.ok());
+    CHECK(saved.value().get<g7::f64>("audio.music", 0.0) == doctest::Approx(0.75));
+    CHECK_FALSE(saved.value().contains("audio.effects"));
+    CHECK(saved.value().get<g7::i64>("game.unrelated", 0) == 7); // other keys stay
+
+    // New game: the camp with the hero behind the loading screen.
+    tapKey(engine, SDL_SCANCODE_UP);
+    tapKey(engine, SDL_SCANCODE_UP);
+    tapKey(engine, SDL_SCANCODE_RETURN);
+    CHECK(engine.loading());
+    REQUIRE(runUntil(engine, [&] { return !engine.loading() && engine.player() != nullptr; }));
+    REQUIRE(engine.runFrame());
+    CHECK_FALSE(engine.inMainMenu());
+    CHECK(engine.screens().empty());
+
+    // Esc: the pause menu stops the game; Esc again goes back.
+    tapKey(engine, SDL_SCANCODE_ESCAPE);
+    CHECK(engine.screens().find("menu") != nullptr);
+    CHECK(engine.screens().pausesGame());
+    const auto ticks = engine.simulationTicks();
+    REQUIRE(engine.runFrame());
+    CHECK(engine.simulationTicks() == ticks);
+    tapKey(engine, SDL_SCANCODE_ESCAPE);
+    CHECK(engine.screens().empty());
+    std::filesystem::remove(user);
 }

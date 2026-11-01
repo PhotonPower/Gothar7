@@ -17,7 +17,7 @@ void pushKey(SDL_Scancode scancode, bool down)
 }
 } // namespace
 
-TEST_CASE("Engine: pause action toggles the pause")
+TEST_CASE("Engine: the pause action opens the pause menu, which stops the simulation (M14 part F)")
 {
     auto settings = g7::Config::parse(R"(
 [bindings.classic]
@@ -37,14 +37,19 @@ pause = ["Escape"]
 
     pushKey(SDL_SCANCODE_ESCAPE, true);
     REQUIRE(engine.runFrame());
-    CHECK(engine.paused());
+    REQUIRE(engine.gameUi() != nullptr);
+    CHECK(engine.screens().find("menu") != nullptr);
+    CHECK(engine.screens().pausesGame());
     pushKey(SDL_SCANCODE_ESCAPE, false);
     REQUIRE(engine.runFrame());
     REQUIRE(engine.runFrame());
     CHECK(engine.simulationTicks() == ticksBefore); // the pressing frame already skipped its step
 
-    pushKey(SDL_SCANCODE_ESCAPE, true);
+    pushKey(SDL_SCANCODE_ESCAPE, true); // the pause action closes the menu again (Start on the gamepad)
     REQUIRE(engine.runFrame());
-    CHECK_FALSE(engine.paused());
-    CHECK(engine.simulationTicks() == ticksBefore + 1);
+    pushKey(SDL_SCANCODE_ESCAPE, false);
+    REQUIRE(engine.runFrame());
+    CHECK(engine.screens().empty());
+    REQUIRE(engine.runFrame());
+    CHECK(engine.simulationTicks() > ticksBefore);
 }

@@ -283,7 +283,7 @@ bool List::navigate(NavDir dir)
 
 bool List::accept()
 {
-    if (onAccept && m_selected < rows.size())
+    if (onAccept && m_selected < rows.size() && !isDimmed(m_selected))
     {
         onAccept(m_selected);
         return true;
@@ -343,8 +343,16 @@ void List::drawSelf(const DrawContext& context) const
         {
             drawFrame(context, rect, "highlight");
         }
-        drawCentredLine(context, rect, role, rows[row].resolve(context.ui.strings()), Align::Left,
-                        selected && focused, 10.0f, highlightColor);
+        const bool lit = selected && focused;
+        const bool dim = isDimmed(row) && !lit;
+        drawCentredLine(context, rect, role, rows[row].resolve(context.ui.strings()), Align::Left, lit || dim,
+                        10.0f, dim ? std::string_view("text_dim") : std::string_view(highlightColor));
+        if (row < values.size())
+        {
+            drawCentredLine(context, rect, role, values[row].resolve(context.ui.strings()), Align::Right,
+                            lit || dim, 10.0f,
+                            dim ? std::string_view("text_dim") : std::string_view(highlightColor));
+        }
     }
     context.canvas.popClip();
 }

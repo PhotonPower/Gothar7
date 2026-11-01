@@ -90,6 +90,19 @@ hero = "characters/figures/farmer.figure.toml"
 hero_graph = "data/anim/human.animgraph.toml"
 # Bewegungswerte der Spielfigur und Kamera
 movement = "data/movement.toml"
+# Neues Spiel (Hauptmenü, M14 Teil F): diese Welt an diesem Startpunkt, Name auf dem Ladebildschirm.
+world = "testworld/camp.g7world"
+start = "START_LAGER"
+title = "Testlager"
+
+[menu]
+# Hauptmenü (M14 Teil F, F8): Start ohne --world/--scene/--view-mesh. Dahinter eine langsame Kamerafahrt durch die
+# Menü-Welt (ohne Spielfigur, Simulation steht) und das Musikthema `music` aus data/music.toml.
+enabled = true
+world = "worlds/leonberg/leonberg.g7world"
+title = "Leonberg"
+flight = "ui/menu_flight.toml"
+music = "MENU"
 
 [assets]
 # Ordner und Archive im virtuellen Dateisystem (docs/modules/asset.md). Höhere Priorität gewinnt.
@@ -115,6 +128,7 @@ environment = "data/environment.toml"
 # "classic" (Gothic-artig: Aktionstaste + Richtung) oder "modern" (Maus-Angriff, E zum Benutzen)
 scheme = "classic"
 stick_deadzone = 0.2
+mouse_sensitivity = 1.0 # Faktor auf die Mausdrehung der Spielfigur (Optionen, M14 Teil F)
 
 # Eingabenamen: Tasten nach US-Layout ("W", "LeftCtrl", "Grave", "1", "F5"),
 # Maus "MouseLeft"/"MouseRight"/"MouseMiddle"/"MouseX1"/"MouseX2",

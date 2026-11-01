@@ -58,6 +58,9 @@
   `appendUtf8(out, codepoint)`.
 - `Config.hpp` – `Config` (ADR 0010; toml++ PRIVATE hinter PImpl, header-only mit `TOML_EXCEPTIONS=0`):
   - `child(table, name)` (M14): eine Untertabelle mit genau diesem Namen, auch mit Punkten (`[model."items/a.glb"]`).
+  - `erase(key)`, `sameValue(key, other)`, `copyValue(key, source)` (M14 Teil F): Schlüssel entfernen (leer gewordene
+    Tabellen mit), Werte zweier Configs vergleichen (Zahlen nach Wert, Tabellen und Arrays tief), einen Wert beliebigen
+    Typs übernehmen; damit schreiben die Optionen nur Abweichungen vom Standard in die Benutzer-Config.
   - `Config::parse(text, sourceName)`, `Config::load(path)` → `Result<Config>`; Syntaxfehler als
     `"<quelle>:<zeile>:<spalte>: <beschreibung>"`. `save(path)` schreibt atomisch, `toToml()`.
   - Schlüssel sind Punkt-Pfade (`"audio.volume.music"`). Werttypen (Concept `ConfigValue`): `bool`, `i64`, `f64`,

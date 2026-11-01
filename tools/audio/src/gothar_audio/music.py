@@ -137,6 +137,7 @@ def arpeggio(piece: Piece, chords: list[str], pattern: list[int], gain: float, b
 # --- the segments -----------------------------------------------------------------------------------------
 
 LAGER = Piece(bpm=96, beats=4, bars=4)  # 10 s
+MENU = Piece(bpm=72, beats=4, bars=8)  # 26.7 s
 STADT = Piece(bpm=120, beats=4, bars=4)  # 8 s
 THREAT = Piece(bpm=80, beats=4, bars=2)  # 6 s
 FIGHT = Piece(bpm=150, beats=4, bars=4)  # 6.4 s
@@ -179,6 +180,25 @@ def stadt_night(rng: random.Random) -> Samples:
     for bar, names in enumerate(chords):
         notes.append((bar * 4, pad(chord(names), 4 * STADT.beat, 3.5), 0.3))
     return normalise(render(STADT, notes), 0.6)
+
+
+def menu(rng: random.Random) -> Samples:
+    # The main menu (M14 part F): D minor, slow and wide - a lute over a long pad, a theme to wait with.
+    chords = [
+        "D3 A3 D4 F4",
+        "Bb2 F3 Bb3 D4",
+        "F3 C4 F4 A4",
+        "C3 G3 C4 E4",
+        "D3 A3 D4 F4",
+        "G2 D3 G3 Bb3",
+        "Bb2 F3 Bb3 D4",
+        "A2 E3 A3 C#4",
+    ]
+    notes = arpeggio(MENU, chords, [0, 2, 3, 1, 2, 1, 3, 2], 0.35, 0.45)
+    for bar, names in enumerate(chords):
+        notes.append((bar * 4, pad(chord(names), 4 * MENU.beat, 3.0), 0.3))
+        notes.append((bar * 4, bass(chord(names)[0] / 2, 3.0), 0.35))
+    return normalise(render(MENU, notes), 0.6)
 
 
 def threat(rng: random.Random) -> Samples:
@@ -243,6 +263,7 @@ MUSIC: dict[str, Callable[[random.Random], Samples]] = {
     "lager_std_ngt": lager_night,
     "stadt_std_day": stadt_day,
     "stadt_std_ngt": stadt_night,
+    "menu_std": menu,
     "common_thr": threat,
     "common_fgt": fight,
     "stinger_quest": stinger_quest,
@@ -251,7 +272,7 @@ MUSIC: dict[str, Callable[[random.Random], Samples]] = {
     "stinger_chapter": stinger_chapter,
 }
 
-PIECES = {"lager": LAGER, "stadt": STADT, "common_thr": THREAT, "common_fgt": FIGHT}
+PIECES = {"lager": LAGER, "stadt": STADT, "menu": MENU, "common_thr": THREAT, "common_fgt": FIGHT}
 
 
 def generate_music(name: str, seed: int = 11) -> Samples:

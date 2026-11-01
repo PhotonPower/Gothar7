@@ -288,7 +288,11 @@ Plan (Teile A–G, freigegeben 2026-11-01, Gestaltung F1–F12 vom Projektinhabe
 - [x] Charakterbildschirm, Tagebuch-Bildschirm, Karte (falls Karten-Item)
   - Teil E: Charakter (B), Tagebuch auf Pergament (N), Karte über Items mit `map`-Bild (M, F9); das Stadtplan-Item
     für Leonberg liefert welt, bis dahin ein Platzhalter-Bild für Tests
-- [ ] Hauptmenü, Optionen (Grafik, Audio, Steuerung), Ladebildschirm
+- [x] Hauptmenü, Optionen (Grafik, Audio, Steuerung), Ladebildschirm
+  - Teil F: Start ins Hauptmenü über einer Kamerafahrt durch Leonberg (`ui/menu_flight.toml`) mit eigenem
+    Platzhalter-Thema `MENU`; Esc öffnet im Spiel das Pausenmenü; Optionen in vier Reitern (Grafik, Klang mit den
+    Lautstärken aus `[audio]`, Steuerung mit Tastenbelegung, Spiel), gespeichert wird nur, was vom Standard abweicht;
+    Ladebildschirm beim Start und bei Neues Spiel. Laden/Speichern bleiben bis M15 ausgegraut
 - [ ] Lokalisierung (Schlüssel → Text-Tabellen DE/EN), Untertitel
   - Gesprochene Texte kommen aus `assets/source/voice/lines.<sprache>.json` (eine Datei je Sprache)
 - [x] Bildschirmtexte (z. B. „Erfahrung +50“), Nachrichten – Teil C: oben mittig, 3 s (F7), Lua `screen_message`

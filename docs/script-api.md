@@ -11,6 +11,9 @@ Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 ### `map_open(image: string, title?: string)`
 Zeigt eine Karte (Bild im VFS, z. B. `ui/maps/leonberg.png`) wie ein Karten-Item (Konsole, Tests).
 
+### `menu_open(page?: string)`
+Öffnet das Pausenmenü wie Esc, mit `"options"` gleich die Optionen darüber (Konsole, Prüfbilder).
+
 ### `screen_message(text: string, seconds?: number)`
 Zeigt dem Spieler eine Meldung oben in der Mitte (F7; Vorgabe 3 s), z. B. `Erfahrung +50`.
 
