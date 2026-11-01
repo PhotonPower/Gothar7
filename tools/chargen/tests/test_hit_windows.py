@@ -9,7 +9,6 @@ from gothar_chargen.clipspec import load_set_spec
 from gothar_chargen.events import load_events
 from gothar_chargen.hitreach import (
     FIST_LENGTH,
-    NO_REACH,
     ZONE_FRONT,
     ZONE_HIGH,
     ZONE_LOW,
@@ -51,7 +50,7 @@ def test_weapon_lengths():
 def test_all_melee_strikes_covered():
     names = {name for _, name, _ in STRIKES}
     assert len(names) == 14
-    assert names >= NO_REACH
+    assert {"1h/t_attack_l", "1h/t_attack_r", "2h/t_attack_l", "2h/t_attack_r"} <= names
 
 
 @pytest.mark.parametrize(("mode", "name", "markers"), STRIKES, ids=[s[1] for s in STRIKES])
@@ -77,12 +76,23 @@ def test_window_on_the_strike(paths, mode, name, markers):
     path = paths[mode][name]
     start, end = markers["hit_start"], markers["hit_end"]
     forward, low, high = path.window_reach(start, end)
-    if name in NO_REACH:  # blade upright during the swing: reported, needs new key poses
-        assert forward < ZONE_FRONT + 0.15, f"{name} reaches now: drop it from NO_REACH"
-        return
     assert forward >= ZONE_FRONT + 0.15
     assert ZONE_LOW <= low <= high <= ZONE_HIGH
     ahead = path.ahead()
     reach = ahead[start : end + 1].max()
     assert ahead[start] <= reach - 0.3
     assert reach >= ahead[max(start - 3, 0) : end + 4].max() - 0.05
+
+
+@pytest.mark.parametrize("mode", ["1h", "2h"])
+def test_directional_swings_cross_the_front(paths, mode):
+    """Gothic 1 side swings: the blade sweeps across in front of the body, t_attack_l from the
+    right (-X) to the left (+X), t_attack_r the other way, roughly level (tip 0.9-1.6 m high)."""
+    for clip, sign in (("t_attack_l", 1.0), ("t_attack_r", -1.0)):
+        markers = dict(
+            next(c for c in load_set_spec(mode).clips if c.name == f"{mode}/{clip}").markers
+        )
+        start, end = markers["hit_start"], markers["hit_end"]
+        tips = paths[mode][f"{mode}/{clip}"].tips[start : end + 1, 0]
+        assert sign * (tips[-1, 0] - tips[0, 0]) >= 1.2, clip  # sideways across the front
+        assert tips[:, 1].min() >= 0.9 and tips[:, 1].max() <= 1.6, clip

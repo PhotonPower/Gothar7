@@ -77,13 +77,13 @@ events = [
 events = [
     { frame = 6, event = "sound:swing" },
     { frame = 10, event = "hit_start" },
-    { frame = 17, event = "hit_end" },
+    { frame = 16, event = "hit_end" },
 ]
 
 [clips."1h/t_attack_r"]
 events = [
-    { frame = 4, event = "sound:swing" },
-    { frame = 8, event = "hit_start" },
+    { frame = 5, event = "sound:swing" },
+    { frame = 9, event = "hit_start" },
     { frame = 15, event = "hit_end" },
 ]
 

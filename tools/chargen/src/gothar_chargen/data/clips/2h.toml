@@ -153,12 +153,12 @@ helper = true
 base = "none/s_idle"
 keys = [[0, "rest"], [10, "wind"], [16, "cut"], [21, "through"], [38, "rest"]]
 [clip.params.poses.wind]
-rotate = { upperarm_r = [["X", -80], ["Z", -75]], lowerarm_r = [["X", -40]], spine_02 = [["Z", -35]], spine_01 = [["Z", -15]] }
+rotate = { upperarm_r = [["X", -80], ["Z", -75]], lowerarm_r = [["X", -40]], spine_02 = [["Z", -35]], spine_01 = [["Z", -15]], hand_r = [["X", 110], ["Y", 23], ["Z", 84]] }
 [clip.params.poses.cut]
-rotate = { upperarm_r = [["X", -85], ["Z", 5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 5]], spine_01 = [["Z", 2]] }
+rotate = { upperarm_r = [["X", -85], ["Z", 5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 5]], spine_01 = [["Z", 2]], hand_r = [["X", 144], ["Y", 3], ["Z", 79]] }
 move = { pelvis = [0, -0.06, -0.03] }
 [clip.params.poses.through]
-rotate = { upperarm_r = [["X", -70], ["Z", 70]], lowerarm_r = [["X", -40]], spine_02 = [["Z", 35]], spine_01 = [["Z", 15]] }
+rotate = { upperarm_r = [["X", -70], ["Z", 70]], lowerarm_r = [["X", -40]], spine_02 = [["Z", 35]], spine_01 = [["Z", 15]], hand_r = [["X", 137], ["Y", -23], ["Z", 104]] }
 move = { pelvis = [0, -0.05, -0.03] }
 
 [[clip]]
@@ -169,12 +169,12 @@ helper = true
 base = "none/s_idle"
 keys = [[0, "rest"], [10, "wind"], [16, "cut"], [21, "through"], [38, "rest"]]
 [clip.params.poses.wind]
-rotate = { upperarm_r = [["X", -75], ["Z", 65]], lowerarm_r = [["X", -70]], spine_02 = [["Z", 35]], spine_01 = [["Z", 15]] }
+rotate = { upperarm_r = [["X", -75], ["Z", 65]], lowerarm_r = [["X", -70]], spine_02 = [["Z", 35]], spine_01 = [["Z", 15]], hand_r = [["X", 73], ["Y", 44], ["Z", -71]] }
 [clip.params.poses.cut]
-rotate = { upperarm_r = [["X", -85], ["Z", -5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", -5]], spine_01 = [["Z", -2]] }
+rotate = { upperarm_r = [["X", -85], ["Z", -5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", -5]], spine_01 = [["Z", -2]], hand_r = [["X", 40], ["Y", 13], ["Z", -123]] }
 move = { pelvis = [0, -0.06, -0.03] }
 [clip.params.poses.through]
-rotate = { upperarm_r = [["X", -70], ["Z", -70]], lowerarm_r = [["X", -15]], spine_02 = [["Z", -35]], spine_01 = [["Z", -15]] }
+rotate = { upperarm_r = [["X", -70], ["Z", -70]], lowerarm_r = [["X", -15]], spine_02 = [["Z", -35]], spine_01 = [["Z", -15]], hand_r = [["X", 59], ["Y", -5], ["Z", -106]] }
 move = { pelvis = [0, -0.05, -0.03] }
 
 [[clip]]
@@ -198,7 +198,7 @@ helper = true
 [[clip]]
 name = "2h/t_attack_l"  # directional swing to the left
 keyframe = "framed"
-markers = { hit_start = 13, hit_end = 19, "sound:swing" = 9 }
+markers = { hit_start = 13, hit_end = 20, "sound:swing" = 9 }
 params = { base = "2h/t_t_swing_l_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
 
 [[clip]]
@@ -210,7 +210,7 @@ helper = true
 [[clip]]
 name = "2h/t_attack_r"  # directional swing to the right
 keyframe = "framed"
-markers = { hit_start = 10, hit_end = 18, "sound:swing" = 6 }
+markers = { hit_start = 11, hit_end = 19, "sound:swing" = 7 }
 params = { base = "2h/t_t_swing_r_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
 
 [[clip]]

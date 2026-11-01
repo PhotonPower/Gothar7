@@ -28,9 +28,6 @@ FIST_LENGTH = 0.12  # engine CombatSettings::fist_length
 WEAPONS = {"1h": "it_sword_old", "2h": "it_sword_2h"}
 SOCKETS = {"fist": ("socket_hand_r", "socket_hand_l"), "1h": ("socket_hand_r",)}
 SOCKETS["2h"] = SOCKETS["1h"]
-# Clips whose blade does not reach the front zone (the swing keeps the blade upright; their
-# windows sit on the hand's pass in front of the body). Reported, the clips need new key poses.
-NO_REACH = frozenset({"1h/t_attack_l", "1h/t_attack_r", "2h/t_attack_l", "2h/t_attack_r"})
 
 
 def item_length(item_glb: Path) -> float:
