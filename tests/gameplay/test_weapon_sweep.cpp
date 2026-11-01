@@ -7,6 +7,7 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -69,7 +70,7 @@ TEST_CASE("Weapon sweep: poses between two, segment distance, blade against a bo
     CHECK(segmentDistance(Vec3(0, 0, 0), Vec3(1, 0, 0), Vec3(3, 0, 0), Vec3(4, 0, 0)) ==
           doctest::Approx(2.0f));
 
-    const SweepTarget body{1, Vec3(0.0f, 0.0f, -1.5f), 1.8f, 0.35f};
+    const SweepTarget body = uprightTarget(1, Vec3(0.0f, 0.0f, -1.5f), 1.8f, 0.35f);
     CHECK(bladeTouches({Vec3(0, 1.3f, -0.5f), Vec3(0, 1.3f, -1.2f)}, 0.08f, body));
     CHECK_FALSE(bladeTouches({Vec3(0, 1.3f, -0.5f), Vec3(0, 1.3f, -1.0f)}, 0.08f, body)); // 0.5 m short
     CHECK_FALSE(bladeTouches({Vec3(0, 2.4f, -1.5f), Vec3(0, 3.0f, -1.5f)}, 0.08f, body)); // over the head
@@ -78,9 +79,9 @@ TEST_CASE("Weapon sweep: poses between two, segment distance, blade against a bo
 TEST_CASE("Weapon sweep: a swing hits a target in its arc, once, and none outside it")
 {
     // Ahead (in the arc), behind and too far.
-    const std::vector<SweepTarget> targets{{1, Vec3(0.0f, 0.0f, -1.5f), 1.8f, 0.35f},
-                                           {2, Vec3(0.0f, 0.0f, 1.5f), 1.8f, 0.35f},
-                                           {3, Vec3(0.0f, 0.0f, -3.0f), 1.8f, 0.35f}};
+    const std::vector<SweepTarget> targets{uprightTarget(1, Vec3(0.0f, 0.0f, -1.5f), 1.8f, 0.35f),
+                                           uprightTarget(2, Vec3(0.0f, 0.0f, 1.5f), 1.8f, 0.35f),
+                                           uprightTarget(3, Vec3(0.0f, 0.0f, -3.0f), 1.8f, 0.35f)};
     // From the right over the front to the left, in steps of 15 degrees (fast: the blade jumps 0.3 m per
     // step).
     const std::vector<u32> hit = swing(0.0f, 180.0f, 15.0f, targets);
@@ -104,8 +105,8 @@ TEST_CASE("Weapon sweep: a swing hits a target in its arc, once, and none outsid
 TEST_CASE(
     "Weapon sweep: a wall stops the blade - the target behind it is not hit, the rest of the swing neither")
 {
-    const std::vector<SweepTarget> targets{{1, Vec3(0.0f, 0.0f, -1.5f), 1.8f, 0.35f},
-                                           {2, Vec3(-1.4f, 0.0f, 0.0f), 1.8f, 0.35f}};
+    const std::vector<SweepTarget> targets{uprightTarget(1, Vec3(0.0f, 0.0f, -1.5f), 1.8f, 0.35f),
+                                           uprightTarget(2, Vec3(-1.4f, 0.0f, 0.0f), 1.8f, 0.35f)};
     // A wall in the plane x = 0.3 for z < 0 (ahead right): the blade swinging from the right meets it. The
     // blocker tests the blade's points (stand-in for the physics' capsule cast): the share of the motion
     // where the first point crosses the plane.
@@ -140,6 +141,35 @@ TEST_CASE(
     const SweepResult inside = sweepBlade(swordAt(90.0f), swordAt(90.0f), 0.08f, targets, wall);
     CHECK(inside.blocked);
     CHECK(inside.hits.empty());
+}
+
+TEST_CASE(
+    "Weapon sweep: an animal's body lies along it - a blow at its head counts, the distance to its body")
+{
+    // A wolf (Creatures.wolf.body) at the origin looking along -Z: its body reaches from 0.13 m behind the
+    // feet to 1.09 m ahead (offset 0.48 ahead, length 1.22), 0.48 m high.
+    const BodyShape wolf{0.32f, 1.22f, Vec3(0.0f, 0.48f, 0.48f), true};
+    const SweepTarget t = bodyTarget(7, wolf, Vec3(0.0f), Vec3(0.0f, 0.0f, -1.0f));
+    CHECK(t.radius == doctest::Approx(0.32f));
+    CHECK(t.a.y == doctest::Approx(0.48f));
+    CHECK(std::min(t.a.z, t.b.z) == doctest::Approx(-0.48f - 0.29f));
+    CHECK(std::max(t.a.z, t.b.z) == doctest::Approx(-0.48f + 0.29f));
+    // Somebody standing 1.3 m ahead of its feet is 0.53 m from its body's axis (its head end), on the ground.
+    CHECK(groundDistanceToAxis(Vec3(0.0f, 0.0f, -1.3f), t) == doctest::Approx(0.53f).epsilon(0.01));
+    // From the side it counts to the middle of the body.
+    CHECK(groundDistanceToAxis(Vec3(1.0f, 0.0f, -0.48f), t) == doctest::Approx(1.0f).epsilon(0.01));
+    // A fist at knee height just at its snout (1.1 m ahead) touches it; one at 1.6 m height passes over.
+    CHECK(bladeTouches({Vec3(0.0f, 0.5f, -1.1f), Vec3(0.0f, 0.5f, -1.15f)}, 0.1f, t));
+    CHECK_FALSE(bladeTouches({Vec3(0.0f, 1.6f, -1.0f), Vec3(0.0f, 1.6f, -1.1f)}, 0.1f, t));
+    // Upright (the running bird): a capsule standing on the feet, ahead by its offset.
+    const SweepTarget bird =
+        bodyTarget(8, {0.24f, 1.66f, Vec3(0.0f, 0.83f, 0.37f), false}, Vec3(0.0f), Vec3(1.0f, 0.0f, 0.0f));
+    CHECK(bird.a.x == doctest::Approx(0.37f));
+    CHECK(bird.b.x == doctest::Approx(0.37f));
+    CHECK(std::max(bird.a.y, bird.b.y) == doctest::Approx(1.66f - 0.24f));
+    // A person: the plain upright capsule.
+    const SweepTarget man = uprightTarget(9, Vec3(1.0f, 0.0f, 2.0f), 1.8f, 0.35f);
+    CHECK(groundDistanceToAxis(Vec3(1.0f, 0.0f, 0.8f), man) == doctest::Approx(1.2f));
 }
 
 TEST_CASE("Knockback: a push over its time, then nothing")

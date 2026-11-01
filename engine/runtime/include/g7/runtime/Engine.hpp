@@ -1089,6 +1089,11 @@ private:
     // Combat (M11, EngineCombat.cpp).
     struct Combatant;
     void loadCombat();
+    void loadAnimalBodies(); ///< Creatures.<species>.body (data/creatures.lua)
+    /// The body a blow hits and the AI walks up to: people upright, animals by their Creatures body.
+    [[nodiscard]] gameplay::SweepTarget bodyOf(const Combatant& c) const;
+    /// Ground distance from `from` to `to` counted to the target's body (as between two people's middles).
+    [[nodiscard]] f32 reachDistance(const Combatant& from, const Combatant& to) const;
     void bindCombatFunctions();
     void bindLootFunctions();
     void fixedUpdateCombat(f32 seconds);
@@ -1571,6 +1576,7 @@ private:
     gameplay::MobTypes m_mobTypes;
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
+    std::map<std::string, gameplay::BodyShape, std::less<>> m_animalBodies; // by species (M11)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline

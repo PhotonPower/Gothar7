@@ -358,7 +358,7 @@ Nimmt einem bewusstlosen oder toten NPC in der Nähe des Helden `count` (ohne: a
 Ein Schlag (M11): `front` setzt die Kombo fort, soweit das Talent reicht; false, wenn er gerade nicht kann.
 
 ### `npc_distance(npc: string, other: string) -> number`
-Abstand zweier Kämpfer auf dem Boden in Metern (`hero` für den Helden).
+Abstand zweier Kämpfer auf dem Boden in Metern, Mitte zu Mitte; zu einem Tier bis zu seinem Körper gerechnet, wie zwischen zwei Menschen (zum Vergleich mit `npc_reach`; `hero` für den Helden).
 
 ### `npc_dodge(npc: string) -> boolean`
 Ausweichschritt zurück (M11).
