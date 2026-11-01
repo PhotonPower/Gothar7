@@ -70,6 +70,7 @@ DOOR_SWEEP_EXTRA_M = 0.3  # the door's sweep stays free and this much round it (
 MOVE_M = 0.45  # room to walk past furniture
 STEP_M = 0.25  # placement search step
 INSIDE_WP_M = 1.2  # the room's waypoint this far inside the door
+ENTRY_CLEAR_M = 0.35  # and at least this far from the room's walls
 REACH_R_M = 0.4  # straight walks keep this clear (engine: 0.3 m spheres, ai.md; models overhang)
 DOOR_WP_IN_M = 0.15  # the door's waypoint in the middle of the opening (half the wall)
 OUTSIDE_WP_M = 0.9  # the waypoint in front of the door, outside
@@ -221,9 +222,18 @@ class _Room:
 
     @property
     def entry(self) -> tuple[float, float]:
-        """The room's waypoint just inside the door."""
-        return (self.door_mid[0] + self.inward[0] * INSIDE_WP_M,
-                self.door_mid[1] + self.inward[1] * INSIDE_WP_M)  # fmt: skip
+        """The room's waypoint just inside the door: ``INSIDE_WP_M`` straight in, nearer where
+        that would come to a wall (a slanted strip of a chamber), off the walls by a figure."""
+        clear = self.poly.buffer(-ENTRY_CLEAR_M)
+        for t in (INSIDE_WP_M, 1.0, 0.8, 0.6):
+            p = (self.door_mid[0] + self.inward[0] * t, self.door_mid[1] + self.inward[1] * t)
+            if clear.is_empty or clear.contains(Point(p)):
+                return p
+        p = (self.door_mid[0] + self.inward[0] * INSIDE_WP_M,
+             self.door_mid[1] + self.inward[1] * INSIDE_WP_M)  # fmt: skip
+        q = clear.exterior.interpolate(clear.exterior.project(Point(p))) if isinstance(
+            clear, Polygon) else Point(p)  # fmt: skip
+        return (q.x, q.y)
 
     def reachable(self, p: tuple[float, float]) -> bool:
         """A straight walk from the room's waypoint to ``p`` past all furniture."""
