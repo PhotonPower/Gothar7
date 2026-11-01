@@ -40,7 +40,8 @@ Npc "npc_leo_market" {
     level = 3,
     attributes = { str = 10, hp = 60 }, -- Kampf (M11): Platzhalterwerte
     figure = "characters/figures/market_woman.figure.toml",
-    inventory = { it_gulden = 100, it_lockpick = 2, it_mug = 3, it_broom = 2, it_potion_heal_small = 3, it_apple = 5 },
+    inventory = { it_gulden = 100, it_lockpick = 2, it_mug = 3, it_broom = 2, it_potion_heal_small = 3, it_apple = 5,
+                  it_map_leonberg = 1 },
     routine = "rtn_leo_market",
 }
 
