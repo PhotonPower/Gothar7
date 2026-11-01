@@ -17,7 +17,7 @@ Coordinates: world (x, z) in the plan, y up.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -126,12 +126,17 @@ def stair_from_json(d: dict[str, Any]) -> Stair:
 
 def plan_stair(room: Polygon, upper: Polygon, floor: float, top: float,
                blocked: Sequence[Polygon], windows: Sequence[tuple[LineString, float]],
-               away_from: Pt, spec: dict[str, Any] | None = None) -> Stair | None:  # fmt: skip
+               away_from: Pt, spec: dict[str, Any] | None = None,
+               accept: Callable[[Stair], bool] | None = None,
+               walls: Polygon | None = None) -> Stair | None:  # fmt: skip
     """A straight flight along a wall of ``room`` (the room with the door, counter-clockwise):
     its steps and the landing before them inside the room, the landing at the head inside
     ``upper`` (the upper storey's floor), clear of ``blocked`` (the door's way in, passages); it
     may pass a window on its wall only below the sill (``windows``: inner span, sill height).
-    Of the places that fit the one farthest from ``away_from`` (the door) wins; None if none."""
+    With ``walls`` (the storey's inner outline) the flight runs along one of its walls:
+    upstairs a partition below is no wall, the opening would lie open on that side. ``accept``
+    may refuse a place (the ways to its foot and from its head, ``reachable``). Of the places
+    that fit the one farthest from ``away_from`` (the door) wins; None if none."""
     sp = {**DEFAULTS, **(spec or {})}
     height = top - floor
     steps = max(2, math.ceil(height / float(sp["riseM"]) - 1e-9))
@@ -142,7 +147,7 @@ def plan_stair(room: Polygon, upper: Polygon, floor: float, top: float,
     above = upper.buffer(0.01)
     for side_entry in (False, True):  # the landing before the steps; in a short room beside them
         found = _best(room, upper, inside, above, floor, top, steps, rise, tread, width, blocked,
-                      windows, away_from, sp, side_entry)  # fmt: skip
+                      windows, away_from, sp, side_entry, accept, walls)  # fmt: skip
         if found is not None:
             return found
     return None
@@ -151,14 +156,19 @@ def plan_stair(room: Polygon, upper: Polygon, floor: float, top: float,
 def _best(room: Polygon, upper: Polygon, inside: Any, above: Any, floor: float, top: float,  # noqa: ANN401
           steps: int, rise: float, tread: float, width: float, blocked: Sequence[Polygon],
           windows: Sequence[tuple[LineString, float]], away_from: Pt, sp: dict[str, Any],
-          side_entry: bool) -> Stair | None:  # fmt: skip
+          side_entry: bool, accept: Callable[[Stair], bool] | None = None,
+          walls: Polygon | None = None) -> Stair | None:  # fmt: skip
     best: tuple[float, Stair] | None = None
     ring = list(room.exterior.coords)
+    outer = None if walls is None else walls.exterior.buffer(float(sp["wallGapM"]) + 0.03)
     for a, b in zip(ring, ring[1:], strict=False):
         length = math.dist(a, b)
         u = ((b[0] - a[0]) / length, (b[1] - a[1]) / length) if length > 1e-6 else (1.0, 0.0)
         n = (-u[1], u[0])  # into a counter-clockwise room
         wall_windows = [(w, sill) for w, sill in windows if LineString([a, b]).distance(w) < 0.05]
+        middle = LineString([a, b]).interpolate(0.5, normalized=True)
+        if length < 1e-6 or (outer is not None and not outer.contains(middle)):
+            continue  # a partition of the storey below, not an outer wall
         for sign in (1.0, -1.0):
             up = (u[0] * sign, u[1] * sign)
             start = a if sign > 0 else b
@@ -175,10 +185,31 @@ def _best(room: Polygon, upper: Polygon, inside: Any, above: Any, floor: float, 
                     continue
                 if any(_blocks(st, w, sill, float(sp["windowClearM"])) for w, sill in wall_windows):
                     continue
+                along = LineString([st.at(-st.tread, 0.0), st.at(st.run, 0.0)])
+                if outer is not None and not outer.contains(along):
+                    continue
                 score = st.footprint.distance(_point(away_from))
-                if best is None or score > best[0] + 1e-6:
-                    best = (score, st)
+                if best is not None and score <= best[0] + 1e-6:
+                    continue
+                if accept is not None and not accept(st):
+                    continue
+                best = (score, st)
     return None if best is None else best[1]
+
+
+def reachable(walk: Any, start: Pt, goals: Sequence[Pt], share: float = 0.9,  # noqa: ANN401
+              near: float = 0.5) -> bool:  # fmt: skip
+    """Whether ``start`` lies in the part of ``walk`` (where a figure's middle may stand: the
+    floor shrunk by its radius, without the obstacles grown by it) that holds every one of
+    ``goals`` (each within ``near`` of it: a door lies in the wall) and at least ``share`` of
+    its area."""
+    parts = [g for g in getattr(walk, "geoms", [walk]) if isinstance(g, Polygon) and g.area > 0]
+    total = sum(g.area for g in parts)
+    here = [g for g in parts if g.distance(_point(start)) < 0.15]
+    if not here or total <= 0:
+        return False
+    part = max(here, key=lambda g: g.area)
+    return part.area >= share * total and all(part.distance(_point(q)) < near for q in goals)
 
 
 def _blocks(st: Stair, window: LineString, sill: float, clear: float) -> bool:

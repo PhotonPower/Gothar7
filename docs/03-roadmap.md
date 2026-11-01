@@ -237,7 +237,7 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 - [x] Waffenmodi (Faust, Einhand, Zweihand, Bogen, Armbrust), Ziehen/Wegstecken – Fernkampfwaffen mit eigener Taste (R1)
 - [x] Kameramodus „Kampf“ der Third-Person-Kamera (aus M5: näher, Blick auf den Gegner bei Ziel-Lock) – `[camera.combat]`, weich überblendet, drinnen der nähere Abstand (K5)
 - [x] Nahkampf: Angriffe mit Treffer-Fenstern aus Animations-Events, Kombos abhängig vom Talent, Parieren, Ausweichschritt – Gothic-1-Tasten, Maus als Zweitbelegung; bis zu den Clips eine Zeitleiste (A, B)
-- [ ] Trefferprüfung (Waffen-Shapecast entlang der Animation), Treffer-Reaktionen, Rückstoß
+- [x] Trefferprüfung (Waffen-Shapecast entlang der Animation), Treffer-Reaktionen, Rückstoß – Klinge bzw. Fäuste als Kapsel je Schritt entlang des Clips gefegt (`capsuleCast`, Wände und Türen halten auf), Rückstoß 0,3 m (Vorschlag); `weapon_sweep` vorerst aus, bis die Trefferfenster der Platzhalter-Clips passen (gameplay.md „Trefferprüfung“)
 - [x] Schadensmodell: Schadensarten × Schutzwerte, kritische Treffer abhängig vom Talent – Waffe + Stärke − Schutz, mindestens 5, kritisch 0/10/20 % (K2, K3; Teil A)
 - [x] Fernkampf: Zielen, Projektile mit Ballistik, Munition – Bogen und Armbrust des Helden, Trefferchance nach Talent auf das Ziel, Pfeile bleiben stecken bzw. liegen (R1–R4; E)
 - [x] Bewusstlosigkeit vs. Tod, Plündern – bewusstlos 30 s, Schlag auf Liegende tötet, Plündern, Zeugen (K7; A, C)
@@ -421,6 +421,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [x] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …) – `uses-suggest` (OSM/ALKIS), Auswahl des Koordinators in `data/leonberg/uses.json` (30 Häuser), Routinen-Wegpunkte, Freepoints und Mobs (`docs/design/leonberg-routinen-orte.md`)
   - Stand: Treppen ins Obergeschoss der 5 begehbaren Häuser (höchstens 35°, Kollision als glatte Rampe, Deckenausschnitt mit Geländer), Obergeschoss mit eigenen Räumen, Fenstern und Licht; Betten und Truhen oben, Wegpunkte `…_TREPPE`, `…_TREPPE_OBEN`, `…_OBEN…`, Innenzonen je Geschoss und über der Treppe
   - Stand: begehbare Häuser Phase 1 – zehn weitere Häuser begehbar (Bäcker, Metzger, Schreiner, Töpfer, Goldschmied, Tuchhändler, Gewandschneider, Kräuterkammer, Badstube, Wachstube am Unteren Tor), eingerichtet nach Nutzung bzw. Gewerk (`uses.<use>.inside`, `insideByTrade`; Ofen, Hackklotz, Töpferscheibe, Tuchregal, Badewanne; Arbeits-Freepoints vor dem Werkstück); Steinböden mit Fußschritt-Hinweis (`surface`); Metzger, Töpfer, Wache und Schreiner vorerst ohne Obergeschoss (`upper: false`, Treppenplatzierung folgt in Phase 2); Wege gerade durch Durchgänge und um Treppen geprüft mit Autopilot-Rundgang und NPC-Probe
+  - Stand: begehbare Häuser Phase 2 – Treppen nur an Außenwänden, Fuß und Kopf mit allen Räumen verbunden (Prüfung mit dem Figurenradius); Metzger, Töpfer, Wache und Schreiner mit Obergeschoss; Lager- und Werkstattzeug des Gewerbes in den Kammern (`inside.chamber`); als Nächstes Pfarrhaus begehbar (Betten für Pfarrer und Mönche), danach Phase 3 (Licht- und Dreiecksbudget)
 
 **DoD:** Leonberg ist als fertiger Spielort im Vertical Slice / Kapitel nutzbar.
 

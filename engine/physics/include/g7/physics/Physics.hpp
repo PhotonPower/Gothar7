@@ -130,6 +130,12 @@ public:
     /// A sphere moved along `direction`: the first thing it touches.
     [[nodiscard]] std::optional<RayHit> sphereCast(const Vec3& origin, f32 radius, const Vec3& direction,
                                                    f32 maxDistance, LayerMask layers = kAllLayers) const;
+    /// A capsule around the segment [a, b] (a sphere when a = b) moved by `motion`: every contact on the way,
+    /// one per body part (a mesh triangle, a hull), nearest first; `distance` = how far along `motion`, 0 for
+    /// parts it overlaps at the start; `normal` points from the surface towards the capsule. A zero motion
+    /// only tests the overlap. Weapon sweeps (gameplay.md "Kampf").
+    [[nodiscard]] std::vector<RayHit> capsuleCast(const Vec3& a, const Vec3& b, f32 radius,
+                                                  const Vec3& motion, LayerMask layers = kAllLayers) const;
     /// User data of every body the sphere overlaps (each once, in no particular order).
     [[nodiscard]] std::vector<u64> overlapSphere(const Vec3& centre, f32 radius,
                                                  LayerMask layers = kAllLayers) const;

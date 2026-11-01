@@ -687,3 +687,68 @@ def test_the_musician_stands_off_a_wall_facing_into_the_room():
     c = room.centroid  # facing in: the room lies ahead
     ahead = (music["pos"][0] + music["dir"][0], music["pos"][1] + music["dir"][1])
     assert math.dist(ahead, (c.x, c.y)) < math.dist(music["pos"], (c.x, c.y))
+
+
+def test_every_chamber_gets_the_trades_stock_as_far_as_it_fits():
+    stock = ["crate:1", "sacks:1", "barrel:40"]
+    spec = {"wohnhaus": inside_spec({"mobs": ["table:1"], "hearth": True, "chamber": stock}, "x")}
+    assert spec["wohnhaus"].stock == [("crate", 1), ("sacks", 1), ("barrel", 40)]
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=2, inside=True)
+    p = plan_inside([house], spec, DIVIDED, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+    assert p.failed == []  # forty barrels do not fit: no failure for the rest
+    names = [v["name"] for v in p.vobs]
+    assert "PROP_LEO_WOHNHAUS_ZJV_KAMMER_CRATE_1" in names
+    assert "PROP_LEO_WOHNHAUS_ZJV_KAMMER_SACKS_1" in names
+    assert "PROP_LEO_WOHNHAUS_ZJV_KAMMER_BARREL_1" in names
+    assert not any(n.startswith("PROP_LEO_WOHNHAUS_ZJV_INNEN_CRATE") for n in names)  # chambers
+    with pytest.raises(UsesError):
+        inside_spec({"chamber": ["counter:1"]}, "x")
+    down, _ = _split_upstairs(spec["wohnhaus"], 2)
+    assert down.stock == spec["wohnhaus"].stock  # with an upper storey the stores stay below
+    single = plan(specs=spec)  # one room, no chamber: no stock
+    assert not any("_CRATE_" in v["name"] for v in single.vobs)
+
+
+def test_from_a_head_at_the_end_wall_the_way_goes_along_the_opening():
+    from shapely.geometry import box
+
+    from gothar_worldgen.uses.inside import _detour
+
+    room, hole = box(0.0, 0.0, 8.0, 4.0), box(3.0, 2.75, 7.2, 4.0)  # the head landing at x 7.2-8
+    a, b = (7.6, 3.4), (2.0, 0.8)
+    assert _detour(a, b, hole, room) == []  # the corners at the head lie beyond the end wall
+    way = _detour(a, b, hole, room, sample=True)
+    assert way and all(room.contains(Point(c)) for c in way)
+    legs = LineString([a, *way, b])
+    assert not legs.intersects(hole)
+
+
+def test_to_a_foot_behind_the_flight_the_way_goes_round_its_side():
+    from shapely.geometry import box
+
+    from gothar_worldgen.uses.inside import _inside_way
+
+    room, steps = box(0.0, 0.0, 9.0, 4.0), box(3.5, 3.0, 7.9, 3.95)  # foot at the east end
+    a, foot = (1.0, 3.4), (8.45, 3.45)  # the straight way runs through the whole flight
+    way = _inside_way(a, foot, room, steps)
+    assert way and not LineString([a, *way, foot]).intersects(steps)
+    assert _inside_way((1.0, 1.0), (8.45, 1.0), room, steps) == []  # clear of it
+
+
+def test_a_freepoint_hidden_round_the_corner_by_the_stairs_gets_corners():
+    from shapely.geometry import box
+
+    from gothar_worldgen.uses.inside import _House, _Room
+
+    poly = box(0.0, 0.0, 8.0, 4.0).union(box(8.0, 2.0, 11.0, 4.0))  # an L: the wing at the east
+    room = _Room(poly, 0.0, 2.8, Polygon(), (0.0, 0.5), (1.0, 0.0))  # the door in the west wall
+    room.steps = box(3.0, 3.0, 7.5, 3.95)
+    p = InsidePlan()
+    house = _House(p, House("DEBW_00100061ZjV", "wohnhaus", residents=1, inside=True), room)
+    house.fp("REPAIR", (10.5, 2.4), (0.0, 1.0))  # behind the inner corner
+    house.round_the_stairs()
+    (wp,) = [q for q in p.places if q["kind"] == "wp"]
+    assert wp["name"] == "WP_LEO_WOHNHAUS_ZJV_INNEN_UM_REPAIR"
+    assert wp["link"] == "WP_LEO_WOHNHAUS_ZJV_INNEN"
+    legs = LineString([room.entry, wp["pos"], (10.5, 2.4)])
+    assert not legs.intersects(room.steps) and poly.buffer(0.01).contains(legs)

@@ -4,7 +4,7 @@
 
 ## Bestandteile
 - Statische Welt-Kollision aus `COL_`-Geometrie bzw. Welt-Mesh (Mesh-Shape), Vobs mit Box/Konvex.
-- Abfragen: `raycast`, `sphereCast`, `overlap` mit Layer-Filtern (`World`, `Npc`, `Item`, `Mob`, `Trigger`, `Water`).
+- Abfragen: `raycast`, `sphereCast`, `capsuleCast`, `overlap` mit Layer-Filtern (`World`, `Npc`, `Item`, `Mob`, `Trigger`, `Water`).
 - **Charakter-Controller** (Jolt `CharacterVirtual`):
   - Zustände: `Ground`, `Air`, `Swim`, `Dive`, `Climb` (Kante hochziehen), `Slide` (zu steiler Hang)
   - Parameter: Steigungsgrenze (~50°), Stufenhöhe, Sprunghöhe, Kantenhöhen für „hochziehen“ (niedrig/mittel/hoch → unterschiedliche Animationen)
@@ -30,6 +30,9 @@ class PhysicsWorld {
     std::optional<RayHit> raycast(origin, dir, maxDistance, LayerMask = kAllLayers) const;
     std::optional<RayHit> sphereCast(origin, radius, dir, maxDistance, LayerMask = kAllLayers) const;
     std::vector<u64> overlapSphere(centre, radius, LayerMask = kAllLayers) const;   // userData je Körper einmal
+    // Kapsel um [a, b] um motion verschoben: alle Kontakte (je Körperteil), nächster zuerst; Abstand 0 = schon
+    // überlappend, motion 0 = nur Überlappung. Waffen-Sweep im Kampf (M11, gameplay.md „Trefferprüfung“).
+    std::vector<RayHit> capsuleCast(a, b, radius, motion, LayerMask = kAllLayers) const;
     PhysicsStats stats() const;                                             // Körper, Formen, Mesh-Dreiecke
 };
 }

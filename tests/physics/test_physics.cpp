@@ -152,3 +152,49 @@ TEST_CASE("Physics: height field - heights, odd sizes, holes never larger than d
     CHECK_FALSE(world.addHeightfield({1, 4, 1.0f, Vec2(0.0f), heights, {}}).ok());
     CHECK_FALSE(world.addHeightfield({w, h, 2.0f, Vec2(0.0f), heights, std::vector<u8>(3)}).ok());
 }
+
+TEST_CASE("Physics: a capsule cast - walls on the way, nearest first, overlap at the start, layer filter")
+{
+    PhysicsWorld world = makeWorld();
+    // A floor (mesh) and a thin wall at x 1 .. 1.2 (hull), a mob box further at x 3.
+    ShapePart floor;
+    floor.points = {Vec3(-5, 0, -5), Vec3(5, 0, -5), Vec3(5, 0, 5), Vec3(-5, 0, 5)};
+    floor.indices = {0, 2, 1, 0, 3, 2};
+    const ShapeId floorShape = world.createShape(std::vector<ShapePart>{floor}).value();
+    REQUIRE(world.addStatic(floorShape, Vec3(0.0f), Quat(1, 0, 0, 0), Vec3(1.0f), Layer::World, 1).ok());
+    const ShapeId wall =
+        world.createShape(std::vector<ShapePart>{box(Vec3(1, 0, -2), Vec3(1.2f, 3, 2))}).value();
+    REQUIRE(world.addStatic(wall, Vec3(0.0f), Quat(1, 0, 0, 0), Vec3(1.0f), Layer::World, 2).ok());
+    const ShapeId crate =
+        world.createShape(std::vector<ShapePart>{box(Vec3(3, 0, -1), Vec3(4, 1.5f, 1))}).value();
+    REQUIRE(world.addStatic(crate, Vec3(0.0f), Quat(1, 0, 0, 0), Vec3(1.0f), Layer::Mob, 3).ok());
+    world.optimize();
+
+    // A blade 0.9 m long, upright from y 1 to 1.9, radius 0.1, moved 5 m along +x: the wall first (its face
+    // at x 1, the capsule's side touches it after 0.9 m), the crate later.
+    const auto hits = world.capsuleCast(Vec3(0, 1, 0), Vec3(0, 1.9f, 0), 0.1f, Vec3(5, 0, 0));
+    REQUIRE(hits.size() >= 2);
+    CHECK(hits[0].userData == 2);
+    CHECK(hits[0].distance == doctest::Approx(0.9f).epsilon(0.02));
+    CHECK(hits[0].normal.x == doctest::Approx(-1.0f).epsilon(0.02));
+    CHECK(std::ranges::is_sorted(hits, {}, &RayHit::distance));
+    CHECK(std::ranges::any_of(hits, [](const RayHit& h) { return h.userData == 3; }));
+    // Only the world layer: no crate.
+    const auto world_only =
+        world.capsuleCast(Vec3(0, 1, 0), Vec3(0, 1.9f, 0), 0.1f, Vec3(5, 0, 0), layerBit(Layer::World));
+    CHECK(std::ranges::none_of(world_only, [](const RayHit& h) { return h.userData == 3; }));
+    // Lying along x, moved away from the wall: nothing (the floor is 1 m below).
+    CHECK(world.capsuleCast(Vec3(0, 1, 0), Vec3(0.5f, 1, 0), 0.1f, Vec3(-2, 0, 0)).empty());
+    // Through the wall already: a contact at distance 0; no motion tests just the overlap.
+    const auto inside = world.capsuleCast(Vec3(0.5f, 1, 0), Vec3(1.5f, 1, 0), 0.1f, Vec3(0, 0, 0));
+    REQUIRE(inside.size() == 1);
+    CHECK(inside[0].userData == 2);
+    CHECK(inside[0].distance == 0.0f);
+    CHECK(world.capsuleCast(Vec3(0, 1, 0), Vec3(0.5f, 1, 0), 0.1f, Vec3(0, 0, 0)).empty());
+    // Down onto the floor: a contact facing up (a floor; the weapon sweep lets floors pass).
+    const auto down = world.capsuleCast(Vec3(-2, 1, 0), Vec3(-2, 1.5f, 0), 0.1f, Vec3(0, -2, 0));
+    REQUIRE_FALSE(down.empty());
+    CHECK(down[0].userData == 1);
+    CHECK(down[0].normal.y == doctest::Approx(1.0f).epsilon(0.02));
+    CHECK(down[0].distance == doctest::Approx(0.9f).epsilon(0.02));
+}

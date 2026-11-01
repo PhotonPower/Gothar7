@@ -74,6 +74,16 @@ Result<CombatSettings> CombatSettings::fromTable(const script::Table& t)
                    readNumber(t, "reach_2h", s.reach2h, 0.1, 5.0),
                    readNumber(t, "animal_reach", s.animalReach, 0.1, 5.0),
                    readNumber(t, "hit_angle", s.hitAngleDegrees, 1.0, 180.0),
+                   readNumber(t, "weapon_radius", s.weaponRadius, 0.01, 0.5),
+                   readNumber(t, "blade_1h", s.blade1h, 0.1, 3.0),
+                   readNumber(t, "blade_2h", s.blade2h, 0.1, 3.0),
+                   readNumber(t, "fist_length", s.fistLength, 0.0, 0.5),
+                   readNumber(t, "fist_radius", s.fistRadius, 0.01, 0.5),
+                   readNumber(t, "body_radius", s.bodyRadius, 0.05, 2.0),
+                   readNumber(t, "body_height", s.bodyHeight, 0.2, 5.0),
+                   readNumber(t, "animal_height", s.animalHeight, 0.2, 5.0),
+                   readNumber(t, "knockback", s.knockback, 0.0, 5.0),
+                   readNumber(t, "knockback_seconds", s.knockbackSeconds, 0.01, 2.0),
                    readLevels(t, "crit_chance", s.critChance, 0.0, 1.0),
                    readLevels(t, "combo_hits", s.comboHits, 1.0, 10.0),
                    readLevels(t, "attack_speed", s.attackSpeed, 0.25, 4.0),
@@ -101,6 +111,14 @@ Result<CombatSettings> CombatSettings::fromTable(const script::Table& t)
             }
             *target = std::string(it->second.asString());
         }
+    }
+    if (const auto it = t.fields.find("weapon_sweep"); it != t.fields.end())
+    {
+        if (!it->second.isBool())
+        {
+            return Error{"Combat.weapon_sweep: must be true or false"};
+        }
+        s.weaponSweep = it->second.asBool();
     }
     return s;
 }
@@ -180,6 +198,30 @@ bool facesAttacker(f32 defenderYaw, const Vec2& defender, const Vec2& attacker, 
     const Vec3 forward = forwardOf(defenderYaw);
     const f32 cosine = glm::dot(glm::normalize(to), glm::normalize(Vec2(forward.x, forward.z)));
     return cosine >= std::cos(glm::radians(angleDegrees));
+}
+
+void Knockback::start(const Vec3& direction, f32 distance, f32 time) noexcept
+{
+    const Vec3 flat(direction.x, 0.0f, direction.z);
+    const f32 length = glm::length(flat);
+    if (length < 1e-4f || distance <= 0.0f || time <= 0.0f)
+    {
+        *this = {};
+        return;
+    }
+    velocity = flat / length * (distance / time);
+    seconds = time;
+}
+
+Vec3 Knockback::take(f32 step) noexcept
+{
+    if (seconds <= 0.0f || step <= 0.0f)
+    {
+        return Vec3(0.0f);
+    }
+    const f32 share = std::min(step, seconds) / step; // the last step only for the time left
+    seconds -= step;
+    return velocity * share;
 }
 
 void Fighter::enter(FightState state) noexcept
