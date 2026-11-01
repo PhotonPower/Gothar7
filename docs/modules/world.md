@@ -27,6 +27,11 @@ class Scene {   // entt::registry privat (ADR 0005)
   kommen nie wieder. Beim Laden kann `VobDesc::id` eine feste ID setzen; doppelte IDs, Welt-IDs im Laufzeitbereich,
   feste IDs für Laufzeit-Vobs und unbekannte Eltern sind **Fehler** (`Result`, Daten). Die Zähler stehen danach
   mindestens bei max(ID) + 1; `setNextVobId`/`setNextRuntimeVobId` lehnen kleinere Werte ab.
+- **Stabilität der welt-Vobs (Vertrag mit welt, 2026-11-01, für Spielstände M15):** VobIds der welt-Vobs sind über
+  Neuerzeugungen stabil, solange ihr Schlüssel in `tools/worldgen/data/<ort>/vob_ids.json` gleich bleibt (Häuser nach
+  Gebäude-ID, Ausstattung nach Vob-Name, Startpunkte nach Name). Neue Vobs bekommen neue IDs ab `nextVobId`, gelöschte
+  IDs werden nie wieder vergeben. Geänderte Einrichtung eines Raums kann Möbeln neue Namen und damit neue IDs geben;
+  Spielstände behandeln unbekannte IDs als gelöscht. Geprüft von `tools/worldgen/tests/test_vob_ids_contract.py`.
 - **Komponenten:** `Vob`, `Transform` (lokal), `WorldTransform` hat jeder Vob; andere Module setzen eigene
   Komponenten über `set`/`get`/`each`. Transformänderungen nur über `setTransform`/`set<Transform>` (setzt die
   Änderungsmarke), `get<Transform>` ist nur lesend.
