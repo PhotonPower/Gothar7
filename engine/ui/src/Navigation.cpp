@@ -16,8 +16,9 @@ using platform::Action;
 /// Which kind of input pressed one of the UI actions this frame, if any.
 std::optional<InputDevice> pressedDevice(const platform::Input& input, const platform::ActionMap& actions)
 {
-    for (const Action action : {Action::UiUp, Action::UiDown, Action::UiLeft, Action::UiRight,
-                                Action::UiAccept, Action::UiBack, Action::UiPrevTab, Action::UiNextTab})
+    for (const Action action :
+         {Action::UiUp, Action::UiDown, Action::UiLeft, Action::UiRight, Action::UiAccept, Action::UiBack,
+          Action::UiPrevTab, Action::UiNextTab, Action::UiDrop})
     {
         for (const platform::InputBinding& binding : actions.bindings(action))
         {
@@ -107,6 +108,7 @@ UiInput buildUiInput(const platform::Input& input, const platform::ActionMap& ac
     out.back = actions.pressed(input, Action::UiBack);
     out.prevTab = actions.pressed(input, Action::UiPrevTab);
     out.nextTab = actions.pressed(input, Action::UiNextTab);
+    out.drop = actions.pressed(input, Action::UiDrop);
     if (const auto device = pressedDevice(input, actions))
     {
         repeat.device = *device;

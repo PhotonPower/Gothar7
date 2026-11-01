@@ -155,9 +155,10 @@ void Canvas::rect(const Rect& rect, Color color)
     quad(rect, {Vec2(0.0f), Vec2(1.0f)}, nullptr, color.packed());
 }
 
-void Canvas::image(const Rect& rect, const render::rhi::Texture* texture, const Rect& uv, Color tint)
+void Canvas::image(const Rect& rect, const render::rhi::Texture* texture, const Rect& uv, Color tint,
+                   bool displayValues)
 {
-    quad(rect, uv, texture, tint.packed());
+    quad(rect, uv, texture, tint.packed(), displayValues ? -1.0f : 0.0f);
 }
 
 void Canvas::frame(const Rect& rect, const NineSlice& slice, Color tint)

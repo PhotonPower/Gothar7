@@ -121,6 +121,7 @@ void Engine::updateGameUi(f64 realSeconds, bool allowMouse, bool allowKeyboard)
         input.back = false;
         input.prevTab = false;
         input.nextTab = false;
+        input.drop = false;
     }
     if (!allowMouse)
     {
@@ -133,6 +134,14 @@ void Engine::updateGameUi(f64 realSeconds, bool allowMouse, bool allowKeyboard)
     const f32 height = pixels.height > 0 ? static_cast<f32>(pixels.height) : 1080.0f;
     const f32 userScale =
         std::clamp(static_cast<f32>(m_config.settings.get<f64>("ui.scale", 1.0)), 0.5f, 2.0f);
+    // The inventory key closes the inventory again (Gothic: Tab), though the screen holds the game keys.
+    if (allowKeyboard && m_screens.top() != nullptr && m_screens.top()->name() == "inventory" &&
+        m_actions.pressed(m_input, platform::Action::Inventory))
+    {
+        setInventoryOpen(false);
+        m_lootTarget.reset();
+    }
+    advanceItemSpin(static_cast<f32>(realSeconds));
     syncGameScreens();
     const ui::Rect area{Vec2(0.0f), Vec2(width, height)};
     const f32 scale = height / kReferenceHeight * userScale;
@@ -176,7 +185,8 @@ void Engine::drawGameUi(u32 width, u32 height)
     const f32 scale = static_cast<f32>(height) / kReferenceHeight * userScale;
     m_canvas.begin(Vec2(static_cast<f32>(width), static_cast<f32>(height)), scale);
     m_hud.draw(m_canvas, *m_gameUi);
-    m_screens.draw(m_canvas, *m_gameUi);
+    m_screens.draw(m_canvas, *m_gameUi); // may render item pictures into their atlases (other framebuffers)
+    m_device->bindFramebuffer(nullptr);
     m_canvas.end(m_device.get());
 }
 void Engine::showScreenMessage(std::string text, f32 seconds)
@@ -252,6 +262,7 @@ ui::HudModel Engine::buildHudModel(Vec2 pixels) const
 
 void Engine::syncGameScreens()
 {
+    syncItemScreens(); // inventory, trading, containers (part D)
     // Dialogue (replaces the ImGui window; E3: like Gothic 1).
     ui::Screen* dialog = m_screens.find("dialog");
     if (m_dialog && dialog == nullptr)
@@ -377,6 +388,18 @@ void Engine::syncGameScreens()
 void Engine::bindUiFunctions()
 {
     script::ScriptVm& vm = *m_scripts;
+    vm.bind({"inventory_open", "inventory_open(open?: boolean)",
+             "Öffnet (oder mit `false` schließt) das Inventar des Helden wie die Inventar-Taste (Konsole, "
+             "Tests).",
+             "Bildschirm", [this](std::span<const script::Value> a) -> Result<script::Value>
+             {
+                 if (!m_hero)
+                 {
+                     return Error{"no hero"};
+                 }
+                 setInventoryOpen(a.empty() || a[0].asBool(true));
+                 return script::Value{};
+             }});
     vm.bind({"screen_message", "screen_message(text: string, seconds?: number)",
              "Zeigt dem Spieler eine Meldung oben in der Mitte (F7; Vorgabe 3 s), z. B. `Erfahrung +50`.",
              "Bildschirm", [this](std::span<const script::Value> a) -> Result<script::Value>

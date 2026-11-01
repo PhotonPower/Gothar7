@@ -64,6 +64,9 @@ public:
     /// Direct child keys of the table at `table` (root if empty), sorted. Empty if not a table.
     [[nodiscard]] std::vector<std::string> keys(std::string_view table = {}) const;
 
+    /// The table `name` inside the table at `table`, looked up by its exact name (keys with dots such as file
+    /// paths, `[model."items/a.glb"]`); nullopt if absent or not a table.
+    [[nodiscard]] std::optional<Config> child(std::string_view table, std::string_view name) const;
     /// Applies `overrides` on top: its values replace ours, tables are merged recursively,
     /// keys only present here are kept. Used for default config <- user config <- command line.
     void merge(const Config& overrides);

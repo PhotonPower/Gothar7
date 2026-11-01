@@ -870,6 +870,23 @@ void Engine::bindMobFunctions()
                  m_mobs.at(vob.value().value).locked = false;
                  return Value();
              }});
+    vm.bind(
+        {"use_mob", "use_mob(vob: string)",
+         "Der Held benutzt ein Mob-Vob dieser Welt wie mit der Aktionstaste (Konsole, Tests): Truhe öffnen, "
+         "Schloss knacken, am Amboss schmieden.",
+         "Mobs", [this, mobByName](std::span<const Value> a) -> Result<Value>
+         {
+             auto vob = mobByName(a);
+             if (!vob)
+             {
+                 return vob.error();
+             }
+             if (auto used = useMob(vob.value()); !used)
+             {
+                 return used.error();
+             }
+             return Value();
+         }});
     vm.bind({"mob_used",
              "on(\"mob_used\", fn(mob: string, type: string))",
              "Der Held hat ein Mob benutzt (Truhe offen, Tür bewegt); `mob` ist die Mob-Instanz.",

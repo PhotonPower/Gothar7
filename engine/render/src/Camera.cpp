@@ -16,7 +16,18 @@ Mat4 Camera::view() const noexcept
 
 Mat4 Camera::projection() const noexcept
 {
-    return perspectiveReverseZ(fovY, aspect > 0.0f ? aspect : 1.0f, nearPlane, farPlane);
+    Mat4 p = perspectiveReverseZ(fovY, aspect > 0.0f ? aspect : 1.0f, nearPlane, farPlane);
+    if (windowCenter != Vec2(0.0f) || windowHalfSize != 1.0f)
+    {
+        // x' = (x_ndc - w.x) / e in clip space: x_clip' = (x_clip - w.x * w_clip) / e (rows 0 and 1).
+        const f32 e = windowHalfSize > 0.0f ? windowHalfSize : 1.0f;
+        for (int column = 0; column < 4; ++column)
+        {
+            p[column][0] = (p[column][0] - windowCenter.x * p[column][3]) / e;
+            p[column][1] = (p[column][1] - windowCenter.y * p[column][3]) / e;
+        }
+    }
+    return p;
 }
 
 namespace
