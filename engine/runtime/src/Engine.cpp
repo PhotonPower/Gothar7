@@ -1369,25 +1369,21 @@ void Engine::performWorldChange()
     const PendingWorldChange change = std::move(*m_pendingWorldChange);
     m_pendingWorldChange.reset();
     const std::string key = toLower(change.world);
-    // The target: as left earlier (its state kept) or from its file.
-    world::WorldFile target;
-    std::set<u64> spent;
+    // The target: as left earlier (its state kept: delta, items, mobs, NPCs, triggers; M15 part C) or from
+    // its file.
+    std::optional<save::WorldState> kept;
     if (const auto left = m_leftWorlds.find(key); left != m_leftWorlds.end())
     {
-        target = left->second.file;
-        spent = left->second.spentTriggers;
+        kept = left->second;
     }
-    else
+    auto file = worldBase(change.world);
+    if (!file)
     {
-        auto file = world::loadWorldFile(m_vfs, change.world);
-        if (!file)
-        {
-            G7_LOG_WARN("engine", "level change to {} failed, staying here: {}", change.world,
-                        file.error().message);
-            return;
-        }
-        target = std::move(file).value();
+        G7_LOG_WARN("engine", "level change to {} failed, staying here: {}", change.world,
+                    file.error().message);
+        return;
     }
+    world::WorldFile target = kept ? save::applyDelta(file.value(), kept->delta) : std::move(file).value();
     // No start name: the first start point, as when a world is loaded at the start (main menu).
     const bool hasStart =
         change.start.empty() ||
@@ -1401,32 +1397,47 @@ void Engine::performWorldChange()
         return;
     }
 
-    // Keep the world we leave as it is now (moved or removed vobs, spent once-triggers).
+    // Keep the world we leave as it is now (not the main menu's: it is dropped after New game).
     const std::string leftPath = m_worldPath;
-    world::WorldFile leaving = m_worldFile;
-    world::WorldFile captured = world::captureWorld(m_scene, m_worldFile.name);
-    storeDoors(captured);
-    leaving.vobs = captured.vobs;
-    leaving.nextVobId = captured.nextVobId;
-    if (!leftPath.empty()) // nothing loaded yet (main menu)
+    std::optional<save::WorldState> leaving;
+    if (!leftPath.empty() && !m_menuMode)
     {
-        m_leftWorlds[toLower(leftPath)] = LeftWorld{leaving, m_triggers.spentTriggers()};
+        auto captured = captureCurrentWorld();
+        if (captured)
+        {
+            leaving = std::move(captured).value();
+            m_leftWorlds[toLower(leftPath)] = *leaving;
+        }
+        else
+        {
+            G7_LOG_WARN("engine", "{} is not kept: {}", leftPath, captured.error().message);
+        }
     }
 
     G7_LOG_INFO("engine", "level change: {} -> {} ({})", leftPath, change.world, change.start);
     unloadWorld();
-    if (auto loaded = loadWorld(change.world, std::move(target), change.start); !loaded)
+    m_restoringWorld = kept.has_value();
+    auto loaded = loadWorld(change.world, std::move(target), change.start);
+    m_restoringWorld = false;
+    if (loaded && kept)
+    {
+        loaded = restoreWorldState(*kept);
+    }
+    if (!loaded)
     {
         // Not expected (the target was read and checked); go back to where we were.
         G7_LOG_ERROR("engine", "{}; returning to {}", loaded.error().message, leftPath);
         unloadWorld();
-        if (auto back = loadWorld(leftPath, leaving, {}); !back)
+        if (leaving)
         {
-            G7_LOG_ERROR("engine", "cannot return to {}: {}", leftPath, back.error().message);
+            if (auto back = loadWorldState(*leaving, {}); !back)
+            {
+                G7_LOG_ERROR("engine", "cannot return to {}: {}", leftPath, back.error().message);
+            }
         }
         return;
     }
-    m_triggers.setSpentTriggers(std::move(spent));
+    m_leftWorlds.erase(key); // the current world is not a left one
     releaseUnusedModels();
 }
 

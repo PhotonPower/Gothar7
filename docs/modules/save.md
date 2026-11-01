@@ -59,14 +59,27 @@ Result<void> applyGame(const save::GameState&);    // Welt aus Datei + Delta, NP
   Delta laden – die Skripte hören `world_loaded(world, true)` und setzen niemanden ein (`startup.lua`) –, Items,
   Trigger, Mobs, NPCs (die von Skripten eingesetzten werden ersetzt), dann Story und Timer (nach den Handlern),
   Held an seinen Ort, Fackel, Ereignis `game_loaded()`.
-- **Noch nicht:** Tiergestalt und Trank-Wirkungen des Helden (enden beim Laden), gezogene Waffe (steckt), andere
-  besuchte Welten (Teil C), Datei (Teil A).
+- **Noch nicht:** Tiergestalt und Trank-Wirkungen des Helden (enden beim Laden), gezogene Waffe (steckt), Datei
+  (Teil A).
 - **Tests:** `tests/save/test_game_state.cpp` (alle Felder durch JSON, stabil, Fehler, neuere Version; Delta mit
   entfernten/geänderten/neuen Vobs, nicht mehr passende Einträge, Kinder), `tests/gameplay/test_character.cpp`,
   `tests/script/test_script.cpp` (benannte Timer über einen neuen VM), `tests/world/test_scene.cpp`,
   `test_world_file.cpp`, `tests/runtime/test_engine_save.cpp` (das veränderte Lager: erfassen → neue Engine →
   anwenden → erfassen ergibt dieselben Bytes), `test_engine_leonberg_save.cpp` (ctest `runtime_leonberg_save`,
   Leonberg mit 25 Bewohnern, nur lokal).
+
+## Teil C (umgesetzt, M15) – Besuchte Welten und Weltwechsel
+- `Engine::m_leftWorlds` hält je verlassener Welt ihren `save::WorldState` (Delta gegen die Datei, Laufzeit-Items,
+  Mobs, NPCs, verbrauchte Trigger) statt nur eines `WorldFile`: beim Weltwechsel `captureCurrentWorld()`, bei der
+  Rückkehr `loadWorldState()` (Datei + Delta, `world_loaded(world, true)`, dann Items, Mobs, NPCs, Trigger). Damit
+  bleiben fallen gelassene Items (Laufzeit-Vobs), Truhen-Inhalte, Schlösser und NPCs (Werte, tot) über einen
+  Weltwechsel erhalten – bis M14 gingen sie verloren (offener Punkt aus M4 erledigt).
+- Die Menü-Welt (Hauptmenü) wird beim Verlassen nicht erfasst.
+- `captureGame()` enthält alle besuchten Welten (verlassene nach Pfad, dann die aktuelle); `applyGame()` lädt die
+  aktuelle und legt die anderen als verlassene Welten ab.
+- **Tests:** `tests/runtime/test_engine_save.cpp` (Lager → Höhle → Lager: NPC-Werte, toter Wolf, Item, Truhe;
+  Spielstand mit zwei Welten in neuer Engine byte-gleich; danach wieder Höhle und zurück), GPU
+  `test_world_vobs.cpp` (Weltwechsel wie bisher).
 
 ## Plan M15 (2026-11-01; Teile B und C freigegeben, A wartet auf ADR 0021)
 
@@ -218,16 +231,6 @@ Variante nur im Lager (zwei Welten: Lager + Höhle). Begehung durch den Projekti
 ## Format (Kurzfassung, bis M15 umgesetzt)
 Binär, Chunks mit `tag u32, version u16, size u32` → robuste Erweiterung; Schreiben in Temp-Datei + atomisches
 Umbenennen, CRC32 je Chunk. Einzelheiten oben und in ADR 0021.
-
-## Schnittstelle zum Weltwechsel (Stand M4)
-- Die Engine hält je **verlassener Welt** deren Zustand im Speicher (`Engine::m_leftWorlds`): ein `world::WorldFile`
-  (Vobs wie beim Verlassen, `nextVobId`, Gelände/Wegnetz/Zonen aus der Datei) plus die Menge der verbrauchten
-  `once`-Trigger. Beim Rückkehren wird daraus gespawnt statt aus der Datei.
-- Für den Spielstand heißt das: je besuchter Welt dieses `WorldFile` bzw. sein **Delta zur Ausgangsdatei** (oben)
-  plus die verbrauchten Trigger; die aktuelle Welt wird beim Speichern genauso erfasst (`captureWorld`).
-- **Offener Punkt – Laufzeit-Vobs:** `captureWorld` lässt Vobs ab `kRuntimeVobIdBase` (fallen gelassene Items,
-  gespawnte NPCs) weg; M15 Teil B nimmt sie in den Weltzustand auf (Erfassen und Spawnen mit fester Laufzeit-ID).
-- Global, nicht je Welt: Spielzeit/Tag-Nacht, Story-Variablen (world.md).
 
 ## Schnittstelle Spielzeit (Stand M4)
 - `world::GameTime` (world.md): zu speichern sind `clock()` (Minuten seit Tag 0, 00:00, mit Bruchteil – daraus Tag

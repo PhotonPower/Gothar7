@@ -146,3 +146,69 @@ TEST_CASE("Save state: the changed camp captured, applied to a fresh engine, cap
     // Story is the saved one: the handler of this engine ran with restored = true, then Story was replaced.
     CHECK(run(engine, "Story.heard == nil").asBool());
 }
+
+TEST_CASE("Save state: visited worlds keep their state over level changes and in the game state (part C)")
+{
+    Engine engine(campConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    run(engine, "insert_npc('npc_old_man') insert_npc('mon_wolf', 'wp_camp_center')");
+    frames(engine, 10);
+    run(engine, "npc_set_stat('npc_old_man', 'hp', 23)");
+    const auto wolf = engine.npcByInstance("mon_wolf");
+    REQUIRE(wolf.has_value());
+    REQUIRE(engine.creatureAction(*wolf, "die"));
+    run(engine, "give_item('it_apple', 2) drop_item('it_apple', 1)");
+    const auto chest = engine.findMob("LAGER_TRUHE");
+    REQUIRE(chest.has_value());
+    const auto contents = engine.mobInfo(*chest)->contents;
+    REQUIRE(engine.takeFromMob(*chest, contents.front().item, contents.front().count).ok());
+    const usize chestStacks = engine.mobInfo(*chest)->contents.size();
+    const auto apples = [&]
+    {
+        return std::ranges::count_if(engine.worldItems(), [](const WorldItemInfo& i)
+                                     { return i.instance == "it_apple" && i.vob.runtime(); });
+    };
+    REQUIRE(apples() == 1);
+
+    // Into the cave and back: the camp is as it was left - nobody inserted again, nobody revived.
+    run(engine, "Story.heard = {} on('world_loaded', function(w, restored) Story.heard[#Story.heard + 1] = "
+                "restored end)");
+    engine.requestWorldChange("testworld/cave.g7world", "START_HOEHLE");
+    frames(engine, 2);
+    REQUIRE(engine.worldPath() == "testworld/cave.g7world");
+    CHECK(engine.keptWorlds() == 1);
+    CHECK(engine.creatureCount() == 0);
+    engine.requestWorldChange("testworld/camp.g7world", "START_LAGER_HOEHLE");
+    frames(engine, 2);
+    REQUIRE(engine.worldPath() == "testworld/camp.g7world");
+    CHECK(engine.keptWorlds() == 1); // now the cave
+    CHECK(run(engine, "Story.heard[1] == false and Story.heard[2] == true").asBool());
+    CHECK(engine.creatureCount() == 2);
+    CHECK(run(engine, "npc_stat('npc_old_man', 'hp')").asInteger() == 23);
+    CHECK(run(engine, "fight_state('mon_wolf')").asString() != "ready");
+    CHECK(apples() == 1);
+    CHECK(engine.mobInfo(*engine.findMob("LAGER_TRUHE"))->contents.size() == chestStacks);
+
+    // The game state holds both worlds; a fresh engine gets both back and the same document.
+    auto state = engine.captureGame();
+    REQUIRE(state.ok());
+    REQUIRE(state.value().worlds.size() == 2);
+    CHECK(state.value().worlds[0].path == "testworld/cave.g7world");
+    CHECK(state.value().worlds[1].path == "testworld/camp.g7world");
+    const std::string first = save::toJson(state.value());
+    Engine loaded(campConfig());
+    REQUIRE(loaded.init().ok());
+    frames(loaded, 3);
+    REQUIRE(loaded.applyGame(state.value()).ok());
+    CHECK(loaded.keptWorlds() == 1);
+    const std::string second = captured(loaded);
+    CHECK_MESSAGE(second == first, firstDifference(first, second));
+    // The loaded game goes to the cave and back: still the same camp.
+    loaded.requestWorldChange("testworld/cave.g7world", "START_HOEHLE");
+    frames(loaded, 2);
+    loaded.requestWorldChange("testworld/camp.g7world", "START_LAGER_HOEHLE");
+    frames(loaded, 2);
+    CHECK(run(loaded, "npc_stat('npc_old_man', 'hp')").asInteger() == 23);
+    CHECK(loaded.creatureCount() == 2);
+}

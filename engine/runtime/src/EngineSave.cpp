@@ -1,7 +1,8 @@
 // The game state for save games (M15 parts B and C, docs/modules/save.md): what the engine captures from the
-// running game and puts back - time, Story, named timers, the hero, and per world its delta against the file,
-// the dropped items, mobs, NPCs and spent triggers. NPCs come back where they were with their values and
-// begin the state of their routine anew (plan point 2).
+// running game and puts back - time, Story, named timers, the hero, and per visited world its delta against
+// the file, the dropped items, mobs, NPCs and spent triggers. A world left through a level change keeps the
+// same state in memory and comes back with it. NPCs come back where they were with their values and begin the
+// state of their routine anew (plan point 2).
 
 #include "PlayerFigure.hpp"
 
@@ -156,6 +157,11 @@ Result<save::GameState> Engine::captureGame()
     {
         return current.error();
     }
+    // The worlds left earlier (in path order), then the current one.
+    for (const auto& [path, left] : m_leftWorlds)
+    {
+        state.worlds.push_back(left);
+    }
     state.worlds.push_back(std::move(current).value());
     return state;
 }
@@ -243,6 +249,25 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
     return {};
 }
 
+Result<void> Engine::loadWorldState(const save::WorldState& state, std::string_view start)
+{
+    auto base = worldBase(state.path);
+    if (!base)
+    {
+        return Error{std::format("{}: {}", state.path, base.error().message)};
+    }
+    world::WorldFile target = save::applyDelta(base.value(), state.delta);
+    target.nextVobId = std::max(target.nextVobId, state.delta.nextVobId);
+    m_restoringWorld = true;
+    auto loaded = loadWorld(state.path, std::move(target), start);
+    m_restoringWorld = false;
+    if (!loaded)
+    {
+        return loaded;
+    }
+    return restoreWorldState(state);
+}
+
 Result<void> Engine::applyGame(const save::GameState& state)
 {
     if (!m_scripts)
@@ -255,13 +280,10 @@ Result<void> Engine::applyGame(const save::GameState& state)
     {
         return Error{std::format("the game state has no world '{}'", state.currentWorld)};
     }
-    auto base = worldBase(current->path);
-    if (!base)
+    if (auto base = worldBase(current->path); !base) // checked before anything is torn down
     {
         return Error{std::format("{}: {}", current->path, base.error().message)};
     }
-    world::WorldFile target = save::applyDelta(base.value(), current->delta);
-    target.nextVobId = std::max(target.nextVobId, current->delta.nextVobId);
 
     // Hero values first: the player figure is built from them when the world loads.
     if (state.hero && m_hero)
@@ -273,22 +295,23 @@ Result<void> Engine::applyGame(const save::GameState& state)
     m_routineMinute = ~0ull; // routines put everybody where they belong now
 
     m_pendingWorldChange.reset();
+    // The other visited worlds wait as they were (part C).
     m_leftWorlds.clear();
+    for (const save::WorldState& w : state.worlds)
+    {
+        if (&w != &*current)
+        {
+            m_leftWorlds[toLower(w.path)] = w;
+        }
+    }
     if (m_torch)
     {
         putTorchAway();
     }
     unloadWorld();
-    m_restoringWorld = true;
-    auto loaded = loadWorld(current->path, std::move(target), {});
-    m_restoringWorld = false;
-    if (!loaded)
+    if (auto loaded = loadWorldState(*current, {}); !loaded)
     {
         return loaded;
-    }
-    if (auto restored = restoreWorldState(*current); !restored)
-    {
-        return restored;
     }
     // Story and timers after the world's handlers ran (they see `restored` and leave both alone).
     if (auto story = m_scripts->setStory(state.story); !story)

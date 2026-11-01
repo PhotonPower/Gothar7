@@ -1293,6 +1293,9 @@ private:
     [[nodiscard]] Result<world::WorldFile> worldBase(const std::string& path);
     [[nodiscard]] Result<save::WorldState> captureCurrentWorld();
     [[nodiscard]] Result<void> restoreWorldState(const save::WorldState& state);
+    /// Loads a world from its file with the state's delta (scripts hear world_loaded(world, true)) and puts
+    /// its items, mobs, NPCs and triggers back; `start` empty: the player stays where the caller puts him.
+    [[nodiscard]] Result<void> loadWorldState(const save::WorldState& state, std::string_view start);
     // Item screens (EngineUiItems.cpp, M14 part D)
     void syncItemScreens();
     [[nodiscard]] ui::ItemScreenView itemScreenView(ui::ItemScreenMode mode);
@@ -1416,12 +1419,8 @@ private:
     world::TriggerSystem m_triggers; // fed with the camera until the player exists (M5)
     std::string m_worldPath;
     world::WorldFile m_worldFile; // the loaded world without its vobs (terrain, waynet ... for capturing)
-    struct LeftWorld
-    {
-        world::WorldFile file;       // as it was when left
-        std::set<u64> spentTriggers; // once-triggers that fired there
-    };
-    std::map<std::string, LeftWorld> m_leftWorlds; // by lower-case path; into the save game later
+    std::map<std::string, save::WorldState>
+        m_leftWorlds; // left worlds as they were, by lower-case path (M15 C)
     struct PendingWorldChange
     {
         std::string world;
