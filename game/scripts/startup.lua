@@ -1,7 +1,10 @@
 -- Start: Hilfen für die Konsole und Reaktion auf Weltwechsel (Beispielinhalt M7).
 local util = require "lib.util" -- (Beispiel für require)
 
-on("world_loaded", function(world)
+on("world_loaded", function(world, restored)
+    if restored then
+        return -- from a save game: Story is the saved one
+    end
     Story.visits = (Story.visits or 0) + 1
     print(string.format("Welt geladen: %s (Besuch %d)", world, Story.visits))
 end)
@@ -30,8 +33,9 @@ function leonberg_people()
 end
 
 -- Entscheidung des Projektinhabers (L2): Beim Laden von Leonberg sind seine Bewohner da, wie Gothics Startup-Skripte.
-on("world_loaded", function(world)
-    if world:find("leonberg/leonberg.g7world", 1, true) then
+-- Aus einem Spielstand (`restored`) kommen sie mit ihm (M15).
+on("world_loaded", function(world, restored)
+    if not restored and world:find("leonberg/leonberg.g7world", 1, true) then
         leonberg_people()
     end
 end)

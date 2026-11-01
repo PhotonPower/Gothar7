@@ -180,3 +180,26 @@ TEST_CASE("Character: hp and mana within their maximum, experience and levels")
     CHECK(hero.experience() == 3100);
     CHECK(hero.learnPoints() == 30);
 }
+
+TEST_CASE("Character: the state as data and back (save game, M15)")
+{
+    Fixture f;
+    Character hero = f.hero();
+    REQUIRE(hero.setAttribute("str", 25).ok());
+    hero.addItem("it_ring_a");
+    REQUIRE(hero.equip("it_ring_a", f.items).ok());
+    hero.setLearnPoints(7);
+    const CharacterState state = hero.state();
+    CHECK(state.equipped[static_cast<usize>(EquipSlot::Armor)] == "it_armor");
+
+    Character other = f.hero();
+    other.restore(state, f.items);
+    CHECK(other.state() == state);
+    CHECK(other.protection("edge") == hero.protection("edge")); // armour 15 + ring 2: from the items
+    CHECK(other.learnPoints() == 7);
+    // An item the scripts no longer know is not put on again.
+    CharacterState gone = state;
+    gone.equipped[static_cast<usize>(EquipSlot::Ring1)] = "it_vanished";
+    other.restore(gone, f.items);
+    CHECK(other.equipped(EquipSlot::Ring1).empty());
+}

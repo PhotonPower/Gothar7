@@ -257,3 +257,13 @@ TEST_CASE("Scene: each hands out Transform read-only")
     CHECK(seen == 1);
     CHECK(scene.get<Health>(hut)->value == 7);
 }
+
+TEST_CASE("Scene: a save game puts runtime vobs back with their ids (M15)")
+{
+    Scene scene;
+    const auto item = spawn(scene, {"ITEM", {}, {}, VobId{kRuntimeVobIdBase + 7}, true});
+    CHECK(scene.idOf(item) == VobId{kRuntimeVobIdBase + 7});
+    CHECK(scene.nextRuntimeVobId() == kRuntimeVobIdBase + 8); // the counter lies above it
+    CHECK_FALSE(scene.spawnVob({"TWICE", {}, {}, VobId{kRuntimeVobIdBase + 7}, true}).ok());
+    CHECK_FALSE(scene.spawnVob({"WORLD", {}, {}, VobId{5}, true}).ok()); // a runtime vob needs a runtime id
+}

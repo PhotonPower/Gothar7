@@ -1294,7 +1294,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
                 timer.elapsedSeconds() * 1000.0);
     if (m_scripts)
     {
-        const script::Value world[] = {path};
+        const script::Value world[] = {path, m_restoringWorld};
         m_scripts->emit("world_loaded", world);
     }
     return {};

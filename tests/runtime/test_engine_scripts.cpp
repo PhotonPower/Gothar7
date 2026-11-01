@@ -124,7 +124,8 @@ TEST_CASE("Engine scripts: docs/script-api.md lists the engine functions and eve
     const std::string md = engine.scriptApiMarkdown();
     for (const char* entry :
          {"### `insert(instance: string, count?: integer) -> boolean`", "## Welt", "## Ereignisse",
-          "### `on(\"world_loaded\", fn(world: string))`", "### `time(hour: integer, minute?: integer)`"})
+          "### `on(\"world_loaded\", fn(world: string, restored: boolean))`",
+          "### `time(hour: integer, minute?: integer)`"})
     {
         CAPTURE(entry);
         CHECK(md.find(entry) != std::string::npos);

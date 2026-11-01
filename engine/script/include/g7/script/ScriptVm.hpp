@@ -137,6 +137,22 @@ public:
     /// A failing timer is logged and dropped. Returns the number of timer calls.
     usize tick(f64 seconds);
     [[nodiscard]] f64 time() const noexcept;
+    /// A timer that survives a save game (M15): `after`/`every` with the name of a global function instead
+    /// of a function (`after(5, "camp_check", "npc_x")`); timers with a Lua function are not saved.
+    struct NamedTimer
+    {
+        u32 id = 0;
+        f64 due = 0.0;      ///< script clock
+        f64 interval = 0.0; ///< 0: once
+        std::string function;
+        std::vector<Value> arguments;
+        friend bool operator==(const NamedTimer&, const NamedTimer&) = default;
+    };
+    [[nodiscard]] std::vector<NamedTimer> namedTimers() const;
+    /// Back from a save game: the script clock, the named timers (replacing the named ones) and the next id.
+    /// Timers with a Lua function stay with the time they had left.
+    void restoreTimers(f64 clock, std::vector<NamedTimer> timers, u32 nextId);
+    [[nodiscard]] u32 nextTimerId() const noexcept;
     /// Calls every handler registered with `on(event, fn)` (and Lua's emit). Failing handlers are logged.
     usize emit(std::string_view event, std::span<const Value> arguments = {});
 

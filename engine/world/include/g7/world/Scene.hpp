@@ -26,7 +26,8 @@ struct VobDesc
     /// Fixed id (world loader: the id stored in .g7world). Must be unique and below kRuntimeVobIdBase.
     /// 0 = assign the next free one.
     VobId id;
-    /// Spawned while playing (items, NPCs): the id comes from the runtime range.
+    /// Spawned while playing (items, NPCs): the id comes from the runtime range - or is `id` from that range
+    /// (a save game puts runtime vobs back with their ids, M15).
     bool runtime = false;
 };
 
@@ -40,7 +41,7 @@ public:
     Scene& operator=(const Scene&) = delete;
 
     /// Creates a vob with Vob, Transform and WorldTransform. Fails for a duplicate id, a fixed
-    /// world id in the runtime range (or a runtime vob with a fixed id) and an unknown parent.
+    /// world id in the runtime range (or a runtime vob with a fixed id outside it) and an unknown parent.
     [[nodiscard]] Result<entt::entity> spawnVob(const VobDesc& desc);
     /// Destroys the vob and all its descendants. Their ids are never handed out again.
     void destroyVob(entt::entity vob);

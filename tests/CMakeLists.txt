@@ -24,6 +24,7 @@ set(_g7_runtime_groups
     "npc_mobs|*test_engine_npc_mobs.cpp"
     "leonberg|*test_engine_leonberg.cpp"
     "leonberg_residents|*test_engine_leonberg_residents.cpp"
+    "leonberg_save|*test_engine_leonberg_save.cpp"
     "ui|*test_engine_ui.cpp"
     "slice|*test_engine_vertical_slice.cpp")
 set(_g7_runtime_tests runtime)
@@ -72,6 +73,7 @@ g7_add_test_suite(ai)
 # test_day_cycle.cpp checks the shipped day-and-night curves.
 target_compile_definitions(g7_tests_world PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
 g7_add_test_suite(ui)
+g7_add_test_suite(save)
 # test_debug_ui.cpp inspects ImGui's state directly.
 find_package(imgui CONFIG QUIET)
 target_link_libraries(g7_tests_ui PRIVATE imgui::imgui)

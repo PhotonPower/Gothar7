@@ -425,3 +425,21 @@ TEST_CASE("WorldFile: daylight lights - read, written after intensity and only w
             "d")
             .ok());
 }
+
+TEST_CASE("World file: one vob as text and back (save game delta, M15)")
+{
+    WorldFileVob vob;
+    vob.id = VobId{12};
+    vob.type = VobType::Item;
+    vob.name = "APFEL";
+    vob.transform.position = Vec3(1.5f, 0.0f, -2.25f);
+    vob.item = {"it_apple", 3, "npc_x"};
+    const std::string text = writeVobJson(vob);
+    CHECK(text.find('\n') == std::string::npos);
+    auto back = parseVobJson(text);
+    REQUIRE(back.ok());
+    CHECK(writeVobJson(back.value()) == text);
+    CHECK(back.value().item.count == 3);
+    CHECK_FALSE(parseVobJson("{").ok());
+    CHECK_FALSE(parseVobJson("{\"type\": \"item\"}").ok()); // no id
+}

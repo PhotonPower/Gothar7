@@ -118,6 +118,9 @@ Ein Dialog ist vorbei.
 ### `on("dialog_started", fn(npc: string))`
 Ein Dialog beginnt.
 
+### `on("game_loaded", fn())`
+Ein Spielstand ist geladen: Welt, NPCs, Story und benannte Timer sind wieder da (M15).
+
 ### `on("hero_transformed", fn(species: string))`
 Der Held nimmt eine Tiergestalt an (M12, Z7) bzw. wird wieder Mensch (`species` leer).
 
@@ -232,8 +235,8 @@ Die Fackel des Helden ist aus (weggesteckt, fallen gelassen, im Wasser).
 ### `on("voice_line", fn(npc: string, key: string, seconds: number))`
 Eine Zeile wird gesprochen (es gibt ihren Take voice/<sprache>/<key>.wav).
 
-### `on("world_loaded", fn(world: string))`
-Nachdem eine Welt geladen ist (auch nach einem Weltwechsel); `world` ist ihr Pfad.
+### `on("world_loaded", fn(world: string, restored: boolean))`
+Nachdem eine Welt geladen ist (auch nach einem Weltwechsel); `world` ist ihr Pfad. `restored`: die Welt kommt aus einem Spielstand bzw. einem gespeicherten Zustand – ihre NPCs sind schon da, Inhalte setzen dann niemanden ein (M15).
 
 ## Gegenstände
 
@@ -248,8 +251,8 @@ Ob der Held eine brennende Fackel hält.
 
 ## Grundlagen
 
-### `after(seconds: number, fn: function) -> integer`
-Ruft `fn` einmal nach `seconds` Sekunden Spielzeit auf; gibt die Nummer des Timers zurück.
+### `after(seconds: number, fn: function | string, ...) -> integer`
+Ruft `fn` einmal nach `seconds` Sekunden Spielzeit auf; gibt die Nummer des Timers zurück. Mit dem Namen einer globalen Funktion statt einer Funktion (dazu Argumente) überdauert der Timer einen Spielstand.
 
 ### `cancel(timer: integer) -> boolean`
 Hält einen Timer von `after`/`every` an; `false`, wenn es ihn nicht (mehr) gibt.
@@ -257,8 +260,8 @@ Hält einen Timer von `after`/`every` an; `false`, wenn es ihn nicht (mehr) gibt
 ### `emit(event: string, ...) -> integer`
 Löst das Ereignis `event` mit den übrigen Argumenten aus; gibt die Zahl der aufgerufenen Funktionen zurück.
 
-### `every(seconds: number, fn: function) -> integer`
-Ruft `fn` alle `seconds` Sekunden Spielzeit auf (`seconds` > 0); gibt die Nummer des Timers zurück.
+### `every(seconds: number, fn: function | string, ...) -> integer`
+Ruft `fn` alle `seconds` Sekunden Spielzeit auf (`seconds` > 0); gibt die Nummer des Timers zurück. Mit einem Funktionsnamen (und Argumenten) wird er mit dem Spiel gespeichert.
 
 ### `instance(kind: string, name: string) -> table | nil`
 Die Felder einer Instanz (`instance("Item", "it_apple").value`), Funktionen darin aufrufbar; `nil`, wenn es sie nicht gibt.
