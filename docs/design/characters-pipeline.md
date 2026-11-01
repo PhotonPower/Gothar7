@@ -221,6 +221,13 @@ events = [
   Stücke und Prüfregeln: §6.3.
 - **Werkzeug in der Hand (engine #297):** optionales Feld `item` je Mob-Typ in `mobs.toml` nennt das Item, das die
   Figur von `item_to_hand` bis `item_from_hand` an `socket_hand_r` hält (Amboss: `it_hammer`).
+- **Item je Schleifen-Variante (engine #301):** optionales Feld `variant_items` je Mob-Typ, eine Tabelle
+  Variante → Item-Instanz, z. B. `variant_items = { drink = "it_mug" }` am Tisch (`s_sit_drink`) und
+  `variant_items = { lute = "it_lute" }` an der Bank (Satz `music`). Es gilt, wenn ein NPC die Variante benutzt
+  (`npc_use_mob(npc, type, radius, loop)`, `loop` = Variante); das Item hängt wie bei `item` von `item_to_hand` bis
+  `item_from_hand` an `socket_hand_r`. Eine Variante darf eigene Hinsetz- und Aufsteh-Clips haben (Zustände
+  `<type>_<variant>_enter`/`_leave` im Graphen); fehlt sie in der Tabelle, gilt `item` des Typs. Für figuren:
+  Clips mit Gegenstand brauchen die Events `item_to_hand`/`item_from_hand`, das Item liegt unter `items/` (§6.3).
 
 **Animationskanäle (Vertrag):** Clips enthalten **Rotation** für beliebige Knochen, **Translation nur für
 `root` und `pelvis`** (Root Motion bzw. Hüfthöhe) und **keine Skalierung** – so behält jede Figur ihre eigenen

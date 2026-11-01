@@ -1,13 +1,31 @@
 #pragma once
 
-// The UI sample page (M14 part A, `gothar --ui-sample`): every text role, both frames and the HUD bars in
-// their places, for checking fonts, sizes and colours at any resolution.
+// The UI sample screen (M14 parts A and B, `gothar --ui-sample`): every text role, the frames, the HUD bars,
+// and widgets to try the navigation with keyboard, gamepad and mouse - a list, a grid of cells, buttons.
+// Boxes come from layout.toml ("sample.*", "hud.*"). ui_back or the close button closes it.
+
+#include <g7/ui/Screen.hpp>
+
+#include <memory>
 
 namespace g7::ui
 {
-class Canvas;
-class UiResources;
+class SampleScreen : public Screen
+{
+public:
+    SampleScreen();
+    [[nodiscard]] std::string_view name() const override { return "sample"; }
 
-/// Draws the page over the whole canvas (between Canvas::begin and Canvas::end).
-void drawSamplePage(Canvas& canvas, const UiResources& ui);
+    [[nodiscard]] List& list() noexcept { return *m_list; }
+    [[nodiscard]] Grid& grid() noexcept { return *m_grid; }
+    /// What the screen shows as chosen last (empty before anything was chosen).
+    [[nodiscard]] const UiText& chosen() const noexcept;
+
+private:
+    List* m_list = nullptr;
+    Grid* m_grid = nullptr;
+    Label* m_chosen = nullptr;
+};
+
+[[nodiscard]] std::unique_ptr<Screen> makeSampleScreen();
 } // namespace g7::ui

@@ -3,6 +3,11 @@
 Erzeugt aus den Bindings der Engine (`gothar --script-api=docs/script-api.md`) – nicht von Hand bearbeiten.
 Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
+## Bildschirm
+
+### `screen_message(text: string, seconds?: number)`
+Zeigt dem Spieler eine Meldung oben in der Mitte (F7; Vorgabe 3 s), z. B. `Erfahrung +50`.
+
 ## Debug
 
 ### `npc_debug_hold(npc: string, seconds: number)`
@@ -309,6 +314,9 @@ Legt ab, was auf dem Platz `slot` ausgerüstet ist.
 Der Held benutzt ein Item aus dem Inventar (Nahrung, Trank, Schriftstück) – nur im Stand, sonst „Nicht jetzt.“. Die Wirkung (`effects`) kommt beim Event `use` des Clips.
 
 ## Kampf
+
+### `combat_reload()`
+Liest die Kampfwerte aus der Tabelle `Combat` neu (nach Änderungen in der Konsole, zum Abstimmen).
 
 ### `draw_ranged() -> string`
 Zieht den ausgerüsteten Bogen bzw. die Armbrust bzw. steckt weg, wie die Taste draw_ranged (M11, R1); gibt zurück, was danach gezogen ist (wie player_weapon).

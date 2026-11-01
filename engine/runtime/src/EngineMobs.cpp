@@ -193,6 +193,12 @@ std::optional<world::VobId> Engine::findMob(std::string_view vobName) const
 void Engine::notice(std::string text)
 {
     G7_LOG_INFO("engine", "{}", text);
+    if (m_gameUi)
+    {
+        m_notice = text; // also for lastNotice()
+        showScreenMessage(std::move(text));
+        return;
+    }
     showNotice(std::move(text), kNoticeSeconds);
 }
 

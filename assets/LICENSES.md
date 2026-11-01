@@ -50,7 +50,7 @@ Jede Fremdquelle, die in Assets oder abgeleitete Daten einfließt, wird hier ein
 | `assets/source/items/textures/metal_rust.jpg`, `leather.jpg`, `wood.jpg`, `bark.jpg`, `wood_dark.jpg` (Waffen und Handgegenstände, F6; verkleinert, Rinde dunkler getönt; Geometrie aller `items/*.glb` und die übrigen Texturen sind eigene Arbeit, per Code erzeugt) | ambientCG „Metal 021“, „Leather 014“, „Wood 049“, „Bark 012“, „Wood 060“, ambientcg.com (1K-JPG) | CC0 1.0 | keine (Nennung „ambientCG.com“ freiwillig) |
 | `assets/source/sounds/*.wav` (Platzhalter-Klänge, M13) | eigene Arbeit: synthetisch erzeugt mit `tools/audio` (`gothar-audio placeholders`), ohne Fremdmaterial | wie das Repository | keine |
 | `assets/source/music/*.wav` (Platzhalter-Musik und Stinger, M13 Teil C) | eigene Arbeit: synthetisch erzeugt mit `tools/audio` (`gothar-audio music`), ohne Fremdmaterial | wie das Repository | keine |
-| `assets/source/ui/frames/panel.png`, `parchment.png` (Platzhalter-Rahmen der Spiel-UI, M14) | eigene Arbeit: per Skript erzeugt (Pillow, prozedural), ohne Fremdmaterial | wie das Repository | keine |
+| `assets/source/ui/frames/*.png` (Rahmen, Balken und Hintergründe der Spiel-UI, M14: Holz, Leder, Pergament, Eisen; ersetzen die Platzhalter von engine) | eigene Arbeit: prozedural erzeugt mit `tools/chargen` (`gothar-chargen ui-frames`, numpy, Seed 7), ohne Fremdmaterial | wie das Repository | keine |
 
 ## Schriften
 | Datei | Quelle | Lizenz | Pflichtangabe |

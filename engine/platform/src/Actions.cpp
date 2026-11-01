@@ -15,7 +15,8 @@ constexpr std::array<std::string_view, static_cast<usize>(Action::Count)> kActio
     "draw_ranged",  "draw_magic", "rune_1",      "rune_2",       "rune_3",    "rune_4",        "rune_5",
     "rune_6",       "inventory",  "log",         "status",       "map",       "quick_save",    "quick_load",
     "console",      "pause",      "debug_draw",  "debug_ui",     "debug_fly", "fly_forward",   "fly_back",
-    "fly_left",     "fly_right",  "fly_up",      "fly_down",     "fly_fast",  "copy_position",
+    "fly_left",     "fly_right",  "fly_up",      "fly_down",     "fly_fast",  "copy_position", "ui_up",
+    "ui_down",      "ui_left",    "ui_right",    "ui_accept",    "ui_back",   "ui_prev_tab",   "ui_next_tab",
 };
 
 std::string tablePath(std::string_view scheme)

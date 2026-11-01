@@ -63,6 +63,20 @@ Result<UiResources> UiResources::load(const ReadFile& read, std::string language
         return style.error();
     }
     ui.m_style = std::move(style).value();
+    ui.m_files.emplace_back(kStylePath);
+
+    auto layoutBytes = read(kLayoutPath);
+    if (!layoutBytes)
+    {
+        return Error{std::string(kLayoutPath) + ": " + layoutBytes.error().message};
+    }
+    auto layout = Layout::load(textOf(layoutBytes.value()), kLayoutPath);
+    if (!layout)
+    {
+        return layout.error();
+    }
+    ui.m_layout = std::move(layout).value();
+    ui.m_files.emplace_back(kLayoutPath);
 
     const std::string textPath = stringsPath(language);
     auto textBytes = read(textPath);
@@ -76,6 +90,7 @@ Result<UiResources> UiResources::load(const ReadFile& read, std::string language
         return strings.error();
     }
     ui.m_strings = std::move(strings).value();
+    ui.m_files.push_back(textPath);
 
     for (const auto& [role, text] : ui.m_style.fonts)
     {
@@ -105,6 +120,7 @@ Result<UiResources> UiResources::load(const ReadFile& read, std::string language
             }
         }
         ui.m_fonts.emplace(text.font, std::move(loaded));
+        ui.m_files.push_back(text.font);
     }
 
     for (const auto& [name, frame] : ui.m_style.frames)
@@ -136,6 +152,7 @@ Result<UiResources> UiResources::load(const ReadFile& read, std::string language
             }
         }
         ui.m_images.emplace(frame.image, std::move(image));
+        ui.m_files.push_back(frame.image);
     }
     G7_LOG_INFO("ui", "game UI: {} text roles, {} fonts, {} frames, {} texts ({})", ui.m_style.fonts.size(),
                 ui.m_fonts.size(), ui.m_style.frames.size(), ui.m_strings.keys().size(),
@@ -152,7 +169,7 @@ const Font* UiResources::font(std::string_view path) const
 TextStyle UiResources::textStyle(std::string_view role, f32 uiScale) const
 {
     const TextRole& r = m_style.font(role);
-    return {font(r.font), r.color, r.outline * uiScale, r.outlineColor};
+    return {font(r.font), r.color, r.outline * uiScale, r.outlineColor, r.shadow * uiScale, r.shadowColor};
 }
 
 f32 UiResources::textSize(std::string_view role, f32 uiScale) const

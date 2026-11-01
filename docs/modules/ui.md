@@ -42,7 +42,7 @@ public:
   (`tools/editor`) füllt und liest sie.
 
 ## Spiel-UI Teil A (umgesetzt, M14) – Schrift, Text, Stil, Texte, Canvas
-`Font.hpp`, `Text.hpp`, `Style.hpp`, `Strings.hpp`, `Canvas.hpp`, `UiResources.hpp`, `SamplePage.hpp`; Shader
+`Font.hpp`, `Text.hpp`, `Style.hpp`, `Strings.hpp`, `Canvas.hpp`, `UiResources.hpp`; Shader
 `ui.vert`/`ui.frag`; Schriften nach ADR 0020 (`asset/FontFile.hpp`, `g7-cook --font`). `ui` hängt dafür zusätzlich von
 `asset` ab (`.g7font`, Bilder dekodieren; Tabelle in `docs/02-architecture.md`).
 
@@ -76,7 +76,6 @@ class UiResources {                             // Stil, Texte einer Sprache, Sc
     TextStyle textStyle(role, uiScale) const; f32 textSize(role, uiScale) const;
     TextLayout layout(role, utf8, uiScale, TextOptions = {}) const; NineSlice frame(name, uiScale) const;
 };
-void drawSamplePage(Canvas&, const UiResources&);           // gothar --ui-sample
 }
 ```
 - **Koordinaten:** Canvas in Framebuffer-Pixeln, +Y unten. Bildschirme rechnen in **UI-Einheiten** (Pixel bei
@@ -101,17 +100,136 @@ void drawSamplePage(Canvas&, const UiResources&);           // gothar --ui-sampl
   `panel` und `parchment`), `text/ui.de.toml` und `text/ui.en.toml` (Test: gleiche Schlüssel), Schriften
   `fonts/alegreya.g7font` und `fonts/alegreya_sc.g7font` (Alegreya bzw. Alegreya SC, OFL, F1), Platzhalter-Rahmen
   `ui/frames/panel.png` (dunkles Holz mit Eisenrand) und `parchment.png` (F2).
-- **Engine** (`runtime/EngineUi.cpp`): `initGameUi()` lädt Canvas und Ressourcen beim Start (nur mit Renderer),
-  `drawGameUi()` zeichnet nach der Szene. Bis Teil B zeigt sie nur die Musterseite (`--ui-sample`); `engine.toml [ui]`
-  `language` (de/en) und `scale`.
-- **Noch nicht (Teil B):** Neu laden von Stil, Texten und Schriften im laufenden Spiel; Widgets, Layout aus
-  `layout.toml`, Navigation.
+- **Engine** (`runtime/EngineUi.cpp`): `initGameUi()` lädt Canvas und Ressourcen beim Start, `drawGameUi()` zeichnet
+  nach der Szene; `engine.toml [ui]` `language` (de/en) und `scale`. Bildschirme, Eingabe und Neu laden: Teil B.
 - **Abweichung vom Plan:** Alegreya liegt als statische Instanz (Gewicht 400) bei, wie Google Fonts sie ausliefert:
   stb_truetype liest das Kerning der variablen Schrift nicht (0 Paare), das der statischen Instanz schon (6205 Paare).
 - **Tests:** `tests/ui/test_text.cpp`, `test_style.cpp`, `test_strings.cpp`, `test_canvas.cpp` (synthetische Schrift,
   ohne GPU), `tests/asset/test_font_file.cpp`, `tests/cook/test_fonts.cpp` (Atlas von Alegreya: Stamm innen, Punze
   außen, Kerning „AV“, deterministisch), `tests/core/test_stringutil.cpp` (UTF-8), GPU: `test_ui_canvas.cpp` (Farben,
   Clip, sRGB-Bild, Text aus der ausgelieferten Schrift).
+
+## Spiel-UI Teil B (umgesetzt, M14) – Layout, Widgets, Navigation, Bildschirm-Stapel, Hot-Reload
+`Layout.hpp`, `Navigation.hpp`, `Widget.hpp`, `Screen.hpp`, `SamplePage.hpp` (jetzt `SampleScreen`); Daten
+`ui/layout.toml`; Aktionen `ui_*` in `platform::Action` und `engine.toml`; Engine `runtime/EngineUi.cpp`.
+
+```cpp
+namespace g7::ui {
+enum class Anchor { TopLeft, Top, TopRight, Left, Center, Right, BottomLeft, Bottom, BottomRight };
+struct LayoutBox { Anchor anchor; Vec2 offset; Vec2 size; };        // UI-Einheiten, +Y unten; Größe <= 0: Eltern + Wert
+Rect place(const LayoutBox&, const Rect& parent, f32 scale);        // derselbe Punkt von Eltern und Kasten
+class Layout { static Result<Layout> load(toml, source); LayoutBox box(key, fallback) const; f32 number(key, fallback) const; };
+struct UiInput { NavDir nav; bool accept, back, prevTab, nextTab; Vec2 pointer; bool pointerMoved, click; f32 wheel;
+                 InputDevice device; };                              // Keyboard, Mouse, Gamepad (zuletzt benutzt)
+UiInput buildUiInput(const platform::Input&, const platform::ActionMap&, NavRepeat&, f32 dt, Vec2 pointerScale);
+std::optional<usize> navigate(std::span<const Rect>, usize current, NavDir);   // räumliche Fokus-Suche
+class Widget { LayoutBox box; std::string layoutKey; bool visible; template <T> T& add(...); const Rect& rect();
+               virtual bool focusable(), navigate(NavDir), accept(), scroll(f32), pointerAt(Vec2); };
+// Panel (Rahmen), Label (Textrolle, UiText, Umbruch), Bar (Füllung, Farbe, Rahmen "bar"), Button, Stack (vertikal/
+// horizontal), List (Zeilen, Auswahl, Scrollen), Grid (Zellen, Auswahl, Scrollen, drawCell-Rückruf)
+struct UiText { std::string value; bool isKey; std::vector<std::pair<std::string, std::string>> args; };
+class Screen { virtual ScreenFlags flags() const; Widget& root(); Widget* focus();
+               void update(const UiInput*, f32 dt, const Rect& area, f32 scale, const Layout*);
+               void draw(Canvas&, const UiResources&) const; void close();
+protected: virtual bool onBack(); virtual bool onTab(int); virtual void onUpdate(f32); };
+struct ScreenFlags { bool blocksGameInput = true, pausesGame = false, hidesHud = false; };
+class ScreenStack { push, pop, top, find(name), blocksGameInput(), pausesGame(), hidesHud(), update(...), draw(...),
+                    takeEvents(); };
+}
+```
+- **Layout:** Ein Widget nimmt seinen Kasten aus `layout.toml`, wenn `layoutKey` gesetzt ist (`hud.hp`,
+  `sample.list` …), sonst seinen eigenen `box` als Vorgabe; fehlende oder ungültige Einträge melden sich einmal im Log.
+  Der Kasten wird jeden Frame neu ausgewertet, ein geändertes `layout.toml` wirkt also sofort.
+- **Texte:** `UiText` ist ein Schlüssel (mit `{platzhaltern}`) oder ein wörtlicher Text (Namen und Werte aus dem
+  Spiel); Schlüssel werden beim Zeichnen nachgeschlagen.
+- **Navigation:** Ein Schritt geht zuerst in das fokussierte Widget (nächste Zeile oder Zelle); an dessen Rand
+  wandert der Fokus räumlich zum nächsten fokussierbaren Widget in der Richtung (Abstand längs + 2 × quer).
+  Gehaltene Richtungen wiederholen nach `[ui] nav_repeat_delay` (0,35 s) alle `nav_repeat_rate` (0,08 s). Der linke
+  Stick zählt ab halbem Ausschlag. Maus: Zeigen fokussiert (und wählt Zeile oder Zelle), Klick bestätigt, das Rad
+  scrollt, was unter dem Zeiger liegt. `UiInput::device` merkt sich das zuletzt benutzte Gerät für Tastenhinweise (F11).
+- **Aktionen** (beide Schemata, `engine.toml`): `ui_up`/`ui_down`/`ui_left`/`ui_right` (Pfeile, WASD, Steuerkreuz),
+  `ui_accept` (Enter, Strg, Süd), `ui_back` (Esc, Rücktaste, Ost), `ui_prev_tab`/`ui_next_tab` (Q/E, Bild↑/Bild↓,
+  Schultertasten). Sie wirken nur, solange ein Bildschirm offen ist.
+- **Stapel und Spielsteuerung:** Nur der oberste Bildschirm bekommt die Eingabe, die anderen werden nur angeordnet
+  und gezeichnet (von unten nach oben). Ist zu Beginn eines Frames ein blockierender Bildschirm offen, bekommt das
+  Spiel in diesem Frame keine Tasten und keine Maus – die Taste, die den Bildschirm schließt (Esc), pausiert also nicht
+  zugleich das Spiel. `pausesGame` hält die Simulation an. Geschlossene Bildschirme verschwinden nach dem Update.
+- **UI-Ereignisse:** Bildschirme melden `select`, `accept`, `back`; die Engine spielt dazu `style.toml [sounds]`
+  (noch leer, Platzhalter-Klänge folgen).
+- **Hot-Reload:** Mit `[assets] hot_reload` prüft die Engine alle 0,5 s die Zeitstempel aller UI-Dateien (Stil,
+  Layout, Texte, Schriften, Rahmenbilder) und lädt bei einer Änderung alles neu; ein Fehler behält die alte Fassung.
+- **Rahmen-Namen (stabil, Vertrag mit figuren):** Die Rahmenbilder unter `ui/frames/` macht figuren
+  (`gothar-chargen ui-frames`, #305; 2 Bildpixel je UI-Einheit, daher `scale = 0.5`, `slice` in Bildpixeln):
+  `panel`, `parchment`, `leather`, `tooltip`, `cell`, `cell_selected`, `cell_equipped`, `tab`, `tab_active`, `button`,
+  `button_focus`, `button_pressed`, `bar` (Rand über der Füllung), `bar_hp`, `bar_mana`, `bar_enemy`, `bar_air`
+  (eingefärbte Füllungen), `subtitle`, `highlight`, `slider_track`, `slider_knob` und die Kacheln `bg_wood`,
+  `bg_leather`, `bg_parchment` (noch ungenutzt: die Canvas kachelt noch nicht). Ein Test prüft Namen und Bilder;
+  neue Rahmen trägt engine früh in `style.toml` ein. Balken: 260 × 24 UI-Einheiten, Füllung um 7 × 5 eingerückt.
+- **Musterseite** (`--ui-sample`): Fenster mit Liste, Zellenraster und zwei Knöpfen, dazu HUD-Balken, Meldung und
+  Untertitel an ihren Plätzen; mit Tastatur, Gamepad und Maus bedienbar, Esc oder „Schließen“ schließt sie.
+- **Engine:** Die Spiel-UI lädt jetzt auch ohne Renderer (Layout und Eingabe in Tests); ohne Framebuffer gilt
+  1920 × 1080.
+- **Tests:** `tests/ui/test_layout.cpp` (Anker, Größen, `layout.toml`, ausgelieferte Daten und Rahmen),
+  `test_navigation.cpp` (Wiederholung, Geräte, Stick, Maus, räumliche Suche), `test_widgets.cpp` (Stack, Liste, Raster,
+  Fokus mit Tasten und Maus, Stapel), `tests/runtime/test_engine_ui.cpp` (Musterseite über SDL-Tasten; Esc schließt
+  sie, bevor es pausiert).
+
+## Spiel-UI Teil C (umgesetzt, M14) – HUD, Meldungen, Untertitel, Dialog, Dokument, Auswahl, Dietrich
+`Hud.hpp` (HUD, `MessageQueue`, `SubtitleQueue`), `GameScreens.hpp` (`DialogScreen`, `DocumentScreen`,
+`ChoiceScreen`, `LockpickScreen`); Engine `runtime/EngineUi.cpp` (`buildHudModel`, `syncGameScreens`,
+`bindUiFunctions`).
+
+```cpp
+namespace g7::ui {
+struct BarValue { f32 value, max; f32 fraction() const; };
+struct HudModel { bool visible; BarValue health; std::optional<BarValue> mana;   // Mana nur mit Magie (F3)
+                  std::optional<Enemy> enemy; std::optional<f32> air; std::optional<Focus> focus; };
+class MessageQueue { void push(std::string text, f32 seconds = 3); void update(f32 dt); };      // F7
+class SubtitleQueue { void push(std::string speaker, std::string text, f32 seconds); void update(f32 dt); };
+f32 readingSeconds(std::string_view text);                     // Zeilen ohne Take: 1,5 s + 0,06 s je Zeichen, 2-10 s
+class Hud { void update(const HudModel&, const MessageQueue&, std::span<const SubtitleQueue::Line>, Rect, f32, const Layout*);
+            void draw(Canvas&, const UiResources&) const; };
+struct DialogView { bool menu; std::vector<std::string> options; usize selected; bool hidden; };
+class DialogScreen { struct Actions { view, skip, choose, select }; };          // blockiert, verbirgt das HUD
+class DocumentScreen { DocumentScreen(title, text, onClose); };                 // Bestätigen oder Zurück schließt
+class ChoiceScreen { struct Actions { view, choose, leave }; };                 // Amboss, Bett
+class LockpickScreen { struct Actions { view, turn(bool left), leave }; };      // links/rechts drehen
+}
+```
+- **HUD (F3):** Leben unten links, Mana unten rechts nur, wenn der Held Magie hat (Magiekreis ≥ 1 oder eine Rune
+  bzw. Spruchrolle auf einem Runenplatz), Gegnerleben oben mittig mit Namen darunter (der im Kampf erfasste Gegner,
+  K5), Luft über dem Lebensbalken beim Tauchen; keine Uhr, kein Kompass. Balken mit figurens Füllungen `bar_hp`,
+  `bar_mana`, `bar_enemy`, `bar_air` und dem Rand `bar`. Der Fokusname steht über dem Ziel (ersetzt
+  `DebugUi::focusLabel`), nicht bei offenem Inventar, im Dialog oder unter einem blockierenden Bildschirm.
+  Bildschirme mit `hidesHud` (der Dialog) blenden die Balken aus.
+- **Meldungen (F7):** oben mittig, je 3 s (die letzte halbe Sekunde verblassend), höchstens vier, die älteste oben.
+  Lua `screen_message(text, seconds?)`; die bisherigen Hinweise der Engine (`notice`: „Verschlossen.“, „Der Dietrich
+  ist abgebrochen.“ …) erscheinen ebenfalls hier. Ein Lade-Ruckler zählt höchstens 0,1 s.
+- **Untertitel (F6):** unten mittig auf dem Hintergrund `subtitle`, der Sprechername (Rolle `subtitle_name`) über dem
+  Text (Rolle `subtitle`, ohne Kontur mit dezentem Schatten – Rückmeldung des Koordinators zu Teil A). Quellen: die
+  gesprochene Dialogzeile (solange sie läuft; Überspringen nimmt sie sofort weg) und Zurufe von NPCs im Umkreis von
+  15 m (`npc_shout`, `npc_say`; Dauer = Take oder Lesezeit). Höchstens zwei Zeilen, die neueste unten; ein neuer
+  Satz desselben Sprechers ersetzt seinen alten. `[ui] subtitles = true` (Optionsmenü in Teil F).
+- **Dialog** (ersetzt `DialogPanel`, E3 wie Gothic 1): Während eine Zeile gesprochen wird, überspringt Bestätigen sie
+  (E4). Danach stehen die Antworten auf Pergament unten mittig (`dialog.box`, so hoch wie die Antworten, höchstens
+  sechs Zeilen sichtbar), Auswahl mit Hoch/Runter, Stick oder Maus, Bestätigen wählt. Esc verlässt kein Gespräch.
+  Beim Handeln ist der Dialog unsichtbar (Handel bis Teil D im ImGui-Fenster).
+- **Dokument:** Titel und Text auf Pergament (`document.*`), Bestätigen oder Zurück schließt. Zweiseitige Bücher und
+  Scrollen langer Texte folgen, wenn es solche Schriftstücke gibt.
+- **Auswahl an einem Mob** (Amboss, Bett): Liste der Möglichkeiten, darunter die Meldung (Schläge, Ergebnis), Zurück
+  hört auf. **Dietrich:** die Schritte der Kombination als Zellen (geschaffte hervorgehoben), Dietriche übrig, das
+  letzte Ergebnis; Links/Rechts drehen, Zurück hört auf.
+- **Engine:** `syncGameScreens()` öffnet und schließt die Bildschirme jeden Frame nach dem Zustand (Dialog, Dokument,
+  Mob-Phase); sie lesen ihre Daten über Rückrufe und handeln über die bestehenden Engine-Funktionen (`dialogSkip`,
+  `dialogChoose`, `chooseMobOption`, `mobCommand`). Ohne geladene Spiel-UI bleiben die ImGui-Fenster von M8–M10 als
+  Rückfallebene; Inventar, Truhe, Handel und Tagebuch bleiben bis Teil D/E ImGui.
+- **Stil, Layout, Texte:** neue Textrollen `subtitle_name`, `focus`, `dialog`, `document_title`, `document_hint`;
+  Farben `ink_highlight`, `air`; Kästen `hud.air`, `dialog.*`, `document.*`, `choice.*`, `lockpick.*`; Texte
+  `UI_DOCUMENT_CLOSE`, `UI_CHOICE_LEAVE`, `UI_LOCKPICK_PICKS`, `UI_LOCKPICK_HINT`, `UI_ANVIL_STRIKES` (DE/EN).
+  Die Canvas zeichnet Text auf Wunsch mit Schlagschatten (`shadow`, `shadow_color` je Textrolle).
+- **Tests:** `tests/ui/test_game_screens.cpp` (Meldungen, Untertitel, HUD-Lage und -Inhalt, Dialog, Dokument,
+  Auswahl, Dietrich mit Rückrufen), `tests/runtime/test_engine_ui.cpp` (`screen_message`; im Testlager Dietrich per
+  Pfeiltasten und Esc, Brief per Enter schließen, Dialog verbirgt das HUD und zeigt die Antworten).
 
 ## Plan M14 (freigegeben, 2026-11-01)
 Grundlage: ADR 0009 (angenommen: eigenes Retained-Mode-UI, RmlUi verworfen, ImGui nur Debug/Editor), ADR 0020

@@ -25,6 +25,7 @@
 #include <g7/gameplay/Magic.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
+#include <g7/gameplay/WeaponSweep.hpp>
 #include <g7/physics/Character.hpp>
 #include <g7/physics/Physics.hpp>
 #include <g7/platform/Actions.hpp>
@@ -48,6 +49,9 @@
 #include <g7/script/ScriptVm.hpp>
 #include <g7/ui/Canvas.hpp>
 #include <g7/ui/DebugUi.hpp>
+#include <g7/ui/Hud.hpp>
+#include <g7/ui/Navigation.hpp>
+#include <g7/ui/Screen.hpp>
 #include <g7/ui/UiResources.hpp>
 #include <g7/world/DayCycle.hpp>
 #include <g7/world/GameTime.hpp>
@@ -373,6 +377,19 @@ public:
     void setDebugOverlay(bool enabled) noexcept;
     /// ImGui debug panels (toggled with the debug_ui action, F1); only with rendering.
     [[nodiscard]] bool debugUiVisible() const noexcept { return m_debugUiVisible; }
+    /// The game UI's screens (M14): the top one gets the UI input; a blocking one takes the game controls
+    /// away.
+    [[nodiscard]] ui::ScreenStack& screens() noexcept { return m_screens; }
+    /// The loaded game UI (style, layout, texts, fonts), or nullptr if it failed to load.
+    [[nodiscard]] const ui::UiResources* gameUi() const noexcept { return m_gameUi ? &*m_gameUi : nullptr; }
+    /// The HUD as last laid out (M14 part C): bars, focus name, messages, subtitles.
+    [[nodiscard]] const ui::Hud& hud() const noexcept { return m_hud; }
+    /// Messages to the player top centre (F7; notices and Lua screen_message).
+    [[nodiscard]] const ui::MessageQueue& screenMessages() const noexcept { return m_messages; }
+    /// Shouts and other spoken lines outside dialogues as subtitles (F6).
+    [[nodiscard]] const ui::SubtitleQueue& subtitles() const noexcept { return m_subtitles; }
+    /// Shows a message top centre for `seconds` (F7).
+    void showScreenMessage(std::string text, f32 seconds = 3.0f);
     void setDebugUiVisible(bool visible) noexcept;
     /// Collision of the loaded world (terrain, mesh vobs, ground plate) for queries. Kept in step with
     /// the scene: rebuilt before the next simulation step after instances change, and right after
@@ -1019,6 +1036,14 @@ private:
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
     void stopForFight(Creature& c);
+    /// The striking parts of the attacker's weapon (socket_hand_r) or fists (both hands) in the last step's
+    /// pose; none for animals, figures without the sockets, moves without a clip and with Combat.weapon_sweep
+    /// off (they hit by reach and angle).
+    [[nodiscard]] std::vector<gameplay::Blade> weaponBlades(const Combatant& c);
+    /// The hits of one fixed step of an attack's hit window (weapon sweep or reach and angle).
+    void strike(Combatant& attacker, std::span<const u32> ids);
+    /// Something solid between the two points (walls, mobs) - a blow does not pass it.
+    [[nodiscard]] bool blowBlocked(const Vec3& from, const Vec3& to) const;
     // Combat clips (M11, figuren #217): the graph's weapon value and the fight states.
     [[nodiscard]] i32 heroWeaponAnimation() const;
     [[nodiscard]] f32 creatureWeaponAnimation(const Creature& c) const;
@@ -1183,6 +1208,15 @@ private:
     void runDebugUi(f64 realSeconds);
     // Game UI (EngineUi.cpp, M14)
     void initGameUi();
+    /// UI input to the top screen, UI sounds; reloads changed UI files (hot reload).
+    void updateGameUi(f64 realSeconds, bool allowMouse, bool allowKeyboard);
+    void reloadGameUiIfChanged(f64 realSeconds);
+    /// Opens and closes the game screens with the engine's state: dialogue, document, mob choice,
+    /// lockpicking.
+    void syncGameScreens();
+    [[nodiscard]] ui::HudModel buildHudModel(Vec2 pixels) const;
+    [[nodiscard]] bool heroHasMagic() const;
+    void bindUiFunctions();
     void drawGameUi(u32 width, u32 height);
 
     EngineConfig m_config;
@@ -1208,8 +1242,15 @@ private:
     bool m_debugUiFrame = false;             // an ImGui frame was begun this frame and awaits rendering
     ui::Canvas m_canvas;                     // game UI drawing (M14)
     std::optional<ui::UiResources> m_gameUi; // style, texts, fonts, frames; empty if they failed to load
-    f64 m_frameSeconds = 0.0;                // real duration of the last frame
-    f64 m_smoothedFrameSeconds = 0.0;        // for the overlay's FPS display
+    ui::ScreenStack m_screens;
+    ui::Hud m_hud;
+    ui::MessageQueue m_messages;
+    ui::SubtitleQueue m_subtitles;
+    ui::NavRepeat m_navRepeat;
+    f64 m_gameUiReloadTimer = 0.0;
+    std::string m_gameUiStamp;        // disk paths and times of the UI files (hot reload)
+    f64 m_frameSeconds = 0.0;         // real duration of the last frame
+    f64 m_smoothedFrameSeconds = 0.0; // for the overlay's FPS display
     // Scene: --view-mesh (one model) or --scene (test scene); models are shared by instances.
     world::Scene m_scene;       // world vobs (--world, --scene); render instances are built from it
     world::GameTime m_gameTime; // global: runs across level changes (save game: save.md)
@@ -1393,7 +1434,8 @@ private:
     gameplay::MobTypes m_mobTypes;
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
-    std::vector<u32> m_heroHitThisSwing;
+    gameplay::Swing m_heroSwing;
+    gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline
     struct CombatRequest
     {

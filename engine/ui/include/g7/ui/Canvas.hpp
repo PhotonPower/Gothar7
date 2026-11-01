@@ -62,6 +62,18 @@ struct TextStyle
     Color color;
     f32 outline = 0.0f;
     Color outlineColor{0.0f, 0.0f, 0.0f, 1.0f};
+    f32 shadow = 0.0f; ///< drop shadow offset in pixels (right and down); 0 = none
+    Color shadowColor{0.0f, 0.0f, 0.0f, 0.6f};
+
+    /// The same style with every colour's alpha multiplied (fading texts).
+    [[nodiscard]] TextStyle faded(f32 opacity) const noexcept
+    {
+        TextStyle s = *this;
+        s.color.a *= opacity;
+        s.outlineColor.a *= opacity;
+        s.shadowColor.a *= opacity;
+        return s;
+    }
 };
 
 class Canvas

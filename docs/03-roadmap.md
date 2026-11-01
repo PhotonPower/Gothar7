@@ -237,7 +237,7 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 - [x] Waffenmodi (Faust, Einhand, Zweihand, Bogen, Armbrust), Ziehen/Wegstecken – Fernkampfwaffen mit eigener Taste (R1)
 - [x] Kameramodus „Kampf“ der Third-Person-Kamera (aus M5: näher, Blick auf den Gegner bei Ziel-Lock) – `[camera.combat]`, weich überblendet, drinnen der nähere Abstand (K5)
 - [x] Nahkampf: Angriffe mit Treffer-Fenstern aus Animations-Events, Kombos abhängig vom Talent, Parieren, Ausweichschritt – Gothic-1-Tasten, Maus als Zweitbelegung; bis zu den Clips eine Zeitleiste (A, B)
-- [ ] Trefferprüfung (Waffen-Shapecast entlang der Animation), Treffer-Reaktionen, Rückstoß
+- [x] Trefferprüfung (Waffen-Shapecast entlang der Animation), Treffer-Reaktionen, Rückstoß – Klinge bzw. Fäuste als Kapsel je Schritt entlang des Clips gefegt (`capsuleCast`, Wände und Türen halten auf), Rückstoß 0,3 m (Vorschlag); `weapon_sweep` vorerst aus, bis die Trefferfenster der Platzhalter-Clips passen (gameplay.md „Trefferprüfung“)
 - [x] Schadensmodell: Schadensarten × Schutzwerte, kritische Treffer abhängig vom Talent – Waffe + Stärke − Schutz, mindestens 5, kritisch 0/10/20 % (K2, K3; Teil A)
 - [x] Fernkampf: Zielen, Projektile mit Ballistik, Munition – Bogen und Armbrust des Helden, Trefferchance nach Talent auf das Ziel, Pfeile bleiben stecken bzw. liegen (R1–R4; E)
 - [x] Bewusstlosigkeit vs. Tod, Plündern – bewusstlos 30 s, Schlag auf Liegende tötet, Plündern, Zeugen (K7; A, C)
@@ -272,17 +272,22 @@ oder stehlen); danach Kapitel 2. *Nachgewiesen* headless in `tests/runtime/test_
 Plan (Teile A–G, freigegeben 2026-11-01, Gestaltung F1–F12 vom Projektinhaber): `docs/modules/ui.md` „Plan M14“. ADR 0009 angenommen
 (Projektinhaber, 2026-10-31: eigenes UI, RmlUi verworfen); ADR 0020 (MSDF-Atlas mit msdfgen im Cooker) angenommen (2026-11-01).
 
-- [ ] Spiel-UI-Framework (ADR 0009): Layout, Texturen-Rahmen (9-Slice), Schrift (MSDF), Gamepad-Navigation
-  - Teil A: Schrift (MSDF-Atlas mit `g7-cook --font`, `.g7font`, Alegreya und Alegreya SC), Textsatz (UTF-8, Umbruch,
-    Kerning, Kürzen), Stil `ui/style.toml`, UI-Texte `text/ui.<sprache>.toml` (DE/EN), Canvas mit 9-Slice und Clip,
-    Musterseite `--ui-sample`; offen: Widgets, Layout, Navigation (Teil B)
-- [ ] HUD: Leben, Mana, Gegner-Leben, Fokus-Namen, Luftanzeige
+- [x] Spiel-UI-Framework (ADR 0009): Layout, Texturen-Rahmen (9-Slice), Schrift (MSDF), Gamepad-Navigation
+  - Teil A (#304): Schrift (MSDF-Atlas mit `g7-cook --font`, `.g7font`, Alegreya und Alegreya SC), Textsatz (UTF-8,
+    Umbruch, Kerning, Kürzen), Stil `ui/style.toml`, UI-Texte `text/ui.<sprache>.toml` (DE/EN), Canvas mit 9-Slice
+    und Clip, Musterseite `--ui-sample`
+  - Teil B: Layout `ui/layout.toml` (Anker, Kästen), Widgets (Panel, Label, Bar, Button, Stack, List, Grid),
+    Navigation mit Tastatur, Gamepad und Maus (`ui_*`-Aktionen, Wiederholung, räumliche Fokus-Suche),
+    Bildschirm-Stapel (sperrt die Spielsteuerung, kann pausieren), Hot-Reload aller UI-Dateien, Rahmen von figuren (#305)
+- [x] HUD: Leben, Mana, Gegner-Leben, Fokus-Namen, Luftanzeige
+  - Teil C: HUD wie Gothic 1 (F3), Dialog-Bildschirm mit Untertiteln (F6, auch für Zurufe), Fenster für
+    Dokument, Auswahl am Mob und Dietrich; die ImGui-Fenster dafür bleiben nur als Rückfallebene
 - [ ] Inventar-Bildschirm (Kategorien, Item-Vorschau als 3D-Modell), Handel, Truhe
 - [ ] Charakterbildschirm, Tagebuch-Bildschirm, Karte (falls Karten-Item)
 - [ ] Hauptmenü, Optionen (Grafik, Audio, Steuerung), Ladebildschirm
 - [ ] Lokalisierung (Schlüssel → Text-Tabellen DE/EN), Untertitel
   - Gesprochene Texte kommen aus `assets/source/voice/lines.<sprache>.json` (eine Datei je Sprache)
-- [ ] Bildschirmtexte (z. B. „Erfahrung +50“), Nachrichten
+- [x] Bildschirmtexte (z. B. „Erfahrung +50“), Nachrichten – Teil C: oben mittig, 3 s (F7), Lua `screen_message`
 
 **DoD:** Das Vertical Slice ist vollständig ohne Debug-UI spielbar.
 
@@ -416,6 +421,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 - [x] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …) – `uses-suggest` (OSM/ALKIS), Auswahl des Koordinators in `data/leonberg/uses.json` (30 Häuser), Routinen-Wegpunkte, Freepoints und Mobs (`docs/design/leonberg-routinen-orte.md`)
   - Stand: Treppen ins Obergeschoss der 5 begehbaren Häuser (höchstens 35°, Kollision als glatte Rampe, Deckenausschnitt mit Geländer), Obergeschoss mit eigenen Räumen, Fenstern und Licht; Betten und Truhen oben, Wegpunkte `…_TREPPE`, `…_TREPPE_OBEN`, `…_OBEN…`, Innenzonen je Geschoss und über der Treppe
   - Stand: begehbare Häuser Phase 1 – zehn weitere Häuser begehbar (Bäcker, Metzger, Schreiner, Töpfer, Goldschmied, Tuchhändler, Gewandschneider, Kräuterkammer, Badstube, Wachstube am Unteren Tor), eingerichtet nach Nutzung bzw. Gewerk (`uses.<use>.inside`, `insideByTrade`; Ofen, Hackklotz, Töpferscheibe, Tuchregal, Badewanne; Arbeits-Freepoints vor dem Werkstück); Steinböden mit Fußschritt-Hinweis (`surface`); Metzger, Töpfer, Wache und Schreiner vorerst ohne Obergeschoss (`upper: false`, Treppenplatzierung folgt in Phase 2); Wege gerade durch Durchgänge und um Treppen geprüft mit Autopilot-Rundgang und NPC-Probe
+  - Stand: begehbare Häuser Phase 2 – Treppen nur an Außenwänden, Fuß und Kopf mit allen Räumen verbunden (Prüfung mit dem Figurenradius); Metzger, Töpfer, Wache und Schreiner mit Obergeschoss; Lager- und Werkstattzeug des Gewerbes in den Kammern (`inside.chamber`); als Nächstes Pfarrhaus begehbar (Betten für Pfarrer und Mönche), danach Phase 3 (Licht- und Dreiecksbudget)
 
 **DoD:** Leonberg ist als fertiger Spielort im Vertical Slice / Kapitel nutzbar.
 

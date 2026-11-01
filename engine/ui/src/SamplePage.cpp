@@ -1,4 +1,3 @@
-#include <g7/ui/Canvas.hpp>
 #include <g7/ui/SamplePage.hpp>
 #include <g7/ui/UiResources.hpp>
 
@@ -8,73 +7,95 @@ namespace g7::ui
 {
 namespace
 {
-/// A bar like the HUD's: dark back, coloured fill, frame on top.
-void bar(Canvas& canvas, const UiResources& ui, const Rect& rect, f32 fraction, Color fill)
-{
-    canvas.rect(rect, ui.style().color("bar_back"));
-    const f32 inset = 3.0f * canvas.uiScale();
-    Rect inner{rect.min + Vec2(inset), rect.max - Vec2(inset)};
-    inner.max.x = inner.min.x + inner.width() * fraction;
-    canvas.rect(inner, fill);
-}
+constexpr usize kRows = 12;
+constexpr usize kCells = 17;
 
-void text(Canvas& canvas, const UiResources& ui, std::string_view role, std::string_view utf8, Vec2 position,
-          TextOptions options = {})
+/// A cell of the sample grid: its frame and its number.
+void drawSampleCell(const DrawContext& context, const Rect& rect, usize index, bool selected)
 {
-    const f32 s = canvas.uiScale();
-    const TextLayout layout = ui.layout(role, utf8, s, options);
-    canvas.text(position, layout, ui.textStyle(role, s));
+    const std::string_view frame = selected ? "cell_selected" : "cell";
+    context.canvas.frame(rect, context.ui.frame(frame, context.scale()), context.ui.frameTint(frame));
+    const TextLayout layout = context.ui.layout("small", std::to_string(index + 1), context.scale(),
+                                                {.wrapWidth = rect.width(), .align = Align::Center});
+    context.canvas.text(Vec2(rect.min.x, rect.min.y + (rect.height() - layout.size.y) * 0.5f), layout,
+                        context.ui.textStyle("small", context.scale()));
 }
 } // namespace
 
-void drawSamplePage(Canvas& canvas, const UiResources& ui)
+SampleScreen::SampleScreen()
 {
-    const f32 s = canvas.uiScale();
-    const Vec2 screen = canvas.pixels();
-    const Strings& strings = ui.strings();
+    Widget& top = root();
 
-    // Main panel in the middle (1100 x 600 UI units).
-    const Vec2 panelSize = Vec2(1100.0f, 600.0f) * s;
-    const Rect panel = Rect::fromSize((screen - panelSize) * 0.5f, panelSize);
-    canvas.frame(panel, ui.frame("panel", s), ui.frameTint("panel"));
-    const f32 pad = 48.0f * s;
-    const f32 width = panel.width() - 2.0f * pad;
-    Vec2 at = panel.min + Vec2(pad, 36.0f * s);
-    text(canvas, ui, "title", strings.get("UI_SAMPLE_TITLE"), at,
-         {.wrapWidth = width, .align = Align::Center});
-    at.y += ui.textSize("title", s) * 1.6f;
-    const TextLayout body = ui.layout("body", strings.get("UI_SAMPLE_BODY"), s, {.wrapWidth = width});
-    canvas.text(at, body, ui.textStyle("body", s));
-    at.y += body.size.y + 16.0f * s;
-    text(canvas, ui, "small",
-         std::string(strings.get("UI_SAMPLE_SMALL")) + " - " +
-             strings.format("UI_MONEY", {{"amount", formatNumber(1234567, strings.language())}}),
-         at);
-    at.y += ui.textSize("small", s) * 1.8f;
+    Panel& panel = top.add<Panel>("panel");
+    panel.layoutKey = "sample.panel";
+    panel.box = {Anchor::Center, Vec2(0.0f), Vec2(1100.0f, 640.0f)};
 
-    // A letter on parchment, clipped to its box.
-    const Rect letter = Rect::fromSize(at, Vec2(width, panel.max.y - pad - at.y));
-    canvas.frame(letter, ui.frame("parchment", s), ui.frameTint("parchment"));
-    canvas.pushClip(letter);
-    text(canvas, ui, "document", strings.get("UI_SAMPLE_DOCUMENT"), letter.min + Vec2(28.0f * s, 22.0f * s),
-         {.wrapWidth = letter.width() - 56.0f * s});
-    canvas.popClip();
+    Label& title = panel.add<Label>("title", UiText::key("UI_SAMPLE_TITLE"), Align::Center);
+    title.layoutKey = "sample.title";
+    title.box = {Anchor::Top, Vec2(0.0f, 30.0f), Vec2(-96.0f, 50.0f)};
 
-    // HUD bars as in Gothic 1 (F3): health bottom left, mana bottom right.
-    const Vec2 barSize = Vec2(260.0f, 22.0f) * s;
-    const f32 margin = 32.0f * s;
-    bar(canvas, ui, Rect::fromSize(Vec2(margin, screen.y - margin - barSize.y), barSize), 0.7f,
-        ui.style().color("hp"));
-    bar(canvas, ui,
-        Rect::fromSize(Vec2(screen.x - margin - barSize.x, screen.y - margin - barSize.y), barSize), 0.4f,
-        ui.style().color("mana"));
+    Label& body = panel.add<Label>("body", UiText::key("UI_SAMPLE_BODY"));
+    body.layoutKey = "sample.body";
+    body.box = {Anchor::Top, Vec2(0.0f, 92.0f), Vec2(-96.0f, 70.0f)};
 
-    // Screen message top centre (F7) and a subtitle bottom centre (F6).
-    text(canvas, ui, "message", strings.format("UI_XP_GAINED", {{"xp", "50"}}), Vec2(0.0f, 60.0f * s),
-         {.wrapWidth = screen.x, .align = Align::Center});
-    const f32 subtitleWidth = 1200.0f * s;
-    text(canvas, ui, "subtitle", strings.get("UI_SAMPLE_SUBTITLE"),
-         Vec2((screen.x - subtitleWidth) * 0.5f, screen.y - 140.0f * s),
-         {.wrapWidth = subtitleWidth, .maxLines = 2, .align = Align::Center});
+    Label& money =
+        panel.add<Label>("small", UiText::key("UI_MONEY", {{"amount", formatNumber(1234567, "de")}}));
+    money.layoutKey = "sample.small";
+    money.box = {Anchor::Top, Vec2(0.0f, 170.0f), Vec2(-96.0f, 26.0f)};
+
+    List& rows = panel.add<List>("body", 36.0f);
+    rows.layoutKey = "sample.list";
+    rows.box = {Anchor::TopLeft, Vec2(48.0f, 210.0f), Vec2(440.0f, 290.0f)};
+    for (usize i = 0; i < kRows; ++i)
+    {
+        rows.rows.push_back(UiText::key("UI_SAMPLE_ROW", {{"n", std::to_string(i + 1)}}));
+    }
+    m_list = &rows;
+
+    Grid& cells = panel.add<Grid>(kCells, 5, 80.0f, 6.0f);
+    cells.layoutKey = "sample.grid";
+    cells.box = {Anchor::TopRight, Vec2(-48.0f, 210.0f), Vec2(424.0f, 290.0f)};
+    cells.drawCell = drawSampleCell;
+    m_grid = &cells;
+
+    Label& chosen = panel.add<Label>("small", UiText::literal(""));
+    chosen.layoutKey = "sample.chosen";
+    chosen.box = {Anchor::BottomLeft, Vec2(48.0f, -36.0f), Vec2(500.0f, 28.0f)};
+    m_chosen = &chosen;
+    rows.onAccept = [&chosen](usize row)
+    { chosen.text = UiText::key("UI_SAMPLE_CHOSEN_ROW", {{"n", std::to_string(row + 1)}}); };
+    cells.onAccept = [&chosen](usize cell)
+    { chosen.text = UiText::key("UI_SAMPLE_CHOSEN_CELL", {{"n", std::to_string(cell + 1)}}); };
+
+    Stack& buttons = panel.add<Stack>(Stack::Direction::Horizontal, 16.0f);
+    buttons.layoutKey = "sample.buttons";
+    buttons.box = {Anchor::BottomRight, Vec2(-48.0f, -28.0f), Vec2(416.0f, 44.0f)};
+    buttons.add<Button>(UiText::key("UI_OK"), [&chosen] { chosen.text = UiText::key("UI_OK"); });
+    buttons.add<Button>(UiText::key("UI_CLOSE"), [this] { close(); });
+
+    // The HUD as in Gothic 1 (F3), a screen message (F7) and a subtitle (F6) in their places.
+    Bar& hp = top.add<Bar>("bar_hp", "hp", 0.7f);
+    hp.layoutKey = "hud.hp";
+    hp.box = {Anchor::BottomLeft, Vec2(32.0f, -32.0f), Vec2(260.0f, 24.0f)};
+    Bar& mana = top.add<Bar>("bar_mana", "mana", 0.4f);
+    mana.layoutKey = "hud.mana";
+    mana.box = {Anchor::BottomRight, Vec2(-32.0f, -32.0f), Vec2(260.0f, 24.0f)};
+    Label& message = top.add<Label>("message", UiText::key("UI_XP_GAINED", {{"xp", "50"}}), Align::Center);
+    message.layoutKey = "hud.message";
+    message.box = {Anchor::Top, Vec2(0.0f, 60.0f), Vec2(1200.0f, 40.0f)};
+    Label& subtitle = top.add<Label>("subtitle", UiText::key("UI_SAMPLE_SUBTITLE"), Align::Center);
+    subtitle.layoutKey = "hud.subtitle";
+    subtitle.box = {Anchor::Bottom, Vec2(0.0f, -110.0f), Vec2(1200.0f, 80.0f)};
+    subtitle.maxLines = 2;
+}
+
+const UiText& SampleScreen::chosen() const noexcept
+{
+    return m_chosen->text;
+}
+
+std::unique_ptr<Screen> makeSampleScreen()
+{
+    return std::make_unique<SampleScreen>();
 }
 } // namespace g7::ui
