@@ -403,7 +403,8 @@ void Engine::movePlayer(f32 seconds, const gameplay::MoveInput& input)
     }
 
     const bool running = m_movement.running(s);
-    const Vec3 velocity = m_movement.step(input, seconds, s);
+    // A hit pushes the hero back along the blow (M11); he stands meanwhile (fixedUpdateHeroFight).
+    const Vec3 velocity = m_movement.step(input, seconds, s) + m_heroKnockback.take(seconds);
     m_jumpCooldown = std::max(0.0f, m_jumpCooldown - seconds);
     if (input.jump && m_jumpCooldown <= 0.0f && m_player.state() == physics::MoveState::Ground)
     {

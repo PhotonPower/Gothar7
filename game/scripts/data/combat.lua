@@ -14,7 +14,7 @@ Combat = {
     reach_1h = 1.3,
     reach_2h = 1.7,
     animal_reach = 1.3,            -- Biss bzw. Hauer: das Tier springt vor
-    hit_angle = 50,                -- halber Winkel des Schlags vor dem Angreifer
+    hit_angle = 50,                -- halber Winkel des Schlags vor dem Angreifer (Tiere, Züge ohne Clip)
 }
 
 -- Fernkampf (M11 Teil E, Entscheidungen R1-R4 wie Gothic 1).
@@ -26,3 +26,21 @@ Combat.bow_reload = 1.0                     -- s zwischen zwei Schüssen (Nachla
 Combat.crossbow_reload = 1.6
 Combat.bow_ammo = "it_arrow"
 Combat.crossbow_ammo = "it_bolt"
+
+-- Trefferprüfung (M11): Im Trefferfenster fegt die Waffe an socket_hand_r als Kapsel entlang des Clips; was sie
+-- berührt, ist getroffen, eine Wand hält sie auf. Die Klingenlänge kommt aus dem Item-Modell (+Y ab dem Griff),
+-- ohne Modell aus blade_1h/blade_2h. Tiere und Züge ohne Clip treffen weiter nach Reichweite und Winkel oben,
+-- ebenso alle, solange weapon_sweep aus ist: Die Trefferfenster mehrerer Platzhalter-Clips liegen noch vor dem
+-- eigentlichen Hieb (gameplay.md "Trefferprüfung"); einschalten, wenn figuren sie angepasst hat.
+Combat.weapon_sweep = false  -- Klinge entlang des Clips (true) oder Reichweite und Winkel (false)
+Combat.weapon_radius = 0.08  -- m: Dicke der Klingen-Kapsel
+Combat.blade_1h = 0.9        -- m ab dem Griff, nur ohne Item-Modell
+Combat.blade_2h = 1.3
+Combat.fist_length = 0.12    -- m: die Fäuste als kurze Kapseln um socket_hand_l und socket_hand_r
+Combat.fist_radius = 0.1
+Combat.body_radius = 0.35    -- m: Körper-Kapsel der Getroffenen (Reichweite zählt ab ihrer Vorderseite)
+Combat.body_height = 1.8     -- m: Menschen
+Combat.animal_height = 1.0   -- m: Tiere
+-- Rückstoß: ein Treffer, der taumeln lässt, schiebt das Ziel entlang des Schlags zurück (Vorschlag, Spielgefühl).
+Combat.knockback = 0.3          -- m
+Combat.knockback_seconds = 0.2  -- über diese Zeit

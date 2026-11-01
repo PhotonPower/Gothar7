@@ -204,7 +204,8 @@ struct Creature
     bool openedFromSwingSide = false; ///< ... from the side its leaf swings to (behind it: the other side)
     // Combat (M11, EngineCombat.cpp).
     gameplay::Fighter fighter;
-    std::vector<u32> hitThisSwing; ///< targets of the current swing (each hit once)
+    gameplay::Swing swing;         ///< the current swing: targets hit, the blade, blocked
+    gameplay::Knockback knockback; ///< pushed back by a hit
     std::string fightState;        ///< the graph state of its move (clip-timed), empty: timeline
     f32 combatStance = 0.0f;       ///< seconds it keeps its weapon raised after fighting              ///<
                                    ///< walks up to the player for an important Info (approach = true)

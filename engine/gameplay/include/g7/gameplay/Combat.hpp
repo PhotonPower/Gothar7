@@ -41,6 +41,20 @@ struct CombatSettings
     f32 reach2h = 1.7f;
     f32 animalReach = 1.3f;      ///< a bite or a horn lunges forward
     f32 hitAngleDegrees = 50.0f; ///< half-angle of the swing in front of the attacker
+    // Weapon sweep (WeaponSweep.hpp): the blade along the clip; reach and angle above stay for animals, moves
+    // without a clip and with the sweep off.
+    bool weaponSweep = false; ///< off until the clips' hit windows meet the blade's way (gameplay.md)
+    f32 weaponRadius = 0.08f; ///< m, the blade's capsule
+    f32 blade1h = 0.9f;       ///< m from the grip, for a weapon without a model (else the model's +Y extent)
+    f32 blade2h = 1.3f;
+    f32 fistLength = 0.12f; ///< m, the fist's capsule around socket_hand_r
+    f32 fistRadius = 0.1f;
+    f32 bodyRadius = 0.35f;  ///< a body's capsule (reach counts from its front)
+    f32 bodyHeight = 1.8f;   ///< people
+    f32 animalHeight = 1.0f; ///< animals
+    // Knockback: a hit that staggers pushes the target back along the blow.
+    f32 knockback = 0.3f;        ///< m
+    f32 knockbackSeconds = 0.2f; ///< over this time
     // Ranged (M11 part E, owner decisions R1-R4).
     f32 projectileSpeed = 40.0f;                       ///< m/s
     f32 missSpreadDegrees = 5.0f;                      ///< R4: a missed shot goes this far aside
@@ -85,6 +99,20 @@ struct DamageResult
 /// Positions on the ground (x, z); yaw 0 = looking along -Z, positive turns left (as the movement).
 [[nodiscard]] bool facesAttacker(f32 defenderYaw, const Vec2& defender, const Vec2& attacker,
                                  f32 angleDegrees) noexcept;
+
+/// A push along the ground over a short time (knockback after a hit).
+struct Knockback
+{
+    Vec3 velocity{0.0f}; ///< m/s, horizontal
+    f32 seconds = 0.0f;  ///< left
+
+    /// Pushes `distance` metres along `direction` (made horizontal) within `seconds`; replaces a push
+    /// running.
+    void start(const Vec3& direction, f32 distance, f32 seconds) noexcept;
+    /// The velocity for the next `step` seconds (zero when over); counts down.
+    [[nodiscard]] Vec3 take(f32 step) noexcept;
+    [[nodiscard]] bool active() const noexcept { return seconds > 0.0f; }
+};
 
 enum class FightState : u8
 {
