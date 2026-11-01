@@ -817,3 +817,16 @@ def test_beds_the_chambers_have_no_room_for_go_to_the_room_with_the_door():
     beds = [v["name"] for v in p.vobs if "_BED_" in v["name"]]
     assert len(beds) == 4 and not [f for f in p.failed if f["what"] == "bed"]
     assert any("_INNEN_BED_" in n for n in beds) and any("_KAMMER_BED_" in n for n in beds)
+
+
+def test_in_leonberg_the_lights_keep_within_the_frame_budget():
+    """W7 phase 3: the engine takes 256 point lights a frame (world lights and daylight through
+    the windows together); Leonberg keeps well below, room lights and windows sparingly."""
+    import json
+
+    world_path = Path(__file__).resolve().parents[3] / "assets/source/worlds/leonberg"
+    world = json.loads((world_path / "leonberg.g7world").read_text(encoding="utf-8"))
+    lights = [v for v in world["vobs"] if v["type"] == "light"]
+    daylight = [v for v in lights if v.get("components", {}).get("light", {}).get("daylight")]
+    assert len(lights) - len(daylight) <= 160 and len(daylight) <= 100
+    assert len(lights) <= 256

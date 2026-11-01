@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 36372,
+ "nextVobId": 36374,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -36373,6 +36373,8 @@
   "outdoor:grass:DEBW_00100061ZiU:2:1": 36368,
   "outdoor:grass:DEBW_00100061ZiU:2:3": 36369,
   "outdoor:grass:DEBW_00100061ZiU:33:3": 36370,
-  "start:START_LEO_UNTERES_TOR": 36371
+  "start:START_LEO_UNTERES_TOR": 36371,
+  "use:PROP_LEO_GEWANDSCHNEIDER_ZKV_KAMMER_LANTERN_1": 36372,
+  "use:LIGHT_LEO_GEWANDSCHNEIDER_ZKV_KAMMER_LATERNE_1": 36373
  }
 }
