@@ -90,14 +90,24 @@ helper = true
 [[clip]]
 name = "fist/t_attack_combo1"     # jab, left fist
 keyframe = "framed"
-markers = { hit_start = 6, hit_end = 9, combo_start = 9, combo_end = 21, "sound:swing" = 2 }
+markers = { hit_start = 4, hit_end = 7, combo_start = 7, combo_end = 21, "sound:swing" = 0 }
 params = { base = "fist/t_jab", stance = "fist/s_idle", fade_in = 3, fade_out = 6 }
 
 [[clip]]
-name = "fist/t_attack_combo2"     # cross, right fist
+name = "fist/t_cross_low"         # the cross driven low into the body (leaning in): hits animals too
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "fist/t_cross"
+keys = [[0, "rest"], [5, "low"], [16, "low"], [30, "rest"]]
+[clip.params.poses.low]
+rotate = { spine_02 = [["X", 25]], spine_01 = [["X", 8]] }  # grid search: right fist 0.7 m ahead, 0.9 m high
+
+[[clip]]
+name = "fist/t_attack_combo2"     # low cross, right fist (body blow; reaches animals, sweep M11)
 keyframe = "framed"
-markers = { hit_start = 9, hit_end = 14, combo_start = 14, combo_end = 24, "sound:swing" = 5 }
-params = { base = "fist/t_cross", stance = "fist/s_idle", fade_in = 5, fade_out = 6 }
+markers = { hit_start = 5, hit_end = 9, combo_start = 9, combo_end = 24, "sound:swing" = 1 }
+params = { base = "fist/t_cross_low", stance = "fist/s_idle", fade_in = 5, fade_out = 6 }
 
 [[clip]]
 name = "fist/t_cover"             # forearms raised in front of the face (over the upright none/s_idle)

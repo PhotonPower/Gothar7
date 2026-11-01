@@ -25,6 +25,11 @@ vec3 linearToDisplay(vec3 c)
 void main()
 {
     vec4 texel = texture(uTexture, vUv);
+    if (vPixelRange < 0.0)
+    {
+        fragColor = vColor * texel; // a texture of display values (rendered item cells)
+        return;
+    }
     if (vPixelRange <= 0.0)
     {
         fragColor = vColor * vec4(linearToDisplay(texel.rgb), texel.a);

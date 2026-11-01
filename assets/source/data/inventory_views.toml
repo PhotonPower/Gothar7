@@ -199,3 +199,19 @@ yaw = 0.0
 pitch = 10.0
 roll = -40.0
 fill = 0.97
+
+# Gulden: no Lua mesh yet (engine sets it); a small pile of coins, seen from above at an angle
+[model."items/it_gulden.glb"]
+category = "misc"
+yaw = 20.0
+pitch = 40.0
+roll = 0.0
+fill = 0.72
+
+# glowing sword blank from the anvil: like a blade, the flat side, diagonal
+[model."items/it_blank_hot.glb"]
+category = "misc"
+yaw = 90.0
+pitch = 0.0
+roll = -45.0
+fill = 0.95

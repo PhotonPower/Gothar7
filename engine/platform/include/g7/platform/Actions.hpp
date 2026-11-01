@@ -70,6 +70,7 @@ enum class Action : u16
     UiBack,
     UiPrevTab,
     UiNextTab,
+    UiDrop, ///< M14 part D: drop the selected item (inventory)
     Count
 };
 

@@ -42,6 +42,7 @@ struct UiInput
     bool back = false;
     bool prevTab = false;
     bool nextTab = false;
+    bool drop = false;   ///< ui_drop (inventory)
     Vec2 pointer{-1.0f}; ///< mouse in framebuffer pixels
     bool pointerMoved = false;
     bool click = false; ///< left mouse button went down

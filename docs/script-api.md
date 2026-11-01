@@ -3,6 +3,20 @@
 Erzeugt aus den Bindings der Engine (`gothar --script-api=docs/script-api.md`) – nicht von Hand bearbeiten.
 Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
+## Bildschirm
+
+### `inventory_open(open?: boolean)`
+Öffnet (oder mit `false` schließt) das Inventar des Helden wie die Inventar-Taste (Konsole, Tests).
+
+### `map_open(image: string, title?: string)`
+Zeigt eine Karte (Bild im VFS, z. B. `ui/maps/leonberg.png`) wie ein Karten-Item (Konsole, Tests).
+
+### `screen_message(text: string, seconds?: number)`
+Zeigt dem Spieler eine Meldung oben in der Mitte (F7; Vorgabe 3 s), z. B. `Erfahrung +50`.
+
+### `status_open(open?: boolean)`
+Öffnet (oder mit `false` schließt) den Charakterbildschirm wie die Taste status (B).
+
 ## Debug
 
 ### `npc_debug_hold(npc: string, seconds: number)`
@@ -426,6 +440,9 @@ Wem ein Item- oder Mob-Vob dieser Welt gehört (Npc oder Gilde); nil, wenn niema
 
 ### `unlock(vob: string)`
 Schließt ein Mob-Vob auf (Truhe, Tür), etwa wenn eine Quest es öffnet.
+
+### `use_mob(vob: string)`
+Der Held benutzt ein Mob-Vob dieser Welt wie mit der Aktionstaste (Konsole, Tests): Truhe öffnen, Schloss knacken, am Amboss schmieden.
 
 ## NPCs
 

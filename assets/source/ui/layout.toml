@@ -20,6 +20,11 @@ anchor = "top"
 offset = [0, 24]
 size = [360, 18]
 
+[hud.air] # air while diving, above health
+anchor = "bottom_left"
+offset = [32, -66]
+size = [260, 24]
+
 # Screen messages top centre (F7), subtitles bottom centre (F6).
 [hud.message]
 anchor = "top"
@@ -70,3 +75,225 @@ size = [500, 28]
 anchor = "bottom_right"
 offset = [-48, -28]
 size = [416, 44]
+
+# Dialogue choices on parchment at the bottom (part C; the spoken line is a subtitle).
+[dialog.box]
+anchor = "bottom"
+offset = [0, -40]
+size = [1100, 260]
+
+[dialog.options]
+anchor = "center"
+size = [-80, -40]
+
+# A letter or book being read.
+[document.page]
+anchor = "center"
+size = [900, 680]
+
+[document.title]
+anchor = "top"
+offset = [0, 48]
+size = [-120, 50]
+
+[document.text]
+anchor = "top"
+offset = [0, 112]
+size = [-140, -170]
+
+[document.hint]
+anchor = "bottom"
+offset = [0, -36]
+size = [-120, 26]
+
+# A choice at a mob (anvil, bed).
+[choice.box]
+anchor = "right"
+offset = [-80, 0]
+size = [520, 420]
+
+[choice.title]
+anchor = "top"
+offset = [0, 36]
+size = [-80, 50]
+
+[choice.options]
+anchor = "top"
+offset = [0, 100]
+size = [-80, 220]
+
+[choice.message]
+anchor = "bottom"
+offset = [0, -64]
+size = [-80, 50]
+
+[choice.hint]
+anchor = "bottom"
+offset = [0, -30]
+size = [-80, 26]
+
+# Lockpicking.
+[lockpick.box]
+anchor = "center"
+offset = [0, 200]
+size = [640, 300]
+
+[lockpick.title]
+anchor = "top"
+offset = [0, 30]
+size = [-80, 50]
+
+[lockpick.steps]
+anchor = "top"
+offset = [0, 96]
+size = [-80, 44]
+
+[lockpick.picks]
+anchor = "top"
+offset = [0, 152]
+size = [-80, 32]
+
+[lockpick.result]
+anchor = "top"
+offset = [0, 190]
+size = [-80, 30]
+
+[lockpick.hint]
+anchor = "bottom"
+offset = [0, -26]
+size = [-80, 26]
+
+# Inventory, trading, containers (part D, F4/F5): the hero's pane on the right, the trader's or container's on the
+# left; inside a pane: title, tabs (hero only), grid, info box (hero only), footer and message.
+[inventory]
+columns = 5
+cell = 104    # UI units, square
+spacing = 6
+tabs = [      # Gothic 1-like tabs (F4); each Lua item category in exactly one tab (a test checks it)
+    { key = "UI_TAB_WEAPONS", categories = ["melee_1h", "melee_2h", "bow", "crossbow", "ammo"] },
+    { key = "UI_TAB_ARMOR", categories = ["armor", "helmet"] },
+    { key = "UI_TAB_MAGIC", categories = ["rune", "scroll"] },
+    { key = "UI_TAB_ARTIFACTS", categories = ["ring", "amulet", "belt"] },
+    { key = "UI_TAB_FOOD", categories = ["food", "potion"] },
+    { key = "UI_TAB_DOCUMENTS", categories = ["document"] },
+    { key = "UI_TAB_MISC", categories = ["key", "torch", "misc"] },
+]
+
+[inventory.hero]
+anchor = "right"
+offset = [-40, 0]
+size = [600, 880]
+
+[inventory.other]
+anchor = "left"
+offset = [40, 0]
+size = [600, 880]
+
+[inventory.title]
+anchor = "top"
+offset = [0, 22]
+size = [-60, 44]
+
+[inventory.tab_bar]
+anchor = "top"
+offset = [0, 76]
+size = [-40, 44]
+
+[inventory.grid]
+anchor = "top"
+offset = [0, 130]
+size = [544, 434]
+
+[inventory.info]
+anchor = "bottom"
+offset = [0, -64]
+size = [-40, 240]
+
+[inventory.footer]
+anchor = "bottom_left"
+offset = [30, -24]
+size = [300, 28]
+
+[inventory.message]
+anchor = "bottom_right"
+offset = [-30, -24]
+size = [300, 28]
+
+[inventory.quantity]
+anchor = "center"
+size = [520, 220]
+
+# Character sheet (part E): four blocks of name/value rows.
+[status.panel]
+anchor = "center"
+size = [1100, 780]
+
+[status.title]
+anchor = "top"
+offset = [0, 30]
+size = [-80, 50]
+
+[status.general]
+anchor = "top_left"
+offset = [60, 110]
+size = [460, 220]
+
+[status.attributes]
+anchor = "top_left"
+offset = [60, 360]
+size = [460, 250]
+
+[status.talents]
+anchor = "top_right"
+offset = [-60, 110]
+size = [460, 380]
+
+[status.protection]
+anchor = "top_right"
+offset = [-60, 510]
+size = [460, 220]
+
+# Diary (part E): chapter, section tabs, topics left, entries right, on parchment (F2).
+[diary.page]
+anchor = "center"
+size = [1240, 780]
+
+[diary.chapter]
+anchor = "top"
+offset = [0, 40]
+size = [-120, 48]
+
+[diary.tabs]
+anchor = "top"
+offset = [0, 100]
+size = [-120, 44]
+
+[diary.topics]
+anchor = "top_left"
+offset = [60, 164]
+size = [400, -220]
+
+[diary.entries]
+anchor = "top_right"
+offset = [-60, 164]
+size = [680, -220]
+
+[diary.empty]
+anchor = "center"
+offset = [0, 40]
+size = [-120, 40]
+
+# Map (part E, F9): the map item's picture fitted on parchment.
+[map.page]
+anchor = "center"
+size = [1400, 940]
+
+[map.title]
+anchor = "top"
+offset = [0, 30]
+size = [-120, 46]
+
+[map.picture]
+anchor = "top"
+offset = [0, 90]
+size = [-100, -130]

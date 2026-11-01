@@ -39,17 +39,17 @@ events = [
 
 [clips."1h/t_attack_combo1"]
 events = [
-    { frame = 13, event = "sound:swing" },
-    { frame = 17, event = "hit_start" },
-    { frame = 23, event = "combo_start" },
-    { frame = 23, event = "hit_end" },
-    { frame = 34, event = "combo_end" },
+    { frame = 18, event = "sound:swing" },
+    { frame = 22, event = "hit_start" },
+    { frame = 32, event = "combo_start" },
+    { frame = 32, event = "hit_end" },
+    { frame = 38, event = "combo_end" },
 ]
 
 [clips."1h/t_attack_combo2"]
 events = [
-    { frame = 1, event = "sound:swing" },
-    { frame = 5, event = "hit_start" },
+    { frame = 2, event = "sound:swing" },
+    { frame = 6, event = "hit_start" },
     { frame = 9, event = "combo_start" },
     { frame = 9, event = "hit_end" },
     { frame = 38, event = "combo_end" },
@@ -57,34 +57,34 @@ events = [
 
 [clips."1h/t_attack_combo3"]
 events = [
-    { frame = 8, event = "sound:swing" },
-    { frame = 12, event = "hit_start" },
-    { frame = 17, event = "combo_start" },
-    { frame = 17, event = "hit_end" },
+    { frame = 6, event = "sound:swing" },
+    { frame = 10, event = "hit_start" },
+    { frame = 14, event = "combo_start" },
+    { frame = 14, event = "hit_end" },
     { frame = 24, event = "combo_end" },
 ]
 
 [clips."1h/t_attack_combo4"]
 events = [
-    { frame = 5, event = "sound:swing" },
-    { frame = 9, event = "hit_start" },
-    { frame = 13, event = "combo_start" },
-    { frame = 13, event = "hit_end" },
+    { frame = 7, event = "sound:swing" },
+    { frame = 11, event = "hit_start" },
+    { frame = 14, event = "combo_start" },
+    { frame = 14, event = "hit_end" },
     { frame = 37, event = "combo_end" },
 ]
 
 [clips."1h/t_attack_l"]
 events = [
-    { frame = 7, event = "sound:swing" },
-    { frame = 11, event = "hit_start" },
+    { frame = 6, event = "sound:swing" },
+    { frame = 10, event = "hit_start" },
     { frame = 16, event = "hit_end" },
 ]
 
 [clips."1h/t_attack_r"]
 events = [
-    { frame = 7, event = "sound:swing" },
-    { frame = 11, event = "hit_start" },
-    { frame = 16, event = "hit_end" },
+    { frame = 5, event = "sound:swing" },
+    { frame = 9, event = "hit_start" },
+    { frame = 15, event = "hit_end" },
 ]
 
 [clips."1h/t_draw"]

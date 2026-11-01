@@ -412,6 +412,10 @@ void Engine::dialogUi()
     {
         return;
     }
+    if (m_gameUi)
+    {
+        return; // the game UI's dialogue and trade screens (M14 parts C, D)
+    }
     if (m_trade)
     {
         tradeUi();

@@ -1,6 +1,6 @@
 # Look of the game UI (M14, docs/modules/ui.md "Plan M14"): colours, text roles, frames, UI sounds.
 # Sizes in UI units = pixels at 1080p (scaled with the window height and [ui] scale). Colours are display
-# values. Dark like Gothic (owner decision F2); the frames are placeholders until the owner's own designs.
+# values. Dark like Gothic (owner decision F2); frames by figuren (#305).
 version = 1
 
 [colors]
@@ -12,14 +12,24 @@ hp = "#a81c1c"
 mana = "#2a48b8"
 bar_back = "#1a120cd8"
 ink = "#3a2a18"       # text on parchment
+ink_highlight = "#8a2a10" # the selected dialogue option on parchment
+air = "#6aa8d8"
 
 [fonts]
+# outline/shadow in UI units; shadow = a soft drop shadow down and to the right (subtitles: no outline, F6 review)
 body = { font = "fonts/alegreya.g7font", size = 24, color = "text" }
 small = { font = "fonts/alegreya.g7font", size = 19, color = "text_dim" }
 title = { font = "fonts/alegreya_sc.g7font", size = 38, color = "highlight", outline = 1.5, outline_color = "shadow" }
-subtitle = { font = "fonts/alegreya.g7font", size = 28, color = "text", outline = 2.0, outline_color = "shadow" }
-message = { font = "fonts/alegreya_sc.g7font", size = 30, color = "text", outline = 2.0, outline_color = "shadow" }
+subtitle = { font = "fonts/alegreya.g7font", size = 28, color = "text", shadow = 1.5, shadow_color = "shadow" }
+subtitle_name = { font = "fonts/alegreya_sc.g7font", size = 22, color = "highlight", shadow = 1.2, shadow_color = "shadow" }
+message = { font = "fonts/alegreya_sc.g7font", size = 30, color = "text", outline = 1.0, outline_color = "shadow", shadow = 1.5 }
+focus = { font = "fonts/alegreya.g7font", size = 22, color = "text", outline = 1.0, outline_color = "shadow", shadow = 1.2 }
+dialog = { font = "fonts/alegreya.g7font", size = 26, color = "ink" }
 document = { font = "fonts/alegreya.g7font", size = 24, color = "ink" }
+document_title = { font = "fonts/alegreya_sc.g7font", size = 34, color = "ink" }
+document_hint = { font = "fonts/alegreya.g7font", size = 18, color = "ink" }
+tab = { font = "fonts/alegreya.g7font", size = 16, color = "text_dim" }   # tab titles (8 tabs fit)
+heading = { font = "fonts/alegreya_sc.g7font", size = 26, color = "highlight" } # sections of the character sheet
 
 # Frames: own procedural designs by figuren (`gothar-chargen ui-frames`), drawn at 2 image pixels per UI
 # unit (sharp at 4K), hence slices in image pixels and scale = 0.5.
@@ -144,3 +154,14 @@ scale = 0.5
 image = "ui/frames/bg_parchment.png"
 slice = [0, 0, 0, 0]
 scale = 0.5
+
+# Inventory cells (M14 part D): the studio light of the 3D item pictures, like figuren's review sheet - sun from
+# the upper left front, bright ambient; view space (+X right, +Y up, +Z towards the viewer). Linear colours.
+[item_preview]
+sun_direction = [-0.5, 0.6, 0.6]
+sun_color = [1.0, 0.96, 0.9]
+sun_intensity = 3.0
+ambient_sky = [0.55, 0.55, 0.6]
+ambient_ground = [0.3, 0.28, 0.25]
+exposure = 1.0
+spin_seconds = 6.0 # one turn of the selected item

@@ -15,6 +15,11 @@ struct Camera
     f32 nearPlane = 0.1f;
     f32 farPlane = 1500.0f;
     f32 aspect = 16.0f / 9.0f; ///< Width / height of the viewport.
+    /// Image window (M14 inventory cells, off-axis): the view shows the part of the full projection around
+    /// `windowCenter` (normalised device coordinates) with half size `windowHalfSize`; the defaults show it
+    /// all.
+    Vec2 windowCenter{0.0f};
+    f32 windowHalfSize = 1.0f;
 
     [[nodiscard]] Mat4 view() const noexcept;
     [[nodiscard]] Mat4 projection() const noexcept;

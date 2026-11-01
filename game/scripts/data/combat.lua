@@ -41,6 +41,7 @@ Combat.fist_radius = 0.1
 Combat.body_radius = 0.35    -- m: Körper-Kapsel der Getroffenen (Reichweite zählt ab ihrer Vorderseite)
 Combat.body_height = 1.8     -- m: Menschen
 Combat.animal_height = 1.0   -- m: Tiere
--- Rückstoß: ein Treffer, der taumeln lässt, schiebt das Ziel entlang des Schlags zurück (Vorschlag, Spielgefühl).
+-- Rückstoß: ein Treffer, der taumeln lässt, schiebt das Ziel entlang des Schlags zurück.
 Combat.knockback = 0.3          -- m
-Combat.knockback_seconds = 0.2  -- über diese Zeit
+Combat.knockback_seconds = 0.2  -- über diese Zeit (bestätigt vom Projektinhaber 2026-11-01)
+Combat.parry_knockback = 0.2    -- m: ein parierter Angreifer wird ebenfalls zurückgestoßen (Projektinhaber; Wert Vorschlag)

@@ -22,6 +22,10 @@ void Screen::update(const UiInput* input, f32 deltaSeconds, const Rect& area, f3
         return;
     }
     const UiInput& in = *input;
+    if (onInput(in))
+    {
+        return;
+    }
 
     // Mouse: hovering focuses (and selects rows or cells), a click accepts, the wheel scrolls what it is
     // over.
@@ -72,9 +76,17 @@ void Screen::update(const UiInput* input, f32 deltaSeconds, const Rect& area, f3
                 m_focus = focusables[*next];
                 emit("select");
             }
+            else if (onDirection(in.nav))
+            {
+                emit("select");
+            }
         }
     }
-    if (in.accept && m_focus != nullptr && m_focus->accept())
+    else if (in.nav != NavDir::None && onDirection(in.nav))
+    {
+        emit("select");
+    }
+    if (in.accept && ((m_focus != nullptr && m_focus->accept()) || onAccept()))
     {
         emit("accept");
     }

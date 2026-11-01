@@ -279,13 +279,19 @@ Plan (Teile A–G, freigegeben 2026-11-01, Gestaltung F1–F12 vom Projektinhabe
   - Teil B: Layout `ui/layout.toml` (Anker, Kästen), Widgets (Panel, Label, Bar, Button, Stack, List, Grid),
     Navigation mit Tastatur, Gamepad und Maus (`ui_*`-Aktionen, Wiederholung, räumliche Fokus-Suche),
     Bildschirm-Stapel (sperrt die Spielsteuerung, kann pausieren), Hot-Reload aller UI-Dateien, Rahmen von figuren (#305)
-- [ ] HUD: Leben, Mana, Gegner-Leben, Fokus-Namen, Luftanzeige
-- [ ] Inventar-Bildschirm (Kategorien, Item-Vorschau als 3D-Modell), Handel, Truhe
-- [ ] Charakterbildschirm, Tagebuch-Bildschirm, Karte (falls Karten-Item)
+- [x] HUD: Leben, Mana, Gegner-Leben, Fokus-Namen, Luftanzeige
+  - Teil C: HUD wie Gothic 1 (F3), Dialog-Bildschirm mit Untertiteln (F6, auch für Zurufe), Fenster für
+    Dokument, Auswahl am Mob und Dietrich; die ImGui-Fenster dafür bleiben nur als Rückfallebene
+- [x] Inventar-Bildschirm (Kategorien, Item-Vorschau als 3D-Modell), Handel, Truhe
+  - Teil D: Kategorie-Reiter und Raster (F4), 3D-Zellen nach `inventory_views.toml` v2 (Render-to-Texture,
+    das gewählte Item dreht sich), Infokasten, Handel mit Mengenwahl (F5), Truhe und Plündern
+- [x] Charakterbildschirm, Tagebuch-Bildschirm, Karte (falls Karten-Item)
+  - Teil E: Charakter (B), Tagebuch auf Pergament (N), Karte über Items mit `map`-Bild (M, F9); das Stadtplan-Item
+    für Leonberg liefert welt, bis dahin ein Platzhalter-Bild für Tests
 - [ ] Hauptmenü, Optionen (Grafik, Audio, Steuerung), Ladebildschirm
 - [ ] Lokalisierung (Schlüssel → Text-Tabellen DE/EN), Untertitel
   - Gesprochene Texte kommen aus `assets/source/voice/lines.<sprache>.json` (eine Datei je Sprache)
-- [ ] Bildschirmtexte (z. B. „Erfahrung +50“), Nachrichten
+- [x] Bildschirmtexte (z. B. „Erfahrung +50“), Nachrichten – Teil C: oben mittig, 3 s (F7), Lua `screen_message`
 
 **DoD:** Das Vertical Slice ist vollständig ohne Debug-UI spielbar.
 

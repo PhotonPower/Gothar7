@@ -62,6 +62,18 @@ struct TextStyle
     Color color;
     f32 outline = 0.0f;
     Color outlineColor{0.0f, 0.0f, 0.0f, 1.0f};
+    f32 shadow = 0.0f; ///< drop shadow offset in pixels (right and down); 0 = none
+    Color shadowColor{0.0f, 0.0f, 0.0f, 0.6f};
+
+    /// The same style with every colour's alpha multiplied (fading texts).
+    [[nodiscard]] TextStyle faded(f32 opacity) const noexcept
+    {
+        TextStyle s = *this;
+        s.color.a *= opacity;
+        s.outlineColor.a *= opacity;
+        s.shadowColor.a *= opacity;
+        return s;
+    }
 };
 
 class Canvas
@@ -104,7 +116,8 @@ public:
 
     void rect(const Rect& rect, Color color);
     /// An image; `uv` in texture coordinates (0..1, origin top left). The texture is sampled as sRGB.
-    void image(const Rect& rect, const render::rhi::Texture* texture, const Rect& uv, Color tint);
+    void image(const Rect& rect, const render::rhi::Texture* texture, const Rect& uv, Color tint,
+               bool displayValues = false);
     /// A 9-slice frame stretched over `rect`; borders larger than the rectangle shrink proportionally.
     void frame(const Rect& rect, const NineSlice& slice, Color tint);
     /// A laid-out text with its box's top left at `position`.

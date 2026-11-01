@@ -123,6 +123,8 @@ struct FreeFlyInput { Vec3 move; /* x rechts, y Welt-oben, z vorwärts */ f32 tu
 class FreeFlyCamera { f32 speed, fastFactor, sensitivity, turnRate;
                       void attach(const Camera&); void update(Camera&, const FreeFlyInput&, f64 dt); };
 ```
+- `windowCenter`, `windowHalfSize` (M14 Teil D): Bildfenster der Projektion (Off-Axis) für die Inventar-Zellen; die
+  Vorgaben (0, 1) zeigen alles.
 - Blickrichtung −Z der Transform, +Y oben; Projektion **Reverse-Z** (ADR 0002): `Device` stellt
   `glClipControl(…, ZERO_TO_ONE)` ein, `beginFrame` löscht Tiefe mit 0, `PipelineDesc::depthCompare` ist
   standardmäßig `GreaterEqual`. Skalierung der Kamera-Transform wird ignoriert.

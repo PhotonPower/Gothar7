@@ -57,6 +57,7 @@
   `nextCodepoint(text, pos)` (fehlerhafte Folgen, Überlangformen, Surrogate → U+FFFD, ein Byte weiter),
   `appendUtf8(out, codepoint)`.
 - `Config.hpp` – `Config` (ADR 0010; toml++ PRIVATE hinter PImpl, header-only mit `TOML_EXCEPTIONS=0`):
+  - `child(table, name)` (M14): eine Untertabelle mit genau diesem Namen, auch mit Punkten (`[model."items/a.glb"]`).
   - `Config::parse(text, sourceName)`, `Config::load(path)` → `Result<Config>`; Syntaxfehler als
     `"<quelle>:<zeile>:<spalte>: <beschreibung>"`. `save(path)` schreibt atomisch, `toToml()`.
   - Schlüssel sind Punkt-Pfade (`"audio.volume.music"`). Werttypen (Concept `ConfigValue`): `bool`, `i64`, `f64`,

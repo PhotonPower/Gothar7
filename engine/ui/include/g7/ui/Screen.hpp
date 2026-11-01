@@ -59,6 +59,14 @@ protected:
         close();
         return true;
     }
+    /// Every input first; true: the screen handled it itself (a modal part such as a quantity choice),
+    /// nothing else happens this frame.
+    virtual bool onInput(const UiInput&) { return false; }
+    /// A direction step no widget used (no focus, or the focused widget's edge with nothing beyond); true if
+    /// it did something.
+    virtual bool onDirection(NavDir) { return false; }
+    /// The accept action when no focused widget took it; true if it did something.
+    virtual bool onAccept() { return false; }
     /// ui_prev_tab (-1) or ui_next_tab (+1); true if it did something.
     virtual bool onTab(int) { return false; }
     /// Once per update before the input: refresh widgets from the data shown.

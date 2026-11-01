@@ -38,6 +38,7 @@ language = "de"
 scale = 1.0
 nav_repeat_delay = 0.35 # Sekunden, bis gehaltene Richtungen wiederholen
 nav_repeat_rate = 0.08  # Sekunden zwischen Wiederholungen
+subtitles = true       # Untertitel mit Sprechername, unten mittig, auch für Zurufe (F6)
 
 [render]
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
@@ -175,6 +176,7 @@ ui_accept = ["Enter", "LeftCtrl", "PadSouth"]
 ui_back = ["Escape", "Backspace", "PadEast"]
 ui_prev_tab = ["Q", "PageUp", "PadLeftShoulder"]
 ui_next_tab = ["E", "PageDown", "PadRightShoulder"]
+ui_drop = ["Delete", "PadNorth"] # Inventar: das gewählte Item ablegen (M14 Teil D, Vorschlag)
 
 [bindings.modern]
 move_forward = ["W", "PadDpadUp"]
@@ -229,6 +231,7 @@ ui_accept = ["Enter", "LeftCtrl", "PadSouth"]
 ui_back = ["Escape", "Backspace", "PadEast"]
 ui_prev_tab = ["Q", "PageUp", "PadLeftShoulder"]
 ui_next_tab = ["E", "PageDown", "PadRightShoulder"]
+ui_drop = ["Delete", "PadNorth"] # Inventar: das gewählte Item ablegen (M14 Teil D, Vorschlag)
 
 [ai]
 # KI-LOD: NPCs weiter weg vom Spieler werden nicht simuliert (springen bei Routinenwechseln an ihren Ort).

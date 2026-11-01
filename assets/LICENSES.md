@@ -51,6 +51,7 @@ Jede Fremdquelle, die in Assets oder abgeleitete Daten einfließt, wird hier ein
 | `assets/source/sounds/*.wav` (Platzhalter-Klänge, M13) | eigene Arbeit: synthetisch erzeugt mit `tools/audio` (`gothar-audio placeholders`), ohne Fremdmaterial | wie das Repository | keine |
 | `assets/source/music/*.wav` (Platzhalter-Musik und Stinger, M13 Teil C) | eigene Arbeit: synthetisch erzeugt mit `tools/audio` (`gothar-audio music`), ohne Fremdmaterial | wie das Repository | keine |
 | `assets/source/ui/frames/*.png` (Rahmen, Balken und Hintergründe der Spiel-UI, M14: Holz, Leder, Pergament, Eisen; ersetzen die Platzhalter von engine) | eigene Arbeit: prozedural erzeugt mit `tools/chargen` (`gothar-chargen ui-frames`, numpy, Seed 7), ohne Fremdmaterial | wie das Repository | keine |
+| `assets/source/ui/maps/placeholder.png` (Platzhalter-Karte für Tests, M14 Teil E) | eigene Arbeit: per Skript erzeugt (Pillow, prozedural), ohne Fremdmaterial | wie das Repository | keine |
 
 ## Schriften
 | Datei | Quelle | Lizenz | Pflichtangabe |

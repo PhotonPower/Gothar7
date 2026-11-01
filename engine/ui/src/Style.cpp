@@ -12,7 +12,8 @@ namespace g7::ui
 {
 namespace
 {
-constexpr std::array<std::string_view, 5> kSections = {"version", "colors", "fonts", "frames", "sounds"};
+constexpr std::array<std::string_view, 6> kSections = {"version", "colors", "fonts",
+                                                       "frames",  "sounds", "item_preview"};
 constexpr Color kMissing{1.0f, 0.0f, 1.0f, 1.0f};
 
 int hexDigit(char c) noexcept
@@ -193,6 +194,17 @@ Result<Style> loadStyle(std::string_view toml, std::string_view sourceName)
         {
             return entryError(sourceName, "fonts." + name, color.error().message);
         }
+        role.shadow = static_cast<f32>(config.get<f64>(base + "shadow", 0.0));
+        if (auto color =
+                colorValue(style.colors, config.get<std::string>(base + "shadow_color", "#00000099"));
+            color)
+        {
+            role.shadowColor = color.value();
+        }
+        else
+        {
+            return entryError(sourceName, "fonts." + name, color.error().message);
+        }
         style.fonts.emplace(name, std::move(role));
     }
     for (const std::string& name : config.keys("frames"))
@@ -225,6 +237,37 @@ Result<Style> loadStyle(std::string_view toml, std::string_view sourceName)
         }
         style.frames.emplace(name, std::move(frame));
     }
+    const auto vec3 = [&](std::string_view key, Vec3 fallback) -> Result<Vec3>
+    {
+        const auto values = config.find<std::vector<f64>>("item_preview." + std::string(key));
+        if (!values)
+        {
+            return fallback;
+        }
+        if (values->size() != 3)
+        {
+            return entryError(sourceName, "item_preview." + std::string(key), "needs three numbers");
+        }
+        return Vec3(static_cast<f32>((*values)[0]), static_cast<f32>((*values)[1]),
+                    static_cast<f32>((*values)[2]));
+    };
+    PreviewLight& light = style.itemPreview;
+    for (auto [key, target] : {std::pair<std::string_view, Vec3*>{"sun_direction", &light.sunDirection},
+                               {"sun_color", &light.sunColor},
+                               {"ambient_sky", &light.ambientSky},
+                               {"ambient_ground", &light.ambientGround}})
+    {
+        auto value = vec3(key, *target);
+        if (!value)
+        {
+            return value.error();
+        }
+        *target = value.value();
+    }
+    light.sunIntensity = static_cast<f32>(config.get<f64>("item_preview.sun_intensity", light.sunIntensity));
+    light.exposure = static_cast<f32>(config.get<f64>("item_preview.exposure", light.exposure));
+    style.itemSpinSeconds =
+        static_cast<f32>(config.get<f64>("item_preview.spin_seconds", style.itemSpinSeconds));
     for (const std::string& name : config.keys("sounds"))
     {
         style.sounds.emplace(name, config.get<std::string>("sounds." + name, ""));

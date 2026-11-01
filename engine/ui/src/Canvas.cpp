@@ -155,9 +155,10 @@ void Canvas::rect(const Rect& rect, Color color)
     quad(rect, {Vec2(0.0f), Vec2(1.0f)}, nullptr, color.packed());
 }
 
-void Canvas::image(const Rect& rect, const render::rhi::Texture* texture, const Rect& uv, Color tint)
+void Canvas::image(const Rect& rect, const render::rhi::Texture* texture, const Rect& uv, Color tint,
+                   bool displayValues)
 {
-    quad(rect, uv, texture, tint.packed());
+    quad(rect, uv, texture, tint.packed(), displayValues ? -1.0f : 0.0f);
 }
 
 void Canvas::frame(const Rect& rect, const NineSlice& slice, Color tint)
@@ -214,6 +215,17 @@ void Canvas::text(Vec2 position, const TextLayout& layout, const TextStyle& styl
     const f32 range = style.font->screenPixelRange(layout.pixelSize);
     const u32 color = style.color.packed();
     const u32 outlineColor = style.outlineColor.packed();
+    if (style.shadow > 0.0f)
+    {
+        // A soft drop shadow: the glyphs once more, offset, in the shadow colour (wider edge = softer).
+        const Vec2 offset(style.shadow);
+        const u32 shadowColor = style.shadowColor.packed();
+        for (const PlacedGlyph& g : layout.glyphs)
+        {
+            quad({position + offset + g.min, position + offset + g.max}, {g.uvMin, g.uvMax}, texture,
+                 shadowColor, std::max(1.0f, range * 0.5f), 0.0f, 0);
+        }
+    }
     // A glyph quad of an un-uploaded font (tests) is marked with the white texture's nullptr but keeps its
     // range.
     for (const PlacedGlyph& g : layout.glyphs)

@@ -399,6 +399,7 @@ Clip, bleibt die Zeitleiste. Menschen halten nach einem Kampf 5 s die Kampfhaltu
 - **Wände:** Jeder Teilschritt ist ein `PhysicsWorld::capsuleCast` gegen `World` und `Mob`; trifft die Klinge
   eine Fläche, die nicht nach oben zeigt (Normale y < 0,7 – Böden halten sie nicht auf), endet der Schlag dort:
   Ziele bis dahin zählen, danach trifft er nichts mehr. Steckt die Klinge schon in der Wand, trifft sie nichts.
+  Möbel (Mobs) halten sie auf wie Wände (Projektinhaber 2026-11-01).
 - **Ohne Sweep** treffen Tiere (Biss mit Sprung), Züge ohne Clip (Zeitleiste) und alle bei `weapon_sweep = false`
   weiter nach Reichweite und Winkel (oben); ein Strahl von Brust zu Brust (1,3 m, Tiere 0,5 m) gegen `World` und
   `Mob` hält auch dort den Schlag durch Wände und geschlossene Türen auf.
@@ -409,9 +410,10 @@ Clip, bleibt die Zeitleiste. Menschen halten nach einem Kampf 5 s die Kampfhaltu
   Talent-0-Kämpfe (nur Kombo 1) aus der Reichweite der Kampf-KI. Einschalten, sobald figuren die Fenster an die
   Clips angepasst hat; `combat_reload()` liest geänderte Werte aus der Konsole neu.
 - **Treffer-Reaktion:** wie bisher (Taumeln mit `none/t_hit_light` ab `stagger_share`, Tiere ihr Treffer-Clip).
-- **Rückstoß** (Vorschlag, Spielgefühl offen): Ein Treffer, der taumeln lässt, schiebt das Ziel `knockback` 0,3 m
+- **Rückstoß** (Projektinhaber 2026-11-01 bestätigt): Ein Treffer, der taumeln lässt, schiebt das Ziel `knockback` 0,3 m
   in `knockback_seconds` 0,2 s entlang der Richtung Angreifer → Ziel, mit Kollision (Menschen und Held; Tiere ohne
-  Körper nicht). `knockback = 0` schaltet ihn ab.
+  Körper nicht). `knockback = 0` schaltet ihn ab. Ein parierter Angreifer wird ebenso `parry_knockback` 0,2 m
+  zurückgestoßen (Projektinhaber 2026-11-01: Rückstoß bestätigt, Parade-Rückstoß gewünscht, Wert Vorschlag).
 - Tests: `tests/gameplay/test_weapon_sweep.cpp` (Bogen, außerhalb, Wand, einmal je Schlag, Rückstoß, Werte),
   `tests/physics/test_physics.cpp` (Kapsel-Cast), `tests/runtime/test_engine_weapon_sweep.cpp` (echte Clips:
   Treffer vorn einmal je Schlag, keiner hinten, Tür blockt mit und ohne Sweep, Rückstoß).

@@ -307,6 +307,20 @@ std::vector<std::string> Config::keys(std::string_view table) const
     return result;
 }
 
+std::optional<Config> Config::child(std::string_view table, std::string_view name) const
+{
+    const toml::node* node = lookup(m_impl->table, table);
+    const auto* t = node ? node->as_table() : nullptr;
+    const toml::node* entry = t != nullptr ? t->get(name) : nullptr;
+    if (entry == nullptr || !entry->is_table())
+    {
+        return std::nullopt;
+    }
+    Config out;
+    out.m_impl->table = *entry->as_table();
+    return out;
+}
+
 void Config::merge(const Config& overrides)
 {
     mergeTables(m_impl->table, overrides.m_impl->table);

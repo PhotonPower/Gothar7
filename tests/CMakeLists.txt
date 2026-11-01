@@ -18,9 +18,13 @@ g7_add_test_suite(runtime NO_TEST)
 set(_g7_runtime_groups
     "scenarios|*_scenario.cpp"
     "npcs|*test_engine_scripts.cpp,*test_engine_monsters.cpp"
-    "fights|*test_engine_perception.cpp,*test_engine_dialog.cpp,*test_engine_combat.cpp,*test_engine_weapon_sweep.cpp"
+    "fights|*test_engine_perception.cpp,*test_engine_combat.cpp"
+    "dialog|*test_engine_dialog.cpp,*test_engine_weapon_sweep.cpp"
+    "magic|*test_engine_magic.cpp"
+    "npc_mobs|*test_engine_npc_mobs.cpp"
     "leonberg|*test_engine_leonberg.cpp"
-    "leonberg_residents|*test_engine_leonberg_residents.cpp")
+    "leonberg_residents|*test_engine_leonberg_residents.cpp"
+    "ui|*test_engine_ui.cpp")
 set(_g7_runtime_tests runtime)
 set(_g7_runtime_grouped "")
 foreach(_group IN LISTS _g7_runtime_groups)
@@ -87,18 +91,20 @@ set_target_properties(g7_tests_render_gpu PROPERTIES FOLDER "tests")
 set(_g7_gpu_engine_cases "*GPU:*,Test world*,Test scene*,Engine*")
 set(_g7_gpu_group_water "Player GPU: swims*,Player GPU: dives*,Player GPU: walks into the pond*")
 set(_g7_gpu_group_player "Player GPU*")
-set(_g7_gpu_group_creatures "Creatures GPU*,Autopilot GPU*")
+set(_g7_gpu_group_creatures "Creatures GPU*")
+set(_g7_gpu_group_autopilot "Autopilot GPU*")
 set(_g7_gpu_group_figures "Player figure GPU*,Scripts GPU*,Terrain GPU*,Start view GPU*")
 add_test(NAME render_gpu COMMAND g7_tests_render_gpu "--test-case-exclude=${_g7_gpu_engine_cases}")
 add_test(NAME render_gpu_water COMMAND g7_tests_render_gpu "--test-case=${_g7_gpu_group_water}")
 add_test(NAME render_gpu_player COMMAND g7_tests_render_gpu "--test-case=${_g7_gpu_group_player}"
          "--test-case-exclude=${_g7_gpu_group_water}")
 add_test(NAME render_gpu_creatures COMMAND g7_tests_render_gpu "--test-case=${_g7_gpu_group_creatures}")
+add_test(NAME render_gpu_autopilot COMMAND g7_tests_render_gpu "--test-case=${_g7_gpu_group_autopilot}")
 add_test(NAME render_gpu_figures COMMAND g7_tests_render_gpu "--test-case=${_g7_gpu_group_figures}")
 add_test(NAME render_gpu_engine COMMAND g7_tests_render_gpu "--test-case=${_g7_gpu_engine_cases}"
-         "--test-case-exclude=${_g7_gpu_group_player},${_g7_gpu_group_creatures},${_g7_gpu_group_figures}")
-set(_g7_gpu_tests render_gpu render_gpu_water render_gpu_player render_gpu_creatures render_gpu_figures
-    render_gpu_engine)
+         "--test-case-exclude=${_g7_gpu_group_player},${_g7_gpu_group_creatures},${_g7_gpu_group_autopilot},${_g7_gpu_group_figures}")
+set(_g7_gpu_tests render_gpu render_gpu_water render_gpu_player render_gpu_creatures render_gpu_autopilot
+    render_gpu_figures render_gpu_engine)
 set_tests_properties(${_g7_gpu_tests} PROPERTIES LABELS gpu)
 target_compile_definitions(g7_tests_render_gpu PRIVATE G7_SHADER_DIR="${PROJECT_SOURCE_DIR}/engine/render/shaders"
     G7_TESTSCENE="${PROJECT_SOURCE_DIR}/assets/source/testscene/scene.toml"

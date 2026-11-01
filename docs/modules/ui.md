@@ -174,6 +174,140 @@ class ScreenStack { push, pop, top, find(name), blocksGameInput(), pausesGame(),
   Fokus mit Tasten und Maus, Stapel), `tests/runtime/test_engine_ui.cpp` (Musterseite über SDL-Tasten; Esc schließt
   sie, bevor es pausiert).
 
+## Spiel-UI Teil C (umgesetzt, M14) – HUD, Meldungen, Untertitel, Dialog, Dokument, Auswahl, Dietrich
+`Hud.hpp` (HUD, `MessageQueue`, `SubtitleQueue`), `GameScreens.hpp` (`DialogScreen`, `DocumentScreen`,
+`ChoiceScreen`, `LockpickScreen`); Engine `runtime/EngineUi.cpp` (`buildHudModel`, `syncGameScreens`,
+`bindUiFunctions`).
+
+```cpp
+namespace g7::ui {
+struct BarValue { f32 value, max; f32 fraction() const; };
+struct HudModel { bool visible; BarValue health; std::optional<BarValue> mana;   // Mana nur mit Magie (F3)
+                  std::optional<Enemy> enemy; std::optional<f32> air; std::optional<Focus> focus; };
+class MessageQueue { void push(std::string text, f32 seconds = 3); void update(f32 dt); };      // F7
+class SubtitleQueue { void push(std::string speaker, std::string text, f32 seconds); void update(f32 dt); };
+f32 readingSeconds(std::string_view text);                     // Zeilen ohne Take: 1,5 s + 0,06 s je Zeichen, 2-10 s
+class Hud { void update(const HudModel&, const MessageQueue&, std::span<const SubtitleQueue::Line>, Rect, f32, const Layout*);
+            void draw(Canvas&, const UiResources&) const; };
+struct DialogView { bool menu; std::vector<std::string> options; usize selected; bool hidden; };
+class DialogScreen { struct Actions { view, skip, choose, select }; };          // blockiert, verbirgt das HUD
+class DocumentScreen { DocumentScreen(title, text, onClose); };                 // Bestätigen oder Zurück schließt
+class ChoiceScreen { struct Actions { view, choose, leave }; };                 // Amboss, Bett
+class LockpickScreen { struct Actions { view, turn(bool left), leave }; };      // links/rechts drehen
+}
+```
+- **HUD (F3):** Leben unten links, Mana unten rechts nur, wenn der Held Magie hat (Magiekreis ≥ 1 oder eine Rune
+  bzw. Spruchrolle auf einem Runenplatz), Gegnerleben oben mittig mit Namen darunter (der im Kampf erfasste Gegner,
+  K5), Luft über dem Lebensbalken beim Tauchen; keine Uhr, kein Kompass. Balken mit figurens Füllungen `bar_hp`,
+  `bar_mana`, `bar_enemy`, `bar_air` und dem Rand `bar`. Der Fokusname steht über dem Ziel (ersetzt
+  `DebugUi::focusLabel`), nicht bei offenem Inventar, im Dialog oder unter einem blockierenden Bildschirm.
+  Bildschirme mit `hidesHud` (der Dialog) blenden die Balken aus.
+- **Meldungen (F7):** oben mittig, je 3 s (die letzte halbe Sekunde verblassend), höchstens vier, die älteste oben.
+  Lua `screen_message(text, seconds?)`; die bisherigen Hinweise der Engine (`notice`: „Verschlossen.“, „Der Dietrich
+  ist abgebrochen.“ …) erscheinen ebenfalls hier. Ein Lade-Ruckler zählt höchstens 0,1 s.
+- **Untertitel (F6):** unten mittig auf dem Hintergrund `subtitle`, der Sprechername (Rolle `subtitle_name`) über dem
+  Text (Rolle `subtitle`, ohne Kontur mit dezentem Schatten – Rückmeldung des Koordinators zu Teil A). Quellen: die
+  gesprochene Dialogzeile (solange sie läuft; Überspringen nimmt sie sofort weg) und Zurufe von NPCs im Umkreis von
+  15 m (`npc_shout`, `npc_say`; Dauer = Take oder Lesezeit). Höchstens zwei Zeilen, die neueste unten; ein neuer
+  Satz desselben Sprechers ersetzt seinen alten. `[ui] subtitles = true` (Optionsmenü in Teil F).
+- **Dialog** (ersetzt `DialogPanel`, E3 wie Gothic 1): Während eine Zeile gesprochen wird, überspringt Bestätigen sie
+  (E4). Danach stehen die Antworten auf Pergament unten mittig (`dialog.box`, so hoch wie die Antworten, höchstens
+  sechs Zeilen sichtbar), Auswahl mit Hoch/Runter, Stick oder Maus, Bestätigen wählt. Esc verlässt kein Gespräch.
+  Beim Handeln ist der Dialog unsichtbar (Handel bis Teil D im ImGui-Fenster).
+- **Dokument:** Titel und Text auf Pergament (`document.*`), Bestätigen oder Zurück schließt. Zweiseitige Bücher und
+  Scrollen langer Texte folgen, wenn es solche Schriftstücke gibt.
+- **Auswahl an einem Mob** (Amboss, Bett): Liste der Möglichkeiten, darunter die Meldung (Schläge, Ergebnis), Zurück
+  hört auf. **Dietrich:** die Schritte der Kombination als Zellen (geschaffte hervorgehoben), Dietriche übrig, das
+  letzte Ergebnis; Links/Rechts drehen, Zurück hört auf.
+- **Engine:** `syncGameScreens()` öffnet und schließt die Bildschirme jeden Frame nach dem Zustand (Dialog, Dokument,
+  Mob-Phase); sie lesen ihre Daten über Rückrufe und handeln über die bestehenden Engine-Funktionen (`dialogSkip`,
+  `dialogChoose`, `chooseMobOption`, `mobCommand`). Ohne geladene Spiel-UI bleiben die ImGui-Fenster von M8–M10 als
+  Rückfallebene; Inventar, Truhe, Handel und Tagebuch bleiben bis Teil D/E ImGui.
+- **Stil, Layout, Texte:** neue Textrollen `subtitle_name`, `focus`, `dialog`, `document_title`, `document_hint`;
+  Farben `ink_highlight`, `air`; Kästen `hud.air`, `dialog.*`, `document.*`, `choice.*`, `lockpick.*`; Texte
+  `UI_DOCUMENT_CLOSE`, `UI_CHOICE_LEAVE`, `UI_LOCKPICK_PICKS`, `UI_LOCKPICK_HINT`, `UI_ANVIL_STRIKES` (DE/EN).
+  Die Canvas zeichnet Text auf Wunsch mit Schlagschatten (`shadow`, `shadow_color` je Textrolle).
+- **Tests:** `tests/ui/test_game_screens.cpp` (Meldungen, Untertitel, HUD-Lage und -Inhalt, Dialog, Dokument,
+  Auswahl, Dietrich mit Rückrufen), `tests/runtime/test_engine_ui.cpp` (`screen_message`; im Testlager Dietrich per
+  Pfeiltasten und Esc, Brief per Enter schließen, Dialog verbirgt das HUD und zeigt die Antworten).
+
+## Spiel-UI Teil D (umgesetzt, M14) – Inventar mit 3D-Zellen, Handel, Truhe, Plündern
+`ItemCell.hpp` (`InventoryViews`, `computeCell`), `ItemPreview.hpp` (`ItemPreviews`, Shader `item_preview.frag`),
+`ItemScreen.hpp` (`ItemScreen` für Inventar, Handel, Behälter); `render::Camera` mit Bildfenster; Engine
+`runtime/EngineUiItems.cpp`; `core::Config::child` (Tabellen mit Punkten im Namen).
+
+```cpp
+namespace g7::ui {
+class InventoryViews { static Result<InventoryViews> load(toml, source);            // inventory_views.toml v2
+                       InventoryView resolve(std::string_view mesh, std::string_view category) const; f32 fovDegrees(); };
+struct CellFrame { Mat3 rotation; Vec3 centre; f32 distance, fovDegrees; Vec2 window; f32 halfSize;
+                   Mat4 modelMatrix(f32 spinRadians = 0) const; };
+Result<CellFrame> computeCell(std::span<const Vec3> lod0Positions, const InventoryView&, f32 fovDegrees);
+class ItemPreviews { static Result<ItemPreviews> create(Device&, ShaderLibrary&, u32 tilePixels, u32 columns);
+                     void render(Device&, MeshRenderer&, u32 tile, const Mesh&, const MaterialSet&, const CellFrame&,
+                                 f32 spinRadians, const PreviewLight&);
+                     Rect uv(u32 tile) const; const rhi::Texture& texture() const; };
+enum class ItemScreenMode { Inventory, Trade, Container };
+class ItemScreen { struct Actions { view, use, drop, transfer(fromOther, entry, count), maxTransfer, close,
+                                    preview(item, large, spinning) }; };
+std::vector<ItemTab> itemTabs(const Layout&);                                       // layout.toml [inventory] tabs
+}
+```
+- **Vertrag `inventory_views.toml` v2:** engine hat zugestimmt und setzt ihn um. Die Zellen-Geometrie (Schritte 1–4)
+  rechnet `computeCell` aus den LOD-0-Vertices des geladenen Modells (einmal je Item, im Speicher); Tests vergleichen
+  mit Werten aus figurens `inventory.py`. Modelle ohne CPU-Daten (Platzhalter) nehmen die Ecken ihrer Bounding-Box.
+- **Bilder der Zellen (Render-to-Texture):** Ein Atlas mit 8 × 8 Kacheln zu 128 Pixeln für die Zellen und eine
+  Kachel zu 384 Pixeln für das große Bild im Infokasten. Jede Kachel wird in doppelter Größe in ein HDR-Ziel
+  gezeichnet (feste Studio-Beleuchtung aus `style.toml [item_preview]`, keine Schatten, kein Nebel, Kamera mit
+  Bildfenster `render::Camera::windowCenter/windowHalfSize`) und mit ACES und sRGB in die Kachel aufgelöst; Alpha =
+  Deckung, der Zellrahmen scheint durch. Eine Kachel wird einmal gezeichnet, das gewählte Item jeden Frame gedreht
+  (um die Bild-Y-Achse, eine Umdrehung in `spin_seconds`, Bildfenster der Startlage), danach wieder aufrecht.
+  Die Canvas zeichnet solche Bilder als Anzeigewerte (`Canvas::image(..., displayValues = true)`).
+- **Inventar (F4):** rechts eine Leder-Tafel (`leather`) mit Titel, Kategorie-Reitern wie Gothic 1 (`tab`,
+  `tab_active`; Reiter und Kategorien in `layout.toml [inventory] tabs`), Raster (Spalten, Zellgröße, Abstand in
+  `[inventory]`), Zellen `cell`, `cell_selected`, `cell_equipped` mit Stapelzahl, darunter der Infokasten (`tooltip`)
+  mit dem gewählten Item groß und drehend, Name, Schaden, Schutz, Voraussetzungen, Wert, Anzahl. Bestätigen benutzt
+  bzw. legt an oder ab, `ui_drop` (Entf, Nord) legt eines auf den Boden, Reiter-Tasten wechseln den Reiter (auch per
+  Klick). Die Welt läuft weiter (`pausesGame = false`), die Spielsteuerung ist gesperrt; die Inventar-Taste (Tab)
+  schließt es wieder. Das Inventar öffnet auf dem ersten Reiter mit Inhalt.
+- **Handel (F5):** links die Waren des Händlers, rechts die des Helden, Gulden beider Seiten unten, der Preis je Stück
+  im Infokasten. Bei Stapeln fragt eine Mengenwahl (Links/Rechts ±1, Reiter-Tasten ±10, Rad ±1, Bestätigen, Zurück
+  bricht ab) mit Gesamtpreis; das Höchste ist durch das Geld begrenzt.
+- **Truhe und Plündern:** links der Behälter bzw. der liegende NPC (Name, „tot“/„bewusstlos“), rechts der Held;
+  Bestätigen nimmt bzw. legt hinein, bei Stapeln mit Mengenwahl (bei Behältern vorgewählt: alles). Zurück verlässt
+  die Truhe (sie schließt sich) bzw. das Plündern.
+- **Engine:** `syncItemScreens()` öffnet die Bildschirme nach dem Zustand (`m_inventoryOpen`, offene Truhe, Plündern,
+  Handel) und handelt über die bestehenden Funktionen (`equip`, `useItem`, `dropItem`, `tradeBuy/Sell`,
+  `takeFromMob`, `putIntoMob`, `loot`). Die ImGui-Fenster Inventar und Handel bleiben nur als Rückfallebene ohne
+  Spiel-UI. Neue Lua-Funktionen für Konsole und Tests: `inventory_open(open?)`, `use_mob(vob)`.
+- **Vorschläge (rückbaubar, Projektinhaber abwesend):** Handel und Behälter haben zusätzlich einen ersten Reiter
+  „Alles“; das Inventar öffnet auf dem ersten Reiter mit Inhalt; die Mengenwahl beginnt beim Handel bei 1, bei
+  Behältern bei allem; Ablegen legt ein Stück ab (Taste `ui_drop` = Entf, Gamepad Nord); das HUD bleibt sichtbar.
+- **Tests:** `tests/ui/test_item_cell.cpp` (Geometrie gegen `inventory.py`, Drehen, `inventory_views.toml`),
+  `test_item_screen.cpp` (Reiter decken jede Kategorie einmal ab, Benutzen, Ablegen, Reiter, Mengenwahl, Behälter),
+  GPU `test_item_preview.cpp` (Deckung in der Kachel mittig und `fill`), `tests/runtime/test_engine_ui.cpp` (Inventar
+  per Tab schließen, Truhe per Enter ausräumen).
+
+## Spiel-UI Teil E (umgesetzt, M14) – Charakter, Tagebuch, Karte
+`JournalScreens.hpp` (`StatusScreen`, `DiaryScreen`, `MapScreen`, Widget `TextView`); Engine
+`runtime/EngineUiJournal.cpp`; Lua-Feld `map` an Items.
+
+- **Charakter** (Taste `status`, B): Name und Gilde, vier Blöcke – Allgemein (Stufe, Erfahrung / nächste Stufe,
+  Lernpunkte), Attribute (Leben, Mana, Stärke, Geschick), Talente (alle aus `kTalents`, „–“ = nicht gelernt), Schutz
+  (Klinge, Wucht, Pfeile, Feuer, Magie). Kästen `status.*`, Überschriften in der neuen Textrolle `heading`.
+- **Tagebuch** (Taste `log`, N; ersetzt `DiaryPanel`): Pergament mit dem Kapitel, Reitern Laufende Aufträge /
+  Erledigt / Gescheitert / Allgemeines (Reiter-Tasten oder Klick), links die Aufträge bzw. Themen, rechts ihre
+  Einträge als scrollender Text (`TextView`: Hoch/Runter, Rad). Daten aus `Story` wie bisher (`diaryPanelData`).
+- **Karte** (Taste `map`, M; F9): nur mit einem Karten-Item – ein Item der Kategorie `document` mit dem Feld
+  `map = "ui/maps/<name>.png"`; Benutzen oder M zeigt sein Bild auf Pergament, eingepasst, ohne Spielerposition.
+  Ohne Karte meldet M „Ich habe keine Karte.“. Das Stadtplan-Item für Leonberg liefert welt; bis dahin
+  `ui/maps/placeholder.png` (eigene Arbeit, nur für Tests und Konsole: `map_open(image, title?)`).
+- Die drei Tasten schließen ihren Bildschirm wieder, Zurück ebenso. Lua für Konsole und Tests: `status_open(open?)`,
+  `map_open(image, title?)`, `diary_open(open?)` (seit M10).
+- **Nacharbeit Teil D:** Reiter-Titel in der neuen Textrolle `tab` (16 statt 19): acht Reiter passen ungekürzt.
+- **Tests:** `tests/ui/test_journal_screens.cpp` (Charakter, Tagebuch-Abschnitte und -Einträge, Scrollen, Karte
+  eingepasst), `tests/runtime/test_engine_ui.cpp` (B, N, M öffnen und schließen; ohne Karten-Item eine Meldung).
+
 ## Plan M14 (freigegeben, 2026-11-01)
 Grundlage: ADR 0009 (angenommen: eigenes Retained-Mode-UI, RmlUi verworfen, ImGui nur Debug/Editor), ADR 0020
 (angenommen: MSDF-Atlas mit msdfgen im Cooker) und die Festlegungen des Projektinhabers vom 2026-10-31
@@ -560,7 +694,7 @@ fehlende Übersetzung → Schlüssel sichtbar + Warnung im Log. Zahlen-/Datumsfo
 ## Inventar-Ansichten (Vorschlag figuren, M14-Vorarbeit)
 Festgelegt vom Projektinhaber: Inventar wie Gothic, **jede Zelle zeigt das 3D-Modell**, zentriert auf seine
 Kontur, Standardansicht je Kategorie, keine PNG-Symbole. figuren liefert die Daten, engine baut die
-Darstellung. Status: **Vorschlag** – Vertrag figuren → engine, bis engine zustimmt (M14).
+Darstellung. Status: **vereinbart** (engine stimmt v2 zu, umgesetzt in M14 Teil D) – Vertrag figuren → engine.
 
 - **Datei:** `assets/source/data/inventory_views.toml` (gepflegt von figuren), Version 2:
   ```toml
