@@ -90,6 +90,8 @@ hero = "characters/figures/farmer.figure.toml"
 hero_graph = "data/anim/human.animgraph.toml"
 # Bewegungswerte der Spielfigur und Kamera
 movement = "data/movement.toml"
+# Automatisch speichern beim Weltwechsel und am Kapitelanfang (M15, S3; Optionen → Spiel).
+autosave = true
 # Neues Spiel (Hauptmenü, M14 Teil F): diese Welt an diesem Startpunkt, Name auf dem Ladebildschirm.
 world = "testworld/camp.g7world"
 start = "START_LAGER"

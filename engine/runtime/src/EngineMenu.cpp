@@ -127,8 +127,22 @@ void Engine::updateLoading(f64 realSeconds)
         // The loading screen is drawn at least once before the world loads synchronously.
         if (job.frames >= 2 || !m_gameUi)
         {
-            G7_LOG_INFO("engine", "loading {}{}", job.world, job.menu ? " (main menu)" : "");
-            requestWorldChange(job.world, job.start); // happens at the end of this frame
+            G7_LOG_INFO("engine", "loading {}{}", job.world,
+                        job.menu   ? " (main menu)"
+                        : job.save ? " (save)"
+                                   : "");
+            if (job.save)
+            {
+                if (auto applied = applyLoadedSave(*job.save); !applied)
+                {
+                    G7_LOG_ERROR("save", "{}", applied.error().message);
+                    notice(uiText("UI_LOAD_FAILED"));
+                }
+            }
+            else
+            {
+                requestWorldChange(job.world, job.start); // happens at the end of this frame
+            }
             job.requested = true;
             job.progress = 0.1f;
         }
@@ -169,11 +183,7 @@ void Engine::updateLoading(f64 realSeconds)
     }
     else
     {
-        if (m_menuMode)
-        {
-            m_leftWorlds.erase(toLower(m_config.settings.get<std::string>("menu.world", "")));
-        }
-        m_menuMode = false;
+        m_menuMode = false; // the menu world was not kept (performWorldChange skips it)
         m_musicForcedTheme.reset();
         m_musicForcedState.reset();
     }
@@ -187,16 +197,16 @@ void Engine::openMenu(bool inGame)
     if (inGame)
     {
         entries = {{"resume", "UI_MENU_RESUME", true},
-                   {"new_game", "UI_MENU_NEW_GAME", false}, // a second game needs save games (M15)
-                   {"load", "UI_MENU_LOAD", false},
-                   {"save", "UI_MENU_SAVE", false},
+                   {"new_game", "UI_MENU_NEW_GAME", false}, // a second game in one run: not yet
+                   {"load", "UI_MENU_LOAD", anySave()},
+                   {"save", "UI_MENU_SAVE", saveBlocker().empty()},
                    {"options", "UI_MENU_OPTIONS", true},
                    {"quit", "UI_MENU_QUIT", true}};
     }
     else
     {
         entries = {{"new_game", "UI_MENU_NEW_GAME", true},
-                   {"load", "UI_MENU_LOAD", false},
+                   {"load", "UI_MENU_LOAD", anySave()},
                    {"options", "UI_MENU_OPTIONS", true},
                    {"quit", "UI_MENU_QUIT", true}};
     }
@@ -214,6 +224,7 @@ void Engine::openPauseMenu()
 {
     if (m_gameUi && !m_menuMode && !m_loadJob && m_screens.find("menu") == nullptr)
     {
+        m_thumbnailRequested = m_device != nullptr; // S7: the scene as it was before the menu opened
         openMenu(true);
     }
 }
@@ -239,6 +250,14 @@ void Engine::runMenuCommand()
     else if (command == "options")
     {
         openOptions();
+    }
+    else if (command == "save" || command == "load")
+    {
+        openSaveScreen(command == "save");
+    }
+    else if (command.starts_with("save_to:") || command.starts_with("load_from:"))
+    {
+        runSaveCommand(command);
     }
     else if (command == "quit")
     {
@@ -328,7 +347,8 @@ std::vector<ui::OptionPage> Engine::optionPages() const
                 {choice("ui.language", "UI_OPT_LANGUAGE",
                         {{std::string("de"), UiText::literal("Deutsch")},
                          {std::string("en"), UiText::literal("English")}}),
-                 toggle("ui.subtitles", "UI_OPT_SUBTITLES"), choice("ui.scale", "UI_OPT_UI_SCALE", scales)}};
+                 toggle("ui.subtitles", "UI_OPT_SUBTITLES"), toggle("game.autosave", "UI_OPT_AUTOSAVE"),
+                 choice("ui.scale", "UI_OPT_UI_SCALE", scales)}};
     return pages;
 }
 

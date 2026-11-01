@@ -338,6 +338,31 @@ anchor = "bottom"
 offset = [0, -28]
 size = [-80, 64]
 
+# Save and load (M15 part D): the slots on the left, the selected one's thumbnail on the right, a line below.
+[save.box]
+anchor = "center"
+size = [1400, 800]
+
+[save.title]
+anchor = "top"
+offset = [0, 30]
+size = [-80, 56]
+
+[save.list]
+anchor = "top_left"
+offset = [50, 110]
+size = [820, 600]
+
+[save.thumbnail]
+anchor = "top_right"
+offset = [-50, 110]
+size = [440, 248]
+
+[save.message]
+anchor = "bottom"
+offset = [0, -28]
+size = [-80, 64]
+
 # Loading screen (part F): the whole screen, the world's name and the progress in the middle.
 [loading.background]
 anchor = "center"

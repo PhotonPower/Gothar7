@@ -318,7 +318,9 @@ Plan (Teile A–E, Vorschlag 2026-11-01, wartet auf Freigabe): `docs/modules/sav
     Lager und Leonberg), benannte Lua-Timer, `world_loaded(world, restored)`
 - [x] Binärformat mit Versionsnummer + Migrationspfad, Metadaten (Screenshot, Spielzeit, Ort)
   - Teil A: `.g7save` nach ADR 0021 (angenommen): Chunks META/THMB/GLOB/WRLD, zstd, Versionen je Chunk
-- [ ] Speicherplätze, Quicksave/Quickload, Speichern beim Weltwechsel (Zustand jeder besuchten Welt)
+- [x] Speicherplätze, Quicksave/Quickload, Speichern beim Weltwechsel (Zustand jeder besuchten Welt)
+  - Teil D: 15 Plätze + Schnellspeicher (F5/F9) + Autosave (Weltwechsel, Kapitel), Menüs Laden/Speichern mit
+    Vorschaubild, Vorschlagswerte S1–S8
   - Teil C: Zustand jeder besuchten Welt im Speicher (Items, Mobs, NPCs bleiben über Weltwechsel) und im Spielzustand;
     Speicherplätze, F5/F9 und Datei folgen mit Teil A/D
 - [x] Robustheit: atomisches Schreiben (temp + rename), Prüfsumme

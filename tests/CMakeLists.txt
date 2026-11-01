@@ -25,7 +25,7 @@ set(_g7_runtime_groups
     "leonberg|*test_engine_leonberg.cpp"
     "leonberg_residents|*test_engine_leonberg_residents.cpp"
     "leonberg_save|*test_engine_leonberg_save.cpp"
-    "ui|*test_engine_ui.cpp"
+    "ui|*test_engine_ui.cpp,*test_engine_save_slots.cpp"
     "slice|*test_engine_vertical_slice.cpp")
 set(_g7_runtime_tests runtime)
 set(_g7_runtime_grouped "")

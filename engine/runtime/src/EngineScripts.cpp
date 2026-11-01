@@ -110,6 +110,7 @@ Result<void> Engine::initScripts()
     bindDiaryFunctions();
     bindUiFunctions();
     bindSaveFunctions();
+    bindSaveSlotFunctions();
     bindJournalFunctions();
     bindMagicFunctions();
     bindFxFunctions();

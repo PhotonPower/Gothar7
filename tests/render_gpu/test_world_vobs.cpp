@@ -3,7 +3,9 @@
 
 #include "GlFixture.hpp"
 
+#include <g7/asset/ImageData.hpp>
 #include <g7/runtime/Engine.hpp>
+#include <g7/save/SaveFile.hpp>
 #include <g7/world/Components.hpp>
 
 #include <chrono>
@@ -213,4 +215,33 @@ TEST_CASE("World vobs GPU: an invalid start time is an error")
     auto result = engine.init();
     REQUIRE_FALSE(result.ok());
     CHECK(result.error().message == "invalid start time '25:00' (expected HH:MM)");
+}
+
+TEST_CASE("World vobs GPU: a quick save takes the scene as its thumbnail (M15 part D)")
+{
+    const std::filesystem::path saves = std::filesystem::temp_directory_path() / "g7_gpu_thumbnail_saves";
+    std::filesystem::remove_all(saves);
+    EngineConfig config = worldConfig("START_LAGER");
+    config.player = true;
+    config.saveDirectory = saves;
+    Engine engine(std::move(config));
+    REQUIRE(engine.init().ok());
+    for (int i = 0; i < 60 && !engine.saveBlocker().empty(); ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    REQUIRE(engine.runConsoleLine("save_game('slot_02')").ok());
+    std::vector<u8> thumbnail;
+    auto meta = save::readSaveMeta(saves / "slot_02.g7save", &thumbnail);
+    REQUIRE(meta.ok());
+    CHECK(meta.value().world == "testworld/camp.g7world");
+    // save_game writes at once with the thumbnail taken last; F5 takes a fresh one with the next frame.
+    REQUIRE(engine.runConsoleLine("menu_open()").ok());
+    REQUIRE(engine.runFrame()); // the pause menu takes the scene before it is drawn over it
+    REQUIRE_FALSE(engine.thumbnailPng().empty());
+    auto image = asset::decodeImage(engine.thumbnailPng(), "thumbnail");
+    REQUIRE(image.ok());
+    CHECK(image.value().width == 320);
+    CHECK(image.value().height == 180);
+    std::filesystem::remove_all(saves);
 }

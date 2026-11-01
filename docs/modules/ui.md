@@ -382,6 +382,12 @@ std::vector<ItemTab> itemTabs(const Layout&);                                   
   `tests/core/test_config.cpp` (erase/sameValue/copyValue), `tests/runtime/test_engine_ui.cpp` (Hauptmenü mit dem
   Lager als Menü-Welt, Optionen ändern und speichern, Neues Spiel, Pausenmenü hält die Simulation an).
 
+## Speichern und Laden (M15 Teil D) – `SaveScreens.hpp`
+`SaveScreen(Mode::Save | Mode::Load, Actions{view, select, question, choose, close})`: Plätze als Liste (Name,
+rechts Datum), ausgegraute Zeilen nicht wählbar, das Vorschaubild des gewählten Platzes rechts, eine Rückfrage vor
+dem Übernehmen (Aktion: ja, Zurück: nein), Zurück verlässt. Kästen `save.*` in `layout.toml`. Einzelheiten:
+`docs/modules/save.md` „Teil D“.
+
 ## Spiel-UI Teil E (umgesetzt, M14) – Charakter, Tagebuch, Karte
 `JournalScreens.hpp` (`StatusScreen`, `DiaryScreen`, `MapScreen`, Widget `TextView`); Engine
 `runtime/EngineUiJournal.cpp`; Lua-Feld `map` an Items.

@@ -49,6 +49,7 @@
 #include <g7/runtime/SceneFile.hpp>
 #include <g7/runtime/StartView.hpp>
 #include <g7/save/GameState.hpp>
+#include <g7/save/SaveFile.hpp>
 #include <g7/script/ScriptVm.hpp>
 #include <g7/ui/Canvas.hpp>
 #include <g7/ui/DebugUi.hpp>
@@ -222,6 +223,8 @@ struct EngineConfig
     i32 forcedLod = -1;
     /// The game UI's sample page over the scene (--ui-sample, M14 part A): every text role, frame and bar.
     bool uiSample = false;
+    /// Where the save slots are (M15 part D); empty: the user directory's "saves".
+    fs::Path saveDirectory;
     /// Saves the last rendered frame as PNG (--screenshot=<file>), e.g. with --frames or --benchmark.
     fs::Path screenshot;
     platform::WindowDesc window; ///< Used unless headless.
@@ -426,6 +429,18 @@ public:
     [[nodiscard]] bool loading() const noexcept { return m_loadJob.has_value(); }
     /// The pause menu (Esc in the game); nothing in the main menu or while loading.
     void openPauseMenu();
+
+    // Save slots (M15 part D, EngineSaveSlots.cpp)
+    /// Saves into a slot ("slot_01" .. "slot_15", "quick", "auto"); errors: not now (S1), writing failed. The
+    /// player gets a notice either way.
+    Result<void> saveGame(std::string_view slot);
+    /// Loads a slot behind the loading screen (applied in the next frames). Errors: no such save, damaged.
+    Result<void> loadGame(std::string_view slot);
+    /// Why saving is not possible now (a UI text key), empty: it is (S1).
+    [[nodiscard]] std::string saveBlocker() const;
+    [[nodiscard]] fs::Path saveDirectory() const;
+    [[nodiscard]] f64 playSeconds() const noexcept { return m_playSeconds; }
+    [[nodiscard]] const std::vector<u8>& thumbnailPng() const noexcept { return m_thumbnailPng; }
     /// Loads [game] world at [game] start with the player, behind the loading screen.
     void startNewGame();
     void setDebugUiVisible(bool visible) noexcept;
@@ -1325,6 +1340,22 @@ private:
     void updateMenuFlight(f64 realSeconds);
     void openMenu(bool inGame);
     void runMenuCommand();
+    void bindSaveSlotFunctions();
+    [[nodiscard]] save::SaveMeta saveMeta(std::string_view slot) const;
+    [[nodiscard]] u64 contentStamp() const;
+    void requestSave(std::string slot);
+    void finishPendingSave();
+    void captureThumbnail(u32 width, u32 height);
+    [[nodiscard]] Result<void> applyLoadedSave(const save::SaveFile& file);
+    [[nodiscard]] bool anySave() const;
+    [[nodiscard]] const std::vector<save::SlotInfo>& saveSlots() const;
+    void openSaveScreen(bool saving);
+    [[nodiscard]] const save::SlotInfo* slotOfRow(usize row, bool saving) const;
+    void showSlotThumbnail(usize row, bool saving);
+    void runSaveCommand(const std::string& command);
+    void autosave();
+    void updatePlayTime(f64 realSeconds);
+    void saveKeys();
     void openOptions();
     [[nodiscard]] std::vector<ui::OptionPage> optionPages() const;
     [[nodiscard]] ui::OptionValue optionValue(const ui::OptionDef& option) const;
@@ -1395,8 +1426,20 @@ private:
         usize pending = 0; ///< asset loads open right after the world was loaded
         f64 seconds = 0.0;
         f32 progress = 0.0f;
+        std::shared_ptr<save::SaveFile> save; ///< loading a save game (M15 part D) instead of a world
     };
     std::optional<LoadJob> m_loadJob;
+    f64 m_playSeconds = 0.0;          ///< real time played (save meta data)
+    f64 m_lastSavedPlaySeconds = 0.0; ///< m_playSeconds at the last save or load (S5)
+    std::vector<u8> m_thumbnailPng;   ///< the last scene captured for a save (PNG 320x180)
+    bool m_thumbnailRequested = false;
+    std::optional<std::string> m_pendingSave; ///< written after the next frame's thumbnail
+    f64 m_autosaveWait = 0.0;                 ///< > 0: an autosave waits for a moment it is allowed in
+    mutable std::vector<save::SlotInfo> m_slots;
+    mutable bool m_slotsDirty = true;
+    std::optional<render::rhi::Texture> m_slotThumbnail; ///< of the slot selected in the save screen
+    std::string m_slotThumbnailOf;
+    std::string m_saveScreenMessage;
     bool m_menuMode = false;
     std::map<std::string, std::shared_ptr<const world::WorldFile>> m_worldBases; ///< by lower-case path
     bool m_restoringWorld = false; ///< loadWorld from a game state: world_loaded(world, true)

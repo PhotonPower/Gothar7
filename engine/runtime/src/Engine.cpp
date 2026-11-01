@@ -345,6 +345,10 @@ bool Engine::runFrame()
         const bool gameUiBlocks = m_screens.blocksGameInput();
         updateGameUi(realSeconds, !debugMouse, !debugKeyboard);
         updateMenu(realSeconds); // menu choices, the loading screen (M14 part F)
+        if (!debugKeyboard)
+        {
+            saveKeys(); // F5/F9 (M15 part D), also over a screen: a dialogue says why not
+        }
         const bool uiMouse = debugMouse || gameUiBlocks;
         const bool uiKeyboard = debugKeyboard || gameUiBlocks;
         if (m_config.benchmark)
@@ -532,6 +536,8 @@ bool Engine::runFrame()
         m_debugDraw.advance(static_cast<f32>(m_frameSeconds));
     }
 
+    finishPendingSave(); // after the frame that took its thumbnail
+    updatePlayTime(m_frameSeconds);
     ++m_frameCount;
     if (m_config.maxFrames != 0 && m_frameCount >= m_config.maxFrames)
     {
@@ -1439,6 +1445,10 @@ void Engine::performWorldChange()
     }
     m_leftWorlds.erase(key); // the current world is not a left one
     releaseUnusedModels();
+    if (!m_menuMode && !m_loadJob)
+    {
+        autosave(); // S3: after a level change
+    }
 }
 
 void Engine::releaseUnusedModels()
@@ -1681,6 +1691,7 @@ void Engine::renderScene(u32 width, u32 height)
         drawNotice(height);  // fly mode hint, "position copied" ...
         m_debugRenderer.render(*m_device, m_debugDraw, m_camera, &m_sceneTarget.depth(), width, height);
     }
+    captureThumbnail(width, height); // for a save game: the scene without the UI (M15 part D)
     // The game UI over the scene, ImGui last, on top of everything.
     drawGameUi(width, height);
     if (m_debugUiFrame)
