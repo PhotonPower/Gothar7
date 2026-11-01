@@ -129,3 +129,18 @@ def test_fists_reach_animals(paths):
         if mode == "fist" and _animal_points(paths[mode][name], m) >= 5
     }
     assert "fist/t_attack_combo2" in low
+
+
+SIDE_REACH = {"1h": 1.5, "2h": 1.8}  # m from the body centre: the AI fights at 1.9 / 2.3 m
+
+
+@pytest.mark.parametrize("mode", ["1h", "2h"])
+def test_side_swings_reach_the_fighting_distance(paths, mode):
+    """The side swings lunge (root forward) so that the tip reaches the opponent at the combat
+    AI's distance (engine2 2026-11-01, centre to centre 1.9 m with 1h, 2.3 m with 2h, minus
+    body and blade radius)."""
+    for clip in ("t_attack_l", "t_attack_r"):
+        name = f"{mode}/{clip}"
+        markers = dict(next(c for c in load_set_spec(mode).clips if c.name == name).markers)
+        tips = paths[mode][name].tips[markers["hit_start"] : markers["hit_end"] + 1, 0]
+        assert tips[:, 2].max() >= SIDE_REACH[mode], name

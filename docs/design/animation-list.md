@@ -147,7 +147,8 @@ Trefferfenster für den Waffen-Sweep (2026-11-01, gameplay.md „Trefferprüfung
 ab 0,5 m vorn). Werkzeug `gothar_chargen.hitreach`, Prüfung `tests/test_hit_windows.py`. Die Richtungshiebe
 `t_attack_l`/`_r` (1h, 2h) schwingen die Klinge mit gedrehter Hand (`hand_r` je Schlüsselpose, 2026-11-01) schräg
 abwärts quer vor dem Körper: `_l` von rechts nach links, `_r` von links nach rechts, die Spitze von etwa 1,5 m bis
-unter 1 m. Damit Tiere (Kapseln bis 1,0 m) getroffen werden, zieht Kombo 1 (1h, 2h; Hilfsclip `t_combo1_low`) den Hieb
+unter 1 m, mit Ausfallschritt (`root` 0,6 m bzw. 0,7 m vor): Spitze im Fenster mindestens 1,5 m (1h) bzw. 1,8 m (2h)
+vor der Körpermitte, passend zum Kampfabstand der KI. Damit Tiere (Kapseln bis 1,0 m) getroffen werden, zieht Kombo 1 (1h, 2h; Hilfsclip `t_combo1_low`) den Hieb
 von oben bis Hüfthöhe durch, ebenso der 2h-Schlag von oben (Kombo 3). Jeder Waffenschlag erreicht im Fenster den Bereich
 vor dem Körper in 0,5–1,0 m Höhe (Test); bei den Fäusten der tiefe
 Körperhaken (Kombo 2, Hilfsclip `fist/t_cross_low`, vorgebeugt, Faust 0,7 m vorn auf 0,9 m Höhe).

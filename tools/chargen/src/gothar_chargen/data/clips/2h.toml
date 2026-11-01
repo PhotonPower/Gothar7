@@ -164,12 +164,13 @@ base = "none/s_idle"
 keys = [[0, "rest"], [10, "wind"], [16, "cut"], [21, "through"], [38, "rest"]]
 [clip.params.poses.wind]
 rotate = { upperarm_r = [["X", -80], ["Z", -75]], lowerarm_r = [["X", -40]], spine_02 = [["Z", -35]], spine_01 = [["Z", -15]], hand_r = [["X", 115], ["Y", 37], ["Z", 91]] }
+move = { root = [0, -0.12, 0] }  # lunge (reach of the AI's fighting distance)
 [clip.params.poses.cut]
 rotate = { upperarm_r = [["X", -85], ["Z", 5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 5]], spine_01 = [["Z", 2]], hand_r = [["X", 143], ["Y", -11], ["Z", 59]] }
-move = { pelvis = [0, -0.06, -0.03] }
+move = { pelvis = [0, -0.06, -0.03], root = [0, -0.7, 0] }
 [clip.params.poses.through]
 rotate = { upperarm_r = [["X", -70], ["Z", 70]], lowerarm_r = [["X", -40]], spine_02 = [["Z", 35]], spine_01 = [["Z", 15]], hand_r = [["X", 157], ["Y", -46], ["Z", 63]] }
-move = { pelvis = [0, -0.05, -0.03] }
+move = { pelvis = [0, -0.05, -0.03], root = [0, -0.7, 0] }
 
 [[clip]]
 name = "2h/t_swing_r"
@@ -180,12 +181,13 @@ base = "none/s_idle"
 keys = [[0, "rest"], [10, "wind"], [16, "cut"], [21, "through"], [38, "rest"]]
 [clip.params.poses.wind]
 rotate = { upperarm_r = [["X", -75], ["Z", 65]], lowerarm_r = [["X", -70]], spine_02 = [["Z", 35]], spine_01 = [["Z", 15]], hand_r = [["X", 75], ["Y", 29], ["Z", -65]] }
+move = { root = [0, -0.12, 0] }  # lunge (reach of the AI's fighting distance)
 [clip.params.poses.cut]
 rotate = { upperarm_r = [["X", -85], ["Z", -5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", -5]], spine_01 = [["Z", -2]], hand_r = [["X", 34], ["Y", 29], ["Z", -144]] }
-move = { pelvis = [0, -0.06, -0.03] }
+move = { pelvis = [0, -0.06, -0.03], root = [0, -0.7, 0] }
 [clip.params.poses.through]
 rotate = { upperarm_r = [["X", -70], ["Z", -70]], lowerarm_r = [["X", -15]], spine_02 = [["Z", -35]], spine_01 = [["Z", -15]], hand_r = [["X", 58], ["Y", 29], ["Z", -126]] }
-move = { pelvis = [0, -0.05, -0.03] }
+move = { pelvis = [0, -0.05, -0.03], root = [0, -0.7, 0] }
 
 [[clip]]
 name = "2h/t_t_chop_grip"
