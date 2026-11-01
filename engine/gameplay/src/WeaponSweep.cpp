@@ -83,14 +83,36 @@ f32 segmentDistance(const Vec3& p0, const Vec3& p1, const Vec3& q0, const Vec3& 
     return glm::length((p0 + d1 * s) - (q0 + d2 * t));
 }
 
+SweepTarget uprightTarget(u32 id, const Vec3& feet, f32 height, f32 radius) noexcept
+{
+    // The capsule spans feet .. feet + height: its axis is shorter by the radius at both ends.
+    const f32 bottom = std::min(radius, height * 0.5f);
+    const f32 top = std::max(height - radius, bottom);
+    return {id, feet + Vec3(0.0f, bottom, 0.0f), feet + Vec3(0.0f, top, 0.0f), radius};
+}
+
+SweepTarget bodyTarget(u32 id, const BodyShape& shape, const Vec3& feet, const Vec3& forward) noexcept
+{
+    const Vec3 ahead = glm::length(Vec2(forward.x, forward.z)) > 1e-6f
+                           ? glm::normalize(Vec3(forward.x, 0.0f, forward.z))
+                           : Vec3(0.0f, 0.0f, -1.0f);
+    const Vec3 right(-ahead.z, 0.0f, ahead.x);
+    const Vec3 middle =
+        feet + right * shape.offset.x + Vec3(0.0f, shape.offset.y, 0.0f) + ahead * shape.offset.z;
+    const Vec3 axis = shape.lying ? ahead : Vec3(0.0f, 1.0f, 0.0f);
+    const f32 half = std::max(shape.length * 0.5f - shape.radius, 0.0f);
+    return {id, middle - axis * half, middle + axis * half, shape.radius};
+}
+
+f32 groundDistanceToAxis(const Vec3& point, const SweepTarget& target) noexcept
+{
+    const Vec3 p(point.x, 0.0f, point.z);
+    return segmentDistance(p, p, Vec3(target.a.x, 0.0f, target.a.z), Vec3(target.b.x, 0.0f, target.b.z));
+}
+
 bool bladeTouches(const Blade& blade, f32 radius, const SweepTarget& target) noexcept
 {
-    // The body capsule spans feet .. feet + height: its axis is shorter by the radius at both ends.
-    const f32 bottom = std::min(target.radius, target.height * 0.5f);
-    const f32 top = std::max(target.height - target.radius, bottom);
-    const Vec3 q0 = target.feet + Vec3(0.0f, bottom, 0.0f);
-    const Vec3 q1 = target.feet + Vec3(0.0f, top, 0.0f);
-    return segmentDistance(blade.grip, blade.tip, q0, q1) <= radius + target.radius;
+    return segmentDistance(blade.grip, blade.tip, target.a, target.b) <= radius + target.radius;
 }
 
 SweepResult sweepBlade(const Blade& from, const Blade& to, f32 radius, std::span<const SweepTarget> targets,

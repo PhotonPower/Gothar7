@@ -22,14 +22,33 @@ struct Blade
     Vec3 tip{0.0f};
 };
 
-/// A body a blow can hit: an upright capsule from the feet up to `height`.
+/// A body a blow can hit: a capsule around the segment [a, b] (world space).
 struct SweepTarget
 {
     u32 id = 0;
-    Vec3 feet{0.0f};
-    f32 height = 1.8f;
+    Vec3 a{0.0f};
+    Vec3 b{0.0f, 1.8f, 0.0f};
     f32 radius = 0.35f;
 };
+
+/// The shape of a body as a capsule (data, e.g. Creatures.<species>.body): `length` end to end, `offset` of
+/// its middle from the feet in model space (x right, y up, z ahead), lying along the body or standing
+/// upright.
+struct BodyShape
+{
+    f32 radius = 0.35f;
+    f32 length = 1.8f;
+    Vec3 offset{0.0f, 0.9f, 0.0f};
+    bool lying = false;
+};
+
+/// A person: upright from the feet up to `height`.
+[[nodiscard]] SweepTarget uprightTarget(u32 id, const Vec3& feet, f32 height, f32 radius) noexcept;
+/// A body of `shape` standing at `feet`, looking along `forward` (horizontal unit vector).
+[[nodiscard]] SweepTarget bodyTarget(u32 id, const BodyShape& shape, const Vec3& feet,
+                                     const Vec3& forward) noexcept;
+/// Distance on the ground from `point` to the nearest point of the body's axis (0 inside its extent).
+[[nodiscard]] f32 groundDistanceToAxis(const Vec3& point, const SweepTarget& target) noexcept;
 
 /// Where the blade capsule (`radius`) at pose `from`, moved by `motion`, first meets something that stops a
 /// swing: the share of `motion` in [0, 1] (0: it is in it already), nullopt when the way is free.
