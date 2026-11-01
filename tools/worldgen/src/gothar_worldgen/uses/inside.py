@@ -674,7 +674,9 @@ class _House:
         reach = PROP_SIZE[kind][1] / 2 + SLOT.get(kind, 0.6)
 
         def worked_at(_s: Polygon, c: Pt, n: Pt) -> bool:  # its work place reached from the door
-            return room.reachable((c[0] + n[0] * reach, c[1] + n[1] * reach))
+            at = (c[0] + n[0] * reach, c[1] + n[1] * reach)  # in a straight line, not round a
+            lane = LineString([room.entry, at]).buffer(REACH_R_M - 0.1)  # corner or the stairs
+            return room.reachable(at) and room.poly.contains(lane)
 
         spot = _against_wall(room, kind, accept=worked_at if kind in WORK_AT else None)
         if spot is None:
@@ -1027,8 +1029,9 @@ class _House:
                 hit += [g for g in pieces if g.intersects(line.buffer(0.35))]
             if not hit:
                 continue
-            corners = _detour(room.entry, at, unary_union([*hit, room.steps]), room.poly,
-                              sample=True, clear_m=FP_CLEAR_M)  # fmt: skip
+            things = [*hit, room.steps, *room.taken, *room.props]  # the furniture too (bodies)
+            corners = _detour(room.entry, at, unary_union(things), room.poly, sample=True,
+                              clear_m=FP_CLEAR_M)  # fmt: skip
             kind = place["name"][3:].split("_LEO_")[0]
             prev = f"WP_{self.tag}"
             for k, c in enumerate(corners, start=1):
@@ -1155,7 +1158,8 @@ def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
     if not LineString([a, b]).intersects(near):
         return []
     inside = room.buffer(-0.3)
-    ring = obstacle.buffer(DETOUR_CORNER_M, join_style="mitre").exterior.coords[:-1]
+    grown = obstacle.buffer(DETOUR_CORNER_M, join_style="mitre")
+    ring = [q for g in getattr(grown, "geoms", [grown]) for q in g.exterior.coords[:-1]]
     corners = [(x, z) for x, z in ring if inside.contains(Point(x, z))]
 
     # legs at the ends may pass close; an end on the obstacle's edge (the head of the stairs) is
@@ -1170,10 +1174,12 @@ def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
 
     best = _shortest(a, b, corners, clear)
     if best is None and sample:  # a corner beyond a wall (a head at the wall): along the sides
-        rim = obstacle.buffer(max(clear_m + 0.1, DETOUR_START_M + 0.3) if clear_m < DETOUR_CLEAR_M
-                              else DETOUR_CORNER_M, join_style="mitre").exterior  # fmt: skip
-        n = max(4, int(rim.length / DETOUR_SAMPLE_M))
-        along = [rim.interpolate(k * rim.length / n) for k in range(n)]
+        out = obstacle.buffer(max(clear_m + 0.1, DETOUR_START_M + 0.3) if clear_m < DETOUR_CLEAR_M
+                              else DETOUR_CORNER_M, join_style="mitre")  # fmt: skip
+        along = []
+        for rim in (g.exterior for g in getattr(out, "geoms", [out])):
+            n = max(4, int(rim.length / DETOUR_SAMPLE_M))
+            along += [rim.interpolate(k * rim.length / n) for k in range(n)]
         more = [(q.x, q.y) for q in along if inside.contains(q)]
         best = _shortest(a, b, corners + [q for q in more if q not in corners], clear)
     return [] if best is None else best
