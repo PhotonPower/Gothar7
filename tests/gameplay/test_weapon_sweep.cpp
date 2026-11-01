@@ -176,8 +176,12 @@ TEST_CASE("Combat settings: the sweep's values from data/combat.lua, wrong ones 
     CHECK(s.value().weaponRadius == doctest::Approx(0.1f));
     CHECK(s.value().knockback == doctest::Approx(0.5f));
     CHECK(s.value().fistLength == doctest::Approx(0.12f)); // default kept
-    CHECK_FALSE(CombatSettings{}.weaponSweep);
+    CHECK(CombatSettings{}.weaponSweep);
+    CHECK(CombatSettings{}.fistSweep);
 
+    t.fields["fist_sweep"] = script::Value(false);
+    REQUIRE(CombatSettings::fromTable(t).ok());
+    CHECK_FALSE(CombatSettings::fromTable(t).value().fistSweep);
     t.fields["weapon_sweep"] = script::Value(1.0);
     CHECK_FALSE(CombatSettings::fromTable(t).ok());
     t.fields["weapon_sweep"] = script::Value(false);

@@ -43,7 +43,8 @@ struct CombatSettings
     f32 hitAngleDegrees = 50.0f; ///< half-angle of the swing in front of the attacker
     // Weapon sweep (WeaponSweep.hpp): the blade along the clip; reach and angle above stay for animals, moves
     // without a clip and with the sweep off.
-    bool weaponSweep = false; ///< off until the clips' hit windows meet the blade's way (gameplay.md)
+    bool weaponSweep = true;  ///< the blade along the clip (off: reach and angle for everyone)
+    bool fistSweep = true;    ///< the fists too (off: fists by reach and angle)
     f32 weaponRadius = 0.08f; ///< m, the blade's capsule
     f32 blade1h = 0.9f;       ///< m from the grip, for a weapon without a model (else the model's +Y extent)
     f32 blade2h = 1.3f;

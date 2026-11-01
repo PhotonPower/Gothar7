@@ -113,13 +113,17 @@ Result<CombatSettings> CombatSettings::fromTable(const script::Table& t)
             *target = std::string(it->second.asString());
         }
     }
-    if (const auto it = t.fields.find("weapon_sweep"); it != t.fields.end())
+    for (const auto& [key, target] :
+         {std::pair{"weapon_sweep", &s.weaponSweep}, std::pair{"fist_sweep", &s.fistSweep}})
     {
-        if (!it->second.isBool())
+        if (const auto it = t.fields.find(key); it != t.fields.end())
         {
-            return Error{"Combat.weapon_sweep: must be true or false"};
+            if (!it->second.isBool())
+            {
+                return Error{std::format("Combat.{}: must be true or false", key)};
+            }
+            *target = it->second.asBool();
         }
-        s.weaponSweep = it->second.asBool();
     }
     return s;
 }
