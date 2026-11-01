@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 36371,
+ "nextVobId": 36372,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -36372,6 +36372,7 @@
   "use:MOB_LEO_PFARRHAUS_ZIU_INNEN_BED_1": 36367,
   "outdoor:grass:DEBW_00100061ZiU:2:1": 36368,
   "outdoor:grass:DEBW_00100061ZiU:2:3": 36369,
-  "outdoor:grass:DEBW_00100061ZiU:33:3": 36370
+  "outdoor:grass:DEBW_00100061ZiU:33:3": 36370,
+  "start:START_LEO_UNTERES_TOR": 36371
  }
 }
