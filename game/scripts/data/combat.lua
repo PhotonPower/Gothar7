@@ -10,7 +10,7 @@ Combat = {
     knockout_seconds = 30,         -- K7: bewusstlos, dann steht er auf
     stagger_seconds = 0.5,         -- Taumeln nach einem Treffer (ohne Clip)
     stagger_share = 0.15,          -- nur ein Treffer ab diesem Anteil des Lebens lässt taumeln (Starke schütteln ab)
-    fist_reach = 0.9,              -- Reichweite in m ab der Körpervorderseite
+    fist_reach = 0.5,              -- Reichweite in m ab der Körpervorderseite (an die Faust angeglichen, M11)
     reach_1h = 1.2,                -- an die Klinge angeglichen (M11): Kombo 3, der kürzeste Schlag, reicht 1,9 m Mitte zu Mitte
     reach_2h = 1.6,                -- ebenso (Kombo 1 reicht 2,4 m); die Kampf-KI geht so nah heran (npc_reach)
     animal_reach = 1.3,            -- Biss bzw. Hauer: das Tier springt vor
@@ -31,7 +31,7 @@ Combat.crossbow_ammo = "it_bolt"
 -- berührt, ist getroffen, eine Wand hält sie auf. Die Klingenlänge kommt aus dem Item-Modell (+Y ab dem Griff),
 -- ohne Modell aus blade_1h/blade_2h. Tiere (Biss) und Züge ohne Clip treffen nach Reichweite und Winkel oben.
 Combat.weapon_sweep = true   -- Klinge entlang des Clips (true) oder Reichweite und Winkel für alle (false)
-Combat.fist_sweep = false    -- Fäuste ebenso; aus, bis figurens Fausthiebe Tierhöhe erreichen (dann true)
+Combat.fist_sweep = true     -- Fäuste ebenso (beide Hände)
 Combat.weapon_radius = 0.08  -- m: Dicke der Klingen-Kapsel
 Combat.blade_1h = 0.9        -- m ab dem Griff, nur ohne Item-Modell
 Combat.blade_2h = 1.3

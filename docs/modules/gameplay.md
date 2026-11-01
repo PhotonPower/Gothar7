@@ -303,8 +303,8 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
 - **Kombos (K4):** Talent 0 Einzelschläge, 1 bis 3, 2 bis 4 und 1,25-mal schneller; der nächste Schlag nur im
   Kombofenster. Seitenhiebe ketten nicht. Talent: `melee_2h` für Zweihänder, sonst `melee_1h` (auch Fäuste).
 - **Treffer:** im Trefferfenster jedes Ziel höchstens einmal je Schlag. Mit Clip fegt die Waffe entlang der Animation
-  (siehe „Trefferprüfung“ unten); Tiere, Fäuste (vorerst) und Züge ohne Clip treffen in Reichweite (ab den Körpern:
-  Faust 0,9 m, Einhand 1,2 m, Zweihand 1,6 m) und im Winkel (±50°) vor dem Angreifer, ohne Wand oder Mob dazwischen.
+  (siehe „Trefferprüfung“ unten); Tiere und Züge ohne Clip treffen in Reichweite (ab den Körpern:
+  Faust 0,5 m, Einhand 1,2 m, Zweihand 1,6 m) und im Winkel (±50°) vor dem Angreifer, ohne Wand oder Mob dazwischen.
 - **Schaden (K2, K3):** je Schadensart max(Waffe − Schutz, 0), die Stärke zur Hauptart der Waffe (Fäuste: stumpf),
   mindestens 5; kritisch nach Talent 0/10/20 % mit doppeltem Waffenschaden. Tiere: `Npc.damage` (Art) plus Stärke.
 - **Parade (K6):** blockt 0,4 s ab Beginn Schläge von vorn (±60°); der Schlag prallt ab (der Angreifer taumelt).
@@ -393,9 +393,13 @@ Clip, bleibt die Zeitleiste. Menschen halten nach einem Kampf 5 s die Kampfhaltu
   sind kurze Kapseln (`fist_length` 0,12 m, `fist_radius` 0,1 m) um beide Hand-Sockets (Kombo 1 ist die Linke).
   Je Simulationsschritt fegt sie von der Lage des letzten Schritts zur jetzigen, in Teilschritten von höchstens
   0,1 m Weg von Griff oder Spitze (der Griff geht je Teilschritt gerade, die Klinge dreht sich).
-- **Ziele** sind stehende Kapseln (`body_radius` 0,35 m, Höhe `body_height` 1,8 m bzw. Tiere `animal_height`
-  1,0 m); getroffen ist, was die Klinge berührt, jedes Ziel höchstens einmal je Schlag. Die Spielregeln danach
-  (Parade, Schaden, kritisch, Bewusstlosigkeit, gleiche Gilde) bleiben unverändert.
+- **Ziele** sind Kapseln: Menschen stehend (`body_radius` 0,35 m, Höhe `body_height` 1,8 m), Tiere nach ihrem
+  Körper (`Creatures.<art>.body` in `data/creatures.lua`, aus figurens `[rig.collision]`: liegend entlang des Körpers
+  bzw. stehend, Mitte vor den Füßen; der Wolf 0,32 m Radius, 1,22 m lang, Mitte 0,48 m voraus). Getroffen ist, was
+  die Klinge berührt, jedes Ziel höchstens einmal je Schlag. Auch `npc_distance` und die Reichweite ohne Clip
+  rechnen bis zum Körper eines Tieres (wie zwischen zwei Menschen-Mitten), so kommt ein Faustkämpfer an den Kopf
+  eines Wolfs heran. Die Spielregeln danach (Parade, Schaden, kritisch, Bewusstlosigkeit, gleiche Gilde) bleiben
+  unverändert.
 - **Wände:** Jeder Teilschritt ist ein `PhysicsWorld::capsuleCast` gegen `World` und `Mob`; trifft die Klinge
   eine Fläche, die nicht nach oben zeigt (Normale y < 0,7 – Böden halten sie nicht auf), endet der Schlag dort:
   Ziele bis dahin zählen, danach trifft er nichts mehr. Steckt die Klinge schon in der Wand, trifft sie nichts.
@@ -406,9 +410,9 @@ Clip, bleibt die Zeitleiste. Menschen halten nach einem Kampf 5 s die Kampfhaltu
 - **Stand:** `weapon_sweep` ist **an** (Standard). figuren hat die Trefferfenster auf den eigentlichen Hieb gelegt
   (#308) und Kombo 1 (1h, 2h), 2h Kombo 3 und die Seitenhiebe bis Tierhöhe nachgebaut (#317). Gemessen im Fenster
   reicht die Klinge vorn bis 1,5 m (1h Kombo 3) bzw. 1,8–2,1 m (1h Kombo 1/2, 2h Kombo 1) ab der Körpermitte;
-  die Seitenhiebe bis etwa 0,9 m. Daran angeglichen sind die Reichweiten der Kampf-KI: `reach_1h` 1,2 m und
-  `reach_2h` 1,6 m (vorher 1,3 und 1,7), also `npc_reach` 1,9 bzw. 2,3 m Mitte zu Mitte. Fäuste schlagen vorerst
-  nach Reichweite und Winkel (`fist_sweep = false`), bis figurens Fausthiebe Tierhöhe erreichen.
+  die Seitenhiebe mit Ausfallschritt (#323) 1,6–2,0 m. Daran angeglichen sind die Reichweiten der Kampf-KI: `reach_1h` 1,2 m und
+  `reach_2h` 1,6 m (vorher 1,3 und 1,7), also `npc_reach` 1,9 bzw. 2,3 m Mitte zu Mitte. Fäuste (`fist_sweep`,
+  an seit figurens tiefer Rechter #319) reichen vorn 0,78 m, also `fist_reach` 0,5 m (vorher 0,9; `npc_reach` 1,2 m).
   `combat_reload()` liest geänderte Werte aus der Konsole neu.
 - **Treffer-Reaktion:** wie bisher (Taumeln mit `none/t_hit_light` ab `stagger_share`, Tiere ihr Treffer-Clip).
 - **Rückstoß** (Projektinhaber 2026-11-01 bestätigt): Ein Treffer, der taumeln lässt, schiebt das Ziel `knockback` 0,3 m
@@ -419,8 +423,7 @@ Clip, bleibt die Zeitleiste. Menschen halten nach einem Kampf 5 s die Kampfhaltu
   `tests/physics/test_physics.cpp` (Kapsel-Cast), `tests/runtime/test_engine_weapon_sweep.cpp` (echte Clips:
   Treffer vorn einmal je Schlag, keiner hinten, Tür blockt mit und ohne Sweep, Rückstoß).
 
-**Weiter:** Fernkampf für NPCs (Jäger); Bogen-Clips beim Schießen; `fist_sweep` einschalten, wenn figurens
-Fausthiebe Tierhöhe erreichen.
+**Weiter:** Fernkampf für NPCs (Jäger); Bogen-Clips beim Schießen.
 
 ## Magie (M12)
 Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, wie Gothic 1).

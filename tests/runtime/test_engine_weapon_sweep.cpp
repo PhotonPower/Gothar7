@@ -172,3 +172,33 @@ TEST_CASE("Weapon sweep: a parried attacker is pushed back a little")
     CHECK(after - before > 0.12); // Combat.parry_knockback 0.2 m
     CHECK(after - before < 0.3);
 }
+
+TEST_CASE("Weapon sweep: the combat AI lands blows with its fists (the fists swept, fist_reach matched)")
+{
+    Engine engine(sweepConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true");
+    run(engine, "teleport(10, 0, 30)");
+    run(engine, "Combat.weapon_sweep = true Combat.fist_sweep = true combat_reload()");
+    run(engine, "Story.fists = 0 on('npc_hit', function(a, t) if a == 'npc_old_man' then Story.fists = "
+                "Story.fists + 1 "
+                "end end)");
+    for (const auto npc : {"npc_farmer_woman", "npc_old_man"})
+    {
+        if (!engine.runConsoleLine(std::format("npc_state('{}')", npc)).ok())
+        {
+            REQUIRE(run(engine, std::format("insert_npc('{}', 'wp_camp_center')", npc)).isString());
+        }
+        run(engine, std::format("set_routine('{}', '') npc_clear('{}')", npc, npc));
+    }
+    run(engine,
+        "npc_set_stat('npc_farmer_woman', 'hp_max', 1000) npc_set_stat('npc_farmer_woman', 'hp', 1000)");
+    run(engine, "Fights['npc_farmer_woman'] = 'nobody'"); // she does not hit back
+    // 3 m apart: the old man walks up to his fists' reach and punches.
+    run(engine, "npc_teleport('npc_old_man', 40, 0, 20, 0)");
+    run(engine, "npc_teleport('npc_farmer_woman', 40, 0, 17, 180)");
+    runSeconds(engine, 0.2f);
+    run(engine, "fight('npc_old_man', 'npc_farmer_woman')");
+    runSeconds(engine, 15.0f);
+    CHECK(run(engine, "Story.fists").asInteger() >= 6); // 13 now; with the old fist_reach 0.9 only 2
+}

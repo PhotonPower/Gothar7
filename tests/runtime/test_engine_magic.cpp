@@ -74,6 +74,8 @@ EngineConfig castConfig()
     config.start = "START_LAGER";
     config.startTime = "12:00";
     config.fixedFrameSeconds = 1.0 / 60.0;
+    // The same rolls every run (the old man's fists against the wolf, crits): his blows decide a time limit.
+    config.randomSeed = 5;
     return config;
 }
 
