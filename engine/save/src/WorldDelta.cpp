@@ -95,7 +95,11 @@ world::WorldFile applyDelta(world::WorldFile base, const WorldDelta& delta, usiz
     {
         if (i >= erase.size() || !erase[i])
         {
-            base.vobs[w++] = std::move(base.vobs[i]);
+            if (w != i) // a self-move empties strings with libstdc++
+            {
+                base.vobs[w] = std::move(base.vobs[i]);
+            }
+            ++w;
         }
     }
     base.vobs.resize(w);
