@@ -81,6 +81,10 @@ gothar-chargen build-items --sources C:\GotharData\characters\ambientcg\items
 gothar-chargen inventory-sheet --out C:\GotharData\review\m14-inventar
                                               & REM Prüfblatt der Inventar-Ansichten je Zelle
                                               & REM (data/inventory_views.toml, M14; Cycles auf der CPU)
+gothar-chargen ui-frames [--sheet C:\GotharData\review\m14-ui-rahmen]
+                                              & REM eigene UI-Rahmen → assets/source/ui/frames (M14, numpy,
+                                              & REM Seed 7; --style: [frames.*] für style.toml; --sheet: Mock-up
+                                              & REM und Teile-Blatt mit Pillow, --items/--background optional)
 gothar-chargen assemble [figures\x.figure.toml] & REM Figuren aus Manifesten + Teilen (reines Python, ohne Blender;
                                               & REM nicht versioniert; ohne Argument alle, entfernt veraltete)
 gothar-chargen part-data [parts\x]            & REM Zusammenbau-Daten der Teile (Halsring, Masken; §6.2)

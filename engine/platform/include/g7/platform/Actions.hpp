@@ -61,6 +61,15 @@ enum class Action : u16
     FlyFast,
     CopyPosition, ///< Development: copies the view as start options (--world --cam ... --fly) to the
                   ///< clipboard.
+    // Game UI (M14 part B): navigation, choosing, going back, switching tabs.
+    UiUp,
+    UiDown,
+    UiLeft,
+    UiRight,
+    UiAccept,
+    UiBack,
+    UiPrevTab,
+    UiNextTab,
     Count
 };
 

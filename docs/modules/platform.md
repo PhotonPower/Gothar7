@@ -125,7 +125,8 @@ namespace g7::platform {
 enum class Action : u16 { MoveForward, MoveBack, StrafeLeft, StrafeRight, TurnLeft, TurnRight,
     Walk /*gehalten: gehen statt rennen*/, Sneak, Jump, Action /*Gothic-Aktionstaste*/, Attack, Use, DrawWeapon, DrawMagic,
     Inventory, Log, Status, Map, QuickSave, QuickLoad, Console, Pause, DebugDraw /*Entwicklung, F2*/, DebugUi /*Entwicklung, F1*/, DebugFly /*Entwicklung, F3*/,
-    FlyForward, FlyBack, FlyLeft, FlyRight, FlyUp, FlyDown, FlyFast /*freie Kamera*/, CopyPosition /*Entwicklung, F6*/, Count };
+    FlyForward, FlyBack, FlyLeft, FlyRight, FlyUp, FlyDown, FlyFast /*freie Kamera*/, CopyPosition /*Entwicklung, F6*/,
+    UiUp, UiDown, UiLeft, UiRight, UiAccept, UiBack, UiPrevTab, UiNextTab /*Spiel-UI, M14 Teil B*/, Count };
 std::string_view name(Action);  std::optional<Action> actionFromName(sv);      // "move_forward" …
 using InputBinding = std::variant<Key, MouseButton, GamepadButton>;
 std::optional<InputBinding> bindingFromName(sv);  std::string_view name(const InputBinding&);

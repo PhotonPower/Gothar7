@@ -241,6 +241,7 @@ Result<void> Engine::init()
         m_actions = platform::ActionMap::fromConfig(m_config.settings, scheme);
         m_input.setStickDeadzone(static_cast<f32>(m_config.settings.get<f64>("input.stick_deadzone", 0.2)));
         G7_LOG_INFO("engine", "control scheme '{}'", scheme);
+        initGameUi(); // M14: also without a renderer (layout and input in tests)
     }
 
     m_fixedStep = FixedStep(1.0 / m_config.simulationHz);
@@ -323,8 +324,14 @@ bool Engine::runFrame()
         // The debug UI sees the input first: what it uses (hovered window, focused text field) the
         // game ignores.
         runDebugUi(realSeconds);
-        const bool uiMouse = m_debugUiFrame && m_debugUi.wantsMouse();
-        const bool uiKeyboard = m_debugUiFrame && m_debugUi.wantsKeyboard();
+        const bool debugMouse = m_debugUiFrame && m_debugUi.wantsMouse();
+        const bool debugKeyboard = m_debugUiFrame && m_debugUi.wantsKeyboard();
+        // Then the game UI (M14): a blocking screen open at the start of the frame takes the game controls
+        // away, so the key that closes it does not also act in the game.
+        const bool gameUiBlocks = m_screens.blocksGameInput();
+        updateGameUi(realSeconds, !debugMouse, !debugKeyboard);
+        const bool uiMouse = debugMouse || gameUiBlocks;
+        const bool uiKeyboard = debugKeyboard || gameUiBlocks;
         if (m_config.benchmark)
         {
             updateBenchmark(realSeconds); // drives the camera itself
@@ -410,7 +417,7 @@ bool Engine::runFrame()
     }
 
     // While paused the accumulator is not fed, so nothing is caught up afterwards.
-    const u32 steps = m_paused ? 0 : m_fixedStep.advance(realSeconds * m_timeScale);
+    const u32 steps = m_paused || m_screens.pausesGame() ? 0 : m_fixedStep.advance(realSeconds * m_timeScale);
     if (m_fixedStep.droppedSeconds() > 0.0)
     {
         // E.g. window dragged on Windows (modal loop), debugger break, loading stall.
@@ -562,7 +569,6 @@ Result<void> Engine::initShaders()
     }
     m_debugUi = std::move(debugUi).value();
     m_debugUiVisible = m_config.settings.get<bool>("render.debug_ui", false);
-    initGameUi();
     const auto size = m_window->pixelSize();
     auto target = render::SceneTarget::create(*m_device, size.width, size.height);
     if (!target)
@@ -1909,8 +1915,12 @@ void Engine::setDebugUiVisible(bool visible) noexcept
 
 void Engine::runDebugUi(f64 realSeconds)
 {
-    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_focus || m_mobUse ||
-                      m_document || m_dialog || m_diaryOpen) &&
+    // The game UI (M14) shows the focus name, dialogue, documents, mob choices and lockpicking; without it
+    // (failed to load) the ImGui windows of M8-M10 do.
+    const bool legacy = !m_gameUi;
+    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_diaryOpen ||
+                      (m_dialog && m_trade) || (m_mobUse && m_mobUse->containerOpen) ||
+                      (legacy && (m_focus || m_mobUse || m_document || m_dialog))) &&
                      m_debugUi.valid();
     m_window->setTextInput(m_debugUiFrame && m_debugUi.wantsText());
     if (!m_debugUiFrame)
@@ -1928,11 +1938,14 @@ void Engine::runDebugUi(f64 realSeconds)
         consoleUi(); // also without the other debug windows
     }
     inventoryUi(); // the inventory and the focus name until the HUD exists (M13)
-    focusUi();
-    lockpickUi();
-    choiceUi();
-    documentUi();
-    dialogUi(); // M10
+    if (legacy)
+    {
+        focusUi();
+        lockpickUi();
+        choiceUi();
+        documentUi();
+    }
+    dialogUi(); // M10: trading (the dialogue itself: the game UI)
     diaryUi();
     if (!m_debugUiVisible)
     {

@@ -297,6 +297,70 @@ std::optional<RayHit> PhysicsWorld::sphereCast(const Vec3& origin, f32 radius, c
     return hit;
 }
 
+std::vector<RayHit> PhysicsWorld::capsuleCast(const Vec3& a, const Vec3& b, f32 radius, const Vec3& motion,
+                                              LayerMask layers) const
+{
+    const Vec3 axis = b - a;
+    const f32 length = glm::length(axis);
+    const Vec3 centre = (a + b) * 0.5f;
+    // Jolt's capsule stands along +Y around its centre.
+    JPH::RefConst<JPH::Shape> shape;
+    JPH::Quat rotation = JPH::Quat::sIdentity();
+    if (length > 1e-4f)
+    {
+        shape = new JPH::CapsuleShape(length * 0.5f, radius);
+        rotation = JPH::Quat::sFromTo(JPH::Vec3::sAxisY(), toJolt(axis / length));
+    }
+    else
+    {
+        shape = new JPH::SphereShape(radius);
+    }
+    const JPH::RMat44 start =
+        JPH::RMat44::sRotationTranslation(rotation, JPH::RVec3(centre.x, centre.y, centre.z));
+    const MaskFilter filter(layers);
+    const f32 distance = glm::length(motion);
+    std::vector<RayHit> result;
+    const auto add = [&](const JPH::BodyID& body, JPH::Vec3Arg point, JPH::Vec3Arg penetrationAxis, f32 at)
+    {
+        JPH::BodyLockRead lock(m_impl->system.GetBodyLockInterface(), body);
+        if (!lock.Succeeded())
+        {
+            return;
+        }
+        RayHit hit;
+        hit.distance = at;
+        hit.position = fromJolt(point);
+        const Vec3 out = fromJolt(-penetrationAxis);
+        hit.normal = glm::length(out) > 1e-6f ? glm::normalize(out) : Vec3(0.0f, 1.0f, 0.0f);
+        hit.layer = static_cast<Layer>(lock.GetBody().GetObjectLayer());
+        hit.userData = lock.GetBody().GetUserData();
+        result.push_back(hit);
+    };
+    if (distance < 1e-5f)
+    {
+        JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
+        m_impl->system.GetNarrowPhaseQuery().CollideShape(shape, JPH::Vec3::sReplicate(1.0f), start,
+                                                          JPH::CollideShapeSettings(), JPH::RVec3::sZero(),
+                                                          collector, {}, filter);
+        for (const auto& h : collector.mHits)
+        {
+            add(h.mBodyID2, JPH::Vec3(h.mContactPointOn2), h.mPenetrationAxis, 0.0f);
+        }
+        return result;
+    }
+    const JPH::RShapeCast cast(shape, JPH::Vec3::sReplicate(1.0f), start, toJolt(motion));
+    const JPH::ShapeCastSettings settings;
+    JPH::AllHitCollisionCollector<JPH::CastShapeCollector> collector;
+    m_impl->system.GetNarrowPhaseQuery().CastShape(cast, settings, JPH::RVec3::sZero(), collector, {},
+                                                   filter);
+    for (const auto& h : collector.mHits)
+    {
+        add(h.mBodyID2, JPH::Vec3(h.mContactPointOn2), h.mPenetrationAxis, h.mFraction * distance);
+    }
+    std::ranges::sort(result, {}, &RayHit::distance);
+    return result;
+}
+
 std::vector<u64> PhysicsWorld::overlapSphere(const Vec3& centre, f32 radius, LayerMask layers) const
 {
     const JPH::SphereShape sphere(radius);
