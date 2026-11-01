@@ -114,6 +114,15 @@ UiInput buildUiInput(const platform::Input& input, const platform::ActionMap& ac
         repeat.device = *device;
     }
 
+    for (u16 k = 1; k < static_cast<u16>(platform::Key::Count); ++k) // 0: Unknown
+    {
+        if (input.pressed(static_cast<platform::Key>(k)))
+        {
+            out.key = static_cast<platform::Key>(k);
+            break;
+        }
+    }
+
     out.pointer = input.mousePosition() * pointerScale;
     const Vec2 delta = input.mouseDelta();
     out.pointerMoved = delta.x != 0.0f || delta.y != 0.0f;

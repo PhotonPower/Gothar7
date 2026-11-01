@@ -1,0 +1,38 @@
+# Kamerafahrt hinter dem Hauptmenü (M14 Teil F, F8): Punkte mit Position und Blickziel (Meter, Weltkoordinaten
+# der Menü-Welt aus engine.toml [menu] world), dazwischen eine weiche Kurve mit gleichmäßiger Geschwindigkeit.
+# Vorschlag: langsam über Marktplatz, Stadtkirche und Schlossstraße und zurück; loop = von vorn.
+version = 1
+speed = 3.0 # m/s
+loop = true
+
+[[point]] # über dem Marktplatz von Südosten
+position = [30.0, 32.0, 50.0]
+look = [0.0, 2.0, 0.0]
+
+[[point]]
+position = [-20.0, 30.0, 45.0]
+look = [-35.0, 4.0, 0.0]
+
+[[point]] # zur Stadtkirche
+position = [-70.0, 34.0, 22.0]
+look = [-119.0, 10.0, -15.0]
+
+[[point]] # Schlossstraße
+position = [-120.0, 40.0, 30.0]
+look = [-167.0, 8.0, -37.0]
+
+[[point]] # Blick auf den Pomeranzengarten
+position = [-150.0, 44.0, -10.0]
+look = [-226.0, 0.0, 11.0]
+
+[[point]]
+position = [-80.0, 38.0, -40.0]
+look = [-20.0, 2.0, 0.0]
+
+[[point]]
+position = [0.0, 36.0, -32.0]
+look = [0.0, 2.0, 10.0]
+
+[[point]]
+position = [40.0, 34.0, 10.0]
+look = [0.0, 2.0, 5.0]

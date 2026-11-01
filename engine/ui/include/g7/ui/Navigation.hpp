@@ -14,6 +14,7 @@ namespace g7::platform
 {
 class Input;
 class ActionMap;
+enum class Key : u16;
 } // namespace g7::platform
 
 namespace g7::ui
@@ -48,6 +49,8 @@ struct UiInput
     bool click = false; ///< left mouse button went down
     f32 wheel = 0.0f;   ///< steps, + = away from the user (scroll up)
     InputDevice device = InputDevice::Keyboard;
+    /// The first keyboard key that went down this frame (assigning keys in the options, M14 part F).
+    std::optional<platform::Key> key;
 };
 
 /// State between frames: the held direction and its repeat timer, the last device.

@@ -46,6 +46,7 @@ Item "it_axe" {
 -- Die Währung (M10, Entscheidung des Projektinhabers E6): Gulden, im Handel und beim Lehrer.
 Item "it_gulden" {
     name = "Gulden",
+    mesh = "items/it_gulden.glb", -- figuren #321
     category = "misc",
     value = 1,
 }

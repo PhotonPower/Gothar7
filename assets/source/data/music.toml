@@ -68,3 +68,12 @@ volume = 0.9
 files = ["music/stinger_death.wav"]
 [stinger.chapter]
 files = ["music/stinger_chapter.wav"]
+
+# --- Hauptmenü (M14 Teil F, F8): engine.toml [menu] music; erzwungen, solange das Menü vor der Fahrt läuft ------
+[theme.MENU]
+bpm = 72
+beats = 4
+volume = 0.8
+[theme.MENU.std]
+segments = ["music/menu_std.wav"]
+transition = "end"

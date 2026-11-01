@@ -49,6 +49,7 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --benchmark             visit every viewpoint, log frame times, exit
   --screenshot=<file.png> save the last frame (with --frames or --benchmark)
   --ui-sample             draw the game UI's sample page (text roles, frames, bars) over the scene
+  --no-menu               without --world: no main menu, an empty window (development)
   --lod=auto|0|1|2        level of detail of static models: by distance (default) or forced (test images)
   --no-ground             no ground plate under the model or scene
   --no-sun                no sunlight
@@ -77,6 +78,7 @@ struct CommandLine
     std::string screenshot;
     bool benchmark = false;
     bool uiSample = false;
+    bool noMenu = false;
     int lod = -1; // --lod: -1 = auto
     bool editor = false;
     std::string walk;
@@ -161,6 +163,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--ui-sample")
         {
             cli.uiSample = true;
+        }
+        else if (arg == "--no-menu")
+        {
+            cli.noMenu = true;
         }
         else if (arg == "--benchmark")
         {
@@ -270,12 +276,13 @@ void setupDirectories(const char* argv0)
 }
 
 /// Default config shipped with the game, overridden key by key by the user config.
-g7::Config loadSettings()
+g7::Config loadSettings(g7::Config& shipped)
 {
     g7::Config settings;
     if (auto defaults = g7::Config::load(g7::fs::gamePath("config/engine.toml")))
     {
         settings = std::move(defaults).value();
+        shipped = settings;
     }
     else
     {
@@ -321,7 +328,8 @@ int main(int argc, char** argv)
 
     g7::EngineConfig config;
     config.appName = "Gothar";
-    config.settings = loadSettings();
+    config.settings = loadSettings(config.defaultSettings);
+    config.userConfig = g7::fs::userPath("config.toml"); // the options write here (M14 part F)
 
     config.window.title = "Gothar";
     config.window.size.width = toDimension(config.settings.get<g7::i64>("window.width", 1600), 1600);
@@ -408,6 +416,11 @@ int main(int argc, char** argv)
         config.maxFrames = 10;
         config.fixedFrameSeconds = 1.0 / 60.0; // deterministic: 10 frames = 10 ticks
     }
+
+    // Without a world, scene or model the game starts in the main menu (M14 part F, F8).
+    config.mainMenu = !config.headless && config.render && config.world.empty() && config.scene.empty() &&
+                      config.viewMesh.empty() && !cli->editor && !config.benchmark && !cli->uiSample &&
+                      !cli->noMenu && config.settings.get<bool>("menu.enabled", true);
 
     // Autopilot (docs/modules/tools.md): the route sets start point and time; the run is as fast as the
     // machine allows (fixed frame time, no frame cap, no VSync) and deterministic.

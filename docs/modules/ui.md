@@ -288,6 +288,42 @@ std::vector<ItemTab> itemTabs(const Layout&);                                   
   GPU `test_item_preview.cpp` (Deckung in der Kachel mittig und `fill`), `tests/runtime/test_engine_ui.cpp` (Inventar
   per Tab schließen, Truhe per Enter ausräumen).
 
+## Spiel-UI Teil F (umgesetzt, M14) – Hauptmenü, Pause, Optionen, Ladebildschirm
+`MenuScreens.hpp` (`MenuScreen`, `OptionsScreen`, `LoadingScreen`, `stepOption`, `optionText`, `assignKey`),
+`runtime/MenuFlight.hpp`; Engine `runtime/EngineMenu.cpp`; `core::Config::erase`, `sameValue`, `copyValue`.
+- **Start:** Ohne `--world`, `--scene` und `--view-mesh` (und ohne `--editor`, `--benchmark`, `--ui-sample`,
+  `--no-menu`) startet das Spiel ins Hauptmenü (`EngineConfig::mainMenu`, `[menu] enabled`). Erst steht der
+  Ladebildschirm (mindestens ein Bild), dann lädt die Menü-Welt `[menu] world` (Leonberg) ohne Spielfigur über den
+  Weltwechsel. Dahinter fährt die Kamera `ui/menu_flight.toml` ab (Catmull-Rom durch Positionen und Blickziele,
+  `speed` m/s, `loop`), die Simulation steht, die Musik ist auf das Thema `[menu] music` (`MENU`, Platzhalter
+  `music/menu_std.wav` aus `gothar-audio music`) festgelegt.
+- **Hauptmenü:** Neues Spiel, Spiel laden (ausgegraut bis M15), Optionen, Spiel beenden; Titel „Gothar“ darüber.
+  Zurück tut hier nichts. **Neues Spiel** lädt `[game] world` an `[game] start` mit Spielfigur hinter dem
+  Ladebildschirm (`[game] title`); die Menü-Welt wird danach nicht aufbewahrt.
+- **Pausenmenü:** `pause` (Esc/Start) öffnet es im Spiel (pausiert, verbirgt das HUD): Weiterspielen, Neues Spiel,
+  Laden, Speichern (diese drei ausgegraut bis M15), Optionen, Spiel beenden. Zurück spielt weiter. Ohne Spiel-UI
+  schaltet `pause` wie bisher nur die Pause um.
+- **Optionen:** Reiter Grafik (Auflösung, Vollbild, VSync, Bildratenlimit, Sichtweite), Klang (Gesamt, Musik,
+  Effekte, Stimmen, Umgebung, Menüklänge als Schieberegler mit den Rahmen `slider_track`/`slider_knob` in
+  5-%-Schritten; wirken sofort auf die Busse), Steuerung (Schema
+  klassisch/modern, Mausempfindlichkeit `[input] mouse_sensitivity` als Faktor, Tasten der Spielaktionen), Spiel
+  (Sprache, Untertitel, Anzeigegröße). Hoch/Runter wählt, Links/Rechts (oder Bestätigen) ändert, Q/E bzw.
+  Schultertasten wechseln den Reiter, Zurück verlässt und speichert. **Taste belegen:** Bestätigen, dann die neue
+  Taste drücken (Esc bricht ab); sie wird die erste Taste der Aktion, die bisherige erste fällt weg, eine zweite
+  Taste, Maus- und Gamepad-Belegungen bleiben. Hatte eine andere Spielaktion die Taste, verliert sie sie und eine
+  Meldung nennt sie (Menü- und Entwicklertasten zählen nicht). Gamepad-Tasten sind vorerst nicht belegbar.
+- **Speichern:** In `%APPDATA%\Gothar\Gothar\config.toml` (`EngineConfig::userConfig`) wird jeder geänderte Schlüssel
+  geschrieben, wenn er vom Standard (`EngineConfig::defaultSettings`, engine.toml) abweicht, sonst entfernt; andere
+  Schlüssel der Datei bleiben, das Schreiben ist atomar.
+- **Ladebildschirm:** Lederhintergrund, „<Welt> wird geladen …“ und ein Balken (0,1 vor dem Laden, danach die noch
+  offenen Ladeaufträge des `AssetManager`, höchstens 8 s Warten).
+- **Lua:** `menu_open(page?, tab?)` öffnet das Pausenmenü, mit `"options"` die Optionen darüber, auf Reiter `tab`
+  (ab 1; Konsole, Prüfbilder).
+- **Tests:** `tests/ui/test_menu_screens.cpp` (Schritte, Texte, Tastenbelegung mit Konflikt, Menü mit ausgegrauten
+  Einträgen, Optionen mit Reitern und Tastenfang, Ladebildschirm), `tests/runtime/test_menu_flight.cpp`,
+  `tests/core/test_config.cpp` (erase/sameValue/copyValue), `tests/runtime/test_engine_ui.cpp` (Hauptmenü mit dem
+  Lager als Menü-Welt, Optionen ändern und speichern, Neues Spiel, Pausenmenü hält die Simulation an).
+
 ## Spiel-UI Teil E (umgesetzt, M14) – Charakter, Tagebuch, Karte
 `JournalScreens.hpp` (`StatusScreen`, `DiaryScreen`, `MapScreen`, Widget `TextView`); Engine
 `runtime/EngineUiJournal.cpp`; Lua-Feld `map` an Items.

@@ -44,6 +44,7 @@
 #include <g7/render/Visibility.hpp>
 #include <g7/runtime/EngineTool.hpp>
 #include <g7/runtime/FrameTimes.hpp>
+#include <g7/runtime/MenuFlight.hpp>
 #include <g7/runtime/SceneFile.hpp>
 #include <g7/runtime/StartView.hpp>
 #include <g7/script/ScriptVm.hpp>
@@ -54,6 +55,7 @@
 #include <g7/ui/ItemPreview.hpp>
 #include <g7/ui/ItemScreen.hpp>
 #include <g7/ui/JournalScreens.hpp>
+#include <g7/ui/MenuScreens.hpp>
 #include <g7/ui/Navigation.hpp>
 #include <g7/ui/Screen.hpp>
 #include <g7/ui/UiResources.hpp>
@@ -219,6 +221,14 @@ struct EngineConfig
     /// Saves the last rendered frame as PNG (--screenshot=<file>), e.g. with --frames or --benchmark.
     fs::Path screenshot;
     platform::WindowDesc window; ///< Used unless headless.
+    /// Start in the main menu (M14 part F): the menu world ([menu] world) with the camera flight and no
+    /// player; New Game loads [game] world at [game] start. Set by the game when no world, scene or model is
+    /// given.
+    bool mainMenu = false;
+    /// The user config the options are saved to (only what differs from `defaultSettings`); empty: not saved.
+    fs::Path userConfig;
+    /// The shipped defaults (engine.toml) without the user config, to tell what the player changed.
+    Config defaultSettings;
     /// Merged settings (engine.toml + user config). The engine reads [input] (scheme,
     /// stick_deadzone) and [bindings.<scheme>]; window settings are applied by the caller.
     Config settings;
@@ -246,6 +256,8 @@ public:
     void requestQuit() noexcept { m_quitRequested = true; }
 
     [[nodiscard]] u64 frameCount() const noexcept { return m_frameCount; }
+    /// The merged settings as they are now (options change them, M14 part F).
+    [[nodiscard]] const Config& settings() const noexcept { return m_config.settings; }
     /// Shadow tiles drawn per cascade since start (far cascades less often than every frame).
     [[nodiscard]] const std::array<u32, 4>& cascadeDraws() const noexcept { return m_cascadeDraws; }
     [[nodiscard]] u64 simulationTicks() const noexcept { return m_simTicks; }
@@ -394,6 +406,14 @@ public:
     [[nodiscard]] const ui::SubtitleQueue& subtitles() const noexcept { return m_subtitles; }
     /// Shows a message top centre for `seconds` (F7).
     void showScreenMessage(std::string text, f32 seconds = 3.0f);
+    /// In the main menu (M14 part F): the menu world without a player, the camera flight, the menu music.
+    [[nodiscard]] bool inMainMenu() const noexcept { return m_menuMode; }
+    /// A world is being loaded behind the loading screen.
+    [[nodiscard]] bool loading() const noexcept { return m_loadJob.has_value(); }
+    /// The pause menu (Esc in the game); nothing in the main menu or while loading.
+    void openPauseMenu();
+    /// Loads [game] world at [game] start with the player, behind the loading screen.
+    void startNewGame();
     void setDebugUiVisible(bool visible) noexcept;
     /// Collision of the loaded world (terrain, mesh vobs, ground plate) for queries. Kept in step with
     /// the scene: rebuilt before the next simulation step after instances change, and right after
@@ -1247,6 +1267,23 @@ private:
     void openMapOfHero();
     void bindJournalFunctions();
     void drawGameUi(u32 width, u32 height);
+    void reloadGameUi();
+    // Main menu, pause menu, options, loading screen (EngineMenu.cpp, M14 part F)
+    void startMainMenu();
+    void beginLoading(std::string world, std::string start, std::string title, bool menu);
+    void updateLoading(f64 realSeconds);
+    void updateMenu(f64 realSeconds);
+    void updateMenuFlight(f64 realSeconds);
+    void openMenu(bool inGame);
+    void runMenuCommand();
+    void openOptions();
+    [[nodiscard]] std::vector<ui::OptionPage> optionPages() const;
+    [[nodiscard]] ui::OptionValue optionValue(const ui::OptionDef& option) const;
+    void setOption(const ui::OptionDef& option, const ui::OptionValue& value);
+    void applySetting(std::string_view key);
+    [[nodiscard]] std::string bindingText(const ui::OptionDef& option) const;
+    std::string assignBinding(const ui::OptionDef& option, platform::Key key);
+    void saveUserSettings();
 
     EngineConfig m_config;
     // Assets: the manager is destroyed before the VFS it reads from (member order).
@@ -1296,6 +1333,27 @@ private:
     std::string m_mapTexturePath;
     Vec2 m_mapSize{1.0f};
     ui::NavRepeat m_navRepeat;
+    // Main menu and loading (M14 part F).
+    struct LoadJob
+    {
+        std::string world;
+        std::string start;
+        std::string title;
+        bool menu = false; ///< the menu world (else a new game)
+        u32 frames = 0;
+        bool requested = false;
+        bool loaded = false;
+        usize pending = 0; ///< asset loads open right after the world was loaded
+        f64 seconds = 0.0;
+        f32 progress = 0.0f;
+    };
+    std::optional<LoadJob> m_loadJob;
+    bool m_menuMode = false;
+    MenuFlight m_menuFlight;
+    f32 m_menuFlightTime = 0.0f;
+    usize m_optionsTab = 0;                  ///< the options open on this tab (Lua menu_open)
+    std::string m_menuCommand;               ///< chosen in a menu, run after the screens' update
+    std::set<std::string> m_changedSettings; ///< option keys changed since the last save
     f64 m_gameUiReloadTimer = 0.0;
     std::string m_gameUiStamp;        // disk paths and times of the UI files (hot reload)
     f64 m_frameSeconds = 0.0;         // real duration of the last frame

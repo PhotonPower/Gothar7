@@ -199,3 +199,52 @@ mesh = "b.glb"
     copy.set<std::vector<f64>>("camera.target", {4.0, 5.0});
     CHECK(copy.get<std::vector<f64>>("camera.target", {}) == std::vector<f64>{4.0, 5.0});
 }
+
+TEST_CASE("Config: erase, sameValue and copyValue (user settings, M14 part F)")
+{
+    auto parsed = g7::Config::parse(R"(
+[audio]
+music = 0.8
+master = 1
+[bindings.classic]
+jump = ["LeftAlt", "PadSouth"]
+)");
+    REQUIRE(parsed.ok());
+    const g7::Config defaults = parsed.value();
+    g7::Config user;
+
+    SUBCASE("numbers compare by value, arrays deeply, absent equals absent")
+    {
+        g7::Config other;
+        other.set<f64>("audio.master", 1.0);
+        other.set<std::vector<std::string>>("bindings.classic.jump", {"LeftAlt", "PadSouth"});
+        CHECK(defaults.sameValue("audio.master", other));
+        CHECK(defaults.sameValue("bindings.classic.jump", other));
+        CHECK_FALSE(defaults.sameValue("audio.music", other));
+        CHECK(defaults.sameValue("audio.nothing", other));
+        other.set<std::vector<std::string>>("bindings.classic.jump", {"Space"});
+        CHECK_FALSE(defaults.sameValue("bindings.classic.jump", other));
+    }
+    SUBCASE("copyValue copies any type and erases what the source lacks")
+    {
+        user.set<std::string>("game.other", "kept");
+        user.copyValue("bindings.classic.jump", defaults);
+        CHECK(user.get<std::vector<std::string>>("bindings.classic.jump", {}) ==
+              std::vector<std::string>{"LeftAlt", "PadSouth"});
+        user.copyValue("audio.music", defaults);
+        CHECK(user.get<f64>("audio.music", 0.0) == doctest::Approx(0.8));
+        user.copyValue("audio.music", g7::Config{});
+        CHECK_FALSE(user.contains("audio.music"));
+        CHECK_FALSE(user.contains("audio")); // emptied tables go too
+        CHECK(user.get<std::string>("game.other", "") == "kept");
+    }
+    SUBCASE("erase removes values and emptied tables, false if absent")
+    {
+        user = defaults;
+        CHECK(user.erase("bindings.classic.jump"));
+        CHECK_FALSE(user.contains("bindings"));
+        CHECK_FALSE(user.erase("bindings.classic.jump"));
+        CHECK(user.erase("audio.music"));
+        CHECK(user.contains("audio.master"));
+    }
+}

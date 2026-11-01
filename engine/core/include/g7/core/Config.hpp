@@ -61,6 +61,15 @@ public:
     template <ConfigValue T>
     void set(std::string_view key, std::type_identity_t<T> value);
 
+    /// Removes the value or table at `key`; tables left empty by it are removed too. False if absent.
+    bool erase(std::string_view key);
+    /// The value at `key` here and in `other` is the same (type and value; tables and arrays deeply), or
+    /// absent in both.
+    [[nodiscard]] bool sameValue(std::string_view key, const Config& other) const;
+    /// Copies the value at `key` from `source` (any type, also tables and arrays); erases it if `source` has
+    /// none.
+    void copyValue(std::string_view key, const Config& source);
+
     /// Direct child keys of the table at `table` (root if empty), sorted. Empty if not a table.
     [[nodiscard]] std::vector<std::string> keys(std::string_view table = {}) const;
 

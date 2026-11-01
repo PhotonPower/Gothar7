@@ -2,6 +2,7 @@
 -- Schmiede-Talent kommt später als Inhalt).
 Item "it_blank_hot" {
     name = "Glühender Rohling",
+    mesh = "items/it_blank_hot.glb", -- glühend (Emissive), figuren #321
     category = "misc",
     value = 5,
 }

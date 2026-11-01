@@ -297,3 +297,58 @@ size = [-120, 46]
 anchor = "top"
 offset = [0, 90]
 size = [-100, -130]
+
+# Main and pause menu (part F, F8): the title over the menu flight, the entries in a panel below.
+[menu.title]
+anchor = "top"
+offset = [0, 110]
+size = [1200, 140]
+
+[menu.box]
+anchor = "center"
+offset = [0, 110]
+size = [460, 430]
+
+[menu.list]
+anchor = "center"
+size = [-60, -50]
+
+# Options (part F): tabs, options with their values, the hint (or a message) below.
+[options.box]
+anchor = "center"
+size = [1000, 780]
+
+[options.title]
+anchor = "top"
+offset = [0, 30]
+size = [-80, 56]
+
+[options.tab_bar]
+anchor = "top"
+offset = [0, 100]
+size = [-80, 48]
+
+[options.list]
+anchor = "top"
+offset = [0, 172]
+size = [-120, 484]
+
+[options.hint]
+anchor = "bottom"
+offset = [0, -28]
+size = [-80, 64]
+
+# Loading screen (part F): the whole screen, the world's name and the progress in the middle.
+[loading.background]
+anchor = "center"
+size = [0, 0]
+
+[loading.title]
+anchor = "center"
+offset = [0, -40]
+size = [1200, 60]
+
+[loading.bar]
+anchor = "center"
+offset = [0, 40]
+size = [520, 24]
