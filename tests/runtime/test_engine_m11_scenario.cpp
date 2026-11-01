@@ -25,6 +25,8 @@ EngineConfig scenarioConfig()
     config.start = "START_LAGER";
     config.startTime = "12:00";
     config.fixedFrameSeconds = 1.0 / 60.0;
+    // The same rolls every run (crits, the bot's and the AI's parries and side swings).
+    config.randomSeed = 11;
     return config;
 }
 
