@@ -1,0 +1,72 @@
+# Where things are on screen (M14, docs/modules/ui.md): boxes in UI units (pixels at 1080p), +Y down.
+# anchor: top_left, top, top_right, left, center, right, bottom_left, bottom, bottom_right - the same point of the
+# parent and of the box; offset moves it; a size <= 0 means the parent's extent plus that value (0 = full).
+# Reloaded while the game runs (with [assets] hot_reload).
+version = 1
+
+# HUD as in Gothic 1 (owner decision F3): health bottom left, mana bottom right, enemy health top centre.
+[hud.hp]
+anchor = "bottom_left"
+offset = [32, -32]
+size = [260, 24]
+
+[hud.mana]
+anchor = "bottom_right"
+offset = [-32, -32]
+size = [260, 24]
+
+[hud.enemy]
+anchor = "top"
+offset = [0, 24]
+size = [360, 18]
+
+# Screen messages top centre (F7), subtitles bottom centre (F6).
+[hud.message]
+anchor = "top"
+offset = [0, 60]
+size = [1200, 40]
+
+[hud.subtitle]
+anchor = "bottom"
+offset = [0, -110]
+size = [1200, 80]
+
+# The sample screen (gothar --ui-sample).
+[sample.panel]
+anchor = "center"
+size = [1100, 640]
+
+[sample.title]
+anchor = "top"
+offset = [0, 30]
+size = [-96, 50]
+
+[sample.body]
+anchor = "top"
+offset = [0, 92]
+size = [-96, 70]
+
+[sample.small]
+anchor = "top"
+offset = [0, 170]
+size = [-96, 26]
+
+[sample.list]
+anchor = "top_left"
+offset = [48, 210]
+size = [440, 290]
+
+[sample.grid]
+anchor = "top_right"
+offset = [-48, 210]
+size = [424, 290]
+
+[sample.chosen]
+anchor = "bottom_left"
+offset = [48, -36]
+size = [500, 28]
+
+[sample.buttons]
+anchor = "bottom_right"
+offset = [-48, -28]
+size = [416, 44]

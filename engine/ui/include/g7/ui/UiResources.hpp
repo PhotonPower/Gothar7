@@ -1,14 +1,15 @@
 #pragma once
 
-// What the game UI loads (M14 part A): the style (ui/style.toml), the texts of one language
-// (text/ui.<language>.toml), every font the style's text roles name and every frame image. Missing fonts
-// or images are warnings (text or frame not drawn); a broken style or text table is an error.
+// What the game UI loads (M14 parts A, B): the style (ui/style.toml), the layout (ui/layout.toml), the texts
+// of one language (text/ui.<language>.toml), every font the style's text roles name and every frame image.
+// Missing fonts or images are warnings (text or frame not drawn); a broken style or text table is an error.
 
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 #include <g7/render/rhi/Resources.hpp>
 #include <g7/ui/Canvas.hpp>
 #include <g7/ui/Font.hpp>
+#include <g7/ui/Layout.hpp>
 #include <g7/ui/Strings.hpp>
 #include <g7/ui/Style.hpp>
 
@@ -28,6 +29,7 @@ class Device;
 namespace g7::ui
 {
 inline constexpr std::string_view kStylePath = "ui/style.toml";
+inline constexpr std::string_view kLayoutPath = "ui/layout.toml";
 
 /// Reads a file from the virtual file system (the engine passes its VFS).
 using ReadFile = std::function<Result<std::vector<u8>>(std::string_view path)>;
@@ -51,6 +53,10 @@ public:
 
     [[nodiscard]] const Style& style() const noexcept { return m_style; }
     [[nodiscard]] const Strings& strings() const noexcept { return m_strings; }
+    [[nodiscard]] const Layout& screenLayout() const noexcept { return m_layout; }
+    /// Every VFS path loaded (style, layout, texts, fonts, frame images): the engine watches them for
+    /// changes.
+    [[nodiscard]] const std::vector<std::string>& files() const noexcept { return m_files; }
     /// A loaded font by VFS path, nullptr if it failed to load.
     [[nodiscard]] const Font* font(std::string_view path) const;
 
@@ -75,6 +81,8 @@ private:
     };
     Style m_style;
     Strings m_strings;
+    Layout m_layout;
+    std::vector<std::string> m_files;
     std::map<std::string, std::unique_ptr<Font>, std::less<>> m_fonts;
     std::map<std::string, std::unique_ptr<Image>, std::less<>> m_images;
 };

@@ -107,7 +107,7 @@ das Spiel dort mit `--no-render` starten.
 ## Konfigurationsdateien
 | Datei | Inhalt |
 |---|---|
-| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[assets]` (VFS-Mounts, Hot-Reload), `[ui]` (Sprache der UI-Texte, UI-Skalierung; M14), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]`; wird bei jedem Build neben die Executable kopiert (Target `gothar_data`) |
+| `game/config/engine.toml` → `<build>/game/config/engine.toml` | Standardwerte: `[window]`, `[camera]` (FOV, Near/Far, Maus, Fluggeschwindigkeit), `[render]` (Shader-Hot-Reload, Shader-Verzeichnis, Anisotropie, Schatten, Tonemapping, Belichtung, Nebel, Debug-Overlay, Debug-UI), `[assets]` (VFS-Mounts, Hot-Reload), `[ui]` (Sprache der UI-Texte, UI-Skalierung, Wiederholung gehaltener Richtungen; M14), `[input]` (Schema, Stick-Totzone), `[bindings.classic]`, `[bindings.modern]` (mit den `ui_*`-Aktionen der Spiel-UI); wird bei jedem Build neben die Executable kopiert (Target `gothar_data`) |
 | `config.toml` im Benutzerverzeichnis (Windows `%APPDATA%\Gothar\Gothar`) | optionale eigene Einstellungen; überschreibt `engine.toml` Schlüssel für Schlüssel |
 | `engine/render/shaders/` → `<build>/game/shaders/` | Engine-Shader (GLSL); werden bei jedem Build neben die Executable kopiert (Target `gothar_data`, auch wenn nur ein Shader geändert wurde) – Änderungen dort gehen beim nächsten Build verloren, zum Bearbeiten `[render] shader_dir` auf die Quellen zeigen lassen |
 
@@ -139,7 +139,7 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--viewpoint=N` | mit Viewpoint N der Szene starten (Standard 0) |
 | `--benchmark` | VSync und Frame-Limit aus, jeden Viewpoint der Szene 300 Frames lang ansteuern (die ersten 30 zum Einschwingen), Frame-Zeiten (Mittel, p95, p99, schlechtester) sowie Draws, Pufferbindungen, Pipeline-Wechsel und Dreiecke je Viewpoint loggen, dann beenden |
 | `--screenshot=<datei.png>` | letztes Bild als PNG speichern (mit `--frames` oder `--benchmark`) |
-| `--ui-sample` | Musterseite der Spiel-UI über der Szene (alle Textrollen, Rahmen, HUD-Balken; M14 Teil A) – zum Prüfen von Schrift, Größen und Farben, z. B. mit `--frames=60 --screenshot=…`; Sprache und Skalierung aus `[ui]` |
+| `--ui-sample` | Musterseite der Spiel-UI über der Szene (Textrollen, Rahmen, HUD-Balken, Liste, Zellenraster, Knöpfe; M14 Teile A, B) – zum Prüfen von Schrift, Größen, Farben und Navigation (Tastatur, Gamepad, Maus; Esc schließt), Bilder z. B. mit `--frames=60 --screenshot=…`; Sprache und Skalierung aus `[ui]` |
 | `--no-ground` | Bodenplatte unter dem Modell bzw. der Szene weglassen |
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |
 | `--walk=<route.json>` | Autopilot: die Spielfigur läuft die Route ab (mit `--world`), schreibt Protokoll und Screenshots, beendet sich (`docs/modules/tools.md`); mit `--no-render` ohne Grafikgerät und ohne Bilder |
