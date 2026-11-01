@@ -169,7 +169,7 @@ const Font* UiResources::font(std::string_view path) const
 TextStyle UiResources::textStyle(std::string_view role, f32 uiScale) const
 {
     const TextRole& r = m_style.font(role);
-    return {font(r.font), r.color, r.outline * uiScale, r.outlineColor};
+    return {font(r.font), r.color, r.outline * uiScale, r.outlineColor, r.shadow * uiScale, r.shadowColor};
 }
 
 f32 UiResources::textSize(std::string_view role, f32 uiScale) const

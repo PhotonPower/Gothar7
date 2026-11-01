@@ -49,6 +49,7 @@
 #include <g7/script/ScriptVm.hpp>
 #include <g7/ui/Canvas.hpp>
 #include <g7/ui/DebugUi.hpp>
+#include <g7/ui/Hud.hpp>
 #include <g7/ui/Navigation.hpp>
 #include <g7/ui/Screen.hpp>
 #include <g7/ui/UiResources.hpp>
@@ -381,6 +382,14 @@ public:
     [[nodiscard]] ui::ScreenStack& screens() noexcept { return m_screens; }
     /// The loaded game UI (style, layout, texts, fonts), or nullptr if it failed to load.
     [[nodiscard]] const ui::UiResources* gameUi() const noexcept { return m_gameUi ? &*m_gameUi : nullptr; }
+    /// The HUD as last laid out (M14 part C): bars, focus name, messages, subtitles.
+    [[nodiscard]] const ui::Hud& hud() const noexcept { return m_hud; }
+    /// Messages to the player top centre (F7; notices and Lua screen_message).
+    [[nodiscard]] const ui::MessageQueue& screenMessages() const noexcept { return m_messages; }
+    /// Shouts and other spoken lines outside dialogues as subtitles (F6).
+    [[nodiscard]] const ui::SubtitleQueue& subtitles() const noexcept { return m_subtitles; }
+    /// Shows a message top centre for `seconds` (F7).
+    void showScreenMessage(std::string text, f32 seconds = 3.0f);
     void setDebugUiVisible(bool visible) noexcept;
     /// Collision of the loaded world (terrain, mesh vobs, ground plate) for queries. Kept in step with
     /// the scene: rebuilt before the next simulation step after instances change, and right after
@@ -1202,6 +1211,12 @@ private:
     /// UI input to the top screen, UI sounds; reloads changed UI files (hot reload).
     void updateGameUi(f64 realSeconds, bool allowMouse, bool allowKeyboard);
     void reloadGameUiIfChanged(f64 realSeconds);
+    /// Opens and closes the game screens with the engine's state: dialogue, document, mob choice,
+    /// lockpicking.
+    void syncGameScreens();
+    [[nodiscard]] ui::HudModel buildHudModel(Vec2 pixels) const;
+    [[nodiscard]] bool heroHasMagic() const;
+    void bindUiFunctions();
     void drawGameUi(u32 width, u32 height);
 
     EngineConfig m_config;
@@ -1228,6 +1243,9 @@ private:
     ui::Canvas m_canvas;                     // game UI drawing (M14)
     std::optional<ui::UiResources> m_gameUi; // style, texts, fonts, frames; empty if they failed to load
     ui::ScreenStack m_screens;
+    ui::Hud m_hud;
+    ui::MessageQueue m_messages;
+    ui::SubtitleQueue m_subtitles;
     ui::NavRepeat m_navRepeat;
     f64 m_gameUiReloadTimer = 0.0;
     std::string m_gameUiStamp;        // disk paths and times of the UI files (hot reload)

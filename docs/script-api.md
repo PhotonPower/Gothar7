@@ -3,6 +3,11 @@
 Erzeugt aus den Bindings der Engine (`gothar --script-api=docs/script-api.md`) – nicht von Hand bearbeiten.
 Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
+## Bildschirm
+
+### `screen_message(text: string, seconds?: number)`
+Zeigt dem Spieler eine Meldung oben in der Mitte (F7; Vorgabe 3 s), z. B. `Erfahrung +50`.
+
 ## Debug
 
 ### `npc_debug_hold(npc: string, seconds: number)`

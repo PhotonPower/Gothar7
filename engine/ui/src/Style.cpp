@@ -193,6 +193,17 @@ Result<Style> loadStyle(std::string_view toml, std::string_view sourceName)
         {
             return entryError(sourceName, "fonts." + name, color.error().message);
         }
+        role.shadow = static_cast<f32>(config.get<f64>(base + "shadow", 0.0));
+        if (auto color =
+                colorValue(style.colors, config.get<std::string>(base + "shadow_color", "#00000099"));
+            color)
+        {
+            role.shadowColor = color.value();
+        }
+        else
+        {
+            return entryError(sourceName, "fonts." + name, color.error().message);
+        }
         style.fonts.emplace(name, std::move(role));
     }
     for (const std::string& name : config.keys("frames"))

@@ -8,13 +8,14 @@ namespace g7::ui
 {
 namespace
 {
-/// The text style of a role; `highlight` swaps the colour for the style's "highlight" (focused entries).
-TextStyle roleStyle(const DrawContext& context, std::string_view role, bool highlight)
+/// The text style of a role; `highlight` swaps the colour for a style colour (focused entries).
+TextStyle roleStyle(const DrawContext& context, std::string_view role, bool highlight,
+                    std::string_view highlightColor = "highlight")
 {
     TextStyle style = context.ui.textStyle(role, context.scale());
     if (highlight)
     {
-        style.color = context.ui.style().color("highlight");
+        style.color = context.ui.style().color(highlightColor);
     }
     return style;
 }
@@ -29,14 +30,15 @@ void drawFrame(const DrawContext& context, const Rect& rect, std::string_view fr
 
 /// A one-line text vertically centred in `rect`.
 void drawCentredLine(const DrawContext& context, const Rect& rect, std::string_view role,
-                     std::string_view text, Align align, bool highlight, f32 inset)
+                     std::string_view text, Align align, bool highlight, f32 inset,
+                     std::string_view highlightColor = "highlight")
 {
     const f32 s = context.scale();
     const TextLayout layout = context.ui.layout(
         role, text, s,
         {.wrapWidth = std::max(1.0f, rect.width() - 2.0f * inset * s), .maxLines = 1, .align = align});
     const Vec2 at(rect.min.x + inset * s, rect.min.y + (rect.height() - layout.size.y) * 0.5f);
-    context.canvas.text(at, layout, roleStyle(context, role, highlight));
+    context.canvas.text(at, layout, roleStyle(context, role, highlight, highlightColor));
 }
 } // namespace
 
@@ -59,7 +61,11 @@ std::string UiText::resolve(const Strings& strings) const
 
 void Widget::arrange(const Rect& parent, f32 scale, const Layout* layout)
 {
-    const LayoutBox effective = layout != nullptr && !layoutKey.empty() ? layout->box(layoutKey, box) : box;
+    LayoutBox effective = layout != nullptr && !layoutKey.empty() ? layout->box(layoutKey, box) : box;
+    if (heightOverride)
+    {
+        effective.size.y = *heightOverride;
+    }
     arrangeAt(place(effective, parent, scale), scale, layout);
 }
 
@@ -137,7 +143,7 @@ void Label::drawSelf(const DrawContext& context) const
     const TextLayout layout = context.ui.layout(
         role, text.resolve(context.ui.strings()), s,
         {.wrapWidth = std::max(1.0f, m_rect.width()), .maxLines = maxLines, .align = align});
-    context.canvas.text(m_rect.min, layout, roleStyle(context, role, false));
+    context.canvas.text(m_rect.min, layout, roleStyle(context, role, false).faded(opacity));
 }
 
 void Bar::drawSelf(const DrawContext& context) const
@@ -338,7 +344,7 @@ void List::drawSelf(const DrawContext& context) const
             drawFrame(context, rect, "highlight");
         }
         drawCentredLine(context, rect, role, rows[row].resolve(context.ui.strings()), Align::Left,
-                        selected && focused, 10.0f);
+                        selected && focused, 10.0f, highlightColor);
     }
     context.canvas.popClip();
 }

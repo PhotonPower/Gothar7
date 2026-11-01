@@ -174,6 +174,63 @@ class ScreenStack { push, pop, top, find(name), blocksGameInput(), pausesGame(),
   Fokus mit Tasten und Maus, Stapel), `tests/runtime/test_engine_ui.cpp` (Musterseite über SDL-Tasten; Esc schließt
   sie, bevor es pausiert).
 
+## Spiel-UI Teil C (umgesetzt, M14) – HUD, Meldungen, Untertitel, Dialog, Dokument, Auswahl, Dietrich
+`Hud.hpp` (HUD, `MessageQueue`, `SubtitleQueue`), `GameScreens.hpp` (`DialogScreen`, `DocumentScreen`,
+`ChoiceScreen`, `LockpickScreen`); Engine `runtime/EngineUi.cpp` (`buildHudModel`, `syncGameScreens`,
+`bindUiFunctions`).
+
+```cpp
+namespace g7::ui {
+struct BarValue { f32 value, max; f32 fraction() const; };
+struct HudModel { bool visible; BarValue health; std::optional<BarValue> mana;   // Mana nur mit Magie (F3)
+                  std::optional<Enemy> enemy; std::optional<f32> air; std::optional<Focus> focus; };
+class MessageQueue { void push(std::string text, f32 seconds = 3); void update(f32 dt); };      // F7
+class SubtitleQueue { void push(std::string speaker, std::string text, f32 seconds); void update(f32 dt); };
+f32 readingSeconds(std::string_view text);                     // Zeilen ohne Take: 1,5 s + 0,06 s je Zeichen, 2-10 s
+class Hud { void update(const HudModel&, const MessageQueue&, std::span<const SubtitleQueue::Line>, Rect, f32, const Layout*);
+            void draw(Canvas&, const UiResources&) const; };
+struct DialogView { bool menu; std::vector<std::string> options; usize selected; bool hidden; };
+class DialogScreen { struct Actions { view, skip, choose, select }; };          // blockiert, verbirgt das HUD
+class DocumentScreen { DocumentScreen(title, text, onClose); };                 // Bestätigen oder Zurück schließt
+class ChoiceScreen { struct Actions { view, choose, leave }; };                 // Amboss, Bett
+class LockpickScreen { struct Actions { view, turn(bool left), leave }; };      // links/rechts drehen
+}
+```
+- **HUD (F3):** Leben unten links, Mana unten rechts nur, wenn der Held Magie hat (Magiekreis ≥ 1 oder eine Rune
+  bzw. Spruchrolle auf einem Runenplatz), Gegnerleben oben mittig mit Namen darunter (der im Kampf erfasste Gegner,
+  K5), Luft über dem Lebensbalken beim Tauchen; keine Uhr, kein Kompass. Balken mit figurens Füllungen `bar_hp`,
+  `bar_mana`, `bar_enemy`, `bar_air` und dem Rand `bar`. Der Fokusname steht über dem Ziel (ersetzt
+  `DebugUi::focusLabel`), nicht bei offenem Inventar, im Dialog oder unter einem blockierenden Bildschirm.
+  Bildschirme mit `hidesHud` (der Dialog) blenden die Balken aus.
+- **Meldungen (F7):** oben mittig, je 3 s (die letzte halbe Sekunde verblassend), höchstens vier, die älteste oben.
+  Lua `screen_message(text, seconds?)`; die bisherigen Hinweise der Engine (`notice`: „Verschlossen.“, „Der Dietrich
+  ist abgebrochen.“ …) erscheinen ebenfalls hier. Ein Lade-Ruckler zählt höchstens 0,1 s.
+- **Untertitel (F6):** unten mittig auf dem Hintergrund `subtitle`, der Sprechername (Rolle `subtitle_name`) über dem
+  Text (Rolle `subtitle`, ohne Kontur mit dezentem Schatten – Rückmeldung des Koordinators zu Teil A). Quellen: die
+  gesprochene Dialogzeile (solange sie läuft; Überspringen nimmt sie sofort weg) und Zurufe von NPCs im Umkreis von
+  15 m (`npc_shout`, `npc_say`; Dauer = Take oder Lesezeit). Höchstens zwei Zeilen, die neueste unten; ein neuer
+  Satz desselben Sprechers ersetzt seinen alten. `[ui] subtitles = true` (Optionsmenü in Teil F).
+- **Dialog** (ersetzt `DialogPanel`, E3 wie Gothic 1): Während eine Zeile gesprochen wird, überspringt Bestätigen sie
+  (E4). Danach stehen die Antworten auf Pergament unten mittig (`dialog.box`, so hoch wie die Antworten, höchstens
+  sechs Zeilen sichtbar), Auswahl mit Hoch/Runter, Stick oder Maus, Bestätigen wählt. Esc verlässt kein Gespräch.
+  Beim Handeln ist der Dialog unsichtbar (Handel bis Teil D im ImGui-Fenster).
+- **Dokument:** Titel und Text auf Pergament (`document.*`), Bestätigen oder Zurück schließt. Zweiseitige Bücher und
+  Scrollen langer Texte folgen, wenn es solche Schriftstücke gibt.
+- **Auswahl an einem Mob** (Amboss, Bett): Liste der Möglichkeiten, darunter die Meldung (Schläge, Ergebnis), Zurück
+  hört auf. **Dietrich:** die Schritte der Kombination als Zellen (geschaffte hervorgehoben), Dietriche übrig, das
+  letzte Ergebnis; Links/Rechts drehen, Zurück hört auf.
+- **Engine:** `syncGameScreens()` öffnet und schließt die Bildschirme jeden Frame nach dem Zustand (Dialog, Dokument,
+  Mob-Phase); sie lesen ihre Daten über Rückrufe und handeln über die bestehenden Engine-Funktionen (`dialogSkip`,
+  `dialogChoose`, `chooseMobOption`, `mobCommand`). Ohne geladene Spiel-UI bleiben die ImGui-Fenster von M8–M10 als
+  Rückfallebene; Inventar, Truhe, Handel und Tagebuch bleiben bis Teil D/E ImGui.
+- **Stil, Layout, Texte:** neue Textrollen `subtitle_name`, `focus`, `dialog`, `document_title`, `document_hint`;
+  Farben `ink_highlight`, `air`; Kästen `hud.air`, `dialog.*`, `document.*`, `choice.*`, `lockpick.*`; Texte
+  `UI_DOCUMENT_CLOSE`, `UI_CHOICE_LEAVE`, `UI_LOCKPICK_PICKS`, `UI_LOCKPICK_HINT`, `UI_ANVIL_STRIKES` (DE/EN).
+  Die Canvas zeichnet Text auf Wunsch mit Schlagschatten (`shadow`, `shadow_color` je Textrolle).
+- **Tests:** `tests/ui/test_game_screens.cpp` (Meldungen, Untertitel, HUD-Lage und -Inhalt, Dialog, Dokument,
+  Auswahl, Dietrich mit Rückrufen), `tests/runtime/test_engine_ui.cpp` (`screen_message`; im Testlager Dietrich per
+  Pfeiltasten und Esc, Brief per Enter schließen, Dialog verbirgt das HUD und zeigt die Antworten).
+
 ## Plan M14 (freigegeben, 2026-11-01)
 Grundlage: ADR 0009 (angenommen: eigenes Retained-Mode-UI, RmlUi verworfen, ImGui nur Debug/Editor), ADR 0020
 (angenommen: MSDF-Atlas mit msdfgen im Cooker) und die Festlegungen des Projektinhabers vom 2026-10-31

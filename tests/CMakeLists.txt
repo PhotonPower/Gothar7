@@ -20,7 +20,8 @@ set(_g7_runtime_groups
     "npcs|*test_engine_scripts.cpp,*test_engine_monsters.cpp"
     "fights|*test_engine_perception.cpp,*test_engine_dialog.cpp,*test_engine_combat.cpp,*test_engine_weapon_sweep.cpp"
     "leonberg|*test_engine_leonberg.cpp"
-    "leonberg_residents|*test_engine_leonberg_residents.cpp")
+    "leonberg_residents|*test_engine_leonberg_residents.cpp"
+    "ui|*test_engine_ui.cpp")
 set(_g7_runtime_tests runtime)
 set(_g7_runtime_grouped "")
 foreach(_group IN LISTS _g7_runtime_groups)

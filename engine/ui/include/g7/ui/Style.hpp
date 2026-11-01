@@ -37,6 +37,8 @@ struct TextRole
     Color color;
     f32 outline = 0.0f; ///< outline width in UI units (0 = none); at most half the font's distance range
     Color outlineColor{0.0f, 0.0f, 0.0f, 1.0f};
+    f32 shadow = 0.0f; ///< drop shadow offset in UI units (0 = none)
+    Color shadowColor{0.0f, 0.0f, 0.0f, 0.6f};
 };
 
 /// A frame drawn from an image in nine parts: corners keep their size, edges stretch along one axis.
