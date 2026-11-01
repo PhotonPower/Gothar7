@@ -563,6 +563,10 @@ public:
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
+    /// The point lights of the last frame drawn (selectFrameLights; tests, overlay).
+    [[nodiscard]] const render::LightList& frameLights() const noexcept { return m_frameLights; }
+    /// The world's lights as loaded (light vobs; window lights in daylightLights).
+    [[nodiscard]] usize worldLightCount() const noexcept { return m_lights.size() + m_daylightLights.size(); }
     /// 0 .. 1: the combat profile of the camera ([camera.combat], M11 K5).
     [[nodiscard]] f32 playerCombatBlend() const noexcept { return m_combatBlend; }
     [[nodiscard]] f32 playerCameraDistance() const noexcept { return m_playerCamera.distance(); }
@@ -1667,8 +1671,10 @@ private:
     u64 m_benchmarkFrame = 0;
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs
     render::Environment m_environment;
-    render::LightList m_lights;
-    render::LightList m_frameLights; // m_lights plus the effects' lights of this frame (M12)
+    std::vector<render::PointLight> m_lights; // the world's (light vobs, the scene's torch)
+    render::LightBudget m_lightBudget;        // [render] max_lights, light_distance, window_light_radius
+    render::LightList
+        m_frameLights; // this frame's: effects first, then the nearest visible (selectFrameLights)
     std::vector<render::PointLight>
         m_daylightLights; // window lights (components.light.daylight), as in the file
     render::ParticleSystem m_particles;

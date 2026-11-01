@@ -633,6 +633,13 @@ Result<void> Engine::initSceneRendering()
     m_lodSettings.lod1Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod1_distance", 60.0));
     m_lodSettings.lod2Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod2_distance", 150.0));
     m_lodSettings.hysteresis = static_cast<f32>(m_config.settings.get<f64>("render.lod_hysteresis", 0.1));
+    // Lights per frame (render.md "Lichter je Bild"): effects first, then the nearest visible up to
+    // max_lights.
+    m_lightBudget.maxLights = static_cast<u32>(std::clamp<i64>(
+        m_config.settings.get<i64>("render.max_lights", 128), 1, render::LightList::kMaxPerFrame));
+    m_lightBudget.distance = static_cast<f32>(m_config.settings.get<f64>("render.light_distance", 120.0));
+    m_lightBudget.windowRadius =
+        static_cast<f32>(m_config.settings.get<f64>("render.window_light_radius", 25.0));
     m_lodSettings.forced = m_config.forcedLod;
     // multi_draw: "auto" (default) batches except on Intel GPUs - there the GPU is the limit and the
     // batches measured ~10 % slower (render.md); true/false or "on"/"off" force it.
@@ -972,7 +979,8 @@ Result<void> Engine::initViewMesh()
     const Vec3 torchOffset = Vec3(0.6f, 0.8f, 0.6f) * radius;
     // The falloff is in metres (1 / (d² + 1)); scale the intensity so the torch lights any model size.
     const f32 torchIntensity = 2.0f * (glm::dot(torchOffset, torchOffset) + 1.0f);
-    m_lights.add({bounds.center() + torchOffset, radius * 2.5f, Vec3(1.0f, 0.62f, 0.3f), torchIntensity});
+    m_lights.push_back(
+        {bounds.center() + torchOffset, radius * 2.5f, Vec3(1.0f, 0.62f, 0.3f), torchIntensity});
     m_camera.transform.position = bounds.center() + glm::normalize(Vec3(0.6f, 0.4f, 1.0f)) * radius * 2.5f;
     m_camera.transform.rotation = lookRotation(bounds.center() - m_camera.transform.position);
     m_flyCamera.speed = std::max(radius, 1.0f);
@@ -1127,7 +1135,7 @@ Result<void> Engine::instantiateScene()
             }
             else
             {
-                m_lights.add(point);
+                m_lights.push_back(point);
             }
         });
     return {};
@@ -1290,7 +1298,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     m_worldFile.vobs.clear(); // the scene holds them; captured again when the world is left
     m_sceneName = m_worldFile.name.empty() ? path : m_worldFile.name;
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
-                m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size(),
+                m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.size(),
                 timer.elapsedSeconds() * 1000.0);
     if (m_scripts)
     {
@@ -1776,18 +1784,12 @@ void Engine::drawScene(u32 width, u32 height)
 
     // Main pass: terrain (culled and detailed per chunk), then the instances inside the view frustum.
     // The world's lights, daylight through windows and the effects' lights (fire, magic; M12).
-    m_frameLights = m_lights;
-    for (const render::PointLight& l : daylightLights())
-    {
-        m_frameLights.add(l);
-    }
+    // Not all of them: the effects (the torch too) always, then the nearest visible ones up to the budget.
     {
         std::vector<render::PointLight> effectLights;
         m_particles.lights(effectLights);
-        for (const render::PointLight& l : effectLights)
-        {
-            m_frameLights.add(l);
-        }
+        render::selectFrameLights(effectLights, m_lights, daylightLights(), m_camera.transform.position,
+                                  m_camera.frustum(), m_lightBudget, m_frameLights);
     }
     m_meshRenderer.setLighting(*m_device, m_environment, m_frameLights,
                                shadowFrame.map ? &shadowFrame : nullptr);
@@ -2089,7 +2091,7 @@ void Engine::addDebugOverlay(u32 width, u32 height)
             }
         }
     }
-    for (const render::PointLight& light : m_lights.lights())
+    for (const render::PointLight& light : m_lights)
     {
         const render::DebugStyle style{Vec4(1.0f, 0.55f, 0.2f, 0.8f)};
         m_debugDraw.cross(light.position, std::min(size * 0.05f, 0.5f), style);

@@ -69,6 +69,12 @@ lod_hysteresis = 0.1
 multi_draw = "auto"
 # Kaskaden einfärben (rot, grün, blau, gelb) zum Einstellen.
 shadow_debug = false
+# Punktlichter je Bild (render.md „Lichter je Bild“): Effektlichter (Feuer, Magie, Fackel) immer, dann die nächsten
+# sichtbaren Lichter der Welt bis max_lights (der Shader fasst 256). Weltlichter, deren Reichweite weiter als
+# light_distance Meter entfernt ist, und Fensterlichter weiter als window_light_radius fallen weg.
+max_lights = 128
+light_distance = 120.0
+window_light_radius = 25.0
 # Tonemapping des HDR-Bildes: "aces" (filmisch, Standard), "reinhard" (neutral), "none" (abschneiden).
 tonemap = "aces"
 exposure = 1.0

@@ -98,6 +98,22 @@ private:
     bool m_warned = false;
 };
 
+/// How many point lights a frame takes and from where (render.md "Lichter je Bild", engine.toml [render]).
+struct LightBudget
+{
+    u32 maxLights = 128;      ///< per frame (the shader holds LightList::kMaxPerFrame)
+    f32 distance = 120.0f;    ///< world lights: their reach must come this near the eye
+    f32 windowRadius = 25.0f; ///< window (daylight) lights: only this near the eye
+};
+
+/// The lights of a frame into `out` (cleared): every light of `always` first (effects: fire, magic, the
+/// torch), then of `world` and `windows` those whose sphere is in `view` and near enough (window lights
+/// within `windowRadius` of `eye`, the others within `distance` of their reach), nearest reach first, until
+/// `maxLights`. Deterministic: equal distances keep world before windows and their order.
+void selectFrameLights(std::span<const PointLight> always, std::span<const PointLight> world,
+                       std::span<const PointLight> windows, const Vec3& eye, const Frustum& view,
+                       const LightBudget& budget, LightList& out);
+
 /// std140 layout of the lighting uniform block (binding 0 in common/lighting.glsl).
 struct GpuLighting
 {
