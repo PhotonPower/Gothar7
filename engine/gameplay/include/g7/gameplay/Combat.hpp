@@ -55,6 +55,7 @@ struct CombatSettings
     // Knockback: a hit that staggers pushes the target back along the blow.
     f32 knockback = 0.3f;        ///< m
     f32 knockbackSeconds = 0.2f; ///< over this time
+    f32 parryKnockback = 0.2f;   ///< m: a parried attacker is pushed back too
     // Ranged (M11 part E, owner decisions R1-R4).
     f32 projectileSpeed = 40.0f;                       ///< m/s
     f32 missSpreadDegrees = 5.0f;                      ///< R4: a missed shot goes this far aside

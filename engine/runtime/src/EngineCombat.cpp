@@ -616,6 +616,9 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
     {
         attacker.fighter->stagger(); // the blow bounces off
         playReaction(attacker, "none/t_hit_light");
+        // ... and is pushed back a little (owner 2026-11-01).
+        attacker.knockback->start(attacker.position - target.position, m_combat.parryKnockback,
+                                  m_combat.knockbackSeconds);
         emit("npc_parried", {target.name, attacker.name});
         return;
     }

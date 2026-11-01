@@ -1,7 +1,8 @@
 // Weapon sweep (M11, label "headless", gameplay.md "Kampf" - "Trefferprüfung"): with Combat.weapon_sweep on,
 // the weapon at socket_hand_r is swept along the attack clip in the hit window - a target in its arc is hit
 // once per swing, one behind the attacker is not, a door between them stops the blow; without the sweep a
-// door blocks the blow by reach and angle too. A hit that staggers pushes the target back (knockback).
+// door blocks the blow by reach and angle too. A hit that staggers pushes the target back (knockback), a
+// parry the attacker.
 
 #include <g7/runtime/Engine.hpp>
 
@@ -140,4 +141,34 @@ TEST_CASE("Weapon sweep: a hit that staggers pushes the target back along the bl
     REQUIRE(blow(engine) == 1);
     CHECK(run(engine, "npc_distance('npc_gate_guard', 'npc_farmer_woman')").asNumber() ==
           doctest::Approx(still).epsilon(0.02));
+}
+
+TEST_CASE("Weapon sweep: a parried attacker is pushed back a little")
+{
+    Engine engine(sweepConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "Story.met_gate_guard = true");
+    run(engine, "teleport(10, 0, 30)");
+    run(engine, "Story.parried = nil on('npc_parried', function(d, a) Story.parried = a end)");
+    // Fists against fists (fists parry no weapons), of different guilds.
+    for (const auto npc : {"npc_farmer_woman", "npc_old_man"})
+    {
+        if (!engine.runConsoleLine(std::format("npc_state('{}')", npc)).ok())
+        {
+            REQUIRE(run(engine, std::format("insert_npc('{}', 'wp_camp_center')", npc)).isString());
+        }
+        run(engine, std::format("set_routine('{}', '') npc_clear('{}')", npc, npc));
+    }
+    run(engine, "npc_teleport('npc_farmer_woman', 40, 0, 20, 0)");
+    run(engine, "npc_teleport('npc_old_man', 40, 0, 18.8, 180)");
+    runSeconds(engine, 0.2f);
+    const f64 before = run(engine, "npc_distance('npc_farmer_woman', 'npc_old_man')").asNumber();
+    REQUIRE(run(engine, "npc_attack('npc_farmer_woman')").asBool());
+    runSeconds(engine, 0.1f);
+    REQUIRE(run(engine, "npc_parry('npc_old_man')").asBool());
+    runSeconds(engine, 1.8f);
+    REQUIRE(run(engine, "Story.parried").asString() == "npc_farmer_woman");
+    const f64 after = run(engine, "npc_distance('npc_farmer_woman', 'npc_old_man')").asNumber();
+    CHECK(after - before > 0.12); // Combat.parry_knockback 0.2 m
+    CHECK(after - before < 0.3);
 }
