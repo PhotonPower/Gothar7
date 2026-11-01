@@ -372,6 +372,14 @@ void beginFrame();  BatchStats lastBatch();  shared_ptr<const MaterialDefaults> 
   liegen in einem SSBO (`common/draws.glsl`); jeder Draw trägt seinen Index als `baseInstance`, ein Instanz-Attribut
   (Divisor 1) liefert ihn dem Shader – **kein `gl_DrawID`/`ARB_shader_draw_parameters` nötig** (GL 4.3-Kern, auch
   Mesa llvmpipe in der CI). Durchsichtige Submeshes und Meshes außerhalb einer Arena: einzeln, danach.
+- **Instanzen (Phase 3, E3):** Die Draws eines Passes werden nach Modell und LOD geordnet, so liegen die Datensätze
+  gleicher Modelle hintereinander; dasselbe Submesh aufeinanderfolgender Datensätze wird **ein** Befehl mit
+  `instanceCount` > 1 (das Instanz-Attribut zählt ab `baseInstance` weiter). `BatchStats::commands` zählt die
+  Befehle. Leonberg: 3448 Submeshes → 2113 Befehle (Markt), die Häuser sind meist Einzelstücke.
+- **Figuren (Phase 3, E3):** Animierte Figuren (Menschen, Tiere) kommen nur in einen Pass, wenn ihre Box (3 × 3 m
+  breit, 3 m hoch) im Sichtkegel bzw. im Lichtvolumen der Kaskade liegt und nah genug ist: `[render] figure_distance`
+  150 m, Schatten `figure_shadow_distance` 40 m (`render::FigureCull`, `figureInView`). Vorher kam jede Figur der Welt
+  in jeden Pass: in Leonberg etwa 1440 von 1900 Draw-Calls je Bild (vier Kaskaden und Hauptpass je ~360).
 - Gleiche Werte in verschiedenen Modellen bündeln, weil alle `MaterialSet`s die neutralen Texturen des Renderers teilen
   (`MaterialSet::create(…, defaults())`), und Texturen aus Dateien über den Textur-Cache dieselben Objekte sind:
   Modelle auf demselben Trim-Sheet bündeln miteinander.

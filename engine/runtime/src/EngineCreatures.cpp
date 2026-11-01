@@ -43,6 +43,9 @@ constexpr std::array<ShowcaseStep, 13> kShowcase = {{
     {"die", 3.0f},
     {"revive", 0.5f},
 }};
+constexpr f32 kFigureHalfWidth =
+    1.5f; ///< m: a figure's box for culling (people, wolves, boars; a little generous)
+constexpr f32 kFigureHeight = 3.0f;
 
 Mat4 creatureMatrix(const Vec3& feet, f32 yaw)
 {
@@ -366,10 +369,20 @@ void Engine::fixedUpdateCreatures(f32 seconds)
 void Engine::drawCreatures(bool shadow, u32 cascade)
 {
     const f32 alpha = static_cast<f32>(m_fixedStep.alpha());
+    // Only figures near and in view (main pass) or in the cascade's light volume and nearer (shadows).
+    const Frustum volume =
+        shadow ? Frustum::fromViewProjection(m_cascades[cascade].viewProjection) : m_camera.frustum();
+    const f32 reach = shadow ? m_figureCull.shadowDistance : m_figureCull.distance;
     for (const auto& owned : m_creatures)
     {
         Creature& c = *owned;
         if (!c.figure->uploaded || c.vanished)
+        {
+            continue;
+        }
+        const AABB box{c.position - Vec3(kFigureHalfWidth, 0.0f, kFigureHalfWidth),
+                       c.position + Vec3(kFigureHalfWidth, kFigureHeight, kFigureHalfWidth)};
+        if (!render::figureInView(box, m_camera.transform.position, volume, reach))
         {
             continue;
         }

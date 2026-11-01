@@ -41,6 +41,26 @@ std::span<const u8> bytesOf(const std::vector<T>& v)
 {
     return {reinterpret_cast<const u8*>(v.data()), v.size() * sizeof(T)};
 }
+
+/// The items of a pass with equal models and levels of detail next to each other (their order otherwise
+/// kept), so their draw records follow each other and equal submeshes merge into one instanced command.
+void orderByModel(std::span<const MeshDrawItem> items, std::vector<const MeshDrawItem*>& out)
+{
+    out.clear();
+    for (const MeshDrawItem& item : items)
+    {
+        out.push_back(&item);
+    }
+    std::stable_sort(out.begin(), out.end(),
+                     [](const MeshDrawItem* a, const MeshDrawItem* b)
+                     {
+                         if (a->mesh != b->mesh)
+                         {
+                             return std::less<const Mesh*>{}(a->mesh, b->mesh);
+                         }
+                         return a->lod < b->lod;
+                     });
+}
 } // namespace
 
 void MeshRenderer::bindMaterial(rhi::ShaderProgram& program, Device& device, const Material& material)
@@ -62,8 +82,10 @@ void MeshRenderer::drawBatched(Device& device, std::span<const MeshDrawItem> ite
     m_singles.clear();
     m_batch = {};
     std::vector<std::pair<const MeshDrawItem*, usize>> translucent;
-    for (const MeshDrawItem& item : items)
+    orderByModel(items, m_order); // equal models and LODs together: their draws become instances
+    for (const MeshDrawItem* each : m_order)
     {
+        const MeshDrawItem& item = *each;
         const auto submeshes = item.mesh->submeshes();
         if (item.mesh->arena() == nullptr)
         {
@@ -152,8 +174,10 @@ void MeshRenderer::drawShadowBatched(Device& device, std::span<const MeshDrawIte
     m_entries.clear();
     m_drawData.clear();
     m_batch = {};
-    for (const MeshDrawItem& item : items)
+    orderByModel(items, m_order); // equal models and LODs together: their draws become instances
+    for (const MeshDrawItem* each : m_order)
     {
+        const MeshDrawItem& item = *each;
         if (item.mesh->arena() == nullptr)
         {
             drawShadow(device, *item.mesh, *item.materials, item.model, cascade, item.lod);
@@ -203,11 +227,38 @@ void MeshRenderer::uploadBatch(Device& device)
     // This pass goes behind the earlier passes of the frame: data records and commands each from their base.
     const usize dataBase = m_frameRecords;
     const usize dataCount = m_drawData.size() / sizeof(GpuDrawData);
+    // Per group (a run of equal keys) its commands; within a group the same submesh of consecutive draw
+    // records (the same model and LOD, ordered together by orderByModel) becomes one command with more
+    // instances.
     m_commands.clear();
-    for (const BatchEntry& entry : m_entries)
+    m_groups.clear();
+    for (usize i = 0; i < m_entries.size(); ++i)
     {
-        m_commands.push_back(entry.command);
-        m_commands.back().baseInstance += static_cast<u32>(dataBase);
+        const BatchEntry& entry = m_entries[i];
+        if (m_groups.empty() || !(entry.key == m_entries[m_groups.back().firstEntry].key))
+        {
+            m_groups.push_back({i, m_commands.size(), 0, 0, 0});
+        }
+        BatchGroup& group = m_groups.back();
+        DrawIndexedIndirect command = entry.command;
+        command.baseInstance += static_cast<u32>(dataBase);
+        if (group.commands > 0)
+        {
+            DrawIndexedIndirect& last = m_commands.back();
+            if (last.indexCount == command.indexCount && last.firstIndex == command.firstIndex &&
+                last.baseVertex == command.baseVertex &&
+                last.baseInstance + last.instanceCount == command.baseInstance)
+            {
+                last.instanceCount += command.instanceCount;
+                ++group.entries;
+                group.triangles += command.indexCount / 3;
+                continue;
+            }
+        }
+        m_commands.push_back(command);
+        ++group.commands;
+        ++group.entries;
+        group.triangles += command.indexCount / 3;
     }
     m_batchBase = dataBase + dataCount; // commands follow the data records in record numbering
     const usize needed = m_batchBase + m_commands.size();
@@ -263,17 +314,9 @@ void MeshRenderer::drawGroups(Device& device, bool shadow, const Mat4& viewProje
             device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
         }
     }
-    usize first = 0;
-    while (first < m_entries.size())
+    for (const BatchGroup& group : m_groups)
     {
-        usize end = first + 1;
-        u32 triangles = m_entries[first].command.indexCount / 3;
-        while (end < m_entries.size() && m_entries[end].key == m_entries[first].key)
-        {
-            triangles += m_entries[end].command.indexCount / 3;
-            ++end;
-        }
-        const BatchEntry& head = m_entries[first];
+        const BatchEntry& head = m_entries[group.firstEntry];
         const bool alphaTest = (head.key.blockAndFlags & 0xFF) == AlphaTest;
         rhi::ShaderProgram* program = shadow
                                           ? (alphaTest ? m_multiShadowAlphaTestProgram : m_multiShadowProgram)
@@ -303,11 +346,11 @@ void MeshRenderer::drawGroups(Device& device, bool shadow, const Mat4& viewProje
             bindMaterial(*program, device, *head.material);
         }
         device.multiDrawIndexedIndirect(m_batchBuffers[m_batchFrame].commands,
-                                        (m_batchBase + first) * sizeof(DrawIndexedIndirect),
-                                        static_cast<u32>(end - first), triangles);
+                                        (m_batchBase + group.firstCommand) * sizeof(DrawIndexedIndirect),
+                                        group.commands, group.triangles);
         ++m_batch.groups;
-        m_batch.batchedDraws += static_cast<u32>(end - first);
-        first = end;
+        m_batch.batchedDraws += group.entries;
+        m_batch.commands += group.commands;
     }
 }
 } // namespace g7::render
