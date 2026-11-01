@@ -1175,11 +1175,11 @@ Result<u32> Engine::loot(std::string_view npc, std::string_view item, u32 count)
     }
     if (c->fighter.state() != FightState::Down && c->fighter.state() != FightState::Dead)
     {
-        return Error{"Nur Bewusstlose und Tote lassen sich plündern."};
+        return Error{uiText("UI_LOOT_ONLY_DOWN")};
     }
     if (glm::length(c->position - m_player.feet()) > kLootReach)
     {
-        return Error{"Zu weit weg."};
+        return Error{uiText("UI_TOO_FAR")};
     }
     const u32 have = c->character->itemCount(item);
     const u32 take = count == 0 ? have : std::min(count, have);

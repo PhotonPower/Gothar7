@@ -24,7 +24,8 @@ set(_g7_runtime_groups
     "npc_mobs|*test_engine_npc_mobs.cpp"
     "leonberg|*test_engine_leonberg.cpp"
     "leonberg_residents|*test_engine_leonberg_residents.cpp"
-    "ui|*test_engine_ui.cpp")
+    "ui|*test_engine_ui.cpp"
+    "slice|*test_engine_vertical_slice.cpp")
 set(_g7_runtime_tests runtime)
 set(_g7_runtime_grouped "")
 foreach(_group IN LISTS _g7_runtime_groups)

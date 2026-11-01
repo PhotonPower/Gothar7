@@ -28,7 +28,17 @@ gothar-voice scan            # was sich in den Skripten geändert hat (neu, geä
 gothar-voice scan --write    # Datenbank abgleichen: neu = offen, geändert = wieder offen, entfernt = verwaist
 gothar-voice check           # Schema, gewählte Takes vorhanden, Datenbank passt zu den Skripten (CI)
 gothar-voice app             # Streamlit-Oberfläche
+gothar-voice texts           # Übersetzungen (Vorgabe --lang en): neue, geänderte, entfernte Inhaltstexte
+gothar-voice texts --write   # text/script.en.json abgleichen: neu = offen, geändert = veraltet, entfernt = weg
 ```
+
+## Übersetzungen (M14 Teil G)
+`assets/source/text/script.<sprache>.json` übersetzt alle Texte, die der Spieler aus den Skripten liest oder hört:
+gesprochene Zeilen (Sprach-Schlüssel), Zurufe (`svm.<anlass>_NN`), Namen und Beschreibungen (`<instanz>.<feld>`),
+Tagebuch-Einträge, Kapitel, Meldungen (`<info bzw. datei>.<funktion>_NN`). Die Engine sucht nach dem deutschen
+Text (`de`). Nach `texts --write` die offenen Einträge übersetzen (`text`, `status = "entwurf"`); geänderte deutsche
+Texte stehen auf `veraltet`, bis die Übersetzung geprüft ist. `check` (CI) schlägt fehl, solange etwas offen,
+veraltet oder nicht abgeglichen ist.
 In der App: Regie und Status in der Tabelle bearbeiten und speichern, offene Zeilen als CSV für einen TTS-Stapel
 laden, eine Zeile wählen, WAVs hochladen (mehrere = mehrere Takes), anhören, Take wählen; „game/scripts abgleichen“
 entspricht `scan --write`.

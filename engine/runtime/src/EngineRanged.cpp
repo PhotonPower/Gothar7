@@ -59,7 +59,7 @@ void Engine::toggleRanged()
     const std::string weapon = rangedWeapon();
     if (weapon.empty())
     {
-        notice("Kein Bogen und keine Armbrust ausgerüstet.");
+        notice(uiText("UI_RANGED_NONE"));
         return;
     }
     putTorchAway(); // the bow takes the left hand
@@ -95,7 +95,7 @@ Result<void> Engine::shootRanged()
     const std::string& ammo = crossbow ? m_combat.crossbowAmmo : m_combat.bowAmmo;
     if (!m_hero->removeItem(ammo, 1))
     {
-        notice(crossbow ? "Keine Bolzen." : "Keine Pfeile."); // R2
+        notice(uiText(crossbow ? "UI_NO_BOLTS" : "UI_NO_ARROWS")); // R2
         return Error{std::format("no {}", ammo)};
     }
     m_rangedReload = crossbow ? m_combat.crossbowReload : m_combat.bowReload; // R2: reloads by himself

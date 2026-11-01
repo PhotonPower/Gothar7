@@ -92,7 +92,7 @@ Result<void> Engine::tradeBuy(std::string_view item, u32 count)
     const i64 price = tradePrice(item, true) * count;
     if (m_hero->itemCount(m_tradeSettings.currency) < price)
     {
-        notice("Nicht genug Gulden.");
+        notice(uiText("UI_TRADE_NO_MONEY"));
         return Error{std::format("costs {} {}", price, m_tradeSettings.currency)};
     }
     (void)seller->removeItem(item, count);
@@ -123,14 +123,14 @@ Result<void> Engine::tradeSell(std::string_view item, u32 count)
     {
         if (m_hero->equipped(static_cast<gameplay::EquipSlot>(s)) == item && m_hero->itemCount(item) <= count)
         {
-            notice("Das trage ich gerade.");
+            notice(uiText("UI_TRADE_EQUIPPED"));
             return Error{std::format("{} is equipped", item)};
         }
     }
     const i64 price = tradePrice(item, false) * count;
     if (buyer->itemCount(m_tradeSettings.currency) < price)
     {
-        notice("So viel Gulden hat er nicht.");
+        notice(uiText("UI_TRADE_TRADER_NO_MONEY"));
         return Error{std::format("the trader cannot pay {} {}", price, m_tradeSettings.currency)};
     }
     (void)m_hero->removeItem(item, count);
@@ -144,52 +144,6 @@ Result<void> Engine::tradeSell(std::string_view item, u32 count)
         m_scripts->emit("item_sold", args);
     }
     return {};
-}
-
-void Engine::tradeUi()
-{
-    gameplay::Character* seller = trader();
-    if (seller == nullptr || !m_hero)
-    {
-        return;
-    }
-    const auto items = itemLookup();
-    ui::TradePanel panel;
-    const script::Instance* npc = m_scripts->findInstance("Npc", m_dialog ? m_dialog->npcName : "");
-    panel.title = std::format("Handel mit {}", npc != nullptr ? npc->fields["name"].asString() : "?");
-    panel.currency = "Gulden";
-    const auto rows =
-        [&](const gameplay::Character& who, bool heroBuys, std::vector<ui::TradePanel::Row>& out)
-    {
-        for (const gameplay::ItemStack& stack : who.inventory(items))
-        {
-            if (stack.item == m_tradeSettings.currency)
-            {
-                continue;
-            }
-            const script::Instance* item = m_scripts->findInstance("Item", stack.item);
-            out.push_back({stack.item,
-                           item != nullptr ? std::string(item->fields["name"].asString()) : stack.item,
-                           stack.count, tradePrice(stack.item, heroBuys)});
-        }
-    };
-    rows(*seller, true, panel.trader);
-    rows(*m_hero, false, panel.hero);
-    panel.traderMoney = seller->itemCount(m_tradeSettings.currency);
-    panel.heroMoney = m_hero->itemCount(m_tradeSettings.currency);
-    m_debugUi.tradePanel(panel);
-    if (panel.buy >= 0 && static_cast<usize>(panel.buy) < panel.trader.size())
-    {
-        (void)tradeBuy(panel.trader[static_cast<usize>(panel.buy)].item, 1);
-    }
-    if (panel.sell >= 0 && static_cast<usize>(panel.sell) < panel.hero.size())
-    {
-        (void)tradeSell(panel.hero[static_cast<usize>(panel.sell)].item, 1);
-    }
-    if (panel.close)
-    {
-        closeTrade();
-    }
 }
 
 void Engine::bindTradeFunctions()

@@ -46,7 +46,7 @@ void Engine::lightTorch(std::string_view item)
     }
     if (m_weaponMode >= 3) // a bow or crossbow, magic, an animal's shape: no hand free
     {
-        notice("Dafür ist keine Hand frei.");
+        notice(uiText("UI_NO_HAND_FREE"));
         return;
     }
     if (m_weaponMode == 1)
@@ -54,7 +54,7 @@ void Engine::lightTorch(std::string_view item)
         const script::Instance* weapon = m_scripts ? m_scripts->findInstance("Item", m_weaponDrawn) : nullptr;
         if (weapon != nullptr && weapon->fields["category"].asString() == "melee_2h")
         {
-            notice("Dafür ist keine Hand frei.");
+            notice(uiText("UI_NO_HAND_FREE"));
             return;
         }
     }

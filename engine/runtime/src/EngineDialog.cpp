@@ -165,7 +165,7 @@ void Engine::buildDialogMenu()
         m_dialog->menu.push_back(std::move(option));
     }
     DialogOption end;
-    end.text = "Ende";
+    end.text = uiText("UI_DIALOG_END");
     end.end = true;
     m_dialog->menu.push_back(std::move(end));
 }
@@ -403,46 +403,6 @@ void Engine::dialogInput()
     if (action)
     {
         dialogChoose(static_cast<usize>(m_dialog->selected));
-    }
-}
-
-void Engine::dialogUi()
-{
-    if (!m_dialog)
-    {
-        return;
-    }
-    if (m_gameUi)
-    {
-        return; // the game UI's dialogue and trade screens (M14 parts C, D)
-    }
-    if (m_trade)
-    {
-        tradeUi();
-        return;
-    }
-    ui::DialogPanel panel;
-    if (!m_dialog->lines.empty())
-    {
-        panel.speaker = m_dialog->lines.front().name;
-        panel.line = m_dialog->lines.front().text;
-    }
-    else
-    {
-        for (const DialogOption& o : m_dialog->menu)
-        {
-            panel.options.push_back(o.text);
-        }
-        panel.selected = m_dialog->selected;
-    }
-    m_debugUi.dialogPanel(panel);
-    if (panel.clicked >= 0)
-    {
-        dialogChoose(static_cast<usize>(panel.clicked));
-    }
-    else if (panel.selected != m_dialog->selected && panel.selected >= 0)
-    {
-        m_dialog->selected = panel.selected;
     }
 }
 

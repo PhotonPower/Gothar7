@@ -449,6 +449,7 @@ void Engine::applySetting(std::string_view key)
     }
     else if (key == "ui.language")
     {
+        loadTexts();
         reloadGameUi();
     }
 }

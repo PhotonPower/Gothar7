@@ -25,10 +25,9 @@ constexpr f32 kFallbackClipSeconds = 0.6f;   ///< a phase without its clip in th
 constexpr f64 kNoticeSeconds = 2.5;          ///< "Verschlossen." and the like
 constexpr f32 kStrikeFallbackSeconds = 0.7f; ///< a hammer blow without the hit_anvil event
 /// Sleeping (Entscheidung Projektinhaber 2026-10-04, wie Gothic 1): until morning, noon, evening or midnight.
-constexpr std::pair<u32, const char*> kSleepUntil[] = {{8, "Bis zum Morgen (8:00)"},
-                                                       {12, "Bis Mittag (12:00)"},
-                                                       {20, "Bis zum Abend (20:00)"},
-                                                       {0, "Bis Mitternacht (0:00)"}};
+/// Sleeping in a bed: until when (hour, UI text).
+constexpr std::pair<u32, std::string_view> kSleepUntil[] = {
+    {8, "UI_SLEEP_MORNING"}, {12, "UI_SLEEP_NOON"}, {20, "UI_SLEEP_EVENING"}, {0, "UI_SLEEP_MIDNIGHT"}};
 
 f32 wrapAngle(f32 a)
 {
@@ -172,10 +171,15 @@ std::optional<MobInfo> Engine::mobInfo(world::VobId vob) const
         return std::nullopt;
     }
     const MobRuntime& m = it->second;
-    MobInfo info{m.definition, m.type, m.name, m.locked, m.open, {}};
+    MobInfo info{m.definition, m.type, m.name, m.locked, m.open, {}, Vec3(0.0f)};
     for (const auto& [item, count] : m.contents)
     {
         info.contents.push_back({item, count});
+    }
+    const entt::entity e = m_scene.findById(vob);
+    if (const world::WorldTransform* t = e != entt::null ? m_scene.get<world::WorldTransform>(e) : nullptr)
+    {
+        info.position = Vec3(t->matrix[3]);
     }
     return info;
 }
@@ -193,6 +197,7 @@ std::optional<world::VobId> Engine::findMob(std::string_view vobName) const
 void Engine::notice(std::string text)
 {
     G7_LOG_INFO("engine", "{}", text);
+    ++m_noticeCount;
     if (m_gameUi)
     {
         m_notice = text; // also for lastNotice()
@@ -238,7 +243,7 @@ Result<void> Engine::useMob(world::VobId vob)
     const auto place = gameplay::chooseSlot(*type, world, m_player.feet(), busySlots(m, "hero"));
     if (!place)
     {
-        notice("Hier ist kein Platz.");
+        notice(uiText("UI_NO_ROOM"));
         if (m_scripts)
         {
             const script::Value args[] = {m.definition};
@@ -252,7 +257,7 @@ Result<void> Engine::useMob(world::VobId vob)
         if (!m.key.empty() && m_hero->itemCount(m.key) > 0)
         {
             m.locked = false; // the key opens it on the way (Gothic: no extra step)
-            notice(std::format("{} aufgeschlossen.", m.name));
+            notice(uiText("UI_UNLOCKED", {{"name", contentText(m.name)}}));
         }
         else if (const std::string pick = lockpickItem(); m_hero->itemCount(pick) > 0)
         {
@@ -260,7 +265,7 @@ Result<void> Engine::useMob(world::VobId vob)
         }
         else
         {
-            notice("Verschlossen.");
+            notice(uiText("UI_LOCKED"));
             if (m_scripts)
             {
                 const script::Value args[] = {m.definition};
@@ -381,15 +386,15 @@ void Engine::mobCommand(MobCommand command)
     switch (use.lockpick->turn(command == MobCommand::TurnLeft ? 'L' : 'R', roll, lockpickBreakChance()))
     {
     case gameplay::Lockpick::Result::Progress:
-        use.lockpickResult = "Klick.";
+        use.lockpickResult = uiText("UI_LOCKPICK_CLICK");
         break;
     case gameplay::Lockpick::Result::Reset:
-        use.lockpickResult = "Der Dietrich rutscht ab - von vorn.";
+        use.lockpickResult = uiText("UI_LOCKPICK_SLIP");
         break;
     case gameplay::Lockpick::Result::Broken:
     {
         (void)m_hero->removeItem(lockpickItem());
-        use.lockpickResult = "Der Dietrich ist abgebrochen.";
+        use.lockpickResult = uiText("UI_LOCKPICK_BROKEN");
         notice(use.lockpickResult);
         if (m_scripts)
         {
@@ -405,7 +410,7 @@ void Engine::mobCommand(MobCommand command)
     }
     case gameplay::Lockpick::Result::Opened:
         m.locked = false;
-        use.lockpickResult = "Das Schloss springt auf.";
+        use.lockpickResult = uiText("UI_LOCKPICK_OPEN");
         notice(use.lockpickResult);
         if (m_scripts)
         {
@@ -768,31 +773,6 @@ Result<void> Engine::putIntoMob(world::VobId vob, std::string_view item, u32 cou
     return {};
 }
 
-void Engine::lockpickUi()
-{
-    if (!m_mobUse || m_mobUse->phase != MobUse::Phase::Picklock || !m_mobUse->lockpick || !m_hero)
-    {
-        return;
-    }
-    MobUse& use = *m_mobUse;
-    ui::LockpickPanel panel;
-    panel.title = m_mobs.at(use.vob.value).name;
-    panel.progress = use.lockpick->progress();
-    panel.length = use.lockpick->length();
-    panel.picks = m_hero->itemCount(lockpickItem());
-    panel.hint = "links/rechts: drehen (Drehen- oder Seitwärts-Tasten), rückwärts: aufhören";
-    panel.result = use.lockpickResult;
-    m_debugUi.lockpickPanel(panel);
-    if (panel.turn != 0)
-    {
-        mobCommand(panel.turn == 'L' ? MobCommand::TurnLeft : MobCommand::TurnRight);
-    }
-    if (panel.leave)
-    {
-        mobCommand(MobCommand::Leave);
-    }
-}
-
 void Engine::mobInput()
 {
     using platform::Action;
@@ -952,14 +932,14 @@ std::vector<std::string> Engine::mobChoices() const
     {
         for (const auto& [hour, label] : kSleepUntil)
         {
-            out.emplace_back(label);
+            out.push_back(uiText(label));
         }
     }
     else if (m_mobUse->strikesLeft == 0)
     {
         for (const script::Instance* recipe : recipesFor(m_mobUse->type))
         {
-            out.emplace_back(recipe->fields["name"].asString());
+            out.push_back(contentText(recipe->fields["name"].asString()));
         }
     }
     return out;
@@ -979,7 +959,8 @@ Result<void> Engine::chooseMobOption(usize index)
         // Rested (Gothic 1): hit points and mana full.
         (void)m_hero->setAttribute("hp", m_hero->attribute("hp_max"));
         (void)m_hero->setAttribute("mana", m_hero->attribute("mana_max"));
-        notice(std::format("Ausgeschlafen - Tag {}, {:02}:00.", m_gameTime.day(), hour));
+        notice(uiText("UI_SLEPT",
+                      {{"day", std::to_string(m_gameTime.day())}, {"time", std::format("{:02}:00", hour)}}));
         if (m_scripts)
         {
             const script::Value args[] = {static_cast<i64>(hour)};
@@ -996,8 +977,9 @@ Result<void> Engine::chooseMobOption(usize index)
             if (m_hero->itemCount(item) < static_cast<u32>(std::max<i64>(1, count.asInteger(1))))
             {
                 const script::Instance* needed = m_scripts->findInstance("Item", item);
-                use.choiceMessage = std::format("Dafür fehlt: {}.",
-                                                needed != nullptr ? needed->fields["name"].asString() : item);
+                use.choiceMessage = uiText(
+                    "UI_MISSING_MATERIAL",
+                    {{"item", needed != nullptr ? contentText(needed->fields["name"].asString()) : item}});
                 return Error{use.choiceMessage};
             }
         }
@@ -1025,7 +1007,7 @@ void Engine::finishRecipe(MobUse& use)
         {
             if (m_hero->itemCount(item) < static_cast<u32>(std::max<i64>(1, count.asInteger(1))))
             {
-                use.choiceMessage = "Das Material ist weg.";
+                use.choiceMessage = uiText("UI_MATERIAL_GONE");
                 use.recipe.clear();
                 return;
             }
@@ -1042,7 +1024,7 @@ void Engine::finishRecipe(MobUse& use)
             m_hero->addItem(item, static_cast<u32>(std::max<i64>(1, count.asInteger(1))));
         }
     }
-    use.choiceMessage = std::format("{} fertig.", recipe->fields["name"].asString());
+    use.choiceMessage = uiText("UI_CRAFTED", {{"item", contentText(recipe->fields["name"].asString())}});
     notice(use.choiceMessage);
     if (m_scripts)
     {
@@ -1052,36 +1034,4 @@ void Engine::finishRecipe(MobUse& use)
     use.recipe.clear();
 }
 
-void Engine::choiceUi()
-{
-    if (!m_mobUse || m_mobUse->phase != MobUse::Phase::Loop || m_mobUse->containerOpen)
-    {
-        return;
-    }
-    MobUse& use = *m_mobUse;
-    ui::ChoicePanel panel;
-    panel.title = m_mobs.at(use.vob.value).name;
-    panel.options = mobChoices();
-    if (use.strikesLeft > 0)
-    {
-        panel.message = std::format("Schmiedet ... noch {} Schläge", use.strikesLeft);
-    }
-    else
-    {
-        panel.message = use.choiceMessage;
-    }
-    if (panel.options.empty() && use.type != "anvil")
-    {
-        return;
-    }
-    m_debugUi.choicePanel(panel);
-    if (panel.chosen >= 0)
-    {
-        (void)chooseMobOption(static_cast<usize>(panel.chosen));
-    }
-    if (panel.cancel)
-    {
-        mobCommand(MobCommand::Leave);
-    }
-}
 } // namespace g7

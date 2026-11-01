@@ -178,7 +178,8 @@ void Engine::updateGameUi(f64 realSeconds, bool allowMouse, bool allowKeyboard)
         if (m_dialog && !m_dialog->lines.empty() && m_dialog->linePresented)
         {
             const DialogLine& line = m_dialog->lines.front();
-            subtitles.push_back({line.name, line.text, line.seconds - m_dialog->lineTime});
+            subtitles.push_back(
+                {contentText(line.name), contentText(line.text), line.seconds - m_dialog->lineTime});
         }
     }
     m_hud.update(buildHudModel(Vec2(width, height)), m_messages, subtitles, area, scale,
@@ -299,7 +300,7 @@ void Engine::syncGameScreens()
             view.hidden = m_trade.has_value();
             for (const DialogOption& o : m_dialog->menu)
             {
-                view.options.push_back(o.text);
+                view.options.push_back(contentText(o.text));
             }
             view.selected = static_cast<usize>(std::max(0, m_dialog->selected));
             return view;
@@ -329,14 +330,15 @@ void Engine::syncGameScreens()
     // A document being read.
     auto* document = dynamic_cast<ui::DocumentScreen*>(m_screens.find("document"));
     if (document != nullptr && !document->closed() &&
-        (!m_document || document->title() != m_document->title || document->text() != m_document->text))
+        (!m_document || document->title() != contentText(m_document->title) ||
+         document->text() != contentText(m_document->text)))
     {
         document->close();
     }
     if (m_document && (document == nullptr || document->closed()))
     {
-        m_screens.push(std::make_unique<ui::DocumentScreen>(m_document->title, m_document->text,
-                                                            [this] { m_document.reset(); }));
+        m_screens.push(std::make_unique<ui::DocumentScreen>(
+            contentText(m_document->title), contentText(m_document->text), [this] { m_document.reset(); }));
     }
 
     // A choice at a mob (anvil, bed).
@@ -353,12 +355,11 @@ void Engine::syncGameScreens()
             {
                 return view;
             }
-            view.title = m_mobs.at(m_mobUse->vob.value).name;
+            view.title = contentText(m_mobs.at(m_mobUse->vob.value).name);
             view.options = mobChoices();
-            if (m_mobUse->strikesLeft > 0 && m_gameUi)
+            if (m_mobUse->strikesLeft > 0)
             {
-                view.message = m_gameUi->strings().format("UI_ANVIL_STRIKES",
-                                                          {{"n", std::to_string(m_mobUse->strikesLeft)}});
+                view.message = uiText("UI_ANVIL_STRIKES", {{"n", std::to_string(m_mobUse->strikesLeft)}});
             }
             else
             {
@@ -388,7 +389,7 @@ void Engine::syncGameScreens()
             {
                 return view;
             }
-            view.title = m_mobs.at(m_mobUse->vob.value).name;
+            view.title = contentText(m_mobs.at(m_mobUse->vob.value).name);
             view.progress = m_mobUse->lockpick->progress();
             view.length = m_mobUse->lockpick->length();
             view.picks = m_hero ? m_hero->itemCount(lockpickItem()) : 0;
@@ -441,6 +442,44 @@ void Engine::bindUiFunctions()
                          a.size() > 1 ? static_cast<usize>(std::max(a[1].asNumber(1.0), 1.0)) - 1 : 0;
                  }
                  return script::Value{};
+             }});
+    vm.bind(
+        {"ui_text", "ui_text(key: string, args?: table): string",
+         "Ein UI-Text aus `text/ui.<sprache>.toml` in der eingestellten Sprache, Platzhalter `{name}` aus "
+         "`args` (z. B. `ui_text(\"UI_QUEST_NEW\", { quest = tr(q.name) })`) – für Texte, die erst zur "
+         "Laufzeit entstehen.",
+         "Bildschirm", [this](std::span<const script::Value> a) -> Result<script::Value>
+         {
+             if (a.empty() || !a[0].isString())
+             {
+                 return Error{"argument 1 must be the key"};
+             }
+             std::string text(m_uiStrings.get(a[0].asString()));
+             if (a.size() > 1)
+             {
+                 if (const script::Table* args = a[1].asTable())
+                 {
+                     for (const auto& [name, value] : args->fields)
+                     {
+                         const std::string arg = value.isString()    ? std::string(value.asString())
+                                                 : value.isInteger() ? std::to_string(value.asInteger())
+                                                                     : value.toString();
+                         text = ui::substitute(text, {{name, arg}});
+                     }
+                 }
+             }
+             return script::Value{std::move(text)};
+         }});
+    vm.bind({"tr", "tr(text: string): string",
+             "Ein deutscher Inhaltstext in der eingestellten Sprache (Übersetzung aus "
+             "`text/script.<sprache>.json`, sonst der Text selbst; M14 Teil G).",
+             "Bildschirm", [this](std::span<const script::Value> a) -> Result<script::Value>
+             {
+                 if (a.empty() || !a[0].isString())
+                 {
+                     return Error{"argument 1 must be the text"};
+                 }
+                 return script::Value{contentText(a[0].asString())};
              }});
     vm.bind({"screen_message", "screen_message(text: string, seconds?: number)",
              "Zeigt dem Spieler eine Meldung oben in der Mitte (F7; Vorgabe 3 s), z. B. `Erfahrung +50`.",

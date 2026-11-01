@@ -1,13 +1,15 @@
 // UI texts by key (M14 part A): lookup, fallback to the key, placeholders, number format; the shipped
-// tables for German and English have the same keys.
+// tables for German and English have the same keys, and every key the code names exists.
 
 #include <g7/core/FileSystem.hpp>
 #include <g7/ui/Strings.hpp>
 
 #include <doctest/doctest.h>
 
+#include <filesystem>
 #include <limits>
 #include <ostream>
+#include <regex>
 #include <string>
 
 using namespace g7;
@@ -53,4 +55,42 @@ TEST_CASE("Strings: the shipped German and English tables match")
     REQUIRE_MESSAGE(english, (english ? "" : english.error().message));
     CHECK(german.value().keys() == english.value().keys());
     CHECK_FALSE(german.value().keys().empty());
+}
+
+TEST_CASE("Strings: every key the code, the UI data and the scripts name is in the tables (M14 part G)")
+{
+    const fs::Path assets = fs::fromUtf8(G7_ASSET_SOURCE_DIR);
+    const fs::Path root = assets.parent_path().parent_path();
+    auto de = fs::readText(assets / "text" / "ui.de.toml");
+    REQUIRE(de);
+    auto german = Strings::load("de", de.value(), "ui.de.toml");
+    REQUIRE(german);
+    const std::regex quotedKey(R"re("(UI_[A-Z0-9_]*[A-Z0-9])")re");
+    usize found = 0;
+    for (const fs::Path& dir : {root / "engine", root / "game" / "scripts", assets / "ui"})
+    {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(dir))
+        {
+            const std::string ext = entry.path().extension().string();
+            if (!entry.is_regular_file() ||
+                (ext != ".cpp" && ext != ".hpp" && ext != ".lua" && ext != ".toml"))
+            {
+                continue;
+            }
+            auto text = fs::readText(entry.path());
+            REQUIRE(text);
+            for (std::sregex_iterator it(text.value().begin(), text.value().end(), quotedKey), end; it != end;
+                 ++it)
+            {
+                const std::string key = (*it)[1].str();
+                ++found;
+                CHECK_MESSAGE(german.value().contains(key), key, " (", fs::toUtf8(entry.path()), ")");
+            }
+        }
+    }
+    CHECK(found > 100);
+    for (int n = 1; n <= 6; ++n) // "UI_ORDINAL_{}" (circles of magic)
+    {
+        CHECK(german.value().contains("UI_ORDINAL_" + std::to_string(n)));
+    }
 }

@@ -102,6 +102,7 @@ Result<void> Engine::initScripts()
     bindPerceptionFunctions();
     bindDialogFunctions();
     bindTradeFunctions();
+    loadTexts();
     loadVoiceLines();
     bindCombatFunctions();
     bindLootFunctions();

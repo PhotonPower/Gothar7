@@ -66,19 +66,15 @@ i32 spellMana(const SpellInfo& spell, u32 stages) noexcept
     return spell.mana + static_cast<i32>(std::min(stages, spell.investStages)) * spell.investMana;
 }
 
-std::optional<std::string> castBlocked(const Character& caster, const SpellInfo& spell, bool scroll,
-                                       u32 stages)
+std::optional<CastBlock> castBlocked(const Character& caster, const SpellInfo& spell, bool scroll, u32 stages)
 {
-    static constexpr std::array<const char*, 6> kOrdinals = {"erste",  "zweite", "dritte",
-                                                             "vierte", "fünfte", "sechste"};
     if (!scroll && caster.talent("magic_circle") < spell.circle)
     {
-        return std::format("Dafür fehlt dir der {} Kreis der Magie.",
-                           kOrdinals[static_cast<usize>(std::clamp(spell.circle, 1, 6) - 1)]);
+        return CastBlock{CastBlock::Reason::Circle, std::clamp(spell.circle, 1, 6)};
     }
     if (caster.attribute("mana") < spellMana(spell, stages))
     {
-        return std::string("Dafür reicht dein Mana nicht.");
+        return CastBlock{CastBlock::Reason::Mana, 0};
     }
     return std::nullopt;
 }

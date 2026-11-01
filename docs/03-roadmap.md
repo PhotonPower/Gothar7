@@ -294,11 +294,20 @@ Plan (Teile A–G, freigegeben 2026-11-01, Gestaltung F1–F12 vom Projektinhabe
     Platzhalter-Thema `MENU`; Esc öffnet im Spiel das Pausenmenü; Optionen in vier Reitern (Grafik, Klang mit den
     Lautstärken aus `[audio]`, Steuerung mit Tastenbelegung, Spiel), gespeichert wird nur, was vom Standard abweicht;
     Ladebildschirm beim Start und bei Neues Spiel. Laden/Speichern bleiben bis M15 ausgegraut
-- [ ] Lokalisierung (Schlüssel → Text-Tabellen DE/EN), Untertitel
+- [x] Lokalisierung (Schlüssel → Text-Tabellen DE/EN), Untertitel
   - Gesprochene Texte kommen aus `assets/source/voice/lines.<sprache>.json` (eine Datei je Sprache)
+  - Teil G: alle UI-Texte und Meldungen der Engine aus `text/ui.<sprache>.toml`; Inhaltstexte der Skripte deutsch
+    inline, Übersetzungen in `text/script.<sprache>.json` (`gothar-voice texts`, Vertrag „Inhaltstexte“); Englisch
+    als Entwurf von Claude (F10, Abnahme durch den Projektinhaber offen); Sprache in den Optionen umschaltbar;
+    Lua `ui_text`/`tr`. Die ImGui-Spielfenster sind entfernt (ImGui nur noch Debug/Editor)
 - [x] Bildschirmtexte (z. B. „Erfahrung +50“), Nachrichten – Teil C: oben mittig, 3 s (F7), Lua `screen_message`
 
-**DoD:** Das Vertical Slice ist vollständig ohne Debug-UI spielbar.
+**DoD:** Das Vertical Slice ist vollständig ohne Debug-UI spielbar. – Erfüllt (Teil G): Szenariotest
+`tests/runtime/test_engine_vertical_slice.cpp` (ctest `runtime_slice`) spielt Hauptmenü → Neues Spiel → Dialog →
+Auftrag → Handel → Inventar → Truhe → Kampf → Tagebuch → Pause nur mit Tasten, dazu die Wache auf Englisch;
+die Begehung durch den Projektinhaber (Deutsch und Englisch) steht aus.
+
+**Phase M14 abgeschlossen** (Teile A–G).
 
 ## M15 – Speichern/Laden  → Meilenstein C
 - [ ] Serialisierung: Welt-Delta gegenüber Ausgangszustand (geänderte/entfernte/neue Vobs), NPC-Zustände, Inventare, Skript-Variablen, Tagebuch, Spielzeit

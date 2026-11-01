@@ -20,6 +20,12 @@ Zeigt dem Spieler eine Meldung oben in der Mitte (F7; Vorgabe 3 s), z. B. `Erfah
 ### `status_open(open?: boolean)`
 Öffnet (oder mit `false` schließt) den Charakterbildschirm wie die Taste status (B).
 
+### `tr(text: string): string`
+Ein deutscher Inhaltstext in der eingestellten Sprache (Übersetzung aus `text/script.<sprache>.json`, sonst der Text selbst; M14 Teil G).
+
+### `ui_text(key: string, args?: table): string`
+Ein UI-Text aus `text/ui.<sprache>.toml` in der eingestellten Sprache, Platzhalter `{name}` aus `args` (z. B. `ui_text("UI_QUEST_NEW", { quest = tr(q.name) })`) – für Texte, die erst zur Laufzeit entstehen.
+
 ## Debug
 
 ### `npc_debug_hold(npc: string, seconds: number)`

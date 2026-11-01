@@ -109,14 +109,15 @@ void Engine::npcSays(const Creature& c, std::string_view text)
     if (m_player.valid() && glm::length(c.position - m_player.feet()) < 15.0f)
     {
         const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", c.species) : nullptr;
-        const std::string name = npc != nullptr ? std::string(npc->fields["name"].asString()) : c.species;
+        const std::string name = npc != nullptr ? contentText(npc->fields["name"].asString()) : c.species;
+        const std::string shown = contentText(text);
         if (m_gameUi)
         {
-            m_subtitles.push(name, std::string(text), spoken ? *spoken : ui::readingSeconds(text));
+            m_subtitles.push(name, shown, spoken ? *spoken : ui::readingSeconds(shown));
         }
         else
         {
-            notice(std::format("{}: {}", name, text));
+            notice(std::format("{}: {}", name, shown)); // headless (no window): the line in lastNotice()
         }
     }
 }

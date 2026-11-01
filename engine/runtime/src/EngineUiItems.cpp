@@ -102,7 +102,7 @@ ui::ItemScreenView Engine::itemScreenView(ui::ItemScreenMode mode)
             const auto info = items(stack.item);
             ui::ItemEntry e;
             e.item = stack.item;
-            e.name = info ? info->name : stack.item;
+            e.name = info ? contentText(info->name) : stack.item;
             e.category = info ? info->category : "misc";
             e.count = stack.count;
             if (heroSide)
@@ -126,7 +126,7 @@ ui::ItemScreenView Engine::itemScreenView(ui::ItemScreenMode mode)
         }
     };
     entries(m_hero.get(), true, view.hero.items);
-    view.hero.title = strings.format("UI_INVENTORY_TITLE", {{"name", m_hero->name()}});
+    view.hero.title = strings.format("UI_INVENTORY_TITLE", {{"name", contentText(m_hero->name())}});
     view.hero.footer = strings.format(
         "UI_MONEY",
         {{"amount", ui::formatNumber(m_hero->itemCount(m_tradeSettings.currency), strings.language())}});
@@ -136,7 +136,7 @@ ui::ItemScreenView Engine::itemScreenView(ui::ItemScreenMode mode)
         gameplay::Character* seller = trader();
         entries(seller, false, view.other.items);
         const script::Instance* npc = m_scripts->findInstance("Npc", m_dialog ? m_dialog->npcName : "");
-        view.other.title = npc != nullptr ? std::string(npc->fields["name"].asString()) : std::string();
+        view.other.title = npc != nullptr ? contentText(npc->fields["name"].asString()) : std::string();
         if (seller != nullptr)
         {
             view.other.footer = strings.format(
@@ -150,7 +150,7 @@ ui::ItemScreenView Engine::itemScreenView(ui::ItemScreenMode mode)
         if (looted != nullptr && looted->character)
         {
             entries(looted->character.get(), false, view.other.items);
-            view.other.title = std::format("{} ({})", looted->character->name(),
+            view.other.title = std::format("{} ({})", contentText(looted->character->name()),
                                            strings.get(looted->fighter.state() == gameplay::FightState::Dead
                                                            ? "UI_LOOT_DEAD"
                                                            : "UI_LOOT_UNCONSCIOUS"));
@@ -158,13 +158,13 @@ ui::ItemScreenView Engine::itemScreenView(ui::ItemScreenMode mode)
         else if (m_mobUse && m_mobUse->containerOpen)
         {
             const MobRuntime& chest = m_mobs.at(m_mobUse->vob.value);
-            view.other.title = chest.name;
+            view.other.title = contentText(chest.name);
             for (const auto& [item, count] : chest.contents)
             {
                 const auto info = items(item);
                 ui::ItemEntry e;
                 e.item = item;
-                e.name = info ? info->name : item;
+                e.name = info ? contentText(info->name) : item;
                 e.category = info ? info->category : "misc";
                 e.count = count;
                 e.details = itemDetails(item);
@@ -272,15 +272,32 @@ void Engine::useInventoryItem(const std::string& item)
     if (gameplay::Character::slotFor(category))
     {
         auto slot = hero.equip(item, items);
-        m_inventoryMessage = slot ? std::string() : slot.error().message;
+        m_inventoryMessage.clear();
+        if (!slot)
+        {
+            // Not strong or skilled enough (the requirements of the item), else just "cannot".
+            const script::Instance* def = m_scripts ? m_scripts->findInstance("Item", item) : nullptr;
+            const std::string needs =
+                def != nullptr ? listOf(m_uiStrings, "UI_REQUIRE_", def->fields["requires"]) : std::string();
+            m_inventoryMessage =
+                needs.empty() ? uiText("UI_CANNOT_DO") : uiText("UI_ITEM_REQUIRES", {{"list", needs}});
+        }
         return;
     }
+    const u64 notices = m_noticeCount;
     auto used = useItem(item);
-    m_inventoryMessage = used ? std::string() : used.error().message;
+    m_inventoryMessage = used ? std::string() : failureMessage(notices);
+}
+
+std::string Engine::failureMessage(u64 noticesBefore) const
+{
+    // The engine's errors are for the log and Lua; the player reads the notice the action gave, if any.
+    return m_noticeCount != noticesBefore ? m_notice : uiText("UI_CANNOT_DO");
 }
 
 void Engine::transferItem(ui::ItemScreenMode mode, bool fromOther, const std::string& item, u32 count)
 {
+    const u64 notices = m_noticeCount;
     Result<void> done{};
     if (mode == ui::ItemScreenMode::Trade)
     {
@@ -295,8 +312,8 @@ void Engine::transferItem(ui::ItemScreenMode mode, bool fromOther, const std::st
         }
         else
         {
-            done =
-                Error{m_gameUi ? std::string(m_gameUi->strings().get("UI_LOOT_TAKE_ONLY")) : "only taking"};
+            notice(uiText("UI_LOOT_TAKE_ONLY"));
+            done = Error{"only taking"};
         }
     }
     else if (m_mobUse && m_mobUse->containerOpen)
@@ -304,7 +321,7 @@ void Engine::transferItem(ui::ItemScreenMode mode, bool fromOther, const std::st
         const world::VobId vob = m_mobUse->vob;
         done = fromOther ? takeFromMob(vob, item, count) : putIntoMob(vob, item, count);
     }
-    m_inventoryMessage = done ? std::string() : done.error().message;
+    m_inventoryMessage = done ? std::string() : failureMessage(notices);
 }
 
 std::optional<ui::CellFrame> Engine::itemCellFrame(std::string_view item, const LoadedModel& model)

@@ -152,7 +152,7 @@ TEST_CASE("M10 scenario: the camp's three quests played through, the ring bought
     CHECK(run(engine, "item_count('it_gulden')").asInteger() == 10);
     returnRing(engine);
     // All in the diary: four quests done, none running.
-    const ui::DiaryPanel diary = engine.diaryPanelData();
+    const Engine::DiaryData diary = engine.diaryData();
     CHECK(diary.running.empty());
     CHECK(diary.done.size() == 4);
     CHECK(diary.chapter == "Kapitel 2");

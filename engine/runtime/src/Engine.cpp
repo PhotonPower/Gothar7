@@ -1955,13 +1955,8 @@ void Engine::setDebugUiVisible(bool visible) noexcept
 
 void Engine::runDebugUi(f64 realSeconds)
 {
-    // The game UI (M14) shows the focus name, dialogue, documents, mob choices and lockpicking; without it
-    // (failed to load) the ImGui windows of M8-M10 do.
-    const bool legacy = !m_gameUi;
-    m_debugUiFrame =
-        (m_debugUiVisible || m_consoleOpen ||
-         (legacy && (m_inventoryOpen || m_diaryOpen || m_focus || m_mobUse || m_document || m_dialog))) &&
-        m_debugUi.valid();
+    // ImGui is only the debug and editor UI (ADR 0009): the game itself is the game UI's (M14).
+    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen) && m_debugUi.valid();
     m_window->setTextInput(m_debugUiFrame && m_debugUi.wantsText());
     if (!m_debugUiFrame)
     {
@@ -1976,19 +1971,6 @@ void Engine::runDebugUi(f64 realSeconds)
     if (m_consoleOpen)
     {
         consoleUi(); // also without the other debug windows
-    }
-    if (legacy)
-    {
-        inventoryUi(); // the game UI's item screens since M14 part D
-        focusUi();
-        lockpickUi();
-        choiceUi();
-        documentUi();
-    }
-    dialogUi(); // M10: without the game UI the dialogue and trading windows
-    if (legacy)
-    {
-        diaryUi(); // the game UI's diary screen since M14 part E
     }
     if (!m_debugUiVisible)
     {
