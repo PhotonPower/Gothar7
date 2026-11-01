@@ -395,7 +395,9 @@ def generate(
         if in_core:
             entry = {"id": bid, "kind": "building", "mesh": "", "pos": list(origin),
                      "triangles": triangles, "collisionTriangles": col.triangles,
-                     "groundY": lod2_ground}  # fmt: skip
+                     "groundY": lod2_ground,  # the footprint: the town map (M14)
+                     "footprint": [[round(float(x), 2), round(float(z), 2)]
+                                   for x, z in footprint]}  # fmt: skip
             deferred.append((entry, stem, prims, list(col.parts), origin))
             if dgm:
                 entry["dgmMinY"], entry["dgmMaxY"] = round(dgm[0], 3), round(dgm[1], 3)

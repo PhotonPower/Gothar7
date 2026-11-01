@@ -1186,6 +1186,83 @@ def _retaining_walls(grid: Any, works: dict[str, Any], street_doc: dict[str, Any
     return grid
 
 
+def _cmd_citymap(args: argparse.Namespace, out: TextIO) -> int:
+    """The town map (M14 F9): ui/maps/<site>.png and .toml from the game's houses, OSM streets,
+    water and gardens, the town wall and the labels of data/<site>/citymap.json (after
+    assemble: the labels' anchors are vobs of the world)."""
+    from shapely.geometry import Polygon as Poly
+
+    from gothar_worldgen.citymap import (
+        GREEN_KINDS,
+        CityMapError,
+        in_view,
+        load_labels,
+        map_toml,
+        map_view,
+        png_bytes,
+        point_on,
+        render,
+    )
+    from gothar_worldgen.walls.citywall import CourseError, load_course
+
+    site = load_site(args.site, args.config_dir)
+    local = load_local(args.config_dir)
+    paths = DataPaths(local.data_root, site.name)
+    folder, data_dir = _site_dirs(args, site.name)
+    assets = folder.parents[1]
+    try:
+        spec = json.loads((data_dir / "citymap.json").read_text(encoding="utf-8"))
+        features = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
+        feats = features.get("features", [])
+        street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+        index = json.loads((folder / "generated" / "buildings_index.json").read_text("utf-8"))
+        course = load_course(json.loads((data_dir / "city_wall.json").read_text("utf-8")), feats)
+        world = json.loads((folder / f"{site.name}.g7world").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, CourseError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    wall = Poly(course.ring)
+    view = map_view(wall, float(spec.get("marginM", 60.0)), int(spec.get("widthPx", 2048)))
+    houses = in_view(view, [Poly(e["footprint"]) for e in index.get("entries", [])
+                            if len(e.get("footprint") or []) >= 3])  # fmt: skip
+    squares = in_view(view, [Poly(q["polygon"]) for q in street_doc.get("squares", [])])
+    areas = [f for f in feats if f.get("geometry") == "polygon"]
+    waters = in_view(view, [Poly(f["polygon"]) for f in areas if f.get("type") == "water"])
+    greens = in_view(view, [Poly(f["polygon"]) for f in areas if f.get("kind") in GREEN_KINDS])
+    stream = float(spec.get("streamM", 6.0))
+    waterways = [([(float(x), float(z)) for x, z in f["points"]], stream) for f in feats
+                 if f.get("type") == "waterway" and f.get("geometry") == "line"]  # fmt: skip
+    anchors: dict[str, tuple[float, float]] = {}
+    for v in world.get("vobs", []):
+        if v.get("name"):
+            anchors[v["name"]] = (float(v["pos"][0]), float(v["pos"][2]))
+    for g in course.gates:
+        anchors[g.key] = g.at
+    for f in feats:
+        if f.get("name") and f.get("geometry") == "line":
+            anchors.setdefault(f["name"], point_on(f["points"], view))
+    try:
+        labels = load_labels(spec, anchors)
+    except CityMapError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    fonts = {"caps": assets / "fonts" / "AlegreyaSC-Regular.ttf",
+             "text": assets / "fonts" / "Alegreya-Regular.ttf"}  # fmt: skip
+    img = render(view, houses, street_doc.get("streets", []), squares, waters, waterways, greens,
+                 wall, [g.at for g in course.gates if g.kind == "tower"], labels,
+                 str(spec.get("title", site.name)), fonts)  # fmt: skip
+    target = assets / "ui" / "maps"
+    target.mkdir(parents=True, exist_ok=True)
+    data = png_bytes(img, int(spec.get("colours", 64)))
+    (target / f"{site.name}.png").write_bytes(data)
+    toml = map_toml(view, f"ui/maps/{site.name}.png")
+    (target / f"{site.name}.toml").write_bytes(toml.encode("utf-8"))
+    print(f"  {view.width}x{view.height} px, {view.scale:.2f} px/m, {len(houses)} houses, "
+          f"{len(labels)} labels, {len(data) / 1e6:.2f} MB", file=out)  # fmt: skip
+    print(f"  {target / f'{site.name}.png'}", file=out)
+    return EXIT_OK
+
+
 def _cmd_streetworks(args: argparse.Namespace, out: TextIO) -> int:
     """Steps, gutters and retaining walls of the old town (W6, ``streetworks.json``): meshes on
     the final heightmap into generated/streetworks (run after export-terrain, before assemble)."""
@@ -1576,6 +1653,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_kirche)
+
+    p = sub.add_parser("citymap", help="the town map for the map item (M14), after assemble")
+    p.add_argument("site")
+    p.add_argument("--assets-dir", type=Path, default=None)
+    p.set_defaults(func=_cmd_citymap)
 
     p = sub.add_parser("streetworks", help="steps, gutters, retaining walls (W6), before assemble")
     p.add_argument("site")
