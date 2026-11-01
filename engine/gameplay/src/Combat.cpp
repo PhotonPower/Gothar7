@@ -84,6 +84,7 @@ Result<CombatSettings> CombatSettings::fromTable(const script::Table& t)
                    readNumber(t, "animal_height", s.animalHeight, 0.2, 5.0),
                    readNumber(t, "knockback", s.knockback, 0.0, 5.0),
                    readNumber(t, "knockback_seconds", s.knockbackSeconds, 0.01, 2.0),
+                   readNumber(t, "parry_knockback", s.parryKnockback, 0.0, 5.0),
                    readLevels(t, "crit_chance", s.critChance, 0.0, 1.0),
                    readLevels(t, "combo_hits", s.comboHits, 1.0, 10.0),
                    readLevels(t, "attack_speed", s.attackSpeed, 0.25, 4.0),
