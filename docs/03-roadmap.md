@@ -310,6 +310,9 @@ die Begehung durch den Projektinhaber (Deutsch und Englisch) steht aus.
 **Phase M14 abgeschlossen** (Teile A–G).
 
 ## M15 – Speichern/Laden  → Meilenstein C
+Plan (Teile A–E, Vorschlag 2026-11-01, wartet auf Freigabe): `docs/modules/save.md` „Plan M15“; ADR 0021
+(Spielstandformat) vorgeschlagen.
+
 - [ ] Serialisierung: Welt-Delta gegenüber Ausgangszustand (geänderte/entfernte/neue Vobs), NPC-Zustände, Inventare, Skript-Variablen, Tagebuch, Spielzeit
 - [ ] Binärformat mit Versionsnummer + Migrationspfad, Metadaten (Screenshot, Spielzeit, Ort)
 - [ ] Speicherplätze, Quicksave/Quickload, Speichern beim Weltwechsel (Zustand jeder besuchten Welt)
