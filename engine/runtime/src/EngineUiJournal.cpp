@@ -27,10 +27,13 @@ ui::StatusView Engine::statusView()
         return strings.contains(key) ? std::string(strings.get(key)) : std::string(name);
     };
     const std::string language = strings.language();
-    view.name = hero.name();
+    view.name = contentText(hero.name());
     if (!hero.guild().empty() && hero.guild() != "none")
     {
-        view.guild = label("UI_GUILD_", hero.guild());
+        // The guild's name from Guilds (data/guilds.lua), in the UI language.
+        const script::Value guilds = m_scripts ? m_scripts->global("Guilds") : script::Value();
+        const std::string_view name = guilds[hero.guild()]["name"].asString();
+        view.guild = name.empty() ? hero.guild() : contentText(name);
     }
     view.general = {
         {std::string(strings.get("UI_STATUS_LEVEL")), std::to_string(hero.level())},
@@ -64,13 +67,12 @@ ui::StatusView Engine::statusView()
 
 ui::DiaryView Engine::diaryView() const
 {
-    const ui::DiaryPanel panel = diaryPanelData();
+    const DiaryData panel = diaryData();
     ui::DiaryView view;
     view.chapter = panel.chapter;
-    const auto copy =
-        [](const std::vector<ui::DiaryPanel::Quest>& from, std::vector<ui::DiaryView::Topic>& to)
+    const auto copy = [](const std::vector<DiaryData::Topic>& from, std::vector<ui::DiaryView::Topic>& to)
     {
-        for (const ui::DiaryPanel::Quest& q : from)
+        for (const DiaryData::Topic& q : from)
         {
             to.push_back({q.name, q.entries});
         }
@@ -93,7 +95,7 @@ std::optional<std::pair<std::string, std::string>> Engine::heroMapItem() const
         const script::Instance* item = m_scripts->findInstance("Item", stack.item);
         if (item != nullptr && !item->fields["map"].asString().empty())
         {
-            return std::pair{std::string(item->fields["name"].asString()),
+            return std::pair{contentText(item->fields["name"].asString()),
                              std::string(item->fields["map"].asString())};
         }
     }
@@ -208,7 +210,7 @@ void Engine::openMapOfHero()
     }
     else if (m_gameUi)
     {
-        showScreenMessage(std::string(m_gameUi->strings().get("UI_MAP_NONE")));
+        showScreenMessage(uiText("UI_MAP_NONE"));
     }
 }
 

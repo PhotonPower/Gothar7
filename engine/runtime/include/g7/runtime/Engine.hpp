@@ -10,6 +10,7 @@
 #include <g7/asset/FigureAssembly.hpp>
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
+#include <g7/asset/ScriptTexts.hpp>
 #include <g7/asset/TextureData.hpp>
 #include <g7/asset/Vfs.hpp>
 #include <g7/asset/VoiceLines.hpp>
@@ -58,6 +59,7 @@
 #include <g7/ui/MenuScreens.hpp>
 #include <g7/ui/Navigation.hpp>
 #include <g7/ui/Screen.hpp>
+#include <g7/ui/Strings.hpp>
 #include <g7/ui/UiResources.hpp>
 #include <g7/world/DayCycle.hpp>
 #include <g7/world/GameTime.hpp>
@@ -134,6 +136,7 @@ struct MobInfo
     bool locked = false;
     bool open = false; ///< chest lid up, door open
     std::vector<gameplay::ItemStack> contents;
+    Vec3 position{0.0f}; ///< of the vob in the world
 };
 
 /// What the hero does at a mob (keys, or the lockpick window's buttons).
@@ -276,6 +279,8 @@ public:
     /// catch up afterwards.
     void setPaused(bool paused) noexcept;
     [[nodiscard]] bool paused() const noexcept { return m_paused; }
+    /// Whether ImGui (debug and editor UI only, ADR 0009) began a frame in the last frame.
+    [[nodiscard]] bool debugUiFrame() const noexcept { return m_debugUiFrame; }
     static constexpr f64 kMaxTimeScale = 10.0;
 
     /// Virtual file system with the mounts of [assets] (docs/modules/asset.md).
@@ -585,8 +590,36 @@ public:
     Result<void> openMap(std::string title, std::string image);
     [[nodiscard]] bool mapOpen() const noexcept { return m_map.has_value(); }
     [[nodiscard]] bool diaryOpen() const noexcept { return m_diaryOpen; }
-    /// What the window "Tagebuch" shows (from Story).
-    [[nodiscard]] ui::DiaryPanel diaryPanelData() const;
+    /// What the diary shows (from Story): chapter, quests by status with their entries, notes by topic; texts
+    /// in the UI language.
+    struct DiaryData
+    {
+        std::string chapter;
+        struct Topic
+        {
+            std::string name; ///< the quest, or the topic of notes
+            std::vector<std::string> entries;
+        };
+        std::vector<Topic> running;
+        std::vector<Topic> done;
+        std::vector<Topic> failed;
+        std::vector<Topic> notes;
+    };
+    [[nodiscard]] DiaryData diaryData() const;
+    /// The UI language (`[ui] language`: "de", "en").
+    [[nodiscard]] std::string language() const;
+    /// A content text of the scripts (German inline, E2) in the UI language: its translation from
+    /// text/script.<language>.json, else the German text (M14 part G).
+    [[nodiscard]] std::string contentText(std::string_view german) const;
+    /// A UI text by key from text/ui.<language>.toml with "{name}" placeholders filled in (also headless).
+    [[nodiscard]] std::string uiText(std::string_view key,
+                                     std::initializer_list<ui::TextArg> args = {}) const;
+    [[nodiscard]] const ui::Strings& uiStrings() const noexcept { return m_uiStrings; }
+    /// Why a cast fails, for the player (Z5).
+    [[nodiscard]] std::string castBlockedText(const gameplay::CastBlock& block) const;
+    /// What the item screen says when an action failed: the notice it gave since `noticesBefore`, else
+    /// "cannot".
+    [[nodiscard]] std::string failureMessage(u64 noticesBefore) const;
     /// Price of one piece: the hero buys (full value x Trade.sell_factor) or sells (x Trade.buy_factor).
     [[nodiscard]] i64 tradePrice(std::string_view item, bool heroBuys) const;
     /// Whether one can walk straight from a to b (a sphere at knee-to-hip height meets nothing).
@@ -770,7 +803,6 @@ private:
     void queueLine(std::string speaker, std::string text);
     void fixedUpdateDialog(f32 seconds);
     void dialogInput();
-    void dialogUi();
     void dialogPerception(Creature& c, f32 distance, bool sees);
     void presentLine(const struct DialogLineRef& line);
     void loadDialogPresentation();
@@ -778,9 +810,7 @@ private:
     [[nodiscard]] Result<void> openTrade();
     [[nodiscard]] i64 itemValue(std::string_view item) const;
     [[nodiscard]] gameplay::Character* trader();
-    void tradeUi();
     void bindTradeFunctions();
-    void diaryUi();
     void bindDiaryFunctions();
     void stopTalking();
     /// Over the listener's shoulder at the speaker (M10 part B); in updatePlayerCamera.
@@ -1113,6 +1143,7 @@ private:
     void drawProjectiles();
     void bindRangedFunctions();
     Result<void> lootFocus(); // opens the inventory with the lying NPC's belongings
+    void loadTexts();         // text/ui.<language>.toml and text/script.<language>.json (M14 part G)
     void loadVoiceLines();    // voice/lines.<language>.json: the keys of the spoken lines
     /// Key of a spoken line: dialogue "<info>_NN", else the NPC's shout "svm_<voice>_<m|f>_<occasion>_NN";
     /// empty if the voice database does not know the text.
@@ -1142,7 +1173,6 @@ private:
     void approachMob(f32 seconds);
     void fixedUpdateMobs(f32 seconds);
     void swingDoors(f32 seconds);
-    void lockpickUi();
     // Using items, pickpocketing (EngineUse.cpp)
     struct ItemUse
     {
@@ -1163,9 +1193,7 @@ private:
     void applyItemUse(ItemUse& use);
     void fixedUpdateItemUse(f32 seconds);
     void finishPickpocket(const PendingPickpocket& p);
-    void documentUi();
     void bindUseFunctions();
-    void choiceUi();
     [[nodiscard]] std::vector<const script::Instance*> recipesFor(std::string_view type) const;
     void finishRecipe(MobUse& use);
     void bindMobFunctions();
@@ -1177,8 +1205,6 @@ private:
     [[nodiscard]] std::string focusName(gameplay::FocusKind kind, u64 id) const;
     void takeItem(world::VobId id);
     void fixedUpdateInteraction(f32 seconds);
-    void inventoryUi();
-    void focusUi();
     void bindHeroFunctions();
     [[nodiscard]] gameplay::ItemLookup itemLookup() const;
     [[nodiscard]] i32 xpForLevel(i32 level);
@@ -1606,8 +1632,12 @@ private:
     std::optional<TransformOut> m_transformOut; // the transition clip plays, the swap follows
     i32 m_heroAnimalAction = 0;                 // transformed: the animal graph's "action" for one step
     asset::VoiceLines m_voiceLines;
-    std::unordered_map<u64, MobRuntime> m_mobs;    // by vob id
-    void lockpickNoticed(const MobRuntime& m);     // witnesses of picking a lock (M9 part C)
+    u64 m_noticeCount = 0;            ///< notices so far (failureMessage)
+    ui::Strings m_uiStrings;          ///< text/ui.<language>.toml (M14 part G; also headless)
+    asset::ScriptTexts m_scriptTexts; ///< text/script.<language>.json (empty for German)
+    mutable std::set<std::string, std::less<>> m_untranslated; ///< content texts reported once
+    std::unordered_map<u64, MobRuntime> m_mobs;                // by vob id
+    void lockpickNoticed(const MobRuntime& m);                 // witnesses of picking a lock (M9 part C)
     void storeDoors(world::WorldFile& file) const; // doors closed in the file, components.mob.open
     std::optional<MobUse> m_mobUse;
     std::vector<std::string> m_mobEvents;         // "open"/"close" of the hero's figure this step

@@ -1,0 +1,1620 @@
+{
+  "schema": 1,
+  "lang": "en",
+  "texts": {
+    "data.guilds.name_01": {
+      "de": "Bauern",
+      "text": "Farmers",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_02": {
+      "de": "Wachen",
+      "text": "Guards",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_03": {
+      "de": "Jäger",
+      "text": "Hunters",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_04": {
+      "de": "Ausgestoßene",
+      "text": "Outcasts",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_05": {
+      "de": "Wölfe",
+      "text": "Wolves",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_06": {
+      "de": "Keiler",
+      "text": "Boars",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_07": {
+      "de": "Laufvögel",
+      "text": "Runner Birds",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_08": {
+      "de": "Bürger",
+      "text": "Citizens",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.teaching.attribute_names_01": {
+      "de": "Stärke",
+      "text": "Strength",
+      "context": "data/teaching.lua",
+      "status": "entwurf"
+    },
+    "data.teaching.attribute_names_02": {
+      "de": "Geschick",
+      "text": "Dexterity",
+      "context": "data/teaching.lua",
+      "status": "entwurf"
+    },
+    "data.teaching.attribute_names_03": {
+      "de": "Mana",
+      "text": "Mana",
+      "context": "data/teaching.lua",
+      "status": "entwurf"
+    },
+    "data.teaching.choice_01": {
+      "de": "Zurück.",
+      "text": "Back.",
+      "context": "data/teaching.lua",
+      "status": "entwurf"
+    },
+    "data.teaching.talent_names_01": {
+      "de": "Kreis der Magie",
+      "text": "Circle of Magic",
+      "context": "data/teaching.lua",
+      "status": "entwurf"
+    },
+    "data.teaching.talent_names_02": {
+      "de": "Schlösser öffnen",
+      "text": "Lockpicking",
+      "context": "data/teaching.lua",
+      "status": "entwurf"
+    },
+    "data.teaching.talent_names_03": {
+      "de": "Taschendiebstahl",
+      "text": "Pickpocketing",
+      "context": "data/teaching.lua",
+      "status": "entwurf"
+    },
+    "data.teaching.talent_names_04": {
+      "de": "Schmieden",
+      "text": "Smithing",
+      "context": "data/teaching.lua",
+      "status": "entwurf"
+    },
+    "data.teaching.talent_names_05": {
+      "de": "Schleichen",
+      "text": "Sneaking",
+      "context": "data/teaching.lua",
+      "status": "entwurf"
+    },
+    "data.teaching.talent_names_06": {
+      "de": "Einhand",
+      "text": "One-Handed",
+      "context": "data/teaching.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_ring.quest_success_01": {
+      "de": "Die Bäuerin hat ihren Ring zurück.",
+      "text": "The farmer's wife has her ring back.",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_ring_01": {
+      "de": "Hier ist dein Ring.",
+      "text": "Here's your ring.",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_ring_02": {
+      "de": "Tatsächlich, das ist er! Wie soll ich dir das je danken?",
+      "text": "It really is! How can I ever thank you?",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_ring_03": {
+      "de": "Viel habe ich nicht, aber nimm das hier.",
+      "text": "I don't have much, but take this.",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_sad_01": {
+      "de": "Du siehst bedrückt aus.",
+      "text": "You look troubled.",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_sad_02": {
+      "de": "Mein Ring ist fort. Der Ring meiner Mutter, das Einzige, was mir von ihr geblieben ist.",
+      "text": "My ring is gone. My mother's ring, the only thing I have left of her.",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_sad_03": {
+      "de": "Hast du einen Verdacht?",
+      "text": "Any idea who took it?",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_sad_04": {
+      "de": "Der alte Mann schleicht ständig um meine Hütte. Aber beweisen kann ich nichts.",
+      "text": "The old man keeps creeping around my hut. But I can't prove anything.",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_sent_01": {
+      "de": "Die Wache schickt mich. Du brauchst Hilfe?",
+      "text": "The guard sent me. You need help?",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_sent_02": {
+      "de": "Hilfe kann ich immer brauchen. Fang mit etwas Leichtem an.",
+      "text": "I can always use help. Start with something easy.",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_sent_03": {
+      "de": "Der Holzfäller vergisst über der Arbeit das Essen. Bring ihm dieses Bündel.",
+      "text": "The woodcutter forgets to eat when he's working. Take him this bundle.",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_work_01": {
+      "de": "Wie läuft's auf dem Feld?",
+      "text": "How are things in the field?",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_farmer_woman_work_02": {
+      "de": "Der Boden ist steinig, aber das Korn kommt. Wenn nur die Wölfe nicht wären.",
+      "text": "The ground's stony, but the grain is coming up. If only it weren't for the wolves.",
+      "context": "dialogs/farmer_woman.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_blades_01": {
+      "de": "Ich höre, eure Klingen sind stumpf?",
+      "text": "I hear your blades are dull?",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_blades_02": {
+      "de": "Stumpf ist gar kein Wort. Mit meinem Schwert schneide ich nicht mal Brot.",
+      "text": "Dull doesn't begin to cover it. I can't even cut bread with my sword.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_blades_03": {
+      "de": "Bring mir ein Grobes Schwert. Hinter dem Tor steht ein Amboss, Rohlinge liegen in der Truhe daneben.",
+      "text": "Bring me a Crude Sword. There's an anvil behind the gate, and blanks in the chest next to it.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_camp_01": {
+      "de": "Was ist das hier für ein Lager?",
+      "text": "What kind of camp is this?",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_camp_02": {
+      "de": "Bauern, ein paar Holzfäller und wir, die auf alles aufpassen.",
+      "text": "Farmers, a few woodcutters, and us, keeping an eye on everything.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_camp_03": {
+      "de": "Nachts kommen die Wölfe bis an den Zaun. Bleib am Feuer, wenn's dunkel wird.",
+      "text": "At night the wolves come right up to the fence. Stay by the fire once it gets dark.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_hello_01": {
+      "de": "Moment mal. Dich hab ich hier noch nie gesehen.",
+      "text": "Hold on. I've never seen you around here.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_hello_02": {
+      "de": "Ich bin nur auf der Durchreise und suche Arbeit.",
+      "text": "I'm just passing through, looking for work.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_hello_03": {
+      "de": "Arbeit gibt's genug. Aber hier im Lager benimmst du dich, verstanden?",
+      "text": "There's work enough. But here in the camp you behave yourself, got it?",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_sword.quest_success_01": {
+      "de": "Die Wache hat ihr Schwert.",
+      "text": "The guard has his sword.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_sword_01": {
+      "de": "Hier ist ein Grobes Schwert.",
+      "text": "Here's a Crude Sword.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_sword_02": {
+      "de": "Nicht schön, aber scharf. Genau was ich brauche.",
+      "text": "Not pretty, but sharp. Just what I need.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_thief.quest_entry_01": {
+      "de": "Die Wache hat dem alten Mann den Ring abgenommen. Ich soll ihn der Bäuerin bringen.",
+      "text": "The guard took the ring from the old man. I'm to bring it to the farmer's wife.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_thief_01": {
+      "de": "Der alte Mann hat den Ring der Bäuerin.",
+      "text": "The old man has the farmer's wife's ring.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_thief_02": {
+      "de": "So, so. Den alten Kauz hatte ich schon länger im Auge.",
+      "text": "Well, well. I've had my eye on that old coot for a while.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_thief_03": {
+      "de": "Ich hol mir das Ding. Warte hier.",
+      "text": "I'll go get the thing. Wait here.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_thief_04": {
+      "de": "Da. Bring ihn der Bäuerin, sie wird sich freuen.",
+      "text": "There. Take it to the farmer's wife, she'll be glad.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_work_01": {
+      "de": "Gibt es hier Arbeit?",
+      "text": "Is there any work around here?",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_work_02": {
+      "de": "Die Bäuerin draußen am Feld sucht immer helfende Hände.",
+      "text": "The farmer's wife out in the field always needs a helping hand.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_work_03": {
+      "de": "Dann gehe ich gleich zu ihr.",
+      "text": "Then I'll go see her right away.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_work_04": {
+      "de": "Gut. Sag ihr, die Wache schickt dich.",
+      "text": "Good. Tell her the guard sent you.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_work_05": {
+      "de": "Feldarbeit ist nichts für mich.",
+      "text": "Field work isn't for me.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_work_06": {
+      "de": "Dann wirst du hier nicht alt, Fremder.",
+      "text": "Then you won't grow old here, stranger.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_baker_husband_hello_01": {
+      "de": "Du bist der Bäcker?",
+      "text": "You're the baker?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_baker_husband_hello_02": {
+      "de": "Seit ich denken kann. Um vier am Ofen, um eins im Gasthaus. Dazwischen Mehl.",
+      "text": "For as long as I can remember. At the oven by four, at the tavern by one. Flour in between.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_baker_husband_hello_03": {
+      "de": "Brot kaufst du bei meiner Frau. Ich backe nur.",
+      "text": "Buy your bread from my wife. I just bake.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_baker_trade_01": {
+      "de": "Was backst du heute?",
+      "text": "What are you baking today?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_baker_trade_02": {
+      "de": "Brot, frisch aus dem Ofen. Für ein paar Gulden gehört es dir.",
+      "text": "Bread, fresh from the oven. A few Gulden and it's yours.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_heal_01": {
+      "de": "Kannst du mich heilen?",
+      "text": "Can you heal me?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_heal_02": {
+      "de": "Zeig her. Für zwanzig Gulden flicke ich dich zusammen.",
+      "text": "Let me see. For twenty Gulden I'll patch you up.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_heal_03": {
+      "de": "Hier sind zwanzig Gulden.",
+      "text": "Here's twenty Gulden.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_heal_04": {
+      "de": "So. Das hält wieder eine Weile.",
+      "text": "There. That'll hold for a while.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_heal_05": {
+      "de": "Ohne Geld keine Salbe.",
+      "text": "No money, no salve.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_heal_06": {
+      "de": "Später vielleicht.",
+      "text": "Maybe later.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_heal_07": {
+      "de": "Wie du willst. Verblute nur nicht vor meiner Tür.",
+      "text": "Suit yourself. Just don't bleed to death on my doorstep.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_hello_01": {
+      "de": "Was macht ein Bader?",
+      "text": "What does a barber-surgeon do?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_hello_02": {
+      "de": "Baden, scheren, Zähne ziehen, Wunden flicken. Wer in Leonberg blutet, kommt zu mir.",
+      "text": "Baths, shaves, pulling teeth, stitching wounds. Anyone who bleeds in Leonberg comes to me.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_trade_01": {
+      "de": "Verkaufst du Heiltränke?",
+      "text": "Do you sell healing potions?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_bather_trade_02": {
+      "de": "Ein paar habe ich da. Für die Reise.",
+      "text": "I've got a few. For the road.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_butcher_trade_01": {
+      "de": "Was hast du heute?",
+      "text": "What have you got today?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_butcher_trade_02": {
+      "de": "Schinken und Würste, alles vom eigenen Schwein. Wer bei mir kauft, kommt satt durch den Winter.",
+      "text": "Ham and sausages, all from my own pigs. Buy from me and you'll get through the winter with a full belly.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_citizen_hello_01": {
+      "de": "Was macht ein Ratsdiener?",
+      "text": "What does a council runner do?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_citizen_hello_02": {
+      "de": "Laufen. Vom Rathaus zum Markt, vom Markt zum Rathaus. Und zuhören, was die Leute reden.",
+      "text": "Walk. From the town hall to the market, from the market to the town hall. And listen to what people say.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_cloth_merchant_trade_01": {
+      "de": "Was kostet dein Tuch?",
+      "text": "What does your cloth cost?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_cloth_merchant_trade_02": {
+      "de": "Wolle aus dem Gäu, gefärbt am Glemsufer. Fass es ruhig an, es hält, was es verspricht.",
+      "text": "Wool from the Gäu, dyed on the banks of the Glems. Go on, feel it. It's as good as it looks.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_farmer_hello_01": {
+      "de": "Wie steht das Korn?",
+      "text": "How's the grain looking?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_farmer_hello_02": {
+      "de": "Besser als letztes Jahr. Wenn die Stadt nur nicht so viel davon wollte.",
+      "text": "Better than last year. If only the town didn't want so much of it.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_goldsmith_trade_01": {
+      "de": "Was hast du an Schmuck?",
+      "text": "What jewellery do you have?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_goldsmith_trade_02": {
+      "de": "Ringe, ein Amulett, eine Kette. Gute Arbeit hat ihren Preis, und ich arbeite gut.",
+      "text": "Rings, an amulet, a chain. Good work has its price, and my work is good.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_guard_lower_hello_01": {
+      "de": "Alles ruhig am Tor?",
+      "text": "All quiet at the gate?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_guard_lower_hello_02": {
+      "de": "Solange du keinen Ärger machst, ja.",
+      "text": "As long as you don't make trouble, yes.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_guard_upper_hello_01": {
+      "de": "Wer führt hier das Kommando?",
+      "text": "Who's in command here?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_guard_upper_hello_02": {
+      "de": "Ich. Und nachts lasse ich niemanden durch, der hier nichts verloren hat.",
+      "text": "I am. And at night I let no one through who has no business here.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_herbalist_trade_01": {
+      "de": "Was hast du an Kräutern und Tränken?",
+      "text": "What herbs and potions do you have?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_herbalist_trade_02": {
+      "de": "Salbei, Kamille, Nesseln. Und was man daraus kocht, wenn man es kann.",
+      "text": "Sage, chamomile, nettles. And whatever you can brew from them, if you know how.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_herbalist_trade_03": {
+      "de": "Für den Trank der Stärke musst du tief in den Beutel greifen. Er wirkt dafür ein Leben lang.",
+      "text": "For the potion of strength you'll have to dig deep into your purse. But it lasts a lifetime.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_innkeeper_hello_01": {
+      "de": "Was gibt es Neues?",
+      "text": "What's new?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_innkeeper_hello_02": {
+      "de": "Neues? Die Wachen beschweren sich über die Nachtschicht, die Bauern über den Regen.",
+      "text": "New? The guards complain about the night watch, the farmers about the rain.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_innkeeper_hello_03": {
+      "de": "Und alle über mein Bier. Trinken tun sie's trotzdem.",
+      "text": "And everyone complains about my beer. They drink it all the same.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_joiner_hello_01": {
+      "de": "Was baust du da?",
+      "text": "What are you building there?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_joiner_hello_02": {
+      "de": "Truhen, Bänke, Fensterläden. Und Särge, wenn einer bestellt. Holz fragt nicht, wofür.",
+      "text": "Chests, benches, shutters. And coffins, when someone orders one. Wood doesn't ask what for.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_joiner_trade_01": {
+      "de": "Verkaufst du Werkzeug?",
+      "text": "Do you sell tools?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_joiner_trade_02": {
+      "de": "Ein altes Stück habe ich übrig. Gut gepflegt, versteht sich.",
+      "text": "I've got one old piece to spare. Well looked after, of course.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_market_trade_01": {
+      "de": "Was hast du im Laden?",
+      "text": "What have you got in the shop?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_market_trade_02": {
+      "de": "Ein bisschen von allem. Schau, was du brauchst.",
+      "text": "A bit of everything. See what you need.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_merchant_f_hello_01": {
+      "de": "Schöner Tag heute.",
+      "text": "Nice day today.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_merchant_f_hello_02": {
+      "de": "Für dich vielleicht. Mein Mann hat schon wieder das halbe Lager verkauft, bevor ich den Preis kannte.",
+      "text": "For you, maybe. My husband's sold off half the stock again before I even knew the price.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_merchant_m_hello_01": {
+      "de": "Was führt dich nach Leonberg?",
+      "text": "What brings you to Leonberg?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_merchant_m_hello_02": {
+      "de": "Der Handel, was sonst. Tuch nach Stuttgart, Wein zurück. Und der Rat will auch noch seinen Zoll.",
+      "text": "Trade, what else? Cloth to Stuttgart, wine back. And the council wants its toll on top.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_potter_trade_01": {
+      "de": "Zeig mir deine Töpferwaren.",
+      "text": "Show me your pottery.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_potter_trade_02": {
+      "de": "Kannen, Schüsseln, Krüge. Was zerbricht, verkaufe ich dir gern noch einmal.",
+      "text": "Jugs, bowls, mugs. Whatever breaks, I'll gladly sell you again.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_smith_hello_01": {
+      "de": "Viel zu tun?",
+      "text": "Lots to do?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_smith_hello_02": {
+      "de": "Hufeisen, Nägel, Beschläge für die Torflügel. Ein Schmied hat nie Feierabend.",
+      "text": "Horseshoes, nails, fittings for the gate doors. A smith's work is never done.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_smith_hello_03": {
+      "de": "Und wenn doch, sitze ich in der Krummen Gans.",
+      "text": "And when it is, I'm sitting in the Crooked Goose.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_smith_teach_01": {
+      "de": "Kannst du mir das Schmieden beibringen?",
+      "text": "Can you teach me smithing?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_smith_teach_02": {
+      "de": "Kann ich. Umsonst ist es aber nicht.",
+      "text": "I can. But it isn't free.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_smith_teach_03": {
+      "de": "Gut. Halt das Eisen heiß und schlag nicht daneben.",
+      "text": "Good. Keep the iron hot and don't miss.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_smith_teach_04": {
+      "de": "Komm wieder, wenn du mehr gelernt hast.",
+      "text": "Come back when you've learned more.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_smith_teach_05": {
+      "de": "Fünfzig Gulden, keinen weniger.",
+      "text": "Fifty Gulden, not a coin less.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_smith_teach_06": {
+      "de": "Das kannst du doch längst.",
+      "text": "You know that already.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_tailor_hello_01": {
+      "de": "Kannst du mir etwas nähen?",
+      "text": "Can you sew something for me?",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_tailor_hello_02": {
+      "de": "Bring mir Tuch und Geduld. Bis dahin verkaufe ich dir, was ich übrig habe.",
+      "text": "Bring me cloth and patience. Until then I'll sell you what I've got left over.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_hello_01": {
+      "de": "Wer bist du?",
+      "text": "Who are you?",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_hello_02": {
+      "de": "Einer, der schon zu lange hier draußen lebt.",
+      "text": "Someone who's lived out here too long.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_hello_03": {
+      "de": "Was andere wegwerfen, hebe ich auf. Und was ich aufhebe, verkaufe ich.",
+      "text": "What others throw away, I pick up. And what I pick up, I sell.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_ring.quest_entry_01": {
+      "de": "Ich habe dem alten Mann den Ring abgekauft.",
+      "text": "I bought the ring from the old man.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_ring.quest_entry_02": {
+      "de": "Der alte Mann will den Ring nicht hergeben. Vielleicht hilft die Torwache.",
+      "text": "The old man won't give up the ring. Maybe the gate guard can help.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_ring_01": {
+      "de": "Du hast einen Ring, der dir nicht gehört.",
+      "text": "You've got a ring that isn't yours.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_ring_02": {
+      "de": "Gefunden hab ich ihn. Im Gras. Was man findet, gehört einem, oder?",
+      "text": "I found it. In the grass. Finders keepers, right?",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_ring_03": {
+      "de": "Ich kaufe ihn dir ab. (30 Gulden)",
+      "text": "I'll buy it from you. (30 Gulden)",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_ring_04": {
+      "de": "Ein gutes Geschäft. Für mich.",
+      "text": "A good deal. For me.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_ring_05": {
+      "de": "Ohne Gulden kein Ring, mein Freund.",
+      "text": "No Gulden, no ring, my friend.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_ring_06": {
+      "de": "Gib ihn her, oder ich hole die Wache.",
+      "text": "Hand it over, or I'll fetch the guard.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_ring_07": {
+      "de": "Hol sie doch. Mal sehen, wem sie glaubt.",
+      "text": "Go on, fetch him. Let's see who he believes.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_ring_08": {
+      "de": "Schon gut.",
+      "text": "Forget it.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_trade_01": {
+      "de": "Zeig mir, was du hast.",
+      "text": "Show me what you've got.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_old_man_trade_02": {
+      "de": "Schau dich ruhig um. Aber gezahlt wird in Gulden.",
+      "text": "Go ahead, have a look around. But you pay in Gulden.",
+      "context": "dialogs/old_man.lua",
+      "status": "entwurf"
+    },
+    "dia_woodcutter_hello_01": {
+      "de": "Harte Arbeit, das Holzhacken?",
+      "text": "Hard work, chopping wood?",
+      "context": "dialogs/woodcutter.lua",
+      "status": "entwurf"
+    },
+    "dia_woodcutter_hello_02": {
+      "de": "Hart? Man muss nur wissen, wo man ansetzt.",
+      "text": "Hard? You just have to know where to strike.",
+      "context": "dialogs/woodcutter.lua",
+      "status": "entwurf"
+    },
+    "dia_woodcutter_hello_03": {
+      "de": "Wenn du willst, zeig ich dir, wie man richtig zupackt.",
+      "text": "If you like, I'll show you how to put some real muscle into it.",
+      "context": "dialogs/woodcutter.lua",
+      "status": "entwurf"
+    },
+    "dia_woodcutter_lunch.quest_success_01": {
+      "de": "Der Holzfäller hat sein Essen. Er meint, die Wache habe Ärger mit stumpfen Klingen.",
+      "text": "The woodcutter has his food. He says the guard has trouble with dull blades.",
+      "context": "dialogs/woodcutter.lua",
+      "status": "entwurf"
+    },
+    "dia_woodcutter_lunch_01": {
+      "de": "Die Bäuerin schickt dir dein Essen.",
+      "text": "The farmer's wife sent your food.",
+      "context": "dialogs/woodcutter.lua",
+      "status": "entwurf"
+    },
+    "dia_woodcutter_lunch_02": {
+      "de": "Ah, endlich! Mir hängt der Magen schon in den Kniekehlen.",
+      "text": "Ah, finally! My stomach's been growling for hours.",
+      "context": "dialogs/woodcutter.lua",
+      "status": "entwurf"
+    },
+    "dia_woodcutter_lunch_03": {
+      "de": "Hier, für den Weg. Und sag der Wache, dass sie sich um ihre stumpfen Klingen kümmern soll.",
+      "text": "Here, for the road. And tell the guard to do something about his dull blades.",
+      "context": "dialogs/woodcutter.lua",
+      "status": "entwurf"
+    },
+    "dia_woodcutter_teach_01": {
+      "de": "Bring mir bei, kräftiger zuzupacken.",
+      "text": "Teach me to put more muscle into it.",
+      "context": "dialogs/woodcutter.lua",
+      "status": "entwurf"
+    },
+    "dia_woodcutter_teach_02": {
+      "de": "Dann zeig mal, was in dir steckt.",
+      "text": "Then show me what you've got in you.",
+      "context": "dialogs/woodcutter.lua",
+      "status": "entwurf"
+    },
+    "it_amulet.name": {
+      "de": "Amulett",
+      "text": "Amulet",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_amulet_old.name": {
+      "de": "Altes Amulett",
+      "text": "Old Amulet",
+      "context": "items/armor.lua",
+      "status": "entwurf"
+    },
+    "it_apple.name": {
+      "de": "Apfel",
+      "text": "Apple",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_armor_leather.name": {
+      "de": "Lederrüstung",
+      "text": "Leather Armour",
+      "context": "items/armor.lua",
+      "status": "entwurf"
+    },
+    "it_arrow.name": {
+      "de": "Pfeil",
+      "text": "Arrow",
+      "context": "items/weapons.lua",
+      "status": "entwurf"
+    },
+    "it_axe.name": {
+      "de": "Axt",
+      "text": "Axe",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_beer.name": {
+      "de": "Bier",
+      "text": "Beer",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_blank_hot.name": {
+      "de": "Glühender Rohling",
+      "text": "Glowing Blank",
+      "context": "items/smithing.lua",
+      "status": "entwurf"
+    },
+    "it_bolt.name": {
+      "de": "Bolzen",
+      "text": "Bolt",
+      "context": "items/weapons.lua",
+      "status": "entwurf"
+    },
+    "it_bow_short.name": {
+      "de": "Kurzbogen",
+      "text": "Short Bow",
+      "context": "items/weapons.lua",
+      "status": "entwurf"
+    },
+    "it_bowl.name": {
+      "de": "Schüssel",
+      "text": "Bowl",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_bread.name": {
+      "de": "Brot",
+      "text": "Bread",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_broom.name": {
+      "de": "Besen",
+      "text": "Broom",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_chain_gold.name": {
+      "de": "Goldkette",
+      "text": "Gold Chain",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_cheese.name": {
+      "de": "Käse",
+      "text": "Cheese",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_cloth_bolt.name": {
+      "de": "Tuchballen",
+      "text": "Bolt of Cloth",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_club.name": {
+      "de": "Knüppel",
+      "text": "Club",
+      "context": "items/weapons.lua",
+      "status": "entwurf"
+    },
+    "it_crossbow.name": {
+      "de": "Leichte Armbrust",
+      "text": "Light Crossbow",
+      "context": "items/weapons.lua",
+      "status": "entwurf"
+    },
+    "it_gulden.name": {
+      "de": "Gulden",
+      "text": "Gulden",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_ham.name": {
+      "de": "Schinken",
+      "text": "Ham",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_hammer.name": {
+      "de": "Hammer",
+      "text": "Hammer",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_herb_chamomile.name": {
+      "de": "Kamille",
+      "text": "Chamomile",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_herb_nettle.name": {
+      "de": "Brennnessel",
+      "text": "Stinging Nettle",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_herb_sage.name": {
+      "de": "Salbei",
+      "text": "Sage",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_herbs_dried.description": {
+      "de": "Ein Bund getrockneter Kräuter, wie ihn Kräuterkundige für Tränke brauchen.",
+      "text": "A bunch of dried herbs, the kind herbalists need for potions.",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_herbs_dried.name": {
+      "de": "Getrocknete Kräuter",
+      "text": "Dried Herbs",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_jug.name": {
+      "de": "Kanne",
+      "text": "Jug",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_key.name": {
+      "de": "Schlüssel",
+      "text": "Key",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_key_chest_hut.name": {
+      "de": "Truhenschlüssel",
+      "text": "Chest Key",
+      "context": "items/armor.lua",
+      "status": "entwurf"
+    },
+    "it_key_hut_door.name": {
+      "de": "Hüttenschlüssel",
+      "text": "Hut Key",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_letter_farm.name": {
+      "de": "Brief an den Bauern",
+      "text": "Letter to the Farmer",
+      "context": "items/documents.lua",
+      "status": "entwurf"
+    },
+    "it_letter_farm.text": {
+      "de": "Bauer,\n\ndie Ernte muss bis zum Vollmond eingebracht sein. Schick zwei Knechte zum Lager.\n\n- Der Vogt",
+      "text": "Farmer,\n\nthe harvest must be brought in by the full moon. Send two farmhands to the camp.\n\n- The Reeve",
+      "context": "items/documents.lua",
+      "status": "entwurf"
+    },
+    "it_lockpick.name": {
+      "de": "Dietrich",
+      "text": "Lockpick",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_lunch.description": {
+      "de": "Brot, Käse und ein Stück Wurst, in ein Tuch gewickelt.",
+      "text": "Bread, cheese and a piece of sausage, wrapped in a cloth.",
+      "context": "items/story.lua",
+      "status": "entwurf"
+    },
+    "it_lunch.name": {
+      "de": "Essensbündel",
+      "text": "Food Bundle",
+      "context": "items/story.lua",
+      "status": "entwurf"
+    },
+    "it_lute.name": {
+      "de": "Laute",
+      "text": "Lute",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_mug.name": {
+      "de": "Krug",
+      "text": "Mug",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_potion_heal_medium.name": {
+      "de": "Heiltrank",
+      "text": "Healing Potion",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_potion_heal_small.name": {
+      "de": "Kleiner Heiltrank",
+      "text": "Small Healing Potion",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_potion_mana_medium.name": {
+      "de": "Manatrank",
+      "text": "Mana Potion",
+      "context": "items/magic.lua",
+      "status": "entwurf"
+    },
+    "it_potion_mana_small.name": {
+      "de": "Kleiner Manatrank",
+      "text": "Small Mana Potion",
+      "context": "items/magic.lua",
+      "status": "entwurf"
+    },
+    "it_potion_speed.description": {
+      "de": "Für zwei Minuten läuft man schneller.",
+      "text": "Makes you run faster for two minutes.",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_potion_speed.name": {
+      "de": "Trank der Schnelligkeit",
+      "text": "Potion of Speed",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_potion_strength.description": {
+      "de": "Selten und teuer: Es macht für immer stärker.",
+      "text": "Rare and costly: it makes you stronger for good.",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_potion_strength.name": {
+      "de": "Elixier der Stärke",
+      "text": "Elixir of Strength",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_pretzel.name": {
+      "de": "Brezel",
+      "text": "Pretzel",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_ring_family.description": {
+      "de": "Ein schlichter Silberring mit eingeritzten Initialen.",
+      "text": "A plain silver ring with initials scratched into it.",
+      "context": "items/story.lua",
+      "status": "entwurf"
+    },
+    "it_ring_family.name": {
+      "de": "Familienring",
+      "text": "Family Ring",
+      "context": "items/story.lua",
+      "status": "entwurf"
+    },
+    "it_ring_gold.name": {
+      "de": "Goldring",
+      "text": "Gold Ring",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_ring_protection.name": {
+      "de": "Ring des Schutzes",
+      "text": "Ring of Protection",
+      "context": "items/armor.lua",
+      "status": "entwurf"
+    },
+    "it_ring_silver.name": {
+      "de": "Silberring",
+      "text": "Silver Ring",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_sausage.name": {
+      "de": "Wurst",
+      "text": "Sausage",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "it_saw.name": {
+      "de": "Säge",
+      "text": "Saw",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_shears.name": {
+      "de": "Schere",
+      "text": "Shears",
+      "context": "items/goods.lua",
+      "status": "entwurf"
+    },
+    "it_sword_2h.name": {
+      "de": "Zweihänder",
+      "text": "Two-Handed Sword",
+      "context": "items/weapons.lua",
+      "status": "entwurf"
+    },
+    "it_sword_crude.name": {
+      "de": "Grobes Schwert",
+      "text": "Crude Sword",
+      "context": "items/smithing.lua",
+      "status": "entwurf"
+    },
+    "it_sword_old.name": {
+      "de": "Altes Schwert",
+      "text": "Old Sword",
+      "context": "items/weapons.lua",
+      "status": "entwurf"
+    },
+    "it_torch.name": {
+      "de": "Fackel",
+      "text": "Torch",
+      "context": "items/tools.lua",
+      "status": "entwurf"
+    },
+    "it_wine.name": {
+      "de": "Wein",
+      "text": "Wine",
+      "context": "items/food.lua",
+      "status": "entwurf"
+    },
+    "mob_camp_anvil.name": {
+      "de": "Amboss",
+      "text": "Anvil",
+      "context": "mobs/camp.lua",
+      "status": "entwurf"
+    },
+    "mob_camp_bed.name": {
+      "de": "Bett",
+      "text": "Bed",
+      "context": "mobs/camp.lua",
+      "status": "entwurf"
+    },
+    "mob_camp_bench.name": {
+      "de": "Bank",
+      "text": "Bench",
+      "context": "mobs/camp.lua",
+      "status": "entwurf"
+    },
+    "mob_camp_chest.name": {
+      "de": "Truhe",
+      "text": "Chest",
+      "context": "mobs/camp.lua",
+      "status": "entwurf"
+    },
+    "mob_camp_chest_locked.name": {
+      "de": "Verschlossene Truhe",
+      "text": "Locked Chest",
+      "context": "mobs/camp.lua",
+      "status": "entwurf"
+    },
+    "mob_camp_door.name": {
+      "de": "Tür",
+      "text": "Door",
+      "context": "mobs/camp.lua",
+      "status": "entwurf"
+    },
+    "mob_camp_door_locked.name": {
+      "de": "Verschlossene Tür",
+      "text": "Locked Door",
+      "context": "mobs/camp.lua",
+      "status": "entwurf"
+    },
+    "mob_camp_guard_bed.name": {
+      "de": "Bett",
+      "text": "Bed",
+      "context": "mobs/camp.lua",
+      "status": "entwurf"
+    },
+    "mob_camp_table.name": {
+      "de": "Tisch",
+      "text": "Table",
+      "context": "mobs/camp.lua",
+      "status": "entwurf"
+    },
+    "mon_keiler.name": {
+      "de": "Keiler",
+      "text": "Boar",
+      "context": "npcs/animals.lua",
+      "status": "entwurf"
+    },
+    "mon_laufvogel.name": {
+      "de": "Laufvogel",
+      "text": "Runner Bird",
+      "context": "npcs/animals.lua",
+      "status": "entwurf"
+    },
+    "mon_wolf.name": {
+      "de": "Wolf",
+      "text": "Wolf",
+      "context": "npcs/animals.lua",
+      "status": "entwurf"
+    },
+    "npc_bandit.name": {
+      "de": "Wegelagerer",
+      "text": "Highwayman",
+      "context": "npcs/camp/bandits.lua",
+      "status": "entwurf"
+    },
+    "npc_bandit_leader.name": {
+      "de": "Rotbart, Anführer der Wegelagerer",
+      "text": "Redbeard, Leader of the Highwaymen",
+      "context": "npcs/camp/bandits.lua",
+      "status": "entwurf"
+    },
+    "npc_camp_hexer.name": {
+      "de": "Kräuterhexer",
+      "text": "Hedge Wizard",
+      "context": "npcs/camp/camp_people.lua",
+      "status": "entwurf"
+    },
+    "npc_farmer_woman.name": {
+      "de": "Bäuerin",
+      "text": "Farmer's Wife",
+      "context": "npcs/camp/camp_people.lua",
+      "status": "entwurf"
+    },
+    "npc_gate_guard.name": {
+      "de": "Torwache",
+      "text": "Gate Guard",
+      "context": "npcs/camp/camp_people.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_baker.name": {
+      "de": "Gertrud die Bäckerin",
+      "text": "Gertrud the Baker",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_baker_husband.name": {
+      "de": "Konrad der Bäcker",
+      "text": "Konrad the Baker",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_bather.name": {
+      "de": "Meister Wendel, der Bader",
+      "text": "Master Wendel, the Barber-Surgeon",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_beggar_f.name": {
+      "de": "Die alte Grete",
+      "text": "Old Grete",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_beggar_m.name": {
+      "de": "Lumpen-Hannes",
+      "text": "Ragged Hannes",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_butcher.name": {
+      "de": "Hans der Metzger",
+      "text": "Hans the Butcher",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_citizen.name": {
+      "de": "Matthis der Ratsdiener",
+      "text": "Matthis the Council Runner",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_cloth_merchant.name": {
+      "de": "Elsbeth die Tuchhändlerin",
+      "text": "Elsbeth the Cloth Merchant",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_farmer.name": {
+      "de": "Veit vom Scheunenhof",
+      "text": "Veit of the Barn Farm",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_goldsmith.name": {
+      "de": "Ruprecht der Goldschmied",
+      "text": "Ruprecht the Goldsmith",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_guard_lower.name": {
+      "de": "Kaspar, Wache am Unteren Tor",
+      "text": "Kaspar, Guard at the Lower Gate",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_guard_upper.name": {
+      "de": "Lienhard, Hauptmann am Oberen Tor",
+      "text": "Lienhard, Captain at the Upper Gate",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_herbalist.name": {
+      "de": "Mechthild die Kräuterfrau",
+      "text": "Mechthild the Herbwife",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_innkeeper.name": {
+      "de": "Bertold, Wirt der Krummen Gans",
+      "text": "Bertold, Landlord of the Crooked Goose",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_joiner.name": {
+      "de": "Lorenz der Schreiner",
+      "text": "Lorenz the Joiner",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_market.name": {
+      "de": "Agnes vom Krämerladen",
+      "text": "Agnes of the General Store",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_merchant_f.name": {
+      "de": "Margarete, die Kaufmannsfrau",
+      "text": "Margarete, the Merchant's Wife",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_merchant_m.name": {
+      "de": "Hieronymus der Kaufmann",
+      "text": "Hieronymus the Merchant",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_monk_1.name": {
+      "de": "Bruder Anselm",
+      "text": "Brother Anselm",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_monk_2.name": {
+      "de": "Bruder Kilian",
+      "text": "Brother Kilian",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_musician.name": {
+      "de": "Florian der Spielmann",
+      "text": "Florian the Minstrel",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_potter.name": {
+      "de": "Michel der Töpfer",
+      "text": "Michel the Potter",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_priest.name": {
+      "de": "Pfarrer Johannes",
+      "text": "Father Johannes",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_smith.name": {
+      "de": "Ulrich der Schmied",
+      "text": "Ulrich the Smith",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_tailor.name": {
+      "de": "Jörg der Gewandschneider",
+      "text": "Jörg the Tailor",
+      "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_old_man.name": {
+      "de": "Alter Mann",
+      "text": "Old Man",
+      "context": "npcs/camp/camp_people.lua",
+      "status": "entwurf"
+    },
+    "npc_woodcutter.name": {
+      "de": "Holzfäller",
+      "text": "Woodcutter",
+      "context": "npcs/camp/camp_people.lua",
+      "status": "entwurf"
+    },
+    "pc_hero.name": {
+      "de": "Held",
+      "text": "Hero",
+      "context": "npcs/hero.lua",
+      "status": "entwurf"
+    },
+    "quest_farm_work.description": {
+      "de": "Die Torwache meint, die Bäuerin am Feld brauche Hilfe.",
+      "text": "The gate guard says the farmer's wife in the field needs help.",
+      "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "quest_farm_work.name": {
+      "de": "Arbeit im Lager",
+      "text": "Work in the Camp",
+      "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "quest_lunch.description": {
+      "de": "Die Bäuerin hat mir ein Essensbündel für den Holzfäller mitgegeben. Er arbeitet im Norden des Lagers.",
+      "text": "The farmer's wife gave me a food bundle for the woodcutter. He works in the north of the camp.",
+      "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "quest_lunch.name": {
+      "de": "Essen für den Holzfäller",
+      "text": "Food for the Woodcutter",
+      "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "quest_ring.description": {
+      "de": "Der Bäuerin fehlt ihr Familienring. Sie verdächtigt den alten Mann.",
+      "text": "The farmer's wife's family ring is missing. She suspects the old man.",
+      "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "quest_ring.name": {
+      "de": "Der Ring der Bäuerin",
+      "text": "The Farmer's Wife's Ring",
+      "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "quest_sword.description": {
+      "de": "Die Torwache braucht ein Grobes Schwert. Am Amboss hinter dem Tor kann man eines schmieden.",
+      "text": "The gate guard needs a Crude Sword. One can be forged at the anvil behind the gate.",
+      "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "quest_sword.name": {
+      "de": "Eine Klinge für die Wache",
+      "text": "A Blade for the Guard",
+      "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "quests.farm_work.quest_success_01": {
+      "de": "Im Lager kennt man mich jetzt. Zeit, weiterzuziehen.",
+      "text": "People in the camp know me now. Time to move on.",
+      "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "quests.farm_work.set_chapter_01": {
+      "de": "Weiter nach Leonberg",
+      "text": "On to Leonberg",
+      "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "rcp_sword_crude.name": {
+      "de": "Grobes Schwert",
+      "text": "Crude Sword",
+      "context": "items/smithing.lua",
+      "status": "entwurf"
+    },
+    "spl_fear.name": {
+      "de": "Schrecken",
+      "text": "Fear",
+      "context": "magic/spells.lua",
+      "status": "entwurf"
+    },
+    "spl_firebolt.name": {
+      "de": "Feuerpfeil",
+      "text": "Fire Arrow",
+      "context": "magic/spells.lua",
+      "status": "entwurf"
+    },
+    "spl_heal.name": {
+      "de": "Heilung",
+      "text": "Heal",
+      "context": "magic/spells.lua",
+      "status": "entwurf"
+    },
+    "spl_sleep.name": {
+      "de": "Schlaf",
+      "text": "Sleep",
+      "context": "magic/spells.lua",
+      "status": "entwurf"
+    },
+    "spl_summon_wolf.name": {
+      "de": "Wolf rufen",
+      "text": "Summon Wolf",
+      "context": "magic/spells.lua",
+      "status": "entwurf"
+    },
+    "spl_transform_wolf.name": {
+      "de": "Wolfsgestalt",
+      "text": "Wolf Form",
+      "context": "magic/spells.lua",
+      "status": "entwurf"
+    },
+    "svm.flee_01": {
+      "de": "Lass mich bloß in Ruhe!",
+      "text": "Just leave me alone!",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    },
+    "svm.foreign_mob_01": {
+      "de": "Was fummelst du da an meinen Sachen herum?",
+      "text": "What are you fiddling with my things for?",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    },
+    "svm.help_01": {
+      "de": "Warte, ich helf dir! Den knöpfen wir uns vor!",
+      "text": "Hold on, I'll help you! Let's get him!",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    },
+    "svm.hostile_01": {
+      "de": "Dich hab ich schon gesucht!",
+      "text": "You're just the one I've been looking for!",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    },
+    "svm.intruder_01": {
+      "de": "Raus aus meinem Haus, aber flott!",
+      "text": "Get out of my house, and be quick about it!",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    },
+    "svm.intruder_again_01": {
+      "de": "Hast du nicht gehört? Raus hier!",
+      "text": "Didn't you hear me? Get out!",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    },
+    "svm.thief_01": {
+      "de": "Finger weg von fremden Sachen, du Dieb!",
+      "text": "Keep your hands off other people's things, you thief!",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    },
+    "svm.threaten_01": {
+      "de": "Jetzt reicht's mir mit dir!",
+      "text": "That's it, I've had enough of you!",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    },
+    "svm.weapon_calm_01": {
+      "de": "Na also. Geht doch.",
+      "text": "There you go. Was that so hard?",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    },
+    "svm.weapon_warn_01": {
+      "de": "He! Weg mit der Klinge, sonst gibt's Ärger!",
+      "text": "Hey! Put that blade away, or there'll be trouble!",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    },
+    "svm.weapon_warn_02": {
+      "de": "Ich sag's nicht noch mal: Waffe runter!",
+      "text": "I won't say it again: weapon down!",
+      "context": "data/shouts.lua",
+      "status": "entwurf"
+    }
+  }
+}

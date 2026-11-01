@@ -99,7 +99,7 @@ void Engine::toggleMagic()
     const std::string item = runeInSlot(m_runeSlot);
     if (item.empty())
     {
-        notice("Keine Rune und keine Spruchrolle angelegt.");
+        notice(uiText("UI_MAGIC_NONE_EQUIPPED"));
         return;
     }
     putTorchAway(); // magic takes both hands
@@ -116,7 +116,7 @@ void Engine::selectRune(u32 slot)
     const std::string item = runeInSlot(slot);
     if (item.empty())
     {
-        notice("Auf diesem Runenplatz liegt nichts.");
+        notice(uiText("UI_MAGIC_SLOT_EMPTY"));
         return;
     }
     m_runeSlot = slot;
@@ -149,7 +149,7 @@ void Engine::beginHeroCast()
     const bool scroll = def != nullptr && def->fields["category"].asString() == "scroll";
     if (const auto blocked = gameplay::castBlocked(*m_hero, *spell, scroll); blocked)
     {
-        notice(*blocked); // Z5: the attempt fails
+        notice(castBlockedText(*blocked)); // Z5: the attempt fails
         if (m_figure && m_figure->animator.hasState("mag_t_cast_fail"))
         {
             m_figure->animator.enter("mag_t_cast_fail", 0.1f);
@@ -281,13 +281,13 @@ void Engine::applyHeroSpell()
         const f32 range = magicValue(m_scripts.get(), "target_range", 25.0f);
         if (target == nullptr || glm::length(target->position - m_player.feet()) > range)
         {
-            notice("Kein Ziel.");
+            notice(uiText("UI_MAGIC_NO_TARGET"));
             break;
         }
         if (spell.effect == "sleep" &&
             !castSleep(target->id, spell.duration * strength, "hero", fx("on_target")))
         {
-            notice("Der Zauber zeigt keine Wirkung."); // Z6: stronger than the caster
+            notice(uiText("UI_MAGIC_NO_EFFECT")); // Z6: stronger than the caster
         }
         else if (spell.effect == "fear")
         {
@@ -542,7 +542,7 @@ std::optional<std::string> Engine::npcCast(Creature& c, std::string_view spell, 
     {
         if (scroll.empty() || gameplay::castBlocked(*c.character, info, true))
         {
-            return *blocked;
+            return castBlockedText(*blocked);
         }
         (void)c.character->removeItem(scroll, 1);
     }
@@ -960,14 +960,14 @@ void Engine::bindMagicFunctions()
              }
              if (!m_hero || m_hero->itemCount(a[0].asString()) == 0)
              {
-                 return Value(std::string("Das hast du nicht."));
+                 return Value(uiText("UI_NOT_OWNED"));
              }
              const script::Instance* item = m_scripts->findInstance("Item", a[0].asString());
              const bool scroll = item->fields["category"].asString() == "scroll";
              const auto blocked = gameplay::castBlocked(
                  *m_hero, *spell, scroll,
                  a.size() > 1 ? static_cast<u32>(std::max<i64>(0, a[1].asInteger())) : 0u);
-             return blocked ? Value(*blocked) : Value();
+             return blocked ? Value(castBlockedText(*blocked)) : Value();
          }});
     vm.bind(
         {"draw_magic", "draw_magic() -> string",

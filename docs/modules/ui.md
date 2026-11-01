@@ -3,7 +3,9 @@
 **Zweck:** Alle Bildschirmoberflächen.
 
 ## Zwei Welten
-1. **Debug-/Editor-UI**: Dear ImGui (+ ImGuizmo ab M4). Zurzeit in allen Builds, standardmäßig aus (F1).
+1. **Debug-/Editor-UI**: Dear ImGui (+ ImGuizmo ab M4). Zurzeit in allen Builds, standardmäßig aus (F1). Seit M14
+   Teil G nur noch Debug und Editor: Konsole, „Gothar“, „AI“, „Creatures“, „Animation“, Editor-Fenster – das Spiel
+   selbst zeigt ausschließlich die Spiel-UI.
 2. **Spiel-UI**: eigenes schlankes Retained-Mode-System (ADR 0009, angenommen 2026-10-31; „Plan M14“ unten) auf dem Renderer:
    Widgets (Panel, Text, Bild, Liste, Balken, Item-Slot, 3D-Item-Vorschau), Layout (Anker, Stapel),
    9-Slice-Rahmen, MSDF-Schrift, Gamepad-/Tastatur-Navigation, Themes als Daten.
@@ -40,6 +42,62 @@ public:
 - **Editor-Fenster** (`EditorPanel.hpp`, M4): `DebugUi::editorPanel(EditorPanel&)` mit Werten ohne `world`-Typen –
   Vob-Liste, generischer Inspektor aus `EditorField`s, Modell-Liste, Gizmo-Einstellungen, Aktionen; der Editor
   (`tools/editor`) füllt und liest sie.
+- **Entfallen (M14 Teil G):** die ImGui-Spielfenster der Phasen M8–M10 (`InventoryPanel`, `TradePanel`,
+  `DialogPanel`, `DiaryPanel`, `DocumentPanel`, `ChoicePanel`, `LockpickPanel`, `focusLabel`) samt ihren
+  Rückfallebenen in der Engine; ImGui öffnet nur noch mit F1 (`debug_ui`) oder der Konsole (^).
+
+## Spiel-UI Teil G (umgesetzt, M14) – Lokalisierung DE/EN, Abbau der ImGui-Spielfenster, DoD
+`asset/ScriptTexts.hpp`; Engine `runtime/EngineText.cpp`; Werkzeug `gothar-voice texts` (`tools/voice`).
+
+```cpp
+namespace g7::asset {
+class ScriptTexts {                         // text/script.<sprache>.json, Schema 1
+    static Result<ScriptTexts> parse(std::string_view json, std::string_view source);
+    const std::string* find(std::string_view german) const;   // Übersetzung eines deutschen Textes; nullptr: keine
+    const std::string* findKey(std::string_view key) const;   // "it_apple.name", "dia_gate_guard_hello_01"
+};
+}
+namespace g7 {   // Engine
+std::string language() const;                                  // [ui] language: "de", "en"
+std::string uiText(std::string_view key, std::initializer_list<ui::TextArg> args = {}) const; // text/ui.<sprache>.toml
+std::string contentText(std::string_view german) const;       // Inhaltstext der Skripte in der UI-Sprache
+std::string castBlockedText(const gameplay::CastBlock&) const; // Z5 in Worten (gameplay liefert nur den Grund)
+Engine::DiaryData diaryData() const;                           // ersetzt diaryPanelData() / ui::DiaryPanel
+bool debugUiFrame() const;                                     // hat ImGui in diesem Frame gezeichnet?
+}
+```
+- **UI-Texte:** Alle Texte der Engine stehen in `text/ui.de.toml`/`ui.en.toml`, auch die Meldungen (Schloss,
+  Dietrich, Handel, Taschendiebstahl, Fernkampf, Magie, Schlaf, Schmieden), „Ende“ im Dialog, Tagebuch-Zeilen
+  („Tag {day}, {time}: {text}“, „Kapitel {n}“) und die Antworten des Lehrers. `Engine::uiText` liest die Tabelle der
+  eingestellten Sprache auch ohne Fenster (Tests ohne Spiel-UI sehen die deutschen Meldungen wie bisher).
+  `gameplay::castBlocked` gibt statt eines deutschen Satzes `CastBlock{reason, circle}` zurück. Scheitert eine
+  Aktion im Inventar oder Handel, zeigt der Bildschirm die Meldung der Aktion bzw. „Das geht nicht.“; fehlt Stärke
+  oder Geschick zum Anlegen, „Benötigt: …“ – die englischen Fehlertexte der Engine bleiben dem Log und Lua.
+- **Inhaltstexte:** Die deutschen Texte bleiben inline in Lua (E2), ebenso alle Spieldaten (Story, Dialogmenüs,
+  Item-Namen, Spielstände). Die Bildschirme übersetzen beim Anzeigen mit `contentText`: Item-, NPC-, Mob-,
+  Rezept- und Auftragsnamen, Fokusnamen, Dialogzeilen und -antworten (Untertitel), Zurufe, Schriftstücke,
+  Tagebuch-Einträge und Lua-Meldungen (`notice`). Die Übersetzung steht in `text/script.<sprache>.json`
+  (Vertrag „Inhaltstexte“ in `docs/coordination.md`); gefunden wird über den deutschen Text, Einträge `offen`
+  oder `veraltet` zählen nicht. Fehlt sie, bleibt der deutsche Text (Debug-Log einmal je Text). Bei Deutsch wird
+  nichts geladen.
+- **Lua:** `ui_text(key, args?)` (UI-Text mit Platzhaltern, für Texte, die erst zur Laufzeit entstehen) und
+  `tr(text)` (Inhaltstext in der UI-Sprache). `lib/diary.lua` (Meldungen zu Aufträgen und Kapiteln) und
+  `data/teaching.lua` (Antworten des Lehrers) bauen ihre Texte damit.
+- **Sprache umschalten:** Optionen → Spiel → Sprache wirkt sofort (UI-Texte, Inhaltstexte, Schriften neu geladen)
+  und wird in der Benutzer-Konfiguration gespeichert. Die Stimmen bleiben deutsch; Untertitel kommen in der
+  UI-Sprache (F10). Abweichung vom Plan: Die gesprochenen Zeilen stehen mit ihrem Sprach-Schlüssel ebenfalls in
+  `script.<sprache>.json`; eine `voice/lines.en.json` braucht es erst für englische Aufnahmen.
+- **Englisch:** Entwurf von Claude (Status `entwurf`, F10); der Projektinhaber nimmt ihn ab (Status `abgenommen`).
+  Britische Schreibung („Armour“, „Jewellery“), Währung „Gulden“ auch im Englischen.
+- **Debug-UI:** siehe oben („Entfallen“). `MobInfo` hat dazu `position` (Szenariotest).
+- **Tests:** `tests/ui/test_strings.cpp` (DE und EN mit denselben Schlüsseln; jeder Schlüssel, den Code, UI-Daten
+  und Skripte nennen, steht in der Tabelle), `tests/asset/test_script_texts.cpp` (Parser; die englische Datei hat
+  nichts offen), `tools/voice/tests/test_texts.py` (Scan, Abgleich, Übernahme bei neuem Schlüssel, die Datei des
+  Repos passt zu den Skripten), CI `gothar-voice check`. **DoD:** `tests/runtime/test_engine_vertical_slice.cpp`
+  (ctest `runtime_slice`, ~10 s im Debug-Build): Hauptmenü → Neues Spiel → Dialog → Auftrag → Botengang → Handel
+  (Mengenwahl) → Inventar (Schwert anlegen, Apfel essen) → Truhe → Kampf mit Wolf → Tagebuch → Pause, nur über
+  SDL-Tasten der ausgelieferten Belegung; ein zweiter Fall stellt in den Optionen auf Englisch um und spricht mit
+  der Wache (Fokusname, Antworten, Meldung, Tagebuch englisch; Story bleibt deutsch).
 
 ## Spiel-UI Teil A (umgesetzt, M14) – Schrift, Text, Stil, Texte, Canvas
 `Font.hpp`, `Text.hpp`, `Style.hpp`, `Strings.hpp`, `Canvas.hpp`, `UiResources.hpp`; Shader
@@ -302,7 +360,7 @@ std::vector<ItemTab> itemTabs(const Layout&);                                   
   Ladebildschirm (`[game] title`); die Menü-Welt wird danach nicht aufbewahrt.
 - **Pausenmenü:** `pause` (Esc/Start) öffnet es im Spiel (pausiert, verbirgt das HUD): Weiterspielen, Neues Spiel,
   Laden, Speichern (diese drei ausgegraut bis M15), Optionen, Spiel beenden. Zurück spielt weiter. Ohne Spiel-UI
-  schaltet `pause` wie bisher nur die Pause um.
+  schaltet `pause` nur die Pause um (Spiel-UI nicht geladen: Fehler im Log).
 - **Optionen:** Reiter Grafik (Auflösung, Vollbild, VSync, Bildratenlimit, Sichtweite), Klang (Gesamt, Musik,
   Effekte, Stimmen, Umgebung, Menüklänge als Schieberegler mit den Rahmen `slider_track`/`slider_knob` in
   5-%-Schritten; wirken sofort auf die Busse), Steuerung (Schema
@@ -333,7 +391,7 @@ std::vector<ItemTab> itemTabs(const Layout&);                                   
   (Klinge, Wucht, Pfeile, Feuer, Magie). Kästen `status.*`, Überschriften in der neuen Textrolle `heading`.
 - **Tagebuch** (Taste `log`, N; ersetzt `DiaryPanel`): Pergament mit dem Kapitel, Reitern Laufende Aufträge /
   Erledigt / Gescheitert / Allgemeines (Reiter-Tasten oder Klick), links die Aufträge bzw. Themen, rechts ihre
-  Einträge als scrollender Text (`TextView`: Hoch/Runter, Rad). Daten aus `Story` wie bisher (`diaryPanelData`).
+  Einträge als scrollender Text (`TextView`: Hoch/Runter, Rad). Daten aus `Story` (`diaryData`, seit Teil G).
 - **Karte** (Taste `map`, M; F9): nur mit einem Karten-Item – ein Item der Kategorie `document` mit dem Feld
   `map = "ui/maps/<name>.png"`; Benutzen oder M zeigt sein Bild auf Pergament, eingepasst, ohne Spielerposition.
   Ohne Karte meldet M „Ich habe keine Karte.“. Das Stadtplan-Item für Leonberg liefert welt; bis dahin
@@ -668,7 +726,7 @@ einstellbar.
 - **DoD:** Start ins Hauptmenü, Neues Spiel, Optionen ändern (bleiben nach einem Neustart erhalten), Beenden –
   alles ohne Debug-UI und mit dem Gamepad bedienbar.
 
-### Teil G – Lokalisierung DE/EN, Aufräumen, DoD der Phase
+### Teil G – Lokalisierung DE/EN, Aufräumen, DoD der Phase (umgesetzt, siehe „Spiel-UI Teil G“ oben)
 - **UI-Texte:** `text/ui.de.toml` und `text/ui.en.toml` vollständig; Test: beide Tabellen haben dieselben
   Schlüssel, und jeder im C++-Code verwendete Schlüssel existiert.
 - **Inhaltstexte aus Lua (Vorschlag):** Namen und Beschreibungen von Items und NPCs, Info-Beschreibungen
@@ -724,8 +782,10 @@ Truhe, Charakter, Tagebuch, Dokument (Briefe/Bücher), Karte, Hauptmenü, Option
 Ladebildschirm, Konsole (Debug), Bildschirmmeldungen.
 
 ## Lokalisierung
-Alle Texte über Schlüssel (`DIA_Ruvin_Hello_11_01`, `UI_INVENTORY_TITLE`) aus Tabellen pro Sprache;
-fehlende Übersetzung → Schlüssel sichtbar + Warnung im Log. Zahlen-/Datumsformat je Sprache.
+UI-Texte über Schlüssel (`UI_INVENTORY_TITLE`) aus `text/ui.<sprache>.toml` – fehlender Schlüssel → Schlüssel
+sichtbar + Warnung im Log; Inhaltstexte deutsch inline in Lua, Übersetzungen in `text/script.<sprache>.json` nach
+dem deutschen Text (fehlt sie, bleibt der deutsche Text). Zahlenformat je Sprache (`formatNumber`). Einzelheiten:
+„Spiel-UI Teil G“.
 
 ## Inventar-Ansichten (Vorschlag figuren, M14-Vorarbeit)
 Festgelegt vom Projektinhaber: Inventar wie Gothic, **jede Zelle zeigt das 3D-Modell**, zentriert auf seine

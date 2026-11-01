@@ -236,7 +236,7 @@ TEST_CASE("Engine diary: quests with entries by status, notes by topic, chapters
     CHECK_FALSE(engine.runConsoleLine("quest_start('quest_nowhere')").ok());
     run(engine, "note('Das Lager', 'Nachts kommen Wölfe bis an den Zaun.')");
 
-    ui::DiaryPanel diary = engine.diaryPanelData();
+    Engine::DiaryData diary = engine.diaryData();
     CHECK(diary.chapter == "Kapitel 1");
     REQUIRE(diary.running.size() == 1);
     CHECK(diary.running[0].name == "Arbeit im Lager");
@@ -247,7 +247,7 @@ TEST_CASE("Engine diary: quests with entries by status, notes by topic, chapters
     CHECK(diary.notes[0].name == "Das Lager");
 
     run(engine, "quest_success('quest_farm_work', 'Das Feld ist umgegraben.')");
-    diary = engine.diaryPanelData();
+    diary = engine.diaryData();
     CHECK(diary.running.empty());
     REQUIRE(diary.done.size() == 1);
     CHECK(diary.done[0].entries.size() == 3);
@@ -255,7 +255,7 @@ TEST_CASE("Engine diary: quests with entries by status, notes by topic, chapters
     run(engine, "set_chapter(2, 'Ärger im Lager')");
     CHECK(run(engine, "chapter()").asInteger() == 2);
     CHECK(run(engine, "Story.changed").asInteger() == 2);
-    CHECK(engine.diaryPanelData().chapter == "Kapitel 2");
+    CHECK(engine.diaryData().chapter == "Kapitel 2");
 }
 
 TEST_CASE("Engine dialogue: voice keys - every branch its own key, shouts in the voice of guild and gender")

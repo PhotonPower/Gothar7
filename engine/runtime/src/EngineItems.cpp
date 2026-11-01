@@ -280,7 +280,7 @@ std::string Engine::focusName(gameplay::FocusKind kind, u64 id) const
         }
         const script::Instance* item = m_scripts ? m_scripts->findInstance("Item", ref->instance) : nullptr;
         const std::string name =
-            item != nullptr ? std::string(item->fields["name"].asString()) : ref->instance;
+            item != nullptr ? contentText(item->fields["name"].asString()) : ref->instance;
         return ref->count > 1 ? std::format("{} ({})", name, ref->count) : name;
     }
     case gameplay::FocusKind::Mob:
@@ -288,7 +288,7 @@ std::string Engine::focusName(gameplay::FocusKind kind, u64 id) const
         // The name of its Mob definition (part C), else the definition's id.
         if (const auto it = m_mobs.find(id); it != m_mobs.end())
         {
-            return it->second.name;
+            return contentText(it->second.name);
         }
         const entt::entity e = m_scene.findById(world::VobId{id});
         const world::MobRef* mob = e != entt::null ? m_scene.get<world::MobRef>(e) : nullptr;
@@ -303,7 +303,7 @@ std::string Engine::focusName(gameplay::FocusKind kind, u64 id) const
         if ((c->id | kCreatureFocusBit) == id)
         {
             const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", c->species) : nullptr;
-            return npc != nullptr ? std::string(npc->fields["name"].asString()) : c->species;
+            return npc != nullptr ? contentText(npc->fields["name"].asString()) : c->species;
         }
     }
     return {};
@@ -496,148 +496,5 @@ void Engine::setInventoryOpen(bool open) noexcept
 {
     m_inventoryOpen = open && m_hero != nullptr && !m_transform; // Z7: an animal carries nothing
     m_inventoryMessage.clear();
-}
-
-void Engine::inventoryUi()
-{
-    if (!m_inventoryOpen || !m_hero)
-    {
-        return;
-    }
-    gameplay::Character& hero = *m_hero;
-    const gameplay::ItemLookup items = itemLookup();
-    ui::InventoryPanel panel;
-    panel.title = std::format("{} - Stufe {} ({} / {} EP, {} LP)", hero.name(), hero.level(),
-                              hero.experience(), xpForLevel(hero.level() + 1), hero.learnPoints());
-    panel.stats.push_back(std::format(
-        "Leben {}/{}  Mana {}/{}  Stärke {}  Geschick {}", hero.attribute("hp"), hero.attribute("hp_max"),
-        hero.attribute("mana"), hero.attribute("mana_max"), hero.attribute("str"), hero.attribute("dex")));
-    panel.stats.push_back(std::format("Schutz: Waffen {}  Pfeile {}  Feuer {}  Magie {}",
-                                      hero.protection("edge"), hero.protection("point"),
-                                      hero.protection("fire"), hero.protection("magic")));
-    for (const gameplay::ItemStack& stack : hero.inventory(items))
-    {
-        const auto info = items(stack.item);
-        ui::InventoryPanel::Row row;
-        row.item = stack.item;
-        row.name = info ? info->name : stack.item;
-        row.category = info ? info->category : "misc";
-        row.count = stack.count;
-        row.equippable = gameplay::Character::slotFor(row.category).has_value();
-        row.usable = row.category == "food" || row.category == "potion" || row.category == "document";
-        for (usize s = 0; s < static_cast<usize>(gameplay::EquipSlot::Count); ++s)
-        {
-            if (hero.equipped(static_cast<gameplay::EquipSlot>(s)) == stack.item)
-            {
-                row.equipped = std::string(gameplay::slotName(static_cast<gameplay::EquipSlot>(s)));
-                break;
-            }
-        }
-        panel.rows.push_back(std::move(row));
-    }
-    panel.message = m_inventoryMessage;
-    const MobRuntime* chest =
-        m_mobUse && m_mobUse->containerOpen ? &m_mobs.at(m_mobUse->vob.value) : nullptr; // M8 part C
-    const Creature* looted = m_lootTarget ? creature(*m_lootTarget) : nullptr;           // M11 part C
-    if (looted != nullptr && looted->character)
-    {
-        panel.container = true;
-        panel.containerTitle =
-            std::format("{} ({})", looted->character->name(),
-                        looted->fighter.state() == gameplay::FightState::Dead ? "tot" : "bewusstlos");
-        for (const gameplay::ItemStack& stack : looted->character->inventory(items))
-        {
-            const auto info = items(stack.item);
-            panel.containerRows.push_back({stack.item,
-                                           info ? info->name : stack.item,
-                                           info ? info->category : "misc",
-                                           stack.count,
-                                           {},
-                                           false});
-        }
-    }
-    else if (chest != nullptr)
-    {
-        panel.container = true;
-        panel.containerTitle = chest->name;
-        for (const auto& [item, count] : chest->contents)
-        {
-            const auto info = items(item);
-            panel.containerRows.push_back(
-                {item, info ? info->name : item, info ? info->category : "misc", count, {}, false});
-        }
-    }
-    m_debugUi.inventoryPanel(panel);
-    if (!panel.open)
-    {
-        m_inventoryOpen = false;
-        m_lootTarget.reset();
-    }
-    if (looted != nullptr && (panel.action == "take" || panel.action == "put"))
-    {
-        auto taken = panel.action == "take" ? loot(looted->species, panel.actionItem, 0)
-                                            : Result<u32>(Error{"Hier wird nur genommen."});
-        m_inventoryMessage = taken ? std::string() : taken.error().message;
-        return;
-    }
-    if (panel.action == "equip")
-    {
-        auto slot = hero.equip(panel.actionItem, items);
-        m_inventoryMessage = slot ? std::string() : slot.error().message;
-    }
-    else if (panel.action == "unequip")
-    {
-        for (usize s = 0; s < static_cast<usize>(gameplay::EquipSlot::Count); ++s)
-        {
-            if (hero.equipped(static_cast<gameplay::EquipSlot>(s)) == panel.actionItem)
-            {
-                hero.unequip(static_cast<gameplay::EquipSlot>(s));
-                break;
-            }
-        }
-        m_inventoryMessage.clear();
-    }
-    else if (panel.action == "use")
-    {
-        auto used = useItem(panel.actionItem);
-        m_inventoryMessage = used ? std::string() : used.error().message;
-    }
-    else if (panel.action == "drop")
-    {
-        auto dropped = dropItem(panel.actionItem, 1);
-        m_inventoryMessage = dropped ? std::string() : dropped.error().message;
-    }
-    else if ((panel.action == "take" || panel.action == "put") && m_mobUse)
-    {
-        const world::VobId vob = m_mobUse->vob;
-        const u32 count = panel.action == "take" ? m_mobs.at(vob.value).contents[panel.actionItem]
-                                                 : hero.itemCount(panel.actionItem);
-        auto moved = panel.action == "take" ? takeFromMob(vob, panel.actionItem, std::max(count, 1u))
-                                            : putIntoMob(vob, panel.actionItem, 1);
-        m_inventoryMessage = moved ? std::string() : moved.error().message;
-    }
-}
-
-void Engine::focusUi()
-{
-    if (!m_focus || m_focus->name.empty() || !m_window || m_inventoryOpen || m_dialog)
-    {
-        return;
-    }
-    // Above the target: its world point projected to window coordinates.
-    const Vec4 clip = m_camera.viewProjection() * Vec4(m_focus->point + Vec3(0.0f, 0.35f, 0.0f), 1.0f);
-    if (clip.w <= 0.0f)
-    {
-        return;
-    }
-    const Vec2 ndc = Vec2(clip) / clip.w;
-    if (std::abs(ndc.x) > 1.0f || std::abs(ndc.y) > 1.0f)
-    {
-        return;
-    }
-    const auto size = m_window->size();
-    m_debugUi.focusLabel(Vec2((ndc.x * 0.5f + 0.5f) * static_cast<f32>(size.width),
-                              (0.5f - ndc.y * 0.5f) * static_cast<f32>(size.height)),
-                         m_focus->name);
 }
 } // namespace g7

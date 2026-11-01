@@ -9,16 +9,15 @@ Teaching = {
     limit = 100, -- höchster Wert eines Attributs beim Lehrer
 }
 
+-- Die Antwort im Menü entsteht erst zur Laufzeit: in der eingestellten Sprache (text/ui.<sprache>.toml).
 local function label(offer)
     local name = offer.attribute and (Teaching.attribute_names[offer.attribute] or offer.attribute)
         or (Teaching.talent_names[offer.talent] or offer.talent)
-    local what = offer.attribute and string.format("%s +%d", name, offer.amount or 1)
-        or string.format("%s (Stufe %d)", name, offer.level or 1)
-    local cost = string.format("%d LP", offer.lp)
-    if (offer.gulden or 0) > 0 then
-        cost = cost .. string.format(", %d Gulden", offer.gulden)
-    end
-    return string.format("%s (%s)", what, cost)
+    local what = offer.attribute and ui_text("UI_TEACH_ATTRIBUTE", { name = tr(name), amount = offer.amount or 1 })
+        or ui_text("UI_TEACH_TALENT", { name = tr(name), level = offer.level or 1 })
+    local cost = (offer.gulden or 0) > 0 and ui_text("UI_TEACH_COST_GULDEN", { lp = offer.lp, gulden = offer.gulden })
+        or ui_text("UI_TEACH_COST", { lp = offer.lp })
+    return ui_text("UI_TEACH_OFFER", { what = what, cost = cost })
 end
 
 --- Bringt dem Helden ein Angebot bei; false und ein Grund, wenn es nicht geht.

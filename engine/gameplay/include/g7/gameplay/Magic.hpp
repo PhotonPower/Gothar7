@@ -55,8 +55,19 @@ struct SpellInfo
 /// Mana for a cast charged `stages` extra stages (Z5).
 [[nodiscard]] i32 spellMana(const SpellInfo& spell, u32 stages) noexcept;
 
-/// Why `caster` cannot cast `spell` (from a rune, or a scroll) with `stages` - nullopt: it can. German text
-/// for the player ("Dafür fehlt dir der zweite Kreis der Magie.").
-[[nodiscard]] std::optional<std::string> castBlocked(const Character& caster, const SpellInfo& spell,
-                                                     bool scroll, u32 stages = 0);
+/// Why a cast fails (Z5); the engine words it for the player (text/ui.<language>.toml).
+struct CastBlock
+{
+    enum class Reason
+    {
+        Circle, ///< the caster lacks the circle of magic `circle`
+        Mana,   ///< not enough mana
+    };
+    Reason reason = Reason::Mana;
+    i32 circle = 0;
+};
+
+/// Why `caster` cannot cast `spell` (from a rune, or a scroll) with `stages` - nullopt: it can.
+[[nodiscard]] std::optional<CastBlock> castBlocked(const Character& caster, const SpellInfo& spell,
+                                                   bool scroll, u32 stages = 0);
 } // namespace g7::gameplay

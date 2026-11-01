@@ -70,7 +70,7 @@ Result<void> Engine::useItem(std::string_view item)
     }
     if (!heroStanding())
     {
-        notice("Nicht jetzt.");
+        notice(uiText("UI_NOT_NOW"));
         return Error{"not now"};
     }
     ItemUse use;
@@ -210,17 +210,17 @@ Result<void> Engine::pickpocketFocus()
     }
     if (m_hero->talent("pickpocket") < 1)
     {
-        notice("Das kann ich nicht.");
+        notice(uiText("UI_PICKPOCKET_CANNOT"));
         return Error{"needs the talent pickpocket"};
     }
     if (c->pickpocketed)
     {
-        notice("Da ist nichts mehr zu holen.");
+        notice(uiText("UI_PICKPOCKET_NOTHING_LEFT"));
         return Error{"already tried"};
     }
     if (!heroStanding())
     {
-        notice("Nicht jetzt.");
+        notice(uiText("UI_NOT_NOW"));
         return Error{"not now"};
     }
     PendingPickpocket p;
@@ -250,7 +250,7 @@ void Engine::finishPickpocket(const PendingPickpocket& p)
     const std::string name = npc != nullptr ? std::string(npc->fields["name"].asString()) : c->species;
     if (m_hero->attribute("dex") < needed)
     {
-        notice(std::format("{} hat es bemerkt!", name));
+        notice(uiText("UI_PICKPOCKET_NOTICED", {{"name", contentText(name)}}));
         if (m_scripts)
         {
             const script::Value args[] = {c->species};
@@ -276,7 +276,7 @@ void Engine::finishPickpocket(const PendingPickpocket& p)
     }
     if (loot.empty())
     {
-        notice(std::format("{} hat nichts bei sich.", name));
+        notice(uiText("UI_PICKPOCKET_EMPTY", {{"name", contentText(name)}}));
         return;
     }
     // A quest item the scripts name comes first (Gothic: each NPC's pickpocket item; M10).
@@ -291,7 +291,8 @@ void Engine::finishPickpocket(const PendingPickpocket& p)
     (void)c->character->removeItem(item);
     m_hero->addItem(item);
     const script::Instance* def = m_scripts ? m_scripts->findInstance("Item", item) : nullptr;
-    notice(std::format("{} gestohlen.", def != nullptr ? def->fields["name"].asString() : item));
+    notice(uiText("UI_PICKPOCKET_STOLEN",
+                  {{"item", def != nullptr ? contentText(def->fields["name"].asString()) : item}}));
     if (m_scripts)
     {
         const script::Value args[] = {c->species, item};
@@ -307,22 +308,6 @@ std::optional<std::vector<gameplay::ItemStack>> Engine::creatureInventory(u32 id
         return std::nullopt;
     }
     return c->character->inventory(itemLookup());
-}
-
-void Engine::documentUi()
-{
-    if (!m_document)
-    {
-        return;
-    }
-    ui::DocumentPanel panel;
-    panel.title = m_document->title;
-    panel.text = m_document->text;
-    m_debugUi.documentPanel(panel);
-    if (!panel.open)
-    {
-        m_document.reset();
-    }
 }
 
 gameplay::MovementSettings Engine::boostedMovement() const

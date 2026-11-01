@@ -123,55 +123,6 @@ struct CreaturesPanel
     std::vector<Row> rows;
 };
 
-/// A dialogue (M10, owner decision E3: like Gothic 1): the line being said with the speaker's name, or the
-/// menu (topics, answers) below; arrow keys or the mouse, the action key chooses.
-struct DialogPanel
-{
-    std::string speaker;
-    std::string line; ///< empty: the menu is shown
-    std::vector<std::string> options;
-    i32 selected = 0; ///< edited (mouse hover)
-    i32 clicked = -1; ///< out
-};
-
-/// The diary (M10 part D): chapter, quests by status with their entries, notes by topic.
-struct DiaryPanel
-{
-    std::string chapter;
-    struct Quest
-    {
-        std::string name; ///< or the topic of notes
-        std::vector<std::string> entries;
-    };
-    std::vector<Quest> running;
-    std::vector<Quest> done;
-    std::vector<Quest> failed;
-    std::vector<Quest> notes;
-    bool open = true; ///< edited: closed with its button
-};
-
-/// Trading (M10 part C): the trader's goods and the hero's, prices in the currency; one piece per click.
-struct TradePanel
-{
-    std::string title;
-    std::string currency;
-    struct Row
-    {
-        std::string item;
-        std::string name;
-        u32 count = 0;
-        i64 price = 0; ///< per piece
-    };
-    std::vector<Row> trader; ///< what the hero can buy
-    std::vector<Row> hero;   ///< what he can sell
-    i64 traderMoney = 0;
-    i64 heroMoney = 0;
-    // out
-    i32 buy = -1;
-    i32 sell = -1;
-    bool close = false;
-};
-
 /// NPC behaviour (M9 part E, window "AI"): per NPC state, routine, queue, perception. The engine fills it;
 /// the selected NPC's senses are drawn in the debug overlay (F2).
 struct AiPanel
@@ -196,68 +147,6 @@ struct AiPanel
     std::string filter;   ///< edited: only rows whose name contains it
     u32 selected = 0;     ///< edited: the NPC whose senses the overlay draws (0: none)
     u64 scriptErrors = 0; ///< failed script calls since start
-};
-
-/// The hero's inventory (M8, "Inventory" window, Tab) until the real inventory screen (M13): items by
-/// category, equipment, values. The engine fills it and acts on the button pressed.
-struct InventoryPanel
-{
-    std::string title;              ///< "Held - Stufe 2"
-    std::vector<std::string> stats; ///< lines shown above the list ("LP 40/40", "Stärke 10" ...)
-    struct Row
-    {
-        std::string item;     ///< instance name
-        std::string name;     ///< display name
-        std::string category; ///< kItemCategories
-        u32 count = 0;
-        std::string equipped; ///< slot name, empty: not equipped
-        bool equippable = false;
-        bool usable = false; ///< food, potions, documents (M8 part D)
-    };
-    std::vector<Row> rows;
-    std::string message; ///< shown: the result of the last action ("needs str 15")
-    bool open = true;    ///< out: false when the window was closed
-    /// An open chest (M8 part C): its contents next to the hero's; the hero's rows then offer "put" instead
-    /// of "drop", the chest's "take".
-    bool container = false;
-    std::string containerTitle;
-    std::vector<Row> containerRows;
-    // out: the button pressed this frame
-    std::string action; ///< "equip", "unequip", "drop", "take", "put", "use"
-    std::string actionItem;
-};
-
-/// A document being read (M8 part D, "Document" window).
-struct DocumentPanel
-{
-    std::string title;
-    std::string text;
-    bool open = true; ///< out: false when closed
-};
-
-/// Lockpicking (M8 part C, "Lockpick" window): progress through the combination, picks left, the last result.
-struct LockpickPanel
-{
-    std::string title;  ///< the mob's name
-    usize progress = 0; ///< steps done
-    usize length = 0;   ///< steps of the combination
-    u32 picks = 0;      ///< lockpicks the hero has
-    std::string hint;   ///< keys to use
-    std::string result; ///< the last turn ("Das Schloss gibt nach.", "Der Dietrich ist abgebrochen.")
-    // out: buttons
-    char turn = 0; ///< 'L' or 'R'
-    bool leave = false;
-};
-
-/// A choice at a mob (M8 part C2, "Choice" window): what to forge at the anvil, how long to sleep in the bed.
-struct ChoicePanel
-{
-    std::string title;
-    std::vector<std::string> options;
-    std::string message; ///< shown below ("Grobes Schwert geschmiedet.", "needs it_blank_hot")
-    // out
-    i32 chosen = -1;
-    bool cancel = false;
 };
 
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor
@@ -291,25 +180,8 @@ public:
     void consolePanel(ConsolePanel& panel);
     /// Window "Creatures" (M6 D3).
     void creaturesPanel(CreaturesPanel& panel);
-    /// Window "Tagebuch" (M10 part D).
-    void diaryPanel(DiaryPanel& panel);
-    /// Window "Handel" (M10 part C).
-    void tradePanel(TradePanel& panel);
-    /// The dialogue box at the bottom (M10).
-    void dialogPanel(DialogPanel& panel);
     /// Window "AI" (M9 part E).
     void aiPanel(AiPanel& panel);
-    /// Window "Inventory" (M8).
-    void inventoryPanel(InventoryPanel& panel);
-    /// Window "Lockpick" (M8 part C).
-    void lockpickPanel(LockpickPanel& panel);
-    /// Window "Choice" (M8 part C2).
-    void choicePanel(ChoicePanel& panel);
-    /// Window "Document" (M8 part D).
-    void documentPanel(DocumentPanel& panel);
-    /// A text centred at `screen` (window coordinates, +Y down) over everything, without a window: the name
-    /// of the focused object (M8) until the HUD exists (M13).
-    void focusLabel(Vec2 screen, std::string_view text);
     /// Draws the editor windows (tools/editor); edits and actions are written back into `panel`.
     void editorPanel(EditorPanel& panel);
     /// Finishes the frame and, with a device, draws it into the bound target (normally the window).

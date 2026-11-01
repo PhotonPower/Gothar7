@@ -1,4 +1,4 @@
-"""gothar-voice app | check | scan [--write]"""
+"""gothar-voice app | check | scan [--write] | texts [--lang en] [--write]"""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .db import VoiceDb, data_root
 from .luascan import scan
+from .texts import ScriptTexts, scan_texts
 
 
 def repo_root() -> Path:
@@ -27,11 +28,18 @@ def load_db(root: Path, lang: str) -> VoiceDb:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="gothar-voice")
-    ap.add_argument("command", choices=["app", "check", "scan"])
-    ap.add_argument("--lang", default="de")
-    ap.add_argument("--write", action="store_true", help="scan: bring the database in line with the scripts")
+    ap.add_argument("command", choices=["app", "check", "scan", "texts"])
+    ap.add_argument("--lang", default=None, help="voice database (default de) resp. translation (default en)")
+    ap.add_argument(
+        "--write",
+        action="store_true",
+        help="scan/texts: bring the database resp. translation in line with the scripts",
+    )
     args = ap.parse_args(argv)
     root = repo_root()
+    if args.command == "texts":
+        return texts_command(root, args.lang or "en", args.write)
+    args.lang = args.lang or "de"
     if args.command == "app":
         app = Path(__file__).with_name("app.py")
         return subprocess.call(
@@ -68,6 +76,46 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{db.db_path}: {len(db.lines)} Zeilen")
         return 0
     return 1 if report.dirty else 0
+
+
+def texts_root(root: Path) -> Path:
+    return root / "assets/source/text"
+
+
+def check_texts(root: Path) -> list[str]:
+    """Every translation file script.<lang>.json: schema, in line with the scripts, nothing missing or outdated."""
+    errors: list[str] = []
+    scanned = scan_texts(root / "game/scripts")
+    for lang in ScriptTexts.languages(texts_root(root)):
+        texts = ScriptTexts.load(texts_root(root), lang)
+        errors += texts.validate()
+        report = texts.merge(scanned)
+        if report.dirty:
+            errors.append(
+                f"script.{lang}.json passt nicht zu den Skripten ({len(report.added)} neu, {len(report.changed)} "
+                f"geändert, {len(report.removed)} entfernt): gothar-voice texts --lang {lang} --write"
+            )
+        errors += [f"script.{lang}.json: {p}" for p in texts.problems()]
+    return errors
+
+
+def texts_command(root: Path, lang: str, write: bool) -> int:
+    texts = ScriptTexts.load(texts_root(root), lang)
+    report = texts.merge(scan_texts(root / "game/scripts"))
+    for title, keys in (
+        ("neu", report.added),
+        ("deutsch geändert (veraltet)", report.changed),
+        ("entfernt", report.removed),
+    ):
+        for key in keys:
+            print(f"{title}	{key}	{texts.texts[key].de if key in texts.texts else ''}")
+    for problem in texts.problems():
+        print(problem)
+    if write:
+        texts.save()
+        print(f"{texts.path}: {len(texts.texts)} Texte")
+        return 0
+    return 1 if report.dirty or texts.problems() else 0
 
 
 if __name__ == "__main__":
