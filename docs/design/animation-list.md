@@ -141,6 +141,12 @@ Kombo-Fenster `combo_start` (= `hit_end`) bis `combo_end` (ca. 80 %), danach Erh
 Abspielrate (keine Clips je Stufe). Zweihänder: linke Hand per Rezept `two_hands` am Griff unter der rechten.
 Fernkampf: Event `release` beim Lösen des Schusses. Schwung-Laut (M13, Wunsch engine 2026-10-08): `sound:swing` in jedem
 Schlag-Clip von `1h`, `2h` und `fist`, 4 Bilder vor `hit_start` (Ziehen, Wegstecken und Treffer setzt engine selbst).
+Trefferfenster für den Waffen-Sweep (2026-11-01, gameplay.md „Trefferprüfung“): gemessen an der Klinge
+(`socket_hand_r` entlang +Y, Länge von `it_sword_old` bzw. `it_sword_2h`; Faust 0,12 m an beiden Händen) im Modellraum;
+`hit_start` = letztes Bild vor dem Schwung nach vorn, `hit_end` = größte Reichweite vor dem Körper (0,6–1,8 m hoch,
+ab 0,5 m vorn). Werkzeug `gothar_chargen.hitreach`, Prüfung `tests/test_hit_windows.py`. Die Richtungshiebe
+`t_attack_l`/`_r` (1h, 2h) halten die Klinge aufrecht und erreichen den Bereich nicht (Fenster auf dem Weg der Hand,
+neue Schlüsselposen nötig).
 
 | Name | Zweck | Länge | Events | Quelle | Status |
 |---|---|---|---|---|---|
