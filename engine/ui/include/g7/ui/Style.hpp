@@ -3,6 +3,7 @@
 // Look of the game UI as data (M14 part A): assets/source/ui/style.toml - colours, text roles (font, size,
 // outline), 9-slice frames and UI sounds. Screens ask for names ("body", "panel"); the values stay editable.
 
+#include <g7/core/Math.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 
@@ -53,6 +54,18 @@ struct FrameStyle
     Color tint;
 };
 
+/// The studio light of the cells (style.toml [item_preview]; like figuren's review sheet: sun from the upper
+/// left front, bright ambient).
+struct PreviewLight
+{
+    Vec3 sunDirection{-0.5f, 0.6f, 0.6f}; ///< towards the sun, view space (+X right, +Y up, +Z to the viewer)
+    Vec3 sunColor{1.0f, 0.96f, 0.9f};
+    f32 sunIntensity = 3.0f;
+    Vec3 ambientSky{0.55f, 0.55f, 0.6f};
+    Vec3 ambientGround{0.3f, 0.28f, 0.25f};
+    f32 exposure = 1.0f;
+};
+
 /// style.toml, version 1:
 ///
 ///     version = 1
@@ -73,6 +86,8 @@ struct Style
     std::map<std::string, TextRole, std::less<>> fonts;
     std::map<std::string, FrameStyle, std::less<>> frames;
     std::map<std::string, std::string, std::less<>> sounds;
+    PreviewLight itemPreview;   ///< [item_preview] (M14 part D)
+    f32 itemSpinSeconds = 6.0f; ///< [item_preview] spin_seconds: one turn of the selected item
 
     /// A named colour; unknown names log a warning (once) and give magenta.
     [[nodiscard]] Color color(std::string_view name) const;

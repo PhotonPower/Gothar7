@@ -116,7 +116,8 @@ public:
 
     void rect(const Rect& rect, Color color);
     /// An image; `uv` in texture coordinates (0..1, origin top left). The texture is sampled as sRGB.
-    void image(const Rect& rect, const render::rhi::Texture* texture, const Rect& uv, Color tint);
+    void image(const Rect& rect, const render::rhi::Texture* texture, const Rect& uv, Color tint,
+               bool displayValues = false);
     /// A 9-slice frame stretched over `rect`; borders larger than the rectangle shrink proportionally.
     void frame(const Rect& rect, const NineSlice& slice, Color tint);
     /// A laid-out text with its box's top left at `position`.

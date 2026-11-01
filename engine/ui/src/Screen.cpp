@@ -22,6 +22,10 @@ void Screen::update(const UiInput* input, f32 deltaSeconds, const Rect& area, f3
         return;
     }
     const UiInput& in = *input;
+    if (onInput(in))
+    {
+        return;
+    }
 
     // Mouse: hovering focuses (and selects rows or cells), a click accepts, the wheel scrolls what it is
     // over.

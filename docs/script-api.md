@@ -5,6 +5,9 @@ Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 
 ## Bildschirm
 
+### `inventory_open(open?: boolean)`
+Öffnet (oder mit `false` schließt) das Inventar des Helden wie die Inventar-Taste (Konsole, Tests).
+
 ### `screen_message(text: string, seconds?: number)`
 Zeigt dem Spieler eine Meldung oben in der Mitte (F7; Vorgabe 3 s), z. B. `Erfahrung +50`.
 
@@ -431,6 +434,9 @@ Wem ein Item- oder Mob-Vob dieser Welt gehört (Npc oder Gilde); nil, wenn niema
 
 ### `unlock(vob: string)`
 Schließt ein Mob-Vob auf (Truhe, Tür), etwa wenn eine Quest es öffnet.
+
+### `use_mob(vob: string)`
+Der Held benutzt ein Mob-Vob dieser Welt wie mit der Aktionstaste (Konsole, Tests): Truhe öffnen, Schloss knacken, am Amboss schmieden.
 
 ## NPCs
 

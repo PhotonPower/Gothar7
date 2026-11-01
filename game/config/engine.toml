@@ -176,6 +176,7 @@ ui_accept = ["Enter", "LeftCtrl", "PadSouth"]
 ui_back = ["Escape", "Backspace", "PadEast"]
 ui_prev_tab = ["Q", "PageUp", "PadLeftShoulder"]
 ui_next_tab = ["E", "PageDown", "PadRightShoulder"]
+ui_drop = ["Delete", "PadNorth"] # Inventar: das gewählte Item ablegen (M14 Teil D, Vorschlag)
 
 [bindings.modern]
 move_forward = ["W", "PadDpadUp"]
@@ -230,6 +231,7 @@ ui_accept = ["Enter", "LeftCtrl", "PadSouth"]
 ui_back = ["Escape", "Backspace", "PadEast"]
 ui_prev_tab = ["Q", "PageUp", "PadLeftShoulder"]
 ui_next_tab = ["E", "PageDown", "PadRightShoulder"]
+ui_drop = ["Delete", "PadNorth"] # Inventar: das gewählte Item ablegen (M14 Teil D, Vorschlag)
 
 [ai]
 # KI-LOD: NPCs weiter weg vom Spieler werden nicht simuliert (springen bei Routinenwechseln an ihren Ort).

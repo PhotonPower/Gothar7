@@ -152,3 +152,14 @@ scale = 0.5
 image = "ui/frames/bg_parchment.png"
 slice = [0, 0, 0, 0]
 scale = 0.5
+
+# Inventory cells (M14 part D): the studio light of the 3D item pictures, like figuren's review sheet - sun from
+# the upper left front, bright ambient; view space (+X right, +Y up, +Z towards the viewer). Linear colours.
+[item_preview]
+sun_direction = [-0.5, 0.6, 0.6]
+sun_color = [1.0, 0.96, 0.9]
+sun_intensity = 3.0
+ambient_sky = [0.55, 0.55, 0.6]
+ambient_ground = [0.3, 0.28, 0.25]
+exposure = 1.0
+spin_seconds = 6.0 # one turn of the selected item

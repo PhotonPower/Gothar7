@@ -4,7 +4,7 @@
 layout(location = 0) in vec2 aPosition;
 layout(location = 1) in vec2 aUv;
 layout(location = 2) in vec4 aColor;        // display values
-layout(location = 3) in float aPixelRange;  // > 0: distance-field text; 0: image
+layout(location = 3) in float aPixelRange;  // > 0: distance-field text; 0: sRGB image; < 0: display values
 layout(location = 4) in float aOutline;     // outline width in pixels (text)
 layout(location = 5) in vec4 aOutlineColor; // display values
 

@@ -3,6 +3,7 @@
 
 #include <g7/runtime/Engine.hpp>
 #include <g7/ui/GameScreens.hpp>
+#include <g7/ui/ItemScreen.hpp>
 #include <g7/ui/SamplePage.hpp>
 
 #include <SDL3/SDL.h>
@@ -170,4 +171,49 @@ TEST_CASE("Engine UI: lockpicking, documents and the dialogue open as game scree
     REQUIRE(dialog != nullptr);
     REQUIRE(runUntil(engine, [&] { return !dialog->options().rows.empty(); }, 120));
     CHECK(dialog->focus() == &dialog->options());
+}
+
+TEST_CASE("Engine UI: inventory and chest as item screens")
+{
+    g7::Engine engine(campWithWindow());
+    REQUIRE(engine.init().ok());
+    REQUIRE(engine.gameUi() != nullptr);
+    REQUIRE(engine.runFrame());
+
+    // The inventory: opened like the Tab key, Tab closes it again (the screen holds the other game keys).
+    REQUIRE(engine.runConsoleLine("give_item('it_bread', 2)").ok());
+    REQUIRE(engine.runConsoleLine("inventory_open()").ok());
+    REQUIRE(engine.runFrame());
+    auto* inventory = dynamic_cast<g7::ui::ItemScreen*>(engine.screens().find("inventory"));
+    REQUIRE(inventory != nullptr);
+    CHECK(engine.screens().blocksGameInput());
+    CHECK_FALSE(engine.screens().pausesGame()); // F4
+    tapKey(engine, SDL_SCANCODE_TAB);
+    CHECK_FALSE(engine.inventoryOpen());
+    CHECK(engine.screens().find("inventory") == nullptr);
+
+    // A chest: the container screen; Enter on its stack asks how many (all by default), Enter takes them.
+    const auto chest = engine.findMob("LAGER_TRUHE");
+    REQUIRE(chest.has_value());
+    REQUIRE(engine.runConsoleLine("use_mob('LAGER_TRUHE')").ok());
+    REQUIRE(runUntil(engine, [&] { return engine.screens().find("container") != nullptr; }));
+    REQUIRE(engine.runFrame());
+    auto* container = dynamic_cast<g7::ui::ItemScreen*>(engine.screens().find("container"));
+    REQUIRE(container != nullptr);
+    REQUIRE_FALSE(container->otherItems().empty());
+    CHECK(container->focus() == &container->otherGrid());
+    const g7::ui::ItemEntry first = *container->selected();
+    const g7::u32 before = engine.hero()->itemCount(first.item);
+    tapKey(engine, SDL_SCANCODE_RETURN);
+    if (first.count > 1)
+    {
+        REQUIRE(container->quantityOpen());
+        CHECK(container->quantity() == first.count);
+        tapKey(engine, SDL_SCANCODE_RETURN);
+    }
+    CHECK(engine.hero()->itemCount(first.item) == before + first.count);
+    tapKey(engine, SDL_SCANCODE_ESCAPE); // leaves the chest
+    REQUIRE(runUntil(engine, [&] { return !engine.mobPhase(); }));
+    REQUIRE(engine.runFrame());
+    CHECK(engine.screens().find("container") == nullptr);
 }

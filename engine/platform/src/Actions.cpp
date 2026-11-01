@@ -17,6 +17,7 @@ constexpr std::array<std::string_view, static_cast<usize>(Action::Count)> kActio
     "console",      "pause",      "debug_draw",  "debug_ui",     "debug_fly", "fly_forward",   "fly_back",
     "fly_left",     "fly_right",  "fly_up",      "fly_down",     "fly_fast",  "copy_position", "ui_up",
     "ui_down",      "ui_left",    "ui_right",    "ui_accept",    "ui_back",   "ui_prev_tab",   "ui_next_tab",
+    "ui_drop",
 };
 
 std::string tablePath(std::string_view scheme)

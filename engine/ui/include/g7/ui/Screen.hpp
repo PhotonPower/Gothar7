@@ -59,6 +59,9 @@ protected:
         close();
         return true;
     }
+    /// Every input first; true: the screen handled it itself (a modal part such as a quantity choice),
+    /// nothing else happens this frame.
+    virtual bool onInput(const UiInput&) { return false; }
     /// A direction step no widget used (no focus, or the focused widget's edge with nothing beyond); true if
     /// it did something.
     virtual bool onDirection(NavDir) { return false; }

@@ -282,7 +282,9 @@ Plan (Teile A–G, freigegeben 2026-11-01, Gestaltung F1–F12 vom Projektinhabe
 - [x] HUD: Leben, Mana, Gegner-Leben, Fokus-Namen, Luftanzeige
   - Teil C: HUD wie Gothic 1 (F3), Dialog-Bildschirm mit Untertiteln (F6, auch für Zurufe), Fenster für
     Dokument, Auswahl am Mob und Dietrich; die ImGui-Fenster dafür bleiben nur als Rückfallebene
-- [ ] Inventar-Bildschirm (Kategorien, Item-Vorschau als 3D-Modell), Handel, Truhe
+- [x] Inventar-Bildschirm (Kategorien, Item-Vorschau als 3D-Modell), Handel, Truhe
+  - Teil D: Kategorie-Reiter und Raster (F4), 3D-Zellen nach `inventory_views.toml` v2 (Render-to-Texture,
+    das gewählte Item dreht sich), Infokasten, Handel mit Mengenwahl (F5), Truhe und Plündern
 - [ ] Charakterbildschirm, Tagebuch-Bildschirm, Karte (falls Karten-Item)
 - [ ] Hauptmenü, Optionen (Grafik, Audio, Steuerung), Ladebildschirm
 - [ ] Lokalisierung (Schlüssel → Text-Tabellen DE/EN), Untertitel

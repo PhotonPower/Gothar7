@@ -50,6 +50,9 @@
 #include <g7/ui/Canvas.hpp>
 #include <g7/ui/DebugUi.hpp>
 #include <g7/ui/Hud.hpp>
+#include <g7/ui/ItemCell.hpp>
+#include <g7/ui/ItemPreview.hpp>
+#include <g7/ui/ItemScreen.hpp>
 #include <g7/ui/Navigation.hpp>
 #include <g7/ui/Screen.hpp>
 #include <g7/ui/UiResources.hpp>
@@ -1217,6 +1220,16 @@ private:
     [[nodiscard]] ui::HudModel buildHudModel(Vec2 pixels) const;
     [[nodiscard]] bool heroHasMagic() const;
     void bindUiFunctions();
+    // Item screens (EngineUiItems.cpp, M14 part D)
+    void syncItemScreens();
+    [[nodiscard]] ui::ItemScreenView itemScreenView(ui::ItemScreenMode mode);
+    [[nodiscard]] std::vector<std::string> itemDetails(std::string_view item) const;
+    void useInventoryItem(const std::string& item);
+    void transferItem(ui::ItemScreenMode mode, bool fromOther, const std::string& item, u32 count);
+    [[nodiscard]] std::optional<ui::CellFrame> itemCellFrame(std::string_view item, const LoadedModel& model);
+    [[nodiscard]] std::optional<ui::PreviewImage> itemPreview(const std::string& item, bool large,
+                                                              bool spinning);
+    void advanceItemSpin(f32 seconds);
     void drawGameUi(u32 width, u32 height);
 
     EngineConfig m_config;
@@ -1246,6 +1259,15 @@ private:
     ui::Hud m_hud;
     ui::MessageQueue m_messages;
     ui::SubtitleQueue m_subtitles;
+    // Inventory cells (M14 part D): views, cell frames per item, the picture atlases.
+    std::optional<ui::InventoryViews> m_inventoryViews;
+    bool m_inventoryViewsLoaded = false;
+    std::map<std::string, std::optional<ui::CellFrame>, std::less<>> m_cellFrames;
+    std::optional<ui::ItemPreviews> m_cellPreviews;
+    std::optional<ui::ItemPreviews> m_bigPreview;
+    std::map<std::string, u32, std::less<>> m_previewTiles;
+    std::set<std::string, std::less<>> m_previewDrawn;
+    f32 m_spinAngle = 0.0f;
     ui::NavRepeat m_navRepeat;
     f64 m_gameUiReloadTimer = 0.0;
     std::string m_gameUiStamp;        // disk paths and times of the UI files (hot reload)
