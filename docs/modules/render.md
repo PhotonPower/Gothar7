@@ -380,6 +380,11 @@ void beginFrame();  BatchStats lastBatch();  shared_ptr<const MaterialDefaults> 
   breit, 3 m hoch) im Sichtkegel bzw. im Lichtvolumen der Kaskade liegt und nah genug ist: `[render] figure_distance`
   150 m, Schatten `figure_shadow_distance` 40 m (`render::FigureCull`, `figureInView`). Vorher kam jede Figur der Welt
   in jeden Pass: in Leonberg etwa 1440 von 1900 Draw-Calls je Bild (vier Kaskaden und Hauptpass je ~360).
+- **Innenräume (Phase 3, E2):** Steht die Kamera in einer Innenzone (`indoorAmount` > 0,5, world.md „Zonen“), zeichnet
+  das Bild nur, was näher als `[render] indoor_view_distance` (30 m) liegt – Modelle, Gelände-Kacheln und Figuren;
+  durch Fenster und Tür sieht man die Nähe. Sonnenschatten (durch die Fenster) werfen dann nur Dinge bis
+  `indoor_shadow_distance` (12 m), Kaskaden, die weiter beginnen, ruhen. Ein echtes Portal (nur durch Öffnungen)
+  bleibt offen. Leonberg: Stube der Krummen Gans 2,6 Mio. → 0,26 Mio. Dreiecke, 1917 → 184 Draws (mit E3).
 - Gleiche Werte in verschiedenen Modellen bündeln, weil alle `MaterialSet`s die neutralen Texturen des Renderers teilen
   (`MaterialSet::create(…, defaults())`), und Texturen aus Dateien über den Textur-Cache dieselben Objekte sind:
   Modelle auf demselben Trim-Sheet bündeln miteinander.
