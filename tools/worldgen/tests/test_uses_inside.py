@@ -735,10 +735,10 @@ def test_to_a_foot_behind_the_flight_the_way_goes_round_its_side():
     assert _inside_way((1.0, 1.0), (8.45, 1.0), room, steps) == []  # clear of it
 
 
-def test_a_freepoint_hidden_round_the_corner_by_the_stairs_gets_corners():
+def test_a_freepoint_far_or_hidden_gets_a_waypoint_near_it_in_a_free_line():
     from shapely.geometry import box
 
-    from gothar_worldgen.uses.inside import _House, _Room
+    from gothar_worldgen.uses.inside import FP_NEAR_M, _House, _Room
 
     poly = box(0.0, 0.0, 8.0, 4.0).union(box(8.0, 2.0, 11.0, 4.0))  # an L: the wing at the east
     room = _Room(poly, 0.0, 2.8, Polygon(), (0.0, 0.5), (1.0, 0.0))  # the door in the west wall
@@ -746,9 +746,65 @@ def test_a_freepoint_hidden_round_the_corner_by_the_stairs_gets_corners():
     p = InsidePlan()
     house = _House(p, House("DEBW_00100061ZjV", "wohnhaus", residents=1, inside=True), room)
     house.fp("REPAIR", (10.5, 2.4), (0.0, 1.0))  # behind the inner corner
-    house.round_the_stairs()
-    (wp,) = [q for q in p.places if q["kind"] == "wp"]
-    assert wp["name"] == "WP_LEO_WOHNHAUS_ZJV_INNEN_UM_REPAIR"
-    assert wp["link"] == "WP_LEO_WOHNHAUS_ZJV_INNEN"
-    legs = LineString([room.entry, wp["pos"], (10.5, 2.4)])
+    house.fp("LEAN", (2.0, 0.6), (0.0, 1.0))  # beside the door: the room's waypoint is near
+    house.add_wp("WP_LEO_WOHNHAUS_ZJV_INNEN", room.entry, "")
+    house.near_waypoints()
+    wps = {q["name"]: q for q in p.places if q["kind"] == "wp"}
+    corner = wps.pop("WP_LEO_WOHNHAUS_ZJV_INNEN_VOR_REPAIR_01_UM")  # round the inner corner
+    assert corner["link"] == "WP_LEO_WOHNHAUS_ZJV_INNEN"
+    assert set(wps) <= {"WP_LEO_WOHNHAUS_ZJV_INNEN", "WP_LEO_WOHNHAUS_ZJV_INNEN_VOR_REPAIR_01"}
+    last = wps.get("WP_LEO_WOHNHAUS_ZJV_INNEN_VOR_REPAIR_01", corner)
+    assert math.dist(last["pos"], (10.5, 2.4)) <= FP_NEAR_M  # LEAN: the room's waypoint is near
+    legs = LineString([room.entry, corner["pos"], last["pos"], (10.5, 2.4)])
     assert not legs.intersects(room.steps) and poly.buffer(0.01).contains(legs)
+    assert p.failed == []
+
+
+def test_every_freepoint_has_a_waypoint_near_it():
+    from gothar_worldgen.uses.inside import FP_NEAR_M
+
+    spec = {"wohnhaus": inside_spec({"mobs": ["bed:R", "chest:1", "table:1"], "hearth": True,
+                                     "freepoints": ["LEAN:2", "SWEEP:1"],
+                                     "props": ["shelf:1", "sacks:1"]}, "x")}  # fmt: skip
+    for index in (INDEX, DIVIDED, _two_storeys()):
+        house = House("DEBW_00100061ZjV", "wohnhaus", residents=2, inside=True)
+        p = plan_inside([house], spec, index, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+        wps = [q for q in p.places if q["kind"] == "wp" and "y" in q]
+        for fp in [q for q in p.places if q["kind"] == "fp"]:
+            assert any(math.dist(w["pos"], fp["pos"]) <= FP_NEAR_M + 1e-6 for w in wps
+                       if abs(w["y"] - fp["y"]) < 0.05), fp["name"]  # fmt: skip
+        assert not [f for f in p.failed if f["what"].startswith("way to")]
+
+
+def test_in_leonberg_every_freepoint_indoors_has_a_waypoint_near_it():
+    """The committed world: every freepoint in a house's indoor zones has a waypoint at most
+    ``FP_NEAR_M`` away on its floor, the line between them inside the house's zones (the
+    engine walks to a freepoint only from such a waypoint after replanning)."""
+    import json
+    import re
+
+    from shapely.ops import unary_union
+
+    from gothar_worldgen.uses.inside import FP_NEAR_M, _box_foot
+
+    world_path = Path(__file__).resolve().parents[3] / "assets/source/worlds/leonberg"
+    world = json.loads((world_path / "leonberg.g7world").read_text(encoding="utf-8"))
+    boxes = [(z["value"], z["box"]["center"][1], z["box"]["halfExtents"][1], _box_foot(z))
+             for z in world.get("zones", []) if z.get("type") == "indoor"]  # fmt: skip
+    wps = [p["pos"] for p in world["waynet"]["points"]]
+    checked = 0
+    for fp in world["waynet"]["freepoints"]:
+        x, y, z = fp["pos"]
+        mine = [(v, foot) for v, cy, hy, foot in boxes
+                if abs(y - cy) <= hy and foot.contains(Point(x, z))]  # fmt: skip
+        if not mine:
+            continue
+        house = re.split("_(?:INNEN|KAMMER|OBEN|TREPPE)", mine[0][0])[0]
+        feet = [foot for v, cy, hy, foot in boxes if v.startswith(house) and abs(y - cy) <= hy]
+        inside = unary_union(feet).buffer(0.05)
+        near = [w for w in wps if abs(w[1] - y) < 0.5
+                and math.dist((w[0], w[2]), (x, z)) <= FP_NEAR_M + 1e-3
+                and inside.contains(LineString([(w[0], w[2]), (x, z)]))]  # fmt: skip
+        assert near, fp["name"]
+        checked += 1
+    assert checked >= 20  # 26 in 2026-11

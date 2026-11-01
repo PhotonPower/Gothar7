@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 36323,
+ "nextVobId": 36329,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -36324,6 +36324,12 @@
   "outdoor:grass:DEBW_00100061Zh5:22:1": 36319,
   "outdoor:grass:DEBW_00100061Zhk:12:4": 36320,
   "outdoor:grass:DEBW_00100061Zhk:12:6": 36321,
-  "outdoor:grass:DEBW_00100061ZnQ:40:1": 36322
+  "outdoor:grass:DEBW_00100061ZnQ:40:1": 36322,
+  "use:MOB_LEO_TOEPFER_ZKT_OBEN_KAMMER_2_BED_1": 36323,
+  "use:MOB_LEO_TOEPFER_ZKT_OBEN_KAMMER_2_CHEST_1": 36324,
+  "use:MOB_LEO_TOEPFER_ZKT_OBEN_KAMMER_3_BED_1": 36325,
+  "use:MOB_LEO_TOEPFER_ZKT_OBEN_KAMMER_3_CHEST_1": 36326,
+  "use:MOB_LEO_TOEPFER_ZKT_OBEN_KAMMER_4_BED_1": 36327,
+  "use:MOB_LEO_TOEPFER_ZKT_OBEN_KAMMER_4_CHEST_1": 36328
  }
 }
