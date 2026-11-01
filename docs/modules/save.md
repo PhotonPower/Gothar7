@@ -11,9 +11,40 @@
   `fs::writeTextAtomic`/Benutzerpfad (`fs::userPath`), die Aktionen `quick_save`/`quick_load` (F5/F9, ungenutzt) und
   im Menü die ausgegrauten Einträge „Spiel laden“/„Spiel speichern“ (M14 Teil F).
 
+## Teil A (umgesetzt, M15) – Datei `.g7save` (ADR 0021, angenommen)
+`save/SaveFile.hpp`, `core/Crc32.hpp`.
+```cpp
+namespace g7::save {
+struct SaveMeta { std::string name, world, place, language, gameVersion; i64 savedAtUtc; f64 playSeconds;
+                  u32 day, minute, chapter; i32 heroLevel; u64 contentStamp; };
+struct SaveFile { SaveMeta meta; std::vector<u8> thumbnailPng; GameState state; };
+Result<std::vector<u8>> encodeSave(const SaveFile&);
+Result<SaveFile> decodeSave(std::span<const u8>);                     // alle CRCs, dann JSON; nie halb gelesen
+Result<SaveMeta> decodeMeta(std::span<const u8>, std::vector<u8>* thumbnail = nullptr);  // nur META + THMB
+Result<void> writeSaveFile(const fs::Path&, const SaveFile&);         // atomar: .tmp, dann umbenennen
+Result<SaveFile> readSaveFile(const fs::Path&);  Result<SaveMeta> readSaveMeta(const fs::Path&, …);
+struct SlotInfo { std::string slot; fs::Path path; std::optional<SaveMeta> meta; std::string error;
+                  std::vector<u8> thumbnailPng; };
+std::vector<SlotInfo> listSlots(const fs::Path& dir);                  // slot_01 … slot_15, quick, auto (S2)
+fs::Path slotPath(const fs::Path& dir, std::string_view slot);
+u32 g7::crc32(std::span<const u8>, u32 crc = 0);                       // IEEE, wie zip/PNG
+}
+```
+- **Aufbau:** Kopf 20 Byte (`G7SV`, Format 1, Flags, Chunk-Zahl, reserviert, CRC des Kopfes); je Chunk 20 Byte Kopf
+  (Tag, Version, Flags – Bit 0 zstd –, Rohgröße, Größe, CRC über Kopf und Daten) und die Daten. Chunks: `META`
+  (JSON, ungepackt, zuerst), `THMB` (PNG, ungepackt), `GLOB` (`globalJson`, zstd Stufe 3), `WRLD` je Welt
+  (`worldJson`, zstd). Unbekannte Chunks werden mit Warnung übersprungen; neueres Format oder neuere Chunk-Version →
+  Fehler „from a newer version“; Migrationen älterer Chunk-Versionen haben ihren Platz in `checkVersion` (heute
+  alles v1). Ein Chunk über 256 MB gilt als beschädigt (kaputte Größenfelder).
+- **Dazu:** `GameState` in Teilen: `globalJson`/`worldJson`, `parseGlobalJson`/`parseWorldJson`.
+- **Tests:** `tests/save/test_save_file.cpp` (CRC-Prüfwert, Rundlauf byte-gleich, nur Metadaten, **jedes einzelne
+  verfälschte Byte** und abgeschnittene Dateien werden abgelehnt, unbekannter Chunk übersprungen, neueres Format
+  abgelehnt, atomisches Ersetzen, Plätze mit beschädigtem Schnellspeicher), `tests/runtime/test_engine_save.cpp`
+  (Spielstand mit zwei Welten durch eine Datei).
+
 ## Teil B (umgesetzt, M15) – Spielzustand erfassen und anwenden
-`save/GameState.hpp`, `save/WorldDelta.hpp`; Engine `runtime/EngineSave.cpp`. Ohne Datei-Container (Teil A wartet
-auf ADR 0021): der Zustand ist ein JSON-Dokument im Speicher.
+`save/GameState.hpp`, `save/WorldDelta.hpp`; Engine `runtime/EngineSave.cpp`. Der Zustand als JSON-Dokument im
+Speicher; die Datei kommt mit Teil A.
 
 ```cpp
 namespace g7::save {
@@ -81,7 +112,7 @@ Result<void> applyGame(const save::GameState&);    // Welt aus Datei + Delta, NP
   Spielstand mit zwei Welten in neuer Engine byte-gleich; danach wieder Höhle und zurück), GPU
   `test_world_vobs.cpp` (Weltwechsel wie bisher).
 
-## Plan M15 (2026-11-01; Teile B und C freigegeben, A wartet auf ADR 0021)
+## Plan M15 (2026-11-01; Teile A, B, C umgesetzt, ADR 0021 angenommen)
 
 ### Grundsätze
 - **Gothic-Modell:** Gespeichert wird der *Zustand*, nicht die laufende Simulation. NPCs kommen nach dem Laden an
@@ -96,7 +127,7 @@ Result<void> applyGame(const save::GameState&);    // Welt aus Datei + Delta, NP
 - **Deterministischer Rundlauf** als Hauptprüfung: speichern → laden → speichern ergibt (ohne Metadaten-Zeit und
   Bild) dieselben Bytes.
 
-### Dateiformat `.g7save` (ADR 0021, vorgeschlagen)
+### Dateiformat `.g7save` (ADR 0021, angenommen; umgesetzt siehe Teil A)
 ```
 Kopf (20 Byte):  magic "G7SV" | format u16 (1) | flags u16 | chunkCount u32 | reserved u32 | headerCrc u32
 Chunk:           tag u32 ("META") | version u16 | flags u16 (bit0 zstd) | rawSize u32 | size u32 | crc32 u32 | Daten
@@ -227,10 +258,6 @@ Variante nur im Lager (zwei Welten: Lager + Höhle). Begehung durch den Projekti
 4. Tabelle `02-architecture.md`: `save` zusätzlich `world_format`.
 5. Vertrag VobId: „stabil über Neuerzeugungen“ – Rückfrage an welt.
 6. Startpunkt am Unteren Tor in Leonberg und ein Weltwechsel-Trigger dorthin (welt) für das Kapitel.
-
-## Format (Kurzfassung, bis M15 umgesetzt)
-Binär, Chunks mit `tag u32, version u16, size u32` → robuste Erweiterung; Schreiben in Temp-Datei + atomisches
-Umbenennen, CRC32 je Chunk. Einzelheiten oben und in ADR 0021.
 
 ## Schnittstelle Spielzeit (Stand M4)
 - `world::GameTime` (world.md): zu speichern sind `clock()` (Minuten seit Tag 0, 00:00, mit Bruchteil – daraus Tag

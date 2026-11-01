@@ -211,9 +211,9 @@ Standard-Runnern sind damit kostenlos.
 | fastgltf | `fastgltf` | asset/tools | M2/M3 |
 | stb (image, truetype, rect_pack, vorbis) | `stb` | asset, audio (stb_vorbis, ADR 0007), tools/asset-cooker (stb_truetype, stb_rect_pack: Schriften, ADR 0020) | M2/M13/M14 |
 | KTX (libktx, UASTC → BC7/BC5) | `ktx` (ADR 0016) | asset/tools | M3 |
-| zstd | `zstd` (ADR 0016) | asset/tools | M3 |
+| zstd | `zstd` (ADR 0016, ADR 0021) | asset/tools, save (M15) | M3 |
 | EnTT 3.16 (MIT) | `entt` (ADR 0005) | world (öffentlich; Registry nicht in der API) | M4 |
-| nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world_format (privat, Weltformat `.g7world`), tools/walk (privat, Routen und Protokoll) | M4 |
+| nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world_format (privat, Weltformat `.g7world`), tools/walk (privat, Routen und Protokoll), save (privat, Spielstand, ADR 0021) | M4 |
 | Jolt Physics 5.6 (MIT) | `joltphysics` (ADR 0004; `nodeps`: FetchContent v5.6.0 mit SHA256) | physics (privat) | M5 |
 | Lua 5.4.7 (MIT) + sol2 3.5.0 (MIT) | `lua` (per `overrides` auf 5.4.7, die Baseline brächte 5.5), `sol2` (ADR 0006; `nodeps`: FetchContent mit SHA256) | script (privat) | M7 |
 | miniaudio (MIT-0) | `miniaudio` (ADR 0007) | audio (privat) | M13 |

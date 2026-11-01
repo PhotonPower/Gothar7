@@ -316,11 +316,13 @@ Plan (Teile A–E, Vorschlag 2026-11-01, wartet auf Freigabe): `docs/modules/sav
 - [x] Serialisierung: Welt-Delta gegenüber Ausgangszustand (geänderte/entfernte/neue Vobs), NPC-Zustände, Inventare, Skript-Variablen, Tagebuch, Spielzeit
   - Teil B: `Engine::captureGame/applyGame`, `save::GameState` als JSON-Dokument im Speicher (Rundlauf byte-gleich,
     Lager und Leonberg), benannte Lua-Timer, `world_loaded(world, restored)`
-- [ ] Binärformat mit Versionsnummer + Migrationspfad, Metadaten (Screenshot, Spielzeit, Ort)
+- [x] Binärformat mit Versionsnummer + Migrationspfad, Metadaten (Screenshot, Spielzeit, Ort)
+  - Teil A: `.g7save` nach ADR 0021 (angenommen): Chunks META/THMB/GLOB/WRLD, zstd, Versionen je Chunk
 - [ ] Speicherplätze, Quicksave/Quickload, Speichern beim Weltwechsel (Zustand jeder besuchten Welt)
   - Teil C: Zustand jeder besuchten Welt im Speicher (Items, Mobs, NPCs bleiben über Weltwechsel) und im Spielzustand;
     Speicherplätze, F5/F9 und Datei folgen mit Teil A/D
-- [ ] Robustheit: atomisches Schreiben (temp + rename), Prüfsumme
+- [x] Robustheit: atomisches Schreiben (temp + rename), Prüfsumme
+  - Teil A: CRC-32 über Kopf und Daten jedes Chunks (jedes verfälschte Byte erkannt), Schreiben über `.tmp`
 
 **DoD / Meilenstein C:** Ein komplettes Kapitel (Inhalt eigener Wahl) ist mit Speichern/Laden durchspielbar.
 
