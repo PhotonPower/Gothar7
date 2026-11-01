@@ -1177,6 +1177,18 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   behält so etwa zwei Drittel des Innen-Ambients; an ihr bleiben leichte Helligkeitsstufen. Leonberg: 24 Boxen für
   5 Räume. Andere Zonen der Welt bleiben erhalten, die eigenen (`LEO_…_INNEN`) werden ersetzt.
 
+#### Stadtplan (M14 F9, Plan freigegeben 2026-11-01)
+- **Was:** das Bild des Karten-Items, `gothar-worldgen citymap leonberg` (nach `assemble`) → `assets/source/ui/maps/leonberg.png` und
+  `leonberg.toml` (Weltausschnitt der Bildränder für engine; Vertrag in `docs/coordination.md`). Kein Spielerstandort, wie Gothic 1.
+- **Inhalt:** die Häuser des Spiels (Grundrisse aus `buildings_index.json`, `footprint`), OSM-Gassen als helle Bahnen,
+  Plätze, Wasser, Glems, Gärten und Wiesen, die Stadtmauer mit Türmen und Toren, Titel, Windrose, Maßstab 100 m,
+  „© OpenStreetMap-Mitwirkende“.
+- **Stil (Koordinator, rückbaubar):** Pergament, wie gezeichnet. Keine Straßennamen, nur wichtige Orte mit ihren Spielnamen:
+  Markt, Kirche, Schloss, Pomeranzengarten, Oberes und Unteres Tor, Glems.
+- **Daten:** `data/leonberg/citymap.json`: Titel, Breite (2048 px), Rand (60 m), Farben (64), Beschriftungen mit Anker
+  (Vob-Name, Tor-Schlüssel oder Name einer OSM-Linie), Versatz in Metern, Größe, Winkel.
+- **Größe:** Palette-PNG mit 64 Farben, etwa 0,4 MB (Ziel < 1,5 MB); bei jedem Lauf gleiche Bytes.
+
 #### Treppen und Obergeschoss (W7, Plan freigegeben 2026-10-08)
 - **Wann:** Ein begehbares Haus mit einem zweiten Stockwerk bekommt eine Treppe dorthin, wenn dessen Raum mindestens
   `stairs.upperMinHeightM` (2,1 m) hoch ist (Obergeschosse sind niedrig; Figuren 1,8 m). Werkzeug

@@ -1,0 +1,19 @@
+{
+ "format": "gothar-citymap",
+ "version": 1,
+ "note": "Stadtplan für das Karten-Item (M14 F9, Auftrag Koordinator 2026-11-01): Pergament, wie gezeichnet; keine Straßennamen, nur wichtige Orte mit ihren Spielnamen. Anker: Vob-Namen der Welt, Tor-Schlüssel aus city_wall.json oder Namen von OSM-Linien (features.json); offset in Metern (x Osten, z Süden), angle in Grad gegen den Uhrzeigersinn. Kein Spielerstandort (wie Gothic 1).",
+ "title": "Leonberg",
+ "widthPx": 2048,
+ "marginM": 60.0,
+ "streamM": 6.0,
+ "colours": 64,
+ "labels": [
+  {"text": "Markt", "anchor": "HANDMADE_MARKTBRUNNEN", "offset": [0, -14]},
+  {"text": "Kirche", "anchor": "HANDMADE_KIRCHE", "offset": [0, -22]},
+  {"text": "Schloss", "anchor": "HANDMADE_SCHLOSS", "offset": [0, -38]},
+  {"text": "Pomeranzengarten", "anchor": "HANDMADE_OBELISKBRUNNEN", "offset": [0, 34], "size": 0.85},
+  {"text": "Oberes Tor", "anchor": "oberes_tor", "offset": [-6, 18], "size": 0.85},
+  {"text": "Unteres Tor", "anchor": "unteres_tor", "offset": [0, 18], "size": 0.85},
+  {"text": "Glems", "anchor": "Glems", "offset": [8, 4], "size": 0.9, "angle": 52}
+ ]
+}

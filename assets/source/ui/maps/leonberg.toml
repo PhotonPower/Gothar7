@@ -1,0 +1,11 @@
+# Stadtplan (welt, gothar-worldgen citymap): Bild und sein Weltausschnitt
+image = "ui/maps/leonberg.png"
+width = 2048
+height = 1446
+# Weltkoordinaten der Bildränder (x nach Osten, z nach Süden; Norden oben)
+min_x = -381.9
+min_z = -223.0
+max_x = 155.2
+max_z = 156.3
+pixels_per_metre = 3.8131
+credit = "© OpenStreetMap-Mitwirkende"
