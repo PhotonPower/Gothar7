@@ -372,7 +372,10 @@ void Engine::drawCreatures(bool shadow, u32 cascade)
     // Only figures near and in view (main pass) or in the cascade's light volume and nearer (shadows).
     const Frustum volume =
         shadow ? Frustum::fromViewProjection(m_cascades[cascade].viewProjection) : m_camera.frustum();
-    const f32 reach = shadow ? m_figureCull.shadowDistance : m_figureCull.distance;
+    // Indoors not beyond the room's view distance either (m_frameCull, render.md "Innenräume").
+    const f32 limit = shadow ? m_figureCull.shadowDistance : m_figureCull.distance;
+    const f32 frame = shadow ? m_frameShadowCull.viewDistance : m_frameCull.viewDistance;
+    const f32 reach = frame > 0.0f ? std::min(limit, frame) : limit;
     for (const auto& owned : m_creatures)
     {
         Creature& c = *owned;

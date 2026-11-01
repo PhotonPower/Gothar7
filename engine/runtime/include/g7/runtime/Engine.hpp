@@ -1426,6 +1426,10 @@ private:
     u32 m_culledFar = 0;
     u32 m_culledSmall = 0;
     render::CullSettings m_cullSettings;
+    render::CullSettings m_frameCull; // this frame's: m_cullSettings, indoors with indoor_view_distance (E2)
+    f32 m_indoorViewDistance = 30.0f; // [render] indoor_view_distance, 0 = off
+    f32 m_indoorShadowDistance = 12.0f;     // [render] indoor_shadow_distance
+    render::CullSettings m_frameShadowCull; // this frame's shadow casters (indoors nearer still)
     render::LodSettings m_lodSettings;
     std::array<u32, 3> m_lodCounts{}; // instances drawn per level of detail in the last main pass
     render::CullGrid m_cullGrid;      // over m_instances; rebuilt when instances change

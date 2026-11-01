@@ -630,6 +630,10 @@ Result<void> Engine::initSceneRendering()
     m_shadowDebug = m_config.settings.get<bool>("render.shadow_debug", false);
     m_cullSettings.viewDistance = static_cast<f32>(m_config.settings.get<f64>("render.view_distance", 400.0));
     m_cullSettings.sizeCull = static_cast<f32>(m_config.settings.get<f64>("render.size_cull", 0.005));
+    // Indoors: nothing beyond this (m) is drawn or casts a shadow (render.md "Innenräume"); 0 = off.
+    m_indoorViewDistance = static_cast<f32>(m_config.settings.get<f64>("render.indoor_view_distance", 30.0));
+    m_indoorShadowDistance =
+        static_cast<f32>(m_config.settings.get<f64>("render.indoor_shadow_distance", 12.0));
     m_lodSettings.lod1Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod1_distance", 60.0));
     m_lodSettings.lod2Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod2_distance", 150.0));
     m_lodSettings.hysteresis = static_cast<f32>(m_config.settings.get<f64>("render.lod_hysteresis", 0.1));
@@ -1693,6 +1697,21 @@ void Engine::renderScene(u32 width, u32 height)
 void Engine::drawScene(u32 width, u32 height)
 {
     m_meshRenderer.beginFrame();
+    // Indoors (the camera in a room, world.md "Zonen") the world outside shows only through windows and the
+    // door: nothing beyond indoor_view_distance (render.md "Innenräume"), and the sun's shadows (through the
+    // windows) only from casters within indoor_shadow_distance.
+    m_frameCull = m_cullSettings;
+    m_frameShadowCull = m_cullSettings;
+    const bool inside = m_indoorViewDistance > 0.0f &&
+                        render::indoorAmount(m_camera.transform.position, m_environment.indoor, 0.0f) > 0.5f;
+    const auto limited = [](f32 distance, f32 limit)
+    { return distance > 0.0f ? std::min(distance, limit) : limit; };
+    if (inside)
+    {
+        m_frameCull.viewDistance = limited(m_frameCull.viewDistance, m_indoorViewDistance);
+        m_frameShadowCull.viewDistance =
+            limited(m_frameCull.viewDistance, std::max(m_indoorShadowDistance, 0.1f));
+    }
     if (m_cullGridDirty)
     {
         std::vector<AABB> bounds;
@@ -1716,9 +1735,11 @@ void Engine::drawScene(u32 width, u32 height)
             m_cascadesDrawn.assign(m_cascades.size(), render::Cascade{});
         }
         m_shadowMap.begin(*m_device);
+        m_terrain.setMaxDistance(inside ? m_frameShadowCull.viewDistance : 0.0f);
         for (u32 i = 0; i < m_cascades.size(); ++i)
         {
-            if (!shadowRedraw(i))
+            // Indoors a cascade that starts beyond the view distance shades nothing drawn: left as it is.
+            if (!shadowRedraw(i) || (inside && m_cascades[i].splitNear > m_frameShadowCull.viewDistance))
             {
                 m_cascades[i] = m_cascadesDrawn[i]; // shade with what the tile holds
                 continue;
@@ -1736,7 +1757,7 @@ void Engine::drawScene(u32 width, u32 height)
                 const SceneInstance& instance = m_instances[index];
                 if (instance.model != m_groundModel.get() && instance.solid &&
                     volume.intersects(instance.bounds) &&
-                    render::cullByDistance(instance.bounds, m_camera.transform.position, m_cullSettings,
+                    render::cullByDistance(instance.bounds, m_camera.transform.position, m_frameShadowCull,
                                            instance.sizeCullable) == render::CullResult::Kept)
                 {
                     if (m_multiDraw)
@@ -1799,6 +1820,7 @@ void Engine::drawScene(u32 width, u32 height)
     if (m_hasTerrain)
     {
         m_meshRenderer.bindLighting(*m_device);
+        m_terrain.setMaxDistance(inside ? m_frameCull.viewDistance : 0.0f);
         m_terrain.draw(*m_device, m_camera, &m_frameLights);
     }
     const Frustum view = m_camera.frustum();
@@ -1807,13 +1829,13 @@ void Engine::drawScene(u32 width, u32 height)
     m_culledFar = 0;
     m_culledSmall = 0;
     m_cullCandidates.clear();
-    m_cullGrid.query(view, m_camera.transform.position, m_cullSettings.viewDistance, m_cullCandidates);
+    m_cullGrid.query(view, m_camera.transform.position, m_frameCull.viewDistance, m_cullCandidates);
     m_drawItems.clear();
     for (const u32 index : m_cullCandidates)
     {
         SceneInstance& instance = m_instances[index];
         const render::CullResult cull = render::cullByDistance(instance.bounds, m_camera.transform.position,
-                                                               m_cullSettings, instance.sizeCullable);
+                                                               m_frameCull, instance.sizeCullable);
         m_culledFar += cull == render::CullResult::TooFar ? 1 : 0;
         m_culledSmall += cull == render::CullResult::TooSmall ? 1 : 0;
         if (cull == render::CullResult::Kept && view.intersects(instance.bounds))

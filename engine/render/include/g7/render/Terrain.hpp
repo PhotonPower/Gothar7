@@ -72,6 +72,9 @@ public:
     /// Depth of every chunk inside the cascade's light volume (the terrain casts shadows too), each at the
     /// detail the main pass draws it with from `eye` (the camera): a coarser shadow surface would lie above
     /// the drawn one in hollows and shadow it in rings (acne, welt 2026-10-04).
+    /// Chunks farther than this (nearest point, m) are left out of both passes (indoors, render.md
+    /// "Innenräume"); 0 = no limit.
+    void setMaxDistance(f32 metres) noexcept { m_maxDistance = metres; }
     void drawShadow(Device& device, const Cascade& cascade, const Vec3& eye);
     /// Chunks the last shadow pass drew per detail level (tests, statistics).
     [[nodiscard]] const std::array<u32, 4>& shadowLevels() const noexcept { return m_shadowLevels; }
@@ -91,6 +94,7 @@ public:
     f32 lodDistance = 96.0f; ///< metres of full detail; each LOD level doubles it
 
 private:
+    f32 m_maxDistance = 0.0f;
     struct Chunk
     {
         Vec2 origin; ///< first sample (column, row)
