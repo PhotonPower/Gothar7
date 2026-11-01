@@ -20,6 +20,11 @@ anchor = "top"
 offset = [0, 24]
 size = [360, 18]
 
+[hud.air] # air while diving, above health
+anchor = "bottom_left"
+offset = [32, -66]
+size = [260, 24]
+
 # Screen messages top centre (F7), subtitles bottom centre (F6).
 [hud.message]
 anchor = "top"
@@ -70,3 +75,90 @@ size = [500, 28]
 anchor = "bottom_right"
 offset = [-48, -28]
 size = [416, 44]
+
+# Dialogue choices on parchment at the bottom (part C; the spoken line is a subtitle).
+[dialog.box]
+anchor = "bottom"
+offset = [0, -40]
+size = [1100, 260]
+
+[dialog.options]
+anchor = "center"
+size = [-80, -40]
+
+# A letter or book being read.
+[document.page]
+anchor = "center"
+size = [900, 680]
+
+[document.title]
+anchor = "top"
+offset = [0, 48]
+size = [-120, 50]
+
+[document.text]
+anchor = "top"
+offset = [0, 112]
+size = [-140, -170]
+
+[document.hint]
+anchor = "bottom"
+offset = [0, -36]
+size = [-120, 26]
+
+# A choice at a mob (anvil, bed).
+[choice.box]
+anchor = "right"
+offset = [-80, 0]
+size = [520, 420]
+
+[choice.title]
+anchor = "top"
+offset = [0, 36]
+size = [-80, 50]
+
+[choice.options]
+anchor = "top"
+offset = [0, 100]
+size = [-80, 220]
+
+[choice.message]
+anchor = "bottom"
+offset = [0, -64]
+size = [-80, 50]
+
+[choice.hint]
+anchor = "bottom"
+offset = [0, -30]
+size = [-80, 26]
+
+# Lockpicking.
+[lockpick.box]
+anchor = "center"
+offset = [0, 200]
+size = [640, 300]
+
+[lockpick.title]
+anchor = "top"
+offset = [0, 30]
+size = [-80, 50]
+
+[lockpick.steps]
+anchor = "top"
+offset = [0, 96]
+size = [-80, 44]
+
+[lockpick.picks]
+anchor = "top"
+offset = [0, 152]
+size = [-80, 32]
+
+[lockpick.result]
+anchor = "top"
+offset = [0, 190]
+size = [-80, 30]
+
+[lockpick.hint]
+anchor = "bottom"
+offset = [0, -26]
+size = [-80, 26]

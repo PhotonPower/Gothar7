@@ -1915,8 +1915,12 @@ void Engine::setDebugUiVisible(bool visible) noexcept
 
 void Engine::runDebugUi(f64 realSeconds)
 {
-    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_focus || m_mobUse ||
-                      m_document || m_dialog || m_diaryOpen) &&
+    // The game UI (M14) shows the focus name, dialogue, documents, mob choices and lockpicking; without it
+    // (failed to load) the ImGui windows of M8-M10 do.
+    const bool legacy = !m_gameUi;
+    m_debugUiFrame = (m_debugUiVisible || m_consoleOpen || m_inventoryOpen || m_diaryOpen ||
+                      (m_dialog && m_trade) || (m_mobUse && m_mobUse->containerOpen) ||
+                      (legacy && (m_focus || m_mobUse || m_document || m_dialog))) &&
                      m_debugUi.valid();
     m_window->setTextInput(m_debugUiFrame && m_debugUi.wantsText());
     if (!m_debugUiFrame)
@@ -1934,11 +1938,14 @@ void Engine::runDebugUi(f64 realSeconds)
         consoleUi(); // also without the other debug windows
     }
     inventoryUi(); // the inventory and the focus name until the HUD exists (M13)
-    focusUi();
-    lockpickUi();
-    choiceUi();
-    documentUi();
-    dialogUi(); // M10
+    if (legacy)
+    {
+        focusUi();
+        lockpickUi();
+        choiceUi();
+        documentUi();
+    }
+    dialogUi(); // M10: trading (the dialogue itself: the game UI)
     diaryUi();
     if (!m_debugUiVisible)
     {

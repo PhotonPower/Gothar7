@@ -98,17 +98,26 @@ void Engine::npcSays(const Creature& c, std::string_view text)
 {
     const std::string key = voiceKey({}, c.species, text); // shouts: svm_<voice>_<m|f>_<occasion>_NN
     G7_LOG_INFO("engine", "{}: \"{}\" [{}]", c.species, text, key);
-    (void)speak(c.species, key); // M13 D: in its voice if the take exists (from afar quieter: 3D)
+    const std::optional<f32> spoken = speak(c.species, key); // M13 D: in its voice if the take exists (3D)
     if (m_scripts)
     {
         const script::Value args[] = {c.species, std::string(text), key};
         m_scripts->emit("npc_said", args);
     }
-    // Until the dialogues (M10): shown near the player.
+    // Near the player: a subtitle with the speaker's name (F6: also for shouts), as long as the take or the
+    // reading.
     if (m_player.valid() && glm::length(c.position - m_player.feet()) < 15.0f)
     {
         const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", c.species) : nullptr;
-        notice(std::format("{}: {}", npc != nullptr ? npc->fields["name"].asString() : c.species, text));
+        const std::string name = npc != nullptr ? std::string(npc->fields["name"].asString()) : c.species;
+        if (m_gameUi)
+        {
+            m_subtitles.push(name, std::string(text), spoken ? *spoken : ui::readingSeconds(text));
+        }
+        else
+        {
+            notice(std::format("{}: {}", name, text));
+        }
     }
 }
 

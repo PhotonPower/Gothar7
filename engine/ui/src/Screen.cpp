@@ -72,9 +72,17 @@ void Screen::update(const UiInput* input, f32 deltaSeconds, const Rect& area, f3
                 m_focus = focusables[*next];
                 emit("select");
             }
+            else if (onDirection(in.nav))
+            {
+                emit("select");
+            }
         }
     }
-    if (in.accept && m_focus != nullptr && m_focus->accept())
+    else if (in.nav != NavDir::None && onDirection(in.nav))
+    {
+        emit("select");
+    }
+    if (in.accept && ((m_focus != nullptr && m_focus->accept()) || onAccept()))
     {
         emit("accept");
     }

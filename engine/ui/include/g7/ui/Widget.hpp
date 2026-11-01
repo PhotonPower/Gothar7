@@ -14,6 +14,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -65,6 +66,8 @@ public:
     LayoutBox box;
     std::string layoutKey;
     bool visible = true;
+    /// Replaces the box height (UI units) after the layout lookup: content-sized widgets (dialogue choices).
+    std::optional<f32> heightOverride;
 
     template <class T, class... Args>
     T& add(Args&&... args)
@@ -132,6 +135,7 @@ public:
     UiText text;
     Align align = Align::Left;
     u32 maxLines = 0;
+    f32 opacity = 1.0f; ///< fades text, outline and shadow
 
 protected:
     void drawSelf(const DrawContext& context) const override;
@@ -208,6 +212,7 @@ public:
     std::string role;
     f32 rowHeight; ///< UI units
     std::vector<UiText> rows;
+    std::string highlightColor = "highlight"; ///< style colour of the selected row's text while focused
     std::function<void(usize)> onAccept;
 
     [[nodiscard]] usize selected() const noexcept { return m_selected; }
@@ -255,7 +260,8 @@ public:
     /// The cell's rectangle in pixels (also for cells scrolled out of view).
     [[nodiscard]] Rect cellRect(usize index) const noexcept;
 
-    [[nodiscard]] bool focusable() const override { return count > 0; }
+    bool interactive = true; ///< false: display only (no focus, no selection)
+    [[nodiscard]] bool focusable() const override { return interactive && count > 0; }
     bool navigate(NavDir dir) override;
     bool accept() override;
     bool scroll(f32 steps) override;

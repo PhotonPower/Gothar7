@@ -38,6 +38,7 @@ language = "de"
 scale = 1.0
 nav_repeat_delay = 0.35 # Sekunden, bis gehaltene Richtungen wiederholen
 nav_repeat_rate = 0.08  # Sekunden zwischen Wiederholungen
+subtitles = true       # Untertitel mit Sprechername, unten mittig, auch für Zurufe (F6)
 
 [render]
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
