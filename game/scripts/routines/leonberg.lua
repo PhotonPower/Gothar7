@@ -139,29 +139,31 @@ Routine "rtn_leo_merchant_f" {
 -- betet in einer Reihe vor dem Hauptportal (FP_PRAY), gepredigt wird am Portal und am Marktbrunnen (FP_PREACH),
 -- gebettelt an Kirche, Marktbrunnen und den Toren (FP_BEG), gespielt in der Stube der Krummen Gans (FP_MUSIC).
 -- Ist der genannte Freepoint belegt, nimmt npc_goto_freepoint den nächsten freien des Typs (15 m).
--- Das Pfarrhaus hat noch keinen Schlafplatz: zs_sleep fällt dort auf den Boden zurück (bis welt es begehbar macht).
+-- Im Pfarrhaus (welt #326) schläft der Pfarrer im Bett der Stube, die Mönche in den zwei Betten der Kammer.
 Routine "rtn_leo_priest" {
     { from = "06:00", to = "08:00", state = "zs_pray", at = "fp_pray_leo_kirche_01" },
     { from = "08:00", to = "11:00", state = "zs_preach", at = "fp_preach_leo_kirche_01" },
     { from = "11:00", to = "13:00", state = "zs_preach", at = "fp_preach_leo_marktbrunnen_01" },
-    { from = "13:00", to = "17:00", state = "zs_sweep", at = "wp_leo_pfarrhaus_ziu" },
+    { from = "13:00", to = "14:00", state = "zs_sit_table", at = "wp_leo_pfarrhaus_ziu_innen" },
+    { from = "14:00", to = "16:00", state = "zs_pray", at = "wp_leo_pfarrhaus_ziu_innen" },
+    { from = "16:00", to = "17:00", state = "zs_sweep", at = "wp_leo_pfarrhaus_ziu" },
     { from = "17:00", to = "20:00", state = "zs_pray", at = "fp_pray_leo_kirche_01" },
-    { from = "20:00", to = "06:00", state = "zs_sleep", at = "wp_leo_pfarrhaus_ziu" },
+    { from = "20:00", to = "06:00", state = "zs_sleep", at = "wp_leo_pfarrhaus_ziu_innen" },
 }
 
 Routine "rtn_leo_monk_1" {
     { from = "05:00", to = "09:00", state = "zs_pray_stand", at = "fp_pray_leo_kirche_02" },
-    { from = "09:00", to = "13:00", state = "zs_sweep", at = "wp_leo_pfarrhaus_ziu" },
+    { from = "09:00", to = "13:00", state = "zs_sweep", at = "wp_leo_pfarrhaus_ziu_innen" },
     { from = "13:00", to = "18:00", state = "zs_pray_stand", at = "fp_pray_leo_kirche_02" },
-    { from = "18:00", to = "21:00", state = "zs_stand", at = "wp_leo_pfarrhaus_ziu" },
-    { from = "21:00", to = "05:00", state = "zs_sleep", at = "wp_leo_pfarrhaus_ziu" },
+    { from = "18:00", to = "21:00", state = "zs_sit_table", at = "wp_leo_pfarrhaus_ziu_innen" },
+    { from = "21:00", to = "05:00", state = "zs_sleep", at = "wp_leo_pfarrhaus_ziu_kammer" },
 }
 
 Routine "rtn_leo_monk_2" {
     { from = "05:00", to = "12:00", state = "zs_pray_stand", at = "fp_pray_leo_kirche_03" },
     { from = "12:00", to = "16:00", state = "zs_stand", at = "wp_leo_marktplatz_013" },
     { from = "16:00", to = "20:00", state = "zs_pray_stand", at = "fp_pray_leo_kirche_03" },
-    { from = "20:00", to = "05:00", state = "zs_sleep", at = "wp_leo_pfarrhaus_ziu" },
+    { from = "20:00", to = "05:00", state = "zs_sleep", at = "wp_leo_pfarrhaus_ziu_kammer" },
 }
 
 Routine "rtn_leo_beggar_m" { -- schläft an der Kirchenmauer
