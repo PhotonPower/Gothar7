@@ -278,12 +278,14 @@ void OptionsScreen::showPage(usize page)
     m_message.clear();
     m_list->rows.clear();
     m_list->values.clear();
+    m_list->sliders.clear();
     if (m_page < m_pages.size())
     {
         for (const OptionDef& def : m_pages[m_page].options)
         {
             m_list->rows.push_back(UiText::key(def.label));
             m_list->values.push_back(UiText::literal(""));
+            m_list->sliders.emplace_back();
         }
     }
     m_list->select(0);
@@ -311,7 +313,17 @@ void OptionsScreen::onUpdate(f32)
         }
         else if (m_actions.get)
         {
-            m_list->values[row] = optionText(*def, m_actions.get(*def));
+            const OptionValue value = m_actions.get(*def);
+            m_list->values[row] = optionText(*def, value);
+            if (def->kind == OptionKind::Slider && def->max > def->min)
+            {
+                // Volumes as sliders (coordinator, figuren's frames); the percent text stays for tests and
+                // logs.
+                const f64 v = std::holds_alternative<f64>(value)   ? std::get<f64>(value)
+                              : std::holds_alternative<i64>(value) ? static_cast<f64>(std::get<i64>(value))
+                                                                   : def->min;
+                m_list->sliders[row] = static_cast<f32>((v - def->min) / (def->max - def->min));
+            }
         }
     }
     m_hint->text = m_message.empty() ? UiText::key("UI_OPTIONS_HINT") : UiText::literal(m_message);

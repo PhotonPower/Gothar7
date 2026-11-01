@@ -199,6 +199,10 @@ TEST_CASE("Options screen: pages, values, keys and leaving")
     idle(screen);
     REQUIRE(screen.options().values.size() == 2);
     CHECK(screen.options().values[0].value == "80 %");
+    REQUIRE(screen.options().sliders.size() == 2);
+    REQUIRE(screen.options().sliders[0].has_value());
+    CHECK(*screen.options().sliders[0] == doctest::Approx(0.8f));
+    CHECK_FALSE(screen.options().sliders[1].has_value()); // a toggle: text
 
     run(screen, step(NavDir::Right));
     CHECK(std::get<f64>(values["audio.music"]) == doctest::Approx(0.85));

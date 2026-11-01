@@ -304,7 +304,8 @@ std::vector<ItemTab> itemTabs(const Layout&);                                   
   Laden, Speichern (diese drei ausgegraut bis M15), Optionen, Spiel beenden. Zurück spielt weiter. Ohne Spiel-UI
   schaltet `pause` wie bisher nur die Pause um.
 - **Optionen:** Reiter Grafik (Auflösung, Vollbild, VSync, Bildratenlimit, Sichtweite), Klang (Gesamt, Musik,
-  Effekte, Stimmen, Umgebung, Menüklänge in 5-%-Schritten; wirken sofort auf die Busse), Steuerung (Schema
+  Effekte, Stimmen, Umgebung, Menüklänge als Schieberegler mit den Rahmen `slider_track`/`slider_knob` in
+  5-%-Schritten; wirken sofort auf die Busse), Steuerung (Schema
   klassisch/modern, Mausempfindlichkeit `[input] mouse_sensitivity` als Faktor, Tasten der Spielaktionen), Spiel
   (Sprache, Untertitel, Anzeigegröße). Hoch/Runter wählt, Links/Rechts (oder Bestätigen) ändert, Q/E bzw.
   Schultertasten wechseln den Reiter, Zurück verlässt und speichert. **Taste belegen:** Bestätigen, dann die neue
@@ -316,7 +317,8 @@ std::vector<ItemTab> itemTabs(const Layout&);                                   
   Schlüssel der Datei bleiben, das Schreiben ist atomar.
 - **Ladebildschirm:** Lederhintergrund, „<Welt> wird geladen …“ und ein Balken (0,1 vor dem Laden, danach die noch
   offenen Ladeaufträge des `AssetManager`, höchstens 8 s Warten).
-- **Lua:** `menu_open(page?)` öffnet das Pausenmenü, mit `"options"` die Optionen darüber (Konsole, Prüfbilder).
+- **Lua:** `menu_open(page?, tab?)` öffnet das Pausenmenü, mit `"options"` die Optionen darüber, auf Reiter `tab`
+  (ab 1; Konsole, Prüfbilder).
 - **Tests:** `tests/ui/test_menu_screens.cpp` (Schritte, Texte, Tastenbelegung mit Konflikt, Menü mit ausgegrauten
   Einträgen, Optionen mit Reitern und Tastenfang, Ladebildschirm), `tests/runtime/test_menu_flight.cpp`,
   `tests/core/test_config.cpp` (erase/sameValue/copyValue), `tests/runtime/test_engine_ui.cpp` (Hauptmenü mit dem

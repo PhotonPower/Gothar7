@@ -214,6 +214,9 @@ public:
     std::vector<UiText> rows;
     /// Optional second column, right-aligned in the same row (option values, M14 part F).
     std::vector<UiText> values;
+    /// Rows with a slider in the value column instead of a text: 0..1 (option volumes, frames slider_track
+    /// and slider_knob).
+    std::vector<std::optional<f32>> sliders;
     /// Rows shown greyed out (`text_dim`) that cannot be accepted (Load and Save until M15).
     std::vector<bool> dimmed;
     std::string highlightColor = "highlight"; ///< style colour of the selected row's text while focused

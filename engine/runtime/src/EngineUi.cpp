@@ -420,9 +420,10 @@ void Engine::bindUiFunctions()
                  setInventoryOpen(a.empty() || a[0].asBool(true));
                  return script::Value{};
              }});
-    vm.bind({"menu_open", "menu_open(page?: string)",
-             "Öffnet das Pausenmenü wie Esc, mit `\"options\"` gleich die Optionen darüber (Konsole, "
-             "Prüfbilder).",
+    vm.bind({"menu_open", "menu_open(page?: string, tab?: number)",
+             "Öffnet das Pausenmenü wie Esc, mit `\"options\"` gleich die Optionen darüber, auf Reiter `tab` "
+             "(ab 1; "
+             "Konsole, Prüfbilder).",
              "Bildschirm", [this](std::span<const script::Value> a) -> Result<script::Value>
              {
                  if (!m_gameUi)
@@ -436,6 +437,8 @@ void Engine::bindUiFunctions()
                  if (!a.empty() && a[0].asString() == "options")
                  {
                      m_menuCommand = "options"; // opened after this frame's screen update
+                     m_optionsTab =
+                         a.size() > 1 ? static_cast<usize>(std::max(a[1].asNumber(1.0), 1.0)) - 1 : 0;
                  }
                  return script::Value{};
              }});

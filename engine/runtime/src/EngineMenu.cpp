@@ -506,7 +506,9 @@ void Engine::openOptions()
     actions.assign = [this](const ui::OptionDef& option, platform::Key key)
     { return assignBinding(option, key); };
     actions.close = [this] { saveUserSettings(); };
-    m_screens.push(std::make_unique<ui::OptionsScreen>(optionPages(), std::move(actions)));
+    auto screen = std::make_unique<ui::OptionsScreen>(optionPages(), std::move(actions));
+    screen->selectPage(std::exchange(m_optionsTab, usize{0}));
+    m_screens.push(std::move(screen));
 }
 
 void Engine::saveUserSettings()

@@ -1351,6 +1351,7 @@ private:
     bool m_menuMode = false;
     MenuFlight m_menuFlight;
     f32 m_menuFlightTime = 0.0f;
+    usize m_optionsTab = 0;                  ///< the options open on this tab (Lua menu_open)
     std::string m_menuCommand;               ///< chosen in a menu, run after the screens' update
     std::set<std::string> m_changedSettings; ///< option keys changed since the last save
     f64 m_gameUiReloadTimer = 0.0;

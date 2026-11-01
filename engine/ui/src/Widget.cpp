@@ -28,6 +28,34 @@ void drawFrame(const DrawContext& context, const Rect& rect, std::string_view fr
     }
 }
 
+/// A slider right-aligned in a list row: the groove (slider_track) and the knob (slider_knob) at `fraction`.
+void drawSlider(const DrawContext& context, const Rect& row, f32 fraction)
+{
+    const f32 s = context.scale();
+    const NineSlice track = context.ui.frame("slider_track", s);
+    const NineSlice knob = context.ui.frame("slider_knob", s);
+    const f32 width = std::min(260.0f * s, row.width() * 0.45f);
+    const f32 height = std::max(row.height() * 0.3f, (track.top + track.bottom) * track.borderScale);
+    const f32 right = row.max.x - 12.0f * s;
+    const Rect groove =
+        Rect::fromSize(Vec2(right - width, row.min.y + (row.height() - height) * 0.5f), Vec2(width, height));
+    context.canvas.frame(groove, track, context.ui.frameTint("slider_track"));
+    // The knob at its own size, but never taller than the row.
+    Vec2 size = knob.imageSize * knob.borderScale;
+    if (size.y > row.height() * 0.8f && size.y > 0.0f)
+    {
+        size *= row.height() * 0.8f / size.y;
+    }
+    if (size.x <= 0.0f || size.y <= 0.0f)
+    {
+        size = Vec2(row.height() * 0.6f);
+    }
+    const f32 travel = std::max(groove.width() - size.x, 0.0f);
+    const Vec2 at(groove.min.x + travel * std::clamp(fraction, 0.0f, 1.0f),
+                  row.min.y + (row.height() - size.y) * 0.5f);
+    context.canvas.frame(Rect::fromSize(at, size), knob, context.ui.frameTint("slider_knob"));
+}
+
 /// A one-line text vertically centred in `rect`.
 void drawCentredLine(const DrawContext& context, const Rect& rect, std::string_view role,
                      std::string_view text, Align align, bool highlight, f32 inset,
@@ -347,7 +375,11 @@ void List::drawSelf(const DrawContext& context) const
         const bool dim = isDimmed(row) && !lit;
         drawCentredLine(context, rect, role, rows[row].resolve(context.ui.strings()), Align::Left, lit || dim,
                         10.0f, dim ? std::string_view("text_dim") : std::string_view(highlightColor));
-        if (row < values.size())
+        if (row < sliders.size() && sliders[row])
+        {
+            drawSlider(context, rect, *sliders[row]);
+        }
+        else if (row < values.size())
         {
             drawCentredLine(context, rect, role, values[row].resolve(context.ui.strings()), Align::Right,
                             lit || dim, 10.0f,
