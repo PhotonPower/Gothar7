@@ -808,3 +808,12 @@ def test_in_leonberg_every_freepoint_indoors_has_a_waypoint_near_it():
         assert near, fp["name"]
         checked += 1
     assert checked >= 20  # 26 in 2026-11
+
+
+def test_beds_the_chambers_have_no_room_for_go_to_the_room_with_the_door():
+    spec = {"wohnhaus": inside_spec({"mobs": ["bed:4", "table:1"], "hearth": True}, "x")}
+    house = House("DEBW_00100061ZjV", "wohnhaus", residents=4, inside=True)
+    p = plan_inside([house], spec, DIVIDED, {"DEBW_00100061ZjV": "WP_LEO_WOHNHAUS_ZJV"})
+    beds = [v["name"] for v in p.vobs if "_BED_" in v["name"]]
+    assert len(beds) == 4 and not [f for f in p.failed if f["what"] == "bed"]
+    assert any("_INNEN_BED_" in n for n in beds) and any("_KAMMER_BED_" in n for n in beds)
