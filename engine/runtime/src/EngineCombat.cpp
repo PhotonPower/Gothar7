@@ -420,6 +420,10 @@ std::vector<gameplay::Blade> Engine::weaponBlades(const Combatant& c)
         return {}; // a bite lunges; a move on the fallback timeline has no swing to follow
     }
     const std::string weapon = meleeWeapon(c);
+    if (weapon.empty() && !m_combat.fistSweep)
+    {
+        return {}; // fists by reach and angle (Combat.fist_sweep)
+    }
     std::vector<Mat4> modelSpace(figure->skeleton.size());
     figure->skeleton.modelSpace(figure->poseNow, modelSpace);
     const Mat4 body = creatureMatrix(c.id == kHeroId ? m_playerFeet : c.position, c.yaw);

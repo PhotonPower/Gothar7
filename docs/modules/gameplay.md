@@ -302,9 +302,9 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers K1–K9 (2026-10-05, 
   `t_dodge_back`, `none/t_hit_light`, `none/t_ko`, `none/t_die_front` (Modus `fist`, `1h`, `2h`).
 - **Kombos (K4):** Talent 0 Einzelschläge, 1 bis 3, 2 bis 4 und 1,25-mal schneller; der nächste Schlag nur im
   Kombofenster. Seitenhiebe ketten nicht. Talent: `melee_2h` für Zweihänder, sonst `melee_1h` (auch Fäuste).
-- **Treffer:** im Trefferfenster jedes Ziel höchstens einmal je Schlag, in Reichweite (ab den Körpern: Faust 0,9 m,
-  Einhand 1,3 m, Zweihand 1,7 m) und im Winkel (±50°) vor dem Angreifer, ohne Wand oder Mob dazwischen. Mit
-  `weapon_sweep` fegt stattdessen die Waffe entlang des Clips (siehe „Trefferprüfung“ unten).
+- **Treffer:** im Trefferfenster jedes Ziel höchstens einmal je Schlag. Mit Clip fegt die Waffe entlang der Animation
+  (siehe „Trefferprüfung“ unten); Tiere, Fäuste (vorerst) und Züge ohne Clip treffen in Reichweite (ab den Körpern:
+  Faust 0,9 m, Einhand 1,2 m, Zweihand 1,6 m) und im Winkel (±50°) vor dem Angreifer, ohne Wand oder Mob dazwischen.
 - **Schaden (K2, K3):** je Schadensart max(Waffe − Schutz, 0), die Stärke zur Hauptart der Waffe (Fäuste: stumpf),
   mindestens 5; kritisch nach Talent 0/10/20 % mit doppeltem Waffenschaden. Tiere: `Npc.damage` (Art) plus Stärke.
 - **Parade (K6):** blockt 0,4 s ab Beginn Schläge von vorn (±60°); der Schlag prallt ab (der Angreifer taumelt).
@@ -403,12 +403,13 @@ Clip, bleibt die Zeitleiste. Menschen halten nach einem Kampf 5 s die Kampfhaltu
 - **Ohne Sweep** treffen Tiere (Biss mit Sprung), Züge ohne Clip (Zeitleiste) und alle bei `weapon_sweep = false`
   weiter nach Reichweite und Winkel (oben); ein Strahl von Brust zu Brust (1,3 m, Tiere 0,5 m) gegen `World` und
   `Mob` hält auch dort den Schlag durch Wände und geschlossene Türen auf.
-- **Stand:** `weapon_sweep` ist vorerst **aus**. Gemessen mit den Platzhalter-Clips liegt das Trefferfenster
-  mehrerer Züge vor dem eigentlichen Hieb: `1h`/`2h t_attack_combo1` halten die Klinge im Fenster noch erhoben
-  (Spitze ≥ 1,6 m hoch, vorn höchstens 1,1–1,2 m; der Hieb nach vorn bis 1,9–2,3 m kommt erst nach `hit_end`),
-  `t_attack_l`/`t_attack_r` (Platzhalter-K) erreichen im Fenster nichts vor dem Körper. Mit Sweep fallen dann
-  Talent-0-Kämpfe (nur Kombo 1) aus der Reichweite der Kampf-KI. Einschalten, sobald figuren die Fenster an die
-  Clips angepasst hat; `combat_reload()` liest geänderte Werte aus der Konsole neu.
+- **Stand:** `weapon_sweep` ist **an** (Standard). figuren hat die Trefferfenster auf den eigentlichen Hieb gelegt
+  (#308) und Kombo 1 (1h, 2h), 2h Kombo 3 und die Seitenhiebe bis Tierhöhe nachgebaut (#317). Gemessen im Fenster
+  reicht die Klinge vorn bis 1,5 m (1h Kombo 3) bzw. 1,8–2,1 m (1h Kombo 1/2, 2h Kombo 1) ab der Körpermitte;
+  die Seitenhiebe bis etwa 0,9 m. Daran angeglichen sind die Reichweiten der Kampf-KI: `reach_1h` 1,2 m und
+  `reach_2h` 1,6 m (vorher 1,3 und 1,7), also `npc_reach` 1,9 bzw. 2,3 m Mitte zu Mitte. Fäuste schlagen vorerst
+  nach Reichweite und Winkel (`fist_sweep = false`), bis figurens Fausthiebe Tierhöhe erreichen.
+  `combat_reload()` liest geänderte Werte aus der Konsole neu.
 - **Treffer-Reaktion:** wie bisher (Taumeln mit `none/t_hit_light` ab `stagger_share`, Tiere ihr Treffer-Clip).
 - **Rückstoß** (Projektinhaber 2026-11-01 bestätigt): Ein Treffer, der taumeln lässt, schiebt das Ziel `knockback` 0,3 m
   in `knockback_seconds` 0,2 s entlang der Richtung Angreifer → Ziel, mit Kollision (Menschen und Held; Tiere ohne
@@ -418,8 +419,8 @@ Clip, bleibt die Zeitleiste. Menschen halten nach einem Kampf 5 s die Kampfhaltu
   `tests/physics/test_physics.cpp` (Kapsel-Cast), `tests/runtime/test_engine_weapon_sweep.cpp` (echte Clips:
   Treffer vorn einmal je Schlag, keiner hinten, Tür blockt mit und ohne Sweep, Rückstoß).
 
-**Weiter:** Fernkampf für NPCs (Jäger); Bogen-Clips beim Schießen; `weapon_sweep` einschalten, wenn die
-Trefferfenster der Clips passen (figuren).
+**Weiter:** Fernkampf für NPCs (Jäger); Bogen-Clips beim Schießen; `fist_sweep` einschalten, wenn figurens
+Fausthiebe Tierhöhe erreichen.
 
 ## Magie (M12)
 Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, wie Gothic 1).
