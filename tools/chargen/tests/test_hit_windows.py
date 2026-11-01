@@ -87,7 +87,8 @@ def test_window_on_the_strike(paths, mode, name, markers):
 @pytest.mark.parametrize("mode", ["1h", "2h"])
 def test_directional_swings_cross_the_front(paths, mode):
     """Gothic 1 side swings: the blade sweeps across in front of the body, t_attack_l from the
-    right (-X) to the left (+X), t_attack_r the other way, roughly level (tip 0.9-1.6 m high)."""
+    right (-X) to the left (+X), t_attack_r the other way, slanting down (high wind-up, the tip
+    below 1 m on the way out) so that animals are hit too."""
     for clip, sign in (("t_attack_l", 1.0), ("t_attack_r", -1.0)):
         markers = dict(
             next(c for c in load_set_spec(mode).clips if c.name == f"{mode}/{clip}").markers
@@ -95,4 +96,21 @@ def test_directional_swings_cross_the_front(paths, mode):
         start, end = markers["hit_start"], markers["hit_end"]
         tips = paths[mode][f"{mode}/{clip}"].tips[start : end + 1, 0]
         assert sign * (tips[-1, 0] - tips[0, 0]) >= 1.2, clip  # sideways across the front
-        assert tips[:, 1].min() >= 0.9 and tips[:, 1].max() <= 1.6, clip
+        assert tips[-1, 1] < tips[0, 1] - 0.4, clip  # slanting down
+        assert tips[:, 1].min() <= 1.0 and tips[:, 1].max() <= 1.8, clip
+
+
+ANIMAL_LOW, ANIMAL_HIGH = 0.5, 1.0  # animals are capsules up to 1.0 m (engine animal_height)
+
+
+@pytest.mark.parametrize(
+    ("mode", "name", "markers"),
+    [s for s in STRIKES if s[0] != "fist"],
+    ids=[s[1] for s in STRIKES if s[0] != "fist"],
+)
+def test_weapon_strikes_reach_animals(paths, mode, name, markers):
+    """Every weapon strike passes the space in front of the body at animal height within its
+    window (wolves, boars: capsules up to 1.0 m; engine2 2026-11-01)."""
+    p = paths[mode][name].points[markers["hit_start"] : markers["hit_end"] + 1].reshape(-1, 3)
+    low = (p[:, 2] >= ZONE_FRONT) & (p[:, 1] >= ANIMAL_LOW) & (p[:, 1] <= ANIMAL_HIGH)
+    assert low.sum() >= 5, name
