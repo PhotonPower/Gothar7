@@ -78,9 +78,9 @@ protected:
             const bool open = i == m_screen.m_tab;
             drawFrame(context, rect, open ? "tab_active" : "tab");
             const TextLayout title =
-                context.ui.layout("small", context.ui.strings().get(tabs[i].key), context.scale(),
+                context.ui.layout("tab", context.ui.strings().get(tabs[i].key), context.scale(),
                                   {.wrapWidth = rect.width(), .maxLines = 1, .align = Align::Center});
-            TextStyle style = context.ui.textStyle("small", context.scale());
+            TextStyle style = context.ui.textStyle("tab", context.scale());
             if (open)
             {
                 style.color = context.ui.style().color("highlight");

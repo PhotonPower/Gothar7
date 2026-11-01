@@ -8,8 +8,14 @@ Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 ### `inventory_open(open?: boolean)`
 Öffnet (oder mit `false` schließt) das Inventar des Helden wie die Inventar-Taste (Konsole, Tests).
 
+### `map_open(image: string, title?: string)`
+Zeigt eine Karte (Bild im VFS, z. B. `ui/maps/leonberg.png`) wie ein Karten-Item (Konsole, Tests).
+
 ### `screen_message(text: string, seconds?: number)`
 Zeigt dem Spieler eine Meldung oben in der Mitte (F7; Vorgabe 3 s), z. B. `Erfahrung +50`.
+
+### `status_open(open?: boolean)`
+Öffnet (oder mit `false` schließt) den Charakterbildschirm wie die Taste status (B).
 
 ## Debug
 

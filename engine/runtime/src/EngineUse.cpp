@@ -94,7 +94,17 @@ void Engine::applyItemUse(ItemUse& use)
     {
         return; // gone meanwhile
     }
-    if (use.category == "document")
+    if (use.category == "document" && !def->fields["map"].asString().empty())
+    {
+        // A map item (M14 part E, F9): its picture instead of a text.
+        if (auto opened = openMap(std::string(def->fields["name"].asString()),
+                                  std::string(def->fields["map"].asString()));
+            !opened)
+        {
+            G7_LOG_WARN("engine", "{}", opened.error().message);
+        }
+    }
+    else if (use.category == "document")
     {
         m_document = Document{std::string(def->fields["name"].asString()),
                               std::string(def->fields["text"].asString())};

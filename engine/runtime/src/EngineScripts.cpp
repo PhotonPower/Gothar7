@@ -108,6 +108,7 @@ Result<void> Engine::initScripts()
     bindRangedFunctions();
     bindDiaryFunctions();
     bindUiFunctions();
+    bindJournalFunctions();
     bindMagicFunctions();
     bindFxFunctions();
     bindAudioFunctions();

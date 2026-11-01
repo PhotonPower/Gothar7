@@ -222,3 +222,78 @@ size = [300, 28]
 [inventory.quantity]
 anchor = "center"
 size = [520, 220]
+
+# Character sheet (part E): four blocks of name/value rows.
+[status.panel]
+anchor = "center"
+size = [1100, 780]
+
+[status.title]
+anchor = "top"
+offset = [0, 30]
+size = [-80, 50]
+
+[status.general]
+anchor = "top_left"
+offset = [60, 110]
+size = [460, 220]
+
+[status.attributes]
+anchor = "top_left"
+offset = [60, 360]
+size = [460, 250]
+
+[status.talents]
+anchor = "top_right"
+offset = [-60, 110]
+size = [460, 380]
+
+[status.protection]
+anchor = "top_right"
+offset = [-60, 510]
+size = [460, 220]
+
+# Diary (part E): chapter, section tabs, topics left, entries right, on parchment (F2).
+[diary.page]
+anchor = "center"
+size = [1240, 780]
+
+[diary.chapter]
+anchor = "top"
+offset = [0, 40]
+size = [-120, 48]
+
+[diary.tabs]
+anchor = "top"
+offset = [0, 100]
+size = [-120, 44]
+
+[diary.topics]
+anchor = "top_left"
+offset = [60, 164]
+size = [400, -220]
+
+[diary.entries]
+anchor = "top_right"
+offset = [-60, 164]
+size = [680, -220]
+
+[diary.empty]
+anchor = "center"
+offset = [0, 40]
+size = [-120, 40]
+
+# Map (part E, F9): the map item's picture fitted on parchment.
+[map.page]
+anchor = "center"
+size = [1400, 940]
+
+[map.title]
+anchor = "top"
+offset = [0, 30]
+size = [-120, 46]
+
+[map.picture]
+anchor = "top"
+offset = [0, 90]
+size = [-100, -130]

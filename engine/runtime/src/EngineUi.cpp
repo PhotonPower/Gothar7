@@ -141,6 +141,10 @@ void Engine::updateGameUi(f64 realSeconds, bool allowMouse, bool allowKeyboard)
         setInventoryOpen(false);
         m_lootTarget.reset();
     }
+    if (allowKeyboard)
+    {
+        journalKeys();
+    }
     advanceItemSpin(static_cast<f32>(realSeconds));
     syncGameScreens();
     const ui::Rect area{Vec2(0.0f), Vec2(width, height)};
@@ -262,7 +266,8 @@ ui::HudModel Engine::buildHudModel(Vec2 pixels) const
 
 void Engine::syncGameScreens()
 {
-    syncItemScreens(); // inventory, trading, containers (part D)
+    syncItemScreens();    // inventory, trading, containers (part D)
+    syncJournalScreens(); // character sheet, diary, map (part E)
     // Dialogue (replaces the ImGui window; E3: like Gothic 1).
     ui::Screen* dialog = m_screens.find("dialog");
     if (m_dialog && dialog == nullptr)

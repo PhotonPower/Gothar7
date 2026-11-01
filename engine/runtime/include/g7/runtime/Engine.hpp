@@ -53,6 +53,7 @@
 #include <g7/ui/ItemCell.hpp>
 #include <g7/ui/ItemPreview.hpp>
 #include <g7/ui/ItemScreen.hpp>
+#include <g7/ui/JournalScreens.hpp>
 #include <g7/ui/Navigation.hpp>
 #include <g7/ui/Screen.hpp>
 #include <g7/ui/UiResources.hpp>
@@ -557,6 +558,12 @@ public:
     void closeTrade();
     // Diary (M10 part D, EngineDiary.cpp)
     void setDiaryOpen(bool open) noexcept { m_diaryOpen = open; }
+    /// The character sheet (M14 part E, action status).
+    void setStatusOpen(bool open) noexcept { m_statusOpen = open; }
+    [[nodiscard]] bool statusOpen() const noexcept { return m_statusOpen; }
+    /// Shows a map picture (VFS path) as the map screen (M14 part E; map items, Lua map_open).
+    Result<void> openMap(std::string title, std::string image);
+    [[nodiscard]] bool mapOpen() const noexcept { return m_map.has_value(); }
     [[nodiscard]] bool diaryOpen() const noexcept { return m_diaryOpen; }
     /// What the window "Tagebuch" shows (from Story).
     [[nodiscard]] ui::DiaryPanel diaryPanelData() const;
@@ -1230,6 +1237,15 @@ private:
     [[nodiscard]] std::optional<ui::PreviewImage> itemPreview(const std::string& item, bool large,
                                                               bool spinning);
     void advanceItemSpin(f32 seconds);
+    // Character, diary and map screens (EngineUiJournal.cpp, M14 part E)
+    [[nodiscard]] ui::StatusView statusView();
+    [[nodiscard]] ui::DiaryView diaryView() const;
+    /// The first map item the hero carries: its name and picture (Lua Item field `map`).
+    [[nodiscard]] std::optional<std::pair<std::string, std::string>> heroMapItem() const;
+    void syncJournalScreens();
+    void journalKeys();
+    void openMapOfHero();
+    void bindJournalFunctions();
     void drawGameUi(u32 width, u32 height);
 
     EngineConfig m_config;
@@ -1268,6 +1284,17 @@ private:
     std::map<std::string, u32, std::less<>> m_previewTiles;
     std::set<std::string, std::less<>> m_previewDrawn;
     f32 m_spinAngle = 0.0f;
+    // Character sheet and map (M14 part E).
+    bool m_statusOpen = false;
+    struct MapRequest
+    {
+        std::string title;
+        std::string image; ///< VFS path
+    };
+    std::optional<MapRequest> m_map;
+    std::optional<render::rhi::Texture> m_mapTexture;
+    std::string m_mapTexturePath;
+    Vec2 m_mapSize{1.0f};
     ui::NavRepeat m_navRepeat;
     f64 m_gameUiReloadTimer = 0.0;
     std::string m_gameUiStamp;        // disk paths and times of the UI files (hot reload)

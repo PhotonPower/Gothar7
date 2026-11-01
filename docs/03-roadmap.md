@@ -285,7 +285,9 @@ Plan (Teile A–G, freigegeben 2026-11-01, Gestaltung F1–F12 vom Projektinhabe
 - [x] Inventar-Bildschirm (Kategorien, Item-Vorschau als 3D-Modell), Handel, Truhe
   - Teil D: Kategorie-Reiter und Raster (F4), 3D-Zellen nach `inventory_views.toml` v2 (Render-to-Texture,
     das gewählte Item dreht sich), Infokasten, Handel mit Mengenwahl (F5), Truhe und Plündern
-- [ ] Charakterbildschirm, Tagebuch-Bildschirm, Karte (falls Karten-Item)
+- [x] Charakterbildschirm, Tagebuch-Bildschirm, Karte (falls Karten-Item)
+  - Teil E: Charakter (B), Tagebuch auf Pergament (N), Karte über Items mit `map`-Bild (M, F9); das Stadtplan-Item
+    für Leonberg liefert welt, bis dahin ein Platzhalter-Bild für Tests
 - [ ] Hauptmenü, Optionen (Grafik, Audio, Steuerung), Ladebildschirm
 - [ ] Lokalisierung (Schlüssel → Text-Tabellen DE/EN), Untertitel
   - Gesprochene Texte kommen aus `assets/source/voice/lines.<sprache>.json` (eine Datei je Sprache)
