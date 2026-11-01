@@ -225,6 +225,13 @@ struct GpuLighting; GpuLighting packLighting(const Environment&, const LightList
   Gleichstand Einfügereihenfolge. Alle Lichter des Frames (≤ 256, darüber Warnung) liegen in einem UBO, pro Draw
   gehen nur die Indizes mit. Clustered Forward erst, wenn > 32 Lichter gleichzeitig sichtbar sind oder große
   Gelände-Meshes (M4) es verlangen.
+- **Lichter je Bild** (`selectFrameLights`, `LightBudget`; engine.toml `[render] max_lights` 128, `light_distance`
+  120 m, `window_light_radius` 25 m): Effektlichter (Feuer, Magie, die Fackel) kommen immer zuerst; dann von den
+  Lichtern der Welt und den Fensterlichtern die, deren Kugel im Sichtkegel liegt, die nächsten (Abstand zur
+  Reichweite) zuerst, bis `max_lights`. Weltlichter nur, wenn ihre Reichweite näher als `light_distance` kommt,
+  Fensterlichter nur bis `window_light_radius`. Leonberg (220 Weltlichter, 151 Fensterlichter) blieb vorher jedes
+  Bild über 256 (Warnung, Fensterlichter und Fackel fielen weg); jetzt ≤ 128, die Fackel immer dabei.
+  `Engine::frameLights()`.
 - **Lichtmodell (stilisiert):** Hemisphären-Ambient (Himmel/Boden nach Normalen-Y gemischt) + Lambert-Sonne +
   Punktlichter mit Abfall `saturate(1 − (d/r)⁴)² / (d² + 1)` (Meter; genau 0 am Radius). Keine Glanzlichter.
 - **Räume** (Zonen `indoor`, world.md „Zonen“): Das Ambient wird je Fläche in Räumen mit `[indoor] ambient`
