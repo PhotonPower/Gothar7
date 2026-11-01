@@ -64,6 +64,10 @@ size_cull = 0.005
 lod1_distance = 60.0
 lod2_distance = 150.0
 lod_hysteresis = 0.1
+# Kleine Dinge (Props: Begrenzungsradius unter lod_small_radius Meter) wechseln früher: Schwellen mal lod_small_scale
+# (bei 0.35: LOD1 ab 21 m, LOD2 ab 52 m). Phase 3, E4.
+lod_small_radius = 1.5
+lod_small_scale = 0.35
 # Objekte gleichen Materials mit einem Zeichenaufruf je Pass zeichnen (Multi-Draw): "auto" = an, außer auf Intel-GPUs
 # (dort grafikkartenbegrenzt, ~10 % langsamer gemessen; RTX 3080: +41 % im Leonberg-Kern); "on"/"off" erzwingen.
 multi_draw = "auto"

@@ -199,7 +199,9 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
   Hysterese: Stufe 1 ab `lod1_distance` (60 m), Stufe 2 ab `lod2_distance` (150 m), zurück erst `lod_hysteresis`
   (10 %) darunter (engine.toml `[render]`). Hat ein Modell weniger Stufen, zeichnet es seine gröbste (`Mesh::inLod`).
   Der Schattenpass nimmt die Stufe des Hauptpasses. Alle Stufen liegen in einem Arena-Mesh; die Auswahl wählt nur die
-  Submeshes, das Multi-Draw-Batching bleibt.
+  Submeshes, das Multi-Draw-Batching bleibt. Kleine Dinge (Props, Begrenzungsradius unter `lod_small_radius` 1,5 m)
+  wechseln früher: ihre Schwellen mal `lod_small_scale` 0,35, also Stufe 1 ab 21 m, Stufe 2 ab 52 m (Phase 3, E4;
+  welts Props mit `_lod1` seit #336). `size_cull` gilt für sie wie für alle Deko-Modelle.
 - **Prüfen:** `--lod=0|1|2` bzw. Debug-UI (Engine → Render → LOD) erzwingen eine Stufe; dort und im Benchmark-Log
   steht, wie viele Objekte je Stufe gezeichnet wurden. Das Debug-Overlay (F2) umrandet Modelle mit Stufen nach der
   gezeichneten: grün 0, gelb 1, rot 2.

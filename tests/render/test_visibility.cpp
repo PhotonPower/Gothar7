@@ -99,3 +99,18 @@ TEST_CASE("Visibility: level of detail by distance with hysteresis, forced level
     CHECK(selectLod(1.0f, 0, forced) == 1);
     CHECK(selectLod(500.0f, 2, forced) == 1);
 }
+
+TEST_CASE("Visibility: small objects (props) switch their level of detail sooner")
+{
+    LodSettings s;
+    s.smallRadius = 1.5f;
+    s.smallScale = 0.35f;                     // thresholds 21 and 52.5 m
+    CHECK(selectLod(30.0f, 0, s, 0.6f) == 1); // a crate: coarse from 21 m (+10 %)
+    CHECK(selectLod(30.0f, 0, s, 4.0f) == 0); // a house: full up to 60 m
+    CHECK(selectLod(30.0f, 0, s) == 0);       // no radius given: as before
+    CHECK(selectLod(60.0f, 0, s, 0.6f) == 2); // beyond 52.5 m (+10 %): the coarsest
+    CHECK(selectLod(20.0f, 1, s, 0.6f) == 1); // within the hysteresis it stays
+    CHECK(selectLod(18.0f, 1, s, 0.6f) == 0); // back below 21 m (-10 %)
+    s.smallRadius = 0.0f;
+    CHECK(selectLod(30.0f, 0, s, 0.6f) == 0); // off
+}
