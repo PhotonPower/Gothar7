@@ -154,7 +154,7 @@ rotate = { upperarm_r = [["X", 25]], lowerarm_r = [["X", -95]], hand_r = [["X", 
 move = { pelvis = [0, 0.04, -0.03] }
 [clip.params.poses.thrust]
 rotate = { upperarm_r = [["X", -80], ["Z", 8]], lowerarm_r = [["X", -10]], hand_r = [["X", 80], ["Z", 90], ["X", 75], ["Z", 90]], spine_02 = [["Z", 18], ["X", 6]], spine_01 = [["Z", 8]], upperarm_l = [["X", 25]] }
-move = { pelvis = [0, -0.14, -0.05] }
+move = { pelvis = [0, -0.14, -0.05], root = [0, -0.15, 0] }  # small lunge: reach 1.5 m
 
 [[clip]]
 name = "1h/t_swing_l"

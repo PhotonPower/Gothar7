@@ -150,10 +150,10 @@ base = "none/s_idle"
 keys = [[0, "rest"], [12, "raise"], [19, "chop"], [24, "chop"], [40, "rest"]]
 [clip.params.poses.raise]
 rotate = { upperarm_r = [["X", -150], ["Z", -25]], lowerarm_r = [["X", -60]], spine_02 = [["Z", -20], ["X", -8]], spine_01 = [["Z", -8]], hand_r = [["X", 37], ["Y", 45], ["Z", -78]] }
-move = { pelvis = [0, 0.04, -0.02] }
+move = { pelvis = [0, 0.04, -0.02], root = [0, -0.1, 0] }
 [clip.params.poses.chop]
 rotate = { upperarm_r = [["X", -40], ["Z", 20]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 15], ["X", 18]], spine_01 = [["Z", 6], ["X", 8]], hand_r = [["X", 49], ["Y", -92], ["Z", -102]] }
-move = { pelvis = [0, -0.12, -0.08] }
+move = { pelvis = [0, -0.12, -0.08], root = [0, -0.45, 0] }  # lunge: reach 1.8 m
 
 [[clip]]
 name = "2h/t_swing_l"
@@ -231,9 +231,19 @@ from = "ual1:Sword_Attack"
 helper = true
 
 [[clip]]
+name = "2h/t_combo4_reach"        # a step into the finisher: reach 1.8 m (the AI's 2h distance)
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "2h/t_combo4_src"
+keys = [[0, "rest"], [6, "rest"], [13, "lunge"], [30, "lunge"], [46, "rest"]]
+[clip.params.poses.lunge]
+move = { root = [0, -0.15, 0] }
+
+[[clip]]
 name = "2h/t_combo4_grip"
 keyframe = "two_hands"
-params = { base = "2h/t_combo4_src" }
+params = { base = "2h/t_combo4_reach" }
 helper = true
 
 [[clip]]
