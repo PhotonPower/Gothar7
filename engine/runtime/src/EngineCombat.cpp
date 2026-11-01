@@ -15,6 +15,7 @@
 #include <g7/runtime/Engine.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <format>
 #include <random>
@@ -423,10 +424,11 @@ std::vector<gameplay::Blade> Engine::weaponBlades(const Combatant& c)
     figure->skeleton.modelSpace(figure->poseNow, modelSpace);
     const Mat4 body = creatureMatrix(c.id == kHeroId ? m_playerFeet : c.position, c.yaw);
     std::vector<gameplay::Blade> blades;
-    // Fists punch with either hand; a weapon is held in the right one.
-    for (const char* socketName : weapon.empty()
-                                      ? std::initializer_list<const char*>{"socket_hand_l", "socket_hand_r"}
-                                      : std::initializer_list<const char*>{"socket_hand_r"})
+    // Fists punch with either hand; a weapon is held in the right one. (A named array: the backing array of
+    // an initializer_list chosen by ?: would not outlive the range-for's initializer.)
+    static constexpr std::array<const char*, 2> kHands{"socket_hand_r", "socket_hand_l"};
+    const std::span<const char* const> sockets(kHands.data(), weapon.empty() ? 2 : 1);
+    for (const char* socketName : sockets)
     {
         const i32 bone = figure->skeleton.find(socketName);
         if (bone < 0)
