@@ -224,3 +224,18 @@ def test_lanes_and_yards_are_own_group_of_deco_meshes():
     assert by_name(w2)["BAUM_N1"]["id"] == v["id"]  # stable id
     w3 = run(index("A"), w2, ids)
     assert "BAUM_N1" not in by_name(w3) and "WORLDGEN_GASSEN" not in by_name(w3)
+
+
+def test_a_new_start_point_survives_the_passes_of_one_run():
+    from gothar_worldgen.export.starts import StartPoint
+
+    ids = VobIds({}, 1)
+    w = run(index("A"), None, ids)
+    known = frozenset(k for k in ids.ids if k.startswith("start:"))  # as vob_ids.json had them
+    starts = (StartPoint("START_TOR", 5.0, 5.0, 0.0),)
+    first = assemble(TERRAIN, index("A"), w, ids, "t", ground=ground, starts=starts,
+                     known_starts=known)  # fmt: skip
+    again = assemble(TERRAIN, index("A"), w, ids, "t", ground=ground, starts=starts,
+                     known_starts=known)  # fmt: skip
+    assert "START_TOR" in by_name(first.world) and "START_TOR" in by_name(again.world)
+    assert by_name(again.world)["START_TOR"]["id"] == by_name(first.world)["START_TOR"]["id"]

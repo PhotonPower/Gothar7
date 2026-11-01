@@ -101,7 +101,8 @@ struct Engine::Combatant
     gameplay::Knockback* knockback = nullptr;
     Vec3 position{0.0f};
     f32 yaw = 0.0f;
-    std::string name; ///< Npc instance, "hero"
+    std::string name;    ///< Npc instance, "hero"
+    std::string species; ///< animals: Npc.species (wolf, keiler ...), the hero in an animal's shape too
     bool animal = false;
 };
 
@@ -124,6 +125,11 @@ std::optional<Engine::Combatant> Engine::combatant(u32 id)
         c.yaw = m_movement.yaw();
         c.name = "hero";
         c.animal = m_transform.has_value();
+        if (const script::Instance* def =
+                m_transform && m_scripts ? m_scripts->findInstance("Npc", m_transform->npc) : nullptr)
+        {
+            c.species = std::string(def->fields["species"].asString());
+        }
         return c;
     }
     Creature* creature = this->creature(id);
@@ -139,8 +145,11 @@ std::optional<Engine::Combatant> Engine::combatant(u32 id)
     c.position = creature->position;
     c.yaw = creature->yaw;
     c.name = creature->species;
-    c.animal = m_scripts && m_scripts->findInstance("Npc", creature->species) != nullptr &&
-               !m_scripts->findInstance("Npc", creature->species)->fields["species"].asString().empty();
+    if (const script::Instance* def = m_scripts ? m_scripts->findInstance("Npc", creature->species) : nullptr)
+    {
+        c.species = std::string(def->fields["species"].asString());
+    }
+    c.animal = !c.species.empty();
     return c;
 }
 
@@ -159,6 +168,75 @@ void Engine::loadCombat()
         return;
     }
     m_combat = settings.value();
+    loadAnimalBodies();
+}
+
+void Engine::loadAnimalBodies()
+{
+    // data/creatures.lua: Creatures.<species>.body = { shape = "lying"|"upright", radius, length, offset }.
+    m_animalBodies.clear();
+    const script::Value creatures = m_scripts ? m_scripts->global("Creatures") : script::Value();
+    if (creatures.asTable() == nullptr)
+    {
+        return;
+    }
+    const auto field = [](const script::Table* t, std::string_view key) -> const script::Value*
+    {
+        if (t == nullptr)
+        {
+            return nullptr;
+        }
+        const auto it = t->fields.find(key);
+        return it != t->fields.end() ? &it->second : nullptr;
+    };
+    for (const auto& [species, def] : creatures.asTable()->fields)
+    {
+        const script::Value* body = field(def.asTable(), "body");
+        if (body == nullptr)
+        {
+            continue;
+        }
+        const script::Value* radius = field(body->asTable(), "radius");
+        const script::Value* length = field(body->asTable(), "length");
+        const script::Value* offset = field(body->asTable(), "offset");
+        const script::Value* shape = field(body->asTable(), "shape");
+        const script::Table* xyz = offset != nullptr ? offset->asTable() : nullptr;
+        if (radius == nullptr || !radius->isNumber() || length == nullptr || !length->isNumber() ||
+            xyz == nullptr || xyz->array.size() != 3)
+        {
+            G7_LOG_WARN("engine", "Creatures.{}.body: needs radius, length and offset {{x, y, z}}", species);
+            continue;
+        }
+        gameplay::BodyShape b;
+        b.radius = static_cast<f32>(radius->asNumber());
+        b.length = static_cast<f32>(length->asNumber());
+        b.offset =
+            Vec3(static_cast<f32>(xyz->array[0].asNumber()), static_cast<f32>(xyz->array[1].asNumber()),
+                 static_cast<f32>(xyz->array[2].asNumber()));
+        b.lying = shape == nullptr || shape->asString() != "upright";
+        m_animalBodies.insert_or_assign(species, b);
+    }
+}
+
+gameplay::SweepTarget Engine::bodyOf(const Combatant& c) const
+{
+    if (c.animal)
+    {
+        if (const auto it = m_animalBodies.find(c.species); it != m_animalBodies.end())
+        {
+            return gameplay::bodyTarget(c.id, it->second, c.position, gameplay::forwardOf(c.yaw));
+        }
+        return gameplay::uprightTarget(c.id, c.position, m_combat.animalHeight, m_combat.bodyRadius);
+    }
+    return gameplay::uprightTarget(c.id, c.position, m_combat.bodyHeight, m_combat.bodyRadius);
+}
+
+f32 Engine::reachDistance(const Combatant& from, const Combatant& to) const
+{
+    // To the nearest point of the target's body axis, as if it were a person (a person's radius for its own).
+    const gameplay::SweepTarget body = bodyOf(to);
+    return std::max(gameplay::groundDistanceToAxis(from.position, body) - body.radius + m_combat.bodyRadius,
+                    0.0f);
 }
 
 std::string Engine::meleeWeapon(const Combatant& c) const
@@ -511,8 +589,7 @@ void Engine::strike(Combatant& attacker, std::span<const u32> ids)
         std::vector<gameplay::SweepTarget> bodies;
         for (const Combatant& t : targets)
         {
-            bodies.push_back({t.id, t.position, t.animal ? m_combat.animalHeight : m_combat.bodyHeight,
-                              m_combat.bodyRadius});
+            bodies.push_back(bodyOf(t)); // animals: their body along their length
         }
         const f32 radius = meleeWeapon(attacker).empty() ? m_combat.fistRadius : m_combat.weaponRadius;
         const auto blocker = [this](const gameplay::Blade& from, f32 r,
@@ -564,7 +641,7 @@ void Engine::strike(Combatant& attacker, std::span<const u32> ids)
         {
             const Vec3 to = t.position - attacker.position;
             const f32 distance = glm::length(Vec2(to.x, to.z));
-            if (distance - 2.0f * m_combat.bodyRadius > reach)
+            if (reachDistance(attacker, t) - 2.0f * m_combat.bodyRadius > reach) // animals: to their body
             {
                 continue;
             }
@@ -866,19 +943,20 @@ void Engine::bindCombatFunctions()
             v.asString() == "hero" ? std::optional<u32>(kHeroId) : npcByInstance(v.asString());
         return id ? combatant(*id) : std::nullopt;
     };
-    vm.bind({"npc_distance", "npc_distance(npc: string, other: string) -> number",
-             "Abstand zweier Kämpfer auf dem Boden in Metern (`hero` für den Helden).", "Kampf",
-             [fighterOf](std::span<const Value> a) -> Result<Value>
+    vm.bind(
+        {"npc_distance", "npc_distance(npc: string, other: string) -> number",
+         "Abstand zweier Kämpfer auf dem Boden in Metern, Mitte zu Mitte; zu einem Tier bis zu seinem Körper "
+         "gerechnet, wie zwischen zwei Menschen (zum Vergleich mit `npc_reach`; `hero` für den Helden).",
+         "Kampf", [this, fighterOf](std::span<const Value> a) -> Result<Value>
+         {
+             auto x = a.size() >= 2 ? fighterOf(a[0]) : std::nullopt;
+             auto y = a.size() >= 2 ? fighterOf(a[1]) : std::nullopt;
+             if (!x || !y)
              {
-                 auto x = a.size() >= 2 ? fighterOf(a[0]) : std::nullopt;
-                 auto y = a.size() >= 2 ? fighterOf(a[1]) : std::nullopt;
-                 if (!x || !y)
-                 {
-                     return Error{"expects (npc, other) in the world (\"hero\" for the hero)"};
-                 }
-                 const Vec3 d = y->position - x->position;
-                 return Value(static_cast<f64>(glm::length(Vec2(d.x, d.z))));
-             }});
+                 return Error{"expects (npc, other) in the world (\"hero\" for the hero)"};
+             }
+             return Value(static_cast<f64>(reachDistance(*x, *y)));
+         }});
     vm.bind({"npc_face", "npc_face(npc: string, other: string)",
              "Dreht ein NPC sofort zu einem anderen bzw. zum Helden (Kampf).", "Kampf",
              [this, fighterOf](std::span<const Value> a) -> Result<Value>

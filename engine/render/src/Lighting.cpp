@@ -82,6 +82,63 @@ void LightList::selectFor(const AABB& bounds, std::vector<u32>& out) const
     }
 }
 
+void selectFrameLights(std::span<const PointLight> always, std::span<const PointLight> world,
+                       std::span<const PointLight> windows, const Vec3& eye, const Frustum& view,
+                       const LightBudget& budget, LightList& out)
+{
+    out.clear();
+    const u32 limit = std::min(budget.maxLights, LightList::kMaxPerFrame);
+    u32 count = 0;
+    for (const PointLight& l : always)
+    {
+        if (count == limit)
+        {
+            break;
+        }
+        out.add(l);
+        ++count;
+    }
+    struct Candidate
+    {
+        f32 distance; ///< from the eye to the light's reach
+        const PointLight* light;
+    };
+    std::vector<Candidate> candidates;
+    const auto consider = [&](std::span<const PointLight> lights, bool window)
+    {
+        for (const PointLight& l : lights)
+        {
+            if (l.intensity <= 0.0f || l.radius <= 0.0f)
+            {
+                continue;
+            }
+            const f32 centre = glm::length(l.position - eye);
+            if (window ? centre > budget.windowRadius : centre - l.radius > budget.distance)
+            {
+                continue;
+            }
+            if (!view.intersects(Sphere{l.position, l.radius}))
+            {
+                continue;
+            }
+            candidates.push_back({std::max(centre - l.radius, 0.0f), &l});
+        }
+    };
+    consider(world, false);
+    consider(windows, true);
+    std::stable_sort(candidates.begin(), candidates.end(),
+                     [](const Candidate& a, const Candidate& b) { return a.distance < b.distance; });
+    for (const Candidate& c : candidates)
+    {
+        if (count == limit)
+        {
+            break;
+        }
+        out.add(*c.light);
+        ++count;
+    }
+}
+
 f32 indoorAmount(const Vec3& point, std::span<const IndoorVolume> volumes, f32 edge) noexcept
 {
     f32 amount = 0.0f;

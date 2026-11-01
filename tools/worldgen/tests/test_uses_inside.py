@@ -817,3 +817,48 @@ def test_beds_the_chambers_have_no_room_for_go_to_the_room_with_the_door():
     beds = [v["name"] for v in p.vobs if "_BED_" in v["name"]]
     assert len(beds) == 4 and not [f for f in p.failed if f["what"] == "bed"]
     assert any("_INNEN_BED_" in n for n in beds) and any("_KAMMER_BED_" in n for n in beds)
+
+
+def test_in_leonberg_the_lights_keep_within_the_frame_budget():
+    """W7 phase 3: the engine takes 256 point lights a frame (world lights and daylight through
+    the windows together); Leonberg keeps well below, room lights and windows sparingly."""
+    import json
+
+    world_path = Path(__file__).resolve().parents[3] / "assets/source/worlds/leonberg"
+    world = json.loads((world_path / "leonberg.g7world").read_text(encoding="utf-8"))
+    lights = [v for v in world["vobs"] if v["type"] == "light"]
+    daylight = [v for v in lights if v.get("components", {}).get("light", {}).get("daylight")]
+    assert len(lights) - len(daylight) <= 160 and len(daylight) <= 100
+    assert len(lights) <= 256
+
+
+def test_in_leonberg_every_room_waypoint_lies_in_a_zone_of_its_room():
+    """Every enterable room on every storey (its waypoint ``WP_<room>``, a figure's height above
+    the floor) lies in an indoor zone of that room: rooms' ambient, the inner camera and the
+    engine's indoor view (E2) work upstairs as downstairs."""
+    import json
+
+    world_path = Path(__file__).resolve().parents[3] / "assets/source/worlds/leonberg"
+    world = json.loads((world_path / "leonberg.g7world").read_text(encoding="utf-8"))
+    zones = [z for z in world.get("zones", []) if z.get("type") == "indoor"]
+    values = {z["value"] for z in zones} - {
+        v for v in (z["value"] for z in zones) if v.endswith("_TREPPE")
+    }
+
+    def inside(p: tuple[float, float, float], z: dict) -> bool:
+        b = z["box"]
+        c, h, yaw = b["center"], b["halfExtents"], math.radians(b.get("yaw", 0.0))
+        dx, dy, dz = p[0] - c[0], p[1] - c[1], p[2] - c[2]
+        local = (
+            dx * math.cos(yaw) - dz * math.sin(yaw),
+            dy,
+            dx * math.sin(yaw) + dz * math.cos(yaw),
+        )
+        return all(abs(local[i]) <= h[i] + 1e-3 for i in range(3))
+
+    rooms = [p for p in world["waynet"]["points"] if p["name"][3:] in values]
+    assert len(rooms) > 60 and any("_OBEN" in p["name"] for p in rooms)
+    outside = [p["name"] for p in rooms
+               if not any(z["value"] == p["name"][3:] and inside(
+                   (p["pos"][0], p["pos"][1] + 1.0, p["pos"][2]), z) for z in zones)]  # fmt: skip
+    assert outside == []

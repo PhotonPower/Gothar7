@@ -630,9 +630,23 @@ Result<void> Engine::initSceneRendering()
     m_shadowDebug = m_config.settings.get<bool>("render.shadow_debug", false);
     m_cullSettings.viewDistance = static_cast<f32>(m_config.settings.get<f64>("render.view_distance", 400.0));
     m_cullSettings.sizeCull = static_cast<f32>(m_config.settings.get<f64>("render.size_cull", 0.005));
+    // Indoors: nothing beyond this (m) is drawn or casts a shadow (render.md "Innenräume"); 0 = off.
+    m_indoorViewDistance = static_cast<f32>(m_config.settings.get<f64>("render.indoor_view_distance", 30.0));
+    m_indoorShadowDistance =
+        static_cast<f32>(m_config.settings.get<f64>("render.indoor_shadow_distance", 12.0));
     m_lodSettings.lod1Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod1_distance", 60.0));
     m_lodSettings.lod2Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod2_distance", 150.0));
     m_lodSettings.hysteresis = static_cast<f32>(m_config.settings.get<f64>("render.lod_hysteresis", 0.1));
+    // Lights per frame (render.md "Lichter je Bild"): effects first, then the nearest visible up to
+    // max_lights.
+    m_lightBudget.maxLights = static_cast<u32>(std::clamp<i64>(
+        m_config.settings.get<i64>("render.max_lights", 128), 1, render::LightList::kMaxPerFrame));
+    m_lightBudget.distance = static_cast<f32>(m_config.settings.get<f64>("render.light_distance", 120.0));
+    m_lightBudget.windowRadius =
+        static_cast<f32>(m_config.settings.get<f64>("render.window_light_radius", 25.0));
+    m_figureCull.distance = static_cast<f32>(m_config.settings.get<f64>("render.figure_distance", 150.0));
+    m_figureCull.shadowDistance =
+        static_cast<f32>(m_config.settings.get<f64>("render.figure_shadow_distance", 40.0));
     m_lodSettings.forced = m_config.forcedLod;
     // multi_draw: "auto" (default) batches except on Intel GPUs - there the GPU is the limit and the
     // batches measured ~10 % slower (render.md); true/false or "on"/"off" force it.
@@ -972,7 +986,8 @@ Result<void> Engine::initViewMesh()
     const Vec3 torchOffset = Vec3(0.6f, 0.8f, 0.6f) * radius;
     // The falloff is in metres (1 / (d² + 1)); scale the intensity so the torch lights any model size.
     const f32 torchIntensity = 2.0f * (glm::dot(torchOffset, torchOffset) + 1.0f);
-    m_lights.add({bounds.center() + torchOffset, radius * 2.5f, Vec3(1.0f, 0.62f, 0.3f), torchIntensity});
+    m_lights.push_back(
+        {bounds.center() + torchOffset, radius * 2.5f, Vec3(1.0f, 0.62f, 0.3f), torchIntensity});
     m_camera.transform.position = bounds.center() + glm::normalize(Vec3(0.6f, 0.4f, 1.0f)) * radius * 2.5f;
     m_camera.transform.rotation = lookRotation(bounds.center() - m_camera.transform.position);
     m_flyCamera.speed = std::max(radius, 1.0f);
@@ -1127,7 +1142,7 @@ Result<void> Engine::instantiateScene()
             }
             else
             {
-                m_lights.add(point);
+                m_lights.push_back(point);
             }
         });
     return {};
@@ -1290,7 +1305,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     m_worldFile.vobs.clear(); // the scene holds them; captured again when the world is left
     m_sceneName = m_worldFile.name.empty() ? path : m_worldFile.name;
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
-                m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.lights().size(),
+                m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.size(),
                 timer.elapsedSeconds() * 1000.0);
     if (m_scripts)
     {
@@ -1682,6 +1697,21 @@ void Engine::renderScene(u32 width, u32 height)
 void Engine::drawScene(u32 width, u32 height)
 {
     m_meshRenderer.beginFrame();
+    // Indoors (the camera in a room, world.md "Zonen") the world outside shows only through windows and the
+    // door: nothing beyond indoor_view_distance (render.md "Innenräume"), and the sun's shadows (through the
+    // windows) only from casters within indoor_shadow_distance.
+    m_frameCull = m_cullSettings;
+    m_frameShadowCull = m_cullSettings;
+    const bool inside = m_indoorViewDistance > 0.0f &&
+                        render::indoorAmount(m_camera.transform.position, m_environment.indoor, 0.0f) > 0.5f;
+    const auto limited = [](f32 distance, f32 limit)
+    { return distance > 0.0f ? std::min(distance, limit) : limit; };
+    if (inside)
+    {
+        m_frameCull.viewDistance = limited(m_frameCull.viewDistance, m_indoorViewDistance);
+        m_frameShadowCull.viewDistance =
+            limited(m_frameCull.viewDistance, std::max(m_indoorShadowDistance, 0.1f));
+    }
     if (m_cullGridDirty)
     {
         std::vector<AABB> bounds;
@@ -1705,9 +1735,11 @@ void Engine::drawScene(u32 width, u32 height)
             m_cascadesDrawn.assign(m_cascades.size(), render::Cascade{});
         }
         m_shadowMap.begin(*m_device);
+        m_terrain.setMaxDistance(inside ? m_frameShadowCull.viewDistance : 0.0f);
         for (u32 i = 0; i < m_cascades.size(); ++i)
         {
-            if (!shadowRedraw(i))
+            // Indoors a cascade that starts beyond the view distance shades nothing drawn: left as it is.
+            if (!shadowRedraw(i) || (inside && m_cascades[i].splitNear > m_frameShadowCull.viewDistance))
             {
                 m_cascades[i] = m_cascadesDrawn[i]; // shade with what the tile holds
                 continue;
@@ -1725,7 +1757,7 @@ void Engine::drawScene(u32 width, u32 height)
                 const SceneInstance& instance = m_instances[index];
                 if (instance.model != m_groundModel.get() && instance.solid &&
                     volume.intersects(instance.bounds) &&
-                    render::cullByDistance(instance.bounds, m_camera.transform.position, m_cullSettings,
+                    render::cullByDistance(instance.bounds, m_camera.transform.position, m_frameShadowCull,
                                            instance.sizeCullable) == render::CullResult::Kept)
                 {
                     if (m_multiDraw)
@@ -1776,24 +1808,19 @@ void Engine::drawScene(u32 width, u32 height)
 
     // Main pass: terrain (culled and detailed per chunk), then the instances inside the view frustum.
     // The world's lights, daylight through windows and the effects' lights (fire, magic; M12).
-    m_frameLights = m_lights;
-    for (const render::PointLight& l : daylightLights())
-    {
-        m_frameLights.add(l);
-    }
+    // Not all of them: the effects (the torch too) always, then the nearest visible ones up to the budget.
     {
         std::vector<render::PointLight> effectLights;
         m_particles.lights(effectLights);
-        for (const render::PointLight& l : effectLights)
-        {
-            m_frameLights.add(l);
-        }
+        render::selectFrameLights(effectLights, m_lights, daylightLights(), m_camera.transform.position,
+                                  m_camera.frustum(), m_lightBudget, m_frameLights);
     }
     m_meshRenderer.setLighting(*m_device, m_environment, m_frameLights,
                                shadowFrame.map ? &shadowFrame : nullptr);
     if (m_hasTerrain)
     {
         m_meshRenderer.bindLighting(*m_device);
+        m_terrain.setMaxDistance(inside ? m_frameCull.viewDistance : 0.0f);
         m_terrain.draw(*m_device, m_camera, &m_frameLights);
     }
     const Frustum view = m_camera.frustum();
@@ -1802,13 +1829,13 @@ void Engine::drawScene(u32 width, u32 height)
     m_culledFar = 0;
     m_culledSmall = 0;
     m_cullCandidates.clear();
-    m_cullGrid.query(view, m_camera.transform.position, m_cullSettings.viewDistance, m_cullCandidates);
+    m_cullGrid.query(view, m_camera.transform.position, m_frameCull.viewDistance, m_cullCandidates);
     m_drawItems.clear();
     for (const u32 index : m_cullCandidates)
     {
         SceneInstance& instance = m_instances[index];
         const render::CullResult cull = render::cullByDistance(instance.bounds, m_camera.transform.position,
-                                                               m_cullSettings, instance.sizeCullable);
+                                                               m_frameCull, instance.sizeCullable);
         m_culledFar += cull == render::CullResult::TooFar ? 1 : 0;
         m_culledSmall += cull == render::CullResult::TooSmall ? 1 : 0;
         if (cull == render::CullResult::Kept && view.intersects(instance.bounds))
@@ -1870,11 +1897,12 @@ void Engine::updateBenchmark(f64 realSeconds)
                 G7_LOG_INFO(
                     "engine",
                     "benchmark viewpoint {}: {}; {} draws, {} buffer binds, {} pipeline changes, {}k tris; "
-                    "main pass: {} batches ({} submeshes), {} single draws, {} terrain chunks; LOD {}/{}/{}",
+                    "main pass: {} batches ({} submeshes, {} commands), {} single draws, {} terrain chunks; "
+                    "LOD {}/{}/{}",
                     v, s.toString(), stats.drawCalls, stats.bufferBinds, stats.pipelineChanges,
-                    stats.triangles / 1000, batch.groups, batch.batchedDraws, batch.singleDraws,
-                    m_benchmarkTerrainChunks[v], m_benchmarkLods[v][0], m_benchmarkLods[v][1],
-                    m_benchmarkLods[v][2]);
+                    stats.triangles / 1000, batch.groups, batch.batchedDraws, batch.commands,
+                    batch.singleDraws, m_benchmarkTerrainChunks[v], m_benchmarkLods[v][0],
+                    m_benchmarkLods[v][1], m_benchmarkLods[v][2]);
             }
             const auto [worstAverage, worstP99] = std::accumulate(
                 m_benchmarkResults.begin(), m_benchmarkResults.end(), std::pair{0.0, 0.0},
@@ -2089,7 +2117,7 @@ void Engine::addDebugOverlay(u32 width, u32 height)
             }
         }
     }
-    for (const render::PointLight& light : m_lights.lights())
+    for (const render::PointLight& light : m_lights)
     {
         const render::DebugStyle style{Vec4(1.0f, 0.55f, 0.2f, 0.8f)};
         m_debugDraw.cross(light.position, std::min(size * 0.05f, 0.5f), style);

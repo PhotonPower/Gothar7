@@ -394,7 +394,8 @@ std::vector<ItemTab> itemTabs(const Layout&);                                   
   Einträge als scrollender Text (`TextView`: Hoch/Runter, Rad). Daten aus `Story` (`diaryData`, seit Teil G).
 - **Karte** (Taste `map`, M; F9): nur mit einem Karten-Item – ein Item der Kategorie `document` mit dem Feld
   `map = "ui/maps/<name>.png"`; Benutzen oder M zeigt sein Bild auf Pergament, eingepasst, ohne Spielerposition.
-  Ohne Karte meldet M „Ich habe keine Karte.“. Das Stadtplan-Item für Leonberg liefert welt; bis dahin
+  Ohne Karte meldet M „Ich habe keine Karte.“. Stadtplan: `it_map_leonberg` (50 Gulden, verkauft Agnes vom
+  Krämerladen) zeigt welts `ui/maps/leonberg.png` (2048 × 1446, Ausschnitt in `ui/maps/leonberg.toml`); dazu
   `ui/maps/placeholder.png` (eigene Arbeit, nur für Tests und Konsole: `map_open(image, title?)`).
 - Die drei Tasten schließen ihren Bildschirm wieder, Zurück ebenso. Lua für Konsole und Tests: `status_open(open?)`,
   `map_open(image, title?)`, `diary_open(open?)` (seit M10).
@@ -699,8 +700,8 @@ einstellbar.
   Allgemeines, Einträge mit Umbruch und Scrollen (ersetzt `DiaryPanel`). **Karte** (`map`, M, F9): nur, wenn der
   Held ein Karten-Item besitzt; das Item nennt ein Bild (Lua-Feld `map = "ui/maps/<name>.png"`). Für Leonberg
   erzeugt welt einen Stadtplan aus den OSM-Daten (Auftrag über den Koordinator; Nennung
-  „© OpenStreetMap-Mitwirkende“ in `assets/LICENSES.md`); **ohne Spielerposition**, wie Gothic 1. Bis dahin ein
-  Testbild im Testlager.
+  „© OpenStreetMap-Mitwirkende“ in `assets/LICENSES.md`, steht auf dem Bild); **ohne Spielerposition**, wie Gothic 1.
+  Umgesetzt: welt #328 (`gothar-worldgen citymap`), Item `it_map_leonberg` bei Agnes vom Krämerladen.
 - **Tests:** Modell → Zeilen (Talente nach `kTalents`, Reiter des Tagebuchs, Scrollen langer Einträge);
   Runtime-Test öffnet beide Bildschirme im Testlager.
 - **DoD:** Charakter und Tagebuch im Testlager vollständig bedienbar; die Karte, sobald ein Karten-Item existiert.

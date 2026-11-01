@@ -44,6 +44,19 @@ struct LodSettings
 [[nodiscard]] CullResult cullByDistance(const AABB& bounds, const Vec3& eye, const CullSettings& settings,
                                         bool sizeCullable) noexcept;
 
+/// Animated figures (people, animals): drawn only near and in view (render.md "Figuren"), shadows only
+/// nearer.
+struct FigureCull
+{
+    f32 distance = 150.0f;      ///< m from the camera to the nearest point of the figure's box
+    f32 shadowDistance = 40.0f; ///< m: farther figures cast no shadow
+};
+
+/// A figure's box `box` is drawn: it intersects `volume` (view frustum or a cascade's light volume) and its
+/// nearest point is within `distance` of `eye`.
+[[nodiscard]] bool figureInView(const AABB& box, const Vec3& eye, const Frustum& volume,
+                                f32 distance) noexcept;
+
 /// Objects sorted into square cells over x/z, so a frustum test visits cells first and only the
 /// objects of cells it reaches. Cell bounds grow to whatever their objects cover (an object belongs
 /// to the cell of its centre), so large objects are never missed.

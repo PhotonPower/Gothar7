@@ -19,7 +19,7 @@ import numpy as np
 from gothar_chargen.clipspeed import FPS, duration, global_matrices
 from gothar_chargen.gltf import Gltf
 
-ZONE_LOW = 0.6  # m above the ground
+ZONE_LOW = 0.3  # m above the ground (wolf backs: 0.8 m, engine2 2026-11-01)
 ZONE_HIGH = 1.8
 ZONE_FRONT = 0.5  # m in front of the figure's position
 SAMPLES = 11  # points along the blade (grip .. tip)

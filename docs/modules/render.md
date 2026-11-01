@@ -225,6 +225,13 @@ struct GpuLighting; GpuLighting packLighting(const Environment&, const LightList
   Gleichstand Einfügereihenfolge. Alle Lichter des Frames (≤ 256, darüber Warnung) liegen in einem UBO, pro Draw
   gehen nur die Indizes mit. Clustered Forward erst, wenn > 32 Lichter gleichzeitig sichtbar sind oder große
   Gelände-Meshes (M4) es verlangen.
+- **Lichter je Bild** (`selectFrameLights`, `LightBudget`; engine.toml `[render] max_lights` 128, `light_distance`
+  120 m, `window_light_radius` 25 m): Effektlichter (Feuer, Magie, die Fackel) kommen immer zuerst; dann von den
+  Lichtern der Welt und den Fensterlichtern die, deren Kugel im Sichtkegel liegt, die nächsten (Abstand zur
+  Reichweite) zuerst, bis `max_lights`. Weltlichter nur, wenn ihre Reichweite näher als `light_distance` kommt,
+  Fensterlichter nur bis `window_light_radius`. Leonberg (220 Weltlichter, 151 Fensterlichter) blieb vorher jedes
+  Bild über 256 (Warnung, Fensterlichter und Fackel fielen weg); jetzt ≤ 128, die Fackel immer dabei.
+  `Engine::frameLights()`.
 - **Lichtmodell (stilisiert):** Hemisphären-Ambient (Himmel/Boden nach Normalen-Y gemischt) + Lambert-Sonne +
   Punktlichter mit Abfall `saturate(1 − (d/r)⁴)² / (d² + 1)` (Meter; genau 0 am Radius). Keine Glanzlichter.
 - **Räume** (Zonen `indoor`, world.md „Zonen“): Das Ambient wird je Fläche in Räumen mit `[indoor] ambient`
@@ -365,6 +372,19 @@ void beginFrame();  BatchStats lastBatch();  shared_ptr<const MaterialDefaults> 
   liegen in einem SSBO (`common/draws.glsl`); jeder Draw trägt seinen Index als `baseInstance`, ein Instanz-Attribut
   (Divisor 1) liefert ihn dem Shader – **kein `gl_DrawID`/`ARB_shader_draw_parameters` nötig** (GL 4.3-Kern, auch
   Mesa llvmpipe in der CI). Durchsichtige Submeshes und Meshes außerhalb einer Arena: einzeln, danach.
+- **Instanzen (Phase 3, E3):** Die Draws eines Passes werden nach Modell und LOD geordnet, so liegen die Datensätze
+  gleicher Modelle hintereinander; dasselbe Submesh aufeinanderfolgender Datensätze wird **ein** Befehl mit
+  `instanceCount` > 1 (das Instanz-Attribut zählt ab `baseInstance` weiter). `BatchStats::commands` zählt die
+  Befehle. Leonberg: 3448 Submeshes → 2113 Befehle (Markt), die Häuser sind meist Einzelstücke.
+- **Figuren (Phase 3, E3):** Animierte Figuren (Menschen, Tiere) kommen nur in einen Pass, wenn ihre Box (3 × 3 m
+  breit, 3 m hoch) im Sichtkegel bzw. im Lichtvolumen der Kaskade liegt und nah genug ist: `[render] figure_distance`
+  150 m, Schatten `figure_shadow_distance` 40 m (`render::FigureCull`, `figureInView`). Vorher kam jede Figur der Welt
+  in jeden Pass: in Leonberg etwa 1440 von 1900 Draw-Calls je Bild (vier Kaskaden und Hauptpass je ~360).
+- **Innenräume (Phase 3, E2):** Steht die Kamera in einer Innenzone (`indoorAmount` > 0,5, world.md „Zonen“), zeichnet
+  das Bild nur, was näher als `[render] indoor_view_distance` (30 m) liegt – Modelle, Gelände-Kacheln und Figuren;
+  durch Fenster und Tür sieht man die Nähe. Sonnenschatten (durch die Fenster) werfen dann nur Dinge bis
+  `indoor_shadow_distance` (12 m), Kaskaden, die weiter beginnen, ruhen. Ein echtes Portal (nur durch Öffnungen)
+  bleibt offen. Leonberg: Stube der Krummen Gans 2,6 Mio. → 0,26 Mio. Dreiecke, 1917 → 184 Draws (mit E3).
 - Gleiche Werte in verschiedenen Modellen bündeln, weil alle `MaterialSet`s die neutralen Texturen des Renderers teilen
   (`MaterialSet::create(…, defaults())`), und Texturen aus Dateien über den Textur-Cache dieselben Objekte sind:
   Modelle auf demselben Trim-Sheet bündeln miteinander.

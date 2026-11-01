@@ -193,3 +193,14 @@ def test_props_budget_and_collision(kind):
     else:  # standing on the floor, against the wall at -Z
         assert lo[1] == pytest.approx(0.0) and m.main.collision
         assert lo[2] >= -0.5  # no deeper than half a metre behind the origin
+
+
+def test_the_many_props_of_the_lanes_have_a_coarse_level():
+    """W7 phase 3: props that stand by the hundreds have a _lod1 node; the woodpile is light."""
+    from gothar_worldgen import mobs
+
+    for make in (mobs.crate, mobs.crate_stack, mobs.bucket, mobs.basket, mobs.cart,
+                 mobs.woodpile, mobs.barrel, mobs.barrel_stack, mobs.sacks):  # fmt: skip
+        model = make()
+        assert model.lods and model.lods[0].triangles() * 3 <= model.triangles(), model.name
+    assert mobs.woodpile().triangles() <= 400

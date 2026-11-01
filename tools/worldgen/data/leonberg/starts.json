@@ -101,6 +101,13 @@
         -7.9,
         29.6
       ]
+    },
+    {
+      "name": "START_LEO_UNTERES_TOR",
+      "x": -99.4,
+      "z": -150.0,
+      "yawDeg": -146.5,
+      "note": "innen am Unteren Tor, Blick in die Stadt: Ankunft in Leonberg (Kapitel 2, Weltwechsel vom Testlager; Koordinator 2026-11-01)"
     }
   ]
 }
