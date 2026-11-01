@@ -103,6 +103,12 @@ def test_directional_swings_cross_the_front(paths, mode):
 ANIMAL_LOW, ANIMAL_HIGH = 0.5, 1.0  # animals are capsules up to 1.0 m (engine animal_height)
 
 
+def _animal_points(path, markers) -> int:
+    p = path.points[markers["hit_start"] : markers["hit_end"] + 1].reshape(-1, 3)
+    low = (p[:, 2] >= ZONE_FRONT) & (p[:, 1] >= ANIMAL_LOW) & (p[:, 1] <= ANIMAL_HIGH)
+    return int(low.sum())
+
+
 @pytest.mark.parametrize(
     ("mode", "name", "markers"),
     [s for s in STRIKES if s[0] != "fist"],
@@ -111,6 +117,15 @@ ANIMAL_LOW, ANIMAL_HIGH = 0.5, 1.0  # animals are capsules up to 1.0 m (engine a
 def test_weapon_strikes_reach_animals(paths, mode, name, markers):
     """Every weapon strike passes the space in front of the body at animal height within its
     window (wolves, boars: capsules up to 1.0 m; engine2 2026-11-01)."""
-    p = paths[mode][name].points[markers["hit_start"] : markers["hit_end"] + 1].reshape(-1, 3)
-    low = (p[:, 2] >= ZONE_FRONT) & (p[:, 1] >= ANIMAL_LOW) & (p[:, 1] <= ANIMAL_HIGH)
-    assert low.sum() >= 5, name
+    assert _animal_points(paths[mode][name], markers) >= 5, name
+
+
+def test_fists_reach_animals(paths):
+    """Fists: at least one combo hit is a low blow at animal height (owner 2026-11-01: the low
+    cross, combo 2), so an unarmed hero can fight a wolf with two hits."""
+    low = {
+        name
+        for mode, name, m in STRIKES
+        if mode == "fist" and _animal_points(paths[mode][name], m) >= 5
+    }
+    assert "fist/t_attack_combo2" in low
