@@ -1679,6 +1679,7 @@ private:
     render::Environment m_environment;
     std::vector<render::PointLight> m_lights; // the world's (light vobs, the scene's torch)
     render::LightBudget m_lightBudget;        // [render] max_lights, light_distance, window_light_radius
+    render::FigureCull m_figureCull;          // [render] figure_distance, figure_shadow_distance
     render::LightList
         m_frameLights; // this frame's: effects first, then the nearest visible (selectFrameLights)
     std::vector<render::PointLight>

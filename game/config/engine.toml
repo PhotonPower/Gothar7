@@ -75,6 +75,10 @@ shadow_debug = false
 max_lights = 128
 light_distance = 120.0
 window_light_radius = 25.0
+# Figuren (Menschen, Tiere) nur in Sicht und bis figure_distance Meter zeichnen, Schatten nur bis
+# figure_shadow_distance (render.md „Figuren“); vorher kam jede Figur der Welt in jeden Pass.
+figure_distance = 150.0
+figure_shadow_distance = 40.0
 # Tonemapping des HDR-Bildes: "aces" (filmisch, Standard), "reinhard" (neutral), "none" (abschneiden).
 tonemap = "aces"
 exposure = 1.0

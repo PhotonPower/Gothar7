@@ -640,6 +640,9 @@ Result<void> Engine::initSceneRendering()
     m_lightBudget.distance = static_cast<f32>(m_config.settings.get<f64>("render.light_distance", 120.0));
     m_lightBudget.windowRadius =
         static_cast<f32>(m_config.settings.get<f64>("render.window_light_radius", 25.0));
+    m_figureCull.distance = static_cast<f32>(m_config.settings.get<f64>("render.figure_distance", 150.0));
+    m_figureCull.shadowDistance =
+        static_cast<f32>(m_config.settings.get<f64>("render.figure_shadow_distance", 40.0));
     m_lodSettings.forced = m_config.forcedLod;
     // multi_draw: "auto" (default) batches except on Intel GPUs - there the GPU is the limit and the
     // batches measured ~10 % slower (render.md); true/false or "on"/"off" force it.
@@ -1872,11 +1875,12 @@ void Engine::updateBenchmark(f64 realSeconds)
                 G7_LOG_INFO(
                     "engine",
                     "benchmark viewpoint {}: {}; {} draws, {} buffer binds, {} pipeline changes, {}k tris; "
-                    "main pass: {} batches ({} submeshes), {} single draws, {} terrain chunks; LOD {}/{}/{}",
+                    "main pass: {} batches ({} submeshes, {} commands), {} single draws, {} terrain chunks; "
+                    "LOD {}/{}/{}",
                     v, s.toString(), stats.drawCalls, stats.bufferBinds, stats.pipelineChanges,
-                    stats.triangles / 1000, batch.groups, batch.batchedDraws, batch.singleDraws,
-                    m_benchmarkTerrainChunks[v], m_benchmarkLods[v][0], m_benchmarkLods[v][1],
-                    m_benchmarkLods[v][2]);
+                    stats.triangles / 1000, batch.groups, batch.batchedDraws, batch.commands,
+                    batch.singleDraws, m_benchmarkTerrainChunks[v], m_benchmarkLods[v][0],
+                    m_benchmarkLods[v][1], m_benchmarkLods[v][2]);
             }
             const auto [worstAverage, worstP99] = std::accumulate(
                 m_benchmarkResults.begin(), m_benchmarkResults.end(), std::pair{0.0, 0.0},
