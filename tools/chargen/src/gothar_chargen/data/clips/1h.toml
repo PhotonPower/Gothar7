@@ -110,13 +110,23 @@ helper = true
 base = "1h/t_combo1_src"
 keys = [[0, "rest"], [22, "rest"], [31, "low"], [35, "low"], [43, "rest"]]
 [clip.params.poses.low]
-rotate = { spine_02 = [["X", 15]], upperarm_r = [["X", 15]], hand_r = [["X", 7], ["Y", 13], ["Z", -9]] }
+rotate = { spine_02 = [["X", 20]], upperarm_r = [["X", 15]], hand_r = [["X", 12], ["Y", 14], ["Z", -23]] }
 
 [[clip]]
 name = "1h/t_combo2_src"
 concat = ["ual2:Sword_Regular_B", "ual2:Sword_Regular_B_Rec"]
 helper = true
 
+
+[[clip]]
+name = "1h/t_combo2_low"         # the slash bent down to wolf height (animals' bodies, sweep M11)
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "1h/t_combo2_src"
+keys = [[0, "rest"], [4, "rest"], [7, "low"], [10, "low"], [16, "rest"], [48, "rest"]]
+[clip.params.poses.low]
+rotate = { spine_02 = [["X", 12]], hand_r = [["X", 10], ["Y", -13], ["Z", 8]] }
 
 [[clip]]
 name = "1h/t_combo4_src"
@@ -138,7 +148,7 @@ params = { base = "1h/t_combo1_low", stance = "1h/s_idle", fade_in = 3, fade_out
 name = "1h/t_attack_combo2"
 keyframe = "framed"
 markers = { hit_start = 6, hit_end = 9, combo_start = 9, combo_end = 38, "sound:swing" = 2 }
-params = { base = "1h/t_combo2_src", stance = "1h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head"] }
+params = { base = "1h/t_combo2_low", stance = "1h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head"] }
 
 # Own swings: key poses over the upright none/s_idle (hanging arms: the world axes act as written),
 # framed into the 1h stance at start and end.
@@ -153,8 +163,8 @@ keys = [[0, "rest"], [8, "draw_back"], [13, "thrust"], [17, "thrust"], [30, "res
 rotate = { upperarm_r = [["X", 25]], lowerarm_r = [["X", -95]], hand_r = [["X", 70], ["Z", 90], ["X", 75], ["Z", 90]], spine_02 = [["Z", -15]], spine_01 = [["Z", -8]] }
 move = { pelvis = [0, 0.04, -0.03] }
 [clip.params.poses.thrust]
-rotate = { upperarm_r = [["X", -80], ["Z", 8]], lowerarm_r = [["X", -10]], hand_r = [["X", 80], ["Z", 90], ["X", 75], ["Z", 90]], spine_02 = [["Z", 18], ["X", 6]], spine_01 = [["Z", 8]], upperarm_l = [["X", 25]] }
-move = { pelvis = [0, -0.14, -0.05], root = [0, -0.15, 0] }  # small lunge: reach 1.5 m
+rotate = { upperarm_r = [["X", -80], ["Z", 8]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 18], ["X", 22]], spine_01 = [["Z", 8]], upperarm_l = [["X", 25]], hand_r = [["X", 5], ["Y", 2], ["Z", -125]] }
+move = { pelvis = [0, -0.14, -0.05], root = [0, -0.3, 0] }  # lunge: reach 1.5 m, low thrust
 
 [[clip]]
 name = "1h/t_swing_l"
@@ -167,11 +177,11 @@ keys = [[0, "rest"], [8, "wind"], [13, "cut"], [17, "through"], [30, "rest"]]
 rotate = { upperarm_r = [["X", -80], ["Z", -60]], lowerarm_r = [["X", -30]], spine_02 = [["Z", -25]], spine_01 = [["Z", -10]], hand_r = [["X", -29], ["Y", 156], ["Z", -65]] }
 move = { root = [0, -0.12, 0] }  # lunge (reach of the AI's fighting distance)
 [clip.params.poses.cut]
-rotate = { upperarm_r = [["X", -85], ["Z", 5]], lowerarm_r = [["X", -5]], spine_02 = [["Z", 5]], spine_01 = [["Z", 2]], hand_r = [["X", 144], ["Y", -6], ["Z", 58]] }
-move = { pelvis = [0, -0.05, -0.02], root = [0, -0.6, 0] }
+rotate = { upperarm_r = [["X", -85], ["Z", 5]], lowerarm_r = [["X", -5]], spine_02 = [["Z", 5], ["X", 15]], spine_01 = [["Z", 2]], hand_r = [["X", 146], ["Y", -11], ["Z", 60]] }
+move = { pelvis = [0, -0.05, -0.02], root = [0, -0.65, 0] }
 [clip.params.poses.through]
-rotate = { upperarm_r = [["X", -75], ["Z", 65]], lowerarm_r = [["X", -40]], spine_02 = [["Z", 25]], spine_01 = [["Z", 10]], hand_r = [["X", 135], ["Y", -52], ["Z", 66]] }
-move = { pelvis = [0, -0.04, -0.02], root = [0, -0.6, 0] }
+rotate = { upperarm_r = [["X", -75], ["Z", 65]], lowerarm_r = [["X", -40]], spine_02 = [["Z", 25], ["X", 15]], spine_01 = [["Z", 10]], hand_r = [["X", -21], ["Y", -107], ["Z", -134]] }
+move = { pelvis = [0, -0.04, -0.02], root = [0, -0.65, 0] }
 
 [[clip]]
 name = "1h/t_swing_r"
@@ -184,11 +194,11 @@ keys = [[0, "rest"], [8, "wind"], [13, "cut"], [17, "through"], [30, "rest"]]
 rotate = { upperarm_r = [["X", -75], ["Z", 60]], lowerarm_r = [["X", -70]], spine_02 = [["Z", 25]], spine_01 = [["Z", 10]], hand_r = [["X", 89], ["Y", 26], ["Z", -74]] }
 move = { root = [0, -0.12, 0] }  # lunge (reach of the AI's fighting distance)
 [clip.params.poses.cut]
-rotate = { upperarm_r = [["X", -85], ["Z", -5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", -5]], spine_01 = [["Z", -2]], hand_r = [["X", 35], ["Y", 29], ["Z", -144]] }
-move = { pelvis = [0, -0.05, -0.02], root = [0, -0.6, 0] }
+rotate = { upperarm_r = [["X", -85], ["Z", -5]], lowerarm_r = [["X", -10]], spine_02 = [["Z", -5], ["X", 15]], spine_01 = [["Z", -2]], hand_r = [["X", 34], ["Y", 30], ["Z", -144]] }
+move = { pelvis = [0, -0.05, -0.02], root = [0, -0.65, 0] }
 [clip.params.poses.through]
-rotate = { upperarm_r = [["X", -70], ["Z", -60]], lowerarm_r = [["X", -15]], spine_02 = [["Z", -25]], spine_01 = [["Z", -10]], hand_r = [["X", 35], ["Y", 19], ["Z", -142]] }
-move = { pelvis = [0, -0.04, -0.02], root = [0, -0.6, 0] }
+rotate = { upperarm_r = [["X", -70], ["Z", -60]], lowerarm_r = [["X", -15]], spine_02 = [["Z", -25], ["X", 15]], spine_01 = [["Z", -10]], hand_r = [["X", 44], ["Y", 20], ["Z", -155]] }
+move = { pelvis = [0, -0.04, -0.02], root = [0, -0.65, 0] }
 
 [[clip]]
 name = "1h/t_attack_combo3"       # thrust (own keyframes; UAL2 Sword_Regular_C is a spinning leap)

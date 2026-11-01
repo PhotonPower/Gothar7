@@ -58,6 +58,11 @@ shadow_far_cadence = true
 # Größe. 0 schaltet die jeweilige Prüfung ab. Leonberg-Kern von oben: gleiches Bild, 4,2 → 2,9 ms (RTX 3080).
 view_distance = 400.0
 size_cull = 0.005
+# Drinnen (Kamera in einer Innenzone, world.md „Zonen“): weiter als indoor_view_distance Meter wird nichts gezeichnet
+# und wirft keinen Schatten; durch Fenster und Tür sieht man dann nur die Nähe (render.md „Innenräume“). 0 = aus.
+indoor_view_distance = 30.0
+# Drinnen werfen nur Dinge bis indoor_shadow_distance Meter Sonnenschatten (durch die Fenster); fernere Kaskaden ruhen.
+indoor_shadow_distance = 12.0
 # Detailstufen statischer Modelle (asset.md „Detailstufen (LOD) statischer Modelle“): Modelle mit Knoten <name>_lod1 /
 # _lod2 zeigen diese ab der Entfernung (Kamera bis Mitte der Bounds); der Wechsel zurück erst lod_hysteresis
 # (Anteil) unter bzw. über der Schwelle, gegen Flackern. --lod=0|1|2 erzwingt eine Stufe (Prüfbilder).
@@ -69,6 +74,16 @@ lod_hysteresis = 0.1
 multi_draw = "auto"
 # Kaskaden einfärben (rot, grün, blau, gelb) zum Einstellen.
 shadow_debug = false
+# Punktlichter je Bild (render.md „Lichter je Bild“): Effektlichter (Feuer, Magie, Fackel) immer, dann die nächsten
+# sichtbaren Lichter der Welt bis max_lights (der Shader fasst 256). Weltlichter, deren Reichweite weiter als
+# light_distance Meter entfernt ist, und Fensterlichter weiter als window_light_radius fallen weg.
+max_lights = 128
+light_distance = 120.0
+window_light_radius = 25.0
+# Figuren (Menschen, Tiere) nur in Sicht und bis figure_distance Meter zeichnen, Schatten nur bis
+# figure_shadow_distance (render.md „Figuren“); vorher kam jede Figur der Welt in jeden Pass.
+figure_distance = 150.0
+figure_shadow_distance = 40.0
 # Tonemapping des HDR-Bildes: "aces" (filmisch, Standard), "reinhard" (neutral), "none" (abschneiden).
 tonemap = "aces"
 exposure = 1.0

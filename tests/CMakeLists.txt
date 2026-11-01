@@ -23,7 +23,10 @@ set(_g7_runtime_groups
     "magic|*test_engine_magic.cpp"
     "npc_mobs|*test_engine_npc_mobs.cpp"
     "leonberg|*test_engine_leonberg.cpp"
+    "leonberg_doors|*test_engine_leonberg_doors.cpp"
+    "leonberg_parish|*test_engine_leonberg_parish.cpp"
     "leonberg_residents|*test_engine_leonberg_residents.cpp"
+    "leonberg_night|*test_engine_leonberg_residents_night.cpp"
     "leonberg_save|*test_engine_leonberg_save.cpp"
     "ui|*test_engine_ui.cpp,*test_engine_save_slots.cpp"
     "slice|*test_engine_vertical_slice.cpp")

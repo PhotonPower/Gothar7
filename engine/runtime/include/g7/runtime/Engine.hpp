@@ -587,6 +587,10 @@ public:
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
+    /// The point lights of the last frame drawn (selectFrameLights; tests, overlay).
+    [[nodiscard]] const render::LightList& frameLights() const noexcept { return m_frameLights; }
+    /// The world's lights as loaded (light vobs; window lights in daylightLights).
+    [[nodiscard]] usize worldLightCount() const noexcept { return m_lights.size() + m_daylightLights.size(); }
     /// 0 .. 1: the combat profile of the camera ([camera.combat], M11 K5).
     [[nodiscard]] f32 playerCombatBlend() const noexcept { return m_combatBlend; }
     [[nodiscard]] f32 playerCameraDistance() const noexcept { return m_playerCamera.distance(); }
@@ -1112,6 +1116,11 @@ private:
     // Combat (M11, EngineCombat.cpp).
     struct Combatant;
     void loadCombat();
+    void loadAnimalBodies(); ///< Creatures.<species>.body (data/creatures.lua)
+    /// The body a blow hits and the AI walks up to: people upright, animals by their Creatures body.
+    [[nodiscard]] gameplay::SweepTarget bodyOf(const Combatant& c) const;
+    /// Ground distance from `from` to `to` counted to the target's body (as between two people's middles).
+    [[nodiscard]] f32 reachDistance(const Combatant& from, const Combatant& to) const;
     void bindCombatFunctions();
     void bindLootFunctions();
     void fixedUpdateCombat(f32 seconds);
@@ -1486,6 +1495,10 @@ private:
     u32 m_culledFar = 0;
     u32 m_culledSmall = 0;
     render::CullSettings m_cullSettings;
+    render::CullSettings m_frameCull; // this frame's: m_cullSettings, indoors with indoor_view_distance (E2)
+    f32 m_indoorViewDistance = 30.0f; // [render] indoor_view_distance, 0 = off
+    f32 m_indoorShadowDistance = 12.0f;     // [render] indoor_shadow_distance
+    render::CullSettings m_frameShadowCull; // this frame's shadow casters (indoors nearer still)
     render::LodSettings m_lodSettings;
     std::array<u32, 3> m_lodCounts{}; // instances drawn per level of detail in the last main pass
     render::CullGrid m_cullGrid;      // over m_instances; rebuilt when instances change
@@ -1631,6 +1644,7 @@ private:
     gameplay::MobTypes m_mobTypes;
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
+    std::map<std::string, gameplay::BodyShape, std::less<>> m_animalBodies; // by species (M11)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline
@@ -1731,8 +1745,11 @@ private:
     u64 m_benchmarkFrame = 0;
     render::MeshRenderer m_meshRenderer; // pipelines reference ShaderLibrary programs
     render::Environment m_environment;
-    render::LightList m_lights;
-    render::LightList m_frameLights; // m_lights plus the effects' lights of this frame (M12)
+    std::vector<render::PointLight> m_lights; // the world's (light vobs, the scene's torch)
+    render::LightBudget m_lightBudget;        // [render] max_lights, light_distance, window_light_radius
+    render::FigureCull m_figureCull;          // [render] figure_distance, figure_shadow_distance
+    render::LightList
+        m_frameLights; // this frame's: effects first, then the nearest visible (selectFrameLights)
     std::vector<render::PointLight>
         m_daylightLights; // window lights (components.light.daylight), as in the file
     render::ParticleSystem m_particles;

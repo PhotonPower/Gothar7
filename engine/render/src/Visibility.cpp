@@ -50,6 +50,11 @@ CullResult cullByDistance(const AABB& bounds, const Vec3& eye, const CullSetting
     return CullResult::Kept;
 }
 
+bool figureInView(const AABB& box, const Vec3& eye, const Frustum& volume, f32 distance) noexcept
+{
+    return distanceTo(box, eye) <= distance && volume.intersects(box);
+}
+
 void CullGrid::build(std::span<const AABB> bounds, f32 cellSize)
 {
     m_cells.clear();

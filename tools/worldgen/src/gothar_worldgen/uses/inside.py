@@ -70,6 +70,7 @@ DOOR_SWEEP_EXTRA_M = 0.3  # the door's sweep stays free and this much round it (
 MOVE_M = 0.45  # room to walk past furniture
 STEP_M = 0.25  # placement search step
 INSIDE_WP_M = 1.2  # the room's waypoint this far inside the door
+ENTRY_CLEAR_M = 0.35  # and at least this far from the room's walls
 REACH_R_M = 0.4  # straight walks keep this clear (engine: 0.3 m spheres, ai.md; models overhang)
 DOOR_WP_IN_M = 0.15  # the door's waypoint in the middle of the opening (half the wall)
 OUTSIDE_WP_M = 0.9  # the waypoint in front of the door, outside
@@ -81,9 +82,9 @@ LIGHT = {
     # (``daylight``, world.md), so it is dark at night; no flicker
     "window": {"color": [1.0, 1.0, 1.0], "range": 4.5, "intensity": 1.4, "daylight": True},
 }
-WINDOW_LIGHTS = 2  # per room at most (the engine's 8 lights per object: hearth, candles, ...)
-ROOM_LIGHTS = 6  # lights of a room at most: two of the engine's 8 stay for the neighbours'
-NIGHT_M2 = 15.0  # a light burning at night per this much floor (hearth, candles, lanterns)
+WINDOW_LIGHTS = 1  # per room (W7 phase 3: the frame budget of lights; the engine: 8 per object)
+ROOM_LIGHTS = 4  # lights of a room at most (W7 phase 3, before 6)
+NIGHT_M2 = 25.0  # a light burning at night per this much floor (W7 phase 3, before 15)
 LANTERN_APART_M = 2.5  # lanterns this far from other lights at least
 LANTERN_CLEAR_M = 1.2  # and this far from doors, passages and windows
 WINDOW_LIGHT_IN_M = 0.8  # the window's light this far inside
@@ -221,9 +222,18 @@ class _Room:
 
     @property
     def entry(self) -> tuple[float, float]:
-        """The room's waypoint just inside the door."""
-        return (self.door_mid[0] + self.inward[0] * INSIDE_WP_M,
-                self.door_mid[1] + self.inward[1] * INSIDE_WP_M)  # fmt: skip
+        """The room's waypoint just inside the door: ``INSIDE_WP_M`` straight in, nearer where
+        that would come to a wall (a slanted strip of a chamber), off the walls by a figure."""
+        clear = self.poly.buffer(-ENTRY_CLEAR_M)
+        for t in (INSIDE_WP_M, 1.0, 0.8, 0.6):
+            p = (self.door_mid[0] + self.inward[0] * t, self.door_mid[1] + self.inward[1] * t)
+            if clear.is_empty or clear.contains(Point(p)):
+                return p
+        p = (self.door_mid[0] + self.inward[0] * INSIDE_WP_M,
+             self.door_mid[1] + self.inward[1] * INSIDE_WP_M)  # fmt: skip
+        q = clear.exterior.interpolate(clear.exterior.project(Point(p))) if isinstance(
+            clear, Polygon) else Point(p)  # fmt: skip
+        return (q.x, q.y)
 
     def reachable(self, p: tuple[float, float]) -> bool:
         """A straight walk from the room's waypoint to ``p`` past all furniture."""

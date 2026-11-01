@@ -1177,6 +1177,13 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   behält so etwa zwei Drittel des Innen-Ambients; an ihr bleiben leichte Helligkeitsstufen. Leonberg: 24 Boxen für
   5 Räume. Andere Zonen der Welt bleiben erhalten, die eigenen (`LEO_…_INNEN`) werden ersetzt.
 
+#### Licht-Budget (W7 Phase 3, Plan freigegeben 2026-11-01)
+- Die Engine nimmt höchstens 256 Punktlichter je Frame (Welt-Lichter plus Tageslicht durch die Fenster plus Effekte).
+  Leonberg bleibt deutlich darunter: je Raum höchstens ein Fensterlicht (`WINDOW_LIGHTS`, vorher 2), höchstens
+  4 Lichter (`ROOM_LIGHTS`, vorher 6), ein Nachtlicht je 25 m² Boden (`NIGHT_M2`, vorher 15; Herd, Kerzen und Talglichter
+  zählen). Ergebnis: etwa 146 Welt-Lichter und 82 Fensterlichter (vorher 220 und 151). Test gegen die eingecheckte Welt.
+- Die Auswahl der Lichter je Frame nach Entfernung macht engine (E1).
+
 #### Stadtplan (M14 F9, Plan freigegeben 2026-11-01)
 - **Was:** das Bild des Karten-Items, `gothar-worldgen citymap leonberg` (nach `assemble`) → `assets/source/ui/maps/leonberg.png` und
   `leonberg.toml` (Weltausschnitt der Bildränder für engine; Vertrag in `docs/coordination.md`). Kein Spielerstandort, wie Gothic 1.

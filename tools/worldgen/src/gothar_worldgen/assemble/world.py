@@ -130,7 +130,10 @@ def assemble(
     mobs: Sequence[dict[str, Any]] = (),
     outdoor: Sequence[dict[str, Any]] = (),
     streetworks: dict[str, Any] | None = None,
+    known_starts: frozenset[str] | None = None,
 ) -> AssembleResult:
+    """``known_starts``: the start-point keys of vob_ids.json before this run (several passes
+    of one run share ``ids``: a start point created in the first pass is no deleted one)."""
     if "terrain" not in terrain_world:
         raise AssembleError("the terrain world has no terrain block (run export-terrain)")
     doc: dict[str, Any] = (
@@ -264,7 +267,11 @@ def assemble(
     doc["vobs"] = [vobs[k] for k in sorted(vobs)]
     if ground is not None:
         result.added += add_start_points(
-            doc, starts, ground, known=lambda k: k in ids.ids, id_for=ids.get
+            doc,
+            starts,
+            ground,
+            known=lambda k: k in (ids.ids if known_starts is None else known_starts),
+            id_for=ids.get,
         )
     doc["nextVobId"] = max(
         [int(doc.get("nextVobId", 1)), ids.next_id] + [int(v["id"]) + 1 for v in doc["vobs"]]
