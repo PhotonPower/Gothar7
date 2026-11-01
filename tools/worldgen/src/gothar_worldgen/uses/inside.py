@@ -81,9 +81,9 @@ LIGHT = {
     # (``daylight``, world.md), so it is dark at night; no flicker
     "window": {"color": [1.0, 1.0, 1.0], "range": 4.5, "intensity": 1.4, "daylight": True},
 }
-WINDOW_LIGHTS = 2  # per room at most (the engine's 8 lights per object: hearth, candles, ...)
-ROOM_LIGHTS = 6  # lights of a room at most: two of the engine's 8 stay for the neighbours'
-NIGHT_M2 = 15.0  # a light burning at night per this much floor (hearth, candles, lanterns)
+WINDOW_LIGHTS = 1  # per room (W7 phase 3: the frame budget of lights; the engine: 8 per object)
+ROOM_LIGHTS = 4  # lights of a room at most (W7 phase 3, before 6)
+NIGHT_M2 = 25.0  # a light burning at night per this much floor (W7 phase 3, before 15)
 LANTERN_APART_M = 2.5  # lanterns this far from other lights at least
 LANTERN_CLEAR_M = 1.2  # and this far from doors, passages and windows
 WINDOW_LIGHT_IN_M = 0.8  # the window's light this far inside
