@@ -27,9 +27,20 @@ Result<entt::entity> Scene::spawnVob(const VobDesc& desc)
     {
         if (id.valid())
         {
-            return Error{"runtime vobs get their id from the runtime counter, not a fixed one"};
+            // A save game puts dropped items back with the ids they had (M15).
+            if (!id.runtime())
+            {
+                return Error{std::format("runtime vob id {} lies in the world range", id.value)};
+            }
+            if (m_byId.contains(id))
+            {
+                return Error{std::format("duplicate vob id {}", id.value)};
+            }
         }
-        id = VobId{m_nextRuntimeVobId};
+        else
+        {
+            id = VobId{m_nextRuntimeVobId};
+        }
     }
     else if (id.valid())
     {

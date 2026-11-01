@@ -48,6 +48,7 @@
 #include <g7/runtime/MenuFlight.hpp>
 #include <g7/runtime/SceneFile.hpp>
 #include <g7/runtime/StartView.hpp>
+#include <g7/save/GameState.hpp>
 #include <g7/script/ScriptVm.hpp>
 #include <g7/ui/Canvas.hpp>
 #include <g7/ui/DebugUi.hpp>
@@ -261,6 +262,14 @@ public:
     [[nodiscard]] u64 frameCount() const noexcept { return m_frameCount; }
     /// The merged settings as they are now (options change them, M14 part F).
     [[nodiscard]] const Config& settings() const noexcept { return m_config.settings; }
+
+    // Save games (M15, EngineSave.cpp, docs/modules/save.md)
+    /// The game as it is now: time, Story, named timers, the hero and the current world (its delta against
+    /// the file, dropped items, mobs, NPCs, spent triggers). Errors: no world, a function in Story.
+    [[nodiscard]] Result<save::GameState> captureGame();
+    /// Puts a captured game back: loads its world from the file with the delta (scripts hear
+    /// world_loaded(world, true) and insert nobody), the saved NPCs and items, Story, timers, the hero.
+    [[nodiscard]] Result<void> applyGame(const save::GameState& state);
     /// Shadow tiles drawn per cascade since start (far cascades less often than every frame).
     [[nodiscard]] const std::array<u32, 4>& cascadeDraws() const noexcept { return m_cascadeDraws; }
     [[nodiscard]] u64 simulationTicks() const noexcept { return m_simTicks; }
@@ -633,6 +642,9 @@ public:
     /// Items lying in the world (item vobs of the world file plus those inserted or dropped).
     [[nodiscard]] std::vector<WorldItemInfo> worldItems() const;
     /// Puts an item vob (runtime id) into the world; the Item instance must exist.
+    /// An item vob with its whole transform; `fixedId` (runtime range) puts a saved one back (M15).
+    [[nodiscard]] Result<world::VobId> spawnItemAt(std::string_view instance, u32 count,
+                                                   const Transform& transform, world::VobId fixedId);
     [[nodiscard]] Result<world::VobId> spawnItem(std::string_view instance, u32 count, const Vec3& at,
                                                  f32 yaw = 0.0f);
     /// The focus of the last frame (hero only; none in fly mode).
@@ -1105,6 +1117,9 @@ private:
     bool startFight(Combatant& c, std::string_view move, gameplay::AttackKind kind);
     void resolveHit(Combatant& attacker, Combatant& target);
     void stopForFight(Creature& c);
+    /// A save game puts an NPC back knocked out (for `seconds`) or dead (M15).
+    void knockOutRestored(Creature& c, f32 seconds);
+    void killRestored(Creature& c);
     /// The striking parts of the attacker's weapon (socket_hand_r) or fists (both hands) in the last step's
     /// pose; none for animals, figures without the sockets, moves without a clip and with Combat.weapon_sweep
     /// off (they hit by reach and angle).
@@ -1282,6 +1297,14 @@ private:
     [[nodiscard]] ui::HudModel buildHudModel(Vec2 pixels) const;
     [[nodiscard]] bool heroHasMagic() const;
     void bindUiFunctions();
+    void bindSaveFunctions();
+    /// The world file as it is on disk (cached): what a world's delta is taken against.
+    [[nodiscard]] Result<world::WorldFile> worldBase(const std::string& path);
+    [[nodiscard]] Result<save::WorldState> captureCurrentWorld();
+    [[nodiscard]] Result<void> restoreWorldState(const save::WorldState& state);
+    /// Loads a world from its file with the state's delta (scripts hear world_loaded(world, true)) and puts
+    /// its items, mobs, NPCs and triggers back; `start` empty: the player stays where the caller puts him.
+    [[nodiscard]] Result<void> loadWorldState(const save::WorldState& state, std::string_view start);
     // Item screens (EngineUiItems.cpp, M14 part D)
     void syncItemScreens();
     [[nodiscard]] ui::ItemScreenView itemScreenView(ui::ItemScreenMode mode);
@@ -1384,6 +1407,8 @@ private:
     };
     std::optional<LoadJob> m_loadJob;
     bool m_menuMode = false;
+    std::map<std::string, std::shared_ptr<const world::WorldFile>> m_worldBases; ///< by lower-case path
+    bool m_restoringWorld = false; ///< loadWorld from a game state: world_loaded(world, true)
     MenuFlight m_menuFlight;
     f32 m_menuFlightTime = 0.0f;
     usize m_optionsTab = 0;                  ///< the options open on this tab (Lua menu_open)
@@ -1403,12 +1428,8 @@ private:
     world::TriggerSystem m_triggers; // fed with the camera until the player exists (M5)
     std::string m_worldPath;
     world::WorldFile m_worldFile; // the loaded world without its vobs (terrain, waynet ... for capturing)
-    struct LeftWorld
-    {
-        world::WorldFile file;       // as it was when left
-        std::set<u64> spentTriggers; // once-triggers that fired there
-    };
-    std::map<std::string, LeftWorld> m_leftWorlds; // by lower-case path; into the save game later
+    std::map<std::string, save::WorldState>
+        m_leftWorlds; // left worlds as they were, by lower-case path (M15 C)
     struct PendingWorldChange
     {
         std::string world;

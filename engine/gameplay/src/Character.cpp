@@ -1,3 +1,4 @@
+#include <g7/core/Log.hpp>
 #include <g7/gameplay/Character.hpp>
 
 #include <algorithm>
@@ -380,5 +381,54 @@ void Character::unequip(EquipSlot slot) noexcept
 const std::string& Character::equipped(EquipSlot slot) const noexcept
 {
     return m_equipped[static_cast<usize>(slot)];
+}
+
+CharacterState Character::state() const
+{
+    CharacterState s;
+    s.instance = m_instance;
+    s.name = m_name;
+    s.guild = m_guild;
+    s.attributes = m_attributes;
+    s.talents = m_talents;
+    s.protection = m_protection;
+    s.level = m_level;
+    s.experience = m_xp;
+    s.learnPoints = m_learnPoints;
+    s.items = m_items;
+    s.equipped = m_equipped;
+    return s;
+}
+
+void Character::restore(const CharacterState& state, const ItemLookup& items)
+{
+    m_instance = state.instance;
+    m_name = state.name;
+    m_guild = state.guild;
+    m_attributes = state.attributes;
+    m_talents = state.talents;
+    m_protection = state.protection;
+    m_level = state.level;
+    m_xp = state.experience;
+    m_learnPoints = state.learnPoints;
+    m_items = state.items;
+    for (usize i = 0; i < m_equipped.size(); ++i)
+    {
+        m_equipped[i].clear();
+        m_equippedProtection[i].clear();
+        if (state.equipped[i].empty())
+        {
+            continue;
+        }
+        const auto info = items ? items(state.equipped[i]) : std::nullopt;
+        if (!info)
+        {
+            G7_LOG_WARN("gameplay", "{}: unknown item \"{}\" not equipped again", m_instance,
+                        state.equipped[i]);
+            continue;
+        }
+        m_equipped[i] = state.equipped[i];
+        m_equippedProtection[i] = info->protection;
+    }
 }
 } // namespace g7::gameplay

@@ -109,6 +109,7 @@ Result<void> Engine::initScripts()
     bindRangedFunctions();
     bindDiaryFunctions();
     bindUiFunctions();
+    bindSaveFunctions();
     bindJournalFunctions();
     bindMagicFunctions();
     bindFxFunctions();
@@ -296,11 +297,14 @@ void Engine::bindEngineFunctions()
                           {"day", static_cast<i64>(m_gameTime.day()) + 1}}); // the first day is 1
              }});
     // Events the engine emits (documentation only).
-    vm.bind({"world_loaded",
-             "on(\"world_loaded\", fn(world: string))",
-             "Nachdem eine Welt geladen ist (auch nach einem Weltwechsel); `world` ist ihr Pfad.",
-             "Ereignisse",
-             {}});
+    vm.bind(
+        {"world_loaded",
+         "on(\"world_loaded\", fn(world: string, restored: boolean))",
+         "Nachdem eine Welt geladen ist (auch nach einem Weltwechsel); `world` ist ihr Pfad. `restored`: "
+         "die Welt kommt aus einem Spielstand bzw. einem gespeicherten Zustand – ihre NPCs sind schon da, "
+         "Inhalte setzen dann niemanden ein (M15).",
+         "Ereignisse",
+         {}});
     vm.bind(
         {"scripts_reloaded",
          "on(\"scripts_reloaded\", fn())",

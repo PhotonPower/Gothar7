@@ -70,12 +70,36 @@ struct ItemStack
     u32 count = 0;
 };
 
+/// Everything that makes up a Character, as plain data (save game, M15): the protection of equipped items is
+/// not part of it (it follows from the items).
+struct CharacterState
+{
+    std::string instance;
+    std::string name;
+    std::string guild;
+    std::map<std::string, i32, std::less<>> attributes;
+    std::map<std::string, i32, std::less<>> talents;
+    std::map<std::string, i32, std::less<>> protection; ///< its own (without equipment)
+    i32 level = 0;
+    i32 experience = 0;
+    i32 learnPoints = 0;
+    std::map<std::string, u32, std::less<>> items;
+    std::array<std::string, static_cast<usize>(EquipSlot::Count)> equipped; ///< by slot, empty: nothing
+    friend bool operator==(const CharacterState&, const CharacterState&) = default;
+};
+
 class Character
 {
 public:
     /// Values of an Npc instance: attributes, talents, protection, guild, level, inventory (`inventory = {
     /// it_x = 3 }` plus every `equipment` entry), equipment (`equipment` is equipped where the rules allow).
     [[nodiscard]] static Result<Character> fromInstance(const script::Instance& npc, const ItemLookup& items);
+
+    /// Everything as plain data (save game).
+    [[nodiscard]] CharacterState state() const;
+    /// Takes over a saved state; equipped items are put on again without checking requirements (they were
+    /// met when it was saved). An item `items` does not know is dropped from the equipment (logged).
+    void restore(const CharacterState& state, const ItemLookup& items);
 
     [[nodiscard]] const std::string& instance() const noexcept { return m_instance; }
     [[nodiscard]] const std::string& name() const noexcept { return m_name; }

@@ -34,7 +34,7 @@
 | ai | core, world, script |
 | gameplay | core, world, animation, script, ai |
 | ui | core, platform, asset, render |
-| save | core, world, script, gameplay |
+| save | core, world_format, world, script, gameplay |
 | runtime | alle |
 | tools/editor (`g7_editor`, im Spiel gelinkt) | runtime, world, ui, render, core – die Engine kennt nur `EngineTool` |
 | tools/walk (`g7_walk`, im Spiel gelinkt) | runtime, world (nlohmann-json privat) – Autopilot `--walk`, ebenfalls ein `EngineTool` |

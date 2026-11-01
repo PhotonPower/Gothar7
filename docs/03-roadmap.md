@@ -313,9 +313,13 @@ die Begehung durch den Projektinhaber (Deutsch und Englisch) steht aus.
 Plan (Teile A–E, Vorschlag 2026-11-01, wartet auf Freigabe): `docs/modules/save.md` „Plan M15“; ADR 0021
 (Spielstandformat) vorgeschlagen.
 
-- [ ] Serialisierung: Welt-Delta gegenüber Ausgangszustand (geänderte/entfernte/neue Vobs), NPC-Zustände, Inventare, Skript-Variablen, Tagebuch, Spielzeit
+- [x] Serialisierung: Welt-Delta gegenüber Ausgangszustand (geänderte/entfernte/neue Vobs), NPC-Zustände, Inventare, Skript-Variablen, Tagebuch, Spielzeit
+  - Teil B: `Engine::captureGame/applyGame`, `save::GameState` als JSON-Dokument im Speicher (Rundlauf byte-gleich,
+    Lager und Leonberg), benannte Lua-Timer, `world_loaded(world, restored)`
 - [ ] Binärformat mit Versionsnummer + Migrationspfad, Metadaten (Screenshot, Spielzeit, Ort)
 - [ ] Speicherplätze, Quicksave/Quickload, Speichern beim Weltwechsel (Zustand jeder besuchten Welt)
+  - Teil C: Zustand jeder besuchten Welt im Speicher (Items, Mobs, NPCs bleiben über Weltwechsel) und im Spielzustand;
+    Speicherplätze, F5/F9 und Datei folgen mit Teil A/D
 - [ ] Robustheit: atomisches Schreiben (temp + rename), Prüfsumme
 
 **DoD / Meilenstein C:** Ein komplettes Kapitel (Inhalt eigener Wahl) ist mit Speichern/Laden durchspielbar.

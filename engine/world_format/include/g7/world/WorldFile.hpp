@@ -107,4 +107,9 @@ struct WorldFile
 [[nodiscard]] std::string writeWorldFile(const WorldFile& world);
 
 [[nodiscard]] std::string_view vobTypeName(VobType type) noexcept;
+/// One vob as the file writes it (one line, stable: equal vobs give equal text) - the save game's world delta
+/// (M15) and comparisons.
+[[nodiscard]] std::string writeVobJson(const WorldFileVob& vob);
+/// Reads what writeVobJson wrote (the same checks as a vob of a file).
+[[nodiscard]] Result<WorldFileVob> parseVobJson(std::string_view json, std::string_view source = "<vob>");
 } // namespace g7::world
