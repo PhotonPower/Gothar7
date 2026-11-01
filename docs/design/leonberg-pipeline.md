@@ -1147,7 +1147,10 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   das Lager- und Werkstattzeug des Gewerbes aus `uses.<use>.inside.chamber` (bzw. `insideByTrade`), so viel Platz
   ist, ohne Fehlschlag für den Rest (Phase 2: die Kammern wirkten leer). Beispiele: Metzger Würste, Fässer, Eimer;
   Töpfer Regale, Kistenstapel, Tonsäcke; Wache Waffenbrett, Kisten, Fass; Schreiner Hobelbank, Werkzeugbrett,
-  Brennholz. Je Kammer ein Licht, ein
+  Brennholz. Betten und Truhen, für die keine Kammer Platz hat, kommen in die anderen Räume, zuerst in den mit der Haustür
+  (Pfarrhaus ZiU: drei Betten für Pfarrer und zwei Mönche, eine kleine Kammer). Jeder Freepoint drinnen hat einen
+  Wegpunkt in höchstens 3 m Entfernung mit freier Linie (`WP_…_VOR_<TYP>_<NN>`, um Treppe, Möbel und innere Ecken
+  über `…_UM`): Nach einem Hänger plant die Engine nur mit geraden Stücken bis 3 m neu. Je Kammer ein Licht, ein
   Wegpunkt im Durchgang `WP_…_KAMMER_DURCHGANG` (verbunden mit dem Wegpunkt des Raums davor) und `WP_…_KAMMER` 1,2 m
   dahinter; der Durchgang und der gerade Weg dorthin bleiben in beiden Räumen frei. Je Raum eine indoor-Zone
   (`LEO_…_INNEN`, `LEO_…_KAMMER` …). Mob- und Prop-Namen tragen den Raum (`MOB_LEO_…_KAMMER_BED_1`). Beim Herd einer

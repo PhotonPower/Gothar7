@@ -920,21 +920,8 @@ class _House:
                     self.tables.append((cx, cz))
                     self.table_axes.append((ax, az))
                     continue
-                wall_spot = _against_wall(room, kind)
-                if wall_spot is None:
+                if not self.wall_mob(kind):
                     self.fail(kind)
-                    continue
-                shape, centre, front = wall_spot
-                self.mob(kind, centre, front)
-                room.taken.append(shape)
-                if kind == "bed":
-                    self.beds.append((centre, front))
-                reach = (SIZE.get(kind) or (0.0, 0.6))[1] / 2 + SLOT.get(kind, 0.6)
-                self.keep_way((centre[0] + front[0] * reach, centre[1] + front[1] * reach))
-                if kind == "chest":  # a counter: the trader stands at its slot
-                    reach = SIZE["chest"][1] / 2 + SLOT["chest"]
-                    slot = (centre[0] + front[0] * reach, centre[1] + front[1] * reach)
-                    room.stands.append((slot, (-front[0], -front[1])))
         if hearth_at:
             (hx, hz), (fx, fz) = hearth_at
             reach = SIZE["hearth"][1] / 2 + SLOT["hearth"]
@@ -1010,6 +997,25 @@ class _House:
         self.near_waypoints()
         if h.owner:
             self.private_area()
+
+    def wall_mob(self, kind: str) -> bool:
+        """A mob with its back to a wall (bed, chest, ...); False if there is no room."""
+        room = self.room
+        wall_spot = _against_wall(room, kind)
+        if wall_spot is None:
+            return False
+        shape, centre, front = wall_spot
+        self.mob(kind, centre, front)
+        room.taken.append(shape)
+        if kind == "bed":
+            self.beds.append((centre, front))
+        reach = (SIZE.get(kind) or (0.0, 0.6))[1] / 2 + SLOT.get(kind, 0.6)
+        self.keep_way((centre[0] + front[0] * reach, centre[1] + front[1] * reach))
+        if kind == "chest":  # a counter: the trader stands at its slot
+            reach = SIZE["chest"][1] / 2 + SLOT["chest"]
+            slot = (centre[0] + front[0] * reach, centre[1] + front[1] * reach)
+            room.stands.append((slot, (-front[0], -front[1])))
+        return True
 
     def sees(self, a: Pt, b: Pt) -> bool:
         """A figure walks from ``a`` straight to the freepoint ``b``: inside the room, past the
@@ -1529,6 +1535,8 @@ def _divided(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, ro
     stairs_in = _stairs_room(r, st) if st is not None else order[0]
     stair_way = _with_stairs(built, st, stairs_in)
     shares = _share(spec, h.residents, len(order) - 1)
+    start = len(plan.failed)
+    furnished: list[_House] = []
     for share in shares[1:]:
         share.stock = list(spec.stock)
     for k, (name, share) in enumerate(zip(order, shares, strict=True)):
@@ -1537,8 +1545,14 @@ def _divided(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, ro
         before = len(plan.failed)
         house = _House(plan, h, built[name], f"{base}_{name}")
         house.build(share, routine_wp, entered.get(name))
+        furnished.append(house)
         if k + 1 < len(shares):  # what a room had no room for: the next chamber
             _to_chamber(plan, h, before, shares[k + 1])
+    # beds and chests the chambers had no room for: in the other rooms, the one with the door
+    # first (the parish house: a small chamber, three beds)
+    for f in [f for f in plan.failed[start:] if f["house"] == h.id and f["what"] in CHAMBER_MOBS]:
+        if any(room.wall_mob(f["what"]) for room in furnished):
+            plan.failed.remove(f)
     return f"WP_{base}_{stairs_in}", stair_way
 
 
