@@ -2,6 +2,8 @@
 // meta data reads without the game state, every damaged byte and a cut-off file are refused, unknown chunks
 // are skipped, newer formats refused, slots listed with their meta data; the file is replaced atomically.
 
+#include "RunTempDir.hpp"
+
 #include <g7/core/Crc32.hpp>
 #include <g7/save/SaveFile.hpp>
 
@@ -142,7 +144,7 @@ TEST_CASE("Save file: unknown chunks are skipped, newer formats and chunk versio
 
 TEST_CASE("Save file: written atomically, slots listed with their meta data")
 {
-    const std::filesystem::path dir = std::filesystem::temp_directory_path() / "g7_save_slots_test";
+    const std::filesystem::path dir = g7::test::runTempDir() / "g7_save_slots_test";
     std::filesystem::remove_all(dir);
     save::SaveFile f = sample();
     REQUIRE(save::writeSaveFile(save::slotPath(dir, "slot_03"), f).ok());

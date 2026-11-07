@@ -78,4 +78,37 @@ struct EditorPanel
     bool confirmYes = false;
     bool confirmNo = false;
 };
+
+/// The waynet window of the editor (M16 part B, docs/modules/editor.md).
+struct WaynetPanel
+{
+    // Shown
+    bool shown = false;   ///< the editor is in waynet mode
+    std::string selected; ///< name of the selected point or freepoint (empty: none)
+    bool selectedFreepoint = false;
+    bool selectedGenerated = false;
+    std::string annotation; ///< for a deleted generated point: the line for welt's waynet.json "remove"
+    std::vector<std::string> freepointTypes;
+    std::vector<std::string> issues; ///< of the last check
+    std::string pathResult;          ///< of the last path probe
+
+    // Edited
+    bool active = false;   ///< waynet mode on (key G)
+    Vec3 position{0.0f};   ///< of the selection
+    f32 yawDegrees = 0.0f; ///< facing of a freepoint
+    std::string name;      ///< rename field
+    i32 type = 0;          ///< freepoint type for "add freepoint"
+    std::string pathFrom;  ///< path probe
+    std::string pathTo;
+
+    // Actions of this frame
+    bool moved = false; ///< position or facing edited
+    bool rename = false;
+    bool addPoint = false;
+    bool addFreepoint = false;
+    bool remove = false;
+    bool check = false;
+    bool probe = false;
+    i32 clickedIssue = -1;
+};
 } // namespace g7::ui

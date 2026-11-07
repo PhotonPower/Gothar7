@@ -116,10 +116,13 @@ void History::record(Command command)
             }
             return v;
         };
+        const auto names = [](const std::optional<WaynetSnapshot>& s)
+        { return s ? s->names : std::vector<std::string>{}; };
         if (last.mergeable && last.label == command.label && ids(last.before) == ids(command.before) &&
-            m_saved != static_cast<i64>(m_done))
+            names(last.waynetBefore) == names(command.waynetBefore) && m_saved != static_cast<i64>(m_done))
         {
             last.after = std::move(command.after); // one step: from the first "before" to the last "after"
+            last.waynetAfter = std::move(command.waynetAfter);
             return;
         }
     }
@@ -133,29 +136,45 @@ void History::record(Command command)
     }
 }
 
-Result<bool> History::undo(world::Scene& scene)
+Result<bool> History::undo(world::Scene& scene, world::WaynetData* waynet)
 {
     if (!canUndo())
     {
         return false;
     }
-    if (auto restored = restoreVobs(scene, m_commands[m_done - 1].before); !restored)
+    const Command& c = m_commands[m_done - 1];
+    if (auto restored = restoreVobs(scene, c.before); !restored)
     {
         return restored.error();
+    }
+    if (c.waynetBefore && waynet != nullptr)
+    {
+        if (auto restored = restoreWaynet(*waynet, *c.waynetBefore); !restored)
+        {
+            return restored.error();
+        }
     }
     --m_done;
     return true;
 }
 
-Result<bool> History::redo(world::Scene& scene)
+Result<bool> History::redo(world::Scene& scene, world::WaynetData* waynet)
 {
     if (!canRedo())
     {
         return false;
     }
-    if (auto restored = restoreVobs(scene, m_commands[m_done].after); !restored)
+    const Command& c = m_commands[m_done];
+    if (auto restored = restoreVobs(scene, c.after); !restored)
     {
         return restored.error();
+    }
+    if (c.waynetAfter && waynet != nullptr)
+    {
+        if (auto restored = restoreWaynet(*waynet, *c.waynetAfter); !restored)
+        {
+            return restored.error();
+        }
     }
     ++m_done;
     return true;
