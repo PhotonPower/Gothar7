@@ -324,6 +324,11 @@ std::vector<ui::OptionPage> Engine::optionPages() const
                  toggle("window.fullscreen", "UI_OPT_FULLSCREEN"), toggle("window.vsync", "UI_OPT_VSYNC"),
                  choice("window.max_fps", "UI_OPT_MAX_FPS", fps),
                  choice("render.view_distance", "UI_OPT_VIEW_DISTANCE", distances),
+                 toggle("render.weather", "UI_OPT_WEATHER"),
+                 choice("render.rain_quality", "UI_OPT_RAIN",
+                        {{std::string("low"), UiText::key("UI_OPT_QUALITY_LOW")},
+                         {std::string("medium"), UiText::key("UI_OPT_QUALITY_MEDIUM")},
+                         {std::string("high"), UiText::key("UI_OPT_QUALITY_HIGH")}}),
                  toggle("render.bloom", "UI_OPT_BLOOM"), toggle("render.grading", "UI_OPT_GRADING")}};
     pages[1] = {"UI_OPTIONS_AUDIO",
                 {slider("audio.master", "UI_OPT_MASTER"), slider("audio.music", "UI_OPT_MUSIC"),
@@ -444,6 +449,21 @@ void Engine::applySetting(std::string_view key)
     {
         m_config.maxFps = static_cast<f64>(std::max<i64>(0, s.get<i64>("window.max_fps", 240)));
         m_framePacer = FramePacer(m_config.maxFps);
+    }
+    else if (key == "render.weather")
+    {
+        m_weatherVisible = s.get<bool>("render.weather", true);
+    }
+    else if (key == "render.rain_quality")
+    {
+        const std::string quality = s.get<std::string>("render.rain_quality", "medium");
+        const auto parsed = render::parseRainQuality(quality);
+        if (!parsed)
+        {
+            G7_LOG_WARN("engine", "[render] rain_quality = {}: low, medium or high (medium instead)",
+                        quality);
+        }
+        m_rainQuality = parsed.value_or(render::RainQuality::Medium);
     }
     else if (key == "render.bloom")
     {

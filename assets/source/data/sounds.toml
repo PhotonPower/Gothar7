@@ -63,6 +63,20 @@ bus = "ambient"
 loop = true
 volume = 0.6
 
+# Regen (M17 Wetter, Teil R): eigene Ebene über dem Zonen-Ambiente, Lautstärke nach der Regenstärke; in
+# Innenräumen die Variante auf dem Dach.
+[amb_rain]
+files = ["sounds/amb_rain.wav"]
+bus = "ambient"
+loop = true
+volume = 0.8
+
+[amb_rain_roof]
+files = ["sounds/amb_rain_roof.wav"]
+bus = "ambient"
+loop = true
+volume = 0.5
+
 [amb_camp]
 files = ["sounds/amb_camp.wav"]
 bus = "ambient"

@@ -358,6 +358,38 @@ Engine::grading();  Engine::gradingAt(timeOfDay, point);
   (gelieferte Werte, Zonen, Fehler), `tests/runtime/test_engine_grading.cpp` (Zonen-Vorrang im Testlager),
   GPU `test_post.cpp` (neutral ≈ unverändert, Sättigung 0 grau, warm röter).
 
+### Regen (M17 Wetter, Teil R, umgesetzt) – `Rain.hpp`, `rain.vert/.frag`
+```cpp
+enum class RainQuality { Low, Medium, High };  parseRainQuality(text);  u32 rainStreaks(quality); // 4 000/12 000/24 000
+struct RainFrame { f32 rain; Vec2 wind; f32 time; Vec3 light; RainQuality quality; };
+Mat4 rainMapViewProjection(centre);  kRainMapRadius = 32 m, kRainMapHeight = 120 m
+class RainRenderer { static Result<RainRenderer> create(Device&, ShaderLibrary&, u32 mapSize = 512);
+                     bool mapStale(eye); void beginMap(Device&, eye); void endMap(); void invalidateMap();
+                     u32 draw(Device&, const Camera&, const RainFrame&); };
+Engine::rainStreaksDrawn(), rain(), rainSound();  Environment::shadowStrength (Lighting-Block shadowExtra.z)
+```
+- **Regenschleier:** Striche aus `gl_InstanceID` und Zeit im Vertex-Shader, ohne CPU-Simulation und ohne
+  Vertex-Puffer; ortsfest (jeder Tropfen hat seinen Platz in einer Kiste von 40 × 24 × 40 m um die Kamera, die beim
+  Gehen umklappt), schräg nach dem Wind (bis Teil W fest aus Westen, Stärke aus der Lage), 8 m/s, 0,45 m lang,
+  additiv und schwach, nah und fern ausgeblendet. Anzahl = `rainStreaks(Qualität) · rain`.
+- **Regenkarte (Draufsicht-Tiefe):** 512² über 64 × 64 m, Gelände und feste Instanzen von oben mit den
+  Schatten-Shadern (Tiefe 0 oben .. 1 unten). Neu nur, wenn die Kamera mehr als 8 m weiterzieht oder sich die
+  Instanzen ändern. Tropfen unter der obersten Fläche (Dach, Torbogen, Marktstand) werden verworfen.
+- **Spritzer** (`medium`, `high`): kleine Ringe, je 0,45 s an einem neuen Ort im Umkreis von 10 m, auf der obersten
+  Fläche aus der Regenkarte (auch auf Dächern).
+- **Ton:** eigene Ebene `amb_rain` über dem Zonen-Ambiente, lauter mit dem Regen; in einer `indoor`-Zone
+  `amb_rain_roof` (dumpfes Trommeln). Platzhalter aus `tools/audio` (`gothar-audio placeholders amb_rain`).
+- **Optionen:** `[render] weather` (aus: kein Regen zu sehen, die Lage läuft weiter), `rain_quality` (low/medium/high);
+  Optionen → Grafik „Wetter“, „Regenqualität“.
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Marktplatz): `rain` 0,04 ms bei `high` und Regen, 0,10 ms bei
+  Starkregen (24 000 Striche · 0,9 und Spritzer); die Regenkarte nur in Frames mit Erneuerung (Budget ≤ 0,5 ms bzw. 0,8 ms).
+- **Noch nicht:** Ringe auf dem Wasser und gedämpfter Regen unter Wasser (brauchen W1/W3, die mit #363–#368 kommen;
+  danach als kleiner Nachtrag), nasse Flächen (Teil N).
+- **Tests:** `tests/render/test_rain.cpp` (Stufen, Projektion der Karte), GPU `test_rain.cpp` (Striche im Freien,
+  keine unter einem Dach, keine ohne Regen), `test_engine_render.cpp` (Regen nur bei Regen und `weather = true`,
+  Karte gezeichnet), `tests/runtime/test_engine_weather.cpp` (Regen-Ebene folgt der Lage),
+  `tests/render/test_lighting.cpp` (Schattenstärke im Lighting-Block).
+
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp
 struct DebugStyle { Vec4 color{1}; f32 duration = 0; bool depthTest = true; };   // duration 0 = nur dieser Frame

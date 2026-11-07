@@ -429,6 +429,9 @@ Engine::weather(), weatherNow();  save::GameState::weather (optional, additiv na
   und Wind lesen `weatherNow()` in den Teilen R, N, G, W.
 - **Lua:** `set_weather(name, minutes?)`, `weather()`, `lock_weather(locked)`, Ereignis `weather_changed(old, new)`;
   Startparameter `--weather=<lage>` (Prüfbilder); Pfad `[time] weather` (Vorgabe `data/weather.toml`).
+- **Schatten:** `shadow` je Lage (1 voll .. 0 keine) mischt in `Environment::shadowStrength`; bewölkt 0,4, Nebel 0,5,
+  Regen 0,12, Starkregen und Gewitter 0,08 – unter bedecktem Himmel weiche bzw. fast keine Sonnenschatten
+  (Koordinator, Durchsicht von #381).
 - **Spielstand:** Lage, vorige Lage, Wechselzeit, Übergang, nächste Entscheidung, Zufallszustand und Sperre stehen
   als `weather` im Spielstand; ältere Spielstände ohne das Feld laden weiter, das Wetter bleibt dann, wie es ist.
 

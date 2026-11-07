@@ -92,3 +92,20 @@ TEST_CASE("Engine weather: a save keeps it; an old save without weather leaves i
     REQUIRE(other.applyGame(old).ok());
     CHECK(other.weather().current() == "klar");
 }
+
+TEST_CASE("Engine weather: the rain layer of the ambience follows the rain")
+{
+    EngineConfig config = campConfig();
+    config.weather = "regen";
+    Engine engine(config);
+    REQUIRE(engine.init().ok());
+    REQUIRE(engine.runFrame());
+    if (engine.audio() == nullptr)
+    {
+        return; // audio switched off on this machine
+    }
+    CHECK(engine.rainSound() == "amb_rain");
+    run(engine, "set_weather('klar')");
+    REQUIRE(engine.runFrame());
+    CHECK(engine.rainSound().empty());
+}

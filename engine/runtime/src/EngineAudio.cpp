@@ -141,7 +141,7 @@ void Engine::initAudio()
         }
     }
     G7_LOG_INFO("engine", "audio: {} sounds, {} ambiences", m_soundDefs.size(), m_ambientDefs.size());
-    initMusic(); // M13 part C
+    initMusic();     // M13 part C
     loadFootsteps(); // M13 E
 }
 
@@ -154,10 +154,40 @@ void Engine::updateAudio(f64 realSeconds)
     const Vec3 forward = m_camera.transform.rotation * Vec3(0.0f, 0.0f, -1.0f);
     m_audio->setListener(m_camera.transform.position, forward);
     updateAmbience(static_cast<f32>(realSeconds));
+    updateRainSound();
     updateOcclusion(static_cast<f32>(realSeconds));
     updateMusic(static_cast<f32>(realSeconds));
     updateVoices(static_cast<f32>(realSeconds)); // M13 D: lip sync, ducking
     m_audio->update(static_cast<f32>(realSeconds));
+}
+
+void Engine::updateRainSound()
+{
+    // M17 R: rain as its own layer, louder with the rain; in a room the dull drumming on the roof.
+    const f32 rain = weatherNow().rain;
+    const bool inside = zoneAt("indoor", m_camera.transform.position).has_value();
+    const std::string want = rain < 0.02f ? std::string() : inside ? "amb_rain_roof" : "amb_rain";
+    if (want != m_rainSound.name)
+    {
+        if (m_rainSound.loop)
+        {
+            m_audio->stop(*m_rainSound.loop, 2.0f);
+            m_rainSound.loop.reset();
+        }
+        m_rainSound.name = want;
+        if (!want.empty())
+        {
+            m_rainSound.loop = playSound(want);
+            if (m_rainSound.loop)
+            {
+                m_audio->setVolume(*m_rainSound.loop, 0.0f);
+            }
+        }
+    }
+    if (m_rainSound.loop)
+    {
+        m_audio->setVolume(*m_rainSound.loop, std::min(1.0f, 0.3f + rain), 1.0f);
+    }
 }
 
 std::optional<audio::SoundId> Engine::startAmbienceLoop(std::string_view ambience, bool isNight, f32 volume,

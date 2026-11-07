@@ -45,6 +45,10 @@ subtitles = true       # Untertitel mit Sprechername, unten mittig, auch für Zu
 bloom = true
 # Farbkorrektur je Tageszeit und Zone (M17 P2; Werte in data/environment.toml).
 grading = true
+# Wetter (M17, docs/design/wetter.md): aus = kein Regen, keine Nässe, keine Blitze zu sehen (die Lage läuft weiter).
+weather = true
+# Regen: low 4 000 Striche ohne Spritzer, medium 12 000, high 24 000.
+rain_quality = "medium"
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
 # shader_hot_reload = true
 # Anisotrope Filterung für Materialtexturen (1 = aus; wird auf den Treiberwert begrenzt).
