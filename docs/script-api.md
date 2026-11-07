@@ -596,8 +596,8 @@ Weltwechsel wie ein Trigger mit `changeWorld` (M15 Teil E): lädt die Welt (VFS-
 ### `insert(instance: string, count?: integer) -> boolean`
 Setzt ein Item (vor der Spielfigur auf den Boden, `count` Stück nebeneinander) oder einen NPC (vor die Spielfigur, ihr zugewandt) in die Welt. Ohne `mesh` erhält ein Item einen Platzhalter nach `category`.
 
-### `lightning(distance?: number)`
-Ein Blitz jetzt (Story, Prüfbilder), `distance` Meter entfernt (Vorgabe 800, 50 bis 5000); der Donner folgt nach Entfernung / 343 m/s – auch ohne Gewitter.
+### `lightning(distance?: number, direction?: number)`
+Ein Blitz jetzt (Story, Prüfbilder), `distance` Meter entfernt (Vorgabe 800, 50 bis 5000), in Richtung `direction` Grad (0 = -Z wie yaw 0, Vorgabe wechselnd); nahe und mittlere zeigen ihren Strahl am Himmel. Der Donner folgt nach Entfernung / 343 m/s – auch ohne Gewitter.
 
 ### `lock_weather(locked: boolean)`
 Hält die Wetterlage fest (eine Story-Szene): der Ablauf wechselt nicht, set_weather wirkt weiter.

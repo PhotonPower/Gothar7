@@ -2151,6 +2151,17 @@ void Engine::drawScene(u32 width, u32 height)
     m_backgroundProgram->setUniform("uMoonDirection", m_sky.moonDirection);
     m_backgroundProgram->setUniform("uMoon", m_sky.moon);
     m_backgroundProgram->setUniform("uStars", m_sky.stars);
+    // M17 G: the bolt of a near or middle flash (decision 8: rarely seen), in its direction above the
+    // horizon.
+    Vec4 bolt(0.0f);
+    if (m_flash && m_weatherVisible && m_flash->distance < kBoltDistance)
+    {
+        const f32 brightness =
+            world::lightningBrightness(static_cast<f32>(m_stormClock - m_flash->start), m_flash->flickers);
+        bolt = Vec4(m_flash->azimuth, brightness, static_cast<f32>(m_flashCount % 97u),
+                    0.3f + 0.35f * (1.0f - m_flash->distance / kBoltDistance)); // nearer: taller
+    }
+    m_backgroundProgram->setUniform("uBolt", bolt);
     m_device->bindPipeline(m_backgroundPipeline);
     m_device->draw(3); // fullscreen triangle from gl_VertexID
     if (m_instances.empty() && !m_hasTerrain)
