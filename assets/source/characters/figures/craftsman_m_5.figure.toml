@@ -1,0 +1,22 @@
+# craftsman_m_5: guild set 'craftsman' (figure_sets.toml), more varied Leonbergers: thatch, mutton beard (F3, 2026-11-07)
+version = 1
+
+[parts]
+head = "parts/head_m_farmer/head.glb"
+hair = "parts/hair_m_farmer/hair_thatch.glb"
+beard = "parts/hair_m_farmer/beard_mutton.glb"
+body = "parts/body_m_average/body.glb"
+cloth = [
+    "parts/garb_m_average/shirt.glb",
+    "parts/garb_m_average/apron_leather.glb",
+    "parts/garb_m_average/belt.glb",
+    "parts/cloth_m_average/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#6a4a2a"
+beard_mutton = "#6a4a2a"
+cloth_shirt = "#b8ac94"
+cloth_apron_leather = "#6a4a30"
+cloth_belt = "#2e2018"
+cloth_culturalibre_male_boots = "#3a2c22"

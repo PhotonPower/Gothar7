@@ -14,17 +14,25 @@ citizen = [
     "characters/figures/citizen_f_1.figure.toml",
     "characters/figures/citizen_f_2.figure.toml",
     "characters/figures/citizen_f_3.figure.toml",
+    "characters/figures/citizen_m_5.figure.toml",
+    "characters/figures/citizen_m_6.figure.toml",
+    "characters/figures/citizen_f_4.figure.toml",
+    "characters/figures/citizen_f_5.figure.toml",
 ]
 citizen_m = [
     "characters/figures/citizen_m_1.figure.toml",
     "characters/figures/citizen_m_2.figure.toml",
     "characters/figures/citizen_m_3.figure.toml",
     "characters/figures/citizen_m_4.figure.toml",
+    "characters/figures/citizen_m_5.figure.toml",
+    "characters/figures/citizen_m_6.figure.toml",
 ]
 citizen_f = [
     "characters/figures/citizen_f_1.figure.toml",
     "characters/figures/citizen_f_2.figure.toml",
     "characters/figures/citizen_f_3.figure.toml",
+    "characters/figures/citizen_f_4.figure.toml",
+    "characters/figures/citizen_f_5.figure.toml",
 ]
 craftsman = [
     "characters/figures/craftsman_m_1.figure.toml",
@@ -32,15 +40,21 @@ craftsman = [
     "characters/figures/craftsman_m_3.figure.toml",
     "characters/figures/craftsman_f_1.figure.toml",
     "characters/figures/craftsman_f_2.figure.toml",
+    "characters/figures/craftsman_m_4.figure.toml",
+    "characters/figures/craftsman_m_5.figure.toml",
+    "characters/figures/craftsman_f_3.figure.toml",
 ]
 craftsman_m = [
     "characters/figures/craftsman_m_1.figure.toml",
     "characters/figures/craftsman_m_2.figure.toml",
     "characters/figures/craftsman_m_3.figure.toml",
+    "characters/figures/craftsman_m_4.figure.toml",
+    "characters/figures/craftsman_m_5.figure.toml",
 ]
 craftsman_f = [
     "characters/figures/craftsman_f_1.figure.toml",
     "characters/figures/craftsman_f_2.figure.toml",
+    "characters/figures/craftsman_f_3.figure.toml",
 ]
 guard = [
     "characters/figures/guard_m_1.figure.toml",
@@ -64,17 +78,23 @@ farmer = [
     "characters/figures/farmer_f_1.figure.toml",
     "characters/figures/farmer_f_2.figure.toml",
     "characters/figures/farmer_f_3.figure.toml",
+    "characters/figures/farmer_m_5.figure.toml",
+    "characters/figures/farmer_m_6.figure.toml",
+    "characters/figures/farmer_f_4.figure.toml",
 ]
 farmer_m = [
     "characters/figures/farmer_m_1.figure.toml",
     "characters/figures/farmer_m_2.figure.toml",
     "characters/figures/farmer_m_3.figure.toml",
     "characters/figures/farmer_m_4.figure.toml",
+    "characters/figures/farmer_m_5.figure.toml",
+    "characters/figures/farmer_m_6.figure.toml",
 ]
 farmer_f = [
     "characters/figures/farmer_f_1.figure.toml",
     "characters/figures/farmer_f_2.figure.toml",
     "characters/figures/farmer_f_3.figure.toml",
+    "characters/figures/farmer_f_4.figure.toml",
 ]
 hunter = [
     "characters/figures/hunter_m_1.figure.toml",
@@ -113,12 +133,14 @@ merchant = [
     "characters/figures/merchant_f_2.figure.toml",
     "characters/figures/merchant_f_3.figure.toml",
     "characters/figures/merchant_f_4.figure.toml",
+    "characters/figures/merchant_m_5.figure.toml",
 ]
 merchant_m = [
     "characters/figures/merchant_m_1.figure.toml",
     "characters/figures/merchant_m_2.figure.toml",
     "characters/figures/merchant_m_3.figure.toml",
     "characters/figures/merchant_m_4.figure.toml",
+    "characters/figures/merchant_m_5.figure.toml",
 ]
 merchant_f = [
     "characters/figures/merchant_f_1.figure.toml",

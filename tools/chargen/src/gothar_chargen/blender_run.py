@@ -115,12 +115,14 @@ def inventory_sheet(blender: Path, root: Path, out: Path, only: list[str] | None
     return run_script(blender, "inventory_sheet.py", args)
 
 
-def build_stubble(blender: Path, head: Path, texture: Path, out: Path) -> str:
-    """Stubble beard of one head part (blender/build_stubble.py)."""
+def build_stubble(
+    blender: Path, head: Path, texture: Path, out: Path, style: str = "beard_stubble"
+) -> str:
+    """Own beard (a style of stubble.STYLES) of one head part (blender/build_stubble.py)."""
     return run_script(
         blender,
         "build_stubble.py",
-        ["--head", str(head), "--texture", str(texture), "--out", str(out)],
+        ["--head", str(head), "--texture", str(texture), "--out", str(out), "--style", style],
     )
 
 

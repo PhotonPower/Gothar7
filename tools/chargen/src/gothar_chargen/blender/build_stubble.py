@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from gothar_chargen.blender.common import import_glb, new_reference  # noqa: E402
 from gothar_chargen.blender.settings import GLTF_EXPORT_SETTINGS  # noqa: E402
 from gothar_chargen.skeleton import load_rig  # noqa: E402
-from gothar_chargen.stubble import PART, TRIANGLES  # noqa: E402
+from gothar_chargen.stubble import PART, STYLES, TRIANGLES, BeardStyle  # noqa: E402
 
 OFFSET = 0.0008  # m above the skin
 SOFT = 2.0  # widths of the soft zone borders (x the base widths below)
@@ -43,6 +43,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--head", type=Path, required=True)
     p.add_argument("--texture", type=Path, required=True)
     p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--style", default=PART, choices=sorted(STYLES))
     return p.parse_args(argv)
 
 
@@ -53,8 +54,9 @@ def _clamp(v: float) -> float:
 class Head:
     """Skin of the head part in world space, its landmarks and the beard zone."""
 
-    def __init__(self, obj: bpy.types.Object) -> None:
+    def __init__(self, obj: bpy.types.Object, zone: str = "full") -> None:
         self.obj, self.me, self.w = obj, obj.data, obj.matrix_world
+        self.mode = zone
         skin = self.me.materials.find("skin")
         if skin < 0:
             raise RuntimeError(f"{obj.name}: no skin material")
@@ -83,6 +85,8 @@ class Head:
             d *= _clamp((p.z - (self.zmin + 0.03)) / (0.01 * SOFT))
         if ax < 0.028 and p.y < n.y + 0.03:  # the lips stay free
             d *= _clamp((abs(p.z - (self.mouth_z - 0.002)) - 0.006) / (0.004 * SOFT))
+        if self.mode == "sides":  # mutton chops: cheeks and sideburns, chin and mouth free
+            d *= _clamp((ax - 0.032) / (0.01 * SOFT))
         return d
 
     def face_density(self, poly: bpy.types.MeshPolygon) -> float:
@@ -92,13 +96,13 @@ class Head:
         return self.tree.find(p)[1]
 
 
-def _patch(head: Head, arm: bpy.types.Object, name: str) -> bpy.types.Object:
+def _patch(head: Head, arm: bpy.types.Object, name: str, offset: float) -> bpy.types.Object:
     """The full shell over the beard zone (before reduction), on the reference armature."""
     faces = [p for p in head.faces if head.face_density(p) > 0.08]
     used = sorted({v for p in faces for v in p.vertices})
     index = {v: k for k, v in enumerate(used)}
     w3 = head.w.to_3x3()
-    verts = [head.pts[v] + (w3 @ head.me.vertices[v].normal).normalized() * OFFSET for v in used]
+    verts = [head.pts[v] + (w3 @ head.me.vertices[v].normal).normalized() * offset for v in used]
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(verts, [], [tuple(index[v] for v in p.vertices) for p in faces])
     for poly in mesh.polygons:
@@ -149,7 +153,20 @@ def _morphs(obj: bpy.types.Object, head: Head, owners: list[int], names: list[st
             )
 
 
-def _band_uvs(obj: bpy.types.Object, head: Head) -> None:
+def _band_level(dens: float, limits: tuple[float, ...]) -> float:
+    """Continuous band position 0..3 of a zone density (0 = densest band): the faces at the border
+    of a full beard fade through the bands from vertex to vertex instead of stepping per face."""
+    edges = [1.0, *limits, 0.0]
+    for k in range(len(edges) - 1):
+        hi, lo = edges[k], edges[k + 1]
+        if dens >= lo:
+            return k if k == 0 else k - 1 + (hi - dens) / max(hi - lo, 1e-6)
+    return float(len(limits))
+
+
+def _band_uvs(
+    obj: bpy.types.Object, head: Head, limits: tuple[float, ...] = BANDS, smooth: bool = False
+) -> None:
     """Even texel density (smart unwrap, UV_TILE m per tile), then every face moved into the
     texture band of its zone density; the hairs are noise, so the jumps between faces don't show."""
     obj.data.uv_layers.new(name="UVMap")
@@ -175,17 +192,22 @@ def _band_uvs(obj: bpy.types.Object, head: Head) -> None:
             poly.vertices
         )
         dens = head.zone(centre)
-        band = next((k for k, limit in enumerate(BANDS) if dens > limit), len(BANDS))
+        band = next((k for k, limit in enumerate(limits) if dens > limit), len(limits))
         lis = list(poly.loop_indices)
         pts = [uv.data[li].uv * scale for li in lis]
         u0, v0 = min(p.x for p in pts), min(p.y for p in pts)
         for li, p in zip(lis, pts, strict=True):
             du, dv = p.x - u0, p.y - v0  # faces are far smaller than a tile
-            uv.data[li].uv = ((u0 % 1.0) + du, (band + 0.01 + 0.98 * min(dv, 1.0)) / 4)
+            if smooth:  # per vertex: soft fade at the border, one even band inside
+                vco = obj.data.vertices[obj.data.loops[li].vertex_index].co
+                level = min(_band_level(head.zone(vco), limits), 2.99)
+                uv.data[li].uv = ((u0 % 1.0) + du, (level + 0.01 * (1 + min(dv, 1.0))) / 4)
+            else:
+                uv.data[li].uv = ((u0 % 1.0) + du, (band + 0.01 + 0.98 * min(dv, 1.0)) / 4)
 
 
-def _material(texture: Path) -> bpy.types.Material:
-    mat = bpy.data.materials.new(PART)  # role "beard" by its first word (postprocess.py)
+def _material(texture: Path, part: str) -> bpy.types.Material:
+    mat = bpy.data.materials.new(part)  # role "beard" by its first word (postprocess.py)
     mat.use_nodes = True
     nt = mat.node_tree
     bsdf = nt.nodes["Principled BSDF"]
@@ -215,19 +237,21 @@ def main() -> None:
     rig = load_rig()
     arm = new_reference(rig)
     imported = import_glb(args.head)
-    head = Head(next(o for o in imported if o.type == "MESH" and o.name.endswith("_lod0")))
+    style: BeardStyle = STYLES[args.style]
+    lod0 = next(o for o in imported if o.type == "MESH" and o.name.endswith("_lod0"))
+    head = Head(lod0, style.zone)
     print(f"[chargen] {args.head.parent.name}: nose at {tuple(round(v, 3) for v in head.nose)}")
-    mat = _material(args.texture)
+    mat = _material(args.texture, style.part)
     levels = []
     for level, triangles in enumerate(TRIANGLES):
-        obj = _patch(head, arm, f"beard_lod{level}")
+        obj = _patch(head, arm, f"beard_lod{level}", style.offset)
         obj.data.name = obj.name
         _reduce(obj, triangles)
         owners = [head.nearest(v.co) for v in obj.data.vertices]
         _weights(obj, head, owners)
         if level == 0:  # face morphs only on lod0 (§2.2)
             _morphs(obj, head, owners, list(rig.morph_targets))
-        _band_uvs(obj, head)
+        _band_uvs(obj, head, style.limits, smooth=style.limits != BANDS)
         obj.data.materials.append(mat)
         levels.append(obj)
     for o in imported:

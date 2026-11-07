@@ -1,0 +1,20 @@
+# citizen_m_6: guild set 'citizen' (figure_sets.toml), more varied Leonbergers: layered, short beard (F3, 2026-11-07)
+version = 1
+
+[parts]
+head = "parts/head_m_young/head.glb"
+hair = "parts/hair_m_young/hair_layered.glb"
+beard = "parts/hair_m_young/beard_short.glb"
+body = "parts/body_m_average/body.glb"
+cloth = [
+    "parts/garb_m_average/tunic_clean.glb",
+    "parts/garb_m_average/belt.glb",
+    "parts/cloth_m_average/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#8a6a42"
+beard_short = "#8a6a42"
+cloth_tunic_clean = "#3d5a7a"
+cloth_belt = "#3a2a1e"
+cloth_culturalibre_male_boots = "#4a3628"

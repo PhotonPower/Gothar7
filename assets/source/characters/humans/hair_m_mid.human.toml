@@ -13,6 +13,7 @@ hairs = [
     "hair/afro01/afro01.mhclo",
     "hair/short02/short02.mhclo",
     "hair/short01/short01.mhclo",
+    "hair/culturalibre_hair_06/culturalibre_hair_06.mhclo",
 ]
 beards = [
     "clothes/rehmanpolanski_beard_viking/rehmanpolanski_beard_viking.mhclo",
@@ -26,3 +27,4 @@ short02 = "hair_short"
 short01 = "hair_cropped"
 rehmanpolanski_beard_viking = "beard_goatee"
 culturalibre_faun_beard = "beard_faun"
+culturalibre_hair_06 = "hair_layered"

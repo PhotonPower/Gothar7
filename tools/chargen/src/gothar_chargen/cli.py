@@ -518,8 +518,8 @@ def _cmd_human(args: argparse.Namespace, out: TextIO) -> int:
 
 
 def _cmd_stubble(args: argparse.Namespace, out: TextIO) -> int:
-    """Own stubble beards for the male heads (F3): parts/hair_m_<head>/beard_stubble.glb."""
-    from gothar_chargen.stubble import MALE_HEADS, PART, TEXTURE, write_texture
+    """Own beards for the male heads (F3): parts/hair_m_<head>/<style>.glb (stubble.STYLES)."""
+    from gothar_chargen.stubble import MALE_HEADS, PART, STYLES, write_texture
 
     characters = _characters_dir(args)
     heads = args.heads or list(MALE_HEADS)
@@ -527,15 +527,15 @@ def _cmd_stubble(args: argparse.Namespace, out: TextIO) -> int:
     if unknown:
         print(f"error: unknown heads {unknown} (male heads: {', '.join(MALE_HEADS)})", file=out)
         return EXIT_ERROR
+    style = STYLES[args.style or PART]
     blender = find_blender(args.blender)
-    texture = write_texture(characters / "textures" / "hair" / TEXTURE)
+    texture = write_texture(characters / "textures" / "hair" / style.texture, style)
     rig = load_rig(args.rig)
     ok = True
     for name in heads:
-        glb = characters / "parts" / f"hair_m_{name}" / f"{PART}.glb"
-        log = build_stubble(
-            blender, characters / "parts" / f"head_m_{name}" / "head.glb", texture, glb
-        )
+        glb = characters / "parts" / f"hair_m_{name}" / f"{style.part}.glb"
+        head = characters / "parts" / f"head_m_{name}" / "head.glb"
+        log = build_stubble(blender, head, texture, glb, style.part)
         for line in log.splitlines():
             if line.startswith("[chargen]"):
                 print(line[10:], file=out)
@@ -784,8 +784,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.set_defaults(func=_cmd_licences)
 
-    p = sub.add_parser("stubble", help="own stubble beards for the male heads (F3)")
+    p = sub.add_parser("stubble", help="own beards (stubble, short, mutton) of the male heads")
     p.add_argument("heads", nargs="*", help="head names (bald, farmer, ...; default: all)")
+    p.add_argument("--style", help="beard_stubble (default), beard_short, beard_mutton")
     p.add_argument(
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
     )
