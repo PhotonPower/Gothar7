@@ -358,6 +358,137 @@ Engine::grading();  Engine::gradingAt(timeOfDay, point);
   (gelieferte Werte, Zonen, Fehler), `tests/runtime/test_engine_grading.cpp` (Zonen-Vorrang im Testlager),
   GPU `test_post.cpp` (neutral ≈ unverändert, Sättigung 0 grau, warm röter).
 
+### Wasseroberfläche (M17 Teil W1, umgesetzt) – `Water.hpp`, `water.vert/.frag`, `water_copy.frag`
+```cpp
+enum class WaterQuality { Low, Medium, High };  std::optional<WaterQuality> parseWaterQuality(text);
+struct WaterStyle { Vec3 absorption, scatter; f32 waveScale, waveSpeed, waveStrength, flowSpeed,
+                    refraction, glint, shininess, shoreFade; };
+class WaterStyles { static Result<WaterStyles> parse(toml, source); const WaterStyle& style(kind) const; };
+f32 waterFresnel(cosTheta, f0 = 0.02);  Vec3 waterTransmittance(absorption, metres);   // wie water.frag
+std::vector<u8> makeWaterNormals(size);                                               // Wellen, im Code erzeugt
+struct WaterSurface { Vec3 centre; f32 yaw; Vec2 halfExtents; const WaterStyle* style; };
+struct WaterFrame { f32 time; WaterQuality quality; Vec3 sunDirection, sunColor, ambient, skyHorizon, skyZenith,
+                    fogColor; f32 fogStart, fogDensity; };
+class WaterRenderer { static Result<WaterRenderer> create(Device&, ShaderLibrary&);
+                      u32 draw(Device&, const SceneTarget&, const Camera&, span<const WaterSurface>, const WaterFrame&); };
+Engine::waterSurfaces(), waterSurfacesDrawn(), waterQuality(), waterStyles();  world::WaterBody::kind
+```
+- **Ablauf:** Die Engine macht aus jedem `water`-Vob eine Fläche (Oberkante der Box) und zeichnet sie nach der
+  opaken Szene und vor den Partikeln. Sichtbare Flächen (Frustum) → bei `medium`/`high` zuerst eine Kopie von Farbe
+  und Tiefe des `SceneTarget` (ein Vollbild-Zug in RGBA16F + R32F, nur wenn Wasser sichtbar ist), dann je Fläche ein
+  Rechteck aus `gl_VertexID` (kein Vertex-Puffer). Die Fläche schreibt Tiefe (Partikel darunter bleiben verdeckt).
+  Der bisherige halbtransparente Platzhalter (eine Instanz je Box) entfällt.
+- **Wellen:** eine gekachelte Normalenkarte (128², Summe von Sinuswellen mit ganzzahligen Frequenzen, also nahtlos),
+  zwei gegeneinander driftende Lagen in Weltkoordinaten (keine Nähte zwischen überlappenden Boxen); bei `river`
+  zusätzlich entlang lokal +X der Box (Vertrag mit welt). Grenze: Wo zwei Flussboxen mit verschiedener Richtung
+  aneinanderstoßen, springt die Fließrichtung des Musters.
+- **Brechung (leicht):** die Kopie, um die Wellenneigung versetzt (höchstens `refraction` der Bildbreite, mit der
+  Wassertiefe über den ersten Meter einblendend), punktweise gelesen; liegt der versetzte Punkt nicht unter
+  Wasser (Tiefenvergleich), bleibt der eigene Punkt – nichts über dem Wasser wird hineingezogen.
+- **Tiefe:** Weg des Blickstrahls im Wasser aus der Tiefenkopie, Farbe `unten · e^(−absorption·weg)
+  + scatter · Licht · (1 − e^(−absorption·weg))`; Uferkante weich über `shore_fade` Meter Wassertiefe (Alpha).
+- **Licht:** Fresnel (Schlick, f0 = 0,02) zwischen dem Durchscheinenden und dem gespiegelten Himmel (Horizont- und
+  Zenitfarbe wie `background.frag`; bei `high` die Spiegelung, W2), Sonnenglanz nach Blinn-Phong, Nebel wie die Szene.
+  Von unten (Tauchen) siehe W3.
+- **Daten** `data/water.toml`: `[kind.river]`, `[kind.pond]`, `default = "pond"` (fehlt `kind` oder ist es
+  unbekannt, gilt die Vorgabe). Werte nach Entscheidung 5/6: Glems trüb grün-braun (Sicht ca. 4 m), fließt 0,6 m/s;
+  Teich dunkel-oliv (ca. 3 m), ruhiger und mit schärferem Glanz.
+- **Qualität:** `[render] water_quality = "low" | "medium" | "high"` (Vorgabe `medium`), Optionen → Grafik
+  „Wasserqualität“. `low`: ohne Kopien, die Fläche halbdurchsichtig mit Fresnel und Glanz. `high` dazu die
+  Spiegelung (W2, unten).
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Blick über die Glems): `water` 0,07 ms bei `medium`
+  (Kopie + Flächen), unter 0,01 ms bei `low`; Passzeit `water` im Fenster „Gothar“ und im
+  Benchmark (Budget ≤ 0,6 ms bei sichtbarem Fluss, `low` ≤ 0,3 ms).
+- **Tests:** `tests/render/test_water.cpp` (Fresnel, Absorption, nahtlose Wellen, Wasserarten und Fehler, gelieferte
+  Werte: Sichtweiten), GPU `test_water.cpp` (tieferes Wasser dunkler, Ufer ohne Sprung, Brechung versetzt nur unter
+  Wasser, ohne Wellen kein Versatz, `low` ohne Kopien, außer Sicht nichts gezeichnet), `test_engine_render.cpp`
+  (Teich im Testlager über den Wasser-Pass, Vorgabe-Art, Qualität aus den Einstellungen).
+
+### Spiegelung auf dem Wasser (M17 Teil W2, umgesetzt) – `water.frag`
+```cpp
+inline constexpr u32 kReflectionSteps = 32;  inline constexpr f32 kReflectionDistance = 80.0f;  // Water.hpp
+```
+- **Screen-Space-Reflexion** nur bei `water_quality = "high"`, im Wasser-Shader selbst (je Wasserpixel, volle
+  Auflösung) statt eines eigenen Passes in halber Auflösung wie im Plan: Das spart Ziel-Texturen und einen
+  Zusammensetz-Schritt, und der Strahl läuft nur dort, wo Wasser zu sehen ist; gemessen unter dem Budget (unten).
+- **Strahl:** vom Wasserpunkt entlang der an der gewellten Normale gespiegelten Blickrichtung, 32 Schritte, quadratisch
+  wachsend bis 80 m (kurze Schritte nahe am Wasser), je Pixel leicht versetzt gegen Streifen. Jeder Punkt wird
+  aufs Bild projiziert und mit der Tiefenkopie verglichen (Blicktiefe): liegt er dahinter, aber weniger als eine
+  Dicke (0,3 m bzw. 10 % des Weges), ist es ein Treffer, verfeinert mit 5 Schritten Binärsuche; liegt er weiter
+  dahinter, ist der Weg verdeckt.
+- **Rückfall und Rand:** Verlässt der Strahl das Bild, geht er hinter die Kamera oder trifft nichts, bleibt der Himmel
+  aus W1. Treffer nahe am Bildrand (8 % der Bildgröße) und am Ende des Strahls blenden weich zum Himmel aus. Was nicht
+  auf dem Bild ist, spiegelt sich nicht (Grenze des Verfahrens; Rückfall-Proben je Zone wären die spätere Ergänzung,
+  siehe „Spiegelnde Fenster“).
+- **Spielgefühl (Entscheidung 6):** Die Wellen verzerren die Spiegelung; der ruhige Teich (`wave_strength` 0,1)
+  spiegelt klarer als die Glems (0,18). Das Wasser selbst steht nicht in der Tiefenkopie und spiegelt sich daher
+  nicht in sich.
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Blick die Glems entlang mit viel Wasser im Bild): `water` 0,87 ms
+  bei `high` gegen 0,16 ms bei `medium` (zwei Läufe mit verschieden hoher Szenenzeit, die Karte taktet; der Anteil der
+  Spiegelung liegt etwa bei 0,4–0,7 ms, Budget ≤ 0,8 ms). Im Release-Build kleiner.
+- **Tests:** GPU `test_water.cpp`: eine helle Wand über dem Wasser erscheint bei `high` im Wasser, bei `medium` und
+  ohne Wand bleibt der Himmel.
+
+### Unter Wasser (M17 Teil W3, umgesetzt) – `post.frag`, `water.frag`
+```cpp
+struct Underwater { Vec3 absorption, fogColor; f32 distortion = 1, time; Mat4 inverseProjection; };
+Vec3 underwaterColor(color, water, metres);           // wie post.frag
+struct PostSettings { …; std::optional<Underwater> underwater; };
+const WaterBody* world::WaterBodies::submergedIn(point);  Engine::cameraWater(), postSettings();
+void audio::AudioSystem::setBusMuffle(Bus, amount);  f32 busMuffle(Bus);
+```
+- **Wann:** Die Kamera liegt unter der Oberfläche einer Wasser-Box (`submergedIn`: unter der Oberkante, über dem
+  Boden, in der Grundfläche; bei Überlappung die höchste Oberfläche). Die Wasserart der Box liefert die Werte.
+- **Bild (Entscheidung 7):** im Post-Pass je Pixel nach seiner Entfernung (aus der Tiefe) getönt und vernebelt:
+  `farbe · e^(−absorption·d) + wasserfarbe · (1 − e^(−absorption·d))`, Wasserfarbe = `scatter` mal Himmels- und
+  Sonnenlicht (wie die Tiefenfarbe der Oberfläche). Sicht eigener Wert `underwater_visibility` (Projektinhaber 2026-11-07: Teich 8 m, Glems
+  10 m; `absorption` wird so skaliert, dass der klarste Kanal dort 2 % behält – Farbton gleich, die Oberfläche von
+  oben unverändert, `underwaterAbsorption`); grün-blau
+  aus den Absorptionswerten. Leichtes Wabern (Bildversatz höchstens 0,4 %), abschaltbar. Kein Bloom unter Wasser
+  (die Sonne darüber glüht sonst durch). Kaustik zunächst aus.
+- **Oberfläche von unten:** im Snell-Fenster (etwa 48,6° um die Senkrechte, weich zwischen 44° und 50°, von den
+  Wellen bewegt) scheint die Welt darüber durch (Kopie der Szene, bei `low` der Himmel), außerhalb spiegelt sie
+  das Wasser (Totalreflexion, vereinfacht als Wasserfarbe); der Post-Pass vernebelt sie nach der Entfernung.
+- **Ton:** Musik- und Umgebungs-Bus werden über einen Tiefpass gedämpft (`setBusMuffle`, 0,85), solange die Kamera
+  unten ist. Ein offener Bus hat keinen Filter im Signalweg (klingt genau wie vorher).
+- **Option:** `[render] underwater_distortion = true`, Optionen → Grafik „Unterwasser-Verzerrung“.
+- **Tests:** `tests/world/test_water.cpp` (Kamera knapp unter/über der Oberfläche, Boden, Überlappung),
+  `tests/render/test_post.cpp` (Farbe nah/fern), `tests/audio/test_audio.cpp` (gedämpfter Bus verliert die Höhen,
+  offen wieder wie vorher), GPU `test_post.cpp` (nah kaum verändert, fern Wasserfarbe, über Wasser unverändert),
+  `test_engine_render.cpp` (Kamera im Teich: Unterwasser-Bild, kein Bloom, Musik und Umgebung gedämpft; darüber
+  nicht).
+
+### Umgebungsverdeckung mit Tiefen-Vorpass (M17 Teil P3, umgesetzt) – `Ssao.hpp`, `ssao.frag`, `ssao_blur.frag`
+```cpp
+struct SsaoSettings { f32 radius = 0.8f, strength = 1.5f; };  std::vector<Vec3> ssaoKernel(count);  // 12 Proben
+class Ssao { static Result<Ssao> create(Device&, ShaderLibrary&); Result<void> resize(Device&, u32 w, u32 h);
+             void render(Device&, const rhi::Texture& depth, const Camera&, const SsaoSettings&);
+             const rhi::Texture* result() const; };                  // R8, halbe Größe, 1 = offen
+MeshRenderer::drawDepthBatched(device, items, camera);  MeshRenderer::setAmbientOcclusion(texture);
+TerrainRenderer::drawDepth(device, camera);  inline constexpr rhi::DepthBias kPrepassBias{-2, -1};
+Environment::ambientOcclusion, viewportTexel;  GpuLighting::aoParams;  Engine::ssaoEnabled(), ssao()
+```
+- **Nur wenn an** (`[render] ssao`, Vorgabe `false`, Entscheidung 8; Optionen → Grafik „Umgebungsverdeckung (SSAO)“):
+  Ohne SSAO läuft weder Vorpass noch SSAO; der Ablauf ist der von vorher (kein Mehraufwand).
+- **Tiefen-Vorpass:** nach den Schatten das Gelände und die gestapelten Objekte (sichtbare Instanzen und Gegenstände,
+  Mehrfachzeichnen) nur in die Tiefe, mit den Schatten-Shadern und eigenen Pipelines (Reverse-Z, `GreaterEqual`).
+  Statt `GL_EQUAL` liegt die Vorpass-Tiefe um einen kleinen Versatz (`kPrepassBias`) weiter hinten: Hauptpass und
+  Vorpass rechnen die Position mit verschiedenen Shadern, ein Gleichheitstest gäbe Löcher; mit dem Versatz zeichnet
+  der Hauptpass (`GreaterEqual`) dieselben Flächen wieder, Verdecktes fällt weiter weg. Figuren (Held, Kreaturen,
+  NPCs) und Durchscheinendes sind nicht im Vorpass; Figuren nehmen und geben keine Verdeckung (`#ifndef SKINNED`).
+  Nur mit Mehrfachzeichnen (`render.multi_draw`, Vorgabe „auto“: an außer auf Intel-GPUs).
+- **SSAO:** halbe Auflösung aus der Tiefe, Normale aus der Tiefe (je Achse der flachere Nachbar), 12 Proben in der
+  Halbkugel (`ssaoKernel`, nahe der Mitte dichter), je Pixel gedreht; eine Probe zählt, wenn die Szene davor näher
+  liegt, gewichtet nach Entfernung (keine dunklen Säume um weit vorn stehende Dinge). Danach eine tiefenabhängige
+  4×4-Unschärfe. `[render] ssao_radius` (0,8 m) und `ssao_strength` (1,5).
+- **Anwendung:** `common/lighting.glsl` dämpft **nur das Umgebungslicht** (`aoParams.x`, Textur an Einheit 8); Sonne
+  und Punktlichter bleiben. Wirkt daher vor allem im Schatten und in Innenräumen: Mauerfüße, unter Vorsprüngen,
+  Fensterlaibungen, Ecken.
+- **Passzeiten:** mit SSAO misst die Engine `scene` (nur noch Schatten), `depth` (Vorpass), `ssao`, `shading`
+  (Hauptpass); ohne wie bisher `scene`.
+- **Tests:** GPU `test_ssao.cpp` (Proben in der Halbkugel; eine Stufe in der Tiefe verdunkelt die Wand daneben, eine
+  freie Wand bleibt offen), `test_engine_render.cpp` (aus: kein `depth`/`ssao`-Pass; an: beide und ein Ergebnis).
+  Der Vorpass allein ändert das Bild nicht (Prüfbild mit `ssao_strength = 0` gegen aus: 0,004 % der Pixel weichen ab).
 ### Regen (M17 Wetter, Teil R, umgesetzt) – `Rain.hpp`, `rain.vert/.frag`
 ```cpp
 enum class RainQuality { Low, Medium, High };  parseRainQuality(text);  u32 rainStreaks(quality); // 4 000/12 000/24 000
@@ -383,11 +514,15 @@ Engine::rainStreaksDrawn(), rain(), rainSound();  Environment::shadowStrength (L
   Optionen → Grafik „Wetter“, „Regenqualität“.
 - **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Marktplatz): `rain` 0,04 ms bei `high` und Regen, 0,10 ms bei
   Starkregen (24 000 Striche · 0,9 und Spritzer); die Regenkarte nur in Frames mit Erneuerung (Budget ≤ 0,5 ms bzw. 0,8 ms).
-- **Noch nicht:** Ringe auf dem Wasser und gedämpfter Regen unter Wasser (brauchen W1/W3, die mit #363–#368 kommen;
-  danach als kleiner Nachtrag), nasse Flächen (Teil N).
+- **Wasser:** Regenringe auf jeder Wasserfläche (`water.frag`, `WaterFrame::rain`): je Zelle von 0,7 m (zwei
+  versetzte Lagen) ein Tropfen, dessen Ring sich in seinem Takt auf 0,35 m weitet und vergeht; die Neigung zeigt vom
+  Ringmittelpunkt weg und mischt sich zu den Wellen. Unter Wasser keine Striche; die Regen-Ebene liegt im Bus
+  `ambient` und klingt dort durch den Unterwasser-Tiefpass (W3) gedämpft.
+- **Noch nicht:** nasse Flächen (Teil N).
 - **Tests:** `tests/render/test_rain.cpp` (Stufen, Projektion der Karte), GPU `test_rain.cpp` (Striche im Freien,
   keine unter einem Dach, keine ohne Regen), `test_engine_render.cpp` (Regen nur bei Regen und `weather = true`,
-  Karte gezeichnet), `tests/runtime/test_engine_weather.cpp` (Regen-Ebene folgt der Lage),
+  Karte gezeichnet; unter Wasser keine Striche, Regen gedämpft), GPU `test_water.cpp` (Regenringe kräuseln eine
+  ruhige Fläche), `tests/runtime/test_engine_weather.cpp` (Regen-Ebene folgt der Lage),
   `tests/render/test_lighting.cpp` (Schattenstärke im Lighting-Block).
 
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
@@ -604,6 +739,146 @@ public:
 };
 }
 ```
+
+## Plan M17: Wasser und Post-Processing (freigegeben 2026-11-07)
+Auftrag des Projektinhabers (über den Koordinator): **Wasser** mit Reflexion und leichter Brechung für die Glems und
+den Teich, dazu ein Unterwasser-Effekt; **Post-Processing** mit Bloom, Farbkorrektur je Tageszeit und Zone und
+optional SSAO. Roadmap M17, Punkte „Wasser-Rendering“ und „Post-Processing“.
+
+### Ausgangslage
+- **Wasser** ist heute eine halbtransparente Fläche je `water`-Box (`asset::makePlane`, Blend, beidseitig;
+  `Engine::instantiateScene`). Leonberg hat **186 Boxen** für die Glems (Stufen an den Überlappungen, `kind` leer),
+  das Testlager den Teich. Schwimmen und Tauchen gibt es seit M5 (`world::WaterBodies::surfaceAt`, Luftvorrat).
+- **Post** ist ein Pass: `SceneTarget` (RGBA16F + Depth32F) → `post.frag` (Belichtung, Tonemapping ACES, sRGB,
+  Dithering). Es gibt keinen Tiefen-Vorpass und keine Normalen außer im Forward-Shader.
+- **Stimmung** kommt aus `data/environment.toml` (Schlüsselbilder je Uhrzeit: Sonne, Mond, Ambient, Nebel, Himmel);
+  `[zone]` ist dort für M17 reserviert. Zonen gibt es als `indoor`, `music`, `ambient` (`world.md` „Zonen“).
+- Es gibt **keine GPU-Zeitmessung** je Pass.
+
+### Grundsätze
+- Alles in `render` (Shader unter `engine/render/shaders/`), die Engine füllt Parameter je Frame. Keine neue
+  Bibliothek, **keine ADR nötig**: Die Verfahren (Screen-Space-Reflexion, Bloom-Kette, parametrische Farbkorrektur,
+  SSAO) sind Standard und hinter der RHI rückbaubar. Erst echtes Raytracing für Fenster bräuchte das
+  Vulkan-Backend und dafür eine ADR (Offene Fragen unten).
+- **Werte als Daten:** Farbkorrektur, Bloom und Wasserfarben in `data/environment.toml` (Tageszeit, Zonen) und
+  `data/water.toml` (Wasserarten), mit Hot-Reload wie die Umgebung.
+- **Abschaltbar:** Jeder Effekt hat einen Schalter unter `[render]` und im Reiter **Grafik** der Optionen; aus heißt
+  der heutige Look, ohne Mehrkosten (ein Shader-Zweig bzw. ausgelassener Pass).
+- **Budget gemessen:** Teil 1 bringt GPU-Zeitmessung je Pass; jeder Teil zeigt seine Zeit im Fenster „Gothar“ und im
+  Benchmark (`--benchmark` schreibt die Passzeiten).
+
+### Teile (je ein PR, in dieser Reihenfolge)
+1. **P1 – Zeitmessung und Bloom**
+   - RHI: `rhi::TimerQuery` (`GL_TIME_ELAPSED`, doppelt gepuffert, Ergebnis ein Frame später) und
+     `render::PassTimes` (Name → ms, gleitender Mittelwert). Fenster „Gothar“ und Benchmark zeigen sie.
+   - Bloom auf dem HDR-Bild vor dem Tonemapping: Helligkeits-Schwelle mit weichem Knie, Abwärtskette aus
+     5 Mip-Stufen (13-Tap-Filter), Aufwärtskette mit Zelt-Filter (wie „Call of Duty: Advanced Warfare“),
+     Mischung in `post.frag`. Neue Dateien `Bloom.hpp/.cpp`, `bloom_down.frag`, `bloom_up.frag`.
+   - Werte: `bloom_threshold`, `bloom_knee`, `bloom_intensity` je Tageszeit-Schlüssel in `environment.toml`
+     (nachts mehr Glühen um Fackeln, mittags kaum). `[render] bloom = true`.
+   - Tests: CPU – Schwelle/Knie-Kurve, Mischgewichte; GPU – ein heller Punkt strahlt in die Nachbarn, unter der
+     Schwelle bleibt das Bild gleich, `bloom = false` ergibt die Bytes von vorher; Zeitmessung liefert Werte > 0.
+2. **P2 – Farbkorrektur je Tageszeit und Zone**
+   - Parametrisch im Post-Shader, **ohne LUT-Dateien**: Weißabgleich (Temperatur, Tönung), Belichtung,
+     Kontrast, Sättigung, Lift/Gamma/Gain, Vignette. Grund: in den Daten lesbar und von Hand einstellbar, keine
+     Bild-Assets; eine 3D-LUT kann später als Option dazukommen.
+   - Werte je Tageszeit-Schlüssel (`grading_*` in `[[key]]`) und je Zone (`[zone.<wert>]` mit Überschreibungen,
+     z. B. `[zone.LEO_KIRCHE]`, `[zone.innen]` als Vorgabe für alle `indoor`-Zonen). Übergang beim Betreten einer
+     Zone weich über 1,5 s. Neu: `render::Grading` (Struct, Mischung, Uniforms), `world/DayCycle` liefert ihn.
+   - Tests: CPU – Mischung zweier Gradings, Interpolation über den Tag, Zonenvorrang (innen vor Musikzone),
+     neutrale Werte = Identität; GPU – neutrales Grading ändert keinen Pixel, Sättigung 0 ergibt Grau.
+3. **W1 – Wasseroberfläche mit Brechung und Tiefe**
+   - Eigener Pass nach dem Opaken und dem Himmel, vor Partikeln: Kopie von Farbe und Tiefe des `SceneTarget`
+     (eine Blit-Kopie je Frame, nur wenn Wasser sichtbar ist), dann je Wasserfläche `water.vert/.frag`.
+   - Normalen aus zwei verschobenen, gekachelten Rausch-Normalkarten, **im Code erzeugt** (kein Bild-Asset).
+     Bei Flüssen fließt das Muster entlang einer Richtung (siehe Vertrag unten), bei Teichen nur Wellen.
+   - **Brechung (leicht):** die Kopie des Bildes, um die Normale versetzt (höchstens 2 % der Bildbreite), nur dort,
+     wo der Versatz unter Wasser liegt (Tiefenvergleich, sonst kein Versatz).
+   - **Wassertiefe:** Farbe und Sicht nach der Tiefe (Beer-Lambert mit Absorption je Farbkanal), Uferkante weich
+     über die Tiefendifferenz, kein harter Schnitt am Ufer.
+   - Fresnel (Schlick) mischt zwischen Brechung und Reflexion; die Reflexion ist in W1 noch der Himmel
+     (Horizont- und Zenitfarbe aus der Tageszeit) plus Sonnenglanz (Blinn-Phong).
+   - Daten `data/water.toml`: je Wasserart (`river`, `pond`, Vorgabe) Absorption, Streufarbe, Wellengröße und
+     -tempo, Glanz. `[render] water_quality = "low"|"medium"|"high"` (low = heutige Fläche plus Fresnel und Glanz,
+     ohne Kopien).
+   - Tests: CPU – Fresnel, Absorption; GPU – tieferes Wasser ist dunkler, ein Objekt unter Wasser erscheint
+     versetzt und getönt, über Wasser liegt nichts versetzt, die Uferkante hat keinen Sprung.
+4. **W2 – Reflexion**
+   - **Screen-Space-Reflexion** nur auf Wasserpixeln: Strahl im Tiefenpuffer (halbe Auflösung, höchstens 32
+     Schritte, Binärsuche am Ende), weicher Rand am Bildrand, Rückfall auf den Himmel aus W1 wo der Strahl nichts
+     trifft.
+   - Grund gegen planare Spiegel: Die Glems besteht aus 186 Boxen auf vielen Höhen; ein zweites Rendern der Szene
+     je Höhe ist zu teuer. Planare Spiegelung bleibt als spätere Stufe für einzelne ebene Flächen (Teich) möglich.
+   - Nur bei `water_quality = "high"`. Tests: GPU – ein heller Würfel über dem Wasser erscheint gespiegelt an der
+     richtigen Stelle, außerhalb des Bildes Rückfall auf den Himmel.
+5. **W3 – Unterwasser**
+   - Kamera unter der Oberfläche (`WaterBodies::surfaceAt` am Kamerapunkt, wie das Tauchen): im Post-Pass
+     Tönung und dichter Nebel in der Wasserfarbe (Sichtweite je Wasserart), leichte Wellenverzerrung,
+     Lichtflecken (Kaustik) optional; die Oberfläche von unten mit Totalreflexion am Rand (Snell-Fenster vereinfacht).
+   - Ton: Musik und Umgebung gedämpft (der vorhandene Tiefpass, `audio::setMuffle`), solange die Kamera unten ist.
+   - Tests: CPU – Kamera knapp über/unter der Oberfläche; GPU – unter Wasser ist das Bild getönt und die Ferne im
+     Nebel, über Wasser nicht.
+6. **P3 – SSAO (optional)**
+   - Braucht einen **Tiefen-Vorpass** (Opakes nur Tiefe, danach Shading mit `GL_EQUAL`), der auch Überzeichnung
+     spart. SSAO halbe Auflösung aus Tiefe (Normalen aus der Tiefe rekonstruiert), 8–12 Proben, bilaterale
+     Unschärfe; das Ergebnis dämpft **nur das Umgebungslicht** im Forward-Shader (Sonne und Punktlichter bleiben).
+   - `[render] ssao = false` als Vorgabe (Vorschlag), an in der Stufe „hoch“.
+   - Tests: GPU – eine Innenecke wird dunkler als eine freie Fläche, `ssao = false` ändert nichts; Vorpass
+     ergibt dasselbe Bild wie ohne.
+
+### Budget je Effekt (1600×900, RTX 3080 Laptop, Release; Intel UHD in Klammern als Zielwert der Stufe „niedrig“)
+| Effekt | Budget | Stufe niedrig |
+|---|---|---|
+| Bloom (5 Stufen) | ≤ 0,4 ms | ≤ 1,5 ms (3 Stufen) |
+| Farbkorrektur | ≤ 0,1 ms (im Post-Pass) | ≤ 0,3 ms |
+| Wasser W1 (Kopien + Fläche) | ≤ 0,6 ms bei sichtbarem Fluss | ohne Kopien: ≤ 0,3 ms |
+| Reflexion W2 (SSR, halbe Auflösung) | ≤ 0,8 ms | aus |
+| Unterwasser W3 | ≤ 0,2 ms | ≤ 0,5 ms |
+| SSAO P3 (halbe Auflösung) | ≤ 1,2 ms; der Vorpass spart Überzeichnung (netto gemessen) | aus |
+| **Summe hoch** | **≤ 3,3 ms** | |
+
+Überschreitet ein Effekt sein Budget in der Messung, wird er heruntergestuft (weniger Schritte, kleinere Auflösung),
+nicht das Budget angehoben (wie bei den Testgruppen).
+
+### Grafik-Optionen (Reiter „Grafik“, gespeichert wie bisher nur bei Abweichung)
+| Option | Schlüssel | Werte | Vorgabe |
+|---|---|---|---|
+| Wasserqualität | `render.water_quality` | niedrig / mittel / hoch | mittel |
+| Bloom | `render.bloom` | an / aus | an |
+| Farbkorrektur | `render.grading` | an / aus | an |
+| Umgebungsverdeckung (SSAO) | `render.ssao` | an / aus | aus |
+| Unterwasser-Verzerrung | `render.underwater_distortion` | an / aus | an |
+
+### Vertrag mit welt (vereinbart 2026-11-07, welt setzt die Daten)
+- `water.kind` wird belegt: `river` (fließt) und `pond` (steht), leer = `pond`. Fließrichtung bei `river`:
+  **lokale +X-Achse der Box** (die Box ist nur um Y gedreht), Tempo aus `data/water.toml`. Das ersetzt das in
+  `world.md` vorgemerkte Gefälle-Feld für die Darstellung; ein echtes Gefälle-Feld bleibt möglich. Betroffen:
+  welt (Glems-Boxen bekommen `kind = "river"` und eine Drehung entlang des Flusslaufs), Vertragszeile in
+  `docs/coordination.md` erst nach Zustimmung.
+
+### Entscheidungen zum Spielgefühl (Projektinhaber, 2026-11-07: alle acht wie vorgeschlagen; rückbaubar in den Daten)
+1. **Bloom-Stärke:** dezent – nur Feuer, Fackeln, Zauber und die Sonne glühen; Schwelle bei Luminanz 1,0,
+   Stärke 0,12 tags, 0,2 nachts. (Gothic hatte keinen Bloom; ein starker Bloom wirkt schnell „modern“.)
+2. **Farbstimmung je Tageszeit:** Morgen kühl-golden (leicht entsättigt), Mittag neutral, Abend warm-orange mit
+   mehr Kontrast, Nacht blau und entsättigt (Sättigung 0,7), Gewitter (später) grau-grün.
+3. **Zonen:** Innenräume warm (Kerzen-/Herdlicht, +Kontrast), Kirche kühl und heller, Wald (Testlager) leicht
+   grün, Leonberger Gassen neutral; Übergang 1,5 s.
+4. **Vignette:** leicht (Stärke 0,15) immer an, dunkler in Innenräumen.
+5. **Wasserfarbe:** Glems trüb grün-braun (Sicht unter Wasser ca. 4 m), Teich dunkel-oliv (ca. 3 m).
+6. **Reflexion:** leicht gewellte Spiegelung, bei ruhigem Teich klarer als im Fluss; Sonnenglanz deutlich.
+7. **Unterwasser:** grün-blaue Tönung, dichte Sicht, leichte Wellenverzerrung, Ton gedämpft; Kaustik zunächst aus.
+8. **SSAO:** standardmäßig aus (kostet, Gothic-Look kommt ohne aus); an nur in der Stufe „hoch“.
+
+### Technische Entscheidungen (Koordinator, 2026-11-07)
+- **Reihenfolge** P1 → P2 → W1 → W2 → W3 → P3 (Zeitmessung zuerst, weil alle Budgets davon abhängen).
+- **SSR ohne ADR:** Screen-Space-Reflexion braucht weder eine neue Bibliothek noch ein neues Backend; sie ist ein
+  Shader-Verfahren hinter der vorhandenen RHI und lässt sich abschalten bzw. ersetzen. Bezug zu den **spiegelnden
+  Fenstern** (Offene Fragen unten): Dieselbe SSR-Stufe kann später Glas-Materialien spiegeln (mit Reflexions-Proben
+  je Zone als Rückfall); erst echtes Raytracing bräuchte das Vulkan-Backend und dann eine ADR.
+- **Tiefen-Vorpass** erst mit P3, außer W1 misst einen klaren Gewinn.
+- **`water.kind`:** vereinbart mit welt (2026-11-07, `docs/coordination.md`): `river` (Glems) oder `pond`
+  (Parksee); bei `river` zeigt lokal +X stromabwärts. welt setzt die Daten in einem eigenen PR; bis dahin gilt
+  fehlendes `kind` als Vorgabe (stehend).
 
 ## Offene Fragen
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.

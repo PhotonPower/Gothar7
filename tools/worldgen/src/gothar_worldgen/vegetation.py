@@ -305,21 +305,51 @@ def spruce() -> MobModel:
 HEDGE_L, HEDGE_D, HEDGE_H = 1.5, 0.6, 0.8  # hedge_box: one piece of a box hedge
 
 
+HEDGE_BEVEL = 0.07  # the clipped hedge's rounded (chamfered) edges
+
+
+def _hedge_section(bevel: float) -> list[tuple[float, float]]:
+    """The hedge's cross-section (z, y), counter-clockwise seen from +x: a rectangle with its
+    upper edges chamfered; the foot slightly narrower than the top (clipped hedges)."""
+    hd, h, foot = HEDGE_D / 2, HEDGE_H, HEDGE_D / 2 - 0.04
+    if bevel <= 0.0:
+        return [(-foot, 0.0), (foot, 0.0), (hd, h), (-hd, h)]
+    return [(-foot, 0.0), (foot, 0.0), (hd, h - bevel), (hd - bevel, h), (-hd + bevel, h),
+            (-hd, h - bevel)]  # fmt: skip
+
+
+def _hedge_into(m: Mesh, bevel: float) -> None:
+    """A clipped hedge piece: its section swept along x from end to end (pieces in a row make a
+    closed hedge), both ends closed."""
+    b = m.b("leaves_box")
+    sec = _hedge_section(bevel)
+    x0, x1 = -HEDGE_L / 2, HEDGE_L / 2
+    v = 0.0
+    for k in range(len(sec)):
+        (za, ya), (zb, yb) = sec[k], sec[(k + 1) % len(sec)]
+        if ya == 0.0 and yb == 0.0:
+            continue  # the foot stands on the ground
+        w = math.dist((za, ya), (zb, yb))
+        out = ((za + zb) / 2, (ya + yb) / 2 - HEDGE_H / 2)  # (z, y) away from the middle
+        b.polygon([(x0, ya, za), (x1, ya, za), (x1, yb, zb), (x0, yb, zb)],
+                  [(x0, v), (x1, v), (x1, v + w), (x0, v + w)],
+                  (0.0, out[1], out[0]))  # fmt: skip
+        v += w
+    for x, n in ((x0, -1.0), (x1, 1.0)):  # the ends: fans of the section
+        for k in range(1, len(sec) - 1):
+            tri = [(x, sec[0][1], sec[0][0]), (x, sec[k][1], sec[k][0]),
+                   (x, sec[k + 1][1], sec[k + 1][0])]  # fmt: skip
+            b.polygon(tri, [(q[2], q[1]) for q in tri], (n, 0.0, 0.0))
+
+
 def hedge_box() -> MobModel:
-    """A clipped box hedge, ``HEDGE_L`` long along x: three blobs in a row (the formal garden);
-    pieces end to end make a hedge. It collides as a low box (one steps round it)."""
+    """A clipped box hedge, ``HEDGE_L`` long along x, as in a baroque parterre: a box with
+    rounded (chamfered) upper edges, a little narrower at the foot; pieces end to end make a
+    closed hedge. The coarse level drops the chamfers. It collides as a low box."""
     levels = []
-    for subdiv in (1, 0):
+    for bevel in (HEDGE_BEVEL, 0.0):
         m = Mesh()
-        rng = np.random.default_rng(79)
-        if subdiv:
-            for k in range(3):
-                x = (k - 1) * HEDGE_L / 3
-                blob(m, "leaves_box", (x, HEDGE_H / 2, 0.0),
-                     (HEDGE_L / 3 * 1.05, HEDGE_H / 2, HEDGE_D / 2), 1, rng, 0.04)  # fmt: skip
-        else:
-            blob(m, "leaves_box", (0.0, HEDGE_H / 2, 0.0),
-                 (HEDGE_L / 2, HEDGE_H / 2, HEDGE_D / 2), 0, rng, 0.05)  # fmt: skip
+        _hedge_into(m, bevel)
         levels.append(m)
     levels[0].collision.append(box_body("COL_HULL_HEDGE", (-HEDGE_L / 2, 0.0, -HEDGE_D / 2),
                                         (HEDGE_L / 2, HEDGE_H, HEDGE_D / 2)))  # fmt: skip

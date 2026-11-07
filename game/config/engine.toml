@@ -45,6 +45,15 @@ subtitles = true       # Untertitel mit Sprechername, unten mittig, auch für Zu
 bloom = true
 # Farbkorrektur je Tageszeit und Zone (M17 P2; Werte in data/environment.toml).
 grading = true
+# Wasser (M17 W1): low = Fläche mit Fresnel und Glanz, medium = mit Brechung und Tiefenfarbe, high = dazu ab W2
+# die Spiegelung. Wasserarten in data/water.toml.
+water_quality = "medium"
+# Unter Wasser (M17 W3): leichtes Wabern des Bildes; Tönung und Sichtweite immer.
+underwater_distortion = true
+# Umgebungsverdeckung mit Tiefen-Vorpass (M17 P3; Entscheidung 8: aus, an nur in der Stufe „hoch“). Aus kostet sie nichts.
+ssao = false
+ssao_radius = 0.8     # m um einen Punkt, die ihn verdecken können
+ssao_strength = 1.5   # wie stark das Verdeckte das Umgebungslicht dämpft
 # Wetter (M17, docs/design/wetter.md): aus = kein Regen, keine Nässe, keine Blitze zu sehen (die Lage läuft weiter).
 weather = true
 # Regen: low 4 000 Striche ohne Spritzer, medium 12 000, high 24 000.
@@ -285,3 +294,4 @@ simulation_distance = 80.0
 [editor]
 # Editor-Modus (gothar --editor, docs/modules/tools.md): so viele Schritte lassen sich je Sitzung rückgängig machen.
 undo_depth = 200
+waynet_radius = 80.0 # m: the waynet mode draws and picks points this near the camera (Leonberg ~3800 points)

@@ -23,6 +23,7 @@ layout(std140, binding = 0) uniform Lighting
     vec4 fogColorStart;     // rgb linear, w start distance
     vec4 fogParams;         // x density
     vec4 indoorParams;      // x rooms, y ambient factor inside, z edge (m)
+    vec4 aoParams;          // x ambient occlusion strength (0 off), yz 1 / viewport size (M17 P3)
     vec4 indoorBoxes[2 * kMaxIndoorVolumes]; // per room: centre + cos yaw, half extents + sin yaw
     vec4 pointPositionRadius[kMaxPointLights];
     vec4 pointColor[kMaxPointLights];
@@ -48,6 +49,7 @@ float pointLightAttenuation(float distance, float radius)
     return window * window / (distance * distance + 1.0);
 }
 
+layout(binding = 8) uniform sampler2D uAmbientOcclusion; // M17 P3: half size, 1 = open (render::Ssao)
 layout(binding = 3) uniform sampler2DShadow uShadowAtlas; // cascades in 2x2 tiles, compare LessEqual
 
 int shadowCascade(vec3 worldPosition)
@@ -142,6 +144,14 @@ vec3 incomingLight(vec3 worldPosition, vec3 n)
     {
         light *= mix(1.0, uLighting.indoorParams.y, indoorAmount(worldPosition)); // rooms: the indoor ambient
     }
+#ifndef SKINNED
+    // Ambient occlusion (M17 P3) damps only the ambient light. Figures are not in the depth prepass, so they
+    // neither take nor give it.
+    if (uLighting.aoParams.x > 0.0)
+    {
+        light *= mix(1.0, texture(uAmbientOcclusion, gl_FragCoord.xy * uLighting.aoParams.yz).r, uLighting.aoParams.x);
+    }
+#endif
     light += uLighting.sunColor.rgb * max(dot(n, uLighting.sunDirection.xyz), 0.0) *
              mix(sunShadow(worldPosition, n), 1.0, uLighting.shadowExtra.z); // overcast: soft or no shadows
     for (int i = 0; i < lightCount(); ++i)

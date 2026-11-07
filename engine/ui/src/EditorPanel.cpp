@@ -189,4 +189,95 @@ void DebugUi::editorPanel(EditorPanel& panel)
     }
     ImGui::End();
 }
+
+void DebugUi::waynetPanel(WaynetPanel& panel)
+{
+    panel.moved = panel.rename = panel.addPoint = panel.addFreepoint = panel.remove = false;
+    panel.check = panel.probe = false;
+    panel.clickedIssue = -1;
+    if (!panel.shown)
+    {
+        return;
+    }
+    ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 740.0f, 10.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(360.0f, 520.0f), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Waynet");
+    ImGui::Checkbox("waynet mode (G)", &panel.active);
+    ImGui::TextWrapped(
+        "Click: select a point. Ctrl+click on the ground: new point (joined to the selected one). "
+        "Shift+click on a point: join/part it with the selected one. Del: delete.");
+    panel.addPoint = ImGui::Button("add point here");
+    ImGui::SameLine();
+    std::vector<const char*> types;
+    for (const std::string& t : panel.freepointTypes)
+    {
+        types.push_back(t.c_str());
+    }
+    ImGui::SetNextItemWidth(110.0f);
+    ImGui::Combo("##type", &panel.type, types.data(), static_cast<int>(types.size()));
+    ImGui::SameLine();
+    panel.addFreepoint = ImGui::Button("add freepoint");
+
+    if (ImGui::CollapsingHeader("Selection", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        if (panel.selected.empty())
+        {
+            ImGui::TextDisabled("nothing selected");
+        }
+        else
+        {
+            ImGui::TextUnformatted(panel.selected.c_str());
+            if (panel.selectedGenerated)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.75f, 0.2f, 1.0f));
+                ImGui::TextWrapped(
+                    "generated (owner worldgen): moving or renaming makes it yours; deleting lasts "
+                    "only until the next generator run");
+                ImGui::PopStyleColor();
+            }
+            panel.moved = ImGui::DragFloat3("position", &panel.position.x, 0.05f);
+            if (panel.selectedFreepoint)
+            {
+                panel.moved =
+                    ImGui::DragFloat("facing (deg)", &panel.yawDegrees, 1.0f, -180.0f, 180.0f) || panel.moved;
+            }
+            inputText("name", panel.name);
+            ImGui::SameLine();
+            panel.rename = ImGui::Button("rename");
+            panel.remove = ImGui::Button("delete (Del)");
+        }
+        if (!panel.annotation.empty())
+        {
+            ImGui::TextWrapped("For good: add to tools/worldgen/data/<site>/waynet.json \"remove\" (welt):");
+            ImGui::InputText("##annotation", panel.annotation.data(), panel.annotation.size() + 1,
+                             ImGuiInputTextFlags_ReadOnly);
+            ImGui::SameLine();
+            if (ImGui::Button("copy"))
+            {
+                ImGui::SetClipboardText(panel.annotation.c_str());
+            }
+        }
+    }
+    if (ImGui::CollapsingHeader("Check", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        panel.check = ImGui::Button("check the waynet");
+        ImGui::BeginChild("issues", ImVec2(0.0f, 160.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.issues.size(); ++i)
+        {
+            if (ImGui::Selectable(panel.issues[i].c_str()))
+            {
+                panel.clickedIssue = static_cast<i32>(i); // the camera goes there
+            }
+        }
+        ImGui::EndChild();
+    }
+    if (ImGui::CollapsingHeader("Path probe"))
+    {
+        inputText("from", panel.pathFrom);
+        inputText("to", panel.pathTo);
+        panel.probe = ImGui::Button("find the path");
+        ImGui::TextWrapped("%s", panel.pathResult.c_str());
+    }
+    ImGui::End();
+}
 } // namespace g7::ui

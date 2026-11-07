@@ -7,6 +7,12 @@
 
 namespace g7::render
 {
+Vec3 underwaterColor(const Vec3& color, const Underwater& water, f32 metres) noexcept
+{
+    const Vec3 t = glm::exp(-water.absorption * std::max(metres, 0.0f));
+    return color * t + water.fogColor * (Vec3(1.0f) - t);
+}
+
 Result<SceneTarget> SceneTarget::create(Device& device, u32 width, u32 height)
 {
     SceneTarget target;
@@ -127,6 +133,16 @@ void PostProcess::apply(Device& device, const SceneTarget& scene, u32 width, u32
     const bool bloom = settings.bloom != nullptr && settings.bloomIntensity > 0.0f;
     m_program->setUniform("uBloomIntensity", bloom ? settings.bloomIntensity : 0.0f);
     m_program->setUniform("uGrade", settings.grading ? 1 : 0);
+    m_program->setUniform("uUnderwater", settings.underwater ? 1 : 0);
+    if (settings.underwater)
+    {
+        const Underwater& w = *settings.underwater;
+        m_program->setUniform("uWaterAbsorption", w.absorption);
+        m_program->setUniform("uWaterFog", w.fogColor);
+        m_program->setUniform("uWaterDistortion", w.distortion);
+        m_program->setUniform("uWaterTime", w.time);
+        m_program->setUniform("uInverseProjection", w.inverseProjection);
+    }
     if (settings.grading)
     {
         const Grading& g = *settings.grading;
@@ -144,6 +160,10 @@ void PostProcess::apply(Device& device, const SceneTarget& scene, u32 width, u32
     if (bloom)
     {
         device.bindTexture(1, *settings.bloom, m_bloomSampler);
+    }
+    if (settings.underwater)
+    {
+        device.bindTexture(2, scene.depth(), m_sampler);
     }
     device.draw(3); // fullscreen triangle
 }

@@ -3,6 +3,7 @@ function(g7_add_test_suite name)
     file(GLOB _sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${name}/*.cpp")
     add_executable(g7_tests_${name} ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_sources})
     target_link_libraries(g7_tests_${name} PRIVATE g7::${name} doctest::doctest)
+    target_include_directories(g7_tests_${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common) # RunTempDir.hpp
     g7_set_warnings(g7_tests_${name})
     set_target_properties(g7_tests_${name} PROPERTIES FOLDER "tests")
     if(NOT ARGV1 STREQUAL "NO_TEST") # NO_TEST: the caller adds the ctest entries (groups)
@@ -66,6 +67,7 @@ target_compile_definitions(g7_tests_runtime PRIVATE G7_ASSET_SOURCE_DIR="${PROJE
                                                    G7_GAME_CONFIG="${PROJECT_SOURCE_DIR}/game/config/engine.toml")
 
 g7_add_test_suite(render)
+target_compile_definitions(g7_tests_render PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
 g7_add_test_suite(physics)
 g7_add_test_suite(gameplay)
 target_compile_definitions(g7_tests_gameplay PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source"
@@ -90,6 +92,7 @@ target_compile_definitions(g7_tests_ui PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SO
 file(GLOB _gpu_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/render_gpu/*.cpp")
 add_executable(g7_tests_render_gpu ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_gpu_sources})
 target_link_libraries(g7_tests_render_gpu PRIVATE g7::runtime g7_editor g7_walk doctest::doctest) # editor, autopilot end to end
+target_include_directories(g7_tests_render_gpu PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common) # RunTempDir.hpp
 g7_set_warnings(g7_tests_render_gpu)
 set_target_properties(g7_tests_render_gpu PROPERTIES FOLDER "tests")
 # Several ctest entries over one executable, so each stays within its timeout in the coverage job (software GL plus

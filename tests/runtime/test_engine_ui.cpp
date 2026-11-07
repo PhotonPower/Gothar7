@@ -1,6 +1,8 @@
 // The game UI in the engine (M14 part B), driven by synthetic SDL events (needs SDL_VIDEO_DRIVER=offscreen):
 // the sample screen takes the keys, Escape closes it before it can pause the game.
 
+#include "RunTempDir.hpp"
+
 #include <g7/runtime/Engine.hpp>
 #include <g7/ui/GameScreens.hpp>
 #include <g7/ui/ItemScreen.hpp>
@@ -300,7 +302,7 @@ TEST_CASE("Engine UI: main menu, new game, pause menu and options (part F)")
     g7::Config merged = std::move(settings).value();
     merged.set<std::string>("menu.world", "testworld/camp.g7world"); // Leonberg is too big for this test
     merged.set<std::string>("menu.flight", "");                      // no flight: the camera stays
-    const std::filesystem::path user = std::filesystem::temp_directory_path() / "g7_menu_user_config.toml";
+    const std::filesystem::path user = g7::test::runTempDir() / "g7_menu_user_config.toml";
     REQUIRE(g7::fs::writeTextAtomic(user, "[game]\nunrelated = 7\n").ok());
 
     g7::EngineConfig config;

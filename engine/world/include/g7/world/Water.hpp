@@ -8,6 +8,7 @@
 
 #include <optional>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace g7::world
@@ -21,6 +22,7 @@ struct WaterBody
     Vec3 centre{0.0f};
     f32 yaw = 0.0f; ///< radians about +Y
     Vec3 halfExtents{1.0f};
+    std::string kind; ///< WaterVolume::kind: "river" flows along local +X, "pond" or empty stands (M17)
     [[nodiscard]] f32 surface() const noexcept { return centre.y + halfExtents.y; }
     [[nodiscard]] f32 bottom() const noexcept { return centre.y - halfExtents.y; }
     /// True if x, z lies inside the box's footprint.
@@ -39,6 +41,10 @@ public:
     /// nullopt: no water there.
     [[nodiscard]] std::optional<f32> surfaceAt(const Vec3& point, f32 above = 0.5f) const noexcept;
     [[nodiscard]] std::span<const WaterBody> bodies() const noexcept { return m_bodies; }
+    /// The body `point` lies under the surface of (strictly below the top, above the bottom, inside the
+    /// footprint); of several the one with the highest surface. nullptr: not under water (M17 W3, the
+    /// camera).
+    [[nodiscard]] const WaterBody* submergedIn(const Vec3& point) const noexcept;
 
 private:
     std::vector<WaterBody> m_bodies;

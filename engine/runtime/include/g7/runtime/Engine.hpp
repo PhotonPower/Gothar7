@@ -44,8 +44,10 @@
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/Rain.hpp>
 #include <g7/render/ShaderLibrary.hpp>
+#include <g7/render/Ssao.hpp>
 #include <g7/render/Terrain.hpp>
 #include <g7/render/Visibility.hpp>
+#include <g7/render/Water.hpp>
 #include <g7/runtime/EngineTool.hpp>
 #include <g7/runtime/FrameTimes.hpp>
 #include <g7/runtime/MenuFlight.hpp>
@@ -280,6 +282,21 @@ public:
     [[nodiscard]] const render::BloomSettings& bloomSettings() const noexcept { return m_bloomSettings; }
     /// The colour grading of the last frame (M17 P2), after the zone fade.
     [[nodiscard]] const render::Grading& grading() const noexcept { return m_grading; }
+    /// Water (M17 W1): the surfaces, how many were drawn last frame, the quality.
+    [[nodiscard]] std::span<const render::WaterSurface> waterSurfaces() const noexcept
+    {
+        return m_waterSurfaces;
+    }
+    [[nodiscard]] u32 waterSurfacesDrawn() const noexcept { return m_waterDrawn; }
+    [[nodiscard]] render::WaterQuality waterQuality() const noexcept { return m_waterQuality; }
+    /// Ambient occlusion with depth prepass (M17 P3, [render] ssao) and whether it was drawn last frame.
+    [[nodiscard]] bool ssaoEnabled() const noexcept { return m_ssaoEnabled; }
+    [[nodiscard]] const render::Ssao& ssao() const noexcept { return m_ssao; }
+    [[nodiscard]] const render::WaterStyles& waterStyles() const noexcept { return m_waterStyles; }
+    /// The water body the camera is under the surface of (M17 W3); nullptr above water.
+    [[nodiscard]] const world::WaterBody* cameraWater() const noexcept;
+    /// The post settings of the last frame (bloom, grading, under water).
+    [[nodiscard]] const render::PostSettings& postSettings() const noexcept { return m_postSettings; }
     /// The grading for a point: the time of day overridden by the zones there (music, ambient, indoor).
     [[nodiscard]] render::Grading gradingAt(const render::Grading& timeOfDay, const Vec3& point) const;
 
@@ -401,6 +418,10 @@ public:
     [[nodiscard]] Result<void> refreshScene();
     /// The loaded world without its vobs (terrain, waynet, zones, generator head).
     [[nodiscard]] const world::WorldFile& worldFile() const noexcept { return m_worldFile; }
+    /// Replaces the world's waynet (editor, M16 part B): checked and sorted, the path finding rebuilt, saved
+    /// with the world. Fails (and keeps the old one) for a broken waynet. NPC routes planned before are
+    /// dropped.
+    [[nodiscard]] Result<void> setWaynet(world::WaynetData waynet);
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;
@@ -1326,6 +1347,10 @@ private:
     void updateWeather();
     void updateRainMap();
     void drawRain(u32 width, u32 height);
+    void rebuildWaterSurfaces();
+    void drawWater();
+    void cullInstances(const Frustum& view); // fills m_drawItems (multi-draw) or draws them right away
+    void updateUnderwater();
     void drawScene(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
     /// `allowMouse` / `allowKeyboard` false while the debug UI uses them.
@@ -1534,7 +1559,15 @@ private:
     bool m_hasTerrain = false;
     std::map<std::string, std::unique_ptr<LoadedModel>, std::less<>> m_models; // by VFS path
     std::unique_ptr<LoadedModel> m_groundModel;
-    std::unique_ptr<LoadedModel> m_waterModel; // translucent placeholder surface of water vobs (until M17)
+    render::WaterRenderer m_waterRenderer;                              // M17 W1
+    render::WaterStyles m_waterStyles;                                  // data/water.toml
+    std::vector<render::WaterSurface> m_waterSurfaces;                  // one per water body
+    render::WaterQuality m_waterQuality = render::WaterQuality::Medium; // [render] water_quality
+    f64 m_waterTime = 0.0;                                              // moves the waves (real seconds)
+    u32 m_waterDrawn = 0;                                               // surfaces drawn last frame
+    render::Ssao m_ssao;                                                // M17 P3
+    render::SsaoSettings m_ssaoSettings;
+    bool m_ssaoEnabled = false; // [render] ssao (owner decision 8: off by default)
     world::WaterBodies m_water;
     std::vector<SceneInstance> m_instances;
     std::string m_sceneName;

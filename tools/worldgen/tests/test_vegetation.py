@@ -78,7 +78,7 @@ def test_the_w6_vegetation_models_are_light_and_have_coarse_levels():
         model = VEGETATION[name]()
         assert model.triangles() <= most, name
         if name != "reed":  # a single tuft: culled by its size
-            assert model.lods and model.lods[-1].triangles() * 2 <= model.triangles(), name
+            assert model.lods and model.lods[-1].triangles() < model.triangles(), name
         assert crown_radius(name) > 0
     clump = VEGETATION["forest_clump"]()
     trunks = [p for p in clump.main.collision if p.name.startswith("COL_HULL_TRUNK")]

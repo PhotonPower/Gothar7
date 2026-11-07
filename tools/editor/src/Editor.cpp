@@ -66,6 +66,8 @@ Editor::Editor(Engine& engine)
                             std::clamp<i64>(engine.settings().get<i64>("editor.undo_depth", 200), 1, 10000)))
 {
     engine.setPaused(true);
+    m_waynetRadius = std::clamp(static_cast<f32>(engine.settings().get<f64>("editor.waynet_radius", 80.0)),
+                                10.0f, 2000.0f);
     engine.setDebugUiVisible(true);
     engine.setDebugOverlay(true);
     // Placeable models: glTF sources and cooked meshes (a cooked one only if its source is not there).
@@ -82,6 +84,7 @@ Editor::Editor(Engine& engine)
         }
     }
     std::sort(m_assets.begin(), m_assets.end());
+    m_waynetData = engine.worldFile().waynet.value_or(world::WaynetData{}); // edited as a copy (part B)
     G7_LOG_INFO("editor", "editor mode: {} models to place; left click selects, right mouse looks",
                 m_assets.size());
 }
@@ -217,22 +220,36 @@ Result<void> Editor::edit(std::string label, std::vector<world::VobId> ids,
 Result<bool> Editor::undo()
 {
     const std::string label = m_history.undoLabel();
-    auto undone = m_history.undo(m_engine.scene());
+    auto undone = m_history.undo(m_engine.scene(), &m_waynetData);
     if (undone && undone.value())
     {
-        sceneChanged();
+        historyApplied();
         m_status = "undone: " + label;
     }
     return undone;
 }
 
+void Editor::historyApplied()
+{
+    sceneChanged();
+    if (auto handed = m_engine.setWaynet(m_waynetData); !handed)
+    {
+        m_status = handed.error().message;
+    }
+    if (m_waynetData.findPoint(m_waynetSelected) == nullptr &&
+        m_waynetData.findFreepoint(m_waynetSelected) == nullptr)
+    {
+        m_waynetSelected.clear();
+    }
+}
+
 Result<bool> Editor::redo()
 {
     const std::string label = m_history.redoLabel();
-    auto redone = m_history.redo(m_engine.scene());
+    auto redone = m_history.redo(m_engine.scene(), &m_waynetData);
     if (redone && redone.value())
     {
-        sceneChanged();
+        historyApplied();
         m_status = "redone: " + label;
     }
     return redone;
@@ -342,10 +359,14 @@ Result<void> Editor::save()
         m_status = "cannot save: the world is not a loose file (archive or no world)";
         return Error{m_status};
     }
-    if (!m_generatedEdited.empty())
+    if (!m_generatedEdited.empty() || !m_waynetGeneratedEdited.empty())
     {
         // editor.md, guideline 2: before generated vobs are saved, say what the next generator run undoes.
         std::string ids;
+        for (const std::string& name : m_waynetGeneratedEdited)
+        {
+            ids += (ids.empty() ? "" : ", ") + name;
+        }
         for (const u64 id : m_generatedEdited)
         {
             ids += (ids.empty() ? "" : ", ") + std::to_string(id);
@@ -355,9 +376,10 @@ Result<void> Editor::save()
                 break;
             }
         }
-        ask(std::format("{} generated vob(s) changed ({}): they are saved, but the next 'gothar-worldgen "
+        ask(std::format("{} generated vob(s) or waynet entries changed ({}): they are saved, but the next "
+                        "'gothar-worldgen "
                         "assemble' writes them anew. Save anyway?",
-                        m_generatedEdited.size(), ids),
+                        m_generatedEdited.size() + m_waynetGeneratedEdited.size(), ids),
             [this] { (void)write(); });
         return Error{"waiting for confirmation"};
     }
@@ -392,6 +414,7 @@ Result<void> Editor::write()
     }
     m_history.markSaved();
     m_generatedEdited.clear();
+    m_waynetGeneratedEdited.clear();
     m_status = "saved " + fs::toUtf8(*path);
     return {};
 }
@@ -425,6 +448,10 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         {
             m_gizmo.mode = GizmoMode::Scale;
         }
+        if (input.pressed(platform::Key::G))
+        {
+            setWaynetMode(!m_waynetMode); // the waynet (M16 part B)
+        }
         if (input.pressed(platform::Key::L))
         {
             localAxes = !localAxes;
@@ -439,7 +466,14 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         }
         if (input.pressed(platform::Key::Delete))
         {
-            deleteSelection();
+            if (m_waynetMode)
+            {
+                (void)deleteWaynetSelection();
+            }
+            else
+            {
+                deleteSelection();
+            }
         }
         if (ctrl && input.pressed(platform::Key::D))
         {
@@ -460,8 +494,15 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         }
     }
 
-    placeGizmo();
     const Vec2 mouse = input.mousePosition();
+    if (m_waynetMode)
+    {
+        waynetMouse(engine, mouse, !uiMouse && input.pressed(platform::MouseButton::Left),
+                    input.isDown(platform::MouseButton::Left));
+        drawWaynet();
+        return;
+    }
+    placeGizmo();
     const GizmoView v = view();
     if (m_dragHandle != GizmoHandle::None)
     {
@@ -921,5 +962,8 @@ void Editor::ui(Engine&, ui::DebugUi& debugUi)
     fillPanel();
     debugUi.editorPanel(m_panel);
     applyPanel();
+    fillWaynetPanel();
+    debugUi.waynetPanel(m_waynetPanel);
+    applyWaynetPanel();
 }
 } // namespace g7::editor
