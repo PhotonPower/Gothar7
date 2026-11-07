@@ -145,6 +145,8 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--walk=<route.json>` | Autopilot: die Spielfigur läuft die Route ab (mit `--world`), schreibt Protokoll und Screenshots, beendet sich (`docs/modules/tools.md`); mit `--no-render` ohne Grafikgerät und ohne Bilder |
 | `--walk-out=<ordner>` | Ausgabeordner des Autopiloten (Vorgabe `walk/`) |
 | `--script-api=<datei.md>` | Lua-Referenz (`docs/script-api.md`) aus den Bindings der Engine schreiben und beenden; zusammen mit `--smoke-test` ohne Fenster. ctest `game.script_api` prüft, dass die Datei aktuell ist |
+| `--set key=value` | Eine Einstellung aus `engine.toml` für diesen Lauf überschreiben (mehrfach), z. B. `--set render.bloom=false`; der Wert ist TOML (`true`, `0.5`, `"text"`; einfache Wörter gelten als Text). Für Prüfbilder statt einer Benutzer-Konfiguration |
+| `--no-user-config` | Die Benutzer-Konfiguration (`%APPDATA%\Gothar\Gothar\config.toml`) weder lesen noch schreiben. **Regel:** Tests und Prüfbilder legen unter `%APPDATA%\Gothar` nichts an, überschreiben und löschen nichts |
 | (Taste ^) | Skript-Konsole ein/aus (Aktion `console`): Lua-Zeilen mit Verlauf (Pfeil hoch/runter), z. B. `insert("it_apple", 3)`, `insert("npc_gate_guard")`, `teleport("START_MARKTPLATZ")`, `time(18, 30)`, `where()` |
 | (Taste F1) | ImGui-Debugfenster ein/aus (Aktion `debug_ui`): Leistung, Kamera, Render-Einstellungen live |
 | (Taste F2) | Debug-Overlay ein/aus (Aktion `debug_draw`): FPS, Draw-Calls, Kamera (Position, Gier, Neigung), Achsen, Raster, Bounds, Lichtradien, Spielfigur (Zylinder, Zustand, Tempo) |

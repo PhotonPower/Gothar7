@@ -589,6 +589,15 @@ Result<void> Engine::initShaders()
         return Error{"cannot create post pass: " + post.error().message};
     }
     m_post = std::move(post).value();
+    if (auto bloom = render::Bloom::create(*m_device, *m_shaders); bloom)
+    {
+        m_bloom = std::move(bloom).value();
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "bloom: {} (no bloom)", bloom.error().message);
+    }
+    m_bloomSettings.enabled = m_config.settings.get<bool>("render.bloom", true);
     auto debugRenderer = render::DebugDrawRenderer::create(*m_device, *m_shaders);
     if (!debugRenderer)
     {
@@ -1702,6 +1711,8 @@ void Engine::updateEnvironment()
 {
     const f32 fogStart = m_environment.fogStart;
     const world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
+    m_bloomSettings.threshold = sample.bloomThreshold; // M17 P1: by the time of day
+    m_bloomSettings.intensity = sample.bloomIntensity;
     m_environment = sample.environment;
     m_environment.fogStart = fogStart;
     // Rooms (zones of type indoor, world.md): the nearest to the camera get the indoor ambient.
@@ -1712,11 +1723,59 @@ void Engine::updateEnvironment()
         m_environment.sunIntensity = 0.0f;
     }
     m_sky = sample.sky;
+    updateGrading(sample.grading);
+}
+
+render::Grading Engine::gradingAt(const render::Grading& timeOfDay, const Vec3& point) const
+{
+    // M17 P2 (decision 3): zones override the time of day - music, then ambient, then indoor (strongest);
+    // [zone.innen] stands for every indoor zone without an entry of its own.
+    render::Grading grading = timeOfDay;
+    for (const char* type : {"music", "ambient", "indoor"})
+    {
+        const auto zone = zoneAt(type, point);
+        if (!zone)
+        {
+            continue;
+        }
+        const render::GradingOverride* over = m_dayCycle.zoneGrading(*zone);
+        if (over == nullptr && std::string_view(type) == "indoor")
+        {
+            over = m_dayCycle.zoneGrading("innen");
+        }
+        if (over != nullptr)
+        {
+            grading = render::applyOverride(grading, *over);
+        }
+    }
+    return grading;
+}
+
+void Engine::updateGrading(const render::Grading& timeOfDay)
+{
+    const render::Grading target = gradingAt(timeOfDay, m_camera.transform.position);
+    if (!m_gradingStarted)
+    {
+        m_grading = target; // the first frame: no fade in
+        m_gradingStarted = true;
+    }
+    else
+    {
+        // A zone change fades over kGradingFadeSeconds (decision 3: 1.5 s).
+        const f32 step = std::clamp(static_cast<f32>(m_frameSeconds) / kGradingFadeSeconds, 0.0f, 1.0f);
+        m_grading = render::mixGrading(m_grading, target, step);
+    }
+    m_postSettings.grading.reset();
+    if (m_config.settings.get<bool>("render.grading", true))
+    {
+        m_postSettings.grading = m_grading;
+    }
 }
 
 void Engine::renderScene(u32 width, u32 height)
 {
     m_device->beginFrame(width, height, kClearColor); // stats, window cleared
+    m_passTimes.collect(*m_device);                   // GPU times of earlier frames (M17)
     if (auto resized = m_sceneTarget.resize(*m_device, width, height); !resized)
     {
         G7_LOG_ERROR("engine", "{}", resized.error().message);
@@ -1726,11 +1785,28 @@ void Engine::renderScene(u32 width, u32 height)
     updateEnvironment(); // light, fog and sky at the current game time
 
     // Scene into the linear HDR target: background, then meshes (after their shadow pass).
+    m_passTimes.begin(*m_device, "scene");
     drawScene(width, height);
+    m_passTimes.end(*m_device);
 
-    // Tonemap into the window.
+    // Bloom from the HDR scene (M17 P1), then tonemap into the window.
+    m_postSettings.bloom = nullptr;
+    m_postSettings.bloomIntensity = 0.0f;
+    if (m_bloomSettings.enabled && m_bloomSettings.intensity > 0.0f)
+    {
+        if (auto resized = m_bloom.resize(*m_device, width, height, m_bloomSettings.levels); resized)
+        {
+            m_passTimes.begin(*m_device, "bloom");
+            m_bloom.render(*m_device, m_sceneTarget.color(), m_bloomSettings);
+            m_passTimes.end(*m_device);
+            m_postSettings.bloom = m_bloom.result();
+            m_postSettings.bloomIntensity = m_bloomSettings.intensity;
+        }
+    }
     m_device->bindFramebuffer(nullptr);
+    m_passTimes.begin(*m_device, "post");
     m_post.apply(*m_device, m_sceneTarget, width, height, m_postSettings);
+    m_passTimes.end(*m_device);
 
     // Debug drawing on top, depth-tested against the scene.
     if (m_debugOverlay || (m_figure && m_figure->showSockets) || noticeVisible())
@@ -1991,6 +2067,12 @@ void Engine::updateBenchmark(f64 realSeconds)
         m_benchmarkBatches.push_back(m_meshRenderer.lastBatch());
         m_benchmarkTerrainChunks.push_back(m_hasTerrain ? m_terrain.drawnChunks() : 0);
         m_benchmarkLods.push_back(m_lodCounts);
+        std::string passes;
+        for (const render::PassTime& pass : m_passTimes.times())
+        {
+            passes += std::format("{}{} {:.2f} ms", passes.empty() ? "" : ", ", pass.name, pass.milliseconds);
+        }
+        G7_LOG_INFO("benchmark", "viewpoint {}: GPU passes: {}", m_benchmarkResults.size() - 1, passes);
     }
 }
 
@@ -2086,6 +2168,10 @@ void Engine::runDebugUi(f64 realSeconds)
     panel.debugDraw = m_debugOverlay;
     panel.paused = m_paused;
     panel.timeScale = static_cast<f32>(m_timeScale);
+    for (const render::PassTime& pass : m_passTimes.times())
+    {
+        panel.passTimes.emplace_back(pass.name, pass.milliseconds);
+    }
     m_debugUi.enginePanel(panel);
     playerAnimationUi();
     creaturesUi();
