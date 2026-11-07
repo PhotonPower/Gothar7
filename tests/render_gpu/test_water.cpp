@@ -164,3 +164,49 @@ TEST_CASE("Water surface: low quality draws without copies; nothing visible draw
     CHECK(w.draw(1.0f, style) == 0);
     CHECK(w.gl.device->debugErrorCount() == 0);
 }
+
+TEST_CASE("Water surface: high quality reflects what stands on the screen, the sky where the ray leaves it "
+          "(M17 W2)")
+{
+    WaterScene w;
+    // Looking slightly down over the water towards a "wall" filling the upper part of the screen 20 m ahead.
+    w.camera.transform.position = Vec3(0.0f, 2.0f, 0.0f);
+    w.camera.transform.rotation = glm::angleAxis(glm::radians(-15.0f), Vec3(1.0f, 0.0f, 0.0f));
+    w.camera.fovY = glm::radians(60.0f);
+    WaterStyle style = calm();
+    style.absorption = Vec3(50.0f); // opaque water: only the reflection shows
+    const auto wallDepth = [&]
+    {
+        const Vec4 clip = w.camera.projection() * Vec4(0.0f, 0.0f, -20.0f, 1.0f);
+        return clip.z / clip.w;
+    }();
+    const auto render = [&](WaterQuality quality, bool wall)
+    {
+        w.frame.quality = quality;
+        w.gl.device->bindFramebuffer(&w.scene.framebuffer());
+        w.gl.device->setViewport(0, 0, kSize, kSize);
+        w.gl.device->clear(Vec4(0.0f, 0.0f, 0.0f, 1.0f), 0.0f); // black sky, infinitely far
+        if (wall)
+        {
+            const PixelRect upper{0, kSize / 2 + 4, kSize, kSize / 2 - 4};
+            w.gl.device->setScissor(upper);
+            w.gl.device->clear(Vec4(5.0f, 0.0f, 0.0f, 1.0f), std::nullopt);
+            w.gl.device->setScissor(std::nullopt);
+            w.gl.device->clearDepthRegion(w.scene.depth(), upper, wallDepth);
+        }
+        const WaterSurface s{Vec3(0.0f, 0.0f, -10.0f), 0.0f, Vec2(50.0f, 10.0f), &style};
+        w.gl.device->bindFramebuffer(&w.scene.framebuffer());
+        w.gl.device->setViewport(0, 0, kSize, kSize);
+        REQUIRE(w.water.draw(*w.gl.device, w.scene, w.camera, std::span(&s, 1), w.frame) == 1);
+        f32 red = 0.0f;
+        for (u32 y = 0; y < kSize / 2; ++y) // the water below the horizon
+        {
+            red = std::max(red, w.pixel(kSize / 2, y).x);
+        }
+        return red;
+    };
+    CHECK(render(WaterQuality::High, true) > 0.05f);   // the red wall appears in the water
+    CHECK(render(WaterQuality::Medium, true) < 0.01f); // medium: the (black) sky only
+    CHECK(render(WaterQuality::High, false) < 0.01f);  // nothing on the screen to reflect: the sky
+    CHECK(w.gl.device->debugErrorCount() == 0);
+}

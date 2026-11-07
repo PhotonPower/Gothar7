@@ -319,6 +319,10 @@ u32 WaterRenderer::draw(Device& device, const SceneTarget& scene, const Camera& 
     p.setUniform("uViewportSize", Vec2(static_cast<f32>(width), static_cast<f32>(height)));
     p.setUniform("uTime", frame.time);
     p.setUniform("uRefract", refract ? 1 : 0);
+    p.setUniform("uReflect", frame.quality == WaterQuality::High ? 1 : 0);
+    p.setUniform("uCameraForward", camera.transform.rotation * Vec3(0.0f, 0.0f, -1.0f));
+    p.setUniform("uSteps", static_cast<i32>(kReflectionSteps));
+    p.setUniform("uMaxDistance", kReflectionDistance);
     p.setUniform("uSunDirection", glm::normalize(frame.sunDirection));
     p.setUniform("uSunColor", frame.sunColor);
     p.setUniform("uAmbient", frame.ambient);

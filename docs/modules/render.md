@@ -388,14 +388,14 @@ Engine::waterSurfaces(), waterSurfacesDrawn(), waterQuality(), waterStyles();  w
 - **Tiefe:** Weg des Blickstrahls im Wasser aus der Tiefenkopie, Farbe `unten · e^(−absorption·weg)
   + scatter · Licht · (1 − e^(−absorption·weg))`; Uferkante weich über `shore_fade` Meter Wassertiefe (Alpha).
 - **Licht:** Fresnel (Schlick, f0 = 0,02) zwischen dem Durchscheinenden und dem gespiegelten Himmel (Horizont- und
-  Zenitfarbe wie `background.frag`; echte Spiegelung mit W2), Sonnenglanz nach Blinn-Phong, Nebel wie die Szene.
+  Zenitfarbe wie `background.frag`; bei `high` die Spiegelung, W2), Sonnenglanz nach Blinn-Phong, Nebel wie die Szene.
   Von unten (Tauchen) bis W3 eine trübe Fläche.
 - **Daten** `data/water.toml`: `[kind.river]`, `[kind.pond]`, `default = "pond"` (fehlt `kind` oder ist es
   unbekannt, gilt die Vorgabe). Werte nach Entscheidung 5/6: Glems trüb grün-braun (Sicht ca. 4 m), fließt 0,6 m/s;
   Teich dunkel-oliv (ca. 3 m), ruhiger und mit schärferem Glanz.
 - **Qualität:** `[render] water_quality = "low" | "medium" | "high"` (Vorgabe `medium`), Optionen → Grafik
-  „Wasserqualität“. `low`: ohne Kopien, die Fläche halbdurchsichtig mit Fresnel und Glanz. `high` wie `medium`, bis
-  W2 die Spiegelung bringt.
+  „Wasserqualität“. `low`: ohne Kopien, die Fläche halbdurchsichtig mit Fresnel und Glanz. `high` dazu die
+  Spiegelung (W2, unten).
 - **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Blick über die Glems): `water` 0,07 ms bei `medium`
   (Kopie + Flächen), unter 0,01 ms bei `low`; Passzeit `water` im Fenster „Gothar“ und im
   Benchmark (Budget ≤ 0,6 ms bei sichtbarem Fluss, `low` ≤ 0,3 ms).
@@ -403,6 +403,31 @@ Engine::waterSurfaces(), waterSurfacesDrawn(), waterQuality(), waterStyles();  w
   Werte: Sichtweiten), GPU `test_water.cpp` (tieferes Wasser dunkler, Ufer ohne Sprung, Brechung versetzt nur unter
   Wasser, ohne Wellen kein Versatz, `low` ohne Kopien, außer Sicht nichts gezeichnet), `test_engine_render.cpp`
   (Teich im Testlager über den Wasser-Pass, Vorgabe-Art, Qualität aus den Einstellungen).
+
+### Spiegelung auf dem Wasser (M17 Teil W2, umgesetzt) – `water.frag`
+```cpp
+inline constexpr u32 kReflectionSteps = 32;  inline constexpr f32 kReflectionDistance = 80.0f;  // Water.hpp
+```
+- **Screen-Space-Reflexion** nur bei `water_quality = "high"`, im Wasser-Shader selbst (je Wasserpixel, volle
+  Auflösung) statt eines eigenen Passes in halber Auflösung wie im Plan: Das spart Ziel-Texturen und einen
+  Zusammensetz-Schritt, und der Strahl läuft nur dort, wo Wasser zu sehen ist; gemessen unter dem Budget (unten).
+- **Strahl:** vom Wasserpunkt entlang der an der gewellten Normale gespiegelten Blickrichtung, 32 Schritte, quadratisch
+  wachsend bis 80 m (kurze Schritte nahe am Wasser), je Pixel leicht versetzt gegen Streifen. Jeder Punkt wird
+  aufs Bild projiziert und mit der Tiefenkopie verglichen (Blicktiefe): liegt er dahinter, aber weniger als eine
+  Dicke (0,3 m bzw. 10 % des Weges), ist es ein Treffer, verfeinert mit 5 Schritten Binärsuche; liegt er weiter
+  dahinter, ist der Weg verdeckt.
+- **Rückfall und Rand:** Verlässt der Strahl das Bild, geht er hinter die Kamera oder trifft nichts, bleibt der Himmel
+  aus W1. Treffer nahe am Bildrand (8 % der Bildgröße) und am Ende des Strahls blenden weich zum Himmel aus. Was nicht
+  auf dem Bild ist, spiegelt sich nicht (Grenze des Verfahrens; Rückfall-Proben je Zone wären die spätere Ergänzung,
+  siehe „Spiegelnde Fenster“).
+- **Spielgefühl (Entscheidung 6):** Die Wellen verzerren die Spiegelung; der ruhige Teich (`wave_strength` 0,1)
+  spiegelt klarer als die Glems (0,18). Das Wasser selbst steht nicht in der Tiefenkopie und spiegelt sich daher
+  nicht in sich.
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Blick die Glems entlang mit viel Wasser im Bild): `water` 0,87 ms
+  bei `high` gegen 0,16 ms bei `medium` (zwei Läufe mit verschieden hoher Szenenzeit, die Karte taktet; der Anteil der
+  Spiegelung liegt etwa bei 0,4–0,7 ms, Budget ≤ 0,8 ms). Im Release-Build kleiner.
+- **Tests:** GPU `test_water.cpp`: eine helle Wand über dem Wasser erscheint bei `high` im Wasser, bei `medium` und
+  ohne Wand bleibt der Himmel.
 
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp

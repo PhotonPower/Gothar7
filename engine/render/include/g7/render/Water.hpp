@@ -29,7 +29,7 @@ enum class WaterQuality : u8
 {
     Low,    ///< no copies: tinted surface with Fresnel and glint
     Medium, ///< refraction and depth colour (copies of colour and depth)
-    High,   ///< as medium; W2 adds the screen-space reflection here
+    High,   ///< as medium plus the screen-space reflection (W2)
 };
 /// "low" | "medium" | "high"; nullopt for anything else.
 [[nodiscard]] std::optional<WaterQuality> parseWaterQuality(std::string_view text) noexcept;
@@ -48,6 +48,10 @@ struct WaterStyle
     f32 shininess = 400.0f;             ///< sharpness of the highlight (Blinn-Phong exponent)
     f32 shoreFade = 0.25f;              ///< metres of water depth over which the shore edge fades in
 };
+
+/// Screen-space reflection (W2, quality high): steps along the ray and how far it goes.
+inline constexpr u32 kReflectionSteps = 32;
+inline constexpr f32 kReflectionDistance = 80.0f;
 
 /// The kinds of water: `[kind.<name>]` tables and `default = "<name>"` for water without (or with an unknown)
 /// kind. Contract with welt (render.md "Plan M17"): `river` flows along the box's local +X, `pond` stands.
