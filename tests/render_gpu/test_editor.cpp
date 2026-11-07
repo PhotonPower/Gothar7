@@ -146,3 +146,89 @@ TEST_CASE("Editor GPU: vobs of the world's generator warn; archives cannot be sa
     CHECK(fs::readText(copy.file).value().find(
               "\"generator\": {\"tool\":\"gothar-worldgen\",\"owned\":[[1,100]]}") != std::string::npos);
 }
+
+TEST_CASE(
+    "Editor GPU: undo and redo of placing, moving and deleting (M16 part A); the saved version is known")
+{
+    WorldCopy copy;
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    editor::Editor editor(engine);
+    engine.addTool(editor);
+    const usize instancesBefore = engine.instances().size();
+    const std::string original = fs::readText(copy.file).value();
+
+    auto rock = editor.place("testscene/nature/rock_largeA.glb");
+    REQUIRE(rock.ok());
+    Transform moved;
+    moved.position = Vec3(40.0f, 0.0f, 5.0f);
+    editor.setSelectionTransform(moved);
+    editor.deleteSelection();
+    CHECK(engine.instances().size() == instancesBefore);
+    CHECK(editor.history().undoLabel().starts_with("delete ROCK_LARGEA"));
+
+    REQUIRE(editor.undo().value()); // the rock is back where it was moved to
+    CHECK(engine.instances().size() == instancesBefore + 1);
+    const entt::entity e = engine.scene().findById(rock.value());
+    REQUIRE(engine.scene().valid(e));
+    CHECK(editor::worldTransformOf(engine.scene(), e).position.x == doctest::Approx(40.0f));
+    REQUIRE(editor.undo().value()); // not moved
+    REQUIRE(editor.undo().value()); // not placed
+    CHECK(engine.instances().size() == instancesBefore);
+    CHECK_FALSE(editor.dirty()); // as loaded
+    // Saving now writes the loaded world again (only the id counter may stay raised: ids are never reused).
+    REQUIRE(editor.redo().value());
+    REQUIRE(editor.save().ok());
+    CHECK_FALSE(editor.dirty());
+    REQUIRE(editor.undo().value());
+    CHECK(editor.dirty());
+    REQUIRE(editor.redo().value());
+    CHECK_FALSE(editor.dirty());
+    CHECK(fs::readText(copy.file).value() != original);
+    CHECK(engine.renderDevice()->debugErrorCount() == 0);
+}
+
+TEST_CASE("Editor GPU: editing a generated vob asks first; saving changed generated vobs asks too")
+{
+    WorldCopy copy(R"("generator": {"tool": "gothar-worldgen", "owned": [[1, 100]]},
+  )");
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    editor::Editor editor(engine);
+    engine.addTool(editor);
+    // The stool (68) is generated: moving it asks and does nothing yet.
+    editor.select(world::VobId{68});
+    const Transform before =
+        editor::worldTransformOf(engine.scene(), engine.scene().findById(world::VobId{68}));
+    Transform moved = before;
+    moved.position.x += 2.0f;
+    editor.setSelectionTransform(moved);
+    CHECK(editor.confirmation().find("generated") != std::string::npos);
+    CHECK(editor::worldTransformOf(engine.scene(), engine.scene().findById(world::VobId{68})).position.x ==
+          doctest::Approx(before.position.x));
+    CHECK_FALSE(editor.history().canUndo());
+    // No: still nothing. Asked again, yes: done, and later edits of generated vobs go without a question.
+    editor.confirm(false);
+    CHECK(editor.confirmation().empty());
+    editor.setSelectionTransform(moved);
+    editor.confirm(true);
+    CHECK(editor::worldTransformOf(engine.scene(), engine.scene().findById(world::VobId{68})).position.x ==
+          doctest::Approx(before.position.x + 2.0f));
+    moved.position.x += 1.0f;
+    editor.setSelectionTransform(moved);
+    CHECK(editor.confirmation().empty());
+    CHECK(editor.history().size() == 2);
+    // A vob of the editor (170, not generated) needs no question at all.
+    CHECK(editor.warningFor(world::VobId{170}).empty());
+
+    // Saving: first the summary of what the next generator run writes anew; no keeps the file.
+    const std::string original = fs::readText(copy.file).value();
+    CHECK_FALSE(editor.save().ok());
+    CHECK(editor.confirmation().find("1 generated vob(s) changed (68)") != std::string::npos);
+    editor.confirm(false);
+    CHECK(fs::readText(copy.file).value() == original);
+    CHECK_FALSE(editor.save().ok());
+    editor.confirm(true);
+    CHECK(fs::readText(copy.file).value() != original);
+    CHECK_FALSE(editor.dirty());
+}

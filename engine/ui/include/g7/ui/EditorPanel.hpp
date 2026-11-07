@@ -52,6 +52,9 @@ struct EditorPanel
     std::string warning; ///< about the selection (e.g. rewritten by the generator)
     bool dirty = false;
     bool canSave = false;
+    std::string undoLabel; ///< what Ctrl+Z undoes (empty: nothing)
+    std::string redoLabel;
+    std::string confirm; ///< a question waiting for yes/no (editing generated vobs, saving them)
     std::vector<EditorVobRow> vobs;
     std::vector<std::string> assets; ///< placeable models (VFS paths)
     std::vector<EditorField> fields; ///< properties of the selection; edited in place
@@ -70,5 +73,9 @@ struct EditorPanel
     bool save = false;
     bool remove = false; ///< delete the selection
     bool duplicate = false;
+    bool undo = false;
+    bool redo = false;
+    bool confirmYes = false;
+    bool confirmNo = false;
 };
 } // namespace g7::ui

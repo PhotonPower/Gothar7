@@ -73,6 +73,7 @@ void DebugUi::editorPanel(EditorPanel& panel)
     panel.clickedVob = 0;
     panel.placeAsset = -1;
     panel.save = panel.remove = panel.duplicate = false;
+    panel.undo = panel.redo = panel.confirmYes = panel.confirmNo = false;
 
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 370.0f, 10.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(360.0f, 520.0f), ImGuiCond_FirstUseEver);
@@ -83,6 +84,31 @@ void DebugUi::editorPanel(EditorPanel& panel)
     ImGui::BeginDisabled(!panel.canSave);
     panel.save = ImGui::Button("Save (Ctrl+S)");
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(panel.undoLabel.empty());
+    panel.undo = ImGui::Button("Undo (Ctrl+Z)");
+    if (!panel.undoLabel.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+        ImGui::SetTooltip("%s", panel.undoLabel.c_str());
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(panel.redoLabel.empty());
+    panel.redo = ImGui::Button("Redo (Ctrl+Y)");
+    if (!panel.redoLabel.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+    {
+        ImGui::SetTooltip("%s", panel.redoLabel.c_str());
+    }
+    ImGui::EndDisabled();
+    if (!panel.confirm.empty())
+    {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.75f, 0.2f, 1.0f));
+        ImGui::TextWrapped("%s", panel.confirm.c_str());
+        ImGui::PopStyleColor();
+        panel.confirmYes = ImGui::Button("Yes");
+        ImGui::SameLine();
+        panel.confirmNo = ImGui::Button("No");
+    }
     if (!panel.status.empty())
     {
         ImGui::TextWrapped("%s", panel.status.c_str());

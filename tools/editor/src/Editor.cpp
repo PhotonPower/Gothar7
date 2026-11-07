@@ -61,7 +61,9 @@ Vec3 eulerDegrees(const Quat& q)
 }
 } // namespace
 
-Editor::Editor(Engine& engine) : m_engine(engine)
+Editor::Editor(Engine& engine)
+    : m_engine(engine), m_history(static_cast<usize>(
+                            std::clamp<i64>(engine.settings().get<i64>("editor.undo_depth", 200), 1, 10000)))
 {
     engine.setPaused(true);
     engine.setDebugUiVisible(true);
@@ -118,7 +120,6 @@ void Editor::placeGizmo()
 
 void Editor::sceneChanged()
 {
-    m_dirty = true;
     m_engine.scene().updateTransforms();
     if (auto refreshed = m_engine.refreshScene(); !refreshed)
     {
@@ -126,16 +127,129 @@ void Editor::sceneChanged()
     }
 }
 
-void Editor::setSelectionTransform(const Transform& world)
+std::string Editor::vobLabel(world::VobId id) const
 {
-    world::Scene& scene = m_engine.scene();
-    const entt::entity e = scene.findById(m_selection);
-    if (!scene.valid(e))
+    const world::Scene& scene = m_engine.scene();
+    const entt::entity e = scene.findById(id);
+    const world::Vob* vob = scene.valid(e) ? scene.get<world::Vob>(e) : nullptr;
+    return vob != nullptr ? std::format("{} ({})", vob->nameText, id.value) : std::format("id {}", id.value);
+}
+
+void Editor::ask(std::string question, std::function<void()> onYes)
+{
+    m_confirm = std::move(question);
+    m_onYes = std::move(onYes);
+}
+
+void Editor::confirm(bool yes)
+{
+    if (m_confirm.empty())
     {
         return;
     }
-    setWorldTransform(scene, e, world);
+    m_confirm.clear();
+    auto onYes = std::exchange(m_onYes, {});
+    if (yes && onYes)
+    {
+        onYes();
+    }
+}
+
+bool Editor::mayEdit(std::span<const world::VobId> ids, std::function<void()> retry)
+{
+    if (m_generatedConfirmed)
+    {
+        return true;
+    }
+    for (const world::VobId id : ids)
+    {
+        if (id.valid() && world::isGenerated(m_engine.worldFile(), id))
+        {
+            ask(std::format(
+                    "{} is generated: the next 'gothar-worldgen assemble' writes it anew and the change "
+                    "is lost (welt's annotations keep changes). Edit generated vobs anyway?",
+                    vobLabel(id)),
+                [this, retry = std::move(retry)]
+                {
+                    m_generatedConfirmed = true;
+                    retry();
+                });
+            return false;
+        }
+    }
+    return true;
+}
+
+Result<void> Editor::edit(std::string label, std::vector<world::VobId> ids,
+                          const std::function<Result<void>()>& change, bool mergeable)
+{
+    if (!mayEdit(ids, [this, label, ids, change, mergeable] { (void)edit(label, ids, change, mergeable); }))
+    {
+        return Error{"waiting for confirmation"};
+    }
+    world::Scene& scene = m_engine.scene();
+    const u64 firstNew = scene.nextVobId();
+    Command command{std::move(label), captureVobs(scene, ids), {}, mergeable};
+    if (auto changed = change(); !changed)
+    {
+        m_status = changed.error().message;
+        return changed;
+    }
+    // Vobs the change created: their ids come from the counter; before it they were not there.
+    for (u64 id = firstNew; id < scene.nextVobId(); ++id)
+    {
+        ids.push_back(world::VobId{id});
+        command.before.push_back({world::VobId{id}, std::nullopt});
+    }
+    command.after = captureVobs(scene, ids);
+    for (const VobState& s : command.before)
+    {
+        if (world::isGenerated(m_engine.worldFile(), s.id))
+        {
+            m_generatedEdited.insert(s.id.value);
+        }
+    }
+    m_history.record(std::move(command));
     sceneChanged();
+    return {};
+}
+
+Result<bool> Editor::undo()
+{
+    const std::string label = m_history.undoLabel();
+    auto undone = m_history.undo(m_engine.scene());
+    if (undone && undone.value())
+    {
+        sceneChanged();
+        m_status = "undone: " + label;
+    }
+    return undone;
+}
+
+Result<bool> Editor::redo()
+{
+    const std::string label = m_history.redoLabel();
+    auto redone = m_history.redo(m_engine.scene());
+    if (redone && redone.value())
+    {
+        sceneChanged();
+        m_status = "redone: " + label;
+    }
+    return redone;
+}
+
+void Editor::setSelectionTransform(const Transform& world)
+{
+    if (!m_engine.scene().valid(m_engine.scene().findById(m_selection)))
+    {
+        return;
+    }
+    (void)edit("move " + vobLabel(m_selection), {m_selection},
+               [this, world]
+               {
+                   setWorldTransform(m_engine.scene(), m_engine.scene().findById(m_selection), world);
+                   return Result<void>{};
+               });
 }
 
 Result<world::VobId> Editor::place(std::string_view meshPath)
@@ -150,14 +264,23 @@ Result<world::VobId> Editor::place(std::string_view meshPath)
         position.x = g7::editor::snap(position.x, snapMove);
         position.z = g7::editor::snap(position.z, snapMove);
     }
-    world::Scene& scene = m_engine.scene();
-    auto vob = placeMesh(scene, meshPath, position);
-    if (!vob)
+    world::VobId id;
+    const std::string path(meshPath);
+    if (auto placed = edit("place " + path, {},
+                           [&]() -> Result<void>
+                           {
+                               auto vob = placeMesh(m_engine.scene(), path, position);
+                               if (!vob)
+                               {
+                                   return vob.error();
+                               }
+                               id = m_engine.scene().idOf(vob.value());
+                               return {};
+                           });
+        !placed)
     {
-        return vob.error();
+        return placed.error();
     }
-    const world::VobId id = scene.idOf(vob.value());
-    sceneChanged();
     select(id);
     m_status = std::format("placed {} (id {})", meshPath, id.value);
     return id;
@@ -165,19 +288,29 @@ Result<world::VobId> Editor::place(std::string_view meshPath)
 
 Result<world::VobId> Editor::duplicateSelection()
 {
-    world::Scene& scene = m_engine.scene();
-    const entt::entity e = scene.findById(m_selection);
-    if (!scene.valid(e))
+    if (!m_engine.scene().valid(m_engine.scene().findById(m_selection)))
     {
         return Error{"nothing selected"};
     }
-    auto copy = duplicateVob(scene, e, Vec3(snap ? std::max(snapMove, 1.0f) : 1.0f, 0.0f, 0.0f));
-    if (!copy)
+    world::VobId id;
+    const world::VobId source = m_selection;
+    const Vec3 offset(snap ? std::max(snapMove, 1.0f) : 1.0f, 0.0f, 0.0f);
+    if (auto copied = edit("duplicate " + vobLabel(source), {},
+                           [&]() -> Result<void>
+                           {
+                               auto copy =
+                                   duplicateVob(m_engine.scene(), m_engine.scene().findById(source), offset);
+                               if (!copy)
+                               {
+                                   return copy.error();
+                               }
+                               id = m_engine.scene().idOf(copy.value());
+                               return {};
+                           });
+        !copied)
     {
-        return copy.error();
+        return copied.error();
     }
-    const world::VobId id = scene.idOf(copy.value());
-    sceneChanged();
     select(id);
     m_status = std::format("duplicated as id {}", id.value);
     return id;
@@ -185,30 +318,63 @@ Result<world::VobId> Editor::duplicateSelection()
 
 void Editor::deleteSelection()
 {
-    world::Scene& scene = m_engine.scene();
-    const entt::entity e = scene.findById(m_selection);
-    if (!scene.valid(e))
+    if (!m_engine.scene().valid(m_engine.scene().findById(m_selection)))
     {
         return;
     }
-    m_status = std::format("deleted id {} (the id stays used)", m_selection.value);
-    removeVob(scene, e);
-    m_selection = {};
-    sceneChanged();
+    const world::VobId id = m_selection;
+    if (edit("delete " + vobLabel(id), {id},
+             [this, id]
+             {
+                 removeVob(m_engine.scene(), m_engine.scene().findById(id));
+                 return Result<void>{};
+             }))
+    {
+        m_status = std::format("deleted id {} (the id stays used; Ctrl+Z brings it back)", id.value);
+        m_selection = {};
+    }
 }
 
 Result<void> Editor::save()
 {
-    const auto path = m_engine.worldSourceFile();
-    if (!path)
+    if (!m_engine.worldSourceFile())
     {
         m_status = "cannot save: the world is not a loose file (archive or no world)";
         return Error{m_status};
     }
+    if (!m_generatedEdited.empty())
+    {
+        // editor.md, guideline 2: before generated vobs are saved, say what the next generator run undoes.
+        std::string ids;
+        for (const u64 id : m_generatedEdited)
+        {
+            ids += (ids.empty() ? "" : ", ") + std::to_string(id);
+            if (ids.size() > 60)
+            {
+                ids += " ...";
+                break;
+            }
+        }
+        ask(std::format("{} generated vob(s) changed ({}): they are saved, but the next 'gothar-worldgen "
+                        "assemble' writes them anew. Save anyway?",
+                        m_generatedEdited.size(), ids),
+            [this] { (void)write(); });
+        return Error{"waiting for confirmation"};
+    }
+    return write();
+}
+
+Result<void> Editor::write()
+{
+    const auto path = m_engine.worldSourceFile();
+    if (!path)
+    {
+        return Error{"no world file"};
+    }
     std::error_code ec;
     if (!m_backedUp && std::filesystem::exists(*path, ec))
     {
-        // No undo yet: the version before this session's first save stays next to it.
+        // The version before this session's first save stays next to it (undo does not outlive the session).
         fs::Path backup = *path;
         backup += ".bak";
         std::filesystem::copy_file(*path, backup, std::filesystem::copy_options::overwrite_existing, ec);
@@ -224,7 +390,8 @@ Result<void> Editor::save()
         m_status = saved.error().message;
         return saved;
     }
-    m_dirty = false;
+    m_history.markSaved();
+    m_generatedEdited.clear();
     m_status = "saved " + fs::toUtf8(*path);
     return {};
 }
@@ -282,6 +449,15 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         {
             (void)save();
         }
+        const bool shift = input.isDown(platform::Key::LeftShift) || input.isDown(platform::Key::RightShift);
+        if (ctrl && input.pressed(platform::Key::Z))
+        {
+            (void)(shift ? redo() : undo());
+        }
+        if (ctrl && input.pressed(platform::Key::Y))
+        {
+            (void)redo();
+        }
     }
 
     placeGizmo();
@@ -295,7 +471,22 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         }
         else
         {
+            // The drag is one command: from the vob before it to the vob now.
             m_dragHandle = GizmoHandle::None;
+            Command command{std::string(m_gizmo.mode == GizmoMode::Translate ? "move "
+                                        : m_gizmo.mode == GizmoMode::Rotate  ? "turn "
+                                                                             : "scale ") +
+                                vobLabel(m_selection),
+                            std::exchange(m_dragBefore, {}),
+                            captureVobs(engine.scene(), std::vector{m_selection})};
+            if (command.after != command.before)
+            {
+                if (world::isGenerated(engine.worldFile(), m_selection))
+                {
+                    m_generatedEdited.insert(m_selection.value);
+                }
+                m_history.record(std::move(command));
+            }
         }
     }
     else if (!uiMouse)
@@ -305,10 +496,14 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         {
             if (m_hover != GizmoHandle::None)
             {
-                m_dragHandle = m_hover;
-                m_dragStart = mouse;
-                m_dragGizmo = m_gizmo;
-                m_dragFrom = worldTransformOf(engine.scene(), engine.scene().findById(m_selection));
+                if (mayEdit(std::vector{m_selection}, [] {})) // generated: asked first, the next drag goes
+                {
+                    m_dragBefore = captureVobs(engine.scene(), std::vector{m_selection});
+                    m_dragHandle = m_hover;
+                    m_dragStart = mouse;
+                    m_dragGizmo = m_gizmo;
+                    m_dragFrom = worldTransformOf(engine.scene(), engine.scene().findById(m_selection));
+                }
             }
             else
             {
@@ -360,7 +555,8 @@ void Editor::drag(const Vec2& mouse)
         }
         t.scale = m_dragFrom.scale * factor;
     }
-    setSelectionTransform(t);
+    setWorldTransform(m_engine.scene(), m_engine.scene().findById(m_selection), t); // one command at the end
+    sceneChanged();
     placeGizmo();
 }
 
@@ -447,7 +643,10 @@ void Editor::fillPanel()
     ui::EditorPanel& p = m_panel;
     const world::Scene& scene = m_engine.scene();
     p.world = m_engine.worldPath();
-    p.dirty = m_dirty;
+    p.dirty = dirty();
+    p.undoLabel = m_history.undoLabel();
+    p.redoLabel = m_history.redoLabel();
+    p.confirm = m_confirm;
     p.canSave = m_engine.worldSourceFile().has_value();
     p.status = m_status;
     p.warning = warningFor(m_selection);
@@ -577,28 +776,64 @@ void Editor::applyPanel()
     {
         (void)duplicateSelection();
     }
+    if (p.undo)
+    {
+        (void)undo();
+    }
+    if (p.redo)
+    {
+        (void)redo();
+    }
+    if (p.confirmYes || p.confirmNo)
+    {
+        confirm(p.confirmYes);
+    }
     if (p.remove)
     {
         deleteSelection();
         return;
     }
 
-    world::Scene& scene = m_engine.scene();
-    const entt::entity e = scene.findById(m_selection);
-    if (!scene.valid(e) || p.clickedVob != 0)
+    // Changed fields: one command; typing on in the same fields of the same vob joins it.
+    std::string labels;
+    for (const ui::EditorField& f : p.fields)
+    {
+        if (f.changed)
+        {
+            labels += (labels.empty() ? "" : ", ") + f.label;
+        }
+    }
+    if (labels.empty() || p.clickedVob != 0 ||
+        !m_engine.scene().valid(m_engine.scene().findById(m_selection)))
     {
         return;
     }
-    bool changed = false;
+    (void)edit(
+        "edit " + labels + " of " + vobLabel(m_selection), {m_selection},
+        [this, fields = p.fields]
+        {
+            applyFields(fields);
+            return Result<void>{};
+        },
+        true);
+}
+
+void Editor::applyFields(const std::vector<ui::EditorField>& fields)
+{
+    world::Scene& scene = m_engine.scene();
+    const entt::entity e = scene.findById(m_selection);
+    if (!scene.valid(e))
+    {
+        return;
+    }
     Transform t = worldTransformOf(scene, e);
     bool moved = false;
-    for (const ui::EditorField& f : p.fields)
+    for (const ui::EditorField& f : fields)
     {
         if (!f.changed)
         {
             continue;
         }
-        changed = true;
         if (f.label == "name")
         {
             world::Vob vob = *scene.get<world::Vob>(e);
@@ -678,10 +913,6 @@ void Editor::applyPanel()
     if (moved)
     {
         setWorldTransform(scene, e, t);
-    }
-    if (changed)
-    {
-        sceneChanged();
     }
 }
 

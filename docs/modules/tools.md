@@ -25,10 +25,23 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
   (Geländehöhe), Name aus dem Dateinamen, ID aus `nextVobId`. Duplizieren (Strg+D), Löschen (Entf; IDs bleiben
   verbraucht).
 - **Speichern** (Strg+S): zurück in die Quelldatei, nur lose Dateien (aus `.g7pak` = Meldung). Beim ersten
-  Speichern je Sitzung bleibt die vorige Fassung als `<datei>.bak` (noch kein Undo). Gelände, Wegnetz, Zonen und
-  `generator`-Kopf der Welt bleiben erhalten.
+  Speichern je Sitzung bleibt die vorige Fassung als `<datei>.bak` (Undo gilt nur in der Sitzung). Gelände, Wegnetz,
+  Zonen und `generator`-Kopf der Welt bleiben erhalten.
+- **Undo/Redo (M16 Teil A, ADR 0022):** Strg+Z, Strg+Y bzw. Strg+Umschalt+Z, dazu Knöpfe mit dem Namen des
+  Schritts („move ROCK_LARGEA (171)“).
+  - Jede Bearbeitung ist ein Befehl (`editor/Commands.hpp`). Er hält den Zustand der berührten Vobs vorher und
+    nachher als ihre Zeile der Weltdatei (`writeVobJson`), Kinder eingeschlossen.
+  - Undo und Redo setzen sie byte-genau zurück (`world::captureVob`/`restoreVob`). IDs bleiben verbraucht.
+  - Ein Ziehen mit dem Gizmo ist ein Schritt. Tippen in denselben Feldern desselben Vobs ergibt einen Schritt.
+  - Tiefe `[editor] undo_depth` (200).
+  - „ungespeichert“ heißt: Die Welt weicht vom gespeicherten Stand ab. Führt Undo genau dorthin zurück, gilt sie
+    wieder als gespeichert.
 - **Generator-Vobs:** Steht ein Vob im `generator.owned` der Welt (world.md), warnt der Inspektor: der nächste
   `gothar-worldgen assemble` überschreibt ihn – dort `locked` setzen.
+  - Die erste Bearbeitung eines solchen Vobs in der Sitzung fragt vorher (Ja/Nein, `Editor::confirmation`). Erst
+    nach Ja wird sie ausgeführt; danach fragt der Editor für Generator-Vobs nicht mehr.
+  - Speichern mit geänderten Generator-Vobs fragt ebenso und nennt sie („2 generated vob(s) changed (68, 70) …“),
+    Nein lässt die Datei unverändert. Entscheidung 1 des M16-Plans.
 - Nach jeder Änderung baut die Engine Instanzen und Lichter aus der Szene neu (`Engine::refreshScene`, Modelle
   bleiben im Cache).
 
@@ -43,7 +56,8 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
 | Licht-Editor mit Vorschau je Tageszeit | M16 |
 | Mobs: Slots, Zustände, Besitzer, Schloss | M16 |
 | Routinen-Vorschau: Zeitregler, NPC-„Geister“ an Routinen-Positionen | M16 |
-| Undo/Redo (Command-Pattern), Prefabs | M16 |
+| Undo/Redo (Befehle mit JSON-Zuständen, ADR 0022), Fragen vor Generator-Vobs | M16 A (umgesetzt) |
+| Prefabs | M16 |
 | Simulation im Editor starten/stoppen (Play-in-Editor) | M16 |
 
 ## Autopilot (`gothar --walk`, vorgezogen für die W3-Begehung; Vertrag mit welt)

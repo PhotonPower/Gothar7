@@ -5,6 +5,8 @@
 #include <g7/core/Result.hpp>
 #include <g7/world/WorldFile.hpp>
 
+#include <entt/entity/entity.hpp>
+
 #include <string_view>
 
 namespace g7::world
@@ -17,4 +19,9 @@ class Scene;
 [[nodiscard]] Result<void> spawnWorld(Scene& scene, const WorldFile& world);
 /// The scene's world vobs (runtime vobs are left out) as a file, e.g. for the editor.
 [[nodiscard]] WorldFile captureWorld(const Scene& scene, std::string_view name);
+/// One vob as the file has it (local transform, parent id, the component of its type) - the editor's undo.
+[[nodiscard]] WorldFileVob captureVob(const Scene& scene, entt::entity vob);
+/// Puts `vob` back as captured: an existing vob with its id gets name, parent, local transform and components
+/// (its children stay), else it is spawned with its id (the parent must exist). The editor's undo and redo.
+[[nodiscard]] Result<entt::entity> restoreVob(Scene& scene, const WorldFileVob& vob);
 } // namespace g7::world
