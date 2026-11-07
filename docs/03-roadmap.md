@@ -310,8 +310,9 @@ die Begehung durch den Projektinhaber (Deutsch und Englisch) steht aus.
 **Phase M14 abgeschlossen** (Teile A–G).
 
 ## M15 – Speichern/Laden  → Meilenstein C
-Plan (Teile A–E, Vorschlag 2026-11-01, wartet auf Freigabe): `docs/modules/save.md` „Plan M15“; ADR 0021
-(Spielstandformat) vorgeschlagen.
+Plan (Teile A–E, 2026-11-01): `docs/modules/save.md`; ADR 0021 (Spielstandformat) angenommen (Projektinhaber,
+2026-11-01). Alle Teile umgesetzt (#335, #337, #346, #347, #348); Vorschlagswerte S1–S8 und die des Kapitels warten
+auf den Projektinhaber.
 
 - [x] Serialisierung: Welt-Delta gegenüber Ausgangszustand (geänderte/entfernte/neue Vobs), NPC-Zustände, Inventare, Skript-Variablen, Tagebuch, Spielzeit
   - Teil B: `Engine::captureGame/applyGame`, `save::GameState` als JSON-Dokument im Speicher (Rundlauf byte-gleich,
@@ -321,8 +322,7 @@ Plan (Teile A–E, Vorschlag 2026-11-01, wartet auf Freigabe): `docs/modules/sav
 - [x] Speicherplätze, Quicksave/Quickload, Speichern beim Weltwechsel (Zustand jeder besuchten Welt)
   - Teil D: 15 Plätze + Schnellspeicher (F5/F9) + Autosave (Weltwechsel, Kapitel), Menüs Laden/Speichern mit
     Vorschaubild, Vorschlagswerte S1–S8
-  - Teil C: Zustand jeder besuchten Welt im Speicher (Items, Mobs, NPCs bleiben über Weltwechsel) und im Spielzustand;
-    Speicherplätze, F5/F9 und Datei folgen mit Teil A/D
+  - Teil C: Zustand jeder besuchten Welt im Speicher (Items, Mobs, NPCs bleiben über Weltwechsel) und im Spielzustand
 - [x] Robustheit: atomisches Schreiben (temp + rename), Prüfsumme
   - Teil A: CRC-32 über Kopf und Daten jedes Chunks (jedes verfälschte Byte erkannt), Schreiben über `.tmp`
 

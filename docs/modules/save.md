@@ -166,7 +166,7 @@ Result<void> applyGame(const save::GameState&);    // Welt aus Datei + Delta, NP
   Spielstand mit zwei Welten in neuer Engine byte-gleich; danach wieder Höhle und zurück), GPU
   `test_world_vobs.cpp` (Weltwechsel wie bisher).
 
-## Plan M15 (2026-11-01; Teile A, B, C umgesetzt, ADR 0021 angenommen)
+## Plan M15 (2026-11-01; alle Teile umgesetzt, ADR 0021 angenommen)
 
 ### Grundsätze
 - **Gothic-Modell:** Gespeichert wird der *Zustand*, nicht die laufende Simulation. NPCs kommen nach dem Laden an
