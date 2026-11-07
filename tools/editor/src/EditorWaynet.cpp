@@ -52,6 +52,8 @@ void Editor::setWaynetMode(bool on)
     m_waynetMode = on;
     if (on)
     {
+        m_zoneMode = false;
+        m_zoneSelected.reset();
         select({});
     }
     else

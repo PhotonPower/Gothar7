@@ -123,6 +123,9 @@ public:
     void bind(Binding binding);
     /// Every binding and built-in (print, require, after, every, cancel, on, emit, Story), for the docs.
     [[nodiscard]] std::vector<const Binding*> bindings() const;
+    /// The names of the global functions the loaded scripts define (Lua functions, not the bindings or the
+    /// standard library), sorted - e.g. for the trigger callbacks in the editor.
+    [[nodiscard]] std::vector<std::string> scriptFunctions() const;
     /// docs/script-api.md: the bindings by group, sorted, with signature and description.
     [[nodiscard]] std::string apiMarkdown() const;
 

@@ -7,6 +7,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/editor/WaynetEdit.hpp>
 #include <g7/world/Components.hpp>
+#include <g7/world/WorldFile.hpp>
 
 #include <optional>
 #include <span>
@@ -47,6 +48,9 @@ struct Command
     /// Waynet edits (part B): the touched entries before and after (none: the command left the waynet alone).
     std::optional<WaynetSnapshot> waynetBefore;
     std::optional<WaynetSnapshot> waynetAfter;
+    /// Zone edits (part C): the whole zones block before and after (a few hundred boxes at most).
+    std::optional<std::vector<world::Zone>> zonesBefore;
+    std::optional<std::vector<world::Zone>> zonesAfter;
 };
 
 /// The edits of a session: undo, redo, and whether the world differs from its saved version.
@@ -59,9 +63,11 @@ public:
     /// mergeable too, has the same label and touched the same vobs. Beyond the depth the oldest is dropped.
     void record(Command command);
     /// Puts the last command's "before" back; false if there is none (or it failed - then the history stays).
-    [[nodiscard]] Result<bool> undo(world::Scene& scene, world::WaynetData* waynet = nullptr);
+    [[nodiscard]] Result<bool> undo(world::Scene& scene, world::WaynetData* waynet = nullptr,
+                                    std::vector<world::Zone>* zones = nullptr);
     /// Puts the next undone command's "after" back.
-    [[nodiscard]] Result<bool> redo(world::Scene& scene, world::WaynetData* waynet = nullptr);
+    [[nodiscard]] Result<bool> redo(world::Scene& scene, world::WaynetData* waynet = nullptr,
+                                    std::vector<world::Zone>* zones = nullptr);
 
     [[nodiscard]] bool canUndo() const noexcept { return m_done > 0; }
     [[nodiscard]] bool canRedo() const noexcept { return m_done < m_commands.size(); }

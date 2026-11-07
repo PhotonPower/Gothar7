@@ -1178,6 +1178,19 @@ Result<void> Engine::setWaynet(world::WaynetData waynet)
     return {};
 }
 
+Result<void> Engine::setZones(std::vector<world::Zone> zones)
+{
+    for (usize i = 0; i < zones.size(); ++i)
+    {
+        if (auto checked = world::checkZone(zones[i], std::format("zones[{}]", i)); !checked)
+        {
+            return checked;
+        }
+    }
+    m_worldFile.zones = std::move(zones); // read live: rooms (render), music, ambience, NPC rooms
+    return {};
+}
+
 Result<void> Engine::refreshScene()
 {
     // Everything but the ground plate is rebuilt from the scene; models stay cached, new ones load.

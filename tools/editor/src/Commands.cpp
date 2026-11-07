@@ -123,6 +123,7 @@ void History::record(Command command)
         {
             last.after = std::move(command.after); // one step: from the first "before" to the last "after"
             last.waynetAfter = std::move(command.waynetAfter);
+            last.zonesAfter = std::move(command.zonesAfter);
             return;
         }
     }
@@ -136,7 +137,7 @@ void History::record(Command command)
     }
 }
 
-Result<bool> History::undo(world::Scene& scene, world::WaynetData* waynet)
+Result<bool> History::undo(world::Scene& scene, world::WaynetData* waynet, std::vector<world::Zone>* zones)
 {
     if (!canUndo())
     {
@@ -154,11 +155,15 @@ Result<bool> History::undo(world::Scene& scene, world::WaynetData* waynet)
             return restored.error();
         }
     }
+    if (c.zonesBefore && zones != nullptr)
+    {
+        *zones = *c.zonesBefore;
+    }
     --m_done;
     return true;
 }
 
-Result<bool> History::redo(world::Scene& scene, world::WaynetData* waynet)
+Result<bool> History::redo(world::Scene& scene, world::WaynetData* waynet, std::vector<world::Zone>* zones)
 {
     if (!canRedo())
     {
@@ -175,6 +180,10 @@ Result<bool> History::redo(world::Scene& scene, world::WaynetData* waynet)
         {
             return restored.error();
         }
+    }
+    if (c.zonesAfter && zones != nullptr)
+    {
+        *zones = *c.zonesAfter;
     }
     ++m_done;
     return true;

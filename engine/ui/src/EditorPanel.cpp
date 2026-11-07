@@ -280,4 +280,110 @@ void DebugUi::waynetPanel(WaynetPanel& panel)
     }
     ImGui::End();
 }
+
+void DebugUi::zonePanel(ZonePanel& panel)
+{
+    panel.clickedRow = panel.clickedIssue = -1;
+    panel.boxChanged = panel.valueChanged = panel.add = panel.remove = panel.checkTriggers = false;
+    if (!panel.shown)
+    {
+        return;
+    }
+    ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 740.0f, 540.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(360.0f, 480.0f), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Zones & triggers");
+    ImGui::Checkbox("zone mode (V)", &panel.active);
+    ImGui::TextWrapped("Click: select a box; the gizmo moves, turns (about up only) and sizes it (1/2/3).");
+    ImGui::TextWrapped("here: %s", panel.here.c_str());
+    if (ImGui::CollapsingHeader("Zones", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::BeginChild("zones", ImVec2(0.0f, 130.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.rows.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(panel.rows[i].c_str(), static_cast<i32>(i) == panel.selected))
+            {
+                panel.clickedRow = static_cast<i32>(i);
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+        std::vector<const char*> types;
+        for (const std::string& t : panel.types)
+        {
+            types.push_back(t.c_str());
+        }
+        ImGui::SetNextItemWidth(90.0f);
+        ImGui::Combo("##newType", &panel.newType, types.data(), static_cast<int>(types.size()));
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(130.0f);
+        if (ImGui::BeginCombo("##newValue", panel.newValue.c_str()))
+        {
+            for (const std::string& v : panel.newValues)
+            {
+                if (ImGui::Selectable(v.c_str(), v == panel.newValue))
+                {
+                    panel.newValue = v;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::SameLine();
+        panel.add = ImGui::Button("add zone");
+        if (panel.selected >= 0)
+        {
+            ImGui::Separator();
+            if (!panel.selectedEditable)
+            {
+                ImGui::TextDisabled("a zone of type '%s': kept as it is", panel.selectedType.c_str());
+            }
+            else
+            {
+                if (panel.selectedType == "indoor")
+                {
+                    panel.valueChanged = inputText("room", panel.value);
+                }
+                else if (ImGui::BeginCombo(panel.selectedType == "music" ? "theme" : "ambience",
+                                           panel.value.c_str()))
+                {
+                    for (const std::string& v : panel.values)
+                    {
+                        if (ImGui::Selectable(v.c_str(), v == panel.value))
+                        {
+                            panel.value = v;
+                            panel.valueChanged = true;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                panel.boxChanged = ImGui::DragFloat3("centre", &panel.center.x, 0.05f);
+                panel.boxChanged =
+                    ImGui::DragFloat3("half extents", &panel.halfExtents.x, 0.05f, 0.05f, 5000.0f) ||
+                    panel.boxChanged;
+                panel.boxChanged = ImGui::DragFloat("yaw (deg)", &panel.yawDegrees, 0.5f, -180.0f, 180.0f) ||
+                                   panel.boxChanged;
+            }
+            panel.remove = ImGui::Button("delete zone (Del)");
+        }
+    }
+    if (ImGui::CollapsingHeader("Triggers", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::TextWrapped(
+            "Triggers are vobs: select them outside the zone mode; the inspector lists the script "
+            "functions, worlds and start points.");
+        panel.checkTriggers = ImGui::Button("check the triggers");
+        ImGui::BeginChild("triggerIssues", ImVec2(0.0f, 110.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.triggerIssues.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(panel.triggerIssues[i].c_str()))
+            {
+                panel.clickedIssue = static_cast<i32>(i); // selects the trigger
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+    }
+    ImGui::End();
+}
 } // namespace g7::ui

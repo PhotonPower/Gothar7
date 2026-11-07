@@ -121,8 +121,10 @@ void Engine::updateMusic(f32 seconds)
     }
     const audio::MusicState state =
         m_musicForcedState.value_or(m_musicFilter.update(m_musicCause, seconds, m_music->defs().hysteresis));
-    const std::string theme = m_musicForcedTheme.value_or(
-        zoneAt("music", m_playerFeet + Vec3(0.0f, kZoneHeight, 0.0f)).value_or(std::string()));
+    // Measured at the hero (hip height), without one at the camera (world.md "Zonen"; the editor).
+    const Vec3 listener =
+        m_player.valid() ? m_playerFeet + Vec3(0.0f, kZoneHeight, 0.0f) : m_camera.transform.position;
+    const std::string theme = m_musicForcedTheme.value_or(zoneAt("music", listener).value_or(std::string()));
     m_music->update(*m_audio, theme, state, night());
     const std::string now = m_music->status().set;
     if (now != m_musicSet)

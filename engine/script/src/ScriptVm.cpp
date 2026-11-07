@@ -806,6 +806,27 @@ void ScriptVm::bind(Binding binding)
     m_impl->bindings.push_back(std::move(binding));
 }
 
+std::vector<std::string> ScriptVm::scriptFunctions() const
+{
+    std::vector<std::string> names;
+    lua_State* L = m_impl->lua.lua_state();
+    for (const auto& [key, value] : m_impl->lua.globals())
+    {
+        if (key.get_type() != sol::type::string || value.get_type() != sol::type::function)
+        {
+            continue;
+        }
+        value.push(L);
+        lua_Debug info{};
+        if (lua_getinfo(L, ">S", &info) != 0 && info.what != nullptr && std::string_view(info.what) == "Lua")
+        {
+            names.push_back(key.as<std::string>()); // written in Lua: a script's (C: binding or library)
+        }
+    }
+    std::ranges::sort(names);
+    return names;
+}
+
 std::vector<const Binding*> ScriptVm::bindings() const
 {
     std::vector<const Binding*> out;

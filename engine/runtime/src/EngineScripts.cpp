@@ -608,4 +608,14 @@ void Engine::consoleUi()
         m_consoleOpen = false;
     }
 }
+
+std::vector<std::string> Engine::scriptFunctions() const
+{
+    return m_scripts ? m_scripts->scriptFunctions() : std::vector<std::string>{};
+}
+
+bool Engine::hasScripts() const noexcept
+{
+    return m_scripts != nullptr;
+}
 } // namespace g7
