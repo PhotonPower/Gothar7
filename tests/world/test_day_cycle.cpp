@@ -166,6 +166,10 @@ TEST_CASE("Day cycle: errors name the key; the shipped curves load")
     CHECK(shipped.value().evaluate(12.5f, 0.01f).environment.sunIntensity >
           shipped.value().evaluate(19.5f, 0.01f).environment.sunIntensity);
     CHECK(shipped.value().indoorAmbient() < 1.0f); // rooms are darker
+    // M17 P1 (owner decision 1): bloom subtle by day, more at night.
+    CHECK(shipped.value().evaluate(12.5f, 0.01f).bloomIntensity == doctest::Approx(0.12f));
+    CHECK(shipped.value().evaluate(0.0f, 0.01f).bloomIntensity == doctest::Approx(0.2f));
+    CHECK(shipped.value().evaluate(12.5f, 0.01f).bloomThreshold == doctest::Approx(1.0f));
 
     // [indoor] ambient: a factor 0..1 on the ambient inside rooms (zones of type indoor).
     auto indoor = DayCycle::parse("version = 1\n[indoor]\nambient = 0.2\n[[key]]\nhour = 1.0\n", "e.toml");

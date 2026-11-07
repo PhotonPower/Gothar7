@@ -1,4 +1,6 @@
+#include <g7/render/Bloom.hpp>
 #include <g7/render/Lighting.hpp>
+#include <g7/render/PassTimes.hpp>
 #include <g7/render/PostProcess.hpp>
 
 #include <doctest/doctest.h>
@@ -52,4 +54,23 @@ TEST_CASE("Distance fog")
     }
     CHECK(fogFactor(500.0f, 30.0f, 0.0f) == 0.0f);    // density 0 = off
     CHECK(fogDensityFor(0.9f, 20.0f, 30.0f) == 0.0f); // end before start: off
+}
+
+TEST_CASE("Bloom prefilter: nothing below the knee, softly into it, linear above; the hue stays (M17)")
+{
+    using render::bloomPrefilter;
+    CHECK(glm::length(bloomPrefilter(Vec3(0.4f), 1.0f, 0.5f)) == doctest::Approx(0.0f));
+    const Vec3 soft = bloomPrefilter(Vec3(0.9f), 1.0f, 0.5f); // inside the knee (0.5 .. 1.5)
+    CHECK(soft.x > 0.0f);
+    CHECK(soft.x < 0.9f - 0.5f);
+    const Vec3 bright = bloomPrefilter(Vec3(4.0f, 2.0f, 1.0f), 1.0f, 0.5f);
+    CHECK(bright.x == doctest::Approx(3.0f)); // brightness 4 - threshold 1
+    CHECK(bright.y / bright.x == doctest::Approx(0.5f));
+    CHECK(glm::length(bloomPrefilter(Vec3(1.2f), 1.0f, 0.0f)) == doctest::Approx(glm::length(Vec3(0.2f))));
+}
+
+TEST_CASE("Pass times: the first sample is taken, then smoothed")
+{
+    CHECK(render::smoothPassTime(0.0f, 2.0f, true) == doctest::Approx(2.0f));
+    CHECK(render::smoothPassTime(2.0f, 4.0f, false) == doctest::Approx(2.2f));
 }

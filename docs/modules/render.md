@@ -297,6 +297,37 @@ class PostProcess { static Result<PostProcess> create(Device&, ShaderLibrary&);
   `[render] fog_start`, `fog_density` (0 = aus). Ab M4 liefert die Tageszeit-Kurve Farbe und Dichte; Höhennebel
   (Sümpfe) folgt mit der Atmosphäre (M17).
 
+### Bloom und GPU-Zeitmessung (M17 Teil P1, umgesetzt) – `Bloom.hpp`, `PassTimes.hpp`, `bloom_down/up.frag`
+```cpp
+struct BloomSettings { bool enabled = true; f32 threshold = 1, knee = 0.5, intensity = 0.12; u32 levels = 5; };
+Vec3 bloomPrefilter(const Vec3& color, f32 threshold, f32 knee);   // wie bloom_down.frag (Tests)
+class Bloom { static Result<Bloom> create(Device&, ShaderLibrary&);
+              Result<void> resize(Device&, u32 w, u32 h, u32 levels);
+              void render(Device&, const rhi::Texture& scene, const BloomSettings&);
+              const rhi::Texture* result() const; };                   // halbe Größe, linear
+struct PostSettings { …; const rhi::Texture* bloom = nullptr; f32 bloomIntensity = 0; };
+class rhi::TimerQuery;  Device::createTimerQuery(), beginTimerQuery(q), endTimerQuery(),
+                        timerQueryNanoseconds(q) -> std::optional<u64>;   // GL_TIME_ELAPSED
+class PassTimes { void begin(Device&, name); void end(Device&); void collect(Device&);
+                  const std::vector<PassTime>& times() const; f32 milliseconds(name) const; };
+```
+- **Bloom:** Abwärtskette aus `levels` halbierten RGBA16F-Stufen (13-Tap-Filter nach Jimenez; die erste Stufe
+  lässt nur durch, was über der Schwelle liegt, mit weichem Knie nach Karis), Aufwärtskette mit 3×3-Zeltfilter,
+  additiv in die nächstgrößere Stufe. `post.frag` addiert das Ergebnis (halbe Größe, linear gefiltert) mal
+  `bloomIntensity` vor Belichtung und Tonemapping. Stärke 0 oder `[render] bloom = false`: kein Pass, das Bild ist
+  bytegleich zu vorher.
+- **Werte (Entscheidung 1 des Projektinhabers, dezent):** `bloom_threshold` (1,0) und `bloom_intensity` (0,12; nachts
+  0,2) je Tageszeit-Schlüssel in `data/environment.toml` (`world::DaySample::bloomThreshold/-Intensity`). Optionen →
+  Grafik „Leuchten (Bloom)“.
+- **Zeitmessung:** `PassTimes` hält je Pass vier Abfragen im Umlauf, liest fertige Ergebnisse beim nächsten
+  `collect` und glättet sie (10 % je Messung). Die Engine misst `scene` (Schatten, Himmel, Szene), `bloom`, `post`;
+  das Fenster „Gothar“ zeigt sie, der Benchmark schreibt sie je Aussichtspunkt ins Log.
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Testszene): Bloom 0,17 ms, Post 0,06 ms (Budget Bloom
+  ≤ 0,4 ms).
+- **Tests:** `tests/render/test_post.cpp` (Knie-Kurve, Glättung), `tests/world/test_day_cycle.cpp` (Werte der
+  Tageszeit), GPU `test_post.cpp` (dunkle Szene glüht nicht, ein heller Fleck strahlt in die Umgebung, Stärke 0
+  bytegleich, Zeitmessung > 0), `test_engine_render.cpp` (Engine mit und ohne Bloom, Passzeiten).
+
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp
 struct DebugStyle { Vec4 color{1}; f32 duration = 0; bool depthTest = true; };   // duration 0 = nur dieser Frame

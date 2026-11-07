@@ -85,6 +85,14 @@ public:
     [[nodiscard]] Result<rhi::Pipeline> createPipeline(const rhi::PipelineDesc& desc);
     /// Fails for invalid attachments or an incomplete framebuffer.
     [[nodiscard]] Result<rhi::Framebuffer> createFramebuffer(const rhi::FramebufferDesc& desc);
+    [[nodiscard]] Result<rhi::TimerQuery> createTimerQuery();
+
+    // --- GPU time (M17: budgets per pass) ---
+    void beginTimerQuery(const rhi::TimerQuery& query);
+    void endTimerQuery();
+    /// The measured time once the GPU has it (a frame or two later), nullopt before; a query never begun
+    /// gives nullopt too.
+    [[nodiscard]] std::optional<u64> timerQueryNanoseconds(const rhi::TimerQuery& query) const;
 
     // --- Frame and render targets ---
     /// Resets the frame stats, binds the window framebuffer, sets the viewport, clears colour and

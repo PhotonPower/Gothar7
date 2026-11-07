@@ -126,7 +126,9 @@ Result<DayCycle> DayCycle::parse(std::string_view toml, std::string_view source)
         }
         for (auto [name, target] :
              {std::pair{"sun_intensity", &key.sunIntensity}, std::pair{"moon_intensity", &key.moonIntensity},
-              std::pair{"fog_density", &key.fogDensity}, std::pair{"stars", &key.stars}})
+              std::pair{"fog_density", &key.fogDensity}, std::pair{"stars", &key.stars},
+              std::pair{"bloom_threshold", &key.bloomThreshold},
+              std::pair{"bloom_intensity", &key.bloomIntensity}})
         {
             const f64 value = c.get<f64>(at + "." + name, *target);
             if (value < 0.0)
@@ -231,6 +233,8 @@ DaySample DayCycle::evaluate(f32 hour, f32 fogDensity) const
     sky.moonDirection = moon;
     sky.moon = moonUp;
     sky.stars = blend(a.stars, b.stars, t);
+    sample.bloomThreshold = blend(a.bloomThreshold, b.bloomThreshold, t);
+    sample.bloomIntensity = blend(a.bloomIntensity, b.bloomIntensity, t);
     return sample;
 }
 } // namespace g7::world
