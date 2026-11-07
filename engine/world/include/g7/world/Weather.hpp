@@ -36,6 +36,7 @@ struct WeatherState
     f32 fog = 1.0f;                  ///< factor on the fog density of the time of day
     f32 sun = 1.0f;                  ///< factor on the sun's (or moon's) light
     f32 ambient = 1.0f;              ///< factor on the ambient light
+    f32 shadow = 1.0f;               ///< how dark the sun's shadows stay, 1 full .. 0 none (overcast)
     f32 lightning = 0.0f;            ///< flashes per minute (part G)
     render::GradingOverride grading; ///< over the time of day's grading
     f32 minHours = 1.0f;             ///< duration in game hours
@@ -55,6 +56,7 @@ struct WeatherSample
     f32 fog = 1.0f;
     f32 sun = 1.0f;
     f32 ambient = 1.0f;
+    f32 shadow = 1.0f;
     f32 lightning = 0.0f;
     f32 fade = 1.0f; ///< 0 at the change .. 1 when the new state is reached
 };

@@ -96,7 +96,8 @@ Result<Weather> Weather::parse(std::string_view toml, std::string_view source)
         for (auto [key, target] :
              {std::pair{"rain", &s.rain}, std::pair{"clouds", &s.clouds}, std::pair{"wind", &s.wind},
               std::pair{"gusts", &s.gusts}, std::pair{"fog", &s.fog}, std::pair{"sun", &s.sun},
-              std::pair{"ambient", &s.ambient}, std::pair{"lightning", &s.lightning}})
+              std::pair{"ambient", &s.ambient}, std::pair{"shadow", &s.shadow},
+              std::pair{"lightning", &s.lightning}})
         {
             if (const auto value = c.find<f64>(at + "." + key))
             {
@@ -117,6 +118,10 @@ Result<Weather> Weather::parse(std::string_view toml, std::string_view source)
         if (s.fog < 0.0f || s.sun < 0.0f || s.ambient < 0.0f || s.lightning < 0.0f)
         {
             return error(at, "fog, sun, ambient and lightning must not be negative");
+        }
+        if (s.shadow < 0.0f || s.shadow > 1.0f)
+        {
+            return error(at, "shadow must lie in 0..1");
         }
         if (const std::string bad = readGrading(c, at, s.grading); !bad.empty())
         {
@@ -315,6 +320,7 @@ WeatherSample Weather::sample(f64 clock) const
     s.fog = mix(a.fog, b.fog);
     s.sun = mix(a.sun, b.sun);
     s.ambient = mix(a.ambient, b.ambient);
+    s.shadow = mix(a.shadow, b.shadow);
     s.lightning = mix(a.lightning, b.lightning);
     s.fade = t;
     return s;
@@ -328,6 +334,7 @@ void Weather::apply(DaySample& day, f64 clock) const
     e.ambientSky *= s.ambient;
     e.ambientGround *= s.ambient;
     e.fogDensity *= s.fog;
+    e.shadowStrength *= s.shadow;
     // Clouds: sky and fog turn grey (keeping their brightness), moon and stars vanish.
     const auto grey = [](const Vec3& c, f32 amount) { return glm::mix(c, Vec3(glm::dot(c, kLuma)), amount); };
     day.sky.zenith = grey(day.sky.zenith, 0.8f * s.clouds);

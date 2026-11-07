@@ -17,7 +17,7 @@ layout(std140, binding = 0) uniform Lighting
     vec4 cascadeRects[4];   // atlas tile: uv offset xy, size zw
     vec4 cascadeTexelSize;  // world size of a shadow texel per cascade
     vec4 shadowParams;      // x enabled, y cascades, z distance, w normal offset (texels)
-    vec4 shadowExtra;       // x debug colours, y atlas texel size (uv)
+    vec4 shadowExtra;       // x debug colours, y atlas texel size (uv), z shadow softening (weather; 0 full)
     vec4 cameraPosition;
     vec4 cameraForward;
     vec4 fogColorStart;     // rgb linear, w start distance
@@ -142,7 +142,8 @@ vec3 incomingLight(vec3 worldPosition, vec3 n)
     {
         light *= mix(1.0, uLighting.indoorParams.y, indoorAmount(worldPosition)); // rooms: the indoor ambient
     }
-    light += uLighting.sunColor.rgb * max(dot(n, uLighting.sunDirection.xyz), 0.0) * sunShadow(worldPosition, n);
+    light += uLighting.sunColor.rgb * max(dot(n, uLighting.sunDirection.xyz), 0.0) *
+             mix(sunShadow(worldPosition, n), 1.0, uLighting.shadowExtra.z); // overcast: soft or no shadows
     for (int i = 0; i < lightCount(); ++i)
     {
         const int index = lightIndex(i);

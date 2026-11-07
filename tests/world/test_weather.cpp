@@ -34,6 +34,7 @@ next = { regen = 1.0 }
 [state.regen]
 rain = 0.8
 sun = 0.5
+shadow = 0.2
 grading_saturation = 0.5
 duration = [2.0, 2.0]
 next = { klar = 1.0 }
@@ -200,6 +201,8 @@ TEST_CASE("Weather: mixed into the time of day - darker, foggier, greyer, the st
     w.apply(rainy, 70.0);
     CHECK(rainy.environment.sunIntensity == doctest::Approx(1.0f));
     CHECK(rainy.grading.saturation == doctest::Approx(0.5f));
+    CHECK(rainy.environment.shadowStrength == doctest::Approx(0.2f)); // overcast: nearly no shadows
+    CHECK(clear.environment.shadowStrength == doctest::Approx(1.0f));
     DaySample halfway = day;
     w.apply(halfway, 65.0);
     CHECK(halfway.grading.saturation == doctest::Approx(0.75f));

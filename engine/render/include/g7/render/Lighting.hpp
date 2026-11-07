@@ -41,6 +41,8 @@ struct Environment
     std::vector<IndoorVolume> indoor;
     f32 indoorAmbient = 1.0f; ///< ambient factor inside them (environment.toml [indoor])
     f32 indoorEdge = 0.3f;    ///< m, the fade beyond a room's box (welt's walls are 0.3 m thick)
+    /// How dark the sun's shadows are, 1 = full .. 0 = none (M17 weather: overcast skies soften them).
+    f32 shadowStrength = 1.0f;
 };
 
 inline constexpr u32 kMaxIndoorVolumes = 32;
@@ -127,7 +129,7 @@ struct GpuLighting
     std::array<Vec4, 4> cascadeRects; ///< atlas tile per cascade
     Vec4 cascadeTexelSize;            ///< world size of a shadow texel per cascade
     Vec4 shadowParams;                ///< x enabled, y cascades, z distance, w normal offset (texels)
-    Vec4 shadowExtra;                 ///< x debug colours, y atlas texel size (uv)
+    Vec4 shadowExtra; ///< x debug colours, y atlas texel size (uv), z shadow softening (0 full)
     Vec4 cameraPosition;
     Vec4 cameraForward;
     Vec4 fogColorStart; ///< rgb linear, w start

@@ -2,6 +2,7 @@
 # Jede Lage überschreibt die Tageszeit aus environment.toml:
 #   rain, clouds, wind, gusts   0..1 (Regen, Bewölkung, Wind, Böigkeit)
 #   fog, sun, ambient           Faktoren auf Nebeldichte, Sonnen- bzw. Mondlicht und Umgebungslicht
+#   shadow                      wie dunkel die Sonnenschatten bleiben, 1 voll .. 0 keine (bedeckt: weich bzw. fast keine)
 #   lightning                   Blitze je Spielminute (Teil G)
 #   grading_*                   Farbkorrektur wie in environment.toml, über die Tageszeit gelegt
 #   duration = [min, max]       Dauer in Spielstunden (ein Spieltag = 96 Echtminuten)
@@ -27,6 +28,7 @@ wind = 0.05
 gusts = 0.0
 fog = 3.0
 sun = 0.7
+shadow = 0.5
 grading_saturation = 0.85
 window = [4.5, 6.5]
 duration = [2.0, 3.0]
@@ -39,6 +41,7 @@ gusts = 0.2
 fog = 1.2
 sun = 0.6
 ambient = 0.85
+shadow = 0.4
 grading_saturation = 0.9
 duration = [1.5, 4.0]
 next = { klar = 4.0, regen = 1.0, bewoelkt = 1.0 }
@@ -51,6 +54,7 @@ gusts = 0.3
 fog = 1.6
 sun = 0.35
 ambient = 0.75
+shadow = 0.12
 grading_saturation = 0.8
 grading_temperature = -0.08
 duration = [1.0, 3.0]
@@ -64,6 +68,7 @@ gusts = 0.4
 fog = 2.2
 sun = 0.25
 ambient = 0.65
+shadow = 0.08
 grading_saturation = 0.75
 grading_temperature = -0.1
 duration = [0.5, 1.5]
@@ -77,6 +82,7 @@ gusts = 0.7
 fog = 2.0
 sun = 0.2
 ambient = 0.6
+shadow = 0.08
 lightning = 1.5
 grading_saturation = 0.65
 grading_tint = -0.15

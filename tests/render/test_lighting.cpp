@@ -1,4 +1,6 @@
+#include <g7/render/Camera.hpp>
 #include <g7/render/Lighting.hpp>
+#include <g7/render/Shadows.hpp>
 
 #include <doctest/doctest.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -168,4 +170,17 @@ TEST_CASE("Lighting: the lights of a frame - effects first, then the nearest vis
     budget.maxLights = 1000;
     selectFrameLights(many, world, windows, Vec3(0.0f), view, budget, out);
     CHECK(out.lights().size() == LightList::kMaxPerFrame);
+}
+
+TEST_CASE("Lighting: the weather softens the sun's shadows; packing the shadows keeps it (M17)")
+{
+    Environment environment;
+    CHECK(packLighting(environment, LightList{}).shadowExtra.z == doctest::Approx(0.0f)); // full shadows
+    environment.shadowStrength = 0.1f; // a storm: almost none
+    GpuLighting gpu = packLighting(environment, LightList{});
+    CHECK(gpu.shadowExtra.z == doctest::Approx(0.9f));
+    ShadowSettings settings;
+    Camera camera;
+    packShadows(gpu, {}, settings, camera, false);
+    CHECK(gpu.shadowExtra.z == doctest::Approx(0.9f));
 }
