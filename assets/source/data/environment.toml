@@ -6,6 +6,8 @@
 #   fog_color         Nebel und Horizont des Himmels (gleich, damit Fernes in den Himmel übergeht)
 #   fog_density       Faktor auf [render] fog_density (Morgendunst > 1)
 #   sky_zenith        Himmel senkrecht oben; stars 0..1
+#   bloom_threshold   M17: Helligkeit (linear, HDR), ab der etwas glüht (Vorgabe 1.0)
+#   bloom_intensity   M17: wie stark (Vorgabe 0.12; Entscheidung 1 des Projektinhabers: dezent, nachts 0.2)
 version = 1
 
 [indoor]              # Räume (Zonen vom Typ indoor, world.md „Zonen“): Umgebungslicht drinnen = Faktor mal draußen,
@@ -32,6 +34,7 @@ fog_color = [0.04, 0.045, 0.07]
 fog_density = 0.8
 sky_zenith = [0.012, 0.015, 0.035]
 stars = 1.0
+bloom_intensity = 0.2
 
 [[key]] # Morgengrauen
 hour = 4.75
@@ -107,3 +110,4 @@ fog_color = [0.15, 0.11, 0.15]
 fog_density = 0.9
 sky_zenith = [0.04, 0.05, 0.10]
 stars = 0.6
+bloom_intensity = 0.2

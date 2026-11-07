@@ -170,14 +170,17 @@ set_tests_properties(walk PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
 
 # Game command line: --help and unknown options must exit at once, without a window or the engine.
 if(TARGET gothar)
-    foreach(_case IN ITEMS "help|--help|0|--world=" "unknown|--bogus|nonzero|unknown argument '--bogus'")
+    foreach(_case IN ITEMS "help|--help|0|--world=" "unknown|--bogus|nonzero|unknown argument '--bogus'"
+                          "set_bad|--set=render.bloom|nonzero|--set needs key=value"
+                          "set|--set=render.bloom=false,--set,ui.language=en,--no-user-config,--smoke-test|0|--set ui.language=en")
         string(REPLACE "|" ";" _parts "${_case}")
         list(GET _parts 0 _name)
         list(GET _parts 1 _arg)
+        string(REPLACE "," ";" _arg "${_arg}") # several arguments: comma-separated in the case
         list(GET _parts 2 _rc)
         list(GET _parts 3 _expect)
         add_test(NAME game.cli.${_name}
-                 COMMAND ${CMAKE_COMMAND} -DGOTHAR=$<TARGET_FILE:gothar> -DARGS=${_arg} -DEXPECT_RC=${_rc}
+                 COMMAND ${CMAKE_COMMAND} -DGOTHAR=$<TARGET_FILE:gothar> "-DARGS=${_arg}" -DEXPECT_RC=${_rc}
                          "-DEXPECT=${_expect}" -P "${CMAKE_CURRENT_SOURCE_DIR}/game/check_cli.cmake")
         set_tests_properties(game.cli.${_name} PROPERTIES TIMEOUT 60)
     endforeach()

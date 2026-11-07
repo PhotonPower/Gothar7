@@ -35,6 +35,10 @@ void deleteVertexArray(u32 id)
 {
     glDeleteVertexArrays(1, &id);
 }
+void deleteQuery(u32 id)
+{
+    glDeleteQueries(1, &id);
+}
 void deleteFramebuffer(u32 id)
 {
     glDeleteFramebuffers(1, &id);
@@ -326,6 +330,46 @@ Result<Framebuffer> Device::createFramebuffer(const FramebufferDesc& desc)
     framebuffer.m_width = width;
     framebuffer.m_height = height;
     return framebuffer;
+}
+
+Result<TimerQuery> Device::createTimerQuery()
+{
+    GLuint id = 0;
+    glCreateQueries(GL_TIME_ELAPSED, 1, &id);
+    if (id == 0)
+    {
+        return Error{"cannot create a timer query"};
+    }
+    TimerQuery query;
+    query.m_handle = Handle(id, deleteQuery);
+    return query;
+}
+
+void Device::beginTimerQuery(const TimerQuery& query)
+{
+    glBeginQuery(GL_TIME_ELAPSED, query.m_handle.id());
+}
+
+void Device::endTimerQuery()
+{
+    glEndQuery(GL_TIME_ELAPSED);
+}
+
+std::optional<u64> Device::timerQueryNanoseconds(const TimerQuery& query) const
+{
+    if (!query.m_handle || glIsQuery(query.m_handle.id()) == GL_FALSE)
+    {
+        return std::nullopt;
+    }
+    GLint available = 0;
+    glGetQueryObjectiv(query.m_handle.id(), GL_QUERY_RESULT_AVAILABLE, &available);
+    if (available == 0)
+    {
+        return std::nullopt;
+    }
+    GLuint64 nanoseconds = 0;
+    glGetQueryObjectui64v(query.m_handle.id(), GL_QUERY_RESULT, &nanoseconds);
+    return static_cast<u64>(nanoseconds);
 }
 } // namespace g7::render
 

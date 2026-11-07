@@ -323,7 +323,8 @@ std::vector<ui::OptionPage> Engine::optionPages() const
                 {choice(std::string(kResolution), "UI_OPT_RESOLUTION", resolutions),
                  toggle("window.fullscreen", "UI_OPT_FULLSCREEN"), toggle("window.vsync", "UI_OPT_VSYNC"),
                  choice("window.max_fps", "UI_OPT_MAX_FPS", fps),
-                 choice("render.view_distance", "UI_OPT_VIEW_DISTANCE", distances)}};
+                 choice("render.view_distance", "UI_OPT_VIEW_DISTANCE", distances),
+                 toggle("render.bloom", "UI_OPT_BLOOM")}};
     pages[1] = {"UI_OPTIONS_AUDIO",
                 {slider("audio.master", "UI_OPT_MASTER"), slider("audio.music", "UI_OPT_MUSIC"),
                  slider("audio.effects", "UI_OPT_EFFECTS"), slider("audio.voice", "UI_OPT_VOICE"),
@@ -443,6 +444,10 @@ void Engine::applySetting(std::string_view key)
     {
         m_config.maxFps = static_cast<f64>(std::max<i64>(0, s.get<i64>("window.max_fps", 240)));
         m_framePacer = FramePacer(m_config.maxFps);
+    }
+    else if (key == "render.bloom")
+    {
+        m_bloomSettings.enabled = s.get<bool>("render.bloom", true);
     }
     else if (key == "render.view_distance")
     {

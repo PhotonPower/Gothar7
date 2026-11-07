@@ -31,6 +31,8 @@ struct EnvironmentKey
     f32 fogDensity = 1.0f;            ///< factor on [render] fog_density
     Vec3 skyZenith{0.1f, 0.2f, 0.5f}; ///< the horizon is the fog colour (distant geometry fades into the sky)
     f32 stars = 0.0f;                 ///< 0 .. 1
+    f32 bloomThreshold = 1.0f;        ///< M17: luminance from which bright pixels glow
+    f32 bloomIntensity = 0.12f;       ///< M17: how strongly (decision 1: subtle; more at night)
 };
 
 /// Paths of sun and moon. The sun rises in the east (+X), stands south (+Z) at noon and sets in the
@@ -50,6 +52,8 @@ struct DaySample
 {
     render::Environment environment; ///< directional light = sun by day, moon by night
     render::Sky sky;
+    f32 bloomThreshold = 1.0f;
+    f32 bloomIntensity = 0.12f;
 };
 
 class DayCycle

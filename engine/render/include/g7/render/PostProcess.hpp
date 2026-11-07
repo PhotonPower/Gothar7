@@ -42,6 +42,8 @@ struct PostSettings
 {
     Tonemapper tonemapper = Tonemapper::Aces;
     f32 exposure = 1.0f;
+    const rhi::Texture* bloom = nullptr; ///< the glow of render::Bloom (M17), nullptr: none
+    f32 bloomIntensity = 0.0f;
 };
 
 /// Same curves as post.frag (per channel, after exposure), for tests and tools.
@@ -62,5 +64,6 @@ private:
     rhi::ShaderProgram* m_program = nullptr; // owned by the ShaderLibrary
     rhi::Pipeline m_pipeline;
     rhi::Sampler m_sampler;
+    rhi::Sampler m_bloomSampler;
 };
 } // namespace g7::render

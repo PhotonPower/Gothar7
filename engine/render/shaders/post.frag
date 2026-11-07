@@ -1,11 +1,13 @@
 #version 450 core
-// Final pass: exposure, tonemapping, sRGB encoding of the linear HDR scene (render::PostProcess).
+// Final pass: bloom (M17), exposure, tonemapping, sRGB encoding of the linear HDR scene (render::PostProcess).
 #include "common/color.glsl"
 
 layout(binding = 0) uniform sampler2D uScene; // RGBA16F, linear
+layout(binding = 1) uniform sampler2D uBloom; // the glow at half size (render::Bloom), linear
 
 uniform float uExposure;
 uniform int uTonemapper; // 0 ACES, 1 Reinhard, 2 none – same order as render::Tonemapper
+uniform float uBloomIntensity; // 0: no bloom (the texture is then not read)
 
 in vec2 vUv;
 out vec4 fragColor;
@@ -27,7 +29,12 @@ vec3 tonemap(vec3 x)
 
 void main()
 {
-    const vec3 hdr = texture(uScene, vUv).rgb * uExposure;
+    vec3 scene = texture(uScene, vUv).rgb;
+    if (uBloomIntensity > 0.0)
+    {
+        scene += texture(uBloom, vUv).rgb * uBloomIntensity;
+    }
+    const vec3 hdr = scene * uExposure;
     vec3 color = linearToSrgb(tonemap(hdr));
     color += (ditherNoise(gl_FragCoord.xy) - 0.5) / 255.0; // break up 8-bit banding in dark gradients
     fragColor = vec4(color, 1.0);

@@ -187,6 +187,18 @@ struct FramebufferDesc
     const Texture* depth = nullptr;     ///< Optional depth (or depth-stencil) texture.
 };
 
+/// A GPU time measurement (GL_TIME_ELAPSED, M17): Device::beginTimerQuery/endTimerQuery around the work, the
+/// result some frames later through Device::timerQueryNanoseconds. Timer queries must not nest.
+class TimerQuery
+{
+public:
+    TimerQuery() = default;
+
+private:
+    friend class render::Device;
+    Handle m_handle;
+};
+
 class Framebuffer
 {
 public:

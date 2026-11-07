@@ -3,10 +3,12 @@
 #include "GlFixture.hpp"
 
 #include <g7/asset/Procedural.hpp>
+#include <g7/render/Bloom.hpp>
 #include <g7/render/Camera.hpp>
 #include <g7/render/Lighting.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
+#include <g7/render/PassTimes.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 
@@ -113,5 +115,92 @@ TEST_CASE("Post: distance fog towards the fog colour")
     CHECK(nearlyEqual(centreAt(10.0f), Vec3(1.0f), 1e-2f)); // before the fog start
     CHECK(nearlyEqual(centreAt(300.0f), glm::mix(Vec3(1.0f), environment.fogColor, 0.9f), 2e-2f));
     CHECK(nearlyEqual(centreAt(1500.0f), environment.fogColor, 1e-2f)); // fully fogged
+    CHECK(gl.device->debugErrorCount() == 0);
+}
+
+TEST_CASE("Post: bloom spreads a bright pixel, darker scenes do not glow, intensity 0 changes nothing (M17)")
+{
+    GlFixture gl;
+    ShaderLibrary library(*gl.device, fs::fromUtf8(G7_SHADER_DIR));
+    PostProcess post = require(PostProcess::create(*gl.device, library));
+    Bloom bloom = require(Bloom::create(*gl.device, library));
+    SceneTarget scene = require(SceneTarget::create(*gl.device, 64, 64));
+    REQUIRE(bloom.resize(*gl.device, 64, 64, 4).ok());
+    BloomSettings settings;
+    settings.threshold = 1.0f;
+    settings.intensity = 1.0f;
+
+    // Dark grey (below the threshold and its knee): no glow.
+    gl.device->bindFramebuffer(&scene.framebuffer());
+    gl.device->setViewport(0, 0, 64, 64);
+    gl.device->clear(Vec4(0.3f, 0.3f, 0.3f, 1.0f), 0.0f);
+    bloom.render(*gl.device, scene.color(), settings);
+    REQUIRE(bloom.result() != nullptr);
+    const auto dark = gl.device->readTextureFloat(*bloom.result(), 0);
+    f32 darkMax = 0.0f;
+    for (usize i = 0; i < dark.size(); ++i)
+    {
+        if (i % 4 != 3) // colour, not alpha (the additive up steps add up alpha)
+        {
+            darkMax = std::max(darkMax, dark[i]);
+        }
+    }
+    CHECK(darkMax < 1e-4f);
+
+    // A bright square in the middle: the glow reaches beyond it.
+    gl.device->bindFramebuffer(&scene.framebuffer());
+    gl.device->clear(Vec4(0.0f, 0.0f, 0.0f, 1.0f), 0.0f);
+    gl.device->setScissor(PixelRect{30, 30, 4, 4});
+    gl.device->clear(Vec4(50.0f, 50.0f, 50.0f, 1.0f), std::nullopt);
+    gl.device->setScissor(std::nullopt);
+    bloom.render(*gl.device, scene.color(), settings);
+    const rhi::Texture& glow = *bloom.result();
+    const auto pixels = gl.device->readTextureFloat(glow, 0);
+    const u32 w = glow.desc().width;
+    const auto at = [&](u32 x, u32 y) { return pixels[(static_cast<usize>(y) * w + x) * 4]; };
+    CHECK(w == 32);
+    CHECK(at(16, 16) > 0.5f);       // over the square (half size: 15..17)
+    CHECK(at(16 + 5, 16) > 0.001f); // spread around it
+    CHECK(at(16 + 5, 16) < at(16, 16));
+    CHECK(at(1, 1) < at(16 + 5, 16)); // far away: less
+
+    // The post pass: bloom adds light near the square; intensity 0 gives the bytes of no bloom.
+    Texture output = require(gl.device->createTexture({64, 64, Format::RGBA8, 1}));
+    Framebuffer window = require(gl.device->createFramebuffer({{&output}, nullptr}));
+    const auto shot = [&](const PostSettings& s)
+    {
+        gl.device->bindFramebuffer(&window);
+        post.apply(*gl.device, scene, 64, 64, s);
+        return gl.device->readPixels(0, 0, 64, 64, &window);
+    };
+    const auto plain = shot({Tonemapper::Aces, 1.0f, nullptr, 0.0f});
+    const auto off = shot({Tonemapper::Aces, 1.0f, &glow, 0.0f});
+    const auto on = shot({Tonemapper::Aces, 1.0f, &glow, 0.5f});
+    CHECK(off == plain);
+    const usize near = (static_cast<usize>(32) * 64 + 40) * 4; // 8 px right of the square
+    CHECK(int(on[near]) > int(plain[near]) + 5);
+    CHECK(gl.device->debugErrorCount() == 0);
+}
+
+TEST_CASE("Post: GPU timer queries measure a pass (M17)")
+{
+    GlFixture gl;
+    PassTimes times;
+    SceneTarget scene = require(SceneTarget::create(*gl.device, 256, 256));
+    for (int frame = 0; frame < 12; ++frame)
+    {
+        times.collect(*gl.device);
+        times.begin(*gl.device, "clear");
+        gl.device->bindFramebuffer(&scene.framebuffer());
+        gl.device->setViewport(0, 0, 256, 256);
+        gl.device->clear(Vec4(0.2f, 0.2f, 0.2f, 1.0f), 0.0f);
+        times.end(*gl.device);
+        (void)gl.device->readPixels(0, 0, 1, 1, &scene.framebuffer()); // waits for the GPU
+    }
+    times.collect(*gl.device);
+    REQUIRE(times.times().size() == 1);
+    CHECK(times.times()[0].name == "clear");
+    CHECK(times.milliseconds("clear") > 0.0f);
+    CHECK(times.milliseconds("nothing") == 0.0f);
     CHECK(gl.device->debugErrorCount() == 0);
 }
