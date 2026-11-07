@@ -1,6 +1,6 @@
 # 0024 – Profiling mit Tracy
 
-- **Status:** Vorgeschlagen
+- **Status:** Angenommen (Projektinhaber, 2026-11-07)
 - **Datum:** 2026-11-07
 - **Phase:** M17 (Teil A, `docs/modules/perf.md`)
 
@@ -27,7 +27,7 @@ Abhängigkeit, eine ADR fehlt bisher.
 4. **Nur Plattform-Profiler** (Visual Studio, `perf`, Nsight): ohne Code, aber ohne Zonen nach Systemen, ohne
    gemeinsame Sicht auf CPU und GPU und auf Linux und Windows verschieden.
 
-## Entscheidung (Vorschlag)
+## Entscheidung
 **Option 1: Tracy**, mit diesen Grenzen:
 - **Nur im neuen Preset `profile`:** RelWithDebInfo mit `G7_PROFILING=ON` und `TRACY_ENABLE`. Debug, Release und das
   Paket enthalten kein Tracy und öffnen keinen Port (Entscheidung 2 des Performance-Plans).
