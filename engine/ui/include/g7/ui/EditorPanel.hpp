@@ -203,4 +203,22 @@ struct RoutinePanel
     bool playAtStart = false; ///< Shift+F5
     bool stop = false;
 };
+
+/// The terrain window of the editor (M16 part F2): the height brush and splat painting.
+struct TerrainPanel
+{
+    // Shown
+    bool shown = false;
+    std::string locked; ///< why the terrain cannot be edited (empty: it can)
+    std::vector<std::string> layers;
+    bool dirty = false; ///< heights or weights differ from the files
+
+    // Edited
+    bool active = false; ///< terrain mode on (key T)
+    i32 mode = 0;        ///< raise, lower, smooth, flatten, paint
+    f32 radius = 4.0f;
+    f32 strength = 2.0f;
+    f32 flattenHeight = 0.0f;
+    i32 layer = 0;
+};
 } // namespace g7::ui

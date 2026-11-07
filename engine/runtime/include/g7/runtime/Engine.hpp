@@ -488,6 +488,27 @@ public:
     };
     [[nodiscard]] Result<std::vector<ModelMarker>> modelMarkers(std::string_view path,
                                                                 std::string_view prefix) const;
+    /// Terrain editing (the editor's height brush, M16 part F2, ADR 0023). Worlds with a generator head
+    /// (Leonberg: LGL heights from welt) are locked - terrainLock() says why, editableHeightfield() is null.
+    [[nodiscard]] std::string terrainLock() const;
+    [[nodiscard]] world::Heightfield* editableHeightfield() noexcept;
+    /// After heights changed: the drawn terrain follows (cheap, during a stroke); the collision follows at
+    /// terrainStrokeFinished().
+    [[nodiscard]] Result<void> terrainHeightsChanged();
+    void terrainStrokeFinished();
+    /// A splat map as RGBA8 bytes on the CPU (channel k of map m = weight of layer 4m + k), to paint into;
+    /// nullopt without one. After painting: terrainSplatChanged() uploads it.
+    struct SplatView
+    {
+        std::span<u8> rgba;
+        u32 width = 0;
+        u32 height = 0;
+    };
+    [[nodiscard]] std::optional<SplatView> terrainSplat(u32 map) noexcept;
+    [[nodiscard]] Result<void> terrainSplatChanged();
+    [[nodiscard]] u32 terrainLayerCount() const noexcept;
+    /// Writes the heights (.r16) and the splat maps (.png) over their sources on disk.
+    [[nodiscard]] Result<void> saveTerrain();
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;
@@ -1374,7 +1395,8 @@ private:
     [[nodiscard]] Result<void> instantiateScene();
     /// Splat layers and holes of the loaded terrain; layers that fail to load are a warning (slope
     /// colours instead), holes always apply.
-    void loadTerrainSurface(const world::TerrainRef& ref);
+    /// `painted`: the splat maps from m_splatImages (the editor painted them) instead of their files.
+    void loadTerrainSurface(const world::TerrainRef& ref, bool painted = false);
     /// Puts the camera on the start point (--start or the lowest id); no start point and no --start
     /// keeps the overview camera, an unknown name is an error.
     [[nodiscard]] Result<void> applyStartPoint(std::string_view name);

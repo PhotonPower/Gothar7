@@ -1547,7 +1547,7 @@ Result<void> Engine::applyStartPoint(std::string_view name)
     return {};
 }
 
-void Engine::loadTerrainSurface(const world::TerrainRef& ref)
+void Engine::loadTerrainSurface(const world::TerrainRef& ref, bool painted)
 {
     render::TerrainSurfaceDesc surface;
     surface.holes = m_heightfield.holes();
@@ -1571,9 +1571,17 @@ void Engine::loadTerrainSurface(const world::TerrainRef& ref)
         }
         return handle.get();
     };
+    std::vector<asset::TextureData> paintedMaps; // the editor's painted weights (M16 part F2), linear data
+    if (painted && m_splatImages.size() == maps.size())
+    {
+        for (const asset::ImageData& image : m_splatImages)
+        {
+            paintedMaps.push_back(asset::textureFromImage(image, false));
+        }
+    }
     for (usize i = 0; i < maps.size(); ++i)
     {
-        surface.splatMaps.push_back(check(maps[i], ref.splatMaps[i]));
+        surface.splatMaps.push_back(paintedMaps.empty() ? check(maps[i], ref.splatMaps[i]) : &paintedMaps[i]);
     }
     for (usize i = 0; i < albedos.size(); ++i)
     {
