@@ -254,6 +254,54 @@
       "selected": null,
       "takes": []
     },
+    "dia_gate_guard_letter_01": {
+      "text": "Und wohin jetzt?",
+      "speaker": "hero",
+      "gender": "m",
+      "voice": "",
+      "direction": "",
+      "context": "dialogs/gate_guard.lua",
+      "status": "offen",
+      "orphan": false,
+      "selected": null,
+      "takes": []
+    },
+    "dia_gate_guard_letter_02": {
+      "text": "Nach Leonberg. Der Vogt hat einen Brief für den Rat, und du hast dich hier bewährt.",
+      "speaker": "npc_gate_guard",
+      "gender": "m",
+      "voice": "guard",
+      "direction": "",
+      "context": "dialogs/gate_guard.lua",
+      "status": "offen",
+      "orphan": false,
+      "selected": null,
+      "takes": []
+    },
+    "dia_gate_guard_letter_03": {
+      "text": "Gib ihn dem Ratsdiener. Matthis heißt er, du findest ihn am Markt.",
+      "speaker": "npc_gate_guard",
+      "gender": "m",
+      "voice": "guard",
+      "direction": "",
+      "context": "dialogs/gate_guard.lua",
+      "status": "offen",
+      "orphan": false,
+      "selected": null,
+      "takes": []
+    },
+    "dia_gate_guard_letter_04": {
+      "text": "Die Straße führt östlich am Lager vorbei. Halt dich daran, dann kommst du ans Untere Tor.",
+      "speaker": "npc_gate_guard",
+      "gender": "m",
+      "voice": "guard",
+      "direction": "",
+      "context": "dialogs/gate_guard.lua",
+      "status": "offen",
+      "orphan": false,
+      "selected": null,
+      "takes": []
+    },
     "dia_gate_guard_sword_01": {
       "text": "Hier ist ein Grobes Schwert.",
       "speaker": "hero",
@@ -638,6 +686,42 @@
       "selected": null,
       "takes": []
     },
+    "dia_leo_citizen_letter_01": {
+      "text": "Ich bringe einen Brief aus dem Lager.",
+      "speaker": "hero",
+      "gender": "m",
+      "voice": "",
+      "direction": "",
+      "context": "dialogs/leonberg.lua",
+      "status": "offen",
+      "orphan": false,
+      "selected": null,
+      "takes": []
+    },
+    "dia_leo_citizen_letter_02": {
+      "text": "Vom Vogt? Zeig her.",
+      "speaker": "npc_leo_citizen",
+      "gender": "m",
+      "voice": "citizen",
+      "direction": "",
+      "context": "dialogs/leonberg.lua",
+      "status": "offen",
+      "orphan": false,
+      "selected": null,
+      "takes": []
+    },
+    "dia_leo_citizen_letter_03": {
+      "text": "Salz und Eisen. Der Rat wird murren, aber er wird zahlen. Hier, für den Weg.",
+      "speaker": "npc_leo_citizen",
+      "gender": "m",
+      "voice": "citizen",
+      "direction": "",
+      "context": "dialogs/leonberg.lua",
+      "status": "offen",
+      "orphan": false,
+      "selected": null,
+      "takes": []
+    },
     "dia_leo_cloth_merchant_trade_01": {
       "text": "Was kostet dein Tuch?",
       "speaker": "hero",
@@ -703,6 +787,30 @@
       "speaker": "npc_leo_goldsmith",
       "gender": "m",
       "voice": "craftsman",
+      "direction": "",
+      "context": "dialogs/leonberg.lua",
+      "status": "offen",
+      "orphan": false,
+      "selected": null,
+      "takes": []
+    },
+    "dia_leo_guard_lower_camp_01": {
+      "text": "Ich will zurück zum Lager am Waldrand.",
+      "speaker": "hero",
+      "gender": "m",
+      "voice": "",
+      "direction": "",
+      "context": "dialogs/leonberg.lua",
+      "status": "offen",
+      "orphan": false,
+      "selected": null,
+      "takes": []
+    },
+    "dia_leo_guard_lower_camp_02": {
+      "text": "Dann raus mit dir. Die Straße nach Westen, du kannst sie nicht verfehlen.",
+      "speaker": "npc_leo_guard_lower",
+      "gender": "m",
+      "voice": "guard",
       "direction": "",
       "context": "dialogs/leonberg.lua",
       "status": "offen",

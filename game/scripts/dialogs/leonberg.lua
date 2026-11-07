@@ -100,6 +100,38 @@ Info "dia_leo_citizen_hello" {
     end,
 }
 
+-- --- Kapitel 2 (M15 Teil E): der Brief des Vogts, der Weg zurück ins Lager
+
+Info "dia_leo_citizen_letter" {
+    npc = "npc_leo_citizen",
+    nr = 2,
+    description = "Ich bringe einen Brief aus dem Lager.",
+    condition = function()
+        return quest_status("quest_leo_letter") == "running" and item_count("it_letter_council") > 0
+    end,
+    run = function(npc)
+        say(npc, "Vom Vogt? Zeig her.")
+        remove_item("it_letter_council")
+        npc_give_item(npc, "it_letter_council")
+        say(npc, "Salz und Eisen. Der Rat wird murren, aber er wird zahlen. Hier, für den Weg.")
+        give_item("it_gulden", 50)
+        add_xp(150)
+        quest_success("quest_leo_letter", "Der Ratsdiener hat den Brief des Vogts. Leonberg wird dem Lager helfen.")
+    end,
+}
+
+Info "dia_leo_guard_lower_camp" {
+    npc = "npc_leo_guard_lower",
+    nr = 2,
+    permanent = true,
+    description = "Ich will zurück zum Lager am Waldrand.",
+    run = function(npc)
+        say(npc, "Dann raus mit dir. Die Straße nach Westen, du kannst sie nicht verfehlen.")
+        end_dialog()
+        change_world("testworld/camp.g7world", "START_LAGER_STRASSE")
+    end,
+}
+
 -- --- welt Phase 1: Handwerker und Händler (eigene Texte; wer etwas verkauft, handelt mit dem, was er im Inventar hat)
 Info "dia_leo_baker_husband_hello" {
     npc = "npc_leo_baker_husband",

@@ -242,6 +242,30 @@
       "context": "dialogs/gate_guard.lua",
       "status": "entwurf"
     },
+    "dia_gate_guard_letter_01": {
+      "de": "Und wohin jetzt?",
+      "text": "Where to now?",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_letter_02": {
+      "de": "Nach Leonberg. Der Vogt hat einen Brief für den Rat, und du hast dich hier bewährt.",
+      "text": "To Leonberg. The Reeve has a letter for the council, and you've proven yourself here.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_letter_03": {
+      "de": "Gib ihn dem Ratsdiener. Matthis heißt er, du findest ihn am Markt.",
+      "text": "Give it to the council runner. Matthis is his name, you'll find him at the market.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
+    "dia_gate_guard_letter_04": {
+      "de": "Die Straße führt östlich am Lager vorbei. Halt dich daran, dann kommst du ans Untere Tor.",
+      "text": "The road runs east past the camp. Stick to it and you'll reach the Lower Gate.",
+      "context": "dialogs/gate_guard.lua",
+      "status": "entwurf"
+    },
     "dia_gate_guard_sword.quest_success_01": {
       "de": "Die Wache hat ihr Schwert.",
       "text": "The guard has his sword.",
@@ -446,6 +470,30 @@
       "context": "dialogs/leonberg.lua",
       "status": "entwurf"
     },
+    "dia_leo_citizen_letter.quest_success_01": {
+      "de": "Der Ratsdiener hat den Brief des Vogts. Leonberg wird dem Lager helfen.",
+      "text": "The council runner has the Reeve's letter. Leonberg will help the camp.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_citizen_letter_01": {
+      "de": "Ich bringe einen Brief aus dem Lager.",
+      "text": "I'm bringing a letter from the camp.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_citizen_letter_02": {
+      "de": "Vom Vogt? Zeig her.",
+      "text": "From the Reeve? Let me see.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_citizen_letter_03": {
+      "de": "Salz und Eisen. Der Rat wird murren, aber er wird zahlen. Hier, für den Weg.",
+      "text": "Salt and iron. The council will grumble, but it will pay. Here, for your trouble.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
     "dia_leo_cloth_merchant_trade_01": {
       "de": "Was kostet dein Tuch?",
       "text": "What does your cloth cost?",
@@ -479,6 +527,18 @@
     "dia_leo_goldsmith_trade_02": {
       "de": "Ringe, ein Amulett, eine Kette. Gute Arbeit hat ihren Preis, und ich arbeite gut.",
       "text": "Rings, an amulet, a chain. Good work has its price, and my work is good.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_guard_lower_camp_01": {
+      "de": "Ich will zurück zum Lager am Waldrand.",
+      "text": "I want to go back to the camp at the forest's edge.",
+      "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_guard_lower_camp_02": {
+      "de": "Dann raus mit dir. Die Straße nach Westen, du kannst sie nicht verfehlen.",
+      "text": "Then off with you. The road to the west, you can't miss it.",
       "context": "dialogs/leonberg.lua",
       "status": "entwurf"
     },
@@ -1004,6 +1064,18 @@
       "context": "items/tools.lua",
       "status": "entwurf"
     },
+    "it_letter_council.name": {
+      "de": "Versiegelter Brief an den Rat",
+      "text": "Sealed Letter to the Council",
+      "context": "items/documents.lua",
+      "status": "entwurf"
+    },
+    "it_letter_council.text": {
+      "de": "An den Rat der Stadt Leonberg,\n\ndas Lager am Waldrand bittet um Salz und Eisen für den Winter. Der Überbringer ist ein Mann, dem man trauen kann.\n\n- Der Vogt",
+      "text": "To the council of the town of Leonberg,\n\nthe camp at the forest's edge asks for salt and iron for the winter. The bearer is a man who can be trusted.\n\n- The Reeve",
+      "context": "items/documents.lua",
+      "status": "entwurf"
+    },
     "it_letter_farm.name": {
       "de": "Brief an den Bauern",
       "text": "Letter to the Farmer",
@@ -1464,6 +1536,18 @@
       "de": "Arbeit im Lager",
       "text": "Work in the Camp",
       "context": "quests/farm_work.lua",
+      "status": "entwurf"
+    },
+    "quest_leo_letter.description": {
+      "de": "Die Torwache gab mir einen Brief des Vogts. Ich soll ihn in Leonberg dem Ratsdiener bringen. Die Straße nach Leonberg führt östlich am Lager vorbei.",
+      "text": "The gate guard gave me a letter from the Reeve. I'm to take it to the council runner in Leonberg. The road to Leonberg runs east past the camp.",
+      "context": "quests/leonberg_letter.lua",
+      "status": "entwurf"
+    },
+    "quest_leo_letter.name": {
+      "de": "Ein Brief für den Rat",
+      "text": "A Letter for the Council",
+      "context": "quests/leonberg_letter.lua",
       "status": "entwurf"
     },
     "quest_lunch.description": {

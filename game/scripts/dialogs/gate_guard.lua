@@ -95,3 +95,20 @@ Info "dia_gate_guard_thief" {
         quest_entry("quest_ring", "Die Wache hat dem alten Mann den Ring abgenommen. Ich soll ihn der Bäuerin bringen.")
     end,
 }
+
+-- Kapitel 2 (M15 Teil E): der Brief für Leonberg.
+Info "dia_gate_guard_letter" {
+    npc = "npc_gate_guard",
+    nr = 7,
+    description = "Und wohin jetzt?",
+    condition = function()
+        return chapter() >= 2 and quest_status("quest_leo_letter") == "none"
+    end,
+    run = function(npc)
+        say(npc, "Nach Leonberg. Der Vogt hat einen Brief für den Rat, und du hast dich hier bewährt.")
+        say(npc, "Gib ihn dem Ratsdiener. Matthis heißt er, du findest ihn am Markt.")
+        say(npc, "Die Straße führt östlich am Lager vorbei. Halt dich daran, dann kommst du ans Untere Tor.")
+        give_item("it_letter_council")
+        quest_start("quest_leo_letter")
+    end,
+}

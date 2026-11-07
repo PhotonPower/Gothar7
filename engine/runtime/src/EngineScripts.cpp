@@ -226,6 +226,24 @@ void Engine::bindEngineFunctions()
                  }
                  return Value(true);
              }});
+    vm.bind({"change_world", "change_world(world: string, start: string)",
+             "Weltwechsel wie ein Trigger mit `changeWorld` (M15 Teil E): lädt die Welt (VFS-Pfad einer "
+             ".g7world) am "
+             "Ende des Frames und stellt den Helden auf den Startpunkt; eine besuchte Welt kommt mit ihrem "
+             "Zustand.",
+             "Welt", [this](std::span<const Value> a) -> Result<Value>
+             {
+                 if (a.size() < 2 || !a[0].isString() || !a[1].isString())
+                 {
+                     return Error{"expects (world: string, start: string)"};
+                 }
+                 if (!m_vfs.exists(a[0].asString()))
+                 {
+                     return Error{std::format("no world '{}'", a[0].asString())};
+                 }
+                 requestWorldChange(std::string(a[0].asString()), std::string(a[1].asString()));
+                 return Value(true);
+             }});
     vm.bind(
         {"teleport", "teleport(start: string) | teleport(x: number, y: number, z: number)",
          "Setzt die Spielfigur (bzw. ohne Spielfigur die Kamera) auf einen Startpunkt der Welt oder an eine "
