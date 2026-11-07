@@ -2,6 +2,7 @@
 
 #include <g7/core/Math.hpp>
 #include <g7/core/Result.hpp>
+#include <g7/render/Grading.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
 namespace g7::render
@@ -44,6 +45,7 @@ struct PostSettings
     f32 exposure = 1.0f;
     const rhi::Texture* bloom = nullptr; ///< the glow of render::Bloom (M17), nullptr: none
     f32 bloomIntensity = 0.0f;
+    std::optional<Grading> grading; ///< M17 P2; nullopt: none (the image as before)
 };
 
 /// Same curves as post.frag (per channel, after exposure), for tests and tools.

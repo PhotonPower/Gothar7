@@ -324,7 +324,7 @@ std::vector<ui::OptionPage> Engine::optionPages() const
                  toggle("window.fullscreen", "UI_OPT_FULLSCREEN"), toggle("window.vsync", "UI_OPT_VSYNC"),
                  choice("window.max_fps", "UI_OPT_MAX_FPS", fps),
                  choice("render.view_distance", "UI_OPT_VIEW_DISTANCE", distances),
-                 toggle("render.bloom", "UI_OPT_BLOOM")}};
+                 toggle("render.bloom", "UI_OPT_BLOOM"), toggle("render.grading", "UI_OPT_GRADING")}};
     pages[1] = {"UI_OPTIONS_AUDIO",
                 {slider("audio.master", "UI_OPT_MASTER"), slider("audio.music", "UI_OPT_MUSIC"),
                  slider("audio.effects", "UI_OPT_EFFECTS"), slider("audio.voice", "UI_OPT_VOICE"),

@@ -126,6 +126,19 @@ void PostProcess::apply(Device& device, const SceneTarget& scene, u32 width, u32
     m_program->setUniform("uTonemapper", static_cast<i32>(settings.tonemapper));
     const bool bloom = settings.bloom != nullptr && settings.bloomIntensity > 0.0f;
     m_program->setUniform("uBloomIntensity", bloom ? settings.bloomIntensity : 0.0f);
+    m_program->setUniform("uGrade", settings.grading ? 1 : 0);
+    if (settings.grading)
+    {
+        const Grading& g = *settings.grading;
+        m_program->setUniform("uTemperature", g.temperature);
+        m_program->setUniform("uTint", g.tint);
+        m_program->setUniform("uSaturation", g.saturation);
+        m_program->setUniform("uContrast", g.contrast);
+        m_program->setUniform("uLift", g.lift);
+        m_program->setUniform("uGamma", g.gamma);
+        m_program->setUniform("uGain", g.gain);
+        m_program->setUniform("uVignette", g.vignette);
+    }
     device.bindPipeline(m_pipeline);
     device.bindTexture(0, scene.color(), m_sampler);
     if (bloom)

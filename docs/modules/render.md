@@ -328,6 +328,36 @@ class PassTimes { void begin(Device&, name); void end(Device&); void collect(Dev
   Tageszeit), GPU `test_post.cpp` (dunkle Szene glüht nicht, ein heller Fleck strahlt in die Umgebung, Stärke 0
   bytegleich, Zeitmessung > 0), `test_engine_render.cpp` (Engine mit und ohne Bloom, Passzeiten).
 
+### Farbkorrektur (M17 Teil P2, umgesetzt) – `Grading.hpp`, `post.frag`
+```cpp
+struct Grading { f32 temperature = 0, tint = 0, saturation = 1, contrast = 1;
+                 Vec3 lift{0}, gamma{1}, gain{1}; f32 vignette = 0; };
+struct GradingOverride { std::optional<…> je Feld; };                // [zone.<wert>]
+Grading mixGrading(a, b, t);  Grading applyOverride(base, over);
+Vec3 gradeLinear(color, g);  Vec3 gradeDisplay(color, g);  f32 vignetteFactor(uv, strength); // wie post.frag
+struct PostSettings { …; std::optional<Grading> grading; };          // nullopt: Bild wie vor P2
+world::DaySample::grading;  DayCycle::zoneGrading(name) -> const GradingOverride*;
+Engine::grading();  Engine::gradingAt(timeOfDay, point);
+```
+- **Parameter statt LUT (Entscheidung 2):** vor dem Tonemapping auf die lineare HDR-Farbe Weißabgleich
+  (Temperatur, Tönung; Helligkeit bleibt), Sättigung, Kontrast um Mittelgrau 0,18; nach dem Tonemapping
+  Lift/Gamma/Gain auf die Anzeigefarbe, dann Vignette. Neutral (Vorgabewerte) ändert kein Pixel (± 1 durch Rundung).
+- **Tageszeit:** `grading_temperature`, `grading_tint`, `grading_saturation`, `grading_contrast`, `grading_lift/gamma/gain`
+  `[r, g, b]` und `vignette` je `[[key]]` in `data/environment.toml`, interpoliert wie die übrigen Werte. Nachts
+  kühl und blass, mittags neutral, abends warm mit etwas Kontrast; Vignette überall 0,15 (Entscheidung 4).
+- **Zonen (Entscheidung 3):** `[zone.<wert>]` überschreibt einzelne Felder; `<wert>` ist der Wert einer Zone der
+  Welt, `innen` gilt für jede indoor-Zone ohne eigenen Eintrag. Reihenfolge music → ambient → indoor (der letzte
+  gewinnt), je Typ die kleinste Zone an der Kameraposition. Wechsel blenden über 1,5 s. Geliefert: `innen` (warm,
+  Kontrast, Vignette 0,3), `wald` (leicht grün), `kirche` (kühl, heller; wirkt, sobald die Welt-Spur eine
+  ambient-Zone `kirche` setzt).
+- **Option:** `[render] grading = true`, Optionen → Grafik „Farbstimmung“.
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, Benchmark-Testszene): Post 0,05 ms mit, 0,03 ms ohne Farbkorrektur
+  (Budget ≤ 0,1 ms).
+- **Tests:** `tests/render/test_post.cpp` (neutral = Identität, Weißabgleich hält Helligkeit, Sättigung 0 grau,
+  Kontrast um Mittelgrau, Lift/Gamma, Vignette, Mischen/Überschreiben), `tests/world/test_day_cycle.cpp`
+  (gelieferte Werte, Zonen, Fehler), `tests/runtime/test_engine_grading.cpp` (Zonen-Vorrang im Testlager),
+  GPU `test_post.cpp` (neutral ≈ unverändert, Sättigung 0 grau, warm röter).
+
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp
 struct DebugStyle { Vec4 color{1}; f32 duration = 0; bool depthTest = true; };   // duration 0 = nur dieser Frame
