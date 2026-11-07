@@ -3,14 +3,85 @@
 **Zweck:** Spielstände – Speichern, Laden, Schnellspeichern, Zustand jeder besuchten Welt (M15, Meilenstein C).
 
 ## Stand vor M15
-- Modul `save` ist ein Platzhalter (`moduleName()`); Abhängigkeiten laut Tabelle: core, world, script, gameplay.
+- Modul `save` war ein Platzhalter (`moduleName()`); Abhängigkeiten jetzt core, world_format, world, script,
+  gameplay (Punkt 4, freigegeben).
 - Vorhanden und genutzt werden: `world::captureWorld` + `Engine::m_leftWorlds` (verlassene Welten bleiben im
   Speicher, M4), `Scene::nextVobId/nextRuntimeVobId` mit Settern „für den Spielstand“, `GameTime::clock/restore`,
   `ScriptVm::story()/setStory()` (Story ohne Funktionen), `asset::encodePng`, zstd (in `asset`, `.g7pak`),
   `fs::writeTextAtomic`/Benutzerpfad (`fs::userPath`), die Aktionen `quick_save`/`quick_load` (F5/F9, ungenutzt) und
   im Menü die ausgegrauten Einträge „Spiel laden“/„Spiel speichern“ (M14 Teil F).
 
-## Plan M15 (Vorschlag engine, 2026-11-01 – wartet auf Freigabe)
+## Teil B (umgesetzt, M15) – Spielzustand erfassen und anwenden
+`save/GameState.hpp`, `save/WorldDelta.hpp`; Engine `runtime/EngineSave.cpp`. Ohne Datei-Container (Teil A wartet
+auf ADR 0021): der Zustand ist ein JSON-Dokument im Speicher.
+
+```cpp
+namespace g7::save {
+struct WorldDelta { std::vector<RemovedVob> removed;          // Datei-Vobs, die fehlen (id + Name)
+                    std::vector<world::WorldFileVob> changed;  // geänderte Datei-Vobs, neue Welt-Vobs
+                    std::vector<world::WorldFileVob> runtime;  // Laufzeit-Vobs (fallen gelassene Items)
+                    u64 nextVobId, nextRuntimeVobId; };
+WorldDelta diffWorld(const world::WorldFile& base, const world::WorldFile& now);
+world::WorldFile applyDelta(world::WorldFile base, const WorldDelta&, usize* dropped = nullptr);
+struct MobState { u64 vob; std::string definition; bool locked, open; std::map<std::string, u32> contents; };
+enum class Life { Alive, Down, Dead, Vanished };
+struct NpcState { std::string name, instance; Vec3 position; f32 yaw; std::optional<gameplay::CharacterState>
+                  character; std::string routine; Life life; f32 downSeconds; bool pickpocketed, summoned;
+                  f32 summonSeconds; };
+struct WorldState { std::string path; WorldDelta delta; std::vector<u64> spentTriggers;
+                    std::vector<MobState> mobs; std::vector<NpcState> npcs; };
+struct HeroState { gameplay::CharacterState character; Vec3 position; f32 yaw; std::string torch; };
+struct GameState { u32 version; f64 clock, secondsPerMinute, scriptClock; u32 nextTimerId;
+                   std::vector<script::ScriptVm::NamedTimer> timers; script::Value story;
+                   std::optional<HeroState> hero; std::string currentWorld; std::vector<WorldState> worlds; };
+std::string toJson(const GameState&);            // stabil: gleicher Zustand, gleiche Bytes
+Result<GameState> fromJson(std::string_view);    // Fehler nennen den Eintrag; neuere Version → Fehler
+}
+// Engine
+Result<save::GameState> captureGame();             // Zeit, Story, benannte Timer, Held, aktuelle Welt
+Result<void> applyGame(const save::GameState&);    // Welt aus Datei + Delta, NPCs, Items, Mobs, Story, Timer, Held
+```
+- **Dazu:** `gameplay::CharacterState` mit `Character::state()/restore()` (Ausrüstung ohne erneute Prüfung, unbekannte
+  Items fallen weg); `world::writeVobJson/parseVobJson` (ein Vob wie in der Datei); `Scene::spawnVob` nimmt für
+  Laufzeit-Vobs eine feste Laufzeit-ID (Spielstand); `Engine::spawnItemAt(instance, count, transform, fixedId)`;
+  `ScriptVm::namedTimers()/restoreTimers()` und `after/every(sec, "funktion", args…)` – Timer mit Lua-Funktion
+  bleiben beim Laden mit ihrer Restzeit (Systeme wie `every(1.0, fn)` beim Laden der Skripte), benannte kommen aus
+  dem Spielstand (Punkt 3).
+- **Welt:** Delta gegen die Datei (Vergleich der Vobs als Dateitext; Türen geschlossen mit `open`), Laufzeit-Items mit
+  ID und Transform, `nextVobId`/`nextRuntimeVobId`, verbrauchte `once`-Trigger, alle Mobs (Schloss, offen,
+  Inhalt). Beim Anwenden passt jeder Delta-Eintrag nur auf einen Vob mit gleichem Namen/Typ, sonst Warnung und
+  verworfen (Schutz vor neu erzeugten Welten, Punkt 5). Entfernte Eltern nehmen ihre Kinder mit.
+- **NPCs:** in der Reihenfolge des Einsetzens, mit Namen (`mon_wolf#2`), Ort, Blick, Werten, Inventar,
+  Tagesablauf (Eintrag neu), Leben (bewusstlos mit Restzeit, tot, verschwunden), beschworen, Taschendiebstahl
+  versucht. Die KI beginnt den Zustand ihres Tagesablaufs neu (Punkt 2). Nicht gespeichert: Befehlsliste, Wege,
+  Kampfzug, Fluchtzustand, vorübergehende Einstellungen (Closures).
+- **Ablauf beim Anwenden:** Held-Werte, Zeit (`restore`, Tagesabläufe neu ausgewertet), Welt entladen, aus Datei +
+  Delta laden – die Skripte hören `world_loaded(world, true)` und setzen niemanden ein (`startup.lua`) –, Items,
+  Trigger, Mobs, NPCs (die von Skripten eingesetzten werden ersetzt), dann Story und Timer (nach den Handlern),
+  Held an seinen Ort, Fackel, Ereignis `game_loaded()`.
+- **Noch nicht:** Tiergestalt und Trank-Wirkungen des Helden (enden beim Laden), gezogene Waffe (steckt), Datei
+  (Teil A).
+- **Tests:** `tests/save/test_game_state.cpp` (alle Felder durch JSON, stabil, Fehler, neuere Version; Delta mit
+  entfernten/geänderten/neuen Vobs, nicht mehr passende Einträge, Kinder), `tests/gameplay/test_character.cpp`,
+  `tests/script/test_script.cpp` (benannte Timer über einen neuen VM), `tests/world/test_scene.cpp`,
+  `test_world_file.cpp`, `tests/runtime/test_engine_save.cpp` (das veränderte Lager: erfassen → neue Engine →
+  anwenden → erfassen ergibt dieselben Bytes), `test_engine_leonberg_save.cpp` (ctest `runtime_leonberg_save`,
+  Leonberg mit 25 Bewohnern, nur lokal).
+
+## Teil C (umgesetzt, M15) – Besuchte Welten und Weltwechsel
+- `Engine::m_leftWorlds` hält je verlassener Welt ihren `save::WorldState` (Delta gegen die Datei, Laufzeit-Items,
+  Mobs, NPCs, verbrauchte Trigger) statt nur eines `WorldFile`: beim Weltwechsel `captureCurrentWorld()`, bei der
+  Rückkehr `loadWorldState()` (Datei + Delta, `world_loaded(world, true)`, dann Items, Mobs, NPCs, Trigger). Damit
+  bleiben fallen gelassene Items (Laufzeit-Vobs), Truhen-Inhalte, Schlösser und NPCs (Werte, tot) über einen
+  Weltwechsel erhalten – bis M14 gingen sie verloren (offener Punkt aus M4 erledigt).
+- Die Menü-Welt (Hauptmenü) wird beim Verlassen nicht erfasst.
+- `captureGame()` enthält alle besuchten Welten (verlassene nach Pfad, dann die aktuelle); `applyGame()` lädt die
+  aktuelle und legt die anderen als verlassene Welten ab.
+- **Tests:** `tests/runtime/test_engine_save.cpp` (Lager → Höhle → Lager: NPC-Werte, toter Wolf, Item, Truhe;
+  Spielstand mit zwei Welten in neuer Engine byte-gleich; danach wieder Höhle und zurück), GPU
+  `test_world_vobs.cpp` (Weltwechsel wie bisher).
+
+## Plan M15 (2026-11-01; Teile B und C freigegeben, A wartet auf ADR 0021)
 
 ### Grundsätze
 - **Gothic-Modell:** Gespeichert wird der *Zustand*, nicht die laufende Simulation. NPCs kommen nach dem Laden an
@@ -148,7 +219,7 @@ Variante nur im Lager (zwei Welten: Lager + Höhle). Begehung durch den Projekti
 | S7 | Vorschaubild | Spielszene ohne HUD/Menü, Moment des Speicherns (beim Speichern aus dem Pausenmenü: das Bild vor dem Öffnen des Menüs) |
 | S8 | Spielstände mit anderem Inhalt | laden mit Warnung (Inhalts-Prägung weicht ab), nicht sperren |
 
-### Technische Punkte für den Koordinator
+### Technische Punkte (Koordinator 2026-11-01: 2, 3, 4 freigegeben; 5, 6 klärt er mit welt; 1 = ADR 0021 offen)
 1. JSON-Nutzlast + zstd im Binär-Container statt rein binär (ADR 0021) – nlohmann und zstd werden zusätzlich in
    `save` `PRIVATE` gelinkt (keine neue Abhängigkeit in `vcpkg.json`).
 2. NPC-KI nach dem Laden: Tagesablauf neu beginnen statt Befehlsliste speichern.
@@ -160,16 +231,6 @@ Variante nur im Lager (zwei Welten: Lager + Höhle). Begehung durch den Projekti
 ## Format (Kurzfassung, bis M15 umgesetzt)
 Binär, Chunks mit `tag u32, version u16, size u32` → robuste Erweiterung; Schreiben in Temp-Datei + atomisches
 Umbenennen, CRC32 je Chunk. Einzelheiten oben und in ADR 0021.
-
-## Schnittstelle zum Weltwechsel (Stand M4)
-- Die Engine hält je **verlassener Welt** deren Zustand im Speicher (`Engine::m_leftWorlds`): ein `world::WorldFile`
-  (Vobs wie beim Verlassen, `nextVobId`, Gelände/Wegnetz/Zonen aus der Datei) plus die Menge der verbrauchten
-  `once`-Trigger. Beim Rückkehren wird daraus gespawnt statt aus der Datei.
-- Für den Spielstand heißt das: je besuchter Welt dieses `WorldFile` bzw. sein **Delta zur Ausgangsdatei** (oben)
-  plus die verbrauchten Trigger; die aktuelle Welt wird beim Speichern genauso erfasst (`captureWorld`).
-- **Offener Punkt – Laufzeit-Vobs:** `captureWorld` lässt Vobs ab `kRuntimeVobIdBase` (fallen gelassene Items,
-  gespawnte NPCs) weg; M15 Teil B nimmt sie in den Weltzustand auf (Erfassen und Spawnen mit fester Laufzeit-ID).
-- Global, nicht je Welt: Spielzeit/Tag-Nacht, Story-Variablen (world.md).
 
 ## Schnittstelle Spielzeit (Stand M4)
 - `world::GameTime` (world.md): zu speichern sind `clock()` (Minuten seit Tag 0, 00:00, mit Bruchteil – daraus Tag

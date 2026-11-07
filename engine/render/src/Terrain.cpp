@@ -350,6 +350,10 @@ void TerrainRenderer::drawShadow(Device& device, const Cascade& cascade, const V
             continue;
         }
         const Vec3 closest = glm::clamp(eye, chunk.bounds.min, chunk.bounds.max);
+        if (m_maxDistance > 0.0f && glm::length(closest - eye) > m_maxDistance)
+        {
+            continue;
+        }
         const u32 level = lodFor(glm::length(closest - eye), lodDistance);
         if (level != boundLevel)
         {
@@ -390,6 +394,10 @@ void TerrainRenderer::draw(Device& device, const Camera& camera, const LightList
             continue;
         }
         const Vec3 closest = glm::clamp(camera.transform.position, chunk.bounds.min, chunk.bounds.max);
+        if (m_maxDistance > 0.0f && glm::length(closest - camera.transform.position) > m_maxDistance)
+        {
+            continue;
+        }
         const u32 level = lodFor(glm::length(closest - camera.transform.position), lodDistance);
         if (level != boundLevel)
         {

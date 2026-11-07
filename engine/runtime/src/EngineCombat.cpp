@@ -785,6 +785,27 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
     emit("npc_killed", {target.name, attacker.name});
 }
 
+void Engine::knockOutRestored(Creature& c, f32 seconds)
+{
+    if (auto target = combatant(c.id))
+    {
+        target->fighter->knockOut(seconds);
+        playReaction(*target, "none/t_ko");
+    }
+    stopForFight(c);
+}
+
+void Engine::killRestored(Creature& c)
+{
+    if (auto target = combatant(c.id))
+    {
+        target->fighter->die();
+        playReaction(*target, "none/t_die_front");
+    }
+    c.dead = true;
+    stopForFight(c);
+}
+
 void Engine::stopForFight(Creature& c)
 {
     c.commands.clear();

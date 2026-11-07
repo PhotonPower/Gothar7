@@ -1139,6 +1139,138 @@ Result<WorldFile> loadWorldFile(const asset::Vfs& vfs, std::string_view path)
         std::string_view(reinterpret_cast<const char*>(bytes.value().data()), bytes.value().size()), path);
 }
 
+namespace
+{
+/// One vob as written into the file (writeWorldFile, writeVobJson).
+Json vobJson(const WorldFileVob& vob)
+{
+    Json v = Json::object();
+    v["id"] = vob.id.value;
+    v["type"] = vobTypeName(vob.type);
+    v["name"] = vob.name;
+    if (vob.parent.valid())
+    {
+        v["parent"] = vob.parent.value;
+    }
+    const Transform& t = vob.transform;
+    v["pos"] = numbers({t.position.x, t.position.y, t.position.z});
+    v["rot"] = numbers({t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w});
+    if (t.scale != Vec3(1.0f))
+    {
+        v["scale"] = numbers({t.scale.x, t.scale.y, t.scale.z});
+    }
+    if (vob.type == VobType::Mesh || vob.type == VobType::Mob)
+    {
+        v["mesh"] = vob.mesh;
+        if (vob.type == VobType::Mesh && vob.category == VobCategory::Gameplay)
+        {
+            v["category"] = "gameplay"; // deco is the default and not written
+        }
+    }
+    if (vob.type == VobType::Light)
+    {
+        const LightSource& l = vob.light;
+        Json light = Json{{"color", numbers({l.color.r, l.color.g, l.color.b})},
+                          {"range", tidy(l.range)},
+                          {"intensity", tidy(l.intensity)}};
+        if (l.daylight)
+        {
+            light["daylight"] = true; // after intensity, only when true (contract with welt)
+        }
+        light["flicker"] = tidy(l.flicker);
+        v["components"]["light"] = std::move(light);
+    }
+    if (vob.type == VobType::Sound)
+    {
+        const SoundEmitter& s = vob.sound;
+        v["components"]["sound"] = Json{{"sound", s.sound},
+                                        {"range", tidy(s.range)},
+                                        {"volume", tidy(s.volume)},
+                                        {"mode", nameOf(kSoundModes, s.mode)},
+                                        {"delay", numbers({s.delay.x, s.delay.y})}};
+    }
+    if (vob.type == VobType::Trigger)
+    {
+        const TriggerVolume& tv = vob.trigger;
+        Json trigger = Json::object();
+        if (tv.shape == TriggerVolume::Shape::Box)
+        {
+            trigger["shape"] = "box";
+            trigger["halfExtents"] = numbers({tv.halfExtents.x, tv.halfExtents.y, tv.halfExtents.z});
+        }
+        else
+        {
+            trigger["shape"] = "sphere";
+            trigger["radius"] = tidy(tv.radius);
+        }
+        if (!tv.onEnter.empty())
+        {
+            trigger["onEnter"] = tv.onEnter;
+        }
+        if (!tv.onLeave.empty())
+        {
+            trigger["onLeave"] = tv.onLeave;
+        }
+        trigger["filter"] = nameOf(kTriggerFilters, tv.filter);
+        trigger["once"] = tv.once;
+        if (tv.targetId.valid())
+        {
+            trigger["target"] = tv.targetId.value;
+        }
+        else if (!tv.targetName.empty())
+        {
+            trigger["target"] = tv.targetName;
+        }
+        if (!tv.changeWorld.empty())
+        {
+            trigger["changeWorld"] = Json{{"world", tv.changeWorld}, {"start", tv.changeStart}};
+        }
+        if (!tv.owner.empty())
+        {
+            trigger["owner"] = tv.owner;
+        }
+        v["components"]["trigger"] = std::move(trigger);
+    }
+    if (vob.type == VobType::Mob)
+    {
+        v["components"]["mob"] = Json{{"definition", vob.mob.definition}};
+        if (vob.mob.open)
+        {
+            v["components"]["mob"]["open"] = true; // after definition, only when true (welt: byte-equal)
+        }
+    }
+    if (vob.type == VobType::Item)
+    {
+        Json item = Json{{"instance", vob.item.instance}};
+        if (vob.item.count != 1)
+        {
+            item["count"] = vob.item.count;
+        }
+        if (!vob.item.owner.empty())
+        {
+            item["owner"] = vob.item.owner;
+        }
+        v["components"]["item"] = std::move(item);
+    }
+    if ((vob.type == VobType::Mesh || vob.type == VobType::Mob) && !vob.footstep.empty())
+    {
+        v["components"]["surface"] = Json{{"footstep", vob.footstep}}; // only when set (byte-equal)
+    }
+    if (vob.type == VobType::Water)
+    {
+        Json water =
+            Json{{"halfExtents",
+                  numbers({vob.water.halfExtents.x, vob.water.halfExtents.y, vob.water.halfExtents.z})}};
+        if (!vob.water.kind.empty())
+        {
+            water["kind"] = vob.water.kind;
+        }
+        v["components"]["water"] = std::move(water);
+    }
+    return v;
+}
+} // namespace
+
 std::string writeWorldFile(const WorldFile& world)
 {
     Json root = Json::object();
@@ -1190,129 +1322,7 @@ std::string writeWorldFile(const WorldFile& world)
     Json vobs = Json::array();
     for (const WorldFileVob* vob : sorted)
     {
-        Json v = Json::object();
-        v["id"] = vob->id.value;
-        v["type"] = vobTypeName(vob->type);
-        v["name"] = vob->name;
-        if (vob->parent.valid())
-        {
-            v["parent"] = vob->parent.value;
-        }
-        const Transform& t = vob->transform;
-        v["pos"] = numbers({t.position.x, t.position.y, t.position.z});
-        v["rot"] = numbers({t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w});
-        if (t.scale != Vec3(1.0f))
-        {
-            v["scale"] = numbers({t.scale.x, t.scale.y, t.scale.z});
-        }
-        if (vob->type == VobType::Mesh || vob->type == VobType::Mob)
-        {
-            v["mesh"] = vob->mesh;
-            if (vob->type == VobType::Mesh && vob->category == VobCategory::Gameplay)
-            {
-                v["category"] = "gameplay"; // deco is the default and not written
-            }
-        }
-        if (vob->type == VobType::Light)
-        {
-            const LightSource& l = vob->light;
-            Json light = Json{{"color", numbers({l.color.r, l.color.g, l.color.b})},
-                              {"range", tidy(l.range)},
-                              {"intensity", tidy(l.intensity)}};
-            if (l.daylight)
-            {
-                light["daylight"] = true; // after intensity, only when true (contract with welt)
-            }
-            light["flicker"] = tidy(l.flicker);
-            v["components"]["light"] = std::move(light);
-        }
-        if (vob->type == VobType::Sound)
-        {
-            const SoundEmitter& s = vob->sound;
-            v["components"]["sound"] = Json{{"sound", s.sound},
-                                            {"range", tidy(s.range)},
-                                            {"volume", tidy(s.volume)},
-                                            {"mode", nameOf(kSoundModes, s.mode)},
-                                            {"delay", numbers({s.delay.x, s.delay.y})}};
-        }
-        if (vob->type == VobType::Trigger)
-        {
-            const TriggerVolume& tv = vob->trigger;
-            Json trigger = Json::object();
-            if (tv.shape == TriggerVolume::Shape::Box)
-            {
-                trigger["shape"] = "box";
-                trigger["halfExtents"] = numbers({tv.halfExtents.x, tv.halfExtents.y, tv.halfExtents.z});
-            }
-            else
-            {
-                trigger["shape"] = "sphere";
-                trigger["radius"] = tidy(tv.radius);
-            }
-            if (!tv.onEnter.empty())
-            {
-                trigger["onEnter"] = tv.onEnter;
-            }
-            if (!tv.onLeave.empty())
-            {
-                trigger["onLeave"] = tv.onLeave;
-            }
-            trigger["filter"] = nameOf(kTriggerFilters, tv.filter);
-            trigger["once"] = tv.once;
-            if (tv.targetId.valid())
-            {
-                trigger["target"] = tv.targetId.value;
-            }
-            else if (!tv.targetName.empty())
-            {
-                trigger["target"] = tv.targetName;
-            }
-            if (!tv.changeWorld.empty())
-            {
-                trigger["changeWorld"] = Json{{"world", tv.changeWorld}, {"start", tv.changeStart}};
-            }
-            if (!tv.owner.empty())
-            {
-                trigger["owner"] = tv.owner;
-            }
-            v["components"]["trigger"] = std::move(trigger);
-        }
-        if (vob->type == VobType::Mob)
-        {
-            v["components"]["mob"] = Json{{"definition", vob->mob.definition}};
-            if (vob->mob.open)
-            {
-                v["components"]["mob"]["open"] = true; // after definition, only when true (welt: byte-equal)
-            }
-        }
-        if (vob->type == VobType::Item)
-        {
-            Json item = Json{{"instance", vob->item.instance}};
-            if (vob->item.count != 1)
-            {
-                item["count"] = vob->item.count;
-            }
-            if (!vob->item.owner.empty())
-            {
-                item["owner"] = vob->item.owner;
-            }
-            v["components"]["item"] = std::move(item);
-        }
-        if ((vob->type == VobType::Mesh || vob->type == VobType::Mob) && !vob->footstep.empty())
-        {
-            v["components"]["surface"] = Json{{"footstep", vob->footstep}}; // only when set (byte-equal)
-        }
-        if (vob->type == VobType::Water)
-        {
-            Json water = Json{{"halfExtents", numbers({vob->water.halfExtents.x, vob->water.halfExtents.y,
-                                                       vob->water.halfExtents.z})}};
-            if (!vob->water.kind.empty())
-            {
-                water["kind"] = vob->water.kind;
-            }
-            v["components"]["water"] = std::move(water);
-        }
-        vobs.push_back(std::move(v));
+        vobs.push_back(vobJson(*vob));
     }
     // Layout for diffs: the header keys one per line, then one vob per line, so changing a vob
     // changes exactly one line. Waynet and zones follow as compact values.
@@ -1428,4 +1438,19 @@ std::string writeWorldFile(const WorldFile& world)
     return out;
 }
 
+std::string writeVobJson(const WorldFileVob& vob)
+{
+    return dumpJson(vobJson(vob));
+}
+
+Result<WorldFileVob> parseVobJson(std::string_view json, std::string_view source)
+{
+    const Json v = Json::parse(json.begin(), json.end(), nullptr, false);
+    const Reader r{source};
+    if (v.is_discarded())
+    {
+        return r.error("vob", "not valid JSON");
+    }
+    return readVob(r, v, "vob");
+}
 } // namespace g7::world

@@ -630,6 +630,10 @@ Result<void> Engine::initSceneRendering()
     m_shadowDebug = m_config.settings.get<bool>("render.shadow_debug", false);
     m_cullSettings.viewDistance = static_cast<f32>(m_config.settings.get<f64>("render.view_distance", 400.0));
     m_cullSettings.sizeCull = static_cast<f32>(m_config.settings.get<f64>("render.size_cull", 0.005));
+    // Indoors: nothing beyond this (m) is drawn or casts a shadow (render.md "Innenräume"); 0 = off.
+    m_indoorViewDistance = static_cast<f32>(m_config.settings.get<f64>("render.indoor_view_distance", 30.0));
+    m_indoorShadowDistance =
+        static_cast<f32>(m_config.settings.get<f64>("render.indoor_shadow_distance", 12.0));
     m_lodSettings.lod1Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod1_distance", 60.0));
     m_lodSettings.lod2Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod2_distance", 150.0));
     m_lodSettings.hysteresis = static_cast<f32>(m_config.settings.get<f64>("render.lod_hysteresis", 0.1));
@@ -643,6 +647,9 @@ Result<void> Engine::initSceneRendering()
     m_lightBudget.distance = static_cast<f32>(m_config.settings.get<f64>("render.light_distance", 120.0));
     m_lightBudget.windowRadius =
         static_cast<f32>(m_config.settings.get<f64>("render.window_light_radius", 25.0));
+    m_figureCull.distance = static_cast<f32>(m_config.settings.get<f64>("render.figure_distance", 150.0));
+    m_figureCull.shadowDistance =
+        static_cast<f32>(m_config.settings.get<f64>("render.figure_shadow_distance", 40.0));
     m_lodSettings.forced = m_config.forcedLod;
     // multi_draw: "auto" (default) batches except on Intel GPUs - there the GPU is the limit and the
     // batches measured ~10 % slower (render.md); true/false or "on"/"off" force it.
@@ -1305,7 +1312,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
                 timer.elapsedSeconds() * 1000.0);
     if (m_scripts)
     {
-        const script::Value world[] = {path};
+        const script::Value world[] = {path, m_restoringWorld};
         m_scripts->emit("world_loaded", world);
     }
     return {};
@@ -1380,25 +1387,21 @@ void Engine::performWorldChange()
     const PendingWorldChange change = std::move(*m_pendingWorldChange);
     m_pendingWorldChange.reset();
     const std::string key = toLower(change.world);
-    // The target: as left earlier (its state kept) or from its file.
-    world::WorldFile target;
-    std::set<u64> spent;
+    // The target: as left earlier (its state kept: delta, items, mobs, NPCs, triggers; M15 part C) or from
+    // its file.
+    std::optional<save::WorldState> kept;
     if (const auto left = m_leftWorlds.find(key); left != m_leftWorlds.end())
     {
-        target = left->second.file;
-        spent = left->second.spentTriggers;
+        kept = left->second;
     }
-    else
+    auto file = worldBase(change.world);
+    if (!file)
     {
-        auto file = world::loadWorldFile(m_vfs, change.world);
-        if (!file)
-        {
-            G7_LOG_WARN("engine", "level change to {} failed, staying here: {}", change.world,
-                        file.error().message);
-            return;
-        }
-        target = std::move(file).value();
+        G7_LOG_WARN("engine", "level change to {} failed, staying here: {}", change.world,
+                    file.error().message);
+        return;
     }
+    world::WorldFile target = kept ? save::applyDelta(file.value(), kept->delta) : std::move(file).value();
     // No start name: the first start point, as when a world is loaded at the start (main menu).
     const bool hasStart =
         change.start.empty() ||
@@ -1412,32 +1415,47 @@ void Engine::performWorldChange()
         return;
     }
 
-    // Keep the world we leave as it is now (moved or removed vobs, spent once-triggers).
+    // Keep the world we leave as it is now (not the main menu's: it is dropped after New game).
     const std::string leftPath = m_worldPath;
-    world::WorldFile leaving = m_worldFile;
-    world::WorldFile captured = world::captureWorld(m_scene, m_worldFile.name);
-    storeDoors(captured);
-    leaving.vobs = captured.vobs;
-    leaving.nextVobId = captured.nextVobId;
-    if (!leftPath.empty()) // nothing loaded yet (main menu)
+    std::optional<save::WorldState> leaving;
+    if (!leftPath.empty() && !m_menuMode)
     {
-        m_leftWorlds[toLower(leftPath)] = LeftWorld{leaving, m_triggers.spentTriggers()};
+        auto captured = captureCurrentWorld();
+        if (captured)
+        {
+            leaving = std::move(captured).value();
+            m_leftWorlds[toLower(leftPath)] = *leaving;
+        }
+        else
+        {
+            G7_LOG_WARN("engine", "{} is not kept: {}", leftPath, captured.error().message);
+        }
     }
 
     G7_LOG_INFO("engine", "level change: {} -> {} ({})", leftPath, change.world, change.start);
     unloadWorld();
-    if (auto loaded = loadWorld(change.world, std::move(target), change.start); !loaded)
+    m_restoringWorld = kept.has_value();
+    auto loaded = loadWorld(change.world, std::move(target), change.start);
+    m_restoringWorld = false;
+    if (loaded && kept)
+    {
+        loaded = restoreWorldState(*kept);
+    }
+    if (!loaded)
     {
         // Not expected (the target was read and checked); go back to where we were.
         G7_LOG_ERROR("engine", "{}; returning to {}", loaded.error().message, leftPath);
         unloadWorld();
-        if (auto back = loadWorld(leftPath, leaving, {}); !back)
+        if (leaving)
         {
-            G7_LOG_ERROR("engine", "cannot return to {}: {}", leftPath, back.error().message);
+            if (auto back = loadWorldState(*leaving, {}); !back)
+            {
+                G7_LOG_ERROR("engine", "cannot return to {}: {}", leftPath, back.error().message);
+            }
         }
         return;
     }
-    m_triggers.setSpentTriggers(std::move(spent));
+    m_leftWorlds.erase(key); // the current world is not a left one
     releaseUnusedModels();
 }
 
@@ -1693,6 +1711,21 @@ void Engine::renderScene(u32 width, u32 height)
 void Engine::drawScene(u32 width, u32 height)
 {
     m_meshRenderer.beginFrame();
+    // Indoors (the camera in a room, world.md "Zonen") the world outside shows only through windows and the
+    // door: nothing beyond indoor_view_distance (render.md "Innenräume"), and the sun's shadows (through the
+    // windows) only from casters within indoor_shadow_distance.
+    m_frameCull = m_cullSettings;
+    m_frameShadowCull = m_cullSettings;
+    const bool inside = m_indoorViewDistance > 0.0f &&
+                        render::indoorAmount(m_camera.transform.position, m_environment.indoor, 0.0f) > 0.5f;
+    const auto limited = [](f32 distance, f32 limit)
+    { return distance > 0.0f ? std::min(distance, limit) : limit; };
+    if (inside)
+    {
+        m_frameCull.viewDistance = limited(m_frameCull.viewDistance, m_indoorViewDistance);
+        m_frameShadowCull.viewDistance =
+            limited(m_frameCull.viewDistance, std::max(m_indoorShadowDistance, 0.1f));
+    }
     if (m_cullGridDirty)
     {
         std::vector<AABB> bounds;
@@ -1716,9 +1749,11 @@ void Engine::drawScene(u32 width, u32 height)
             m_cascadesDrawn.assign(m_cascades.size(), render::Cascade{});
         }
         m_shadowMap.begin(*m_device);
+        m_terrain.setMaxDistance(inside ? m_frameShadowCull.viewDistance : 0.0f);
         for (u32 i = 0; i < m_cascades.size(); ++i)
         {
-            if (!shadowRedraw(i))
+            // Indoors a cascade that starts beyond the view distance shades nothing drawn: left as it is.
+            if (!shadowRedraw(i) || (inside && m_cascades[i].splitNear > m_frameShadowCull.viewDistance))
             {
                 m_cascades[i] = m_cascadesDrawn[i]; // shade with what the tile holds
                 continue;
@@ -1736,7 +1771,7 @@ void Engine::drawScene(u32 width, u32 height)
                 const SceneInstance& instance = m_instances[index];
                 if (instance.model != m_groundModel.get() && instance.solid &&
                     volume.intersects(instance.bounds) &&
-                    render::cullByDistance(instance.bounds, m_camera.transform.position, m_cullSettings,
+                    render::cullByDistance(instance.bounds, m_camera.transform.position, m_frameShadowCull,
                                            instance.sizeCullable) == render::CullResult::Kept)
                 {
                     if (m_multiDraw)
@@ -1799,6 +1834,7 @@ void Engine::drawScene(u32 width, u32 height)
     if (m_hasTerrain)
     {
         m_meshRenderer.bindLighting(*m_device);
+        m_terrain.setMaxDistance(inside ? m_frameCull.viewDistance : 0.0f);
         m_terrain.draw(*m_device, m_camera, &m_frameLights);
     }
     const Frustum view = m_camera.frustum();
@@ -1807,13 +1843,13 @@ void Engine::drawScene(u32 width, u32 height)
     m_culledFar = 0;
     m_culledSmall = 0;
     m_cullCandidates.clear();
-    m_cullGrid.query(view, m_camera.transform.position, m_cullSettings.viewDistance, m_cullCandidates);
+    m_cullGrid.query(view, m_camera.transform.position, m_frameCull.viewDistance, m_cullCandidates);
     m_drawItems.clear();
     for (const u32 index : m_cullCandidates)
     {
         SceneInstance& instance = m_instances[index];
         const render::CullResult cull = render::cullByDistance(instance.bounds, m_camera.transform.position,
-                                                               m_cullSettings, instance.sizeCullable);
+                                                               m_frameCull, instance.sizeCullable);
         m_culledFar += cull == render::CullResult::TooFar ? 1 : 0;
         m_culledSmall += cull == render::CullResult::TooSmall ? 1 : 0;
         if (cull == render::CullResult::Kept && view.intersects(instance.bounds))
@@ -1875,11 +1911,12 @@ void Engine::updateBenchmark(f64 realSeconds)
                 G7_LOG_INFO(
                     "engine",
                     "benchmark viewpoint {}: {}; {} draws, {} buffer binds, {} pipeline changes, {}k tris; "
-                    "main pass: {} batches ({} submeshes), {} single draws, {} terrain chunks; LOD {}/{}/{}",
+                    "main pass: {} batches ({} submeshes, {} commands), {} single draws, {} terrain chunks; "
+                    "LOD {}/{}/{}",
                     v, s.toString(), stats.drawCalls, stats.bufferBinds, stats.pipelineChanges,
-                    stats.triangles / 1000, batch.groups, batch.batchedDraws, batch.singleDraws,
-                    m_benchmarkTerrainChunks[v], m_benchmarkLods[v][0], m_benchmarkLods[v][1],
-                    m_benchmarkLods[v][2]);
+                    stats.triangles / 1000, batch.groups, batch.batchedDraws, batch.commands,
+                    batch.singleDraws, m_benchmarkTerrainChunks[v], m_benchmarkLods[v][0],
+                    m_benchmarkLods[v][1], m_benchmarkLods[v][2]);
             }
             const auto [worstAverage, worstP99] = std::accumulate(
                 m_benchmarkResults.begin(), m_benchmarkResults.end(), std::pair{0.0, 0.0},

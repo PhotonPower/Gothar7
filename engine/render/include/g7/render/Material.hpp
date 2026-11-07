@@ -122,7 +122,8 @@ struct BatchStats
 {
     u32 groups = 0;       ///< multi-draw calls (one per pipeline, material and geometry block)
     u32 batchedDraws = 0; ///< submeshes drawn through them
-    u32 singleDraws = 0;  ///< submeshes drawn one by one (translucent, meshes outside an arena)
+    u32 commands = 0; ///< indirect commands for them: equal submeshes of one model and LOD drawn as instances
+    u32 singleDraws = 0; ///< submeshes drawn one by one (translucent, meshes outside an arena)
 };
 
 class MeshRenderer
@@ -257,6 +258,16 @@ private:
     std::vector<BatchEntry> m_entries;
     std::vector<u8> m_drawData;
     std::vector<DrawIndexedIndirect> m_commands;
+    struct BatchGroup // a run of equal keys: one multi-draw
+    {
+        usize firstEntry = 0;
+        usize firstCommand = 0;
+        u32 commands = 0;
+        u32 entries = 0;
+        u32 triangles = 0;
+    };
+    std::vector<BatchGroup> m_groups;
+    std::vector<const MeshDrawItem*> m_order; // the items of a pass, equal models and LODs together
     std::vector<std::pair<const MeshDrawItem*, usize>> m_singles; // (item, submesh)
     BatchStats m_batch;
     std::shared_ptr<const MaterialDefaults> m_defaults;

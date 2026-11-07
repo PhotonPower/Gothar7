@@ -387,3 +387,36 @@ end)
     vm.tick(0.25); // the handler's 100 fire; the repeating timer adds another 100
     CHECK(vm.runString("fired").value().asInteger() == 100 * 1000 + 100);
 }
+
+TEST_CASE("Script timers by function name survive a save game (M15)")
+{
+    Files files;
+    files.files["startup.lua"] = R"(
+calls = { named = 0, fn = 0, arg = nil }
+function on_named(a, b) calls.named = calls.named + 1; calls.arg = a .. b end
+every(1.0, function() calls.fn = calls.fn + 1 end) -- a system started when the scripts load
+)";
+    ScriptVm vm = makeVm(files);
+    vm.loadAll();
+    REQUIRE(vm.errors().empty());
+    REQUIRE(vm.runString("named_id = after(5, 'on_named', 'x', 2)").ok());
+    CHECK_FALSE(vm.runString("after(5, 'on_named', function() end)").ok()); // cannot be saved
+    vm.tick(2.0);
+    const auto timers = vm.namedTimers();
+    REQUIRE(timers.size() == 1);
+    CHECK(timers[0].function == "on_named");
+    CHECK(timers[0].due == doctest::Approx(5.0));
+    CHECK(timers[0].arguments == std::vector<Value>{Value("x"), Value(i64{2})});
+
+    // A fresh VM (a loaded game): the clock and the named timer come back, the system timer stays.
+    ScriptVm loaded = makeVm(files);
+    loaded.loadAll();
+    loaded.restoreTimers(2.0, timers, vm.nextTimerId());
+    CHECK(loaded.time() == doctest::Approx(2.0));
+    CHECK(loaded.namedTimers() == timers);
+    loaded.tick(3.0);
+    CHECK(loaded.runString("calls.named").value().asInteger() == 1);
+    CHECK(loaded.runString("calls.arg").value().asString() == "x2");
+    CHECK(loaded.runString("calls.fn").value().asInteger() >= 1);
+    CHECK(loaded.namedTimers().empty());
+}

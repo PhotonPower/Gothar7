@@ -133,6 +133,8 @@ struct ScriptVm::Impl
         f64 due = 0.0;
         f64 interval = 0.0; // 0: once
         FunctionRef function;
+        std::string name;             // a global function instead (saved with the game)
+        std::vector<Value> arguments; // for `name`
     };
     std::vector<Timer> timers;
     u32 nextTimer = 1;
@@ -286,13 +288,17 @@ struct ScriptVm::Impl
             "Globale Tabelle der Story-Variablen (Zahlen, Strings, Wahrheitswerte, verschachtelte Tabellen); "
             "wird mit dem Spielstand gespeichert. Funktionen darin sind nicht erlaubt.");
         addBuiltin(
-            "after", "after(seconds: number, fn: function) -> integer",
-            "Ruft `fn` einmal nach `seconds` Sekunden Spielzeit auf; gibt die Nummer des Timers zurück.",
+            "after", "after(seconds: number, fn: function | string, ...) -> integer",
+            "Ruft `fn` einmal nach `seconds` Sekunden Spielzeit auf; gibt die Nummer des Timers zurück. Mit "
+            "dem "
+            "Namen einer globalen Funktion statt einer Funktion (dazu Argumente) überdauert der Timer einen "
+            "Spielstand.",
             [this](std::span<const Value> a) -> Result<Value> { return addTimer(a, false); });
-        addBuiltin("every", "every(seconds: number, fn: function) -> integer",
-                   "Ruft `fn` alle `seconds` Sekunden Spielzeit auf (`seconds` > 0); gibt die Nummer des "
-                   "Timers zurück.",
-                   [this](std::span<const Value> a) -> Result<Value> { return addTimer(a, true); });
+        addBuiltin(
+            "every", "every(seconds: number, fn: function | string, ...) -> integer",
+            "Ruft `fn` alle `seconds` Sekunden Spielzeit auf (`seconds` > 0); gibt die Nummer des "
+            "Timers zurück. Mit einem Funktionsnamen (und Argumenten) wird er mit dem Spiel gespeichert.",
+            [this](std::span<const Value> a) -> Result<Value> { return addTimer(a, true); });
         addBuiltin("cancel", "cancel(timer: integer) -> boolean",
                    "Hält einen Timer von `after`/`every` an; `false`, wenn es ihn nicht (mehr) gibt.",
                    [this](std::span<const Value> a) -> Result<Value>
@@ -362,14 +368,27 @@ struct ScriptVm::Impl
 
     Result<Value> addTimer(std::span<const Value> a, bool repeat)
     {
-        if (a.size() < 2 || !a[0].isNumber() || !a[1].isFunction() || a[0].asNumber() < 0.0 ||
-            (repeat && a[0].asNumber() <= 0.0))
+        if (a.size() < 2 || !a[0].isNumber() || !(a[1].isFunction() || a[1].isString()) ||
+            a[0].asNumber() < 0.0 || (repeat && a[0].asNumber() <= 0.0))
         {
-            return Error{repeat ? "expects (seconds > 0, fn: function)"
-                                : "expects (seconds >= 0, fn: function)"};
+            return Error{repeat ? "expects (seconds > 0, fn: function | string)"
+                                : "expects (seconds >= 0, fn: function | string)"};
         }
         const u32 id = nextTimer++;
-        timers.push_back({id, clock + a[0].asNumber(), repeat ? a[0].asNumber() : 0.0, a[1].asFunction()});
+        Timer timer{id, clock + a[0].asNumber(), repeat ? a[0].asNumber() : 0.0, a[1].asFunction(), {}, {}};
+        if (a[1].isString())
+        {
+            timer.name = std::string(a[1].asString());
+            for (usize i = 2; i < a.size(); ++i)
+            {
+                if (a[i].isFunction())
+                {
+                    return Error{std::format("argument {}: a saved timer cannot carry a function", i + 1)};
+                }
+                timer.arguments.push_back(a[i]);
+            }
+        }
+        timers.push_back(std::move(timer));
         return Value(static_cast<i64>(id));
     }
 
@@ -921,13 +940,54 @@ usize ScriptVm::tick(f64 seconds)
             impl.timers.erase(still);
         }
         ++calls;
-        if (auto r = impl.callFunction(t.function, {}); !r)
+        if (auto r = t.name.empty() ? impl.callFunction(t.function, {}) : callGlobal(t.name, t.arguments); !r)
         {
             G7_LOG_WARN("script", "timer {}: {} (dropped)", t.id, r.error().message);
             std::erase_if(impl.timers, [&](const Impl::Timer& x) { return x.id == t.id; });
         }
     }
     return calls;
+}
+
+std::vector<ScriptVm::NamedTimer> ScriptVm::namedTimers() const
+{
+    std::vector<NamedTimer> out;
+    for (const Impl::Timer& t : m_impl->timers)
+    {
+        if (!t.name.empty())
+        {
+            out.push_back({t.id, t.due, t.interval, t.name, t.arguments});
+        }
+    }
+    std::sort(out.begin(), out.end(), [](const NamedTimer& a, const NamedTimer& b) { return a.id < b.id; });
+    return out;
+}
+
+void ScriptVm::restoreTimers(f64 clock, std::vector<NamedTimer> timers, u32 nextId)
+{
+    Impl& impl = *m_impl;
+    // Timers with a Lua function (systems started when the scripts load: `every(1, fn)`) stay, with the time
+    // they had left; the named ones are those of the save game.
+    const f64 shift = clock - impl.clock;
+    std::erase_if(impl.timers, [](const Impl::Timer& t) { return !t.name.empty(); });
+    u32 next = std::max(nextId, impl.nextTimer);
+    for (Impl::Timer& t : impl.timers)
+    {
+        t.due += shift;
+    }
+    impl.clock = clock;
+    for (NamedTimer& t : timers)
+    {
+        impl.timers.push_back(
+            {t.id, t.due, t.interval, FunctionRef{}, std::move(t.function), std::move(t.arguments)});
+        next = std::max(next, t.id + 1);
+    }
+    impl.nextTimer = next;
+}
+
+u32 ScriptVm::nextTimerId() const noexcept
+{
+    return m_impl->nextTimer;
 }
 
 f64 ScriptVm::time() const noexcept

@@ -4,6 +4,7 @@
 #include <g7/render/Visibility.hpp>
 
 #include <doctest/doctest.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <algorithm>
 #include <vector>
@@ -113,4 +114,21 @@ TEST_CASE("Visibility: small objects (props) switch their level of detail sooner
     CHECK(selectLod(18.0f, 1, s, 0.6f) == 0); // back below 21 m (-10 %)
     s.smallRadius = 0.0f;
     CHECK(selectLod(30.0f, 0, s, 0.6f) == 0); // off
+}
+
+TEST_CASE("Visibility: figures only in view and near enough; shadows nearer")
+{
+    const Frustum view = Frustum::fromViewProjection(
+        perspectiveReverseZ(glm::radians(60.0f), 1.0f, 0.1f, 1000.0f) *
+        glm::lookAt(Vec3(0.0f, 1.7f, 0.0f), Vec3(0.0f, 1.7f, -1.0f), Vec3(0.0f, 1.0f, 0.0f)));
+    const auto box = [](f32 x, f32 z)
+    { return AABB{Vec3(x - 1.5f, 0.0f, z - 1.5f), Vec3(x + 1.5f, 3.0f, z + 1.5f)}; };
+    const Vec3 eye(0.0f, 1.7f, 0.0f);
+    const FigureCull cull;                                                   // 150 m, shadows 40 m
+    CHECK(figureInView(box(0.0f, -20.0f), eye, view, cull.distance));        // ahead
+    CHECK_FALSE(figureInView(box(0.0f, 20.0f), eye, view, cull.distance));   // behind
+    CHECK_FALSE(figureInView(box(0.0f, -200.0f), eye, view, cull.distance)); // too far
+    CHECK(figureInView(box(0.0f, -30.0f), eye, view, cull.shadowDistance));
+    CHECK_FALSE(figureInView(box(0.0f, -60.0f), eye, view, cull.shadowDistance)); // its shadow too far
+    CHECK(figureInView(box(1.0f, 1.0f), eye, view, cull.distance)); // the box around the eye: in
 }

@@ -185,6 +185,15 @@ void Engine::rebuildWorldItems()
 
 Result<world::VobId> Engine::spawnItem(std::string_view instance, u32 count, const Vec3& at, f32 yaw)
 {
+    Transform transform;
+    transform.position = at;
+    transform.rotation = glm::angleAxis(yaw, Vec3(0.0f, 1.0f, 0.0f));
+    return spawnItemAt(instance, count, transform, {});
+}
+
+Result<world::VobId> Engine::spawnItemAt(std::string_view instance, u32 count, const Transform& transform,
+                                         world::VobId fixedId)
+{
     if (!m_scripts || m_scripts->findInstance("Item", instance) == nullptr)
     {
         return Error{std::format("unknown item \"{}\"", instance)};
@@ -196,9 +205,9 @@ Result<world::VobId> Engine::spawnItem(std::string_view instance, u32 count, con
     }
     world::VobDesc desc;
     desc.name = std::string(instance);
-    desc.transform.position = at;
-    desc.transform.rotation = glm::angleAxis(yaw, Vec3(0.0f, 1.0f, 0.0f));
+    desc.transform = transform;
     desc.runtime = true;
+    desc.id = fixedId;
     auto vob = m_scene.spawnVob(desc);
     if (!vob)
     {

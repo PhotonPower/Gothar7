@@ -151,6 +151,72 @@ TEST_CASE("Mesh batches: grouped by material values, same picture as single draw
     CHECK(gl.device->debugErrorCount() == 0);
 }
 
+TEST_CASE("Mesh batches: one model many times is one instanced command, same picture as single draws")
+{
+    GlFixture gl;
+    ShaderLibrary library(*gl.device, fs::fromUtf8(G7_SHADER_DIR));
+    MeshRenderer renderer = require(MeshRenderer::create(*gl.device, library, 1.0f));
+    GeometryArena arena;
+    // A crate model (red) placed 24 times and a barrel model (blue) 12 times, interleaved as a lane lists
+    // them.
+    const asset::MeshData red = quad(Vec4(0.8f, 0.1f, 0.1f, 1.0f));
+    const asset::MeshData blue = quad(Vec4(0.1f, 0.1f, 0.8f, 1.0f));
+    const Mesh crate = require(Mesh::create(*gl.device, arena, red));
+    const MaterialSet crateMaterials = require(MaterialSet::create(*gl.device, red, {}, renderer.defaults()));
+    const Mesh barrel = require(Mesh::create(*gl.device, arena, blue));
+    const MaterialSet barrelMaterials =
+        require(MaterialSet::create(*gl.device, blue, {}, renderer.defaults()));
+    std::vector<MeshDrawItem> items;
+    for (int i = 0; i < 36; ++i)
+    {
+        const bool isCrate = i % 3 != 2;
+        const Mat4 model = glm::translate(Mat4(1.0f), Vec3(f32(i % 6) - 2.5f, f32(i / 6) - 2.5f, 0.0f)) *
+                           glm::scale(Mat4(1.0f), Vec3(0.8f));
+        const Mesh& mesh = isCrate ? crate : barrel;
+        items.push_back(
+            {&mesh, isCrate ? &crateMaterials : &barrelMaterials, model, mesh.bounds().transformed(model)});
+    }
+    Texture color = require(gl.device->createTexture({64, 64, Format::RGBA8, 1}));
+    Texture depth = require(gl.device->createTexture({64, 64, Format::Depth32F, 1}));
+    Framebuffer target = require(gl.device->createFramebuffer({{&color}, &depth}));
+    Camera camera;
+    camera.aspect = 1.0f;
+    camera.transform.position = Vec3(0.0f, 0.0f, 8.0f);
+    const auto begin = [&]
+    {
+        gl.device->bindFramebuffer(&target);
+        gl.device->setViewport(0, 0, 64, 64);
+        gl.device->clear(Vec4(0, 0, 0, 1), 0.0f);
+        const Environment light{.sunIntensity = 0.0f, .ambientSky = Vec3(1.0f), .ambientGround = Vec3(1.0f)};
+        static const LightList none;
+        renderer.setLighting(*gl.device, light, none);
+    };
+    begin();
+    for (const MeshDrawItem& item : items)
+    {
+        renderer.draw(*gl.device, *item.mesh, *item.materials, item.model, camera);
+    }
+    const auto single = gl.device->readPixels(0, 0, 64, 64, &target);
+    renderer.beginFrame();
+    begin();
+    renderer.drawBatched(*gl.device, items, camera);
+    CHECK(gl.device->readPixels(0, 0, 64, 64, &target) == single);
+    // Two materials: two groups, each one command for all placements of its model.
+    CHECK(renderer.lastBatch().groups == 2);
+    CHECK(renderer.lastBatch().batchedDraws == 36);
+    CHECK(renderer.lastBatch().commands == 2);
+    // The shadow pass merges the same way (one group for opaque depth, one command per model).
+    ShadowSettings settings;
+    settings.resolution = 256;
+    ShadowMap shadows = require(ShadowMap::create(*gl.device, settings));
+    const auto cascades = computeCascades(camera, Vec3(0.3f, 1.0f, 0.5f), settings);
+    shadows.begin(*gl.device);
+    shadows.beginCascade(*gl.device, 0);
+    renderer.drawShadowBatched(*gl.device, items, cascades[0]);
+    CHECK(renderer.lastBatch().commands == 2);
+    CHECK(gl.device->debugErrorCount() == 0);
+}
+
 TEST_CASE("Mesh batches: buffers grow with the number of draws")
 {
     GlFixture gl;

@@ -1,10 +1,7 @@
 #pragma once
 
-// Module: g7::save
-// Serialisierung des Spielzustands, Versionierung, Quicksave.
-// Spezifikation: docs/modules/save.md   |   Roadmap: M15
-//
-// Status: Platzhalter. Die oeffentliche API wird in der genannten Phase entworfen.
+// Module: g7::save - save games (docs/modules/save.md, M15). The game state as data and JSON: GameState.hpp;
+// the world delta: WorldDelta.hpp.
 
 #include <string_view>
 
