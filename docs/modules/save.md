@@ -11,6 +11,41 @@
   `fs::writeTextAtomic`/Benutzerpfad (`fs::userPath`), die Aktionen `quick_save`/`quick_load` (F5/F9, ungenutzt) und
   im Menü die ausgegrauten Einträge „Spiel laden“/„Spiel speichern“ (M14 Teil F).
 
+## Teil D (umgesetzt, M15) – Speicherplätze, Schnellspeichern, Autosave, Menüs
+Engine `runtime/EngineSaveSlots.cpp`, Bildschirm `ui/SaveScreens.hpp` (`SaveScreen`, Modus Speichern/Laden).
+```cpp
+// Engine
+Result<void> saveGame(std::string_view slot);   // "slot_01" … "slot_15", "quick", "auto"; Meldung in jedem Fall
+Result<void> loadGame(std::string_view slot);   // hinter dem Ladebildschirm, angewendet in den nächsten Frames
+std::string saveBlocker() const;                // warum jetzt nicht (UI-Text-Schlüssel), leer: es geht (S1)
+fs::Path saveDirectory() const;                 // EngineConfig::saveDirectory, sonst fs::userPath("saves")
+f64 playSeconds() const;  const std::vector<u8>& thumbnailPng() const;
+```
+- **Plätze (S2):** 15 Plätze, Schnellspeicher `quick`, Autosave `auto` unter `%APPDATA%\Gothar\Gothar\saves`
+  (`<platz>.g7save`). Der Bildschirm „Speichern“ bietet `auto` nicht an; beim Laden sind leere und beschädigte Plätze
+  ausgegraut. Zeile: Name des Spielstands, rechts Datum und Uhrzeit; rechts oben das Vorschaubild des gewählten Platzes.
+- **Wann (S1):** überall, auch im Kampf; nicht im Hauptmenü, beim Laden, im Dialog oder Handel, an einem Mob, beim
+  Aufheben, unter Wasser, im Fall (`saveBlocker`). Sonst eine Meldung („Jetzt kann nicht gespeichert werden.“).
+- **Name (S4):** „Ort – Kapitel n – Tag d, hh:mm“ (`UI_SAVE_NAME`), beim Schnellspeicher/Autosave mit Vorsatz.
+  Metadaten: Welt, Ort (Name der Welt), Sprache, Spielversion, Datum (UTC), gespielte Zeit, Tag/Uhrzeit, Kapitel
+  (`Story.chapter`), Stufe, Inhalts-Prägung (CRC-32 der besuchten Weltdateien; anders → Laden mit Meldung, S8).
+- **Vorschaubild (S7):** 320×180 PNG der Szene ohne UI (vor `drawGameUi` gelesen, auf 16:9 zugeschnitten,
+  Kastenfilter). Aufgenommen, wenn das Pausenmenü öffnet (die Szene davor) bzw. beim Schnellspeichern/Autosave mit dem
+  nächsten Frame; ohne Renderer keines.
+- **Tasten:** F5 (`quick_save`) speichert schnell, F9 (`quick_load`) lädt ohne Rückfrage (S5); beide auch über
+  einem Bildschirm (im Dialog: die Meldung).
+- **Autosave (S3):** nach einem Weltwechsel und bei `set_chapter` (Lua `autosave()`), sobald Speichern erlaubt ist
+  (höchstens 30 s Warten); abschaltbar unter Optionen → Spiel (`[game] autosave`).
+- **Menüs:** Hauptmenü „Spiel laden“ und Pausenmenü „Spiel laden“/„Spiel speichern“ sind frei, sobald es einen
+  Spielstand gibt bzw. Speichern geht. Überschreiben fragt („Aktion: ja · Zurück: nein“); Laden aus dem Pausenmenü
+  fragt, wenn seit dem letzten Speichern/Laden über 2 min gespielt wurde (S5). Nach dem Speichern schließen die
+  Menüs. „Neues Spiel“ im Pausenmenü bleibt ausgegraut (ein zweites Spiel in einem Lauf: später).
+- **Lua:** `save_game(slot?)`, `load_game(slot?)` (Vorgabe `quick`), `autosave()`, Ereignis `game_saved(slot)`.
+- **Tests:** `tests/ui/test_save_screens.cpp` (Zeilen, ausgegraut, Rückfrage ja/nein, Zurück),
+  `tests/runtime/test_engine_save_slots.cpp` (ctest `runtime_ui`: F5 im Dialog abgelehnt, F5/F9, Pausenmenü →
+  Speichern → Platz 1, Autosave nach dem Weltwechsel, neuer Lauf: Hauptmenü → Laden → Platz 1), GPU
+  `test_world_vobs.cpp` (Vorschaubild 320×180 beim Öffnen des Pausenmenüs).
+
 ## Teil A (umgesetzt, M15) – Datei `.g7save` (ADR 0021, angenommen)
 `save/SaveFile.hpp`, `core/Crc32.hpp`.
 ```cpp

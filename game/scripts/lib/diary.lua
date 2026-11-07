@@ -95,4 +95,5 @@ function set_chapter(n, title)
     Story.chapter = n
     notice(title and ui_text("UI_CHAPTER_TITLE", { n = n, title = tr(title) }) or ui_text("UI_DIARY_CHAPTER", { n = n }))
     emit("chapter_changed", n)
+    autosave() -- S3 (M15): a save at the start of each chapter, if the player wants it
 end

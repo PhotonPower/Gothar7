@@ -121,6 +121,9 @@ Ein Dialog beginnt.
 ### `on("game_loaded", fn())`
 Ein Spielstand ist geladen: Welt, NPCs, Story und benannte Timer sind wieder da (M15).
 
+### `on("game_saved", fn(slot: string))`
+Ein Spielstand ist geschrieben (M15).
+
 ### `on("hero_transformed", fn(species: string))`
 Der Held nimmt eine Tiergestalt an (M12, Z7) bzw. wird wieder Mensch (`species` leer).
 
@@ -544,6 +547,17 @@ Länge des Weges (Meter) zwischen zwei Wegpunkten bzw. Freepoints, wie ein NPC i
 
 ### `set_routine(npc: string, routine: string)`
 Wechselt den Tagesablauf (Kapitelwechsel); der passende Eintrag beginnt sofort. `""` schaltet ihn ab (der NPC tut dann nur, was Skripte ihm auftragen).
+
+## Spielstand
+
+### `autosave()`
+Speichert in den Autosave-Platz, wenn es eingeschaltet ist und gerade geht (S3; Kapitelwechsel).
+
+### `load_game(slot?: string) -> boolean`
+Lädt einen Spielstand (Vorgabe `"quick"`) über den Ladebildschirm; `false`, wenn es ihn nicht gibt oder er beschädigt ist.
+
+### `save_game(slot?: string) -> boolean`
+Speichert das Spiel in einen Platz (`"slot_01"` … `"slot_15"`, `"quick"`, Vorgabe `"quick"`); `false`, wenn es gerade nicht geht (Dialog, unter Wasser …). Konsole, Tests.
 
 ## Wahrnehmung
 
