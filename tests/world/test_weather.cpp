@@ -241,3 +241,37 @@ TEST_CASE("Weather: wetness rises in rain within minutes and dries over about an
     copy.settle();
     CHECK(copy.sample(210.0).wetness == doctest::Approx(1.0f));
 }
+
+TEST_CASE("Lightning: thunder after distance / 343 m/s, flares of a flash, a storm's flashes (M17 G)")
+{
+    CHECK(thunderDelay(343.0f) == doctest::Approx(1.0f));
+    CHECK(thunderDelay(3000.0f) == doctest::Approx(8.75f).epsilon(0.01)); // the far ones: up to 9 s
+    CHECK(lightningBrightness(-0.1f, 2) == 0.0f);
+    CHECK(lightningBrightness(0.0f, 2) == doctest::Approx(1.0f));
+    CHECK(lightningBrightness(0.08f, 2) == 0.0f); // dark between two flares
+    CHECK(lightningBrightness(0.12f, 2) > 0.3f);  // the second flare, weaker
+    CHECK(lightningBrightness(0.12f, 2) < 1.0f);
+    CHECK(lightningBrightness(0.5f, 3) == 0.0f);                   // over
+    CHECK(lightningStrength(300.0f) > lightningStrength(2500.0f)); // near ones light more
+
+    LightningStorm a(42);
+    LightningStorm b(42);
+    int flashes = 0;
+    for (int i = 0; i < 60000; ++i) // 1000 game minutes in steps of 1/60
+    {
+        const auto fa = a.step(1.0 / 60.0, 0.15f, i);
+        const auto fb = b.step(1.0 / 60.0, 0.15f, i);
+        REQUIRE(fa.has_value() == fb.has_value()); // deterministic
+        if (fa)
+        {
+            ++flashes;
+            CHECK(fa->distance >= 300.0f);
+            CHECK(fa->distance <= 3000.0f);
+            CHECK(fa->flickers >= 1u);
+        }
+    }
+    CHECK(flashes > 110); // about 150 at 0.15 per game minute
+    CHECK(flashes < 190);
+    LightningStorm calm(1);
+    CHECK_FALSE(calm.step(100.0, 0.0f, 0.0));
+}

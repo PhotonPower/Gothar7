@@ -109,3 +109,40 @@ TEST_CASE("Engine weather: the rain layer of the ambience follows the rain")
     REQUIRE(engine.runFrame());
     CHECK(engine.rainSound().empty());
 }
+
+TEST_CASE("Engine weather: a thunderstorm flashes and thunders; clear weather does not (M17 G)")
+{
+    const auto flashes = [](const char* weather)
+    {
+        EngineConfig config = campConfig();
+        config.weather = weather;
+        config.settings.set<f64>("time.minute_seconds", 0.05); // 20 game minutes per real second
+        Engine engine(config);
+        REQUIRE(engine.init().ok());
+        run(engine, "lock_weather(true)"); // the storm stays for the whole test
+        for (int i = 0; i < 600; ++i)      // 10 s: 200 game minutes, about 30 flashes in a storm
+        {
+            REQUIRE(engine.runFrame());
+        }
+        if (engine.lightningCount() > 0 && engine.audio() != nullptr)
+        {
+            CHECK(engine.lastThunderDelay() ==
+                  doctest::Approx(world::thunderDelay(engine.lastLightning()->distance)));
+        }
+        return engine.lightningCount();
+    };
+    CHECK(flashes("gewitter") > 5u);
+    // A flash by script (story): now, lighting the world; the thunder after its distance.
+    Engine engine(campConfig());
+    REQUIRE(engine.init().ok());
+    REQUIRE(engine.runFrame());
+    run(engine, "lightning(686)");
+    CHECK(engine.lightningCount() == 1u);
+    CHECK(engine.lightningNow() > 0.5f);
+    if (engine.audio() != nullptr)
+    {
+        CHECK(engine.lastThunderDelay() == doctest::Approx(2.0f));
+    }
+    CHECK_FALSE(engine.runConsoleLine("lightning(20)").ok());
+    CHECK(flashes("regen") == 0u);
+}
