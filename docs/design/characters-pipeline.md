@@ -355,7 +355,7 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   (Strähnen 2×9 px, Bänder 96 / 82 / 55 / 25 % Bedeckung). Innen liegt die ganze Zone im dichtesten Band (eine
   gleichmäßige Bartfläche); nur am Rand blendet die UV-Lage **je Vertex** stufenlos durch die Bänder (weiche Kante
   statt Flächenstufen – die Flecken der ersten Fassung kamen aus der Textur-Zuordnung je Fläche, nicht aus den
-  Normalen). `beard_short` deckt die ganze Stoppelzone (alle 8 Männerköpfe), `beard_mutton` nur Wangen und Koteletten,
+  Normalen). **Volumen (2026-11-07, Projektinhaber):** Die Hülle wölbt sich zur Zonenmitte bis 7 mm zusätzlich (Kinn und Kiefer, nicht die Kehle), und am Kieferrand hängen Haarkarten (1,6 cm, ein Quad je Randkante, Wurzel im dichten, Spitze im dünneren Band), sodass der Bart in Strähnen endet; dafür bekommt die Hülle 70 % des Dreiecksbudgets. `beard_short` deckt die ganze Stoppelzone (alle 8 Männerköpfe), `beard_mutton` nur Wangen und Koteletten,
   Kinn und Mund frei (Köpfe farmer, old, rough, gaunt). Material und Palettenschlüssel heißen wie das Teil.
 - **Neue Frisuren (2026-11-07, CC0, Kopf geprüft):** in den Kits `hair_<kopf>` zusätzlich `hair_layered`
   (`culturalibre_hair_06`) und `hair_thatch` (`culturalibre_hair_05`). Ausgeschieden: `short03` und `bob01`
