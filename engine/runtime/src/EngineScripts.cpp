@@ -312,6 +312,44 @@ void Engine::bindEngineFunctions()
                                     static_cast<u32>(a.size() > 1 ? a[1].asInteger() : 0));
                  return Value();
              }});
+    vm.bind(
+        {"set_weather", "set_weather(name: string, minutes?: number) -> boolean",
+         "Setzt die Wetterlage (data/weather.toml), mit Übergang über `minutes` Spielminuten (ohne: sofort); "
+         "der Ablauf geht von ihr aus weiter. false bei unbekannter Lage.",
+         "Welt", [this](std::span<const Value> a) -> Result<Value>
+         {
+             if (a.empty() || !a[0].isString() ||
+                 (a.size() > 1 && (!a[1].isNumber() || a[1].asNumber() < 0.0)))
+             {
+                 return Error{"expects (name, minutes? >= 0)"};
+             }
+             return Value(
+                 m_weather.set(a[0].asString(), m_gameTime.clock(), a.size() > 1 ? a[1].asNumber() : 0.0));
+         }});
+    vm.bind({"weather", "weather() -> {name, rain, clouds, wind, locked, next}",
+             "Die Wetterlage jetzt: Name, Regen, Bewölkung und Wind (0..1, im Übergang gemischt), ob sie "
+             "gesperrt ist, und in wie vielen Spielminuten der Ablauf wieder entscheidet.",
+             "Welt", [this](std::span<const Value>) -> Result<Value>
+             {
+                 const f64 clock = m_gameTime.clock();
+                 const world::WeatherSample s = m_weather.sample(clock);
+                 const auto rounded = [](f32 v) { return std::round(static_cast<f64>(v) * 100.0) / 100.0; };
+                 return script::makeTable(
+                     {}, {{"name", m_weather.current()},
+                          {"rain", rounded(s.rain)},
+                          {"clouds", rounded(s.clouds)},
+                          {"wind", rounded(s.wind)},
+                          {"locked", m_weather.locked()},
+                          {"next", std::max(0.0, std::round(m_weather.nextChange() - clock))}});
+             }});
+    vm.bind(
+        {"lock_weather", "lock_weather(locked: boolean)",
+         "Hält die Wetterlage fest (eine Story-Szene): der Ablauf wechselt nicht, set_weather wirkt weiter.",
+         "Welt", [this](std::span<const Value> a) -> Result<Value>
+         {
+             m_weather.lock(a.empty() || a[0].asBool());
+             return Value();
+         }});
     vm.bind({"where", "where() -> {x, y, z, yaw, world, time, day}",
              "Position (Meter) und Blickrichtung (Grad) der Spielfigur bzw. der Kamera, die Welt, der "
              "Spieltag (ab 1) und die "
@@ -340,6 +378,11 @@ void Engine::bindEngineFunctions()
          "Inhalte setzen dann niemanden ein (M15).",
          "Ereignisse",
          {}});
+    vm.bind({"weather_changed",
+             "on(\"weather_changed\", fn(old: string, new: string))",
+             "Die Wetterlage hat gewechselt (Ablauf aus data/weather.toml; nicht bei set_weather).",
+             "Ereignisse",
+             {}});
     vm.bind(
         {"scripts_reloaded",
          "on(\"scripts_reloaded\", fn())",

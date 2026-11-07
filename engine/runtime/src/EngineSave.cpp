@@ -152,6 +152,10 @@ Result<save::GameState> Engine::captureGame()
         state.hero = std::move(hero);
     }
     state.currentWorld = m_worldPath;
+    const world::WeatherSnapshot weather = m_weather.snapshot();
+    state.weather =
+        save::WeatherSave{weather.state,      weather.previous, weather.changeMinute, weather.fadeMinutes,
+                          weather.nextMinute, weather.random,   weather.locked};
     auto current = captureCurrentWorld();
     if (!current)
     {
@@ -292,6 +296,16 @@ Result<void> Engine::applyGame(const save::GameState& state)
     }
     m_gameTime.setSecondsPerMinute(state.secondsPerMinute);
     m_gameTime.restore(state.clock);
+    if (state.weather) // older saves have none: the weather goes on as it is (M17 E1)
+    {
+        const save::WeatherSave& w = *state.weather;
+        if (!m_weather.restore(
+                {w.state, w.previous, w.changeMinute, w.fadeMinutes, w.nextMinute, w.random, w.locked}))
+        {
+            G7_LOG_WARN("engine", "save: weather '{}' unknown to weather.toml, kept the current one",
+                        w.state);
+        }
+    }
     m_routineMinute = ~0ull; // routines put everybody where they belong now
 
     m_pendingWorldChange.reset();

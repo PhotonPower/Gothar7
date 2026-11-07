@@ -19,6 +19,7 @@ uniform mat4 uInverseViewProjection;
 uniform vec3 uCameraPosition;
 uniform vec2 uViewportSize;
 uniform float uTime;
+uniform float uRain; // M17 R: rain rings on the surface, 0 dry .. 1 heavy rain
 uniform vec2 uFlow; // m/s in world xz
 uniform vec3 uAbsorption;
 uniform vec3 uScatter;
@@ -123,6 +124,33 @@ vec3 traceReflection(vec3 origin, vec3 direction)
     return vec3(0.0);
 }
 
+// Rain rings (M17 R, render::waterRainRings): in cells of 0.7 m (two shifted layers) each drop makes a ring that
+// widens to 0.35 m and fades within its cycle; the tilt points away from the ring's middle.
+vec2 rainRings(vec2 p, float t)
+{
+    vec2 tilt = vec2(0.0);
+    for (int layer = 0; layer < 2; ++layer)
+    {
+        const vec2 q = p / 0.7 + float(layer) * vec2(0.37, 0.61);
+        const vec2 cell = floor(q);
+        for (int y = -1; y <= 1; ++y)
+        {
+            for (int x = -1; x <= 1; ++x)
+            {
+                const vec2 c = cell + vec2(x, y);
+                const float h = fract(sin(dot(c, vec2(127.1, 311.7))) * 43758.5453);
+                const vec2 centre = c + vec2(fract(h * 13.7), fract(h * 7.3));
+                const float age = fract(t * 1.3 + h);
+                const vec2 d = q - centre;
+                const float distance = length(d);
+                const float ring = exp(-pow((distance - age * 0.5) / 0.06, 2.0)) * (1.0 - age);
+                tilt += ring * d / max(distance, 1e-3);
+            }
+        }
+    }
+    return tilt * 0.3;
+}
+
 void main()
 {
     // Waves: two layers drifting apart (fract keeps the offsets small over hours), carried by the flow.
@@ -131,7 +159,11 @@ void main()
     const float t = uTime * uWaveSpeed;
     const vec2 a = texture(uWaves, uv + flow + fract(vec2(t, 0.6 * t))).rg * 2.0 - 1.0;
     const vec2 b = texture(uWaves, uv * 1.7 + flow * 1.7 + fract(vec2(-0.8 * t, 0.5 * t)) + 0.37).rg * 2.0 - 1.0;
-    const vec2 tilt = (a + 0.6 * b) * uWaveStrength;
+    vec2 tilt = (a + 0.6 * b) * uWaveStrength;
+    if (uRain > 0.0)
+    {
+        tilt += rainRings(vWorld.xz, uTime) * uRain;
+    }
     vec3 normal = normalize(vec3(tilt.x, 1.0, tilt.y));
 
     const vec3 toCamera = uCameraPosition - vWorld;

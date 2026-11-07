@@ -42,6 +42,7 @@
 #include <g7/render/Particles.hpp>
 #include <g7/render/PassTimes.hpp>
 #include <g7/render/PostProcess.hpp>
+#include <g7/render/Rain.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/Ssao.hpp>
 #include <g7/render/Terrain.hpp>
@@ -73,6 +74,7 @@
 #include <g7/world/Terrain.hpp>
 #include <g7/world/Triggers.hpp>
 #include <g7/world/Water.hpp>
+#include <g7/world/Weather.hpp>
 #include <g7/world/WorldFile.hpp>
 
 #include <deque>
@@ -253,6 +255,8 @@ struct EngineConfig
     std::string start;
     /// Game time at start, "HH:MM" (--time); empty = [time] start (default 08:00).
     std::string startTime;
+    /// Weather state at start (--weather, M17 E1); empty = data/weather.toml's start and schedule.
+    std::string weather;
     /// Console lines (Lua) run once after start (--exec, repeatable), e.g. `insert_npc('npc_farmer_woman')`.
     std::vector<std::string> exec;
     /// --cam, --yaw, --pitch, --fly, --player: a view to reproduce (StartView.hpp), applied after loading.
@@ -431,6 +435,8 @@ public:
     [[nodiscard]] const std::string& ambience() const noexcept { return m_ambience.name; }
     /// In a room: the ambience outside, heard quietly and muffled; empty outside.
     [[nodiscard]] const std::string& ambienceOutside() const noexcept { return m_ambience.outside; }
+    /// The rain layer playing now (M17 R): amb_rain, amb_rain_roof (indoors) or empty.
+    [[nodiscard]] const std::string& rainSound() const noexcept { return m_rainSound.name; }
     /// The occlusion of a 3D sound the engine started (0 open .. 1 muffled).
     [[nodiscard]] f32 soundMuffle(audio::SoundId id) const noexcept
     {
@@ -741,6 +747,12 @@ public:
     /// Starts talking to an NPC: an important Info runs first, then the menu of Infos.
     [[nodiscard]] Result<void> startDialog(u32 npc);
     [[nodiscard]] bool inDialog() const noexcept { return m_dialog.has_value(); }
+    /// The weather (M17 E1): its state and course, and what it is at the current game time.
+    [[nodiscard]] const world::Weather& weather() const noexcept { return m_weather; }
+    [[nodiscard]] world::WeatherSample weatherNow() const { return m_weather.sample(m_gameTime.clock()); }
+    /// Rain (M17 R): streaks drawn last frame (0: dry or [render] weather = false) and the rain map.
+    [[nodiscard]] u32 rainStreaksDrawn() const noexcept { return m_rainDrawn; }
+    [[nodiscard]] const render::RainRenderer& rain() const noexcept { return m_rain; }
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
@@ -1240,6 +1252,13 @@ private:
         std::optional<audio::SoundId> outsideLoop;
     };
     Ambience m_ambience;
+    struct RainSound // M17 R: the rain layer over the zone's ambience
+    {
+        std::string name; ///< amb_rain, amb_rain_roof (indoors) or empty
+        std::optional<audio::SoundId> loop;
+    };
+    RainSound m_rainSound;
+    void updateRainSound();
     std::map<audio::SoundId, Vec3> m_spatialSounds; // where the 3D sounds play (occlusion)
     f32 m_occlusionTimer = 0.0f;
     void bindAudioFunctions();
@@ -1451,6 +1470,9 @@ private:
     void updateEnvironment();
     void renderScene(u32 width, u32 height);
     void updateGrading(const render::Grading& timeOfDay);
+    void updateWeather();
+    void updateRainMap();
+    void drawRain(u32 width, u32 height);
     void rebuildWaterSurfaces();
     void drawWater();
     void cullInstances(const Frustum& view); // fills m_drawItems (multi-draw) or draws them right away
@@ -1636,6 +1658,13 @@ private:
     world::Scene m_scene;       // world vobs (--world, --scene); render instances are built from it
     world::GameTime m_gameTime; // global: runs across level changes (save game: save.md)
     world::DayCycle m_dayCycle = world::DayCycle::fallback();
+    world::Weather m_weather = world::Weather::fallback();           // M17 E1: data/weather.toml
+    render::RainRenderer m_rain;                                     // M17 R
+    std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
+    render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
+    bool m_weatherVisible = true;                                    // [render] weather
+    f64 m_rainTime = 0.0;                                            // moves the drops (real seconds)
+    u32 m_rainDrawn = 0;                                             // streaks drawn last frame
     render::Sky m_sky;
     f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
     bool m_sunEnabled = true;        // debug: sun and moon light off

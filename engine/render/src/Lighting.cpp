@@ -179,6 +179,7 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
         gpu.indoorBoxes[2 * i + 1] = Vec4(v.halfExtents, std::sin(v.yaw));
     }
     const auto& points = lights.lights();
+    gpu.shadowExtra.z = 1.0f - std::clamp(environment.shadowStrength, 0.0f, 1.0f);
     gpu.counts[0] = static_cast<i32>(points.size());
     for (usize i = 0; i < points.size(); ++i)
     {
@@ -200,8 +201,8 @@ void packShadows(GpuLighting& gpu, std::span<const Cascade> cascades, const Shad
     }
     gpu.shadowParams = Vec4(count > 0 ? 1.0f : 0.0f, static_cast<f32>(count),
                             count > 0 ? cascades[count - 1].splitFar : 0.0f, settings.normalOffset);
-    gpu.shadowExtra =
-        Vec4(debugColours ? 1.0f : 0.0f, 1.0f / static_cast<f32>(settings.resolution * 2), 0.0f, 0.0f);
+    gpu.shadowExtra = Vec4(debugColours ? 1.0f : 0.0f, 1.0f / static_cast<f32>(settings.resolution * 2),
+                           gpu.shadowExtra.z, 0.0f); // z from packLighting (weather)
     gpu.cameraPosition = Vec4(camera.transform.position, 1.0f);
     gpu.cameraForward = Vec4(camera.transform.forward(), 0.0f);
 }

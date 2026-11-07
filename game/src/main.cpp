@@ -40,6 +40,7 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --world=<path>          load a .g7world (VFS path or file on disk)
   --start=<name>          start point of the world
   --time=HH:MM            game time at start
+  --weather=<state>       weather state at start (data/weather.toml: klar, regen, gewitter ...)
   --exec=<lua>            console line run after start (repeatable), e.g. --exec=camp_people()
   --cam=x,y,z             free camera at this point (m); with a player: fly mode
   --yaw=deg --pitch=deg   view direction (yaw 0 = along -Z, positive left; pitch positive up)
@@ -84,6 +85,7 @@ struct CommandLine
     std::string saveWorld;
     std::string start;
     std::string time;
+    std::string weather; // --weather (M17 E1)
     std::vector<std::string> exec;
     std::string screenshot;
     bool benchmark = false;
@@ -178,6 +180,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg.starts_with("--time="))
         {
             cli.time = std::string(arg.substr(7));
+        }
+        else if (arg.starts_with("--weather="))
+        {
+            cli.weather = std::string(arg.substr(10));
         }
         else if (arg.starts_with("--exec="))
         {
@@ -444,6 +450,7 @@ int main(int argc, char** argv)
     }
     config.start = cli->start;
     config.startTime = cli->time;
+    config.weather = cli->weather;
     config.exec = cli->exec;
     config.view = cli->view;
     if (!cli->saveWorld.empty())

@@ -97,6 +97,7 @@ struct WaterSurface
 struct WaterFrame
 {
     f32 time = 0.0f; ///< seconds, moves the waves
+    f32 rain = 0.0f; ///< M17 R: rain rings on the surface (0 dry .. 1)
     WaterQuality quality = WaterQuality::Medium;
     Vec3 sunDirection{0.0f, 1.0f, 0.0f}; ///< towards the sun
     Vec3 sunColor{1.0f};                 ///< times intensity, linear

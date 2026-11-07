@@ -76,6 +76,19 @@ struct HeroState
     std::string torch; ///< the lit torch's item, empty: none
 };
 
+/// The weather (M17 E1, world::WeatherSnapshot); older saves have none - the game keeps its weather then.
+struct WeatherSave
+{
+    std::string state;
+    std::string previous;
+    f64 changeMinute = 0.0;
+    f64 fadeMinutes = 0.0;
+    f64 nextMinute = 0.0;
+    u64 random = 0;
+    bool locked = false;
+    friend bool operator==(const WeatherSave&, const WeatherSave&) = default;
+};
+
 struct GameState
 {
     u32 version = kGameStateVersion;
@@ -87,7 +100,8 @@ struct GameState
     script::Value story; ///< the table Story
     std::optional<HeroState> hero;
     std::string currentWorld;
-    std::vector<WorldState> worlds; ///< every visited world, the current one included
+    std::vector<WorldState> worlds;     ///< every visited world, the current one included
+    std::optional<WeatherSave> weather; ///< M17 E1; additive (older saves: none)
 };
 
 /// Stable text: the same state always gives the same bytes (tests: capture -> apply -> capture).
