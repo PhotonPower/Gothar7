@@ -221,10 +221,12 @@ float puddle(vec3 worldPosition, vec3 n, float wet)
     return smoothstep(0.70, 0.75, shape + 0.2 * (wet - 0.5)) * smoothstep(0.92, 0.98, n.y);
 }
 
-// Wet surfaces: darker albedo (water in the pores), puddles flat and dark; returns the sheen to add: the sky
-// mirrored (Fresnel, mostly the horizon at grazing views) and a glint of the sun.
-vec3 wetSurface(vec3 worldPosition, inout vec3 albedo, inout vec3 n)
+// Wet surfaces: darker albedo (water in the pores), puddles flat and darker still; returns the mirrored sky to
+// add (Fresnel, mostly the horizon at grazing views) and in `glint` the sun's highlight. The caller limits the sky
+// with wetSheen(): a wet surface never gets lighter than its dry tone, a puddle stays darker than the wet ground.
+vec3 wetSurface(vec3 worldPosition, inout vec3 albedo, inout vec3 n, out vec3 glint)
 {
+    glint = vec3(0.0);
     const float wet = wetness(worldPosition, n);
     if (wet <= 0.0)
     {
@@ -239,6 +241,14 @@ vec3 wetSurface(vec3 worldPosition, inout vec3 albedo, inout vec3 n)
     const float up = smoothstep(0.5, 0.95, n.y);
     const vec3 sky = uLighting.fogColorStart.rgb; // the horizon colour (the sky's at grazing views)
     const vec3 halfway = normalize(view + uLighting.sunDirection.xyz);
-    const float glint = pow(max(dot(n, halfway), 0.0), mix(60.0, 600.0, pool));
-    return fresnel * sky * (0.35 * wet * up + 0.6 * pool) + uLighting.sunColor.rgb * glint * (0.15 * wet * up + pool);
+    const float highlight = pow(max(dot(n, halfway), 0.0), mix(60.0, 600.0, pool));
+    glint = uLighting.sunColor.rgb * highlight * (0.15 * wet * up + pool);
+    return fresnel * sky * (0.2 * wet * up + 0.25 * pool);
+}
+
+// The mirrored sky on a lit wet surface, at most 0.6 of its own lit colour: with the albedo at 0.6 (wet) the
+// surface stays below its dry tone, a puddle (0.3) below the wet ground.
+vec3 wetSheen(vec3 lit, vec3 sky)
+{
+    return min(sky, lit * 0.6);
 }

@@ -542,7 +542,9 @@ MeshRenderer::setRainMap(texture);                                  // Einheit 9
   Himmel (Horizontfarbe) nach Fresnel und ein Sonnenglanz, nur auf nach oben zeigenden Flächen. Ohne Nässe wird nichts
   gerechnet, das Bild bleibt wie vorher. Figuren werden mit nass (sie stehen im Regen).
 - **Pfützen** (Regenqualität `high`, Entscheidung 9): Rauschflecken auf flachem Boden (Normale nahezu senkrecht), die
-  ab halber Nässe wachsen; dort dunkler (×0,5), flach und spiegelnd (Fresnel bis zum Spiegel, scharfer Glanz). Sie
+  ab halber Nässe wachsen; dort dunkler (×0,5), flach, mit gedämpfter Spiegelung des Himmels und scharfem Glanz. Die
+  Spiegelung des Himmels ist auf 0,6 der eigenen beleuchteten Farbe begrenzt (`wetSheen`): nasser Boden wird nie heller
+  als trocken, Pfützen bleiben dunkler als der nasse Boden (Koordinator, Durchsicht von #390). Sie
   trocknen mit der Nässe ab (etwa eine Spielstunde, Entscheidung 9).
 - **Noch nicht:** Material-Rauheit (alle Materialien gleich; die Vorgabe je Material-Gruppe folgt, wenn welt und
   figuren sie setzen), SSR in Pfützen.
