@@ -59,6 +59,9 @@ def _kinds(doc: dict[str, Any]) -> set[str]:
     for area in doc.get("areas", []):
         for layer in area.get("layers", []):
             out |= set(layer.get("pick", {}))
+    for key in ("slopes", "wall", "banks"):
+        for layer in (doc.get(key) or {}).get("layers", []):
+            out |= set(layer.get("pick", {}))
     formal = doc.get("formal")
     if formal:
         out.add(formal["hedge"]["kind"])
@@ -138,12 +141,63 @@ class _Areas:
                           j * step + rng.uniform(-0.45, 0.45) * step)  # fmt: skip
                     if rng.random() >= float(layer["chance"]) or not inner.contains(Point(at)):
                         continue
+                    if not self.slope_fits(at, layer):
+                        continue
                     kind = _pick(rng, layer["pick"])
                     key = f"veg:{area_id}:{li}:{i}:{j}"
                     name = f"VEG_{area_id.upper()}_{li}_{i}_{j}".replace("-", "M")
                     if self.put(key, name, kind, at, rng, landmarks, layer.get("slopeM")):
                         n += 1
         return n
+
+    def slope_deg(self, at: tuple[float, float]) -> float:
+        """The ground's slope at ``at`` (degrees), over a metre each way."""
+        h = self.p.site.height_at
+        x, z = at
+        gx = (h(x + 1.0, z) - h(x - 1.0, z)) / 2.0
+        gz = (h(x, z + 1.0) - h(x, z - 1.0)) / 2.0
+        return math.degrees(math.atan(math.hypot(gx, gz)))
+
+    def slope_fits(self, at: tuple[float, float], layer: dict[str, Any]) -> bool:
+        if "minSlopeDeg" not in layer and "maxSlopeDeg" not in layer:
+            return True
+        d = self.slope_deg(at)
+        return float(layer.get("minSlopeDeg", -1.0)) <= d < float(layer.get("maxSlopeDeg", 91.0))
+
+    def slopes(self) -> None:
+        """Scrub and grass on the steep ground round the old town (by the heightmap's slope)."""
+        spec = self.rules.get("slopes")
+        if spec:
+            self.p.plan.counts["slopes"] += self.fill("hang", self.town, spec["layers"])
+
+    def wall_band(self) -> None:
+        """A band outside the town wall, ``fromM``..``toM`` off it: grass and scrub (the wall
+        path along its foot stays free)."""
+        spec = self.rules.get("wall")
+        if not spec or not self.p.walls:
+            return
+        hull = unary_union(self.p.walls).convex_hull
+        band = hull.buffer(float(spec["toM"])).difference(hull.buffer(float(spec["fromM"])))
+        self.p.plan.counts["wall band"] += self.fill("mauer", band, spec["layers"])
+
+    def banks(self) -> None:
+        """Reed and bushes along a river, ``fromM``..``toM`` off its axis, within ``reachM`` of
+        the town wall."""
+        spec = self.rules.get("banks")
+        if not spec:
+            return
+        names = set(spec["rivers"])
+        lines = [LineString(f["points"]) for f in sorted(self.p.site.features,
+                                                         key=lambda f: str(f.get("osmId")))
+                 if f.get("geometry") == "line" and f.get("name") in names
+                 and len(f.get("points") or []) >= 2]  # fmt: skip
+        if not lines:
+            return
+        axis = unary_union(lines)
+        core = self.p.walls or list(self.p.houses.values())
+        near = unary_union(core).convex_hull.buffer(float(spec["reachM"]))
+        band = axis.buffer(float(spec["toM"])).difference(axis.buffer(float(spec["fromM"])))
+        self.p.plan.counts["banks"] += self.fill("ufer", band.intersection(near), spec["layers"])
 
     def areas(self) -> None:
         feats = sorted(self.p.site.features, key=lambda f: str(f.get("osmId")))
@@ -240,7 +294,11 @@ class _Areas:
 
 
 def plan_vegetation(planner: _Planner, rules: VegRules) -> None:
-    """After the lanes (props, trees, yards, grass): the formal garden, then the areas."""
+    """After the lanes (props, trees, yards, grass): the formal garden, the areas, then the
+    river banks, the band outside the town wall and the steep slopes."""
     a = _Areas(planner, rules)
     a.formal()
     a.areas()
+    a.banks()
+    a.wall_band()
+    a.slopes()
