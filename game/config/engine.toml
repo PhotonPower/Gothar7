@@ -271,3 +271,7 @@ ui_drop = ["Delete", "PadNorth"] # Inventar: das gewählte Item ablegen (M14 Tei
 [ai]
 # KI-LOD: NPCs weiter weg vom Spieler werden nicht simuliert (springen bei Routinenwechseln an ihren Ort).
 simulation_distance = 80.0
+
+[editor]
+# Editor-Modus (gothar --editor, docs/modules/tools.md): so viele Schritte lassen sich je Sitzung rückgängig machen.
+undo_depth = 200
