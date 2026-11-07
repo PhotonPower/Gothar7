@@ -1,0 +1,26 @@
+{
+ "version": 1,
+ "note": "Vegetation auf Flächen (W6 Vegetation, Plan freigegeben vom Koordinator 2026-11-07). Mechanik in gothar_worldgen/vegetation_place.py, Regeln hier. areas: OSM-Flächen nach Art (features.json kind), je Schicht ein verrücktes Raster (stepM, chance, pick, edgeM Abstand zum Rand, slopeM erlaubter Höhenunterschied unter dem Fuß). Nur bis reachM um die Stadtmauer (PR 2; Umland folgt). formal: der Pomeranzengarten, Buchshecken entlang beider Seiten seiner Wege (Lücken an Kreuzungen), Beete dazwischen. Masken wie in outdoor.json (Gassen, Wege, Türgassen, Wegnetz-Kanten, Freepoints, Häuser, Handmodelle).",
+ "seed": 7,
+ "reachM": 60.0,
+ "areas": [
+  {"name": "garten", "kinds": ["garden", "allotments", "orchard"], "minM2": 30.0, "layers": [
+   {"pick": {"tree_fruit": 4, "tree_young": 1}, "stepM": 8.0, "chance": 0.55, "edgeM": 1.5},
+   {"pick": {"bush_hazel": 2, "bush_box": 2}, "stepM": 5.0, "chance": 0.25, "edgeM": 0.8},
+   {"pick": {"grass_patch": 1}, "stepM": 4.0, "chance": 0.35, "edgeM": 0.5, "slopeM": 0.6}
+  ]},
+  {"name": "wiese", "kinds": ["meadow", "grass", "park"], "minM2": 50.0, "layers": [
+   {"pick": {"tree_linden": 1, "tree_oak": 1, "tree_young": 2}, "stepM": 16.0, "chance": 0.35, "edgeM": 3.0},
+   {"pick": {"bush_hazel": 1, "bush_scrub": 1}, "stepM": 9.0, "chance": 0.2, "edgeM": 1.0},
+   {"pick": {"grass_patch": 1}, "stepM": 4.0, "chance": 0.4, "edgeM": 0.5, "slopeM": 0.6}
+  ]}
+ ],
+ "formal": {
+  "name": "Pomeranzengarten",
+  "hedge": {"kind": "hedge_box", "offsetM": 0.7, "gapM": 0.0, "crossingM": 1.2, "minRun": 3},
+  "beds": [
+   {"pick": {"tree_fruit": 1}, "stepM": 7.0, "chance": 0.6, "edgeM": 2.0},
+   {"pick": {"grass_patch": 1}, "stepM": 3.5, "chance": 0.5, "edgeM": 0.6, "slopeM": 0.4}
+  ]
+ }
+}
