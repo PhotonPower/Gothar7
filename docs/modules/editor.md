@@ -13,8 +13,8 @@ neuer Ort samt Wegnetz, Zonen und NPC-Routinen **ohne Texteditor** bauen lässt 
 | C – Zonen- und Trigger-Editor | #361 | umgesetzt |
 | D – Licht- und Mob-Editor | #362 | umgesetzt |
 | E – Routinen-Vorschau und Play-in-Editor | #367 | umgesetzt |
-| F1 – Prefabs, Vobs aus Blender (`VOB_`) | dieser PR | umgesetzt |
-| F2 – Gelände (Höhen-Pinsel, Mesh → Heightmap) | – | offen (eigener PR) |
+| F1 – Prefabs, Vobs aus Blender (`VOB_`) | #371 | umgesetzt |
+| F2 – Gelände (Höhen-Pinsel, Mesh → Heightmap) | dieser PR | umgesetzt |
 
 Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
 - **A:** Befehle sind Daten statt Klassen mit `apply`/`revert`: `editor::Command` hält `VobState` (Zeile der
@@ -73,6 +73,16 @@ Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
   - `VOB_`-Knoten: Licht, Startpunkt, Trigger; Vertrag in `asset.md`. Die Engine reicht die leeren Knoten als
     einfache Werte durch (`Engine::modelMarkers`, `asset::loadGltfMarkers`), da der Editor `asset` nicht direkt
     nutzen darf.
+- **F2:**
+  - Die Engine bietet `editableHeightfield()` (null bei Sperre), `terrainHeightsChanged()` (lädt die Höhentextur
+    neu und berechnet die Kachel-Grenzen, `TerrainRenderer::updateHeights`), `terrainStrokeFinished()` (baut die
+    Kollision sofort neu, der Editor pausiert die Simulation), `terrainSplat(map)` (RGBA-Bytes der Splat-Karte auf
+    der CPU, dieselben wie für die Fußschritte), `terrainSplatChanged()` und `saveTerrain()`.
+  - Statt eines Teil-Updates der Kacheln lädt `updateHeights` die ganze Höhentextur neu: Eigene Orte sind klein,
+    und Leonberg ist gesperrt.
+  - Gesperrt ist jede Welt mit `generator`-Kopf, nicht nur Leonberg.
+  - Splat-Malen schreibt PNG. Gekochte `.ktx2`-Kopien gelten weiter, bis neu gekocht wird; die Engine warnt dann.
+  - Die Pinsel-Mathematik steht in `TerrainBrush.hpp`, ohne Fenster getestet.
 
 ## Ausgangslage (M4)
 - `g7_editor` (Bibliothek in `tools/editor`) ist ein `EngineTool`. Die Engine kennt nur `update`/`ui`. Fenster sind

@@ -123,6 +123,20 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
   - Das Setzen ist ein Undo-Schritt für Vobs und Wegnetz zusammen.
 - **Vobs aus Blender (ADR 0023):** Hat eine `.glb` leere Knoten `VOB_LIGHT_…`, `VOB_START_…` oder `VOB_TRIGGER_…`,
   setzt der Editor sie beim Platzieren des Modells als Kind-Vobs ein (Vertrag in `asset.md` „Vobs aus Blender“).
+- **Gelände (M16 Teil F2, ADR 0023, Entscheidung 6; Taste T bzw. Fenster „Terrain“):**
+  - Pinsel bei gehaltener linker Maustaste: anheben, senken, glätten, ebnen auf eine Höhe (Strg+Klick nimmt die Höhe
+    unter der Maus), Splat-Schicht malen. Der Pinsel hat Radius und Stärke, die Wirkung fällt zum Rand hin weich ab.
+  - Gemalt wird so, dass die Summe der Schichtgewichte gleich bleibt.
+  - Das gezeichnete Gelände folgt sofort. Die Kollision wird nach jedem Strich neu gebaut.
+  - Ein Strich ist ein Undo-Schritt. Er hält nur das berührte Rechteck der Höhen bzw. der Splat-Karten, vorher und
+    nachher.
+  - Strg+S schreibt die `.r16` und die Splat-PNGs über ihre Quellen auf der Platte. Gibt es gekochte Kopien
+    (`.ktx2`), gelten sie bis zum nächsten Kochen; die Engine warnt dann.
+  - Höhen bleiben im Bereich `minY`–`maxY` des `terrain`-Blocks (der Bereich der `.r16`).
+  - **Gesperrt** für Welten mit `generator`-Kopf: Leonbergs Gelände kommt aus LGL-Daten über welt.
+  - Großformen aus Blender: `g7-cook --heightmap-from-mesh <gelände.glb> <aus.r16> [<zelle m>] [<vfs-pfad>]` rastert
+    das Mesh (Stufe 0, ohne `COL_`) und schreibt den `terrain`-Block daneben (`<aus.r16>.terrain.json`). Jeder
+    Punkt nimmt die höchste Fläche darüber bzw. darunter; Punkte ohne Fläche bekommen die tiefste Höhe, mit Warnung.
 - Nach jeder Änderung baut die Engine Instanzen und Lichter aus der Szene neu (`Engine::refreshScene`, Modelle
   bleiben im Cache).
 
@@ -139,6 +153,7 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
 | Routinen-Vorschau: Zeitregler, NPC-„Geister“ an Routinen-Positionen, Prüfung; Routinen in eigener Lua-Datei je Ort | M16 E (umgesetzt) |
 | Undo/Redo (Befehle mit JSON-Zuständen, ADR 0022), Fragen vor Generator-Vobs | M16 A (umgesetzt) |
 | Prefabs (lose Kopien, mit Wegnetz-Einträgen), Vobs aus `VOB_`-Knoten einer `.glb` | M16 F (umgesetzt) |
+| Gelände: Höhen-Pinsel (anheben, senken, glätten, ebnen), Splat-Schichten malen, Mesh → Heightmap aus Blender; erzeugtes Gelände gesperrt | M16 F2 (umgesetzt) |
 | Simulation im Editor starten/stoppen (Play-in-Editor, F5 an der Kamera, Umschalt+F5 am Startpunkt) | M16 E (umgesetzt) |
 
 ## Autopilot (`gothar --walk`, vorgezogen für die W3-Begehung; Vertrag mit welt)

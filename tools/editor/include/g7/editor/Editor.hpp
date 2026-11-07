@@ -20,6 +20,7 @@
 #include <g7/editor/Prefabs.hpp>
 #include <g7/editor/RoutineEdit.hpp>
 #include <g7/editor/RoutinePreview.hpp>
+#include <g7/editor/TerrainBrush.hpp>
 #include <g7/editor/TriggerEdit.hpp>
 #include <g7/editor/WaynetCheck.hpp>
 #include <g7/editor/WaynetEdit.hpp>
@@ -187,6 +188,17 @@ public:
     /// What the last placed .glb's VOB_ markers did not give (ADR 0023).
     [[nodiscard]] const std::vector<std::string>& importWarnings() const noexcept { return m_importWarnings; }
 
+    // --- Terrain (M16 part F2, ADR 0023): height brush and splat painting; locked for generated terrain ---
+    [[nodiscard]] bool terrainMode() const noexcept { return m_terrainMode; }
+    void setTerrainMode(bool on);
+    [[nodiscard]] std::string terrainLocked() const;
+    [[nodiscard]] Brush& brush() noexcept { return m_brush; }
+    /// A stroke: begin, steps at points (seconds of brushing each), end = one undo step, then the collision.
+    [[nodiscard]] Result<void> beginStroke();
+    void strokeAt(const Vec3& centre, f32 seconds);
+    void endStroke();
+    [[nodiscard]] bool terrainDirty() const noexcept { return m_terrainDirty; }
+
     Gizmo& gizmo() noexcept { return m_gizmo; }
     bool snap = true;
     f32 snapMove = 0.5f;   ///< metres
@@ -296,5 +308,23 @@ private:
     // Prefabs and Blender vobs (part F)
     fs::Path m_prefabDirectory;
     std::vector<std::string> m_importWarnings;
+    // Terrain (part F2)
+    bool m_terrainMode = false;
+    bool m_terrainDirty = false;
+    Brush m_brush;
+    struct Stroke
+    {
+        std::vector<u16> heights;           ///< all samples before the stroke
+        std::vector<std::vector<u8>> splat; ///< every map's bytes before it
+        HeightPatch area;                   ///< what it touched
+        std::vector<SplatPatch> splatAreas; ///< per map
+    };
+    std::optional<Stroke> m_stroke;
+    ui::TerrainPanel m_terrainPanel;
+    [[nodiscard]] TerrainTarget terrainTarget();
+    [[nodiscard]] std::optional<Vec3> terrainUnder(const Vec2& mouse) const;
+    void terrainMouse(Engine& engine, const Vec2& mouse, bool pressed, bool held, f32 seconds);
+    void fillTerrainPanel();
+    void applyTerrainPanel();
 };
 } // namespace g7::editor

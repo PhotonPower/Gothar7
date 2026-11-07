@@ -54,6 +54,7 @@ void Editor::setWaynetMode(bool on)
     {
         m_zoneMode = false;
         m_zoneSelected.reset();
+        m_terrainMode = false;
         select({});
     }
     else

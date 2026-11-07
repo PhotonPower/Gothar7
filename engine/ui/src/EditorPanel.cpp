@@ -545,4 +545,45 @@ void DebugUi::routinePanel(RoutinePanel& panel)
     }
     ImGui::End();
 }
+
+void DebugUi::terrainPanel(TerrainPanel& panel)
+{
+    if (!panel.shown)
+    {
+        return;
+    }
+    ImGui::SetNextWindowPos(ImVec2(400.0f, 10.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(320.0f, 260.0f), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Terrain");
+    if (!panel.locked.empty())
+    {
+        ImGui::TextWrapped("%s", panel.locked.c_str());
+        ImGui::End();
+        return;
+    }
+    ImGui::Checkbox("terrain mode (T)", &panel.active);
+    ImGui::SameLine();
+    ImGui::TextUnformatted(panel.dirty ? "* unsaved (Ctrl+S)" : "");
+    constexpr std::array<const char*, 5> kModes = {"raise", "lower", "smooth", "flatten", "paint"};
+    ImGui::Combo("brush", &panel.mode, kModes.data(), static_cast<int>(kModes.size()));
+    ImGui::SliderFloat("radius (m)", &panel.radius, 0.5f, 50.0f);
+    ImGui::SliderFloat("strength", &panel.strength, 0.1f, 20.0f);
+    if (panel.mode == 3)
+    {
+        ImGui::DragFloat("height (m)", &panel.flattenHeight, 0.05f);
+        ImGui::TextDisabled("Ctrl+click: the height under the mouse");
+    }
+    if (panel.mode == 4)
+    {
+        std::vector<const char*> layers;
+        for (const std::string& l : panel.layers)
+        {
+            layers.push_back(l.c_str());
+        }
+        ImGui::Combo("layer", &panel.layer, layers.data(), static_cast<int>(layers.size()));
+    }
+    ImGui::TextWrapped(
+        "Left mouse held: brush. Each stroke is one undo step; the collision follows when it ends.");
+    ImGui::End();
+}
 } // namespace g7::ui

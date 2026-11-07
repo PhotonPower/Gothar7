@@ -5,6 +5,7 @@
 
 #include <g7/editor/Editor.hpp>
 #include <g7/editor/Operations.hpp>
+#include <g7/physics/Physics.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/WorldFile.hpp>
@@ -566,4 +567,67 @@ TEST_CASE("Editor GPU: prefabs - the selection with its waynet as a template, lo
     CHECK(engine.scene().vobCount() == vobs);
     CHECK(editor.waynetData().points.size() + editor.waynetData().freepoints.size() == entries);
     CHECK_FALSE(editor.placePrefab("missing").ok());
+}
+
+TEST_CASE(
+    "Editor GPU: terrain brush - heights, drawn terrain and collision follow; undo; generated terrain locked")
+{
+    {
+        WorldCopy copy;
+        Engine engine(editorConfig(copy.file));
+        REQUIRE(engine.init().ok());
+        editor::Editor editor(engine);
+        engine.addTool(editor);
+        REQUIRE(engine.terrain() != nullptr);
+        CHECK(editor.terrainLocked().empty());
+        const Vec3 spot(-60.0f, 0.0f, -60.0f); // open meadow of the camp's terrain
+        const f32 before = engine.terrain()->heightAt(spot.x, spot.z);
+        const auto ground = [&]
+        {
+            const auto hit = engine.physics().raycast(Vec3(spot.x, 200.0f, spot.z), Vec3(0.0f, -1.0f, 0.0f),
+                                                      400.0f, physics::layerBit(physics::Layer::World));
+            return hit ? hit->position.y : -1000.0f;
+        };
+        CHECK(ground() == doctest::Approx(before).epsilon(0.02));
+
+        editor.setTerrainMode(true);
+        CHECK(editor.terrainMode());
+        editor.brush() = editor::Brush{editor::BrushMode::Raise, 6.0f, 4.0f};
+        REQUIRE(editor.beginStroke().ok());
+        editor.strokeAt(spot, 0.5f);
+        editor.strokeAt(spot + Vec3(1.0f, 0.0f, 0.0f), 0.5f);
+        editor.endStroke();
+        const f32 raised = engine.terrain()->heightAt(spot.x, spot.z);
+        CHECK(raised > before + 3.0f);
+        CHECK(editor.terrainDirty());
+        CHECK(engine.runFrame()); // the collision anew after the stroke
+        CHECK(ground() == doctest::Approx(raised).epsilon(0.02));
+
+        REQUIRE(editor.undo().value()); // one stroke, one step
+        CHECK(engine.terrain()->heightAt(spot.x, spot.z) == doctest::Approx(before).epsilon(0.001));
+        CHECK(engine.runFrame());
+        CHECK(ground() == doctest::Approx(before).epsilon(0.02));
+
+        // Painting a layer: the weights change and undo.
+        editor.brush() = editor::Brush{editor::BrushMode::Paint, 6.0f, 50.0f};
+        editor.brush().layer = 2;
+        REQUIRE(editor.beginStroke().ok());
+        editor.strokeAt(spot, 1.0f);
+        editor.endStroke();
+        CHECK(editor.history().undoLabel() == "terrain: paint");
+        REQUIRE(editor.undo().value());
+        // Not saved: the camp's terrain files belong to the repository.
+    }
+    {
+        WorldCopy generated(R"("generator": {"tool": "gothar-worldgen", "owned": [[1, 100]]},
+  )");
+        Engine engine(editorConfig(generated.file));
+        REQUIRE(engine.init().ok());
+        editor::Editor editor(engine);
+        engine.addTool(editor);
+        CHECK_FALSE(editor.terrainLocked().empty()); // like Leonberg: heights from the generator
+        editor.setTerrainMode(true);
+        CHECK_FALSE(editor.terrainMode());
+        CHECK_FALSE(editor.beginStroke().ok());
+    }
 }

@@ -242,7 +242,8 @@ Result<void> Editor::edit(std::string label, std::vector<world::VobId> ids,
 Result<bool> Editor::undo()
 {
     const std::string label = m_history.undoLabel();
-    auto undone = m_history.undo(m_engine.scene(), &m_waynetData, &m_zones, &m_routines);
+    TerrainTarget terrain = terrainTarget();
+    auto undone = m_history.undo(m_engine.scene(), &m_waynetData, &m_zones, &m_routines, &terrain);
     if (undone && undone.value())
     {
         historyApplied();
@@ -267,13 +268,21 @@ void Editor::historyApplied()
     {
         m_status = handed.error().message;
     }
-    selectZone(m_zoneSelected); // gone after undoing its "add"
+    selectZone(m_zoneSelected);         // gone after undoing its "add"
+    if (m_history.lastTouchedTerrain()) // part F2: drawn terrain, weights and collision follow
+    {
+        (void)m_engine.terrainHeightsChanged();
+        (void)m_engine.terrainSplatChanged();
+        m_engine.terrainStrokeFinished();
+        m_terrainDirty = true;
+    }
 }
 
 Result<bool> Editor::redo()
 {
     const std::string label = m_history.redoLabel();
-    auto redone = m_history.redo(m_engine.scene(), &m_waynetData, &m_zones, &m_routines);
+    TerrainTarget terrain = terrainTarget();
+    auto redone = m_history.redo(m_engine.scene(), &m_waynetData, &m_zones, &m_routines, &terrain);
     if (redone && redone.value())
     {
         historyApplied();
@@ -471,6 +480,16 @@ Result<void> Editor::write()
     m_generatedEdited.clear();
     m_waynetGeneratedEdited.clear();
     m_status = "saved " + fs::toUtf8(*path);
+    if (m_terrainDirty) // part F2: heights and splat weights over their files
+    {
+        if (auto terrain = m_engine.saveTerrain(); !terrain)
+        {
+            m_status = terrain.error().message;
+            return terrain;
+        }
+        m_terrainDirty = false;
+        m_status += " and the terrain";
+    }
     if (routinesDirty()) // part E: the routines of the editor's file with the world
     {
         if (auto routines = writeRoutines(); !routines)
@@ -493,7 +512,7 @@ std::string Editor::warningFor(world::VobId id) const
     return {};
 }
 
-void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
+void Editor::update(Engine& engine, f64 seconds, bool uiMouse, bool uiKeyboard)
 {
     const platform::Input& input = engine.input();
     const bool shiftDown = input.isDown(platform::Key::LeftShift) || input.isDown(platform::Key::RightShift);
@@ -545,6 +564,10 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         {
             setZoneMode(!m_zoneMode); // zones (M16 part C)
         }
+        if (input.pressed(platform::Key::T))
+        {
+            setTerrainMode(!m_terrainMode); // the terrain (M16 part F2)
+        }
         if (input.pressed(platform::Key::L))
         {
             localAxes = !localAxes;
@@ -562,6 +585,10 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
             if (m_waynetMode)
             {
                 (void)deleteWaynetSelection();
+            }
+            else if (m_terrainMode)
+            {
+                // the terrain has nothing to delete
             }
             else if (m_zoneMode)
             {
@@ -597,6 +624,12 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         waynetMouse(engine, mouse, !uiMouse && input.pressed(platform::MouseButton::Left),
                     input.isDown(platform::MouseButton::Left));
         drawWaynet();
+        return;
+    }
+    if (m_terrainMode)
+    {
+        terrainMouse(engine, mouse, !uiMouse && input.pressed(platform::MouseButton::Left),
+                     input.isDown(platform::MouseButton::Left), static_cast<f32>(seconds));
         return;
     }
     if (m_zoneMode)
@@ -1192,6 +1225,12 @@ void Editor::ui(Engine&, ui::DebugUi& debugUi)
     }
     fillRoutinePanel();
     debugUi.routinePanel(m_routinePanel);
+    if (!playing())
+    {
+        fillTerrainPanel();
+        debugUi.terrainPanel(m_terrainPanel);
+        applyTerrainPanel();
+    }
     applyRoutinePanel();
 }
 } // namespace g7::editor
