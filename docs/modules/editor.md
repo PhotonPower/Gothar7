@@ -11,8 +11,9 @@ neuer Ort samt Wegnetz, Zonen und NPC-Routinen **ohne Texteditor** bauen lässt 
 | A – Befehle, Undo/Redo, Schutz erzeugter Daten | #355 | umgesetzt |
 | B – Wegnetz-Editor | #359 | umgesetzt |
 | C – Zonen- und Trigger-Editor | #361 | umgesetzt |
-| D – Licht- und Mob-Editor | dieser Teil-D-PR | umgesetzt |
-| E, F | – | offen |
+| D – Licht- und Mob-Editor | #362 | umgesetzt |
+| E – Routinen-Vorschau und Play-in-Editor | dieser Teil-E-PR | umgesetzt |
+| F | – | offen |
 
 Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
 - **A:** Befehle sind Daten statt Klassen mit `apply`/`revert`: `editor::Command` hält `VobState` (Zeile der
@@ -42,6 +43,23 @@ Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
   - „Tür offen“ gibt es nur für Türen. Die Slots des Typs stehen als Marker an der Auswahl.
   - Die Listen kommen über die Engine (`Engine::mobDefinitions`, `mobTypeNames`, `mobTypeSlots`,
     `scriptInstanceNames`, `guildNames`, `lightBudget`).
+- **E:** Die Engine liefert reine Abfragen ohne Nebenwirkung: `Engine::routines()` (die `Routine`-Instanzen mit
+  Datei), `npcRoutines()`, `routinePlace(ort)`, `scriptGlobalNames("zs_")`. Der Eintrag zu einer Minute steht im
+  Editor (`RoutinePreview.hpp`, `entryAt`), nicht als `Engine::routineAt`.
+  - Geister: Marker mit Name und Zustand. Das NPC der gewählten Routine ist eine einfache Strichfigur aus
+    Debug-Linien, keine echte Figur (Entscheidung 8 sagt „Figur“; eine Modellfigur je Geist folgt bei Bedarf).
+  - Geprüft werden nur die Routinen, denen NPCs dieser Welt folgen, und die der Editor-Datei.
+  - Routinen bearbeiten: Die Datei heißt nach der Weltdatei (`routines/<ort>_editor.lua`). Ein NPC bekommt seine
+    Routine weiter in seiner `Npc`-Instanz (`routine = "rtn_…"`). Der Editor legt nur die Routinen an und füllt sie.
+    Lesen und Schreiben sind reine Funktionen (`RoutineEdit.hpp`, Rundreise im Test). `Engine::writeScript`
+    schreibt die Datei in den Skriptordner (`EngineConfig::extraScriptDirectory` für Tests) und lädt die Skripte
+    neu. Routinen-Schritte sind Befehle wie alle anderen (Momentaufnahme der Editor-Routinen).
+  - Play-in-Editor: Es gibt kein `PlayInEditor.hpp`. Der Schnappschuss ist der Spielstand aus M15
+    (`captureGame`/`applyGame`) im Speicher der Engine (`Engine::startPlay`/`stopPlay`), nicht die Befehls-JSON
+    aus A: So kommen auch NPCs, Story und Zeit zurück. Wegnetz und Zonen des Editors gibt der Editor danach wieder
+    an die Engine.
+  - Weil F5 auch Schnellspeichern ist: Mit Editor speichert und lädt F5/F9 nicht, und während Play-in-Editor sperrt
+    `saveBlocker` jedes Speichern (die Spielstände gehören dem Projektinhaber).
 
 ## Ausgangslage (M4)
 - `g7_editor` (Bibliothek in `tools/editor`) ist ein `EngineTool`. Die Engine kennt nur `update`/`ui`. Fenster sind

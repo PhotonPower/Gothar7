@@ -155,4 +155,47 @@ struct ZonePanel
     bool checkTriggers = false;
     i32 clickedIssue = -1;
 };
+
+/// The routines window of the editor (M16 part E, docs/modules/editor.md): ghosts, the day plans, editing the
+/// routines of the editor's own file, play-in-editor.
+struct RoutinePanel
+{
+    // Shown
+    bool shown = false;
+    bool playing = false;
+    std::vector<std::string> npcs;     ///< "npc_x: rtn_y - zs_sweep @ wp_z"
+    std::vector<std::string> routines; ///< every routine; editable ones marked
+    i32 selectedRoutine = -1;
+    bool editable = false;            ///< the selected routine lives in the editor's file
+    std::string file;                 ///< of the selected routine
+    std::string editorFile;           ///< routines/<site>_editor.lua
+    bool dirty = false;               ///< the editor's routines differ from the file
+    std::vector<std::string> entries; ///< of the selected routine
+    i32 selectedEntry = -1;
+    std::vector<std::string> states; ///< zs_ states of the scripts
+    std::vector<std::string> issues;
+
+    // Edited
+    bool ghosts = true;
+    f32 hour = 12.0f; ///< preview time (not the game's)
+    std::string from = "08:00";
+    std::string to = "20:00";
+    i32 state = 0;
+    std::string at;
+    bool pickPlace = false; ///< the next click in the world picks a way point or freepoint for `at`
+    std::string newName = "rtn_";
+
+    // Actions of this frame
+    i32 clickedNpc = -1;
+    i32 clickedRoutine = -1;
+    i32 clickedEntry = -1;
+    bool addEntry = false;
+    bool changeEntry = false;
+    bool removeEntry = false;
+    bool newRoutine = false;
+    bool write = false;
+    bool play = false;        ///< F5: at the camera
+    bool playAtStart = false; ///< Shift+F5
+    bool stop = false;
+};
 } // namespace g7::ui

@@ -92,7 +92,15 @@ Editor::Editor(Engine& engine)
     }
     std::sort(m_worlds.begin(), m_worlds.end());
     m_scriptFunctions = engine.scriptFunctions();
-    m_mobLists = mobLists(); // part D
+    m_mobLists = mobLists();                 // part D
+    for (RoutineInfo& r : engine.routines()) // part E: the routines of the editor's file
+    {
+        if (r.file == editorRoutineFile())
+        {
+            m_routines.push_back(std::move(r));
+        }
+    }
+    m_routinesWritten = m_routines;
     G7_LOG_INFO("editor", "editor mode: {} models to place; left click selects, right mouse looks",
                 m_assets.size());
 }
@@ -228,7 +236,7 @@ Result<void> Editor::edit(std::string label, std::vector<world::VobId> ids,
 Result<bool> Editor::undo()
 {
     const std::string label = m_history.undoLabel();
-    auto undone = m_history.undo(m_engine.scene(), &m_waynetData, &m_zones);
+    auto undone = m_history.undo(m_engine.scene(), &m_waynetData, &m_zones, &m_routines);
     if (undone && undone.value())
     {
         historyApplied();
@@ -259,7 +267,7 @@ void Editor::historyApplied()
 Result<bool> Editor::redo()
 {
     const std::string label = m_history.redoLabel();
-    auto redone = m_history.redo(m_engine.scene(), &m_waynetData, &m_zones);
+    auto redone = m_history.redo(m_engine.scene(), &m_waynetData, &m_zones, &m_routines);
     if (redone && redone.value())
     {
         historyApplied();
@@ -429,6 +437,14 @@ Result<void> Editor::write()
     m_generatedEdited.clear();
     m_waynetGeneratedEdited.clear();
     m_status = "saved " + fs::toUtf8(*path);
+    if (routinesDirty()) // part E: the routines of the editor's file with the world
+    {
+        if (auto routines = writeRoutines(); !routines)
+        {
+            return routines;
+        }
+        m_status = "saved " + fs::toUtf8(*path) + " and scripts/" + editorRoutineFile();
+    }
     return {};
 }
 
@@ -446,6 +462,32 @@ std::string Editor::warningFor(world::VobId id) const
 void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
 {
     const platform::Input& input = engine.input();
+    const bool shiftDown = input.isDown(platform::Key::LeftShift) || input.isDown(platform::Key::RightShift);
+    // Play-in-editor (part E): the game runs; F5 or Esc stops it, nothing else of the editor.
+    if (playing())
+    {
+        if (!uiKeyboard && (input.pressed(platform::Key::F5) || input.pressed(platform::Key::Escape)))
+        {
+            (void)stopPlay();
+        }
+        return;
+    }
+    if (!uiKeyboard && input.pressed(platform::Key::F5))
+    {
+        (void)startPlay(shiftDown); // F5 at the camera, Shift+F5 at the start point (decision 7)
+        return;
+    }
+    drawGhosts();
+    if (m_routinePanel.pickPlace && !uiMouse && input.pressed(platform::MouseButton::Left))
+    {
+        // The routine window waits for a place: the way point or freepoint nearest the click.
+        if (std::string name = nearestWaynetName(input.mousePosition()); !name.empty())
+        {
+            m_routinePanel.at = std::move(name);
+            m_routinePanel.pickPlace = false;
+        }
+        return;
+    }
     if (!uiKeyboard)
     {
         const bool ctrl = input.isDown(platform::Key::LeftCtrl) || input.isDown(platform::Key::RightCtrl);
@@ -1093,14 +1135,20 @@ void Editor::applyFields(const std::vector<ui::EditorField>& fields)
 
 void Editor::ui(Engine&, ui::DebugUi& debugUi)
 {
-    fillPanel();
-    debugUi.editorPanel(m_panel);
-    applyPanel();
-    fillWaynetPanel();
-    debugUi.waynetPanel(m_waynetPanel);
-    applyWaynetPanel();
-    fillZonePanel();
-    debugUi.zonePanel(m_zonePanel);
-    applyZonePanel();
+    if (!playing()) // while playing only the routine window (its stop button)
+    {
+        fillPanel();
+        debugUi.editorPanel(m_panel);
+        applyPanel();
+        fillWaynetPanel();
+        debugUi.waynetPanel(m_waynetPanel);
+        applyWaynetPanel();
+        fillZonePanel();
+        debugUi.zonePanel(m_zonePanel);
+        applyZonePanel();
+    }
+    fillRoutinePanel();
+    debugUi.routinePanel(m_routinePanel);
+    applyRoutinePanel();
 }
 } // namespace g7::editor

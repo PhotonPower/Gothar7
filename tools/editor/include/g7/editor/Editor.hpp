@@ -16,6 +16,8 @@
 #include <g7/editor/Gizmo.hpp>
 #include <g7/editor/LightEdit.hpp>
 #include <g7/editor/MobEdit.hpp>
+#include <g7/editor/RoutineEdit.hpp>
+#include <g7/editor/RoutinePreview.hpp>
 #include <g7/editor/TriggerEdit.hpp>
 #include <g7/editor/WaynetCheck.hpp>
 #include <g7/editor/WaynetEdit.hpp>
@@ -133,6 +135,38 @@ public:
     /// Checks the scene's mob vobs against those lists.
     [[nodiscard]] const std::vector<MobIssue>& checkMobs();
 
+    // --- Routines and play-in-editor (M16 part E) ---
+    /// Where an NPC's routine puts it at `minute` (ghost): way point or freepoint of the entry and its state.
+    struct Ghost
+    {
+        std::string npc;
+        std::string routine;
+        std::string state; ///< empty: no entry at that minute
+        std::string at;
+        std::optional<Vec3> place; ///< nullopt: the waynet does not know `at`
+        Vec3 now{0.0f};            ///< where the NPC stands now
+    };
+    [[nodiscard]] std::vector<Ghost> ghosts(u32 minute) const;
+    /// Every routine: the loaded ones, those of the editor's file as edited.
+    [[nodiscard]] std::vector<RoutineInfo> allRoutines() const;
+    [[nodiscard]] const std::vector<RoutineInfo>& editorRoutines() const noexcept { return m_routines; }
+    [[nodiscard]] std::string editorRoutineFile() const;
+    /// The day plan checks (times, gaps, overlaps, places the waynet lacks) of the routines this world uses:
+    /// those of its NPCs and of its editor file.
+    [[nodiscard]] std::vector<RoutineIssue> checkRoutines() const;
+    /// Routines of the editor's file (others are shown only); each edit is undoable, the file is written by
+    /// writeRoutines (or save).
+    [[nodiscard]] Result<void> newRoutine(std::string name);
+    [[nodiscard]] Result<void> addRoutineEntry(std::string_view routine, RoutineEntryInfo entry);
+    [[nodiscard]] Result<void> setRoutineEntry(std::string_view routine, usize index, RoutineEntryInfo entry);
+    [[nodiscard]] Result<void> removeRoutineEntry(std::string_view routine, usize index);
+    [[nodiscard]] bool routinesDirty() const noexcept { return m_routines != m_routinesWritten; }
+    [[nodiscard]] Result<void> writeRoutines();
+    /// F5 at the camera, Shift+F5 at the start point; F5 or Esc again stops and puts the world back.
+    [[nodiscard]] Result<void> startPlay(bool atStartPoint);
+    [[nodiscard]] Result<void> stopPlay();
+    [[nodiscard]] bool playing() const noexcept;
+
     Gizmo& gizmo() noexcept { return m_gizmo; }
     bool snap = true;
     f32 snapMove = 0.5f;   ///< metres
@@ -175,6 +209,13 @@ private:
     void drawZones();
     void drawTriggers();
     void drawMobSlots(); ///< the selected mob's user slots (mobs.toml), to check them
+    Result<void> editRoutines(std::string label,
+                              const std::function<Result<void>(std::vector<RoutineInfo>&)>& change);
+    void drawGhosts();
+    void fillRoutinePanel();
+    void applyRoutinePanel();
+    [[nodiscard]] std::string nearestWaynetName(const Vec2& mouse) const;
+    [[nodiscard]] Result<RoutineEntryInfo> panelEntry() const; ///< from the routine window's fields
     void fillZonePanel();
     void applyZonePanel();
     void applyWaynetPanel();
@@ -226,5 +267,11 @@ private:
     // Lights and mobs (part D)
     std::vector<MobIssue> m_mobIssues;
     MobLists m_mobLists; ///< refreshed when the editor starts and on each check
+    // Routines and play (part E)
+    std::vector<RoutineInfo> m_routines;        ///< of the editor's file, as edited
+    std::vector<RoutineInfo> m_routinesWritten; ///< as the file holds them
+    std::string m_selectedRoutine;
+    Transform m_playCamera; ///< the camera before play-in-editor
+    ui::RoutinePanel m_routinePanel;
 };
 } // namespace g7::editor

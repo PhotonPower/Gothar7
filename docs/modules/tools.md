@@ -92,6 +92,25 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
   - „check the mobs“ meldet unbekannte Definitionen, Typen ohne Eintrag in `mobs.toml`, Besitzer, die weder NPC noch
     Gilde sind, Schlüssel und Inhalt, die keine Items sind, Schlösser aus anderen Buchstaben als L und R und offen
     gespeicherte Nicht-Türen. Ein Klick auf eine Meldung wählt das Mob.
+- **Routinen und Play-in-Editor (M16 Teil E, Fenster „Routines“):**
+  - **Geister:** Für jedes NPC der Welt zeigt ein Marker mit Name und Zustand, wo seine Routine es zur gewählten
+    Stunde hinstellt (Wegpunkt bzw. Freepoint des Eintrags). Das NPC der gewählten Routine erscheint als einfache
+    Figur, eine Linie führt von seinem jetzigen Ort dorthin. Der Regler „hour“ betrifft nur die Vorschau, nicht die
+    Spielzeit; die KI läuft dafür nicht.
+  - **Prüfung „Day plan check“:** für die Routinen der NPCs dieser Welt und der Editor-Datei. Sie meldet Zeiten, die
+    nicht HH:MM sind, leere Zeitfenster, Lücken („nothing to do 20:00-24:00“), Überschneidungen (es gilt der erste
+    Eintrag) sowie Orte ohne Zustand, ohne Ort oder unbekannt im Wegnetz.
+  - **Bearbeiten (Entscheidung 4):** Routinen der Datei `game/scripts/routines/<ort>_editor.lua` (Ort = Name der
+    Weltdatei) bearbeitet der Editor: „new routine“ (Name `rtn_…`, noch nicht vergeben), Einträge mit von/bis,
+    Zustand aus der Liste der `zs_`-Zustände der Skripte und Ort (Feld oder „pick“: der nächste Klick wählt den
+    Wegpunkt bzw. Freepoint). Jeder Schritt ist rückgängig zu machen.
+  - „write the routines“ bzw. Strg+S schreibt die Datei (nur `Routine "…" { … }`, nach Name, Einträge nach Beginn;
+    von Hand nicht anfassen) und lädt die Skripte neu. Routinen anderer Dateien zeigt der Editor nur an.
+  - **Play-in-Editor (Entscheidung 7):** F5 startet die Simulation mit dem Helden auf dem Boden unter der Kamera,
+    Umschalt+F5 am Startpunkt der Welt. F5 oder Esc hält an: Welt, NPCs, Story und Zeit stehen wieder wie vor dem
+    Start (`Engine::startPlay`/`stopPlay` über den Spielstand im Speicher), die Kamera an ihrem Platz. Solange der
+    Editor läuft, speichern F5/F9 nicht (Schnellspeichern); im Spiel aus dem Editor heraus sperrt `saveBlocker`
+    jedes Speichern.
 - Nach jeder Änderung baut die Engine Instanzen und Lichter aus der Szene neu (`Engine::refreshScene`, Modelle
   bleiben im Cache).
 
@@ -105,10 +124,10 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
 | Trigger mit Skript-Callbacks (Auswahllisten, Prüfung) | M16 C (umgesetzt) |
 | Licht-Editor mit Vorschau je Tageszeit, Lichter aus Vorlagen, Hinweis auf das Lichtbudget | M16 D (umgesetzt) |
 | Mobs: Definition aus Listen, Slots als Marker, Tür offen; Besitzer, Schloss, Inhalt angezeigt und geprüft | M16 D (umgesetzt) |
-| Routinen-Vorschau: Zeitregler, NPC-„Geister“ an Routinen-Positionen | M16 |
+| Routinen-Vorschau: Zeitregler, NPC-„Geister“ an Routinen-Positionen, Prüfung; Routinen in eigener Lua-Datei je Ort | M16 E (umgesetzt) |
 | Undo/Redo (Befehle mit JSON-Zuständen, ADR 0022), Fragen vor Generator-Vobs | M16 A (umgesetzt) |
 | Prefabs | M16 |
-| Simulation im Editor starten/stoppen (Play-in-Editor) | M16 |
+| Simulation im Editor starten/stoppen (Play-in-Editor, F5 an der Kamera, Umschalt+F5 am Startpunkt) | M16 E (umgesetzt) |
 
 ## Autopilot (`gothar --walk`, vorgezogen für die W3-Begehung; Vertrag mit welt)
 Die Spielfigur läuft eine Route ab und protokolliert, was unterwegs passiert. `tools/walk` (`g7_walk`) ist wie der

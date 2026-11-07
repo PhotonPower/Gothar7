@@ -25,6 +25,8 @@ namespace
 constexpr std::string_view kScriptRoot = "scripts";
 constexpr i32 kScriptCopyPriority = -20; // the copy next to the game (gothar_data)
 constexpr i32 kScriptDevPriority = -10;  // the repository's game/scripts (development builds) wins over it
+constexpr i32 kScriptExtraPriority =
+    -5; // EngineConfig::extraScriptDirectory (the editor's files, tests) over both
 constexpr std::string_view kDefaultNpcFigure = "characters/figures/laborer.figure.toml";
 constexpr std::string_view kHumanGraph = "data/anim/human.animgraph.toml";
 constexpr usize kConsoleLines = 200;
@@ -42,13 +44,27 @@ void Engine::mountScripts()
 {
     // In development builds the repository's game/scripts alone: the copy next to the game keeps files
     // deleted or renamed since (or from another branch), and every script found is loaded. Otherwise the copy
-    // (gothar_data).
+    // (gothar_data). The editor's folder (M16 part E, tests) lies over either.
+    m_scriptMounts.clear();
+    const auto mount = [&](const fs::Path& dir, i32 priority)
+    {
+        if (auto id = m_vfs.mount(dir, priority, std::string(kScriptRoot)); id)
+        {
+            m_scriptMounts.push_back(id.value());
+        }
+    };
+    if (!m_config.extraScriptDirectory.empty())
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(m_config.extraScriptDirectory, ec);
+        mount(m_config.extraScriptDirectory, kScriptExtraPriority);
+    }
 #if defined(G7_DEV_SCRIPT_ROOT)
     std::error_code devError;
     if (m_config.settings.get<bool>("assets.dev_mounts", true) &&
         std::filesystem::is_directory(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), devError))
     {
-        (void)m_vfs.mount(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), kScriptDevPriority, std::string(kScriptRoot));
+        mount(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), kScriptDevPriority);
         return;
     }
 #endif
@@ -56,7 +72,7 @@ void Engine::mountScripts()
     std::error_code ec;
     if (std::filesystem::is_directory(copy, ec))
     {
-        (void)m_vfs.mount(copy, kScriptCopyPriority, std::string(kScriptRoot));
+        mount(copy, kScriptCopyPriority);
     }
 }
 
@@ -648,5 +664,39 @@ std::vector<std::string> Engine::guildNames() const
         }
     }
     return names; // a sorted map
+}
+
+std::vector<std::string> Engine::scriptGlobalNames(std::string_view prefix) const
+{
+    return m_scripts ? m_scripts->globalNames(prefix) : std::vector<std::string>{};
+}
+
+Result<void> Engine::writeScript(std::string_view relative, std::string_view text)
+{
+    // Into the editor's folder (tests), else where the scripts lie on disk (development: game/scripts).
+    fs::Path root = m_config.extraScriptDirectory;
+    if (root.empty())
+    {
+        const auto startup = m_vfs.diskPath(std::string(kScriptRoot) + "/startup.lua");
+        if (!startup)
+        {
+            return Error{"the scripts come from an archive - nothing can be written"};
+        }
+        root = startup->parent_path();
+    }
+    const fs::Path file = root / fs::fromUtf8(relative);
+    std::error_code ec;
+    std::filesystem::create_directories(file.parent_path(), ec);
+    if (auto written = fs::writeText(file, text); !written)
+    {
+        return written;
+    }
+    // The new file into the VFS index, then the scripts anew (as the hot reload does).
+    for (const asset::MountId id : m_scriptMounts)
+    {
+        (void)m_vfs.rescan(id);
+    }
+    reloadScripts();
+    return {};
 }
 } // namespace g7

@@ -126,6 +126,8 @@ public:
     /// The names of the global functions the loaded scripts define (Lua functions, not the bindings or the
     /// standard library), sorted - e.g. for the trigger callbacks in the editor.
     [[nodiscard]] std::vector<std::string> scriptFunctions() const;
+    /// The names of all globals starting with `prefix` (any type), sorted - e.g. the "zs_" states.
+    [[nodiscard]] std::vector<std::string> globalNames(std::string_view prefix) const;
     /// docs/script-api.md: the bindings by group, sorted, with signature and description.
     [[nodiscard]] std::string apiMarkdown() const;
 

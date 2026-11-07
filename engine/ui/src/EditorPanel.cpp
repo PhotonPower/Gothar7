@@ -415,4 +415,117 @@ void DebugUi::zonePanel(ZonePanel& panel)
     }
     ImGui::End();
 }
+
+void DebugUi::routinePanel(RoutinePanel& panel)
+{
+    panel.clickedNpc = panel.clickedRoutine = panel.clickedEntry = -1;
+    panel.addEntry = panel.changeEntry = panel.removeEntry = panel.newRoutine = panel.write = false;
+    panel.play = panel.playAtStart = panel.stop = false;
+    if (!panel.shown)
+    {
+        return;
+    }
+    ImGui::SetNextWindowPos(ImVec2(10.0f, 300.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(380.0f, 560.0f), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Routines");
+    if (panel.playing)
+    {
+        ImGui::TextWrapped("Playing from here. F5 or Esc: stop - the world as before the start.");
+        panel.stop = ImGui::Button("stop (F5)");
+        ImGui::End();
+        return;
+    }
+    panel.play = ImGui::Button("play here (F5)");
+    ImGui::SameLine();
+    panel.playAtStart = ImGui::Button("play at the start (Shift+F5)");
+    ImGui::Checkbox("ghosts", &panel.ghosts);
+    ImGui::SameLine();
+    ImGui::SliderFloat("hour", &panel.hour, 0.0f, 24.0f, "%.2f");
+    if (ImGui::CollapsingHeader("NPCs", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::BeginChild("npcs", ImVec2(0.0f, 100.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.npcs.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(panel.npcs[i].c_str()))
+            {
+                panel.clickedNpc = static_cast<i32>(i); // its routine
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+    }
+    if (ImGui::CollapsingHeader("Routines", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::BeginChild("routines", ImVec2(0.0f, 90.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.routines.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(panel.routines[i].c_str(), static_cast<i32>(i) == panel.selectedRoutine))
+            {
+                panel.clickedRoutine = static_cast<i32>(i);
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+        inputText("##newName", panel.newName);
+        ImGui::SameLine();
+        panel.newRoutine = ImGui::Button("new routine");
+        if (panel.selectedRoutine >= 0)
+        {
+            ImGui::TextWrapped("%s%s", panel.file.c_str(),
+                               panel.editable ? "" : " - written by hand: shown only");
+            ImGui::BeginChild("entries", ImVec2(0.0f, 100.0f), ImGuiChildFlags_Borders);
+            for (usize i = 0; i < panel.entries.size(); ++i)
+            {
+                ImGui::PushID(static_cast<int>(i));
+                if (ImGui::Selectable(panel.entries[i].c_str(), static_cast<i32>(i) == panel.selectedEntry))
+                {
+                    panel.clickedEntry = static_cast<i32>(i);
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndChild();
+            if (panel.editable)
+            {
+                ImGui::SetNextItemWidth(60.0f);
+                inputText("from", panel.from);
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(60.0f);
+                inputText("to", panel.to);
+                std::vector<const char*> states;
+                for (const std::string& s : panel.states)
+                {
+                    states.push_back(s.c_str());
+                }
+                ImGui::Combo("state", &panel.state, states.data(), static_cast<int>(states.size()));
+                inputText("place", panel.at);
+                ImGui::SameLine();
+                ImGui::Checkbox("pick", &panel.pickPlace);
+                panel.addEntry = ImGui::Button("add entry");
+                ImGui::SameLine();
+                ImGui::BeginDisabled(panel.selectedEntry < 0);
+                panel.changeEntry = ImGui::Button("change entry");
+                ImGui::SameLine();
+                panel.removeEntry = ImGui::Button("remove entry");
+                ImGui::EndDisabled();
+            }
+        }
+        ImGui::Separator();
+        ImGui::TextWrapped("%s%s", panel.editorFile.c_str(), panel.dirty ? " * unsaved" : "");
+        ImGui::BeginDisabled(!panel.dirty);
+        panel.write = ImGui::Button("write the routines (also Ctrl+S)");
+        ImGui::EndDisabled();
+    }
+    if (ImGui::CollapsingHeader("Day plan check", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::BeginChild("routineIssues", ImVec2(0.0f, 100.0f), ImGuiChildFlags_Borders);
+        for (const std::string& issue : panel.issues)
+        {
+            ImGui::TextWrapped("%s", issue.c_str());
+        }
+        ImGui::EndChild();
+    }
+    ImGui::End();
+}
 } // namespace g7::ui

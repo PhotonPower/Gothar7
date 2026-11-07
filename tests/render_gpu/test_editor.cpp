@@ -8,6 +8,7 @@
 #include <g7/runtime/Engine.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/WorldFile.hpp>
+#include <g7/world/WorldScene.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -56,6 +57,9 @@ EngineConfig editorConfig(const fs::Path& world)
     config.player = false; // as gothar --editor
     config.shaderDirectory = fs::fromUtf8(G7_SHADER_DIR);
     config.fixedFrameSeconds = 1.0 / 60.0;
+    // Everything the editor or the game could write stays in the temporary copy (never the user's folder).
+    config.saveDirectory = world.parent_path() / "saves";
+    config.extraScriptDirectory = world.parent_path() / "scripts";
     g7::test::keepVideoAlive();
     return config;
 }
@@ -428,4 +432,92 @@ TEST_CASE("Editor GPU: lights and mobs - a new light is in the frame's choice at
     REQUIRE(issues.size() == 1);
     CHECK(issues[0].name == "CRATE_TEST");
     CHECK(issues[0].text.find("crate_of_nowhere") != std::string::npos);
+}
+
+TEST_CASE(
+    "Editor GPU: routines - ghosts, the editor's own routine file, play-in-editor leaves the world as it was")
+{
+    WorldCopy copy;
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    editor::Editor editor(engine);
+    engine.addTool(editor);
+    REQUIRE(engine.runConsoleLine("camp_people()").ok()); // the camp's NPCs at their routine places
+    CHECK(engine.runFrame());
+
+    // Ghosts: at 8 o'clock the farmer woman sweeps at the camp's centre (routines/camp.lua), from the
+    // scripts.
+    const auto ghosts = editor.ghosts(8 * 60);
+    const auto woman = std::ranges::find(ghosts, "npc_farmer_woman", &editor::Editor::Ghost::npc);
+    REQUIRE(woman != ghosts.end());
+    CHECK(woman->state == "zs_sweep");
+    CHECK(woman->at == "wp_camp_center");
+    CHECK(woman->place.has_value());
+    for (const editor::RoutineIssue& issue : editor.checkRoutines())
+    {
+        MESSAGE(issue.routine << ": " << issue.text);
+    }
+    CHECK(editor.checkRoutines().empty()); // the camp's day plans are whole
+
+    // A routine of the editor's file: made, filled, undone and redone, written - the scripts load it.
+    CHECK_FALSE(editor.newRoutine("rtn_farmer_woman").ok()); // hand-written: taken
+    REQUIRE(editor.newRoutine("rtn_editor_guard").ok());
+    REQUIRE(editor.addRoutineEntry("rtn_editor_guard", {"20:00", "08:00", "zs_sleep", "wp_camp_west"}).ok());
+    REQUIRE(
+        editor.addRoutineEntry("rtn_editor_guard", {"08:00", "20:00", "zs_stand", "wp_camp_center"}).ok());
+    CHECK_FALSE(
+        editor.addRoutineEntry("rtn_farmer_woman", {"08:00", "09:00", "zs_stand", "wp_camp_center"}).ok());
+    CHECK_FALSE(editor.addRoutineEntry("rtn_editor_guard", {"08:00", "09:00", "zs_stand", "wp\"x"}).ok());
+    REQUIRE(editor.undo().value());
+    CHECK(editor.editorRoutines()[0].entries.size() == 1);
+    REQUIRE(editor.redo().value());
+    CHECK(editor.routinesDirty());
+    REQUIRE(editor.writeRoutines().ok());
+    CHECK_FALSE(editor.routinesDirty());
+    CHECK(std::filesystem::exists(copy.dir / "scripts" / "routines" /
+                                  "camp_copy_editor.lua")); // site: the file name
+    const auto loaded = engine.routines();
+    const auto guard = std::ranges::find(loaded, "rtn_editor_guard", &RoutineInfo::name);
+    REQUIRE(guard != loaded.end());
+    CHECK(guard->file == "routines/camp_copy_editor.lua");
+    REQUIRE(guard->entries.size() == 2);
+    CHECK(guard->entries[0].from == "08:00"); // sorted by start
+    {
+        editor::Editor again(engine); // a new session finds its routines in the file
+        REQUIRE(again.editorRoutines().size() == 1);
+        CHECK(again.editorRoutines()[0] == *guard);
+    }
+
+    // Play-in-editor at the camera: the hero there, the simulation runs; stopped, the world is as before.
+    const auto text = [&]
+    {
+        world::WorldFile file = world::captureWorld(engine.scene(), "w");
+        return world::writeWorldFile(file);
+    };
+    const std::string before = text();
+    const f64 minuteBefore = engine.gameTime().minuteOfDay();
+    const usize npcsBefore = engine.npcRoutines().size();
+    const Transform camera = engine.camera().transform;
+    REQUIRE(editor.startPlay(false).ok());
+    CHECK(editor.playing());
+    CHECK_FALSE(editor.startPlay(false).ok());
+    for (int i = 0; i < 30; ++i)
+    {
+        CHECK(engine.runFrame()); // the routine window only, with its stop button
+    }
+    CHECK(engine.simulationTicks() > 0);
+    REQUIRE(engine.runConsoleLine("insert('it_apple', 3)").ok()); // something changes while playing
+    REQUIRE(editor.stopPlay().ok());
+    CHECK_FALSE(editor.playing());
+    CHECK(text() == before);
+    CHECK(engine.npcRoutines().size() == npcsBefore);
+    CHECK(engine.gameTime().minuteOfDay() == doctest::Approx(minuteBefore).epsilon(0.001));
+    CHECK(glm::length(engine.camera().transform.position - camera.position) < 1e-3f);
+    CHECK(engine.runFrame());
+
+    // Shift+F5: at the start point.
+    REQUIRE(editor.startPlay(true).ok());
+    CHECK(engine.runFrame());
+    REQUIRE(editor.stopPlay().ok());
+    CHECK(text() == before);
 }
