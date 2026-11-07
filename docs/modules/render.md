@@ -358,6 +358,52 @@ Engine::grading();  Engine::gradingAt(timeOfDay, point);
   (gelieferte Werte, Zonen, Fehler), `tests/runtime/test_engine_grading.cpp` (Zonen-Vorrang im Testlager),
   GPU `test_post.cpp` (neutral ≈ unverändert, Sättigung 0 grau, warm röter).
 
+### Wasseroberfläche (M17 Teil W1, umgesetzt) – `Water.hpp`, `water.vert/.frag`, `water_copy.frag`
+```cpp
+enum class WaterQuality { Low, Medium, High };  std::optional<WaterQuality> parseWaterQuality(text);
+struct WaterStyle { Vec3 absorption, scatter; f32 waveScale, waveSpeed, waveStrength, flowSpeed,
+                    refraction, glint, shininess, shoreFade; };
+class WaterStyles { static Result<WaterStyles> parse(toml, source); const WaterStyle& style(kind) const; };
+f32 waterFresnel(cosTheta, f0 = 0.02);  Vec3 waterTransmittance(absorption, metres);   // wie water.frag
+std::vector<u8> makeWaterNormals(size);                                               // Wellen, im Code erzeugt
+struct WaterSurface { Vec3 centre; f32 yaw; Vec2 halfExtents; const WaterStyle* style; };
+struct WaterFrame { f32 time; WaterQuality quality; Vec3 sunDirection, sunColor, ambient, skyHorizon, skyZenith,
+                    fogColor; f32 fogStart, fogDensity; };
+class WaterRenderer { static Result<WaterRenderer> create(Device&, ShaderLibrary&);
+                      u32 draw(Device&, const SceneTarget&, const Camera&, span<const WaterSurface>, const WaterFrame&); };
+Engine::waterSurfaces(), waterSurfacesDrawn(), waterQuality(), waterStyles();  world::WaterBody::kind
+```
+- **Ablauf:** Die Engine macht aus jedem `water`-Vob eine Fläche (Oberkante der Box) und zeichnet sie nach der
+  opaken Szene und vor den Partikeln. Sichtbare Flächen (Frustum) → bei `medium`/`high` zuerst eine Kopie von Farbe
+  und Tiefe des `SceneTarget` (ein Vollbild-Zug in RGBA16F + R32F, nur wenn Wasser sichtbar ist), dann je Fläche ein
+  Rechteck aus `gl_VertexID` (kein Vertex-Puffer). Die Fläche schreibt Tiefe (Partikel darunter bleiben verdeckt).
+  Der bisherige halbtransparente Platzhalter (eine Instanz je Box) entfällt.
+- **Wellen:** eine gekachelte Normalenkarte (128², Summe von Sinuswellen mit ganzzahligen Frequenzen, also nahtlos),
+  zwei gegeneinander driftende Lagen in Weltkoordinaten (keine Nähte zwischen überlappenden Boxen); bei `river`
+  zusätzlich entlang lokal +X der Box (Vertrag mit welt). Grenze: Wo zwei Flussboxen mit verschiedener Richtung
+  aneinanderstoßen, springt die Fließrichtung des Musters.
+- **Brechung (leicht):** die Kopie, um die Wellenneigung versetzt (höchstens `refraction` der Bildbreite, mit der
+  Wassertiefe über den ersten Meter einblendend), punktweise gelesen; liegt der versetzte Punkt nicht unter
+  Wasser (Tiefenvergleich), bleibt der eigene Punkt – nichts über dem Wasser wird hineingezogen.
+- **Tiefe:** Weg des Blickstrahls im Wasser aus der Tiefenkopie, Farbe `unten · e^(−absorption·weg)
+  + scatter · Licht · (1 − e^(−absorption·weg))`; Uferkante weich über `shore_fade` Meter Wassertiefe (Alpha).
+- **Licht:** Fresnel (Schlick, f0 = 0,02) zwischen dem Durchscheinenden und dem gespiegelten Himmel (Horizont- und
+  Zenitfarbe wie `background.frag`; echte Spiegelung mit W2), Sonnenglanz nach Blinn-Phong, Nebel wie die Szene.
+  Von unten (Tauchen) bis W3 eine trübe Fläche.
+- **Daten** `data/water.toml`: `[kind.river]`, `[kind.pond]`, `default = "pond"` (fehlt `kind` oder ist es
+  unbekannt, gilt die Vorgabe). Werte nach Entscheidung 5/6: Glems trüb grün-braun (Sicht ca. 4 m), fließt 0,6 m/s;
+  Teich dunkel-oliv (ca. 3 m), ruhiger und mit schärferem Glanz.
+- **Qualität:** `[render] water_quality = "low" | "medium" | "high"` (Vorgabe `medium`), Optionen → Grafik
+  „Wasserqualität“. `low`: ohne Kopien, die Fläche halbdurchsichtig mit Fresnel und Glanz. `high` wie `medium`, bis
+  W2 die Spiegelung bringt.
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Blick über die Glems): `water` 0,07 ms bei `medium`
+  (Kopie + Flächen), unter 0,01 ms bei `low`; Passzeit `water` im Fenster „Gothar“ und im
+  Benchmark (Budget ≤ 0,6 ms bei sichtbarem Fluss, `low` ≤ 0,3 ms).
+- **Tests:** `tests/render/test_water.cpp` (Fresnel, Absorption, nahtlose Wellen, Wasserarten und Fehler, gelieferte
+  Werte: Sichtweiten), GPU `test_water.cpp` (tieferes Wasser dunkler, Ufer ohne Sprung, Brechung versetzt nur unter
+  Wasser, ohne Wellen kein Versatz, `low` ohne Kopien, außer Sicht nichts gezeichnet), `test_engine_render.cpp`
+  (Teich im Testlager über den Wasser-Pass, Vorgabe-Art, Qualität aus den Einstellungen).
+
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp
 struct DebugStyle { Vec4 color{1}; f32 duration = 0; bool depthTest = true; };   // duration 0 = nur dieser Frame

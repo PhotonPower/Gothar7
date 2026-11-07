@@ -8,6 +8,7 @@
 
 #include <optional>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace g7::world
@@ -21,6 +22,7 @@ struct WaterBody
     Vec3 centre{0.0f};
     f32 yaw = 0.0f; ///< radians about +Y
     Vec3 halfExtents{1.0f};
+    std::string kind; ///< WaterVolume::kind: "river" flows along local +X, "pond" or empty stands (M17)
     [[nodiscard]] f32 surface() const noexcept { return centre.y + halfExtents.y; }
     [[nodiscard]] f32 bottom() const noexcept { return centre.y - halfExtents.y; }
     /// True if x, z lies inside the box's footprint.

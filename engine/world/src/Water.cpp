@@ -24,8 +24,8 @@ void WaterBodies::rebuild(const Scene& scene)
         [&](entt::entity, const Vob& vob, const WaterVolume& water, const WorldTransform& world)
         {
             const Vec3 forward = Mat3(world.matrix) * Vec3(0.0f, 0.0f, -1.0f);
-            m_bodies.push_back(
-                {vob.id, Vec3(world.matrix[3]), std::atan2(-forward.x, -forward.z), water.halfExtents});
+            m_bodies.push_back({vob.id, Vec3(world.matrix[3]), std::atan2(-forward.x, -forward.z),
+                                water.halfExtents, water.kind});
         });
 }
 
