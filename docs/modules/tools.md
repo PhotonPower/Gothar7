@@ -39,8 +39,26 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
   `gothar-worldgen assemble` überschreibt ihn – dort `locked` setzen.
   - Die erste Bearbeitung eines solchen Vobs in der Sitzung fragt vorher (Ja/Nein, `Editor::confirmation`). Erst
     nach Ja wird sie ausgeführt; danach fragt der Editor für Generator-Vobs nicht mehr.
-  - Speichern mit geänderten Generator-Vobs fragt ebenso und nennt sie („2 generated vob(s) changed (68, 70) …“),
+  - Speichern mit geänderten Generator-Vobs fragt ebenso und nennt sie („2 generated vob(s) or waynet entries changed (68, 70) …“),
     Nein lässt die Datei unverändert. Entscheidung 1 des M16-Plans.
+- **Wegnetz-Modus (M16 Teil B, Taste G bzw. Fenster „Waynet“):** bearbeitet den `waynet`-Block der Welt
+  (Vertrag world.md „Wegnetz“) als Arbeitskopie; jede Änderung geht sofort an die Engine (`Engine::setWaynet`,
+  Pfadsuche neu gebaut) und ist ein Undo-Schritt (`editor/WaynetEdit.hpp`, Momentaufnahme der berührten Einträge
+  und ihrer Kanten).
+  - Klick wählt einen Punkt oder Freepoint, das Gizmo verschiebt ihn (ein Schritt je Ziehen). Strg+Klick auf den
+    Boden setzt einen neuen Punkt, verbunden mit dem gewählten; Name aus dessen Stamm (`WP_CAMP_OUTSIDE_01`), sonst
+    aus dem Weltnamen. Umschalt+Klick verbindet bzw. trennt den gewählten mit dem angeklickten Punkt. Entf löscht.
+  - Fenster: Position, Blickrichtung (Freepoints), Umbenennen (Kanten folgen), Freepoint mit Typ (`FP_<TYP>_…`).
+  - Gezeichnet werden Punkte und Kanten bis `[editor] waynet_radius` (80 m) um die Kamera, erzeugte blasser,
+    Namen bis 25 m.
+  - Erzeugte Einträge (`owner: worldgen`): die erste Änderung in der Sitzung fragt; Verschieben oder Umbenennen
+    macht sie zu eigenen (Vertrag). Löschen gilt nur bis zum nächsten Generator-Lauf: der Editor zeigt die fertige
+    Zeile für `tools/worldgen/data/<ort>/waynet.json` „remove“ zum Kopieren und schreibt welts Datei nicht
+    (Entscheidung 2). Speichern mit geänderten erzeugten Einträgen fragt wie bei Generator-Vobs.
+  - Prüfen (`editor/WaynetCheck.hpp`, Empfehlungen aus world.md): unverbundene Punkte, Inseln außerhalb des größten
+    Netzes, Kanten unter 5 m oder über 20 m, Hindernis auf Hüfthöhe (Strahl gegen `COL_`-Welt), kein begehbarer
+    Boden, Freepoint ohne Wegpunkt in 3 m. Klick auf einen Eintrag wählt ihn und fährt die Kamera hin.
+  - Pfadprobe: A* der Engine zwischen zwei Punkten, als grüne Linie gezeichnet.
 - Nach jeder Änderung baut die Engine Instanzen und Lichter aus der Szene neu (`Engine::refreshScene`, Modelle
   bleiben im Cache).
 
@@ -49,7 +67,7 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
 | Welt laden/speichern, Kamera frei fliegen | M4 |
 | Vobs auswählen, verschieben/drehen/skalieren (Gizmo), aus Asset-Browser platzieren | M4 |
 | Eigenschafts-Inspektor für Komponenten | M4 |
-| Wegnetz: Punkte setzen, verbinden, benennen, Freepoints, Validierung (unverbundene Punkte) | M16 |
+| Wegnetz: Punkte setzen, verbinden, benennen, Freepoints, Prüfungen, Pfadprobe | M16 B (umgesetzt) |
 | Zonen (Musik, Ambient, Besitz, Innenraum) als Boxen editieren | M16 |
 | Trigger mit Skript-Callbacks | M16 |
 | Licht-Editor mit Vorschau je Tageszeit | M16 |

@@ -1157,6 +1157,23 @@ Result<void> Engine::instantiateScene()
     return {};
 }
 
+Result<void> Engine::setWaynet(world::WaynetData waynet)
+{
+    if (auto checked = world::normalizeWaynet(waynet, m_worldPath); !checked)
+    {
+        return checked;
+    }
+    m_worldFile.waynet = waynet.empty() && !m_worldFile.waynet
+                             ? std::nullopt
+                             : std::optional<world::WaynetData>(std::move(waynet));
+    m_waynet = m_worldFile.waynet ? ai::Waynet::build(*m_worldFile.waynet) : ai::Waynet{};
+    for (const auto& c : m_creatures)
+    {
+        c->route.reset(); // indices into the old waynet
+    }
+    return {};
+}
+
 Result<void> Engine::refreshScene()
 {
     // Everything but the ground plate is rebuilt from the scene; models stay cached, new ones load.

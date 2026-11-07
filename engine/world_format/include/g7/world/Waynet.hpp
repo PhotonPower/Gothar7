@@ -20,6 +20,8 @@ struct WaynetPoint
     Vec3 position{0.0f};     ///< metres, world space; y = ground (feet)
     std::optional<Vec3> dir; ///< horizontal facing for whoever stands there (normalised)
     bool generated = false;  ///< owner "worldgen": the generator replaces it on its next run
+
+    friend bool operator==(const WaynetPoint&, const WaynetPoint&) = default;
 };
 
 struct WaynetEdge
@@ -27,6 +29,8 @@ struct WaynetEdge
     std::string a; ///< the smaller name first (as written)
     std::string b;
     bool generated = false;
+
+    friend bool operator==(const WaynetEdge&, const WaynetEdge&) = default;
 };
 
 struct WaynetData
@@ -34,6 +38,8 @@ struct WaynetData
     std::vector<WaynetPoint> points;
     std::vector<WaynetEdge> edges;
     std::vector<WaynetPoint> freepoints;
+
+    friend bool operator==(const WaynetData&, const WaynetData&) = default;
 
     [[nodiscard]] bool empty() const noexcept
     {

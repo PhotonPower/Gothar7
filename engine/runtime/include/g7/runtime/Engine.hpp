@@ -382,6 +382,10 @@ public:
     [[nodiscard]] Result<void> refreshScene();
     /// The loaded world without its vobs (terrain, waynet, zones, generator head).
     [[nodiscard]] const world::WorldFile& worldFile() const noexcept { return m_worldFile; }
+    /// Replaces the world's waynet (editor, M16 part B): checked and sorted, the path finding rebuilt, saved
+    /// with the world. Fails (and keeps the old one) for a broken waynet. NPC routes planned before are
+    /// dropped.
+    [[nodiscard]] Result<void> setWaynet(world::WaynetData waynet);
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;
