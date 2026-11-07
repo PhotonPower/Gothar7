@@ -49,3 +49,6 @@ if(G7_BUILD_TESTS)
         message(WARNING "doctest nicht gefunden - Tests werden uebersprungen (vcpkg-Preset verwenden).")
     endif()
 endif()
+
+# The release package (M17, docs/modules/release.md part C): install rules, CPack, g7_release_data.
+include(Package)

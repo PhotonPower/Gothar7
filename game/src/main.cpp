@@ -49,6 +49,7 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
                           F6 in the game copies the current view as these options
   --save-world=<file>     save the loaded world or test scene as .g7world
   --crash-dir=<dir>       where crash reports go (default: crashes in the user folder)
+  --user-dir=<dir>        the user folder (saves, config, crash reports) instead of the system's
   --editor                editor mode (simulation paused)
   --scene=<path>          load a test scene (TOML)
   --viewpoint=N           start at viewpoint N of the scene
@@ -85,6 +86,7 @@ struct CommandLine
     std::string world;
     std::string saveWorld;
     std::string crashDir; ///< --crash-dir: where crash reports go (default: the user folder's crashes)
+    std::string userDir;  ///< --user-dir: the user folder (saves, config, crashes) instead of the system's
     std::string start;
     std::string time;
     std::vector<std::string> exec;
@@ -169,6 +171,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg.starts_with("--world="))
         {
             cli.world = std::string(arg.substr(8));
+        }
+        else if (arg.starts_with("--user-dir="))
+        {
+            cli.userDir = std::string(arg.substr(11));
         }
         else if (arg.starts_with("--crash-dir="))
         {
@@ -328,7 +334,7 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
     return cli;
 }
 
-void setupDirectories(const char* argv0)
+void setupDirectories(const char* argv0, const std::string& userDirOverride)
 {
     std::error_code ec;
     g7::fs::Path gameDir = std::filesystem::weakly_canonical(g7::fs::Path(argv0), ec).parent_path();
@@ -337,7 +343,12 @@ void setupDirectories(const char* argv0)
         gameDir = std::filesystem::current_path(ec);
     }
     g7::fs::Path userDir = gameDir / "userdata";
-    if (auto prefPath = g7::platform::userDataDirectory("Gothar", "Gothar"))
+    if (!userDirOverride.empty())
+    {
+        userDir =
+            g7::fs::fromUtf8(userDirOverride); // --user-dir: tests and the package test, never the real one
+    }
+    else if (auto prefPath = g7::platform::userDataDirectory("Gothar", "Gothar"))
     {
         userDir = std::move(prefPath).value();
     }
@@ -406,7 +417,7 @@ int main(int argc, char** argv)
         std::fputs(kUsage, stdout);
         return EXIT_SUCCESS;
     }
-    setupDirectories(argv[0]);
+    setupDirectories(argv[0], cli->userDir);
     // Local crash reports (release.md part B, decisions 2 and 3): minidump and text, nothing is sent.
     const g7::fs::Path crashDir =
         cli->crashDir.empty() ? g7::fs::userPath("crashes") : g7::fs::fromUtf8(cli->crashDir);

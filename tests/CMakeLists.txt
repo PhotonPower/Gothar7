@@ -174,7 +174,7 @@ set_tests_properties(walk PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
 if(TARGET gothar)
     foreach(_case IN ITEMS "help|--help|0|--world=" "unknown|--bogus|nonzero|unknown argument '--bogus'"
                           "set_bad|--set=render.bloom|nonzero|--set needs key=value"
-                          "set|--set=render.bloom=false,--set,ui.language=en,--no-user-config,--smoke-test,--crash-dir=${CMAKE_CURRENT_BINARY_DIR}/crash_reports|0|--set ui.language=en"
+                          "set|--set=render.bloom=false,--set,ui.language=en,--no-user-config,--smoke-test,--crash-dir=${CMAKE_CURRENT_BINARY_DIR}/crash_reports,--user-dir=${CMAKE_CURRENT_BINARY_DIR}/user|0|--set ui.language=en"
                           "version|--version|0|Gothar ")
         string(REPLACE "|" ";" _parts "${_case}")
         list(GET _parts 0 _name)
@@ -202,3 +202,14 @@ g7_set_warnings(g7_crash_probe)
 set_target_properties(g7_crash_probe PROPERTIES FOLDER "tests")
 add_dependencies(g7_tests_platform g7_crash_probe)
 target_compile_definitions(g7_tests_platform PRIVATE G7_CRASH_PROBE="$<TARGET_FILE:g7_crash_probe>")
+
+# The pure package test (M17, release.md part C): label "package", run by tools/release/make_release.cmake with
+# the built ZIP in G7_PACKAGE; without it the test passes without checking anything.
+add_executable(g7_tests_package ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/package/test_package.cpp)
+target_link_libraries(g7_tests_package PRIVATE g7::core doctest::doctest)
+target_include_directories(g7_tests_package PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common)
+target_compile_definitions(g7_tests_package PRIVATE G7_CMAKE="${CMAKE_COMMAND}")
+g7_set_warnings(g7_tests_package)
+set_target_properties(g7_tests_package PROPERTIES FOLDER "tests")
+add_test(NAME package COMMAND g7_tests_package)
+set_tests_properties(package PROPERTIES LABELS package TIMEOUT 600)

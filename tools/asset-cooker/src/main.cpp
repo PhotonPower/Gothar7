@@ -2,13 +2,16 @@
 // them into .g7pak archives (ADR 0016, docs/06-asset-pipeline.md).
 #include "Cooker.hpp"
 #include "Fonts.hpp"
+#include "Licences.hpp"
 #include "Textures.hpp"
 
 #include <g7/core/Log.hpp>
 
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace
 {
@@ -17,6 +20,7 @@ void printUsage()
     std::puts("usage: g7-cook [--source <dir>] [--out <dir>] [--pack <file.g7pak>] [--level <1-22>]\n"
               "               [--textures copy|ktx2] [--uastc-level <0-4>] [--full] [--clean]\n"
               "       g7-cook --font <name.font.toml> <out.g7font>\n"
+              "       g7-cook --check-licences <assets dir> [<CREDITS.txt> <version line>]\n"
               "  --source  source assets (default: assets/source)\n"
               "  --out     output directory (default: assets/cooked)\n"
               "  --pack    write one archive <out>/<file> instead of loose files (zstd per entry)\n"
@@ -25,7 +29,9 @@ void printUsage()
               "  --uastc-level  KTX2 quality vs. speed, 0-4 (default 2)\n"
               "  --full    ignore the manifest and cook everything\n"
               "  --clean   delete the output directory first\n"
-              "  --font    generate a distance-field font (ADR 0020) from its description and font file");
+              "  --font    generate a distance-field font (ADR 0020) from its description and font file\n"
+              "  --check-licences  every file of <assets>/source needs a shippable source in licenses.toml\n"
+              "            and a row in LICENSES.md; writes the release's CREDITS.txt if a path is given");
 }
 } // namespace
 
@@ -38,6 +44,56 @@ int main(int argc, char** argv)
         {
             G7_LOG_ERROR("cook", "{}", cooked.error().message);
             return 1;
+        }
+        return 0;
+    }
+    if ((argc == 3 || argc == 5) && std::string_view(argv[1]) == "--check-licences")
+    {
+        // Release part C (docs/modules/release.md): the licences of everything that goes into the package.
+        const g7::fs::Path assets = g7::fs::fromUtf8(argv[2]);
+        auto toml = g7::fs::readText(assets / "licenses.toml");
+        auto md = g7::fs::readText(assets / "LICENSES.md");
+        if (!toml || !md)
+        {
+            G7_LOG_ERROR("cook", "{}", !toml ? toml.error().message : md.error().message);
+            return 1;
+        }
+        auto table = g7::cook::parseLicences(toml.value(), "licenses.toml");
+        if (!table)
+        {
+            G7_LOG_ERROR("cook", "{}", table.error().message);
+            return 1;
+        }
+        const std::vector<std::string> files = g7::cook::assetFiles(assets / "source");
+        const g7::cook::LicenceReport report = g7::cook::checkLicences(table.value(), files, md.value());
+        for (const std::string& e : report.tableErrors)
+        {
+            G7_LOG_ERROR("cook", "licenses.toml: {}", e);
+        }
+        for (const std::string& f : report.uncovered)
+        {
+            G7_LOG_ERROR("cook", "no licence source for {}", f);
+        }
+        for (const std::string& f : report.forbidden)
+        {
+            G7_LOG_ERROR("cook", "may not be shipped: {}", f);
+        }
+        G7_LOG_INFO("cook", "licences: {} files, {} sources used, {} problems", files.size(),
+                    report.used.size(),
+                    report.uncovered.size() + report.forbidden.size() + report.tableErrors.size());
+        if (!report.ok())
+        {
+            return 1;
+        }
+        if (argc == 5)
+        {
+            if (auto written = g7::fs::writeText(g7::fs::fromUtf8(argv[3]),
+                                                 g7::cook::creditsText(table.value(), report, argv[4]));
+                !written)
+            {
+                G7_LOG_ERROR("cook", "{}", written.error().message);
+                return 1;
+            }
         }
         return 0;
     }

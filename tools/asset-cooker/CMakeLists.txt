@@ -1,5 +1,5 @@
 # Cooker logic as a library so tests can call it; g7-cook is a thin command line around it.
-add_library(g7_cook_lib STATIC src/Cooker.cpp src/Fonts.cpp src/Manifest.cpp src/Textures.cpp)
+add_library(g7_cook_lib STATIC src/Cooker.cpp src/Fonts.cpp src/Licences.cpp src/Manifest.cpp src/Textures.cpp)
 target_include_directories(g7_cook_lib PUBLIC src)
 # world_format only: terrain blocks name texture usage. The cooker must not link render or physics
 # (checked below, g7_assert_no_link_to).
