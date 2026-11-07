@@ -2,6 +2,7 @@
 // overlay draws the invisible vobs.
 
 #include "GlFixture.hpp"
+#include "RunTempDir.hpp"
 
 #include <g7/asset/ImageData.hpp>
 #include <g7/runtime/Engine.hpp>
@@ -69,8 +70,9 @@ TEST_CASE("World vobs GPU: --start picks a start point by name; an unknown one f
     Engine engine(worldConfig("START_NOWHERE"));
     auto result = engine.init();
     REQUIRE_FALSE(result.ok());
-    CHECK(result.error().message == "cannot load world: unknown start point 'START_NOWHERE' (the world has: "
-                                    "START_LAGER, START_LAGER_HOEHLE, START_KLETTERPLATZ, START_TEICH, START_LAGER_STRASSE)");
+    CHECK(result.error().message ==
+          "cannot load world: unknown start point 'START_NOWHERE' (the world has: "
+          "START_LAGER, START_LAGER_HOEHLE, START_KLETTERPLATZ, START_TEICH, START_LAGER_STRASSE)");
 }
 
 TEST_CASE("World vobs GPU: small deco vanishes by size, gameplay (the mob) never; distance hides all")
@@ -219,7 +221,7 @@ TEST_CASE("World vobs GPU: an invalid start time is an error")
 
 TEST_CASE("World vobs GPU: a quick save takes the scene as its thumbnail (M15 part D)")
 {
-    const std::filesystem::path saves = std::filesystem::temp_directory_path() / "g7_gpu_thumbnail_saves";
+    const std::filesystem::path saves = g7::test::runTempDir() / "g7_gpu_thumbnail_saves";
     std::filesystem::remove_all(saves);
     EngineConfig config = worldConfig("START_LAGER");
     config.player = true;

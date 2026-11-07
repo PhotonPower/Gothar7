@@ -43,6 +43,7 @@ class WaterBox:
     center: tuple[float, float, float]
     yaw: float  # radians about +Y; the box's local +X runs along (cos, 0, -sin)
     half: tuple[float, float, float]
+    kind: str = "river"  # world.md water.kind: river (flows along local +X) or pond
 
     @property
     def rot(self) -> list[float]:
@@ -231,6 +232,7 @@ def river_boxes(
         cuts.append(len(s) - 1)
     boxes = []
     key = name.lower().replace(" ", "_")
+    with_line = bool(level[0] >= level[-1])  # the level never rises downstream (river_level)
     for n, (i0, i1) in enumerate(zip(cuts, cuts[1:], strict=False)):
         p0, p1 = pts[i0], pts[i1]
         chord = p1 - p0
@@ -242,6 +244,8 @@ def river_boxes(
         bottom = float(bed[i0 : i1 + 1].min()) - below_bed
         hy = (top - bottom) / 2
         yaw = math.atan2(-chord[1], chord[0])
+        if not with_line:  # local +X downstream (world.md water.kind river)
+            yaw = math.remainder(yaw + math.pi, 2 * math.pi)
         boxes.append(
             WaterBox(
                 f"{key}_{n:03d}",
@@ -310,6 +314,7 @@ def lake(
                     round(hy, 3),
                     round(float(np.linalg.norm(e2)) / 2, 3),
                 ),
+                "pond",
             )
         )
     return boxes, changed
@@ -354,6 +359,7 @@ def carve_and_place(
             "pos": list(b.center),
             "rot": b.rot,
             "halfExtents": list(b.half),
+            "kind": b.kind,
         }
         for b in boxes
     ]

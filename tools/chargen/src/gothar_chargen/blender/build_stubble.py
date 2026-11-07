@@ -21,6 +21,7 @@ import math
 import sys
 from pathlib import Path
 
+import bmesh  # type: ignore[import-not-found]
 import bpy  # type: ignore[import-not-found]
 from mathutils import Vector, kdtree  # type: ignore[import-not-found]
 
@@ -35,6 +36,12 @@ OFFSET = 0.0008  # m above the skin
 SOFT = 2.0  # widths of the soft zone borders (x the base widths below)
 UV_TILE = 0.03  # m per texture tile
 BANDS = (0.8, 0.55, 0.3)  # zone density limits of the bands 0 | 1 | 2 | 3
+CARD_LENGTH = (
+    0.016  # m: strands hanging from the border of a full beard (volume, not a painted edge)
+)
+BULGE = 0.007  # m: extra thickness of a full beard in the middle of its zone
+CARD_SHARE = 0.7  # full beards: share of the triangle budget for the shell, the rest for the cards
+CARD_V = (0.08, 0.62)  # texture v of a card's root (band 0, dense) and tip (band 2, sparser)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -96,13 +103,22 @@ class Head:
         return self.tree.find(p)[1]
 
 
-def _patch(head: Head, arm: bpy.types.Object, name: str, offset: float) -> bpy.types.Object:
+def _patch(
+    head: Head, arm: bpy.types.Object, name: str, offset: float, bulge: float = 0.0
+) -> bpy.types.Object:
     """The full shell over the beard zone (before reduction), on the reference armature."""
     faces = [p for p in head.faces if head.face_density(p) > 0.08]
     used = sorted({v for p in faces for v in p.vertices})
     index = {v: k for k, v in enumerate(used)}
     w3 = head.w.to_3x3()
-    verts = [head.pts[v] + (w3 @ head.me.vertices[v].normal).normalized() * offset for v in used]
+
+    def lift(p: Vector) -> float:  # full beards bulge in the middle: chin and jaw, not the throat
+        return offset + bulge * head.zone(p) * _clamp((p.z - head.chin_z + 0.03) / 0.03)
+
+    verts = [
+        head.pts[v] + (w3 @ head.me.vertices[v].normal).normalized() * lift(head.pts[v])
+        for v in used
+    ]
     mesh = bpy.data.meshes.new(name)
     mesh.from_pydata(verts, [], [tuple(index[v] for v in p.vertices) for p in faces])
     for poly in mesh.polygons:
@@ -112,6 +128,67 @@ def _patch(head: Head, arm: bpy.types.Object, name: str, offset: float) -> bpy.t
     obj.parent = arm
     obj.modifiers.new("Armature", "ARMATURE").object = arm
     return obj
+
+
+def _cards(obj: bpy.types.Object, head: Head, budget: int) -> int:
+    """Hair cards along the outer border of a full beard: a quad per border edge, hanging down and
+    out from the skin (``CARD_LENGTH``), so the beard ends in strands, not in a flat painted edge.
+    The lip opening gets none. At most ``budget`` triangles (every k-th edge). Returns the index of
+    the first card face (the faces before it are the shell)."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.normal_update()
+    first = len(bm.faces)
+    mouth = head.mouth_z
+
+    def at_mouth(co: Vector) -> bool:
+        return abs(co.x) < 0.035 and abs(co.z - mouth) < 0.025 and co.y < head.nose.y + 0.04
+
+    def hangs(e: bmesh.types.BMEdge) -> bool:  # outer border along the jaw and chin, not the throat
+        mid = (e.verts[0].co + e.verts[1].co) / 2
+        jaw = head.chin_z + 0.005 < mid.z < mouth - 0.012 and abs(mid.x) > 0.025
+        return e.is_boundary and not at_mouth(mid) and jaw
+
+    border = [e for e in bm.edges if hangs(e)]
+    step = max(1, math.ceil(2 * len(border) / max(budget, 2)))
+    down = Vector((0.0, 0.0, -1.0))
+    tips: dict[int, bmesh.types.BMVert] = {}
+
+    def tip(v: bmesh.types.BMVert) -> bmesh.types.BMVert:
+        if v.index not in tips:
+            out = (v.normal * 0.3 + down * 0.95).normalized()
+            jitter = 0.8 + 0.4 * ((v.index * 7919) % 101) / 100  # uneven strand lengths
+            tips[v.index] = bm.verts.new(v.co + out * CARD_LENGTH * jitter)
+        return tips[v.index]
+
+    bm.verts.ensure_lookup_table()
+    for e in border[::step]:
+        a, b = e.verts
+        try:
+            bm.faces.new((a, b, tip(b), tip(a)))
+        except ValueError:  # face exists already
+            continue
+    bm.to_mesh(obj.data)
+    bm.free()
+    for poly in obj.data.polygons[first:]:
+        poly.use_smooth = True
+    return first
+
+
+def _card_uvs(obj: bpy.types.Object, first: int) -> None:
+    """Cards: u along the border, v from the dense root to the sparser tip (strands run along v)."""
+    uv = obj.data.uv_layers.active
+    for k, poly in enumerate(obj.data.polygons[first:]):
+        lis = list(poly.loop_indices)  # a, b, tip(b), tip(a)
+        width = (
+            obj.data.vertices[poly.vertices[1]].co - obj.data.vertices[poly.vertices[0]].co
+        ).length
+        u0 = (k * 0.37) % 1.0
+        u1 = u0 + width / UV_TILE
+        for li, (u, v) in zip(
+            lis, ((u0, CARD_V[0]), (u1, CARD_V[0]), (u1, CARD_V[1]), (u0, CARD_V[1])), strict=True
+        ):
+            uv.data[li].uv = (u, v)
 
 
 def _reduce(obj: bpy.types.Object, triangles: int) -> None:
@@ -243,15 +320,20 @@ def main() -> None:
     print(f"[chargen] {args.head.parent.name}: nose at {tuple(round(v, 3) for v in head.nose)}")
     mat = _material(args.texture, style.part)
     levels = []
+    full = style.limits != BANDS  # dense beards: soft border bands and hair cards
     for level, triangles in enumerate(TRIANGLES):
-        obj = _patch(head, arm, f"beard_lod{level}", style.offset)
+        obj = _patch(head, arm, f"beard_lod{level}", style.offset, BULGE if full else 0.0)
         obj.data.name = obj.name
-        _reduce(obj, triangles)
+        _reduce(obj, int(triangles * CARD_SHARE) if full else triangles)
+        shell_tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
+        first = _cards(obj, head, triangles - shell_tris) if full else len(obj.data.polygons)
         owners = [head.nearest(v.co) for v in obj.data.vertices]
         _weights(obj, head, owners)
         if level == 0:  # face morphs only on lod0 (§2.2)
             _morphs(obj, head, owners, list(rig.morph_targets))
-        _band_uvs(obj, head, style.limits, smooth=style.limits != BANDS)
+        _band_uvs(obj, head, style.limits, smooth=full)
+        if full:
+            _card_uvs(obj, first)
         obj.data.materials.append(mat)
         levels.append(obj)
     for o in imported:

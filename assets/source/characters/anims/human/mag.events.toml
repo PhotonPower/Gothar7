@@ -74,10 +74,24 @@ events = [
 
 [clips."mag/t_turn_l"]
 events = [
-    { frame = 18, event = "footstep_r" },
+    { frame = 0, event = "footstep_l" },
+    { frame = 0, event = "footstep_r" },
+    { frame = 5, event = "footstep_l" },
+    { frame = 11, event = "footstep_r" },
+    { frame = 17, event = "footstep_l" },
+    { frame = 23, event = "footstep_l" },
+    { frame = 29, event = "footstep_r" },
+    { frame = 30, event = "footstep_l" },
 ]
 
 [clips."mag/t_turn_r"]
 events = [
-    { frame = 18, event = "footstep_r" },
+    { frame = 0, event = "footstep_l" },
+    { frame = 0, event = "footstep_r" },
+    { frame = 5, event = "footstep_l" },
+    { frame = 11, event = "footstep_r" },
+    { frame = 17, event = "footstep_l" },
+    { frame = 23, event = "footstep_l" },
+    { frame = 29, event = "footstep_r" },
+    { frame = 30, event = "footstep_l" },
 ]

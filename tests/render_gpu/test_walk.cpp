@@ -2,6 +2,7 @@
 // a closed gate - with the log and the summary it writes.
 
 #include "GlFixture.hpp"
+#include "RunTempDir.hpp"
 
 #include <g7/runtime/Engine.hpp>
 #include <g7/walk/Autopilot.hpp>
@@ -30,7 +31,7 @@ TEST_CASE("Autopilot GPU: a route through the camp, logged")
                                   "camp.json");
     REQUIRE_MESSAGE(route.ok(), (route.ok() ? "" : route.error().message));
 
-    const fs::Path out = std::filesystem::temp_directory_path() / "g7_walk_test";
+    const fs::Path out = g7::test::runTempDir() / "g7_walk_test";
     std::error_code ec;
     std::filesystem::remove_all(out, ec);
     EngineConfig config;

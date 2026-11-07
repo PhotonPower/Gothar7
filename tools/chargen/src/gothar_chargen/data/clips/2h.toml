@@ -102,10 +102,16 @@ params = { base = "2h/t_combo1_low" }
 helper = true
 
 [[clip]]
-name = "2h/t_attack_combo1"
+name = "2h/t_attack_combo1_framed"
 keyframe = "framed"
-markers = { hit_start = 22, hit_end = 32, combo_start = 32, combo_end = 38, "sound:swing" = 18 }
+helper = true
 params = { base = "2h/t_combo1_grip", stance = "2h/s_idle", fade_in = 5, fade_out = 8, soften = ["spine_03", "neck", "head", "upperarm_l", "lowerarm_l"] }
+
+[[clip]]
+name = "2h/t_attack_combo1"                 # feet planted, steps instead of sliding (F4)
+keyframe = "plant"
+markers = { hit_start = 22, hit_end = 32, combo_start = 32, combo_end = 38, "sound:swing" = 18 }
+params = { base = "2h/t_attack_combo1_framed" }
 
 [[clip]]
 name = "2h/t_block_src"
@@ -145,12 +151,18 @@ params = { base = "2h/t_combo2_low" }
 helper = true
 
 [[clip]]
-name = "2h/t_attack_combo2"       # wide horizontal cut
+name = "2h/t_attack_combo2_framed"       # wide horizontal cut
 keyframe = "framed"
-markers = { hit_start = 6, hit_end = 9, combo_start = 9, combo_end = 38, "sound:swing" = 2 }
+helper = true
 params = { base = "2h/t_combo2_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head", "upperarm_l", "lowerarm_l"] }
 
 # own swings over the upright none/s_idle (right arm; the left hand follows on the grip)
+
+[[clip]]
+name = "2h/t_attack_combo2"                 # feet planted, steps instead of sliding (F4)
+keyframe = "plant"
+markers = { hit_start = 6, hit_end = 9, combo_start = 9, combo_end = 38, "sound:swing" = 2 }
+params = { base = "2h/t_attack_combo2_framed" }
 [[clip]]
 name = "2h/t_chop"
 keyframe = "keyposes"
@@ -206,10 +218,16 @@ params = { base = "2h/t_chop" }
 helper = true
 
 [[clip]]
-name = "2h/t_attack_combo3"  # diagonal overhead chop
+name = "2h/t_attack_combo3_framed"  # diagonal overhead chop
 keyframe = "framed"
-markers = { hit_start = 15, hit_end = 19, combo_start = 19, combo_end = 32, "sound:swing" = 11 }
+helper = true
 params = { base = "2h/t_t_chop_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "2h/t_attack_combo3"                 # feet planted, steps instead of sliding (F4)
+keyframe = "plant"
+markers = { hit_start = 15, hit_end = 19, combo_start = 19, combo_end = 32, "sound:swing" = 11 }
+params = { base = "2h/t_attack_combo3_framed" }
 
 [[clip]]
 name = "2h/t_t_swing_l_grip"
@@ -218,10 +236,16 @@ params = { base = "2h/t_swing_l" }
 helper = true
 
 [[clip]]
-name = "2h/t_attack_l"  # directional swing to the left
+name = "2h/t_attack_l_framed"  # directional swing to the left
 keyframe = "framed"
-markers = { hit_start = 13, hit_end = 20, "sound:swing" = 9 }
+helper = true
 params = { base = "2h/t_t_swing_l_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "2h/t_attack_l"                 # feet planted, steps instead of sliding (F4)
+keyframe = "plant"
+markers = { hit_start = 13, hit_end = 20, "sound:swing" = 9 }
+params = { base = "2h/t_attack_l_framed" }
 
 [[clip]]
 name = "2h/t_t_swing_r_grip"
@@ -230,10 +254,16 @@ params = { base = "2h/t_swing_r" }
 helper = true
 
 [[clip]]
-name = "2h/t_attack_r"  # directional swing to the right
+name = "2h/t_attack_r_framed"  # directional swing to the right
 keyframe = "framed"
-markers = { hit_start = 11, hit_end = 19, "sound:swing" = 7 }
+helper = true
 params = { base = "2h/t_t_swing_r_grip", stance = "2h/s_idle", fade_in = 6, fade_out = 8 }
+
+[[clip]]
+name = "2h/t_attack_r"                 # feet planted, steps instead of sliding (F4)
+keyframe = "plant"
+markers = { hit_start = 11, hit_end = 19, "sound:swing" = 7 }
+params = { base = "2h/t_attack_r_framed" }
 
 [[clip]]
 name = "2h/t_combo4_src"
@@ -257,10 +287,16 @@ params = { base = "2h/t_combo4_reach" }
 helper = true
 
 [[clip]]
-name = "2h/t_attack_combo4"       # heavy finisher
+name = "2h/t_attack_combo4_framed"       # heavy finisher
 keyframe = "framed"
-markers = { hit_start = 11, hit_end = 14, combo_start = 14, combo_end = 37, "sound:swing" = 7 }
+helper = true
 params = { base = "2h/t_combo4_grip", stance = "2h/s_idle", fade_in = 5, fade_out = 8, soften = ["spine_03", "neck", "head", "upperarm_l", "lowerarm_l"] }
+
+[[clip]]
+name = "2h/t_attack_combo4"                 # feet planted, steps instead of sliding (F4)
+keyframe = "plant"
+markers = { hit_start = 11, hit_end = 14, combo_start = 14, combo_end = 37, "sound:swing" = 7 }
+params = { base = "2h/t_attack_combo4_framed" }
 
 [[clip]]
 name = "2h/t_dodge_back"          # jump backwards, root motion 0.8 m (no events)

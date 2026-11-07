@@ -2,6 +2,8 @@
 // quick save and F9 quick load, saving from the pause menu into a slot, the autosave after a level change,
 // loading from the main menu of a new run; "Load" is greyed out while there is no save.
 
+#include "RunTempDir.hpp"
+
 #include <g7/core/FileSystem.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/save/SaveFile.hpp>
@@ -78,7 +80,7 @@ bool inGame(Engine& engine)
 
 TEST_CASE("Save slots: quick save and load, a slot from the pause menu, the autosave, loading from the menu")
 {
-    const std::filesystem::path saves = std::filesystem::temp_directory_path() / "g7_save_slots_engine";
+    const std::filesystem::path saves = g7::test::runTempDir() / "g7_save_slots_engine";
     std::filesystem::remove_all(saves);
     {
         Engine engine(menuConfig(saves));

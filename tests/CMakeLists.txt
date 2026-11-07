@@ -3,6 +3,7 @@ function(g7_add_test_suite name)
     file(GLOB _sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${name}/*.cpp")
     add_executable(g7_tests_${name} ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_sources})
     target_link_libraries(g7_tests_${name} PRIVATE g7::${name} doctest::doctest)
+    target_include_directories(g7_tests_${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common) # RunTempDir.hpp
     g7_set_warnings(g7_tests_${name})
     set_target_properties(g7_tests_${name} PROPERTIES FOLDER "tests")
     if(NOT ARGV1 STREQUAL "NO_TEST") # NO_TEST: the caller adds the ctest entries (groups)
@@ -90,6 +91,7 @@ target_compile_definitions(g7_tests_ui PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SO
 file(GLOB _gpu_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/render_gpu/*.cpp")
 add_executable(g7_tests_render_gpu ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_gpu_sources})
 target_link_libraries(g7_tests_render_gpu PRIVATE g7::runtime g7_editor g7_walk doctest::doctest) # editor, autopilot end to end
+target_include_directories(g7_tests_render_gpu PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common) # RunTempDir.hpp
 g7_set_warnings(g7_tests_render_gpu)
 set_target_properties(g7_tests_render_gpu PROPERTIES FOLDER "tests")
 # Several ctest entries over one executable, so each stays within its timeout in the coverage job (software GL plus
@@ -170,14 +172,17 @@ set_tests_properties(walk PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
 
 # Game command line: --help and unknown options must exit at once, without a window or the engine.
 if(TARGET gothar)
-    foreach(_case IN ITEMS "help|--help|0|--world=" "unknown|--bogus|nonzero|unknown argument '--bogus'")
+    foreach(_case IN ITEMS "help|--help|0|--world=" "unknown|--bogus|nonzero|unknown argument '--bogus'"
+                          "set_bad|--set=render.bloom|nonzero|--set needs key=value"
+                          "set|--set=render.bloom=false,--set,ui.language=en,--no-user-config,--smoke-test|0|--set ui.language=en")
         string(REPLACE "|" ";" _parts "${_case}")
         list(GET _parts 0 _name)
         list(GET _parts 1 _arg)
+        string(REPLACE "," ";" _arg "${_arg}") # several arguments: comma-separated in the case
         list(GET _parts 2 _rc)
         list(GET _parts 3 _expect)
         add_test(NAME game.cli.${_name}
-                 COMMAND ${CMAKE_COMMAND} -DGOTHAR=$<TARGET_FILE:gothar> -DARGS=${_arg} -DEXPECT_RC=${_rc}
+                 COMMAND ${CMAKE_COMMAND} -DGOTHAR=$<TARGET_FILE:gothar> "-DARGS=${_arg}" -DEXPECT_RC=${_rc}
                          "-DEXPECT=${_expect}" -P "${CMAKE_CURRENT_SOURCE_DIR}/game/check_cli.cmake")
         set_tests_properties(game.cli.${_name} PROPERTIES TIMEOUT 60)
     endforeach()

@@ -3,6 +3,8 @@
 // wolf stays dead, the dropped item lies where it lay, the chest keeps what was taken out, Story and named
 // timers return; the world's scripts hear world_loaded(world, true).
 
+#include "RunTempDir.hpp"
+
 #include <g7/runtime/Engine.hpp>
 #include <g7/save/SaveFile.hpp>
 
@@ -200,7 +202,7 @@ TEST_CASE("Save state: visited worlds keep their state over level changes and in
     CHECK(state.value().worlds[1].path == "testworld/camp.g7world");
     const std::string first = save::toJson(state.value());
     // Through a save file (part A): the same document comes back.
-    const std::filesystem::path file = std::filesystem::temp_directory_path() / "g7_engine_save_test.g7save";
+    const std::filesystem::path file = g7::test::runTempDir() / "g7_engine_save_test.g7save";
     save::SaveFile written;
     written.meta.world = state.value().currentWorld;
     written.state = state.value();
