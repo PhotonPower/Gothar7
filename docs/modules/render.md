@@ -542,13 +542,36 @@ MeshRenderer::setRainMap(texture);                                  // Einheit 9
   Himmel (Horizontfarbe) nach Fresnel und ein Sonnenglanz, nur auf nach oben zeigenden Flächen. Ohne Nässe wird nichts
   gerechnet, das Bild bleibt wie vorher. Figuren werden mit nass (sie stehen im Regen).
 - **Pfützen** (Regenqualität `high`, Entscheidung 9): Rauschflecken auf flachem Boden (Normale nahezu senkrecht), die
-  ab halber Nässe wachsen; dort dunkler (×0,5), flach und spiegelnd (Fresnel bis zum Spiegel, scharfer Glanz). Sie
+  ab halber Nässe wachsen; dort dunkler (×0,5), flach, mit gedämpfter Spiegelung des Himmels und scharfem Glanz. Die
+  Spiegelung des Himmels ist auf 0,6 der eigenen beleuchteten Farbe begrenzt (`wetSheen`): nasser Boden wird nie heller
+  als trocken, Pfützen bleiben dunkler als der nasse Boden (Koordinator, Durchsicht von #390). Sie
   trocknen mit der Nässe ab (etwa eine Spielstunde, Entscheidung 9).
 - **Noch nicht:** Material-Rauheit (alle Materialien gleich; die Vorgabe je Material-Gruppe folgt, wenn welt und
   figuren sie setzen), SSR in Pfützen.
 - **Tests:** `tests/world/test_weather.cpp` (Nässe steigt und trocknet, im Snapshot, `settle`),
   `tests/render/test_lighting.cpp` (Werte im Lighting-Block, trocken = 0), GPU `test_lighting.cpp` (nass dunkler,
   trocken unverändert), `tests/save/test_game_state.cpp` (Nässe im Spielstand).
+
+### Gewitter (M17 Wetter, Teil G, umgesetzt) – `Weather.hpp` (`Lightning`, `LightningStorm`), Engine
+```cpp
+struct Lightning { f64 start; f32 distance, azimuth; u32 flickers; };
+f32 thunderDelay(metres);  f32 lightningBrightness(seconds, flickers);  f32 lightningStrength(distance);
+class LightningStorm { std::optional<Lightning> step(gameMinutes, perMinute, now); };   // Poisson, deterministisch
+Engine::lightningCount(), lastLightning(), lightningNow(), lastThunderDelay();  Lua lightning(distance?)
+```
+- **Blitze:** zufällig mit `lightning` Blitzen je Spielminute der Lage (Gewitter 0,15: etwa alle 7 Spielminuten,
+  knapp 30 Echtsekunden), je Blitz eine Entfernung von 300 bis 3000 m (nahe seltener), eine Richtung und ein bis drei
+  Aufflackern in etwa 0,25 s (die späteren schwächer). Deterministisch aus dem Startwert.
+- **Licht (Entscheidung 8: deutlich, nicht grell):** für die Dauer des Blitzes heller – Himmelslicht und Bodenlicht,
+  Nebel- und Himmelsfarbe –, nahe Blitze stärker (`lightningStrength`); den Rest macht der Bloom. Ein sichtbarer
+  Blitzstrahl am Himmel kommt später (selten, Entscheidung 8).
+- **Donner:** `thunder_near` (unter 1000 m: Krachen und Rollen) bzw. `thunder_far` (Grollen), um Entfernung / 343 m/s
+  verzögert (1–9 s) auf der Uhr des Mischers, leiser mit der Entfernung; im Bus `ambient` (unter Wasser gedämpft).
+  Platzhalter aus `tools/audio`.
+- **Lua:** `lightning(distance?)` – ein Blitz jetzt (Story, Prüfbilder), auch ohne Gewitter; Vorgabe 800 m.
+- **Tests:** `tests/world/test_weather.cpp` (Verzögerung, Aufflackern, Häufigkeit und Entfernungen, deterministisch),
+  `tests/runtime/test_engine_weather.cpp` (Gewitter blitzt, Regen nicht; `lightning()` hellt sofort auf, Donner nach
+  Entfernung / 343).
 
 ### Wind (Vertrag, vereinbart 2026-11-07; Umsetzung Teil W)
 - Markierung je glTF-Material: `extras.wind` = `trunk` (steif, oben leichtes Schwanken), `leaves` (Äste und

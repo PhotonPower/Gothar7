@@ -76,8 +76,10 @@ void main()
     const vec3 n = normalize(vNormal);
     vec3 albedo = uLayerCount > 0 ? splatAlbedo() : slopeAlbedo(n);
     vec3 wetNormal = n;
-    const vec3 sheen = wetSurface(vWorldPosition, albedo, wetNormal); // M17 N: rain
-    vec3 color = albedo * incomingLight(vWorldPosition, wetNormal) + sheen;
+    vec3 glint;
+    const vec3 sky = wetSurface(vWorldPosition, albedo, wetNormal, glint); // M17 N: rain
+    vec3 color = albedo * incomingLight(vWorldPosition, wetNormal);
+    color += wetSheen(color, sky) + glint;
     color *= shadowDebugTint(vWorldPosition);
     color = applyFog(color, distance(vWorldPosition, uCameraPosition));
     fragColor = vec4(color, 1.0);

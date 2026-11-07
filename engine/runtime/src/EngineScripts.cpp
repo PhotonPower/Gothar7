@@ -350,6 +350,26 @@ void Engine::bindEngineFunctions()
              m_weather.lock(a.empty() || a[0].asBool());
              return Value();
          }});
+    vm.bind({"lightning", "lightning(distance?: number)",
+             "Ein Blitz jetzt (Story, Prüfbilder), `distance` Meter entfernt (Vorgabe 800, 50 bis 5000); der "
+             "Donner "
+             "folgt nach Entfernung / 343 m/s – auch ohne Gewitter.",
+             "Welt", [this](std::span<const Value> a) -> Result<Value>
+             {
+                 const f64 distance = a.empty() ? 800.0 : a[0].asNumber(-1.0);
+                 if (distance < 50.0 || distance > 5000.0)
+                 {
+                     return Error{"expects (distance? 50-5000 m)"};
+                 }
+                 world::Lightning flash;
+                 flash.start = m_stormClock;
+                 flash.distance = static_cast<f32>(distance);
+                 flash.flickers = 2;
+                 m_flash = flash;
+                 ++m_flashCount;
+                 thunder(flash);
+                 return Value();
+             }});
     vm.bind({"where", "where() -> {x, y, z, yaw, world, time, day}",
              "Position (Meter) und Blickrichtung (Grad) der Spielfigur bzw. der Kamera, die Welt, der "
              "Spieltag (ab 1) und die "
