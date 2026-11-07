@@ -4,9 +4,11 @@
 // timers return; the world's scripts hear world_loaded(world, true).
 
 #include <g7/runtime/Engine.hpp>
+#include <g7/save/SaveFile.hpp>
 
 #include <doctest/doctest.h>
 
+#include <filesystem>
 #include <format>
 #include <ostream> // doctest needs it to print std::string operands
 #include <string>
@@ -197,6 +199,16 @@ TEST_CASE("Save state: visited worlds keep their state over level changes and in
     CHECK(state.value().worlds[0].path == "testworld/cave.g7world");
     CHECK(state.value().worlds[1].path == "testworld/camp.g7world");
     const std::string first = save::toJson(state.value());
+    // Through a save file (part A): the same document comes back.
+    const std::filesystem::path file = std::filesystem::temp_directory_path() / "g7_engine_save_test.g7save";
+    save::SaveFile written;
+    written.meta.world = state.value().currentWorld;
+    written.state = state.value();
+    REQUIRE(save::writeSaveFile(file, written).ok());
+    auto fromFile = save::readSaveFile(file);
+    REQUIRE_MESSAGE(fromFile.ok(), (fromFile.ok() ? "" : fromFile.error().message));
+    CHECK(save::toJson(fromFile.value().state) == first);
+    std::filesystem::remove(file);
     Engine loaded(campConfig());
     REQUIRE(loaded.init().ok());
     frames(loaded, 3);

@@ -1,6 +1,6 @@
 # 0021 – Spielstandformat `.g7save`: Chunk-Container mit CRC32, JSON-Nutzlast, zstd
 
-- **Status:** Vorgeschlagen
+- **Status:** Angenommen (Projektinhaber, 2026-11-01)
 - **Datum:** 2026-11-01
 - **Phase:** M15
 
@@ -24,7 +24,7 @@ Versionen laden lassen. Der Projektinhaber verlangt keine Lesbarkeit; Spielstän
 4. **SQLite** – Transaktionen und Abfragen geschenkt; neue Bibliothek, für einen Schreibvorgang je Spielstand
    überdimensioniert.
 
-## Entscheidung (Vorschlag)
+## Entscheidung
 **Option 2.** Kopf `"G7SV"`, Formatversion u16, Chunk-Anzahl, CRC des Kopfes; je Chunk `tag u32, version u16,
 flags u16 (zstd), rawSize u32, size u32, crc32 u32`. Chunks `META` (unkomprimiert, zuerst), `THMB` (PNG 320×180),
 `GLOB`, `WRLD` je Welt, `CURR`. CRC32 (IEEE) als eigene kleine Funktion in `core` (keine Bibliothek). zstd und
@@ -37,3 +37,8 @@ Schreiben atomar (Temp-Datei, flush, umbenennen). Migration je Chunk-Version auf
 - Wird die Nutzlast zu groß oder zu langsam, wird sie chunkweise binär (neue Chunk-Version, Migration), ohne den
   Container zu ändern.
 - Jede Änderung an gespeicherten Strukturen erhöht die Chunk-Version und bringt eine Migration plus Test mit.
+
+## Umsetzung (M15 Teil A)
+`save/SaveFile.hpp`: Chunks META, THMB, GLOB (Spielzustand ohne Welten), WRLD je besuchter Welt; der Chunk `CURR`
+des Plans entfällt (die aktuelle Welt steht in GLOB). Die CRC eines Chunks deckt seinen Kopf (Tag, Version, Flags,
+Größen) und seine Daten ab, so fällt auch ein umgeschriebenes Tag auf. CRC-32 in `core/Crc32.hpp`.

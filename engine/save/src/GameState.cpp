@@ -294,7 +294,65 @@ bool readNpc(Reader& r, const Json& j, const std::string& where, NpcState& n)
 }
 } // namespace
 
-std::string toJson(const GameState& state)
+namespace
+{
+Json worldToJson(const WorldState& w)
+{
+    Json removed = Json::array();
+    for (const RemovedVob& r : w.delta.removed)
+    {
+        removed.push_back(Json{{"id", r.id.value}, {"name", r.name}});
+    }
+    Json changed = Json::array();
+    for (const world::WorldFileVob& vob : w.delta.changed)
+    {
+        changed.push_back(vobJson(vob));
+    }
+    Json runtime = Json::array();
+    for (const world::WorldFileVob& vob : w.delta.runtime)
+    {
+        runtime.push_back(vobJson(vob));
+    }
+    Json mobs = Json::array();
+    for (const MobState& m : w.mobs)
+    {
+        mobs.push_back(Json{{"vob", m.vob},
+                            {"definition", m.definition},
+                            {"locked", m.locked},
+                            {"open", m.open},
+                            {"contents", m.contents}});
+    }
+    Json npcs = Json::array();
+    for (const NpcState& n : w.npcs)
+    {
+        Json npc = Json{{"name", n.name},
+                        {"instance", n.instance},
+                        {"position", vec3(n.position)},
+                        {"yaw", n.yaw},
+                        {"routine", n.routine},
+                        {"life", lifeName(n.life)},
+                        {"downSeconds", n.downSeconds},
+                        {"pickpocketed", n.pickpocketed},
+                        {"summoned", n.summoned},
+                        {"summonSeconds", n.summonSeconds}};
+        if (n.character)
+        {
+            npc["character"] = characterJson(*n.character);
+        }
+        npcs.push_back(std::move(npc));
+    }
+    return Json{{"path", w.path},
+                {"removed", std::move(removed)},
+                {"changed", std::move(changed)},
+                {"runtime", std::move(runtime)},
+                {"nextVobId", w.delta.nextVobId},
+                {"nextRuntimeVobId", w.delta.nextRuntimeVobId},
+                {"spentTriggers", w.spentTriggers},
+                {"mobs", std::move(mobs)},
+                {"npcs", std::move(npcs)}};
+}
+
+Json globalsToJson(const GameState& state)
 {
     Json root = Json::object();
     root["version"] = state.version;
@@ -327,83 +385,88 @@ std::string toJson(const GameState& state)
                             {"torch", h.torch}};
     }
     root["currentWorld"] = state.currentWorld;
+    return root;
+}
+} // namespace
+
+std::string toJson(const GameState& state)
+{
+    Json root = globalsToJson(state);
     Json worlds = Json::array();
     for (const WorldState& w : state.worlds)
     {
-        Json removed = Json::array();
-        for (const RemovedVob& r : w.delta.removed)
-        {
-            removed.push_back(Json{{"id", r.id.value}, {"name", r.name}});
-        }
-        Json changed = Json::array();
-        for (const world::WorldFileVob& vob : w.delta.changed)
-        {
-            changed.push_back(vobJson(vob));
-        }
-        Json runtime = Json::array();
-        for (const world::WorldFileVob& vob : w.delta.runtime)
-        {
-            runtime.push_back(vobJson(vob));
-        }
-        Json mobs = Json::array();
-        for (const MobState& m : w.mobs)
-        {
-            mobs.push_back(Json{{"vob", m.vob},
-                                {"definition", m.definition},
-                                {"locked", m.locked},
-                                {"open", m.open},
-                                {"contents", m.contents}});
-        }
-        Json npcs = Json::array();
-        for (const NpcState& n : w.npcs)
-        {
-            Json npc = Json{{"name", n.name},
-                            {"instance", n.instance},
-                            {"position", vec3(n.position)},
-                            {"yaw", n.yaw},
-                            {"routine", n.routine},
-                            {"life", lifeName(n.life)},
-                            {"downSeconds", n.downSeconds},
-                            {"pickpocketed", n.pickpocketed},
-                            {"summoned", n.summoned},
-                            {"summonSeconds", n.summonSeconds}};
-            if (n.character)
-            {
-                npc["character"] = characterJson(*n.character);
-            }
-            npcs.push_back(std::move(npc));
-        }
-        worlds.push_back(Json{{"path", w.path},
-                              {"removed", std::move(removed)},
-                              {"changed", std::move(changed)},
-                              {"runtime", std::move(runtime)},
-                              {"nextVobId", w.delta.nextVobId},
-                              {"nextRuntimeVobId", w.delta.nextRuntimeVobId},
-                              {"spentTriggers", w.spentTriggers},
-                              {"mobs", std::move(mobs)},
-                              {"npcs", std::move(npcs)}});
+        worlds.push_back(worldToJson(w));
     }
     root["worlds"] = std::move(worlds);
     return root.dump(1) + "\n";
 }
 
-Result<GameState> fromJson(std::string_view text)
+std::string globalJson(const GameState& state)
 {
-    const Json root = Json::parse(text.begin(), text.end(), nullptr, false);
-    if (root.is_discarded() || !root.is_object())
+    return globalsToJson(state).dump(1) + "\n";
+}
+
+std::string worldJson(const WorldState& world)
+{
+    return worldToJson(world).dump(1) + "\n";
+}
+
+namespace
+{
+bool readWorld(Reader& r, const Json& j, const std::string& at, WorldState& out)
+{
+    WorldState w;
+    bool ok = true;
+    ok = read(r, j, "path", at, w.path) && read(r, j, "nextVobId", at, w.delta.nextVobId) &&
+         read(r, j, "nextRuntimeVobId", at, w.delta.nextRuntimeVobId) &&
+         read(r, j, "spentTriggers", at, w.spentTriggers) && readVobs(r, j, "changed", at, w.delta.changed) &&
+         readVobs(r, j, "runtime", at, w.delta.runtime);
+    const Json* removed = ok ? field(r, j, "removed", at) : nullptr;
+    ok = ok && removed != nullptr && removed->is_array();
+    for (usize k = 0; ok && k < removed->size(); ++k)
     {
-        return Error{"game state: not a JSON object"};
+        RemovedVob v;
+        u64 id = 0;
+        const std::string rk = std::format("{}.removed[{}]", at, k);
+        ok = read(r, (*removed)[k], "id", rk, id) && read(r, (*removed)[k], "name", rk, v.name);
+        v.id = world::VobId{id};
+        w.delta.removed.push_back(std::move(v));
     }
-    Reader r;
-    GameState s;
+    const Json* mobs = ok ? field(r, j, "mobs", at) : nullptr;
+    ok = ok && mobs != nullptr && mobs->is_array();
+    for (usize k = 0; ok && k < mobs->size(); ++k)
+    {
+        MobState m;
+        const std::string mk = std::format("{}.mobs[{}]", at, k);
+        const Json& mj = (*mobs)[k];
+        ok = read(r, mj, "vob", mk, m.vob) && read(r, mj, "definition", mk, m.definition) &&
+             read(r, mj, "locked", mk, m.locked) && read(r, mj, "open", mk, m.open) &&
+             read(r, mj, "contents", mk, m.contents);
+        w.mobs.push_back(std::move(m));
+    }
+    const Json* npcs = ok ? field(r, j, "npcs", at) : nullptr;
+    ok = ok && npcs != nullptr && npcs->is_array();
+    for (usize k = 0; ok && k < npcs->size(); ++k)
+    {
+        NpcState n;
+        ok = readNpc(r, (*npcs)[k], std::format("{}.npcs[{}]", at, k), n);
+        w.npcs.push_back(std::move(n));
+    }
+    out = std::move(w);
+    return ok;
+}
+
+/// Everything but the worlds; false with r.error set.
+bool readGlobals(Reader& r, const Json& root, GameState& s)
+{
     if (!read(r, root, "version", "game state", s.version))
     {
-        return Error{r.error};
+        return false;
     }
     if (s.version > kGameStateVersion)
     {
-        return Error{
-            std::format("game state version {} is newer than this game ({})", s.version, kGameStateVersion)};
+        return r.failed("game state",
+                        std::format("version {} is newer than this game ({})", s.version, kGameStateVersion));
     }
     // (Migrations of older versions go here.)
     bool ok = read(r, root, "clock", "game state", s.clock) &&
@@ -442,48 +505,32 @@ Result<GameState> fromJson(std::string_view text)
              read(r, j, "torch", "hero", h.torch);
         s.hero = std::move(h);
     }
+    return ok;
+}
+
+Json parseObject(std::string_view text)
+{
+    Json root = Json::parse(text.begin(), text.end(), nullptr, false);
+    return root.is_discarded() || !root.is_object() ? Json() : root;
+}
+} // namespace
+
+Result<GameState> fromJson(std::string_view text)
+{
+    const Json root = parseObject(text);
+    if (root.is_null())
+    {
+        return Error{"game state: not a JSON object"};
+    }
+    Reader r;
+    GameState s;
+    bool ok = readGlobals(r, root, s);
     const Json* worlds = ok ? field(r, root, "worlds", "game state") : nullptr;
     ok = ok && worlds != nullptr && worlds->is_array();
     for (usize i = 0; ok && i < worlds->size(); ++i)
     {
-        const std::string at = std::format("worlds[{}]", i);
-        const Json& j = (*worlds)[i];
         WorldState w;
-        ok = read(r, j, "path", at, w.path) && read(r, j, "nextVobId", at, w.delta.nextVobId) &&
-             read(r, j, "nextRuntimeVobId", at, w.delta.nextRuntimeVobId) &&
-             read(r, j, "spentTriggers", at, w.spentTriggers) &&
-             readVobs(r, j, "changed", at, w.delta.changed) && readVobs(r, j, "runtime", at, w.delta.runtime);
-        const Json* removed = ok ? field(r, j, "removed", at) : nullptr;
-        ok = ok && removed != nullptr && removed->is_array();
-        for (usize k = 0; ok && k < removed->size(); ++k)
-        {
-            RemovedVob v;
-            u64 id = 0;
-            const std::string rk = std::format("{}.removed[{}]", at, k);
-            ok = read(r, (*removed)[k], "id", rk, id) && read(r, (*removed)[k], "name", rk, v.name);
-            v.id = world::VobId{id};
-            w.delta.removed.push_back(std::move(v));
-        }
-        const Json* mobs = ok ? field(r, j, "mobs", at) : nullptr;
-        ok = ok && mobs != nullptr && mobs->is_array();
-        for (usize k = 0; ok && k < mobs->size(); ++k)
-        {
-            MobState m;
-            const std::string mk = std::format("{}.mobs[{}]", at, k);
-            const Json& mj = (*mobs)[k];
-            ok = read(r, mj, "vob", mk, m.vob) && read(r, mj, "definition", mk, m.definition) &&
-                 read(r, mj, "locked", mk, m.locked) && read(r, mj, "open", mk, m.open) &&
-                 read(r, mj, "contents", mk, m.contents);
-            w.mobs.push_back(std::move(m));
-        }
-        const Json* npcs = ok ? field(r, j, "npcs", at) : nullptr;
-        ok = ok && npcs != nullptr && npcs->is_array();
-        for (usize k = 0; ok && k < npcs->size(); ++k)
-        {
-            NpcState n;
-            ok = readNpc(r, (*npcs)[k], std::format("{}.npcs[{}]", at, k), n);
-            w.npcs.push_back(std::move(n));
-        }
+        ok = readWorld(r, (*worlds)[i], std::format("worlds[{}]", i), w);
         s.worlds.push_back(std::move(w));
     }
     if (!ok)
@@ -491,5 +538,37 @@ Result<GameState> fromJson(std::string_view text)
         return Error{r.error.empty() ? std::string("game state: malformed") : r.error};
     }
     return s;
+}
+
+Result<GameState> parseGlobalJson(std::string_view text)
+{
+    const Json root = parseObject(text);
+    if (root.is_null())
+    {
+        return Error{"game state: not a JSON object"};
+    }
+    Reader r;
+    GameState s;
+    if (!readGlobals(r, root, s))
+    {
+        return Error{r.error.empty() ? std::string("game state: malformed") : r.error};
+    }
+    return s;
+}
+
+Result<WorldState> parseWorldJson(std::string_view text, std::string_view where)
+{
+    const Json root = parseObject(text);
+    if (root.is_null())
+    {
+        return Error{std::format("{}: not a JSON object", where)};
+    }
+    Reader r;
+    WorldState w;
+    if (!readWorld(r, root, std::string(where), w))
+    {
+        return Error{r.error.empty() ? std::format("{}: malformed", where) : r.error};
+    }
+    return w;
 }
 } // namespace g7::save

@@ -94,4 +94,9 @@ struct GameState
 [[nodiscard]] std::string toJson(const GameState& state);
 /// Reads what toJson wrote. Errors name the entry ("worlds[0].npcs[2]: missing 'name'").
 [[nodiscard]] Result<GameState> fromJson(std::string_view json);
+/// The same in parts, for the chunks of a save file: everything but the worlds, and one world.
+[[nodiscard]] std::string globalJson(const GameState& state);
+[[nodiscard]] std::string worldJson(const WorldState& world);
+[[nodiscard]] Result<GameState> parseGlobalJson(std::string_view json); ///< worlds stay empty
+[[nodiscard]] Result<WorldState> parseWorldJson(std::string_view json, std::string_view where = "world");
 } // namespace g7::save
