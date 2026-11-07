@@ -4,6 +4,7 @@
 // test_engine_leonberg_chapter.cpp (local).
 
 #include "ChapterHelpers.hpp"
+#include "RunTempDir.hpp"
 
 #include <g7/runtime/Engine.hpp>
 #include <g7/save/SaveFile.hpp>
@@ -51,7 +52,7 @@ std::unique_ptr<Engine> saveAndReload(std::unique_ptr<Engine> engine, const std:
 
 TEST_CASE("M15 DoD: chapter 1 of the camp with a save and a fresh load after every section")
 {
-    const std::filesystem::path saves = std::filesystem::temp_directory_path() / "g7_chapter_saves";
+    const std::filesystem::path saves = g7::test::runTempDir() / "g7_chapter_saves";
     std::filesystem::remove_all(saves);
     auto engine = std::make_unique<Engine>(chapterConfig(saves, true));
     REQUIRE(engine->init().ok());

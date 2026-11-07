@@ -2,6 +2,8 @@
 // ([camera.indoor] in data/movement.toml), blended in. The roof: a small world written here - welt's table (a
 // collision box) scaled to a floor and, 2.6 m up, to a ceiling.
 
+#include "RunTempDir.hpp"
+
 #include <g7/runtime/Engine.hpp>
 
 #include <doctest/doctest.h>
@@ -43,7 +45,7 @@ TEST_CASE("Engine camera: closer under a roof (indoor profile), the far one outs
         CHECK(engine.playerCameraDistance() > 2.5f);
     }
     // A room: floor and ceiling; the hero starts under the ceiling.
-    const std::filesystem::path world = std::filesystem::temp_directory_path() / "g7_indoor_room.g7world";
+    const std::filesystem::path world = g7::test::runTempDir() / "g7_indoor_room.g7world";
     {
         std::ofstream out(world, std::ios::binary);
         out << R"({"version":1,"name":"room","nextVobId":4,"vobs":[)"
@@ -68,7 +70,7 @@ TEST_CASE("Engine camera: closer under a roof (indoor profile), the far one outs
 TEST_CASE("Engine camera: under a jettied upper floor along a house it stays the outside camera")
 {
     // Only a strip of roof 0.6 m wide right above the hero (like a jetty over the street): outside.
-    const std::filesystem::path world = std::filesystem::temp_directory_path() / "g7_indoor_jetty.g7world";
+    const std::filesystem::path world = g7::test::runTempDir() / "g7_indoor_jetty.g7world";
     {
         std::ofstream out(world, std::ios::binary);
         out << R"({"version":1,"name":"jetty","nextVobId":4,"vobs":[)"
@@ -93,7 +95,7 @@ TEST_CASE(
 {
     // The jetty's world, but the hero stands in a zone of type indoor (welt: the stair box over both
     // storeys).
-    const std::filesystem::path world = std::filesystem::temp_directory_path() / "g7_indoor_stair.g7world";
+    const std::filesystem::path world = g7::test::runTempDir() / "g7_indoor_stair.g7world";
     {
         std::ofstream out(world, std::ios::binary);
         out << R"({"version":1,"name":"stair","nextVobId":4,"vobs":[)"

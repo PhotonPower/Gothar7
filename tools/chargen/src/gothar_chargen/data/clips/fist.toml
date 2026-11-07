@@ -88,10 +88,16 @@ from = "ual1:Punch_Cross"
 helper = true
 
 [[clip]]
-name = "fist/t_attack_combo1"     # jab, left fist
+name = "fist/t_attack_combo1_framed"     # jab, left fist
 keyframe = "framed"
-markers = { hit_start = 4, hit_end = 7, combo_start = 7, combo_end = 21, "sound:swing" = 0 }
+helper = true
 params = { base = "fist/t_jab", stance = "fist/s_idle", fade_in = 3, fade_out = 6 }
+
+[[clip]]
+name = "fist/t_attack_combo1"                 # feet planted, steps instead of sliding (F4)
+keyframe = "plant"
+markers = { hit_start = 4, hit_end = 7, combo_start = 7, combo_end = 21, "sound:swing" = 0 }
+params = { base = "fist/t_attack_combo1_framed" }
 
 [[clip]]
 name = "fist/t_cross_low"         # crouched low cross (knees bent, leaning in): hits wolves too
@@ -106,10 +112,16 @@ rotate = { spine_02 = [["X", 30]], spine_01 = [["X", 10]], thigh_l = [["X", -45]
 move = { pelvis = [0, 0, -0.28], root = [0, -0.1, 0] }
 
 [[clip]]
-name = "fist/t_attack_combo2"     # low cross, right fist (body blow; reaches animals, sweep M11)
+name = "fist/t_attack_combo2_framed"     # low cross, right fist (body blow; reaches animals, sweep M11)
 keyframe = "framed"
-markers = { hit_start = 4, hit_end = 9, combo_start = 9, combo_end = 24, "sound:swing" = 0 }
+helper = true
 params = { base = "fist/t_cross_low", stance = "fist/s_idle", fade_in = 5, fade_out = 6 }
+
+[[clip]]
+name = "fist/t_attack_combo2"                 # feet planted, steps instead of sliding (F4)
+keyframe = "plant"
+markers = { hit_start = 4, hit_end = 9, combo_start = 9, combo_end = 24, "sound:swing" = 0 }
+params = { base = "fist/t_attack_combo2_framed" }
 
 [[clip]]
 name = "fist/t_cover"             # forearms raised in front of the face (over the upright none/s_idle)

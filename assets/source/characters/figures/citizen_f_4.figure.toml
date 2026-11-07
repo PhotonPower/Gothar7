@@ -1,9 +1,9 @@
-# citizen_f_4: guild set 'citizen' (figure_sets.toml), more varied Leonbergers: ponytail (F3, 2026-11-07)
+# citizen_f_4: guild set 'citizen' (figure_sets.toml), more varied Leonbergers: long (F3, 2026-11-07)
 version = 1
 
 [parts]
 head = "parts/head_f_young/head.glb"
-hair = "parts/hair_f_young/hair_ponytail.glb"
+hair = "parts/hair_f_young/hair_long.glb"
 body = "parts/body_f_thin/body.glb"
 cloth = [
     "parts/cloth_f_thin/toigo_bodice-style_top.glb",

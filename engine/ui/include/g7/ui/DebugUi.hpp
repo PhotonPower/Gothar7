@@ -52,8 +52,9 @@ struct EnginePanel
     std::array<u32, 3> lodCounts{}; ///< shown: instances drawn per level
     bool paused = false;
     f32 timeScale = 1.0f;
-    f32 hour = 8.0f;          ///< game time of day (0 .. 24)
-    f32 minuteSeconds = 4.0f; ///< real seconds per game minute
+    f32 hour = 8.0f;                                    ///< game time of day (0 .. 24)
+    f32 minuteSeconds = 4.0f;                           ///< real seconds per game minute
+    std::vector<std::pair<std::string, f32>> passTimes; ///< shown: GPU ms per render pass (M17)
 };
 
 /// The player figure's animation (M6, "Animation" window): shown only.

@@ -1,6 +1,8 @@
 // Placing NPCs (label "headless"): insert_npc at a way point inside a room puts them on its floor, not on the
 // ceiling (welt's walkable houses; the ground probe starts just above the point).
 
+#include "RunTempDir.hpp"
+
 #include <g7/runtime/Engine.hpp>
 
 #include <doctest/doctest.h>
@@ -12,7 +14,7 @@ using namespace g7;
 
 TEST_CASE("Engine NPCs: inserted at a way point in a room they stand on its floor, not on the ceiling")
 {
-    const std::filesystem::path world = std::filesystem::temp_directory_path() / "g7_spawn_room.g7world";
+    const std::filesystem::path world = g7::test::runTempDir() / "g7_spawn_room.g7world";
     {
         std::ofstream out(world, std::ios::binary);
         out << R"({"version":1,"name":"room","nextVobId":4,"vobs":[)"
