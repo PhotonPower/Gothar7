@@ -168,6 +168,15 @@ void MeshRenderer::drawBatched(Device& device, std::span<const MeshDrawItem> ite
     }
 }
 
+void MeshRenderer::drawDepthBatched(Device& device, std::span<const MeshDrawItem> items, const Camera& camera)
+{
+    Cascade view;
+    view.viewProjection = camera.viewProjection();
+    m_depthPass = true;
+    drawShadowBatched(device, items, view);
+    m_depthPass = false;
+}
+
 void MeshRenderer::drawShadowBatched(Device& device, std::span<const MeshDrawItem> items,
                                      const Cascade& cascade)
 {
@@ -313,6 +322,7 @@ void MeshRenderer::drawGroups(Device& device, bool shadow, const Mat4& viewProje
         {
             device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
         }
+        bindAmbientOcclusion(device);
     }
     for (const BatchGroup& group : m_groups)
     {
@@ -323,7 +333,7 @@ void MeshRenderer::drawGroups(Device& device, bool shadow, const Mat4& viewProje
                                       : alphaTest ? m_multiAlphaTestProgram
                                                   : m_multiProgram;
         const rhi::Pipeline& pipeline =
-            shadow ? m_multiShadowPipelines[alphaTest ? 1 : 0]
+            shadow ? (m_depthPass ? m_multiDepthPipelines : m_multiShadowPipelines)[alphaTest ? 1 : 0]
                    : m_multiPipelines[static_cast<usize>(alphaTest ? AlphaTest : Opaque) * 2 +
                                       (head.material->doubleSided ? 1 : 0)];
         device.bindPipeline(pipeline);

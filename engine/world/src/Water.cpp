@@ -24,9 +24,23 @@ void WaterBodies::rebuild(const Scene& scene)
         [&](entt::entity, const Vob& vob, const WaterVolume& water, const WorldTransform& world)
         {
             const Vec3 forward = Mat3(world.matrix) * Vec3(0.0f, 0.0f, -1.0f);
-            m_bodies.push_back(
-                {vob.id, Vec3(world.matrix[3]), std::atan2(-forward.x, -forward.z), water.halfExtents});
+            m_bodies.push_back({vob.id, Vec3(world.matrix[3]), std::atan2(-forward.x, -forward.z),
+                                water.halfExtents, water.kind});
         });
+}
+
+const WaterBody* WaterBodies::submergedIn(const Vec3& point) const noexcept
+{
+    const WaterBody* best = nullptr;
+    for (const WaterBody& body : m_bodies)
+    {
+        if (point.y < body.surface() && point.y >= body.bottom() && body.covers(point.x, point.z) &&
+            (best == nullptr || body.surface() > best->surface()))
+        {
+            best = &body;
+        }
+    }
+    return best;
 }
 
 std::optional<f32> WaterBodies::surfaceAt(const Vec3& point, f32 above) const noexcept

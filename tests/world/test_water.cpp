@@ -101,6 +101,14 @@ TEST_CASE("Water bodies: surface over a point, turned boxes, overlaps, dry above
     CHECK_FALSE(water.surfaceAt(Vec3(11.0f, -1.0f, 0.0f)).has_value());
     // Where both overlap (x 6..7), the higher surface wins.
     CHECK(water.surfaceAt(Vec3(6.5f, -1.0f, 0.0f)) == doctest::Approx(0.5f));
+    // The camera just under / just over the surface (M17 W3: the underwater view).
+    REQUIRE(water.submergedIn(Vec3(0.0f, -0.01f, 0.0f)) != nullptr);
+    CHECK(water.submergedIn(Vec3(0.0f, -0.01f, 0.0f))->vob.value == 1);
+    CHECK(water.submergedIn(Vec3(0.0f, 0.01f, 0.0f)) == nullptr);
+    CHECK(water.submergedIn(Vec3(0.0f, -2.5f, 0.0f)) == nullptr);  // below the bottom
+    REQUIRE(water.submergedIn(Vec3(6.5f, 0.2f, 0.0f)) != nullptr); // overlap: under the higher river surface
+    CHECK(water.submergedIn(Vec3(6.5f, 0.2f, 0.0f))->vob.value == 2);
+    CHECK(water.submergedIn(Vec3(6.5f, 0.2f, 0.0f))->kind == "river");
     water.clear();
     CHECK_FALSE(water.surfaceAt(Vec3(0.0f, -1.5f, 0.0f)).has_value());
 }

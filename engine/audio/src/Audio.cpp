@@ -175,6 +175,11 @@ struct AudioSystem::Impl
     std::array<ma_sound_group, static_cast<usize>(Bus::Count)> groups{};
     std::array<f32, static_cast<usize>(Bus::Count)> busVolumes{};
     usize groupsReady = 0;
+    // A low-pass per bus (M17 W3), between the group and the endpoint only while it muffles (open it is not
+    // in the graph, so the bus sounds exactly as before).
+    std::array<ma_lpf_node, static_cast<usize>(Bus::Count)> busLpf{};
+    std::array<bool, static_cast<usize>(Bus::Count)> busLpfReady{};
+    std::array<f32, static_cast<usize>(Bus::Count)> busMuffles{};
     std::unordered_map<std::string, std::shared_ptr<const Clip>> clips;
     std::unordered_map<SoundId, Voice> voices;
     SoundId nextId = 1;
@@ -192,6 +197,10 @@ struct AudioSystem::Impl
         for (usize i = 0; i < groupsReady; ++i)
         {
             ma_sound_group_uninit(&groups[i]);
+            if (busLpfReady[i])
+            {
+                ma_lpf_node_uninit(&busLpf[i], nullptr);
+            }
         }
         if (engineReady)
         {
@@ -576,6 +585,54 @@ f32 AudioSystem::busVolume(Bus bus) const noexcept
 {
     const auto i = static_cast<usize>(bus);
     return i < m_impl->busVolumes.size() ? m_impl->busVolumes[i] : 0.0f;
+}
+
+void AudioSystem::setBusMuffle(Bus bus, f32 amount)
+{
+    const auto i = static_cast<usize>(bus);
+    if (i >= m_impl->groupsReady)
+    {
+        return;
+    }
+    amount = std::clamp(amount, 0.0f, 1.0f);
+    f32& current = m_impl->busMuffles[i];
+    if (std::abs(current - amount) < 1e-3f)
+    {
+        return;
+    }
+    ma_node* group = &m_impl->groups[i];
+    ma_node* endpoint = ma_engine_get_endpoint(&m_impl->engine);
+    const ma_lpf_node_config lc = m_impl->lpfConfig(amount);
+    if (!m_impl->busLpfReady[i])
+    {
+        if (ma_lpf_node_init(ma_engine_get_node_graph(&m_impl->engine), &lc, nullptr, &m_impl->busLpf[i]) !=
+            MA_SUCCESS)
+        {
+            G7_LOG_WARN("audio", "bus {}: no low-pass", kBusNames[i]);
+            return;
+        }
+        m_impl->busLpfReady[i] = true;
+        ma_node_attach_output_bus(&m_impl->busLpf[i], 0, endpoint, 0);
+    }
+    else
+    {
+        ma_lpf_node_reinit(&lc.lpf, &m_impl->busLpf[i]);
+    }
+    if (amount > 0.0f && current <= 0.0f)
+    {
+        ma_node_attach_output_bus(group, 0, &m_impl->busLpf[i], 0); // into the filter
+    }
+    else if (amount <= 0.0f)
+    {
+        ma_node_attach_output_bus(group, 0, endpoint, 0); // past it again
+    }
+    current = amount;
+}
+
+f32 AudioSystem::busMuffle(Bus bus) const noexcept
+{
+    const auto i = static_cast<usize>(bus);
+    return i < m_impl->busMuffles.size() ? m_impl->busMuffles[i] : 0.0f;
 }
 
 u64 AudioSystem::frame() const noexcept

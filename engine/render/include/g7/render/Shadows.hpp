@@ -25,6 +25,11 @@ struct ShadowSettings
     f32 normalOffset = 1.5f;      ///< receiver offset along the normal, in shadow-map texels
 };
 
+/// Depth prepass (M17 P3): its depth a little further away than the main pass draws the same surface
+/// (reverse-Z, a negative offset), so the main pass (GreaterEqual) still draws it although another shader
+/// computes it.
+inline constexpr rhi::DepthBias kPrepassBias{-2.0f, -1.0f};
+
 struct Cascade
 {
     Mat4 viewProjection;  ///< world -> light clip space (xy -1..1, depth 0..1 = near..far)

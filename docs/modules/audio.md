@@ -47,6 +47,9 @@
   Grenzfrequenz 20 kHz bis etwa 600 Hz).
   - Die Engine prüft zehnmal je Sekunde einen Strahl von der Kamera zum Klang (Welt-Kollision). Liegt etwas dazwischen,
     wird der Klang auf 0,8 gedämpft, sonst wieder offen.
+- **Ganzer Bus gedämpft** (M17 W3, unter Wasser): `setBusMuffle(bus, menge)` legt einen Tiefpass zwischen die Gruppe und
+  den Master, nur solange die Menge > 0 ist (offen ist der Bus unverändert). Die Engine dämpft Musik und Ambiente
+  auf 0,85, solange die Kamera unter Wasser ist (render.md „Unter Wasser“).
 - **Ambiente** (`assets/source/data/ambient.toml`): je Name `loop` und `loop_night`, Einzelklänge `randoms` und
   `randoms_night`, `interval` und `distance` als [min, max], `fade`.
   - Es gilt die Zone vom Typ `ambient`, in der der Held steht (world.md „Zonen“, die kleinste).

@@ -117,10 +117,16 @@ Result<TerrainRenderer> TerrainRenderer::create(Device& device, ShaderLibrary& s
     desc.depthCompare = rhi::CompareOp::LessEqual; // shadow depth is not reversed
     desc.depthBias = {shadows.depthBias, shadows.slopeBias};
     auto shadowPipeline = device.createPipeline(desc);
-    if (!pipeline || !shadowPipeline)
+    desc.depthCompare = rhi::CompareOp::GreaterEqual; // depth prepass (M17 P3): the camera's reverse-Z
+    desc.depthBias = kPrepassBias;
+    auto depthPipeline = device.createPipeline(desc);
+    if (!pipeline || !shadowPipeline || !depthPipeline)
     {
-        return !pipeline ? pipeline.error() : shadowPipeline.error();
+        return !pipeline         ? pipeline.error()
+               : !shadowPipeline ? shadowPipeline.error()
+                                 : depthPipeline.error();
     }
+    terrain.m_depthPipeline = std::move(depthPipeline).value();
     terrain.m_pipeline = std::move(pipeline).value();
     terrain.m_shadowPipeline = std::move(shadowPipeline).value();
 
@@ -364,6 +370,40 @@ void TerrainRenderer::drawShadow(Device& device, const Cascade& cascade, const V
         m_shadowProgram->setUniform("uChunkOrigin", chunk.origin);
         device.drawIndexed(m_grids[level].indexCount);
         ++m_shadowLevels[level];
+    }
+}
+
+void TerrainRenderer::drawDepth(Device& device, const Camera& camera)
+{
+    if (m_chunks.empty())
+    {
+        return;
+    }
+    const Frustum view = camera.frustum();
+    device.bindPipeline(m_depthPipeline);
+    bindCommon(*m_shadowProgram, device);
+    m_shadowProgram->setUniform("uViewProjection", camera.viewProjection());
+    u32 boundLevel = kLodLevels;
+    for (const Chunk& chunk : m_chunks)
+    {
+        if (!view.intersects(chunk.bounds))
+        {
+            continue;
+        }
+        const Vec3 closest = glm::clamp(camera.transform.position, chunk.bounds.min, chunk.bounds.max);
+        if (m_maxDistance > 0.0f && glm::length(closest - camera.transform.position) > m_maxDistance)
+        {
+            continue;
+        }
+        const u32 level = lodFor(glm::length(closest - camera.transform.position), lodDistance);
+        if (level != boundLevel)
+        {
+            device.bindVertexBuffer(m_grids[level].vertices);
+            device.bindIndexBuffer(m_grids[level].indices, rhi::IndexType::U32);
+            boundLevel = level;
+        }
+        m_shadowProgram->setUniform("uChunkOrigin", chunk.origin);
+        device.drawIndexed(m_grids[level].indexCount);
     }
 }
 

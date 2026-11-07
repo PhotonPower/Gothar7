@@ -20,6 +20,7 @@ using script::Value;
 constexpr f32 kNightFrom = 20.0f;        ///< hours: night ambience and music from here ...
 constexpr f32 kNightTo = 6.0f;           ///< ... until here
 constexpr f32 kOcclusionInterval = 0.1f; ///< s between the occlusion rays
+constexpr f32 kUnderwaterMuffle = 0.85f; ///< music and ambience with the camera under water (M17 W3)
 constexpr f32 kOccludedMuffle = 0.8f;    ///< a wall between: this muffled (owner decision 8: a low-pass)
 constexpr std::string_view kIndoorAmbience = "innen"; ///< in a room (indoor zone): this ambience ...
 constexpr f32 kOutsideVolume = 0.3f;                  ///< ... with the outside one this loud ...
@@ -141,7 +142,7 @@ void Engine::initAudio()
         }
     }
     G7_LOG_INFO("engine", "audio: {} sounds, {} ambiences", m_soundDefs.size(), m_ambientDefs.size());
-    initMusic(); // M13 part C
+    initMusic();     // M13 part C
     loadFootsteps(); // M13 E
 }
 
@@ -157,6 +158,10 @@ void Engine::updateAudio(f64 realSeconds)
     updateOcclusion(static_cast<f32>(realSeconds));
     updateMusic(static_cast<f32>(realSeconds));
     updateVoices(static_cast<f32>(realSeconds)); // M13 D: lip sync, ducking
+    // Under water (M17 W3, decision 7): music and ambience muffled while the camera is below the surface.
+    const f32 muffle = cameraWater() != nullptr ? kUnderwaterMuffle : 0.0f;
+    m_audio->setBusMuffle(audio::Bus::Music, muffle);
+    m_audio->setBusMuffle(audio::Bus::Ambient, muffle);
     m_audio->update(static_cast<f32>(realSeconds));
 }
 
