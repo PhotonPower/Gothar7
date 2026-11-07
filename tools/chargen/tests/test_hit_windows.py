@@ -15,6 +15,7 @@ from gothar_chargen.hitreach import (
     blade_paths,
     item_length,
     planted_slide,
+    turning_slide,
     weapon_length,
 )
 
@@ -156,3 +157,11 @@ def test_attacks_step_instead_of_sliding(mode):
     for name, metres in slide.items():
         if "/t_attack_" in name:
             assert metres < 0.25, (name, round(metres, 3))
+
+
+@pytest.mark.parametrize("mode", ["none", "fist", "1h", "2h", "bow", "cbow", "mag"])
+def test_turning_on_the_spot_steps_round(mode):
+    """F4: while the engine turns the figure (180 deg/s), the standing feet stay on the ground and
+    step round (plant with yaw); before, they slid 0.7 m per turn clip."""
+    for name, metres in turning_slide(ANIMS / f"{mode}.glb").items():
+        assert metres < 0.35, (name, round(metres, 3))
