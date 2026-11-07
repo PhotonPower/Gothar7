@@ -125,7 +125,7 @@ TREES = {
     # an apple or pear tree in a garden
     "tree_fruit": TreeSpec(1.4, (0.16, 0.11), (0.15, -0.1), 2.9, (2.0, 1.6), 5, "leaves_fruit", 37),
     # a young tree at the edge of a wood, in a meadow (W6 vegetation)
-    "tree_young": TreeSpec(1.6, (0.1, 0.07), (0.05, 0.0), 3.3, (1.4, 1.5), 4, "leaves_linden", 41),
+    "tree_young": TreeSpec(1.6, (0.1, 0.07), (0.05, 0.03), 3.3, (1.4, 1.5), 4, "leaves_linden", 41),
 }
 
 
@@ -281,13 +281,15 @@ def _spruce_into(m: Mesh, at: tuple[float, float], scale: float, level: int) -> 
     x, z = at
     h = SPRUCE_H * scale
     sides = (8, 6, 4)[level]
-    frustum(m, "bark", (x, -0.3, z), (x, h * 0.35, z), 0.22 * scale, 0.14 * scale,
+    lx, lz = x + 0.03 * scale, z + 0.02 * scale  # a slight lean: no axis exactly upright
+    frustum(m, "bark", (x, -0.3, z), (lx, h * 0.35, lz), 0.22 * scale, 0.14 * scale,
             max(4, sides - 2))  # fmt: skip
     tiers = ((0.15, 0.55, 2.0), (0.4, 0.78, 1.5), (0.62, 1.0, 0.95))[: (3, 2, 1)[level]]
     if level == 2:
         tiers = ((0.15, 1.0, 2.0),)
     for y0, y1, r in tiers:
-        frustum(m, "needles", (x, h * y0, z), (x, h * y1, z), r * scale, 0.03, sides)
+        frustum(m, "needles", (lx, h * y0, lz), (lx + 0.02 * scale, h * y1, lz + 0.01 * scale),
+                r * scale, 0.03, sides)  # fmt: skip
 
 
 def spruce() -> MobModel:
