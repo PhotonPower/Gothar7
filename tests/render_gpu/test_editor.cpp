@@ -9,6 +9,7 @@
 #include <g7/world/Scene.hpp>
 #include <g7/world/WorldFile.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <string>
@@ -224,11 +225,82 @@ TEST_CASE("Editor GPU: editing a generated vob asks first; saving changed genera
     // Saving: first the summary of what the next generator run writes anew; no keeps the file.
     const std::string original = fs::readText(copy.file).value();
     CHECK_FALSE(editor.save().ok());
-    CHECK(editor.confirmation().find("1 generated vob(s) changed (68)") != std::string::npos);
+    CHECK(editor.confirmation().find("1 generated vob(s) or waynet entries changed (68)") !=
+          std::string::npos);
     editor.confirm(false);
     CHECK(fs::readText(copy.file).value() == original);
     CHECK_FALSE(editor.save().ok());
     editor.confirm(true);
     CHECK(fs::readText(copy.file).value() != original);
     CHECK_FALSE(editor.dirty());
+}
+
+TEST_CASE("Editor GPU: waynet mode - add, join, probe a path, rename, undo, delete, save and load again")
+{
+    WorldCopy copy;
+    {
+        Engine engine(editorConfig(copy.file));
+        REQUIRE(engine.init().ok());
+        editor::Editor editor(engine);
+        engine.addTool(editor);
+        editor.setWaynetMode(true);
+        const world::WaynetPoint* outsidePoint = editor.waynetData().findPoint("WP_CAMP_OUTSIDE");
+        REQUIRE(outsidePoint != nullptr);
+        const Vec3 outside = outsidePoint->position; // a copy: edits replace the editor's waynet
+        const usize points = editor.waynetData().points.size();
+
+        // A new point next to the selected one: named after its stem, joined to it, known to the path
+        // finding.
+        editor.selectWaynet("WP_CAMP_OUTSIDE");
+        const auto added = editor.addWaypoint(outside + Vec3(8.0f, 0.0f, 0.0f));
+        REQUIRE(added.ok());
+        CHECK(added.value() == "WP_CAMP_OUTSIDE_01");
+        CHECK(editor.waynetSelection() == "WP_CAMP_OUTSIDE_01");
+        CHECK(engine.waynet().find("WP_CAMP_OUTSIDE_01").has_value());
+        const auto path = editor.probePath("WP_CAMP_CENTER", "WP_CAMP_OUTSIDE_01");
+        REQUIRE(path.has_value());
+        CHECK(path->back() == "WP_CAMP_OUTSIDE_01");
+        CHECK(path->at(path->size() - 2) == "WP_CAMP_OUTSIDE");
+
+        // Parted, it is unreachable (and the check finds it); joined again, reachable.
+        CHECK_FALSE(editor.toggleEdge("WP_CAMP_OUTSIDE", "WP_CAMP_OUTSIDE_01").value());
+        CHECK_FALSE(editor.probePath("WP_CAMP_CENTER", "WP_CAMP_OUTSIDE_01").has_value());
+        const auto& issues = editor.checkWaynet();
+        CHECK(std::ranges::any_of(
+            issues, [](const editor::WaynetIssue& i)
+            { return i.name == "WP_CAMP_OUTSIDE_01" && i.kind == editor::WaynetIssue::Kind::Unconnected; }));
+        REQUIRE(editor.undo().value());
+        CHECK(editor.probePath("WP_CAMP_CENTER", "WP_CAMP_OUTSIDE_01").has_value());
+
+        // Rename and undo it; the edges follow both ways.
+        REQUIRE(editor.renameWaynetSelection("WP_CAMP_BACH").ok());
+        CHECK(editor.probePath("WP_CAMP_CENTER", "WP_CAMP_BACH").has_value());
+        REQUIRE(editor.undo().value());
+        CHECK(editor.waynetData().findPoint("WP_CAMP_BACH") == nullptr);
+        CHECK(editor.probePath("WP_CAMP_CENTER", "WP_CAMP_OUTSIDE_01").has_value());
+        REQUIRE(editor.redo().value());
+
+        // A freepoint near it; deleting a point of the human's leaves no annotation line.
+        editor.selectWaynet("WP_CAMP_BACH");
+        REQUIRE(editor.addFreepoint("STAND", outside + Vec3(8.0f, 0.0f, 1.0f), 90.0f).ok());
+        CHECK(editor.waynetData().findFreepoint("FP_STAND_CAMP_BACH_01") != nullptr);
+        CHECK(engine.runFrame()); // waynet drawn, its window shown (selection, issues)
+        editor.selectWaynet("WP_CAMP_FIRE");
+        REQUIRE(editor.deleteWaynetSelection().ok());
+        CHECK(editor.waynetAnnotation().empty());
+        CHECK_FALSE(engine.waynet().find("WP_CAMP_FIRE").has_value());
+        REQUIRE(editor.undo().value());
+        CHECK(engine.waynet().find("WP_CAMP_FIRE").has_value());
+
+        CHECK(editor.dirty());
+        REQUIRE(editor.save().ok());
+        CHECK(editor.waynetData().points.size() == points + 1);
+    }
+    // Loaded again: the waynet as saved.
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    CHECK(engine.waynet().find("WP_CAMP_BACH").has_value());
+    CHECK(engine.waynet().find("WP_CAMP_FIRE").has_value());
+    REQUIRE(engine.worldFile().waynet.has_value());
+    CHECK(engine.worldFile().waynet->findFreepoint("FP_STAND_CAMP_BACH_01") != nullptr);
 }

@@ -41,6 +41,10 @@ nav_repeat_rate = 0.08  # Sekunden zwischen Wiederholungen
 subtitles = true       # Untertitel mit Sprechername, unten mittig, auch für Zurufe (F6)
 
 [render]
+# Bloom (M17 P1): Helles glüht in die Umgebung; Stärke und Schwelle je Tageszeit in data/environment.toml.
+bloom = true
+# Farbkorrektur je Tageszeit und Zone (M17 P2; Werte in data/environment.toml).
+grading = true
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
 # shader_hot_reload = true
 # Anisotrope Filterung für Materialtexturen (1 = aus; wird auf den Treiberwert begrenzt).
@@ -275,3 +279,4 @@ simulation_distance = 80.0
 [editor]
 # Editor-Modus (gothar --editor, docs/modules/tools.md): so viele Schritte lassen sich je Sitzung rückgängig machen.
 undo_depth = 200
+waynet_radius = 80.0 # m: the waynet mode draws and picks points this near the camera (Leonberg ~3800 points)

@@ -5,8 +5,11 @@
 
 #include <g7/core/Math.hpp>
 #include <g7/core/Result.hpp>
+#include <g7/render/Grading.hpp>
 #include <g7/render/Lighting.hpp>
 
+#include <map>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -31,6 +34,9 @@ struct EnvironmentKey
     f32 fogDensity = 1.0f;            ///< factor on [render] fog_density
     Vec3 skyZenith{0.1f, 0.2f, 0.5f}; ///< the horizon is the fog colour (distant geometry fades into the sky)
     f32 stars = 0.0f;                 ///< 0 .. 1
+    f32 bloomThreshold = 1.0f;        ///< M17: luminance from which bright pixels glow
+    f32 bloomIntensity = 0.12f;       ///< M17: how strongly (decision 1: subtle; more at night)
+    render::Grading grading;          ///< M17 P2: colour grading (grading_* and vignette)
 };
 
 /// Paths of sun and moon. The sun rises in the east (+X), stands south (+Z) at noon and sets in the
@@ -50,6 +56,9 @@ struct DaySample
 {
     render::Environment environment; ///< directional light = sun by day, moon by night
     render::Sky sky;
+    f32 bloomThreshold = 1.0f;
+    f32 bloomIntensity = 0.12f;
+    render::Grading grading;
 };
 
 class DayCycle
@@ -69,10 +78,14 @@ public:
     /// [indoor] ambient: factor on the ambient inside rooms (zones of type indoor), 0..1.
     [[nodiscard]] f32 indoorAmbient() const noexcept { return m_indoorAmbient; }
     [[nodiscard]] const std::vector<EnvironmentKey>& keys() const noexcept { return m_keys; }
+    /// [zone.<name>] (M17 P2): grading of a zone, by the zone's value ("wald", an indoor tag) or "innen" for
+    /// every indoor zone; nullptr: none.
+    [[nodiscard]] const render::GradingOverride* zoneGrading(std::string_view name) const;
 
 private:
     Orbit m_orbit;
     std::vector<EnvironmentKey> m_keys; // sorted by hour, at least one
     f32 m_indoorAmbient = 0.35f;
+    std::map<std::string, render::GradingOverride, std::less<>> m_zoneGrading;
 };
 } // namespace g7::world

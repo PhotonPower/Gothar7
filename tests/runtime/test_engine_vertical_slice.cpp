@@ -5,6 +5,8 @@
 // the scene (who stands where) and reads state; the ImGui game windows are gone (ImGui is debug and editor
 // UI, ADR 0009). Its own ctest group (runtime_slice).
 
+#include "RunTempDir.hpp"
+
 #include <g7/core/FileSystem.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/ui/GameScreens.hpp>
@@ -262,7 +264,7 @@ void newGame(Engine& engine)
 
 TEST_CASE("M14 DoD: the vertical slice played through the game UI with keys only, without ImGui")
 {
-    const std::filesystem::path user = std::filesystem::temp_directory_path() / "g7_slice_user_config.toml";
+    const std::filesystem::path user = g7::test::runTempDir() / "g7_slice_user_config.toml";
     Engine engine(gameConfig(user));
     REQUIRE(engine.init().ok());
     REQUIRE(engine.gameUi() != nullptr);
@@ -415,8 +417,7 @@ TEST_CASE("M14 DoD: the vertical slice played through the game UI with keys only
 
 TEST_CASE("M14 DoD: the language switched to English in the options, the camp in English")
 {
-    const std::filesystem::path user =
-        std::filesystem::temp_directory_path() / "g7_slice_en_user_config.toml";
+    const std::filesystem::path user = g7::test::runTempDir() / "g7_slice_en_user_config.toml";
     Engine engine(gameConfig(user));
     REQUIRE(engine.init().ok());
     REQUIRE(runUntil(engine, [&] { return engine.screens().find("menu") != nullptr; }));

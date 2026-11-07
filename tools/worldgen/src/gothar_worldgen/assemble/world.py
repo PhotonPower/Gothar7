@@ -210,7 +210,10 @@ def assemble(
         for e in water["entries"]:
             vid = ids.get(f"water:{e['id']}", floor)
             v = _vob(vid, "water", e["name"], e["pos"], group, rot=e["rot"])
-            v["components"] = {"water": {"halfExtents": [_tidy(h) for h in e["halfExtents"]]}}
+            water_c: dict[str, Any] = {"halfExtents": [_tidy(h) for h in e["halfExtents"]]}
+            if e.get("kind"):  # river (flows along local +X) or pond (world.md)
+                water_c["kind"] = e["kind"]
+            v["components"] = {"water": water_c}
             fresh[vid] = v
 
     if mobs:

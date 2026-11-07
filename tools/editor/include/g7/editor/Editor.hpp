@@ -14,11 +14,14 @@
 #include <g7/core/Transform.hpp>
 #include <g7/editor/Commands.hpp>
 #include <g7/editor/Gizmo.hpp>
+#include <g7/editor/WaynetCheck.hpp>
+#include <g7/editor/WaynetEdit.hpp>
 #include <g7/runtime/EngineTool.hpp>
 #include <g7/ui/EditorPanel.hpp>
 #include <g7/world/Components.hpp>
 
 #include <functional>
+#include <optional>
 #include <set>
 #include <span>
 #include <string>
@@ -66,6 +69,33 @@ public:
     /// Answers it: yes does what was asked about (and later edits of generated vobs need no more question).
     void confirm(bool yes);
 
+    // --- Waynet (M16 part B): every edit undoable; generated entries ask first (once per session) ---
+    [[nodiscard]] bool waynetMode() const noexcept { return m_waynetMode; }
+    void setWaynetMode(bool on);
+    void selectWaynet(std::string name);
+    [[nodiscard]] const std::string& waynetSelection() const noexcept { return m_waynetSelected; }
+    /// A new way point at `feet` (name from the selected point's stem, else the world's), joined to the
+    /// selected way point; selected.
+    [[nodiscard]] Result<std::string> addWaypoint(const Vec3& feet);
+    /// A new freepoint FP_<TYPE>_<stem>_NN at `feet` facing `yawDegrees` (0 = -Z, positive left); selected.
+    [[nodiscard]] Result<std::string> addFreepoint(std::string_view type, const Vec3& feet, f32 yawDegrees);
+    [[nodiscard]] Result<void> moveWaynetSelection(const Vec3& feet,
+                                                   std::optional<f32> yawDegrees = std::nullopt);
+    [[nodiscard]] Result<void> renameWaynetSelection(std::string name);
+    /// Deletes the selection; for a generated point waynetAnnotation() then holds the line for welt's
+    /// annotations (decision 2: shown to copy, not written).
+    [[nodiscard]] Result<void> deleteWaynetSelection();
+    /// Joins the two way points, or parts them if joined; true if joined now.
+    [[nodiscard]] Result<bool> toggleEdge(std::string_view a, std::string_view b);
+    /// Runs the checks (world.md recommendations) against the world's collision.
+    [[nodiscard]] const std::vector<WaynetIssue>& checkWaynet();
+    /// The path finding's way between two way points (names), drawn until the next probe; nullopt:
+    /// unconnected.
+    [[nodiscard]] std::optional<std::vector<std::string>> probePath(std::string_view from,
+                                                                    std::string_view to);
+    [[nodiscard]] const std::string& waynetAnnotation() const noexcept { return m_annotation; }
+    [[nodiscard]] const world::WaynetData& waynetData() const noexcept { return m_waynetData; }
+
     Gizmo& gizmo() noexcept { return m_gizmo; }
     bool snap = true;
     f32 snapMove = 0.5f;   ///< metres
@@ -78,6 +108,7 @@ private:
     void drag(const Vec2& mouse);
     void drawSelection();
     void sceneChanged();
+    void historyApplied(); ///< after undo or redo: rendering and waynet follow
     void fillPanel();
     void applyPanel();
     void applyFields(const std::vector<ui::EditorField>& fields);
@@ -90,6 +121,17 @@ private:
     void ask(std::string question, std::function<void()> onYes);
     [[nodiscard]] Result<void> write();
     [[nodiscard]] std::string vobLabel(world::VobId id) const;
+    /// Does `change` on the working waynet as one undoable command on the entries `names` and `edges` (and
+    /// the edges at those points); asks first for generated entries; hands the result to the engine.
+    Result<void> editWaynet(std::string label, std::vector<std::string> names,
+                            std::vector<std::pair<std::string, std::string>> edges,
+                            const std::function<Result<void>(world::WaynetData&)>& change,
+                            bool mergeable = false);
+    void waynetMouse(Engine& engine, const Vec2& mouse, bool pressed, bool held);
+    void drawWaynet();
+    void fillWaynetPanel();
+    void applyWaynetPanel();
+    [[nodiscard]] std::optional<Vec3> groundUnder(const Vec2& mouse) const;
 
     Engine& m_engine;
     world::VobId m_selection;
@@ -109,5 +151,18 @@ private:
     std::string m_status;
     std::vector<std::string> m_assets;
     ui::EditorPanel m_panel;
+    // Waynet (part B)
+    world::WaynetData m_waynetData; ///< the world's waynet as edited (handed to the engine after each edit)
+    bool m_waynetMode = false;
+    f32 m_waynetRadius = 80.0f; ///< points drawn and picked this near the camera ([editor] waynet_radius)
+    std::string m_waynetSelected;
+    bool m_waynetConfirmed = false;                ///< edits of generated waynet entries asked about once
+    std::set<std::string> m_waynetGeneratedEdited; ///< generated entries changed since the last save
+    std::string m_annotation;
+    std::vector<WaynetIssue> m_issues;
+    std::vector<Vec3> m_probe; ///< the last probed path
+    std::optional<WaynetSnapshot> m_waynetDragBefore;
+    bool m_waynetDragging = false;
+    ui::WaynetPanel m_waynetPanel;
 };
 } // namespace g7::editor
