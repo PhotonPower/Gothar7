@@ -430,6 +430,19 @@
     "collisionPerFile": 200,
     "materials": {"wall": "stone", "roof": "roof_old", "frame": "frame", "timber": "timber_dark"}
   },
+  "weiler": {
+    "status": "festgelegt – Entscheidung des Projektinhabers (2026-11-07): vor der Mauer nur Weiler; Regeln und Werte vom Koordinator freigegeben (2026-11-07)",
+    "note": "Außerhalb der Stadtmauer entfallen fast alle Gebäude (buildings/weiler.py). Es bleiben: die Häuser von uses.json vor den Toren (Torvorstadt), Mühlen an der Glems und einzelne Höfe an den Torstraßen; die freien Flächen füllt vegetation.json (umland).",
+    "enabled": true,
+    "insideM": 3.0,
+    "insideShare": 0.25,
+    "reachM": 600.0,
+    "minWallM": 80.0,
+    "functions": ["31001"],
+    "maxParts": 2,
+    "mill": {"river": "Glems", "maxRiverM": 20.0, "minM2": 60.0, "maxM2": 450.0, "spacingM": 200.0},
+    "farm": {"highways": ["secondary", "tertiary"], "gateM": 12.0, "maxRoadM": 25.0, "minM2": 80.0, "maxM2": 450.0, "spacingM": 175.0}
+  },
   "assignment": {
     "note": "Reihenfolge: Override style, OSM (Kirche, Schloss), ALKIS-Funktion, Lage; dann gewichtete Wahl je Haus aus hash(id, seed); Override timber/infill/roofCover hat Vorrang",
     "wallFunctions": ["51007"],
