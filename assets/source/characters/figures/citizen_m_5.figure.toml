@@ -1,0 +1,23 @@
+# citizen_m_5: guild set 'citizen' (figure_sets.toml), more varied Leonbergers: thatch, short beard (F3, 2026-11-07)
+version = 1
+
+[parts]
+head = "parts/head_m_gaunt/head.glb"
+hair = "parts/hair_m_gaunt/hair_thatch.glb"
+beard = "parts/hair_m_gaunt/beard_short.glb"
+body = "parts/body_m_thin/body.glb"
+cloth = [
+    "parts/garb_m_thin/coat_clean.glb",
+    "parts/garb_m_thin/belt.glb",
+    "parts/cloth_m_thin/culturalibre_male_boots.glb",
+]
+
+[palette]
+hair = "#4a3626"
+beard_short = "#4a3626"
+cloth_coat_clean = "#6a2a2a"
+cloth_belt = "#2a1e16"
+cloth_culturalibre_male_boots = "#3a2c22"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "relaxed"
