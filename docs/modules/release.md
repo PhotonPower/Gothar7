@@ -3,7 +3,7 @@
 Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). Kein Code in diesem PR.
 Ziel ist ein Paket, das ohne Repository läuft: ein ZIP mit dem Spiel, den gekochten Assets in `.g7pak`, den Lizenzen
 und Pflichtangaben, einer sichtbaren Version und lokalen Absturzberichten. Die Entscheidungen des Projektinhabers stehen am Ende,
-nummeriert und jeweils mit Vorschlag.
+nummeriert.
 
 ## Ausgangslage
 - **Bauen:** `release`-Preset und CI-Job `release (ubuntu-24.04)` (optimierter Build, Tests ohne GPU, `--smoke-test`).
@@ -82,7 +82,7 @@ nummeriert und jeweils mit Vorschlag.
     MIT, EnTT MIT, fastgltf MIT, glm MIT, Dear ImGui MIT, nlohmann-json MIT, toml++ MIT, miniaudio Public Domain/
     MIT-0, stb Public Domain, zstd BSD, libktx Apache-2.0, msdfgen MIT, glad MIT). Die Liste prüft CI gegen
     `vcpkg.json`, damit keine Bibliothek ohne Eintrag dazukommt.
-- **Installer:** optional über CPack (NSIS oder WiX, beides externe Programme, keine Bibliothek) – Frage 1.
+- **Installer:** optional über CPack (NSIS oder WiX, beides externe Programme, keine Bibliothek) – Entscheidung 1.
 - **CI:** Ein Workflow auf Tags `v*` baut das ZIP und die Symbole als Artefakte. Er veröffentlicht nichts
   automatisch (Entscheidung 8).
 - **Tests:** Lizenzprüfung (pytest in `tools/release`), CPack-Inhalt (Liste der Dateien im ZIP), der reine Paket-Test
