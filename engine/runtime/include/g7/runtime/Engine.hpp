@@ -992,6 +992,9 @@ private:
     [[nodiscard]] std::string npcFigurePath(const script::Instance& npc, std::string_view name);
     // Behaviour (EngineAi.cpp)
     void fixedUpdateAi(Creature& c, f32 seconds);
+    /// AI LOD by count ([ai] max_simulated): which creatures may be simulated this step
+    /// (Creature::lodAllowed).
+    void updateSimulationLimit();
     void perceive(Creature& c, f32 seconds);
     [[nodiscard]] bool seesPlayer(const Creature& c) const;
     /// The player did something (theft, used a mob) that NPCs who see it react to: `event`(npc, args...).
@@ -1773,6 +1776,7 @@ private:
     f32 m_runNoiseTimer = 0.0f;
     u64 m_routineMinute = ~0ull;      // the game minute routines were last checked
     f32 m_simulationDistance = 80.0f; // [ai] simulation_distance: AI LOD
+    u32 m_simulationLimit = 32;       // [ai] max_simulated: the nearest this many (0: no limit)
     // Dialogue (M10 part A)
     struct DialogLine
     {

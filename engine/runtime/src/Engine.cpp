@@ -93,6 +93,9 @@ Result<void> Engine::init()
     }
     // Game time: [time] minute_seconds (real seconds per game minute), start "HH:MM" (or --time).
     m_gameTime.setSecondsPerMinute(m_config.settings.get<f64>("time.minute_seconds", 4.0));
+    // AI LOD by count (M17 perf part D), also headless.
+    m_simulationLimit =
+        static_cast<u32>(std::max<i64>(0, m_config.settings.get<i64>("ai.max_simulated", 32)));
     const std::string startTime = m_config.startTime.empty()
                                       ? m_config.settings.get<std::string>("time.start", "08:00")
                                       : m_config.startTime;

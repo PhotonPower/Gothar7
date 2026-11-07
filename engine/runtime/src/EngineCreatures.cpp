@@ -217,6 +217,7 @@ f32 Engine::creatureYaw(u32 id) const noexcept
 
 void Engine::fixedUpdateCreatures(f32 seconds)
 {
+    updateSimulationLimit(); // AI LOD by count, before each creature decides by distance
     // By index: a script state may insert NPCs while this runs (they move next step).
     const usize creatureCount = m_creatures.size();
     for (usize index = 0; index < creatureCount; ++index)

@@ -66,6 +66,12 @@ Routine "rtn_farmer_woman" {
 - **KI-LOD**: NPCs weiter als `[ai] simulation_distance` (80 m) vom Spieler (zurück 5 m näher) werden weder bewegt noch animiert und
   beginnen keinen Zustand; wechselt ihr Zeitfenster, stehen sie sofort am neuen Ort. Kommt der Spieler näher,
   beginnt der aktuelle Zustand.
+  **Obergrenze nach Anzahl** (M17 Perf Teil D): höchstens `[ai] max_simulated` (32; 0 = ohne) NPCs werden voll
+  simuliert, die nächsten zum Spieler (ohne Spieler: zur Kamera); bereits simulierte zählen 5 m näher (kein
+  Flackern an der Grenze). NPCs im Dialog, beim Zaubern oder in einem Kampfzustand (`zs_attack`, `zs_mm_attack`,
+  `zs_mm_hunt`) bleiben immer simuliert und belegen ihren Platz zuerst; nur wenn mehr als N beschäftigt sind, liegt
+  die Zahl darüber. Wer herausfällt, verhält sich wie ein ferner NPC (geht er gerade, steht er sofort am Ziel).
+  `npc_state(npc).simulated` zeigt den Stand.
 - Testlager: `camp_people()` (Konsole oder `--exec=camp_people()`) setzt Torwache, Bäuerin, Holzfäller und den
   alten Mann an die Orte ihres Tagesablaufs (`routines/camp.lua`).
 
