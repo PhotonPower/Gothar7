@@ -112,7 +112,7 @@ def _site_with(features: list, height=lambda x, z: 0.0) -> Site:  # noqa: ANN001
 
 def _only(**keep) -> VegRules:
     data = json.loads((DATA / "vegetation.json").read_text(encoding="utf-8"))
-    for key in ("areas", "formal", "banks", "wall", "slopes"):
+    for key in ("areas", "formal", "banks", "wall", "slopes", "umland"):
         if key not in keep:
             data.pop(key, None)
     data.update(keep)
@@ -146,3 +146,46 @@ def test_scrub_and_grass_grow_on_steep_ground_only():
     plan = plan_outdoor(_outdoor(), _site_with([], height), _only(slopes=_veg().data["slopes"]))
     hang = [v for v in plan.vobs if v["name"].startswith("VEG_HANG")]
     assert hang and all(v["pos"][2] > -21.5 for v in hang)
+
+
+WOOD = {"osmId": "w20", "kind": "forest", "geometry": "polygon",
+        "polygon": [[-40.0, -45.0], [60.0, -45.0], [60.0, -400.0], [-40.0, -400.0]]}  # fmt: skip
+HOUSING = {"osmId": "w21", "kind": "residential", "geometry": "polygon",
+           "polygon": [[70.0, -45.0], [200.0, -45.0], [200.0, 60.0], [70.0, 60.0]]}  # fmt: skip
+
+
+def _umland(**over):  # noqa: ANN202
+    spec = {**_veg().data["umland"], "reachM": 200.0, **over}
+    plan = plan_outdoor(_outdoor(), _site_with([WOOD, HOUSING]), _only(umland=spec))
+    return spec, plan.vobs
+
+
+def test_the_surroundings_reach_from_inner_to_reach_round_the_wall():
+    spec, vobs = _umland()
+    hull = WALL.convex_hull
+    inner = {c["name"].upper(): float(c["innerM"]) for c in spec["classes"]}
+    land = [v for v in vobs if v["name"].startswith(("VEG_WALD", "VEG_STREUOBST"))]
+    assert land
+    for v in land:
+        cls = v["name"].split("_")[1].rstrip("F")
+        assert inner[cls] - 0.5 <= hull.distance(_at(v)) <= spec["reachM"] + 0.5
+    assert vobs == _umland()[1]  # the same every run
+
+
+def test_a_wood_turns_to_clumps_beyond_far_and_housing_to_orchard_meadow():
+    spec, vobs = _umland()
+    wald = next(c for c in spec["classes"] if c["name"] == "wald")
+    hull = WALL.convex_hull
+    clumps = [v for v in vobs if v["mesh"].endswith("forest_clump.glb")]
+    assert clumps and all(v["name"].startswith("VEG_WALDF") for v in clumps)
+    assert all(hull.distance(_at(v)) >= wald["farM"] - 0.5 for v in clumps)
+    near = [v for v in vobs if v["name"].startswith("VEG_WALD_")]
+    assert near and all(hull.distance(_at(v)) <= wald["farM"] + 0.5 for v in near)
+    orchard = [v for v in vobs if v["name"].startswith("VEG_STREUOBST")]
+    assert any(v["mesh"].endswith("tree_fruit.glb") for v in orchard)
+    assert all(Polygon(HOUSING["polygon"]).contains(_at(v)) for v in orchard)
+
+
+def test_no_surroundings_without_their_rule():
+    vobs = plan_outdoor(_outdoor(), _site_with([WOOD, HOUSING]), _only()).vobs
+    assert not [v for v in vobs if v["name"].startswith(("VEG_WALD", "VEG_STREUOBST"))]
