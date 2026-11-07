@@ -38,6 +38,20 @@ Result<rhi::Framebuffer> Device::createFramebuffer(const rhi::FramebufferDesc&)
 {
     return noGl();
 }
+Result<rhi::TimerQuery> Device::createTimerQuery()
+{
+    return noGl();
+}
+void Device::beginTimerQuery(const rhi::TimerQuery&)
+{
+}
+void Device::endTimerQuery()
+{
+}
+std::optional<u64> Device::timerQueryNanoseconds(const rhi::TimerQuery&) const
+{
+    return std::nullopt;
+}
 void Device::bindFramebuffer(const rhi::Framebuffer*)
 {
 }

@@ -33,12 +33,14 @@
 #include <g7/platform/GlContext.hpp>
 #include <g7/platform/Input.hpp>
 #include <g7/platform/Window.hpp>
+#include <g7/render/Bloom.hpp>
 #include <g7/render/Camera.hpp>
 #include <g7/render/DebugDraw.hpp>
 #include <g7/render/Device.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
 #include <g7/render/Particles.hpp>
+#include <g7/render/PassTimes.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/Terrain.hpp>
@@ -310,6 +312,17 @@ public:
     [[nodiscard]] u64 frameCount() const noexcept { return m_frameCount; }
     /// The merged settings as they are now (options change them, M14 part F).
     [[nodiscard]] const Config& settings() const noexcept { return m_config.settings; }
+    /// GPU time per render pass, smoothed (M17; empty without a renderer).
+    [[nodiscard]] const std::vector<render::PassTime>& passTimes() const noexcept
+    {
+        return m_passTimes.times();
+    }
+    /// The bloom of the last frame (M17 P1): settings from the time of day and [render] bloom.
+    [[nodiscard]] const render::BloomSettings& bloomSettings() const noexcept { return m_bloomSettings; }
+    /// The colour grading of the last frame (M17 P2), after the zone fade.
+    [[nodiscard]] const render::Grading& grading() const noexcept { return m_grading; }
+    /// The grading for a point: the time of day overridden by the zones there (music, ambient, indoor).
+    [[nodiscard]] render::Grading gradingAt(const render::Grading& timeOfDay, const Vec3& point) const;
 
     // Save games (M15, EngineSave.cpp, docs/modules/save.md)
     /// The game as it is now: time, Story, named timers, the hero and the current world (its delta against
@@ -1420,6 +1433,7 @@ private:
     /// Light, fog and sky from the day cycle at the current game time.
     void updateEnvironment();
     void renderScene(u32 width, u32 height);
+    void updateGrading(const render::Grading& timeOfDay);
     void drawScene(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
     /// `allowMouse` / `allowKeyboard` false while the debug UI uses them.
@@ -1519,6 +1533,12 @@ private:
     render::SceneTarget m_sceneTarget; // linear HDR scene, tonemapped by m_post
     render::PostProcess m_post;
     render::PostSettings m_postSettings;
+    render::Bloom m_bloom;                 // M17 P1
+    render::BloomSettings m_bloomSettings; // enabled from [render] bloom, the rest from the time of day
+    render::PassTimes m_passTimes;         // GPU time per pass (M17)
+    render::Grading m_grading;             // M17 P2: current colour grading (fades between zones)
+    bool m_gradingStarted = false;
+    static constexpr f32 kGradingFadeSeconds = 1.5f;
     render::DebugDraw m_debugDraw;
     render::DebugDrawRenderer m_debugRenderer;
     bool m_debugOverlay = false;

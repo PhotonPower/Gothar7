@@ -106,15 +106,27 @@ params = { base = "none/s_walk", side = "r", yaw = 70 }
 events = "footsteps"
 
 [[clip]]
-name = "none/t_turn_l"
+name = "none/t_turn_l_body"   # the body's twist without leg motion (the feet step in plant)
 keyframe = "turn"
-params = { idle = "none/s_idle", walk = "none/s_walk", side = "l", frames = 30 }
+params = { idle = "none/s_idle", walk = "none/s_walk", side = "l", frames = 30, step = 0.0 }
+helper = true
+
+[[clip]]
+name = "none/t_turn_l"        # F4: feet stand on the turning ground and step round (180 deg/s)
+keyframe = "plant"
+params = { base = "none/t_turn_l_body", yaw = 180, threshold = 0.07, step = 5, lift = 0.05 }
 events = "footsteps"
 
 [[clip]]
-name = "none/t_turn_r"
+name = "none/t_turn_r_body"   # the body's twist without leg motion (the feet step in plant)
 keyframe = "turn"
-params = { idle = "none/s_idle", walk = "none/s_walk", side = "r", frames = 30 }
+params = { idle = "none/s_idle", walk = "none/s_walk", side = "r", frames = 30, step = 0.0 }
+helper = true
+
+[[clip]]
+name = "none/t_turn_r"        # F4: feet stand on the turning ground and step round (180 deg/s)
+keyframe = "plant"
+params = { base = "none/t_turn_r_body", yaw = -180, threshold = 0.07, step = 5, lift = 0.05 }
 events = "footsteps"
 
 [[clip]]

@@ -14,6 +14,8 @@ from gothar_chargen.hitreach import (
     ZONE_LOW,
     blade_paths,
     item_length,
+    planted_slide,
+    turning_slide,
     weapon_length,
 )
 
@@ -146,3 +148,20 @@ def test_weapon_strikes_reach_the_fighting_distance(paths, mode, name, markers):
     blade radius); short strikes lunge (root forward) like combo 1/2."""
     tips = paths[mode][name].tips[markers["hit_start"] : markers["hit_end"] + 1, 0]
     assert tips[:, 2].max() >= REACH[mode], name
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_attacks_step_instead_of_sliding(mode):
+    """F4: the feet stay planted and step (recipe plant); before, lunges slid 0.5-2 m."""
+    slide = planted_slide(ANIMS / f"{mode}.glb")
+    for name, metres in slide.items():
+        if "/t_attack_" in name:
+            assert metres < 0.25, (name, round(metres, 3))
+
+
+@pytest.mark.parametrize("mode", ["none", "fist", "1h", "2h", "bow", "cbow", "mag"])
+def test_turning_on_the_spot_steps_round(mode):
+    """F4: while the engine turns the figure (180 deg/s), the standing feet stay on the ground and
+    step round (plant with yaw); before, they slid 0.7 m per turn clip."""
+    for name, metres in turning_slide(ANIMS / f"{mode}.glb").items():
+        assert metres < 0.35, (name, round(metres, 3))

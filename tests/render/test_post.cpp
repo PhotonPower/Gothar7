@@ -1,4 +1,7 @@
+#include <g7/render/Bloom.hpp>
+#include <g7/render/Grading.hpp>
 #include <g7/render/Lighting.hpp>
+#include <g7/render/PassTimes.hpp>
 #include <g7/render/PostProcess.hpp>
 
 #include <doctest/doctest.h>
@@ -52,4 +55,72 @@ TEST_CASE("Distance fog")
     }
     CHECK(fogFactor(500.0f, 30.0f, 0.0f) == 0.0f);    // density 0 = off
     CHECK(fogDensityFor(0.9f, 20.0f, 30.0f) == 0.0f); // end before start: off
+}
+
+TEST_CASE("Bloom prefilter: nothing below the knee, softly into it, linear above; the hue stays (M17)")
+{
+    using render::bloomPrefilter;
+    CHECK(glm::length(bloomPrefilter(Vec3(0.4f), 1.0f, 0.5f)) == doctest::Approx(0.0f));
+    const Vec3 soft = bloomPrefilter(Vec3(0.9f), 1.0f, 0.5f); // inside the knee (0.5 .. 1.5)
+    CHECK(soft.x > 0.0f);
+    CHECK(soft.x < 0.9f - 0.5f);
+    const Vec3 bright = bloomPrefilter(Vec3(4.0f, 2.0f, 1.0f), 1.0f, 0.5f);
+    CHECK(bright.x == doctest::Approx(3.0f)); // brightness 4 - threshold 1
+    CHECK(bright.y / bright.x == doctest::Approx(0.5f));
+    CHECK(glm::length(bloomPrefilter(Vec3(1.2f), 1.0f, 0.0f)) == doctest::Approx(glm::length(Vec3(0.2f))));
+}
+
+TEST_CASE("Pass times: the first sample is taken, then smoothed")
+{
+    CHECK(render::smoothPassTime(0.0f, 2.0f, true) == doctest::Approx(2.0f));
+    CHECK(render::smoothPassTime(2.0f, 4.0f, false) == doctest::Approx(2.2f));
+}
+
+TEST_CASE(
+    "Grading: neutral is the identity, white balance, saturation, contrast, lift/gamma/gain, vignette (M17)")
+{
+    const Grading neutral;
+    const Vec3 c(0.3f, 0.6f, 0.1f);
+    const Vec3 same = gradeLinear(c, neutral);
+    CHECK(same.x == doctest::Approx(c.x));
+    CHECK(same.y == doctest::Approx(c.y));
+    CHECK(same.z == doctest::Approx(c.z));
+    CHECK(gradeDisplay(Vec3(0.25f, 0.5f, 0.75f), neutral).y == doctest::Approx(0.5f));
+    CHECK(vignetteFactor(Vec2(0.5f), 0.3f) == doctest::Approx(1.0f));
+    CHECK(vignetteFactor(Vec2(0.0f), 0.3f) == doctest::Approx(0.7f).epsilon(0.02));
+
+    Grading warm;
+    warm.temperature = 1.0f;
+    const Vec3 w = gradeLinear(Vec3(0.5f), warm);
+    CHECK(w.x > w.z); // red over blue
+    CHECK(glm::dot(w, Vec3(0.2126f, 0.7152f, 0.0722f)) ==
+          doctest::Approx(0.5f).epsilon(0.01)); // brightness kept
+
+    Grading grey;
+    grey.saturation = 0.0f;
+    const Vec3 g = gradeLinear(c, grey);
+    CHECK(g.x == doctest::Approx(g.y));
+    CHECK(g.y == doctest::Approx(g.z));
+
+    Grading hard;
+    hard.contrast = 1.5f;
+    CHECK(gradeLinear(Vec3(0.18f), hard).x == doctest::Approx(0.18f)); // middle grey stays
+    CHECK(gradeLinear(Vec3(0.05f), hard).x < 0.05f);                   // darker below it
+    CHECK(gradeLinear(Vec3(0.5f), hard).x > 0.5f);                     // brighter above
+
+    Grading lifted;
+    lifted.lift = Vec3(0.1f);
+    CHECK(gradeDisplay(Vec3(0.0f), lifted).x == doctest::Approx(0.1f));
+    Grading brighter;
+    brighter.gamma = Vec3(2.0f);
+    CHECK(gradeDisplay(Vec3(0.25f), brighter).x == doctest::Approx(0.5f));
+
+    // Mixing and overrides (zones).
+    const Grading half = mixGrading(neutral, warm, 0.5f);
+    CHECK(half.temperature == doctest::Approx(0.5f));
+    GradingOverride over;
+    over.saturation = 0.7f;
+    const Grading overridden = applyOverride(warm, over);
+    CHECK(overridden.saturation == doctest::Approx(0.7f));
+    CHECK(overridden.temperature == doctest::Approx(1.0f)); // the rest stays
 }

@@ -1,6 +1,8 @@
 // Rooms (label "headless"): zones of type indoor in the world file reach the lighting - the rooms nearest to
 // the camera (world.md "Zonen", render.md); the ambient factor is environment.toml [indoor] (test_day_cycle).
 
+#include "RunTempDir.hpp"
+
 #include <g7/runtime/Engine.hpp>
 
 #include <doctest/doctest.h>
@@ -12,7 +14,7 @@ using namespace g7;
 
 TEST_CASE("Engine lighting: the rooms of the world file, nearest first, with the indoor ambient")
 {
-    const std::filesystem::path world = std::filesystem::temp_directory_path() / "g7_indoor_light.g7world";
+    const std::filesystem::path world = g7::test::runTempDir() / "g7_indoor_light.g7world";
     {
         std::ofstream out(world, std::ios::binary);
         out << R"({"version":1,"name":"rooms","nextVobId":3,"vobs":[)"
@@ -45,7 +47,7 @@ TEST_CASE("Engine lighting: the rooms of the world file, nearest first, with the
     {
         farthest = std::max(farthest, v.center.x);
     }
-    CHECK(farthest < 160.0f); // the far rooms (x 160 .. 195) are left out
+    CHECK(farthest < 160.0f);                             // the far rooms (x 160 .. 195) are left out
     CHECK(near[0].halfExtents == Vec3(2.0f, 1.2f, 2.0f)); // the nearest is a room, not the music zone
     CHECK(engine.nearestIndoorVolumes(Vec3(195.0f, 0.0f, 10.0f))[0].center.x == doctest::Approx(195.0f));
     std::filesystem::remove(world);

@@ -60,6 +60,61 @@ Vec3 Orbit::moonDirection(f32 hour) const noexcept
                                -std::sin(angle) * std::cos(elevation)));
 }
 
+namespace
+{
+/// grading_* and vignette of a [[key]] or [zone.<name>] (`at` the table path) into an override; error text or
+/// empty.
+std::string readGrading(const Config& c, const std::string& at, render::GradingOverride& out)
+{
+    const std::string prefix = at.empty() ? std::string() : at + ".";
+    for (auto [name, target] :
+         {std::pair{"grading_temperature", &out.temperature}, std::pair{"grading_tint", &out.tint},
+          std::pair{"grading_saturation", &out.saturation}, std::pair{"grading_contrast", &out.contrast},
+          std::pair{"vignette", &out.vignette}})
+    {
+        if (const auto value = c.find<f64>(prefix + name))
+        {
+            *target = static_cast<f32>(*value);
+        }
+        else if (c.contains(prefix + name))
+        {
+            return prefix + name + ": must be a number";
+        }
+    }
+    for (auto [name, target] : {std::pair{"grading_lift", &out.lift}, std::pair{"grading_gamma", &out.gamma},
+                                std::pair{"grading_gain", &out.gain}})
+    {
+        if (const auto value = c.find<std::vector<f64>>(prefix + name); value && value->size() == 3)
+        {
+            *target = Vec3((*value)[0], (*value)[1], (*value)[2]);
+        }
+        else if (c.contains(prefix + name))
+        {
+            return prefix + name + ": must be [r, g, b]";
+        }
+    }
+    if (out.saturation && *out.saturation < 0.0f)
+    {
+        return prefix + "grading_saturation: must not be negative";
+    }
+    if (out.contrast && *out.contrast <= 0.0f)
+    {
+        return prefix + "grading_contrast: must be > 0";
+    }
+    if (out.gamma && glm::any(glm::lessThanEqual(*out.gamma, Vec3(0.0f))))
+    {
+        return prefix + "grading_gamma: must be > 0";
+    }
+    return {};
+}
+} // namespace
+
+const render::GradingOverride* DayCycle::zoneGrading(std::string_view name) const
+{
+    const auto it = m_zoneGrading.find(name);
+    return it == m_zoneGrading.end() ? nullptr : &it->second;
+}
+
 Result<DayCycle> DayCycle::parse(std::string_view toml, std::string_view source)
 {
     auto config = Config::parse(toml, source);
@@ -126,7 +181,9 @@ Result<DayCycle> DayCycle::parse(std::string_view toml, std::string_view source)
         }
         for (auto [name, target] :
              {std::pair{"sun_intensity", &key.sunIntensity}, std::pair{"moon_intensity", &key.moonIntensity},
-              std::pair{"fog_density", &key.fogDensity}, std::pair{"stars", &key.stars}})
+              std::pair{"fog_density", &key.fogDensity}, std::pair{"stars", &key.stars},
+              std::pair{"bloom_threshold", &key.bloomThreshold},
+              std::pair{"bloom_intensity", &key.bloomIntensity}})
         {
             const f64 value = c.get<f64>(at + "." + name, *target);
             if (value < 0.0)
@@ -135,7 +192,25 @@ Result<DayCycle> DayCycle::parse(std::string_view toml, std::string_view source)
             }
             *target = static_cast<f32>(value);
         }
+        render::GradingOverride grading;
+        if (const std::string bad = readGrading(c, at, grading); !bad.empty())
+        {
+            return error(at, bad.substr(at.size() + 1));
+        }
+        key.grading = applyOverride(key.grading, grading);
+        key.grading.vignette = grading.vignette.value_or(0.15f); // decision 4: a light vignette always
         cycle.m_keys.push_back(key);
+    }
+    // [zone.<name>] (M17 P2): grading overrides for zones.
+    for (const std::string& name : c.keys("zone"))
+    {
+        render::GradingOverride grading;
+        const std::string at = "zone." + name;
+        if (const std::string bad = readGrading(c, at, grading); !bad.empty())
+        {
+            return error(at, bad.substr(at.size() + 1));
+        }
+        cycle.m_zoneGrading.emplace(name, grading);
     }
     std::sort(cycle.m_keys.begin(), cycle.m_keys.end(),
               [](const EnvironmentKey& a, const EnvironmentKey& b) { return a.hour < b.hour; });
@@ -231,6 +306,9 @@ DaySample DayCycle::evaluate(f32 hour, f32 fogDensity) const
     sky.moonDirection = moon;
     sky.moon = moonUp;
     sky.stars = blend(a.stars, b.stars, t);
+    sample.bloomThreshold = blend(a.bloomThreshold, b.bloomThreshold, t);
+    sample.bloomIntensity = blend(a.bloomIntensity, b.bloomIntensity, t);
+    sample.grading = render::mixGrading(a.grading, b.grading, t);
     return sample;
 }
 } // namespace g7::world
