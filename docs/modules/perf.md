@@ -2,7 +2,7 @@
 
 Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). Kein Code in diesem PR.
 Ziel (Meilenstein D): Release-Build stabil ≥ 60 FPS in der größten Welt (Leonberg) auf Zielhardware. Erst messen, dann
-parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummeriert und mit Vorschlag.
+parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummeriert.
 
 ## Ausgangslage
 - **Hauptschleife** (`docs/02-architecture.md`) läuft auf einem Thread: fester Zeitschritt (Physik, Spieler, KI mit
@@ -20,7 +20,7 @@ parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummerie
 - **Neue Abhängigkeit:** Tracy (BSD-3), vcpkg `tracy`. Sie braucht eine ADR; ADR 0024 entsteht mit Status
   „Vorgeschlagen“ im Teil-A-PR und wird vor der Umsetzung bestätigt.
 - **Nur mit `G7_PROFILING=ON`** (eigenes Preset `profile`: Release mit Symbolen und Tracy). Normale Builds und das Paket
-  bleiben ohne Tracy; die Makros sind dort leer wie heute (Frage 2).
+  bleiben ohne Tracy; die Makros sind dort leer wie heute (Entscheidung 2).
 - **Abbildung:** `G7_PROFILE_SCOPE` → `ZoneScopedN`, `G7_PROFILE_FRAME` → `FrameMark`, Thread-Namen für
   Job-Arbeiter. GPU-Zonen (`TracyOpenGL`) in `render` für Schatten, Hauptpass, Post. Speicher-Zonen nur auf Wunsch.
 - **Eingebauter Sammler bleibt** für das Overlay (F1) und für Tests ohne Tracy.
@@ -29,7 +29,7 @@ parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummerie
   Laden.
 
 ## Teil B – Budget je System und Messung in Leonberg
-- **Budget bei 60 FPS (16,6 ms)**, Vorschlag (Frage 1, 5):
+- **Budget bei 60 FPS (16,6 ms)**, festgelegt (Entscheidungen 1, 5):
 
   | System | CPU Hauptthread | Hinweis |
   |---|---|---|
@@ -50,7 +50,7 @@ parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummerie
   Je Szenario: 5 s Anlauf, dann 600 Bilder mit dem Helden an fester Stelle (gleiche Zufallszahlen). Ausgegeben werden
   p50/p95/p99 der Bildzeit und je Zone, GPU-Zeiten aus Timer-Abfragen, Draws, Dreiecke, Lichter, simulierte NPCs.
   Ergebnis als JSON (`perf_<szenario>.json`) und eine Zeile im Log.
-- **Wo gemessen wird:** Release-Build, 1600×900, Schatten an, auf RTX 3080 Laptop und Intel UHD (Frage 1).
+- **Wo gemessen wird:** Release-Build, 1600×900, Schatten an, auf RTX 3080 Laptop und Intel UHD (Entscheidung 1).
   Ein CI-Lauf ist nicht vorgesehen (GPU-Zeiten in CI sind nicht vergleichbar). Ein Bericht je Messung kommt in
   `docs/perf/` (Datum, Hash, Hardware, Tabelle).
 - **Ladezeit:** Start bis erstes Bild in Leonberg, aufgeteilt in Welt, Häuser, Figuren und Clips, Skripte. Diese
@@ -59,7 +59,7 @@ parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummerie
 ## Teil C – Job-System (Animation, KI, Culling)
 - **Eigenes, kleines System in `core`** (`g7/core/Jobs.hpp`): fester Pool aus `std::jthread`,
   `parallelFor(count, chunk, fn)` und `JobGroup::wait()`. Keine Aufgaben-Graphen, kein Work-Stealing zu Beginn.
-  Fremdbibliotheken (enkiTS, Taskflow) wären eine neue Abhängigkeit mit ADR; der Bedarf ist klein (Frage 6).
+  Fremdbibliotheken (enkiTS, Taskflow) wären eine neue Abhängigkeit mit ADR; der Bedarf ist klein (Entscheidung 6).
 - **Regeln:**
   - **Lua nur auf dem Hauptthread** (sol2 ist nicht thread-sicher). KI-Zustände und alles, was Skripte ruft, bleibt
     seriell. Parallel laufen nur reine Berechnungen.
