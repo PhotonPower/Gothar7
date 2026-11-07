@@ -227,6 +227,18 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
 - Viele `COL_`-Knoten je Datei (Zellen des Umlands) sind unkritisch: die Engine baut je Modell **eine** Form (bei
   mehreren Teilen eine statische Verbundform) und teilt sie zwischen allen Instanzen.
 
+### Vobs aus Blender – `VOB_`-Knoten (M16 Teil F, ADR 0023; Vertrag, betrifft welt und figuren nur bei Nutzung)
+- Leere Knoten (Blender „Empty“, ohne Mesh), deren **Name mit `VOB_` beginnt**, setzt der Editor beim Platzieren
+  des Modells als **Kind-Vobs** des Modell-Vobs ein. Gerendert und kollidiert werden sie nicht.
+- Name: `VOB_<TYP>_<NAME>`; der Vob heißt `<NAME>` in Großbuchstaben. Blenders Endung `.001` usw. fällt weg.
+  - `VOB_LIGHT_<NAME>`: Licht. Die Reichweite ist die größte Skalierung des Empty × 5 m (Skalierung 1 → 5 m).
+  - `VOB_START_<NAME>`: Startpunkt; die Drehung des Empty ist die Blickrichtung.
+  - `VOB_TRIGGER_<NAME>`: Box-Trigger. Die Halbachsen sind die Skalierung des Empty (ein Würfel-Empty der Größe 1
+    hat Halbachsen 1 m). Funktionen und Levelwechsel setzt man danach im Inspektor.
+  - Andere Typen meldet der Editor (`Editor::importWarnings`) und lässt sie weg.
+- Lage und Drehung kommen aus dem Knoten im Modellraum (Eltern-Knoten eingerechnet), die Skalierung bemisst nur Reichweite
+  bzw. Volumen. Lesen: `asset::loadGltfMarkers` (nur `.glb`; gekochte `.g7mesh` haben keine leeren Knoten).
+
 ### `TextureData.hpp` – Texturen für den Upload (ADR 0016)
 ```cpp
 enum class TextureFormat : u8 { RGBA8, BC7, BC5 };   // BC5: Normal-Map mit zwei Kanälen (X, Y)

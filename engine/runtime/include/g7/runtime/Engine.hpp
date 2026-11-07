@@ -102,6 +102,47 @@ struct LoadedModel
     std::vector<u32> imageVersions;
 };
 
+/// A Lua `Mob` definition (gameplay.md "Mob-Interaktion") as plain values, for the editor.
+struct MobDefinitionInfo
+{
+    std::string definition;                            ///< instance name ("mob_camp_chest")
+    std::string name;                                  ///< focus name
+    std::string type;                                  ///< mob type of data/mobs.toml
+    std::string owner;                                 ///< Npc instance or guild; empty: nobody's
+    std::string lock;                                  ///< combination ("LRRL"); empty: open
+    std::string key;                                   ///< item instance that unlocks it
+    std::vector<std::pair<std::string, u32>> contents; ///< items and counts
+};
+
+/// One entry of a Lua `Routine` (ai.md "Tagesabläufe"): the window [from, to), across midnight when to <=
+/// from.
+struct RoutineEntryInfo
+{
+    std::string from; ///< "06:00" as written
+    std::string to;
+    std::string state; ///< "zs_sweep"
+    std::string at;    ///< way point or freepoint
+    friend bool operator==(const RoutineEntryInfo&, const RoutineEntryInfo&) = default;
+};
+
+/// A Lua `Routine` instance as plain values (editor, M16 part E).
+struct RoutineInfo
+{
+    std::string name; ///< "rtn_farmer_woman"
+    std::string file; ///< the script it is written in ("routines/camp.lua")
+    std::vector<RoutineEntryInfo> entries;
+    friend bool operator==(const RoutineInfo&, const RoutineInfo&) = default;
+};
+
+/// An NPC of the world with its routine (editor ghosts).
+struct NpcRoutineInfo
+{
+    u32 creature = 0;
+    std::string npc;     ///< the Npc instance
+    std::string routine; ///< empty: none
+    Vec3 position{0.0f};
+};
+
 /// One placed model with its world bounds (for culling).
 struct SceneInstance
 {
@@ -172,6 +213,7 @@ namespace script
 {
 class ScriptVm;
 class Value;
+struct Instance;
 } // namespace script
 struct AnimatedFigure; // animated figures (EngineFigure.cpp)
 struct PlayerFigure;   // the animated hero
@@ -229,6 +271,9 @@ struct EngineConfig
     bool uiSample = false;
     /// Where the save slots are (M15 part D); empty: the user directory's "saves".
     fs::Path saveDirectory;
+    /// A folder of scripts over the game's (VFS "scripts/", above the repository's): files the editor writes
+    /// go there (M16 part E; tests). Empty: the editor writes into the scripts folder on disk.
+    fs::Path extraScriptDirectory;
     /// Saves the last rendered frame as PNG (--screenshot=<file>), e.g. with --frames or --benchmark.
     fs::Path screenshot;
     platform::WindowDesc window; ///< Used unless headless.
@@ -426,6 +471,53 @@ public:
     [[nodiscard]] std::vector<std::string> musicThemes() const;
     [[nodiscard]] std::vector<std::string> scriptFunctions() const;
     [[nodiscard]] bool hasScripts() const noexcept;
+    /// For the editor (M16 part D): the Lua `Mob` definitions as the engine reads them (gameplay.md), sorted
+    /// by name; the mob types of data/mobs.toml; a type's user slots (mob space: feet, view direction); the
+    /// names of the script instances of a kind ("Npc", "Item"); the guilds (keys of the Lua table `Guilds`).
+    [[nodiscard]] std::vector<MobDefinitionInfo> mobDefinitions() const;
+    [[nodiscard]] std::vector<std::string> mobTypeNames() const;
+    [[nodiscard]] std::vector<std::pair<Vec3, Vec3>> mobTypeSlots(std::string_view type) const;
+    [[nodiscard]] std::vector<std::string> scriptInstanceNames(std::string_view kind) const;
+    [[nodiscard]] std::vector<std::string> guildNames() const;
+    /// [render] max_lights, light_distance, window_light_radius (E1): what a frame takes.
+    [[nodiscard]] const render::LightBudget& lightBudget() const noexcept { return m_lightBudget; }
+    /// For the editor (M16 part E), queries without side effects: the loaded `Routine` instances (sorted by
+    /// name), the world's NPCs with their routines, where a routine place lies (way point or freepoint, as
+    /// NPCs walk there), and the names of the globals starting with `prefix` (the "zs_" states).
+    [[nodiscard]] std::vector<RoutineInfo> routines() const;
+    [[nodiscard]] std::vector<NpcRoutineInfo> npcRoutines() const;
+    [[nodiscard]] std::optional<Vec3> routinePlace(std::string_view at) const { return navigationTarget(at); }
+    [[nodiscard]] std::vector<std::string> scriptGlobalNames(std::string_view prefix) const;
+    /// Writes a script (VFS "scripts/<relative>") into the folder scripts are written to
+    /// (EngineConfig::extraScriptDirectory, else the scripts folder on disk) and loads the scripts anew.
+    /// Fails for scripts from archives.
+    [[nodiscard]] Result<void> writeScript(std::string_view relative, std::string_view text);
+    /// Play-in-editor (M16 part E): the game as it is now is kept, the hero appears at `at` (feet, yaw from
+    /// the rotation) or at the start point, the simulation runs. stopPlay puts the kept game back (world,
+    /// NPCs, Story, time), removes the hero and the free camera stands at `camera`.
+    [[nodiscard]] Result<void> startPlay(std::optional<Transform> at);
+    [[nodiscard]] Result<void> stopPlay(const Transform& camera);
+    [[nodiscard]] bool playing() const noexcept { return m_playSnapshot.has_value(); }
+    /// The editor's routine ghost (M16 part E, decision 8): the Npc instance's real figure at rest at `feet`
+    /// facing `yaw`; drawn with the creatures, no AI, not part of the game. nullopt hides it. Loaded once per
+    /// NPC; false if the figure cannot be loaded.
+    struct GhostFigure
+    {
+        std::string npc;
+        Vec3 feet{0.0f};
+        f32 yaw = 0.0f;
+    };
+    bool setGhostFigure(std::optional<GhostFigure> ghost);
+    [[nodiscard]] bool ghostFigureShown() const noexcept;
+    /// The empty nodes of a .glb whose names start with `prefix` and their placement in the model (editor,
+    /// ADR 0023: VOB_ markers). Empty for other files.
+    struct ModelMarker
+    {
+        std::string name;
+        Mat4 local{1.0f};
+    };
+    [[nodiscard]] Result<std::vector<ModelMarker>> modelMarkers(std::string_view path,
+                                                                std::string_view prefix) const;
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;
@@ -859,6 +951,8 @@ private:
     bool m_strictRoute = false; // the next route planned follows the waynet (a replan after being stuck)
     /// Spawns an Npc instance with its figure, capsule, values and routine.
     [[nodiscard]] Result<u32> spawnNpc(std::string_view name, const Vec3& at, f32 yaw);
+    /// The figure an Npc instance wears (its own, one of its set, else the default).
+    [[nodiscard]] std::string npcFigurePath(const script::Instance& npc, std::string_view name);
     // Behaviour (EngineAi.cpp)
     void fixedUpdateAi(Creature& c, f32 seconds);
     void perceive(Creature& c, f32 seconds);
@@ -1587,6 +1681,8 @@ private:
     f32 m_lastFallDamage = 0.0f;
     std::optional<PlayerLanding> m_lastLanding;
     std::optional<fs::Path> m_screenshotRequest;
+    std::optional<save::GameState> m_playSnapshot; ///< play-in-editor: the game before it started (M16 E)
+    std::vector<asset::MountId> m_scriptMounts;    ///< the script folders (writeScript rescans them)
     gameplay::Swimmer m_swimmer;
     f32 m_drownDamage = 0.0f;
     f32 m_drownLogged = 0.0f; // damage already reported in the log (whole points)
@@ -1598,6 +1694,8 @@ private:
     const LoadedModel* m_playerModel = nullptr;         // static placeholder when no animated figure loads
     std::unique_ptr<PlayerFigure> m_figure;             // animated hero (M6)
     std::vector<std::unique_ptr<Creature>> m_creatures; // animals (M6 D3, until M9)
+    struct GhostFigureState;                            // the editor's routine ghost (EngineCreatures.cpp)
+    std::unique_ptr<GhostFigureState> m_ghostFigure;
     u32 m_nextCreatureId = 1;
     std::string m_creatureSpecies = "wolf";                   // debug UI choice
     std::unique_ptr<script::ScriptVm> m_scripts;              // Lua of the game session (M7)

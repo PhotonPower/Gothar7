@@ -806,6 +806,24 @@ void ScriptVm::bind(Binding binding)
     m_impl->bindings.push_back(std::move(binding));
 }
 
+std::vector<std::string> ScriptVm::globalNames(std::string_view prefix) const
+{
+    std::vector<std::string> names;
+    for (const auto& [key, value] : m_impl->lua.globals())
+    {
+        if (key.get_type() == sol::type::string && value.get_type() != sol::type::lua_nil)
+        {
+            std::string name = key.as<std::string>();
+            if (name.starts_with(prefix))
+            {
+                names.push_back(std::move(name));
+            }
+        }
+    }
+    std::ranges::sort(names);
+    return names;
+}
+
 std::vector<std::string> ScriptVm::scriptFunctions() const
 {
     std::vector<std::string> names;
