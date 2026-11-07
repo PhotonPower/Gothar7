@@ -62,6 +62,8 @@ struct EditorPanel
     std::string lightInfo; ///< lights this frame of the budget (E1)
     std::vector<std::string> lightPresets;
     std::vector<std::string> mobIssues;
+    // Prefabs (M16 part F)
+    std::vector<std::string> prefabs; ///< names of the templates (assets/source/prefabs)
 
     // Edited
     i32 gizmoMode = 0; ///< 0 move, 1 turn, 2 scale
@@ -72,6 +74,7 @@ struct EditorPanel
     std::string assetFilter;
     f32 hour = 12.0f; ///< preview time of day (display only)
     i32 lightPreset = 0;
+    std::string prefabName; ///< for "save as prefab"
 
     // Actions of this frame
     u64 clickedVob = 0;  ///< row clicked (0: none)
@@ -87,6 +90,8 @@ struct EditorPanel
     bool addLight = false; ///< a light of `lightPreset` ahead of the camera
     bool checkMobs = false;
     i32 clickedMobIssue = -1;
+    i32 placePrefab = -1;    ///< index into `prefabs`, placed ahead of the camera
+    bool savePrefab = false; ///< the selection (with children) as `prefabName`
 };
 
 /// The waynet window of the editor (M16 part B, docs/modules/editor.md).

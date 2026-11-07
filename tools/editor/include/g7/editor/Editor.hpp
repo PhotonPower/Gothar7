@@ -14,8 +14,10 @@
 #include <g7/core/Transform.hpp>
 #include <g7/editor/Commands.hpp>
 #include <g7/editor/Gizmo.hpp>
+#include <g7/editor/GlbVobImport.hpp>
 #include <g7/editor/LightEdit.hpp>
 #include <g7/editor/MobEdit.hpp>
+#include <g7/editor/Prefabs.hpp>
 #include <g7/editor/RoutineEdit.hpp>
 #include <g7/editor/RoutinePreview.hpp>
 #include <g7/editor/TriggerEdit.hpp>
@@ -171,6 +173,20 @@ public:
     [[nodiscard]] Result<void> stopPlay();
     [[nodiscard]] bool playing() const noexcept;
 
+    // --- Prefabs and vobs from Blender (M16 part F) ---
+    /// Where the templates are (default: assets/source/prefabs on disk; tests choose their own).
+    void setPrefabDirectory(fs::Path directory) { m_prefabDirectory = std::move(directory); }
+    [[nodiscard]] const fs::Path& prefabDirectory() const noexcept { return m_prefabDirectory; }
+    [[nodiscard]] std::vector<std::string> prefabNames() const;
+    /// The selected vob with its children (and the waynet entries near them) as <name>.g7prefab.
+    [[nodiscard]] Result<fs::Path> savePrefab(std::string_view name);
+    /// Loose copies of a template at `at` (default: 8 m ahead of the camera on the ground), one undo step;
+    /// the first new vob is selected.
+    [[nodiscard]] Result<PlacedPrefab> placePrefab(std::string_view name,
+                                                   std::optional<Vec3> at = std::nullopt);
+    /// What the last placed .glb's VOB_ markers did not give (ADR 0023).
+    [[nodiscard]] const std::vector<std::string>& importWarnings() const noexcept { return m_importWarnings; }
+
     Gizmo& gizmo() noexcept { return m_gizmo; }
     bool snap = true;
     f32 snapMove = 0.5f;   ///< metres
@@ -277,5 +293,8 @@ private:
     std::string m_selectedRoutine;
     Transform m_playCamera; ///< the camera before play-in-editor
     ui::RoutinePanel m_routinePanel;
+    // Prefabs and Blender vobs (part F)
+    fs::Path m_prefabDirectory;
+    std::vector<std::string> m_importWarnings;
 };
 } // namespace g7::editor

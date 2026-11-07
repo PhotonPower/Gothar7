@@ -95,7 +95,8 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
 - **Routinen und Play-in-Editor (M16 Teil E, Fenster „Routines“):**
   - **Geister:** Für jedes NPC der Welt zeigt ein Marker mit Name und Zustand, wo seine Routine es zur gewählten
     Stunde hinstellt (Wegpunkt bzw. Freepoint des Eintrags). Das NPC der gewählten Routine steht dort als seine
-    echte Figur in Ruhepose, zur Kamera gedreht. Eine Linie führt vom jetzigen Ort des NPCs dorthin. Der Regler „hour“ betrifft nur die Vorschau, nicht die
+    echte Figur in Ruhepose, zur Kamera gedreht. Eine Linie führt vom jetzigen Ort des NPCs dorthin. Der Regler
+    „hour“ betrifft nur die Vorschau, nicht die
     Spielzeit; die KI läuft dafür nicht.
   - **Prüfung „Day plan check“:** für die Routinen der NPCs dieser Welt und der Editor-Datei. Sie meldet Zeiten, die
     nicht HH:MM sind, leere Zeitfenster, Lücken („nothing to do 20:00-24:00“), Überschneidungen (es gilt der erste
@@ -111,6 +112,17 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
     Start (`Engine::startPlay`/`stopPlay` über den Spielstand im Speicher), die Kamera an ihrem Platz. Solange der
     Editor läuft, speichern F5/F9 nicht (Schnellspeichern); im Spiel aus dem Editor heraus sperrt `saveBlocker`
     jedes Speichern.
+- **Prefabs (M16 Teil F, Entscheidung 5; Abschnitt „Prefabs“ im Fenster „Editor“):**
+  - „save selection“ legt den gewählten Vob mit seinen Kindern als Vorlage `assets/source/prefabs/<name>.g7prefab`
+    an (Name aus Kleinbuchstaben, Ziffern, `_`). Wegpunkte und Freepoints bis 2 m (waagrecht) neben einem ihrer Vobs
+    kommen mit, ebenso die Kanten zwischen diesen Wegpunkten.
+  - Die Datei ist eine kleine Welt im `.g7world`-Format, die Lagen sind relativ zum ersten Vob.
+  - Ein Klick auf eine Vorlage setzt sie 8 m vor die Kamera auf den Boden. Es entstehen lose Kopien: normale Vobs
+    mit neuen IDs, ohne Verknüpfung zur Vorlage. Wegpunkte und Freepoints bekommen die nächste freie Nummer ihres
+    Stamms (`FP_SIT_CAMPFIRE_01` → `FP_SIT_CAMPFIRE_02`).
+  - Das Setzen ist ein Undo-Schritt für Vobs und Wegnetz zusammen.
+- **Vobs aus Blender (ADR 0023):** Hat eine `.glb` leere Knoten `VOB_LIGHT_…`, `VOB_START_…` oder `VOB_TRIGGER_…`,
+  setzt der Editor sie beim Platzieren des Modells als Kind-Vobs ein (Vertrag in `asset.md` „Vobs aus Blender“).
 - Nach jeder Änderung baut die Engine Instanzen und Lichter aus der Szene neu (`Engine::refreshScene`, Modelle
   bleiben im Cache).
 
@@ -126,7 +138,7 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
 | Mobs: Definition aus Listen, Slots als Marker, Tür offen; Besitzer, Schloss, Inhalt angezeigt und geprüft | M16 D (umgesetzt) |
 | Routinen-Vorschau: Zeitregler, NPC-„Geister“ an Routinen-Positionen, Prüfung; Routinen in eigener Lua-Datei je Ort | M16 E (umgesetzt) |
 | Undo/Redo (Befehle mit JSON-Zuständen, ADR 0022), Fragen vor Generator-Vobs | M16 A (umgesetzt) |
-| Prefabs | M16 |
+| Prefabs (lose Kopien, mit Wegnetz-Einträgen), Vobs aus `VOB_`-Knoten einer `.glb` | M16 F (umgesetzt) |
 | Simulation im Editor starten/stoppen (Play-in-Editor, F5 an der Kamera, Umschalt+F5 am Startpunkt) | M16 E (umgesetzt) |
 
 ## Autopilot (`gothar --walk`, vorgezogen für die W3-Begehung; Vertrag mit welt)

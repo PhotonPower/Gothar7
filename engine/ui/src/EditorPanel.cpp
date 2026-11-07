@@ -74,7 +74,8 @@ void DebugUi::editorPanel(EditorPanel& panel)
     panel.placeAsset = -1;
     panel.save = panel.remove = panel.duplicate = false;
     panel.undo = panel.redo = panel.confirmYes = panel.confirmNo = false;
-    panel.hourChanged = panel.addLight = panel.checkMobs = false;
+    panel.hourChanged = panel.addLight = panel.checkMobs = panel.savePrefab = false;
+    panel.placePrefab = -1;
     panel.clickedMobIssue = -1;
 
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 370.0f, 10.0f), ImGuiCond_FirstUseEver);
@@ -171,6 +172,22 @@ void DebugUi::editorPanel(EditorPanel& panel)
         ImGui::EndChild();
     }
 
+    if (ImGui::CollapsingHeader("Prefabs"))
+    {
+        // Templates placed as loose copies (decision 5); waypoints and freepoints near them come along.
+        inputText("name##prefab", panel.prefabName);
+        ImGui::SameLine();
+        panel.savePrefab = ImGui::Button("save selection");
+        ImGui::BeginChild("prefabs", ImVec2(0.0f, 90.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.prefabs.size(); ++i)
+        {
+            if (ImGui::Selectable(panel.prefabs[i].c_str()))
+            {
+                panel.placePrefab = static_cast<i32>(i); // ahead of the camera
+            }
+        }
+        ImGui::EndChild();
+    }
     if (ImGui::CollapsingHeader("Lights & mobs", ImGuiTreeNodeFlags_DefaultOpen))
     {
         // Preview time (display only, not saved): judge lights by night.

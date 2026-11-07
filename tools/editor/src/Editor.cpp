@@ -10,6 +10,7 @@
 #include <g7/world/Scene.hpp>
 #include <g7/world/Terrain.hpp>
 #include <g7/world/WorldFile.hpp>
+#include <g7/world/WorldScene.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -101,6 +102,11 @@ Editor::Editor(Engine& engine)
         }
     }
     m_routinesWritten = m_routines;
+    // Part F: the templates next to the assets on disk (assets/source/prefabs).
+    if (const auto data = engine.vfs().diskPath("data/mobs.toml"))
+    {
+        m_prefabDirectory = data->parent_path().parent_path() / "prefabs";
+    }
     G7_LOG_INFO("editor", "editor mode: {} models to place; left click selects, right mouse looks",
                 m_assets.size());
 }
@@ -313,6 +319,34 @@ Result<world::VobId> Editor::place(std::string_view meshPath)
                                    return vob.error();
                                }
                                id = m_engine.scene().idOf(vob.value());
+                               // ADR 0023: empty VOB_<type>_<name> nodes of a .glb become child vobs.
+                               m_importWarnings.clear();
+                               auto markers = m_engine.modelMarkers(path, "VOB_");
+                               if (!markers)
+                               {
+                                   m_importWarnings.push_back(markers.error().message);
+                                   return {};
+                               }
+                               std::vector<VobMarker> found;
+                               for (const Engine::ModelMarker& m : markers.value())
+                               {
+                                   found.push_back({m.name, m.local});
+                               }
+                               VobImport imported = vobsFromMarkers(found);
+                               m_importWarnings = std::move(imported.warnings);
+                               for (world::WorldFileVob& v : imported.vobs)
+                               {
+                                   v.id = world::VobId{m_engine.scene().nextVobId()};
+                                   v.parent = id;
+                                   if (auto restored = world::restoreVob(m_engine.scene(), v); !restored)
+                                   {
+                                       return restored.error();
+                                   }
+                                   if (m_engine.scene().nextVobId() <= v.id.value)
+                                   {
+                                       (void)m_engine.scene().setNextVobId(v.id.value + 1);
+                                   }
+                               }
                                return {};
                            });
         !placed)
@@ -788,6 +822,7 @@ void Editor::fillPanel()
     {
         p.hour = m_engine.gameTime().hourOfDay();
     }
+    p.prefabs = prefabNames();
     p.mobIssues.clear();
     for (const MobIssue& issue : m_mobIssues)
     {
@@ -947,6 +982,14 @@ void Editor::applyPanel()
     if (p.addLight && p.lightPreset >= 0 && static_cast<usize>(p.lightPreset) < lightPresets().size())
     {
         (void)placeLight(lightPresets()[static_cast<usize>(p.lightPreset)].name);
+    }
+    if (p.savePrefab)
+    {
+        (void)savePrefab(p.prefabName);
+    }
+    if (p.placePrefab >= 0 && static_cast<usize>(p.placePrefab) < p.prefabs.size())
+    {
+        (void)placePrefab(p.prefabs[static_cast<usize>(p.placePrefab)]);
     }
     if (p.checkMobs)
     {

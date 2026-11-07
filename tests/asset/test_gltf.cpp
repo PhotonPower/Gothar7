@@ -386,3 +386,25 @@ TEST_CASE("glTF: LOD nodes (_lod1, _lod2) become submeshes of their level")
     // Submeshes are ordered by level: level 0 first.
     CHECK(sword.submeshes.front().lod == 0);
 }
+
+TEST_CASE("glTF: empty VOB_ nodes with their world placement (ADR 0023)")
+{
+    // A model node with an empty child (translation inherited) and a scaled empty at the root; Blender
+    // numbers.
+    const std::string json = R"({"asset": {"version": "2.0"}, "scene": 0,
+      "scenes": [{"nodes": [0, 2, 3]}],
+      "nodes": [
+        {"name": "ROOM", "translation": [10, 0, 0], "children": [1]},
+        {"name": "VOB_LIGHT_HEARTH", "translation": [0, 2, 0]},
+        {"name": "VOB_TRIGGER_DOOR.001", "translation": [1, 0, 0], "scale": [2, 1, 0.5]},
+        {"name": "Camera", "translation": [5, 5, 5]}
+      ]})";
+    auto markers = loadGltfMarkers(std::span(reinterpret_cast<const u8*>(json.data()), json.size()), "VOB_");
+    REQUIRE(markers.ok());
+    REQUIRE(markers.value().size() == 2);
+    CHECK(markers.value()[0].name == "VOB_LIGHT_HEARTH");
+    CHECK(Vec3(markers.value()[0].world[3]) == Vec3(10, 2, 0)); // the parent's translation included
+    CHECK(markers.value()[1].name == "VOB_TRIGGER_DOOR.001");
+    CHECK(glm::length(Vec3(markers.value()[1].world[0])) == doctest::Approx(2.0f));
+    CHECK_FALSE(loadGltfMarkers(std::span(reinterpret_cast<const u8*>("x"), 1), "VOB_").ok());
+}

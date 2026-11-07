@@ -556,4 +556,29 @@ bool Engine::ghostFigureShown() const noexcept
 {
     return m_ghostFigure && m_ghostFigure->shown && m_ghostFigure->figure && m_ghostFigure->figure->uploaded;
 }
+
+Result<std::vector<Engine::ModelMarker>> Engine::modelMarkers(std::string_view path,
+                                                              std::string_view prefix) const
+{
+    std::vector<ModelMarker> out;
+    if (!path.ends_with(".glb"))
+    {
+        return out; // cooked meshes keep no empty nodes
+    }
+    auto bytes = m_vfs.read(path);
+    if (!bytes)
+    {
+        return bytes.error();
+    }
+    auto markers = asset::loadGltfMarkers(bytes.value(), prefix, path);
+    if (!markers)
+    {
+        return markers.error();
+    }
+    for (asset::GltfMarker& m : markers.value())
+    {
+        out.push_back({std::move(m.name), m.world});
+    }
+    return out;
+}
 } // namespace g7

@@ -118,4 +118,14 @@ struct MeshData
 /// `baseDirectory` allows only self-contained data (GLB chunk, data: URIs); external buffers fail.
 [[nodiscard]] Result<MeshData> loadGltf(std::span<const u8> bytes, const fs::Path& baseDirectory,
                                         std::string_view debugName = "<memory>");
+
+/// An empty node of a glTF scene (ADR 0023: `VOB_<type>_<name>` places vobs) with its world transform.
+struct GltfMarker
+{
+    std::string name;
+    Mat4 world{1.0f};
+};
+/// The nodes without a mesh whose name starts with `prefix`, in scene order (self-contained data only).
+[[nodiscard]] Result<std::vector<GltfMarker>>
+loadGltfMarkers(std::span<const u8> bytes, std::string_view prefix, std::string_view debugName = "<memory>");
 } // namespace g7::asset

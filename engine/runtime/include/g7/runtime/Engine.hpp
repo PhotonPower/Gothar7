@@ -479,6 +479,15 @@ public:
     };
     bool setGhostFigure(std::optional<GhostFigure> ghost);
     [[nodiscard]] bool ghostFigureShown() const noexcept;
+    /// The empty nodes of a .glb whose names start with `prefix` and their placement in the model (editor,
+    /// ADR 0023: VOB_ markers). Empty for other files.
+    struct ModelMarker
+    {
+        std::string name;
+        Mat4 local{1.0f};
+    };
+    [[nodiscard]] Result<std::vector<ModelMarker>> modelMarkers(std::string_view path,
+                                                                std::string_view prefix) const;
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;

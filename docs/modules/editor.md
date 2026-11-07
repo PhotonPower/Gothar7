@@ -12,8 +12,9 @@ neuer Ort samt Wegnetz, Zonen und NPC-Routinen **ohne Texteditor** bauen lässt 
 | B – Wegnetz-Editor | #359 | umgesetzt |
 | C – Zonen- und Trigger-Editor | #361 | umgesetzt |
 | D – Licht- und Mob-Editor | #362 | umgesetzt |
-| E – Routinen-Vorschau und Play-in-Editor | dieser Teil-E-PR | umgesetzt |
-| F | – | offen |
+| E – Routinen-Vorschau und Play-in-Editor | #367 | umgesetzt |
+| F1 – Prefabs, Vobs aus Blender (`VOB_`) | dieser PR | umgesetzt |
+| F2 – Gelände (Höhen-Pinsel, Mesh → Heightmap) | – | offen (eigener PR) |
 
 Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
 - **A:** Befehle sind Daten statt Klassen mit `apply`/`revert`: `editor::Command` hält `VobState` (Zeile der
@@ -62,6 +63,16 @@ Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
     an die Engine.
   - Weil F5 auch Schnellspeichern ist: Mit Editor speichert und lädt F5/F9 nicht, und während Play-in-Editor sperrt
     `saveBlocker` jedes Speichern (die Spielstände gehören dem Projektinhaber).
+- **F1:** Teil F ist geteilt, wie der Koordinator es erlaubt: Prefabs und Blender-Vobs in einem PR, das Gelände im
+  nächsten.
+  - Eine Vorlage ist der gewählte Vob mit seinen Kindern; der Editor hat eine Einzelauswahl, Gruppen sind Eltern
+    mit Kindern. Die Datei `.g7prefab` ist das `.g7world`-Format (eine kleine Welt), es gibt kein eigenes JSON.
+  - Wegnetz-Einträge kommen mit, wenn sie bis 2 m (waagrecht) neben einem Vob der Vorlage liegen.
+  - Der Ordner ist `assets/source/prefabs` auf der Platte (`Editor::setPrefabDirectory` für Tests). Er wird direkt
+    gelesen, nicht über das VFS.
+  - `VOB_`-Knoten: Licht, Startpunkt, Trigger; Vertrag in `asset.md`. Die Engine reicht die leeren Knoten als
+    einfache Werte durch (`Engine::modelMarkers`, `asset::loadGltfMarkers`), da der Editor `asset` nicht direkt
+    nutzen darf.
 
 ## Ausgangslage (M4)
 - `g7_editor` (Bibliothek in `tools/editor`) ist ein `EngineTool`. Die Engine kennt nur `update`/`ui`. Fenster sind

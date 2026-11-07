@@ -532,3 +532,38 @@ TEST_CASE(
     REQUIRE(editor.stopPlay().ok());
     CHECK(text() == before);
 }
+
+TEST_CASE("Editor GPU: prefabs - the selection with its waynet as a template, loose copies, one undo step")
+{
+    WorldCopy copy;
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    editor::Editor editor(engine);
+    engine.addTool(editor);
+    editor.setPrefabDirectory(copy.dir / "prefabs"); // never the repository's assets
+    editor.select(world::VobId{68});                 // the stool by the camp fire
+    CHECK_FALSE(editor.savePrefab("Bad Name").ok());
+    const auto saved = editor.savePrefab("stool");
+    REQUIRE(saved.ok());
+    CHECK(std::filesystem::exists(saved.value()));
+    CHECK(editor.prefabNames() == std::vector<std::string>{"stool"});
+
+    const usize vobs = engine.scene().vobCount();
+    const usize entries = editor.waynetData().points.size() + editor.waynetData().freepoints.size();
+    const auto placed = editor.placePrefab("stool", Vec3(40.0f, 0.0f, 40.0f));
+    REQUIRE(placed.ok());
+    CHECK(engine.scene().vobCount() == vobs + placed.value().vobs.size());
+    CHECK(editor.waynetData().points.size() + editor.waynetData().freepoints.size() ==
+          entries + placed.value().waynetNames.size());
+    for (const std::string& name : placed.value().waynetNames)
+    {
+        const bool known =
+            engine.waynet().find(name).has_value() || editor.waynetData().findFreepoint(name) != nullptr;
+        CHECK(known); // in the waynet at once
+    }
+    CHECK(engine.runFrame());
+    REQUIRE(editor.undo().value()); // vobs and waynet entries in one step
+    CHECK(engine.scene().vobCount() == vobs);
+    CHECK(editor.waynetData().points.size() + editor.waynetData().freepoints.size() == entries);
+    CHECK_FALSE(editor.placePrefab("missing").ok());
+}
