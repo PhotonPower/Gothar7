@@ -348,9 +348,9 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
 - [ ] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional
 - [ ] Vegetation: Instancing, Wind-Animation, Grasfelder
-- [ ] Job-System, Multithreading für Animation/KI/Culling
+- [ ] Job-System, Multithreading für Animation/KI/Culling – Plan: `docs/modules/perf.md`
 - [ ] Welt-Streaming in Zellen, Ladezeiten-Optimierung
-- [ ] Tracy-Profiling, Performance-Budget pro System
+- [ ] Tracy-Profiling, Performance-Budget pro System – Plan: `docs/modules/perf.md`
 - [ ] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info
 - [ ] Gekochtes Format für Figuren und Animationen (`.g7skin`/`.g7anim`, ADR 0019 Folgearbeit) – spätestens vor dem ersten reinen `.g7pak`-Release; bis dahin laden Figuren und Clips aus losen glTF (`asset.md`)
 - [ ] Optional: Vulkan-Backend hinter der RHI (ADR)
