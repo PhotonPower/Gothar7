@@ -5,7 +5,8 @@ Kommandozeilen-Werkzeug zum Kochen und Packen von Assets (`tools/asset-cooker`, 
 Tests in `tests/cook`). Stand und Optionen: `docs/06-asset-pipeline.md`; Formate: ADR 0016.
 
 ## Editor (M4 Grundlage, M16 vollständig)
-Editor-Modus der Engine (`gothar --editor`), ImGui-basiert – Gegenstück zu Gothics **Spacer**.
+Editor-Modus der Engine (`gothar --editor`), ImGui-basiert – Gegenstück zu Gothics **Spacer**. Plan M16:
+`docs/modules/editor.md` (Teile A–F, ADR 0022/0023).
 
 **Stand M4 (umgesetzt):** `tools/editor` (Bibliothek `g7_editor`, im Spiel gelinkt). Die Engine kennt nur
 `EngineTool` (`runtime/EngineTool.hpp`: `update` je Frame, `ui` im Debug-UI-Frame); das Spiel registriert den
