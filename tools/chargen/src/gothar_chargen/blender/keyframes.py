@@ -695,18 +695,31 @@ def plant(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
     away from a foot by more than ``threshold`` metres (looking ``step`` frames ahead), the foot
     steps there in ``step`` frames with a ``lift`` arc - one foot at a time, and both back on
     their spots of the base by the last frame. The legs are solved with IK, the feet keep the
-    base's orientation; the upper body is untouched (hit windows and reach stay)."""
+    base's orientation; the upper body is untouched (hit windows and reach stay).
+    ``yaw`` (degrees per second, + = left): the engine turns the figure while the clip plays
+    (turning on the spot); standing feet then turn the other way in the clip, so they stay
+    put on the ground and step round."""
     base = clips[params["base"]]
     threshold = float(params.get("threshold", 0.12))
     step = int(params.get("step", 6))
     lift = float(params.get("lift", 0.06))
+    turn = Matrix.Rotation(-math.radians(float(params.get("yaw", 0.0))) / FPS, 3, "Z")
+    turn_q = turn.to_quaternion()
     n = int(length(base))
     poses = [pose_at(base, f, rig.bones) for f in range(n + 1)]
     want = {s: [rig.world(p, leg[2]) for p in poses] for s, leg in PLANT_LEGS.items()}
     spot = {s: want[s][0].translation.copy() for s in PLANT_LEGS}
     swing: dict[str, tuple[int, int, Vector, Vector] | None] = {s: None for s in PLANT_LEGS}
+    twist = {s: Quaternion() for s in PLANT_LEGS}  # a standing foot's turn against the body
     worst = 0.0
     for f in range(n + 1):
+        if f:  # the world turns under the figure: standing feet (and lifted ones' start) follow
+            for s in PLANT_LEGS:
+                spot[s] = turn @ spot[s]
+                twist[s] = turn_q @ twist[s]
+                if swing[s] is not None:
+                    a, b, p0, p1 = swing[s]
+                    swing[s] = (a, b, turn @ p0, p1)
         closing = n - f <= 3 * step  # towards the end: back onto the stance spots
         for s in sorted(PLANT_LEGS, key=lambda s: -(want[s][n].translation.xy - spot[s].xy).length):
             busy = any(swing[o] for o in PLANT_LEGS if o != s)
@@ -724,13 +737,16 @@ def plant(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
                 t = (f - a) / max(b - a, 1)
                 target = p0.lerp(p1, _smooth(t))
                 target.z += lift * math.sin(math.pi * t)
+                twist[s] = twist[s].slerp(Quaternion(), _smooth(t))
                 if f >= b:
                     spot[s], swing[s] = p1.copy(), None
+                    twist[s] = Quaternion()
             else:
                 target = spot[s].copy()
             worst = max(worst, _leg_ik(rig, pose, leg, target))
             current = rig.world(pose, leg[2]).to_quaternion()
-            _turn_world(rig, pose, leg[2], want[s][f].to_quaternion() @ current.inverted())
+            goal_q = twist[s] @ want[s][f].to_quaternion()
+            _turn_world(rig, pose, leg[2], goal_q @ current.inverted())
     print(f"[chargen] plant {params['base']}: worst foot miss {worst * 100:.1f} cm")
     return to_curves(poses)
 

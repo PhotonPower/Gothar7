@@ -173,6 +173,10 @@ events = [
     dorthin, immer nur ein Fuß zugleich. In den letzten Bildern gehen beide auf die Haltungs-Plätze zurück. Beine per
     3D-Zwei-Knochen-IK, die Fußdrehung kommt aus dem Vorbild. Oberkörper, Klinge, Fenster und Reichweite bleiben
     unverändert. Prüfung: `planted_slide` in `hitreach.py`, Test < 0,25 m je Angriff.
+    Drehen auf der Stelle (`none/t_turn_l|r`, in die Waffensätze geschichtet): `plant` mit `yaw` (±180 °/s wie
+    `movement.toml` [turn]) über dem Körper-Dreher ohne Beinbewegung (Hilfsclip `t_turn_<seite>_body`): Die engine dreht
+    die Figur, stehende Füße drehen im Clip gegenläufig mit und bleiben so am Boden, bis sie herumtreten. Prüfung
+    `turning_slide` (Weltraum), Test < 0,35 m (vorher 0,7 m).
 - Event-Namen: `lower_snake_case`, optional mit Argument nach Doppelpunkt (`sound:<name>`).
   Bekannte Events siehe `docs/modules/animation.md` („Clip“); neue Events nach Absprache mit engine.
 - Clips ohne Events und ohne `speed` werden weggelassen; die Datei ist optional.
