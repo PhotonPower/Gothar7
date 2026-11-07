@@ -2,6 +2,8 @@
 // sound(), the animation events sound:<name> of the clips (the woodcutter's axe), the volumes of engine.toml
 // [audio].
 
+#include "RunTempDir.hpp"
+
 #include <g7/runtime/Engine.hpp>
 
 #include <doctest/doctest.h>
@@ -154,7 +156,7 @@ TEST_CASE("Engine audio: in a room the ambience innen, the outside one quiet and
 {
     // A floor, the forest around, a room (indoor zone) and in its corner the forge (an ambient box smaller
     // than the room).
-    const std::filesystem::path world = std::filesystem::temp_directory_path() / "g7_audio_rooms.g7world";
+    const std::filesystem::path world = g7::test::runTempDir() / "g7_audio_rooms.g7world";
     {
         std::ofstream out(world, std::ios::binary);
         out << R"({"version":1,"name":"rooms","nextVobId":3,"vobs":[)"
