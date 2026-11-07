@@ -170,6 +170,22 @@ TEST_CASE("Day cycle: errors name the key; the shipped curves load")
     CHECK(shipped.value().evaluate(12.5f, 0.01f).bloomIntensity == doctest::Approx(0.12f));
     CHECK(shipped.value().evaluate(0.0f, 0.01f).bloomIntensity == doctest::Approx(0.2f));
     CHECK(shipped.value().evaluate(12.5f, 0.01f).bloomThreshold == doctest::Approx(1.0f));
+    // M17 P2 (decisions 2-4): cool and pale at night, neutral at noon, warm in the evening; zones.
+    const render::Grading night = shipped.value().evaluate(0.0f, 0.01f).grading;
+    const render::Grading noon = shipped.value().evaluate(12.5f, 0.01f).grading;
+    const render::Grading evening = shipped.value().evaluate(18.75f, 0.01f).grading;
+    CHECK(night.temperature < 0.0f);
+    CHECK(night.saturation < 0.8f);
+    CHECK(noon.temperature == doctest::Approx(0.0f));
+    CHECK(noon.vignette == doctest::Approx(0.15f));
+    CHECK(evening.temperature > 0.2f);
+    CHECK(evening.contrast > 1.0f);
+    REQUIRE(shipped.value().zoneGrading("innen") != nullptr);
+    CHECK(shipped.value().zoneGrading("innen")->temperature.value_or(0.0f) > 0.0f);
+    REQUIRE(shipped.value().zoneGrading("wald") != nullptr);
+    CHECK(shipped.value().zoneGrading("nirgends") == nullptr);
+    CHECK(error("version = 1\n[zone.x]\ngrading_contrast = 0.0\n[[key]]\nhour = 1.0\n") ==
+          "environment.toml: zone.x: grading_contrast: must be > 0");
 
     // [indoor] ambient: a factor 0..1 on the ambient inside rooms (zones of type indoor).
     auto indoor = DayCycle::parse("version = 1\n[indoor]\nambient = 0.2\n[[key]]\nhour = 1.0\n", "e.toml");

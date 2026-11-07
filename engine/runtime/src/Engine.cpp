@@ -1693,6 +1693,53 @@ void Engine::updateEnvironment()
         m_environment.sunIntensity = 0.0f;
     }
     m_sky = sample.sky;
+    updateGrading(sample.grading);
+}
+
+render::Grading Engine::gradingAt(const render::Grading& timeOfDay, const Vec3& point) const
+{
+    // M17 P2 (decision 3): zones override the time of day - music, then ambient, then indoor (strongest);
+    // [zone.innen] stands for every indoor zone without an entry of its own.
+    render::Grading grading = timeOfDay;
+    for (const char* type : {"music", "ambient", "indoor"})
+    {
+        const auto zone = zoneAt(type, point);
+        if (!zone)
+        {
+            continue;
+        }
+        const render::GradingOverride* over = m_dayCycle.zoneGrading(*zone);
+        if (over == nullptr && std::string_view(type) == "indoor")
+        {
+            over = m_dayCycle.zoneGrading("innen");
+        }
+        if (over != nullptr)
+        {
+            grading = render::applyOverride(grading, *over);
+        }
+    }
+    return grading;
+}
+
+void Engine::updateGrading(const render::Grading& timeOfDay)
+{
+    const render::Grading target = gradingAt(timeOfDay, m_camera.transform.position);
+    if (!m_gradingStarted)
+    {
+        m_grading = target; // the first frame: no fade in
+        m_gradingStarted = true;
+    }
+    else
+    {
+        // A zone change fades over kGradingFadeSeconds (decision 3: 1.5 s).
+        const f32 step = std::clamp(static_cast<f32>(m_frameSeconds) / kGradingFadeSeconds, 0.0f, 1.0f);
+        m_grading = render::mixGrading(m_grading, target, step);
+    }
+    m_postSettings.grading.reset();
+    if (m_config.settings.get<bool>("render.grading", true))
+    {
+        m_postSettings.grading = m_grading;
+    }
 }
 
 void Engine::renderScene(u32 width, u32 height)

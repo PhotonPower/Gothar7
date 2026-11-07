@@ -5,6 +5,7 @@
 #include <g7/asset/Procedural.hpp>
 #include <g7/render/Bloom.hpp>
 #include <g7/render/Camera.hpp>
+#include <g7/render/Grading.hpp>
 #include <g7/render/Lighting.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
@@ -202,5 +203,41 @@ TEST_CASE("Post: GPU timer queries measure a pass (M17)")
     CHECK(times.times()[0].name == "clear");
     CHECK(times.milliseconds("clear") > 0.0f);
     CHECK(times.milliseconds("nothing") == 0.0f);
+    CHECK(gl.device->debugErrorCount() == 0);
+}
+
+TEST_CASE("Post: colour grading - neutral changes (almost) nothing, saturation 0 is grey (M17)")
+{
+    GlFixture gl;
+    ShaderLibrary library(*gl.device, fs::fromUtf8(G7_SHADER_DIR));
+    PostProcess post = require(PostProcess::create(*gl.device, library));
+    SceneTarget scene = require(SceneTarget::create(*gl.device, 8, 8));
+    Texture output = require(gl.device->createTexture({8, 8, Format::RGBA8, 1}));
+    Framebuffer window = require(gl.device->createFramebuffer({{&output}, nullptr}));
+    gl.device->bindFramebuffer(&scene.framebuffer());
+    gl.device->setViewport(0, 0, 8, 8);
+    gl.device->clear(Vec4(0.6f, 0.2f, 0.1f, 1.0f), 0.0f);
+    const auto shot = [&](std::optional<Grading> grading)
+    {
+        gl.device->bindFramebuffer(&window);
+        PostSettings settings{Tonemapper::Aces, 1.0f, nullptr, 0.0f, grading};
+        post.apply(*gl.device, scene, 8, 8, settings);
+        return gl.device->readPixels(4, 4, 1, 1, &window);
+    };
+    const auto plain = shot(std::nullopt);
+    const auto neutral = shot(Grading{});
+    for (int i = 0; i < 3; ++i)
+    {
+        CHECK(std::abs(int(plain[i]) - int(neutral[i])) <= 1);
+    }
+    Grading grey;
+    grey.saturation = 0.0f;
+    const auto g = shot(grey);
+    CHECK(std::abs(int(g[0]) - int(g[1])) <= 1);
+    CHECK(std::abs(int(g[1]) - int(g[2])) <= 1);
+    Grading warm;
+    warm.temperature = 1.0f;
+    const auto w = shot(warm);
+    CHECK(int(w[0]) - int(w[2]) > int(plain[0]) - int(plain[2])); // redder
     CHECK(gl.device->debugErrorCount() == 0);
 }
