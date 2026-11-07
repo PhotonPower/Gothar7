@@ -279,3 +279,4 @@ simulation_distance = 80.0
 [editor]
 # Editor-Modus (gothar --editor, docs/modules/tools.md): so viele Schritte lassen sich je Sitzung rückgängig machen.
 undo_depth = 200
+waynet_radius = 80.0 # m: the waynet mode draws and picks points this near the camera (Leonberg ~3800 points)
