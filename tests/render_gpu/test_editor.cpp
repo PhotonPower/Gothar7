@@ -419,9 +419,13 @@ TEST_CASE("Editor GPU: lights and mobs - a new light is in the frame's choice at
     CHECK_FALSE(lists.definitions.empty());
     CHECK(std::ranges::find(lists.types, "chest") != lists.types.end());
     CHECK(std::ranges::find(lists.guilds, "guard") != lists.guilds.end());
-    // The camp's one finding: the stool names "STOOL", which is no type of mobs.toml (the engine warns too).
+    // The camp's mobs are all known (the stool sits like a bench); a mob of an unknown type is found.
+    CHECK(editor.checkMobs().empty());
+    auto crate = engine.scene().spawnVob({"CRATE_TEST", Transform{}, {}, {}});
+    REQUIRE(crate.ok());
+    engine.scene().set<world::MobRef>(crate.value(), {"crate_of_nowhere"});
     const auto& issues = editor.checkMobs();
     REQUIRE(issues.size() == 1);
-    CHECK(issues[0].id.value == 68);
-    CHECK(issues[0].text.find("STOOL") != std::string::npos);
+    CHECK(issues[0].name == "CRATE_TEST");
+    CHECK(issues[0].text.find("crate_of_nowhere") != std::string::npos);
 }
