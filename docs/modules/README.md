@@ -20,3 +20,4 @@ beim Implementieren darf (und soll) verbessert werden; die Doku wird dann angepa
 | ui | M14 | [ui.md](ui.md) |
 | save | M15 | [save.md](save.md) |
 | tools (Editor, g7-cook) | M3, M4, M16 | [tools.md](tools.md) |
+| perf (Profiling, Budgets, Job-System; Plan) | M17 | [perf.md](perf.md) |
