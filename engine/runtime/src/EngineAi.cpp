@@ -1222,4 +1222,44 @@ void Engine::bindAiFunctions()
              "Ereignisse",
              {}});
 }
+
+std::vector<RoutineInfo> Engine::routines() const
+{
+    // As updateRoutine reads them (editor, M16 part E).
+    std::vector<RoutineInfo> out;
+    if (!m_scripts)
+    {
+        return out;
+    }
+    for (const script::Instance* r : m_scripts->instancesOf("Routine"))
+    {
+        RoutineInfo info;
+        info.name = r->name;
+        info.file = r->file;
+        if (const script::Table* entries = r->fields.asTable())
+        {
+            for (const script::Value& e : entries->array)
+            {
+                info.entries.push_back({std::string(e["from"].asString()), std::string(e["to"].asString()),
+                                        std::string(e["state"].asString()), std::string(e["at"].asString())});
+            }
+        }
+        out.push_back(std::move(info));
+    }
+    std::ranges::sort(out, {}, &RoutineInfo::name);
+    return out;
+}
+
+std::vector<NpcRoutineInfo> Engine::npcRoutines() const
+{
+    std::vector<NpcRoutineInfo> out;
+    for (const auto& c : m_creatures)
+    {
+        if (c->character) // NPCs (animals have no Npc instance)
+        {
+            out.push_back({c->id, c->species, c->routine, c->position});
+        }
+    }
+    return out;
+}
 } // namespace g7

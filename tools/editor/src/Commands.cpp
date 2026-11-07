@@ -124,6 +124,7 @@ void History::record(Command command)
             last.after = std::move(command.after); // one step: from the first "before" to the last "after"
             last.waynetAfter = std::move(command.waynetAfter);
             last.zonesAfter = std::move(command.zonesAfter);
+            last.routinesAfter = std::move(command.routinesAfter);
             return;
         }
     }
@@ -137,7 +138,8 @@ void History::record(Command command)
     }
 }
 
-Result<bool> History::undo(world::Scene& scene, world::WaynetData* waynet, std::vector<world::Zone>* zones)
+Result<bool> History::undo(world::Scene& scene, world::WaynetData* waynet, std::vector<world::Zone>* zones,
+                           std::vector<RoutineInfo>* routines, TerrainTarget* terrain)
 {
     if (!canUndo())
     {
@@ -159,11 +161,28 @@ Result<bool> History::undo(world::Scene& scene, world::WaynetData* waynet, std::
     {
         *zones = *c.zonesBefore;
     }
+    if (c.routinesBefore && routines != nullptr)
+    {
+        *routines = *c.routinesBefore;
+    }
+    m_lastTerrain = c.heightsBefore.has_value() || !c.splatBefore.empty();
+    if (terrain != nullptr && terrain->heights != nullptr && c.heightsBefore)
+    {
+        restoreHeights(*terrain->heights, *c.heightsBefore);
+    }
+    for (const SplatPatch& p : c.splatBefore)
+    {
+        if (terrain != nullptr)
+        {
+            restoreSplat(terrain->maps, p);
+        }
+    }
     --m_done;
     return true;
 }
 
-Result<bool> History::redo(world::Scene& scene, world::WaynetData* waynet, std::vector<world::Zone>* zones)
+Result<bool> History::redo(world::Scene& scene, world::WaynetData* waynet, std::vector<world::Zone>* zones,
+                           std::vector<RoutineInfo>* routines, TerrainTarget* terrain)
 {
     if (!canRedo())
     {
@@ -184,6 +203,22 @@ Result<bool> History::redo(world::Scene& scene, world::WaynetData* waynet, std::
     if (c.zonesAfter && zones != nullptr)
     {
         *zones = *c.zonesAfter;
+    }
+    if (c.routinesAfter && routines != nullptr)
+    {
+        *routines = *c.routinesAfter;
+    }
+    m_lastTerrain = c.heightsAfter.has_value() || !c.splatAfter.empty();
+    if (terrain != nullptr && terrain->heights != nullptr && c.heightsAfter)
+    {
+        restoreHeights(*terrain->heights, *c.heightsAfter);
+    }
+    for (const SplatPatch& p : c.splatAfter)
+    {
+        if (terrain != nullptr)
+        {
+            restoreSplat(terrain->maps, p);
+        }
     }
     ++m_done;
     return true;

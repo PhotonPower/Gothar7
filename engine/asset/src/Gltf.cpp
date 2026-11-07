@@ -606,4 +606,37 @@ Result<MeshData> loadGltf(std::span<const u8> bytes, const fs::Path& baseDirecto
     }
     return parse(data.get(), baseDirectory, debugName);
 }
+
+Result<std::vector<GltfMarker>> loadGltfMarkers(std::span<const u8> bytes, std::string_view prefix,
+                                                std::string_view debugName)
+{
+    auto data =
+        fastgltf::GltfDataBuffer::FromBytes(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
+    if (data.error() != fastgltf::Error::None)
+    {
+        return Error{std::string(debugName) + ": " + std::string(fastgltf::getErrorMessage(data.error()))};
+    }
+    auto asset = gltf::parseAsset(data.get(), {}, debugName);
+    if (!asset)
+    {
+        return asset.error();
+    }
+    std::vector<GltfMarker> markers;
+    if (asset.value().scenes.empty())
+    {
+        return markers;
+    }
+    // Empty nodes (Blender "Empty", ADR 0023): no mesh, the name says what they are.
+    fastgltf::iterateSceneNodes(asset.value(), asset.value().defaultScene.value_or(0),
+                                fastgltf::math::fmat4x4(),
+                                [&](fastgltf::Node& node, const auto& matrix)
+                                {
+                                    const std::string_view name(node.name.data(), node.name.size());
+                                    if (!node.meshIndex && name.starts_with(prefix))
+                                    {
+                                        markers.push_back({std::string(name), toGlm(matrix)});
+                                    }
+                                });
+    return markers;
+}
 } // namespace g7::asset

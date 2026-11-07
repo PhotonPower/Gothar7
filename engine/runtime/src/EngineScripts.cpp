@@ -25,6 +25,8 @@ namespace
 constexpr std::string_view kScriptRoot = "scripts";
 constexpr i32 kScriptCopyPriority = -20; // the copy next to the game (gothar_data)
 constexpr i32 kScriptDevPriority = -10;  // the repository's game/scripts (development builds) wins over it
+constexpr i32 kScriptExtraPriority =
+    -5; // EngineConfig::extraScriptDirectory (the editor's files, tests) over both
 constexpr std::string_view kDefaultNpcFigure = "characters/figures/laborer.figure.toml";
 constexpr std::string_view kHumanGraph = "data/anim/human.animgraph.toml";
 constexpr usize kConsoleLines = 200;
@@ -42,13 +44,27 @@ void Engine::mountScripts()
 {
     // In development builds the repository's game/scripts alone: the copy next to the game keeps files
     // deleted or renamed since (or from another branch), and every script found is loaded. Otherwise the copy
-    // (gothar_data).
+    // (gothar_data). The editor's folder (M16 part E, tests) lies over either.
+    m_scriptMounts.clear();
+    const auto mount = [&](const fs::Path& dir, i32 priority)
+    {
+        if (auto id = m_vfs.mount(dir, priority, std::string(kScriptRoot)); id)
+        {
+            m_scriptMounts.push_back(id.value());
+        }
+    };
+    if (!m_config.extraScriptDirectory.empty())
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(m_config.extraScriptDirectory, ec);
+        mount(m_config.extraScriptDirectory, kScriptExtraPriority);
+    }
 #if defined(G7_DEV_SCRIPT_ROOT)
     std::error_code devError;
     if (m_config.settings.get<bool>("assets.dev_mounts", true) &&
         std::filesystem::is_directory(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), devError))
     {
-        (void)m_vfs.mount(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), kScriptDevPriority, std::string(kScriptRoot));
+        mount(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), kScriptDevPriority);
         return;
     }
 #endif
@@ -56,7 +72,7 @@ void Engine::mountScripts()
     std::error_code ec;
     if (std::filesystem::is_directory(copy, ec))
     {
-        (void)m_vfs.mount(copy, kScriptCopyPriority, std::string(kScriptRoot));
+        mount(copy, kScriptCopyPriority);
     }
 }
 
@@ -455,6 +471,26 @@ physics::CharacterDesc Engine::creatureBody(std::string_view species)
     return desc;
 }
 
+std::string Engine::npcFigurePath(const script::Instance& npc, std::string_view name)
+{
+    // The figure: its own manifest, or one of a set for nameless people (figure_set, data/figure_sets.toml),
+    // chosen by the NPC's name so that it looks the same each time; the default one if neither is there.
+    std::string figure(npc.fields["figure"].isString() ? npc.fields["figure"].asString() : "");
+    if (figure.empty() && npc.fields["figure_set"].isString())
+    {
+        figure = figureFromSet(npc.fields["figure_set"].asString(), name);
+    }
+    if (figure.empty() || !m_vfs.exists(figure))
+    {
+        if (!figure.empty())
+        {
+            G7_LOG_WARN("engine", "{}: no figure {}, the default one stands in", name, figure);
+        }
+        figure = std::string(kDefaultNpcFigure);
+    }
+    return figure;
+}
+
 Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
 {
     const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", name) : nullptr;
@@ -465,21 +501,7 @@ Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
     // Animals are Npcs too (M9 part D, like Gothic's monsters): `species` picks their figure and graph.
     const std::string species =
         npc->fields["species"].isString() ? std::string(npc->fields["species"].asString()) : std::string();
-    // The figure: its own manifest, or one of a set for nameless people (figure_set, data/figure_sets.toml),
-    // chosen by the NPC's name so that it looks the same each time; the default one if neither is there.
-    std::string figure(npc->fields["figure"].isString() ? npc->fields["figure"].asString() : "");
-    if (figure.empty() && npc->fields["figure_set"].isString())
-    {
-        figure = figureFromSet(npc->fields["figure_set"].asString(), name);
-    }
-    if (figure.empty() || !m_vfs.exists(figure))
-    {
-        if (!figure.empty())
-        {
-            G7_LOG_WARN("engine", "{}: no figure {}, the default one stands in", name, figure);
-        }
-        figure = std::string(kDefaultNpcFigure);
-    }
+    const std::string figure = npcFigurePath(*npc, name);
     auto spawned =
         species.empty() ? spawnAnimated(name, figure, kHumanGraph, at, yaw) : spawnCreature(species, at, yaw);
     if (!spawned)
@@ -617,5 +639,70 @@ std::vector<std::string> Engine::scriptFunctions() const
 bool Engine::hasScripts() const noexcept
 {
     return m_scripts != nullptr;
+}
+
+std::vector<std::string> Engine::scriptInstanceNames(std::string_view kind) const
+{
+    std::vector<std::string> names;
+    if (m_scripts)
+    {
+        for (const script::Instance* i : m_scripts->instancesOf(kind))
+        {
+            names.push_back(i->name);
+        }
+    }
+    std::ranges::sort(names);
+    return names;
+}
+
+std::vector<std::string> Engine::guildNames() const
+{
+    std::vector<std::string> names;
+    if (m_scripts)
+    {
+        const script::Value guilds = m_scripts->global("Guilds"); // data/guilds.lua
+        if (const script::Table* table = guilds.asTable())
+        {
+            for (const auto& [name, guild] : table->fields)
+            {
+                names.push_back(name);
+            }
+        }
+    }
+    return names; // a sorted map
+}
+
+std::vector<std::string> Engine::scriptGlobalNames(std::string_view prefix) const
+{
+    return m_scripts ? m_scripts->globalNames(prefix) : std::vector<std::string>{};
+}
+
+Result<void> Engine::writeScript(std::string_view relative, std::string_view text)
+{
+    // Into the editor's folder (tests), else where the scripts lie on disk (development: game/scripts).
+    fs::Path root = m_config.extraScriptDirectory;
+    if (root.empty())
+    {
+        const auto startup = m_vfs.diskPath(std::string(kScriptRoot) + "/startup.lua");
+        if (!startup)
+        {
+            return Error{"the scripts come from an archive - nothing can be written"};
+        }
+        root = startup->parent_path();
+    }
+    const fs::Path file = root / fs::fromUtf8(relative);
+    std::error_code ec;
+    std::filesystem::create_directories(file.parent_path(), ec);
+    if (auto written = fs::writeText(file, text); !written)
+    {
+        return written;
+    }
+    // The new file into the VFS index, then the scripts anew (as the hot reload does).
+    for (const asset::MountId id : m_scriptMounts)
+    {
+        (void)m_vfs.rescan(id);
+    }
+    reloadScripts();
+    return {};
 }
 } // namespace g7

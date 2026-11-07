@@ -66,6 +66,9 @@ public:
     /// few maps, layers or maps that differ in size or format, and a hole mask of the wrong size;
     /// the previous surface stays then.
     [[nodiscard]] Result<void> setSurface(Device& device, const TerrainSurfaceDesc& surface);
+    /// New heights on the same grid (the editor's height brush, M16 part F2): the height texture and the
+    /// chunks' culling bounds anew. Fails for another grid size.
+    [[nodiscard]] Result<void> updateHeights(const HeightfieldDesc& heightfield);
     [[nodiscard]] u32 layerCount() const noexcept { return m_layerCount; }
     [[nodiscard]] bool hasHoles() const noexcept { return m_hasHoles; }
 
@@ -110,6 +113,7 @@ private:
     };
 
     void bindCommon(rhi::ShaderProgram& program, Device& device);
+    void buildChunks(const HeightfieldDesc& d); ///< chunks and their bounds from the heights
 
     std::vector<Chunk> m_chunks;
     std::array<Grid, kLodLevels> m_grids;

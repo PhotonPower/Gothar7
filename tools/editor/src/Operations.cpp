@@ -42,6 +42,20 @@ Result<entt::entity> placeMesh(world::Scene& scene, std::string_view meshPath, c
     return vob;
 }
 
+Result<entt::entity> placeLight(world::Scene& scene, std::string name, const Vec3& position,
+                                const world::LightSource& light)
+{
+    Transform transform;
+    transform.position = position;
+    auto vob = scene.spawnVob({std::move(name), transform, {}, {}});
+    if (!vob)
+    {
+        return vob.error();
+    }
+    scene.set<world::LightSource>(vob.value(), light);
+    return vob;
+}
+
 Result<entt::entity> duplicateVob(world::Scene& scene, entt::entity vob, const Vec3& offset)
 {
     const world::Vob* source = scene.get<world::Vob>(vob);

@@ -10,6 +10,7 @@
 #include <g7/world/Scene.hpp>
 #include <g7/world/Terrain.hpp>
 #include <g7/world/WorldFile.hpp>
+#include <g7/world/WorldScene.hpp>
 
 #include <algorithm>
 #include <filesystem>
@@ -92,6 +93,20 @@ Editor::Editor(Engine& engine)
     }
     std::sort(m_worlds.begin(), m_worlds.end());
     m_scriptFunctions = engine.scriptFunctions();
+    m_mobLists = mobLists();                 // part D
+    for (RoutineInfo& r : engine.routines()) // part E: the routines of the editor's file
+    {
+        if (r.file == editorRoutineFile())
+        {
+            m_routines.push_back(std::move(r));
+        }
+    }
+    m_routinesWritten = m_routines;
+    // Part F: the templates next to the assets on disk (assets/source/prefabs).
+    if (const auto data = engine.vfs().diskPath("data/mobs.toml"))
+    {
+        m_prefabDirectory = data->parent_path().parent_path() / "prefabs";
+    }
     G7_LOG_INFO("editor", "editor mode: {} models to place; left click selects, right mouse looks",
                 m_assets.size());
 }
@@ -227,7 +242,8 @@ Result<void> Editor::edit(std::string label, std::vector<world::VobId> ids,
 Result<bool> Editor::undo()
 {
     const std::string label = m_history.undoLabel();
-    auto undone = m_history.undo(m_engine.scene(), &m_waynetData, &m_zones);
+    TerrainTarget terrain = terrainTarget();
+    auto undone = m_history.undo(m_engine.scene(), &m_waynetData, &m_zones, &m_routines, &terrain);
     if (undone && undone.value())
     {
         historyApplied();
@@ -252,13 +268,21 @@ void Editor::historyApplied()
     {
         m_status = handed.error().message;
     }
-    selectZone(m_zoneSelected); // gone after undoing its "add"
+    selectZone(m_zoneSelected);         // gone after undoing its "add"
+    if (m_history.lastTouchedTerrain()) // part F2: drawn terrain, weights and collision follow
+    {
+        (void)m_engine.terrainHeightsChanged();
+        (void)m_engine.terrainSplatChanged();
+        m_engine.terrainStrokeFinished();
+        m_terrainDirty = true;
+    }
 }
 
 Result<bool> Editor::redo()
 {
     const std::string label = m_history.redoLabel();
-    auto redone = m_history.redo(m_engine.scene(), &m_waynetData, &m_zones);
+    TerrainTarget terrain = terrainTarget();
+    auto redone = m_history.redo(m_engine.scene(), &m_waynetData, &m_zones, &m_routines, &terrain);
     if (redone && redone.value())
     {
         historyApplied();
@@ -304,6 +328,34 @@ Result<world::VobId> Editor::place(std::string_view meshPath)
                                    return vob.error();
                                }
                                id = m_engine.scene().idOf(vob.value());
+                               // ADR 0023: empty VOB_<type>_<name> nodes of a .glb become child vobs.
+                               m_importWarnings.clear();
+                               auto markers = m_engine.modelMarkers(path, "VOB_");
+                               if (!markers)
+                               {
+                                   m_importWarnings.push_back(markers.error().message);
+                                   return {};
+                               }
+                               std::vector<VobMarker> found;
+                               for (const Engine::ModelMarker& m : markers.value())
+                               {
+                                   found.push_back({m.name, m.local});
+                               }
+                               VobImport imported = vobsFromMarkers(found);
+                               m_importWarnings = std::move(imported.warnings);
+                               for (world::WorldFileVob& v : imported.vobs)
+                               {
+                                   v.id = world::VobId{m_engine.scene().nextVobId()};
+                                   v.parent = id;
+                                   if (auto restored = world::restoreVob(m_engine.scene(), v); !restored)
+                                   {
+                                       return restored.error();
+                                   }
+                                   if (m_engine.scene().nextVobId() <= v.id.value)
+                                   {
+                                       (void)m_engine.scene().setNextVobId(v.id.value + 1);
+                                   }
+                               }
                                return {};
                            });
         !placed)
@@ -428,6 +480,24 @@ Result<void> Editor::write()
     m_generatedEdited.clear();
     m_waynetGeneratedEdited.clear();
     m_status = "saved " + fs::toUtf8(*path);
+    if (m_terrainDirty) // part F2: heights and splat weights over their files
+    {
+        if (auto terrain = m_engine.saveTerrain(); !terrain)
+        {
+            m_status = terrain.error().message;
+            return terrain;
+        }
+        m_terrainDirty = false;
+        m_status += " and the terrain";
+    }
+    if (routinesDirty()) // part E: the routines of the editor's file with the world
+    {
+        if (auto routines = writeRoutines(); !routines)
+        {
+            return routines;
+        }
+        m_status = "saved " + fs::toUtf8(*path) + " and scripts/" + editorRoutineFile();
+    }
     return {};
 }
 
@@ -442,9 +512,35 @@ std::string Editor::warningFor(world::VobId id) const
     return {};
 }
 
-void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
+void Editor::update(Engine& engine, f64 seconds, bool uiMouse, bool uiKeyboard)
 {
     const platform::Input& input = engine.input();
+    const bool shiftDown = input.isDown(platform::Key::LeftShift) || input.isDown(platform::Key::RightShift);
+    // Play-in-editor (part E): the game runs; F5 or Esc stops it, nothing else of the editor.
+    if (playing())
+    {
+        if (!uiKeyboard && (input.pressed(platform::Key::F5) || input.pressed(platform::Key::Escape)))
+        {
+            (void)stopPlay();
+        }
+        return;
+    }
+    if (!uiKeyboard && input.pressed(platform::Key::F5))
+    {
+        (void)startPlay(shiftDown); // F5 at the camera, Shift+F5 at the start point (decision 7)
+        return;
+    }
+    drawGhosts();
+    if (m_routinePanel.pickPlace && !uiMouse && input.pressed(platform::MouseButton::Left))
+    {
+        // The routine window waits for a place: the way point or freepoint nearest the click.
+        if (std::string name = nearestWaynetName(input.mousePosition()); !name.empty())
+        {
+            m_routinePanel.at = std::move(name);
+            m_routinePanel.pickPlace = false;
+        }
+        return;
+    }
     if (!uiKeyboard)
     {
         const bool ctrl = input.isDown(platform::Key::LeftCtrl) || input.isDown(platform::Key::RightCtrl);
@@ -468,6 +564,10 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         {
             setZoneMode(!m_zoneMode); // zones (M16 part C)
         }
+        if (input.pressed(platform::Key::T))
+        {
+            setTerrainMode(!m_terrainMode); // the terrain (M16 part F2)
+        }
         if (input.pressed(platform::Key::L))
         {
             localAxes = !localAxes;
@@ -485,6 +585,10 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
             if (m_waynetMode)
             {
                 (void)deleteWaynetSelection();
+            }
+            else if (m_terrainMode)
+            {
+                // the terrain has nothing to delete
             }
             else if (m_zoneMode)
             {
@@ -520,6 +624,12 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         waynetMouse(engine, mouse, !uiMouse && input.pressed(platform::MouseButton::Left),
                     input.isDown(platform::MouseButton::Left));
         drawWaynet();
+        return;
+    }
+    if (m_terrainMode)
+    {
+        terrainMouse(engine, mouse, !uiMouse && input.pressed(platform::MouseButton::Left),
+                     input.isDown(platform::MouseButton::Left), static_cast<f32>(seconds));
         return;
     }
     if (m_zoneMode)
@@ -653,6 +763,7 @@ void Editor::drawSelection()
         draw.box(AABB{m_gizmo.origin - Vec3(0.3f), m_gizmo.origin + Vec3(0.3f)}, {kActive});
     }
 
+    drawMobSlots();
     drawGizmo();
 }
 
@@ -731,6 +842,25 @@ void Editor::fillPanel()
     p.snapMove = snapMove;
     p.snapAngle = snapAngle;
     p.assets = m_assets;
+    // Part D: lights and mobs.
+    p.lightPresets.clear();
+    for (const LightPreset& preset : lightPresets())
+    {
+        p.lightPresets.emplace_back(preset.name);
+    }
+    const usize windows = m_engine.daylightLights().size();
+    p.lightInfo = lightBudgetText(m_engine.frameLights().lights().size(), m_engine.lightBudget().maxLights,
+                                  m_engine.worldLightCount() - windows, windows);
+    if (!p.hourChanged)
+    {
+        p.hour = m_engine.gameTime().hourOfDay();
+    }
+    p.prefabs = prefabNames();
+    p.mobIssues.clear();
+    for (const MobIssue& issue : m_mobIssues)
+    {
+        p.mobIssues.push_back(std::format("{} ({}): {}", issue.name, issue.id.value, issue.text));
+    }
 
     // The vob tree: roots by id, children below their parent.
     p.vobs.clear();
@@ -794,7 +924,28 @@ void Editor::fillPanel()
     }
     if (const auto* mob = scene.get<world::MobRef>(e))
     {
-        addField("mob definition", Kind::Text).text = mob->definition;
+        // Part D: the definition from the list (Lua Mob definitions and mobs.toml types); what it holds is
+        // shown - owner, lock, key and contents belong to the Lua definition.
+        const std::vector<std::string> names = mobDefinitionChoices(m_mobLists.definitions, m_mobLists.types);
+        ChoiceList list = choiceList(mob->definition, names);
+        auto& definition = addField("mob definition", Kind::Choice);
+        definition.choices = std::move(list.items);
+        definition.choice = list.index;
+        if (const auto resolved = resolveMob(m_mobLists.definitions, m_mobLists.types, mob->definition))
+        {
+            for (auto& [label, text] : mobSummary(*resolved))
+            {
+                addField(std::move(label), Kind::ReadOnly).text = std::move(text);
+            }
+            if (resolved->type == "door")
+            {
+                addField("door open", Kind::Flag).flag = mob->open; // stored closed unless set (world.md)
+            }
+        }
+        else
+        {
+            addField("mob type", Kind::ReadOnly).text = "unknown definition";
+        }
     }
     if (const auto* light = scene.get<world::LightSource>(e))
     {
@@ -802,6 +953,7 @@ void Editor::fillPanel()
         addField("light range", Kind::Number).number = light->range;
         addField("light intensity", Kind::Number).number = light->intensity;
         addField("light flicker", Kind::Number).number = light->flicker;
+        addField("light daylight", Kind::Flag).flag = light->daylight; // window light: follows the sky
     }
     if (const auto* sound = scene.get<world::SoundEmitter>(e))
     {
@@ -855,6 +1007,30 @@ void Editor::applyPanel()
     if (p.clickedVob != 0)
     {
         select(world::VobId{p.clickedVob});
+    }
+    if (p.hourChanged)
+    {
+        setPreviewHour(p.hour);
+    }
+    if (p.addLight && p.lightPreset >= 0 && static_cast<usize>(p.lightPreset) < lightPresets().size())
+    {
+        (void)placeLight(lightPresets()[static_cast<usize>(p.lightPreset)].name);
+    }
+    if (p.savePrefab)
+    {
+        (void)savePrefab(p.prefabName);
+    }
+    if (p.placePrefab >= 0 && static_cast<usize>(p.placePrefab) < p.prefabs.size())
+    {
+        (void)placePrefab(p.prefabs[static_cast<usize>(p.placePrefab)]);
+    }
+    if (p.checkMobs)
+    {
+        (void)checkMobs();
+    }
+    if (p.clickedMobIssue >= 0 && static_cast<usize>(p.clickedMobIssue) < m_mobIssues.size())
+    {
+        select(m_mobIssues[static_cast<usize>(p.clickedMobIssue)].id);
     }
     if (p.placeAsset >= 0 && static_cast<usize>(p.placeAsset) < m_assets.size())
     {
@@ -955,7 +1131,18 @@ void Editor::applyFields(const std::vector<ui::EditorField>& fields)
         }
         else if (f.label == "mob definition")
         {
-            scene.get<world::MobRef>(e)->definition = f.text;
+            // From the list only ("-" keeps the definition: a mob vob needs one).
+            if (std::string chosen = choiceValue(f.choices, f.choice); !chosen.empty())
+            {
+                world::MobRef* mob = scene.get<world::MobRef>(e);
+                mob->definition = std::move(chosen);
+                const auto resolved = resolveMob(m_mobLists.definitions, m_mobLists.types, mob->definition);
+                mob->open = mob->open && resolved && resolved->type == "door"; // only doors are stored open
+            }
+        }
+        else if (f.label == "door open")
+        {
+            scene.get<world::MobRef>(e)->open = f.flag;
         }
         else if (auto* light = scene.get<world::LightSource>(e); light && f.label.starts_with("light "))
         {
@@ -963,6 +1150,7 @@ void Editor::applyFields(const std::vector<ui::EditorField>& fields)
             light->range = f.label == "light range" ? std::max(f.number, 0.1f) : light->range;
             light->intensity = f.label == "light intensity" ? std::max(f.number, 0.0f) : light->intensity;
             light->flicker = f.label == "light flicker" ? std::clamp(f.number, 0.0f, 1.0f) : light->flicker;
+            light->daylight = f.label == "light daylight" ? f.flag : light->daylight;
         }
         else if (auto* sound = scene.get<world::SoundEmitter>(e); sound && f.label.starts_with("sound"))
         {
@@ -1023,14 +1211,26 @@ void Editor::applyFields(const std::vector<ui::EditorField>& fields)
 
 void Editor::ui(Engine&, ui::DebugUi& debugUi)
 {
-    fillPanel();
-    debugUi.editorPanel(m_panel);
-    applyPanel();
-    fillWaynetPanel();
-    debugUi.waynetPanel(m_waynetPanel);
-    applyWaynetPanel();
-    fillZonePanel();
-    debugUi.zonePanel(m_zonePanel);
-    applyZonePanel();
+    if (!playing()) // while playing only the routine window (its stop button)
+    {
+        fillPanel();
+        debugUi.editorPanel(m_panel);
+        applyPanel();
+        fillWaynetPanel();
+        debugUi.waynetPanel(m_waynetPanel);
+        applyWaynetPanel();
+        fillZonePanel();
+        debugUi.zonePanel(m_zonePanel);
+        applyZonePanel();
+    }
+    fillRoutinePanel();
+    debugUi.routinePanel(m_routinePanel);
+    if (!playing())
+    {
+        fillTerrainPanel();
+        debugUi.terrainPanel(m_terrainPanel);
+        applyTerrainPanel();
+    }
+    applyRoutinePanel();
 }
 } // namespace g7::editor

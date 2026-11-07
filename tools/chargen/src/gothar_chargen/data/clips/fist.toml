@@ -10,6 +10,10 @@ depends = ["none"]
 file = "AnimationLibrary_Godot_Standard.glb"
 mapping = "quaternius_ual1"
 
+[sources.cmu]                  # CMU mocap retargeted by `gothar-chargen cmu` (F4, LICENSES.md)
+file = "cmu_combat.blend"
+mapping = "identity"
+
 [[clip]]
 name = "fist/s_guard"
 from = "ual1:Punch_Enter[24:26]"
@@ -78,13 +82,25 @@ frames = 15
 # the impact of the fist, combo_start = hit_end .. combo_end at about 80 %, then recovery.
 
 [[clip]]
-name = "fist/t_jab"
-from = "ual1:Punch_Jab"
+name = "fist/t_jab_mocap"
+from = "cmu:fist_jab"           # CMU 143_23, frames 548-656 (F4 mocap)
 helper = true
 
 [[clip]]
-name = "fist/t_cross"
-from = "ual1:Punch_Cross"
+name = "fist/t_jab"                # CMU has no fingers: the fists come from the guard
+layer = ["fist/t_jab_mocap", "fist/s_idle"]
+from_bone = ["thumb_01_l", "index_01_l", "middle_01_l", "ring_01_l", "pinky_01_l", "thumb_01_r", "index_01_r", "middle_01_r", "ring_01_r", "pinky_01_r"]
+helper = true
+
+[[clip]]
+name = "fist/t_cross_mocap"
+from = "cmu:fist_cross_low"     # CMU 02_05, frames 1328-1448 (F4 mocap)
+helper = true
+
+[[clip]]
+name = "fist/t_cross"                # CMU has no fingers: the fists come from the guard
+layer = ["fist/t_cross_mocap", "fist/s_idle"]
+from_bone = ["thumb_01_l", "index_01_l", "middle_01_l", "ring_01_l", "pinky_01_l", "thumb_01_r", "index_01_r", "middle_01_r", "ring_01_r", "pinky_01_r"]
 helper = true
 
 [[clip]]
@@ -96,20 +112,22 @@ params = { base = "fist/t_jab", stance = "fist/s_idle", fade_in = 3, fade_out = 
 [[clip]]
 name = "fist/t_attack_combo1"                 # feet planted, steps instead of sliding (F4)
 keyframe = "plant"
-markers = { hit_start = 4, hit_end = 7, combo_start = 7, combo_end = 21, "sound:swing" = 0 }
+markers = { hit_start = 9, hit_end = 13, combo_start = 13, combo_end = 21, "sound:swing" = 5 }
 params = { base = "fist/t_attack_combo1_framed" }
 
 [[clip]]
-name = "fist/t_cross_low"         # crouched low cross (knees bent, leaning in): hits wolves too
+name = "fist/t_cross_low"         # the mocap body blow driven lower (knees bent, leaning in): hits wolves too
 keyframe = "keyposes"
 helper = true
 [clip.params]
 base = "fist/t_cross"
-keys = [[0, "rest"], [5, "low"], [16, "low"], [30, "rest"]]
-[clip.params.poses.low]
-# grid search (2026-11-01, wolf height): right fist ~0.75 m ahead at ~0.5 m, feet on the ground
-rotate = { spine_02 = [["X", 30]], spine_01 = [["X", 10]], thigh_l = [["X", -45]], thigh_r = [["X", -45]], calf_l = [["X", 70]], calf_r = [["X", 70]] }
-move = { pelvis = [0, 0, -0.28], root = [0, -0.1, 0] }
+keys = [[0, "rest"], [6, "crouch"], [12, "low"], [20, "low"], [30, "rest"]]
+[clip.params.poses.crouch]
+rotate = { spine_02 = [["X", 18]], thigh_l = [["X", -30]], thigh_r = [["X", -30]], calf_l = [["X", 45]], calf_r = [["X", 45]] }
+move = { pelvis = [0, 0, -0.17] }
+[clip.params.poses.low]       # and a step into the blow (reach; the feet step by plant)
+rotate = { spine_02 = [["X", 18]], thigh_l = [["X", -30]], thigh_r = [["X", -30]], calf_l = [["X", 45]], calf_r = [["X", 45]] }
+move = { pelvis = [0, 0, -0.17], root = [0, -0.15, 0] }
 
 [[clip]]
 name = "fist/t_attack_combo2_framed"     # low cross, right fist (body blow; reaches animals, sweep M11)
@@ -120,7 +138,7 @@ params = { base = "fist/t_cross_low", stance = "fist/s_idle", fade_in = 5, fade_
 [[clip]]
 name = "fist/t_attack_combo2"                 # feet planted, steps instead of sliding (F4)
 keyframe = "plant"
-markers = { hit_start = 4, hit_end = 9, combo_start = 9, combo_end = 24, "sound:swing" = 0 }
+markers = { hit_start = 4, hit_end = 13, combo_start = 13, combo_end = 24, "sound:swing" = 0 }
 params = { base = "fist/t_attack_combo2_framed" }
 
 [[clip]]
