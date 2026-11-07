@@ -9,6 +9,13 @@ layout(binding = 1) uniform sampler2D uBloom; // the glow at half size (render::
 uniform float uExposure;
 uniform int uTonemapper; // 0 ACES, 1 Reinhard, 2 none – same order as render::Tonemapper
 uniform float uBloomIntensity; // 0: no bloom (the texture is then not read)
+uniform int uUnderwater;       // 1: the camera under water (M17 W3)
+uniform vec3 uWaterAbsorption;
+uniform vec3 uWaterFog;
+uniform float uWaterDistortion;
+uniform float uWaterTime;
+uniform mat4 uInverseProjection;
+layout(binding = 2) uniform sampler2D uDepth; // the scene's depth (reverse-Z), read under water only
 uniform int uGrade;            // 0: no grading (the image as before M17 P2)
 uniform float uTemperature;
 uniform float uTint;
@@ -67,10 +74,25 @@ vec3 tonemap(vec3 x)
 
 void main()
 {
-    vec3 scene = texture(uScene, vUv).rgb;
+    vec2 uv = vUv;
+    vec3 scene;
+    if (uUnderwater == 1)
+    {
+        // Under water (render::underwaterColor): a slight wavering, then tint and fog by the distance.
+        uv = clamp(uv + uWaterDistortion * 0.004 *
+                            vec2(sin(vUv.y * 30.0 + uWaterTime * 1.7), cos(vUv.x * 25.0 + uWaterTime * 1.3)),
+                   0.0, 1.0);
+        const vec4 view = uInverseProjection * vec4(uv * 2.0 - 1.0, texture(uDepth, uv).r, 1.0);
+        const vec3 t = exp(-uWaterAbsorption * length(view.xyz / view.w));
+        scene = texture(uScene, uv).rgb * t + uWaterFog * (1.0 - t);
+    }
+    else
+    {
+        scene = texture(uScene, uv).rgb;
+    }
     if (uBloomIntensity > 0.0)
     {
-        scene += texture(uBloom, vUv).rgb * uBloomIntensity;
+        scene += texture(uBloom, uv).rgb * uBloomIntensity;
     }
     vec3 hdr = scene * uExposure;
     vec3 display;

@@ -39,13 +39,28 @@ enum class Tonemapper : u8
     None,     ///< Clamp at 1 (for comparison).
 };
 
+/// The view under water (M17 W3): every pixel tinted and fogged by its distance through the water
+/// (underwaterColor), the picture slightly wavering.
+struct Underwater
+{
+    Vec3 absorption{1.0f}; ///< per metre (render::WaterStyle)
+    Vec3 fogColor{0.05f};  ///< the water's own colour, lit
+    f32 distortion = 1.0f; ///< 0: still picture ([render] underwater_distortion = false)
+    f32 time = 0.0f;       ///< seconds, moves the wavering
+    Mat4 inverseProjection{1.0f};
+};
+
+/// The colour of a pixel `metres` away seen through water. Same as post.frag.
+[[nodiscard]] Vec3 underwaterColor(const Vec3& color, const Underwater& water, f32 metres) noexcept;
+
 struct PostSettings
 {
     Tonemapper tonemapper = Tonemapper::Aces;
     f32 exposure = 1.0f;
     const rhi::Texture* bloom = nullptr; ///< the glow of render::Bloom (M17), nullptr: none
     f32 bloomIntensity = 0.0f;
-    std::optional<Grading> grading; ///< M17 P2; nullopt: none (the image as before)
+    std::optional<Grading> grading;       ///< M17 P2; nullopt: none (the image as before)
+    std::optional<Underwater> underwater; ///< M17 W3: the camera under water; nullopt: above
 };
 
 /// Same curves as post.frag (per channel, after exposure), for tests and tools.

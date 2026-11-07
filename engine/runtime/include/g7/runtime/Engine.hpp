@@ -285,6 +285,10 @@ public:
     [[nodiscard]] u32 waterSurfacesDrawn() const noexcept { return m_waterDrawn; }
     [[nodiscard]] render::WaterQuality waterQuality() const noexcept { return m_waterQuality; }
     [[nodiscard]] const render::WaterStyles& waterStyles() const noexcept { return m_waterStyles; }
+    /// The water body the camera is under the surface of (M17 W3); nullptr above water.
+    [[nodiscard]] const world::WaterBody* cameraWater() const noexcept;
+    /// The post settings of the last frame (bloom, grading, under water).
+    [[nodiscard]] const render::PostSettings& postSettings() const noexcept { return m_postSettings; }
     /// The grading for a point: the time of day overridden by the zones there (music, ambient, indoor).
     [[nodiscard]] render::Grading gradingAt(const render::Grading& timeOfDay, const Vec3& point) const;
 
@@ -1315,6 +1319,7 @@ private:
     void updateGrading(const render::Grading& timeOfDay);
     void rebuildWaterSurfaces();
     void drawWater();
+    void updateUnderwater();
     void drawScene(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
     /// `allowMouse` / `allowKeyboard` false while the debug UI uses them.

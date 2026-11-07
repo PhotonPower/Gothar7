@@ -29,6 +29,20 @@ void WaterBodies::rebuild(const Scene& scene)
         });
 }
 
+const WaterBody* WaterBodies::submergedIn(const Vec3& point) const noexcept
+{
+    const WaterBody* best = nullptr;
+    for (const WaterBody& body : m_bodies)
+    {
+        if (point.y < body.surface() && point.y >= body.bottom() && body.covers(point.x, point.z) &&
+            (best == nullptr || body.surface() > best->surface()))
+        {
+            best = &body;
+        }
+    }
+    return best;
+}
+
 std::optional<f32> WaterBodies::surfaceAt(const Vec3& point, f32 above) const noexcept
 {
     std::optional<f32> best;

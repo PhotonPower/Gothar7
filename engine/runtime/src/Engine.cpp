@@ -1754,10 +1754,13 @@ void Engine::renderScene(u32 width, u32 height)
     drawScene(width, height);
     m_passTimes.end(*m_device);
 
+    // Under water (M17 W3): tint, fog and wavering in the post pass; no bloom (the glow of the sun above).
+    updateUnderwater();
+
     // Bloom from the HDR scene (M17 P1), then tonemap into the window.
     m_postSettings.bloom = nullptr;
     m_postSettings.bloomIntensity = 0.0f;
-    if (m_bloomSettings.enabled && m_bloomSettings.intensity > 0.0f)
+    if (m_bloomSettings.enabled && m_bloomSettings.intensity > 0.0f && !m_postSettings.underwater)
     {
         if (auto resized = m_bloom.resize(*m_device, width, height, m_bloomSettings.levels); resized)
         {
@@ -1981,6 +1984,32 @@ void Engine::rebuildWaterSurfaces()
                                    Vec2(body.halfExtents.x, body.halfExtents.z),
                                    &m_waterStyles.style(body.kind)});
     }
+}
+
+const world::WaterBody* Engine::cameraWater() const noexcept
+{
+    return m_water.submergedIn(m_camera.transform.position);
+}
+
+void Engine::updateUnderwater()
+{
+    m_postSettings.underwater.reset();
+    const world::WaterBody* body = cameraWater();
+    if (body == nullptr)
+    {
+        return;
+    }
+    const render::WaterStyle& style = m_waterStyles.style(body->kind);
+    render::Underwater water;
+    water.absorption = style.absorption;
+    // The water's own colour, lit by the sky and the sun above (as the surface's deep colour in water.frag).
+    water.fogColor =
+        style.scatter * (m_environment.ambientSky + m_environment.sunColor * m_environment.sunIntensity *
+                                                        std::max(m_environment.sunDirection.y, 0.0f));
+    water.distortion = m_config.settings.get<bool>("render.underwater_distortion", true) ? 1.0f : 0.0f;
+    water.time = static_cast<f32>(std::fmod(m_waterTime, 3600.0));
+    water.inverseProjection = glm::inverse(m_camera.projection());
+    m_postSettings.underwater = water;
 }
 
 void Engine::drawWater()

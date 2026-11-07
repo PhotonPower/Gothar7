@@ -91,3 +91,39 @@ TEST_CASE("Engine render: the pond in the camp is drawn by the water pass, by qu
         CHECK(engine.renderDevice()->debugErrorCount() == 0);
     }
 }
+
+TEST_CASE(
+    "Engine render: the camera under the pond sees the underwater view, music and ambience muffled (M17 W3)")
+{
+    for (const bool under : {true, false})
+    {
+        g7::EngineConfig config;
+        config.window.size = {320, 240};
+        config.window.vsync = false;
+        config.shaderDirectory = g7::fs::fromUtf8(G7_SHADER_DIR);
+        config.world = g7::fs::fromUtf8("testworld/camp.g7world");
+        config.player = false;
+        config.fixedFrameSeconds = 1.0 / 60.0;
+        // The pond: surface -4, bottom -12, centre (-160, -137).
+        config.view.camera = g7::Vec3(-160.0f, under ? -6.0f : -2.0f, -137.0f);
+        g7::test::keepVideoAlive();
+        g7::Engine engine(config);
+        REQUIRE(engine.init().ok());
+        for (int i = 0; i < 6; ++i)
+        {
+            REQUIRE(engine.runFrame());
+        }
+        CHECK((engine.cameraWater() != nullptr) == under);
+        CHECK(engine.postSettings().underwater.has_value() == under);
+        if (under)
+        {
+            CHECK(engine.postSettings().bloom == nullptr); // no glow of the sun above through the water
+        }
+        if (const g7::audio::AudioSystem* audio = engine.audio())
+        {
+            CHECK((audio->busMuffle(g7::audio::Bus::Music) > 0.5f) == under);
+            CHECK((audio->busMuffle(g7::audio::Bus::Ambient) > 0.5f) == under);
+        }
+        CHECK(engine.renderDevice()->debugErrorCount() == 0);
+    }
+}

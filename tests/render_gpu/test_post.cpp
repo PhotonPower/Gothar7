@@ -241,3 +241,45 @@ TEST_CASE("Post: colour grading - neutral changes (almost) nothing, saturation 0
     CHECK(int(w[0]) - int(w[2]) > int(plain[0]) - int(plain[2])); // redder
     CHECK(gl.device->debugErrorCount() == 0);
 }
+
+TEST_CASE("Post: under water the far scene turns into the water's colour, the near one stays; above water "
+          "nothing (M17)")
+{
+    GlFixture gl;
+    ShaderLibrary library(*gl.device, fs::fromUtf8(G7_SHADER_DIR));
+    PostProcess post = require(PostProcess::create(*gl.device, library));
+    SceneTarget scene = require(SceneTarget::create(*gl.device, 8, 8));
+    Texture output = require(gl.device->createTexture({8, 8, Format::RGBA8, 1}));
+    Framebuffer window = require(gl.device->createFramebuffer({{&output}, nullptr}));
+    Camera camera;
+    const auto depthAt = [&](f32 metres)
+    {
+        const Vec4 clip = camera.projection() * Vec4(0.0f, 0.0f, -metres, 1.0f);
+        return clip.z / clip.w;
+    };
+    Underwater water;
+    water.absorption = Vec3(1.0f);
+    water.fogColor = Vec3(0.0f, 0.2f, 0.1f);
+    water.distortion = 0.0f;
+    water.inverseProjection = glm::inverse(camera.projection());
+    const auto shot = [&](f32 metres, bool under)
+    {
+        gl.device->bindFramebuffer(&scene.framebuffer());
+        gl.device->setViewport(0, 0, 8, 8);
+        gl.device->clear(Vec4(0.8f, 0.8f, 0.8f, 1.0f), depthAt(metres));
+        gl.device->bindFramebuffer(&window);
+        PostSettings settings{Tonemapper::None, 1.0f,
+                              nullptr,          0.0f,
+                              std::nullopt,     under ? std::optional<Underwater>(water) : std::nullopt};
+        post.apply(*gl.device, scene, 8, 8, settings);
+        return gl.device->readPixels(4, 4, 1, 1, &window);
+    };
+    const auto above = shot(50.0f, false);
+    const auto near = shot(0.2f, true);
+    const auto far = shot(50.0f, true);
+    CHECK(std::abs(int(above[0]) - int(near[0])) < 40); // 20 cm of water: hardly changed
+    CHECK(int(far[0]) < 10);                            // 50 m: no red left ...
+    CHECK(int(far[1]) > int(far[0]) + 40);              // ... the water's green instead
+    CHECK(int(above[0]) > 200);                         // above water: the scene as it is
+    CHECK(gl.device->debugErrorCount() == 0);
+}

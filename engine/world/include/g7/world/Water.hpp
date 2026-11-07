@@ -41,6 +41,10 @@ public:
     /// nullopt: no water there.
     [[nodiscard]] std::optional<f32> surfaceAt(const Vec3& point, f32 above = 0.5f) const noexcept;
     [[nodiscard]] std::span<const WaterBody> bodies() const noexcept { return m_bodies; }
+    /// The body `point` lies under the surface of (strictly below the top, above the bottom, inside the
+    /// footprint); of several the one with the highest surface. nullptr: not under water (M17 W3, the
+    /// camera).
+    [[nodiscard]] const WaterBody* submergedIn(const Vec3& point) const noexcept;
 
 private:
     std::vector<WaterBody> m_bodies;

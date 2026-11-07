@@ -389,7 +389,7 @@ Engine::waterSurfaces(), waterSurfacesDrawn(), waterQuality(), waterStyles();  w
   + scatter · Licht · (1 − e^(−absorption·weg))`; Uferkante weich über `shore_fade` Meter Wassertiefe (Alpha).
 - **Licht:** Fresnel (Schlick, f0 = 0,02) zwischen dem Durchscheinenden und dem gespiegelten Himmel (Horizont- und
   Zenitfarbe wie `background.frag`; bei `high` die Spiegelung, W2), Sonnenglanz nach Blinn-Phong, Nebel wie die Szene.
-  Von unten (Tauchen) bis W3 eine trübe Fläche.
+  Von unten (Tauchen) siehe W3.
 - **Daten** `data/water.toml`: `[kind.river]`, `[kind.pond]`, `default = "pond"` (fehlt `kind` oder ist es
   unbekannt, gilt die Vorgabe). Werte nach Entscheidung 5/6: Glems trüb grün-braun (Sicht ca. 4 m), fließt 0,6 m/s;
   Teich dunkel-oliv (ca. 3 m), ruhiger und mit schärferem Glanz.
@@ -428,6 +428,33 @@ inline constexpr u32 kReflectionSteps = 32;  inline constexpr f32 kReflectionDis
   Spiegelung liegt etwa bei 0,4–0,7 ms, Budget ≤ 0,8 ms). Im Release-Build kleiner.
 - **Tests:** GPU `test_water.cpp`: eine helle Wand über dem Wasser erscheint bei `high` im Wasser, bei `medium` und
   ohne Wand bleibt der Himmel.
+
+### Unter Wasser (M17 Teil W3, umgesetzt) – `post.frag`, `water.frag`
+```cpp
+struct Underwater { Vec3 absorption, fogColor; f32 distortion = 1, time; Mat4 inverseProjection; };
+Vec3 underwaterColor(color, water, metres);           // wie post.frag
+struct PostSettings { …; std::optional<Underwater> underwater; };
+const WaterBody* world::WaterBodies::submergedIn(point);  Engine::cameraWater(), postSettings();
+void audio::AudioSystem::setBusMuffle(Bus, amount);  f32 busMuffle(Bus);
+```
+- **Wann:** Die Kamera liegt unter der Oberfläche einer Wasser-Box (`submergedIn`: unter der Oberkante, über dem
+  Boden, in der Grundfläche; bei Überlappung die höchste Oberfläche). Die Wasserart der Box liefert die Werte.
+- **Bild (Entscheidung 7):** im Post-Pass je Pixel nach seiner Entfernung (aus der Tiefe) getönt und vernebelt:
+  `farbe · e^(−absorption·d) + wasserfarbe · (1 − e^(−absorption·d))`, Wasserfarbe = `scatter` mal Himmels- und
+  Sonnenlicht (wie die Tiefenfarbe der Oberfläche). Sicht damit wie in W1: Glems ca. 4 m, Teich ca. 3 m; grün-blau
+  aus den Absorptionswerten. Leichtes Wabern (Bildversatz höchstens 0,4 %), abschaltbar. Kein Bloom unter Wasser
+  (die Sonne darüber glüht sonst durch). Kaustik zunächst aus.
+- **Oberfläche von unten:** im Snell-Fenster (etwa 48,6° um die Senkrechte, weich zwischen 44° und 50°, von den
+  Wellen bewegt) scheint die Welt darüber durch (Kopie der Szene, bei `low` der Himmel), außerhalb spiegelt sie
+  das Wasser (Totalreflexion, vereinfacht als Wasserfarbe); der Post-Pass vernebelt sie nach der Entfernung.
+- **Ton:** Musik- und Umgebungs-Bus werden über einen Tiefpass gedämpft (`setBusMuffle`, 0,85), solange die Kamera
+  unten ist. Ein offener Bus hat keinen Filter im Signalweg (klingt genau wie vorher).
+- **Option:** `[render] underwater_distortion = true`, Optionen → Grafik „Unterwasser-Verzerrung“.
+- **Tests:** `tests/world/test_water.cpp` (Kamera knapp unter/über der Oberfläche, Boden, Überlappung),
+  `tests/render/test_post.cpp` (Farbe nah/fern), `tests/audio/test_audio.cpp` (gedämpfter Bus verliert die Höhen,
+  offen wieder wie vorher), GPU `test_post.cpp` (nah kaum verändert, fern Wasserfarbe, über Wasser unverändert),
+  `test_engine_render.cpp` (Kamera im Teich: Unterwasser-Bild, kein Bloom, Musik und Umgebung gedämpft; darüber
+  nicht).
 
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp

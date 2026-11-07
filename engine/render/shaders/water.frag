@@ -142,8 +142,16 @@ void main()
 
     if (view.y < 0.0)
     {
-        // Seen from below (diving): murky until W3 brings the underwater view.
-        fragColor = vec4(deep + 0.3 * uSkyHorizon, 0.75);
+        // Seen from below (diving, W3): inside the Snell window (about 48.6 degrees around straight up) the world
+        // above shines through, outside it the surface mirrors the water (total internal reflection). The post
+        // pass then fogs it by the distance.
+        const float window = smoothstep(cos(radians(50.0)), cos(radians(44.0)), -view.y + 0.15 * length(tilt));
+        vec3 above = mix(uSkyHorizon, uSkyZenith, 0.5);
+        if (uRefract == 1)
+        {
+            above = texture(uSceneColor, gl_FragCoord.xy / uViewportSize).rgb;
+        }
+        fragColor = vec4(mix(deep, above, window), 1.0);
         return;
     }
 
