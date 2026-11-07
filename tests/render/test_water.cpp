@@ -76,6 +76,14 @@ TEST_CASE("Water: kinds, default and errors")
     CHECK(error("version = 1\ndefault = \"lake\"\n") == "water.toml: default: names no [kind.lake]");
     CHECK(error("version = 1\n[kind.x]\nabsorption = [1.0]\n") ==
           "water.toml: kind.x: absorption must be [r, g, b]");
+    CHECK(error("version = 1\n[kind.x]\nunderwater_visibility = -1.0\n") ==
+          "water.toml: kind.x: underwater_visibility must not be negative");
+    WaterStyle hue;
+    hue.absorption = Vec3(1.0f, 0.5f, 2.0f);
+    CHECK(underwaterAbsorption(hue).x == doctest::Approx(1.0f)); // no visibility: unchanged
+    hue.underwaterVisibility = 10.0f;
+    const Vec3 a = underwaterAbsorption(hue);
+    CHECK(a.x / a.y == doctest::Approx(2.0f)); // the hue stays
     CHECK(error("version = 1\n[kind.x]\nwave_scale = 0.0\n") ==
           "water.toml: kind.x: wave_scale, shininess and shore_fade must be > 0");
 }
@@ -97,4 +105,8 @@ TEST_CASE("Water: the shipped kinds (decision 5: Glems about 4 m visibility, pon
     CHECK(waterTransmittance(pond.absorption, 3.0f).y < 0.08f);
     CHECK(river.refraction <= 0.02f);              // plan: at most 2 % of the screen width
     CHECK(pond.waveStrength < river.waveStrength); // the pond is calmer (decision 6)
+    // Diving (owner, 2026-11-07): about 8 m in the pond, 10 m in the Glems; the surface keeps its absorption.
+    CHECK(waterTransmittance(underwaterAbsorption(pond), 8.0f).y == doctest::Approx(0.02f).epsilon(0.05));
+    CHECK(waterTransmittance(underwaterAbsorption(river), 10.0f).y == doctest::Approx(0.02f).epsilon(0.05));
+    CHECK(waterTransmittance(underwaterAbsorption(pond), 4.0f).y > 0.1f);
 }

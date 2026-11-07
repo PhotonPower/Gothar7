@@ -67,7 +67,8 @@ Result<WaterStyles> WaterStyles::parse(std::string_view toml, std::string_view s
              {std::pair{"wave_scale", &style.waveScale}, std::pair{"wave_speed", &style.waveSpeed},
               std::pair{"wave_strength", &style.waveStrength}, std::pair{"flow_speed", &style.flowSpeed},
               std::pair{"refraction", &style.refraction}, std::pair{"glint", &style.glint},
-              std::pair{"shininess", &style.shininess}, std::pair{"shore_fade", &style.shoreFade}})
+              std::pair{"shininess", &style.shininess}, std::pair{"shore_fade", &style.shoreFade},
+              std::pair{"underwater_visibility", &style.underwaterVisibility}})
         {
             if (const auto value = c.find<f64>(at + "." + key))
             {
@@ -81,6 +82,10 @@ Result<WaterStyles> WaterStyles::parse(std::string_view toml, std::string_view s
         if (glm::any(glm::lessThan(style.absorption, Vec3(0.0f))))
         {
             return error(at, "absorption must not be negative");
+        }
+        if (style.underwaterVisibility < 0.0f)
+        {
+            return error(at, "underwater_visibility must not be negative");
         }
         if (style.waveScale <= 0.0f || style.shininess <= 0.0f || style.shoreFade <= 0.0f)
         {
@@ -118,6 +123,17 @@ f32 waterFresnel(f32 cosTheta, f32 f0) noexcept
 Vec3 waterTransmittance(const Vec3& absorption, f32 metres) noexcept
 {
     return glm::exp(-absorption * std::max(metres, 0.0f));
+}
+
+Vec3 underwaterAbsorption(const WaterStyle& style) noexcept
+{
+    const f32 clearest = std::min({style.absorption.x, style.absorption.y, style.absorption.z});
+    if (style.underwaterVisibility <= 0.0f || clearest <= 0.0f)
+    {
+        return style.absorption;
+    }
+    // e^(-a * visibility) = 0.02 for the clearest channel: a = ln(50) / visibility.
+    return style.absorption * (std::log(50.0f) / style.underwaterVisibility / clearest);
 }
 
 std::vector<u8> makeWaterNormals(u32 size)

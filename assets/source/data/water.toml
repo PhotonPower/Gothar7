@@ -7,10 +7,11 @@
 #   flow_speed     m/s entlang lokal +X (nur Flüsse)
 #   refraction     größter Versatz der Brechung als Anteil der Bildbreite (Plan: höchstens 0,02)
 #   glint, shininess  Stärke und Schärfe des Sonnenglanzes;  shore_fade  Meter Wassertiefe, über die das Ufer einblendet
+#   underwater_visibility  Sicht beim Tauchen in Metern (M17 W3; 0 = wie absorption); die Farbe von oben bleibt
 version = 1
 default = "pond"
 
-# Glems: trüb grün-braun, Sicht unter Wasser ca. 4 m (Entscheidung 5 des Projektinhabers); fließt.
+# Glems: trüb grün-braun, von oben ca. 4 m tief zu sehen (Entscheidung 5 des Projektinhabers); fließt.
 [kind.river]
 absorption = [0.85, 0.7, 1.2]
 scatter = [0.05, 0.055, 0.03]
@@ -22,8 +23,9 @@ refraction = 0.02
 glint = 1.4
 shininess = 1500.0     # klarer, enger Glanz statt eines großen Flecks (Koordinator, 2026-11-07)
 shore_fade = 0.2
+underwater_visibility = 10.0   # Tauchen „etwas klarer“ (Projektinhaber, 2026-11-07)
 
-# Teich (Testlager, Parksee): dunkel-oliv, Sicht ca. 3 m; ruhig, klarer gespiegelt (Entscheidung 6).
+# Teich (Testlager, Parksee): dunkel-oliv, von oben ca. 3 m tief zu sehen; ruhig, klarer gespiegelt (Entscheidung 6).
 [kind.pond]
 absorption = [1.2, 1.05, 1.6]
 scatter = [0.025, 0.035, 0.015]
@@ -35,3 +37,4 @@ refraction = 0.015
 glint = 1.4
 shininess = 1500.0     # klarer, enger Glanz wie beim Fluss (Koordinator, 2026-11-07)
 shore_fade = 0.25
+underwater_visibility = 8.0    # Tauchen „etwas klarer“ (Projektinhaber, 2026-11-07)

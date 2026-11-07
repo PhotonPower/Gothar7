@@ -47,6 +47,9 @@ struct WaterStyle
     f32 glint = 2.0f;                   ///< strength of the sun's highlight
     f32 shininess = 400.0f;             ///< sharpness of the highlight (Blinn-Phong exponent)
     f32 shoreFade = 0.25f;              ///< metres of water depth over which the shore edge fades in
+    /// Metres one sees under water (M17 W3, the camera diving); 0: as `absorption` gives it. Only the view
+    /// from below uses it, the colour of the surface seen from above stays.
+    f32 underwaterVisibility = 0.0f;
 };
 
 /// Screen-space reflection (W2, quality high): steps along the ray and how far it goes.
@@ -74,6 +77,9 @@ private:
 [[nodiscard]] f32 waterFresnel(f32 cosTheta, f32 f0 = 0.02f) noexcept;
 /// The part of the light that crosses `metres` of water per channel (Beer-Lambert). Same as water.frag.
 [[nodiscard]] Vec3 waterTransmittance(const Vec3& absorption, f32 metres) noexcept;
+/// The absorption under water (M17 W3): `absorption` scaled so that its clearest channel keeps 2 % of the
+/// light at `underwaterVisibility` metres (the hue stays); `absorption` itself without a visibility.
+[[nodiscard]] Vec3 underwaterAbsorption(const WaterStyle& style) noexcept;
 /// The tiling wave height field the normals are made from (size x size texels, RGBA8: xz of the normal in RG,
 /// height in B); public for tests.
 [[nodiscard]] std::vector<u8> makeWaterNormals(u32 size);

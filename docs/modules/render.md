@@ -441,7 +441,9 @@ void audio::AudioSystem::setBusMuffle(Bus, amount);  f32 busMuffle(Bus);
   Boden, in der Grundfläche; bei Überlappung die höchste Oberfläche). Die Wasserart der Box liefert die Werte.
 - **Bild (Entscheidung 7):** im Post-Pass je Pixel nach seiner Entfernung (aus der Tiefe) getönt und vernebelt:
   `farbe · e^(−absorption·d) + wasserfarbe · (1 − e^(−absorption·d))`, Wasserfarbe = `scatter` mal Himmels- und
-  Sonnenlicht (wie die Tiefenfarbe der Oberfläche). Sicht damit wie in W1: Glems ca. 4 m, Teich ca. 3 m; grün-blau
+  Sonnenlicht (wie die Tiefenfarbe der Oberfläche). Sicht eigener Wert `underwater_visibility` (Projektinhaber 2026-11-07: Teich 8 m, Glems
+  10 m; `absorption` wird so skaliert, dass der klarste Kanal dort 2 % behält – Farbton gleich, die Oberfläche von
+  oben unverändert, `underwaterAbsorption`); grün-blau
   aus den Absorptionswerten. Leichtes Wabern (Bildversatz höchstens 0,4 %), abschaltbar. Kein Bloom unter Wasser
   (die Sonne darüber glüht sonst durch). Kaustik zunächst aus.
 - **Oberfläche von unten:** im Snell-Fenster (etwa 48,6° um die Senkrechte, weich zwischen 44° und 50°, von den

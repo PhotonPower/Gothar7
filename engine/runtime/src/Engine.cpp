@@ -2001,7 +2001,7 @@ void Engine::updateUnderwater()
     }
     const render::WaterStyle& style = m_waterStyles.style(body->kind);
     render::Underwater water;
-    water.absorption = style.absorption;
+    water.absorption = render::underwaterAbsorption(style); // own visibility under water (W3)
     // The water's own colour, lit by the sky and the sun above (as the surface's deep colour in water.frag).
     water.fogColor =
         style.scatter * (m_environment.ambientSky + m_environment.sunColor * m_environment.sunIntensity *
