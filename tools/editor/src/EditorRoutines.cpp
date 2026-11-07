@@ -217,6 +217,7 @@ bool Editor::playing() const noexcept
 
 Result<void> Editor::startPlay(bool atStartPoint)
 {
+    (void)m_engine.setGhostFigure(std::nullopt); // the game has its own NPCs
     m_playCamera = m_engine.camera().transform;
     std::optional<Transform> at;
     if (!atStartPoint)
@@ -293,11 +294,13 @@ void Editor::drawGhosts()
 {
     if (!m_routinePanel.ghosts)
     {
+        (void)m_engine.setGhostFigure(std::nullopt);
         return;
     }
     render::DebugDraw& draw = m_engine.debugDraw();
     const Vec3 eye = m_engine.camera().transform.position;
     const u32 minute = static_cast<u32>(std::clamp(m_routinePanel.hour, 0.0f, 24.0f) * 60.0f) % 1440u;
+    bool figureShown = false;
     for (const Ghost& g : ghosts(minute))
     {
         if (!g.place || glm::length(*g.place - eye) > kGhostRadius)
@@ -307,16 +310,16 @@ void Editor::drawGhosts()
         const bool selected = g.routine == m_selectedRoutine && !g.routine.empty();
         const Vec4 colour = selected ? Vec4(1.0f, 0.9f, 0.3f, 1.0f) : Vec4(0.7f, 0.85f, 1.0f, 0.8f);
         const Vec3 p = *g.place;
-        if (selected)
+        // Decision 8: the selected routine's NPC as its real figure at rest (the first such NPC), the others
+        // as markers. Facing the camera, so the face can be judged.
+        if (selected && !figureShown)
         {
-            // Decision 8: the selected NPC as a (simple) figure.
-            draw.sphere(p + Vec3(0.0f, 1.65f, 0.0f), 0.13f, {colour});
-            draw.line(p + Vec3(0.0f, 0.9f, 0.0f), p + Vec3(0.0f, 1.5f, 0.0f), {colour});
-            draw.line(p + Vec3(-0.3f, 1.35f, 0.0f), p + Vec3(0.3f, 1.35f, 0.0f), {colour});
-            draw.line(p + Vec3(0.0f, 0.9f, 0.0f), p + Vec3(-0.15f, 0.0f, 0.0f), {colour});
-            draw.line(p + Vec3(0.0f, 0.9f, 0.0f), p + Vec3(0.15f, 0.0f, 0.0f), {colour});
+            const Vec3 look = eye - p;
+            const f32 yaw = std::atan2(-look.x, -look.z); // yaw 0 looks along -Z, positive turns left
+            figureShown = m_engine.setGhostFigure(
+                Engine::GhostFigure{g.npc.substr(0, g.npc.find('#')), p, yaw}); // "npc#2": its instance
         }
-        else
+        if (!(selected && figureShown))
         {
             draw.circle(p + Vec3(0.0f, 0.03f, 0.0f), Vec3(0.0f, 1.0f, 0.0f), 0.35f, {colour});
             draw.line(p, p + Vec3(0.0f, 1.8f, 0.0f), {colour});
@@ -327,6 +330,10 @@ void Editor::drawGhosts()
             draw.line(g.now + Vec3(0.0f, 0.1f, 0.0f), p + Vec3(0.0f, 0.1f, 0.0f),
                       {Vec4(colour.r, colour.g, colour.b, 0.35f)});
         }
+    }
+    if (!figureShown)
+    {
+        (void)m_engine.setGhostFigure(std::nullopt);
     }
 }
 

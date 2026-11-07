@@ -147,6 +147,10 @@ public:
         Vec3 now{0.0f};            ///< where the NPC stands now
     };
     [[nodiscard]] std::vector<Ghost> ghosts(u32 minute) const;
+    /// The routine shown in the window; its NPC's ghost is the real figure (decision 8).
+    void selectRoutine(std::string name) { m_selectedRoutine = std::move(name); }
+    /// The preview hour of the routine window (0 .. 24; not the game's time).
+    void setRoutineHour(f32 hour) { m_routinePanel.hour = hour; }
     /// Every routine: the loaded ones, those of the editor's file as edited.
     [[nodiscard]] std::vector<RoutineInfo> allRoutines() const;
     [[nodiscard]] const std::vector<RoutineInfo>& editorRoutines() const noexcept { return m_routines; }

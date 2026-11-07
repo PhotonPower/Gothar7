@@ -471,6 +471,26 @@ physics::CharacterDesc Engine::creatureBody(std::string_view species)
     return desc;
 }
 
+std::string Engine::npcFigurePath(const script::Instance& npc, std::string_view name)
+{
+    // The figure: its own manifest, or one of a set for nameless people (figure_set, data/figure_sets.toml),
+    // chosen by the NPC's name so that it looks the same each time; the default one if neither is there.
+    std::string figure(npc.fields["figure"].isString() ? npc.fields["figure"].asString() : "");
+    if (figure.empty() && npc.fields["figure_set"].isString())
+    {
+        figure = figureFromSet(npc.fields["figure_set"].asString(), name);
+    }
+    if (figure.empty() || !m_vfs.exists(figure))
+    {
+        if (!figure.empty())
+        {
+            G7_LOG_WARN("engine", "{}: no figure {}, the default one stands in", name, figure);
+        }
+        figure = std::string(kDefaultNpcFigure);
+    }
+    return figure;
+}
+
 Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
 {
     const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", name) : nullptr;
@@ -481,21 +501,7 @@ Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
     // Animals are Npcs too (M9 part D, like Gothic's monsters): `species` picks their figure and graph.
     const std::string species =
         npc->fields["species"].isString() ? std::string(npc->fields["species"].asString()) : std::string();
-    // The figure: its own manifest, or one of a set for nameless people (figure_set, data/figure_sets.toml),
-    // chosen by the NPC's name so that it looks the same each time; the default one if neither is there.
-    std::string figure(npc->fields["figure"].isString() ? npc->fields["figure"].asString() : "");
-    if (figure.empty() && npc->fields["figure_set"].isString())
-    {
-        figure = figureFromSet(npc->fields["figure_set"].asString(), name);
-    }
-    if (figure.empty() || !m_vfs.exists(figure))
-    {
-        if (!figure.empty())
-        {
-            G7_LOG_WARN("engine", "{}: no figure {}, the default one stands in", name, figure);
-        }
-        figure = std::string(kDefaultNpcFigure);
-    }
+    const std::string figure = npcFigurePath(*npc, name);
     auto spawned =
         species.empty() ? spawnAnimated(name, figure, kHumanGraph, at, yaw) : spawnCreature(species, at, yaw);
     if (!spawned)

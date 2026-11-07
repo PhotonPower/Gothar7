@@ -94,8 +94,8 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
     gespeicherte Nicht-Türen. Ein Klick auf eine Meldung wählt das Mob.
 - **Routinen und Play-in-Editor (M16 Teil E, Fenster „Routines“):**
   - **Geister:** Für jedes NPC der Welt zeigt ein Marker mit Name und Zustand, wo seine Routine es zur gewählten
-    Stunde hinstellt (Wegpunkt bzw. Freepoint des Eintrags). Das NPC der gewählten Routine erscheint als einfache
-    Figur, eine Linie führt von seinem jetzigen Ort dorthin. Der Regler „hour“ betrifft nur die Vorschau, nicht die
+    Stunde hinstellt (Wegpunkt bzw. Freepoint des Eintrags). Das NPC der gewählten Routine steht dort als seine
+    echte Figur in Ruhepose, zur Kamera gedreht. Eine Linie führt vom jetzigen Ort des NPCs dorthin. Der Regler „hour“ betrifft nur die Vorschau, nicht die
     Spielzeit; die KI läuft dafür nicht.
   - **Prüfung „Day plan check“:** für die Routinen der NPCs dieser Welt und der Editor-Datei. Sie meldet Zeiten, die
     nicht HH:MM sind, leere Zeitfenster, Lücken („nothing to do 20:00-24:00“), Überschneidungen (es gilt der erste

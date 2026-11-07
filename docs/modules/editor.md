@@ -46,8 +46,10 @@ Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
 - **E:** Die Engine liefert reine Abfragen ohne Nebenwirkung: `Engine::routines()` (die `Routine`-Instanzen mit
   Datei), `npcRoutines()`, `routinePlace(ort)`, `scriptGlobalNames("zs_")`. Der Eintrag zu einer Minute steht im
   Editor (`RoutinePreview.hpp`, `entryAt`), nicht als `Engine::routineAt`.
-  - Geister: Marker mit Name und Zustand. Das NPC der gewählten Routine ist eine einfache Strichfigur aus
-    Debug-Linien, keine echte Figur (Entscheidung 8 sagt „Figur“; eine Modellfigur je Geist folgt bei Bedarf).
+  - Geister: Marker mit Name und Zustand. Das NPC der gewählten Routine steht als seine echte Figur in Ruhepose
+    da (`Engine::setGhostFigure`: dieselbe Figur wie beim Einsetzen, mit den Kreaturen gezeichnet, ohne KI, kein
+    Teil des Spiels), zur Kamera gedreht. Den Clip des Zustands gibt es nicht: Die `zs_`-Zustände spielen ihre
+    Animationen in Lua, die Engine kennt keine feste Zuordnung Zustand → Clip.
   - Geprüft werden nur die Routinen, denen NPCs dieser Welt folgen, und die der Editor-Datei.
   - Routinen bearbeiten: Die Datei heißt nach der Weltdatei (`routines/<ort>_editor.lua`). Ein NPC bekommt seine
     Routine weiter in seiner `Npc`-Instanz (`routine = "rtn_…"`). Der Editor legt nur die Routinen an und füllt sie.

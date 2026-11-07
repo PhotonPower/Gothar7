@@ -209,6 +209,7 @@ namespace script
 {
 class ScriptVm;
 class Value;
+struct Instance;
 } // namespace script
 struct AnimatedFigure; // animated figures (EngineFigure.cpp)
 struct PlayerFigure;   // the animated hero
@@ -467,6 +468,17 @@ public:
     [[nodiscard]] Result<void> startPlay(std::optional<Transform> at);
     [[nodiscard]] Result<void> stopPlay(const Transform& camera);
     [[nodiscard]] bool playing() const noexcept { return m_playSnapshot.has_value(); }
+    /// The editor's routine ghost (M16 part E, decision 8): the Npc instance's real figure at rest at `feet`
+    /// facing `yaw`; drawn with the creatures, no AI, not part of the game. nullopt hides it. Loaded once per
+    /// NPC; false if the figure cannot be loaded.
+    struct GhostFigure
+    {
+        std::string npc;
+        Vec3 feet{0.0f};
+        f32 yaw = 0.0f;
+    };
+    bool setGhostFigure(std::optional<GhostFigure> ghost);
+    [[nodiscard]] bool ghostFigureShown() const noexcept;
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;
@@ -900,6 +912,8 @@ private:
     bool m_strictRoute = false; // the next route planned follows the waynet (a replan after being stuck)
     /// Spawns an Npc instance with its figure, capsule, values and routine.
     [[nodiscard]] Result<u32> spawnNpc(std::string_view name, const Vec3& at, f32 yaw);
+    /// The figure an Npc instance wears (its own, one of its set, else the default).
+    [[nodiscard]] std::string npcFigurePath(const script::Instance& npc, std::string_view name);
     // Behaviour (EngineAi.cpp)
     void fixedUpdateAi(Creature& c, f32 seconds);
     void perceive(Creature& c, f32 seconds);
@@ -1622,6 +1636,8 @@ private:
     const LoadedModel* m_playerModel = nullptr;         // static placeholder when no animated figure loads
     std::unique_ptr<PlayerFigure> m_figure;             // animated hero (M6)
     std::vector<std::unique_ptr<Creature>> m_creatures; // animals (M6 D3, until M9)
+    struct GhostFigureState;                            // the editor's routine ghost (EngineCreatures.cpp)
+    std::unique_ptr<GhostFigureState> m_ghostFigure;
     u32 m_nextCreatureId = 1;
     std::string m_creatureSpecies = "wolf";                   // debug UI choice
     std::unique_ptr<script::ScriptVm> m_scripts;              // Lua of the game session (M7)

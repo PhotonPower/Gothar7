@@ -459,6 +459,17 @@ TEST_CASE(
     }
     CHECK(editor.checkRoutines().empty()); // the camp's day plans are whole
 
+    // Decision 8: the selected routine's NPC stands there as its real figure (at rest).
+    editor.setRoutineHour(8.0f);
+    editor.selectRoutine("rtn_farmer_woman");
+    engine.camera().transform.position =
+        *woman->place + Vec3(4.0f, 1.6f, 0.0f); // the fly camera keeps its yaw (90: along -X)
+    CHECK(engine.runFrame());
+    CHECK(engine.ghostFigureShown());
+    editor.selectRoutine("");
+    CHECK(engine.runFrame());
+    CHECK_FALSE(engine.ghostFigureShown());
+
     // A routine of the editor's file: made, filled, undone and redone, written - the scripts load it.
     CHECK_FALSE(editor.newRoutine("rtn_farmer_woman").ok()); // hand-written: taken
     REQUIRE(editor.newRoutine("rtn_editor_guard").ok());
