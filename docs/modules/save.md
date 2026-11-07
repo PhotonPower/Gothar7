@@ -11,6 +11,25 @@
   `fs::writeTextAtomic`/Benutzerpfad (`fs::userPath`), die Aktionen `quick_save`/`quick_load` (F5/F9, ungenutzt) und
   im Menü die ausgegrauten Einträge „Spiel laden“/„Spiel speichern“ (M14 Teil F).
 
+## Teil E (umgesetzt, M15) – Kapitel für Meilenstein C und DoD
+- **Kapitel 2 „Ankunft in Leonberg“** (Vorschlag engine, Inhalt eigener Wahl nach Roadmap): Nach Kapitel 1 (die drei
+  Aufträge im Lager) gibt die Torwache einen versiegelten Brief des Vogts an den Rat mit (`dia_gate_guard_letter`,
+  Item `it_letter_council`, Auftrag `quest_leo_letter`). Die Straße östlich des Lagers führt über den neuen
+  Weltwechsel `TRG_TO_LEONBERG` (Testlager, x 54) an welts Startpunkt `START_LEO_UNTERES_TOR` (#332). Matthis der
+  Ratsdiener (`npc_leo_citizen`) nimmt den Brief an: 50 Gulden, 150 Erfahrung, Auftrag erledigt. Kaspar am Unteren
+  Tor bringt den Helden zurück (`dia_leo_guard_lower_camp` → `change_world`, Startpunkt `START_LAGER_STRASSE`).
+  Texte deutsch inline, Englisch als Entwurf (`script.en.json`), Sprach-Schlüssel per `gothar-voice scan`.
+- **Lua:** `change_world(world, start)` – Weltwechsel wie ein Trigger.
+- **Engine:** Ohne Fenster (headless) laufen Ladeaufträge jetzt auch (`updateMenu`): ein Spielstand lädt in Tests.
+- **DoD-Tests:**
+  - `tests/runtime/test_engine_chapter_save.cpp` (ctest `runtime_chapter`, CI, ~30 s): Kapitel 1 im Lager mit einem
+    Spielstand nach jedem Abschnitt; jeder Abschnitt geht in einer **neuen Engine** weiter, die den Stand lädt
+    (Auftrag, NPCs und ihre Inventare, Helden-Inventar, Kapitel 2 mit Autosave, Brief).
+  - `tests/runtime/test_engine_leonberg_chapter.cpp` (ctest `runtime_leonberg_chapter`, nur lokal, ~90 s): Kapitel 2 –
+    Brief, Straße mit Weltwechsel und Autosave, Matthis, Spielstand in Leonberg, Rückweg ins Lager (Lager wie
+    verlassen), eine neue Engine lädt den Leonberger Stand.
+- Die Begehung durch den Projektinhaber steht aus.
+
 ## Teil D (umgesetzt, M15) – Speicherplätze, Schnellspeichern, Autosave, Menüs
 Engine `runtime/EngineSaveSlots.cpp`, Bildschirm `ui/SaveScreens.hpp` (`SaveScreen`, Modus Speichern/Laden).
 ```cpp

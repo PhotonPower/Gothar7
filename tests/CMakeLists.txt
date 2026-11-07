@@ -28,6 +28,8 @@ set(_g7_runtime_groups
     "leonberg_residents|*test_engine_leonberg_residents.cpp"
     "leonberg_night|*test_engine_leonberg_residents_night.cpp"
     "leonberg_save|*test_engine_leonberg_save.cpp"
+    "leonberg_chapter|*test_engine_leonberg_chapter.cpp"
+    "chapter|*test_engine_chapter_save.cpp"
     "ui|*test_engine_ui.cpp,*test_engine_save_slots.cpp"
     "slice|*test_engine_vertical_slice.cpp")
 set(_g7_runtime_tests runtime)
