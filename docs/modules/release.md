@@ -1,8 +1,8 @@
 # release – Plan M17 (Paket, Versions-Info, Absturzberichte)
 
-Stand: **Plan, zur Freigabe** (Auftrag des Projektinhabers über den Koordinator, 2026-11-07). Kein Code in diesem PR.
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). Kein Code in diesem PR.
 Ziel ist ein Paket, das ohne Repository läuft: ein ZIP mit dem Spiel, den gekochten Assets in `.g7pak`, den Lizenzen
-und Pflichtangaben, einer sichtbaren Version und lokalen Absturzberichten. Fragen an den Projektinhaber stehen am Ende,
+und Pflichtangaben, einer sichtbaren Version und lokalen Absturzberichten. Die Entscheidungen des Projektinhabers stehen am Ende,
 nummeriert und jeweils mit Vorschlag.
 
 ## Ausgangslage
@@ -113,24 +113,24 @@ A zuerst (B und C brauchen die Build-Zeile), dann B, dann C. Neue Bibliotheken: 
 gehören zu CMake, Windows SDK bzw. glibc. Deshalb braucht es keine neue ADR; käme doch eine Bibliothek dazu (etwa für
 Minidumps unter Linux), dann mit ADR „Vorgeschlagen“.
 
-## Fragen an den Projektinhaber (mit Vorschlag)
-1. **ZIP oder Installer?** Vorschlag: zuerst nur ZIP (entpacken, starten, Spielstände im Benutzerordner). Ein Installer
+## Entscheidungen des Projektinhabers (2026-11-07, alle wie vorgeschlagen)
+1. **ZIP oder Installer?** **Entschieden:** zuerst nur ZIP (entpacken, starten, Spielstände im Benutzerordner). Ein Installer
    (NSIS) später, wenn das Spiel öffentlich verteilt wird.
-2. **Ordner der Absturzberichte?** Vorschlag: `<Benutzerordner>/crashes`, neben `saves`, auf Windows also unter
+2. **Ordner der Absturzberichte?** **Entschieden:** `<Benutzerordner>/crashes`, neben `saves`, auf Windows also unter
    `%APPDATA%\Gothar\crashes`; dort schreibt nur das Spiel selbst, Tests nie.
-3. **Hinweis nach einem Absturz?** Vorschlag: Beim nächsten Start eine Zeile im Hauptmenü („Ein Absturzbericht liegt
+3. **Hinweis nach einem Absturz?** **Entschieden:** Beim nächsten Start eine Zeile im Hauptmenü („Ein Absturzbericht liegt
    in …“, Ordner öffnen per Klick) und ein Log-Eintrag; kein Dialog, nichts wird gesendet.
-4. **Wo steht die Version?** Vorschlag: Hauptmenü unten rechts klein und blass `0.4.0 (abc1234)`, dazu Log und
+4. **Wo steht die Version?** **Entschieden:** Hauptmenü unten rechts klein und blass `0.4.0 (abc1234)`, dazu Log und
    `--version`; im Spiel selbst nicht.
-5. **Versionsschema?** Vorschlag: `0.<meilenstein>.<patch>` bis zum ersten öffentlichen Release, also Meilenstein D =
+5. **Versionsschema?** **Entschieden:** `0.<meilenstein>.<patch>` bis zum ersten öffentlichen Release, also Meilenstein D =
    `0.4.0`; Git-Tag `v0.4.0` setzt die Version, der Hash kommt immer dazu.
-6. **Symbole (`.pdb`)?** Vorschlag: nicht im ZIP, sondern als CI-Artefakt je Version, 90 Tage aufbewahrt; für
+6. **Symbole (`.pdb`)?** **Entschieden:** nicht im ZIP, sondern als CI-Artefakt je Version, 90 Tage aufbewahrt; für
    veröffentlichte Versionen dauerhaft im Release-Anhang.
-7. **Linux?** Vorschlag: Windows-ZIP ist das Release. Linux als `.tar.gz` nur als CI-Artefakt, ohne Zusage, mit
+7. **Linux?** **Entschieden:** Windows-ZIP ist das Release. Linux als `.tar.gz` nur als CI-Artefakt, ohne Zusage, mit
    Text-Absturzbericht ohne Minidump.
-8. **Veröffentlichen?** Vorschlag: CI baut auf Tags nur Artefakte. Ein GitHub-Release legt der Projektinhaber von Hand
+8. **Veröffentlichen?** **Entschieden:** CI baut auf Tags nur Artefakte. Ein GitHub-Release legt der Projektinhaber von Hand
    an (das Repo ist öffentlich, das ZIP wäre es dann auch).
-9. **`.g7skin`/`.g7anim` jetzt?** Vorschlag: nein (Teil D). Erst wenn der reine Paket-Test scheitert oder die
+9. **`.g7skin`/`.g7anim` jetzt?** **Entschieden:** nein (Teil D). Erst wenn der reine Paket-Test scheitert oder die
    Ladezeit-Messung im Performance-Plan es verlangt.
-10. **Mitwirkende im Spiel?** Vorschlag: ein Menüpunkt „Mitwirkende“ im Hauptmenü, der `CREDITS.txt` zeigt
+10. **Mitwirkende im Spiel?** **Entschieden:** ein Menüpunkt „Mitwirkende“ im Hauptmenü, der `CREDITS.txt` zeigt
     (Pflichtangaben LGL und OSM zuerst). Die Datei liegt zusätzlich im ZIP.
