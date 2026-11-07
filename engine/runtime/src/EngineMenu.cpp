@@ -329,7 +329,8 @@ std::vector<ui::OptionPage> Engine::optionPages() const
                          {std::string("medium"), UiText::key("UI_OPT_QUALITY_MEDIUM")},
                          {std::string("high"), UiText::key("UI_OPT_QUALITY_HIGH")}}),
                  toggle("render.underwater_distortion", "UI_OPT_UNDERWATER_DISTORTION"),
-                 toggle("render.bloom", "UI_OPT_BLOOM"), toggle("render.grading", "UI_OPT_GRADING")}};
+                 toggle("render.ssao", "UI_OPT_SSAO"), toggle("render.bloom", "UI_OPT_BLOOM"),
+                 toggle("render.grading", "UI_OPT_GRADING")}};
     pages[1] = {"UI_OPTIONS_AUDIO",
                 {slider("audio.master", "UI_OPT_MASTER"), slider("audio.music", "UI_OPT_MUSIC"),
                  slider("audio.effects", "UI_OPT_EFFECTS"), slider("audio.voice", "UI_OPT_VOICE"),
@@ -460,6 +461,12 @@ void Engine::applySetting(std::string_view key)
                         quality);
         }
         m_waterQuality = parsed.value_or(render::WaterQuality::Medium);
+    }
+    else if (key == "render.ssao")
+    {
+        m_ssaoEnabled = s.get<bool>("render.ssao", false);
+        m_ssaoSettings.radius = static_cast<f32>(s.get<f64>("render.ssao_radius", 0.8));
+        m_ssaoSettings.strength = static_cast<f32>(s.get<f64>("render.ssao_strength", 1.5));
     }
     else if (key == "render.bloom")
     {

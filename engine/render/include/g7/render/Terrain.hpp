@@ -76,6 +76,8 @@ public:
     /// "Innenräume"); 0 = no limit.
     void setMaxDistance(f32 metres) noexcept { m_maxDistance = metres; }
     void drawShadow(Device& device, const Cascade& cascade, const Vec3& eye);
+    /// Depth prepass (M17 P3): the terrain's depth from `camera`, the same chunks and detail as draw().
+    void drawDepth(Device& device, const Camera& camera);
     /// Chunks the last shadow pass drew per detail level (tests, statistics).
     [[nodiscard]] const std::array<u32, 4>& shadowLevels() const noexcept { return m_shadowLevels; }
     /// Main pass: chunks inside the camera frustum, each at the detail its distance asks for. The
@@ -128,7 +130,8 @@ private:
     rhi::ShaderProgram* m_shadowProgram = nullptr;
     rhi::Pipeline m_pipeline;
     rhi::Pipeline m_shadowPipeline;
-    HeightfieldDesc m_desc; // samples not kept (they live in the texture)
+    rhi::Pipeline m_depthPipeline; // M17 P3
+    HeightfieldDesc m_desc;        // samples not kept (they live in the texture)
     AABB m_bounds;
     f32 m_skirtDepth = 1.0f;
     u32 m_drawn = 0;

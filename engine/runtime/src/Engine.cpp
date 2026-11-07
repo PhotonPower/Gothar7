@@ -607,6 +607,15 @@ Result<void> Engine::initShaders()
         G7_LOG_WARN("engine", "water: {} (no water surfaces)", water.error().message);
     }
     applySetting("render.water_quality");
+    if (auto ssao = render::Ssao::create(*m_device, *m_shaders); ssao)
+    {
+        m_ssao = std::move(ssao).value();
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "ssao: {} (no ambient occlusion)", ssao.error().message);
+    }
+    applySetting("render.ssao");
     auto debugRenderer = render::DebugDrawRenderer::create(*m_device, *m_shaders);
     if (!debugRenderer)
     {
@@ -1893,6 +1902,43 @@ void Engine::drawScene(u32 width, u32 height)
     m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
     m_device->setViewport(0, 0, width, height);
     m_device->clear(Vec4(0.0f, 0.0f, 0.0f, 1.0f), 0.0f);
+    const Frustum view = m_camera.frustum();
+    // M17 P3: with ambient occlusion first the depth of the opaque world (terrain, objects, items), the
+    // occlusion from it, then the main pass on that depth. Without it none of this runs (no cost).
+    const bool ssao =
+        m_ssaoEnabled && m_ssao.ready() && m_multiDraw && (!m_instances.empty() || m_hasTerrain);
+    m_environment.ambientOcclusion = 0.0f;
+    m_meshRenderer.setAmbientOcclusion(nullptr);
+    if (ssao)
+    {
+        m_passTimes.end(*m_device); // "scene": shadows
+        m_passTimes.begin(*m_device, "depth");
+        cullInstances(view);
+        appendItemDraws(view, false, 0);
+        if (m_hasTerrain)
+        {
+            m_terrain.setMaxDistance(inside ? m_frameCull.viewDistance : 0.0f);
+            m_terrain.drawDepth(*m_device, m_camera);
+        }
+        m_meshRenderer.drawDepthBatched(*m_device, m_drawItems, m_camera);
+        m_passTimes.end(*m_device);
+        m_passTimes.begin(*m_device, "ssao");
+        if (auto resized = m_ssao.resize(*m_device, width, height); resized)
+        {
+            m_ssao.render(*m_device, m_sceneTarget.depth(), m_camera, m_ssaoSettings);
+        }
+        m_passTimes.end(*m_device);
+        m_passTimes.begin(*m_device, "shading");
+        m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
+        m_device->setViewport(0, 0, width, height);
+        if (m_ssao.result() != nullptr)
+        {
+            m_environment.ambientOcclusion = 1.0f; // the strength is in the occlusion itself
+            m_environment.viewportTexel =
+                Vec2(1.0f / static_cast<f32>(width), 1.0f / static_cast<f32>(height));
+            m_meshRenderer.setAmbientOcclusion(m_ssao.result());
+        }
+    }
     m_backgroundProgram->setUniform("uInverseViewProjection", glm::inverse(m_camera.viewProjection()));
     m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
     m_backgroundProgram->setUniform("uHorizonColor", m_environment.fogColor);
@@ -1926,7 +1972,26 @@ void Engine::drawScene(u32 width, u32 height)
         m_terrain.setMaxDistance(inside ? m_frameCull.viewDistance : 0.0f);
         m_terrain.draw(*m_device, m_camera, &m_frameLights);
     }
-    const Frustum view = m_camera.frustum();
+    if (!ssao)
+    {
+        cullInstances(view); // without a prepass (multi-draw off: draws the instances right away)
+        appendItemDraws(view, false, 0);
+    }
+    // The player before the batched pass: that one ends with the translucent water, which must lie over
+    // the figure's parts below the surface.
+    drawPlayer(false, 0);
+    drawProjectiles(); // arrows and bolts in flight (M11)
+    drawCreatures(false, 0);
+    if (m_multiDraw)
+    {
+        m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
+    }
+    drawWater();   // M17 W1: after the opaque scene and the sky, before the particles
+    drawEffects(); // particles over the opaque scene, depth-tested (M12)
+}
+
+void Engine::cullInstances(const Frustum& view)
+{
     m_visibleInstances = 0;
     m_lodCounts = {};
     m_culledFar = 0;
@@ -1961,18 +2026,6 @@ void Engine::drawScene(u32 width, u32 height)
             ++m_visibleInstances;
         }
     }
-    appendItemDraws(view, false, 0);
-    // The player before the batched pass: that one ends with the translucent water, which must lie over
-    // the figure's parts below the surface.
-    drawPlayer(false, 0);
-    drawProjectiles(); // arrows and bolts in flight (M11)
-    drawCreatures(false, 0);
-    if (m_multiDraw)
-    {
-        m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
-    }
-    drawWater();   // M17 W1: after the opaque scene and the sky, before the particles
-    drawEffects(); // particles over the opaque scene, depth-tested (M12)
 }
 
 void Engine::rebuildWaterSurfaces()
@@ -2389,6 +2442,7 @@ void Engine::shutdown()
     m_instances.clear();
     m_groundModel.reset();
     m_waterRenderer = {};
+    m_ssao = {};
     m_worldItems.clear();
     m_itemModels.clear();
     m_scriptModels.clear();

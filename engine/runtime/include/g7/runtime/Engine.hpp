@@ -43,6 +43,7 @@
 #include <g7/render/PassTimes.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
+#include <g7/render/Ssao.hpp>
 #include <g7/render/Terrain.hpp>
 #include <g7/render/Visibility.hpp>
 #include <g7/render/Water.hpp>
@@ -284,6 +285,9 @@ public:
     }
     [[nodiscard]] u32 waterSurfacesDrawn() const noexcept { return m_waterDrawn; }
     [[nodiscard]] render::WaterQuality waterQuality() const noexcept { return m_waterQuality; }
+    /// Ambient occlusion with depth prepass (M17 P3, [render] ssao) and whether it was drawn last frame.
+    [[nodiscard]] bool ssaoEnabled() const noexcept { return m_ssaoEnabled; }
+    [[nodiscard]] const render::Ssao& ssao() const noexcept { return m_ssao; }
     [[nodiscard]] const render::WaterStyles& waterStyles() const noexcept { return m_waterStyles; }
     /// The water body the camera is under the surface of (M17 W3); nullptr above water.
     [[nodiscard]] const world::WaterBody* cameraWater() const noexcept;
@@ -1319,6 +1323,7 @@ private:
     void updateGrading(const render::Grading& timeOfDay);
     void rebuildWaterSurfaces();
     void drawWater();
+    void cullInstances(const Frustum& view); // fills m_drawItems (multi-draw) or draws them right away
     void updateUnderwater();
     void drawScene(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
@@ -1527,6 +1532,9 @@ private:
     render::WaterQuality m_waterQuality = render::WaterQuality::Medium; // [render] water_quality
     f64 m_waterTime = 0.0;                                              // moves the waves (real seconds)
     u32 m_waterDrawn = 0;                                               // surfaces drawn last frame
+    render::Ssao m_ssao;                                                // M17 P3
+    render::SsaoSettings m_ssaoSettings;
+    bool m_ssaoEnabled = false; // [render] ssao (owner decision 8: off by default)
     world::WaterBodies m_water;
     std::vector<SceneInstance> m_instances;
     std::string m_sceneName;

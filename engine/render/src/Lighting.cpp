@@ -170,6 +170,8 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
     gpu.fogParams = Vec4(environment.fogDensity, 0.0f, 0.0f, 0.0f);
     const usize rooms = std::min<usize>(environment.indoor.size(), kMaxIndoorVolumes);
     gpu.indoorParams = Vec4(static_cast<f32>(rooms), environment.indoorAmbient, environment.indoorEdge, 0.0f);
+    gpu.aoParams =
+        Vec4(environment.ambientOcclusion, environment.viewportTexel.x, environment.viewportTexel.y, 0.0f);
     for (usize i = 0; i < rooms; ++i)
     {
         const IndoorVolume& v = environment.indoor[i];

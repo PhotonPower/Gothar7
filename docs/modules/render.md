@@ -458,6 +458,38 @@ void audio::AudioSystem::setBusMuffle(Bus, amount);  f32 busMuffle(Bus);
   `test_engine_render.cpp` (Kamera im Teich: Unterwasser-Bild, kein Bloom, Musik und Umgebung gedämpft; darüber
   nicht).
 
+### Umgebungsverdeckung mit Tiefen-Vorpass (M17 Teil P3, umgesetzt) – `Ssao.hpp`, `ssao.frag`, `ssao_blur.frag`
+```cpp
+struct SsaoSettings { f32 radius = 0.8f, strength = 1.5f; };  std::vector<Vec3> ssaoKernel(count);  // 12 Proben
+class Ssao { static Result<Ssao> create(Device&, ShaderLibrary&); Result<void> resize(Device&, u32 w, u32 h);
+             void render(Device&, const rhi::Texture& depth, const Camera&, const SsaoSettings&);
+             const rhi::Texture* result() const; };                  // R8, halbe Größe, 1 = offen
+MeshRenderer::drawDepthBatched(device, items, camera);  MeshRenderer::setAmbientOcclusion(texture);
+TerrainRenderer::drawDepth(device, camera);  inline constexpr rhi::DepthBias kPrepassBias{-2, -1};
+Environment::ambientOcclusion, viewportTexel;  GpuLighting::aoParams;  Engine::ssaoEnabled(), ssao()
+```
+- **Nur wenn an** (`[render] ssao`, Vorgabe `false`, Entscheidung 8; Optionen → Grafik „Umgebungsverdeckung (SSAO)“):
+  Ohne SSAO läuft weder Vorpass noch SSAO; der Ablauf ist der von vorher (kein Mehraufwand).
+- **Tiefen-Vorpass:** nach den Schatten das Gelände und die gestapelten Objekte (sichtbare Instanzen und Gegenstände,
+  Mehrfachzeichnen) nur in die Tiefe, mit den Schatten-Shadern und eigenen Pipelines (Reverse-Z, `GreaterEqual`).
+  Statt `GL_EQUAL` liegt die Vorpass-Tiefe um einen kleinen Versatz (`kPrepassBias`) weiter hinten: Hauptpass und
+  Vorpass rechnen die Position mit verschiedenen Shadern, ein Gleichheitstest gäbe Löcher; mit dem Versatz zeichnet
+  der Hauptpass (`GreaterEqual`) dieselben Flächen wieder, Verdecktes fällt weiter weg. Figuren (Held, Kreaturen,
+  NPCs) und Durchscheinendes sind nicht im Vorpass; Figuren nehmen und geben keine Verdeckung (`#ifndef SKINNED`).
+  Nur mit Mehrfachzeichnen (`render.multi_draw`, Vorgabe „auto“: an außer auf Intel-GPUs).
+- **SSAO:** halbe Auflösung aus der Tiefe, Normale aus der Tiefe (je Achse der flachere Nachbar), 12 Proben in der
+  Halbkugel (`ssaoKernel`, nahe der Mitte dichter), je Pixel gedreht; eine Probe zählt, wenn die Szene davor näher
+  liegt, gewichtet nach Entfernung (keine dunklen Säume um weit vorn stehende Dinge). Danach eine tiefenabhängige
+  4×4-Unschärfe. `[render] ssao_radius` (0,8 m) und `ssao_strength` (1,5).
+- **Anwendung:** `common/lighting.glsl` dämpft **nur das Umgebungslicht** (`aoParams.x`, Textur an Einheit 8); Sonne
+  und Punktlichter bleiben. Wirkt daher vor allem im Schatten und in Innenräumen: Mauerfüße, unter Vorsprüngen,
+  Fensterlaibungen, Ecken.
+- **Passzeiten:** mit SSAO misst die Engine `scene` (nur noch Schatten), `depth` (Vorpass), `ssao`, `shading`
+  (Hauptpass); ohne wie bisher `scene`.
+- **Tests:** GPU `test_ssao.cpp` (Proben in der Halbkugel; eine Stufe in der Tiefe verdunkelt die Wand daneben, eine
+  freie Wand bleibt offen), `test_engine_render.cpp` (aus: kein `depth`/`ssao`-Pass; an: beide und ein Ergebnis).
+  Der Vorpass allein ändert das Bild nicht (Prüfbild mit `ssao_strength = 0` gegen aus: 0,004 % der Pixel weichen ab).
+
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp
 struct DebugStyle { Vec4 color{1}; f32 duration = 0; bool depthTest = true; };   // duration 0 = nur dieser Frame

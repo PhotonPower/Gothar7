@@ -6,6 +6,7 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -126,4 +127,47 @@ TEST_CASE(
         }
         CHECK(engine.renderDevice()->debugErrorCount() == 0);
     }
+}
+
+TEST_CASE("Engine render: ambient occlusion with depth prepass only when switched on (M17 P3)")
+{
+    const auto run = [](std::string_view settingsText)
+    {
+        auto settings = g7::Config::parse(settingsText);
+        REQUIRE(settings.ok());
+        g7::EngineConfig config;
+        config.window.size = {320, 240};
+        config.window.vsync = false;
+        config.shaderDirectory = g7::fs::fromUtf8(G7_SHADER_DIR);
+        config.world = g7::fs::fromUtf8("testworld/camp.g7world");
+        config.player = false;
+        config.fixedFrameSeconds = 1.0 / 60.0;
+        config.settings = std::move(settings).value();
+        g7::test::keepVideoAlive();
+        auto engine = std::make_unique<g7::Engine>(config);
+        REQUIRE(engine->init().ok());
+        for (int i = 0; i < 12; ++i)
+        {
+            REQUIRE(engine->runFrame());
+        }
+        return engine;
+    };
+    const auto has = [](const g7::Engine& engine, std::string_view name)
+    {
+        return std::ranges::any_of(engine.passTimes(), [&](const g7::render::PassTime& p)
+                                   { return p.name == name && p.milliseconds > 0.0f; });
+    };
+    {
+        auto off = run("[render]\nssao = false\n");
+        CHECK_FALSE(off->ssaoEnabled());
+        CHECK_FALSE(has(*off, "depth")); // no prepass without ambient occlusion
+        CHECK_FALSE(has(*off, "ssao"));
+        CHECK(off->renderDevice()->debugErrorCount() == 0);
+    }
+    auto on = run("[render]\nssao = true\n");
+    CHECK(on->ssaoEnabled());
+    CHECK(has(*on, "depth"));
+    CHECK(has(*on, "ssao"));
+    CHECK(on->ssao().result() != nullptr);
+    CHECK(on->renderDevice()->debugErrorCount() == 0);
 }

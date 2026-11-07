@@ -50,6 +50,10 @@ grading = true
 water_quality = "medium"
 # Unter Wasser (M17 W3): leichtes Wabern des Bildes; Tönung und Sichtweite immer.
 underwater_distortion = true
+# Umgebungsverdeckung mit Tiefen-Vorpass (M17 P3; Entscheidung 8: aus, an nur in der Stufe „hoch“). Aus kostet sie nichts.
+ssao = false
+ssao_radius = 0.8     # m um einen Punkt, die ihn verdecken können
+ssao_strength = 1.5   # wie stark das Verdeckte das Umgebungslicht dämpft
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
 # shader_hot_reload = true
 # Anisotrope Filterung für Materialtexturen (1 = aus; wird auf den Treiberwert begrenzt).
