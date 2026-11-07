@@ -727,9 +727,10 @@ class _Planner:
                                  (p[0], y, p[1]), yaw_quat(math.sin(a2), math.cos(a2)))  # fmt: skip
 
 
-def plan_outdoor(rules: Rules, site: Site) -> Plan:
+def plan_outdoor(rules: Rules, site: Site, vegetation: Any = None) -> Plan:  # noqa: ANN401
     """The market stalls first (they need the most room), the props at the walls and the
-    street edges, then trees, yards and the grass between them."""
+    street edges, then trees, yards and the grass between them; with ``vegetation``
+    (``vegetation_place.VegRules``, W6 vegetation) the green areas after them."""
     p = _Planner(rules, site)
     p.market()
     p.props()
@@ -737,4 +738,8 @@ def plan_outdoor(rules: Rules, site: Site) -> Plan:
     p.trees()
     p.yards()
     p.grass()
+    if vegetation is not None:
+        from gothar_worldgen.vegetation_place import plan_vegetation
+
+        plan_vegetation(p, vegetation)
     return p.plan

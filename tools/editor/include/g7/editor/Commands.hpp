@@ -5,6 +5,7 @@
 // puts the "before" back, redo the "after" - byte for byte, with one mechanism for every kind of vob.
 
 #include <g7/core/Result.hpp>
+#include <g7/editor/WaynetEdit.hpp>
 #include <g7/world/Components.hpp>
 
 #include <optional>
@@ -41,8 +42,11 @@ struct Command
     std::string label;            ///< what the user did ("move HUT_A")
     std::vector<VobState> before; ///< every vob it touched, as it was
     std::vector<VobState> after;  ///< and as it is now
-    bool mergeable =
-        false; ///< typing in a field: the next edit of the same vobs with the same label joins it
+    /// Typing in a field: the next edit of the same vobs (and waynet entries) with the same label joins it.
+    bool mergeable = false;
+    /// Waynet edits (part B): the touched entries before and after (none: the command left the waynet alone).
+    std::optional<WaynetSnapshot> waynetBefore;
+    std::optional<WaynetSnapshot> waynetAfter;
 };
 
 /// The edits of a session: undo, redo, and whether the world differs from its saved version.
@@ -55,9 +59,9 @@ public:
     /// mergeable too, has the same label and touched the same vobs. Beyond the depth the oldest is dropped.
     void record(Command command);
     /// Puts the last command's "before" back; false if there is none (or it failed - then the history stays).
-    [[nodiscard]] Result<bool> undo(world::Scene& scene);
+    [[nodiscard]] Result<bool> undo(world::Scene& scene, world::WaynetData* waynet = nullptr);
     /// Puts the next undone command's "after" back.
-    [[nodiscard]] Result<bool> redo(world::Scene& scene);
+    [[nodiscard]] Result<bool> redo(world::Scene& scene, world::WaynetData* waynet = nullptr);
 
     [[nodiscard]] bool canUndo() const noexcept { return m_done > 0; }
     [[nodiscard]] bool canRedo() const noexcept { return m_done < m_commands.size(); }

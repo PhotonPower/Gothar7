@@ -573,6 +573,146 @@ public:
 }
 ```
 
+## Plan M17: Wasser und Post-Processing (freigegeben 2026-11-07)
+Auftrag des Projektinhabers (über den Koordinator): **Wasser** mit Reflexion und leichter Brechung für die Glems und
+den Teich, dazu ein Unterwasser-Effekt; **Post-Processing** mit Bloom, Farbkorrektur je Tageszeit und Zone und
+optional SSAO. Roadmap M17, Punkte „Wasser-Rendering“ und „Post-Processing“.
+
+### Ausgangslage
+- **Wasser** ist heute eine halbtransparente Fläche je `water`-Box (`asset::makePlane`, Blend, beidseitig;
+  `Engine::instantiateScene`). Leonberg hat **186 Boxen** für die Glems (Stufen an den Überlappungen, `kind` leer),
+  das Testlager den Teich. Schwimmen und Tauchen gibt es seit M5 (`world::WaterBodies::surfaceAt`, Luftvorrat).
+- **Post** ist ein Pass: `SceneTarget` (RGBA16F + Depth32F) → `post.frag` (Belichtung, Tonemapping ACES, sRGB,
+  Dithering). Es gibt keinen Tiefen-Vorpass und keine Normalen außer im Forward-Shader.
+- **Stimmung** kommt aus `data/environment.toml` (Schlüsselbilder je Uhrzeit: Sonne, Mond, Ambient, Nebel, Himmel);
+  `[zone]` ist dort für M17 reserviert. Zonen gibt es als `indoor`, `music`, `ambient` (`world.md` „Zonen“).
+- Es gibt **keine GPU-Zeitmessung** je Pass.
+
+### Grundsätze
+- Alles in `render` (Shader unter `engine/render/shaders/`), die Engine füllt Parameter je Frame. Keine neue
+  Bibliothek, **keine ADR nötig**: Die Verfahren (Screen-Space-Reflexion, Bloom-Kette, parametrische Farbkorrektur,
+  SSAO) sind Standard und hinter der RHI rückbaubar. Erst echtes Raytracing für Fenster bräuchte das
+  Vulkan-Backend und dafür eine ADR (Offene Fragen unten).
+- **Werte als Daten:** Farbkorrektur, Bloom und Wasserfarben in `data/environment.toml` (Tageszeit, Zonen) und
+  `data/water.toml` (Wasserarten), mit Hot-Reload wie die Umgebung.
+- **Abschaltbar:** Jeder Effekt hat einen Schalter unter `[render]` und im Reiter **Grafik** der Optionen; aus heißt
+  der heutige Look, ohne Mehrkosten (ein Shader-Zweig bzw. ausgelassener Pass).
+- **Budget gemessen:** Teil 1 bringt GPU-Zeitmessung je Pass; jeder Teil zeigt seine Zeit im Fenster „Gothar“ und im
+  Benchmark (`--benchmark` schreibt die Passzeiten).
+
+### Teile (je ein PR, in dieser Reihenfolge)
+1. **P1 – Zeitmessung und Bloom**
+   - RHI: `rhi::TimerQuery` (`GL_TIME_ELAPSED`, doppelt gepuffert, Ergebnis ein Frame später) und
+     `render::PassTimes` (Name → ms, gleitender Mittelwert). Fenster „Gothar“ und Benchmark zeigen sie.
+   - Bloom auf dem HDR-Bild vor dem Tonemapping: Helligkeits-Schwelle mit weichem Knie, Abwärtskette aus
+     5 Mip-Stufen (13-Tap-Filter), Aufwärtskette mit Zelt-Filter (wie „Call of Duty: Advanced Warfare“),
+     Mischung in `post.frag`. Neue Dateien `Bloom.hpp/.cpp`, `bloom_down.frag`, `bloom_up.frag`.
+   - Werte: `bloom_threshold`, `bloom_knee`, `bloom_intensity` je Tageszeit-Schlüssel in `environment.toml`
+     (nachts mehr Glühen um Fackeln, mittags kaum). `[render] bloom = true`.
+   - Tests: CPU – Schwelle/Knie-Kurve, Mischgewichte; GPU – ein heller Punkt strahlt in die Nachbarn, unter der
+     Schwelle bleibt das Bild gleich, `bloom = false` ergibt die Bytes von vorher; Zeitmessung liefert Werte > 0.
+2. **P2 – Farbkorrektur je Tageszeit und Zone**
+   - Parametrisch im Post-Shader, **ohne LUT-Dateien**: Weißabgleich (Temperatur, Tönung), Belichtung,
+     Kontrast, Sättigung, Lift/Gamma/Gain, Vignette. Grund: in den Daten lesbar und von Hand einstellbar, keine
+     Bild-Assets; eine 3D-LUT kann später als Option dazukommen.
+   - Werte je Tageszeit-Schlüssel (`grading_*` in `[[key]]`) und je Zone (`[zone.<wert>]` mit Überschreibungen,
+     z. B. `[zone.LEO_KIRCHE]`, `[zone.innen]` als Vorgabe für alle `indoor`-Zonen). Übergang beim Betreten einer
+     Zone weich über 1,5 s. Neu: `render::Grading` (Struct, Mischung, Uniforms), `world/DayCycle` liefert ihn.
+   - Tests: CPU – Mischung zweier Gradings, Interpolation über den Tag, Zonenvorrang (innen vor Musikzone),
+     neutrale Werte = Identität; GPU – neutrales Grading ändert keinen Pixel, Sättigung 0 ergibt Grau.
+3. **W1 – Wasseroberfläche mit Brechung und Tiefe**
+   - Eigener Pass nach dem Opaken und dem Himmel, vor Partikeln: Kopie von Farbe und Tiefe des `SceneTarget`
+     (eine Blit-Kopie je Frame, nur wenn Wasser sichtbar ist), dann je Wasserfläche `water.vert/.frag`.
+   - Normalen aus zwei verschobenen, gekachelten Rausch-Normalkarten, **im Code erzeugt** (kein Bild-Asset).
+     Bei Flüssen fließt das Muster entlang einer Richtung (siehe Vertrag unten), bei Teichen nur Wellen.
+   - **Brechung (leicht):** die Kopie des Bildes, um die Normale versetzt (höchstens 2 % der Bildbreite), nur dort,
+     wo der Versatz unter Wasser liegt (Tiefenvergleich, sonst kein Versatz).
+   - **Wassertiefe:** Farbe und Sicht nach der Tiefe (Beer-Lambert mit Absorption je Farbkanal), Uferkante weich
+     über die Tiefendifferenz, kein harter Schnitt am Ufer.
+   - Fresnel (Schlick) mischt zwischen Brechung und Reflexion; die Reflexion ist in W1 noch der Himmel
+     (Horizont- und Zenitfarbe aus der Tageszeit) plus Sonnenglanz (Blinn-Phong).
+   - Daten `data/water.toml`: je Wasserart (`river`, `pond`, Vorgabe) Absorption, Streufarbe, Wellengröße und
+     -tempo, Glanz. `[render] water_quality = "low"|"medium"|"high"` (low = heutige Fläche plus Fresnel und Glanz,
+     ohne Kopien).
+   - Tests: CPU – Fresnel, Absorption; GPU – tieferes Wasser ist dunkler, ein Objekt unter Wasser erscheint
+     versetzt und getönt, über Wasser liegt nichts versetzt, die Uferkante hat keinen Sprung.
+4. **W2 – Reflexion**
+   - **Screen-Space-Reflexion** nur auf Wasserpixeln: Strahl im Tiefenpuffer (halbe Auflösung, höchstens 32
+     Schritte, Binärsuche am Ende), weicher Rand am Bildrand, Rückfall auf den Himmel aus W1 wo der Strahl nichts
+     trifft.
+   - Grund gegen planare Spiegel: Die Glems besteht aus 186 Boxen auf vielen Höhen; ein zweites Rendern der Szene
+     je Höhe ist zu teuer. Planare Spiegelung bleibt als spätere Stufe für einzelne ebene Flächen (Teich) möglich.
+   - Nur bei `water_quality = "high"`. Tests: GPU – ein heller Würfel über dem Wasser erscheint gespiegelt an der
+     richtigen Stelle, außerhalb des Bildes Rückfall auf den Himmel.
+5. **W3 – Unterwasser**
+   - Kamera unter der Oberfläche (`WaterBodies::surfaceAt` am Kamerapunkt, wie das Tauchen): im Post-Pass
+     Tönung und dichter Nebel in der Wasserfarbe (Sichtweite je Wasserart), leichte Wellenverzerrung,
+     Lichtflecken (Kaustik) optional; die Oberfläche von unten mit Totalreflexion am Rand (Snell-Fenster vereinfacht).
+   - Ton: Musik und Umgebung gedämpft (der vorhandene Tiefpass, `audio::setMuffle`), solange die Kamera unten ist.
+   - Tests: CPU – Kamera knapp über/unter der Oberfläche; GPU – unter Wasser ist das Bild getönt und die Ferne im
+     Nebel, über Wasser nicht.
+6. **P3 – SSAO (optional)**
+   - Braucht einen **Tiefen-Vorpass** (Opakes nur Tiefe, danach Shading mit `GL_EQUAL`), der auch Überzeichnung
+     spart. SSAO halbe Auflösung aus Tiefe (Normalen aus der Tiefe rekonstruiert), 8–12 Proben, bilaterale
+     Unschärfe; das Ergebnis dämpft **nur das Umgebungslicht** im Forward-Shader (Sonne und Punktlichter bleiben).
+   - `[render] ssao = false` als Vorgabe (Vorschlag), an in der Stufe „hoch“.
+   - Tests: GPU – eine Innenecke wird dunkler als eine freie Fläche, `ssao = false` ändert nichts; Vorpass
+     ergibt dasselbe Bild wie ohne.
+
+### Budget je Effekt (1600×900, RTX 3080 Laptop, Release; Intel UHD in Klammern als Zielwert der Stufe „niedrig“)
+| Effekt | Budget | Stufe niedrig |
+|---|---|---|
+| Bloom (5 Stufen) | ≤ 0,4 ms | ≤ 1,5 ms (3 Stufen) |
+| Farbkorrektur | ≤ 0,1 ms (im Post-Pass) | ≤ 0,3 ms |
+| Wasser W1 (Kopien + Fläche) | ≤ 0,6 ms bei sichtbarem Fluss | ohne Kopien: ≤ 0,3 ms |
+| Reflexion W2 (SSR, halbe Auflösung) | ≤ 0,8 ms | aus |
+| Unterwasser W3 | ≤ 0,2 ms | ≤ 0,5 ms |
+| SSAO P3 (halbe Auflösung) | ≤ 1,2 ms; der Vorpass spart Überzeichnung (netto gemessen) | aus |
+| **Summe hoch** | **≤ 3,3 ms** | |
+
+Überschreitet ein Effekt sein Budget in der Messung, wird er heruntergestuft (weniger Schritte, kleinere Auflösung),
+nicht das Budget angehoben (wie bei den Testgruppen).
+
+### Grafik-Optionen (Reiter „Grafik“, gespeichert wie bisher nur bei Abweichung)
+| Option | Schlüssel | Werte | Vorgabe |
+|---|---|---|---|
+| Wasserqualität | `render.water_quality` | niedrig / mittel / hoch | mittel |
+| Bloom | `render.bloom` | an / aus | an |
+| Farbkorrektur | `render.grading` | an / aus | an |
+| Umgebungsverdeckung (SSAO) | `render.ssao` | an / aus | aus |
+| Unterwasser-Verzerrung | `render.underwater_distortion` | an / aus | an |
+
+### Vertrag mit welt (vereinbart 2026-11-07, welt setzt die Daten)
+- `water.kind` wird belegt: `river` (fließt) und `pond` (steht), leer = `pond`. Fließrichtung bei `river`:
+  **lokale +X-Achse der Box** (die Box ist nur um Y gedreht), Tempo aus `data/water.toml`. Das ersetzt das in
+  `world.md` vorgemerkte Gefälle-Feld für die Darstellung; ein echtes Gefälle-Feld bleibt möglich. Betroffen:
+  welt (Glems-Boxen bekommen `kind = "river"` und eine Drehung entlang des Flusslaufs), Vertragszeile in
+  `docs/coordination.md` erst nach Zustimmung.
+
+### Entscheidungen zum Spielgefühl (Projektinhaber, 2026-11-07: alle acht wie vorgeschlagen; rückbaubar in den Daten)
+1. **Bloom-Stärke:** dezent – nur Feuer, Fackeln, Zauber und die Sonne glühen; Schwelle bei Luminanz 1,0,
+   Stärke 0,12 tags, 0,2 nachts. (Gothic hatte keinen Bloom; ein starker Bloom wirkt schnell „modern“.)
+2. **Farbstimmung je Tageszeit:** Morgen kühl-golden (leicht entsättigt), Mittag neutral, Abend warm-orange mit
+   mehr Kontrast, Nacht blau und entsättigt (Sättigung 0,7), Gewitter (später) grau-grün.
+3. **Zonen:** Innenräume warm (Kerzen-/Herdlicht, +Kontrast), Kirche kühl und heller, Wald (Testlager) leicht
+   grün, Leonberger Gassen neutral; Übergang 1,5 s.
+4. **Vignette:** leicht (Stärke 0,15) immer an, dunkler in Innenräumen.
+5. **Wasserfarbe:** Glems trüb grün-braun (Sicht unter Wasser ca. 4 m), Teich dunkel-oliv (ca. 3 m).
+6. **Reflexion:** leicht gewellte Spiegelung, bei ruhigem Teich klarer als im Fluss; Sonnenglanz deutlich.
+7. **Unterwasser:** grün-blaue Tönung, dichte Sicht, leichte Wellenverzerrung, Ton gedämpft; Kaustik zunächst aus.
+8. **SSAO:** standardmäßig aus (kostet, Gothic-Look kommt ohne aus); an nur in der Stufe „hoch“.
+
+### Technische Entscheidungen (Koordinator, 2026-11-07)
+- **Reihenfolge** P1 → P2 → W1 → W2 → W3 → P3 (Zeitmessung zuerst, weil alle Budgets davon abhängen).
+- **SSR ohne ADR:** Screen-Space-Reflexion braucht weder eine neue Bibliothek noch ein neues Backend; sie ist ein
+  Shader-Verfahren hinter der vorhandenen RHI und lässt sich abschalten bzw. ersetzen. Bezug zu den **spiegelnden
+  Fenstern** (Offene Fragen unten): Dieselbe SSR-Stufe kann später Glas-Materialien spiegeln (mit Reflexions-Proben
+  je Zone als Rückfall); erst echtes Raytracing bräuchte das Vulkan-Backend und dann eine ADR.
+- **Tiefen-Vorpass** erst mit P3, außer W1 misst einen klaren Gewinn.
+- **`water.kind`:** vereinbart mit welt (2026-11-07, `docs/coordination.md`): `river` (Glems) oder `pond`
+  (Parksee); bei `river` zeigt lokal +X stromabwärts. welt setzt die Daten in einem eigenen PR; bis dahin gilt
+  fehlendes `kind` als Vorgabe (stehend).
+
 ## Offene Fragen
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.
 - **Dual-Quaternion-Skinning** (Hinweis figuren, 2026-10-03): Lineares Blend-Skinning verliert in extremen Posen

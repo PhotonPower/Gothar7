@@ -4,6 +4,7 @@
 // a fresh engine loads the save made in the town.
 
 #include "ChapterHelpers.hpp"
+#include "RunTempDir.hpp"
 
 #include <g7/runtime/Engine.hpp>
 #include <g7/save/SaveFile.hpp>
@@ -46,7 +47,7 @@ TEST_CASE("M15 DoD: chapter 2 in Leonberg with saves, the way there and back (wi
         MESSAGE("skipped: Leonberg's generated files are not here");
         return;
     }
-    const std::filesystem::path saves = std::filesystem::temp_directory_path() / "g7_leonberg_chapter_saves";
+    const std::filesystem::path saves = g7::test::runTempDir() / "g7_leonberg_chapter_saves";
     std::filesystem::remove_all(saves);
     {
         Engine engine(config(saves, true));

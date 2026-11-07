@@ -1133,7 +1133,13 @@ def _plan_outdoor(
         spots=[(float(f["pos"][0]), float(f["pos"][2])) for f in block.get("freepoints", [])],
         squares=squares,
     )
-    return plan_outdoor(rules, site)
+    veg_path = data_dir / "vegetation.json"  # W6 vegetation: the green areas
+    veg = None
+    if veg_path.is_file():
+        from gothar_worldgen.vegetation_place import VegRules
+
+        veg = VegRules.load(veg_path)
+    return plan_outdoor(rules, site, veg)
 
 
 def _retaining_walls(grid: Any, works: dict[str, Any], street_doc: dict[str, Any], work: Path,  # noqa: ANN401
