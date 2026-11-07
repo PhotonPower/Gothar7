@@ -58,6 +58,8 @@ struct WeatherSample
     f32 ambient = 1.0f;
     f32 shadow = 1.0f;
     f32 lightning = 0.0f;
+    f32 wetness =
+        0.0f;        ///< M17 N: how wet the world is outside, 0 dry .. 1 soaked (rises in rain, dries after)
     f32 fade = 1.0f; ///< 0 at the change .. 1 when the new state is reached
 };
 
@@ -71,6 +73,8 @@ struct WeatherSnapshot
     f64 nextMinute = 0.0; ///< when the schedule decides again
     u64 random = 0;
     bool locked = false;
+    f32 wetness = 0.0f;     ///< M17 N
+    f64 wetnessClock = 0.0; ///< game clock the wetness was last advanced to
 };
 
 class Weather
@@ -92,6 +96,8 @@ public:
     bool set(std::string_view name, f64 clock, f64 fadeMinutes);
     /// A story scene keeps the state: no changes by the schedule while locked (set() still works).
     void lock(bool locked) noexcept { m_locked = locked; }
+    /// As if the current state had lasted a while (--weather for screenshots): wet in rain, dry otherwise.
+    void settle() noexcept { m_wetness = m_states[m_current].rain > 0.02f ? 1.0f : 0.0f; }
     [[nodiscard]] bool locked() const noexcept { return m_locked; }
 
     [[nodiscard]] WeatherSample sample(f64 clock) const;
@@ -123,5 +129,8 @@ private:
     f64 m_nextMinute = 1e300;
     u64 m_random = 0x9e3779b97f4a7c15ull;
     bool m_locked = false;
+    f32 m_wetness = 0.0f;
+    f64 m_wetnessClock = 0.0;
+    void advanceWetness(f64 clock) noexcept;
 };
 } // namespace g7::world

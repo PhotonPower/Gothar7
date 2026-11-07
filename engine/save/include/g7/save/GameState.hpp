@@ -86,6 +86,8 @@ struct WeatherSave
     f64 nextMinute = 0.0;
     u64 random = 0;
     bool locked = false;
+    f32 wetness = 0.0f; ///< M17 N; saves of E1 have none (0)
+    f64 wetnessClock = 0.0;
     friend bool operator==(const WeatherSave&, const WeatherSave&) = default;
 };
 

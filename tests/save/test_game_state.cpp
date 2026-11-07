@@ -76,7 +76,8 @@ save::GameState sample()
     npc.character = hero;
     w.npcs.push_back(npc);
     s.worlds.push_back(std::move(w));
-    s.weather = save::WeatherSave{"regen", "bewoelkt", 600.5, 15.0, 720.25, 1234567890123ull, true};
+    s.weather =
+        save::WeatherSave{"regen", "bewoelkt", 600.5, 15.0, 720.25, 1234567890123ull, true, 0.75f, 700.5};
     return s;
 }
 } // namespace

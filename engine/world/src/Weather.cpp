@@ -225,7 +225,24 @@ void Weather::start(f64 clock, u64 seed)
     m_current = m_previous = m_start;
     m_changeMinute = clock;
     m_changeFade = 0.0;
+    m_wetness = 0.0f;
+    m_wetnessClock = clock;
     schedule(clock);
+}
+
+void Weather::advanceWetness(f64 clock) noexcept
+{
+    // M17 N: wet within about 10 game minutes of steady rain (faster in heavy rain), dry about an hour after
+    // it.
+    const f64 minutes = clock - m_wetnessClock;
+    m_wetnessClock = clock;
+    if (minutes <= 0.0)
+    {
+        return;
+    }
+    const f32 rain = sample(clock).rain;
+    const f32 rate = rain > 0.02f ? std::min(1.0f, rain * 2.0f) / 10.0f : -1.0f / 60.0f; // per game minute
+    m_wetness = std::clamp(m_wetness + rate * static_cast<f32>(minutes), 0.0f, 1.0f);
 }
 
 void Weather::schedule(f64 from)
@@ -238,6 +255,7 @@ void Weather::schedule(f64 from)
 std::vector<std::pair<std::string, std::string>> Weather::update(f64 clock, bool hold)
 {
     std::vector<std::pair<std::string, std::string>> changes;
+    advanceWetness(clock);
     if (m_states.size() < 2)
     {
         return changes;
@@ -323,6 +341,7 @@ WeatherSample Weather::sample(f64 clock) const
     s.shadow = mix(a.shadow, b.shadow);
     s.lightning = mix(a.lightning, b.lightning);
     s.fade = t;
+    s.wetness = m_wetness;
     return s;
 }
 
@@ -355,7 +374,9 @@ WeatherSnapshot Weather::snapshot() const
             m_changeFade,
             m_nextMinute,
             m_random,
-            m_locked};
+            m_locked,
+            m_wetness,
+            m_wetnessClock};
 }
 
 bool Weather::restore(const WeatherSnapshot& snapshot)
@@ -373,6 +394,8 @@ bool Weather::restore(const WeatherSnapshot& snapshot)
     m_nextMinute = snapshot.nextMinute;
     m_random = snapshot.random;
     m_locked = snapshot.locked;
+    m_wetness = snapshot.wetness;
+    m_wetnessClock = snapshot.wetnessClock;
     return true;
 }
 } // namespace g7::world

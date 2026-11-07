@@ -394,7 +394,9 @@ Json globalsToJson(const GameState& state)
                                {"fadeMinutes", w.fadeMinutes},
                                {"nextMinute", w.nextMinute},
                                {"random", w.random},
-                               {"locked", w.locked}};
+                               {"locked", w.locked},
+                               {"wetness", w.wetness},
+                               {"wetnessClock", w.wetnessClock}};
     }
     return root;
 }
@@ -525,6 +527,11 @@ bool readGlobals(Reader& r, const Json& root, GameState& s)
              read(r, j, "fadeMinutes", "weather", w.fadeMinutes) &&
              read(r, j, "nextMinute", "weather", w.nextMinute) && read(r, j, "random", "weather", w.random) &&
              read(r, j, "locked", "weather", w.locked);
+        if (ok && j.contains("wetness")) // M17 N, additive
+        {
+            ok = read(r, j, "wetness", "weather", w.wetness) &&
+                 read(r, j, "wetnessClock", "weather", w.wetnessClock);
+        }
         s.weather = std::move(w);
     }
     return ok;

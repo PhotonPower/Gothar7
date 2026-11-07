@@ -212,3 +212,32 @@ TEST_CASE("Weather: mixed into the time of day - darker, foggier, greyer, the st
     CHECK(none.update(100000.0).empty());
     CHECK(none.current() == "klar");
 }
+
+TEST_CASE("Weather: wetness rises in rain within minutes and dries over about an hour (M17 N)")
+{
+    auto parsed = Weather::parse(kTwo, "w.toml");
+    REQUIRE(parsed.ok());
+    Weather w = std::move(parsed).value();
+    w.start(0.0, 1);
+    w.update(30.0);
+    CHECK(w.sample(30.0).wetness == doctest::Approx(0.0f)); // dry while clear
+    w.update(60.0);                                         // rain (0.8) from 60
+    w.update(65.0);
+    const f32 early = w.sample(65.0).wetness;
+    CHECK(early > 0.0f);
+    w.update(75.0);
+    CHECK(w.sample(75.0).wetness == doctest::Approx(1.0f)); // soaked after ~10 minutes
+    w.update(180.0);                                        // clear again at 180
+    w.update(210.0);
+    const f32 drying = w.sample(210.0).wetness;
+    CHECK(drying < 1.0f);
+    CHECK(drying > 0.3f); // not dry after half an hour
+    // Kept in a snapshot.
+    Weather copy = std::move(Weather::parse(kTwo, "w.toml")).value();
+    REQUIRE(copy.restore(w.snapshot()));
+    CHECK(copy.sample(210.0).wetness == doctest::Approx(drying));
+    // --weather for screenshots: as if it had rained a while.
+    CHECK(copy.set("regen", 210.0, 0.0));
+    copy.settle();
+    CHECK(copy.sample(210.0).wetness == doctest::Approx(1.0f));
+}
