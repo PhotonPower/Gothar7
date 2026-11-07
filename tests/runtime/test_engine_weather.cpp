@@ -144,5 +144,9 @@ TEST_CASE("Engine weather: a thunderstorm flashes and thunders; clear weather do
         CHECK(engine.lastThunderDelay() == doctest::Approx(2.0f));
     }
     CHECK_FALSE(engine.runConsoleLine("lightning(20)").ok());
+    // A direction like yaw (degrees, 0 = -Z, positive to the left): the bolt shows there in the sky.
+    run(engine, "lightning(900, 30)");
+    REQUIRE(engine.lastLightning().has_value());
+    CHECK(engine.lastLightning()->azimuth == doctest::Approx(glm::radians(-30.0f)));
     CHECK(flashes("regen") == 0u);
 }

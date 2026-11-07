@@ -563,12 +563,16 @@ Engine::lightningCount(), lastLightning(), lightningNow(), lastThunderDelay();  
   knapp 30 Echtsekunden), je Blitz eine Entfernung von 300 bis 3000 m (nahe seltener), eine Richtung und ein bis drei
   Aufflackern in etwa 0,25 s (die späteren schwächer). Deterministisch aus dem Startwert.
 - **Licht (Entscheidung 8: deutlich, nicht grell):** für die Dauer des Blitzes heller – Himmelslicht und Bodenlicht,
-  Nebel- und Himmelsfarbe –, nahe Blitze stärker (`lightningStrength`); den Rest macht der Bloom. Ein sichtbarer
-  Blitzstrahl am Himmel kommt später (selten, Entscheidung 8).
+  Nebel- und Himmelsfarbe –, nahe Blitze stärker (`lightningStrength`); den Rest macht der Bloom.
+- **Blitzstrahl** (Koordinator, nach #393): nur bei nahen und mittleren Blitzen (unter 1800 m), für die Dauer des
+  Aufflackerns, am Himmel in Blitzrichtung vom Horizont aufwärts (je näher, desto höher), gezackt aus Rauschen mit
+  schwachem Schein; im Himmels-Shader (`background.frag`, `uBolt`), also nur, wo Himmel zu sehen ist. Keine
+  Lichtquelle in der Szene (die Aufhellung oben genügt).
 - **Donner:** `thunder_near` (unter 1000 m: Krachen und Rollen) bzw. `thunder_far` (Grollen), um Entfernung / 343 m/s
   verzögert (1–9 s) auf der Uhr des Mischers, leiser mit der Entfernung; im Bus `ambient` (unter Wasser gedämpft).
   Platzhalter aus `tools/audio`.
-- **Lua:** `lightning(distance?)` – ein Blitz jetzt (Story, Prüfbilder), auch ohne Gewitter; Vorgabe 800 m.
+- **Lua:** `lightning(distance?, direction?)` – ein Blitz jetzt (Story, Prüfbilder), auch ohne Gewitter; Vorgabe
+  800 m, Richtung in Grad wie `yaw` (0 = -Z, positiv nach links).
 - **Tests:** `tests/world/test_weather.cpp` (Verzögerung, Aufflackern, Häufigkeit und Entfernungen, deterministisch),
   `tests/runtime/test_engine_weather.cpp` (Gewitter blitzt, Regen nicht; `lightning()` hellt sofort auf, Donner nach
   Entfernung / 343).

@@ -1675,8 +1675,10 @@ private:
     std::optional<world::Lightning> m_flash; // the last flash
     f64 m_stormClock = 0.0;                  // simulation seconds (flash times)
     u32 m_flashCount = 0;
-    f32 m_lastThunderDelay = 0.0f; // moves the drops (real seconds)
-    u32 m_rainDrawn = 0;           // streaks drawn last frame
+    f32 m_lastThunderDelay = 0.0f;
+    static constexpr f32 kBoltDistance =
+        1800.0f; // flashes nearer than this show their bolt in the sky // moves the drops (real seconds)
+    u32 m_rainDrawn = 0; // streaks drawn last frame
     render::Sky m_sky;
     f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
     bool m_sunEnabled = true;        // debug: sun and moon light off
