@@ -74,6 +74,8 @@ void DebugUi::editorPanel(EditorPanel& panel)
     panel.placeAsset = -1;
     panel.save = panel.remove = panel.duplicate = false;
     panel.undo = panel.redo = panel.confirmYes = panel.confirmNo = false;
+    panel.hourChanged = panel.addLight = panel.checkMobs = false;
+    panel.clickedMobIssue = -1;
 
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 370.0f, 10.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(360.0f, 520.0f), ImGuiCond_FirstUseEver);
@@ -169,6 +171,33 @@ void DebugUi::editorPanel(EditorPanel& panel)
         ImGui::EndChild();
     }
 
+    if (ImGui::CollapsingHeader("Lights & mobs", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        // Preview time (display only, not saved): judge lights by night.
+        panel.hourChanged = ImGui::SliderFloat("time of day", &panel.hour, 0.0f, 24.0f, "%.2f h");
+        ImGui::TextWrapped("%s", panel.lightInfo.c_str());
+        std::vector<const char*> presets;
+        for (const std::string& p : panel.lightPresets)
+        {
+            presets.push_back(p.c_str());
+        }
+        ImGui::SetNextItemWidth(110.0f);
+        ImGui::Combo("##preset", &panel.lightPreset, presets.data(), static_cast<int>(presets.size()));
+        ImGui::SameLine();
+        panel.addLight = ImGui::Button("add light");
+        panel.checkMobs = ImGui::Button("check the mobs");
+        ImGui::BeginChild("mobIssues", ImVec2(0.0f, 90.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.mobIssues.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(panel.mobIssues[i].c_str()))
+            {
+                panel.clickedMobIssue = static_cast<i32>(i); // selects the mob
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+    }
     if (ImGui::CollapsingHeader("Models"))
     {
         inputText("filter", panel.assetFilter);

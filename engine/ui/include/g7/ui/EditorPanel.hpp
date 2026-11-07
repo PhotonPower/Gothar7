@@ -58,6 +58,10 @@ struct EditorPanel
     std::vector<EditorVobRow> vobs;
     std::vector<std::string> assets; ///< placeable models (VFS paths)
     std::vector<EditorField> fields; ///< properties of the selection; edited in place
+    // Lights and mobs (M16 part D)
+    std::string lightInfo; ///< lights this frame of the budget (E1)
+    std::vector<std::string> lightPresets;
+    std::vector<std::string> mobIssues;
 
     // Edited
     i32 gizmoMode = 0; ///< 0 move, 1 turn, 2 scale
@@ -66,6 +70,8 @@ struct EditorPanel
     f32 snapMove = 0.5f;   ///< metres
     f32 snapAngle = 15.0f; ///< degrees
     std::string assetFilter;
+    f32 hour = 12.0f; ///< preview time of day (display only)
+    i32 lightPreset = 0;
 
     // Actions of this frame
     u64 clickedVob = 0;  ///< row clicked (0: none)
@@ -77,6 +83,10 @@ struct EditorPanel
     bool redo = false;
     bool confirmYes = false;
     bool confirmNo = false;
+    bool hourChanged = false;
+    bool addLight = false; ///< a light of `lightPreset` ahead of the camera
+    bool checkMobs = false;
+    i32 clickedMobIssue = -1;
 };
 
 /// The waynet window of the editor (M16 part B, docs/modules/editor.md).

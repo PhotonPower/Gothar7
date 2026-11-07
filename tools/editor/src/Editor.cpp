@@ -92,6 +92,7 @@ Editor::Editor(Engine& engine)
     }
     std::sort(m_worlds.begin(), m_worlds.end());
     m_scriptFunctions = engine.scriptFunctions();
+    m_mobLists = mobLists(); // part D
     G7_LOG_INFO("editor", "editor mode: {} models to place; left click selects, right mouse looks",
                 m_assets.size());
 }
@@ -653,6 +654,7 @@ void Editor::drawSelection()
         draw.box(AABB{m_gizmo.origin - Vec3(0.3f), m_gizmo.origin + Vec3(0.3f)}, {kActive});
     }
 
+    drawMobSlots();
     drawGizmo();
 }
 
@@ -731,6 +733,24 @@ void Editor::fillPanel()
     p.snapMove = snapMove;
     p.snapAngle = snapAngle;
     p.assets = m_assets;
+    // Part D: lights and mobs.
+    p.lightPresets.clear();
+    for (const LightPreset& preset : lightPresets())
+    {
+        p.lightPresets.emplace_back(preset.name);
+    }
+    const usize windows = m_engine.daylightLights().size();
+    p.lightInfo = lightBudgetText(m_engine.frameLights().lights().size(), m_engine.lightBudget().maxLights,
+                                  m_engine.worldLightCount() - windows, windows);
+    if (!p.hourChanged)
+    {
+        p.hour = m_engine.gameTime().hourOfDay();
+    }
+    p.mobIssues.clear();
+    for (const MobIssue& issue : m_mobIssues)
+    {
+        p.mobIssues.push_back(std::format("{} ({}): {}", issue.name, issue.id.value, issue.text));
+    }
 
     // The vob tree: roots by id, children below their parent.
     p.vobs.clear();
@@ -794,7 +814,28 @@ void Editor::fillPanel()
     }
     if (const auto* mob = scene.get<world::MobRef>(e))
     {
-        addField("mob definition", Kind::Text).text = mob->definition;
+        // Part D: the definition from the list (Lua Mob definitions and mobs.toml types); what it holds is
+        // shown - owner, lock, key and contents belong to the Lua definition.
+        const std::vector<std::string> names = mobDefinitionChoices(m_mobLists.definitions, m_mobLists.types);
+        ChoiceList list = choiceList(mob->definition, names);
+        auto& definition = addField("mob definition", Kind::Choice);
+        definition.choices = std::move(list.items);
+        definition.choice = list.index;
+        if (const auto resolved = resolveMob(m_mobLists.definitions, m_mobLists.types, mob->definition))
+        {
+            for (auto& [label, text] : mobSummary(*resolved))
+            {
+                addField(std::move(label), Kind::ReadOnly).text = std::move(text);
+            }
+            if (resolved->type == "door")
+            {
+                addField("door open", Kind::Flag).flag = mob->open; // stored closed unless set (world.md)
+            }
+        }
+        else
+        {
+            addField("mob type", Kind::ReadOnly).text = "unknown definition";
+        }
     }
     if (const auto* light = scene.get<world::LightSource>(e))
     {
@@ -802,6 +843,7 @@ void Editor::fillPanel()
         addField("light range", Kind::Number).number = light->range;
         addField("light intensity", Kind::Number).number = light->intensity;
         addField("light flicker", Kind::Number).number = light->flicker;
+        addField("light daylight", Kind::Flag).flag = light->daylight; // window light: follows the sky
     }
     if (const auto* sound = scene.get<world::SoundEmitter>(e))
     {
@@ -855,6 +897,22 @@ void Editor::applyPanel()
     if (p.clickedVob != 0)
     {
         select(world::VobId{p.clickedVob});
+    }
+    if (p.hourChanged)
+    {
+        setPreviewHour(p.hour);
+    }
+    if (p.addLight && p.lightPreset >= 0 && static_cast<usize>(p.lightPreset) < lightPresets().size())
+    {
+        (void)placeLight(lightPresets()[static_cast<usize>(p.lightPreset)].name);
+    }
+    if (p.checkMobs)
+    {
+        (void)checkMobs();
+    }
+    if (p.clickedMobIssue >= 0 && static_cast<usize>(p.clickedMobIssue) < m_mobIssues.size())
+    {
+        select(m_mobIssues[static_cast<usize>(p.clickedMobIssue)].id);
     }
     if (p.placeAsset >= 0 && static_cast<usize>(p.placeAsset) < m_assets.size())
     {
@@ -955,7 +1013,18 @@ void Editor::applyFields(const std::vector<ui::EditorField>& fields)
         }
         else if (f.label == "mob definition")
         {
-            scene.get<world::MobRef>(e)->definition = f.text;
+            // From the list only ("-" keeps the definition: a mob vob needs one).
+            if (std::string chosen = choiceValue(f.choices, f.choice); !chosen.empty())
+            {
+                world::MobRef* mob = scene.get<world::MobRef>(e);
+                mob->definition = std::move(chosen);
+                const auto resolved = resolveMob(m_mobLists.definitions, m_mobLists.types, mob->definition);
+                mob->open = mob->open && resolved && resolved->type == "door"; // only doors are stored open
+            }
+        }
+        else if (f.label == "door open")
+        {
+            scene.get<world::MobRef>(e)->open = f.flag;
         }
         else if (auto* light = scene.get<world::LightSource>(e); light && f.label.starts_with("light "))
         {
@@ -963,6 +1032,7 @@ void Editor::applyFields(const std::vector<ui::EditorField>& fields)
             light->range = f.label == "light range" ? std::max(f.number, 0.1f) : light->range;
             light->intensity = f.label == "light intensity" ? std::max(f.number, 0.0f) : light->intensity;
             light->flicker = f.label == "light flicker" ? std::clamp(f.number, 0.0f, 1.0f) : light->flicker;
+            light->daylight = f.label == "light daylight" ? f.flag : light->daylight;
         }
         else if (auto* sound = scene.get<world::SoundEmitter>(e); sound && f.label.starts_with("sound"))
         {

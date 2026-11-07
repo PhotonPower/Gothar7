@@ -98,6 +98,18 @@ struct LoadedModel
     std::vector<u32> imageVersions;
 };
 
+/// A Lua `Mob` definition (gameplay.md "Mob-Interaktion") as plain values, for the editor.
+struct MobDefinitionInfo
+{
+    std::string definition;                            ///< instance name ("mob_camp_chest")
+    std::string name;                                  ///< focus name
+    std::string type;                                  ///< mob type of data/mobs.toml
+    std::string owner;                                 ///< Npc instance or guild; empty: nobody's
+    std::string lock;                                  ///< combination ("LRRL"); empty: open
+    std::string key;                                   ///< item instance that unlocks it
+    std::vector<std::pair<std::string, u32>> contents; ///< items and counts
+};
+
 /// One placed model with its world bounds (for culling).
 struct SceneInstance
 {
@@ -396,6 +408,16 @@ public:
     [[nodiscard]] std::vector<std::string> musicThemes() const;
     [[nodiscard]] std::vector<std::string> scriptFunctions() const;
     [[nodiscard]] bool hasScripts() const noexcept;
+    /// For the editor (M16 part D): the Lua `Mob` definitions as the engine reads them (gameplay.md), sorted
+    /// by name; the mob types of data/mobs.toml; a type's user slots (mob space: feet, view direction); the
+    /// names of the script instances of a kind ("Npc", "Item"); the guilds (keys of the Lua table `Guilds`).
+    [[nodiscard]] std::vector<MobDefinitionInfo> mobDefinitions() const;
+    [[nodiscard]] std::vector<std::string> mobTypeNames() const;
+    [[nodiscard]] std::vector<std::pair<Vec3, Vec3>> mobTypeSlots(std::string_view type) const;
+    [[nodiscard]] std::vector<std::string> scriptInstanceNames(std::string_view kind) const;
+    [[nodiscard]] std::vector<std::string> guildNames() const;
+    /// [render] max_lights, light_distance, window_light_radius (E1): what a frame takes.
+    [[nodiscard]] const render::LightBudget& lightBudget() const noexcept { return m_lightBudget; }
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;

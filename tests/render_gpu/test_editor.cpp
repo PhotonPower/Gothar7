@@ -362,3 +362,66 @@ TEST_CASE("Editor GPU: zones and triggers - a music zone at the camera switches 
     CHECK(std::ranges::any_of(engine.worldFile().zones,
                               [](const world::Zone& z) { return z.type == "music" && z.value == "STADT"; }));
 }
+
+TEST_CASE("Editor GPU: lights and mobs - a new light is in the frame's choice at once; the time slider")
+{
+    WorldCopy copy;
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    editor::Editor editor(engine);
+    engine.addTool(editor);
+    const auto shot = [&](const char* name)
+    {
+        const fs::Path file = copy.dir / name;
+        engine.requestScreenshot(file);
+        CHECK(engine.runFrame());
+        auto bytes = fs::readText(file);
+        REQUIRE(bytes.ok());
+        return bytes.value();
+    };
+
+    // The time slider: night, then noon - the sky follows (display only).
+    editor.setPreviewHour(0.5f);
+    CHECK(engine.runFrame());
+    const f32 nightSun = engine.environment().sunIntensity;
+    editor.setPreviewHour(12.0f);
+    CHECK(engine.runFrame());
+    CHECK(engine.gameTime().hourOfDay() == doctest::Approx(12.0f));
+    CHECK(engine.environment().sunIntensity > nightSun);
+
+    // By night a fire 4 m ahead: in this frame's lights at once, and the picture changes.
+    editor.setPreviewHour(0.5f);
+    const std::string dark = shot("before.png");
+    const usize worldLights = engine.worldLightCount();
+    const auto placed = editor.placeLight("fire");
+    REQUIRE(placed.ok());
+    CHECK(engine.worldLightCount() == worldLights + 1);
+    const Vec3 at =
+        editor::worldTransformOf(engine.scene(), engine.scene().findById(placed.value())).position;
+    const std::string lit = shot("after.png");
+    const auto chosen = [&]
+    {
+        return std::ranges::any_of(engine.frameLights().lights(), [&](const render::PointLight& l)
+                                   { return glm::length(l.position - at) < 0.01f; });
+    };
+    CHECK(chosen());
+    CHECK(lit != dark);
+    CHECK_FALSE(editor.placeLight("laser").ok());
+
+    // Undone: gone from the choice.
+    REQUIRE(editor.undo().value());
+    CHECK(engine.runFrame());
+    CHECK_FALSE(chosen());
+    CHECK(engine.worldLightCount() == worldLights);
+
+    // Mobs: the camp's definitions come from the scripts; the check runs over the camp's mob vobs.
+    const editor::MobLists lists = editor.mobLists();
+    CHECK_FALSE(lists.definitions.empty());
+    CHECK(std::ranges::find(lists.types, "chest") != lists.types.end());
+    CHECK(std::ranges::find(lists.guilds, "guard") != lists.guilds.end());
+    // The camp's one finding: the stool names "STOOL", which is no type of mobs.toml (the engine warns too).
+    const auto& issues = editor.checkMobs();
+    REQUIRE(issues.size() == 1);
+    CHECK(issues[0].id.value == 68);
+    CHECK(issues[0].text.find("STOOL") != std::string::npos);
+}

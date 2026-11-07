@@ -10,8 +10,9 @@ neuer Ort samt Wegnetz, Zonen und NPC-Routinen **ohne Texteditor** bauen lässt 
 |---|---|---|
 | A – Befehle, Undo/Redo, Schutz erzeugter Daten | #355 | umgesetzt |
 | B – Wegnetz-Editor | #359 | umgesetzt |
-| C – Zonen- und Trigger-Editor | dieser Teil-C-PR | umgesetzt |
-| D–F | – | offen |
+| C – Zonen- und Trigger-Editor | #361 | umgesetzt |
+| D – Licht- und Mob-Editor | dieser Teil-D-PR | umgesetzt |
+| E, F | – | offen |
 
 Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
 - **A:** Befehle sind Daten statt Klassen mit `apply`/`revert`: `editor::Command` hält `VobState` (Zeile der
@@ -31,6 +32,16 @@ Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
   das Ambiente). Trigger sind Vobs: Gizmo und Inspektor des Vob-Modus; neu sind Auswahllisten (Form, Filter,
   Skriptfunktionen aus `Engine::scriptFunctions`, Welten, Startpunkte der Zielwelt) und die Prüfung im Fenster
   „Zones & triggers“ (unbekannte Funktion, fehlende Welt oder fehlender Startpunkt, Trigger ohne Wirkung).
+- **D:** Neue Lichter kommen aus Vorlagen (`LightEdit.hpp`: Feuer, Fackel, Kerze, Lampe, Fenster). Nach
+  `refreshScene` sind sie sofort in der Lichtauswahl des nächsten Bildes (E1, im GPU-Test geprüft). Der
+  Tageszeit-Regler setzt die Spielzeit nur für die Darstellung (`GameTime::setTime`, die Welt speichert keine Zeit).
+  Der Hinweis zeigt die Lichter im Bild gegen `max_lights` sowie Welt- und Fensterlichter.
+  - Mobs: Die Definition kommt nur aus der Liste (Lua-`Mob`-Definitionen und Typen aus `mobs.toml`). Besitzer,
+    Schloss, Schlüssel und Inhalt gehören der Lua-Definition (Mechanik in C++, Inhalt in Lua). Der Editor zeigt sie
+    und prüft sie gegen NPCs, Gilden (`Guilds`) und Items, statt sie zu bearbeiten.
+  - „Tür offen“ gibt es nur für Türen. Die Slots des Typs stehen als Marker an der Auswahl.
+  - Die Listen kommen über die Engine (`Engine::mobDefinitions`, `mobTypeNames`, `mobTypeSlots`,
+    `scriptInstanceNames`, `guildNames`, `lightBudget`).
 
 ## Ausgangslage (M4)
 - `g7_editor` (Bibliothek in `tools/editor`) ist ein `EngineTool`. Die Engine kennt nur `update`/`ui`. Fenster sind

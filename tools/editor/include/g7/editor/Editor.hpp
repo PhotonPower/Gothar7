@@ -14,6 +14,8 @@
 #include <g7/core/Transform.hpp>
 #include <g7/editor/Commands.hpp>
 #include <g7/editor/Gizmo.hpp>
+#include <g7/editor/LightEdit.hpp>
+#include <g7/editor/MobEdit.hpp>
 #include <g7/editor/TriggerEdit.hpp>
 #include <g7/editor/WaynetCheck.hpp>
 #include <g7/editor/WaynetEdit.hpp>
@@ -119,6 +121,18 @@ public:
     /// The start points of a world (VFS path; the open world: from the scene); nullopt: no such world.
     [[nodiscard]] std::optional<std::vector<std::string>> startsOf(std::string_view world);
 
+    // --- Lights and mobs (M16 part D) ---
+    /// A light vob of a preset (lightPresets: fire, torch, candle, lamp, window) at `at`, or 4 m ahead of the
+    /// camera at 2 m height; selected. It takes part in the frame's light choice from the next frame on.
+    [[nodiscard]] Result<world::VobId> placeLight(std::string_view preset,
+                                                  std::optional<Vec3> at = std::nullopt);
+    /// The time of day shown (0 .. 24 h; display only, the world file keeps no time).
+    void setPreviewHour(f32 hour);
+    /// The lists a mob's values come from (definitions, types, NPCs, guilds, items), fresh from the engine.
+    [[nodiscard]] MobLists mobLists() const;
+    /// Checks the scene's mob vobs against those lists.
+    [[nodiscard]] const std::vector<MobIssue>& checkMobs();
+
     Gizmo& gizmo() noexcept { return m_gizmo; }
     bool snap = true;
     f32 snapMove = 0.5f;   ///< metres
@@ -160,6 +174,7 @@ private:
     void zoneMouse(Engine& engine, const Vec2& mouse, bool pressed, bool held);
     void drawZones();
     void drawTriggers();
+    void drawMobSlots(); ///< the selected mob's user slots (mobs.toml), to check them
     void fillZonePanel();
     void applyZonePanel();
     void applyWaynetPanel();
@@ -208,5 +223,8 @@ private:
     std::vector<std::string> m_scriptFunctions; ///< for onEnter/onLeave
     std::map<std::string, std::optional<std::vector<std::string>>, std::less<>> m_starts; ///< per world
     ui::ZonePanel m_zonePanel;
+    // Lights and mobs (part D)
+    std::vector<MobIssue> m_mobIssues;
+    MobLists m_mobLists; ///< refreshed when the editor starts and on each check
 };
 } // namespace g7::editor

@@ -77,6 +77,21 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
   sichtbar. „check the triggers“ meldet
   unbekannte Funktionen, fehlende Zielwelten oder Startpunkte, Startpunkte ohne Welt und Trigger ohne Wirkung
   (keine Funktion, kein Levelwechsel, kein Besitzer). Ein Klick auf eine Meldung wählt den Trigger.
+- **Lichter und Mobs (M16 Teil D, Abschnitt „Lights & mobs“ im Fenster „Editor“):**
+  - „time of day“ stellt die Tageszeit nur für die Darstellung, damit sich Lichter bei Nacht beurteilen lassen. Die
+    Weltdatei speichert keine Zeit.
+  - Darunter steht, wie viele Lichter dieses Bild nimmt (höchstens `[render] max_lights`, E1) und wie viele Welt- und
+    Fensterlichter es gibt.
+  - „add light“ setzt ein Licht aus einer Vorlage (Feuer, Fackel, Kerze, Lampe, Fenster mit `daylight`) 4 m vor die
+    Kamera, 2 m über den Boden (`LIGHT_<VORLAGE>_NN`). Es zählt sofort zur Lichtauswahl.
+  - Der Inspektor eines Lichts bearbeitet Farbe, Reichweite, Stärke, Flackern und „daylight“ (Fensterlicht).
+  - Der Inspektor eines Mobs wählt die Definition aus der Liste (Lua-`Mob`-Definitionen und Typen aus `mobs.toml`).
+    Er zeigt Typ, Name, Besitzer, Schloss, Schlüssel und Inhalt der Definition; diese Werte gehören in Lua.
+  - „door open“ gibt es nur bei Türen. Die Benutzer-Slots des Typs stehen als Marker an der Auswahl (Fußpunkt,
+    Blickrichtung, Körperhöhe).
+  - „check the mobs“ meldet unbekannte Definitionen, Typen ohne Eintrag in `mobs.toml`, Besitzer, die weder NPC noch
+    Gilde sind, Schlüssel und Inhalt, die keine Items sind, Schlösser aus anderen Buchstaben als L und R und offen
+    gespeicherte Nicht-Türen. Ein Klick auf eine Meldung wählt das Mob.
 - Nach jeder Änderung baut die Engine Instanzen und Lichter aus der Szene neu (`Engine::refreshScene`, Modelle
   bleiben im Cache).
 
@@ -88,8 +103,8 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
 | Wegnetz: Punkte setzen, verbinden, benennen, Freepoints, Prüfungen, Pfadprobe | M16 B (umgesetzt) |
 | Zonen (Musik, Ambient, Innenraum) als Boxen, Besitz als Trigger mit `owner` | M16 C (umgesetzt) |
 | Trigger mit Skript-Callbacks (Auswahllisten, Prüfung) | M16 C (umgesetzt) |
-| Licht-Editor mit Vorschau je Tageszeit | M16 |
-| Mobs: Slots, Zustände, Besitzer, Schloss | M16 |
+| Licht-Editor mit Vorschau je Tageszeit, Lichter aus Vorlagen, Hinweis auf das Lichtbudget | M16 D (umgesetzt) |
+| Mobs: Definition aus Listen, Slots als Marker, Tür offen; Besitzer, Schloss, Inhalt angezeigt und geprüft | M16 D (umgesetzt) |
 | Routinen-Vorschau: Zeitregler, NPC-„Geister“ an Routinen-Positionen | M16 |
 | Undo/Redo (Befehle mit JSON-Zuständen, ADR 0022), Fragen vor Generator-Vobs | M16 A (umgesetzt) |
 | Prefabs | M16 |

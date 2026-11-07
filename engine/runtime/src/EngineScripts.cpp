@@ -618,4 +618,35 @@ bool Engine::hasScripts() const noexcept
 {
     return m_scripts != nullptr;
 }
+
+std::vector<std::string> Engine::scriptInstanceNames(std::string_view kind) const
+{
+    std::vector<std::string> names;
+    if (m_scripts)
+    {
+        for (const script::Instance* i : m_scripts->instancesOf(kind))
+        {
+            names.push_back(i->name);
+        }
+    }
+    std::ranges::sort(names);
+    return names;
+}
+
+std::vector<std::string> Engine::guildNames() const
+{
+    std::vector<std::string> names;
+    if (m_scripts)
+    {
+        const script::Value guilds = m_scripts->global("Guilds"); // data/guilds.lua
+        if (const script::Table* table = guilds.asTable())
+        {
+            for (const auto& [name, guild] : table->fields)
+            {
+                names.push_back(name);
+            }
+        }
+    }
+    return names; // a sorted map
+}
 } // namespace g7
