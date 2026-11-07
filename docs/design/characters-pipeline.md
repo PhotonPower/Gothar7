@@ -167,6 +167,12 @@ events = [
     +Y von `socket_hand_r`, CCD über Ober- und Unterarm, Warmstart aus dem Vorbild – stetige Lösung) und dreht sie wie
     die rechte. Fernkampf: `s_aim` (Schleife), `t_shoot` mit Event `release`, `t_reload`; Bogen-Posen per Gittersuche
     (Bogenarm gestreckt, Bogen aufrecht mit der Sehne zum Körper, Sehnenhand an der Wange, Köcher hinter der Schulter).
+  - Feste Füße (F4, 2026-11-07): Rezept `plant` legt sich um jeden Angriff (`<name>_framed` als Hilfsclip, die Marker
+    am äußeren Clip). Die Füße bleiben stehen; entfernt sich der Körper (Ausfallschritt, `root` vor) mehr als `threshold`
+    (0,12 m, `step` Bilder vorausgeschaut) von einem Fuß, tritt dieser in `step` (6) Bildern mit `lift` (6 cm) Bogen
+    dorthin, immer nur ein Fuß zugleich. In den letzten Bildern gehen beide auf die Haltungs-Plätze zurück. Beine per
+    3D-Zwei-Knochen-IK, die Fußdrehung kommt aus dem Vorbild. Oberkörper, Klinge, Fenster und Reichweite bleiben
+    unverändert. Prüfung: `planted_slide` in `hitreach.py`, Test < 0,25 m je Angriff.
 - Event-Namen: `lower_snake_case`, optional mit Argument nach Doppelpunkt (`sound:<name>`).
   Bekannte Events siehe `docs/modules/animation.md` („Clip“); neue Events nach Absprache mit engine.
 - Clips ohne Events und ohne `speed` werden weggelassen; die Datei ist optional.
