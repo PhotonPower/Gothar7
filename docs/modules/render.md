@@ -621,7 +621,7 @@ nicht das Budget angehoben (wie bei den Testgruppen).
 | Umgebungsverdeckung (SSAO) | `render.ssao` | an / aus | aus |
 | Unterwasser-Verzerrung | `render.underwater_distortion` | an / aus | an |
 
-### Vertrag mit welt (Vorschlag)
+### Vertrag mit welt (vereinbart 2026-11-07, welt setzt die Daten)
 - `water.kind` wird belegt: `river` (fließt) und `pond` (steht), leer = `pond`. Fließrichtung bei `river`:
   **lokale +X-Achse der Box** (die Box ist nur um Y gedreht), Tempo aus `data/water.toml`. Das ersetzt das in
   `world.md` vorgemerkte Gefälle-Feld für die Darstellung; ein echtes Gefälle-Feld bleibt möglich. Betroffen:
@@ -648,8 +648,9 @@ nicht das Budget angehoben (wie bei den Testgruppen).
   Fenstern** (Offene Fragen unten): Dieselbe SSR-Stufe kann später Glas-Materialien spiegeln (mit Reflexions-Proben
   je Zone als Rückfall); erst echtes Raytracing bräuchte das Vulkan-Backend und dann eine ADR.
 - **Tiefen-Vorpass** erst mit P3, außer W1 misst einen klaren Gewinn.
-- **`water.kind`:** Der Vertrag (`river`/`pond`, Fluss entlang lokal +X) liegt bei welt zur Zustimmung. Bis dahin
-  gilt eine Box ohne `kind` als `river`, wenn ihr Name es zeigt (`WATER_GLEMS_*`), sonst als Vorgabe (stehend).
+- **`water.kind`:** vereinbart mit welt (2026-11-07, `docs/coordination.md`): `river` (Glems) oder `pond`
+  (Parksee); bei `river` zeigt lokal +X stromabwärts. welt setzt die Daten in einem eigenen PR; bis dahin gilt
+  fehlendes `kind` als Vorgabe (stehend).
 
 ## Offene Fragen
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.
