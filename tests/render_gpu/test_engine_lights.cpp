@@ -1,7 +1,7 @@
-// Lights per frame (render.md "Lichter je Bild", label "gpu"): in Leonberg - 220 light vobs and 151 window
-// lights (welt's phase-3 measurement) - a frame takes at most max_lights (128), the torch always, window
-// lights only near the eye; no "more than 256 point lights" any more. Needs the generated town (not
-// versioned; skipped without).
+// Lights per frame (render.md "Lichter je Bild", label "gpu"): Leonberg has more lights than the frame budget
+// (220 light vobs and 151 window lights at welt's phase-3 measurement, 228 in all since #340) - a frame takes
+// at most max_lights (128), the torch always first, window lights only near the eye; no "more than 256 point
+// lights" any more. Needs the generated town (not versioned; skipped without).
 
 #include "GlFixture.hpp"
 
@@ -37,12 +37,14 @@ TEST_CASE("Engine lights GPU: Leonberg takes at most 128 lights a frame, the tor
     Engine engine(config);
     REQUIRE(engine.init().ok());
     REQUIRE(engine.renderDevice() != nullptr);
-    CHECK(engine.worldLightCount() > render::LightList::kMaxPerFrame); // more than the shader holds
+    // More lights than the frame budget (max_lights 128; 228 since welt's #340): the selection has to cut.
+    constexpr usize kBudget = 128;
+    REQUIRE(engine.worldLightCount() > kBudget);
     for (int i = 0; i < 5; ++i)
     {
         REQUIRE(engine.runFrame());
     }
-    CHECK(engine.frameLights().lights().size() <= 128);
+    CHECK(engine.frameLights().lights().size() <= kBudget);
     CHECK_FALSE(engine.frameLights().lights().empty());
     // The torch: lit in the hand, its flame's light comes first, whatever else is around.
     REQUIRE(engine.runConsoleLine("give_item('it_torch')").ok());
@@ -54,7 +56,7 @@ TEST_CASE("Engine lights GPU: Leonberg takes at most 128 lights a frame, the tor
     REQUIRE(engine.runConsoleLine("hero_torch_lit()").value().asBool());
     const auto& lights = engine.frameLights().lights();
     REQUIRE_FALSE(lights.empty());
-    CHECK(lights.size() <= 128);
+    CHECK(lights.size() <= kBudget);
     REQUIRE(engine.player() != nullptr);
     const f32 toHand = glm::length(lights.front().position - engine.player()->feet());
     CHECK(toHand < 2.5f); // the first light is at the hero: the torch
