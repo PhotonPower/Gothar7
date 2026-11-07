@@ -1106,12 +1106,14 @@ void Engine::bindAiFunctions()
     vm.bind(
         {"npc_state",
          "npc_state(npc: string) -> {state, routine, ambient, at, commands, animation, walking, gait, mob, "
-         "simulated, "
+         "simulated, animated, "
          "hand, x, y, z}",
          "Zustand, Tagesablauf, Tagesablauf-Animation, Ort, Länge der Befehlsliste, Zustand des "
          "Animationsgraphen, ob er gerade geht, seine Gangart ([anim] variant der Figur), das Mob, auf dem "
          "er sitzt bzw. liegt (Typ), der Gegenstand in seiner rechten Hand (`\"it_lute\"`, sonst leer) und "
-         "seine Position; `simulated`: ob er voll simuliert wird (KI-LOD nach Entfernung und Anzahl).",
+         "seine Position; `simulated`: ob er voll simuliert wird (KI-LOD nach Entfernung und Anzahl); "
+         "`animated`: ob seine Animation läuft (auch ohne KI, wenn die Obergrenze ihn herausnimmt, er aber "
+         "sichtbar und nah ist).",
          "NPCs", [npc](std::span<const Value> a) -> Result<Value>
          {
              auto c = npc(a);
@@ -1129,6 +1131,7 @@ void Engine::bindAiFunctions()
                        c.value()->figure ? std::string(c.value()->figure->animator.state()) : std::string()},
                       {"walking", c.value()->route.has_value()},
                       {"simulated", c.value()->simulated},
+                      {"animated", c.value()->simulated || c.value()->animationOnly},
                       {"gait", c.value()->figure ? c.value()->figure->variant : std::string()},
                       {"mob", c.value()->mob && c.value()->mob->phase == Creature::MobUse::Phase::Loop
                                   ? c.value()->mob->type

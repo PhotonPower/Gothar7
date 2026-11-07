@@ -27,7 +27,20 @@
 - Die Obergrenze hält: 32 von 85 simuliert. p95 sinkt um etwa 25 %, p99 um etwa 30 %, die Ausreißer verschwinden.
 - Die GPU-Zeit bleibt gleich: Nicht simulierte NPCs werden weiter gezeichnet. Die Draws sinken vermutlich, weil
   herausfallende NPCs, die gerade gingen, sofort an ihrem Ziel stehen, und das liegt teils außer Sicht.
-- **Offen (Spielgefühl):** Nicht simulierte NPCs werden nicht animiert und stehen in ihrer letzten Pose. Mit der
-  Obergrenze kann das schon in Sichtweite passieren (im Stresslauf auf dem Markt selbst). Möglicher
-  nächster Schritt: Für sie nur die Animation weiterlaufen lassen (billig, keine KI) oder sie seltener abtasten.
+- Nicht simulierte NPCs wurden nicht animiert und standen in ihrer letzten Pose, mit der Obergrenze auch in
+  Sichtweite (im Stresslauf auf dem Markt selbst). Behoben im Folge-PR, siehe unten.
 - markt liegt im Rahmen der Messschwankung, dort greift die Obergrenze nicht (25 NPCs).
+
+## Nachtrag: keine Statuen (Animation ohne KI)
+
+NPCs, die die Obergrenze herausnimmt, die aber sichtbar (im Kamera-Frustum) und näher als `simulation_distance` sind,
+spielen ihre aktuelle Schleife bzw. Idle-Animation weiter, ohne KI, Wege und Wahrnehmung (Branch
+`feature/m17-lod-idle-anim`).
+
+| markt_voll, 10:00 | Mittel ms | p50 | p95 | p99 | schlechtester | GPU ms | NPCs simuliert/gesamt |
+|---|---|---|---|---|---|---|---|
+| Obergrenze, ohne Animation (2 Läufe) | 4,24 / 3,93 | 3,95 / 3,74 | 6,42 / 6,18 | 7,06 / 6,62 | 8,61 / 11,91 | 3,23 / 3,04 | 32 / 85 |
+| mit Animation (2 Läufe) | 4,17 / 4,17 | 3,68 / 3,80 | 6,89 / 6,69 | 7,25 / 7,18 | 8,40 / 8,64 | 3,05 / 3,06 | 32 / 85 |
+
+Die Animation der sichtbaren, nicht simulierten NPCs kostet p95 etwa 0,3–0,5 ms. Im Mittel ändert sich nichts. Alles
+bleibt weit unter dem Budget (vor der Obergrenze: p99 10,04 ms).
