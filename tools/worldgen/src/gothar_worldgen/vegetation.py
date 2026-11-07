@@ -124,6 +124,8 @@ TREES = {
     "tree_oak": TreeSpec(2.4, (0.42, 0.28), (-0.25, 0.2), 5.4, (4.2, 2.8), 7, "leaves_oak", 23),
     # an apple or pear tree in a garden
     "tree_fruit": TreeSpec(1.4, (0.16, 0.11), (0.15, -0.1), 2.9, (2.0, 1.6), 5, "leaves_fruit", 37),
+    # a young tree at the edge of a wood, in a meadow (W6 vegetation)
+    "tree_young": TreeSpec(1.6, (0.1, 0.07), (0.05, 0.0), 3.3, (1.4, 1.5), 4, "leaves_linden", 41),
 }
 
 
@@ -180,6 +182,7 @@ class BushSpec:
 BUSHES = {
     "bush_hazel": BushSpec(0.9, 1.7, 4, "leaves_fruit", 51),  # loose, taller
     "bush_box": BushSpec(0.55, 0.8, 3, "leaves_box", 53),  # low, dense (gardens)
+    "bush_scrub": BushSpec(0.95, 1.2, 5, "leaves_oak", 57),  # broad, low: slopes (W6 vegetation)
 }
 
 
@@ -217,19 +220,27 @@ class TuftSpec:
 TUFTS = {
     "grass_tuft": TuftSpec(18, (0.2, 0.4), 0.05, 0.16, "grass", 61),  # at wall feet
     "weeds": TuftSpec(12, (0.35, 0.65), 0.08, 0.22, "grass_dry", 67),  # in corners, by the wall
+    "reed": TuftSpec(16, (0.9, 1.5), 0.04, 0.3, "grass_dry", 71),  # on the Glems banks (W6)
 }
 
 
 def tuft(name: str) -> MobModel:
     """Blades as thin wedges, both sides (no double-sided material needed)."""
     spec = TUFTS[name]
-    rng = np.random.default_rng(spec.seed)
     m = Mesh()
+    _blades(m, spec, np.random.default_rng(spec.seed), (0.0, 0.0), spec.blades)
+    _no_collision(m)
+    return MobModel(name, m)
+
+
+def _blades(m: Mesh, spec: TuftSpec, rng: np.random.Generator, at: tuple[float, float],
+            count: int) -> None:  # fmt: skip
+    """``count`` blades of ``spec`` round ``at`` (x, z)."""
     b = m.b(spec.material)
-    for _ in range(spec.blades):
+    for _ in range(count):
         a = rng.uniform(0, 2 * math.pi)
         d = spec.spread * math.sqrt(rng.random())
-        x, z = d * math.cos(a), d * math.sin(a)
+        x, z = at[0] + d * math.cos(a), at[1] + d * math.sin(a)
         h = rng.uniform(*spec.height)
         lean = rng.uniform(0.15, 0.45) * h
         face = rng.uniform(0, 2 * math.pi)
@@ -240,8 +251,115 @@ def tuft(name: str) -> MobModel:
         uvs = [(0.0, 0.0), (spec.width, 0.0), (spec.width / 2, h)]
         b.polygon(tri, uvs, n)
         b.polygon(tri, uvs, (-n[0], n[1], -n[2]))
-    _no_collision(m)
-    return MobModel(name, m)
+
+
+PATCH_M = 3.0  # grass_patch: a square of grass and weeds this wide (one mesh, W6 vegetation)
+
+
+def grass_patch() -> MobModel:
+    """Tufts of grass and a few weeds over a ``PATCH_M`` square: one model for what would be
+    eight or ten single tufts (meadows, slopes); the coarse level keeps a third of the blades."""
+    levels = []
+    for share in (1.0, 0.34):
+        m = Mesh()
+        rng = np.random.default_rng(73)
+        for k in range(9):
+            x = (k % 3 - 1) * PATCH_M / 3 + rng.uniform(-0.35, 0.35)
+            z = (k // 3 - 1) * PATCH_M / 3 + rng.uniform(-0.35, 0.35)
+            spec = TUFTS["weeds" if k in (2, 6) else "grass_tuft"]
+            _blades(m, spec, rng, (x, z), max(3, round(spec.blades * share)))
+        levels.append(m)
+    _no_collision(levels[0])
+    return MobModel("grass_patch", levels[0], lods=levels[1:])
+
+
+SPRUCE_H = 9.0  # tree_spruce: height
+
+
+def _spruce_into(m: Mesh, at: tuple[float, float], scale: float, level: int) -> None:
+    """A spruce at ``at``: trunk and stacked cones of needles (fewer and coarser by ``level``)."""
+    x, z = at
+    h = SPRUCE_H * scale
+    sides = (8, 6, 4)[level]
+    frustum(m, "bark", (x, -0.3, z), (x, h * 0.35, z), 0.22 * scale, 0.14 * scale,
+            max(4, sides - 2))  # fmt: skip
+    tiers = ((0.15, 0.55, 2.0), (0.4, 0.78, 1.5), (0.62, 1.0, 0.95))[: (3, 2, 1)[level]]
+    if level == 2:
+        tiers = ((0.15, 1.0, 2.0),)
+    for y0, y1, r in tiers:
+        frustum(m, "needles", (x, h * y0, z), (x, h * y1, z), r * scale, 0.03, sides)
+
+
+def spruce() -> MobModel:
+    levels = []
+    for level in range(3):
+        m = Mesh()
+        _spruce_into(m, (0.0, 0.0), 1.0, level)
+        levels.append(m)
+    levels[0].collision.append(box_body("COL_HULL_TRUNK", (-0.22, 0.0, -0.22), (0.22, 3.0, 0.22)))
+    return MobModel("tree_spruce", levels[0], lods=levels[1:])
+
+
+HEDGE_L, HEDGE_D, HEDGE_H = 1.5, 0.6, 0.8  # hedge_box: one piece of a box hedge
+
+
+def hedge_box() -> MobModel:
+    """A clipped box hedge, ``HEDGE_L`` long along x: three blobs in a row (the formal garden);
+    pieces end to end make a hedge. It collides as a low box (one steps round it)."""
+    levels = []
+    for subdiv in (1, 0):
+        m = Mesh()
+        rng = np.random.default_rng(79)
+        if subdiv:
+            for k in range(3):
+                x = (k - 1) * HEDGE_L / 3
+                blob(m, "leaves_box", (x, HEDGE_H / 2, 0.0),
+                     (HEDGE_L / 3 * 1.05, HEDGE_H / 2, HEDGE_D / 2), 1, rng, 0.04)  # fmt: skip
+        else:
+            blob(m, "leaves_box", (0.0, HEDGE_H / 2, 0.0),
+                 (HEDGE_L / 2, HEDGE_H / 2, HEDGE_D / 2), 0, rng, 0.05)  # fmt: skip
+        levels.append(m)
+    levels[0].collision.append(box_body("COL_HULL_HEDGE", (-HEDGE_L / 2, 0.0, -HEDGE_D / 2),
+                                        (HEDGE_L / 2, HEDGE_H, HEDGE_D / 2)))  # fmt: skip
+    return MobModel("hedge_box", levels[0], lods=levels[1:])
+
+
+# forest_clump: the trees of a wood seen from afar, in one mesh (only their coarse levels)
+CLUMP = (("tree_oak", (0.0, 0.0), 1.0), ("tree_linden", (6.5, 2.0), 0.9),
+         ("spruce", (-5.5, 3.5), 1.0), ("spruce", (2.5, -6.0), 0.85),
+         ("tree_oak", (-3.0, -5.5), 0.8), ("spruce", (5.0, 7.5), 1.1),
+         ("tree_young", (-6.5, -1.5), 1.0))  # fmt: skip
+CLUMP_R = 10.0  # its trees stand within this radius
+
+
+def _shift_into(dst: Mesh, src: Mesh, at: tuple[float, float], scale: float) -> None:
+    for material, b in src.builders.items():
+        d = dst.b(material)
+        base = len(d.pos)
+        d.pos += [(at[0] + x * scale, y * scale, at[1] + z * scale) for x, y, z in b.pos]
+        d.nrm += list(b.nrm)
+        d.uv += [(u * scale, v * scale) for u, v in b.uv]
+        d.idx += [base + i for i in b.idx]
+
+
+def forest_clump() -> MobModel:
+    """Seven trees of a wood (oak, lime, spruce, a young one) within ``CLUMP_R``: for woods
+    beyond the near ones, built from the trees' coarse levels (1 and 2); collides at the
+    trunks."""
+    levels = []
+    for level in (1, 2):
+        m = Mesh()
+        for name, at, scale in CLUMP:
+            if name == "spruce":
+                _spruce_into(m, at, scale, level)
+            else:
+                _shift_into(m, tree(name).lods[level - 1], at, scale)
+        levels.append(m)
+    for k, (_, (x, z), scale) in enumerate(CLUMP):
+        r = 0.3 * scale
+        levels[0].collision.append(box_body(f"COL_HULL_TRUNK{k}", (x - r, 0.0, z - r),
+                                            (x + r, 2.5 * scale, z + r)))  # fmt: skip
+    return MobModel("forest_clump", levels[0], lods=levels[1:])
 
 
 def _no_collision(m: Mesh) -> None:
@@ -253,6 +371,10 @@ VEGETATION = {
     **{n: (lambda n=n: tree(n)) for n in TREES},
     **{n: (lambda n=n: bush(n)) for n in BUSHES},
     **{n: (lambda n=n: tuft(n)) for n in TUFTS},
+    "tree_spruce": spruce,
+    "grass_patch": grass_patch,
+    "hedge_box": hedge_box,
+    "forest_clump": forest_clump,
 }  # assets/source/vegetation/<name>.glb
 
 
@@ -262,7 +384,9 @@ def crown_radius(name: str) -> float:
         return TREES[name].crown_r[0]
     if name in BUSHES:
         return BUSHES[name].radius
-    return TUFTS[name].spread
+    extra = {"tree_spruce": 2.0, "grass_patch": PATCH_M / 2, "hedge_box": HEDGE_L / 2,
+             "forest_clump": CLUMP_R + 4.0}  # fmt: skip
+    return extra[name] if name in extra else TUFTS[name].spread
 
 
 def names() -> Sequence[str]:

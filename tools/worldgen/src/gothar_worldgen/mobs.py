@@ -75,6 +75,7 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "leaves_box": ("leaves", (0.022, 0.05, 0.016)),
     "grass": ("leaves", (0.07, 0.11, 0.032)),
     "grass_dry": ("leaves", (0.14, 0.13, 0.055)),
+    "needles": ("leaves", (0.018, 0.042, 0.022)),  # spruce (W6 vegetation)
     "dung": ("straw", (0.09, 0.065, 0.04)),
     # guild signs (W6): gilded symbols on the brackets
     "gilt": ("iron", (0.42, 0.29, 0.07)),
