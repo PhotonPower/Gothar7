@@ -153,9 +153,9 @@ Result<save::GameState> Engine::captureGame()
     }
     state.currentWorld = m_worldPath;
     const world::WeatherSnapshot weather = m_weather.snapshot();
-    state.weather =
-        save::WeatherSave{weather.state,      weather.previous, weather.changeMinute, weather.fadeMinutes,
-                          weather.nextMinute, weather.random,   weather.locked};
+    state.weather = save::WeatherSave{weather.state,       weather.previous,   weather.changeMinute,
+                                      weather.fadeMinutes, weather.nextMinute, weather.random,
+                                      weather.locked,      weather.wetness,    weather.wetnessClock};
     auto current = captureCurrentWorld();
     if (!current)
     {
@@ -299,8 +299,8 @@ Result<void> Engine::applyGame(const save::GameState& state)
     if (state.weather) // older saves have none: the weather goes on as it is (M17 E1)
     {
         const save::WeatherSave& w = *state.weather;
-        if (!m_weather.restore(
-                {w.state, w.previous, w.changeMinute, w.fadeMinutes, w.nextMinute, w.random, w.locked}))
+        if (!m_weather.restore({w.state, w.previous, w.changeMinute, w.fadeMinutes, w.nextMinute, w.random,
+                                w.locked, w.wetness, w.wetnessClock}))
         {
             G7_LOG_WARN("engine", "save: weather '{}' unknown to weather.toml, kept the current one",
                         w.state);

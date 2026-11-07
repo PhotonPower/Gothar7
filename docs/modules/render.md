@@ -525,6 +525,45 @@ Engine::rainStreaksDrawn(), rain(), rainSound();  Environment::shadowStrength (L
   ruhige Fläche), `tests/runtime/test_engine_weather.cpp` (Regen-Ebene folgt der Lage),
   `tests/render/test_lighting.cpp` (Schattenstärke im Lighting-Block).
 
+### Nasse Oberflächen (M17 Wetter, Teil N, umgesetzt) – `common/lighting.glsl`, `mesh.frag`, `terrain.frag`
+```cpp
+world::WeatherSample::wetness;  world::Weather::settle();          // Nässe 0..1, --weather: schon nass
+Environment::wetness, hasRainMap, rainMapViewProjection, puddles;   GpuLighting::rainMapViewProjection, wetParams
+MeshRenderer::setRainMap(texture);                                  // Einheit 9, die Regenkarte aus Teil R
+```
+- **Nässe** (`world::Weather`): steigt im Regen (bei mäßigem Regen in etwa 10 Spielminuten auf 1, bei Starkregen
+  schneller), trocknet danach in etwa einer Spielstunde. Sie läuft mit der Spielzeit (auch bei Zeitsprüngen) und steht
+  im Spielstand (`weather.wetness`, additiv; ältere Stände: trocken). `--weather=<lage>` beginnt, als hätte es schon
+  geregnet.
+- **Wo:** nur draußen. Mit Regenkarte: ein Punkt (um 0,3 m entlang der Normale hinaus versetzt, damit eine Wand an
+  ihrer eigenen Oberkante vorbeisieht) unter der obersten Fläche bleibt trocken – unter Dächern, Vordächern, in Toren
+  und unter Marktständen. Ohne Karte: nicht in Innenzonen. Nach oben zeigende Flächen werden voll nass, Wände zu 35 %.
+- **Aussehen (`wetSurface`):** Grundfarbe dunkler (×0,6 bei voller Nässe, Wasser in den Poren), dazu ein Glanz: der
+  Himmel (Horizontfarbe) nach Fresnel und ein Sonnenglanz, nur auf nach oben zeigenden Flächen. Ohne Nässe wird nichts
+  gerechnet, das Bild bleibt wie vorher. Figuren werden mit nass (sie stehen im Regen).
+- **Pfützen** (Regenqualität `high`, Entscheidung 9): Rauschflecken auf flachem Boden (Normale nahezu senkrecht), die
+  ab halber Nässe wachsen; dort dunkler (×0,5), flach und spiegelnd (Fresnel bis zum Spiegel, scharfer Glanz). Sie
+  trocknen mit der Nässe ab (etwa eine Spielstunde, Entscheidung 9).
+- **Noch nicht:** Material-Rauheit (alle Materialien gleich; die Vorgabe je Material-Gruppe folgt, wenn welt und
+  figuren sie setzen), SSR in Pfützen.
+- **Tests:** `tests/world/test_weather.cpp` (Nässe steigt und trocknet, im Snapshot, `settle`),
+  `tests/render/test_lighting.cpp` (Werte im Lighting-Block, trocken = 0), GPU `test_lighting.cpp` (nass dunkler,
+  trocken unverändert), `tests/save/test_game_state.cpp` (Nässe im Spielstand).
+
+### Wind (Vertrag, vereinbart 2026-11-07; Umsetzung Teil W)
+- Markierung je glTF-Material: `extras.wind` = `trunk` (steif, oben leichtes Schwanken), `leaves` (Äste und
+  Blattflattern), `grass` (biegt vom Fuß, stark), `cloth` (Fahnen, Wimpel), `hanging` (schwingt um den
+  Aufhängepunkt); `extras.wind_strength` 0..2 (Vorgabe 1).
+- Gewicht je Vertex aus der Höhe im Modellraum: 0 am Fuß (kleinstes y der Grenzen), 1 an der Spitze; Bäume und Blätter
+  quadratisch, Gras linear; auf 0..1 begrenzt (Stämme reichen 0,3 m unter den Boden). `forest_clump` über die Höhe des
+  ganzen Modells. `hanging`: um `extras.wind_pivot` [x, y, z] im Modellraum, sonst den Ursprung; Gewicht
+  (pivot_y − y) / Ausdehnung.
+- Ohne Markierung bleibt ein Modell still (Häuser, Mauern, Mobs, geschnittener Buchs `hedge_box`, `bush_box`). Ketten
+  der Zunftschilder: Material `iron_chain` (hanging); Wandplatte, Arm und Strebe unmarkiert. Kleidung nicht
+  (Entscheidung 7).
+- Ausschläge bei vollem Wind: Bäume an der Spitze höchstens etwa 4 % ihrer Höhe, Gras etwa 25 %, Stoff und Schilder
+  bis 30°; Phase je Instanz aus der Lage. welt liefert die Markierungen nach Vegetation-PR 4.
+
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp
 struct DebugStyle { Vec4 color{1}; f32 duration = 0; bool depthTest = true; };   // duration 0 = nur dieser Frame

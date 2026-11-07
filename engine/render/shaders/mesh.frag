@@ -55,7 +55,10 @@ void main()
         discard;
     }
 #endif
-    vec3 color = base.rgb * incomingLight(vWorldPosition, surfaceNormal());
+    vec3 albedo = base.rgb;
+    vec3 n = surfaceNormal();
+    const vec3 sheen = wetSurface(vWorldPosition, albedo, n); // M17 N: rain
+    vec3 color = albedo * incomingLight(vWorldPosition, n) + sheen;
     color += uEmissive * texture(uEmissiveTexture, vUv).rgb;
     color *= shadowDebugTint(vWorldPosition);
     color = applyFog(color, distance(vWorldPosition, uCameraPosition));

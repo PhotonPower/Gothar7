@@ -1661,7 +1661,11 @@ void Engine::initEnvironment()
         m_weather = world::Weather::fallback();
     }
     m_weather.start(m_gameTime.clock(), m_config.randomSeed.value_or(0x5eed));
-    if (!m_config.weather.empty() && !m_weather.set(m_config.weather, m_gameTime.clock(), 0.0))
+    if (!m_config.weather.empty() && m_weather.set(m_config.weather, m_gameTime.clock(), 0.0))
+    {
+        m_weather.settle(); // screenshots: as if it had rained a while
+    }
+    else if (!m_config.weather.empty())
     {
         G7_LOG_WARN("engine", "--weather={}: no such state in {}", m_config.weather, weatherPath);
     }
@@ -1811,6 +1815,13 @@ void Engine::updateEnvironment()
     world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
     m_weather.apply(sample, m_gameTime.clock()); // M17 E1: clouds, rain and fog over the time of day
     m_rainTime += m_frameSeconds;
+    // M17 N: wet surfaces outside (the rain map tells outside from under a roof), puddles at rain quality
+    // high.
+    sample.environment.wetness = m_weatherVisible ? weatherNow().wetness : 0.0f;
+    sample.environment.puddles = m_rainQuality == render::RainQuality::High;
+    sample.environment.hasRainMap = m_rain.mapValid();
+    sample.environment.rainMapViewProjection = m_rain.mapViewProjection();
+    m_meshRenderer.setRainMap(m_rain.mapValid() ? &m_rain.map() : nullptr);
     m_bloomSettings.threshold = sample.bloomThreshold; // M17 P1: by the time of day
     m_bloomSettings.intensity = sample.bloomIntensity;
     m_environment = sample.environment;
@@ -2027,7 +2038,9 @@ void Engine::drawScene(u32 width, u32 height)
         shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
     }
     // M17 R: the rain map (depth from above) anew when it rains and the camera moved on.
-    if (m_weatherVisible && weatherNow().rain > 0.0f && m_rain.mapStale(m_camera.transform.position))
+    const world::WeatherSample rainNow = weatherNow();
+    if (m_weatherVisible && (rainNow.rain > 0.0f || rainNow.wetness > 0.0f) &&
+        m_rain.mapStale(m_camera.transform.position))
     {
         updateRainMap();
     }

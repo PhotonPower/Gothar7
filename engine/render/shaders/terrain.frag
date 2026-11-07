@@ -74,8 +74,10 @@ void main()
     }
 #ifndef SHADOW
     const vec3 n = normalize(vNormal);
-    const vec3 albedo = uLayerCount > 0 ? splatAlbedo() : slopeAlbedo(n);
-    vec3 color = albedo * incomingLight(vWorldPosition, n);
+    vec3 albedo = uLayerCount > 0 ? splatAlbedo() : slopeAlbedo(n);
+    vec3 wetNormal = n;
+    const vec3 sheen = wetSurface(vWorldPosition, albedo, wetNormal); // M17 N: rain
+    vec3 color = albedo * incomingLight(vWorldPosition, wetNormal) + sheen;
     color *= shadowDebugTint(vWorldPosition);
     color = applyFog(color, distance(vWorldPosition, uCameraPosition));
     fragColor = vec4(color, 1.0);

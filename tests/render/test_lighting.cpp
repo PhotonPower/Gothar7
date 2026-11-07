@@ -184,3 +184,18 @@ TEST_CASE("Lighting: the weather softens the sun's shadows; packing the shadows 
     packShadows(gpu, {}, settings, camera, false);
     CHECK(gpu.shadowExtra.z == doctest::Approx(0.9f));
 }
+
+TEST_CASE("Lighting: wetness, rain map and puddles packed for the shaders (M17 N)")
+{
+    Environment environment;
+    CHECK(packLighting(environment, LightList{}).wetParams == Vec4(0.0f)); // dry: the image as before
+    environment.wetness = 1.5f;
+    environment.hasRainMap = true;
+    environment.puddles = true;
+    environment.rainMapViewProjection = Mat4(2.0f);
+    const GpuLighting gpu = packLighting(environment, LightList{});
+    CHECK(gpu.wetParams.x == doctest::Approx(1.0f)); // clamped
+    CHECK(gpu.wetParams.y == doctest::Approx(1.0f));
+    CHECK(gpu.wetParams.z == doctest::Approx(1.0f));
+    CHECK(gpu.rainMapViewProjection == Mat4(2.0f));
+}
