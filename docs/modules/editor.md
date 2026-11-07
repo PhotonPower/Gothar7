@@ -5,6 +5,33 @@ entschieden). Grundlage ist der Editor-Modus aus M4 (`gothar --editor`,
 `tools/editor`, Beschreibung in `docs/modules/tools.md` „Editor“). M16 macht daraus ein Werkzeug, mit dem sich ein
 neuer Ort samt Wegnetz, Zonen und NPC-Routinen **ohne Texteditor** bauen lässt (DoD der Roadmap).
 
+## Umsetzungsstand
+| Teil | PR | Stand |
+|---|---|---|
+| A – Befehle, Undo/Redo, Schutz erzeugter Daten | #355 | umgesetzt |
+| B – Wegnetz-Editor | #359 | umgesetzt |
+| C – Zonen- und Trigger-Editor | dieser Teil-C-PR | umgesetzt |
+| D–F | – | offen |
+
+Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
+- **A:** Befehle sind Daten statt Klassen mit `apply`/`revert`: `editor::Command` hält `VobState` (Zeile der
+  Weltdatei je berührtem Vob, Kinder eingeschlossen) vorher und nachher; `History::undo/redo` setzt sie ein
+  (`world::captureVob`/`restoreVob`). Es gibt kein `Ownership.hpp`: Vobs prüft `world::isGenerated`, das Wegnetz
+  `isGeneratedEntry`; die Fragen stellt der Editor (`Editor::confirmation`). Die Eigentumsfälle stehen in den
+  GPU-Tests statt in `test_ownership.cpp`.
+- **B:** Taste G (N ist das Tagebuch). Befehle halten Momentaufnahmen der berührten Wegnetz-Einträge und ihrer
+  Kanten (`WaynetSnapshot`); jede Änderung geht über `Engine::setWaynet`. Das Gizmo verschiebt nur, die
+  Blickrichtung eines Freepoints steht im Fenster. Doppelte oder ungültige Namen weist schon die Bearbeitung ab
+  (`normalizeWaynet`), sie stehen deshalb nicht in der Prüfliste. Die Prüfungen sind in `test_waynet_edit.cpp`
+  getestet. Gelöschte erzeugte Punkte: Der Editor zeigt die Zeile für welts `waynet.json` „remove“ zum Kopieren und
+  schreibt die Datei nicht (Entscheidung 2).
+- **C:** Taste V. Ein Zonen-Befehl hält den ganzen `zones`-Block vorher und nachher (wenige hundert Boxen); jede
+  Änderung geht über `Engine::setZones` (geprüft wie beim Lesen), Räume, Musik und Ambiente folgen im nächsten
+  Frame. Die Musik misst ohne Spielfigur jetzt an der Kamera (wie in `world.md` beschrieben, galt bisher nur für
+  das Ambiente). Trigger sind Vobs: Gizmo und Inspektor des Vob-Modus; neu sind Auswahllisten (Form, Filter,
+  Skriptfunktionen aus `Engine::scriptFunctions`, Welten, Startpunkte der Zielwelt) und die Prüfung im Fenster
+  „Zones & triggers“ (unbekannte Funktion, fehlende Welt oder fehlender Startpunkt, Trigger ohne Wirkung).
+
 ## Ausgangslage (M4)
 - `g7_editor` (Bibliothek in `tools/editor`) ist ein `EngineTool`. Die Engine kennt nur `update`/`ui`. Fenster sind
   `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 0015).

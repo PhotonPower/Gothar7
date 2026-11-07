@@ -25,44 +25,11 @@ constexpr f32 kOccludedMuffle = 0.8f;    ///< a wall between: this muffled (owne
 constexpr std::string_view kIndoorAmbience = "innen"; ///< in a room (indoor zone): this ambience ...
 constexpr f32 kOutsideVolume = 0.3f;                  ///< ... with the outside one this loud ...
 constexpr f32 kOutsideMuffle = 0.8f;                  ///< ... and this muffled behind it
-
-/// Whether `p` lies in the turned box (world.md: local +X = (cos yaw, 0, -sin yaw), +Z = (sin yaw, 0, cos
-/// yaw)).
-bool inBox(const world::ZoneBox& b, const Vec3& p)
-{
-    const Vec3 d = p - b.center;
-    const f32 yaw = glm::radians(b.yawDegrees);
-    const f32 c = std::cos(yaw);
-    const f32 s = std::sin(yaw);
-    const Vec3 local(d.x * c - d.z * s, d.y, d.x * s + d.z * c);
-    return std::abs(local.x) <= b.halfExtents.x && std::abs(local.y) <= b.halfExtents.y &&
-           std::abs(local.z) <= b.halfExtents.z;
-}
 } // namespace
 
 const world::Zone* Engine::smallestZoneAt(std::string_view type, const Vec3& point, f32* volume) const
 {
-    // Nested zones: the smallest box wins (a camp inside a forest).
-    const world::Zone* best = nullptr;
-    f32 bestVolume = 0.0f;
-    for (const world::Zone& z : m_worldFile.zones)
-    {
-        if (z.type != type || !z.box || !inBox(*z.box, point))
-        {
-            continue;
-        }
-        const f32 v = z.box->halfExtents.x * z.box->halfExtents.y * z.box->halfExtents.z;
-        if (best == nullptr || v < bestVolume)
-        {
-            best = &z;
-            bestVolume = v;
-        }
-    }
-    if (volume != nullptr)
-    {
-        *volume = bestVolume;
-    }
-    return best;
+    return world::smallestZone(m_worldFile.zones, type, point, volume); // nested zones: the smallest wins
 }
 
 std::optional<std::string> Engine::zoneAt(std::string_view type, const Vec3& point) const
@@ -383,5 +350,28 @@ void Engine::bindAudioFunctions()
                  return Value(m_audio && !a.empty() && a[0].isNumber() &&
                               m_audio->playing(static_cast<audio::SoundId>(a[0].asInteger())));
              }});
+}
+
+std::vector<std::string> Engine::ambienceNames() const
+{
+    std::vector<std::string> names;
+    for (const auto& [name, def] : m_ambientDefs)
+    {
+        names.push_back(name);
+    }
+    return names; // a sorted map
+}
+
+std::vector<std::string> Engine::musicThemes() const
+{
+    std::vector<std::string> names;
+    if (m_music)
+    {
+        for (const auto& [name, theme] : m_music->defs().themes)
+        {
+            names.push_back(name);
+        }
+    }
+    return names;
 }
 } // namespace g7

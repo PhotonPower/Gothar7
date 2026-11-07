@@ -85,6 +85,13 @@ Editor::Editor(Engine& engine)
     }
     std::sort(m_assets.begin(), m_assets.end());
     m_waynetData = engine.worldFile().waynet.value_or(world::WaynetData{}); // edited as a copy (part B)
+    m_zones = engine.worldFile().zones;                                     // part C
+    for (const auto& file : engine.vfs().list({}, ".g7world"))
+    {
+        m_worlds.push_back(file.path);
+    }
+    std::sort(m_worlds.begin(), m_worlds.end());
+    m_scriptFunctions = engine.scriptFunctions();
     G7_LOG_INFO("editor", "editor mode: {} models to place; left click selects, right mouse looks",
                 m_assets.size());
 }
@@ -220,7 +227,7 @@ Result<void> Editor::edit(std::string label, std::vector<world::VobId> ids,
 Result<bool> Editor::undo()
 {
     const std::string label = m_history.undoLabel();
-    auto undone = m_history.undo(m_engine.scene(), &m_waynetData);
+    auto undone = m_history.undo(m_engine.scene(), &m_waynetData, &m_zones);
     if (undone && undone.value())
     {
         historyApplied();
@@ -241,12 +248,17 @@ void Editor::historyApplied()
     {
         m_waynetSelected.clear();
     }
+    if (auto handed = m_engine.setZones(m_zones); !handed)
+    {
+        m_status = handed.error().message;
+    }
+    selectZone(m_zoneSelected); // gone after undoing its "add"
 }
 
 Result<bool> Editor::redo()
 {
     const std::string label = m_history.redoLabel();
-    auto redone = m_history.redo(m_engine.scene(), &m_waynetData);
+    auto redone = m_history.redo(m_engine.scene(), &m_waynetData, &m_zones);
     if (redone && redone.value())
     {
         historyApplied();
@@ -452,6 +464,10 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         {
             setWaynetMode(!m_waynetMode); // the waynet (M16 part B)
         }
+        if (input.pressed(platform::Key::V))
+        {
+            setZoneMode(!m_zoneMode); // zones (M16 part C)
+        }
         if (input.pressed(platform::Key::L))
         {
             localAxes = !localAxes;
@@ -469,6 +485,10 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
             if (m_waynetMode)
             {
                 (void)deleteWaynetSelection();
+            }
+            else if (m_zoneMode)
+            {
+                (void)deleteZone();
             }
             else
             {
@@ -502,6 +522,14 @@ void Editor::update(Engine& engine, f64, bool uiMouse, bool uiKeyboard)
         drawWaynet();
         return;
     }
+    if (m_zoneMode)
+    {
+        zoneMouse(engine, mouse, !uiMouse && input.pressed(platform::MouseButton::Left),
+                  input.isDown(platform::MouseButton::Left));
+        drawZones();
+        return;
+    }
+    drawTriggers();
     placeGizmo();
     const GizmoView v = view();
     if (m_dragHandle != GizmoHandle::None)
@@ -625,7 +653,13 @@ void Editor::drawSelection()
         draw.box(AABB{m_gizmo.origin - Vec3(0.3f), m_gizmo.origin + Vec3(0.3f)}, {kActive});
     }
 
+    drawGizmo();
+}
+
+void Editor::drawGizmo()
+{
     // The gizmo, on top of everything.
+    render::DebugDraw& draw = m_engine.debugDraw();
     const GizmoView v = view();
     const f32 arm = m_gizmo.armLength(v);
     const GizmoHandle active = m_dragHandle != GizmoHandle::None ? m_dragHandle : m_hover;
@@ -777,6 +811,9 @@ void Editor::fillPanel()
     }
     if (const auto* trigger = scene.get<world::TriggerVolume>(e))
     {
+        auto& shape = addField("shape", Kind::Choice);
+        shape.choices = {"box", "sphere"};
+        shape.choice = trigger->shape == world::TriggerVolume::Shape::Box ? 0 : 1;
         if (trigger->shape == world::TriggerVolume::Shape::Box)
         {
             addField("half extents", Kind::Vector).vector = trigger->halfExtents;
@@ -785,11 +822,25 @@ void Editor::fillPanel()
         {
             addField("radius", Kind::Number).number = trigger->radius;
         }
-        addField("on enter", Kind::Text).text = trigger->onEnter;
-        addField("on leave", Kind::Text).text = trigger->onLeave;
+        auto& filter = addField("filter", Kind::Choice);
+        filter.choices = {"player", "npc", "any"};
+        filter.choice = static_cast<i32>(trigger->filter);
+        // Part C: names from lists - the loaded scripts' functions, the worlds, the target world's starts.
+        const auto choose =
+            [&](std::string label, std::string_view current, std::span<const std::string> known)
+        {
+            ChoiceList list = choiceList(current, known);
+            auto& field = addField(std::move(label), Kind::Choice);
+            field.choices = std::move(list.items);
+            field.choice = list.index;
+        };
+        choose("on enter", trigger->onEnter, m_scriptFunctions);
+        choose("on leave", trigger->onLeave, m_scriptFunctions);
         addField("once", Kind::Flag).flag = trigger->once;
-        addField("change world", Kind::Text).text = trigger->changeWorld;
-        addField("change start", Kind::Text).text = trigger->changeStart;
+        choose("change world", trigger->changeWorld, m_worlds);
+        const auto starts = startsOf(trigger->changeWorld).value_or(std::vector<std::string>{});
+        choose("change start", trigger->changeStart, starts);
+        addField("owner", Kind::Text).text = trigger->owner; // private area (M9): Npc instance or guild
     }
 }
 
@@ -929,13 +980,22 @@ void Editor::applyFields(const std::vector<ui::EditorField>& fields)
             {
                 trigger->radius = std::max(f.number, 0.05f);
             }
+            else if (f.label == "shape")
+            {
+                trigger->shape =
+                    f.choice == 1 ? world::TriggerVolume::Shape::Sphere : world::TriggerVolume::Shape::Box;
+            }
+            else if (f.label == "filter")
+            {
+                trigger->filter = static_cast<world::TriggerVolume::Filter>(std::clamp(f.choice, 0, 2));
+            }
             else if (f.label == "on enter")
             {
-                trigger->onEnter = f.text;
+                trigger->onEnter = choiceValue(f.choices, f.choice);
             }
             else if (f.label == "on leave")
             {
-                trigger->onLeave = f.text;
+                trigger->onLeave = choiceValue(f.choices, f.choice);
             }
             else if (f.label == "once")
             {
@@ -943,11 +1003,15 @@ void Editor::applyFields(const std::vector<ui::EditorField>& fields)
             }
             else if (f.label == "change world")
             {
-                trigger->changeWorld = f.text;
+                trigger->changeWorld = choiceValue(f.choices, f.choice);
+            }
+            else if (f.label == "owner")
+            {
+                trigger->owner = f.text;
             }
             else if (f.label == "change start")
             {
-                trigger->changeStart = f.text;
+                trigger->changeStart = choiceValue(f.choices, f.choice);
             }
         }
     }
@@ -965,5 +1029,8 @@ void Editor::ui(Engine&, ui::DebugUi& debugUi)
     fillWaynetPanel();
     debugUi.waynetPanel(m_waynetPanel);
     applyWaynetPanel();
+    fillZonePanel();
+    debugUi.zonePanel(m_zonePanel);
+    applyZonePanel();
 }
 } // namespace g7::editor

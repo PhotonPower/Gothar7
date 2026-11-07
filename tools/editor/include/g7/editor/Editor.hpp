@@ -14,13 +14,16 @@
 #include <g7/core/Transform.hpp>
 #include <g7/editor/Commands.hpp>
 #include <g7/editor/Gizmo.hpp>
+#include <g7/editor/TriggerEdit.hpp>
 #include <g7/editor/WaynetCheck.hpp>
 #include <g7/editor/WaynetEdit.hpp>
+#include <g7/editor/ZoneEdit.hpp>
 #include <g7/runtime/EngineTool.hpp>
 #include <g7/ui/EditorPanel.hpp>
 #include <g7/world/Components.hpp>
 
 #include <functional>
+#include <map>
 #include <optional>
 #include <set>
 #include <span>
@@ -96,6 +99,26 @@ public:
     [[nodiscard]] const std::string& waynetAnnotation() const noexcept { return m_annotation; }
     [[nodiscard]] const world::WaynetData& waynetData() const noexcept { return m_waynetData; }
 
+    // --- Zones and triggers (M16 part C): every zone edit undoable; the engine follows at once ---
+    [[nodiscard]] bool zoneMode() const noexcept { return m_zoneMode; }
+    void setZoneMode(bool on);
+    void selectZone(std::optional<usize> index);
+    [[nodiscard]] std::optional<usize> zoneSelection() const noexcept { return m_zoneSelected; }
+    [[nodiscard]] const std::vector<world::Zone>& zones() const noexcept { return m_zones; }
+    /// A new zone (indoor, music, ambient) at `centre`; selected. Its index.
+    [[nodiscard]] Result<usize> addZone(std::string type, std::string value, const Vec3& centre);
+    [[nodiscard]] Result<void> setZoneBox(const world::ZoneBox& box); ///< of the selection
+    [[nodiscard]] Result<void> setZoneValue(std::string value);       ///< of the selection
+    [[nodiscard]] Result<void> deleteZone();                          ///< the selection
+    /// Index of the zone of `type` that counts at `point` (the smallest holding it); nullopt: none.
+    [[nodiscard]] std::optional<usize> zoneAt(std::string_view type, const Vec3& point) const;
+    /// What `value` may be for a zone type (music themes, ambiences, the world's room tags).
+    [[nodiscard]] std::vector<std::string> zoneValueChoices(std::string_view type) const;
+    /// Checks the scene's triggers (script functions, level changes).
+    [[nodiscard]] const std::vector<TriggerIssue>& checkTriggers();
+    /// The start points of a world (VFS path; the open world: from the scene); nullopt: no such world.
+    [[nodiscard]] std::optional<std::vector<std::string>> startsOf(std::string_view world);
+
     Gizmo& gizmo() noexcept { return m_gizmo; }
     bool snap = true;
     f32 snapMove = 0.5f;   ///< metres
@@ -107,6 +130,7 @@ private:
     void placeGizmo();
     void drag(const Vec2& mouse);
     void drawSelection();
+    void drawGizmo(); ///< m_gizmo with m_hover / m_dragHandle lit
     void sceneChanged();
     void historyApplied(); ///< after undo or redo: rendering and waynet follow
     void fillPanel();
@@ -130,6 +154,14 @@ private:
     void waynetMouse(Engine& engine, const Vec2& mouse, bool pressed, bool held);
     void drawWaynet();
     void fillWaynetPanel();
+    Result<void> editZones(std::string label,
+                           const std::function<Result<void>(std::vector<world::Zone>&)>& change,
+                           bool mergeable = false);
+    void zoneMouse(Engine& engine, const Vec2& mouse, bool pressed, bool held);
+    void drawZones();
+    void drawTriggers();
+    void fillZonePanel();
+    void applyZonePanel();
     void applyWaynetPanel();
     [[nodiscard]] std::optional<Vec3> groundUnder(const Vec2& mouse) const;
 
@@ -164,5 +196,17 @@ private:
     std::optional<WaynetSnapshot> m_waynetDragBefore;
     bool m_waynetDragging = false;
     ui::WaynetPanel m_waynetPanel;
+    // Zones and triggers (part C)
+    std::vector<world::Zone> m_zones; ///< the world's zones as edited (handed to the engine after each edit)
+    bool m_zoneMode = false;
+    std::optional<usize> m_zoneSelected;
+    bool m_zoneDragging = false;
+    std::optional<std::vector<world::Zone>> m_zoneDragBefore;
+    Transform m_zoneDragFrom;
+    std::vector<TriggerIssue> m_triggerIssues;
+    std::vector<std::string> m_worlds;          ///< .g7world files in the VFS
+    std::vector<std::string> m_scriptFunctions; ///< for onEnter/onLeave
+    std::map<std::string, std::optional<std::vector<std::string>>, std::less<>> m_starts; ///< per world
+    ui::ZonePanel m_zonePanel;
 };
 } // namespace g7::editor

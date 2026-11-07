@@ -416,6 +416,16 @@ public:
     /// with the world. Fails (and keeps the old one) for a broken waynet. NPC routes planned before are
     /// dropped.
     [[nodiscard]] Result<void> setWaynet(world::WaynetData waynet);
+    /// Replaces the world's zones (editor, M16 part C): each checked like reading does; fails and keeps the
+    /// old ones if one is broken. Rooms, music and ambience follow from the next frame on; saved with the
+    /// world.
+    [[nodiscard]] Result<void> setZones(std::vector<world::Zone> zones);
+    /// For the editor (M16 part C), by name and sorted: the ambiences of data/ambient.toml, the music themes
+    /// of data/music.toml, and the global functions the loaded scripts define (empty without scripts).
+    [[nodiscard]] std::vector<std::string> ambienceNames() const;
+    [[nodiscard]] std::vector<std::string> musicThemes() const;
+    [[nodiscard]] std::vector<std::string> scriptFunctions() const;
+    [[nodiscard]] bool hasScripts() const noexcept;
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;

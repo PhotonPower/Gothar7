@@ -60,6 +60,23 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
     Netzes, Kanten unter 5 m oder über 20 m, Hindernis auf Hüfthöhe (Strahl gegen `COL_`-Welt), kein begehbarer
     Boden, Freepoint ohne Wegpunkt in 3 m. Klick auf einen Eintrag wählt ihn und fährt die Kamera hin.
   - Pfadprobe: A* der Engine zwischen zwei Punkten, als grüne Linie gezeichnet.
+- **Zonen-Modus (M16 Teil C, Taste V bzw. Fenster „Zones & triggers“):** bearbeitet den `zones`-Block der Welt
+  (world.md „Zonen“) als Arbeitskopie; jede Änderung ist ein Undo-Schritt und geht sofort an die Engine
+  (`Engine::setZones`, geprüft wie beim Lesen). Räume, Musik und Ambiente folgen im nächsten Frame.
+  - `indoor`, `music` und `ambient` werden als Boxen gezeichnet (Raum blau, Musik violett, Ambiente grün) und sind
+    editierbar. Andere Typen stehen nur in der Liste und bleiben unverändert.
+  - Klick wählt die Box, in die der Strahl zuerst eintritt; steht die Kamera in allen getroffenen Boxen, die kleinste.
+    Das Gizmo verschiebt, dreht nur um die Hochachse (Ring Y) und ändert die Halbachsen (1/2/3 wie bei Vobs).
+  - `value`: Musik-Themen aus `data/music.toml` (ohne `common`), Ambienten aus `data/ambient.toml`, Raum-Tags als
+    freier Text. Neue Zone: Typ und Wert wählen, sie steht 6 m vor der Kamera auf dem Boden.
+  - „here“ zeigt je Typ, welche Zone an der Kamera gilt (die kleinste Box, Regel aus world.md). Ohne Spielfigur
+    misst auch die Musik an der Kamera.
+- **Trigger (M16 Teil C):** Volumen aller Trigger im Umkreis von 120 m werden im Vob-Modus gezeichnet. Der Inspektor
+  bietet Form und Filter sowie Listen für `onEnter`/`onLeave` (globale Lua-Funktionen der geladenen Skripte), die
+  Zielwelt (`.g7world` im VFS) und ihre Startpunkte, dazu `owner` (privater Bereich, M9). Unbekannte Namen bleiben
+  sichtbar. „check the triggers“ meldet
+  unbekannte Funktionen, fehlende Zielwelten oder Startpunkte, Startpunkte ohne Welt und Trigger ohne Wirkung
+  (keine Funktion, kein Levelwechsel, kein Besitzer). Ein Klick auf eine Meldung wählt den Trigger.
 - Nach jeder Änderung baut die Engine Instanzen und Lichter aus der Szene neu (`Engine::refreshScene`, Modelle
   bleiben im Cache).
 
@@ -69,8 +86,8 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
 | Vobs auswählen, verschieben/drehen/skalieren (Gizmo), aus Asset-Browser platzieren | M4 |
 | Eigenschafts-Inspektor für Komponenten | M4 |
 | Wegnetz: Punkte setzen, verbinden, benennen, Freepoints, Prüfungen, Pfadprobe | M16 B (umgesetzt) |
-| Zonen (Musik, Ambient, Besitz, Innenraum) als Boxen editieren | M16 |
-| Trigger mit Skript-Callbacks | M16 |
+| Zonen (Musik, Ambient, Innenraum) als Boxen, Besitz als Trigger mit `owner` | M16 C (umgesetzt) |
+| Trigger mit Skript-Callbacks (Auswahllisten, Prüfung) | M16 C (umgesetzt) |
 | Licht-Editor mit Vorschau je Tageszeit | M16 |
 | Mobs: Slots, Zustände, Besitzer, Schloss | M16 |
 | Routinen-Vorschau: Zeitregler, NPC-„Geister“ an Routinen-Positionen | M16 |

@@ -111,4 +111,38 @@ struct WaynetPanel
     bool probe = false;
     i32 clickedIssue = -1;
 };
+
+/// The zones and triggers window of the editor (M16 part C, docs/modules/editor.md).
+struct ZonePanel
+{
+    // Shown
+    bool shown = false;
+    std::vector<std::string> rows; ///< every zone ("music LAGER (40 x 20 x 40 m)")
+    i32 selected = -1;             ///< row of the selection
+    bool selectedEditable = false; ///< a known type with a box (others are only shown)
+    std::string selectedType;
+    std::vector<std::string> values;    ///< what the selection's value may be (indoor: free text as well)
+    std::vector<std::string> types;     ///< for "add zone"
+    std::vector<std::string> newValues; ///< values for the type chosen for "add zone"
+    std::string here;                   ///< which zone counts at the camera, per type
+    std::vector<std::string> triggerIssues;
+
+    // Edited
+    bool active = false; ///< zone mode on (key V)
+    Vec3 center{0.0f};
+    Vec3 halfExtents{1.0f};
+    f32 yawDegrees = 0.0f;
+    std::string value; ///< of the selection
+    i32 newType = 0;
+    std::string newValue;
+
+    // Actions of this frame
+    i32 clickedRow = -1;
+    bool boxChanged = false;
+    bool valueChanged = false;
+    bool add = false;
+    bool remove = false;
+    bool checkTriggers = false;
+    i32 clickedIssue = -1;
+};
 } // namespace g7::ui

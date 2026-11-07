@@ -304,3 +304,61 @@ TEST_CASE("Editor GPU: waynet mode - add, join, probe a path, rename, undo, dele
     REQUIRE(engine.worldFile().waynet.has_value());
     CHECK(engine.worldFile().waynet->findFreepoint("FP_STAND_CAMP_BACH_01") != nullptr);
 }
+
+TEST_CASE("Editor GPU: zones and triggers - a music zone at the camera switches the theme; undo; save; check")
+{
+    WorldCopy copy;
+    {
+        Engine engine(editorConfig(copy.file));
+        REQUIRE(engine.init().ok());
+        editor::Editor editor(engine);
+        engine.addTool(editor);
+        if (engine.music() == nullptr)
+        {
+            MESSAGE("no music (data/music.toml or sound missing) - zone part skipped");
+            return;
+        }
+        // The camera in the camp: the camp's zone counts.
+        engine.camera().transform.position = Vec3(8.0f, 3.0f, 4.0f);
+        for (int i = 0; i < 3; ++i)
+        {
+            CHECK(engine.runFrame());
+        }
+        CHECK(engine.music()->status().theme == "LAGER");
+        const std::vector<std::string> themes = editor.zoneValueChoices("music");
+        CHECK(std::ranges::find(themes, "STADT") != themes.end());
+        CHECK(std::ranges::find(themes, "common") == themes.end());
+
+        // A smaller music zone around the camera: it counts at once (the smallest box wins).
+        editor.setZoneMode(true);
+        const usize zonesBefore = editor.zones().size();
+        const auto added = editor.addZone("music", "STADT", Vec3(8.0f, 3.0f, 4.0f));
+        REQUIRE(added.ok());
+        CHECK(editor.zoneSelection() == added.value());
+        CHECK(engine.worldFile().zones.size() == zonesBefore + 1);
+        CHECK(engine.runFrame()); // zone mode drawn, its window shown
+        CHECK(engine.music()->status().theme == "STADT");
+        CHECK(editor.zones()[*editor.zoneAt("music", Vec3(8.0f, 3.0f, 4.0f))].value == "STADT");
+
+        // Sized and moved away: the camp's theme again; undone: the town's.
+        world::ZoneBox box = *editor.zones()[added.value()].box;
+        box.center.x += 200.0f;
+        REQUIRE(editor.setZoneBox(box).ok());
+        CHECK(engine.runFrame());
+        CHECK(engine.music()->status().theme == "LAGER");
+        REQUIRE(editor.undo().value());
+        CHECK(engine.runFrame());
+        CHECK(engine.music()->status().theme == "STADT");
+        CHECK_FALSE(editor.addZone("fog", "dense", Vec3(0.0f)).ok()); // other types are not edited
+
+        // Triggers: the camp's level change to the cave is fine; a broken function name is found.
+        editor.setZoneMode(false);
+        const auto& issues = editor.checkTriggers();
+        CHECK(std::ranges::none_of(issues, [](const editor::TriggerIssue& i) { return i.id.value == 173; }));
+        REQUIRE(editor.save().ok());
+    }
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    CHECK(std::ranges::any_of(engine.worldFile().zones,
+                              [](const world::Zone& z) { return z.type == "music" && z.value == "STADT"; }));
+}
