@@ -1,6 +1,6 @@
 // Water (M17 W1): Fresnel, absorption, the wave normals, kinds of water from data/water.toml.
 
-#include <g7/core/Filesystem.hpp>
+#include <g7/core/FileSystem.hpp>
 #include <g7/render/Water.hpp>
 
 #include <doctest/doctest.h>
