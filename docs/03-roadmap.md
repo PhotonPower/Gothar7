@@ -343,7 +343,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 **DoD:** Ein neuer Ort mit Wegnetz, Zonen und NPC-Routinen lässt sich ohne Texteditor bauen.
 
 ## M17 – Atmosphäre, Performance, Release → Meilenstein D
-- [ ] Wetter: Regen (Partikel + nasse Oberflächen), Gewitter, Wind für Vegetation – Plan `docs/design/wetter.md` (Teile E1, R, N, G, W, K)
+- [ ] Wetter: Regen (Partikel + nasse Oberflächen), Gewitter, Wind für Vegetation – Plan `docs/design/wetter.md` (Teile E1, R, N, G, W; K entfällt; Entscheidungen 1–10 vom Projektinhaber 2026-11-07)
 - [ ] Wasser-Rendering (Reflexion, Brechung light), Unterwasser-Effekt
 - [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
 - [ ] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional

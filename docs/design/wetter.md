@@ -7,7 +7,8 @@ Oberflächen), Gewitter, Wind für Vegetation“:
 - Wind für Vegetation und für Kleidung bzw. Fahnen;
 - Wetterwechsel über den Tag.
 
-Stand: **Plan**, noch kein Code. Die Teile werden nacheinander umgesetzt, je ein PR, nach Freigabe.
+Stand: **Plan freigegeben** (Koordinator, 2026-11-07). Der Projektinhaber hat alle zehn Vorschläge zum Spielgefühl
+übernommen; Teil K entfällt. Umsetzung je Teil ein PR: E1 → R → N → G, W sobald welts PR 3 da ist.
 
 ## Ausgangslage
 - **Tageszeit:** `world::DayCycle` liest `data/environment.toml` mit Schlüsselbildern je Uhrzeit: Sonne, Mond, Ambient,
@@ -132,13 +133,13 @@ Stand: **Plan**, noch kein Code. Die Teile werden nacheinander umgesetzt, je ein
    - **Fahnen, Wimpel, Zunftschilder:** dasselbe Biegen mit dem Gewicht aus der Vertexfarbe. Schilder schwingen
      als Ganzes um ihre Aufhängung, mit Gewicht nach unten zunehmend. Betrifft welt (Schilder #261) und figuren
      (Fahnen als Gegenstände).
-   - **Kleidung:** Vorschlag zunächst nicht, wie in Gothic 1 (siehe Frage 7). Möglich wäre später ein leichtes
+   - **Kleidung:** nicht, wie in Gothic 1 (Entscheidung 7). Möglich wäre später ein leichtes
      Schwingen von Umhang- und Rock-Knochen, sofern das Referenz-Skelett sie hat (Vertrag mit figuren,
      `animation.md`).
    - **Tests:**
      - CPU: Wind deterministisch, Böen im Rahmen.
      - GPU: die Spitze eines Testmodells bewegt sich mit dem Wind, der Fuß nicht; ohne Wind steht alles still.
-6. **K – NPCs bei Regen** (nur wenn gewünscht, Frage 6)
+6. **K – NPCs bei Regen – entfällt** (Entscheidung 6: NPCs stellen sich nicht unter). Der Entwurf zur Erinnerung:
    - Ein Zustand `ZS_SHELTER`: Wer draußen eine Routine ohne festen Ort hat, z. B. Herumstehen, sucht bei Regen den
      nächsten überdachten Freepoint oder geht nach Hause.
    - Wer arbeitet (Händler am Stand, Wache), bleibt.
@@ -171,15 +172,13 @@ wird er heruntergestuft (weniger Striche, kleinere Karte, seltener erneuert), ni
 ## Schnittstellen und Abhängigkeiten
 - **welt:**
   - Vertrag für das Wind-Gewicht der Vegetation, Fahnen und Schilder (Vorschlag oben).
-  - Optional `rain_shelter`-Freepoints für Teil K.
   - Alles erst nach welts PR 3; ich schlage den Vertrag dann in `coordination.md` vor.
 - **figuren:**
   - Fahnen als Gegenstände mit Gewicht in der Vertexfarbe.
-  - Kleidung nur bei Frage 7 = ja (Knochen im Referenz-Skelett).
 - **Audio:** neue Klänge `amb_rain`, `amb_rain_roof`, `thunder_near`, `thunder_far` (zunächst Platzhalter).
 - **Speichern:** additiv in `GameState` (ADR 0021).
 
-## Fragen zum Spielgefühl (Projektinhaber; je ein Vorschlag, rückbaubar in `weather.toml`)
+## Entscheidungen zum Spielgefühl (Projektinhaber, 2026-11-07: alle zehn wie vorgeschlagen; rückbaubar in `weather.toml`)
 1. **Häufigkeit:** an etwa jedem dritten Spieltag Regen, Gewitter an etwa jedem zehnten (nur im Sommerhalbjahr,
    solange es keine Jahreszeiten gibt: immer möglich). Nebel am Morgen an etwa jedem vierten Tag.
 2. **Dauer:**
@@ -193,9 +192,8 @@ wird er heruntergestuft (weniger Striche, kleinere Karte, seltener erneuert), ni
    Dialogen, Zwischensequenzen und gesperrter Story-Szenen (`lock_weather`).
 5. **Wind:** immer eine leichte Brise (Gras und Blätter bewegen sich etwas). Bei Regen mehr, beim Gewitter böig;
    Rauch treibt mit.
-6. **NPCs bei Regen:** Vorschlag **nein** in der ersten Fassung, wie in Gothic 1, wo der Regen das Verhalten nicht
-   änderte. Teil K bleibt vorbereitet. Wenn ja: nur NPCs ohne feste Arbeit stellen sich unter.
-7. **Kleidung im Wind:** Vorschlag nein, wie in Gothic 1. Fahnen, Wimpel und Schilder bewegen sich.
+6. **NPCs bei Regen:** **nein**, wie in Gothic 1, wo der Regen das Verhalten nicht änderte. Teil K entfällt.
+7. **Kleidung im Wind:** nein, wie in Gothic 1. Fahnen, Wimpel und Schilder bewegen sich.
 8. **Blitz und Donner:** deutlich, aber nicht grell; Blitz eher als Aufleuchten des Himmels, selten ein
    sichtbarer Strahl. Nahe Donnerschläge laut, die meisten ferner Grollen.
 9. **Pfützen:** nur in der Stufe „hoch“, auf Pflaster und Wegen. Sie bleiben nach dem Regen etwa eine Spielstunde.
