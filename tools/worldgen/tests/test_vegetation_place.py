@@ -102,3 +102,47 @@ def test_unknown_models_are_refused(tmp_path: Path):
     with pytest.raises(OutdoorError):
         VegRules.load(path)
     assert VegRules.load(DATA / "vegetation.json").data["version"] == 1
+
+
+def _site_with(features: list, height=lambda x, z: 0.0) -> Site:  # noqa: ANN001
+    return Site(entries=[{"id": "A", "doors": [[5.0, 0.0, 0.0, "ground", 0.0, -1.0]]}],
+                uses={}, places=[], bodies=[("BLD_A", HOUSE), ("CITYWALL_1", WALL)],
+                streets=[STREET], features=features, height_at=height)  # fmt: skip
+
+
+def _only(**keep) -> VegRules:
+    data = json.loads((DATA / "vegetation.json").read_text(encoding="utf-8"))
+    for key in ("areas", "formal", "banks", "wall", "slopes"):
+        if key not in keep:
+            data.pop(key, None)
+    data.update(keep)
+    return VegRules(data)
+
+
+def test_reed_and_bushes_line_the_river_banks():
+    river = {"osmId": "w9", "kind": "stream", "geometry": "line", "name": "Glems",
+             "points": [[-40.0, -60.0], [60.0, -60.0]]}  # fmt: skip
+    plan = plan_outdoor(_outdoor(), _site_with([river]), _only(banks=_veg().data["banks"]))
+    banks = [v for v in plan.vobs if v["name"].startswith("VEG_UFER")]
+    spec = _veg().data["banks"]
+    assert banks and any(v["mesh"].endswith("reed.glb") for v in banks)
+    axis = LineString(river["points"])
+    assert all(spec["fromM"] <= axis.distance(_at(v)) <= spec["toM"] for v in banks)
+
+
+def test_a_band_outside_the_town_wall_keeps_its_foot_free():
+    spec = _veg().data["wall"]
+    plan = plan_outdoor(_outdoor(), _site_with([]), _only(wall=spec))
+    band = [v for v in plan.vobs if v["name"].startswith("VEG_MAUER")]
+    assert band
+    hull = WALL.convex_hull
+    assert all(spec["fromM"] <= hull.distance(_at(v)) <= spec["toM"] for v in band)
+
+
+def test_scrub_and_grass_grow_on_steep_ground_only():
+    def height(x: float, z: float) -> float:  # flat, then 30 degrees up south of z = -20
+        return 0.0 if z < -20.0 else (z + 20.0) * 0.577
+
+    plan = plan_outdoor(_outdoor(), _site_with([], height), _only(slopes=_veg().data["slopes"]))
+    hang = [v for v in plan.vobs if v["name"].startswith("VEG_HANG")]
+    assert hang and all(v["pos"][2] > -21.5 for v in hang)
