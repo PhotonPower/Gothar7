@@ -498,3 +498,12 @@ void Engine::creaturesUi()
     }
 }
 } // namespace g7
+
+namespace g7
+{
+usize Engine::simulatedCreatureCount() const noexcept
+{
+    return static_cast<usize>(std::count_if(m_creatures.begin(), m_creatures.end(),
+                                            [](const auto& c) { return !c->vanished && c->simulated; }));
+}
+} // namespace g7

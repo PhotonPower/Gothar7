@@ -1,6 +1,6 @@
 # perf – Plan M17 (Profiling, Budgets, Job-System)
 
-Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). Kein Code in diesem PR.
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). **Teil B umgesetzt:** `gothar --perf=<namen>|all` mit `assets/source/data/perf.toml` (markt, gasse, stube um 10:00 und 21:00; Stress `markt_voll` mit 60 NPCs mehr), Bericht `perf_<name>.json`, Ladephasen; erste Werte in `docs/perf/2026-11-07-erste-messung.md`.
 Ziel (Meilenstein D): Release-Build stabil ≥ 60 FPS in der größten Welt (Leonberg) auf Zielhardware. Erst messen, dann
 parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummeriert.
 
@@ -55,6 +55,14 @@ parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummerie
   `docs/perf/` (Datum, Hash, Hardware, Tabelle).
 - **Ladezeit:** Start bis erstes Bild in Leonberg, aufgeteilt in Welt, Häuser, Figuren und Clips, Skripte. Diese
   Zahl entscheidet über `.g7skin`/`.g7anim` (siehe `release.md`, Teil D).
+- **Umsetzung (Teil B):** `tools/perf` (EngineTool, siehe `tools.md`). Bericht `perf_<name>.json`: `scenario`,
+  `build`, `renderer`, `resolution`, `profiling`, je Uhrzeit ein Eintrag in `runs` mit `frame` (average/p50/p95/p99/
+  worst in ms), `zones` (Zeit je Bild als p50/p95/p99, Aufrufe je Bild; nur mit `G7_PROFILING`), `gpu_passes` (Mittel
+  der geglätteten Timer-Abfragen), `gpu_total_ms`, `stats` (Draws, Dreiecke, Lichter je Bild, NPCs, simulierte NPCs im
+  Mittel und maximal), dazu `load_phases` (Name, Dauer, Ende seit Start: assets, scripts, window/OpenGL, shaders,
+  scene rendering, world file, world, houses and models, figures and clips, first frame, models settled).
+  Abweichung vom Plan: Die Uhrzeiten eines Szenarios laufen im selben Prozess nacheinander (Zeitsprung, dann erneut
+  Anlauf). Die Welt kommt aus `--world` (Standard Leonberg), nicht aus perf.toml.
 
 ## Teil C – Job-System (Animation, KI, Culling)
 - **Eigenes, kleines System in `core`** (`g7/core/Jobs.hpp`): fester Pool aus `std::jthread`,

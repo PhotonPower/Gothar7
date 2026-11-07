@@ -146,5 +146,13 @@ gothar --world=<welt> --walk=<route.json> [--walk-out=<ordner>] [--no-render]
 - **Tests:** `tests/walk` (Routen-Format) und `render_gpu` „Autopilot GPU …“: Lagerroute mit Klettern, 6-m-Fall,
   Schwimmen und Hänger am geschlossenen Tor (`vob: fence-gate`).
 
+## Mess-Szenarien (`gothar --perf`, M17 Perf Teil B)
+`tools/perf` (Bibliothek `g7_perf`, wie der Autopilot ein `EngineTool`): liest `data/perf.toml` über das VFS, setzt
+je Szenario und Uhrzeit Kamera und Helden (`Engine::applyView`, wie `--cam`/`--player`), stellt die Uhrzeit, wartet
+den Anlauf ab und misst dann eine feste Bildzahl. Stress-Szenarien (`extra_npcs`) setzen NPCs per
+`Engine::spawnScriptNpc` auf die nächsten Wegpunkte; bei `all` laufen sie zuletzt. Bericht: `perf_<name>.json`
+(Format siehe `docs/modules/perf.md`), Exit-Code ≠ 0 bei Lese- oder Schreibfehlern. Tests: `tests/perf`
+(Datei, Auswahl, Bericht); der Lauf selbst braucht GPU und Leonberg und läuft von Hand.
+
 ## Optional: Gothic-Import-Werkzeug (siehe ADR 0008)
 Nur für Forschung/Vergleich mit eigener, legal erworbener Kopie; nicht Teil des Spiels.

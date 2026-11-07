@@ -12,12 +12,21 @@ struct FrameTimeSummary
 {
     usize frames = 0;
     f64 averageMs = 0.0;
+    f64 p50Ms = 0.0; ///< median
     f64 p95Ms = 0.0; ///< 95 % of frames were at least this fast
     f64 p99Ms = 0.0;
     f64 worstMs = 0.0;
     [[nodiscard]] f64 averageFps() const noexcept { return averageMs > 0.0 ? 1000.0 / averageMs : 0.0; }
-    /// "123 frames: 4.10 ms avg (244 fps), p95 5.00 ms, p99 6.20 ms, worst 9.80 ms"
+    /// "123 frames: 4.10 ms avg (244 fps), p50 4.00 ms, p95 5.00 ms, p99 6.20 ms, worst 9.80 ms"
     [[nodiscard]] std::string toString() const;
+};
+
+/// One step of loading (M17 perf, part B): milliseconds it took, and since start when it ended.
+struct LoadPhase
+{
+    std::string name;
+    f64 ms = 0.0;
+    f64 endMs = 0.0;
 };
 
 class FrameTimes

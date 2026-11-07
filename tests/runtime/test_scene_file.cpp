@@ -141,6 +141,7 @@ TEST_CASE("FrameTimes: average and percentiles")
     const FrameTimeSummary s = times.summary();
     CHECK(s.frames == 100);
     CHECK(s.averageMs == doctest::Approx(50.5));
+    CHECK(s.p50Ms == doctest::Approx(50.0));
     CHECK(s.p95Ms == doctest::Approx(95.0));
     CHECK(s.p99Ms == doctest::Approx(99.0));
     CHECK(s.worstMs == doctest::Approx(100.0));
