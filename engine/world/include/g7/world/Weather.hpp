@@ -1,9 +1,9 @@
 #pragma once
 
-// Weather (M17 part E1, docs/design/wetter.md): states with rain, clouds, wind and mood from data/weather.toml, a
-// deterministic schedule over the game time (durations, weighted successors, start windows by hour) and fades
-// between them. The state mixes into the time of day (light, fog, sky, colour grading); rain, wetness, lightning
-// and wind read it in the later parts.
+// Weather (M17 part E1, docs/design/wetter.md): states with rain, clouds, wind and mood from
+// data/weather.toml, a deterministic schedule over the game time (durations, weighted successors, start
+// windows by hour) and fades between them. The state mixes into the time of day (light, fog, sky, colour
+// grading); rain, wetness, lightning and wind read it in the later parts.
 
 #include <g7/core/Math.hpp>
 #include <g7/core/Result.hpp>
@@ -29,18 +29,18 @@ struct DaySample;
 struct WeatherState
 {
     std::string name;
-    f32 rain = 0.0f;    ///< 0 dry .. 1 heavy rain
-    f32 clouds = 0.0f;  ///< 0 clear .. 1 overcast (greys the sky, hides moon and stars)
-    f32 wind = 0.2f;    ///< 0 still .. 1 storm
-    f32 gusts = 0.1f;   ///< how much the wind varies
-    f32 fog = 1.0f;     ///< factor on the fog density of the time of day
-    f32 sun = 1.0f;     ///< factor on the sun's (or moon's) light
-    f32 ambient = 1.0f; ///< factor on the ambient light
-    f32 lightning = 0.0f; ///< flashes per minute (part G)
+    f32 rain = 0.0f;                 ///< 0 dry .. 1 heavy rain
+    f32 clouds = 0.0f;               ///< 0 clear .. 1 overcast (greys the sky, hides moon and stars)
+    f32 wind = 0.2f;                 ///< 0 still .. 1 storm
+    f32 gusts = 0.1f;                ///< how much the wind varies
+    f32 fog = 1.0f;                  ///< factor on the fog density of the time of day
+    f32 sun = 1.0f;                  ///< factor on the sun's (or moon's) light
+    f32 ambient = 1.0f;              ///< factor on the ambient light
+    f32 lightning = 0.0f;            ///< flashes per minute (part G)
     render::GradingOverride grading; ///< over the time of day's grading
-    f32 minHours = 1.0f;  ///< duration in game hours
+    f32 minHours = 1.0f;             ///< duration in game hours
     f32 maxHours = 3.0f;
-    std::optional<std::pair<f32, f32>> window;    ///< may only begin between these hours
+    std::optional<std::pair<f32, f32>> window;     ///< may only begin between these hours
     std::vector<std::pair<std::string, f32>> next; ///< what may follow, with weights
 };
 
@@ -85,16 +85,16 @@ public:
     /// Advances the schedule to `clock`. `hold`: no change now (dialogue, cut scene; decision 4) - it waits.
     /// Returns the changes made (old, new), oldest first.
     std::vector<std::pair<std::string, std::string>> update(f64 clock, bool hold = false);
-    /// Sets a state now, fading over `fadeMinutes` (0: at once); false for an unknown name. The schedule goes on
-    /// from it.
+    /// Sets a state now, fading over `fadeMinutes` (0: at once); false for an unknown name. The schedule goes
+    /// on from it.
     bool set(std::string_view name, f64 clock, f64 fadeMinutes);
     /// A story scene keeps the state: no changes by the schedule while locked (set() still works).
     void lock(bool locked) noexcept { m_locked = locked; }
     [[nodiscard]] bool locked() const noexcept { return m_locked; }
 
     [[nodiscard]] WeatherSample sample(f64 clock) const;
-    /// Mixes the weather at `clock` into the time of day: sun and ambient light, fog density, a greyer sky and fog
-    /// colour under clouds, moon and stars hidden, the states' colour grading.
+    /// Mixes the weather at `clock` into the time of day: sun and ambient light, fog density, a greyer sky
+    /// and fog colour under clouds, moon and stars hidden, the states' colour grading.
     void apply(DaySample& day, f64 clock) const;
 
     [[nodiscard]] const std::string& current() const;

@@ -19,7 +19,7 @@ clouds = 0.1
 wind = 0.15            # immer eine leichte Brise (Entscheidung 5)
 gusts = 0.1
 duration = [2.0, 6.0]
-next = { klar = 4.0, bewoelkt = 2.0, nebel = 6.0 }
+next = { klar = 4.0, bewoelkt = 2.0, nebel = 14.0 }
 
 [state.nebel]          # Morgennebel bis etwa 9 Uhr (Entscheidung 2)
 clouds = 0.4
@@ -41,7 +41,7 @@ sun = 0.6
 ambient = 0.85
 grading_saturation = 0.9
 duration = [1.5, 4.0]
-next = { klar = 3.0, regen = 2.0, bewoelkt = 1.0 }
+next = { klar = 4.0, regen = 1.0, bewoelkt = 1.0 }
 
 [state.regen]          # mäßiger Landregen (Entscheidung 3)
 rain = 0.5
@@ -54,7 +54,7 @@ ambient = 0.75
 grading_saturation = 0.8
 grading_temperature = -0.08
 duration = [1.0, 3.0]
-next = { bewoelkt = 4.0, klar = 1.0, starkregen = 1.0, gewitter = 3.0 }
+next = { bewoelkt = 4.0, klar = 1.0, starkregen = 1.0, gewitter = 9.0 }
 
 [state.starkregen]     # selten (Entscheidung 3); Sicht bleibt über etwa 80 m
 rain = 0.9

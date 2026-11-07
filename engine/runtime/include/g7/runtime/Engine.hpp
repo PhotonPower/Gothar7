@@ -71,6 +71,7 @@
 #include <g7/world/Terrain.hpp>
 #include <g7/world/Triggers.hpp>
 #include <g7/world/Water.hpp>
+#include <g7/world/Weather.hpp>
 #include <g7/world/WorldFile.hpp>
 
 #include <deque>
@@ -209,6 +210,8 @@ struct EngineConfig
     std::string start;
     /// Game time at start, "HH:MM" (--time); empty = [time] start (default 08:00).
     std::string startTime;
+    /// Weather state at start (--weather, M17 E1); empty = data/weather.toml's start and schedule.
+    std::string weather;
     /// Console lines (Lua) run once after start (--exec, repeatable), e.g. `insert_npc('npc_farmer_woman')`.
     std::vector<std::string> exec;
     /// --cam, --yaw, --pitch, --fly, --player: a view to reproduce (StartView.hpp), applied after loading.
@@ -597,6 +600,9 @@ public:
     /// Starts talking to an NPC: an important Info runs first, then the menu of Infos.
     [[nodiscard]] Result<void> startDialog(u32 npc);
     [[nodiscard]] bool inDialog() const noexcept { return m_dialog.has_value(); }
+    /// The weather (M17 E1): its state and course, and what it is at the current game time.
+    [[nodiscard]] const world::Weather& weather() const noexcept { return m_weather; }
+    [[nodiscard]] world::WeatherSample weatherNow() const { return m_weather.sample(m_gameTime.clock()); }
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
@@ -1304,6 +1310,7 @@ private:
     void updateEnvironment();
     void renderScene(u32 width, u32 height);
     void updateGrading(const render::Grading& timeOfDay);
+    void updateWeather();
     void drawScene(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
     /// `allowMouse` / `allowKeyboard` false while the debug UI uses them.
@@ -1485,6 +1492,7 @@ private:
     world::Scene m_scene;       // world vobs (--world, --scene); render instances are built from it
     world::GameTime m_gameTime; // global: runs across level changes (save game: save.md)
     world::DayCycle m_dayCycle = world::DayCycle::fallback();
+    world::Weather m_weather = world::Weather::fallback(); // M17 E1: data/weather.toml
     render::Sky m_sky;
     f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
     bool m_sunEnabled = true;        // debug: sun and moon light off

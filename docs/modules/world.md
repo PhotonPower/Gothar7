@@ -400,7 +400,37 @@ struct Orbit { sunrise, sunset, noonElevation, moonElevation; sunDirection(hour)
 - **Reserviert (M17):** `[zone]` für Überschreibungen je Zone bzw. Welt (Höhle, Sumpf; Farbkorrektur) – noch ohne Wirkung.
 - Werte sind Spielgefühl und Vorgaben bis zur Abnahme durch den Projektinhaber (Screenshots zu 6 Uhrzeiten,
   Lager und Leonberg: `C:\GotharData\review\m4-daynight\`, nicht im Repo).
-- Wetter (M17): Regenintensität als Zustandsautomat mit Übergängen.
+
+### Wetter (M17 Teil E1, umgesetzt) – `Weather.hpp`, `data/weather.toml`
+Plan und Entscheidungen des Projektinhabers: `docs/design/wetter.md`.
+```cpp
+struct WeatherState { std::string name; f32 rain, clouds, wind, gusts, fog, sun, ambient, lightning;
+                      render::GradingOverride grading; f32 minHours, maxHours;
+                      std::optional<std::pair<f32, f32>> window; std::vector<std::pair<std::string, f32>> next; };
+struct WeatherSample { std::string_view state; f32 rain, clouds, wind, gusts, fog, sun, ambient, lightning, fade; };
+class Weather { static Result<Weather> parse(toml, source) / load(vfs, path) / fallback();
+                void start(f64 clock, u64 seed); std::vector<std::pair<old, new>> update(f64 clock, bool hold);
+                bool set(name, clock, fadeMinutes); void lock(bool);
+                WeatherSample sample(clock) const; void apply(DaySample&, clock) const;
+                WeatherSnapshot snapshot() const; bool restore(const WeatherSnapshot&); };
+Engine::weather(), weatherNow();  save::GameState::weather (optional, additiv nach ADR 0021)
+```
+- **Lagen** `[state.<name>]`: Regen, Bewölkung, Wind, Böen (0..1), Faktoren auf Nebel, Sonnen-/Mondlicht und
+  Umgebungslicht, Blitze je Minute (Teil G), `grading_*` über der Tageszeit. `duration = [min, max]` Spielstunden,
+  `window = [von, bis]` (darf nur dann beginnen), `next = { lage = gewicht }`. Geliefert: `klar`, `nebel` (Morgen),
+  `bewoelkt`, `regen`, `starkregen`, `gewitter` (nur aus Regen, 12–22 Uhr).
+- **Ablauf:** deterministisch aus Spielzeit und Startwert (`--seed`, sonst fest); bei jeder Wechselzeit eine
+  gewichtete Wahl unter den erlaubten Nachfolgern, Übergang über `transition_minutes` (15). Ein Zeitsprung (Schlafen)
+  läuft durch alle Wechsel dazwischen. Während eines Dialogs und bei `lock_weather(true)` wartet der Wechsel.
+  Häufigkeit über 2000 Spieltage geprüft: Regen an 33 % der Tage, Gewitter an 9 %, Morgennebel an 26 %
+  (Entscheidung 1).
+- **Wirkung:** `apply` mischt in die Tageszeit – Sonne und Ambient gedämpft, Nebel dichter, Himmel und Nebelfarbe
+  unter Wolken grauer, Mond und Sterne verdeckt, Farbkorrektur der Lage (danach die Zonen, P2). Regen, Nässe, Blitze
+  und Wind lesen `weatherNow()` in den Teilen R, N, G, W.
+- **Lua:** `set_weather(name, minutes?)`, `weather()`, `lock_weather(locked)`, Ereignis `weather_changed(old, new)`;
+  Startparameter `--weather=<lage>` (Prüfbilder); Pfad `[time] weather` (Vorgabe `data/weather.toml`).
+- **Spielstand:** Lage, vorige Lage, Wechselzeit, Übergang, nächste Entscheidung, Zufallszustand und Sperre stehen
+  als `weather` im Spielstand; ältere Spielstände ohne das Feld laden weiter, das Wetter bleibt dann, wie es ist.
 
 ## Gothic-Bezug
 - Vob-Baum ≈ ZenGin `zCVob`-Hierarchie. Mobs, Trigger, Lichter, Startpunkte sind Vob-Typen.

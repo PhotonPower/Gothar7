@@ -1,5 +1,5 @@
-// Weather (M17 part E1, docs/design/wetter.md): states from weather.toml, a deterministic schedule, fades, locks,
-// the mood mixed into the time of day, snapshots for save games.
+// Weather (M17 part E1, docs/design/wetter.md): states from weather.toml, a deterministic schedule, fades,
+// locks, the mood mixed into the time of day, snapshots for save games.
 
 #include <g7/core/FileSystem.hpp>
 #include <g7/world/DayCycle.hpp>
@@ -52,7 +52,8 @@ TEST_CASE("Weather: errors name the entry")
     CHECK(errorOf("version = 1\n") == "weather.toml: state: needs at least one [state.<name>]");
     CHECK(errorOf("version = 1\n[state.a]\nrain = 2.0\n") ==
           "weather.toml: state.a: rain, clouds, wind and gusts must lie in 0..1");
-    CHECK(errorOf("version = 1\n[state.a]\nnext = { b = 1.0 }\n") == "weather.toml: state.a.next: unknown state 'b'");
+    CHECK(errorOf("version = 1\n[state.a]\nnext = { b = 1.0 }\n") ==
+          "weather.toml: state.a.next: unknown state 'b'");
     CHECK(errorOf("version = 1\n[state.a]\nduration = [3.0, 1.0]\n") ==
           "weather.toml: state.a: duration must be [min, max] game hours, 0 < min <= max");
     CHECK(errorOf("version = 1\nstart = \"x\"\n[state.a]\n") == "weather.toml: start: unknown state 'x'");
@@ -71,9 +72,9 @@ TEST_CASE("Weather: the schedule changes after the duration and fades over the t
     REQUIRE(changes.size() == 1);
     CHECK(changes[0].first == "klar");
     CHECK(changes[0].second == "regen");
-    CHECK(w.sample(60.0).rain == doctest::Approx(0.0f));     // the fade begins
-    CHECK(w.sample(65.0).rain == doctest::Approx(0.4f));     // half way
-    CHECK(w.sample(70.0).rain == doctest::Approx(0.8f));     // reached
+    CHECK(w.sample(60.0).rain == doctest::Approx(0.0f)); // the fade begins
+    CHECK(w.sample(65.0).rain == doctest::Approx(0.4f)); // half way
+    CHECK(w.sample(70.0).rain == doctest::Approx(0.8f)); // reached
     CHECK(w.sample(70.0).state == "regen");
     // A long jump (sleeping) goes through every change on the way: 2 h rain, 1 h clear, 2 h rain ...
     const auto many = w.update(60.0 + 6.0 * 60.0);

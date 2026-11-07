@@ -76,6 +76,7 @@ save::GameState sample()
     npc.character = hero;
     w.npcs.push_back(npc);
     s.worlds.push_back(std::move(w));
+    s.weather = save::WeatherSave{"regen", "bewoelkt", 600.5, 15.0, 720.25, 1234567890123ull, true};
     return s;
 }
 } // namespace
@@ -109,6 +110,22 @@ TEST_CASE("Game state: everything survives JSON, the text is stable")
     CHECK(b.worlds[0].mobs == s.worlds[0].mobs);
     CHECK(b.worlds[0].npcs == s.worlds[0].npcs);
     CHECK(save::toJson(b) == text); // stable
+}
+
+TEST_CASE("Game state: a save from before the weather (M17 E1) still loads, without weather")
+{
+    save::GameState s = sample();
+    auto withWeather = save::fromJson(save::toJson(s));
+    REQUIRE(withWeather.ok());
+    REQUIRE(withWeather.value().weather.has_value());
+    CHECK(*withWeather.value().weather == *s.weather);
+    s.weather.reset();
+    const std::string old = save::toJson(s);
+    CHECK(old.find("\"weather\"") == std::string::npos); // as the saves before E1 looked
+    auto back = save::fromJson(old);
+    REQUIRE_MESSAGE(back.ok(), (back.ok() ? "" : back.error().message));
+    CHECK_FALSE(back.value().weather.has_value());
+    CHECK(back.value().clock == s.clock);
 }
 
 TEST_CASE("Game state: broken documents and newer versions are refused")

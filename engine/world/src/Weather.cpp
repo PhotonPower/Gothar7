@@ -16,10 +16,10 @@ constexpr Vec3 kLuma{0.2126f, 0.7152f, 0.0722f};
 /// grading_* of a state (as DayCycle reads them for [zone.<name>]); error text or empty.
 std::string readGrading(const Config& c, const std::string& at, render::GradingOverride& out)
 {
-    for (auto [name, target] : {std::pair{"grading_temperature", &out.temperature},
-                                std::pair{"grading_tint", &out.tint},
-                                std::pair{"grading_saturation", &out.saturation},
-                                std::pair{"grading_contrast", &out.contrast}, std::pair{"vignette", &out.vignette}})
+    for (auto [name, target] :
+         {std::pair{"grading_temperature", &out.temperature}, std::pair{"grading_tint", &out.tint},
+          std::pair{"grading_saturation", &out.saturation}, std::pair{"grading_contrast", &out.contrast},
+          std::pair{"vignette", &out.vignette}})
     {
         if (const auto value = c.find<f64>(at + "." + name))
         {
@@ -122,8 +122,8 @@ Result<Weather> Weather::parse(std::string_view toml, std::string_view source)
         {
             return error(at, bad);
         }
-        if (const auto d = c.find<std::vector<f64>>(at + ".duration"); d && d->size() == 2 && (*d)[0] > 0.0 &&
-                                                                      (*d)[0] <= (*d)[1])
+        if (const auto d = c.find<std::vector<f64>>(at + ".duration");
+            d && d->size() == 2 && (*d)[0] > 0.0 && (*d)[0] <= (*d)[1])
         {
             s.minHours = static_cast<f32>((*d)[0]);
             s.maxHours = static_cast<f32>((*d)[1]);
@@ -175,7 +175,8 @@ Result<Weather> Weather::load(const asset::Vfs& vfs, std::string_view path)
     {
         return bytes.error();
     }
-    return parse(std::string_view(reinterpret_cast<const char*>(bytes.value().data()), bytes.value().size()), path);
+    return parse(std::string_view(reinterpret_cast<const char*>(bytes.value().data()), bytes.value().size()),
+                 path);
 }
 
 Weather Weather::fallback()
@@ -189,7 +190,8 @@ Weather Weather::fallback()
 
 const WeatherState* Weather::find(std::string_view name) const
 {
-    const auto it = std::find_if(m_states.begin(), m_states.end(), [&](const WeatherState& s) { return s.name == name; });
+    const auto it =
+        std::find_if(m_states.begin(), m_states.end(), [&](const WeatherState& s) { return s.name == name; });
     return it == m_states.end() ? nullptr : &*it;
 }
 
@@ -327,8 +329,7 @@ void Weather::apply(DaySample& day, f64 clock) const
     e.ambientGround *= s.ambient;
     e.fogDensity *= s.fog;
     // Clouds: sky and fog turn grey (keeping their brightness), moon and stars vanish.
-    const auto grey = [](const Vec3& c, f32 amount)
-    { return glm::mix(c, Vec3(glm::dot(c, kLuma)), amount); };
+    const auto grey = [](const Vec3& c, f32 amount) { return glm::mix(c, Vec3(glm::dot(c, kLuma)), amount); };
     day.sky.zenith = grey(day.sky.zenith, 0.8f * s.clouds);
     e.fogColor = grey(e.fogColor, 0.6f * s.clouds);
     day.sky.moon *= 1.0f - s.clouds;
@@ -341,8 +342,13 @@ void Weather::apply(DaySample& day, f64 clock) const
 
 WeatherSnapshot Weather::snapshot() const
 {
-    return {m_states[m_current].name, m_states[m_previous].name, m_changeMinute, m_changeFade, m_nextMinute,
-            m_random, m_locked};
+    return {m_states[m_current].name,
+            m_states[m_previous].name,
+            m_changeMinute,
+            m_changeFade,
+            m_nextMinute,
+            m_random,
+            m_locked};
 }
 
 bool Weather::restore(const WeatherSnapshot& snapshot)

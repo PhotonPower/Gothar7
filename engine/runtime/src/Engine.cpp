@@ -492,6 +492,7 @@ bool Engine::runFrame()
         const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
         m_triggers.update(m_scene, std::span(&probe, 1));
         m_gameTime.advance(m_fixedStep.step()); // global: keeps running across level changes
+        updateWeather();
         ++m_simTicks;
         if (m_pendingWorldChange)
         {
@@ -1629,6 +1630,23 @@ void Engine::initEnvironment()
     m_environment.fogDensity = static_cast<f32>(
         m_config.settings.get<f64>("render.fog_density", render::fogDensityFor(0.9f, 300.0f, 30.0f)));
     m_fogBaseDensity = m_environment.fogDensity;
+    // Weather (M17 E1): states and schedule from data; without the file always clear.
+    const std::string weatherPath = m_config.settings.get<std::string>("time.weather", "data/weather.toml");
+    if (auto weather = world::Weather::load(m_vfs, weatherPath))
+    {
+        m_weather = std::move(weather).value();
+        G7_LOG_INFO("engine", "weather from {} ({} states)", weatherPath, m_weather.states().size());
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "no weather ({}), always clear", weather.error().message);
+        m_weather = world::Weather::fallback();
+    }
+    m_weather.start(m_gameTime.clock(), m_config.randomSeed.value_or(0x5eed));
+    if (!m_config.weather.empty() && !m_weather.set(m_config.weather, m_gameTime.clock(), 0.0))
+    {
+        G7_LOG_WARN("engine", "--weather={}: no such state in {}", m_config.weather, weatherPath);
+    }
     updateEnvironment();
 }
 
@@ -1677,10 +1695,25 @@ std::vector<render::PointLight> Engine::daylightLights() const
     return out;
 }
 
+void Engine::updateWeather()
+{
+    // M17 E1: no change during a dialogue (decision 4); the scripts hear of each change.
+    for (const auto& [from, to] : m_weather.update(m_gameTime.clock(), inDialog()))
+    {
+        G7_LOG_INFO("engine", "weather: {} -> {}", from, to);
+        if (m_scripts)
+        {
+            const script::Value args[] = {from, to};
+            m_scripts->emit("weather_changed", args);
+        }
+    }
+}
+
 void Engine::updateEnvironment()
 {
     const f32 fogStart = m_environment.fogStart;
-    const world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
+    world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
+    m_weather.apply(sample, m_gameTime.clock());       // M17 E1: clouds, rain and fog over the time of day
     m_bloomSettings.threshold = sample.bloomThreshold; // M17 P1: by the time of day
     m_bloomSettings.intensity = sample.bloomIntensity;
     m_environment = sample.environment;
