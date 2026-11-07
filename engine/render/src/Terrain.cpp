@@ -1,3 +1,4 @@
+#include <g7/core/Profiler.hpp>
 #include <g7/render/Camera.hpp>
 #include <g7/render/Device.hpp>
 #include <g7/render/Lighting.hpp>
@@ -409,6 +410,7 @@ void TerrainRenderer::drawDepth(Device& device, const Camera& camera)
 
 void TerrainRenderer::draw(Device& device, const Camera& camera, const LightList* lights)
 {
+    G7_PROFILE_SCOPE("render::terrain");
     m_drawn = 0;
     if (m_chunks.empty())
     {

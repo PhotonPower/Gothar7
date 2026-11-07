@@ -5,6 +5,7 @@
 #include "PlayerFigure.hpp"
 
 #include <g7/core/Log.hpp>
+#include <g7/core/Profiler.hpp>
 #include <g7/gameplay/Movement.hpp>
 #include <g7/runtime/Engine.hpp>
 
@@ -217,6 +218,7 @@ f32 Engine::creatureYaw(u32 id) const noexcept
 
 void Engine::fixedUpdateCreatures(f32 seconds)
 {
+    G7_PROFILE_SCOPE("creatures (ai, animation)");
     // By index: a script state may insert NPCs while this runs (they move next step).
     const usize creatureCount = m_creatures.size();
     for (usize index = 0; index < creatureCount; ++index)
@@ -368,6 +370,7 @@ void Engine::fixedUpdateCreatures(f32 seconds)
 
 void Engine::drawCreatures(bool shadow, u32 cascade)
 {
+    G7_PROFILE_SCOPE("render::figures");
     const f32 alpha = static_cast<f32>(m_fixedStep.alpha());
     // Only figures near and in view (main pass) or in the cascade's light volume and nearer (shadows).
     const Frustum volume =

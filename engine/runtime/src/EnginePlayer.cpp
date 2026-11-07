@@ -4,6 +4,7 @@
 #include "PlayerFigure.hpp"
 
 #include <g7/core/Log.hpp>
+#include <g7/core/Profiler.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/world/StartPoints.hpp>
 
@@ -257,6 +258,7 @@ void Engine::updatePlayerInput(bool allowMouse, bool allowKeyboard)
 
 void Engine::fixedUpdatePlayer(f32 seconds)
 {
+    G7_PROFILE_SCOPE("player");
     if (!m_player.valid())
     {
         return;

@@ -4,6 +4,7 @@
 // engine.toml [audio].
 
 #include <g7/core/Log.hpp>
+#include <g7/core/Profiler.hpp>
 #include <g7/physics/Physics.hpp>
 #include <g7/runtime/Engine.hpp>
 
@@ -148,6 +149,7 @@ void Engine::initAudio()
 
 void Engine::updateAudio(f64 realSeconds)
 {
+    G7_PROFILE_SCOPE("audio");
     if (!m_audio)
     {
         return;

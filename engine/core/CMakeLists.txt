@@ -46,3 +46,11 @@ target_compile_definitions(g7_core PUBLIC
 
 # G7_PROFILE_* macros are active only with G7_PROFILING=ON (see Profiler.hpp).
 target_compile_definitions(g7_core PUBLIC G7_PROFILING=$<BOOL:${G7_PROFILING}>)
+
+# Tracy (ADR 0024): only with G7_PROFILING and G7_TRACY (preset profile, vcpkg feature "profiling"). The
+# G7_PROFILE_* macros then report to Tracy too; on-demand: it measures only while a viewer is connected.
+if(G7_PROFILING AND G7_TRACY)
+    find_package(Tracy CONFIG REQUIRED)
+    target_link_libraries(g7_core PUBLIC Tracy::TracyClient)
+    target_compile_definitions(g7_core PUBLIC G7_TRACY=1)
+endif()

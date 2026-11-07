@@ -9,6 +9,7 @@
 #include "PlayerFigure.hpp"
 
 #include <g7/core/Log.hpp>
+#include <g7/core/Profiler.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
 #include <g7/runtime/CombatInput.hpp>
@@ -425,6 +426,7 @@ void Engine::playReaction(Combatant& c, std::string_view clip)
 
 void Engine::fixedUpdateCombat(f32 seconds)
 {
+    G7_PROFILE_SCOPE("combat");
     std::vector<u32> ids;
     if (m_player.valid() && m_hero)
     {

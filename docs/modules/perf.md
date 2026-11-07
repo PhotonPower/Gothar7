@@ -1,6 +1,6 @@
 # perf – Plan M17 (Profiling, Budgets, Job-System)
 
-Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). Kein Code in diesem PR.
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). **Teil A umgesetzt:** Tracy 0.14 im Preset `profile` (ADR 0024 angenommen), Zonen je System (Spieler, Kreaturen, KI, Wahrnehmung, Wege, Animation, Kampf, Mobs, Skripte, Physik, Audio, UI, Culling, Schatten je Kaskade, Gelände, Figuren, Post, Welt laden), GPU-Zonen je Durchgang über `PassTimes`, Thread-Name der Asset-Arbeiter. Benutzen: `cmake --preset profile && cmake --build --preset profile`, `build/profile/game/gothar`, dann den Tracy-Viewer 0.14 (separat, nicht im Repo) verbinden; ohne Viewer misst Tracy nicht (on-demand).
 Ziel (Meilenstein D): Release-Build stabil ≥ 60 FPS in der größten Welt (Leonberg) auf Zielhardware. Erst messen, dann
 parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummeriert.
 
@@ -21,7 +21,7 @@ parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummerie
   „Vorgeschlagen“ im Teil-A-PR und wird vor der Umsetzung bestätigt.
 - **Nur mit `G7_PROFILING=ON`** (eigenes Preset `profile`: Release mit Symbolen und Tracy). Normale Builds und das Paket
   bleiben ohne Tracy; die Makros sind dort leer wie heute (Entscheidung 2).
-- **Abbildung:** `G7_PROFILE_SCOPE` → `ZoneScopedN`, `G7_PROFILE_FRAME` → `FrameMark`, Thread-Namen für
+- **Abbildung:** `G7_PROFILE_SCOPE` → `ZoneNamedN`, `G7_PROFILE_FRAME` → `FrameMark`, Thread-Namen für
   Job-Arbeiter. GPU-Zonen (`TracyOpenGL`) in `render` für Schatten, Hauptpass, Post. Speicher-Zonen nur auf Wunsch.
 - **Eingebauter Sammler bleibt** für das Overlay (F1) und für Tests ohne Tracy.
 - **Zonen ergänzen** (je System eine bis drei): Physik-Schritt, Spieler, KI (Routinen, Wahrnehmung, Wege), Animation
