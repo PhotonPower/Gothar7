@@ -122,3 +122,26 @@ def test_format_and_assembler():
     assert set(v["components"]) == {"water"} and len(v["components"]["water"]["halfExtents"]) == 3
     again = assemble(terrain, {"entries": []}, res.world, ids, "t", water=index)
     assert again.added == 0 and again.updated == 0
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_river_boxes_flow_downstream_along_their_local_x(reverse: bool):
+    """world.md water.kind: a river flows along its boxes' local +X, downstream, whichever way
+    the OSM line runs; lakes are ponds."""
+    features = [dict(f) for f in FEATURES]
+    if reverse:  # the line drawn uphill
+        features[0], features[1] = (
+            {**features[1], "points": features[1]["points"][::-1]},
+            {**features[0], "points": features[0]["points"][::-1]},
+        )
+    _, index = carve_and_place(GRID, features, DOC)
+    river = [e for e in index["entries"] if e["id"].startswith("bach_")]
+    assert river and all(e["kind"] == "river" for e in river)
+    for e in river:
+        yaw = 2 * math.atan2(e["rot"][1], e["rot"][3])
+        assert math.cos(yaw) > 0.5  # +X towards +x: the ground falls to the east
+    assert {e["kind"] for e in index["entries"] if e["id"].startswith("teich_")} == {"pond"}
+    terrain = {"version": 1, "name": "t", "terrain": {"version": 1}}
+    res = assemble(terrain, {"entries": []}, None, VobIds({}, 1), "t", water=index)
+    kinds = {v["components"]["water"]["kind"] for v in res.world["vobs"] if v["type"] == "water"}
+    assert kinds == {"river", "pond"}

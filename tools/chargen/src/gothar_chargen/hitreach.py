@@ -100,3 +100,51 @@ def blade_paths(set_glb: Path, mode: str, length: float) -> dict[str, BladePath]
             per_socket.append(origin[:, None, :] + axis[:, None, :] * along[None, :, None])
         out[animation["name"]] = BladePath(animation["name"], np.stack(per_socket, axis=1))
     return out
+
+
+GROUND = 0.04  # m above its lowest point a foot counts as standing
+FEET = ("foot_l", "foot_r", "ball_l", "ball_r")
+
+
+def planted_slide(set_glb: Path) -> dict[str, float]:
+    """Mean metres the feet (ankles and balls) move horizontally while they stand, per clip (F4:
+    attacks step instead of sliding, recipe ``plant``)."""
+    gltf = Gltf.load(set_glb)
+    names = {n.get("name"): i for i, n in enumerate(gltf.doc["nodes"])}
+    out = {}
+    for animation in gltf.doc.get("animations", []):
+        t = np.arange(int(round(duration(gltf, animation) * FPS)) + 1) / FPS
+        global_of = global_matrices(gltf, animation, t)
+        total = 0.0
+        for foot in FEET:
+            p = global_of(names[foot])[:, :3, 3]
+            ground = p[:, 1] <= p[:, 1].min() + GROUND
+            moved = np.linalg.norm(np.diff(p[:, [0, 2]], axis=0), axis=1)
+            total += float(moved[ground[:-1] & ground[1:]].sum())
+        out[animation["name"]] = total / len(FEET)
+    return out
+
+
+def turning_slide(set_glb: Path, yaw: float = 180.0) -> dict[str, float]:
+    """``planted_slide`` of the turning clips (``*/t_turn_l|r``) in world space: the engine turns
+    the figure at ``yaw`` degrees per second while they play (movement.toml [turn])."""
+    gltf = Gltf.load(set_glb)
+    names = {n.get("name"): i for i, n in enumerate(gltf.doc["nodes"])}
+    out = {}
+    for animation in gltf.doc.get("animations", []):
+        name = str(animation["name"])
+        if "/t_turn_" not in name:
+            continue
+        t = np.arange(int(round(duration(gltf, animation) * FPS)) + 1) / FPS
+        global_of = global_matrices(gltf, animation, t)
+        angle = np.radians(yaw if name.endswith("_l") else -yaw) * t  # about +Y (glTF up)
+        c, s = np.cos(angle), np.sin(angle)
+        total = 0.0
+        for foot in FEET:
+            p = global_of(names[foot])[:, :3, 3]
+            world = np.stack([c * p[:, 0] + s * p[:, 2], -s * p[:, 0] + c * p[:, 2]], axis=1)
+            ground = p[:, 1] <= p[:, 1].min() + GROUND
+            moved = np.linalg.norm(np.diff(world, axis=0), axis=1)
+            total += float(moved[ground[:-1] & ground[1:]].sum())
+        out[name] = total / len(FEET)
+    return out

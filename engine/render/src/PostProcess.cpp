@@ -105,6 +105,16 @@ Result<PostProcess> PostProcess::create(Device& device, ShaderLibrary& shaders)
         return sampler.error();
     }
     post.m_sampler = std::move(sampler).value();
+    rhi::SamplerDesc bloomDesc; // the half-size glow, smoothly up to the window size
+    bloomDesc.minFilter = bloomDesc.magFilter = rhi::Filter::Linear;
+    bloomDesc.mipFilter = rhi::Filter::Nearest;
+    bloomDesc.wrapU = bloomDesc.wrapV = rhi::Wrap::Clamp;
+    auto bloomSampler = device.createSampler(bloomDesc);
+    if (!bloomSampler)
+    {
+        return bloomSampler.error();
+    }
+    post.m_bloomSampler = std::move(bloomSampler).value();
     return post;
 }
 
@@ -114,8 +124,27 @@ void PostProcess::apply(Device& device, const SceneTarget& scene, u32 width, u32
     device.setViewport(0, 0, width, height);
     m_program->setUniform("uExposure", settings.exposure);
     m_program->setUniform("uTonemapper", static_cast<i32>(settings.tonemapper));
+    const bool bloom = settings.bloom != nullptr && settings.bloomIntensity > 0.0f;
+    m_program->setUniform("uBloomIntensity", bloom ? settings.bloomIntensity : 0.0f);
+    m_program->setUniform("uGrade", settings.grading ? 1 : 0);
+    if (settings.grading)
+    {
+        const Grading& g = *settings.grading;
+        m_program->setUniform("uTemperature", g.temperature);
+        m_program->setUniform("uTint", g.tint);
+        m_program->setUniform("uSaturation", g.saturation);
+        m_program->setUniform("uContrast", g.contrast);
+        m_program->setUniform("uLift", g.lift);
+        m_program->setUniform("uGamma", g.gamma);
+        m_program->setUniform("uGain", g.gain);
+        m_program->setUniform("uVignette", g.vignette);
+    }
     device.bindPipeline(m_pipeline);
     device.bindTexture(0, scene.color(), m_sampler);
+    if (bloom)
+    {
+        device.bindTexture(1, *settings.bloom, m_bloomSampler);
+    }
     device.draw(3); // fullscreen triangle
 }
 } // namespace g7::render

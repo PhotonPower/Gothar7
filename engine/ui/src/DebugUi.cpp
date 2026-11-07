@@ -848,6 +848,10 @@ void DebugUi::enginePanel(EnginePanel& panel)
         ImGui::Text("%u draws   %.1fk triangles", panel.frame.drawCalls, panel.frame.triangles / 1000.0f);
         ImGui::Text("%u pipeline changes   %u texture binds", panel.frame.pipelineChanges,
                     panel.frame.textureBinds);
+        for (const auto& [name, ms] : panel.passTimes) // GPU time per pass (M17)
+        {
+            ImGui::Text("GPU %-8s %.2f ms", name.c_str(), static_cast<double>(ms));
+        }
         ImGui::Text("%u x %u px   %llu ticks", panel.width, panel.height,
                     static_cast<unsigned long long>(panel.simulationTicks));
     }

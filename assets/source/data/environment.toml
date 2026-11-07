@@ -6,6 +6,11 @@
 #   fog_color         Nebel und Horizont des Himmels (gleich, damit Fernes in den Himmel übergeht)
 #   fog_density       Faktor auf [render] fog_density (Morgendunst > 1)
 #   sky_zenith        Himmel senkrecht oben; stars 0..1
+#   bloom_threshold   M17: Helligkeit (linear, HDR), ab der etwas glüht (Vorgabe 1.0)
+#   bloom_intensity   M17: wie stark (Vorgabe 0.12; Entscheidung 1 des Projektinhabers: dezent, nachts 0.2)
+#   grading_*         M17 P2, Farbkorrektur (Entscheidung 2): temperature -1 kühl .. +1 warm, tint -1 grün .. +1
+#                     magenta, saturation (1 = unverändert), contrast (1 = unverändert, um Mittelgrau), lift/gamma/gain
+#                     [r, g, b] auf die Anzeigefarbe; vignette 0..1 (Vorgabe 0.15, Entscheidung 4)
 version = 1
 
 [indoor]              # Räume (Zonen vom Typ indoor, world.md „Zonen“): Umgebungslicht drinnen = Faktor mal draußen,
@@ -17,12 +22,26 @@ sunset = 18.5
 noon_elevation = 55.0 # Grad über dem Südhorizont
 moon_elevation = 40.0 # Grad, um Mitternacht
 
-# Reserviert (M17): Überschreibungen je Zone bzw. Welt, z. B. [zone.hoehle] mit eigenen [[zone.hoehle.key]].
-# Noch ohne Wirkung.
-[zone]
+# Farbkorrektur je Zone (M17 P2, Entscheidung 3 des Projektinhabers): [zone.<wert>] überschreibt die Werte der
+# Tageszeit; <wert> ist der Wert einer Zone der Welt (ambient, music oder ein indoor-Kennzeichen), „innen“ gilt für
+# jede indoor-Zone. Vorrang: indoor vor ambient vor music; Übergang 1,5 s.
+[zone.innen]          # Innenräume: warm (Kerzen-, Herdlicht), mehr Kontrast, dunklere Ecken (Entscheidung 4)
+grading_temperature = 0.15
+grading_contrast = 1.08
+vignette = 0.3
+
+[zone.kirche]         # Kirche: kühl und heller (braucht eine ambient-Zone „kirche“ der Welt-Spur)
+grading_temperature = -0.12
+grading_gamma = [1.06, 1.06, 1.08]
+
+[zone.wald]           # Wald (Testlager, Leonberger Wald): leicht grün
+grading_tint = -0.15
+grading_saturation = 1.05
 
 [[key]] # Mitternacht
 hour = 0.0
+grading_temperature = -0.25
+grading_saturation = 0.7
 sun_intensity = 0.0
 moon_color = [0.55, 0.65, 0.95]
 moon_intensity = 0.35
@@ -32,9 +51,12 @@ fog_color = [0.04, 0.045, 0.07]
 fog_density = 0.8
 sky_zenith = [0.012, 0.015, 0.035]
 stars = 1.0
+bloom_intensity = 0.2
 
 [[key]] # Morgengrauen
 hour = 4.75
+grading_temperature = -0.1
+grading_saturation = 0.85
 sun_intensity = 0.0
 moon_color = [0.6, 0.65, 0.9]
 moon_intensity = 0.25
@@ -47,6 +69,9 @@ stars = 0.5
 
 [[key]] # Sonnenaufgang
 hour = 6.25
+grading_temperature = 0.08
+grading_saturation = 0.9
+grading_gain = [1.02, 1.0, 0.96]
 sun_color = [1.0, 0.55, 0.35]
 sun_intensity = 1.2
 ambient_sky = [0.34, 0.30, 0.36]
@@ -58,6 +83,7 @@ stars = 0.0
 
 [[key]] # Vormittag
 hour = 8.5
+grading_temperature = 0.03
 sun_color = [1.0, 0.86, 0.72]
 sun_intensity = 1.7
 ambient_sky = [0.45, 0.50, 0.60]
@@ -78,6 +104,7 @@ sky_zenith = [0.25, 0.42, 0.72]
 
 [[key]] # Nachmittag
 hour = 16.5
+grading_temperature = 0.05
 sun_color = [1.0, 0.86, 0.66]
 sun_intensity = 1.7
 ambient_sky = [0.46, 0.47, 0.54]
@@ -88,6 +115,9 @@ sky_zenith = [0.27, 0.38, 0.62]
 
 [[key]] # Sonnenuntergang
 hour = 18.75
+grading_temperature = 0.3
+grading_contrast = 1.1
+grading_saturation = 1.05
 sun_color = [1.0, 0.5, 0.28]
 sun_intensity = 1.2
 ambient_sky = [0.32, 0.26, 0.30]
@@ -98,6 +128,8 @@ sky_zenith = [0.15, 0.17, 0.32]
 
 [[key]] # Abenddämmerung
 hour = 20.25
+grading_temperature = -0.2
+grading_saturation = 0.75
 sun_intensity = 0.0
 moon_color = [0.55, 0.62, 0.9]
 moon_intensity = 0.25
@@ -107,3 +139,4 @@ fog_color = [0.15, 0.11, 0.15]
 fog_density = 0.9
 sky_zenith = [0.04, 0.05, 0.10]
 stars = 0.6
+bloom_intensity = 0.2

@@ -8,12 +8,15 @@
 #include <g7/walk/Autopilot.hpp>
 
 #include <algorithm>
+#include <cctype>
 #include <charconv>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <format>
 #include <limits>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <system_error>
 #include <vector>
@@ -56,6 +59,10 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --walk=<route.json>     autopilot: the player runs the route, then the game exits (with --world)
   --walk-out=<dir>        where the autopilot writes walk.jsonl, walk_summary.json and screenshots
   --script-api=<file.md>  write the Lua API reference (docs/script-api.md) and exit, headless
+  --set key=value         override a setting of engine.toml for this run (repeatable), e.g.
+                          --set render.bloom=false; the value is TOML (true, 0.5, "text"; plain words are text)
+  --no-user-config        neither read nor write the user config (%APPDATA%\Gothar\Gothar\config.toml):
+                          test runs and screenshots leave it alone
 
 Details: docs/05-build.md
 )";
@@ -88,7 +95,36 @@ struct CommandLine
     std::optional<g7::u64> maxFps;
     g7::StartView view;
     std::string scriptApi;
+    g7::Config overrides; ///< --set key=value
+    bool noUserConfig = false;
 };
+
+/// One --set: `key=value` as a TOML line ("render.bloom = false"); a value TOML does not read becomes a
+/// string.
+g7::Result<g7::Config> parseSetting(std::string_view setting)
+{
+    const auto equals = setting.find('=');
+    const std::string_view key = setting.substr(0, equals);
+    const bool keyOk =
+        !key.empty() &&
+        std::ranges::all_of(key, [](char c)
+                            { return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '.'; });
+    if (equals == std::string_view::npos || !keyOk)
+    {
+        return g7::Error{std::format("--set needs key=value (e.g. render.bloom=false), not '{}'", setting)};
+    }
+    const std::string_view value = setting.substr(equals + 1);
+    if (auto parsed = g7::Config::parse(std::format("{} = {}\n", key, value), "--set"))
+    {
+        return parsed;
+    }
+    std::string quoted;
+    for (const char c : value)
+    {
+        quoted += c == '"' || c == '\\' ? std::string("\\") + c : std::string(1, c);
+    }
+    return g7::Config::parse(std::format("{} = \"{}\"\n", key, quoted), "--set");
+}
 
 std::optional<CommandLine> parseCommandLine(int argc, char** argv)
 {
@@ -225,6 +261,31 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
             }
             cli.maxFps = fps;
         }
+        else if (arg == "--no-user-config")
+        {
+            cli.noUserConfig = true;
+        }
+        else if (arg == "--set" || arg.starts_with("--set="))
+        {
+            std::string_view setting = arg.substr(arg == "--set" ? 5 : 6);
+            if (arg == "--set")
+            {
+                if (i + 1 >= argc)
+                {
+                    G7_LOG_FATAL("game", "--set needs key=value");
+                    return std::nullopt;
+                }
+                setting = argv[++i];
+            }
+            auto parsed = parseSetting(setting);
+            if (!parsed)
+            {
+                G7_LOG_FATAL("game", "{}", parsed.error().message);
+                return std::nullopt;
+            }
+            cli.overrides.merge(parsed.value());
+            G7_LOG_INFO("game", "--set {}", setting);
+        }
         else if (arg.starts_with("--frames="))
         {
             const std::string_view value = arg.substr(9);
@@ -275,8 +336,9 @@ void setupDirectories(const char* argv0)
     G7_LOG_DEBUG("game", "user directory: {}", g7::fs::toUtf8(userDir));
 }
 
-/// Default config shipped with the game, overridden key by key by the user config.
-g7::Config loadSettings(g7::Config& shipped)
+/// Default config shipped with the game, overridden key by key by the user config (unless `noUserConfig`) and
+/// then by --set.
+g7::Config loadSettings(g7::Config& shipped, bool noUserConfig, const g7::Config& overrides)
 {
     g7::Config settings;
     if (auto defaults = g7::Config::load(g7::fs::gamePath("config/engine.toml")))
@@ -291,7 +353,7 @@ g7::Config loadSettings(g7::Config& shipped)
     }
 
     const g7::fs::Path userConfig = g7::fs::userPath("config.toml");
-    if (g7::fs::exists(userConfig))
+    if (!noUserConfig && g7::fs::exists(userConfig))
     {
         if (auto user = g7::Config::load(userConfig))
         {
@@ -303,6 +365,7 @@ g7::Config loadSettings(g7::Config& shipped)
             G7_LOG_WARN("game", "user config ignored: {}", user.error().message);
         }
     }
+    settings.merge(overrides);
     return settings;
 }
 
@@ -328,8 +391,11 @@ int main(int argc, char** argv)
 
     g7::EngineConfig config;
     config.appName = "Gothar";
-    config.settings = loadSettings(config.defaultSettings);
-    config.userConfig = g7::fs::userPath("config.toml"); // the options write here (M14 part F)
+    config.settings = loadSettings(config.defaultSettings, cli->noUserConfig, cli->overrides);
+    if (!cli->noUserConfig)
+    {
+        config.userConfig = g7::fs::userPath("config.toml"); // the options write here (M14 part F)
+    }
 
     config.window.title = "Gothar";
     config.window.size.width = toDimension(config.settings.get<g7::i64>("window.width", 1600), 1600);
