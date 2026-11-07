@@ -174,7 +174,8 @@ set_tests_properties(walk PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
 if(TARGET gothar)
     foreach(_case IN ITEMS "help|--help|0|--world=" "unknown|--bogus|nonzero|unknown argument '--bogus'"
                           "set_bad|--set=render.bloom|nonzero|--set needs key=value"
-                          "set|--set=render.bloom=false,--set,ui.language=en,--no-user-config,--smoke-test|0|--set ui.language=en")
+                          "set|--set=render.bloom=false,--set,ui.language=en,--no-user-config,--smoke-test,--crash-dir=${CMAKE_CURRENT_BINARY_DIR}/crash_reports|0|--set ui.language=en"
+                          "version|--version|0|Gothar ")
         string(REPLACE "|" ";" _parts "${_case}")
         list(GET _parts 0 _name)
         list(GET _parts 1 _arg)
@@ -192,3 +193,12 @@ if(TARGET gothar)
                      "-DDOC=${PROJECT_SOURCE_DIR}/docs/script-api.md" -P "${CMAKE_CURRENT_SOURCE_DIR}/game/check_script_api.cmake")
     set_tests_properties(game.script_api PROPERTIES TIMEOUT 120)
 endif()
+
+# Crash reports (M17, release.md part B): the tests start this probe as a process of its own, which crashes on
+# purpose - the test runner itself never crashes.
+add_executable(g7_crash_probe ${CMAKE_CURRENT_SOURCE_DIR}/crash_probe/main.cpp)
+target_link_libraries(g7_crash_probe PRIVATE g7::platform g7::core)
+g7_set_warnings(g7_crash_probe)
+set_target_properties(g7_crash_probe PROPERTIES FOLDER "tests")
+add_dependencies(g7_tests_platform g7_crash_probe)
+target_compile_definitions(g7_tests_platform PRIVATE G7_CRASH_PROBE="$<TARGET_FILE:g7_crash_probe>")

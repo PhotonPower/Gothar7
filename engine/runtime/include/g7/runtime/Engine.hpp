@@ -227,6 +227,9 @@ struct EngineConfig
     bool uiSample = false;
     /// Where the save slots are (M15 part D); empty: the user directory's "saves".
     fs::Path saveDirectory;
+    /// Where the crash reports are (release.md part B; main installs the handler): the main menu points out
+    /// new ones once. Empty: not looked at (tests).
+    fs::Path crashDirectory;
     /// Saves the last rendered frame as PNG (--screenshot=<file>), e.g. with --frames or --benchmark.
     fs::Path screenshot;
     platform::WindowDesc window; ///< Used unless headless.
@@ -1478,8 +1481,9 @@ private:
     bool m_restoringWorld = false; ///< loadWorld from a game state: world_loaded(world, true)
     MenuFlight m_menuFlight;
     f32 m_menuFlightTime = 0.0f;
-    usize m_optionsTab = 0;                  ///< the options open on this tab (Lua menu_open)
-    std::string m_menuCommand;               ///< chosen in a menu, run after the screens' update
+    usize m_optionsTab = 0;     ///< the options open on this tab (Lua menu_open)
+    std::string m_menuCommand;  ///< chosen in a menu, run after the screens' update
+    bool m_crashNotice = false; ///< new crash reports found at the start: the main menu offers to open them
     std::set<std::string> m_changedSettings; ///< option keys changed since the last save
     f64 m_gameUiReloadTimer = 0.0;
     std::string m_gameUiStamp;        // disk paths and times of the UI files (hot reload)
