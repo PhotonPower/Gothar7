@@ -246,3 +246,28 @@ TEST_CASE("Loading screen: world name and progress, not closed by the player")
     run(screen, back());
     CHECK_FALSE(screen.closed());
 }
+
+TEST_CASE("Menu: the main menu's footer (the version) bottom right; none without one")
+{
+    const std::vector<MenuEntry> entries{{"new_game", "UI_MENU_NEW_GAME", true}};
+    const auto footer = [](const MenuScreen& menu) -> const Label*
+    {
+        for (const auto& child : menu.root().children())
+        {
+            if (const auto* label = dynamic_cast<const Label*>(child.get());
+                label && label->role == "menu_note")
+            {
+                return label;
+            }
+        }
+        return nullptr;
+    };
+    const MenuScreen main(entries, {}, true, "0.3.0 (abc1234)");
+    const Label* note = footer(main);
+    REQUIRE(note != nullptr);
+    CHECK(note->text.value == "0.3.0 (abc1234)");
+    CHECK_FALSE(note->text.isKey);
+    CHECK(note->box.anchor == Anchor::BottomRight);
+    const MenuScreen pause(entries, {}, false);
+    CHECK(footer(pause) == nullptr);
+}

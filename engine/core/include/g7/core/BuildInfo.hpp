@@ -1,8 +1,8 @@
 #pragma once
 
 // Version and build info (M17, docs/modules/release.md part A): generated at every build from CMake's project
-// version and git (cmake/BuildInfo.cmake). Shown in the log, the main menu, `gothar --version`, save games and
-// crash reports.
+// version and git (cmake/BuildInfo.cmake). Shown in the log, the main menu, `gothar --version`, save games
+// and crash reports.
 
 #include <string>
 #include <string_view>

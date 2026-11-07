@@ -1,5 +1,6 @@
 // Main menu with the camera flight, pause menu, options and loading screen (M14 part F, docs/modules/ui.md).
 #include <g7/audio/Audio.hpp>
+#include <g7/core/BuildInfo.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
 #include <g7/platform/GlContext.hpp>
@@ -217,7 +218,9 @@ void Engine::openMenu(bool inGame)
     {
         actions.back = [this] { m_menuCommand = "resume"; };
     }
-    m_screens.push(std::make_unique<ui::MenuScreen>(std::move(entries), std::move(actions), !inGame));
+    // The main menu shows the version bottom right (release.md part A, decision 4).
+    m_screens.push(std::make_unique<ui::MenuScreen>(std::move(entries), std::move(actions), !inGame,
+                                                    inGame ? std::string() : versionText()));
 }
 
 void Engine::openPauseMenu()

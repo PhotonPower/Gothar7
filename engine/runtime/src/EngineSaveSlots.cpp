@@ -58,8 +58,7 @@ save::SaveMeta Engine::saveMeta(std::string_view slot) const
     meta.world = m_worldPath;
     meta.place = contentText(m_sceneName);
     meta.language = language();
-    meta.gameVersion =
-        versionText(); // "0.3.0 (abc1234)", release.md part A
+    meta.gameVersion = versionText(); // "0.3.0 (abc1234)", release.md part A
     meta.savedAtUtc =
         std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
             .count();
