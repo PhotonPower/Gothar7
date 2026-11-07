@@ -512,7 +512,7 @@ public:
 }
 ```
 
-## Plan M17: Wasser und Post-Processing (Vorschlag engine, 2026-11-07, wartet auf Freigabe)
+## Plan M17: Wasser und Post-Processing (freigegeben 2026-11-07)
 Auftrag des Projektinhabers (über den Koordinator): **Wasser** mit Reflexion und leichter Brechung für die Glems und
 den Teich, dazu ein Unterwasser-Effekt; **Post-Processing** mit Bloom, Farbkorrektur je Tageszeit und Zone und
 optional SSAO. Roadmap M17, Punkte „Wasser-Rendering“ und „Post-Processing“.
@@ -628,7 +628,7 @@ nicht das Budget angehoben (wie bei den Testgruppen).
   welt (Glems-Boxen bekommen `kind = "river"` und eine Drehung entlang des Flusslaufs), Vertragszeile in
   `docs/coordination.md` erst nach Zustimmung.
 
-### Fragen zum Spielgefühl (Vorschläge, rückbaubar)
+### Entscheidungen zum Spielgefühl (Projektinhaber, 2026-11-07: alle acht wie vorgeschlagen; rückbaubar in den Daten)
 1. **Bloom-Stärke:** dezent – nur Feuer, Fackeln, Zauber und die Sonne glühen; Schwelle bei Luminanz 1,0,
    Stärke 0,12 tags, 0,2 nachts. (Gothic hatte keinen Bloom; ein starker Bloom wirkt schnell „modern“.)
 2. **Farbstimmung je Tageszeit:** Morgen kühl-golden (leicht entsättigt), Mittag neutral, Abend warm-orange mit
@@ -641,10 +641,15 @@ nicht das Budget angehoben (wie bei den Testgruppen).
 7. **Unterwasser:** grün-blaue Tönung, dichte Sicht, leichte Wellenverzerrung, Ton gedämpft; Kaustik zunächst aus.
 8. **SSAO:** standardmäßig aus (kostet, Gothic-Look kommt ohne aus); an nur in der Stufe „hoch“.
 
-### Fragen an den Koordinator (technisch)
-- Reihenfolge P1 → P2 → W1 → W2 → W3 → P3 (Zeitmessung zuerst, weil alle Budgets davon abhängen)?
-- SSR statt planarer Spiegel (Begründung oben) – ok ohne ADR?
-- Tiefen-Vorpass erst mit P3 (oder früher, falls er sich schon in W1 lohnt)?
+### Technische Entscheidungen (Koordinator, 2026-11-07)
+- **Reihenfolge** P1 → P2 → W1 → W2 → W3 → P3 (Zeitmessung zuerst, weil alle Budgets davon abhängen).
+- **SSR ohne ADR:** Screen-Space-Reflexion braucht weder eine neue Bibliothek noch ein neues Backend; sie ist ein
+  Shader-Verfahren hinter der vorhandenen RHI und lässt sich abschalten bzw. ersetzen. Bezug zu den **spiegelnden
+  Fenstern** (Offene Fragen unten): Dieselbe SSR-Stufe kann später Glas-Materialien spiegeln (mit Reflexions-Proben
+  je Zone als Rückfall); erst echtes Raytracing bräuchte das Vulkan-Backend und dann eine ADR.
+- **Tiefen-Vorpass** erst mit P3, außer W1 misst einen klaren Gewinn.
+- **`water.kind`:** Der Vertrag (`river`/`pond`, Fluss entlang lokal +X) liegt bei welt zur Zustimmung. Bis dahin
+  gilt eine Box ohne `kind` als `river`, wenn ihr Name es zeigt (`WATER_GLEMS_*`), sonst als Vorgabe (stehend).
 
 ## Offene Fragen
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.

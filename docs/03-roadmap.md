@@ -345,10 +345,10 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 ## M17 – Atmosphäre, Performance, Release → Meilenstein D
 - [ ] Wetter: Regen (Partikel + nasse Oberflächen), Gewitter, Wind für Vegetation
 - [ ] Wasser-Rendering (Reflexion, Brechung light), Unterwasser-Effekt
-  - Plan (Teile W1–W3, Vorschlag 2026-11-07, wartet auf Freigabe): `docs/modules/render.md` „Plan M17: Wasser und Post-Processing“
+  - Plan (Teile W1–W3, freigegeben 2026-11-07): `docs/modules/render.md` „Plan M17: Wasser und Post-Processing“
 - [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
 - [ ] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional
-  - Plan (Teile P1–P3, Vorschlag 2026-11-07, wartet auf Freigabe): ebenda
+  - Plan (Teile P1–P3, freigegeben 2026-11-07): ebenda
 - [ ] Vegetation: Instancing, Wind-Animation, Grasfelder
 - [ ] Job-System, Multithreading für Animation/KI/Culling
 - [ ] Welt-Streaming in Zellen, Ladezeiten-Optimierung
