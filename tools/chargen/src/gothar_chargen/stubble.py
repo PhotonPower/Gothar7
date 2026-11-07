@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import struct
 import zlib
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -26,6 +27,29 @@ NEUTRAL_MEAN = 0.55  # texture contract §2.3: the palette colour is the mean
 SIZE = 512
 
 
+@dataclass(frozen=True)
+class BeardStyle:
+    """An own beard built like the stubble (F3, 2026-11-07): a shell over a zone of the face."""
+
+    part: str  # parts/hair_m_<head>/<part>.glb, material name and palette key
+    texture: str  # below textures/hair/
+    bands: tuple[float, float, float, float]  # share of hair pixels per band (0 = centre)
+    hair: int  # hair length in texture pixels (2 = stubble dots, longer = strands)
+    offset: float  # metres above the skin
+    zone: str  # "full" (the stubble zone), "sides" (cheeks and sideburns, chin free)
+
+
+STYLES = {
+    PART: BeardStyle(PART, TEXTURE, BAND_DENSITY, 2, 0.0008, "full"),
+    "beard_short": BeardStyle(
+        "beard_short", "beard_short_neutral.png", (0.85, 0.75, 0.58, 0.32), 9, 0.003, "full"
+    ),
+    "beard_mutton": BeardStyle(
+        "beard_mutton", "beard_short_neutral.png", (0.85, 0.75, 0.58, 0.32), 9, 0.003, "sides"
+    ),
+}
+
+
 def stubble_texture(size: int = SIZE, seed: int = 3) -> np.ndarray:
     """(size, size, 4) uint8 RGBA: 2x2 px hairs, alpha 255 or 0, grey with mean NEUTRAL_MEAN over
     the hair pixels. Image row 0 is the top (UV v = 1): band k covers v in [k/4, (k+1)/4), so the
@@ -37,6 +61,28 @@ def stubble_texture(size: int = SIZE, seed: int = 3) -> np.ndarray:
     hairs = rng.random((half, half)) < density
     alpha = np.kron(hairs, np.ones((2, 2), dtype=bool))
     lum = 1.0 + 0.15 * (rng.random((size, size)) - 0.5)
+    lum = np.clip(lum / lum[alpha].mean() * NEUTRAL_MEAN, 0.0, 1.0)
+    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    rgba[..., :3] = np.round(lum * 255)[..., None]
+    rgba[..., 3] = np.where(alpha, 255, 0)
+    return rgba
+
+
+def beard_texture(style: BeardStyle, size: int = SIZE, seed: int = 5) -> np.ndarray:
+    """Like stubble_texture, but the hairs are strands 2 px wide and ``style.hair`` px long (along
+    v), overlapping; the band densities are the share of covered pixels."""
+    if style.hair <= 2:
+        return stubble_texture(size)
+    rng = np.random.default_rng(seed)
+    rows = size // len(style.bands)
+    alpha = np.zeros((size, size), dtype=bool)
+    for k, density in enumerate(style.bands[::-1]):  # image rows from the top: band 3 first
+        band = np.zeros((rows, size), dtype=bool)
+        while band.mean() < density:
+            for yy, xx in zip(rng.integers(0, rows, 64), rng.integers(0, size, 64), strict=True):
+                band[yy : yy + style.hair, xx : xx + 2] = True
+        alpha[k * rows : (k + 1) * rows] = band
+    lum = 1.0 + 0.3 * (rng.random((size, size)) - 0.5)
     lum = np.clip(lum / lum[alpha].mean() * NEUTRAL_MEAN, 0.0, 1.0)
     rgba = np.zeros((size, size, 4), dtype=np.uint8)
     rgba[..., :3] = np.round(lum * 255)[..., None]
@@ -64,7 +110,7 @@ def png_bytes(rgba: np.ndarray) -> bytes:
     )
 
 
-def write_texture(path: Path) -> Path:
+def write_texture(path: Path, style: BeardStyle | None = None) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(png_bytes(stubble_texture()))
+    path.write_bytes(png_bytes(beard_texture(style or STYLES[PART])))
     return path

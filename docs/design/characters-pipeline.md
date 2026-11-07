@@ -343,6 +343,17 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   ein Material `beard` tragen, das beim Zusammenbau gewinnt. Die Dichte ist für die Nahansicht abgestimmt; engine
   erhält die Alpha-Bedeckung über die Mip-Stufen (Castaño). Ein eigener **Vollbart** ist zurückgestellt
   (Projektinhaber 2026-10-08: später mit besserer Technik).
+- **Kurzbart und Backenbart (eigene Arbeit, 2026-11-07, Auftrag Projektinhaber „Bärte für mehr Vielfalt“):**
+  `gothar-chargen stubble [köpfe] --style beard_short | beard_mutton` baut mit derselben Technik
+  (`stubble.STYLES`) eine dichtere Hülle 3 mm über der Haut: Textur `textures/hair/beard_short_neutral.png`
+  (Strähnen 2×9 px, Bänder 85 / 75 / 58 / 32 % Bedeckung). `beard_short` deckt die ganze Stoppelzone (alle 8
+  Männerköpfe), `beard_mutton` nur Wangen und Koteletten, Kinn und Mund frei (Köpfe farmer, old, rough, gaunt).
+  Material und Palettenschlüssel heißen wie das Teil.
+- **Neue Frisuren (2026-11-07, CC0, Kopf geprüft):** in den Kits `hair_<kopf>` zusätzlich `hair_bowl` (System-Asset
+  `short03`), `hair_layered` (`culturalibre_hair_06`), `hair_thatch` (`culturalibre_hair_05`), `hair_pageboy`
+  (System-Asset `bob01`). `faydaen_hair_1` (CC0) scheidet aus: Textur ohne Alpha. Damit elf neue Leonberger in
+  `figure_sets.toml` (citizen_m_5/6, citizen_f_4/5, craftsman_m_4/5, craftsman_f_3, merchant_m_5, farmer_m_5/6,
+  farmer_f_4).
 - **Haare/Bärte:** eigene Meshes, an Köpfe angepasst. **Frisur-Kits (F3v):** Rezept `humans/hair_<kopf>` mit
   `fit_to = "head_<kopf>"`, `parts = ["hair", "beard"]` und `[assets] hairs = [...]`, `beards = [...]` → je
   Stil ein Teil `parts/hair_<kopf>/hair_<stil>.glb` bzw. `beard_<stil>.glb` (Rollen `hair`, `beard` im Manifest;

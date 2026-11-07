@@ -13,6 +13,7 @@ hairs = [
     "hair/cortu_short_messy_hair/cortu_short_messy_hair.mhclo",
     "hair/short04/short04.mhclo",
     "hair/ponytail01/ponytail01.mhclo",
+    "hair/culturalibre_hair_05/culturalibre_hair_05.mhclo",
 ]
 beards = [
     "clothes/rehmanpolanski_beard_viking/rehmanpolanski_beard_viking.mhclo",
@@ -26,3 +27,4 @@ short04 = "hair_buzz"
 ponytail01 = "hair_ponytail"
 rehmanpolanski_beard_viking = "beard_goatee"
 rehmanpolanski_moustache_viking = "beard_moustache"
+culturalibre_hair_05 = "hair_thatch"
