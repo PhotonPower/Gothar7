@@ -1,7 +1,7 @@
 // Weather (M17 part E1, docs/design/wetter.md): states from weather.toml, a deterministic schedule, fades, locks,
 // the mood mixed into the time of day, snapshots for save games.
 
-#include <g7/core/Filesystem.hpp>
+#include <g7/core/FileSystem.hpp>
 #include <g7/world/DayCycle.hpp>
 #include <g7/world/Weather.hpp>
 
