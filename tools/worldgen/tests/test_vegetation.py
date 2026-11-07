@@ -66,3 +66,22 @@ def test_versioned_vegetation_is_current(tmp_path: Path):
         made = (tmp_path / "vegetation" / f"{name}.glb").read_bytes()
         assert made == (VEG_ASSETS / f"{name}.glb").read_bytes(), name
     assert not (VEG_ASSETS / "textures").exists()  # the shared folder (furniture/textures)
+
+
+def test_the_w6_vegetation_models_are_light_and_have_coarse_levels():
+    """W6 vegetation: the new models (woods, meadows, the formal garden, the banks)."""
+    from gothar_worldgen.vegetation import VEGETATION, crown_radius
+
+    budget = {"tree_spruce": 120, "tree_young": 500, "bush_scrub": 500, "hedge_box": 300,
+              "grass_patch": 320, "reed": 40, "forest_clump": 800}  # fmt: skip
+    for name, most in budget.items():
+        model = VEGETATION[name]()
+        assert model.triangles() <= most, name
+        if name != "reed":  # a single tuft: culled by its size
+            assert model.lods and model.lods[-1].triangles() * 2 <= model.triangles(), name
+        assert crown_radius(name) > 0
+    clump = VEGETATION["forest_clump"]()
+    trunks = [p for p in clump.main.collision if p.name.startswith("COL_HULL_TRUNK")]
+    assert len(trunks) == 7  # it collides at its trees' trunks only
+    hedge = VEGETATION["hedge_box"]()
+    assert [p.name for p in hedge.main.collision] == ["COL_HULL_HEDGE"]
