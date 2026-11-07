@@ -1,6 +1,6 @@
 # 0022 – Editor: Undo/Redo als Befehle mit JSON-Zuständen
 
-- **Status:** Vorgeschlagen (engine2, 2026-11-07)
+- **Status:** Angenommen (Projektinhaber, 2026-11-07)
 - **Datum:** 2026-11-07
 - **Phase:** M16 (Teil A, `docs/modules/editor.md`)
 
@@ -23,7 +23,7 @@ Ziel: einfach, testbar, byte-genaues Zurückstellen, keine neue Bibliothek.
 4. **Bibliothek** (z. B. ein Undo-Framework) – für C++ nichts Verbreitetes, das zu EnTT/unseren Formaten passt;
    neue Abhängigkeit.
 
-## Entscheidung (Vorschlag)
+## Entscheidung
 **Option 2**: `Command` mit `apply`/`revert` (und `merge` für Ziehschritte), der Zustand eines Befehls ist der
 JSON-Zustand des Betroffenen vorher und nachher (Vob mit Kindern, Wegnetz-Eintrag, Zone, Trigger); eigene
 Unterklassen nur dort, wo JSON nicht passt (Gelände-Pinsel: Rechteck der Höhen vorher/nachher). `History` mit

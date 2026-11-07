@@ -1,6 +1,6 @@
 # 0023 – Gelände im Editor und Import aus Blender
 
-- **Status:** Vorgeschlagen (engine2, 2026-11-07)
+- **Status:** Angenommen (Projektinhaber, 2026-11-07)
 - **Datum:** 2026-11-07
 - **Phase:** M16 (Teil F, `docs/modules/editor.md`)
 
@@ -20,7 +20,7 @@ und Bauwerke werden schon in Blender gebaut (`.glb` mit `COL_`-Knoten).
    die schnelle Heightfield-Kollision.
 4. **Fremdwerkzeug** (z. B. World Machine/Gaea): Lizenz und kein Weg zurück in die Engine ohne Exportschritt.
 
-## Entscheidung (Vorschlag)
+## Entscheidung
 **Option 1 plus Option 2:** Höhen-Pinsel im Editor für Feinarbeit, Mesh→Heightmap im Cooker für Großformen aus
 Blender. Beides schreibt das vorhandene Format (`terrain`-Block v1, `.r16`, Splat), kein neues. Welten mit
 `generator`-Kopf (Leonberg) sperren den Pinsel. Zusätzlich setzt ein `.glb`-Import leere Knoten

@@ -1,6 +1,7 @@
 # editor – Plan M16 (Editor und Werkzeuge)
 
-Stand: **Plan, zur Freigabe** (engine2, 2026-11-07). Grundlage ist der Editor-Modus aus M4 (`gothar --editor`,
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; ADR 0022 und 0023 angenommen, Fragen 1–8 wie vorgeschlagen
+entschieden). Grundlage ist der Editor-Modus aus M4 (`gothar --editor`,
 `tools/editor`, Beschreibung in `docs/modules/tools.md` „Editor“). M16 macht daraus ein Werkzeug, mit dem sich ein
 neuer Ort samt Wegnetz, Zonen und NPC-Routinen **ohne Texteditor** bauen lässt (DoD der Roadmap).
 
@@ -40,7 +41,7 @@ neuer Ort samt Wegnetz, Zonen und NPC-Routinen **ohne Texteditor** bauen lässt 
   - `EditContext` bündelt `world::Scene&`, den Wegnetz- und Zonen-Stand der Welt (`world::WorldFile`-Teile) und das
     Eigentum (`GeneratorHead`).
   - `class History { push(std::unique_ptr<Command>); undo(); redo(); bool canUndo/canRedo; usize savedAt; }`.
-    Die Tiefe ist begrenzt (`[editor] undo_depth`, Vorschlag 200).
+    Die Tiefe ist begrenzt (`[editor] undo_depth`, 200, Entscheidung 3).
   - Aufeinanderfolgende Gizmo-Ziehschritte desselben Vobs werden ein Eintrag (`merge`).
 - **Zustand je Befehl** (ADR 0022): Ein Befehl speichert vorher und nachher das, was er ändert, als JSON in der Form
   des Weltformats. Bei Vobs ist das `writeVobJson`/`parseVobJson` des Weltformats (wie das Welt-Delta der
@@ -133,7 +134,7 @@ neuer Ort samt Wegnetz, Zonen und NPC-Routinen **ohne Texteditor** bauen lässt 
     Namen), wo seine Routine es zu dieser Stunde hinstellt: Wegpunkt bzw. Freepoint seines Eintrags, mit Zustand.
   - Eine Liste nennt Routinen-Orte, die das Wegnetz nicht kennt, und Lücken oder Überschneidungen im Tagesplan.
   - Die Daten kommen aus den geladenen Skripten (`Routine`-Instanzen); die KI läuft dafür nicht.
-- **Routinen bearbeiten ohne Texteditor (DoD):** siehe Frage 4. Vorschlag:
+- **Routinen bearbeiten ohne Texteditor (DoD):** Entscheidung 4:
   - Ein Routinen-Fenster legt Einträge an (von, bis, Zustand aus der Liste, Ort per Klick auf Wegpunkt oder
     Freepoint).
   - Es schreibt eine **eigene Lua-Datei je Ort** (`game/scripts/routines/<ort>_editor.lua`, nur `Routine { … }`,
@@ -159,7 +160,7 @@ neuer Ort samt Wegnetz, Zonen und NPC-Routinen **ohne Texteditor** bauen lässt 
     (Frage 5).
   - Gedacht für Lagerfeuer mit Bänken, Marktstand mit Waren, Wachposten mit Freepoints.
   - Freepoints und Wegpunkte einer Vorlage kommen mit (umbenannt mit fortlaufender Nummer).
-- **Gelände** (ADR 0023, Vorschlag):
+- **Gelände** (ADR 0023):
   - Leonbergs Gelände kommt aus LGL-Daten über welt und wird im Editor **nicht** bearbeitet.
   - Für eigene Orte ein **einfacher Höhen-Pinsel** im Editor: anheben, senken, glätten, ebnen auf Höhe, Malen der
     Splat-Schichten. Er schreibt die `.r16`-Heightmap und Splat-Karten des `terrain`-Blocks.
@@ -192,40 +193,40 @@ A zuerst (alles hängt an den Befehlen), dann B und C (DoD), D, E, F. Je Teil ei
 | E | Routinen-Vorschau und -Bearbeitung, Play-in-Editor | groß |
 | F | Prefabs, Gelände-Pinsel, Mesh→Heightmap, `.glb`-Vob-Import | groß |
 
-ADR 0022 (Undo/Redo) gehört zu A, ADR 0023 (Gelände und Blender-Import) zu F. Neue Bibliotheken sind nicht nötig.
+ADR 0022 (Undo/Redo, angenommen) gehört zu A, ADR 0023 (Gelände und Blender-Import, angenommen) zu F. Neue Bibliotheken sind nicht nötig.
 
-## Fragen an den Projektinhaber (mit Vorschlag)
+## Entscheidungen des Projektinhabers (2026-11-07, alle wie vorgeschlagen)
 1. **Leonberg im Editor:**
    - Darf der Editor die Leonberg-Welt (gehört welt) überhaupt speichern?
-   - *Vorschlag:* ja, aber nur Eigenes (ohne `owner`, nicht in `generator.owned`) bleibt dauerhaft. Erzeugtes
+   - **Entschieden:** ja, aber nur Eigenes (ohne `owner`, nicht in `generator.owned`) bleibt dauerhaft. Erzeugtes
      ändern geht nur nach Bestätigung, der Speichern-Dialog fasst zusammen, was der nächste `assemble`
      überschreibt.
    - Größere Arbeiten an Leonberg bleiben bei welts Annotationen.
 2. **Erzeugte Wegpunkte löschen:**
    - Soll der Editor statt nur zu warnen gleich einen Eintrag in welts `tools/worldgen/data/<ort>/waynet.json`
      (`remove`) schreiben?
-   - *Vorschlag:* nein, das ist welts Datei. Der Editor zeigt den fertigen Eintrag zum Kopieren an, welt übernimmt
+   - **Entschieden:** nein, das ist welts Datei. Der Editor zeigt den fertigen Eintrag zum Kopieren an, welt übernimmt
      ihn.
 3. **Undo-Tiefe und -Umfang:**
-   - *Vorschlag:* 200 Schritte je Sitzung, nicht über Speichern und Neustart hinaus; Gelände-Pinsel als ein Schritt
+   - **Entschieden:** 200 Schritte je Sitzung, nicht über Speichern und Neustart hinaus; Gelände-Pinsel als ein Schritt
      je Strich.
 4. **Routinen ohne Texteditor:**
    - Wie sollen im Editor angelegte Routinen gespeichert werden?
-   - *Vorschlag:* eine eigene, vom Editor geschriebene Lua-Datei je Ort (`routines/<ort>_editor.lua`).
+   - **Entschieden:** eine eigene, vom Editor geschriebene Lua-Datei je Ort (`routines/<ort>_editor.lua`).
      Handgeschriebene Routinen bleiben unangetastet und werden nur angezeigt.
    - Alternative: eine Datendatei (TOML), die Lua liest. Sie wäre sauberer getrennt, ist aber eine weitere
      Formatstelle.
 5. **Prefabs:**
    - Kopien verknüpft (ändert man die Vorlage, ändern sich alle) oder lose?
-   - *Vorschlag:* lose, wie Gothics Spacer-Vorlagen. Verknüpfung kostet ein eigenes Format im Weltblock.
+   - **Entschieden:** lose, wie Gothics Spacer-Vorlagen. Verknüpfung kostet ein eigenes Format im Weltblock.
 6. **Gelände:**
-   - Höhen-Pinsel im Editor plus Mesh→Heightmap aus Blender (ADR 0023, Vorschlag), oder nur einer davon?
-   - *Vorschlag:* beides, der Pinsel für Feinarbeit, Blender für Großformen.
+   - Höhen-Pinsel im Editor plus Mesh→Heightmap aus Blender (ADR 0023), oder nur einer davon?
+   - **Entschieden:** beides, der Pinsel für Feinarbeit, Blender für Großformen.
    - Leonbergs Gelände bleibt beim Pinsel gesperrt.
 7. **Play-in-Editor:**
    - Startet die Simulation an der Kamera oder am Startpunkt der Welt?
-   - *Vorschlag:* an der Kamera (schneller zum Prüfen). Startpunkt ist eine zweite Taste (Umschalt+F5).
+   - **Entschieden:** an der Kamera (schneller zum Prüfen). Startpunkt ist eine zweite Taste (Umschalt+F5).
 8. **Routinen-Geister:**
    - Figur oder einfacher Marker?
-   - *Vorschlag:* einfacher Marker mit Namen und Zustand (billig, auch bei 60 NPCs). Die Figur nur für das
+   - **Entschieden:** einfacher Marker mit Namen und Zustand (billig, auch bei 60 NPCs). Die Figur nur für das
      ausgewählte NPC.
