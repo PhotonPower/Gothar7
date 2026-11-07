@@ -167,6 +167,15 @@ events = [
     +Y von `socket_hand_r`, CCD über Ober- und Unterarm, Warmstart aus dem Vorbild – stetige Lösung) und dreht sie wie
     die rechte. Fernkampf: `s_aim` (Schleife), `t_shoot` mit Event `release`, `t_reload`; Bogen-Posen per Gittersuche
     (Bogenarm gestreckt, Bogen aufrecht mit der Sehne zum Körper, Sehnenhand an der Wange, Köcher hinter der Schulter).
+  - **Mocap aus der CMU-Datenbank (F4, 2026-11-07, Projektinhaber):** `gothar-chargen cmu` liest die Original-ASF/AMC
+    von mocap.cs.cmu.edu (`DATA_ROOT/characters/cmu/raw`, nie im Repo; Lizenz und Takes in `assets/LICENSES.md`), schneidet
+    die Segmente aus `data/cmu.toml` (120 → 30 Bilder/s) und überträgt sie in Blender (`blender/cmu_retarget.py`) auf das
+    Referenz-Rig: Jeder zugeordnete Knochen bekommt die Weltdrehung des CMU-Knochens seit dessen Ruhepose (beide Rigs in
+    T-Pose, vorher auf die CMU-Knochenrichtung ausgerichtet; CMU-Achsen Y oben, +Z vorn → Blender Z oben, −Y vorn), das
+    Becken folgt der CMU-Hüfte (Beinlängen-Verhältnis, Knöchel auf Ruhehöhe), jedes Segment beginnt nach vorn gewandt über
+    dem Ursprung. Ergebnis `cmu_combat.blend` (Quelle `cmu`, Zuordnung `identity`). CMU hat keine Finger: Die Sätze
+    nehmen die Finger aus ihrer Haltung (`layer` mit den Fingerwurzeln). Danach wie gehabt `framed` und `plant`;
+    Fenster, Reichweite und Tierhöhe misst `hitreach`.
   - Feste Füße (F4, 2026-11-07): Rezept `plant` legt sich um jeden Angriff (`<name>_framed` als Hilfsclip, die Marker
     am äußeren Clip). Die Füße bleiben stehen; entfernt sich der Körper (Ausfallschritt, `root` vor) mehr als `threshold`
     (0,12 m, `step` Bilder vorausgeschaut) von einem Fuß, tritt dieser in `step` (6) Bildern mit `lift` (6 cm) Bogen

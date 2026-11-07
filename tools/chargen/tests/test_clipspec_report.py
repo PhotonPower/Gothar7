@@ -168,7 +168,11 @@ def test_weapon_sets_depend_on_none():
             "cbow": 11,
             "mag": 20,
         }.get(mode, 8)
-        layered = [c for c in spec.clips if c.op == "layer" and not c.name.endswith("/s_idle")]
+        layered = [  # locomotion layers (helpers: e.g. the fingers of the fist mocap, F4)
+            c
+            for c in spec.clips
+            if c.op == "layer" and not c.helper and not c.name.endswith("/s_idle")
+        ]
         assert len(layered) == 7
         assert all(c.bones == ("clavicle_l", "clavicle_r", "neck") for c in layered)
 
