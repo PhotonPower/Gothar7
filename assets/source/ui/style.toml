@@ -19,6 +19,7 @@ air = "#6aa8d8"
 # outline/shadow in UI units; shadow = a soft drop shadow down and to the right (subtitles: no outline, F6 review)
 body = { font = "fonts/alegreya.g7font", size = 24, color = "text" }
 small = { font = "fonts/alegreya.g7font", size = 19, color = "text_dim" }
+menu_note = { font = "fonts/alegreya.g7font", size = 16, color = "text_dim", outline = 1.0, outline_color = "shadow" } # the version under the main menu (M17)
 title = { font = "fonts/alegreya_sc.g7font", size = 38, color = "highlight", outline = 1.5, outline_color = "shadow" }
 subtitle = { font = "fonts/alegreya.g7font", size = 28, color = "text", shadow = 1.5, shadow_color = "shadow" }
 subtitle_name = { font = "fonts/alegreya_sc.g7font", size = 22, color = "highlight", shadow = 1.2, shadow_color = "shadow" }

@@ -10,7 +10,7 @@ namespace g7::ui
 {
 // --- Main and pause menu ---
 
-MenuScreen::MenuScreen(std::vector<MenuEntry> entries, Actions actions, bool title)
+MenuScreen::MenuScreen(std::vector<MenuEntry> entries, Actions actions, bool title, std::string footer)
     : m_entries(std::move(entries)), m_actions(std::move(actions))
 {
     if (title)
@@ -18,6 +18,12 @@ MenuScreen::MenuScreen(std::vector<MenuEntry> entries, Actions actions, bool tit
         Label& heading = root().add<Label>("menu_title", UiText::key("UI_MENU_TITLE"), Align::Center);
         heading.layoutKey = "menu.title";
         heading.box = {Anchor::Top, Vec2(0.0f, 120.0f), Vec2(1000.0f, 120.0f)};
+    }
+    if (!footer.empty())
+    {
+        Label& note = root().add<Label>("menu_note", UiText::literal(std::move(footer)), Align::Right);
+        note.layoutKey = "menu.footer";
+        note.box = {Anchor::BottomRight, Vec2(-24.0f, -16.0f), Vec2(600.0f, 30.0f)};
     }
     Panel& panel = root().add<Panel>("panel");
     panel.layoutKey = "menu.box";

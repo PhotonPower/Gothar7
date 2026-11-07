@@ -6,6 +6,7 @@
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/Procedural.hpp>
 #include <g7/audio/Audio.hpp>
+#include <g7/core/BuildInfo.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/Profiler.hpp>
@@ -83,8 +84,7 @@ Engine::~Engine()
 
 Result<void> Engine::init()
 {
-    G7_LOG_INFO("engine", "{} {}.{}.{} - starting '{}'", kEngineName, kEngineVersion.major,
-                kEngineVersion.minor, kEngineVersion.patch, m_config.appName);
+    G7_LOG_INFO("engine", "{} - starting '{}'", buildLine(), m_config.appName); // release.md part A
 
     if (m_config.simulationHz <= 0.0)
     {

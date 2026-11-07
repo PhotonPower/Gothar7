@@ -1,3 +1,4 @@
+#include <g7/core/BuildInfo.hpp>
 #include <g7/core/Config.hpp>
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Log.hpp>
@@ -29,6 +30,7 @@ namespace
 constexpr const char* kUsage = R"(Usage: gothar [options]
 
   --help, -h              show this help and exit
+  --version               print the version and build (git hash) and exit
   --verbose               debug log level
   --smoke-test            10 frames headless with a fixed frame time, then exit (CI)
   --frames=N              exit after N frames (also with a window)
@@ -70,6 +72,7 @@ Details: docs/05-build.md
 struct CommandLine
 {
     bool help = false;
+    bool version = false;
     bool smokeTest = false;
     bool fullscreen = false;
     bool noRender = false;
@@ -132,7 +135,11 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
     for (int i = 1; i < argc; ++i)
     {
         const std::string_view arg = argv[i];
-        if (arg == "--help" || arg == "-h" || arg == "/?")
+        if (arg == "--version")
+        {
+            cli.version = true;
+        }
+        else if (arg == "--help" || arg == "-h" || arg == "/?")
         {
             cli.help = true;
         }
@@ -382,6 +389,11 @@ int main(int argc, char** argv)
     {
         return EXIT_FAILURE;
     }
+    if (cli->version)
+    {
+        std::puts(g7::buildLine().c_str()); // "Gothar 0.3.0 (abc1234, release)"
+        return EXIT_SUCCESS;
+    }
     if (cli->help)
     {
         std::fputs(kUsage, stdout);
@@ -397,7 +409,12 @@ int main(int argc, char** argv)
         config.userConfig = g7::fs::userPath("config.toml"); // the options write here (M14 part F)
     }
 
+    // Development builds name their build in the title (release.md part A); the release shows only the name.
+#ifdef NDEBUG
     config.window.title = "Gothar";
+#else
+    config.window.title = g7::buildLine();
+#endif
     config.window.size.width = toDimension(config.settings.get<g7::i64>("window.width", 1600), 1600);
     config.window.size.height = toDimension(config.settings.get<g7::i64>("window.height", 900), 900);
     if (config.settings.get<bool>("window.fullscreen", false))

@@ -5,6 +5,21 @@ Ziel ist ein Paket, das ohne Repository läuft: ein ZIP mit dem Spiel, den gekoc
 und Pflichtangaben, einer sichtbaren Version und lokalen Absturzberichten. Die Entscheidungen des Projektinhabers stehen am Ende,
 nummeriert.
 
+## Umsetzungsstand
+| Teil | PR | Stand |
+|---|---|---|
+| A – Versions- und Build-Info | dieser Teil-A-PR | umgesetzt |
+| B – Absturzberichte | – | offen |
+| C – Paket | – | offen |
+
+Abweichungen bei A:
+- Die Build-Info entsteht nicht beim Konfigurieren, sondern **bei jedem Build** (`cmake/BuildInfo.cmake` als Ziel
+  `g7_build_info`). Die Datei wird nur bei geändertem Inhalt neu geschrieben: Ein Build ohne Änderung übersetzt
+  nichts, Hash und „verändert“-Kennzeichen stimmen trotzdem immer.
+- Version 0.3.0 nach Meilenstein C (Entscheidung 5). Der Git-Tag setzt die Version noch nicht selbst. Teil C prüft
+  beim Paketbau, dass Tag und `project(VERSION)` übereinstimmen.
+- Der Fenstertitel zeigt die Build-Zeile nur in Debug-Builds; im Release steht dort „Gothar“.
+
 ## Ausgangslage
 - **Bauen:** `release`-Preset und CI-Job `release (ubuntu-24.04)` (optimierter Build, Tests ohne GPU, `--smoke-test`).
   Ein Paket entsteht nirgends; `gothar_data` kopiert `config/`, `shaders/` und `scripts/` neben die ausführbare Datei.
