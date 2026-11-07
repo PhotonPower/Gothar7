@@ -26,7 +26,7 @@ nummeriert und jeweils mit Vorschlag.
   jeder Commit alles neu.
 - **Sichtbar:**
   - Log, erste Zeile: `Gothar 0.4.0 (abc1234, release)`.
-  - Hauptmenü unten rechts, klein und blass (Frage 4).
+  - Hauptmenü unten rechts, klein und blass (Entscheidung 4).
   - `gothar --version` druckt dieselbe Zeile.
   - Spielstand: `SaveMeta::gameVersion` mit Hash; das Laden prüft weiterhin nur das Format, nicht den Hash.
   - Absturzbericht (Teil B) und Fenstertitel in Entwicklungs-Builds.
@@ -39,15 +39,15 @@ nummeriert und jeweils mit Vorschlag.
   Bibliothek). Ausgabe: `crashes/gothar_<version>_<hash>_<zeit>.dmp` (Minidump mit Stapel und Threads, ohne ganzen
   Speicher) und daneben `.txt` mit Build-Zeile, Grund (Ausnahme-Code) und den letzten 200 Log-Zeilen.
 - **Linux:** Signal-Handler (`SIGSEGV`, `SIGABRT`, `SIGFPE`, `SIGILL`) schreibt nur die `.txt` mit Rückverfolgung
-  (`backtrace`, glibc) – ein Minidump-Format gibt es ohne Fremdbibliothek nicht (Frage 7).
+  (`backtrace`, glibc) – ein Minidump-Format gibt es ohne Fremdbibliothek nicht (Entscheidung 7).
 - **Auch:** `std::set_terminate` (ungefangene Ausnahme) und `G7_ASSERT`/`G7_VERIFY` in Release-Builds schreiben vor
   dem Abbruch denselben Bericht.
 - **Verzeichnis:** Vorgabe `<Benutzerordner>/crashes` (dort, wo Spielstände und Einstellungen liegen), änderbar über
   `EngineConfig::crashDirectory` bzw. `--crash-dir`. Tests und CI setzen immer einen eigenen Ordner, nie den
   Benutzerordner (Regel: nichts unter `%APPDATA%\Gothar` aus Tests).
-- **Nach einem Absturz:** Der nächste Start sieht neue Berichte und sagt es einmal (Frage 3). Nichts wird gesendet,
+- **Nach einem Absturz:** Der nächste Start sieht neue Berichte und sagt es einmal (Entscheidung 3). Nichts wird gesendet,
   es gibt keinen Hintergrund-Upload und keine Abfrage.
-- **Symbole:** Die `.pdb` kommen nicht ins ZIP, sondern als eigenes CI-Artefakt je Version (Frage 6). Damit lässt
+- **Symbole:** Die `.pdb` kommen nicht ins ZIP, sondern als eigenes CI-Artefakt je Version (Entscheidung 6). Damit lässt
   sich ein Minidump aus der Hand des Projektinhabers später auswerten.
 - **Alternativen, verworfen:** Crashpad/Breakpad (neue Bibliothek, Upload-Infrastruktur, für lokal zu groß);
   Windows Error Reporting allein (Berichte landen beim System, nicht beim Projekt).
@@ -84,7 +84,7 @@ nummeriert und jeweils mit Vorschlag.
     `vcpkg.json`, damit keine Bibliothek ohne Eintrag dazukommt.
 - **Installer:** optional über CPack (NSIS oder WiX, beides externe Programme, keine Bibliothek) – Frage 1.
 - **CI:** Ein Workflow auf Tags `v*` baut das ZIP und die Symbole als Artefakte. Er veröffentlicht nichts
-  automatisch (Frage 8).
+  automatisch (Entscheidung 8).
 - **Tests:** Lizenzprüfung (pytest in `tools/release`), CPack-Inhalt (Liste der Dateien im ZIP), der reine Paket-Test
   in CI auf Windows.
 
@@ -94,12 +94,12 @@ nummeriert und jeweils mit Vorschlag.
 - **Einschätzung:** Für ein reines `.g7pak` ist es **keine Voraussetzung**. Der Loader liest glTF aus Bytes über das VFS,
   und die Texturen der Figuren werden als eigene Dateien über das VFS aufgelöst. Ob das im Paket wirklich trägt, zeigt
   der reine Paket-Test aus Teil C.
-- **Vorschlag:** `.g7skin`/`.g7anim` gehört **nicht** in diesen Plan.
+- **Entschieden (Entscheidung 9):** `.g7skin`/`.g7anim` gehört **nicht** in diesen Plan.
   - Teil C beweist mit dem Paket-Test, dass Figuren und Clips aus `data.g7pak` laden. Scheitert er, wird Teil D
     Pflicht und kommt vor das erste Release.
   - Ob es sich lohnt, entscheidet die Messung im Performance-Plan (`docs/m17-perf`: Ladezeit Leonberg, Anteil der
     glTF-Figuren und -Clips). Das Format kommt dann mit eigener ADR.
-  - Siehe Frage 9.
+  - Siehe Entscheidung 9.
 
 ## Reihenfolge und Umfang
 | Teil | Inhalt | Umfang |
