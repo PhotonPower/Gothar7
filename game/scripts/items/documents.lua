@@ -14,3 +14,11 @@ Item "it_map_leonberg" {
     value = 50,
     map = "ui/maps/leonberg.png",
 }
+
+-- Kapitel 2 (M15 Teil E): der Brief an den Rat von Leonberg.
+Item "it_letter_council" {
+    name = "Versiegelter Brief an den Rat",
+    category = "document",
+    value = 0,
+    text = "An den Rat der Stadt Leonberg,\n\ndas Lager am Waldrand bittet um Salz und Eisen für den Winter. Der Überbringer ist ein Mann, dem man trauen kann.\n\n- Der Vogt",
+}

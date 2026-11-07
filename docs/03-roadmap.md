@@ -327,6 +327,9 @@ Plan (Teile A–E, Vorschlag 2026-11-01, wartet auf Freigabe): `docs/modules/sav
   - Teil A: CRC-32 über Kopf und Daten jedes Chunks (jedes verfälschte Byte erkannt), Schreiben über `.tmp`
 
 **DoD / Meilenstein C:** Ein komplettes Kapitel (Inhalt eigener Wahl) ist mit Speichern/Laden durchspielbar.
+– Umgesetzt (Teil E): Kapitel 1 im Lager plus Kapitel 2 „Ankunft in Leonberg“ (Brief an den Rat, Weg über die
+Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jedem Spielstand) und
+`runtime_leonberg_chapter` (lokal). Die Abnahme von Meilenstein C durch den Projektinhaber steht aus.
 
 ## M16 – Editor & Werkzeuge
 - [x] Autopilot `gothar --walk` (vorgezogen für die W3-Begehung): Route ablaufen, Protokoll `walk.jsonl` und Zusammenfassung, Screenshots; auch ohne Grafikgerät (`docs/modules/tools.md`, Vertrag mit welt)

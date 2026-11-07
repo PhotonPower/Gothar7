@@ -453,6 +453,10 @@ bool Engine::runFrame()
             }
         }
     }
+    else
+    {
+        updateMenu(realSeconds); // a save game loads also without a window (M15, tests)
+    }
 
     // While paused the accumulator is not fed, so nothing is caught up afterwards.
     const u32 steps = m_paused || m_screens.pausesGame() ? 0 : m_fixedStep.advance(realSeconds * m_timeScale);

@@ -584,6 +584,9 @@ Was der Held gezogen hat: `"none"`, `"weapon"` (Nahkampfwaffe), `"fists"`, `"ran
 
 ## Welt
 
+### `change_world(world: string, start: string)`
+Weltwechsel wie ein Trigger mit `changeWorld` (M15 Teil E): lädt die Welt (VFS-Pfad einer .g7world) am Ende des Frames und stellt den Helden auf den Startpunkt; eine besuchte Welt kommt mit ihrem Zustand.
+
 ### `diary_open(open?: boolean)`
 Öffnet (bzw. mit `false` schließt) das Tagebuch, wie die Taste log (N bzw. J).
 
