@@ -12,9 +12,11 @@ hairs = [
     "hair/ponytail01/ponytail01.mhclo",
     "hair/bob02/bob02.mhclo",
     "hair/braid01/braid01.mhclo",
+    "hair/culturalibre_hair_06/culturalibre_hair_06.mhclo",
 ]
 
 [names]
 ponytail01 = "hair_ponytail"
 bob02 = "hair_bob"
 braid01 = "hair_braid"
+culturalibre_hair_06 = "hair_layered"

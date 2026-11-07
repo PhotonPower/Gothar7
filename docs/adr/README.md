@@ -26,3 +26,5 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | [0019](0019-animation-runtime.md) | Animations-Laufzeit: eigene Implementierung (statt ozz-animation) | Akzeptiert | M6 |
 | [0020](0020-font-msdf-atlas.md) | Schrift: MSDF-Atlas im Cooker mit msdfgen (Kern) und stb_truetype | Akzeptiert (Projektinhaber, 2026-11-01) | M14 |
 | [0021](0021-save-format.md) | Spielstandformat `.g7save`: Chunk-Container mit CRC32, JSON-Nutzlast, zstd | Angenommen (Projektinhaber, 2026-11-01) | M15 |
+| [0022](0022-editor-undo-commands.md) | Editor: Undo/Redo als Befehle mit JSON-Zuständen | Angenommen (Projektinhaber, 2026-11-07) | M16 |
+| [0023](0023-terrain-editing-and-blender-import.md) | Gelände im Editor (Höhen-Pinsel) und Import aus Blender (Mesh→Heightmap, `VOB_`-Knoten) | Angenommen (Projektinhaber, 2026-11-07) | M16 |

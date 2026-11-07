@@ -1,0 +1,23 @@
+# craftsman_f_3: guild set 'craftsman' (figure_sets.toml), more varied Leonbergers: braid (F3, 2026-11-07)
+version = 1
+
+[parts]
+head = "parts/head_f_mid/head.glb"
+hair = "parts/hair_f_mid/hair_braid.glb"
+body = "parts/body_f_average/body.glb"
+cloth = [
+    "parts/garb_f_average/shirt.glb",
+    "parts/garb_f_average/skirt_tiered.glb",
+    "parts/garb_f_average/apron_leather.glb",
+    "parts/cloth_f_average/toigo_flats.glb",
+]
+
+[palette]
+hair = "#8a6a42"
+cloth_shirt = "#e4dccb"
+cloth_skirt_tiered = "#5a4a3a"
+cloth_apron_leather = "#6a4a30"
+cloth_toigo_flats = "#3e3024"
+
+[anim]                 # walk-style variant (gait.glb)
+variant = "woman"

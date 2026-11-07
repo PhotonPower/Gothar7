@@ -80,3 +80,27 @@ def test_stubble_parts_of_all_male_heads():
         assert [m["name"] for m in mats] == [PART]  # not "beard": the heads mid/old carry one
         assert mats[0]["alphaMode"] == "MASK"
         assert g.list("images")[0]["uri"].endswith(f"textures/hair/{TEXTURE}")
+
+
+def test_beard_styles_parts_and_texture():
+    """Own beards beyond the stubble (F3, 2026-11-07): short beard on every male head, mutton chops
+    on four; their shared strand texture is committed as generated."""
+    from gothar_chargen.stubble import STYLES, beard_texture
+
+    short = STYLES["beard_short"]
+    path = CHARACTERS / "textures" / "hair" / short.texture
+    assert (_decode_png(path.read_bytes()) == beard_texture(short)).all()
+    rgba = beard_texture(short)
+    quarter = rgba.shape[0] // 4
+    shares = [float((rgba[k * quarter : (k + 1) * quarter, :, 3] > 0).mean()) for k in range(4)]
+    assert shares == sorted(shares) and shares[-1] > 0.8  # dense at the centre (bottom band)
+    lum = rgba[..., 0][rgba[..., 3] > 0] / 255
+    assert abs(lum.mean() - NEUTRAL_MEAN) < 0.01
+    built = {"beard_short": MALE_HEADS, "beard_mutton": ("farmer", "old", "rough", "gaunt")}
+    for part, heads in built.items():
+        for head in heads:
+            g = Gltf.load(CHARACTERS / "parts" / f"hair_m_{head}" / f"{part}.glb")
+            assert [m["name"] for m in g.list("materials")] == [part], (part, head)
+            assert {"beard_lod0", "beard_lod1", "beard_lod2"} <= {
+                n.get("name") for n in g.list("nodes")
+            }
