@@ -16,6 +16,7 @@ import struct
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -53,6 +54,7 @@ class Primitive:
     mesh: MeshData
     textures: tuple[str, str] | None = None  # (base colour, normal) image URIs from the VFS root
     emissive: tuple[float, float, float] | None = None  # glowing (embers, flames): emissiveFactor
+    extras: dict[str, Any] | None = None  # the material's glTF extras (wind, M17 contract)
 
 
 @dataclass
@@ -102,7 +104,7 @@ def glb_bytes_multi(
     accessors: list[dict] = []
     gl_prims: list[dict] = []
     materials: list[dict] = []
-    material_index: dict[tuple[str, tuple[str, str] | None], int] = {}
+    material_index: dict[tuple[Any, ...], int] = {}
     images: list[dict] = []
     image_index: dict[str, int] = {}
 
@@ -147,7 +149,8 @@ def glb_bytes_multi(
             accessors.append(acc)
             blobs.append(arr.tobytes())
             targets.append(_ELEMENT_ARRAY_BUFFER if i == 3 else _ARRAY_BUFFER)
-        key = (p.material, p.textures, p.emissive)
+        key = (p.material, p.textures, p.emissive,
+               json.dumps(p.extras, sort_keys=True) if p.extras else None)  # fmt: skip
         if key not in material_index:
             material_index[key] = len(materials)
             pbr: dict = {"baseColorFactor": [float(c) for c in p.color], "metallicFactor": 0.0,
@@ -158,6 +161,8 @@ def glb_bytes_multi(
                 material["normalTexture"] = {"index": texture(p.textures[1])}
             if p.emissive is not None:
                 material["emissiveFactor"] = [float(c) for c in p.emissive]
+            if p.extras:
+                material["extras"] = dict(p.extras)
             materials.append(material)
         return {
             "attributes": {"POSITION": first, "NORMAL": first + 1, "TEXCOORD_0": first + 2},

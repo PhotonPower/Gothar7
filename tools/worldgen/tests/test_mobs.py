@@ -204,3 +204,18 @@ def test_the_many_props_of_the_lanes_have_a_coarse_level():
         model = make()
         assert model.lods and model.lods[0].triangles() * 3 <= model.triangles(), model.name
     assert mobs.woodpile().triangles() <= 400
+
+
+def test_guild_signs_hang_in_the_wind_but_their_bracket_stays_still():
+    import json
+    import struct
+
+    from gothar_worldgen.mobs import BOARD_Z, SIGN_ARM_Y, guild_sign
+
+    data = guild_sign("tankard").glb()
+    (size,) = struct.unpack("<I", data[12:16])
+    mats = {m["name"]: m.get("extras") for m in json.loads(data[20 : 20 + size])["materials"]}
+    assert mats["iron_bracket"] is None
+    hang = {"wind": "hanging", "wind_pivot": [0.0, round(SIGN_ARM_Y - 0.02, 3), BOARD_Z]}
+    assert mats["iron_chain"] == hang and mats["paint_board"] == hang
+    assert all(v == hang for k, v in mats.items() if k != "iron_bracket")
