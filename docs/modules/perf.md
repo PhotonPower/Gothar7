@@ -1,8 +1,8 @@
 # perf – Plan M17 (Profiling, Budgets, Job-System)
 
-Stand: **Plan, zur Freigabe** (Auftrag des Projektinhabers über den Koordinator, 2026-11-07). Kein Code in diesem PR.
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). Kein Code in diesem PR.
 Ziel (Meilenstein D): Release-Build stabil ≥ 60 FPS in der größten Welt (Leonberg) auf Zielhardware. Erst messen, dann
-parallelisieren. Fragen an den Projektinhaber stehen am Ende, nummeriert und mit Vorschlag.
+parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummeriert und mit Vorschlag.
 
 ## Ausgangslage
 - **Hauptschleife** (`docs/02-architecture.md`) läuft auf einem Thread: fester Zeitschritt (Physik, Spieler, KI mit
@@ -94,15 +94,15 @@ Schattenkaskaden seltener für ferne Kacheln, Draw-Bündel, Ladezeit. Jede Ände
 
 A und B zuerst: Sie liefern die Zahlen, nach denen C priorisiert wird.
 
-## Fragen an den Projektinhaber (mit Vorschlag)
-1. **Zielhardware für die 60 FPS?** Vorschlag: RTX 3080 Laptop bei 1600×900 und hohen Einstellungen muss 60 FPS
+## Entscheidungen des Projektinhabers (2026-11-07, alle wie vorgeschlagen)
+1. **Zielhardware für die 60 FPS?** **Entschieden:** RTX 3080 Laptop bei 1600×900 und hohen Einstellungen muss 60 FPS
    sicher halten; Intel UHD bei 1280×720 und niedrigen Einstellungen (Schatten kürzer, weniger Lichter) ≥ 30 FPS.
-2. **Tracy im Paket?** Vorschlag: nein, nur im Preset `profile`. Das ausgelieferte Spiel öffnet keinen Port.
-3. **Mess-Zeitpunkt in Leonberg?** Vorschlag: 10:00 Uhr (Händler und Handwerker aktiv) und 21:00 Uhr (Fensterlichter,
+2. **Tracy im Paket?** **Entschieden:** nein, nur im Preset `profile`. Das ausgelieferte Spiel öffnet keinen Port.
+3. **Mess-Zeitpunkt in Leonberg?** **Entschieden:** 10:00 Uhr (Händler und Handwerker aktiv) und 21:00 Uhr (Fensterlichter,
    Fackeln); beide in jedem Szenario.
-4. **Wie viele NPCs gleichzeitig?** Vorschlag: die Leonberger aus den Routinen (heute 19 Bewohner plus Lager) als
+4. **Wie viele NPCs gleichzeitig?** **Entschieden:** die Leonberger aus den Routinen (heute 19 Bewohner plus Lager) als
    Grundlast, ein Stress-Szenario „Markt voll“ mit 60 NPCs um den Brunnen.
-5. **Budget-Tabelle (Teil B) so festlegen?** Vorschlag: ja, als Richtwert für die Systeme; verbindlich wird sie wie die
+5. **Budget-Tabelle (Teil B) so festlegen?** **Entschieden:** ja, als Richtwert für die Systeme; verbindlich wird sie wie die
    Inhalts-Budgets in `render.md`, nach der ersten Messung.
-6. **Eigenes Job-System statt Bibliothek?** Vorschlag: ja, eigenes kleines in `core` (Pool und `parallelFor`). Eine
+6. **Eigenes Job-System statt Bibliothek?** **Entschieden:** ja, eigenes kleines in `core` (Pool und `parallelFor`). Eine
    Bibliothek erst, wenn Aufgaben-Graphen nötig werden, dann mit ADR.
