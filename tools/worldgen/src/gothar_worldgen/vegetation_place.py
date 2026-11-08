@@ -62,6 +62,9 @@ def _kinds(doc: dict[str, Any]) -> set[str]:
     for key in ("slopes", "wall", "banks"):
         for layer in (doc.get(key) or {}).get("layers", []):
             out |= set(layer.get("pick", {}))
+    for cls in (doc.get("umland") or {}).get("classes", []):
+        for layer in [*cls.get("layers", []), *(cls.get("farLayers") or [])]:
+            out |= set(layer.get("pick", {}))
     formal = doc.get("formal")
     if formal:
         out.add(formal["hedge"]["kind"])
@@ -216,6 +219,39 @@ class _Areas:
                     f"{area['name']}_{f['osmId']}", poly, area["layers"]
                 )
 
+    def umland(self) -> None:
+        """The surroundings up to ``reachM`` round the town wall (decision of the project owner
+        2026-11-07: medieval): each class of OSM land between ``innerM`` and ``reachM`` after its
+        layers, beyond ``farM`` after its far layers (a wood seen from the town as clumps of
+        trees). Built-up land (housing, trade) becomes orchard meadow or meadow."""
+        spec = self.rules.get("umland")
+        if not spec:
+            return
+        core = self.p.walls or list(self.p.houses.values())
+        hull = unary_union(core).convex_hull
+        reach = hull.buffer(float(spec["reachM"]))
+        feats = sorted(self.p.site.features, key=lambda f: str(f.get("osmId")))
+        for cls in spec["classes"]:
+            kinds = set(cls["kinds"])
+            ring = reach.difference(hull.buffer(float(cls["innerM"])))
+            far_m = cls.get("farM")
+            near = ring.intersection(hull.buffer(float(far_m))) if far_m else ring
+            far = ring.difference(hull.buffer(float(far_m))) if far_m else None
+            for f in feats:
+                if f.get("kind") not in kinds or f.get("geometry") != "polygon":
+                    continue
+                poly = Polygon(f["polygon"], f.get("holes") or []).buffer(0)
+                for part, layers, tag in ((near, cls["layers"], ""),
+                                          (far, cls.get("farLayers"), "F")):  # fmt: skip
+                    if part is None or not layers:
+                        continue
+                    piece = poly.intersection(part)
+                    if piece.is_empty or piece.area < float(cls.get("minM2", 50.0)):
+                        continue
+                    self.p.plan.counts[f"umland {cls['name']}"] += self.fill(
+                        f"{cls['name']}{tag}_{f['osmId']}", piece, layers
+                    )
+
     def formal(self) -> None:
         """Hedges along both sides of the paths inside the formal garden, end to end with gaps
         where paths cross; the beds between them after their layers."""
@@ -302,3 +338,4 @@ def plan_vegetation(planner: _Planner, rules: VegRules) -> None:
     a.banks()
     a.wall_band()
     a.slopes()
+    a.umland()

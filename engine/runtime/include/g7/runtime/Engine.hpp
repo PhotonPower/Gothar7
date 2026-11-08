@@ -42,6 +42,7 @@
 #include <g7/render/Particles.hpp>
 #include <g7/render/PassTimes.hpp>
 #include <g7/render/PostProcess.hpp>
+#include <g7/render/Rain.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 #include <g7/render/Ssao.hpp>
 #include <g7/render/Terrain.hpp>
@@ -73,6 +74,7 @@
 #include <g7/world/Terrain.hpp>
 #include <g7/world/Triggers.hpp>
 #include <g7/world/Water.hpp>
+#include <g7/world/Weather.hpp>
 #include <g7/world/WorldFile.hpp>
 
 #include <deque>
@@ -100,6 +102,47 @@ struct LoadedModel
     std::vector<asset::Handle<asset::TextureData>> images; ///< parallel to MeshData::images (external ones)
     u32 sourceVersion = 0; ///< versions uploaded to the GPU (hot reload compares them)
     std::vector<u32> imageVersions;
+};
+
+/// A Lua `Mob` definition (gameplay.md "Mob-Interaktion") as plain values, for the editor.
+struct MobDefinitionInfo
+{
+    std::string definition;                            ///< instance name ("mob_camp_chest")
+    std::string name;                                  ///< focus name
+    std::string type;                                  ///< mob type of data/mobs.toml
+    std::string owner;                                 ///< Npc instance or guild; empty: nobody's
+    std::string lock;                                  ///< combination ("LRRL"); empty: open
+    std::string key;                                   ///< item instance that unlocks it
+    std::vector<std::pair<std::string, u32>> contents; ///< items and counts
+};
+
+/// One entry of a Lua `Routine` (ai.md "Tagesabläufe"): the window [from, to), across midnight when to <=
+/// from.
+struct RoutineEntryInfo
+{
+    std::string from; ///< "06:00" as written
+    std::string to;
+    std::string state; ///< "zs_sweep"
+    std::string at;    ///< way point or freepoint
+    friend bool operator==(const RoutineEntryInfo&, const RoutineEntryInfo&) = default;
+};
+
+/// A Lua `Routine` instance as plain values (editor, M16 part E).
+struct RoutineInfo
+{
+    std::string name; ///< "rtn_farmer_woman"
+    std::string file; ///< the script it is written in ("routines/camp.lua")
+    std::vector<RoutineEntryInfo> entries;
+    friend bool operator==(const RoutineInfo&, const RoutineInfo&) = default;
+};
+
+/// An NPC of the world with its routine (editor ghosts).
+struct NpcRoutineInfo
+{
+    u32 creature = 0;
+    std::string npc;     ///< the Npc instance
+    std::string routine; ///< empty: none
+    Vec3 position{0.0f};
 };
 
 /// One placed model with its world bounds (for culling).
@@ -172,6 +215,7 @@ namespace script
 {
 class ScriptVm;
 class Value;
+struct Instance;
 } // namespace script
 struct AnimatedFigure; // animated figures (EngineFigure.cpp)
 struct PlayerFigure;   // the animated hero
@@ -211,6 +255,8 @@ struct EngineConfig
     std::string start;
     /// Game time at start, "HH:MM" (--time); empty = [time] start (default 08:00).
     std::string startTime;
+    /// Weather state at start (--weather, M17 E1); empty = data/weather.toml's start and schedule.
+    std::string weather;
     /// Console lines (Lua) run once after start (--exec, repeatable), e.g. `insert_npc('npc_farmer_woman')`.
     std::vector<std::string> exec;
     /// --cam, --yaw, --pitch, --fly, --player: a view to reproduce (StartView.hpp), applied after loading.
@@ -229,6 +275,9 @@ struct EngineConfig
     bool uiSample = false;
     /// Where the save slots are (M15 part D); empty: the user directory's "saves".
     fs::Path saveDirectory;
+    /// A folder of scripts over the game's (VFS "scripts/", above the repository's): files the editor writes
+    /// go there (M16 part E; tests). Empty: the editor writes into the scripts folder on disk.
+    fs::Path extraScriptDirectory;
     /// Saves the last rendered frame as PNG (--screenshot=<file>), e.g. with --frames or --benchmark.
     fs::Path screenshot;
     platform::WindowDesc window; ///< Used unless headless.
@@ -400,6 +449,8 @@ public:
     [[nodiscard]] const std::string& ambience() const noexcept { return m_ambience.name; }
     /// In a room: the ambience outside, heard quietly and muffled; empty outside.
     [[nodiscard]] const std::string& ambienceOutside() const noexcept { return m_ambience.outside; }
+    /// The rain layer playing now (M17 R): amb_rain, amb_rain_roof (indoors) or empty.
+    [[nodiscard]] const std::string& rainSound() const noexcept { return m_rainSound.name; }
     /// The occlusion of a 3D sound the engine started (0 open .. 1 muffled).
     [[nodiscard]] f32 soundMuffle(audio::SoundId id) const noexcept
     {
@@ -440,6 +491,74 @@ public:
     [[nodiscard]] std::vector<std::string> musicThemes() const;
     [[nodiscard]] std::vector<std::string> scriptFunctions() const;
     [[nodiscard]] bool hasScripts() const noexcept;
+    /// For the editor (M16 part D): the Lua `Mob` definitions as the engine reads them (gameplay.md), sorted
+    /// by name; the mob types of data/mobs.toml; a type's user slots (mob space: feet, view direction); the
+    /// names of the script instances of a kind ("Npc", "Item"); the guilds (keys of the Lua table `Guilds`).
+    [[nodiscard]] std::vector<MobDefinitionInfo> mobDefinitions() const;
+    [[nodiscard]] std::vector<std::string> mobTypeNames() const;
+    [[nodiscard]] std::vector<std::pair<Vec3, Vec3>> mobTypeSlots(std::string_view type) const;
+    [[nodiscard]] std::vector<std::string> scriptInstanceNames(std::string_view kind) const;
+    [[nodiscard]] std::vector<std::string> guildNames() const;
+    /// [render] max_lights, light_distance, window_light_radius (E1): what a frame takes.
+    [[nodiscard]] const render::LightBudget& lightBudget() const noexcept { return m_lightBudget; }
+    /// For the editor (M16 part E), queries without side effects: the loaded `Routine` instances (sorted by
+    /// name), the world's NPCs with their routines, where a routine place lies (way point or freepoint, as
+    /// NPCs walk there), and the names of the globals starting with `prefix` (the "zs_" states).
+    [[nodiscard]] std::vector<RoutineInfo> routines() const;
+    [[nodiscard]] std::vector<NpcRoutineInfo> npcRoutines() const;
+    [[nodiscard]] std::optional<Vec3> routinePlace(std::string_view at) const { return navigationTarget(at); }
+    [[nodiscard]] std::vector<std::string> scriptGlobalNames(std::string_view prefix) const;
+    /// Writes a script (VFS "scripts/<relative>") into the folder scripts are written to
+    /// (EngineConfig::extraScriptDirectory, else the scripts folder on disk) and loads the scripts anew.
+    /// Fails for scripts from archives.
+    [[nodiscard]] Result<void> writeScript(std::string_view relative, std::string_view text);
+    /// Play-in-editor (M16 part E): the game as it is now is kept, the hero appears at `at` (feet, yaw from
+    /// the rotation) or at the start point, the simulation runs. stopPlay puts the kept game back (world,
+    /// NPCs, Story, time), removes the hero and the free camera stands at `camera`.
+    [[nodiscard]] Result<void> startPlay(std::optional<Transform> at);
+    [[nodiscard]] Result<void> stopPlay(const Transform& camera);
+    [[nodiscard]] bool playing() const noexcept { return m_playSnapshot.has_value(); }
+    /// The editor's routine ghost (M16 part E, decision 8): the Npc instance's real figure at rest at `feet`
+    /// facing `yaw`; drawn with the creatures, no AI, not part of the game. nullopt hides it. Loaded once per
+    /// NPC; false if the figure cannot be loaded.
+    struct GhostFigure
+    {
+        std::string npc;
+        Vec3 feet{0.0f};
+        f32 yaw = 0.0f;
+    };
+    bool setGhostFigure(std::optional<GhostFigure> ghost);
+    [[nodiscard]] bool ghostFigureShown() const noexcept;
+    /// The empty nodes of a .glb whose names start with `prefix` and their placement in the model (editor,
+    /// ADR 0023: VOB_ markers). Empty for other files.
+    struct ModelMarker
+    {
+        std::string name;
+        Mat4 local{1.0f};
+    };
+    [[nodiscard]] Result<std::vector<ModelMarker>> modelMarkers(std::string_view path,
+                                                                std::string_view prefix) const;
+    /// Terrain editing (the editor's height brush, M16 part F2, ADR 0023). Worlds with a generator head
+    /// (Leonberg: LGL heights from welt) are locked - terrainLock() says why, editableHeightfield() is null.
+    [[nodiscard]] std::string terrainLock() const;
+    [[nodiscard]] world::Heightfield* editableHeightfield() noexcept;
+    /// After heights changed: the drawn terrain follows (cheap, during a stroke); the collision follows at
+    /// terrainStrokeFinished().
+    [[nodiscard]] Result<void> terrainHeightsChanged();
+    void terrainStrokeFinished();
+    /// A splat map as RGBA8 bytes on the CPU (channel k of map m = weight of layer 4m + k), to paint into;
+    /// nullopt without one. After painting: terrainSplatChanged() uploads it.
+    struct SplatView
+    {
+        std::span<u8> rgba;
+        u32 width = 0;
+        u32 height = 0;
+    };
+    [[nodiscard]] std::optional<SplatView> terrainSplat(u32 map) noexcept;
+    [[nodiscard]] Result<void> terrainSplatChanged();
+    [[nodiscard]] u32 terrainLayerCount() const noexcept;
+    /// Writes the heights (.r16) and the splat maps (.png) over their sources on disk.
+    [[nodiscard]] Result<void> saveTerrain();
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;
@@ -644,6 +763,18 @@ public:
     /// Starts talking to an NPC: an important Info runs first, then the menu of Infos.
     [[nodiscard]] Result<void> startDialog(u32 npc);
     [[nodiscard]] bool inDialog() const noexcept { return m_dialog.has_value(); }
+    /// The weather (M17 E1): its state and course, and what it is at the current game time.
+    [[nodiscard]] const world::Weather& weather() const noexcept { return m_weather; }
+    [[nodiscard]] world::WeatherSample weatherNow() const { return m_weather.sample(m_gameTime.clock()); }
+    /// Rain (M17 R): streaks drawn last frame (0: dry or [render] weather = false) and the rain map.
+    [[nodiscard]] u32 rainStreaksDrawn() const noexcept { return m_rainDrawn; }
+    /// Thunderstorm (M17 G): flashes so far, the last one, how bright it lights the world now (0..1), the
+    /// delay of the last thunder (seconds).
+    [[nodiscard]] u32 lightningCount() const noexcept { return m_flashCount; }
+    [[nodiscard]] const std::optional<world::Lightning>& lastLightning() const noexcept { return m_flash; }
+    [[nodiscard]] f32 lightningNow() const noexcept;
+    [[nodiscard]] f32 lastThunderDelay() const noexcept { return m_lastThunderDelay; }
+    [[nodiscard]] const render::RainRenderer& rain() const noexcept { return m_rain; }
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
@@ -875,6 +1006,8 @@ private:
     bool m_strictRoute = false; // the next route planned follows the waynet (a replan after being stuck)
     /// Spawns an Npc instance with its figure, capsule, values and routine.
     [[nodiscard]] Result<u32> spawnNpc(std::string_view name, const Vec3& at, f32 yaw);
+    /// The figure an Npc instance wears (its own, one of its set, else the default).
+    [[nodiscard]] std::string npcFigurePath(const script::Instance& npc, std::string_view name);
     // Behaviour (EngineAi.cpp)
     void fixedUpdateAi(Creature& c, f32 seconds);
     void perceive(Creature& c, f32 seconds);
@@ -1141,6 +1274,13 @@ private:
         std::optional<audio::SoundId> outsideLoop;
     };
     Ambience m_ambience;
+    struct RainSound // M17 R: the rain layer over the zone's ambience
+    {
+        std::string name; ///< amb_rain, amb_rain_roof (indoors) or empty
+        std::optional<audio::SoundId> loop;
+    };
+    RainSound m_rainSound;
+    void updateRainSound();
     std::map<audio::SoundId, Vec3> m_spatialSounds; // where the 3D sounds play (occlusion)
     f32 m_occlusionTimer = 0.0f;
     void bindAudioFunctions();
@@ -1326,7 +1466,8 @@ private:
     [[nodiscard]] Result<void> instantiateScene();
     /// Splat layers and holes of the loaded terrain; layers that fail to load are a warning (slope
     /// colours instead), holes always apply.
-    void loadTerrainSurface(const world::TerrainRef& ref);
+    /// `painted`: the splat maps from m_splatImages (the editor painted them) instead of their files.
+    void loadTerrainSurface(const world::TerrainRef& ref, bool painted = false);
     /// Puts the camera on the start point (--start or the lowest id); no start point and no --start
     /// keeps the overview camera, an unknown name is an error.
     [[nodiscard]] Result<void> applyStartPoint(std::string_view name);
@@ -1351,6 +1492,10 @@ private:
     void updateEnvironment();
     void renderScene(u32 width, u32 height);
     void updateGrading(const render::Grading& timeOfDay);
+    void updateWeather();
+    void thunder(const world::Lightning& flash);
+    void updateRainMap();
+    void drawRain(u32 width, u32 height);
     void rebuildWaterSurfaces();
     void drawWater();
     void cullInstances(const Frustum& view); // fills m_drawItems (multi-draw) or draws them right away
@@ -1541,6 +1686,20 @@ private:
     world::Scene m_scene;       // world vobs (--world, --scene); render instances are built from it
     world::GameTime m_gameTime; // global: runs across level changes (save game: save.md)
     world::DayCycle m_dayCycle = world::DayCycle::fallback();
+    world::Weather m_weather = world::Weather::fallback();           // M17 E1: data/weather.toml
+    render::RainRenderer m_rain;                                     // M17 R
+    std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
+    render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
+    bool m_weatherVisible = true;                                    // [render] weather
+    f64 m_rainTime = 0.0;
+    world::LightningStorm m_storm;           // M17 G
+    std::optional<world::Lightning> m_flash; // the last flash
+    f64 m_stormClock = 0.0;                  // simulation seconds (flash times)
+    u32 m_flashCount = 0;
+    f32 m_lastThunderDelay = 0.0f;
+    static constexpr f32 kBoltDistance =
+        1800.0f; // flashes nearer than this show their bolt in the sky // moves the drops (real seconds)
+    u32 m_rainDrawn = 0; // streaks drawn last frame
     render::Sky m_sky;
     f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
     bool m_sunEnabled = true;        // debug: sun and moon light off
@@ -1608,6 +1767,8 @@ private:
     f32 m_lastFallDamage = 0.0f;
     std::optional<PlayerLanding> m_lastLanding;
     std::optional<fs::Path> m_screenshotRequest;
+    std::optional<save::GameState> m_playSnapshot; ///< play-in-editor: the game before it started (M16 E)
+    std::vector<asset::MountId> m_scriptMounts;    ///< the script folders (writeScript rescans them)
     gameplay::Swimmer m_swimmer;
     f32 m_drownDamage = 0.0f;
     f32 m_drownLogged = 0.0f; // damage already reported in the log (whole points)
@@ -1619,6 +1780,8 @@ private:
     const LoadedModel* m_playerModel = nullptr;         // static placeholder when no animated figure loads
     std::unique_ptr<PlayerFigure> m_figure;             // animated hero (M6)
     std::vector<std::unique_ptr<Creature>> m_creatures; // animals (M6 D3, until M9)
+    struct GhostFigureState;                            // the editor's routine ghost (EngineCreatures.cpp)
+    std::unique_ptr<GhostFigureState> m_ghostFigure;
     u32 m_nextCreatureId = 1;
     std::string m_creatureSpecies = "wolf";                   // debug UI choice
     std::unique_ptr<script::ScriptVm> m_scripts;              // Lua of the game session (M7)

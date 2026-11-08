@@ -10,6 +10,7 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace g7;
@@ -208,5 +209,37 @@ TEST_CASE("Water surface: high quality reflects what stands on the screen, the s
     CHECK(render(WaterQuality::High, true) > 0.05f);   // the red wall appears in the water
     CHECK(render(WaterQuality::Medium, true) < 0.01f); // medium: the (black) sky only
     CHECK(render(WaterQuality::High, false) < 0.01f);  // nothing on the screen to reflect: the sky
+    CHECK(w.gl.device->debugErrorCount() == 0);
+}
+
+TEST_CASE("Water surface: rain rings ruffle a still surface (M17 R)")
+{
+    WaterScene w;
+    const WaterStyle style = calm();
+    w.frame.quality = WaterQuality::Low;
+    w.frame.skyHorizon = w.frame.skyZenith = Vec3(1.0f); // the reflection shows the tilt
+    w.frame.time = 1.234f;
+    // A grazing view: there the reflection reacts strongly to the tilt.
+    w.camera.transform.position = Vec3(0.0f, 2.0f, 0.0f);
+    w.camera.transform.rotation = glm::angleAxis(glm::radians(-20.0f), Vec3(1.0f, 0.0f, 0.0f));
+    w.camera.fovY = glm::radians(40.0f);
+    const auto spread = [&](f32 rain)
+    {
+        w.frame.rain = rain;
+        w.gl.device->bindFramebuffer(&w.scene.framebuffer());
+        w.gl.device->setViewport(0, 0, kSize, kSize);
+        w.gl.device->clear(Vec4(0.0f, 0.0f, 0.0f, 1.0f), 0.0f); // nothing behind the water
+        REQUIRE(w.draw(1.0f, style) == 1);
+        const std::vector<f32> rgba = w.gl.device->readTextureFloat(w.scene.color(), 0);
+        // Ripples: the colour jumps between neighbouring pixels (a flat surface changes only smoothly).
+        f32 roughness = 0.0f;
+        for (usize i = 4; i < rgba.size() / 3; i += 4) // the lower part of the image: the water
+        {
+            roughness += std::abs(rgba[i] - rgba[i - 4]);
+        }
+        return roughness;
+    };
+    const f32 still = spread(0.0f);
+    CHECK(spread(1.0f) > 3.0f * still + 0.05f); // rings
     CHECK(w.gl.device->debugErrorCount() == 0);
 }

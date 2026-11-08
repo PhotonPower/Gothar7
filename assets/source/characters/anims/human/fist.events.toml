@@ -39,10 +39,10 @@ events = [
 
 [clips."fist/t_attack_combo1"]
 events = [
-    { frame = 0, event = "sound:swing" },
-    { frame = 4, event = "hit_start" },
-    { frame = 7, event = "combo_start" },
-    { frame = 7, event = "hit_end" },
+    { frame = 5, event = "sound:swing" },
+    { frame = 9, event = "hit_start" },
+    { frame = 13, event = "combo_start" },
+    { frame = 13, event = "hit_end" },
     { frame = 21, event = "combo_end" },
 ]
 
@@ -50,8 +50,8 @@ events = [
 events = [
     { frame = 0, event = "sound:swing" },
     { frame = 4, event = "hit_start" },
-    { frame = 9, event = "combo_start" },
-    { frame = 9, event = "hit_end" },
+    { frame = 13, event = "combo_start" },
+    { frame = 13, event = "hit_end" },
     { frame = 24, event = "combo_end" },
 ]
 

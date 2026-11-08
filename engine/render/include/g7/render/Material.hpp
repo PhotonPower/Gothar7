@@ -175,6 +175,8 @@ public:
     void drawDepthBatched(Device& device, std::span<const MeshDrawItem> items, const Camera& camera);
     /// The ambient occlusion the shaders read at unit 8 (M17 P3); nullptr: none (white).
     void setAmbientOcclusion(const rhi::Texture* texture) noexcept { m_ambientOcclusion = texture; }
+    /// The rain map the shaders read at unit 9 for wet surfaces (M17 N); nullptr: none.
+    void setRainMap(const rhi::Texture* texture) noexcept { m_rainMap = texture; }
     [[nodiscard]] const BatchStats& lastBatch() const noexcept { return m_batch; }
     /// Starts a frame for the batched passes (rotates their buffers). Call once per frame before them.
     void beginFrame() noexcept;
@@ -223,6 +225,7 @@ private:
     std::array<rhi::Pipeline, 2> m_depthPipelines;  // the same for the depth prepass (reverse-Z, M17 P3)
     bool m_depthPass = false;                       // the shadow draws go to the depth prepass
     const rhi::Texture* m_ambientOcclusion = nullptr;
+    const rhi::Texture* m_rainMap = nullptr;
     void bindAmbientOcclusion(Device& device) const;
     const ShadowMap* m_shadowMap = nullptr;
     const LightList* m_lights = nullptr;

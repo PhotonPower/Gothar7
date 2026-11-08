@@ -46,3 +46,23 @@ target_compile_definitions(g7_core PUBLIC
 
 # G7_PROFILE_* macros are active only with G7_PROFILING=ON (see Profiler.hpp).
 target_compile_definitions(g7_core PUBLIC G7_PROFILING=$<BOOL:${G7_PROFILING}>)
+
+# Version and build info (M17, docs/modules/release.md part A): build_info.cpp is generated at every build
+# (git hash, changes), rewritten only when its content changes.
+find_package(Git QUIET)
+set(_g7_build_info "${CMAKE_CURRENT_BINARY_DIR}/generated/build_info.cpp")
+add_custom_target(g7_build_info
+    COMMAND ${CMAKE_COMMAND}
+            -DOUT=${_g7_build_info}
+            -DSOURCE_DIR=${PROJECT_SOURCE_DIR}
+            -DGIT_EXECUTABLE=${GIT_EXECUTABLE}
+            -DVERSION=${PROJECT_VERSION}
+            -DBUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DTEMPLATE=${CMAKE_CURRENT_SOURCE_DIR}/src/BuildInfo.cpp.in
+            -P ${PROJECT_SOURCE_DIR}/cmake/BuildInfo.cmake
+    BYPRODUCTS ${_g7_build_info}
+    COMMENT "Build info (version, git hash)"
+    VERBATIM)
+set_target_properties(g7_build_info PROPERTIES FOLDER "engine")
+target_sources(g7_core PRIVATE ${_g7_build_info})
+add_dependencies(g7_core g7_build_info)

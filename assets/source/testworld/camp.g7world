@@ -72,7 +72,7 @@
     {"id":65,"type":"mesh","name":"log_stack","pos":[-6.0,0.0,2.0],"rot":[0.0,0.34202,0.0,0.93969],"scale":[4.0,4.0,4.0],"mesh":"testscene/nature/log_stack.glb"},
     {"id":66,"type":"mesh","name":"log_stack","pos":[-7.0,0.0,3.5],"rot":[0.0,0.08716,0.0,0.99619],"scale":[4.0,4.0,4.0],"mesh":"testscene/nature/log_stack.glb"},
     {"id":67,"type":"mesh","name":"tent_detailedOpen","pos":[-17.0,0.0,-3.0],"rot":[0.0,0.5,0.0,0.86603],"scale":[5.0,5.0,5.0],"mesh":"testscene/nature/tent_detailedOpen.glb"},
-    {"id":68,"type":"mob","name":"STOOL_CAMPFIRE","pos":[3.0,0.0,3.0],"rot":[0.0,0.0,0.0,1.0],"scale":[4.0,4.0,4.0],"mesh":"testscene/nature/stump_round.glb","components":{"mob":{"definition":"STOOL"}}},
+    {"id":68,"type":"mob","name":"STOOL_CAMPFIRE","pos":[3.0,0.0,3.0],"rot":[0.0,0.0,0.0,1.0],"scale":[4.0,4.0,4.0],"mesh":"testscene/nature/stump_round.glb","components":{"mob":{"definition":"bench"}}},
     {"id":69,"type":"mesh","name":"rock-large","pos":[-3.0,0.0,10.0],"rot":[0.0,0.17365,0.0,0.98481],"scale":[1.5,1.5,1.5],"mesh":"testscene/town/rock-large.glb"},
     {"id":70,"type":"mesh","name":"fence","pos":[24.0,0.0,-12.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,3.0],"mesh":"testscene/town/fence.glb"},
     {"id":71,"type":"mesh","name":"fence","pos":[24.0,0.0,-9.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,3.0],"mesh":"testscene/town/fence.glb"},

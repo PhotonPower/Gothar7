@@ -407,6 +407,11 @@ void Engine::drawCreatures(bool shadow, u32 cascade)
             }
         }
     }
+    if (ghostFigureShown()) // the editor's routine ghost (M16 part E)
+    {
+        drawAnimatedFigure(*m_ghostFigure->figure, creatureMatrix(m_ghostFigure->feet, m_ghostFigure->yaw),
+                           shadow, cascade);
+    }
 }
 
 void Engine::creaturesUi()
@@ -496,6 +501,85 @@ void Engine::creaturesUi()
             c->turn = 0.0f; // a button turns once
         }
     }
+}
+
+bool Engine::setGhostFigure(std::optional<GhostFigure> ghost)
+{
+    if (!ghost)
+    {
+        if (m_ghostFigure)
+        {
+            m_ghostFigure->shown = false;
+        }
+        return true;
+    }
+    if (!m_ghostFigure)
+    {
+        m_ghostFigure = std::make_unique<GhostFigureState>();
+    }
+    GhostFigureState& g = *m_ghostFigure;
+    if (g.npc != ghost->npc || !g.figure)
+    {
+        // The NPC's figure as spawnNpc chooses it (animals: their species' model and graph), at rest.
+        g.figure.reset();
+        g.npc = ghost->npc;
+        const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", ghost->npc) : nullptr;
+        if (npc == nullptr)
+        {
+            g.shown = false;
+            return false;
+        }
+        const std::string species = npc->fields["species"].isString()
+                                        ? std::string(npc->fields["species"].asString())
+                                        : std::string();
+        const std::string model = species.empty()
+                                      ? npcFigurePath(*npc, ghost->npc)
+                                      : std::format("characters/monsters/{0}/rig/{0}_reference.glb", species);
+        const std::string graph = species.empty() ? std::string("data/anim/human.animgraph.toml")
+                                                  : std::format("data/anim/{}.animgraph.toml", species);
+        auto figure = std::make_unique<AnimatedFigure>();
+        if (auto loaded = loadAnimatedFigure(*figure, model, graph); !loaded)
+        {
+            G7_LOG_WARN("engine", "ghost of {}: {}", ghost->npc, loaded.error().message);
+            g.shown = false;
+            return false;
+        }
+        g.figure = std::move(figure);
+    }
+    g.feet = ghost->feet;
+    g.yaw = ghost->yaw;
+    g.shown = true;
+    return true;
+}
+
+bool Engine::ghostFigureShown() const noexcept
+{
+    return m_ghostFigure && m_ghostFigure->shown && m_ghostFigure->figure && m_ghostFigure->figure->uploaded;
+}
+
+Result<std::vector<Engine::ModelMarker>> Engine::modelMarkers(std::string_view path,
+                                                              std::string_view prefix) const
+{
+    std::vector<ModelMarker> out;
+    if (!path.ends_with(".glb"))
+    {
+        return out; // cooked meshes keep no empty nodes
+    }
+    auto bytes = m_vfs.read(path);
+    if (!bytes)
+    {
+        return bytes.error();
+    }
+    auto markers = asset::loadGltfMarkers(bytes.value(), prefix, path);
+    if (!markers)
+    {
+        return markers.error();
+    }
+    for (asset::GltfMarker& m : markers.value())
+    {
+        out.push_back({std::move(m.name), m.world});
+    }
+    return out;
 }
 } // namespace g7
 

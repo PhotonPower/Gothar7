@@ -6,7 +6,8 @@ Quelle der Wahrheit für **welche** Animationen gebraucht werden. Konvention sie
 
 **Legende** – Typ: `s` Schleife, `t` Übergang/Einmal, `a` additiv · RM: Root Motion ·
 Quelle: Q = Quaternius CC0 (UAL1/UAL2, nur Knochen umbenennen), Q→ = aus einem Q-Clip abgeleitet
-(rückwärts, Überblendung, Verkettung), MC = eigenes Mocap, K = Keyframe · **kein Mixamo** (öffentliches
+(rückwärts, Überblendung, Verkettung), MC = eigenes Mocap, CMU = CMU-Mocap (mocap.cs.cmu.edu, Take je Clip in
+`assets/LICENSES.md`, `gothar-chargen cmu`), K = Keyframe · **kein Mixamo** (öffentliches
 Repo, Adobe-Bedingungen verbieten die Weitergabe; Entscheidung 2026-10-03) ·
 Prio: **A** = Meilenstein A (M6), **B** = Vertical Slice (M10), **C** = später ·
 Status: `offen` / `platzhalter` (aus einer Bibliothek, nachbearbeitet bzw. ersetzt in F4) /
@@ -164,8 +165,8 @@ die tiefe Rechte (Kombo 2, Hilfsclip `fist/t_cross_low`) aus der Hocke, Faust 0,
 | `none/t_ko` | K.o. (Faustkampf verloren): rücklings hingeworfen, endet in der `s_ko`-Pose | 0,83 s | – | Q | platzhalter (UAL2 `Hit_Knockback`) |
 | `none/s_ko` | bewusstlos liegen (Schleife, atmet) | 2,0 s | – | K | platzhalter-K (letzte Pose von `t_ko`) |
 | `none/t_ko_getup` | aufstehen, beginnt in der `s_ko`-Pose | 1,5 s | – | Q | platzhalter (UAL2 `LayToIdle`, eingeblendet aus `s_ko`) |
-| `fist/t_attack_combo1` | Faust: Gerade links (Kombo 1) | 0,87 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL1 `Punch_Jab`, aus/in `fist/s_idle`) |
-| `fist/t_attack_combo2` | Faust: tiefe Rechte aus der Hocke (Kombo 2, trifft auch Tiere) | 1,0 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL1 `Punch_Cross`, vorgebeugt tiefer, aus/in `fist/s_idle`) |
+| `fist/t_attack_combo1` | Faust: Gerade links mit Schritt (Kombo 1) | 0,9 s | hit_start, hit_end, combo_start, combo_end | CMU | mocap (Take 143_23, Finger aus `fist/s_idle`, aus/in `fist/s_idle`) |
+| `fist/t_attack_combo2` | Faust: tiefe Rechte mit Ausfall (Kombo 2, trifft auch Tiere) | 1,0 s | hit_start, hit_end, combo_start, combo_end | CMU | mocap (Take 02_05, tiefer gebeugt und Schritt per Schlüsselposen, aus/in `fist/s_idle`) |
 | `fist/t_parry` | Deckung: Unterarme vor dem Gesicht (Blockfenster setzt engine) | 0,6 s | – | K | platzhalter-K (Pose per Gittersuche) |
 | `1h/t_attack_combo1` | Kombo 1: Hieb von oben | 1,4 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL2 `Sword_Regular_A` + `_Rec`, aus/in `1h/s_idle`) |
 | `1h/t_attack_combo2` | Kombo 2: waagrechter Schnitt mit Ausfall | 1,6 s | hit_start, hit_end, combo_start, combo_end | Q | platzhalter (UAL2 `Sword_Regular_B` + `_Rec`) |

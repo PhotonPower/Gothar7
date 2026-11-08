@@ -25,6 +25,8 @@ namespace
 constexpr std::string_view kScriptRoot = "scripts";
 constexpr i32 kScriptCopyPriority = -20; // the copy next to the game (gothar_data)
 constexpr i32 kScriptDevPriority = -10;  // the repository's game/scripts (development builds) wins over it
+constexpr i32 kScriptExtraPriority =
+    -5; // EngineConfig::extraScriptDirectory (the editor's files, tests) over both
 constexpr std::string_view kDefaultNpcFigure = "characters/figures/laborer.figure.toml";
 constexpr std::string_view kHumanGraph = "data/anim/human.animgraph.toml";
 constexpr usize kConsoleLines = 200;
@@ -42,13 +44,27 @@ void Engine::mountScripts()
 {
     // In development builds the repository's game/scripts alone: the copy next to the game keeps files
     // deleted or renamed since (or from another branch), and every script found is loaded. Otherwise the copy
-    // (gothar_data).
+    // (gothar_data). The editor's folder (M16 part E, tests) lies over either.
+    m_scriptMounts.clear();
+    const auto mount = [&](const fs::Path& dir, i32 priority)
+    {
+        if (auto id = m_vfs.mount(dir, priority, std::string(kScriptRoot)); id)
+        {
+            m_scriptMounts.push_back(id.value());
+        }
+    };
+    if (!m_config.extraScriptDirectory.empty())
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(m_config.extraScriptDirectory, ec);
+        mount(m_config.extraScriptDirectory, kScriptExtraPriority);
+    }
 #if defined(G7_DEV_SCRIPT_ROOT)
     std::error_code devError;
     if (m_config.settings.get<bool>("assets.dev_mounts", true) &&
         std::filesystem::is_directory(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), devError))
     {
-        (void)m_vfs.mount(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), kScriptDevPriority, std::string(kScriptRoot));
+        mount(fs::fromUtf8(G7_DEV_SCRIPT_ROOT), kScriptDevPriority);
         return;
     }
 #endif
@@ -56,7 +72,7 @@ void Engine::mountScripts()
     std::error_code ec;
     if (std::filesystem::is_directory(copy, ec))
     {
-        (void)m_vfs.mount(copy, kScriptCopyPriority, std::string(kScriptRoot));
+        mount(copy, kScriptCopyPriority);
     }
 }
 
@@ -296,6 +312,68 @@ void Engine::bindEngineFunctions()
                                     static_cast<u32>(a.size() > 1 ? a[1].asInteger() : 0));
                  return Value();
              }});
+    vm.bind(
+        {"set_weather", "set_weather(name: string, minutes?: number) -> boolean",
+         "Setzt die Wetterlage (data/weather.toml), mit Übergang über `minutes` Spielminuten (ohne: sofort); "
+         "der Ablauf geht von ihr aus weiter. false bei unbekannter Lage.",
+         "Welt", [this](std::span<const Value> a) -> Result<Value>
+         {
+             if (a.empty() || !a[0].isString() ||
+                 (a.size() > 1 && (!a[1].isNumber() || a[1].asNumber() < 0.0)))
+             {
+                 return Error{"expects (name, minutes? >= 0)"};
+             }
+             return Value(
+                 m_weather.set(a[0].asString(), m_gameTime.clock(), a.size() > 1 ? a[1].asNumber() : 0.0));
+         }});
+    vm.bind({"weather", "weather() -> {name, rain, clouds, wind, locked, next}",
+             "Die Wetterlage jetzt: Name, Regen, Bewölkung und Wind (0..1, im Übergang gemischt), ob sie "
+             "gesperrt ist, und in wie vielen Spielminuten der Ablauf wieder entscheidet.",
+             "Welt", [this](std::span<const Value>) -> Result<Value>
+             {
+                 const f64 clock = m_gameTime.clock();
+                 const world::WeatherSample s = m_weather.sample(clock);
+                 const auto rounded = [](f32 v) { return std::round(static_cast<f64>(v) * 100.0) / 100.0; };
+                 return script::makeTable(
+                     {}, {{"name", m_weather.current()},
+                          {"rain", rounded(s.rain)},
+                          {"clouds", rounded(s.clouds)},
+                          {"wind", rounded(s.wind)},
+                          {"locked", m_weather.locked()},
+                          {"next", std::max(0.0, std::round(m_weather.nextChange() - clock))}});
+             }});
+    vm.bind(
+        {"lock_weather", "lock_weather(locked: boolean)",
+         "Hält die Wetterlage fest (eine Story-Szene): der Ablauf wechselt nicht, set_weather wirkt weiter.",
+         "Welt", [this](std::span<const Value> a) -> Result<Value>
+         {
+             m_weather.lock(a.empty() || a[0].asBool());
+             return Value();
+         }});
+    vm.bind(
+        {"lightning", "lightning(distance?: number, direction?: number)",
+         "Ein Blitz jetzt (Story, Prüfbilder), `distance` Meter entfernt (Vorgabe 800, 50 bis 5000), in "
+         "Richtung "
+         "`direction` Grad (0 = -Z wie yaw 0, Vorgabe wechselnd); nahe und mittlere zeigen ihren Strahl am "
+         "Himmel. Der Donner folgt nach Entfernung / 343 m/s – auch ohne Gewitter.",
+         "Welt", [this](std::span<const Value> a) -> Result<Value>
+         {
+             const f64 distance = a.empty() ? 800.0 : a[0].asNumber(-1.0);
+             if (distance < 50.0 || distance > 5000.0)
+             {
+                 return Error{"expects (distance? 50-5000 m)"};
+             }
+             world::Lightning flash;
+             flash.start = m_stormClock;
+             flash.distance = static_cast<f32>(distance);
+             flash.flickers = 2;
+             flash.azimuth = a.size() > 1 ? static_cast<f32>(glm::radians(-a[1].asNumber()))
+                                          : static_cast<f32>(m_flashCount) * 2.399963f; // spread out
+             m_flash = flash;
+             ++m_flashCount;
+             thunder(flash);
+             return Value();
+         }});
     vm.bind({"where", "where() -> {x, y, z, yaw, world, time, day}",
              "Position (Meter) und Blickrichtung (Grad) der Spielfigur bzw. der Kamera, die Welt, der "
              "Spieltag (ab 1) und die "
@@ -324,6 +402,11 @@ void Engine::bindEngineFunctions()
          "Inhalte setzen dann niemanden ein (M15).",
          "Ereignisse",
          {}});
+    vm.bind({"weather_changed",
+             "on(\"weather_changed\", fn(old: string, new: string))",
+             "Die Wetterlage hat gewechselt (Ablauf aus data/weather.toml; nicht bei set_weather).",
+             "Ereignisse",
+             {}});
     vm.bind(
         {"scripts_reloaded",
          "on(\"scripts_reloaded\", fn())",
@@ -455,6 +538,26 @@ physics::CharacterDesc Engine::creatureBody(std::string_view species)
     return desc;
 }
 
+std::string Engine::npcFigurePath(const script::Instance& npc, std::string_view name)
+{
+    // The figure: its own manifest, or one of a set for nameless people (figure_set, data/figure_sets.toml),
+    // chosen by the NPC's name so that it looks the same each time; the default one if neither is there.
+    std::string figure(npc.fields["figure"].isString() ? npc.fields["figure"].asString() : "");
+    if (figure.empty() && npc.fields["figure_set"].isString())
+    {
+        figure = figureFromSet(npc.fields["figure_set"].asString(), name);
+    }
+    if (figure.empty() || !m_vfs.exists(figure))
+    {
+        if (!figure.empty())
+        {
+            G7_LOG_WARN("engine", "{}: no figure {}, the default one stands in", name, figure);
+        }
+        figure = std::string(kDefaultNpcFigure);
+    }
+    return figure;
+}
+
 Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
 {
     const script::Instance* npc = m_scripts ? m_scripts->findInstance("Npc", name) : nullptr;
@@ -465,21 +568,7 @@ Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
     // Animals are Npcs too (M9 part D, like Gothic's monsters): `species` picks their figure and graph.
     const std::string species =
         npc->fields["species"].isString() ? std::string(npc->fields["species"].asString()) : std::string();
-    // The figure: its own manifest, or one of a set for nameless people (figure_set, data/figure_sets.toml),
-    // chosen by the NPC's name so that it looks the same each time; the default one if neither is there.
-    std::string figure(npc->fields["figure"].isString() ? npc->fields["figure"].asString() : "");
-    if (figure.empty() && npc->fields["figure_set"].isString())
-    {
-        figure = figureFromSet(npc->fields["figure_set"].asString(), name);
-    }
-    if (figure.empty() || !m_vfs.exists(figure))
-    {
-        if (!figure.empty())
-        {
-            G7_LOG_WARN("engine", "{}: no figure {}, the default one stands in", name, figure);
-        }
-        figure = std::string(kDefaultNpcFigure);
-    }
+    const std::string figure = npcFigurePath(*npc, name);
     auto spawned =
         species.empty() ? spawnAnimated(name, figure, kHumanGraph, at, yaw) : spawnCreature(species, at, yaw);
     if (!spawned)
@@ -617,5 +706,70 @@ std::vector<std::string> Engine::scriptFunctions() const
 bool Engine::hasScripts() const noexcept
 {
     return m_scripts != nullptr;
+}
+
+std::vector<std::string> Engine::scriptInstanceNames(std::string_view kind) const
+{
+    std::vector<std::string> names;
+    if (m_scripts)
+    {
+        for (const script::Instance* i : m_scripts->instancesOf(kind))
+        {
+            names.push_back(i->name);
+        }
+    }
+    std::ranges::sort(names);
+    return names;
+}
+
+std::vector<std::string> Engine::guildNames() const
+{
+    std::vector<std::string> names;
+    if (m_scripts)
+    {
+        const script::Value guilds = m_scripts->global("Guilds"); // data/guilds.lua
+        if (const script::Table* table = guilds.asTable())
+        {
+            for (const auto& [name, guild] : table->fields)
+            {
+                names.push_back(name);
+            }
+        }
+    }
+    return names; // a sorted map
+}
+
+std::vector<std::string> Engine::scriptGlobalNames(std::string_view prefix) const
+{
+    return m_scripts ? m_scripts->globalNames(prefix) : std::vector<std::string>{};
+}
+
+Result<void> Engine::writeScript(std::string_view relative, std::string_view text)
+{
+    // Into the editor's folder (tests), else where the scripts lie on disk (development: game/scripts).
+    fs::Path root = m_config.extraScriptDirectory;
+    if (root.empty())
+    {
+        const auto startup = m_vfs.diskPath(std::string(kScriptRoot) + "/startup.lua");
+        if (!startup)
+        {
+            return Error{"the scripts come from an archive - nothing can be written"};
+        }
+        root = startup->parent_path();
+    }
+    const fs::Path file = root / fs::fromUtf8(relative);
+    std::error_code ec;
+    std::filesystem::create_directories(file.parent_path(), ec);
+    if (auto written = fs::writeText(file, text); !written)
+    {
+        return written;
+    }
+    // The new file into the VFS index, then the scripts anew (as the hot reload does).
+    for (const asset::MountId id : m_scriptMounts)
+    {
+        (void)m_vfs.rescan(id);
+    }
+    reloadScripts();
+    return {};
 }
 } // namespace g7
