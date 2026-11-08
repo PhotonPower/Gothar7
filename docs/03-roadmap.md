@@ -357,7 +357,9 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [ ] Gekochtes Format für Figuren und Animationen (`.g7skin`/`.g7anim`, ADR 0019 Folgearbeit) – spätestens vor dem ersten reinen `.g7pak`-Release; bis dahin laden Figuren und Clips aus losen glTF (`asset.md`)
 - [ ] Optional: Vulkan-Backend hinter der RHI (ADR)
 - [ ] Magie: Telekinese (Zaubertyp „Kontrolle“) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
+  - Plan (Teil T, Vorschlag 2026-11-08): `docs/modules/gameplay.md` „Plan M17: Magie-Nachträge“, Gefühlsfragen 1–13
 - [ ] Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
+  - Plan (Teile G, V, Vorschlag 2026-11-08): `docs/modules/render.md` „Plan M17: Zauber-Effekte“
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 

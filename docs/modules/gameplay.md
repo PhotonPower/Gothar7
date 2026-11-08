@@ -524,7 +524,108 @@ gegen den Kräuterhexer und einen Wegelagerer:
 - Heilung heilt genau 50 abzüglich der Treffer währenddessen.
 - In Wolfsgestalt greift die Torwache an, der alte Mann flieht; „1“ macht den Helden wieder zum Menschen.
 
-**Nicht umgesetzt** (aus der Roadmap-Zeile): Telekinese und Shader-Effekte. Offen, ob sie zu M12 gehören.
+**Nicht umgesetzt in M12:** Telekinese und Shader-Effekte, verschoben nach M17 (Entscheidung Projektinhaber
+2026-10-08); Plan unten.
+
+## Plan M17: Magie-Nachträge – Telekinese und Zauber-Effekte (Vorschlag, wartet auf Freigabe)
+Auftrag des Projektinhabers (über den Koordinator, 2026-11-08), Roadmap M17 „Magie: Telekinese (Zaubertyp
+„Kontrolle“)“ und „Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen)“. **Kein Code bis zur
+Freigabe.** Teil T (Telekinese) steht hier, die Teile G (Glühen) und V (Verzerrung) in `render.md`
+„Plan M17: Zauber-Effekte“; die Gefühlsfragen für alle Teile am Ende dieses Abschnitts.
+
+### Wie in Gothic 1 (Zielverhalten)
+- `01-vision.md`: Kontrollzauber neben Projektil, Fläche, Verwandlung, Beschwörung. Telekinese in Gothic 1: eine
+  Rune; man zielt auf einen Gegenstand am Boden, hält den Zauber, der Gegenstand hebt sich und schwebt zum
+  Zaubernden; solange gehalten wird, kostet es laufend Mana; loslassen oder Mana leer – er fällt. Personen und
+  Tiere bewegt sie nicht. Ob man ihn in Gothic 1 seitlich lenken konnte, ist nicht sicher belegt (Frage 3).
+- Shader-Effekte hatte Gothic 1 kaum: Zauber leuchteten über Partikel und Licht, dazu ein paar Bildschirm-Effekte
+  (Wabern bei manchen Sprüchen). Ziel daher **dezent**, kein moderner Glanz (wie Entscheidung 1 zu P2).
+
+### Bestand, auf dem der Plan aufbaut
+- Zauber sind `Spell`-Instanzen in Lua (`kind`, `mana`, `invest`, `fx`, `sounds`); `gameplay::SpellInfo` liest
+  sie, `castBlocked` prüft Kreis und Mana, `EngineMagic.cpp` wirkt sie (Teil C1). Aufladen (Z5) = Taste halten.
+- Items liegen als Item-Vobs in der Welt (Fokus, Aufheben, Besitz und `theft`, M8). Sie haben **keine
+  Physik-Körper**; Jolt kennt nur statische Körper, die Spielfigur-Kapseln und Abfragen (Strahl, Kugel).
+- Partikel aus `data/fx/*.toml` (M12 A, mit Wind seit M17 W), Clips `mag/*`; `mag/s_cast_loop` (Dauerzauber,
+  Arm ausgestreckt) gibt es als Platzhalter.
+
+### Teil T – Telekinese
+1. **Zauber als Inhalt** (`game/scripts/magic/`):
+   - Neue Art `kind = "telekinesis"` (`gameplay::SpellKind::Telekinesis`).
+   - Felder: `mana` (beim Anheben), `mana_per_second` (solange gehalten), `range` (Anvisieren), `speed`
+     (Schweben), `lift` (Höhe des Anhebens), `carry` (Item-Kategorien bzw. größte Ausdehnung, die gehen).
+   - Rune `it_rune_telekinesis`, Spruchrolle `it_scroll_telekinesis`, Texte und Sprechtext-Schlüssel
+     (`gothar-voice`). Alle Zahlen im Spell bzw. in `data/magic.lua` (`Magic.telekinesis_*`), nicht in C++.
+2. **Mechanik** (`gameplay/Telekinesis.hpp`, rein und testbar; Engine in `EngineMagic.cpp`):
+   - **Anvisieren:** wie das Ziel-Lock der Zielzauber, aber auf Item-Vobs im Fokus, bis `range`, mit freier Sicht
+     (Strahl gegen `COL_`). Ohne Ziel: `mag/t_cast_fail` und der Hinweis „Nichts zu bewegen.“, nichts wird
+     verbraucht.
+   - **Halten:** Taste gehalten wie beim Aufladen; `mag/t_invest` → `mag/s_cast_loop`. `mana` beim Anheben, dann
+     `mana_per_second`; reicht das Mana für den nächsten Schritt nicht, fällt der Gegenstand.
+   - **Bewegung (`TelekinesisFlight`):** erst um `lift` anheben, dann mit `speed` zur Hand des Zaubernden; dreht
+     sich langsam; ein Kugel-Wurf in seiner Größe hält ihn vor Wänden (steckt er fest, schwebt er auf der Stelle).
+     Lenken mit den Bewegungstasten nur nach Frage 3. Kein dynamischer Physik-Körper: der Flug ist kinematisch
+     (deterministisch, keine neue Abhängigkeit).
+   - **Ankunft:** 0,8 m vor der Hand geht er ins Inventar wie beim Aufheben, mit derselben Besitzregel (fremdes
+     Item → `theft(owner, item, count)`, wenn jemand es sieht; Frage 5).
+   - **Loslassen, Treffer, Mana leer, Ziel weiter als `range` · 1,5:** er fällt senkrecht mit Schwerkraft auf den
+     Boden (Strahl nach unten) und bleibt liegen; die neue Lage ist Weltzustand (M15 `WorldDelta`).
+   - **Spielstand mitten im Flug:** der Gegenstand wird an seiner Stelle auf den Boden gesetzt gespeichert.
+   - **NPCs** wirken Telekinese nicht (Frage 8).
+3. **Effekte:** `fx.on_target` (neuer Effekt `telekinesis`: schwache blaue Funken um den Gegenstand), `fx.cast` an
+   der Hand, Glühen des Zaubernden aus Teil G; Klang-Schleife `spell_telekinesis_loop` (Platzhalter aus
+   `tools/audio`).
+4. **Clips (figuren):** `mag/s_cast_loop` reicht als Platzhalter; ein eigenes `mag/s_telekinesis` (Hand zieht
+   langsam heran) wäre schöner, ist aber keine Voraussetzung. Anfrage an figuren erst nach Freigabe.
+5. **Lua:** `hero_telekinesis() -> {item, phase}` (nil, wenn keiner läuft); Ereignis
+   `telekinesis(item_vob, phase)` mit `lift`, `arrive`, `drop`; `telekinesis_allowed(item) -> bool` für
+   Story-Sperren (ein Quest-Gegenstand soll nicht fliegen). Generiert in `docs/script-api.md`.
+6. **Tests:**
+   - CPU `tests/gameplay/test_telekinesis.cpp`: Flug hebt, schwebt und kommt in der erwarteten Zeit an; ein
+     Hindernis stoppt ihn; Fallen landet auf dem Boden; Mana-Abrechnung je Schritt; `carry` lehnt zu Großes ab.
+   - Runtime `tests/runtime/test_engine_telekinesis.cpp` (Testlager, headless): ein Apfel 8 m vor dem Helden
+     landet im Inventar; Loslassen lässt ihn fallen und er liegt nach Speichern und Laden noch dort; Mana leer →
+     er fällt; fremdes Item vor Zeugen → `theft`; außer Reichweite oder ohne Sicht → `t_cast_fail` ohne Kosten;
+     Spruchrolle danach verbraucht.
+   - Erweiterung von `test_engine_m12_scenario.cpp`: den Schlüssel einer Truhe hinter einem Gitter heranziehen.
+   - Prüfbilder: Gegenstand im Flug mit Funken und Glühen (Testlager), Leonberg Marktplatz.
+
+### Reihenfolge und Abhängigkeiten
+- Je Teil ein PR: **T** (Telekinese) → **G** (Glühen) → **V** (Verzerrung). T braucht G nicht (dann ohne Glühen
+  der Hand).
+- figuren: optional ein eigener Telekinese-Clip. welt: nichts (das Gitter für das Szenario steht im Testlager,
+  engine). Kein neuer Vertrag; `carry` nennt die Item-Kategorien aus `inventory_views.toml`.
+
+### Gefühlsfragen an den Projektinhaber (je mit Vorschlag)
+1. **Kreis und Kosten der Telekinese:** Vorschlag Kreis 2, 10 Mana beim Anheben, dann 2 Mana je Sekunde (ein
+   Gegenstand aus 15 m kostet so etwa 14 Mana).
+2. **Reichweite und Tempo:** Vorschlag 15 m zum Anvisieren, 0,5 m anheben, dann 3 m/s (man sieht ihn kommen; aus
+   15 m etwa 5 s).
+3. **Lenken:** Vorschlag **nein** – er kommt geradewegs zum Zaubernden. Lenken mit den Bewegungstasten (hoch,
+   runter, seitlich) ginge, ist aber fummelig und für Rätsel kaum nötig.
+4. **Was sich bewegen lässt:** Vorschlag alle Items bis 1,2 m Größe, auch Waffen; keine Mobs (Truhen, Türen),
+   keine NPCs, keine Tiere.
+5. **Diebstahl:** Vorschlag **ja** – ein fremdes Item per Telekinese zählt wie Aufheben (der Besitzer wird böse,
+   wenn es jemand sieht; ohne Zeugen bleibt es unbemerkt).
+6. **Fallen lassen:** Vorschlag senkrecht fallen und liegen bleiben, auch im Wasser (sinkt auf den Grund); kein
+   Schaden für den, auf den er fällt.
+7. **Wer bekommt den Zauber:** Vorschlag Rune beim Händler der Magier (sobald es einen gibt), eine Spruchrolle im
+   Testlager zum Ausprobieren.
+8. **NPCs mit Telekinese:** Vorschlag **nein** (in Gothic 1 nicht zu sehen), höchstens als Story-Moment über Lua.
+9. **Glühen beim Wirken (Teil G):** Vorschlag Hand und Unterarm in der Farbe des Zaubers (Feuer orange, Heilung
+   grün, Schlaf, Furcht und Telekinese blau), je Aufladestufe etwas stärker; die Gestalt selbst nur als
+   schwacher Rand, kein Leuchten am ganzen Körper.
+10. **Glühen beim Treffen (Teil G):** Vorschlag 0,3 s Aufblitzen in der Farbe der Schadensart (Feuer orange,
+    Magie blau); Brennende glimmen orange, solange sie brennen; Schlafende ganz schwach blau. Bei
+    Nahkampftreffern **nicht** (dort reicht der Treffer-Clip).
+11. **Verzerrung (Teil V):** Vorschlag **dezent**: Hitzeflimmern hinter dem Feuerpfeil und über Feuern bzw.
+    Brennenden; eine kurze Druckwelle beim Einschlag (Ring, 0,3 s, höchstens etwa 1 % der Bildbreite Versatz);
+    ein Wirbel um die Hände beim Aufladen ab Stufe 2; Flimmern beim Beschwören und Verwandeln. Option
+    „Zauber-Verzerrung“ an/aus (Vorgabe an).
+12. **Bildschirm-Effekte für den Helden:** Vorschlag nur ein kurzes Wabern des ganzen Bildes (0,5 s) beim
+    Verwandeln in ein Tier und zurück; sonst keine (NPC-Schlaf und -Furcht wirken nicht auf den Helden).
+13. **Lagerfeuer und Fackeln:** sollen sie auch ohne Magie flimmern (Teil V nutzt dieselbe Technik)? Vorschlag
+    **ja, nur große Feuer** (Lagerfeuer, Herde, Brennende), Fackeln nicht.
 
 ## Wirtschaft
 Handel: Händler-Inventar, Preisfaktor Verkauf (z. B. 0,5), Währung als Item (`ItMi_Ore`).
