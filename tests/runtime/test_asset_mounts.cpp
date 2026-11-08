@@ -134,3 +134,22 @@ TEST_CASE("Asset mounts: cooked meshes and textures replace their sources")
     CHECK(preferCooked(vfs, "worlds/splat0.png") == "worlds/splat0.ktx2"); // terrain blocks name the PNG
     CHECK(preferCooked(vfs, "worlds/rock.jpg") == "worlds/rock.jpg");
 }
+
+TEST_CASE("Asset mounts: cooked figures and clip sets replace their glTF (ADR 0025)")
+{
+    TempTree tree;
+    tree.dir("parts");
+    tree.file("parts/body.glb");
+    tree.file("parts/body.g7skin");
+    tree.file("parts/head.glb");
+    tree.dir("anims");
+    tree.file("anims/none.glb");
+    tree.file("anims/none.g7anim");
+    asset::Vfs vfs;
+    REQUIRE(vfs.mount(tree.root, 0).ok());
+    CHECK(preferCookedFigure(vfs, "parts/body.glb", true) == "parts/body.g7skin");
+    CHECK(preferCookedFigure(vfs, "parts/body.glb", false) == "parts/body.glb"); // no .g7anim of it
+    CHECK(preferCookedFigure(vfs, "parts/head.glb", true) == "parts/head.glb");  // not cooked: glTF
+    CHECK(preferCookedFigure(vfs, "anims/none.glb", false) == "anims/none.g7anim");
+    CHECK(preferCookedFigure(vfs, "anims/none.events.toml", false) == "anims/none.events.toml");
+}

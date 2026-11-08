@@ -2,9 +2,14 @@
 // parts (morphs, neck and falloff data, garments with covers), the same assembled figure from cooked and
 // glTF parts, and corrupt files refused without crashing.
 
+#include "TempDir.hpp"
+
+#include <g7/asset/AnimFile.hpp>
+#include <g7/asset/AssetManager.hpp>
 #include <g7/asset/FigureAssembly.hpp>
 #include <g7/asset/SkinFile.hpp>
 #include <g7/asset/SkinnedModel.hpp>
+#include <g7/asset/Vfs.hpp>
 #include <g7/core/FileSystem.hpp>
 
 #include <doctest/doctest.h>
@@ -142,4 +147,49 @@ TEST_CASE("g7skin: corrupt, truncated and foreign files are refused")
         damaged[at] ^= 0xa5;
         static_cast<void>(deserializeSkin(damaged));
     }
+}
+
+TEST_CASE("AssetManager loads .g7skin and .g7anim, events.toml beside them, and falls back to the .glb")
+{
+    test::TempDir dir;
+    const fs::Path root = dir.path();
+    std::filesystem::create_directories(root / "parts");
+    std::filesystem::create_directories(root / "anims");
+    const SkinnedModelData head = loadPart("parts/head_m_farmer/head.glb");
+    REQUIRE(fs::writeFile(root / "parts" / "head.g7skin", serializeSkin(head)).ok());
+    // A damaged cooked file with its glTF beside it: the glTF is loaded instead.
+    std::vector<u8> broken = serializeSkin(loadPart("parts/head_m_farmer/hair.glb"));
+    broken[4] = 9; // another version
+    REQUIRE(fs::writeFile(root / "parts" / "hair.g7skin", broken).ok());
+    REQUIRE(fs::writeFile(root / "parts" / "hair.glb",
+                          fs::readFile(kCharacters / "parts/head_m_farmer/hair.glb").value())
+                .ok());
+    // A damaged cooked file alone: an error.
+    REQUIRE(fs::writeFile(root / "parts" / "alone.g7skin", broken).ok());
+    const auto none = fs::readFile(kCharacters / "anims/human/none.glb");
+    REQUIRE(none.ok());
+    auto set = loadAnimationGltf(none.value(), {}, "none.glb");
+    REQUIRE(set.ok());
+    REQUIRE(fs::writeFile(root / "anims" / "none.g7anim", serializeAnim(set.value())).ok());
+    REQUIRE(fs::writeFile(root / "anims" / "none.events.toml",
+                          fs::readFile(kCharacters / "anims/human/none.events.toml").value())
+                .ok());
+
+    Vfs vfs;
+    REQUIRE(vfs.mount(root, 0).ok());
+    AssetManager assets(vfs, {.workerThreads = 0});
+    const auto cooked = assets.load<SkinnedModelData>("parts/head.g7skin");
+    const auto fallback = assets.load<SkinnedModelData>("parts/hair.g7skin");
+    const auto alone = assets.load<SkinnedModelData>("parts/alone.g7skin");
+    const auto clips = assets.load<AnimationSetData>("anims/none.g7anim");
+    assets.waitAll();
+    REQUIRE_MESSAGE(cooked.isReady(), cooked.error());
+    CHECK(serializeSkin(*cooked.get()) == serializeSkin(head));
+    REQUIRE_MESSAGE(fallback.isReady(), fallback.error());
+    CHECK(fallback->skeleton.size() == 60);
+    CHECK(alone.failed());
+    REQUIRE_MESSAGE(clips.isReady(), clips.error());
+    const ClipData* walk = clips->find("none/s_walk");
+    REQUIRE(walk != nullptr);
+    CHECK_FALSE(walk->events.empty()); // from none.events.toml
 }

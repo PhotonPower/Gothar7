@@ -182,11 +182,14 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
   `SkinnedModelData::assembly` enthält `asset.extras.gothar` der Figuren-Teile (`neck`, `falloff`, `covers`,
   `hides`; Format v1, §6.2), gelesen mit nlohmann-json (privat, ADR 0017). Zusammenbau: `FigureAssembly.hpp`
   (`animation.md` „Figuren zur Laufzeit zusammensetzen“).
-- **Lader im `AssetManager`:** `SkinnedModelData` und `AnimationSetData` direkt aus glTF/GLB.
-  - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019; Plan und ADR 0025 unten, „Plan M17: gekochte Figuren
-    und Animationen“). Bis dahin laden Figuren und Sets aus losen Dateien (Entwicklung). Mit `--pack` legt g7-cook
-    geskinnte und animierte `.glb` zusätzlich unverändert ins Archiv (06-asset-pipeline.md, Teil 0), so lädt auch ein
-    reines `.g7pak` Figuren und Clips als glTF.
+- **Lader im `AssetManager`:** `SkinnedModelData` aus `.g7skin` oder glTF/GLB, `AnimationSetData` aus `.g7anim` oder
+  glTF/GLB (ADR 0025).
+  - `events.toml` liest der Lader in beiden Fällen neben dem Set.
+  - Ist eine gekochte Datei von anderer Version oder beschädigt, gibt es eine Warnung, und der Lader nimmt das
+    `.glb` daneben. Ohne `.glb` ist es ein Fehler.
+  - Welche Datei geladen wird, entscheidet die Engine mit `preferCookedFigure(vfs, path, skin)`
+    (`runtime/AssetMounts.hpp`): `x.glb` wird zu `x.g7skin` bzw. `x.g7anim`, wenn die Datei im VFS liegt.
+    Manifeste, Skripte und `animgraph.toml` nennen weiter `.glb`.
 
 ### `SkinFile.hpp` – gekochte Figuren `.g7skin` (M17, ADR 0025, Plan Teil B)
 ```cpp
@@ -491,6 +494,10 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
   vorher.
 
 ### Teil E – Laden, Rückfall, Hot-Reload (asset, runtime)
+- **Umgesetzt** (2026-11-09):
+  - Lader für `.g7skin`/`.g7anim` mit Rückfall auf das `.glb`.
+  - `preferCookedFigure` an allen drei Ladestellen in `EngineFigure` (Teile, Figuren-`.glb`, Clip-Sets).
+  - Tests in `test_skin_file.cpp` und `test_asset_mounts.cpp`.
 - Die Loader für `SkinnedModelData`/`AnimationSetData` erkennen `.g7skin`/`.g7anim`. „Gekochtes gewinnt“ wie bei
   `.g7mesh`: Für `x.glb` lädt der Manager `x.g7skin` bzw. `x.g7anim`, wenn die Datei im VFS liegt. Skripte, Manifeste
   und `animgraph.toml` nennen weiter `.glb`. **Kein Pfad in Inhalten ändert sich.**

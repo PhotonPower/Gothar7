@@ -84,7 +84,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
     }
     else
     {
-        model = m_assets->load<asset::SkinnedModelData>(path);
+        model = m_assets->load<asset::SkinnedModelData>(preferCookedFigure(m_vfs, path, true));
         m_assets->waitAll();
         if (model.failed() || !model.get())
         {
@@ -111,7 +111,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
     std::vector<asset::Handle<asset::AnimationSetData>> setHandles;
     for (const std::string& set : graph.value().sets)
     {
-        setHandles.push_back(m_assets->load<asset::AnimationSetData>(set));
+        setHandles.push_back(m_assets->load<asset::AnimationSetData>(preferCookedFigure(m_vfs, set, false)));
     }
     m_assets->waitAll();
     std::vector<const asset::AnimationSetData*> sets;
@@ -240,7 +240,8 @@ Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureM
     std::vector<asset::Handle<asset::SkinnedModelData>> handles;
     for (const asset::FigureManifest::Part& part : manifest.parts)
     {
-        handles.push_back(m_assets->load<asset::SkinnedModelData>(std::string(kCharacters) + part.path));
+        handles.push_back(m_assets->load<asset::SkinnedModelData>(
+            preferCookedFigure(m_vfs, std::string(kCharacters) + part.path, true)));
     }
     m_assets->waitAll();
     std::vector<asset::FigurePart> parts;
