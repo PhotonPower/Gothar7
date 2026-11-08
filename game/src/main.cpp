@@ -4,6 +4,7 @@
 #include <g7/core/Log.hpp>
 #include <g7/editor/Editor.hpp>
 #include <g7/perf/PerfRun.hpp>
+#include <g7/platform/CrashHandler.hpp>
 #include <g7/platform/GpuPreference.hpp>
 #include <g7/platform/Paths.hpp>
 #include <g7/runtime/Engine.hpp>
@@ -54,6 +55,7 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --player=x,y,z          put the player's feet there (--yaw turns it)
                           F6 in the game copies the current view as these options
   --save-world=<file>     save the loaded world or test scene as .g7world
+  --crash-dir=<dir>       where crash reports go (default: crashes in the user folder)
   --editor                editor mode (simulation paused)
   --scene=<path>          load a test scene (TOML)
   --viewpoint=N           start at viewpoint N of the scene
@@ -93,6 +95,7 @@ struct CommandLine
     std::string scene;
     std::string world;
     std::string saveWorld;
+    std::string crashDir; ///< --crash-dir: where crash reports go (default: the user folder's crashes)
     std::string start;
     std::string time;
     std::string weather; // --weather (M17 E1)
@@ -180,6 +183,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg.starts_with("--world="))
         {
             cli.world = std::string(arg.substr(8));
+        }
+        else if (arg.starts_with("--crash-dir="))
+        {
+            cli.crashDir = std::string(arg.substr(12));
         }
         else if (arg.starts_with("--save-world="))
         {
@@ -426,8 +433,16 @@ int main(int argc, char** argv)
         return EXIT_SUCCESS;
     }
     setupDirectories(argv[0]);
+    // Local crash reports (release.md part B, decisions 2 and 3): minidump and text, nothing is sent.
+    const g7::fs::Path crashDir =
+        cli->crashDir.empty() ? g7::fs::userPath("crashes") : g7::fs::fromUtf8(cli->crashDir);
+    if (auto handler = g7::platform::installCrashHandler({crashDir, g7::buildLine(), true}); !handler)
+    {
+        G7_LOG_WARN("game", "no crash reports: {}", handler.error().message);
+    }
 
     g7::EngineConfig config;
+    config.crashDirectory = crashDir; // the main menu points out new reports once
     config.appName = "Gothar";
     config.settings = loadSettings(config.defaultSettings, cli->noUserConfig, cli->overrides);
     if (!cli->noUserConfig)

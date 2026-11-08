@@ -1,5 +1,6 @@
 #include <g7/animation/Animator.hpp>
 #include <g7/core/Config.hpp>
+#include <g7/core/Profiler.hpp>
 
 #include <algorithm>
 #include <charconv>
@@ -471,6 +472,7 @@ void Animator::sample(const Instance& instance, Pose& pose) const
 
 void Animator::update(f32 seconds, const EventCallback& onEvent)
 {
+    G7_PROFILE_SCOPE("animation");
     // 1. At most one transition (file order wins).
     for (const AnimGraphTransition& t : m_transitions)
     {
