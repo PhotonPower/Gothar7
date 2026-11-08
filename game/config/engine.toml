@@ -292,6 +292,9 @@ ui_drop = ["Delete", "PadNorth"] # Inventar: das gewählte Item ablegen (M14 Tei
 [ai]
 # KI-LOD: NPCs weiter weg vom Spieler werden nicht simuliert (springen bei Routinenwechseln an ihren Ort).
 simulation_distance = 80.0
+# Höchstens so viele NPCs voll simuliert, die nächsten zum Spieler (bzw. zur Kamera); NPCs im Kampf oder Dialog
+# zählen immer dazu. 0 = ohne Obergrenze (M17 Perf Teil D).
+max_simulated = 32
 
 [editor]
 # Editor-Modus (gothar --editor, docs/modules/tools.md): so viele Schritte lassen sich je Sitzung rückgängig machen.
