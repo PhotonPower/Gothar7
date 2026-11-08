@@ -113,7 +113,12 @@ name = "ambientCG (Texturen der Gegenstände)"
 licences = ["CC0-1_0"]
 thanks = "ambientCG (ambientcg.com)"
 md = "ambientCG"
-paths = ["items/textures/*.jpg"]
+# only these five come from ambientCG (tools/chargen items.py TEXTURES); the other item textures are
+# procedural own work (items.py PROCEDURAL: runes, gold, silver, glass ...) under items/** below
+paths = [
+    "items/textures/metal_rust.jpg", "items/textures/leather.jpg", "items/textures/wood.jpg",
+    "items/textures/bark.jpg", "items/textures/wood_dark.jpg",
+]
 
 [[source]]
 name = "Eigene Arbeit (Projekt)"
