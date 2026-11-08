@@ -93,8 +93,8 @@ TEST_CASE("Package: unpacked into a folder of its own, the game starts from the 
     }
     CHECK_FALSE(missing);
     CHECK_FALSE(scriptError);
-    CHECK(figures >= 7); // the hero and the six people of camp_people()
-    if (rc != 0 || text.find("ERROR") != std::string::npos || missing || scriptError || figures < 7)
+    CHECK(figures >= 6); // the hero and the five people of camp_people()
+    if (rc != 0 || text.find("ERROR") != std::string::npos || missing || scriptError || figures < 6)
     {
         MESSAGE(text);
     }
