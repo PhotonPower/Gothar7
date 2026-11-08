@@ -45,6 +45,7 @@
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/Rain.hpp>
 #include <g7/render/ShaderLibrary.hpp>
+#include <g7/render/SpellFx.hpp>
 #include <g7/render/Ssao.hpp>
 #include <g7/render/Terrain.hpp>
 #include <g7/render/Visibility.hpp>
@@ -782,6 +783,13 @@ public:
     [[nodiscard]] const std::optional<world::Lightning>& lastLightning() const noexcept { return m_flash; }
     [[nodiscard]] f32 lightningNow() const noexcept;
     [[nodiscard]] f32 lastThunderDelay() const noexcept { return m_lastThunderDelay; }
+    /// Spell glow (M17 part G): how "hero" or an NPC glows now (casting, a spell's hit, burning, asleep).
+    [[nodiscard]] render::FigureGlow figureGlow(std::string_view who);
+    [[nodiscard]] const render::SpellFxSettings& spellFx() const noexcept { return m_spellFx; }
+    /// Spell distortion (M17 part V): distorting particles drawn last frame (0: the pass was skipped), the
+    /// picture's wobble now (0..1, the hero changes shape).
+    [[nodiscard]] u32 distortionDrawn() const noexcept { return m_distortionDrawn; }
+    [[nodiscard]] f32 wobble() const noexcept;
     [[nodiscard]] const render::RainRenderer& rain() const noexcept { return m_rain; }
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
@@ -983,7 +991,17 @@ private:
                                                   std::string_view graphPath,
                                                   const FigureGraphCallback& extra = {});
     void prepareFigurePose(AnimatedFigure& figure, f32 alpha);
-    void drawAnimatedFigure(AnimatedFigure& figure, const Mat4& transform, bool shadow, u32 cascade);
+    void drawAnimatedFigure(AnimatedFigure& figure, const Mat4& transform, bool shadow, u32 cascade,
+                            render::FigureGlow glow = {});
+    // Spell glow (M17 part G, EngineSpellFx.cpp).
+    void loadSpellFx();
+    void flashSpellHit(u32 targetId, const gameplay::DamageByType& damage);
+    void fixedUpdateGlow(f32 seconds);
+    [[nodiscard]] render::FigureGlow glowFor(u32 id, const gameplay::SpellInfo* casting, u32 stages,
+                                             bool asleep) const;
+    [[nodiscard]] render::FigureGlow heroGlow() const;
+    [[nodiscard]] render::FigureGlow creatureGlow(const Creature& c) const;
+    static void applyGlowBones(AnimatedFigure& figure, render::FigureGlow& glow);
     // Animals (EngineCreatures.cpp)
     void fixedUpdateCreatures(f32 seconds);
     void drawCreatures(bool shadow, u32 cascade);
@@ -1721,7 +1739,13 @@ private:
     f32 m_lastThunderDelay = 0.0f;
     static constexpr f32 kBoltDistance =
         1800.0f; // flashes nearer than this show their bolt in the sky // moves the drops (real seconds)
-    u32 m_rainDrawn = 0; // streaks drawn last frame
+    u32 m_rainDrawn = 0;                   // streaks drawn last frame
+    render::DistortionTarget m_distortion; // M17 V
+    std::vector<render::ParticleInstance> m_distortParticles;
+    u32 m_distortionDrawn = 0;
+    bool m_spellDistortion = true; // [render] spell_distortion
+    f32 m_wobbleSeconds = 0.0f;    // left of the wobble (decision 12)
+    void drawDistortion();
     render::Sky m_sky;
     f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
     bool m_sunEnabled = true;        // debug: sun and moon light off
@@ -1949,6 +1973,7 @@ private:
         std::string state; ///< the graph state played
         std::optional<u32> target;
         bool telekinesis = false; ///< M17 part T: held while the item floats
+        std::optional<u32> swirl; ///< M17 V: the swirl round the hand from stage 2 of charging
     };
     std::optional<HeroCast> m_heroCast;
     struct TelekinesisRun
@@ -1973,7 +1998,9 @@ private:
         std::optional<u32> effect;
         std::string caster;
     };
-    std::map<u32, Burning> m_burning; // decision B: who burns (creature id, ~0: the hero)
+    std::map<u32, Burning> m_burning;              // decision B: who burns (creature id, ~0: the hero)
+    render::SpellFxSettings m_spellFx;             // M17 part G: data/spell_fx.toml
+    std::map<u32, render::FigureGlowState> m_glow; // flashes by creature id (~0: the hero)
     struct HeroTransform
     {
         std::string species;                         ///< "wolf"

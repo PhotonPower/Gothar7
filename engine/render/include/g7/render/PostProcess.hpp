@@ -61,6 +61,11 @@ struct PostSettings
     f32 bloomIntensity = 0.0f;
     std::optional<Grading> grading;       ///< M17 P2; nullopt: none (the image as before)
     std::optional<Underwater> underwater; ///< M17 W3: the camera under water; nullopt: above
+    /// M17 V: offsets from render::DistortionTarget (rg, fractions of the picture); nullptr: none (the image
+    /// as before).
+    const rhi::Texture* distortion = nullptr;
+    f32 wobble = 0.0f;     ///< M17 V: the whole picture wobbles, 0..1 (the hero changes shape)
+    f32 wobbleTime = 0.0f; ///< seconds, moves the wobble
 };
 
 /// Same curves as post.frag (per channel, after exposure), for tests and tools.
