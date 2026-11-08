@@ -219,6 +219,11 @@ f32 Engine::creatureYaw(u32 id) const noexcept
 void Engine::fixedUpdateCreatures(f32 seconds)
 {
     G7_PROFILE_SCOPE("creatures (ai, animation)");
+    updateSimulationLimit(); // AI LOD by count, before each creature decides by distance
+    // Taken out by the count only, but visible and within the AI LOD distance: no statues (M17 perf part D) -
+    // they keep playing their loop or idle, without AI, routes or perception.
+    const Frustum view = m_camera.frustum();
+    const Vec3 eye = m_player.valid() ? m_player.feet() : m_camera.transform.position;
     // By index: a script state may insert NPCs while this runs (they move next step).
     const usize creatureCount = m_creatures.size();
     for (usize index = 0; index < creatureCount; ++index)
@@ -276,6 +281,8 @@ void Engine::fixedUpdateCreatures(f32 seconds)
             }
         }
 
+        bool& animationOnly = c.animationOnly; // see above
+        animationOnly = false;
         const gameplay::FightState fight = c.fighter.state();
         if (fight == gameplay::FightState::Down || fight == gameplay::FightState::Dead)
         {
@@ -284,12 +291,24 @@ void Engine::fixedUpdateCreatures(f32 seconds)
         else if (c.body || c.character)
         {
             fixedUpdateAi(c, seconds); // routine, state, commands (M9 part B)
-            if (!c.simulated)
+            animationOnly = !c.simulated && !c.lodAllowed &&
+                            glm::length(c.position - eye) < m_simulationDistance &&
+                            view.intersects(Sphere{c.position + Vec3(0.0f, 0.9f, 0.0f), 1.2f});
+            if (!c.simulated && !animationOnly)
             {
                 continue; // far from the player: neither walked nor animated (AI LOD)
             }
         }
-        walkNpc(c, seconds); // human NPCs: their capsule along the route sets position, yaw and speed (M9)
+        if (animationOnly)
+        {
+            c.speed = 0.0f; // standing: its loop or idle plays on
+            c.turn = 0.0f;
+        }
+        else
+        {
+            walkNpc(c,
+                    seconds); // human NPCs: their capsule along the route sets position, yaw and speed (M9)
+        }
         animation::Animator& a = f.animator;
         a.setFloat("speed", c.speed);
         a.setFloat("turn", c.turn);
@@ -333,7 +352,7 @@ void Engine::fixedUpdateCreatures(f32 seconds)
 
         // Root motion: turn first, then the movement in the turned frame (model -> world). NPCs with a
         // capsule move by it instead (their head and face below still move: M13 D found them still).
-        if (!c.body)
+        if (!c.body && !animationOnly)
         {
             c.yaw = std::remainder(c.yaw + a.rootMotionYaw(), 2.0f * glm::pi<f32>());
             const Vec3 ahead = Vec3(creatureMatrix(Vec3(0.0f), c.yaw) * Vec4(a.rootMotion(), 0.0f));
@@ -583,5 +602,14 @@ Result<std::vector<Engine::ModelMarker>> Engine::modelMarkers(std::string_view p
         out.push_back({std::move(m.name), m.world});
     }
     return out;
+}
+} // namespace g7
+
+namespace g7
+{
+usize Engine::simulatedCreatureCount() const noexcept
+{
+    return static_cast<usize>(std::count_if(m_creatures.begin(), m_creatures.end(),
+                                            [](const auto& c) { return !c->vanished && c->simulated; }));
 }
 } // namespace g7

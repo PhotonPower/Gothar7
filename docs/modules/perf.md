@@ -1,6 +1,6 @@
 # perf – Plan M17 (Profiling, Budgets, Job-System)
 
-Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). **Teil A umgesetzt:** Tracy 0.14 im Preset `profile` (ADR 0024 angenommen), Zonen je System (Spieler, Kreaturen, KI, Wahrnehmung, Wege, Animation, Kampf, Mobs, Skripte, Physik, Audio, UI, Culling, Schatten je Kaskade, Gelände, Figuren, Post, Welt laden), GPU-Zonen je Durchgang über `PassTimes`, Thread-Name der Asset-Arbeiter. Benutzen: `cmake --preset profile && cmake --build --preset profile`, `build/profile/game/gothar`, dann den Tracy-Viewer 0.14 (separat, nicht im Repo) verbinden; ohne Viewer misst Tracy nicht (on-demand).
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-07; alle Vorschläge übernommen). **Teil A umgesetzt:** Tracy 0.14 im Preset `profile` (ADR 0024 angenommen), Zonen je System (Spieler, Kreaturen, KI, Wahrnehmung, Wege, Animation, Kampf, Mobs, Skripte, Physik, Audio, UI, Culling, Schatten je Kaskade, Gelände, Figuren, Post, Welt laden), GPU-Zonen je Durchgang über `PassTimes`, Thread-Name der Asset-Arbeiter. Benutzen: `cmake --preset profile && cmake --build --preset profile`, `build/profile/game/gothar`, dann den Tracy-Viewer 0.14 (separat, nicht im Repo) verbinden; ohne Viewer misst Tracy nicht (on-demand). **Teil B umgesetzt:** `gothar --perf=<namen>|all` mit `assets/source/data/perf.toml` (markt, gasse, stube um 10:00 und 21:00; Stress `markt_voll` mit 60 NPCs mehr), Bericht `perf_<name>.json`, Ladephasen; erste Werte in `docs/perf/2026-11-07-erste-messung.md`. **Teil C zurückgestellt; Teil D: KI-LOD-Obergrenze nach Anzahl umgesetzt.**
 Ziel (Meilenstein D): Release-Build stabil ≥ 60 FPS in der größten Welt (Leonberg) auf Zielhardware. Erst messen, dann
 parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummeriert.
 
@@ -55,8 +55,20 @@ parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummerie
   `docs/perf/` (Datum, Hash, Hardware, Tabelle).
 - **Ladezeit:** Start bis erstes Bild in Leonberg, aufgeteilt in Welt, Häuser, Figuren und Clips, Skripte. Diese
   Zahl entscheidet über `.g7skin`/`.g7anim` (siehe `release.md`, Teil D).
+- **Umsetzung (Teil B):** `tools/perf` (EngineTool, siehe `tools.md`). Bericht `perf_<name>.json`: `scenario`,
+  `build`, `renderer`, `resolution`, `profiling`, je Uhrzeit ein Eintrag in `runs` mit `frame` (average/p50/p95/p99/
+  worst in ms), `zones` (Zeit je Bild als p50/p95/p99, Aufrufe je Bild; nur mit `G7_PROFILING`), `gpu_passes` (Mittel
+  der geglätteten Timer-Abfragen), `gpu_total_ms`, `stats` (Draws, Dreiecke, Lichter je Bild, NPCs, simulierte NPCs im
+  Mittel und maximal), dazu `load_phases` (Name, Dauer, Ende seit Start: assets, scripts, window/OpenGL, shaders,
+  scene rendering, world file, world, houses and models, figures and clips, first frame, models settled).
+  Abweichung vom Plan: Die Uhrzeiten eines Szenarios laufen im selben Prozess nacheinander (Zeitsprung, dann erneut
+  Anlauf). Die Welt kommt aus `--world` (Standard Leonberg), nicht aus perf.toml.
 
 ## Teil C – Job-System (Animation, KI, Culling)
+**Zurückgestellt** (Koordinator nach der ersten Messung, 2026-11-07): Alle Szenarien liegen weit im Budget (Markt p99
+6,5 ms, Stress p99 10 ms bei 16,7 ms), das Job-System ist im Moment nicht nötig. Es kommt erst, wenn ein Szenario das
+Budget reißt. Ebenso bleibt `.g7skin`/`.g7anim` nach Entscheidung 9 zurückgestellt (3,85 s Ladezeit sind in Ordnung).
+
 - **Eigenes, kleines System in `core`** (`g7/core/Jobs.hpp`): fester Pool aus `std::jthread`,
   `parallelFor(count, chunk, fn)` und `JobGroup::wait()`. Keine Aufgaben-Graphen, kein Work-Stealing zu Beginn.
   Fremdbibliotheken (enkiTS, Taskflow) wären eine neue Abhängigkeit mit ADR; der Bedarf ist klein (Entscheidung 6).
@@ -80,6 +92,9 @@ parallelisieren. Die Entscheidungen des Projektinhabers stehen am Ende, nummerie
   Szenario-Tests laufen mit 1 und mit 4 Threads und müssen dasselbe ergeben.
 
 ## Teil D – Optimieren nach Messung
+**Umgesetzt:** KI-LOD mit Obergrenze nach Anzahl (`[ai] max_simulated`, 32; die nächsten zum Spieler bzw. zur Kamera,
+NPCs im Kampf oder Dialog immer; `ai.md`). Messung vorher und nachher: `docs/perf/2026-11-07-ki-lod-obergrenze.md`.
+
 Erst nach A–C, gezielt nach den Zahlen: Animations-LOD (ferne Figuren seltener abtasten, ADR 0019 sieht es vor),
 Schattenkaskaden seltener für ferne Kacheln, Draw-Bündel, Ladezeit. Jede Änderung mit Messung vorher und nachher in
 `docs/perf/`.

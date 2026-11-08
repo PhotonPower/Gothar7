@@ -886,6 +886,8 @@ keine echten Wappen oder Logos. Code: `mobs.guild_sign` (Modelle `props/sign_<sy
   zwei Ketten ein hell bemaltes Brett von 0,9 × 0,75 m im Eichenrahmen (Unterkante 2,05 m), das Symbol 1,4-fach auf beiden
   Seiten, in der Ebene des Auslegers (entlang der Straße lesbar).
 - **Kollision:** keine (nur das winzige `COL_HULL_NONE` unter dem Boden).
+- **Wind (M17, Vertrag in `coordination.md`):** alles außer der Halterung (`iron_bracket`, still) trägt `extras.wind =
+  "hanging"` mit `wind_pivot` [0; 2,93; 0,7] am Halt der Ketten; die Ketten haben das Material `iron_chain`.
 
 ### Bodenregel für handgemachte Modelle (W6)
 Entscheidung Projektinhaber (2026-10-03): Kein sichtbarer Teil eines handgemachten Modells darf im Gelände stecken.
@@ -954,6 +956,8 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
 - **Modelle:** Bäume mit Detailstufen (`_lod1`, `_lod2`), Kollision nur am Stamm. Büsche und Gras kollidieren nicht
   (kleiner `COL_`-Kasten 1 m unter dem Boden; ohne `COL_` würde das ganze Mesh kollidieren). Kronen sind
   geschlossene Low-Poly-Blobs mit der Textur `leaves` und gerundeten Normalen (keine Alpha-Ausschnitte).
+- **Wind (M17):** Material-`extras.wind` aus `vegetation.WIND`: Rinde `trunk`, Laub und Nadeln `leaves`, Gras `grass`;
+  der geschnittene Buchs (`hedge_box`, `bush_box`, Material `leaves_box`) bleibt unmarkiert und damit still.
 - **Zufall** je Haus bzw. Ort mit festem Seed: Ändert sich ein Haus, bleiben die Dinge der anderen stehen.
 - **Leonberg (Stand nach der Verdichtung):** rund 8900 Vobs – etwa 6150 Requisiten (3,0-mal so viele wie im ersten
   Schritt, davon 1900 frei am Straßenrand), 12 Marktstände, 400 Bäume, 300 Büsche, 2000 Gras- und Unkrautbüschel.

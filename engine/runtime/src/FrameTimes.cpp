@@ -9,8 +9,9 @@ namespace g7
 {
 std::string FrameTimeSummary::toString() const
 {
-    return std::format("{} frames: {:.2f} ms avg ({:.0f} fps), p95 {:.2f} ms, p99 {:.2f} ms, worst {:.2f} ms",
-                       frames, averageMs, averageFps(), p95Ms, p99Ms, worstMs);
+    return std::format(
+        "{} frames: {:.2f} ms avg ({:.0f} fps), p50 {:.2f} ms, p95 {:.2f} ms, p99 {:.2f} ms, worst {:.2f} ms",
+        frames, averageMs, averageFps(), p50Ms, p95Ms, p99Ms, worstMs);
 }
 
 FrameTimeSummary FrameTimes::summary() const
@@ -31,6 +32,7 @@ FrameTimeSummary FrameTimes::summary() const
         return sorted[std::min(index, sorted.size() - 1)];
     };
     s.averageMs = std::accumulate(sorted.begin(), sorted.end(), 0.0) / static_cast<f64>(sorted.size());
+    s.p50Ms = rank(0.50);
     s.p95Ms = rank(0.95);
     s.p99Ms = rank(0.99);
     s.worstMs = sorted.back();

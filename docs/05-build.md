@@ -141,6 +141,8 @@ Engine zu starten. Die Tests `game.cli.*` (ctest) prüfen das.
 | `--viewpoint=N` | mit Viewpoint N der Szene starten (Standard 0) |
 | `--benchmark` | VSync und Frame-Limit aus, jeden Viewpoint der Szene 300 Frames lang ansteuern (die ersten 30 zum Einschwingen), Frame-Zeiten (Mittel, p95, p99, schlechtester) sowie Draws, Pufferbindungen, Pipeline-Wechsel und Dreiecke je Viewpoint loggen, dann beenden |
 | `--screenshot=<datei.png>` | letztes Bild als PNG speichern (mit `--frames` oder `--benchmark`) |
+| `--perf=<namen>` | Mess-Szenarien aus `data/perf.toml` (`markt`, `gasse`, `stube`, `markt_voll` oder `all`, mehrere mit Komma): 1600×900, VSync und Frame-Limit aus, feste Zufallszahlen, ohne `--world` Leonberg; je Szenario und Uhrzeit Anlauf (5 s, mindestens bis keine Modelle mehr laden), dann 600 Bilder; schreibt `perf_<name>.json` (p50/p95/p99 der Bildzeit, Zonen bei `G7_PROFILING`, GPU-Durchgänge, Draws, Dreiecke, Lichter, simulierte NPCs, Ladephasen) und je Lauf eine Logzeile `perf …`, dann Ende (`docs/modules/perf.md`, Teil B) |
+| `--perf-out=<ordner>` | Zielordner der `--perf`-Berichte (Standard `perf` im Arbeitsverzeichnis) |
 | `--ui-sample` | Musterseite der Spiel-UI über der Szene (Textrollen, Rahmen, HUD-Balken, Liste, Zellenraster, Knöpfe; M14 Teile A, B) – zum Prüfen von Schrift, Größen, Farben und Navigation (Tastatur, Gamepad, Maus; Esc schließt), Bilder z. B. mit `--frames=60 --screenshot=…`; Sprache und Skalierung aus `[ui]` |
 | `--no-ground` | Bodenplatte unter dem Modell bzw. der Szene weglassen |
 | `--no-sun` | ohne Sonnenlicht (Punktlichter allein beurteilen) |
@@ -217,7 +219,7 @@ Standard-Runnern sind damit kostenlos.
 | KTX (libktx, UASTC → BC7/BC5) | `ktx` (ADR 0016) | asset/tools | M3 |
 | zstd | `zstd` (ADR 0016, ADR 0021) | asset/tools, save (M15) | M3 |
 | EnTT 3.16 (MIT) | `entt` (ADR 0005) | world (öffentlich; Registry nicht in der API) | M4 |
-| nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world_format (privat, Weltformat `.g7world`), tools/walk (privat, Routen und Protokoll), save (privat, Spielstand, ADR 0021) | M4 |
+| nlohmann-json 3.12 (MIT) | `nlohmann-json` (ADR 0017) | world_format (privat, Weltformat `.g7world`), tools/walk (privat, Routen und Protokoll), tools/perf (privat, Bericht `perf_<name>.json`), save (privat, Spielstand, ADR 0021) | M4 |
 | Jolt Physics 5.6 (MIT) | `joltphysics` (ADR 0004; `nodeps`: FetchContent v5.6.0 mit SHA256) | physics (privat) | M5 |
 | Lua 5.4.7 (MIT) + sol2 3.5.0 (MIT) | `lua` (per `overrides` auf 5.4.7, die Baseline brächte 5.5), `sol2` (ADR 0006; `nodeps`: FetchContent mit SHA256) | script (privat) | M7 |
 | miniaudio (MIT-0) | `miniaudio` (ADR 0007) | audio (privat) | M13 |
