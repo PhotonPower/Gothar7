@@ -1398,8 +1398,10 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     {
         const script::Value world[] = {path, m_restoringWorld};
         const f64 figuresStart = platform::nowSeconds();
+        m_figureLoadTimes = {};
         m_scripts->emit("world_loaded", world);
         addLoadPhase("figures and clips (world_loaded)", figuresStart);
+        addFigureLoadPhases();
     }
     return {};
 }
@@ -2760,6 +2762,31 @@ void Engine::addLoadPhase(std::string name, f64 startSeconds)
     LoadPhase phase{std::move(name), (now - startSeconds) * 1000.0, (now - m_startSeconds) * 1000.0};
     G7_LOG_DEBUG("engine", "load phase {}: {:.0f} ms (at {:.0f} ms)", phase.name, phase.ms, phase.endMs);
     m_loadPhases.push_back(std::move(phase));
+}
+
+void Engine::addFigureLoadPhases()
+{
+    // Inside "figures and clips": where the time of the figures built by world_loaded went (plan M17 cooked
+    // figures, part A). Wall clock, summed over the figures; "other" is graphs, skeletons and animators.
+    const FigureLoadTimes& t = m_figureLoadTimes;
+    if (t.figures == 0)
+    {
+        return;
+    }
+    const f64 endMs = m_loadPhases.empty() ? 0.0 : m_loadPhases.back().endMs;
+    const f64 other = t.total - t.parts - t.sets - t.assemble - t.images - t.upload;
+    const std::pair<const char*, f64> parts[] = {
+        {"figures: parts", t.parts},   {"figures: clip sets", t.sets},    {"figures: assemble", t.assemble},
+        {"figures: images", t.images}, {"figures: GPU upload", t.upload}, {"figures: other", other}};
+    for (const auto& [name, ms] : parts)
+    {
+        m_loadPhases.push_back({name, ms, endMs});
+    }
+    G7_LOG_INFO(
+        "engine",
+        "figures: {} built in {:.0f} ms - parts {:.0f}, clip sets {:.0f}, assemble {:.0f}, images {:.0f}, "
+        "upload {:.0f}, other {:.0f}",
+        t.figures, t.total, t.parts, t.sets, t.assemble, t.images, t.upload, other);
 }
 
 render::FrameStats Engine::frameStats() const noexcept
