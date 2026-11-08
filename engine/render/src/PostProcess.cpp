@@ -1,3 +1,4 @@
+#include <g7/core/Profiler.hpp>
 #include <g7/core/StringUtil.hpp>
 #include <g7/render/Device.hpp>
 #include <g7/render/PostProcess.hpp>
@@ -127,6 +128,7 @@ Result<PostProcess> PostProcess::create(Device& device, ShaderLibrary& shaders)
 void PostProcess::apply(Device& device, const SceneTarget& scene, u32 width, u32 height,
                         const PostSettings& settings)
 {
+    G7_PROFILE_SCOPE("render::post");
     device.setViewport(0, 0, width, height);
     m_program->setUniform("uExposure", settings.exposure);
     m_program->setUniform("uTonemapper", static_cast<i32>(settings.tonemapper));

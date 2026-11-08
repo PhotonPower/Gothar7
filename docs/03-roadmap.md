@@ -343,13 +343,14 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 **DoD:** Ein neuer Ort mit Wegnetz, Zonen und NPC-Routinen lässt sich ohne Texteditor bauen.
 
 ## M17 – Atmosphäre, Performance, Release → Meilenstein D
-- [ ] Wetter: Regen (Partikel + nasse Oberflächen), Gewitter, Wind für Vegetation – Plan `docs/design/wetter.md` (Teile E1, R, N, G, W; K entfällt; Entscheidungen 1–10 vom Projektinhaber 2026-11-07)
+- [x] Wetter: Regen (Partikel + nasse Oberflächen), Gewitter, Wind für Vegetation – Plan `docs/design/wetter.md` (Teile E1, R, N, G, W; K entfällt; Entscheidungen 1–10 vom Projektinhaber 2026-11-07)
+  - Wetterlagen (#381), Regen (#383, Ringe auf Wasser #388), nasse Flächen und Pfützen (#390), Gewitter (#393), Blitzstrahl (#394), Wind: Vegetation und Zunftschilder nach welts Markierungen (`extras.wind`, #396), Rauch treibt, Regen schräg, Option `render.wind` (Teil W, `render.md` „Wind“)
 - [ ] Wasser-Rendering (Reflexion, Brechung light), Unterwasser-Effekt
   - Plan (Teile W1–W3, freigegeben 2026-11-07): `docs/modules/render.md` „Plan M17: Wasser und Post-Processing“
 - [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
 - [ ] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional
   - Plan (Teile P1–P3, freigegeben 2026-11-07): ebenda
-- [ ] Vegetation: Instancing, Wind-Animation, Grasfelder
+- [ ] Vegetation: Instancing, Wind-Animation, Grasfelder – Wind-Animation umgesetzt (Wetter Teil W); offen: Instancing, Grasfelder
 - [ ] Job-System, Multithreading für Animation/KI/Culling – Plan: `docs/modules/perf.md`
 - [ ] Welt-Streaming in Zellen, Ladezeiten-Optimierung
 - [ ] Tracy-Profiling, Performance-Budget pro System – Plan: `docs/modules/perf.md`

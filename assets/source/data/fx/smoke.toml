@@ -9,6 +9,7 @@ spread = 12
 radius = 0.2
 gravity = -0.3
 drag = 0.3
+wind = 1.0              # treibt mit dem Wind (M17 W)
 size = [0.4, 1.6]
 color_start = [0.35, 0.33, 0.31, 0.45]
 color_end = [0.5, 0.5, 0.5, 0.0]

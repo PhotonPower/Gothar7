@@ -91,6 +91,7 @@ das Spiel dort mit `--no-render` starten.
 |---|---|
 | `debug` | Entwicklung, Assertions an |
 | `release` | `RelWithDebInfo`, Profiling/Performance |
+| `profile` | `RelWithDebInfo` + `G7_PROFILING` + `G7_TRACY`, vcpkg-Feature `profiling` (Tracy, ADR 0024); Zonen an den Tracy-Viewer (on-demand: misst nur bei verbundenem Viewer), nicht für Auslieferungen |
 | `coverage` | Debug + `G7_COVERAGE` (nur GCC/Clang), für die Abdeckungsmessung |
 | `nodeps` | Schnelltest ohne vcpkg |
 | `package` | Paket (M17, `release.md` Teil C): `RelWithDebInfo` mit `G7_DEV_ASSETS=OFF`; `cmake -P tools/release/make_release.cmake` baut damit Spiel, Daten (`g7_release_data`), ZIP (CPack) und prüft das entpackte Paket |
@@ -101,7 +102,8 @@ das Spiel dort mit `--no-render` starten.
 | `G7_BUILD_TESTS` | ON | Unit-Tests |
 | `G7_BUILD_TOOLS` | ON | g7-cook, Editor |
 | `G7_WARNINGS_AS_ERRORS` | OFF | in CI empfohlen ON |
-| `G7_PROFILING` | OFF | aktiviert die `G7_PROFILE_*`-Zonen (eingebauter Sammler, ab M17 Tracy) |
+| `G7_PROFILING` | OFF | aktiviert die `G7_PROFILE_*`-Zonen (eingebauter Sammler: Debug-Overlay, `--perf`) |
+| `G7_TRACY` | OFF | meldet die Zonen zusätzlich an Tracy (nur mit `G7_PROFILING`; braucht das vcpkg-Feature `profiling`, Preset `profile`) |
 | `G7_COVERAGE` | OFF | Testabdeckung (`--coverage`, nur GCC/Clang); Auswertung mit gcovr |
 | `G7_DEV_ASSETS` | ON | Entwicklungs-Builds mounten `<repo>/assets/source`, `assets/cooked` und `assets/cooked/*.g7pak` (`[assets] dev_mounts`); für Auslieferungen OFF |
 
@@ -223,4 +225,4 @@ Standard-Runnern sind damit kostenlos.
 | Lua 5.4.7 (MIT) + sol2 3.5.0 (MIT) | `lua` (per `overrides` auf 5.4.7, die Baseline brächte 5.5), `sol2` (ADR 0006; `nodeps`: FetchContent mit SHA256) | script (privat) | M7 |
 | miniaudio (MIT-0) | `miniaudio` (ADR 0007) | audio (privat) | M13 |
 | msdfgen 1.13 (MIT), nur der Kern | `msdfgen` mit `default-features: false` (ADR 0020; ohne FreeType, libpng, Skia) | tools/asset-cooker (privat; Schrift-Atlanten, `g7-cook --font`); fehlt er (`nodeps`), lehnt g7-cook Schriften ab | M14 |
-| Tracy | `tracy` | core | M17 |
+| Tracy 0.14 (BSD-3-Clause) | `tracy` nur im vcpkg-Feature `profiling` mit `default-features: false` und Feature `on-demand` (ADR 0024; ohne Tracys eigenen Absturzbehandler) – nur das Preset `profile` installiert es | core (öffentlich gelinkt, nur mit `G7_PROFILING` und `G7_TRACY`), render (GPU-Zonen der Durchgänge); nie im Paket | M17 |

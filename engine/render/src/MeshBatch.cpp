@@ -63,6 +63,23 @@ void orderByModel(std::span<const MeshDrawItem> items, std::vector<const MeshDra
 }
 } // namespace
 
+void MeshRenderer::setWindKey(BatchKey& key, const Material& material) noexcept
+{
+    const WindBend& w = material.wind;
+    if (w.kind == asset::WindKind::None)
+    {
+        return; // still materials keep batching as before
+    }
+    key.values[9] = static_cast<u32>(w.kind);
+    key.values[10] = bitsOf(w.strength);
+    key.values[11] = bitsOf(w.foot);
+    key.values[12] = bitsOf(w.height);
+    key.values[13] = bitsOf(w.pivot.x);
+    key.values[14] = bitsOf(w.pivot.y);
+    key.values[15] = bitsOf(w.pivot.z);
+    key.values[16] = w.hinge;
+}
+
 void MeshRenderer::bindMaterial(rhi::ShaderProgram& program, Device& device, const Material& material)
 {
     program.setUniform("uBaseColor", material.baseColorFactor);
@@ -70,6 +87,7 @@ void MeshRenderer::bindMaterial(rhi::ShaderProgram& program, Device& device, con
     program.setUniform("uNormalScale", material.normalScale);
     program.setUniform("uNormalTwoChannel", material.normalTwoChannel ? 1 : 0);
     program.setUniform("uAlphaCutoff", material.alphaCutoff);
+    setWindUniforms(program, material);
     device.bindTexture(0, *material.baseColor, m_sampler);
     device.bindTexture(1, *material.normal, m_sampler);
     device.bindTexture(2, *material.emissive, m_sampler);
@@ -148,6 +166,7 @@ void MeshRenderer::drawBatched(Device& device, std::span<const MeshDrawItem> ite
                                 bitsOf(e.b),
                                 bitsOf(material.normalScale),
                                 bitsOf(material.alphaCutoff)};
+            setWindKey(entry.key, material);
             entry.command = item.mesh->drawRecord(i);
             entry.command.baseInstance = drawIndex;
             entry.mesh = item.mesh;
@@ -217,6 +236,7 @@ void MeshRenderer::drawShadowBatched(Device& device, std::span<const MeshDrawIte
                 entry.key.values[3] = bitsOf(material.baseColorFactor.a);
                 entry.key.values[8] = bitsOf(material.alphaCutoff);
             }
+            setWindKey(entry.key, material); // bent materials need their own group (M17 W)
             entry.command = item.mesh->drawRecord(i);
             entry.command.baseInstance = drawIndex;
             entry.mesh = item.mesh;
@@ -315,6 +335,7 @@ void MeshRenderer::beginFrame() noexcept
 void MeshRenderer::drawGroups(Device& device, bool shadow, const Mat4& viewProjection,
                               const Vec3& cameraPosition)
 {
+    device.bindUniformBuffer(4, m_windBuffer); // M17 W
     if (!shadow)
     {
         device.bindUniformBuffer(0, m_lightingBuffer);
@@ -343,6 +364,7 @@ void MeshRenderer::drawGroups(Device& device, bool shadow, const Mat4& viewProje
         program->setUniform("uViewProjection", viewProjection);
         if (shadow)
         {
+            setWindUniforms(*program, *head.material);
             if (alphaTest)
             {
                 program->setUniform("uBaseColor", head.material->baseColorFactor);

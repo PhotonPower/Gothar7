@@ -375,6 +375,14 @@ bool Weather::set(std::string_view name, f64 clock, f64 fadeMinutes)
     return true;
 }
 
+Vec2 windDirection(f64 clock) noexcept
+{
+    // Periods of about 7 and 2.3 game hours: the direction wanders, never jumps.
+    const f64 angle = std::atan2(0.3, 1.0) + 0.55 * std::sin(clock / (60.0 * 7.0) * 6.283185307) +
+                      0.25 * std::sin(clock / (60.0 * 2.3) * 6.283185307 + 1.3);
+    return Vec2(static_cast<f32>(std::cos(angle)), static_cast<f32>(std::sin(angle)));
+}
+
 WeatherSample Weather::sample(f64 clock) const
 {
     const WeatherState& a = m_states[m_previous];
@@ -389,6 +397,7 @@ WeatherSample Weather::sample(f64 clock) const
     s.clouds = mix(a.clouds, b.clouds);
     s.wind = mix(a.wind, b.wind);
     s.gusts = mix(a.gusts, b.gusts);
+    s.windDirection = windDirection(clock);
     s.fog = mix(a.fog, b.fog);
     s.sun = mix(a.sun, b.sun);
     s.ambient = mix(a.ambient, b.ambient);

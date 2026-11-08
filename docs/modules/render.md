@@ -501,7 +501,7 @@ Engine::rainStreaksDrawn(), rain(), rainSound();  Environment::shadowStrength (L
 ```
 - **Regenschleier:** Striche aus `gl_InstanceID` und Zeit im Vertex-Shader, ohne CPU-Simulation und ohne
   Vertex-Puffer; ortsfest (jeder Tropfen hat seinen Platz in einer Kiste von 40 × 24 × 40 m um die Kamera, die beim
-  Gehen umklappt), schräg nach dem Wind (bis Teil W fest aus Westen, Stärke aus der Lage), 8 m/s, 0,45 m lang,
+  Gehen umklappt), schräg nach dem Wind (Richtung und Stärke aus der Lage, Teil W), 8 m/s, 0,45 m lang,
   additiv und schwach, nah und fern ausgeblendet. Anzahl = `rainStreaks(Qualität) · rain`.
 - **Regenkarte (Draufsicht-Tiefe):** 512² über 64 × 64 m, Gelände und feste Instanzen von oben mit den
   Schatten-Shadern (Tiefe 0 oben .. 1 unten). Neu nur, wenn die Kamera mehr als 8 m weiterzieht oder sich die
@@ -577,19 +577,57 @@ Engine::lightningCount(), lastLightning(), lightningNow(), lastThunderDelay();  
   `tests/runtime/test_engine_weather.cpp` (Gewitter blitzt, Regen nicht; `lightning()` hellt sofort auf, Donner nach
   Entfernung / 343).
 
-### Wind (Vertrag, vereinbart 2026-11-07; Umsetzung Teil W)
-- Markierung je glTF-Material: `extras.wind` = `trunk` (steif, oben leichtes Schwanken), `leaves` (Äste und
-  Blattflattern), `grass` (biegt vom Fuß, stark), `cloth` (Fahnen, Wimpel), `hanging` (schwingt um den
-  Aufhängepunkt); `extras.wind_strength` 0..2 (Vorgabe 1).
-- Gewicht je Vertex aus der Höhe im Modellraum: 0 am Fuß (kleinstes y der Grenzen), 1 an der Spitze; Bäume und Blätter
-  quadratisch, Gras linear; auf 0..1 begrenzt (Stämme reichen 0,3 m unter den Boden). `forest_clump` über die Höhe des
-  ganzen Modells. `hanging`: um `extras.wind_pivot` [x, y, z] im Modellraum, sonst den Ursprung; Gewicht
-  (pivot_y − y) / Ausdehnung.
-- Ohne Markierung bleibt ein Modell still (Häuser, Mauern, Mobs, geschnittener Buchs `hedge_box`, `bush_box`). Ketten
-  der Zunftschilder: Material `iron_chain` (hanging); Wandplatte, Arm und Strebe unmarkiert. Kleidung nicht
-  (Entscheidung 7).
-- Ausschläge bei vollem Wind: Bäume an der Spitze höchstens etwa 4 % ihrer Höhe, Gras etwa 25 %, Stoff und Schilder
-  bis 30°; Phase je Instanz aus der Lage. welt liefert die Markierungen nach Vegetation-PR 4.
+### Wind (M17 Wetter, Teil W, umgesetzt; Vertrag vereinbart 2026-11-07) – `Wind.hpp`, `common/wind.glsl`
+```cpp
+enum class asset::WindKind { None, Trunk, Leaves, Grass, Cloth, Hanging };  parseWindKind(text); windKindName(kind);
+asset::MaterialInfo::wind, windStrength (0..2, Vorgabe 1), windPivot          // aus glTF extras, .g7mesh v4
+struct WindFrame { Vec2 direction; f32 strength, gusts, time; };            // je Frame, aus der Wetterlage
+struct WindBend { WindKind kind; f32 strength, foot, height; Vec3 pivot; u8 hinge; };  // je Material
+WindBend windBend(material, modelBounds);  f32 windAt(frame, xz);  f32 windWeight(bend, y);
+Vec3 windBent(frame, bend, model, modelPosition);  Vec3 windVelocity(frame, position);   // = Shader-Formeln
+MeshRenderer::setWind(frame);  ParticleSystem::setWind(frame);  EmitterDef::wind;  world::windDirection(clock)
+Engine::windNow(), windEnabled();  WeatherSample::windDirection
+```
+- **Markierung (Vertrag):** je glTF-Material `extras.wind` = `trunk` (steif, oben leichtes Schwanken), `leaves`
+  (Äste und Blattflattern), `grass` (biegt vom Fuß, stark), `cloth` (Fahnen, Wimpel), `hanging` (schwingt um den
+  Aufhängepunkt); `extras.wind_strength` 0..2 (Vorgabe 1, außerhalb begrenzt); `extras.wind_pivot` [x, y, z] im
+  Modellraum (sonst der Ursprung). Ohne Markierung bleibt ein Material still (Häuser, Mauern, Mobs, `hedge_box`,
+  `bush_box`; an den Zunftschildern Wandplatte, Arm und Strebe, Material `iron_bracket`). Kleidung nicht
+  (Entscheidung 7). Unbekannte oder fehlerhafte Werte: Warnung, das Material bleibt still bzw. nimmt die Vorgabe.
+- **Laden und Kochen:** `asset::loadGltf` liest die Extras aus dem glTF-JSON (nlohmann-json, `GltfExtras.cpp`);
+  `.g7mesh` Version 4 hängt je Material Art, Stärke und Drehpunkt an (ältere Dateien: alles still).
+  `g7-cook` Version 5 kocht deshalb einmal alles neu.
+- **Gewicht je Vertex** im Vertex-Shader aus der Höhe im Modellraum: 0 am Fuß (kleinstes y der Grenzen des
+  **ganzen Modells**, auch bei `forest_clump`), 1 an der Spitze; `trunk`/`leaves` quadratisch, `grass`/`cloth`
+  linear, auf 0..1 begrenzt (Stämme reichen 0,3 m unter den Boden). Fuß und Höhe stehen beim Material
+  (`MaterialSet::create` aus `MeshData::bounds`), also kein neues Vertex-Attribut.
+- **Ausschläge bei vollem Wind** (`strength` 1, mal `wind_strength`), in Windrichtung, mit der Weltgröße der Instanz
+  skaliert: Bäume an der Spitze höchstens 4 % ihrer Höhe (Schwanken 0,75–1 mit Phase je Instanz aus ihrer Lage),
+  Blätter wie der Stamm an derselben Stelle plus etwa 3 cm Flattern; Gras 25 % (Phase je Halm aus der Lage),
+  Stoff 15 % plus seitliches Flattern. `hanging`: starr um den Drehpunkt gedreht, bis 30°, der untere Rand schwingt
+  mit dem Wind; der Ausschlag wächst so mit (pivot_y − y) wie im Vertrag; Normalen und Tangenten drehen mit.
+  **Scharnier** (`WindBend::hinge`, Engine-Detail, kein Vertragsteil): ist das Modell in einer waagrechten Richtung
+  mehr als doppelt so lang wie in der anderen (Zunftschild mit Arm entlang +Z), dreht es nur um diese Achse, und nur
+  der Wind quer zum Schild bewegt es (Wind längs des Arms: still); sonst pendelt es frei (Achse quer zum Wind). Schatten, Tiefen-Vorpass und Regenkarte biegen gleich (`shadow.vert`).
+- **Globaler Wind** (`WindFrame`, Uniform-Block `Wind`, Bindung 4, einmal je Frame): Richtung aus
+  `world::windDirection(clock)` – meist aus Westen, dreht über einige Spielstunden um bis zu etwa 45° hin und her,
+  hängt nur von der Spielzeit ab (nach dem Laden gleich); Stärke und Böigkeit aus der Wetterlage (`wind`, `gusts`
+  in `weather.toml`: klar 0,15 als leichte Brise, Regen 0,45, Gewitter 0,8; Entscheidung 5). **Böen:** Rauschen
+  über Ort und Zeit (Zellen von etwa 30 m, ziehen mit 6 m/s in Windrichtung), Stärke · (1 ± 1,5 · gusts), auf
+  0..1 begrenzt; je Instanz an ihrem Ursprung ausgewertet, damit ein Baum als Ganzes schwankt.
+- **Partikel:** `wind` in `data/fx/*.toml` (0..10, Vorgabe 0) – die Teilchen treiben mit bis zu 4 m/s · Böenstärke
+  · Faktor; Rauch 1, Feuer und Fackel 0,3, Magie 0. Der Regen fällt schräg in Windrichtung.
+- **Option:** `[render] wind` (an; Optionen → Grafik „Wind“): aus = Stärke 0, Vegetation, Schilder und Rauch stehen
+  still.
+- **Batching:** Materialien mit Wind haben die Biegewerte im Gruppenschlüssel (eigene Gruppe je Modell); stille
+  Materialien bündeln wie bisher. Culling-Grenzen bleiben die unbewegten (Ausschläge höchstens einige Dezimeter).
+- **Tests:** `tests/render/test_wind.cpp` (Biegung aus Markierung und Grenzen, Böen im Rahmen und
+  deterministisch, Gewicht, Ausschläge je Art, starres Schwingen, Scharnier der Schilder, still ohne Wind, Rauch
+  treibt), `tests/asset/
+  test_material.cpp` (Extras gelesen, Fehler still), `test_mesh_file.cpp` (Version 4, Version 3 still),
+  `tests/world/test_weather.cpp` (Windrichtung), GPU `test_wind.cpp` (die Spitze eines Testmodells bewegt sich
+  mit dem Wind, der Fuß nicht; ohne Wind und unmarkiert steht alles still; Mehrfach-Zeichnen und Tiefen-Pass
+  biegen gleich), `test_engine_render.cpp` (Wind folgt der Lage, aus in den Einstellungen).
 
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp

@@ -6,6 +6,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -42,6 +43,22 @@ enum class AlphaMode : u8
     Blend,
 };
 
+/// How a material moves in the wind (M17 W, contract in coordination.md: glTF material `extras.wind`).
+enum class WindKind : u8
+{
+    None,    ///< still (houses, walls, mobs, cut box hedges)
+    Trunk,   ///< stiff, a slight sway at the top (weight quadratic over the height)
+    Leaves,  ///< branches and leaves: the trunk's sway plus flutter (quadratic)
+    Grass,   ///< bends from the foot, strongly (linear)
+    Cloth,   ///< flags and pennants: bends and flutters (linear)
+    Hanging, ///< swings as a whole about `windPivot` (guild signs and their chains)
+};
+/// "trunk", "leaves", "grass", "cloth", "hanging"; nullopt for anything else.
+[[nodiscard]] std::optional<WindKind> parseWindKind(std::string_view text) noexcept;
+[[nodiscard]] std::string_view windKindName(WindKind kind) noexcept;
+/// Bounds of `extras.wind_strength`.
+inline constexpr f32 kMaxWindStrength = 2.0f;
+
 /// Deliberately simple, stylised material (no metallic/roughness). Image indices refer to
 /// MeshData::images, -1 = none.
 struct MaterialInfo
@@ -56,6 +73,9 @@ struct MaterialInfo
     AlphaMode alphaMode = AlphaMode::Opaque;
     f32 alphaCutoff = 0.5f; ///< Mask: fragments with alpha below are discarded.
     bool doubleSided = false;
+    WindKind wind = WindKind::None; ///< glTF `extras.wind` (M17 W)
+    f32 windStrength = 1.0f;        ///< `extras.wind_strength`, 0..2
+    Vec3 windPivot{0.0f};           ///< `extras.wind_pivot` in model space (Hanging); the origin if not given
 };
 
 /// Range of the index buffer drawn with one material.

@@ -16,8 +16,8 @@ namespace g7::cook
 {
 /// Bump whenever the cooker's output for the same input changes (format, encoder settings).
 // 2: .g7mesh v2 (collision parts), 3: .g7mesh v3 (LOD per submesh), 4: alpha coverage kept in the mips of
-// alpha-tested colour textures
-inline constexpr u32 kCookerVersion = 4;
+// alpha-tested colour textures, 5: .g7mesh v4 (wind per material, M17 W)
+inline constexpr u32 kCookerVersion = 5;
 /// Manifest location below the output directory.
 inline constexpr std::string_view kManifestPath = ".g7cook/manifest.txt";
 

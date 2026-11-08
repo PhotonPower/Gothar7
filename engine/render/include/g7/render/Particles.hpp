@@ -7,6 +7,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
 #include <g7/render/Lighting.hpp>
+#include <g7/render/Wind.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
 #include <array>
@@ -40,11 +41,12 @@ struct EmitterDef
     f32 duration = 0.0f;  ///< seconds of emitting; 0: until stopped
     std::array<f32, 2> lifetime{0.5f, 1.0f};
     std::array<f32, 2> speed{0.5f, 1.0f};
-    Vec3 direction{0.0f, 1.0f, 0.0f};     ///< main direction (turned with the emitter)
-    f32 spreadDegrees = 20.0f;            ///< cone around it
-    f32 radius = 0.0f;                    ///< start positions within this sphere
-    f32 gravity = 0.0f;                   ///< m/s² along -Y (negative: rises)
-    f32 drag = 0.0f;                      ///< 1/s
+    Vec3 direction{0.0f, 1.0f, 0.0f}; ///< main direction (turned with the emitter)
+    f32 spreadDegrees = 20.0f;        ///< cone around it
+    f32 radius = 0.0f;                ///< start positions within this sphere
+    f32 gravity = 0.0f;               ///< m/s² along -Y (negative: rises)
+    f32 drag = 0.0f;                  ///< 1/s
+    f32 wind = 0.0f; ///< M17 W: how much the particles drift with the wind (smoke 1, sparks less, magic 0)
     std::array<f32, 2> size{0.2f, 0.05f}; ///< m at birth and at death
     Vec4 colorStart{1.0f};                ///< linear rgb, alpha
     Vec4 colorEnd{1.0f, 1.0f, 1.0f, 0.0f};
@@ -87,6 +89,8 @@ public:
     [[nodiscard]] usize emitterCount() const noexcept { return m_emitters.size(); }
 
     void update(f32 seconds);
+    /// The wind the particles drift with from the next update() on (M17 W; `wind` of their EmitterDef).
+    void setWind(const WindFrame& wind) noexcept { m_wind = wind; }
     /// The particles to draw: additive ones, and alpha ones sorted back to front from `eye`.
     void collect(const Vec3& eye, std::vector<ParticleInstance>& additive,
                  std::vector<ParticleInstance>& alpha) const;
@@ -116,6 +120,7 @@ private:
     void emit(Emitter& e, u32 count);
 
     std::vector<Emitter> m_emitters;
+    WindFrame m_wind;
     u32 m_next = 1;
     std::mt19937 m_rng;
 };
