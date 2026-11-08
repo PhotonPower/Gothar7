@@ -786,6 +786,10 @@ public:
     /// Spell glow (M17 part G): how "hero" or an NPC glows now (casting, a spell's hit, burning, asleep).
     [[nodiscard]] render::FigureGlow figureGlow(std::string_view who);
     [[nodiscard]] const render::SpellFxSettings& spellFx() const noexcept { return m_spellFx; }
+    /// Spell distortion (M17 part V): distorting particles drawn last frame (0: the pass was skipped), the
+    /// picture's wobble now (0..1, the hero changes shape).
+    [[nodiscard]] u32 distortionDrawn() const noexcept { return m_distortionDrawn; }
+    [[nodiscard]] f32 wobble() const noexcept;
     [[nodiscard]] const render::RainRenderer& rain() const noexcept { return m_rain; }
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
@@ -1735,7 +1739,13 @@ private:
     f32 m_lastThunderDelay = 0.0f;
     static constexpr f32 kBoltDistance =
         1800.0f; // flashes nearer than this show their bolt in the sky // moves the drops (real seconds)
-    u32 m_rainDrawn = 0; // streaks drawn last frame
+    u32 m_rainDrawn = 0;                   // streaks drawn last frame
+    render::DistortionTarget m_distortion; // M17 V
+    std::vector<render::ParticleInstance> m_distortParticles;
+    u32 m_distortionDrawn = 0;
+    bool m_spellDistortion = true; // [render] spell_distortion
+    f32 m_wobbleSeconds = 0.0f;    // left of the wobble (decision 12)
+    void drawDistortion();
     render::Sky m_sky;
     f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
     bool m_sunEnabled = true;        // debug: sun and moon light off
@@ -1963,6 +1973,7 @@ private:
         std::string state; ///< the graph state played
         std::optional<u32> target;
         bool telekinesis = false; ///< M17 part T: held while the item floats
+        std::optional<u32> swirl; ///< M17 V: the swirl round the hand from stage 2 of charging
     };
     std::optional<HeroCast> m_heroCast;
     struct TelekinesisRun

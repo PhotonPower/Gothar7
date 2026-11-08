@@ -78,6 +78,8 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
                           --set render.bloom=false; the value is TOML (true, 0.5, "text"; plain words are text)
   --no-user-config        neither read nor write the user config (%APPDATA%\Gothar\Gothar\config.toml):
                           test runs and screenshots leave it alone
+  --fixed-step            every frame advances the game by exactly 1/60 s and the random numbers are fixed:
+                          two runs with --frames=N show the same moment (screenshots to compare)
 
 Details: docs/05-build.md
 )";
@@ -117,6 +119,7 @@ struct CommandLine
     std::string scriptApi;
     g7::Config overrides; ///< --set key=value
     bool noUserConfig = false;
+    bool fixedStep = false;
 };
 
 /// One --set: `key=value` as a TOML line ("render.bloom = false"); a value TOML does not read becomes a
@@ -304,6 +307,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--no-user-config")
         {
             cli.noUserConfig = true;
+        }
+        else if (arg == "--fixed-step")
+        {
+            cli.fixedStep = true;
         }
         else if (arg == "--set" || arg.starts_with("--set="))
         {
@@ -533,6 +540,11 @@ int main(int argc, char** argv)
     if (cli->frames)
     {
         config.maxFrames = *cli->frames;
+    }
+    if (cli->fixedStep)
+    {
+        config.fixedFrameSeconds = 1.0 / 60.0;
+        config.randomSeed = config.randomSeed.value_or(1);
     }
     if (cli->smokeTest)
     {

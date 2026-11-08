@@ -356,6 +356,7 @@ std::vector<ui::OptionPage> Engine::optionPages() const
                          {std::string("high"), UiText::key("UI_OPT_QUALITY_HIGH")}}),
                  toggle("render.underwater_distortion", "UI_OPT_UNDERWATER_DISTORTION"),
                  toggle("render.ssao", "UI_OPT_SSAO"), toggle("render.weather", "UI_OPT_WEATHER"),
+                 toggle("render.spell_distortion", "UI_OPT_SPELL_DISTORTION"),
                  choice("render.rain_quality", "UI_OPT_RAIN",
                         {{std::string("low"), UiText::key("UI_OPT_QUALITY_LOW")},
                          {std::string("medium"), UiText::key("UI_OPT_QUALITY_MEDIUM")},
@@ -485,6 +486,10 @@ void Engine::applySetting(std::string_view key)
     else if (key == "render.weather")
     {
         m_weatherVisible = s.get<bool>("render.weather", true);
+    }
+    else if (key == "render.spell_distortion")
+    {
+        m_spellDistortion = s.get<bool>("render.spell_distortion", true);
     }
     else if (key == "render.wind")
     {

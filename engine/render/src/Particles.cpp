@@ -164,7 +164,8 @@ Result<EmitterDef> EmitterDef::parse(std::string_view toml, std::string_view sou
          {number("rate", d.rate, 0.0, 10000.0), number("burst", burst, 0.0, ParticleSystem::kMaxPerEmitter),
           number("duration", d.duration, 0.0, 3600.0), number("spread", d.spreadDegrees, 0.0, 180.0),
           number("radius", d.radius, 0.0, 100.0), number("gravity", d.gravity, -100.0, 100.0),
-          number("drag", d.drag, 0.0, 100.0), number("wind", d.wind, 0.0, 10.0)})
+          number("drag", d.drag, 0.0, 100.0), number("wind", d.wind, 0.0, 10.0),
+          number("distort", d.distort, 0.0, 4.0), number("distort_size", d.distortSize, 0.1, 20.0)})
     {
         if (!r)
         {
@@ -172,6 +173,25 @@ Result<EmitterDef> EmitterDef::parse(std::string_view toml, std::string_view sou
         }
     }
     d.burst = static_cast<u32>(burst);
+    for (usize i = 0; i < c.arraySize("with"); ++i)
+    {
+        const auto name = c.find<std::string>(std::format("with[{}]", i));
+        if (!name || name->empty())
+        {
+            return Error{std::format("{}: with: names of effects", source)};
+        }
+        d.with.push_back(*name);
+    }
+    if (c.contains("distort_shape"))
+    {
+        const std::string shape = c.get<std::string>("distort_shape", "haze");
+        const auto parsedShape = parseDistortShape(shape);
+        if (!parsedShape)
+        {
+            return Error{std::format("{}: distort_shape: haze, ring or swirl, not \"{}\"", source, shape)};
+        }
+        d.distortShape = *parsedShape;
+    }
     if (d.rate == 0.0f && d.burst == 0)
     {
         return Error{std::format("{}: needs rate or burst", source)};
@@ -386,6 +406,30 @@ void ParticleSystem::collect(const Vec3& eye, std::vector<ParticleInstance>& add
               { return glm::length(a.position - eye) > glm::length(b.position - eye); });
 }
 
+void ParticleSystem::collectDistortion(std::vector<ParticleInstance>& out) const
+{
+    for (const Emitter& e : m_emitters)
+    {
+        const EmitterDef& d = *e.def;
+        if (d.distort <= 0.0f)
+        {
+            continue;
+        }
+        for (const Particle& p : e.particles)
+        {
+            const f32 t = std::clamp(p.age / p.life, 0.0f, 1.0f);
+            ParticleInstance i;
+            i.position = p.position;
+            i.size = glm::mix(d.size[0], d.size[1], t) * d.distortSize;
+            // Rings fade by their age in the shader; haze and swirl fade out over the life here.
+            const f32 strength = d.distortShape == DistortShape::Ring ? d.distort : d.distort * (1.0f - t);
+            i.color = Vec4(strength, t, static_cast<f32>(d.distortShape), 1.0f);
+            i.sprite = 0.0f;
+            out.push_back(i);
+        }
+    }
+}
+
 void ParticleSystem::lights(std::vector<PointLight>& out) const
 {
     for (const Emitter& e : m_emitters)
@@ -462,6 +506,21 @@ Result<ParticleRenderer> ParticleRenderer::create(Device& device, ShaderLibrary&
     }
     r.m_additive = std::move(additive).value();
     r.m_alpha = std::move(alpha).value();
+    // M17 V: the same quads into the offset buffer, added up, depth-tested against the scene.
+    auto distortProgram = shaders.load("particle_distort", {"particle.vert", "particle_distort.frag", {}});
+    if (!distortProgram)
+    {
+        return distortProgram.error();
+    }
+    r.m_distortProgram = distortProgram.value();
+    desc.program = r.m_distortProgram;
+    desc.blend = rhi::BlendMode::Additive;
+    auto distort = device.createPipeline(desc);
+    if (!distort)
+    {
+        return distort.error();
+    }
+    r.m_distort = std::move(distort).value();
 
     auto sprites = device.createTexture({kSpriteSize, kSpriteSize, rhi::Format::RGBA8, 0, 3, true});
     if (!sprites)
@@ -493,13 +552,9 @@ Result<ParticleRenderer> ParticleRenderer::create(Device& device, ShaderLibrary&
     return r;
 }
 
-void ParticleRenderer::draw(Device& device, const Camera& camera, std::span<const ParticleInstance> particles,
-                            bool additive)
+void ParticleRenderer::upload(Device& device, std::span<const ParticleInstance> particles,
+                              rhi::ShaderProgram& program, const Camera& camera)
 {
-    if (particles.empty() || m_program == nullptr)
-    {
-        return;
-    }
     const usize bytes = particles.size_bytes();
     if (m_instances.size() < bytes)
     {
@@ -517,13 +572,35 @@ void ParticleRenderer::draw(Device& device, const Camera& camera, std::span<cons
         return;
     }
     const Mat4 view = camera.view();
-    m_program->setUniform("uViewProjection", camera.viewProjection());
-    m_program->setUniform("uCameraRight", Vec3(view[0][0], view[1][0], view[2][0]));
-    m_program->setUniform("uCameraUp", Vec3(view[0][1], view[1][1], view[2][1]));
-    m_program->setUniform("uCameraPosition", camera.transform.position);
-    device.bindPipeline(additive ? m_additive : m_alpha);
+    program.setUniform("uViewProjection", camera.viewProjection());
+    program.setUniform("uCameraRight", Vec3(view[0][0], view[1][0], view[2][0]));
+    program.setUniform("uCameraUp", Vec3(view[0][1], view[1][1], view[2][1]));
+    program.setUniform("uCameraPosition", camera.transform.position);
     device.bindInstanceBuffer(m_instances);
+}
+
+void ParticleRenderer::draw(Device& device, const Camera& camera, std::span<const ParticleInstance> particles,
+                            bool additive)
+{
+    if (particles.empty() || m_program == nullptr)
+    {
+        return;
+    }
+    device.bindPipeline(additive ? m_additive : m_alpha);
+    upload(device, particles, *m_program, camera);
     device.bindTexture(0, m_sprites, m_sampler);
+    device.drawInstanced(6, static_cast<u32>(particles.size()));
+}
+
+void ParticleRenderer::drawDistortion(Device& device, const Camera& camera,
+                                      std::span<const ParticleInstance> particles)
+{
+    if (particles.empty() || m_distortProgram == nullptr)
+    {
+        return;
+    }
+    device.bindPipeline(m_distort);
+    upload(device, particles, *m_distortProgram, camera);
     device.drawInstanced(6, static_cast<u32>(particles.size()));
 }
 } // namespace g7::render

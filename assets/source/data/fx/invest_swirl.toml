@@ -1,0 +1,15 @@
+# Wirbel um die Hand beim Aufladen ab Stufe 2 (M17 V, Entscheidung 11): unsichtbare Teilchen, die das Bild drehen.
+version = 1
+sprite = "soft"
+blend = "additive"
+rate = 6
+duration = 8              # endet spätestens nach 8 s, falls das Aufladen anders endet
+lifetime = [0.6, 0.9]
+speed = [0.0, 0.1]
+spread = 180
+size = [0.7, 0.9]
+color_start = [0.0, 0.0, 0.0, 0.0]
+color_end = [0.0, 0.0, 0.0, 0.0]
+distort = 1.0
+distort_shape = "swirl"
+distort_size = 1.0

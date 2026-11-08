@@ -1067,6 +1067,36 @@ MeshRenderer::drawSkinned(..., const FigureGlow& glow = {});  Engine::figureGlow
   - `test_engine_render.cpp`: Option aus → kein Pass `distort`, an und Feuerpfeil im Flug → Pass gezeichnet.
   - Prüfbilder: Feuerpfeil vor einer Hauswand (Flimmern), Einschlag-Ring, Aufladen Stufe 3, Lagerfeuer.
 
+### Teil V – umgesetzt (`Distortion.hpp`, `particle_distort.frag`, `post.frag`)
+```cpp
+enum class DistortShape { Haze, Ring, Swirl };  parseDistortShape(text);  Vec2 distortOffset(shape, p, strength, age);
+kDistortHaze 0,004, kDistortRing 0,01, kDistortSwirl 0,006 (Bildanteile bei Stärke 1); kWobbleSeconds 0,5, kWobbleAmount 0,006
+class DistortionTarget { begin(device, scene); texture(); };          // RGBA16F, teilt die Tiefe der Szene
+EmitterDef::distort, distortShape, distortSize, with;  ParticleSystem::collectDistortion(out);
+ParticleRenderer::drawDistortion(device, camera, particles);  PostSettings::distortion, wobble, wobbleTime
+Engine::distortionDrawn(), wobble();  gothar --fixed-step (1/60 s je Frame, Prüfbilder zum Vergleich)
+```
+- **Puffer:** abweichend vom Plan in voller Auflösung (RGBA16F, Versatz in rg), weil er so die Tiefe der Szene
+  mitbenutzen kann: Verzerrer hinter einer Wand schreiben nichts. Er wird nur gezeichnet, wenn ein verzerrendes
+  Teilchen lebt und `[render] spell_distortion` an ist; sonst fällt der Pass weg und das Bild ist bytegleich.
+  Passzeit `distort`.
+- **Formen** (`particle_distort.frag` = `distortOffset`, über das Quad −1..1, außerhalb des Kreises nichts):
+  `haze` flimmert (Sinus über Ort und Alter, zum Rand schwächer), `ring` schiebt nach außen, wo der Ring gerade ist
+  (Radius = Alter, klingt mit dem Alter aus), `swirl` dreht tangential. Dunst und Wirbel werden über die Lebenszeit
+  schwächer, Ringe über das Alter. Größte Verschiebung etwa 1 % der Bildbreite (Entscheidung 11).
+- **Daten** (`data/fx/*.toml`): `distort` 0..4, `distort_shape`, `distort_size` (Faktor auf die Teilchengröße),
+  `with = [...]` (Begleit-Effekte, die `startEffect` mitstartet). Feuerpfeil-Spur Dunst (Größe ×4), Einschlag
+  `impact_fire` mit `with = ["impact_ring"]` (ein unsichtbares Teilchen, Ring 2,5 m, 0,3 s), Beschwörung und
+  Verwandlung (`summon`) Dunst, `fire` (Lagerfeuer, Herde, Brennende) Dunst 0,5; Fackeln nicht (Entscheidung 13).
+  Aufladen ab Stufe 2: `invest_swirl` an der Hand (endet mit dem Aufladen, spätestens nach 8 s).
+- **Wabern des Bildes** (Entscheidung 12): 0,5 s beim Verwandeln in ein Tier und zurück, im Post-Pass.
+- **Option:** `[render] spell_distortion` (an), Optionen → Grafik „Zauber-Verzerrung“; aus auch ohne Wabern.
+- **Tests:** `tests/render/test_distortion.cpp` (Felder, Begleiter, Fehler, Sammeln und Ausklingen, Formen und
+  Grenzen, gelieferte Effekte), GPU `test_distortion.cpp` (leerer Puffer bytegleich, Ring verschiebt nur in seinem
+  Umkreis, hinter einer Wand nichts, Wabern), `test_engine_render.cpp` (Pass nur mit verzerrendem Effekt in Sicht,
+  aus: keiner, Fackel: keiner). Prüfbilder `C:\GotharData\review\m17-distortion` (aus/an/Differenz ×8 mit
+  `--fixed-step`).
+
 ### Reihenfolge
 G vor V (G ist klein und unabhängig); beide nach Teil T oder parallel dazu, je ein PR.
 
