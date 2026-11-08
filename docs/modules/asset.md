@@ -426,6 +426,13 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
 - Tracy-Zonen (Preset `profile`, #387) in `AssetManager` und `EngineFigure`: `skin parse (glTF)`, `anim parse (glTF)`,
   `figure assemble`, `figure textures`, `figure upload`. Lauf `--perf=markt,markt_voll` auf ruhiger Maschine.
 - Ergebnis in `docs/perf/` mit Anteilen je Zone. Erst damit wird der Gewinn belastbar (siehe „Erwarteter Gewinn“).
+- **Umgesetzt** (2026-11-08):
+  - Die Zonen heißen `figure load`, `figure parts (glTF)`, `figure clip sets (glTF)`, `figure assemble`,
+    `figure images` und `figure upload`.
+  - Engine und `--perf` schreiben die Summen zusätzlich als Ladephasen `figures: …`. Das gilt in jedem Build, nicht
+    nur im Preset `profile`.
+  - Ergebnis in `docs/perf/2026-11-08-figuren-laden.md`: In Leonberg (25 Figuren, ~1,3 s) braucht glTF-Parsen
+    ~720–770 ms (Clip-Sets ~460, Teile ~260), Zusammenbau ~30 ms, Bilder ~200 ms und Upload ~160 ms.
 
 ### Teil B – Format `.g7skin` (asset, `SkinFile.hpp`)
 - Eine Datei je geskinntem `.glb` (Teil, Monster-Rig, Platzhalter). Sie bildet `SkinnedModelData` 1:1 ab: Skelett
