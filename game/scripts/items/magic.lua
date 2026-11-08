@@ -27,11 +27,13 @@ rune("it_rune_heal", "spl_heal", "Heilung", 150)
 rune("it_rune_sleep", "spl_sleep", "Schlaf", 300)
 rune("it_rune_transform_wolf", "spl_transform_wolf", "Wolfsgestalt", 300)
 rune("it_rune_summon_wolf", "spl_summon_wolf", "Wolf rufen", 450)
+rune("it_rune_telekinesis", "spl_telekinesis", "Telekinese", 300) -- M17 T; Modell folgt (figuren), bis dahin Platzhalter
 
 scroll("it_scroll_firebolt", "spl_firebolt", "Feuerpfeil", 25)
 scroll("it_scroll_heal", "spl_heal", "Heilung", 25)
 scroll("it_scroll_sleep", "spl_sleep", "Schlaf", 50)
 scroll("it_scroll_fear", "spl_fear", "Schrecken", 40)
+scroll("it_scroll_telekinesis", "spl_telekinesis", "Telekinese", 50) -- M17 T, Entscheidung 7
 
 Item "it_potion_mana_small" {
     name = "Kleiner Manatrank",

@@ -15,12 +15,13 @@ SpellInfo spellInfo(const script::Instance& spell)
     s.circle = static_cast<i32>(spell.fields["circle"].asInteger(1));
     s.mana = static_cast<i32>(spell.fields["mana"].asInteger(0));
     const std::string_view kind = spell.fields["kind"].asString();
-    s.kind = kind == "area"        ? SpellKind::Area
-             : kind == "self"      ? SpellKind::Self
-             : kind == "target"    ? SpellKind::Target
-             : kind == "summon"    ? SpellKind::Summon
-             : kind == "transform" ? SpellKind::Transform
-                                   : SpellKind::Projectile;
+    s.kind = kind == "area"          ? SpellKind::Area
+             : kind == "self"        ? SpellKind::Self
+             : kind == "target"      ? SpellKind::Target
+             : kind == "summon"      ? SpellKind::Summon
+             : kind == "transform"   ? SpellKind::Transform
+             : kind == "telekinesis" ? SpellKind::Telekinesis
+                                     : SpellKind::Projectile;
     if (const script::Table* invest = spell.fields["invest"].asTable())
     {
         const auto stages = invest->fields.find("stages");
@@ -39,6 +40,11 @@ SpellInfo spellInfo(const script::Instance& spell)
     }
     s.radius = static_cast<f32>(spell.fields["radius"].asNumber(0.0));
     s.burn = spell.fields["burn"].asBool();
+    s.manaPerSecond = static_cast<f32>(spell.fields["mana_per_second"].asNumber(0.0));
+    s.range = static_cast<f32>(spell.fields["range"].asNumber(0.0));
+    s.speed = static_cast<f32>(spell.fields["speed"].asNumber(0.0));
+    s.lift = static_cast<f32>(spell.fields["lift"].asNumber(0.0));
+    s.carry = static_cast<f32>(spell.fields["carry"].asNumber(0.0));
     if (const script::Table* sounds = spell.fields["sounds"].asTable())
     {
         for (const auto& [role, name] : sounds->fields)

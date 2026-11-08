@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "status": "Plan freigegeben (Koordinator 2026-11-08; Schwelle 400 m vom Projektinhaber bestätigt): vor der Mauer Landstraßen und Feldwege statt des modernen Straßennetzes",
+  "note": "Mechanik in gothar_worldgen/geo/rural.py (Straßen) und export/harmonise.py (Gelände). Innerhalb des Rings (plus insideM) bleibt jede Straße.",
+  "enabled": true,
+  "insideM": 5.0,
+  "reachM": 600.0,
+  "accessM": 12.0,
+  "maxLinkM": 300.0,
+  "linkHalfM": 350.0,
+  "belt": {"m": 40.0, "highways": ["footway", "path", "steps", "pedestrian", "service", "track"]},
+  "landstrasse": {
+    "highways": ["primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link"],
+    "gateM": 12.0,
+    "gateHighways": ["residential", "living_street", "unclassified"],
+    "widthM": 4.5,
+    "surface": "gravel"
+  },
+  "feldweg": {
+    "highways": ["track", "path", "unclassified"],
+    "named": ["residential", "living_street"],
+    "minNamedM": 400.0,
+    "widthM": 2.5,
+    "surface": "mud"
+  },
+  "harmonise": {
+    "buildingM": 3.0,
+    "streetMarginM": 3.0,
+    "streetMarginShare": 0.5,
+    "railWidthM": 8.0,
+    "wallM": 45.0,
+    "keepM": 5.0
+  }
+}

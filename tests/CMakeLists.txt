@@ -21,7 +21,7 @@ set(_g7_runtime_groups
     "npcs|*test_engine_scripts.cpp,*test_engine_monsters.cpp"
     "fights|*test_engine_perception.cpp,*test_engine_combat.cpp"
     "dialog|*test_engine_dialog.cpp,*test_engine_weapon_sweep.cpp"
-    "magic|*test_engine_magic.cpp"
+    "magic|*test_engine_magic.cpp,*test_engine_telekinesis.cpp"
     "npc_mobs|*test_engine_npc_mobs.cpp"
     "leonberg|*test_engine_leonberg.cpp"
     "leonberg_doors|*test_engine_leonberg_doors.cpp"
@@ -185,7 +185,8 @@ set_tests_properties(perf PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
 if(TARGET gothar)
     foreach(_case IN ITEMS "help|--help|0|--world=" "unknown|--bogus|nonzero|unknown argument '--bogus'"
                           "set_bad|--set=render.bloom|nonzero|--set needs key=value"
-                          "set|--set=render.bloom=false,--set,ui.language=en,--no-user-config,--smoke-test|0|--set ui.language=en")
+                          "set|--set=render.bloom=false,--set,ui.language=en,--no-user-config,--smoke-test,--crash-dir=${CMAKE_CURRENT_BINARY_DIR}/crash_reports,--user-dir=${CMAKE_CURRENT_BINARY_DIR}/user|0|--set ui.language=en"
+                          "version|--version|0|Gothar ")
         string(REPLACE "|" ";" _parts "${_case}")
         list(GET _parts 0 _name)
         list(GET _parts 1 _arg)
@@ -203,3 +204,23 @@ if(TARGET gothar)
                      "-DDOC=${PROJECT_SOURCE_DIR}/docs/script-api.md" -P "${CMAKE_CURRENT_SOURCE_DIR}/game/check_script_api.cmake")
     set_tests_properties(game.script_api PROPERTIES TIMEOUT 120)
 endif()
+
+# Crash reports (M17, release.md part B): the tests start this probe as a process of its own, which crashes on
+# purpose - the test runner itself never crashes.
+add_executable(g7_crash_probe ${CMAKE_CURRENT_SOURCE_DIR}/crash_probe/main.cpp)
+target_link_libraries(g7_crash_probe PRIVATE g7::platform g7::core)
+g7_set_warnings(g7_crash_probe)
+set_target_properties(g7_crash_probe PROPERTIES FOLDER "tests")
+add_dependencies(g7_tests_platform g7_crash_probe)
+target_compile_definitions(g7_tests_platform PRIVATE G7_CRASH_PROBE="$<TARGET_FILE:g7_crash_probe>")
+
+# The pure package test (M17, release.md part C): label "package", run by tools/release/make_release.cmake with
+# the built ZIP in G7_PACKAGE; without it the test passes without checking anything.
+add_executable(g7_tests_package ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/package/test_package.cpp)
+target_link_libraries(g7_tests_package PRIVATE g7::core doctest::doctest)
+target_include_directories(g7_tests_package PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/common)
+target_compile_definitions(g7_tests_package PRIVATE G7_CMAKE="${CMAKE_COMMAND}")
+g7_set_warnings(g7_tests_package)
+set_target_properties(g7_tests_package PROPERTIES FOLDER "tests")
+add_test(NAME package COMMAND g7_tests_package)
+set_tests_properties(package PROPERTIES LABELS package TIMEOUT 600)

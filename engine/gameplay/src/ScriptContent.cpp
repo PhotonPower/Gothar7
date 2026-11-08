@@ -30,6 +30,7 @@ void defineContentKinds(script::ScriptVm& vm)
              {"on_use", Type::Function}, // fn(item): after the effects
              {"tags", Type::StringList},
              {"spell", Type::String, false, none, none, "Spell"}, // runes and scrolls: what they cast (M12)
+             {"no_telekinesis", Type::Boolean}, // M17 part T: the story keeps it from flying
          },
          false});
 
@@ -133,7 +134,8 @@ void defineContentKinds(script::ScriptVm& vm)
     // = 25 },
     //                     fx = { trail = "firebolt", impact = "impact_fire" } }: what a rune or a scroll
     //                     casts
-    // (M12 part B, owner decisions Z1-Z3). kind: projectile, area, self, target, summon, transform.
+    // (M12 part B, owner decisions Z1-Z3). kind: projectile, area, self, target, summon, transform,
+    // telekinesis (M17).
     vm.defineKind(
         {"Spell",
          {
@@ -146,7 +148,8 @@ void defineContentKinds(script::ScriptVm& vm)
               none,
               none,
               {},
-              std::vector<std::string>{"projectile", "area", "self", "target", "summon", "transform"}},
+              std::vector<std::string>{"projectile", "area", "self", "target", "summon", "transform",
+                                       "telekinesis"}},
              {"invest", Type::Table}, // Z5: { stages = 3, mana = 5 } more per second of charging
              {"damage", Type::Table}, // { fire = 25 } (projectile, area)
              {"radius", Type::Number, false, 0.0, 50.0},         // area
@@ -159,6 +162,12 @@ void defineContentKinds(script::ScriptVm& vm)
              {"burn", Type::Boolean},     // its fire sets the target burning (owner decision B, as Gothic)
              {"sounds", Type::Table},     // { cast, impact }: sounds of data/sounds.toml (M13)
              {"on_cast", Type::Function}, // fn(caster, target): after the engine
+             // Telekinesis (M17 part T, decisions 1, 2, 4)
+             {"mana_per_second", Type::Number, false, 0.0, 1000.0},
+             {"range", Type::Number, false, 0.0, 100.0},
+             {"speed", Type::Number, false, 0.0, 50.0},
+             {"lift", Type::Number, false, 0.0, 10.0},
+             {"carry", Type::Number, false, 0.0, 10.0}, // largest item extent in metres
          },
          false});
 

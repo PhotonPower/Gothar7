@@ -14,6 +14,7 @@ option(G7_BUILD_TESTS  "Unit-Tests bauen (benoetigt doctest)" ON)
 option(G7_BUILD_TOOLS  "Tools (Asset-Cooker, Editor) bauen" ON)
 option(G7_WARNINGS_AS_ERRORS "Warnungen als Fehler behandeln" OFF)
 option(G7_PROFILING   "Profiler-Zonen (G7_PROFILE_*) aktivieren" OFF)
+option(G7_TRACY       "Profiler-Zonen an Tracy melden (ADR 0024; nur mit G7_PROFILING, Preset profile)" OFF)
 option(G7_COVERAGE    "Testabdeckung messen (GCC/Clang, --coverage)" OFF)
 option(G7_DEV_ASSETS  "Entwicklung: Repo-Ordner assets/ ins VFS mounten ([assets] dev_mounts); fuer Auslieferung OFF" ON)
 
@@ -50,3 +51,6 @@ if(G7_BUILD_TESTS)
         message(WARNING "doctest nicht gefunden - Tests werden uebersprungen (vcpkg-Preset verwenden).")
     endif()
 endif()
+
+# The release package (M17, docs/modules/release.md part C): install rules, CPack, g7_release_data.
+include(Package)

@@ -41,10 +41,11 @@ pitch = 0.0
 roll = -45.0
 fill = 0.97
 
-# seen from above onto the plane of the prod, diagonal like the other weapons: stock, prod and string
+# three-quarter view from above, diagonal like the other weapons: the stock shows its side (butt) and
+# the prod its arc - straight from above the thin stock and string were hard to read at 104 px
 [category.crossbow]
-yaw = 0.0
-pitch = 10.0
+yaw = 45.0
+pitch = 35.0
 roll = -45.0
 fill = 0.97
 
@@ -215,3 +216,7 @@ yaw = 90.0
 pitch = 0.0
 roll = -45.0
 fill = 0.95
+
+# telekinesis rune: its Lua item comes with engine #404 (category rune); until then the model names it
+[model."items/it_rune_telekinesis.glb"]
+category = "rune"

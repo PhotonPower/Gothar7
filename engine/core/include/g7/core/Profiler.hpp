@@ -8,7 +8,7 @@
 
 /// Profiling hook. The macros below are the only thing engine/game code uses; they compile to
 /// nothing unless the CMake option G7_PROFILING is ON. Behind them sits a small built-in
-/// per-frame collector for now (debug overlay in M2); Tracy replaces it in M17.
+/// per-frame collector (debug overlay, --perf), and with G7_TRACY (preset profile, ADR 0024) Tracy as well.
 namespace g7::profiler
 {
 /// Aggregated timings of one zone name within one frame. Times are inclusive (nested zones
@@ -48,11 +48,33 @@ void markFrame();
 #define G7_PROFILE_CONCAT_INNER(a, b) a##b
 #define G7_PROFILE_CONCAT(a, b) G7_PROFILE_CONCAT_INNER(a, b)
 
+// Tracy (ADR 0024, preset profile): the same zones go to Tracy as well; names must be string literals there.
+#if defined(G7_TRACY) && G7_TRACY
+#include <tracy/Tracy.hpp>
+#define G7_PROFILE_TRACY_ZONE(name) ZoneNamedN(G7_PROFILE_CONCAT(g7TracyZone, __LINE__), name, true)
+#define G7_PROFILE_TRACY_FUNCTION() ZoneNamed(G7_PROFILE_CONCAT(g7TracyZone, __LINE__), true)
+#define G7_PROFILE_TRACY_FRAME() FrameMark
+#define G7_PROFILE_THREAD(name) tracy::SetThreadName(name)
+#else
+#define G7_PROFILE_TRACY_ZONE(name) static_cast<void>(0)
+#define G7_PROFILE_TRACY_FUNCTION() static_cast<void>(0)
+#define G7_PROFILE_TRACY_FRAME() static_cast<void>(0)
+#define G7_PROFILE_THREAD(name) static_cast<void>(0)
+#endif
+
 #if defined(G7_PROFILING) && G7_PROFILING
 #define G7_PROFILE_SCOPE(name)                                                                               \
+    G7_PROFILE_TRACY_ZONE(name);                                                                             \
     const ::g7::profiler::ScopedZone G7_PROFILE_CONCAT(g7ProfileZone, __LINE__)(name)
-#define G7_PROFILE_FUNCTION() G7_PROFILE_SCOPE(__func__)
-#define G7_PROFILE_FRAME() ::g7::profiler::markFrame()
+#define G7_PROFILE_FUNCTION()                                                                                \
+    G7_PROFILE_TRACY_FUNCTION();                                                                             \
+    const ::g7::profiler::ScopedZone G7_PROFILE_CONCAT(g7ProfileZone, __LINE__)(__func__)
+#define G7_PROFILE_FRAME()                                                                                   \
+    do                                                                                                       \
+    {                                                                                                        \
+        ::g7::profiler::markFrame();                                                                         \
+        G7_PROFILE_TRACY_FRAME();                                                                            \
+    } while (false)
 #else
 #define G7_PROFILE_SCOPE(name) static_cast<void>(0)
 #define G7_PROFILE_FUNCTION() static_cast<void>(0)

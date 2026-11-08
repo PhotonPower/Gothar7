@@ -52,6 +52,7 @@ const char* castState(gameplay::SpellKind kind)
         return "mag_t_cast_summon";
     case gameplay::SpellKind::Self:
     case gameplay::SpellKind::Transform:
+    case gameplay::SpellKind::Telekinesis:
         break;
     }
     return "mag_t_cast_self";
@@ -153,6 +154,21 @@ void Engine::beginHeroCast()
         if (m_figure && m_figure->animator.hasState("mag_t_cast_fail"))
         {
             m_figure->animator.enter("mag_t_cast_fail", 0.1f);
+        }
+        return;
+    }
+    if (spell->kind == gameplay::SpellKind::Telekinesis)
+    {
+        // M17 part T: held while the item floats; the mana and a scroll go when it lifts.
+        HeroCast cast;
+        cast.item = m_weaponDrawn;
+        cast.spell = *spell;
+        cast.scroll = scroll;
+        cast.telekinesis = true;
+        m_heroCast = std::move(cast);
+        if (!beginTelekinesis(*spell))
+        {
+            m_heroCast.reset();
         }
         return;
     }
@@ -324,6 +340,8 @@ void Engine::applyHeroSpell()
     case gameplay::SpellKind::Transform:
         requestTransform(spell.species); // the transition clip, then the swap
         break;
+    case gameplay::SpellKind::Telekinesis:
+        break; // held, not cast (EngineTelekinesis.cpp)
     }
 }
 
@@ -532,9 +550,10 @@ std::optional<std::string> Engine::npcCast(Creature& c, std::string_view spell, 
         return std::string("busy");
     }
     const gameplay::SpellInfo info = gameplay::spellInfo(*def);
-    if (info.kind == gameplay::SpellKind::Summon || info.kind == gameplay::SpellKind::Transform)
+    if (info.kind == gameplay::SpellKind::Summon || info.kind == gameplay::SpellKind::Transform ||
+        info.kind == gameplay::SpellKind::Telekinesis)
     {
-        return std::string("NPCs do not summon or transform yet");
+        return std::string("NPCs do not summon, transform or move items (decision 8)");
     }
     // With its circle (a rune it knows), else from a scroll it carries (no circle; used up; decision A).
     const std::string scroll = npcScrollFor(*c.character, info.instance);
@@ -705,6 +724,7 @@ void Engine::applyNpcSpell(Creature& c)
     }
     case gameplay::SpellKind::Summon:
     case gameplay::SpellKind::Transform:
+    case gameplay::SpellKind::Telekinesis:
         break;
     }
 }
@@ -873,6 +893,11 @@ void Engine::fixedUpdateHeroMagic(gameplay::MoveInput& input, f32 seconds)
     const bool held = m_castHeld || m_castScripted;
     const bool pressed = held && !m_castWasHeld;
     m_castWasHeld = held;
+    if (m_heroCast && m_heroCast->telekinesis && (!held || m_weaponMode != kMagicMode))
+    {
+        m_heroCast.reset(); // let go: the item falls (fixedUpdateTelekinesis)
+    }
+    fixedUpdateTelekinesis(seconds);
     if (m_weaponMode != kMagicMode)
     {
         m_heroCast.reset();
@@ -884,6 +909,10 @@ void Engine::fixedUpdateHeroMagic(gameplay::MoveInput& input, f32 seconds)
         {
             beginHeroCast();
         }
+    }
+    else if (m_heroCast->telekinesis)
+    {
+        // Held: the item floats (fixedUpdateTelekinesis); the hero stands.
     }
     else if (m_heroCast->charging)
     {
@@ -943,6 +972,7 @@ void Engine::bindMagicFunctions()
 {
     using script::Value;
     script::ScriptVm& vm = *m_scripts;
+    bindTelekinesisFunctions(); // M17 part T
     vm.bind(
         {"cast_check", "cast_check(item: string, stages?: integer) -> string | nil",
          "Ob der Held die Rune bzw. Spruchrolle wirken kann (M12, Z1-Z3): nil, sonst der Grund (fehlender "

@@ -5,6 +5,7 @@
 #include "PlayerFigure.hpp"
 
 #include <g7/core/Log.hpp>
+#include <g7/core/Profiler.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/ui/GameScreens.hpp>
 #include <g7/ui/SamplePage.hpp>
@@ -110,6 +111,7 @@ void Engine::reloadGameUi()
 
 void Engine::updateGameUi(f64 realSeconds, bool allowMouse, bool allowKeyboard)
 {
+    G7_PROFILE_SCOPE("ui");
     reloadGameUiIfChanged(realSeconds);
     if (!m_gameUi || !m_window)
     {

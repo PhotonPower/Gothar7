@@ -1,0 +1,125 @@
+# Licences of the assets, machine-readable (M17, docs/modules/release.md part C). The readable list with all
+# details is assets/LICENSES.md; `g7-cook --check-licences` checks that every file of assets/source has a source
+# here (first match wins, paths relative to assets/source, `*` within a folder name, `**` across folders),
+# that its licences may be shipped, that each source's `md` phrase stands in LICENSES.md, and writes the
+# CREDITS.txt of the release from the sources used (required credits by `credit_order`, then the thanks).
+version = 1
+
+# --- Licence kinds: may they go into the release (redistributable) and do they demand a credit line? ---
+[licence.own]
+name = "eigene Arbeit (MIT-Lizenz des Repositorys)"
+redistributable = true
+attribution = false
+
+[licence.owner]
+name = "eigene Arbeit des Projektinhabers"
+redistributable = true
+attribution = false
+
+[licence.CC0-1_0]
+name = "CC0 1.0"
+redistributable = true
+attribution = false
+
+[licence.CC-BY-4_0]
+name = "CC BY 4.0"
+redistributable = true
+attribution = true
+
+[licence.DL-DE-BY-2_0]
+name = "Datenlizenz Deutschland - Namensnennung 2.0"
+redistributable = true
+attribution = true
+
+[licence.ODbL-1_0]
+name = "Open Database License 1.0"
+redistributable = true
+attribution = true
+
+[licence.OFL-1_1]
+name = "SIL Open Font License 1.1"
+redistributable = true
+attribution = true
+
+[licence.public-domain]
+name = "Public Domain"
+redistributable = true
+attribution = false
+
+[licence.CMU-MoCap]
+# CMU Graphics Lab Motion Capture Database, terms of use (figuren #369): "This data is free for use in research
+# projects. You may include this data in commercially-sold products, but you may not resell this data directly,
+# even in converted form." Shipping it inside the game is allowed; the acknowledgement is asked for.
+name = "CMU Graphics Lab Motion Capture Database - Nutzungsbedingungen"
+redistributable = true
+attribution = true
+
+# --- Sources, most specific first ---
+[[source]]
+name = "CMU Graphics Lab Motion Capture Database"
+licences = ["CMU-MoCap", "CC0-1_0"]
+credit = "The data used in this project was obtained from mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217."
+credit_order = 4
+md = "CMU Graphics Lab Motion Capture Database"
+optional_md = true # the row comes with figuren #369
+paths = ["characters/anims/human/fist.*"]
+
+[[source]]
+name = "OpenStreetMap"
+licences = ["ODbL-1_0", "DL-DE-BY-2_0"]
+credit = "Straßen, Plätze und Nutzung: © OpenStreetMap-Mitwirkende (ODbL 1.0)"
+credit_order = 2 # LGL and OSM first (release.md, decision 10)
+md = "OpenStreetMap"
+paths = ["ui/maps/leonberg.png", "worlds/leonberg/generated/*splat*"]
+
+[[source]]
+name = "Modelle des Projektinhabers (Leonberg)"
+licences = ["owner"]
+md = "eigene Arbeit des Projektinhabers"
+paths = ["worlds/leonberg/handmade/**"]
+
+[[source]]
+name = "LGL Baden-Württemberg - DGM1, LoD2, DOP"
+licences = ["DL-DE-BY-2_0"]
+credit = "Gelände und Baukörper von Leonberg - Datengrundlage: LGL, www.lgl-bw.de (Datenlizenz Deutschland - Namensnennung 2.0)"
+credit_order = 1
+md = "LGL Baden-Württemberg"
+paths = ["worlds/leonberg/**"]
+
+[[source]]
+name = "Alegreya und Alegreya SC (Huerta Tipográfica)"
+licences = ["OFL-1_1"]
+credit = "Schriften Alegreya und Alegreya SC: Juan Pablo del Peral, Huerta Tipográfica - SIL Open Font License 1.1 (OFL.txt)"
+credit_order = 3
+md = "SIL Open Font License 1.1"
+paths = ["fonts/*.ttf", "fonts/*.g7font", "fonts/OFL.txt"]
+
+[[source]]
+name = "Kenney Fantasy Town Kit und Nature Kit"
+licences = ["CC0-1_0"]
+thanks = "Kenney (kenney.nl)"
+md = "Kenney"
+paths = ["testscene/town/**", "testscene/nature/**"]
+
+[[source]]
+name = "MakeHuman/MPFB2, Quaternius, ambientCG (Figuren)"
+licences = ["CC0-1_0"]
+thanks = "MakeHuman-Gemeinschaft, Quaternius, ambientCG"
+md = "MakeHuman"
+paths = ["characters/**"]
+
+[[source]]
+name = "ambientCG (Texturen der Gegenstände)"
+licences = ["CC0-1_0"]
+thanks = "ambientCG (ambientcg.com)"
+md = "ambientCG"
+paths = ["items/textures/*.jpg"]
+
+[[source]]
+name = "Eigene Arbeit (Projekt)"
+licences = ["own"]
+md = "eigene Arbeit"
+paths = [
+    "data/**", "fonts/*.font.toml", "furniture/**", "items/**", "mobs/**", "music/**", "props/**", "sounds/**",
+    "testscene/*", "testworld/**", "text/**", "ui/**", "vegetation/**", "voice/**", "worlds/.gitignore",
+]

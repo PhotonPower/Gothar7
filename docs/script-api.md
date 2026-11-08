@@ -436,6 +436,9 @@ Das vom Helden beschworene Wesen, solange es da ist (Z8); nil ohne.
 ### `hero_target() -> string | nil`
 Das Ziel, das der Held mit gezogener Waffe bzw. Magie anvisiert (Lock, K5); nil ohne.
 
+### `hero_telekinesis() -> {item, phase} | nil`
+Der Gegenstand, den der Held gerade per Telekinese bewegt (M17 Teil T): Item und Phase ("lift", "float", "drop" = fällt); nil, wenn keiner.
+
 ### `hero_transform_back()`
 Der Held wird wieder Mensch (wie die Taste „1“ in Tiergestalt).
 
@@ -447,6 +450,9 @@ Ein NPC wirkt einen Spruch (M12 Teil D) mit seinem Mana und Kreis (Talent magic_
 
 ### `npc_casting(npc: string) -> boolean`
 Ob ein NPC gerade einen Spruch wirkt.
+
+### `telekinesis_allowed(item: string) -> boolean`
+Ob sich das Item per Telekinese bewegen lässt (M17 Teil T): nicht bei no_telekinesis (Story) und nicht, wenn es größer ist als 1,2 m (Entscheidung 4).
 
 ## Mobs
 
