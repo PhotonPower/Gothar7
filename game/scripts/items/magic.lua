@@ -1,9 +1,9 @@
 -- Runen (dauerhaft, brauchen den Kreis des Zaubers) und Spruchrollen (ohne Kreis, verbraucht) - M12, Z2/Z3.
 -- Modelle von figuren (#222): eine Datei je Rune (gleiche Form, eigenes Material), eine für alle Rollen.
-local function rune(id, spell, name, value)
+local function rune(id, spell, name, value, model)
     Item(id) {
         name = "Rune: " .. name,
-        mesh = "items/" .. id .. ".glb",
+        mesh = "items/" .. (model or id) .. ".glb",
         category = "rune",
         value = value,
         weight = 0.2,
@@ -27,7 +27,8 @@ rune("it_rune_heal", "spl_heal", "Heilung", 150)
 rune("it_rune_sleep", "spl_sleep", "Schlaf", 300)
 rune("it_rune_transform_wolf", "spl_transform_wolf", "Wolfsgestalt", 300)
 rune("it_rune_summon_wolf", "spl_summon_wolf", "Wolf rufen", 450)
-rune("it_rune_telekinesis", "spl_telekinesis", "Telekinese", 300) -- M17 T; Modell folgt (figuren), bis dahin Platzhalter
+-- M17 T: bis figuren ein eigenes Modell liefert, das der Schlaf-Rune (blau, gleiche Form)
+rune("it_rune_telekinesis", "spl_telekinesis", "Telekinese", 300, "it_rune_sleep")
 
 scroll("it_scroll_firebolt", "spl_firebolt", "Feuerpfeil", 25)
 scroll("it_scroll_heal", "spl_heal", "Heilung", 25)

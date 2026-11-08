@@ -45,6 +45,7 @@
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/Rain.hpp>
 #include <g7/render/ShaderLibrary.hpp>
+#include <g7/render/SpellFx.hpp>
 #include <g7/render/Ssao.hpp>
 #include <g7/render/Terrain.hpp>
 #include <g7/render/Visibility.hpp>
@@ -782,6 +783,9 @@ public:
     [[nodiscard]] const std::optional<world::Lightning>& lastLightning() const noexcept { return m_flash; }
     [[nodiscard]] f32 lightningNow() const noexcept;
     [[nodiscard]] f32 lastThunderDelay() const noexcept { return m_lastThunderDelay; }
+    /// Spell glow (M17 part G): how "hero" or an NPC glows now (casting, a spell's hit, burning, asleep).
+    [[nodiscard]] render::FigureGlow figureGlow(std::string_view who);
+    [[nodiscard]] const render::SpellFxSettings& spellFx() const noexcept { return m_spellFx; }
     [[nodiscard]] const render::RainRenderer& rain() const noexcept { return m_rain; }
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
@@ -983,7 +987,17 @@ private:
                                                   std::string_view graphPath,
                                                   const FigureGraphCallback& extra = {});
     void prepareFigurePose(AnimatedFigure& figure, f32 alpha);
-    void drawAnimatedFigure(AnimatedFigure& figure, const Mat4& transform, bool shadow, u32 cascade);
+    void drawAnimatedFigure(AnimatedFigure& figure, const Mat4& transform, bool shadow, u32 cascade,
+                            render::FigureGlow glow = {});
+    // Spell glow (M17 part G, EngineSpellFx.cpp).
+    void loadSpellFx();
+    void flashSpellHit(u32 targetId, const gameplay::DamageByType& damage);
+    void fixedUpdateGlow(f32 seconds);
+    [[nodiscard]] render::FigureGlow glowFor(u32 id, const gameplay::SpellInfo* casting, u32 stages,
+                                             bool asleep) const;
+    [[nodiscard]] render::FigureGlow heroGlow() const;
+    [[nodiscard]] render::FigureGlow creatureGlow(const Creature& c) const;
+    static void applyGlowBones(AnimatedFigure& figure, render::FigureGlow& glow);
     // Animals (EngineCreatures.cpp)
     void fixedUpdateCreatures(f32 seconds);
     void drawCreatures(bool shadow, u32 cascade);
@@ -1973,7 +1987,9 @@ private:
         std::optional<u32> effect;
         std::string caster;
     };
-    std::map<u32, Burning> m_burning; // decision B: who burns (creature id, ~0: the hero)
+    std::map<u32, Burning> m_burning;              // decision B: who burns (creature id, ~0: the hero)
+    render::SpellFxSettings m_spellFx;             // M17 part G: data/spell_fx.toml
+    std::map<u32, render::FigureGlowState> m_glow; // flashes by creature id (~0: the hero)
     struct HeroTransform
     {
         std::string species;                         ///< "wolf"
