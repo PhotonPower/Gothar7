@@ -13,6 +13,7 @@
     { "name": "debug",   "displayName": "Debug (vcpkg)",   "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" } },
     { "name": "release", "displayName": "Release (vcpkg)", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" } },
     { "name": "package", "displayName": "Paket (Release ohne Repo-Mounts, M17)", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "G7_DEV_ASSETS": "OFF" } },
+    { "name": "profile", "displayName": "Profiling mit Tracy (ADR 0024, M17)", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "G7_PROFILING": "ON", "G7_TRACY": "ON", "VCPKG_MANIFEST_FEATURES": "profiling" } },
     { "name": "coverage", "displayName": "Debug + Testabdeckung (GCC/Clang)", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "G7_COVERAGE": "ON" } },
     {
       "name": "nodeps",
@@ -26,6 +27,7 @@
     { "name": "debug",   "configurePreset": "debug" },
     { "name": "release", "configurePreset": "release" },
     { "name": "package", "configurePreset": "package" },
+    { "name": "profile", "configurePreset": "profile" },
     { "name": "coverage", "configurePreset": "coverage" },
     { "name": "nodeps",  "configurePreset": "nodeps" }
   ],

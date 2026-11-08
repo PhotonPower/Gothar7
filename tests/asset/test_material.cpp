@@ -104,6 +104,41 @@ TEST_CASE("Material: glTF fields are read")
     CHECK(blend.materials[0].alphaCutoff == doctest::Approx(0.5f)); // glTF default
 }
 
+TEST_CASE("Material: wind marks from the material extras (M17 W)")
+{
+    const MeshData none = load(quadGltf(R"({"name":"Wand"})"));
+    CHECK(none.materials[0].wind == WindKind::None);
+    CHECK(none.materials[0].windStrength == 1.0f);
+
+    const MeshData leaves = load(quadGltf(R"({"name":"Laub","extras":{"wind":"leaves"}})"));
+    CHECK(leaves.materials[0].wind == WindKind::Leaves);
+    CHECK(leaves.materials[0].windStrength == 1.0f);
+    CHECK(leaves.materials[0].windPivot == Vec3(0.0f));
+
+    const MeshData sign = load(quadGltf(
+        R"({"name":"oak","extras":{"wind":"hanging","wind_strength":0.5,"wind_pivot":[0.0,2.93,0.7]}})"));
+    CHECK(sign.materials[0].wind == WindKind::Hanging);
+    CHECK(sign.materials[0].windStrength == doctest::Approx(0.5f));
+    CHECK(nearlyEqual(sign.materials[0].windPivot, Vec3(0.0f, 2.93f, 0.7f)));
+
+    // Out of range or malformed: clamped, or still - the model loads anyway.
+    const MeshData strong = load(quadGltf(R"({"extras":{"wind":"grass","wind_strength":5}})"));
+    CHECK(strong.materials[0].wind == WindKind::Grass);
+    CHECK(strong.materials[0].windStrength == kMaxWindStrength);
+    const MeshData unknown = load(quadGltf(R"({"extras":{"wind":"storm"}})"));
+    CHECK(unknown.materials[0].wind == WindKind::None);
+    const MeshData badPivot = load(quadGltf(R"({"extras":{"wind":"hanging","wind_pivot":[1,2]}})"));
+    CHECK(badPivot.materials[0].wind == WindKind::Hanging);
+    CHECK(badPivot.materials[0].windPivot == Vec3(0.0f));
+
+    for (const WindKind kind :
+         {WindKind::Trunk, WindKind::Leaves, WindKind::Grass, WindKind::Cloth, WindKind::Hanging})
+    {
+        CHECK(parseWindKind(windKindName(kind)) == kind);
+    }
+    CHECK_FALSE(parseWindKind("none").has_value());
+}
+
 TEST_CASE("Material: tangents are computed for normal-mapped materials")
 {
     const MeshData mesh = load(quadGltf(R"({"normalTexture":{"index":0}})"));

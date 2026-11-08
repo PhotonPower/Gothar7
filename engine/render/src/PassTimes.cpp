@@ -3,8 +3,27 @@
 
 #include <algorithm>
 
+#if defined(G7_TRACY) && G7_TRACY && !defined(G7_RENDER_NO_GL)
+#define G7_TRACY_GPU 1
+#include "rhi/GlMapping.hpp" // glad before TracyOpenGL
+
+#include <tracy/TracyOpenGL.hpp>
+
+#include <cstring>
+#include <optional>
+#endif
+
 namespace g7::render
 {
+#if defined(G7_TRACY_GPU)
+namespace
+{
+std::optional<tracy::GpuCtxScope>
+    g_gpuZone;             ///< open pass for Tracy's GPU zones (ADR 0024; passes do not nest)
+bool g_gpuContext = false; ///< TracyGpuContext created (needs the current GL context)
+} // namespace
+#endif
+
 f32 smoothPassTime(f32 previous, f32 sample, bool first) noexcept
 {
     return first ? sample : previous + (sample - previous) * 0.1f;
@@ -12,6 +31,16 @@ f32 smoothPassTime(f32 previous, f32 sample, bool first) noexcept
 
 void PassTimes::begin(Device& device, std::string_view name)
 {
+#if defined(G7_TRACY_GPU)
+    if (!g_gpuContext)
+    {
+        TracyGpuContext;
+        g_gpuContext = true;
+    }
+    g_gpuZone.reset();
+    g_gpuZone.emplace(static_cast<uint32_t>(__LINE__), __FILE__, std::strlen(__FILE__), __func__,
+                      std::strlen(__func__), name.data(), name.size(), true);
+#endif
     auto it = std::find_if(m_passes.begin(), m_passes.end(), [&](const Pass& p) { return p.name == name; });
     if (it == m_passes.end())
     {
@@ -45,6 +74,9 @@ void PassTimes::begin(Device& device, std::string_view name)
 
 void PassTimes::end(Device& device)
 {
+#if defined(G7_TRACY_GPU)
+    g_gpuZone.reset();
+#endif
     if (m_open == nullptr)
     {
         return;
@@ -57,6 +89,12 @@ void PassTimes::end(Device& device)
 
 void PassTimes::collect(Device& device)
 {
+#if defined(G7_TRACY_GPU)
+    if (g_gpuContext)
+    {
+        TracyGpuCollect;
+    }
+#endif
     for (usize i = 0; i < m_passes.size(); ++i)
     {
         Pass& pass = m_passes[i];

@@ -8,7 +8,10 @@ Oberflächen), Gewitter, Wind für Vegetation“:
 - Wetterwechsel über den Tag.
 
 Stand: **Plan freigegeben** (Koordinator, 2026-11-07). Der Projektinhaber hat alle zehn Vorschläge zum Spielgefühl
-übernommen; Teil K entfällt. Umsetzung je Teil ein PR: E1 → R → N → G, W sobald welts PR 3 da ist.
+übernommen; Teil K entfällt. Umsetzung je Teil ein PR: E1 → R → N → G → W; **alle Teile umgesetzt** (W nach
+welts Markierungen #396; Mechanik und Werte in `docs/modules/render.md` „Wind“). Abweichung vom Entwurf unten: das
+Windgewicht kommt nicht aus der Vertexfarbe, sondern aus der Höhe im Modell und der Markierung am Material (Vertrag
+in `coordination.md`).
 
 ## Ausgangslage
 - **Tageszeit:** `world::DayCycle` liest `data/environment.toml` mit Schlüsselbildern je Uhrzeit: Sonne, Mond, Ambient,

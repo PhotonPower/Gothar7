@@ -500,9 +500,13 @@ bool Engine::runFrame()
         fixedUpdateDialog(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {
+            G7_PROFILE_SCOPE("scripts");
             m_scripts->tick(m_fixedStep.step()); // after/every run in simulation time
         }
-        m_physics.step(m_fixedStep.step());
+        {
+            G7_PROFILE_SCOPE("physics");
+            m_physics.step(m_fixedStep.step());
+        }
         const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
         m_triggers.update(m_scene, std::span(&probe, 1));
         m_gameTime.advance(m_fixedStep.step()); // global: keeps running across level changes
@@ -650,6 +654,7 @@ Result<void> Engine::initShaders()
     }
     applySetting("render.weather");
     applySetting("render.rain_quality");
+    applySetting("render.wind");
     auto debugRenderer = render::DebugDrawRenderer::create(*m_device, *m_shaders);
     if (!debugRenderer)
     {
@@ -1260,6 +1265,7 @@ Result<void> Engine::initWorld()
 
 Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, std::string_view start)
 {
+    G7_PROFILE_SCOPE("load::world");
     const Stopwatch timer;
     if (auto spawned = world::spawnWorld(m_scene, file); !spawned)
     {
@@ -1834,8 +1840,8 @@ void Engine::drawRain(u32 width, u32 height)
     }
     render::RainFrame frame;
     frame.rain = weather.rain;
-    // Until the wind gets its direction (part W): a steady breeze from the west, as strong as the state says.
-    frame.wind = glm::normalize(Vec2(1.0f, 0.3f)) * (4.0f * weather.wind);
+    // Slanted with the wind (M17 W): its direction, about 4 m/s at full strength.
+    frame.wind = weather.windDirection * (4.0f * weather.wind);
     frame.time = static_cast<f32>(std::fmod(m_rainTime, 3600.0));
     frame.light = m_environment.ambientSky + m_environment.sunColor * m_environment.sunIntensity * 0.3f;
     frame.quality = m_rainQuality;
@@ -1899,6 +1905,17 @@ void Engine::thunder(const world::Lightning& flash)
     }
 }
 
+render::WindFrame Engine::windNow() const
+{
+    const world::WeatherSample weather = weatherNow();
+    render::WindFrame frame;
+    frame.direction = weather.windDirection;
+    frame.strength = m_windEnabled ? weather.wind : 0.0f;
+    frame.gusts = weather.gusts;
+    frame.time = static_cast<f32>(m_windTime);
+    return frame;
+}
+
 f32 Engine::lightningNow() const noexcept
 {
     if (!m_flash || !m_weatherVisible)
@@ -1915,6 +1932,10 @@ void Engine::updateEnvironment()
     world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
     m_weather.apply(sample, m_gameTime.clock()); // M17 E1: clouds, rain and fog over the time of day
     m_rainTime += m_frameSeconds;
+    m_windTime = std::fmod(m_windTime + m_frameSeconds, 3600.0);
+    const render::WindFrame wind = windNow(); // M17 W: vegetation, signs, smoke
+    m_meshRenderer.setWind(wind);
+    m_particles.setWind(wind);
     // M17 N: wet surfaces outside (the rain map tells outside from under a roof), puddles at rain quality
     // high.
     sample.environment.wetness = m_weatherVisible ? weatherNow().wetness : 0.0f;
@@ -2055,6 +2076,7 @@ void Engine::renderScene(u32 width, u32 height)
 
 void Engine::drawScene(u32 width, u32 height)
 {
+    G7_PROFILE_SCOPE("render::scene (culling, shadows, main)");
     m_meshRenderer.beginFrame();
     // Indoors (the camera in a room, world.md "Zonen") the world outside shows only through windows and the
     // door: nothing beyond indoor_view_distance (render.md "Innenräume"), and the sun's shadows (through the
@@ -2105,6 +2127,7 @@ void Engine::drawScene(u32 width, u32 height)
             }
             m_cascadesDrawn[i] = m_cascades[i];
             ++m_cascadeDraws[std::min<u32>(i, 3)];
+            G7_PROFILE_SCOPE("render::shadow cascade");
             m_shadowMap.beginCascade(*m_device, i);
             const Frustum volume = Frustum::fromViewProjection(m_cascades[i].viewProjection);
             m_cullCandidates.clear();
@@ -2257,6 +2280,7 @@ void Engine::drawScene(u32 width, u32 height)
 
 void Engine::cullInstances(const Frustum& view)
 {
+    G7_PROFILE_SCOPE("render::culling");
     m_visibleInstances = 0;
     m_lodCounts = {};
     m_culledFar = 0;

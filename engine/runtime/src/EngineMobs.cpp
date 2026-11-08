@@ -5,6 +5,7 @@
 #include "PlayerFigure.hpp"
 
 #include <g7/core/Log.hpp>
+#include <g7/core/Profiler.hpp>
 #include <g7/gameplay/Movement.hpp>
 #include <g7/runtime/Engine.hpp>
 
@@ -535,6 +536,7 @@ void Engine::approachMob(f32 seconds)
 
 void Engine::fixedUpdateMobs(f32 seconds)
 {
+    G7_PROFILE_SCOPE("mobs");
     swingDoors(seconds);
     if (!m_mobUse || m_mobUse->phase == MobUse::Phase::Approach)
     {

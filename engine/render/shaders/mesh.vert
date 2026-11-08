@@ -3,6 +3,7 @@
 // SKINNED: positions, normals and tangents first go through the vertex's bones (common/skinning.glsl).
 #include "common/draws.glsl"
 #include "common/skinning.glsl"
+#include "common/wind.glsl"
 
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
@@ -42,10 +43,15 @@ void main()
     const vec3 normal = aNormal;
     const vec3 tangent = aTangent.xyz;
 #endif
-    vNormal = normalMatrix * normal;
-    vTangent = vec4(mat3(model) * tangent, aTangent.w);
+    vec3 worldNormal = normalMatrix * normal;
+    vec3 worldTangent = mat3(model) * tangent;
+    vec3 world = (model * vec4(position, 1.0)).xyz;
+#ifndef SKINNED
+    world = windBent(position, model, world, worldNormal, worldTangent); // M17 W
+#endif
+    vNormal = worldNormal;
+    vTangent = vec4(worldTangent, aTangent.w);
     vUv = aUv;
-    const vec4 world = model * vec4(position, 1.0);
-    vWorldPosition = world.xyz;
-    gl_Position = uViewProjection * world;
+    vWorldPosition = world;
+    gl_Position = uViewProjection * vec4(world, 1.0);
 }
