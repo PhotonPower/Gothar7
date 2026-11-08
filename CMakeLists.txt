@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(Gothar
-    VERSION 0.1.0
+    VERSION 0.3.0
     DESCRIPTION "Gothar - eine Open-World-RPG-Engine im Stil von Gothic 1"
     LANGUAGES CXX)
 

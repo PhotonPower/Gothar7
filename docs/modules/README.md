@@ -21,3 +21,5 @@ beim Implementieren darf (und soll) verbessert werden; die Doku wird dann angepa
 | save | M15 | [save.md](save.md) |
 | tools (Editor, g7-cook) | M3, M4, M16 | [tools.md](tools.md) |
 | perf (Profiling, Budgets, Job-System; Plan) | M17 | [perf.md](perf.md) |
+| editor (Plan M16) | M16 | [editor.md](editor.md) |
+| release (Paket, Version, Absturzberichte; Plan) | M17 | [release.md](release.md) |

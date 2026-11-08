@@ -385,6 +385,19 @@ Json globalsToJson(const GameState& state)
                             {"torch", h.torch}};
     }
     root["currentWorld"] = state.currentWorld;
+    if (state.weather)
+    {
+        const WeatherSave& w = *state.weather;
+        root["weather"] = Json{{"state", w.state},
+                               {"previous", w.previous},
+                               {"changeMinute", w.changeMinute},
+                               {"fadeMinutes", w.fadeMinutes},
+                               {"nextMinute", w.nextMinute},
+                               {"random", w.random},
+                               {"locked", w.locked},
+                               {"wetness", w.wetness},
+                               {"wetnessClock", w.wetnessClock}};
+    }
     return root;
 }
 } // namespace
@@ -504,6 +517,22 @@ bool readGlobals(Reader& r, const Json& root, GameState& s)
              readVec3(r, j, "position", "hero", h.position) && read(r, j, "yaw", "hero", h.yaw) &&
              read(r, j, "torch", "hero", h.torch);
         s.hero = std::move(h);
+    }
+    if (ok && root.contains("weather")) // M17 E1, additive: older saves have none
+    {
+        WeatherSave w;
+        const Json& j = root["weather"];
+        ok = read(r, j, "state", "weather", w.state) && read(r, j, "previous", "weather", w.previous) &&
+             read(r, j, "changeMinute", "weather", w.changeMinute) &&
+             read(r, j, "fadeMinutes", "weather", w.fadeMinutes) &&
+             read(r, j, "nextMinute", "weather", w.nextMinute) && read(r, j, "random", "weather", w.random) &&
+             read(r, j, "locked", "weather", w.locked);
+        if (ok && j.contains("wetness")) // M17 N, additive
+        {
+            ok = read(r, j, "wetness", "weather", w.wetness) &&
+                 read(r, j, "wetnessClock", "weather", w.wetnessClock);
+        }
+        s.weather = std::move(w);
     }
     return ok;
 }

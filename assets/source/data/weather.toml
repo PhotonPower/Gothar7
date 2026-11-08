@@ -1,0 +1,92 @@
+# Wetterlagen (M17 Teil E1, docs/design/wetter.md; Entscheidungen 1–10 des Projektinhabers, 2026-11-07).
+# Jede Lage überschreibt die Tageszeit aus environment.toml:
+#   rain, clouds, wind, gusts   0..1 (Regen, Bewölkung, Wind, Böigkeit)
+#   fog, sun, ambient           Faktoren auf Nebeldichte, Sonnen- bzw. Mondlicht und Umgebungslicht
+#   shadow                      wie dunkel die Sonnenschatten bleiben, 1 voll .. 0 keine (bedeckt: weich bzw. fast keine)
+#   lightning                   Blitze je Spielminute (Teil G)
+#   grading_*                   Farbkorrektur wie in environment.toml, über die Tageszeit gelegt
+#   duration = [min, max]       Dauer in Spielstunden (ein Spieltag = 96 Echtminuten)
+#   window = [von, bis]         darf nur zu diesen Uhrzeiten beginnen
+#   next = { lage = gewicht }   was folgen kann
+# Übergänge über transition_minutes Spielminuten (Entscheidung 2: 15). Kein Wechsel während Dialogen
+# (Entscheidung 4). Häufigkeit (Entscheidung 1): Regen an etwa jedem dritten Tag, Gewitter an etwa jedem zehnten,
+# Morgennebel an etwa jedem vierten; geprüft in tests/world/test_weather.cpp über viele Tage.
+version = 1
+start = "klar"
+transition_minutes = 15.0
+
+[state.klar]
+clouds = 0.1
+wind = 0.15            # immer eine leichte Brise (Entscheidung 5)
+gusts = 0.1
+duration = [2.0, 6.0]
+next = { klar = 4.0, bewoelkt = 2.0, nebel = 14.0 }
+
+[state.nebel]          # Morgennebel bis etwa 9 Uhr (Entscheidung 2)
+clouds = 0.4
+wind = 0.05
+gusts = 0.0
+fog = 3.0
+sun = 0.7
+shadow = 0.5
+grading_saturation = 0.85
+window = [4.5, 6.5]
+duration = [2.0, 3.0]
+next = { klar = 2.0, bewoelkt = 1.0 }
+
+[state.bewoelkt]
+clouds = 0.6
+wind = 0.3
+gusts = 0.2
+fog = 1.2
+sun = 0.6
+ambient = 0.85
+shadow = 0.4
+grading_saturation = 0.9
+duration = [1.5, 4.0]
+next = { klar = 4.0, regen = 1.0, bewoelkt = 1.0 }
+
+[state.regen]          # mäßiger Landregen (Entscheidung 3)
+rain = 0.5
+clouds = 0.85
+wind = 0.45
+gusts = 0.3
+fog = 1.6
+sun = 0.35
+ambient = 0.75
+shadow = 0.12
+grading_saturation = 0.8
+grading_temperature = -0.08
+duration = [1.0, 3.0]
+next = { bewoelkt = 4.0, klar = 1.0, starkregen = 1.0, gewitter = 9.0 }
+
+[state.starkregen]     # selten (Entscheidung 3); Sicht bleibt über etwa 80 m
+rain = 0.9
+clouds = 0.95
+wind = 0.6
+gusts = 0.4
+fog = 2.2
+sun = 0.25
+ambient = 0.65
+shadow = 0.08
+grading_saturation = 0.75
+grading_temperature = -0.1
+duration = [0.5, 1.5]
+next = { regen = 1.0 }
+
+[state.gewitter]       # im Regen, bevorzugt nachmittags und abends (Entscheidung 4); grau-grün (P2, Entscheidung 2)
+rain = 0.9
+clouds = 1.0
+wind = 0.8
+gusts = 0.7
+fog = 2.0
+sun = 0.2
+ambient = 0.6
+shadow = 0.08
+lightning = 0.15       # je Spielminute: etwa alle 7 Spielminuten (knapp 30 Echtsekunden) ein Blitz
+grading_saturation = 0.65
+grading_tint = -0.15
+grading_contrast = 1.05
+window = [12.0, 22.0]
+duration = [0.33, 1.0]
+next = { regen = 1.0 }

@@ -145,3 +145,19 @@ TEST_CASE("Lighting: lights behind the surface do not light it")
     behind.add({Vec3(0, 0, -1), 3.0f, Vec3(1.0f), 5.0f});
     CHECK(brightness(scene.centre(dark(), behind)) == 0);
 }
+
+TEST_CASE("Lighting: a wet surface is darker; without wetness nothing changes (M17 N)")
+{
+    Scene scene;
+    Environment environment = dark();
+    environment.ambientSky = Vec3(0.6f);
+    environment.ambientGround = Vec3(0.6f);
+    const int dry = brightness(scene.centre(environment, LightList{}));
+    environment.wetness = 0.0f;
+    CHECK(brightness(scene.centre(environment, LightList{})) == dry);
+    environment.wetness = 1.0f; // no rain map, no rooms: wet everywhere (a wall: less than the ground)
+    const int wet = brightness(scene.centre(environment, LightList{}));
+    CHECK(wet < dry);
+    CHECK(wet > dry / 2);
+    CHECK(scene.gl.device->debugErrorCount() == 0);
+}
