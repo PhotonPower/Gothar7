@@ -25,3 +25,4 @@ Bibliothek). Die Liste prüft ein Test gegen vcpkg.json (tests/cook, test_releas
 Nur in den Werkzeugen, nicht im Spiel:
 - msdfgen (msdfgen) - MIT License - Schrift-Atlanten im Cooker
 - doctest (doctest) - MIT License - Tests
+- Tracy (tracy) - BSD 3-Clause License - Profiling, nur im Preset `profile` (ADR 0024), nicht im Paket
