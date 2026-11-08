@@ -61,7 +61,8 @@ TEST_CASE("Engine spell glow: the hand glows while casting, a hit flashes 0.3 s 
     run(engine, "hero_cast(false)");
     runSeconds(engine, 0.05f);
     const render::FigureGlow casting = engine.figureGlow("hero");
-    CHECK(casting.hand.r > casting.hand.b); // decision 9: orange for the fire bolt
+    CHECK(casting.hand.r > casting.hand.b);      // decision 9: orange for the fire bolt
+    CHECK(casting.arm == render::GlowArm::Left); // the bolt clip pushes with the left hand
     CHECK(casting.hand.r > 1.0f);
     CHECK(casting.rim.r < casting.hand.r); // the outline only faintly
     CHECK(casting.fill.r == 0.0f);

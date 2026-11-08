@@ -1020,9 +1020,14 @@ class FigureGlowState { flash(look); update(seconds); glow(casting, stages, stat
 MeshRenderer::drawSkinned(..., const FigureGlow& glow = {});  Engine::figureGlow(who), spellFx()
 ```
 - **Shader:** nur die `SKINNED`-Varianten von `mesh.vert`/`mesh.frag`. Das Handgewicht ist die Summe der
-  Skin-Gewichte auf den Knochen in `uGlowBones` (Bitmaske über 128 Knochen); die Engine setzt dort `lowerarm_r`
-  und alles darunter (Hand, Finger). Dazu `uGlowRim · (1 − n·v)⁴` und `uGlowFill`, additiv vor dem Nebel; der Bloom
+  Skin-Gewichte auf den Knochen in `uGlowBones` (Bitmaske über 128 Knochen), über `smoothstep(0,55; 0,95)`, damit
+  der Übergang am Ellbogen zum Oberarm nicht mitleuchtet. Die Engine setzt je nach `arm` des Zaubers
+  `lowerarm_l` bzw. `lowerarm_r` und alles darunter (Hand, Finger), bei `both` beide. Dazu `uGlowRim · (1 − n·v)⁴` und `uGlowFill`, additiv vor dem Nebel; der Bloom
   macht den Schein. Ohne Glühen bleibt das Bild bytegleich.
+- **Welcher Arm** (`arm` = `left`, `right`, `both`, Vorgabe `right`): der, mit dem der Wurf-Clip wirkt. Die
+  Platzhalter-Clips `mag/t_cast_projectile`, `_target` und `s_cast_loop` wirken mit der linken Hand,
+  `t_cast_self` mit beiden (Prüfbilder 2026-11-09), obwohl die Rune rechts liegt; also Feuerpfeil, Schlaf,
+  Schrecken, Telekinese `left`, Heilung `both`. Ändern sich die Clips (figuren), ändert sich nur die Daten-Datei.
 - **Daten:** `[glow.<spell>]` (Feuerpfeil orange, Heilung grün, Schlaf, Schrecken und Telekinese blau; je
   Aufladestufe +50 %), `[hit.fire]`/`[hit.magic]` (0,3 s Aufblitzen, linear ausklingend; ein schwächerer Treffer
   ersetzt ein stärkeres Aufblitzen nicht), `[state.burning]` (orange, pulsiert zweimal je Sekunde),

@@ -38,6 +38,10 @@ TEST_CASE("Spell fx: the shipped data - fire orange, healing green, sleep, fear 
         REQUIRE_MESSAGE(s.spells.contains(spell), spell);
         CHECK(s.spells.find(spell)->second.hand > s.spells.find(spell)->second.rim); // decision 9: the hand
     }
+    // The arm the cast clip raises: left for bolt, target and loop clips, both for the self clip.
+    CHECK(s.spells.find("spl_firebolt")->second.arm == GlowArm::Left);
+    CHECK(s.spells.find("spl_heal")->second.arm == GlowArm::Both);
+    CHECK(s.spells.find("spl_telekinesis")->second.arm == GlowArm::Left);
     const Vec3 fire = s.spells.find("spl_firebolt")->second.color;
     CHECK(fire.r > fire.b);
     CHECK(s.spells.find("spl_heal")->second.color.g > s.spells.find("spl_heal")->second.color.r);
@@ -58,6 +62,10 @@ TEST_CASE("Spell fx: errors name the key")
     CHECK(errorOf("[glow.spl_x]\ncolor = [1, 0, 0]\nhand = -1\n").find("glow.spl_x.hand") !=
           std::string::npos);
     CHECK(errorOf("[state.burning]\ncolor = [1, 0]\n").find("state.burning.color") != std::string::npos);
+    CHECK(errorOf("[glow.spl_x]\narm = \"up\"\ncolor = [1, 0, 0]\n").find("glow.spl_x.arm") !=
+          std::string::npos);
+    CHECK(SpellFxSettings::parse("[glow.a]\ncolor = [1, 0, 0]\n", "x").value().spells.at("a").arm ==
+          GlowArm::Right);
     CHECK(errorOf("").empty());
 }
 
@@ -73,6 +81,10 @@ TEST_CASE("Spell fx: casting glows at the hand, stronger per stage; a flash fade
     CHECK(casting.hand.r == doctest::Approx(2.0f));
     CHECK(casting.rim.g == doctest::Approx(0.1f));
     CHECK(casting.fill == Vec3(0.0f));
+    CHECK(casting.arm == GlowArm::Right);
+    GlowLook left = cast;
+    left.arm = GlowArm::Left;
+    CHECK(state.glow(&left, 0, nullptr, 0.0f).arm == GlowArm::Left);
     CHECK(state.glow(&cast, 2, nullptr, 0.0f).hand.r == doctest::Approx(4.0f)); // two stages: twice as much
 
     state.flash(hit);

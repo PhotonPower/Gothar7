@@ -45,8 +45,9 @@ void main()
 #endif
 #ifdef SKINNED
     const mat4 skin = skinMatrix();
-    vGlowHand = aWeights.x * glowBone(aJoints.x) + aWeights.y * glowBone(aJoints.y) +
-                aWeights.z * glowBone(aJoints.z) + aWeights.w * glowBone(aJoints.w);
+    // Forearm and hand only: the elbow's blend towards the upper arm fades out (decision 9).
+    vGlowHand = smoothstep(0.55, 0.95, aWeights.x * glowBone(aJoints.x) + aWeights.y * glowBone(aJoints.y) +
+                                           aWeights.z * glowBone(aJoints.z) + aWeights.w * glowBone(aJoints.w));
     const vec3 position = (skin * vec4(aPosition, 1.0)).xyz;
     const vec3 normal = mat3(skin) * aNormal; // bones are rigid: no inverse transpose needed
     const vec3 tangent = mat3(skin) * aTangent.xyz;

@@ -1,35 +1,43 @@
 # Zauber-Glühen (M17 Teil G, Entscheidungen 9 und 10 des Projektinhabers 2026-11-08). Farben linear (über 1 = der
 # Bloom macht einen Schein), Stärken als Faktoren:
 #   hand       Hand und Unterarm des Zaubernden      rim   Umriss (Fresnel), schwach
+#   arm        welcher Arm leuchtet: der, mit dem der Wurf-Clip wirkt – "left", "right" oder "both"
 #   fill       die ganze Gestalt, flach              per_stage   je Aufladestufe so viel mehr (0,5 = halb so viel)
 #   seconds    Treffer: so lange klingt das Aufblitzen aus    pulse   Zustände: Pulse je Sekunde
 version = 1
 
-# Beim Wirken: Hand und Unterarm in der Farbe des Zaubers, der Umriss nur schwach (Entscheidung 9).
+# Beim Wirken: Hand und Unterarm in der Farbe des Zaubers, der Umriss nur schwach (Entscheidung 9). Die Wurf-Clips
+# (mag/t_cast_projectile, _target, s_cast_loop) wirken mit der linken Hand, t_cast_self mit beiden (Prüfbilder
+# 2026-11-09); die Rune liegt dabei in der rechten.
 [glow.spl_firebolt]
+arm = "left"
 color = [1.0, 0.45, 0.12]
 hand = 2.5
 rim = 0.25
 per_stage = 0.5
 
 [glow.spl_heal]
+arm = "both"
 color = [0.35, 1.0, 0.4]
 hand = 2.0
 rim = 0.25
 per_stage = 0.5
 
 [glow.spl_sleep]
+arm = "left"
 color = [0.35, 0.5, 1.0]
 hand = 2.0
 rim = 0.25
 per_stage = 0.5
 
 [glow.spl_fear]
+arm = "left"
 color = [0.35, 0.5, 1.0]
 hand = 2.0
 rim = 0.25
 
 [glow.spl_telekinesis]
+arm = "left"
 color = [0.35, 0.5, 1.0]
 hand = 1.6
 rim = 0.2

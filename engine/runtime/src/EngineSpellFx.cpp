@@ -15,14 +15,13 @@ namespace
 {
 constexpr u32 kHeroId = ~u32(0);
 
-/// The casting arm: lowerarm_r and everything below it (hand, fingers).
-std::array<u32, 4> handBonesOf(const animation::Skeleton& skeleton)
+/// A forearm: `lowerarm` and everything below it (hand, fingers), added to `mask`.
+void addForearm(const animation::Skeleton& skeleton, std::string_view lowerarm, std::array<u32, 4>& mask)
 {
-    std::array<u32, 4> mask{};
-    const i32 arm = skeleton.find("lowerarm_r");
+    const i32 arm = skeleton.find(lowerarm);
     if (arm < 0)
     {
-        return mask;
+        return;
     }
     for (usize bone = 0; bone < skeleton.size() && bone < 128; ++bone)
     {
@@ -35,7 +34,6 @@ std::array<u32, 4> handBonesOf(const animation::Skeleton& skeleton)
             }
         }
     }
-    return mask;
 }
 } // namespace
 
@@ -127,8 +125,17 @@ void Engine::applyGlowBones(AnimatedFigure& figure, render::FigureGlow& glow)
 {
     if (!figure.glowBones)
     {
-        figure.glowBones = handBonesOf(figure.skeleton);
+        std::array<std::array<u32, 4>, 2> arms{}; // right, left
+        addForearm(figure.skeleton, "lowerarm_r", arms[0]);
+        addForearm(figure.skeleton, "lowerarm_l", arms[1]);
+        figure.glowBones = arms;
     }
-    glow.handBones = *figure.glowBones;
+    const auto& arms = *figure.glowBones;
+    glow.handBones = {};
+    for (usize w = 0; w < 4; ++w)
+    {
+        glow.handBones[w] = (glow.arm != render::GlowArm::Left ? arms[0][w] : 0u) |
+                            (glow.arm != render::GlowArm::Right ? arms[1][w] : 0u);
+    }
 }
 } // namespace g7

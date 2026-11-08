@@ -12,6 +12,12 @@ namespace
 Result<GlowLook> readLook(const Config& c, const std::string& at, std::string_view source)
 {
     GlowLook look;
+    const std::string arm = c.get<std::string>(at + ".arm", "right");
+    if (arm != "right" && arm != "left" && arm != "both")
+    {
+        return Error{std::format("{}: {}.arm: right, left or both, not \"{}\"", source, at, arm)};
+    }
+    look.arm = arm == "left" ? GlowArm::Left : arm == "both" ? GlowArm::Both : GlowArm::Right;
     const std::string colour = at + ".color";
     if (c.arraySize(colour) != 3)
     {
@@ -114,6 +120,7 @@ FigureGlow FigureGlowState::glow(const GlowLook* casting, u32 stages, const Glow
     {
         const f32 grow = 1.0f + casting->perStage * static_cast<f32>(stages);
         g.hand += casting->color * (casting->hand * grow);
+        g.arm = casting->arm;
         g.rim += casting->color * (casting->rim * grow);
         g.fill += casting->color * casting->fill;
     }
