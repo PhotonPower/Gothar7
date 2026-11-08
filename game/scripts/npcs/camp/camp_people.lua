@@ -41,7 +41,8 @@ Npc "npc_old_man" {
     routine = "rtn_old_man",
     -- Er handelt mit allerlei Kram (M10): seine Waren und Gulden zum Bezahlen.
     inventory = { it_gulden = 120, it_apple = 6, it_bread = 4, it_lockpick = 3, it_potion_heal_small = 2,
-                  it_ring_family = 1 }, -- der Ring der Bäuerin (Geschichte M10)
+                  it_ring_family = 1, -- der Ring der Bäuerin (Geschichte M10)
+                  it_scroll_telekinesis = 2 }, -- zum Ausprobieren (M17 T, Entscheidung 7)
     pickpocket_dex = 20,
     pickpocket_item = "it_ring_family", -- wer ihn bestiehlt, erwischt den Ring
 }

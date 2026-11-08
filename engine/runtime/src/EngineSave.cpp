@@ -122,6 +122,7 @@ Result<save::WorldState> Engine::captureCurrentWorld()
 
 Result<save::GameState> Engine::captureGame()
 {
+    finishTelekinesis(); // M17 part T: an item in the air lands where it is
     if (!m_scripts)
     {
         return Error{"no scripts"};

@@ -21,7 +21,7 @@ set(_g7_runtime_groups
     "npcs|*test_engine_scripts.cpp,*test_engine_monsters.cpp"
     "fights|*test_engine_perception.cpp,*test_engine_combat.cpp"
     "dialog|*test_engine_dialog.cpp,*test_engine_weapon_sweep.cpp"
-    "magic|*test_engine_magic.cpp"
+    "magic|*test_engine_magic.cpp,*test_engine_telekinesis.cpp"
     "npc_mobs|*test_engine_npc_mobs.cpp"
     "leonberg|*test_engine_leonberg.cpp"
     "leonberg_doors|*test_engine_leonberg_doors.cpp"

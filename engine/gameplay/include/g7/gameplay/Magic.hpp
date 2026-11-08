@@ -26,6 +26,7 @@ enum class SpellKind : u8
     Target,
     Summon,
     Transform,
+    Telekinesis, ///< M17 part T: pulls an item to the caster while held
 };
 
 struct SpellInfo
@@ -47,6 +48,12 @@ struct SpellInfo
     std::map<std::string, std::string, std::less<>> fx;     ///< cast, trail, impact, on_target
     bool burn = false;                                      ///< sets the target burning (decision B)
     std::map<std::string, std::string, std::less<>> sounds; ///< cast, impact (data/sounds.toml, M13)
+    // Telekinesis (M17 part T): 0 = the TelekinesisSettings default
+    f32 manaPerSecond = 0.0f; ///< while held
+    f32 range = 0.0f;         ///< metres to aim at an item
+    f32 speed = 0.0f;         ///< m/s floating
+    f32 lift = 0.0f;          ///< metres it rises first
+    f32 carry = 0.0f;         ///< largest item extent (metres)
 };
 
 /// The Spell instance's fields.

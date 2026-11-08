@@ -1634,6 +1634,12 @@
       "context": "magic/spells.lua",
       "status": "entwurf"
     },
+    "spl_telekinesis.name": {
+      "de": "Telekinese",
+      "text": "Telekinesis",
+      "context": "magic/spells.lua",
+      "status": "entwurf"
+    },
     "spl_transform_wolf.name": {
       "de": "Wolfsgestalt",
       "text": "Wolf Form",

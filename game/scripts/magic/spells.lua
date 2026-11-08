@@ -61,3 +61,19 @@ Spell "spl_fear" {
     fx = { on_target = "smoke" },
     sounds = { cast = "spell_cast" },
 }
+
+-- Telekinese (M17 Teil T, Entscheidungen 1-8 des Projektinhabers 2026-11-08): ein Gegenstand bis 1,2 m schwebt
+-- zum Zaubernden, solange der Zauber gehalten wird; loslassen oder Mana leer: er fällt. Personen nicht.
+Spell "spl_telekinesis" {
+    name = "Telekinese",
+    circle = 2,
+    mana = 10,               -- beim Anheben (Entscheidung 1)
+    mana_per_second = 2,     -- solange gehalten
+    kind = "telekinesis",
+    range = 15,              -- Entscheidung 2: anvisieren bis 15 m
+    lift = 0.5,              -- erst 0,5 m anheben
+    speed = 3,               -- dann 3 m/s
+    carry = 1.2,             -- Entscheidung 4: Gegenstände bis 1,2 m, auch Waffen
+    fx = { on_target = "telekinesis" },
+    sounds = { cast = "spell_cast" },
+}
