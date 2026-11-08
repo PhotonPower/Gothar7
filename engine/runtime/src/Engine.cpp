@@ -497,6 +497,7 @@ bool Engine::runFrame()
         fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateProjectiles(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateBurning(static_cast<f32>(m_fixedStep.step())); // M12, decision B
+        fixedUpdateGlow(static_cast<f32>(m_fixedStep.step()));    // M17 part G
         fixedUpdateDialog(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {
@@ -1713,6 +1714,7 @@ void Engine::initEnvironment()
         m_weather = world::Weather::fallback();
     }
     m_weather.start(m_gameTime.clock(), m_config.randomSeed.value_or(0x5eed));
+    loadSpellFx(); // M17 part G
     if (!m_config.weather.empty() && m_weather.set(m_config.weather, m_gameTime.clock(), 0.0))
     {
         m_weather.settle(); // screenshots: as if it had rained a while

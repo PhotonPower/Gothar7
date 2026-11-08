@@ -22,6 +22,16 @@ out vec3 vWorldPosition;
 out vec3 vNormal;
 out vec4 vTangent;
 out vec2 vUv;
+#ifdef SKINNED
+// M17 part G: the bones whose weights count as the glowing hand (bit j of word j / 32; render::FigureGlow).
+uniform int uGlowBones[4];
+out float vGlowHand;
+
+float glowBone(uint joint)
+{
+    return ((uint(uGlowBones[joint >> 5u]) >> (joint & 31u)) & 1u) != 0u ? 1.0 : 0.0;
+}
+#endif
 
 void main()
 {
@@ -35,6 +45,8 @@ void main()
 #endif
 #ifdef SKINNED
     const mat4 skin = skinMatrix();
+    vGlowHand = aWeights.x * glowBone(aJoints.x) + aWeights.y * glowBone(aJoints.y) +
+                aWeights.z * glowBone(aJoints.z) + aWeights.w * glowBone(aJoints.w);
     const vec3 position = (skin * vec4(aPosition, 1.0)).xyz;
     const vec3 normal = mat3(skin) * aNormal; // bones are rigid: no inverse transpose needed
     const vec3 tangent = mat3(skin) * aTangent.xyz;

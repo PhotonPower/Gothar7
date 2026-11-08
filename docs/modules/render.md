@@ -1011,6 +1011,31 @@ Teile G und V des Plans „Magie-Nachträge“ (`gameplay.md`, dort auch Teil T 
   - Runtime: beim Aufladen hat der Held Glühen, ein Feuertreffer blitzt 0,3 s.
   - Prüfbilder: Feuerpfeil aufladen bei Nacht im Testlager, Getroffener im Aufblitzen, Brennender.
 
+### Teil G – umgesetzt (`SpellFx.hpp`, `runtime/EngineSpellFx.cpp`, `data/spell_fx.toml`)
+```cpp
+struct GlowLook { Vec3 color; f32 hand, rim, fill, perStage, seconds, pulse; };
+struct SpellFxSettings { spells, hits; GlowLook burning, asleep; static parse(toml, source); };
+struct FigureGlow { Vec3 hand, rim, fill; std::array<u32, 4> handBones; bool active(); };   // vormultipliziert
+class FigureGlowState { flash(look); update(seconds); glow(casting, stages, state, time); };
+MeshRenderer::drawSkinned(..., const FigureGlow& glow = {});  Engine::figureGlow(who), spellFx()
+```
+- **Shader:** nur die `SKINNED`-Varianten von `mesh.vert`/`mesh.frag`. Das Handgewicht ist die Summe der
+  Skin-Gewichte auf den Knochen in `uGlowBones` (Bitmaske über 128 Knochen); die Engine setzt dort `lowerarm_r`
+  und alles darunter (Hand, Finger). Dazu `uGlowRim · (1 − n·v)⁴` und `uGlowFill`, additiv vor dem Nebel; der Bloom
+  macht den Schein. Ohne Glühen bleibt das Bild bytegleich.
+- **Daten:** `[glow.<spell>]` (Feuerpfeil orange, Heilung grün, Schlaf, Schrecken und Telekinese blau; je
+  Aufladestufe +50 %), `[hit.fire]`/`[hit.magic]` (0,3 s Aufblitzen, linear ausklingend; ein schwächerer Treffer
+  ersetzt ein stärkeres Aufblitzen nicht), `[state.burning]` (orange, pulsiert zweimal je Sekunde),
+  `[state.asleep]` (schwach blau). Zauber ohne Eintrag leuchten nicht (Beschwörung, Verwandlung).
+- **Wann:** der Held, solange `m_heroCast` läuft (Aufladen, Wurf-Clip, Telekinese); NPCs während `Creature::cast`;
+  Aufblitzen bei jedem Zaubertreffer (`spellHit`), nicht bei den Brand-Ticks und nicht im Nahkampf (Entscheidung
+  10); Brennen und Schlaf als Zustand. Schattenpässe ohne Glühen.
+- **Tests:** `tests/render/test_spell_fx.cpp` (Daten, Fehler, Stufen, Ausklingen, Pulsieren),
+  GPU `test_spell_glow.cpp` (Hand nur auf ihrem Knochen, Fläche überall, ohne bytegleich),
+  `tests/runtime/test_engine_spell_glow.cpp` (Feuerpfeil: orange Hand beim Wirken, Treffer 0,3 s).
+  Prüfbilder `C:\GotharData\review\m17-glow`.
+- **Runen-Modell Telekinese:** bis figuren eines liefert, das der Schlaf-Rune (`items/magic.lua`, Parameter `model`).
+
 ### Teil V – Verzerrung
 - **Was:** ein Versatz-Puffer (RG16F, halbe Auflösung), in den „Verzerrer“ geschrieben werden; der Post-Pass liest
   das HDR-Bild an den versetzten Stellen, vor Bloom und Farbkorrektur. Dieselbe Technik wie das Unterwasser-Wabern

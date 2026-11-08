@@ -360,7 +360,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [x] Magie: Telekinese (Zaubertyp „Kontrolle“) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
   - Plan (Teil T, freigegeben 2026-11-08): `docs/modules/gameplay.md` „Plan M17: Magie-Nachträge“, Gefühlsfragen 1–13 nach Vorschlag entschieden; Teil T umgesetzt (Telekinese, Spruchrolle im Testlager)
 - [ ] Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
-  - Plan (Teile G, V, freigegeben 2026-11-08): `docs/modules/render.md` „Plan M17: Zauber-Effekte“
+  - Plan (Teile G, V, freigegeben 2026-11-08): `docs/modules/render.md` „Plan M17: Zauber-Effekte“; Teil G (Glühen) umgesetzt, V offen
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 

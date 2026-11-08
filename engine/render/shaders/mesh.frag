@@ -22,6 +22,13 @@ in vec3 vNormal;
 in vec4 vTangent;
 in vec2 vUv;
 out vec4 fragColor;
+#ifdef SKINNED
+// M17 part G: a spell's glow on a figure (render::FigureGlow, premultiplied colours; all zero: none).
+in float vGlowHand;
+uniform vec3 uGlowHand;
+uniform vec3 uGlowRim;
+uniform vec3 uGlowFill;
+#endif
 
 vec3 surfaceNormal()
 {
@@ -62,6 +69,11 @@ void main()
     vec3 color = albedo * incomingLight(vWorldPosition, n);
     color += wetSheen(color, sky) + glint;
     color += uEmissive * texture(uEmissiveTexture, vUv).rgb;
+#ifdef SKINNED
+    const float facing = max(dot(n, normalize(uCameraPosition - vWorldPosition)), 0.0);
+    const float rim = pow(1.0 - facing, 4.0);
+    color += uGlowHand * vGlowHand + uGlowRim * rim + uGlowFill;
+#endif
     color *= shadowDebugTint(vWorldPosition);
     color = applyFog(color, distance(vWorldPosition, uCameraPosition));
     fragColor = vec4(color, base.a); // linear HDR; the post pass tonemaps and encodes

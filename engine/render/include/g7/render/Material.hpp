@@ -7,6 +7,7 @@
 #include <g7/render/Device.hpp>
 #include <g7/render/Lighting.hpp>
 #include <g7/render/Shadows.hpp>
+#include <g7/render/SpellFx.hpp>
 #include <g7/render/TextureCache.hpp>
 #include <g7/render/Wind.hpp>
 #include <g7/render/rhi/Resources.hpp>
@@ -158,9 +159,9 @@ public:
               const Camera& camera, i32 onlySubmesh = -1, u32 lod = 0); ///< -1: all submeshes
 
     /// A skinned mesh (M6): `bones` are the skinning matrices (model-space bone * inverse bind), at most
-    /// asset::kMaxBones. Same lighting and materials as draw().
+    /// asset::kMaxBones. Same lighting and materials as draw(). `glow`: a spell's glow on it (M17 part G).
     void drawSkinned(Device& device, const SkinnedMesh& mesh, const MaterialSet& materials, const Mat4& model,
-                     std::span<const Mat4> bones, const Camera& camera);
+                     std::span<const Mat4> bones, const Camera& camera, const FigureGlow& glow = {});
     /// drawShadow() for a skinned mesh.
     void drawShadowSkinned(Device& device, const SkinnedMesh& mesh, const MaterialSet& materials,
                            const Mat4& model, std::span<const Mat4> bones, const Cascade& cascade);
