@@ -283,4 +283,10 @@ std::vector<std::string> gltfExternalUris(std::span<const u8> bytes)
     }
     return uris;
 }
+
+bool gltfHas(std::span<const u8> bytes, std::string_view key)
+{
+    const std::string quoted = "\"" + std::string(key) + "\"";
+    return gltfJson(bytes).find(quoted) != std::string_view::npos;
+}
 } // namespace g7::cook

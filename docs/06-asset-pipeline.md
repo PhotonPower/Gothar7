@@ -10,8 +10,8 @@
 | Inhalt | Quelle | Laufzeit |
 |---|---|---|
 | Statische Meshes, Welt-Geometrie | `.glb` | `.g7mesh` (Vertex/Index-Buffer, Submeshes, Material-Refs, AABB, LODs) |
-| Skelette, Skin-Meshes | `.glb` | `.g7skel`, `.g7mesh` mit Skin-Gewichten |
-| Animationen | `.glb` (eine Datei pro Set) | `.g7anim` (komprimierte Tracks, Events) |
+| Figurenteile, Rigs (Skin + Mesh) | `.glb` | `.g7skin` (Skelett, Skin-Gewichte, Morphs, Zusammenbau-Daten; ADR 0025) |
+| Animationen | `.glb` (eine Datei pro Set) + `.events.toml` | `.g7anim` (Spuren als f32; `.events.toml` bleibt daneben) |
 | Texturen | `.png`/`.tga` | `.ktx2` (BC7 Farbe, BC5 Normal, Mipmaps) |
 | Materialien | `.g7mat` (TOML/JSON) | dito, vorvalidiert |
 | Sounds/Musik/Sprache | `.ogg`/`.wav` (Sprache: `assets/source/voice/`, siehe `tools/voice`) | `.ogg` |
@@ -74,6 +74,14 @@ Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_
 - **Übersprungen** werden versteckte Dateien (`.xyz`), Blender-Dateien (`.blend`, `.blend1`), Schrift-Quellen (`.ttf`, `.otf`,
   `.font.toml`) und glTF-Puffer
   (`.bin`, die über die `.gltf` gelesen werden). **Alles andere** (Skripte, Konfiguration, Sounds) wird kopiert.
+- **Figuren und Clips** (M17, ADR 0025):
+  - Ein `.glb` mit Skin und Mesh (Figurenteile, Rigs) wird zu `.g7skin`, eines mit Animationen (Clip-Sets) zu
+    `.g7anim`, eines mit beidem zu beidem. Ein statisches `.g7mesh` entsteht dafür nicht.
+  - Was die Engine beim Laden ablehnen würde (mehr als 128 Knochen, fehlende Gewichte, kubische Splines,
+    fehlende Bilder), lässt den Kochlauf scheitern.
+  - Bildverweise bleiben relativ zum Teil. Die Engine nimmt im Archiv das `.ktx2` der Bilder (`preferCooked`).
+  - Gekochte Dateien in `assets/cooked` verdecken das Quell-`.glb` wie bei `.g7mesh`. Wer an Figuren arbeitet,
+    kocht neu oder arbeitet ohne diesen Ordner.
 - **Ausgabe:** lose Dateien unter `--out` (Ordnerstruktur wie die Quelle) oder mit `--pack` ein einziges
   Archiv `<out>/<datei>` (`.g7pak` v2, zstd pro Eintrag; `--level 1..22`, Vorgabe 19, 1–3 für schnelle Entwicklungsläufe). Gleiche Quellen ergeben byte-gleiche Ausgaben. `--clean` leert `--out` vorher.
   Ein Ausgabeordner innerhalb der Quelle wird abgelehnt.
