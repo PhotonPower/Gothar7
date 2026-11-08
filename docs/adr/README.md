@@ -29,4 +29,4 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | [0022](0022-editor-undo-commands.md) | Editor: Undo/Redo als Befehle mit JSON-Zuständen | Angenommen (Projektinhaber, 2026-11-07) | M16 |
 | [0023](0023-terrain-editing-and-blender-import.md) | Gelände im Editor (Höhen-Pinsel) und Import aus Blender (Mesh→Heightmap, `VOB_`-Knoten) | Angenommen (Projektinhaber, 2026-11-07) | M16 |
 | [0024](0024-tracy-profiling.md) | Profiling mit Tracy (nur Preset `profile`, hinter den `G7_PROFILE_*`-Makros) | Angenommen (Projektinhaber, 2026-11-07) | M17 |
-| [0025](0025-cooked-skin-anim.md) | Gekochte Figuren und Animationen: `.g7skin`/`.g7anim` (eigene Binärformate, glTF als Rückfall) | Vorgeschlagen | M17 |
+| [0025](0025-cooked-skin-anim.md) | Gekochte Figuren und Animationen: `.g7skin`/`.g7anim` (eigene Binärformate, glTF als Rückfall) | Angenommen (Projektinhaber, 2026-11-08) | M17 |

@@ -381,9 +381,9 @@ std::string vfsSibling(std::string_view base, std::string_view relative);       
   jeweiligen Modulen. Eingetragen werden sie vom höheren Modul über `registerLoader`, `asset` kennt sie nicht.
 
 ## Plan M17: gekochte Figuren und Animationen (`.g7skin`/`.g7anim`)
-Stand: **Plan, wartet auf Freigabe** (2026-11-08). ADR 0025 liegt als „Vorgeschlagen“ bei. Roadmap M17: „spätestens
-vor dem ersten reinen `.g7pak`-Release“. ADR 0019 hat das eigene Format als Folgearbeit vorgesehen. Die Fragen an den
-Projektinhaber stehen am Ende, nummeriert, jeweils mit Vorschlag.
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-08; alle Vorschläge übernommen, ADR 0025 angenommen). Roadmap M17:
+„spätestens vor dem ersten reinen `.g7pak`-Release“. ADR 0019 hat das eigene Format als Folgearbeit vorgesehen. Die
+Entscheidungen stehen am Ende, nummeriert. Reihenfolge: Teil 0 nach dem Merge von #384, danach A–F, je Teil ein PR.
 
 ### Ausgangslage (gemessen bzw. geprüft am 2026-11-08)
 - **Laufzeit:** Figuren entstehen zur Laufzeit aus Teilen. `figures/<name>.figure.toml` nennt die Teile
@@ -522,21 +522,21 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
 | E | Loader, Rückfall, Hot-Reload, Zusammenbau-Test | 1 Tag |
 | F | Paket, Doku, Messung | ½ Tag |
 
-### Fragen an den Projektinhaber (mit Vorschlag)
-1. **Teil 0 jetzt?** Das Paket aus #384 lädt heute keine Figuren, der Test merkt es nicht. **Vorschlag:** ja, als
+### Entscheidungen des Projektinhabers (2026-11-08, alle nach Vorschlag)
+1. **Teil 0 jetzt?** Das Paket aus #384 lädt heute keine Figuren, der Test merkt es nicht. **Entschieden:** ja, als
    kleiner Fix-PR direkt nach #384: glTF ins Archiv, Test streng. Dann ist jeder Release bis Teil F lauffähig.
-2. **`events.toml` beim Kochen in `.g7anim` einbauen oder getrennt lassen?** **Vorschlag:** getrennt. Der Vertrag
+2. **`events.toml` beim Kochen in `.g7anim` einbauen oder getrennt lassen?** **Entschieden:** getrennt. Der Vertrag
    bleibt gleich, Hot-Reload der Events bleibt, der Unterschied in der Ladezeit ist klein (TOML je Set).
-3. **Schlüssel komprimieren (Quantisierung, z. B. Quaternion 3×16 bit)?** **Vorschlag:** nicht in Version 1. f32 und
+3. **Schlüssel komprimieren (Quantisierung, z. B. Quaternion 3×16 bit)?** **Entschieden:** nicht in Version 1. f32 und
    zstd im Archiv, die Sets haben heute 15 MB. Quantisierung kommt später mit eigener Version, wenn Größe oder
    Speicher drücken.
-4. **Ganze Figuren (`figure.toml`) vorab zusammenbauen und kochen?** **Vorschlag:** nein. Der Zusammenbau zur
+4. **Ganze Figuren (`figure.toml`) vorab zusammenbauen und kochen?** **Entschieden:** nein. Der Zusammenbau zur
    Laufzeit bleibt (Rüstung/Kleidung tauschen, Cache der Teile). Erst wenn Teil A ihn als großen Posten zeigt, wird
    über einen Cache der fertigen Figuren entschieden.
-5. **Statisches `.g7mesh` für geskinnte `.glb` weglassen?** **Vorschlag:** ja, nur noch `.g7skin`, sofern Teil D
+5. **Statisches `.g7mesh` für geskinnte `.glb` weglassen?** **Entschieden:** ja, nur noch `.g7skin`, sofern Teil D
    prüft, dass nichts ein Figurenteil statisch lädt (heute nicht der Fall). Das spart Platz im Archiv.
-6. **Morph-Targets dicht oder dünn speichern?** **Vorschlag:** dicht in Version 1 (wie geladen). Dünn (nur bewegte
+6. **Morph-Targets dicht oder dünn speichern?** **Entschieden:** dicht in Version 1 (wie geladen). Dünn (nur bewegte
    Vertices) später, falls Köpfe im Archiv groß werden.
-7. **Reihenfolge:** **Vorschlag:** 0 sofort. A–F danach am Stück, unabhängig vom Messergebnis, weil die Roadmap das
+7. **Reihenfolge:** **Entschieden:** 0 sofort. A–F danach am Stück, unabhängig vom Messergebnis, weil die Roadmap das
    Format vor dem reinen `.g7pak`-Release verlangt. Teil A legt nur fest, ob danach noch der Zusammenbau oder der
    Upload dran ist.

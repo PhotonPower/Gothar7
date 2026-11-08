@@ -1,6 +1,6 @@
 # 0025 – Gekochte Figuren und Animationen: `.g7skin` und `.g7anim`
 
-- **Status:** Vorgeschlagen
+- **Status:** Angenommen (Projektinhaber, 2026-11-08)
 - **Datum:** 2026-11-08
 - **Phase:** M17 (Plan in `docs/modules/asset.md`, „Plan M17: gekochte Figuren und Animationen“)
 
@@ -37,7 +37,7 @@ Bedingungen:
 4. **Allgemeine Serialisierung (FlatBuffers, cereal).**
    - Schema-Werkzeug bzw. neue Abhängigkeit für zwei einfache Formate. Kein Vorteil gegenüber Option 2.
 
-## Entscheidung (vorgeschlagen)
+## Entscheidung
 Option 2, mit Option 1 als Übergang, bis Option 2 im Paket ist.
 
 - **`.g7skin`** (Kopf `G7SK`, Version u32, little-endian, Abschnitte mit Länge):
