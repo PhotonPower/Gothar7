@@ -184,9 +184,9 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
   (`animation.md` „Figuren zur Laufzeit zusammensetzen“).
 - **Lader im `AssetManager`:** `SkinnedModelData` und `AnimationSetData` direkt aus glTF/GLB.
   - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019; Plan und ADR 0025 unten, „Plan M17: gekochte Figuren
-    und Animationen“). Bis dahin laden Figuren und Sets aus losen Dateien
-    (Entwicklung). g7-cook kocht skinnte Figuren weiterhin nur als statisches `.g7mesh`, Sets ohne Mesh überspringt
-    er; ein reines `.g7pak` enthält sie noch nicht.
+    und Animationen“). Bis dahin laden Figuren und Sets aus losen Dateien (Entwicklung). Mit `--pack` legt g7-cook
+    geskinnte und animierte `.glb` zusätzlich unverändert ins Archiv (06-asset-pipeline.md, Teil 0), so lädt auch ein
+    reines `.g7pak` Figuren und Clips als glTF.
 
 ### Detailstufen (LOD) statischer Modelle (Vertrag mit welt und figuren, 2026-10-04)
 - **Knoten:** Ein `.glb` enthält bis zu drei Render-Stufen mit **gleichem Ursprung**: Stufe 0 als `<name>` oder
@@ -384,6 +384,7 @@ std::string vfsSibling(std::string_view base, std::string_view relative);       
 Stand: **Plan freigegeben** (Projektinhaber, 2026-11-08; alle Vorschläge übernommen, ADR 0025 angenommen). Roadmap M17:
 „spätestens vor dem ersten reinen `.g7pak`-Release“. ADR 0019 hat das eigene Format als Folgearbeit vorgesehen. Die
 Entscheidungen stehen am Ende, nummeriert. Reihenfolge: Teil 0 nach dem Merge von #384, danach A–F, je Teil ein PR.
+**Teil 0 umgesetzt** (`fix/m17-package-figures`): glTF-Kopien im Archiv, strenger Paket-Test, Figurenbilder über `.ktx2`.
 
 ### Ausgangslage (gemessen bzw. geprüft am 2026-11-08)
 - **Laufzeit:** Figuren entstehen zur Laufzeit aus Teilen. `figures/<name>.figure.toml` nennt die Teile
