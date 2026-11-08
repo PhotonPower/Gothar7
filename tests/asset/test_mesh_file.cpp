@@ -26,6 +26,9 @@ MeshData sampleMesh()
     leaves.alphaMode = AlphaMode::Mask;
     leaves.alphaCutoff = 0.3f;
     leaves.doubleSided = true;
+    leaves.wind = WindKind::Leaves; // version 4
+    leaves.windStrength = 1.5f;
+    leaves.windPivot = Vec3(0.0f, 2.93f, 0.7f);
     mesh.materials.push_back(leaves);
     mesh.submeshes.push_back({0, 6, static_cast<u32>(mesh.materials.size() - 1)});
     mesh.submeshes.push_back({0, 3, 0, 2}); // a coarser level of detail (version 3)
@@ -72,6 +75,9 @@ void checkEqual(const MeshData& a, const MeshData& b)
         CHECK(x.alphaMode == y.alphaMode);
         CHECK(x.alphaCutoff == y.alphaCutoff);
         CHECK(x.doubleSided == y.doubleSided);
+        CHECK(x.wind == y.wind);
+        CHECK(x.windStrength == y.windStrength);
+        CHECK(x.windPivot == y.windPivot);
     }
     REQUIRE(a.images.size() == b.images.size());
     for (usize i = 0; i < a.images.size(); ++i)
@@ -105,7 +111,8 @@ constexpr usize kHeaderSize = 4 + 7 * 4 + 6 * 4;
 
 namespace
 {
-/// The same file in the layout of version 1 or 2: submeshes without their LOD level (version 3 added it).
+/// The same file in the layout of version 1, 2 or 3: without the wind per material (version 4 added it) and,
+/// before version 3, submeshes without their LOD level.
 std::vector<u8> olderLayout(std::vector<u8> data, u32 version)
 {
     const auto read = [&](usize at)
@@ -114,6 +121,12 @@ std::vector<u8> olderLayout(std::vector<u8> data, u32 version)
         std::memcpy(&v, data.data() + at, 4);
         return v;
     };
+    data.resize(data.size() - usize(read(20)) * 17); // the wind records at the end
+    setU32(data, 4, version);
+    if (version >= 3)
+    {
+        return data;
+    }
     const u32 vertices = read(8);
     const u32 indices = read(12);
     const u32 submeshes = read(16);
@@ -180,11 +193,24 @@ TEST_CASE("corrupt .g7mesh files are rejected")
         auto v2 = deserializeMesh(olderLayout(good, 2), "v2.g7mesh");
         REQUIRE_MESSAGE(v2, (v2 ? "" : v2.error().message));
         CHECK_FALSE(v2.value().collision.empty());
+        // Version 3 (levels, no wind): every material still.
+        auto v3 = deserializeMesh(olderLayout(good, 3), "v3.g7mesh");
+        REQUIRE_MESSAGE(v3, (v3 ? "" : v3.error().message));
+        CHECK(v3.value().submeshes.back().lod == 2);
+        CHECK(v3.value().materials.back().wind == WindKind::None);
+        CHECK(v3.value().materials.back().windStrength == 1.0f);
+    }
+    SUBCASE("unknown wind kind")
+    {
+        auto data = good;
+        data[data.size() - 17] = 9; // the last material's wind kind
+        rejected(data, "wind kind");
     }
     SUBCASE("collision index out of range")
     {
         auto data = good;
-        setU32(data, data.size() - 4, 7); // the last collision index
+        setU32(data, data.size() - 4 - usize(sampleMesh().materials.size()) * 17,
+               7); // the last collision index
         rejected(data, "collision index");
     }
     SUBCASE("truncated or trailing data")

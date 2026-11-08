@@ -3,6 +3,8 @@
 
 #include "PartAssembly.hpp"
 
+#include "GltfExtras.hpp"
+
 #include <nlohmann/json.hpp>
 
 #include <cstring>
@@ -13,27 +15,6 @@ namespace g7::asset
 namespace
 {
 using Json = nlohmann::json;
-
-/// The JSON text of a .gltf (all of it) or .glb (chunk 0).
-std::string_view jsonText(std::span<const u8> bytes)
-{
-    const auto u32At = [&](usize offset)
-    {
-        u32 value = 0;
-        std::memcpy(&value, bytes.data() + offset, 4);
-        return value;
-    };
-    if (bytes.size() >= 20 && std::memcmp(bytes.data(), "glTF", 4) == 0)
-    {
-        const u32 length = u32At(12);
-        if (u32At(16) == 0x4E4F534Au && 20 + static_cast<usize>(length) <= bytes.size()) // "JSON"
-        {
-            return {reinterpret_cast<const char*>(bytes.data() + 20), length};
-        }
-        return {};
-    }
-    return {reinterpret_cast<const char*>(bytes.data()), bytes.size()};
-}
 
 bool unsignedAt(const Json& array, usize index, u32& out)
 {
@@ -49,7 +30,7 @@ bool unsignedAt(const Json& array, usize index, u32& out)
 std::map<std::string, std::vector<std::string>> readMorphNames(std::span<const u8> bytes)
 {
     std::map<std::string, std::vector<std::string>> out;
-    const std::string_view text = jsonText(bytes);
+    const std::string_view text = gltfJsonText(bytes);
     const Json doc = Json::parse(text.begin(), text.end(), nullptr, false);
     if (doc.is_discarded() || !doc.contains("nodes") || !doc.contains("meshes"))
     {
@@ -82,7 +63,7 @@ std::map<std::string, std::vector<std::string>> readMorphNames(std::span<const u
 Result<SkinnedModelData::Assembly> readPartAssembly(std::span<const u8> bytes, std::string_view debugName)
 {
     SkinnedModelData::Assembly out;
-    const std::string_view text = jsonText(bytes);
+    const std::string_view text = gltfJsonText(bytes);
     const Json doc = Json::parse(text.begin(), text.end(), nullptr, false);
     if (doc.is_discarded() || !doc.is_object())
     {
