@@ -7,6 +7,7 @@
 #include "PlayerFigure.hpp"
 
 #include <g7/core/Log.hpp>
+#include <g7/core/Profiler.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/runtime/Engine.hpp>
 
@@ -272,6 +273,7 @@ void Engine::updateRoutine(Creature& c)
 
 void Engine::fixedUpdateAi(Creature& c, f32 seconds)
 {
+    G7_PROFILE_SCOPE("ai");
     // AI LOD by the distance to the player (or the camera without one).
     const Vec3 eye = m_player.valid() ? m_player.feet() : m_camera.transform.position;
     const f32 distance = glm::length(c.position - eye);

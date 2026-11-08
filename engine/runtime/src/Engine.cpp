@@ -501,9 +501,13 @@ bool Engine::runFrame()
         fixedUpdateDialog(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {
+            G7_PROFILE_SCOPE("scripts");
             m_scripts->tick(m_fixedStep.step()); // after/every run in simulation time
         }
-        m_physics.step(m_fixedStep.step());
+        {
+            G7_PROFILE_SCOPE("physics");
+            m_physics.step(m_fixedStep.step());
+        }
         const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
         m_triggers.update(m_scene, std::span(&probe, 1));
         m_gameTime.advance(m_fixedStep.step()); // global: keeps running across level changes
@@ -1262,6 +1266,7 @@ Result<void> Engine::initWorld()
 
 Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, std::string_view start)
 {
+    G7_PROFILE_SCOPE("load::world");
     const Stopwatch timer;
     if (auto spawned = world::spawnWorld(m_scene, file); !spawned)
     {
@@ -2073,6 +2078,7 @@ void Engine::renderScene(u32 width, u32 height)
 
 void Engine::drawScene(u32 width, u32 height)
 {
+    G7_PROFILE_SCOPE("render::scene (culling, shadows, main)");
     m_meshRenderer.beginFrame();
     // Indoors (the camera in a room, world.md "Zonen") the world outside shows only through windows and the
     // door: nothing beyond indoor_view_distance (render.md "Innenräume"), and the sun's shadows (through the
@@ -2123,6 +2129,7 @@ void Engine::drawScene(u32 width, u32 height)
             }
             m_cascadesDrawn[i] = m_cascades[i];
             ++m_cascadeDraws[std::min<u32>(i, 3)];
+            G7_PROFILE_SCOPE("render::shadow cascade");
             m_shadowMap.beginCascade(*m_device, i);
             const Frustum volume = Frustum::fromViewProjection(m_cascades[i].viewProjection);
             m_cullCandidates.clear();
@@ -2275,6 +2282,7 @@ void Engine::drawScene(u32 width, u32 height)
 
 void Engine::cullInstances(const Frustum& view)
 {
+    G7_PROFILE_SCOPE("render::culling");
     m_visibleInstances = 0;
     m_lodCounts = {};
     m_culledFar = 0;
