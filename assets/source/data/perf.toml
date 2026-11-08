@@ -1,0 +1,43 @@
+# Perf scenarios (docs/modules/perf.md, part B): gothar --perf=<name>[,<name>...] or --perf=all.
+# Each scenario: camera and hero at a fixed spot in Leonberg, one run per time of day; per run warmup_seconds
+# (at least until no model is loading any more), then `frames` measured frames. Result: perf_<name>.json.
+# cam/yaw/pitch as F6 copies them (--cam/--yaw/--pitch); player = the hero's feet (default 1.6 m below cam).
+
+warmup_seconds = 5.0
+frames = 600
+
+[[scenario]]
+name = "markt"
+description = "Marktbrunnen, Blick ueber den Platz, Haendler aktiv"
+cam = [10.8, 1.8, 7.7]
+yaw = 30.0
+pitch = -5.0
+times = ["10:00", "21:00"]
+
+[[scenario]]
+name = "gasse"
+description = "enge Gasse am Hang, viele Haeuser nah, Schatten"
+cam = [-76.8, -0.4, -135.3]
+yaw = -117.0
+pitch = -3.0
+times = ["10:00", "21:00"]
+
+[[scenario]]
+name = "stube"
+description = "im Gasthaus: Innenraum, Fensterlichter, Herdfeuer, NPCs am Tisch"
+cam = [-89.7, 1.4, 27.0]
+yaw = 0.0
+pitch = -10.0
+times = ["10:00", "21:00"]
+
+# Stress: the market with 60 NPCs more (nameless townsfolk on the way points around the fountain).
+[[scenario]]
+name = "markt_voll"
+description = "Markt voll: 60 NPCs mehr"
+cam = [10.8, 1.8, 7.7]
+yaw = 30.0
+pitch = -5.0
+times = ["10:00"]
+extra_npcs = 60
+npcs = ["npc_leo_citizen", "npc_leo_merchant_m", "npc_leo_merchant_f", "npc_leo_monk_1", "npc_leo_monk_2"]
+npc_radius = 25.0

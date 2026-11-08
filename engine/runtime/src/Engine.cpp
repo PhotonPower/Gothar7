@@ -84,6 +84,7 @@ Engine::~Engine()
 
 Result<void> Engine::init()
 {
+    m_startSeconds = platform::nowSeconds();
     G7_LOG_INFO("engine", "{} - starting '{}'", buildLine(), m_config.appName); // release.md part A
 
     if (m_config.simulationHz <= 0.0)
@@ -132,6 +133,7 @@ Result<void> Engine::init()
     m_flyCamera.speed = static_cast<f32>(m_config.settings.get<f64>("camera.fly_speed", 10.0));
     m_flyCamera.attach(m_camera);
 
+    const f64 assetsStart = platform::nowSeconds();
     if (auto assets = initAssets(); !assets)
     {
         return assets;
@@ -143,15 +145,18 @@ Result<void> Engine::init()
         return Error{"cannot create the physics world: " + collision.error().message};
     }
     m_physics = std::move(collision).value();
+    addLoadPhase("assets", assetsStart);
 
     initPlayer();
     initAudio(); // M13
     // Scripts before the world: their handlers hear world_loaded (M7).
+    const f64 scriptsStart = platform::nowSeconds();
     mountScripts();
     if (auto scripts = initScripts(); !scripts)
     {
         G7_LOG_WARN("engine", "scripts: {}", scripts.error().message);
     }
+    addLoadPhase("scripts", scriptsStart);
 
     if (m_config.headless || !m_config.render)
     {
@@ -159,6 +164,7 @@ Result<void> Engine::init()
     }
     if (!m_config.headless)
     {
+        const f64 windowStart = platform::nowSeconds();
         platform::WindowDesc desc = m_config.window;
         desc.graphics = m_config.render ? platform::GraphicsApi::OpenGL : platform::GraphicsApi::None;
         auto window = platform::Window::create(desc);
@@ -186,10 +192,13 @@ Result<void> Engine::init()
             m_geometry = std::make_unique<render::GeometryArena>();
             m_glContext->setVSync(m_config.window.vsync);
 
+            addLoadPhase("window, OpenGL", windowStart);
+            const f64 shadersStart = platform::nowSeconds();
             if (auto result = initShaders(); !result)
             {
                 return result;
             }
+            addLoadPhase("shaders", shadersStart);
             if (m_config.mainMenu && m_config.world.empty() && m_config.scene.empty() &&
                 m_config.viewMesh.empty())
             {
@@ -201,7 +210,9 @@ Result<void> Engine::init()
             }
             else if (!m_config.world.empty() || !m_config.scene.empty() || !m_config.viewMesh.empty())
             {
+                const f64 renderStart = platform::nowSeconds();
                 auto result = initSceneRendering();
+                addLoadPhase("scene rendering (targets, shadows, sky)", renderStart);
                 if (result)
                 {
                     result = !m_config.world.empty()   ? initWorld()
@@ -544,6 +555,15 @@ bool Engine::runFrame()
     finishPendingSave(); // after the frame that took its thumbnail
     updatePlayTime(m_frameSeconds);
     ++m_frameCount;
+    if (m_frameCount == 1)
+    {
+        addLoadPhase("first frame", m_startSeconds);
+    }
+    if (!m_modelsSettled && m_assets && m_assets->pendingCount() == 0)
+    {
+        m_modelsSettled = true; // streamed models (houses, figures) are all on the GPU now
+        addLoadPhase("models settled", m_startSeconds);
+    }
     if (m_config.maxFrames != 0 && m_frameCount >= m_config.maxFrames)
     {
         requestQuit();
@@ -1224,12 +1244,14 @@ void Engine::addTool(EngineTool& tool)
 
 Result<void> Engine::initWorld()
 {
+    const f64 fileStart = platform::nowSeconds();
     auto path = resolveAssetArgument(m_config.world);
     auto file = path ? world::loadWorldFile(m_vfs, path.value()) : Result<world::WorldFile>(path.error());
     if (!file)
     {
         return Error{"cannot load world: " + file.error().message};
     }
+    addLoadPhase("world file (read, parse)", fileStart);
     return loadWorld(path.value(), std::move(file).value(), m_config.start);
 }
 
@@ -1267,10 +1289,13 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
             loadTerrainSurface(*ref);
         }
     }
+    addLoadPhase("world (vobs, waynet, terrain)", platform::nowSeconds() - timer.elapsedSeconds());
+    const f64 housesStart = platform::nowSeconds();
     if (auto instantiated = instantiateScene(); !instantiated)
     {
         return instantiated;
     }
+    addLoadPhase("houses and models (instances, collision)", housesStart);
     // Without terrain a ground plate below the world; a camera overlooking the vobs (or the terrain
     // of a world without vobs).
     const bool hasVobs = m_sceneBounds.max.x >= m_sceneBounds.min.x;
@@ -1363,7 +1388,9 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     if (m_scripts)
     {
         const script::Value world[] = {path, m_restoringWorld};
+        const f64 figuresStart = platform::nowSeconds();
         m_scripts->emit("world_loaded", world);
+        addLoadPhase("figures and clips (world_loaded)", figuresStart);
     }
     return {};
 }
@@ -2695,5 +2722,29 @@ void Engine::shutdown()
     m_glContext.reset();
     m_window.reset();
     m_initialized = false;
+}
+} // namespace g7
+
+namespace g7
+{
+void Engine::addLoadPhase(std::string name, f64 startSeconds)
+{
+    const f64 now = platform::nowSeconds();
+    LoadPhase phase{std::move(name), (now - startSeconds) * 1000.0, (now - m_startSeconds) * 1000.0};
+    G7_LOG_DEBUG("engine", "load phase {}: {:.0f} ms (at {:.0f} ms)", phase.name, phase.ms, phase.endMs);
+    m_loadPhases.push_back(std::move(phase));
+}
+
+render::FrameStats Engine::frameStats() const noexcept
+{
+    return m_device ? m_device->stats() : render::FrameStats{};
+}
+} // namespace g7
+
+namespace g7
+{
+std::string Engine::rendererName() const
+{
+    return m_device ? m_device->info().renderer : std::string("no device");
 }
 } // namespace g7

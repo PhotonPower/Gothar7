@@ -182,7 +182,11 @@ void Engine::updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeybo
 
 void Engine::applyStartView()
 {
-    const StartView& v = m_config.view;
+    applyView(m_config.view);
+}
+
+void Engine::applyView(const StartView& v)
+{
     if (v.empty())
     {
         return;
