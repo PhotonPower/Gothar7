@@ -946,9 +946,9 @@ nicht das Budget angehoben (wie bei den Testgruppen).
   (Parksee); bei `river` zeigt lokal +X stromabwärts. welt setzt die Daten in einem eigenen PR; bis dahin gilt
   fehlendes `kind` als Vorgabe (stehend).
 
-## Plan M17: Zauber-Effekte – Glühen und Verzerrung (Vorschlag, wartet auf Freigabe)
+## Plan M17: Zauber-Effekte – Glühen und Verzerrung (freigegeben 2026-11-08)
 Teile G und V des Plans „Magie-Nachträge“ (`gameplay.md`, dort auch Teil T Telekinese und die Gefühlsfragen
-9–13). **Kein Code bis zur Freigabe.** Werte als Daten in `data/fx/*.toml` bzw. `data/spell_fx.toml`.
+9–13, alle nach Vorschlag entschieden). Werte als Daten in `data/fx/*.toml` bzw. `data/spell_fx.toml`.
 
 ### Teil G – Glühen beim Wirken und Treffen
 - **Was:** ein additiver Rand- und Flächenschein auf Figuren (skinned) in einer Farbe, zeitlich gesteuert:

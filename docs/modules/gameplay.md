@@ -527,10 +527,10 @@ gegen den Kräuterhexer und einen Wegelagerer:
 **Nicht umgesetzt in M12:** Telekinese und Shader-Effekte, verschoben nach M17 (Entscheidung Projektinhaber
 2026-10-08); Plan unten.
 
-## Plan M17: Magie-Nachträge – Telekinese und Zauber-Effekte (Vorschlag, wartet auf Freigabe)
+## Plan M17: Magie-Nachträge – Telekinese und Zauber-Effekte (freigegeben 2026-11-08)
 Auftrag des Projektinhabers (über den Koordinator, 2026-11-08), Roadmap M17 „Magie: Telekinese (Zaubertyp
-„Kontrolle“)“ und „Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen)“. **Kein Code bis zur
-Freigabe.** Teil T (Telekinese) steht hier, die Teile G (Glühen) und V (Verzerrung) in `render.md`
+„Kontrolle“)“ und „Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen)“. **Freigegeben** vom
+Projektinhaber (über den Koordinator, 2026-11-08): alle 13 Gefühlsfragen nach Vorschlag. Teil T (Telekinese) steht hier, die Teile G (Glühen) und V (Verzerrung) in `render.md`
 „Plan M17: Zauber-Effekte“; die Gefühlsfragen für alle Teile am Ende dieses Abschnitts.
 
 ### Wie in Gothic 1 (Zielverhalten)
@@ -596,7 +596,7 @@ Freigabe.** Teil T (Telekinese) steht hier, die Teile G (Glühen) und V (Verzerr
 - figuren: optional ein eigener Telekinese-Clip. welt: nichts (das Gitter für das Szenario steht im Testlager,
   engine). Kein neuer Vertrag; `carry` nennt die Item-Kategorien aus `inventory_views.toml`.
 
-### Gefühlsfragen an den Projektinhaber (je mit Vorschlag)
+### Gefühlsfragen – entschieden (Projektinhaber 2026-11-08: alle nach Vorschlag)
 1. **Kreis und Kosten der Telekinese:** Vorschlag Kreis 2, 10 Mana beim Anheben, dann 2 Mana je Sekunde (ein
    Gegenstand aus 15 m kostet so etwa 14 Mana).
 2. **Reichweite und Tempo:** Vorschlag 15 m zum Anvisieren, 0,5 m anheben, dann 3 m/s (man sieht ihn kommen; aus
