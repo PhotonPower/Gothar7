@@ -186,3 +186,19 @@ def test_steep_banks_beside_streets_are_earth_not_cobbles():
     w = composite(layer_masks(grid, [], [street], [], [], core), heights.shape)
     assert dominant(w, -20, 0) == KOPFSTEIN and dominant(w, 30, 0) == KOPFSTEIN
     assert dominant(w, 5, 0) == MATSCH
+
+
+def test_rural_ways_field_mud_country_gravel() -> None:
+    """W6 (geo/rural.py): field ways are mud and country roads gravel, also in the core."""
+    streets = [
+        {"highway": "track", "rural": "feldweg", "widthM": 2.5, "points": [[-45, -20], [-5, -20]]},
+        {
+            "highway": "track",
+            "rural": "landstrasse",
+            "widthM": 4.5,
+            "points": [[-45, 10], [-5, 10]],
+        },
+    ]
+    w = composite(layer_masks(GRID, [], streets, [], [], CORE), GRID.heights.shape)
+    assert dominant(w, -25, -20) == MATSCH
+    assert dominant(w, -25, 10) == KIES
