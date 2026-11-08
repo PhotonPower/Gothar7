@@ -56,8 +56,9 @@ layer = ["none/t_turn_r", "mag/s_idle"]
 from_bone = ["clavicle_l", "clavicle_r", "neck"]
 events = "footsteps"
 
-# --- magic (M12, agreed with engine 2026-10-06): the rune or scroll in the right hand
-# (socket_hand_r); every one-shot starts and ends in mag/s_idle; event `cast` = the effect starts
+# --- magic (M12, agreed with engine 2026-10-06; left hand since 2026-11-08 like the Quaternius
+# stance): the rune or scroll in the left hand (socket_hand_l); every one-shot starts and ends in
+# mag/s_idle; event `cast` = the effect starts
 # (the projectile leaves the hand). Five casting variants; transformation uses t_cast_self, sleep
 # the knock-out clips of `none`. Own key poses over the upright none/s_idle (hand targets by grid
 # search), framed into the stance.
@@ -70,7 +71,7 @@ helper = true
 base = "none/s_idle"
 keys = [[0, "reach"], [10, "reach"]]
 [clip.params.poses.reach]
-rotate = { spine_02 = [["Z", -10], ["X", 6]], neck = [["X", 15]], upperarm_r = [["X", -10], ["Z", -10]], lowerarm_r = [["X", -45]] }
+rotate = { spine_02 = [["Z", 10], ["X", 6]], neck = [["X", 15]], upperarm_l = [["X", -10], ["Z", 10]], lowerarm_l = [["X", -45]] }
 
 [[clip]]
 name = "mag/t_reach"
@@ -128,7 +129,7 @@ helper = true
 base = "none/s_idle"
 keys = [[0, "rest"], [10, "point"], [22, "point"], [32, "rest"]]
 [clip.params.poses.point]
-rotate = { upperarm_r = [["X", -90], ["Y", 15], ["Z", 40]], spine_02 = [["Z", -6]], neck = [["Z", -5]] }
+rotate = { upperarm_l = [["X", -90], ["Y", -15], ["Z", -18]], spine_02 = [["Z", 6]], neck = [["Z", 5]] }
 
 [[clip]]
 name = "mag/t_cast_target"  # point at the target (sleep, fear, control)
@@ -179,9 +180,9 @@ helper = true
 base = "none/s_idle"
 keys = [[0, "rest"], [12, "raise"], [20, "down"], [28, "down"], [38, "rest"]]
 [clip.params.poses.raise]
-rotate = { upperarm_r = [["X", -155], ["Z", 10]], lowerarm_r = [["X", -15]], neck = [["X", -12]] }
+rotate = { upperarm_l = [["X", -155], ["Z", -10]], lowerarm_l = [["X", -15]], neck = [["X", -12]] }
 [clip.params.poses.down]
-rotate = { upperarm_r = [["X", -45], ["Z", 10]], lowerarm_r = [["X", -5]], spine_02 = [["X", 15]], neck = [["X", 15]] }
+rotate = { upperarm_l = [["X", -45], ["Z", -10]], lowerarm_l = [["X", -5]], spine_02 = [["X", 15]], neck = [["X", 15]] }
 
 [[clip]]
 name = "mag/t_cast_summon"  # arm raised, then down to the ground ahead
@@ -196,9 +197,9 @@ keyframe = "keyposes"
 base = "none/s_idle"
 keys = [[0, "point"], [37, "point2"], [75, "point"]]
 [clip.params.poses.point]
-rotate = { upperarm_r = [["X", -90], ["Y", 15], ["Z", 40]], spine_02 = [["Z", -6]], neck = [["Z", -5]] }
+rotate = { upperarm_l = [["X", -90], ["Y", -15], ["Z", -18]], spine_02 = [["Z", 6]], neck = [["Z", 5]] }  # mirrored to the left arm (2026-11-08), Z eased: the hand points just left of centre
 [clip.params.poses.point2]
-rotate = { upperarm_r = [["X", -94], ["Y", 15], ["Z", 40]], spine_02 = [["Z", -6]], neck = [["Z", -5]] }
+rotate = { upperarm_l = [["X", -94], ["Y", -15], ["Z", -18]], spine_02 = [["Z", 6]], neck = [["Z", 5]] }
 
 [[clip]]
 name = "mag/t_cast_loop_end"      # from the continuous spell back into the stance
@@ -213,9 +214,9 @@ helper = true
 base = "none/s_idle"
 keys = [[0, "rest"], [5, "jerk"], [9, "shake"], [13, "jerk"], [22, "rest"]]
 [clip.params.poses.jerk]
-rotate = { upperarm_r = [["X", -60]], lowerarm_r = [["X", -40]], hand_r = [["X", 30]], neck = [["X", 10]] }
+rotate = { upperarm_l = [["X", -60]], lowerarm_l = [["X", -40]], hand_l = [["X", 30]], neck = [["X", 10]] }
 [clip.params.poses.shake]
-rotate = { upperarm_r = [["X", -50]], lowerarm_r = [["X", -30]], hand_r = [["X", -20]], neck = [["X", 10]] }
+rotate = { upperarm_l = [["X", -50]], lowerarm_l = [["X", -30]], hand_l = [["X", -20]], neck = [["X", 10]] }
 
 [[clip]]
 name = "mag/t_cast_fail"  # no mana: the hand twitches
