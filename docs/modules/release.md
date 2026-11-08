@@ -155,6 +155,9 @@ Abweichungen bei C:
   - Ob es sich lohnt, entscheidet die Messung im Performance-Plan (`docs/m17-perf`: Ladezeit Leonberg, Anteil der
     glTF-Figuren und -Clips). Das Format kommt dann mit eigener ADR.
   - Siehe Entscheidung 9.
+- **Nachtrag (2026-11-09):** Teil C hatte eine Lücke, der Paket-Test hat Figuren nicht wirklich geprüft (#410). Danach
+  hat der Projektinhaber das Format als eigenen Plan freigegeben (`asset.md`, „Plan M17: gekochte Figuren“, ADR 0025).
+  Umgesetzt: Das Paket enthält `.g7skin`/`.g7anim`, und der strenge Paket-Test lädt alle Lager-Figuren daraus.
 
 ## Reihenfolge und Umfang
 | Teil | Inhalt | Umfang |

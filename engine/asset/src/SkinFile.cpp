@@ -377,20 +377,16 @@ Result<SkinnedModelData> deserializeSkin(std::span<const u8> bytes, std::string_
         {
             return skinError(debugName, "part counts");
         }
+        // Arrays in one copy each (the layouts match the file: asset::Vertex is 12 floats, joints 4 x u16).
+        static_assert(sizeof(Vertex) == 12 * sizeof(f32) && sizeof(std::array<u16, 4>) == 4 * sizeof(u16));
         p.vertices.resize(vertexCount);
-        for (Vertex& v : p.vertices)
-        {
-            readFloats(r, &v.position.x, 3);
-            readFloats(r, &v.normal.x, 3);
-            readFloats(r, &v.uv.x, 2);
-            readFloats(r, &v.tangent.x, 4);
-        }
+        r.array(reinterpret_cast<f32*>(p.vertices.data()), usize(vertexCount) * 12);
         p.joints.resize(vertexCount);
-        for (auto& j : p.joints)
+        r.array(reinterpret_cast<u16*>(p.joints.data()), usize(vertexCount) * 4);
+        for (const auto& j : p.joints)
         {
-            for (u16& bone : j)
+            for (const u16 bone : j)
             {
-                bone = r.u16v();
                 if (bone >= boneCount)
                 {
                     return skinError(debugName, "joint out of range");
@@ -398,14 +394,11 @@ Result<SkinnedModelData> deserializeSkin(std::span<const u8> bytes, std::string_
             }
         }
         p.weights.resize(vertexCount);
-        for (Vec4& weight : p.weights)
-        {
-            readFloats(r, &weight.x, 4);
-        }
+        r.array(reinterpret_cast<f32*>(p.weights.data()), usize(vertexCount) * 4);
         p.indices.resize(indexCount);
-        for (u32& index : p.indices)
+        r.array(p.indices.data(), indexCount);
+        for (const u32 index : p.indices)
         {
-            index = r.u32v();
             if (index >= vertexCount)
             {
                 return skinError(debugName, "index out of range");
@@ -433,18 +426,13 @@ Result<SkinnedModelData> deserializeSkin(std::span<const u8> bytes, std::string_
             {
                 return skinError(debugName, "morph target");
             }
+            static_assert(sizeof(Vec3) == 3 * sizeof(f32));
             morph.positions.resize(vertexCount);
-            for (Vec3& d : morph.positions)
-            {
-                readFloats(r, &d.x, 3);
-            }
+            r.array(reinterpret_cast<f32*>(morph.positions.data()), usize(vertexCount) * 3);
             if (normals)
             {
                 morph.normals.resize(vertexCount);
-                for (Vec3& d : morph.normals)
-                {
-                    readFloats(r, &d.x, 3);
-                }
+                r.array(reinterpret_cast<f32*>(morph.normals.data()), usize(vertexCount) * 3);
             }
         }
         p.primitives.resize(primitiveCount);

@@ -179,19 +179,17 @@ Result<AnimationSetData> deserializeAnim(std::span<const u8> bytes, std::string_
             }
             track.path = static_cast<TrackData::Path>(path);
             track.times.resize(keys);
+            r.array(track.times.data(), keys);
             for (u32 k = 0; k < keys; ++k)
             {
-                track.times[k] = r.f32v();
                 if (!std::isfinite(track.times[k]) || (k > 0 && track.times[k] < track.times[k - 1]))
                 {
                     return animError(debugName, "key times not rising");
                 }
             }
             track.values.resize(keys);
-            for (Vec4& v : track.values)
-            {
-                readFloats(r, &v.x, 4);
-            }
+            static_assert(sizeof(Vec4) == 4 * sizeof(f32));
+            r.array(reinterpret_cast<f32*>(track.values.data()), usize(keys) * 4);
         }
         if (r.failed())
         {

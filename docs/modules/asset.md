@@ -531,6 +531,11 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
 - Der strenge Paket-Test aus Teil 0 belegt Figuren und Clips aus dem Archiv. Dazu kommt ein Lauf mit
   `--exec=camp_people()` und einem Kampf-Clip (Events).
 - Danach: release.md Teil D abschließen, Roadmap-Punkt abhaken, Messung wiederholen (`--perf`, Ladephasen).
+- **Umgesetzt** (2026-11-09):
+  - Der Paket-Test (`make_release`) lädt die Lager-Figuren aus `.g7skin`/`.g7anim` in `data.g7pak`, ohne `.glb`.
+  - Der Leser liest Arrays am Stück.
+  - Messung im Nachtrag von `docs/perf/2026-11-08-figuren-laden.md`.
+  - release.md und Roadmap sind nachgeführt.
 
 ### Tests
 - **asset:**

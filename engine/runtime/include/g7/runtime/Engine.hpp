@@ -1630,8 +1630,8 @@ private:
     /// summed over the figures built since the last reset; world_loaded adds them as load phases.
     struct FigureLoadTimes
     {
-        f64 parts = 0.0;    // figure parts (SkinnedModelData from glTF) loaded and waited for
-        f64 sets = 0.0;     // clip sets (AnimationSetData from glTF) loaded and waited for
+        f64 parts = 0.0;    // figure parts (SkinnedModelData, .g7skin or glTF) loaded, waited for
+        f64 sets = 0.0;     // clip sets (AnimationSetData, .g7anim or glTF) loaded, waited for
         f64 assemble = 0.0; // asset::assembleFigure
         f64 images = 0.0;   // textures loaded and waited for
         f64 upload = 0.0;   // skinned mesh and materials on the GPU
