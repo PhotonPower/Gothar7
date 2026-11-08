@@ -25,6 +25,7 @@ from gothar_chargen.blender_run import (
     build_set,
     build_stubble,
     build_test_parts,
+    cmu_retarget,
     conform_human,
     export_glb,
     find_blender,
@@ -34,6 +35,7 @@ from gothar_chargen.blender_run import (
 )
 from gothar_chargen.clipfix import repair_set
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, packaged_sets
+from gothar_chargen.cmu import load_segments
 from gothar_chargen.collision import CollisionError, derive_collision, write_collision
 from gothar_chargen.creature import CreatureError, load_creature
 from gothar_chargen.events import events_path_for, sync_marker_events, update_speeds
@@ -517,6 +519,21 @@ def _cmd_human(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK if ok else EXIT_ERROR
 
 
+def _cmd_cmu(args: argparse.Namespace, out: TextIO) -> int:
+    """CMU mocap (F4): the segments of data/cmu.toml retargeted into a source .blend (local)."""
+    raw = args.raw or Path("C:/GotharData/characters/cmu/raw")
+    target = args.out or raw.parent / "cmu_combat.blend"
+    missing = sorted({s.take for s in load_segments()} - {p.stem for p in raw.glob("*.amc")})
+    if missing:
+        print(f"error: CMU takes missing below {raw}: {', '.join(missing)}", file=out)
+        return EXIT_ERROR
+    log = cmu_retarget(find_blender(args.blender), raw, target)
+    for line in log.splitlines():
+        if line.startswith("[chargen]"):
+            print(line[10:], file=out)
+    return EXIT_OK
+
+
 def _cmd_stubble(args: argparse.Namespace, out: TextIO) -> int:
     """Own beards for the male heads (F3): parts/hair_m_<head>/<style>.glb (stubble.STYLES)."""
     from gothar_chargen.stubble import MALE_HEADS, PART, STYLES, write_texture
@@ -783,6 +800,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--out-dir", type=Path, help="characters folder (default: assets/source/characters)"
     )
     p.set_defaults(func=_cmd_licences)
+
+    p = sub.add_parser("cmu", help="CMU mocap segments onto the reference rig (F4, local)")
+    p.add_argument("--raw", type=Path, help="CMU ASF/AMC folder (default C:/GotharData/...)")
+    p.add_argument("--out", type=Path, help="source .blend (default: <raw>/../cmu_combat.blend)")
+    p.set_defaults(func=_cmd_cmu)
 
     p = sub.add_parser("stubble", help="own beards (stubble, short, mutton) of the male heads")
     p.add_argument("heads", nargs="*", help="head names (bald, farmer, ...; default: all)")

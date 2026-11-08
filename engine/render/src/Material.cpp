@@ -446,6 +446,7 @@ void MeshRenderer::bindAmbientOcclusion(Device& device) const
 {
     device.bindTexture(8, m_ambientOcclusion != nullptr ? *m_ambientOcclusion : m_defaults->white,
                        m_aoSampler);
+    device.bindTexture(9, m_rainMap != nullptr ? *m_rainMap : m_defaults->white, m_aoSampler); // M17 N
 }
 
 void MeshRenderer::bindLighting(Device& device) const
@@ -517,6 +518,7 @@ void MeshRenderer::drawSkinned(Device& device, const SkinnedMesh& mesh, const Ma
     {
         device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
     }
+    bindAmbientOcclusion(device); // also the rain map (wet figures, M17 N)
     m_selected.clear();
     if (m_lights)
     {

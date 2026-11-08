@@ -247,4 +247,14 @@ struct Creature
     u32 showcaseStep = 0;
     f32 showcaseTime = 0.0f;
 };
+
+/// The editor's routine ghost (M16 part E, decision 8): an NPC's figure at rest, outside the game.
+struct Engine::GhostFigureState
+{
+    std::string npc; ///< whose figure is loaded
+    std::unique_ptr<AnimatedFigure> figure;
+    Vec3 feet{0.0f};
+    f32 yaw = 0.0f;
+    bool shown = false;
+};
 } // namespace g7

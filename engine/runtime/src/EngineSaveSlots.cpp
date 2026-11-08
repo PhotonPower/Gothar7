@@ -4,6 +4,7 @@
 
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/TextureData.hpp>
+#include <g7/core/BuildInfo.hpp>
 #include <g7/core/Crc32.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
@@ -36,7 +37,8 @@ std::string Engine::saveBlocker() const
 {
     // S1: anywhere, also in a fight - not in a dialogue, at a mob, under water, falling, in a menu world or
     // while loading.
-    if (!m_hero || !m_player.valid() || m_worldPath.empty() || m_menuMode || m_loadJob)
+    // Not in play-in-editor (M16 part E): its game is thrown away at the end, and the saves are the owner's.
+    if (!m_hero || !m_player.valid() || m_worldPath.empty() || m_menuMode || m_loadJob || m_playSnapshot)
     {
         return "UI_SAVE_NOT_HERE";
     }
@@ -57,8 +59,7 @@ save::SaveMeta Engine::saveMeta(std::string_view slot) const
     meta.world = m_worldPath;
     meta.place = contentText(m_sceneName);
     meta.language = language();
-    meta.gameVersion =
-        std::format("{}.{}.{}", kEngineVersion.major, kEngineVersion.minor, kEngineVersion.patch);
+    meta.gameVersion = versionText(); // "0.3.0 (abc1234)", release.md part A
     meta.savedAtUtc =
         std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
             .count();
@@ -445,6 +446,10 @@ void Engine::updatePlayTime(f64 realSeconds)
 
 void Engine::saveKeys()
 {
+    if (!m_tools.empty())
+    {
+        return; // the editor (F5: play-in-editor, M16 part E) - no saving, no loading
+    }
     if (m_actions.pressed(m_input, platform::Action::QuickSave))
     {
         if (const std::string blocked = saveBlocker(); !blocked.empty())

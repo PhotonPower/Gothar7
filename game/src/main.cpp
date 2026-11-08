@@ -1,3 +1,4 @@
+#include <g7/core/BuildInfo.hpp>
 #include <g7/core/Config.hpp>
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Log.hpp>
@@ -29,6 +30,7 @@ namespace
 constexpr const char* kUsage = R"(Usage: gothar [options]
 
   --help, -h              show this help and exit
+  --version               print the version and build (git hash) and exit
   --verbose               debug log level
   --smoke-test            10 frames headless with a fixed frame time, then exit (CI)
   --frames=N              exit after N frames (also with a window)
@@ -38,6 +40,7 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --world=<path>          load a .g7world (VFS path or file on disk)
   --start=<name>          start point of the world
   --time=HH:MM            game time at start
+  --weather=<state>       weather state at start (data/weather.toml: klar, regen, gewitter ...)
   --exec=<lua>            console line run after start (repeatable), e.g. --exec=camp_people()
   --cam=x,y,z             free camera at this point (m); with a player: fly mode
   --yaw=deg --pitch=deg   view direction (yaw 0 = along -Z, positive left; pitch positive up)
@@ -70,6 +73,7 @@ Details: docs/05-build.md
 struct CommandLine
 {
     bool help = false;
+    bool version = false;
     bool smokeTest = false;
     bool fullscreen = false;
     bool noRender = false;
@@ -81,6 +85,7 @@ struct CommandLine
     std::string saveWorld;
     std::string start;
     std::string time;
+    std::string weather; // --weather (M17 E1)
     std::vector<std::string> exec;
     std::string screenshot;
     bool benchmark = false;
@@ -132,7 +137,11 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
     for (int i = 1; i < argc; ++i)
     {
         const std::string_view arg = argv[i];
-        if (arg == "--help" || arg == "-h" || arg == "/?")
+        if (arg == "--version")
+        {
+            cli.version = true;
+        }
+        else if (arg == "--help" || arg == "-h" || arg == "/?")
         {
             cli.help = true;
         }
@@ -171,6 +180,10 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg.starts_with("--time="))
         {
             cli.time = std::string(arg.substr(7));
+        }
+        else if (arg.starts_with("--weather="))
+        {
+            cli.weather = std::string(arg.substr(10));
         }
         else if (arg.starts_with("--exec="))
         {
@@ -382,6 +395,11 @@ int main(int argc, char** argv)
     {
         return EXIT_FAILURE;
     }
+    if (cli->version)
+    {
+        std::puts(g7::buildLine().c_str()); // "Gothar 0.3.0 (abc1234, release)"
+        return EXIT_SUCCESS;
+    }
     if (cli->help)
     {
         std::fputs(kUsage, stdout);
@@ -397,7 +415,12 @@ int main(int argc, char** argv)
         config.userConfig = g7::fs::userPath("config.toml"); // the options write here (M14 part F)
     }
 
+    // Development builds name their build in the title (release.md part A); the release shows only the name.
+#ifdef NDEBUG
     config.window.title = "Gothar";
+#else
+    config.window.title = g7::buildLine();
+#endif
     config.window.size.width = toDimension(config.settings.get<g7::i64>("window.width", 1600), 1600);
     config.window.size.height = toDimension(config.settings.get<g7::i64>("window.height", 900), 900);
     if (config.settings.get<bool>("window.fullscreen", false))
@@ -427,6 +450,7 @@ int main(int argc, char** argv)
     }
     config.start = cli->start;
     config.startTime = cli->time;
+    config.weather = cli->weather;
     config.exec = cli->exec;
     config.view = cli->view;
     if (!cli->saveWorld.empty())

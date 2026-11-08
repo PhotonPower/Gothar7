@@ -1,6 +1,6 @@
 {
  "version": 1,
- "note": "Vegetation auf Flächen (W6 Vegetation, Plan freigegeben vom Koordinator 2026-11-07). Mechanik in gothar_worldgen/vegetation_place.py, Regeln hier. areas: OSM-Flächen nach Art (features.json kind), je Schicht ein verrücktes Raster (stepM, chance, pick, edgeM Abstand zum Rand, slopeM erlaubter Höhenunterschied unter dem Fuß). Nur bis reachM um die Stadtmauer (PR 2; Umland folgt). formal: der Pomeranzengarten, Buchshecken entlang beider Seiten seiner Wege (Lücken an Kreuzungen), Beete dazwischen. Masken wie in outdoor.json (Gassen, Wege, Türgassen, Wegnetz-Kanten, Freepoints, Häuser, Handmodelle). banks: Schilf und Hasel fromM..toM von der Flussachse, bis reachM um die Mauer. wall: Band außen vor der Stadtmauer (fromM..toM vom Mauerumriss; der Mauerweg bleibt frei). slopes: Gestrüpp und Gras nach der Neigung der Heightmap (minSlopeDeg..maxSlopeDeg je Schicht).",
+ "note": "Vegetation auf Flächen (W6 Vegetation, Plan freigegeben vom Koordinator 2026-11-07). Mechanik in gothar_worldgen/vegetation_place.py, Regeln hier. areas: OSM-Flächen nach Art (features.json kind), je Schicht ein verrücktes Raster (stepM, chance, pick, edgeM Abstand zum Rand, slopeM erlaubter Höhenunterschied unter dem Fuß). Nur bis reachM um die Stadtmauer (PR 2; Umland folgt). formal: der Pomeranzengarten, Buchshecken entlang beider Seiten seiner Wege (Lücken an Kreuzungen), Beete dazwischen. Masken wie in outdoor.json (Gassen, Wege, Türgassen, Wegnetz-Kanten, Freepoints, Häuser, Handmodelle). banks: Schilf und Hasel fromM..toM von der Flussachse, bis reachM um die Mauer. wall: Band außen vor der Stadtmauer (fromM..toM vom Mauerumriss; der Mauerweg bleibt frei). slopes: Gestrüpp und Gras nach der Neigung der Heightmap (minSlopeDeg..maxSlopeDeg je Schicht). umland (Entscheidung Projektinhaber 2026-11-07): bis reachM um die Stadtmauer, je Klasse ab innerM; Wald ab farM als forest_clump; Wohn- und Gewerbeflächen außerhalb Mauer + 30 m werden Streuobstwiese bzw. Wiese (mittelalterlich), Wald, Wiese und Acker bleiben nach OSM.",
  "seed": 7,
  "reachM": 60.0,
  "areas": [
@@ -200,6 +200,132 @@
     "edgeM": 0.0,
     "minSlopeDeg": 30.0,
     "slopeM": 0.5
+   }
+  ]
+ },
+ "umland": {
+  "reachM": 600.0,
+  "classes": [
+   {
+    "name": "wald",
+    "kinds": [
+     "forest",
+     "wood"
+    ],
+    "innerM": 60.0,
+    "farM": 150.0,
+    "minM2": 100.0,
+    "layers": [
+     {
+      "pick": {
+       "tree_spruce": 3,
+       "tree_oak": 2,
+       "tree_linden": 1
+      },
+      "stepM": 7.5,
+      "chance": 0.5,
+      "edgeM": 1.0,
+      "slopeM": 2.5
+     },
+     {
+      "pick": {
+       "tree_young": 2,
+       "bush_scrub": 2,
+       "bush_hazel": 1
+      },
+      "stepM": 6.0,
+      "chance": 0.2,
+      "edgeM": 0.0,
+      "slopeM": 1.5
+     }
+    ],
+    "farLayers": [
+     {
+      "pick": {
+       "forest_clump": 1
+      },
+      "stepM": 17.0,
+      "chance": 0.85,
+      "edgeM": 4.0,
+      "slopeM": 4.0
+     }
+    ]
+   },
+   {
+    "name": "streuobst",
+    "kinds": [
+     "residential",
+     "retail",
+     "commercial",
+     "industrial",
+     "construction",
+     "brownfield",
+     "garages",
+     "orchard",
+     "allotments",
+     "garden"
+    ],
+    "innerM": 30.0,
+    "minM2": 200.0,
+    "layers": [
+     {
+      "pick": {
+       "tree_fruit": 5,
+       "tree_young": 1
+      },
+      "stepM": 15.0,
+      "chance": 0.55,
+      "edgeM": 2.0,
+      "slopeM": 1.5
+     },
+     {
+      "pick": {
+       "bush_hazel": 1,
+       "bush_scrub": 1
+      },
+      "stepM": 30.0,
+      "chance": 0.3,
+      "edgeM": 1.0,
+      "slopeM": 1.2
+     }
+    ]
+   },
+   {
+    "name": "wiese",
+    "kinds": [
+     "meadow",
+     "grass",
+     "park",
+     "farmland",
+     "village_green",
+     "recreation_ground",
+     "cemetery"
+    ],
+    "innerM": 60.0,
+    "minM2": 200.0,
+    "layers": [
+     {
+      "pick": {
+       "tree_oak": 1,
+       "tree_linden": 1,
+       "tree_young": 1
+      },
+      "stepM": 30.0,
+      "chance": 0.35,
+      "edgeM": 3.0,
+      "slopeM": 1.5
+     },
+     {
+      "pick": {
+       "bush_hazel": 1,
+       "bush_scrub": 2
+      },
+      "stepM": 24.0,
+      "chance": 0.3,
+      "edgeM": 1.0,
+      "slopeM": 1.2
+     }
+    ]
    }
   ]
  }

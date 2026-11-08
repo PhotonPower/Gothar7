@@ -333,12 +333,12 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 
 ## M16 – Editor & Werkzeuge
 - [x] Autopilot `gothar --walk` (vorgezogen für die W3-Begehung): Route ablaufen, Protokoll `walk.jsonl` und Zusammenfassung, Screenshots; auch ohne Grafikgerät (`docs/modules/tools.md`, Vertrag mit welt)
-- [ ] Wegnetz-Editor (Punkte setzen, verbinden, Freepoints, Validierung)
-- [ ] Trigger-, Zonen- (Musik/Ambient), Licht- und Mob-Editor
-- [ ] Vorschau von Tagesabläufen (Zeitregler im Editor, NPC-Geister an Routinen-Positionen)
-- [ ] Prefabs / Vob-Vorlagen
-- [ ] Gelände-Werkzeuge oder Import-Workflow aus Blender (ADR)
-- [ ] Undo/Redo
+- [x] Wegnetz-Editor (Punkte setzen, verbinden, Freepoints, Validierung, Pfadprobe) – Teil B (#359)
+- [x] Trigger-, Zonen- (Musik/Ambient), Licht- und Mob-Editor – Teile C (#361) und D (#362)
+- [x] Vorschau von Tagesabläufen (Zeitregler im Editor, NPC-Geister an Routinen-Positionen), Routinen ohne Texteditor, Play-in-Editor – Teil E (#367, Geist als Figur #371)
+- [x] Prefabs / Vob-Vorlagen, Vobs aus `VOB_`-Knoten – Teil F1 (#371)
+- [x] Gelände-Werkzeuge und Import-Workflow aus Blender (ADR 0023) – Teil F2
+- [x] Undo/Redo (ADR 0022) – Teil A (#355)
 
 **DoD:** Ein neuer Ort mit Wegnetz, Zonen und NPC-Routinen lässt sich ohne Texteditor bauen.
 
@@ -353,7 +353,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [ ] Job-System, Multithreading für Animation/KI/Culling – Plan: `docs/modules/perf.md`
 - [ ] Welt-Streaming in Zellen, Ladezeiten-Optimierung
 - [ ] Tracy-Profiling, Performance-Budget pro System – Plan: `docs/modules/perf.md`
-- [ ] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info
+- [ ] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info – Plan: `docs/modules/release.md`
 - [ ] Gekochtes Format für Figuren und Animationen (`.g7skin`/`.g7anim`, ADR 0019 Folgearbeit) – spätestens vor dem ersten reinen `.g7pak`-Release; bis dahin laden Figuren und Clips aus losen glTF (`asset.md`)
 - [ ] Optional: Vulkan-Backend hinter der RHI (ADR)
 - [ ] Magie: Telekinese (Zaubertyp „Kontrolle“) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08

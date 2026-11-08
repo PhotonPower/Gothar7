@@ -200,9 +200,16 @@ Result<TerrainRenderer> TerrainRenderer::create(Device& device, ShaderLibrary& s
                                   static_cast<u32>(indices.size())};
     }
 
+    terrain.buildChunks(d);
+    return terrain;
+}
+
+void TerrainRenderer::buildChunks(const HeightfieldDesc& d)
+{
+    m_chunks.clear();
     // Chunks with their height range (for culling); skirts hang a little below the lowest point.
     const f32 range = d.maxY - d.minY;
-    terrain.m_skirtDepth = std::max(d.cellSize * 4.0f, range * 0.01f);
+    m_skirtDepth = std::max(d.cellSize * 4.0f, range * 0.01f);
     const u32 chunksX = (d.width - 1 + kChunkCells - 1) / kChunkCells;
     const u32 chunksZ = (d.height - 1 + kChunkCells - 1) / kChunkCells;
     for (u32 cz = 0; cz < chunksZ; ++cz)
@@ -225,18 +232,36 @@ Result<TerrainRenderer> TerrainRenderer::create(Device& device, ShaderLibrary& s
                 }
             }
             const auto heightOf = [&](u16 v) { return d.minY + static_cast<f32>(v) / 65535.0f * range; };
-            const Vec3 min(d.firstSample.x + static_cast<f32>(x0) * d.cellSize,
-                           heightOf(low) - terrain.m_skirtDepth,
+            const Vec3 min(d.firstSample.x + static_cast<f32>(x0) * d.cellSize, heightOf(low) - m_skirtDepth,
                            d.firstSample.y + static_cast<f32>(z0) * d.cellSize);
             const Vec3 max(d.firstSample.x + static_cast<f32>(x1) * d.cellSize, heightOf(high),
                            d.firstSample.y + static_cast<f32>(z1) * d.cellSize);
-            terrain.m_chunks.push_back({Vec2(static_cast<f32>(x0), static_cast<f32>(z0)), AABB{min, max}});
+            m_chunks.push_back({Vec2(static_cast<f32>(x0), static_cast<f32>(z0)), AABB{min, max}});
         }
     }
-    terrain.m_bounds = AABB{Vec3(d.firstSample.x, d.minY, d.firstSample.y),
-                            Vec3(d.firstSample.x + static_cast<f32>(d.width - 1) * d.cellSize, d.maxY,
-                                 d.firstSample.y + static_cast<f32>(d.height - 1) * d.cellSize)};
-    return terrain;
+    m_bounds = AABB{Vec3(d.firstSample.x, d.minY, d.firstSample.y),
+                    Vec3(d.firstSample.x + static_cast<f32>(d.width - 1) * d.cellSize, d.maxY,
+                         d.firstSample.y + static_cast<f32>(d.height - 1) * d.cellSize)};
+}
+
+Result<void> TerrainRenderer::updateHeights(const HeightfieldDesc& heightfield)
+{
+    // The editor's height brush (M16 part F2): same grid, new heights - the texture and the chunks' bounds
+    // anew.
+    const HeightfieldDesc& d = heightfield;
+    if (d.width != m_desc.width || d.height != m_desc.height ||
+        d.samples.size() != static_cast<usize>(d.width) * d.height)
+    {
+        return Error{"updateHeights: the grid differs from the terrain's"};
+    }
+    if (auto uploaded = m_heights.upload(
+            0, std::span<const u8>(reinterpret_cast<const u8*>(d.samples.data()), d.samples.size_bytes()));
+        !uploaded)
+    {
+        return uploaded.error();
+    }
+    buildChunks(d);
+    return {};
 }
 
 Result<void> TerrainRenderer::setSurface(Device& device, const TerrainSurfaceDesc& surface)

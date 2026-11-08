@@ -10,6 +10,7 @@
 #include <g7/world/Waynet.hpp>
 
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -66,6 +67,7 @@ struct ZoneBox
     Vec3 center{0.0f};
     Vec3 halfExtents{1.0f};
     f32 yawDegrees = 0.0f;
+    friend bool operator==(const ZoneBox&, const ZoneBox&) = default;
 };
 
 struct Zone
@@ -74,6 +76,7 @@ struct Zone
     std::string value; ///< indoor: the room tag LEO_<USE>_<CODE>_INNEN; music: the theme; ambient: its name
     std::optional<ZoneBox> box; ///< indoor, music and ambient zones (several boxes may share a value)
     std::string json;           ///< other types: the entry as it was (written back unchanged)
+    friend bool operator==(const Zone&, const Zone&) = default;
 };
 
 struct WorldFile
@@ -98,6 +101,16 @@ struct WorldFile
 
 /// True if the world's generator rewrites the vob (editor warning); false without a generator head.
 [[nodiscard]] bool isGenerated(const WorldFile& world, VobId id) noexcept;
+
+/// True if `point` lies in the turned box (edges included).
+[[nodiscard]] bool zoneContains(const ZoneBox& box, const Vec3& point) noexcept;
+/// The zone of `type` with a box holding `point` and the smallest volume (nested zones: the smallest wins,
+/// world.md "Zonen"); null if none. `volume` gets its box volume (half extents multiplied).
+[[nodiscard]] const Zone* smallestZone(std::span<const Zone> zones, std::string_view type, const Vec3& point,
+                                       f32* volume = nullptr) noexcept;
+/// Checks one zone as reading does (known types need a value and a box with positive half extents); `where`
+/// names it in the message ("zones[3]").
+[[nodiscard]] Result<void> checkZone(const Zone& zone, std::string_view where);
 
 /// Reads a .g7world. Errors name `source` and the entry ("vobs[3]: missing 'id'").
 [[nodiscard]] Result<WorldFile> parseWorldFile(std::string_view json, std::string_view source = "<world>");

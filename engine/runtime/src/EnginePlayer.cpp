@@ -615,4 +615,52 @@ void Engine::drawPlayerDebug()
     m_debugDraw.text(top + Vec3(0.0f, 0.3f, 0.0f),
                      std::format("{} {:.1f} m/s", name, std::sqrt(v.x * v.x + v.z * v.z)), style);
 }
+
+Result<void> Engine::startPlay(std::optional<Transform> at)
+{
+    // Play-in-editor (M16 part E): the game is kept as a save game would keep it, then the hero appears.
+    if (m_playSnapshot)
+    {
+        return Error{"already playing"};
+    }
+    auto state = captureGame();
+    if (!state)
+    {
+        return Error{std::format("cannot keep the game: {}", state.error().message)};
+    }
+    m_config.player = true;
+    spawnPlayer(); // at the start point
+    if (!m_player.valid())
+    {
+        m_config.player = false;
+        return Error{"no hero: the world needs a start point and collision"};
+    }
+    if (at)
+    {
+        const Vec3 forward = at->rotation * Vec3(0.0f, 0.0f, -1.0f);
+        teleportPlayer(at->position, std::atan2(-forward.x, -forward.z)); // yaw 0 = -Z, positive left
+    }
+    m_playSnapshot = std::move(state).value();
+    setPaused(false);
+    G7_LOG_INFO("engine", "play-in-editor started");
+    return {};
+}
+
+Result<void> Engine::stopPlay(const Transform& camera)
+{
+    if (!m_playSnapshot)
+    {
+        return Error{"not playing"};
+    }
+    const save::GameState state = std::move(*m_playSnapshot);
+    m_playSnapshot.reset();
+    removePlayer();
+    m_config.player = false;
+    setPaused(true);
+    auto applied = applyGame(state); // world, NPCs, Story, timers and time as before the start
+    m_camera.transform = camera;
+    m_flyCamera.attach(m_camera);
+    G7_LOG_INFO("engine", "play-in-editor stopped, the game as before");
+    return applied;
+}
 } // namespace g7

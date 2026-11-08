@@ -1036,4 +1036,56 @@ void Engine::finishRecipe(MobUse& use)
     use.recipe.clear();
 }
 
+std::vector<MobDefinitionInfo> Engine::mobDefinitions() const
+{
+    // As rebuildMobs reads them (editor, M16 part D).
+    std::vector<MobDefinitionInfo> out;
+    if (!m_scripts)
+    {
+        return out;
+    }
+    for (const script::Instance* def : m_scripts->instancesOf("Mob"))
+    {
+        MobDefinitionInfo m;
+        m.definition = def->name;
+        m.name = std::string(def->fields["name"].asString());
+        m.type = std::string(def->fields["type"].asString());
+        m.owner = std::string(def->fields["owner"].asString());
+        m.lock = std::string(def->fields["lock"].asString());
+        m.key = std::string(def->fields["key"].asString());
+        if (const script::Table* contents = def->fields["contents"].asTable())
+        {
+            for (const auto& [item, count] : contents->fields)
+            {
+                m.contents.emplace_back(item, static_cast<u32>(std::max<i64>(1, count.asInteger(1))));
+            }
+        }
+        out.push_back(std::move(m));
+    }
+    std::ranges::sort(out, {}, &MobDefinitionInfo::definition);
+    return out;
+}
+
+std::vector<std::string> Engine::mobTypeNames() const
+{
+    std::vector<std::string> names;
+    for (const auto& [name, type] : m_mobTypes.types)
+    {
+        names.push_back(name);
+    }
+    return names;
+}
+
+std::vector<std::pair<Vec3, Vec3>> Engine::mobTypeSlots(std::string_view type) const
+{
+    std::vector<std::pair<Vec3, Vec3>> slots;
+    if (const gameplay::MobType* t = m_mobTypes.find(type))
+    {
+        for (const gameplay::MobSlot& s : t->slots)
+        {
+            slots.emplace_back(s.position, s.facing);
+        }
+    }
+    return slots;
+}
 } // namespace g7

@@ -74,6 +74,9 @@ void DebugUi::editorPanel(EditorPanel& panel)
     panel.placeAsset = -1;
     panel.save = panel.remove = panel.duplicate = false;
     panel.undo = panel.redo = panel.confirmYes = panel.confirmNo = false;
+    panel.hourChanged = panel.addLight = panel.checkMobs = panel.savePrefab = false;
+    panel.placePrefab = -1;
+    panel.clickedMobIssue = -1;
 
     ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 370.0f, 10.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(360.0f, 520.0f), ImGuiCond_FirstUseEver);
@@ -169,6 +172,49 @@ void DebugUi::editorPanel(EditorPanel& panel)
         ImGui::EndChild();
     }
 
+    if (ImGui::CollapsingHeader("Prefabs"))
+    {
+        // Templates placed as loose copies (decision 5); waypoints and freepoints near them come along.
+        inputText("name##prefab", panel.prefabName);
+        ImGui::SameLine();
+        panel.savePrefab = ImGui::Button("save selection");
+        ImGui::BeginChild("prefabs", ImVec2(0.0f, 90.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.prefabs.size(); ++i)
+        {
+            if (ImGui::Selectable(panel.prefabs[i].c_str()))
+            {
+                panel.placePrefab = static_cast<i32>(i); // ahead of the camera
+            }
+        }
+        ImGui::EndChild();
+    }
+    if (ImGui::CollapsingHeader("Lights & mobs", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        // Preview time (display only, not saved): judge lights by night.
+        panel.hourChanged = ImGui::SliderFloat("time of day", &panel.hour, 0.0f, 24.0f, "%.2f h");
+        ImGui::TextWrapped("%s", panel.lightInfo.c_str());
+        std::vector<const char*> presets;
+        for (const std::string& p : panel.lightPresets)
+        {
+            presets.push_back(p.c_str());
+        }
+        ImGui::SetNextItemWidth(110.0f);
+        ImGui::Combo("##preset", &panel.lightPreset, presets.data(), static_cast<int>(presets.size()));
+        ImGui::SameLine();
+        panel.addLight = ImGui::Button("add light");
+        panel.checkMobs = ImGui::Button("check the mobs");
+        ImGui::BeginChild("mobIssues", ImVec2(0.0f, 90.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.mobIssues.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(panel.mobIssues[i].c_str()))
+            {
+                panel.clickedMobIssue = static_cast<i32>(i); // selects the mob
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+    }
     if (ImGui::CollapsingHeader("Models"))
     {
         inputText("filter", panel.assetFilter);
@@ -278,6 +324,266 @@ void DebugUi::waynetPanel(WaynetPanel& panel)
         panel.probe = ImGui::Button("find the path");
         ImGui::TextWrapped("%s", panel.pathResult.c_str());
     }
+    ImGui::End();
+}
+
+void DebugUi::zonePanel(ZonePanel& panel)
+{
+    panel.clickedRow = panel.clickedIssue = -1;
+    panel.boxChanged = panel.valueChanged = panel.add = panel.remove = panel.checkTriggers = false;
+    if (!panel.shown)
+    {
+        return;
+    }
+    ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 740.0f, 540.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(360.0f, 480.0f), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Zones & triggers");
+    ImGui::Checkbox("zone mode (V)", &panel.active);
+    ImGui::TextWrapped("Click: select a box; the gizmo moves, turns (about up only) and sizes it (1/2/3).");
+    ImGui::TextWrapped("here: %s", panel.here.c_str());
+    if (ImGui::CollapsingHeader("Zones", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::BeginChild("zones", ImVec2(0.0f, 130.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.rows.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(panel.rows[i].c_str(), static_cast<i32>(i) == panel.selected))
+            {
+                panel.clickedRow = static_cast<i32>(i);
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+        std::vector<const char*> types;
+        for (const std::string& t : panel.types)
+        {
+            types.push_back(t.c_str());
+        }
+        ImGui::SetNextItemWidth(90.0f);
+        ImGui::Combo("##newType", &panel.newType, types.data(), static_cast<int>(types.size()));
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(130.0f);
+        if (ImGui::BeginCombo("##newValue", panel.newValue.c_str()))
+        {
+            for (const std::string& v : panel.newValues)
+            {
+                if (ImGui::Selectable(v.c_str(), v == panel.newValue))
+                {
+                    panel.newValue = v;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::SameLine();
+        panel.add = ImGui::Button("add zone");
+        if (panel.selected >= 0)
+        {
+            ImGui::Separator();
+            if (!panel.selectedEditable)
+            {
+                ImGui::TextDisabled("a zone of type '%s': kept as it is", panel.selectedType.c_str());
+            }
+            else
+            {
+                if (panel.selectedType == "indoor")
+                {
+                    panel.valueChanged = inputText("room", panel.value);
+                }
+                else if (ImGui::BeginCombo(panel.selectedType == "music" ? "theme" : "ambience",
+                                           panel.value.c_str()))
+                {
+                    for (const std::string& v : panel.values)
+                    {
+                        if (ImGui::Selectable(v.c_str(), v == panel.value))
+                        {
+                            panel.value = v;
+                            panel.valueChanged = true;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                panel.boxChanged = ImGui::DragFloat3("centre", &panel.center.x, 0.05f);
+                panel.boxChanged =
+                    ImGui::DragFloat3("half extents", &panel.halfExtents.x, 0.05f, 0.05f, 5000.0f) ||
+                    panel.boxChanged;
+                panel.boxChanged = ImGui::DragFloat("yaw (deg)", &panel.yawDegrees, 0.5f, -180.0f, 180.0f) ||
+                                   panel.boxChanged;
+            }
+            panel.remove = ImGui::Button("delete zone (Del)");
+        }
+    }
+    if (ImGui::CollapsingHeader("Triggers", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::TextWrapped(
+            "Triggers are vobs: select them outside the zone mode; the inspector lists the script "
+            "functions, worlds and start points.");
+        panel.checkTriggers = ImGui::Button("check the triggers");
+        ImGui::BeginChild("triggerIssues", ImVec2(0.0f, 110.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.triggerIssues.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(panel.triggerIssues[i].c_str()))
+            {
+                panel.clickedIssue = static_cast<i32>(i); // selects the trigger
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+    }
+    ImGui::End();
+}
+
+void DebugUi::routinePanel(RoutinePanel& panel)
+{
+    panel.clickedNpc = panel.clickedRoutine = panel.clickedEntry = -1;
+    panel.addEntry = panel.changeEntry = panel.removeEntry = panel.newRoutine = panel.write = false;
+    panel.play = panel.playAtStart = panel.stop = false;
+    if (!panel.shown)
+    {
+        return;
+    }
+    ImGui::SetNextWindowPos(ImVec2(10.0f, 300.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(380.0f, 560.0f), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Routines");
+    if (panel.playing)
+    {
+        ImGui::TextWrapped("Playing from here. F5 or Esc: stop - the world as before the start.");
+        panel.stop = ImGui::Button("stop (F5)");
+        ImGui::End();
+        return;
+    }
+    panel.play = ImGui::Button("play here (F5)");
+    ImGui::SameLine();
+    panel.playAtStart = ImGui::Button("play at the start (Shift+F5)");
+    ImGui::Checkbox("ghosts", &panel.ghosts);
+    ImGui::SameLine();
+    ImGui::SliderFloat("hour", &panel.hour, 0.0f, 24.0f, "%.2f");
+    if (ImGui::CollapsingHeader("NPCs", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::BeginChild("npcs", ImVec2(0.0f, 100.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.npcs.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(panel.npcs[i].c_str()))
+            {
+                panel.clickedNpc = static_cast<i32>(i); // its routine
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+    }
+    if (ImGui::CollapsingHeader("Routines", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::BeginChild("routines", ImVec2(0.0f, 90.0f), ImGuiChildFlags_Borders);
+        for (usize i = 0; i < panel.routines.size(); ++i)
+        {
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(panel.routines[i].c_str(), static_cast<i32>(i) == panel.selectedRoutine))
+            {
+                panel.clickedRoutine = static_cast<i32>(i);
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndChild();
+        inputText("##newName", panel.newName);
+        ImGui::SameLine();
+        panel.newRoutine = ImGui::Button("new routine");
+        if (panel.selectedRoutine >= 0)
+        {
+            ImGui::TextWrapped("%s%s", panel.file.c_str(),
+                               panel.editable ? "" : " - written by hand: shown only");
+            ImGui::BeginChild("entries", ImVec2(0.0f, 100.0f), ImGuiChildFlags_Borders);
+            for (usize i = 0; i < panel.entries.size(); ++i)
+            {
+                ImGui::PushID(static_cast<int>(i));
+                if (ImGui::Selectable(panel.entries[i].c_str(), static_cast<i32>(i) == panel.selectedEntry))
+                {
+                    panel.clickedEntry = static_cast<i32>(i);
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndChild();
+            if (panel.editable)
+            {
+                ImGui::SetNextItemWidth(60.0f);
+                inputText("from", panel.from);
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(60.0f);
+                inputText("to", panel.to);
+                std::vector<const char*> states;
+                for (const std::string& s : panel.states)
+                {
+                    states.push_back(s.c_str());
+                }
+                ImGui::Combo("state", &panel.state, states.data(), static_cast<int>(states.size()));
+                inputText("place", panel.at);
+                ImGui::SameLine();
+                ImGui::Checkbox("pick", &panel.pickPlace);
+                panel.addEntry = ImGui::Button("add entry");
+                ImGui::SameLine();
+                ImGui::BeginDisabled(panel.selectedEntry < 0);
+                panel.changeEntry = ImGui::Button("change entry");
+                ImGui::SameLine();
+                panel.removeEntry = ImGui::Button("remove entry");
+                ImGui::EndDisabled();
+            }
+        }
+        ImGui::Separator();
+        ImGui::TextWrapped("%s%s", panel.editorFile.c_str(), panel.dirty ? " * unsaved" : "");
+        ImGui::BeginDisabled(!panel.dirty);
+        panel.write = ImGui::Button("write the routines (also Ctrl+S)");
+        ImGui::EndDisabled();
+    }
+    if (ImGui::CollapsingHeader("Day plan check", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::BeginChild("routineIssues", ImVec2(0.0f, 100.0f), ImGuiChildFlags_Borders);
+        for (const std::string& issue : panel.issues)
+        {
+            ImGui::TextWrapped("%s", issue.c_str());
+        }
+        ImGui::EndChild();
+    }
+    ImGui::End();
+}
+
+void DebugUi::terrainPanel(TerrainPanel& panel)
+{
+    if (!panel.shown)
+    {
+        return;
+    }
+    ImGui::SetNextWindowPos(ImVec2(400.0f, 10.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(320.0f, 260.0f), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Terrain");
+    if (!panel.locked.empty())
+    {
+        ImGui::TextWrapped("%s", panel.locked.c_str());
+        ImGui::End();
+        return;
+    }
+    ImGui::Checkbox("terrain mode (T)", &panel.active);
+    ImGui::SameLine();
+    ImGui::TextUnformatted(panel.dirty ? "* unsaved (Ctrl+S)" : "");
+    constexpr std::array<const char*, 5> kModes = {"raise", "lower", "smooth", "flatten", "paint"};
+    ImGui::Combo("brush", &panel.mode, kModes.data(), static_cast<int>(kModes.size()));
+    ImGui::SliderFloat("radius (m)", &panel.radius, 0.5f, 50.0f);
+    ImGui::SliderFloat("strength", &panel.strength, 0.1f, 20.0f);
+    if (panel.mode == 3)
+    {
+        ImGui::DragFloat("height (m)", &panel.flattenHeight, 0.05f);
+        ImGui::TextDisabled("Ctrl+click: the height under the mouse");
+    }
+    if (panel.mode == 4)
+    {
+        std::vector<const char*> layers;
+        for (const std::string& l : panel.layers)
+        {
+            layers.push_back(l.c_str());
+        }
+        ImGui::Combo("layer", &panel.layer, layers.data(), static_cast<int>(layers.size()));
+    }
+    ImGui::TextWrapped(
+        "Left mouse held: brush. Each stroke is one undo step; the collision follows when it ends.");
     ImGui::End();
 }
 } // namespace g7::ui
