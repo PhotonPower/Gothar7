@@ -16,6 +16,10 @@ uniform float uWaterDistortion;
 uniform float uWaterTime;
 uniform mat4 uInverseProjection;
 layout(binding = 2) uniform sampler2D uDepth; // the scene's depth (reverse-Z), read under water only
+layout(binding = 3) uniform sampler2D uDistortion; // M17 V: screen offsets in rg (render::DistortionTarget)
+uniform int uDistort;      // 1: read uDistortion (else the image as before)
+uniform float uWobble;     // M17 V: the whole picture wobbles by this much (0: not)
+uniform float uWobbleTime;
 uniform int uGrade;            // 0: no grading (the image as before M17 P2)
 uniform float uTemperature;
 uniform float uTint;
@@ -75,6 +79,15 @@ vec3 tonemap(vec3 x)
 void main()
 {
     vec2 uv = vUv;
+    if (uDistort == 1)
+    {
+        uv += texture(uDistortion, vUv).rg; // heat haze, shock rings, swirls of spells
+    }
+    if (uWobble > 0.0)
+    {
+        uv += uWobble * vec2(sin(vUv.y * 20.0 + uWobbleTime * 8.0), cos(vUv.x * 18.0 + uWobbleTime * 7.0));
+    }
+    uv = clamp(uv, 0.0, 1.0);
     vec3 scene;
     if (uUnderwater == 1)
     {

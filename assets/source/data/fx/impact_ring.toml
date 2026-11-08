@@ -1,0 +1,17 @@
+# Druckwelle eines Einschlags (M17 V, Entscheidung 11): ein unsichtbares Teilchen, dessen Ring das Bild 0,3 s
+# lang nach außen verschiebt (höchstens etwa 1 % der Bildbreite). Gestartet über `with` von impact_fire.
+version = 1
+sprite = "soft"
+blend = "additive"
+rate = 0
+burst = 1
+duration = 0.1
+lifetime = [0.3, 0.3]
+speed = [0.0, 0.0]
+spread = 0
+size = [2.5, 2.5]
+color_start = [0.0, 0.0, 0.0, 0.0]
+color_end = [0.0, 0.0, 0.0, 0.0]
+distort = 1.0
+distort_shape = "ring"
+distort_size = 1.0

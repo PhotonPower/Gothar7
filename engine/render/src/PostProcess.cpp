@@ -1,6 +1,7 @@
 #include <g7/core/Profiler.hpp>
 #include <g7/core/StringUtil.hpp>
 #include <g7/render/Device.hpp>
+#include <g7/render/Distortion.hpp>
 #include <g7/render/PostProcess.hpp>
 #include <g7/render/ShaderLibrary.hpp>
 
@@ -136,6 +137,9 @@ void PostProcess::apply(Device& device, const SceneTarget& scene, u32 width, u32
     m_program->setUniform("uBloomIntensity", bloom ? settings.bloomIntensity : 0.0f);
     m_program->setUniform("uGrade", settings.grading ? 1 : 0);
     m_program->setUniform("uUnderwater", settings.underwater ? 1 : 0);
+    m_program->setUniform("uDistort", settings.distortion != nullptr ? 1 : 0); // M17 V
+    m_program->setUniform("uWobble", settings.wobble * kWobbleAmount);
+    m_program->setUniform("uWobbleTime", settings.wobbleTime);
     if (settings.underwater)
     {
         const Underwater& w = *settings.underwater;
@@ -166,6 +170,10 @@ void PostProcess::apply(Device& device, const SceneTarget& scene, u32 width, u32
     if (settings.underwater)
     {
         device.bindTexture(2, scene.depth(), m_sampler);
+    }
+    if (settings.distortion != nullptr)
+    {
+        device.bindTexture(3, *settings.distortion, m_sampler);
     }
     device.draw(3); // fullscreen triangle
 }

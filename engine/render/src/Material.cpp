@@ -533,7 +533,8 @@ void MeshRenderer::uploadBones(Device& device, std::span<const Mat4> bones)
 }
 
 void MeshRenderer::drawSkinned(Device& device, const SkinnedMesh& mesh, const MaterialSet& materials,
-                               const Mat4& model, std::span<const Mat4> bones, const Camera& camera)
+                               const Mat4& model, std::span<const Mat4> bones, const Camera& camera,
+                               const FigureGlow& glow)
 {
     uploadBones(device, bones);
     device.bindUniformBuffer(0, m_lightingBuffer);
@@ -559,6 +560,14 @@ void MeshRenderer::drawSkinned(Device& device, const SkinnedMesh& mesh, const Ma
         program->setUniform("uCameraPosition", camera.transform.position);
         program->setUniform("uLightIndices", std::span<const i32>(indices));
         program->setUniform("uLightCount", static_cast<i32>(m_selected.size()));
+        // M17 part G: the spell glow (zero: none).
+        const std::array<i32, 4> glowBones{
+            static_cast<i32>(glow.handBones[0]), static_cast<i32>(glow.handBones[1]),
+            static_cast<i32>(glow.handBones[2]), static_cast<i32>(glow.handBones[3])};
+        program->setUniform("uGlowBones", std::span<const i32>(glowBones));
+        program->setUniform("uGlowHand", glow.hand);
+        program->setUniform("uGlowRim", glow.rim);
+        program->setUniform("uGlowFill", glow.fill);
     }
     const auto submeshes = mesh.submeshes();
     for (const bool translucentPass : {false, true})

@@ -414,7 +414,8 @@ void Engine::drawCreatures(bool shadow, u32 cascade)
         const f32 turn = std::remainder(c.yaw - c.yawBefore, 2.0f * glm::pi<f32>());
         const Mat4 transform =
             creatureMatrix(glm::mix(c.positionBefore, c.position, alpha), c.yawBefore + turn * alpha);
-        drawAnimatedFigure(*c.figure, transform, shadow, cascade);
+        drawAnimatedFigure(*c.figure, transform, shadow, cascade,
+                           shadow ? render::FigureGlow{} : creatureGlow(c));
         if (c.handItem != nullptr && c.handBone < c.figure->modelSpace.size())
         {
             const Mat4 at = transform * c.figure->modelSpace[c.handBone];

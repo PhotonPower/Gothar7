@@ -497,6 +497,7 @@ bool Engine::runFrame()
         fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateProjectiles(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateBurning(static_cast<f32>(m_fixedStep.step())); // M12, decision B
+        fixedUpdateGlow(static_cast<f32>(m_fixedStep.step()));    // M17 part G
         fixedUpdateDialog(static_cast<f32>(m_fixedStep.step()));
         if (m_scripts)
         {
@@ -655,6 +656,7 @@ Result<void> Engine::initShaders()
     applySetting("render.weather");
     applySetting("render.rain_quality");
     applySetting("render.wind");
+    applySetting("render.spell_distortion");
     auto debugRenderer = render::DebugDrawRenderer::create(*m_device, *m_shaders);
     if (!debugRenderer)
     {
@@ -1718,6 +1720,7 @@ void Engine::initEnvironment()
         m_weather = world::Weather::fallback();
     }
     m_weather.start(m_gameTime.clock(), m_config.randomSeed.value_or(0x5eed));
+    loadSpellFx(); // M17 part G
     if (!m_config.weather.empty() && m_weather.set(m_config.weather, m_gameTime.clock(), 0.0))
     {
         m_weather.settle(); // screenshots: as if it had rained a while
@@ -1916,6 +1919,44 @@ render::WindFrame Engine::windNow() const
     return frame;
 }
 
+void Engine::drawDistortion()
+{
+    // M17 V: effects with `distort` write screen offsets, read by the post pass. Off, or none in sight: the
+    // pass is skipped and the picture is the same as without.
+    m_distortionDrawn = 0;
+    m_postSettings.distortion = nullptr;
+    m_wobbleSeconds = std::max(0.0f, m_wobbleSeconds - static_cast<f32>(m_frameSeconds));
+    m_postSettings.wobble = m_spellDistortion ? m_wobbleSeconds / render::kWobbleSeconds : 0.0f;
+    m_postSettings.wobbleTime = static_cast<f32>(std::fmod(m_rainTime, 3600.0));
+    if (!m_spellDistortion || !m_particleRenderer || m_particles.emitterCount() == 0)
+    {
+        return;
+    }
+    m_distortParticles.clear();
+    m_particles.collectDistortion(m_distortParticles);
+    if (m_distortParticles.empty())
+    {
+        return;
+    }
+    m_passTimes.begin(*m_device, "distort");
+    if (auto began = m_distortion.begin(*m_device, m_sceneTarget); began)
+    {
+        m_particleRenderer->drawDistortion(*m_device, m_camera, m_distortParticles);
+        m_distortionDrawn = static_cast<u32>(m_distortParticles.size());
+        m_postSettings.distortion = &m_distortion.texture();
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "distortion: {}", began.error().message);
+    }
+    m_passTimes.end(*m_device);
+}
+
+f32 Engine::wobble() const noexcept
+{
+    return m_spellDistortion ? m_wobbleSeconds / render::kWobbleSeconds : 0.0f;
+}
+
 f32 Engine::lightningNow() const noexcept
 {
     if (!m_flash || !m_weatherVisible)
@@ -2030,6 +2071,7 @@ void Engine::renderScene(u32 width, u32 height)
     drawScene(width, height);
     m_passTimes.end(*m_device);
     drawRain(width, height); // M17 R
+    drawDistortion();        // M17 V: offsets of spells and big fires
 
     // Under water (M17 W3): tint, fog and wavering in the post pass; no bloom (the glow of the sun above).
     updateUnderwater();
