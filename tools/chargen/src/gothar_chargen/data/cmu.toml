@@ -12,3 +12,18 @@ end = 656
 take = "02_05"
 start = 1328
 end = 1448
+
+[segment.sword_overhead]    # subject 2 "swordplay", two-handed cut from above
+take = "02_07"
+start = 100
+end = 272
+
+[segment.sword_heavy]       # subject 2 "swordplay", heavy cut from above
+take = "02_07"
+start = 816
+end = 960
+
+[segment.sword_cut_rl]      # subject 2 "swordplay", low horizontal cut from right to left
+take = "02_07"
+start = 1808
+end = 1944

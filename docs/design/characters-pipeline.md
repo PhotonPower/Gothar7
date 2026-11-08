@@ -176,6 +176,9 @@ events = [
     dem Ursprung. Ergebnis `cmu_combat.blend` (Quelle `cmu`, Zuordnung `identity`). CMU hat keine Finger: Die Sätze
     nehmen die Finger aus ihrer Haltung (`layer` mit den Fingerwurzeln). Danach wie gehabt `framed` und `plant`;
     Fenster, Reichweite und Tierhöhe misst `hitreach`.
+    Einhandwaffe (`1h`): Hiebe aus dem beidhändigen Take 02_07 („swordplay“); der linke Arm und der Griff kommen aus
+    `1h/s_idle` (`layer` ab `clavicle_l`), Ausfallschritt und Tierhöhe per Schlüsselposen über dem Mocap. Die einhändigen
+    Takes 02_08/02_09 sind Fechtübungen, deren Handgelenk die Klinge nicht mitführt (Klinge bleibt beim Hieb oben).
   - Feste Füße (F4, 2026-11-07): Rezept `plant` legt sich um jeden Angriff (`<name>_framed` als Hilfsclip, die Marker
     am äußeren Clip). Die Füße bleiben stehen; entfernt sich der Körper (Ausfallschritt, `root` vor) mehr als `threshold`
     (0,12 m, `step` Bilder vorausgeschaut) von einem Fuß, tritt dieser in `step` (6) Bildern mit `lift` (6 cm) Bogen

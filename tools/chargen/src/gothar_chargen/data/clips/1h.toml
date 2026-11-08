@@ -14,6 +14,10 @@ mapping = "quaternius_ual1"
 file = "UAL2_Standard.glb"
 mapping = "quaternius_ual2"
 
+[sources.cmu]                  # CMU mocap retargeted by `gothar-chargen cmu` (F4, LICENSES.md)
+file = "cmu_combat.blend"
+mapping = "identity"
+
 [[clip]]
 name = "1h/s_idle"
 from = "ual1:Sword_Idle"
@@ -98,40 +102,70 @@ markers = { sheath = 15 }
 # directional swings t_attack_l/r (hit events only), parry from the front, dodge backwards.
 
 [[clip]]
-name = "1h/t_combo1_src"
-concat = ["ual2:Sword_Regular_A", "ual2:Sword_Regular_A_Rec"]
+name = "1h/t_overhead_mocap"            # cut from above
+from = "cmu:sword_overhead"           # CMU 02_07, frames 100-272 (F4 mocap, two-handed)
 helper = true
 
 [[clip]]
-name = "1h/t_combo1_low"         # the cut from above carried through to hip height (sweep vs. animals)
+name = "1h/t_overhead"                # one hand: left arm and the right grip from the stance
+layer = ["1h/t_overhead_mocap", "1h/s_idle"]
+from_bone = ["clavicle_l", "thumb_01_r", "index_01_r", "middle_01_r", "ring_01_r", "pinky_01_r"]
+helper = true
+
+[[clip]]
+name = "1h/t_overhead_low"         # the cut from above carried down to wolf height with a lunge (reach, sweep M11)
 keyframe = "keyposes"
 helper = true
 [clip.params]
-base = "1h/t_combo1_src"
-keys = [[0, "rest"], [22, "rest"], [31, "low"], [35, "low"], [43, "rest"]]
+base = "1h/t_overhead"
+keys = [[0, "rest"], [16, "rest"], [24, "low"], [30, "low"], [40, "rest"], [43, "rest"]]
 [clip.params.poses.low]
-rotate = { spine_02 = [["X", 20]], upperarm_r = [["X", 15]], hand_r = [["X", 12], ["Y", 14], ["Z", -23]] }
+rotate = { spine_02 = [["X", 20]], hand_r = [["X", -5], ["Y", -11], ["Z", -28]] }
+move = { root = [0, -0.4, 0] }
 
 [[clip]]
-name = "1h/t_combo2_src"
-concat = ["ual2:Sword_Regular_B", "ual2:Sword_Regular_B_Rec"]
+name = "1h/t_cut_mocap"            # horizontal cut from right to left
+from = "cmu:sword_cut_rl"           # CMU 02_07, frames 1808-1944 (F4 mocap, two-handed)
 helper = true
 
+[[clip]]
+name = "1h/t_cut"                # one hand: left arm and the right grip from the stance
+layer = ["1h/t_cut_mocap", "1h/s_idle"]
+from_bone = ["clavicle_l", "thumb_01_r", "index_01_r", "middle_01_r", "ring_01_r", "pinky_01_r"]
+helper = true
 
 [[clip]]
-name = "1h/t_combo2_low"         # the slash bent down to wolf height (animals' bodies, sweep M11)
+name = "1h/t_cut_low"         # the horizontal cut bent down to wolf height with a lunge
 keyframe = "keyposes"
 helper = true
 [clip.params]
-base = "1h/t_combo2_src"
-keys = [[0, "rest"], [4, "rest"], [7, "low"], [10, "low"], [16, "rest"], [48, "rest"]]
+base = "1h/t_cut"
+keys = [[0, "rest"], [5, "rest"], [10, "low"], [13, "low"], [20, "rest"], [34, "rest"], [36, "rest"]]
 [clip.params.poses.low]
-rotate = { spine_02 = [["X", 12]], hand_r = [["X", 10], ["Y", -13], ["Z", 8]] }
+rotate = { spine_02 = [["X", 15]], hand_r = [["X", -26], ["Y", -6], ["Z", 10]] }
+move = { root = [0, -0.35, 0] }
 
 [[clip]]
-name = "1h/t_combo4_src"
-from = "ual1:Sword_Attack"
+name = "1h/t_heavy_mocap"            # heavy cut from above
+from = "cmu:sword_heavy"           # CMU 02_07, frames 816-960 (F4 mocap, two-handed)
 helper = true
+
+[[clip]]
+name = "1h/t_heavy"                # one hand: left arm and the right grip from the stance
+layer = ["1h/t_heavy_mocap", "1h/s_idle"]
+from_bone = ["clavicle_l", "thumb_01_r", "index_01_r", "middle_01_r", "ring_01_r", "pinky_01_r"]
+helper = true
+
+[[clip]]
+name = "1h/t_heavy_low"         # the heavy diagonal cut turned to the front, down to wolf height with a lunge
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "1h/t_heavy"
+keys = [[0, "rest"], [12, "rest"], [20, "low"], [27, "low"], [34, "rest"], [36, "rest"]]
+[clip.params.poses.low]
+rotate = { pelvis = [["Z", -30]], spine_02 = [["X", 20]], hand_r = [["X", -11], ["Y", 3], ["Z", -2]] }
+move = { root = [0, -0.4, 0] }
 
 [[clip]]
 name = "1h/t_block_src"
@@ -142,19 +176,19 @@ helper = true
 name = "1h/t_attack_combo1_framed"
 keyframe = "framed"
 helper = true
-params = { base = "1h/t_combo1_low", stance = "1h/s_idle", fade_in = 3, fade_out = 8, soften = ["spine_03", "neck", "head"] }
+params = { base = "1h/t_overhead_low", stance = "1h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head"] }
 
 [[clip]]
 name = "1h/t_attack_combo1"                 # feet planted, steps instead of sliding (F4)
 keyframe = "plant"
-markers = { hit_start = 22, hit_end = 32, combo_start = 32, combo_end = 38, "sound:swing" = 18 }
+markers = { hit_start = 18, hit_end = 24, combo_start = 24, combo_end = 35, "sound:swing" = 14 }
 params = { base = "1h/t_attack_combo1_framed" }
 
 [[clip]]
 name = "1h/t_attack_combo2_framed"
 keyframe = "framed"
 helper = true
-params = { base = "1h/t_combo2_low", stance = "1h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head"] }
+params = { base = "1h/t_cut_low", stance = "1h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head"] }
 
 # Own swings: key poses over the upright none/s_idle (hanging arms: the world axes act as written),
 # framed into the 1h stance at start and end.
@@ -162,7 +196,7 @@ params = { base = "1h/t_combo2_low", stance = "1h/s_idle", fade_in = 6, fade_out
 [[clip]]
 name = "1h/t_attack_combo2"                 # feet planted, steps instead of sliding (F4)
 keyframe = "plant"
-markers = { hit_start = 6, hit_end = 9, combo_start = 9, combo_end = 38, "sound:swing" = 2 }
+markers = { hit_start = 6, hit_end = 12, combo_start = 12, combo_end = 29, "sound:swing" = 2 }
 params = { base = "1h/t_attack_combo2_framed" }
 [[clip]]
 name = "1h/t_thrust"
@@ -270,12 +304,12 @@ move = { root = [0, 0.8, 0] }
 name = "1h/t_attack_combo4_framed"       # the heavy finisher
 keyframe = "framed"
 helper = true
-params = { base = "1h/t_combo4_src", stance = "1h/s_idle", fade_in = 3, fade_out = 8, soften = ["spine_03", "neck", "head"] }
+params = { base = "1h/t_heavy_low", stance = "1h/s_idle", fade_in = 6, fade_out = 8, soften = ["spine_03", "neck", "head"] }
 
 [[clip]]
 name = "1h/t_attack_combo4"                 # feet planted, steps instead of sliding (F4)
 keyframe = "plant"
-markers = { hit_start = 11, hit_end = 14, combo_start = 14, combo_end = 37, "sound:swing" = 7 }
+markers = { hit_start = 16, hit_end = 22, combo_start = 22, combo_end = 30, "sound:swing" = 12 }
 params = { base = "1h/t_attack_combo4_framed" }
 
 [[clip]]
