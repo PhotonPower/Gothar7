@@ -1064,7 +1064,7 @@ def blank_hot(seg: int) -> list[Mesh]:
     return [hot, tang]
 
 
-RUNES = ("firebolt", "heal", "sleep", "transform_wolf", "summon_wolf")  # it_rune_<spell> (M12)
+RUNES = ("firebolt", "heal", "sleep", "transform_wolf", "summon_wolf", "telekinesis")  # it_rune_<x>
 
 ITEMS: dict[str, tuple[Callable[[int], list[Mesh]], int]] = {
     "it_sword_old": (lambda s: sword(s, rust=True), 12),
@@ -1139,6 +1139,7 @@ EMISSIVE = {"iron_hot": (1.0, 1.0, 1.0)}  # material -> glTF emissiveFactor (wit
 RUNE_COLOURS = {  # sign colour per spell
     "firebolt": (0.95, 0.42, 0.08), "heal": (0.25, 0.85, 0.35), "sleep": (0.6, 0.35, 0.9),
     "transform_wolf": (0.7, 0.5, 0.25), "summon_wolf": (0.25, 0.4, 0.95),
+    "telekinesis": (0.3, 0.72, 1.0),
 }  # fmt: skip
 
 
@@ -1161,6 +1162,22 @@ def _rune_sign(spell: str, x: np.ndarray, y: np.ndarray) -> np.ndarray:
         )
     if spell == "sleep":  # crescent moon
         return (r < 0.65) & (np.hypot(x - 0.3, y - 0.15) > 0.55)
+    if spell == "telekinesis":  # an open hand reaching out, fingers spread
+
+        def bar(x0: float, y0: float, x1: float, y1: float, w: float) -> np.ndarray:
+            dx, dy = x1 - x0, y1 - y0
+            t = np.clip(((x - x0) * dx + (y - y0) * dy) / (dx * dx + dy * dy), 0, 1)
+            return np.hypot(x - x0 - t * dx, y - y0 - t * dy) < w
+
+        palm = bar(-0.12, -0.42, 0.12, -0.42, 0.2) | bar(-0.12, -0.12, 0.12, -0.12, 0.22)
+        fingers = (
+            bar(-0.26, -0.05, -0.36, 0.42, 0.07)
+            | bar(-0.09, 0.0, -0.11, 0.62, 0.07)
+            | bar(0.09, 0.0, 0.11, 0.58, 0.07)
+            | bar(0.24, -0.05, 0.33, 0.4, 0.065)
+        )
+        thumb = bar(0.26, -0.3, 0.6, -0.02, 0.075)
+        return palm | fingers | thumb
     if spell == "transform_wolf":  # spiral
         a = np.arctan2(y, x)
         return (np.abs(((r - 0.08 * a) % 0.25) - 0.12) < 0.05) & (r < 0.75)
