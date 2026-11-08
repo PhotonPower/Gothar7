@@ -1218,6 +1218,9 @@ Eiche, Obstbaum, Hasel, Buchs, Gras, Unkraut; `vegetation.py`) und die Props `ca
   hinter einer Nische neben den Stufen (Schreiner ZjR, 0,36 m), ein Kopf in einer spitzen Ecke (Metzger ZnQ) und ein
   Ausschnitt quer über dem Weg zwischen den Räumen. Liegt der Kopf an einer Stirnwand, gehen die Wege oben über Punkte
   entlang der Seiten des Ausschnitts (`DETOUR_SAMPLE_M` 0,5 m), wenn keine Ecke im Raum liegt.
+  Oben geht ein gerader Weg schon dann um den Ausschnitt herum (`WP_…_OBEN_UM_…`), wenn er dem Ausschnitt näher als
+  `RAIL_CLEAR_M` 0,4 m kommt (Geländer 5 cm plus Zylinder 0,3 m plus Spiel). Vorher galten 0,2 m; bei ZjV streifte der
+  Weg vom Treppenkopf zur Kammer das Geländerende in 0,27 m, und der Autopilot blieb hängen.
 - **Geometrie:** Stufen als Blöcke, Handlauf auf der offenen Seite. Über dem oberen Lauf ist die Decke offen
   (Kopfhöhe 2,4 m über der Rampe: die Physik-Figur ist ein Zylinder von 1,8 m Höhe und 0,3 m Radius, ihre
   Vorderkante kommt früher unter die Deckenkante als ihre Mitte), der Ausschnitt reicht in die Wand (kein Streifen Decke, den ein konvexes
