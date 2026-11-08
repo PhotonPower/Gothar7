@@ -171,6 +171,16 @@ set_target_properties(g7_tests_walk PROPERTIES FOLDER "tests")
 add_test(NAME walk COMMAND g7_tests_walk)
 set_tests_properties(walk PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
 
+# Perf scenarios (tools/perf): perf.toml, percentiles, report. The run itself needs a GPU and Leonberg (manual).
+file(GLOB _perf_test_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/perf/*.cpp")
+add_executable(g7_tests_perf ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${_perf_test_sources})
+target_link_libraries(g7_tests_perf PRIVATE g7_perf doctest::doctest)
+target_compile_definitions(g7_tests_perf PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
+g7_set_warnings(g7_tests_perf)
+set_target_properties(g7_tests_perf PROPERTIES FOLDER "tests")
+add_test(NAME perf COMMAND g7_tests_perf)
+set_tests_properties(perf PROPERTIES TIMEOUT ${G7_TEST_TIMEOUT})
+
 # Game command line: --help and unknown options must exit at once, without a window or the engine.
 if(TARGET gothar)
     foreach(_case IN ITEMS "help|--help|0|--world=" "unknown|--bogus|nonzero|unknown argument '--bogus'"

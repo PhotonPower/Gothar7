@@ -326,6 +326,20 @@ public:
     {
         return m_passTimes.times();
     }
+    /// Draw calls, triangles and so on of the last frame (M17 perf; zero without a renderer).
+    [[nodiscard]] render::FrameStats frameStats() const noexcept;
+    /// The GPU (GL renderer string), or "no device".
+    [[nodiscard]] std::string rendererName() const;
+    /// Load times since start (M17 perf, part B): assets, scripts, world, houses, figures and clips, first
+    /// frame, models settled; in the order they happened.
+    [[nodiscard]] const std::vector<LoadPhase>& loadPhases() const noexcept { return m_loadPhases; }
+    /// Puts camera and player as the start options would (--cam/--yaw/--pitch/--player/--fly; perf runs).
+    void applyView(const StartView& view);
+    /// Spawns the script Npc instance `name` (like the scripts do; perf stress runs, tests). Returns its id.
+    [[nodiscard]] Result<u32> spawnScriptNpc(std::string_view name, const Vec3& at, f32 yaw)
+    {
+        return spawnNpc(name, at, yaw);
+    }
     /// The bloom of the last frame (M17 P1): settings from the time of day and [render] bloom.
     [[nodiscard]] const render::BloomSettings& bloomSettings() const noexcept { return m_bloomSettings; }
     /// The colour grading of the last frame (M17 P2), after the zone fade.
@@ -688,6 +702,8 @@ public:
     /// clips.
     void setCreatureShowcase(u32 id, bool on);
     [[nodiscard]] usize creatureCount() const noexcept;
+    /// Creatures the AI LOD simulates this step (walked and animated; M17 perf).
+    [[nodiscard]] usize simulatedCreatureCount() const noexcept;
     [[nodiscard]] std::string_view creatureState(u32 id) const noexcept;
     [[nodiscard]] std::optional<Vec3> creaturePosition(u32 id) const;
     [[nodiscard]] f32 creatureYaw(u32 id) const noexcept;
@@ -997,6 +1013,9 @@ private:
     [[nodiscard]] std::string npcFigurePath(const script::Instance& npc, std::string_view name);
     // Behaviour (EngineAi.cpp)
     void fixedUpdateAi(Creature& c, f32 seconds);
+    /// AI LOD by count ([ai] max_simulated): which creatures may be simulated this step
+    /// (Creature::lodAllowed).
+    void updateSimulationLimit();
     void perceive(Creature& c, f32 seconds);
     [[nodiscard]] bool seesPlayer(const Creature& c) const;
     /// The player did something (theft, used a mob) that NPCs who see it react to: `event`(npc, args...).
@@ -1493,6 +1512,8 @@ private:
     void updateDebugCamera(f64 realSeconds, bool allowMouse, bool allowKeyboard);
     // Fly mode, start view, notices (EngineView.cpp)
     void applyStartView();
+    /// Records a load phase that began at `startSeconds` (platform::nowSeconds) and ends now.
+    void addLoadPhase(std::string name, f64 startSeconds);
     void copyViewToClipboard();
     void showNotice(std::string text, f64 seconds);
     [[nodiscard]] bool noticeVisible() const noexcept;
@@ -1589,6 +1610,9 @@ private:
     render::Bloom m_bloom;                 // M17 P1
     render::BloomSettings m_bloomSettings; // enabled from [render] bloom, the rest from the time of day
     render::PassTimes m_passTimes;         // GPU time per pass (M17)
+    std::vector<LoadPhase> m_loadPhases;   // load times (M17 perf)
+    f64 m_startSeconds = 0.0;              // platform::nowSeconds() at init
+    bool m_modelsSettled = false;          // the first time no asset load was pending (load phase)
     render::Grading m_grading;             // M17 P2: current colour grading (fades between zones)
     bool m_gradingStarted = false;
     static constexpr f32 kGradingFadeSeconds = 1.5f;
@@ -1799,6 +1823,7 @@ private:
     f32 m_runNoiseTimer = 0.0f;
     u64 m_routineMinute = ~0ull;      // the game minute routines were last checked
     f32 m_simulationDistance = 80.0f; // [ai] simulation_distance: AI LOD
+    u32 m_simulationLimit = 32;       // [ai] max_simulated: the nearest this many (0: no limit)
     // Dialogue (M10 part A)
     struct DialogLine
     {
