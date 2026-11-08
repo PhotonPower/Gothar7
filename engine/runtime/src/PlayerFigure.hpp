@@ -68,6 +68,7 @@ struct FigureAttachment
     usize bone = 0;
     const LoadedModel* model = nullptr;
     std::unique_ptr<LoadedModel> owned; ///< procedural models (tests, debug UI)
+    Mat4 offset{1.0f};                  ///< in the socket's space (a rune turned to show its sign)
 };
 
 struct PlayerFigure : AnimatedFigure

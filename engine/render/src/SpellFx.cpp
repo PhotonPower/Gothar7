@@ -12,12 +12,12 @@ namespace
 Result<GlowLook> readLook(const Config& c, const std::string& at, std::string_view source)
 {
     GlowLook look;
-    const std::string arm = c.get<std::string>(at + ".arm", "right");
+    const std::string arm = c.get<std::string>(at + ".arm", "left");
     if (arm != "right" && arm != "left" && arm != "both")
     {
         return Error{std::format("{}: {}.arm: right, left or both, not \"{}\"", source, at, arm)};
     }
-    look.arm = arm == "left" ? GlowArm::Left : arm == "both" ? GlowArm::Both : GlowArm::Right;
+    look.arm = arm == "right" ? GlowArm::Right : arm == "both" ? GlowArm::Both : GlowArm::Left;
     const std::string colour = at + ".color";
     if (c.arraySize(colour) != 3)
     {

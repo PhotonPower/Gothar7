@@ -1024,10 +1024,10 @@ MeshRenderer::drawSkinned(..., const FigureGlow& glow = {});  Engine::figureGlow
   der Übergang am Ellbogen zum Oberarm nicht mitleuchtet. Die Engine setzt je nach `arm` des Zaubers
   `lowerarm_l` bzw. `lowerarm_r` und alles darunter (Hand, Finger), bei `both` beide. Dazu `uGlowRim · (1 − n·v)⁴` und `uGlowFill`, additiv vor dem Nebel; der Bloom
   macht den Schein. Ohne Glühen bleibt das Bild bytegleich.
-- **Welcher Arm** (`arm` = `left`, `right`, `both`, Vorgabe `right`): der, mit dem der Wurf-Clip wirkt. Die
-  Platzhalter-Clips `mag/t_cast_projectile`, `_target` und `s_cast_loop` wirken mit der linken Hand,
-  `t_cast_self` mit beiden (Prüfbilder 2026-11-09), obwohl die Rune rechts liegt; also Feuerpfeil, Schlaf,
-  Schrecken, Telekinese `left`, Heilung `both`. Ändern sich die Clips (figuren), ändert sich nur die Daten-Datei.
+- **Welcher Arm** (`arm` = `left`, `right`, `both`, Vorgabe `left`): der, mit dem der Wurf-Clip wirkt. Seit
+  figuren #409 wirkt der ganze mag-Satz links, und die Rune liegt in der linken Hand (`kMagicSocket` =
+  `socket_hand_l`); `t_cast_self` und `t_cast_area` mit beiden. Also Feuerpfeil, Schlaf, Schrecken, Telekinese
+  `left`, Heilung `both`.
 - **Daten:** `[glow.<spell>]` (Feuerpfeil orange, Heilung grün, Schlaf, Schrecken und Telekinese blau; je
   Aufladestufe +50 %), `[hit.fire]`/`[hit.magic]` (0,3 s Aufblitzen, linear ausklingend; ein schwächerer Treffer
   ersetzt ein stärkeres Aufblitzen nicht), `[state.burning]` (orange, pulsiert zweimal je Sekunde),

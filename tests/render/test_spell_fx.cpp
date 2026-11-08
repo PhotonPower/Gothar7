@@ -65,7 +65,7 @@ TEST_CASE("Spell fx: errors name the key")
     CHECK(errorOf("[glow.spl_x]\narm = \"up\"\ncolor = [1, 0, 0]\n").find("glow.spl_x.arm") !=
           std::string::npos);
     CHECK(SpellFxSettings::parse("[glow.a]\ncolor = [1, 0, 0]\n", "x").value().spells.at("a").arm ==
-          GlowArm::Right);
+          GlowArm::Left); // the rune's hand
     CHECK(errorOf("").empty());
 }
 
@@ -81,10 +81,10 @@ TEST_CASE("Spell fx: casting glows at the hand, stronger per stage; a flash fade
     CHECK(casting.hand.r == doctest::Approx(2.0f));
     CHECK(casting.rim.g == doctest::Approx(0.1f));
     CHECK(casting.fill == Vec3(0.0f));
-    CHECK(casting.arm == GlowArm::Right);
-    GlowLook left = cast;
-    left.arm = GlowArm::Left;
-    CHECK(state.glow(&left, 0, nullptr, 0.0f).arm == GlowArm::Left);
+    CHECK(casting.arm == GlowArm::Left);
+    GlowLook bothArms = cast;
+    bothArms.arm = GlowArm::Both;
+    CHECK(state.glow(&bothArms, 0, nullptr, 0.0f).arm == GlowArm::Both);
     CHECK(state.glow(&cast, 2, nullptr, 0.0f).hand.r == doctest::Approx(4.0f)); // two stages: twice as much
 
     state.flash(hit);

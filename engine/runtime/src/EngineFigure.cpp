@@ -877,7 +877,7 @@ bool Engine::drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade)
     const PlayerFigure& f = *m_figure;
     for (const FigureAttachment& attachment : f.attachments)
     {
-        const Mat4 at = transform * f.modelSpace[attachment.bone];
+        const Mat4 at = transform * f.modelSpace[attachment.bone] * attachment.offset;
         if (shadow)
         {
             m_meshRenderer.drawShadow(*m_device, attachment.model->mesh, attachment.model->materials, at,

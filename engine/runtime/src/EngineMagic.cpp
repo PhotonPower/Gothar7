@@ -126,7 +126,7 @@ void Engine::selectRune(u32 slot)
         // Another rune in the hand at once (Gothic 1).
         m_heroCast.reset();
         m_weaponDrawn = item;
-        detachFromPlayer("socket_hand_r");
+        detachFromPlayer(kMagicSocket);
         weaponEvent("draw");
     }
     else if (m_weaponMode == 0)
