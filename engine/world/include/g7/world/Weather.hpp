@@ -63,6 +63,45 @@ struct WeatherSample
     f32 fade = 1.0f; ///< 0 at the change .. 1 when the new state is reached
 };
 
+/// A flash of lightning (M17 part G): when (real seconds of the engine's clock), how far (metres) and from
+/// where.
+struct Lightning
+{
+    f64 start = 0.0;
+    f32 distance = 1000.0f;
+    f32 azimuth = 0.0f; ///< radians about +Y
+    u32 flickers = 2;   ///< how often it flares within the flash
+};
+
+inline constexpr f32 kSpeedOfSound = 343.0f; ///< m/s
+/// Seconds from the flash to its thunder.
+[[nodiscard]] inline f32 thunderDelay(f32 metres) noexcept
+{
+    return metres / kSpeedOfSound;
+}
+/// Brightness 0..1 of a flash `seconds` after its start: `flickers` short flares within about 0.25 s, the
+/// later ones weaker; 0 before and afterwards.
+[[nodiscard]] f32 lightningBrightness(f32 seconds, u32 flickers) noexcept;
+/// How strongly a flash lights the world, by its distance (near ones brighter; decision 8: clear, not
+/// glaring).
+[[nodiscard]] f32 lightningStrength(f32 distance) noexcept;
+
+/// The flashes of a thunderstorm: at random (a Poisson process over the game time, `perMinute` flashes per
+/// game minute), each at a random distance (300 .. 3000 m, near ones rarer) and direction. Deterministic by
+/// its seed.
+class LightningStorm
+{
+public:
+    explicit LightningStorm(u64 seed = 0x7a1e5u) noexcept : m_random(seed) {}
+    /// Advances by `gameMinutes` at `perMinute` flashes per game minute; a flash begins at `now` (real
+    /// seconds).
+    std::optional<Lightning> step(f64 gameMinutes, f32 perMinute, f64 now) noexcept;
+
+private:
+    [[nodiscard]] f32 uniform() noexcept;
+    u64 m_random;
+};
+
 /// What a save game keeps (save::WeatherSave mirrors it).
 struct WeatherSnapshot
 {

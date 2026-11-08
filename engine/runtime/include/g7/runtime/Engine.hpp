@@ -752,6 +752,12 @@ public:
     [[nodiscard]] world::WeatherSample weatherNow() const { return m_weather.sample(m_gameTime.clock()); }
     /// Rain (M17 R): streaks drawn last frame (0: dry or [render] weather = false) and the rain map.
     [[nodiscard]] u32 rainStreaksDrawn() const noexcept { return m_rainDrawn; }
+    /// Thunderstorm (M17 G): flashes so far, the last one, how bright it lights the world now (0..1), the
+    /// delay of the last thunder (seconds).
+    [[nodiscard]] u32 lightningCount() const noexcept { return m_flashCount; }
+    [[nodiscard]] const std::optional<world::Lightning>& lastLightning() const noexcept { return m_flash; }
+    [[nodiscard]] f32 lightningNow() const noexcept;
+    [[nodiscard]] f32 lastThunderDelay() const noexcept { return m_lastThunderDelay; }
     [[nodiscard]] const render::RainRenderer& rain() const noexcept { return m_rain; }
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
@@ -1471,6 +1477,7 @@ private:
     void renderScene(u32 width, u32 height);
     void updateGrading(const render::Grading& timeOfDay);
     void updateWeather();
+    void thunder(const world::Lightning& flash);
     void updateRainMap();
     void drawRain(u32 width, u32 height);
     void rebuildWaterSurfaces();
@@ -1663,8 +1670,15 @@ private:
     std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
     render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
     bool m_weatherVisible = true;                                    // [render] weather
-    f64 m_rainTime = 0.0;                                            // moves the drops (real seconds)
-    u32 m_rainDrawn = 0;                                             // streaks drawn last frame
+    f64 m_rainTime = 0.0;
+    world::LightningStorm m_storm;           // M17 G
+    std::optional<world::Lightning> m_flash; // the last flash
+    f64 m_stormClock = 0.0;                  // simulation seconds (flash times)
+    u32 m_flashCount = 0;
+    f32 m_lastThunderDelay = 0.0f;
+    static constexpr f32 kBoltDistance =
+        1800.0f; // flashes nearer than this show their bolt in the sky // moves the drops (real seconds)
+    u32 m_rainDrawn = 0; // streaks drawn last frame
     render::Sky m_sky;
     f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
     bool m_sunEnabled = true;        // debug: sun and moon light off

@@ -382,6 +382,24 @@ def _site_dirs(args: argparse.Namespace, site_name: str) -> tuple[Path, Path]:
     return assets / "worlds" / site_name, config.parent / "data" / site_name
 
 
+def _weiler(work: Path, data_dir: Path, entries: Sequence[dict[str, Any]]) -> Any:  # noqa: ANN401
+    """The hamlets outside the wall (W6, ``building_rules.json`` "weiler"), or None when off."""
+    from gothar_worldgen.buildings.weiler import select_weiler
+
+    rules = json.loads((data_dir.parent / "building_rules.json").read_text(encoding="utf-8"))
+    spec = rules.get("weiler")
+    course_path = data_dir / "city_wall.json"
+    if not spec or not spec.get("enabled") or not course_path.is_file():
+        return None
+    features = json.loads((work / "features.json").read_text(encoding="utf-8")).get("features", [])
+    streets = json.loads((work / "streets.json").read_text(encoding="utf-8")).get("streets", [])
+    course = load_course(json.loads(course_path.read_text(encoding="utf-8")), features)
+    uses_path = data_dir / "uses.json"
+    use_ids = [h.id for h in load_uses(uses_path).houses] if uses_path.is_file() else []
+    gates = [g.at for g in course.gates if g.kind == "tower"]
+    return select_weiler(entries, course.ring, gates, streets, features, use_ids, spec)
+
+
 def _cmd_mobs(args: argparse.Namespace, out: TextIO) -> int:
     """Mob models (M8): chest, anvil, bed, door into assets/source/mobs (not tied to a site)."""
     from gothar_worldgen.mobs import PROPS, write_mobs
@@ -440,6 +458,15 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
         print(f"  warning: no heightmap ({e}); base heights from LoD2 only", file=out)
         grid = None
     entries = [b for b in buildings.get("buildings", []) if b.get("id") not in dropped]
+    weiler = None
+    if args.mode == "medieval":
+        try:  # W6: only hamlets outside the wall
+            weiler = _weiler(paths.work, data_dir, entries)
+        except (OSError, json.JSONDecodeError, CourseError, UsesError, KeyError) as e:
+            print(f"error: weiler: {e}", file=sys.stderr)
+            return EXIT_ERROR
+    if weiler is not None:
+        entries = [b for b in entries if b["id"] not in weiler.dropped]
     replace = report = None
     rb = rules.data.get("rueckbau") if rules else None
     if rb and rb.get("enabled") and (args.mode == "medieval" or args.rueckbau):
@@ -450,7 +477,16 @@ def _cmd_buildings(args: argparse.Namespace, out: TextIO) -> int:
         protected = frozenset(selection.guarded)
 
         def replace(b: dict) -> list[dict]:
-            return [] if b["id"] in protected else split_building(b, rb, streets).houses
+            if b["id"] in protected:
+                return []
+            houses = split_building(b, rb, streets).houses
+            return weiler.filter(houses) if weiler is not None else houses
+
+    if weiler is not None:
+        entries = weiler.filter(entries)
+        print(f"  weiler: {weiler.inside} inside the wall, {len(weiler.dropped)} left out; "
+              f"mills {len(weiler.mills)}, farms {len(weiler.farms)}, "
+              f"gate houses {len(weiler.gate_parents)} cut", file=out)  # fmt: skip
 
     wall = None
     course_path = data_dir / "city_wall.json"
@@ -797,6 +833,13 @@ def _cmd_citywall(args: argparse.Namespace, out: TextIO) -> int:
             entries, rb, overrides, Protection(features.get("features", []))
         )
         entries, _ = apply_rueckbau(entries, selection, rb, streets)
+    try:  # W6: only hamlets outside the wall
+        weiler = _weiler(paths.work, data_dir, buildings.get("buildings", []))
+    except (OSError, json.JSONDecodeError, CourseError, UsesError, KeyError) as e:
+        print(f"error: weiler: {e}", file=sys.stderr)
+        return EXIT_ERROR
+    if weiler is not None:
+        entries = weiler.filter(entries)
     footprints = [poly for _, poly in footprints_of(entries)]
     try:  # hand-made objects (castle) stand on the line like houses
         from shapely.geometry import Polygon
@@ -1154,8 +1197,11 @@ def _retaining_walls(grid: Any, works: dict[str, Any], street_doc: dict[str, Any
     from gothar_worldgen.qa.begehung import collision_parts
 
     buildings = json.loads((work / "buildings.json").read_text(encoding="utf-8"))
-    houses = [shapely.make_valid(Polygon(b["footprint"])) for b in buildings.get("buildings", [])
-              if len(b.get("footprint") or []) >= 3]  # fmt: skip
+    raw = buildings.get("buildings", [])
+    weiler = _weiler(work, data_dir, raw)  # W6: the houses left out outside the wall
+    houses = [shapely.make_valid(Polygon(b["footprint"])) for b in raw
+              if len(b.get("footprint") or []) >= 3
+              and (weiler is None or b["id"] not in weiler.dropped)]  # fmt: skip
     index_path = folder / "generated" / "buildings_index.json"
     entries = (
         json.loads(index_path.read_text("utf-8")).get("entries", []) if index_path.is_file() else []
@@ -1297,8 +1343,10 @@ def _cmd_streetworks(args: argparse.Namespace, out: TextIO) -> int:
         house_rules = load_house_rules(data_dir.parent / "building_rules.json")
         street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
         buildings = json.loads((paths.work / "buildings.json").read_text(encoding="utf-8"))
-        houses = [Polygon(b["footprint"]) for b in buildings.get("buildings", [])
-                  if len(b.get("footprint") or []) >= 3]  # fmt: skip
+        raw = buildings.get("buildings", [])
+        weiler = _weiler(paths.work, data_dir, raw)  # W6: the houses left out outside the wall
+        houses = [Polygon(b["footprint"]) for b in raw if len(b.get("footprint") or []) >= 3
+                  and (weiler is None or b["id"] not in weiler.dropped)]  # fmt: skip
         half = site.core_half_extent_m
         core = rect(-half, -half, half, half)
         plan_path = folder / "generated" / "retaining_walls.json"
@@ -1311,7 +1359,8 @@ def _cmd_streetworks(args: argparse.Namespace, out: TextIO) -> int:
         entries = write_pieces(pieces, house_rules.color, folder / "generated" / "streetworks", vfs)
         stats["triangles"] = sum(e["triangles"] for e in entries)
         write_index(folder / "generated" / "streetworks_index.json", entries, stats)
-    except (StreetworksError, OSError, json.JSONDecodeError, KeyError) as e:
+    except (StreetworksError, OSError, json.JSONDecodeError, KeyError, CourseError,
+            UsesError) as e:  # fmt: skip
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
     print(f"  steps: {stats['steps']} ({stats['stepsM']} m), {stats['gapSteps']} in wall gaps; "

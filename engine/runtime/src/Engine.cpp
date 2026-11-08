@@ -1828,6 +1828,55 @@ void Engine::updateWeather()
             m_scripts->emit("weather_changed", args);
         }
     }
+    // M17 G: lightning in a thunderstorm, its thunder after the time the sound needs.
+    const f64 step = m_fixedStep.step();
+    m_stormClock += step;
+    const f64 gameMinutes = m_gameTime.secondsPerMinute() > 0.0 ? step / m_gameTime.secondsPerMinute() : 0.0;
+    if (auto flash = m_storm.step(gameMinutes, weatherNow().lightning, m_stormClock))
+    {
+        m_flash = *flash;
+        ++m_flashCount;
+        thunder(*flash);
+    }
+}
+
+void Engine::thunder(const world::Lightning& flash)
+{
+    if (!m_audio)
+    {
+        return;
+    }
+    const auto def = m_soundDefs.find(flash.distance < 1000.0f ? "thunder_near" : "thunder_far");
+    if (def == m_soundDefs.end())
+    {
+        return;
+    }
+    for (const std::string& file : def->second.files)
+    {
+        if (!m_audio->hasClip(file))
+        {
+            if (auto bytes = m_vfs.read(file))
+            {
+                (void)m_audio->addClip(file, bytes.value());
+            }
+        }
+    }
+    const f32 delay = world::thunderDelay(flash.distance);
+    if (auto id = m_audio->play(def->second, std::nullopt, delay))
+    {
+        m_audio->setVolume(id.value(), world::lightningStrength(flash.distance));
+        m_lastThunderDelay = delay;
+    }
+}
+
+f32 Engine::lightningNow() const noexcept
+{
+    if (!m_flash || !m_weatherVisible)
+    {
+        return 0.0f;
+    }
+    return world::lightningBrightness(static_cast<f32>(m_stormClock - m_flash->start), m_flash->flickers) *
+           world::lightningStrength(m_flash->distance);
 }
 
 void Engine::updateEnvironment()
@@ -1845,6 +1894,14 @@ void Engine::updateEnvironment()
     m_meshRenderer.setRainMap(m_rain.mapValid() ? &m_rain.map() : nullptr);
     m_bloomSettings.threshold = sample.bloomThreshold; // M17 P1: by the time of day
     m_bloomSettings.intensity = sample.bloomIntensity;
+    // M17 G: a flash lights the sky, the fog and everything under the open sky for a moment.
+    if (const f32 flash = lightningNow(); flash > 0.0f)
+    {
+        sample.environment.ambientSky += Vec3(0.75f, 0.8f, 1.0f) * (1.1f * flash);
+        sample.environment.ambientGround += Vec3(0.5f, 0.52f, 0.6f) * (0.5f * flash);
+        sample.environment.fogColor += Vec3(0.3f, 0.33f, 0.4f) * flash;
+        sample.sky.zenith += Vec3(0.35f, 0.4f, 0.55f) * flash;
+    }
     m_environment = sample.environment;
     m_environment.fogStart = fogStart;
     // Rooms (zones of type indoor, world.md): the nearest to the camera get the indoor ambient.
@@ -2115,6 +2172,17 @@ void Engine::drawScene(u32 width, u32 height)
     m_backgroundProgram->setUniform("uMoonDirection", m_sky.moonDirection);
     m_backgroundProgram->setUniform("uMoon", m_sky.moon);
     m_backgroundProgram->setUniform("uStars", m_sky.stars);
+    // M17 G: the bolt of a near or middle flash (decision 8: rarely seen), in its direction above the
+    // horizon.
+    Vec4 bolt(0.0f);
+    if (m_flash && m_weatherVisible && m_flash->distance < kBoltDistance)
+    {
+        const f32 brightness =
+            world::lightningBrightness(static_cast<f32>(m_stormClock - m_flash->start), m_flash->flickers);
+        bolt = Vec4(m_flash->azimuth, brightness, static_cast<f32>(m_flashCount % 97u),
+                    0.3f + 0.35f * (1.0f - m_flash->distance / kBoltDistance)); // nearer: taller
+    }
+    m_backgroundProgram->setUniform("uBolt", bolt);
     m_device->bindPipeline(m_backgroundPipeline);
     m_device->draw(3); // fullscreen triangle from gl_VertexID
     if (m_instances.empty() && !m_hasTerrain)

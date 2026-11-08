@@ -62,6 +62,60 @@ bool inWindow(const WeatherState& s, f64 clock)
 }
 } // namespace
 
+f32 lightningBrightness(f32 seconds, u32 flickers) noexcept
+{
+    if (seconds < 0.0f || flickers == 0)
+    {
+        return 0.0f;
+    }
+    constexpr f32 kFlare = 0.06f; // one flare
+    constexpr f32 kGap = 0.05f;   // dark between two
+    const auto index = static_cast<u32>(seconds / (kFlare + kGap));
+    if (index >= flickers)
+    {
+        return 0.0f;
+    }
+    const f32 within = seconds - static_cast<f32>(index) * (kFlare + kGap);
+    if (within > kFlare)
+    {
+        return 0.0f;
+    }
+    const f32 shape = 1.0f - within / kFlare; // sharp on, fading
+    return shape * (index == 0 ? 1.0f : 0.6f / static_cast<f32>(index));
+}
+
+f32 lightningStrength(f32 distance) noexcept
+{
+    return std::clamp(1.2f - distance / 3000.0f, 0.25f, 1.0f);
+}
+
+f32 LightningStorm::uniform() noexcept
+{
+    u64 z = (m_random += 0x9e3779b97f4a7c15ull);
+    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ull;
+    z = (z ^ (z >> 27)) * 0x94d049bb133111ebull;
+    return static_cast<f32>((z ^ (z >> 31)) >> 40) / static_cast<f32>(1ull << 24);
+}
+
+std::optional<Lightning> LightningStorm::step(f64 gameMinutes, f32 perMinute, f64 now) noexcept
+{
+    if (perMinute <= 0.0f || gameMinutes <= 0.0)
+    {
+        return std::nullopt;
+    }
+    const f32 chance = 1.0f - std::exp(-perMinute * static_cast<f32>(gameMinutes));
+    if (uniform() >= chance)
+    {
+        return std::nullopt;
+    }
+    Lightning flash;
+    flash.start = now;
+    flash.distance = 300.0f + 2700.0f * std::sqrt(uniform()); // near ones rarer
+    flash.azimuth = uniform() * 6.2831853f;
+    flash.flickers = 1 + static_cast<u32>(uniform() * 3.0f);
+    return flash;
+}
+
 Result<Weather> Weather::parse(std::string_view toml, std::string_view source)
 {
     auto config = Config::parse(toml, source);
