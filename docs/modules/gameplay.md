@@ -590,6 +590,38 @@ Projektinhaber (über den Koordinator, 2026-11-08): alle 13 Gefühlsfragen nach 
    - Erweiterung von `test_engine_m12_scenario.cpp`: den Schlüssel einer Truhe hinter einem Gitter heranziehen.
    - Prüfbilder: Gegenstand im Flug mit Funken und Glühen (Testlager), Leonberg Marktplatz.
 
+### Teil T – umgesetzt (`gameplay/Telekinesis.hpp`, `runtime/EngineTelekinesis.cpp`)
+```cpp
+enum class SpellKind { ..., Telekinesis };  SpellInfo::manaPerSecond, range, speed, lift, carry   // Spell-Felder
+struct TelekinesisSettings { range 15, speed 3, lift 0.5, liftSpeed 1, maxSize 1.2, arrive 0.8, aimAngle 20,
+                             leash 1.5, gravity 9.81, spin 0.8, manaPerSecond 2; };
+std::optional<u64> pickTelekinesisTarget(candidates, eye, aim, settings, visible);
+i32 telekinesisManaDue(carry, perSecond, seconds);
+class TelekinesisFlight { carry(seconds, hand, sweep); release(groundY); fall(seconds); land(); phase(); position(); };
+```
+- **Inhalt:** `spl_telekinesis` (Kreis 2, 10 Mana, 2 je Sekunde, 15 m, 0,5 m, 3 m/s, bis 1,2 m), Rune
+  `it_rune_telekinesis` (Platzhalter-Modell, bis figuren eines liefert), Spruchrolle `it_scroll_telekinesis` (zwei
+  beim alten Mann im Testlager, Entscheidung 7), Effekt `data/fx/telekinesis.toml` (blaue Funken, schwaches Licht).
+  Item-Feld `no_telekinesis = true` sperrt einen Gegenstand für die Story.
+- **Anvisieren:** Items innerhalb von 20° um die Blickrichtung der Kamera (sonst um die des Helden), bis 15 m, mit
+  freier Sicht (Strahl auf einen Punkt 0,3 m über dem Item); gewählt wird das nächste zur Blickrichtung, bei fast
+  gleicher Richtung das nähere (1° je 4 m). Ohne Ziel: „Nichts zu bewegen.“ und `mag/t_cast_fail`, nichts wird
+  verbraucht.
+- **Halten:** `mag/s_cast_loop`; 10 Mana und eine Spruchrolle beim Anheben, danach 2 Mana je Sekunde (Bruchteile
+  laufen weiter). Der Held steht. Das Item dreht sich langsam (0,8 rad/s); eine Kugel von 12 cm hält es vor Wänden,
+  dort schwebt es, bis man loslässt.
+- **Fallen:** Loslassen, Waffenwechsel, ein Treffer (weniger Leben als beim Anheben), Mana leer oder weiter als
+  22,5 m von der Hand: es fällt senkrecht mit Schwerkraft auf den Boden darunter (Strahl, sonst zurück auf die
+  Ausgangshöhe) und ist dann wieder ein Item-Vob (Laufzeit-Vob mit seinem Besitzer, im Spielstand an der neuen
+  Stelle). Ein Spielstand während des Fluges setzt es sofort auf den Boden.
+- **Ankunft:** 0,8 m vor der Hand wie Aufheben (`takeItem`: `item_taken`, bei fremdem Besitz `theft` und Zeugen).
+- **Lua:** `hero_telekinesis()`, `telekinesis_allowed(item)`; Ereignis `telekinesis(item, phase)` mit `lift`,
+  `float`, `arrive`, `drop`; der Beginn meldet auch `npc_cast("hero", spell)`. NPCs wirken den Spruch nicht.
+- **Tests:** `tests/gameplay/test_telekinesis.cpp`, `tests/runtime/test_engine_telekinesis.cpp` (Gruppe
+  `runtime_magic`). Prüfbilder `C:\GotharData\review\m17-telekinesis`.
+- **Noch nicht:** das Szenario „Schlüssel hinter einem Gitter“ in `test_engine_m12_scenario.cpp` (braucht ein
+  Gitter im Testlager), ein eigener Clip und ein Runen-Modell (figuren).
+
 ### Reihenfolge und Abhängigkeiten
 - Je Teil ein PR: **T** (Telekinese) → **G** (Glühen) → **V** (Verzerrung). T braucht G nicht (dann ohne Glühen
   der Hand).

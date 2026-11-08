@@ -26,6 +26,7 @@
 #include <g7/gameplay/Magic.hpp>
 #include <g7/gameplay/Mobs.hpp>
 #include <g7/gameplay/Movement.hpp>
+#include <g7/gameplay/Telekinesis.hpp>
 #include <g7/gameplay/WeaponSweep.hpp>
 #include <g7/physics/Character.hpp>
 #include <g7/physics/Physics.hpp>
@@ -1180,6 +1181,14 @@ private:
     void beginHeroCast();
     void releaseHeroCast();
     void applyHeroSpell(); ///< at the cast clip's "cast" event
+    // Telekinesis (M17 part T, EngineTelekinesis.cpp): an item floats to the hero while the spell is held.
+    [[nodiscard]] bool beginTelekinesis(const gameplay::SpellInfo& spell);
+    void fixedUpdateTelekinesis(f32 seconds);
+    void dropTelekinesis();   ///< let go: it falls
+    void landTelekinesis();   ///< on the ground: an item vob again
+    void finishTelekinesis(); ///< a save meanwhile: it lands at once
+    void placeTelekinesisItem();
+    void bindTelekinesisFunctions();
     /// A spell's harm on a creature or the hero (fire bolt, area): its damage minus protection, min 5 (as
     /// R3).
     /// `burn`: it sets the target burning (decision B); `reaction`: the target staggers (not for burning).
@@ -1935,9 +1944,24 @@ private:
         bool acted = false;
         std::string state; ///< the graph state played
         std::optional<u32> target;
+        bool telekinesis = false; ///< M17 part T: held while the item floats
     };
     std::optional<HeroCast> m_heroCast;
-    std::optional<u32> m_heroSummon; // Z8: the hero's summoned creature (one at a time)
+    struct TelekinesisRun
+    {
+        world::VobId vob;
+        std::string item; ///< its Item instance
+        gameplay::TelekinesisSettings settings;
+        gameplay::TelekinesisFlight flight;
+        Mat4 start{1.0f};      ///< the item's model matrix where it lay
+        Vec3 centre{0.0f};     ///< the middle of its bounds there (the flight's point)
+        f32 halfHeight = 0.0f; ///< from the middle down to its lowest point
+        std::optional<u32> effect;
+        f32 manaCarry = 0.0f;
+        i32 hp = 0; ///< the hero's life when it began: a hit lets it fall
+    };
+    std::optional<TelekinesisRun> m_telekinesis; // M17 part T
+    std::optional<u32> m_heroSummon;             // Z8: the hero's summoned creature (one at a time)
     struct Burning
     {
         f32 seconds = 0.0f; ///< left

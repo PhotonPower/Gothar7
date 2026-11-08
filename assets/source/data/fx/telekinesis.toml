@@ -1,0 +1,18 @@
+# Telekinese (M17 Teil T): schwache blaue Funken um den schwebenden Gegenstand.
+version = 1
+sprite = "soft"
+blend = "additive"
+rate = 30
+lifetime = [0.4, 0.8]
+speed = [0.05, 0.2]
+spread = 180
+radius = 0.25
+gravity = 0
+size = [0.08, 0.02]
+color_start = [0.45, 0.6, 1.0, 0.8]
+color_end = [0.3, 0.45, 1.0, 0.0]
+[light]
+color = [0.5, 0.65, 1.0]
+range = 2.5
+intensity = 0.8
+flicker = 0.1
