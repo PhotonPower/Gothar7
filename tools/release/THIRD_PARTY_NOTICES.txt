@@ -1,0 +1,28 @@
+Gothar - Bibliotheken anderer Autoren
+=====================================
+
+Das Spiel enthält die folgenden Bibliotheken. Ihre Lizenztexte liegen im Ordner LICENSES/ (Dateiname nach der
+Bibliothek). Die Liste prüft ein Test gegen vcpkg.json (tests/cook, test_release.cpp).
+
+- SDL 3 (sdl3) - zlib License - Fenster, Eingabe, Plattform
+- Jolt Physics (joltphysics) - MIT License - Physik
+- Lua 5.4 (lua) - MIT License - Skripte
+- sol2 (sol2) - MIT License - Lua-Anbindung
+- EnTT (entt) - MIT License - Szene
+- fastgltf (fastgltf) - MIT License - glTF-Modelle
+- simdjson (simdjson) - Apache License 2.0 - JSON für fastgltf
+- glad (glad) - MIT License (Generator) / Apache License 2.0 (Khronos-Spezifikation) - OpenGL-Laden
+- GLM (glm) - MIT License - Mathematik
+- Dear ImGui (imgui) - MIT License - Werkzeug-Fenster
+- nlohmann/json (nlohmann-json) - MIT License - Weltformat und Spielstände
+- toml++ (tomlplusplus) - MIT License - Konfiguration
+- miniaudio (miniaudio) - MIT No Attribution / Public Domain - Klang
+- stb_image (stb) - Public Domain / MIT License - Bilder
+- Zstandard (zstd) - BSD 3-Clause License - Archive und Spielstände
+- KTX-Software (ktx) - Apache License 2.0 - gekochte Texturen
+- font8x8 von Daniel Hepper - Public Domain - Debug-Schrift
+
+Nur in den Werkzeugen, nicht im Spiel:
+- msdfgen (msdfgen) - MIT License - Schrift-Atlanten im Cooker
+- doctest (doctest) - MIT License - Tests
+- Tracy (tracy) - BSD 3-Clause License - Profiling, nur im Preset `profile` (ADR 0024), nicht im Paket
