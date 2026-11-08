@@ -158,6 +158,21 @@ public:
 
 ### `Clipboard.hpp` – Zwischenablage
 `Result<void> setClipboardText(std::string_view)` (SDL, braucht das Video-Subsystem): `copy_position`.
+`Result<void> openFolder(const fs::Path&)` öffnet einen Ordner im Datei-Browser (`SDL_OpenURL`, die Absturzberichte).
+
+### `CrashHandler.hpp` – Absturzberichte (M17, `release.md` Teil B)
+- `installCrashHandler(CrashSettings{directory, buildLine, minidump})` fängt unbehandelte Ausnahmen bzw. Signale,
+  ungefangene C++-Ausnahmen (`std::terminate`) und fehlgeschlagene `G7_VERIFY`/`G7_ASSERT` (über
+  `g7::setFatalHook` aus `core`).
+- Geschrieben werden `gothar_<version>_<hash>_<zeit>_<pid>.txt` (Build-Zeile, Grund, die letzten 200 Log-Zeilen
+  aus `log::recentLines`, unter Linux die Rückverfolgung) und unter Windows `.dmp` (`MiniDumpWriteDump`,
+  Stapel und Threads). Danach endet der Prozess mit Code 3, ohne den Systemdialog. Nichts wird gesendet.
+- Der Ordner entsteht erst beim ersten Bericht. `gothar` nimmt `<Benutzerordner>/crashes` bzw. `--crash-dir`.
+- Tests und ctest-Aufrufe von `gothar` setzen immer einen eigenen Ordner.
+- `unseenCrashReports(dir)` / `markReportsSeen(dir)`: Das Hauptmenü bietet neue Berichte einmal an
+  („Absturzbericht ansehen“ öffnet den Ordner).
+- Getestet mit dem Prozess `g7_crash_probe`, der absichtlich abstürzt: Zugriffsfehler, Ausnahme, `G7_VERIFY`.
+  Der Test-Runner selbst stürzt nie ab.
 
 ### Konfiguration
 `game/src/main.cpp` lädt `gamePath("config/engine.toml")` (wird beim Bauen neben die Executable kopiert)

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <format>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace g7::log
 {
@@ -18,6 +20,10 @@ enum class Level
 /// Sets the minimum level that is emitted. Thread-safe.
 void setMinLevel(Level level) noexcept;
 [[nodiscard]] Level minLevel() noexcept;
+
+/// The last 200 lines written (oldest first), for crash reports (M17, release.md part B). Thread-safe.
+/// `wait` false (crash handlers): returns at once if another thread holds the log.
+[[nodiscard]] std::vector<std::string> recentLines(bool wait = true);
 
 /// Writes an already formatted message. Thread-safe.
 void write(Level level, std::string_view channel, std::string_view message);

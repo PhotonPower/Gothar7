@@ -3,6 +3,8 @@
 #include <g7/core/BuildInfo.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
+#include <g7/platform/Clipboard.hpp>
+#include <g7/platform/CrashHandler.hpp>
 #include <g7/platform/GlContext.hpp>
 #include <g7/platform/Window.hpp>
 #include <g7/runtime/Engine.hpp>
@@ -210,6 +212,20 @@ void Engine::openMenu(bool inGame)
                    {"load", "UI_MENU_LOAD", anySave()},
                    {"options", "UI_MENU_OPTIONS", true},
                    {"quit", "UI_MENU_QUIT", true}};
+        // Decision 3 (release.md part B): new crash reports since the last start - said once, opened by a
+        // click.
+        if (!m_config.crashDirectory.empty() &&
+            !platform::unseenCrashReports(m_config.crashDirectory).empty())
+        {
+            m_crashNotice = true;
+            platform::markReportsSeen(m_config.crashDirectory);
+            G7_LOG_WARN("engine", "a crash report is in {} (nothing was sent)",
+                        fs::toUtf8(m_config.crashDirectory));
+        }
+        if (m_crashNotice)
+        {
+            entries.insert(entries.end() - 1, {"crash_report", "UI_MENU_CRASH_REPORT", true});
+        }
     }
     ui::MenuScreen::Actions actions;
     // Screens are only changed after the stack's update (the callbacks run inside it).
@@ -261,6 +277,13 @@ void Engine::runMenuCommand()
     else if (command.starts_with("save_to:") || command.starts_with("load_from:"))
     {
         runSaveCommand(command);
+    }
+    else if (command == "crash_report")
+    {
+        if (auto opened = platform::openFolder(m_config.crashDirectory); !opened)
+        {
+            G7_LOG_WARN("engine", "{}", opened.error().message);
+        }
     }
     else if (command == "quit")
     {

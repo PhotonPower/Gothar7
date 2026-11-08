@@ -8,8 +8,8 @@ nummeriert.
 ## Umsetzungsstand
 | Teil | PR | Stand |
 |---|---|---|
-| A – Versions- und Build-Info | dieser Teil-A-PR | umgesetzt |
-| B – Absturzberichte | – | offen |
+| A – Versions- und Build-Info | #380 | umgesetzt |
+| B – Absturzberichte | dieser Teil-B-PR | umgesetzt |
 | C – Paket | – | offen |
 
 Abweichungen bei A:
@@ -19,6 +19,16 @@ Abweichungen bei A:
 - Version 0.3.0 nach Meilenstein C (Entscheidung 5). Der Git-Tag setzt die Version noch nicht selbst. Teil C prüft
   beim Paketbau, dass Tag und `project(VERSION)` übereinstimmen.
 - Der Fenstertitel zeigt die Build-Zeile nur in Debug-Builds; im Release steht dort „Gothar“.
+
+Abweichungen bei B:
+- Statt eines versteckten `--crash-test` in `gothar` stürzt ein eigener kleiner Prozess ab (`g7_crash_probe`). So
+  hängt der Test nicht am Spiel, und der Test-Runner stürzt nie selbst ab.
+- Unter Windows landet eine ungefangene C++-Ausnahme beim Ausnahme-Filter, nicht bei `std::terminate`. Der Bericht
+  nennt dann „uncaught exception (C++ exception 0xE06D7363 …)“ ohne `what()`. Unter Linux steht `what()` dabei.
+- Der Hinweis (Entscheidung 3) ist ein Menüeintrag „Absturzbericht ansehen“ über „Beenden“. Er öffnet den Ordner und
+  erscheint in der Sitzung, in der die Berichte neu sind; danach gelten sie als gesehen.
+- Ein Stapelüberlauf wird unter Windows erkannt, der Bericht kann dann aber ausfallen: Der Filter läuft auf dem
+  übergelaufenen Stapel. Nachbessern nur bei Bedarf (eigener Thread für den Bericht).
 
 ## Ausgangslage
 - **Bauen:** `release`-Preset und CI-Job `release (ubuntu-24.04)` (optimierter Build, Tests ohne GPU, `--smoke-test`).
