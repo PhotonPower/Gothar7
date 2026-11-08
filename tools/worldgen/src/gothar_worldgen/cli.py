@@ -65,6 +65,8 @@ from gothar_worldgen.geo.dgm1 import DgmError
 from gothar_worldgen.geo.frame import LocalFrame
 from gothar_worldgen.geo.lod2 import Lod2Error
 from gothar_worldgen.geo.osm import OsmError
+from gothar_worldgen.geo.rural import load_rules as load_rural_rules
+from gothar_worldgen.geo.rural import load_street_doc
 from gothar_worldgen.handmade import (
     HandmadeError,
     build_marktbrunnen,
@@ -347,6 +349,7 @@ def _export_splat(
     name: str,
     out: TextIO,
     gardens: Sequence[dict] = (),
+    data_dir: Path | None = None,
 ) -> dict:
     docs = {}
     for file, key in (("buildings.json", "buildings"), ("streets.json", "streets"),
@@ -355,6 +358,19 @@ def _export_splat(
             docs[key] = json.loads((work / file).read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as e:
             raise ExportError(f"{file}: {e} (run 'import' first or pass --no-splat)") from None
+    if data_dir is not None and load_rural_rules(data_dir) is not None:  # W6 rural ways
+        docs["streets"] = load_street_doc(work, data_dir)
+        raw = docs["buildings"].get("buildings", [])
+        weiler = _weiler(work, data_dir, raw)  # no mud around the left-out buildings
+        if weiler is not None:
+            docs["buildings"] = {"buildings": [b for b in raw if b.get("id") not in weiler.dropped]}
+        wall = data_dir / "city_wall.json"
+        if wall.is_file():  # railways only inside the wall (none of them in the game)
+            feats = docs["features"].get("features", [])
+            town = Polygon(load_course(json.loads(wall.read_text("utf-8")), feats).ring).buffer(0)
+            docs["features"] = {"features": [
+                f for f in feats if f.get("kind") != "rail" or f.get("geometry") != "line"
+                or town.contains(LineString(f["points"]))]}  # fmt: skip
     masks = layer_masks(
         grid,
         docs["buildings"].get("buildings", []),
@@ -577,7 +593,7 @@ def _build_waynet(
     from gothar_worldgen.waynet.landmarks import garden_beds, garden_links, landmarks
 
     assets = folder.parents[1]
-    streets = json.loads((work / "streets.json").read_text(encoding="utf-8"))["streets"]
+    streets = load_street_doc(work, data_dir)["streets"]
     index = json.loads((folder / "generated" / "buildings_index.json").read_text("utf-8"))
     ch = Character.load(assets / "data" / "movement.toml")
     grid = game_grid(world, assets)
@@ -713,7 +729,7 @@ def _cmd_begehung(args: argparse.Namespace, out: TextIO) -> int:
         rules = json.loads((data_dir.parent / "building_rules.json").read_text(encoding="utf-8"))
         movement = assets / "data" / "movement.toml"
         report = walkthrough(
-            world_path, assets, paths.work, rules, movement, site.core_half_extent_m
+            world_path, assets, paths.work, rules, movement, site.core_half_extent_m, data_dir
         )
     except (OSError, json.JSONDecodeError, KeyError, ValueError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -754,7 +770,7 @@ def _cmd_walk_routes(args: argparse.Namespace, out: TextIO) -> int:
         character = Character.load(assets / "data" / "movement.toml")
         grid = game_grid(world, assets)
         bodies = load_bodies(world, assets, grid, character)
-        streets = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))["streets"]
+        streets = load_street_doc(paths.work, data_dir)["streets"]
         stations = json.loads((data_dir / "starts.json").read_text(encoding="utf-8"))["starts"]
         features = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
         wall_doc = json.loads((data_dir / "city_wall.json").read_text(encoding="utf-8"))
@@ -1266,7 +1282,7 @@ def _cmd_citymap(args: argparse.Namespace, out: TextIO) -> int:
         spec = json.loads((data_dir / "citymap.json").read_text(encoding="utf-8"))
         features = json.loads((paths.work / "features.json").read_text(encoding="utf-8"))
         feats = features.get("features", [])
-        street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+        street_doc = load_street_doc(paths.work, data_dir)
         index = json.loads((folder / "generated" / "buildings_index.json").read_text("utf-8"))
         course = load_course(json.loads((data_dir / "city_wall.json").read_text("utf-8")), feats)
         world = json.loads((folder / f"{site.name}.g7world").read_text(encoding="utf-8"))
@@ -1341,7 +1357,7 @@ def _cmd_streetworks(args: argparse.Namespace, out: TextIO) -> int:
         grid = game_grid(terrain, folder.parents[1])
         rules = load_works(data_dir / "streetworks.json")
         house_rules = load_house_rules(data_dir.parent / "building_rules.json")
-        street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+        street_doc = load_street_doc(paths.work, data_dir)
         buildings = json.loads((paths.work / "buildings.json").read_text(encoding="utf-8"))
         raw = buildings.get("buildings", [])
         weiler = _weiler(paths.work, data_dir, raw)  # W6: the houses left out outside the wall
@@ -1419,7 +1435,7 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
                            handmade, water, starts, doors,
                            streetworks=works, known_starts=known)  # fmt: skip
         if uses_path.is_file():  # W7: mobs and routine places at the houses with a use
-            street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+            street_doc = load_street_doc(paths.work, data_dir)
             places, mobs, zones = _plan_uses(uses_path, res.world, index, folder.parents[1],
                                              street_doc.get("streets", []))  # fmt: skip
             res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
@@ -1472,6 +1488,38 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_OK
 
 
+def _harmonise_rural(grid: Grid, work: Path, data_dir: Path, folder: Path, out: TextIO) -> Grid:
+    """W6 rural ways: the ground of the left-out buildings and streets outside the wall evened
+    out (``export/harmonise.py``); unchanged without ``rural_ways.json`` or the hamlets."""
+    from gothar_worldgen.export.harmonise import harmonise, rural_areas
+    from gothar_worldgen.geo.features import RAILWAYS
+
+    spec = load_rural_rules(data_dir)
+    wall = data_dir / "city_wall.json"
+    index_path = folder / "generated" / "buildings_index.json"
+    if spec is None or not wall.is_file() or not index_path.is_file():
+        return grid
+    raw = json.loads((work / "buildings.json").read_text(encoding="utf-8")).get("buildings", [])
+    weiler = _weiler(work, data_dir, raw)
+    if weiler is None:
+        return grid
+    features = json.loads((work / "features.json").read_text(encoding="utf-8")).get("features", [])
+    course = load_course(json.loads(wall.read_text(encoding="utf-8")), features)
+    streets = json.loads((work / "streets.json").read_text(encoding="utf-8")).get("streets", [])
+    entries = json.loads(index_path.read_text(encoding="utf-8")).get("entries", [])
+    dropped = [b["footprint"] for b in raw if b.get("id") in weiler.dropped and b.get("footprint")]
+    kept = [e["footprint"] for e in entries if e.get("footprint")]
+    rails = [f["points"] for f in features
+             if f.get("kind") in RAILWAYS and f.get("geometry") == "line"]  # fmt: skip
+    fill, keep = rural_areas(streets, course.ring, dropped, kept, rails, spec)
+    grid, st = harmonise(grid, fill, keep)
+    print(f"  rural: {st['cells']} cells evened out ({len(dropped)} left-out buildings, streets "
+          f"and railways outside the wall), raised up to {st['raisedM']} m, lowered up to "
+          f"{st['loweredM']} m, {st.get('movedOver1M', 0)} cells over 1 m, "
+          f"{st['iterations']} iterations", file=out)  # fmt: skip
+    return grid
+
+
 def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
     site = load_site(args.site, args.config_dir)
     local = load_local(args.config_dir)
@@ -1492,6 +1540,7 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
         grid = load_grid(paths.work)
         grid = crop(grid, core if args.area == "core" else None, args.step)
         data_dir = (args.config_dir or default_config_dir()).parent / "data" / site.name
+        grid = _harmonise_rural(grid, paths.work, data_dir, folder, out)
         water_doc = data_dir / "water.json"
         # River beds and lake basins: the heightmap deliberately leaves the DGM there.
         if water_doc.is_file():
@@ -1510,7 +1559,7 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             entries = json.loads(index_path.read_text(encoding="utf-8")).get("entries", [])
             hillside = json.loads((data_dir.parent / "building_rules.json").read_text(
                 encoding="utf-8")).get("hillside", {})  # fmt: skip
-            street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+            street_doc = load_street_doc(paths.work, data_dir)
             walkable = unary_union([LineString(w["points"]) for w in street_doc.get("streets", [])
                                     if w["highway"] in WALKABLE and len(w["points"]) >= 2
                                     and not w.get("tunnel")]).buffer(0.8)  # fmt: skip
@@ -1529,7 +1578,7 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             print(f"  pads: {len(handmade_pads)} level areas, {padded} cells", file=out)
         ways_doc = data_dir / "ways.json"
         if ways_doc.is_file():  # E5: steep stretches of ways limited, leaving the DGM there
-            street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+            street_doc = load_street_doc(paths.work, data_dir)
             half = site.core_half_extent_m
             ways_spec = json.loads(ways_doc.read_text(encoding="utf-8"))
             core_box = box(-half, -half, half, half)
@@ -1544,7 +1593,7 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             from gothar_worldgen.export.ways import shape_steps
 
             works = json.loads(works_doc.read_text(encoding="utf-8"))
-            street_doc = json.loads((paths.work / "streets.json").read_text(encoding="utf-8"))
+            street_doc = load_street_doc(paths.work, data_dir)
             half = site.core_half_extent_m
             grid, shaped = shape_steps(grid, street_doc.get("streets", []),
                                        box(-half, -half, half, half), works["steps"])  # fmt: skip
@@ -1558,7 +1607,8 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
         splat = None
         if not args.no_splat:
             gardens = splat_areas(load_handmade(data_dir / "handmade.json"))
-            splat = _export_splat(grid, paths.work, core, folder, site.name, name, out, gardens)
+            splat = _export_splat(grid, paths.work, core, folder, site.name, name, out, gardens,
+                                  data_dir)  # fmt: skip
         starts = (DEFAULT_STARTS if site.name == "leonberg" else ()) + load_starts(
             data_dir / "starts.json"
         )
