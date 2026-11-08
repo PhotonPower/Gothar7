@@ -16,8 +16,9 @@ namespace g7::cook
 {
 /// Bump whenever the cooker's output for the same input changes (format, encoder settings).
 // 2: .g7mesh v2 (collision parts), 3: .g7mesh v3 (LOD per submesh), 4: alpha coverage kept in the mips of
-// alpha-tested colour textures, 5: .g7mesh v4 (wind per material, M17 W)
-inline constexpr u32 kCookerVersion = 5;
+// alpha-tested colour textures, 5: .g7mesh v4 (wind per material, M17 W), 6: skinned and animated .glb also
+// go into archives unchanged (plan M17 part 0)
+inline constexpr u32 kCookerVersion = 6;
 /// Manifest location below the output directory.
 inline constexpr std::string_view kManifestPath = ".g7cook/manifest.txt";
 
@@ -70,4 +71,8 @@ struct Manifest
 /// Non-data URIs referenced by a glTF (.gltf JSON or the JSON chunk of a .glb): buffers and images,
 /// percent-decoded, in file order.
 [[nodiscard]] std::vector<std::string> gltfExternalUris(std::span<const u8> bytes);
+
+/// True if a glTF has skins or animations (figure parts, rigs, clip sets). The engine loads those as glTF
+/// (SkinnedModelData, AnimationSetData) until a cooked format exists (asset.md, plan M17).
+[[nodiscard]] bool gltfSkinnedOrAnimated(std::span<const u8> bytes);
 } // namespace g7::cook

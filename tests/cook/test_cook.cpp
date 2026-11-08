@@ -5,6 +5,7 @@
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
 #include <g7/asset/MeshFile.hpp>
+#include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/Vfs.hpp>
 
 #include <doctest/doctest.h>
@@ -279,4 +280,42 @@ TEST_CASE("a glTF without a mesh (animation set) is skipped, not cooked empty")
     CHECK(report.value().meshes == 2);  // the two of the source tree
     CHECK(report.value().skipped == 5); // the four usual ones + the animation set
     CHECK_FALSE(std::filesystem::exists(t.out / "anims" / "none.g7mesh"));
+}
+
+TEST_CASE("an archive carries skinned and animated .glb unchanged (figures load as glTF, plan M17 part 0)")
+{
+    SourceTree t;
+    const fs::Path assets = fs::fromUtf8(G7_ASSET_SOURCE_DIR);
+    const fs::Path rig = t.source / "characters" / "rig" / "human_reference.glb";
+    const fs::Path set = t.source / "characters" / "anims" / "human" / "dive.glb";
+    std::filesystem::create_directories(rig.parent_path());
+    std::filesystem::create_directories(set.parent_path());
+    std::filesystem::copy_file(assets / "characters" / "rig" / "human_reference.glb", rig);
+    std::filesystem::copy_file(assets / "characters" / "anims" / "human" / "dive.glb", set);
+
+    // Loose output keeps the .glb out (a copy in assets/cooked would hide the source while figuren edits it).
+    auto loose = cook::cook({.source = t.source, .out = t.out});
+    REQUIRE_MESSAGE(loose, (loose ? "" : loose.error().message));
+    CHECK(std::filesystem::exists(t.out / "characters" / "rig" / "human_reference.g7mesh"));
+    CHECK_FALSE(std::filesystem::exists(t.out / "characters" / "rig" / "human_reference.glb"));
+    CHECK_FALSE(std::filesystem::exists(t.out / "characters" / "anims" / "human" / "dive.glb"));
+
+    const fs::Path packed = t.dir.path() / "packed";
+    auto report = cook::cook({.source = t.source, .out = packed, .pack = "data.g7pak"});
+    REQUIRE_MESSAGE(report, (report ? "" : report.error().message));
+    CHECK(report.value().errors.empty());
+    asset::Vfs vfs;
+    REQUIRE(vfs.mount(packed / "data.g7pak", 0));
+    CHECK(vfs.exists("characters/rig/human_reference.g7mesh"));
+    CHECK(vfs.read("characters/rig/human_reference.glb").value() == fs::readFile(rig).value());
+    CHECK(vfs.read("characters/anims/human/dive.glb").value() == fs::readFile(set).value());
+    CHECK_FALSE(vfs.exists("models/Tri.glb")); // static meshes stay .g7mesh only
+    asset::AssetManager manager(vfs);
+    const auto model = manager.load<asset::SkinnedModelData>("characters/rig/human_reference.glb");
+    const auto clips = manager.load<asset::AnimationSetData>("characters/anims/human/dive.glb");
+    manager.waitAll();
+    REQUIRE_MESSAGE(model.isReady(), model.error());
+    REQUIRE_MESSAGE(clips.isReady(), clips.error());
+    CHECK(model->skeleton.size() == 60);
+    CHECK_FALSE(clips->clips.empty());
 }

@@ -267,7 +267,12 @@ Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedMo
         {
             continue;
         }
-        const auto candidates = imageCandidates(figure.path, data.images[i].uri);
+        // Parts are glTF and name the source images; an archive has them cooked (x.png -> x.ktx2).
+        auto candidates = imageCandidates(figure.path, data.images[i].uri);
+        for (std::string& candidate : candidates)
+        {
+            candidate = preferCooked(m_vfs, candidate);
+        }
         const auto found = std::find_if(candidates.begin(), candidates.end(),
                                         [&](const std::string& c) { return m_vfs.exists(c); });
         if (found == candidates.end())
