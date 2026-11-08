@@ -129,14 +129,19 @@ Phase **M9** abgeschlossen: Wegnetz-Pfadsuche, Tagesabläufe mit Freepoints, Wah
 Einstellungen, Kameraden, Fliehen, Tier-KI (Rudel, Revier); Fenster „AI“; LOD-Auswahl statischer Modelle (`--lod`).
 Phase **M10** abgeschlossen (Meilenstein B vom Projektinhaber abgenommen): Dialoge (Infos, Antworten, Kamera, Gesten),
 Handel in Gulden, Lehrer, Tagebuch, Kapitel, Platzhalter-Geschichte im Testlager; Sprechtext-Schlüssel (`tools/voice`).
-Phase **M11** weitgehend abgeschlossen: Nahkampf nach Clip-Events, Parade, Bewusstlosigkeit, Plündern, Kampf-KI,
-Fernkampf (Bogen, Armbrust), Kampfkamera; offen: Waffen-Shapecast.
+Phase **M11** abgeschlossen: Nahkampf nach Clip-Events, Parade, Bewusstlosigkeit, Plündern, Kampf-KI,
+Fernkampf (Bogen, Armbrust), Kampfkamera, Waffen-Shapecast, Tierkörper.
 Phase **M12** abgeschlossen: Partikel als Daten, Runen/Spruchrollen/Mana, Wirken des Helden, Beschwörung, Wolfsgestalt,
 Zauber-KI, Brennen; Telekinese und Shader-Effekte nach M17 verschoben.
 Phase **M13** abgeschlossen: miniaudio-Mixer mit Bussen, 3D-Klang mit Verdeckung, Musik- und Ambiente-Zonen, dynamische Musik,
 Stimmen mit Lippensync, Fußschritte nach Material. Dazu: Fackel, Gangarten, NPCs benutzen Mobs (Tisch, Bank, Amboss, Bett),
 Leonberger Handwerker und Händler mit Waren.
-Aktuelle Phase: **M14** (UI und Menüs; zuerst ADR 0009 bestätigen). Inventar mit 3D-Vorschau je Zelle, keine Symbole.
+Phase **M14** abgeschlossen: UI und Menüs (ADR 0009), Inventar mit 3D-Vorschau je Zelle, Stadtplan.
+Phase **M15** abgeschlossen: Speichern/Laden `.g7save` (ADR 0021), Plätze, Schnellspeichern, Autosave, Kapitel 2 in Leonberg.
+Phase **M16** abgeschlossen (vom Projektinhaber abgenommen): Editor mit Undo/Redo, Wegnetz, Zonen/Trigger, Licht/Mobs,
+Routinen und Play-in-Editor, Prefabs, Gelände (ADR 0022/0023).
+Aktuelle Phase: **M17**: Wetter und Wind, Wasser, Post-Processing, Tracy/Perf, Build-Info/Absturzberichte/ZIP fertig;
+Magie-Nachträge (Telekinese, Glühen, Verzerrung) in Arbeit; als Nächstes gekochte Figuren/Animationen (ADR 0025).
 Werkzeug: `gothar --fly`, F3 Flugmodus, F6 Position kopieren (`--cam/--yaw/--pitch`), `--walk` Autopilot.
 Welt-Spur: **W1–W3** abgeschlossen (Maßstab 1:1); **W4** wartet auf Aufnahmen; **W5/W6** laufen (Fachwerk-Leonberg,
 Stil `docs/design/leonberg-stil.md`, prozedurale Texturen auf allen Häusern, Kopfsteinpflaster, Stadtmauer, Schloss, Kirche,
