@@ -420,3 +420,19 @@ every(1.0, function() calls.fn = calls.fn + 1 end) -- a system started when the 
     CHECK(loaded.runString("calls.fn").value().asInteger() >= 1);
     CHECK(loaded.namedTimers().empty());
 }
+
+TEST_CASE("Script: the loaded scripts' global functions, without bindings and the standard library")
+{
+    Files files;
+    files.files["world/triggers.lua"] = "function camp_gate_enter() end\nfunction camp_gate_leave() end\n"
+                                        "local function hidden() end\nanswer = 42\n";
+    ScriptVm vm = makeVm(files);
+    Binding ping;
+    ping.name = "g7_ping";
+    ping.function = [](std::span<const Value>) -> Result<Value> { return Value(); };
+    vm.bind(std::move(ping));
+    CHECK(vm.loadAll() == 1);
+    REQUIRE(vm.runString("function console_helper() end").ok());
+    const std::vector<std::string> names = vm.scriptFunctions();
+    CHECK(names == std::vector<std::string>{"camp_gate_enter", "camp_gate_leave", "console_helper"});
+}

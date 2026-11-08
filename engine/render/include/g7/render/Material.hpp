@@ -169,6 +169,14 @@ public:
     void drawBatched(Device& device, std::span<const MeshDrawItem> items, const Camera& camera);
     /// drawShadow() for many objects, grouped the same way.
     void drawShadowBatched(Device& device, std::span<const MeshDrawItem> items, const Cascade& cascade);
+    /// Depth prepass (M17 P3): the opaque and alpha-tested submeshes' depth from `camera` into the bound
+    /// target, pushed a little further away (depth bias), so the main pass (GreaterEqual) draws the same
+    /// surfaces again.
+    void drawDepthBatched(Device& device, std::span<const MeshDrawItem> items, const Camera& camera);
+    /// The ambient occlusion the shaders read at unit 8 (M17 P3); nullptr: none (white).
+    void setAmbientOcclusion(const rhi::Texture* texture) noexcept { m_ambientOcclusion = texture; }
+    /// The rain map the shaders read at unit 9 for wet surfaces (M17 N); nullptr: none.
+    void setRainMap(const rhi::Texture* texture) noexcept { m_rainMap = texture; }
     [[nodiscard]] const BatchStats& lastBatch() const noexcept { return m_batch; }
     /// Starts a frame for the batched passes (rotates their buffers). Call once per frame before them.
     void beginFrame() noexcept;
@@ -209,10 +217,16 @@ private:
     rhi::ShaderProgram* m_alphaTestProgram = nullptr;        // owned by the ShaderLibrary
     std::array<rhi::Pipeline, VariantCount * 2> m_pipelines; // [variant][culled, double-sided]
     rhi::Sampler m_sampler;
+    rhi::Sampler m_aoSampler;     // linear, clamped (M17 P3)
     rhi::Buffer m_lightingBuffer; // GpuLighting, uniform block binding 0
     rhi::ShaderProgram* m_shadowProgram = nullptr;
     rhi::ShaderProgram* m_shadowAlphaTestProgram = nullptr;
     std::array<rhi::Pipeline, 2> m_shadowPipelines; // [opaque, alpha test]
+    std::array<rhi::Pipeline, 2> m_depthPipelines;  // the same for the depth prepass (reverse-Z, M17 P3)
+    bool m_depthPass = false;                       // the shadow draws go to the depth prepass
+    const rhi::Texture* m_ambientOcclusion = nullptr;
+    const rhi::Texture* m_rainMap = nullptr;
+    void bindAmbientOcclusion(Device& device) const;
     const ShadowMap* m_shadowMap = nullptr;
     const LightList* m_lights = nullptr;
     std::vector<u32> m_selected;
@@ -242,6 +256,7 @@ private:
     rhi::ShaderProgram* m_multiShadowProgram = nullptr;
     rhi::ShaderProgram* m_multiShadowAlphaTestProgram = nullptr;
     std::array<rhi::Pipeline, 2> m_multiShadowPipelines;
+    std::array<rhi::Pipeline, 2> m_multiDepthPipelines;
     // Per frame one of three buffer sets; every pass of the frame appends behind the previous one, so
     // no buffer is rewritten while the GPU may still read it (drivers would stall on that).
     struct BatchBuffers

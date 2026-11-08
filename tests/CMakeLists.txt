@@ -67,6 +67,7 @@ target_compile_definitions(g7_tests_runtime PRIVATE G7_ASSET_SOURCE_DIR="${PROJE
                                                    G7_GAME_CONFIG="${PROJECT_SOURCE_DIR}/game/config/engine.toml")
 
 g7_add_test_suite(render)
+target_compile_definitions(g7_tests_render PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source")
 g7_add_test_suite(physics)
 g7_add_test_suite(gameplay)
 target_compile_definitions(g7_tests_gameplay PRIVATE G7_ASSET_SOURCE_DIR="${PROJECT_SOURCE_DIR}/assets/source"

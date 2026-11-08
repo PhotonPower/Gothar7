@@ -115,6 +115,11 @@ def inventory_sheet(blender: Path, root: Path, out: Path, only: list[str] | None
     return run_script(blender, "inventory_sheet.py", args)
 
 
+def cmu_retarget(blender: Path, raw: Path, out: Path) -> str:
+    """CMU mocap segments (data/cmu.toml) onto the reference rig (blender/cmu_retarget.py)."""
+    return run_script(blender, "cmu_retarget.py", ["--raw", str(raw), "--out", str(out)])
+
+
 def build_stubble(
     blender: Path, head: Path, texture: Path, out: Path, style: str = "beard_stubble"
 ) -> str:

@@ -214,6 +214,15 @@ Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders
         return sampler.error();
     }
     renderer.m_sampler = std::move(sampler).value();
+    rhi::SamplerDesc aoDesc;
+    aoDesc.mipFilter = rhi::Filter::Nearest;
+    aoDesc.wrapU = aoDesc.wrapV = rhi::Wrap::Clamp;
+    auto aoSampler = device.createSampler(aoDesc);
+    if (!aoSampler)
+    {
+        return aoSampler.error();
+    }
+    renderer.m_aoSampler = std::move(aoSampler).value();
 
     auto shadow = shaders.load("shadow", {"shadow.vert", "shadow.frag", {}});
     auto shadowAlpha = shaders.load("shadow_alpha_test", {"shadow.vert", "shadow.frag", {"ALPHA_TEST"}});
@@ -238,6 +247,14 @@ Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders
             return pipeline.error();
         }
         renderer.m_shadowPipelines[i] = std::move(pipeline).value();
+        desc.depthCompare = rhi::CompareOp::GreaterEqual; // depth prepass: the camera's reverse-Z
+        desc.depthBias = kPrepassBias;
+        auto depth = device.createPipeline(desc);
+        if (!depth)
+        {
+            return depth.error();
+        }
+        renderer.m_depthPipelines[i] = std::move(depth).value();
     }
 
     // Multi-draw variants: the draw index as per-instance attribute 4 (binding 1, divisor 1).
@@ -294,6 +311,14 @@ Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders
             return pipeline.error();
         }
         renderer.m_multiShadowPipelines[i] = std::move(pipeline).value();
+        desc.depthCompare = rhi::CompareOp::GreaterEqual;
+        desc.depthBias = kPrepassBias;
+        auto depth = device.createPipeline(desc);
+        if (!depth)
+        {
+            return depth.error();
+        }
+        renderer.m_multiDepthPipelines[i] = std::move(depth).value();
     }
 
     // Skinned variants (M6): the same shaders with SKINNED, the SkinnedMesh layout, bones in block 2.
@@ -417,6 +442,13 @@ void MeshRenderer::drawSubmesh(Device& device, const Mesh& mesh, usize submesh, 
     mesh.draw(device, submesh);
 }
 
+void MeshRenderer::bindAmbientOcclusion(Device& device) const
+{
+    device.bindTexture(8, m_ambientOcclusion != nullptr ? *m_ambientOcclusion : m_defaults->white,
+                       m_aoSampler);
+    device.bindTexture(9, m_rainMap != nullptr ? *m_rainMap : m_defaults->white, m_aoSampler); // M17 N
+}
+
 void MeshRenderer::bindLighting(Device& device) const
 {
     device.bindUniformBuffer(0, m_lightingBuffer);
@@ -424,6 +456,7 @@ void MeshRenderer::bindLighting(Device& device) const
     {
         device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
     }
+    bindAmbientOcclusion(device);
 }
 
 void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& materials, const Mat4& model,
@@ -435,6 +468,7 @@ void MeshRenderer::draw(Device& device, const Mesh& mesh, const MaterialSet& mat
     {
         device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
     }
+    bindAmbientOcclusion(device);
     m_selected.clear();
     if (m_lights)
     {
@@ -484,6 +518,7 @@ void MeshRenderer::drawSkinned(Device& device, const SkinnedMesh& mesh, const Ma
     {
         device.bindTexture(3, m_shadowMap->texture(), m_shadowMap->sampler());
     }
+    bindAmbientOcclusion(device); // also the rain map (wet figures, M17 N)
     m_selected.clear();
     if (m_lights)
     {
@@ -572,7 +607,7 @@ void MeshRenderer::drawShadow(Device& device, const Mesh& mesh, const MaterialSe
             continue;
         }
         const bool alphaTest = material.alphaMode == asset::AlphaMode::Mask;
-        device.bindPipeline(m_shadowPipelines[alphaTest ? 1 : 0]);
+        device.bindPipeline((m_depthPass ? m_depthPipelines : m_shadowPipelines)[alphaTest ? 1 : 0]);
         mesh.bind(device);
         if (alphaTest)
         {

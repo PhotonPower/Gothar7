@@ -1122,6 +1122,70 @@ Result<WorldFile> parseWorldFile(std::string_view text, std::string_view source)
     return world;
 }
 
+bool zoneContains(const ZoneBox& box, const Vec3& point) noexcept
+{
+    // Into the box's own axes: local +X = (cos yaw, 0, -sin yaw), local +Z = (sin yaw, 0, cos yaw).
+    const Vec3 d = point - box.center;
+    const f32 yaw = glm::radians(box.yawDegrees);
+    const f32 c = std::cos(yaw);
+    const f32 s = std::sin(yaw);
+    const Vec3 local(d.x * c - d.z * s, d.y, d.x * s + d.z * c);
+    return std::abs(local.x) <= box.halfExtents.x && std::abs(local.y) <= box.halfExtents.y &&
+           std::abs(local.z) <= box.halfExtents.z;
+}
+
+const Zone* smallestZone(std::span<const Zone> zones, std::string_view type, const Vec3& point,
+                         f32* volume) noexcept
+{
+    const Zone* best = nullptr;
+    f32 bestVolume = 0.0f;
+    for (const Zone& z : zones)
+    {
+        if (z.type != type || !z.box || !zoneContains(*z.box, point))
+        {
+            continue;
+        }
+        const f32 v = z.box->halfExtents.x * z.box->halfExtents.y * z.box->halfExtents.z;
+        if (best == nullptr || v < bestVolume)
+        {
+            best = &z;
+            bestVolume = v;
+        }
+    }
+    if (volume != nullptr)
+    {
+        *volume = bestVolume;
+    }
+    return best;
+}
+
+Result<void> checkZone(const Zone& zone, std::string_view where)
+{
+    if (zone.type.empty())
+    {
+        return Error{std::format("{}: needs 'type'", where)};
+    }
+    if (zone.type != "indoor" && zone.type != "music" && zone.type != "ambient")
+    {
+        return {}; // kept as it is
+    }
+    if (zone.value.empty())
+    {
+        return Error{std::format("{}: a {} zone needs 'value'", where, zone.type)};
+    }
+    if (!zone.box)
+    {
+        return Error{std::format("{}: a {} zone needs 'box'", where, zone.type)};
+    }
+    const Vec3& h = zone.box->halfExtents;
+    if (!(h.x > 0.0f && h.y > 0.0f && h.z > 0.0f) || !std::isfinite(h.x + h.y + h.z) ||
+        !std::isfinite(zone.box->center.x + zone.box->center.y + zone.box->center.z + zone.box->yawDegrees))
+    {
+        return Error{std::format("{}.box.halfExtents: must be positive", where)};
+    }
+    return {};
+}
+
 bool isGenerated(const WorldFile& world, VobId id) noexcept
 {
     return std::any_of(world.generatorOwned.begin(), world.generatorOwned.end(), [&](const auto& range)

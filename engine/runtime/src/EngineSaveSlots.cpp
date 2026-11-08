@@ -37,7 +37,8 @@ std::string Engine::saveBlocker() const
 {
     // S1: anywhere, also in a fight - not in a dialogue, at a mob, under water, falling, in a menu world or
     // while loading.
-    if (!m_hero || !m_player.valid() || m_worldPath.empty() || m_menuMode || m_loadJob)
+    // Not in play-in-editor (M16 part E): its game is thrown away at the end, and the saves are the owner's.
+    if (!m_hero || !m_player.valid() || m_worldPath.empty() || m_menuMode || m_loadJob || m_playSnapshot)
     {
         return "UI_SAVE_NOT_HERE";
     }
@@ -445,6 +446,10 @@ void Engine::updatePlayTime(f64 realSeconds)
 
 void Engine::saveKeys()
 {
+    if (!m_tools.empty())
+    {
+        return; // the editor (F5: play-in-editor, M16 part E) - no saving, no loading
+    }
     if (m_actions.pressed(m_input, platform::Action::QuickSave))
     {
         if (const std::string blocked = saveBlocker(); !blocked.empty())

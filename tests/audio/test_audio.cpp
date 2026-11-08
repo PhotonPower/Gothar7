@@ -262,3 +262,28 @@ loop = "amb_wind"
     CHECK_FALSE(parseAmbientDefs("[x]\nfade = 1\n", "a").ok());
     CHECK_FALSE(parseAmbientDefs("[x]\nloop = \"a\"\ninterval = [20, 8]\n", "a").ok());
 }
+
+TEST_CASE("audio: a muffled bus loses its highs, open again it sounds as before (under water, M17 W3)")
+{
+    AudioSystem audio = mixer();
+    REQUIRE(audio.addClip("music/high.wav", sineWav(1.0f, 6000.0f)).ok());
+    SoundDef music;
+    music.files = {"music/high.wav"};
+    music.loop = true;
+    music.bus = Bus::Music;
+    REQUIRE(audio.play(music).ok()); // 2D: no filter of its own
+    audio.update(0.2f);
+    audio.update(0.1f);
+    const f32 open = audio.lastPeak();
+    REQUIRE(open > 0.1f);
+    audio.setBusMuffle(Bus::Music, 1.0f);
+    CHECK(audio.busMuffle(Bus::Music) == doctest::Approx(1.0f));
+    CHECK(audio.busMuffle(Bus::Effects) == doctest::Approx(0.0f));
+    audio.update(0.1f);
+    audio.update(0.1f);
+    CHECK(audio.lastPeak() < open * 0.2f);
+    audio.setBusMuffle(Bus::Music, 0.0f);
+    audio.update(0.1f);
+    audio.update(0.1f);
+    CHECK(audio.lastPeak() == doctest::Approx(open).epsilon(0.02));
+}

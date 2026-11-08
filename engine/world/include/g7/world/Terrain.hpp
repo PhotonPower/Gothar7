@@ -3,6 +3,7 @@
 // Heightmap terrain of a world (M4): the heights the "terrain" block (TerrainRef.hpp) points to.
 // Contract with the world track: docs/modules/world.md ("Gelände"), docs/coordination.md.
 
+#include <g7/core/FileSystem.hpp>
 #include <g7/core/Geometry.hpp>
 #include <g7/core/Math.hpp>
 #include <g7/core/Result.hpp>
@@ -48,6 +49,16 @@ public:
 
     [[nodiscard]] const TerrainRef& ref() const noexcept { return m_ref; }
     [[nodiscard]] render::HeightfieldDesc renderDesc() const noexcept;
+
+    // Writing (the editor's height brush, M16 part F2, ADR 0023).
+    [[nodiscard]] std::span<const u16> samples() const noexcept { return m_samples; }
+    /// Sample (column, row) as stored (0 .. 65535 between minY and maxY); clamped to the grid.
+    [[nodiscard]] u16 sample(i32 column, i32 row) const noexcept;
+    void setSample(i32 column, i32 row, u16 value) noexcept; ///< outside the grid: nothing
+    /// Sets a height in metres, clamped to minY .. maxY of the block (the range of the .r16).
+    void setSampleHeight(i32 column, i32 row, f32 y) noexcept;
+    /// The .r16 file: uint16 little endian, row by row (as read).
+    [[nodiscard]] Result<void> saveR16(const fs::Path& path) const;
 
 private:
     TerrainRef m_ref;

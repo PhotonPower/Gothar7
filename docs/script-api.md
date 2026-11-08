@@ -238,6 +238,9 @@ Die Fackel des Helden ist aus (weggesteckt, fallen gelassen, im Wasser).
 ### `on("voice_line", fn(npc: string, key: string, seconds: number))`
 Eine Zeile wird gesprochen (es gibt ihren Take voice/<sprache>/<key>.wav).
 
+### `on("weather_changed", fn(old: string, new: string))`
+Die Wetterlage hat gewechselt (Ablauf aus data/weather.toml; nicht bei set_weather).
+
 ### `on("world_loaded", fn(world: string, restored: boolean))`
 Nachdem eine Welt geladen ist (auch nach einem Weltwechsel); `world` ist ihr Pfad. `restored`: die Welt kommt aus einem Spielstand bzw. einem gespeicherten Zustand – ihre NPCs sind schon da, Inhalte setzen dann niemanden ein (M15).
 
@@ -593,14 +596,26 @@ Weltwechsel wie ein Trigger mit `changeWorld` (M15 Teil E): lädt die Welt (VFS-
 ### `insert(instance: string, count?: integer) -> boolean`
 Setzt ein Item (vor der Spielfigur auf den Boden, `count` Stück nebeneinander) oder einen NPC (vor die Spielfigur, ihr zugewandt) in die Welt. Ohne `mesh` erhält ein Item einen Platzhalter nach `category`.
 
+### `lightning(distance?: number, direction?: number)`
+Ein Blitz jetzt (Story, Prüfbilder), `distance` Meter entfernt (Vorgabe 800, 50 bis 5000), in Richtung `direction` Grad (0 = -Z wie yaw 0, Vorgabe wechselnd); nahe und mittlere zeigen ihren Strahl am Himmel. Der Donner folgt nach Entfernung / 343 m/s – auch ohne Gewitter.
+
+### `lock_weather(locked: boolean)`
+Hält die Wetterlage fest (eine Story-Szene): der Ablauf wechselt nicht, set_weather wirkt weiter.
+
 ### `notice(text: string)`
 Eine kurze Meldung am Bildschirm (Tagebuch-Einträge, Kapitel, Hinweise).
+
+### `set_weather(name: string, minutes?: number) -> boolean`
+Setzt die Wetterlage (data/weather.toml), mit Übergang über `minutes` Spielminuten (ohne: sofort); der Ablauf geht von ihr aus weiter. false bei unbekannter Lage.
 
 ### `teleport(start: string) | teleport(x: number, y: number, z: number)`
 Setzt die Spielfigur (bzw. ohne Spielfigur die Kamera) auf einen Startpunkt der Welt oder an eine Position in Metern.
 
 ### `time(hour: integer, minute?: integer)`
 Stellt die Uhrzeit des Spiels (der Tag bleibt).
+
+### `weather() -> {name, rain, clouds, wind, locked, next}`
+Die Wetterlage jetzt: Name, Regen, Bewölkung und Wind (0..1, im Übergang gemischt), ob sie gesperrt ist, und in wie vielen Spielminuten der Ablauf wieder entscheidet.
 
 ### `where() -> {x, y, z, yaw, world, time, day}`
 Position (Meter) und Blickrichtung (Grad) der Spielfigur bzw. der Kamera, die Welt, der Spieltag (ab 1) und die Uhrzeit.

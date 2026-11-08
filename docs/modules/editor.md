@@ -5,6 +5,85 @@ entschieden). Grundlage ist der Editor-Modus aus M4 (`gothar --editor`,
 `tools/editor`, Beschreibung in `docs/modules/tools.md` „Editor“). M16 macht daraus ein Werkzeug, mit dem sich ein
 neuer Ort samt Wegnetz, Zonen und NPC-Routinen **ohne Texteditor** bauen lässt (DoD der Roadmap).
 
+## Umsetzungsstand
+| Teil | PR | Stand |
+|---|---|---|
+| A – Befehle, Undo/Redo, Schutz erzeugter Daten | #355 | umgesetzt |
+| B – Wegnetz-Editor | #359 | umgesetzt |
+| C – Zonen- und Trigger-Editor | #361 | umgesetzt |
+| D – Licht- und Mob-Editor | #362 | umgesetzt |
+| E – Routinen-Vorschau und Play-in-Editor | #367 | umgesetzt |
+| F1 – Prefabs, Vobs aus Blender (`VOB_`) | #371 | umgesetzt |
+| F2 – Gelände (Höhen-Pinsel, Mesh → Heightmap) | dieser PR | umgesetzt |
+
+Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
+- **A:** Befehle sind Daten statt Klassen mit `apply`/`revert`: `editor::Command` hält `VobState` (Zeile der
+  Weltdatei je berührtem Vob, Kinder eingeschlossen) vorher und nachher; `History::undo/redo` setzt sie ein
+  (`world::captureVob`/`restoreVob`). Es gibt kein `Ownership.hpp`: Vobs prüft `world::isGenerated`, das Wegnetz
+  `isGeneratedEntry`; die Fragen stellt der Editor (`Editor::confirmation`). Die Eigentumsfälle stehen in den
+  GPU-Tests statt in `test_ownership.cpp`.
+- **B:** Taste G (N ist das Tagebuch). Befehle halten Momentaufnahmen der berührten Wegnetz-Einträge und ihrer
+  Kanten (`WaynetSnapshot`); jede Änderung geht über `Engine::setWaynet`. Das Gizmo verschiebt nur, die
+  Blickrichtung eines Freepoints steht im Fenster. Doppelte oder ungültige Namen weist schon die Bearbeitung ab
+  (`normalizeWaynet`), sie stehen deshalb nicht in der Prüfliste. Die Prüfungen sind in `test_waynet_edit.cpp`
+  getestet. Gelöschte erzeugte Punkte: Der Editor zeigt die Zeile für welts `waynet.json` „remove“ zum Kopieren und
+  schreibt die Datei nicht (Entscheidung 2).
+- **C:** Taste V. Ein Zonen-Befehl hält den ganzen `zones`-Block vorher und nachher (wenige hundert Boxen); jede
+  Änderung geht über `Engine::setZones` (geprüft wie beim Lesen), Räume, Musik und Ambiente folgen im nächsten
+  Frame. Die Musik misst ohne Spielfigur jetzt an der Kamera (wie in `world.md` beschrieben, galt bisher nur für
+  das Ambiente). Trigger sind Vobs: Gizmo und Inspektor des Vob-Modus; neu sind Auswahllisten (Form, Filter,
+  Skriptfunktionen aus `Engine::scriptFunctions`, Welten, Startpunkte der Zielwelt) und die Prüfung im Fenster
+  „Zones & triggers“ (unbekannte Funktion, fehlende Welt oder fehlender Startpunkt, Trigger ohne Wirkung).
+- **D:** Neue Lichter kommen aus Vorlagen (`LightEdit.hpp`: Feuer, Fackel, Kerze, Lampe, Fenster). Nach
+  `refreshScene` sind sie sofort in der Lichtauswahl des nächsten Bildes (E1, im GPU-Test geprüft). Der
+  Tageszeit-Regler setzt die Spielzeit nur für die Darstellung (`GameTime::setTime`, die Welt speichert keine Zeit).
+  Der Hinweis zeigt die Lichter im Bild gegen `max_lights` sowie Welt- und Fensterlichter.
+  - Mobs: Die Definition kommt nur aus der Liste (Lua-`Mob`-Definitionen und Typen aus `mobs.toml`). Besitzer,
+    Schloss, Schlüssel und Inhalt gehören der Lua-Definition (Mechanik in C++, Inhalt in Lua). Der Editor zeigt sie
+    und prüft sie gegen NPCs, Gilden (`Guilds`) und Items, statt sie zu bearbeiten.
+  - „Tür offen“ gibt es nur für Türen. Die Slots des Typs stehen als Marker an der Auswahl.
+  - Die Listen kommen über die Engine (`Engine::mobDefinitions`, `mobTypeNames`, `mobTypeSlots`,
+    `scriptInstanceNames`, `guildNames`, `lightBudget`).
+- **E:** Die Engine liefert reine Abfragen ohne Nebenwirkung: `Engine::routines()` (die `Routine`-Instanzen mit
+  Datei), `npcRoutines()`, `routinePlace(ort)`, `scriptGlobalNames("zs_")`. Der Eintrag zu einer Minute steht im
+  Editor (`RoutinePreview.hpp`, `entryAt`), nicht als `Engine::routineAt`.
+  - Geister: Marker mit Name und Zustand. Das NPC der gewählten Routine steht als seine echte Figur in Ruhepose
+    da (`Engine::setGhostFigure`: dieselbe Figur wie beim Einsetzen, mit den Kreaturen gezeichnet, ohne KI, kein
+    Teil des Spiels), zur Kamera gedreht. Den Clip des Zustands gibt es nicht: Die `zs_`-Zustände spielen ihre
+    Animationen in Lua, die Engine kennt keine feste Zuordnung Zustand → Clip.
+  - Geprüft werden nur die Routinen, denen NPCs dieser Welt folgen, und die der Editor-Datei.
+  - Routinen bearbeiten: Die Datei heißt nach der Weltdatei (`routines/<ort>_editor.lua`). Ein NPC bekommt seine
+    Routine weiter in seiner `Npc`-Instanz (`routine = "rtn_…"`). Der Editor legt nur die Routinen an und füllt sie.
+    Lesen und Schreiben sind reine Funktionen (`RoutineEdit.hpp`, Rundreise im Test). `Engine::writeScript`
+    schreibt die Datei in den Skriptordner (`EngineConfig::extraScriptDirectory` für Tests) und lädt die Skripte
+    neu. Routinen-Schritte sind Befehle wie alle anderen (Momentaufnahme der Editor-Routinen).
+  - Play-in-Editor: Es gibt kein `PlayInEditor.hpp`. Der Schnappschuss ist der Spielstand aus M15
+    (`captureGame`/`applyGame`) im Speicher der Engine (`Engine::startPlay`/`stopPlay`), nicht die Befehls-JSON
+    aus A: So kommen auch NPCs, Story und Zeit zurück. Wegnetz und Zonen des Editors gibt der Editor danach wieder
+    an die Engine.
+  - Weil F5 auch Schnellspeichern ist: Mit Editor speichert und lädt F5/F9 nicht, und während Play-in-Editor sperrt
+    `saveBlocker` jedes Speichern (die Spielstände gehören dem Projektinhaber).
+- **F1:** Teil F ist geteilt, wie der Koordinator es erlaubt: Prefabs und Blender-Vobs in einem PR, das Gelände im
+  nächsten.
+  - Eine Vorlage ist der gewählte Vob mit seinen Kindern; der Editor hat eine Einzelauswahl, Gruppen sind Eltern
+    mit Kindern. Die Datei `.g7prefab` ist das `.g7world`-Format (eine kleine Welt), es gibt kein eigenes JSON.
+  - Wegnetz-Einträge kommen mit, wenn sie bis 2 m (waagrecht) neben einem Vob der Vorlage liegen.
+  - Der Ordner ist `assets/source/prefabs` auf der Platte (`Editor::setPrefabDirectory` für Tests). Er wird direkt
+    gelesen, nicht über das VFS.
+  - `VOB_`-Knoten: Licht, Startpunkt, Trigger; Vertrag in `asset.md`. Die Engine reicht die leeren Knoten als
+    einfache Werte durch (`Engine::modelMarkers`, `asset::loadGltfMarkers`), da der Editor `asset` nicht direkt
+    nutzen darf.
+- **F2:**
+  - Die Engine bietet `editableHeightfield()` (null bei Sperre), `terrainHeightsChanged()` (lädt die Höhentextur
+    neu und berechnet die Kachel-Grenzen, `TerrainRenderer::updateHeights`), `terrainStrokeFinished()` (baut die
+    Kollision sofort neu, der Editor pausiert die Simulation), `terrainSplat(map)` (RGBA-Bytes der Splat-Karte auf
+    der CPU, dieselben wie für die Fußschritte), `terrainSplatChanged()` und `saveTerrain()`.
+  - Statt eines Teil-Updates der Kacheln lädt `updateHeights` die ganze Höhentextur neu: Eigene Orte sind klein,
+    und Leonberg ist gesperrt.
+  - Gesperrt ist jede Welt mit `generator`-Kopf, nicht nur Leonberg.
+  - Splat-Malen schreibt PNG. Gekochte `.ktx2`-Kopien gelten weiter, bis neu gekocht wird; die Engine warnt dann.
+  - Die Pinsel-Mathematik steht in `TerrainBrush.hpp`, ohne Fenster getestet.
+
 ## Ausgangslage (M4)
 - `g7_editor` (Bibliothek in `tools/editor`) ist ein `EngineTool`. Die Engine kennt nur `update`/`ui`. Fenster sind
   `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 0015).

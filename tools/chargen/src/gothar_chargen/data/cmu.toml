@@ -1,0 +1,14 @@
+# CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.edu), F4: segments retargeted onto the
+# reference rig by `gothar-chargen cmu` (blender/cmu_retarget.py) into
+# DATA_ROOT/characters/cmu/cmu_combat.blend (source library "cmu" of the clip sets).
+# Frames at 120 fps, inclusive; the licence and the takes per clip are in assets/LICENSES.md.
+
+[segment.fist_jab]          # subject 143 "Punching", left straight at frame 600
+take = "143_23"
+start = 548
+end = 656
+
+[segment.fist_cross_low]    # subject 2 "punch/strike", low right at frame 1388
+take = "02_05"
+start = 1328
+end = 1448

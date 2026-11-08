@@ -110,6 +110,45 @@ f32 Heightfield::sampleHeight(i32 column, i32 row) const noexcept
     return decodeHeight(m_samples[r * m_ref.width + c], m_ref.minY, m_ref.maxY);
 }
 
+u16 Heightfield::sample(i32 column, i32 row) const noexcept
+{
+    if (m_samples.empty())
+    {
+        return 0;
+    }
+    const auto c = static_cast<usize>(std::clamp(column, 0, static_cast<i32>(m_ref.width) - 1));
+    const auto r = static_cast<usize>(std::clamp(row, 0, static_cast<i32>(m_ref.height) - 1));
+    return m_samples[r * m_ref.width + c];
+}
+
+void Heightfield::setSample(i32 column, i32 row, u16 value) noexcept
+{
+    if (column < 0 || row < 0 || column >= static_cast<i32>(m_ref.width) ||
+        row >= static_cast<i32>(m_ref.height))
+    {
+        return;
+    }
+    m_samples[static_cast<usize>(row) * m_ref.width + static_cast<usize>(column)] = value;
+}
+
+void Heightfield::setSampleHeight(i32 column, i32 row, f32 y) noexcept
+{
+    const f32 t = std::clamp((y - m_ref.minY) / (m_ref.maxY - m_ref.minY), 0.0f, 1.0f);
+    setSample(column, row, static_cast<u16>(std::lround(t * 65535.0f)));
+}
+
+Result<void> Heightfield::saveR16(const fs::Path& path) const
+{
+    std::vector<u8> bytes;
+    bytes.reserve(m_samples.size() * 2);
+    for (const u16 v : m_samples)
+    {
+        bytes.push_back(static_cast<u8>(v & 0xFF)); // little endian, as read
+        bytes.push_back(static_cast<u8>(v >> 8));
+    }
+    return fs::writeFileAtomic(path, bytes);
+}
+
 f32 Heightfield::heightAt(f32 x, f32 z) const noexcept
 {
     if (m_samples.empty())
