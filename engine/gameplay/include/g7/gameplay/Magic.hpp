@@ -49,11 +49,12 @@ struct SpellInfo
     bool burn = false;                                      ///< sets the target burning (decision B)
     std::map<std::string, std::string, std::less<>> sounds; ///< cast, impact (data/sounds.toml, M13)
     // Telekinesis (M17 part T): 0 = the TelekinesisSettings default
-    f32 manaPerSecond = 0.0f; ///< while held
-    f32 range = 0.0f;         ///< metres to aim at an item
-    f32 speed = 0.0f;         ///< m/s floating
-    f32 lift = 0.0f;          ///< metres it rises first
-    f32 carry = 0.0f;         ///< largest item extent (metres)
+    f32 manaPerSecond = 0.0f;       ///< while held
+    f32 range = 0.0f;               ///< metres to aim at an item
+    f32 speed = 0.0f;               ///< m/s floating
+    f32 lift = 0.0f;                ///< metres it rises first
+    f32 carry = 0.0f;               ///< largest item extent (metres)
+    std::optional<f32> blockedDrop; ///< seconds blocked until it falls (unset: the default; 0: never)
 };
 
 /// The Spell instance's fields.

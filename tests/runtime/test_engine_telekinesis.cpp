@@ -99,6 +99,7 @@ TEST_CASE("Engine telekinesis: held, the item floats into the inventory, costing
     CHECK(spell->kind == gameplay::SpellKind::Telekinesis);
     CHECK(spell->circle == 2);
     CHECK(spell->manaPerSecond == doctest::Approx(2.0f));
+    CHECK(spell->blockedDrop == std::optional<f32>(1.0f)); // owner decision 2026-11-08: stuck 1 s, it falls
     CHECK(engine.spellOfItem("it_scroll_telekinesis").has_value());
     CHECK(run(engine, "telekinesis_allowed('it_apple')").asBool());
 

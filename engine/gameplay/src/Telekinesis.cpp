@@ -77,6 +77,7 @@ TelekinesisFlight::Phase TelekinesisFlight::carry(f32 seconds, const Vec3& hand,
         step = to / distance * std::min(m_settings.speed * seconds, distance);
     }
     const f32 length = glm::length(step);
+    const Vec3 wanted = step;
     if (length > 1e-6f && sweep)
     {
         if (const auto wall = sweep(m_position, step / length, length))
@@ -89,6 +90,16 @@ TelekinesisFlight::Phase TelekinesisFlight::carry(f32 seconds, const Vec3& hand,
         }
     }
     m_position += step;
+    // Barely moving although it should: blocked (it falls after blockedDrop seconds).
+    const f32 wantedLength = glm::length(wanted);
+    if (wantedLength > 1e-6f && glm::length(step) < m_settings.blockedShare * wantedLength)
+    {
+        m_blocked += seconds;
+    }
+    else
+    {
+        m_blocked = 0.0f;
+    }
     if (m_phase == Phase::Float && glm::length(hand - m_position) <= m_settings.arrive)
     {
         m_phase = Phase::Arrived;

@@ -27,6 +27,10 @@ struct TelekinesisSettings
     f32 gravity = 9.81f;      ///< falling
     f32 spin = 0.8f;          ///< radians per second about the vertical while carried
     f32 manaPerSecond = 2.0f; ///< decision 1
+    /// Owner decision 2026-11-08: blocked this long (barely moving) while carried, it falls; 0: never.
+    f32 blockedDrop = 1.0f;
+    /// A step that covers less than this share of its way counts as blocked.
+    f32 blockedShare = 0.2f;
 };
 
 /// An item the hero might move: its vob id, the middle of its bounds and its largest extent.
@@ -82,6 +86,11 @@ public:
     [[nodiscard]] f32 spin() const noexcept { return m_spin; }
     /// Too far from the hand to hold (range times leash).
     [[nodiscard]] bool outOfReach(const Vec3& hand) const noexcept;
+    /// Held against an obstacle for blockedDrop seconds: it should fall (owner decision 2026-11-08).
+    [[nodiscard]] bool stuck() const noexcept
+    {
+        return m_settings.blockedDrop > 0.0f && m_blocked >= m_settings.blockedDrop;
+    }
 
 private:
     TelekinesisSettings m_settings;
@@ -90,6 +99,7 @@ private:
     f32 m_spin = 0.0f;
     f32 m_fallSpeed = 0.0f;
     f32 m_groundY = 0.0f;
+    f32 m_blocked = 0.0f; ///< seconds in a row it barely moved
     Phase m_phase = Phase::Lift;
 };
 } // namespace g7::gameplay

@@ -44,6 +44,7 @@ gameplay::TelekinesisSettings settingsOf(const gameplay::SpellInfo& spell)
     s.speed = spell.speed > 0.0f ? spell.speed : s.speed;
     s.lift = spell.lift > 0.0f ? spell.lift : s.lift;
     s.maxSize = spell.carry > 0.0f ? spell.carry : s.maxSize;
+    s.blockedDrop = spell.blockedDrop.value_or(s.blockedDrop);
     return s;
 }
 
@@ -304,7 +305,7 @@ void Engine::fixedUpdateTelekinesis(f32 seconds)
     const bool hit = m_hero != nullptr && m_hero->attribute("hp") < t.hp;
     const i32 due = gameplay::telekinesisManaDue(t.manaCarry, t.settings.manaPerSecond, seconds);
     const bool spent = m_hero == nullptr || m_hero->attribute("mana") < due;
-    if (!held || hit || spent || t.flight.outOfReach(hand))
+    if (!held || hit || spent || t.flight.outOfReach(hand) || t.flight.stuck())
     {
         m_heroCast.reset();
         dropTelekinesis();
