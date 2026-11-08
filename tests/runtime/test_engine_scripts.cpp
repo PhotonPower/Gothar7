@@ -1042,3 +1042,47 @@ TEST_CASE("Engine world: a door open in the world file stands open and is saved 
             "d")
             .ok());
 }
+
+TEST_CASE("Engine AI LOD by count: the nearest max_simulated NPCs, talking ones always")
+{
+    EngineConfig config = scriptConfig();
+    config.settings.set<i64>("ai.max_simulated", 2);
+    Engine engine(std::move(config));
+    REQUIRE(engine.init().ok());
+    run(engine, "teleport(34, 0, 0)");
+    // Four of them in a row west of the player: 24, 14, 8 and 4 m away (the first inserted farthest).
+    const f32 xs[] = {10.0f, 20.0f, 26.0f, 30.0f};
+    std::vector<std::string> names;
+    for (const f32 x : xs)
+    {
+        names.emplace_back(run(engine, "insert_npc('npc_old_man', 'wp_camp_center')").asString());
+        run(engine, std::format("set_routine('{0}', '') npc_clear('{0}') npc_teleport('{0}', {1}, 0, 0)",
+                                names.back(), x));
+    }
+    const auto simulated = [&](const std::string& name)
+    { return run(engine, std::format("npc_state('{}').simulated", name)).asBool(); };
+    runSeconds(engine, 0.5f);
+    CHECK_FALSE(simulated(names[0]));
+    CHECK_FALSE(simulated(names[1]));
+    CHECK(simulated(names[2]));
+    CHECK(simulated(names[3]));
+
+    // Talking to the farthest: it is simulated and takes a place first, the farther of the near ones drops
+    // out.
+    const auto first = engine.npcByInstance("npc_old_man");
+    REQUIRE(first);
+    REQUIRE(engine.startDialog(*first).ok());
+    runSeconds(engine, 0.5f);
+    CHECK(simulated(names[0]));
+    CHECK_FALSE(simulated(names[1]));
+    CHECK_FALSE(simulated(names[2]));
+    CHECK(simulated(names[3]));
+
+    // The player walks over to the second (2 m): it is the nearest now, the one he left (12 m) drops out.
+    run(engine, "teleport(18, 0, 0)");
+    runSeconds(engine, 0.5f);
+    CHECK(simulated(names[0])); // still talking
+    CHECK(simulated(names[1]));
+    CHECK_FALSE(simulated(names[2]));
+    CHECK_FALSE(simulated(names[3]));
+}
