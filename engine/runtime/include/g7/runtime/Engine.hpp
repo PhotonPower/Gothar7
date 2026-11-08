@@ -750,6 +750,10 @@ public:
     /// The weather (M17 E1): its state and course, and what it is at the current game time.
     [[nodiscard]] const world::Weather& weather() const noexcept { return m_weather; }
     [[nodiscard]] world::WeatherSample weatherNow() const { return m_weather.sample(m_gameTime.clock()); }
+    /// Wind (M17 W): the wind the shaders and particles get this frame - direction, strength and gusts from
+    /// the weather; strength 0 with [render] wind = false (vegetation and signs stand still).
+    [[nodiscard]] render::WindFrame windNow() const;
+    [[nodiscard]] bool windEnabled() const noexcept { return m_windEnabled; }
     /// Rain (M17 R): streaks drawn last frame (0: dry or [render] weather = false) and the rain map.
     [[nodiscard]] u32 rainStreaksDrawn() const noexcept { return m_rainDrawn; }
     /// Thunderstorm (M17 G): flashes so far, the last one, how bright it lights the world now (0..1), the
@@ -1671,6 +1675,8 @@ private:
     render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
     bool m_weatherVisible = true;                                    // [render] weather
     f64 m_rainTime = 0.0;
+    bool m_windEnabled = true;               // [render] wind (M17 W)
+    f64 m_windTime = 0.0;                    // real seconds, wrapped; moves the sway and the gusts
     world::LightningStorm m_storm;           // M17 G
     std::optional<world::Lightning> m_flash; // the last flash
     f64 m_stormClock = 0.0;                  // simulation seconds (flash times)

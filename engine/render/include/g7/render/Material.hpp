@@ -8,6 +8,7 @@
 #include <g7/render/Lighting.hpp>
 #include <g7/render/Shadows.hpp>
 #include <g7/render/TextureCache.hpp>
+#include <g7/render/Wind.hpp>
 #include <g7/render/rhi/Resources.hpp>
 
 #include <array>
@@ -39,6 +40,7 @@ struct Material
     f32 alphaCutoff = 0.5f;
     asset::AlphaMode alphaMode = asset::AlphaMode::Opaque;
     bool doubleSided = false;
+    WindBend wind; ///< M17 W: how it moves in the wind (from the glTF material and the model's bounds)
 };
 
 /// Neutral 1x1 textures shared by every MaterialSet of a renderer: materials without images then use
@@ -177,6 +179,10 @@ public:
     void setAmbientOcclusion(const rhi::Texture* texture) noexcept { m_ambientOcclusion = texture; }
     /// The rain map the shaders read at unit 9 for wet surfaces (M17 N); nullptr: none.
     void setRainMap(const rhi::Texture* texture) noexcept { m_rainMap = texture; }
+    /// The frame's wind (M17 W) for every following draw, shadows and depth prepass included. Until the
+    /// first call (and with strength 0) nothing moves.
+    void setWind(const WindFrame& wind);
+    [[nodiscard]] const WindFrame& wind() const noexcept { return m_wind; }
     [[nodiscard]] const BatchStats& lastBatch() const noexcept { return m_batch; }
     /// Starts a frame for the batched passes (rotates their buffers). Call once per frame before them.
     void beginFrame() noexcept;
@@ -227,6 +233,9 @@ private:
     const rhi::Texture* m_ambientOcclusion = nullptr;
     const rhi::Texture* m_rainMap = nullptr;
     void bindAmbientOcclusion(Device& device) const;
+    static void setWindUniforms(rhi::ShaderProgram& program, const Material& material);
+    rhi::Buffer m_windBuffer; // GpuWind, uniform block binding 4 (M17 W)
+    WindFrame m_wind;
     const ShadowMap* m_shadowMap = nullptr;
     const LightList* m_lights = nullptr;
     std::vector<u32> m_selected;
@@ -237,7 +246,8 @@ private:
     {
         u64 blockAndFlags = 0; // geometry block << 32 | variant | doubleSided << 8 | twoChannel << 9
         std::array<u64, 3> textures{};
-        std::array<u32, 9> values{}; // float bits: base colour (4), emissive (3), normal scale, cutoff
+        std::array<u32, 17> values{}; // float bits: base colour (4), emissive (3), normal scale, cutoff,
+                                      // wind kind, strength, foot, height, pivot (3), hinge
         friend auto operator<=>(const BatchKey&, const BatchKey&) = default;
     };
     struct BatchEntry
@@ -247,6 +257,7 @@ private:
         const Mesh* mesh = nullptr;
         const Material* material = nullptr;
     };
+    static void setWindKey(BatchKey& key, const Material& material) noexcept;
     void drawGroups(Device& device, bool shadow, const Mat4& viewProjection, const Vec3& cameraPosition);
     void uploadBatch(Device& device);
     void bindMaterial(rhi::ShaderProgram& program, Device& device, const Material& material);

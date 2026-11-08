@@ -7,6 +7,8 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
+#include <cmath>
 #include <ostream>
 #include <set>
 #include <string>
@@ -274,4 +276,31 @@ TEST_CASE("Lightning: thunder after distance / 343 m/s, flares of a flash, a sto
     CHECK(flashes < 190);
     LightningStorm calm(1);
     CHECK_FALSE(calm.step(100.0, 0.0f, 0.0));
+}
+
+TEST_CASE("Weather: the wind's direction turns slowly, mostly from the west, the same after loading (M17 W)")
+{
+    f32 largestTurn = 0.0f;
+    f32 mostNorth = 0.0f;
+    f32 mostSouth = 0.0f;
+    Vec2 previous = windDirection(0.0);
+    for (f64 minute = 1.0; minute < 3.0 * 1440.0; minute += 1.0)
+    {
+        const Vec2 d = windDirection(minute);
+        CHECK(glm::length(d) == doctest::Approx(1.0f));
+        CHECK(d.x > 0.4f); // towards the east: from the west, within about 65 degrees
+        largestTurn = std::max(largestTurn, std::acos(std::clamp(glm::dot(d, previous), -1.0f, 1.0f)));
+        mostNorth = std::min(mostNorth, d.y);
+        mostSouth = std::max(mostSouth, d.y);
+        previous = d;
+    }
+    CHECK(glm::degrees(largestTurn) <
+          1.5f);              // a game minute (4 real seconds) turns it by about a degree at most
+    CHECK(mostNorth < -0.3f); // it does wander both ways
+    CHECK(mostSouth > 0.5f);
+    CHECK(windDirection(500.0) == windDirection(500.0));
+
+    Weather weather = Weather::fallback();
+    weather.start(0.0, 1);
+    CHECK(weather.sample(733.0).windDirection == windDirection(733.0));
 }

@@ -207,6 +207,42 @@ TEST_CASE("Engine render: rain only while it rains and the weather is shown (M17
     CHECK(streaks("klar", true) == 0u);
 }
 
+TEST_CASE("Engine render: the wind follows the weather, stands still when switched off (M17 W)")
+{
+    const auto windOf = [](std::string_view weather, bool on)
+    {
+        auto settings = g7::Config::parse(on ? "[render]\nwind = true\n" : "[render]\nwind = false\n");
+        REQUIRE(settings.ok());
+        g7::EngineConfig config;
+        config.window.size = {320, 240};
+        config.window.vsync = false;
+        config.shaderDirectory = g7::fs::fromUtf8(G7_SHADER_DIR);
+        config.world = g7::fs::fromUtf8("testworld/camp.g7world");
+        config.player = false;
+        config.fixedFrameSeconds = 1.0 / 60.0;
+        config.weather = std::string(weather);
+        config.settings = std::move(settings).value();
+        g7::test::keepVideoAlive();
+        g7::Engine engine(config);
+        REQUIRE(engine.init().ok());
+        REQUIRE(engine.runFrame());
+        const g7::f32 start = engine.windNow().time;
+        for (int i = 0; i < 5; ++i)
+        {
+            REQUIRE(engine.runFrame());
+        }
+        CHECK(engine.renderDevice()->debugErrorCount() == 0);
+        const g7::render::WindFrame wind = engine.windNow();
+        CHECK(wind.time > start); // the sway moves on
+        CHECK(wind.direction == g7::world::windDirection(engine.gameTime().clock()));
+        CHECK(engine.windEnabled() == on);
+        return wind.strength;
+    };
+    CHECK(windOf("klar", true) == doctest::Approx(0.15f)); // always a light breeze (decision 5)
+    CHECK(windOf("gewitter", true) == doctest::Approx(0.8f));
+    CHECK(windOf("gewitter", false) == 0.0f); // [render] wind = false: everything stands still
+}
+
 TEST_CASE("Engine render: no rain streaks under water (M17 R)")
 {
     g7::EngineConfig config;

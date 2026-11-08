@@ -1,4 +1,5 @@
 #include "GltfCommon.hpp"
+#include "GltfExtras.hpp"
 
 #include <g7/asset/MeshData.hpp>
 #include <g7/core/Log.hpp>
@@ -530,15 +531,20 @@ Result<MeshData> convert(fastgltf::Asset& asset, std::string_view debugName)
     return mesh;
 }
 
-Result<MeshData> parse(fastgltf::GltfDataBuffer& data, const fs::Path& baseDirectory,
-                       std::string_view debugName)
+Result<MeshData> parse(fastgltf::GltfDataBuffer& data, std::span<const u8> bytes,
+                       const fs::Path& baseDirectory, std::string_view debugName)
 {
     auto asset = parseAsset(data, baseDirectory, debugName);
     if (!asset)
     {
         return asset.error();
     }
-    return convert(asset.value(), debugName);
+    auto mesh = convert(asset.value(), debugName);
+    if (mesh)
+    {
+        readMaterialWind(bytes, mesh.value().materials, debugName); // M17 W
+    }
+    return mesh;
 }
 } // namespace
 
@@ -586,13 +592,12 @@ Result<MeshData> loadGltf(const fs::Path& path)
         const fs::Path absolute = std::filesystem::absolute(path, ec);
         return Error{"glTF file not found: '" + fs::toUtf8(ec ? path : absolute) + "'"};
     }
-    auto data = fastgltf::GltfDataBuffer::FromPath(path);
-    if (data.error() != fastgltf::Error::None)
+    auto bytes = fs::readFile(path); // the material extras are read from the same bytes
+    if (!bytes)
     {
-        return Error{"cannot read glTF '" + fs::toUtf8(path) +
-                     "': " + std::string(fastgltf::getErrorMessage(data.error()))};
+        return Error{"cannot read glTF '" + fs::toUtf8(path) + "': " + bytes.error().message};
     }
-    return parse(data.get(), path.parent_path(), fs::toUtf8(path));
+    return loadGltf(bytes.value(), path.parent_path(), fs::toUtf8(path));
 }
 
 Result<MeshData> loadGltf(std::span<const u8> bytes, const fs::Path& baseDirectory,
@@ -604,7 +609,7 @@ Result<MeshData> loadGltf(std::span<const u8> bytes, const fs::Path& baseDirecto
     {
         return Error{std::string(debugName) + ": " + std::string(fastgltf::getErrorMessage(data.error()))};
     }
-    return parse(data.get(), baseDirectory, debugName);
+    return parse(data.get(), bytes, baseDirectory, debugName);
 }
 
 Result<std::vector<GltfMarker>> loadGltfMarkers(std::span<const u8> bytes, std::string_view prefix,

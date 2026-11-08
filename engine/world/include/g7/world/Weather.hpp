@@ -53,6 +53,7 @@ struct WeatherSample
     f32 clouds = 0.0f;
     f32 wind = 0.0f;
     f32 gusts = 0.0f;
+    Vec2 windDirection{1.0f, 0.0f}; ///< M17 W: where the wind blows to (unit, world xz); turns slowly
     f32 fog = 1.0f;
     f32 sun = 1.0f;
     f32 ambient = 1.0f;
@@ -72,6 +73,11 @@ struct Lightning
     f32 azimuth = 0.0f; ///< radians about +Y
     u32 flickers = 2;   ///< how often it flares within the flash
 };
+
+/// M17 W: where the wind blows to at game `clock` (minutes): mostly from the west (towards +X, a little +Z),
+/// turning slowly by up to about 45 degrees either way over a few game hours. Depends on the clock only, so
+/// it is the same after loading.
+[[nodiscard]] Vec2 windDirection(f64 clock) noexcept;
 
 inline constexpr f32 kSpeedOfSound = 343.0f; ///< m/s
 /// Seconds from the flash to its thunder.

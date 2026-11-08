@@ -164,7 +164,7 @@ Result<EmitterDef> EmitterDef::parse(std::string_view toml, std::string_view sou
          {number("rate", d.rate, 0.0, 10000.0), number("burst", burst, 0.0, ParticleSystem::kMaxPerEmitter),
           number("duration", d.duration, 0.0, 3600.0), number("spread", d.spreadDegrees, 0.0, 180.0),
           number("radius", d.radius, 0.0, 100.0), number("gravity", d.gravity, -100.0, 100.0),
-          number("drag", d.drag, 0.0, 100.0)})
+          number("drag", d.drag, 0.0, 100.0), number("wind", d.wind, 0.0, 10.0)})
     {
         if (!r)
         {
@@ -350,6 +350,10 @@ void ParticleSystem::update(f32 seconds)
             p.velocity.y -= d.gravity * seconds;
             p.velocity *= std::max(0.0f, 1.0f - d.drag * seconds);
             p.position += p.velocity * seconds;
+            if (d.wind > 0.0f && m_wind.strength > 0.0f)
+            {
+                p.position += windVelocity(m_wind, p.position) * (d.wind * seconds); // drifts, M17 W
+            }
         }
         std::erase_if(e.particles, [](const Particle& p) { return p.age >= p.life; });
         if (d.light && d.lightFlicker > 0.0f)

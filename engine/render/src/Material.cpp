@@ -161,6 +161,7 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
         material.alphaCutoff = info.alphaCutoff;
         material.alphaMode = info.alphaMode;
         material.doubleSided = info.doubleSided;
+        material.wind = windBend(info, mesh.bounds); // M17 W: weight over the whole model's height
         set.m_materials.push_back(material);
     }
     return set;
@@ -401,6 +402,13 @@ Result<MeshRenderer> MeshRenderer::create(Device& device, ShaderLibrary& shaders
         return lighting.error();
     }
     renderer.m_lightingBuffer = std::move(lighting).value();
+    auto wind = device.createBuffer({sizeof(GpuWind), rhi::BufferUsage::Dynamic, {}});
+    if (!wind)
+    {
+        return wind.error();
+    }
+    renderer.m_windBuffer = std::move(wind).value();
+    renderer.setWind(WindFrame{}); // still
     // Neutral default until setLighting(): ambient white, no sun, no point lights.
     renderer.setLighting(
         device, Environment{.sunIntensity = 0.0f, .ambientSky = Vec3(1.0f), .ambientGround = Vec3(1.0f)},
@@ -442,8 +450,23 @@ void MeshRenderer::drawSubmesh(Device& device, const Mesh& mesh, usize submesh, 
     mesh.draw(device, submesh);
 }
 
+void MeshRenderer::setWind(const WindFrame& wind)
+{
+    m_wind = wind;
+    const GpuWind gpu = packWind(wind);
+    (void)m_windBuffer.update(0, std::span(reinterpret_cast<const u8*>(&gpu), sizeof(gpu)));
+}
+
+void MeshRenderer::setWindUniforms(rhi::ShaderProgram& program, const Material& material)
+{
+    const WindBend& w = material.wind;
+    program.setUniform("uWindBend", Vec4(static_cast<f32>(w.kind), w.strength, w.foot, w.height));
+    program.setUniform("uWindPivot", Vec4(w.pivot, static_cast<f32>(w.hinge)));
+}
+
 void MeshRenderer::bindAmbientOcclusion(Device& device) const
 {
+    device.bindUniformBuffer(4, m_windBuffer); // M17 W: every static mesh pass reads the wind
     device.bindTexture(8, m_ambientOcclusion != nullptr ? *m_ambientOcclusion : m_defaults->white,
                        m_aoSampler);
     device.bindTexture(9, m_rainMap != nullptr ? *m_rainMap : m_defaults->white, m_aoSampler); // M17 N
@@ -593,6 +616,7 @@ void MeshRenderer::drawShadowSkinned(Device& device, const SkinnedMesh& mesh, co
 void MeshRenderer::drawShadow(Device& device, const Mesh& mesh, const MaterialSet& materials,
                               const Mat4& model, const Cascade& cascade, u32 lod)
 {
+    device.bindUniformBuffer(4, m_windBuffer);
     for (rhi::ShaderProgram* program : {m_shadowProgram, m_shadowAlphaTestProgram})
     {
         program->setUniform("uViewProjection", cascade.viewProjection);
@@ -609,6 +633,7 @@ void MeshRenderer::drawShadow(Device& device, const Mesh& mesh, const MaterialSe
         const bool alphaTest = material.alphaMode == asset::AlphaMode::Mask;
         device.bindPipeline((m_depthPass ? m_depthPipelines : m_shadowPipelines)[alphaTest ? 1 : 0]);
         mesh.bind(device);
+        setWindUniforms(alphaTest ? *m_shadowAlphaTestProgram : *m_shadowProgram, material);
         if (alphaTest)
         {
             m_shadowAlphaTestProgram->setUniform("uBaseColor", material.baseColorFactor);

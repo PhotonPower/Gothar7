@@ -58,6 +58,8 @@ ssao_strength = 1.5   # wie stark das Verdeckte das Umgebungslicht dämpft
 weather = true
 # Regen: low 4 000 Striche ohne Spritzer, medium 12 000, high 24 000.
 rain_quality = "medium"
+# Wind (M17 W): Vegetation, Zunftschilder und Rauch bewegen sich mit dem Wind der Wetterlage; aus = alles steht still.
+wind = true
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
 # shader_hot_reload = true
 # Anisotrope Filterung für Materialtexturen (1 = aus; wird auf den Treiberwert begrenzt).

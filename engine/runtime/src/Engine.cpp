@@ -627,6 +627,7 @@ Result<void> Engine::initShaders()
     }
     applySetting("render.weather");
     applySetting("render.rain_quality");
+    applySetting("render.wind");
     auto debugRenderer = render::DebugDrawRenderer::create(*m_device, *m_shaders);
     if (!debugRenderer)
     {
@@ -1804,8 +1805,8 @@ void Engine::drawRain(u32 width, u32 height)
     }
     render::RainFrame frame;
     frame.rain = weather.rain;
-    // Until the wind gets its direction (part W): a steady breeze from the west, as strong as the state says.
-    frame.wind = glm::normalize(Vec2(1.0f, 0.3f)) * (4.0f * weather.wind);
+    // Slanted with the wind (M17 W): its direction, about 4 m/s at full strength.
+    frame.wind = weather.windDirection * (4.0f * weather.wind);
     frame.time = static_cast<f32>(std::fmod(m_rainTime, 3600.0));
     frame.light = m_environment.ambientSky + m_environment.sunColor * m_environment.sunIntensity * 0.3f;
     frame.quality = m_rainQuality;
@@ -1869,6 +1870,17 @@ void Engine::thunder(const world::Lightning& flash)
     }
 }
 
+render::WindFrame Engine::windNow() const
+{
+    const world::WeatherSample weather = weatherNow();
+    render::WindFrame frame;
+    frame.direction = weather.windDirection;
+    frame.strength = m_windEnabled ? weather.wind : 0.0f;
+    frame.gusts = weather.gusts;
+    frame.time = static_cast<f32>(m_windTime);
+    return frame;
+}
+
 f32 Engine::lightningNow() const noexcept
 {
     if (!m_flash || !m_weatherVisible)
@@ -1885,6 +1897,10 @@ void Engine::updateEnvironment()
     world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
     m_weather.apply(sample, m_gameTime.clock()); // M17 E1: clouds, rain and fog over the time of day
     m_rainTime += m_frameSeconds;
+    m_windTime = std::fmod(m_windTime + m_frameSeconds, 3600.0);
+    const render::WindFrame wind = windNow(); // M17 W: vegetation, signs, smoke
+    m_meshRenderer.setWind(wind);
+    m_particles.setWind(wind);
     // M17 N: wet surfaces outside (the rain map tells outside from under a roof), puddles at rain quality
     // high.
     sample.environment.wetness = m_weatherVisible ? weatherNow().wetness : 0.0f;
