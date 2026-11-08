@@ -206,6 +206,20 @@ Result<SkinnedModelData> deserializeSkin(bytes, debugName);
   Submesh-/Primitive-Bereiche, Bildverweise und Reste. Eine andere Version ist ein Fehler mit dem Hinweis
   „cook again“.
 
+### `AnimFile.hpp` – gekochte Clip-Sets `.g7anim` (M17, ADR 0025, Plan Teil C)
+```cpp
+namespace g7::asset {
+inline constexpr char kAnimMagic[4] = {'G', '7', 'A', 'N'};
+inline constexpr u32 kAnimVersion = 1;
+std::vector<u8> serializeAnim(const AnimationSetData&);
+Result<AnimationSetData> deserializeAnim(bytes, debugName);
+}
+```
+- Skelett des Sets und Clips mit Spuren (Knochenname, Kanal, Schritt/linear, Zeiten, Werte als f32).
+- Events und Eigengeschwindigkeiten speichert die Datei nicht. `<set>.events.toml` bleibt eine eigene Datei und
+  wird nach dem Laden angewendet (Entscheidung 2, Test).
+- Der Leser prüft Anzahlen, Eltern vor Kindern, bekannte Kanäle, steigende Zeiten und Reste.
+
 ### Detailstufen (LOD) statischer Modelle (Vertrag mit welt und figuren, 2026-10-04)
 - **Knoten:** Ein `.glb` enthält bis zu drei Render-Stufen mit **gleichem Ursprung**: Stufe 0 als `<name>` oder
   `<name>_lod0`, gröber `<name>_lod1`, `<name>_lod2` (`lodLevel`, `isCoarserLod`). Materialien werden geteilt; jeder
@@ -459,6 +473,7 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
 - `writeSkinFile(const SkinnedModelData&) -> std::vector<u8>`, `readSkinFile(bytes, name) -> Result<SkinnedModelData>`.
 
 ### Teil C – Format `.g7anim` (asset, `AnimFile.hpp`)
+- **Umgesetzt** (2026-11-08): `serializeAnim`/`deserializeAnim`, Tests in `tests/asset/test_anim_file.cpp`.
 - Eine Datei je Set-`.glb`: Skelett des Sets, Clips mit Name, Dauer und Spuren (Knochenname, Kanal, Schritt/linear,
   Zeiten, Werte). Version 1 speichert f32 unverändert, das Archiv komprimiert mit zstd (Frage 3).
 - **`events.toml` bleibt eine eigene Datei** (Frage 2). Der Loader liest sie neben dem Set wie heute
