@@ -4,8 +4,9 @@
 
 ## Bestand (M0)
 - `Types.hpp` – `i32`, `u64`, `f32` …
-- `Log.hpp` – kanalbasiertes Logging (`G7_LOG_INFO("render", "...", args)`), threadsicher, `std::format`
-- `Assert.hpp` – `G7_ASSERT` (Debug), `G7_VERIFY` (immer)
+- `Log.hpp` – kanalbasiertes Logging (`G7_LOG_INFO("render", "...", args)`), threadsicher, `std::format`;
+  `log::recentLines()` hält die letzten 200 Zeilen für Absturzberichte (M17)
+- `Assert.hpp` – `G7_ASSERT` (Debug), `G7_VERIFY` (immer); `setFatalHook` (M17): der Absturzbericht vor dem Abbruch
 - `Result.hpp` – `Result<T>` / `Result<void>` mit `Error{message}`
 - `Clock.hpp` – `Stopwatch`, `FixedStep` (Akkumulator für feste Simulationsrate; `droppedSeconds()` meldet bei
   Hängern verworfene Zeit, die Engine loggt sie mit `--verbose` als `frame hitch`), `FramePacer`

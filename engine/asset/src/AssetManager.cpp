@@ -5,6 +5,7 @@
 #include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/TextureData.hpp>
 #include <g7/core/Log.hpp>
+#include <g7/core/Profiler.hpp>
 #include <g7/core/StringUtil.hpp>
 
 #include <algorithm>
@@ -177,6 +178,7 @@ struct AssetManager::Impl
 
     void workerLoop()
     {
+        G7_PROFILE_THREAD("asset worker");
         for (;;)
         {
             Job job;

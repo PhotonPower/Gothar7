@@ -18,3 +18,8 @@ if(NOT SDL3_FOUND)
 endif()
 
 g7_add_module(platform DEPS core PRIVATE_LIBS SDL3::SDL3)
+
+# Crash reports (M17, release.md part B): minidumps through dbghelp (Windows SDK, no extra library).
+if(WIN32)
+    target_link_libraries(g7_platform PRIVATE dbghelp)
+endif()
