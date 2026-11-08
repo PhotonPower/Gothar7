@@ -283,4 +283,11 @@ std::vector<std::string> gltfExternalUris(std::span<const u8> bytes)
     }
     return uris;
 }
+
+bool gltfSkinnedOrAnimated(std::span<const u8> bytes)
+{
+    const std::string_view json = gltfJson(bytes);
+    return json.find("\"skins\"") != std::string_view::npos ||
+           json.find("\"animations\"") != std::string_view::npos;
+}
 } // namespace g7::cook

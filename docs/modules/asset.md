@@ -184,8 +184,8 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
   (`animation.md` „Figuren zur Laufzeit zusammensetzen“).
 - **Lader im `AssetManager`:** `SkinnedModelData` und `AnimationSetData` direkt aus glTF/GLB.
   - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019). Bis dahin laden Figuren und Sets aus losen Dateien
-    (Entwicklung). g7-cook kocht skinnte Figuren weiterhin nur als statisches `.g7mesh`, Sets ohne Mesh überspringt
-    er; ein reines `.g7pak` enthält sie noch nicht.
+    (Entwicklung). Mit `--pack` legt g7-cook geskinnte und animierte `.glb` zusätzlich unverändert ins Archiv
+    (06-asset-pipeline.md), so lädt auch ein reines `.g7pak` Figuren und Clips als glTF.
 
 ### Detailstufen (LOD) statischer Modelle (Vertrag mit welt und figuren, 2026-10-04)
 - **Knoten:** Ein `.glb` enthält bis zu drei Render-Stufen mit **gleichem Ursprung**: Stufe 0 als `<name>` oder

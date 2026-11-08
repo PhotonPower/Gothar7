@@ -76,9 +76,25 @@ TEST_CASE("Package: unpacked into a folder of its own, the game starts from the 
     CHECK(rc == 0);
     CHECK(text.find("data.g7pak") != std::string::npos); // the archive was mounted
     CHECK(text.find("ERROR") == std::string::npos);
-    CHECK(text.find("assets\source") == std::string::npos); // nothing from the repository
+    CHECK(text.find("assets\\source") == std::string::npos); // nothing from the repository
     CHECK(text.find("assets/source") == std::string::npos);
-    if (rc != 0 || text.find("ERROR") != std::string::npos)
+    // Figures and clips come from the archive too (plan M17 part 0): a missing part, set or image is only a
+    // warning in the game and a failing insert_npc only a script error - both fail here.
+    const bool missing = text.find("cannot load") != std::string::npos ||
+                         text.find("not found in the VFS") != std::string::npos;
+    const bool scriptError =
+        text.find("[sol2]") != std::string::npos ||
+        text.find("--exec camp_people():") != std::string::npos; // logged on failure only
+    usize figures = 0;
+    for (usize at = text.find(": 60 bones, "); at != std::string::npos;
+         at = text.find(": 60 bones, ", at + 1))
+    {
+        ++figures;
+    }
+    CHECK_FALSE(missing);
+    CHECK_FALSE(scriptError);
+    CHECK(figures >= 7); // the hero and the six people of camp_people()
+    if (rc != 0 || text.find("ERROR") != std::string::npos || missing || scriptError || figures < 7)
     {
         MESSAGE(text);
     }
