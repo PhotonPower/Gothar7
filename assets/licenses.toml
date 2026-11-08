@@ -62,7 +62,7 @@ credit = "The data used in this project was obtained from mocap.cs.cmu.edu. The 
 credit_order = 4
 md = "CMU Graphics Lab Motion Capture Database"
 optional_md = true # the row comes with figuren #369
-paths = ["characters/anims/human/fist.*"]
+paths = ["characters/anims/human/fist.*", "characters/anims/human/1h.*", "characters/anims/human/2h.*"]
 
 [[source]]
 name = "OpenStreetMap"
