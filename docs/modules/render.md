@@ -984,6 +984,62 @@ nicht das Budget angehoben (wie bei den Testgruppen).
   (Parksee); bei `river` zeigt lokal +X stromabwärts. welt setzt die Daten in einem eigenen PR; bis dahin gilt
   fehlendes `kind` als Vorgabe (stehend).
 
+## Plan M17: Zauber-Effekte – Glühen und Verzerrung (freigegeben 2026-11-08)
+Teile G und V des Plans „Magie-Nachträge“ (`gameplay.md`, dort auch Teil T Telekinese und die Gefühlsfragen
+9–13, alle nach Vorschlag entschieden). Werte als Daten in `data/fx/*.toml` bzw. `data/spell_fx.toml`.
+
+### Teil G – Glühen beim Wirken und Treffen
+- **Was:** ein additiver Rand- und Flächenschein auf Figuren (skinned) in einer Farbe, zeitlich gesteuert:
+  - Wirken: Hand und Unterarm (Gewicht aus den Knochen `hand_r`/`lowerarm_r` des Referenz-Skeletts,
+    `animation.md`), Rand der Gestalt schwach; Stärke steigt je Aufladestufe.
+  - Treffen: kurzes Aufblitzen in der Farbe der Schadensart, Brennen glimmt pulsierend, Schlaf schimmert.
+- **Wie:** `MeshRenderer::drawSkinned` bekommt je Figur einen `FigureGlow { Vec3 color; f32 rim, hand; }`
+  (Uniform `uGlow`, nur Varianten `SKINNED`). `mesh.frag` addiert `color · (rim · fresnel⁴ + hand · Knochengewicht)`
+  zum Emissive; der Bloom (P1) macht den Schein. Das Knochengewicht kommt aus den Skin-Gewichten im Vertex-Shader
+  (Summe der Gewichte auf die Hand-Knochen), also kein neues Attribut.
+- **Daten:** `data/spell_fx.toml`:
+  - `[glow.<spell>] color, hand, rim, per_stage`;
+  - `[hit.<damage>] color, strength, seconds` (fire, magic);
+  - `[state.burning]`, `[state.asleep]`.
+  Spells ohne Eintrag leuchten nicht.
+- **Engine:** `EngineMagic.cpp` setzt den Wert des Zaubernden je Frame aus Aufladestufe und Zauber;
+  Treffer und Zustände klingen nach `seconds` ab (`FigureGlowState`, rein, testbar).
+- **Budget:** praktisch 0 (ein paar Rechnungen im Fragment-Shader der Figuren); ≤ 0,05 ms.
+- **Tests:**
+  - CPU `tests/render/test_spell_fx.cpp`: Laden der Daten, Abklingen, Stufen;
+  - GPU `test_skinned_render.cpp`: Glühen hellt nur die Hand bzw. den Rand auf, ohne Glühen bytegleich;
+  - Runtime: beim Aufladen hat der Held Glühen, ein Feuertreffer blitzt 0,3 s.
+  - Prüfbilder: Feuerpfeil aufladen bei Nacht im Testlager, Getroffener im Aufblitzen, Brennender.
+
+### Teil V – Verzerrung
+- **Was:** ein Versatz-Puffer (RG16F, halbe Auflösung), in den „Verzerrer“ geschrieben werden; der Post-Pass liest
+  das HDR-Bild an den versetzten Stellen, vor Bloom und Farbkorrektur. Dieselbe Technik wie das Unterwasser-Wabern
+  (W3), aber örtlich.
+- **Verzerrer als Partikel:** neues Feld `distort` in `data/fx/*.toml` (0 = keiner, Vorgabe), dazu `distort_shape` =
+  `haze` (Rauschen, steigt auf), `ring` (Druckwelle, wächst über die Lebenszeit) oder `swirl` (Wirbel).
+  Ein Emitter mit `distort` zeichnet seine Teilchen zusätzlich in den Versatz-Puffer (eigener Shader
+  `particle_distort.frag`, tiefengetestet gegen die Szene, additiv). So hängen Hitzeflimmern, Druckwelle und
+  Wirbel an den bestehenden Effekten:
+  - `firebolt` (Spur, haze);
+  - `impact_fire` (ring);
+  - Aufladen ab Stufe 2 (swirl an der Hand, neuer Effekt `invest_swirl`);
+  - `summon` (haze);
+  - nach Frage 13 auch `fire` (Lagerfeuer, Herde, Brennende).
+- **Bild-Wabern des Helden** (Frage 12): eine Stärke im `PostSettings` (wie Unterwasser), 0,5 s beim Verwandeln.
+- **Option:** `[render] spell_distortion` (an), Optionen → Grafik „Zauber-Verzerrung“. Aus: der Puffer wird nicht
+  gezeichnet, das Bild ist bytegleich zu heute.
+- **Budget:** ≤ 0,2 ms bei 1600×900 (halbe Auflösung, nur wenn ein Verzerrer sichtbar ist; sonst 0, der Pass fällt
+  weg). Passzeit `distort` in `PassTimes`.
+- **Tests:**
+  - CPU: `distort`-Felder in `test_particles.cpp`;
+  - GPU `test_post.cpp`: ein leerer Puffer ändert nichts, ein Ring verschiebt Pixel nur in seinem Radius;
+  - GPU `test_particles.cpp`: Verzerrer hinter einer Wand schreiben nichts;
+  - `test_engine_render.cpp`: Option aus → kein Pass `distort`, an und Feuerpfeil im Flug → Pass gezeichnet.
+  - Prüfbilder: Feuerpfeil vor einer Hauswand (Flimmern), Einschlag-Ring, Aufladen Stufe 3, Lagerfeuer.
+
+### Reihenfolge
+G vor V (G ist klein und unabhängig); beide nach Teil T oder parallel dazu, je ein PR.
+
 ## Offene Fragen
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.
 - **Dual-Quaternion-Skinning** (Hinweis figuren, 2026-10-03): Lineares Blend-Skinning verliert in extremen Posen
