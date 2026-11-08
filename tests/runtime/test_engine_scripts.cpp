@@ -1061,11 +1061,16 @@ TEST_CASE("Engine AI LOD by count: the nearest max_simulated NPCs, talking ones 
     }
     const auto simulated = [&](const std::string& name)
     { return run(engine, std::format("npc_state('{}').simulated", name)).asBool(); };
+    const auto animated = [&](const std::string& name)
+    { return run(engine, std::format("npc_state('{}').animated", name)).asBool(); };
     runSeconds(engine, 0.5f);
     CHECK_FALSE(simulated(names[0]));
     CHECK_FALSE(simulated(names[1]));
     CHECK(simulated(names[2]));
     CHECK(simulated(names[3]));
+    // Out by the count, but in front of the camera and near: animated on (no statues), without AI.
+    CHECK(animated(names[0]));
+    CHECK(animated(names[1]));
 
     // Talking to the farthest: it is simulated and takes a place first, the farther of the near ones drops
     // out.
@@ -1085,4 +1090,7 @@ TEST_CASE("Engine AI LOD by count: the nearest max_simulated NPCs, talking ones 
     CHECK(simulated(names[1]));
     CHECK_FALSE(simulated(names[2]));
     CHECK_FALSE(simulated(names[3]));
+    // Those two are behind the camera now (it looks west): not animated either.
+    CHECK_FALSE(animated(names[2]));
+    CHECK_FALSE(animated(names[3]));
 }

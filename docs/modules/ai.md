@@ -71,7 +71,9 @@ Routine "rtn_farmer_woman" {
   Flackern an der Grenze). NPCs im Dialog, beim Zaubern oder in einem Kampfzustand (`zs_attack`, `zs_mm_attack`,
   `zs_mm_hunt`) bleiben immer simuliert und belegen ihren Platz zuerst; nur wenn mehr als N beschäftigt sind, liegt
   die Zahl darüber. Wer herausfällt, verhält sich wie ein ferner NPC (geht er gerade, steht er sofort am Ziel).
-  `npc_state(npc).simulated` zeigt den Stand.
+  Ist er aber sichtbar (im Kamera-Frustum) und näher als `simulation_distance`, spielt er seine aktuelle Schleife
+  bzw. Idle-Animation weiter, ohne KI, Wege und Wahrnehmung (keine Statuen). `npc_state(npc).simulated` und
+  `.animated` zeigen den Stand.
 - Testlager: `camp_people()` (Konsole oder `--exec=camp_people()`) setzt Torwache, Bäuerin, Holzfäller und den
   alten Mann an die Orte ihres Tagesablaufs (`routines/camp.lua`).
 
