@@ -80,6 +80,8 @@ MATERIALS: dict[str, tuple[str, tuple[float, float, float]]] = {
     # guild signs (W6): gilded symbols on the brackets
     "gilt": ("iron", (0.42, 0.29, 0.07)),
     "paint_board": ("boards", (0.55, 0.47, 0.33)),  # a sign's board, painted light
+    "iron_bracket": ("iron", (0.05, 0.05, 0.055)),  # a sign's bracket: iron that stays still
+    "iron_chain": ("iron", (0.05, 0.05, 0.055)),  # its chains: iron that swings in the wind
 }
 # materials that glow: the engine adds emissive after the light (render.md "Material")
 EMISSIVE = {"ember": (0.9, 0.28, 0.05), "flame": (1.0, 0.55, 0.15)}
@@ -161,7 +163,10 @@ class Mesh:
     def body(self, name: str, lo: Vec3, hi: Vec3) -> None:
         self.collision.append(box_body(f"COL_HULL_{name}", lo, hi))
 
-    def primitives(self) -> list[Primitive]:
+    def primitives(self, wind: dict[str, dict[str, Any]] | None = None) -> list[Primitive]:
+        """One primitive per material; ``wind``: the glTF extras per material (M17 wind
+        contract, coordination.md: ``wind`` trunk | leaves | grass | cloth | hanging, optional
+        ``wind_strength`` and, for hanging, ``wind_pivot``)."""
         out = []
         for material in MATERIALS:  # fixed order: deterministic files
             b = self.builders.get(material)
@@ -175,7 +180,7 @@ class Mesh:
             out.append(Primitive(
                 material, (*(min(c / scale, 1.0) for c in colour), 1.0), mesh,  # type: ignore[arg-type]
                 (f"{TEXTURE_DIR}/{kind}_albedo.png", f"{TEXTURE_DIR}/{kind}_normal.png"),
-                EMISSIVE.get(material),
+                EMISSIVE.get(material), (wind or {}).get(material),
             ))  # fmt: skip
         return out
 
@@ -227,6 +232,7 @@ class MobModel:
     main: Mesh
     parts: list[tuple[str, Vec3, Mesh]] = field(default_factory=list)  # (node, pivot, mesh)
     lods: list[Mesh] = field(default_factory=list)  # coarser levels: nodes <name>_lod1, _lod2
+    wind: dict[str, dict[str, Any]] = field(default_factory=dict)  # material -> glTF extras (M17)
 
     def triangles(self) -> int:
         """Of the finest level (what the budget counts)."""
@@ -236,12 +242,13 @@ class MobModel:
         return [self.main, *(m for _, _, m in self.parts), *self.lods]
 
     def glb(self) -> bytes:
-        parts = [Part(n, pivot, m.primitives(), m.collision) for n, pivot, m in self.parts]
+        w = self.wind
+        parts = [Part(n, pivot, m.primitives(w), m.collision) for n, pivot, m in self.parts]
         parts += [
-            Part(f"{self.name}_lod{k + 1}", (0.0, 0.0, 0.0), m.primitives())
+            Part(f"{self.name}_lod{k + 1}", (0.0, 0.0, 0.0), m.primitives(w))
             for k, m in enumerate(self.lods)
         ]  # asset.md "Detailstufen": same origin
-        return glb_bytes_multi(self.main.primitives(), self.name, self.main.collision, parts)
+        return glb_bytes_multi(self.main.primitives(w), self.name, self.main.collision, parts)
 
 
 # --- the four mobs ---------------------------------------------------------------------------
@@ -1201,15 +1208,15 @@ def _bracket(m: Mesh) -> None:
     """The iron bracket: a plate on the wall, the arm out, a stay under it, two short chains, the
     painted board hanging from them (in an oak frame)."""
     y, ln = SIGN_ARM_Y, SIGN_ARM_L
-    m.box("iron", (-0.04, y - 0.4, -0.01), (0.04, y + 0.06, 0.02))  # wall plate
-    m.box("iron", (-0.018, y - 0.02, 0.0), (0.018, y + 0.02, ln), grain=2)  # arm
+    m.box("iron_bracket", (-0.04, y - 0.4, -0.01), (0.04, y + 0.06, 0.02))  # wall plate
+    m.box("iron_bracket", (-0.018, y - 0.02, 0.0), (0.018, y + 0.02, ln), grain=2)  # arm
     for k in range(6):  # the stay, stepping down to the wall
         z0 = 0.05 + k * 0.07
         dy = 0.06 * (6 - k)
-        m.box("iron", (-0.012, y - dy - 0.012, z0), (0.012, y - dy + 0.012, z0 + 0.07))
-    m.box("iron", (-0.025, y - 0.03, ln - 0.03), (0.025, y + 0.03, ln + 0.02))  # the end, a knob
+        m.box("iron_bracket", (-0.012, y - dy - 0.012, z0), (0.012, y - dy + 0.012, z0 + 0.07))
+    m.box("iron_bracket", (-0.025, y - 0.03, ln - 0.03), (0.025, y + 0.03, ln + 0.02))  # knob
     for z in (BOARD_Z - BOARD_W / 2 + 0.08, BOARD_Z + BOARD_W / 2 - 0.08):  # chains
-        m.box("iron", (-0.006, BOARD_TOP, z - 0.006), (0.006, y - 0.02, z + 0.006))
+        m.box("iron_chain", (-0.006, BOARD_TOP, z - 0.006), (0.006, y - 0.02, z + 0.006))
     z0, z1, y0 = BOARD_Z - BOARD_W / 2, BOARD_Z + BOARD_W / 2, BOARD_TOP - BOARD_H
     m.box("paint_board", (-0.015, y0, z0), (0.015, BOARD_TOP, z1), grain=2)  # the board
     for lo, hi in (((-0.022, BOARD_TOP - 0.05, z0), (0.022, BOARD_TOP, z1)),  # its frame
@@ -1344,7 +1351,9 @@ def guild_sign(symbol: str) -> MobModel:
         to = (side * 0.04, BOARD_TOP - BOARD_H / 2, BOARD_Z)
         SIGNS[symbol](_Scaled(m, centre, SIGN_SCALE, to))  # type: ignore[arg-type]
     m.collision.append(box_body("COL_HULL_NONE", (-0.02, -1.04, -0.02), (0.02, -1.0, 0.02)))
-    return MobModel(f"sign_{symbol}", m)
+    # wind (M17): all but the bracket hang from the arm, swinging about where the chains hold
+    hang = {"wind": "hanging", "wind_pivot": [0.0, round(SIGN_ARM_Y - 0.02, 3), BOARD_Z]}
+    return MobModel(f"sign_{symbol}", m, wind={k: hang for k in m.builders if k != "iron_bracket"})
 
 
 PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "firewood": firewood,

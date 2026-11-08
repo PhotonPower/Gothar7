@@ -85,3 +85,22 @@ def test_the_w6_vegetation_models_are_light_and_have_coarse_levels():
     assert len(trunks) == 7  # it collides at its trees' trunks only
     hedge = VEGETATION["hedge_box"]()
     assert [p.name for p in hedge.main.collision] == ["COL_HULL_HEDGE"]
+
+
+def _materials(name: str) -> dict:
+    import json
+    import struct
+
+    data = VEGETATION[name]().glb()
+    (size,) = struct.unpack("<I", data[12:16])
+    return {m["name"]: m.get("extras") for m in json.loads(data[20 : 20 + size])["materials"]}
+
+
+def test_wind_marks_bark_leaves_and_grass_but_not_the_clipped_box():
+    # M17 wind contract (coordination.md): extras.wind per glTF material
+    assert _materials("tree_oak") == {"bark": {"wind": "trunk"}, "leaves_oak": {"wind": "leaves"}}
+    clump = _materials("forest_clump")
+    assert clump["bark"] == {"wind": "trunk"} and clump["needles"] == {"wind": "leaves"}
+    assert all(v == {"wind": "grass"} for v in _materials("grass_patch").values())
+    assert _materials("hedge_box") == {"leaves_box": None}
+    assert _materials("bush_box") == {"leaves_box": None}
