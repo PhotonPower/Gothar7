@@ -1,4 +1,5 @@
 #include <g7/ai/Waynet.hpp>
+#include <g7/core/Profiler.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -156,6 +157,7 @@ std::optional<u32> Waynet::nearest(const Vec3& position, const WalkableLine& wal
 
 std::optional<Route> Waynet::route(const Vec3& from, const Vec3& goal, const WalkableLine& walkable) const
 {
+    G7_PROFILE_SCOPE("ai::route");
     if (!walkable || walkable(from, goal))
     {
         return Route{{goal}, {}};

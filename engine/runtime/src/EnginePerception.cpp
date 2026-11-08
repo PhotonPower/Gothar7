@@ -1,3 +1,4 @@
+#include <g7/core/Profiler.hpp>
 // NPC perception (M9 part C, docs/modules/ai.md "Wahrnehmung"): sight (cone, range, line of sight; sneaking
 // and night shorten it), hearing (noises with a radius) and the player's deeds witnessed. What an NPC makes
 // of it is content: the engine emits assess_* events with the NPC first (game/scripts/ai/perceptions.lua).
@@ -132,6 +133,7 @@ bool Engine::ownedBy(const Creature& c, std::string_view owner) const
 
 void Engine::perceive(Creature& c, f32 seconds)
 {
+    G7_PROFILE_SCOPE("ai::perception");
     if (!m_scripts || !c.character)
     {
         return;
