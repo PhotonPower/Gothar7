@@ -39,6 +39,8 @@ struct CookOptions
 struct CookReport
 {
     u32 meshes = 0;                  ///< glTF/GLB cooked to .g7mesh
+    u32 skins = 0;                   ///< skinned glTF (figure parts, rigs) cooked to .g7skin
+    u32 anims = 0;                   ///< glTF with animations (clip sets) cooked to .g7anim
     u32 images = 0;                  ///< image files plus images extracted from meshes
     u32 copied = 0;                  ///< other files taken over unchanged
     u32 skipped = 0;                 ///< hidden files, Blender files, glTF buffers (.bin), glTF without mesh

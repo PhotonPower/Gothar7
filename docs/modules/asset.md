@@ -485,6 +485,11 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
 - `writeAnimFile`, `readAnimFile` wie in Teil B.
 
 ### Teil D – Cooker
+- **Umgesetzt** (2026-11-09):
+  - `cookSkinned` in `g7-cook` (`kCookerVersion` 7) erzeugt `.g7skin`/`.g7anim` statt `.g7mesh` und der
+    glTF-Kopie aus Teil 0.
+  - Der Bericht zählt `skins` und `anims`.
+  - Tests in `tests/cook/test_cook.cpp`.
 - Ein `.glb` mit Skin ergibt `.g7skin`, eines mit Animationen `.g7anim`. Eine Datei mit beidem ergibt beide.
 - Das statische `.g7mesh` eines geskinnten `.glb` entfällt (Frage 5). Die Kopie aus Teil 0 entfällt ebenfalls.
 - Bilder der Materialien laufen wie bei `.g7mesh` durch die Textur-Erkennung (KTX2, Farbe/Normal/Daten).
