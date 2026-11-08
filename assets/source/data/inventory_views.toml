@@ -216,3 +216,7 @@ yaw = 90.0
 pitch = 0.0
 roll = -45.0
 fill = 0.95
+
+# telekinesis rune: its Lua item comes with engine #404 (category rune); until then the model names it
+[model."items/it_rune_telekinesis.glb"]
+category = "rune"
