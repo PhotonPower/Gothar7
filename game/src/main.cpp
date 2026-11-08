@@ -3,6 +3,7 @@
 #include <g7/core/FileSystem.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/editor/Editor.hpp>
+#include <g7/perf/PerfRun.hpp>
 #include <g7/platform/CrashHandler.hpp>
 #include <g7/platform/GpuPreference.hpp>
 #include <g7/platform/Paths.hpp>
@@ -28,6 +29,11 @@ G7_REQUEST_HIGH_PERFORMANCE_GPU();
 
 namespace
 {
+/// Perf scenarios (--perf): world, resolution (docs/modules/perf.md, decision 1) and the scenario file.
+constexpr const char* kPerfWorld = "worlds/leonberg/leonberg.g7world";
+constexpr g7::u32 kPerfWidth = 1600;
+constexpr g7::u32 kPerfHeight = 900;
+constexpr const char* kPerfFile = "data/perf.toml";
 constexpr const char* kUsage = R"(Usage: gothar [options]
 
   --help, -h              show this help and exit
@@ -55,6 +61,10 @@ constexpr const char* kUsage = R"(Usage: gothar [options]
   --viewpoint=N           start at viewpoint N of the scene
   --view-mesh=<path>      show a model (.gltf/.glb/.g7mesh) at the origin
   --benchmark             visit every viewpoint, log frame times, exit
+  --perf=<names>          perf scenarios of data/perf.toml (markt,gasse,... or all) at 1600x900: frame
+                          times, zones, GPU passes and stats as perf_<name>.json, then exit (default
+                          world Leonberg)
+  --perf-out=<dir>        where --perf writes its reports (default: perf)
   --screenshot=<file.png> save the last frame (with --frames or --benchmark)
   --ui-sample             draw the game UI's sample page (text roles, frames, bars) over the scene
   --no-menu               without --world: no main menu, an empty window (development)
@@ -92,6 +102,8 @@ struct CommandLine
     std::vector<std::string> exec;
     std::string screenshot;
     bool benchmark = false;
+    std::string perf;
+    std::string perfOut;
     bool uiSample = false;
     bool noMenu = false;
     int lod = -1; // --lod: -1 = auto
@@ -223,6 +235,14 @@ std::optional<CommandLine> parseCommandLine(int argc, char** argv)
         else if (arg == "--no-menu")
         {
             cli.noMenu = true;
+        }
+        else if (arg.starts_with("--perf="))
+        {
+            cli.perf = std::string(arg.substr(7));
+        }
+        else if (arg.starts_with("--perf-out="))
+        {
+            cli.perfOut = std::string(arg.substr(11));
         }
         else if (arg == "--benchmark")
         {
@@ -522,6 +542,21 @@ int main(int argc, char** argv)
         config.fixedFrameSeconds = 1.0 / 60.0; // deterministic: 10 frames = 10 ticks
     }
 
+    // Perf scenarios (docs/modules/perf.md part B): Leonberg unless --world says otherwise, 1600x900, as fast
+    // as the machine allows, the same random numbers every run.
+    if (!cli->perf.empty())
+    {
+        if (config.world.empty())
+        {
+            config.world = g7::fs::fromUtf8(kPerfWorld);
+        }
+        config.window.size = {kPerfWidth, kPerfHeight};
+        config.window.mode = g7::platform::WindowMode::Windowed;
+        config.window.vsync = false;
+        config.maxFps = 0.0;
+        config.randomSeed = 1;
+    }
+
     // Without a world, scene or model the game starts in the main menu (M14 part F, F8).
     config.mainMenu = !config.headless && config.render && config.world.empty() && config.scene.empty() &&
                       config.viewMesh.empty() && !cli->editor && !config.benchmark && !cli->uiSample &&
@@ -597,5 +632,13 @@ int main(int argc, char** argv)
         autopilot.emplace(std::move(*route), g7::fs::fromUtf8(cli->walkOut.empty() ? "walk" : cli->walkOut));
         engine.addTool(*autopilot);
     }
-    return engine.run();
+    std::optional<g7::perf::PerfRun> perfRun;
+    if (!cli->perf.empty())
+    {
+        perfRun.emplace(cli->perf, kPerfFile, g7::fs::fromUtf8(cli->perfOut.empty() ? "perf" : cli->perfOut),
+                        kPerfWidth, kPerfHeight);
+        engine.addTool(*perfRun);
+    }
+    const int exitCode = engine.run();
+    return perfRun && !perfRun->succeeded() ? EXIT_FAILURE : exitCode;
 }

@@ -15,8 +15,9 @@ Axes as for the props: Y up, origin on the ground in the middle of the trunk or 
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -399,14 +400,35 @@ def _no_collision(m: Mesh) -> None:
         m.collision.append(box_body(f"COL_HULL_{name}", lo, hi))
 
 
+# wind (M17 contract, coordination.md): glTF extras per material; clipped box (leaves_box) stays
+# still, as do models without a marked material
+WIND: dict[str, dict[str, Any]] = {
+    "bark": {"wind": "trunk"},
+    **{m: {"wind": "leaves"} for m in ("leaves_linden", "leaves_oak", "leaves_fruit", "needles")},
+    **{m: {"wind": "grass"} for m in ("grass", "grass_dry")},
+}
+
+
+def _windy(build: Callable[[], MobModel]) -> Callable[[], MobModel]:
+    def model() -> MobModel:
+        m = build()
+        m.wind = WIND
+        return m
+
+    return model
+
+
 VEGETATION = {
-    **{n: (lambda n=n: tree(n)) for n in TREES},
-    **{n: (lambda n=n: bush(n)) for n in BUSHES},
-    **{n: (lambda n=n: tuft(n)) for n in TUFTS},
-    "tree_spruce": spruce,
-    "grass_patch": grass_patch,
-    "hedge_box": hedge_box,
-    "forest_clump": forest_clump,
+    name: _windy(build)
+    for name, build in {
+        **{n: (lambda n=n: tree(n)) for n in TREES},
+        **{n: (lambda n=n: bush(n)) for n in BUSHES},
+        **{n: (lambda n=n: tuft(n)) for n in TUFTS},
+        "tree_spruce": spruce,
+        "grass_patch": grass_patch,
+        "hedge_box": hedge_box,
+        "forest_clump": forest_clump,
+    }.items()
 }  # assets/source/vegetation/<name>.glb
 
 

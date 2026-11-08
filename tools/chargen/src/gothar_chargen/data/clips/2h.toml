@@ -14,6 +14,10 @@ mapping = "quaternius_ual1"
 file = "UAL2_Standard.glb"
 mapping = "quaternius_ual2"
 
+[sources.cmu]                  # CMU mocap retargeted by `gothar-chargen cmu` (F4, LICENSES.md)
+file = "cmu_combat.blend"
+mapping = "identity"
+
 [[clip]]
 name = "2h/s_stance"
 keyframe = "pose"
@@ -81,24 +85,102 @@ events = "footsteps"
 # below the right one (recipe two_hands), wider and heavier swings.
 
 [[clip]]
-name = "2h/t_combo1_src"
-concat = ["ual2:Sword_Regular_A", "ual2:Sword_Regular_A_Rec"]
+name = "2h/s_grip"                # closed sword grip for the mocap hands (CMU has no fingers)
+from = "ual1:Sword_Idle"
 helper = true
 
 [[clip]]
-name = "2h/t_combo1_low"         # the cut from above carried through to hip height (sweep vs. animals)
+name = "2h/t_overhead_mocap"            # cut from above
+from = "cmu:sword2h_overhead"           # CMU 02_07, frames 340-480 (F4 mocap, two-handed)
+helper = true
+
+[[clip]]
+name = "2h/t_overhead"                # CMU has no fingers: closed grip from 2h/s_grip
+layer = ["2h/t_overhead_mocap", "2h/s_grip"]
+from_bone = ["thumb_01_l", "index_01_l", "middle_01_l", "ring_01_l", "pinky_01_l", "thumb_01_r", "index_01_r", "middle_01_r", "ring_01_r", "pinky_01_r"]
+helper = true
+
+[[clip]]
+name = "2h/t_overhead_low"         # lunge and wolf height by key poses over the mocap
 keyframe = "keyposes"
 helper = true
 [clip.params]
-base = "2h/t_combo1_src"
-keys = [[0, "rest"], [22, "rest"], [31, "low"], [35, "low"], [43, "rest"]]
+base = "2h/t_overhead"
+keys = [[0, "rest"], [18, "rest"], [25, "low"], [29, "low"], [34, "rest"], [35, "rest"]]
 [clip.params.poses.low]
-rotate = { spine_02 = [["X", 20]], hand_r = [["X", 20], ["Y", 5], ["Z", -31]] }
+rotate = { spine_02 = [["X", 20]], hand_r = [["X", -3], ["Y", -10], ["Z", -24]] }
+move = { root = [0, -0.7, 0] }
+
+[[clip]]
+name = "2h/t_wide_mocap"            # wide horizontal cut from right to left
+from = "cmu:sword2h_wide"           # CMU 02_07, frames 1652-1788 (F4 mocap, two-handed)
+helper = true
+
+[[clip]]
+name = "2h/t_wide"                # CMU has no fingers: closed grip from 2h/s_grip
+layer = ["2h/t_wide_mocap", "2h/s_grip"]
+from_bone = ["thumb_01_l", "index_01_l", "middle_01_l", "ring_01_l", "pinky_01_l", "thumb_01_r", "index_01_r", "middle_01_r", "ring_01_r", "pinky_01_r"]
+helper = true
+
+[[clip]]
+name = "2h/t_wide_low"         # lunge and wolf height by key poses over the mocap
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "2h/t_wide"
+keys = [[0, "rest"], [16, "rest"], [23, "low"], [26, "low"], [32, "rest"], [34, "rest"]]
+[clip.params.poses.low]
+rotate = { spine_02 = [["X", 10]], thigh_l = [["X", -35]], thigh_r = [["X", -35]], calf_l = [["X", 55]], calf_r = [["X", 55]], hand_r = [["X", 35], ["Y", 7], ["Z", 10]] }
+move = { pelvis = [0, 0, -0.24], root = [0, -1.05, 0] }
+
+[[clip]]
+name = "2h/t_diagonal_mocap"            # diagonal cut from upper right to lower left
+from = "cmu:sword2h_diagonal"           # CMU 02_07, frames 1048-1180 (F4 mocap, two-handed)
+helper = true
+
+[[clip]]
+name = "2h/t_diagonal"                # CMU has no fingers: closed grip from 2h/s_grip
+layer = ["2h/t_diagonal_mocap", "2h/s_grip"]
+from_bone = ["thumb_01_l", "index_01_l", "middle_01_l", "ring_01_l", "pinky_01_l", "thumb_01_r", "index_01_r", "middle_01_r", "ring_01_r", "pinky_01_r"]
+helper = true
+
+[[clip]]
+name = "2h/t_diagonal_low"         # lunge and wolf height by key poses over the mocap
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "2h/t_diagonal"
+keys = [[0, "rest"], [16, "rest"], [23, "low"], [26, "low"], [31, "rest"], [33, "rest"]]
+[clip.params.poses.low]
+rotate = { spine_02 = [["X", 10]], hand_r = [["X", 11], ["Y", 9], ["Z", -33]] }
+move = { root = [0, -0.9, 0] }
+
+[[clip]]
+name = "2h/t_sweep_mocap"            # low horizontal sweep from left to right
+from = "cmu:sword2h_sweep"           # CMU 02_07, frames 1912-2040 (F4 mocap, two-handed)
+helper = true
+
+[[clip]]
+name = "2h/t_sweep"                # CMU has no fingers: closed grip from 2h/s_grip
+layer = ["2h/t_sweep_mocap", "2h/s_grip"]
+from_bone = ["thumb_01_l", "index_01_l", "middle_01_l", "ring_01_l", "pinky_01_l", "thumb_01_r", "index_01_r", "middle_01_r", "ring_01_r", "pinky_01_r"]
+helper = true
+
+[[clip]]
+name = "2h/t_sweep_low"         # lunge and wolf height by key poses over the mocap
+keyframe = "keyposes"
+helper = true
+[clip.params]
+base = "2h/t_sweep"
+keys = [[0, "rest"], [14, "rest"], [20, "low"], [23, "low"], [29, "rest"], [32, "rest"]]
+[clip.params.poses.low]
+rotate = { spine_02 = [["X", 10]], thigh_l = [["X", -30]], thigh_r = [["X", -30]], calf_l = [["X", 45]], calf_r = [["X", 45]], hand_r = [["X", 29], ["Y", 19], ["Z", -8]] }
+move = { pelvis = [0, 0, -0.17], root = [0, -0.9, 0] }
 
 [[clip]]
 name = "2h/t_combo1_grip"
 keyframe = "two_hands"
-params = { base = "2h/t_combo1_low" }
+params = { base = "2h/t_overhead_low" }
 helper = true
 
 [[clip]]
@@ -110,7 +192,7 @@ params = { base = "2h/t_combo1_grip", stance = "2h/s_idle", fade_in = 5, fade_ou
 [[clip]]
 name = "2h/t_attack_combo1"                 # feet planted, steps instead of sliding (F4)
 keyframe = "plant"
-markers = { hit_start = 22, hit_end = 32, combo_start = 32, combo_end = 38, "sound:swing" = 18 }
+markers = { hit_start = 19, hit_end = 25, combo_start = 25, combo_end = 30, "sound:swing" = 15 }
 params = { base = "2h/t_attack_combo1_framed" }
 
 [[clip]]
@@ -130,24 +212,9 @@ keyframe = "framed"
 params = { base = "2h/t_block_grip", stance = "2h/s_idle", fade_in = 5, fade_out = 6, soften = ["spine_02", "spine_03", "neck", "head"] }
 
 [[clip]]
-name = "2h/t_combo2_src"
-concat = ["ual2:Sword_Regular_B", "ual2:Sword_Regular_B_Rec"]
-helper = true
-
-[[clip]]
-name = "2h/t_combo2_low"         # the slash bent down to wolf height (animals' bodies, sweep M11)
-keyframe = "keyposes"
-helper = true
-[clip.params]
-base = "2h/t_combo2_src"
-keys = [[0, "rest"], [4, "rest"], [7, "low"], [10, "low"], [16, "rest"], [48, "rest"]]
-[clip.params.poses.low]
-rotate = { spine_02 = [["X", 12]], hand_r = [["X", 10], ["Y", -13], ["Z", 8]] }
-
-[[clip]]
 name = "2h/t_combo2_grip"
 keyframe = "two_hands"
-params = { base = "2h/t_combo2_low" }
+params = { base = "2h/t_wide_low" }
 helper = true
 
 [[clip]]
@@ -161,22 +228,8 @@ params = { base = "2h/t_combo2_grip", stance = "2h/s_idle", fade_in = 6, fade_ou
 [[clip]]
 name = "2h/t_attack_combo2"                 # feet planted, steps instead of sliding (F4)
 keyframe = "plant"
-markers = { hit_start = 6, hit_end = 9, combo_start = 9, combo_end = 38, "sound:swing" = 2 }
+markers = { hit_start = 19, hit_end = 25, combo_start = 25, combo_end = 30, "sound:swing" = 15 }
 params = { base = "2h/t_attack_combo2_framed" }
-[[clip]]
-name = "2h/t_chop"
-keyframe = "keyposes"
-helper = true
-[clip.params]
-base = "none/s_idle"
-keys = [[0, "rest"], [12, "raise"], [19, "chop"], [24, "chop"], [40, "rest"]]
-[clip.params.poses.raise]
-rotate = { upperarm_r = [["X", -150], ["Z", -25]], lowerarm_r = [["X", -60]], spine_02 = [["Z", -20], ["X", -8]], spine_01 = [["Z", -8]], hand_r = [["X", 37], ["Y", 45], ["Z", -78]] }
-move = { pelvis = [0, 0.04, -0.02], root = [0, -0.1, 0] }
-[clip.params.poses.chop]
-rotate = { upperarm_r = [["X", -40], ["Z", 20]], lowerarm_r = [["X", -10]], spine_02 = [["Z", 15], ["X", 18]], spine_01 = [["Z", 6], ["X", 8]], hand_r = [["X", 1], ["Y", -93], ["Z", -62]] }
-move = { pelvis = [0, -0.12, -0.08], root = [0, -0.45, 0] }  # lunge: reach 1.8 m
-
 [[clip]]
 name = "2h/t_swing_l"
 keyframe = "keyposes"
@@ -214,7 +267,7 @@ move = { pelvis = [0, -0.05, -0.03], root = [0, -0.7, 0] }
 [[clip]]
 name = "2h/t_t_chop_grip"
 keyframe = "two_hands"
-params = { base = "2h/t_chop" }
+params = { base = "2h/t_diagonal_low" }
 helper = true
 
 [[clip]]
@@ -226,7 +279,7 @@ params = { base = "2h/t_t_chop_grip", stance = "2h/s_idle", fade_in = 6, fade_ou
 [[clip]]
 name = "2h/t_attack_combo3"                 # feet planted, steps instead of sliding (F4)
 keyframe = "plant"
-markers = { hit_start = 15, hit_end = 19, combo_start = 19, combo_end = 32, "sound:swing" = 11 }
+markers = { hit_start = 19, hit_end = 24, combo_start = 24, combo_end = 29, "sound:swing" = 15 }
 params = { base = "2h/t_attack_combo3_framed" }
 
 [[clip]]
@@ -266,24 +319,9 @@ markers = { hit_start = 11, hit_end = 19, "sound:swing" = 7 }
 params = { base = "2h/t_attack_r_framed" }
 
 [[clip]]
-name = "2h/t_combo4_src"
-from = "ual1:Sword_Attack"
-helper = true
-
-[[clip]]
-name = "2h/t_combo4_reach"        # a step into the finisher: reach 1.8 m (the AI's 2h distance)
-keyframe = "keyposes"
-helper = true
-[clip.params]
-base = "2h/t_combo4_src"
-keys = [[0, "rest"], [6, "rest"], [13, "lunge"], [30, "lunge"], [46, "rest"]]
-[clip.params.poses.lunge]
-move = { root = [0, -0.15, 0] }
-
-[[clip]]
 name = "2h/t_combo4_grip"
 keyframe = "two_hands"
-params = { base = "2h/t_combo4_reach" }
+params = { base = "2h/t_sweep_low" }
 helper = true
 
 [[clip]]
@@ -295,7 +333,7 @@ params = { base = "2h/t_combo4_grip", stance = "2h/s_idle", fade_in = 5, fade_ou
 [[clip]]
 name = "2h/t_attack_combo4"                 # feet planted, steps instead of sliding (F4)
 keyframe = "plant"
-markers = { hit_start = 11, hit_end = 14, combo_start = 14, combo_end = 37, "sound:swing" = 7 }
+markers = { hit_start = 17, hit_end = 22, combo_start = 22, combo_end = 27, "sound:swing" = 13 }
 params = { base = "2h/t_attack_combo4_framed" }
 
 [[clip]]

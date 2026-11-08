@@ -12,3 +12,38 @@ end = 656
 take = "02_05"
 start = 1328
 end = 1448
+
+[segment.sword_overhead]    # subject 2 "swordplay", two-handed cut from above
+take = "02_07"
+start = 100
+end = 272
+
+[segment.sword_heavy]       # subject 2 "swordplay", heavy cut from above
+take = "02_07"
+start = 816
+end = 960
+
+[segment.sword_cut_rl]      # subject 2 "swordplay", low horizontal cut from right to left
+take = "02_07"
+start = 1808
+end = 1944
+
+[segment.sword2h_overhead]  # subject 2 "swordplay", two-handed cut from above
+take = "02_07"
+start = 340
+end = 480
+
+[segment.sword2h_wide]      # subject 2 "swordplay", wide horizontal cut from right to left
+take = "02_07"
+start = 1652
+end = 1788
+
+[segment.sword2h_diagonal]  # subject 2 "swordplay", diagonal cut from upper right to lower left
+take = "02_07"
+start = 1048
+end = 1180
+
+[segment.sword2h_sweep]     # subject 2 "swordplay", low horizontal sweep from left to right
+take = "02_07"
+start = 1912
+end = 2040

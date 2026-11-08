@@ -186,6 +186,8 @@ struct Creature
     std::optional<MobUse> mob;
     std::optional<f32> turnTo; ///< yaw to turn to
     bool simulated = true;     ///< near enough to the player (AI LOD)
+    bool lodAllowed = true; ///< among the [ai] max_simulated nearest (or fighting, talking): may be simulated
+    bool animationOnly = false; ///< out by the count, but visible and near: animated, no AI (M17 perf part D)
     /// The item of the ambient animation: taken at its event item_to_hand, put away at item_from_hand.
     std::string handItemWanted;
     // Perception (M9 part C, EnginePerception.cpp).
