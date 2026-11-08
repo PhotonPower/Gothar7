@@ -124,3 +124,19 @@ TEST_CASE(
     CHECK(overridden.saturation == doctest::Approx(0.7f));
     CHECK(overridden.temperature == doctest::Approx(1.0f)); // the rest stays
 }
+
+TEST_CASE("Underwater colour: near unchanged, far the water's own colour, the clearest channel last (M17 W3)")
+{
+    Underwater water;
+    water.absorption = Vec3(1.0f, 0.5f, 2.0f);
+    water.fogColor = Vec3(0.0f, 0.1f, 0.05f);
+    const Vec3 white(1.0f);
+    const Vec3 near = underwaterColor(white, water, 0.0f);
+    CHECK(near.x == doctest::Approx(1.0f));
+    const Vec3 far = underwaterColor(white, water, 100.0f);
+    CHECK(far.y == doctest::Approx(0.1f));
+    CHECK(far.z == doctest::Approx(0.05f));
+    const Vec3 mid = underwaterColor(white, water, 1.0f);
+    CHECK(mid.y > mid.x); // green carries furthest here
+    CHECK(mid.x > mid.z);
+}

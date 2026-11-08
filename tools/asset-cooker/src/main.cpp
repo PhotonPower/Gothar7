@@ -2,6 +2,7 @@
 // them into .g7pak archives (ADR 0016, docs/06-asset-pipeline.md).
 #include "Cooker.hpp"
 #include "Fonts.hpp"
+#include "Heightmap.hpp"
 #include "Licences.hpp"
 #include "Textures.hpp"
 
@@ -21,6 +22,7 @@ void printUsage()
               "               [--textures copy|ktx2] [--uastc-level <0-4>] [--full] [--clean]\n"
               "       g7-cook --font <name.font.toml> <out.g7font>\n"
               "       g7-cook --check-licences <assets dir> [<CREDITS.txt> <version line>]\n"
+              "       g7-cook --heightmap-from-mesh <terrain.glb> <out.r16> [<cell m>] [<vfs path>]\n"
               "  --source  source assets (default: assets/source)\n"
               "  --out     output directory (default: assets/cooked)\n"
               "  --pack    write one archive <out>/<file> instead of loose files (zstd per entry)\n"
@@ -31,7 +33,9 @@ void printUsage()
               "  --clean   delete the output directory first\n"
               "  --font    generate a distance-field font (ADR 0020) from its description and font file\n"
               "  --check-licences  every file of <assets>/source needs a shippable source in licenses.toml\n"
-              "            and a row in LICENSES.md; writes the release's CREDITS.txt if a path is given");
+              "            and a row in LICENSES.md; writes the release's CREDITS.txt if a path is given\n"
+              "  --heightmap-from-mesh  raster a Blender terrain mesh into a .r16 heightmap and write the\n"
+              "            terrain block next to it (<out>.terrain.json; ADR 0023), cells default 1 m");
 }
 } // namespace
 
@@ -95,6 +99,21 @@ int main(int argc, char** argv)
                 return 1;
             }
         }
+        return 0;
+    }
+    if (argc >= 4 && argc <= 6 && std::string_view(argv[1]) == "--heightmap-from-mesh")
+    {
+        const g7::f32 cell = argc >= 5 ? static_cast<g7::f32>(std::atof(argv[4])) : 1.0f;
+        const std::string vfs =
+            argc >= 6 ? std::string(argv[5]) : g7::fs::toUtf8(g7::fs::fromUtf8(argv[3]).filename());
+        auto cooked =
+            g7::cook::cookHeightmap(g7::fs::fromUtf8(argv[2]), g7::fs::fromUtf8(argv[3]), cell, vfs);
+        if (!cooked)
+        {
+            G7_LOG_ERROR("cook", "{}", cooked.error().message);
+            return 1;
+        }
+        std::puts(g7::cook::terrainBlockJson(cooked.value(), vfs).c_str());
         return 0;
     }
     g7::cook::CookOptions options{.source = "assets/source", .out = "assets/cooked"};

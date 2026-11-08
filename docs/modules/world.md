@@ -152,7 +152,7 @@ Texte kommen aus Inhalt/Definitionen (lokalisiert, M14). Konvention der Engine: 
 | `trigger` | `trigger`: `shape` `box` (`halfExtents` [x,y,z] > 0, Vorgabe 1) | `sphere` (`radius` > 0, Vorgabe 1), `onEnter`/`onLeave` (Skriptfunktionsnamen, optional), `filter` `player`|`npc`|`any` (Vorgabe player), `once` (Vorgabe false), `target` (**reserviert**: Vob-ID oder Name, gelesen/geschrieben, noch ohne Wirkung), `owner` (M9: Npc-Instanz oder Gilde – **privater Bereich**, z. B. die Stube einer Hütte; betritt der Spieler ihn, nimmt der Besitzer das wahr, `assess_enter_room`; der Filter bleibt `player`) | Volumen, das Betreten/Verlassen meldet. Box dreht und skaliert mit dem Vob, Kugel: Radius × größte Skalierung. |
 | `mob` | `mob`: `definition` (Pflicht, Name der Mob-Definition, M8) + `mesh` wie bei `mesh` | Interaktives Objekt (Bett, Truhe, Tür). `definition` ist eine `Mob`-Instanz der Skripte (Name, Typ aus `data/mobs.toml`, Schloss, Inhalt) oder ein bloßer Typ (`chest`); Fokusname aus der Instanz. Tür-Mobs: Ursprung an der Angel, das Türblatt entlang +X (gameplay.md „Mob-Interaktion“). **`open`** (Vertrag mit welt, Tür-PR): `true` = die Tür steht offen; gespeichert wird sie geschlossen (die Drehung des Vobs), offen ist +90° um die Angel, das Blatt in den Raum (weg von der Vorderseite, +Z außen). Geschrieben nach `definition` und nur, wenn `true`; die Engine speichert offene Türen ebenso (Editor-Speichern bleibt byte-gleich zum Generator). |
 | `item` (M8 Teil B, umgesetzt) | `item`: `instance` (Pflicht, Name einer `Item`-Instanz der Skripte), `count` (1…1 000 000, Vorgabe 1, wird bei 1 nicht geschrieben), `owner` (optional, Npc-Instanz oder Gilde; Aufheben ist dann Diebstahl, M8 D) | Gegenstand, der in der Welt liegt. Kein `mesh` in der Datei: Die Engine zeichnet das `mesh` des Items bzw. einen Platzhalter seiner Kategorie, ohne Kollision (wie Gothic), und nimmt ihn in den Fokus. Aufgehoben, verschwindet der Vob; zur Laufzeit gelegte Items (`insert`, `drop_item`) haben Laufzeit-IDs und werden nicht gespeichert (Spielstand mit M14). |
-| `water` (M5 Teil E, umgesetzt) | `water`: `halfExtents` [x,y,z] > 0, `kind` (**reserviert**, z. B. Fluss/Sumpf) | Wasserkörper als Box um `pos`, nur um Y gedreht; **Oberfläche = Oberkante** (pos.y + hy). Schwimmen ab Wassertiefe > Hüfthöhe (0,9 m), Tauchen mit Luftvorrat. Boxen dürfen sich überlappen (Flussabschnitte, Stufen an den Überlappungen). Darstellung der Fläche mit M17, bis dahin Debug-Draw. Ein Gefälle-Feld ist für M17 vorgemerkt. Mit welt abgestimmt. Fehler: fehlende oder nicht positive `halfExtents`, Drehung nicht nur um Y, Skalierung ≠ 1. Abfrage: `world::WaterBodies` (`Water.hpp`): `surfaceAt(punkt)` = höchste Oberfläche der Boxen, deren Grundfläche den Punkt enthält und die von unter ihm bis höchstens 0,5 m unter ihn reichen (eine Brücke hoch über dem Fluss ist trocken). |
+| `water` (M5 Teil E, umgesetzt) | `water`: `halfExtents` [x,y,z] > 0, `kind`: `river` (fließt entlang lokal +X der Box) oder `pond` (steht); leer = Vorgabe aus `data/water.toml` (M17, vereinbart mit welt 2026-11-07) | Wasserkörper als Box um `pos`, nur um Y gedreht; **Oberfläche = Oberkante** (pos.y + hy). Schwimmen ab Wassertiefe > Hüfthöhe (0,9 m), Tauchen mit Luftvorrat. Boxen dürfen sich überlappen (Flussabschnitte, Stufen an den Überlappungen). Darstellung der Fläche: render.md „Wasseroberfläche“ (M17 W1). Ein Gefälle-Feld ist für M17 vorgemerkt. Mit welt abgestimmt. Fehler: fehlende oder nicht positive `halfExtents`, Drehung nicht nur um Y, Skalierung ≠ 1. Abfrage: `world::WaterBodies` (`Water.hpp`): `surfaceAt(punkt)` = höchste Oberfläche der Boxen, deren Grundfläche den Punkt enthält und die von unter ihm bis höchstens 0,5 m unter ihn reichen (eine Brücke hoch über dem Fluss ist trocken). |
 
 **Oberfläche (`components.surface`, M13 E, Vertrag mit welt 2026-10-08):** `mesh`- und `mob`-Vobs haben optional
 `"components": {"surface": {"footstep": "<material>"}}`. Gemeint ist das Fußschritt-Material dessen, worauf man in
@@ -400,7 +400,40 @@ struct Orbit { sunrise, sunset, noonElevation, moonElevation; sunDirection(hour)
 - **Reserviert (M17):** `[zone]` für Überschreibungen je Zone bzw. Welt (Höhle, Sumpf; Farbkorrektur) – noch ohne Wirkung.
 - Werte sind Spielgefühl und Vorgaben bis zur Abnahme durch den Projektinhaber (Screenshots zu 6 Uhrzeiten,
   Lager und Leonberg: `C:\GotharData\review\m4-daynight\`, nicht im Repo).
-- Wetter (M17): Regenintensität als Zustandsautomat mit Übergängen.
+
+### Wetter (M17 Teil E1, umgesetzt) – `Weather.hpp`, `data/weather.toml`
+Plan und Entscheidungen des Projektinhabers: `docs/design/wetter.md`.
+```cpp
+struct WeatherState { std::string name; f32 rain, clouds, wind, gusts, fog, sun, ambient, lightning;
+                      render::GradingOverride grading; f32 minHours, maxHours;
+                      std::optional<std::pair<f32, f32>> window; std::vector<std::pair<std::string, f32>> next; };
+struct WeatherSample { std::string_view state; f32 rain, clouds, wind, gusts, fog, sun, ambient, lightning, fade; };
+class Weather { static Result<Weather> parse(toml, source) / load(vfs, path) / fallback();
+                void start(f64 clock, u64 seed); std::vector<std::pair<old, new>> update(f64 clock, bool hold);
+                bool set(name, clock, fadeMinutes); void lock(bool);
+                WeatherSample sample(clock) const; void apply(DaySample&, clock) const;
+                WeatherSnapshot snapshot() const; bool restore(const WeatherSnapshot&); };
+Engine::weather(), weatherNow();  save::GameState::weather (optional, additiv nach ADR 0021)
+```
+- **Lagen** `[state.<name>]`: Regen, Bewölkung, Wind, Böen (0..1), Faktoren auf Nebel, Sonnen-/Mondlicht und
+  Umgebungslicht, Blitze je Minute (Teil G), `grading_*` über der Tageszeit. `duration = [min, max]` Spielstunden,
+  `window = [von, bis]` (darf nur dann beginnen), `next = { lage = gewicht }`. Geliefert: `klar`, `nebel` (Morgen),
+  `bewoelkt`, `regen`, `starkregen`, `gewitter` (nur aus Regen, 12–22 Uhr).
+- **Ablauf:** deterministisch aus Spielzeit und Startwert (`--seed`, sonst fest); bei jeder Wechselzeit eine
+  gewichtete Wahl unter den erlaubten Nachfolgern, Übergang über `transition_minutes` (15). Ein Zeitsprung (Schlafen)
+  läuft durch alle Wechsel dazwischen. Während eines Dialogs und bei `lock_weather(true)` wartet der Wechsel.
+  Häufigkeit über 2000 Spieltage geprüft: Regen an 33 % der Tage, Gewitter an 9 %, Morgennebel an 26 %
+  (Entscheidung 1).
+- **Wirkung:** `apply` mischt in die Tageszeit – Sonne und Ambient gedämpft, Nebel dichter, Himmel und Nebelfarbe
+  unter Wolken grauer, Mond und Sterne verdeckt, Farbkorrektur der Lage (danach die Zonen, P2). Regen, Nässe, Blitze
+  und Wind lesen `weatherNow()` in den Teilen R, N, G, W.
+- **Lua:** `set_weather(name, minutes?)`, `weather()`, `lock_weather(locked)`, Ereignis `weather_changed(old, new)`;
+  Startparameter `--weather=<lage>` (Prüfbilder); Pfad `[time] weather` (Vorgabe `data/weather.toml`).
+- **Schatten:** `shadow` je Lage (1 voll .. 0 keine) mischt in `Environment::shadowStrength`; bewölkt 0,4, Nebel 0,5,
+  Regen 0,12, Starkregen und Gewitter 0,08 – unter bedecktem Himmel weiche bzw. fast keine Sonnenschatten
+  (Koordinator, Durchsicht von #381).
+- **Spielstand:** Lage, vorige Lage, Wechselzeit, Übergang, nächste Entscheidung, Zufallszustand und Sperre stehen
+  als `weather` im Spielstand; ältere Spielstände ohne das Feld laden weiter, das Wetter bleibt dann, wie es ist.
 
 ## Gothic-Bezug
 - Vob-Baum ≈ ZenGin `zCVob`-Hierarchie. Mobs, Trigger, Lichter, Startpunkte sind Vob-Typen.

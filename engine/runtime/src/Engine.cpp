@@ -492,6 +492,7 @@ bool Engine::runFrame()
         const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
         m_triggers.update(m_scene, std::span(&probe, 1));
         m_gameTime.advance(m_fixedStep.step()); // global: keeps running across level changes
+        updateWeather();
         ++m_simTicks;
         if (m_pendingWorldChange)
         {
@@ -598,6 +599,34 @@ Result<void> Engine::initShaders()
         G7_LOG_WARN("engine", "bloom: {} (no bloom)", bloom.error().message);
     }
     m_bloomSettings.enabled = m_config.settings.get<bool>("render.bloom", true);
+    if (auto water = render::WaterRenderer::create(*m_device, *m_shaders); water)
+    {
+        m_waterRenderer = std::move(water).value();
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "water: {} (no water surfaces)", water.error().message);
+    }
+    applySetting("render.water_quality");
+    if (auto ssao = render::Ssao::create(*m_device, *m_shaders); ssao)
+    {
+        m_ssao = std::move(ssao).value();
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "ssao: {} (no ambient occlusion)", ssao.error().message);
+    }
+    applySetting("render.ssao");
+    if (auto rain = render::RainRenderer::create(*m_device, *m_shaders); rain)
+    {
+        m_rain = std::move(rain).value();
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "rain: {} (no rain)", rain.error().message);
+    }
+    applySetting("render.weather");
+    applySetting("render.rain_quality");
     auto debugRenderer = render::DebugDrawRenderer::create(*m_device, *m_shaders);
     if (!debugRenderer)
     {
@@ -923,6 +952,7 @@ void Engine::refreshReloadedModels()
             {
                 instance.bounds = loaded->bounds.transformed(instance.transform);
                 m_cullGridDirty = true;
+                m_rain.invalidateMap(); // M17 R: the occluders changed
                 m_physicsDirty = true;
             }
         }
@@ -943,6 +973,7 @@ void Engine::addInstance(const LoadedModel& model, const Mat4& transform, bool s
     }
     m_instances.push_back({&model, transform, bounds, sizeCullable, vob});
     m_cullGridDirty = true;
+    m_rain.invalidateMap(); // M17 R: the occluders changed
     m_physicsDirty = true;
 }
 
@@ -1116,40 +1147,9 @@ Result<void> Engine::instantiateScene()
             }
             addInstance(*loaded, world.matrix, mesh.category == world::VobCategory::Deco, vob.id);
         });
-    // Water: the boxes for swimming, and a translucent surface on each until water is rendered (M17).
+    // Water: the boxes for swimming, and their surfaces for the water pass (M17 W1).
     m_water.rebuild(m_scene);
-    if (!m_water.bodies().empty() && m_device && !m_waterModel)
-    {
-        asset::MeshData plane = asset::makePlane(1.0f, 1.0f, Vec4(0.16f, 0.36f, 0.5f, 0.55f));
-        for (asset::MaterialInfo& material : plane.materials)
-        {
-            material.alphaMode = asset::AlphaMode::Blend;
-            material.doubleSided = true; // seen from below while diving
-        }
-        auto mesh = render::Mesh::create(*m_device, *m_geometry, plane);
-        auto materials = render::MaterialSet::create(*m_device, plane, render::MaterialSet::ImageLookup{},
-                                                     m_meshRenderer.defaults());
-        if (mesh && materials)
-        {
-            m_waterModel = std::make_unique<LoadedModel>();
-            m_waterModel->mesh = std::move(mesh).value();
-            m_waterModel->materials = std::move(materials).value();
-            m_waterModel->name = "water";
-            m_waterModel->bounds = plane.bounds;
-        }
-    }
-    if (m_waterModel)
-    {
-        for (const world::WaterBody& body : m_water.bodies())
-        {
-            const Mat4 surface =
-                glm::translate(Mat4(1.0f), Vec3(body.centre.x, body.surface(), body.centre.z)) *
-                glm::rotate(Mat4(1.0f), body.yaw, Vec3(0.0f, 1.0f, 0.0f)) *
-                glm::scale(Mat4(1.0f), Vec3(2.0f * body.halfExtents.x, 1.0f, 2.0f * body.halfExtents.z));
-            addInstance(*m_waterModel, surface, false, body.vob);
-            m_instances.back().solid = false;
-        }
-    }
+    rebuildWaterSurfaces();
     rebuildWorldItems();
     rebuildMobs();
     m_lights.clear();
@@ -1187,6 +1187,19 @@ Result<void> Engine::setWaynet(world::WaynetData waynet)
     return {};
 }
 
+Result<void> Engine::setZones(std::vector<world::Zone> zones)
+{
+    for (usize i = 0; i < zones.size(); ++i)
+    {
+        if (auto checked = world::checkZone(zones[i], std::format("zones[{}]", i)); !checked)
+        {
+            return checked;
+        }
+    }
+    m_worldFile.zones = std::move(zones); // read live: rooms (render), music, ambience, NPC rooms
+    return {};
+}
+
 Result<void> Engine::refreshScene()
 {
     // Everything but the ground plate is rebuilt from the scene; models stay cached, new ones load.
@@ -1194,6 +1207,7 @@ Result<void> Engine::refreshScene()
                   [&](const SceneInstance& instance) { return instance.model != m_groundModel.get(); });
     m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)};
     m_cullGridDirty = true;
+    m_rain.invalidateMap(); // M17 R: the occluders changed
     m_physicsDirty = true;
     return instantiateScene();
 }
@@ -1404,6 +1418,7 @@ void Engine::unloadWorld()
     m_mobUse.reset();
     m_mobBodies.clear();
     m_cullGridDirty = true;
+    m_rain.invalidateMap(); // M17 R: the occluders changed
     m_physicsDirty = true;
     m_lights.clear();
     m_daylightLights.clear();
@@ -1543,7 +1558,7 @@ Result<void> Engine::applyStartPoint(std::string_view name)
     return {};
 }
 
-void Engine::loadTerrainSurface(const world::TerrainRef& ref)
+void Engine::loadTerrainSurface(const world::TerrainRef& ref, bool painted)
 {
     render::TerrainSurfaceDesc surface;
     surface.holes = m_heightfield.holes();
@@ -1567,9 +1582,17 @@ void Engine::loadTerrainSurface(const world::TerrainRef& ref)
         }
         return handle.get();
     };
+    std::vector<asset::TextureData> paintedMaps; // the editor's painted weights (M16 part F2), linear data
+    if (painted && m_splatImages.size() == maps.size())
+    {
+        for (const asset::ImageData& image : m_splatImages)
+        {
+            paintedMaps.push_back(asset::textureFromImage(image, false));
+        }
+    }
     for (usize i = 0; i < maps.size(); ++i)
     {
-        surface.splatMaps.push_back(check(maps[i], ref.splatMaps[i]));
+        surface.splatMaps.push_back(paintedMaps.empty() ? check(maps[i], ref.splatMaps[i]) : &paintedMaps[i]);
     }
     for (usize i = 0; i < albedos.size(); ++i)
     {
@@ -1646,7 +1669,44 @@ void Engine::initEnvironment()
     m_environment.fogDensity = static_cast<f32>(
         m_config.settings.get<f64>("render.fog_density", render::fogDensityFor(0.9f, 300.0f, 30.0f)));
     m_fogBaseDensity = m_environment.fogDensity;
+    // Weather (M17 E1): states and schedule from data; without the file always clear.
+    const std::string weatherPath = m_config.settings.get<std::string>("time.weather", "data/weather.toml");
+    if (auto weather = world::Weather::load(m_vfs, weatherPath))
+    {
+        m_weather = std::move(weather).value();
+        G7_LOG_INFO("engine", "weather from {} ({} states)", weatherPath, m_weather.states().size());
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "no weather ({}), always clear", weather.error().message);
+        m_weather = world::Weather::fallback();
+    }
+    m_weather.start(m_gameTime.clock(), m_config.randomSeed.value_or(0x5eed));
+    if (!m_config.weather.empty() && m_weather.set(m_config.weather, m_gameTime.clock(), 0.0))
+    {
+        m_weather.settle(); // screenshots: as if it had rained a while
+    }
+    else if (!m_config.weather.empty())
+    {
+        G7_LOG_WARN("engine", "--weather={}: no such state in {}", m_config.weather, weatherPath);
+    }
     updateEnvironment();
+    // Kinds of water (M17 W1): data/water.toml; without it every surface gets the built-in style.
+    const std::string waterPath = m_config.settings.get<std::string>("render.water", "data/water.toml");
+    if (auto bytes = m_vfs.read(waterPath))
+    {
+        const std::string_view text(reinterpret_cast<const char*>(bytes.value().data()),
+                                    bytes.value().size());
+        if (auto styles = render::WaterStyles::parse(text, waterPath))
+        {
+            m_waterStyles = std::move(styles).value();
+        }
+        else
+        {
+            G7_LOG_WARN("engine", "{} (built-in water)", styles.error().message);
+        }
+    }
+    rebuildWaterSurfaces();
 }
 
 std::vector<render::IndoorVolume> Engine::nearestIndoorVolumes(const Vec3& point) const
@@ -1694,12 +1754,154 @@ std::vector<render::PointLight> Engine::daylightLights() const
     return out;
 }
 
+void Engine::updateRainMap()
+{
+    // The occluders seen from above: terrain and the solid instances inside the map's square.
+    m_rain.beginMap(*m_device, m_camera.transform.position);
+    render::Cascade view;
+    view.viewProjection = m_rain.mapViewProjection();
+    const Frustum volume = Frustum::fromViewProjection(view.viewProjection);
+    m_cullCandidates.clear();
+    m_cullGrid.query(volume, m_camera.transform.position, 0.0f, m_cullCandidates);
+    m_rainItems.clear();
+    for (const u32 index : m_cullCandidates)
+    {
+        const SceneInstance& instance = m_instances[index];
+        if (instance.model == m_groundModel.get() || !instance.solid || !volume.intersects(instance.bounds))
+        {
+            continue;
+        }
+        if (m_multiDraw)
+        {
+            m_rainItems.push_back({&instance.model->mesh, &instance.model->materials, instance.transform,
+                                   instance.bounds, instance.lod});
+        }
+        else
+        {
+            m_meshRenderer.drawShadow(*m_device, instance.model->mesh, instance.model->materials,
+                                      instance.transform, view, instance.lod);
+        }
+    }
+    if (m_multiDraw)
+    {
+        m_meshRenderer.drawShadowBatched(*m_device, m_rainItems, view);
+    }
+    if (m_hasTerrain)
+    {
+        m_terrain.setMaxDistance(0.0f);
+        m_terrain.drawShadow(*m_device, view, m_camera.transform.position);
+    }
+    m_rain.endMap();
+}
+
+void Engine::drawRain(u32 width, u32 height)
+{
+    const world::WeatherSample weather = weatherNow();
+    m_rainDrawn = 0;
+    if (!m_weatherVisible || weather.rain <= 0.0f || cameraWater() != nullptr) // under water no streaks (W3)
+    {
+        return;
+    }
+    render::RainFrame frame;
+    frame.rain = weather.rain;
+    // Until the wind gets its direction (part W): a steady breeze from the west, as strong as the state says.
+    frame.wind = glm::normalize(Vec2(1.0f, 0.3f)) * (4.0f * weather.wind);
+    frame.time = static_cast<f32>(std::fmod(m_rainTime, 3600.0));
+    frame.light = m_environment.ambientSky + m_environment.sunColor * m_environment.sunIntensity * 0.3f;
+    frame.quality = m_rainQuality;
+    m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
+    m_device->setViewport(0, 0, width, height);
+    m_passTimes.begin(*m_device, "rain");
+    m_rainDrawn = m_rain.draw(*m_device, m_camera, frame);
+    m_passTimes.end(*m_device);
+}
+
+void Engine::updateWeather()
+{
+    // M17 E1: no change during a dialogue (decision 4); the scripts hear of each change.
+    for (const auto& [from, to] : m_weather.update(m_gameTime.clock(), inDialog()))
+    {
+        G7_LOG_INFO("engine", "weather: {} -> {}", from, to);
+        if (m_scripts)
+        {
+            const script::Value args[] = {from, to};
+            m_scripts->emit("weather_changed", args);
+        }
+    }
+    // M17 G: lightning in a thunderstorm, its thunder after the time the sound needs.
+    const f64 step = m_fixedStep.step();
+    m_stormClock += step;
+    const f64 gameMinutes = m_gameTime.secondsPerMinute() > 0.0 ? step / m_gameTime.secondsPerMinute() : 0.0;
+    if (auto flash = m_storm.step(gameMinutes, weatherNow().lightning, m_stormClock))
+    {
+        m_flash = *flash;
+        ++m_flashCount;
+        thunder(*flash);
+    }
+}
+
+void Engine::thunder(const world::Lightning& flash)
+{
+    if (!m_audio)
+    {
+        return;
+    }
+    const auto def = m_soundDefs.find(flash.distance < 1000.0f ? "thunder_near" : "thunder_far");
+    if (def == m_soundDefs.end())
+    {
+        return;
+    }
+    for (const std::string& file : def->second.files)
+    {
+        if (!m_audio->hasClip(file))
+        {
+            if (auto bytes = m_vfs.read(file))
+            {
+                (void)m_audio->addClip(file, bytes.value());
+            }
+        }
+    }
+    const f32 delay = world::thunderDelay(flash.distance);
+    if (auto id = m_audio->play(def->second, std::nullopt, delay))
+    {
+        m_audio->setVolume(id.value(), world::lightningStrength(flash.distance));
+        m_lastThunderDelay = delay;
+    }
+}
+
+f32 Engine::lightningNow() const noexcept
+{
+    if (!m_flash || !m_weatherVisible)
+    {
+        return 0.0f;
+    }
+    return world::lightningBrightness(static_cast<f32>(m_stormClock - m_flash->start), m_flash->flickers) *
+           world::lightningStrength(m_flash->distance);
+}
+
 void Engine::updateEnvironment()
 {
     const f32 fogStart = m_environment.fogStart;
-    const world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
+    world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
+    m_weather.apply(sample, m_gameTime.clock()); // M17 E1: clouds, rain and fog over the time of day
+    m_rainTime += m_frameSeconds;
+    // M17 N: wet surfaces outside (the rain map tells outside from under a roof), puddles at rain quality
+    // high.
+    sample.environment.wetness = m_weatherVisible ? weatherNow().wetness : 0.0f;
+    sample.environment.puddles = m_rainQuality == render::RainQuality::High;
+    sample.environment.hasRainMap = m_rain.mapValid();
+    sample.environment.rainMapViewProjection = m_rain.mapViewProjection();
+    m_meshRenderer.setRainMap(m_rain.mapValid() ? &m_rain.map() : nullptr);
     m_bloomSettings.threshold = sample.bloomThreshold; // M17 P1: by the time of day
     m_bloomSettings.intensity = sample.bloomIntensity;
+    // M17 G: a flash lights the sky, the fog and everything under the open sky for a moment.
+    if (const f32 flash = lightningNow(); flash > 0.0f)
+    {
+        sample.environment.ambientSky += Vec3(0.75f, 0.8f, 1.0f) * (1.1f * flash);
+        sample.environment.ambientGround += Vec3(0.5f, 0.52f, 0.6f) * (0.5f * flash);
+        sample.environment.fogColor += Vec3(0.3f, 0.33f, 0.4f) * flash;
+        sample.sky.zenith += Vec3(0.35f, 0.4f, 0.55f) * flash;
+    }
     m_environment = sample.environment;
     m_environment.fogStart = fogStart;
     // Rooms (zones of type indoor, world.md): the nearest to the camera get the indoor ambient.
@@ -1711,6 +1913,7 @@ void Engine::updateEnvironment()
     }
     m_sky = sample.sky;
     updateGrading(sample.grading);
+    m_waterTime += m_frameSeconds;
 }
 
 render::Grading Engine::gradingAt(const render::Grading& timeOfDay, const Vec3& point) const
@@ -1775,11 +1978,15 @@ void Engine::renderScene(u32 width, u32 height)
     m_passTimes.begin(*m_device, "scene");
     drawScene(width, height);
     m_passTimes.end(*m_device);
+    drawRain(width, height); // M17 R
+
+    // Under water (M17 W3): tint, fog and wavering in the post pass; no bloom (the glow of the sun above).
+    updateUnderwater();
 
     // Bloom from the HDR scene (M17 P1), then tonemap into the window.
     m_postSettings.bloom = nullptr;
     m_postSettings.bloomIntensity = 0.0f;
-    if (m_bloomSettings.enabled && m_bloomSettings.intensity > 0.0f)
+    if (m_bloomSettings.enabled && m_bloomSettings.intensity > 0.0f && !m_postSettings.underwater)
     {
         if (auto resized = m_bloom.resize(*m_device, width, height, m_bloomSettings.levels); resized)
         {
@@ -1908,10 +2115,54 @@ void Engine::drawScene(u32 width, u32 height)
         }
         shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
     }
+    // M17 R: the rain map (depth from above) anew when it rains and the camera moved on.
+    const world::WeatherSample rainNow = weatherNow();
+    if (m_weatherVisible && (rainNow.rain > 0.0f || rainNow.wetness > 0.0f) &&
+        m_rain.mapStale(m_camera.transform.position))
+    {
+        updateRainMap();
+    }
 
     m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
     m_device->setViewport(0, 0, width, height);
     m_device->clear(Vec4(0.0f, 0.0f, 0.0f, 1.0f), 0.0f);
+    const Frustum view = m_camera.frustum();
+    // M17 P3: with ambient occlusion first the depth of the opaque world (terrain, objects, items), the
+    // occlusion from it, then the main pass on that depth. Without it none of this runs (no cost).
+    const bool ssao =
+        m_ssaoEnabled && m_ssao.ready() && m_multiDraw && (!m_instances.empty() || m_hasTerrain);
+    m_environment.ambientOcclusion = 0.0f;
+    m_meshRenderer.setAmbientOcclusion(nullptr);
+    if (ssao)
+    {
+        m_passTimes.end(*m_device); // "scene": shadows
+        m_passTimes.begin(*m_device, "depth");
+        cullInstances(view);
+        appendItemDraws(view, false, 0);
+        if (m_hasTerrain)
+        {
+            m_terrain.setMaxDistance(inside ? m_frameCull.viewDistance : 0.0f);
+            m_terrain.drawDepth(*m_device, m_camera);
+        }
+        m_meshRenderer.drawDepthBatched(*m_device, m_drawItems, m_camera);
+        m_passTimes.end(*m_device);
+        m_passTimes.begin(*m_device, "ssao");
+        if (auto resized = m_ssao.resize(*m_device, width, height); resized)
+        {
+            m_ssao.render(*m_device, m_sceneTarget.depth(), m_camera, m_ssaoSettings);
+        }
+        m_passTimes.end(*m_device);
+        m_passTimes.begin(*m_device, "shading");
+        m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
+        m_device->setViewport(0, 0, width, height);
+        if (m_ssao.result() != nullptr)
+        {
+            m_environment.ambientOcclusion = 1.0f; // the strength is in the occlusion itself
+            m_environment.viewportTexel =
+                Vec2(1.0f / static_cast<f32>(width), 1.0f / static_cast<f32>(height));
+            m_meshRenderer.setAmbientOcclusion(m_ssao.result());
+        }
+    }
     m_backgroundProgram->setUniform("uInverseViewProjection", glm::inverse(m_camera.viewProjection()));
     m_backgroundProgram->setUniform("uCameraPosition", m_camera.transform.position);
     m_backgroundProgram->setUniform("uHorizonColor", m_environment.fogColor);
@@ -1921,6 +2172,17 @@ void Engine::drawScene(u32 width, u32 height)
     m_backgroundProgram->setUniform("uMoonDirection", m_sky.moonDirection);
     m_backgroundProgram->setUniform("uMoon", m_sky.moon);
     m_backgroundProgram->setUniform("uStars", m_sky.stars);
+    // M17 G: the bolt of a near or middle flash (decision 8: rarely seen), in its direction above the
+    // horizon.
+    Vec4 bolt(0.0f);
+    if (m_flash && m_weatherVisible && m_flash->distance < kBoltDistance)
+    {
+        const f32 brightness =
+            world::lightningBrightness(static_cast<f32>(m_stormClock - m_flash->start), m_flash->flickers);
+        bolt = Vec4(m_flash->azimuth, brightness, static_cast<f32>(m_flashCount % 97u),
+                    0.3f + 0.35f * (1.0f - m_flash->distance / kBoltDistance)); // nearer: taller
+    }
+    m_backgroundProgram->setUniform("uBolt", bolt);
     m_device->bindPipeline(m_backgroundPipeline);
     m_device->draw(3); // fullscreen triangle from gl_VertexID
     if (m_instances.empty() && !m_hasTerrain)
@@ -1945,7 +2207,26 @@ void Engine::drawScene(u32 width, u32 height)
         m_terrain.setMaxDistance(inside ? m_frameCull.viewDistance : 0.0f);
         m_terrain.draw(*m_device, m_camera, &m_frameLights);
     }
-    const Frustum view = m_camera.frustum();
+    if (!ssao)
+    {
+        cullInstances(view); // without a prepass (multi-draw off: draws the instances right away)
+        appendItemDraws(view, false, 0);
+    }
+    // The player before the batched pass: that one ends with the translucent water, which must lie over
+    // the figure's parts below the surface.
+    drawPlayer(false, 0);
+    drawProjectiles(); // arrows and bolts in flight (M11)
+    drawCreatures(false, 0);
+    if (m_multiDraw)
+    {
+        m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
+    }
+    drawWater();   // M17 W1: after the opaque scene and the sky, before the particles
+    drawEffects(); // particles over the opaque scene, depth-tested (M12)
+}
+
+void Engine::cullInstances(const Frustum& view)
+{
     m_visibleInstances = 0;
     m_lodCounts = {};
     m_culledFar = 0;
@@ -1980,17 +2261,69 @@ void Engine::drawScene(u32 width, u32 height)
             ++m_visibleInstances;
         }
     }
-    appendItemDraws(view, false, 0);
-    // The player before the batched pass: that one ends with the translucent water, which must lie over
-    // the figure's parts below the surface.
-    drawPlayer(false, 0);
-    drawProjectiles(); // arrows and bolts in flight (M11)
-    drawCreatures(false, 0);
-    if (m_multiDraw)
+}
+
+void Engine::rebuildWaterSurfaces()
+{
+    m_waterSurfaces.clear();
+    for (const world::WaterBody& body : m_water.bodies())
     {
-        m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
+        m_waterSurfaces.push_back({Vec3(body.centre.x, body.surface(), body.centre.z), body.yaw,
+                                   Vec2(body.halfExtents.x, body.halfExtents.z),
+                                   &m_waterStyles.style(body.kind)});
     }
-    drawEffects(); // particles over the opaque scene, depth-tested (M12)
+}
+
+const world::WaterBody* Engine::cameraWater() const noexcept
+{
+    return m_water.submergedIn(m_camera.transform.position);
+}
+
+void Engine::updateUnderwater()
+{
+    m_postSettings.underwater.reset();
+    const world::WaterBody* body = cameraWater();
+    if (body == nullptr)
+    {
+        return;
+    }
+    const render::WaterStyle& style = m_waterStyles.style(body->kind);
+    render::Underwater water;
+    water.absorption = render::underwaterAbsorption(style); // own visibility under water (W3)
+    // The water's own colour, lit by the sky and the sun above (as the surface's deep colour in water.frag).
+    water.fogColor =
+        style.scatter * (m_environment.ambientSky + m_environment.sunColor * m_environment.sunIntensity *
+                                                        std::max(m_environment.sunDirection.y, 0.0f));
+    water.distortion = m_config.settings.get<bool>("render.underwater_distortion", true) ? 1.0f : 0.0f;
+    water.time = static_cast<f32>(std::fmod(m_waterTime, 3600.0));
+    water.inverseProjection = glm::inverse(m_camera.projection());
+    m_postSettings.underwater = water;
+}
+
+void Engine::drawWater()
+{
+    m_waterDrawn = 0;
+    if (m_waterSurfaces.empty())
+    {
+        return;
+    }
+    render::WaterFrame frame;
+    frame.time = static_cast<f32>(std::fmod(m_waterTime, 3600.0));
+    frame.rain = m_weatherVisible ? weatherNow().rain : 0.0f; // M17 R: rain rings
+    frame.quality = m_waterQuality;
+    frame.sunDirection = m_environment.sunDirection;
+    frame.sunColor = m_environment.sunColor * m_environment.sunIntensity;
+    frame.ambient = m_environment.ambientSky;
+    frame.skyHorizon = m_environment.fogColor;
+    frame.skyZenith = m_sky.zenith;
+    frame.fogColor = m_environment.fogColor;
+    frame.fogStart = m_environment.fogStart;
+    frame.fogDensity = m_environment.fogDensity;
+    m_passTimes.end(*m_device); // "scene" without the water
+    m_passTimes.begin(*m_device, "water");
+    m_waterDrawn = m_waterRenderer.draw(*m_device, m_sceneTarget, m_camera, m_waterSurfaces, frame);
+    m_passTimes.end(*m_device);
+    m_passTimes.begin(*m_device, "effects");
 }
 
 void Engine::updateBenchmark(f64 realSeconds)
@@ -2344,7 +2677,8 @@ void Engine::shutdown()
     m_shadowMap = {};
     m_instances.clear();
     m_groundModel.reset();
-    m_waterModel.reset();
+    m_waterRenderer = {};
+    m_ssao = {};
     m_worldItems.clear();
     m_itemModels.clear();
     m_scriptModels.clear();

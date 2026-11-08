@@ -186,6 +186,9 @@ public:
     /// Draws the editor windows (tools/editor); edits and actions are written back into `panel`.
     void editorPanel(EditorPanel& panel);
     void waynetPanel(WaynetPanel& panel);
+    void zonePanel(ZonePanel& panel);
+    void routinePanel(RoutinePanel& panel);
+    void terrainPanel(TerrainPanel& panel);
     /// Finishes the frame and, with a device, draws it into the bound target (normally the window).
     void endFrame(render::Device* device);
 

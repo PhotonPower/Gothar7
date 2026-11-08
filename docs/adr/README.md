@@ -28,3 +28,4 @@ Wichtige technische Entscheidungen werden hier festgehalten (Vorlage: [0000-temp
 | [0021](0021-save-format.md) | Spielstandformat `.g7save`: Chunk-Container mit CRC32, JSON-Nutzlast, zstd | Angenommen (Projektinhaber, 2026-11-01) | M15 |
 | [0022](0022-editor-undo-commands.md) | Editor: Undo/Redo als Befehle mit JSON-Zuständen | Angenommen (Projektinhaber, 2026-11-07) | M16 |
 | [0023](0023-terrain-editing-and-blender-import.md) | Gelände im Editor (Höhen-Pinsel) und Import aus Blender (Mesh→Heightmap, `VOB_`-Knoten) | Angenommen (Projektinhaber, 2026-11-07) | M16 |
+| [0024](0024-tracy-profiling.md) | Profiling mit Tracy (nur Preset `profile`, hinter den `G7_PROFILE_*`-Makros) | Angenommen (Projektinhaber, 2026-11-07) | M17 |

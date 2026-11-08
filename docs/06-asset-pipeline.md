@@ -34,6 +34,7 @@ g7-cook [--source assets/source] [--out assets/cooked] [--pack data.g7pak] [--le
         [--textures ktx2|copy] [--uastc-level 2] [--full] [--clean]
 g7-cook --font <name>.font.toml <name>.g7font      # Schrift-Atlas (ADR 0020)
 g7-cook --check-licences assets [CREDITS.txt "<Versionszeile>"]   # Lizenzen vor dem Paket (M17, release.md Teil C)
+g7-cook --heightmap-from-mesh <gelände.glb> <aus.r16> [<zelle m>] [<vfs-pfad>]   # Gelände aus Blender (ADR 0023)
 ```
 Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_lib`
 (`tools/asset-cooker/src/Cooker.hpp`, `g7::cook::cook(options)`); `g7-cook` ist die Kommandozeile dazu.

@@ -133,7 +133,8 @@ struct TriggerVolume
 struct WaterVolume
 {
     Vec3 halfExtents{1.0f};
-    std::string kind; ///< reserved (river, swamp ...): read and written, no effect yet
+    std::string
+        kind; ///< "river" (flows along local +X) or "pond"; empty = the default of data/water.toml (M17)
 };
 
 /// An interactive object (bed, chest, door; Gothic "Mob"). Placeholder until M8: drawn with its

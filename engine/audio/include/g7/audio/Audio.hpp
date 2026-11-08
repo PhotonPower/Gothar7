@@ -124,6 +124,10 @@ public:
     void setMasterVolume(f32 volume);
     void setBusVolume(Bus bus, f32 volume);
     [[nodiscard]] f32 busVolume(Bus bus) const noexcept;
+    /// A low-pass over a whole bus, 0 (open, the bus as before) .. 1 (strongly muffled): under water (M17
+    /// W3).
+    void setBusMuffle(Bus bus, f32 amount);
+    [[nodiscard]] f32 busMuffle(Bus bus) const noexcept;
 
     /// The mixer's clock in seconds (frames rendered or played).
     [[nodiscard]] f64 time() const noexcept;

@@ -66,6 +66,9 @@ public:
     /// few maps, layers or maps that differ in size or format, and a hole mask of the wrong size;
     /// the previous surface stays then.
     [[nodiscard]] Result<void> setSurface(Device& device, const TerrainSurfaceDesc& surface);
+    /// New heights on the same grid (the editor's height brush, M16 part F2): the height texture and the
+    /// chunks' culling bounds anew. Fails for another grid size.
+    [[nodiscard]] Result<void> updateHeights(const HeightfieldDesc& heightfield);
     [[nodiscard]] u32 layerCount() const noexcept { return m_layerCount; }
     [[nodiscard]] bool hasHoles() const noexcept { return m_hasHoles; }
 
@@ -76,6 +79,8 @@ public:
     /// "Innenräume"); 0 = no limit.
     void setMaxDistance(f32 metres) noexcept { m_maxDistance = metres; }
     void drawShadow(Device& device, const Cascade& cascade, const Vec3& eye);
+    /// Depth prepass (M17 P3): the terrain's depth from `camera`, the same chunks and detail as draw().
+    void drawDepth(Device& device, const Camera& camera);
     /// Chunks the last shadow pass drew per detail level (tests, statistics).
     [[nodiscard]] const std::array<u32, 4>& shadowLevels() const noexcept { return m_shadowLevels; }
     /// Main pass: chunks inside the camera frustum, each at the detail its distance asks for. The
@@ -108,6 +113,7 @@ private:
     };
 
     void bindCommon(rhi::ShaderProgram& program, Device& device);
+    void buildChunks(const HeightfieldDesc& d); ///< chunks and their bounds from the heights
 
     std::vector<Chunk> m_chunks;
     std::array<Grid, kLodLevels> m_grids;
@@ -128,7 +134,8 @@ private:
     rhi::ShaderProgram* m_shadowProgram = nullptr;
     rhi::Pipeline m_pipeline;
     rhi::Pipeline m_shadowPipeline;
-    HeightfieldDesc m_desc; // samples not kept (they live in the texture)
+    rhi::Pipeline m_depthPipeline; // M17 P3
+    HeightfieldDesc m_desc;        // samples not kept (they live in the texture)
     AABB m_bounds;
     f32 m_skirtDepth = 1.0f;
     u32 m_drawn = 0;

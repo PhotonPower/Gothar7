@@ -358,6 +358,239 @@ Engine::grading();  Engine::gradingAt(timeOfDay, point);
   (gelieferte Werte, Zonen, Fehler), `tests/runtime/test_engine_grading.cpp` (Zonen-Vorrang im Testlager),
   GPU `test_post.cpp` (neutral ≈ unverändert, Sättigung 0 grau, warm röter).
 
+### Wasseroberfläche (M17 Teil W1, umgesetzt) – `Water.hpp`, `water.vert/.frag`, `water_copy.frag`
+```cpp
+enum class WaterQuality { Low, Medium, High };  std::optional<WaterQuality> parseWaterQuality(text);
+struct WaterStyle { Vec3 absorption, scatter; f32 waveScale, waveSpeed, waveStrength, flowSpeed,
+                    refraction, glint, shininess, shoreFade; };
+class WaterStyles { static Result<WaterStyles> parse(toml, source); const WaterStyle& style(kind) const; };
+f32 waterFresnel(cosTheta, f0 = 0.02);  Vec3 waterTransmittance(absorption, metres);   // wie water.frag
+std::vector<u8> makeWaterNormals(size);                                               // Wellen, im Code erzeugt
+struct WaterSurface { Vec3 centre; f32 yaw; Vec2 halfExtents; const WaterStyle* style; };
+struct WaterFrame { f32 time; WaterQuality quality; Vec3 sunDirection, sunColor, ambient, skyHorizon, skyZenith,
+                    fogColor; f32 fogStart, fogDensity; };
+class WaterRenderer { static Result<WaterRenderer> create(Device&, ShaderLibrary&);
+                      u32 draw(Device&, const SceneTarget&, const Camera&, span<const WaterSurface>, const WaterFrame&); };
+Engine::waterSurfaces(), waterSurfacesDrawn(), waterQuality(), waterStyles();  world::WaterBody::kind
+```
+- **Ablauf:** Die Engine macht aus jedem `water`-Vob eine Fläche (Oberkante der Box) und zeichnet sie nach der
+  opaken Szene und vor den Partikeln. Sichtbare Flächen (Frustum) → bei `medium`/`high` zuerst eine Kopie von Farbe
+  und Tiefe des `SceneTarget` (ein Vollbild-Zug in RGBA16F + R32F, nur wenn Wasser sichtbar ist), dann je Fläche ein
+  Rechteck aus `gl_VertexID` (kein Vertex-Puffer). Die Fläche schreibt Tiefe (Partikel darunter bleiben verdeckt).
+  Der bisherige halbtransparente Platzhalter (eine Instanz je Box) entfällt.
+- **Wellen:** eine gekachelte Normalenkarte (128², Summe von Sinuswellen mit ganzzahligen Frequenzen, also nahtlos),
+  zwei gegeneinander driftende Lagen in Weltkoordinaten (keine Nähte zwischen überlappenden Boxen); bei `river`
+  zusätzlich entlang lokal +X der Box (Vertrag mit welt). Grenze: Wo zwei Flussboxen mit verschiedener Richtung
+  aneinanderstoßen, springt die Fließrichtung des Musters.
+- **Brechung (leicht):** die Kopie, um die Wellenneigung versetzt (höchstens `refraction` der Bildbreite, mit der
+  Wassertiefe über den ersten Meter einblendend), punktweise gelesen; liegt der versetzte Punkt nicht unter
+  Wasser (Tiefenvergleich), bleibt der eigene Punkt – nichts über dem Wasser wird hineingezogen.
+- **Tiefe:** Weg des Blickstrahls im Wasser aus der Tiefenkopie, Farbe `unten · e^(−absorption·weg)
+  + scatter · Licht · (1 − e^(−absorption·weg))`; Uferkante weich über `shore_fade` Meter Wassertiefe (Alpha).
+- **Licht:** Fresnel (Schlick, f0 = 0,02) zwischen dem Durchscheinenden und dem gespiegelten Himmel (Horizont- und
+  Zenitfarbe wie `background.frag`; bei `high` die Spiegelung, W2), Sonnenglanz nach Blinn-Phong, Nebel wie die Szene.
+  Von unten (Tauchen) siehe W3.
+- **Daten** `data/water.toml`: `[kind.river]`, `[kind.pond]`, `default = "pond"` (fehlt `kind` oder ist es
+  unbekannt, gilt die Vorgabe). Werte nach Entscheidung 5/6: Glems trüb grün-braun (Sicht ca. 4 m), fließt 0,6 m/s;
+  Teich dunkel-oliv (ca. 3 m), ruhiger und mit schärferem Glanz.
+- **Qualität:** `[render] water_quality = "low" | "medium" | "high"` (Vorgabe `medium`), Optionen → Grafik
+  „Wasserqualität“. `low`: ohne Kopien, die Fläche halbdurchsichtig mit Fresnel und Glanz. `high` dazu die
+  Spiegelung (W2, unten).
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Blick über die Glems): `water` 0,07 ms bei `medium`
+  (Kopie + Flächen), unter 0,01 ms bei `low`; Passzeit `water` im Fenster „Gothar“ und im
+  Benchmark (Budget ≤ 0,6 ms bei sichtbarem Fluss, `low` ≤ 0,3 ms).
+- **Tests:** `tests/render/test_water.cpp` (Fresnel, Absorption, nahtlose Wellen, Wasserarten und Fehler, gelieferte
+  Werte: Sichtweiten), GPU `test_water.cpp` (tieferes Wasser dunkler, Ufer ohne Sprung, Brechung versetzt nur unter
+  Wasser, ohne Wellen kein Versatz, `low` ohne Kopien, außer Sicht nichts gezeichnet), `test_engine_render.cpp`
+  (Teich im Testlager über den Wasser-Pass, Vorgabe-Art, Qualität aus den Einstellungen).
+
+### Spiegelung auf dem Wasser (M17 Teil W2, umgesetzt) – `water.frag`
+```cpp
+inline constexpr u32 kReflectionSteps = 32;  inline constexpr f32 kReflectionDistance = 80.0f;  // Water.hpp
+```
+- **Screen-Space-Reflexion** nur bei `water_quality = "high"`, im Wasser-Shader selbst (je Wasserpixel, volle
+  Auflösung) statt eines eigenen Passes in halber Auflösung wie im Plan: Das spart Ziel-Texturen und einen
+  Zusammensetz-Schritt, und der Strahl läuft nur dort, wo Wasser zu sehen ist; gemessen unter dem Budget (unten).
+- **Strahl:** vom Wasserpunkt entlang der an der gewellten Normale gespiegelten Blickrichtung, 32 Schritte, quadratisch
+  wachsend bis 80 m (kurze Schritte nahe am Wasser), je Pixel leicht versetzt gegen Streifen. Jeder Punkt wird
+  aufs Bild projiziert und mit der Tiefenkopie verglichen (Blicktiefe): liegt er dahinter, aber weniger als eine
+  Dicke (0,3 m bzw. 10 % des Weges), ist es ein Treffer, verfeinert mit 5 Schritten Binärsuche; liegt er weiter
+  dahinter, ist der Weg verdeckt.
+- **Rückfall und Rand:** Verlässt der Strahl das Bild, geht er hinter die Kamera oder trifft nichts, bleibt der Himmel
+  aus W1. Treffer nahe am Bildrand (8 % der Bildgröße) und am Ende des Strahls blenden weich zum Himmel aus. Was nicht
+  auf dem Bild ist, spiegelt sich nicht (Grenze des Verfahrens; Rückfall-Proben je Zone wären die spätere Ergänzung,
+  siehe „Spiegelnde Fenster“).
+- **Spielgefühl (Entscheidung 6):** Die Wellen verzerren die Spiegelung; der ruhige Teich (`wave_strength` 0,1)
+  spiegelt klarer als die Glems (0,18). Das Wasser selbst steht nicht in der Tiefenkopie und spiegelt sich daher
+  nicht in sich.
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Blick die Glems entlang mit viel Wasser im Bild): `water` 0,87 ms
+  bei `high` gegen 0,16 ms bei `medium` (zwei Läufe mit verschieden hoher Szenenzeit, die Karte taktet; der Anteil der
+  Spiegelung liegt etwa bei 0,4–0,7 ms, Budget ≤ 0,8 ms). Im Release-Build kleiner.
+- **Tests:** GPU `test_water.cpp`: eine helle Wand über dem Wasser erscheint bei `high` im Wasser, bei `medium` und
+  ohne Wand bleibt der Himmel.
+
+### Unter Wasser (M17 Teil W3, umgesetzt) – `post.frag`, `water.frag`
+```cpp
+struct Underwater { Vec3 absorption, fogColor; f32 distortion = 1, time; Mat4 inverseProjection; };
+Vec3 underwaterColor(color, water, metres);           // wie post.frag
+struct PostSettings { …; std::optional<Underwater> underwater; };
+const WaterBody* world::WaterBodies::submergedIn(point);  Engine::cameraWater(), postSettings();
+void audio::AudioSystem::setBusMuffle(Bus, amount);  f32 busMuffle(Bus);
+```
+- **Wann:** Die Kamera liegt unter der Oberfläche einer Wasser-Box (`submergedIn`: unter der Oberkante, über dem
+  Boden, in der Grundfläche; bei Überlappung die höchste Oberfläche). Die Wasserart der Box liefert die Werte.
+- **Bild (Entscheidung 7):** im Post-Pass je Pixel nach seiner Entfernung (aus der Tiefe) getönt und vernebelt:
+  `farbe · e^(−absorption·d) + wasserfarbe · (1 − e^(−absorption·d))`, Wasserfarbe = `scatter` mal Himmels- und
+  Sonnenlicht (wie die Tiefenfarbe der Oberfläche). Sicht eigener Wert `underwater_visibility` (Projektinhaber 2026-11-07: Teich 8 m, Glems
+  10 m; `absorption` wird so skaliert, dass der klarste Kanal dort 2 % behält – Farbton gleich, die Oberfläche von
+  oben unverändert, `underwaterAbsorption`); grün-blau
+  aus den Absorptionswerten. Leichtes Wabern (Bildversatz höchstens 0,4 %), abschaltbar. Kein Bloom unter Wasser
+  (die Sonne darüber glüht sonst durch). Kaustik zunächst aus.
+- **Oberfläche von unten:** im Snell-Fenster (etwa 48,6° um die Senkrechte, weich zwischen 44° und 50°, von den
+  Wellen bewegt) scheint die Welt darüber durch (Kopie der Szene, bei `low` der Himmel), außerhalb spiegelt sie
+  das Wasser (Totalreflexion, vereinfacht als Wasserfarbe); der Post-Pass vernebelt sie nach der Entfernung.
+- **Ton:** Musik- und Umgebungs-Bus werden über einen Tiefpass gedämpft (`setBusMuffle`, 0,85), solange die Kamera
+  unten ist. Ein offener Bus hat keinen Filter im Signalweg (klingt genau wie vorher).
+- **Option:** `[render] underwater_distortion = true`, Optionen → Grafik „Unterwasser-Verzerrung“.
+- **Tests:** `tests/world/test_water.cpp` (Kamera knapp unter/über der Oberfläche, Boden, Überlappung),
+  `tests/render/test_post.cpp` (Farbe nah/fern), `tests/audio/test_audio.cpp` (gedämpfter Bus verliert die Höhen,
+  offen wieder wie vorher), GPU `test_post.cpp` (nah kaum verändert, fern Wasserfarbe, über Wasser unverändert),
+  `test_engine_render.cpp` (Kamera im Teich: Unterwasser-Bild, kein Bloom, Musik und Umgebung gedämpft; darüber
+  nicht).
+
+### Umgebungsverdeckung mit Tiefen-Vorpass (M17 Teil P3, umgesetzt) – `Ssao.hpp`, `ssao.frag`, `ssao_blur.frag`
+```cpp
+struct SsaoSettings { f32 radius = 0.8f, strength = 1.5f; };  std::vector<Vec3> ssaoKernel(count);  // 12 Proben
+class Ssao { static Result<Ssao> create(Device&, ShaderLibrary&); Result<void> resize(Device&, u32 w, u32 h);
+             void render(Device&, const rhi::Texture& depth, const Camera&, const SsaoSettings&);
+             const rhi::Texture* result() const; };                  // R8, halbe Größe, 1 = offen
+MeshRenderer::drawDepthBatched(device, items, camera);  MeshRenderer::setAmbientOcclusion(texture);
+TerrainRenderer::drawDepth(device, camera);  inline constexpr rhi::DepthBias kPrepassBias{-2, -1};
+Environment::ambientOcclusion, viewportTexel;  GpuLighting::aoParams;  Engine::ssaoEnabled(), ssao()
+```
+- **Nur wenn an** (`[render] ssao`, Vorgabe `false`, Entscheidung 8; Optionen → Grafik „Umgebungsverdeckung (SSAO)“):
+  Ohne SSAO läuft weder Vorpass noch SSAO; der Ablauf ist der von vorher (kein Mehraufwand).
+- **Tiefen-Vorpass:** nach den Schatten das Gelände und die gestapelten Objekte (sichtbare Instanzen und Gegenstände,
+  Mehrfachzeichnen) nur in die Tiefe, mit den Schatten-Shadern und eigenen Pipelines (Reverse-Z, `GreaterEqual`).
+  Statt `GL_EQUAL` liegt die Vorpass-Tiefe um einen kleinen Versatz (`kPrepassBias`) weiter hinten: Hauptpass und
+  Vorpass rechnen die Position mit verschiedenen Shadern, ein Gleichheitstest gäbe Löcher; mit dem Versatz zeichnet
+  der Hauptpass (`GreaterEqual`) dieselben Flächen wieder, Verdecktes fällt weiter weg. Figuren (Held, Kreaturen,
+  NPCs) und Durchscheinendes sind nicht im Vorpass; Figuren nehmen und geben keine Verdeckung (`#ifndef SKINNED`).
+  Nur mit Mehrfachzeichnen (`render.multi_draw`, Vorgabe „auto“: an außer auf Intel-GPUs).
+- **SSAO:** halbe Auflösung aus der Tiefe, Normale aus der Tiefe (je Achse der flachere Nachbar), 12 Proben in der
+  Halbkugel (`ssaoKernel`, nahe der Mitte dichter), je Pixel gedreht; eine Probe zählt, wenn die Szene davor näher
+  liegt, gewichtet nach Entfernung (keine dunklen Säume um weit vorn stehende Dinge). Danach eine tiefenabhängige
+  4×4-Unschärfe. `[render] ssao_radius` (0,8 m) und `ssao_strength` (1,5).
+- **Anwendung:** `common/lighting.glsl` dämpft **nur das Umgebungslicht** (`aoParams.x`, Textur an Einheit 8); Sonne
+  und Punktlichter bleiben. Wirkt daher vor allem im Schatten und in Innenräumen: Mauerfüße, unter Vorsprüngen,
+  Fensterlaibungen, Ecken.
+- **Passzeiten:** mit SSAO misst die Engine `scene` (nur noch Schatten), `depth` (Vorpass), `ssao`, `shading`
+  (Hauptpass); ohne wie bisher `scene`.
+- **Tests:** GPU `test_ssao.cpp` (Proben in der Halbkugel; eine Stufe in der Tiefe verdunkelt die Wand daneben, eine
+  freie Wand bleibt offen), `test_engine_render.cpp` (aus: kein `depth`/`ssao`-Pass; an: beide und ein Ergebnis).
+  Der Vorpass allein ändert das Bild nicht (Prüfbild mit `ssao_strength = 0` gegen aus: 0,004 % der Pixel weichen ab).
+### Regen (M17 Wetter, Teil R, umgesetzt) – `Rain.hpp`, `rain.vert/.frag`
+```cpp
+enum class RainQuality { Low, Medium, High };  parseRainQuality(text);  u32 rainStreaks(quality); // 4 000/12 000/24 000
+struct RainFrame { f32 rain; Vec2 wind; f32 time; Vec3 light; RainQuality quality; };
+Mat4 rainMapViewProjection(centre);  kRainMapRadius = 32 m, kRainMapHeight = 120 m
+class RainRenderer { static Result<RainRenderer> create(Device&, ShaderLibrary&, u32 mapSize = 512);
+                     bool mapStale(eye); void beginMap(Device&, eye); void endMap(); void invalidateMap();
+                     u32 draw(Device&, const Camera&, const RainFrame&); };
+Engine::rainStreaksDrawn(), rain(), rainSound();  Environment::shadowStrength (Lighting-Block shadowExtra.z)
+```
+- **Regenschleier:** Striche aus `gl_InstanceID` und Zeit im Vertex-Shader, ohne CPU-Simulation und ohne
+  Vertex-Puffer; ortsfest (jeder Tropfen hat seinen Platz in einer Kiste von 40 × 24 × 40 m um die Kamera, die beim
+  Gehen umklappt), schräg nach dem Wind (bis Teil W fest aus Westen, Stärke aus der Lage), 8 m/s, 0,45 m lang,
+  additiv und schwach, nah und fern ausgeblendet. Anzahl = `rainStreaks(Qualität) · rain`.
+- **Regenkarte (Draufsicht-Tiefe):** 512² über 64 × 64 m, Gelände und feste Instanzen von oben mit den
+  Schatten-Shadern (Tiefe 0 oben .. 1 unten). Neu nur, wenn die Kamera mehr als 8 m weiterzieht oder sich die
+  Instanzen ändern. Tropfen unter der obersten Fläche (Dach, Torbogen, Marktstand) werden verworfen.
+- **Spritzer** (`medium`, `high`): kleine Ringe, je 0,45 s an einem neuen Ort im Umkreis von 10 m, auf der obersten
+  Fläche aus der Regenkarte (auch auf Dächern).
+- **Ton:** eigene Ebene `amb_rain` über dem Zonen-Ambiente, lauter mit dem Regen; in einer `indoor`-Zone
+  `amb_rain_roof` (dumpfes Trommeln). Platzhalter aus `tools/audio` (`gothar-audio placeholders amb_rain`).
+- **Optionen:** `[render] weather` (aus: kein Regen zu sehen, die Lage läuft weiter), `rain_quality` (low/medium/high);
+  Optionen → Grafik „Wetter“, „Regenqualität“.
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Marktplatz): `rain` 0,04 ms bei `high` und Regen, 0,10 ms bei
+  Starkregen (24 000 Striche · 0,9 und Spritzer); die Regenkarte nur in Frames mit Erneuerung (Budget ≤ 0,5 ms bzw. 0,8 ms).
+- **Wasser:** Regenringe auf jeder Wasserfläche (`water.frag`, `WaterFrame::rain`): je Zelle von 0,7 m (zwei
+  versetzte Lagen) ein Tropfen, dessen Ring sich in seinem Takt auf 0,35 m weitet und vergeht; die Neigung zeigt vom
+  Ringmittelpunkt weg und mischt sich zu den Wellen. Unter Wasser keine Striche; die Regen-Ebene liegt im Bus
+  `ambient` und klingt dort durch den Unterwasser-Tiefpass (W3) gedämpft.
+- **Noch nicht:** nasse Flächen (Teil N).
+- **Tests:** `tests/render/test_rain.cpp` (Stufen, Projektion der Karte), GPU `test_rain.cpp` (Striche im Freien,
+  keine unter einem Dach, keine ohne Regen), `test_engine_render.cpp` (Regen nur bei Regen und `weather = true`,
+  Karte gezeichnet; unter Wasser keine Striche, Regen gedämpft), GPU `test_water.cpp` (Regenringe kräuseln eine
+  ruhige Fläche), `tests/runtime/test_engine_weather.cpp` (Regen-Ebene folgt der Lage),
+  `tests/render/test_lighting.cpp` (Schattenstärke im Lighting-Block).
+
+### Nasse Oberflächen (M17 Wetter, Teil N, umgesetzt) – `common/lighting.glsl`, `mesh.frag`, `terrain.frag`
+```cpp
+world::WeatherSample::wetness;  world::Weather::settle();          // Nässe 0..1, --weather: schon nass
+Environment::wetness, hasRainMap, rainMapViewProjection, puddles;   GpuLighting::rainMapViewProjection, wetParams
+MeshRenderer::setRainMap(texture);                                  // Einheit 9, die Regenkarte aus Teil R
+```
+- **Nässe** (`world::Weather`): steigt im Regen (bei mäßigem Regen in etwa 10 Spielminuten auf 1, bei Starkregen
+  schneller), trocknet danach in etwa einer Spielstunde. Sie läuft mit der Spielzeit (auch bei Zeitsprüngen) und steht
+  im Spielstand (`weather.wetness`, additiv; ältere Stände: trocken). `--weather=<lage>` beginnt, als hätte es schon
+  geregnet.
+- **Wo:** nur draußen. Mit Regenkarte: ein Punkt (um 0,3 m entlang der Normale hinaus versetzt, damit eine Wand an
+  ihrer eigenen Oberkante vorbeisieht) unter der obersten Fläche bleibt trocken – unter Dächern, Vordächern, in Toren
+  und unter Marktständen. Ohne Karte: nicht in Innenzonen. Nach oben zeigende Flächen werden voll nass, Wände zu 35 %.
+- **Aussehen (`wetSurface`):** Grundfarbe dunkler (×0,6 bei voller Nässe, Wasser in den Poren), dazu ein Glanz: der
+  Himmel (Horizontfarbe) nach Fresnel und ein Sonnenglanz, nur auf nach oben zeigenden Flächen. Ohne Nässe wird nichts
+  gerechnet, das Bild bleibt wie vorher. Figuren werden mit nass (sie stehen im Regen).
+- **Pfützen** (Regenqualität `high`, Entscheidung 9): Rauschflecken auf flachem Boden (Normale nahezu senkrecht), die
+  ab halber Nässe wachsen; dort dunkler (×0,5), flach, mit gedämpfter Spiegelung des Himmels und scharfem Glanz. Die
+  Spiegelung des Himmels ist auf 0,6 der eigenen beleuchteten Farbe begrenzt (`wetSheen`): nasser Boden wird nie heller
+  als trocken, Pfützen bleiben dunkler als der nasse Boden (Koordinator, Durchsicht von #390). Sie
+  trocknen mit der Nässe ab (etwa eine Spielstunde, Entscheidung 9).
+- **Noch nicht:** Material-Rauheit (alle Materialien gleich; die Vorgabe je Material-Gruppe folgt, wenn welt und
+  figuren sie setzen), SSR in Pfützen.
+- **Tests:** `tests/world/test_weather.cpp` (Nässe steigt und trocknet, im Snapshot, `settle`),
+  `tests/render/test_lighting.cpp` (Werte im Lighting-Block, trocken = 0), GPU `test_lighting.cpp` (nass dunkler,
+  trocken unverändert), `tests/save/test_game_state.cpp` (Nässe im Spielstand).
+
+### Gewitter (M17 Wetter, Teil G, umgesetzt) – `Weather.hpp` (`Lightning`, `LightningStorm`), Engine
+```cpp
+struct Lightning { f64 start; f32 distance, azimuth; u32 flickers; };
+f32 thunderDelay(metres);  f32 lightningBrightness(seconds, flickers);  f32 lightningStrength(distance);
+class LightningStorm { std::optional<Lightning> step(gameMinutes, perMinute, now); };   // Poisson, deterministisch
+Engine::lightningCount(), lastLightning(), lightningNow(), lastThunderDelay();  Lua lightning(distance?)
+```
+- **Blitze:** zufällig mit `lightning` Blitzen je Spielminute der Lage (Gewitter 0,15: etwa alle 7 Spielminuten,
+  knapp 30 Echtsekunden), je Blitz eine Entfernung von 300 bis 3000 m (nahe seltener), eine Richtung und ein bis drei
+  Aufflackern in etwa 0,25 s (die späteren schwächer). Deterministisch aus dem Startwert.
+- **Licht (Entscheidung 8: deutlich, nicht grell):** für die Dauer des Blitzes heller – Himmelslicht und Bodenlicht,
+  Nebel- und Himmelsfarbe –, nahe Blitze stärker (`lightningStrength`); den Rest macht der Bloom.
+- **Blitzstrahl** (Koordinator, nach #393): nur bei nahen und mittleren Blitzen (unter 1800 m), für die Dauer des
+  Aufflackerns, am Himmel in Blitzrichtung vom Horizont aufwärts (je näher, desto höher), gezackt aus Rauschen mit
+  schwachem Schein; im Himmels-Shader (`background.frag`, `uBolt`), also nur, wo Himmel zu sehen ist. Keine
+  Lichtquelle in der Szene (die Aufhellung oben genügt).
+- **Donner:** `thunder_near` (unter 1000 m: Krachen und Rollen) bzw. `thunder_far` (Grollen), um Entfernung / 343 m/s
+  verzögert (1–9 s) auf der Uhr des Mischers, leiser mit der Entfernung; im Bus `ambient` (unter Wasser gedämpft).
+  Platzhalter aus `tools/audio`.
+- **Lua:** `lightning(distance?, direction?)` – ein Blitz jetzt (Story, Prüfbilder), auch ohne Gewitter; Vorgabe
+  800 m, Richtung in Grad wie `yaw` (0 = -Z, positiv nach links).
+- **Tests:** `tests/world/test_weather.cpp` (Verzögerung, Aufflackern, Häufigkeit und Entfernungen, deterministisch),
+  `tests/runtime/test_engine_weather.cpp` (Gewitter blitzt, Regen nicht; `lightning()` hellt sofort auf, Donner nach
+  Entfernung / 343).
+
+### Wind (Vertrag, vereinbart 2026-11-07; Umsetzung Teil W)
+- Markierung je glTF-Material: `extras.wind` = `trunk` (steif, oben leichtes Schwanken), `leaves` (Äste und
+  Blattflattern), `grass` (biegt vom Fuß, stark), `cloth` (Fahnen, Wimpel), `hanging` (schwingt um den
+  Aufhängepunkt); `extras.wind_strength` 0..2 (Vorgabe 1).
+- Gewicht je Vertex aus der Höhe im Modellraum: 0 am Fuß (kleinstes y der Grenzen), 1 an der Spitze; Bäume und Blätter
+  quadratisch, Gras linear; auf 0..1 begrenzt (Stämme reichen 0,3 m unter den Boden). `forest_clump` über die Höhe des
+  ganzen Modells. `hanging`: um `extras.wind_pivot` [x, y, z] im Modellraum, sonst den Ursprung; Gewicht
+  (pivot_y − y) / Ausdehnung.
+- Ohne Markierung bleibt ein Modell still (Häuser, Mauern, Mobs, geschnittener Buchs `hedge_box`, `bush_box`). Ketten
+  der Zunftschilder: Material `iron_chain` (hanging); Wandplatte, Arm und Strebe unmarkiert. Kleidung nicht
+  (Entscheidung 7).
+- Ausschläge bei vollem Wind: Bäume an der Spitze höchstens etwa 4 % ihrer Höhe, Gras etwa 25 %, Stoff und Schilder
+  bis 30°; Phase je Instanz aus der Lage. welt liefert die Markierungen nach Vegetation-PR 4.
+
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp
 struct DebugStyle { Vec4 color{1}; f32 duration = 0; bool depthTest = true; };   // duration 0 = nur dieser Frame

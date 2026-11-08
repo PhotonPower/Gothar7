@@ -5,8 +5,11 @@
 // puts the "before" back, redo the "after" - byte for byte, with one mechanism for every kind of vob.
 
 #include <g7/core/Result.hpp>
+#include <g7/editor/TerrainBrush.hpp>
 #include <g7/editor/WaynetEdit.hpp>
+#include <g7/runtime/Engine.hpp>
 #include <g7/world/Components.hpp>
+#include <g7/world/WorldFile.hpp>
 
 #include <optional>
 #include <span>
@@ -36,6 +39,13 @@ struct VobState
 /// first); ids stay used. Fails (and stops) when a state cannot be restored, e.g. its parent is gone.
 [[nodiscard]] Result<void> restoreVobs(world::Scene& scene, std::span<const VobState> states);
 
+/// Where terrain patches go back to (part F2): the heightfield and the splat maps' bytes.
+struct TerrainTarget
+{
+    world::Heightfield* heights = nullptr;
+    std::vector<SplatPixels> maps;
+};
+
 /// One undoable edit.
 struct Command
 {
@@ -47,6 +57,17 @@ struct Command
     /// Waynet edits (part B): the touched entries before and after (none: the command left the waynet alone).
     std::optional<WaynetSnapshot> waynetBefore;
     std::optional<WaynetSnapshot> waynetAfter;
+    /// Zone edits (part C): the whole zones block before and after (a few hundred boxes at most).
+    std::optional<std::vector<world::Zone>> zonesBefore;
+    std::optional<std::vector<world::Zone>> zonesAfter;
+    /// Routine edits (part E): the routines of the editor's file before and after.
+    std::optional<std::vector<RoutineInfo>> routinesBefore;
+    std::optional<std::vector<RoutineInfo>> routinesAfter;
+    /// Terrain strokes (part F2): the touched rectangle of heights and of the splat maps, before and after.
+    std::optional<HeightPatch> heightsBefore;
+    std::optional<HeightPatch> heightsAfter;
+    std::vector<SplatPatch> splatBefore;
+    std::vector<SplatPatch> splatAfter;
 };
 
 /// The edits of a session: undo, redo, and whether the world differs from its saved version.
@@ -59,10 +80,18 @@ public:
     /// mergeable too, has the same label and touched the same vobs. Beyond the depth the oldest is dropped.
     void record(Command command);
     /// Puts the last command's "before" back; false if there is none (or it failed - then the history stays).
-    [[nodiscard]] Result<bool> undo(world::Scene& scene, world::WaynetData* waynet = nullptr);
+    [[nodiscard]] Result<bool> undo(world::Scene& scene, world::WaynetData* waynet = nullptr,
+                                    std::vector<world::Zone>* zones = nullptr,
+                                    std::vector<RoutineInfo>* routines = nullptr,
+                                    TerrainTarget* terrain = nullptr);
     /// Puts the next undone command's "after" back.
-    [[nodiscard]] Result<bool> redo(world::Scene& scene, world::WaynetData* waynet = nullptr);
+    [[nodiscard]] Result<bool> redo(world::Scene& scene, world::WaynetData* waynet = nullptr,
+                                    std::vector<world::Zone>* zones = nullptr,
+                                    std::vector<RoutineInfo>* routines = nullptr,
+                                    TerrainTarget* terrain = nullptr);
 
+    /// The last undo or redo put terrain back (the drawn terrain and the collision must follow).
+    [[nodiscard]] bool lastTouchedTerrain() const noexcept { return m_lastTerrain; }
     [[nodiscard]] bool canUndo() const noexcept { return m_done > 0; }
     [[nodiscard]] bool canRedo() const noexcept { return m_done < m_commands.size(); }
     /// Label of the command undo/redo would act on (empty: none).
@@ -81,5 +110,6 @@ private:
     usize m_done = 0; ///< commands applied (the next undo is m_commands[m_done - 1])
     i64 m_saved = 0;  ///< m_done when saved; -1: that version is no longer reachable
     usize m_depth = 200;
+    bool m_lastTerrain = false;
 };
 } // namespace g7::editor

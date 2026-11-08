@@ -41,6 +41,18 @@ struct Environment
     std::vector<IndoorVolume> indoor;
     f32 indoorAmbient = 1.0f; ///< ambient factor inside them (environment.toml [indoor])
     f32 indoorEdge = 0.3f;    ///< m, the fade beyond a room's box (welt's walls are 0.3 m thick)
+    /// How dark the sun's shadows are, 1 = full .. 0 = none (M17 weather: overcast skies soften them).
+    f32 shadowStrength = 1.0f;
+    /// M17 P3: how strongly the ambient occlusion (MeshRenderer::setAmbientOcclusion) damps the ambient
+    /// light, 0 = off; `viewportTexel` = 1 / the scene's size in pixels (its screen position in the shaders).
+    f32 ambientOcclusion = 0.0f;
+    /// M17 N: how wet surfaces outside are (0 dry .. 1 soaked), the rain map that tells outside from under a
+    /// roof (render::RainRenderer; `hasRainMap` false: indoor zones only), puddles (rain quality high).
+    f32 wetness = 0.0f;
+    bool hasRainMap = false;
+    Mat4 rainMapViewProjection{1.0f};
+    bool puddles = false;
+    Vec2 viewportTexel{0.0f};
 };
 
 inline constexpr u32 kMaxIndoorVolumes = 32;
@@ -127,19 +139,22 @@ struct GpuLighting
     std::array<Vec4, 4> cascadeRects; ///< atlas tile per cascade
     Vec4 cascadeTexelSize;            ///< world size of a shadow texel per cascade
     Vec4 shadowParams;                ///< x enabled, y cascades, z distance, w normal offset (texels)
-    Vec4 shadowExtra;                 ///< x debug colours, y atlas texel size (uv)
+    Vec4 shadowExtra; ///< x debug colours, y atlas texel size (uv), z shadow softening (0 full)
     Vec4 cameraPosition;
     Vec4 cameraForward;
-    Vec4 fogColorStart; ///< rgb linear, w start
-    Vec4 fogParams;     ///< x density
-    Vec4 indoorParams;  ///< x rooms, y ambient factor inside, z edge (m)
+    Vec4 fogColorStart;         ///< rgb linear, w start
+    Vec4 fogParams;             ///< x density
+    Vec4 indoorParams;          ///< x rooms, y ambient factor inside, z edge (m)
+    Vec4 aoParams;              ///< x ambient occlusion strength (0 off), yz 1 / viewport size
+    Mat4 rainMapViewProjection; ///< M17 N: world -> rain map (depth 0 top .. 1)
+    Vec4 wetParams;             ///< x wetness, y has rain map, z puddles
     std::array<Vec4, 2 * kMaxIndoorVolumes>
         indoorBoxes; ///< per room: centre + cos yaw, half extents + sin yaw
     std::array<Vec4, LightList::kMaxPerFrame> pointPositionRadius;
     std::array<Vec4, LightList::kMaxPerFrame> pointColor; ///< rgb * intensity
 };
-static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 8 * 16 + 2 * 16 * kMaxIndoorVolumes +
-                                         2 * 16 * LightList::kMaxPerFrame,
+static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 9 * 16 + 64 + 16 +
+                                         2 * 16 * kMaxIndoorVolumes + 2 * 16 * LightList::kMaxPerFrame,
               "must match std140 (common/lighting.glsl)");
 
 [[nodiscard]] GpuLighting packLighting(const Environment& environment, const LightList& lights) noexcept;

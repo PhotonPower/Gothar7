@@ -6,14 +6,41 @@
 
 #include <doctest/doctest.h>
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <random>
+#include <string>
 
 using namespace g7;
 
+namespace
+{
+struct DaylightDir
+{
+    std::filesystem::path path;
+    DaylightDir()
+    {
+        const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+        path = std::filesystem::temp_directory_path() /
+               ("g7_daylight_" + std::to_string(stamp) + "_" + std::to_string(std::random_device{}()));
+        std::filesystem::create_directories(path);
+    }
+    ~DaylightDir()
+    {
+        std::error_code ignored;
+        std::filesystem::remove_all(path, ignored);
+    }
+    DaylightDir(const DaylightDir&) = delete;
+    DaylightDir& operator=(const DaylightDir&) = delete;
+};
+} // namespace
+
 TEST_CASE("Engine lighting: a daylight window light follows the sky; at night it is out")
 {
-    const std::filesystem::path world = std::filesystem::temp_directory_path() / "g7_daylight.g7world";
+    // A folder of its own per run: parallel runs (other worktrees, ctest -j) must not share the file.
+    const DaylightDir dir;
+    const std::filesystem::path world = dir.path / "g7_daylight.g7world";
     {
         std::ofstream out(world, std::ios::binary);
         out << R"({"version":1,"name":"window","nextVobId":4,"vobs":[)"
@@ -45,5 +72,4 @@ TEST_CASE("Engine lighting: a daylight window light follows the sky; at night it
     CHECK(evening.intensity < noon.intensity);
     const render::PointLight night = at("01:00");
     CHECK(night.intensity < 0.25f * noon.intensity);
-    std::filesystem::remove(world);
 }

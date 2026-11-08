@@ -60,6 +60,83 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
     Netzes, Kanten unter 5 m oder über 20 m, Hindernis auf Hüfthöhe (Strahl gegen `COL_`-Welt), kein begehbarer
     Boden, Freepoint ohne Wegpunkt in 3 m. Klick auf einen Eintrag wählt ihn und fährt die Kamera hin.
   - Pfadprobe: A* der Engine zwischen zwei Punkten, als grüne Linie gezeichnet.
+- **Zonen-Modus (M16 Teil C, Taste V bzw. Fenster „Zones & triggers“):** bearbeitet den `zones`-Block der Welt
+  (world.md „Zonen“) als Arbeitskopie; jede Änderung ist ein Undo-Schritt und geht sofort an die Engine
+  (`Engine::setZones`, geprüft wie beim Lesen). Räume, Musik und Ambiente folgen im nächsten Frame.
+  - `indoor`, `music` und `ambient` werden als Boxen gezeichnet (Raum blau, Musik violett, Ambiente grün) und sind
+    editierbar. Andere Typen stehen nur in der Liste und bleiben unverändert.
+  - Klick wählt die Box, in die der Strahl zuerst eintritt; steht die Kamera in allen getroffenen Boxen, die kleinste.
+    Das Gizmo verschiebt, dreht nur um die Hochachse (Ring Y) und ändert die Halbachsen (1/2/3 wie bei Vobs).
+  - `value`: Musik-Themen aus `data/music.toml` (ohne `common`), Ambienten aus `data/ambient.toml`, Raum-Tags als
+    freier Text. Neue Zone: Typ und Wert wählen, sie steht 6 m vor der Kamera auf dem Boden.
+  - „here“ zeigt je Typ, welche Zone an der Kamera gilt (die kleinste Box, Regel aus world.md). Ohne Spielfigur
+    misst auch die Musik an der Kamera.
+- **Trigger (M16 Teil C):** Volumen aller Trigger im Umkreis von 120 m werden im Vob-Modus gezeichnet. Der Inspektor
+  bietet Form und Filter sowie Listen für `onEnter`/`onLeave` (globale Lua-Funktionen der geladenen Skripte), die
+  Zielwelt (`.g7world` im VFS) und ihre Startpunkte, dazu `owner` (privater Bereich, M9). Unbekannte Namen bleiben
+  sichtbar. „check the triggers“ meldet
+  unbekannte Funktionen, fehlende Zielwelten oder Startpunkte, Startpunkte ohne Welt und Trigger ohne Wirkung
+  (keine Funktion, kein Levelwechsel, kein Besitzer). Ein Klick auf eine Meldung wählt den Trigger.
+- **Lichter und Mobs (M16 Teil D, Abschnitt „Lights & mobs“ im Fenster „Editor“):**
+  - „time of day“ stellt die Tageszeit nur für die Darstellung, damit sich Lichter bei Nacht beurteilen lassen. Die
+    Weltdatei speichert keine Zeit.
+  - Darunter steht, wie viele Lichter dieses Bild nimmt (höchstens `[render] max_lights`, E1) und wie viele Welt- und
+    Fensterlichter es gibt.
+  - „add light“ setzt ein Licht aus einer Vorlage (Feuer, Fackel, Kerze, Lampe, Fenster mit `daylight`) 4 m vor die
+    Kamera, 2 m über den Boden (`LIGHT_<VORLAGE>_NN`). Es zählt sofort zur Lichtauswahl.
+  - Der Inspektor eines Lichts bearbeitet Farbe, Reichweite, Stärke, Flackern und „daylight“ (Fensterlicht).
+  - Der Inspektor eines Mobs wählt die Definition aus der Liste (Lua-`Mob`-Definitionen und Typen aus `mobs.toml`).
+    Er zeigt Typ, Name, Besitzer, Schloss, Schlüssel und Inhalt der Definition; diese Werte gehören in Lua.
+  - „door open“ gibt es nur bei Türen. Die Benutzer-Slots des Typs stehen als Marker an der Auswahl (Fußpunkt,
+    Blickrichtung, Körperhöhe).
+  - „check the mobs“ meldet unbekannte Definitionen, Typen ohne Eintrag in `mobs.toml`, Besitzer, die weder NPC noch
+    Gilde sind, Schlüssel und Inhalt, die keine Items sind, Schlösser aus anderen Buchstaben als L und R und offen
+    gespeicherte Nicht-Türen. Ein Klick auf eine Meldung wählt das Mob.
+- **Routinen und Play-in-Editor (M16 Teil E, Fenster „Routines“):**
+  - **Geister:** Für jedes NPC der Welt zeigt ein Marker mit Name und Zustand, wo seine Routine es zur gewählten
+    Stunde hinstellt (Wegpunkt bzw. Freepoint des Eintrags). Das NPC der gewählten Routine steht dort als seine
+    echte Figur in Ruhepose, zur Kamera gedreht. Eine Linie führt vom jetzigen Ort des NPCs dorthin. Der Regler
+    „hour“ betrifft nur die Vorschau, nicht die
+    Spielzeit; die KI läuft dafür nicht.
+  - **Prüfung „Day plan check“:** für die Routinen der NPCs dieser Welt und der Editor-Datei. Sie meldet Zeiten, die
+    nicht HH:MM sind, leere Zeitfenster, Lücken („nothing to do 20:00-24:00“), Überschneidungen (es gilt der erste
+    Eintrag) sowie Orte ohne Zustand, ohne Ort oder unbekannt im Wegnetz.
+  - **Bearbeiten (Entscheidung 4):** Routinen der Datei `game/scripts/routines/<ort>_editor.lua` (Ort = Name der
+    Weltdatei) bearbeitet der Editor: „new routine“ (Name `rtn_…`, noch nicht vergeben), Einträge mit von/bis,
+    Zustand aus der Liste der `zs_`-Zustände der Skripte und Ort (Feld oder „pick“: der nächste Klick wählt den
+    Wegpunkt bzw. Freepoint). Jeder Schritt ist rückgängig zu machen.
+  - „write the routines“ bzw. Strg+S schreibt die Datei (nur `Routine "…" { … }`, nach Name, Einträge nach Beginn;
+    von Hand nicht anfassen) und lädt die Skripte neu. Routinen anderer Dateien zeigt der Editor nur an.
+  - **Play-in-Editor (Entscheidung 7):** F5 startet die Simulation mit dem Helden auf dem Boden unter der Kamera,
+    Umschalt+F5 am Startpunkt der Welt. F5 oder Esc hält an: Welt, NPCs, Story und Zeit stehen wieder wie vor dem
+    Start (`Engine::startPlay`/`stopPlay` über den Spielstand im Speicher), die Kamera an ihrem Platz. Solange der
+    Editor läuft, speichern F5/F9 nicht (Schnellspeichern); im Spiel aus dem Editor heraus sperrt `saveBlocker`
+    jedes Speichern.
+- **Prefabs (M16 Teil F, Entscheidung 5; Abschnitt „Prefabs“ im Fenster „Editor“):**
+  - „save selection“ legt den gewählten Vob mit seinen Kindern als Vorlage `assets/source/prefabs/<name>.g7prefab`
+    an (Name aus Kleinbuchstaben, Ziffern, `_`). Wegpunkte und Freepoints bis 2 m (waagrecht) neben einem ihrer Vobs
+    kommen mit, ebenso die Kanten zwischen diesen Wegpunkten.
+  - Die Datei ist eine kleine Welt im `.g7world`-Format, die Lagen sind relativ zum ersten Vob.
+  - Ein Klick auf eine Vorlage setzt sie 8 m vor die Kamera auf den Boden. Es entstehen lose Kopien: normale Vobs
+    mit neuen IDs, ohne Verknüpfung zur Vorlage. Wegpunkte und Freepoints bekommen die nächste freie Nummer ihres
+    Stamms (`FP_SIT_CAMPFIRE_01` → `FP_SIT_CAMPFIRE_02`).
+  - Das Setzen ist ein Undo-Schritt für Vobs und Wegnetz zusammen.
+- **Vobs aus Blender (ADR 0023):** Hat eine `.glb` leere Knoten `VOB_LIGHT_…`, `VOB_START_…` oder `VOB_TRIGGER_…`,
+  setzt der Editor sie beim Platzieren des Modells als Kind-Vobs ein (Vertrag in `asset.md` „Vobs aus Blender“).
+- **Gelände (M16 Teil F2, ADR 0023, Entscheidung 6; Taste T bzw. Fenster „Terrain“):**
+  - Pinsel bei gehaltener linker Maustaste: anheben, senken, glätten, ebnen auf eine Höhe (Strg+Klick nimmt die Höhe
+    unter der Maus), Splat-Schicht malen. Der Pinsel hat Radius und Stärke, die Wirkung fällt zum Rand hin weich ab.
+  - Gemalt wird so, dass die Summe der Schichtgewichte gleich bleibt.
+  - Das gezeichnete Gelände folgt sofort. Die Kollision wird nach jedem Strich neu gebaut.
+  - Ein Strich ist ein Undo-Schritt. Er hält nur das berührte Rechteck der Höhen bzw. der Splat-Karten, vorher und
+    nachher.
+  - Strg+S schreibt die `.r16` und die Splat-PNGs über ihre Quellen auf der Platte. Gibt es gekochte Kopien
+    (`.ktx2`), gelten sie bis zum nächsten Kochen; die Engine warnt dann.
+  - Höhen bleiben im Bereich `minY`–`maxY` des `terrain`-Blocks (der Bereich der `.r16`).
+  - **Gesperrt** für Welten mit `generator`-Kopf: Leonbergs Gelände kommt aus LGL-Daten über welt.
+  - Großformen aus Blender: `g7-cook --heightmap-from-mesh <gelände.glb> <aus.r16> [<zelle m>] [<vfs-pfad>]` rastert
+    das Mesh (Stufe 0, ohne `COL_`) und schreibt den `terrain`-Block daneben (`<aus.r16>.terrain.json`). Jeder
+    Punkt nimmt die höchste Fläche darüber bzw. darunter; Punkte ohne Fläche bekommen die tiefste Höhe, mit Warnung.
 - Nach jeder Änderung baut die Engine Instanzen und Lichter aus der Szene neu (`Engine::refreshScene`, Modelle
   bleiben im Cache).
 
@@ -69,14 +146,15 @@ Editor bei `--editor`. Fenster als `ui::EditorPanel` (ImGui bleibt in `ui`, ADR 
 | Vobs auswählen, verschieben/drehen/skalieren (Gizmo), aus Asset-Browser platzieren | M4 |
 | Eigenschafts-Inspektor für Komponenten | M4 |
 | Wegnetz: Punkte setzen, verbinden, benennen, Freepoints, Prüfungen, Pfadprobe | M16 B (umgesetzt) |
-| Zonen (Musik, Ambient, Besitz, Innenraum) als Boxen editieren | M16 |
-| Trigger mit Skript-Callbacks | M16 |
-| Licht-Editor mit Vorschau je Tageszeit | M16 |
-| Mobs: Slots, Zustände, Besitzer, Schloss | M16 |
-| Routinen-Vorschau: Zeitregler, NPC-„Geister“ an Routinen-Positionen | M16 |
+| Zonen (Musik, Ambient, Innenraum) als Boxen, Besitz als Trigger mit `owner` | M16 C (umgesetzt) |
+| Trigger mit Skript-Callbacks (Auswahllisten, Prüfung) | M16 C (umgesetzt) |
+| Licht-Editor mit Vorschau je Tageszeit, Lichter aus Vorlagen, Hinweis auf das Lichtbudget | M16 D (umgesetzt) |
+| Mobs: Definition aus Listen, Slots als Marker, Tür offen; Besitzer, Schloss, Inhalt angezeigt und geprüft | M16 D (umgesetzt) |
+| Routinen-Vorschau: Zeitregler, NPC-„Geister“ an Routinen-Positionen, Prüfung; Routinen in eigener Lua-Datei je Ort | M16 E (umgesetzt) |
 | Undo/Redo (Befehle mit JSON-Zuständen, ADR 0022), Fragen vor Generator-Vobs | M16 A (umgesetzt) |
-| Prefabs | M16 |
-| Simulation im Editor starten/stoppen (Play-in-Editor) | M16 |
+| Prefabs (lose Kopien, mit Wegnetz-Einträgen), Vobs aus `VOB_`-Knoten einer `.glb` | M16 F (umgesetzt) |
+| Gelände: Höhen-Pinsel (anheben, senken, glätten, ebnen), Splat-Schichten malen, Mesh → Heightmap aus Blender; erzeugtes Gelände gesperrt | M16 F2 (umgesetzt) |
+| Simulation im Editor starten/stoppen (Play-in-Editor, F5 an der Kamera, Umschalt+F5 am Startpunkt) | M16 E (umgesetzt) |
 
 ## Autopilot (`gothar --walk`, vorgezogen für die W3-Begehung; Vertrag mit welt)
 Die Spielfigur läuft eine Route ab und protokolliert, was unterwegs passiert. `tools/walk` (`g7_walk`) ist wie der

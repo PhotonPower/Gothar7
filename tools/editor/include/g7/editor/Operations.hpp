@@ -36,6 +36,9 @@ void setWorldTransform(world::Scene& scene, entt::entity vob, const Transform& w
 /// ("models/hut_a.glb" -> "HUT_A"); its id comes from the scene's nextVobId.
 [[nodiscard]] Result<entt::entity> placeMesh(world::Scene& scene, std::string_view meshPath,
                                              const Vec3& position);
+/// A new light vob named `name` at `position` with `light` (M16 part D); its id from the scene's nextVobId.
+[[nodiscard]] Result<entt::entity> placeLight(world::Scene& scene, std::string name, const Vec3& position,
+                                              const world::LightSource& light);
 /// A copy of the vob with all its components (same parent and name, a new id), moved by `offset`.
 /// Children are not copied.
 [[nodiscard]] Result<entt::entity> duplicateVob(world::Scene& scene, entt::entity vob, const Vec3& offset);

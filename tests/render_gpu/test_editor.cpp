@@ -5,9 +5,11 @@
 
 #include <g7/editor/Editor.hpp>
 #include <g7/editor/Operations.hpp>
+#include <g7/physics/Physics.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/WorldFile.hpp>
+#include <g7/world/WorldScene.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -56,6 +58,9 @@ EngineConfig editorConfig(const fs::Path& world)
     config.player = false; // as gothar --editor
     config.shaderDirectory = fs::fromUtf8(G7_SHADER_DIR);
     config.fixedFrameSeconds = 1.0 / 60.0;
+    // Everything the editor or the game could write stays in the temporary copy (never the user's folder).
+    config.saveDirectory = world.parent_path() / "saves";
+    config.extraScriptDirectory = world.parent_path() / "scripts";
     g7::test::keepVideoAlive();
     return config;
 }
@@ -303,4 +308,326 @@ TEST_CASE("Editor GPU: waynet mode - add, join, probe a path, rename, undo, dele
     CHECK(engine.waynet().find("WP_CAMP_FIRE").has_value());
     REQUIRE(engine.worldFile().waynet.has_value());
     CHECK(engine.worldFile().waynet->findFreepoint("FP_STAND_CAMP_BACH_01") != nullptr);
+}
+
+TEST_CASE("Editor GPU: zones and triggers - a music zone at the camera switches the theme; undo; save; check")
+{
+    WorldCopy copy;
+    {
+        Engine engine(editorConfig(copy.file));
+        REQUIRE(engine.init().ok());
+        editor::Editor editor(engine);
+        engine.addTool(editor);
+        if (engine.music() == nullptr)
+        {
+            MESSAGE("no music (data/music.toml or sound missing) - zone part skipped");
+            return;
+        }
+        // The camera in the camp: the camp's zone counts.
+        engine.camera().transform.position = Vec3(8.0f, 3.0f, 4.0f);
+        for (int i = 0; i < 3; ++i)
+        {
+            CHECK(engine.runFrame());
+        }
+        CHECK(engine.music()->status().theme == "LAGER");
+        const std::vector<std::string> themes = editor.zoneValueChoices("music");
+        CHECK(std::ranges::find(themes, "STADT") != themes.end());
+        CHECK(std::ranges::find(themes, "common") == themes.end());
+
+        // A smaller music zone around the camera: it counts at once (the smallest box wins).
+        editor.setZoneMode(true);
+        const usize zonesBefore = editor.zones().size();
+        const auto added = editor.addZone("music", "STADT", Vec3(8.0f, 3.0f, 4.0f));
+        REQUIRE(added.ok());
+        CHECK(editor.zoneSelection() == added.value());
+        CHECK(engine.worldFile().zones.size() == zonesBefore + 1);
+        CHECK(engine.runFrame()); // zone mode drawn, its window shown
+        CHECK(engine.music()->status().theme == "STADT");
+        CHECK(editor.zones()[*editor.zoneAt("music", Vec3(8.0f, 3.0f, 4.0f))].value == "STADT");
+
+        // Sized and moved away: the camp's theme again; undone: the town's.
+        world::ZoneBox box = *editor.zones()[added.value()].box;
+        box.center.x += 200.0f;
+        REQUIRE(editor.setZoneBox(box).ok());
+        CHECK(engine.runFrame());
+        CHECK(engine.music()->status().theme == "LAGER");
+        REQUIRE(editor.undo().value());
+        CHECK(engine.runFrame());
+        CHECK(engine.music()->status().theme == "STADT");
+        CHECK_FALSE(editor.addZone("fog", "dense", Vec3(0.0f)).ok()); // other types are not edited
+
+        // Triggers: the camp's level change to the cave is fine; a broken function name is found.
+        editor.setZoneMode(false);
+        const auto& issues = editor.checkTriggers();
+        CHECK(std::ranges::none_of(issues, [](const editor::TriggerIssue& i) { return i.id.value == 173; }));
+        REQUIRE(editor.save().ok());
+    }
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    CHECK(std::ranges::any_of(engine.worldFile().zones,
+                              [](const world::Zone& z) { return z.type == "music" && z.value == "STADT"; }));
+}
+
+TEST_CASE("Editor GPU: lights and mobs - a new light is in the frame's choice at once; the time slider")
+{
+    WorldCopy copy;
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    editor::Editor editor(engine);
+    engine.addTool(editor);
+    const auto shot = [&](const char* name)
+    {
+        const fs::Path file = copy.dir / name;
+        engine.requestScreenshot(file);
+        CHECK(engine.runFrame());
+        auto bytes = fs::readText(file);
+        REQUIRE(bytes.ok());
+        return bytes.value();
+    };
+
+    // The time slider: night, then noon - the sky follows (display only).
+    editor.setPreviewHour(0.5f);
+    CHECK(engine.runFrame());
+    const f32 nightSun = engine.environment().sunIntensity;
+    editor.setPreviewHour(12.0f);
+    CHECK(engine.runFrame());
+    CHECK(engine.gameTime().hourOfDay() == doctest::Approx(12.0f));
+    CHECK(engine.environment().sunIntensity > nightSun);
+
+    // By night a fire 4 m ahead: in this frame's lights at once, and the picture changes.
+    editor.setPreviewHour(0.5f);
+    const std::string dark = shot("before.png");
+    const usize worldLights = engine.worldLightCount();
+    const auto placed = editor.placeLight("fire");
+    REQUIRE(placed.ok());
+    CHECK(engine.worldLightCount() == worldLights + 1);
+    const Vec3 at =
+        editor::worldTransformOf(engine.scene(), engine.scene().findById(placed.value())).position;
+    const std::string lit = shot("after.png");
+    const auto chosen = [&]
+    {
+        return std::ranges::any_of(engine.frameLights().lights(), [&](const render::PointLight& l)
+                                   { return glm::length(l.position - at) < 0.01f; });
+    };
+    CHECK(chosen());
+    CHECK(lit != dark);
+    CHECK_FALSE(editor.placeLight("laser").ok());
+
+    // Undone: gone from the choice.
+    REQUIRE(editor.undo().value());
+    CHECK(engine.runFrame());
+    CHECK_FALSE(chosen());
+    CHECK(engine.worldLightCount() == worldLights);
+
+    // Mobs: the camp's definitions come from the scripts; the check runs over the camp's mob vobs.
+    const editor::MobLists lists = editor.mobLists();
+    CHECK_FALSE(lists.definitions.empty());
+    CHECK(std::ranges::find(lists.types, "chest") != lists.types.end());
+    CHECK(std::ranges::find(lists.guilds, "guard") != lists.guilds.end());
+    // The camp's mobs are all known (the stool sits like a bench); a mob of an unknown type is found.
+    CHECK(editor.checkMobs().empty());
+    auto crate = engine.scene().spawnVob({"CRATE_TEST", Transform{}, {}, {}});
+    REQUIRE(crate.ok());
+    engine.scene().set<world::MobRef>(crate.value(), {"crate_of_nowhere"});
+    const auto& issues = editor.checkMobs();
+    REQUIRE(issues.size() == 1);
+    CHECK(issues[0].name == "CRATE_TEST");
+    CHECK(issues[0].text.find("crate_of_nowhere") != std::string::npos);
+}
+
+TEST_CASE(
+    "Editor GPU: routines - ghosts, the editor's own routine file, play-in-editor leaves the world as it was")
+{
+    WorldCopy copy;
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    editor::Editor editor(engine);
+    engine.addTool(editor);
+    REQUIRE(engine.runConsoleLine("camp_people()").ok()); // the camp's NPCs at their routine places
+    CHECK(engine.runFrame());
+
+    // Ghosts: at 8 o'clock the farmer woman sweeps at the camp's centre (routines/camp.lua), from the
+    // scripts.
+    const auto ghosts = editor.ghosts(8 * 60);
+    const auto woman = std::ranges::find(ghosts, "npc_farmer_woman", &editor::Editor::Ghost::npc);
+    REQUIRE(woman != ghosts.end());
+    CHECK(woman->state == "zs_sweep");
+    CHECK(woman->at == "wp_camp_center");
+    CHECK(woman->place.has_value());
+    for (const editor::RoutineIssue& issue : editor.checkRoutines())
+    {
+        MESSAGE(issue.routine << ": " << issue.text);
+    }
+    CHECK(editor.checkRoutines().empty()); // the camp's day plans are whole
+
+    // Decision 8: the selected routine's NPC stands there as its real figure (at rest).
+    editor.setRoutineHour(8.0f);
+    editor.selectRoutine("rtn_farmer_woman");
+    engine.camera().transform.position =
+        *woman->place + Vec3(4.0f, 1.6f, 0.0f); // the fly camera keeps its yaw (90: along -X)
+    CHECK(engine.runFrame());
+    CHECK(engine.ghostFigureShown());
+    editor.selectRoutine("");
+    CHECK(engine.runFrame());
+    CHECK_FALSE(engine.ghostFigureShown());
+
+    // A routine of the editor's file: made, filled, undone and redone, written - the scripts load it.
+    CHECK_FALSE(editor.newRoutine("rtn_farmer_woman").ok()); // hand-written: taken
+    REQUIRE(editor.newRoutine("rtn_editor_guard").ok());
+    REQUIRE(editor.addRoutineEntry("rtn_editor_guard", {"20:00", "08:00", "zs_sleep", "wp_camp_west"}).ok());
+    REQUIRE(
+        editor.addRoutineEntry("rtn_editor_guard", {"08:00", "20:00", "zs_stand", "wp_camp_center"}).ok());
+    CHECK_FALSE(
+        editor.addRoutineEntry("rtn_farmer_woman", {"08:00", "09:00", "zs_stand", "wp_camp_center"}).ok());
+    CHECK_FALSE(editor.addRoutineEntry("rtn_editor_guard", {"08:00", "09:00", "zs_stand", "wp\"x"}).ok());
+    REQUIRE(editor.undo().value());
+    CHECK(editor.editorRoutines()[0].entries.size() == 1);
+    REQUIRE(editor.redo().value());
+    CHECK(editor.routinesDirty());
+    REQUIRE(editor.writeRoutines().ok());
+    CHECK_FALSE(editor.routinesDirty());
+    CHECK(std::filesystem::exists(copy.dir / "scripts" / "routines" /
+                                  "camp_copy_editor.lua")); // site: the file name
+    const auto loaded = engine.routines();
+    const auto guard = std::ranges::find(loaded, "rtn_editor_guard", &RoutineInfo::name);
+    REQUIRE(guard != loaded.end());
+    CHECK(guard->file == "routines/camp_copy_editor.lua");
+    REQUIRE(guard->entries.size() == 2);
+    CHECK(guard->entries[0].from == "08:00"); // sorted by start
+    {
+        editor::Editor again(engine); // a new session finds its routines in the file
+        REQUIRE(again.editorRoutines().size() == 1);
+        CHECK(again.editorRoutines()[0] == *guard);
+    }
+
+    // Play-in-editor at the camera: the hero there, the simulation runs; stopped, the world is as before.
+    const auto text = [&]
+    {
+        world::WorldFile file = world::captureWorld(engine.scene(), "w");
+        return world::writeWorldFile(file);
+    };
+    const std::string before = text();
+    const f64 minuteBefore = engine.gameTime().minuteOfDay();
+    const usize npcsBefore = engine.npcRoutines().size();
+    const Transform camera = engine.camera().transform;
+    REQUIRE(editor.startPlay(false).ok());
+    CHECK(editor.playing());
+    CHECK_FALSE(editor.startPlay(false).ok());
+    for (int i = 0; i < 30; ++i)
+    {
+        CHECK(engine.runFrame()); // the routine window only, with its stop button
+    }
+    CHECK(engine.simulationTicks() > 0);
+    REQUIRE(engine.runConsoleLine("insert('it_apple', 3)").ok()); // something changes while playing
+    REQUIRE(editor.stopPlay().ok());
+    CHECK_FALSE(editor.playing());
+    CHECK(text() == before);
+    CHECK(engine.npcRoutines().size() == npcsBefore);
+    CHECK(engine.gameTime().minuteOfDay() == doctest::Approx(minuteBefore).epsilon(0.001));
+    CHECK(glm::length(engine.camera().transform.position - camera.position) < 1e-3f);
+    CHECK(engine.runFrame());
+
+    // Shift+F5: at the start point.
+    REQUIRE(editor.startPlay(true).ok());
+    CHECK(engine.runFrame());
+    REQUIRE(editor.stopPlay().ok());
+    CHECK(text() == before);
+}
+
+TEST_CASE("Editor GPU: prefabs - the selection with its waynet as a template, loose copies, one undo step")
+{
+    WorldCopy copy;
+    Engine engine(editorConfig(copy.file));
+    REQUIRE(engine.init().ok());
+    editor::Editor editor(engine);
+    engine.addTool(editor);
+    editor.setPrefabDirectory(copy.dir / "prefabs"); // never the repository's assets
+    editor.select(world::VobId{68});                 // the stool by the camp fire
+    CHECK_FALSE(editor.savePrefab("Bad Name").ok());
+    const auto saved = editor.savePrefab("stool");
+    REQUIRE(saved.ok());
+    CHECK(std::filesystem::exists(saved.value()));
+    CHECK(editor.prefabNames() == std::vector<std::string>{"stool"});
+
+    const usize vobs = engine.scene().vobCount();
+    const usize entries = editor.waynetData().points.size() + editor.waynetData().freepoints.size();
+    const auto placed = editor.placePrefab("stool", Vec3(40.0f, 0.0f, 40.0f));
+    REQUIRE(placed.ok());
+    CHECK(engine.scene().vobCount() == vobs + placed.value().vobs.size());
+    CHECK(editor.waynetData().points.size() + editor.waynetData().freepoints.size() ==
+          entries + placed.value().waynetNames.size());
+    for (const std::string& name : placed.value().waynetNames)
+    {
+        const bool known =
+            engine.waynet().find(name).has_value() || editor.waynetData().findFreepoint(name) != nullptr;
+        CHECK(known); // in the waynet at once
+    }
+    CHECK(engine.runFrame());
+    REQUIRE(editor.undo().value()); // vobs and waynet entries in one step
+    CHECK(engine.scene().vobCount() == vobs);
+    CHECK(editor.waynetData().points.size() + editor.waynetData().freepoints.size() == entries);
+    CHECK_FALSE(editor.placePrefab("missing").ok());
+}
+
+TEST_CASE(
+    "Editor GPU: terrain brush - heights, drawn terrain and collision follow; undo; generated terrain locked")
+{
+    {
+        WorldCopy copy;
+        Engine engine(editorConfig(copy.file));
+        REQUIRE(engine.init().ok());
+        editor::Editor editor(engine);
+        engine.addTool(editor);
+        REQUIRE(engine.terrain() != nullptr);
+        CHECK(editor.terrainLocked().empty());
+        const Vec3 spot(-60.0f, 0.0f, -60.0f); // open meadow of the camp's terrain
+        const f32 before = engine.terrain()->heightAt(spot.x, spot.z);
+        const auto ground = [&]
+        {
+            const auto hit = engine.physics().raycast(Vec3(spot.x, 200.0f, spot.z), Vec3(0.0f, -1.0f, 0.0f),
+                                                      400.0f, physics::layerBit(physics::Layer::World));
+            return hit ? hit->position.y : -1000.0f;
+        };
+        CHECK(ground() == doctest::Approx(before).epsilon(0.02));
+
+        editor.setTerrainMode(true);
+        CHECK(editor.terrainMode());
+        editor.brush() = editor::Brush{editor::BrushMode::Raise, 6.0f, 4.0f};
+        REQUIRE(editor.beginStroke().ok());
+        editor.strokeAt(spot, 0.5f);
+        editor.strokeAt(spot + Vec3(1.0f, 0.0f, 0.0f), 0.5f);
+        editor.endStroke();
+        const f32 raised = engine.terrain()->heightAt(spot.x, spot.z);
+        CHECK(raised > before + 3.0f);
+        CHECK(editor.terrainDirty());
+        CHECK(engine.runFrame()); // the collision anew after the stroke
+        CHECK(ground() == doctest::Approx(raised).epsilon(0.02));
+
+        REQUIRE(editor.undo().value()); // one stroke, one step
+        CHECK(engine.terrain()->heightAt(spot.x, spot.z) == doctest::Approx(before).epsilon(0.001));
+        CHECK(engine.runFrame());
+        CHECK(ground() == doctest::Approx(before).epsilon(0.02));
+
+        // Painting a layer: the weights change and undo.
+        editor.brush() = editor::Brush{editor::BrushMode::Paint, 6.0f, 50.0f};
+        editor.brush().layer = 2;
+        REQUIRE(editor.beginStroke().ok());
+        editor.strokeAt(spot, 1.0f);
+        editor.endStroke();
+        CHECK(editor.history().undoLabel() == "terrain: paint");
+        REQUIRE(editor.undo().value());
+        // Not saved: the camp's terrain files belong to the repository.
+    }
+    {
+        WorldCopy generated(R"("generator": {"tool": "gothar-worldgen", "owned": [[1, 100]]},
+  )");
+        Engine engine(editorConfig(generated.file));
+        REQUIRE(engine.init().ok());
+        editor::Editor editor(engine);
+        engine.addTool(editor);
+        CHECK_FALSE(editor.terrainLocked().empty()); // like Leonberg: heights from the generator
+        editor.setTerrainMode(true);
+        CHECK_FALSE(editor.terrainMode());
+        CHECK_FALSE(editor.beginStroke().ok());
+    }
 }
