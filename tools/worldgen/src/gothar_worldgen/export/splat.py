@@ -58,6 +58,7 @@ TREE_RADIUS_M = 3.0
 BUILDING_MARGIN_M = 1.5
 WATER_WIDTH_M = 3.0
 RAIL_WIDTH_M = 4.0
+RURAL_EDGE_M = 1.0  # W6 rural ways: ruts and trodden verge beyond the way's width
 ROCK_SLOPE_DEG = (35.0, 45.0)  # rock fades in between these slopes
 # Paving fades out between these slopes and earth takes its place: a street is level across now
 # (W6), the bank beside it is no street (coordinator 2026-10-08: no stretched cobbles there).
@@ -188,8 +189,13 @@ def layer_masks(
     for s in streets:
         if s.get("highway") in NO_SURFACE_HIGHWAYS:
             continue
-        layer = KOPFSTEIN if _inside(core, s["points"]) else KIES
+        rural = s.get("rural")  # W6: country roads gravel, field ways mud (geo/rural.py)
         width = float(s.get("widthM") or DEFAULT_STREET_WIDTH_M)
+        if rural:  # painted a little wider: the blurred edge would leave a narrow way faint
+            layer = MATSCH if rural == "feldweg" else KIES
+            width += RURAL_EDGE_M
+        else:
+            layer = KOPFSTEIN if _inside(core, s["points"]) else KIES
         canvases[layer].line(s["points"], width)
         _off_surface(grid, s["points"], width, off)
     for q in squares:

@@ -887,6 +887,42 @@ keine echten Wappen oder Logos. Code: `mobs.guild_sign` (Modelle `props/sign_<sy
   Seiten, in der Ebene des Auslegers (entlang der Straße lesbar).
 - **Kollision:** keine (nur das winzige `COL_HULL_NONE` unter dem Boden).
 
+### Landstraßen und Feldwege vor der Mauer (W6)
+Plan freigegeben (Koordinator 2026-11-08; Torvorstadt und Schwelle 400 m vom Projektinhaber bestätigt). Vor der Mauer
+stehen nur noch Weiler (`buildings/weiler.py`, `building_rules.json` „weiler“). Dazu passt das Wegenetz: Statt der
+modernen Straßen gibt es Landstraßen und Feldwege. Regeln in `data/<ort>/rural_ways.json`, Mechanik in
+`gothar_worldgen/geo/rural.py` (Wege) und `export/harmonise.py` (Gelände).
+- **Innen** (Ring plus `insideM` = 5 m) bleibt jede Straße. Eine Straße über den Ring wird dort geteilt.
+- **Landstraße:** Straßen der Klassen `primary`/`secondary`/`tertiary` (samt `_link`) und jede Straße, die an einem
+  Torturm beginnt (`gateM` 12 m). 4,5 m breit, Kies, ohne Rinnen und Stützmauern.
+- **Feldweg:** `track`, `path` und `unclassified`, außerdem Siedlungsstraßen (`residential`, `living_street`), deren
+  Name innerhalb von `reachM` (600 m) mindestens `minNamedM` (400 m) vor der Mauer verläuft. 2,5 m breit, Matsch,
+  ohne Rinnen und Stützmauern.
+- **Der Rest entfällt** vor der Mauer: `service`, `footway`, `steps`, `cycleway`, `pedestrian`, Autobahn und Bahn.
+- **Um die Mauer** (`belt`, 40 m) bleiben kleine Wege (`footway`, `path`, `steps`, `pedestrian`, `service`, `track`)
+  unverändert, wenn sie ganz in diesem Gürtel liegen: Wege an Mauer und Zwinger, Schlossberg, Pomeranzengarten.
+- **Erreichbarkeit** (nur im Wegnetz-Gebiet, `linkHalfM` 350 m):
+  - Jeder verbliebene Weg bekommt Anschluss an die Stadt über das kürzeste Stück entfallener Wege (höchstens
+    `maxLinkM` 300 m). Diese Stücke werden zu Feldwegen (`access`). Ein Weg ohne solchen Anschluss entfällt.
+  - Ebenso bekommt jede Tür, jeder Start und jedes Tor ohne Weg im Umkreis von `accessM` (12 m) den nächsten
+    entfallenen Weg in diesem Umkreis und dessen Anschluss.
+  - Die Türen stammen aus `buildings_index.json`. `buildings` liest dafür die unveränderten OSM-Straßen, damit
+    sich innerhalb der Mauer kein Haus ändert.
+- **Ein Helfer für die Leser:** `load_street_doc` liefert den Lesern von `streets.json` (Gelände, Splat, Stufen,
+  Stützmauern, Rinnen, Nutzungen, Gassen, Wegnetz, Begehung, Stadtplan) dieselben Wege. Ein Stück vor der Mauer
+  hat `highway = "track"`, `rural` (`landstrasse` | `feldweg`) und `osmHighway`. Die OSM-Straßen unverändert
+  lesen nur `buildings`, `citywall` (Rückbau) und die Weiler-Auswahl: Häuser und Mauer bleiben byte-gleich.
+- **Gelände zurückgleichen:** `export-terrain` füllt zuerst harmonisch (Laplace, Rand = umgebendes Gelände):
+  - die Grundrisse der entfallenen Gebäude plus `buildingM` (3 m), also Keller, Garagen und Hanganschnitte;
+  - vor der Mauer den Korridor jeder OSM-Straße (halbe Breite plus 3 m bzw. die halbe Breite, das Größere) und der
+    Bahn, also Einschnitte und Dämme. Auch die verbliebenen Wege liegen danach auf dem ausgeglichenen Gelände.
+  - Unverändert bleiben: die Stadt bis `wallM` (45 m) vor dem Ring, die verbliebenen Häuser plus `keepM` (5 m),
+    Brücken und Tunnel.
+  - Danach folgen wie bisher Gewässer, Hangtüren, Raum-Pads, Wege, Stufen und Stützmauern.
+- **Splat:** Feldwege Matsch, Landstraßen Kies, je 1 m breiter gemalt als der Weg (Fahrspuren, Rand; sonst wirkt
+  ein schmaler Weg durch die Weichzeichnung blass). Matsch nur noch um die verbliebenen Häuser, Bahnschotter nur
+  innerhalb der Mauer.
+
 ### Bodenregel für handgemachte Modelle (W6)
 Entscheidung Projektinhaber (2026-10-03): Kein sichtbarer Teil eines handgemachten Modells darf im Gelände stecken.
 - Ein Modell steht auf dem höchsten Gelände unter seinem Grundriss. Talseitig gibt es Sockel oder Fundament aus Stein,
