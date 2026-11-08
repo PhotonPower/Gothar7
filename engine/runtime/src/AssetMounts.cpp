@@ -160,6 +160,24 @@ std::string preferCooked(const asset::Vfs& vfs, std::string_view path)
     return std::string(path);
 }
 
+std::string preferCookedFigure(const asset::Vfs& vfs, std::string_view path, bool skin)
+{
+    for (const std::string_view extension : {std::string_view(".glb"), std::string_view(".gltf")})
+    {
+        if (path.size() > extension.size() &&
+            equalsIgnoreCase(path.substr(path.size() - extension.size()), extension))
+        {
+            std::string cooked =
+                std::string(path.substr(0, path.size() - extension.size())) + (skin ? ".g7skin" : ".g7anim");
+            if (vfs.exists(cooked))
+            {
+                return cooked;
+            }
+        }
+    }
+    return std::string(path);
+}
+
 std::vector<std::string> imageCandidates(std::string_view meshPath, std::string_view uri)
 {
     std::vector<std::string> candidates{std::string(uri)};
