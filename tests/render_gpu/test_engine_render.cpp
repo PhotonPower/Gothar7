@@ -171,3 +171,65 @@ TEST_CASE("Engine render: ambient occlusion with depth prepass only when switche
     CHECK(on->ssao().result() != nullptr);
     CHECK(on->renderDevice()->debugErrorCount() == 0);
 }
+
+TEST_CASE("Engine render: rain only while it rains and the weather is shown (M17 R)")
+{
+    const auto streaks = [](std::string_view weather, bool shown)
+    {
+        auto settings =
+            g7::Config::parse(shown ? "[render]\nweather = true\n" : "[render]\nweather = false\n");
+        REQUIRE(settings.ok());
+        g7::EngineConfig config;
+        config.window.size = {320, 240};
+        config.window.vsync = false;
+        config.shaderDirectory = g7::fs::fromUtf8(G7_SHADER_DIR);
+        config.world = g7::fs::fromUtf8("testworld/camp.g7world");
+        config.player = false;
+        config.fixedFrameSeconds = 1.0 / 60.0;
+        config.weather = std::string(weather);
+        config.settings = std::move(settings).value();
+        g7::test::keepVideoAlive();
+        g7::Engine engine(config);
+        REQUIRE(engine.init().ok());
+        for (int i = 0; i < 6; ++i)
+        {
+            REQUIRE(engine.runFrame());
+        }
+        CHECK(engine.renderDevice()->debugErrorCount() == 0);
+        if (std::string_view(weather) == "regen" && shown)
+        {
+            CHECK(engine.rain().mapValid()); // the map from above was drawn
+        }
+        return engine.rainStreaksDrawn();
+    };
+    CHECK(streaks("regen", true) > 1000u);
+    CHECK(streaks("regen", false) == 0u); // [render] weather = false: no rain to see
+    CHECK(streaks("klar", true) == 0u);
+}
+
+TEST_CASE("Engine render: no rain streaks under water (M17 R)")
+{
+    g7::EngineConfig config;
+    config.window.size = {320, 240};
+    config.window.vsync = false;
+    config.shaderDirectory = g7::fs::fromUtf8(G7_SHADER_DIR);
+    config.world = g7::fs::fromUtf8("testworld/camp.g7world");
+    config.player = false;
+    config.fixedFrameSeconds = 1.0 / 60.0;
+    config.weather = "regen";
+    config.view.camera = g7::Vec3(-160.0f, -6.0f, -137.0f); // in the pond (surface -4)
+    g7::test::keepVideoAlive();
+    g7::Engine engine(config);
+    REQUIRE(engine.init().ok());
+    for (int i = 0; i < 6; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    REQUIRE(engine.cameraWater() != nullptr);
+    CHECK(engine.rainStreaksDrawn() == 0u);
+    if (const g7::audio::AudioSystem* audio = engine.audio())
+    {
+        CHECK(engine.rainSound() == "amb_rain");
+        CHECK(audio->busMuffle(g7::audio::Bus::Ambient) > 0.5f); // the rain heard dull through the water (W3)
+    }
+}

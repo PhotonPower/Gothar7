@@ -312,6 +312,68 @@ void Engine::bindEngineFunctions()
                                     static_cast<u32>(a.size() > 1 ? a[1].asInteger() : 0));
                  return Value();
              }});
+    vm.bind(
+        {"set_weather", "set_weather(name: string, minutes?: number) -> boolean",
+         "Setzt die Wetterlage (data/weather.toml), mit Übergang über `minutes` Spielminuten (ohne: sofort); "
+         "der Ablauf geht von ihr aus weiter. false bei unbekannter Lage.",
+         "Welt", [this](std::span<const Value> a) -> Result<Value>
+         {
+             if (a.empty() || !a[0].isString() ||
+                 (a.size() > 1 && (!a[1].isNumber() || a[1].asNumber() < 0.0)))
+             {
+                 return Error{"expects (name, minutes? >= 0)"};
+             }
+             return Value(
+                 m_weather.set(a[0].asString(), m_gameTime.clock(), a.size() > 1 ? a[1].asNumber() : 0.0));
+         }});
+    vm.bind({"weather", "weather() -> {name, rain, clouds, wind, locked, next}",
+             "Die Wetterlage jetzt: Name, Regen, Bewölkung und Wind (0..1, im Übergang gemischt), ob sie "
+             "gesperrt ist, und in wie vielen Spielminuten der Ablauf wieder entscheidet.",
+             "Welt", [this](std::span<const Value>) -> Result<Value>
+             {
+                 const f64 clock = m_gameTime.clock();
+                 const world::WeatherSample s = m_weather.sample(clock);
+                 const auto rounded = [](f32 v) { return std::round(static_cast<f64>(v) * 100.0) / 100.0; };
+                 return script::makeTable(
+                     {}, {{"name", m_weather.current()},
+                          {"rain", rounded(s.rain)},
+                          {"clouds", rounded(s.clouds)},
+                          {"wind", rounded(s.wind)},
+                          {"locked", m_weather.locked()},
+                          {"next", std::max(0.0, std::round(m_weather.nextChange() - clock))}});
+             }});
+    vm.bind(
+        {"lock_weather", "lock_weather(locked: boolean)",
+         "Hält die Wetterlage fest (eine Story-Szene): der Ablauf wechselt nicht, set_weather wirkt weiter.",
+         "Welt", [this](std::span<const Value> a) -> Result<Value>
+         {
+             m_weather.lock(a.empty() || a[0].asBool());
+             return Value();
+         }});
+    vm.bind(
+        {"lightning", "lightning(distance?: number, direction?: number)",
+         "Ein Blitz jetzt (Story, Prüfbilder), `distance` Meter entfernt (Vorgabe 800, 50 bis 5000), in "
+         "Richtung "
+         "`direction` Grad (0 = -Z wie yaw 0, Vorgabe wechselnd); nahe und mittlere zeigen ihren Strahl am "
+         "Himmel. Der Donner folgt nach Entfernung / 343 m/s – auch ohne Gewitter.",
+         "Welt", [this](std::span<const Value> a) -> Result<Value>
+         {
+             const f64 distance = a.empty() ? 800.0 : a[0].asNumber(-1.0);
+             if (distance < 50.0 || distance > 5000.0)
+             {
+                 return Error{"expects (distance? 50-5000 m)"};
+             }
+             world::Lightning flash;
+             flash.start = m_stormClock;
+             flash.distance = static_cast<f32>(distance);
+             flash.flickers = 2;
+             flash.azimuth = a.size() > 1 ? static_cast<f32>(glm::radians(-a[1].asNumber()))
+                                          : static_cast<f32>(m_flashCount) * 2.399963f; // spread out
+             m_flash = flash;
+             ++m_flashCount;
+             thunder(flash);
+             return Value();
+         }});
     vm.bind({"where", "where() -> {x, y, z, yaw, world, time, day}",
              "Position (Meter) und Blickrichtung (Grad) der Spielfigur bzw. der Kamera, die Welt, der "
              "Spieltag (ab 1) und die "
@@ -340,6 +402,11 @@ void Engine::bindEngineFunctions()
          "Inhalte setzen dann niemanden ein (M15).",
          "Ereignisse",
          {}});
+    vm.bind({"weather_changed",
+             "on(\"weather_changed\", fn(old: string, new: string))",
+             "Die Wetterlage hat gewechselt (Ablauf aus data/weather.toml; nicht bei set_weather).",
+             "Ereignisse",
+             {}});
     vm.bind(
         {"scripts_reloaded",
          "on(\"scripts_reloaded\", fn())",

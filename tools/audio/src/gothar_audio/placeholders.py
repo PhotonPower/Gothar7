@@ -239,6 +239,53 @@ def amb_room(rng: random.Random) -> Samples:
     return normalise(seamless(lowpass(noise(LOOP, rng), 150.0)), 0.5)  # quiet by its volume in sounds.toml
 
 
+def amb_rain(rng: random.Random) -> Samples:
+    """Rain outside (M17 weather): a hiss of many drops and a few louder ones close by."""
+    hiss = lowpass(highpass(noise(LOOP, rng), 600.0), 6000.0)
+    drops = scatter(
+        int(LOOP * 22050),
+        400,
+        lambda: [
+            x * rng.uniform(0.2, 0.8) for x in envelope(highpass(noise(0.02, rng), 2500.0), 0.0005, 0.006)
+        ],
+        rng,
+    )
+    return normalise(seamless(mix((hiss, 0.7), (drops, 0.5))), 0.5)
+
+
+def amb_rain_roof(rng: random.Random) -> Samples:
+    """Rain heard from inside (M17 weather): dull drumming on the roof."""
+    drum = lowpass(noise(LOOP, rng), 900.0)
+    taps = scatter(
+        int(LOOP * 22050),
+        250,
+        lambda: [
+            x * rng.uniform(0.3, 1.0) for x in envelope(lowpass(noise(0.03, rng), 1200.0), 0.001, 0.012)
+        ],
+        rng,
+    )
+    return normalise(seamless(mix((drum, 0.6), (taps, 0.6))), 0.45)
+
+
+def thunder_near(rng: random.Random) -> Samples:
+    """A close thunderclap (M17 storm): a sharp crack, then a long rolling rumble."""
+    crack = envelope(highpass(noise(0.4, rng), 800.0), 0.002, 0.25)
+    rumble = [
+        x * (0.6 + 0.4 * math.sin(2 * math.pi * 1.3 * i / 22050 + rng.uniform(0, 6)))
+        for i, x in enumerate(envelope(lowpass(noise(4.5, rng), 180.0), 0.05, 3.5))
+    ]
+    return normalise(fade(mix((crack + silence(4.1), 0.8), (rumble, 1.0)), 0.002, 0.8), 0.9)
+
+
+def thunder_far(rng: random.Random) -> Samples:
+    """Distant thunder (M17 storm): only a low rumble swelling and fading."""
+    rumble = [
+        x * (0.5 + 0.5 * math.sin(2 * math.pi * 0.8 * i / 22050))
+        for i, x in enumerate(envelope(lowpass(noise(5.0, rng), 120.0), 0.6, 3.0))
+    ]
+    return normalise(fade(rumble, 0.3, 1.0), 0.6)
+
+
 def crow(rng: random.Random) -> Samples:
     caw = lowpass(tone(lambda t: 700.0 - 300.0 * t / 0.3, 0.3, "saw"), 1800.0)
     one = fade(mix((caw, 1.0), (lowpass(noise(0.3, rng), 1500.0), 0.3)), 0.02, 0.1)
@@ -369,6 +416,10 @@ SOUNDS: dict[str, Callable[[random.Random], Samples]] = {
     "amb_fire": amb_fire,
     "amb_tavern": amb_tavern,
     "amb_room": amb_room,
+    "amb_rain": amb_rain,
+    "amb_rain_roof": amb_rain_roof,
+    "thunder_near": thunder_near,
+    "thunder_far": thunder_far,
     "crow": crow,
     "dog_bark": dog_bark,
     "wood_creak": wood_creak,

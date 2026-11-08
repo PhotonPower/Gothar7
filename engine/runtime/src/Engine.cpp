@@ -6,6 +6,7 @@
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/Procedural.hpp>
 #include <g7/audio/Audio.hpp>
+#include <g7/core/BuildInfo.hpp>
 #include <g7/core/Clock.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/Profiler.hpp>
@@ -84,8 +85,7 @@ Engine::~Engine()
 Result<void> Engine::init()
 {
     m_startSeconds = platform::nowSeconds();
-    G7_LOG_INFO("engine", "{} {}.{}.{} - starting '{}'", kEngineName, kEngineVersion.major,
-                kEngineVersion.minor, kEngineVersion.patch, m_config.appName);
+    G7_LOG_INFO("engine", "{} - starting '{}'", buildLine(), m_config.appName); // release.md part A
 
     if (m_config.simulationHz <= 0.0)
     {
@@ -506,6 +506,7 @@ bool Engine::runFrame()
         const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
         m_triggers.update(m_scene, std::span(&probe, 1));
         m_gameTime.advance(m_fixedStep.step()); // global: keeps running across level changes
+        updateWeather();
         ++m_simTicks;
         if (m_pendingWorldChange)
         {
@@ -639,6 +640,16 @@ Result<void> Engine::initShaders()
         G7_LOG_WARN("engine", "ssao: {} (no ambient occlusion)", ssao.error().message);
     }
     applySetting("render.ssao");
+    if (auto rain = render::RainRenderer::create(*m_device, *m_shaders); rain)
+    {
+        m_rain = std::move(rain).value();
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "rain: {} (no rain)", rain.error().message);
+    }
+    applySetting("render.weather");
+    applySetting("render.rain_quality");
     auto debugRenderer = render::DebugDrawRenderer::create(*m_device, *m_shaders);
     if (!debugRenderer)
     {
@@ -964,6 +975,7 @@ void Engine::refreshReloadedModels()
             {
                 instance.bounds = loaded->bounds.transformed(instance.transform);
                 m_cullGridDirty = true;
+                m_rain.invalidateMap(); // M17 R: the occluders changed
                 m_physicsDirty = true;
             }
         }
@@ -984,6 +996,7 @@ void Engine::addInstance(const LoadedModel& model, const Mat4& transform, bool s
     }
     m_instances.push_back({&model, transform, bounds, sizeCullable, vob});
     m_cullGridDirty = true;
+    m_rain.invalidateMap(); // M17 R: the occluders changed
     m_physicsDirty = true;
 }
 
@@ -1217,6 +1230,7 @@ Result<void> Engine::refreshScene()
                   [&](const SceneInstance& instance) { return instance.model != m_groundModel.get(); });
     m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)};
     m_cullGridDirty = true;
+    m_rain.invalidateMap(); // M17 R: the occluders changed
     m_physicsDirty = true;
     return instantiateScene();
 }
@@ -1434,6 +1448,7 @@ void Engine::unloadWorld()
     m_mobUse.reset();
     m_mobBodies.clear();
     m_cullGridDirty = true;
+    m_rain.invalidateMap(); // M17 R: the occluders changed
     m_physicsDirty = true;
     m_lights.clear();
     m_daylightLights.clear();
@@ -1684,6 +1699,27 @@ void Engine::initEnvironment()
     m_environment.fogDensity = static_cast<f32>(
         m_config.settings.get<f64>("render.fog_density", render::fogDensityFor(0.9f, 300.0f, 30.0f)));
     m_fogBaseDensity = m_environment.fogDensity;
+    // Weather (M17 E1): states and schedule from data; without the file always clear.
+    const std::string weatherPath = m_config.settings.get<std::string>("time.weather", "data/weather.toml");
+    if (auto weather = world::Weather::load(m_vfs, weatherPath))
+    {
+        m_weather = std::move(weather).value();
+        G7_LOG_INFO("engine", "weather from {} ({} states)", weatherPath, m_weather.states().size());
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "no weather ({}), always clear", weather.error().message);
+        m_weather = world::Weather::fallback();
+    }
+    m_weather.start(m_gameTime.clock(), m_config.randomSeed.value_or(0x5eed));
+    if (!m_config.weather.empty() && m_weather.set(m_config.weather, m_gameTime.clock(), 0.0))
+    {
+        m_weather.settle(); // screenshots: as if it had rained a while
+    }
+    else if (!m_config.weather.empty())
+    {
+        G7_LOG_WARN("engine", "--weather={}: no such state in {}", m_config.weather, weatherPath);
+    }
     updateEnvironment();
     // Kinds of water (M17 W1): data/water.toml; without it every surface gets the built-in style.
     const std::string waterPath = m_config.settings.get<std::string>("render.water", "data/water.toml");
@@ -1748,12 +1784,154 @@ std::vector<render::PointLight> Engine::daylightLights() const
     return out;
 }
 
+void Engine::updateRainMap()
+{
+    // The occluders seen from above: terrain and the solid instances inside the map's square.
+    m_rain.beginMap(*m_device, m_camera.transform.position);
+    render::Cascade view;
+    view.viewProjection = m_rain.mapViewProjection();
+    const Frustum volume = Frustum::fromViewProjection(view.viewProjection);
+    m_cullCandidates.clear();
+    m_cullGrid.query(volume, m_camera.transform.position, 0.0f, m_cullCandidates);
+    m_rainItems.clear();
+    for (const u32 index : m_cullCandidates)
+    {
+        const SceneInstance& instance = m_instances[index];
+        if (instance.model == m_groundModel.get() || !instance.solid || !volume.intersects(instance.bounds))
+        {
+            continue;
+        }
+        if (m_multiDraw)
+        {
+            m_rainItems.push_back({&instance.model->mesh, &instance.model->materials, instance.transform,
+                                   instance.bounds, instance.lod});
+        }
+        else
+        {
+            m_meshRenderer.drawShadow(*m_device, instance.model->mesh, instance.model->materials,
+                                      instance.transform, view, instance.lod);
+        }
+    }
+    if (m_multiDraw)
+    {
+        m_meshRenderer.drawShadowBatched(*m_device, m_rainItems, view);
+    }
+    if (m_hasTerrain)
+    {
+        m_terrain.setMaxDistance(0.0f);
+        m_terrain.drawShadow(*m_device, view, m_camera.transform.position);
+    }
+    m_rain.endMap();
+}
+
+void Engine::drawRain(u32 width, u32 height)
+{
+    const world::WeatherSample weather = weatherNow();
+    m_rainDrawn = 0;
+    if (!m_weatherVisible || weather.rain <= 0.0f || cameraWater() != nullptr) // under water no streaks (W3)
+    {
+        return;
+    }
+    render::RainFrame frame;
+    frame.rain = weather.rain;
+    // Until the wind gets its direction (part W): a steady breeze from the west, as strong as the state says.
+    frame.wind = glm::normalize(Vec2(1.0f, 0.3f)) * (4.0f * weather.wind);
+    frame.time = static_cast<f32>(std::fmod(m_rainTime, 3600.0));
+    frame.light = m_environment.ambientSky + m_environment.sunColor * m_environment.sunIntensity * 0.3f;
+    frame.quality = m_rainQuality;
+    m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
+    m_device->setViewport(0, 0, width, height);
+    m_passTimes.begin(*m_device, "rain");
+    m_rainDrawn = m_rain.draw(*m_device, m_camera, frame);
+    m_passTimes.end(*m_device);
+}
+
+void Engine::updateWeather()
+{
+    // M17 E1: no change during a dialogue (decision 4); the scripts hear of each change.
+    for (const auto& [from, to] : m_weather.update(m_gameTime.clock(), inDialog()))
+    {
+        G7_LOG_INFO("engine", "weather: {} -> {}", from, to);
+        if (m_scripts)
+        {
+            const script::Value args[] = {from, to};
+            m_scripts->emit("weather_changed", args);
+        }
+    }
+    // M17 G: lightning in a thunderstorm, its thunder after the time the sound needs.
+    const f64 step = m_fixedStep.step();
+    m_stormClock += step;
+    const f64 gameMinutes = m_gameTime.secondsPerMinute() > 0.0 ? step / m_gameTime.secondsPerMinute() : 0.0;
+    if (auto flash = m_storm.step(gameMinutes, weatherNow().lightning, m_stormClock))
+    {
+        m_flash = *flash;
+        ++m_flashCount;
+        thunder(*flash);
+    }
+}
+
+void Engine::thunder(const world::Lightning& flash)
+{
+    if (!m_audio)
+    {
+        return;
+    }
+    const auto def = m_soundDefs.find(flash.distance < 1000.0f ? "thunder_near" : "thunder_far");
+    if (def == m_soundDefs.end())
+    {
+        return;
+    }
+    for (const std::string& file : def->second.files)
+    {
+        if (!m_audio->hasClip(file))
+        {
+            if (auto bytes = m_vfs.read(file))
+            {
+                (void)m_audio->addClip(file, bytes.value());
+            }
+        }
+    }
+    const f32 delay = world::thunderDelay(flash.distance);
+    if (auto id = m_audio->play(def->second, std::nullopt, delay))
+    {
+        m_audio->setVolume(id.value(), world::lightningStrength(flash.distance));
+        m_lastThunderDelay = delay;
+    }
+}
+
+f32 Engine::lightningNow() const noexcept
+{
+    if (!m_flash || !m_weatherVisible)
+    {
+        return 0.0f;
+    }
+    return world::lightningBrightness(static_cast<f32>(m_stormClock - m_flash->start), m_flash->flickers) *
+           world::lightningStrength(m_flash->distance);
+}
+
 void Engine::updateEnvironment()
 {
     const f32 fogStart = m_environment.fogStart;
-    const world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
+    world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
+    m_weather.apply(sample, m_gameTime.clock()); // M17 E1: clouds, rain and fog over the time of day
+    m_rainTime += m_frameSeconds;
+    // M17 N: wet surfaces outside (the rain map tells outside from under a roof), puddles at rain quality
+    // high.
+    sample.environment.wetness = m_weatherVisible ? weatherNow().wetness : 0.0f;
+    sample.environment.puddles = m_rainQuality == render::RainQuality::High;
+    sample.environment.hasRainMap = m_rain.mapValid();
+    sample.environment.rainMapViewProjection = m_rain.mapViewProjection();
+    m_meshRenderer.setRainMap(m_rain.mapValid() ? &m_rain.map() : nullptr);
     m_bloomSettings.threshold = sample.bloomThreshold; // M17 P1: by the time of day
     m_bloomSettings.intensity = sample.bloomIntensity;
+    // M17 G: a flash lights the sky, the fog and everything under the open sky for a moment.
+    if (const f32 flash = lightningNow(); flash > 0.0f)
+    {
+        sample.environment.ambientSky += Vec3(0.75f, 0.8f, 1.0f) * (1.1f * flash);
+        sample.environment.ambientGround += Vec3(0.5f, 0.52f, 0.6f) * (0.5f * flash);
+        sample.environment.fogColor += Vec3(0.3f, 0.33f, 0.4f) * flash;
+        sample.sky.zenith += Vec3(0.35f, 0.4f, 0.55f) * flash;
+    }
     m_environment = sample.environment;
     m_environment.fogStart = fogStart;
     // Rooms (zones of type indoor, world.md): the nearest to the camera get the indoor ambient.
@@ -1830,6 +2008,7 @@ void Engine::renderScene(u32 width, u32 height)
     m_passTimes.begin(*m_device, "scene");
     drawScene(width, height);
     m_passTimes.end(*m_device);
+    drawRain(width, height); // M17 R
 
     // Under water (M17 W3): tint, fog and wavering in the post pass; no bloom (the glow of the sun above).
     updateUnderwater();
@@ -1966,6 +2145,13 @@ void Engine::drawScene(u32 width, u32 height)
         }
         shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
     }
+    // M17 R: the rain map (depth from above) anew when it rains and the camera moved on.
+    const world::WeatherSample rainNow = weatherNow();
+    if (m_weatherVisible && (rainNow.rain > 0.0f || rainNow.wetness > 0.0f) &&
+        m_rain.mapStale(m_camera.transform.position))
+    {
+        updateRainMap();
+    }
 
     m_device->bindFramebuffer(&m_sceneTarget.framebuffer());
     m_device->setViewport(0, 0, width, height);
@@ -2016,6 +2202,17 @@ void Engine::drawScene(u32 width, u32 height)
     m_backgroundProgram->setUniform("uMoonDirection", m_sky.moonDirection);
     m_backgroundProgram->setUniform("uMoon", m_sky.moon);
     m_backgroundProgram->setUniform("uStars", m_sky.stars);
+    // M17 G: the bolt of a near or middle flash (decision 8: rarely seen), in its direction above the
+    // horizon.
+    Vec4 bolt(0.0f);
+    if (m_flash && m_weatherVisible && m_flash->distance < kBoltDistance)
+    {
+        const f32 brightness =
+            world::lightningBrightness(static_cast<f32>(m_stormClock - m_flash->start), m_flash->flickers);
+        bolt = Vec4(m_flash->azimuth, brightness, static_cast<f32>(m_flashCount % 97u),
+                    0.3f + 0.35f * (1.0f - m_flash->distance / kBoltDistance)); // nearer: taller
+    }
+    m_backgroundProgram->setUniform("uBolt", bolt);
     m_device->bindPipeline(m_backgroundPipeline);
     m_device->draw(3); // fullscreen triangle from gl_VertexID
     if (m_instances.empty() && !m_hasTerrain)
@@ -2142,6 +2339,7 @@ void Engine::drawWater()
     }
     render::WaterFrame frame;
     frame.time = static_cast<f32>(std::fmod(m_waterTime, 3600.0));
+    frame.rain = m_weatherVisible ? weatherNow().rain : 0.0f; // M17 R: rain rings
     frame.quality = m_waterQuality;
     frame.sunDirection = m_environment.sunDirection;
     frame.sunColor = m_environment.sunColor * m_environment.sunIntensity;

@@ -43,7 +43,8 @@ public:
         /// Going back: the pause menu resumes; unset (main menu): nothing happens.
         std::function<void()> back;
     };
-    MenuScreen(std::vector<MenuEntry> entries, Actions actions, bool title);
+    /// `footer`: a small pale line bottom right (the main menu: the version, release.md part A); empty: none.
+    MenuScreen(std::vector<MenuEntry> entries, Actions actions, bool title, std::string footer = {});
     [[nodiscard]] std::string_view name() const override { return "menu"; }
     [[nodiscard]] ScreenFlags flags() const override { return {true, true, true}; }
     [[nodiscard]] List& entries() noexcept { return *m_list; }

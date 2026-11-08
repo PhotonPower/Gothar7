@@ -11,7 +11,12 @@
   Hängern verworfene Zeit, die Engine loggt sie mit `--verbose` als `frame hitch`), `FramePacer`
   (Frame-Limit ohne Drift: Fristen rücken um ein festes Intervall vor, nach einem Hänger > 1 Intervall
   wird neu synchronisiert statt nachgeholt; Zeit wird injiziert, daher ohne echte Uhr testbar)
-- `Version.hpp`
+- `Version.hpp` – `kEngineVersion` (0.3.0; gleich `project(VERSION)` in `CMakeLists.txt`, ein Test prüft es)
+- `BuildInfo.hpp` (M17, `release.md` Teil A) – `buildInfo()`: Version, kurzer Git-Hash, „verändert“, Build-Typ,
+  Commit-Datum; bei jedem Build von `cmake/BuildInfo.cmake` erzeugt (`build_info.cpp`, nur bei geändertem Inhalt
+  neu geschrieben). `versionText()` → `0.3.0 (abc1234)` (Hauptmenü, Spielstand), `buildLine()` →
+  `Gothar 0.3.0 (abc1234, release)` (erste Log-Zeile, `gothar --version`, Fenstertitel in Debug-Builds); `+`
+  hinter dem Hash = mit nicht eingecheckten Änderungen gebaut.
 - `FileSystem.hpp` – Namespace `g7::fs`:
   - `readFile(path) -> Result<std::vector<u8>>`, `readText(path) -> Result<std::string>` (binär, keine Zeilenende-Umwandlung)
   - `writeFile`/`writeText` sowie `writeFileAtomic`/`writeTextAtomic` (Temp-Datei `<ziel>.tmp` + `rename`,

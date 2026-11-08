@@ -489,6 +489,107 @@ Environment::ambientOcclusion, viewportTexel;  GpuLighting::aoParams;  Engine::s
 - **Tests:** GPU `test_ssao.cpp` (Proben in der Halbkugel; eine Stufe in der Tiefe verdunkelt die Wand daneben, eine
   freie Wand bleibt offen), `test_engine_render.cpp` (aus: kein `depth`/`ssao`-Pass; an: beide und ein Ergebnis).
   Der Vorpass allein ändert das Bild nicht (Prüfbild mit `ssao_strength = 0` gegen aus: 0,004 % der Pixel weichen ab).
+### Regen (M17 Wetter, Teil R, umgesetzt) – `Rain.hpp`, `rain.vert/.frag`
+```cpp
+enum class RainQuality { Low, Medium, High };  parseRainQuality(text);  u32 rainStreaks(quality); // 4 000/12 000/24 000
+struct RainFrame { f32 rain; Vec2 wind; f32 time; Vec3 light; RainQuality quality; };
+Mat4 rainMapViewProjection(centre);  kRainMapRadius = 32 m, kRainMapHeight = 120 m
+class RainRenderer { static Result<RainRenderer> create(Device&, ShaderLibrary&, u32 mapSize = 512);
+                     bool mapStale(eye); void beginMap(Device&, eye); void endMap(); void invalidateMap();
+                     u32 draw(Device&, const Camera&, const RainFrame&); };
+Engine::rainStreaksDrawn(), rain(), rainSound();  Environment::shadowStrength (Lighting-Block shadowExtra.z)
+```
+- **Regenschleier:** Striche aus `gl_InstanceID` und Zeit im Vertex-Shader, ohne CPU-Simulation und ohne
+  Vertex-Puffer; ortsfest (jeder Tropfen hat seinen Platz in einer Kiste von 40 × 24 × 40 m um die Kamera, die beim
+  Gehen umklappt), schräg nach dem Wind (bis Teil W fest aus Westen, Stärke aus der Lage), 8 m/s, 0,45 m lang,
+  additiv und schwach, nah und fern ausgeblendet. Anzahl = `rainStreaks(Qualität) · rain`.
+- **Regenkarte (Draufsicht-Tiefe):** 512² über 64 × 64 m, Gelände und feste Instanzen von oben mit den
+  Schatten-Shadern (Tiefe 0 oben .. 1 unten). Neu nur, wenn die Kamera mehr als 8 m weiterzieht oder sich die
+  Instanzen ändern. Tropfen unter der obersten Fläche (Dach, Torbogen, Marktstand) werden verworfen.
+- **Spritzer** (`medium`, `high`): kleine Ringe, je 0,45 s an einem neuen Ort im Umkreis von 10 m, auf der obersten
+  Fläche aus der Regenkarte (auch auf Dächern).
+- **Ton:** eigene Ebene `amb_rain` über dem Zonen-Ambiente, lauter mit dem Regen; in einer `indoor`-Zone
+  `amb_rain_roof` (dumpfes Trommeln). Platzhalter aus `tools/audio` (`gothar-audio placeholders amb_rain`).
+- **Optionen:** `[render] weather` (aus: kein Regen zu sehen, die Lage läuft weiter), `rain_quality` (low/medium/high);
+  Optionen → Grafik „Wetter“, „Regenqualität“.
+- **Gemessen** (RTX 3080 Laptop, Debug-Build, 1600×900, Marktplatz): `rain` 0,04 ms bei `high` und Regen, 0,10 ms bei
+  Starkregen (24 000 Striche · 0,9 und Spritzer); die Regenkarte nur in Frames mit Erneuerung (Budget ≤ 0,5 ms bzw. 0,8 ms).
+- **Wasser:** Regenringe auf jeder Wasserfläche (`water.frag`, `WaterFrame::rain`): je Zelle von 0,7 m (zwei
+  versetzte Lagen) ein Tropfen, dessen Ring sich in seinem Takt auf 0,35 m weitet und vergeht; die Neigung zeigt vom
+  Ringmittelpunkt weg und mischt sich zu den Wellen. Unter Wasser keine Striche; die Regen-Ebene liegt im Bus
+  `ambient` und klingt dort durch den Unterwasser-Tiefpass (W3) gedämpft.
+- **Noch nicht:** nasse Flächen (Teil N).
+- **Tests:** `tests/render/test_rain.cpp` (Stufen, Projektion der Karte), GPU `test_rain.cpp` (Striche im Freien,
+  keine unter einem Dach, keine ohne Regen), `test_engine_render.cpp` (Regen nur bei Regen und `weather = true`,
+  Karte gezeichnet; unter Wasser keine Striche, Regen gedämpft), GPU `test_water.cpp` (Regenringe kräuseln eine
+  ruhige Fläche), `tests/runtime/test_engine_weather.cpp` (Regen-Ebene folgt der Lage),
+  `tests/render/test_lighting.cpp` (Schattenstärke im Lighting-Block).
+
+### Nasse Oberflächen (M17 Wetter, Teil N, umgesetzt) – `common/lighting.glsl`, `mesh.frag`, `terrain.frag`
+```cpp
+world::WeatherSample::wetness;  world::Weather::settle();          // Nässe 0..1, --weather: schon nass
+Environment::wetness, hasRainMap, rainMapViewProjection, puddles;   GpuLighting::rainMapViewProjection, wetParams
+MeshRenderer::setRainMap(texture);                                  // Einheit 9, die Regenkarte aus Teil R
+```
+- **Nässe** (`world::Weather`): steigt im Regen (bei mäßigem Regen in etwa 10 Spielminuten auf 1, bei Starkregen
+  schneller), trocknet danach in etwa einer Spielstunde. Sie läuft mit der Spielzeit (auch bei Zeitsprüngen) und steht
+  im Spielstand (`weather.wetness`, additiv; ältere Stände: trocken). `--weather=<lage>` beginnt, als hätte es schon
+  geregnet.
+- **Wo:** nur draußen. Mit Regenkarte: ein Punkt (um 0,3 m entlang der Normale hinaus versetzt, damit eine Wand an
+  ihrer eigenen Oberkante vorbeisieht) unter der obersten Fläche bleibt trocken – unter Dächern, Vordächern, in Toren
+  und unter Marktständen. Ohne Karte: nicht in Innenzonen. Nach oben zeigende Flächen werden voll nass, Wände zu 35 %.
+- **Aussehen (`wetSurface`):** Grundfarbe dunkler (×0,6 bei voller Nässe, Wasser in den Poren), dazu ein Glanz: der
+  Himmel (Horizontfarbe) nach Fresnel und ein Sonnenglanz, nur auf nach oben zeigenden Flächen. Ohne Nässe wird nichts
+  gerechnet, das Bild bleibt wie vorher. Figuren werden mit nass (sie stehen im Regen).
+- **Pfützen** (Regenqualität `high`, Entscheidung 9): Rauschflecken auf flachem Boden (Normale nahezu senkrecht), die
+  ab halber Nässe wachsen; dort dunkler (×0,5), flach, mit gedämpfter Spiegelung des Himmels und scharfem Glanz. Die
+  Spiegelung des Himmels ist auf 0,6 der eigenen beleuchteten Farbe begrenzt (`wetSheen`): nasser Boden wird nie heller
+  als trocken, Pfützen bleiben dunkler als der nasse Boden (Koordinator, Durchsicht von #390). Sie
+  trocknen mit der Nässe ab (etwa eine Spielstunde, Entscheidung 9).
+- **Noch nicht:** Material-Rauheit (alle Materialien gleich; die Vorgabe je Material-Gruppe folgt, wenn welt und
+  figuren sie setzen), SSR in Pfützen.
+- **Tests:** `tests/world/test_weather.cpp` (Nässe steigt und trocknet, im Snapshot, `settle`),
+  `tests/render/test_lighting.cpp` (Werte im Lighting-Block, trocken = 0), GPU `test_lighting.cpp` (nass dunkler,
+  trocken unverändert), `tests/save/test_game_state.cpp` (Nässe im Spielstand).
+
+### Gewitter (M17 Wetter, Teil G, umgesetzt) – `Weather.hpp` (`Lightning`, `LightningStorm`), Engine
+```cpp
+struct Lightning { f64 start; f32 distance, azimuth; u32 flickers; };
+f32 thunderDelay(metres);  f32 lightningBrightness(seconds, flickers);  f32 lightningStrength(distance);
+class LightningStorm { std::optional<Lightning> step(gameMinutes, perMinute, now); };   // Poisson, deterministisch
+Engine::lightningCount(), lastLightning(), lightningNow(), lastThunderDelay();  Lua lightning(distance?)
+```
+- **Blitze:** zufällig mit `lightning` Blitzen je Spielminute der Lage (Gewitter 0,15: etwa alle 7 Spielminuten,
+  knapp 30 Echtsekunden), je Blitz eine Entfernung von 300 bis 3000 m (nahe seltener), eine Richtung und ein bis drei
+  Aufflackern in etwa 0,25 s (die späteren schwächer). Deterministisch aus dem Startwert.
+- **Licht (Entscheidung 8: deutlich, nicht grell):** für die Dauer des Blitzes heller – Himmelslicht und Bodenlicht,
+  Nebel- und Himmelsfarbe –, nahe Blitze stärker (`lightningStrength`); den Rest macht der Bloom.
+- **Blitzstrahl** (Koordinator, nach #393): nur bei nahen und mittleren Blitzen (unter 1800 m), für die Dauer des
+  Aufflackerns, am Himmel in Blitzrichtung vom Horizont aufwärts (je näher, desto höher), gezackt aus Rauschen mit
+  schwachem Schein; im Himmels-Shader (`background.frag`, `uBolt`), also nur, wo Himmel zu sehen ist. Keine
+  Lichtquelle in der Szene (die Aufhellung oben genügt).
+- **Donner:** `thunder_near` (unter 1000 m: Krachen und Rollen) bzw. `thunder_far` (Grollen), um Entfernung / 343 m/s
+  verzögert (1–9 s) auf der Uhr des Mischers, leiser mit der Entfernung; im Bus `ambient` (unter Wasser gedämpft).
+  Platzhalter aus `tools/audio`.
+- **Lua:** `lightning(distance?, direction?)` – ein Blitz jetzt (Story, Prüfbilder), auch ohne Gewitter; Vorgabe
+  800 m, Richtung in Grad wie `yaw` (0 = -Z, positiv nach links).
+- **Tests:** `tests/world/test_weather.cpp` (Verzögerung, Aufflackern, Häufigkeit und Entfernungen, deterministisch),
+  `tests/runtime/test_engine_weather.cpp` (Gewitter blitzt, Regen nicht; `lightning()` hellt sofort auf, Donner nach
+  Entfernung / 343).
+
+### Wind (Vertrag, vereinbart 2026-11-07; Umsetzung Teil W)
+- Markierung je glTF-Material: `extras.wind` = `trunk` (steif, oben leichtes Schwanken), `leaves` (Äste und
+  Blattflattern), `grass` (biegt vom Fuß, stark), `cloth` (Fahnen, Wimpel), `hanging` (schwingt um den
+  Aufhängepunkt); `extras.wind_strength` 0..2 (Vorgabe 1).
+- Gewicht je Vertex aus der Höhe im Modellraum: 0 am Fuß (kleinstes y der Grenzen), 1 an der Spitze; Bäume und Blätter
+  quadratisch, Gras linear; auf 0..1 begrenzt (Stämme reichen 0,3 m unter den Boden). `forest_clump` über die Höhe des
+  ganzen Modells. `hanging`: um `extras.wind_pivot` [x, y, z] im Modellraum, sonst den Ursprung; Gewicht
+  (pivot_y − y) / Ausdehnung.
+- Ohne Markierung bleibt ein Modell still (Häuser, Mauern, Mobs, geschnittener Buchs `hedge_box`, `bush_box`). Ketten
+  der Zunftschilder: Material `iron_chain` (hanging); Wandplatte, Arm und Strebe unmarkiert. Kleidung nicht
+  (Entscheidung 7).
+- Ausschläge bei vollem Wind: Bäume an der Spitze höchstens etwa 4 % ihrer Höhe, Gras etwa 25 %, Stoff und Schilder
+  bis 30°; Phase je Instanz aus der Lage. welt liefert die Markierungen nach Vegetation-PR 4.
 
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp
