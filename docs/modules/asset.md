@@ -183,7 +183,8 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
   `hides`; Format v1, §6.2), gelesen mit nlohmann-json (privat, ADR 0017). Zusammenbau: `FigureAssembly.hpp`
   (`animation.md` „Figuren zur Laufzeit zusammensetzen“).
 - **Lader im `AssetManager`:** `SkinnedModelData` und `AnimationSetData` direkt aus glTF/GLB.
-  - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019). Bis dahin laden Figuren und Sets aus losen Dateien
+  - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019; Plan und ADR 0025 unten, „Plan M17: gekochte Figuren
+    und Animationen“). Bis dahin laden Figuren und Sets aus losen Dateien
     (Entwicklung). g7-cook kocht skinnte Figuren weiterhin nur als statisches `.g7mesh`, Sets ohne Mesh überspringt
     er; ein reines `.g7pak` enthält sie noch nicht.
 
@@ -378,3 +379,164 @@ std::string vfsSibling(std::string_view base, std::string_view relative);       
 ## Bestandteile (geplant)
 - **Weitere Loader** pro Typ (`Texture`, `Skeleton`, `AnimationClip`, `Sound`, `WorldData`, `Material`) mit den
   jeweiligen Modulen. Eingetragen werden sie vom höheren Modul über `registerLoader`, `asset` kennt sie nicht.
+
+## Plan M17: gekochte Figuren und Animationen (`.g7skin`/`.g7anim`)
+Stand: **Plan, wartet auf Freigabe** (2026-11-08). ADR 0025 liegt als „Vorgeschlagen“ bei. Roadmap M17: „spätestens
+vor dem ersten reinen `.g7pak`-Release“. ADR 0019 hat das eigene Format als Folgearbeit vorgesehen. Die Fragen an den
+Projektinhaber stehen am Ende, nummeriert, jeweils mit Vorschlag.
+
+### Ausgangslage (gemessen bzw. geprüft am 2026-11-08)
+- **Laufzeit:** Figuren entstehen zur Laufzeit aus Teilen. `figures/<name>.figure.toml` nennt die Teile
+  (`parts/**/*.glb`), `Engine::assembleFigureParts` lädt sie über den `AssetManager` (`SkinnedModelData`, im Cache)
+  und `asset::assembleFigure` setzt sie zusammen (Hals, verdeckte Körperdreiecke, Paletten). Clips liegen in
+  `anims/human/<set>.glb` (16 Sets) mit `<set>.events.toml`, Tiere in `monsters/<art>/rig/*.glb` und
+  `monsters/<art>/anims/*.glb`. Gelesen wird alles mit fastgltf aus losem glTF.
+- **Mengen:** 311 Teile mit 61 MB, 16 Sets mit 15 MB, Monster mit 8,5 MB (nur `.glb`). Die Teile haben keine
+  eingebetteten Bilder, ihre Texturen liegen unter `characters/textures/`.
+- **Cooker:** `g7-cook` macht aus einem geskinnten `.glb` heute ein statisches `.g7mesh` ohne Skin. Sets ohne Mesh
+  überspringt er mit „no mesh in this glTF, skipped“. Die `.glb` selbst kommen nicht ins Archiv.
+- **Befund zum Paket (#384):** Das reine Paket lädt **keine Figuren**. Ein Probelauf aus dem entpackten ZIP
+  (`--smoke-test --world=testworld/camp.g7world --exec=camp_people()`) meldet
+  `cannot load 'characters/parts/body_m_average/body.glb': file not found in VFS`. Danach läuft er ohne Spielerfigur,
+  und `insert_npc` scheitert für alle Lager-NPCs. Der Paket-Test ist trotzdem grün, denn das sind nur `WARN`, ein
+  `ERROR` kommt nicht vor, und der Rückgabewert ist 0. release.md Teil C setzt dagegen voraus, dass der Test das
+  Laden der Figuren belegt.
+- **Ladezeit:**
+  - Leonberg (`docs/perf/2026-11-07-erste-messung.md`): Die Phase „figures and clips“ braucht 1420 ms von 3850 ms bis
+    zum ersten Bild. Das ist der größte Posten.
+  - Lager (Release, warmer Datei-Cache): Der Held mit allen 16 Sets braucht ~68 ms, jede weitere Figur 23–60 ms je
+    nach Anzahl neuer Teile.
+  - Wie sich das auf glTF-Parsen, Zusammenbau, Texturen und GPU-Upload verteilt, ist noch nicht gemessen (Teil A).
+
+### Ziel
+Ein reines `.g7pak` enthält Figurenteile und Clips in einem eigenen Binärformat. Die Engine lädt sie ohne glTF-Parser,
+der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF die Quelle und der Rückfall.
+`animation` und `render` sehen dieselben CPU-Strukturen wie heute (`SkinnedModelData`, `AnimationSetData`).
+
+### Teil 0 – Sofort: Figuren überhaupt im Paket (klein, eigener Fix-PR nach #384)
+- `g7-cook` kopiert geskinnte `.glb` und reine Clip-Sets **zusätzlich unverändert** ins Archiv. Sein `.g7mesh` behält
+  ein geskinntes `.glb` vorerst. Der Loader liest glTF schon heute aus Bytes über das VFS, die Teile sind
+  eigenständig (keine externen `.bin`).
+- Der Paket-Test wird streng:
+  - `cannot load` und Skriptfehler (`[sol2]`, `--exec ...:`) gelten als Fehler.
+  - Mindestanzahl erfolgreich gebauter Figuren (`figure ...: 60 bones` im Log, Lager: Held + 6).
+- Teil 0 macht den Release mit glTF lauffähig. Teil D ersetzt die Kopie durch `.g7skin`/`.g7anim`.
+
+### Teil A – Messen, wohin die 1,4 s gehen
+- Tracy-Zonen (Preset `profile`, #387) in `AssetManager` und `EngineFigure`: `skin parse (glTF)`, `anim parse (glTF)`,
+  `figure assemble`, `figure textures`, `figure upload`. Lauf `--perf=markt,markt_voll` auf ruhiger Maschine.
+- Ergebnis in `docs/perf/` mit Anteilen je Zone. Erst damit wird der Gewinn belastbar (siehe „Erwarteter Gewinn“).
+
+### Teil B – Format `.g7skin` (asset, `SkinFile.hpp`)
+- Eine Datei je geskinntem `.glb` (Teil, Monster-Rig, Platzhalter). Sie bildet `SkinnedModelData` 1:1 ab: Skelett
+  (Namen, Eltern, Ruhepose, `rootParent`), inverse Bind-Matrizen, Teile (Vertices, Joints u16×4, Gewichte, Indizes,
+  Submeshes, Morph-Targets mit Namen, **Primitive-Tabelle**), Materialien und Bildverweise (VFS-Pfade ab der Wurzel
+  wie bei `.g7mesh`), Bounds und die Zusammenbau-Daten aus `asset.extras.gothar` (Hals-Ringe, Falloff, `covers`,
+  `hides`, `coversBody`).
+- **Pflicht:** Vertex- und Dreiecksreihenfolge exakt wie aus glTF geladen (kein Umsortieren, kein Zusammenfassen). Die
+  Zusammenbau-Daten zeigen per [Primitive, Vertex] in diese Reihenfolge.
+- Aufbau nach ADR 0025: Kopf `G7SK`, Version u32, little-endian, Abschnitte mit Länge. Der Leser prüft Grenzen,
+  Indizes (Joint < Knochenanzahl, Index < Vertexanzahl), Reste und Version. Fehler kommen als `Result`, ohne Absturz.
+- `writeSkinFile(const SkinnedModelData&) -> std::vector<u8>`, `readSkinFile(bytes, name) -> Result<SkinnedModelData>`.
+
+### Teil C – Format `.g7anim` (asset, `AnimFile.hpp`)
+- Eine Datei je Set-`.glb`: Skelett des Sets, Clips mit Name, Dauer und Spuren (Knochenname, Kanal, Schritt/linear,
+  Zeiten, Werte). Version 1 speichert f32 unverändert, das Archiv komprimiert mit zstd (Frage 3).
+- **`events.toml` bleibt eine eigene Datei** (Frage 2). Der Loader liest sie neben dem Set wie heute
+  (`applyClipEvents`), auch neben `.g7anim`. Hot-Reload der Events funktioniert so weiter.
+- `writeAnimFile`, `readAnimFile` wie in Teil B.
+
+### Teil D – Cooker
+- Ein `.glb` mit Skin ergibt `.g7skin`, eines mit Animationen `.g7anim`. Eine Datei mit beidem ergibt beide.
+- Das statische `.g7mesh` eines geskinnten `.glb` entfällt (Frage 5). Die Kopie aus Teil 0 entfällt ebenfalls.
+- Bilder der Materialien laufen wie bei `.g7mesh` durch die Textur-Erkennung (KTX2, Farbe/Normal/Daten).
+- `kCookerVersion` 4 → 5: Das Manifest kocht beim ersten Lauf alles neu.
+- Prüfung beim Kochen: Fehler, die heute erst zur Laufzeit kommen (mehr als 128 Knochen, fehlende JOINTS/WEIGHTS,
+  kubische Splines), lassen den Kochlauf scheitern. Die figuren-CI (`gothar-chargen validate`) prüft dasselbe schon
+  vorher.
+
+### Teil E – Laden, Rückfall, Hot-Reload (asset, runtime)
+- Die Loader für `SkinnedModelData`/`AnimationSetData` erkennen `.g7skin`/`.g7anim`. „Gekochtes gewinnt“ wie bei
+  `.g7mesh`: Für `x.glb` lädt der Manager `x.g7skin` bzw. `x.g7anim`, wenn die Datei im VFS liegt. Skripte, Manifeste
+  und `animgraph.toml` nennen weiter `.glb`. **Kein Pfad in Inhalten ändert sich.**
+- **Rückfall auf glTF:**
+  - Fehlt die gekochte Datei, lädt der Manager das `.glb` (Entwicklung, Tests, figuren-Arbeitsablauf).
+  - Hat eine gekochte Datei eine falsche Version oder ist beschädigt, gibt es eine Warnung, und der Manager lädt das
+    `.glb`, falls vorhanden. Sonst ist es ein Fehler.
+- **Zusammenbau:** `assembleFigure` bekommt dieselben `SkinnedModelData`. Test: gekochte und glTF-Teile ergeben eine
+  byte-gleiche Figur.
+- **Hot-Reload:** wie bei `.g7mesh`. Lose `.glb` werden beobachtet und neu geladen, solange keine gekochte Datei sie
+  verdeckt. Im Ordner `assets/cooked` lädt eine neu gekochte `.g7skin` neu (Änderungszeit). `events.toml` wird
+  weiter als Abhängigkeit beobachtet.
+- `animation` und `render` bleiben unverändert. Ein GPU-fertiges Vertex-Layout (direkter Upload) wäre ein späterer
+  Schritt und gehört nicht in diesen Plan.
+
+### Teil F – Paket-Integration (mit #384)
+- Ins Archiv kommen `.g7skin`, `.g7anim`, `events.toml` und `figure.toml` (kopiert). Die `.glb`-Kopien aus Teil 0
+  fallen weg (die Größe des ZIP misst der PR).
+- Der strenge Paket-Test aus Teil 0 belegt Figuren und Clips aus dem Archiv. Dazu kommt ein Lauf mit
+  `--exec=camp_people()` und einem Kampf-Clip (Events).
+- Danach: release.md Teil D abschließen, Roadmap-Punkt abhaken, Messung wiederholen (`--perf`, Ladephasen).
+
+### Tests
+- **asset:**
+  - Rundreise `.g7skin` für einen Kopf mit Morphs, einen Körper mit Hals-Daten und ein Kleidungsstück mit `covers`.
+  - Rundreise `.g7anim` mit Schritt- und linearen Spuren, danach `applyClipEvents`.
+  - Beschädigte, abgeschnittene Dateien und Dateien mit falscher Version ergeben Fehler, keinen Absturz.
+  - `assembleFigure` aus gekochten Teilen ist byte-gleich zu dem aus glTF (farmer, guard).
+- **cook:** Ein Figurenteil und ein Set kochen zu `.g7skin`/`.g7anim`, kein `.g7mesh` für Skins, Manifest
+  inkrementell, Fehler bei kubischer Spline.
+- **AssetManager:** „Gekochtes gewinnt“ und der Rückfall auf `.glb` bei falscher Version.
+- **runtime:** Das Lager mit NPCs aus einem VFS nur mit `.g7pak` (Temp-Ordner) läuft, alle Figuren werden gebaut.
+- **package:** strenger Test (Teil 0/F).
+- Animationsergebnisse (Pose nach t Sekunden) für gekochte und glTF-Sets gleich.
+
+### Erwarteter Ladezeit-Gewinn
+- **Schätzung, bis Teil A misst:**
+  - Der glTF-Weg (JSON, Accessoren, Umrechnung je Vertex und je Schlüssel) wird zu einem Einlesen fester Arrays. Für
+    diesen Anteil sind 5–10× realistisch.
+  - Zusammenbau, Texturen und GPU-Upload bleiben gleich.
+  - Macht das Parsen die Hälfte der 1,4 s aus, spart Leonberg ~0,5–0,7 s (≈ 15 % der Zeit bis zum ersten Bild).
+  - Mit mehr Bewohnern und mehr Teilen wächst der Anteil.
+- **Belegt wird der Gewinn** mit `--perf` (Ladephasen) vorher und nachher, im selben Bericht wie
+  `2026-11-07-erste-messung.md`.
+
+### Vertrag mit figuren
+- **Unverändert:** Figuren-`.glb` (Teile, Rigs, Sets), `figure.toml`, `events.toml`, Knoten-/LOD-Namen (§2.2),
+  Morph-Namen (§6.1) und `asset.extras.gothar` (§6.2). figuren liefert weiter glTF, gekocht wird nur im Cooker.
+- **Neu für figuren sichtbar:**
+  - Ein Teil, das zur Laufzeit scheitern würde, lässt jetzt schon `g7-cook` scheitern (Teil D).
+  - Ändert figuren das Format von `asset.extras.gothar` oder die Morph-Liste, muss der Cooker mitziehen (Version
+    erhöhen). Das läuft wie bisher über die Absprache zu §6.2.
+- Die gebauten `figures/<name>.glb` (`g7_figures`) braucht die Laufzeit nicht, nur Platzhalter und Tests. Sie werden
+  gekocht wie jedes geskinnte `.glb`.
+
+### Reihenfolge und Aufwand
+| Teil | Inhalt | Aufwand |
+|---|---|---|
+| 0 | Figuren-glTF ins Paket, strenger Paket-Test | ½ Tag |
+| A | Messung mit Zonen | ½ Tag |
+| B | `.g7skin` lesen/schreiben + Tests | 1 Tag |
+| C | `.g7anim` lesen/schreiben + Tests | ½ Tag |
+| D | Cooker | ½–1 Tag |
+| E | Loader, Rückfall, Hot-Reload, Zusammenbau-Test | 1 Tag |
+| F | Paket, Doku, Messung | ½ Tag |
+
+### Fragen an den Projektinhaber (mit Vorschlag)
+1. **Teil 0 jetzt?** Das Paket aus #384 lädt heute keine Figuren, der Test merkt es nicht. **Vorschlag:** ja, als
+   kleiner Fix-PR direkt nach #384: glTF ins Archiv, Test streng. Dann ist jeder Release bis Teil F lauffähig.
+2. **`events.toml` beim Kochen in `.g7anim` einbauen oder getrennt lassen?** **Vorschlag:** getrennt. Der Vertrag
+   bleibt gleich, Hot-Reload der Events bleibt, der Unterschied in der Ladezeit ist klein (TOML je Set).
+3. **Schlüssel komprimieren (Quantisierung, z. B. Quaternion 3×16 bit)?** **Vorschlag:** nicht in Version 1. f32 und
+   zstd im Archiv, die Sets haben heute 15 MB. Quantisierung kommt später mit eigener Version, wenn Größe oder
+   Speicher drücken.
+4. **Ganze Figuren (`figure.toml`) vorab zusammenbauen und kochen?** **Vorschlag:** nein. Der Zusammenbau zur
+   Laufzeit bleibt (Rüstung/Kleidung tauschen, Cache der Teile). Erst wenn Teil A ihn als großen Posten zeigt, wird
+   über einen Cache der fertigen Figuren entschieden.
+5. **Statisches `.g7mesh` für geskinnte `.glb` weglassen?** **Vorschlag:** ja, nur noch `.g7skin`, sofern Teil D
+   prüft, dass nichts ein Figurenteil statisch lädt (heute nicht der Fall). Das spart Platz im Archiv.
+6. **Morph-Targets dicht oder dünn speichern?** **Vorschlag:** dicht in Version 1 (wie geladen). Dünn (nur bewegte
+   Vertices) später, falls Köpfe im Archiv groß werden.
+7. **Reihenfolge:** **Vorschlag:** 0 sofort. A–F danach am Stück, unabhängig vom Messergebnis, weil die Roadmap das
+   Format vor dem reinen `.g7pak`-Release verlangt. Teil A legt nur fest, ob danach noch der Zusammenbau oder der
+   Upload dran ist.
