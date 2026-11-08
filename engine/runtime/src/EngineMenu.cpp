@@ -8,10 +8,12 @@
 #include <g7/platform/GlContext.hpp>
 #include <g7/platform/Window.hpp>
 #include <g7/runtime/Engine.hpp>
+#include <g7/ui/GameScreens.hpp>
 #include <g7/ui/MenuScreens.hpp>
 
 #include <algorithm>
 #include <charconv>
+#include <filesystem>
 #include <format>
 #include <utility>
 
@@ -222,6 +224,13 @@ void Engine::openMenu(bool inGame)
             G7_LOG_WARN("engine", "a crash report is in {} (nothing was sent)",
                         fs::toUtf8(m_config.crashDirectory));
         }
+        // Decision 10: the credits of the package (CREDITS.txt next to the game; development builds have
+        // none).
+        std::error_code creditsError;
+        if (std::filesystem::exists(fs::baseDirectories().gameDir / "CREDITS.txt", creditsError))
+        {
+            entries.insert(entries.end() - 1, {"credits", "UI_MENU_CREDITS", true});
+        }
         if (m_crashNotice)
         {
             entries.insert(entries.end() - 1, {"crash_report", "UI_MENU_CRASH_REPORT", true});
@@ -277,6 +286,12 @@ void Engine::runMenuCommand()
     else if (command.starts_with("save_to:") || command.starts_with("load_from:"))
     {
         runSaveCommand(command);
+    }
+    else if (command == "credits")
+    {
+        auto text = fs::readText(fs::baseDirectories().gameDir / "CREDITS.txt");
+        m_screens.push(std::make_unique<ui::DocumentScreen>(
+            uiText("UI_MENU_CREDITS"), text ? text.value() : text.error().message, [] {}));
     }
     else if (command == "crash_report")
     {

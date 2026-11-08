@@ -1,0 +1,76 @@
+name: Release package
+
+# M17, docs/modules/release.md part C: on a tag v<version> the package is built and kept as artifacts - the ZIP
+# (Windows; Linux as .tar.gz without a promise, decision 7) and the symbols (decision 6). Nothing is published:
+# a GitHub release is made by hand (decision 8).
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'ubuntu-24.04' }}
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/vcpkg-binary-cache,readwrite"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache vcpkg binary packages
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-binary-cache
+          key: vcpkg-${{ runner.os }}-package-${{ hashFiles('vcpkg.json') }}-${{ github.run_id }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-package-${{ hashFiles('vcpkg.json') }}-
+            vcpkg-${{ runner.os }}-
+
+      - name: Setup vcpkg
+        shell: bash
+        run: |
+          mkdir -p vcpkg-binary-cache
+          git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          if [ "$RUNNER_OS" = "Windows" ]; then "$VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics; else "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics; fi
+
+      - name: Setup MSVC dev environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Ninja and SDL3 build dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build pkg-config autoconf autoconf-archive automake libtool libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libwayland-dev wayland-protocols libegl1-mesa-dev libgl1-mesa-dev libudev-dev
+
+      - name: Setup Python for g7_figures
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install numpy
+        run: python -m pip install numpy
+
+      # Build, figures, licence check, data.g7pak, package, package test (unpacked into a temporary folder).
+      - name: Make the release package
+        run: cmake -P tools/release/make_release.cmake
+
+      - name: Keep the package
+        uses: actions/upload-artifact@v4
+        with:
+          name: gothar-${{ runner.os }}-package
+          path: |
+            build/package/release/Gothar-*.zip
+            build/package/release/Gothar-*.tar.gz
+          retention-days: 90
+
+      - name: Keep the symbols
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gothar-windows-symbols
+          path: build/package/game/*.pdb
+          retention-days: 90

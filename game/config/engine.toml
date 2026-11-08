@@ -154,10 +154,11 @@ dev_mounts = true
 # Geänderte Dateien (Texturen, Modelle) im laufenden Spiel neu laden; Standard: an im Debug-, aus im Release-Build.
 # hot_reload = true
 # Weitere Quellen, relativ zum Spielordner; "*.g7pak" mountet alle Archive eines Ordners:
-# [[assets.mount]]
-# path = "data/*.g7pak"
-# priority = 20
-# mount_point = ""
+# Das Paket (release.md Teil C) liegt als data/*.g7pak neben dem Spiel; in der Entwicklung fehlt der Ordner, dann
+# wird nichts gemountet.
+[[assets.mount]]
+path = "data/*.g7pak"
+priority = 20
 
 [time]
 # Spielzeit: Echtsekunden je Spielminute (4 = ein Tag in 96 Minuten), Uhrzeit beim Start (auch --time=HH:MM).
