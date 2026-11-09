@@ -563,7 +563,7 @@ Projektinhaber (über den Koordinator, 2026-11-08): alle 13 Gefühlsfragen nach 
    - **Halten:** Taste gehalten wie beim Aufladen; `mag/t_invest` → `mag/s_cast_loop`. `mana` beim Anheben, dann
      `mana_per_second`; reicht das Mana für den nächsten Schritt nicht, fällt der Gegenstand.
    - **Bewegung (`TelekinesisFlight`):** erst um `lift` anheben, dann mit `speed` zur Hand des Zaubernden; dreht
-     sich langsam; ein Kugel-Wurf in seiner Größe hält ihn vor Wänden (steckt er fest, schwebt er auf der Stelle).
+     sich langsam; ein Kugel-Wurf in seiner Größe hält ihn vor Wänden (steckt er etwa 1 s fest, fällt er; Entscheidung 2026-11-08).
      Lenken mit den Bewegungstasten nur nach Frage 3. Kein dynamischer Physik-Körper: der Flug ist kinematisch
      (deterministisch, keine neue Abhängigkeit).
    - **Ankunft:** 0,8 m vor der Hand geht er ins Inventar wie beim Aufheben, mit derselben Besitzregel (fremdes
@@ -608,9 +608,10 @@ class TelekinesisFlight { carry(seconds, hand, sweep); release(groundY); fall(se
   gleicher Richtung das nähere (1° je 4 m). Ohne Ziel: „Nichts zu bewegen.“ und `mag/t_cast_fail`, nichts wird
   verbraucht.
 - **Halten:** `mag/s_cast_loop`; 10 Mana und eine Spruchrolle beim Anheben, danach 2 Mana je Sekunde (Bruchteile
-  laufen weiter). Der Held steht. Das Item dreht sich langsam (0,8 rad/s); eine Kugel von 12 cm hält es vor Wänden,
-  dort schwebt es, bis man loslässt.
-- **Fallen:** Loslassen, Waffenwechsel, ein Treffer (weniger Leben als beim Anheben), Mana leer oder weiter als
+  laufen weiter). Der Held steht. Das Item dreht sich langsam (0,8 rad/s); eine Kugel von 12 cm hält es vor Wänden.
+  Bleibt es dort etwa 1 s blockiert (ein Schritt schafft weniger als 20 % seines Weges), fällt es wie beim
+  Loslassen (Entscheidung Projektinhaber 2026-11-08, Spell-Feld `blocked_drop` in Sekunden, 0 = nie).
+- **Fallen:** Loslassen, Waffenwechsel, etwa 1 s an einem Hindernis blockiert, ein Treffer (weniger Leben als beim Anheben), Mana leer oder weiter als
   22,5 m von der Hand: es fällt senkrecht mit Schwerkraft auf den Boden darunter (Strahl, sonst zurück auf die
   Ausgangshöhe) und ist dann wieder ein Item-Vob (Laufzeit-Vob mit seinem Besitzer, im Spielstand an der neuen
   Stelle). Ein Spielstand während des Fluges setzt es sofort auf den Boden.

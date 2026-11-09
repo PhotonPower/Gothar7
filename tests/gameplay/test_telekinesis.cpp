@@ -80,7 +80,42 @@ TEST_CASE("Telekinesis: a wall stops it where it is; it floats there")
     }
     CHECK(flight.phase() == Phase::Float);
     CHECK(flight.position().z == doctest::Approx(-6.0f).epsilon(0.01));
+    CHECK(flight.stuck()); // held at the wall for seconds: it should fall (owner decision 2026-11-08)
     (void)s;
+}
+
+TEST_CASE("Telekinesis: blocked about a second, it is stuck; moving again resets; 0 never")
+{
+    const auto wall = [](const Vec3& from, const Vec3& direction, f32 distance) -> std::optional<f32>
+    {
+        if (direction.z <= 0.0f || from.z > -6.0f + 1e-3f)
+        {
+            return std::nullopt;
+        }
+        const f32 toWall = (-6.0f - from.z) / direction.z;
+        return toWall < distance ? std::optional<f32>(std::max(toWall, 0.0f)) : std::nullopt;
+    };
+    const Vec3 hand(0.0f, 0.6f, 0.0f);
+    TelekinesisFlight flight(Vec3(0.0f, 0.6f, -6.5f), TelekinesisSettings{.lift = 0.0f});
+    f32 blocked = 0.0f;
+    for (int i = 0; i < 3 * 60 && !flight.stuck(); ++i)
+    {
+        const f32 before = flight.position().z;
+        flight.carry(1.0f / 60.0f, hand, wall);
+        blocked = flight.position().z - before < 1e-4f ? blocked + 1.0f / 60.0f : 0.0f;
+    }
+    CHECK(flight.stuck());
+    CHECK(blocked == doctest::Approx(1.0f).epsilon(0.05)); // about a second at the wall
+    // Free again (the hero stepped aside): not stuck any more.
+    flight.carry(1.0f / 60.0f, hand);
+    CHECK_FALSE(flight.stuck());
+
+    TelekinesisFlight never(Vec3(0.0f, 0.6f, -6.5f), TelekinesisSettings{.lift = 0.0f, .blockedDrop = 0.0f});
+    for (int i = 0; i < 5 * 60; ++i)
+    {
+        never.carry(1.0f / 60.0f, hand, wall);
+    }
+    CHECK_FALSE(never.stuck());
 }
 
 TEST_CASE("Telekinesis: let go it falls with gravity to the ground and lands; landing at once")

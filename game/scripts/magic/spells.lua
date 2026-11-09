@@ -74,6 +74,7 @@ Spell "spl_telekinesis" {
     lift = 0.5,              -- erst 0,5 m anheben
     speed = 3,               -- dann 3 m/s
     carry = 1.2,             -- Entscheidung 4: Gegenstände bis 1,2 m, auch Waffen
+    blocked_drop = 1.0,      -- hängt er etwa 1 s an einem Hindernis fest, fällt er (Projektinhaber 2026-11-08)
     fx = { on_target = "telekinesis" },
     sounds = { cast = "spell_cast" },
 }
