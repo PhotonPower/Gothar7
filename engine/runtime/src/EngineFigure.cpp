@@ -8,6 +8,8 @@
 #include <g7/asset/FigureAssembly.hpp>
 #include <g7/asset/Procedural.hpp>
 #include <g7/core/Log.hpp>
+#include <g7/core/Profiler.hpp>
+#include <g7/platform/Time.hpp>
 #include <g7/runtime/AssetMounts.hpp>
 #include <g7/runtime/Engine.hpp>
 
@@ -29,6 +31,12 @@ constexpr std::string_view kCharacters = "characters/"; // manifests name parts 
 constexpr usize kShownEvents = 8;
 constexpr std::array<std::string_view, 3> kClimbStates = {"climb_low", "climb_mid", "climb_high"};
 
+/// Milliseconds since `start` (platform::nowSeconds).
+f64 msSince(f64 start)
+{
+    return (platform::nowSeconds() - start) * 1000.0;
+}
+
 usize ledgeIndex(gameplay::LedgeClass ledge)
 {
     return static_cast<usize>(ledge);
@@ -38,6 +46,8 @@ usize ledgeIndex(gameplay::LedgeClass ledge)
 Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view path,
                                         std::string_view graphPath, const FigureGraphCallback& extra)
 {
+    G7_PROFILE_SCOPE("figure load");
+    const f64 figureStart = platform::nowSeconds();
     AnimatedFigure* figure = &target;
     figure->path = std::string(path);
     figure->graphPath = std::string(graphPath);
@@ -84,8 +94,13 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
     }
     else
     {
-        model = m_assets->load<asset::SkinnedModelData>(path);
-        m_assets->waitAll();
+        const f64 partsStart = platform::nowSeconds();
+        {
+            G7_PROFILE_SCOPE("figure parts (glTF)");
+            model = m_assets->load<asset::SkinnedModelData>(path);
+            m_assets->waitAll();
+        }
+        m_figureLoadTimes.parts += msSince(partsStart);
         if (model.failed() || !model.get())
         {
             return Error{std::format("{}: {}", path, model.error())};
@@ -109,11 +124,16 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
         }
     }
     std::vector<asset::Handle<asset::AnimationSetData>> setHandles;
-    for (const std::string& set : graph.value().sets)
+    const f64 setsStart = platform::nowSeconds();
     {
-        setHandles.push_back(m_assets->load<asset::AnimationSetData>(set));
+        G7_PROFILE_SCOPE("figure clip sets (glTF)");
+        for (const std::string& set : graph.value().sets)
+        {
+            setHandles.push_back(m_assets->load<asset::AnimationSetData>(set));
+        }
+        m_assets->waitAll();
     }
-    m_assets->waitAll();
+    m_figureLoadTimes.sets += msSince(setsStart);
     std::vector<const asset::AnimationSetData*> sets;
     for (usize i = 0; i < setHandles.size(); ++i)
     {
@@ -176,6 +196,8 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
     }
     G7_LOG_INFO("engine", "figure {}: {} bones, {} parts, animation {} ({} sets)", path,
                 figure->skeleton.size(), data.parts.size(), graphPath, sets.size());
+    m_figureLoadTimes.total += msSince(figureStart);
+    ++m_figureLoadTimes.figures;
     return {};
 }
 
@@ -238,11 +260,16 @@ Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureM
 {
     // Parts through the asset manager (cached: swapping back and forth loads nothing twice).
     std::vector<asset::Handle<asset::SkinnedModelData>> handles;
-    for (const asset::FigureManifest::Part& part : manifest.parts)
+    const f64 partsStart = platform::nowSeconds();
     {
-        handles.push_back(m_assets->load<asset::SkinnedModelData>(std::string(kCharacters) + part.path));
+        G7_PROFILE_SCOPE("figure parts (glTF)");
+        for (const asset::FigureManifest::Part& part : manifest.parts)
+        {
+            handles.push_back(m_assets->load<asset::SkinnedModelData>(std::string(kCharacters) + part.path));
+        }
+        m_assets->waitAll();
     }
-    m_assets->waitAll();
+    m_figureLoadTimes.parts += msSince(partsStart);
     std::vector<asset::FigurePart> parts;
     for (usize i = 0; i < handles.size(); ++i)
     {
@@ -253,7 +280,11 @@ Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureM
         }
         parts.push_back({manifest.parts[i].role, path, handles[i].get()});
     }
-    return asset::assembleFigure(manifest, parts);
+    G7_PROFILE_SCOPE("figure assemble");
+    const f64 assembleStart = platform::nowSeconds();
+    auto assembled = asset::assembleFigure(manifest, parts);
+    m_figureLoadTimes.assemble += msSince(assembleStart);
+    return assembled;
 }
 
 Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedModelData& data)
@@ -261,6 +292,7 @@ Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedMo
     // Textures (next to the figure, or VFS paths in assembled figures), then the GPU side; the figure keeps
     // its previous mesh until this succeeds.
     std::vector<asset::Handle<asset::TextureData>> images(data.images.size());
+    const f64 imagesStart = platform::nowSeconds();
     for (usize i = 0; i < data.images.size(); ++i)
     {
         if (data.images[i].uri.empty())
@@ -282,9 +314,15 @@ Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedMo
         }
         images[i] = m_assets->load<asset::TextureData>(*found);
     }
-    m_assets->waitAll();
+    {
+        G7_PROFILE_SCOPE("figure images");
+        m_assets->waitAll();
+    }
+    m_figureLoadTimes.images += msSince(imagesStart);
+    const f64 uploadStart = platform::nowSeconds();
     if (m_device)
     {
+        G7_PROFILE_SCOPE("figure upload");
         auto mesh = render::SkinnedMesh::create(*m_device, data, 0);
         if (!mesh)
         {
@@ -326,6 +364,7 @@ Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedMo
     figure.images = std::move(images);
     figure.inverseBind = data.inverseBind;
     figure.drawnFrame = ~u64(0);
+    m_figureLoadTimes.upload += msSince(uploadStart);
     return {};
 }
 
