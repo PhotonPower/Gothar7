@@ -34,6 +34,9 @@ Data (``[clip.params]`` of a ``keyframe = "gait"`` clip)::
     tail = { bones = ["tail_01", "tail_02"], degrees = 8.0, lag = 0.1 }  # tail swing (optional)
     pose = { neck_01 = [["X", 20]], ear_l = [["X", 30]] }  # fixed posture, world axes at rest
     in_place = true             # root stays; the feet still pass under the body at `speed`
+    splay = true                # arthropods (§7.5): each leg turns about the vertical at its hip
+                                # and bends in its own vertical plane (legs spread sideways)
+    axis = "x"                  # with splay: travel sideways to the left (+X; crab, move_axis "x")
 """
 
 from __future__ import annotations
@@ -57,6 +60,8 @@ KEYS = {
     "tail",
     "pose",
     "in_place",
+    "splay",
+    "axis",
 }
 LEG_KEYS = {"upper", "lower", "foot", "phase", "reach", "curl"}
 REACH_MARGIN = 0.995  # a leg is never stretched beyond this share of its length (knee stays bent)
@@ -99,6 +104,8 @@ class Gait:
     tail: Wave | None = None
     pose: tuple[tuple[str, tuple[tuple[str, float], ...]], ...] = ()  # fixed posture
     in_place: bool = False  # no root motion (s_charge); the natural speed comes from the feet
+    splay: bool = False  # arthropods (§7.5): legs spread sideways, solved in their own plane
+    axis: str = "y"  # travel: "y" forwards, "x" sideways to the left (+X, move_axis "x", §7.5)
 
     @property
     def travel(self) -> float:
@@ -163,8 +170,8 @@ def parse_gait(params: dict) -> Gait:
     if unknown:
         raise GaitError(f"gait: unknown keys {sorted(unknown)}")
     legs_raw = params.get("legs")
-    if not isinstance(legs_raw, list) or not 2 <= len(legs_raw) <= 4:
-        raise GaitError("gait: legs must list 2 to 4 legs")
+    if not isinstance(legs_raw, list) or not 2 <= len(legs_raw) <= 8:  # 6/8: arthropods (§7.5)
+        raise GaitError("gait: legs must list 2 to 8 legs")
     legs = []
     for leg in legs_raw:
         if not isinstance(leg, dict) or set(leg) - LEG_KEYS:
@@ -203,7 +210,18 @@ def parse_gait(params: dict) -> Gait:
         tail=_wave(params.get("tail"), "tail", many=True),
         pose=_posture(params.get("pose")),
         in_place=_flag(params, "in_place"),
+        splay=_flag(params, "splay"),
+        axis=_axis(params),
     )
+
+
+def _axis(params: dict) -> str:
+    axis = params.get("axis", "y")
+    if axis not in ("y", "x"):
+        raise GaitError('gait: axis must be "y" (forwards) or "x" (sideways, needs splay)')
+    if axis == "x" and not params.get("splay"):
+        raise GaitError('gait: axis = "x" needs splay = true (legs spread sideways)')
+    return str(axis)
 
 
 def foot_offset(gait: Gait, leg: Leg, frame: float) -> tuple[float, float, bool]:

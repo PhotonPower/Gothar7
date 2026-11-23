@@ -18,7 +18,9 @@ movement speed the feet do not slide; the engine scales the playback rate to the
 
 from __future__ import annotations
 
+import re
 import tomllib
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -181,6 +183,25 @@ def update_speeds(glb: Path) -> dict[str, float]:
         return speeds
     path.write_text(header + format_events(fps, clips, speeds), encoding="utf-8", newline="\n")
     return speeds
+
+
+_LEG_FOOT = re.compile(r"^leg_(\d+)_foot_([lr])$")
+
+
+def arthropod_feet(bones: Iterable[str]) -> dict[str, str]:
+    """Foot bone -> footstep event of an arthropod (characters-pipeline §7.5): pair 1 reports
+    footstep_front_<s>, the last pair footstep_back_<s>, the pairs between none."""
+    feet = [(int(m.group(1)), m.group(2), b) for b in bones if (m := _LEG_FOOT.match(b))]
+    if not feet:
+        return {}
+    first, last = min(n for n, _, _ in feet), max(n for n, _, _ in feet)
+    out = {}
+    for n, side, bone in feet:
+        if n == first:
+            out[bone] = f"footstep_front_{side}"
+        elif n == last:
+            out[bone] = f"footstep_back_{side}"
+    return out
 
 
 # events the Blender build detects from the motion (build_set.py: footsteps, landing)

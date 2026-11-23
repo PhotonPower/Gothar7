@@ -44,7 +44,7 @@ from gothar_chargen.blender.curves import (  # noqa: E402
 )
 from gothar_chargen.blender.keyframes import RECIPES, RigInfo  # noqa: E402
 from gothar_chargen.clipspec import ClipSpec, SetSpec, SourceRef, load_set_spec  # noqa: E402
-from gothar_chargen.events import detect_contacts  # noqa: E402
+from gothar_chargen.events import arthropod_feet, detect_contacts  # noqa: E402
 from gothar_chargen.mapping import BoneMap, load_mapping  # noqa: E402
 from gothar_chargen.naming import ADDITIVE_ROOT, is_loop_clip  # noqa: E402
 from gothar_chargen.postprocess import TRANSLATED_BONES  # noqa: E402
@@ -148,7 +148,7 @@ def _detected_events(
     cyclic = clip.name.rsplit("/", 1)[-1].startswith("s_")
     events: list[tuple[int, str]] = []
     if clip.events == "footsteps":
-        for bone, event in _FEET.items():
+        for bone, event in {**_FEET, **arthropod_feet(arm.pose.bones.keys())}.items():
             if bone in arm.pose.bones:
                 heights = _foot_heights(arm, action, bone)
                 events += [(f, event) for f in detect_contacts(heights, cyclic=cyclic)]

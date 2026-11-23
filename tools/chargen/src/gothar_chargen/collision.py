@@ -19,8 +19,11 @@ from gothar_chargen.meshdata import mesh_data
 
 SHAPES = ("capsule_upright", "capsule_lying")
 LYING_ASPECT = 1.3  # torso longer than this times its height: lying capsule
-# bones whose vertices stay outside the capsule: tail, lower legs and feet (quadrupeds, birds)
-_LOOSE = re.compile(r"^(tail_.*|.*_lower_[lr]|.*_foot_[lr]|calf_[lr]|foot_[lr])$")
+# bones whose vertices stay outside the capsule: tail, lower legs and feet (quadrupeds, birds);
+# arthropods (§7.5): feelers and the whole spread legs
+_LOOSE = re.compile(
+    r"^(tail_.*|.*_lower_[lr]|.*_foot_[lr]|calf_[lr]|foot_[lr]|antenna_.*|leg_\d+_upper_[lr])$"
+)
 
 
 class CollisionError(Exception):

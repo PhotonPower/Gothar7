@@ -91,3 +91,14 @@ Lebenspunkten rasend. Quest-Boss (verschollene Jäger, Kopfgeld der Stadt). Trop
   zweite Phase ein, danach spielt engine die normalen Clips mit Rate ~1,3; `t_stagger` nach schwerem Treffer bzw.
   pariertem Prankenhieb.
 - **Technik:** lod0 11096 Dreiecke (Boss-Budget bis 12 k), Beschreibung `data/monsters/bergleu.creature.toml`.
+
+### Mauerkriecher (gebaut 2026-11-23)
+Asselartiger Kriecher, so lang wie ein großer Hund (1,0 m ohne Fühler, 0,29 m hoch): flacher, gewölbter Panzer aus
+überlappenden dunklen Ringplatten, blasse Unterseite, kurze Beißzangen, lange Fühler, sechs dünne Beine.
+- **Verhalten (für engine):** sitzt flach in Ritzen (`s_dormant`, `zs_dormant`) und kommt bei Licht und Lärm heraus
+  (`t_emerge`, Event `emerge`; `t_wake`); greift im Rudel von mehreren Seiten an (`t_attack_1` Zangenbiss,
+  `t_attack_2` Stoß von oben), rollt sich bei schweren Treffern ein (`t_curl` → `s_curled` → `t_uncurl`: der Panzer
+  schützt von oben, der Bauch ist weich). Gehen 1,2, Laufen 5,0 m/s.
+- **Technik:** Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5), 34 Knochen; Ringplatten als starre Platten an
+  `spine_01`, `pelvis` und `abdomen_01..04`; lod0 5432 Dreiecke; Beschreibung
+  `data/monsters/mauerkriecher.creature.toml`.
