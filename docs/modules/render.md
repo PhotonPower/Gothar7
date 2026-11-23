@@ -1054,10 +1054,11 @@ G vor V (G ist klein und unabhängig); beide nach Teil T oder parallel dazu, je 
   - **Echtes Raytracing** nur mit dem optionalen Vulkan-Backend (eigene ADR); OpenGL bietet kein Hardware-Raytracing.
   - Dazu ein Material-Merkmal „spiegelnd“ (Glas) in den Modellen der Welt-Spur.
 
-## Plan M17: Spiegelnde Fenster ohne Vulkan (Vorschlag, wartet auf Freigabe)
+## Plan M17: Spiegelnde Fenster ohne Vulkan (freigegeben 2026-11-23)
 Auftrag des Projektinhabers (über den Koordinator, 2026-11-23): Roadmap M17 „Spiegelnde Fenster“ ohne das
-Vulkan-Backend. Verfahren vergleichen, Kosten, Teile, Tests, Prüfbilder, Gefühlsfragen. **Kein Code bis zur
-Freigabe.** **Berührt einen Vertrag mit welt:** ein eigenes Material für die Scheiben (siehe „Vertrag mit welt“).
+Vulkan-Backend. Verfahren vergleichen, Kosten, Teile, Tests, Prüfbilder, Gefühlsfragen. **Freigegeben** vom
+Projektinhaber (2026-11-23): alle 10 Fragen nach Vorschlag; umgesetzt **nach** Schloss und Dungeon (dungeon.md).
+**Berührt einen Vertrag mit welt:** ein eigenes Material für die Scheiben (siehe „Vertrag mit welt“).
 
 ### Ausgangslage
 - **Fenster heute** (`tools/worldgen`, `buildings/medieval.py`): In lod0 ist ein geschlossenes Fenster eine
@@ -1146,7 +1147,7 @@ Freigabe.** **Berührt einen Vertrag mit welt:** ein eigenes Material für die S
 - Stufen low/medium/high nebeneinander;
 - Kamera immer außerhalb der Häuser.
 
-### Gefühlsfragen an den Projektinhaber (je mit Vorschlag)
+### Gefühlsfragen – entschieden (Projektinhaber 2026-11-23: alle nach Vorschlag)
 1. **Stärke:** Vorschlag **dezent**: frontal etwa 4 % (dunkle Scheibe, man ahnt den Himmel), schräg bis etwa 50 %
    (Fresnel). Kein spiegelglattes Glas.
 2. **Glasart:** Vorschlag **Butzen- und Rautenglas wie um 1700**: kleine gewölbte Scheiben in Bleiruten, leicht grünlich;
