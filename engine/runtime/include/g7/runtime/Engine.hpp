@@ -973,7 +973,10 @@ private:
     void playerAnimationUi();
     [[nodiscard]] Mat4 playerFigureTransform() const;
     void preparePlayerPose(f32 alpha);
-    [[nodiscard]] Result<asset::SkinnedModelData> assembleFigureParts(const asset::FigureManifest& manifest);
+    /// `keep`: receives the handles of the parts (the figure holds them, so the cache keeps them).
+    [[nodiscard]] Result<asset::SkinnedModelData>
+    assembleFigureParts(const asset::FigureManifest& manifest,
+                        std::vector<asset::Handle<asset::SkinnedModelData>>* keep = nullptr);
     [[nodiscard]] Result<void> uploadFigure(AnimatedFigure& figure, const asset::SkinnedModelData& data);
     using FigureGraphCallback =
         std::function<void(const animation::AnimGraph&, std::span<const asset::AnimationSetData* const>)>;
