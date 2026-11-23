@@ -492,6 +492,7 @@ bool Engine::runFrame()
         fixedUpdateInteraction(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateItemUse(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateMobs(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateMovers(static_cast<f32>(m_fixedStep.step())); // dungeon D2
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
         m_particles.update(static_cast<f32>(m_fixedStep.step())); // effects (M12)
         fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
@@ -1183,6 +1184,7 @@ Result<void> Engine::instantiateScene()
     rebuildWaterSurfaces();
     rebuildWorldItems();
     rebuildMobs();
+    rebuildMovers();   // dungeon D2
     rebuildEventNet(); // dungeon D1: after the mobs (doors are targets)
     m_lights.clear();
     m_daylightLights.clear();
@@ -1216,6 +1218,11 @@ Result<void> Engine::setWaynet(world::WaynetData waynet)
     {
         c->route.reset(); // indices into the old waynet
     }
+    for (auto& [id, m] : m_movers)
+    {
+        m.edges.reset(); // dungeon D2: worked out anew for the new edges
+    }
+    updateMoverBlocks();
     return {};
 }
 
@@ -1461,6 +1468,7 @@ void Engine::unloadWorld()
     m_focus.reset();
     m_pickup.reset();
     m_mobs.clear();
+    m_movers.clear();
     m_mobUse.reset();
     m_mobBodies.clear();
     m_cullGridDirty = true;
@@ -1672,6 +1680,7 @@ Result<void> Engine::saveWorld(const fs::Path& path) const
     world::WorldFile file = m_worldFile;
     world::WorldFile captured = world::captureWorld(m_scene, name);
     storeDoors(captured);
+    storeMovers(captured, true);
     file.name = name;
     file.nextVobId = captured.nextVobId;
     file.vobs = std::move(captured.vobs);

@@ -56,6 +56,8 @@ struct WorldFileVob
     WaterVolume water;                        ///< Water vobs only
     ItemRef item;                             ///< Item vobs only
     Relay relay;                              ///< Relay vobs only
+    /// `components.mover` (dungeon D2): mesh and mob vobs that move (gate, secret wall, trapdoor).
+    std::optional<Mover> mover;
     /// `components.surface.footstep` (M13 E, contract with welt): the footstep material of what one walks on
     /// in this mesh or mob ("wood", "stone" ...); empty: from the engine's path patterns
     /// (data/footsteps.toml).

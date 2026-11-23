@@ -36,6 +36,12 @@ constexpr std::array<std::pair<TriggerVolume::Filter, std::string_view>, 3> kTri
      {TriggerVolume::Filter::Any, "any"}}};
 constexpr std::array<std::pair<Relay::Mode, std::string_view>, 3> kRelayModes = {
     {{Relay::Mode::Any, "any"}, {Relay::Mode::All, "all"}, {Relay::Mode::Count, "count"}}};
+constexpr std::array<std::pair<Mover::Kind, std::string_view>, 3> kMoverKinds = {
+    {{Mover::Kind::Gate, "gate"},
+     {Mover::Kind::SecretWall, "secret_wall"},
+     {Mover::Kind::Trapdoor, "trapdoor"}}};
+constexpr std::array<std::pair<Mover::Crush, std::string_view>, 2> kMoverCrush = {
+    {{Mover::Crush::Stop, "stop"}, {Mover::Crush::Damage, "damage"}}};
 
 template <typename E, usize N>
 std::string_view nameOf(const std::array<std::pair<E, std::string_view>, N>& table, E value)
@@ -318,6 +324,85 @@ Result<Relay> readRelay(const Reader& r, const Json& v, std::string_view where)
     return relay;
 }
 
+/// components.mover of a mesh or mob vob (dungeon D2).
+Result<Mover> readMover(const Reader& r, const Json& v, std::string_view where)
+{
+    const Json c = componentOf(v, "mover");
+    const std::string at = std::format("{}.components.mover", where);
+    if (!c.is_object())
+    {
+        return r.error(at, "must be an object");
+    }
+    Mover mover;
+    if (!c.contains("kind"))
+    {
+        return r.error(at, "needs 'kind' ('gate', 'secret_wall' or 'trapdoor')");
+    }
+    auto kind = readChoice(r, c, "kind", at, kMoverKinds);
+    auto crush = readChoice(r, c, "crush", at, kMoverCrush);
+    if (!kind || !crush)
+    {
+        return !kind ? kind.error() : crush.error();
+    }
+    mover.kind = kind.value();
+    mover.crush = crush.value();
+    auto seconds = r.number(c, "seconds", at, kMoverSeconds[static_cast<usize>(mover.kind)]);
+    if (!seconds)
+    {
+        return seconds.error();
+    }
+    if (!(seconds.value() > 0.0f))
+    {
+        return r.error(at + ".seconds", "must be more than 0");
+    }
+    mover.seconds = seconds.value();
+    if (c.contains("open"))
+    {
+        if (!c["open"].is_boolean())
+        {
+            return r.error(at + ".open", "must be true or false");
+        }
+        mover.open = c["open"].get<bool>();
+    }
+    for (const auto& [key, field] : {std::pair<const char*, std::optional<Vec3>*>{"offset", &mover.offset},
+                                     std::pair<const char*, std::optional<Vec3>*>{"axis", &mover.axis}})
+    {
+        if (c.contains(key))
+        {
+            auto value = r.vec3(c, key, at, Vec3(0.0f));
+            if (!value)
+            {
+                return value.error();
+            }
+            *field = value.value();
+        }
+    }
+    if (mover.axis && glm::length(*mover.axis) < 1e-4f)
+    {
+        return r.error(at + ".axis", "must not be zero");
+    }
+    if (c.contains("angle"))
+    {
+        auto angle = r.number(c, "angle", at, 0.0f);
+        if (!angle)
+        {
+            return angle.error();
+        }
+        mover.angle = angle.value();
+    }
+    for (const auto& [key, field] : {std::pair<const char*, std::string*>{"sound_move", &mover.soundMove},
+                                     std::pair<const char*, std::string*>{"sound_stop", &mover.soundStop}})
+    {
+        auto text = readText(r, c, key, at, false);
+        if (!text)
+        {
+            return text.error();
+        }
+        *field = std::move(text).value();
+    }
+    return mover;
+}
+
 Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_view where)
 {
     const Json t = componentOf(v, "trigger");
@@ -519,6 +604,19 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             }
             vob.footstep = surface["footstep"].get<std::string>();
         }
+        if (v.contains("components") && v["components"].contains("mover"))
+        {
+            auto mover = readMover(r, v, where);
+            if (!mover)
+            {
+                return mover.error();
+            }
+            vob.mover = std::move(mover).value();
+        }
+    }
+    else if (v.contains("components") && v["components"].is_object() && v["components"].contains("mover"))
+    {
+        return r.error(where, "'components.mover' belongs to a mesh or mob vob");
     }
     if (vob.type == VobType::Light)
     {
@@ -1422,6 +1520,35 @@ Json vobJson(const WorldFileVob& vob)
     if ((vob.type == VobType::Mesh || vob.type == VobType::Mob) && !vob.footstep.empty())
     {
         v["components"]["surface"] = Json{{"footstep", vob.footstep}}; // only when set (byte-equal)
+    }
+    if ((vob.type == VobType::Mesh || vob.type == VobType::Mob) && vob.mover)
+    {
+        // kind, open, seconds, crush always; the motion and sounds only when given.
+        const Mover& m = *vob.mover;
+        Json mover =
+            Json{{"kind", nameOf(kMoverKinds, m.kind)}, {"open", m.open}, {"seconds", tidy(m.seconds)}};
+        if (m.offset)
+        {
+            mover["offset"] = numbers({m.offset->x, m.offset->y, m.offset->z});
+        }
+        if (m.axis)
+        {
+            mover["axis"] = numbers({m.axis->x, m.axis->y, m.axis->z});
+        }
+        if (m.angle)
+        {
+            mover["angle"] = tidy(*m.angle);
+        }
+        if (!m.soundMove.empty())
+        {
+            mover["sound_move"] = m.soundMove;
+        }
+        if (!m.soundStop.empty())
+        {
+            mover["sound_stop"] = m.soundStop;
+        }
+        mover["crush"] = nameOf(kMoverCrush, m.crush);
+        v["components"]["mover"] = std::move(mover);
     }
     if (vob.type == VobType::Relay)
     {

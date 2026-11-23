@@ -155,6 +155,15 @@ Texte kommen aus Inhalt/Definitionen (lokalisiert, M14). Konvention der Engine: 
 | `relay` (Dungeon D1, umgesetzt) | `relay`: `mode` `any`|`all`|`count` (Vorgabe any), `count` (≥ 1, nur bei count geschrieben), `delay` s (≥ 0), `once`, `invert`, `targets`, `action` (Vorgabe `trigger`); alle Felder außer `count` werden immer geschrieben | Unsichtbares Relais (wie `zCTriggerList`): sammelt Ereignisse und gibt `action` an `targets` weiter; Verhalten in dungeon.md „Stand D1“. |
 | `water` (M5 Teil E, umgesetzt) | `water`: `halfExtents` [x,y,z] > 0, `kind`: `river` (fließt entlang lokal +X der Box) oder `pond` (steht); leer = Vorgabe aus `data/water.toml` (M17, vereinbart mit welt 2026-11-07) | Wasserkörper als Box um `pos`, nur um Y gedreht; **Oberfläche = Oberkante** (pos.y + hy). Schwimmen ab Wassertiefe > Hüfthöhe (0,9 m), Tauchen mit Luftvorrat. Boxen dürfen sich überlappen (Flussabschnitte, Stufen an den Überlappungen). Darstellung der Fläche: render.md „Wasseroberfläche“ (M17 W1). Ein Gefälle-Feld ist für M17 vorgemerkt. Mit welt abgestimmt. Fehler: fehlende oder nicht positive `halfExtents`, Drehung nicht nur um Y, Skalierung ≠ 1. Abfrage: `world::WaterBodies` (`Water.hpp`): `surfaceAt(punkt)` = höchste Oberfläche der Boxen, deren Grundfläche den Punkt enthält und die von unter ihm bis höchstens 0,5 m unter ihn reichen (eine Brücke hoch über dem Fluss ist trocken). |
 
+**Bewegtes Teil (`components.mover`, Dungeon D2, umgesetzt):** `mesh`- und `mob`-Vobs haben optional
+`"components": {"mover": {"kind": "gate", "open": false, "seconds": 2.0, "crush": "stop"}}`. `kind` ist Pflicht
+(`gate` | `secret_wall` | `trapdoor`), `open` (Vorgabe false), `seconds` (> 0; Vorgabe 2 / 3 / 0,6 je Art), `crush`
+(`stop` | `damage`, Vorgabe stop) werden immer geschrieben; `offset` [x,y,z], `axis` [x,y,z] (nicht null), `angle`
+(Grad), `sound_move`, `sound_stop` nur, wenn gesetzt (in dieser Reihenfolge, `crush` zuletzt). An anderen Vob-Typen
+ist `mover` ein Ladefehler. Die Drehung des Vobs in der Datei ist die **geschlossene** Stellung; die Engine
+speichert bewegte Teile immer geschlossen (Editor: mit `open` = wohin sie gerade fahren). Verhalten in
+dungeon.md „Stand D2“.
+
 **Oberfläche (`components.surface`, M13 E, Vertrag mit welt 2026-10-08):** `mesh`- und `mob`-Vobs haben optional
 `"components": {"surface": {"footstep": "<material>"}}`. Gemeint ist das Fußschritt-Material dessen, worauf man in
 diesem Modell läuft (`stone`, `wood`, `grass`, `dirt`, `gravel`, `water`; `data/footsteps.toml`).
@@ -187,6 +196,7 @@ struct StartPoint {}; struct SoundEmitter { sound, range, volume, mode, delay };
 struct TriggerVolume { shape, halfExtents, radius, onEnter, onLeave, filter, once, targets, action, targetId,
                        changeWorld, changeStart, owner };
 struct Relay { mode, count, delay, once, invert, targets, action };   // dungeon D1, EventNet.hpp
+struct Mover { kind, open, seconds, offset?, axis?, angle?, soundMove, soundStop, crush };  // dungeon D2, Movers.hpp
 Result<entt::entity> findStartPoint(const Scene&, std::string_view name = {});          // StartPoints.hpp
 class TriggerSystem { void setCallback(Callback); std::vector<TriggerEvent> update(const Scene&, span<const TriggerProbe>);
                       bool isInside(VobId trigger, VobId who) const; void reset(); };  // Triggers.hpp

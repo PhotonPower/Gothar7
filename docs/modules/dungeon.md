@@ -230,8 +230,8 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   - danach Lua: Ereignis **`dungeon_event(target, action, source)`** – für jedes Ziel, auch Türen und Namen ohne Vob
     (ein Ziel ohne Vob wird beim Laden nur protokolliert, Lua darf solche Namen nutzen).
 - **Lua:** `send(target, action?, source?)` (Vorgabe `trigger`, `"lua"`; wirkt im nächsten Schritt),
-  `relay_state(name)` → `{mode, count, counted, inputs, spent}` oder nil. `mover_state`/`switch_state` folgen mit
-  D2/D3.
+  `relay_state(name)` → `{mode, count, counted, inputs, spent}` oder nil. `mover_state` siehe D2, `switch_state`
+  folgt mit D3.
 - **Spielstand:** `save::WorldState.events` (`world::EventNetSnapshot`): Relais, die nicht im Anfangszustand sind
   (gezählt, Eingänge an, verbraucht), und Ereignisse unterwegs mit ihrer Restzeit; im JSON `relays` und `events`, nur
   wenn nicht leer. Ältere Stände ohne die Felder laden den Anfangszustand. Verlassene Welten behalten den Zustand wie
@@ -240,11 +240,49 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   Schnappschuss), `tests/runtime/test_engine_events.cpp` auf `testworld/events.g7world` (zwei Platten → Relais `all`
   → Tür und Lua, Riegel-Trigger entriegelt, `send` aus Lua, Spielstand mitten im Rätsel).
 
+## Stand D2 – bewegte Teile (umgesetzt)
+- **Format** (`world_format`, `Components.hpp` `world::Mover`): `components.mover` an `mesh`- und `mob`-Vobs, Felder in
+  world.md „Bewegtes Teil“. Die Drehung und Lage des Vobs in der Datei ist die **geschlossene** Stellung.
+- **Bahn** (`world/Movers.hpp`, rein): `moverMotion` ergibt aus Art, Modellgrenzen und Skalierung des Vobs die
+  Vorgabe, `offset`, `axis` und `angle` ersetzen deren Teile:
+  - `gate`: um die Modellhöhe nach oben (+Y);
+  - `secret_wall`: um die Modelltiefe nach hinten (−Z des Vobs); zur Seite mit `offset` (z. B. `[3, 0, 0]`);
+  - `trapdoor`: 90° um die lokale +X-Achse durch den Ursprung, das Blatt (+Z) klappt nach unten. Der Ursprung des
+    Modells liegt also an der Angel (welt).
+  - `offset` gilt im gedrehten, nicht skalierten Rahmen des Vobs (Meter). Gleiten und Drehen dürfen zusammen
+    auftreten. Die Stellung 0 (zu) … 1 (offen) ändert sich gleichmäßig in `seconds`; die Lage folgt weich
+    (Smoothstep) wie bei den Türen.
+- **Engine** (`EngineMovers.cpp`): Ereignisse `open`/`on` öffnen, `close`/`off` schließen, `toggle`/`trigger` kehren
+  die Richtung um (auch mitten auf dem Weg); `lock`/`unlock`/`wake` lassen es kalt. Lua hört jedes Ereignis wie in
+  D1 als `dungeon_event`. Im festen Schritt nach den Mobs: Stellung weiter, Zeichnen und Kollision an die neue Lage
+  (der Körper wird wie bei Türen neu eingesetzt), `sound_move` beim Losfahren, `sound_stop` beim Ankommen.
+- **Einklemmen** (Fragen 2 und 3): Nur beim **Schließen** wird geprüft, ob die Box des Modells in der neuen Lage in
+  die Kapsel des Helden oder eines NPC reicht (tiefer als 5 cm). Dann bleibt es in der Lage des vorigen Schritts
+  und fährt wieder auf. Mit `crush = "damage"` (Falle) kostet das jeden im Weg **20 Lebenspunkte** ohne Schutz
+  (wie ein Schlag: Taumeln, der Held geht bei 0 zu Boden und steht wieder auf, ein NPC stirbt; Lua `npc_hit` mit
+  dem Namen des Gatters als Angreifer). Tiere ohne Kapsel werden nicht geprüft.
+- **Wegnetz:** Ein Gatter oder eine Geheimwand sperrt, solange es nicht ganz offen ist, eine Falltür, solange sie
+  nicht ganz zu ist, die Kanten des Wegnetzes, die durch die geschlossene Box gehen (Linie 0,3 m über den
+  Wegpunkten, Box nach oben und unten um 0,5 m vergrößert). `ai::Waynet::setBlockedEdges`/`blocked`; die
+  A*-Suche nimmt gesperrte Kanten nicht. Gerade Wege prüft wie bisher die Kollision.
+- **Lua:** `mover_state(name)` → `{kind, open, position, moving, blocks}` oder nil; bewegt wird mit `send`.
+- **Spielstand:** `save::WorldState.movers` (`vob`, `position`, `open`) für die Teile, die nicht im Anfangszustand
+  stehen; im JSON `movers`, nur wenn nicht leer. Die Welt im Spielstand hält sie geschlossen mit dem `open` der
+  Datei (kein Eintrag in `changed`). Ältere Stände laden den Anfangszustand.
+- **Editor:** Speichern schreibt bewegte Teile geschlossen mit `open` = wohin sie gerade fahren. Bauen die
+  Engine-Teile die Szene neu auf (Editor), behalten die Teile ihre Stellung, solange der Vob nicht verschoben wurde.
+- **Tests:** `tests/world/test_movers.cpp` (Format, Bahn je Art, Lage, Lauf, Box/Kapsel/Kante),
+  `tests/ai/test_waynet.cpp` (gesperrte Kanten), `tests/runtime/test_engine_movers.cpp` auf
+  `testworld/movers.g7world` (Trigger öffnet Gatter mit Kollision und Wegnetz, Geheimwand zur Seite, Falltür klappt
+  und sperrt, Einklemmen ohne und mit Schaden, Spielstand).
+- Offen für später: Kinder eines bewegten Vobs bewegen sich nicht mit; Gegenstände auf einer Falltür fallen erst mit
+  D3/D4 (Platten, Fall als Weltwechsel).
+
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
 | **D1** Netz ✔ | `targets`/`action`, Relais, Lua `send`/`dungeon_event`, Speichern der Relais | mittel |
-| **D2** Mover | Gatter, Geheimwand, Falltür; Kollision mit; Klemmen (`crush`); Speichern | mittel |
+| **D2** Mover ✔ | Gatter, Geheimwand, Falltür; Kollision mit; Klemmen (`crush`); Speichern | mittel |
 | **D3** Schalter und Platten | Mob-Typen `lever`, `wall_button` (versteckt), Platte mit Gewicht inkl. Items; figuren-Clips | mittel |
 | **D4** Teleporter und Fall | Teleport in der Welt und in andere Ebenen, Fall als Weltwechsel mit Geschwindigkeit, Abblenden | mittel |
 | **D5** Nischen und Türen | `niche`, Tür-Ereignisse, `no_pick`, `one_way` | klein |

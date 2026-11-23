@@ -34,6 +34,15 @@ struct MobState
     friend bool operator==(const MobState&, const MobState&) = default;
 };
 
+/// A moving part (dungeon D2) away from its initial state: where it stands and where it goes.
+struct MoverState
+{
+    u64 vob = 0;
+    f32 position = 0.0f; ///< 0 closed .. 1 open
+    bool open = false;   ///< where it goes
+    friend bool operator==(const MoverState&, const MoverState&) = default;
+};
+
 enum class Life : u8
 {
     Alive,
@@ -70,6 +79,8 @@ struct WorldState
     /// The event net (dungeon D1): relays not in their initial state, events on their way. Additive: older
     /// saves have none (the world's initial state).
     world::EventNetSnapshot events;
+    /// Moving parts not in their initial state (dungeon D2), by vob id. Additive like `events`.
+    std::vector<MoverState> movers;
 };
 
 struct HeroState

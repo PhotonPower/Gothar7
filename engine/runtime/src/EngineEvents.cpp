@@ -96,6 +96,7 @@ Result<void> Engine::sendEvent(std::string_view target, std::string_view action,
 void Engine::deliverEvent(const world::NetEvent& event)
 {
     G7_LOG_DEBUG("engine", "event {} -> {} ({})", event.action, event.target, event.source);
+    (void)moverEvent(event); // dungeon D2: gates, secret walls, trapdoors
     if (const auto vob = findMob(event.target); vob)
     {
         if (const auto it = m_mobs.find(vob->value); it != m_mobs.end())
@@ -155,11 +156,13 @@ void Engine::bindEventFunctions()
 {
     using script::Value;
     script::ScriptVm& vm = *m_scripts;
+    bindMoverFunctions(); // dungeon D2
     vm.bind({"send", "send(target: string, action?: string, source?: string)",
              "Schickt ein Ereignis an das Vob `target` (Dungeon D1), wie es ein Auslöser tut: `action` ist "
              "toggle, open, close, on, off, wake, trigger (Vorgabe), lock oder unlock; `source` der Absender "
              "(Vorgabe \"lua\"). Es wirkt im nächsten festen Schritt: Relais zählen es, Türen gehen auf oder "
-             "zu bzw. werden ver- und entriegelt, alle anderen Ziele hören es als Ereignis `dungeon_event`.",
+             "zu bzw. werden ver- und entriegelt, bewegte Teile (Gatter, Geheimwand, Falltür; D2) fahren auf "
+             "oder zu, alle anderen Ziele hören es als Ereignis `dungeon_event`.",
              "Welt", [this](std::span<const Value> a) -> Result<Value>
              {
                  if (a.empty() || !a[0].isString() || (a.size() > 1 && !a[1].isString() && !a[1].isNil()) ||

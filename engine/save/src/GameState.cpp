@@ -361,6 +361,15 @@ Json worldToJson(const WorldState& w)
         }
         out["relays"] = std::move(relays);
     }
+    if (!w.movers.empty())
+    {
+        Json movers = Json::array();
+        for (const MoverState& m : w.movers)
+        {
+            movers.push_back(Json{{"vob", m.vob}, {"position", m.position}, {"open", m.open}});
+        }
+        out["movers"] = std::move(movers);
+    }
     if (!w.events.pending.empty())
     {
         Json events = Json::array();
@@ -501,6 +510,19 @@ bool readWorld(Reader& r, const Json& j, const std::string& at, WorldState& out)
             ok = read(r, relays[k], "name", rk, s.name) && read(r, relays[k], "counted", rk, s.counted) &&
                  read(r, relays[k], "inputs", rk, s.inputs) && read(r, relays[k], "spent", rk, s.spent);
             w.events.relays.push_back(std::move(s));
+        }
+    }
+    if (ok && j.contains("movers"))
+    {
+        const Json& movers = j["movers"];
+        ok = movers.is_array() || r.failed(at, "'movers' must be a list");
+        for (usize k = 0; ok && k < movers.size(); ++k)
+        {
+            MoverState m;
+            const std::string mk = std::format("{}.movers[{}]", at, k);
+            ok = read(r, movers[k], "vob", mk, m.vob) && read(r, movers[k], "position", mk, m.position) &&
+                 read(r, movers[k], "open", mk, m.open);
+            w.movers.push_back(m);
         }
     }
     if (ok && j.contains("events"))
