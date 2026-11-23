@@ -77,6 +77,7 @@ from gothar_worldgen.handmade import (
     put_item,
     schloss_item,
     splat_areas,
+    with_apron,
     with_garden_plan,
     with_wing_terrain,
 )
@@ -900,6 +901,7 @@ def _cmd_schloss(args: argparse.Namespace, out: TextIO) -> int:
         grid = load_grid(DataPaths(local.data_root, site.name).work)
         spec = with_wing_terrain(spec, grid.height_at)  # the socle reaches the ground
         spec = with_garden_plan(spec, garden_plan(spec, grid.height_at))
+        spec = with_apron(spec, grid.height_at)  # W7 D1: paving round the hollow main wing
         # versioned beside the model: the spec with the ground measured from the DGM
         built = out_glb.with_name("schloss_built.json")
         built.parent.mkdir(parents=True, exist_ok=True)
@@ -1613,7 +1615,18 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             data_dir / "starts.json"
         )
         r16 = folder / "generated" / f"{name}.r16"
-        result = export_terrain(grid, name, folder / f"{name}.g7world", r16, vfs, splat, starts)
+        holes = None
+        hole_polys = [ring for it in load_handmade(data_dir / "handmade.json").get("items", [])
+                      for ring in it.get("holes", [])]  # fmt: skip
+        if hole_polys:  # W7 D1: no ground inside the castle's hollow main wing (its cellar)
+            from gothar_worldgen.export.terrain import hole_mask
+
+            hole_file = folder / "generated" / f"{name}_holes.r8"
+            holes = (hole_file, f"worlds/{site.name}/generated/{name}_holes.r8",
+                     hole_mask(grid, hole_polys))  # fmt: skip
+            print(f"  holes: {int((holes[2] == 0).sum())} cells", file=out)
+        result = export_terrain(grid, name, folder / f"{name}.g7world", r16, vfs, splat, starts,
+                                holes)  # fmt: skip
     except ExportError as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
