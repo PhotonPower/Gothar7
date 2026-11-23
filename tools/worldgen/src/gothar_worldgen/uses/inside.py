@@ -1185,6 +1185,9 @@ PASSAGE_FRONT_M = 0.7  # the place before a passage: this far out from it (strai
 DETOUR_START_M = 0.2  # its first and last leg less: the waypoint at the stairs' head is at the
 # edge, a passage may be close
 DETOUR_CORNER_M = 1.0  # its corners this far out from them
+# upstairs the opening has a rail on its edge (5 cm thick): a straight way passing nearer than
+# the physics cylinder (0.3 m) plus the rail and a margin snags on the rail's end (ZjV, W7)
+RAIL_CLEAR_M = 0.4
 FP_NEAR_M = 3.0  # a freepoint has a waypoint this near in a free line (engine's strict replan)
 FP_LANE_M = 0.3  # the engine's walkable line: spheres this wide (EngineNpcs.cpp)
 FP_CLEAR_M = 0.4  # a way to a freepoint round solid steps (no rail): this far from them
@@ -1192,15 +1195,16 @@ DETOUR_SAMPLE_M = 0.5  # without a way over the corners: places this far apart a
 
 
 def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
-            room: Polygon, sample: bool = False,
-            clear_m: float = DETOUR_CLEAR_M) -> list[tuple[float, float]]:  # fmt: skip
+            room: Polygon, sample: bool = False, clear_m: float = DETOUR_CLEAR_M,
+            start_m: float = DETOUR_START_M) -> list[tuple[float, float]]:  # fmt: skip
     """Corners a straight way from ``a`` to ``b`` takes round ``obstacle`` (stairs, the opening
     in the floor above them) inside ``room``; empty if the straight way is clear (the engine
     walks the waynet's edges as they are, unchecked). With ``sample``, where no way over the
     corners is found, places along the sides too (a corner beyond a wall). ``clear_m``: how far
-    the legs keep from it (less round solid steps than round a rail)."""
+    the legs keep from it (less round solid steps than round a rail); ``start_m``: how near the
+    straight way may pass before it goes round."""
     zone = obstacle.buffer(clear_m)
-    near = obstacle.buffer(DETOUR_START_M)
+    near = obstacle.buffer(start_m)
     if not LineString([a, b]).intersects(near):
         return []
     inside = room.buffer(-0.3)
@@ -1210,8 +1214,8 @@ def _detour(a: tuple[float, float], b: tuple[float, float], obstacle: Polygon,
 
     # legs at the ends may pass close; an end on the obstacle's edge (the head of the stairs) is
     # left by them, so a small circle round it does not count
-    keep_a = near.difference(Point(a).buffer(DETOUR_START_M + 0.1))
-    keep_b = near.difference(Point(b).buffer(DETOUR_START_M + 0.1))
+    keep_a = near.difference(Point(a).buffer(start_m + 0.1))
+    keep_b = near.difference(Point(b).buffer(start_m + 0.1))
 
     def clear(p: tuple[float, float], q: tuple[float, float]) -> bool:
         seg = LineString([p, q])
@@ -1253,7 +1257,8 @@ def _shortest(a: Pt, b: Pt, corners: Sequence[Pt],
 
 def _round_about(plan: InsidePlan, h: House, base: str, a: str, b: str, start: tuple[float, float],
                  mid: tuple[float, float], obstacle: Polygon | None, room: _Room,
-                 floor: float, axis: Pt | None = None) -> str:  # fmt: skip
+                 floor: float, axis: Pt | None = None,
+                 clear: float = DETOUR_START_M) -> str:  # fmt: skip
     """The waypoint a chamber's passage links to: the room's own, or the last of the corners
     round the ``obstacle`` (``WP_…_<a>_UM_<b>``) when the straight way would cross it, then the
     place square before the passage (``WP_…_<b>_DURCHGANG_VOR``, with its ``axis``): a figure
@@ -1271,17 +1276,17 @@ def _round_about(plan: InsidePlan, h: House, base: str, a: str, b: str, start: t
         if room.poly.buffer(-0.2).contains(Point(q)) and math.dist(q, start) > 0.3:
             front = q
     goal = front or mid
-    near = obstacle.buffer(DETOUR_START_M) if obstacle is not None else None
+    near = obstacle.buffer(clear) if obstacle is not None else None
     if near is not None and LineString([start, goal]).intersects(near):
         s = start
         if near.contains(Point(start)):  # on the top steps: first off them onto the landing
             for k in range(1, 40):
                 q = (start[0] + room.inward[0] * 0.1 * k, start[1] + room.inward[1] * 0.1 * k)
-                if not obstacle.buffer(DETOUR_START_M + 0.1).contains(Point(q)):
+                if not obstacle.buffer(clear + 0.1).contains(Point(q)):
                     s = q
                     corners.append(q)
                     break
-        corners += _detour(s, goal, obstacle, room.poly, sample=True)
+        corners += _detour(s, goal, obstacle, room.poly, sample=True, start_m=clear)
         last = corners[-1] if corners else start
         if LineString([last, goal]).intersects(obstacle.buffer(-0.05)):
             plan.failed.append({"house": h.id, "what": f"way {a} to {b}",
@@ -1435,7 +1440,7 @@ def _upper(plan: InsidePlan, h: House, e: dict[str, Any], spec: InsideSpec, st: 
         before.exits.append(mid)
         before.keep = before.keep.union(Point(mid).buffer(DOOR_ZONE_M))
         link = _round_about(plan, h, base, a, b, before.entry, mid, hole, before,
-                            float(up["floor"]), axis)  # fmt: skip
+                            float(up["floor"]), axis, RAIL_CLEAR_M)  # fmt: skip
         entered[b] = (link, mid)
     # beds and chests: the chambers first, the room at the stairs only without chambers
     rooms_for = order[1:] or order[:1]
