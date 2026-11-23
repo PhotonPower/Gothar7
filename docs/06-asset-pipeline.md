@@ -74,6 +74,10 @@ Formate und Bibliotheken: ADR 0016. Die Logik steckt in der Bibliothek `g7_cook_
 - **Übersprungen** werden versteckte Dateien (`.xyz`), Blender-Dateien (`.blend`, `.blend1`), Schrift-Quellen (`.ttf`, `.otf`,
   `.font.toml`) und glTF-Puffer
   (`.bin`, die über die `.gltf` gelesen werden). **Alles andere** (Skripte, Konfiguration, Sounds) wird kopiert.
+- **Figuren und Clips** (M17, Übergang bis `.g7skin`/`.g7anim`): Ein `.glb` mit Skin oder Animationen (Figurenteile,
+  Rigs, Clip-Sets) kommt mit `--pack` zusätzlich **unverändert** ins Archiv, denn die Engine lädt Figuren und Clips als
+  glTF. Clip-Sets ohne Mesh ergeben nur diese Kopie. Lose Ausgaben bekommen keine Kopie, damit eine Kopie in
+  `assets/cooked` das Quell-`.glb` nicht verdeckt (Hot-Reload). Die Bilder der Teile laufen über `.ktx2` (`preferCooked`).
 - **Ausgabe:** lose Dateien unter `--out` (Ordnerstruktur wie die Quelle) oder mit `--pack` ein einziges
   Archiv `<out>/<datei>` (`.g7pak` v2, zstd pro Eintrag; `--level 1..22`, Vorgabe 19, 1–3 für schnelle Entwicklungsläufe). Gleiche Quellen ergeben byte-gleiche Ausgaben. `--clean` leert `--out` vorher.
   Ein Ausgabeordner innerhalb der Quelle wird abgelehnt.

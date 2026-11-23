@@ -280,6 +280,31 @@ def test_from_the_top_steps_round_the_opening_to_a_chamber():
         assert not LineString([p, q]).intersects(hole), (p, q)
 
 
+def test_a_way_grazing_the_rail_end_goes_round_it():
+    """ZjV (W7): the straight way from the head landing to a passage passed the opening's rail
+    0.27 m off, within the physics cylinder: with the rail clearance it goes round."""
+    from shapely.geometry import box
+
+    from gothar_worldgen.uses.inside import RAIL_CLEAR_M, _Room, _round_about
+
+    hole = box(5.0, -1.6, 9.0, -0.4)
+    hall = _Room(box(0.0, -6.0, 12.0, 0.0), 4.0, 6.5, Polygon(), (9.4, -1.0), (1.0, 0.0))
+    start, goal = (9.4, -1.0), (9.03, -4.0)  # from the landing past the corner (9, -1.6)
+    assert 0.2 < LineString([start, goal]).distance(hole) < RAIL_CLEAR_M
+    plan = InsidePlan()
+    _round_about(plan, House("H1", "wohnhaus"), "LEO_X", "OBEN", "OBEN_KAMMER", start, goal, hole,
+                 hall, 4.0)  # fmt: skip
+    assert not [p for p in plan.places if "_UM_" in p["name"]]  # the old clearance: straight
+    plan = InsidePlan()
+    _round_about(plan, House("H1", "wohnhaus"), "LEO_X", "OBEN", "OBEN_KAMMER", start, goal, hole,
+                 hall, 4.0, None, RAIL_CLEAR_M)  # fmt: skip
+    ways = [tuple(p["pos"]) for p in plan.places if "_UM_" in p["name"]]
+    assert ways and plan.failed == []
+    path = [start, *ways, goal]
+    for p, q in zip(path, path[1:], strict=False):
+        assert LineString([p, q]).distance(hole) >= RAIL_CLEAR_M - 0.01 or p == start, (p, q)
+
+
 def test_what_finds_no_room_goes_on_to_the_next_room():
     plan = InsidePlan()
     h = House("H1", "wache")

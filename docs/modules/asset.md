@@ -184,9 +184,41 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
   (`animation.md` „Figuren zur Laufzeit zusammensetzen“).
 - **Lader im `AssetManager`:** `SkinnedModelData` und `AnimationSetData` direkt aus glTF/GLB.
   - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019; Plan und ADR 0025 unten, „Plan M17: gekochte Figuren
-    und Animationen“). Bis dahin laden Figuren und Sets aus losen Dateien
-    (Entwicklung). g7-cook kocht skinnte Figuren weiterhin nur als statisches `.g7mesh`, Sets ohne Mesh überspringt
-    er; ein reines `.g7pak` enthält sie noch nicht.
+    und Animationen“). Bis dahin laden Figuren und Sets aus losen Dateien (Entwicklung). Mit `--pack` legt g7-cook
+    geskinnte und animierte `.glb` zusätzlich unverändert ins Archiv (06-asset-pipeline.md, Teil 0), so lädt auch ein
+    reines `.g7pak` Figuren und Clips als glTF.
+
+### `SkinFile.hpp` – gekochte Figuren `.g7skin` (M17, ADR 0025, Plan Teil B)
+```cpp
+namespace g7::asset {
+inline constexpr char kSkinMagic[4] = {'G', '7', 'S', 'K'};
+inline constexpr u32 kSkinVersion = 1;
+std::vector<u8> serializeSkin(const SkinnedModelData&);
+Result<SkinnedModelData> deserializeSkin(bytes, debugName);
+}
+```
+- Bildet `SkinnedModelData` 1:1 ab: Skelett, inverse Bind-Matrizen, Bounds, Materialien (mit Wind), Bilder, Teile
+  (Vertices, Joints, Gewichte, Indizes, Submeshes, Morphs, Primitive-Tabelle) und die Zusammenbau-Daten
+  (`extras.gothar`). Den Aufbau beschreibt der Kommentar im Header.
+- Die Reihenfolge der Vertices und Dreiecke bleibt wie aus glTF, Bildverweise bleiben relativ zum Teil. So
+  ergibt `assembleFigure` aus gekochten Teilen dieselbe Figur (Test).
+- Der Leser prüft Anzahlen gegen die Dateigröße vor dem Anlegen, Eltern vor Kindern, Joints, Indizes,
+  Submesh-/Primitive-Bereiche, Bildverweise und Reste. Eine andere Version ist ein Fehler mit dem Hinweis
+  „cook again“.
+
+### `AnimFile.hpp` – gekochte Clip-Sets `.g7anim` (M17, ADR 0025, Plan Teil C)
+```cpp
+namespace g7::asset {
+inline constexpr char kAnimMagic[4] = {'G', '7', 'A', 'N'};
+inline constexpr u32 kAnimVersion = 1;
+std::vector<u8> serializeAnim(const AnimationSetData&);
+Result<AnimationSetData> deserializeAnim(bytes, debugName);
+}
+```
+- Skelett des Sets und Clips mit Spuren (Knochenname, Kanal, Schritt/linear, Zeiten, Werte als f32).
+- Events und Eigengeschwindigkeiten speichert die Datei nicht. `<set>.events.toml` bleibt eine eigene Datei und
+  wird nach dem Laden angewendet (Entscheidung 2, Test).
+- Der Leser prüft Anzahlen, Eltern vor Kindern, bekannte Kanäle, steigende Zeiten und Reste.
 
 ### Detailstufen (LOD) statischer Modelle (Vertrag mit welt und figuren, 2026-10-04)
 - **Knoten:** Ein `.glb` enthält bis zu drei Render-Stufen mit **gleichem Ursprung**: Stufe 0 als `<name>` oder
@@ -384,6 +416,7 @@ std::string vfsSibling(std::string_view base, std::string_view relative);       
 Stand: **Plan freigegeben** (Projektinhaber, 2026-11-08; alle Vorschläge übernommen, ADR 0025 angenommen). Roadmap M17:
 „spätestens vor dem ersten reinen `.g7pak`-Release“. ADR 0019 hat das eigene Format als Folgearbeit vorgesehen. Die
 Entscheidungen stehen am Ende, nummeriert. Reihenfolge: Teil 0 nach dem Merge von #384, danach A–F, je Teil ein PR.
+**Teil 0 umgesetzt** (`fix/m17-package-figures`): glTF-Kopien im Archiv, strenger Paket-Test, Figurenbilder über `.ktx2`.
 
 ### Ausgangslage (gemessen bzw. geprüft am 2026-11-08)
 - **Laufzeit:** Figuren entstehen zur Laufzeit aus Teilen. `figures/<name>.figure.toml` nennt die Teile
@@ -426,8 +459,16 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
 - Tracy-Zonen (Preset `profile`, #387) in `AssetManager` und `EngineFigure`: `skin parse (glTF)`, `anim parse (glTF)`,
   `figure assemble`, `figure textures`, `figure upload`. Lauf `--perf=markt,markt_voll` auf ruhiger Maschine.
 - Ergebnis in `docs/perf/` mit Anteilen je Zone. Erst damit wird der Gewinn belastbar (siehe „Erwarteter Gewinn“).
+- **Umgesetzt** (2026-11-08):
+  - Die Zonen heißen `figure load`, `figure parts (glTF)`, `figure clip sets (glTF)`, `figure assemble`,
+    `figure images` und `figure upload`.
+  - Engine und `--perf` schreiben die Summen zusätzlich als Ladephasen `figures: …`. Das gilt in jedem Build, nicht
+    nur im Preset `profile`.
+  - Ergebnis in `docs/perf/2026-11-08-figuren-laden.md`: In Leonberg (25 Figuren, ~1,3 s) braucht glTF-Parsen
+    ~720–770 ms (Clip-Sets ~460, Teile ~260), Zusammenbau ~30 ms, Bilder ~200 ms und Upload ~160 ms.
 
 ### Teil B – Format `.g7skin` (asset, `SkinFile.hpp`)
+- **Umgesetzt** (2026-11-08): `serializeSkin`/`deserializeSkin`, Tests in `tests/asset/test_skin_file.cpp`.
 - Eine Datei je geskinntem `.glb` (Teil, Monster-Rig, Platzhalter). Sie bildet `SkinnedModelData` 1:1 ab: Skelett
   (Namen, Eltern, Ruhepose, `rootParent`), inverse Bind-Matrizen, Teile (Vertices, Joints u16×4, Gewichte, Indizes,
   Submeshes, Morph-Targets mit Namen, **Primitive-Tabelle**), Materialien und Bildverweise (VFS-Pfade ab der Wurzel
@@ -440,6 +481,7 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
 - `writeSkinFile(const SkinnedModelData&) -> std::vector<u8>`, `readSkinFile(bytes, name) -> Result<SkinnedModelData>`.
 
 ### Teil C – Format `.g7anim` (asset, `AnimFile.hpp`)
+- **Umgesetzt** (2026-11-08): `serializeAnim`/`deserializeAnim`, Tests in `tests/asset/test_anim_file.cpp`.
 - Eine Datei je Set-`.glb`: Skelett des Sets, Clips mit Name, Dauer und Spuren (Knochenname, Kanal, Schritt/linear,
   Zeiten, Werte). Version 1 speichert f32 unverändert, das Archiv komprimiert mit zstd (Frage 3).
 - **`events.toml` bleibt eine eigene Datei** (Frage 2). Der Loader liest sie neben dem Set wie heute

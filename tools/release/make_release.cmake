@@ -22,6 +22,11 @@ g7_step(${CMAKE_COMMAND} --preset package)
 g7_step(${CMAKE_COMMAND} --build --preset package --target gothar g7-cook g7_tests_package) # not every test
 g7_step(${CMAKE_COMMAND} --build --preset package --target g7_figures)
 g7_step(${CMAKE_COMMAND} --build --preset package --target g7_release_data)
+# Packages of earlier runs (other commits) would leave the test without a clear ZIP.
+file(GLOB _old "${_build}/release/Gothar-*.zip" "${_build}/release/Gothar-*.tar.gz")
+if(_old)
+    file(REMOVE ${_old})
+endif()
 g7_step(${CMAKE_CPACK_COMMAND} --config "${_build}/CPackConfig.cmake")
 file(GLOB _packages "${_build}/release/Gothar-*.zip" "${_build}/release/Gothar-*.tar.gz")
 list(LENGTH _packages _count)
