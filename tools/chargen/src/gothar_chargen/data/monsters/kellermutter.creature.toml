@@ -1,0 +1,359 @@
+# Creature "kellermutter" (F5, own work, dungeon boss 2026-11-23): the ancestral mother of the
+# Mauerkriecher - 5.5 m long, 2.4 m high: a huge pale brood sac (with a glowing weak spot on top,
+# dark chitin ribs over it) dragged behind an armoured forebody on four legs, two scythe arms,
+# a pincer head with a crown of spikes and small ember eyes. Lives in the hoard (at least 4 m
+# headroom, welt). Design: docs/design/monsters.md "Dungeon-Arten".
+# Arthropod plan (characters-pipeline §7.5): pelvis (middle of the forebody, carries pair 2),
+# spine_01 -> neck_01 -> head forwards, abdomen_01..03 backwards with the sac bone `sac` under
+# the last one, mandible_l/r, legs leg_1/2_upper/lower/foot_<s> (pair 1 on spine_01), scythes
+# arm_upper/lower_<s> -> claw_<s> on spine_01 (claw = the scythe blade); the rigid carrier `weak`
+# holds socket_weak and socket_glow (the glowing spot on the sac).
+# Built by `gothar-chargen creature kellermutter` (blender/build_creature.py, creature.py).
+#
+# Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. Sizes are
+# half axes.
+
+art = "kellermutter"
+material = "fur"
+voxel = 0.018
+smooth = 6
+ao = 0.7
+normal_size = 512
+normal_strength = 1.0
+triangles = 10000      # lod0 body (boss budget up to 12 k); rib plates, eyes and the spot add ~1 k
+lods = [1.0, 0.5, 0.25]
+texture = 1024
+seed = 97
+plate_bevel = 0.02
+eye_colour = "#4a2406"
+eye_glow = 1.0
+eye_glow_colour = "#ffa040"       # ember eyes and the glowing weak spot on the sac
+teeth_colour = "#1a1714"          # dark spikes of the crown
+
+[orientation]                # long, the head low in front: pelvis above root, pair 1 left/right
+up = ["root", "pelvis"]
+left = ["leg_1_foot_r", "leg_1_foot_l"]
+
+[sockets]
+socket_mouth = { parent = "head", length = 0.05 }
+socket_claw_l = { parent = "claw_l", length = 0.05 }    # tips of the scythes: hit points
+socket_claw_r = { parent = "claw_r", length = 0.05 }
+socket_weak = { parent = "weak", length = 0.05 }        # weak spot on the sac (engine: distance and angle)
+socket_glow = { parent = "weak", length = 0.08 }        # its glow (light)
+
+# --- rig (arthropod plan §7.5) ---
+
+[[bone]]
+name = "pelvis"
+head = [0, -0.30, 1.25]
+tail = [0, -0.80, 1.30]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0, -0.80, 1.30]
+tail = [0, -1.05, 1.45]
+
+[[bone]]
+name = "neck_01"
+parent = "spine_01"
+head = [0, -1.05, 1.45]
+tail = [0, -1.20, 1.50]
+
+[[bone]]
+name = "head"
+parent = "neck_01"
+head = [0, -1.20, 1.50]
+tail = [0, -1.62, 1.36]
+
+[[bone]]
+name = "mandible_l"
+parent = "head"
+mirror = true
+head = [0.18, -1.50, 1.30]
+tail = [0.07, -1.95, 1.18]
+
+[[bone]]
+name = "abdomen_01"
+parent = "pelvis"
+head = [0, -0.30, 1.25]
+tail = [0, 0.40, 1.25]
+
+[[bone]]
+name = "abdomen_02"
+parent = "abdomen_01"
+head = [0, 0.40, 1.25]
+tail = [0, 1.40, 1.15]
+
+[[bone]]
+name = "abdomen_03"
+parent = "abdomen_02"
+head = [0, 1.40, 1.15]
+tail = [0, 2.50, 0.95]
+
+[[bone]]
+name = "sac"                 # the brood sac hanging under the last segment (rotation only)
+parent = "abdomen_03"
+head = [0, 1.80, 1.00]
+tail = [0, 1.90, 0.30]
+
+[[bone]]
+name = "weak"                # rigid carrier of the weak spot on top of the sac (not animated)
+parent = "abdomen_02"
+head = [0, 1.15, 1.55]
+tail = [0, 1.15, 1.92]
+
+[[bone]]
+name = "arm_upper_l"
+parent = "spine_01"
+mirror = true
+head = [0.55, -0.95, 1.60]
+tail = [0.95, -1.55, 2.35]
+
+[[bone]]
+name = "arm_lower_l"
+parent = "arm_upper_l"
+mirror = true
+head = [0.95, -1.55, 2.35]
+tail = [0.92, -2.00, 1.95]
+
+[[bone]]
+name = "claw_l"              # the scythe blade
+parent = "arm_lower_l"
+mirror = true
+head = [0.92, -2.00, 1.95]
+tail = [0.80, -2.50, 1.10]
+
+[[bone]]
+name = "leg_1_upper_l"
+parent = "spine_01"
+mirror = true
+head = [0.50, -0.85, 1.05]
+tail = [1.40, -1.00, 1.60]
+
+[[bone]]
+name = "leg_1_lower_l"
+parent = "leg_1_upper_l"
+mirror = true
+head = [1.40, -1.00, 1.60]
+tail = [1.75, -1.10, 0.10]
+
+[[bone]]
+name = "leg_1_foot_l"
+parent = "leg_1_lower_l"
+mirror = true
+head = [1.75, -1.10, 0.10]
+tail = [1.80, -1.12, 0.0]
+
+[[bone]]
+name = "leg_2_upper_l"
+parent = "pelvis"
+mirror = true
+head = [0.55, -0.25, 1.00]
+tail = [1.45, -0.10, 1.55]
+
+[[bone]]
+name = "leg_2_lower_l"
+parent = "leg_2_upper_l"
+mirror = true
+head = [1.45, -0.10, 1.55]
+tail = [1.80, 0.05, 0.10]
+
+[[bone]]
+name = "leg_2_foot_l"
+parent = "leg_2_lower_l"
+mirror = true
+head = [1.80, 0.05, 0.10]
+tail = [1.85, 0.06, 0.0]
+
+# --- colour zones ---
+
+[zone.chitin]                # dark brown-grey armour of the forebody and head
+colour = "#3d362e"
+colour2 = "#4b4238"
+variation = 0.14
+spots = 0.3
+stripe_colour = "#26211c"
+relief = 1.2
+wrinkles = 0.2
+
+[zone.sac]                   # pale, waxy brood sac with dark veins
+colour = "#b7a88e"
+colour2 = "#a3957d"
+variation = 0.12
+wrinkles = 0.9
+spots = 0.35
+stripe_colour = "#6f4f45"
+belly = 0.1
+relief = 1.3
+
+[zone.rib]                   # dark chitin ribs over the sac
+colour = "#2e2924"
+colour2 = "#3a332c"
+variation = 0.12
+spots = 0.2
+
+[zone.dark]                  # legs, scythes, mandibles, crown
+colour = "#24201c"
+colour2 = "#302a24"
+variation = 0.1
+spots = 0.15
+stripe_colour = "#4a4038"
+
+[zone.mouth]
+colour = "#3a1a14"
+variation = 0.06
+
+# --- the brood sac ---
+
+[[shape]]
+kind = "ellipsoid"
+zone = "sac"
+center = [0, 1.40, 1.00]
+size = [1.10, 1.50, 0.95]
+
+[[shape]]
+kind = "ellipsoid"           # sagging underside
+zone = "sac"
+center = [0, 1.70, 0.55]
+size = [0.85, 1.05, 0.50]
+
+[[shape]]
+kind = "plate_shell"         # dark chitin ribs across the top of the sac
+zone = "rib"
+center = [0, 1.40, 1.00]
+size = [1.10, 1.50, 0.95]
+rows = [-0.95, -0.45, 0.05, 0.55, 1.05]
+angles = [-62, -31, 0, 31, 62]
+plate = [0.27, 0.065, 0.04]
+sink = 0.01
+tilt = 8
+jitter = 0.08
+seed = 9
+bones = ["abdomen_01", "abdomen_02", "abdomen_03"]
+
+[[shape]]
+kind = "eye"                 # the glowing weak spot on top of the sac
+bone = "weak"
+center = [0, 1.15, 1.93]
+size = [0.30, 0.28, 0.06]
+
+# --- forebody, head ---
+
+[[shape]]
+kind = "ellipsoid"           # armoured forebody
+zone = "chitin"
+center = [0, -0.50, 1.25]
+size = [0.62, 0.62, 0.55]
+
+[[shape]]
+kind = "ellipsoid"           # waist to the sac
+zone = "chitin"
+center = [0, 0.15, 1.20]
+size = [0.45, 0.35, 0.42]
+
+[[shape]]
+kind = "ridge"               # spiny back ridge of the forebody
+zone = "dark"
+points = [[0, -0.95, 1.80], [0, -0.50, 1.82], [0, -0.05, 1.68]]
+sizes = [[0.05, 0.06, 0.10], [0.06, 0.07, 0.14], [0.05, 0.06, 0.08]]
+count = 6
+
+[[shape]]
+kind = "ellipsoid"           # head
+zone = "chitin"
+center = [0, -1.25, 1.50]
+size = [0.38, 0.35, 0.33]
+
+[[shape]]
+kind = "cut_box"             # mouth under the pincers
+zone = "mouth"
+center = [0, -1.55, 1.32]
+size = [0.12, 0.08, 0.012]
+
+[[shape]]
+kind = "eye"                 # small ember eyes
+mirror = true
+bone = "head"
+center = [0.22, -1.52, 1.62]
+size = [0.05, 0.04, 0.05]
+
+[[shape]]
+kind = "capsule"             # pincers
+zone = "dark"
+mirror = true
+a = [0.18, -1.48, 1.32]
+b = [0.10, -1.80, 1.24]
+r = 0.07
+r2 = 0.05
+
+[[shape]]
+kind = "tooth"
+bone = "mandible_l"
+mirror = true
+a = [0.10, -1.80, 1.24]
+b = [0.03, -1.97, 1.18]
+r = 0.05
+
+[[shape]]
+kind = "tooth"               # crown of spikes
+bone = "head"
+a = [0, -1.15, 1.78]
+b = [0, -1.05, 2.40]
+r = 0.08
+
+[[shape]]
+kind = "tooth"
+bone = "head"
+mirror = true
+a = [0.18, -1.15, 1.74]
+b = [0.34, -1.08, 2.22]
+r = 0.07
+
+[[shape]]
+kind = "tooth"
+bone = "head"
+mirror = true
+a = [0.30, -1.25, 1.66]
+b = [0.52, -1.22, 2.00]
+r = 0.06
+
+# --- scythe arms ---
+
+[[shape]]
+kind = "chain"
+zone = "chitin"
+mirror = true
+points = [[0.55, -0.95, 1.60], [0.95, -1.55, 2.35], [0.92, -2.00, 1.95]]
+radii = [0.14, 0.11, 0.09]
+
+[[shape]]
+kind = "chain"               # the scythe blade, thinning to a hook
+zone = "dark"
+mirror = true
+points = [[0.92, -2.00, 1.95], [0.88, -2.30, 1.55], [0.80, -2.50, 1.10]]
+radii = [0.08, 0.05, 0.025]
+
+[[shape]]
+kind = "ellipsoid"           # flat inner edge of the blade
+zone = "dark"
+mirror = true
+center = [0.87, -2.22, 1.55]
+size = [0.03, 0.16, 0.30]
+rotate = [-30, 0, 0]
+
+# --- legs ---
+
+[[shape]]
+kind = "chain"
+zone = "dark"
+mirror = true
+points = [[0.50, -0.85, 1.05], [1.40, -1.00, 1.60], [1.75, -1.10, 0.10], [1.80, -1.12, 0.01]]
+radii = [0.11, 0.09, 0.05, 0.03]
+
+[[shape]]
+kind = "chain"
+zone = "dark"
+mirror = true
+points = [[0.55, -0.25, 1.00], [1.45, -0.10, 1.55], [1.80, 0.05, 0.10], [1.85, 0.06, 0.01]]
+radii = [0.11, 0.09, 0.05, 0.03]

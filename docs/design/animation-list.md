@@ -470,6 +470,28 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `kristallkrebs/t_grab` | Packt mit der rechten Schere und hält fest (§7.5) | – | hit_start, hit_end, grab, release | K | platzhalter-K |
 | `kristallkrebs/t_reflect` | Stemmt sich, die Kristalle flammen auf und werfen den Zauber zurück (§7.5) | – | reflect, sound:kristallkrebs_chime | K | platzhalter-K |
 
+### Kellermutter (`kellermutter`, Dungeon-Boss, eigene Art, Gliederfüßer §7.5, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `kellermutter/s_idle` | Der Brutsack atmet, die Sensen zucken, der gekrönte Kopf pendelt | – | – | K | platzhalter-K |
+| `kellermutter/s_walk` | Schweres Kriechen auf vier Beinen, der Sack schleift nach | ✓ 0,6 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine)) |
+| `kellermutter/s_run` | Vorschnellen, Sensen erhoben | ✓ 1,5 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine)) |
+| `kellermutter/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `kellermutter/t_attack_1` | Beide Sensen hoch und vorn niederhacken (Treffpunkte `socket_claw_l/r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `kellermutter/t_attack_2` | Kopf stößt vor, die Zangen schnappen (`socket_mouth`) | – | hit_start, hit_end | K | platzhalter-K |
+| `kellermutter/t_scythe_l`, `t_scythe_r` | Eine Sense fegt von der Seite herein (§7.5) | – | hit_start, hit_end | K | platzhalter-K |
+| `kellermutter/t_hit` | Treffer: weicht zurück, der Sack bebt | – | – | K | platzhalter-K |
+| `kellermutter/t_stagger` | Schwerer Treffer an der Schwachstelle: der Vorderleib knickt ein, der Sack zittert (§7.5) | – | sound:kellermutter_hit | K | platzhalter-K |
+| `kellermutter/t_die` | Bricht vornüber zusammen, die Sensen fallen (das Leuchten erlischt, engine) | – | – | K | platzhalter-K |
+| `kellermutter/s_eat`, `s_sleep` | Reißt mit den Zangen am Boden / über dem Hort zusammengekauert (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `kellermutter/s_dormant` | Über dem Hort zusammengekauert (`zs_dormant`, #422), Sensen angelegt | – | – | K | platzhalter-K |
+| `kellermutter/t_wake` | Richtet sich auf, entfaltet die Sensen | – | sound:kellermutter_threaten | K | platzhalter-K |
+| `kellermutter/t_threaten` | Bäumt sich auf, Sensen weit gespreizt, kreischt | – | – | K | platzhalter-K |
+| `kellermutter/t_call` | Wirft den Kopf zurück und ruft die Brut aus den Wänden (§7.5) | – | spawn_brood, sound:kellermutter_call | K | platzhalter-K |
+| `kellermutter/t_rage` | Phasenwechsel: schlägt um sich, Sensen klirren, der Sack wogt (§7.5) | – | sound:kellermutter_threaten, sound:kellermutter_call | K | platzhalter-K |
+| `kellermutter/s_guard` | Über dem Schatz: tief, Sensen bereit, Kopf dreht sich (Schleife, §7.5) | – | – | K | platzhalter-K |
+
 ## Prio C – später
 
 Akrobatik-Varianten, weitere Gangarten-Varianten (erste vier siehe oben), zusätzliche

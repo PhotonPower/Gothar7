@@ -46,7 +46,8 @@ def test_packaged_sets_are_valid():
     ]
     assert packaged_sets(monsters=False) == humans
     monsters = [
-        "bergleu", "gatterbock", "glemsmahr", "keiler", "kristallkrebs", "laufvogel",
+        "bergleu", "gatterbock", "glemsmahr", "keiler", "kellermutter", "kristallkrebs",
+        "laufvogel",
         "mauerkriecher", "quaderbuckel", "schinder", "wolf",
     ]  # fmt: skip
     assert packaged_sets(monsters=True) == monsters
@@ -315,7 +316,7 @@ def test_real_list_is_consistent_with_files():
     # combat (M11), magic (M12, with the human transformation), torch (F6), gait variants,
     # 7 monsters (own wolf 15 with the transformation, keiler/laufvogel 12, schinder 15,
     # quaderbuckel 17, glemsmahr/bergleu 19, gatterbock 14, mauerkriecher 18,
-    # kristallkrebs 16)
+    # kristallkrebs 16, kellermutter 20)
     expected = [
         (27, 27),
         (48, 48),
@@ -337,6 +338,7 @@ def test_real_list_is_consistent_with_files():
         (14, 14),
         (18, 18),
         (16, 16),
+        (20, 20),
     ]
     assert counts == expected
     # without the monsters folder the wolf rows are reported as out of date

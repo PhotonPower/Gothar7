@@ -150,3 +150,16 @@ leuchten (Licht am Socket `socket_glow`; es verrät ihn), zwei große Scheren, a
   splittern die Kristalle (Beute, Werte in Lua).
 - **Technik:** Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5), 49 Knochen; Kapsel quer; lod0 6896 Dreiecke;
   Beschreibung `data/monsters/kristallkrebs.creature.toml`.
+
+### Kellermutter (Boss, gebaut 2026-11-23)
+Stammmutter der Mauerkriecher, 5,5 m lang, 2,46 m hoch: riesiger blasser Brutsack mit dunklen Chitinrippen und einer
+orange leuchtenden Schwachstelle obenauf, gepanzerter Vorderleib auf vier Beinen, zwei Fangarme wie Sensen, Zangenkopf
+mit Stachelkrone und Glutaugen. Braucht einen Hort mit mindestens 4 m Raumhöhe (welt).
+- **Verhalten (für engine):** kauert über dem Hort (`s_dormant`, `zs_dormant`) und erwacht (`t_wake`). Phase 1:
+  Sensenhiebe (`t_attack_1` beidseitig, `t_scythe_l/r` von der Seite) und Zangenstoß (`t_attack_2`), der Brutsack ist
+  geschützt. Phase 2 (unter zwei Dritteln, Übergang `t_rage`): ruft Mauerkriecher aus den Wänden (`t_call`, Event
+  `spawn_brood`). Phase 3 (unter einem Drittel): schleppt sich zum Schatz und schützt ihn (`s_guard`), die Schwachstelle
+  (`socket_weak`, Licht an `socket_glow`) ist offen; ein schwerer Treffer dort spielt `t_stagger`. Gehen 0,6, Vorschnellen
+  1,5 m/s.
+- **Technik:** Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5) mit `sac`; 35 Knochen; lod0 11744 Dreiecke
+  (Boss-Budget bis 12 k); Beschreibung `data/monsters/kellermutter.creature.toml`.
