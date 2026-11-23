@@ -28,13 +28,13 @@ enum class GlowArm : u8
 struct GlowLook
 {
     Vec3 color{0.0f};
-    GlowArm arm = GlowArm::Right; ///< `arm` = "right", "left" or "both"
-    f32 hand = 0.0f;              ///< hand and forearm of the casting arm
-    f32 rim = 0.0f;               ///< the outline (fresnel)
-    f32 fill = 0.0f;              ///< the whole figure, flat
-    f32 perStage = 0.0f;          ///< added to hand and rim per charged stage (as a factor: 0.5 = half again)
-    f32 seconds = 0.0f;           ///< flashes: how long it fades out
-    f32 pulse = 0.0f;             ///< states: pulses per second (0: steady)
+    GlowArm arm = GlowArm::Left; ///< `arm` = "left" (the rune's and the mag clips' hand), "right" or "both"
+    f32 hand = 0.0f;             ///< hand and forearm of the casting arm
+    f32 rim = 0.0f;              ///< the outline (fresnel)
+    f32 fill = 0.0f;             ///< the whole figure, flat
+    f32 perStage = 0.0f;         ///< added to hand and rim per charged stage (as a factor: 0.5 = half again)
+    f32 seconds = 0.0f;          ///< flashes: how long it fades out
+    f32 pulse = 0.0f;            ///< states: pulses per second (0: steady)
 };
 
 /// data/spell_fx.toml, version 1: [glow.<spell>], [hit.<damage type>], [state.burning], [state.asleep].
@@ -55,7 +55,7 @@ struct FigureGlow
     Vec3 hand{0.0f};
     Vec3 rim{0.0f};
     Vec3 fill{0.0f};
-    GlowArm arm = GlowArm::Right; ///< the arm `hand` lights
+    GlowArm arm = GlowArm::Left; ///< the arm `hand` lights
     /// Bones whose vertex weights count as "hand" (bit i of word i / 32): the engine fills them for `arm`.
     std::array<u32, 4> handBones{};
 
