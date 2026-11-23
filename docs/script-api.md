@@ -626,6 +626,9 @@ Schickt ein Ereignis an das Vob `target` (Dungeon D1), wie es ein Auslöser tut:
 ### `set_weather(name: string, minutes?: number) -> boolean`
 Setzt die Wetterlage (data/weather.toml), mit Übergang über `minutes` Spielminuten (ohne: sofort); der Ablauf geht von ihr aus weiter. false bei unbekannter Lage.
 
+### `switch_state(name: string) -> {type, on, found, spent} | nil`
+Der Zustand des Schalters `name` (Dungeon D3, Mob-Typen lever und wall_button): Typ, ob ein Hebel umgelegt ist, ob ein versteckter Schalter gefunden (einmal benutzt) ist und ob ein einmaliger Knopf verbraucht ist; für eine Trittplatte (Trigger mit `plate`) `{type = "plate", on = gedrückt}`; nil, wenn es nichts davon mit diesem Namen gibt.
+
 ### `teleport(start: string) | teleport(x: number, y: number, z: number)`
 Setzt die Spielfigur (bzw. ohne Spielfigur die Kamera) auf einen Startpunkt der Welt oder an eine Position in Metern.
 

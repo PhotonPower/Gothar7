@@ -316,11 +316,20 @@ Json worldToJson(const WorldState& w)
     Json mobs = Json::array();
     for (const MobState& m : w.mobs)
     {
-        mobs.push_back(Json{{"vob", m.vob},
-                            {"definition", m.definition},
-                            {"locked", m.locked},
-                            {"open", m.open},
-                            {"contents", m.contents}});
+        Json mob = Json{{"vob", m.vob},
+                        {"definition", m.definition},
+                        {"locked", m.locked},
+                        {"open", m.open},
+                        {"contents", m.contents}};
+        if (m.found)
+        {
+            mob["found"] = true; // dungeon D3, additive
+        }
+        if (m.spent)
+        {
+            mob["spent"] = true;
+        }
+        mobs.push_back(std::move(mob));
     }
     Json npcs = Json::array();
     for (const NpcState& n : w.npcs)
@@ -488,6 +497,14 @@ bool readWorld(Reader& r, const Json& j, const std::string& at, WorldState& out)
         ok = read(r, mj, "vob", mk, m.vob) && read(r, mj, "definition", mk, m.definition) &&
              read(r, mj, "locked", mk, m.locked) && read(r, mj, "open", mk, m.open) &&
              read(r, mj, "contents", mk, m.contents);
+        for (const auto& [key, flag] : {std::pair<const char*, bool*>{"found", &m.found},
+                                        std::pair<const char*, bool*>{"spent", &m.spent}})
+        {
+            if (ok && mj.contains(key))
+            {
+                ok = read(r, mj, key, mk, *flag);
+            }
+        }
         w.mobs.push_back(std::move(m));
     }
     const Json* npcs = ok ? field(r, j, "npcs", at) : nullptr;

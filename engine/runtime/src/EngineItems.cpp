@@ -18,9 +18,10 @@ namespace g7
 {
 namespace
 {
-constexpr f32 kEyeHeight = 1.6f;       ///< focus is measured from here above the hero's feet
-constexpr f32 kPickupFallback = 0.35f; ///< seconds into the pickup without an event: the item is taken
-constexpr f32 kPickupTimeout = 3.0f;   ///< a pickup animation that never ends releases the hero anyway
+constexpr f32 kEyeHeight = 1.6f;           ///< focus is measured from here above the hero's feet
+constexpr f32 kPickupFallback = 0.35f;     ///< seconds into the pickup without an event: the item is taken
+constexpr f32 kPickupTimeout = 3.0f;       ///< a pickup animation that never ends releases the hero anyway
+constexpr f32 kHiddenFocusDistance = 1.2f; ///< dungeon D3: a hidden switch is in focus from this close (eye)
 /// Creature ids in the focus share one number space with vob ids: bit 62 is set in neither world ids (small)
 /// nor runtime ids (kRuntimeVobIdBase = bit 63 plus a counter).
 constexpr u64 kCreatureFocusBit = 1ull << 62;
@@ -297,6 +298,10 @@ std::string Engine::focusName(gameplay::FocusKind kind, u64 id) const
         // The name of its Mob definition (part C), else the definition's id.
         if (const auto it = m_mobs.find(id); it != m_mobs.end())
         {
+            if (it->second.hidden && !it->second.found)
+            {
+                return uiText("UI_LOOSE_STONE"); // dungeon D3: what it is shows once it was used
+            }
             return contentText(it->second.name);
         }
         const entt::entity e = m_scene.findById(world::VobId{id});
@@ -348,6 +353,11 @@ void Engine::updateFocus()
                     point = 0.5f * (instance.bounds.min + instance.bounds.max);
                     break;
                 }
+            }
+            if (const auto it = m_mobs.find(vob.id.value);
+                it != m_mobs.end() && it->second.hidden && glm::length(point - eye) > kHiddenFocusDistance)
+            {
+                return; // dungeon D3: a hidden switch is seen from close by only
             }
             m_focusCandidates.push_back({vob.id.value, gameplay::FocusKind::Mob, point});
         });

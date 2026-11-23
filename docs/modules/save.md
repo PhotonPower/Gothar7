@@ -108,7 +108,8 @@ struct WorldDelta { std::vector<RemovedVob> removed;          // Datei-Vobs, die
                     u64 nextVobId, nextRuntimeVobId; };
 WorldDelta diffWorld(const world::WorldFile& base, const world::WorldFile& now);
 world::WorldFile applyDelta(world::WorldFile base, const WorldDelta&, usize* dropped = nullptr);
-struct MobState { u64 vob; std::string definition; bool locked, open; std::map<std::string, u32> contents; };
+struct MobState { u64 vob; std::string definition; bool locked, open; std::map<std::string, u32> contents;
+                  bool found, spent; };  // dungeon D3: versteckte Schalter gefunden, einmalige Knöpfe verbraucht (JSON nur wenn true)
 enum class Life { Alive, Down, Dead, Vanished };
 struct NpcState { std::string name, instance; Vec3 position; f32 yaw; std::optional<gameplay::CharacterState>
                   character; std::string routine; Life life; f32 downSeconds; bool pickpocketed, summoned;

@@ -156,7 +156,8 @@ void Engine::bindEventFunctions()
 {
     using script::Value;
     script::ScriptVm& vm = *m_scripts;
-    bindMoverFunctions(); // dungeon D2
+    bindMoverFunctions();  // dungeon D2
+    bindSwitchFunctions(); // dungeon D3
     vm.bind({"send", "send(target: string, action?: string, source?: string)",
              "Schickt ein Ereignis an das Vob `target` (Dungeon D1), wie es ein Auslöser tut: `action` ist "
              "toggle, open, close, on, off, wake, trigger (Vorgabe), lock oder unlock; `source` der Absender "

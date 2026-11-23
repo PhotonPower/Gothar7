@@ -40,6 +40,8 @@ constexpr std::array<std::pair<Mover::Kind, std::string_view>, 3> kMoverKinds = 
     {{Mover::Kind::Gate, "gate"},
      {Mover::Kind::SecretWall, "secret_wall"},
      {Mover::Kind::Trapdoor, "trapdoor"}}};
+constexpr std::array<std::pair<Plate::Weight, std::string_view>, 3> kPlateWeights = {
+    {{Plate::Weight::Any, "any"}, {Plate::Weight::Creature, "creature"}, {Plate::Weight::Player, "player"}}};
 constexpr std::array<std::pair<Mover::Crush, std::string_view>, 2> kMoverCrush = {
     {{Mover::Crush::Stop, "stop"}, {Mover::Crush::Damage, "damage"}}};
 
@@ -490,6 +492,33 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
     {
         return events.error();
     }
+    if (t.contains("plate"))
+    {
+        const Json& p = t["plate"];
+        const std::string pat = at + ".plate";
+        if (!p.is_object())
+        {
+            return r.error(pat, "must be an object");
+        }
+        Plate plate;
+        auto weight = readChoice(r, p, "weight", pat, kPlateWeights);
+        if (!weight)
+        {
+            return weight.error();
+        }
+        plate.weight = weight.value();
+        if (p.contains("release_action"))
+        {
+            const std::string release =
+                p["release_action"].is_string() ? p["release_action"].get<std::string>() : "";
+            if (!isEventAction(release))
+            {
+                return r.error(pat, "'release_action' must be an action like 'action'");
+            }
+            plate.releaseAction = release;
+        }
+        trigger.plate = std::move(plate);
+    }
     if (t.contains("target"))
     {
         // The formerly reserved single target (M4): a vob name counts as one of `targets`, an id is kept.
@@ -702,6 +731,23 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
                 return r.error(std::format("{}.components.mob.open", where), "must be true or false");
             }
             vob.mob.open = mob["open"].get<bool>();
+        }
+        const std::string mat = std::format("{}.components.mob", where);
+        if (auto events = readEventTargets(r, mob, mat, vob.mob.targets, vob.mob.action); !events)
+        {
+            return events.error();
+        }
+        for (const auto& [key, flag] : {std::pair<const char*, bool*>{"once", &vob.mob.once},
+                                        std::pair<const char*, bool*>{"hidden", &vob.mob.hidden}})
+        {
+            if (mob.contains(key))
+            {
+                if (!mob[key].is_boolean())
+                {
+                    return r.error(std::format("{}.{}", mat, key), "must be true or false");
+                }
+                *flag = mob[key].get<bool>();
+            }
         }
     }
     if (vob.type == VobType::Item)
@@ -1486,6 +1532,15 @@ Json vobJson(const WorldFileVob& vob)
             trigger["targets"] = tv.targets; // with its action, only when there are targets
             trigger["action"] = tv.action;
         }
+        if (tv.plate)
+        {
+            Json plate = Json{{"weight", nameOf(kPlateWeights, tv.plate->weight)}};
+            if (!tv.plate->releaseAction.empty())
+            {
+                plate["release_action"] = tv.plate->releaseAction;
+            }
+            trigger["plate"] = std::move(plate);
+        }
         if (!tv.changeWorld.empty())
         {
             trigger["changeWorld"] = Json{{"world", tv.changeWorld}, {"start", tv.changeStart}};
@@ -1502,6 +1557,19 @@ Json vobJson(const WorldFileVob& vob)
         if (vob.mob.open)
         {
             v["components"]["mob"]["open"] = true; // after definition, only when true (welt: byte-equal)
+        }
+        if (!vob.mob.targets.empty())
+        {
+            v["components"]["mob"]["targets"] = vob.mob.targets; // switches (dungeon D3)
+            v["components"]["mob"]["action"] = vob.mob.action;
+        }
+        if (vob.mob.once)
+        {
+            v["components"]["mob"]["once"] = true;
+        }
+        if (vob.mob.hidden)
+        {
+            v["components"]["mob"]["hidden"] = true;
         }
     }
     if (vob.type == VobType::Item)

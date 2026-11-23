@@ -364,6 +364,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [ ] Schloss, Keller und Dungeon im Geist der Grid-Dungeon-Crawler (Auftrag Projektinhaber 2026-11-23): Mechanik-Plan `docs/modules/dungeon.md` (Teile D1–D8, freigegeben 2026-11-23, Falltür ohne Fallschaden), Bau welt
   - D1 Ereignis-Netz umgesetzt (`targets`/`action`, Relais, Lua `send`/`dungeon_event`/`relay_state`, Spielstand)
   - D2 bewegte Teile umgesetzt (`mover`: Gatter, Geheimwand, Falltür; Kollision bewegt sich mit, Einklemmen hält an und fährt zurück, Fallen-Gatter 20 Schaden, gesperrte Wegnetz-Kanten, Lua `mover_state`, Spielstand)
+  - D3 Schalter und Platten umgesetzt (Mob-Typen `lever`, `wall_button` mit `hidden`/`once`, Trittplatten mit Gewicht inkl. Gegenständen, Lua `switch_state`, Spielstand; Clips `mob/lever/t_use`, `mob/button/t_press` von figuren offen)
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 
