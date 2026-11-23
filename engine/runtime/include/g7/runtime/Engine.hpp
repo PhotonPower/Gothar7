@@ -240,6 +240,12 @@ struct Creature;       // an animal (EngineCreatures.cpp)
 /// The socket the hero holds a rune or scroll in: the left hand, the casting hand of the mag clips (M17,
 /// figuren #409; contract in animation.md).
 inline constexpr std::string_view kMagicSocket = "socket_hand_l";
+/// Where the rune sits in kMagicSocket: between the fingertips of the grip pose mag/s_grip (figuren #425,
+/// animation-list.md "Griff"), metres in the socket's space; after it half a turn about the rune's long axis
+/// (+Y) turns its sign away from the palm.
+inline constexpr Vec3 kRuneGripOffset{-0.0935f, 0.0155f, -0.052f};
+/// translate(kRuneGripOffset) * rotateY(pi): the rune's transform in kMagicSocket.
+[[nodiscard]] Mat4 runeGripTransform() noexcept;
 
 struct EngineConfig
 {
@@ -709,6 +715,8 @@ public:
     void detachFromPlayer(std::string_view socket);
     /// World transform of a socket in the pose of the last fixed step (nullopt: no figure or socket).
     [[nodiscard]] std::optional<Mat4> playerSocketTransform(std::string_view socket) const;
+    /// World transform of the model held at a socket, its attachment offset included (nullopt: none held).
+    [[nodiscard]] std::optional<Mat4> playerAttachmentTransform(std::string_view socket) const;
     /// The hero's head turns towards this world point (within limits); nullopt: straight ahead.
     void setPlayerLookTarget(std::optional<Vec3> target);
     /// Face: "angry", "friendly", "fear", "pain", "sleep" or "" (neutral); false for an unknown name.

@@ -447,7 +447,9 @@ Plan A–E freigegeben, Entscheidungen des Projektinhabers Z1–Z9 (2026-10-06, 
 - **Ziehen (Z4):**
   - „1“ (`draw_magic`) zieht die Rune bzw. Spruchrolle des zuletzt gewählten Runenplatzes, sonst des ersten belegten; Waffenmodus 4, Graph-Wert `weapon` 6.
   - Die Tasten 4–9 (`rune_1` … `rune_6`) wählen einen Runenplatz. Ist nichts gezogen, ziehen sie ihn; mit gezogener Magie wechselt die Rune sofort in der Hand. Ist eine Waffe gezogen, steckt die Taste sie zuerst weg.
-  - Die Rune liegt in der linken Hand (`socket_hand_l`, mit der die mag-Clips wirken; M17, figuren #409). Ziel-Lock wie beim Bogen (30 m); auch ein verzauberter Schläfer bleibt Ziel.
+  - Die Rune liegt in der linken Hand (`socket_hand_l`, mit der die mag-Clips wirken; M17, figuren #409), zwischen den
+    Fingerkuppen der Griffhaltung `mag/s_grip` (figuren #425): Versatz `kRuneGripOffset` (−0,0935; 0,0155; −0,052) m im
+    Socket, dann eine halbe Drehung um ihre lange Achse, das Zeichen nach außen (`runeGripTransform`). Ziel-Lock wie beim Bogen (30 m); auch ein verzauberter Schläfer bleibt Ziel.
 - **Wirken (Z5):**
   - Strg + vor bzw. linke Maustaste gehalten: Ein Zauber mit `invest` lädt auf, je `Magic.charge_seconds` (1 s) eine Stufe, soweit das Mana reicht. Loslassen wirkt; einfache Zauber wirken sofort.
   - Mana und Rolle werden beim Loslassen abgezogen. Die letzte Rolle weg: Die Hände sind leer.
