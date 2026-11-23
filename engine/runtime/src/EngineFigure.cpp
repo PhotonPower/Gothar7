@@ -82,7 +82,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
         {
             return manifest.error();
         }
-        auto built = assembleFigureParts(manifest.value());
+        auto built = assembleFigureParts(manifest.value(), &figure->partHandles);
         if (!built)
         {
             return Error{std::format("{}: {}", path, built.error().message)};
@@ -98,7 +98,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
         {
             G7_PROFILE_SCOPE("figure parts");
             model = m_assets->load<asset::SkinnedModelData>(preferCookedFigure(m_vfs, path, true));
-            m_assets->waitAll();
+            m_assets->wait(model); // only this figure's data, not what the world streams meanwhile
         }
         m_figureLoadTimes.parts += msSince(partsStart);
         if (model.failed() || !model.get())
@@ -106,6 +106,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
             return Error{std::format("{}: {}", path, model.error())};
         }
         dataPtr = model.get();
+        figure->partHandles = {model};
         // A figure built by g7_figures: its gait from the manifest beside it (figures/<name>.figure.toml).
         if (path.ends_with(".glb"))
         {
@@ -132,7 +133,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
             setHandles.push_back(
                 m_assets->load<asset::AnimationSetData>(preferCookedFigure(m_vfs, set, false)));
         }
-        m_assets->waitAll();
+        m_assets->wait(std::span<const asset::Handle<asset::AnimationSetData>>(setHandles));
     }
     m_figureLoadTimes.sets += msSince(setsStart);
     std::vector<const asset::AnimationSetData*> sets;
@@ -163,6 +164,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
         return Error{std::format("{} with {}: {}", graphPath, path, animator.error().message)};
     }
     figure->animator = std::move(animator).value();
+    figure->setHandles = std::move(setHandles);
     figure->startState = graph.value().start;
     figure->inverseBind = data.inverseBind;
     figure->modelSpace.resize(figure->skeleton.size());
@@ -257,7 +259,9 @@ Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, 
     return figure;
 }
 
-Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureManifest& manifest)
+Result<asset::SkinnedModelData>
+Engine::assembleFigureParts(const asset::FigureManifest& manifest,
+                            std::vector<asset::Handle<asset::SkinnedModelData>>* keep)
 {
     // Parts through the asset manager (cached: swapping back and forth loads nothing twice).
     std::vector<asset::Handle<asset::SkinnedModelData>> handles;
@@ -269,7 +273,7 @@ Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureM
             handles.push_back(m_assets->load<asset::SkinnedModelData>(
                 preferCookedFigure(m_vfs, std::string(kCharacters) + part.path, true)));
         }
-        m_assets->waitAll();
+        m_assets->wait(std::span<const asset::Handle<asset::SkinnedModelData>>(handles));
     }
     m_figureLoadTimes.parts += msSince(partsStart);
     std::vector<asset::FigurePart> parts;
@@ -281,6 +285,10 @@ Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureM
             return Error{std::format("{}: {}", path, handles[i].error())};
         }
         parts.push_back({manifest.parts[i].role, path, handles[i].get()});
+    }
+    if (keep != nullptr)
+    {
+        *keep = handles;
     }
     G7_PROFILE_SCOPE("figure assemble");
     const f64 assembleStart = platform::nowSeconds();
@@ -318,7 +326,7 @@ Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedMo
     }
     {
         G7_PROFILE_SCOPE("figure images");
-        m_assets->waitAll();
+        m_assets->wait(std::span<const asset::Handle<asset::TextureData>>(images));
     }
     m_figureLoadTimes.images += msSince(imagesStart);
     const f64 uploadStart = platform::nowSeconds();
@@ -376,7 +384,7 @@ Result<void> Engine::rebuildPlayerFigure(const asset::FigureManifest& manifest)
     {
         return Error{"no animated player figure"};
     }
-    auto data = assembleFigureParts(manifest);
+    auto data = assembleFigureParts(manifest, &m_figure->partHandles);
     if (!data)
     {
         return data.error();
