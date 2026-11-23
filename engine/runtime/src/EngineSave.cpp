@@ -54,6 +54,7 @@ Result<save::WorldState> Engine::captureCurrentWorld()
     }
     world::WorldFile now = world::captureWorld(m_scene, m_worldFile.name);
     storeDoors(now);
+    storeMovers(now, false); // their state goes to WorldState.movers
     state.delta = save::diffWorld(base.value(), now);
     state.delta.nextRuntimeVobId = m_scene.nextRuntimeVobId();
     // Dropped and inserted items (runtime vobs): as item vobs of the file, with their runtime ids.
@@ -87,6 +88,15 @@ Result<save::WorldState> Engine::captureCurrentWorld()
     }
     std::sort(state.mobs.begin(), state.mobs.end(),
               [](const auto& a, const auto& b) { return a.vob < b.vob; });
+    state.events = m_events.snapshot();   // dungeon D1
+    for (const auto& [vob, m] : m_movers) // dungeon D2: only those away from their initial state
+    {
+        const f32 initial = m.mover.open ? 1.0f : 0.0f;
+        if (m.course.position != initial || m.course.target != initial)
+        {
+            state.movers.push_back({vob, m.course.position, m.course.target > 0.5f});
+        }
+    }
     for (const auto& c : m_creatures)
     {
         const std::string instance = instanceOf(c->species);
@@ -196,6 +206,35 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
         G7_LOG_WARN("save", "{}: {}", state.path, raised.error().message);
     }
     m_triggers.setSpentTriggers(std::set<u64>(state.spentTriggers.begin(), state.spentTriggers.end()));
+    for (const std::string& relay : m_events.restore(state.events))
+    {
+        G7_LOG_WARN("save", "{}: relay {} not in the world any more", state.path, relay);
+    }
+    for (auto& [vob, m] : m_movers) // not in the list: as in the world file
+    {
+        const f32 initial = m.mover.open ? 1.0f : 0.0f;
+        if (m.course.position != initial || m.course.target != initial)
+        {
+            m.course = {initial, initial};
+            m.blocks = world::moverBlocks(m.mover.kind, m.course);
+            placeMover(vob, m);
+        }
+    }
+    for (const save::MoverState& saved : state.movers)
+    {
+        const auto it = m_movers.find(saved.vob);
+        if (it == m_movers.end())
+        {
+            G7_LOG_WARN("save", "{}: mover {} not in the world any more", state.path, saved.vob);
+            continue;
+        }
+        MoverRuntime& m = it->second;
+        m.course.position = std::clamp(saved.position, 0.0f, 1.0f);
+        m.course.target = saved.open ? 1.0f : 0.0f;
+        m.blocks = world::moverBlocks(m.mover.kind, m.course);
+        placeMover(saved.vob, m);
+    }
+    updateMoverBlocks();
     for (const save::MobState& saved : state.mobs)
     {
         const auto it = m_mobs.find(saved.vob);

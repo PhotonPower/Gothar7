@@ -71,7 +71,9 @@
 #include <g7/ui/Strings.hpp>
 #include <g7/ui/UiResources.hpp>
 #include <g7/world/DayCycle.hpp>
+#include <g7/world/EventNet.hpp>
 #include <g7/world/GameTime.hpp>
+#include <g7/world/Movers.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/Terrain.hpp>
 #include <g7/world/Triggers.hpp>
@@ -188,6 +190,18 @@ struct MobInfo
     bool open = false; ///< chest lid up, door open
     std::vector<gameplay::ItemStack> contents;
     Vec3 position{0.0f}; ///< of the vob in the world
+};
+
+/// A moving part of the world (dungeon D2: gate, secret wall, trapdoor), as the engine reports it.
+struct MoverInfo
+{
+    std::string name;
+    world::Mover::Kind kind = world::Mover::Kind::Gate;
+    bool open = false;   ///< where it goes (or stands): open
+    f32 position = 0.0f; ///< 0 closed .. 1 open
+    bool moving = false;
+    bool blocks = false; ///< closes the waynet edges through it now
+    u32 crushes = 0;     ///< times it stopped on someone in its way
 };
 
 /// What the hero does at a mob (keys, or the lockpick window's buttons).
@@ -584,6 +598,15 @@ public:
     [[nodiscard]] const world::TriggerSystem& triggers() const noexcept { return m_triggers; }
     /// Who the camera is for the triggers.
     static constexpr world::VobId kCameraProbe{~0ull};
+    /// The event net of the world (dungeon D1): relays, events on their way.
+    [[nodiscard]] const world::EventNet& events() const noexcept { return m_events; }
+    /// Sends `action` to the vob named `target` (Lua `send`): handled in the next fixed step. Doors
+    /// (open/close/toggle/trigger/lock/unlock) and relays act; every event for a non-relay reaches Lua as
+    /// dungeon_event(target, action, source). Errors: an unknown action.
+    [[nodiscard]] Result<void> sendEvent(std::string_view target, std::string_view action,
+                                         std::string_view source = "lua");
+    /// A moving part (dungeon D2) by vob name, nullopt if there is none.
+    [[nodiscard]] std::optional<MoverInfo> moverInfo(std::string_view name) const;
     /// Shader programs (with hot-reload), or nullptr without rendering.
     [[nodiscard]] render::ShaderLibrary* shaders() noexcept { return m_shaders.get(); }
     /// The game window, or nullptr when headless / before init().
@@ -1216,6 +1239,48 @@ private:
     void finishTelekinesis(); ///< a save meanwhile: it lands at once
     void placeTelekinesisItem();
     void bindTelekinesisFunctions();
+    // Event net (EngineEvents.cpp, dungeon D1)
+    void bindEventFunctions();
+    /// Fills the event net from the world's triggers and relays (after the mobs); warns about cycles and
+    /// targets that name no vob.
+    void rebuildEventNet();
+    /// A trigger was entered: its action to its targets.
+    void triggerTargets(const world::Vob& vob, const world::TriggerVolume& volume);
+    /// An event for a vob that is no relay: doors, movers, the Mob's on_event, Lua dungeon_event.
+    void deliverEvent(const world::NetEvent& event);
+    // Moving parts (EngineMovers.cpp, dungeon D2)
+    struct MoverRuntime
+    {
+        std::string name;
+        world::Mover mover;
+        Transform closed;          ///< local transform as loaded (the closed pose)
+        world::MoverMotion motion; ///< from the model's bounds and the file
+        world::MoverCourse course;
+        AABB modelBounds;    ///< model space; empty (min > max) without a model
+        bool blocks = false; ///< blocks waynet edges now
+        u32 crushes = 0;
+        std::optional<std::vector<std::pair<u32, u32>>> edges; ///< waynet edges through it, worked out once
+    };
+    /// After the mobs: every vob with components.mover; a rebuild (editor) keeps where they stand.
+    void rebuildMovers();
+    void fixedUpdateMovers(f32 seconds);
+    /// Sets the mover going to open or closed (sound_move); no-op when it goes there already.
+    void moveMover(u64 id, MoverRuntime& m, bool open);
+    void bindMoverFunctions();
+    /// Puts the mover at its course's pose: scene, drawing, collision.
+    void placeMover(u64 id, const MoverRuntime& m);
+    /// The local transform of vob `id` changed: its instances and its collision follow (doors, movers).
+    void placeVob(u64 id, entt::entity e, const Transform& local);
+    /// The waynet's blocked edges from every mover that blocks now.
+    void updateMoverBlocks();
+    /// An event for a mover: true if `target` is one.
+    bool moverEvent(const world::NetEvent& event);
+    /// Movers are written closed, not where they stand; `withState`: with where they go as
+    /// components.mover.open (the editor saves the world), else as in the file (a save game keeps them in
+    /// WorldState.movers).
+    void storeMovers(world::WorldFile& file, bool withState) const;
+    /// A trap's harm (a gate marked crush = "damage"): hit points off, no protection; as a blow otherwise.
+    void trapHit(u32 targetId, i32 damage, std::string_view source);
     /// A spell's harm on a creature or the hero (fire bolt, area): its damage minus protection, min 5 (as
     /// R3).
     /// `burn`: it sets the target burning (decision B); `reaction`: the target staggers (not for burning).
@@ -1456,6 +1521,8 @@ private:
     void approachMob(f32 seconds);
     void fixedUpdateMobs(f32 seconds);
     void swingDoors(f32 seconds);
+    /// Starts a door swinging open or shut (the hero's use, events).
+    static void swingDoor(MobRuntime& m, bool open);
     // Using items, pickpocketing (EngineUse.cpp)
     struct ItemUse
     {
@@ -1772,6 +1839,7 @@ private:
     f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
     bool m_sunEnabled = true;        // debug: sun and moon light off
     world::TriggerSystem m_triggers; // fed with the camera until the player exists (M5)
+    world::EventNet m_events;        // dungeon D1: triggers -> relays -> doors, Lua
     std::string m_worldPath;
     world::WorldFile m_worldFile; // the loaded world without its vobs (terrain, waynet ... for capturing)
     std::map<std::string, save::WorldState>
@@ -2053,7 +2121,8 @@ private:
     void storeDoors(world::WorldFile& file) const; // doors closed in the file, components.mob.open
     std::optional<MobUse> m_mobUse;
     std::vector<std::string> m_mobEvents;         // "open"/"close" of the hero's figure this step
-    std::unordered_map<u64, MobBody> m_mobBodies; // collision of mob vobs (doors turn theirs)
+    std::unordered_map<u64, MobBody> m_mobBodies; // collision of mob and mover vobs (doors turn theirs)
+    std::map<u64, MoverRuntime> m_movers;         // dungeon D2, by vob id (in order: deterministic)
     std::optional<ItemUse> m_itemUse;
     std::optional<Document> m_document;
     std::optional<PendingPickpocket> m_pickpocket;

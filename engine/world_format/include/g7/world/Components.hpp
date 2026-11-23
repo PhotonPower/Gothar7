@@ -8,9 +8,14 @@
 #include <g7/core/Transform.hpp>
 #include <g7/core/Types.hpp>
 
+#include <array>
 #include <compare>
 #include <functional>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace g7::world
 {
@@ -93,6 +98,103 @@ struct SoundEmitter
     Vec2 delay{5.0f, 15.0f}; ///< min, max seconds between plays (Random)
 };
 
+/// Actions of the event net (dungeon.md "Ereignisse und Ziele"): what a trigger or relay sends to its
+/// targets. `trigger` is the plain "fire" (a door toggles, a relay counts an input).
+inline constexpr std::string_view kEventTrigger = "trigger";
+inline constexpr std::array<std::string_view, 9> kEventActions = {
+    "toggle", "open", "close", "on", "off", "wake", "trigger", "lock", "unlock"};
+
+[[nodiscard]] constexpr bool isEventAction(std::string_view action) noexcept
+{
+    for (const std::string_view a : kEventActions)
+    {
+        if (a == action)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// The opposite action (open <-> close, on <-> off, lock <-> unlock); the others are their own opposite.
+[[nodiscard]] constexpr std::string_view inverseEventAction(std::string_view action) noexcept
+{
+    constexpr std::array<std::pair<std::string_view, std::string_view>, 6> kPairs = {{{"open", "close"},
+                                                                                      {"close", "open"},
+                                                                                      {"on", "off"},
+                                                                                      {"off", "on"},
+                                                                                      {"lock", "unlock"},
+                                                                                      {"unlock", "lock"}}};
+    for (const auto& [a, b] : kPairs)
+    {
+        if (a == action)
+        {
+            return b;
+        }
+    }
+    return action;
+}
+
+/// False for the "off" side (close, off, lock): a relay input goes off, a pressed plate is released.
+[[nodiscard]] constexpr bool isPositiveEventAction(std::string_view action) noexcept
+{
+    return action != "close" && action != "off" && action != "lock";
+}
+
+/// A relay (vob type "relay", like ZenGin's zCTriggerList; dungeon.md): collects events sent to it and passes
+/// `action` on to `targets`. Invisible, no volume.
+struct Relay
+{
+    enum class Mode : u8
+    {
+        Any,   ///< every event goes on (an "off" event as the opposite action)
+        All,   ///< on once every input is on, the opposite once one goes off again
+        Count, ///< after `count` events (the "on" side), then counts anew
+    };
+    Mode mode = Mode::Any;
+    u32 count = 1;       ///< Count: events needed
+    f32 delay = 0.0f;    ///< seconds until what it sends arrives
+    bool once = false;   ///< fires one time only
+    bool invert = false; ///< sends the opposite action (a plate holds a gate open)
+    std::vector<std::string> targets;
+    std::string action = std::string(kEventTrigger);
+};
+
+/// A moving part (dungeon D2, `components.mover` at a mesh or mob vob, like ZenGin's zCMover): a portcullis,
+/// a secret wall or a trapdoor. It moves between its closed pose (the vob's transform in the file) and its
+/// open pose when events reach it (open, close, toggle, trigger; on/off as open/close); its collision moves
+/// with it. Each kind brings its motion, worked out from the model's bounds; `offset`, `axis` and `angle`
+/// replace parts of it.
+struct Mover
+{
+    enum class Kind : u8
+    {
+        Gate,       ///< slides up by the model's height (a portcullis)
+        SecretWall, ///< slides back (-Z) by the model's depth
+        Trapdoor,   ///< turns 90 degrees about the local +X axis through the origin: its leaf (+Z) goes down
+    };
+    /// What happens when someone is in the way while it closes (dungeon.md questions 2 and 3).
+    enum class Crush : u8
+    {
+        Stop,   ///< it stops and opens again, no harm
+        Damage, ///< a trap: 20 damage to whoever is in the way, then it opens again
+    };
+    Kind kind = Kind::Gate;
+    bool open = false;          ///< open from the start
+    f32 seconds = 2.0f;         ///< for the whole way (the default depends on the kind, see kMoverSeconds)
+    std::optional<Vec3> offset; ///< metres in the vob's frame (turned, not scaled): replaces the slide
+    std::optional<Vec3> axis;   ///< in the vob's frame through its origin: replaces the turn axis
+    std::optional<f32> angle;   ///< degrees about `axis` (trapdoor: 90)
+    std::string soundMove;      ///< played where it is when it starts moving
+    std::string soundStop;      ///< ... when it arrives
+    Crush crush = Crush::Stop;
+
+    bool operator==(const Mover&) const = default;
+};
+
+/// Seconds for the way when the file gives none: gate, secret wall, trapdoor.
+inline constexpr std::array<f32, 3> kMoverSeconds = {2.0f, 3.0f, 0.6f};
+
 /// A volume that reports who enters and leaves it (TriggerSystem). Callbacks name script functions;
 /// the engine passes the events on (log in M4, Lua from M7).
 struct TriggerVolume
@@ -115,9 +217,13 @@ struct TriggerVolume
     std::string onLeave;
     Filter filter = Filter::Player;
     bool once = false; ///< reports the first enter only (and the matching leave)
-    /// Reserved (read and written, not used yet): a vob this trigger acts on - by id or by name.
+    /// Event net (dungeon.md D1): when the player enters, `action` goes to every vob named in `targets`
+    /// (doors, relays, later movers; other names reach Lua as dungeon_event). The old `target` (a name) is
+    /// read as one target.
+    std::vector<std::string> targets;
+    std::string action = std::string(kEventTrigger);
+    /// The old reserved `target` given as a vob id (written back as it was; sends like a name target).
     VobId targetId;
-    std::string targetName;
     /// Level change (Gothic: change-level trigger): when the player enters, the engine loads this world
     /// (VFS path of a .g7world) and puts the player on its start point `changeStart`. Empty = none.
     std::string changeWorld;

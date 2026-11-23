@@ -64,7 +64,8 @@ TEST_CASE("Vob types: start, sound, trigger and mob are read, spawned, captured 
     CHECK(gate.onEnter == "GATE_ENTER");
     CHECK(gate.filter == TriggerVolume::Filter::Player); // default
     CHECK_FALSE(gate.once);
-    CHECK(gate.targetName == "DOOR_01");
+    CHECK(gate.targets == std::vector<std::string>{"DOOR_01"}); // the old single target (M4)
+    CHECK(gate.action == "trigger");
     const TriggerVolume& well = file.vobs[4].trigger;
     CHECK(well.shape == TriggerVolume::Shape::Sphere);
     CHECK(well.radius == 2.0f);
@@ -86,7 +87,7 @@ TEST_CASE("Vob types: start, sound, trigger and mob are read, spawned, captured 
     const std::string written = writeWorldFile(captureWorld(scene, "types"));
     CHECK(writeWorldFile(parse(written)) == written);
     CHECK(written.find(R"("components":{"mob":{"definition":"BEDHIGH"}})") != std::string::npos);
-    CHECK(written.find(R"("target":"DOOR_01")") != std::string::npos);
+    CHECK(written.find(R"("targets":["DOOR_01"],"action":"trigger")") != std::string::npos);
     CHECK(written.find(R"("target":7)") != std::string::npos);
     CHECK(
         written.find(

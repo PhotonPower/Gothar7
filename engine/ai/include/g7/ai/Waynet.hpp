@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace g7::ai
@@ -58,8 +59,14 @@ public:
     [[nodiscard]] std::optional<u32> findFreepoint(std::string_view name) const;
     [[nodiscard]] const std::vector<u32>& neighbours(u32 point) const { return m_edges[point]; }
 
-    /// A* from point to point; the points of the path including both ends, nullopt if unconnected.
+    /// A* from point to point; the points of the path including both ends, nullopt if unconnected. Blocked
+    /// edges are not used.
     [[nodiscard]] std::optional<std::vector<u32>> path(u32 from, u32 to) const;
+    /// Edges no one may walk now (dungeon D2: a closed gate, an open trapdoor), in either direction; replaces
+    /// the ones set before.
+    void setBlockedEdges(std::vector<std::pair<u32, u32>> edges);
+    [[nodiscard]] bool blocked(u32 a, u32 b) const noexcept;
+    [[nodiscard]] const std::vector<std::pair<u32, u32>>& blockedEdges() const noexcept { return m_blocked; }
     /// The nearest point one can walk to straight from `position` (up to `maxDistance`), nullopt if none.
     [[nodiscard]] std::optional<u32> nearest(const Vec3& position, const WalkableLine& walkable = {},
                                              f32 maxDistance = 1e9f) const;
@@ -73,5 +80,6 @@ private:
     std::vector<Point> m_points;
     std::vector<Freepoint> m_freepoints;
     std::vector<std::vector<u32>> m_edges;
+    std::vector<std::pair<u32, u32>> m_blocked; ///< sorted, the smaller index first
 };
 } // namespace g7::ai

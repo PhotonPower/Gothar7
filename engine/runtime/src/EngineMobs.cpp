@@ -151,6 +151,14 @@ void Engine::rebuildMobs()
     m_mobs = std::move(mobs);
 }
 
+void Engine::swingDoor(MobRuntime& m, bool open)
+{
+    m.open = open;
+    m.doorFrom = m.doorAngle;
+    m.doorTo = open ? kDoorOpenAngle : 0.0f;
+    m.doorTime = 0.0f;
+}
+
 void Engine::storeDoors(world::WorldFile& file) const
 {
     // Doors are written closed with their state (components.mob.open), not at the angle they stand at.
@@ -582,10 +590,7 @@ void Engine::fixedUpdateMobs(f32 seconds)
             use.eventFired = true;
             if (m.type == "door")
             {
-                m.open = !m.open;
-                m.doorFrom = m.doorAngle;
-                m.doorTo = m.open ? kDoorOpenAngle : 0.0f;
-                m.doorTime = 0.0f;
+                swingDoor(m, !m.open);
             }
             else
             {
@@ -702,32 +707,37 @@ void Engine::swingDoors(f32 seconds)
         }
         Transform local = *std::as_const(m_scene).get<Transform>(e);
         local.rotation = m.closedRotation * glm::angleAxis(m.doorAngle, Vec3(0.0f, 1.0f, 0.0f));
-        m_scene.setTransform(e, local);
-        m_scene.updateTransforms();
-        const Mat4 world = m_scene.worldMatrix(e);
-        for (SceneInstance& instance : m_instances)
+        placeVob(id, e, local);
+    }
+}
+
+void Engine::placeVob(u64 id, entt::entity e, const Transform& local)
+{
+    m_scene.setTransform(e, local);
+    m_scene.updateTransforms();
+    const Mat4 world = m_scene.worldMatrix(e);
+    for (SceneInstance& instance : m_instances)
+    {
+        if (instance.vob.value == id)
         {
-            if (instance.vob.value == id)
-            {
-                instance.transform = world;
-                instance.bounds = boundsOf(instance.model->bounds, world);
-                m_cullGridDirty = true;
-            }
+            instance.transform = world;
+            instance.bounds = boundsOf(instance.model->bounds, world);
+            m_cullGridDirty = true;
         }
-        // The collision turns with it: the body is put in again at the new angle.
-        if (const auto body = m_mobBodies.find(id); body != m_mobBodies.end() && m_physics.valid())
+    }
+    // The collision moves with it: the body is put in again where it is now.
+    if (const auto body = m_mobBodies.find(id); body != m_mobBodies.end() && m_physics.valid())
+    {
+        m_physics.remove(body->second.body);
+        Vec3 position;
+        Quat rotation;
+        Vec3 scale;
+        decomposeMatrix(world, position, rotation, scale);
+        auto added =
+            m_physics.addStatic(body->second.shape, position, rotation, scale, physics::Layer::World, id);
+        if (added)
         {
-            m_physics.remove(body->second.body);
-            Vec3 position;
-            Quat rotation;
-            Vec3 scale;
-            decomposeMatrix(world, position, rotation, scale);
-            auto added =
-                m_physics.addStatic(body->second.shape, position, rotation, scale, physics::Layer::World, id);
-            if (added)
-            {
-                body->second.body = added.value();
-            }
+            body->second.body = added.value();
         }
     }
 }
