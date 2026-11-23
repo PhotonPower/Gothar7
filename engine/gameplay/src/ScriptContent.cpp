@@ -167,7 +167,8 @@ void defineContentKinds(script::ScriptVm& vm)
              {"range", Type::Number, false, 0.0, 100.0},
              {"speed", Type::Number, false, 0.0, 50.0},
              {"lift", Type::Number, false, 0.0, 10.0},
-             {"carry", Type::Number, false, 0.0, 10.0}, // largest item extent in metres
+             {"carry", Type::Number, false, 0.0, 10.0},        // largest item extent in metres
+             {"blocked_drop", Type::Number, false, 0.0, 60.0}, // seconds blocked until it falls; 0: never
          },
          false});
 

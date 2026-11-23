@@ -9,8 +9,8 @@ nummeriert.
 | Teil | PR | Stand |
 |---|---|---|
 | A – Versions- und Build-Info | #380 | umgesetzt |
-| B – Absturzberichte | dieser Teil-B-PR | umgesetzt |
-| C – Paket | – | offen |
+| B – Absturzberichte | #382 | umgesetzt |
+| C – Paket | dieser Teil-C-PR | umgesetzt |
 
 Abweichungen bei A:
 - Die Build-Info entsteht nicht beim Konfigurieren, sondern **bei jedem Build** (`cmake/BuildInfo.cmake` als Ziel
@@ -29,6 +29,36 @@ Abweichungen bei B:
   erscheint in der Sitzung, in der die Berichte neu sind; danach gelten sie als gesehen.
 - Ein Stapelüberlauf wird unter Windows erkannt, der Bericht kann dann aber ausfallen: Der Filter läuft auf dem
   übergelaufenen Stapel. Nachbessern nur bei Bedarf (eigener Thread für den Bericht).
+
+Abweichungen bei C:
+- Die Lizenzprüfung steckt in `g7-cook --check-licences <assets> [<CREDITS.txt> <Versionszeile>]` (C++,
+  `tools/asset-cooker/src/Licences.cpp`, Tests in `tests/cook`), nicht in einem Python-Skript: CI braucht so keinen
+  neuen Job. Sie prüft:
+  - Jede Datei unter `assets/source` hat in `assets/licenses.toml` eine Quelle; der erste Treffer gilt, `*` innerhalb
+    eines Ordners, `**` über Ordner hinweg.
+  - Deren Lizenzarten dürfen ausgeliefert werden.
+  - Lizenzarten mit Namensnennung haben eine `credit`-Zeile.
+  - Jede Quelle steht mit ihrer `md`-Wendung in `LICENSES.md`.
+  - Jede Lizenz, die eine „Lizenz“-Spalte in `LICENSES.md` nennt, hat eine Art in `licenses.toml`. Erkannt werden CC0,
+    CC BY 4.0, Datenlizenz Deutschland, ODbL, OFL, Public Domain, eigene Arbeit (des Projekts bzw. des
+    Projektinhabers) und die **CMU-Nutzungsbedingungen** (figuren #369; der `LICENSES.md`-Eintrag darf bis zum
+    Merge fehlen, `optional_md`). Ein ctest-Fall prüft das Repository bei jedem Lauf.
+- `CREDITS.txt` ordnet die Pflichtangaben nach `credit_order` (LGL, OSM, Schriften, CMU) und nennt danach die
+  freiwilligen Dank-Zeilen.
+- Die Skripte liegen im Paket als Ordner `scripts/` neben dem Spiel, nicht in `data.g7pak`: Der Cooker kennt nur
+  eine Quelle. Die Release-Engine liest sie dort ohnehin (`mountScripts`). Sie sind eigene Arbeit (MIT).
+- `config/engine.toml` mountet `data/*.g7pak` (Priorität 20). In der Entwicklung fehlt der Ordner, dann geschieht
+  nichts.
+- `gothar` kennt `--user-dir`. Der Paket-Test und die ctest-Aufrufe von `gothar` legen damit nichts im echten
+  Benutzerordner an; `SDL_GetPrefPath` würde ihn sonst beim Start erzeugen.
+- Der Paket-Test ist ein eigenes Testprogramm (`g7_tests_package`, Label `package`). Ohne gebautes Paket
+  (`G7_PACKAGE` leer) prüft er nichts. Er entpackt nur in `runTempDir()`.
+- Der Tag-Abgleich (Entscheidung 5) steckt in `tools/release/release_data.cmake`: Ein Tag `vX.Y.Z` auf HEAD muss
+  `project(VERSION)` entsprechen, sonst bricht der Paketbau ab.
+- Der Menüpunkt „Mitwirkende“ (Entscheidung 10) erscheint, wenn `CREDITS.txt` neben dem Spiel liegt, also im Paket,
+  und zeigt sie als Schriftstück.
+- CI: `.github/workflows/release.yml` läuft auf Tags `v*` (oder von Hand). Es baut das ZIP (Windows) bzw. `.tar.gz`
+  (Linux, ohne Zusage) und bewahrt Paket und `.pdb` 90 Tage als Artefakte auf. Veröffentlicht wird nichts.
 
 ## Ausgangslage
 - **Bauen:** `release`-Preset und CI-Job `release (ubuntu-24.04)` (optimierter Build, Tests ohne GPU, `--smoke-test`).

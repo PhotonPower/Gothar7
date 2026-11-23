@@ -45,6 +45,10 @@ SpellInfo spellInfo(const script::Instance& spell)
     s.speed = static_cast<f32>(spell.fields["speed"].asNumber(0.0));
     s.lift = static_cast<f32>(spell.fields["lift"].asNumber(0.0));
     s.carry = static_cast<f32>(spell.fields["carry"].asNumber(0.0));
+    if (spell.fields["blocked_drop"].isNumber())
+    {
+        s.blockedDrop = static_cast<f32>(spell.fields["blocked_drop"].asNumber());
+    }
     if (const script::Table* sounds = spell.fields["sounds"].asTable())
     {
         for (const auto& [role, name] : sounds->fields)

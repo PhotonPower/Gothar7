@@ -1,7 +1,7 @@
 # docs/script-api.md must match what the engine generates from its script bindings (M7).
 # Usage: cmake -DGOTHAR=<exe> -DOUT=<generated.md> -DDOC=<docs/script-api.md> -P check_script_api.cmake
 execute_process(
-    COMMAND "${GOTHAR}" --smoke-test "--script-api=${OUT}" "--crash-dir=${OUT}.crash_reports"
+    COMMAND "${GOTHAR}" --smoke-test "--script-api=${OUT}" "--crash-dir=${OUT}.crash_reports" "--user-dir=${OUT}.user"
     TIMEOUT 60
     RESULT_VARIABLE rc
     OUTPUT_VARIABLE out

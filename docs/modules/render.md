@@ -1039,7 +1039,6 @@ MeshRenderer::drawSkinned(..., const FigureGlow& glow = {});  Engine::figureGlow
   GPU `test_spell_glow.cpp` (Hand nur auf ihrem Knochen, Fläche überall, ohne bytegleich),
   `tests/runtime/test_engine_spell_glow.cpp` (Feuerpfeil: orange Hand beim Wirken, Treffer 0,3 s).
   Prüfbilder `C:\GotharData\review\m17-glow`.
-- **Runen-Modell Telekinese:** bis figuren eines liefert, das der Schlaf-Rune (`items/magic.lua`, Parameter `model`).
 
 ### Teil V – Verzerrung
 - **Was:** ein Versatz-Puffer (RG16F, halbe Auflösung), in den „Verzerrer“ geschrieben werden; der Post-Pass liest

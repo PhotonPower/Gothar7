@@ -512,6 +512,7 @@ def run(
     rules: dict[str, Any],
     movement: Path,
     half_extent: float,
+    data_dir: Path | None = None,
 ) -> dict[str, Any]:
     """The whole walkthrough as one report (``generated/begehung.json``)."""
     import json
@@ -523,7 +524,9 @@ def run(
     grid = game_grid(world, assets)
     area = box(-half_extent, -half_extent, half_extent, half_extent)
     bodies = load_bodies(world, assets, grid, ch)
-    streets = json.loads((work / "streets.json").read_text(encoding="utf-8"))["streets"]
+    from gothar_worldgen.geo.rural import load_street_doc
+
+    streets = load_street_doc(work, data_dir)["streets"]  # W6: the rural ways outside the wall
     buildings = json.loads((work / "buildings.json").read_text(encoding="utf-8"))
     buildings = buildings.get("buildings", buildings.get("entries", []))
     gen = world_path.parent / "generated"
