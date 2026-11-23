@@ -84,7 +84,7 @@ Result<save::WorldState> Engine::captureCurrentWorld()
     state.spentTriggers.assign(m_triggers.spentTriggers().begin(), m_triggers.spentTriggers().end());
     for (const auto& [vob, m] : m_mobs)
     {
-        state.mobs.push_back({vob, m.definition, m.locked, m.open, m.contents});
+        state.mobs.push_back({vob, m.definition, m.locked, m.open, m.contents, m.found, m.spent});
     }
     std::sort(state.mobs.begin(), state.mobs.end(),
               [](const auto& a, const auto& b) { return a.vob < b.vob; });
@@ -235,6 +235,7 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
         placeMover(saved.vob, m);
     }
     updateMoverBlocks();
+    m_platesPrimed = false; // dungeon D3: plates take what lies on them quietly
     for (const save::MobState& saved : state.mobs)
     {
         const auto it = m_mobs.find(saved.vob);
@@ -247,6 +248,8 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
         MobRuntime& m = it->second;
         m.locked = saved.locked;
         m.open = saved.open;
+        m.found = saved.found; // dungeon D3
+        m.spent = saved.spent;
         m.contents.clear();
         for (const auto& [item, count] : saved.contents)
         {

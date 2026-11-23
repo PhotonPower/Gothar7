@@ -231,7 +231,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
     (ein Ziel ohne Vob wird beim Laden nur protokolliert, Lua darf solche Namen nutzen).
 - **Lua:** `send(target, action?, source?)` (Vorgabe `trigger`, `"lua"`; wirkt im nächsten Schritt),
   `relay_state(name)` → `{mode, count, counted, inputs, spent}` oder nil. `mover_state` siehe D2, `switch_state`
-  folgt mit D3.
+  D3.
 - **Spielstand:** `save::WorldState.events` (`world::EventNetSnapshot`): Relais, die nicht im Anfangszustand sind
   (gezählt, Eingänge an, verbraucht), und Ereignisse unterwegs mit ihrer Restzeit; im JSON `relays` und `events`, nur
   wenn nicht leer. Ältere Stände ohne die Felder laden den Anfangszustand. Verlassene Welten behalten den Zustand wie
@@ -278,12 +278,41 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 - Offen für später: Kinder eines bewegten Vobs bewegen sich nicht mit; Gegenstände auf einer Falltür fallen erst mit
   D3/D4 (Platten, Fall als Weltwechsel).
 
+## Stand D3 – Schalter und Trittplatten (umgesetzt)
+- **Format:** Hebel und Knöpfe sind Mobs der neuen Typen `lever` und `wall_button` (`data/mobs.toml`, je ein Platz
+  „front“ 0,6 bzw. 0,55 m vor der Wand, Blick zur Wand). `components.mob` bekommt `targets`, `action` (Vorgabe
+  `trigger`), `once`, `hidden`. Platten sind Trigger mit `components.trigger.plate` = `weight` (`any` Vorgabe,
+  `creature`, `player`) und `release_action`. Felder und Schreibweise: world.md.
+- **Hebel:** Benutzen wie jedes Mob (M8). Im Moment des Clips (Ereignis `use`, ohne Clip zur Hälfte der Ersatzzeit)
+  wird er umgelegt (`open` = umgelegt, gespeichert, in der Datei als Anfangsstellung erlaubt) und schickt `action`;
+  zurückgelegt das Gegenstück (`open` ↔ `close`, `toggle`/`trigger` noch einmal). Absender ist der Vob-Name.
+- **Knopf:** schickt bei jedem Druck `action`; mit `once` nur beim ersten, danach Meldung „Er rührt sich nicht
+  mehr.“ (`UI_SWITCH_STUCK`).
+- **Versteckt** (`hidden`, Frage 5): im Fokus nur, wenn der Fokuspunkt (Mitte des Modells) höchstens **1,2 m** vom
+  Auge entfernt ist; Name „Loser Stein“ (`UI_LOOSE_STONE`), bis er einmal benutzt wurde (`found`, gespeichert).
+  Danach der Name seiner Mob-Definition.
+- **Trittplatte:** gedrückt, solange etwas im Volumen ist (geprüft 5 cm über den Füßen bzw. über dem tiefsten Punkt
+  eines Gegenstands): `player` nur der Held; `creature` dazu NPCs und Tiere (auch tote, die liegen dort);
+  `any` dazu jeder Gegenstand in der Welt (abgelegt, fallen gelassen, per Telekinese gelandet). Das erste Gewicht
+  schickt `action`, das letzte, das geht, `release_action` bzw. das Gegenstück. Beim Betreten schickt eine Platte
+  **nicht** wie ein gewöhnlicher Trigger; `onEnter`/`onLeave` gelten weiter. Nach dem Laden einer Welt oder eines
+  Spielstands nimmt der erste Schritt das Gewicht still an (es wird nichts geschickt).
+- **Lua:** `switch_state(name)` → Hebel/Knopf `{type, on, found, spent}`, Platte `{type = "plate", on}`, sonst nil;
+  `Engine::platePressed(name)`.
+- **Spielstand:** `MobState.found`/`spent` (JSON nur wenn true, additiv); die Hebelstellung ist das vorhandene
+  `open`; Platten ergeben sich aus dem Gewicht.
+- **Offen:** die Clips `mob/lever/t_use` und `mob/button/t_press` (figuren; bis dahin Ersatzzeit); sichtbare
+  Hebelstellung und das Absenken der Platte um 2 cm (eigenes Modell bzw. kleiner `mover`, später mit welts Modellen).
+- **Tests:** `tests/world/test_switches.cpp` (Format), `tests/runtime/test_engine_switches.cpp` auf
+  `testworld/switches.g7world` (Hebel hin und zurück, versteckter einmaliger Knopf mit Fokus aus der Nähe, Platte mit
+  Held und Apfel, Platte nur für den Helden, Spielstand).
+
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
 | **D1** Netz ✔ | `targets`/`action`, Relais, Lua `send`/`dungeon_event`, Speichern der Relais | mittel |
 | **D2** Mover ✔ | Gatter, Geheimwand, Falltür; Kollision mit; Klemmen (`crush`); Speichern | mittel |
-| **D3** Schalter und Platten | Mob-Typen `lever`, `wall_button` (versteckt), Platte mit Gewicht inkl. Items; figuren-Clips | mittel |
+| **D3** Schalter und Platten ✔ | Mob-Typen `lever`, `wall_button` (versteckt), Platte mit Gewicht inkl. Items; figuren-Clips | mittel |
 | **D4** Teleporter und Fall | Teleport in der Welt und in andere Ebenen, Fall als Weltwechsel mit Geschwindigkeit, Abblenden | mittel |
 | **D5** Nischen und Türen | `niche`, Tür-Ereignisse, `no_pick`, `one_way` | klein |
 | **D6** Monster | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |

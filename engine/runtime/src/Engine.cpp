@@ -493,6 +493,7 @@ bool Engine::runFrame()
         fixedUpdateItemUse(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateMobs(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateMovers(static_cast<f32>(m_fixedStep.step())); // dungeon D2
+        fixedUpdatePlates();                                     // dungeon D3
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
         m_particles.update(static_cast<f32>(m_fixedStep.step())); // effects (M12)
         fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
@@ -1185,6 +1186,7 @@ Result<void> Engine::instantiateScene()
     rebuildWorldItems();
     rebuildMobs();
     rebuildMovers();   // dungeon D2
+    rebuildPlates();   // dungeon D3
     rebuildEventNet(); // dungeon D1: after the mobs (doors are targets)
     m_lights.clear();
     m_daylightLights.clear();
@@ -1372,9 +1374,10 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
             {
                 requestWorldChange(volume->changeWorld, volume->changeStart);
             }
-            if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr)
+            if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr && !volume->plate)
             {
-                triggerTargets(*m_scene.get<world::Vob>(e), *volume); // dungeon D1
+                triggerTargets(*m_scene.get<world::Vob>(e),
+                               *volume); // dungeon D1 (plates send on weight, D3)
             }
             if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr &&
                 !volume->owner.empty() && m_player.valid())
@@ -1469,6 +1472,7 @@ void Engine::unloadWorld()
     m_pickup.reset();
     m_mobs.clear();
     m_movers.clear();
+    m_plates.clear();
     m_mobUse.reset();
     m_mobBodies.clear();
     m_cullGridDirty = true;

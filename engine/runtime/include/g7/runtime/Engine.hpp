@@ -605,6 +605,8 @@ public:
     /// dungeon_event(target, action, source). Errors: an unknown action.
     [[nodiscard]] Result<void> sendEvent(std::string_view target, std::string_view action,
                                          std::string_view source = "lua");
+    /// Whether the pressure plate (a trigger with `plate`, dungeon D3) of that name is pressed.
+    [[nodiscard]] bool platePressed(std::string_view name) const;
     /// A moving part (dungeon D2) by vob name, nullopt if there is none.
     [[nodiscard]] std::optional<MoverInfo> moverInfo(std::string_view name) const;
     /// Shader programs (with hot-reload), or nullptr without rendering.
@@ -1182,6 +1184,13 @@ private:
         f32 doorFrom = 0.0f;
         f32 doorTo = 0.0f;
         f32 doorTime = -1.0f; ///< 0..1 while swinging, -1: still
+        // Switches (dungeon D3, types lever and wall_button): `open` is a lever's position.
+        std::vector<std::string> targets;
+        std::string action;
+        bool once = false;   ///< a button that works one time
+        bool hidden = false; ///< focus from close by, a loose stone until found
+        bool found = false;  ///< a hidden one was used once
+        bool spent = false;  ///< a once-button was pressed
     };
     struct MobUse
     {
@@ -1279,6 +1288,20 @@ private:
     /// components.mover.open (the editor saves the world), else as in the file (a save game keeps them in
     /// WorldState.movers).
     void storeMovers(world::WorldFile& file, bool withState) const;
+    // Switches and plates (EngineSwitches.cpp, dungeon D3)
+    /// A lever or wall button was used (the clip's moment): its action (a lever thrown back: the opposite) to
+    /// its targets; a spent once-button only says so.
+    void useSwitch(world::VobId vob, MobRuntime& m);
+    struct PlateRuntime
+    {
+        bool pressed = false;
+    };
+    /// Every trigger with a plate; a rebuild keeps whether they are pressed, the next step settles it
+    /// quietly.
+    void rebuildPlates();
+    /// Pressed while the hero, a creature or (weight any) an item is in it; a change sends to the targets.
+    void fixedUpdatePlates();
+    void bindSwitchFunctions();
     /// A trap's harm (a gate marked crush = "damage"): hit points off, no protection; as a blow otherwise.
     void trapHit(u32 targetId, i32 damage, std::string_view source);
     /// A spell's harm on a creature or the hero (fire bolt, area): its damage minus protection, min 5 (as
@@ -2123,6 +2146,8 @@ private:
     std::vector<std::string> m_mobEvents;         // "open"/"close" of the hero's figure this step
     std::unordered_map<u64, MobBody> m_mobBodies; // collision of mob and mover vobs (doors turn theirs)
     std::map<u64, MoverRuntime> m_movers;         // dungeon D2, by vob id (in order: deterministic)
+    std::map<u64, PlateRuntime> m_plates;         // dungeon D3, by trigger vob id
+    bool m_platesPrimed = false;                  // false: the next plate step takes the weight quietly
     std::optional<ItemUse> m_itemUse;
     std::optional<Document> m_document;
     std::optional<PendingPickpocket> m_pickpocket;

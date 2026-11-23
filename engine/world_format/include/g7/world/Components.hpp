@@ -195,6 +195,23 @@ struct Mover
 /// Seconds for the way when the file gives none: gate, secret wall, trapdoor.
 inline constexpr std::array<f32, 3> kMoverSeconds = {2.0f, 3.0f, 0.6f};
 
+/// A pressure plate (dungeon D3, `components.trigger.plate`): the trigger is pressed while something lies or
+/// stands in it; the first weight sends the trigger's `action` to its `targets`, the last one leaving sends
+/// `releaseAction` (empty: the opposite of `action`).
+struct Plate
+{
+    enum class Weight : u8
+    {
+        Any,      ///< the hero, NPCs, animals and items lying on it
+        Creature, ///< the hero, NPCs and animals
+        Player,   ///< the hero only
+    };
+    Weight weight = Weight::Any;
+    std::string releaseAction; ///< empty: inverseEventAction(action)
+
+    bool operator==(const Plate&) const = default;
+};
+
 /// A volume that reports who enters and leaves it (TriggerSystem). Callbacks name script functions;
 /// the engine passes the events on (log in M4, Lua from M7).
 struct TriggerVolume
@@ -222,6 +239,8 @@ struct TriggerVolume
     /// read as one target.
     std::vector<std::string> targets;
     std::string action = std::string(kEventTrigger);
+    /// Pressure plate (dungeon D3): sends on weight instead of on the player's entering.
+    std::optional<Plate> plate;
     /// The old reserved `target` given as a vob id (written back as it was; sends like a name target).
     VobId targetId;
     /// Level change (Gothic: change-level trigger): when the player enters, the engine loads this world
@@ -251,6 +270,13 @@ struct MobRef
     /// Doors (contract with welt, world.md): stored closed (the vob's rotation), open = +90 degrees about the
     /// hinge, the leaf into the room (away from the front, +Z outside). Written only when true.
     bool open = false;
+    /// Switches (dungeon D3: mob types lever and wall_button): what using it sends. A lever sends `action`
+    /// when thrown and its opposite when thrown back; a button sends `action` at each press (`once`: only the
+    /// first). Written after `open` and only when there are targets.
+    std::vector<std::string> targets;
+    std::string action = std::string(kEventTrigger);
+    bool once = false;   ///< a button: one press only (written when true)
+    bool hidden = false; ///< in focus only from close by and as a loose stone until found (written when true)
 };
 
 /// An item lying in the world (M8): the Item instance of the scripts and how many. Drawn with the Item's

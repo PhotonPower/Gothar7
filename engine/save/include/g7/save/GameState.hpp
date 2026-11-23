@@ -31,6 +31,8 @@ struct MobState
     bool locked = false;
     bool open = false;
     std::map<std::string, u32, std::less<>> contents;
+    bool found = false; ///< dungeon D3: a hidden switch was used once (JSON only when true)
+    bool spent = false; ///< dungeon D3: a once-button was pressed (JSON only when true)
     friend bool operator==(const MobState&, const MobState&) = default;
 };
 

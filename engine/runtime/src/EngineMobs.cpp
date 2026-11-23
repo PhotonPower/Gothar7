@@ -96,11 +96,20 @@ void Engine::rebuildMobs()
             if (const auto it = m_mobs.find(vob.id.value);
                 it != m_mobs.end() && it->second.definition == ref.definition)
             {
-                mobs.emplace(vob.id.value, std::move(it->second));
+                MobRuntime& kept = it->second;
+                kept.targets = ref.targets; // the editor may have rewired it
+                kept.action = ref.action;
+                kept.once = ref.once;
+                kept.hidden = ref.hidden;
+                mobs.emplace(vob.id.value, std::move(kept));
                 return;
             }
             MobRuntime m;
             m.definition = ref.definition;
+            m.targets = ref.targets; // switches (dungeon D3)
+            m.action = ref.action;
+            m.once = ref.once;
+            m.hidden = ref.hidden;
             const script::Instance* def =
                 m_scripts ? m_scripts->findInstance("Mob", ref.definition) : nullptr;
             if (def != nullptr)
@@ -145,6 +154,10 @@ void Engine::rebuildMobs()
                 m.doorFrom = kDoorOpenAngle;
                 m.doorTo = kDoorOpenAngle;
                 m.doorTime = 0.0f;
+            }
+            if (ref.open && m.type == "lever")
+            {
+                m.open = true; // dungeon D3: thrown from the start
             }
             mobs.emplace(vob.id.value, std::move(m));
         });
@@ -558,7 +571,7 @@ void Engine::fixedUpdateMobs(f32 seconds)
     {
         for (const std::string& e : m_mobEvents)
         {
-            if (e == "open" || e == "close")
+            if (e == "open" || e == "close" || e == "use")
             {
                 return true;
             }
@@ -591,6 +604,10 @@ void Engine::fixedUpdateMobs(f32 seconds)
             if (m.type == "door")
             {
                 swingDoor(m, !m.open);
+            }
+            else if (m.type == "lever" || m.type == "wall_button")
+            {
+                useSwitch(use.vob, m); // dungeon D3
             }
             else
             {
