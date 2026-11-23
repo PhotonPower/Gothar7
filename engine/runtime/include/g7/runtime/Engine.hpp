@@ -223,6 +223,10 @@ struct AnimatedFigure; // animated figures (EngineFigure.cpp)
 struct PlayerFigure;   // the animated hero
 struct Creature;       // an animal (EngineCreatures.cpp)
 
+/// The socket the hero holds a rune or scroll in: the left hand, the casting hand of the mag clips (M17,
+/// figuren #409; contract in animation.md).
+inline constexpr std::string_view kMagicSocket = "socket_hand_l";
+
 struct EngineConfig
 {
     std::string appName = "Gothar";

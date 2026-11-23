@@ -311,12 +311,19 @@ void Engine::weaponEvent(std::string_view event)
     }
     else if (event == "draw" && m_weaponMode == 4 && !m_weaponDrawn.empty())
     {
-        // The rune or scroll in the right hand (M12).
+        // The rune or scroll in the left hand, the casting hand of the mag clips (M17, figuren #409).
         if (const LoadedModel* model = itemModel(m_weaponDrawn))
         {
-            if (auto attached = attachModel("socket_hand_r", model, nullptr); !attached)
+            if (auto attached = attachModel(kMagicSocket, model, nullptr); !attached)
             {
                 G7_LOG_WARN("engine", "draw magic: {}", attached.error().message);
+            }
+            else
+            {
+                // The left socket mirrors the right one: half a turn about the rune's long axis (+Y) turns
+                // its sign side (+Z) away from the palm, out where it can be seen.
+                m_figure->attachments.back().offset =
+                    glm::rotate(Mat4(1.0f), glm::pi<f32>(), Vec3(0.0f, 1.0f, 0.0f));
             }
         }
     }
