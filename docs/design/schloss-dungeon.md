@@ -1,9 +1,10 @@
-# Schloss innen, Keller und Dungeon (Plan, W7/W8)
+# Schloss innen, Keller und Dungeon (W7/W8)
 
-Status: **Plan zur Abstimmung** (welt, 2026-11-23). Es gibt noch keinen Code. Auftrag des Projektinhabers über den
-Koordinator: Das Schloss wird begehbar und bekommt einen Keller. Im Keller liegt ein versteckter Zugang zu einem
-Dungeon im Geist klassischer Grid-Dungeon-Crawler: viele Ebenen tief, Falltüren, Teleporter, Türen und Gatter,
-versteckte Nischen in den Wänden, Schalter und Trittplatten, Monster und Schätze.
+Status: **freigegeben 2026-11-23** (Projektinhaber über den Koordinator: alle Fragen F1–F12 nach Vorschlag; Vertrag
+mit engine abgeglichen, #422). Auftrag des Projektinhabers über den Koordinator: Das Schloss wird begehbar und
+bekommt einen Keller. Im Keller liegt ein versteckter Zugang zu einem Dungeon im Geist klassischer
+Grid-Dungeon-Crawler: viele Ebenen tief, Falltüren, Teleporter, Türen und Gatter, versteckte Nischen in den Wänden,
+Schalter und Trittplatten, Monster und Schätze.
 
 Übernommen wird **nur das Spielgefühl** (enge Gänge, Rätsel aus Schaltern und Platten, Abstieg Ebene um Ebene).
 Karten, Namen, Gegner und Grafik bekannter Spiele bilden wir nicht nach; alles sind eigene Inhalte (ADR 0008,
@@ -259,7 +260,7 @@ schreibt.
 
 ---
 
-## 7. Phasen (Vorschlag)
+## 7. Phasen
 1. **D1 Schloss innen:**
    - Erdgeschoss, 1. OG und Keller begehbar, eingerichtet, mit Wegnetz;
    - Riesenfass mit (vorerst geschlossener) Geheimtür;
@@ -273,10 +274,10 @@ schreibt.
 
 ---
 
-## 8. Fragen an den Projektinhaber (jeweils mit Vorschlag)
-| Nr. | Frage | Vorschlag welt |
+## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
+| Nr. | Frage | Entscheidung |
 |---|---|---|
-| F1 | Wer wohnt im Schloss? | Vogt, zwei Wachen, Köchin, Schreiber mit Routinen; der Vogt mit Dialogen (Inhalt engine) |
+| F1 | Wer wohnt im Schloss? | Vogt, zwei Wachen, Koch, Schreiber mit Routinen; der Vogt mit Dialogen (Inhalt engine/Lua) |
 | F2 | Welche Geschosse begehbar? | EG, 1. OG, Keller; der Rest später |
 | F3 | Wie wird der Zugang gefunden? | Riesenfass im Weinkeller, Hebel = schiefer Fackelhalter, Hinweis in der Bibliothek, Luftzug |
 | F4 | Wie tief? | 8 Ebenen zu je 24–32 × 24–32 Zellen, später erweiterbar |
