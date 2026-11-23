@@ -129,6 +129,9 @@ TEST_CASE(
     CHECK(run(engine, "draw_magic()").asString() == "it_rune_firebolt"); // the first rune place
     runSeconds(engine, 1.0f);
     CHECK(run(engine, "player_weapon()").asString() == "magic");
+    // The rune in the left hand, the casting hand of the mag clips (M17, figuren #409).
+    CHECK(engine.playerHolds("socket_hand_l"));
+    CHECK_FALSE(engine.playerHolds("socket_hand_r"));
     REQUIRE(engine.heroCombatTarget() == std::optional<std::string>("npc_old_man")); // locked, as with a bow
     const i64 before = stat(engine, "npc_old_man", "hp");
     cast(engine);
@@ -152,8 +155,14 @@ TEST_CASE(
     cast(engine);
     CHECK(run(engine, "Story.cast").asString() == "hero spl_heal");
     CHECK(stat(engine, "hero", "hp") == std::min<i64>(60, stat(engine, "hero", "hp_max")));
+    CHECK(engine.playerHolds("socket_hand_l")); // another rune: in the same hand
     // 1 again: away.
     CHECK(run(engine, "draw_magic()").asString() == "none");
+    for (int i = 0; i < 90; ++i)
+    {
+        REQUIRE(engine.runFrame());
+    }
+    CHECK_FALSE(engine.playerHolds("socket_hand_l")); // put away
 }
 
 TEST_CASE(

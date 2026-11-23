@@ -100,3 +100,24 @@ TEST_CASE("Waynet: nearest walkable point, routes around the wall with shortcuts
     const auto blocked = [](const Vec3& a, const Vec3& b) { return glm::length(a - b) < 12.0f; };
     CHECK_FALSE(net.route(Vec3(0, 0, 0), Vec3(50, 0, 49), blocked).has_value());
 }
+
+TEST_CASE("Waynet: blocked edges (a closed gate) are not walked, in either direction")
+{
+    world::WaynetData data = uNet();
+    data.edges.push_back({"WP_A", "WP_D"}); // a short way, through a gate
+    REQUIRE(world::normalizeWaynet(data, "test").ok());
+    Waynet net = Waynet::build(data);
+    const u32 a = *net.find("WP_A");
+    const u32 d = *net.find("WP_D");
+    CHECK(net.path(a, d)->size() == 2);
+    net.setBlockedEdges({{d, a}, {d, a}});
+    CHECK(net.blocked(a, d));
+    CHECK(net.blocked(d, a));
+    CHECK(net.blockedEdges().size() == 1);
+    CHECK(net.path(a, d)->size() == 4); // around
+    CHECK(net.path(d, a)->size() == 4);
+    net.setBlockedEdges({{d, a}, {*net.find("WP_B"), a}});
+    CHECK_FALSE(net.path(a, d).has_value());
+    net.setBlockedEdges({});
+    CHECK(net.path(a, d)->size() == 2);
+}

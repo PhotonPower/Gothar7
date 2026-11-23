@@ -744,6 +744,36 @@ eigenen Aufnahmen.
 - **Leonberg:** Hauptbau 76 × 14 m (Traufe 14,6 m, First 25,5 m über Grund), Verbindungsbau, Ostflügel 43 × 20 m mit
   sehr steilem Dach, Pomeranzengarten; 8212 Dreiecke, 4 Kollisionskörper.
 
+- **Innen (W7 D1a, Plan `schloss-dungeon.md`, freigegeben 2026-11-23):** Der Hauptbau ist begehbar
+  (`interior` in `schloss.json`, Code `blender/schloss/schloss_interior.py`).
+  - Drei Geschosse in den 0,8 m dicken Außenwänden:
+    - Keller −6,75 m mit Tonnengewölbe;
+    - Erdgeschoss −3,25 m (Portal-Ebene; die Passage hinter dem Portal fällt 0,2 m ab);
+    - 1. Obergeschoss 0,75 bis 4,6 m.
+  - Darüber bleibt der Flügel geschlossen.
+  - Räume liegen in einer Reihe entlang des Flügels, Trennwände mit Durchgang 1,2 × 2,3 m bei `doorT`:
+    - Keller: GEWOELBE, WEINKELLER, VERLIES;
+    - EG: KUECHE, SPEISEKAMMER, GESINDE, HALLE, WACHSTUBE, SCHREIBSTUBE;
+    - OG: BIBLIOTHEK, KAPELLE, FESTSAAL, GEMACH.
+  - Die Fensterreihen der Fassaden erscheinen innen als Nischen, wo sie in ein Geschoss fallen.
+  - Das Portal ist offen.
+- **Treppenturm** (Koordinator 2026-11-23, rückbaubar):
+  - Er stand 2,3 m frei vor der Gartenwand und rückt an sie heran; seine Seite liegt 0,5 m in der Wand, eine
+    Achteckseite zeigt zum Flügel.
+  - Innen ist er hohl, mit einer Wendeltreppe um eine Spindel (r 1,1 m): eine volle Umdrehung je Geschoss, an der
+    Spindel höchstens 35°, je Geschoss ein ebener Absatz (60°) mit Durchgang in den Flügel.
+- **Kollision:** 149 geschlossene konvexe Körper (Wände um Portal und Turmdurchgänge, Böden, Trennwände, das
+  geschlossene Obere mit Dach, Turmwände, Spindel, Rampenstücke, Absätze), dazu die Traufpflaster-Platten.
+- **Gelände:**
+  - Unter Flügel und Turm fehlen die Geländezellen (`handmade.json` `holes` → `export-terrain` schreibt
+    `generated/<name>_holes.r8`, world.md „Löcher“).
+  - Die Samples darunter liegen unter dem Kellerboden (Pad `clampBelow`), sonst bliebe Kollision am Rand.
+  - Ein **Traufpflaster** (1,5 m, `stone_slab`, Höhen aus dem DGM) deckt den gezackten Rand der Löcher außen ab.
+- **Prüfung:**
+  - Autopilot durch alle Räume aller Geschosse, über die Wendeltreppe hinauf und hinab: 125/125 Punkte, kein
+    Hänger, kein Sturz.
+  - Einrichtung, Licht, Wegnetz, Zonen und Bewohner folgen mit D1b.
+
 ### W-E4 Marktbrunnen (`gothar-worldgen marktbrunnen <ort>`, W6)
 Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Das Modell, das der Projektinhaber selbst aus
 seinem Foto erstellt hat (mit Claude Design), wird übernommen und an Leonberg um 1700 angepasst.
