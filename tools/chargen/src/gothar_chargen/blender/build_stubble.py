@@ -30,7 +30,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from gothar_chargen.blender.common import import_glb, new_reference  # noqa: E402
 from gothar_chargen.blender.settings import GLTF_EXPORT_SETTINGS  # noqa: E402
 from gothar_chargen.skeleton import load_rig  # noqa: E402
-from gothar_chargen.stubble import PART, STYLES, TRIANGLES, BeardStyle  # noqa: E402
+from gothar_chargen.stubble import (  # noqa: E402
+    FULL_TRIANGLES,
+    PART,
+    STYLES,
+    TRIANGLES,
+    BeardStyle,
+)
 
 OFFSET = 0.0008  # m above the skin
 SOFT = 2.0  # widths of the soft zone borders (x the base widths below)
@@ -40,16 +46,16 @@ CARD_LENGTH = (
     0.016  # m: strands hanging from the border of a full beard (volume, not a painted edge)
 )
 BULGE = 0.007  # m: extra thickness of a full beard in the middle of its zone
-CARD_SHARE = 0.7  # full beards: share of the triangle budget for the shell, the rest for the cards
+CARD_SHARE = 0.5  # full beards: share of the triangle budget for the shell, the rest for the cards
 CARD_V = (0.08, 0.62)  # texture v of a card's root (band 0, dense) and tip (band 2, sparser)
 TUFT_LENGTH = (
-    0.014,
-    0.024,
+    0.022,
+    0.038,
 )  # m: tufts on the beard surface, shortest at the cheeks, longest at the chin
-TUFT_WIDTH = 0.006  # m at the root; the tip is ``TUFT_TAPER`` as wide
-TUFT_TAPER = 0.5
-TUFT_V = (0.3, 0.95)  # texture v of a tuft: root in band 1, tip in the sparse band 3 (wisps)
-TUFT_LIFT = 0.42  # outward share of a tuft's direction (0 = lying on the shell, 1 = standing up)
+TUFT_WIDTH = 0.009  # m at the root; the tip is ``TUFT_TAPER`` as wide
+TUFT_TAPER = 0.55
+TUFT_V = (0.12, 0.9)  # texture v of a tuft: root in band 1, tip in the sparse band 3 (wisps)
+TUFT_LIFT = 0.5  # outward share of a tuft's direction (0 = lying on the shell, 1 = standing up)
 TUFT_SINK = 0.0015  # m: roots below the shell surface, so no tuft starts in the air
 
 
@@ -201,7 +207,7 @@ def _tufts(obj: bpy.types.Object, head: Head, budget: int) -> None:
         return not lips and c.z > head.chin_z - 0.012
 
     faces = [f for f in bm.faces if len(f.verts) <= 4 and free(f.calc_center_median())]
-    faces = [f for f in faces if head.zone(f.calc_center_median()) > 0.5]
+    faces = [f for f in faces if head.zone(f.calc_center_median()) > 0.35]
     faces.sort(key=lambda f: (round(f.calc_center_median().z, 3), f.index))
     count = min(len(faces), max(0, budget // 2))
     if not count:
@@ -387,7 +393,7 @@ def main() -> None:
     mat = _material(args.texture, style.part)
     levels = []
     full = style.limits != BANDS  # dense beards: soft border bands and hair cards
-    for level, triangles in enumerate(TRIANGLES):
+    for level, triangles in enumerate(FULL_TRIANGLES if full else TRIANGLES):
         obj = _patch(head, arm, f"beard_lod{level}", style.offset, BULGE if full else 0.0)
         obj.data.name = obj.name
         _reduce(obj, int(triangles * CARD_SHARE) if full else triangles)
