@@ -411,6 +411,23 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `bergleu/s_eat`, `s_sleep` | Liegend am Riss fressen / auf der Seite schlafen | – | – | K | platzhalter-K |
 | `bergleu/t_threaten` | Drohen: geduckt, fauchen, Ohren flach, Schwanz peitscht | – | – | K | platzhalter-K |
 
+### Gatterbock (`gatterbock`, Dungeon, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `gatterbock/s_idle` | Steht, Stein „atmet“, Kopf mahlt langsam herum | – | – | K | platzhalter-K |
+| `gatterbock/s_walk` | Schwerer, stampfender Schritt | ✓ 0,9 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `gatterbock/s_run` | Schwerer Trab, langsamer als der rennende Held | ✓ 2,2 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `gatterbock/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `gatterbock/t_attack_1` | Beide Fäuste über den Kopf, dann vorn niederschmettern (Treffer an `socket_hand_l/r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `gatterbock/t_attack_2` | Rückhand mit der rechten Faust von links nach rechts | – | hit_start, hit_end | K | platzhalter-K |
+| `gatterbock/t_hit` | Treffer: der Stein wankt zurück | – | – | K | platzhalter-K |
+| `gatterbock/t_die` | Die Glut erlischt: sinkt auf die Knie und kippt nach vorn | – | – | K | platzhalter-K |
+| `gatterbock/s_eat`, `s_sleep` | Staub von den Fäusten wischen (Mindest-Set) / Statue (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `gatterbock/s_dormant` | Statue neben dem Gatter (`zs_dormant`, #422): Kopf gesenkt, Fäuste vor der Brust | – | – | K | platzhalter-K |
+| `gatterbock/t_wake` | Erwachen aus der Statue: Kopf hebt sich, Schultern mahlen, Arme fallen frei | – | sound:gatterbock_threaten | K | platzhalter-K |
+| `gatterbock/t_threaten` | Drohen: stampft, schlägt die Fäuste zusammen | – | – | K | platzhalter-K |
+
 ## Prio C – später
 
 Akrobatik-Varianten, weitere Gangarten-Varianten (erste vier siehe oben), zusätzliche
