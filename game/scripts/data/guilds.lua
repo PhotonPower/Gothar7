@@ -32,3 +32,7 @@ Guilds.laufvogel = { name = "Laufvögel" }
 Guilds.citizen = { name = "Bürger" }
 Attitudes.citizen = { guard = "friendly", farmer = "friendly" }
 Attitudes.guard.citizen = "friendly"
+
+-- Monster des Dungeons (D6)
+Guilds.gatterbock = { name = "Gatterböcke" }
+Guilds.mauerschlupfer = { name = "Mauerschlupfer" }

@@ -32,14 +32,15 @@ struct SweepTarget
 };
 
 /// The shape of a body as a capsule (data, e.g. Creatures.<species>.body): `length` end to end, `offset` of
-/// its middle from the feet in model space (x right, y up, z ahead), lying along the body or standing
-/// upright.
+/// its middle from the feet in model space (x right, y up, z ahead), lying along the body (or across it) or
+/// standing upright.
 struct BodyShape
 {
     f32 radius = 0.35f;
     f32 length = 1.8f;
     Vec3 offset{0.0f, 0.9f, 0.0f};
     bool lying = false;
+    bool across = false; ///< lying across the body (along x, a crab), not along it
 };
 
 /// A person: upright from the feet up to `height`.

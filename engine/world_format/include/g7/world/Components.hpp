@@ -160,6 +160,19 @@ struct Relay
     std::string action = std::string(kEventTrigger);
 };
 
+/// A spawn marker (vob type "spawn", dungeon D6): when its world is loaded for the first time (not from a
+/// save or a visit kept in memory) `count` NPCs of the Npc instance `npc` are put in at the marker, looking
+/// along its yaw. `dormant` ones rest (Lua zs_dormant) until they notice the hero, are hurt or the event
+/// `wake` reaches the marker. Only a nest (`respawn`) fills up again: when the hero comes back into the
+/// level, its dead are replaced.
+struct Spawn
+{
+    std::string npc;      ///< Npc instance ("mon_gatterbock")
+    u32 count = 1;        ///< 1..32, put in a ring around the marker from the second one on
+    bool respawn = false; ///< a nest (dungeon.md question 8: no regrowth anywhere else)
+    bool dormant = true;  ///< begins resting
+};
+
 /// A moving part (dungeon D2, `components.mover` at a mesh or mob vob, like ZenGin's zCMover): a portcullis,
 /// a secret wall or a trapdoor. It moves between its closed pose (the vob's transform in the file) and its
 /// open pose when events reach it (open, close, toggle, trigger; on/off as open/close); its collision moves

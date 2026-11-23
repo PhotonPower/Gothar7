@@ -349,6 +349,52 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 - **Tests:** `tests/world/test_switches.cpp` (Felder), `tests/runtime/test_engine_doors.cpp` auf
   `testworld/doors.g7world`.
 
+## Stand D6 – Monster (umgesetzt)
+- **Format:** Vob-Typ **`spawn`** mit `components.spawn` = `npc`, `count` (1–32), `respawn`, `dormant` (world.md).
+- **Einsetzen** (`EngineSpawns.cpp`): Beim **ersten** Laden einer Welt (nicht aus einem Spielstand und nicht beim
+  Wiederkommen in eine besuchte Ebene) setzt jeder Marker seine NPCs ein (nach Vob-ID; der erste auf dem Marker, die
+  weiteren im Ring von 1,5 m, auf dem Boden darunter, Blick nach dem Yaw des Markers), vor `world_loaded`. Danach
+  Lua-Ereignis **`npc_spawned(npc, spawn, dormant, restored)`**. Nach dem Laden eines Spielstands bzw. beim
+  Wiederkommen kommt es noch einmal für jeden lebenden mit `restored = true`: Die KI wird nicht gespeichert, sein
+  Zustand beginnt neu (ruhend oder wach im Revier).
+- **Ruhen** (`zs_dormant`, `game/scripts/ai/monsters.lua`): Das Monster spielt seine Ruhe-Schleife (Graph-Bool
+  `dormant` → `s_dormant`; ohne den Zustand `sleep`). Es erwacht, wenn es den Helden mit **halber Sichtweite**
+  sieht, ein Geräusch in **halber Hörweite** hört, getroffen wird oder `wake` seinen Marker erreicht
+  (`dungeon_event`). Erwachen: `zs_mm_wake` spielt `t_wake` (Graph-Aktion 5) und wartet `wake_seconds`
+  (`Creatures`), dann Angriff (bzw. Stehlen). Ob es ruht, ist Engine-Zustand (`npc_dormant`/`npc_set_dormant`,
+  gespeichert als `NpcState.dormant`); was es tut, steht in Lua.
+- **Revier:** Wache Monster ohne Aufgabe (nach Kampf oder Flucht) streifen um ihren Marker (`zs_mm_roam`; ein
+  Vob-Name gilt jetzt überall als Ort wie ein Wegpunkt, `navigationTarget`). Sie folgen dem Helden nicht in andere
+  Ebenen (Frage 9): Eine verlassene Ebene ruht mit allen Monstern, wie sie waren.
+- **Nester** (`respawn`, Frage 8): Kommt der Held durch einen Weltwechsel in die Ebene zurück, verschwinden die
+  Toten des Nests und es wird bis `count` aufgefüllt (ruhend, wenn `dormant`). Alle anderen Marker bleiben leer.
+- **Mob-Ziele:** Truhen und Nischen mit `targets` schicken `action` beim Öffnen (eine durchsuchte Nische weckt den
+  Mauerschlupfer: `targets = ["SPAWN_…"]`, `action = "wake"`).
+- **Gatterbock** (figuren #432) und **Mauerschlupfer** (#436): Graphen `data/anim/<art>.animgraph.toml` (wie der
+  Keiler, dazu `dormant`, `wake`, beim Mauerschlupfer `steal` = Aktion 6), Kapseln in `data/creatures.toml`, Werte
+  in `data/creatures.lua`, Instanzen `mon_gatterbock`/`mon_mauerschlupfer` (`npcs/dungeon.lua`, Platzhalterwerte).
+  Jede Art mit Graph kann jetzt eingesetzt werden (nicht mehr nur Wolf, Keiler, Laufvogel).
+- **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
+  **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
+  Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am
+  `socket_mouth` (`npc_hold`) und fliehen. Ohne Glänzendes greifen sie an. Stirbt der Dieb, fällt es heraus
+  (`npc_drop_item`). Clip-Events der Dungeon-Arten (`steal`, `emerge`, `grab`, `release`, `reflect`,
+  `spawn_brood`) gehen als `npc_clip_event(npc, event)` an Lua.
+- **Seitwärtsgang** (Gliederfüßer §7.5): `Creatures.<art>.move_axis = "x"` – die Geh-Clips laufen entlang **+X**
+  (nach links der Figur); die Engine dreht die Figur beim Gehen eine Vierteldrehung nach rechts gegen den Weg
+  (4 rad/s), im Stand, Kampf und Tod schaut sie wieder nach vorn. Die Trefferkapsel folgt. Liegende Kapsel quer:
+  `body = { shape = "lying", axis = "x", … }`. Die Werte überträgt engine aus figurens Rig-TOML.
+- **Lua:** `spawn_npcs(spawn)`, `npc_dormant`, `npc_set_dormant`, `npc_hold(npc, item?, socket?)`,
+  `npc_drop_item(npc, item, count?)`; Ereignisse `npc_spawned`, `npc_clip_event`, dazu `npc_stole` (Lua).
+- **Nebenbei:** Eine Kapsel, die die Physik ablehnt (Höhe nicht über dem doppelten Radius), wird jetzt gewarnt;
+  vorher ging das Tier still ohne Kapsel (und ohne Einklemmen).
+- **Tests:** `tests/world/test_spawn.cpp` (Format), `tests/gameplay/test_weapon_sweep.cpp` (Kapsel quer),
+  `tests/runtime/test_engine_dungeon_monsters.cpp` auf `testworld/monsters.g7world` + `monsters_2.g7world` (Ruhen,
+  Wecken per Ereignis und per Sicht, Spielstand, Nische weckt den Dieb, Stehlen und Fallenlassen, Nest füllt sich).
+- **Offen:** Mauerkriecher (#440), Kristallkrebs, Kellermutter (Graphen und Verhalten wie `emerge`, `grab`,
+  `reflect`, `spawn_brood`, sobald die Modelle da sind); Klangnamen `sound:gatterbock_*`/`mauerschlupfer_*` in
+  `data/sounds.toml`.
+
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
@@ -357,7 +403,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 | **D3** Schalter und Platten ✔ | Mob-Typen `lever`, `wall_button` (versteckt), Platte mit Gewicht inkl. Items; figuren-Clips | mittel |
 | **D4** Teleporter und Fall ✔ | Teleport in der Welt und in andere Ebenen, Fall als Weltwechsel mit Geschwindigkeit, Abblenden | mittel |
 | **D5** Nischen und Türen ✔ | `niche`, Tür-Ereignisse, `no_pick`, `one_way` | klein |
-| **D6** Monster | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |
+| **D6** Monster ✔ | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |
 | **D7** Editor und Import | Inspektor, Linien, Prüfen, `extras` aus Blender | mittel |
 | **D7b** Umgebung | Block `environment` je Welt (ohne Himmel und Sonne, Nebel, Grundlicht), Zonen-Typ `fog` | klein |
 | **D8** Testdungeon und Szenario | zwei kleine Ebenen der Engine (`testworld/dungeon_1/2`), DoD-Szenario | mittel |

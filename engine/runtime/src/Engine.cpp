@@ -1423,6 +1423,10 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
                 m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.size(),
                 timer.elapsedSeconds() * 1000.0);
+    if (m_scripts && !m_restoringWorld)
+    {
+        spawnFromMarkers(); // dungeon D6: a new world's monsters (a restored one brings its own)
+    }
     if (m_scripts)
     {
         const script::Value world[] = {path, m_restoringWorld};
@@ -1563,6 +1567,10 @@ void Engine::performWorldChange()
     if (loaded && kept)
     {
         loaded = restoreWorldState(*kept);
+        if (loaded)
+        {
+            refillNests(); // dungeon D6: back in the level, nests replace their dead
+        }
     }
     if (!loaded)
     {

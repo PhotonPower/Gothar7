@@ -627,6 +627,16 @@ void Engine::fixedUpdateMobs(f32 seconds)
             else
             {
                 m.open = true;
+                // Dungeon D6: a chest or niche with targets sends its action when opened (wakes what
+                // sleeps in the wall).
+                const entt::entity e = m_scene.findById(use.vob);
+                const std::string source =
+                    e != entt::null ? m_scene.get<world::Vob>(e)->nameText : m.definition;
+                for (const std::string& target : m.targets)
+                {
+                    m_events.send(target, m.action.empty() ? std::string(world::kEventTrigger) : m.action,
+                                  source);
+                }
             }
         }
         if (use.eventFired && mobClipDone(use))

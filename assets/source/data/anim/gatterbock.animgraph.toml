@@ -1,0 +1,198 @@
+# Animations-Zustandsautomat: Gatterbock (Dungeon D6; figuren #432): Steinwächter, ruht als Statue (s_dormant) und erwacht (t_wake).
+# Muster wie keiler.animgraph.toml; dazu für den Dungeon (D6):
+#   dormant  Ruhe-Schleife solange gesetzt (bool, zs_dormant)
+#   action   5 Erwachen (t_wake)
+version = 1
+sets = ["characters/monsters/gatterbock/anims/gatterbock.glb"]
+start = "move"
+
+[look_at] # Kopf zum Ziel (Spieler, Beute)
+bones = ["neck_01", "head"]
+shares = [0.4, 0.6]
+max_yaw = 60.0
+max_pitch = 30.0
+
+# --- Zustände ---
+[[state]]
+name = "move"
+blend = "speed"
+root_motion = true
+points = [
+    { value = 0.0, clip = "gatterbock/s_idle" },
+    { value = 0.88, clip = "gatterbock/s_walk" },
+    { value = 2.20, clip = "gatterbock/s_run" },
+]
+
+[[state]]
+name = "turn_l"
+clip = "gatterbock/t_turn_l"
+root_motion = true
+
+[[state]]
+name = "turn_r"
+clip = "gatterbock/t_turn_r"
+root_motion = true
+
+[[state]]
+name = "attack_1"
+clip = "gatterbock/t_attack_1"
+
+[[state]]
+name = "attack_2"
+clip = "gatterbock/t_attack_2"
+
+[[state]]
+name = "hit"
+clip = "gatterbock/t_hit"
+
+[[state]]
+name = "threaten"
+clip = "gatterbock/t_threaten"
+
+[[state]]
+name = "eat"
+clip = "gatterbock/s_eat"
+
+[[state]]
+name = "sleep"
+clip = "gatterbock/s_sleep"
+
+[[state]] # bleibt am Ende liegen
+name = "die"
+clip = "gatterbock/t_die"
+
+[[state]] # Ruhe (zs_dormant): Statue bzw. eingerollt
+name = "dormant"
+clip = "gatterbock/s_dormant"
+
+[[state]]
+name = "wake"
+clip = "gatterbock/t_wake"
+
+# --- Übergänge (Reihenfolge = Vorrang) ---
+[[transition]]
+from = "*"
+to = "die"
+when = ["dead"]
+blend = 0.1
+
+[[transition]]
+from = "*"
+to = "hit"
+when = ["action == 3", "!dead"]
+blend = 0.05
+
+[[transition]]
+from = "*"
+to = "attack_1"
+when = ["action == 1", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "*"
+to = "attack_2"
+when = ["action == 2", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "*"
+to = "threaten"
+when = ["action == 4", "!dead"]
+blend = 0.15
+
+[[transition]]
+from = "*"
+to = "wake"
+when = ["action == 5", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "move"
+to = "dormant"
+when = ["dormant"]
+blend = 0.5
+
+[[transition]]
+from = "dormant"
+to = "move"
+when = ["!dormant"]
+blend = 0.3
+
+[[transition]]
+from = "move"
+to = "eat"
+when = ["eat"]
+blend = 0.3
+
+[[transition]]
+from = "move"
+to = "sleep"
+when = ["sleep"]
+blend = 0.5
+
+[[transition]]
+from = "eat"
+to = "move"
+when = ["!eat"]
+blend = 0.3
+
+[[transition]]
+from = "sleep"
+to = "move"
+when = ["!sleep"]
+blend = 0.5
+
+[[transition]]
+from = "move"
+to = "turn_l"
+when = ["turn < -0.5"]
+blend = 0.15
+
+[[transition]]
+from = "move"
+to = "turn_r"
+when = ["turn > 0.5"]
+blend = 0.15
+
+# Einmal-Aktionen und Drehungen: zurück zur Fortbewegung
+[[transition]]
+from = "turn_l"
+to = "move"
+when = ["end"]
+blend = 0.15
+
+[[transition]]
+from = "turn_r"
+to = "move"
+when = ["end"]
+blend = 0.15
+
+[[transition]]
+from = "attack_1"
+to = "move"
+when = ["end"]
+blend = 0.2
+
+[[transition]]
+from = "attack_2"
+to = "move"
+when = ["end"]
+blend = 0.2
+
+[[transition]]
+from = "hit"
+to = "move"
+when = ["end"]
+blend = 0.2
+
+[[transition]]
+from = "threaten"
+to = "move"
+when = ["end"]
+blend = 0.2
+
+[[transition]]
+from = "wake"
+to = "move"
+when = ["end"]
+blend = 0.2

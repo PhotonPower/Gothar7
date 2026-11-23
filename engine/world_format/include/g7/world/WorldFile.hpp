@@ -37,6 +37,7 @@ enum class VobType : u8
     Water,   ///< WaterVolume (M5)
     Item,    ///< ItemRef (M8)
     Relay,   ///< Relay (dungeon D1): passes events on, invisible
+    Spawn,   ///< Spawn (dungeon D6): puts NPCs in when the world is new, invisible
 };
 
 /// One vob as stored in the file.
@@ -56,6 +57,7 @@ struct WorldFileVob
     WaterVolume water;                        ///< Water vobs only
     ItemRef item;                             ///< Item vobs only
     Relay relay;                              ///< Relay vobs only
+    Spawn spawn;                              ///< Spawn vobs only
     /// `components.mover` (dungeon D2): mesh and mob vobs that move (gate, secret wall, trapdoor).
     std::optional<Mover> mover;
     /// `components.surface.footstep` (M13 E, contract with welt): the footstep material of what one walks on

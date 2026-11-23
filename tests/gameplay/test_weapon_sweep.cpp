@@ -218,3 +218,21 @@ TEST_CASE("Combat settings: the sweep's values from data/combat.lua, wrong ones 
     t.fields["knockback"] = script::Value(-1.0);
     CHECK_FALSE(CombatSettings::fromTable(t).ok());
 }
+
+TEST_CASE("Body shape: a capsule lying across the body (axis = \"x\", a crab) lies along its right")
+{
+    BodyShape crab;
+    crab.radius = 0.4f;
+    crab.length = 1.8f;
+    crab.offset = Vec3(0.0f, 0.4f, 0.0f);
+    crab.lying = true;
+    crab.across = true;
+    const auto target = bodyTarget(1, crab, Vec3(0.0f), Vec3(0.0f, 0.0f, -1.0f)); // looking along -Z
+    CHECK(target.a.z == doctest::Approx(0.0f));
+    CHECK(target.b.z == doctest::Approx(0.0f));
+    CHECK(std::abs(target.b.x - target.a.x) == doctest::Approx(1.0f)); // 1.8 m end to end minus the two ends
+    crab.across = false;
+    const auto along = bodyTarget(1, crab, Vec3(0.0f), Vec3(0.0f, 0.0f, -1.0f));
+    CHECK(along.a.x == doctest::Approx(0.0f));
+    CHECK(std::abs(along.b.z - along.a.z) == doctest::Approx(1.0f));
+}

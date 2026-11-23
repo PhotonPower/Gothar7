@@ -18,3 +18,15 @@ radius = 0.3 # figurens eigener Laufvogel (#266): 1,66 m mit Kamm; Schnabel und 
 height = 1.7
 step_height = 0.4
 max_slope_degrees = 45.0
+
+[gatterbock] # Dungeon D6 (figuren #432): 2,5 m Steinwächter, Kapsel stehend r 0,28 (§7.1); breit in den Schultern
+radius = 0.4
+height = 2.5
+step_height = 0.4
+max_slope_degrees = 40.0
+
+[mauerschlupfer] # Dungeon D6 (figuren #436): Rücken 0,47 m, 1,2 m lang mit Schwanz; liegende Kapsel r 0,25 / l 0,8
+radius = 0.25 # die Höhe muss den doppelten Radius übersteigen
+height = 0.6
+step_height = 0.3
+max_slope_degrees = 55.0

@@ -50,6 +50,18 @@
       "context": "data/guilds.lua",
       "status": "entwurf"
     },
+    "data.guilds.name_09": {
+      "de": "Gatterböcke",
+      "text": "Gate rams",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
+    "data.guilds.name_10": {
+      "de": "Mauerschlupfer",
+      "text": "Wall slinkers",
+      "context": "data/guilds.lua",
+      "status": "entwurf"
+    },
     "data.teaching.attribute_names_01": {
       "de": "Stärke",
       "text": "Strength",
@@ -1310,6 +1322,12 @@
       "context": "mobs/camp.lua",
       "status": "entwurf"
     },
+    "mon_gatterbock.name": {
+      "de": "Gatterbock",
+      "text": "Gate Ram",
+      "context": "npcs/dungeon.lua",
+      "status": "entwurf"
+    },
     "mon_keiler.name": {
       "de": "Keiler",
       "text": "Boar",
@@ -1320,6 +1338,12 @@
       "de": "Laufvogel",
       "text": "Runner Bird",
       "context": "npcs/animals.lua",
+      "status": "entwurf"
+    },
+    "mon_mauerschlupfer.name": {
+      "de": "Mauerschlupfer",
+      "text": "Wall Slinker",
+      "context": "npcs/dungeon.lua",
       "status": "entwurf"
     },
     "mon_wolf.name": {

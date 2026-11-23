@@ -18,7 +18,7 @@ namespace
 {
 using Json = nlohmann::ordered_json; // keeps key order: stable output
 
-constexpr std::array<std::pair<VobType, std::string_view>, 10> kVobTypes = {{{VobType::Empty, "empty"},
+constexpr std::array<std::pair<VobType, std::string_view>, 11> kVobTypes = {{{VobType::Empty, "empty"},
                                                                              {VobType::Mesh, "mesh"},
                                                                              {VobType::Light, "light"},
                                                                              {VobType::Start, "start"},
@@ -27,7 +27,8 @@ constexpr std::array<std::pair<VobType, std::string_view>, 10> kVobTypes = {{{Vo
                                                                              {VobType::Mob, "mob"},
                                                                              {VobType::Water, "water"},
                                                                              {VobType::Item, "item"},
-                                                                             {VobType::Relay, "relay"}}};
+                                                                             {VobType::Relay, "relay"},
+                                                                             {VobType::Spawn, "spawn"}}};
 constexpr std::array<std::pair<SoundEmitter::Mode, std::string_view>, 2> kSoundModes = {
     {{SoundEmitter::Mode::Loop, "loop"}, {SoundEmitter::Mode::Random, "random"}}};
 constexpr std::array<std::pair<TriggerVolume::Filter, std::string_view>, 3> kTriggerFilters = {
@@ -329,6 +330,41 @@ Result<Relay> readRelay(const Reader& r, const Json& v, std::string_view where)
         return events.error();
     }
     return relay;
+}
+
+/// components.spawn of a spawn vob (dungeon D6).
+Result<Spawn> readSpawn(const Reader& r, const Json& v, std::string_view where)
+{
+    const Json c = componentOf(v, "spawn");
+    const std::string at = std::format("{}.components.spawn", where);
+    Spawn spawn;
+    auto npc = readText(r, c, "npc", at, true);
+    if (!npc)
+    {
+        return npc.error();
+    }
+    spawn.npc = std::move(npc).value();
+    if (c.contains("count"))
+    {
+        if (!c["count"].is_number_unsigned() || c["count"].get<u64>() == 0 || c["count"].get<u64>() > 32)
+        {
+            return r.error(at + ".count", "must be a whole number from 1 to 32");
+        }
+        spawn.count = static_cast<u32>(c["count"].get<u64>());
+    }
+    for (const auto& [key, flag] : {std::pair<const char*, bool*>{"respawn", &spawn.respawn},
+                                    std::pair<const char*, bool*>{"dormant", &spawn.dormant}})
+    {
+        if (c.contains(key))
+        {
+            if (!c[key].is_boolean())
+            {
+                return r.error(std::format("{}.{}", at, key), "must be true or false");
+            }
+            *flag = c[key].get<bool>();
+        }
+    }
+    return spawn;
 }
 
 /// components.mover of a mesh or mob vob (dungeon D2).
@@ -766,6 +802,15 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             return relay.error();
         }
         vob.relay = std::move(relay).value();
+    }
+    if (vob.type == VobType::Spawn)
+    {
+        auto spawn = readSpawn(r, v, where);
+        if (!spawn)
+        {
+            return spawn.error();
+        }
+        vob.spawn = std::move(spawn).value();
     }
     if (vob.type == VobType::Water)
     {
@@ -1738,6 +1783,12 @@ Json vobJson(const WorldFileVob& vob)
         relay["targets"] = r.targets;
         relay["action"] = r.action;
         v["components"]["relay"] = std::move(relay);
+    }
+    if (vob.type == VobType::Spawn)
+    {
+        const Spawn& s = vob.spawn;
+        v["components"]["spawn"] =
+            Json{{"npc", s.npc}, {"count", s.count}, {"respawn", s.respawn}, {"dormant", s.dormant}};
     }
     if (vob.type == VobType::Water)
     {

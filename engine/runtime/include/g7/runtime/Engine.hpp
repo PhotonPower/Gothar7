@@ -1328,6 +1328,18 @@ private:
     bool teleportEvent(const world::NetEvent& event); ///< on/off/toggle/trigger: true if it is a teleporter
     void moveWorldItem(world::VobId vob, const Vec3& at);
     void bindTeleportFunctions();
+    // Monsters of the dungeon (EngineSpawns.cpp, dungeon D6)
+    /// A new world (not restored): every spawn marker puts its NPCs in; then npc_spawned for each.
+    void spawnFromMarkers();
+    /// Puts `count` NPCs of spawn vob `e` in (from the `first`-th place of its ring); their names.
+    std::vector<std::string> spawnAt(entt::entity e, u32 first, u32 count);
+    /// Back into a level (a world kept in memory): nests (respawn) replace their dead.
+    void refillNests();
+    /// Lua npc_spawned for creature `c` of a spawn (also after restoring: its state begins anew).
+    void emitSpawned(const Creature& c, bool restored);
+    void bindSpawnFunctions();
+    /// A creature clip event the scripts act on (steal, emerge, grab ...): Lua npc_clip_event.
+    void creatureScriptEvent(const Creature& c, std::string_view event);
     /// A trap's harm (a gate marked crush = "damage"): hit points off, no protection; as a blow otherwise.
     void trapHit(u32 targetId, i32 damage, std::string_view source);
     /// A spell's harm on a creature or the hero (fire bolt, area): its damage minus protection, min 5 (as
@@ -2078,6 +2090,7 @@ private:
     gameplay::CombatSettings m_combat; // data/combat.lua (M11)
     gameplay::Fighter m_heroFighter;
     std::map<std::string, gameplay::BodyShape, std::less<>> m_animalBodies; // by species (M11)
+    std::set<std::string, std::less<>> m_sidewaysSpecies; // Creatures.<species>.move_axis = "x" (dungeon D6)
     gameplay::Swing m_heroSwing;
     gameplay::Knockback m_heroKnockback;
     std::string m_heroFightState; // the graph state of the hero's move (clip-timed), empty: timeline
