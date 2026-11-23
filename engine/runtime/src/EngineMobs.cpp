@@ -96,11 +96,20 @@ void Engine::rebuildMobs()
             if (const auto it = m_mobs.find(vob.id.value);
                 it != m_mobs.end() && it->second.definition == ref.definition)
             {
-                mobs.emplace(vob.id.value, std::move(it->second));
+                MobRuntime& kept = it->second;
+                kept.targets = ref.targets; // the editor may have rewired it
+                kept.action = ref.action;
+                kept.once = ref.once;
+                kept.hidden = ref.hidden;
+                mobs.emplace(vob.id.value, std::move(kept));
                 return;
             }
             MobRuntime m;
             m.definition = ref.definition;
+            m.targets = ref.targets; // switches (dungeon D3)
+            m.action = ref.action;
+            m.once = ref.once;
+            m.hidden = ref.hidden;
             const script::Instance* def =
                 m_scripts ? m_scripts->findInstance("Mob", ref.definition) : nullptr;
             if (def != nullptr)
@@ -146,9 +155,21 @@ void Engine::rebuildMobs()
                 m.doorTo = kDoorOpenAngle;
                 m.doorTime = 0.0f;
             }
+            if (ref.open && m.type == "lever")
+            {
+                m.open = true; // dungeon D3: thrown from the start
+            }
             mobs.emplace(vob.id.value, std::move(m));
         });
     m_mobs = std::move(mobs);
+}
+
+void Engine::swingDoor(MobRuntime& m, bool open)
+{
+    m.open = open;
+    m.doorFrom = m.doorAngle;
+    m.doorTo = open ? kDoorOpenAngle : 0.0f;
+    m.doorTime = 0.0f;
 }
 
 void Engine::storeDoors(world::WorldFile& file) const
@@ -550,7 +571,7 @@ void Engine::fixedUpdateMobs(f32 seconds)
     {
         for (const std::string& e : m_mobEvents)
         {
-            if (e == "open" || e == "close")
+            if (e == "open" || e == "close" || e == "use")
             {
                 return true;
             }
@@ -582,10 +603,11 @@ void Engine::fixedUpdateMobs(f32 seconds)
             use.eventFired = true;
             if (m.type == "door")
             {
-                m.open = !m.open;
-                m.doorFrom = m.doorAngle;
-                m.doorTo = m.open ? kDoorOpenAngle : 0.0f;
-                m.doorTime = 0.0f;
+                swingDoor(m, !m.open);
+            }
+            else if (m.type == "lever" || m.type == "wall_button")
+            {
+                useSwitch(use.vob, m); // dungeon D3
             }
             else
             {
@@ -702,32 +724,37 @@ void Engine::swingDoors(f32 seconds)
         }
         Transform local = *std::as_const(m_scene).get<Transform>(e);
         local.rotation = m.closedRotation * glm::angleAxis(m.doorAngle, Vec3(0.0f, 1.0f, 0.0f));
-        m_scene.setTransform(e, local);
-        m_scene.updateTransforms();
-        const Mat4 world = m_scene.worldMatrix(e);
-        for (SceneInstance& instance : m_instances)
+        placeVob(id, e, local);
+    }
+}
+
+void Engine::placeVob(u64 id, entt::entity e, const Transform& local)
+{
+    m_scene.setTransform(e, local);
+    m_scene.updateTransforms();
+    const Mat4 world = m_scene.worldMatrix(e);
+    for (SceneInstance& instance : m_instances)
+    {
+        if (instance.vob.value == id)
         {
-            if (instance.vob.value == id)
-            {
-                instance.transform = world;
-                instance.bounds = boundsOf(instance.model->bounds, world);
-                m_cullGridDirty = true;
-            }
+            instance.transform = world;
+            instance.bounds = boundsOf(instance.model->bounds, world);
+            m_cullGridDirty = true;
         }
-        // The collision turns with it: the body is put in again at the new angle.
-        if (const auto body = m_mobBodies.find(id); body != m_mobBodies.end() && m_physics.valid())
+    }
+    // The collision moves with it: the body is put in again where it is now.
+    if (const auto body = m_mobBodies.find(id); body != m_mobBodies.end() && m_physics.valid())
+    {
+        m_physics.remove(body->second.body);
+        Vec3 position;
+        Quat rotation;
+        Vec3 scale;
+        decomposeMatrix(world, position, rotation, scale);
+        auto added =
+            m_physics.addStatic(body->second.shape, position, rotation, scale, physics::Layer::World, id);
+        if (added)
         {
-            m_physics.remove(body->second.body);
-            Vec3 position;
-            Quat rotation;
-            Vec3 scale;
-            decomposeMatrix(world, position, rotation, scale);
-            auto added =
-                m_physics.addStatic(body->second.shape, position, rotation, scale, physics::Layer::World, id);
-            if (added)
-            {
-                body->second.body = added.value();
-            }
+            body->second.body = added.value();
         }
     }
 }

@@ -1471,6 +1471,56 @@ void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::s
     }
 }
 
+void Engine::trapHit(u32 targetId, i32 damage, std::string_view source)
+{
+    // A trap (dungeon D2: a gate marked crush = "damage"): its damage in full, no protection, as a blow.
+    auto target = combatant(targetId);
+    if (!target || target->fighter->state() == FightState::Dead)
+    {
+        return;
+    }
+    if (target->creature != nullptr && target->creature->asleep)
+    {
+        wakeUp(targetId);
+    }
+    const i32 hp = target->character->attribute("hp") - damage;
+    (void)target->character->setAttribute("hp", std::max(hp, 0));
+    G7_LOG_INFO("engine", "{} hits {}: {} damage ({} left)", source, target->name, damage, std::max(hp, 0));
+    if (m_scripts)
+    {
+        const Value args[] = {std::string(source), target->name, Value(static_cast<i64>(damage)),
+                              Value(false)};
+        m_scripts->emit("npc_hit", args);
+    }
+    if (hp > 0)
+    {
+        target->fighter->stagger();
+        playReaction(*target, "none/t_hit_light");
+        return;
+    }
+    if (target->id == kHeroId && m_transform)
+    {
+        m_transformBackRequested = true; // Z7: no life left in the animal's shape - human again
+        return;
+    }
+    if (target->id == kHeroId)
+    {
+        (void)target->character->setAttribute("hp", 1); // K8: the hero gets up again
+        target->fighter->knockOut(kHeroDownSeconds);
+        playReaction(*target, "none/t_ko");
+        return;
+    }
+    target->fighter->die();
+    playReaction(*target, "none/t_die_back");
+    target->creature->dead = true;
+    stopForFight(*target->creature);
+    if (m_scripts)
+    {
+        const Value args[] = {target->name, std::string(source)};
+        m_scripts->emit("npc_killed", args);
+    }
+}
+
 bool Engine::castSleep(u32 targetId, f32 seconds, std::string_view caster, std::string_view effect)
 {
     auto target = combatant(targetId);

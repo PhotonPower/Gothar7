@@ -98,9 +98,9 @@ std::vector<MobIssue> checkMobs(const world::Scene& scene, const MobLists& lists
             {
                 add(std::format("lock '{}': L and R only", mob->lock));
             }
-            if (ref.open && mob->type != "door")
+            if (ref.open && mob->type != "door" && mob->type != "lever")
             {
-                add("stored open, but only doors open");
+                add("stored open, but only doors open (and levers are thrown)");
             }
         });
     std::ranges::stable_sort(issues, {}, [](const MobIssue& i) { return i.id.value; });
