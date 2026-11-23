@@ -76,13 +76,39 @@ struct ZoneBox
     friend bool operator==(const ZoneBox&, const ZoneBox&) = default;
 };
 
+/// The fog of a zone of type "fog" (dungeon D7b): inside its box the camera's fog becomes this, fading in
+/// over `fade` metres around the box. Colours are sRGB 0..1 as written (the engine converts them).
+struct ZoneFog
+{
+    Vec3 color{0.0f};
+    f32 distance = 20.0f; ///< metres at which the fog hides 90 %
+    f32 start = 0.0f;     ///< metres without fog
+    f32 fade = 3.0f;      ///< metres around the box over which it fades in
+    friend bool operator==(const ZoneFog&, const ZoneFog&) = default;
+};
+
 struct Zone
 {
-    std::string type;  ///< "indoor", "music", "ambient"; other types are kept unread
-    std::string value; ///< indoor: the room tag LEO_<USE>_<CODE>_INNEN; music: the theme; ambient: its name
-    std::optional<ZoneBox> box; ///< indoor, music and ambient zones (several boxes may share a value)
+    std::string type;  ///< "indoor", "music", "ambient", "fog"; other types are kept unread
+    std::string value; ///< indoor: the room tag LEO_<USE>_<CODE>_INNEN; music: the theme; ambient: its name;
+                       ///< fog: a name
+    std::optional<ZoneBox> box; ///< indoor, music, ambient and fog zones (several boxes may share a value)
     std::string json;           ///< other types: the entry as it was (written back unchanged)
+    std::optional<ZoneFog> fog; ///< fog zones (dungeon D7b)
     friend bool operator==(const Zone&, const Zone&) = default;
+};
+
+/// `environment` of a world (dungeon D7b, dungeon.md "Umgebung je Welt"): no sky, sun, moon or stars, no
+/// time-of-day curves, no weather; a fixed ambient light and fog instead. Without it a world has
+/// data/environment.toml's day and night and the weather. Colours are sRGB 0..1 as written.
+struct WorldEnvironment
+{
+    Vec3 ambient{0.05f};               ///< ambient light from above (the "Grundlicht")
+    std::optional<Vec3> ambientGround; ///< from below; nullopt: half of `ambient`
+    Vec3 fogColor{0.0f};               ///< also the colour of the background
+    f32 fogStart = 0.0f;               ///< metres without fog
+    f32 fogDistance = 40.0f;           ///< metres at which the fog hides 90 %
+    friend bool operator==(const WorldEnvironment&, const WorldEnvironment&) = default;
 };
 
 struct WorldFile
@@ -98,6 +124,8 @@ struct WorldFile
     /// Optional "zones" block (world.md "Zonen"): indoor zones checked and read, the other types kept as they
     /// are; written one per line, sorted by value (indoor ties by box centre x, then z).
     std::vector<Zone> zones;
+    /// Optional "environment" block (dungeon D7b): the world has no sky and its own light and fog.
+    std::optional<WorldEnvironment> environment;
     /// Optional "generator" head (world.md): written by gothar-worldgen, kept unchanged. `generatorOwned`
     /// holds its "owned" ids as closed ranges - a hint for the editor that such vobs are rewritten by the
     /// next generator run.
@@ -114,6 +142,11 @@ struct WorldFile
 /// world.md "Zonen"); null if none. `volume` gets its box volume (half extents multiplied).
 [[nodiscard]] const Zone* smallestZone(std::span<const Zone> zones, std::string_view type, const Vec3& point,
                                        f32* volume = nullptr) noexcept;
+/// How far `point` lies outside the turned box (0 inside), metres.
+[[nodiscard]] f32 zoneDistance(const ZoneBox& box, const Vec3& point) noexcept;
+/// The fog zone that counts at `point` and how much (dungeon D7b): inside a box 1 (nested: the smallest),
+/// else the nearest whose fade reaches it, 1 at its box fading to 0 at `fade` metres; null if none.
+[[nodiscard]] const Zone* fogZoneAt(std::span<const Zone> zones, const Vec3& point, f32& weight) noexcept;
 /// Checks one zone as reading does (known types need a value and a box with positive half extents); `where`
 /// names it in the message ("zones[3]").
 [[nodiscard]] Result<void> checkZone(const Zone& zone, std::string_view where);

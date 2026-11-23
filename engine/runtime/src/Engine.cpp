@@ -1140,6 +1140,7 @@ Result<void> Engine::initScene()
     m_environment.ambientGround = env.ambientGround.value_or(m_environment.ambientGround);
     m_environment.fogColor = env.fogColor.value_or(m_environment.fogColor);
     m_environment.fogStart = env.fogStart.value_or(m_environment.fogStart);
+    m_fogStart = m_environment.fogStart;
     m_environment.fogDensity = env.fogDensity.value_or(m_environment.fogDensity);
 
     m_viewpoints = file.viewpoints;
@@ -1754,6 +1755,7 @@ void Engine::initEnvironment()
     m_environment.ambientGround = Vec3(0.07f, 0.06f, 0.05f);
     m_environment.fogColor = Vec3(0.0844f, 0.0395f, 0.0331f); // sRGB (0.32, 0.22, 0.20), the dusk horizon
     m_environment.fogStart = static_cast<f32>(m_config.settings.get<f64>("render.fog_start", 30.0));
+    m_fogStart = m_environment.fogStart;
     // Default density: 90 % fog at 300 m.
     m_environment.fogDensity = static_cast<f32>(
         m_config.settings.get<f64>("render.fog_density", render::fogDensityFor(0.9f, 300.0f, 30.0f)));
@@ -2020,9 +2022,15 @@ f32 Engine::lightningNow() const noexcept
 
 void Engine::updateEnvironment()
 {
-    const f32 fogStart = m_environment.fogStart;
-    world::DaySample sample = m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
-    m_weather.apply(sample, m_gameTime.clock()); // M17 E1: clouds, rain and fog over the time of day
+    // Dungeon D7b: a world with its own `environment` has no sky, time of day or weather to see.
+    const bool ownEnvironment = m_worldFile.environment.has_value();
+    world::DaySample sample = ownEnvironment ? world::fixedEnvironment(*m_worldFile.environment)
+                                             : m_dayCycle.evaluate(m_gameTime.hourOfDay(), m_fogBaseDensity);
+    if (!ownEnvironment)
+    {
+        sample.environment.fogStart = m_fogStart;
+        m_weather.apply(sample, m_gameTime.clock()); // M17 E1: clouds, rain and fog over the time of day
+    }
     m_rainTime += m_frameSeconds;
     m_windTime = std::fmod(m_windTime + m_frameSeconds, 3600.0);
     const render::WindFrame wind = windNow(); // M17 W: vegetation, signs, smoke
@@ -2046,7 +2054,13 @@ void Engine::updateEnvironment()
         sample.sky.zenith += Vec3(0.35f, 0.4f, 0.55f) * flash;
     }
     m_environment = sample.environment;
-    m_environment.fogStart = fogStart;
+    // Dungeon D7b: a fog zone at the camera (a misty crypt) takes over the fog, fading in at its edge.
+    f32 fogWeight = 0.0f;
+    if (const world::Zone* fog = world::fogZoneAt(m_worldFile.zones, m_camera.transform.position, fogWeight);
+        fog != nullptr && fogWeight > 0.0f)
+    {
+        world::applyZoneFog(m_environment, *fog->fog, fogWeight);
+    }
     // Rooms (zones of type indoor, world.md): the nearest to the camera get the indoor ambient.
     m_environment.indoorAmbient = m_dayCycle.indoorAmbient();
     m_environment.indoor = nearestIndoorVolumes(m_camera.transform.position);
@@ -2653,6 +2667,7 @@ void Engine::runDebugUi(f64 realSeconds)
     m_postSettings.tonemapper = panel.tonemapper;
     m_postSettings.exposure = panel.exposure;
     m_environment.fogStart = panel.fogStart;
+    m_fogStart = panel.fogStart;
     m_fogBaseDensity = panel.fogDensity;
     m_sunEnabled = panel.sun;
     if (panel.hour != shownHour)

@@ -7,6 +7,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/render/Grading.hpp>
 #include <g7/render/Lighting.hpp>
+#include <g7/world/WorldFile.hpp>
 
 #include <map>
 #include <string>
@@ -60,6 +61,12 @@ struct DaySample
     f32 bloomIntensity = 0.12f;
     render::Grading grading;
 };
+
+/// Dungeon D7b: the moment of a world without sky (`WorldFile::environment`): no sun, moon or stars, the
+/// background in the fog colour, the ambient light and fog of the block (sRGB in the file, linear here).
+[[nodiscard]] DaySample fixedEnvironment(const WorldEnvironment& environment);
+/// Dungeon D7b: mixes a fog zone's fog into `environment` by `weight` (0 none .. 1 the zone's fog).
+void applyZoneFog(render::Environment& environment, const ZoneFog& fog, f32 weight);
 
 class DayCycle
 {

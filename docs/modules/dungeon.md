@@ -428,6 +428,21 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `tests/asset/test_gltf.cpp` (extras der Knoten), `tests/render_gpu/test_editor.cpp` „dungeon wiring“ (Probe,
   Vorschau, Speichern, Prüfung).
 
+## Stand D7b – Umgebung je Welt (umgesetzt)
+- **Format** (`world.md` „Umgebung je Welt“ und „Zonen“): Block `environment` (`sky` false, `ambient`,
+  `ambient_ground`, `fog_color`, `fog_start`, `fog_distance`; Farben sRGB) und Zonen-Typ `fog` (`color`, `distance`,
+  `start`, `fade`). Nebel wird über die Weite angegeben (90 % bei `distance` Metern), nicht als Dichte.
+- **Laufzeit:** Mit dem Block nimmt die Engine statt der Tageszeit-Kurven `world::fixedEnvironment` (Sonne 0,
+  Himmel = Nebelfarbe, keine Sterne, kein Mond, keine Schatten), wendet kein Wetter an, und `Engine::weatherNow()`
+  ist dort still (kein Regen, Wind, Blitz, keine Nässe, kein Regenklang); der Zustand des Wetters läuft weiter. Eine
+  Nebelzone an der Kamera mischt ihren Nebel über `fade` ein (`world::fogZoneAt`, `world::applyZoneFog`) – auch in
+  Welten mit Himmel. Der Nebelbeginn aus `[render] fog_start` bzw. dem Debug-Fenster bleibt für Welten mit Himmel
+  erhalten (`m_fogStart`).
+- **Editor:** Zonen-Typ `fog` in der Liste (neu: grauer Dunst, 15 m).
+- **Tests:** `tests/world/test_world_file.cpp` (Block und Zone lesen, prüfen, schreiben, Gewicht am Rand),
+  `tests/world/test_day_cycle.cpp` (fixedEnvironment, applyZoneFog), `tests/render_gpu/test_engine_environment.cpp`
+  auf `testworld/cellar.g7world` (mittags keine Sonne, Gewitter unsichtbar, Nebel der Welt und der Gruft-Zone).
+
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
@@ -438,7 +453,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 | **D5** Nischen und Türen ✔ | `niche`, Tür-Ereignisse, `no_pick`, `one_way` | klein |
 | **D6** Monster ✔ | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |
 | **D7** Editor und Import ✔ | Inspektor, Linien, Prüfen, `extras` aus Blender | mittel |
-| **D7b** Umgebung | Block `environment` je Welt (ohne Himmel und Sonne, Nebel, Grundlicht), Zonen-Typ `fog` | klein |
+| **D7b** Umgebung ✔ | Block `environment` je Welt (ohne Himmel und Sonne, Nebel, Grundlicht), Zonen-Typ `fog` | klein |
 | **D8** Testdungeon und Szenario | zwei kleine Ebenen der Engine (`testworld/dungeon_1/2`), DoD-Szenario | mittel |
 
 Nach D1–D3 kann welt mit echten Räumen bauen. D8 ersetzt welts Inhalt nicht, er prüft nur die Mechanik.

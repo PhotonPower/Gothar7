@@ -194,3 +194,30 @@ TEST_CASE("Day cycle: errors name the key; the shipped curves load")
     CHECK(error("version = 1\n[indoor]\nambient = 1.5\n[[key]]\nhour = 1.0\n") ==
           "environment.toml: indoor.ambient: must be 0..1 (a factor on the ambient)");
 }
+
+TEST_CASE("Day cycle: a world without sky (dungeon D7b) and the fog of a fog zone")
+{
+    WorldEnvironment e;
+    e.ambient = Vec3(0.2f);
+    e.fogColor = Vec3(0.1f, 0.2f, 0.3f);
+    e.fogStart = 1.0f;
+    e.fogDistance = 20.0f;
+    const DaySample s = fixedEnvironment(e);
+    CHECK(s.environment.sunIntensity == 0.0f);
+    CHECK(s.sky.stars == 0.0f);
+    CHECK(s.sky.moon == 0.0f);
+    CHECK(s.environment.ambientSky.r == doctest::Approx(0.0331f).epsilon(0.01)); // sRGB 0.2 -> linear
+    CHECK(s.environment.ambientGround.r == doctest::Approx(s.environment.ambientSky.r * 0.5f));
+    CHECK(s.sky.zenith == s.environment.fogColor); // the background is the fog
+    CHECK(render::fogFactor(20.0f, s.environment.fogStart, s.environment.fogDensity) ==
+          doctest::Approx(0.9f).epsilon(0.01));
+
+    render::Environment env = s.environment;
+    const ZoneFog thick{Vec3(1.0f), 5.0f, 0.0f, 2.0f};
+    applyZoneFog(env, thick, 0.0f);
+    CHECK(env.fogDensity == doctest::Approx(s.environment.fogDensity));
+    applyZoneFog(env, thick, 1.0f);
+    CHECK(env.fogColor == Vec3(1.0f));
+    CHECK(env.fogStart == 0.0f);
+    CHECK(render::fogFactor(5.0f, 0.0f, env.fogDensity) == doctest::Approx(0.9f).epsilon(0.01));
+}
