@@ -667,6 +667,29 @@ std::optional<Mat4> Engine::playerSocketTransform(std::string_view socket) const
     return figure * modelSpace[static_cast<usize>(bone)];
 }
 
+std::optional<Mat4> Engine::playerAttachmentTransform(std::string_view socket) const
+{
+    const auto at = playerSocketTransform(socket);
+    if (!at || !m_figure)
+    {
+        return std::nullopt;
+    }
+    for (const FigureAttachment& a : m_figure->attachments)
+    {
+        if (a.socket == socket)
+        {
+            return *at * a.offset;
+        }
+    }
+    return std::nullopt;
+}
+
+Mat4 runeGripTransform() noexcept
+{
+    return glm::translate(Mat4(1.0f), kRuneGripOffset) *
+           glm::rotate(Mat4(1.0f), glm::pi<f32>(), Vec3(0.0f, 1.0f, 0.0f));
+}
+
 void Engine::setPlayerLookTarget(std::optional<Vec3> target)
 {
     if (m_figure)
