@@ -10,8 +10,8 @@ Karten, Namen, Gegner und Grafik bekannter Spiele bilden wir nicht nach; alles s
 `assets/README.md`).
 
 Die Mechanik (Falltür, Teleporter, Gatter, Schalter, Trittplatte, Geheimwand, Ebenenwechsel) baut **engine**. welt
-baut die Räume und Ebenen und setzt die Vobs. Was welt dafür in die Welt schreiben will, steht in Abschnitt 5 als
-**Vorschlag**. engine schickt parallel einen Mechanik-Plan; der Koordinator gleicht beide zum Vertrag ab.
+baut die Räume und Ebenen und setzt die Vobs. Was welt dafür in die Welt schreibt, steht in Abschnitt 5;
+er ist mit engines Mechanik-Plan (#422, `docs/modules/dungeon.md`) abgeglichen (Entscheidung Koordinator, 2026-11-23).
 
 ---
 
@@ -85,8 +85,8 @@ Die Fenster sind von innen sichtbar, aber nicht begehbar.
   - Im Weinkeller zieht es: Ambiente-Zone mit Luftzug und leisem Tropfen.
   - Der Fackelhalter neben dem Fass ist schief.
 - **Öffnen:**
-  - Der schiefe Fackelhalter ist ein **Hebel** (Mob, „benutzen“). Er schwenkt die Vorderwand des Fasses wie eine Tür
-    auf (**Geheimtür**).
+  - Der schiefe Fackelhalter ist ein **Hebel** (Mob `lever`, „benutzen“, `LEVER_SCHLOSS_FASS`). Er öffnet die
+    Vorderwand des Fasses, einen `mover` vom Typ `secret_wall` (`WALL_SCHLOSS_FASS`), die wie eine Tür aufschwenkt.
   - Ohne den Hebel gibt es keinen Weg hinein: Schlösser knacken geht nicht, Gewalt auch nicht.
 - **Dahinter:**
   - eine enge Wendeltreppe hinab;
@@ -211,42 +211,50 @@ Ganzes aufschwingt.
 
 ---
 
-## 5. Was welt von engine braucht (Vorschlag für den Vertrag)
+## 5. Vertrag mit engine (abgeglichen mit #422, Entscheidung Koordinator 2026-11-23)
 Ziel ist, **alles in der Welt-Datei** zu beschreiben, damit Generator und Editor dieselben Daten schreiben. Die Logik
 (was mit was verbunden ist) steht in Feldern, nicht in Lua. Lua bleibt für Inhalt (Texte, Belohnungen, Sonderfälle).
+Die Mechanik und das genaue Format beschreibt engine in `docs/modules/dungeon.md` (#422). Hier steht, was welt
+schreibt.
 
-| Was | Vorschlag Vob/Mob und Felder | Bemerkung |
+| Was | Vob und Felder, die welt schreibt | Bemerkung |
 |---|---|---|
-| **Verknüpfung** | allgemeines Feld `targets: ["<Vob-Name>", …]` und `action: "toggle" \| "open" \| "close"` an Schalter, Platte, Hebel; Ziele sind alles, was einen Zustand `open` hat | Ziele über den Namen; Namen eindeutig je Welt |
-| **Wandschalter / Hebel** | `mob`, Typ `lever` (neuer Mob-Typ in `mobs.toml`, Clip „ziehen“), `targets`, `action`, `once` | auch der schiefe Fackelhalter im Keller |
-| **Trittplatte** | `trigger` mit `filter: any`, neu `plate: {targets, action, mode: "press" \| "hold", items: true}` | `hold` = offen nur, solange etwas darauf steht; Gegenstände zählen wie im Vorbild |
-| **Gatter** | `mob`, Typ `gate`, `open` (bool), optional `lock` (Schlüssel); bewegt das Gitter nach oben; Kollision zu/offen | geschlossen sperrt die Wegnetz-Kanten (`waynet.edges` mit `via: "<Gatter>"`) |
-| **Tür** | vorhandener Tür-Mob; zusätzlich `targets`-fähig, also auch durch Schalter zu öffnen | Wegnetz wie beim Gatter |
-| **Geheimwand** | `mob`, Typ `secret_wall`, `open`, `motion: "slide_down" \| "slide_side" \| "swing"`; ohne eigenen Fokus, bis ein Schalter sie öffnet (oder optional `focus: true` als „seltsamer Stein“) | auch die Fassfront |
-| **Nische / Depot** | `mob`, Typ `niche` (Behälter wie die Truhe, ohne Deckel; Inhalt aus der Mob-Instanz); in einer Geheimwand oder offen | Inhalt per Skript-Instanz wie bei Truhen |
-| **Falltür** | `mob`, Typ `trapdoor`, `open`; offen fällt man **in eine Zielwelt**: `fall: {world, start}`; oder in derselben Welt `fall: {start}` | Ankunft ohne Fallschaden (kurzer Fall, ~1,5 m); auch Monster fallen? (Frage an engine) |
-| **Teleporter** | `trigger` mit `filter: any`, neu `teleport: {start, yaw?}` in derselben Welt; zwischen Welten der vorhandene `changeWorld`; `active` (bool, schaltbar), `visible` (Partikel) | Monster und Gegenstände nur innerhalb der Welt |
-| **Treppe auf/ab** | vorhandener Levelwechsel-Trigger (`changeWorld`) + Startpunkte `START_E02_VON_OBEN` usw. | unverändert |
-| **Monster-Spawn** | `start`-ähnlicher Vob `spawn` mit `monster` (Art bzw. Instanz), `count`, optional `freepoints`; oder Freepoints `FP_SPAWN_<ART>_…` und Lua | Vorschlag: Vob, damit der Editor ihn zeigt |
-| **Umgebung je Welt** | Kopf-Block `environment: {sky: false, sun: false, ambient: …, fog: {color, near, far}}` | Dungeon ohne Sonne und Tag/Nacht-Licht |
-| **Nebel je Zone** | `zones`-Typ `fog` (Box, Farbe, Weite) | optional, für Grotte/Zisterne |
+| **Auslöser → Ziele** | an jedem Auslöser (Hebel, Knopf, Platte, Teleporter, Relais): `targets: ["<Vob-Name>", …]` und `action` (`open`, `close`, `toggle`; für Teleporter und Relais auch `on`/`off`) | Ziele über den Namen, Namen eindeutig je Welt; mehrere Auslöser für ein Ziel verknüpft engines **`relay`** (`mode` `any`/`all`/`count`, `delay`, `once`, `invert`) |
+| **Bewegte Teile** | `mesh`- bzw. `mob`-Vob mit Komponente **`mover`**, `kind` = `gate` \| `secret_wall` \| `trapdoor`, `open` (Startzustand); Bahn, Zeit und Klänge nach engines Feldern | **keine eigenen Mob-Typen**; die Kollision bewegt sich mit |
+| ├ Fallgatter | `mover`, `kind: gate`, Gitter fährt nach oben | sperrt geschlossen die Wegnetz-Kanten durch die Zelle (Kanten-Sperre über den `mover`-Zustand) |
+| ├ Geheimwand | `mover`, `kind: secret_wall` (gleitet nach hinten oder zur Seite bzw. schwenkt) | auch die **Fassfront im Weinkeller** |
+| └ Falltür | `mover`, `kind: trapdoor` über einem Schacht; unten im Schacht der Fall als Weltwechsel (`changeWorld` mit `fall`, engine) | Ankunft oben im Schacht der Ebene darunter; die Schachthöhe hält welt klein, also kein Fallschaden (Frage F12) |
+| **Hebel** | Mob-Typ **`lever`** (`mobs.toml`), `targets`, `action` | der schiefe Fackelhalter am Riesenfass ist ein `lever` |
+| **Versteckter Knopf** | Mob-Typ **`wall_button`**, `hidden: true`: im Fokus erst ab 1,2 m als „Loser Stein“ | öffnet Nischen und Geheimwände |
+| **Nische / Depot** | Mob-Typ **`niche`** (Behälter ohne Deckel, Inhalt aus der Mob-Instanz in Lua), meist hinter einer `secret_wall` | |
+| **Trittplatte** | `trigger` (flache Box) mit **`plate`**, `targets`, `action`; Gewicht nach engine (`any` = auch Gegenstände) | wie vorgeschlagen |
+| **Teleporter** | `trigger` mit **`teleport`**: Ziel in derselben Welt oder `world` + `start`; `filter`, `active`, `visible` | wie vorgeschlagen; Monster nur innerhalb der Welt |
+| **Tür** | vorhandener Tür-Mob; dazu engines Ereignisse (`open`/`close`/`lock`/`unlock`), `no_pick`, `one_way` | Wegnetz-Sperre wie beim Gatter |
+| **Treppe auf/ab** | vorhandener Weltwechsel-Trigger (`changeWorld`) + Startpunkte `START_E02_VON_OBEN` usw. | unverändert |
+| **Monster** | Vob-Typ **`spawn`** (Instanz, `count`), auf den Monsterplätzen der Karte | Ruhezustand und Wecken macht engine |
+| **Umgebung je Welt** | Block **`environment`** (ohne Sonne und Himmel, Grundlicht, Nebel); Format engine | engine übernimmt |
+| **Nebel je Zone** | `zones`-Typ **`fog`**; Format engine | engine übernimmt |
 | **Wasser** | vorhandener `water`-Vob | Zisterne |
 
-Weitere Wünsche an engine:
-- Weltwechsel mit Ladebildschirm.
-- Ankunft nach dem Fall durch eine Falltür (Fall-Animation, kein Schaden).
-- Speichern im Dungeon wie sonst (Frage F8).
+- **Namen der Vobs** (Vorschlag welt, eindeutig je Ebene): `GATE_E01_<x>_<y>`, `WALL_E01_…`, `TRAP_E01_…`,
+  `LEVER_E01_…`, `BUTTON_E01_…`, `PLATE_E01_…`, `TELE_E01_…`, `RELAY_E01_…`, `NICHE_E01_…`, `SPAWN_E01_…`; im Keller
+  `LEVER_SCHLOSS_FASS` und `WALL_SCHLOSS_FASS`.
+- Der Generator schreibt diese Vobs aus der Karten-JSON. Später kommen dieselben Felder aus Blender-Knoten
+  (`VOB_…`, ADR 0023), falls Teile von Hand gebaut werden.
+- Weitere Wünsche an engine:
+  - Abblenden bzw. Ladebildschirm beim Ebenenwechsel;
+  - Speichern im Dungeon wie sonst (Frage F8).
 
 ---
 
 ## 6. Was welt von figuren braucht
 - **Monster:** 4–6 neue Dungeon-Arten mit Rig, Clips und Kollisionsmaßen (`monsters.md`, F5-Vertrag).
 - **Clips:**
-  - Hebel ziehen (`mob/lever`);
+  - Hebel ziehen und versteckten Knopf drücken (`mob/lever`, `mob/wall_button`; engine D3);
   - auf eine Platte treten bzw. sich bücken (optional);
   - Sturz durch eine Falltür und Landen (Ankunft);
   - Nische durchsuchen (wie Truhe).
-- **Modelle (optional):** Riesenfass mit Geheimfront, Thron/Hort-Schatz, besondere Schätze (Items, F6). Den
+- **Modelle (optional):** Riesenfass (die Front ist ein eigener Knoten für den `mover`), Thron/Hort-Schatz, besondere Schätze (Items, F6). Den
   Baukasten (Wände, Böden, Gatter, Falltüren …) baut welt selbst.
 
 ---
@@ -279,3 +287,4 @@ Weitere Wünsche an engine:
 | F9 | Stimmung? | dunkel, still, bedrohlich; Fackel nötig; wenige, gefährliche Gegner statt vieler; Rätsel aus Schaltern und Platten wichtiger als Kampf |
 | F10 | Welten: eine je Ebene oder übereinander? | eine `.g7world` je Ebene (Ladebildschirm, Monster folgen nicht) |
 | F11 | Respawn? | nein (wie Gothic): Tote bleiben tot, Schätze einmalig |
+| F12 | Fallschaden beim Sturz durch eine Falltür? | nein: kurzer Schacht, man landet unversehrt eine Ebene tiefer; die Falle kostet den Weg zurück, nicht Lebenspunkte |
