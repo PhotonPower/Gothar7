@@ -428,6 +428,23 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `gatterbock/t_wake` | Erwachen aus der Statue: Kopf hebt sich, Schultern mahlen, Arme fallen frei | – | sound:gatterbock_threaten | K | platzhalter-K |
 | `gatterbock/t_threaten` | Drohen: stampft, schlägt die Fäuste zusammen | – | – | K | platzhalter-K |
 
+### Beinhauswart (`beinhauswart`, Dungeon, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `beinhauswart/s_idle` | Steht gebeugt, die Kapuze dreht sich, die Laterne pendelt | – | – | K | platzhalter-K |
+| `beinhauswart/s_walk` | Langsames Schlurfen auf seiner Runde, Spaten als Stock | ✓ 0,8 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `beinhauswart/s_run` | Geduckter, hastiger Lauf, Spaten aufrecht, Laterne schwingt | ✓ 3,2 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `beinhauswart/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `beinhauswart/t_attack_1` | Spaten hoch über den Kopf, dann vorn niederhacken (Treffpunkt `socket_spade`) | – | hit_start, hit_end | K | platzhalter-K |
+| `beinhauswart/t_attack_2` | Spaten flach von rechts nach links in Kniehöhe | – | hit_start, hit_end | K | platzhalter-K |
+| `beinhauswart/t_hit` | Treffer: zuckt zurück, die Laterne schwingt | – | – | K | platzhalter-K |
+| `beinhauswart/t_die` | Die grünen Augen erlöschen: sinkt auf die Knie und fällt nach vorn | – | – | K | platzhalter-K |
+| `beinhauswart/s_eat`, `s_sleep` | Hebt die Laterne an eine Nische und zündet Lichter an (Mindest-Set) / auf den Spaten gestützt (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `beinhauswart/s_dormant` | Wartet an der Gruft (`zs_dormant`, #422): auf den Spaten gestützt, Kopf gesenkt | – | – | K | platzhalter-K |
+| `beinhauswart/t_wake` | Erwachen: die Kapuze hebt sich, die Laterne kommt hoch | – | sound:beinhauswart_threaten | K | platzhalter-K |
+| `beinhauswart/t_threaten` | Drohen: stößt die Laterne dem Gegner entgegen, das Licht blendet | – | flash | K | platzhalter-K |
+
 ## Prio C – später
 
 Akrobatik-Varianten, weitere Gangarten-Varianten (erste vier siehe oben), zusätzliche
