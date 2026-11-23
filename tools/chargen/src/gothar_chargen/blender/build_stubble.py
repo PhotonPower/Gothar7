@@ -52,9 +52,9 @@ TUFT_LENGTH = (
     0.022,
     0.038,
 )  # m: tufts on the beard surface, shortest at the cheeks, longest at the chin
-TUFT_WIDTH = 0.009  # m at the root; the tip is ``TUFT_TAPER`` as wide
-TUFT_TAPER = 0.55
-TUFT_V = (0.12, 0.9)  # texture v of a tuft: root in band 1, tip in the sparse band 3 (wisps)
+TUFT_WIDTH = 0.008  # m at the root; the tip is ``TUFT_TAPER`` as wide (soft ends, no points)
+TUFT_TAPER = 0.9
+TUFT_V = (0.12, 0.99)  # texture v of a tuft: root in band 1, tip in the sparse band 3 (wisps)
 TUFT_LIFT = 0.5  # outward share of a tuft's direction (0 = lying on the shell, 1 = standing up)
 TUFT_SINK = 0.0015  # m: roots below the shell surface, so no tuft starts in the air
 
