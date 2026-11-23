@@ -7,7 +7,9 @@ und Gatter, versteckte Depots in den Wänden, Schalter und Trittplatten, Monster
 Bau (Schloss, Keller, Ebenen). Dieses Dokument plant die **Engine-Mechanik**. **Kein Code bis zur Freigabe.**
 
 **Berührt Verträge mit welt:** neue Vob-Komponenten in `.g7world` und neue `VOB_`-Knoten aus Blender (ADR 0023).
-Siehe „Vertrag mit welt“; welt schickt seine Wünsche, der Koordinator gleicht ab.
+Siehe „Vertrag mit welt“. **Abgeglichen** mit welts Plan #421 (`docs/design/schloss-dungeon.md`, Abschnitt 5),
+Entscheidung Koordinator 2026-11-23: welts Namen für die Arten bewegter Teile (`gate`, `secret_wall`, `trapdoor`) und
+die Felder der Auslöser (`targets`, `action`), dazu welts `environment` je Welt und Zonen-Typ `fog`.
 
 ## Ausgangslage
 - **Bewegung** frei wie in Gothic (M5), nicht in Feldern. Der Dungeon ist also *im Geist* ein Grid-Crawler: Die
@@ -27,34 +29,37 @@ Siehe „Vertrag mit welt“; welt schickt seine Wünsche, der Koordinator gleic
 Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr Zustand wird gespeichert.
 
 ### Ereignisse und Ziele (das Netz)
-- Jeder Auslöser hat `target` (ein Vob-Name oder eine Liste) und `event`:
-  - `open`, `close`, `toggle` (Mover, Türen, Gatter);
-  - `on`, `off` (Schalter, Lichter, Teleporter);
-  - `trigger` (Relais, Lua).
+- Jeder Auslöser (Hebel, Knopf, Platte, Trigger, Relais) hat **`targets`** (Liste von Vob-Namen) und **`action`**
+  (Feldnamen nach welt):
+  - `toggle`, `open`, `close` (bewegte Teile, Türen, Gatter);
+  - dazu `on`, `off` (Teleporter, Lichter), `wake` (Monster eines Raums) und `trigger` (Relais, Lua).
+- Das bisher reservierte `trigger.target` wird als einelementiges `targets` gelesen (alte Welten bleiben gültig).
 - **Relais** (`relay`, wie `zCTriggerList`), ein unsichtbarer Vob:
   - `mode`: `any` (jedes Eingangsereignis weitergeben), `all` (erst wenn alle Eingänge an sind: Rätsel mit mehreren
     Platten) oder `count` (nach n Ereignissen);
   - `delay` (Sekunden), `once`;
   - `invert` (an wird aus: eine Platte *hält* ein Gatter offen).
 - **Lua** für alles, was sich nicht verdrahten lässt:
-  - Ereignis `dungeon_event(target, event, source)`;
-  - Funktionen `send(target, event)`, `mover_state(name)`, `switch_state(name)`;
+  - Ereignis `dungeon_event(target, action, source)`;
+  - Funktionen `send(target, action)`, `mover_state(name)`, `switch_state(name)`;
   - Hook `on_event` an Mob-Definitionen.
 - Die Ereignisse laufen im festen Schritt. Ein Netz mit Zyklus wird beim Laden gemeldet (Warnung) und je Schritt nur
   einmal durchlaufen.
 
-### Bewegte Teile – `mover` (Gatter, Geheimwand, Falltür, Plattform)
-- Ein `mesh`- oder `mob`-Vob mit `mover`:
-  - `kind` = `slide` (Verschiebung `offset` [x, y, z]) oder `rotate` (`axis`, `angle`, um den Ursprung);
+### Bewegte Teile – Komponente `mover` (Gatter, Geheimwand, Falltür)
+- Ein `mesh`-Vob mit `mover` (keine eigenen Mob-Typen dafür):
+  - `kind` = **`gate`** (Fallgatter: gleitet nach oben auf bzw. fällt zu), **`secret_wall`** (gleitet nach hinten bzw.
+    zur Seite) oder **`trapdoor`** (klappt nach unten um die Kante am Ursprung) – welts Namen;
+  - jede Art bringt ihre Bewegung mit (gate: `offset` [0, Höhe, 0]; secret_wall: `offset` nach hinten; trapdoor:
+    `axis` und `angle` 90°). `offset`, `axis` und `angle` dürfen die Vorgabe überschreiben;
   - `seconds` für den Weg, `open` (Startzustand), Klänge `sound_move` und `sound_stop`;
-  - `crush` (was geschieht, wenn jemand im Weg ist, Frage 3).
+  - `crush` (was geschieht, wenn jemand im Weg ist, Fragen 2 und 3).
 - Die Kollision bewegt sich mit, je Schritt neu gesetzt wie bei den Türen heute.
-- **Fallgatter:** `slide`, nach unten. **Geheimwand:** `slide` nach hinten oder zur Seite. **Falltür:** `rotate` nach
-  unten, darunter ein Schacht (siehe Ebenenwechsel). **Hebebühne:** `slide` nach oben, später.
+- Eine Hebebühne (`lift`) kommt später als weitere Art.
 
 ### Schalter – Mob-Typen `lever` und `wall_button`
 - Benutzen wie jedes Mob (M8): Der Held geht hin, spielt `lever_use` bzw. `button_press` und schickt beim Clip-Event
-  `use` `event` an `target`.
+  `use` `action` an `targets`.
 - Hebel haben zwei Stellungen (`toggle`). Knöpfe sind einmalig oder federn zurück (`once`).
 - **Versteckter Knopf:** `hidden = true`. Er erscheint im Fokus erst aus der Nähe (1,2 m statt 3 m) und hat keinen
   Namen, bis er einmal gefunden ist („Loser Stein“), Frage 5.
@@ -67,7 +72,8 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   - ein NPC oder Monster;
   - mit `any` auch **Gegenstände**: ein Item-Vob, das darauf liegt; auch ein fallen gelassenes, ein per Telekinese
     abgelegtes, ein geworfenes.
-- Ereignisse `press` beim ersten Gewicht, `release` beim letzten (oder `event` und `release_event` frei wählbar).
+- Beim ersten Gewicht geht `action` an `targets`, beim letzten die Gegenrichtung (`open` ↔ `close`, `toggle` noch
+  einmal) oder `release_action`, wenn gesetzt.
 - Klang und eine kleine Absenkung des Modells um 2 cm als Rückmeldung (ein kleiner `mover`).
 - **Gewicht** in kg nur, falls Frage 4 es verlangt. Der Vorschlag ist „etwas liegt darauf“.
 
@@ -79,7 +85,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   - `one_way` (nur von einer Seite zu öffnen).
 
 ### Falltür und Grube
-- Eine Falltür (`mover` rotate) über einem Schacht, ausgelöst von einer Platte oder einem Relais, oder offen von
+- Eine Falltür (`mover` mit `kind = trapdoor`) über einem Schacht, ausgelöst von einer Platte oder einem Relais, oder offen von
   Anfang an.
 - Wer in den Schacht fällt, landet in der **Ebene darunter** (siehe „Ebenenwechsel“).
 - Gruben ohne Ebene darunter sind einfach tiefe Löcher mit Fallschaden (M5).
@@ -97,7 +103,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 
 ### Geheimwände, Nischen und Depots
 - Eine **Nische** ist ein Mob `niche` (Truhe ohne Deckel, Inhalt als Lua-`Mob`-Definition wie bei Truhen) hinter
-  einer Geheimwand (`mover`).
+  einer Geheimwand (`mover` mit `kind = secret_wall`).
 - Oder eine offene Nische mit Item-Vobs.
 - **Finden** (Frage 5): durch einen versteckten Knopf in der Nähe, durch eine Platte, durch ein Rätsel (Lua). Im
   Vorschlag gibt es *keine* Suchtaste und *keine* Wahrnehmungsprobe: Man findet sie durch Hinsehen (leicht andere
@@ -108,7 +114,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   (welt).
 - **Ruhe und Erwachen:** neuer Zustand `zs_dormant`. Das Monster liegt bzw. steht still und schläft, bis es den
   Helden wahrnimmt (Sicht oder Geräusch; schlafend mit halber Reichweite, M9-Wahrnehmung) oder Schaden nimmt. Erwacht
-  bleibt es wach. Ein Ereignis kann ganze Räume wecken (`send("raum_3", "wake")`).
+  bleibt es wach. Die Aktion `wake` an einen `spawn`- oder Raum-Vob weckt ganze Räume (`send("raum_3", "wake")`).
 - **Erscheinen:**
   - Marker-Vobs `spawn` mit `npc` (Instanz), `count`, `respawn` (Frage 8);
   - oder Lua beim Laden der Ebene (`world_loaded`).
@@ -145,7 +151,22 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   - Die Engine merkt sich die Fallgeschwindigkeit und lässt den Helden in der neuen Ebene am Startpunkt (oben im
     Ankunftsschacht) mit dieser Geschwindigkeit weiterfallen. Der Fallschaden zählt die ganze Höhe (Frage 6).
   - Statt des Ladebildschirms ein schwarzes Abblenden, solange das Laden unter etwa 2 s bleibt (Frage 7).
-- Ebenen verbinden auch Treppen und Teleporter. Ein Rückweg nach oben muss es immer geben (Frage 11).
+- **Treppen** zwischen Ebenen über den vorhandenen Weltwechsel-Trigger (`changeWorld` + Startpunkt, M4), dazu
+  Teleporter. Ein Rückweg nach oben muss es immer geben (Frage 11).
+
+## Umgebung je Welt (aus welts Plan übernommen)
+- **`environment`** in jeder `.g7world` (neuer Block, optional): kein Himmel, keine Sonne, kein Mond und keine Sterne
+  (`sky = false`), eigener Nebel (Farbe, Dichte), ein Ambient-Grundlicht (Farbe, Stärke), keine Tageszeit-Kurven. Ohne
+  den Block gilt wie bisher `data/environment.toml` mit Tageszeit und Wetter. Wetter und Regen gibt es in solchen
+  Welten nicht; die Spielzeit läuft weiter (Frage 14).
+- **Zonen-Typ `fog`** (neben `indoor`, `music`, `ambient`): ein Bereich mit eigenem Nebel (Farbe, Dichte, weich über
+  einige Meter), z. B. eine nebelige Gruft oder ein dunstiger Gang.
+- Das Grundlicht macht den Dungeon ohne Fackel sehr dunkel, aber nicht schwarz (Frage 13).
+
+## Zugang im Schlosskeller (Entscheidung Koordinator mit welt)
+- Der Eingang liegt hinter welts **Riesenfass** im Schlosskeller. Ein **schiefer Fackelhalter** daneben ist ein
+  `lever` (versteckt, `hidden = true`); er öffnet die **Fassfront**, eine `mover` mit `kind = secret_wall`.
+- Dahinter führt eine Treppe (Weltwechsel-Trigger) in die erste Ebene. Hinweise im Spiel legt die Geschichte fest.
 
 ## Vertrag mit welt (Vorschlag, welt gleicht ab)
 - **Neue Komponenten** in `.g7world`, je an Vobs der vorhandenen Typen:
@@ -154,10 +175,13 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   - `components.trigger.teleport`;
   - `components.relay` (neuer Vob-Typ `relay`);
   - `components.spawn` (neuer Vob-Typ `spawn`);
-  - das schon reservierte `trigger.target` mit `event`;
+  - Felder der Auslöser `targets` (Liste) und `action` (`toggle`/`open`/`close` …); das reservierte `trigger.target`
+    gilt weiter als ein Ziel;
+  - `mover.kind` = `gate` | `secret_wall` | `trapdoor` (welts Namen);
+  - Block `environment` je Welt und Zonen-Typ `fog`;
   - `mob`-Definitionen `lever`, `wall_button`, `niche` in `mobs.toml`.
 - **Blender (ADR 0023):** leere Knoten `VOB_<typ>_<name>`, also `VOB_plate_`, `VOB_teleport_`, `VOB_relay_`,
-  `VOB_spawn_`, `VOB_start_` (Ziele). Die Felder kommen als glTF-`extras` am Knoten (`target`, `event`, `to`,
+  `VOB_spawn_`, `VOB_start_` (Ziele). Die Felder kommen als glTF-`extras` am Knoten (`targets`, `action`, `to`,
   `world`, `mode` …). Bewegte Teile sind Mesh-Knoten mit `extras.mover`. Die Engine liest beim Import alle
   `extras`-Felder in die Komponenten; unbekannte Felder werden gewarnt.
 - **Raster (Frage 1):** Räume auf einem 3-m-Raster, Gänge 3 m breit, Decken 3–4 m. Das erleichtert Bau, Wegnetz und
@@ -175,13 +199,14 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
-| **D1** Netz | `target`/`event`, Relais, Lua `send`/`dungeon_event`, Speichern der Relais | mittel |
+| **D1** Netz | `targets`/`action`, Relais, Lua `send`/`dungeon_event`, Speichern der Relais | mittel |
 | **D2** Mover | Gatter, Geheimwand, Falltür; Kollision mit; Klemmen (`crush`); Speichern | mittel |
 | **D3** Schalter und Platten | Mob-Typen `lever`, `wall_button` (versteckt), Platte mit Gewicht inkl. Items; figuren-Clips | mittel |
 | **D4** Teleporter und Fall | Teleport in der Welt und in andere Ebenen, Fall als Weltwechsel mit Geschwindigkeit, Abblenden | mittel |
 | **D5** Nischen und Türen | `niche`, Tür-Ereignisse, `no_pick`, `one_way` | klein |
 | **D6** Monster | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |
 | **D7** Editor und Import | Inspektor, Linien, Prüfen, `extras` aus Blender | mittel |
+| **D7b** Umgebung | Block `environment` je Welt (ohne Himmel und Sonne, Nebel, Grundlicht), Zonen-Typ `fog` | klein |
 | **D8** Testdungeon und Szenario | zwei kleine Ebenen der Engine (`testworld/dungeon_1/2`), DoD-Szenario | mittel |
 
 Nach D1–D3 kann welt mit echten Räumen bauen. D8 ersetzt welts Inhalt nicht, er prüft nur die Mechanik.
@@ -227,9 +252,9 @@ Nach D1–D3 kann welt mit echten Räumen bauen. D8 ersetzt welts Inhalt nicht, 
 11. **Rückweg:** *Vorschlag: Jede Ebene hat mindestens einen Weg nach oben (Treppe oder Teleporter). Keine Sackgasse,
     die das Spiel unspielbar macht; Falltüren dürfen in Bereiche führen, aus denen man nur durch die Ebene heraus
     kommt.*
-12. **Zugang:** *Vorschlag: Der Dungeon-Eingang im Schlosskeller ist versteckt (Geheimwand mit verstecktem Knopf) und
-    bekommt einen Hinweis im Spiel (Buch oder Gerücht von einem NPC). Wer ihn auslöst, entscheidet die Geschichte.*
-13. **Dunkelheit:** *Vorschlag: ohne Fackel oder Licht-Zauber sehr dunkel (wie Gothic-Höhlen). Nicht völlig schwarz,
-    damit man ohne Fackel nicht festsitzt.*
-14. **Tageszeit:** *Vorschlag: im Dungeon keine Tageszeit zu sehen (Innenzone), die Spielzeit läuft weiter; Monster im
-    Dungeon haben keinen Tag-Nacht-Rhythmus.*
+12. **Zugang:** *entschieden (Koordinator mit welt):* Riesenfass im Schlosskeller, der schiefe Fackelhalter ist der
+    Hebel, die Fassfront die Geheimwand (siehe „Zugang im Schlosskeller“).
+13. **Dunkelheit:** *Vorschlag: ohne Fackel oder Licht-Zauber sehr dunkel (wie Gothic-Höhlen), über das Grundlicht
+    im `environment` der Ebene; nicht völlig schwarz, damit man ohne Fackel nicht festsitzt.*
+14. **Tageszeit:** *Vorschlag: im Dungeon keine Tageszeit zu sehen (`environment` ohne Himmel und Sonne), die
+    Spielzeit läuft weiter; Monster im Dungeon haben keinen Tag-Nacht-Rhythmus.*
