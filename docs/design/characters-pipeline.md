@@ -827,8 +827,9 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
 ### 7.6 Echsen-Bauplan (Vorschlag an engine, 2026-11-23, für den Brunnenmolch)
 
 Für die Dungeon-Art **Brunnenmolch** (`monsters.md` „Dungeon-Arten“): blinder Riesen-Höhlenmolch, 2,6 m lang,
-lauert im Wasser der Zisterne, schnappt von unten nach dem Helden am Steg und zieht sich ins Wasser zurück; an Land
-langsam. Ein Rig je Art wie in §7.1; der Bauplan soll auch für spätere Echsen und Molche gelten. Alles aus §7.1
+lauert halb untergetaucht im flachen Wasser bzw. am Ufer der Zisterne, schnappt nach dem Helden am Steg und taucht
+wieder ab; an Land langsam. Er schwimmt nicht (Projektinhaber 2026-11-24).
+Ein Rig je Art wie in §7.1; der Bauplan soll auch für spätere Echsen und Molche gelten. Alles aus §7.1
 gilt weiter (Ausrichtung, Bind-Pose = natürliche Lage, ≤ 64 Knochen, Translation nur `root`/`pelvis`,
 `[rig.collision]`).
 
@@ -844,33 +845,33 @@ gilt weiter (Ausrichtung, Bind-Pose = natürliche Lage, ≤ 64 Knochen, Translat
 - **Socket** `socket_mouth` (Biss, Pflicht).
 - **Knochenzahl** (Schätzung): 28.
 - **Kollision:** `capsule_lying` aus dem Rumpf ohne Schwanz und Beine (§7.1), Schätzung r 0,22 / l 1,5.
-- **Schlängeln:** Gehen und Schwimmen biegen Rumpf und Schwanz seitlich in einer Welle (Drehung um +Y in
+- **Schlängeln:** Gehen und Laufen biegen Rumpf und Schwanz seitlich in einer Welle (Drehung um +Y in
   glTF). Im Werkzeug: neues `gait`-Feld `sway` (Grad, Knochenliste, Phasenversatz je Knochen).
 - **Clips:**
   - Mindest-Set aus §7.1: `s_idle`, `s_walk`, `s_run`, `t_attack_1`, `t_attack_2`, `t_hit`, `t_die`, `s_eat`,
     `s_sleep`, `t_threaten`, `t_turn_l/r`;
-  - `s_dormant` (am Grund bzw. dicht unter der Oberfläche, `zs_dormant`, #422) und `t_wake`;
-  - neu im Wasser:
-    - `s_swim`: Schwimmen mit Root Motion entlang +Z, Beine angelegt, Schwanz rudert;
-    - `s_float`: Schweben im Wasser am Ort, Kiemen wedeln;
-    - `t_snap_up`: aus dem Wasser senkrecht nach oben schnappen, am Ort. Das Becken hebt sich im Clip um bis zu
+  - `s_dormant`: Ruhepose halb untergetaucht im flachen Wasser bzw. am Ufer (Körper flach, nur Kopfoberseite und
+    Rücken über der Linie, Kiemen wedeln; `zs_dormant`, #422), `t_wake` = Auftauchen (Kopf und Vorderleib heben
+    sich, Event `splash`);
+  - neu:
+    - `t_snap_up`: senkrecht nach oben schnappen, am Ort. Das Becken hebt sich im Clip um bis zu
       1,0 m, Events `hit_start`/`hit_end` und `splash`;
-    - `t_submerge`: zurück ins Wasser gleiten, Event `splash`;
+    - `t_submerge`: wieder abtauchen in die Ruhepose, am Ort, Event `splash`;
   - `t_listen`: Kopf heben und lauschen (er ist blind: engine kann ihn bei Geräuschen spielen).
-- **Root Motion:** wie §7.1. `s_swim` bewegt `root` entlang +Z; `t_snap_up` und `t_submerge` bleiben am Ort.
-- **Tempo** (Vorschlag, m/s): an Land 0,6 / 1,8 (langsam und verletzlich), im Wasser 2,5.
+- **Root Motion:** wie §7.1: `s_walk`/`s_run` entlang +Z (auch durchs flache Wasser), Drehungen um +Y; `t_wake`,
+  `t_snap_up` und `t_submerge` bleiben am Ort.
+- **Tempo** (Vorschlag, m/s): 0,6 / 1,8 (langsam und verletzlich).
 - **Events:**
   - Schritte wie bei den Vierbeinern: `footstep_front_l/r`, `footstep_back_l/r`;
   - neu `splash` (Wasser spritzt);
   - Tierlaute `sound:brunnenmolch_attack`, `_hit`, `_die`, `_threaten`.
 - **Fragen an engine (Antworten 2026-11-24 über den Koordinator):**
-  1. Können Monster schwimmen? Vorschlag: Im Wasser (Zone `water`, M5) spielt engine `s_swim`/`s_float` statt
-     `s_walk`/`s_idle`. Die Höhe hält engine an der Oberfläche bzw. in einer Tiefe aus Lua.
-     **Offen (Projektinhaber):** Heute schwimmt nur der Held; Monster im Wasser wären neue Engine-Arbeit. Der
-     Brunnenmolch ist bis zur Entscheidung zurückgestellt.
+  1. Können Monster schwimmen? **Entschieden (Projektinhaber 2026-11-24): nein.** Der Brunnenmolch lauert halb
+     untergetaucht im flachen Wasser bzw. am Ufer (`s_dormant`, `t_wake` = Auftauchen), schnappt am Ort zu
+     (`t_snap_up`) und läuft an Land (`s_walk`/`s_run` mit Root Motion +Z). Kein `s_swim`/`s_float`.
   2. Soll `t_snap_up` die Höhe als Root Motion (+Y) tragen? **Nein (engine):** Er bleibt am Ort ohne Root Motion,
      das Becken hebt sich nur im Clip, und engine prüft den Treffer an `socket_mouth`. Root Motion tragen nur
-     `s_walk`/`s_run` (bzw. `s_swim`) und die Drehungen.
+     `s_walk`/`s_run` und die Drehungen.
   3. Darf `sway` (seitliches Schlängeln) als Drehung der Wirbel um +Y in den Gangarten liegen? **Ja (engine):**
      reine Drehung der Wirbel und des Schwanzes ohne Translation; die Root Motion bleibt gerade entlang +Z.
 
