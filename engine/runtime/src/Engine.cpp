@@ -2818,9 +2818,8 @@ void Engine::addFigureLoadPhases()
     const f64 endMs = m_loadPhases.empty() ? 0.0 : m_loadPhases.back().endMs;
     const f64 other = t.total - t.parts - t.sets - t.assemble - t.images - t.upload;
     const std::pair<const char*, f64> parts[] = {
-        {"figures: parts (glTF)", t.parts}, {"figures: clip sets (glTF)", t.sets},
-        {"figures: assemble", t.assemble},  {"figures: images", t.images},
-        {"figures: GPU upload", t.upload},  {"figures: other", other}};
+        {"figures: parts", t.parts},   {"figures: clip sets", t.sets},    {"figures: assemble", t.assemble},
+        {"figures: images", t.images}, {"figures: GPU upload", t.upload}, {"figures: other", other}};
     for (const auto& [name, ms] : parts)
     {
         m_loadPhases.push_back({name, ms, endMs});

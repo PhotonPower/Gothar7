@@ -13,13 +13,13 @@
 `loadAnimatedFigure` misst je Schritt die Wanduhr-Zeit und summiert sie über alle Figuren, die `world_loaded`
 baut. Engine und `--perf` schreiben die Summen als eigene Ladephasen `figures: …` neben „figures and clips“,
 das Log zeigt sie als Zeile `figures: N built in … ms`. Mit dem Preset `profile` stehen dieselben Schritte zusätzlich als
-Tracy-Zonen bereit (`figure load`, `figure parts (glTF)`, `figure clip sets (glTF)`, `figure assemble`,
+Tracy-Zonen bereit (`figure load`, `figure parts`, `figure clip sets`, `figure assemble`,
 `figure images`, `figure upload`).
 
 | Schritt | Inhalt |
 |---|---|
-| parts (glTF) | Figurenteile als `SkinnedModelData` laden (fastgltf + Umrechnung), warten |
-| clip sets (glTF) | 16 Clip-Sets als `AnimationSetData` laden, warten (danach im Cache) |
+| parts | Figurenteile als `SkinnedModelData` laden (fastgltf + Umrechnung), warten |
+| clip sets | 16 Clip-Sets als `AnimationSetData` laden, warten (danach im Cache) |
 | assemble | `asset::assembleFigure` (Hals, verdeckte Dreiecke, Paletten) |
 | images | Texturen laden, warten |
 | GPU upload | `SkinnedMesh` und Materialien |
@@ -53,3 +53,26 @@ Figuren bleibt stabil.
 ## Folgen für den Plan
 - Teile B–F wie entschieden. `.g7anim` bringt mit ~460 ms den größten Einzelposten, `.g7skin` ~260 ms.
 - Danach wären Bilder (KTX2 im Paket messen) und Upload die nächsten Kandidaten, beide außerhalb dieses Plans.
+
+## Nachtrag 2026-11-09: mit `.g7skin`/`.g7anim` (Teil F)
+- **Aufbau:** wie oben, Branch `feature/m17-skin-package` (Teile B–F). `assets/cooked` mit
+  `g7-cook --textures copy`, damit die Bilder PNG bleiben und nur das Format den Unterschied macht. Die Entwicklungs-Mounts
+  bevorzugen dann `.g7skin`/`.g7anim`.
+- Lauf 1–3: Leser mit einem Wert je Aufruf. Lauf 4–6: Arrays am Stück gelesen (memcpy auf Little-Endian).
+
+| Lauf | figures and clips | Figuren gesamt | parts | clip sets | assemble | images | upload | other |
+|---|---|---|---|---|---|---|---|---|
+| glTF (oben, Mittel) | 1353 | 1297 | 260 | 474 | 31 | 207 | 162 | 162 |
+| gekocht, Lauf 1–3 | 999 | 950 | 83 | 295 | 30 | 203 | 163 | 176 |
+| gekocht, Lauf 4–6 | 943 | 895 | 69 | 244 | 30 | 205 | 166 | 181 |
+
+- **Gewinn:** Die Figuren brauchen ~400 ms weniger (−31 %), Teile 260 → 69 ms, Clip-Sets 474 → 244 ms.
+- **Clip-Sets sind kein Parsen mehr:** Lesen, Einlesen und Events aller 16 `.g7anim` kosten zusammen ~20 ms (Einzelmessung:
+  Datei 11 ms, Einlesen 6 ms, `events.toml` 3 ms).
+  - Der Rest der Phase ist Warten. `loadAnimatedFigure` ruft `AssetManager::waitAll()` auf und wartet damit auch auf
+    Modelle und Texturen, die zur selben Zeit für die Welt laden.
+  - Dasselbe gilt anteilig für „parts“ und „images“.
+  - Nächster Hebel, nicht Teil dieses Plans: auf die eigenen Handles warten statt auf alle.
+- **Paket:** Der strenge Paket-Test lädt alle 6 Lager-Figuren aus `data.g7pak` (`.g7skin`/`.g7anim`, kein `.glb`).
+  - Das ZIP misst 163 MB (mit glb-Kopien aus Teil 0: 218 MB).
+  - Die Zahl ist nur grob vergleichbar, weil sich der Leonberg-Datenstand zwischen den Läufen geändert hat.
