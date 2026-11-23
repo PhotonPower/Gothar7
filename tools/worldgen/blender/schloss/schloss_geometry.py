@@ -1243,6 +1243,8 @@ def build(spec: dict) -> Model:
             spec.get("portal") if spec.get("portal", {}).get("wing") == inside["wing"] else None
         )
         interior.Inside(m, inner_wing, inside, tower, portal).build(min(w.base for w in wings))
+        if inside.get("apron"):  # measured from the DGM by the schloss command
+            interior.apron(m, inside["apron"])
     for c in spec.get("chimneys", []):
         _chimney(m, by_key[c["wing"]], float(c["t"]))
     _garden(m, spec)

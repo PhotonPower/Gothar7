@@ -487,21 +487,108 @@ class Inside:
         self.tower_inside(base)
 
 
-def cellar_pads(w: Any, spec: dict[str, Any], tower: dict[str, Any] | None) -> list[dict[str, Any]]:  # noqa: ANN401
-    """Heightmap pads that keep the ground under the hollow wing and tower below the cellar
-    floor (a little into the walls, so no sliver of terrain shows at their foot)."""
+def cellar_ground(w: Any, spec: dict[str, Any], tower: dict[str, Any] | None,  # noqa: ANN401
+                  ) -> tuple[list[dict[str, Any]], list[list[list[float]]]]:  # fmt: skip
+    """(pads, holes) for the terrain under the hollow wing and tower: every terrain cell that
+    touches their outline is left out (it would show in the rooms), and the samples inside are
+    lowered under the cellar floor (the collision keeps a cell's triangles while a neighbour
+    has ground). The apron (``apron``) covers the ragged edge outside the walls."""
     y = round(float(spec["cellar"]) - 0.1, 3)
-    wall = float(spec.get("wallM", 0.8)) - 0.4
-    h = w.half - wall
-    ring = [w.p(wall, -h, 0), w.p(w.length - wall, -h, 0), w.p(w.length - wall, h, 0),
-            w.p(wall, h, 0)]  # fmt: skip
-    pads = [{"polygon": [[round(p[0], 3), round(p[2], 3)] for p in ring], "y": y,
-             "clampBelow": True, "exact": True}]  # fmt: skip
+    h = w.half
+    ring = [w.p(0, -h, 0), w.p(w.length, -h, 0), w.p(w.length, h, 0), w.p(0, h, 0)]
+    polys = [[[round(p[0], 3), round(p[2], 3)] for p in ring]]
     if tower is not None:
         s, t, ap = tower_centre(w, tower)
         c = w.p(s, t, 0)
-        r = ap - TOWER_WALL_M + 0.3
-        pts = [[round(c[0] + r * math.cos(k * math.pi / 8), 3),
-                round(c[2] + r * math.sin(k * math.pi / 8), 3)] for k in range(16)]  # fmt: skip
-        pads.append({"polygon": pts, "y": y, "clampBelow": True, "exact": True})
-    return pads
+        r = float(tower["radius"])
+        ph = math.radians(float(moved_tower(w, tower)["phaseDeg"]))
+        angs = [ph + k * math.pi / 4 for k in range(8)]
+        polys.append([[round(c[0] + r * math.cos(a), 3), round(c[2] + r * math.sin(a), 3)]
+                      for a in angs])  # fmt: skip
+    pads = [{"polygon": poly, "y": y, "clampBelow": True, "exact": True} for poly in polys]
+    return pads, polys
+
+
+APRON_M = 1.5  # paving round the hollow wing and tower: covers the terrain cells left out
+APRON_LIFT = 0.03
+APRON_STEP_M = 3.0
+
+
+def apron_samples(w: Any, spec: dict[str, Any], tower: dict[str, Any] | None,  # noqa: ANN401
+                  height: Any) -> dict[str, Any]:  # noqa: ANN401  # fmt: skip
+    """Ground heights for the apron, measured from the DGM by the schloss command: per strip a
+    list of (x, z) corner pairs with heights (at the wall, ``APRON_M`` out)."""
+    h, out = w.half, APRON_M
+    strips = []
+
+    def edge(points: list[tuple[Vec3, Vec3]]) -> list[list[float]]:
+        return [[round(a[0], 3), round(a[2], 3), round(height(a[0], a[2]), 3), round(b[0], 3),
+                 round(b[2], 3), round(height(b[0], b[2]), 3)] for a, b in points]  # fmt: skip
+
+    skip = None
+    if tower is not None:
+        ts, tt, _ = tower_centre(w, tower)
+        skip = (
+            1 if tt > 0 else -1,
+            ts - float(tower["radius"]) - out,
+            ts + float(tower["radius"]) + out,
+        )
+    for side in (1, -1):  # the long sides, from corner to corner (the corners belong to them)
+        n = max(1, math.ceil((w.length + 2 * out) / APRON_STEP_M))
+        ss = [-out + (w.length + 2 * out) * k / n for k in range(n + 1)]
+        run: list[tuple[Vec3, Vec3]] = []
+        for s in ss:
+            if skip and side == skip[0] and skip[1] < s < skip[2]:
+                if len(run) > 1:
+                    strips.append(edge(run))
+                run = []
+                continue
+            run.append((w.p(s, side * h, 0.0), w.p(s, side * (h + out), 0.0)))
+        if len(run) > 1:
+            strips.append(edge(run))
+    for s_wall, s_out in ((0.0, -out), (w.length, w.length + out)):  # the gable ends
+        n = max(1, math.ceil(2 * h / APRON_STEP_M))
+        ts = [-h + 2 * h * k / n for k in range(n + 1)]
+        strips.append(edge([(w.p(s_wall, t, 0.0), w.p(s_out, t, 0.0)) for t in ts]))
+    if tower is not None:
+        s, t, _ = tower_centre(w, tower)
+        c = w.p(s, t, 0.0)
+        r = float(tower["radius"])
+        ph = math.radians(float(moved_tower(w, tower)["phaseDeg"]))
+        side = 1 if t > 0 else -1
+        door = math.atan2(-side * w.n[1], -side * w.n[0])
+        pts = []
+        for k in range(9):
+            a = ph + k * math.pi / 4
+            ca, sa = math.cos(a), math.sin(a)
+            pts.append(((c[0] + r * ca, 0.0, c[2] + r * sa),
+                        (c[0] + (r + out) * ca, 0.0, c[2] + (r + out) * sa)))  # fmt: skip
+        run = []
+        for k in range(8):  # all sides but the one against the wing
+            mid = ph + (k + 0.5) * math.pi / 4
+            facing = abs(math.atan2(math.sin(mid - door), math.cos(mid - door))) < 0.3
+            if facing:
+                if len(run) > 1:
+                    strips.append(edge(run))
+                run = []
+                continue
+            if not run:
+                run.append(pts[k])
+            run.append(pts[k + 1])
+        if len(run) > 1:
+            strips.append(edge(run))
+    return {"strips": strips}
+
+
+def apron(m: Any, samples: dict[str, Any]) -> None:  # noqa: ANN401
+    """The paving strips (stone slabs, a little over the ground) and their collision."""
+    k = 0
+    for strip in samples["strips"]:
+        for a, b in zip(strip, strip[1:], strict=False):
+            pts = [(a[0], a[2] + APRON_LIFT, a[1]), (b[0], b[2] + APRON_LIFT, b[1]),
+                   (b[3], b[5] + APRON_LIFT, b[4]), (a[3], a[5] + APRON_LIFT, a[4])]  # fmt: skip
+            for tri in ((pts[0], pts[1], pts[2]), (pts[0], pts[2], pts[3])):
+                m.poly("stone_slab", list(tri), (0.0, 1.0, 0.0))
+            bottom = [(x, y - 0.5, z) for x, y, z in pts]
+            m.body(f"COL_HULL_apron_{k}", bottom, pts)
+            k += 1

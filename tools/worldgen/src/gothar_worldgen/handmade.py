@@ -118,6 +118,18 @@ def with_wing_terrain(spec: dict[str, Any], height: Any) -> dict[str, Any]:  # n
     return {**spec, "wings": wings}
 
 
+def with_apron(spec: dict[str, Any], height: Any) -> dict[str, Any]:  # noqa: ANN401
+    """Copy of the castle spec with the apron round the hollow main wing measured from the DGM
+    (W7 D1); unchanged without ``interior``."""
+    inside = spec.get("interior")
+    if not inside:
+        return spec
+    geo = schloss_geometry()
+    wing = geo.Wing(next(w for w in spec["wings"] if w["key"] == inside["wing"]))
+    samples = geo.interior.apron_samples(wing, inside, spec.get("stairTower"), height)
+    return {**spec, "interior": {**inside, "apron": samples}}
+
+
 def with_garden_plan(spec: dict[str, Any], garden: dict[str, Any] | None) -> dict[str, Any]:
     """Copy of the castle spec with the terrace plan for the Blender script."""
     if garden is None:
@@ -151,15 +163,15 @@ def schloss_item(spec: dict[str, Any], mesh: str) -> dict[str, Any]:
     garden = spec.get("garden", {}).get("terracePlan")
     if garden:
         item["pads"] = garden["pads"]  # level terraces in the heightmap (export-terrain)
-    inside = spec.get("interior")
-    if inside:  # W7 D1: the ground under the hollow main wing and tower below the cellar
-        wing = geo.Wing(next(w for w in spec["wings"] if w["key"] == inside["wing"]))
-        item["pads"] = list(item.get("pads", [])) + geo.interior.cellar_pads(
-            wing, inside, spec.get("stairTower")
-        )
         item["terraces"] = [
             {"key": tr["key"], "s": tr["s"], "y": tr["y"]} for tr in garden["terraces"]
         ]
+    inside = spec.get("interior")
+    if inside:  # W7 D1: the ground under the hollow main wing and tower below the cellar
+        wing = geo.Wing(next(w for w in spec["wings"] if w["key"] == inside["wing"]))
+        pads, holes = geo.interior.cellar_ground(wing, inside, spec.get("stairTower"))
+        item["pads"] = list(item.get("pads", [])) + pads
+        item["holes"] = holes  # export-terrain: terrain cells left out (world.md "Löcher")
     return item
 
 
