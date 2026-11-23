@@ -230,7 +230,9 @@ events = [
 - **Clips** (`anims/human/mob.glb`, Set `mob`): Truhe `t_open`/`s_open`/`t_close` + `extra.picklock = s_picklock`;
   Amboss `t_start`/`s_work`/`t_stop`; Bett `t_lie_down`/`s_lie`/`t_stand_up` – **Root Motion nur hier** (aufs
   Bett und zurück, im Mob-Raum; die Engine schaltet die Kollision der Figur dabei ab); Tür `t_open` (auch zum
-  Schließen, Slots `front`/`back`). Ohne Mob (Set `none`): `t_pickup_ground`, `t_pickup_high`, `t_eat`,
+  Schließen, Slots `front`/`back`). Dungeon (engine #435, #439; eigene Datei `anims/human/dungeon.glb`, Satz `dungeon`): Hebel
+  `mob/lever/t_use`, Wandknopf `mob/button/t_press` (Event `use`: der Schalter löst aus), Nische
+  `mob/niche/t_reach`/`s_reach`/`t_back` (`open`/`close` wie die Truhe). Ohne Mob (Set `none`): `t_pickup_ground`, `t_pickup_high`, `t_eat`,
   `t_drink`, `t_read_scroll`, `t_pickpocket`.
 - **Events:** `pickup` (Hand am Gegenstand: die Engine nimmt ihn aus der Welt an `hand_r`), `use` (Wirkmoment
   Essen/Trinken/Lesen), `open`/`close` (Deckel oder Tür bewegt sich), `hit_anvil` (Hammer trifft) +
