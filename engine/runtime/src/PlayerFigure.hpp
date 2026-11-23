@@ -60,6 +60,7 @@ struct AnimatedFigure
     std::vector<asset::Handle<asset::AnimationSetData>> setHandles;
     std::vector<std::string> sockets; ///< bones named socket_*, for the debug UI
     std::deque<std::string> events;   ///< the last ones fired, newest first (debug UI)
+    std::optional<std::array<std::array<u32, 4>, 2>> glowBones; ///< M17 part G: right, left forearm (lazily)
 
     virtual ~AnimatedFigure() = default;
 };

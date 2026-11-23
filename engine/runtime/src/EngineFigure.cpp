@@ -902,7 +902,8 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     f.face.update(seconds);
 }
 
-void Engine::drawAnimatedFigure(AnimatedFigure& f, const Mat4& transform, bool shadow, u32 cascade)
+void Engine::drawAnimatedFigure(AnimatedFigure& f, const Mat4& transform, bool shadow, u32 cascade,
+                                render::FigureGlow glow)
 {
     prepareFigurePose(f, static_cast<f32>(m_fixedStep.alpha()));
     if (shadow)
@@ -912,7 +913,11 @@ void Engine::drawAnimatedFigure(AnimatedFigure& f, const Mat4& transform, bool s
     }
     else
     {
-        m_meshRenderer.drawSkinned(*m_device, f.mesh, f.materials, transform, f.bones, m_camera);
+        if (glow.active())
+        {
+            applyGlowBones(f, glow);
+        }
+        m_meshRenderer.drawSkinned(*m_device, f.mesh, f.materials, transform, f.bones, m_camera, glow);
     }
 }
 
@@ -922,7 +927,7 @@ bool Engine::drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade)
     {
         return false;
     }
-    drawAnimatedFigure(*m_figure, transform, shadow, cascade);
+    drawAnimatedFigure(*m_figure, transform, shadow, cascade, shadow ? render::FigureGlow{} : heroGlow());
     const PlayerFigure& f = *m_figure;
     for (const FigureAttachment& attachment : f.attachments)
     {

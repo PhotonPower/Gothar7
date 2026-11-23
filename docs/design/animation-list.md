@@ -193,7 +193,8 @@ die tiefe Rechte (Kombo 2, Hilfsclip `fist/t_cross_low`) aus der Hocke, Faust 0,
 
 ### Prio B – Magie für M12 (ausgeschrieben, Liste von engine)
 
-Vertrag mit engine (2026-10-06): Rune bzw. Spruchrolle in der rechten Hand (`socket_hand_r`); jeder Einmal-Clip
+Vertrag mit engine (2026-10-06, Hand geändert 2026-11-08): Rune bzw. Spruchrolle in der **linken** Hand (`socket_hand_l`,
+wie die Quaternius-Haltung; alle Wirk-Clips wirken links, `t_cast_self`/`t_cast_area` mit beiden Händen); jeder Einmal-Clip
 beginnt und endet in `mag/s_idle`; Event `cast` = der Effekt startet. Fünf Wirk-Varianten; Verwandlung nutzt
 `t_cast_self`, Schlaf die K.o.-Clips von `none`. Kreise bzw. Talent nur über Abspielrate und Effekt.
 

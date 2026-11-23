@@ -201,7 +201,7 @@ root                                   Bodenhöhe, trägt Root Motion
    │  │         └─ socket_helmet
    │  ├─ clavicle_l ─ upperarm_l ─ lowerarm_l ─ hand_l
    │  │     hand_l: thumb_01..03_l, index_01..03_l, middle_01..03_l, ring_01..03_l, pinky_01..03_l,
-   │  │             socket_hand_l (Fackel, Bogen, Zauber)
+   │  │             socket_hand_l (Fackel, Bogen, Rune/Spruchrolle)
    │  ├─ clavicle_r … hand_r (spiegelbildlich), socket_hand_r (Waffe, Werkzeug)
    │  ├─ socket_back_2h   Zweihänder auf dem Rücken
    │  ├─ socket_back_bow  Bogen/Armbrust auf dem Rücken

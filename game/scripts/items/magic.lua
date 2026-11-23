@@ -27,7 +27,7 @@ rune("it_rune_heal", "spl_heal", "Heilung", 150)
 rune("it_rune_sleep", "spl_sleep", "Schlaf", 300)
 rune("it_rune_transform_wolf", "spl_transform_wolf", "Wolfsgestalt", 300)
 rune("it_rune_summon_wolf", "spl_summon_wolf", "Wolf rufen", 450)
-rune("it_rune_telekinesis", "spl_telekinesis", "Telekinese", 300) -- M17 T; Modell folgt (figuren), bis dahin Platzhalter
+rune("it_rune_telekinesis", "spl_telekinesis", "Telekinese", 300) -- M17 T; Modell von figuren (#405)
 
 scroll("it_scroll_firebolt", "spl_firebolt", "Feuerpfeil", 25)
 scroll("it_scroll_heal", "spl_heal", "Heilung", 25)
