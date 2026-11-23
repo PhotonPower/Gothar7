@@ -20,9 +20,10 @@ from gothar_chargen.meshdata import mesh_data
 SHAPES = ("capsule_upright", "capsule_lying")
 LYING_ASPECT = 1.3  # torso longer than this times its height: lying capsule
 # bones whose vertices stay outside the capsule: tail, lower legs and feet (quadrupeds, birds);
-# arthropods (§7.5): feelers and the whole spread legs
+# arthropods (§7.5): feelers, eye stalks, the spread legs, pincer arms and the crystal carrier
 _LOOSE = re.compile(
-    r"^(tail_.*|.*_lower_[lr]|.*_foot_[lr]|calf_[lr]|foot_[lr]|antenna_.*|leg_\d+_upper_[lr])$"
+    r"^(tail_.*|.*_lower_[lr]|.*_foot_[lr]|calf_[lr]|foot_[lr]|antenna_.*|leg_\d+_upper_[lr]"
+    r"|arm_upper_[lr]|claw_.*|eye_stalk_[lr]|crystals)$"
 )
 
 
@@ -36,6 +37,7 @@ class Collision:
     radius: float  # metres
     length: float  # metres, whole capsule incl. both half spheres (upright: height)
     offset: tuple[float, float, float]  # capsule centre relative to root, rig space
+    axis: str = "z"  # lying capsule along +Z (facing), or "x": crosswise (crab, §7.5)
 
     def to_toml(self) -> str:
         x, y, z = self.offset
@@ -44,7 +46,7 @@ class Collision:
             f'shape = "{self.shape}"\n'
             f"radius = {self.radius:.2f}\n"
             f"length = {self.length:.2f}\n"
-            f"offset = [{x:.2f}, {y:.2f}, {z:.2f}]\n"
+            f"offset = [{x:.2f}, {y:.2f}, {z:.2f}]\n" + ('axis = "x"\n' if self.axis == "x" else "")
         )
 
 
@@ -62,7 +64,11 @@ def parse_collision(raw: object) -> Collision:
     if not isinstance(offset, list) or len(offset) != 3:
         raise CollisionError("collision.offset must be [x, y, z]")
     off = tuple(float(v) for v in offset)
-    return Collision(str(shape), float(radius), float(length), (off[0], off[1], off[2]))
+    axis = raw.get("axis", "z")
+    if axis not in ("z", "x") or (axis == "x" and shape != "capsule_lying"):
+        raise CollisionError('collision.axis must be "z" or "x" (x only for capsule_lying)')
+    centre = (off[0], off[1], off[2])
+    return Collision(str(shape), float(radius), float(length), centre, str(axis))
 
 
 def derive_collision(gltf: Gltf) -> Collision:
@@ -81,6 +87,11 @@ def derive_collision(gltf: Gltf) -> Collision:
         raise CollisionError("no torso vertices (all weighted to tail/legs?)")
     lo, hi = torso.min(axis=0), torso.max(axis=0)
     width, height, depth = hi - lo
+    if width > LYING_ASPECT * height and width > depth:  # wider than long: crosswise (crab)
+        radius = max(height, depth) / 2.0
+        length = max(width, 2.0 * radius)
+        centre = ((lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0, (lo[2] + hi[2]) / 2.0)
+        return Collision("capsule_lying", _r(radius), _r(length), _v(centre), "x")
     if depth > LYING_ASPECT * height:
         radius = max(height, width) / 2.0
         length = max(depth, 2.0 * radius)
