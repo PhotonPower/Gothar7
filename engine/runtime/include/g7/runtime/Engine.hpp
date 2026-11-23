@@ -554,9 +554,13 @@ public:
     {
         std::string name;
         Mat4 local{1.0f};
+        std::string extras; ///< the node's glTF extras as JSON text (dungeon D7), empty: none
     };
     [[nodiscard]] Result<std::vector<ModelMarker>> modelMarkers(std::string_view path,
                                                                 std::string_view prefix) const;
+    /// The mesh nodes of a .glb whose extras hold `key` (dungeon D7: `mover`); empty for other files.
+    [[nodiscard]] Result<std::vector<ModelMarker>> modelMeshExtras(std::string_view path,
+                                                                   std::string_view key) const;
     /// Terrain editing (the editor's height brush, M16 part F2, ADR 0023). Worlds with a generator head
     /// (Leonberg: LGL heights from welt) are locked - terrainLock() says why, editableHeightfield() is null.
     [[nodiscard]] std::string terrainLock() const;
@@ -610,6 +614,11 @@ public:
     [[nodiscard]] bool platePressed(std::string_view name) const;
     /// A moving part (dungeon D2) by vob name, nullopt if there is none.
     [[nodiscard]] std::optional<MoverInfo> moverInfo(std::string_view name) const;
+    /// Editor preview (dungeon D7): puts the moving part `name` at once open (true), shut (false) or into the
+    /// other state (nullopt) - no steps, no sound. False if there is no moving part of that name.
+    bool previewMover(std::string_view name, std::optional<bool> open);
+    /// Every moving part back to its state in the world file at once (the editor before it edits or saves).
+    void resetMovers();
     /// Shader programs (with hot-reload), or nullptr without rendering.
     [[nodiscard]] render::ShaderLibrary* shaders() noexcept { return m_shaders.get(); }
     /// The game window, or nullptr when headless / before init().

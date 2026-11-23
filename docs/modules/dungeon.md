@@ -395,6 +395,39 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `reflect`, `spawn_brood`, sobald die Modelle da sind); Klangnamen `sound:gatterbock_*`/`mauerschlupfer_*` in
   `data/sounds.toml`.
 
+## Stand D7 – Editor und Import (umgesetzt)
+- **Import aus Blender** (`tools/editor/GlbVobImport`, Vertrag in `asset.md` „VOB_-Knoten“): neue Knoten
+  `VOB_PLATE_`, `VOB_TELEPORT_`, `VOB_RELAY_`, `VOB_SPAWN_`; die glTF-`extras` jedes `VOB_`-Knotens füllen dessen
+  Komponente (Schlüssel wie in der `.g7world`, `targets` auch als Text `"A, B"`, Schalter auch 0/1). Ein Mesh-Knoten
+  mit `extras.mover` macht das platzierte Modell zum bewegten Teil. Unbekannte Schlüssel werden gewarnt
+  (`Editor::importWarnings`), falsche Werte lassen den Vob weg. Gelesen wird mit `asset::loadGltfMarkers`
+  (`GltfMarker::extras`) und `asset::loadGltfMeshExtras`, in der Engine `Engine::modelMarkers`/`modelMeshExtras`.
+- **Inspektor** (`EditorDungeon.cpp`): Sender (Trigger, Platte, Teleporter, Hebel/Knopf/Truhe, Relais) zeigen `targets`
+  als Text und eine Liste „add target“ (nur Vobs, die Ereignisse empfangen: bewegte Teile, Relais, Mobs, Spawn-Marker,
+  Teleporter), dazu `action`. Platte (`weight`, `release`), Teleporter (`to` aus Startpunkten und Markern, oder Welt
+  und Startpunkt aus Listen, `filter`, `visible`, `active`), Relais (`mode`, `count`, `delay`, `once`, `invert`), Mob
+  (`switch once`, `hidden`, `no pick`, `one way`), Spawn (`npc` aus den NPC-Instanzen, `count`, `respawn`, `dormant`),
+  jedes Mesh/Mob: `mover` (Art wählen oder entfernen, `open`, `seconds`, `crush`, Klänge). Ein Trigger ohne Platte
+  und Teleporter bekommt Knöpfe „make plate“ und „make teleporter“. Felder der Art `Button` (neu in
+  `ui::EditorField`) sind Aktionen, keine Änderungen.
+- **Linien** im Debug-Draw (`dungeonLinks`, `linkColor`): Pfeil vom Sender zum Ziel, Farbe je Aktion (open/on grün,
+  close/off rot, toggle/trigger gelb, wake orange, lock/unlock blau), Teleporter violett zum `to`. Ein Ziel ohne Vob
+  ist ein roter Strich mit „? NAME“. Bis 80 m um die Kamera; die der Auswahl liegen obenauf.
+- **Prüfen** (`checkDungeon`, im Fenster der Zonen/Trigger unter „check the triggers“ und bei **jedem Speichern**,
+  das nicht blockiert, aber die Zahl meldet): Ziele ohne Vob bzw. mit mehrfach vergebenem Namen, Platten und Relais
+  ohne Ziele, Teleporter mit fehlendem `to`, fehlender Welt oder fehlendem Startpunkt, Relais auf einem Zyklus,
+  Spawn-Marker mit unbekannter NPC-Instanz (nur mit Skripten), bewegte Teile ohne Namen. Ein Trigger mit Zielen
+  oder Teleporter gilt nicht mehr als „does nothing“. Ziele, die nur Lua hört (`dungeon_event`), werden als „no
+  vob“ gemeldet – gewollt, damit Tippfehler auffallen.
+- **Probelauf:** „preview open“/„preview shut“ an einem bewegten Teil stellt es sofort hin (`Engine::previewMover`),
+  „probe: send“ an einem Sender zeigt, was er an bewegte Teile unter seinen Zielen schickt (open/close/toggle). Vor
+  jeder Änderung und vor dem Speichern gehen alle Vorschauen zurück (`Engine::resetMovers`), gespeichert wird die
+  geschlossene Lage der Datei. Den Rest des Netzes (Relais mit Verzögerung, Türen, Lua) probiert man mit
+  Play-in-Editor (F5).
+- **Tests:** `tests/editor/test_dungeon_edit.cpp` (extras aller Typen, Mover aus extras, Linien, Prüfungen),
+  `tests/asset/test_gltf.cpp` (extras der Knoten), `tests/render_gpu/test_editor.cpp` „dungeon wiring“ (Probe,
+  Vorschau, Speichern, Prüfung).
+
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
@@ -404,7 +437,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 | **D4** Teleporter und Fall ✔ | Teleport in der Welt und in andere Ebenen, Fall als Weltwechsel mit Geschwindigkeit, Abblenden | mittel |
 | **D5** Nischen und Türen ✔ | `niche`, Tür-Ereignisse, `no_pick`, `one_way` | klein |
 | **D6** Monster ✔ | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |
-| **D7** Editor und Import | Inspektor, Linien, Prüfen, `extras` aus Blender | mittel |
+| **D7** Editor und Import ✔ | Inspektor, Linien, Prüfen, `extras` aus Blender | mittel |
 | **D7b** Umgebung | Block `environment` je Welt (ohne Himmel und Sonne, Nebel, Grundlicht), Zonen-Typ `fog` | klein |
 | **D8** Testdungeon und Szenario | zwei kleine Ebenen der Engine (`testworld/dungeon_1/2`), DoD-Szenario | mittel |
 

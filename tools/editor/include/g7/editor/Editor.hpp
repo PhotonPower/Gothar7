@@ -13,6 +13,7 @@
 #include <g7/core/Result.hpp>
 #include <g7/core/Transform.hpp>
 #include <g7/editor/Commands.hpp>
+#include <g7/editor/DungeonEdit.hpp>
 #include <g7/editor/Gizmo.hpp>
 #include <g7/editor/GlbVobImport.hpp>
 #include <g7/editor/LightEdit.hpp>
@@ -121,8 +122,16 @@ public:
     [[nodiscard]] std::optional<usize> zoneAt(std::string_view type, const Vec3& point) const;
     /// What `value` may be for a zone type (music themes, ambiences, the world's room tags).
     [[nodiscard]] std::vector<std::string> zoneValueChoices(std::string_view type) const;
-    /// Checks the scene's triggers (script functions, level changes).
+    /// Checks the scene's triggers (script functions, level changes) and its dungeon wiring (dungeon D7:
+    /// targets, plates, teleporters, relay cycles, spawn markers; checkDungeon).
     [[nodiscard]] const std::vector<TriggerIssue>& checkTriggers();
+    /// Dungeon D7 preview: the moving part (vob id) at once open, shut or (nullopt) the other way; it goes
+    /// back before the next edit and before saving. False if the vob is no moving part.
+    bool previewMover(world::VobId id, std::optional<bool> open);
+    /// Dungeon D7 probe: what the sender `id` (trigger, plate, lever, relay ...) sends, shown at once on the
+    /// moving parts among its targets (open/close/toggle). The rest of the net (relays, doors, Lua) runs in
+    /// play-in-editor (F5). The number of moving parts it reached.
+    usize probeSender(world::VobId id);
     /// The start points of a world (VFS path; the open world: from the scene); nullopt: no such world.
     [[nodiscard]] std::optional<std::vector<std::string>> startsOf(std::string_view world);
 
@@ -240,7 +249,14 @@ private:
     void zoneMouse(Engine& engine, const Vec2& mouse, bool pressed, bool held);
     void drawZones();
     void drawTriggers();
-    void drawMobSlots(); ///< the selected mob's user slots (mobs.toml), to check them
+    void drawDungeonLinks(); ///< dungeon D7: lines from senders to their targets, teleporters to `to`
+    /// Dungeon D7: the inspector's fields of the dungeon components of `e` (targets, plate, teleport, relay,
+    /// spawn, mover) and their application.
+    void dungeonFields(entt::entity e,
+                       const std::function<ui::EditorField&(std::string, ui::EditorField::Kind)>& addField);
+    [[nodiscard]] bool applyDungeonField(entt::entity e, const ui::EditorField& f);
+    void pressButton(const ui::EditorField& f); ///< a Button field of the inspector (no edit)
+    void drawMobSlots();                        ///< the selected mob's user slots (mobs.toml), to check them
     Result<void> editRoutines(std::string label,
                               const std::function<Result<void>(std::vector<RoutineInfo>&)>& change);
     void drawGhosts();

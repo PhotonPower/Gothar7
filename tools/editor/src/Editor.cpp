@@ -213,6 +213,7 @@ Result<void> Editor::edit(std::string label, std::vector<world::VobId> ids,
         return Error{"waiting for confirmation"};
     }
     world::Scene& scene = m_engine.scene();
+    m_engine.resetMovers(); // dungeon D7: previews go back, the file's poses are what is edited
     const u64 firstNew = scene.nextVobId();
     Command command{std::move(label), captureVobs(scene, ids), {}, mergeable};
     if (auto changed = change(); !changed)
@@ -319,45 +320,66 @@ Result<world::VobId> Editor::place(std::string_view meshPath)
     }
     world::VobId id;
     const std::string path(meshPath);
-    if (auto placed = edit("place " + path, {},
-                           [&]() -> Result<void>
-                           {
-                               auto vob = placeMesh(m_engine.scene(), path, position);
-                               if (!vob)
-                               {
-                                   return vob.error();
-                               }
-                               id = m_engine.scene().idOf(vob.value());
-                               // ADR 0023: empty VOB_<type>_<name> nodes of a .glb become child vobs.
-                               m_importWarnings.clear();
-                               auto markers = m_engine.modelMarkers(path, "VOB_");
-                               if (!markers)
-                               {
-                                   m_importWarnings.push_back(markers.error().message);
-                                   return {};
-                               }
-                               std::vector<VobMarker> found;
-                               for (const Engine::ModelMarker& m : markers.value())
-                               {
-                                   found.push_back({m.name, m.local});
-                               }
-                               VobImport imported = vobsFromMarkers(found);
-                               m_importWarnings = std::move(imported.warnings);
-                               for (world::WorldFileVob& v : imported.vobs)
-                               {
-                                   v.id = world::VobId{m_engine.scene().nextVobId()};
-                                   v.parent = id;
-                                   if (auto restored = world::restoreVob(m_engine.scene(), v); !restored)
-                                   {
-                                       return restored.error();
-                                   }
-                                   if (m_engine.scene().nextVobId() <= v.id.value)
-                                   {
-                                       (void)m_engine.scene().setNextVobId(v.id.value + 1);
-                                   }
-                               }
-                               return {};
-                           });
+    if (auto placed = edit(
+            "place " + path, {},
+            [&]() -> Result<void>
+            {
+                auto vob = placeMesh(m_engine.scene(), path, position);
+                if (!vob)
+                {
+                    return vob.error();
+                }
+                id = m_engine.scene().idOf(vob.value());
+                // ADR 0023: empty VOB_<type>_<name> nodes of a .glb become child vobs.
+                m_importWarnings.clear();
+                auto markers = m_engine.modelMarkers(path, "VOB_");
+                if (!markers)
+                {
+                    m_importWarnings.push_back(markers.error().message);
+                    return {};
+                }
+                std::vector<VobMarker> found;
+                for (const Engine::ModelMarker& m : markers.value())
+                {
+                    found.push_back({m.name, m.local, m.extras});
+                }
+                VobImport imported = vobsFromMarkers(found);
+                m_importWarnings = std::move(imported.warnings);
+                // Dungeon D7: a mesh node with extras.mover makes the model a moving part.
+                if (auto movers = m_engine.modelMeshExtras(path, "mover"); movers && !movers.value().empty())
+                {
+                    const Engine::ModelMarker& node = movers.value().front();
+                    if (movers.value().size() > 1)
+                    {
+                        m_importWarnings.push_back(
+                            std::format("{} mesh nodes with extras.mover: the whole model moves after '{}'",
+                                        movers.value().size(), node.name));
+                    }
+                    if (auto mover = moverFromExtras(node.extras, node.name, m_importWarnings))
+                    {
+                        world::WorldFileVob self = world::captureVob(m_engine.scene(), vob.value());
+                        self.mover = *mover;
+                        if (auto restored = world::restoreVob(m_engine.scene(), self); !restored)
+                        {
+                            return restored.error();
+                        }
+                    }
+                }
+                for (world::WorldFileVob& v : imported.vobs)
+                {
+                    v.id = world::VobId{m_engine.scene().nextVobId()};
+                    v.parent = id;
+                    if (auto restored = world::restoreVob(m_engine.scene(), v); !restored)
+                    {
+                        return restored.error();
+                    }
+                    if (m_engine.scene().nextVobId() <= v.id.value)
+                    {
+                        (void)m_engine.scene().setNextVobId(v.id.value + 1);
+                    }
+                }
+                return {};
+            });
         !placed)
     {
         return placed.error();
@@ -471,6 +493,7 @@ Result<void> Editor::write()
         }
         m_backedUp = true;
     }
+    m_engine.resetMovers(); // dungeon D7: previews are not saved
     if (auto saved = m_engine.saveWorld(*path); !saved)
     {
         m_status = saved.error().message;
@@ -480,6 +503,12 @@ Result<void> Editor::write()
     m_generatedEdited.clear();
     m_waynetGeneratedEdited.clear();
     m_status = "saved " + fs::toUtf8(*path);
+    // Dungeon D7: the wiring is checked at each save (the list in the zones window).
+    const std::string savedStatus = m_status;
+    const usize issues = checkTriggers().size();
+    m_status = issues > 0 ? std::format("saved {} - {} trigger/wiring issue(s), see the zones window (V)",
+                                        fs::toUtf8(*path), issues)
+                          : savedStatus;
     if (m_terrainDirty) // part F2: heights and splat weights over their files
     {
         if (auto terrain = m_engine.saveTerrain(); !terrain)
@@ -640,6 +669,7 @@ void Editor::update(Engine& engine, f64 seconds, bool uiMouse, bool uiKeyboard)
         return;
     }
     drawTriggers();
+    drawDungeonLinks();
     placeGizmo();
     const GizmoView v = view();
     if (m_dragHandle != GizmoHandle::None)
@@ -677,6 +707,7 @@ void Editor::update(Engine& engine, f64 seconds, bool uiMouse, bool uiKeyboard)
             {
                 if (mayEdit(std::vector{m_selection}, [] {})) // generated: asked first, the next drag goes
                 {
+                    engine.resetMovers(); // dungeon D7: the file's pose is dragged, not a preview
                     m_dragBefore = captureVobs(engine.scene(), std::vector{m_selection});
                     m_dragHandle = m_hover;
                     m_dragStart = mouse;
@@ -994,6 +1025,7 @@ void Editor::fillPanel()
         choose("change start", trigger->changeStart, starts);
         addField("owner", Kind::Text).text = trigger->owner; // private area (M9): Npc instance or guild
     }
+    dungeonFields(e, addField); // dungeon D7
 }
 
 void Editor::applyPanel()
@@ -1062,11 +1094,19 @@ void Editor::applyPanel()
         return;
     }
 
+    // Buttons act at once (previews, probes); they are no edits.
+    for (const ui::EditorField& f : p.fields)
+    {
+        if (f.changed && f.kind == ui::EditorField::Kind::Button)
+        {
+            pressButton(f);
+        }
+    }
     // Changed fields: one command; typing on in the same fields of the same vob joins it.
     std::string labels;
     for (const ui::EditorField& f : p.fields)
     {
-        if (f.changed)
+        if (f.changed && f.kind != ui::EditorField::Kind::Button)
         {
             labels += (labels.empty() ? "" : ", ") + f.label;
         }
@@ -1098,7 +1138,7 @@ void Editor::applyFields(const std::vector<ui::EditorField>& fields)
     bool moved = false;
     for (const ui::EditorField& f : fields)
     {
-        if (!f.changed)
+        if (!f.changed || f.kind == ui::EditorField::Kind::Button || applyDungeonField(e, f))
         {
             continue;
         }
