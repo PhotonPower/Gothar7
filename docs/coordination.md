@@ -1,3 +1,4 @@
+| Gras-Überlagerung (M17 G3): `<welt>.grass.png` neben der Weltdatei (Leonberg `worlds/leonberg/leonberg.grass.png`, außerhalb von `generated/`; RGBA, R Dichte, A Deckung über der Grasmaske) ist Handarbeit aus dem Editor-Pinsel „Gras“ – **`gothar-worldgen` schreibt, überschreibt und löscht sie nie**; kein Feld in der Weltdatei – vereinbart 2026-11-23 | engine (Format, Editor, Laden) | welt (Generator lässt sie unberührt), Editor (Projektinhaber malt) | `docs/modules/world.md` „Gras-Überlagerung“ |
 # Zusammenarbeit der Spuren und Sitzungen
 
 Gothar wird von mehreren parallel laufenden Claude-Code-Sitzungen entwickelt, jede in einem eigenen

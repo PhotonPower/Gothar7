@@ -2,6 +2,8 @@
 // loaded world (heightfield, splat weights on the CPU) and where no grass may grow (rooms, water, the
 // waynet's paths, under houses and mobs), the ring around the camera, the uploads and the passes.
 
+#include "PlayerFigure.hpp"
+
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/TextureData.hpp>
 #include <g7/core/Log.hpp>
@@ -318,6 +320,8 @@ render::GrassFrame Engine::grassFrame() const
     frame.settings = render::grassSettings(m_grassQuality);
     frame.wind = windNow();
     frame.layers = m_grassLayers;
+    frame.benders = m_grassBenders;
+    frame.shorteners = m_grassShorteners;
     return frame;
 }
 
@@ -325,6 +329,7 @@ void Engine::updateGrass()
 {
     G7_PROFILE_SCOPE("render::grass ring");
     m_grassBuilt.clear();
+    collectGrassMakers();
     if (m_physicsDirty && m_paused)
     {
         // The editor pauses the simulation, which would sync the collision (moved vobs, undo): here then.
@@ -583,5 +588,31 @@ void Engine::drawGrassTiles()
                                      tile.count > 0 ? std::format(": {}", tile.count) : ""),
                          style);
     }
+}
+
+// --- Grass makes way (decisions 4, 5 of the grass plan) ---
+
+void Engine::collectGrassMakers()
+{
+    const Vec3& eye = m_camera.transform.position;
+    const f32 within = m_grassRing.radius();
+    m_grassPoints.clear();
+    if (m_player.valid())
+    {
+        m_grassPoints.push_back(m_player.feet());
+    }
+    for (const auto& c : m_creatures)
+    {
+        m_grassPoints.push_back(c->position);
+    }
+    render::nearestGrassPoints(m_grassPoints, eye, within, render::kGrassMaxBenders, render::kGrassBendRadius,
+                               m_grassBenders);
+    m_grassPoints.clear();
+    for (const WorldItem& item : m_worldItems)
+    {
+        m_grassPoints.emplace_back(item.bounds.center().x, item.bounds.min.y, item.bounds.center().z);
+    }
+    render::nearestGrassPoints(m_grassPoints, eye, within, render::kGrassMaxShorteners,
+                               render::kGrassItemRadius, m_grassShorteners);
 }
 } // namespace g7

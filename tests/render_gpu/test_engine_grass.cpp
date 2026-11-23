@@ -8,6 +8,7 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 
@@ -148,4 +149,39 @@ TEST_CASE("Engine grass GPU: no grass in Leonberg's rooms and houses (with the g
     }
     const usize tufts = checkTufts(*engine);
     MESSAGE(tufts, " tufts in town; tile building: worst frame ", worst, " ms, all ", total, " ms");
+}
+
+TEST_CASE("Engine grass GPU: the hero and the creatures and items near the camera make way (decisions 4, 5)")
+{
+    auto engine = grassEngine("testworld/camp.g7world", Vec3(10.0f, 4.0f, 12.0f), "medium");
+    for (int i = 0; i < 30; ++i)
+    {
+        REQUIRE(engine->runFrame());
+    }
+    const Vec3 eye = engine->camera().transform.position;
+    const auto wolf = engine->spawnCreature("wolf", eye + Vec3(2.0f, -4.0f, -3.0f), 0.0f);
+    REQUIRE(wolf.ok());
+    REQUIRE(engine->runFrame());
+    const auto at = engine->creaturePosition(wolf.value());
+    REQUIRE(at.has_value());
+    const bool bends = std::ranges::any_of(engine->grassBenders(),
+                                           [&](const Vec4& b) { return glm::length(Vec3(b) - *at) < 0.3f; });
+    CHECK(bends);
+    usize items = 0;
+    for (const WorldItemInfo& item : engine->worldItems())
+    {
+        items += glm::length(Vec2(item.position.x - eye.x, item.position.z - eye.z)) <=
+                 engine->grassRing().radius();
+    }
+    MESSAGE(engine->grassBenders().size(), " figures, ", items, " items near");
+    CHECK(engine->grassBenders().size() <= render::kGrassMaxBenders);
+    CHECK(engine->grassShorteners().size() == std::min<usize>(items, render::kGrassMaxShorteners));
+    for (const Vec4& b : engine->grassBenders())
+    {
+        CHECK(b.w == doctest::Approx(render::kGrassBendRadius));
+    }
+    for (const Vec4& s : engine->grassShorteners())
+    {
+        CHECK(s.w == doctest::Approx(render::kGrassItemRadius));
+    }
 }

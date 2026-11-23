@@ -21,6 +21,10 @@ uniform int uTileCount;
 uniform int uTileStart[96]; // first instance of each listed tile
 uniform int uTileBase[96];  // its first tuft in the buffer
 uniform float uLayerColours[48]; // per terrain layer: foot rgb, tip rgb (linear)
+uniform int uBenderCount;         // figures the blades bend away from (render::kGrassMaxBenders)
+uniform float uBenders[64];       // x, y, z (feet), radius
+uniform int uShortenerCount;      // lying items the tufts around are cut short for (kGrassMaxShorteners)
+uniform float uShorteners[128];   // x, y, z, radius
 
 out vec3 vWorldPosition;
 out vec2 vCard; // stage 1: -1..1 across, 0..1 up
@@ -30,6 +34,9 @@ out vec3 vColour;
 #endif
 
 const float kMaxHeight = 1.2; // render::kGrassMaxHeight
+const float kBendTip = 0.6;    // render::kGrassBendTip
+const float kBendReach = 2.0;  // render::kGrassBendReach
+const float kItemHeight = 1.0 / 3.0; // render::kGrassItemHeight
 const float kPi = 3.14159265;
 
 float hash12(vec2 p)
@@ -63,6 +70,46 @@ vec3 windPush(vec3 foot, float height, float w)
     const vec3 offset = dir * (0.25 * height * w * s * (0.7 + 0.3 * sin(uWindTime.x * 2.3 + local)));
     // Keep the blade's length roughly: the tip sinks a little as it bends.
     return offset - vec3(0.0, 0.5 * dot(offset, offset) / max(height, 0.05), 0.0);
+}
+
+// Away from the figures nearby (render::grassBendTip): the tip pushed sideways, more the nearer; at relative
+// height w the push times w squared; the blade keeps its length roughly.
+vec3 bendPush(vec3 foot, float height, float w)
+{
+    vec2 tip = vec2(0.0);
+    for (int i = 0; i < uBenderCount; ++i)
+    {
+        const vec3 feet = vec3(uBenders[i * 4], uBenders[i * 4 + 1], uBenders[i * 4 + 2]);
+        const float radius = uBenders[i * 4 + 3];
+        const vec2 away = foot.xz - feet.xz;
+        const float d = length(away);
+        if (d >= radius || abs(foot.y - feet.y) > kBendReach)
+        {
+            continue;
+        }
+        const vec2 dir = d > 1e-4 ? away / d : vec2(1.0, 0.0);
+        tip += dir * (kBendTip * height * (1.0 - smoothstep(0.0, radius, d)));
+    }
+    const vec3 offset = vec3(tip.x, 0.0, tip.y) * (w * w);
+    return offset - vec3(0.0, 0.5 * dot(offset, offset) / max(height, 0.05), 0.0);
+}
+
+// Cut short around lying items (render::grassItemScale): a third within the radius, full 0.15 m beyond.
+float itemScale(vec3 foot)
+{
+    float scale = 1.0;
+    for (int i = 0; i < uShortenerCount; ++i)
+    {
+        const vec3 item = vec3(uShorteners[i * 4], uShorteners[i * 4 + 1], uShorteners[i * 4 + 2]);
+        const float radius = uShorteners[i * 4 + 3];
+        if (abs(foot.y - item.y) > kBendReach)
+        {
+            continue;
+        }
+        const float t = clamp((length(foot.xz - item.xz) - radius) / 0.15, 0.0, 1.0);
+        scale = min(scale, mix(kItemHeight, 1.0, t * t * (3.0 - 2.0 * t)));
+    }
+    return scale;
 }
 
 void main()
@@ -105,7 +152,7 @@ void main()
         hide();
         return;
     }
-    height *= 1.0 - fade;
+    height *= (1.0 - fade) * itemScale(foot);
     // Stage by a dither around the blade distance: each tuft is in exactly one.
     const float blend = clamp((distance - (uBladeDistance - 1.0)) * 0.5, 0.0, 1.0);
     const bool nearTuft = hash12(foot.xz * 7.7 + 1.3) >= blend;
@@ -167,13 +214,13 @@ void main()
         {
             const vec3 top = base + vec3(0.0, bladeHeight, 0.0) + out3 * (lean * bladeHeight);
             const vec3 corner = k == 12 ? -across : (k == 13 ? across : vec3(0.0, 1.0, 0.0));
-            p = top + corner * 0.03 + windPush(foot, bladeHeight, 1.0);
+            p = top + corner * 0.03 + windPush(foot, bladeHeight, 1.0) + bendPush(foot, bladeHeight, 1.0);
             level = 1.0;
         }
         else
         {
             p = base + vec3(0.0, t * bladeHeight, 0.0) + out3 * (lean * bladeHeight * t * t) +
-                across * (float(side) * width) + windPush(foot, bladeHeight, t);
+                across * (float(side) * width) + windPush(foot, bladeHeight, t) + bendPush(foot, bladeHeight, t);
             level = t;
         }
 #ifndef SHADOW
@@ -198,7 +245,8 @@ void main()
         const float a = yaw + float(q) * kPi * 0.5;
         const vec3 across = vec3(cos(a), 0.0, sin(a));
         const float halfWidth = 0.12 + 0.35 * height;
-        p = foot + across * (c.x * halfWidth) + vec3(0.0, c.y * height, 0.0) + windPush(foot, height, c.y);
+        p = foot + across * (c.x * halfWidth) + vec3(0.0, c.y * height, 0.0) + windPush(foot, height, c.y) +
+            bendPush(foot, height, c.y);
         vCard = vec2(c.x, c.y);
         level = c.y;
 #ifndef SHADOW

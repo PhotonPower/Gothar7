@@ -33,8 +33,7 @@ das Schatten-Kriterium und dieser Bericht.
 **Instanz-Puffer je Modell und Zelle lohnen sich nicht** und bleiben zurückgestellt: Selbst wenn sie die Arbeit je
 Pflanze ganz beseitigten, sparten sie im Feld unter 0,05 ms im Hauptpass und einen Teil der Schatten-Sammlung – bei
 einem Bild von 3–5 ms CPU und 16,7 ms Budget. Die GPU (1,5–2,6 ms gesamt) ist durch die Zahl der Draws nicht
-begrenzt. Wieder aufnehmen, wenn ein Szenario das Budget „Culling und Draw-Listen“ reißt oder die Intel-UHD-Messung
-zeigt, dass Draws dort zählen.
+begrenzt. Wieder aufnehmen, wenn ein Szenario das Budget „Culling und Draw-Listen“ reißt.
 
 ## Schatten-Kriterium (umgesetzt)
 
@@ -53,4 +52,4 @@ Gewinn 0,04–0,11 ms GPU (3–5 % der Szene), 1–4 % Dreiecke. Die CPU-Zahlen 
 Fremdlast verrauscht (auch unveränderte Zonen wurden teurer) und taugen nicht für einen Vergleich; weniger Objekte
 in zwei Kaskaden können die CPU nur entlasten.
 
-Die Intel-UHD-Messung steht weiterhin aus (GPU-Umschaltung ist eine Systemänderung, nur mit Freigabe).
+Die Intel-UHD-Messung entfällt (Projektinhaber 2026-11-24); die Vorgabe `auto` = `low` für Gras auf Intel bleibt.

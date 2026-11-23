@@ -11,6 +11,7 @@
 
 #include <doctest/doctest.h>
 
+#include <span>
 #include <vector>
 
 using namespace g7;
@@ -78,7 +79,8 @@ struct GrassScene
         }
     }
 
-    std::vector<u8> render(GrassQuality quality, f32 wind = 0.0f)
+    std::vector<u8> render(GrassQuality quality, f32 wind = 0.0f, std::span<const Vec4> benders = {},
+                           std::span<const Vec4> shorteners = {})
     {
         gl.device->bindFramebuffer(&target);
         gl.device->setViewport(0, 0, kSize, kSize);
@@ -92,6 +94,8 @@ struct GrassScene
         frame.layers = layers;
         frame.wind.strength = wind;
         frame.wind.time = 1.3f;
+        frame.benders = benders;
+        frame.shorteners = shorteners;
         grass.draw(*gl.device, camera, ring, frame, &none);
         return gl.device->readPixels(0, 0, kSize, kSize, &target);
     }
@@ -149,5 +153,36 @@ TEST_CASE("Grass GPU: the wind moves the blades, without it they stand")
         changed += still[i] != windy[i] || still[i + 1] != windy[i + 1] ? 1 : 0;
     }
     CHECK(changed > 50);
+    CHECK(scene.gl.device->debugErrorCount() == 0);
+}
+
+TEST_CASE("Grass GPU: blades bend away from a figure; tufts around lying items are cut short")
+{
+    GrassScene scene;
+    scene.fill(GrassQuality::Medium);
+    const std::vector<u8> plain = scene.render(GrassQuality::Medium);
+    // A figure on the meadow in front of the camera: the blades there move, the image elsewhere stays.
+    const std::vector<Vec4> figure{Vec4(-1.0f, 0.0f, 3.0f, kGrassBendRadius)};
+    const std::vector<u8> bent = scene.render(GrassQuality::Medium, 0.0f, figure);
+    CHECK(bent == scene.render(GrassQuality::Medium, 0.0f, figure)); // stable
+    usize changed = 0;
+    for (usize i = 0; i < plain.size(); i += 4)
+    {
+        changed += plain[i] != bent[i] || plain[i + 1] != bent[i + 1] ? 1 : 0;
+    }
+    CHECK(changed > 10);
+    // Items lying all over the near meadow: a third of the height, far fewer grass pixels.
+    std::vector<Vec4> items;
+    for (f32 x = -4.0f; x < 0.0f; x += 0.5f)
+    {
+        for (f32 z = 0.0f; z < 4.0f; z += 0.5f)
+        {
+            items.emplace_back(x, 0.0f, z, kGrassItemRadius);
+        }
+    }
+    items.resize(kGrassMaxShorteners);
+    const std::vector<u8> cut = scene.render(GrassQuality::Medium, 0.0f, {}, items);
+    MESSAGE("meadow pixels plain ", lit(plain, 0, kSize / 2), " cut ", lit(cut, 0, kSize / 2));
+    CHECK(lit(cut, 0, kSize / 2) * 20 < lit(plain, 0, kSize / 2) * 19);
     CHECK(scene.gl.device->debugErrorCount() == 0);
 }

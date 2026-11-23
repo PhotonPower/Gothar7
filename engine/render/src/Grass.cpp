@@ -370,6 +370,50 @@ void buildGrassTile(const GrassGround& ground, std::span<const GrassLayer> layer
     }
 }
 
+// --- Making way (decisions 4, 5) ---
+
+f32 grassItemScale(f32 distance) noexcept
+{
+    const f32 t = std::clamp((distance - kGrassItemRadius) / 0.15f, 0.0f, 1.0f);
+    return glm::mix(kGrassItemHeight, 1.0f, t * t * (3.0f - 2.0f * t));
+}
+
+Vec2 grassBendTip(const Vec3& foot, f32 height, const Vec3& feet) noexcept
+{
+    const Vec2 away(foot.x - feet.x, foot.z - feet.z);
+    const f32 d = glm::length(away);
+    if (d >= kGrassBendRadius || std::abs(foot.y - feet.y) > kGrassBendReach)
+    {
+        return Vec2(0.0f);
+    }
+    const f32 t = d / kGrassBendRadius;
+    const f32 amount = 1.0f - t * t * (3.0f - 2.0f * t);
+    const Vec2 dir = d > 1e-4f ? away / d : Vec2(1.0f, 0.0f);
+    return dir * (kGrassBendTip * height * amount);
+}
+
+void nearestGrassPoints(std::span<const Vec3> points, const Vec3& eye, f32 within, u32 max, f32 radius,
+                        std::vector<Vec4>& out)
+{
+    out.clear();
+    std::vector<std::pair<f32, Vec3>> near;
+    for (const Vec3& p : points)
+    {
+        const f32 d = glm::length(Vec2(p.x - eye.x, p.z - eye.z));
+        if (d <= within)
+        {
+            near.emplace_back(d, p);
+        }
+    }
+    const usize count = std::min<usize>(near.size(), max);
+    std::ranges::partial_sort(near, near.begin() + static_cast<std::ptrdiff_t>(count),
+                              [](const auto& a, const auto& b) { return a.first < b.first; });
+    for (usize i = 0; i < count; ++i)
+    {
+        out.emplace_back(near[i].second, radius);
+    }
+}
+
 // --- GrassRing ---
 
 void GrassRing::reset(f32 radius, f32 tuftsPerSquareMetre)
@@ -667,6 +711,19 @@ void GrassRenderer::setCommon(rhi::ShaderProgram& program, const GrassFrame& fra
         std::copy(std::begin(values), std::end(values), colours.begin() + static_cast<std::ptrdiff_t>(i * 6));
     }
     program.setUniform("uLayerColours", std::span<const f32>(colours));
+    // Figures and lying items: four floats each (x, y, z, radius).
+    const auto points =
+        [&](std::string_view array, std::string_view count, std::span<const Vec4> values, u32 max)
+    {
+        const usize n = std::min<usize>(values.size(), max);
+        program.setUniform(count, static_cast<i32>(n));
+        if (n > 0)
+        {
+            program.setUniform(array, std::span<const f32>(&values[0].x, n * 4));
+        }
+    };
+    points("uBenders", "uBenderCount", frame.benders, kGrassMaxBenders);
+    points("uShorteners", "uShortenerCount", frame.shorteners, kGrassMaxShorteners);
 }
 
 void GrassRenderer::drawStage(Device& device, rhi::ShaderProgram& program, const Stage& stage, bool nearStage)
