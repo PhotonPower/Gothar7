@@ -3,10 +3,13 @@
 #include "Manifest.hpp"
 #include "Textures.hpp"
 
+#include <g7/asset/AnimFile.hpp>
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
 #include <g7/asset/MeshFile.hpp>
 #include <g7/asset/Pak.hpp>
+#include <g7/asset/SkinFile.hpp>
+#include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/Vfs.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/StringUtil.hpp>
@@ -225,12 +228,18 @@ private:
         }
         if (mesh)
         {
-            // Figure parts, rigs and clip sets load as glTF until .g7skin/.g7anim exist (asset.md, plan M17
-            // part 0): an archive carries the .glb unchanged. Loose output does not - a copy in assets/cooked
-            // would hide the source .glb that figuren edits (hot reload).
-            const bool keepGltf =
-                !m_options.pack.empty() && ext == ".glb" && gltfSkinnedOrAnimated(bytes.value());
-            cookMesh(relative, location, keepGltf ? std::move(bytes).value() : std::vector<u8>());
+            // Figure parts and rigs (skin + mesh) become .g7skin, clip sets (animations) .g7anim (ADR 0025,
+            // plan M17 part D); everything else a static .g7mesh.
+            const bool skinned = gltfHas(bytes.value(), "skins") && gltfHas(bytes.value(), "meshes");
+            const bool animated = gltfHas(bytes.value(), "animations");
+            if (skinned || animated)
+            {
+                cookSkinned(relative, location, bytes.value(), skinned, animated);
+            }
+            else
+            {
+                cookMesh(relative, location);
+            }
         }
         else
         {
@@ -370,9 +379,54 @@ private:
         }
     }
 
-    /// `gltf`: the source bytes to emit unchanged next to the .g7mesh (skinned/animated .glb in archives),
-    /// empty: none.
-    void cookMesh(const std::string& relative, const fs::Path& location, std::vector<u8> gltf)
+    /// A figure part or rig (skin + mesh) -> .g7skin, a clip set (animations) -> .g7anim, both if it has
+    /// both. What would fail when the game loads it fails here. Image uris stay relative to the part (the
+    /// figure assembly resolves them like glTF); they must exist in the source, the engine takes their .ktx2.
+    void cookSkinned(const std::string& relative, const fs::Path& location, std::span<const u8> bytes,
+                     bool skinned, bool animated)
+    {
+        const fs::Path directory = location.parent_path();
+        const std::string base = withoutExtension(relative);
+        std::vector<std::pair<std::string, std::vector<u8>>> files;
+        if (skinned)
+        {
+            auto model = asset::loadSkinnedGltf(bytes, directory, relative);
+            if (!model)
+            {
+                fail(relative, model.error().message);
+                return;
+            }
+            for (const asset::ImageSource& image : model.value().images)
+            {
+                if (!image.uri.empty())
+                {
+                    if (auto resolved = resolveTexture(location, image.uri); !resolved)
+                    {
+                        fail(relative, resolved.error().message);
+                        return;
+                    }
+                }
+            }
+            files.emplace_back(base + ".g7skin", asset::serializeSkin(model.value()));
+        }
+        if (animated)
+        {
+            auto set = asset::loadAnimationGltf(bytes, directory, relative);
+            if (!set)
+            {
+                fail(relative, set.error().message);
+                return;
+            }
+            files.emplace_back(base + ".g7anim", asset::serializeAnim(set.value()));
+        }
+        if (emitAll(relative, std::move(files)))
+        {
+            m_report.skins += skinned ? 1 : 0;
+            m_report.anims += animated ? 1 : 0;
+        }
+    }
+
+    void cookMesh(const std::string& relative, const fs::Path& location)
     {
         auto cached = m_meshes.find(relative);
         auto loaded = cached != m_meshes.end() ? std::move(cached->second) : asset::loadGltf(location);
@@ -384,18 +438,7 @@ private:
         asset::MeshData mesh = std::move(loaded).value();
         if (mesh.submeshes.empty())
         {
-            if (!gltf.empty())
-            {
-                // An animation set (anims/*.glb): only the glTF itself.
-                std::vector<std::pair<std::string, std::vector<u8>>> files;
-                files.emplace_back(relative, std::move(gltf));
-                if (emitAll(relative, std::move(files)))
-                {
-                    ++m_report.copied;
-                }
-                return;
-            }
-            // E.g. an animation set (anims/*.glb) in loose output: an empty .g7mesh would only mislead.
+            // A glTF without geometry and without animations: an empty .g7mesh would only mislead.
             G7_LOG_WARN("cook", "{}: no mesh in this glTF, skipped", relative);
             ++m_report.skipped;
             return;
@@ -453,10 +496,6 @@ private:
         }
         const usize images = extracted.size();
         extracted.emplace_back(base + ".g7mesh", asset::serializeMesh(mesh));
-        if (!gltf.empty())
-        {
-            extracted.emplace_back(relative, std::move(gltf));
-        }
         if (emitAll(relative, std::move(extracted)))
         {
             m_report.images += static_cast<u32>(images);
@@ -925,11 +964,12 @@ Result<CookReport> cook(const CookOptions& options)
         return written.error();
     }
     CookReport report = std::move(cook).report();
-    G7_LOG_INFO(
-        "cook",
-        "{} cooked ({} meshes, {} images, {} copied), {} reused, {} skipped -> {} outputs ({} errors)",
-        report.cooked, report.meshes, report.images, report.copied, report.reused, report.skipped,
-        report.outputs, report.errors.size());
+    G7_LOG_INFO("cook",
+                "{} cooked ({} meshes, {} skins, {} clip sets, {} images, {} copied), {} reused, {} skipped "
+                "-> {} outputs "
+                "({} errors)",
+                report.cooked, report.meshes, report.skins, report.anims, report.images, report.copied,
+                report.reused, report.skipped, report.outputs, report.errors.size());
     return report;
 }
 } // namespace g7::cook

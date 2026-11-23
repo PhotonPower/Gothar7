@@ -1426,6 +1426,10 @@ void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::s
                               Value(false)};
         m_scripts->emit("npc_hit", args);
     }
+    if (reaction)
+    {
+        flashSpellHit(targetId, damage); // M17 part G (not for the burning's ticks)
+    }
     if (hp > 0)
     {
         if (burn)

@@ -42,6 +42,14 @@ std::optional<u32> Engine::startEffect(std::string_view name, const Vec3& at, co
     {
         return std::nullopt;
     }
+    // Companions (`with`, M17 V): effects started at the same place, e.g. the shock ring of an impact.
+    for (const std::string& companion : def->with)
+    {
+        if (companion != name)
+        {
+            (void)startEffect(companion, at, direction);
+        }
+    }
     return m_particles.spawn(std::move(def), at, direction);
 }
 

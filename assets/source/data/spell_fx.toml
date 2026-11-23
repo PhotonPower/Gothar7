@@ -1,0 +1,67 @@
+# Zauber-Glühen (M17 Teil G, Entscheidungen 9 und 10 des Projektinhabers 2026-11-08). Farben linear (über 1 = der
+# Bloom macht einen Schein), Stärken als Faktoren:
+#   hand       Hand und Unterarm des Zaubernden      rim   Umriss (Fresnel), schwach
+#   arm        welcher Arm leuchtet: der, mit dem der Wurf-Clip wirkt – "left" (Vorgabe), "right" oder "both"
+#   fill       die ganze Gestalt, flach              per_stage   je Aufladestufe so viel mehr (0,5 = halb so viel)
+#   seconds    Treffer: so lange klingt das Aufblitzen aus    pulse   Zustände: Pulse je Sekunde
+version = 1
+
+# Beim Wirken: Hand und Unterarm in der Farbe des Zaubers, der Umriss nur schwach (Entscheidung 9). Der ganze
+# mag-Satz wirkt mit der linken Hand, in der auch die Rune liegt (figuren #409); t_cast_self und t_cast_area mit
+# beiden.
+[glow.spl_firebolt]
+arm = "left"
+color = [1.0, 0.45, 0.12]
+hand = 2.5
+rim = 0.25
+per_stage = 0.5
+
+[glow.spl_heal]
+arm = "both"
+color = [0.35, 1.0, 0.4]
+hand = 2.0
+rim = 0.25
+per_stage = 0.5
+
+[glow.spl_sleep]
+arm = "left"
+color = [0.35, 0.5, 1.0]
+hand = 2.0
+rim = 0.25
+per_stage = 0.5
+
+[glow.spl_fear]
+arm = "left"
+color = [0.35, 0.5, 1.0]
+hand = 2.0
+rim = 0.25
+
+[glow.spl_telekinesis]
+arm = "left"
+color = [0.35, 0.5, 1.0]
+hand = 1.6
+rim = 0.2
+
+# Treffer eines Zaubers: 0,3 s Aufblitzen in der Farbe der Schadensart (Entscheidung 10; Nahkampf nicht).
+[hit.fire]
+color = [1.0, 0.45, 0.12]
+rim = 1.2
+fill = 0.35
+seconds = 0.3
+
+[hit.magic]
+color = [0.35, 0.5, 1.0]
+rim = 1.2
+fill = 0.35
+seconds = 0.3
+
+# Brennende glimmen orange, solange sie brennen; Schlafende schimmern ganz schwach blau.
+[state.burning]
+color = [1.0, 0.4, 0.1]
+rim = 0.9
+fill = 0.08
+pulse = 2.0
+
+[state.asleep]
+color = [0.35, 0.5, 1.0]
+rim = 0.25

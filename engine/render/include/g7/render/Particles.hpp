@@ -6,6 +6,7 @@
 #include <g7/core/Math.hpp>
 #include <g7/core/Result.hpp>
 #include <g7/core/Types.hpp>
+#include <g7/render/Distortion.hpp>
 #include <g7/render/Lighting.hpp>
 #include <g7/render/Wind.hpp>
 #include <g7/render/rhi/Resources.hpp>
@@ -46,7 +47,11 @@ struct EmitterDef
     f32 radius = 0.0f;                ///< start positions within this sphere
     f32 gravity = 0.0f;               ///< m/s² along -Y (negative: rises)
     f32 drag = 0.0f;                  ///< 1/s
-    f32 wind = 0.0f; ///< M17 W: how much the particles drift with the wind (smoke 1, sparks less, magic 0)
+    f32 wind = 0.0f;    ///< M17 W: how much the particles drift with the wind (smoke 1, sparks less, magic 0)
+    f32 distort = 0.0f; ///< M17 V: how strongly its particles distort the picture behind them (0: not)
+    DistortShape distortShape = DistortShape::Haze; ///< `distort_shape` = haze, ring or swirl
+    f32 distortSize = 1.5f;                         ///< the distortion's size as a factor on the particle's
+    std::vector<std::string> with;        ///< `with`: effects started together with it (Engine::startEffect)
     std::array<f32, 2> size{0.2f, 0.05f}; ///< m at birth and at death
     Vec4 colorStart{1.0f};                ///< linear rgb, alpha
     Vec4 colorEnd{1.0f, 1.0f, 1.0f, 0.0f};
@@ -94,6 +99,9 @@ public:
     /// The particles to draw: additive ones, and alpha ones sorted back to front from `eye`.
     void collect(const Vec3& eye, std::vector<ParticleInstance>& additive,
                  std::vector<ParticleInstance>& alpha) const;
+    /// M17 V: the distorting particles (`distort` > 0) for ParticleRenderer::drawDistortion - colour r =
+    /// strength (fading over the life, rings by their age), g = age 0..1, b = shape.
+    void collectDistortion(std::vector<ParticleInstance>& out) const;
     /// The lights of the emitting emitters (flickering).
     void lights(std::vector<PointLight>& out) const;
 
@@ -132,6 +140,8 @@ public:
     [[nodiscard]] static Result<ParticleRenderer> create(Device& device, ShaderLibrary& shaders);
     void draw(Device& device, const Camera& camera, std::span<const ParticleInstance> particles,
               bool additive);
+    /// M17 V: distorting particles (ParticleSystem::collectDistortion) into the bound DistortionTarget.
+    void drawDistortion(Device& device, const Camera& camera, std::span<const ParticleInstance> particles);
 
     /// The procedural sprites (tests): RGBA8, `size`² per layer, layers in ParticleSprite order.
     [[nodiscard]] static std::vector<u8> spriteImage(ParticleSprite sprite, u32 size);
@@ -140,6 +150,10 @@ private:
     rhi::ShaderProgram* m_program = nullptr;
     rhi::Pipeline m_additive;
     rhi::Pipeline m_alpha;
+    rhi::ShaderProgram* m_distortProgram = nullptr;
+    rhi::Pipeline m_distort;
+    void upload(Device& device, std::span<const ParticleInstance> particles, rhi::ShaderProgram& program,
+                const Camera& camera);
     rhi::Texture m_sprites;
     rhi::Sampler m_sampler;
     rhi::Buffer m_instances;

@@ -96,8 +96,8 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
     {
         const f64 partsStart = platform::nowSeconds();
         {
-            G7_PROFILE_SCOPE("figure parts (glTF)");
-            model = m_assets->load<asset::SkinnedModelData>(path);
+            G7_PROFILE_SCOPE("figure parts");
+            model = m_assets->load<asset::SkinnedModelData>(preferCookedFigure(m_vfs, path, true));
             m_assets->waitAll();
         }
         m_figureLoadTimes.parts += msSince(partsStart);
@@ -126,10 +126,11 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
     std::vector<asset::Handle<asset::AnimationSetData>> setHandles;
     const f64 setsStart = platform::nowSeconds();
     {
-        G7_PROFILE_SCOPE("figure clip sets (glTF)");
+        G7_PROFILE_SCOPE("figure clip sets");
         for (const std::string& set : graph.value().sets)
         {
-            setHandles.push_back(m_assets->load<asset::AnimationSetData>(set));
+            setHandles.push_back(
+                m_assets->load<asset::AnimationSetData>(preferCookedFigure(m_vfs, set, false)));
         }
         m_assets->waitAll();
     }
@@ -262,10 +263,11 @@ Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureM
     std::vector<asset::Handle<asset::SkinnedModelData>> handles;
     const f64 partsStart = platform::nowSeconds();
     {
-        G7_PROFILE_SCOPE("figure parts (glTF)");
+        G7_PROFILE_SCOPE("figure parts");
         for (const asset::FigureManifest::Part& part : manifest.parts)
         {
-            handles.push_back(m_assets->load<asset::SkinnedModelData>(std::string(kCharacters) + part.path));
+            handles.push_back(m_assets->load<asset::SkinnedModelData>(
+                preferCookedFigure(m_vfs, std::string(kCharacters) + part.path, true)));
         }
         m_assets->waitAll();
     }
@@ -892,7 +894,8 @@ void Engine::animatePlayer(f32 seconds, const gameplay::MoveInput& input)
     f.face.update(seconds);
 }
 
-void Engine::drawAnimatedFigure(AnimatedFigure& f, const Mat4& transform, bool shadow, u32 cascade)
+void Engine::drawAnimatedFigure(AnimatedFigure& f, const Mat4& transform, bool shadow, u32 cascade,
+                                render::FigureGlow glow)
 {
     prepareFigurePose(f, static_cast<f32>(m_fixedStep.alpha()));
     if (shadow)
@@ -902,7 +905,11 @@ void Engine::drawAnimatedFigure(AnimatedFigure& f, const Mat4& transform, bool s
     }
     else
     {
-        m_meshRenderer.drawSkinned(*m_device, f.mesh, f.materials, transform, f.bones, m_camera);
+        if (glow.active())
+        {
+            applyGlowBones(f, glow);
+        }
+        m_meshRenderer.drawSkinned(*m_device, f.mesh, f.materials, transform, f.bones, m_camera, glow);
     }
 }
 
@@ -912,11 +919,11 @@ bool Engine::drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade)
     {
         return false;
     }
-    drawAnimatedFigure(*m_figure, transform, shadow, cascade);
+    drawAnimatedFigure(*m_figure, transform, shadow, cascade, shadow ? render::FigureGlow{} : heroGlow());
     const PlayerFigure& f = *m_figure;
     for (const FigureAttachment& attachment : f.attachments)
     {
-        const Mat4 at = transform * f.modelSpace[attachment.bone];
+        const Mat4 at = transform * f.modelSpace[attachment.bone] * attachment.offset;
         if (shadow)
         {
             m_meshRenderer.drawShadow(*m_device, attachment.model->mesh, attachment.model->materials, at,

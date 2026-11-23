@@ -56,6 +56,7 @@ struct AnimatedFigure
     std::vector<asset::Handle<asset::TextureData>> images; ///< parallel to SkinnedModelData::images
     std::vector<std::string> sockets;                      ///< bones named socket_*, for the debug UI
     std::deque<std::string> events;                        ///< the last ones fired, newest first (debug UI)
+    std::optional<std::array<std::array<u32, 4>, 2>> glowBones; ///< M17 part G: right, left forearm (lazily)
 
     virtual ~AnimatedFigure() = default;
 };
@@ -67,6 +68,7 @@ struct FigureAttachment
     usize bone = 0;
     const LoadedModel* model = nullptr;
     std::unique_ptr<LoadedModel> owned; ///< procedural models (tests, debug UI)
+    Mat4 offset{1.0f};                  ///< in the socket's space (a rune turned to show its sign)
 };
 
 struct PlayerFigure : AnimatedFigure
