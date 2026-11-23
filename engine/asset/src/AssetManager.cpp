@@ -472,6 +472,30 @@ void AssetManager::waitAll()
     update();
 }
 
+void AssetManager::waitSlots(std::span<const std::shared_ptr<detail::AssetSlot>> slots)
+{
+    if (!m_impl->workers.empty())
+    {
+        // A slot still Loading has its job queued, in flight or done (not yet published): wait until every
+        // one of ours is done. Workers notify `idle` after each job.
+        std::unique_lock lock(m_impl->mutex);
+        m_impl->idle.wait(lock,
+                          [&]
+                          {
+                              return std::all_of(
+                                  slots.begin(), slots.end(),
+                                  [&](const std::shared_ptr<detail::AssetSlot>& slot)
+                                  {
+                                      return slot->state.load(std::memory_order_acquire) !=
+                                                 AssetState::Loading ||
+                                             std::any_of(m_impl->done.begin(), m_impl->done.end(),
+                                                         [&](const Impl::Done& d) { return d.slot == slot; });
+                                  });
+                          });
+    }
+    update(); // synchronous mode: runs what is queued
+}
+
 usize AssetManager::reload(std::string_view path)
 {
     auto normalised = normalizeVfsPath(path);

@@ -98,7 +98,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
         {
             G7_PROFILE_SCOPE("figure parts");
             model = m_assets->load<asset::SkinnedModelData>(preferCookedFigure(m_vfs, path, true));
-            m_assets->waitAll();
+            m_assets->wait(model); // only this figure's data, not what the world streams meanwhile
         }
         m_figureLoadTimes.parts += msSince(partsStart);
         if (model.failed() || !model.get())
@@ -132,7 +132,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
             setHandles.push_back(
                 m_assets->load<asset::AnimationSetData>(preferCookedFigure(m_vfs, set, false)));
         }
-        m_assets->waitAll();
+        m_assets->wait(std::span<const asset::Handle<asset::AnimationSetData>>(setHandles));
     }
     m_figureLoadTimes.sets += msSince(setsStart);
     std::vector<const asset::AnimationSetData*> sets;
@@ -269,7 +269,7 @@ Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureM
             handles.push_back(m_assets->load<asset::SkinnedModelData>(
                 preferCookedFigure(m_vfs, std::string(kCharacters) + part.path, true)));
         }
-        m_assets->waitAll();
+        m_assets->wait(std::span<const asset::Handle<asset::SkinnedModelData>>(handles));
     }
     m_figureLoadTimes.parts += msSince(partsStart);
     std::vector<asset::FigurePart> parts;
@@ -318,7 +318,7 @@ Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedMo
     }
     {
         G7_PROFILE_SCOPE("figure images");
-        m_assets->waitAll();
+        m_assets->wait(std::span<const asset::Handle<asset::TextureData>>(images));
     }
     m_figureLoadTimes.images += msSince(imagesStart);
     const f64 uploadStart = platform::nowSeconds();
