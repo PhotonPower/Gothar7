@@ -197,6 +197,11 @@ Vertrag mit engine (2026-10-06, Hand geändert 2026-11-08): Rune bzw. Spruchroll
 wie die Quaternius-Haltung; alle Wirk-Clips wirken links, `t_cast_self`/`t_cast_area` mit beiden Händen); jeder Einmal-Clip
 beginnt und endet in `mag/s_idle`; Event `cast` = der Effekt startet. Fünf Wirk-Varianten; Verwandlung nutzt
 `t_cast_self`, Schlaf die K.o.-Clips von `none`. Kreise bzw. Talent nur über Abspielrate und Effekt.
+**Griff (2026-11-23):** Die linke Hand hält die Rune zwischen Daumen und Zeige- und Mittelfinger an den langen Kanten
+(Fingerpose `mag/s_grip`, über jeden Clip des Satzes gelegt; Ring- und kleiner Finger eingerollt), das Zeichen zeigt
+von der Handfläche weg nach außen. **Vorschlag an engine (Vertrag, über den Koordinator):** Die Rune sitzt dafür nicht
+in der Handmitte, sondern zwischen den Fingerkuppen – Versatz im Raum von `socket_hand_l` T = (−0,0935; 0,0155; −0,052) m,
+danach die halbe Drehung um die lange Achse +Y (#414): `offset = translate(T) · rotateY(π)`.
 
 | Name | Zweck | Länge | Events | Quelle | Status |
 |---|---|---|---|---|---|
@@ -406,6 +411,22 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `bergleu/s_eat`, `s_sleep` | Liegend am Riss fressen / auf der Seite schlafen | – | – | K | platzhalter-K |
 | `bergleu/t_threaten` | Drohen: geduckt, fauchen, Ohren flach, Schwanz peitscht | – | – | K | platzhalter-K |
 
+### Gatterbock (`gatterbock`, Dungeon, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `gatterbock/s_idle` | Steht, Stein „atmet“, Kopf mahlt langsam herum | – | – | K | platzhalter-K |
+| `gatterbock/s_walk` | Schwerer, stampfender Schritt | ✓ 0,9 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `gatterbock/s_run` | Schwerer Trab, langsamer als der rennende Held | ✓ 2,2 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `gatterbock/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `gatterbock/t_attack_1` | Beide Fäuste über den Kopf, dann vorn niederschmettern (Treffer an `socket_hand_l/r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `gatterbock/t_attack_2` | Rückhand mit der rechten Faust von links nach rechts | – | hit_start, hit_end | K | platzhalter-K |
+| `gatterbock/t_hit` | Treffer: der Stein wankt zurück | – | – | K | platzhalter-K |
+| `gatterbock/t_die` | Die Glut erlischt: sinkt auf die Knie und kippt nach vorn | – | – | K | platzhalter-K |
+| `gatterbock/s_eat`, `s_sleep` | Staub von den Fäusten wischen (Mindest-Set) / Statue (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `gatterbock/s_dormant` | Statue neben dem Gatter (`zs_dormant`, #422): Kopf gesenkt, Fäuste vor der Brust | – | – | K | platzhalter-K |
+| `gatterbock/t_wake` | Erwachen aus der Statue: Kopf hebt sich, Schultern mahlen, Arme fallen frei | – | sound:gatterbock_threaten | K | platzhalter-K |
+| `gatterbock/t_threaten` | Drohen: stampft, schlägt die Fäuste zusammen | – | – | K | platzhalter-K |
 ### Mauerschlupfer (`mauerschlupfer`, Dungeon, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
 
 | Name | Zweck | RM | Events | Quelle | Status |

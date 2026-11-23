@@ -12,6 +12,7 @@ from conftest import REPO_ROOT
 from gothar_chargen.creature import (
     CreatureError,
     Shape,
+    apply_grime,
     bake_texture,
     blend_normals,
     bone_flow,
@@ -22,6 +23,7 @@ from gothar_chargen.creature import (
     height_normal,
     load_creature,
     matrix_euler,
+    plate_chips,
     rasterize,
     shape_distance,
     srgb,
@@ -381,6 +383,50 @@ size = [0.02, 0.04, 0.008]
     p = np.random.default_rng(2).random((400, 3)) * 0.02 + np.array([0.14, -0.3, 0.25])  # leg
     _, height = surface(c, p, np.tile([1.0, 0, 0], (400, 1)))
     assert height.std() > 0.05  # sandstone grain and chisel marks show in the relief
+
+
+def test_hewn_plates_cracks_and_grime(tmp_path):
+    """Gatterbock v2 (owner 2026-11-23): hewn, chipped blocks, cracks and moss in the joints."""
+    text = MINIMAL.replace('colour = "#202020"', 'colour = "#a08060"')
+    plates = """
+[[shape]]
+kind = "plate"
+zone = "dark"
+bone = "pelvis"
+center = [0, 0.1, 0.8]
+size = [0.1, 0.1, 0.1]
+[[shape]]
+kind = "plate"
+zone = "dark"
+bone = "pelvis"
+center = [0, 0.1, 1.0]
+size = [0.1, 0.1, 0.01]
+"""
+    plain = load_creature(_write(tmp_path, text + plates))
+    assert plain.plate_rough == 0.0 and plain.grime == 0.0
+    block, band = (np.array(s.center) for s in plain.shapes if s.kind == "plate")
+    face = np.array([block + [0, 0, 0.1], band + [0, 0, 0.01]])  # top faces
+    corner = np.array([block + [0.1, -0.1, 0.1]])
+    up = np.array([[0.0, 0.0, 1.0]] * 2)
+    diag = np.array([[1.0, -1.0, 1.0]]) / np.sqrt(3.0)
+    assert (plate_chips(plain, face, up) == 0).all()
+    rough = "plate_rough = 0.04\ngrime = 0.8\n"
+    c = load_creature(_write(tmp_path, rough + text + plates))
+    flat, thin = plate_chips(c, face, up)
+    assert 0 <= flat <= 0.35 * 0.04 + 1e-9  # hewn: shallow on a face
+    assert thin <= 0.35 * 0.01 + 1e-9  # thin plates (iron bands) stay whole
+    assert plate_chips(c, corner, diag)[0] > flat  # chipped corners
+    colour = np.full((2, 3), 0.7)
+    out = apply_grime(c, colour, np.array([1.0, 0.3]))
+    assert out[0] == pytest.approx(colour[0])  # open surface unchanged
+    moss = srgb(c.grime_colour)
+    assert np.abs(out[1] - moss).sum() < np.abs(colour[1] - moss).sum()
+    cracked = text.replace('colour = "#a08060"', 'colour = "#a08060"\ncracks = 1.0')
+    p = np.random.default_rng(3).random((4000, 3)) * 0.3
+    n = np.tile([1.0, 0, 0], (4000, 1))
+    with_cracks = surface(load_creature(_write(tmp_path, cracked)), p, n)[1]
+    without = surface(load_creature(_write(tmp_path, text)), p, n)[1]
+    assert with_cracks.min() < without.min()
 
 
 def test_quaderbuckel_reference_passes():
