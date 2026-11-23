@@ -1040,6 +1040,156 @@ Teile G und V des Plans „Magie-Nachträge“ (`gameplay.md`, dort auch Teil T 
 ### Reihenfolge
 G vor V (G ist klein und unabhängig); beide nach Teil T oder parallel dazu, je ein PR.
 
+## Plan M17: Grasfelder und Vegetations-Instancing (Vorschlag 2026-11-23)
+Stand: **Plan, wartet auf Freigabe.** Roadmap M17 „Vegetation: Instancing, Wind-Animation, Grasfelder“. Die
+Wind-Animation ist fertig (Teil W, „Wind“ oben); offen sind Grasfelder und Instancing. Eine neue Bibliothek ist nicht
+nötig, eine ADR deshalb auch nicht. Die Weltdatei bekommt ein Feld dazu (Teil G2, additiv). Die Gefühlsfragen an den
+Projektinhaber stehen am Ende, nummeriert, jeweils mit Vorschlag.
+
+### Ausgangslage
+- **Gelände Leonberg:** 2 × 2 km, Zellen 1 m, sieben Splat-Schichten: Wiese, Kopfstein, Kies, Matsch, Waldboden, Acker,
+  Fels. Die Wiese ist heute nur Textur.
+- **Vegetation als Vobs** (welt W6): Leonberg hat ~5100 Pflanzen als Modelle, darunter 2201 Obstbäume, 687
+  `grass_tuft`, 290 `grass_patch` (3 × 3 m), 304 `weeds`, 250 `reed` und ~550 Büsche.
+  - Sie laufen durch den normalen Modellweg: Multi-Draw, Instanzen gleicher Modelle (E3), LOD-Stufen und
+    Kategorie-Culling (E4).
+  - Ihr Wind kommt aus `extras.wind` (Vertrag welt, Teil W).
+- **Fehlt:** Flächiges Gras, das Wiesen, Gärten und Ränder füllt, ohne dass welt jede Staude als Vob setzt.
+
+### Ziel
+Wiesen und Gärten wirken bewachsen wie in einem Gothic-Bild: niedrige bis kniehohe Halme in Büscheln, die im Wind
+gehen und mit der Entfernung weich verschwinden. Kein Kollidieren, kein Spielfeld-Element. Die Kosten bleiben
+begrenzt und sind über eine Qualitätsstufe einstellbar.
+
+### Teil G1 – Grasrenderer (render)
+- **Verfahren:** GPU-Instancing von **Büscheln** (ein Büschel = 5–9 Halme, 2 Stufen: nah 3D-Halme ~40 Dreiecke, mittel
+  2 gekreuzte Karten 4 Dreiecke).
+  - Die Büschel-Meshes erzeugt der Renderer prozedural, Textur-Assets braucht es nicht. Halmfarbe aus einer
+    Farbtabelle je Splat-Schicht plus Rauschen.
+  - Alpha-Test nur bei den Karten, mit Alpha-to-Coverage wie bei der Vegetation.
+- **Kacheln:** Die Welt wird in 16 × 16-m-Kacheln geteilt. Für jede Kachel im Umkreis erzeugt die CPU **einmal** die
+  Instanzliste: Position, Drehung, Höhe, Farbton; 16 Byte je Büschel.
+  - Gewürfelt wird deterministisch aus den Kachelkoordinaten, das Bild bleibt also stabil.
+  - Grundlage sind die Splat-Gewichte (Teil G2), die Höhe aus dem Heightfield, Löcher und Neigung (über 35° kein Gras).
+  - Die Kacheln liegen in einem Ringpuffer um die Kamera. Neue Kacheln baut die CPU verteilt über mehrere Bilder,
+    höchstens 2 je Bild (auf dem Job-System, sobald es eins gibt).
+- **Zeichnen:**
+  - Je Stufe ein `drawInstanced` über alle sichtbaren Kacheln.
+  - Kacheln außerhalb des Sichtkegels fallen weg.
+  - Im Alpha-Test-Durchgang nach der deckenden Geometrie.
+- **Dichte und Sichtweite** nach `[render] grass` = `off` | `low` | `medium` | `high` (Optionen → Grafik):
+
+  | Stufe | Umkreis | Büschel/m² (Wiese voll) | 3D-Halme bis | Schatten |
+  |---|---|---|---|---|
+  | low | 20 m | 1,5 | 8 m | keine |
+  | medium (Vorgabe) | 35 m | 3 | 12 m | keine |
+  | high | 50 m | 5 | 20 m | nächste Kaskade, bis 15 m |
+
+  Vorgabe auf Intel UHD ist `low`, wie bei `multi_draw`.
+- **Ausblenden:** Auf den letzten 25 % des Umkreises schrumpfen die Büschel zum Boden, dazu dithert die Dichte aus. So
+  ploppt nichts. Der Übergang von 3D-Halmen zu Karten wird überblendet: beide Stufen über 2 m, gemischt mit Dither.
+- **Wind:** derselbe Wind wie Teil W.
+  - Gewicht `grass` (linear vom Fuß), Richtung und Böen aus den Wind-Uniforms, Phase je Büschel aus der Lage.
+  - Gras und `grass_patch`-Modelle bewegen sich gleich. Bei `[render] wind = false` steht das Gras.
+- **Licht:**
+  - Die Halme bekommen die Normale des Geländes (ein Feld sieht dann nicht „gestreift“ aus), Spitzen etwas heller,
+    am Fuß dunkler (Kontaktschatten).
+  - Sonnenschatten des Geländes und der Häuser werden empfangen. Gras wirft selbst keinen Schatten (außer `high`).
+  - Nachts und im Nebel wirkt das normale Licht.
+- **Ausnahmen:**
+  - Kein Gras in Innenzonen, unter Wasser (`water`-Vobs), auf Wegen des Wegnetzes (1,2 m breit) und unter den
+    Grundflächen von Häusern und Mobs.
+  - Die Grundflächen kommen aus der Kollision: ein Strahl je Büschel nach unten beim Bau der Kachel. Liegt
+    Geometrie über 5 cm über dem Gelände, entfällt das Büschel.
+- **Kollision:** keine. Gras hält niemanden auf und verdeckt keine Wahrnehmung.
+
+### Teil G2 – Wo Gras wächst (Vertrag mit welt)
+- **Je Splat-Schicht** eine Zeile in `data/grass.toml` (engine-Daten): Dichte 0..1, Höhe [min, max], Farbe [unten, oben].
+  - Vorschlag: Wiese 1,0 (0,25–0,6 m), Waldboden 0,25 (kurz), Acker 0 (Teil G4), Matsch 0,1, Kies/Kopfstein/Fels 0.
+  - Die Schicht wird über ihren **Namen** in der Weltdatei gefunden (`terrain.layers[].name`). Die Namen sind damit Teil
+    des Vertrags; Leonberg und das Testlager nutzen sie schon.
+- **Optional `terrain.grass_mask`** (neues Feld im `terrain`-Block, world.md): ein 8-bit-Bild in Auflösung der
+  Splatmap, Wert = Faktor auf die Dichte (0 kein Gras, 255 volle Dichte).
+  - welt erzeugt es aus OSM-Flächen: Wiese, Garten und Park voll, Weg- und Straßenränder ein Streifen von 1 m mit halber
+    Dichte. Dazu Höhe: kniehoch auf `meadow`, kurz in Gärten und im Schlossgarten (Rasen).
+  - Ohne Maske gilt nur die Splatmap (Testlager, ältere Welten).
+- **Bestehende Vobs bleiben:** `grass_tuft` an Mauerfüßen, `grass_patch`, `weeds`, `reed` setzen Akzente. welt kann die
+  flächigen `grass_patch` auf Wiesen später weglassen, wenn das Gras sie ersetzt (Frage 6).
+- Der Vertrag (Schichtnamen, Maske) kommt in `docs/coordination.md`. welt wird vor der Umsetzung gefragt.
+
+### Teil G3 – Editor und Werkzeuge
+- Die Maske lässt sich im Editor malen: ein Pinsel „Gras“ neben den Höhen- und Splat-Pinseln (M16 Teil F),
+  Undo als Befehl. Die Datei schreibt der Editor zurück; welts Generator überschreibt sie beim nächsten Lauf, außer der
+  Pinsel arbeitet in einer eigenen Überlagerung (Frage 9).
+- Debug-Fenster „Grass“: Kacheln, Büschel, Dreiecke, Zeit für den Kachelbau; F2 zeichnet die Kachelgrenzen.
+
+### Teil V – Vegetations-Instancing (Modelle)
+- **Messung zuerst** (Perf-Szenario `feld`, neu in `perf.toml`: Stadtrand mit Obstwiesen; dazu `markt`). Dabei
+  Draw-Befehle, Instanzen, CPU-Zeit für das Sammeln der Draws und GPU-Zeit der Vegetation getrennt.
+- **Wenn die CPU-Seite zählt**, also das Sammeln von ~5100 Pflanzen je Pass:
+  - Vegetation-Vobs kommen in statische **Instanz-Puffer je Modell und Zelle** (64 m). Sie werden einmal gebaut, wenn
+    die Welt lädt oder sich ändert (Editor, Hot-Reload).
+  - Gezeichnet wird je Zelle und Modell ein `drawInstanced`. Pro Pflanze gibt es dann keine Arbeit mehr je Bild.
+  - Sichtbarkeit je Zelle, LOD je Zelle nach dem Abstand zur Zellmitte. Schatten wie heute, kleine Pflanzen nur in den
+    ersten zwei Kaskaden.
+- **Wenn nicht:** nur das Schatten-Kriterium (kleine Pflanzen aus fernen Kaskaden) und der Messbericht, Rest
+  zurückgestellt.
+- Bäume als Impostoren (Billboards in der Ferne) gehören nicht in diesen Plan.
+
+### Teil G4 – Felder (optional)
+- Acker als Getreide oder Stoppeln im selben Renderer (Büschel „Halm-Reihe“, gerichtet nach der Ackerrichtung aus der
+  Maske). Nur wenn der Projektinhaber es will (Frage 7).
+
+### Budget (RTX 3080 Laptop, 1600 × 900; Intel UHD mit `low`)
+- Gras `medium`: GPU ≤ 0,8 ms im Szenario `feld`, ≤ 0,4 ms auf dem `markt` (wenig Wiese). CPU ≤ 0,3 ms je Bild für
+  Kacheln und Draws, Kachelbau ≤ 1 ms verteilt.
+- Speicher: 35 m Umkreis ≈ 3850 m² × 3 Büschel × 16 B ≈ 185 KB Instanzdaten (Ring mit Reserve ~0,5 MB).
+- Intel UHD `low`: ≤ 1,5 ms GPU. Das gesamte Bildbudget aus perf.md bleibt bindend; reißt es, sinkt die Vorgabe-Stufe.
+
+### Tests und Prüfbilder
+- **CPU, render-frei:**
+  - Kachelbau ist deterministisch (gleiche Kachel, gleiche Liste).
+  - Die Dichte folgt dem Splat-Gewicht und der Maske. Kein Gras auf Kopfstein, in Löchern, unter einem Dach, auf
+    Wegnetz-Kanten, in Innenzonen, unter Wasser und an Hängen über 35°.
+  - Der Ring baut höchstens 2 Kacheln je Bild.
+- **GPU:**
+  - Mit `grass = off` zeichnet nichts.
+  - `medium` zeichnet Gras auf der Wiese des Testlagers und keins auf dem Weg (Bildvergleich in Bereichen).
+  - Wind bewegt die Spitzen, nicht den Fuß.
+  - Fern ausgeblendet: keine Instanzen jenseits des Umkreises.
+- **Prüfbilder** für den Projektinhaber (Kameras außerhalb von Gebäuden, `--screenshot`): Leonberger Stadtrand mit
+  Obstwiese (Mittag und Abend), Schlossgarten, Testlager-Wiese, Feldweg bei Wind. Jeweils `low`, `medium` und `high`.
+- **Perf:** Szenario `feld` mit Budget, Vorher/Nachher-Bericht in `docs/perf/`.
+
+### Reihenfolge und Aufwand
+| Teil | Inhalt | Aufwand |
+|---|---|---|
+| G1 | Grasrenderer, Kacheln, Wind, Ausblenden, Option | 2–3 Tage |
+| G2 | `grass.toml`, Maske im Weltformat, Ausnahmen | 1 Tag (+ welt für die Maske) |
+| V | Messung, ggf. Instanz-Puffer je Zelle | ½–2 Tage |
+| G3 | Editor-Pinsel, Debug-Fenster | 1 Tag |
+| G4 | Felder (optional) | 1 Tag |
+
+### Gefühlsfragen an den Projektinhaber (mit Vorschlag)
+1. **Wie dicht und wie hoch?** Gothic 1 hatte fast nur einzelne Büschel. **Vorschlag:** Wiesen knöchel- bis kniehoch und
+   locker (Boden schimmert durch), keine geschlossene Rasendecke. Im Ort nur an Rändern und in Gärten.
+2. **Sichtweite:** **Vorschlag:** `medium` 35 m mit weichem Ausblenden; dahinter trägt die Wiesen-Textur. Kein Gras bis
+   zum Horizont.
+3. **Blumen:** **Vorschlag:** ein kleiner Anteil (etwa 5 %) Wiesenblumen-Büschel (weiß, gelb, blau) auf Wiesen, nicht
+   in Gärten.
+4. **Weicht Gras dem Helden und den NPCs?** **Vorschlag:** ja, leicht: Halme im Umkreis von 0,8 m um Figuren biegen weg
+   (Shader, bis 16 Figuren nah der Kamera). Als eigener kleiner Schritt nach G1.
+5. **Gegenstände im Gras:** Ein liegender Apfel kann im hohen Gras verschwinden. **Vorschlag:** Gras um liegende Items
+   (0,5 m) auf ein Drittel kürzen, damit man sie noch sieht. Der Fokus hebt sie ohnehin hervor.
+6. **Grasflecken-Modelle von welt:** **Vorschlag:** `grass_patch` auf Wiesen ersetzt das neue Gras; welt entfernt sie
+   dort nach G2. Büschel an Mauerfüßen (`grass_tuft`), Unkraut und Schilf bleiben.
+7. **Äcker:** Getreide, Stoppeln oder nackte Erde? **Vorschlag:** vorerst nackte Erde (Acker-Textur); Getreide als
+   späterer Teil G4, wenn gewünscht.
+8. **Schatten vom Gras:** **Vorschlag:** keine eigenen Schatten außer in der Stufe `high`; dunklere Halmfüße genügen.
+9. **Maske malen im Editor:** **Vorschlag:** ja, als Überlagerung zur generierten Maske, damit welts Generator Handarbeit
+   nicht überschreibt.
+10. **Vorgabe-Stufe:** **Vorschlag:** `medium`, auf Intel UHD `low`.
+
 ## Offene Fragen
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.
 - **Dual-Quaternion-Skinning** (Hinweis figuren, 2026-10-03): Lineares Blend-Skinning verliert in extremen Posen
