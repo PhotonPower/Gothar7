@@ -56,6 +56,7 @@ def codes(report, level="error"):
 def test_packaged_wolf_rig(wolf_rig):
     assert packaged_species() == [
         "bergleu",
+        "gatterbock",
         "glemsmahr",
         "keiler",
         "laufvogel",
@@ -191,6 +192,7 @@ def test_invalid_monster_sets(data, message):
         ("quaderbuckel", 29, 17),
         ("glemsmahr", 37, 19),
         ("bergleu", 41, 19),
+        ("gatterbock", 25, 14),
     ],
 )
 def test_monster_files_pass(species, bones, clips):
@@ -323,6 +325,7 @@ def test_validate_command_picks_rig_per_file(capsys):
         ("quaderbuckel", "capsule_lying"),
         ("glemsmahr", "capsule_upright"),
         ("bergleu", "capsule_lying"),
+        ("gatterbock", "capsule_upright"),
     ],
 )
 def test_collision_matches_mesh(species, shape):
@@ -379,7 +382,10 @@ def test_stale_collision_warns(wolf_reference):
 def test_sound_events_for_m13():
     """Engine's wish for M13 (2026-10-08): animal sounds as sound:<art>_<occasion> events, a
     swing sound in every human strike clip."""
-    species = ("wolf", "keiler", "laufvogel", "schinder", "quaderbuckel", "glemsmahr", "bergleu")
+    species = (
+        "wolf", "keiler", "laufvogel", "schinder",
+        "quaderbuckel", "glemsmahr", "bergleu", "gatterbock",
+    )  # fmt: skip
     for art in species:
         clips = {c.name: dict(c.markers) for c in load_set_spec(art).clips}
         for name, markers in clips.items():
