@@ -91,3 +91,15 @@ Lebenspunkten rasend. Quest-Boss (verschollene Jäger, Kopfgeld der Stadt). Trop
   zweite Phase ein, danach spielt engine die normalen Clips mit Rate ~1,3; `t_stagger` nach schwerem Treffer bzw.
   pariertem Prankenhieb.
 - **Technik:** lod0 11096 Dreiecke (Boss-Budget bis 12 k), Beschreibung `data/monsters/bergleu.creature.toml`.
+
+### Mauerschlupfer (gebaut 2026-11-23)
+Kahles, blasses Tier mit überlangen dünnen Gliedern, 1,2 m von der Nase bis zur Schwanzspitze: große
+Fledermausohren, blinde milchige Augen, schmaler Kopf mit gelben Nagezähnen, knotige Wirbelsäule unter der Haut,
+dünner Peitschenschwanz.
+- **Verhalten (für engine):** liegt eingerollt in einer Mauernische (`s_dormant`, `zs_dormant`); wird die Nische
+  durchsucht, springt er heraus (`t_wake`, am Ort, `leap_start`/`leap_land`), beißt (`t_attack_1`) oder reißt mit der
+  Kralle (`t_attack_2`), schnappt sich etwas Glänzendes (`t_steal`, Event `steal`; das Teil trägt er am
+  `socket_mouth`) und flieht in den nächsten Spalt (Lauf 6,0 m/s). Stirbt er, fällt das Gestohlene wieder heraus.
+  Blind: hört statt zu sehen (große Ohren). Schreckmoment und Falle, kein Dauergegner.
+- **Technik:** Rig vom Schinder abgeleitet (28 Knochen, längere Glieder, fünf Schwanzknochen); lod0 7014 Dreiecke;
+  Beschreibung `data/monsters/mauerschlupfer.creature.toml`.
