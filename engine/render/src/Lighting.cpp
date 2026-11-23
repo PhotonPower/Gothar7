@@ -168,6 +168,40 @@ f32 indoorAmbientFactor(const Vec3& point, std::span<const IndoorVolume> volumes
     return factor;
 }
 
+bool roomsHolding(const AABB& bounds, std::span<const IndoorVolume> volumes, std::vector<u32>& rooms)
+{
+    rooms.clear();
+    // Candidates: rooms whose (turned) box can reach the bounds at all, by a sphere around each.
+    const Vec3 centre = bounds.center();
+    const f32 radius = glm::length(bounds.extents());
+    std::vector<u32> near;
+    for (u32 i = 0; i < volumes.size(); ++i)
+    {
+        if (glm::length(volumes[i].center - centre) <= radius + glm::length(volumes[i].halfExtents) + 0.05f)
+        {
+            near.push_back(i);
+        }
+    }
+    for (u32 corner = 0; corner < 8; ++corner)
+    {
+        const Vec3 p((corner & 1) != 0 ? bounds.max.x : bounds.min.x,
+                     (corner & 2) != 0 ? bounds.max.y : bounds.min.y,
+                     (corner & 4) != 0 ? bounds.max.z : bounds.min.z);
+        const auto holder = std::find_if(near.begin(), near.end(), [&](u32 i)
+                                         { return indoorAmount(p, volumes.subspan(i, 1), 0.0f) > 0.5f; });
+        if (holder == near.end())
+        {
+            rooms.clear();
+            return false;
+        }
+        if (std::find(rooms.begin(), rooms.end(), *holder) == rooms.end())
+        {
+            rooms.push_back(*holder);
+        }
+    }
+    return true;
+}
+
 GpuLighting packLighting(const Environment& environment, const LightList& lights) noexcept
 {
     GpuLighting gpu{};
