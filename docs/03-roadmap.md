@@ -368,6 +368,9 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
   - D4 Teleporter und Fall umgesetzt (in der Welt mit Weißblende und ohne Zurückspringen, in andere Ebenen, Kreaturen und Gegenstände, an/aus per Ereignis; Fall durch den Schacht als Weltwechsel mit Geschwindigkeit, ohne Fallschaden; schwarzes Abblenden nach jedem Weltwechsel)
   - D5 Nischen und Türen umgesetzt (Mob-Typ `niche` wie eine Truhe ohne Deckel, Türen mit `no_pick` und `one_way`; Clips `mob/niche/…` von figuren offen)
   - D6 Monster umgesetzt (Vob-Typ `spawn`, `zs_dormant` mit halber Wahrnehmung, `wake` an Marker, Nester füllen sich beim Wiederkommen, Gatterbock und Mauerschlupfer mit Graphen, Mauerschlupfer stiehlt Glänzendes `tags = { "shiny" }`, Seitwärtsgang `move_axis` und Kapsel quer `axis = "x"`)
+  - D7 Editor und Import umgesetzt (`extras` an `VOB_`-Knoten aus Blender inkl. `VOB_PLATE_`/`TELEPORT_`/`RELAY_`/`SPAWN_` und `extras.mover`, Inspektor der Dungeon-Komponenten, Linien Sender → Ziel, Prüfen beim Speichern, Vorschau bewegter Teile)
+  - D7b Umgebung je Welt umgesetzt (Block `environment` ohne Himmel, Sonne und Wetter, mit Grundlicht und Nebel; Zonen-Typ `fog`)
+  - D8 Testdungeon und Szenario umgesetzt (`testworld/dungeon_1`/`dungeon_2`, `test_engine_dungeon_scenario.cpp`; Prüfbilder `C:\GotharData\review\dungeon-d8`) – damit ist die Mechanik D1–D8 fertig; offen: Bau welt, Clips figuren, weitere Monster
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 
