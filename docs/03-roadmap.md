@@ -354,7 +354,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [ ] Job-System, Multithreading für Animation/KI/Culling – Plan: `docs/modules/perf.md`
 - [ ] Welt-Streaming in Zellen, Ladezeiten-Optimierung
 - [x] Tracy-Profiling, Performance-Budget pro System – Plan: `docs/modules/perf.md`; Tracy (#387, ADR 0024), Szenarien mit Budgets (#389), KI-LOD-Obergrenze (#391, #392)
-- [ ] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info – Plan: `docs/modules/release.md`; umgesetzt: Build-Info (#380), Absturzberichte (#382), ZIP mit Lizenzprüfung (#384), Figuren im Paket (#410, gekocht ab #419)
+- [x] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info – Plan: `docs/modules/release.md`; umgesetzt: Build-Info (#380), Absturzberichte (#382), ZIP mit Lizenzprüfung (#384), Figuren im Paket (#410, gekocht ab #419)
 - [x] Gekochtes Format für Figuren und Animationen (`.g7skin`/`.g7anim`, ADR 0025; Plan in `asset.md`, Teile 0 und A–F, #410 #413 #415–#418 und Teil F): das Paket enthält sie, glTF bleibt Rückfall in der Entwicklung; Leonberg lädt die Figuren in ~0,9 statt ~1,3 s (`docs/perf/2026-11-08-figuren-laden.md`)
 - [ ] Optional: Vulkan-Backend hinter der RHI (ADR)
 - [x] Magie: Telekinese (Zaubertyp „Kontrolle“) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
