@@ -197,6 +197,11 @@ Vertrag mit engine (2026-10-06, Hand geändert 2026-11-08): Rune bzw. Spruchroll
 wie die Quaternius-Haltung; alle Wirk-Clips wirken links, `t_cast_self`/`t_cast_area` mit beiden Händen); jeder Einmal-Clip
 beginnt und endet in `mag/s_idle`; Event `cast` = der Effekt startet. Fünf Wirk-Varianten; Verwandlung nutzt
 `t_cast_self`, Schlaf die K.o.-Clips von `none`. Kreise bzw. Talent nur über Abspielrate und Effekt.
+**Griff (2026-11-23):** Die linke Hand hält die Rune zwischen Daumen und Zeige- und Mittelfinger an den langen Kanten
+(Fingerpose `mag/s_grip`, über jeden Clip des Satzes gelegt; Ring- und kleiner Finger eingerollt), das Zeichen zeigt
+von der Handfläche weg nach außen. **Vorschlag an engine (Vertrag, über den Koordinator):** Die Rune sitzt dafür nicht
+in der Handmitte, sondern zwischen den Fingerkuppen – Versatz im Raum von `socket_hand_l` T = (−0,0935; 0,0155; −0,052) m,
+danach die halbe Drehung um die lange Achse +Y (#414): `offset = translate(T) · rotateY(π)`.
 
 | Name | Zweck | Länge | Events | Quelle | Status |
 |---|---|---|---|---|---|
