@@ -175,6 +175,41 @@ def schloss_item(spec: dict[str, Any], mesh: str) -> dict[str, Any]:
     return item
 
 
+ROOM_PREFIX = "schloss_"  # the rooms' items: ``schloss_<storey>_<room>`` and ``schloss_turm``
+WOOD_FLOORS = ("timber_dark", "oak", "pine")  # floor materials one walks on as on wood
+
+
+def schloss_room_items(spec: dict[str, Any], mesh: str) -> list[dict[str, Any]]:
+    """handmade.json entries of the castle's rooms (W7 D1b): a model each beside the castle's,
+    at its origin; wooden floors with their footstep (world.md "Oberfläche")."""
+    inside = spec.get("interior")
+    if not inside:
+        return []
+    geo = schloss_geometry()
+    m = geo.build(spec)
+    origin = [round(v, 3) for v in geo.origin_of(spec)]
+    floors = {k: inside["materials"][k]["floor"] for k in inside["materials"]}
+    out = []
+    for room in sorted(m.rooms):
+        key = room.split("_", 1)[0]
+        item: dict[str, Any] = {"key": f"{ROOM_PREFIX}{room}",
+                                "mesh": str(geo.room_glb(Path(mesh), room).as_posix()),
+                                "pos": origin}  # fmt: skip
+        if floors.get(key) in WOOD_FLOORS:
+            item["components"] = {"surface": {"footstep": "wood"}}
+        out.append(item)
+    return out
+
+
+def with_room_items(doc: dict[str, Any], rooms: list[dict[str, Any]]) -> dict[str, Any]:
+    """``doc`` with the castle's room items replaced by ``rooms`` (stale ones removed)."""
+    keep = [i for i in doc.get("items", []) if not i.get("key", "").startswith(ROOM_PREFIX)]
+    out = {**doc, "items": keep}
+    for item in rooms:
+        out = put_item(out, item)
+    return out
+
+
 def pads(doc: dict[str, Any]) -> list[dict[str, Any]]:
     """Heightmap pads of all hand-made objects (level ground under them)."""
     return [pad for item in doc.get("items", []) for pad in item.get("pads", [])]

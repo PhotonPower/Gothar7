@@ -36,6 +36,14 @@ STEP_T = 0.22  # thickness of a stair block under its tread
 RAMP_PIECES = 24  # collision pieces per turn (smooth ramp)
 
 
+TOWER_PART = "turm"  # the stair tower's inside: a model of its own like the rooms (W7 D1b)
+
+
+def part_name(key: str, room: str) -> str:
+    """The model of a room: ``<storey>_<room>`` in lower case (``schloss_<part>.glb``)."""
+    return f"{key}_{room}".lower()
+
+
 def floors(spec: dict[str, Any]) -> dict[str, float]:
     """Floor and ceiling heights: cellar, ground (the portal's storey) and upper floor."""
     slab = float(spec.get("slabM", 0.3))
@@ -195,7 +203,8 @@ class Inside:
         holes = self.openings(key, y0, y1)
         t = self.t_in
         rooms = self.rooms(key)
-        for _name, a, b in rooms:
+        for name, a, b in rooms:
+            self.m.part = part_name(key, name)
             self.quad(mats["floor"], a, -t, b, t, y0, y0, self.up(), horizontal=True)
             if key == "keller":
                 self.vault(a, b, y0, y1, mats["ceiling"])
@@ -204,27 +213,37 @@ class Inside:
             for side in (1, -1):
                 self.wall_face(side, a, b, y0, y1, mats["wall"], holes[side])
                 self.niches(side, a, b, y0, y1)
-        # gable-end faces and the partitions with their doorways
+        # gable-end faces and the partitions with their doorways (each face in its room)
+        self.m.part = part_name(key, rooms[0][0])
         self.end_face(self.s0, y0, y1, mats["wall"], 1.0)
+        self.m.part = part_name(key, rooms[-1][0])
         self.end_face(self.s1, y0, y1, mats["wall"], -1.0)
-        for (_, _, b), (_, c, _) in zip(rooms, rooms[1:], strict=False):
-            self.partition(b, c, y0, y1, mats["wall"], key)
+        for (before, _, b), (after, c, _) in zip(rooms, rooms[1:], strict=False):
+            self.partition(b, c, y0, y1, mats["wall"], key, (part_name(key, before),
+                                                             part_name(key, after)))  # fmt: skip
+        self.m.part = None
 
     def end_face(self, s: float, y0: float, y1: float, mat: str, sign: float) -> None:
         t = self.t_in
         self.quad(mat, s, -t, s, t, y0, y1, self.w.along(sign))
 
-    def partition(self, a: float, b: float, y0: float, y1: float, mat: str, key: str) -> None:
-        """A wall between s=a and s=b with a doorway at doorT; both faces, the reveal, a body each
-        side of the doorway and one over it."""
+    def partition(self, a: float, b: float, y0: float, y1: float, mat: str, key: str,
+                  parts: tuple[str, str] | None = None) -> None:  # fmt: skip
+        """A wall between s=a and s=b with a doorway at doorT; both faces (each in the model of
+        its room, ``parts``: before, after; the reveal with the room before), a body each side
+        of the doorway and one over it."""
         t, d0, d1 = self.t_in, self.door_t - DOOR_W / 2, self.door_t + DOOR_W / 2
         top = y0 + DOOR_H
         for s, sign in ((a, -1.0), (b, 1.0)):
+            if parts is not None:
+                self.m.part = parts[0] if sign < 0 else parts[1]
             want = self.w.along(sign)
             self.quad(mat, s, -t, s, d0, y0, y1, want)
             self.quad(mat, s, d1, s, t, y0, y1, want)
             self.quad(mat, s, d0, s, d1, top, y1, want)
         p = self.w.p
+        if parts is not None:
+            self.m.part = parts[0]
         self.m.quad(mat, p(a, d0, y0), p(b, d0, y0), p(b, d0, top), p(a, d0, top),
                     (self.w.n[0], 0.0, self.w.n[1]))  # fmt: skip
         self.m.quad(mat, p(a, d1, y0), p(b, d1, y0), p(b, d1, top), p(a, d1, top),
@@ -262,6 +281,8 @@ class Inside:
         if not self.portal:
             return
         w, s, hw = self.w, self.portal_s, self.portal_w / 2
+        self.m.part = next((part_name("eg", n) for n, a, b in self.rooms("eg") if a <= s <= b),
+                           None)  # fmt: skip
         y_out, y_in = self.portal_y, self.f["ground"]
         t_out, t_in = w.half, self.t_in
         p = w.p
@@ -282,6 +303,7 @@ class Inside:
                    p(ring[2][0], ring[2][1], y_out), p(ring[3][0], ring[3][1], y_out)]  # fmt: skip
         self.m.body("COL_HULL_in_portal_ramp", bottom, top_pts)
         self.bodies += 1
+        self.m.part = None
 
     # --- collision of the wing ---------------------------------------------------------------
     def wing_bodies(self) -> None:
@@ -337,6 +359,7 @@ class Inside:
         """Hollow octagon, newel, spiral flights (one turn per storey) and landings."""
         if self.tower is None:
             return
+        self.m.part = TOWER_PART
         w = self.w
         c = w.p(self.tower_s, self.tower_t, 0.0)
         cx, cz = c[0], c[2]
@@ -424,6 +447,7 @@ class Inside:
                 y = y0 + (y1 - y0) * (k + 1) / steps
                 self._step(cx, cz, NEWEL_R, ri, a0, a1, y)
         self._landing(f"{sts[-1][0]}_oben", cx, cz, ri, door_ang, land, sts[-1][1])
+        self.m.part = None
 
     def _sector_body(self, name: str, cx: float, cz: float, r0: float, r1: float, a0: float,
                      a1: float, y0: float, y1: float, n: int = 1) -> None:  # fmt: skip

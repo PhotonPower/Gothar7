@@ -772,7 +772,39 @@ eigenen Aufnahmen.
 - **Prüfung:**
   - Autopilot durch alle Räume aller Geschosse, über die Wendeltreppe hinauf und hinab: 125/125 Punkte, kein
     Hänger, kein Sturz.
-  - Einrichtung, Licht, Wegnetz, Zonen und Bewohner folgen mit D1b.
+- **Leben innen (W7 D1b):** Einrichtung, Licht, Wegnetz und Zonen; die Bewohner (Vogt, zwei Wachen, Koch,
+  Schreiber) schreibt engine in Lua.
+  - **Räume als eigene Modelle:** Jeder Raum und das Turm-Innere ist ein eigenes `.glb`
+    (`handmade/schloss/schloss_<geschoss>_<raum>.glb`, `schloss_turm.glb`; zusammen 1556 Dreiecke) am Ursprung des
+    Schlosses. So gilt das Licht-Budget je Vob für jeden Raum einzeln. Die Raum-Modelle kollidieren nicht selbst
+    (`COL_HULL_NONE` unter dem Boden), die Körper des Schlosses gelten für alle. In `handmade.json` stehen sie als
+    Einträge `schloss_<raum>`; das Obergeschoss hat Holzboden (`surface.footstep` `wood`).
+  - **Einrichtung** als Daten in `data/<ort>/castle_inside.json`, Mechanik in `uses/castle.py`. Lage im Rahmen des
+    Flügels: `s` entlang, `t` quer (+ Hof, − Garten); an einer Wand (`garden`, `court`, `a`, `b`) oder frei (`at`).
+    - Arten: `mob:<typ>`, `table` (Tisch mit zwei Bänken, gedeckt, Kerze), `prop:<modell>`, `light:lantern`,
+      `light:torch`, `fp:<TYP>`; `fp` an einem Eintrag setzt einen Freepoint davor.
+    - Neue Modelle (`mobs.py`): Riesenfass `giant_barrel` (liegend, hohl, 2,8 m lang, 2,85 m hoch; die 4 m des Plans
+      passen nicht unter das Kellergewölbe) mit der Front `giant_barrel_front` (Ursprung am Scharnier), Wandfackel
+      `wall_torch`, schiefer Fackelhalter `torch_lever`, Bücherregal, Lesepult, Altar, Zellengitter `cell_bars`.
+    - Die Prüfung (`check`) meldet Dinge außerhalb des Raums, Überschneidungen, Möbel auf der Laufbahn
+      (`doorT` ± 1,2 m) oder den Wegen zu Portal und Turm, Hohes vor Fenstern, Plätze auf Möbeln, zu viele Lichter;
+      `assemble` bricht dann ab.
+  - **Licht:** je Raum Tageslicht am ersten Fenster (Hofseite zuerst), Herdfeuer, Kerzen auf den Tischen, Laternen
+    bzw. im Keller Fackeln; höchstens 4 je Raum, im Festsaal 6; eine Laterne an jedem Absatz des Turms.
+  - **Riesenfass** im Weinkeller an der Trennwand zum Verlies: Front `WALL_SCHLOSS_FASS` (`mesh` mit `mover`,
+    `secret_wall`, schwenkt um das Scharnier: `offset` 0, `axis` +Y, `angle` −95°, 2,5 s, geschlossen) und
+    daneben der schiefe Fackelhalter `LEVER_SCHLOSS_FASS` (Mob `lever`, `targets` [`WALL_SCHLOSS_FASS`], `toggle`,
+    `hidden`), Vertrag `schloss-dungeon.md` §5. Innen hat das Fass einen Bretterboden; der Abstieg folgt mit D2.
+  - **Wegnetz:** eine Laufbahn je Geschoss bei `doorT` mit einem Punkt in jeder Raummitte (`WP_LEO_SCHLOSS_<RAUM>`,
+    der Routinen-Ort), den Durchgängen und den Abzweigen zu Portal und Turm; die Wendeltreppe mit einem Punkt alle
+    30°; eigene Punkte für Freepoints und Mobs, die weiter als 3 m oder nicht in freier Linie von einem Punkt liegen.
+    Alles hängt als Baum (`link`) am Punkt vor dem Portal, der mit dem Wegnetz der Stadt verbunden wird.
+  - **Freepoints:** `FP_COOK` (Küche), `FP_READ` (Bibliothek, Schreibstube, Gemach; neue Typen, world.md),
+    `FP_STAND` (Halle am Portal), `FP_SMALLTALK` (Halle, Festsaal), `FP_PRAY` (Kapelle). Die Tabelle der Orte je Raum
+    steht in `generated/uses_table.md` („Schloss“).
+  - **Zonen:** `indoor` je Raum (`LEO_SCHLOSS_<RAUM>_INNEN`) und für den Turm; Ambiente (`sound_zones.json` `rooms`):
+    Gewölbe und Verlies `keller_gewoelbe`, Weinkeller `keller_luftzug` (der Hinweis auf den Zugang), Küche
+    `schloss_kueche` – die Klänge dazu legt engine in `ambient.toml` an. Musik: das Schloss liegt in `STADT`.
 
 ### W-E4 Marktbrunnen (`gothar-worldgen marktbrunnen <ort>`, W6)
 Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Das Modell, das der Projektinhaber selbst aus

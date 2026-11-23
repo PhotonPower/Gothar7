@@ -36,6 +36,47 @@ def material(name: str, rgba: list[float]) -> bpy.types.Material:
     return mat
 
 
+def mesh_object(name: str, faces_by_mat: dict, palette: dict, mats: dict) -> bpy.types.Object:
+    """One mesh object with a palette material per slot (sorted material names)."""
+    mesh = bpy.data.meshes.new(name)
+    verts: list[tuple[float, float, float]] = []
+    faces: list[list[int]] = []
+    slots: list[int] = []
+    for slot, mat in enumerate(sorted(faces_by_mat)):
+        if mat not in mats:
+            mats[mat] = material(mat, palette[mat])
+        mesh.materials.append(mats[mat])
+        for face in faces_by_mat[mat]:
+            base = len(verts)
+            verts += [to_blender(p) for p in face]
+            faces.append(list(range(base, base + len(face))))
+            slots.append(slot)
+    mesh.from_pydata(verts, [], faces)
+    mesh.polygons.foreach_set("material_index", slots)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    return obj
+
+
+def collision_object(name: str, pts: list, tris: list) -> None:
+    cm = bpy.data.meshes.new(name)
+    cm.from_pydata([to_blender(p) for p in pts], [], tris)
+    cm.update()
+    col = bpy.data.objects.new(name, cm)
+    col.display_type = "WIRE"
+    col.hide_render = True
+    bpy.context.scene.collection.objects.link(col)
+
+
+def export(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    bpy.ops.export_scene.gltf(
+        filepath=str(path), export_format="GLB", export_yup=True, export_apply=True,
+        export_animations=False, export_materials="EXPORT", use_selection=False,
+    )  # fmt: skip
+
+
 def main() -> None:
     args = sys.argv[sys.argv.index("--") + 1 :]
     spec = json.loads(Path(args[0]).read_text(encoding="utf-8"))
@@ -45,40 +86,32 @@ def main() -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
     model = geometry.to_local(geometry.build(spec), geometry.origin_of(spec))
-    mesh = bpy.data.meshes.new("schloss")
-    verts: list[tuple[float, float, float]] = []
-    faces: list[list[int]] = []
-    slots: list[int] = []
-    for slot, name in enumerate(sorted(model.faces)):
-        mesh.materials.append(material(name, palette[name]))
-        for face in model.faces[name]:
-            base = len(verts)
-            verts += [to_blender(p) for p in face]
-            faces.append(list(range(base, base + len(face))))
-            slots.append(slot)
-    mesh.from_pydata(verts, [], faces)
-    mesh.polygons.foreach_set("material_index", slots)
-    mesh.update()
-    obj = bpy.data.objects.new("schloss", mesh)
-    bpy.context.scene.collection.objects.link(obj)
+    mats: dict = {}
+    # W7 D1b: each room inside a model of its own (schloss_<room>.glb, no collision of its own:
+    # the castle's bodies hold for all), written first, the castle last (the .blend keeps it)
+    for room, faces in sorted(model.rooms.items()):
+        for obj in list(bpy.context.scene.collection.objects):
+            bpy.data.objects.remove(obj)
+        mesh_object(f"schloss_{room}", faces, palette, mats)
+        name, lo, hi = geometry.NO_COLLISION
+        ring = [(lo[0], lo[1], lo[2]), (hi[0], lo[1], lo[2]), (hi[0], lo[1], hi[2]),
+                (lo[0], lo[1], hi[2])]  # fmt: skip
+        m = geometry.Model()
+        m.body(name, ring, [(x, hi[1], z) for x, _, z in ring])
+        collision_object(*m.collision[0])
+        export(geometry.room_glb(out_glb, room))
+    for obj in list(bpy.context.scene.collection.objects):
+        bpy.data.objects.remove(obj)
+    mesh_object("schloss", model.faces, palette, mats)
     for name, pts, tris in model.collision:
-        cm = bpy.data.meshes.new(name)
-        cm.from_pydata([to_blender(p) for p in pts], [], tris)
-        cm.update()
-        col = bpy.data.objects.new(name, cm)
-        col.display_type = "WIRE"
-        col.hide_render = True
-        bpy.context.scene.collection.objects.link(col)
-
-    out_glb.parent.mkdir(parents=True, exist_ok=True)
-    bpy.ops.export_scene.gltf(
-        filepath=str(out_glb), export_format="GLB", export_yup=True, export_apply=True,
-        export_animations=False, export_materials="EXPORT", use_selection=False,
-    )  # fmt: skip
+        collision_object(name, pts, tris)
+    export(out_glb)
     if out_blend is not None:
         out_blend.parent.mkdir(parents=True, exist_ok=True)
         bpy.ops.wm.save_as_mainfile(filepath=str(out_blend), compress=True)
-    print(f"SCHLOSS_OK triangles={model.triangles()} bodies={len(model.collision)}")
+    rooms = model.room_triangles()
+    print(f"SCHLOSS_OK triangles={model.triangles()} bodies={len(model.collision)} "
+          f"rooms={len(rooms)} room_triangles={sum(rooms.values())}")  # fmt: skip
 
 
 main()

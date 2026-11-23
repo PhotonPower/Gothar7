@@ -14,6 +14,7 @@ from gothar_worldgen.mobs import (
     BUILDERS,
     CHEST_BODY_H,
     EMISSIVE,
+    GIANT_BARREL_L,
     HEARTH_D,
     HEARTH_H,
     HEARTH_W,
@@ -185,6 +186,14 @@ def test_props_budget_and_collision(kind):
         assert all(b.positions[:, 1].max() <= -0.99 for b in m.main.collision)  # none to bump
     elif kind == "wall_hanging":  # on the wall above heads' shoulders
         assert lo[1] > 1.2 and hi[2] <= 0.03 and not m.main.collision
+    elif kind in ("wall_torch", "torch_lever"):  # castle (D1b): on the wall above the hips
+        assert lo[1] > 1.2 and hi[1] < 2.3 and lo[2] >= -0.01 and hi[2] <= 0.25
+        assert all(b.positions[:, 1].max() <= -0.99 for b in m.main.collision)  # none to bump
+    elif kind == "giant_barrel":  # castle (D1b): lying in the wine cellar, origin in its middle
+        assert lo[1] == pytest.approx(0.0) and hi[1] < 3.0 and len(m.main.collision) > 20
+        assert lo[2] == pytest.approx(-GIANT_BARREL_L / 2)
+    elif kind == "giant_barrel_front":  # castle (D1b): the cask's door, origin at the hinge
+        assert lo[0] == pytest.approx(0.0) and lo[1] > 0.2 and hi[2] <= 0.2 and m.main.collision
     elif kind.startswith("market_stall_"):  # free-standing on the square, roof above heads
         assert lo[1] == pytest.approx(0.0) and hi[1] > 2.4 and m.main.collision
         assert all(b.positions[:, 1].max() <= 2.65 for b in m.main.collision)

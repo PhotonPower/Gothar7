@@ -33,6 +33,14 @@ ROOF_T = 0.22
 GABLE_T = 0.45
 NORTH_ROOF = -0.25
 TERRAIN_F = (0.1, 0.3, 0.5, 0.7, 0.9)  # samples of each side's ground in schloss.json
+# a room's model has no collision of its own (the castle's bodies hold): one tiny body under the
+# floor so the engine does not collide its faces (asset.md "Kollision in Modellen")
+NO_COLLISION = ("COL_HULL_NONE", (-0.02, -1.04, -0.02), (0.02, -1.0, 0.02))
+
+
+def room_glb(castle_glb: Path, room: str) -> Path:
+    """The file of a room's model beside the castle's (W7 D1b)."""
+    return castle_glb.with_name(f"schloss_{room}.glb")
 
 
 @dataclass
@@ -43,6 +51,11 @@ class Model:
     collision: list[tuple[str, list[Vec3], list[tuple[int, int, int]]]] = field(
         default_factory=list
     )
+    # W7 D1b: the rooms inside as models of their own (own lights per object): faces per room
+    # while ``part`` names one, else into ``faces`` (the castle)
+    rooms: dict[str, dict[str, list[list[Vec3]]]] = field(default_factory=dict)
+    part: str | None = None
+    inner: object = None  # the walkable wing after ``build`` (its ``windows`` filled)
 
     def poly(self, material: str, pts: list[Vec3], want: Vec3) -> None:
         """Convex planar polygon facing roughly ``want``."""
@@ -53,7 +66,8 @@ class Model:
             return
         if _dot(n, want) < 0:
             pts = pts[::-1]
-        self.faces.setdefault(material, []).append(list(pts))
+        faces = self.faces if self.part is None else self.rooms.setdefault(self.part, {})
+        faces.setdefault(material, []).append(list(pts))
 
     def quad(self, material: str, a: Vec3, b: Vec3, c: Vec3, d: Vec3, want: Vec3) -> None:
         self.poly(material, [a, b, c, d], want)
@@ -87,7 +101,12 @@ class Model:
         self.collision.append((name, list(bottom) + list(top), tris))
 
     def triangles(self) -> int:
+        """Of the castle (without the rooms)."""
         return sum(len(f) - 2 for fs in self.faces.values() for f in fs)
+
+    def room_triangles(self) -> dict[str, int]:
+        return {r: sum(len(f) - 2 for fs in faces.values() for f in fs)
+                for r, faces in sorted(self.rooms.items())}  # fmt: skip
 
 
 def _sub(a: Vec3, b: Vec3) -> Vec3:
@@ -1243,6 +1262,7 @@ def build(spec: dict) -> Model:
             spec.get("portal") if spec.get("portal", {}).get("wing") == inside["wing"] else None
         )
         interior.Inside(m, inner_wing, inside, tower, portal).build(min(w.base for w in wings))
+        m.inner = inner_wing
         if inside.get("apron"):  # measured from the DGM by the schloss command
             interior.apron(m, inside["apron"])
     for c in spec.get("chimneys", []):
@@ -1260,6 +1280,9 @@ def to_local(m: Model, origin: Vec3) -> Model:
     out.collision = [
         (n, [(x - ox, y - oy, z - oz) for x, y, z in pts], tris) for n, pts, tris in m.collision
     ]
+    out.rooms = {r: {mat: [[(x - ox, y - oy, z - oz) for x, y, z in f] for f in fs]
+                     for mat, fs in faces.items()} for r, faces in m.rooms.items()}  # fmt: skip
+    out.inner = m.inner
     return out
 
 
