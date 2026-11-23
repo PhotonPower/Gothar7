@@ -359,8 +359,8 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [ ] Optional: Vulkan-Backend hinter der RHI (ADR)
 - [x] Magie: Telekinese (Zaubertyp „Kontrolle“) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
   - Plan (Teil T, freigegeben 2026-11-08): `docs/modules/gameplay.md` „Plan M17: Magie-Nachträge“, Gefühlsfragen 1–13 nach Vorschlag entschieden; Teil T umgesetzt (Telekinese, Spruchrolle im Testlager)
-- [ ] Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
-  - Plan (Teile G, V, freigegeben 2026-11-08): `docs/modules/render.md` „Plan M17: Zauber-Effekte“
+- [x] Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
+  - Plan (Teile G, V, freigegeben 2026-11-08): `docs/modules/render.md` „Plan M17: Zauber-Effekte“; Teil G (Glühen) und V (Verzerrung) umgesetzt
 - [ ] Schloss, Keller und Dungeon im Geist der Grid-Dungeon-Crawler (Auftrag Projektinhaber 2026-11-23): Mechanik-Plan `docs/modules/dungeon.md` (Teile D1–D8, freigegeben 2026-11-23, Falltür ohne Fallschaden), Bau welt
   - D1 Ereignis-Netz umgesetzt (`targets`/`action`, Relais, Lua `send`/`dungeon_event`/`relay_state`, Spielstand)
 

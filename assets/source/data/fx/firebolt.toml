@@ -9,6 +9,9 @@ spread = 180
 size = [0.3, 0.02]
 color_start = [1.0, 0.75, 0.35, 1.0]
 color_end = [1.0, 0.2, 0.02, 0.0]
+distort = 1.0             # Hitzeflimmern hinter dem Geschoss (M17 V, Entscheidung 11)
+distort_shape = "haze"
+distort_size = 4.0
 [light]
 color = [1.0, 0.55, 0.25]
 range = 6

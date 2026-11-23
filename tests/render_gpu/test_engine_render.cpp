@@ -6,6 +6,7 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <format>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -205,6 +206,49 @@ TEST_CASE("Engine render: rain only while it rains and the weather is shown (M17
     CHECK(streaks("regen", true) > 1000u);
     CHECK(streaks("regen", false) == 0u); // [render] weather = false: no rain to see
     CHECK(streaks("klar", true) == 0u);
+}
+
+TEST_CASE(
+    "Engine render: spell distortion only for distorting effects in sight, none when switched off (M17 V)")
+{
+    const auto drawn = [](bool on, std::string_view effect)
+    {
+        auto settings = g7::Config::parse(on ? "[render]\nspell_distortion = true\n"
+                                             : "[render]\nspell_distortion = false\n");
+        REQUIRE(settings.ok());
+        g7::EngineConfig config;
+        config.window.size = {320, 240};
+        config.window.vsync = false;
+        config.shaderDirectory = g7::fs::fromUtf8(G7_SHADER_DIR);
+        config.world = g7::fs::fromUtf8("testworld/camp.g7world");
+        config.start = "START_LAGER";
+        config.fixedFrameSeconds = 1.0 / 60.0;
+        config.settings = std::move(settings).value();
+        g7::test::keepVideoAlive();
+        g7::Engine engine(config);
+        REQUIRE(engine.init().ok());
+        REQUIRE(engine.runFrame());
+        // In front of the hero (he looks west at the start).
+        const g7::Vec3 feet = engine.player()->feet();
+        if (!effect.empty())
+        {
+            REQUIRE(engine
+                        .runConsoleLine(
+                            std::format("fx('{}', {}, {}, {})", effect, feet.x - 3.0f, feet.y + 0.5f, feet.z))
+                        .ok());
+        }
+        for (int i = 0; i < 10; ++i)
+        {
+            REQUIRE(engine.runFrame());
+        }
+        CHECK(engine.renderDevice()->debugErrorCount() == 0);
+        CHECK(engine.wobble() == 0.0f);
+        return engine.distortionDrawn();
+    };
+    CHECK(drawn(true, "fire") > 0u);   // a camp fire flickers (decision 13)
+    CHECK(drawn(false, "fire") == 0u); // switched off: no pass
+    CHECK(drawn(true, "torch") == 0u); // a torch does not
+    CHECK(drawn(true, "") == 0u);      // nothing distorting: no pass
 }
 
 TEST_CASE("Engine render: the wind follows the weather, stands still when switched off (M17 W)")
