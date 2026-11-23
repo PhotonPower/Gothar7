@@ -21,7 +21,9 @@ void applyComponents(Scene& scene, entt::entity e, const WorldFileVob& vob)
     scene.remove<MobRef>(e);
     scene.remove<WaterVolume>(e);
     scene.remove<ItemRef>(e);
+    scene.remove<Relay>(e);
     scene.remove<SurfaceRef>(e);
+    scene.remove<Mover>(e);
     switch (vob.type)
     {
     case VobType::Empty:
@@ -51,10 +53,17 @@ void applyComponents(Scene& scene, entt::entity e, const WorldFileVob& vob)
     case VobType::Item:
         scene.set<ItemRef>(e, vob.item);
         break;
+    case VobType::Relay:
+        scene.set<Relay>(e, vob.relay);
+        break;
     }
     if (!vob.footstep.empty())
     {
         scene.set<SurfaceRef>(e, {vob.footstep}); // M13 E: the footstep material
+    }
+    if (vob.mover && (vob.type == VobType::Mesh || vob.type == VobType::Mob))
+    {
+        scene.set<Mover>(e, *vob.mover); // dungeon D2
     }
 }
 } // namespace
@@ -177,10 +186,20 @@ WorldFileVob captureVob(const Scene& scene, entt::entity e)
         out.type = VobType::Water;
         out.water = *water;
     }
+    else if (const Relay* relay = scene.get<Relay>(e))
+    {
+        out.type = VobType::Relay;
+        out.relay = *relay;
+    }
     if (const SurfaceRef* surface = scene.get<SurfaceRef>(e);
         surface != nullptr && (out.type == VobType::Mesh || out.type == VobType::Mob))
     {
         out.footstep = surface->footstep;
+    }
+    if (const Mover* mover = scene.get<Mover>(e);
+        mover != nullptr && (out.type == VobType::Mesh || out.type == VobType::Mob))
+    {
+        out.mover = *mover;
     }
     return out;
 }

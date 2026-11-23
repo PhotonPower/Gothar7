@@ -348,9 +348,10 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [x] Wasser-Rendering (Reflexion, Brechung light), Unterwasser-Effekt – #363, #365, #368, Fließrichtung #372
   - Plan (Teile W1–W3, freigegeben 2026-11-07): `docs/modules/render.md` „Plan M17: Wasser und Post-Processing“
 - [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
+  - Plan ohne Vulkan (freigegeben 2026-11-23, nach Schloss/Dungeon): `docs/modules/render.md` „Plan M17: Spiegelnde Fenster“, Vertrag Glas-Material mit welt, Gefühlsfragen 1–10
 - [x] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional – #358, #360, #375
   - Plan (Teile P1–P3, freigegeben 2026-11-07): ebenda
-- [ ] Vegetation: Instancing, Wind-Animation, Grasfelder – Wind-Animation umgesetzt (Wetter Teil W); offen: Instancing, Grasfelder
+- [ ] Vegetation: Instancing, Wind-Animation, Grasfelder – Wind-Animation umgesetzt (Wetter Teil W); offen: Instancing, Grasfelder – Plan: `render.md` „Plan M17: Grasfelder und Vegetations-Instancing“ (freigegeben 2026-11-23)
 - [ ] Job-System, Multithreading für Animation/KI/Culling – Plan: `docs/modules/perf.md`
 - [ ] Welt-Streaming in Zellen, Ladezeiten-Optimierung
 - [x] Tracy-Profiling, Performance-Budget pro System – Plan: `docs/modules/perf.md`; Tracy (#387, ADR 0024), Szenarien mit Budgets (#389), KI-LOD-Obergrenze (#391, #392)
@@ -361,6 +362,9 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
   - Plan (Teil T, freigegeben 2026-11-08): `docs/modules/gameplay.md` „Plan M17: Magie-Nachträge“, Gefühlsfragen 1–13 nach Vorschlag entschieden; Teil T umgesetzt (Telekinese, Spruchrolle im Testlager)
 - [x] Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
   - Plan (Teile G, V, freigegeben 2026-11-08): `docs/modules/render.md` „Plan M17: Zauber-Effekte“; Teil G (Glühen) und V (Verzerrung) umgesetzt
+- [ ] Schloss, Keller und Dungeon im Geist der Grid-Dungeon-Crawler (Auftrag Projektinhaber 2026-11-23): Mechanik-Plan `docs/modules/dungeon.md` (Teile D1–D8, freigegeben 2026-11-23, Falltür ohne Fallschaden), Bau welt
+  - D1 Ereignis-Netz umgesetzt (`targets`/`action`, Relais, Lua `send`/`dungeon_event`/`relay_state`, Spielstand)
+  - D2 bewegte Teile umgesetzt (`mover`: Gatter, Geheimwand, Falltür; Kollision bewegt sich mit, Einklemmen hält an und fährt zurück, Fallen-Gatter 20 Schaden, gesperrte Wegnetz-Kanten, Lua `mover_state`, Spielstand)
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 

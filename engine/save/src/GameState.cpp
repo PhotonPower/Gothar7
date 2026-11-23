@@ -341,15 +341,48 @@ Json worldToJson(const WorldState& w)
         }
         npcs.push_back(std::move(npc));
     }
-    return Json{{"path", w.path},
-                {"removed", std::move(removed)},
-                {"changed", std::move(changed)},
-                {"runtime", std::move(runtime)},
-                {"nextVobId", w.delta.nextVobId},
-                {"nextRuntimeVobId", w.delta.nextRuntimeVobId},
-                {"spentTriggers", w.spentTriggers},
-                {"mobs", std::move(mobs)},
-                {"npcs", std::move(npcs)}};
+    Json out = Json{{"path", w.path},
+                    {"removed", std::move(removed)},
+                    {"changed", std::move(changed)},
+                    {"runtime", std::move(runtime)},
+                    {"nextVobId", w.delta.nextVobId},
+                    {"nextRuntimeVobId", w.delta.nextRuntimeVobId},
+                    {"spentTriggers", w.spentTriggers},
+                    {"mobs", std::move(mobs)},
+                    {"npcs", std::move(npcs)}};
+    // The event net (dungeon D1), only when it holds something: worlds without relays stay as they were.
+    if (!w.events.relays.empty())
+    {
+        Json relays = Json::array();
+        for (const world::RelaySnapshot& r : w.events.relays)
+        {
+            relays.push_back(
+                Json{{"name", r.name}, {"counted", r.counted}, {"inputs", r.inputs}, {"spent", r.spent}});
+        }
+        out["relays"] = std::move(relays);
+    }
+    if (!w.movers.empty())
+    {
+        Json movers = Json::array();
+        for (const MoverState& m : w.movers)
+        {
+            movers.push_back(Json{{"vob", m.vob}, {"position", m.position}, {"open", m.open}});
+        }
+        out["movers"] = std::move(movers);
+    }
+    if (!w.events.pending.empty())
+    {
+        Json events = Json::array();
+        for (const world::PendingNetEvent& p : w.events.pending)
+        {
+            events.push_back(Json{{"target", p.event.target},
+                                  {"action", p.event.action},
+                                  {"source", p.event.source},
+                                  {"seconds", p.seconds}});
+        }
+        out["events"] = std::move(events);
+    }
+    return out;
 }
 
 Json globalsToJson(const GameState& state)
@@ -464,6 +497,48 @@ bool readWorld(Reader& r, const Json& j, const std::string& at, WorldState& out)
         NpcState n;
         ok = readNpc(r, (*npcs)[k], std::format("{}.npcs[{}]", at, k), n);
         w.npcs.push_back(std::move(n));
+    }
+    // Additive (dungeon D1): older saves have no relays and events.
+    if (ok && j.contains("relays"))
+    {
+        const Json& relays = j["relays"];
+        ok = relays.is_array() || r.failed(at, "'relays' must be a list");
+        for (usize k = 0; ok && k < relays.size(); ++k)
+        {
+            world::RelaySnapshot s;
+            const std::string rk = std::format("{}.relays[{}]", at, k);
+            ok = read(r, relays[k], "name", rk, s.name) && read(r, relays[k], "counted", rk, s.counted) &&
+                 read(r, relays[k], "inputs", rk, s.inputs) && read(r, relays[k], "spent", rk, s.spent);
+            w.events.relays.push_back(std::move(s));
+        }
+    }
+    if (ok && j.contains("movers"))
+    {
+        const Json& movers = j["movers"];
+        ok = movers.is_array() || r.failed(at, "'movers' must be a list");
+        for (usize k = 0; ok && k < movers.size(); ++k)
+        {
+            MoverState m;
+            const std::string mk = std::format("{}.movers[{}]", at, k);
+            ok = read(r, movers[k], "vob", mk, m.vob) && read(r, movers[k], "position", mk, m.position) &&
+                 read(r, movers[k], "open", mk, m.open);
+            w.movers.push_back(m);
+        }
+    }
+    if (ok && j.contains("events"))
+    {
+        const Json& events = j["events"];
+        ok = events.is_array() || r.failed(at, "'events' must be a list");
+        for (usize k = 0; ok && k < events.size(); ++k)
+        {
+            world::PendingNetEvent p;
+            const std::string ek = std::format("{}.events[{}]", at, k);
+            ok = read(r, events[k], "target", ek, p.event.target) &&
+                 read(r, events[k], "action", ek, p.event.action) &&
+                 read(r, events[k], "source", ek, p.event.source) &&
+                 read(r, events[k], "seconds", ek, p.seconds);
+            w.events.pending.push_back(std::move(p));
+        }
     }
     out = std::move(w);
     return ok;

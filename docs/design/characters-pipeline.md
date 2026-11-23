@@ -719,6 +719,9 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
   Bind-Pose ist die **natürliche Stand-Pose** der Art (keine T-Pose).
 - **Knochennamen:** Vierbeiner `spine_01…`, `neck_01…`, `head`, `tail_01…`, Beine `front_upper/lower/foot_l/r` und
   `back_upper/lower/foot_l/r`; Vögel `thigh/calf/foot_l/r`, `wing_*_l/r`.
+  Menschenähnliche Monster (Gatterbock, Beinhauswart; Vorschlag 2026-11-23): Namen des Menschen-Referenzskeletts
+  (`spine_01/02`, `clavicle/upperarm/lowerarm/hand_l/r`, `thigh/calf/foot/ball_l/r`), aber `neck_01` statt `neck`
+  (Pflichtknochen); Finger nur, wenn die Art greift; Treffpunkte `socket_hand_l/r`.
 - **Clips:** `<art>/<typ>_<aktion>` (z. B. `wolf/s_walk`), Datei `monsters/<art>/anims/<art>.glb` + `<art>.events.toml`.
   Mindest-Set: `s_idle`, `s_walk`, `s_run`, `t_attack_1`, `t_attack_2`, `t_hit`, `t_die`, `s_eat`, `s_sleep`,
   `t_threaten`, `t_turn_l`, `t_turn_r`.
@@ -799,8 +802,11 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
   Quader mit dem Körpermaterial, starr am Knochen) und `plate_shell` (Platten in Reihen auf einem Ellipsoid, je
   Platte am nächsten Knochen aus `bones`; `tilt` hebt die Hinterkante – Dachziegel, jede Reihe liegt über der
   nächsten); `tuft_shell` (dieselben Reihen als Haarsträhnen, die in den Körper verschmelzen, z. B. eine Mähne).
+  Behauene Steinblöcke (ab Gatterbock v2): `plate_bevel` (Fase), `plate_rough` (m; Platten werden unterteilt
+  und nach innen gedrückt: unebene Flächen, abgeschlagene Kanten und Ecken; dünne Platten bleiben ganz).
 - **Farbzonen** (`[zone.<name>]`): Farbe, Zweitfarbe, Fellstrich, Querstreifen, Flecken, hellerer Bauch,
-  Hautfalten, Sandstein (`strata`: Schichtung, Korn, Meißelspuren), Relief-Stärke.
+  Hautfalten, Sandstein (`strata`: Schichtung, Korn, Meißelspuren), Risse (`cracks`), Relief-Stärke; je Art
+  `grime`/`grime_colour` (Moos und Schmutz in Fugen und Höhlungen, nach der Umgebungsverdeckung).
 - `[orientation]` überschreibt einzelne Paare von `[rig.orientation]` (Quaderbuckel: `up = ["root", "pelvis"]`, der
   Kopf hängt tief vorn).
 - **Ablauf** (`blender/build_creature.py`): Formen vereinigen (Voxel-Remesh), Schnitte, glätten, aufs Budget
@@ -821,6 +827,7 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
 | Art | Stand |
 |---|---|
 | `bergleu` | Boss: Rig 41 Knochen (Katzen-Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Mähne `mane_back/l/r`, `tail_01..05`, zehengängige Beine mit Schulterblättern und Zehen; Sockets `socket_mouth`, `socket_paw_l/r`, `socket_tail`), Schulter 1,6 m, lod0 11096 / 5488 / 2714 Dreiecke (Boss-Budget bis 12 k), Mähne aus Strähnen (`tuft_shell`); 19 Clips (Mindest-Set + `s_stalk`, `t_pounce` am Ort, `t_tail_lash`, `t_roar`, `t_rage`, `t_stagger`, `t_turn_back`); Tempo 1,5 / 8,0 / Anpirschen 1,0 m/s (mit engine 2026-10-08) |
+| `gatterbock` | Dungeon (2026-11-23): menschenähnliches Rig 25 Knochen (`spine_01/02`, `neck_01`, `head`, Arme `clavicle/upperarm/lowerarm/hand`, Beine `thigh/calf/foot/ball`; Sockets `socket_mouth`, `socket_hand_l/r`), 2,5 m, Kapsel stehend r 0,28; Rumpf aus einem Eisengerüst (Voxel-Hülle) und 27 starren Platten: ungleich große, behauene und verwitterte Sandsteinblöcke mit gefasten, abgeschlagenen Kanten, Rissen und Moos in den Fugen, rostige Eisenbänder (v2 nach Wunsch des Projektinhabers); Glutaugen (`eye_glow`); lod0 6288 / 3144 / 1572 Dreiecke; 14 Clips (Mindest-Set + `s_dormant`, `t_wake`); Tempo 0,9 / 2,2 m/s |
 | `glemsmahr` | Rig 37 Knochen (neues Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Arme als Vorderbeine mit Schulter, Hand und je drei Fingern, zehengängige Hinterbeine mit Zehen; Sockets `socket_mouth`, `socket_eyes`, `socket_hand_l/r`), geduckt 1,53 m, Kapsel stehend, lod0 7636 / 3758 / 1848 Dreiecke, emissive Augen (`eye_glow`); 19 Clips (Mindest-Set + `s_sneak`, `t_rise`/`s_upright`/`t_lower`, `t_leap` und `t_jump_back` am Ort mit `leap_start`/`leap_land`, `t_recoil`); Tempo 1,4 / 6,5 / Schleichen 0,9 m/s (mit engine 2026-10-07) |
 | `mauerkriecher` | Dungeon (2026-11-23), erste Art nach dem Gliederfüßer-Bauplan §7.5: Rig 34 Knochen (`pelvis`, `spine_01`, `neck_01`, `head`, `mandible_l/r`, Fühler `antenna_01/02_l/r`, `abdomen_01..04`, Beine `leg_1..3_upper/lower/foot_l/r`; Socket `socket_mouth`), 1,0 m lang (ohne Fühler), 0,29 m hoch, Kapsel liegend r 0,21 / l 0,99 (ohne Fühler und Beine); Panzer aus 24 überlappenden Ringplatten (`plate_shell`); lod0 5432 / 2716 / 1358 Dreiecke; 18 Clips (Mindest-Set + `s_dormant`, `t_wake`, `t_curl`/`s_curled`/`t_uncurl`, `t_emerge` mit Event `emerge`); Gang mit gespreizten Beinen im Wechseldreischritt; Tempo 1,2 / 5,0 m/s |
 | `quaderbuckel` | Rig 29 Knochen (Keiler-Benennung mit Schulter-/Hüftknochen, dazu `jaw` und `brow_shield` unter `chest`; Sockets `socket_mouth`, `socket_shield` am Schild), 0,84 m, lod0 7956 / 3978 / 1988 Dreiecke (60 starre Sandstein-Platten), Fell 1024² + Normal-Map 512²; 17 Clips (Mindest-Set + `s_charge` am Ort, `t_warn`, `t_block_in`/`s_block`/`t_block_out`); Tempo 0,8 / 3,5 / Anrennen 4,5 m/s (mit engine 2026-10-07) |

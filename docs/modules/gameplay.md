@@ -660,5 +660,9 @@ class TelekinesisFlight { carry(seconds, hand, sweep); release(groundY); fall(se
 13. **Lagerfeuer und Fackeln:** sollen sie auch ohne Magie flimmern (Teil V nutzt dieselbe Technik)? Vorschlag
     **ja, nur große Feuer** (Lagerfeuer, Herde, Brennende), Fackeln nicht.
 
+## Schloss, Keller und Dungeon (Plan)
+Mechanik-Bausteine (Ereignis-Netz, bewegte Teile, Schalter, Trittplatten, Falltüren, Teleporter, Verstecke, Monster-Ruhe),
+Ebenenwechsel und Vertrag mit welt: [dungeon.md](dungeon.md) (Vorschlag 2026-11-23, wartet auf Freigabe).
+
 ## Wirtschaft
 Handel: Händler-Inventar, Preisfaktor Verkauf (z. B. 0,5), Währung als Item (`ItMi_Ore`).

@@ -92,6 +92,17 @@ Lebenspunkten rasend. Quest-Boss (verschollene Jäger, Kopfgeld der Stadt). Trop
   pariertem Prankenhieb.
 - **Technik:** lod0 11096 Dreiecke (Boss-Budget bis 12 k), Beschreibung `data/monsters/bergleu.creature.toml`.
 
+### Gatterbock (gebaut 2026-11-23)
+Steinwächter der Erbauer, 2,5 m: Rumpf und Glieder aus ungleichen, verwitterten Sandsteinquadern auf einem dunklen Eisengerüst, von
+Eisenbändern gehalten, Fäuste und Füße aus Eisen, gebogene Eisenhörner, zwei Glutaugen unter der Stirn.
+- **Verhalten (für engine):** steht als Statue neben einem Gatter (`s_dormant`, `zs_dormant`) und erwacht (`t_wake`),
+  wenn das Gatter geöffnet oder die Platte betreten wird; langsam (Gehen 0,9, Trab 2,2 m/s – man kann ihm davonlaufen),
+  wuchtig: `t_attack_1` schmettert beide Fäuste vorn nieder (umwerfen), `t_attack_2` ist eine Rückhand von links nach
+  rechts. Klingen prallen ab, stumpfe Waffen und Magie wirken (Werte in Lua).
+- **Technik:** menschenähnliches Rig (25 Knochen, `characters-pipeline.md` §7.1), Steinblöcke als starre Platten an
+  ihren Knochen (er knickt nur in den Gelenken wie eine gegliederte Statue). v2 (Projektinhaber 2026-11-23): Blöcke
+  ungleich groß, behauen und verwittert (gefaste, abgeschlagene Kanten, Risse, Moos und Schmutz in den Fugen),
+  Eisen rostig; lod0 6288 Dreiecke; Beschreibung `data/monsters/gatterbock.creature.toml`.
 ### Mauerkriecher (gebaut 2026-11-23)
 Asselartiger Kriecher, so lang wie ein großer Hund (1,0 m ohne Fühler, 0,29 m hoch): flacher, gewölbter Panzer aus
 überlappenden dunklen Ringplatten, blasse Unterseite, kurze Beißzangen, lange Fühler, sechs dünne Beine.
