@@ -75,14 +75,16 @@ void Engine::refreshMovementSettings()
                 m_movementSettings.camera.distance);
 }
 
-void Engine::spawnPlayer()
+void Engine::spawnPlayer(std::string_view startName)
 {
     removePlayer();
     if (!m_config.player || m_config.benchmark || !m_physics.valid())
     {
         return;
     }
-    auto start = world::findStartPoint(m_scene, m_config.start.empty() ? std::string_view() : m_config.start);
+    // A level change names its start point (dungeon D4 found the configured one taken instead).
+    const std::string_view wanted = !startName.empty() ? startName : std::string_view(m_config.start);
+    auto start = world::findStartPoint(m_scene, wanted);
     if (!start)
     {
         // Wrong names were reported by applyStartPoint; a world without start point keeps the free camera.
@@ -441,7 +443,9 @@ void Engine::movePlayer(f32 seconds, const gameplay::MoveInput& input)
         const Vec3 landed = m_player.feet();
         const auto pool = m_water.surfaceAt(landed);
         const bool intoWater = pool && landed.y < *pool; // water catches any fall
-        const f32 damage = intoWater ? 0.0f : gameplay::fallDamage(*fall, s.fall);
+        // Dungeon D4 (question 6): the fall through a trapdoor into the level below costs nothing.
+        const bool unhurt = std::exchange(m_fallUnhurt, false);
+        const f32 damage = intoWater || unhurt ? 0.0f : gameplay::fallDamage(*fall, s.fall);
         m_lastLanding = PlayerLanding{*fall, damage, intoWater, landed, m_simTicks};
         if (damage > 0.0f)
         {

@@ -88,7 +88,16 @@ Result<save::WorldState> Engine::captureCurrentWorld()
     }
     std::sort(state.mobs.begin(), state.mobs.end(),
               [](const auto& a, const auto& b) { return a.vob < b.vob; });
-    state.events = m_events.snapshot();   // dungeon D1
+    state.events = m_events.snapshot();      // dungeon D1
+    for (const auto& [vob, t] : m_teleports) // dungeon D4: switched against the file
+    {
+        const entt::entity e = m_scene.findById(world::VobId{vob});
+        const world::TriggerVolume* v = e != entt::null ? m_scene.get<world::TriggerVolume>(e) : nullptr;
+        if (v != nullptr && v->teleport && v->teleport->active != t.active)
+        {
+            state.teleporters.push_back({vob, t.active});
+        }
+    }
     for (const auto& [vob, m] : m_movers) // dungeon D2: only those away from their initial state
     {
         const f32 initial = m.mover.open ? 1.0f : 0.0f;
@@ -235,7 +244,22 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
         placeMover(saved.vob, m);
     }
     updateMoverBlocks();
-    m_platesPrimed = false; // dungeon D3: plates take what lies on them quietly
+    m_platesPrimed = false;            // dungeon D3: plates take what lies on them quietly
+    for (auto& [vob, t] : m_teleports) // dungeon D4: as in the file unless saved otherwise
+    {
+        const entt::entity e = m_scene.findById(world::VobId{vob});
+        const world::TriggerVolume* v = e != entt::null ? m_scene.get<world::TriggerVolume>(e) : nullptr;
+        t.active = v != nullptr && v->teleport ? v->teleport->active : t.active;
+        for (const save::TeleporterState& saved : state.teleporters)
+        {
+            if (saved.vob == vob)
+            {
+                t.active = saved.active;
+            }
+        }
+        t.primed = false; // the NPCs were put back: those in it stay
+        updateTeleportEffect(vob, t);
+    }
     for (const save::MobState& saved : state.mobs)
     {
         const auto it = m_mobs.find(saved.vob);
