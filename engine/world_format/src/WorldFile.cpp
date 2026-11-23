@@ -18,21 +18,24 @@ namespace
 {
 using Json = nlohmann::ordered_json; // keeps key order: stable output
 
-constexpr std::array<std::pair<VobType, std::string_view>, 9> kVobTypes = {{{VobType::Empty, "empty"},
-                                                                            {VobType::Mesh, "mesh"},
-                                                                            {VobType::Light, "light"},
-                                                                            {VobType::Start, "start"},
-                                                                            {VobType::Sound, "sound"},
-                                                                            {VobType::Trigger, "trigger"},
-                                                                            {VobType::Mob, "mob"},
-                                                                            {VobType::Water, "water"},
-                                                                            {VobType::Item, "item"}}};
+constexpr std::array<std::pair<VobType, std::string_view>, 10> kVobTypes = {{{VobType::Empty, "empty"},
+                                                                             {VobType::Mesh, "mesh"},
+                                                                             {VobType::Light, "light"},
+                                                                             {VobType::Start, "start"},
+                                                                             {VobType::Sound, "sound"},
+                                                                             {VobType::Trigger, "trigger"},
+                                                                             {VobType::Mob, "mob"},
+                                                                             {VobType::Water, "water"},
+                                                                             {VobType::Item, "item"},
+                                                                             {VobType::Relay, "relay"}}};
 constexpr std::array<std::pair<SoundEmitter::Mode, std::string_view>, 2> kSoundModes = {
     {{SoundEmitter::Mode::Loop, "loop"}, {SoundEmitter::Mode::Random, "random"}}};
 constexpr std::array<std::pair<TriggerVolume::Filter, std::string_view>, 3> kTriggerFilters = {
     {{TriggerVolume::Filter::Player, "player"},
      {TriggerVolume::Filter::Npc, "npc"},
      {TriggerVolume::Filter::Any, "any"}}};
+constexpr std::array<std::pair<Relay::Mode, std::string_view>, 3> kRelayModes = {
+    {{Relay::Mode::Any, "any"}, {Relay::Mode::All, "all"}, {Relay::Mode::Count, "count"}}};
 
 template <typename E, usize N>
 std::string_view nameOf(const std::array<std::pair<E, std::string_view>, N>& table, E value)
@@ -233,6 +236,88 @@ Result<WaterVolume> readWater(const Reader& r, const Json& v, std::string_view w
     return water;
 }
 
+/// `targets` (a list of vob names) and `action` of a trigger or relay (dungeon.md D1).
+Result<void> readEventTargets(const Reader& r, const Json& object, std::string_view at,
+                              std::vector<std::string>& targets, std::string& action)
+{
+    if (object.contains("targets"))
+    {
+        const Json& list = object["targets"];
+        if (!list.is_array())
+        {
+            return r.error(at, "'targets' must be a list of vob names");
+        }
+        for (const Json& name : list)
+        {
+            if (!name.is_string() || name.get<std::string>().empty())
+            {
+                return r.error(at, "'targets' must be a list of vob names");
+            }
+            targets.push_back(name.get<std::string>());
+        }
+    }
+    if (object.contains("action"))
+    {
+        const std::string value = object["action"].is_string() ? object["action"].get<std::string>() : "";
+        if (!isEventAction(value))
+        {
+            std::string choices;
+            for (const std::string_view a : kEventActions)
+            {
+                choices += (choices.empty() ? "'" : ", '") + std::string(a) + "'";
+            }
+            return r.error(at, std::format("'action' must be one of {}", choices));
+        }
+        action = value;
+    }
+    return {};
+}
+
+Result<Relay> readRelay(const Reader& r, const Json& v, std::string_view where)
+{
+    const Json c = componentOf(v, "relay");
+    const std::string at = std::format("{}.components.relay", where);
+    Relay relay;
+    auto mode = readChoice(r, c, "mode", at, kRelayModes);
+    auto delay = r.number(c, "delay", at, relay.delay);
+    if (!mode || !delay)
+    {
+        return !mode ? mode.error() : delay.error();
+    }
+    relay.mode = mode.value();
+    if (!(delay.value() >= 0.0f))
+    {
+        return r.error(at, "'delay' must be 0 or more seconds");
+    }
+    relay.delay = delay.value();
+    if (c.contains("count"))
+    {
+        if (!c["count"].is_number_unsigned() || c["count"].get<u64>() == 0 ||
+            c["count"].get<u64>() > 1'000'000)
+        {
+            return r.error(at + ".count", "must be a whole number from 1 to 1000000");
+        }
+        relay.count = static_cast<u32>(c["count"].get<u64>());
+    }
+    for (const auto& [key, flag] : {std::pair<const char*, bool*>{"once", &relay.once},
+                                    std::pair<const char*, bool*>{"invert", &relay.invert}})
+    {
+        if (c.contains(key))
+        {
+            if (!c[key].is_boolean())
+            {
+                return r.error(std::format("{}.{}", at, key), "must be true or false");
+            }
+            *flag = c[key].get<bool>();
+        }
+    }
+    if (auto events = readEventTargets(r, c, at, relay.targets, relay.action); !events)
+    {
+        return events.error();
+    }
+    return relay;
+}
+
 Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_view where)
 {
     const Json t = componentOf(v, "trigger");
@@ -316,16 +401,24 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
         }
         trigger.owner = std::move(owner).value();
     }
+    if (auto events = readEventTargets(r, t, at, trigger.targets, trigger.action); !events)
+    {
+        return events.error();
+    }
     if (t.contains("target"))
     {
-        // Reserved: a vob id or a vob name.
+        // The formerly reserved single target (M4): a vob name counts as one of `targets`, an id is kept.
         if (t["target"].is_number_unsigned() && t["target"].get<u64>() > 0)
         {
             trigger.targetId = VobId{t["target"].get<u64>()};
         }
         else if (t["target"].is_string() && !t["target"].get<std::string>().empty())
         {
-            trigger.targetName = t["target"].get<std::string>();
+            const std::string name = t["target"].get<std::string>();
+            if (std::find(trigger.targets.begin(), trigger.targets.end(), name) == trigger.targets.end())
+            {
+                trigger.targets.insert(trigger.targets.begin(), name);
+            }
         }
         else
         {
@@ -475,6 +568,15 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             return trigger.error();
         }
         vob.trigger = std::move(trigger).value();
+    }
+    if (vob.type == VobType::Relay)
+    {
+        auto relay = readRelay(r, v, where);
+        if (!relay)
+        {
+            return relay.error();
+        }
+        vob.relay = std::move(relay).value();
     }
     if (vob.type == VobType::Water)
     {
@@ -1281,9 +1383,10 @@ Json vobJson(const WorldFileVob& vob)
         {
             trigger["target"] = tv.targetId.value;
         }
-        else if (!tv.targetName.empty())
+        if (!tv.targets.empty())
         {
-            trigger["target"] = tv.targetName;
+            trigger["targets"] = tv.targets; // with its action, only when there are targets
+            trigger["action"] = tv.action;
         }
         if (!tv.changeWorld.empty())
         {
@@ -1319,6 +1422,21 @@ Json vobJson(const WorldFileVob& vob)
     if ((vob.type == VobType::Mesh || vob.type == VobType::Mob) && !vob.footstep.empty())
     {
         v["components"]["surface"] = Json{{"footstep", vob.footstep}}; // only when set (byte-equal)
+    }
+    if (vob.type == VobType::Relay)
+    {
+        const Relay& r = vob.relay;
+        Json relay = Json{{"mode", nameOf(kRelayModes, r.mode)}};
+        if (r.mode == Relay::Mode::Count)
+        {
+            relay["count"] = r.count;
+        }
+        relay["delay"] = tidy(r.delay);
+        relay["once"] = r.once;
+        relay["invert"] = r.invert;
+        relay["targets"] = r.targets;
+        relay["action"] = r.action;
+        v["components"]["relay"] = std::move(relay);
     }
     if (vob.type == VobType::Water)
     {

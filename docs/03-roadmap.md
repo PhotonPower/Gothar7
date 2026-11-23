@@ -362,6 +362,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [ ] Magie: Shader-Effekte beim Wirken und Treffen (Verzerrung, Glühen) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
   - Plan (Teile G, V, freigegeben 2026-11-08): `docs/modules/render.md` „Plan M17: Zauber-Effekte“
 - [ ] Schloss, Keller und Dungeon im Geist der Grid-Dungeon-Crawler (Auftrag Projektinhaber 2026-11-23): Mechanik-Plan `docs/modules/dungeon.md` (Teile D1–D8, freigegeben 2026-11-23, Falltür ohne Fallschaden), Bau welt
+  - D1 Ereignis-Netz umgesetzt (`targets`/`action`, Relais, Lua `send`/`dungeon_event`/`relay_state`, Spielstand)
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 

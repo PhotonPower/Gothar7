@@ -509,7 +509,8 @@ bool Engine::runFrame()
         }
         const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
         m_triggers.update(m_scene, std::span(&probe, 1));
-        m_gameTime.advance(m_fixedStep.step()); // global: keeps running across level changes
+        m_events.update(static_cast<f32>(m_fixedStep.step())); // dungeon D1: what the triggers sent
+        m_gameTime.advance(m_fixedStep.step());                // global: keeps running across level changes
         updateWeather();
         ++m_simTicks;
         if (m_pendingWorldChange)
@@ -1180,6 +1181,7 @@ Result<void> Engine::instantiateScene()
     rebuildWaterSurfaces();
     rebuildWorldItems();
     rebuildMobs();
+    rebuildEventNet(); // dungeon D1: after the mobs (doors are targets)
     m_lights.clear();
     m_daylightLights.clear();
     m_scene.each<world::LightSource, world::WorldTransform>(
@@ -1361,6 +1363,10 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
             {
                 requestWorldChange(volume->changeWorld, volume->changeStart);
             }
+            if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr)
+            {
+                triggerTargets(*m_scene.get<world::Vob>(e), *volume); // dungeon D1
+            }
             if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr &&
                 !volume->owner.empty() && m_player.valid())
             {
@@ -1466,6 +1472,7 @@ void Engine::unloadWorld()
     m_groundModel.reset();
     m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)}; // empty
     m_triggers.reset();
+    m_events.clear();
     removePlayer();
     m_physics.clear();
     m_water.clear();

@@ -199,10 +199,51 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 - **Prüfen** beim Speichern: fehlende Ziele, Zyklen, Teleporter ohne Ziel, Platten ohne Ziel; Liste im Fenster.
 - **Probelauf** im Editor: Ereignis an ein Ziel schicken (Knopf), Mover bewegen.
 
+## Stand D1 – Ereignis-Netz (umgesetzt)
+- **Format** (`world_format`, `Components.hpp`): `trigger` mit `targets` (Liste von Vob-Namen) und `action`, geschrieben
+  nach `once` und nur, wenn es Ziele gibt; das alte `target` (ein Name) wird als erstes Ziel gelesen, eine alte Vob-ID
+  bleibt als `targetId` erhalten. Neuer Vob-Typ **`relay`** mit `components.relay` = `mode`, `count` (nur bei
+  `count`), `delay`, `once`, `invert`, `targets`, `action` (Felder in dieser Reihenfolge, alle außer `count` immer
+  geschrieben). Erlaubte Aktionen: `toggle`, `open`, `close`, `on`, `off`, `wake`, `trigger` (Vorgabe), `lock`,
+  `unlock`; anderes ist ein Ladefehler.
+- **Logik** (`world/EventNet.hpp`, rein, im festen Schritt nach den Triggern):
+  - `send(target, action, source)` reiht ein; `update(seconds)` arbeitet zuerst die aus dem letzten Schritt
+    verschobenen, dann die fälligen verzögerten, dann die neuen Ereignisse ab, höchstens 256 je Schritt (ein Skript,
+    das sich selbst antwortet); der Rest wartet.
+  - **Polarität:** `close`, `off`, `lock` sind die „Aus“-Seite, alles andere die „An“-Seite. Gegenstücke:
+    `open`↔`close`, `on`↔`off`, `lock`↔`unlock`; `toggle`, `trigger`, `wake` sind ihr eigenes Gegenstück.
+  - `any`: jedes Ereignis geht weiter – die „An“-Seite als `action`, die „Aus“-Seite als ihr Gegenstück (eine
+    losgelassene Platte schließt wieder).
+  - `all`: Eingänge sind die Absender, die das Relais in ihren `targets` nennen (sonst jeder, der etwas schickt).
+    „An“ schaltet den Eingang des Absenders an, „Aus“ ab, `toggle` um. Werden alle an, geht `action`; geht danach
+    einer aus, das Gegenstück.
+  - `count`: zählt Ereignisse der „An“-Seite; bei `count` geht `action` und es zählt neu.
+  - `invert` schickt das Gegenstück, `delay` verzögert die Ankunft (ab dem Schritt, in dem das Relais feuert),
+    `once` macht das Relais nach dem ersten Feuern taub.
+  - Ein Relais feuert **höchstens einmal je Schritt**; weitere Ereignisse für es warten auf den nächsten Schritt. Ein
+    Zyklus läuft so eine Runde je Schritt und wird beim Laden gewarnt (`cycles()`).
+- **Engine** (`EngineEvents.cpp`): Betritt der Spieler einen Trigger, geht dessen `action` an seine Ziele (Absender =
+  Name des Triggers). Ziele, die kein Relais sind:
+  - **Tür-Mobs:** `open`/`close` bewegen sie, `toggle`/`trigger` schalten um – auch verschlossene (der Mechanismus
+    ist der Riegel); `lock`/`unlock` an jedem Mob mit Schloss oder Schlüssel;
+  - die Mob-Definition hört es mit `on_event(mob, action, source)`;
+  - danach Lua: Ereignis **`dungeon_event(target, action, source)`** – für jedes Ziel, auch Türen und Namen ohne Vob
+    (ein Ziel ohne Vob wird beim Laden nur protokolliert, Lua darf solche Namen nutzen).
+- **Lua:** `send(target, action?, source?)` (Vorgabe `trigger`, `"lua"`; wirkt im nächsten Schritt),
+  `relay_state(name)` → `{mode, count, counted, inputs, spent}` oder nil. `mover_state`/`switch_state` folgen mit
+  D2/D3.
+- **Spielstand:** `save::WorldState.events` (`world::EventNetSnapshot`): Relais, die nicht im Anfangszustand sind
+  (gezählt, Eingänge an, verbraucht), und Ereignisse unterwegs mit ihrer Restzeit; im JSON `relays` und `events`, nur
+  wenn nicht leer. Ältere Stände ohne die Felder laden den Anfangszustand. Verlassene Welten behalten den Zustand wie
+  Mobs und Trigger.
+- **Tests:** `tests/world/test_event_net.cpp` (Format, any/all/count/delay/invert/once, Zyklus, Obergrenze,
+  Schnappschuss), `tests/runtime/test_engine_events.cpp` auf `testworld/events.g7world` (zwei Platten → Relais `all`
+  → Tür und Lua, Riegel-Trigger entriegelt, `send` aus Lua, Spielstand mitten im Rätsel).
+
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
-| **D1** Netz | `targets`/`action`, Relais, Lua `send`/`dungeon_event`, Speichern der Relais | mittel |
+| **D1** Netz ✔ | `targets`/`action`, Relais, Lua `send`/`dungeon_event`, Speichern der Relais | mittel |
 | **D2** Mover | Gatter, Geheimwand, Falltür; Kollision mit; Klemmen (`crush`); Speichern | mittel |
 | **D3** Schalter und Platten | Mob-Typen `lever`, `wall_button` (versteckt), Platte mit Gewicht inkl. Items; figuren-Clips | mittel |
 | **D4** Teleporter und Fall | Teleport in der Welt und in andere Ebenen, Fall als Weltwechsel mit Geschwindigkeit, Abblenden | mittel |

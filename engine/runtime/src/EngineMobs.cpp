@@ -151,6 +151,14 @@ void Engine::rebuildMobs()
     m_mobs = std::move(mobs);
 }
 
+void Engine::swingDoor(MobRuntime& m, bool open)
+{
+    m.open = open;
+    m.doorFrom = m.doorAngle;
+    m.doorTo = open ? kDoorOpenAngle : 0.0f;
+    m.doorTime = 0.0f;
+}
+
 void Engine::storeDoors(world::WorldFile& file) const
 {
     // Doors are written closed with their state (components.mob.open), not at the angle they stand at.
@@ -582,10 +590,7 @@ void Engine::fixedUpdateMobs(f32 seconds)
             use.eventFired = true;
             if (m.type == "door")
             {
-                m.open = !m.open;
-                m.doorFrom = m.doorAngle;
-                m.doorTo = m.open ? kDoorOpenAngle : 0.0f;
-                m.doorTime = 0.0f;
+                swingDoor(m, !m.open);
             }
             else
             {

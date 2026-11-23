@@ -973,6 +973,7 @@ void Engine::bindMagicFunctions()
     using script::Value;
     script::ScriptVm& vm = *m_scripts;
     bindTelekinesisFunctions(); // M17 part T
+    bindEventFunctions();       // dungeon D1
     vm.bind(
         {"cast_check", "cast_check(item: string, stages?: integer) -> string | nil",
          "Ob der Held die Rune bzw. Spruchrolle wirken kann (M12, Z1-Z3): nil, sonst der Grund (fehlender "

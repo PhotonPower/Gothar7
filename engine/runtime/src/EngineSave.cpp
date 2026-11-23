@@ -87,6 +87,7 @@ Result<save::WorldState> Engine::captureCurrentWorld()
     }
     std::sort(state.mobs.begin(), state.mobs.end(),
               [](const auto& a, const auto& b) { return a.vob < b.vob; });
+    state.events = m_events.snapshot(); // dungeon D1
     for (const auto& c : m_creatures)
     {
         const std::string instance = instanceOf(c->species);
@@ -196,6 +197,10 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
         G7_LOG_WARN("save", "{}: {}", state.path, raised.error().message);
     }
     m_triggers.setSpentTriggers(std::set<u64>(state.spentTriggers.begin(), state.spentTriggers.end()));
+    for (const std::string& relay : m_events.restore(state.events))
+    {
+        G7_LOG_WARN("save", "{}: relay {} not in the world any more", state.path, relay);
+    }
     for (const save::MobState& saved : state.mobs)
     {
         const auto it = m_mobs.find(saved.vob);

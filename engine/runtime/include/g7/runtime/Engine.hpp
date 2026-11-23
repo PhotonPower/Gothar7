@@ -70,6 +70,7 @@
 #include <g7/ui/Strings.hpp>
 #include <g7/ui/UiResources.hpp>
 #include <g7/world/DayCycle.hpp>
+#include <g7/world/EventNet.hpp>
 #include <g7/world/GameTime.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/Terrain.hpp>
@@ -577,6 +578,13 @@ public:
     [[nodiscard]] const world::TriggerSystem& triggers() const noexcept { return m_triggers; }
     /// Who the camera is for the triggers.
     static constexpr world::VobId kCameraProbe{~0ull};
+    /// The event net of the world (dungeon D1): relays, events on their way.
+    [[nodiscard]] const world::EventNet& events() const noexcept { return m_events; }
+    /// Sends `action` to the vob named `target` (Lua `send`): handled in the next fixed step. Doors
+    /// (open/close/toggle/trigger/lock/unlock) and relays act; every event for a non-relay reaches Lua as
+    /// dungeon_event(target, action, source). Errors: an unknown action.
+    [[nodiscard]] Result<void> sendEvent(std::string_view target, std::string_view action,
+                                         std::string_view source = "lua");
     /// Shader programs (with hot-reload), or nullptr without rendering.
     [[nodiscard]] render::ShaderLibrary* shaders() noexcept { return m_shaders.get(); }
     /// The game window, or nullptr when headless / before init().
@@ -1192,6 +1200,15 @@ private:
     void finishTelekinesis(); ///< a save meanwhile: it lands at once
     void placeTelekinesisItem();
     void bindTelekinesisFunctions();
+    // Event net (EngineEvents.cpp, dungeon D1)
+    void bindEventFunctions();
+    /// Fills the event net from the world's triggers and relays (after the mobs); warns about cycles and
+    /// targets that name no vob.
+    void rebuildEventNet();
+    /// A trigger was entered: its action to its targets.
+    void triggerTargets(const world::Vob& vob, const world::TriggerVolume& volume);
+    /// An event for a vob that is no relay: doors, the Mob's on_event, Lua dungeon_event.
+    void deliverEvent(const world::NetEvent& event);
     /// A spell's harm on a creature or the hero (fire bolt, area): its damage minus protection, min 5 (as
     /// R3).
     /// `burn`: it sets the target burning (decision B); `reaction`: the target staggers (not for burning).
@@ -1431,6 +1448,8 @@ private:
     void approachMob(f32 seconds);
     void fixedUpdateMobs(f32 seconds);
     void swingDoors(f32 seconds);
+    /// Starts a door swinging open or shut (the hero's use, events).
+    static void swingDoor(MobRuntime& m, bool open);
     // Using items, pickpocketing (EngineUse.cpp)
     struct ItemUse
     {
@@ -1741,6 +1760,7 @@ private:
     f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
     bool m_sunEnabled = true;        // debug: sun and moon light off
     world::TriggerSystem m_triggers; // fed with the camera until the player exists (M5)
+    world::EventNet m_events;        // dungeon D1: triggers -> relays -> doors, Lua
     std::string m_worldPath;
     world::WorldFile m_worldFile; // the loaded world without its vobs (terrain, waynet ... for capturing)
     std::map<std::string, save::WorldState>

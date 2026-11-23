@@ -114,7 +114,8 @@ struct NpcState { std::string name, instance; Vec3 position; f32 yaw; std::optio
                   character; std::string routine; Life life; f32 downSeconds; bool pickpocketed, summoned;
                   f32 summonSeconds; };
 struct WorldState { std::string path; WorldDelta delta; std::vector<u64> spentTriggers;
-                    std::vector<MobState> mobs; std::vector<NpcState> npcs; };
+                    std::vector<MobState> mobs; std::vector<NpcState> npcs;
+                    world::EventNetSnapshot events; };  // dungeon D1: JSON "relays"/"events", nur wenn nicht leer
 struct HeroState { gameplay::CharacterState character; Vec3 position; f32 yaw; std::string torch; };
 struct GameState { u32 version; f64 clock, secondsPerMinute, scriptClock; u32 nextTimerId;
                    std::vector<script::ScriptVm::NamedTimer> timers; script::Value story;

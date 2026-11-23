@@ -8,9 +8,13 @@
 #include <g7/core/Transform.hpp>
 #include <g7/core/Types.hpp>
 
+#include <array>
 #include <compare>
 #include <functional>
 #include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace g7::world
 {
@@ -93,6 +97,68 @@ struct SoundEmitter
     Vec2 delay{5.0f, 15.0f}; ///< min, max seconds between plays (Random)
 };
 
+/// Actions of the event net (dungeon.md "Ereignisse und Ziele"): what a trigger or relay sends to its
+/// targets. `trigger` is the plain "fire" (a door toggles, a relay counts an input).
+inline constexpr std::string_view kEventTrigger = "trigger";
+inline constexpr std::array<std::string_view, 9> kEventActions = {
+    "toggle", "open", "close", "on", "off", "wake", "trigger", "lock", "unlock"};
+
+[[nodiscard]] constexpr bool isEventAction(std::string_view action) noexcept
+{
+    for (const std::string_view a : kEventActions)
+    {
+        if (a == action)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// The opposite action (open <-> close, on <-> off, lock <-> unlock); the others are their own opposite.
+[[nodiscard]] constexpr std::string_view inverseEventAction(std::string_view action) noexcept
+{
+    constexpr std::array<std::pair<std::string_view, std::string_view>, 6> kPairs = {{{"open", "close"},
+                                                                                      {"close", "open"},
+                                                                                      {"on", "off"},
+                                                                                      {"off", "on"},
+                                                                                      {"lock", "unlock"},
+                                                                                      {"unlock", "lock"}}};
+    for (const auto& [a, b] : kPairs)
+    {
+        if (a == action)
+        {
+            return b;
+        }
+    }
+    return action;
+}
+
+/// False for the "off" side (close, off, lock): a relay input goes off, a pressed plate is released.
+[[nodiscard]] constexpr bool isPositiveEventAction(std::string_view action) noexcept
+{
+    return action != "close" && action != "off" && action != "lock";
+}
+
+/// A relay (vob type "relay", like ZenGin's zCTriggerList; dungeon.md): collects events sent to it and passes
+/// `action` on to `targets`. Invisible, no volume.
+struct Relay
+{
+    enum class Mode : u8
+    {
+        Any,   ///< every event goes on (an "off" event as the opposite action)
+        All,   ///< on once every input is on, the opposite once one goes off again
+        Count, ///< after `count` events (the "on" side), then counts anew
+    };
+    Mode mode = Mode::Any;
+    u32 count = 1;       ///< Count: events needed
+    f32 delay = 0.0f;    ///< seconds until what it sends arrives
+    bool once = false;   ///< fires one time only
+    bool invert = false; ///< sends the opposite action (a plate holds a gate open)
+    std::vector<std::string> targets;
+    std::string action = std::string(kEventTrigger);
+};
+
 /// A volume that reports who enters and leaves it (TriggerSystem). Callbacks name script functions;
 /// the engine passes the events on (log in M4, Lua from M7).
 struct TriggerVolume
@@ -115,9 +181,13 @@ struct TriggerVolume
     std::string onLeave;
     Filter filter = Filter::Player;
     bool once = false; ///< reports the first enter only (and the matching leave)
-    /// Reserved (read and written, not used yet): a vob this trigger acts on - by id or by name.
+    /// Event net (dungeon.md D1): when the player enters, `action` goes to every vob named in `targets`
+    /// (doors, relays, later movers; other names reach Lua as dungeon_event). The old `target` (a name) is
+    /// read as one target.
+    std::vector<std::string> targets;
+    std::string action = std::string(kEventTrigger);
+    /// The old reserved `target` given as a vob id (written back as it was; sends like a name target).
     VobId targetId;
-    std::string targetName;
     /// Level change (Gothic: change-level trigger): when the player enters, the engine loads this world
     /// (VFS path of a .g7world) and puts the player on its start point `changeStart`. Empty = none.
     std::string changeWorld;

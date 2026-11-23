@@ -11,6 +11,7 @@
 #include <g7/save/WorldDelta.hpp>
 #include <g7/script/ScriptVm.hpp>
 #include <g7/script/Value.hpp>
+#include <g7/world/EventNet.hpp>
 
 #include <map>
 #include <optional>
@@ -66,6 +67,9 @@ struct WorldState
     std::vector<u64> spentTriggers; ///< once-triggers that fired
     std::vector<MobState> mobs;     ///< by vob id
     std::vector<NpcState> npcs;     ///< in the order they were put in
+    /// The event net (dungeon D1): relays not in their initial state, events on their way. Additive: older
+    /// saves have none (the world's initial state).
+    world::EventNetSnapshot events;
 };
 
 struct HeroState
