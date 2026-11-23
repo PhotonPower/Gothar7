@@ -42,6 +42,15 @@ CARD_LENGTH = (
 BULGE = 0.007  # m: extra thickness of a full beard in the middle of its zone
 CARD_SHARE = 0.7  # full beards: share of the triangle budget for the shell, the rest for the cards
 CARD_V = (0.08, 0.62)  # texture v of a card's root (band 0, dense) and tip (band 2, sparser)
+TUFT_LENGTH = (
+    0.014,
+    0.024,
+)  # m: tufts on the beard surface, shortest at the cheeks, longest at the chin
+TUFT_WIDTH = 0.006  # m at the root; the tip is ``TUFT_TAPER`` as wide
+TUFT_TAPER = 0.5
+TUFT_V = (0.3, 0.95)  # texture v of a tuft: root in band 1, tip in the sparse band 3 (wisps)
+TUFT_LIFT = 0.42  # outward share of a tuft's direction (0 = lying on the shell, 1 = standing up)
+TUFT_SINK = 0.0015  # m: roots below the shell surface, so no tuft starts in the air
 
 
 def _parse_args() -> argparse.Namespace:
@@ -175,10 +184,67 @@ def _cards(obj: bpy.types.Object, head: Head, budget: int) -> int:
     return first
 
 
-def _card_uvs(obj: bpy.types.Object, first: int) -> None:
+def _tufts(obj: bpy.types.Object, head: Head, budget: int) -> None:
+    """Hair cards over the inside of a full beard (volume, F3 2026-11-23): one quad per chosen
+    shell face, rooted just under the shell, running with the hair (down along the skin, lifted
+    out by ``TUFT_LIFT``), alternately turned by +-40 degrees about that direction, so the beard
+    gets a tufted surface and a soft silhouette in profile. Lips and the upper throat get none;
+    at most ``budget`` triangles (every k-th face, densest zone first)."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.normal_update()
+    bm.faces.ensure_lookup_table()
+    mouth = head.mouth_z
+
+    def free(c: Vector) -> bool:  # lips and the moustache over them, the throat
+        lips = abs(c.x) < 0.04 and mouth - 0.016 < c.z < mouth + 0.02 and c.y < head.nose.y + 0.045
+        return not lips and c.z > head.chin_z - 0.012
+
+    faces = [f for f in bm.faces if len(f.verts) <= 4 and free(f.calc_center_median())]
+    faces = [f for f in faces if head.zone(f.calc_center_median()) > 0.5]
+    faces.sort(key=lambda f: (round(f.calc_center_median().z, 3), f.index))
+    count = min(len(faces), max(0, budget // 2))
+    if not count:
+        bm.free()
+        return
+    step = len(faces) / count
+    down = Vector((0.0, 0.0, -1.0))
+    for k in range(count):
+        f = faces[int(k * step)]
+        c, n = f.calc_center_median(), f.normal.normalized()
+        flow = (down - n * down.dot(n)).normalized()
+        if flow.length < 0.5:
+            continue
+        along = (flow * (1 - TUFT_LIFT) + n * TUFT_LIFT).normalized()
+        side = flow.cross(n).normalized()
+        turn = math.radians(40 if k % 2 else -40)
+        side = (side * math.cos(turn) + n * math.sin(turn)).normalized()
+        chin = _clamp((mouth - c.z) / 0.04)  # longer towards the chin
+        jitter = 0.85 + 0.3 * ((k * 7919) % 101) / 100
+        length = (TUFT_LENGTH[0] + (TUFT_LENGTH[1] - TUFT_LENGTH[0]) * chin) * jitter
+        root = c - n * TUFT_SINK
+        half = side * TUFT_WIDTH / 2
+        a, b = bm.verts.new(root - half), bm.verts.new(root + half)
+        bm.faces.new(
+            (
+                a,
+                b,
+                bm.verts.new(root + half * TUFT_TAPER + along * length),
+                bm.verts.new(root - half * TUFT_TAPER + along * length),
+            )
+        )
+    bm.to_mesh(obj.data)
+    bm.free()
+    for poly in obj.data.polygons:
+        poly.use_smooth = True
+
+
+def _card_uvs(
+    obj: bpy.types.Object, first: int, end: int | None = None, vs: tuple[float, float] = CARD_V
+) -> None:
     """Cards: u along the border, v from the dense root to the sparser tip (strands run along v)."""
     uv = obj.data.uv_layers.active
-    for k, poly in enumerate(obj.data.polygons[first:]):
+    for k, poly in enumerate(obj.data.polygons[first:end]):
         lis = list(poly.loop_indices)  # a, b, tip(b), tip(a)
         width = (
             obj.data.vertices[poly.vertices[1]].co - obj.data.vertices[poly.vertices[0]].co
@@ -186,7 +252,7 @@ def _card_uvs(obj: bpy.types.Object, first: int) -> None:
         u0 = (k * 0.37) % 1.0
         u1 = u0 + width / UV_TILE
         for li, (u, v) in zip(
-            lis, ((u0, CARD_V[0]), (u1, CARD_V[0]), (u1, CARD_V[1]), (u0, CARD_V[1])), strict=True
+            lis, ((u0, vs[0]), (u1, vs[0]), (u1, vs[1]), (u0, vs[1])), strict=True
         ):
             uv.data[li].uv = (u, v)
 
@@ -326,14 +392,20 @@ def main() -> None:
         obj.data.name = obj.name
         _reduce(obj, int(triangles * CARD_SHARE) if full else triangles)
         shell_tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
-        first = _cards(obj, head, triangles - shell_tris) if full else len(obj.data.polygons)
+        first = len(obj.data.polygons)
+        if full:  # hair cards: the hanging border first, then tufts over the beard (volume)
+            _cards(obj, head, (triangles - shell_tris) // 3)
+            used = sum(len(p.vertices) - 2 for p in obj.data.polygons)
+            tufts = len(obj.data.polygons)
+            _tufts(obj, head, triangles - used)
         owners = [head.nearest(v.co) for v in obj.data.vertices]
         _weights(obj, head, owners)
         if level == 0:  # face morphs only on lod0 (§2.2)
             _morphs(obj, head, owners, list(rig.morph_targets))
         _band_uvs(obj, head, style.limits, smooth=full)
         if full:
-            _card_uvs(obj, first)
+            _card_uvs(obj, first, tufts)
+            _card_uvs(obj, tufts, vs=TUFT_V)
         obj.data.materials.append(mat)
         levels.append(obj)
     for o in imported:
