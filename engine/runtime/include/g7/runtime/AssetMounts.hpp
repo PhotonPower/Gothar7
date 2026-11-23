@@ -50,6 +50,9 @@ inline constexpr i32 kDevCookedArchivePriority = 11;
 /// path, .g7mesh), an image (.png, .jpg, ...) by its .ktx2 when the VFS has one - cooked data wins,
 /// so scenes and worlds may name source files.
 [[nodiscard]] std::string preferCooked(const asset::Vfs& vfs, std::string_view path);
+/// Figures and clip sets (ADR 0025): `x.glb`/`x.gltf` -> `x.g7skin` (`skin`) or `x.g7anim` when the VFS has
+/// it, else `path` (glTF stays the fallback for development and figuren's work).
+[[nodiscard]] std::string preferCookedFigure(const asset::Vfs& vfs, std::string_view path, bool skin);
 /// Path of `relative` next to the VFS file `base` ("scenes/a.toml" + "models/b.glb").
 [[nodiscard]] std::string vfsSibling(std::string_view base, std::string_view relative);
 } // namespace g7

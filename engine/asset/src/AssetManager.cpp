@@ -1,7 +1,9 @@
+#include <g7/asset/AnimFile.hpp>
 #include <g7/asset/AssetManager.hpp>
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
 #include <g7/asset/MeshFile.hpp>
+#include <g7/asset/SkinFile.hpp>
 #include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/TextureData.hpp>
 #include <g7/core/Log.hpp>
@@ -73,6 +75,12 @@ bool hasExtension(std::string_view path, std::string_view extension) noexcept
 {
     return path.size() >= extension.size() &&
            equalsIgnoreCase(path.substr(path.size() - extension.size()), extension);
+}
+
+/// The glTF a cooked figure file was made from: "a/b.g7skin" -> "a/b.glb".
+std::string cookedSource(std::string_view cooked)
+{
+    return std::string(cooked.substr(0, cooked.rfind('.'))) + ".glb";
 }
 
 /// A loose file an asset was built from and its modification time when it was read.
@@ -293,18 +301,54 @@ AssetManager::AssetManager(const Vfs& vfs, AssetManagerDesc desc) : m_impl(std::
             const auto disk = ctx.diskPath();
             return loadGltf(ctx.bytes, disk ? disk->parent_path() : fs::Path(), ctx.path);
         });
-    // Skinned figures and animation sets (M6, ADR 0019): glTF as exported (no cooked format yet).
+    // Skinned figures and animation sets (M6, ADR 0019): cooked .g7skin/.g7anim (ADR 0025) or glTF as
+    // exported. A cooked file of another version or a damaged one falls back to the .glb beside it, if any.
     registerLoader<SkinnedModelData>(
         [](const LoadContext& ctx) -> Result<SkinnedModelData>
         {
+            if (hasExtension(ctx.path, ".g7skin"))
+            {
+                auto cooked = deserializeSkin(ctx.bytes, ctx.path);
+                const std::string gltf = cookedSource(ctx.path);
+                if (cooked || ctx.vfs == nullptr || !ctx.vfs->exists(gltf))
+                {
+                    return cooked;
+                }
+                G7_LOG_WARN("asset", "{} - loading {} instead", cooked.error().message, gltf);
+                auto bytes = ctx.read(gltf);
+                if (!bytes)
+                {
+                    return bytes.error();
+                }
+                return loadSkinnedGltf(bytes.value(), fs::Path(), gltf);
+            }
             const auto disk = ctx.diskPath();
             return loadSkinnedGltf(ctx.bytes, disk ? disk->parent_path() : fs::Path(), ctx.path);
         });
     registerLoader<AnimationSetData>(
         [](const LoadContext& ctx) -> Result<AnimationSetData>
         {
-            const auto disk = ctx.diskPath();
-            auto set = loadAnimationGltf(ctx.bytes, disk ? disk->parent_path() : fs::Path(), ctx.path);
+            Result<AnimationSetData> set = Error{"none"};
+            if (hasExtension(ctx.path, ".g7anim"))
+            {
+                set = deserializeAnim(ctx.bytes, ctx.path);
+                if (const std::string gltf = cookedSource(ctx.path);
+                    !set && ctx.vfs != nullptr && ctx.vfs->exists(gltf))
+                {
+                    G7_LOG_WARN("asset", "{} - loading {} instead", set.error().message, gltf);
+                    auto bytes = ctx.read(gltf);
+                    if (!bytes)
+                    {
+                        return bytes.error();
+                    }
+                    set = loadAnimationGltf(bytes.value(), fs::Path(), gltf);
+                }
+            }
+            else
+            {
+                const auto disk = ctx.diskPath();
+                set = loadAnimationGltf(ctx.bytes, disk ? disk->parent_path() : fs::Path(), ctx.path);
+            }
             if (!set)
             {
                 return set;
