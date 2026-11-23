@@ -1,10 +1,12 @@
-# dungeon – Mechanik für Schloss, Keller und Dungeon (Plan, wartet auf Freigabe)
+# dungeon – Mechanik für Schloss, Keller und Dungeon (Plan, freigegeben 2026-11-23)
 
 Auftrag des Projektinhabers (über den Koordinator, 2026-11-23): Das Schloss wird begehbar, mit Keller und einem
 versteckt zugänglichen Dungeon im Geist klassischer Grid-Dungeon-Crawler („wie Dungeon Master“). Übernommen werden
 nur Mechanik und Spielgefühl, alle Inhalte sind eigen. Vorgesehen sind viele Ebenen, Falltüren, Teleporter, Türen
 und Gatter, versteckte Depots in den Wänden, Schalter und Trittplatten, Monster und Schätze. welt plant parallel den
-Bau (Schloss, Keller, Ebenen). Dieses Dokument plant die **Engine-Mechanik**. **Kein Code bis zur Freigabe.**
+Bau (Schloss, Keller, Ebenen). Dieses Dokument plant die **Engine-Mechanik**. **Freigegeben** vom Projektinhaber (über den Koordinator,
+2026-11-23): alle Gefühlsfragen nach Vorschlag, mit einer Änderung bei Frage 6 (Falltür ohne Fallschaden).
+Reihenfolge: zuerst Schloss und Dungeon, danach die spiegelnden Fenster.
 
 **Berührt Verträge mit welt:** neue Vob-Komponenten in `.g7world` und neue `VOB_`-Knoten aus Blender (ADR 0023).
 Siehe „Vertrag mit welt“. **Abgeglichen** mit welts Plan #421 (`docs/design/schloss-dungeon.md`, Abschnitt 5),
@@ -148,8 +150,9 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `schloss_keller` (welt entscheidet nach Größe). Jede Dungeon-Ebene ist eine eigene Welt `dungeon_<n>.g7world`.
 - **Fall als Weltwechsel:**
   - Unten im Schacht liegt ein `changeWorld`-Trigger mit `fall = true`.
-  - Die Engine merkt sich die Fallgeschwindigkeit und lässt den Helden in der neuen Ebene am Startpunkt (oben im
-    Ankunftsschacht) mit dieser Geschwindigkeit weiterfallen. Der Fallschaden zählt die ganze Höhe (Frage 6).
+  - Der Schacht ist kurz (welts F12). Der Held landet **unverletzt** eine Ebene tiefer (Frage 6, Entscheidung
+    Projektinhaber): Der Fallschaden wird für diesen Fall ausgesetzt; die Falle kostet den Rückweg, nicht Leben. Er
+    kommt am Startpunkt unten im Ankunftsschacht an, die Landung spielt der Fall-Clip.
   - Statt des Ladebildschirms ein schwarzes Abblenden, solange das Laden unter etwa 2 s bleibt (Frage 7).
 - **Treppen** zwischen Ebenen über den vorhandenen Weltwechsel-Trigger (`changeWorld` + Startpunkt, M4), dazu
   Teleporter. Ein Rückweg nach oben muss es immer geben (Frage 11).
@@ -228,7 +231,7 @@ Nach D1–D3 kann welt mit echten Räumen bauen. D8 ersetzt welts Inhalt nicht, 
   - Speichern mitten im Rätsel und Laden stellt alles wieder her.
 - **Prüfbilder:** Gatter auf/zu, Geheimwand offen, Teleporter sichtbar, Falltür, Fackelschein im Gang.
 
-## Gefühlsfragen an den Projektinhaber (je mit Vorschlag)
+## Gefühlsfragen – entschieden (Projektinhaber 2026-11-23: alle nach Vorschlag, Frage 6 geändert)
 1. **Raster:** Räume und Gänge auf einem 3-m-Raster, Steuerung frei wie im Rest des Spiels. *Vorschlag: ja, Raster als
    Bauregel für welt, keine Feld-Bewegung.*
 2. **Gatter, die jemanden treffen:** *Vorschlag: Das Gatter hält an und fährt wieder auf, kein Schaden (ein Spieler
@@ -239,8 +242,8 @@ Nach D1–D3 kann welt mit echten Räumen bauen. D8 ersetzt welts Inhalt nicht, 
    So lassen sich Platten mit einem abgelegten Stein oder Apfel überlisten, wie in Dungeon Master.*
 5. **Verstecke finden:** *Vorschlag: durch Hinsehen. Versteckte Knöpfe erscheinen erst aus 1,2 m im Fokus, als
    „Loser Stein“, und die Wand sieht leicht anders aus. Keine Suchtaste, kein Talent.*
-6. **Fall durch Falltür:** *Vorschlag: normaler Fallschaden über die ganze Höhe (ab 4 m wie überall), die Schächte
-   sind so gebaut, dass es weh tut, aber nicht tötet (etwa 5–6 m).*
+6. **Fall durch Falltür:** *Entschieden (anders als vorgeschlagen): kein Fallschaden. Kurzer Schacht, der Held landet
+   unverletzt eine Ebene tiefer; die Falle kostet den Rückweg (welts F12).* (Vorschlag war: normaler Fallschaden.)
 7. **Laden zwischen Ebenen:** *Vorschlag: kurzes Schwarz statt Ladebildschirm, wenn das Laden unter etwa 2 s bleibt,
    sonst der Ladebildschirm.*
 8. **Monster nachwachsen:** *Vorschlag: nein, wie in Gothic 1. Einmal geleert, bleibt eine Ebene leer, bis auf
