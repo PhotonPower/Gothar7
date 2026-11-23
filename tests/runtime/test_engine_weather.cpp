@@ -150,3 +150,27 @@ TEST_CASE("Engine weather: a thunderstorm flashes and thunders; clear weather do
     CHECK(engine.lastLightning()->azimuth == doctest::Approx(glm::radians(-30.0f)));
     CHECK(flashes("regen") == 0u);
 }
+
+TEST_CASE("Engine weather: the wind loop of the ambience follows the wind (M17 W)")
+{
+    const auto windLoop = [](const char* weather) -> f32
+    {
+        EngineConfig config = campConfig();
+        config.weather = weather;
+        Engine engine(config);
+        REQUIRE(engine.init().ok());
+        REQUIRE(engine.runFrame());
+        return engine.audio() != nullptr ? engine.windLoopVolume() : -1.0f;
+    };
+    const f32 calm = windLoop("nebel");
+    const f32 clear = windLoop("klar");
+    const f32 storm = windLoop("gewitter");
+    if (calm < 0.0f)
+    {
+        return; // audio switched off on this machine
+    }
+    CHECK(calm >= 0.3f); // never silent
+    CHECK(calm < clear);
+    CHECK(clear < storm);
+    CHECK(storm == doctest::Approx(1.0f)); // full in the thunderstorm
+}
