@@ -665,6 +665,10 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   Kachelbau im letzten Bild und das langsamste Bild seit dem Zurücksetzen, Maske/Überlagerung vorhanden, „rebuild“.
   Mit dem Overlay (F2) zeichnet die Engine die Kachelgrenzen auf dem Boden: grün mit Büscheln, grau leer, orange
   veraltet, dazu Kachel und Büschelzahl.
+- **Schatten der Vegetation (Teil V):** Kleine Deko (größenabhängig ausblendbar, größte Ausdehnung unter 1,5 m) wirft
+  Sonnenschatten nur in den ersten zwei Kaskaden (`castsShadowInCascade` in `Visibility.hpp`). Instanz-Puffer je
+  Modell und Zelle sind nach der Messung zurückgestellt (`docs/perf/2026-11-23-vegetation.md`: das Sammeln kostet
+  0,04–0,09 ms).
 - Im Editor pausiert die Simulation; damit der Kachelbau nicht auf die Kollision wartet, gleicht `updateGrass` sie
   dann selbst ab (bewegte Vobs, Undo).
 - **Ausnahmen (Engine, `WorldGrassGround`):** auf dem Wegnetz (1,2 m breit), in Wasser, in Innenzonen und unter

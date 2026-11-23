@@ -51,6 +51,13 @@ struct LodSettings
 [[nodiscard]] CullResult cullByDistance(const AABB& bounds, const Vec3& eye, const CullSettings& settings,
                                         bool sizeCullable) noexcept;
 
+/// Small deco (size-cullable, largest extent below kSmallShadowCasterSize m: tufts, weeds, low bushes,
+/// buckets) casts sun shadows only into the first kSmallShadowCascades cascades (M17 V, render.md "Gras"):
+/// farther, its shadow is a texel or two of a coarse cascade.
+inline constexpr f32 kSmallShadowCasterSize = 1.5f;
+inline constexpr u32 kSmallShadowCascades = 2;
+[[nodiscard]] bool castsShadowInCascade(const AABB& bounds, bool sizeCullable, u32 cascade) noexcept;
+
 /// Animated figures (people, animals): drawn only near and in view (render.md "Figuren"), shadows only
 /// nearer.
 struct FigureCull

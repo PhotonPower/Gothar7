@@ -2195,6 +2195,7 @@ void Engine::drawScene(u32 width, u32 height)
                 // What the main pass hides (distance, size) casts no shadow either.
                 const SceneInstance& instance = m_instances[index];
                 if (instance.model != m_groundModel.get() && instance.solid &&
+                    render::castsShadowInCascade(instance.bounds, instance.sizeCullable, i) &&
                     volume.intersects(instance.bounds) &&
                     render::cullByDistance(instance.bounds, m_camera.transform.position, m_frameShadowCull,
                                            instance.sizeCullable) == render::CullResult::Kept)
