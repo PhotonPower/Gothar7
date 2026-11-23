@@ -1527,6 +1527,8 @@ private:
     void applyStartView();
     /// Records a load phase that began at `startSeconds` (platform::nowSeconds) and ends now.
     void addLoadPhase(std::string name, f64 startSeconds);
+    /// The figure share of the last world_loaded as load phases "figures: ..." (m_figureLoadTimes).
+    void addFigureLoadPhases();
     void copyViewToClipboard();
     void showNotice(std::string text, f64 seconds);
     [[nodiscard]] bool noticeVisible() const noexcept;
@@ -1624,9 +1626,22 @@ private:
     render::BloomSettings m_bloomSettings; // enabled from [render] bloom, the rest from the time of day
     render::PassTimes m_passTimes;         // GPU time per pass (M17)
     std::vector<LoadPhase> m_loadPhases;   // load times (M17 perf)
-    f64 m_startSeconds = 0.0;              // platform::nowSeconds() at init
-    bool m_modelsSettled = false;          // the first time no asset load was pending (load phase)
-    render::Grading m_grading;             // M17 P2: current colour grading (fades between zones)
+    /// Where the time of building figures goes (plan M17 cooked figures, part A): wall-clock milliseconds
+    /// summed over the figures built since the last reset; world_loaded adds them as load phases.
+    struct FigureLoadTimes
+    {
+        f64 parts = 0.0;    // figure parts (SkinnedModelData from glTF) loaded and waited for
+        f64 sets = 0.0;     // clip sets (AnimationSetData from glTF) loaded and waited for
+        f64 assemble = 0.0; // asset::assembleFigure
+        f64 images = 0.0;   // textures loaded and waited for
+        f64 upload = 0.0;   // skinned mesh and materials on the GPU
+        f64 total = 0.0;    // whole loadAnimatedFigure
+        u32 figures = 0;
+    };
+    FigureLoadTimes m_figureLoadTimes;
+    f64 m_startSeconds = 0.0;     // platform::nowSeconds() at init
+    bool m_modelsSettled = false; // the first time no asset load was pending (load phase)
+    render::Grading m_grading;    // M17 P2: current colour grading (fades between zones)
     bool m_gradingStarted = false;
     static constexpr f32 kGradingFadeSeconds = 1.5f;
     render::DebugDraw m_debugDraw;
