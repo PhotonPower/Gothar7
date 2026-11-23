@@ -1478,7 +1478,27 @@ def giant_barrel() -> MobModel:
         m.collision.append(_hull(f"COL_HULL_barrel_shell_{k:02d}", pts))
     m.body("barrel_back", (-inner, y - inner, -hl), (inner, y + inner, -hl + 0.08))
     m.body("barrel_floor", (-half, 0.0, -hl + 0.08), (half, fl, hl - 0.02))
-    return MobModel("giant_barrel", m)
+    return MobModel(
+        "giant_barrel", m, lods=[_giant_barrel_lod(10, True), _giant_barrel_lod(8, False)]
+    )
+
+
+def _giant_barrel_lod(n: int, hoops: bool) -> Mesh:
+    """A coarser giant cask: ``n`` staves, the inside dark behind the open front (back head
+    only), the cradles; ``hoops`` the two middle iron bands."""
+    m = Mesh()
+    r, hl, y = GIANT_BARREL_R, GIANT_BARREL_L / 2, GIANT_BARREL_Y
+    head = GIANT_HEAD_R
+    inner = head - GIANT_BARREL_STAVE
+    _tube(m, "oak", r, -hl, hl, y, n)
+    _ring_face(m, "oak", inner, r, hl, y, n, 1.0)
+    _ring_face(m, "oak", 0.0, inner, -hl + 0.08, y, n, 1.0)
+    if hoops:
+        for z in (-hl * 0.45, hl * 0.45):
+            _tube(m, "iron", r * 1.01, z - 0.04, z + 0.04, y, n)
+    for z in (-hl * 0.62, hl * 0.62):
+        m.box("oak_beam", (-r * 0.9, 0.0, z - 0.12), (r * 0.9, 0.42, z + 0.12), grain=0)
+    return m
 
 
 def giant_barrel_front() -> MobModel:
@@ -1508,7 +1528,16 @@ def giant_barrel_front() -> MobModel:
     m.box("oak_beam", (r - 0.04, y - 0.95, 0.0), (r + 0.04, y - 0.9, 0.16), grain=2)  # the tap
     m.box("iron", (r - 0.02, y - 1.02, 0.12), (r + 0.02, y - 0.9, 0.16))
     m.body("barrel_front", (0.0, y - r, -t), (2 * r, y + r, 0.0))
-    return MobModel("giant_barrel_front", m)
+    lod1 = Mesh()  # the head as a flat disc of fewer sides, the bands; no wreath, no tap
+    b = lod1.b("oak")
+    coarse = [(r + x, yy) for x, yy in _circle(r, y, 10)]
+    for k in range(1, len(coarse) - 1):
+        tri = [(*coarse[0], 0.0), (*coarse[k], 0.0), (*coarse[k + 1], 0.0)]
+        b.polygon(tri, [(q[0], q[1]) for q in tri], (0.0, 0.0, 1.0))
+    for dy in (-0.62, 0.62):
+        w = math.sqrt(max(r * r - dy * dy, 0.0)) - 0.03
+        lod1.box("iron", (r - w, y + dy - 0.04, 0.0), (r + w, y + dy + 0.04, 0.02))
+    return MobModel("giant_barrel_front", m, lods=[lod1])
 
 
 TORCH_Y = 1.6  # the holder's ring over the floor; the flame about 0.4 m higher
@@ -1543,7 +1572,13 @@ def _wall_torch(name: str, tilt_deg: float) -> MobModel:
     m.box("flame", (top[0] - 0.005, top[1], top[2] - 0.04), (top[0] + 0.005, top[1] + 0.17,
                                                              top[2] + 0.04))  # fmt: skip
     m.body("none", (-0.02, -1.04, -0.02), (0.02, -1.0, 0.02))
-    return MobModel(name, m)
+    lod1 = Mesh()  # from afar: the torch with its flame (the holder's iron is too thin to see)
+    _rod(lod1, "oak_beam", turn(0.0, y - 0.25, out), turn(0.0, y + 0.3, out), 0.025)
+    lod1.box("flame", (top[0] - 0.04, top[1], top[2] - 0.005), (top[0] + 0.04, top[1] + 0.2,
+                                                                top[2] + 0.005))  # fmt: skip
+    lod1.box("flame", (top[0] - 0.005, top[1], top[2] - 0.04), (top[0] + 0.005, top[1] + 0.17,
+                                                                top[2] + 0.04))  # fmt: skip
+    return MobModel(name, m, lods=[lod1])
 
 
 def torch_flame(tilt_deg: float = 0.0) -> Vec3:
@@ -1591,7 +1626,16 @@ def bookshelf() -> MobModel:
                 x += w + 0.005
             k += 1
     m.body("bookshelf", (-hw, 0.0, -hd), (hw, h, hd))
-    return MobModel("bookshelf", m)
+    lod1 = Mesh()  # the carcass as one box, the books as one coloured block per board
+    lod1.box("oak", (-hw, 0.0, -hd), (hw, h, -hd + 0.02), grain=1)
+    for x in (-hw, hw - 0.04):
+        lod1.box("oak", (x, 0.0, -hd), (x + 0.04, h, hd), grain=1)
+    for row, yb in enumerate(boards):
+        lod1.box("oak", (-hw + 0.04, yb - 0.03, -hd), (hw - 0.04, yb, hd), grain=0)
+        lod1.box(BOOKS[(row * 2 + 1) % len(BOOKS)], (-hw + 0.06, yb, -hd + 0.04),
+                 (hw - 0.08, yb + 0.27, hd - 0.03))  # fmt: skip
+    lod1.box("oak", (-hw + 0.04, h - 0.03, -hd), (hw - 0.04, h, hd), grain=0)
+    return MobModel("bookshelf", m, lods=[lod1])
 
 
 LECTERN_H = 1.05  # the reading top's front edge over the floor
@@ -1612,7 +1656,11 @@ def lectern() -> MobModel:
                            (x0, lo + 0.03, d - 0.06), (x1, lo + 0.03, d - 0.06),
                            (x1, hi - 0.005, -d + 0.08), (x0, hi - 0.005, -d + 0.08)])  # fmt: skip
     m.body("lectern", (-0.3, 0.0, -0.25), (0.3, hi, 0.25))
-    return MobModel("lectern", m)
+    lod1 = Mesh()  # foot, post and the reading top as a block; the book's pages left out
+    lod1.box("oak_beam", (-0.25, 0.0, -0.2), (0.25, 0.06, 0.2), grain=0)
+    lod1.box("oak_beam", (-0.05, 0.06, -0.05), (0.05, lo, 0.05), grain=1)
+    lod1.box("oak", (-0.3, lo - 0.03, -d), (0.3, hi, d))
+    return MobModel("lectern", m, lods=[lod1])
 
 
 ALTAR_W, ALTAR_D, ALTAR_H = 1.6, 0.8, 1.0
@@ -1637,7 +1685,13 @@ def altar() -> MobModel:
         m.box("gilt", (c[0] - 0.03, c[1] - 0.03, c[2] - 0.01), (c[0] + 0.03, c[1] + 0.03,
                                                               c[2] + 0.01))  # fmt: skip
     m.body("altar", (-hw - 0.05, 0.0, -hd - 0.05), (hw + 0.05, h, hd + 0.05))
-    return MobModel("altar", m)
+    lod1 = Mesh()  # the stone as one block with the cloth, the disc coarse, no rays
+    lod1.box("fieldstone", (-hw - 0.04, 0.0, -hd - 0.04), (hw + 0.04, h, hd + 0.04))
+    lod1.box("linen", (-hw + 0.05, h, -hd + 0.02), (hw - 0.05, h + 0.01, hd + 0.05))
+    lod1.box("wool_red", (-0.33, h - 0.33, hd + 0.04), (0.33, h, hd + 0.055))
+    lod1.box("oak_beam", (-0.03, h, -hd + 0.08), (0.03, h + 0.55, -hd + 0.14), grain=1)
+    lod1.cyl("gilt", 2, (0.0, h + 0.75, -hd + 0.11), 0.3, 0.03, sides=8)
+    return MobModel("altar", m, lods=[lod1])
 
 
 CELL_BARS_W, CELL_BARS_H = 1.35, 2.2
@@ -1654,7 +1708,13 @@ def cell_bars() -> MobModel:
         x = -hw + 0.06 + (2 * hw - 0.12) * k / (n - 1)
         m.box("iron", (x - 0.012, 0.0, -0.012), (x + 0.012, h, 0.012))
     m.body("cell_bars", (-hw, 0.0, -0.05), (hw, h, 0.05))
-    return MobModel("cell_bars", m)
+    lod1 = Mesh()  # from afar: the rails and five thicker bars
+    for y in (0.05, 1.1, h - 0.05):
+        lod1.box("iron", (-hw, y - 0.03, -0.03), (hw, y + 0.03, 0.03))
+    for k in range(5):
+        x = -hw + 0.06 + (2 * hw - 0.12) * k / 4
+        lod1.box("iron", (x - 0.018, 0.0, -0.018), (x + 0.018, h, 0.018))
+    return MobModel("cell_bars", m, lods=[lod1])
 
 
 PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "firewood": firewood,

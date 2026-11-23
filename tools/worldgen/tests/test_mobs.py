@@ -228,3 +228,14 @@ def test_guild_signs_hang_in_the_wind_but_their_bracket_stays_still():
     hang = {"wind": "hanging", "wind_pivot": [0.0, round(SIGN_ARM_Y - 0.02, 3), BOARD_Z]}
     assert mats["iron_chain"] == hang and mats["paint_board"] == hang
     assert all(v == hang for k, v in mats.items() if k != "iron_bracket")
+
+
+def test_castle_props_have_coarser_levels() -> None:
+    """W7 D1b: the castle's props are seen from the court; each has a coarser level."""
+    from gothar_worldgen.mobs import PROPS
+
+    for name in ("giant_barrel", "giant_barrel_front", "wall_torch", "torch_lever", "bookshelf",
+                 "lectern", "altar", "cell_bars"):  # fmt: skip
+        model = PROPS[name]()
+        assert model.lods, name
+        assert all(lod.triangles() < model.main.triangles() for lod in model.lods), name
