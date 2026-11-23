@@ -136,8 +136,12 @@ def schloss_item(spec: dict[str, Any], mesh: str) -> dict[str, Any]:
         ring = [w.p(0, -h, 0), w.p(w.length, -h, 0), w.p(w.length, h, 0), w.p(0, h, 0)]
         footprints.append([[round(p[0], 2), round(p[2], 2)] for p in ring])
     tower = spec.get("stairTower")
+    if tower and spec.get("interior"):  # moved against the garden wall (W7 D1)
+        inner = next(w for w in spec["wings"] if w["key"] == spec["interior"]["wing"])
+        tower = geo.interior.moved_tower(geo.Wing(inner), tower)
     if tower:
-        ring = geo._ring((tower["at"][0], tower["at"][1]), float(tower["radius"]), 0.0)
+        ring = geo._ring((tower["at"][0], tower["at"][1]), float(tower["radius"]), 0.0,
+                         phase=math.radians(float(tower.get("phaseDeg", 0.0))))  # fmt: skip
         footprints.append([[round(p[0], 2), round(p[2], 2)] for p in ring])
     item = {"key": "schloss", "mesh": mesh, "pos": [round(v, 3) for v in origin],
             "replaces": list(spec.get("replaces", [])), "footprints": footprints}  # fmt: skip
@@ -147,6 +151,12 @@ def schloss_item(spec: dict[str, Any], mesh: str) -> dict[str, Any]:
     garden = spec.get("garden", {}).get("terracePlan")
     if garden:
         item["pads"] = garden["pads"]  # level terraces in the heightmap (export-terrain)
+    inside = spec.get("interior")
+    if inside:  # W7 D1: the ground under the hollow main wing and tower below the cellar
+        wing = geo.Wing(next(w for w in spec["wings"] if w["key"] == inside["wing"]))
+        item["pads"] = list(item.get("pads", [])) + geo.interior.cellar_pads(
+            wing, inside, spec.get("stairTower")
+        )
         item["terraces"] = [
             {"key": tr["key"], "s": tr["s"], "y": tr["y"]} for tr in garden["terraces"]
         ]
