@@ -140,8 +140,8 @@ def plan_walls(grid: Grid, streets: Sequence[dict[str, Any]], area: Polygon,
         pts = s.get("points") or []
         if s.get("highway") not in kinds or len(pts) < 2:
             continue
-        if s.get("tunnel") or s.get("bridge") or s.get("layer"):
-            continue
+        if s.get("tunnel") or s.get("bridge") or s.get("layer") or s.get("rural"):
+            continue  # W6: the country roads and field ways outside the wall have no walls
         w = float(s.get("widthM") or 4.0)
         reach = max(w / 2 + offset, float(spec["minAxisM"]))  # axis to the wall's face
         whole = LineString(pts)

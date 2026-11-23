@@ -1094,3 +1094,45 @@ TEST_CASE("Engine AI LOD by count: the nearest max_simulated NPCs, talking ones 
     CHECK_FALSE(animated(names[2]));
     CHECK_FALSE(animated(names[3]));
 }
+
+TEST_CASE("Load phases: figures built by world_loaded are split into parts, clip sets, assemble, images, "
+          "upload (plan M17 cooked figures, part A)")
+{
+    Engine engine(scriptConfig());
+    REQUIRE(engine.init().ok());
+    run(engine, "on('world_loaded', function(w) if w:find('camp', 1, true) then insert_npc('npc_woodcutter') "
+                "end end)");
+    for (const auto& [world, start] : {std::pair{"testworld/cave.g7world", "START_HOEHLE"},
+                                       std::pair{"testworld/camp.g7world", "START_LAGER_HOEHLE"}})
+    {
+        engine.requestWorldChange(world, start);
+        for (int i = 0; i < 2; ++i)
+        {
+            REQUIRE(engine.runFrame());
+        }
+        REQUIRE(engine.worldPath() == world);
+    }
+    const auto& phases = engine.loadPhases();
+    const auto find = [&](std::string_view name)
+    {
+        // The last one: the camp's on returning (with the woodcutter).
+        const auto it =
+            std::find_if(phases.rbegin(), phases.rend(), [&](const LoadPhase& p) { return p.name == name; });
+        return it == phases.rend() ? nullptr : &*it;
+    };
+    const LoadPhase* figures = find("figures and clips (world_loaded)");
+    REQUIRE(figures != nullptr);
+    f64 sum = 0.0;
+    for (const char* name : {"figures: parts (glTF)", "figures: clip sets (glTF)", "figures: assemble",
+                             "figures: images", "figures: GPU upload", "figures: other"})
+    {
+        CAPTURE(name);
+        const LoadPhase* part = find(name);
+        REQUIRE(part != nullptr);
+        CHECK(part->ms >= 0.0);
+        CHECK(part->endMs == figures->endMs);
+        sum += part->ms;
+    }
+    CHECK(find("figures: assemble")->ms > 0.0);
+    CHECK(sum <= figures->ms + 1.0); // a share of the phase (insert_npc does more than the figure)
+}

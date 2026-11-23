@@ -225,7 +225,12 @@ private:
         }
         if (mesh)
         {
-            cookMesh(relative, location);
+            // Figure parts, rigs and clip sets load as glTF until .g7skin/.g7anim exist (asset.md, plan M17
+            // part 0): an archive carries the .glb unchanged. Loose output does not - a copy in assets/cooked
+            // would hide the source .glb that figuren edits (hot reload).
+            const bool keepGltf =
+                !m_options.pack.empty() && ext == ".glb" && gltfSkinnedOrAnimated(bytes.value());
+            cookMesh(relative, location, keepGltf ? std::move(bytes).value() : std::vector<u8>());
         }
         else
         {
@@ -365,7 +370,9 @@ private:
         }
     }
 
-    void cookMesh(const std::string& relative, const fs::Path& location)
+    /// `gltf`: the source bytes to emit unchanged next to the .g7mesh (skinned/animated .glb in archives),
+    /// empty: none.
+    void cookMesh(const std::string& relative, const fs::Path& location, std::vector<u8> gltf)
     {
         auto cached = m_meshes.find(relative);
         auto loaded = cached != m_meshes.end() ? std::move(cached->second) : asset::loadGltf(location);
@@ -377,8 +384,18 @@ private:
         asset::MeshData mesh = std::move(loaded).value();
         if (mesh.submeshes.empty())
         {
-            // E.g. an animation set (anims/*.glb) without geometry: nothing to cook until skeletons and
-            // clips come with M6 - an empty .g7mesh would only mislead.
+            if (!gltf.empty())
+            {
+                // An animation set (anims/*.glb): only the glTF itself.
+                std::vector<std::pair<std::string, std::vector<u8>>> files;
+                files.emplace_back(relative, std::move(gltf));
+                if (emitAll(relative, std::move(files)))
+                {
+                    ++m_report.copied;
+                }
+                return;
+            }
+            // E.g. an animation set (anims/*.glb) in loose output: an empty .g7mesh would only mislead.
             G7_LOG_WARN("cook", "{}: no mesh in this glTF, skipped", relative);
             ++m_report.skipped;
             return;
@@ -436,6 +453,10 @@ private:
         }
         const usize images = extracted.size();
         extracted.emplace_back(base + ".g7mesh", asset::serializeMesh(mesh));
+        if (!gltf.empty())
+        {
+            extracted.emplace_back(relative, std::move(gltf));
+        }
         if (emitAll(relative, std::move(extracted)))
         {
             m_report.images += static_cast<u32>(images);

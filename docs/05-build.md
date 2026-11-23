@@ -94,6 +94,7 @@ das Spiel dort mit `--no-render` starten.
 | `profile` | `RelWithDebInfo` + `G7_PROFILING` + `G7_TRACY`, vcpkg-Feature `profiling` (Tracy, ADR 0024); Zonen an den Tracy-Viewer (on-demand: misst nur bei verbundenem Viewer), nicht für Auslieferungen |
 | `coverage` | Debug + `G7_COVERAGE` (nur GCC/Clang), für die Abdeckungsmessung |
 | `nodeps` | Schnelltest ohne vcpkg |
+| `package` | Paket (M17, `release.md` Teil C): `RelWithDebInfo` mit `G7_DEV_ASSETS=OFF`; `cmake -P tools/release/make_release.cmake` baut damit Spiel, Daten (`g7_release_data`), ZIP (CPack) und prüft das entpackte Paket |
 
 ## CMake-Optionen
 | Option | Standard | Bedeutung |
