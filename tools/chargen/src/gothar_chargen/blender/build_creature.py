@@ -43,12 +43,14 @@ from gothar_chargen.creature import (  # noqa: E402
     PLATES,
     Creature,
     Shape,
+    apply_grime,
     bake_texture,
     blend_normals,
     downsample,
     euler_matrix,
     height_normal,
     load_creature,
+    plate_chips,
     shape_distance,
     srgb,
 )
@@ -252,6 +254,18 @@ def _plates(c: Creature) -> bpy.types.Object | None:
         return None
     ob = _mesh_object("plates", shapes)
     _apply(ob, "BEVEL", width=c.plate_bevel, segments=1, limit_method="NONE")
+    if c.plate_rough > 0:  # hewn and chipped: subdivide, then push vertices inwards
+        bm = bmesh.new()
+        bm.from_mesh(ob.data)
+        bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=c.plate_cuts, use_grid_fill=True)
+        bm.normal_update()
+        co = np.array([v.co[:] for v in bm.verts])
+        nrm = np.array([v.normal[:] for v in bm.verts])
+        depth = plate_chips(c, co, nrm)
+        for v, d, n in zip(bm.verts, depth, nrm, strict=True):
+            v.co -= Vector(n) * float(d)
+        bm.to_mesh(ob.data)
+        bm.free()
     _apply(ob, "TRIANGULATE")
     for p in ob.data.polygons:
         p.use_smooth = False
@@ -319,6 +333,7 @@ def _textures(
         high.hide_render = True  # the coincident high mesh would occlude the body
         occlusion = _bake(ob, None, "AO", c.texture)[..., 0]
         high.hide_render = False
+        colour = apply_grime(c, colour, occlusion)
         colour = colour * (1.0 - c.ao * (1.0 - occlusion))[..., None]
     base = _save(colour, f"{c.material}__{c.art}", folder / f"{c.art}.jpg")  # category__name
     shape = _bake(ob, high, "NORMAL", c.normal_size) * 2.0 - 1.0  # geometry of the high mesh

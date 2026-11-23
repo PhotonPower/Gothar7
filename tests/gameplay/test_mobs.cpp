@@ -84,7 +84,7 @@ TEST_CASE("Mobs: the contract file in the repository parses")
     text << file.rdbuf();
     const auto mobs = MobTypes::parse(text.str(), "mobs.toml");
     REQUIRE_MESSAGE(mobs.ok(), (mobs.ok() ? "" : mobs.error().message));
-    for (const char* type : {"chest", "anvil", "bed", "door", "bench", "table"})
+    for (const char* type : {"chest", "anvil", "bed", "door", "bench", "table", "lever", "wall_button"})
     {
         REQUIRE_MESSAGE(mobs.value().find(type) != nullptr, type);
         CHECK_FALSE(mobs.value().find(type)->slots.empty());

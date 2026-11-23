@@ -118,6 +118,9 @@ Ein Dialog ist vorbei.
 ### `on("dialog_started", fn(npc: string))`
 Ein Dialog beginnt.
 
+### `on("dungeon_event", fn(target: string, action: string, source: string))`
+Ein Ereignis des Netzes (Dungeon D1) hat ein Ziel erreicht, das kein Relais ist: von einem Auslöser (Trigger, Relais) oder `send`. `source` ist der Name des Absenders. Türen haben schon reagiert; eine Mob-Definition mit `on_event(mob, action, source)` hört es vorher.
+
 ### `on("game_loaded", fn())`
 Ein Spielstand ist geladen: Welt, NPCs, Story und benannte Timer sind wieder da (M15).
 
@@ -608,11 +611,23 @@ Ein Blitz jetzt (Story, Prüfbilder), `distance` Meter entfernt (Vorgabe 800, 50
 ### `lock_weather(locked: boolean)`
 Hält die Wetterlage fest (eine Story-Szene): der Ablauf wechselt nicht, set_weather wirkt weiter.
 
+### `mover_state(name: string) -> {kind, open, position, moving, blocks} | nil`
+Der Zustand des bewegten Teils `name` (Dungeon D2): Art (gate, secret_wall, trapdoor), ob es offen ist bzw. dorthin fährt, die Stellung 0 (zu) bis 1 (offen), ob es sich bewegt und ob es gerade Wege des Wegnetzes sperrt; nil, wenn es kein bewegtes Teil dieses Namens gibt. Bewegt wird es mit `send`.
+
 ### `notice(text: string)`
 Eine kurze Meldung am Bildschirm (Tagebuch-Einträge, Kapitel, Hinweise).
 
+### `relay_state(name: string) -> {mode, count, counted, inputs, spent} | nil`
+Der Zustand des Relais `name` der Welt (Dungeon D1): Art (any, all, count), nötige Anzahl, bisher gezählt, die Eingänge, die an sind (Absender-Namen), und ob ein einmaliges Relais verbraucht ist; nil, wenn es kein Relais dieses Namens gibt.
+
+### `send(target: string, action?: string, source?: string)`
+Schickt ein Ereignis an das Vob `target` (Dungeon D1), wie es ein Auslöser tut: `action` ist toggle, open, close, on, off, wake, trigger (Vorgabe), lock oder unlock; `source` der Absender (Vorgabe "lua"). Es wirkt im nächsten festen Schritt: Relais zählen es, Türen gehen auf oder zu bzw. werden ver- und entriegelt, bewegte Teile (Gatter, Geheimwand, Falltür; D2) fahren auf oder zu, alle anderen Ziele hören es als Ereignis `dungeon_event`.
+
 ### `set_weather(name: string, minutes?: number) -> boolean`
 Setzt die Wetterlage (data/weather.toml), mit Übergang über `minutes` Spielminuten (ohne: sofort); der Ablauf geht von ihr aus weiter. false bei unbekannter Lage.
+
+### `switch_state(name: string) -> {type, on, found, spent} | nil`
+Der Zustand des Schalters `name` (Dungeon D3, Mob-Typen lever und wall_button): Typ, ob ein Hebel umgelegt ist, ob ein versteckter Schalter gefunden (einmal benutzt) ist und ob ein einmaliger Knopf verbraucht ist; für eine Trittplatte (Trigger mit `plate`) `{type = "plate", on = gedrückt}`; nil, wenn es nichts davon mit diesem Namen gibt.
 
 ### `teleport(start: string) | teleport(x: number, y: number, z: number)`
 Setzt die Spielfigur (bzw. ohne Spielfigur die Kamera) auf einen Startpunkt der Welt oder an eine Position in Metern.

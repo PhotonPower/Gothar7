@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "name": "switches",
+  "nextVobId": 10,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_SCHALTER","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"mesh","name":"GATE_HEBEL","pos":[3.0,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,0.2],"mesh":"testworld/block.gltf","category":"gameplay","components":{"mover":{"kind":"gate","open":false,"seconds":0.5,"crush":"stop"}}},
+    {"id":3,"type":"mob","name":"LEVER_HEBEL","pos":[3.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[0.2,1.2,0.2],"mesh":"testworld/block.gltf","components":{"mob":{"definition":"lever","targets":["GATE_HEBEL"],"action":"open"}}},
+    {"id":4,"type":"mesh","name":"WALL_NISCHE","pos":[-6.0,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,0.5],"mesh":"testworld/block.gltf","category":"gameplay","components":{"mover":{"kind":"secret_wall","open":false,"seconds":0.5,"offset":[3.0,0.0,0.0],"crush":"stop"}}},
+    {"id":5,"type":"mob","name":"BUTTON_STEIN","pos":[-4.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[0.3,1.3,0.1],"mesh":"testworld/block.gltf","components":{"mob":{"definition":"wall_button","targets":["WALL_NISCHE"],"action":"open","once":true,"hidden":true}}},
+    {"id":6,"type":"trigger","name":"PLATE_STEIN","pos":[6.0,0.0,-6.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,0.2,0.8],"filter":"any","once":false,"targets":["GATE_PLATTE"],"action":"open","plate":{"weight":"any"}}}},
+    {"id":7,"type":"mesh","name":"GATE_PLATTE","pos":[12.0,0.0,6.0],"rot":[0.0,0.0,0.0,1.0],"scale":[3.0,3.0,0.2],"mesh":"testworld/block.gltf","category":"gameplay","components":{"mover":{"kind":"gate","open":false,"seconds":0.5,"crush":"stop"}}},
+    {"id":8,"type":"trigger","name":"PLATE_HELD","pos":[-6.0,0.0,-6.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,0.2,0.8],"filter":"any","once":false,"targets":["LUA_HELD"],"action":"on","plate":{"weight":"player","release_action":"wake"}}}},
+    {"id":9,"type":"item","name":"STEIN_LIEGT","pos":[-6.0,0.0,-6.0],"rot":[0.0,0.0,0.0,1.0],"components":{"item":{"instance":"it_apple"}}}
+  ]
+}

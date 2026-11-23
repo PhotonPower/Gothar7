@@ -153,9 +153,10 @@ void Engine::syncPhysics()
             G7_LOG_WARN("engine", "collision of {}: {}", instance.model->name, body.error().message);
         }
         else if (const entt::entity e = m_scene.findById(instance.vob);
-                 e != entt::null && m_scene.has<world::MobRef>(e))
+                 e != entt::null && (m_scene.has<world::MobRef>(e) || m_scene.has<world::Mover>(e)))
         {
-            m_mobBodies[instance.vob.value] = MobBody{body.value(), it->second}; // doors turn theirs (M8 C)
+            // Doors turn theirs (M8 C), movers move theirs (dungeon D2).
+            m_mobBodies[instance.vob.value] = MobBody{body.value(), it->second};
         }
     }
     m_physics.optimize();
