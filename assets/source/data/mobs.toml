@@ -92,3 +92,26 @@ facing = [0.0, 0.0, 1.0]
 name = "back_right"
 pos = [0.4, 0.0, -1.1]
 facing = [0.0, 0.0, 1.0]
+
+# Switches (dungeon D3, docs/modules/dungeon.md): using one sends components.mob.action to components.mob.targets at
+# the clip's event "use" (without the clip: half way). Clips mob/lever/t_use and mob/button/t_press come from
+# figuren; until then the engine times them. The hero stands in front of them, facing the wall.
+[mobs.lever]                 # a lever or a crooked torch holder on a wall (front +Z), handle about 1.2 m high
+clips = "mob/lever"
+enter = "t_use"
+loop = ""
+leave = ""
+[[mobs.lever.slots]]
+name = "front"
+pos = [0.0, 0.0, 0.6]
+facing = [0.0, 0.0, -1.0]
+
+[mobs.wall_button]           # a stone in the wall to press (front +Z), about 1.2 m high; hidden: a loose stone
+clips = "mob/button"
+enter = "t_press"
+loop = ""
+leave = ""
+[[mobs.wall_button.slots]]
+name = "front"
+pos = [0.0, 0.0, 0.55]
+facing = [0.0, 0.0, -1.0]

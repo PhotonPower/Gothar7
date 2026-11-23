@@ -87,7 +87,9 @@ in `coordination.md`).
    - **Ton:**
      - Regen-Schleife `amb_rain` als eigene Ebene über dem Zonen-Ambiente, Lautstärke nach `rain`.
      - In `indoor`-Zonen die Variante `amb_rain_roof`, gedämpft. Unter Wasser über den Bus-Tiefpass.
-     - Wind-Schleife `amb_wind` (gibt es schon) nach `wind`.
+     - Wind-Schleife `amb_wind` (gibt es schon) nach `wind`: Wo eine Ambiente-Zone sie spielt (auch gedämpft von
+       draußen), ist sie bei Windstille 0,3 laut und ab `wind` 0,8 (Gewitter) voll; dazwischen linear
+       (umgesetzt, `Engine::windLoopVolume`).
      - Platzhalter-Klänge erzeugt wie die übrigen `amb_*`, eigene Aufnahmen später (Lizenz CC0/eigen).
    - **Tests:**
      - GPU: kein Regen unter einem Dach (Draufsicht-Tiefe), Dichte folgt `rain`, `weather = false` zeichnet nichts.

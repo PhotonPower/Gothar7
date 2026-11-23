@@ -1123,8 +1123,8 @@ TEST_CASE("Load phases: figures built by world_loaded are split into parts, clip
     const LoadPhase* figures = find("figures and clips (world_loaded)");
     REQUIRE(figures != nullptr);
     f64 sum = 0.0;
-    for (const char* name : {"figures: parts (glTF)", "figures: clip sets (glTF)", "figures: assemble",
-                             "figures: images", "figures: GPU upload", "figures: other"})
+    for (const char* name : {"figures: parts", "figures: clip sets", "figures: assemble", "figures: images",
+                             "figures: GPU upload", "figures: other"})
     {
         CAPTURE(name);
         const LoadPhase* part = find(name);
