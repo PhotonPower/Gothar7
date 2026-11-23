@@ -1197,6 +1197,7 @@ Result<void> Engine::instantiateScene()
                 m_lights.push_back(point);
             }
         });
+    m_indoorRoomsDirty = true; // window lights decide the rooms' daylight
     return {};
 }
 
@@ -1227,6 +1228,7 @@ Result<void> Engine::setZones(std::vector<world::Zone> zones)
         }
     }
     m_worldFile.zones = std::move(zones); // read live: rooms (render), music, ambience, NPC rooms
+    m_indoorRoomsDirty = true;
     return {};
 }
 
@@ -1392,6 +1394,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     m_worldPath = path;
     m_worldFile = std::move(file);
     m_worldFile.vobs.clear(); // the scene holds them; captured again when the world is left
+    m_indoorRoomsDirty = true;
     m_sceneName = m_worldFile.name.empty() ? path : m_worldFile.name;
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
                 m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.size(),
@@ -1462,6 +1465,7 @@ void Engine::unloadWorld()
     m_physicsDirty = true;
     m_lights.clear();
     m_daylightLights.clear();
+    m_indoorRoomsDirty = true;
     m_terrain = {};
     m_heightfield = {};
     m_hasTerrain = false;
@@ -1689,6 +1693,7 @@ void Engine::initEnvironment()
     {
         m_dayCycle = std::move(cycle).value();
         G7_LOG_INFO("engine", "day and night from {} ({} keys)", curves, m_dayCycle.keys().size());
+        m_indoorRoomsDirty = true; // [indoor] factors
     }
     else
     {
@@ -1750,16 +1755,41 @@ void Engine::initEnvironment()
     rebuildWaterSurfaces();
 }
 
+const std::vector<render::IndoorVolume>& Engine::indoorRooms() const
+{
+    if (!m_indoorRoomsDirty)
+    {
+        return m_indoorRooms;
+    }
+    // Each indoor box with its ambient factor (world.md "Zonen"): its daylight, else from the window lights.
+    std::vector<Vec3> windows;
+    windows.reserve(m_daylightLights.size());
+    for (const render::PointLight& l : m_daylightLights)
+    {
+        windows.push_back(l.position);
+    }
+    const std::vector<f32> factors = world::indoorDaylight(
+        m_worldFile.zones, windows, m_dayCycle.indoorAmbient(), m_dayCycle.indoorAmbientWindowless());
+    m_indoorRooms.clear();
+    for (usize i = 0; i < m_worldFile.zones.size(); ++i)
+    {
+        const world::Zone& z = m_worldFile.zones[i];
+        if (z.box && z.type == "indoor") // music and ambient zones have boxes too (M13)
+        {
+            m_indoorRooms.push_back(
+                {z.box->center, z.box->halfExtents, glm::radians(z.box->yawDegrees), factors[i]});
+        }
+    }
+    m_indoorRoomsDirty = false;
+    return m_indoorRooms;
+}
+
 std::vector<render::IndoorVolume> Engine::nearestIndoorVolumes(const Vec3& point) const
 {
     std::vector<std::pair<f32, render::IndoorVolume>> rooms;
-    for (const world::Zone& z : m_worldFile.zones)
+    for (const render::IndoorVolume& v : indoorRooms())
     {
-        if (z.box && z.type == "indoor") // music and ambient zones have boxes too (M13)
-        {
-            const render::IndoorVolume v{z.box->center, z.box->halfExtents, glm::radians(z.box->yawDegrees)};
-            rooms.emplace_back(glm::length(v.center - point), v);
-        }
+        rooms.emplace_back(glm::length(v.center - point), v);
     }
     const usize count = std::min<usize>(rooms.size(), render::kMaxIndoorVolumes);
     std::partial_sort(rooms.begin(), rooms.begin() + static_cast<std::ptrdiff_t>(count), rooms.end(),
@@ -1998,8 +2028,7 @@ void Engine::updateEnvironment()
     }
     m_environment = sample.environment;
     m_environment.fogStart = fogStart;
-    // Rooms (zones of type indoor, world.md): the nearest to the camera get the indoor ambient.
-    m_environment.indoorAmbient = m_dayCycle.indoorAmbient();
+    // Rooms (zones of type indoor, world.md): the nearest to the camera get their ambient factor.
     m_environment.indoor = nearestIndoorVolumes(m_camera.transform.position);
     if (!m_sunEnabled)
     {

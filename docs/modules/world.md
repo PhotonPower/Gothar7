@@ -272,11 +272,18 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   - Zahlen nach float32-kürzest (wie Vobs und Wegnetz).
 - **Schreiben:** je Zone eine Zeile, sortiert nach `value`, bei Gleichstand nach `box.center` x, dann z; andere Typen
   behalten bei gleichem `value` ihre Reihenfolge. Gleiche Welt, gleiche Bytes.
-- **Wirkung (render):** Jede Fläche im Raum bekommt das Innen-Ambient (`environment.toml` `[indoor] ambient`, Faktor
-  auf Himmels- und Boden-Ambient, Vorgabe 0,35) – je Pixel, nicht je Kamera: Von der Straße wirkt ein Raum dunkel, von
-  innen bleibt die Straße hell. Innenseiten von Wänden, Boden und Decke liegen auf dem Rand der Box und zählen ganz
+  - **`daylight`** (optional, 0..1; Vertrag mit welt, Owner-Entscheidung 2026-11-24): wie viel Tageslicht den Raum
+    erreicht = Faktor auf das Ambient in dieser Box. Steht nach `box`, wird nur geschrieben, wenn gesetzt; nur an
+    `indoor`-Zonen (sonst Ladefehler). Beispiel: `{"type":"indoor","value":"LEO_SCHLOSS_WEINKELLER","box":{…},"daylight":0.02}`.
+  - **Ohne `daylight` abgeleitet** (`world::indoorDaylight`): Liegt ein Fensterlicht (`light.daylight`) in einer Box
+    des Raums (gleicher `value`; bis 0,15 m außerhalb zählt, es sitzt in der Fensteröffnung), gilt für alle Boxen des
+    Raums `environment.toml` `[indoor] ambient` (0,35), sonst `[indoor] ambient_windowless` (0,06, Keller).
+- **Wirkung (render):** Jede Fläche im Raum bekommt den Faktor ihres Raums auf Himmels- und Boden-Ambient – je Pixel,
+  nicht je Kamera: Von der Straße wirkt ein Raum dunkel, von innen bleibt die Straße hell. Liegen Boxen ineinander
+  (Weinkeller unter der Halle), gilt der **kleinste** Faktor. Innenseiten von Wänden, Boden und Decke liegen auf dem Rand der Box und zählen ganz
   (5 cm Toleranz); dahinter blendet es über 0,3 m (= welts Wandstärke) aus, die Außenseite der Wand ist draußen.
-  Die Engine reicht die 32 Räume nächst der Kamera an den Shader (`Engine::nearestIndoorVolumes`).
+  Die Engine reicht die 32 Räume nächst der Kamera mit ihrem Faktor an den Shader (`Engine::nearestIndoorVolumes`,
+  `Engine::indoorRooms`).
 - Sonne und Punktlichter bleiben unverändert (die Sonne fällt durch Tür und Fenster, Schatten kommen aus den
   Schattenkarten); Nebel je Zone folgt später.
 

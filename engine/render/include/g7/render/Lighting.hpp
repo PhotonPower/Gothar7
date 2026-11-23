@@ -11,18 +11,25 @@
 namespace g7::render
 {
 /// A room (world.md "zones", type indoor): a box turned by `yaw` about +Y; local +X points to
-/// (cos yaw, 0, -sin yaw). Surfaces in it get the indoor ambient.
+/// (cos yaw, 0, -sin yaw). Surfaces in it get the room's ambient factor.
 struct IndoorVolume
 {
     Vec3 center{0.0f};
     Vec3 halfExtents{1.0f};
     f32 yaw = 0.0f; ///< radians
+    f32 ambient =
+        1.0f; ///< factor on the ambient inside, 0..1 (world.md "Zonen": daylight, environment.toml [indoor])
 };
 
 /// How much a point is inside the rooms, 0..1: 1 within a box (5 cm tolerance, so its inner wall, floor and
 /// ceiling surfaces count), fading to 0 at `edge` beyond it - through the wall, whose outer face stays
 /// outside. Same formula as common/lighting.glsl.
 [[nodiscard]] f32 indoorAmount(const Vec3& point, std::span<const IndoorVolume> volumes, f32 edge) noexcept;
+/// The factor on the ambient at a point: each room blends from 1 to its `ambient` by how much the point is in
+/// it (as indoorAmount); nested or touching rooms: the smallest. 1 outside. Same formula as
+/// common/lighting.glsl.
+[[nodiscard]] f32 indoorAmbientFactor(const Vec3& point, std::span<const IndoorVolume> volumes,
+                                      f32 edge) noexcept;
 
 /// Global lighting of a frame. Driven by the time of day from M4 (sky colours, sun path).
 struct Environment
@@ -39,8 +46,7 @@ struct Environment
     f32 fogDensity = 0.0f;
     /// Rooms of the world near the camera (at most kMaxIndoorVolumes; the engine picks the nearest).
     std::vector<IndoorVolume> indoor;
-    f32 indoorAmbient = 1.0f; ///< ambient factor inside them (environment.toml [indoor])
-    f32 indoorEdge = 0.3f;    ///< m, the fade beyond a room's box (welt's walls are 0.3 m thick)
+    f32 indoorEdge = 0.3f; ///< m, the fade beyond a room's box (welt's walls are 0.3 m thick)
     /// How dark the sun's shadows are, 1 = full .. 0 = none (M17 weather: overcast skies soften them).
     f32 shadowStrength = 1.0f;
     /// M17 P3: how strongly the ambient occlusion (MeshRenderer::setAmbientOcclusion) damps the ambient
@@ -144,17 +150,19 @@ struct GpuLighting
     Vec4 cameraForward;
     Vec4 fogColorStart;         ///< rgb linear, w start
     Vec4 fogParams;             ///< x density
-    Vec4 indoorParams;          ///< x rooms, y ambient factor inside, z edge (m)
+    Vec4 indoorParams;          ///< x rooms, z edge (m)
     Vec4 aoParams;              ///< x ambient occlusion strength (0 off), yz 1 / viewport size
     Mat4 rainMapViewProjection; ///< M17 N: world -> rain map (depth 0 top .. 1)
     Vec4 wetParams;             ///< x wetness, y has rain map, z puddles
     std::array<Vec4, 2 * kMaxIndoorVolumes>
         indoorBoxes; ///< per room: centre + cos yaw, half extents + sin yaw
+    std::array<Vec4, kMaxIndoorVolumes / 4> indoorAmbient; ///< per room its ambient factor, four to a vec4
     std::array<Vec4, LightList::kMaxPerFrame> pointPositionRadius;
     std::array<Vec4, LightList::kMaxPerFrame> pointColor; ///< rgb * intensity
 };
 static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 9 * 16 + 64 + 16 +
-                                         2 * 16 * kMaxIndoorVolumes + 2 * 16 * LightList::kMaxPerFrame,
+                                         2 * 16 * kMaxIndoorVolumes + 4 * kMaxIndoorVolumes +
+                                         2 * 16 * LightList::kMaxPerFrame,
               "must match std140 (common/lighting.glsl)");
 
 [[nodiscard]] GpuLighting packLighting(const Environment& environment, const LightList& lights) noexcept;

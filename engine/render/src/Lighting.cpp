@@ -157,6 +157,17 @@ f32 indoorAmount(const Vec3& point, std::span<const IndoorVolume> volumes, f32 e
     return amount;
 }
 
+f32 indoorAmbientFactor(const Vec3& point, std::span<const IndoorVolume> volumes, f32 edge) noexcept
+{
+    f32 factor = 1.0f;
+    for (const IndoorVolume& v : volumes)
+    {
+        const f32 amount = indoorAmount(point, std::span<const IndoorVolume>(&v, 1), edge);
+        factor = std::min(factor, 1.0f + (v.ambient - 1.0f) * amount);
+    }
+    return factor;
+}
+
 GpuLighting packLighting(const Environment& environment, const LightList& lights) noexcept
 {
     GpuLighting gpu{};
@@ -169,7 +180,7 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
     gpu.fogColorStart = Vec4(environment.fogColor, environment.fogStart);
     gpu.fogParams = Vec4(environment.fogDensity, 0.0f, 0.0f, 0.0f);
     const usize rooms = std::min<usize>(environment.indoor.size(), kMaxIndoorVolumes);
-    gpu.indoorParams = Vec4(static_cast<f32>(rooms), environment.indoorAmbient, environment.indoorEdge, 0.0f);
+    gpu.indoorParams = Vec4(static_cast<f32>(rooms), 0.0f, environment.indoorEdge, 0.0f);
     gpu.aoParams =
         Vec4(environment.ambientOcclusion, environment.viewportTexel.x, environment.viewportTexel.y, 0.0f);
     gpu.rainMapViewProjection = environment.rainMapViewProjection;
@@ -180,6 +191,7 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
         const IndoorVolume& v = environment.indoor[i];
         gpu.indoorBoxes[2 * i] = Vec4(v.center, std::cos(v.yaw));
         gpu.indoorBoxes[2 * i + 1] = Vec4(v.halfExtents, std::sin(v.yaw));
+        gpu.indoorAmbient[i / 4][static_cast<glm::length_t>(i % 4)] = std::clamp(v.ambient, 0.0f, 1.0f);
     }
     const auto& points = lights.lights();
     gpu.shadowExtra.z = 1.0f - std::clamp(environment.shadowStrength, 0.0f, 1.0f);
