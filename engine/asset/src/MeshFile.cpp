@@ -19,7 +19,8 @@ constexpr usize kSubmeshSize = 3 * 4;
 // Smallest material / image records (empty strings and blobs).
 constexpr usize kMinMaterialSize = 2 + 4 * 4 + 4 + 4 + 4 + 3 * 4 + 4 + 1 + 4 + 1;
 constexpr usize kMinImageSize = 2 + 2 + 4;
-constexpr usize kWindSize = 1 + 4 + 3 * 4; // per material, version 4
+constexpr usize kWindSize = 1 + 4 + 3 * 4;  // per material, version 4
+constexpr usize kGlassSize = 1 + 1 + 3 * 4; // per material, version 5
 
 void writeVec(ByteWriter& w, const f32* v, int n)
 {
@@ -120,6 +121,12 @@ std::vector<u8> serializeMesh(const MeshData& mesh)
         w.u8v(static_cast<u8>(m.wind));
         w.f32v(m.windStrength);
         writeVec(w, &m.windPivot.x, 3);
+    }
+    for (const MaterialInfo& m : mesh.materials) // version 5: glass (M17 windows F1)
+    {
+        w.u8v(m.glass ? 1 : 0);
+        w.u8v(static_cast<u8>(m.glassPattern));
+        writeVec(w, &m.glassTint.x, 3);
     }
     return out;
 }
@@ -253,6 +260,23 @@ Result<MeshData> deserializeMesh(std::span<const u8> bytes, std::string_view deb
             return meshError(debugName, "corrupt .g7mesh (unknown wind kind)");
         }
         material.wind = static_cast<WindKind>(wind);
+    }
+    if (version >= 5 && u64(materialCount) * kGlassSize > r.remaining())
+    {
+        return meshError(debugName, "corrupt .g7mesh (truncated)");
+    }
+    for (u32 m = 0; version >= 5 && m < materialCount; ++m)
+    {
+        MaterialInfo& material = mesh.materials[m];
+        const u8 glass = r.u8v();
+        const u8 pattern = r.u8v();
+        readVec(r, &material.glassTint.x, 3);
+        if (glass > 1 || pattern > static_cast<u8>(GlassPattern::Plain))
+        {
+            return meshError(debugName, "corrupt .g7mesh (unknown glass pattern)");
+        }
+        material.glass = glass == 1;
+        material.glassPattern = static_cast<GlassPattern>(pattern);
     }
     if (r.failed())
     {

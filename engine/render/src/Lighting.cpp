@@ -175,6 +175,7 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
     gpu.rainMapViewProjection = environment.rainMapViewProjection;
     gpu.wetParams = Vec4(std::clamp(environment.wetness, 0.0f, 1.0f), environment.hasRainMap ? 1.0f : 0.0f,
                          environment.puddles ? 1.0f : 0.0f, 0.0f);
+    gpu.skyZenith = Vec4(environment.skyZenith, static_cast<f32>(environment.windowReflections));
     for (usize i = 0; i < rooms; ++i)
     {
         const IndoorVolume& v = environment.indoor[i];

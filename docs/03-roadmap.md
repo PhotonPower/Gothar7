@@ -349,6 +349,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
   - Plan (Teile W1–W3, freigegeben 2026-11-07): `docs/modules/render.md` „Plan M17: Wasser und Post-Processing“
 - [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
   - Plan ohne Vulkan (freigegeben 2026-11-23, nach Schloss/Dungeon): `docs/modules/render.md` „Plan M17: Spiegelnde Fenster“, Vertrag Glas-Material mit welt, Gefühlsfragen 1–10
+  - F1 Glas-Material und Stufe A (Himmel, Fresnel, Butzen/Rauten, Option `render.window_reflections`, `.g7mesh` v5, Testmodell in der Testszene); offen: warmer Schimmer (Frage 4), F2 Proben, F3 SSR, Abschluss (Menü)
 - [x] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional – #358, #360, #375
   - Plan (Teile P1–P3, freigegeben 2026-11-07): ebenda
 - [ ] Vegetation: Instancing, Wind-Animation, Grasfelder – Wind-Animation umgesetzt (Wetter Teil W); offen: Instancing, Grasfelder – Plan: `render.md` „Plan M17: Grasfelder und Vegetations-Instancing“ (freigegeben 2026-11-23)

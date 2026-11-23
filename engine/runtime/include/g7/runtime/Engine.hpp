@@ -1840,7 +1840,9 @@ private:
     render::RainRenderer m_rain;                                     // M17 R
     std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
     render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
-    bool m_weatherVisible = true;                                    // [render] weather
+    render::WindowReflections m_windowReflections =
+        render::WindowReflections::Medium; // [render] window_reflections
+    bool m_weatherVisible = true;          // [render] weather
     f64 m_rainTime = 0.0;
     bool m_windEnabled = true;               // [render] wind (M17 W)
     f64 m_windTime = 0.0;                    // real seconds, wrapped; moves the sway and the gusts

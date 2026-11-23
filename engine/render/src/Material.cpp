@@ -162,6 +162,7 @@ Result<MaterialSet> MaterialSet::create(Device& device, const asset::MeshData& m
         material.alphaMode = info.alphaMode;
         material.doubleSided = info.doubleSided;
         material.wind = windBend(info, mesh.bounds); // M17 W: weight over the whole model's height
+        material.glass = GlassLook{info.glass, info.glassPattern, info.glassTint}; // M17 windows F1
         set.m_materials.push_back(material);
     }
     return set;

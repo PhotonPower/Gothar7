@@ -3,6 +3,7 @@
 #include <g7/core/Geometry.hpp>
 #include <g7/core/Math.hpp>
 #include <g7/core/Types.hpp>
+#include <g7/render/Glass.hpp>
 
 #include <array>
 #include <span>
@@ -53,6 +54,10 @@ struct Environment
     Mat4 rainMapViewProjection{1.0f};
     bool puddles = false;
     Vec2 viewportTexel{0.0f};
+    /// M17 windows F1: the sky's zenith colour (Sky::zenith; the horizon is `fogColor`), mirrored by window
+    /// glass, and the stage of window reflections (off: glass drawn like any material).
+    Vec3 skyZenith{0.04f, 0.03f, 0.05f};
+    WindowReflections windowReflections = WindowReflections::Off;
 };
 
 inline constexpr u32 kMaxIndoorVolumes = 32;
@@ -148,12 +153,13 @@ struct GpuLighting
     Vec4 aoParams;              ///< x ambient occlusion strength (0 off), yz 1 / viewport size
     Mat4 rainMapViewProjection; ///< M17 N: world -> rain map (depth 0 top .. 1)
     Vec4 wetParams;             ///< x wetness, y has rain map, z puddles
+    Vec4 skyZenith; ///< M17 windows F1: rgb the zenith colour, w window reflections (0 off .. 3 high)
     std::array<Vec4, 2 * kMaxIndoorVolumes>
         indoorBoxes; ///< per room: centre + cos yaw, half extents + sin yaw
     std::array<Vec4, LightList::kMaxPerFrame> pointPositionRadius;
     std::array<Vec4, LightList::kMaxPerFrame> pointColor; ///< rgb * intensity
 };
-static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 9 * 16 + 64 + 16 +
+static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 9 * 16 + 64 + 2 * 16 +
                                          2 * 16 * kMaxIndoorVolumes + 2 * 16 * LightList::kMaxPerFrame,
               "must match std140 (common/lighting.glsl)");
 

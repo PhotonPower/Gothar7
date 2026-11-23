@@ -60,6 +60,9 @@ weather = true
 rain_quality = "medium"
 # Wind (M17 W): Vegetation, Zunftschilder und Rauch bewegen sich mit dem Wind der Wetterlage; aus = alles steht still.
 wind = true
+# Spiegelnde Fenster (M17): Glasscheiben spiegeln Himmel und Sonne (low), dazu Reflexions-Proben (medium) und
+# Bildraum-Spiegelung (high; Proben und Bildraum folgen in eigenen Teilen); off = dunkle Scheiben wie früher.
+window_reflections = "medium"
 # Zauber-Verzerrung (M17 V): Hitzeflimmern, Druckwellen und Wirbel der Zauber und großer Feuer; aus = Bild ohne Verzerrung.
 spell_distortion = true
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).

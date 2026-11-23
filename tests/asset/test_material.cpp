@@ -139,6 +139,44 @@ TEST_CASE("Material: wind marks from the material extras (M17 W)")
     CHECK_FALSE(parseWindKind("none").has_value());
 }
 
+TEST_CASE("Material: window glass from the material extras (M17 windows F1)")
+{
+    const MeshData none = load(quadGltf(R"({"name":"frame"})"));
+    CHECK_FALSE(none.materials[0].glass);
+    CHECK(none.materials[0].glassTint == kDefaultGlassTint);
+    CHECK(none.materials[0].glassPattern == GlassPattern::Bullseye);
+
+    const MeshData pane = load(quadGltf(R"({"name":"window_glass","extras":{"glass":true}})"));
+    CHECK(pane.materials[0].glass);
+    CHECK(pane.materials[0].glassTint == kDefaultGlassTint); // slightly green
+    CHECK(pane.materials[0].glassPattern == GlassPattern::Bullseye);
+    CHECK(pane.materials[0].wind == WindKind::None);
+
+    const MeshData diamond = load(quadGltf(
+        R"({"extras":{"glass":true,"glass_tint":[0.5,0.6,1.5],"glass_pattern":"diamond","wind":"cloth"}})"));
+    CHECK(diamond.materials[0].glass);
+    CHECK(nearlyEqual(diamond.materials[0].glassTint, Vec3(0.5f, 0.6f, 1.0f))); // clamped to 0..1
+    CHECK(diamond.materials[0].glassPattern == GlassPattern::Diamond);
+    CHECK(diamond.materials[0].wind == WindKind::Cloth); // both extras together
+
+    // Malformed values: warned about, the defaults instead; a model never fails over its extras.
+    const MeshData notBool = load(quadGltf(R"({"extras":{"glass":"yes"}})"));
+    CHECK_FALSE(notBool.materials[0].glass);
+    const MeshData badTint =
+        load(quadGltf(R"({"extras":{"glass":true,"glass_tint":[1,2],"glass_pattern":"stained"}})"));
+    CHECK(badTint.materials[0].glass);
+    CHECK(badTint.materials[0].glassTint == kDefaultGlassTint);
+    CHECK(badTint.materials[0].glassPattern == GlassPattern::Bullseye);
+    const MeshData off = load(quadGltf(R"({"extras":{"glass":false,"glass_pattern":"plain"}})"));
+    CHECK_FALSE(off.materials[0].glass);
+
+    for (const GlassPattern pattern : {GlassPattern::Bullseye, GlassPattern::Diamond, GlassPattern::Plain})
+    {
+        CHECK(parseGlassPattern(glassPatternName(pattern)) == pattern);
+    }
+    CHECK_FALSE(parseGlassPattern("stained").has_value());
+}
+
 TEST_CASE("Material: tangents are computed for normal-mapped materials")
 {
     const MeshData mesh = load(quadGltf(R"({"normalTexture":{"index":0}})"));

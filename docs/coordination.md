@@ -1,3 +1,4 @@
+| Fensterglas (M17 Fenster): glTF-Material der Scheibe geschlossener Fenster mit `extras.glass = true` (Name frei, Vorschlag `window_glass`; Rahmen und Laibung bleiben `frame`), optional `extras.glass_tint` [r,g,b] 0..1 (Vorgabe leicht grünlich) und `extras.glass_pattern` = `bullseye` (Vorgabe), `diamond` oder `plain`; lod0-Scheiben und flache Fensterflächen von lod1, nicht lod2; offene Fenster ohne Scheibe; Kirche und Schloss ebenso (farbiges Bleiglas später); Glas an Gegenständen (figuren) nicht betroffen – freigegeben 2026-11-23 (Plan #423) | engine (Lesen und Glas-Zweig in `mesh.frag`, Teil F1) | welt (Häuser, Kirche, Schloss) | `docs/modules/render.md` „Spiegelnde Fenster“ |
 # Zusammenarbeit der Spuren und Sitzungen
 
 Gothar wird von mehreren parallel laufenden Claude-Code-Sitzungen entwickelt, jede in einem eigenen
