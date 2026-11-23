@@ -76,6 +76,9 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 | `mob/door/t_open` | Tür öffnen/schließen | – | open | Q | platzhalter (UAL1 `Interact`) |
 | `mob/table/t_sit`, `s_sit`, `t_stand` | Am Tisch sitzen (welts Tisch mit Bänken): hinter der Bank, rechtes Bein zuerst hinübersteigen, sitzen mit den Unterarmen auf der Platte, aufstehen rückwärts | – | – | K | platzhalter-K (Slot 1,10 m von der Tischachse, Hüfte über der Sitzmitte; Armhaltung per Gittersuche; mit engine 2026-10-08) |
 | `mob/table/s_sit_drink`, `s_sit_talk` | Am Tisch trinken (`it_mug`, rechte Hand) bzw. reden (Gesten mit beiden Händen) – Schleifen für FP_SIT/FP_DRINK | – | item_to_hand (trinken) | K | platzhalter-K |
+| `mob/lever/t_use` | Dungeon-Hebel (engine #435): hochgreifen, packen, herunterziehen (Griff ~1,2 m, Slot 0,6 m vor der Wand; eigene Datei `dungeon.glb`) | – | use | K | platzhalter-K |
+| `mob/button/t_press` | Wandknopf (engine #435): Stein in der Wand eindrücken (~1,2 m hoch, Slot 0,55 m) | – | use | K | platzhalter-K |
+| `mob/niche/t_reach`, `s_reach`, `t_back` | Nische (engine #439): vorbeugen und hineingreifen, darin tasten, Hand zurückziehen (Boden ~0,9 m, Slot 0,55 m; wie eine Truhe ohne Deckel) | – | open (t_reach), close (t_back) | K | platzhalter-K |
 
 ### Prio B – Fortbewegung je Waffenmodus (ausgeschrieben, F2)
 
