@@ -40,7 +40,15 @@ from gothar_worldgen.config import (
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.export.descents import dig_descents
 from gothar_worldgen.export.pads import apply_pads, room_pads
-from gothar_worldgen.export.splat import SplatPaths, composite, coverage, layer_masks, write_splat
+from gothar_worldgen.export.splat import (
+    SplatPaths,
+    composite,
+    coverage,
+    grass_mask,
+    layer_masks,
+    write_grass_mask,
+    write_splat,
+)
 from gothar_worldgen.export.starts import DEFAULT_STARTS, load_starts
 from gothar_worldgen.export.terrain import ExportError, Grid, crop, export_terrain, load_grid
 from gothar_worldgen.export.water import carve_and_place
@@ -358,6 +366,7 @@ def _export_splat(
             docs[key] = json.loads((work / file).read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as e:
             raise ExportError(f"{file}: {e} (run 'import' first or pass --no-splat)") from None
+    town = None
     if data_dir is not None and load_rural_rules(data_dir) is not None:  # W6 rural ways
         docs["streets"] = load_street_doc(work, data_dir)
         raw = docs["buildings"].get("buildings", [])
@@ -388,6 +397,19 @@ def _export_splat(
     )  # fmt: skip
     shares = ", ".join(f"{k} {v:.0%}" for k, v in coverage(weights).items())
     print(f"  splat: {len(block['maps'])} maps, {len(block['layers'])} layers ({shares})", file=out)
+    # M17 G2: the grass mask beside the splat maps; the editor's <world>.grass.png beside the
+    # world file is the owner's overlay and is never touched here.
+    mask = grass_mask(
+        grid,
+        docs["buildings"].get("buildings", []),
+        docs["streets"].get("streets", []),
+        docs["streets"].get("squares", []),
+        docs["features"].get("features", []),
+        gardens,
+        town,
+    )
+    write_grass_mask(mask, folder / "generated" / f"{name}_grass_mask.png")
+    print(f"  grass mask: mean {mask.mean():.0%}, none on {(mask < 0.05).mean():.0%}", file=out)
     return block
 
 
@@ -1613,7 +1635,9 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             data_dir / "starts.json"
         )
         r16 = folder / "generated" / f"{name}.r16"
-        result = export_terrain(grid, name, folder / f"{name}.g7world", r16, vfs, splat, starts)
+        mask_vfs = None if splat is None else f"worlds/{site.name}/generated/{name}_grass_mask.png"
+        result = export_terrain(grid, name, folder / f"{name}.g7world", r16, vfs, splat, starts,
+                                mask_vfs)  # fmt: skip
     except ExportError as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR

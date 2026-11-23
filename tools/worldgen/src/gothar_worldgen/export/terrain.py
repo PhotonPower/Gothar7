@@ -143,6 +143,10 @@ def check_terrain_block(block: dict[str, Any]) -> list[str]:
         problems.append("terrain.maxY must be greater than terrain.minY")
     if "splat" in block:
         problems.extend(check_splat_block(block["splat"]))
+    if "grass_mask" in block and not (
+        isinstance(block["grass_mask"], str) and block["grass_mask"].endswith(".png")
+    ):
+        problems.append("terrain.grass_mask must be a VFS path to a .png file")
     return problems
 
 
@@ -252,11 +256,14 @@ def export_terrain(
     heightmap_vfs: str,
     splat: dict[str, Any] | None = None,
     starts: tuple[StartPoint, ...] = (),
+    grass_mask: str | None = None,
 ) -> TerrainExport:
     values, min_y, max_y = quantize_heights(grid.heights)
     block = terrain_block(grid, heightmap_vfs, min_y, max_y)
     if splat is not None:
         block["splat"] = splat
+    if grass_mask is not None:
+        block["grass_mask"] = grass_mask
     problems = check_terrain_block(block)
     if problems:
         raise ExportError("; ".join(problems))
