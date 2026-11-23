@@ -14,7 +14,7 @@ art = "gatterbock"
 material = "fur"
 voxel = 0.012
 smooth = 4
-triangles = 3600       # lod0 core; the ~60 plates and the ember eyes add ~2.5 k
+triangles = 1200       # lod0 core (mostly hidden); the hewn plates and the ember eyes add ~4.8 k
 lods = [1.0, 0.5, 0.25]
 texture = 1024
 seed = 41
@@ -24,6 +24,10 @@ normal_strength = 0.9
 eye_colour = "#3a1c08"
 eye_glow = 0.9
 eye_glow_colour = "#ffa040"           # ember
+plate_bevel = 0.02                    # chamfered edges
+plate_rough = 0.045                   # hewn faces, chipped edges and corners
+grime = 0.6                           # moss and dirt in the joints
+grime_colour = "#4d5530"
 
 [orientation]                # upright biped
 left = ["foot_r", "foot_l"]
@@ -123,19 +127,20 @@ tail = [0.22, -0.29, 0.04]
 
 # --- colour zones ---
 
-[zone.iron]                  # dark forged iron of the frame, bands, fists and feet
+[zone.iron]                  # dark forged iron, rusty and worn
 colour = "#2e2d2c"
-colour2 = "#3f342b"
-variation = 0.14
-spots = 0.35
-stripe_colour = "#5a3a22"     # rust
+colour2 = "#5a3a22"
+variation = 0.18
+spots = 0.7
+stripe_colour = "#7a4a26"     # rust
 
 [zone.stone]                 # hewn sandstone: layers, grain, chisel marks, a little lichen
 colour = "#ab8f6c"
 colour2 = "#927a5c"
 variation = 0.12
 strata = 1.0
-spots = 0.2
+cracks = 0.8
+spots = 0.3
 stripe_colour = "#6f7a4a"
 
 # --- the iron frame (merged core, mostly hidden behind the blocks) ---
@@ -229,35 +234,79 @@ b = [0.33, -0.10, 2.38]
 r = 0.04
 r2 = 0.0
 
-# --- sandstone blocks (rigid plates on their bones) ---
+# --- sandstone blocks of uneven size, hewn and weathered (rigid plates on their bones) ---
 
 [[shape]]
-kind = "plate"               # pelvis block
+kind = "plate"               # pelvis: two blocks
 zone = "stone"
 bone = "pelvis"
-center = [0, 0, 1.12]
-size = [0.31, 0.21, 0.13]
+center = [0.14, 0.0, 1.12]
+size = [0.16, 0.21, 0.12]
+rotate = [0, 2, -3]
 
 [[shape]]
-kind = "plate"               # belly block
+kind = "plate"
+zone = "stone"
+bone = "pelvis"
+center = [-0.155, 0.01, 1.13]
+size = [0.14, 0.20, 0.13]
+rotate = [2, -3, 2]
+
+[[shape]]
+kind = "plate"               # belly: a wide and a narrow block
 zone = "stone"
 bone = "spine_01"
-center = [0, 0, 1.34]
-size = [0.30, 0.20, 0.10]
+center = [0.05, 0.0, 1.34]
+size = [0.24, 0.19, 0.10]
+rotate = [0, -2, 2]
 
 [[shape]]
-kind = "plate"               # chest: two courses of blocks
+kind = "plate"
+zone = "stone"
+bone = "spine_01"
+center = [-0.24, 0.0, 1.33]
+size = [0.07, 0.18, 0.09]
+rotate = [0, 4, -3]
+
+[[shape]]
+kind = "plate"               # chest, lower course: three blocks
 zone = "stone"
 bone = "spine_02"
-center = [0, -0.01, 1.58]
-size = [0.42, 0.26, 0.12]
+center = [0.27, -0.01, 1.57]
+size = [0.15, 0.25, 0.13]
+rotate = [0, 0, 2]
 
 [[shape]]
 kind = "plate"
 zone = "stone"
 bone = "spine_02"
-center = [0, -0.01, 1.82]
-size = [0.45, 0.27, 0.11]
+center = [-0.035, -0.02, 1.585]
+size = [0.145, 0.26, 0.115]
+rotate = [2, 0, -2]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "spine_02"
+center = [-0.31, 0.0, 1.575]
+size = [0.11, 0.24, 0.12]
+rotate = [-2, 3, 0]
+
+[[shape]]
+kind = "plate"               # chest, upper course: two blocks
+zone = "stone"
+bone = "spine_02"
+center = [0.22, -0.01, 1.825]
+size = [0.22, 0.27, 0.105]
+rotate = [0, -2, -1]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "spine_02"
+center = [-0.235, -0.01, 1.815]
+size = [0.215, 0.265, 0.115]
+rotate = [1, 2, 2]
 
 [[shape]]
 kind = "plate"               # iron bands round the chest
@@ -272,6 +321,7 @@ zone = "iron"
 bone = "spine_02"
 center = [0, -0.01, 1.70]
 size = [0.46, 0.28, 0.025]
+rotate = [0, 1, 0]
 
 [[shape]]
 kind = "plate"               # head block with the ember slit below the brow
@@ -279,6 +329,7 @@ zone = "stone"
 bone = "head"
 center = [0, -0.04, 2.24]
 size = [0.15, 0.17, 0.10]
+rotate = [3, 0, -4]
 
 [[shape]]
 kind = "plate"               # jaw block
@@ -286,6 +337,7 @@ zone = "stone"
 bone = "head"
 center = [0, -0.05, 2.09]
 size = [0.13, 0.15, 0.04]
+rotate = [0, 0, 3]
 
 [[shape]]
 kind = "eye"                 # the ember slit: two flat glowing embers under the brow
@@ -298,18 +350,33 @@ size = [0.04, 0.012, 0.012]
 kind = "plate"               # shoulder blocks
 zone = "stone"
 bone = "clavicle_l"
-mirror = true
-center = [0.42, 0, 1.97]
+center = [0.42, 0.0, 1.97]
 size = [0.17, 0.20, 0.14]
+rotate = [0, -6, 3]
 
 [[shape]]
-kind = "plate"               # upper arm
+kind = "plate"
+zone = "stone"
+bone = "clavicle_r"
+center = [-0.43, 0.01, 1.96]
+size = [0.16, 0.21, 0.15]
+rotate = [4, 5, -2]
+
+[[shape]]
+kind = "plate"               # upper arms
 zone = "stone"
 bone = "upperarm_l"
-mirror = true
 center = [0.55, -0.01, 1.62]
 size = [0.13, 0.14, 0.22]
 rotate = [0, 10, 0]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "upperarm_r"
+center = [-0.555, -0.01, 1.64]
+size = [0.14, 0.135, 0.20]
+rotate = [3, -12, 2]
 
 [[shape]]
 kind = "plate"
@@ -321,21 +388,35 @@ size = [0.14, 0.15, 0.02]
 rotate = [0, 10, 0]
 
 [[shape]]
-kind = "plate"               # forearm
+kind = "plate"               # forearms
 zone = "stone"
 bone = "lowerarm_l"
-mirror = true
 center = [0.62, -0.05, 1.20]
 size = [0.135, 0.145, 0.19]
 rotate = [8, 4, 0]
 
 [[shape]]
-kind = "plate"               # thigh
+kind = "plate"
+zone = "stone"
+bone = "lowerarm_r"
+center = [-0.62, -0.05, 1.21]
+size = [0.14, 0.14, 0.18]
+rotate = [8, -6, 3]
+
+[[shape]]
+kind = "plate"               # thighs
 zone = "stone"
 bone = "thigh_l"
-mirror = true
 center = [0.21, -0.01, 0.82]
 size = [0.14, 0.16, 0.21]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "thigh_r"
+center = [-0.215, 0.0, 0.83]
+size = [0.15, 0.155, 0.20]
+rotate = [0, 3, -2]
 
 [[shape]]
 kind = "plate"
@@ -346,9 +427,16 @@ center = [0.21, -0.01, 0.62]
 size = [0.145, 0.165, 0.02]
 
 [[shape]]
-kind = "plate"               # shin
+kind = "plate"               # shins
 zone = "stone"
 bone = "calf_l"
-mirror = true
-center = [0.22, 0, 0.36]
+center = [0.22, 0.0, 0.36]
 size = [0.13, 0.15, 0.19]
+
+[[shape]]
+kind = "plate"
+zone = "stone"
+bone = "calf_r"
+center = [-0.22, 0.01, 0.35]
+size = [0.135, 0.145, 0.18]
+rotate = [2, 0, 3]

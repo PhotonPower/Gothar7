@@ -6,7 +6,7 @@
 name = "gatterbock_reference"
 kind = "monster"
 species = "gatterbock"
-height = 2.499
+height = 2.502
 bind_pose = "natural"
 max_bones = 64
 max_influences = 4
