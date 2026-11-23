@@ -118,6 +118,18 @@ def with_wing_terrain(spec: dict[str, Any], height: Any) -> dict[str, Any]:  # n
     return {**spec, "wings": wings}
 
 
+def with_apron(spec: dict[str, Any], height: Any) -> dict[str, Any]:  # noqa: ANN401
+    """Copy of the castle spec with the apron round the hollow main wing measured from the DGM
+    (W7 D1); unchanged without ``interior``."""
+    inside = spec.get("interior")
+    if not inside:
+        return spec
+    geo = schloss_geometry()
+    wing = geo.Wing(next(w for w in spec["wings"] if w["key"] == inside["wing"]))
+    samples = geo.interior.apron_samples(wing, inside, spec.get("stairTower"), height)
+    return {**spec, "interior": {**inside, "apron": samples}}
+
+
 def with_garden_plan(spec: dict[str, Any], garden: dict[str, Any] | None) -> dict[str, Any]:
     """Copy of the castle spec with the terrace plan for the Blender script."""
     if garden is None:
@@ -136,8 +148,12 @@ def schloss_item(spec: dict[str, Any], mesh: str) -> dict[str, Any]:
         ring = [w.p(0, -h, 0), w.p(w.length, -h, 0), w.p(w.length, h, 0), w.p(0, h, 0)]
         footprints.append([[round(p[0], 2), round(p[2], 2)] for p in ring])
     tower = spec.get("stairTower")
+    if tower and spec.get("interior"):  # moved against the garden wall (W7 D1)
+        inner = next(w for w in spec["wings"] if w["key"] == spec["interior"]["wing"])
+        tower = geo.interior.moved_tower(geo.Wing(inner), tower)
     if tower:
-        ring = geo._ring((tower["at"][0], tower["at"][1]), float(tower["radius"]), 0.0)
+        ring = geo._ring((tower["at"][0], tower["at"][1]), float(tower["radius"]), 0.0,
+                         phase=math.radians(float(tower.get("phaseDeg", 0.0))))  # fmt: skip
         footprints.append([[round(p[0], 2), round(p[2], 2)] for p in ring])
     item = {"key": "schloss", "mesh": mesh, "pos": [round(v, 3) for v in origin],
             "replaces": list(spec.get("replaces", [])), "footprints": footprints}  # fmt: skip
@@ -150,6 +166,12 @@ def schloss_item(spec: dict[str, Any], mesh: str) -> dict[str, Any]:
         item["terraces"] = [
             {"key": tr["key"], "s": tr["s"], "y": tr["y"]} for tr in garden["terraces"]
         ]
+    inside = spec.get("interior")
+    if inside:  # W7 D1: the ground under the hollow main wing and tower below the cellar
+        wing = geo.Wing(next(w for w in spec["wings"] if w["key"] == inside["wing"]))
+        pads, holes = geo.interior.cellar_ground(wing, inside, spec.get("stairTower"))
+        item["pads"] = list(item.get("pads", [])) + pads
+        item["holes"] = holes  # export-terrain: terrain cells left out (world.md "Löcher")
     return item
 
 

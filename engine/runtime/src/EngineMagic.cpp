@@ -126,7 +126,7 @@ void Engine::selectRune(u32 slot)
         // Another rune in the hand at once (Gothic 1).
         m_heroCast.reset();
         m_weaponDrawn = item;
-        detachFromPlayer("socket_hand_r");
+        detachFromPlayer(kMagicSocket);
         weaponEvent("draw");
     }
     else if (m_weaponMode == 0)
@@ -991,6 +991,7 @@ void Engine::bindMagicFunctions()
     using script::Value;
     script::ScriptVm& vm = *m_scripts;
     bindTelekinesisFunctions(); // M17 part T
+    bindEventFunctions();       // dungeon D1
     vm.bind(
         {"cast_check", "cast_check(item: string, stages?: integer) -> string | nil",
          "Ob der Held die Rune bzw. Spruchrolle wirken kann (M12, Z1-Z3): nil, sonst der Grund (fehlender "

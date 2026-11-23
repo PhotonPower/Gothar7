@@ -110,6 +110,10 @@ std::optional<std::vector<u32>> Waynet::path(u32 from, u32 to) const
         }
         for (const u32 q : m_edges[p])
         {
+            if (!m_blocked.empty() && blocked(p, q))
+            {
+                continue;
+            }
             const f32 through = cost[p] + glm::length(m_points[q].position - m_points[p].position);
             if (through < cost[q])
             {
@@ -130,6 +134,26 @@ std::optional<std::vector<u32>> Waynet::path(u32 from, u32 to) const
     }
     std::reverse(result.begin(), result.end());
     return result;
+}
+
+void Waynet::setBlockedEdges(std::vector<std::pair<u32, u32>> edges)
+{
+    for (auto& [a, b] : edges)
+    {
+        if (b < a)
+        {
+            std::swap(a, b);
+        }
+    }
+    std::sort(edges.begin(), edges.end());
+    edges.erase(std::unique(edges.begin(), edges.end()), edges.end());
+    m_blocked = std::move(edges);
+}
+
+bool Waynet::blocked(u32 a, u32 b) const noexcept
+{
+    return std::binary_search(m_blocked.begin(), m_blocked.end(),
+                              std::pair<u32, u32>(std::min(a, b), std::max(a, b)));
 }
 
 std::optional<u32> Waynet::nearest(const Vec3& position, const WalkableLine& walkable, f32 maxDistance) const

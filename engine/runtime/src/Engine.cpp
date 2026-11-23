@@ -492,6 +492,8 @@ bool Engine::runFrame()
         fixedUpdateInteraction(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateItemUse(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateMobs(static_cast<f32>(m_fixedStep.step()));
+        fixedUpdateMovers(static_cast<f32>(m_fixedStep.step())); // dungeon D2
+        fixedUpdatePlates();                                     // dungeon D3
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
         m_particles.update(static_cast<f32>(m_fixedStep.step())); // effects (M12)
         fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
@@ -510,7 +512,8 @@ bool Engine::runFrame()
         }
         const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
         m_triggers.update(m_scene, std::span(&probe, 1));
-        m_gameTime.advance(m_fixedStep.step()); // global: keeps running across level changes
+        m_events.update(static_cast<f32>(m_fixedStep.step())); // dungeon D1: what the triggers sent
+        m_gameTime.advance(m_fixedStep.step());                // global: keeps running across level changes
         updateWeather();
         ++m_simTicks;
         if (m_pendingWorldChange)
@@ -1192,6 +1195,9 @@ Result<void> Engine::instantiateScene()
     rebuildWaterSurfaces();
     rebuildWorldItems();
     rebuildMobs();
+    rebuildMovers();   // dungeon D2
+    rebuildPlates();   // dungeon D3
+    rebuildEventNet(); // dungeon D1: after the mobs (doors are targets)
     m_lights.clear();
     m_daylightLights.clear();
     m_scene.each<world::LightSource, world::WorldTransform>(
@@ -1224,6 +1230,11 @@ Result<void> Engine::setWaynet(world::WaynetData waynet)
     {
         c->route.reset(); // indices into the old waynet
     }
+    for (auto& [id, m] : m_movers)
+    {
+        m.edges.reset(); // dungeon D2: worked out anew for the new edges
+    }
+    updateMoverBlocks();
     return {};
 }
 
@@ -1374,6 +1385,11 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
             {
                 requestWorldChange(volume->changeWorld, volume->changeStart);
             }
+            if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr && !volume->plate)
+            {
+                triggerTargets(*m_scene.get<world::Vob>(e),
+                               *volume); // dungeon D1 (plates send on weight, D3)
+            }
             if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr &&
                 !volume->owner.empty() && m_player.valid())
             {
@@ -1466,6 +1482,8 @@ void Engine::unloadWorld()
     m_focus.reset();
     m_pickup.reset();
     m_mobs.clear();
+    m_movers.clear();
+    m_plates.clear();
     m_mobUse.reset();
     m_mobBodies.clear();
     m_cullGridDirty = true;
@@ -1480,6 +1498,7 @@ void Engine::unloadWorld()
     m_groundModel.reset();
     m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)}; // empty
     m_triggers.reset();
+    m_events.clear();
     removePlayer();
     m_physics.clear();
     m_water.clear();
@@ -1677,6 +1696,7 @@ Result<void> Engine::saveWorld(const fs::Path& path) const
     world::WorldFile file = m_worldFile;
     world::WorldFile captured = world::captureWorld(m_scene, name);
     storeDoors(captured);
+    storeMovers(captured, true);
     file.name = name;
     file.nextVobId = captured.nextVobId;
     file.vobs = std::move(captured.vobs);
@@ -2841,9 +2861,8 @@ void Engine::addFigureLoadPhases()
     const f64 endMs = m_loadPhases.empty() ? 0.0 : m_loadPhases.back().endMs;
     const f64 other = t.total - t.parts - t.sets - t.assemble - t.images - t.upload;
     const std::pair<const char*, f64> parts[] = {
-        {"figures: parts (glTF)", t.parts}, {"figures: clip sets (glTF)", t.sets},
-        {"figures: assemble", t.assemble},  {"figures: images", t.images},
-        {"figures: GPU upload", t.upload},  {"figures: other", other}};
+        {"figures: parts", t.parts},   {"figures: clip sets", t.sets},    {"figures: assemble", t.assemble},
+        {"figures: images", t.images}, {"figures: GPU upload", t.upload}, {"figures: other", other}};
     for (const auto& [name, ms] : parts)
     {
         m_loadPhases.push_back({name, ms, endMs});

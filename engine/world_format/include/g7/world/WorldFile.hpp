@@ -36,6 +36,7 @@ enum class VobType : u8
     Mob,     ///< MobRef + MeshRef (placeholder until M8)
     Water,   ///< WaterVolume (M5)
     Item,    ///< ItemRef (M8)
+    Relay,   ///< Relay (dungeon D1): passes events on, invisible
 };
 
 /// One vob as stored in the file.
@@ -54,6 +55,9 @@ struct WorldFileVob
     MobRef mob;                               ///< Mob vobs only
     WaterVolume water;                        ///< Water vobs only
     ItemRef item;                             ///< Item vobs only
+    Relay relay;                              ///< Relay vobs only
+    /// `components.mover` (dungeon D2): mesh and mob vobs that move (gate, secret wall, trapdoor).
+    std::optional<Mover> mover;
     /// `components.surface.footstep` (M13 E, contract with welt): the footstep material of what one walks on
     /// in this mesh or mob ("wood", "stone" ...); empty: from the engine's path patterns
     /// (data/footsteps.toml).

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -252,11 +253,19 @@ def export_terrain(
     heightmap_vfs: str,
     splat: dict[str, Any] | None = None,
     starts: tuple[StartPoint, ...] = (),
+    holes: tuple[Path, str, npt.NDArray[np.uint8]] | None = None,
 ) -> TerrainExport:
+    """``holes``: (file, VFS path, mask per cell, 0 = hole) – world.md "Löcher"."""
     values, min_y, max_y = quantize_heights(grid.heights)
     block = terrain_block(grid, heightmap_vfs, min_y, max_y)
     if splat is not None:
         block["splat"] = splat
+    if holes is not None:
+        hole_path, hole_vfs, mask = holes
+        if mask.shape != (grid.height - 1, grid.width - 1):
+            raise ExportError(f"hole mask {mask.shape} does not fit the grid")
+        _write_atomic(hole_path, mask.astype(np.uint8).tobytes())
+        block["holes"] = hole_vfs
     problems = check_terrain_block(block)
     if problems:
         raise ExportError("; ".join(problems))
@@ -272,3 +281,26 @@ def export_terrain(
     _write_atomic(heightmap_path, values.astype("<u2").tobytes())
     _write_atomic(world_path, world_text(doc).encode("utf-8"))
     return TerrainExport(grid, min_y, max_y, world_path, heightmap_path)
+
+
+def hole_mask(grid: Grid, polygons: Sequence[Any]) -> npt.NDArray[np.uint8]:
+    """Per cell 255 (ground) or 0 (hole): a cell is a hole where it touches one of ``polygons``
+    (world x, z) – the inside of a hollow hand-made building (W7 D1, the castle's cellar)."""
+    import shapely
+    from shapely.geometry import Polygon
+
+    mask = np.full((grid.height - 1, grid.width - 1), 255, dtype=np.uint8)
+    for ring in polygons:
+        poly = Polygon(ring).buffer(0)
+        x0, z0, x1, z1 = poly.bounds
+        c0 = max(0, int(np.floor((x0 - grid.first_x) / grid.cell)) - 1)
+        c1 = min(grid.width - 2, int(np.ceil((x1 - grid.first_x) / grid.cell)) + 1)
+        r0 = max(0, int(np.floor((z0 - grid.first_z) / grid.cell)) - 1)
+        r1 = min(grid.height - 2, int(np.ceil((z1 - grid.first_z) / grid.cell)) + 1)
+        rows, cols = np.mgrid[r0 : r1 + 1, c0 : c1 + 1]
+        xa = grid.first_x + cols.ravel() * grid.cell
+        za = grid.first_z + rows.ravel() * grid.cell
+        boxes = shapely.box(xa, za, xa + grid.cell, za + grid.cell)
+        hit = shapely.intersects(poly, boxes)
+        mask[rows.ravel()[hit], cols.ravel()[hit]] = 0
+    return mask
