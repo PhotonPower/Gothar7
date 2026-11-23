@@ -1105,13 +1105,126 @@ G vor V (G ist klein und unabhängig); beide nach Teil T oder parallel dazu, je 
   Volumen an Schulter und Ellbogen (Beule bei Arm nach hinten oben, z. B. Klettern; Gewichte helfen nicht).
   Abhilfe: DQS im Skinning-Shader (Knochen als Dual-Quaternionen, Variante `SKINNED_DQ`), ggf. nur für
   Menschen. Entscheidung, sobald echte Clips (F4) es noch zeigen.
-- **Spiegelnde Fenster** (Wunsch Projektinhaber, „Raytracing“; M17, nicht jetzt). Optionen:
+- **Spiegelnde Fenster** (Wunsch Projektinhaber, „Raytracing“): Plan ohne Vulkan unten, „Plan M17: Spiegelnde Fenster“. Optionen:
   - **Reflexions-Proben bzw. Cubemaps je Zone** (vorberechnet oder selten aktualisiert, mit Parallaxen-Korrektur
     für Räume/Straßenzüge): günstig, auf jeder Hardware.
   - **Screen-Space-Reflections:** dynamisch, aber nur was auf dem Bild ist, Lücken am Rand; gut in Kombination mit
     Proben als Rückfall.
   - **Echtes Raytracing** nur mit dem optionalen Vulkan-Backend (eigene ADR); OpenGL bietet kein Hardware-Raytracing.
   - Dazu ein Material-Merkmal „spiegelnd“ (Glas) in den Modellen der Welt-Spur.
+
+## Plan M17: Spiegelnde Fenster ohne Vulkan (freigegeben 2026-11-23)
+Auftrag des Projektinhabers (über den Koordinator, 2026-11-23): Roadmap M17 „Spiegelnde Fenster“ ohne das
+Vulkan-Backend. Verfahren vergleichen, Kosten, Teile, Tests, Prüfbilder, Gefühlsfragen. **Freigegeben** vom
+Projektinhaber (2026-11-23): alle 10 Fragen nach Vorschlag; umgesetzt **nach** Schloss und Dungeon (dungeon.md).
+**Berührt einen Vertrag mit welt:** ein eigenes Material für die Scheiben (siehe „Vertrag mit welt“).
+
+### Ausgangslage
+- **Fenster heute** (`tools/worldgen`, `buildings/medieval.py`): In lod0 ist ein geschlossenes Fenster eine
+  zurückgesetzte, dunkle Fläche mit Laibung im Material `frame` (dasselbe Material wie die Rahmen). In lod1/lod2 ist es
+  eine flache dunkle Fläche 1 cm vor der Wand. Offene Fenster der begehbaren Räume (W7) haben keine Scheibe: Laibung,
+  Fensterkreuz, Läden.
+- Leonberg: 1405 Häuser mit vielen Fenstern, dazu Kirche und Schloss (Bleiglas, teils verglaste Türen).
+- **Was die Engine kann:** SSR auf dem Wasser (W2, `water.frag`; Strahl im Bildraum, 32 Schritte, nur `high`),
+  Himmelsfarben aus `background.frag`, Fresnel und Glanz in `common/lighting.glsl` (Nässe, N), Tiefen-Vorpass (P3).
+  Es gibt keine Cubemaps und keine Reflexions-Proben.
+- **Historisch** (Leonberg um 1700, `leonberg-stil.md`): kleine Scheiben, oft Butzen- oder Rautenglas in Bleiruten,
+  leicht grünlich und wellig. Solche Scheiben spiegeln verzerrt und schwach. Das passt zu Gothic und spart Aufwand:
+  Eine exakte Spiegelung ist weder nötig noch stimmig.
+
+### Verfahren im Vergleich
+| Verfahren | Was spiegelt sich | Kosten (1600×900, RTX 3080 Laptop) | Grenzen |
+|---|---|---|---|
+| **A Himmel + Glanz** | Himmel nach Tageszeit und Wetter, Sonnenglanz, Fresnel; Scheiben-Unebenheit aus Rauschen | ≈ 0 (ein Zweig in `mesh.frag`) | keine Häuser, keine Menschen |
+| **B Reflexions-Proben (Cubemaps)** je Straßenzug | Himmel und gegenüberliegende Häuser, mit Kasten-Parallaxe | Aktualisieren verteilt: eine Würfelseite je Frame ≤ 0,3 ms; Lesen ≈ 0,1 ms; Speicher 64² × 6 RGBA16F mit Mips ≈ 0,13 MB je Probe, 200 Proben ≈ 26 MB | statisch (keine NPCs), ungenau abseits der Probe, Platzierung nötig |
+| **C SSR** wie beim Wasser | alles, was auf dem Bild ist, auch NPCs und Bewegung | ≈ 0,4–0,6 ms, nur wo Glas im Bild ist | senkrechte Scheiben spiegeln meist, was hinter der Kamera liegt: oft Lücken |
+| **D Kombination A + B + C** | B als Grundlage, C darüber, wo der Strahl trifft, A als letzter Rückfall | Summe je nach Stufe | Aufwand am größten |
+| (Je Haus eine Probe) | wie B, genauer | 1405 Proben: zu viel Speicher und Aktualisierung | verworfen |
+| (Planare Spiegel) | exakt | ein weiteres Rendern der Szene je Fassadenebene | verworfen (wie beim Wasser) |
+
+**Vorschlag: D in drei Stufen**, eine Grafik-Option `render.window_reflections`:
+- `low` = A (auf jeder Hardware, auch Intel UHD);
+- `medium` = A + B (Vorgabe);
+- `high` = A + B + C.
+- `off` = die heutigen dunklen Flächen, bytegleich.
+
+### Teile (je ein PR)
+1. **F1 Glas-Material und Stufe A**
+   - `asset::MaterialInfo`: `extras.glass` (bool) und `extras.glass_tint`, wie beim Wind aus den glTF-Extras gelesen
+     (`GltfExtras.cpp`, `.g7mesh` Version 5).
+   - `mesh.frag` (Zweig nur für Glas): Grundfarbe sehr dunkel (dahinter ist es dunkel); Fresnel nach Schlick (f0 0,04);
+     gespiegelter Himmel mit derselben Funktion wie `background.frag`; Sonnenglanz.
+   - Butzen- bzw. Rautenglas: Normalenstörung aus Zellen-Rauschen (eine Wölbung je kleiner Scheibe) und eine Bleirute
+     als dunkles Gitter.
+   - Nachts schwach. Optional ein warmer Schimmer, wenn im Raum dahinter ein Licht brennt (Frage 4).
+   - Tests: CPU Fresnel, Extras lesen (Fehler: still bzw. Vorgabe); GPU – eine Glasfläche spiegelt hellen Himmel, aus
+     ist bytegleich.
+2. **F2 Reflexions-Proben (Stufe B)**
+   - `render::ReflectionProbes`: Proben als Cubemap-Array (64², Mips für die Unschärfe). Gezeichnet werden
+     Gelände, statische Modelle (gröbste LOD) und Himmel; keine Figuren, keine Partikel.
+   - **Platzierung** automatisch beim Laden der Welt: entlang des Wegnetzes etwa alle 20 m in 2,5 m Höhe, dazu je Platz
+     eine. Zusammengelegt, wenn näher als 10 m. Optional welts Marker `VOB_PROBE_*` (Frage 9).
+   - Je Probe ein Einflusskasten aus den umliegenden Fassaden für die Parallaxen-Korrektur.
+   - **Aktualisieren:** beim Laden alle (Ladebildschirm); danach eine Würfelseite je Frame im Umkreis von 80 m, neu nach
+     der Tageszeit alle 10 Spielminuten und bei Wetterwechsel. Weiter entfernte Proben warten.
+   - Glas wählt die nächste Probe (Mittelpunkt der Instanz), weich überblendet zur zweitnächsten.
+   - Tests: CPU – Platzierung deterministisch und Abstände; GPU – ein heller Würfel vor einer Glasfläche erscheint in
+     der Probe, eine Probe weiter weg zählt nicht; das Budget je Frame wird gehalten.
+3. **F3 SSR auf Glas (Stufe C)**
+   - Die Strahl-Funktion aus `water.frag` wandert nach `common/ssr.glsl` und wird gemeinsam genutzt.
+   - Für Glas: kurzer Strahl (16 Schritte, höchstens 30 m), Treffer überblendet auf die Probe; am Bildrand und bei
+     Fehlstellen gilt die Probe.
+   - Tests: GPU – eine Figur vor der Scheibe erscheint in ihr, wenn sie auf dem Bild ist; ohne Treffer bleibt die Probe.
+4. **Abschluss:** Option im Menü (Grafik, „Fensterspiegelung“: aus/niedrig/mittel/hoch), Passzeiten `probes` und
+   `glass`, render.md, Prüfbilder.
+
+### Budget
+| Stufe | Ziel |
+|---|---|
+| low (A) | ≤ 0,05 ms |
+| medium (A + B) | ≤ 0,3 ms je Frame (Aktualisierung verteilt), ≤ 32 MB |
+| high (A + B + C) | ≤ 0,8 ms |
+
+Überschreitet eine Stufe ihr Budget, werden Proben gröber bzw. seltener aktualisiert; das Budget wird nicht erhöht.
+
+### Vertrag mit welt (neu, Vorschlag)
+- Die **Scheibe** eines geschlossenen Fensters wird ein **eigenes glTF-Material** mit `extras.glass = true` (Name
+  frei, Vorschlag `window_glass`), getrennt von `frame` (Rahmen und Laibung bleiben `frame`).
+- Optional `extras.glass_tint` [r, g, b] (Vorgabe leicht grünlich) und `extras.glass_pattern` = `bullseye`
+  (Butzen), `diamond` (Rauten in Blei) oder `plain`.
+- **Wo:** lod0-Scheiben und die flachen Fensterflächen von lod1. In lod2 nicht, dort bleiben sie dunkel. Offene
+  Fenster haben keine Scheibe.
+- **Kirche und Schloss:** dasselbe für ihre Glasflächen. Farbiges Bleiglas ist eine Frage für später.
+- **figuren** (Laternen, Fläschchen): nicht betroffen; Glas an Gegenständen bleibt durchscheinend wie heute.
+- Zeile in `coordination.md` erst nach Freigabe; welt liefert die Markierungen, die Engine liest sie wie den Wind.
+
+### Prüfbilder (je aus / an / Differenz, mit `--fixed-step`)
+- Marktplatz, Fassadenreihe am Tag;
+- Abendrot (Himmelsfarbe in den Scheiben);
+- Nacht mit Kerzenlicht dahinter (falls Frage 4 ja);
+- Regenwetter;
+- Stufen low/medium/high nebeneinander;
+- Kamera immer außerhalb der Häuser.
+
+### Gefühlsfragen – entschieden (Projektinhaber 2026-11-23: alle nach Vorschlag)
+1. **Stärke:** Vorschlag **dezent**: frontal etwa 4 % (dunkle Scheibe, man ahnt den Himmel), schräg bis etwa 50 %
+   (Fresnel). Kein spiegelglattes Glas.
+2. **Glasart:** Vorschlag **Butzen- und Rautenglas wie um 1700**: kleine gewölbte Scheiben in Bleiruten, leicht grünlich;
+   die Spiegelung ist dadurch zerstückelt und weich.
+3. **Was sich spiegelt:** Vorschlag: überall Himmel und die Häuser gegenüber (Proben); Menschen und Bewegung nur in der
+   Stufe „hoch“ und nur, wenn sie auf dem Bild sind.
+4. **Nachts:** Vorschlag: kaum Spiegelung. Stattdessen ein **warmer Schimmer** in den Scheiben von Räumen, in denen ein
+   Licht brennt (Kerze, Herd). In begehbaren Häusern ist das bekannt; die übrigen Häuser bekommen ihn zufällig, je
+   nach Tageszeit (wer noch wach ist).
+5. **Von außen hinein:** Vorschlag **nein**: Geschlossene Fenster bleiben undurchsichtig (Gothic-Stil, kein Innenraum
+   nötig). Offene Fenster zeigen weiter den Raum.
+6. **Von innen hinaus:** Vorschlag: Scheiben von innen milchig hell nach dem Tageslicht, ohne Spiegelung.
+7. **Welche Gebäude:** Vorschlag alle Häuser, Kirche und Schloss. Farbiges Kirchenglas später als eigener Wunsch.
+8. **Qualitätsstufen:** Vorschlag `medium` als Vorgabe (Himmel + Proben), `high` mit SSR, `low` nur Himmel, `off` wie
+   heute.
+9. **Proben setzen:** Vorschlag automatisch aus dem Wegnetz; welt kann an wichtigen Plätzen eigene Marker setzen
+   (`VOB_PROBE_*`), muss aber nicht.
+10. **Regen:** Vorschlag: nasse Scheiben glänzen stärker (Nässe aus Teil N). Tropfen und Schlieren auf dem Glas nicht.
 
 ## Partikel (M12 Teil A, umgesetzt) – `Particles.hpp`
 - **Emitter als Daten:** `data/fx/<name>.toml` (Version 1): `sprite` (`soft`, `smoke`, `spark`), `blend` (`additive`,
