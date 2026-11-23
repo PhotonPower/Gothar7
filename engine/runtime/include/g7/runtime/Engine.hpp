@@ -460,6 +460,8 @@ public:
     [[nodiscard]] const std::string& ambienceOutside() const noexcept { return m_ambience.outside; }
     /// The rain layer playing now (M17 R): amb_rain, amb_rain_roof (indoors) or empty.
     [[nodiscard]] const std::string& rainSound() const noexcept { return m_rainSound.name; }
+    /// Volume of the ambience's wind loop (amb_wind) now: follows the weather's wind (M17 W).
+    [[nodiscard]] f32 windLoopVolume() const noexcept { return m_windLoopVolume; }
     /// The occlusion of a 3D sound the engine started (0 open .. 1 muffled).
     [[nodiscard]] f32 soundMuffle(audio::SoundId id) const noexcept
     {
@@ -1321,6 +1323,7 @@ private:
         std::optional<audio::SoundId> loop;
     };
     RainSound m_rainSound;
+    f32 m_windLoopVolume = 1.0f; // amb_wind after the weather's wind
     void updateRainSound();
     std::map<audio::SoundId, Vec3> m_spatialSounds; // where the 3D sounds play (occlusion)
     f32 m_occlusionTimer = 0.0f;
