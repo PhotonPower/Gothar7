@@ -234,7 +234,9 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   `FP_PRAY_` (beten: kniend `zs_pray`, stehend `zs_pray_stand`; vor dem Kirchenportal, Blick zum Portal, 0,6 m
   frei nach vorn; die Kirche bleibt ohne Innenraum, Entscheidung Projektinhaber 2026-10-31), `FP_PREACH_`
   (predigen; Kirchenportal, Markt), `FP_BEG_` (am Boden sitzend betteln; Kirchentür, Brunnen, Tor; Wand dahinter
-  möglich) und `FP_MUSIC_` (stehend Laute spielen, `zs_play_lute`). Andere Typen sind erlaubt und werden bis zu
+  möglich) und `FP_MUSIC_` (stehend Laute spielen, `zs_play_lute`), dazu für das Schloss (Koordinator-Entscheidung
+  2026-11-23, welt W7 D1b; Zustände `zs_cook`/`zs_read` engine, Clips später figuren) `FP_COOK_` (am Herd kochen,
+  Blick zum Herd) und `FP_READ_` (stehend lesen an Pult oder Bücherregal, Blick dorthin). Andere Typen sind erlaubt und werden bis zu
   ihrer Verwendung ignoriert.
 - **Nachschlagen** (M9): Skripte nennen Punkte in Kleinschreibung (`at = "wp_camp_gate"`); die Engine sucht Namen
   ohne Rücksicht auf Groß- und Kleinschreibung.
