@@ -56,6 +56,12 @@ files = ["sounds/summon.wav"]
 volume = 0.8
 max_distance = 30
 
+[teleport]                   # Dungeon D4: Platzhalter (der Klang der Beschwörung)
+files = ["sounds/summon.wav"]
+volume = 0.7
+pitch_jitter = 0.1
+max_distance = 25
+
 # Ambiente (M13 Teil B): Schleifen im Bus ambient, Einzelklänge drumherum (data/ambient.toml).
 [amb_wind]
 files = ["sounds/amb_wind.wav"]

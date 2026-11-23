@@ -1,0 +1,17 @@
+# Teleporter (Dungeon D4): eine schwache Lichtsäule über einem sichtbaren, aktiven Teleporter.
+version = 1
+sprite = "soft"
+blend = "additive"
+rate = 30
+lifetime = [1.2, 1.8]
+speed = [0.6, 1.0]
+spread = 5
+radius = 0.5
+gravity = -0.3
+size = [0.2, 0.05]
+color_start = [0.6, 0.8, 1.0, 0.6]
+color_end = [0.4, 0.6, 1.0, 0.0]
+[light]
+color = [0.6, 0.8, 1.0]
+range = 4
+intensity = 1.5

@@ -42,6 +42,11 @@ constexpr std::array<std::pair<Mover::Kind, std::string_view>, 3> kMoverKinds = 
      {Mover::Kind::Trapdoor, "trapdoor"}}};
 constexpr std::array<std::pair<Plate::Weight, std::string_view>, 3> kPlateWeights = {
     {{Plate::Weight::Any, "any"}, {Plate::Weight::Creature, "creature"}, {Plate::Weight::Player, "player"}}};
+constexpr std::array<std::pair<Teleport::Filter, std::string_view>, 4> kTeleportFilters = {
+    {{Teleport::Filter::Player, "player"},
+     {Teleport::Filter::Creature, "creature"},
+     {Teleport::Filter::Items, "items"},
+     {Teleport::Filter::Any, "any"}}};
 constexpr std::array<std::pair<Mover::Crush, std::string_view>, 2> kMoverCrush = {
     {{Mover::Crush::Stop, "stop"}, {Mover::Crush::Damage, "damage"}}};
 
@@ -478,6 +483,63 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
         }
         trigger.changeWorld = std::move(world).value();
         trigger.changeStart = std::move(start).value();
+        if (c.contains("fall"))
+        {
+            if (!c["fall"].is_boolean())
+            {
+                return r.error(change + ".fall", "must be true or false");
+            }
+            trigger.changeFall = c["fall"].get<bool>();
+        }
+    }
+    if (t.contains("teleport"))
+    {
+        const Json& p = t["teleport"];
+        const std::string tat = at + ".teleport";
+        if (!p.is_object())
+        {
+            return r.error(tat, "must be an object");
+        }
+        Teleport teleport;
+        auto to = readText(r, p, "to", tat, false);
+        auto world = readText(r, p, "world", tat, false);
+        auto start = readText(r, p, "start", tat, false);
+        auto filter = readChoice(r, p, "filter", tat, kTeleportFilters);
+        if (!to || !world || !start || !filter)
+        {
+            return !to ? to.error() : !world ? world.error() : !start ? start.error() : filter.error();
+        }
+        teleport.to = std::move(to).value();
+        teleport.world = std::move(world).value();
+        teleport.start = std::move(start).value();
+        teleport.filter = filter.value();
+        if (teleport.to.empty() == (teleport.world.empty() || teleport.start.empty()) ||
+            (!teleport.to.empty() && !teleport.world.empty()))
+        {
+            return r.error(tat, "needs 'to' (a vob of this world) or 'world' and 'start'");
+        }
+        for (const auto& [key, flag] : {std::pair<const char*, bool*>{"visible", &teleport.visible},
+                                        std::pair<const char*, bool*>{"active", &teleport.active}})
+        {
+            if (p.contains(key))
+            {
+                if (!p[key].is_boolean())
+                {
+                    return r.error(std::format("{}.{}", tat, key), "must be true or false");
+                }
+                *flag = p[key].get<bool>();
+            }
+        }
+        if (p.contains("yaw"))
+        {
+            auto yaw = r.number(p, "yaw", tat, 0.0f);
+            if (!yaw)
+            {
+                return yaw.error();
+            }
+            teleport.yaw = yaw.value();
+        }
+        trigger.teleport = std::move(teleport);
     }
     if (t.contains("owner"))
     {
@@ -738,7 +800,8 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             return events.error();
         }
         for (const auto& [key, flag] : {std::pair<const char*, bool*>{"once", &vob.mob.once},
-                                        std::pair<const char*, bool*>{"hidden", &vob.mob.hidden}})
+                                        std::pair<const char*, bool*>{"hidden", &vob.mob.hidden},
+                                        std::pair<const char*, bool*>{"no_pick", &vob.mob.noPick}})
         {
             if (mob.contains(key))
             {
@@ -748,6 +811,15 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
                 }
                 *flag = mob[key].get<bool>();
             }
+        }
+        if (mob.contains("one_way"))
+        {
+            const std::string side = mob["one_way"].is_string() ? mob["one_way"].get<std::string>() : "";
+            if (side != "front" && side != "back")
+            {
+                return r.error(mat + ".one_way", "must be 'front' or 'back'");
+            }
+            vob.mob.oneWay = side;
         }
     }
     if (vob.type == VobType::Item)
@@ -1532,6 +1604,28 @@ Json vobJson(const WorldFileVob& vob)
             trigger["targets"] = tv.targets; // with its action, only when there are targets
             trigger["action"] = tv.action;
         }
+        if (tv.teleport)
+        {
+            const Teleport& p = *tv.teleport;
+            Json teleport = Json::object();
+            if (!p.to.empty())
+            {
+                teleport["to"] = p.to;
+            }
+            else
+            {
+                teleport["world"] = p.world;
+                teleport["start"] = p.start;
+            }
+            teleport["visible"] = p.visible;
+            teleport["filter"] = nameOf(kTeleportFilters, p.filter);
+            if (p.yaw)
+            {
+                teleport["yaw"] = tidy(*p.yaw);
+            }
+            teleport["active"] = p.active;
+            trigger["teleport"] = std::move(teleport);
+        }
         if (tv.plate)
         {
             Json plate = Json{{"weight", nameOf(kPlateWeights, tv.plate->weight)}};
@@ -1544,6 +1638,10 @@ Json vobJson(const WorldFileVob& vob)
         if (!tv.changeWorld.empty())
         {
             trigger["changeWorld"] = Json{{"world", tv.changeWorld}, {"start", tv.changeStart}};
+            if (tv.changeFall)
+            {
+                trigger["changeWorld"]["fall"] = true; // dungeon D4, only when true
+            }
         }
         if (!tv.owner.empty())
         {
@@ -1570,6 +1668,14 @@ Json vobJson(const WorldFileVob& vob)
         if (vob.mob.hidden)
         {
             v["components"]["mob"]["hidden"] = true;
+        }
+        if (vob.mob.noPick)
+        {
+            v["components"]["mob"]["no_pick"] = true; // dungeon D5
+        }
+        if (!vob.mob.oneWay.empty())
+        {
+            v["components"]["mob"]["one_way"] = vob.mob.oneWay;
         }
     }
     if (vob.type == VobType::Item)

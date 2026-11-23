@@ -117,7 +117,8 @@ struct NpcState { std::string name, instance; Vec3 position; f32 yaw; std::optio
 struct WorldState { std::string path; WorldDelta delta; std::vector<u64> spentTriggers;
                     std::vector<MobState> mobs; std::vector<NpcState> npcs;
                     world::EventNetSnapshot events;     // dungeon D1: JSON "relays"/"events", nur wenn nicht leer
-                    std::vector<MoverState> movers; };  // dungeon D2: JSON "movers", nur wenn nicht leer
+                    std::vector<MoverState> movers;     // dungeon D2: JSON "movers", nur wenn nicht leer
+                    std::vector<TeleporterState> teleporters; };  // dungeon D4: {vob, active} gegen die Datei geschaltet
 struct MoverState { u64 vob; f32 position; bool open; };  // bewegte Teile außerhalb ihres Anfangszustands
 struct HeroState { gameplay::CharacterState character; Vec3 position; f32 yaw; std::string torch; };
 struct GameState { u32 version; f64 clock, secondsPerMinute, scriptClock; u32 nextTimerId;

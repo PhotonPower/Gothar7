@@ -208,6 +208,13 @@ void Engine::drawGameUi(u32 width, u32 height)
     m_canvas.begin(Vec2(static_cast<f32>(width), static_cast<f32>(height)), scale);
     m_hud.draw(m_canvas, *m_gameUi);
     m_screens.draw(m_canvas, *m_gameUi); // may render item pictures into their atlases (other framebuffers)
+    if (const f32 fade = screenFade(); fade > 0.0f)
+    {
+        // Dungeon D4: white after a teleport, black after a level change, fading out.
+        const Vec3& c = m_screenFade.colour;
+        m_canvas.rect(ui::Rect::fromSize(Vec2(0.0f), m_canvas.pixels() / scale),
+                      ui::Color{c.x, c.y, c.z, fade});
+    }
     m_device->bindFramebuffer(nullptr);
     m_canvas.end(m_device.get());
 }

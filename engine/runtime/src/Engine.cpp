@@ -492,8 +492,9 @@ bool Engine::runFrame()
         fixedUpdateInteraction(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateItemUse(static_cast<f32>(m_fixedStep.step()));
         fixedUpdateMobs(static_cast<f32>(m_fixedStep.step()));
-        fixedUpdateMovers(static_cast<f32>(m_fixedStep.step())); // dungeon D2
-        fixedUpdatePlates();                                     // dungeon D3
+        fixedUpdateMovers(static_cast<f32>(m_fixedStep.step()));    // dungeon D2
+        fixedUpdatePlates();                                        // dungeon D3
+        fixedUpdateTeleports(static_cast<f32>(m_fixedStep.step())); // dungeon D4
         fixedUpdateCreatures(static_cast<f32>(m_fixedStep.step()));
         m_particles.update(static_cast<f32>(m_fixedStep.step())); // effects (M12)
         fixedUpdateCombat(static_cast<f32>(m_fixedStep.step()));
@@ -512,6 +513,7 @@ bool Engine::runFrame()
         }
         const world::TriggerProbe probe{kCameraProbe, triggerProbePosition(), true};
         m_triggers.update(m_scene, std::span(&probe, 1));
+        performHeroTeleport();                                 // dungeon D4: after the trigger update
         m_events.update(static_cast<f32>(m_fixedStep.step())); // dungeon D1: what the triggers sent
         m_gameTime.advance(m_fixedStep.step());                // global: keeps running across level changes
         updateWeather();
@@ -1185,9 +1187,10 @@ Result<void> Engine::instantiateScene()
     rebuildWaterSurfaces();
     rebuildWorldItems();
     rebuildMobs();
-    rebuildMovers();   // dungeon D2
-    rebuildPlates();   // dungeon D3
-    rebuildEventNet(); // dungeon D1: after the mobs (doors are targets)
+    rebuildMovers();    // dungeon D2
+    rebuildPlates();    // dungeon D3
+    rebuildTeleports(); // dungeon D4
+    rebuildEventNet();  // dungeon D1: after the mobs (doors are targets)
     m_lights.clear();
     m_daylightLights.clear();
     m_scene.each<world::LightSource, world::WorldTransform>(
@@ -1373,6 +1376,14 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
                 !volume->changeWorld.empty())
             {
                 requestWorldChange(volume->changeWorld, volume->changeStart);
+                if (volume->changeFall && m_pendingWorldChange && m_player.valid())
+                {
+                    m_pendingWorldChange->fall = m_player.velocity(); // dungeon D4: a fall goes on below
+                }
+            }
+            if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr && volume->teleport)
+            {
+                heroEnteredTeleport(*m_scene.get<world::Vob>(e), *volume->teleport); // dungeon D4
             }
             if (event.kind == world::TriggerEvent::Kind::Enter && volume != nullptr && !volume->plate)
             {
@@ -1390,7 +1401,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     // The player stands on the start point; it needs the collision of the world.
     m_scene.updateTransforms();
     syncPhysics();
-    spawnPlayer();
+    spawnPlayer(start);
     // Arrival: triggers the player (or camera) already stands in fire only after it left them (no
     // bouncing back through a level change next to the start point).
     const world::TriggerProbe camera{kCameraProbe, triggerProbePosition(), true};
@@ -1473,6 +1484,8 @@ void Engine::unloadWorld()
     m_mobs.clear();
     m_movers.clear();
     m_plates.clear();
+    m_teleports.clear();
+    m_pendingTeleport.reset();
     m_mobUse.reset();
     m_mobBodies.clear();
     m_cullGridDirty = true;
@@ -1566,6 +1579,14 @@ void Engine::performWorldChange()
         return;
     }
     m_leftWorlds.erase(key); // the current world is not a left one
+    // Dungeon D4: a short black instead of a loading screen; a fall goes on with its velocity, unhurt.
+    m_screenFade = ScreenFade{Vec3(0.0f), 0.6f, 0.6f};
+    if (change.fall && m_player.valid())
+    {
+        m_player.setVelocity(*change.fall);
+        m_fallUnhurt = true;
+        G7_LOG_INFO("engine", "arrived falling ({:.1f} m/s)", glm::length(*change.fall));
+    }
     releaseUnusedModels();
     if (!m_menuMode && !m_loadJob)
     {

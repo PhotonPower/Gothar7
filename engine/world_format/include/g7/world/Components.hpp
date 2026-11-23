@@ -212,6 +212,29 @@ struct Plate
     bool operator==(const Plate&) const = default;
 };
 
+/// A teleporter (dungeon D4, `components.trigger.teleport`): who enters the active trigger is put at `to` (a
+/// vob of the same world: its position, its yaw unless `yaw` is given) or, the hero only, on the start point
+/// `start` of the world `world`. Events switch it on and off.
+struct Teleport
+{
+    enum class Filter : u8
+    {
+        Player,   ///< the hero
+        Creature, ///< the hero, NPCs and animals (within the world)
+        Items,    ///< items lying in it
+        Any,      ///< all of them
+    };
+    std::string to;    ///< a vob of this world (start point or marker)
+    std::string world; ///< ... or another world (with `start`)
+    std::string start;
+    bool visible = true; ///< a column of light and a hum; false: nothing shows
+    Filter filter = Filter::Player;
+    std::optional<f32> yaw; ///< degrees after arriving (else the target's)
+    bool active = true;     ///< at the start; on/off/toggle events switch it
+
+    bool operator==(const Teleport&) const = default;
+};
+
 /// A volume that reports who enters and leaves it (TriggerSystem). Callbacks name script functions;
 /// the engine passes the events on (log in M4, Lua from M7).
 struct TriggerVolume
@@ -247,6 +270,10 @@ struct TriggerVolume
     /// (VFS path of a .g7world) and puts the player on its start point `changeStart`. Empty = none.
     std::string changeWorld;
     std::string changeStart;
+    /// Dungeon D4: the level change is a fall (a shaft below a trapdoor): the hero arrives falling, unhurt.
+    bool changeFall = false;
+    /// Teleporter (dungeon D4).
+    std::optional<Teleport> teleport;
     /// Private area (M9, Gothic: a hut's room): the Npc instance or guild it belongs to. The player entering
     /// it is perceived by that owner (assess_enter_room). Empty: nobody's.
     std::string owner;
@@ -277,6 +304,10 @@ struct MobRef
     std::string action = std::string(kEventTrigger);
     bool once = false;   ///< a button: one press only (written when true)
     bool hidden = false; ///< in focus only from close by and as a loose stone until found (written when true)
+    /// Doors (dungeon D5): the lockpick does not help, only the key (written when true).
+    bool noPick = false;
+    /// Doors (dungeon D5): "front" (+Z side) or "back" - the only side it opens from; empty: both.
+    std::string oneWay;
 };
 
 /// An item lying in the world (M8): the Item instance of the scripts and how many. Drawn with the Item's

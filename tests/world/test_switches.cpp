@@ -43,8 +43,12 @@ TEST_CASE("Switch format: levers and buttons name targets, plates weigh, written
    "components": {"trigger": {"targets": ["GATE_E01_1"], "action": "open", "plate": {"weight": "creature"}}}},
   {"id": 4, "type": "trigger", "name": "PLATE_E01_2",
    "components": {"trigger": {"targets": ["RELAY"], "action": "on", "plate": {"release_action": "trigger"}}}},
-  {"id": 5, "type": "mob", "name": "CHEST", "mesh": "c.glb", "components": {"mob": {"definition": "chest"}}}
+  {"id": 5, "type": "mob", "name": "CHEST", "mesh": "c.glb", "components": {"mob": {"definition": "chest"}}},
+  {"id": 6, "type": "mob", "name": "GATE_DOOR", "mesh": "d.glb",
+   "components": {"mob": {"definition": "door", "no_pick": true, "one_way": "back"}}}
 ]})");
+    CHECK(file.vobs[5].mob.noPick);
+    CHECK(file.vobs[5].mob.oneWay == "back");
     const MobRef& lever = file.vobs[0].mob;
     CHECK(lever.targets == std::vector<std::string>{"WALL_SCHLOSS_FASS"});
     CHECK(lever.action == "open");
@@ -73,6 +77,8 @@ TEST_CASE("Switch format: levers and buttons name targets, plates weigh, written
           std::string::npos);
     CHECK(written.find(R"("plate":{"weight":"any","release_action":"trigger"})") != std::string::npos);
     CHECK(written.find(R"("mob":{"definition":"chest"}})") != std::string::npos); // others stay as they were
+    CHECK(written.find(R"("mob":{"definition":"door","no_pick":true,"one_way":"back"}})") !=
+          std::string::npos);
 }
 
 TEST_CASE("Switch format: broken switches and plates are errors naming the entry")
@@ -90,6 +96,9 @@ TEST_CASE("Switch format: broken switches and plates are errors naming the entry
         errorOf(
             R"({"id": 1, "type": "trigger", "components": {"trigger": {"plate": {"release_action": "x"}}}})") ==
         "w.g7world: vobs[0].components.trigger.plate: 'release_action' must be an action like 'action'");
+    CHECK(errorOf(R"({"id": 1, "type": "mob", "mesh": "a.glb",
+                      "components": {"mob": {"definition": "door", "one_way": "left"}}})") ==
+          "w.g7world: vobs[0].components.mob.one_way: must be 'front' or 'back'");
     CHECK(errorOf(R"({"id": 1, "type": "trigger", "components": {"trigger": {"plate": true}}})") ==
           "w.g7world: vobs[0].components.trigger.plate: must be an object");
 }

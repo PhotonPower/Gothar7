@@ -605,6 +605,13 @@ public:
     /// dungeon_event(target, action, source). Errors: an unknown action.
     [[nodiscard]] Result<void> sendEvent(std::string_view target, std::string_view action,
                                          std::string_view source = "lua");
+    /// Whether the teleporter (a trigger with `teleport`, dungeon D4) of that name is on; nullopt: none.
+    [[nodiscard]] std::optional<bool> teleportActive(std::string_view name) const;
+    /// How white or black the screen is now (dungeon D4 fades), 0..1.
+    [[nodiscard]] f32 screenFade() const noexcept
+    {
+        return m_screenFade.total > 0.0f ? m_screenFade.seconds / m_screenFade.total : 0.0f;
+    }
     /// Whether the pressure plate (a trigger with `plate`, dungeon D3) of that name is pressed.
     [[nodiscard]] bool platePressed(std::string_view name) const;
     /// A moving part (dungeon D2) by vob name, nullopt if there is none.
@@ -992,7 +999,8 @@ private:
     void syncPhysics();
     // Player (EnginePlayer.cpp)
     void initPlayer();
-    void spawnPlayer();
+    /// On the start point `start` (empty: the configured one, else the first).
+    void spawnPlayer(std::string_view start = {});
     void removePlayer();
     void refreshMovementSettings();
     void updatePlayerInput(bool allowMouse, bool allowKeyboard);
@@ -1191,6 +1199,8 @@ private:
         bool hidden = false; ///< focus from close by, a loose stone until found
         bool found = false;  ///< a hidden one was used once
         bool spent = false;  ///< a once-button was pressed
+        bool noPick = false; ///< dungeon D5: only the key opens it
+        std::string oneWay;  ///< dungeon D5: "front"/"back", the side a door opens from
     };
     struct MobUse
     {
@@ -1302,6 +1312,28 @@ private:
     /// Pressed while the hero, a creature or (weight any) an item is in it; a change sends to the targets.
     void fixedUpdatePlates();
     void bindSwitchFunctions();
+    // Teleporters and falls (EngineTeleport.cpp, dungeon D4)
+    struct TeleportRuntime
+    {
+        bool active = true;
+        std::set<u32> inside;      ///< creatures in it (they go only when they enter)
+        std::set<u64> itemsInside; ///< items in it
+        std::optional<u32> effect; ///< the column of a visible one
+        bool primed = false;       ///< false: the next step takes who is in it without sending them
+    };
+    /// Every trigger with a teleport; a rebuild keeps them on or off.
+    void rebuildTeleports();
+    /// The hero entered a teleporter (trigger callback): he goes at the next step (after the triggers).
+    void heroEnteredTeleport(const world::Vob& vob, const world::Teleport& teleport);
+    void performHeroTeleport(); ///< after the trigger update: moves him, primes the triggers
+    /// Creatures and items entering teleporters; the screen fade.
+    void fixedUpdateTeleports(f32 seconds);
+    /// Where `teleport` puts someone in this world (the target vob's feet and yaw), nullopt if it has none.
+    [[nodiscard]] std::optional<std::pair<Vec3, f32>> teleportTarget(const world::Teleport& teleport) const;
+    void updateTeleportEffect(u64 id, TeleportRuntime& t);
+    bool teleportEvent(const world::NetEvent& event); ///< on/off/toggle/trigger: true if it is a teleporter
+    void moveWorldItem(world::VobId vob, const Vec3& at);
+    void bindTeleportFunctions();
     /// A trap's harm (a gate marked crush = "damage"): hit points off, no protection; as a blow otherwise.
     void trapHit(u32 targetId, i32 damage, std::string_view source);
     /// A spell's harm on a creature or the hero (fire bolt, area): its damage minus protection, min 5 (as
@@ -1871,6 +1903,7 @@ private:
     {
         std::string world;
         std::string start;
+        std::optional<Vec3> fall; ///< dungeon D4: arrives falling with this velocity, unhurt
     };
     std::optional<PendingWorldChange> m_pendingWorldChange;
     std::vector<EngineTool*> m_tools;
@@ -2148,6 +2181,23 @@ private:
     std::map<u64, MoverRuntime> m_movers;         // dungeon D2, by vob id (in order: deterministic)
     std::map<u64, PlateRuntime> m_plates;         // dungeon D3, by trigger vob id
     bool m_platesPrimed = false;                  // false: the next plate step takes the weight quietly
+    std::map<u64, TeleportRuntime> m_teleports;   // dungeon D4, by trigger vob id
+    struct PendingTeleport
+    {
+        std::string source; ///< the teleporter's name
+        Vec3 feet{0.0f};
+        f32 yaw = 0.0f;
+    };
+    std::optional<PendingTeleport> m_pendingTeleport;
+    struct ScreenFade
+    {
+        Vec3 colour{1.0f};
+        f32 seconds = 0.0f; ///< left
+        f32 total = 0.0f;
+    };
+    ScreenFade m_screenFade;               // D4: white after a teleport, black after a fall or a level change
+    std::optional<Vec3> m_arrivalVelocity; // D4: a fall through a trapdoor goes on in the world below
+    bool m_fallUnhurt = false;             // D4: the next landing costs nothing (owner decision, question 6)
     std::optional<ItemUse> m_itemUse;
     std::optional<Document> m_document;
     std::optional<PendingPickpocket> m_pickpocket;

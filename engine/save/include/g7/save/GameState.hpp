@@ -45,6 +45,14 @@ struct MoverState
     friend bool operator==(const MoverState&, const MoverState&) = default;
 };
 
+/// A teleporter (dungeon D4) switched away from how the world file starts it.
+struct TeleporterState
+{
+    u64 vob = 0;
+    bool active = true;
+    friend bool operator==(const TeleporterState&, const TeleporterState&) = default;
+};
+
 enum class Life : u8
 {
     Alive,
@@ -83,6 +91,8 @@ struct WorldState
     world::EventNetSnapshot events;
     /// Moving parts not in their initial state (dungeon D2), by vob id. Additive like `events`.
     std::vector<MoverState> movers;
+    /// Teleporters switched on or off against the file (dungeon D4), by vob id. Additive.
+    std::vector<TeleporterState> teleporters;
 };
 
 struct HeroState
