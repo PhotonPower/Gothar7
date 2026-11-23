@@ -66,9 +66,34 @@ struct GrassLayer
     Vec3 colourTip{0.16f, 0.22f, 0.055f};   ///< and at the tips
     bool flowers = false;                   ///< a few flowering tufts (white, yellow, blue)
 };
-/// The built-in layers by name (G1): "Wiese" (Leonberg) and "grass" (the test camp) are meadow; every
-/// other name has no grass.
-[[nodiscard]] GrassLayer builtinGrassLayer(std::string_view name) noexcept;
+/// Grass per terrain layer name (G2, data/grass.toml; the names are a contract with welt, coordination.md):
+///
+///     version = 1
+///     [layer.Wiese]
+///     aliases = ["grass"]        # further names of the same layer (the test camp)
+///     density = 1.0              # 0..1
+///     height = [0.25, 0.6]       # metres, smallest and tallest tuft
+///     foot = [0.035, 0.06, 0.012] # linear albedo at the foot
+///     tip = [0.16, 0.22, 0.055]   # and at the tips
+///     flowers = true
+///
+/// Names it does not list have no grass.
+class GrassTable
+{
+public:
+    /// The contract's values without the file: Wiese (alias grass) 1, Waldboden 0.25, Matsch 0.1.
+    [[nodiscard]] static GrassTable builtin();
+    /// Errors name the source and the key.
+    [[nodiscard]] static Result<GrassTable> parse(std::string_view toml, std::string_view source);
+    /// The layer of this name (or alias); no grass for an unknown name.
+    [[nodiscard]] GrassLayer layer(std::string_view name) const;
+    [[nodiscard]] usize size() const noexcept { return m_layers.size(); }
+
+private:
+    std::vector<std::pair<std::string, GrassLayer>> m_layers; ///< names and aliases
+};
+/// GrassTable::builtin().layer(name).
+[[nodiscard]] GrassLayer builtinGrassLayer(std::string_view name);
 
 /// The ground under one point, from the world (the engine reads its heightfield and splat maps).
 struct GrassGroundSample

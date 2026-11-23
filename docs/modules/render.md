@@ -645,9 +645,15 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   Kandidaten auf einem gejitterten Raster mit der Dichte der Stufe, jeder bleibt mit der Wahrscheinlichkeit
   seines Bodens.
 - **Wo Gras wächst (`buildGrassTile`):** Dichte = geschärfter Anteil der Schicht am Boden (normiert wie im
-  Gelände-Shader, `smoothstep(0,5; 0,8)`: auf dem Rand eines Pflasterwegs keins) × Dichte der Schicht × Maske. In G1 hat
-  nur die Wiese (`Wiese`, im Testlager `grass`) Gras (Dichte 1, 0,25–0,6 m); `grass.toml` und die Maske folgen in G2.
+  Gelände-Shader, `smoothstep(0,5; 0,8)`: auf dem Rand eines Pflasterwegs keins) × Dichte der Schicht × Maske.
   Kein Gras auf Löchern und an Hängen über 35°.
+- **Gras je Schicht (Teil G2, `data/grass.toml`, `GrassTable`):** je Schichtname Dichte, Höhe [min, max], Farbe am
+  Fuß und an der Spitze (linear), Blumen; `aliases` für weitere Namen derselben Schicht. Vertrag mit welt:
+  `Wiese` (zweiter gültiger Name `grass` im Testlager) 1,0 mit 0,25–0,6 m und Blumen, `Waldboden` 0,25 (kurz),
+  `Matsch` 0,1 (Feldwege bekommen etwas Gras), alle anderen keins. Fehlt die Datei oder ist sie falsch, gelten
+  dieselben Werte eingebaut (Warnung mit Datei und Schlüssel). Die Engine liest sie bei jedem Weltladen.
+- **Maske (Teil G2):** optional `terrain.grass_mask` (`world.md` „Grasmaske“), bilinear wie die Splat-Karten, Faktor
+  0 … 1 auf die Dichte. welt liefert sie für Leonberg nach.
 - **Ausnahmen (Engine, `WorldGrassGround`):** auf dem Wegnetz (1,2 m breit), in Wasser, in Innenzonen und unter
   Häusern, Mauern, Felsen und Mobs. Für Büschel innerhalb der Bounds eines festen Objekts geht ein Strahl von 2 m
   über dem Boden bis 15 cm darunter; trifft er etwas anderes als das Gelände, entfällt das Büschel (so auch flach

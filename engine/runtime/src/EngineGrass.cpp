@@ -2,9 +2,12 @@
 // loaded world (heightfield, splat weights on the CPU) and where no grass may grow (rooms, water, the
 // waynet's paths, under houses and mobs), the ring around the camera, the uploads and the passes.
 
+#include <g7/asset/ImageData.hpp>
+#include <g7/asset/TextureData.hpp>
 #include <g7/core/Log.hpp>
 #include <g7/core/Profiler.hpp>
 #include <g7/core/StringUtil.hpp>
+#include <g7/runtime/AssetMounts.hpp>
 #include <g7/runtime/Engine.hpp>
 
 #include <algorithm>
@@ -33,10 +36,10 @@ class WorldGrassGround final : public render::GrassGround
 {
 public:
     WorldGrassGround(const world::Heightfield& heights, std::span<const asset::ImageData> splat,
-                     std::span<const world::Zone> zones, const world::WaterBodies& water,
-                     std::span<const std::pair<Vec3, Vec3>> paths, std::span<const AABB> solids,
-                     const physics::PhysicsWorld& physics)
-        : m_heights(heights), m_splat(splat), m_zones(zones), m_water(water), m_paths(paths),
+                     const asset::ImageData* mask, std::span<const world::Zone> zones,
+                     const world::WaterBodies& water, std::span<const std::pair<Vec3, Vec3>> paths,
+                     std::span<const AABB> solids, const physics::PhysicsWorld& physics)
+        : m_heights(heights), m_splat(splat), m_mask(mask), m_zones(zones), m_water(water), m_paths(paths),
           m_solids(solids), m_physics(physics)
     {
         m_bounds = heights.bounds();
@@ -97,7 +100,7 @@ public:
         }
         out.height = m_heights.heightAt(xz.x, xz.y);
         out.normal = m_heights.normalAt(xz.x, xz.y);
-        weights(xz, out.weights);
+        weights(xz, out);
         return true;
     }
 
@@ -143,48 +146,55 @@ public:
     }
 
 private:
-    /// Bilinear splat weights (pixel centres on the samples, world.md).
-    void weights(const Vec2& xz, std::array<f32, render::kGrassMaxLayers>& out) const
+    /// Bilinear splat weights and the grass mask (pixel centres on the samples, world.md).
+    void weights(const Vec2& xz, render::GrassGroundSample& out) const
     {
-        out.fill(0.0f);
+        out.weights.fill(0.0f);
         const world::TerrainRef& ref = m_heights.ref();
         if (ref.width < 2 || ref.height < 2)
         {
             return;
         }
-        const f32 u = (xz.x - ref.firstSample.x) / ref.cellSize / static_cast<f32>(ref.width - 1);
-        const f32 v = (xz.y - ref.firstSample.y) / ref.cellSize / static_cast<f32>(ref.height - 1);
+        const Vec2 uv((xz.x - ref.firstSample.x) / ref.cellSize / static_cast<f32>(ref.width - 1),
+                      (xz.y - ref.firstSample.y) / ref.cellSize / static_cast<f32>(ref.height - 1));
         for (usize m = 0; m < m_splat.size(); ++m)
         {
-            const asset::ImageData& image = m_splat[m];
-            if (image.width == 0 || image.height == 0)
+            for (usize k = 0; k < 4 && m * 4 + k < out.weights.size(); ++k)
             {
-                continue;
+                out.weights[m * 4 + k] = bilinear(m_splat[m], uv, k);
             }
-            const f32 px = std::clamp(u, 0.0f, 1.0f) * static_cast<f32>(image.width - 1);
-            const f32 py = std::clamp(v, 0.0f, 1.0f) * static_cast<f32>(image.height - 1);
-            const u32 x0 = static_cast<u32>(px);
-            const u32 y0 = static_cast<u32>(py);
-            const u32 x1 = std::min(x0 + 1, image.width - 1);
-            const u32 y1 = std::min(y0 + 1, image.height - 1);
-            const f32 fx = px - static_cast<f32>(x0);
-            const f32 fy = py - static_cast<f32>(y0);
-            const auto texel = [&](u32 x, u32 y, usize k)
-            {
-                return static_cast<f32>(image.rgba8[(static_cast<usize>(y) * image.width + x) * 4 + k]) /
-                       255.0f;
-            };
-            for (usize k = 0; k < 4 && m * 4 + k < out.size(); ++k)
-            {
-                const f32 top = glm::mix(texel(x0, y0, k), texel(x1, y0, k), fx);
-                const f32 bottom = glm::mix(texel(x0, y1, k), texel(x1, y1, k), fx);
-                out[m * 4 + k] = glm::mix(top, bottom, fy);
-            }
+        }
+        if (m_mask != nullptr)
+        {
+            out.mask = bilinear(*m_mask, uv, 0); // M17 G2: terrain.grass_mask (grey: any channel)
         }
     }
 
+    static f32 bilinear(const asset::ImageData& image, const Vec2& uv, usize channel)
+    {
+        if (image.width == 0 || image.height == 0)
+        {
+            return 0.0f;
+        }
+        const f32 px = std::clamp(uv.x, 0.0f, 1.0f) * static_cast<f32>(image.width - 1);
+        const f32 py = std::clamp(uv.y, 0.0f, 1.0f) * static_cast<f32>(image.height - 1);
+        const u32 x0 = static_cast<u32>(px);
+        const u32 y0 = static_cast<u32>(py);
+        const u32 x1 = std::min(x0 + 1, image.width - 1);
+        const u32 y1 = std::min(y0 + 1, image.height - 1);
+        const auto texel = [&](u32 x, u32 y)
+        {
+            return static_cast<f32>(image.rgba8[(static_cast<usize>(y) * image.width + x) * 4 + channel]) /
+                   255.0f;
+        };
+        const f32 fx = px - static_cast<f32>(x0);
+        const f32 fy = py - static_cast<f32>(y0);
+        return glm::mix(glm::mix(texel(x0, y0), texel(x1, y0), fx),
+                        glm::mix(texel(x0, y1), texel(x1, y1), fx), fy);
+    }
     const world::Heightfield& m_heights;
     std::span<const asset::ImageData> m_splat;
+    const asset::ImageData* m_mask = nullptr;
     std::span<const world::Zone> m_zones;
     const world::WaterBodies& m_water;
     std::span<const std::pair<Vec3, Vec3>> m_paths;
@@ -232,9 +242,44 @@ void Engine::resetGrassWorld()
     {
         return;
     }
+    // M17 G2: grass per layer name from data/grass.toml (the contract's values if it is missing or wrong).
+    render::GrassTable table = render::GrassTable::builtin();
+    const std::string tablePath = "data/grass.toml";
+    if (auto bytes = m_vfs.read(tablePath); bytes)
+    {
+        auto parsed = render::GrassTable::parse(
+            std::string_view(reinterpret_cast<const char*>(bytes.value().data()), bytes.value().size()),
+            tablePath);
+        if (parsed)
+        {
+            table = std::move(parsed).value();
+        }
+        else
+        {
+            G7_LOG_WARN("engine", "grass: {} (built-in values instead)", parsed.error().message);
+        }
+    }
     for (const world::TerrainLayerRef& layer : m_heightfield.ref().layers)
     {
-        m_grassLayers.push_back(render::builtinGrassLayer(layer.name));
+        m_grassLayers.push_back(table.layer(layer.name));
+    }
+    // The optional mask (terrain.grass_mask): a density factor per splat pixel.
+    m_grassMask = {};
+    if (const std::string& mask = m_heightfield.ref().grassMask; !mask.empty())
+    {
+        const std::string path = preferCooked(m_vfs, mask);
+        auto bytes = m_vfs.read(path);
+        auto image = !bytes                    ? Result<asset::ImageData>(bytes.error())
+                     : path.ends_with(".ktx2") ? asset::decodeKtx2Rgba(bytes.value(), path)
+                                               : asset::decodeImage(bytes.value(), path);
+        if (image)
+        {
+            m_grassMask = std::move(image).value();
+        }
+        else
+        {
+            G7_LOG_WARN("engine", "grass mask {}: {} (the splat weights alone)", path, image.error().message);
+        }
     }
     const auto& points = m_waynet.points();
     for (u32 i = 0; i < points.size(); ++i)
@@ -302,8 +347,8 @@ void Engine::updateGrass()
             }
         }
     }
-    WorldGrassGround ground(m_heightfield, m_splatImages, m_worldFile.zones, m_water, m_grassPaths,
-                            m_grassSolids, m_physics);
+    WorldGrassGround ground(m_heightfield, m_splatImages, m_grassMask.rgba8.empty() ? nullptr : &m_grassMask,
+                            m_worldFile.zones, m_water, m_grassPaths, m_grassSolids, m_physics);
     m_grassRing.update(m_camera.transform.position, ground, m_grassLayers, m_grassBuilt);
     for (const u32 slot : m_grassBuilt)
     {

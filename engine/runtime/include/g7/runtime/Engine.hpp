@@ -1762,6 +1762,7 @@ private:
     std::vector<render::GrassLayer> m_grassLayers;                      // per terrain layer of the world
     std::vector<std::pair<Vec3, Vec3>> m_grassPaths; // the waynet's edges: no grass on them
     std::vector<u32> m_grassBuilt;                   // slots built this frame
+    asset::ImageData m_grassMask;                    // terrain.grass_mask (empty: none; M17 G2)
     std::vector<AABB> m_grassSolids;                 // bounds of what stands in the world (rays under them)
     bool m_grassDirty = true;                        // the ring anew (world, physics, splat, quality)
     bool m_grassSplatTried = false;

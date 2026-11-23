@@ -41,6 +41,10 @@ struct TerrainRef
     /// "holes": VFS path of a raw 8-bit mask, one byte per cell ((width - 1) * (height - 1), row 0 =
     /// north); 0 = hole. Empty = no holes.
     std::string holes;
+    /// "grass_mask" (M17 G2, contract with welt): VFS path of an 8-bit image (PNG) in the splat maps'
+    /// resolution and layout (pixel centres on the samples); its value is a factor on the grass density, 0
+    /// none .. 255 full. Empty = the splat weights alone.
+    std::string grassMask;
 };
 
 /// Heights in metres from a 16-bit value and back (the contract's encoding; halves may round

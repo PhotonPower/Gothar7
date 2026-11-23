@@ -1,4 +1,5 @@
 #include <g7/core/Assert.hpp>
+#include <g7/core/Config.hpp>
 #include <g7/core/Profiler.hpp>
 #include <g7/render/Camera.hpp>
 #include <g7/render/Device.hpp>
@@ -10,7 +11,9 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <format>
 #include <numbers>
+#include <tuple>
 
 namespace g7::render
 {
@@ -123,19 +126,121 @@ GrassSettings grassSettings(GrassQuality quality) noexcept
     return {};
 }
 
-GrassLayer builtinGrassLayer(std::string_view name) noexcept
+GrassTable GrassTable::builtin()
 {
-    GrassLayer layer;
-    if (name == "Wiese" || name == "grass")
-    {
-        // Decision 1: ankle to knee high and loose, the ground shows through.
-        layer.density = 1.0f;
-        layer.height = {0.25f, 0.6f};
-        layer.flowers = true;
-    }
-    return layer;
+    GrassTable table;
+    // Decision 1: ankle to knee high and loose on the meadows, the ground shows through.
+    GrassLayer meadow;
+    meadow.density = 1.0f;
+    meadow.height = {0.25f, 0.6f};
+    meadow.flowers = true;
+    table.m_layers.emplace_back("Wiese", meadow);
+    table.m_layers.emplace_back("grass", meadow); // the test camp
+    GrassLayer forest;
+    forest.density = 0.25f;
+    forest.height = {0.1f, 0.3f};
+    forest.colourFoot = {0.03f, 0.04f, 0.015f};
+    forest.colourTip = {0.09f, 0.12f, 0.04f};
+    table.m_layers.emplace_back("Waldboden", forest);
+    GrassLayer mud;
+    mud.density = 0.1f;
+    mud.height = {0.15f, 0.35f};
+    mud.colourFoot = {0.04f, 0.05f, 0.015f};
+    mud.colourTip = {0.15f, 0.17f, 0.06f};
+    table.m_layers.emplace_back("Matsch", mud);
+    return table;
 }
 
+Result<GrassTable> GrassTable::parse(std::string_view toml, std::string_view source)
+{
+    auto parsed = Config::parse(toml, source);
+    if (!parsed)
+    {
+        return parsed.error();
+    }
+    const Config& c = parsed.value();
+    const auto fail = [&](const std::string& key, std::string_view what)
+    { return Error{std::format("{}: {}: {}", source, key, what)}; };
+    if (c.get<i64>("version", 0) != 1)
+    {
+        return fail("version", "must be 1");
+    }
+    GrassTable table;
+    for (const std::string& name : c.keys("layer"))
+    {
+        const std::string at = "layer." + name;
+        GrassLayer layer;
+        layer.density = static_cast<f32>(c.get<f64>(at + ".density", 0.0));
+        if (layer.density < 0.0f || layer.density > 1.0f)
+        {
+            return fail(at + ".density", "must be within 0..1");
+        }
+        const auto vector = [&](const std::string& key, usize size, f32* out) -> Result<void>
+        {
+            if (!c.contains(key))
+            {
+                return {};
+            }
+            if (c.arraySize(key) != size)
+            {
+                return fail(key, std::format("must be a list of {} numbers", size));
+            }
+            for (usize i = 0; i < size; ++i)
+            {
+                const auto value = c.find<f64>(std::format("{}[{}]", key, i));
+                if (!value)
+                {
+                    return fail(key, std::format("must be a list of {} numbers", size));
+                }
+                out[i] = static_cast<f32>(*value);
+            }
+            return {};
+        };
+        for (auto [key, size, out] : {std::tuple{".height", usize{2}, &layer.height.x},
+                                      std::tuple{".foot", usize{3}, &layer.colourFoot.x},
+                                      std::tuple{".tip", usize{3}, &layer.colourTip.x}})
+        {
+            if (auto read = vector(at + key, size, out); !read)
+            {
+                return read.error();
+            }
+        }
+        if (layer.height.x <= 0.0f || layer.height.y < layer.height.x || layer.height.y > kGrassMaxHeight)
+        {
+            return fail(at + ".height",
+                        std::format("must be [min, max] with 0 < min <= max <= {}", kGrassMaxHeight));
+        }
+        layer.flowers = c.get<bool>(at + ".flowers", false);
+        table.m_layers.emplace_back(name, layer);
+        for (usize i = 0, n = c.arraySize(at + ".aliases"); i < n; ++i)
+        {
+            const auto alias = c.find<std::string>(std::format("{}.aliases[{}]", at, i));
+            if (!alias || alias->empty())
+            {
+                return fail(at + ".aliases", "must be a list of names");
+            }
+            table.m_layers.emplace_back(*alias, layer);
+        }
+    }
+    return table;
+}
+
+GrassLayer GrassTable::layer(std::string_view name) const
+{
+    for (const auto& [n, layer] : m_layers)
+    {
+        if (n == name)
+        {
+            return layer;
+        }
+    }
+    return {};
+}
+
+GrassLayer builtinGrassLayer(std::string_view name)
+{
+    return GrassTable::builtin().layer(name);
+}
 u32 packGrassTuft(const GrassTuftInfo& info) noexcept
 {
     constexpr f32 kTwoPi = 2.0f * std::numbers::pi_v<f32>;

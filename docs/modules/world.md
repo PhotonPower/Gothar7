@@ -323,7 +323,7 @@ Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig)
 ```
 - `version` (Pflicht, = 1), `heightmap`: VFS-Pfad einer **rohen `.r16`**: `width·height` Werte **uint16 Little Endian**,
   zeilenweise. `width`/`height` ≥ 2, `cellSize` > 0 (Meter zwischen Sample-Mitten), `firstSample` [x, z] der Mitte von
-  Spalte 0 / Zeile 0, `maxY` > `minY`. Optional: `splat`, `holes` (unten).
+  Spalte 0 / Zeile 0, `maxY` > `minY`. Optional: `splat`, `holes`, `grass_mask` (unten).
 - **Lage:** Sample (Spalte c, Zeile r) liegt bei x = firstSample.x + c·cellSize, z = firstSample.z + r·cellSize.
   **Zeile 0 = kleinstes z (Norden, −Z), Spalte 0 = kleinstes x (Westen, −X)**, Y oben. Die Fläche reicht von Sample-Mitte
   zu Sample-Mitte; dazwischen bilinear, außerhalb gilt die Randhöhe.
@@ -352,6 +352,16 @@ Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig)
   (999, 999) → (999.5, 999.5); (500, 0) → x = −999.5 + 500·1999 / 999 = 1.0005. Bei Heightmap-Auflösung
   (2000×2000) fällt jedes Pixel genau auf ein Sample; da 1999 prim ist, ergibt jede andere Auflösung einen krummen
   Pixelabstand (z. B. 2,001 m bei 1000 px) – mit der Formel unproblematisch.
+- **Gras (M17 G2, Vertrag mit welt):** Die Engine findet das Gras einer Schicht über ihren `name` in
+  `data/grass.toml`: `Wiese` (im Testlager auch `grass`) voll, `Waldboden` ein Viertel, `Matsch` ein Zehntel, alle
+  anderen keins (`render.md` „Gras“).
+
+### Grasmaske (`grass_mask`, optional, M17 G2)
+- `"grass_mask": "worlds/leonberg/generated/grass_mask.png"` – 8-Bit-Bild (Graustufen-PNG; gekocht wie die
+  Splat-Karten als Daten), **Lage wie die Splat-Karten** (Pixel-Mitten auf Samples, Zeile 0 = Norden, bilinear;
+  Leonberg 2000×2000, 1 m). Wert = Faktor auf die Grasdichte: 0 kein Gras … 255 volle Dichte der Schicht.
+- welt erzeugt sie aus OSM-Flächen (Wiese, Garten, Park voll; 1-m-Streifen an Weg- und Straßenrändern halb). Ohne
+  Maske gelten nur die Splat-Gewichte. Ein Ladefehler ist eine Warnung (dann ohne Maske).
 
 ### Löcher (`holes`, optional)
 - `"holes": "worlds/leonberg/generated/holes.r8"` – rohe 8-Bit-Maske **je Zelle** (nicht je Sample):

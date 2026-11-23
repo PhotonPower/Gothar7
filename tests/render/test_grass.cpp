@@ -1,6 +1,7 @@
 // Grass fields (M17 part G1): qualities, the packed tuft, the tile builder (deterministic, density from the
 // ground, no grass on holes, steep slopes or excluded ground) and the ring around the camera. CPU only.
 
+#include <g7/core/FileSystem.hpp>
 #include <g7/render/Grass.hpp>
 
 #include <doctest/doctest.h>
@@ -65,7 +66,48 @@ TEST_CASE("Grass qualities: names, radius and density by the plan's table")
     CHECK(builtinGrassLayer("Wiese").density == 1.0f);
     CHECK(builtinGrassLayer("grass").density == 1.0f); // the test camp
     CHECK(builtinGrassLayer("Kopfstein").density == 0.0f);
-    CHECK(builtinGrassLayer("Acker").density == 0.0f); // decision 7: bare earth for now
+    CHECK(builtinGrassLayer("Acker").density == 0.0f);      // decision 7: bare earth for now
+    CHECK(builtinGrassLayer("Waldboden").density == 0.25f); // G2 contract
+    CHECK(builtinGrassLayer("Matsch").density == 0.1f);
+}
+
+TEST_CASE("Grass table: data/grass.toml holds the contract's values, errors name file and key")
+{
+    auto text = fs::readFile(fs::fromUtf8(G7_ASSET_SOURCE_DIR "/data/grass.toml"));
+    REQUIRE(text);
+    auto table = GrassTable::parse(
+        std::string_view(reinterpret_cast<const char*>(text.value().data()), text.value().size()),
+        "data/grass.toml");
+    REQUIRE_MESSAGE(table, (table ? "" : table.error().message));
+    const GrassTable builtin = GrassTable::builtin();
+    for (const char* name :
+         {"Wiese", "grass", "Waldboden", "Matsch", "Kopfstein", "Kies", "Acker", "Fels", "x"})
+    {
+        CAPTURE(name);
+        const GrassLayer a = table.value().layer(name);
+        const GrassLayer b = builtin.layer(name);
+        CHECK(a.density == b.density);
+        CHECK(a.height == b.height);
+        CHECK(a.colourFoot == b.colourFoot);
+        CHECK(a.colourTip == b.colourTip);
+        CHECK(a.flowers == b.flowers);
+    }
+    CHECK(table.value().layer("grass").flowers); // the test camp's meadow is "Wiese" by another name
+
+    const auto error = [](std::string_view toml)
+    {
+        auto t = GrassTable::parse(toml, "g.toml");
+        REQUIRE_FALSE(t);
+        return t.error().message;
+    };
+    CHECK(error("version = 2") == "g.toml: version: must be 1");
+    CHECK(error("version = 1\n[layer.A]\ndensity = 2.0") == "g.toml: layer.A.density: must be within 0..1");
+    CHECK(error("version = 1\n[layer.A]\nheight = [0.5]") ==
+          "g.toml: layer.A.height: must be a list of 2 numbers");
+    CHECK(error("version = 1\n[layer.A]\nheight = [0.5, 0.2]") ==
+          "g.toml: layer.A.height: must be [min, max] with 0 < min <= max <= 1.2");
+    CHECK(error("version = 1\n[layer.A]\nfoot = [1, 2]") ==
+          "g.toml: layer.A.foot: must be a list of 3 numbers");
 }
 
 TEST_CASE("Grass tuft: the packed bits round trip")

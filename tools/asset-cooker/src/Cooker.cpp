@@ -575,6 +575,10 @@ private:
         {
             // Terrain paths are VFS paths, i.e. relative to the source root.
             m_dataImages.insert(terrain->splatMaps.begin(), terrain->splatMaps.end());
+            if (!terrain->grassMask.empty())
+            {
+                m_dataImages.insert(terrain->grassMask); // M17 G2: a density factor, data like the weights
+            }
             for (const world::TerrainLayerRef& layer : terrain->layers)
             {
                 m_colorImages.insert(layer.albedo);
