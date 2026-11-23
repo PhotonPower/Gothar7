@@ -800,7 +800,8 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
             return events.error();
         }
         for (const auto& [key, flag] : {std::pair<const char*, bool*>{"once", &vob.mob.once},
-                                        std::pair<const char*, bool*>{"hidden", &vob.mob.hidden}})
+                                        std::pair<const char*, bool*>{"hidden", &vob.mob.hidden},
+                                        std::pair<const char*, bool*>{"no_pick", &vob.mob.noPick}})
         {
             if (mob.contains(key))
             {
@@ -810,6 +811,15 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
                 }
                 *flag = mob[key].get<bool>();
             }
+        }
+        if (mob.contains("one_way"))
+        {
+            const std::string side = mob["one_way"].is_string() ? mob["one_way"].get<std::string>() : "";
+            if (side != "front" && side != "back")
+            {
+                return r.error(mat + ".one_way", "must be 'front' or 'back'");
+            }
+            vob.mob.oneWay = side;
         }
     }
     if (vob.type == VobType::Item)
@@ -1658,6 +1668,14 @@ Json vobJson(const WorldFileVob& vob)
         if (vob.mob.hidden)
         {
             v["components"]["mob"]["hidden"] = true;
+        }
+        if (vob.mob.noPick)
+        {
+            v["components"]["mob"]["no_pick"] = true; // dungeon D5
+        }
+        if (!vob.mob.oneWay.empty())
+        {
+            v["components"]["mob"]["one_way"] = vob.mob.oneWay;
         }
     }
     if (vob.type == VobType::Item)

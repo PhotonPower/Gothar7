@@ -304,6 +304,10 @@ struct MobRef
     std::string action = std::string(kEventTrigger);
     bool once = false;   ///< a button: one press only (written when true)
     bool hidden = false; ///< in focus only from close by and as a loose stone until found (written when true)
+    /// Doors (dungeon D5): the lockpick does not help, only the key (written when true).
+    bool noPick = false;
+    /// Doors (dungeon D5): "front" (+Z side) or "back" - the only side it opens from; empty: both.
+    std::string oneWay;
 };
 
 /// An item lying in the world (M8): the Item instance of the scripts and how many. Drawn with the Item's

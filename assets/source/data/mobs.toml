@@ -115,3 +115,13 @@ leave = ""
 name = "front"
 pos = [0.0, 0.0, 0.55]
 facing = [0.0, 0.0, -1.0]
+
+[mobs.niche]                 # dungeon D5: a hollow in a wall (front +Z), floor about 0.9 m high; a chest without a lid
+clips = "mob/niche"          # reaching in, looking, taking back the hand (figuren); until then the engine times them
+enter = "t_reach"
+loop = "s_reach"
+leave = "t_back"
+[[mobs.niche.slots]]
+name = "front"
+pos = [0.0, 0.0, 0.55]
+facing = [0.0, 0.0, -1.0]

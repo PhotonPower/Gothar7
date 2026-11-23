@@ -1193,6 +1193,8 @@ private:
         bool hidden = false; ///< focus from close by, a loose stone until found
         bool found = false;  ///< a hidden one was used once
         bool spent = false;  ///< a once-button was pressed
+        bool noPick = false; ///< dungeon D5: only the key opens it
+        std::string oneWay;  ///< dungeon D5: "front"/"back", the side a door opens from
     };
     struct MobUse
     {

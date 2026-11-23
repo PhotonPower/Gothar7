@@ -366,6 +366,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
   - D2 bewegte Teile umgesetzt (`mover`: Gatter, Geheimwand, Falltür; Kollision bewegt sich mit, Einklemmen hält an und fährt zurück, Fallen-Gatter 20 Schaden, gesperrte Wegnetz-Kanten, Lua `mover_state`, Spielstand)
   - D3 Schalter und Platten umgesetzt (Mob-Typen `lever`, `wall_button` mit `hidden`/`once`, Trittplatten mit Gewicht inkl. Gegenständen, Lua `switch_state`, Spielstand; Clips `mob/lever/t_use`, `mob/button/t_press` von figuren offen)
   - D4 Teleporter und Fall umgesetzt (in der Welt mit Weißblende und ohne Zurückspringen, in andere Ebenen, Kreaturen und Gegenstände, an/aus per Ereignis; Fall durch den Schacht als Weltwechsel mit Geschwindigkeit, ohne Fallschaden; schwarzes Abblenden nach jedem Weltwechsel)
+  - D5 Nischen und Türen umgesetzt (Mob-Typ `niche` wie eine Truhe ohne Deckel, Türen mit `no_pick` und `one_way`; Clips `mob/niche/…` von figuren offen)
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 
