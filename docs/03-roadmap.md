@@ -350,7 +350,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [ ] Spiegelnde Fenster (Wunsch Projektinhaber, „Raytracing“) – Optionen: Reflexions-Proben/Cubemaps je Zone, Screen-Space-Reflections; echtes Raytracing nur mit dem optionalen Vulkan-Backend (eigene ADR); offener Punkt in `render.md`
 - [x] Post-Processing: Bloom, Farbkorrektur je Tageszeit/Zone, SSAO optional – #358, #360, #375
   - Plan (Teile P1–P3, freigegeben 2026-11-07): ebenda
-- [ ] Vegetation: Instancing, Wind-Animation, Grasfelder – Wind-Animation umgesetzt (Wetter Teil W); offen: Instancing, Grasfelder
+- [ ] Vegetation: Instancing, Wind-Animation, Grasfelder – Wind-Animation umgesetzt (Wetter Teil W); Grasrenderer G1 (Büschel in 16-m-Kacheln, Option `render.grass`, `render.md` „Gras“); offen: G2 (`grass.toml`, Maske), G3 (Editor), Instancing (V)
 - [ ] Job-System, Multithreading für Animation/KI/Culling – Plan: `docs/modules/perf.md`
 - [ ] Welt-Streaming in Zellen, Ladezeiten-Optimierung
 - [x] Tracy-Profiling, Performance-Budget pro System – Plan: `docs/modules/perf.md`; Tracy (#387, ADR 0024), Szenarien mit Budgets (#389), KI-LOD-Obergrenze (#391, #392)

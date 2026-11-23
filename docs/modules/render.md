@@ -629,6 +629,53 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   mit dem Wind, der Fuß nicht; ohne Wind und unmarkiert steht alles still; Mehrfach-Zeichnen und Tiefen-Pass
   biegen gleich), `test_engine_render.cpp` (Wind folgt der Lage, aus in den Einstellungen).
 
+### Gras (M17 Teil G1, umgesetzt) – `Grass.hpp`, `grass.vert/.frag`, `runtime/EngineGrass.cpp`
+- **Büschel auf der GPU:** Jedes Büschel ist ein Eintrag von 16 Byte (Fuß als drei Floats, gepackte Bits: Drehung,
+  Höhe, Schicht, Farbton, Art, Gelände-Normale xz; `packGrassTuft`) in einem Speicherpuffer (std430, Bindung 6).
+  Die Geometrie entsteht im Vertex-Shader aus `gl_VertexID`, ohne Vertex-Puffer und ohne Textur:
+  - nah: 7 Halme je Büschel, je 5 Dreiecke (zwei Abschnitte und die Spitze), golden um den Fuß verteilt, nach außen
+    geneigt;
+  - fern: zwei gekreuzte Karten, aus denen `grass.frag` sechs Halme schneidet (Alpha-Test).
+  - Je Stufe ein `drawInstanced` über alle sichtbaren Kacheln; der Shader findet die Kachel einer Instanz per
+    binärer Suche in `uTileStart` (höchstens 96 Kacheln).
+  - Blühende Büschel (5 %, Entscheidung 3): zwei Stängel mit weißem, gelbem oder blauem Kopf.
+- **Kacheln:** 16 × 16 m (`GrassRing`). Kacheln, die näher als der Umkreis liegen, baut die CPU einmal, höchstens zwei
+  je Bild, die nächsten zuerst; sie bleiben, bis sie `kGrassKeepMargin` (8 m) jenseits des Umkreises liegen. Jede
+  Kachel hat einen festen Platz im Puffer. Gewürfelt wird aus den Kachelkoordinaten (gleiche Kachel, gleiche Liste):
+  Kandidaten auf einem gejitterten Raster mit der Dichte der Stufe, jeder bleibt mit der Wahrscheinlichkeit
+  seines Bodens.
+- **Wo Gras wächst (`buildGrassTile`):** Dichte = geschärfter Anteil der Schicht am Boden (normiert wie im
+  Gelände-Shader, `smoothstep(0,5; 0,8)`: auf dem Rand eines Pflasterwegs keins) × Dichte der Schicht × Maske. In G1 hat
+  nur die Wiese (`Wiese`, im Testlager `grass`) Gras (Dichte 1, 0,25–0,6 m); `grass.toml` und die Maske folgen in G2.
+  Kein Gras auf Löchern und an Hängen über 35°.
+- **Ausnahmen (Engine, `WorldGrassGround`):** auf dem Wegnetz (1,2 m breit), in Wasser, in Innenzonen und unter
+  Häusern, Mauern, Felsen und Mobs. Für Büschel innerhalb der Bounds eines festen Objekts geht ein Strahl von 2 m
+  über dem Boden bis 15 cm darunter; trifft er etwas anderes als das Gelände, entfällt das Büschel (so auch flach
+  aufliegende Flächen). Der Ring beginnt neu, wenn die Physik neu gebaut wird (Modelle fertig geladen, Editor), die
+  Splat-Gewichte gemalt werden oder die Stufe wechselt; solange die Physik aussteht, baut er nichts.
+- **Ausblenden:** Auf dem letzten Viertel des Umkreises schrumpfen die Büschel zum Boden und dünnen per Dither aus.
+  Nah/fern wird über 2 m um `bladeDistance` gedithert, jedes Büschel gehört genau einer Stufe.
+- **Wind:** wie `WindKind::Grass` (linear vom Fuß, 25 % der Höhe, Böen aus `common/wind.glsl`); bei `render.wind =
+  false` steht das Gras.
+- **Licht:** Normale des Geländes (kein Streifenbild), Farbe vom dunklen Fuß zur hellen Spitze je Schicht, ±Farbton je
+  Büschel; Sonnenschatten, Punktlichter (die nächsten 8 im Umkreis), Nebel wie das Gelände. Schatten wirft Gras nur
+  in `high` (erste Kaskade, bis 15 m).
+- **Durchgang:** nach dem deckenden Szenen-Pass, eigener GPU-Zeitabschnitt `grass`; Wasser und Effekte haben ihre
+  Abschnitte `water` und `effects` jetzt immer (vorher ohne Wasser im `scene`).
+- **Option** `[render] grass = auto | off | low | medium | high` (Optionen → Grafik „Gras“); `auto` = `medium`, auf
+  Intel `low`:
+
+  | Stufe | Umkreis | Büschel/m² | 3D-Halme bis | Schatten |
+  |---|---|---|---|---|
+  | low | 20 m | 1,5 | 8 m | – |
+  | medium | 35 m | 3 | 12 m | – |
+  | high | 50 m | 5 | 20 m | bis 15 m |
+- **Tests:** `tests/render/test_grass.cpp` (Stufen, gepackte Bits, Kachel deterministisch, Dichte nach Gewicht und
+  Maske, Löcher, Hänge, Ausnahmen, Ring höchstens 2 Kacheln je Bild, ferne Kacheln fallen weg), GPU
+  `test_grass.cpp` (Gras auf der Wiese, keins auf dem Pflaster daneben, aus zeichnet nichts, Wind bewegt die Halme),
+  `test_engine_grass.cpp` (Testlager: Ring füllt sich mit 2 Kacheln je Bild, kein Büschel auf Wegen, im Wasser,
+  unter Hütten und Felsen; Leonberg: keins in Räumen und Häusern).
+
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp
 struct DebugStyle { Vec4 color{1}; f32 duration = 0; bool depthTest = true; };   // duration 0 = nur dieser Frame

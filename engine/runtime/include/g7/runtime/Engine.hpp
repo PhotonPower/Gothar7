@@ -38,6 +38,7 @@
 #include <g7/render/Camera.hpp>
 #include <g7/render/DebugDraw.hpp>
 #include <g7/render/Device.hpp>
+#include <g7/render/Grass.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
 #include <g7/render/Particles.hpp>
@@ -791,6 +792,11 @@ public:
     [[nodiscard]] u32 distortionDrawn() const noexcept { return m_distortionDrawn; }
     [[nodiscard]] f32 wobble() const noexcept;
     [[nodiscard]] const render::RainRenderer& rain() const noexcept { return m_rain; }
+    /// Grass fields (M17 G1): the quality now ([render] grass, auto resolved), the tiles around the camera,
+    /// what the last frame drew.
+    [[nodiscard]] render::GrassQuality grassQuality() const noexcept { return m_grassQuality; }
+    [[nodiscard]] const render::GrassRing& grassRing() const noexcept { return m_grassRing; }
+    [[nodiscard]] const render::GrassStats& grassStats() const noexcept { return m_grass.stats(); }
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
@@ -1532,6 +1538,13 @@ private:
     void updateWeather();
     void thunder(const world::Lightning& flash);
     void updateRainMap();
+    // Grass fields (M17 G1, EngineGrass.cpp).
+    void applyGrassSetting();
+    void resetGrassWorld(); ///< layers and paths of the loaded world
+    void updateGrass();     ///< the ring around the camera, uploads (before the passes)
+    void drawGrass();
+    void drawGrassShadow(const render::Cascade& cascade);
+    [[nodiscard]] render::GrassFrame grassFrame() const;
     void drawRain(u32 width, u32 height);
     void rebuildWaterSurfaces();
     void drawWater();
@@ -1743,7 +1756,17 @@ private:
     render::RainRenderer m_rain;                                     // M17 R
     std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
     render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
-    bool m_weatherVisible = true;                                    // [render] weather
+    render::GrassRenderer m_grass;                                   // M17 G1
+    render::GrassRing m_grassRing;
+    render::GrassQuality m_grassQuality = render::GrassQuality::Medium; // [render] grass (auto resolved)
+    std::vector<render::GrassLayer> m_grassLayers;                      // per terrain layer of the world
+    std::vector<std::pair<Vec3, Vec3>> m_grassPaths; // the waynet's edges: no grass on them
+    std::vector<u32> m_grassBuilt;                   // slots built this frame
+    std::vector<AABB> m_grassSolids;                 // bounds of what stands in the world (rays under them)
+    bool m_grassDirty = true;                        // the ring anew (world, physics, splat, quality)
+    bool m_grassSplatTried = false;
+    u32 m_grassDrawn = 0;
+    bool m_weatherVisible = true; // [render] weather
     f64 m_rainTime = 0.0;
     bool m_windEnabled = true;               // [render] wind (M17 W)
     f64 m_windTime = 0.0;                    // real seconds, wrapped; moves the sway and the gusts
