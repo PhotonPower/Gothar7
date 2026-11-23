@@ -849,6 +849,9 @@ public:
     [[nodiscard]] DiaryData diaryData() const;
     /// The UI language (`[ui] language`: "de", "en").
     [[nodiscard]] std::string language() const;
+    /// The credits screen's text (release.md decision 10): licenses.toml and THIRD_PARTY_NOTICES.txt of the
+    /// package, in development those of the repository.
+    [[nodiscard]] std::string creditsText() const;
     /// A content text of the scripts (German inline, E2) in the UI language: its translation from
     /// text/script.<language>.json, else the German text (M14 part G).
     [[nodiscard]] std::string contentText(std::string_view german) const;

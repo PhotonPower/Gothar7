@@ -1,5 +1,6 @@
 #include <g7/platform/Actions.hpp>
 #include <g7/platform/Input.hpp>
+#include <g7/ui/JournalScreens.hpp>
 #include <g7/ui/MenuScreens.hpp>
 
 #include <algorithm>
@@ -420,5 +421,35 @@ void LoadingScreen::onUpdate(f32)
     const LoadingView view = m_view ? m_view() : LoadingView{};
     m_title->text = UiText::key("UI_LOADING", {{"world", view.world}});
     m_bar->fraction = std::clamp(view.progress, 0.0f, 1.0f);
+}
+
+// --- Credits ---
+
+CreditsScreen::CreditsScreen(std::string title, std::string text) : m_text(std::move(text))
+{
+    Panel& page = root().add<Panel>("parchment");
+    page.layoutKey = "credits.page";
+    page.box = {Anchor::Center, Vec2(0.0f), Vec2(1000.0f, 760.0f)};
+    Label& heading = page.add<Label>("document_title", UiText::literal(std::move(title)), Align::Center);
+    heading.layoutKey = "credits.title";
+    heading.box = {Anchor::Top, Vec2(0.0f, 44.0f), Vec2(-120.0f, 50.0f)};
+    m_view = &page.add<TextView>("document");
+    m_view->layoutKey = "credits.text";
+    m_view->box = {Anchor::Top, Vec2(0.0f, 108.0f), Vec2(-140.0f, -170.0f)};
+    m_view->text = m_text;
+    Label& hint = page.add<Label>("document_hint", UiText::key("UI_CREDITS_CLOSE"), Align::Center);
+    hint.layoutKey = "credits.hint";
+    hint.box = {Anchor::Bottom, Vec2(0.0f, -36.0f), Vec2(-120.0f, 26.0f)};
+}
+
+bool CreditsScreen::onAccept()
+{
+    return onBack();
+}
+
+bool CreditsScreen::onBack()
+{
+    close();
+    return true;
 }
 } // namespace g7::ui
