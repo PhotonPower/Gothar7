@@ -1040,11 +1040,11 @@ Teile G und V des Plans „Magie-Nachträge“ (`gameplay.md`, dort auch Teil T 
 ### Reihenfolge
 G vor V (G ist klein und unabhängig); beide nach Teil T oder parallel dazu, je ein PR.
 
-## Plan M17: Grasfelder und Vegetations-Instancing (Vorschlag 2026-11-23)
-Stand: **Plan, wartet auf Freigabe.** Roadmap M17 „Vegetation: Instancing, Wind-Animation, Grasfelder“. Die
+## Plan M17: Grasfelder und Vegetations-Instancing (freigegeben 2026-11-23)
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-23; alle Vorschläge übernommen). Roadmap M17 „Vegetation: Instancing, Wind-Animation, Grasfelder“. Die
 Wind-Animation ist fertig (Teil W, „Wind“ oben); offen sind Grasfelder und Instancing. Eine neue Bibliothek ist nicht
-nötig, eine ADR deshalb auch nicht. Die Weltdatei bekommt ein Feld dazu (Teil G2, additiv). Die Gefühlsfragen an den
-Projektinhaber stehen am Ende, nummeriert, jeweils mit Vorschlag.
+nötig, eine ADR deshalb auch nicht. Die Weltdatei bekommt ein Feld dazu (Teil G2, additiv). Die Entscheidungen des
+Projektinhabers stehen am Ende, nummeriert. Reihenfolge: G1, G2 (Vertrag mit welt vorher über den Koordinator), G3, V.
 
 ### Ausgangslage
 - **Gelände Leonberg:** 2 × 2 km, Zellen 1 m, sieben Splat-Schichten: Wiese, Kopfstein, Kies, Matsch, Waldboden, Acker,
@@ -1170,25 +1170,25 @@ begrenzt und sind über eine Qualitätsstufe einstellbar.
 | G3 | Editor-Pinsel, Debug-Fenster | 1 Tag |
 | G4 | Felder (optional) | 1 Tag |
 
-### Gefühlsfragen an den Projektinhaber (mit Vorschlag)
-1. **Wie dicht und wie hoch?** Gothic 1 hatte fast nur einzelne Büschel. **Vorschlag:** Wiesen knöchel- bis kniehoch und
+### Entscheidungen des Projektinhabers (2026-11-23, alle nach Vorschlag)
+1. **Wie dicht und wie hoch?** Gothic 1 hatte fast nur einzelne Büschel. **Entschieden:** Wiesen knöchel- bis kniehoch und
    locker (Boden schimmert durch), keine geschlossene Rasendecke. Im Ort nur an Rändern und in Gärten.
-2. **Sichtweite:** **Vorschlag:** `medium` 35 m mit weichem Ausblenden; dahinter trägt die Wiesen-Textur. Kein Gras bis
+2. **Sichtweite:** **Entschieden:** `medium` 35 m mit weichem Ausblenden; dahinter trägt die Wiesen-Textur. Kein Gras bis
    zum Horizont.
-3. **Blumen:** **Vorschlag:** ein kleiner Anteil (etwa 5 %) Wiesenblumen-Büschel (weiß, gelb, blau) auf Wiesen, nicht
+3. **Blumen:** **Entschieden:** ein kleiner Anteil (etwa 5 %) Wiesenblumen-Büschel (weiß, gelb, blau) auf Wiesen, nicht
    in Gärten.
-4. **Weicht Gras dem Helden und den NPCs?** **Vorschlag:** ja, leicht: Halme im Umkreis von 0,8 m um Figuren biegen weg
+4. **Weicht Gras dem Helden und den NPCs?** **Entschieden:** ja, leicht: Halme im Umkreis von 0,8 m um Figuren biegen weg
    (Shader, bis 16 Figuren nah der Kamera). Als eigener kleiner Schritt nach G1.
-5. **Gegenstände im Gras:** Ein liegender Apfel kann im hohen Gras verschwinden. **Vorschlag:** Gras um liegende Items
+5. **Gegenstände im Gras:** Ein liegender Apfel kann im hohen Gras verschwinden. **Entschieden:** Gras um liegende Items
    (0,5 m) auf ein Drittel kürzen, damit man sie noch sieht. Der Fokus hebt sie ohnehin hervor.
-6. **Grasflecken-Modelle von welt:** **Vorschlag:** `grass_patch` auf Wiesen ersetzt das neue Gras; welt entfernt sie
+6. **Grasflecken-Modelle von welt:** **Entschieden:** `grass_patch` auf Wiesen ersetzt das neue Gras; welt entfernt sie
    dort nach G2. Büschel an Mauerfüßen (`grass_tuft`), Unkraut und Schilf bleiben.
-7. **Äcker:** Getreide, Stoppeln oder nackte Erde? **Vorschlag:** vorerst nackte Erde (Acker-Textur); Getreide als
+7. **Äcker:** Getreide, Stoppeln oder nackte Erde? **Entschieden:** vorerst nackte Erde (Acker-Textur); Getreide als
    späterer Teil G4, wenn gewünscht.
-8. **Schatten vom Gras:** **Vorschlag:** keine eigenen Schatten außer in der Stufe `high`; dunklere Halmfüße genügen.
-9. **Maske malen im Editor:** **Vorschlag:** ja, als Überlagerung zur generierten Maske, damit welts Generator Handarbeit
+8. **Schatten vom Gras:** **Entschieden:** keine eigenen Schatten außer in der Stufe `high`; dunklere Halmfüße genügen.
+9. **Maske malen im Editor:** **Entschieden:** ja, als Überlagerung zur generierten Maske, damit welts Generator Handarbeit
    nicht überschreibt.
-10. **Vorgabe-Stufe:** **Vorschlag:** `medium`, auf Intel UHD `low`.
+10. **Vorgabe-Stufe:** **Entschieden:** `medium`, auf Intel UHD `low`.
 
 ## Offene Fragen
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.
