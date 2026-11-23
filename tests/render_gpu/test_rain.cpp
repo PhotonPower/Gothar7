@@ -10,6 +10,8 @@
 
 #include <doctest/doctest.h>
 
+#include <string>
+
 using namespace g7;
 using namespace g7::render;
 using g7::test::GlFixture;
@@ -53,6 +55,25 @@ TEST_CASE("Rain surface: streaks in the open, none under a roof, none without ra
         for (usize i = 0; i < static_cast<usize>(kSize) * (kSize / 2); ++i) // rows from the bottom
         {
             sum += rgba[i * 4] + rgba[i * 4 + 1] + rgba[i * 4 + 2];
+        }
+        if (roof && sum > 0.0f) // TEMP diagnostic (CI llvmpipe): where the light under the roof is
+        {
+            for (u32 y = 0; y < kSize; ++y)
+            {
+                std::string row;
+                f32 rowSum = 0.0f;
+                for (u32 x = 0; x < kSize; ++x)
+                {
+                    const usize i = (static_cast<usize>(y) * kSize + x) * 4;
+                    const f32 v = rgba[i] + rgba[i + 1] + rgba[i + 2];
+                    rowSum += v;
+                    row += v > 0.5f ? "#" : v > 0.0f ? "+" : ".";
+                }
+                if (rowSum > 0.0f)
+                {
+                    MESSAGE("row ", y, " sum ", rowSum, " ", row);
+                }
+            }
         }
         return sum;
     };
