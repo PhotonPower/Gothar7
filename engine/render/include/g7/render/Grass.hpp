@@ -50,12 +50,13 @@ struct GrassSettings
 [[nodiscard]] GrassSettings grassSettings(GrassQuality quality) noexcept;
 
 inline constexpr f32 kGrassTileSize = 16.0f;
-inline constexpr u32 kGrassTilesPerFrame = 2;   ///< new tiles built per frame at most
-inline constexpr f32 kGrassMaxSlope = 35.0f;    ///< degrees; steeper ground has no grass
-inline constexpr f32 kGrassKeepMargin = 8.0f;   ///< a tile stays until this far beyond the radius
-inline constexpr f32 kGrassFlowerShare = 0.05f; ///< of the tufts on layers with flowers (decision 3)
-inline constexpr u32 kGrassMaxLayers = 8;       ///< the terrain's splat layers
-inline constexpr u32 kGrassMaxTiles = 96;       ///< resident tiles (high: 81 at most)
+inline constexpr u32 kGrassTilesPerFrame = 2;         ///< new tiles built per frame at most
+inline constexpr u32 kGrassStaleRebuildsPerFrame = 4; ///< stale tiles (grass brush) rebuilt per frame at most
+inline constexpr f32 kGrassMaxSlope = 35.0f;          ///< degrees; steeper ground has no grass
+inline constexpr f32 kGrassKeepMargin = 8.0f;         ///< a tile stays until this far beyond the radius
+inline constexpr f32 kGrassFlowerShare = 0.05f;       ///< of the tufts on layers with flowers (decision 3)
+inline constexpr u32 kGrassMaxLayers = 8;             ///< the terrain's splat layers
+inline constexpr u32 kGrassMaxTiles = 96;             ///< resident tiles (high: 81 at most)
 
 /// How grass grows on one splat layer of the terrain (G1: built in for the meadow; G2: data/grass.toml).
 struct GrassLayer
@@ -103,6 +104,14 @@ struct GrassGroundSample
     std::array<f32, kGrassMaxLayers> weights{}; ///< splat weight 0..1 of each terrain layer
     f32 mask = 1.0f;                            ///< density factor (G2: terrain.grass_mask)
 };
+
+/// The density factor with the editor's overlay (G3, world::grassOverlayPath): the generated mask where the
+/// overlay does not count, its value where it does - mask x (1 - coverage) + premultiplied, with
+/// `premultiplied` = value x coverage (interpolated as such, so the overlay's edge does not darken).
+[[nodiscard]] constexpr f32 grassMaskWithOverlay(f32 mask, f32 premultiplied, f32 coverage) noexcept
+{
+    return mask * (1.0f - coverage) + premultiplied;
+}
 
 /// Where grass may grow: implemented by the engine over its world (heightfield, splat weights, rooms,
 /// water, paths, buildings).
@@ -180,15 +189,23 @@ public:
         GrassTileKey key;
         u32 slot = 0;
         u32 count = 0;
-        AABB bounds; ///< of the tufts (tallest included); empty tiles: the flat square
+        AABB bounds;        ///< of the tufts (tallest included); empty tiles: the flat square
+        bool stale = false; ///< built from an older ground (invalidate): rebuilt in place, shown until then
     };
 
     /// Starts over for a radius and density (no tiles).
     void reset(f32 radius, f32 tuftsPerSquareMetre);
-    /// Drops tiles beyond the radius plus kGrassKeepMargin, then builds up to `maxBuilds` missing tiles
-    /// within the radius, nearest first. The slots built are appended to `built` (their tufts in tufts()).
+    /// Drops tiles beyond the radius plus kGrassKeepMargin, rebuilds up to kGrassStaleRebuildsPerFrame stale
+    /// tiles in their slots (nearest first), then builds up to `maxBuilds` missing tiles within the radius,
+    /// nearest first. The slots built are appended to `built` (their tufts in tufts()).
     void update(const Vec3& eye, GrassGround& ground, std::span<const GrassLayer> layers,
                 std::vector<u32>& built, u32 maxBuilds = kGrassTilesPerFrame);
+    /// The ground changed in this xz rectangle (the editor's grass brush, G3): the resident tiles touching it
+    /// become stale - they keep their tufts until rebuilt. Returns how many.
+    u32 invalidate(const Vec2& min, const Vec2& max);
+    /// Every resident tile stale (an undo of the grass brush).
+    u32 invalidateAll();
+    [[nodiscard]] u32 staleCount() const noexcept;
 
     [[nodiscard]] const std::vector<Tile>& tiles() const noexcept { return m_tiles; }
     [[nodiscard]] std::span<const GrassTuft> tufts(u32 slot) const noexcept;
@@ -202,6 +219,8 @@ public:
     [[nodiscard]] f64 lastBuildMilliseconds() const noexcept { return m_buildMilliseconds; }
 
 private:
+    void build(Tile& tile, const Vec3& eye, GrassGround& ground, std::span<const GrassLayer> layers);
+
     std::vector<Tile> m_tiles;
     std::vector<std::vector<GrassTuft>> m_slots; ///< tufts per slot
     std::vector<u32> m_freeSlots;

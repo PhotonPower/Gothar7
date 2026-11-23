@@ -629,7 +629,7 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   mit dem Wind, der Fuß nicht; ohne Wind und unmarkiert steht alles still; Mehrfach-Zeichnen und Tiefen-Pass
   biegen gleich), `test_engine_render.cpp` (Wind folgt der Lage, aus in den Einstellungen).
 
-### Gras (M17 Teil G1, umgesetzt) – `Grass.hpp`, `grass.vert/.frag`, `runtime/EngineGrass.cpp`
+### Gras (M17 Teile G1–G3, umgesetzt) – `Grass.hpp`, `grass.vert/.frag`, `runtime/EngineGrass.cpp`
 - **Büschel auf der GPU:** Jedes Büschel ist ein Eintrag von 16 Byte (Fuß als drei Floats, gepackte Bits: Drehung,
   Höhe, Schicht, Farbton, Art, Gelände-Normale xz; `packGrassTuft`) in einem Speicherpuffer (std430, Bindung 6).
   Die Geometrie entsteht im Vertex-Shader aus `gl_VertexID`, ohne Vertex-Puffer und ohne Textur:
@@ -654,6 +654,19 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   dieselben Werte eingebaut (Warnung mit Datei und Schlüssel). Die Engine liest sie bei jedem Weltladen.
 - **Maske (Teil G2):** optional `terrain.grass_mask` (`world.md` „Grasmaske“), bilinear wie die Splat-Karten, Faktor
   0 … 1 auf die Dichte. welt liefert sie für Leonberg nach.
+- **Überlagerung (Teil G3):** `<welt>.grass.png` neben der Weltdatei (`world.md` „Gras-Überlagerung“), im Editor
+  gemalt: `grassMaskWithOverlay(Maske, R·A, A)` ersetzt die Maske dort, wo A zählt. Die Engine lädt sie mit dem ersten
+  Kachelbau der Welt; `Engine::grassOverlay()` (legt sie leer an), `grassOverlayChanged(Rechteck)`,
+  `saveGrassOverlay()`. Gemaltes macht nur die berührten Kacheln **veraltet** (`GrassRing::invalidate`): Sie zeigen ihr
+  altes Gras, bis sie am selben Platz neu gebaut sind (höchstens `kGrassStaleRebuildsPerFrame` = 4 je Bild, die
+  nächsten zuerst, zusätzlich zu den 2 neuen). Ein Undo macht alle Kacheln veraltet.
+- **Fenster „Grass“ (Teil G3, Debug-Oberfläche):** Stufe (nur für diesen Lauf), Umkreis, Dichte, Kacheln/Plätze,
+  ausstehend/veraltet, Büschel, gezeichnete Kacheln und Büschel nah/fern, Dreiecke, GPU-Zeit des Passes `grass`,
+  Kachelbau im letzten Bild und das langsamste Bild seit dem Zurücksetzen, Maske/Überlagerung vorhanden, „rebuild“.
+  Mit dem Overlay (F2) zeichnet die Engine die Kachelgrenzen auf dem Boden: grün mit Büscheln, grau leer, orange
+  veraltet, dazu Kachel und Büschelzahl.
+- Im Editor pausiert die Simulation; damit der Kachelbau nicht auf die Kollision wartet, gleicht `updateGrass` sie
+  dann selbst ab (bewegte Vobs, Undo).
 - **Ausnahmen (Engine, `WorldGrassGround`):** auf dem Wegnetz (1,2 m breit), in Wasser, in Innenzonen und unter
   Häusern, Mauern, Felsen und Mobs. Für Büschel innerhalb der Bounds eines festen Objekts geht ein Strahl von 2 m
   über dem Boden bis 15 cm darunter; trifft er etwas anderes als das Gelände, entfällt das Büschel (so auch flach
@@ -680,7 +693,11 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   Maske, Löcher, Hänge, Ausnahmen, Ring höchstens 2 Kacheln je Bild, ferne Kacheln fallen weg), GPU
   `test_grass.cpp` (Gras auf der Wiese, keins auf dem Pflaster daneben, aus zeichnet nichts, Wind bewegt die Halme),
   `test_engine_grass.cpp` (Testlager: Ring füllt sich mit 2 Kacheln je Bild, kein Büschel auf Wegen, im Wasser,
-  unter Hütten und Felsen; Leonberg: keins in Räumen und Häusern).
+  unter Hütten und Felsen; Leonberg: keins in Räumen und Häusern). G3: `test_grass.cpp` (veraltete Kacheln am selben Platz,
+  4 je Bild, die nächsten zuerst; Überlagerung über der Maske), `tests/editor/test_terrain_brush.cpp` (Pinsel
+  „Gras“ und „grass reset“, kleine Schritte kommen an, Undo), `tests/world/test_terrain.cpp` (Pfad), GPU
+  `test_editor.cpp` (Pinsel auf gesperrtem Gelände, Gras verschwindet, gespeichert neben der Kopie, Undo,
+  neu geladen).
 
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp

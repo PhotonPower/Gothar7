@@ -9,9 +9,11 @@
 #include <g7/core/StringUtil.hpp>
 #include <g7/runtime/AssetMounts.hpp>
 #include <g7/runtime/Engine.hpp>
+#include <g7/world/TerrainRef.hpp>
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 
 namespace g7
 {
@@ -36,11 +38,12 @@ class WorldGrassGround final : public render::GrassGround
 {
 public:
     WorldGrassGround(const world::Heightfield& heights, std::span<const asset::ImageData> splat,
-                     const asset::ImageData* mask, std::span<const world::Zone> zones,
-                     const world::WaterBodies& water, std::span<const std::pair<Vec3, Vec3>> paths,
-                     std::span<const AABB> solids, const physics::PhysicsWorld& physics)
-        : m_heights(heights), m_splat(splat), m_mask(mask), m_zones(zones), m_water(water), m_paths(paths),
-          m_solids(solids), m_physics(physics)
+                     const asset::ImageData* mask, const asset::ImageData* overlay,
+                     std::span<const world::Zone> zones, const world::WaterBodies& water,
+                     std::span<const std::pair<Vec3, Vec3>> paths, std::span<const AABB> solids,
+                     const physics::PhysicsWorld& physics)
+        : m_heights(heights), m_splat(splat), m_mask(mask), m_overlay(overlay), m_zones(zones),
+          m_water(water), m_paths(paths), m_solids(solids), m_physics(physics)
     {
         m_bounds = heights.bounds();
     }
@@ -168,9 +171,24 @@ private:
         {
             out.mask = bilinear(*m_mask, uv, 0); // M17 G2: terrain.grass_mask (grey: any channel)
         }
+        if (m_overlay != nullptr) // M17 G3: the editor's overlay, premultiplied so its edge blends
+        {
+            const auto premultiplied = [](const u8* texel)
+            { return static_cast<f32>(texel[0]) * static_cast<f32>(texel[3]) / (255.0f * 255.0f); };
+            const auto coverage = [](const u8* texel) { return static_cast<f32>(texel[3]) / 255.0f; };
+            out.mask = render::grassMaskWithOverlay(out.mask, bilinearOf(*m_overlay, uv, premultiplied),
+                                                    bilinearOf(*m_overlay, uv, coverage));
+        }
     }
 
     static f32 bilinear(const asset::ImageData& image, const Vec2& uv, usize channel)
+    {
+        return bilinearOf(image, uv,
+                          [channel](const u8* texel) { return static_cast<f32>(texel[channel]) / 255.0f; });
+    }
+    /// `value(texel)` of the four pixels around uv, interpolated.
+    template <typename Value>
+    static f32 bilinearOf(const asset::ImageData& image, const Vec2& uv, Value value)
     {
         if (image.width == 0 || image.height == 0)
         {
@@ -183,10 +201,7 @@ private:
         const u32 x1 = std::min(x0 + 1, image.width - 1);
         const u32 y1 = std::min(y0 + 1, image.height - 1);
         const auto texel = [&](u32 x, u32 y)
-        {
-            return static_cast<f32>(image.rgba8[(static_cast<usize>(y) * image.width + x) * 4 + channel]) /
-                   255.0f;
-        };
+        { return value(image.rgba8.data() + (static_cast<usize>(y) * image.width + x) * 4); };
         const f32 fx = px - static_cast<f32>(x0);
         const f32 fy = py - static_cast<f32>(y0);
         return glm::mix(glm::mix(texel(x0, y0), texel(x1, y0), fx),
@@ -195,6 +210,7 @@ private:
     const world::Heightfield& m_heights;
     std::span<const asset::ImageData> m_splat;
     const asset::ImageData* m_mask = nullptr;
+    const asset::ImageData* m_overlay = nullptr;
     std::span<const world::Zone> m_zones;
     const world::WaterBodies& m_water;
     std::span<const std::pair<Vec3, Vec3>> m_paths;
@@ -238,6 +254,8 @@ void Engine::resetGrassWorld()
     m_grassPaths.clear();
     m_grassSplatTried = false;
     m_grassDirty = true;
+    m_grassOverlay = {}; // M17 G3: looked for when the grass first grows (the world path is set by then)
+    m_grassOverlayTried = false;
     if (!m_hasTerrain)
     {
         return;
@@ -307,6 +325,11 @@ void Engine::updateGrass()
 {
     G7_PROFILE_SCOPE("render::grass ring");
     m_grassBuilt.clear();
+    if (m_physicsDirty && m_paused)
+    {
+        // The editor pauses the simulation, which would sync the collision (moved vobs, undo): here then.
+        syncPhysics();
+    }
     const bool wanted =
         m_grass.ready() && m_hasTerrain && m_grassQuality != render::GrassQuality::Off &&
         std::ranges::any_of(m_grassLayers, [](const render::GrassLayer& l) { return l.density > 0.0f; });
@@ -337,6 +360,10 @@ void Engine::updateGrass()
         m_grassSplatTried = true;
         (void)terrainSplat(0); // the weights on the CPU (loaded for the footsteps already, usually)
     }
+    if (!m_grassOverlayTried)
+    {
+        loadGrassOverlay();
+    }
     if (m_grassSolids.empty())
     {
         for (const SceneInstance& instance : m_instances)
@@ -348,8 +375,10 @@ void Engine::updateGrass()
         }
     }
     WorldGrassGround ground(m_heightfield, m_splatImages, m_grassMask.rgba8.empty() ? nullptr : &m_grassMask,
-                            m_worldFile.zones, m_water, m_grassPaths, m_grassSolids, m_physics);
+                            m_grassOverlay.rgba8.empty() ? nullptr : &m_grassOverlay, m_worldFile.zones,
+                            m_water, m_grassPaths, m_grassSolids, m_physics);
     m_grassRing.update(m_camera.transform.position, ground, m_grassLayers, m_grassBuilt);
+    m_grassBuildPeak = std::max(m_grassBuildPeak, m_grassRing.lastBuildMilliseconds());
     for (const u32 slot : m_grassBuilt)
     {
         if (auto uploaded = m_grass.upload(m_grassRing, slot); !uploaded)
@@ -375,6 +404,184 @@ void Engine::drawGrassShadow(const render::Cascade& cascade)
     if (!m_grassRing.tiles().empty())
     {
         m_grass.drawShadow(*m_device, cascade, m_camera.transform.position, m_grassRing, grassFrame());
+    }
+}
+
+// --- The editor's grass overlay (M17 G3, decision 9) ---
+
+std::string Engine::grassOverlayPath() const
+{
+    return m_worldPath.empty() ? std::string() : world::grassOverlayPath(m_worldPath);
+}
+
+void Engine::loadGrassOverlay()
+{
+    m_grassOverlayTried = true;
+    m_grassOverlay = {};
+    const std::string source = grassOverlayPath();
+    if (!m_hasTerrain || source.empty())
+    {
+        return;
+    }
+    const std::string path = preferCooked(m_vfs, source);
+    if (!m_vfs.exists(path))
+    {
+        return; // none painted: the generated mask alone
+    }
+    auto bytes = m_vfs.read(path);
+    auto image = !bytes                    ? Result<asset::ImageData>(bytes.error())
+                 : path.ends_with(".ktx2") ? asset::decodeKtx2Rgba(bytes.value(), path)
+                                           : asset::decodeImage(bytes.value(), path);
+    if (!image)
+    {
+        G7_LOG_WARN("engine", "grass overlay {}: {} (the generated mask alone)", path, image.error().message);
+        return;
+    }
+    m_grassOverlay = std::move(image).value();
+    G7_LOG_INFO("engine", "grass overlay {} ({} x {})", path, m_grassOverlay.width, m_grassOverlay.height);
+}
+
+std::optional<Engine::SplatView> Engine::grassOverlay()
+{
+    if (!m_hasTerrain)
+    {
+        return std::nullopt;
+    }
+    if (!m_grassOverlayTried)
+    {
+        loadGrassOverlay();
+    }
+    if (m_grassOverlay.rgba8.empty())
+    {
+        // None yet: one pixel per sample, coverage 0 everywhere (the generated mask counts).
+        const world::TerrainRef& ref = m_heightfield.ref();
+        m_grassOverlay.width = ref.width;
+        m_grassOverlay.height = ref.height;
+        m_grassOverlay.rgba8.assign(static_cast<usize>(ref.width) * ref.height * 4, u8{0});
+    }
+    return SplatView{m_grassOverlay.rgba8, m_grassOverlay.width, m_grassOverlay.height};
+}
+
+void Engine::grassOverlayChanged(std::optional<std::pair<Vec2, Vec2>> area)
+{
+    if (area)
+    {
+        (void)m_grassRing.invalidate(area->first, area->second);
+    }
+    else
+    {
+        (void)m_grassRing.invalidateAll();
+    }
+}
+
+Result<void> Engine::saveGrassOverlay()
+{
+    if (m_grassOverlay.rgba8.empty())
+    {
+        return {}; // nothing painted
+    }
+    const auto world = worldSourceFile();
+    if (!world)
+    {
+        return Error{"the world is not a file on disk (archive) - its grass overlay cannot be written"};
+    }
+    const fs::Path target =
+        world->parent_path() / fs::fromUtf8(world::grassOverlayPath(fs::toUtf8(world->filename())));
+    if (auto saved = asset::savePng(target, m_grassOverlay); !saved)
+    {
+        return saved;
+    }
+    if (const std::string source = grassOverlayPath(); preferCooked(m_vfs, source) != source)
+    {
+        G7_LOG_WARN("engine", "{}: a cooked copy is there and wins until it is cooked anew", source);
+    }
+    G7_LOG_INFO("engine", "grass overlay saved: {}", fs::toUtf8(target));
+    return {};
+}
+
+// --- Window "Grass" and the tile borders in the overlay (M17 G3) ---
+
+void Engine::grassUi()
+{
+    ui::GrassPanel panel;
+    const render::GrassStats& stats = m_grass.stats();
+    panel.quality = static_cast<i32>(m_grassQuality);
+    panel.radius = m_grassRing.radius();
+    panel.tuftsPerSquareMetre = render::grassSettings(m_grassQuality).tuftsPerSquareMetre;
+    panel.tiles = static_cast<u32>(m_grassRing.tiles().size());
+    panel.slots = m_grassRing.slotCount();
+    panel.stale = m_grassRing.staleCount();
+    panel.pending = m_grassRing.pending();
+    panel.tufts = m_grassRing.tuftCount();
+    panel.drawnTiles = stats.tiles;
+    panel.nearTufts = stats.nearTufts;
+    panel.farTufts = stats.farTufts;
+    panel.triangles = stats.triangles;
+    panel.buildMilliseconds = m_grassRing.lastBuildMilliseconds();
+    panel.buildPeakMilliseconds = m_grassBuildPeak;
+    for (const render::PassTime& pass : m_passTimes.times())
+    {
+        if (pass.name == "grass")
+        {
+            panel.gpuMilliseconds = pass.milliseconds;
+        }
+    }
+    panel.mask = !m_grassMask.rgba8.empty();
+    panel.overlay = !m_grassOverlay.rgba8.empty();
+    panel.borders = m_grassTileBorders;
+    const i32 shownQuality = panel.quality;
+    m_debugUi.grassPanel(panel);
+    m_grassTileBorders = panel.borders;
+    if (panel.resetPeak)
+    {
+        m_grassBuildPeak = 0.0;
+    }
+    if (panel.quality != shownQuality) // for this run only, the settings stay
+    {
+        m_grassQuality = static_cast<render::GrassQuality>(std::clamp(panel.quality, 0, 3));
+        m_grassDirty = true;
+    }
+    else if (panel.rebuild)
+    {
+        m_grassDirty = true;
+    }
+}
+
+void Engine::drawGrassTiles()
+{
+    if (!m_grassTileBorders || !m_hasTerrain || m_grassRing.tiles().empty())
+    {
+        return;
+    }
+    constexpr f32 kStep = 2.0f; // m between points of a border, following the ground
+    constexpr f32 kLift = 0.15f;
+    const auto ground = [&](f32 x, f32 z) { return Vec3(x, m_heightfield.heightAt(x, z) + kLift, z); };
+    for (const render::GrassRing::Tile& tile : m_grassRing.tiles())
+    {
+        const Vec4 colour = tile.stale       ? Vec4(1.0f, 0.55f, 0.1f, 0.9f)
+                            : tile.count > 0 ? Vec4(0.35f, 1.0f, 0.35f, 0.8f)
+                                             : Vec4(0.6f, 0.6f, 0.6f, 0.5f);
+        const render::DebugStyle style{colour};
+        const Vec2 low(static_cast<f32>(tile.key.x) * render::kGrassTileSize,
+                       static_cast<f32>(tile.key.z) * render::kGrassTileSize);
+        const Vec2 corners[] = {low, low + Vec2(render::kGrassTileSize, 0.0f),
+                                low + Vec2(render::kGrassTileSize), low + Vec2(0.0f, render::kGrassTileSize)};
+        for (usize side = 0; side < 4; ++side)
+        {
+            const Vec2 a = corners[side];
+            const Vec2 b = corners[(side + 1) % 4];
+            for (f32 t = 0.0f; t < render::kGrassTileSize; t += kStep)
+            {
+                const Vec2 p = glm::mix(a, b, t / render::kGrassTileSize);
+                const Vec2 q = glm::mix(a, b, (t + kStep) / render::kGrassTileSize);
+                m_debugDraw.line(ground(p.x, p.y), ground(q.x, q.y), style);
+            }
+        }
+        const Vec2 centre = low + Vec2(0.5f * render::kGrassTileSize);
+        m_debugDraw.text(ground(centre.x, centre.y) + Vec3(0.0f, 0.5f, 0.0f),
+                         std::format("{} {}{}", tile.key.x, tile.key.z,
+                                     tile.count > 0 ? std::format(": {}", tile.count) : ""),
+                         style);
     }
 }
 } // namespace g7

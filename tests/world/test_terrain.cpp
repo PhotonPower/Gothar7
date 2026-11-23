@@ -274,3 +274,11 @@ TEST_CASE("Terrain: the hole mask is loaded with the heights and checked")
     std::error_code ignored;
     std::filesystem::remove_all(dir, ignored);
 }
+
+TEST_CASE("Grass overlay: next to the world file (M17 G3)")
+{
+    CHECK(world::grassOverlayPath("worlds/leonberg/leonberg.g7world") ==
+          "worlds/leonberg/leonberg.grass.png");
+    CHECK(world::grassOverlayPath("camp.g7world") == "camp.grass.png");
+    CHECK(world::grassOverlayPath("odd.json") == "odd.json.grass.png");
+}

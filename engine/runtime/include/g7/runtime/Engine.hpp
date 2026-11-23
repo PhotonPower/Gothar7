@@ -565,6 +565,18 @@ public:
     [[nodiscard]] u32 terrainLayerCount() const noexcept;
     /// Writes the heights (.r16) and the splat maps (.png) over their sources on disk.
     [[nodiscard]] Result<void> saveTerrain();
+    /// The editor's grass overlay (M17 G3, decision 9; world::grassOverlayPath): RGBA8 over the terrain's
+    /// samples (R density, A coverage) on top of the generated grass mask. Paintable also where the terrain
+    /// is locked (Leonberg): the generator never writes it. Loaded with the world if there is one, created
+    /// empty (coverage 0) on first use; nullopt without terrain.
+    [[nodiscard]] std::optional<SplatView> grassOverlay();
+    /// After painting the overlay: the grass tiles touching this xz rectangle are rebuilt (they show the old
+    /// grass until then); without one every tile (undo).
+    void grassOverlayChanged(std::optional<std::pair<Vec2, Vec2>> area = std::nullopt);
+    /// Writes the overlay next to the loose world file (`<world>.grass.png`).
+    [[nodiscard]] Result<void> saveGrassOverlay();
+    /// The overlay's VFS path for the loaded world (empty without one).
+    [[nodiscard]] std::string grassOverlayPath() const;
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;
@@ -1491,7 +1503,10 @@ private:
     [[nodiscard]] gameplay::ItemLookup itemLookup() const;
     [[nodiscard]] i32 xpForLevel(i32 level);
     void creaturesUi();
-    void aiUi();         // window "AI" (M9 part E)
+    void aiUi();           // window "AI" (M9 part E)
+    void grassUi();        // window "Grass" (M17 G3)
+    void drawGrassTiles(); // overlay: the grass tiles' borders and tufts
+    void loadGrassOverlay();
     void drawAiSenses(); // overlay: the selected NPC's sight cone and hearing
     [[nodiscard]] Creature* creature(u32 id) noexcept;
     [[nodiscard]] const Creature* creature(u32 id) const noexcept;
@@ -1763,6 +1778,10 @@ private:
     std::vector<std::pair<Vec3, Vec3>> m_grassPaths; // the waynet's edges: no grass on them
     std::vector<u32> m_grassBuilt;                   // slots built this frame
     asset::ImageData m_grassMask;                    // terrain.grass_mask (empty: none; M17 G2)
+    asset::ImageData m_grassOverlay;                 // the editor's overlay (empty: none; M17 G3)
+    bool m_grassOverlayTried = false;                // looked for the overlay file of this world
+    bool m_grassTileBorders = true;                  // window "Grass": tile borders in the overlay (F2)
+    f64 m_grassBuildPeak = 0.0;                      // window "Grass": slowest frame of tile building (ms)
     std::vector<AABB> m_grassSolids;                 // bounds of what stands in the world (rays under them)
     bool m_grassDirty = true;                        // the ring anew (world, physics, splat, quality)
     bool m_grassSplatTried = false;

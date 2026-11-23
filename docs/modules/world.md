@@ -363,6 +363,15 @@ Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig)
 - welt erzeugt sie aus OSM-Flächen (Wiese, Garten, Park voll; 1-m-Streifen an Weg- und Straßenrändern halb). Ohne
   Maske gelten nur die Splat-Gewichte. Ein Ladefehler ist eine Warnung (dann ohne Maske).
 
+### Gras-Überlagerung (Editor, optional, M17 G3)
+- Keine Angabe in der Weltdatei: Die Datei liegt **neben der Weltdatei**, `<welt>.grass.png` zu `<welt>.g7world`
+  (Leonberg: `worlds/leonberg/leonberg.grass.png`, außerhalb von `generated/`; `world::grassOverlayPath`).
+- RGBA-PNG, Lage wie die Splat-Karten über den Samples (Leonberg 2000×2000): **R** = Grasdichte 0 … 255 (G und B
+  gleich R, damit das Bild grau aussieht), **A** = wie stark die Überlagerung zählt. Wirksam ist
+  `Maske · (1 − A) + R · A` (vormultipliziert bilinear; ohne Maske 1 statt Maske).
+- Der Editor malt sie mit dem Pinsel „Gras“ (`editor.md`), auch bei gesperrtem Gelände. Sie ist Handarbeit:
+  **Der Generator schreibt und löscht sie nie** (Entscheidung 9 des Gras-Plans). Der Cooker kocht sie als Daten.
+
 ### Löcher (`holes`, optional)
 - `"holes": "worlds/leonberg/generated/holes.r8"` – rohe 8-Bit-Maske **je Zelle** (nicht je Sample):
   (width−1)·(height−1) Bytes, zeilenweise, Zeile 0 = Norden. Zelle (c, r) ist das Quadrat zwischen Sample (c, r) und

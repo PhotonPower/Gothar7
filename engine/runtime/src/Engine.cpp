@@ -2614,6 +2614,7 @@ void Engine::runDebugUi(f64 realSeconds)
     playerAnimationUi();
     creaturesUi();
     aiUi();
+    grassUi(); // M17 G3
     for (EngineTool* tool : m_tools)
     {
         tool->ui(*this, m_debugUi);
@@ -2765,8 +2766,9 @@ void Engine::addWorldDebugOverlay()
                                 Vec4(1.0f, 0.3f, 0.2f, 0.7f)};
         m_debugDraw.box(instance.bounds, render::DebugStyle{colours[std::min<u32>(instance.lod, 2)]});
     }
-    drawWaynet();   // M9: way points, edges, freepoints, the routes NPCs walk
-    drawAiSenses(); // M9: the senses of the NPC selected in the window "AI"
+    drawWaynet();     // M9: way points, edges, freepoints, the routes NPCs walk
+    drawAiSenses();   // M9: the senses of the NPC selected in the window "AI"
+    drawGrassTiles(); // M17 G3: the grass tiles (window "Grass")
     m_scene.each<world::Vob, world::MobRef, world::WorldTransform>(
         [&](entt::entity, const world::Vob&, const world::MobRef& mob, const world::WorldTransform& t)
         {

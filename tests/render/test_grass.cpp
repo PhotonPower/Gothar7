@@ -268,3 +268,64 @@ TEST_CASE("Grass ring: at most two tiles a frame, all within the radius in the e
     CHECK(ring.tiles().empty());
     CHECK(built.empty());
 }
+
+TEST_CASE("Grass ring: the grass brush's rectangle makes tiles stale; rebuilt in place, four a frame")
+{
+    FakeGround ground;
+    ground.meadow = [](const Vec2&) { return 1.0f; };
+    const auto l = layers();
+    GrassRing ring;
+    const GrassSettings low = grassSettings(GrassQuality::Low);
+    ring.reset(low.radius, low.tuftsPerSquareMetre);
+    std::vector<u32> built;
+    const Vec3 eye(5.0f, 2.0f, 5.0f);
+    for (int i = 0; i < 100 && (ring.tiles().empty() || ring.pending() > 0); ++i)
+    {
+        ring.update(eye, ground, l, built);
+    }
+    REQUIRE(ring.pending() == 0);
+    const usize tiles = ring.tiles().size();
+    const u32 full = ring.tuftCount();
+    // A rectangle inside tile (0, 0): only that tile.
+    CHECK(ring.invalidate(Vec2(2.0f), Vec2(6.0f)) == 1u);
+    CHECK(ring.staleCount() == 1u);
+    const auto tile = [&](GrassTileKey key)
+    { return *std::ranges::find(ring.tiles(), key, &GrassRing::Tile::key); };
+    const u32 slot = tile({0, 0}).slot;
+    CHECK(tile({0, 0}).stale);
+    CHECK(tile({0, 0}).count > 0u); // shown until rebuilt
+    // Now no grass there: rebuilt in its slot, nothing else.
+    ground.mask = 0.0f;
+    built.clear();
+    ring.update(eye, ground, l, built);
+    CHECK(built == std::vector<u32>{slot});
+    CHECK(tile({0, 0}).slot == slot);
+    CHECK_FALSE(tile({0, 0}).stale);
+    CHECK(tile({0, 0}).count == 0u);
+    CHECK(ring.tiles().size() == tiles);
+    CHECK(ring.tuftCount() < full);
+    // Crossing tile borders: every tile touching the rectangle; four a frame, the nearest first.
+    CHECK(ring.invalidate(Vec2(-1.0f), Vec2(17.0f)) == 9u);
+    built.clear();
+    ring.update(eye, ground, l, built);
+    CHECK(built.size() == kGrassStaleRebuildsPerFrame);
+    CHECK(built.front() == slot); // (0, 0) holds the eye
+    CHECK(ring.staleCount() == 5u);
+    // Undo: all of them.
+    CHECK(ring.invalidateAll() == tiles);
+    for (int i = 0; i < 100 && ring.staleCount() > 0; ++i)
+    {
+        built.clear();
+        ring.update(eye, ground, l, built);
+    }
+    CHECK(ring.staleCount() == 0u);
+    CHECK(ring.tuftCount() == 0u);
+}
+
+TEST_CASE("Grass overlay: over the mask by its coverage, premultiplied")
+{
+    CHECK(grassMaskWithOverlay(0.8f, 0.0f, 0.0f) == doctest::Approx(0.8f)); // no overlay: the mask
+    CHECK(grassMaskWithOverlay(0.8f, 0.0f, 1.0f) == doctest::Approx(0.0f)); // painted bare
+    CHECK(grassMaskWithOverlay(0.0f, 1.0f, 1.0f) == doctest::Approx(1.0f)); // painted full
+    CHECK(grassMaskWithOverlay(0.4f, 0.5f, 0.5f) == doctest::Approx(0.7f)); // full at half coverage
+}

@@ -393,6 +393,32 @@ void GrassRing::reset(f32 radius, f32 tuftsPerSquareMetre)
     m_buildMilliseconds = 0.0;
 }
 
+void GrassRing::build(Tile& tile, const Vec3& eye, GrassGround& ground, std::span<const GrassLayer> layers)
+{
+    G7_PROFILE_SCOPE("render::grass tile");
+    const GrassTileKey key = tile.key;
+    const Vec2 min(static_cast<f32>(key.x) * kGrassTileSize, static_cast<f32>(key.z) * kGrassTileSize);
+    ground.beginTile(min, min + Vec2(kGrassTileSize));
+    std::vector<GrassTuft>& tufts = m_slots[tile.slot];
+    buildGrassTile(ground, layers, key, m_density, tufts);
+    G7_ASSERT(tufts.size() <= m_capacity, "grass: a tile holds more tufts than its slot");
+    tile.count = static_cast<u32>(tufts.size());
+    tile.stale = false;
+    tile.bounds = {Vec3(min.x, eye.y, min.y), Vec3(min.x + kGrassTileSize, eye.y, min.y + kGrassTileSize)};
+    if (!tufts.empty())
+    {
+        f32 lowY = tufts.front().position.y;
+        f32 highY = lowY;
+        for (const GrassTuft& t : tufts)
+        {
+            lowY = std::min(lowY, t.position.y);
+            highY = std::max(highY, t.position.y);
+        }
+        tile.bounds.min.y = lowY;
+        tile.bounds.max.y = highY + kGrassMaxHeight;
+    }
+}
+
 void GrassRing::update(const Vec3& eye, GrassGround& ground, std::span<const GrassLayer> layers,
                        std::vector<u32>& built, u32 maxBuilds)
 {
@@ -414,6 +440,29 @@ void GrassRing::update(const Vec3& eye, GrassGround& ground, std::span<const Gra
                       m_freeSlots.push_back(t.slot);
                       return true;
                   });
+    const auto byDistance = [](const auto& a, const auto& b)
+    {
+        return a.first < b.first ||
+               (a.first == b.first &&
+                (a.second.z < b.second.z || (a.second.z == b.second.z && a.second.x < b.second.x)));
+    };
+    const auto start = std::chrono::steady_clock::now();
+    // Stale tiles (the grass brush changed their ground): in place, nearest first.
+    m_wanted.clear();
+    for (const Tile& t : m_tiles)
+    {
+        if (t.stale)
+        {
+            m_wanted.emplace_back(tileNearest(t.key, p), t.key);
+        }
+    }
+    std::ranges::sort(m_wanted, byDistance);
+    for (usize i = 0; i < m_wanted.size() && i < kGrassStaleRebuildsPerFrame; ++i)
+    {
+        const auto tile = std::ranges::find(m_tiles, m_wanted[i].second, &Tile::key);
+        build(*tile, eye, ground, layers);
+        built.push_back(tile->slot);
+    }
     // Missing tiles within the radius, nearest first.
     m_wanted.clear();
     const GrassTileKey low = grassTileAt(p - Vec2(m_radius));
@@ -431,47 +480,19 @@ void GrassRing::update(const Vec3& eye, GrassGround& ground, std::span<const Gra
             m_wanted.emplace_back(d, key);
         }
     }
-    std::ranges::sort(
-        m_wanted,
-        [](const auto& a, const auto& b)
-        {
-            return a.first < b.first ||
-                   (a.first == b.first &&
-                    (a.second.z < b.second.z || (a.second.z == b.second.z && a.second.x < b.second.x)));
-        });
+    std::ranges::sort(m_wanted, byDistance);
     u32 builds = 0;
-    const auto start = std::chrono::steady_clock::now();
     for (const auto& [distance, key] : m_wanted)
     {
         if (builds >= maxBuilds || m_freeSlots.empty())
         {
             break;
         }
-        G7_PROFILE_SCOPE("render::grass tile");
         Tile tile;
         tile.key = key;
         tile.slot = m_freeSlots.back();
         m_freeSlots.pop_back();
-        const Vec2 min(static_cast<f32>(key.x) * kGrassTileSize, static_cast<f32>(key.z) * kGrassTileSize);
-        ground.beginTile(min, min + Vec2(kGrassTileSize));
-        std::vector<GrassTuft>& tufts = m_slots[tile.slot];
-        buildGrassTile(ground, layers, key, m_density, tufts);
-        G7_ASSERT(tufts.size() <= m_capacity, "grass: a tile holds more tufts than its slot");
-        tile.count = static_cast<u32>(tufts.size());
-        tile.bounds = {Vec3(min.x, eye.y, min.y),
-                       Vec3(min.x + kGrassTileSize, eye.y, min.y + kGrassTileSize)};
-        if (!tufts.empty())
-        {
-            f32 lowY = tufts.front().position.y;
-            f32 highY = lowY;
-            for (const GrassTuft& t : tufts)
-            {
-                lowY = std::min(lowY, t.position.y);
-                highY = std::max(highY, t.position.y);
-            }
-            tile.bounds.min.y = lowY;
-            tile.bounds.max.y = highY + kGrassMaxHeight;
-        }
+        build(tile, eye, ground, layers);
         m_tiles.push_back(tile);
         built.push_back(tile.slot);
         ++builds;
@@ -479,6 +500,37 @@ void GrassRing::update(const Vec3& eye, GrassGround& ground, std::span<const Gra
     m_buildMilliseconds =
         std::chrono::duration<f64, std::milli>(std::chrono::steady_clock::now() - start).count();
     m_pending = static_cast<u32>(m_wanted.size()) - builds;
+}
+
+u32 GrassRing::invalidate(const Vec2& min, const Vec2& max)
+{
+    u32 count = 0;
+    for (Tile& t : m_tiles)
+    {
+        const Vec2 low(static_cast<f32>(t.key.x) * kGrassTileSize,
+                       static_cast<f32>(t.key.z) * kGrassTileSize);
+        const Vec2 high = low + Vec2(kGrassTileSize);
+        if (low.x <= max.x && high.x >= min.x && low.y <= max.y && high.y >= min.y)
+        {
+            t.stale = true;
+            ++count;
+        }
+    }
+    return count;
+}
+
+u32 GrassRing::invalidateAll()
+{
+    for (Tile& t : m_tiles)
+    {
+        t.stale = true;
+    }
+    return static_cast<u32>(m_tiles.size());
+}
+
+u32 GrassRing::staleCount() const noexcept
+{
+    return static_cast<u32>(std::ranges::count_if(m_tiles, [](const Tile& t) { return t.stale; }));
 }
 
 std::span<const GrassTuft> GrassRing::tufts(u32 slot) const noexcept
