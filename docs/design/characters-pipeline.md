@@ -863,13 +863,16 @@ gilt weiter (Ausrichtung, Bind-Pose = natürliche Lage, ≤ 64 Knochen, Translat
   - Schritte wie bei den Vierbeinern: `footstep_front_l/r`, `footstep_back_l/r`;
   - neu `splash` (Wasser spritzt);
   - Tierlaute `sound:brunnenmolch_attack`, `_hit`, `_die`, `_threaten`.
-- **Fragen an engine:**
+- **Fragen an engine (Antworten 2026-11-24 über den Koordinator):**
   1. Können Monster schwimmen? Vorschlag: Im Wasser (Zone `water`, M5) spielt engine `s_swim`/`s_float` statt
      `s_walk`/`s_idle`. Die Höhe hält engine an der Oberfläche bzw. in einer Tiefe aus Lua.
-  2. Soll `t_snap_up` die Höhe als Root Motion (+Y) tragen? Mein Vorschlag ist nein: Er bleibt am Ort, das Becken
-     hebt sich nur im Clip, und engine prüft den Treffer an `socket_mouth`.
-  3. Darf `sway` (seitliches Schlängeln) als Drehung der Wirbel um +Y in den Gangarten liegen? Die Root Motion
-     bleibt gerade.
+     **Offen (Projektinhaber):** Heute schwimmt nur der Held; Monster im Wasser wären neue Engine-Arbeit. Der
+     Brunnenmolch ist bis zur Entscheidung zurückgestellt.
+  2. Soll `t_snap_up` die Höhe als Root Motion (+Y) tragen? **Nein (engine):** Er bleibt am Ort ohne Root Motion,
+     das Becken hebt sich nur im Clip, und engine prüft den Treffer an `socket_mouth`. Root Motion tragen nur
+     `s_walk`/`s_run` (bzw. `s_swim`) und die Drehungen.
+  3. Darf `sway` (seitliches Schlängeln) als Drehung der Wirbel um +Y in den Gangarten liegen? **Ja (engine):**
+     reine Drehung der Wirbel und des Schwanzes ohne Translation; die Root Motion bleibt gerade entlang +Z.
 
 ## 8. Ablauf pro Animation
 
