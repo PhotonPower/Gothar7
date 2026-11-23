@@ -794,7 +794,10 @@ eigenen Aufnahmen.
   - **Riesenfass** im Weinkeller an der Trennwand zum Verlies: Front `WALL_SCHLOSS_FASS` (`mesh` mit `mover`,
     `secret_wall`, schwenkt um das Scharnier: `offset` 0, `axis` +Y, `angle` −95°, 2,5 s, geschlossen) und
     daneben der schiefe Fackelhalter `LEVER_SCHLOSS_FASS` (Mob `lever`, `targets` [`WALL_SCHLOSS_FASS`], `toggle`,
-    `hidden`), Vertrag `schloss-dungeon.md` §5. Innen hat das Fass einen Bretterboden; der Abstieg folgt mit D2.
+    `hidden`), Vertrag `schloss-dungeon.md` §5. Innen hat das Fass einen Bretterboden und in
+    seinem hinteren Boden eine dunkle Öffnung mit Holzrahmen (W8 D2): Dort liegt der Weltwechsel `STAIRS_SCHLOSS_FASS`
+    nach `dungeon/ebene_01.g7world` (`START_E01_VON_OBEN`); vor dem Fass steht `START_SCHLOSS_FASS` (Blick in den
+    Keller) für den Rückweg. Daten: `descent` am Fass-Eintrag in `castle_inside.json`.
   - **Wegnetz:** eine Laufbahn je Geschoss bei `doorT` mit einem Punkt in jeder Raummitte (`WP_LEO_SCHLOSS_<RAUM>`,
     der Routinen-Ort), den Durchgängen und den Abzweigen zu Portal und Turm; die Wendeltreppe mit einem Punkt alle
     30°; eigene Punkte für Freepoints und Mobs, die weiter als 3 m oder nicht in freier Linie von einem Punkt liegen.

@@ -51,6 +51,8 @@ class Level:
     height_m: float
     origin: tuple[float, float, float]
     entries: dict[tuple[int, int], dict[str, Any]] = field(default_factory=dict)
+    starts: list[dict[str, Any]] = field(default_factory=list)  # extra arrivals (``starts``)
+    raw: dict[str, Any] = field(default_factory=dict)  # the JSON (environment, torches …)
 
     @property
     def tag(self) -> str:
@@ -103,6 +105,24 @@ class Level:
             raise LevelError(f"cell {list(at)}: set 'facing' (floor on {sides or 'no side'})")
         return sides[0]
 
+    def well(self, at: tuple[int, int]) -> tuple[int, int]:
+        """The wall cell behind stairs: the flight runs into it, away from ``facing``."""
+        dx, dy = DIRS[self.facing(at)]
+        return (at[0] - dx, at[1] - dy)
+
+    def passage(self, at: tuple[int, int]) -> str:
+        """``x`` or ``z``: the way through a door or gate cell (floor on two opposite sides,
+        walls on the other two)."""
+        we = self.is_floor(at[0] - 1, at[1]) and self.is_floor(at[0] + 1, at[1])
+        ns = self.is_floor(at[0], at[1] - 1) and self.is_floor(at[0], at[1] + 1)
+        wall_we = not self.is_floor(at[0] - 1, at[1]) and not self.is_floor(at[0] + 1, at[1])
+        wall_ns = not self.is_floor(at[0], at[1] - 1) and not self.is_floor(at[0], at[1] + 1)
+        if we and wall_ns:
+            return "x"
+        if ns and wall_we:
+            return "z"
+        raise LevelError(f"{self.name(at)}: needs floor on two opposite sides, walls on the others")
+
     def centre(self, x: float, y: float) -> tuple[float, float, float]:
         """World position of the middle of cell (x, y) on the floor."""
         ox, oy, oz = self.origin
@@ -134,7 +154,15 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
         raise LevelError("the map must be closed by walls")
     origin = tuple(float(v) for v in doc.get("origin", (0.0, 0.0, 0.0)))
     level = Level(int(doc["level"]), str(doc.get("theme", "")), rows,
-                  float(doc.get("cellM", 3.0)), float(doc.get("heightM", 3.5)), origin)  # fmt: skip
+                  float(doc.get("cellM", 3.0)), float(doc.get("heightM", 3.5)), origin,
+                  raw=doc)  # fmt: skip
+    for i, st in enumerate(doc.get("starts", [])):
+        at = _cell(st.get("at"), f"starts[{i}]")
+        if not st.get("name") or not level.is_floor(*at):
+            raise LevelError(f"starts[{i}]: needs 'name' and a floor cell")
+        if st.get("facing", "S") not in DIRS:
+            raise LevelError(f"starts[{i}]: facing must be N, E, S or W")
+        level.starts.append({**st, "at": at})
     for i, e in enumerate(doc.get("cells", [])):
         at = _cell(e.get("at"), f"cells[{i}]")
         c = level.char(*at)
@@ -151,6 +179,7 @@ def parse_level(text: str, doc: dict[str, Any]) -> Level:
     if len(level.cells("<")) < 1:
         raise LevelError("every level needs stairs up ('<', plan F6)")
     _check_entries(level)
+    check_wells(level)
     return level
 
 
@@ -181,13 +210,27 @@ def _check_entries(level: Level) -> None:
                     raise LevelError(f"{where}: 'to' must be a floor cell off the pads")
             elif not (spec.get("world") and spec.get("start")):
                 raise LevelError(f"{where}: needs 'to' or 'world' + 'start'")
-        if kind == "stairs" and not (spec.get("world") and spec.get("start") and e.get("arrive")):
-            raise LevelError(f"{where}: stairs need world, start and 'arrive'")
+        if kind == "stairs":
+            if not (spec.get("world") and spec.get("start") and e.get("arrive")):
+                raise LevelError(f"{where}: stairs need world, start and 'arrive'")
+            dx, dy = DIRS[level.facing(at)]
+            if not level.is_floor(at[0] + dx, at[1] + dy):
+                raise LevelError(f"{where}: faces no floor")
+            if level.char(*level.well(at)) != WALL:
+                raise LevelError(f"{where}: the flight needs a wall cell behind (away from facing)")
+        if kind in ("door", "gate"):
+            level.passage(at)
         if kind == "trapdoor" and not (spec.get("fall", {}).get("world")
                                        and spec.get("fall", {}).get("start")):  # fmt: skip
             raise LevelError(f"{where}: a trapdoor needs 'fall' with world and start")
         if kind == "monster" and not (spec.get("npc") and 1 <= int(spec.get("count", 1)) <= 32):
             raise LevelError(f"{where}: monster needs npc and count 1..32")
+
+
+def check_wells(level: Level) -> None:
+    wells = [level.well(at) for at in level.cells("<>")]
+    if len(set(wells)) != len(wells):
+        raise LevelError("two flights of stairs run into the same wall cell")
 
 
 def load_level(folder: Path, number: int) -> Level:
