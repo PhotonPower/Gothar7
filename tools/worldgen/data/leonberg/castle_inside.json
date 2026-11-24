@@ -5,6 +5,7 @@
  "tag": "LEO_SCHLOSS",
  "laneHalfM": 1.2,
  "roomLights": 4,
+ "daylight": {"eg_schreibstube": 0.35, "eg_wachstube": 0.15},
  "rooms": {
   "keller_gewoelbe": [
    {"what": "prop:crate_stack", "wall": "a", "t": -3.0},

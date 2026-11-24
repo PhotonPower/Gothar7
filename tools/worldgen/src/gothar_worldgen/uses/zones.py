@@ -181,6 +181,8 @@ def zones_text(zones: Sequence[dict[str, Any]]) -> str:
                     "box": {"center": [tidy(c) for c in bx["center"]],
                             "halfExtents": [tidy(c) for c in bx["halfExtents"]],
                             "yaw": tidy(bx.get("yaw", 0.0))}}  # fmt: skip
+            if z.get("daylight") is not None:  # indoor: after the box (world_format writer)
+                line["daylight"] = tidy(z["daylight"])
             lines.append(json.dumps(line, separators=(",", ":"), ensure_ascii=False))
         else:  # other types as the engine keeps them (a JSON object: keys sorted)
             lines.append(json.dumps(z, separators=(",", ":"), ensure_ascii=False, sort_keys=True))

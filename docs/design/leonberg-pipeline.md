@@ -319,7 +319,7 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
 - **Texturen umgesetzt (W5, Entscheidung Projektinhaber 2026-10-04):** eigene, prozedural erzeugte Texturen in
   `gothar_worldgen/textures/` (`procedural.py`, `apply.py`), kachelbar, je 1024² als Albedo + Normal-Map.
   - Arten: Putz, Putz-Fußband, Putz mit Regenschliere, Schichtmauerwerk (Bruchstein), Balken (Maserung, Risse,
-    Äste), Biberschwanz-Ziegel, Ziegel mit Moos (Schattenseite), Bretter (Läden, Türen).
+    Äste), Biberschwanz-Ziegel, Ziegel mit Moos (Schattenseite), Bretter (Läden, Türen); Quader (`ashlar`, Schloss, W7).
   - Sockel (Rückmeldung Projektinhaber 2026-10-04: in Gassen zu hell und gleichförmig): Der Bruchstein liegt bei
     45 % der Palettenhelligkeit, mit Schmutz und Moos in Flecken. Jedes Haus verschiebt die sich wiederholenden
     Texturen (Putz, Stein, Ziegel, Bretter) um einen festen Versatz aus seiner ID, damit Nachbarhäuser nicht dieselben
@@ -805,6 +805,16 @@ eigenen Aufnahmen.
   - **Zonen:** `indoor` je Raum (`LEO_SCHLOSS_<RAUM>_INNEN`) und für den Turm; Ambiente (`sound_zones.json` `rooms`):
     Gewölbe und Verlies `keller_gewoelbe`, Weinkeller `keller_luftzug` (der Hinweis auf den Zugang), Küche
     `schloss_kueche` – die Klänge dazu legt engine in `ambient.toml` an. Musik: das Schloss liegt in `STADT`.
+  - **Innenlicht:** `castle_inside.json` `daylight` (Raum → 0..1) setzt `daylight` an der Innenzone, wo die Ableitung
+    der Engine aus den Fensterlichtern nicht passt (world.md „Zonen“): Schreibstube 0,35, Wachstube (Schießscharten)
+    0,15. Fensterlichter der Häuser liegen immer in einer Box ihrer Innenzone (sonst 0,1 m hinein geklemmt, z. B. an
+    schrägen Wänden; `WINDOW_LIGHT_IN_M` bleibt).
+- **Texturen (W7):** wie die Häuser (`textures/models.py`): `gothar-worldgen schloss` liest die Modelle aus Blender
+  nach, gibt jedem Eckpunkt Texturkoordinaten in Metern (Wände entlang und hoch, flache Flächen entlang des Hauptbaus,
+  Dächer wie die Häuser) und hängt die Bilder aus `generated/textures/` an (URI `../../generated/textures/…`; fehlende
+  Bilder schreibt der Befehl). Welche Textur ein Palettenwert bekommt, steht in `schloss.json` `textures`
+  (`kinds`; neu ist `ashlar`, Quader für die Werksteine und Böden); der Keller (`cellar`: Modelle `schloss_keller_*`)
+  hat Bruchstein, ist um `dark` 0,75 dunkler und heißt `*_cellar`.
 
 ### W-E4 Marktbrunnen (`gothar-worldgen marktbrunnen <ort>`, W6)
 Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Das Modell, das der Projektinhaber selbst aus

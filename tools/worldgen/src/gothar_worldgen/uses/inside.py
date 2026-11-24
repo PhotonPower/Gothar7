@@ -23,7 +23,7 @@ import numpy as np
 from shapely import affinity
 from shapely.geometry import LineString, Point, Polygon, box
 from shapely.geometry.polygon import orient
-from shapely.ops import unary_union
+from shapely.ops import nearest_points, unary_union
 
 from gothar_worldgen.uses.places import FP_TYPES, MOB_TYPES, House, UsesError, door_hinge
 from gothar_worldgen.uses.suggest import short_id
@@ -219,6 +219,20 @@ class _Room:
             ring = list(self.poly.exterior.coords)[:-1]
             self.cover = unary_union([_box_foot(z) for z in room_boxes("", ring, 0.0, 1.0)])
         return self.cover.buffer(-COVER_IN_M).contains(Point(p))
+
+    def clamped(self, p: Pt) -> Pt:
+        """``p``, or the nearest point ``COVER_IN_M`` inside the room's indoor boxes when it
+        lies outside them (a window light in a slanted strip of a chamber: engine assigns a
+        window light to the room whose box holds it)."""
+        self.covered(p)  # builds ``cover``
+        assert self.cover is not None
+        if self.cover.contains(Point(p)):
+            return p
+        inner = self.cover.buffer(-COVER_IN_M)
+        if inner.is_empty:
+            return p
+        q = nearest_points(inner, Point(p))[0]
+        return (round(q.x, 3), round(q.y, 3))
 
     @property
     def entry(self) -> tuple[float, float]:
@@ -574,6 +588,7 @@ class _House:
             nx, nz = w["normal"]
             mx = (w["from"][0] + w["to"][0]) / 2 - nx * WINDOW_LIGHT_IN_M
             mz = (w["from"][1] + w["to"][1]) / 2 - nz * WINDOW_LIGHT_IN_M
+            mx, mz = self.room.clamped((mx, mz))  # engine finds the room by its boxes
             self.vob("light", f"LIGHT_{self.tag}_FENSTER_{k + 1}", (mx, mz), (-nx, -nz),
                      height=(w["sill"] + w["top"]) / 2,
                      components={"light": dict(LIGHT["window"])})  # fmt: skip
