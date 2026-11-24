@@ -305,6 +305,16 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   - **Leonberg** (ganze 2 km): Wiese 41 %, Matsch 23 % (alle Gebäude einschließlich Neubaugebiete),
     Acker 15 %, Waldboden 9 %, Kies 8 %, Kopfstein 2 %, Fels 2 %.
   - `holes` wird noch nicht geschrieben (keine Löcher nötig); Keller und Höhleneingänge kommen später.
+- **Grasmaske (M17 G2, Vertrag `world.md` „Grasmaske“):** `export-terrain` schreibt neben den Splat-Karten
+  `generated/<name>_grass_mask.png` (8-Bit-Graustufen, linear, gleiches Raster und gleiche Weichzeichnung 1,5 m wie
+  der Splat) und trägt `terrain.grass_mask` ein; mit `--no-splat` entfällt sie.
+  - Wert = Faktor auf die Grasdichte der Schicht: Wiese, Gras, Garten, Park, Dorfanger, Streuobst, Friedhof, Heide und
+    alles Offene ohne Nutzung voll; bebaute Nutzung (Wohn-, Gewerbe-, Hof-, Bahnflächen) innerhalb der Stadtmauer halb
+    (draußen ließen die Weiler nur Wiese und Streuobst, W6), außer wo eine grüne Fläche darin liegt; ein 1-m-Streifen
+    an Weg- und Straßenrändern halb; Gebäude, Straßen, Plätze und Mauern (mit 1 m
+    Fuß je Seite) 0; Feldwege halb (Gras zwischen den Spuren); im Schlossgarten Kies 0, Rasenbeete voll.
+  - Die Gras-Überlagerung des Editors `worlds/<ort>/<welt>.grass.png` (neben der Weltdatei, außerhalb von
+    `generated/`) ist Handarbeit und wird vom Generator nie gelöscht oder überschrieben.
 
 ### W-C Gebäude-Generator (Blender-Add-on „Gothar Buildings“, Python/bpy)
 - Eingabe: `buildings.json` + Overrides; Ausgabe: ein `.glb` pro Gebäude (+ LODs) und ein Sammel-Index.
