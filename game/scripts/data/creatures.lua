@@ -55,6 +55,19 @@ Creatures = {
         chase_gait = "run",
         body = { shape = "lying", radius = 0.21, length = 0.99, offset = { 0, 0.16, -0.02 } },
     },
+    kristallkrebs = { -- liegt zwischen den Kristallen der Grotte, läuft seitwärts, hält fest, wirft Zauber zurück
+        territory = 8,
+        attack_distance = 20,
+        wake_seconds = 1.2,
+        chase_gait = "run", -- seitwärts 0,8 / 2,5 m/s
+        move_axis = "x",
+        body = { shape = "lying", radius = 0.4, length = 1.0, axis = "x", offset = { 0, 0.44, 0 } },
+        -- Ein Angriff von dreien ist ein Griff: die Schere hält den Helden bis zum Event release (höchstens 2,5 s),
+        -- wenn er beim Event grab bis 2,2 m vor ihm steht.
+        grab = { chance = 0.33, seconds = 2.5, reach = 2.2 },
+        reflect = { share = 0.5 }, -- die Hälfte eines Zaubers des Helden geht an ihn zurück (Event reflect)
+        splinter = { item = "it_kristall", max = 3 }, -- stumpfe Treffer schlagen Kristalle ab (Beute)
+    },
 }
 
 --- Die Werte des Tieres aus Creatures; nil für Menschen (Npc ohne `species`).
