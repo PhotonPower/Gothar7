@@ -106,6 +106,26 @@ anchor = "bottom"
 offset = [0, -36]
 size = [-120, 26]
 
+# The credits from the main menu (licences, thanks, libraries): a taller page with scrolling text.
+[credits.page]
+anchor = "center"
+size = [1000, 760]
+
+[credits.title]
+anchor = "top"
+offset = [0, 44]
+size = [-120, 50]
+
+[credits.text]
+anchor = "top"
+offset = [0, 108]
+size = [-140, -170]
+
+[credits.hint]
+anchor = "bottom"
+offset = [0, -36]
+size = [-120, 26]
+
 # A choice at a mob (anvil, bed).
 [choice.box]
 anchor = "right"
