@@ -69,9 +69,9 @@ def test_openings_stay_above_the_ground_of_each_side():
     assert min(p[1] for p in frames) >= lowest_sill + geo.SOCLE_M - 1e-6
     main = wings[0]
     s = main.length * SPEC["portal"]["t"]
-    # the open portal (W7 D1): its passage floor starts on the court's ground
+    # the open portal (W7 D1): its passage floor (the hall's model) starts on the court's ground
     hw = SPEC["portal"]["w"] / 2 + 1e-6
-    ramp = [p for f in m.faces["stone_slab"] for p in f
+    ramp = [p for f in m.rooms["eg_halle"]["stone_slab"] for p in f
             if abs(_s(main, p) - s) <= hw and _t(main, p) > main.half - 1e-6]  # fmt: skip
     assert ramp and min(p[1] for p in ramp) == pytest.approx(main.terrain(1, s), abs=1e-6)
 

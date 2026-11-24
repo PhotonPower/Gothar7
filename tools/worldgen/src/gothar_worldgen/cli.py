@@ -76,9 +76,11 @@ from gothar_worldgen.handmade import (
     marktbrunnen_item,
     put_item,
     schloss_item,
+    schloss_room_items,
     splat_areas,
     with_apron,
     with_garden_plan,
+    with_room_items,
     with_wing_terrain,
 )
 from gothar_worldgen.handmade import footprints as handmade_footprints
@@ -911,6 +913,7 @@ def _cmd_schloss(args: argparse.Namespace, out: TextIO) -> int:
                              out_glb, out_blend)  # fmt: skip
         mesh = f"worlds/{site.name}/handmade/schloss/schloss.glb"
         doc = put_item(load_handmade(data_dir / "handmade.json"), schloss_item(spec, mesh))
+        doc = with_room_items(doc, schloss_room_items(spec, mesh))  # W7 D1b: a model per room
         save_handmade(data_dir / "handmade.json", doc)
     except (OSError, json.JSONDecodeError, HandmadeError, ExportError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -1047,9 +1050,10 @@ def _cmd_kirche(args: argparse.Namespace, out: TextIO) -> int:
 
 def _plan_uses(
     path: Path, world: dict[str, Any], index: dict[str, Any], assets: Path,
-    streets: list[dict[str, Any]],
+    streets: list[dict[str, Any]], castle: tuple[Path, Path] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:  # fmt: skip
-    """Routine places, mobs and the rooms' indoor zones of ``uses.json`` (W7)."""
+    """Routine places, mobs and the rooms' indoor zones of ``uses.json`` (W7); with ``castle``
+    (schloss_built.json, castle_inside.json) also inside the castle (W7 D1b)."""
     from shapely.geometry import Point
     from shapely.strtree import STRtree
 
@@ -1101,7 +1105,23 @@ def _plan_uses(
     from gothar_worldgen.uses.zones import indoor_zones
 
     signs = sign_vobs(doc.houses, index, grid.height_at)  # W6: guild signs over the doors
-    return places, [*vobs, *inside.vobs, *signs], indoor_zones(doc.houses, index)
+    zones = indoor_zones(doc.houses, index)
+    castle_vobs: list[dict[str, Any]] = []
+    if castle is not None and castle[0].is_file() and castle[1].is_file():
+        from gothar_worldgen.handmade import schloss_geometry
+        from gothar_worldgen.uses.castle import assemble_vobs, load_castle, plan_castle
+
+        built = json.loads(castle[0].read_text(encoding="utf-8"))
+        if built.get("interior"):
+            cp = plan_castle(built, load_castle(castle[1]), schloss_geometry())
+            if cp.failed:
+                raise UsesError("castle_inside.json: " + "; ".join(cp.failed))
+            places["places"] += [{k: v for k, v in q.items() if k not in ("room", "routine")}
+                                 for q in cp.places]  # fmt: skip
+            places["castle"] = cp.table_md()
+            castle_vobs = assemble_vobs(cp)
+            zones += cp.zones
+    return places, [*vobs, *inside.vobs, *signs, *castle_vobs], zones
 
 
 def _sound_zones(path: Path, world: dict[str, Any], data_dir: Path, folder: Path, work: Path,
@@ -1438,8 +1458,10 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
                            streetworks=works, known_starts=known)  # fmt: skip
         if uses_path.is_file():  # W7: mobs and routine places at the houses with a use
             street_doc = load_street_doc(paths.work, data_dir)
+            castle = (folder / "handmade" / "schloss" / "schloss_built.json",
+                      data_dir / "castle_inside.json")  # W7 D1b  # fmt: skip
             places, mobs, zones = _plan_uses(uses_path, res.world, index, folder.parents[1],
-                                             street_doc.get("streets", []))  # fmt: skip
+                                             street_doc.get("streets", []), castle)  # fmt: skip
             res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
                            handmade, water, starts, [*doors, *mobs],
                            streetworks=works, known_starts=known)  # fmt: skip
@@ -1471,12 +1493,15 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     write_world(folder / f"{name}.g7world", res.world)
     ids.save(ids_path)
     if places is not None:
+        castle_md = places.pop("castle", "")  # W7 D1b: the castle's rooms
         target = folder / "generated" / "uses_places.json"
         target.write_text(json.dumps(places, ensure_ascii=False, indent=1) + "\n", "utf-8")
         from gothar_worldgen.uses.places import routine_table_md
 
         table = folder / "generated" / "uses_table.md"
-        table.write_text(routine_table_md(places), encoding="utf-8", newline="\n")
+        if castle_md:
+            castle_md = "\n## Schloss\n\n" + castle_md
+        table.write_text(routine_table_md(places) + castle_md, encoding="utf-8", newline="\n")
         n = {k: sum(1 for q in places["places"] if q["kind"] == k) for k in ("wp", "fp", "mob")}
         print(f"  uses: {len(places['houses'])} houses, {n['wp']} routine points, {n['fp']} "
               f"freepoints, {n['mob']} mobs, {len(places['failed'])} not placed ({target.name})",

@@ -561,7 +561,7 @@ def _gait_body(rig: RigInfo, g: Gait, frame: int, dz: float = 0.0, phi: float = 
     """Root motion, body bob, vault (lowering ``dz``, pitch ``phi``) and the waves of a gait."""
     pose = rig.rest_pose()
     cycle = 2 * math.pi * frame / g.period
-    rig.move(pose, "root", Vector((0.0, -g.travel * frame / FPS, 0.0)))
+    rig.move(pose, "root", _travel_dir(g) * (g.travel * frame / FPS))
     height = g.bob * math.cos(g.bob_cycles * cycle) - g.crouch - dz
     if height:
         rig.move(pose, "pelvis", Vector((0.0, 0.0, height)))
@@ -583,6 +583,64 @@ def _gait_body(rig: RigInfo, g: Gait, frame: int, dz: float = 0.0, phi: float = 
     return pose
 
 
+def _travel_dir(g: Gait) -> Vector:
+    """Unit vector of the travel: forwards (-Y) or sideways to the left (+X, §7.5)."""
+    return Vector((1.0, 0.0, 0.0)) if g.axis == "x" else Vector((0.0, -1.0, 0.0))
+
+
+def _splay_gait(rig: RigInfo, g: Gait) -> Curves:
+    """Legs spread sideways (arthropods, §7.5): every leg turns about the vertical at its hip
+    towards its foot target and bends in its own vertical plane (planar two-bone IK there); the
+    foot keeps its rest pitch in that plane. Travel forwards or sideways (``axis``)."""
+    rest = rig.rest_pose()
+    up = Vector((0.0, 0.0, 1.0))
+    d = _travel_dir(g)
+    plane = {}
+    for leg in g.legs:
+        hip = rig.world(rest, leg.upper).translation
+        foot = rig.world(rest, leg.foot).translation
+        h = Vector((foot.x - hip.x, foot.y - hip.y, 0.0))
+        if h.length < 1e-4:
+            raise ValueError(f"gait: splay leg '{leg.upper}' has no sideways reach")
+        h.normalize()
+        u = rig.tail[leg.upper] - hip
+        low = rig.tail[leg.lower] - rig.world(rest, leg.lower).translation
+        plane[leg.upper] = (h, h.cross(up), (u.dot(h), u.z), (low.dot(h), low.z), foot)
+
+    def bend(bone: str, axis: Vector, radians: float, yaw: float = 0.0) -> Quaternion:
+        r = rig.rest[bone]
+        world = Quaternion(up, yaw) @ Quaternion(axis, radians)
+        return r.inverted() @ world @ r
+
+    worst = 1.0
+    poses = []
+    for frame in range(g.period + 1):
+        pose = _gait_body(rig, g, frame)
+        for leg in g.legs:
+            h, axis, upper, lower, foot = plane[leg.upper]
+            forward, lift, planted = foot_offset(g, leg, frame)
+            goal = foot + d * (leg.reach + forward + g.travel * frame / FPS) + up * lift
+            hip = rig.world(pose, leg.upper).translation
+            t = goal - hip
+            th = Vector((t.x, t.y, 0.0))
+            yaw = h.to_2d().angle_signed(th.to_2d(), 0.0) if th.length > 1e-6 else 0.0
+            # angle_signed is clockwise-positive: turn the other way about +Z
+            alpha, beta, reached = solve_leg(upper, lower, (th.length, t.z))
+            if planted:
+                worst = min(worst, reached)
+            swing = ((frame / g.period - leg.phase - g.duty) % 1.0) / (1.0 - g.duty)
+            curl = 0.0 if planted else math.radians(leg.curl) * math.sin(math.pi * swing)
+            pose[leg.upper] = (bend(leg.upper, axis, alpha, -yaw), None)
+            pose[leg.lower] = (bend(leg.lower, axis, beta), None)
+            pose[leg.foot] = (bend(leg.foot, axis, curl - alpha - beta), None)
+        poses.append(pose)
+    print(
+        f"[chargen] gait {g.speed} m/s ({'sideways' if g.axis == 'x' else 'forwards'}, splayed "
+        f"legs), stride {g.stride:.2f} m, worst reach while planted {worst:.3f}"
+    )
+    return to_curves(poses)
+
+
 def gait(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
     """Walk, trot or gallop loop with root motion and planted feet (gaits.py, F5).
 
@@ -594,6 +652,8 @@ def gait(rig: RigInfo, params: dict, clips: dict[str, Curves]) -> Curves:
         for bone in (leg.upper, leg.lower, leg.foot):
             if bone not in rig.rest:
                 raise ValueError(f"gait: unknown bone '{bone}'")
+    if g.splay:
+        return _splay_gait(rig, g)
     rest = rig.rest_pose()
     hips = {leg.upper: rig.world(rest, leg.upper).translation for leg in g.legs}
     ground = {leg.upper: rig.world(rest, leg.foot).translation for leg in g.legs}

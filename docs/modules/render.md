@@ -234,9 +234,11 @@ struct GpuLighting; GpuLighting packLighting(const Environment&, const LightList
   `Engine::frameLights()`.
 - **Lichtmodell (stilisiert):** Hemisphären-Ambient (Himmel/Boden nach Normalen-Y gemischt) + Lambert-Sonne +
   Punktlichter mit Abfall `saturate(1 − (d/r)⁴)² / (d² + 1)` (Meter; genau 0 am Radius). Keine Glanzlichter.
-- **Räume** (Zonen `indoor`, world.md „Zonen“): Das Ambient wird je Fläche in Räumen mit `[indoor] ambient`
-  multipliziert (`indoorAmount` in `common/lighting.glsl`, gleiche Formel `render::indoorAmount`); bis zu 32 gedrehte
-  Boxen im Lighting-UBO (`GpuLighting::indoorBoxes`).
+- **Räume** (Zonen `indoor`, world.md „Zonen“): Das Ambient wird je Fläche mit dem Faktor ihres Raums multipliziert
+  (`IndoorVolume::ambient`: `daylight` der Zone, sonst `[indoor] ambient` bzw. `ambient_windowless`); jeder Raum
+  blendet über `indoorAmount` von 1 zu seinem Faktor, ineinanderliegende Räume: der kleinste
+  (`indoorAmbientFactor` in `common/lighting.glsl`, gleiche Formel `render::indoorAmbientFactor`); bis zu 32 gedrehte
+  Boxen im Lighting-UBO (`GpuLighting::indoorBoxes`, Faktoren in `indoorAmbient`, vier je vec4).
 - Flackern von Fackeln ist Welt-/Spiellogik (ändert Lichtwerte pro Frame), kommt mit den Vobs (M4).
 - Ohne `setLighting` gilt neutrales Licht (weißes Ambient, keine Sonne).
 
@@ -753,6 +755,11 @@ void beginFrame();  BatchStats lastBatch();  shared_ptr<const MaterialDefaults> 
   durch Fenster und Tür sieht man die Nähe. Sonnenschatten (durch die Fenster) werfen dann nur Dinge bis
   `indoor_shadow_distance` (12 m), Kaskaden, die weiter beginnen, ruhen. Ein echtes Portal (nur durch Öffnungen)
   bleibt offen. Leonberg: Stube der Krummen Gans 2,6 Mio. → 0,26 Mio. Dreiecke, 1917 → 184 Draws (mit E3).
+- **Einrichtung von außen (M17, 2026-11-24):** Was ganz in Innenzonen liegt (alle acht Ecken der Bounds in Boxen,
+  5 cm Toleranz; `render::roomsHolding`, je Objekt beim ersten Bild nach dem Laden bzw. nach Zonen-/Szenen-Änderung),
+  fehlt im Hauptbild und in den Schattenkaskaden, solange die Kamera in **keiner** Innenzone steht und weiter als
+  `[render] indoor_cull_distance` (12 m, 0 = aus) von jeder seiner Boxen entfernt ist. Von nahem sieht man durch
+  Fenster und Tür hinein; drinnen gilt die Regel oben. `Engine::culledIndoors()`/`culledIndoorShadows()` zählen.
 - Gleiche Werte in verschiedenen Modellen bündeln, weil alle `MaterialSet`s die neutralen Texturen des Renderers teilen
   (`MaterialSet::create(…, defaults())`), und Texturen aus Dateien über den Textur-Cache dieselben Objekte sind:
   Modelle auf demselben Trim-Sheet bündeln miteinander.

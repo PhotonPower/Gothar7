@@ -220,6 +220,12 @@ Result<DayCycle> DayCycle::parse(std::string_view toml, std::string_view source)
         return error("indoor.ambient", "must be 0..1 (a factor on the ambient)");
     }
     cycle.m_indoorAmbient = static_cast<f32>(indoor);
+    const f64 windowless = c.get<f64>("indoor.ambient_windowless", cycle.m_indoorAmbientWindowless);
+    if (windowless < 0.0 || windowless > 1.0)
+    {
+        return error("indoor.ambient_windowless", "must be 0..1 (a factor on the ambient)");
+    }
+    cycle.m_indoorAmbientWindowless = static_cast<f32>(windowless);
     for (usize i = 1; i < cycle.m_keys.size(); ++i)
     {
         if (cycle.m_keys[i].hour == cycle.m_keys[i - 1].hour)

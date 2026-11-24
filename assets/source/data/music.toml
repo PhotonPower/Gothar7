@@ -43,6 +43,15 @@ transition = "end"
 segments = ["music/stadt_std_ngt.wav"]
 transition = "end"
 
+# --- Dungeon unter dem Schloss (welt #458, Musik-Zone DUNGEON): Tag und Nacht gleich; Platzhalter -----------
+[theme.DUNGEON]
+bpm = 80
+beats = 4
+volume = 0.75
+[theme.DUNGEON.std]
+segments = ["music/dungeon_std.wav"]
+transition = "end"
+
 # --- Gemeinsam: Bedrohung und Kampf für jedes Thema ohne eigene --------------------------------------------
 # Eine Menge kann ihr eigenes Tempo haben (bpm, beats); die Taktgrenzen folgen dem Segment, das gerade spielt.
 [theme.common]

@@ -96,7 +96,8 @@ Result<void> Engine::sendEvent(std::string_view target, std::string_view action,
 void Engine::deliverEvent(const world::NetEvent& event)
 {
     G7_LOG_DEBUG("engine", "event {} -> {} ({})", event.action, event.target, event.source);
-    (void)moverEvent(event); // dungeon D2: gates, secret walls, trapdoors
+    (void)moverEvent(event);    // dungeon D2: gates, secret walls, trapdoors
+    (void)teleportEvent(event); // dungeon D4: teleporters on and off
     if (const auto vob = findMob(event.target); vob)
     {
         if (const auto it = m_mobs.find(vob->value); it != m_mobs.end())
@@ -156,8 +157,9 @@ void Engine::bindEventFunctions()
 {
     using script::Value;
     script::ScriptVm& vm = *m_scripts;
-    bindMoverFunctions();  // dungeon D2
-    bindSwitchFunctions(); // dungeon D3
+    bindMoverFunctions();    // dungeon D2
+    bindSwitchFunctions();   // dungeon D3
+    bindTeleportFunctions(); // dungeon D4
     vm.bind({"send", "send(target: string, action?: string, source?: string)",
              "Schickt ein Ereignis an das Vob `target` (Dungeon D1), wie es ein Auslöser tut: `action` ist "
              "toggle, open, close, on, off, wake, trigger (Vorgabe), lock oder unlock; `source` der Absender "

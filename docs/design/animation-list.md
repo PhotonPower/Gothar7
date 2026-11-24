@@ -76,6 +76,9 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 | `mob/door/t_open` | Tür öffnen/schließen | – | open | Q | platzhalter (UAL1 `Interact`) |
 | `mob/table/t_sit`, `s_sit`, `t_stand` | Am Tisch sitzen (welts Tisch mit Bänken): hinter der Bank, rechtes Bein zuerst hinübersteigen, sitzen mit den Unterarmen auf der Platte, aufstehen rückwärts | – | – | K | platzhalter-K (Slot 1,10 m von der Tischachse, Hüfte über der Sitzmitte; Armhaltung per Gittersuche; mit engine 2026-10-08) |
 | `mob/table/s_sit_drink`, `s_sit_talk` | Am Tisch trinken (`it_mug`, rechte Hand) bzw. reden (Gesten mit beiden Händen) – Schleifen für FP_SIT/FP_DRINK | – | item_to_hand (trinken) | K | platzhalter-K |
+| `mob/lever/t_use` | Dungeon-Hebel (engine #435): hochgreifen, packen, herunterziehen (Griff ~1,2 m, Slot 0,6 m vor der Wand; eigene Datei `dungeon.glb`) | – | use | K | platzhalter-K |
+| `mob/button/t_press` | Wandknopf (engine #435): Stein in der Wand eindrücken (~1,2 m hoch, Slot 0,55 m) | – | use | K | platzhalter-K |
+| `mob/niche/t_reach`, `s_reach`, `t_back` | Nische (engine #439): vorbeugen und hineingreifen, darin tasten, Hand zurückziehen (Boden ~0,9 m, Slot 0,55 m; wie eine Truhe ohne Deckel) | – | open (t_reach), close (t_back) | K | platzhalter-K |
 
 ### Prio B – Fortbewegung je Waffenmodus (ausgeschrieben, F2)
 
@@ -427,6 +430,26 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `gatterbock/s_dormant` | Statue neben dem Gatter (`zs_dormant`, #422): Kopf gesenkt, Fäuste vor der Brust | – | – | K | platzhalter-K |
 | `gatterbock/t_wake` | Erwachen aus der Statue: Kopf hebt sich, Schultern mahlen, Arme fallen frei | – | sound:gatterbock_threaten | K | platzhalter-K |
 | `gatterbock/t_threaten` | Drohen: stampft, schlägt die Fäuste zusammen | – | – | K | platzhalter-K |
+### Mauerkriecher (`mauerkriecher`, Dungeon, eigene Art, Gliederfüßer §7.5, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `mauerkriecher/s_idle` | Fühler tasten, die Zangen klicken | – | sound:mauerkriecher_click | K | platzhalter-K |
+| `mauerkriecher/s_walk` | Huschen im Wechseldreischritt (sechs Beine) | ✓ 1,2 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine)) |
+| `mauerkriecher/s_run` | Schnelles Flitzen, Körper tief | ✓ 5,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine)) |
+| `mauerkriecher/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `mauerkriecher/t_attack_1` | Vorschnellen und die Zangen zuschnappen lassen (Treffpunkt `socket_mouth`) | – | hit_start, hit_end | K | platzhalter-K |
+| `mauerkriecher/t_attack_2` | Vorderleib aufbäumen und mit den Zangen herabstoßen | – | hit_start, hit_end | K | platzhalter-K |
+| `mauerkriecher/t_hit` | Treffer: zuckt zurück | – | – | K | platzhalter-K |
+| `mauerkriecher/t_die` | Kippt auf den Rücken, die Beine krümmen sich und zucken | – | – | K | platzhalter-K |
+| `mauerkriecher/s_eat`, `s_sleep` | Kopf tief, knabbert Moos von den Steinen / flach in eine Ritze gedrückt (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `mauerkriecher/s_dormant` | Flach in einer Ritze (`zs_dormant`, #422), Fühler angelegt | – | – | K | platzhalter-K |
+| `mauerkriecher/t_wake` | Hebt sich vom Stein, Fühler schwingen vor | – | sound:mauerkriecher_click | K | platzhalter-K |
+| `mauerkriecher/t_threaten` | Bäumt sich auf, Zangen weit offen, klickt | – | – | K | platzhalter-K |
+| `mauerkriecher/t_curl` | Rollt sich ein: Panzer außen, Bauch und Beine innen (§7.5) | – | – | K | platzhalter-K |
+| `mauerkriecher/s_curled` | Eingerollt (Schleife; der Panzer schützt von oben, engine) | – | – | K | platzhalter-K |
+| `mauerkriecher/t_uncurl` | Rollt sich auf und steht wieder | – | – | K | platzhalter-K |
+| `mauerkriecher/t_emerge` | Zwängt sich aus einer Ritze hinter ihm (am Ort) | – | emerge | K | platzhalter-K |
 
 ## Prio C – später
 

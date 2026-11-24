@@ -3,16 +3,19 @@
 # here (first match wins, paths relative to assets/source, `*` within a folder name, `**` across folders),
 # that its licences may be shipped, that each source's `md` phrase stands in LICENSES.md, and writes the
 # CREDITS.txt of the release from the sources used (required credits by `credit_order`, then the thanks).
+# The credits screen of the main menu shows all of it (German; English from `name_en`, `credit_en`, `thanks_en`).
 version = 1
 
 # --- Licence kinds: may they go into the release (redistributable) and do they demand a credit line? ---
 [licence.own]
 name = "eigene Arbeit (MIT-Lizenz des Repositorys)"
+name_en = "own work (MIT licence of the repository)"
 redistributable = true
 attribution = false
 
 [licence.owner]
 name = "eigene Arbeit des Projektinhabers"
+name_en = "own work of the project owner"
 redistributable = true
 attribution = false
 
@@ -28,6 +31,7 @@ attribution = true
 
 [licence.DL-DE-BY-2_0]
 name = "Datenlizenz Deutschland - Namensnennung 2.0"
+name_en = "Data licence Germany - attribution 2.0"
 redistributable = true
 attribution = true
 
@@ -51,6 +55,7 @@ attribution = false
 # projects. You may include this data in commercially-sold products, but you may not resell this data directly,
 # even in converted form." Shipping it inside the game is allowed; the acknowledgement is asked for.
 name = "CMU Graphics Lab Motion Capture Database - Nutzungsbedingungen"
+name_en = "CMU Graphics Lab Motion Capture Database - terms of use"
 redistributable = true
 attribution = true
 
@@ -68,6 +73,7 @@ paths = ["characters/anims/human/fist.*", "characters/anims/human/1h.*", "charac
 name = "OpenStreetMap"
 licences = ["ODbL-1_0", "DL-DE-BY-2_0"]
 credit = "Straßen, Plätze und Nutzung: © OpenStreetMap-Mitwirkende (ODbL 1.0)"
+credit_en = "Streets, squares and land use: © OpenStreetMap contributors (ODbL 1.0)"
 credit_order = 2 # LGL and OSM first (release.md, decision 10)
 md = "OpenStreetMap"
 paths = ["ui/maps/leonberg.png", "worlds/leonberg/generated/*splat*"]
@@ -82,6 +88,7 @@ paths = ["worlds/leonberg/handmade/**"]
 name = "LGL Baden-Württemberg - DGM1, LoD2, DOP"
 licences = ["DL-DE-BY-2_0"]
 credit = "Gelände und Baukörper von Leonberg - Datengrundlage: LGL, www.lgl-bw.de (Datenlizenz Deutschland - Namensnennung 2.0)"
+credit_en = "Terrain and buildings of Leonberg - data source: LGL, www.lgl-bw.de (Data licence Germany - attribution 2.0)"
 credit_order = 1
 md = "LGL Baden-Württemberg"
 paths = ["worlds/leonberg/**"]
@@ -90,6 +97,7 @@ paths = ["worlds/leonberg/**"]
 name = "Alegreya und Alegreya SC (Huerta Tipográfica)"
 licences = ["OFL-1_1"]
 credit = "Schriften Alegreya und Alegreya SC: Juan Pablo del Peral, Huerta Tipográfica - SIL Open Font License 1.1 (OFL.txt)"
+credit_en = "Fonts Alegreya and Alegreya SC: Juan Pablo del Peral, Huerta Tipográfica - SIL Open Font License 1.1 (OFL.txt)"
 credit_order = 3
 md = "SIL Open Font License 1.1"
 paths = ["fonts/*.ttf", "fonts/*.g7font", "fonts/OFL.txt"]
@@ -105,6 +113,7 @@ paths = ["testscene/town/**", "testscene/nature/**"]
 name = "MakeHuman/MPFB2, Quaternius, ambientCG (Figuren)"
 licences = ["CC0-1_0"]
 thanks = "MakeHuman-Gemeinschaft, Quaternius, ambientCG"
+thanks_en = "MakeHuman community, Quaternius, ambientCG"
 md = "MakeHuman"
 paths = ["characters/**"]
 

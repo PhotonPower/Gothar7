@@ -356,7 +356,7 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
 - [ ] Job-System, Multithreading für Animation/KI/Culling – Plan: `docs/modules/perf.md`
 - [ ] Welt-Streaming in Zellen, Ladezeiten-Optimierung
 - [x] Tracy-Profiling, Performance-Budget pro System – Plan: `docs/modules/perf.md`; Tracy (#387, ADR 0024), Szenarien mit Budgets (#389), KI-LOD-Obergrenze (#391, #392)
-- [ ] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info – Plan: `docs/modules/release.md`; umgesetzt: Build-Info (#380), Absturzberichte (#382), ZIP mit Lizenzprüfung (#384), Figuren im Paket (#410, gekocht ab #419)
+- [x] Packaging (Installer/ZIP), Crash-Reporting (Minidumps), Versions-/Build-Info – Plan: `docs/modules/release.md`; umgesetzt: Build-Info (#380), Absturzberichte (#382), ZIP mit Lizenzprüfung (#384), Figuren im Paket (#410, gekocht ab #419)
 - [x] Gekochtes Format für Figuren und Animationen (`.g7skin`/`.g7anim`, ADR 0025; Plan in `asset.md`, Teile 0 und A–F, #410 #413 #415–#418 und Teil F): das Paket enthält sie, glTF bleibt Rückfall in der Entwicklung; Leonberg lädt die Figuren in ~0,9 statt ~1,3 s (`docs/perf/2026-11-08-figuren-laden.md`)
 - [ ] Optional: Vulkan-Backend hinter der RHI (ADR)
 - [x] Magie: Telekinese (Zaubertyp „Kontrolle“) – verschoben aus M12, Entscheidung Projektinhaber 2026-10-08
@@ -367,6 +367,8 @@ Straße und zurück); Szenariotests `runtime_chapter` (CI, neue Engine nach jede
   - D1 Ereignis-Netz umgesetzt (`targets`/`action`, Relais, Lua `send`/`dungeon_event`/`relay_state`, Spielstand)
   - D2 bewegte Teile umgesetzt (`mover`: Gatter, Geheimwand, Falltür; Kollision bewegt sich mit, Einklemmen hält an und fährt zurück, Fallen-Gatter 20 Schaden, gesperrte Wegnetz-Kanten, Lua `mover_state`, Spielstand)
   - D3 Schalter und Platten umgesetzt (Mob-Typen `lever`, `wall_button` mit `hidden`/`once`, Trittplatten mit Gewicht inkl. Gegenständen, Lua `switch_state`, Spielstand; Clips `mob/lever/t_use`, `mob/button/t_press` von figuren offen)
+  - D4 Teleporter und Fall umgesetzt (in der Welt mit Weißblende und ohne Zurückspringen, in andere Ebenen, Kreaturen und Gegenstände, an/aus per Ereignis; Fall durch den Schacht als Weltwechsel mit Geschwindigkeit, ohne Fallschaden; schwarzes Abblenden nach jedem Weltwechsel)
+  - D5 Nischen und Türen umgesetzt (Mob-Typ `niche` wie eine Truhe ohne Deckel, Türen mit `no_pick` und `one_way`; Clips `mob/niche/…` von figuren offen)
 
 **DoD / Meilenstein D:** Release-Build läuft stabil ≥ 60 FPS in der größten Welt auf Zielhardware.
 
@@ -460,7 +462,7 @@ Rohdaten außerhalb des Repos (`DATA_ROOT`).
 
 ## W7 – Integration & Feinschliff  (benötigt M16, M17)
 - [ ] Handarbeit im Editor, Zellen/Streaming, Performance-Budget
-- [ ] Credits (LGL, OSM, Asset-Lizenzen) im Spiel
+- [x] Credits (LGL, OSM, Asset-Lizenzen) im Spiel – Hauptmenü „Mitwirkende“ aus `assets/licenses.toml` und `THIRD_PARTY_NOTICES.txt`, DE/EN
 - [x] Gebäudenutzungen für Gameplay festlegen (Schmiede, Taverne, Händler …) – `uses-suggest` (OSM/ALKIS), Auswahl des Koordinators in `data/leonberg/uses.json` (30 Häuser), Routinen-Wegpunkte, Freepoints und Mobs (`docs/design/leonberg-routinen-orte.md`)
   - Stand: Treppen ins Obergeschoss der 5 begehbaren Häuser (höchstens 35°, Kollision als glatte Rampe, Deckenausschnitt mit Geländer), Obergeschoss mit eigenen Räumen, Fenstern und Licht; Betten und Truhen oben, Wegpunkte `…_TREPPE`, `…_TREPPE_OBEN`, `…_OBEN…`, Innenzonen je Geschoss und über der Treppe
   - Stand: begehbare Häuser Phase 1 – zehn weitere Häuser begehbar (Bäcker, Metzger, Schreiner, Töpfer, Goldschmied, Tuchhändler, Gewandschneider, Kräuterkammer, Badstube, Wachstube am Unteren Tor), eingerichtet nach Nutzung bzw. Gewerk (`uses.<use>.inside`, `insideByTrade`; Ofen, Hackklotz, Töpferscheibe, Tuchregal, Badewanne; Arbeits-Freepoints vor dem Werkstück); Steinböden mit Fußschritt-Hinweis (`surface`); Metzger, Töpfer, Wache und Schreiner vorerst ohne Obergeschoss (`upper: false`, Treppenplatzierung folgt in Phase 2); Wege gerade durch Durchgänge und um Treppen geprüft mit Autopilot-Rundgang und NPC-Probe

@@ -698,6 +698,96 @@
     [[-258.585, -46.879], [-200.885, 1.921], [-191.715, -8.921], [-249.415, -57.721]],
     [[-229.061, -20.579], [-230.445, -18.943], [-232.58, -18.764], [-234.217, -20.148], [-234.395, -22.284], [-233.011, -23.92], [-230.876, -24.099], [-229.239, -22.715]]
    ]
+  },
+  {
+   "key": "schloss_eg_gesinde",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_eg_gesinde.glb",
+   "pos": [-215.0, -9.6, -15.0]
+  },
+  {
+   "key": "schloss_eg_halle",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_eg_halle.glb",
+   "pos": [-215.0, -9.6, -15.0]
+  },
+  {
+   "key": "schloss_eg_kueche",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_eg_kueche.glb",
+   "pos": [-215.0, -9.6, -15.0]
+  },
+  {
+   "key": "schloss_eg_schreibstube",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_eg_schreibstube.glb",
+   "pos": [-215.0, -9.6, -15.0]
+  },
+  {
+   "key": "schloss_eg_speisekammer",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_eg_speisekammer.glb",
+   "pos": [-215.0, -9.6, -15.0]
+  },
+  {
+   "key": "schloss_eg_wachstube",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_eg_wachstube.glb",
+   "pos": [-215.0, -9.6, -15.0]
+  },
+  {
+   "key": "schloss_keller_gewoelbe",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_keller_gewoelbe.glb",
+   "pos": [-215.0, -9.6, -15.0]
+  },
+  {
+   "key": "schloss_keller_verlies",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_keller_verlies.glb",
+   "pos": [-215.0, -9.6, -15.0]
+  },
+  {
+   "key": "schloss_keller_weinkeller",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_keller_weinkeller.glb",
+   "pos": [-215.0, -9.6, -15.0]
+  },
+  {
+   "key": "schloss_og_bibliothek",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_og_bibliothek.glb",
+   "pos": [-215.0, -9.6, -15.0],
+   "components": {
+    "surface": {
+     "footstep": "wood"
+    }
+   }
+  },
+  {
+   "key": "schloss_og_festsaal",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_og_festsaal.glb",
+   "pos": [-215.0, -9.6, -15.0],
+   "components": {
+    "surface": {
+     "footstep": "wood"
+    }
+   }
+  },
+  {
+   "key": "schloss_og_gemach",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_og_gemach.glb",
+   "pos": [-215.0, -9.6, -15.0],
+   "components": {
+    "surface": {
+     "footstep": "wood"
+    }
+   }
+  },
+  {
+   "key": "schloss_og_kapelle",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_og_kapelle.glb",
+   "pos": [-215.0, -9.6, -15.0],
+   "components": {
+    "surface": {
+     "footstep": "wood"
+    }
+   }
+  },
+  {
+   "key": "schloss_turm",
+   "mesh": "worlds/leonberg/handmade/schloss/schloss_turm.glb",
+   "pos": [-215.0, -9.6, -15.0]
   }
  ]
 }

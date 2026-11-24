@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "name": "teleport",
+  "nextVobId": 9,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_TELEPORT","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"trigger","name":"TELE_A","pos":[5.0,1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,1.0,0.8],"filter":"any","once":false,"teleport":{"to":"MARK_B","visible":true,"filter":"any","active":true}}}},
+    {"id":3,"type":"empty","name":"MARK_B","pos":[20.0,0.0,0.0],"rot":[0.0,0.7071068,0.0,0.7071068]},
+    {"id":4,"type":"trigger","name":"TELE_B","pos":[20.0,1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,1.0,0.8],"filter":"any","once":false,"teleport":{"to":"START_TELEPORT","visible":false,"filter":"player","yaw":180.0,"active":true}}}},
+    {"id":5,"type":"trigger","name":"TELE_AUS","pos":[-5.0,1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,1.0,0.8],"filter":"any","once":false,"teleport":{"to":"MARK_B","visible":false,"filter":"player","active":false}}}},
+    {"id":6,"type":"trigger","name":"TELE_EBENE","pos":[0.0,1.0,-10.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,1.0,0.8],"filter":"any","once":false,"teleport":{"world":"testworld/teleport_unten.g7world","start":"START_UNTEN","visible":true,"filter":"player","active":true}}}},
+    {"id":7,"type":"trigger","name":"FALL_SCHACHT","pos":[0.0,1.0,10.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[0.8,1.0,0.8],"filter":"player","once":false,"changeWorld":{"world":"testworld/teleport_unten.g7world","start":"START_SCHACHT","fall":true}}}},
+    {"id":8,"type":"mesh","name":"BODEN","pos":[0.0,-1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"scale":[60.0,1.0,60.0],"mesh":"testworld/block.gltf","category":"gameplay"}
+  ]
+}

@@ -195,6 +195,11 @@ bool CharacterController::jump(f32 upwardSpeed)
     return true;
 }
 
+void CharacterController::setVelocity(const Vec3& velocity)
+{
+    m_impl->character->SetLinearVelocity(JPH::Vec3(velocity.x, velocity.y, velocity.z));
+}
+
 void CharacterController::moveTo(const Vec3& feet)
 {
     m_impl->character->SetPosition(JPH::RVec3(feet.x, feet.y, feet.z));

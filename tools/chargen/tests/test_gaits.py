@@ -34,7 +34,7 @@ def test_parse_and_stride():
     ("change", "message"),
     [
         ({"x": 1}, "unknown keys"),
-        ({"legs": LEGS[:1]}, "2 to 4 legs"),
+        ({"legs": LEGS[:1]}, "2 to 8 legs"),
         ({"legs": [{**LEGS[0], "knee": 1}, LEGS[1]]}, "leg keys"),
         ({"legs": [{**LEGS[0], "upper": ""}, LEGS[1]]}, "upper, lower and foot"),
         ({"period": 2}, "period"),
@@ -43,11 +43,24 @@ def test_parse_and_stride():
         ({"bob_cycles": 3}, "bob_cycles"),
         ({"tail": {"bones": [], "degrees": 5}}, "tail"),
         ({"speed": True}, "speed"),
+        ({"axis": "z"}, "axis"),
+        ({"axis": "x"}, "needs splay"),
+        ({"legs": LEGS * 5}, "2 to 8 legs"),
     ],
 )
 def test_invalid_gaits(change, message):
     with pytest.raises(GaitError, match=message):
         parse_gait({**TROT, **change})
+
+
+def test_arthropod_gaits():
+    """§7.5: six or eight splayed legs, the crab travels sideways (move_axis "x")."""
+    six = [{**LEGS[i % 2], "upper": f"leg_{i}_u"} for i in range(6)]
+    g = parse_gait({**TROT, "legs": six, "splay": True})
+    assert len(g.legs) == 6 and g.splay and g.axis == "y"
+    crab = parse_gait({**TROT, "legs": six + six[:2], "splay": True, "axis": "x"})
+    assert len(crab.legs) == 8 and crab.axis == "x"
+    assert not parse_gait(TROT).splay
 
 
 def test_planted_foot_moves_back_at_the_speed():

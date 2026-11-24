@@ -307,14 +307,56 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `testworld/switches.g7world` (Hebel hin und zurück, versteckter einmaliger Knopf mit Fokus aus der Nähe, Platte mit
   Held und Apfel, Platte nur für den Helden, Spielstand).
 
+## Stand D4 – Teleporter und Fall (umgesetzt)
+- **Format:** `components.trigger.teleport` und `changeWorld.fall` (world.md). Ein Teleporter braucht genau ein Ziel:
+  `to` (ein Vob dieser Welt, z. B. ein Startpunkt oder ein leerer Marker) oder `world` + `start`.
+- **Held:** Betritt er einen aktiven Teleporter (`filter` nicht `items`), steht er im nächsten Schritt am Ziel (Füße
+  auf dem Ursprung des Ziel-Vobs, Blick nach `yaw` oder nach dem Ziel-Vob), Effekt `teleport` und Klang `teleport`
+  an beiden Enden, **Weißblende 0,2 s**, Lua-Ereignis `hero_teleported(teleporter)`. Danach gilt er in allen
+  Triggern am Ziel als schon drin (`TriggerSystem::prime`): kein Zurückspringen, erst nach Verlassen und Wiederbetreten.
+  Mit `world`: ein Weltwechsel an `start`.
+- **Kreaturen und Gegenstände** (`creature`/`items`/`any`, Frage 9): nur innerhalb der Welt; sie gehen beim
+  **Betreten** (wer schon drin ist oder dort ankommt, bleibt). NPCs verlieren ihren Weg und suchen neu.
+- **An/aus:** `on`/`open` an, `off`/`close` aus, `toggle`/`trigger` um; `visible` zeigt bei aktiven die Lichtsäule
+  `teleport_column` (Partikel, Licht). Gespeichert, wenn anders als in der Datei (`WorldState.teleporters`).
+  Lua `teleport_state(name)`.
+- **Fall** (Frage 6, Entscheidung Projektinhaber): Ein `changeWorld` mit `fall = true` nimmt die Geschwindigkeit
+  des Helden mit; er kommt am Startpunkt (in der Luft, oben im Ankunftsschacht) damit an und fällt weiter. Die
+  **nächste Landung kostet nichts**. Die Fall-Pose spielt die vorhandene Luft-Animation.
+- **Abblenden** (Frage 7): Nach jedem Weltwechsel durch einen Trigger oder Teleporter blendet das Bild in 0,6 s aus
+  Schwarz auf (die Welt lädt dabei ohne Ladebildschirm wie bisher). Engine: `screenFade()`, gezeichnet über dem HUD.
+- **Nebenbei behoben:** Ein Weltwechsel setzt den Helden auf den genannten Startpunkt; bisher nahm `spawnPlayer` den
+  beim Programmstart konfigurierten (`--start`) bzw. den ersten Startpunkt.
+- Nach dem Laden einer Welt oder eines Spielstands gelten Kreaturen und Gegenstände, die schon in einem Teleporter
+  stehen, als drin (wie beim Helden).
+- **Offen:** Teleport-Brummen als Klangschleife.
+- **Tests:** `tests/world/test_teleport.cpp`, `tests/runtime/test_engine_teleport.cpp` auf
+  `testworld/teleport.g7world` und `teleport_unten.g7world` (Marker mit Yaw, kein Zurückspringen, aus bis zum
+  Ereignis, Gegenstand, andere Ebene, Fall 6 m ohne Schaden, Spielstand).
+
+## Stand D5 – Nischen und Türen (umgesetzt)
+- **Nische:** Mob-Typ `niche` (`data/mobs.toml`, Platz „front“ 0,55 m vor der Wand; Clips `mob/niche/t_reach`,
+  `s_reach`, `t_back` von figuren, bis dahin Ersatzzeit). Sie öffnet sich wie eine Truhe (Inhalt aus der
+  `Mob`-Definition in Lua, Behälter-Bildschirm), Schloss und Schlüssel wie bei Truhen.
+- **`no_pick`** (an `components.mob`): Der Dietrich hilft nicht („Verschlossen. Hier hilft nur der Schlüssel.“,
+  `UI_NEEDS_KEY`). Hat die Definition einen Schlüssel, aber keine Kombination, ist die Tür trotzdem zu Beginn
+  verschlossen. Ereignisse `lock`/`unlock` (D1) wirken weiter.
+- **`one_way`** (`front` = von der +Z-Seite, `back`): Eine geschlossene Tür lässt sich nur von dieser Seite öffnen
+  („Von dieser Seite lässt sie sich nicht öffnen.“, `UI_ONE_WAY`); schließen geht von beiden. Ereignisse bewegen sie
+  von überall.
+- Tür-Ereignisse `open`/`close`/`toggle`/`lock`/`unlock` sind seit D1 da.
+- **Offen:** Wegnetz-Sperre an verschlossenen Türen (NPCs öffnen Türen im Gehen, M9); folgt bei Bedarf mit D6.
+- **Tests:** `tests/world/test_switches.cpp` (Felder), `tests/runtime/test_engine_doors.cpp` auf
+  `testworld/doors.g7world`.
+
 ## Teile (je ein PR, in dieser Reihenfolge)
 | Teil | Inhalt | Umfang |
 |---|---|---|
 | **D1** Netz ✔ | `targets`/`action`, Relais, Lua `send`/`dungeon_event`, Speichern der Relais | mittel |
 | **D2** Mover ✔ | Gatter, Geheimwand, Falltür; Kollision mit; Klemmen (`crush`); Speichern | mittel |
 | **D3** Schalter und Platten ✔ | Mob-Typen `lever`, `wall_button` (versteckt), Platte mit Gewicht inkl. Items; figuren-Clips | mittel |
-| **D4** Teleporter und Fall | Teleport in der Welt und in andere Ebenen, Fall als Weltwechsel mit Geschwindigkeit, Abblenden | mittel |
-| **D5** Nischen und Türen | `niche`, Tür-Ereignisse, `no_pick`, `one_way` | klein |
+| **D4** Teleporter und Fall ✔ | Teleport in der Welt und in andere Ebenen, Fall als Weltwechsel mit Geschwindigkeit, Abblenden | mittel |
+| **D5** Nischen und Türen ✔ | `niche`, Tür-Ereignisse, `no_pick`, `one_way` | klein |
 | **D6** Monster | `zs_dormant`, Wecken, `spawn`-Marker, kein Respawn | mittel |
 | **D7** Editor und Import | Inspektor, Linien, Prüfen, `extras` aus Blender | mittel |
 | **D7b** Umgebung | Block `environment` je Welt (ohne Himmel und Sonne, Nebel, Grundlicht), Zonen-Typ `fog` | klein |
