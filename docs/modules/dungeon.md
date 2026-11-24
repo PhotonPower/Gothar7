@@ -374,6 +374,9 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   Keiler, dazu `dormant`, `wake`, beim Mauerschlupfer `steal` = Aktion 6), Kapseln in `data/creatures.toml`, Werte
   in `data/creatures.lua`, Instanzen `mon_gatterbock`/`mon_mauerschlupfer` (`npcs/dungeon.lua`, Platzhalterwerte).
   Jede Art mit Graph kann jetzt eingesetzt werden (nicht mehr nur Wolf, Keiler, Laufvogel).
+- **Mauerkriecher** (figuren #440): Graph wie der Gatterbock, Erwachen = `t_emerge` (aus der Ritze), Rudel laufend
+  (`pack_gait`/`chase_gait` "run"), Instanz `mon_mauerkriecher` (für Spawn-Marker mit `count` 3–6). **Offen:** Einrollen bei
+  schweren Treffern (`t_curl` → `s_curled` → `t_uncurl`, Schutz von oben) braucht Kampf-Logik.
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am

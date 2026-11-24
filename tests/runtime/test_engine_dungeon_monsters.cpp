@@ -182,3 +182,26 @@ TEST_CASE("Engine dungeon monsters: only a nest fills up again when the hero com
         CHECK(dormant(engine, npc.asString()));
     }
 }
+
+TEST_CASE(
+    "Engine dungeon monsters: the Mauerkriecher rests in its crack and comes out (t_emerge) at the hero")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    const std::string kriecher(run(engine, "insert_npc('mon_mauerkriecher', 'WP_MONSTER_OST')").asString());
+    run(engine, std::format("npc_set_dormant('{}', true)", kriecher)); // as a spawn marker does (npc_spawned)
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", kriecher));
+    frames(engine, 30);
+    CHECK(dormant(engine, kriecher));
+    CHECK(run(engine, std::format("npc_state('{}').animation", kriecher)).asString() == "dormant");
+    run(engine, std::format("wake('{}')", kriecher)); // as when it notices the hero: out of the crack
+    bool emerged = false;
+    for (int i = 0; i < 180 && !emerged; ++i)
+    {
+        frames(engine, 1);
+        emerged = run(engine, std::format("npc_state('{}').animation", kriecher)).asString() == "wake";
+    }
+    CHECK(emerged);
+    CHECK_FALSE(dormant(engine, kriecher));
+}

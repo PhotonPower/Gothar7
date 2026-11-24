@@ -47,6 +47,14 @@ Creatures = {
         flee_seconds = 10,
         body = { shape = "lying", radius = 0.25, length = 0.8, offset = { 0, 0.49, 0.36 } },
     },
+    mauerkriecher = { -- sitzt in Ritzen, kommt bei Licht und Lärm heraus (t_emerge), greift im Rudel an
+        territory = 12,
+        attack_distance = 25,
+        wake_seconds = 0.9,
+        pack_gait = "run", -- schnell (1,2 / 5,0 m/s): das Rudel folgt dem Anführer laufend
+        chase_gait = "run",
+        body = { shape = "lying", radius = 0.21, length = 0.99, offset = { 0, 0.16, -0.02 } },
+    },
 }
 
 --- Die Werte des Tieres aus Creatures; nil für Menschen (Npc ohne `species`).
