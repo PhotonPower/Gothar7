@@ -274,6 +274,40 @@ schreibt.
 
 ---
 
+## 7a. Stand D2 (welt, umgesetzt)
+- **Karten** `tools/worldgen/data/leonberg/dungeon/ebene_NN.txt/.json` (Zeichen wie in 3.3). Zusätze in der JSON:
+  - Treppen (`<`, `>`) mit `facing` (die Seite, von der man kommt); der Treppenlauf führt in die **Wandzelle
+    dahinter** (1,8 m hinauf bzw. hinab, 31°, als Stufen sichtbar, als glatte Rampe kollidierend). Am Ende des Laufs
+    liegt der Weltwechsel `STAIRS_E01_<x>_<y>`, auf der Treppenzelle der Ankunftspunkt `arrive` (Blick vom Lauf weg).
+  - `starts`: weitere Ankunftspunkte, mit `shaft: true` oben in einem Schacht über der Decke (Ankunft nach dem Fall
+    durch eine Falltür, `START_E02_SCHACHT`).
+  - optional `environment` (überschreibt die Vorgabe des Themas), `fog` (Nebelzonen über Zellbereichen), `music`,
+    `ambient`, `torches` ([x, y, Seite]), `torchGapCells`, `noAutoTorches`.
+  - Türen und Gatter brauchen Boden auf zwei gegenüberliegenden Seiten und Wände auf den anderen (sonst ließen sie
+    sich umgehen); die Generator-Prüfung bricht sonst ab.
+- **Generator** `gothar-worldgen dungeon leonberg [--level N]` (`gothar_worldgen/dungeon/generate.py`):
+  - je 8 × 8 Zellen ein Mesh-Vob `BLOCK_E01_<bx>_<by>` (`worlds/leonberg/dungeon/ebene_01/block_<bx>_<by>.glb`):
+    Boden, Bruchsteinwände nur dort, wo eine begehbare Zelle an eine feste grenzt, Gewölbe, Treppenläufe,
+    Falltürschächte (3 m), Ankunftsschächte, Türwand mit Türöffnung, Nischenöffnung;
+  - Kollision: feste Zellen an den Wänden als Kästen je Zeilenlauf, Boden und Decke je Zeilenlauf, Rampe je Lauf;
+  - Baukasten `dungeon/kit.py` → `worlds/leonberg/dungeon/kit/*.glb`: `gate`, `secret_wall` (ein Steinblock, der die
+    Zelle füllt und **im Boden versinkt**: `offset` [0, −4,1, 0]), `trapdoor` (Angel am Ursprung, Blatt +Z), `lever`,
+    `wall_button`, `niche`, `plate`, `teleport` (Steinring); Texturen der Mobs (`furniture/textures`);
+  - Vobs nach Abschnitt 5: `mover` (Gatter, Geheimwand, Falltür), Mobs `door`/`lever`/`wall_button`/`niche`/`chest`
+    mit `targets`/`action`/`one_way`/`no_pick`, Platten (`plate`), Teleporter mit Ziel-Marker `TELE_…_ZIEL`
+    (`empty`), unter jeder Falltür der Fall `FALL_E01_<x>_<y>` (`changeWorld` mit `fall`), über einer Falltür mit
+    `plate` die Platte `PLATE_E01_<x>_<y>` (reicht 1 m in den Schacht, damit sie beim Aufklappen gedrückt bleibt),
+    `spawn`, Wandfackeln mit Licht (höchstens 8 je Block, mindestens 3 Zellen auseinander);
+  - Wegnetz `WP_DNG_E01_<x>_<y>` mit Kanten zu den vier Nachbarn, `FP_ROAM_DNG_E01_<x>_<y>` an Monsterplätzen und in
+    Räumen; Zonen `music` `DUNGEON` und `ambient` (Thema, Vorgabe `gewoelbe`) über die Ebene; Block `environment`
+    (ohne Himmel). **Keine `indoor`-Zonen:** ohne Himmel ist das Grundlicht der Welt das Licht.
+  - Erreichbarkeit (`dungeon/logic.py`) vor dem Schreiben; gleiche Karte, gleiche Bytes; VobIds je Ebene in
+    `ebene_NN_vob_ids.json`; Vobs, die dem Generator nicht gehören (Editor), bleiben stehen.
+- **Ebene 1** (20 × 15, alle Mechaniken) und **Ebene 2** als Stub (Ziel der Treppe und des Falls). Der Zugang: die
+  dunkle Öffnung im hinteren Boden des Riesenfasses (`STAIRS_SCHLOSS_FASS` → `START_E01_VON_OBEN`), zurück über die
+  Treppe von Ebene 1 auf `START_SCHLOSS_FASS` vor dem Fass. Die Vorkammer ist der erste Raum von Ebene 1.
+- **Offen für engine:** Musik-Thema `DUNGEON`, Ambiente `gewoelbe`, Instanz `mon_mauerkriecher` (#440).
+
 ## 8. Entscheidungen des Projektinhabers (2026-11-23: alle nach Vorschlag)
 | Nr. | Frage | Entscheidung |
 |---|---|---|

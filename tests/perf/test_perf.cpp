@@ -119,6 +119,9 @@ TEST_CASE("Perf: the game's perf.toml")
             CHECK(one.value()[0].minutesOfDay == std::vector<u32>{600, 1260});
         }
     }
+    auto feld = selectScenarios(file.value(), "feld"); // M17 G1: grass at the town's edge
+    REQUIRE(feld);
+    CHECK(feld.value()[0].minutesOfDay == std::vector<u32>{600, 1170});
 }
 
 TEST_CASE("Perf: report")

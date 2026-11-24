@@ -27,7 +27,10 @@ function leonberg_people()
                            "npc_leo_bather", "npc_leo_merchant_m", "npc_leo_merchant_f",
                            -- Kirche, Bettler und Musik
                            "npc_leo_priest", "npc_leo_monk_1", "npc_leo_monk_2", "npc_leo_beggar_m",
-                           "npc_leo_beggar_f", "npc_leo_musician" }) do
+                           "npc_leo_beggar_f", "npc_leo_musician",
+                           -- das Schloss (F1, welt #447)
+                           "npc_leo_vogt", "npc_leo_castle_guard_day", "npc_leo_castle_guard_night",
+                           "npc_leo_castle_cook", "npc_leo_castle_scribe" }) do
         insert_npc(npc)
     end
 end

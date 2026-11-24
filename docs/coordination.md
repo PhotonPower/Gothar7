@@ -1,3 +1,4 @@
+| Gras-Überlagerung (M17 G3): `<welt>.grass.png` neben der Weltdatei (Leonberg `worlds/leonberg/leonberg.grass.png`, außerhalb von `generated/`; RGBA, R Dichte, A Deckung über der Grasmaske) ist Handarbeit aus dem Editor-Pinsel „Gras“ – **`gothar-worldgen` schreibt, überschreibt und löscht sie nie**; kein Feld in der Weltdatei – vereinbart 2026-11-23 | engine (Format, Editor, Laden) | welt (Generator lässt sie unberührt), Editor (Projektinhaber malt) | `docs/modules/world.md` „Gras-Überlagerung“ |
 # Zusammenarbeit der Spuren und Sitzungen
 
 Gothar wird von mehreren parallel laufenden Claude-Code-Sitzungen entwickelt, jede in einem eigenen
@@ -43,7 +44,7 @@ in der verlinkten Spezifikation anpassen, dann **beide** betroffenen Sitzungen b
 | UI-Rahmen `assets/source/ui/frames/*.png` (24 Namen, 2 Bildpixel je UI-Einheit) und ihre `[frames.*]`-Einträge in `assets/source/ui/style.toml` (`slice` in Bildpixeln, `scale = 0.5`; erzeugt mit `gothar-chargen ui-frames --style`); Namen stabil, neue Rahmen meldet engine früh als Eintrag an (2026-11-01, M14) | figuren (Bilder, slice-Werte) | engine (M14 UI) | `docs/modules/ui.md` „Rahmen-Namen“ |
 | LOD-Stufen in Figuren-`.glb` (`_lod0`–`_lod2`), Dreiecks-Budget | figuren | engine (M6, Cooker) | `characters-pipeline.md` §2.2 |
 | Figuren-Texturen (extern unter `characters/textures/`, Größen je Rolle, Formate, alphaMode MASK, VRAM-Budget) | figuren | engine (M6, Cooker) | `characters-pipeline.md` §2.3 |
-| Monster-Rigs (Rig je Art: TOML + Referenz-`.glb`, Pflichtknochen, Clips `<art>/…`, Root Motion `s_walk`/`s_run`/`t_turn_l/r`, Events) | figuren | engine (M6, M9 Monster-KI) | `characters-pipeline.md` §7.1 |
+| Monster-Rigs (Rig je Art: TOML + Referenz-`.glb`, Pflichtknochen, Clips `<art>/…`, Root Motion `s_walk`/`s_run`/`t_turn_l/r`, Events; Gliederfüßer-Bauplan der Dungeon-Arten mit `move_axis`/`axis = "x"`, vereinbart 2026-11-23) | figuren | engine (M6, M9 Monster-KI) | `characters-pipeline.md` §7.1, §7.5 |
 | Monster-Kollisionskapsel `[rig.collision]` (shape/radius/length/offset je Art) | figuren | engine (M5 Physik, M9) | `characters-pipeline.md` §7.1 |
 | `.g7mesh`/`.g7pak`/Cooker-Optionen | engine | welt, figuren | `docs/06-asset-pipeline.md`, ADR 0016 |
 | Lizenzen maschinenlesbar `assets/licenses.toml` neben `assets/LICENSES.md`: jede Datei unter `assets/source` braucht eine Quelle (Pfadmuster, Lizenzart, Pflichtangabe), jede Lizenz in `LICENSES.md` eine Art; ein ctest-Fall prüft das bei jedem Lauf, `g7-cook --check-licences` vor jedem Paket (M17; neu 2026-11-07) | engine (Format, Prüfung) | alle, die Assets einchecken (neue Ordner oder Quellen: Eintrag in beiden Dateien) | `docs/modules/release.md` Teil C |

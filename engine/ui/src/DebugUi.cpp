@@ -586,6 +586,36 @@ void DebugUi::consolePanel(ConsolePanel& panel)
     ImGui::End();
 }
 
+void DebugUi::grassPanel(GrassPanel& panel)
+{
+    ImGui::SetCurrentContext(m_impl->context);
+    const f32 scale = ImGui::GetStyle().FontScaleDpi;
+    ImGui::SetNextWindowPos(ImVec2(690.0f * scale, 700.0f * scale), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(320.0f * scale, 250.0f * scale), ImGuiCond_FirstUseEver);
+    if (!ImGui::Begin("Grass"))
+    {
+        ImGui::End();
+        return;
+    }
+    constexpr std::array<const char*, 4> kQualities = {"off", "low", "medium", "high"};
+    ImGui::Combo("quality", &panel.quality, kQualities.data(), static_cast<int>(kQualities.size()));
+    ImGui::SameLine();
+    panel.rebuild = ImGui::Button("rebuild");
+    ImGui::Text("radius %.0f m, %.1f tufts/m2%s%s", panel.radius, panel.tuftsPerSquareMetre,
+                panel.mask ? ", mask" : "", panel.overlay ? ", overlay" : "");
+    ImGui::Text("tiles %u of %u slots, %u pending, %u stale", panel.tiles, panel.slots, panel.pending,
+                panel.stale);
+    ImGui::Text("tufts %u resident", panel.tufts);
+    ImGui::Text("drawn: %u tiles, %u near + %u far tufts", panel.drawnTiles, panel.nearTufts, panel.farTufts);
+    ImGui::Text("triangles %u, GPU %.3f ms", panel.triangles, static_cast<double>(panel.gpuMilliseconds));
+    ImGui::Text("tile building %.2f ms, slowest %.2f ms", panel.buildMilliseconds,
+                panel.buildPeakMilliseconds);
+    ImGui::SameLine();
+    panel.resetPeak = ImGui::SmallButton("reset");
+    ImGui::Checkbox("tile borders (F2)", &panel.borders);
+    ImGui::End();
+}
+
 void DebugUi::aiPanel(AiPanel& panel)
 {
     ImGui::SetCurrentContext(m_impl->context);

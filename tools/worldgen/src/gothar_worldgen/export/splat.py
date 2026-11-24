@@ -234,6 +234,101 @@ def layer_masks(
     return masks
 
 
+# Grass mask (M17 G2, world.md "Grasmaske"): a factor on the grass density of the splat layers.
+GRASS_KINDS = {"meadow", "grass", "grassland", "garden", "park", "village_green",
+               "recreation_ground", "orchard", "cemetery", "heath"}  # fmt: skip
+BUILT_KINDS = {"residential", "commercial", "industrial", "retail", "farmyard", "construction",
+               "railway"}  # fmt: skip
+BUILT_GRASS = 0.5  # built-up land without a green area of its own: yards, verges
+WAY_EDGE_M = 1.0  # strip beside a way's or street's edge
+WAY_EDGE_GRASS = 0.5
+FIELD_WAY_GRASS = 0.5  # field ways keep grass between the ruts
+WALL_WIDTH_M = 1.0  # OSM walls (barrier=wall ...) without a width
+WALL_FOOT_M = 1.0  # each side: the foot of the wall (a thin line would vanish in the blur)
+
+
+def _metres(value: Any, default: float) -> float:  # noqa: ANN401
+    """An OSM length tag ("0.6", "0.6 m") in metres, else ``default``."""
+    try:
+        return float(str(value).removesuffix("m").strip()) if value is not None else default
+    except ValueError:
+        return default
+
+
+def _within(
+    ring: Sequence[Sequence[float]], holes: Sequence[Sequence[Sequence[float]]],
+    town: Polygon | None,
+) -> list[tuple[list[tuple[float, float]], list[list[tuple[float, float]]]]]:  # fmt: skip
+    """The polygon (ring, holes) cut to ``town`` (all of it without a town)."""
+    if town is None:
+        return [([tuple(p) for p in ring], [[tuple(p) for p in h] for h in holes])]
+    if len(ring) < 3:
+        return []
+    cut = Polygon(ring, [h for h in holes if len(h) >= 3]).buffer(0).intersection(town)
+    parts = getattr(cut, "geoms", [cut])
+    return [(list(g.exterior.coords), [list(i.coords) for i in g.interiors])
+            for g in parts if isinstance(g, Polygon) and not g.is_empty]  # fmt: skip
+
+
+def grass_mask(
+    grid: Grid,
+    buildings: Sequence[dict[str, Any]],
+    streets: Sequence[dict[str, Any]],
+    squares: Sequence[dict[str, Any]],
+    features: Sequence[dict[str, Any]],
+    gardens: Sequence[dict[str, Any]] = (),
+    town: Polygon | None = None,
+) -> npt.NDArray[np.float32]:
+    """Grass density factor 0..1 per splat pixel, from the same data and with the same blur as the
+    splat: green areas (meadow, garden, park ...) and open land full, built-up land use
+    ``BUILT_GRASS``, a ``WAY_EDGE_M`` strip beside ways and streets half, nothing on buildings,
+    streets, squares and walls (field ways half). Formal gardens: gravel none, lawn beds full.
+    ``town``: the ring of the town wall; built-up land use counts only inside it (outside, the
+    hamlets left only meadow and orchards, W6 Weiler).
+    """
+    built, green, edge, field_way, blocked = (_Canvas(grid) for _ in range(5))
+    for f in features:
+        kind, geometry = f.get("kind"), f.get("geometry")
+        if geometry == "polygon" and kind in BUILT_KINDS:
+            for ring, holes in _within(f["polygon"], f.get("holes") or [], town):
+                built.polygon(ring)
+                for hole in holes:
+                    built.erase(hole)
+        elif geometry == "polygon" and kind in GRASS_KINDS:
+            green.polygon(f["polygon"])
+        elif geometry == "line" and f.get("type") == "wall":
+            width = _metres(f.get("tags", {}).get("width"), WALL_WIDTH_M)
+            blocked.line(f["points"], width + 2 * WALL_FOOT_M)
+    for s in streets:
+        if s.get("highway") in NO_SURFACE_HIGHWAYS:
+            continue
+        width = float(s.get("widthM") or DEFAULT_STREET_WIDTH_M)
+        if s.get("rural"):
+            width += RURAL_EDGE_M
+        edge.line(s["points"], width + 2 * WAY_EDGE_M)
+        (field_way if s.get("rural") == "feldweg" else blocked).line(s["points"], width)
+    for q in squares:
+        blocked.polygon(q["polygon"])
+    for b in buildings:
+        blocked.polygon(b.get("footprint") or [])
+    for g in gardens:
+        for area in g.get("gravel", []):
+            blocked.polygon(area)
+        for bed in g.get("lawn", []):
+            blocked.erase(bed)
+            green.polygon(bed)
+    mask = np.maximum(1.0 - (1.0 - BUILT_GRASS) * built.weights(), green.weights())
+    mask *= 1.0 - (1.0 - WAY_EDGE_GRASS) * edge.weights()
+    mask *= 1.0 - (1.0 - FIELD_WAY_GRASS) * field_way.weights()
+    mask *= 1.0 - blocked.weights()
+    return np.clip(mask, 0.0, 1.0).astype(np.float32)
+
+
+def write_grass_mask(mask: npt.NDArray[np.float32], path: Path) -> None:
+    """8-bit grey PNG (0 no grass .. 255 full density), linear, layout of the splat maps."""
+    write_png(path, np.rint(mask * 255).astype(np.uint8), "L")
+
+
 def composite(
     masks: dict[int, npt.NDArray[np.float32]], shape: tuple[int, int]
 ) -> npt.NDArray[np.float32]:

@@ -371,6 +371,12 @@ std::vector<ui::OptionPage> Engine::optionPages() const
                         {{std::string("low"), UiText::key("UI_OPT_QUALITY_LOW")},
                          {std::string("medium"), UiText::key("UI_OPT_QUALITY_MEDIUM")},
                          {std::string("high"), UiText::key("UI_OPT_QUALITY_HIGH")}}),
+                 choice("render.grass", "UI_OPT_GRASS",
+                        {{std::string("auto"), UiText::key("UI_OPT_QUALITY_AUTO")},
+                         {std::string("off"), UiText::key("UI_OFF")},
+                         {std::string("low"), UiText::key("UI_OPT_QUALITY_LOW")},
+                         {std::string("medium"), UiText::key("UI_OPT_QUALITY_MEDIUM")},
+                         {std::string("high"), UiText::key("UI_OPT_QUALITY_HIGH")}}),
                  toggle("render.wind", "UI_OPT_WIND"), toggle("render.bloom", "UI_OPT_BLOOM"),
                  toggle("render.grading", "UI_OPT_GRADING")}};
     pages[1] = {"UI_OPTIONS_AUDIO",
@@ -515,6 +521,10 @@ void Engine::applySetting(std::string_view key)
                         quality);
         }
         m_rainQuality = parsed.value_or(render::RainQuality::Medium);
+    }
+    else if (key == "render.grass")
+    {
+        applyGrassSetting(); // M17 G1
     }
     else if (key == "render.water_quality")
     {

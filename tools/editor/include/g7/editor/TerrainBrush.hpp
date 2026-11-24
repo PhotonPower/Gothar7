@@ -7,7 +7,9 @@
 #include <g7/core/Math.hpp>
 #include <g7/world/Terrain.hpp>
 
+#include <optional>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace g7::editor
@@ -17,9 +19,16 @@ enum class BrushMode : u8
     Raise,
     Lower,
     Smooth,
-    Flatten, ///< towards `flattenHeight`
-    Paint,   ///< the splat layer `layer`
+    Flatten,    ///< towards `flattenHeight`
+    Paint,      ///< the splat layer `layer`
+    Grass,      ///< the grass overlay towards `grassDensity` (M17 G3; also on locked terrain)
+    GrassReset, ///< the grass overlay fades: the generated mask again
 };
+/// Whether a mode paints the grass overlay (allowed where the terrain is locked).
+[[nodiscard]] constexpr bool paintsGrass(BrushMode mode) noexcept
+{
+    return mode == BrushMode::Grass || mode == BrushMode::GrassReset;
+}
 
 struct Brush
 {
@@ -27,7 +36,8 @@ struct Brush
     f32 radius = 4.0f;   ///< m
     f32 strength = 2.0f; ///< raise/lower: m per second at the centre; smooth/flatten/paint: share per second
     f32 flattenHeight = 0.0f;
-    u32 layer = 0; ///< paint: layer 4m + k = channel k of map m
+    u32 layer = 0;           ///< paint: layer 4m + k = channel k of map m
+    f32 grassDensity = 0.0f; ///< grass: the density factor painted, 0 none .. 1 full
 };
 
 /// Weight at `distance` from the centre: 1 there, falling smoothly to 0 at the radius.
@@ -88,4 +98,13 @@ struct SplatPatch
                                                 const world::TerrainRef& ref, const Vec3& centre, f32 radius);
 [[nodiscard]] SplatPatch captureSplat(std::span<const u8> rgba, u32 mapWidth, const SplatPatch& area);
 void restoreSplat(std::span<SplatPixels> maps, const SplatPatch& patch);
+
+/// One step of the grass brush (M17 G3, decision 9) on the overlay (world::grassOverlayPath: R density, A
+/// coverage; G and B follow R) over `seconds`, only within the brush's rectangle. `Grass` moves the effective
+/// density - whatever the generated mask says - towards `brush.grassDensity` by the brush's share
+/// (compositing over: coverage grows); `GrassReset` lets the coverage fade, the mask shows again. Every
+/// step moves a byte at least by one where it is not at its goal yet. Returns the xz rectangle touched (empty
+/// for no pixel).
+std::optional<std::pair<Vec2, Vec2>> paintGrass(SplatPixels overlay, const world::TerrainRef& ref,
+                                                const Brush& brush, const Vec3& centre, f32 seconds);
 } // namespace g7::editor

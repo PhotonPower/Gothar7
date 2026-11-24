@@ -169,7 +169,7 @@ TEST_CASE("Terrain: detail levels by distance")
     CHECK(TerrainRenderer::lodFor(1e6f, 100.0f) == TerrainRenderer::kLodLevels - 1);
 }
 
-TEST_CASE("Terrain: splat layers and holes in the .g7world block")
+TEST_CASE("Terrain: splat layers, holes and the grass mask in the .g7world block")
 {
     const std::string text = R"({"version": 1, "name": "w",
       "terrain": {"version": 1, "heightmap": "t.r16", "width": 3, "height": 3, "cellSize": 1, "firstSample": [0, 0],
@@ -179,7 +179,7 @@ TEST_CASE("Terrain: splat layers and holes in the .g7world block")
                                        {"name": "Matsch", "albedo": "b.png"}, {"name": "Kies", "albedo": "c.png"},
                                        {"name": "Wiese", "albedo": "d.png", "normal": "d_n.png"},
                                        {"name": "Fels", "albedo": "e.png", "tile": 8}]},
-                  "holes": "h.r8"}})";
+                  "holes": "h.r8", "grass_mask": "g.png"}})";
     auto world = parseWorldFile(text, "w.g7world");
     REQUIRE_MESSAGE(world.ok(), (world.ok() ? "" : world.error().message));
     const TerrainRef& t = *world.value().terrain;
@@ -190,9 +190,11 @@ TEST_CASE("Terrain: splat layers and holes in the .g7world block")
     CHECK(t.layers[1].tile == 4.0f); // default
     CHECK(t.layers[3].normal == "d_n.png");
     CHECK(t.holes == "h.r8");
+    CHECK(t.grassMask == "g.png"); // M17 G2
     const std::string written = writeWorldFile(world.value());
     CHECK(writeWorldFile(parseWorldFile(written).value()) == written);
     CHECK(parseWorldFile(written).value().terrain->layers[3].normal == "d_n.png");
+    CHECK(parseWorldFile(written).value().terrain->grassMask == "g.png");
 
     const auto error = [](std::string_view extra)
     {
@@ -216,6 +218,7 @@ TEST_CASE("Terrain: splat layers and holes in the .g7world block")
     CHECK(error(R"("splat": {"maps": ["s.png"], "layers": [{"name": "a", "albedo": "a.png", "tile": 0}]})") ==
           "w.g7world: terrain.splat.layers[0]: 'tile' must be a positive number (metres)");
     CHECK(error(R"("holes": 3)") == "w.g7world: terrain: 'holes' must be a VFS path");
+    CHECK(error(R"("grass_mask": "")") == "w.g7world: terrain: 'grass_mask' must be a VFS path");
 }
 
 TEST_CASE("Terrain: holes are one byte per cell, 0 = hole")
@@ -270,4 +273,12 @@ TEST_CASE("Terrain: the hole mask is loaded with the heights and checked")
     CHECK_FALSE(Heightfield::load(vfs, ref).ok());
     std::error_code ignored;
     std::filesystem::remove_all(dir, ignored);
+}
+
+TEST_CASE("Grass overlay: next to the world file (M17 G3)")
+{
+    CHECK(world::grassOverlayPath("worlds/leonberg/leonberg.g7world") ==
+          "worlds/leonberg/leonberg.grass.png");
+    CHECK(world::grassOverlayPath("camp.g7world") == "camp.grass.png");
+    CHECK(world::grassOverlayPath("odd.json") == "odd.json.grass.png");
 }

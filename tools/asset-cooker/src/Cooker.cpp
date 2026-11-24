@@ -575,6 +575,12 @@ private:
         {
             // Terrain paths are VFS paths, i.e. relative to the source root.
             m_dataImages.insert(terrain->splatMaps.begin(), terrain->splatMaps.end());
+            if (!terrain->grassMask.empty())
+            {
+                m_dataImages.insert(terrain->grassMask); // M17 G2: a density factor, data like the weights
+            }
+            // M17 G3: the editor's grass overlay next to the world file (if there is one), data as well.
+            m_dataImages.insert(world::grassOverlayPath(relative));
             for (const world::TerrainLayerRef& layer : terrain->layers)
             {
                 m_colorImages.insert(layer.albedo);

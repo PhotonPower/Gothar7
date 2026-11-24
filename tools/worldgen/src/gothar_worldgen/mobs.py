@@ -1463,12 +1463,16 @@ def giant_barrel() -> MobModel:
     _ring_face(m, "oak", inner, head, hl, y, n, 1.0)  # the front rim
     _tube(m, "oak", inner, -hl + 0.08, hl, y, n, inward=True)  # inside
     _ring_face(m, "oak", 0.0, inner, -hl + 0.08, y, n, 1.0)  # the back head, inside
+    fl = GIANT_BARREL_FLOOR  # the way down (W8 D2): a dark opening in the back head
+    m.box("ash", (-0.45, fl, -hl + 0.08), (0.45, fl + 1.75, -hl + 0.09))
+    m.box("oak_beam", (-0.53, fl, -hl + 0.08), (-0.45, fl + 1.83, -hl + 0.12), grain=1)
+    m.box("oak_beam", (0.45, fl, -hl + 0.08), (0.53, fl + 1.83, -hl + 0.12), grain=1)
+    m.box("oak_beam", (-0.53, fl + 1.75, -hl + 0.08), (0.53, fl + 1.83, -hl + 0.12), grain=0)
     for z, rr in ((-hl * 0.82, head * 1.012), (-hl * 0.45, r * 1.01), (hl * 0.45, r * 1.01),
                   (hl * 0.82, head * 1.012)):  # fmt: skip
         _tube(m, "iron", rr, z - 0.04, z + 0.04, y, n)
     for z in (-hl * 0.62, hl * 0.62):  # cradles
         m.box("oak_beam", (-r * 0.9, 0.0, z - 0.12), (r * 0.9, 0.42, z + 0.12), grain=0)
-    fl = GIANT_BARREL_FLOOR
     half = math.sqrt(max(inner * inner - (y - fl) ** 2, 0.0)) - 0.02
     m.box("oak", (-half, fl - 0.05, -hl + 0.08), (half, fl, hl - 0.02), grain=2)
     for k in range(n):  # the wall: a convex piece per stave
