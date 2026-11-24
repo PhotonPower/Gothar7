@@ -667,6 +667,16 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   Kachelbau im letzten Bild und das langsamste Bild seit dem Zurücksetzen, Maske/Überlagerung vorhanden, „rebuild“.
   Mit dem Overlay (F2) zeichnet die Engine die Kachelgrenzen auf dem Boden: grün mit Büscheln, grau leer, orange
   veraltet, dazu Kachel und Büschelzahl.
+- **Gras weicht aus (Entscheidungen 4, 5):** Halme im Umkreis von 0,8 m um Figuren biegen weg (Spitze bis 0,6 × Halmhöhe
+  seitlich, glatt abnehmend, Fuß fest; nur bis 2 m über oder unter den Füßen), für die 16 Figuren (Held, NPCs, Tiere)
+  nächst der Kamera im Umkreis des Grases. Büschel im Umkreis von 0,5 m um liegende Items sind auf ein Drittel gekürzt
+  (0,15 m weicher Rand), für die 32 nächsten Items. Beides in `grass.vert` (`uBenders`, `uShorteners`, auch im
+  Schatten), die Engine sammelt die Punkte je Bild (`nearestGrassPoints`); CPU-Spiegel `grassBendTip`,
+  `grassItemScale`. Tests: `test_grass.cpp` (CPU und GPU), `test_engine_grass.cpp` (ein Wolf biegt, Items kürzen).
+- **Schatten der Vegetation (Teil V):** Kleine Deko (größenabhängig ausblendbar, größte Ausdehnung unter 1,5 m) wirft
+  Sonnenschatten nur in den ersten zwei Kaskaden (`castsShadowInCascade` in `Visibility.hpp`). Instanz-Puffer je
+  Modell und Zelle sind nach der Messung zurückgestellt (`docs/perf/2026-11-23-vegetation.md`: das Sammeln kostet
+  0,04–0,09 ms).
 - Im Editor pausiert die Simulation; damit der Kachelbau nicht auf die Kollision wartet, gleicht `updateGrass` sie
   dann selbst ab (bewegte Vobs, Undo).
 - **Ausnahmen (Engine, `WorldGrassGround`):** auf dem Wegnetz (1,2 m breit), in Wasser, in Innenzonen und unter
@@ -683,7 +693,7 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   in `high` (erste Kaskade, bis 15 m).
 - **Durchgang:** nach dem deckenden Szenen-Pass, eigener GPU-Zeitabschnitt `grass`; Wasser und Effekte haben ihre
   Abschnitte `water` und `effects` jetzt immer (vorher ohne Wasser im `scene`).
-- **Option** `[render] grass = auto | off | low | medium | high` (Optionen → Grafik „Gras“); `auto` = `medium`, auf
+- **Option** `[render] grass = auto  (Messung auf Intel UHD entfällt, Projektinhaber 2026-11-24)| off | low | medium | high` (Optionen → Grafik „Gras“); `auto` = `medium`, auf
   Intel `low`:
 
   | Stufe | Umkreis | Büschel/m² | 3D-Halme bis | Schatten |

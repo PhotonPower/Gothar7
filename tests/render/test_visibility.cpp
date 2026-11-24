@@ -132,3 +132,15 @@ TEST_CASE("Visibility: figures only in view and near enough; shadows nearer")
     CHECK_FALSE(figureInView(box(0.0f, -60.0f), eye, view, cull.shadowDistance)); // its shadow too far
     CHECK(figureInView(box(1.0f, 1.0f), eye, view, cull.distance)); // the box around the eye: in
 }
+
+TEST_CASE("Shadows: small deco only in the first two cascades (M17 V)")
+{
+    const AABB tuft{Vec3(0.0f), Vec3(0.6f, 0.5f, 0.6f)};
+    const AABB tree{Vec3(0.0f), Vec3(3.0f, 6.0f, 3.0f)};
+    for (u32 c = 0; c < 4; ++c)
+    {
+        CHECK(castsShadowInCascade(tuft, true, c) == (c < kSmallShadowCascades));
+        CHECK(castsShadowInCascade(tuft, false, c)); // not deco (a crate, a mob): always
+        CHECK(castsShadowInCascade(tree, true, c));
+    }
+}

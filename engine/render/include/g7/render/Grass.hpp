@@ -233,12 +233,37 @@ private:
     std::vector<std::pair<f32, GrassTileKey>> m_wanted; // scratch
 };
 
+/// Grass makes way (decisions 4 and 5 of the grass plan): blades within kGrassBendRadius of a figure bend
+/// away from it, tufts within kGrassItemRadius of an item lying in the world are cut to kGrassItemHeight of
+/// their height (it stays visible). Both in grass.vert, for the figures and items nearest the camera.
+inline constexpr u32 kGrassMaxBenders = 16;
+inline constexpr u32 kGrassMaxShorteners = 32;
+inline constexpr f32 kGrassBendRadius = 0.8f;
+inline constexpr f32 kGrassBendTip =
+    0.6f; ///< sideways at the tip, share of the blade height, right at the figure
+inline constexpr f32 kGrassBendReach = 2.0f; ///< m above or below the figure's feet a tuft still bends
+inline constexpr f32 kGrassItemRadius = 0.5f;
+inline constexpr f32 kGrassItemHeight = 1.0f / 3.0f;
+
+/// Height factor of a tuft at `distance` (xz) from the nearest lying item: kGrassItemHeight within
+/// kGrassItemRadius, rising to 1 over the next 0.15 m (as grass.vert).
+[[nodiscard]] f32 grassItemScale(f32 distance) noexcept;
+/// How far the tip of a blade `height` tall at `foot` is pushed away from a figure standing at `feet`
+/// (xz; 0 beyond kGrassBendRadius or kGrassBendReach; as grass.vert; at relative height w the push is
+/// this times w squared).
+[[nodiscard]] Vec2 grassBendTip(const Vec3& foot, f32 height, const Vec3& feet) noexcept;
+/// The points nearest `eye` within `within` m (xz), at most `max`, as (x, y, z, radius) for the shader.
+void nearestGrassPoints(std::span<const Vec3> points, const Vec3& eye, f32 within, u32 max, f32 radius,
+                        std::vector<Vec4>& out);
+
 /// Per frame: the light and the wind the grass gets.
 struct GrassFrame
 {
     GrassSettings settings;
     WindFrame wind;                     ///< strength 0 with `[render] wind` off
     std::span<const GrassLayer> layers; ///< colours per terrain layer
+    std::span<const Vec4> benders;      ///< figures: feet and radius (at most kGrassMaxBenders)
+    std::span<const Vec4> shorteners;   ///< lying items: position and radius (at most kGrassMaxShorteners)
 };
 
 /// Statistics of the last draw.

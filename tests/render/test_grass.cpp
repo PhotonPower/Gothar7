@@ -330,3 +330,32 @@ TEST_CASE("Grass overlay: over the mask by its coverage, premultiplied")
     CHECK(grassMaskWithOverlay(0.0f, 1.0f, 1.0f) == doctest::Approx(1.0f)); // painted full
     CHECK(grassMaskWithOverlay(0.4f, 0.5f, 0.5f) == doctest::Approx(0.7f)); // full at half coverage
 }
+
+TEST_CASE("Grass makes way: bends away from figures, cut short around lying items (decisions 4, 5)")
+{
+    // Items: a third within 0.5 m, full height 0.15 m beyond.
+    CHECK(grassItemScale(0.0f) == doctest::Approx(kGrassItemHeight));
+    CHECK(grassItemScale(0.5f) == doctest::Approx(kGrassItemHeight));
+    CHECK(grassItemScale(0.575f) == doctest::Approx(0.5f * (1.0f + kGrassItemHeight)));
+    CHECK(grassItemScale(0.65f) == doctest::Approx(1.0f));
+    // Figures: away from the feet, more the nearer, nothing beyond 0.8 m or far above.
+    const Vec3 feet(10.0f, 2.0f, 10.0f);
+    const Vec2 near = grassBendTip(Vec3(10.2f, 2.0f, 10.0f), 0.5f, feet);
+    const Vec2 farther = grassBendTip(Vec3(10.6f, 2.0f, 10.0f), 0.5f, feet);
+    CHECK(near.x > farther.x);
+    CHECK(farther.x > 0.0f);
+    CHECK(near.y == doctest::Approx(0.0f));
+    CHECK(near.x < kGrassBendTip * 0.5f);
+    CHECK(grassBendTip(Vec3(10.0f, 2.0f, 9.7f), 0.5f, feet).y < 0.0f); // -z of the feet: towards -z
+    CHECK(glm::length(grassBendTip(Vec3(10.85f, 2.0f, 10.0f), 0.5f, feet)) == 0.0f);
+    CHECK(glm::length(grassBendTip(Vec3(10.2f, 5.0f, 10.0f), 0.5f, feet)) == 0.0f); // a storey below
+    // The nearest within the radius, at most max, nearest first.
+    std::vector<Vec4> out;
+    const std::vector<Vec3> points{Vec3(30, 0, 0), Vec3(5, 0, 0), Vec3(100, 0, 0), Vec3(1, 0, 0)};
+    nearestGrassPoints(points, Vec3(0.0f), 35.0f, 2, 0.8f, out);
+    REQUIRE(out.size() == 2);
+    CHECK(out[0] == Vec4(1, 0, 0, 0.8f));
+    CHECK(out[1] == Vec4(5, 0, 0, 0.8f));
+    nearestGrassPoints(points, Vec3(0.0f), 35.0f, 16, 0.5f, out);
+    CHECK(out.size() == 3);
+}

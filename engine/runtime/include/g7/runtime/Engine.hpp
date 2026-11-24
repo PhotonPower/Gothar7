@@ -867,6 +867,9 @@ public:
     [[nodiscard]] render::GrassQuality grassQuality() const noexcept { return m_grassQuality; }
     [[nodiscard]] const render::GrassRing& grassRing() const noexcept { return m_grassRing; }
     [[nodiscard]] const render::GrassStats& grassStats() const noexcept { return m_grass.stats(); }
+    /// Figures and lying items the grass makes way for this frame (decisions 4, 5): x, y, z, radius.
+    [[nodiscard]] std::span<const Vec4> grassBenders() const noexcept { return m_grassBenders; }
+    [[nodiscard]] std::span<const Vec4> grassShorteners() const noexcept { return m_grassShorteners; }
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
@@ -1662,7 +1665,8 @@ private:
     void grassUi();        // window "Grass" (M17 G3)
     void drawGrassTiles(); // overlay: the grass tiles' borders and tufts
     void loadGrassOverlay();
-    void drawAiSenses(); // overlay: the selected NPC's sight cone and hearing
+    void collectGrassMakers(); // figures and lying items near the camera: the grass makes way
+    void drawAiSenses();       // overlay: the selected NPC's sight cone and hearing
     [[nodiscard]] Creature* creature(u32 id) noexcept;
     [[nodiscard]] const Creature* creature(u32 id) const noexcept;
     [[nodiscard]] Result<void> rebuildPlayerFigure(const asset::FigureManifest& manifest);
@@ -1942,6 +1946,9 @@ private:
     bool m_grassOverlayTried = false;                // looked for the overlay file of this world
     bool m_grassTileBorders = true;                  // window "Grass": tile borders in the overlay (F2)
     f64 m_grassBuildPeak = 0.0;                      // window "Grass": slowest frame of tile building (ms)
+    std::vector<Vec4> m_grassBenders;                // figures the grass bends away from (this frame)
+    std::vector<Vec4> m_grassShorteners;             // lying items the grass is cut short around
+    std::vector<Vec3> m_grassPoints;                 // scratch
     std::vector<AABB> m_grassSolids;                 // bounds of what stands in the world (rays under them)
     bool m_grassDirty = true;                        // the ring anew (world, physics, splat, quality)
     bool m_grassSplatTried = false;
