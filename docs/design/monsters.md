@@ -151,6 +151,18 @@ leuchten (Licht am Socket `socket_glow`; es verrät ihn), zwei große Scheren, a
 - **Technik:** Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5), 49 Knochen; Kapsel quer; lod0 6896 Dreiecke;
   Beschreibung `data/monsters/kristallkrebs.creature.toml`.
 
+### Mauerschlupfer (gebaut 2026-11-23)
+Kahles, blasses Tier mit überlangen dünnen Gliedern, 1,2 m von der Nase bis zur Schwanzspitze: große
+Fledermausohren, blinde milchige Augen, schmaler Kopf mit gelben Nagezähnen, knotige Wirbelsäule unter der Haut,
+dünner Peitschenschwanz.
+- **Verhalten (für engine):** liegt eingerollt in einer Mauernische (`s_dormant`, `zs_dormant`); wird die Nische
+  durchsucht, springt er heraus (`t_wake`, am Ort, `leap_start`/`leap_land`), beißt (`t_attack_1`) oder reißt mit der
+  Kralle (`t_attack_2`), schnappt sich etwas Glänzendes (`t_steal`, Event `steal`; das Teil trägt er am
+  `socket_mouth`) und flieht in den nächsten Spalt (Lauf 6,0 m/s). Stirbt er, fällt das Gestohlene wieder heraus.
+  Blind: hört statt zu sehen (große Ohren). Schreckmoment und Falle, kein Dauergegner.
+- **Technik:** Rig vom Schinder abgeleitet (28 Knochen, längere Glieder, fünf Schwanzknochen); lod0 7014 Dreiecke;
+  Beschreibung `data/monsters/mauerschlupfer.creature.toml`.
+
 ### Brunnenmolch (gebaut 2026-11-24)
 Blinder Riesen-Höhlenmolch, 2,6 m von der Schnauze bis zur Schwanzspitze: blasse rosaweiße Haut mit Hautfalten an den
 Flanken, flacher breiter Kopf mit weitem Maul, rote, gefiederte Kiemenbüschel, kurze gespreizte Beine (vorn drei Finger,

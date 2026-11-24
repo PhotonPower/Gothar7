@@ -150,7 +150,8 @@ struct GpuLighting
     std::array<Vec4, 4> cascadeRects; ///< atlas tile per cascade
     Vec4 cascadeTexelSize;            ///< world size of a shadow texel per cascade
     Vec4 shadowParams;                ///< x enabled, y cascades, z distance, w normal offset (texels)
-    Vec4 shadowExtra; ///< x debug colours, y atlas texel size (uv), z shadow softening (0 full)
+    Vec4 shadowExtra; ///< x debug colours, y atlas texel size (uv), z shadow softening (0 full), w rooms dark
+                      ///< beyond
     Vec4 cameraPosition;
     Vec4 cameraForward;
     Vec4 fogColorStart;         ///< rgb linear, w start
@@ -175,7 +176,11 @@ static_assert(sizeof(GpuLighting) == 5 * 16 + 4 * 64 + 16 + 4 * 16 + 9 * 16 + 64
 struct Cascade;
 struct ShadowSettings;
 struct Camera;
-/// Adds the sun's shadow cascades (and the camera they were computed for) to packed lighting.
+/// Adds the sun's shadow cascades (and the camera they were computed for) to packed lighting. `distance`:
+/// where the shadows end (fade out), 0 = the last cascade's far end. `roomsDark`: beyond it the rooms (indoor
+/// zones) get no sun instead of full sun - with the camera in a room only the near casters are drawn
+/// (render.md "Innenräume").
 void packShadows(GpuLighting& gpu, std::span<const Cascade> cascades, const ShadowSettings& settings,
-                 const Camera& camera, bool debugColours) noexcept;
+                 const Camera& camera, bool debugColours, f32 distance = 0.0f,
+                 bool roomsDark = false) noexcept;
 } // namespace g7::render

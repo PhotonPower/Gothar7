@@ -94,8 +94,8 @@ pos = [0.4, 0.0, -1.1]
 facing = [0.0, 0.0, 1.0]
 
 # Switches (dungeon D3, docs/modules/dungeon.md): using one sends components.mob.action to components.mob.targets at
-# the clip's event "use" (without the clip: half way). Clips mob/lever/t_use and mob/button/t_press come from
-# figuren; until then the engine times them. The hero stands in front of them, facing the wall.
+# the clip's event "use" (without the clip: half way). Clips mob/lever/t_use and mob/button/t_press: figuren #441
+# (anims/human/dungeon.glb). The hero stands in front of them, facing the wall.
 [mobs.lever]                 # a lever or a crooked torch holder on a wall (front +Z), handle about 1.2 m high
 clips = "mob/lever"
 enter = "t_use"
@@ -117,7 +117,7 @@ pos = [0.0, 0.0, 0.55]
 facing = [0.0, 0.0, -1.0]
 
 [mobs.niche]                 # dungeon D5: a hollow in a wall (front +Z), floor about 0.9 m high; a chest without a lid
-clips = "mob/niche"          # reaching in, looking, taking back the hand (figuren); until then the engine times them
+clips = "mob/niche"          # reaching in, looking, taking back the hand (figuren #441, dungeon.glb)
 enter = "t_reach"
 loop = "s_reach"
 leave = "t_back"

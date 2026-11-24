@@ -450,6 +450,23 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `mauerkriecher/s_curled` | Eingerollt (Schleife; der Panzer schützt von oben, engine) | – | – | K | platzhalter-K |
 | `mauerkriecher/t_uncurl` | Rollt sich auf und steht wieder | – | – | K | platzhalter-K |
 | `mauerkriecher/t_emerge` | Zwängt sich aus einer Ritze hinter ihm (am Ort) | – | emerge | K | platzhalter-K |
+### Mauerschlupfer (`mauerschlupfer`, Dungeon, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `mauerschlupfer/s_idle` | Geduckt, der blinde Kopf pendelt, die großen Ohren drehen sich und lauschen | – | – | K | platzhalter-K |
+| `mauerschlupfer/s_walk` | Hochbeiniges, spinnenartiges Schleichen | ✓ 1,2 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `mauerschlupfer/s_run` | Flinke Flucht, flach, Ohren angelegt | ✓ 6,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `mauerschlupfer/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `mauerschlupfer/t_attack_1` | Vorschnellen und mit den Nagezähnen beißen | – | hit_start, hit_end | K | platzhalter-K |
+| `mauerschlupfer/t_attack_2` | Aufrichten und mit der langen Kralle niederreißen | – | hit_start, hit_end | K | platzhalter-K |
+| `mauerschlupfer/t_hit` | Treffer: zuckt zurück, Ohren angelegt | – | – | K | platzhalter-K |
+| `mauerschlupfer/t_die` | Quiekt, fällt auf die Seite, die Glieder krümmen sich | – | – | K | platzhalter-K |
+| `mauerschlupfer/s_eat`, `s_sleep` | Nagt an etwas unter der Vorderhand / eingerollt (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `mauerschlupfer/s_dormant` | Eingerollt in einer Mauernische (`zs_dormant`, #422), Ohren angelegt | – | – | K | platzhalter-K |
+| `mauerschlupfer/t_wake` | Springt aus der Nische: entrollt sich und springt vor (am Ort) | – | leap_start, leap_land | K | platzhalter-K |
+| `mauerschlupfer/t_threaten` | Richtet sich auf, spreizt die Ohren, faucht | – | – | K | platzhalter-K |
+| `mauerschlupfer/t_steal` | Schnappt Glänzendes mit dem Maul und ruckt zurück | – | steal | K | platzhalter-K |
 
 ### Kristallkrebs (`kristallkrebs`, Dungeon, eigene Art, Gliederfüßer §7.5, `gothar-chargen creature`; Design `monsters.md`)
 

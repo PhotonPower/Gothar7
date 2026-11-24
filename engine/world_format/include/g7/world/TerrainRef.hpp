@@ -7,6 +7,7 @@
 #include <g7/core/Types.hpp>
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace g7::world
@@ -41,10 +42,20 @@ struct TerrainRef
     /// "holes": VFS path of a raw 8-bit mask, one byte per cell ((width - 1) * (height - 1), row 0 =
     /// north); 0 = hole. Empty = no holes.
     std::string holes;
+    /// "grass_mask" (M17 G2, contract with welt): VFS path of an 8-bit image (PNG) in the splat maps'
+    /// resolution and layout (pixel centres on the samples); its value is a factor on the grass density, 0
+    /// none .. 255 full. Empty = the splat weights alone.
+    std::string grassMask;
 };
 
 /// Heights in metres from a 16-bit value and back (the contract's encoding; halves may round
 /// either way when encoding).
 [[nodiscard]] f32 decodeHeight(u16 value, f32 minY, f32 maxY) noexcept;
 [[nodiscard]] u16 encodeHeight(f32 height, f32 minY, f32 maxY) noexcept;
+
+/// The editor's grass overlay of a world (M17 G3, decision 9): next to the world file, `<world>.grass.png`
+/// for `<world>.g7world` (any other name: `.grass.png` appended). RGBA8 in the splat maps' layout over the
+/// samples (width x height pixels); R = grass density 0..255, A = how much it counts over the generated
+/// mask (0: the mask alone). Hand-painted, so the generator never writes it (world.md "Gras-Überlagerung").
+[[nodiscard]] std::string grassOverlayPath(std::string_view worldPath);
 } // namespace g7::world
