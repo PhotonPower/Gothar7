@@ -57,6 +57,7 @@ def codes(report, level="error"):
 
 def test_packaged_wolf_rig(wolf_rig):
     assert packaged_species() == [
+        "beinhauswart",
         "bergleu",
         "gatterbock",
         "glemsmahr",
@@ -204,6 +205,7 @@ def test_invalid_monster_sets(data, message):
         ("kristallkrebs", 49, 16),
         ("mauerschlupfer", 28, 15),
         ("kellermutter", 35, 20),
+        ("beinhauswart", 29, 14),
     ],
 )
 def test_monster_files_pass(species, bones, clips):
@@ -341,6 +343,7 @@ def test_validate_command_picks_rig_per_file(capsys):
         ("kristallkrebs", "capsule_lying"),
         ("mauerschlupfer", "capsule_lying"),
         ("kellermutter", "capsule_lying"),
+        ("beinhauswart", "capsule_upright"),
     ],
 )
 def test_collision_matches_mesh(species, shape):
@@ -405,7 +408,7 @@ def test_sound_events_for_m13():
     species = (
         "wolf", "keiler", "laufvogel", "schinder",
         "quaderbuckel", "glemsmahr", "bergleu", "gatterbock",
-        "mauerkriecher", "kristallkrebs", "mauerschlupfer", "kellermutter",
+        "mauerkriecher", "kristallkrebs", "mauerschlupfer", "kellermutter", "beinhauswart",
     )  # fmt: skip
     for art in species:
         clips = {c.name: dict(c.markers) for c in load_set_spec(art).clips}
