@@ -108,6 +108,8 @@ struct ShadowFrame
     std::span<const Cascade> cascades;
     const Camera* camera = nullptr; ///< the camera the cascades were computed for
     bool debugColours = false;
+    f32 distance = 0.0f;    ///< where the shadows end, 0 = the last cascade's far end
+    bool roomsDark = false; ///< beyond `distance` the rooms get no sun (camera indoors)
 };
 
 /// Draws meshes with their materials: opaque and alpha-tested submeshes first, then translucent

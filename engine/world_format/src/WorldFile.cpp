@@ -1105,6 +1105,14 @@ Result<TerrainRef> readTerrain(const Reader& r, const Json& t)
         }
         ref.holes = t["holes"].get<std::string>();
     }
+    if (t.contains("grass_mask"))
+    {
+        if (!t["grass_mask"].is_string() || t["grass_mask"].get<std::string>().empty())
+        {
+            return r.error(where, "'grass_mask' must be a VFS path");
+        }
+        ref.grassMask = t["grass_mask"].get<std::string>();
+    }
     return ref;
 }
 
@@ -1854,6 +1862,10 @@ std::string writeWorldFile(const WorldFile& world)
         if (!t.holes.empty())
         {
             root["terrain"]["holes"] = t.holes;
+        }
+        if (!t.grassMask.empty())
+        {
+            root["terrain"]["grass_mask"] = t.grassMask;
         }
     }
 

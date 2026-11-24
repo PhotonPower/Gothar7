@@ -44,6 +44,7 @@ struct TerrainTarget
 {
     world::Heightfield* heights = nullptr;
     std::vector<SplatPixels> maps;
+    std::vector<SplatPixels> grass; ///< the grass overlay (M17 G3; empty: none - also on locked terrain)
 };
 
 /// One undoable edit.
@@ -68,6 +69,9 @@ struct Command
     std::optional<HeightPatch> heightsAfter;
     std::vector<SplatPatch> splatBefore;
     std::vector<SplatPatch> splatAfter;
+    /// Grass brush strokes (M17 G3): the touched rectangle of the grass overlay, before and after.
+    std::vector<SplatPatch> grassBefore;
+    std::vector<SplatPatch> grassAfter;
 };
 
 /// The edits of a session: undo, redo, and whether the world differs from its saved version.
@@ -92,6 +96,8 @@ public:
 
     /// The last undo or redo put terrain back (the drawn terrain and the collision must follow).
     [[nodiscard]] bool lastTouchedTerrain() const noexcept { return m_lastTerrain; }
+    /// The last undo or redo put grass overlay pixels back (the grass must be rebuilt).
+    [[nodiscard]] bool lastTouchedGrass() const noexcept { return m_lastGrass; }
     [[nodiscard]] bool canUndo() const noexcept { return m_done > 0; }
     [[nodiscard]] bool canRedo() const noexcept { return m_done < m_commands.size(); }
     /// Label of the command undo/redo would act on (empty: none).
@@ -111,5 +117,6 @@ private:
     i64 m_saved = 0;  ///< m_done when saved; -1: that version is no longer reachable
     usize m_depth = 200;
     bool m_lastTerrain = false;
+    bool m_lastGrass = false;
 };
 } // namespace g7::editor

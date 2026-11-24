@@ -425,8 +425,8 @@ void MeshRenderer::setLighting(Device&, const Environment& environment, const Li
     m_shadowMap = nullptr;
     if (shadows && shadows->map && shadows->camera && !shadows->cascades.empty())
     {
-        packShadows(gpu, shadows->cascades, shadows->map->settings(), *shadows->camera,
-                    shadows->debugColours);
+        packShadows(gpu, shadows->cascades, shadows->map->settings(), *shadows->camera, shadows->debugColours,
+                    shadows->distance, shadows->roomsDark);
         m_shadowMap = shadows->map;
     }
     // Only the used part of the point arrays changes; the block is small enough to upload whole.

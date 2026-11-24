@@ -450,6 +450,42 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `mauerkriecher/s_curled` | Eingerollt (Schleife; der Panzer schützt von oben, engine) | – | – | K | platzhalter-K |
 | `mauerkriecher/t_uncurl` | Rollt sich auf und steht wieder | – | – | K | platzhalter-K |
 | `mauerkriecher/t_emerge` | Zwängt sich aus einer Ritze hinter ihm (am Ort) | – | emerge | K | platzhalter-K |
+### Mauerschlupfer (`mauerschlupfer`, Dungeon, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `mauerschlupfer/s_idle` | Geduckt, der blinde Kopf pendelt, die großen Ohren drehen sich und lauschen | – | – | K | platzhalter-K |
+| `mauerschlupfer/s_walk` | Hochbeiniges, spinnenartiges Schleichen | ✓ 1,2 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `mauerschlupfer/s_run` | Flinke Flucht, flach, Ohren angelegt | ✓ 6,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `mauerschlupfer/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `mauerschlupfer/t_attack_1` | Vorschnellen und mit den Nagezähnen beißen | – | hit_start, hit_end | K | platzhalter-K |
+| `mauerschlupfer/t_attack_2` | Aufrichten und mit der langen Kralle niederreißen | – | hit_start, hit_end | K | platzhalter-K |
+| `mauerschlupfer/t_hit` | Treffer: zuckt zurück, Ohren angelegt | – | – | K | platzhalter-K |
+| `mauerschlupfer/t_die` | Quiekt, fällt auf die Seite, die Glieder krümmen sich | – | – | K | platzhalter-K |
+| `mauerschlupfer/s_eat`, `s_sleep` | Nagt an etwas unter der Vorderhand / eingerollt (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `mauerschlupfer/s_dormant` | Eingerollt in einer Mauernische (`zs_dormant`, #422), Ohren angelegt | – | – | K | platzhalter-K |
+| `mauerschlupfer/t_wake` | Springt aus der Nische: entrollt sich und springt vor (am Ort) | – | leap_start, leap_land | K | platzhalter-K |
+| `mauerschlupfer/t_threaten` | Richtet sich auf, spreizt die Ohren, faucht | – | – | K | platzhalter-K |
+| `mauerschlupfer/t_steal` | Schnappt Glänzendes mit dem Maul und ruckt zurück | – | steal | K | platzhalter-K |
+
+### Kristallkrebs (`kristallkrebs`, Dungeon, eigene Art, Gliederfüßer §7.5, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `kristallkrebs/s_idle` | Augenstiele drehen sich, die Scheren schnappen, leises Klingen | – | sound:kristallkrebs_chime | K | platzhalter-K |
+| `kristallkrebs/s_walk` | Seitwärts huschen auf acht Beinen (`move_axis = "x"`) | ✓ 0,8 m/s seitwärts (+X) | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine, seitwärts)) |
+| `kristallkrebs/s_run` | Schnell seitwärts, Scheren erhoben | ✓ 2,5 m/s seitwärts (+X) | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine, seitwärts)) |
+| `kristallkrebs/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `kristallkrebs/t_attack_1` | Rechte Schere vorschnellen (Treffpunkt `socket_claw_r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `kristallkrebs/t_attack_2` | Beide Scheren hoch und gemeinsam niederschlagen (`socket_claw_l/r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `kristallkrebs/t_hit` | Treffer: weicht zur Seite, Augen eingezogen | – | – | K | platzhalter-K |
+| `kristallkrebs/t_die` | Sinkt ein, die Beine knicken (die Kristalle erlöschen, engine) | – | – | K | platzhalter-K |
+| `kristallkrebs/s_eat`, `s_sleep` | Pickt mit den Scheren abwechselnd am Boden / zwischen den Kristallen niedergedrückt (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `kristallkrebs/s_dormant` | Zwischen den Kristallen niedergedrückt (`zs_dormant`, #422), Augen eingezogen | – | – | K | platzhalter-K |
+| `kristallkrebs/t_wake` | Augen hoch, hebt sich auf die Beine, Scheren öffnen sich | – | sound:kristallkrebs_chime | K | platzhalter-K |
+| `kristallkrebs/t_threaten` | Bäumt die Front auf, Scheren weit offen, Kristalle klingen | – | – | K | platzhalter-K |
+| `kristallkrebs/t_grab` | Packt mit der rechten Schere und hält fest (§7.5) | – | hit_start, hit_end, grab, release | K | platzhalter-K |
+| `kristallkrebs/t_reflect` | Stemmt sich, die Kristalle flammen auf und werfen den Zauber zurück (§7.5) | – | reflect, sound:kristallkrebs_chime | K | platzhalter-K |
 
 ## Prio C – später
 

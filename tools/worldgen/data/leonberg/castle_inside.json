@@ -50,7 +50,7 @@
    {"what": "prop:barrel_stack", "wall": "court", "s": 42.5},
    {"what": "prop:barrel", "wall": "court", "s": 44.5},
    {"what": "prop:barrel", "wall": "court", "s": 45.2},
-   {"what": "prop:giant_barrel", "wall": "b", "t": -1.5, "front": "WALL_SCHLOSS_FASS"},
+   {"what": "prop:giant_barrel", "wall": "b", "t": -1.5, "front": "WALL_SCHLOSS_FASS", "descent": {"name": "STAIRS_SCHLOSS_FASS", "world": "worlds/leonberg/dungeon/ebene_01.g7world", "start": "START_E01_VON_OBEN", "arrive": "START_SCHLOSS_FASS"}},
    {"what": "light:torch", "wall": "b", "t": -4.2},
    {"what": "lever", "wall": "b", "t": 0.75, "name": "LEVER_SCHLOSS_FASS", "targets": ["WALL_SCHLOSS_FASS"], "action": "toggle", "hidden": true}
   ],

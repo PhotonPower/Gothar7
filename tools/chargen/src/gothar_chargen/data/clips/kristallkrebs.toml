@@ -1,0 +1,279 @@
+# Set "kristallkrebs" (crystal crab of the dungeon; arthropod plan, characters-pipeline.md §7.5)
+# -> monsters/kristallkrebs/anims/kristallkrebs.glb
+# Own creature (gothar-chargen creature kristallkrebs, 2026-11-23): the clip source only holds the
+# still action "rest". move_axis "x" (§7.5): s_walk/s_run go SIDEWAYS to the left (+X), own gait
+# cycles with all eight legs spread (splay, axis "x"; alternating tetrapods; pair 1 reports
+# footstep_front_l/r, pair 4 footstep_back_l/r); engine turns the body across the walking
+# direction. Everything else is keyframed.
+# Dungeon (#422): s_dormant pressed down among the crystals (`zs_dormant`), t_wake; §7.5: t_grab
+# (pincer holds fast: events grab / release), t_reflect (the crystals flare and throw a spell back:
+# event reflect).
+#
+# Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches a bone
+# pointing forwards down, Y swings a leg pointing sideways up (-) or down (+) on the left, +Z turns
+# left) and move root/pelvis.
+
+set = "kristallkrebs"
+rig = "kristallkrebs"
+
+[sources.src]
+file = "kristallkrebs_clips.blend"
+mapping = "identity"
+
+[[clip]]
+name = "kristallkrebs/s_rest"
+from = "src:rest"
+helper = true
+
+[[clip]]
+name = "kristallkrebs/s_idle"      # eye stalks swivel, pincers open and close, a faint chime
+keyframe = "keyposes"
+markers = { "sound:kristallkrebs_chime" = 40 }
+[clip.params]
+base = "kristallkrebs/s_rest"
+keys = [[0, "rest"], [20, "look_l"], [40, "snip"], [50, "rest"], [70, "look_r"], [90, "rest"]]
+[clip.params.poses.look_l]
+rotate = { eye_stalk_l = [["Z", 25]], eye_stalk_r = [["Z", 20]], head = [["Z", 5]], claw_finger_l = [["X", 15]], claw_finger_r = [["X", 15]] }
+[clip.params.poses.look_r]
+rotate = { eye_stalk_l = [["Z", -20]], eye_stalk_r = [["Z", -25]], head = [["Z", -5]] }
+[clip.params.poses.snip]
+rotate = { claw_finger_l = [["X", -8]], claw_finger_r = [["X", -8]], arm_upper_l = [["Z", 6]], arm_upper_r = [["Z", -6]] }
+
+# --- locomotion (root moves sideways to the left: move_axis "x", §7.5) ---
+
+[[clip]]
+name = "kristallkrebs/s_walk"      # sideways scuttle on all eight legs
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 0.8
+period = 16
+duty = 0.5
+lift = 0.07
+bob = 0.006
+splay = true
+axis = "x"
+legs = [
+    { upper = "leg_1_upper_l", lower = "leg_1_lower_l", foot = "leg_1_foot_l", phase = 0.0 },
+    { upper = "leg_1_upper_r", lower = "leg_1_lower_r", foot = "leg_1_foot_r", phase = 0.5 },
+    { upper = "leg_2_upper_l", lower = "leg_2_lower_l", foot = "leg_2_foot_l", phase = 0.5 },
+    { upper = "leg_2_upper_r", lower = "leg_2_lower_r", foot = "leg_2_foot_r", phase = 0.0 },
+    { upper = "leg_3_upper_l", lower = "leg_3_lower_l", foot = "leg_3_foot_l", phase = 0.0 },
+    { upper = "leg_3_upper_r", lower = "leg_3_lower_r", foot = "leg_3_foot_r", phase = 0.5 },
+    { upper = "leg_4_upper_l", lower = "leg_4_lower_l", foot = "leg_4_foot_l", phase = 0.5 },
+    { upper = "leg_4_upper_r", lower = "leg_4_lower_r", foot = "leg_4_foot_r", phase = 0.0 },
+]
+
+[[clip]]
+name = "kristallkrebs/s_run"       # fast sideways rush, pincers raised
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 2.5
+period = 10
+duty = 0.5
+lift = 0.09
+bob = 0.01
+splay = true
+axis = "x"
+pose = { arm_upper_l = [["Z", 10]], arm_upper_r = [["Z", -10]], arm_lower_l = [["X", -25]], arm_lower_r = [["X", -25]], claw_l = [["X", -10]], claw_r = [["X", -10]], claw_finger_l = [["X", 10]], claw_finger_r = [["X", 10]] }
+legs = [
+    { upper = "leg_1_upper_l", lower = "leg_1_lower_l", foot = "leg_1_foot_l", phase = 0.0 },
+    { upper = "leg_1_upper_r", lower = "leg_1_lower_r", foot = "leg_1_foot_r", phase = 0.5 },
+    { upper = "leg_2_upper_l", lower = "leg_2_lower_l", foot = "leg_2_foot_l", phase = 0.5 },
+    { upper = "leg_2_upper_r", lower = "leg_2_lower_r", foot = "leg_2_foot_r", phase = 0.0 },
+    { upper = "leg_3_upper_l", lower = "leg_3_lower_l", foot = "leg_3_foot_l", phase = 0.0 },
+    { upper = "leg_3_upper_r", lower = "leg_3_lower_r", foot = "leg_3_foot_r", phase = 0.5 },
+    { upper = "leg_4_upper_l", lower = "leg_4_lower_l", foot = "leg_4_foot_l", phase = 0.5 },
+    { upper = "leg_4_upper_r", lower = "leg_4_lower_r", foot = "leg_4_foot_r", phase = 0.0 },
+]
+
+[[clip]]
+name = "kristallkrebs/s_step_inplace" # base of the turns
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 16
+duty = 0.5
+lift = 0.06
+splay = true
+legs = [
+    { upper = "leg_1_upper_l", lower = "leg_1_lower_l", foot = "leg_1_foot_l", phase = 0.0 },
+    { upper = "leg_1_upper_r", lower = "leg_1_lower_r", foot = "leg_1_foot_r", phase = 0.5 },
+    { upper = "leg_2_upper_l", lower = "leg_2_lower_l", foot = "leg_2_foot_l", phase = 0.5 },
+    { upper = "leg_2_upper_r", lower = "leg_2_lower_r", foot = "leg_2_foot_r", phase = 0.0 },
+    { upper = "leg_3_upper_l", lower = "leg_3_lower_l", foot = "leg_3_foot_l", phase = 0.0 },
+    { upper = "leg_3_upper_r", lower = "leg_3_lower_r", foot = "leg_3_foot_r", phase = 0.5 },
+    { upper = "leg_4_upper_l", lower = "leg_4_lower_l", foot = "leg_4_foot_l", phase = 0.5 },
+    { upper = "leg_4_upper_r", lower = "leg_4_lower_r", foot = "leg_4_foot_r", phase = 0.0 },
+]
+
+[[clip]]
+name = "kristallkrebs/t_turn_l"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "kristallkrebs/s_step_inplace"
+keys = [[0, "rest"], [32, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", 90]] }
+
+[[clip]]
+name = "kristallkrebs/t_turn_r"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "kristallkrebs/s_step_inplace"
+keys = [[0, "rest"], [32, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", -90]] }
+
+# --- combat (hit point: socket_claw_l/r) ---
+
+[[clip]]
+name = "kristallkrebs/t_attack_1"  # snaps the right pincer forward
+keyframe = "keyposes"
+markers = { hit_start = 12, hit_end = 16, "sound:kristallkrebs_attack" = 8 }
+[clip.params]
+base = "kristallkrebs/s_idle"
+keys = [[0, "rest"], [8, "wind"], [13, "snap"], [16, "snap"], [30, "rest"]]
+[clip.params.poses.wind]
+rotate = { arm_upper_r = [["Z", 25]], arm_lower_r = [["X", -30]], claw_r = [["X", -15]], claw_finger_r = [["X", 25]], pelvis = [["Z", 6]] }
+[clip.params.poses.snap]
+move = { pelvis = [0, -0.06, 0] }
+rotate = { arm_upper_r = [["Z", -10]], arm_lower_r = [["X", 15]], claw_r = [["X", 10]], claw_finger_r = [["X", -10]], pelvis = [["Z", -4]] }
+
+[[clip]]
+name = "kristallkrebs/t_attack_2"  # both pincers raised and brought down together
+keyframe = "keyposes"
+markers = { hit_start = 14, hit_end = 18, "sound:kristallkrebs_attack" = 9 }
+[clip.params]
+base = "kristallkrebs/s_idle"
+keys = [[0, "rest"], [10, "raise"], [15, "smash"], [18, "smash"], [32, "rest"]]
+[clip.params.poses.raise]
+move = { pelvis = [0, 0.03, 0.04] }
+rotate = { pelvis = [["X", -10]], arm_upper_l = [["Z", 5]], arm_upper_r = [["Z", -5]], arm_lower_l = [["X", -60]], arm_lower_r = [["X", -60]], claw_l = [["X", -30]], claw_r = [["X", -30]], claw_finger_l = [["X", 20]], claw_finger_r = [["X", 20]] }
+[clip.params.poses.smash]
+move = { pelvis = [0, -0.04, -0.04] }
+rotate = { pelvis = [["X", 6]], arm_upper_l = [["Z", 0]], arm_upper_r = [["Z", 0]], arm_lower_l = [["X", 30]], arm_lower_r = [["X", 30]], claw_l = [["X", 20]], claw_r = [["X", 20]], claw_finger_l = [["X", -5]], claw_finger_r = [["X", -5]] }
+
+[[clip]]
+name = "kristallkrebs/t_hit"
+keyframe = "keyposes"
+markers = { "sound:kristallkrebs_hit" = 1 }
+[clip.params]
+base = "kristallkrebs/s_idle"
+keys = [[0, "rest"], [4, "flinch"], [16, "rest"]]
+[clip.params.poses.flinch]
+move = { pelvis = [0.04, 0.03, -0.03] }
+rotate = { pelvis = [["Y", 6]], eye_stalk_l = [["X", 50]], eye_stalk_r = [["X", 50]], arm_upper_l = [["Z", -15]], arm_upper_r = [["Z", 15]], arm_lower_l = [["X", 20]], arm_lower_r = [["X", 20]], claw_l = [["X", 0]], claw_r = [["X", 0]], claw_finger_l = [["X", 0]], claw_finger_r = [["X", 0]] }
+
+[[clip]]
+name = "kristallkrebs/t_die"       # sinks down, the legs fold, the crystals go dark (engine)
+keyframe = "keyposes"
+markers = { "sound:kristallkrebs_die" = 2 }
+[clip.params]
+keys = [[0, "rest"], [10, "sag"], [24, "down"], [36, "down"]]
+[clip.params.poses.sag]
+move = { pelvis = [0, 0, -0.10] }
+rotate = { pelvis = [["Y", 8]], leg_1_upper_l = [["Y", -12]], leg_1_upper_r = [["Y", 12]], leg_2_upper_l = [["Y", -12]], leg_2_upper_r = [["Y", 12]], leg_3_upper_l = [["Y", -12]], leg_3_upper_r = [["Y", 12]], leg_4_upper_l = [["Y", -12]], leg_4_upper_r = [["Y", 12]], arm_upper_l = [["Z", -10]], arm_upper_r = [["Z", 10]], arm_lower_l = [["X", 20]], arm_lower_r = [["X", 20]], claw_l = [["X", 0]], claw_r = [["X", 0]], claw_finger_l = [["X", 15]], claw_finger_r = [["X", 15]] }
+[clip.params.poses.down]
+move = { pelvis = [0, 0, -0.26] }
+rotate = { pelvis = [["Y", 10]], leg_1_upper_l = [["Y", -35]], leg_1_upper_r = [["Y", 35]], leg_2_upper_l = [["Y", -35]], leg_2_upper_r = [["Y", 35]], leg_3_upper_l = [["Y", -35]], leg_3_upper_r = [["Y", 35]], leg_4_upper_l = [["Y", -35]], leg_4_upper_r = [["Y", 35]], leg_1_lower_l = [["Y", 45]], leg_1_lower_r = [["Y", -45]], leg_2_lower_l = [["Y", 45]], leg_2_lower_r = [["Y", -45]], leg_3_lower_l = [["Y", 45]], leg_3_lower_r = [["Y", -45]], leg_4_lower_l = [["Y", 45]], leg_4_lower_r = [["Y", -45]], arm_upper_l = [["Z", -25]], arm_upper_r = [["Z", 25]], arm_lower_l = [["X", 40]], arm_lower_r = [["X", 40]], claw_l = [["X", 10]], claw_r = [["X", 10]], claw_finger_l = [["X", 20]], claw_finger_r = [["X", 20]], eye_stalk_l = [["X", 80]], eye_stalk_r = [["X", 80]] }
+
+# --- behaviour ---
+
+[[clip]]
+name = "kristallkrebs/s_eat"       # picks at the ground with both pincers, in turn (loop)
+keyframe = "keyposes"
+[clip.params]
+base = "kristallkrebs/s_rest"
+keys = [[0, "rest"], [12, "pick_l"], [24, "rest"], [36, "pick_r"], [48, "rest"]]
+[clip.params.poses.pick_l]
+rotate = { arm_lower_l = [["X", 40]], claw_l = [["X", 20]], claw_finger_l = [["X", 15]], head = [["X", 8]] }
+[clip.params.poses.pick_r]
+rotate = { arm_lower_r = [["X", 40]], claw_r = [["X", 20]], claw_finger_r = [["X", 15]], head = [["X", 8]] }
+
+[[clip]]
+name = "kristallkrebs/s_dormant"   # pressed down among the crystals (zs_dormant), eyes folded in
+keyframe = "keyposes"
+[clip.params]
+base = "kristallkrebs/s_rest"
+keys = [[0, "low"], [60, "low"]]
+[clip.params.poses.low]
+rotate = { leg_1_upper_l = [["Y", -25]], leg_1_upper_r = [["Y", 25]], leg_2_upper_l = [["Y", -25]], leg_2_upper_r = [["Y", 25]], leg_3_upper_l = [["Y", -25]], leg_3_upper_r = [["Y", 25]], leg_4_upper_l = [["Y", -25]], leg_4_upper_r = [["Y", 25]], leg_1_lower_l = [["Y", 10]], leg_1_lower_r = [["Y", -10]], leg_2_lower_l = [["Y", 10]], leg_2_lower_r = [["Y", -10]], leg_3_lower_l = [["Y", 10]], leg_3_lower_r = [["Y", -10]], leg_4_lower_l = [["Y", 10]], leg_4_lower_r = [["Y", -10]], arm_upper_l = [["Z", -20]], arm_upper_r = [["Z", 20]], arm_lower_l = [["X", 30]], arm_lower_r = [["X", 30]], claw_l = [["X", 10]], claw_r = [["X", 10]], claw_finger_l = [["X", 0]], claw_finger_r = [["X", 0]], eye_stalk_l = [["X", 70]], eye_stalk_r = [["X", 70]] }
+move = { pelvis = [0, 0, -0.22] }
+
+[[clip]]
+name = "kristallkrebs/s_sleep"     # the same pose (minimum set)
+keyframe = "keyposes"
+[clip.params]
+base = "kristallkrebs/s_rest"
+keys = [[0, "low"], [60, "low"]]
+[clip.params.poses.low]
+rotate = { leg_1_upper_l = [["Y", -25]], leg_1_upper_r = [["Y", 25]], leg_2_upper_l = [["Y", -25]], leg_2_upper_r = [["Y", 25]], leg_3_upper_l = [["Y", -25]], leg_3_upper_r = [["Y", 25]], leg_4_upper_l = [["Y", -25]], leg_4_upper_r = [["Y", 25]], leg_1_lower_l = [["Y", 10]], leg_1_lower_r = [["Y", -10]], leg_2_lower_l = [["Y", 10]], leg_2_lower_r = [["Y", -10]], leg_3_lower_l = [["Y", 10]], leg_3_lower_r = [["Y", -10]], leg_4_lower_l = [["Y", 10]], leg_4_lower_r = [["Y", -10]], arm_upper_l = [["Z", -20]], arm_upper_r = [["Z", 20]], arm_lower_l = [["X", 30]], arm_lower_r = [["X", 30]], claw_l = [["X", 10]], claw_r = [["X", 10]], claw_finger_l = [["X", 0]], claw_finger_r = [["X", 0]], eye_stalk_l = [["X", 70]], eye_stalk_r = [["X", 70]] }
+move = { pelvis = [0, 0, -0.22] }
+
+[[clip]]
+name = "kristallkrebs/t_wake"      # eyes up, rises on its legs, pincers open
+keyframe = "keyposes"
+markers = { "sound:kristallkrebs_chime" = 8 }
+[clip.params]
+base = "kristallkrebs/s_rest"
+keys = [[0, "low"], [10, "eyes"], [24, "rest"]]
+[clip.params.poses.low]
+rotate = { leg_1_upper_l = [["Y", -25]], leg_1_upper_r = [["Y", 25]], leg_2_upper_l = [["Y", -25]], leg_2_upper_r = [["Y", 25]], leg_3_upper_l = [["Y", -25]], leg_3_upper_r = [["Y", 25]], leg_4_upper_l = [["Y", -25]], leg_4_upper_r = [["Y", 25]], leg_1_lower_l = [["Y", 10]], leg_1_lower_r = [["Y", -10]], leg_2_lower_l = [["Y", 10]], leg_2_lower_r = [["Y", -10]], leg_3_lower_l = [["Y", 10]], leg_3_lower_r = [["Y", -10]], leg_4_lower_l = [["Y", 10]], leg_4_lower_r = [["Y", -10]], arm_upper_l = [["Z", -20]], arm_upper_r = [["Z", 20]], arm_lower_l = [["X", 30]], arm_lower_r = [["X", 30]], claw_l = [["X", 10]], claw_r = [["X", 10]], claw_finger_l = [["X", 0]], claw_finger_r = [["X", 0]], eye_stalk_l = [["X", 70]], eye_stalk_r = [["X", 70]] }
+move = { pelvis = [0, 0, -0.22] }
+[clip.params.poses.eyes]
+rotate = { leg_1_upper_l = [["Y", -12]], leg_1_upper_r = [["Y", 12]], leg_2_upper_l = [["Y", -12]], leg_2_upper_r = [["Y", 12]], leg_3_upper_l = [["Y", -12]], leg_3_upper_r = [["Y", 12]], leg_4_upper_l = [["Y", -12]], leg_4_upper_r = [["Y", 12]], arm_upper_l = [["Z", -10]], arm_upper_r = [["Z", 10]], arm_lower_l = [["X", 15]], arm_lower_r = [["X", 15]], claw_l = [["X", 5]], claw_r = [["X", 5]], claw_finger_l = [["X", 10]], claw_finger_r = [["X", 10]] }
+move = { pelvis = [0, 0, -0.14] }
+
+[[clip]]
+name = "kristallkrebs/t_threaten"  # rears the front up, pincers wide open, crystals chime
+keyframe = "keyposes"
+markers = { "sound:kristallkrebs_threaten" = 6, "sound:kristallkrebs_chime" = 14 }
+[clip.params]
+base = "kristallkrebs/s_idle"
+keys = [[0, "rest"], [10, "rear"], [18, "clack"], [24, "rear"], [40, "rest"]]
+[clip.params.poses.rear]
+move = { pelvis = [0, 0.03, 0.06] }
+rotate = { pelvis = [["X", -14]], arm_upper_l = [["Z", 30]], arm_upper_r = [["Z", -30]], arm_lower_l = [["X", -50]], arm_lower_r = [["X", -50]], claw_l = [["X", -30]], claw_r = [["X", -30]], claw_finger_l = [["X", 30]], claw_finger_r = [["X", 30]] }
+[clip.params.poses.clack]
+move = { pelvis = [0, 0.03, 0.06] }
+rotate = { pelvis = [["X", -14]], arm_upper_l = [["Z", 30]], arm_upper_r = [["Z", -30]], arm_lower_l = [["X", -50]], arm_lower_r = [["X", -50]], claw_l = [["X", -30]], claw_r = [["X", -30]], claw_finger_l = [["X", -5]], claw_finger_r = [["X", -5]] }
+
+[[clip]]
+name = "kristallkrebs/t_grab"      # seizes the foe with the right pincer and holds it (events grab, release)
+keyframe = "keyposes"
+markers = { hit_start = 10, hit_end = 13, grab = 13, release = 44, "sound:kristallkrebs_attack" = 7 }
+[clip.params]
+base = "kristallkrebs/s_idle"
+keys = [[0, "rest"], [8, "open"], [13, "clamp"], [20, "hold"], [30, "hold2"], [40, "hold"], [44, "let_go"], [56, "rest"]]
+[clip.params.poses.open]
+rotate = { arm_upper_r = [["Z", 20]], arm_lower_r = [["X", -25]], claw_finger_r = [["X", 35]] }
+[clip.params.poses.clamp]
+move = { pelvis = [0, -0.06, 0] }
+rotate = { arm_upper_r = [["Z", -5]], arm_lower_r = [["X", 10]], claw_finger_r = [["X", -12]] }
+[clip.params.poses.hold]
+move = { pelvis = [0, -0.04, 0] }
+rotate = { arm_upper_r = [["Z", -5]], arm_lower_r = [["X", 0]], claw_finger_r = [["X", -12]], pelvis = [["Z", 3]] }
+[clip.params.poses.hold2]
+move = { pelvis = [0, -0.04, 0] }
+rotate = { arm_upper_r = [["Z", 0]], arm_lower_r = [["X", -8]], claw_finger_r = [["X", -12]], pelvis = [["Z", -3]] }
+[clip.params.poses.let_go]
+rotate = { arm_upper_r = [["Z", 10]], arm_lower_r = [["X", -15]], claw_finger_r = [["X", 30]] }
+
+[[clip]]
+name = "kristallkrebs/t_reflect"   # braces, the crystals flare and throw the spell back (event reflect)
+keyframe = "keyposes"
+markers = { reflect = 10, "sound:kristallkrebs_chime" = 10 }
+[clip.params]
+base = "kristallkrebs/s_idle"
+keys = [[0, "rest"], [8, "brace"], [12, "flare"], [24, "rest"]]
+[clip.params.poses.brace]
+move = { pelvis = [0, 0, -0.05] }
+rotate = { leg_1_upper_l = [["Y", 8]], leg_1_upper_r = [["Y", -8]], leg_2_upper_l = [["Y", 8]], leg_2_upper_r = [["Y", -8]], leg_3_upper_l = [["Y", 8]], leg_3_upper_r = [["Y", -8]], leg_4_upper_l = [["Y", 8]], leg_4_upper_r = [["Y", -8]], arm_upper_l = [["Z", -15]], arm_upper_r = [["Z", 15]], arm_lower_l = [["X", 25]], arm_lower_r = [["X", 25]], claw_l = [["X", 10]], claw_r = [["X", 10]], claw_finger_l = [["X", 0]], claw_finger_r = [["X", 0]], eye_stalk_l = [["X", 40]], eye_stalk_r = [["X", 40]] }
+[clip.params.poses.flare]
+move = { pelvis = [0, 0, 0.03] }
+rotate = { pelvis = [["X", -6]], arm_upper_l = [["Z", 10]], arm_upper_r = [["Z", -10]], arm_lower_l = [["X", -20]], arm_lower_r = [["X", -20]], claw_l = [["X", -10]], claw_r = [["X", -10]], claw_finger_l = [["X", 20]], claw_finger_r = [["X", 20]] }
