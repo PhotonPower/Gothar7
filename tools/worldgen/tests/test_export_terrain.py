@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from PIL import Image
 
 from gothar_worldgen.cli import EXIT_ERROR, EXIT_OK, main
 from gothar_worldgen.export.terrain import (
@@ -226,11 +227,15 @@ def test_cli_export_terrain(config_dir: Path, tmp_path: Path, monkeypatch):
     assert len(json.loads(world.read_text(encoding="utf-8"))["terrain"]["splat"]["layers"]) == 7
     assert (assets / "worlds" / "testsite" / "generated" / "testsite_terrain_splat1.png").is_file()
     assert (assets / "worlds" / "testsite" / "layers" / "kopfstein.png").is_file()
+    assert block["grass_mask"] == "worlds/testsite/generated/testsite_terrain_grass_mask.png"
+    with Image.open(assets / "worlds/testsite/generated/testsite_terrain_grass_mask.png") as img:
+        assert (img.mode, img.size) == ("L", (41, 21))  # layout of the splat maps
+    assert "grass mask: mean" in out
     code, _ = run(*base, "--area", "core", "--step", "2", "--name", "core", "--no-splat")
     assert code == EXIT_OK
     core = json.loads((assets / "worlds/testsite/core.g7world").read_text(encoding="utf-8"))
     assert (core["terrain"]["width"], core["terrain"]["cellSize"]) == (6, 2.0)
-    assert "splat" not in core["terrain"]
+    assert "splat" not in core["terrain"] and "grass_mask" not in core["terrain"]
 
 
 def test_cli_export_terrain_without_import(config_dir: Path, tmp_path: Path, monkeypatch, capsys):

@@ -82,6 +82,7 @@ void Engine::syncPhysics()
         return;
     }
     m_physicsDirty = false;
+    m_grassDirty = true; // M17 G1: the grass keeps out of what stands there now
     const Stopwatch timer;
     m_physics.clear();
     m_mobBodies.clear();

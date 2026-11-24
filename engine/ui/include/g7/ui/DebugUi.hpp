@@ -150,6 +150,34 @@ struct AiPanel
     u64 scriptErrors = 0; ///< failed script calls since start
 };
 
+/// Grass fields (M17 G3, window "Grass"): the ring of tiles around the camera, what the last frame drew, the
+/// time spent building tiles. The engine fills it and reads the edits.
+struct GrassPanel
+{
+    // Shown
+    f32 radius = 0.0f;
+    f32 tuftsPerSquareMetre = 0.0f;
+    u32 tiles = 0;   ///< resident
+    u32 slots = 0;   ///< of the GPU buffer
+    u32 stale = 0;   ///< waiting to be rebuilt (grass brush)
+    u32 pending = 0; ///< within the radius, not built yet
+    u32 tufts = 0;   ///< resident
+    u32 drawnTiles = 0;
+    u32 nearTufts = 0;
+    u32 farTufts = 0;
+    u32 triangles = 0;
+    f64 buildMilliseconds = 0.0;     ///< building tiles in the last frame (CPU)
+    f64 buildPeakMilliseconds = 0.0; ///< the slowest frame since the reset
+    f32 gpuMilliseconds = 0.0f;      ///< GPU pass "grass"
+    bool mask = false;               ///< the world has a grass mask (G2)
+    bool overlay = false;            ///< and an overlay painted in the editor (G3)
+    // Edited
+    i32 quality = 0;        ///< off, low, medium, high (for this run only)
+    bool borders = true;    ///< tile borders in the debug overlay (F2)
+    bool rebuild = false;   ///< out: every tile anew
+    bool resetPeak = false; ///< out
+};
+
 /// Window-space clip rectangle (x0, y0, x1, y1; +Y down, in framebuffer pixels) as a GL scissor
 /// rectangle (origin bottom-left), clamped to the framebuffer; nullopt if nothing remains.
 [[nodiscard]] std::optional<render::PixelRect> scissorFromClip(const Vec4& clip, u32 framebufferWidth,
@@ -183,6 +211,8 @@ public:
     void creaturesPanel(CreaturesPanel& panel);
     /// Window "AI" (M9 part E).
     void aiPanel(AiPanel& panel);
+    /// Window "Grass" (M17 G3).
+    void grassPanel(GrassPanel& panel);
     /// Draws the editor windows (tools/editor); edits and actions are written back into `panel`.
     void editorPanel(EditorPanel& panel);
     void waynetPanel(WaynetPanel& panel);

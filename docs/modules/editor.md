@@ -83,6 +83,16 @@ Abweichungen vom Plan unten (Bedienung: `docs/modules/tools.md` „Editor“):
   - Gesperrt ist jede Welt mit `generator`-Kopf, nicht nur Leonberg.
   - Splat-Malen schreibt PNG. Gekochte `.ktx2`-Kopien gelten weiter, bis neu gekocht wird; die Engine warnt dann.
   - Die Pinsel-Mathematik steht in `TerrainBrush.hpp`, ohne Fenster getestet.
+- **Pinsel „Gras“ (M17 G3, Gras-Plan Entscheidung 9):** zwei weitere Modi im Fenster „Terrain“: `grass` malt die
+  Gras-Überlagerung (`world.md` „Gras-Überlagerung“, `<welt>.grass.png` neben der Weltdatei) zur eingestellten Dichte
+  0 … 1, gleich, was die erzeugte Maske sagt; `grass reset` blendet die Überlagerung aus, die Maske gilt wieder.
+  - Auch auf gesperrtem Gelände (Leonberg): Dort bietet das Fenster nur diese beiden Modi. Der Generator schreibt
+    die Datei nie, Handarbeit bleibt.
+  - `paintGrass` in `TerrainBrush.hpp` (nur im Rechteck des Pinsels; jeder Schritt bewegt ein Byte um mindestens 1).
+  - Ein Strich ist ein Undo-Schritt (`Command::grassBefore/After`, das Rechteck der Überlagerung). Das Gras folgt
+    sofort, je berührter Kachel (`Engine::grassOverlayChanged`).
+  - Speichern (Strg+S) schreibt die Überlagerung mit der Welt (`Engine::saveGrassOverlay`). Eine gekochte
+    `.ktx2`-Kopie gilt weiter, bis neu gekocht wird (Warnung).
 
 ## Ausgangslage (M4)
 - `g7_editor` (Bibliothek in `tools/editor`) ist ein `EngineTool`. Die Engine kennt nur `update`/`ui`. Fenster sind

@@ -1,7 +1,7 @@
 {
  "format": "gothar-vob-ids",
  "version": 1,
- "nextVobId": 42982,
+ "nextVobId": 42984,
  "ids": {
   "group:root": 1,
   "group:cell_2_-6": 2,
@@ -42983,6 +42983,8 @@
   "castle:PROP_LEO_SCHLOSS_TURM_LANTERN_2": 42978,
   "castle:LIGHT_LEO_SCHLOSS_TURM_LATERNE_2": 42979,
   "castle:PROP_LEO_SCHLOSS_TURM_LANTERN_3": 42980,
-  "castle:LIGHT_LEO_SCHLOSS_TURM_LATERNE_3": 42981
+  "castle:LIGHT_LEO_SCHLOSS_TURM_LATERNE_3": 42981,
+  "castle:STAIRS_SCHLOSS_FASS": 42982,
+  "castle:START_SCHLOSS_FASS": 42983
  }
 }

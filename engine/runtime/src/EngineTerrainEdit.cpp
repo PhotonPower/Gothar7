@@ -88,6 +88,7 @@ Result<void> Engine::terrainSplatChanged()
     {
         return Error{"no splat maps"};
     }
+    m_grassDirty = true; // M17 G1: grows by the weights
     if (m_device)
     {
         loadTerrainSurface(m_heightfield.ref(), true);
