@@ -833,6 +833,57 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
 | `laufvogel` | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 16 Knochen (bisherige 12 mit Vogel-Namen `thigh/calf/foot`, dazu `neck_02`, `jaw` (Schnabel) und `wing_l/r` mit engine), 1,66 m (Kopf mit Federkamm), lod0 6824 / 3412 / 1706 Dreiecke, Federn 1024² + Normal-Map 512²; eigene Silhouette: schieferblaues Gefieder, rostroter Halskragen, Federkamm, Hakenschnabel, Stummelflügel, Schwanzbusch, Schuppenläufe mit drei Krallenzehen; 12/12 Clips mit denselben Namen, Events und Tempo (1,3 / 6,5 m/s), alle eigen |
 | `schinder` | Rig 26 Knochen, 0,92 m, lod0 7834 / 3916 / 1958 Dreiecke, Fell 1024² + Normal-Map 512²; 15 Clips (Mindest-Set + `s_sneak`, `t_call`, `s_cower`); Tempo 1,3 / 6,5 / Schleichen 0,7 m/s (mit engine 2026-10-07) |
 
+### 7.6 Echsen-Bauplan (Vorschlag an engine, 2026-11-23, für den Brunnenmolch)
+
+Für die Dungeon-Art **Brunnenmolch** (`monsters.md` „Dungeon-Arten“): blinder Riesen-Höhlenmolch, 2,6 m lang,
+lauert halb untergetaucht im flachen Wasser bzw. am Ufer der Zisterne, schnappt nach dem Helden am Steg und taucht
+wieder ab; an Land langsam. Er schwimmt nicht (Projektinhaber 2026-11-24).
+Ein Rig je Art wie in §7.1; der Bauplan soll auch für spätere Echsen und Molche gelten. Alles aus §7.1
+gilt weiter (Ausrichtung, Bind-Pose = natürliche Lage, ≤ 64 Knochen, Translation nur `root`/`pelvis`,
+`[rig.collision]`).
+
+- **Namen wie bei den Vierbeinern (§7.1)**, damit KI, Treffer und Schritte gleich bleiben:
+  - `pelvis` (Hüfte, trägt die Hinterbeine und den Schwanz);
+  - `spine_01..03` nach vorn bis zu den Schultern;
+  - `neck_01`, `head`, `jaw`;
+  - Schwanz `tail_01..06`;
+  - Beine `front_upper/lower/foot_l/r` und `back_upper/lower/foot_l/r`.
+- **Spreizbeine:** Die Beine stehen seitlich ab wie bei den Gliederfüßern (§7.5). Der Gang nutzt `gait` mit
+  `splay = true`.
+- **Neu:** `gill_l/r` am Kopf (Kiemenbüschel, nur Drehung; sie wedeln in den Schleifen).
+- **Socket** `socket_mouth` (Biss, Pflicht).
+- **Knochenzahl** (Schätzung): 28.
+- **Kollision:** `capsule_lying` aus dem Rumpf ohne Schwanz und Beine (§7.1), Schätzung r 0,22 / l 1,5.
+- **Schlängeln:** Gehen und Laufen biegen Rumpf und Schwanz seitlich in einer Welle (Drehung um +Y in
+  glTF). Im Werkzeug: neues `gait`-Feld `sway` (Grad, Knochenliste, Phasenversatz je Knochen).
+- **Clips:**
+  - Mindest-Set aus §7.1: `s_idle`, `s_walk`, `s_run`, `t_attack_1`, `t_attack_2`, `t_hit`, `t_die`, `s_eat`,
+    `s_sleep`, `t_threaten`, `t_turn_l/r`;
+  - `s_dormant`: Ruhepose halb untergetaucht im flachen Wasser bzw. am Ufer (Körper flach, nur Kopfoberseite und
+    Rücken über der Linie, Kiemen wedeln; `zs_dormant`, #422), `t_wake` = Auftauchen (Kopf und Vorderleib heben
+    sich, Event `splash`);
+  - neu:
+    - `t_snap_up`: senkrecht nach oben schnappen, am Ort. Das Becken hebt sich im Clip um bis zu
+      1,0 m, Events `hit_start`/`hit_end` und `splash`;
+    - `t_submerge`: wieder abtauchen in die Ruhepose, am Ort, Event `splash`;
+  - `t_listen`: Kopf heben und lauschen (er ist blind: engine kann ihn bei Geräuschen spielen).
+- **Root Motion:** wie §7.1: `s_walk`/`s_run` entlang +Z (auch durchs flache Wasser), Drehungen um +Y; `t_wake`,
+  `t_snap_up` und `t_submerge` bleiben am Ort.
+- **Tempo** (Vorschlag, m/s): 0,6 / 1,8 (langsam und verletzlich).
+- **Events:**
+  - Schritte wie bei den Vierbeinern: `footstep_front_l/r`, `footstep_back_l/r`;
+  - neu `splash` (Wasser spritzt);
+  - Tierlaute `sound:brunnenmolch_attack`, `_hit`, `_die`, `_threaten`.
+- **Fragen an engine (Antworten 2026-11-24 über den Koordinator):**
+  1. Können Monster schwimmen? **Entschieden (Projektinhaber 2026-11-24): nein.** Der Brunnenmolch lauert halb
+     untergetaucht im flachen Wasser bzw. am Ufer (`s_dormant`, `t_wake` = Auftauchen), schnappt am Ort zu
+     (`t_snap_up`) und läuft an Land (`s_walk`/`s_run` mit Root Motion +Z). Kein `s_swim`/`s_float`.
+  2. Soll `t_snap_up` die Höhe als Root Motion (+Y) tragen? **Nein (engine):** Er bleibt am Ort ohne Root Motion,
+     das Becken hebt sich nur im Clip, und engine prüft den Treffer an `socket_mouth`. Root Motion tragen nur
+     `s_walk`/`s_run` und die Drehungen.
+  3. Darf `sway` (seitliches Schlängeln) als Drehung der Wirbel um +Y in den Gangarten liegen? **Ja (engine):**
+     reine Drehung der Wirbel und des Schwanzes ohne Translation; die Root Motion bleibt gerade entlang +Z.
+
 ## 8. Ablauf pro Animation
 
 1. Eintrag in `animation-list.md` (Name, Zweck, Loop/Root Motion, Events, Quelle, Priorität).
