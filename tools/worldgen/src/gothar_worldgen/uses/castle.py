@@ -367,6 +367,8 @@ class _Castle:
                     lights += 1
                 if model == "giant_barrel" and e.get("front"):
                     self.cask_front(th, str(e["front"]), floor_y, room)
+                if model == "giant_barrel" and e.get("descent"):
+                    self.cask_descent(th, e["descent"], floor_y, room)
             else:
                 raise CastleError(f"{room}: unknown {what!r}")
             if e.get("fp"):
@@ -454,6 +456,22 @@ class _Castle:
         hinge = self.world_of(cask, (-GIANT_FRONT_R, 0.0, GIANT_BARREL_L / 2), floor_y)
         self.vob("mesh", name, hinge, cask.front, room, mesh="props/giant_barrel_front.glb",
                  components={"mover": dict(FRONT_MOVER)})  # fmt: skip
+
+    def cask_descent(self, cask: _Thing, spec: dict[str, Any], floor_y: float,
+                     room: str) -> None:  # fmt: skip
+        """The way down behind the giant cask (schloss-dungeon.md section 2, W8 D2): a change of
+        world at the dark opening in its back head, and the start point in front of the cask
+        for the way back up (looking into the cellar)."""
+        from gothar_worldgen.mobs import GIANT_BARREL_FLOOR, GIANT_BARREL_L
+
+        hl = GIANT_BARREL_L / 2
+        at = self.world_of(cask, (0.0, GIANT_BARREL_FLOOR + 1.0, -hl + 0.5), floor_y)
+        change = {"world": str(spec["world"]), "start": str(spec["start"])}
+        self.vob("trigger", str(spec["name"]), at, cask.front, room, components={"trigger": {
+            "shape": "box", "halfExtents": [0.8, 1.0, 0.4], "filter": "player", "once": False,
+            "changeWorld": change}})  # fmt: skip
+        start = self.world_of(cask, (0.0, 0.0, hl + 1.3), floor_y)
+        self.vob("start", str(spec["arrive"]), start, (-cask.front[0], -cask.front[1]), room)
 
     def window_light(self, key: str, room: str, rm: str, a: float, b: float) -> int:
         """Daylight at the room's first window, the court's first."""

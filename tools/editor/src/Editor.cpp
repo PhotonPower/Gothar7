@@ -276,6 +276,11 @@ void Editor::historyApplied()
         m_engine.terrainStrokeFinished();
         m_terrainDirty = true;
     }
+    if (m_history.lastTouchedGrass()) // M17 G3: the grass grows anew from the overlay
+    {
+        m_engine.grassOverlayChanged();
+        m_grassDirty = true;
+    }
 }
 
 Result<bool> Editor::redo()
@@ -489,6 +494,16 @@ Result<void> Editor::write()
         }
         m_terrainDirty = false;
         m_status += " and the terrain";
+    }
+    if (m_grassDirty) // M17 G3: the grass overlay next to the world file
+    {
+        if (auto grass = m_engine.saveGrassOverlay(); !grass)
+        {
+            m_status = grass.error().message;
+            return grass;
+        }
+        m_grassDirty = false;
+        m_status += " and the grass overlay";
     }
     if (routinesDirty()) // part E: the routines of the editor's file with the world
     {

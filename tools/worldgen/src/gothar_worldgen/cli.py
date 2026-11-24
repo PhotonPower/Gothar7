@@ -40,7 +40,15 @@ from gothar_worldgen.config import (
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.export.descents import dig_descents
 from gothar_worldgen.export.pads import apply_pads, room_pads
-from gothar_worldgen.export.splat import SplatPaths, composite, coverage, layer_masks, write_splat
+from gothar_worldgen.export.splat import (
+    SplatPaths,
+    composite,
+    coverage,
+    grass_mask,
+    layer_masks,
+    write_grass_mask,
+    write_splat,
+)
 from gothar_worldgen.export.starts import DEFAULT_STARTS, load_starts
 from gothar_worldgen.export.terrain import ExportError, Grid, crop, export_terrain, load_grid
 from gothar_worldgen.export.water import carve_and_place
@@ -362,6 +370,7 @@ def _export_splat(
             docs[key] = json.loads((work / file).read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as e:
             raise ExportError(f"{file}: {e} (run 'import' first or pass --no-splat)") from None
+    town = None
     if data_dir is not None and load_rural_rules(data_dir) is not None:  # W6 rural ways
         docs["streets"] = load_street_doc(work, data_dir)
         raw = docs["buildings"].get("buildings", [])
@@ -392,6 +401,19 @@ def _export_splat(
     )  # fmt: skip
     shares = ", ".join(f"{k} {v:.0%}" for k, v in coverage(weights).items())
     print(f"  splat: {len(block['maps'])} maps, {len(block['layers'])} layers ({shares})", file=out)
+    # M17 G2: the grass mask beside the splat maps; the editor's <world>.grass.png beside the
+    # world file is the owner's overlay and is never touched here.
+    mask = grass_mask(
+        grid,
+        docs["buildings"].get("buildings", []),
+        docs["streets"].get("streets", []),
+        docs["streets"].get("squares", []),
+        docs["features"].get("features", []),
+        gardens,
+        town,
+    )
+    write_grass_mask(mask, folder / "generated" / f"{name}_grass_mask.png")
+    print(f"  grass mask: mean {mask.mean():.0%}, none on {(mask < 0.05).mean():.0%}", file=out)
     return block
 
 
@@ -1278,6 +1300,24 @@ def _retaining_walls(grid: Any, works: dict[str, Any], street_doc: dict[str, Any
     return grid
 
 
+def _cmd_dungeon(args: argparse.Namespace, out: TextIO) -> int:
+    """Dungeon levels (W8, schloss-dungeon.md 3.3): data/<site>/dungeon/ebene_NN.txt/.json ->
+    worlds/<site>/dungeon/ebene_NN.g7world with block meshes, the kit and its textures."""
+    from gothar_worldgen.dungeon.generate import DungeonError, generate
+    from gothar_worldgen.dungeon.level import LevelError
+
+    site = load_site(args.site, args.config_dir)
+    folder, data_dir = _site_dirs(args, site.name)
+    try:
+        lines = generate(site.name, data_dir / "dungeon", folder, data_dir, args.level or None)
+    except (LevelError, DungeonError) as e:
+        print(f"error: {e}", file=out)
+        return 1
+    for line in lines:
+        print(line, file=out)
+    return 0
+
+
 def _cmd_citymap(args: argparse.Namespace, out: TextIO) -> int:
     """The town map (M14 F9): ui/maps/<site>.png and .toml from the game's houses, OSM streets,
     water and gardens, the town wall and the labels of data/<site>/citymap.json (after
@@ -1642,6 +1682,7 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             data_dir / "starts.json"
         )
         r16 = folder / "generated" / f"{name}.r16"
+        mask_vfs = None if splat is None else f"worlds/{site.name}/generated/{name}_grass_mask.png"
         holes = None
         hole_polys = [ring for it in load_handmade(data_dir / "handmade.json").get("items", [])
                       for ring in it.get("holes", [])]  # fmt: skip
@@ -1653,7 +1694,7 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
                      hole_mask(grid, hole_polys))  # fmt: skip
             print(f"  holes: {int((holes[2] == 0).sum())} cells", file=out)
         result = export_terrain(grid, name, folder / f"{name}.g7world", r16, vfs, splat, starts,
-                                holes)  # fmt: skip
+                                holes, mask_vfs)  # fmt: skip
     except ExportError as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -1799,6 +1840,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_kirche)
+
+    p = sub.add_parser("dungeon", help="dungeon levels from their maps (W8 D2)")
+    p.add_argument("site")
+    p.add_argument("--level", type=int, action="append", help="only this level (repeatable)")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_dungeon)
 
     p = sub.add_parser("citymap", help="the town map for the map item (M14), after assemble")
     p.add_argument("site")
