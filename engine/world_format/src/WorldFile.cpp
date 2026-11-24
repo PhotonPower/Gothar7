@@ -540,15 +540,18 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
         auto to = readText(r, p, "to", tat, false);
         auto world = readText(r, p, "world", tat, false);
         auto start = readText(r, p, "start", tat, false);
-        auto filter = readChoice(r, p, "filter", tat, kTeleportFilters);
-        if (!to || !world || !start || !filter)
+        auto teleportFilter = readChoice(r, p, "filter", tat, kTeleportFilters);
+        if (!to || !world || !start || !teleportFilter)
         {
-            return !to ? to.error() : !world ? world.error() : !start ? start.error() : filter.error();
+            return !to      ? to.error()
+                   : !world ? world.error()
+                   : !start ? start.error()
+                            : teleportFilter.error();
         }
         teleport.to = std::move(to).value();
         teleport.world = std::move(world).value();
         teleport.start = std::move(start).value();
-        teleport.filter = filter.value();
+        teleport.filter = teleportFilter.value();
         if (teleport.to.empty() == (teleport.world.empty() || teleport.start.empty()) ||
             (!teleport.to.empty() && !teleport.world.empty()))
         {
