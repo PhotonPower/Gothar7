@@ -1,0 +1,54 @@
+# Set "house" -> assets/source/characters/anims/human/house.glb (house work at the new freepoints,
+# 2026-11-24, for engine's zs_read / zs_cook of the castle residents, #466): own file, clips named
+# amb/... (engine finds them by their full name in all sets). Origin = foot point at the freepoint,
+# facing +Z, no root motion.
+#   FP_READ  standing at a lectern with a book (desk about 1.1 m high, 0.45 m in front): both hands
+#            on the book, head down; the loop reads along the lines and now and then turns a page
+#            (sound:page_turn). No item - the book belongs to the lectern.
+#   FP_COOK  stirring the kettle on the hearth (rim about 0.8 m high, 0.5 m in front) with
+#            it_ladle in the right hand (item_to_hand / item_from_hand in the in/out clips, like
+#            amb/t_sweep_in/out); the loop stirs in a circle (sound:cook_stir).
+# Keyframe placeholders like the other routine clips (mocap in F4).
+#
+# Key poses rotate about world axes at rest (Blender: X = the figure's left, -Y = forward, Z = up;
+# -X raises a hanging arm forwards, +X pitches the trunk and head forwards, +Z turns left); twist
+# turns a bone about its own length axis.
+
+set = "house"
+depends = ["none"]
+
+# --- reading at a lectern --------------------------------------------------------------------------
+
+[[clip]]
+name = "amb/t_read_in"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [24, "read"]], poses = { read = { rotate = { spine_01 = [["X", 8]], neck = [["X", 10]], head = [["X", 18]], upperarm_r = [["Y", -45], ["X", -45]], lowerarm_r = [["Y", -45], ["X", -70]], upperarm_l = [["Y", 45], ["X", -45]], lowerarm_l = [["Y", 45], ["X", -70]] } } } }
+
+[[clip]]
+name = "amb/s_read"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "read"], [45, "line"], [80, "read"], [100, "page"], [112, "page_over"], [130, "read"], [160, "read"]], poses = { read = { rotate = { spine_01 = [["X", 8]], neck = [["X", 10]], head = [["X", 18]], upperarm_r = [["Y", -45], ["X", -45]], lowerarm_r = [["Y", -45], ["X", -70]], upperarm_l = [["Y", 45], ["X", -45]], lowerarm_l = [["Y", 45], ["X", -70]] } }, line = { rotate = { spine_01 = [["X", 8]], neck = [["X", 12]], head = [["X", 22], ["Z", -7]], upperarm_r = [["Y", -45], ["X", -45]], lowerarm_r = [["Y", -45], ["X", -70]], upperarm_l = [["Y", 45], ["X", -45]], lowerarm_l = [["Y", 45], ["X", -70]] } }, page = { rotate = { spine_01 = [["X", 8]], neck = [["X", 10]], head = [["X", 16], ["Z", 4]], upperarm_r = [["Y", -45], ["X", -50], ["Z", 8]], lowerarm_r = [["Y", -45], ["X", -72], ["Z", 12]], upperarm_l = [["Y", 45], ["X", -45]], lowerarm_l = [["Y", 45], ["X", -70]] } }, page_over = { rotate = { spine_01 = [["X", 8]], neck = [["X", 10]], head = [["X", 16], ["Z", 6]], upperarm_r = [["Y", -45], ["X", -48], ["Z", 20]], lowerarm_r = [["Y", -45], ["X", -72], ["Z", 35]], upperarm_l = [["Y", 45], ["X", -45]], lowerarm_l = [["Y", 45], ["X", -70]] } } } }
+markers = { "sound:page_turn" = 104 }
+
+[[clip]]
+name = "amb/t_read_out"
+reverse = "amb/t_read_in"
+
+# --- cooking: stirring the kettle with the ladle ----------------------------------------------------
+
+[[clip]]
+name = "amb/t_cook_in"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [22, "front"]], poses = { front = { rotate = { spine_01 = [["X", 14]], head = [["X", 18]], upperarm_r = [["Y", -40], ["X", -65], ["Z", 15]], lowerarm_r = [["Y", -40], ["X", -60]], upperarm_l = [["X", -15], ["Z", -8]], lowerarm_l = [["X", -30]] } } } }
+markers = { item_to_hand = 2 }
+
+[[clip]]
+name = "amb/s_cook"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "front"], [19, "left"], [38, "back"], [56, "right"], [75, "front"]], poses = { front = { rotate = { spine_01 = [["X", 14]], head = [["X", 18]], upperarm_r = [["Y", -40], ["X", -65], ["Z", 15]], lowerarm_r = [["Y", -40], ["X", -60]], upperarm_l = [["X", -15], ["Z", -8]], lowerarm_l = [["X", -30]] } }, left = { rotate = { spine_01 = [["X", 13]], spine_02 = [["Z", 6]], head = [["X", 18]], upperarm_r = [["Y", -40], ["X", -63], ["Z", 25]], lowerarm_r = [["Y", -40], ["X", -62]], upperarm_l = [["X", -15], ["Z", -8]], lowerarm_l = [["X", -30]] } }, back = { rotate = { spine_01 = [["X", 11]], head = [["X", 18]], upperarm_r = [["Y", -40], ["X", -57], ["Z", 15]], lowerarm_r = [["Y", -40], ["X", -70]], upperarm_l = [["X", -15], ["Z", -8]], lowerarm_l = [["X", -30]] } }, right = { rotate = { spine_01 = [["X", 13]], spine_02 = [["Z", -6]], head = [["X", 18]], upperarm_r = [["Y", -40], ["X", -63], ["Z", 5]], lowerarm_r = [["Y", -40], ["X", -62]], upperarm_l = [["X", -15], ["Z", -8]], lowerarm_l = [["X", -30]] } } } }
+markers = { "sound:cook_stir" = 0 }
+
+[[clip]]
+name = "amb/t_cook_out"
+reverse = "amb/t_cook_in"
+markers = { item_from_hand = 20 }

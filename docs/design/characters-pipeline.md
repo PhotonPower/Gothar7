@@ -639,6 +639,7 @@ Blender verkleinert nur die Bildtexturen; Apfel, Brot, rotes Glas, Kork und Schm
   | `it_lockpick`, `it_key` | 15 / 10 cm | Schmiedeeisen |
   | `it_broom` (Besen, Ursprung im oberen Griff, +Y zum Reisig) | 1,4 m | Holz, Reisig (prozedural), Bindung |
   | `it_mug` (Krug, Ursprung am Henkel, +Y nach oben) | 12 cm | dunkles Holz (Wood 060) |
+  | `it_ladle` (Kochkelle für FP_COOK, 2026-11-24: gerader Holzstiel, flache runde Schöpfkelle am Ende, Öffnung nach +Z; Ursprung am oberen Stielende, +Y zur Kelle; rechte Hand per `item_to_hand` in `amb/t_cook_in`) | 56 cm | Holz (Wood 049); 152 Dreiecke |
   | `it_axe` (Axt, Ursprung am unteren Stiel, Schneide zu +Z) | 0,74 m | Holz, Schmiedeeisen |
   | `it_arrow`, `it_bolt` (Pfeil, Armbrustbolzen; Ursprung in der Schaftmitte, +Y zur Spitze, +Z Federebene – Projektil, steckend: engine setzt um halbe Länge − 7 cm zurück; Nocke −0,375 bzw. −0,175 m; mit engine abgestimmt 2026-10-05) | 0,75 / 0,35 m | Holz, Schmiedeeisen, Federn (prozedural); 92 / 76 Dreiecke |
   | `it_sword_2h` (Zweihänder; Ursprung am Griffpunkt der rechten Hand unter der Parierstange, die linke Hand 10 cm darunter per `two_hands`, +Y zur Klinge, +Z Schneide) | 1,43 m | Schmiedeeisen, Ledergriff; 708 Dreiecke |
