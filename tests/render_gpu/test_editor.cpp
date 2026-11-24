@@ -354,7 +354,7 @@ TEST_CASE("Editor GPU: zones and triggers - a music zone at the camera switches 
         REQUIRE(editor.undo().value());
         CHECK(engine.runFrame());
         CHECK(engine.music()->status().theme == "STADT");
-        CHECK_FALSE(editor.addZone("fog", "dense", Vec3(0.0f)).ok()); // other types are not edited
+        CHECK_FALSE(editor.addZone("smell", "dense", Vec3(0.0f)).ok()); // other types are not edited
 
         // Triggers: the camp's level change to the cave is fine; a broken function name is found.
         editor.setZoneMode(false);

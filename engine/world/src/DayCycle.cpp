@@ -263,6 +263,37 @@ DayCycle DayCycle::fallback()
     return cycle;
 }
 
+DaySample fixedEnvironment(const WorldEnvironment& e)
+{
+    DaySample sample;
+    render::Environment& env = sample.environment;
+    env.sunDirection = Vec3(0.0f, -1.0f, 0.0f);
+    env.sunColor = Vec3(0.0f);
+    env.sunIntensity = 0.0f;
+    env.ambientSky = srgbToLinear(e.ambient);
+    env.ambientGround = e.ambientGround ? srgbToLinear(*e.ambientGround) : env.ambientSky * 0.5f;
+    env.fogColor = srgbToLinear(e.fogColor);
+    env.fogStart = e.fogStart;
+    env.fogDensity = render::fogDensityFor(0.9f, e.fogDistance, e.fogStart);
+    env.shadowStrength = 0.0f;
+    sample.sky.zenith = env.fogColor; // the background is the fog
+    sample.sky.sunDirection = Vec3(0.0f, -1.0f, 0.0f);
+    sample.sky.sunColor = Vec3(0.0f);
+    sample.sky.moonDirection = Vec3(0.0f, -1.0f, 0.0f);
+    sample.sky.moon = 0.0f;
+    sample.sky.stars = 0.0f;
+    return sample;
+}
+
+void applyZoneFog(render::Environment& environment, const ZoneFog& fog, f32 weight)
+{
+    const f32 w = std::clamp(weight, 0.0f, 1.0f);
+    environment.fogColor = glm::mix(environment.fogColor, srgbToLinear(fog.color), w);
+    environment.fogStart = glm::mix(environment.fogStart, fog.start, w);
+    environment.fogDensity =
+        glm::mix(environment.fogDensity, render::fogDensityFor(0.9f, fog.distance, fog.start), w);
+}
+
 DaySample DayCycle::evaluate(f32 hour, f32 fogDensity) const
 {
     hour = std::fmod(std::fmod(hour, 24.0f) + 24.0f, 24.0f);

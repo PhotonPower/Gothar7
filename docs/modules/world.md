@@ -267,7 +267,7 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
 - Vorher stand hier eine Skizze mit Kanten per Index; sie wurde nie benutzt (das Spiel las den Block nicht).
 
 ## Zonen – `zones`-Block (Vertrag mit welt: `indoor` 2026-10-05; `music`, `ambient` 2026-10-08)
-- `zones` ist eine Liste; die Engine liest Zonen vom Typ **`indoor`**, **`music`** und **`ambient`** und prüft sie,
+- `zones` ist eine Liste; die Engine liest Zonen vom Typ **`indoor`**, **`music`**, **`ambient`** und **`fog`** und prüft sie,
   andere Typen bleiben unverändert erhalten (bis zu ihrem System). Fehler nennen den Eintrag
   (`zones[3].box.halfExtents: must be positive`).
 - **`music`** und **`ambient`** (M13, Entscheidung Projektinhaber) haben dasselbe Format wie `indoor`, eine gedrehte Box
@@ -303,7 +303,25 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   Die Engine reicht die 32 Räume nächst der Kamera mit ihrem Faktor an den Shader (`Engine::nearestIndoorVolumes`,
   `Engine::indoorRooms`).
 - Sonne und Punktlichter bleiben unverändert (die Sonne fällt durch Tür und Fenster, Schatten kommen aus den
-  Schattenkarten); Nebel je Zone folgt später.
+  Schattenkarten).
+- **`fog`** (Dungeon D7b, Vertrag mit welt über `dungeon.md`): eine Box wie oben, `value` ein Name, dazu der Nebel:
+  `{"type":"fog","value":"GRUFT","box":{…},"color":[r,g,b],"distance":8.0,"start":0.5,"fade":2.0}`.
+  - `color` sRGB 0..1 (Pflicht), `distance` = Meter, bei denen der Nebel 90 % verdeckt, `start` = Meter ohne Nebel
+    (Vorgabe 0), `fade` = Meter um die Box, über die er einblendet (Vorgabe 3).
+  - Gemessen an der **Kamera**: In der Box gilt der Nebel der Zone ganz (ineinander: die kleinste), außerhalb blendet
+    die nächste über `fade` aus. Er ersetzt Farbe, Beginn und Dichte des Nebels der Welt bzw. der Tageszeit.
+  - Der Editor kennt den Typ (Box verschieben und skalieren, neu anlegen mit grauem Dunst); Farbe und Weite stehen
+    in der Datei.
+
+## Umgebung je Welt – `environment`-Block (Dungeon D7b, optional)
+- `"environment": {"sky":false,"ambient":[r,g,b],"ambient_ground":[r,g,b],"fog_color":[r,g,b],"fog_start":2.0,
+  "fog_distance":30.0}` – eine Welt **ohne Himmel**: keine Sonne, kein Mond, keine Sterne, keine Tageszeit-Kurven,
+  kein sichtbares Wetter (kein Regen, Wind, Blitz, keine Nässe; das Wetter läuft weiter und gilt draußen wieder).
+  - `ambient` (Pflicht) ist das Grundlicht von oben, `ambient_ground` von unten (Vorgabe: halb so hell), Farben sRGB
+    0..1. Ohne Fackel sehr dunkel, aber nicht schwarz (`dungeon.md` Frage 13).
+  - `fog_color` ist auch der Hintergrund; `fog_distance` = Meter mit 90 % Nebel, `fog_start` = Meter ohne Nebel.
+  - `sky` darf nur `false` sein; eine Welt mit Himmel lässt den Block weg (dann `data/environment.toml`).
+  - Die Spielzeit läuft weiter (Frage 14). Lesen/Schreiben: `WorldFile::environment`, `world::fixedEnvironment`.
 
 ## Generator-Kopf (`generator`, optional, M4)
 ```json

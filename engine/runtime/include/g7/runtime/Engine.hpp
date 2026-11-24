@@ -850,7 +850,19 @@ public:
     [[nodiscard]] bool inDialog() const noexcept { return m_dialog.has_value(); }
     /// The weather (M17 E1): its state and course, and what it is at the current game time.
     [[nodiscard]] const world::Weather& weather() const noexcept { return m_weather; }
-    [[nodiscard]] world::WeatherSample weatherNow() const { return m_weather.sample(m_gameTime.clock()); }
+    /// In a world without sky (dungeon D7b: `environment`) calm: no rain, wind, lightning or wetness; the
+    /// weather's state runs on and comes back outside.
+    [[nodiscard]] world::WeatherSample weatherNow() const
+    {
+        world::WeatherSample sample = m_weather.sample(m_gameTime.clock());
+        if (m_worldFile.environment)
+        {
+            const std::string_view state = sample.state;
+            sample = {};
+            sample.state = state;
+        }
+        return sample;
+    }
     /// Wind (M17 W): the wind the shaders and particles get this frame - direction, strength and gusts from
     /// the weather; strength 0 with [render] wind = false (vegetation and signs stand still).
     [[nodiscard]] render::WindFrame windNow() const;
@@ -1956,7 +1968,8 @@ private:
     render::RainRenderer m_rain;                                     // M17 R
     std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
     render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
-    render::GrassRenderer m_grass;                                   // M17 G1
+    f32 m_fogStart = 30.0f;        ///< [render] fog_start (or the debug panel) for worlds with sky
+    render::GrassRenderer m_grass; // M17 G1
     render::GrassRing m_grassRing;
     render::GrassQuality m_grassQuality = render::GrassQuality::Medium; // [render] grass (auto resolved)
     std::vector<render::GrassLayer> m_grassLayers;                      // per terrain layer of the world

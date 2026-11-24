@@ -18,7 +18,7 @@
 namespace g7::editor
 {
 /// The zone types the editor edits (their boxes); others are shown and kept.
-inline constexpr std::string_view kZoneTypes[] = {"indoor", "music", "ambient"};
+inline constexpr std::string_view kZoneTypes[] = {"indoor", "music", "ambient", "fog"};
 
 /// A known type with a box.
 [[nodiscard]] bool editableZone(const world::Zone& zone) noexcept;
