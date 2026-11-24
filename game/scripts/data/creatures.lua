@@ -54,8 +54,9 @@ Creatures = {
         pack_gait = "run", -- schnell (1,2 / 5,0 m/s): das Rudel folgt dem Anführer laufend
         chase_gait = "run",
         body = { shape = "lying", radius = 0.21, length = 0.99, offset = { 0, 0.16, -0.02 } },
-        -- Ein schwerer Treffer (ab 25 % des Lebens) rollt ihn ein: 4 s still, der Panzer lässt nur ein Viertel durch.
-        curl = { share = 0.25, seconds = 4.0, damage_factor = 0.25 },
+        -- Ein schwerer Treffer (ab 25 % des Lebens) rollt ihn ein: 4 s still, der Panzer lässt nur ein Viertel durch;
+        -- von vorn (bis 45° neben der Blickrichtung) trifft man den weichen Bauch voll (Projektinhaber 2026-11-24).
+        curl = { share = 0.25, seconds = 4.0, damage_factor = 0.25, belly_degrees = 45 },
     },
 }
 

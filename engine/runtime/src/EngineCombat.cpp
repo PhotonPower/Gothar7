@@ -176,7 +176,7 @@ void Engine::loadAnimalBodies()
 {
     // data/creatures.lua: Creatures.<species>.body = { shape = "lying"|"upright", radius, length, offset,
     // axis = "x"? }; move_axis = "x": walks sideways (characters-pipeline.md section 7.5); curl = { share,
-    // seconds, damage_factor }: rolls up on heavy hits (Mauerkriecher, monsters.md).
+    // seconds, damage_factor, belly_degrees }: rolls up on heavy hits (Mauerkriecher, monsters.md).
     m_animalBodies.clear();
     m_sidewaysSpecies.clear();
     m_curlRules.clear();
@@ -215,6 +215,7 @@ void Engine::loadAnimalBodies()
             number("share", rule.share);
             number("seconds", rule.seconds);
             number("damage_factor", rule.damageFactor);
+            number("belly_degrees", rule.bellyDegrees);
             m_curlRules.insert_or_assign(species, rule);
         }
         const script::Value* body = field(def.asTable(), "body");
@@ -246,15 +247,32 @@ void Engine::loadAnimalBodies()
     }
 }
 
-i32 Engine::curledDamage(const Combatant& target, i32 damage) const
+i32 Engine::curledDamage(const Combatant& target, i32 damage, std::optional<Vec3> from) const
 {
     if (target.creature == nullptr || target.creature->curledSeconds <= 0.0f || damage <= 0)
     {
         return damage;
     }
     const auto it = m_curlRules.find(target.species);
-    const f32 factor = it != m_curlRules.end() ? it->second.damageFactor : 1.0f;
-    return std::max(1, static_cast<i32>(std::lround(static_cast<f32>(damage) * factor)));
+    if (it == m_curlRules.end())
+    {
+        return damage;
+    }
+    // The shell protects from above and behind; at the front, where head and legs are tucked in, the soft
+    // belly lies open (owner 2026-11-24): a hit from there goes through in full.
+    if (from && it->second.bellyDegrees > 0.0f)
+    {
+        Vec3 toSource = *from - target.position;
+        toSource.y = 0.0f;
+        const f32 length = glm::length(toSource);
+        if (length > 1e-4f && glm::dot(toSource / length, gameplay::forwardOf(target.yaw)) >=
+                                  std::cos(glm::radians(it->second.bellyDegrees)))
+        {
+            G7_LOG_INFO("engine", "{} is hit on its soft belly", target.name);
+            return damage;
+        }
+    }
+    return std::max(1, static_cast<i32>(std::lround(static_cast<f32>(damage) * it->second.damageFactor)));
 }
 
 bool Engine::curlOnHit(Combatant& target, i32 damage)
@@ -803,7 +821,7 @@ void Engine::resolveHit(Combatant& attacker, Combatant& target)
         weapon, attacker.character->attribute("str"),
         [&](std::string_view type) { return target.character->protection(type); }, talent, roll, m_combat);
 
-    const i32 damage = curledDamage(target, hit.damage);
+    const i32 damage = curledDamage(target, hit.damage, attacker.position);
     const i32 hp = target.character->attribute("hp") - damage;
     (void)target.character->setAttribute("hp", std::max(hp, 0));
     emit("npc_hit", {attacker.name, target.name, Value(static_cast<i64>(damage)), Value(hit.critical)});
@@ -1427,9 +1445,11 @@ void Engine::projectileHit(const Projectile& p, u32 targetId)
     {
         wakeUp(targetId); // Z6
     }
-    const i32 damage = curledDamage(*target, gameplay::rangedDamage(
-                                                 p.damage, [&](std::string_view type)
-                                                 { return target->character->protection(type); }, m_combat));
+    const i32 damage = curledDamage(
+        *target,
+        gameplay::rangedDamage(
+            p.damage, [&](std::string_view type) { return target->character->protection(type); }, m_combat),
+        p.position - p.velocity); // from where it came
     const i32 hp = target->character->attribute("hp") - damage;
     (void)target->character->setAttribute("hp", std::max(hp, 0));
     target->character->addItem(p.ammo, 1); // R3: it stays in the target (looting)
@@ -1497,9 +1517,11 @@ void Engine::spellHit(const gameplay::DamageByType& damage, u32 targetId, std::s
         noteHeroFight(); // fight music (M13 C)
     }
     // As a projectile (R3): damage minus protection, at least the minimum, no critical hit.
-    const i32 dealt = curledDamage(*target, gameplay::rangedDamage(
-                                                damage, [&](std::string_view type)
-                                                { return target->character->protection(type); }, m_combat));
+    const i32 dealt = curledDamage(
+        *target,
+        gameplay::rangedDamage(
+            damage, [&](std::string_view type) { return target->character->protection(type); }, m_combat),
+        std::nullopt); // a spell washes over the whole shell
     const i32 hp = target->character->attribute("hp") - dealt;
     (void)target->character->setAttribute("hp", std::max(hp, 0));
     G7_LOG_INFO("engine", "{}'s spell hits {}: {} damage ({} left)", caster, target->name, dealt,
