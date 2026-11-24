@@ -97,17 +97,43 @@ TEST_CASE(
     CHECK(indoorAmount(Vec3(0.0f, -0.5f, 0.0f), rooms, 0.3f) == doctest::Approx(0.0f));
     CHECK(indoorAmount(Vec3(0.0f, 1.5f, 0.0f), {}, 0.3f) == doctest::Approx(0.0f));
 
-    // Packed for the shader: centre + cos yaw, half extents + sin yaw; count, factor and edge.
+    // Packed for the shader: centre + cos yaw, half extents + sin yaw; count, edge, each room's factor.
     Environment environment;
-    environment.indoor = {room};
-    environment.indoorAmbient = 0.35f;
+    IndoorVolume lit = room;
+    lit.ambient = 0.35f;
+    IndoorVolume cellar = room;
+    cellar.center.x = 40.0f;
+    cellar.ambient = 0.06f;
+    environment.indoor = {lit, room, room, room, cellar};
     const GpuLighting gpu = packLighting(environment, LightList{});
-    CHECK(gpu.indoorParams.x == 1.0f);
-    CHECK(gpu.indoorParams.y == doctest::Approx(0.35f));
+    CHECK(gpu.indoorParams.x == 5.0f);
     CHECK(gpu.indoorParams.z == doctest::Approx(0.3f));
     CHECK(gpu.indoorBoxes[0].w == doctest::Approx(0.0f).epsilon(1e-6));
     CHECK(gpu.indoorBoxes[1].w == doctest::Approx(1.0f));
     CHECK(Vec3(gpu.indoorBoxes[1]) == Vec3(2.0f, 1.5f, 3.0f));
+    CHECK(gpu.indoorAmbient[0].x == doctest::Approx(0.35f));
+    CHECK(gpu.indoorAmbient[0].y == doctest::Approx(1.0f));
+    CHECK(gpu.indoorAmbient[1].x == doctest::Approx(0.06f)); // the fifth room
+}
+
+TEST_CASE(
+    "Lighting: each room its own ambient factor (daylight) - blended through the wall, nested the smallest")
+{
+    // A hall with window light (0.35) and a windowless cellar box inside it (0.06), both unturned.
+    IndoorVolume hall{Vec3(0.0f, 2.0f, 0.0f), Vec3(5.0f, 2.0f, 5.0f), 0.0f, 0.35f};
+    IndoorVolume cellar{Vec3(3.0f, 1.0f, 0.0f), Vec3(1.0f, 1.0f, 1.0f), 0.0f, 0.06f};
+    const IndoorVolume rooms[] = {hall, cellar};
+    CHECK(indoorAmbientFactor(Vec3(-3.0f, 1.0f, 0.0f), rooms, 0.3f) == doctest::Approx(0.35f));
+    CHECK(indoorAmbientFactor(Vec3(3.0f, 1.0f, 0.0f), rooms, 0.3f) == doctest::Approx(0.06f));  // nested
+    CHECK(indoorAmbientFactor(Vec3(-20.0f, 1.0f, 0.0f), rooms, 0.3f) == doctest::Approx(1.0f)); // outside
+    // Halfway through the hall's wall (0.05 tolerance, then 0.3 m fade): halfway between 1 and 0.35.
+    CHECK(indoorAmbientFactor(Vec3(-5.2f, 1.0f, 0.0f), rooms, 0.3f) == doctest::Approx(1.0f - 0.65f * 0.5f));
+    CHECK(indoorAmbientFactor(Vec3(3.0f, 1.0f, 0.0f), {}, 0.3f) == doctest::Approx(1.0f));
+    // One room alone: as before, a mix by indoorAmount.
+    const IndoorVolume one[] = {hall};
+    const Vec3 p(-5.1f, 1.0f, 0.0f);
+    CHECK(indoorAmbientFactor(p, one, 0.3f) ==
+          doctest::Approx(1.0f + (0.35f - 1.0f) * indoorAmount(p, one, 0.3f)));
 }
 
 TEST_CASE("Lighting: the lights of a frame - effects first, then the nearest visible ones, windows only near")

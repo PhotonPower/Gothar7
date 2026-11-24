@@ -495,9 +495,12 @@ public:
     /// The daylight (window) lights at the current time: the sky ambient's colour, intensity times its
     /// brightness relative to noon (components.light.daylight, world.md).
     [[nodiscard]] std::vector<render::PointLight> daylightLights() const;
-    /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes; the renderer
-    /// gives them the indoor ambient (environment.toml [indoor]).
+    /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes, each with its
+    /// ambient factor (zone `daylight`, else environment.toml [indoor] by window lights; world.md "Zonen").
     [[nodiscard]] std::vector<render::IndoorVolume> nearestIndoorVolumes(const Vec3& point) const;
+    /// Every indoor box of the world with its ambient factor, in zone order (cached; rebuilt when zones,
+    /// lights or environment.toml change).
+    [[nodiscard]] const std::vector<render::IndoorVolume>& indoorRooms() const;
     [[nodiscard]] const render::Sky& sky() const noexcept { return m_sky; }
     /// Writes the scene's world vobs with the loaded world's terrain, waynet, zones and generator head as
     /// .g7world (--save-world, editor).
@@ -2241,6 +2244,8 @@ private:
         m_frameLights; // this frame's: effects first, then the nearest visible (selectFrameLights)
     std::vector<render::PointLight>
         m_daylightLights; // window lights (components.light.daylight), as in the file
+    mutable std::vector<render::IndoorVolume> m_indoorRooms; // indoorRooms(): boxes with their ambient factor
+    mutable bool m_indoorRoomsDirty = true;
     render::ParticleSystem m_particles;
     std::optional<audio::AudioSystem> m_audio; // M13: absent when switched off ([audio] enabled = false)
     audio::SoundDefs m_soundDefs;              // data/sounds.toml

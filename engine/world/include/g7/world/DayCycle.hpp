@@ -75,8 +75,11 @@ public:
     [[nodiscard]] DaySample evaluate(f32 hour, f32 fogDensity) const;
 
     [[nodiscard]] const Orbit& orbit() const noexcept { return m_orbit; }
-    /// [indoor] ambient: factor on the ambient inside rooms (zones of type indoor), 0..1.
+    /// [indoor] ambient: factor on the ambient inside rooms (zones of type indoor) with a window light, 0..1.
     [[nodiscard]] f32 indoorAmbient() const noexcept { return m_indoorAmbient; }
+    /// [indoor] ambient_windowless: the factor in rooms without a window light (cellars), 0..1. A zone's own
+    /// `daylight` replaces both (world.md "Zonen").
+    [[nodiscard]] f32 indoorAmbientWindowless() const noexcept { return m_indoorAmbientWindowless; }
     [[nodiscard]] const std::vector<EnvironmentKey>& keys() const noexcept { return m_keys; }
     /// [zone.<name>] (M17 P2): grading of a zone, by the zone's value ("wald", an indoor tag) or "innen" for
     /// every indoor zone; nullptr: none.
@@ -86,6 +89,7 @@ private:
     Orbit m_orbit;
     std::vector<EnvironmentKey> m_keys; // sorted by hour, at least one
     f32 m_indoorAmbient = 0.35f;
+    f32 m_indoorAmbientWindowless = 0.06f;
     std::map<std::string, render::GradingOverride, std::less<>> m_zoneGrading;
 };
 } // namespace g7::world
