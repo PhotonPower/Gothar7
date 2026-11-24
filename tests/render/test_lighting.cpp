@@ -225,3 +225,25 @@ TEST_CASE("Lighting: wetness, rain map and puddles packed for the shaders (M17 N
     CHECK(gpu.wetParams.z == doctest::Approx(1.0f));
     CHECK(gpu.rainMapViewProjection == Mat4(2.0f));
 }
+
+TEST_CASE("Lighting: the rooms wholly holding a box (furniture) - corners in one or several rooms")
+{
+    // Two rooms side by side along X (a wall between at x 4), the second turned by 90 degrees.
+    const IndoorVolume rooms[] = {{Vec3(0.0f, 1.5f, 0.0f), Vec3(4.0f, 1.5f, 3.0f), 0.0f},
+                                  {Vec3(8.0f, 1.5f, 0.0f), Vec3(3.0f, 1.5f, 4.0f), glm::radians(90.0f)},
+                                  {Vec3(100.0f, 1.5f, 0.0f), Vec3(3.0f, 1.5f, 3.0f), 0.0f}};
+    std::vector<u32> held;
+    CHECK(roomsHolding(AABB{Vec3(-1.0f, 0.0f, -1.0f), Vec3(1.0f, 0.8f, 1.0f)}, rooms, held)); // a table
+    CHECK(held == std::vector<u32>{0});
+    CHECK(roomsHolding(AABB{Vec3(-1.0f, -0.04f, -1.0f), Vec3(1.0f, 3.0f, 1.0f)}, rooms,
+                       held)); // 5 cm tolerance
+    CHECK(
+        roomsHolding(AABB{Vec3(3.0f, 0.0f, -1.0f), Vec3(5.0f, 1.0f, 1.0f)}, rooms, held)); // through the door
+    CHECK(held == std::vector<u32>{0, 1});
+    CHECK_FALSE(roomsHolding(AABB{Vec3(3.0f, 0.0f, -1.0f), Vec3(12.5f, 1.0f, 1.0f)}, rooms,
+                             held)); // beyond the far wall (x 12)
+    CHECK(held.empty());
+    CHECK_FALSE(roomsHolding(AABB{Vec3(-1.0f, 0.0f, -1.0f), Vec3(1.0f, 3.5f, 1.0f)}, rooms, held)); // a roof
+    CHECK_FALSE(roomsHolding(AABB{Vec3(50.0f), Vec3(51.0f)}, rooms, held));
+    CHECK_FALSE(roomsHolding(AABB{Vec3(-1.0f), Vec3(1.0f)}, {}, held));
+}

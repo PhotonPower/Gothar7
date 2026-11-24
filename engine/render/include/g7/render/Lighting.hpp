@@ -30,6 +30,11 @@ struct IndoorVolume
 /// common/lighting.glsl.
 [[nodiscard]] f32 indoorAmbientFactor(const Vec3& point, std::span<const IndoorVolume> volumes,
                                       f32 edge) noexcept;
+/// The rooms that wholly hold `bounds` (render.md "Innenräume": furniture of a room): true if every corner of
+/// the box lies in one of `volumes` (5 cm tolerance, as indoorAmount); `rooms` gets the indices of the
+/// volumes the corners lie in (each once). False and `rooms` empty if a corner is outside every room.
+[[nodiscard]] bool roomsHolding(const AABB& bounds, std::span<const IndoorVolume> volumes,
+                                std::vector<u32>& rooms);
 
 /// Global lighting of a frame. Driven by the time of day from M4 (sky colours, sun path).
 struct Environment

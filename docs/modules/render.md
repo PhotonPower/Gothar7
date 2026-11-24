@@ -719,6 +719,11 @@ void beginFrame();  BatchStats lastBatch();  shared_ptr<const MaterialDefaults> 
   durch Fenster und Tür sieht man die Nähe. Sonnenschatten (durch die Fenster) werfen dann nur Dinge bis
   `indoor_shadow_distance` (12 m), Kaskaden, die weiter beginnen, ruhen. Ein echtes Portal (nur durch Öffnungen)
   bleibt offen. Leonberg: Stube der Krummen Gans 2,6 Mio. → 0,26 Mio. Dreiecke, 1917 → 184 Draws (mit E3).
+- **Einrichtung von außen (M17, 2026-11-24):** Was ganz in Innenzonen liegt (alle acht Ecken der Bounds in Boxen,
+  5 cm Toleranz; `render::roomsHolding`, je Objekt beim ersten Bild nach dem Laden bzw. nach Zonen-/Szenen-Änderung),
+  fehlt im Hauptbild und in den Schattenkaskaden, solange die Kamera in **keiner** Innenzone steht und weiter als
+  `[render] indoor_cull_distance` (12 m, 0 = aus) von jeder seiner Boxen entfernt ist. Von nahem sieht man durch
+  Fenster und Tür hinein; drinnen gilt die Regel oben. `Engine::culledIndoors()`/`culledIndoorShadows()` zählen.
 - Gleiche Werte in verschiedenen Modellen bündeln, weil alle `MaterialSet`s die neutralen Texturen des Renderers teilen
   (`MaterialSet::create(…, defaults())`), und Texturen aus Dateien über den Textur-Cache dieselben Objekte sind:
   Modelle auf demselben Trim-Sheet bündeln miteinander.

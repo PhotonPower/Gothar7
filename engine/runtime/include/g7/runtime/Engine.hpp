@@ -159,6 +159,10 @@ struct SceneInstance
     world::VobId vob;         ///< the mesh vob drawn (0: ground plate, --view-mesh, test scenes)
     bool solid = true;        ///< collides and casts shadows (false: the water surface placeholder)
     u32 lod = 0;              ///< level of detail drawn now (chosen by distance with hysteresis)
+    /// Furniture of rooms (render.md "Innenräume"): the indoor boxes wholly holding it, a range of
+    /// Engine::m_instanceRooms (count 0: not inside a room).
+    u32 roomFirst = 0;
+    u32 roomCount = 0;
 };
 
 /// A landing of the player: fall height from the highest point and the hit points it cost.
@@ -433,6 +437,11 @@ public:
     /// the objects of the grid cells it visited (whole cells beyond view_distance are skipped uncounted).
     [[nodiscard]] u32 culledByDistance() const noexcept { return m_culledFar; }
     [[nodiscard]] u32 culledBySize() const noexcept { return m_culledSmall; }
+    /// Objects wholly inside rooms the last frame left out of the main pass because the camera was in no room
+    /// and farther than [render] indoor_cull_distance from theirs (render.md "Innenräume").
+    [[nodiscard]] u32 culledIndoors() const noexcept { return m_culledIndoor; }
+    /// The same for the shadow cascades of the last frame (summed over the cascades drawn).
+    [[nodiscard]] u32 culledIndoorShadows() const noexcept { return m_culledIndoorShadow; }
     [[nodiscard]] const render::CullSettings& cullSettings() const noexcept { return m_cullSettings; }
     /// Multi-draw batches (engine.toml [render] multi_draw, default on); off draws every mesh on its own.
     void setMultiDraw(bool enabled) noexcept { m_multiDraw = enabled; }
@@ -1679,6 +1688,11 @@ private:
     void rebuildWaterSurfaces();
     void drawWater();
     void cullInstances(const Frustum& view); // fills m_drawItems (multi-draw) or draws them right away
+    /// Finds the rooms holding each instance when needed and which rooms are far this frame
+    /// (indoor_cull_distance).
+    void updateRoomCulling(bool cameraInside);
+    /// True if this frame leaves the instance out: furniture of rooms all beyond indoor_cull_distance.
+    [[nodiscard]] bool hiddenInRoom(const SceneInstance& instance) const noexcept;
     void updateUnderwater();
     void drawScene(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
@@ -1946,7 +1960,14 @@ private:
     render::CullSettings m_cullSettings;
     render::CullSettings m_frameCull; // this frame's: m_cullSettings, indoors with indoor_view_distance (E2)
     f32 m_indoorViewDistance = 30.0f; // [render] indoor_view_distance, 0 = off
-    f32 m_indoorShadowDistance = 12.0f;     // [render] indoor_shadow_distance
+    f32 m_indoorShadowDistance = 12.0f;      // [render] indoor_shadow_distance
+    f32 m_indoorCullDistance = 12.0f;        // [render] indoor_cull_distance, 0 = off
+    std::vector<u32> m_instanceRooms;        // SceneInstance::roomFirst/roomCount: indices into indoorRooms()
+    u64 m_instanceRoomsGeneration = ~u64{0}; // indoorRooms() generation they were found for
+    bool m_cullRooms = false;                // this frame: furniture of far rooms is left out
+    std::vector<u8> m_roomFar; // this frame: per indoorRooms() box, 1 = beyond indoor_cull_distance
+    u32 m_culledIndoor = 0;
+    u32 m_culledIndoorShadow = 0;
     render::CullSettings m_frameShadowCull; // this frame's shadow casters (indoors nearer still)
     render::LodSettings m_lodSettings;
     std::array<u32, 3> m_lodCounts{}; // instances drawn per level of detail in the last main pass
@@ -2246,6 +2267,7 @@ private:
         m_daylightLights; // window lights (components.light.daylight), as in the file
     mutable std::vector<render::IndoorVolume> m_indoorRooms; // indoorRooms(): boxes with their ambient factor
     mutable bool m_indoorRoomsDirty = true;
+    mutable u64 m_indoorRoomsGeneration = 0; // counts the rebuilds of m_indoorRooms
     render::ParticleSystem m_particles;
     std::optional<audio::AudioSystem> m_audio; // M13: absent when switched off ([audio] enabled = false)
     audio::SoundDefs m_soundDefs;              // data/sounds.toml
