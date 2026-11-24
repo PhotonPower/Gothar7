@@ -1,7 +1,8 @@
 // The editor's terrain mode (M16 part F2, ADR 0023, decision 6): raise, lower, smooth, flatten and paint
 // splat layers with the left mouse held; each stroke is one undo step holding the rectangle it touched (a
 // delta, not the whole terrain); the drawn terrain follows at once, the collision when the stroke ends.
-// Terrain from a world's generator (Leonberg) stays locked.
+// Terrain from a world's generator (Leonberg) stays locked - except for the grass brush (M17 G3, decision
+// 9): it paints the grass overlay over the generated mask, which the generator never writes.
 
 #include <g7/core/Log.hpp>
 #include <g7/editor/Editor.hpp>
@@ -19,7 +20,8 @@ namespace
 {
 constexpr f32 kRayStep = 0.5f;     ///< m between height checks along the mouse ray
 constexpr f32 kRayLength = 600.0f; ///< m
-constexpr std::array<const char*, 5> kModeNames = {"raise", "lower", "smooth", "flatten", "paint"};
+constexpr std::array<const char*, 7> kModeNames = {"raise", "lower", "smooth",     "flatten",
+                                                   "paint", "grass", "grass reset"};
 } // namespace
 
 std::string Editor::terrainLocked() const
@@ -29,10 +31,19 @@ std::string Editor::terrainLocked() const
 
 void Editor::setTerrainMode(bool on)
 {
-    if (on && !terrainLocked().empty())
+    if (on && m_engine.terrain() == nullptr)
     {
         m_status = terrainLocked();
         on = false;
+    }
+    else if (on && !terrainLocked().empty())
+    {
+        // Generated terrain: only the grass overlay (M17 G3).
+        m_status = terrainLocked() + " - only the grass brush";
+        if (!paintsGrass(m_brush.mode))
+        {
+            m_brush.mode = BrushMode::Grass;
+        }
     }
     if (m_stroke)
     {
@@ -50,6 +61,13 @@ void Editor::setTerrainMode(bool on)
 TerrainTarget Editor::terrainTarget()
 {
     TerrainTarget target;
+    if (m_grassUsed) // M17 G3: created on first use - not for every undo
+    {
+        if (const auto overlay = m_engine.grassOverlay())
+        {
+            target.grass.push_back({overlay->rgba, overlay->width, overlay->height});
+        }
+    }
     target.heights = m_engine.editableHeightfield();
     if (target.heights == nullptr)
     {
@@ -69,6 +87,19 @@ TerrainTarget Editor::terrainTarget()
 
 Result<void> Editor::beginStroke()
 {
+    if (paintsGrass(m_brush.mode)) // M17 G3: the grass overlay, also on locked terrain
+    {
+        const auto overlay = m_engine.terrain() != nullptr ? m_engine.grassOverlay() : std::nullopt;
+        if (!overlay)
+        {
+            return Error{"the world has no terrain"};
+        }
+        m_grassUsed = true;
+        Stroke stroke;
+        stroke.grass.assign(overlay->rgba.begin(), overlay->rgba.end());
+        m_stroke = std::move(stroke);
+        return {};
+    }
     world::Heightfield* field = m_engine.editableHeightfield();
     if (field == nullptr)
     {
@@ -93,6 +124,36 @@ Result<void> Editor::beginStroke()
 
 void Editor::strokeAt(const Vec3& centre, f32 seconds)
 {
+    if (m_stroke && paintsGrass(m_brush.mode))
+    {
+        const world::Heightfield* terrain = m_engine.terrain();
+        const auto overlay = terrain != nullptr ? m_engine.grassOverlay() : std::nullopt;
+        if (!overlay)
+        {
+            return;
+        }
+        const SplatPixels pixels{overlay->rgba, overlay->width, overlay->height};
+        const std::array<SplatPixels, 1> maps{pixels};
+        for (const SplatPatch& a : splatArea(maps, terrain->ref(), centre, m_brush.radius))
+        {
+            auto& known = m_stroke->grassArea;
+            if (!known)
+            {
+                known = a;
+                continue;
+            }
+            const u32 x0 = std::min(known->x, a.x);
+            const u32 y0 = std::min(known->y, a.y);
+            const u32 x1 = std::max(known->x + known->width, a.x + a.width);
+            const u32 y1 = std::max(known->y + known->height, a.y + a.height);
+            *known = {0, x0, y0, x1 - x0, y1 - y0, {}};
+        }
+        if (const auto touched = paintGrass(pixels, terrain->ref(), m_brush, centre, seconds))
+        {
+            m_engine.grassOverlayChanged(*touched);
+        }
+        return;
+    }
     world::Heightfield* field = m_engine.editableHeightfield();
     if (!m_stroke || field == nullptr)
     {
@@ -139,6 +200,29 @@ void Editor::endStroke()
     }
     Stroke stroke = std::move(*m_stroke);
     m_stroke.reset();
+    if (stroke.grassArea) // M17 G3: the grass overlay's rectangle before and after
+    {
+        const auto overlay = m_engine.grassOverlay();
+        if (!overlay)
+        {
+            return;
+        }
+        Command command{
+            std::format("terrain: {}", kModeNames[static_cast<usize>(m_brush.mode)]), {}, {}, false};
+        command.grassBefore.push_back(captureSplat(stroke.grass, overlay->width, *stroke.grassArea));
+        command.grassAfter.push_back(captureSplat(overlay->rgba, overlay->width, *stroke.grassArea));
+        if (command.grassBefore == command.grassAfter)
+        {
+            return; // nothing changed
+        }
+        m_history.record(std::move(command));
+        m_grassDirty = true;
+        return;
+    }
+    if (!stroke.grass.empty())
+    {
+        return; // a grass stroke that touched nothing
+    }
     world::Heightfield* field = m_engine.editableHeightfield();
     if (field == nullptr)
     {
@@ -247,9 +331,13 @@ void Editor::fillTerrainPanel()
 {
     ui::TerrainPanel& p = m_terrainPanel;
     p.shown = m_engine.terrain() != nullptr;
+    if (!p.shown)
+    {
+        return;
+    }
     p.locked = terrainLocked();
     p.active = m_terrainMode;
-    p.dirty = m_terrainDirty;
+    p.dirty = m_terrainDirty || m_grassDirty;
     p.layers.clear();
     const u32 layers = m_engine.terrainLayerCount();
     for (u32 i = 0; i < layers; ++i)
@@ -261,6 +349,8 @@ void Editor::fillTerrainPanel()
     p.strength = m_brush.strength;
     p.flattenHeight = m_brush.flattenHeight;
     p.layer = static_cast<i32>(m_brush.layer);
+    p.grassDensity = m_brush.grassDensity;
+    p.grassMask = !m_engine.terrain()->ref().grassMask.empty();
 }
 
 void Editor::applyTerrainPanel()
@@ -272,7 +362,12 @@ void Editor::applyTerrainPanel()
     }
     if (!m_stroke) // a stroke keeps its brush
     {
-        m_brush.mode = static_cast<BrushMode>(std::clamp(p.mode, 0, 4));
+        m_brush.mode = static_cast<BrushMode>(std::clamp(p.mode, 0, 6));
+        if (!terrainLocked().empty() && !paintsGrass(m_brush.mode))
+        {
+            m_brush.mode = BrushMode::Grass; // generated terrain: only the grass overlay
+        }
+        m_brush.grassDensity = std::clamp(p.grassDensity, 0.0f, 1.0f);
         m_brush.radius = std::max(p.radius, 0.1f);
         m_brush.strength = std::max(p.strength, 0.01f);
         m_brush.flattenHeight = p.flattenHeight;
