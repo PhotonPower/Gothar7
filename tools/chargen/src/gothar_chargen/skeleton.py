@@ -53,6 +53,7 @@ class RigSpec:
     # (up = +Y, forward = +Z, left = +X); empty for the human rig (fixed checks).
     orientation: tuple[tuple[str, tuple[str, str]], ...] = ()
     collision: Collision | None = None  # monsters: engine character capsule (§7.1)
+    move_axis: str = "z"  # monsters: "x" = s_walk/s_run move root sideways (crab, §7.5)
 
     @property
     def is_monster(self) -> bool:
@@ -162,6 +163,9 @@ def parse_rig(data: dict) -> RigSpec:
             raise SkeletonError(f"monster rig lacks required bones {missing}")
         if {a for a, _ in orientation} != set(ORIENTATION_AXES):
             raise SkeletonError(f"monster rig needs [rig.orientation] {ORIENTATION_AXES}")
+    move_axis = str(rig.get("move_axis", "z"))
+    if move_axis not in ("z", "x"):
+        raise SkeletonError(f'move_axis must be "z" or "x", got \'{move_axis}\'')
     collision = None
     if "collision" in rig:
         try:
@@ -183,6 +187,7 @@ def parse_rig(data: dict) -> RigSpec:
         species=species,
         orientation=tuple(orientation),
         collision=collision,
+        move_axis=move_axis,
     )
 
 
