@@ -1,9 +1,10 @@
 """Collision capsule of a monster species (contract §7.1, engine M5/M9): `[rig.collision]`.
 
-The capsule is derived from the reference mesh: the torso without tail and lower legs (by the
-skin weights), the snout just inside. Long animals get a lying capsule along +Z (facing
-direction), others an upright one standing on the ground. Coordinates are rig space (glTF: Y up,
-+Z forward), relative to `root` at the origin. Pure Python (numpy), no Blender.
+The capsule is derived from the reference mesh: the torso without tail and lower legs (by the skin
+weights), the snout just inside; also left out: gill tufts and legs spread sideways (lizards, §7.6:
+an upper leg whose knee lies more to the side than below the hip). Long animals get a lying capsule
+along +Z (facing direction), others an upright one standing on the ground. Coordinates are rig space
+(glTF: Y up, +Z forward), relative to `root` at the origin. Pure Python (numpy), no Blender.
 """
 
 from __future__ import annotations
@@ -23,8 +24,24 @@ LYING_ASPECT = 1.3  # torso longer than this times its height: lying capsule
 # arthropods (§7.5): feelers, eye stalks, the spread legs, pincer arms and the crystal carrier
 _LOOSE = re.compile(
     r"^(tail_.*|.*_lower_[lr]|.*_foot_[lr]|calf_[lr]|foot_[lr]|antenna_.*|leg_\d+_upper_[lr]"
-    r"|arm_upper_[lr]|claw_.*|eye_stalk_[lr]|crystals)$"
+    r"|arm_upper_[lr]|claw_.*|eye_stalk_[lr]|crystals|gill_[lr])$"
 )
+_UPPER = re.compile(r"^.*_upper_[lr]$")
+
+
+def _splayed(gltf: Gltf) -> set[str]:
+    """Upper legs spread sideways (§7.6): the first child (knee) lies mainly to the side."""
+    nodes = gltf.list("nodes")
+    world = gltf.world_matrices()
+    out = set()
+    for i, node in enumerate(nodes):
+        name = str(node.get("name", ""))
+        if not _UPPER.match(name) or not node.get("children"):
+            continue
+        d = world[node["children"][0]][:3, 3] - world[i][:3, 3]
+        if abs(d[0]) > max(abs(d[1]), abs(d[2])):
+            out.add(name)
+    return out
 
 
 class CollisionError(Exception):
@@ -82,7 +99,8 @@ def derive_collision(gltf: Gltf) -> Collision:
         raise CollisionError("mesh has no skin weights")
     dominant = data.joints[np.arange(len(data.joints)), data.weights.argmax(axis=1)]
     names = np.array([str(nodes[j].get("name", "")) for j in dominant])
-    torso = data.positions[[not _LOOSE.match(n) for n in names]]
+    spread = _splayed(gltf)
+    torso = data.positions[[not _LOOSE.match(n) and n not in spread for n in names]]
     if len(torso) == 0:
         raise CollisionError("no torso vertices (all weighted to tail/legs?)")
     lo, hi = torso.min(axis=0), torso.max(axis=0)
