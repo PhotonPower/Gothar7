@@ -163,7 +163,12 @@ def _order(p: dict[str, Any], q: dict[str, Any]) -> int:
     a, b = str(p.get("value", "")), str(q.get("value", ""))
     if a != b:
         return -1 if a < b else 1
-    if "box" not in p or "box" not in q or p.get("type") not in BOXED or q.get("type") not in BOXED:
+    if (
+        "box" not in p
+        or "box" not in q
+        or p.get("type") not in (*BOXED, "fog")
+        or q.get("type") not in (*BOXED, "fog")
+    ):
         return 0
     (px, _, pz), (qx, _, qz) = p["box"]["center"], q["box"]["center"]
     if px != qx:
@@ -175,12 +180,16 @@ def zones_text(zones: Sequence[dict[str, Any]]) -> str:
     """The ``zones`` list in the engine's layout: one zone per line, sorted."""
     lines = []
     for z in sorted(zones, key=functools.cmp_to_key(_order)):
-        if z.get("type") in BOXED and "box" in z:
+        if z.get("type") in (*BOXED, "fog") and "box" in z:
             bx = z["box"]
             line = {"type": z["type"], "value": z["value"],
                     "box": {"center": [tidy(c) for c in bx["center"]],
                             "halfExtents": [tidy(c) for c in bx["halfExtents"]],
                             "yaw": tidy(bx.get("yaw", 0.0))}}  # fmt: skip
+            if z["type"] == "fog":  # dungeon D7b: the fog after the box (world_format writer)
+                line.update({"color": [tidy(c) for c in z["color"]],
+                             "distance": tidy(z["distance"]), "start": tidy(z.get("start", 0.0)),
+                             "fade": tidy(z.get("fade", 3.0))})  # fmt: skip
             lines.append(json.dumps(line, separators=(",", ":"), ensure_ascii=False))
         else:  # other types as the engine keeps them (a JSON object: keys sorted)
             lines.append(json.dumps(z, separators=(",", ":"), ensure_ascii=False, sort_keys=True))

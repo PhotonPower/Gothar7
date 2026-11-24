@@ -540,15 +540,18 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
         auto to = readText(r, p, "to", tat, false);
         auto world = readText(r, p, "world", tat, false);
         auto start = readText(r, p, "start", tat, false);
-        auto filter = readChoice(r, p, "filter", tat, kTeleportFilters);
-        if (!to || !world || !start || !filter)
+        auto teleportFilter = readChoice(r, p, "filter", tat, kTeleportFilters);
+        if (!to || !world || !start || !teleportFilter)
         {
-            return !to ? to.error() : !world ? world.error() : !start ? start.error() : filter.error();
+            return !to      ? to.error()
+                   : !world ? world.error()
+                   : !start ? start.error()
+                            : teleportFilter.error();
         }
         teleport.to = std::move(to).value();
         teleport.world = std::move(world).value();
         teleport.start = std::move(start).value();
-        teleport.filter = filter.value();
+        teleport.filter = teleportFilter.value();
         if (teleport.to.empty() == (teleport.world.empty() || teleport.start.empty()) ||
             (!teleport.to.empty() && !teleport.world.empty()))
         {
@@ -1149,6 +1152,14 @@ Result<TerrainRef> readTerrain(const Reader& r, const Json& t)
             return r.error(where, "'holes' must be a VFS path");
         }
         ref.holes = t["holes"].get<std::string>();
+    }
+    if (t.contains("grass_mask"))
+    {
+        if (!t["grass_mask"].is_string() || t["grass_mask"].get<std::string>().empty())
+        {
+            return r.error(where, "'grass_mask' must be a VFS path");
+        }
+        ref.grassMask = t["grass_mask"].get<std::string>();
     }
     return ref;
 }
@@ -1905,6 +1916,10 @@ std::string writeWorldFile(const WorldFile& world)
         if (!t.holes.empty())
         {
             root["terrain"]["holes"] = t.holes;
+        }
+        if (!t.grassMask.empty())
+        {
+            root["terrain"]["grass_mask"] = t.grassMask;
         }
     }
 

@@ -238,9 +238,10 @@ GpuLighting packLighting(const Environment& environment, const LightList& lights
     return gpu;
 }
 void packShadows(GpuLighting& gpu, std::span<const Cascade> cascades, const ShadowSettings& settings,
-                 const Camera& camera, bool debugColours) noexcept
+                 const Camera& camera, bool debugColours, f32 distance, bool roomsDark) noexcept
 {
     const usize count = std::min<usize>(cascades.size(), 4);
+    const f32 end = count > 0 ? cascades[count - 1].splitFar : 0.0f;
     for (usize i = 0; i < count; ++i)
     {
         gpu.cascadeViewProjection[i] = cascades[i].viewProjection;
@@ -249,9 +250,9 @@ void packShadows(GpuLighting& gpu, std::span<const Cascade> cascades, const Shad
         gpu.cascadeTexelSize[static_cast<glm::length_t>(i)] = cascades[i].texelWorldSize;
     }
     gpu.shadowParams = Vec4(count > 0 ? 1.0f : 0.0f, static_cast<f32>(count),
-                            count > 0 ? cascades[count - 1].splitFar : 0.0f, settings.normalOffset);
+                            distance > 0.0f ? std::min(distance, end) : end, settings.normalOffset);
     gpu.shadowExtra = Vec4(debugColours ? 1.0f : 0.0f, 1.0f / static_cast<f32>(settings.resolution * 2),
-                           gpu.shadowExtra.z, 0.0f); // z from packLighting (weather)
+                           gpu.shadowExtra.z, roomsDark ? 1.0f : 0.0f); // z from packLighting (weather)
     gpu.cameraPosition = Vec4(camera.transform.position, 1.0f);
     gpu.cameraForward = Vec4(camera.transform.forward(), 0.0f);
 }

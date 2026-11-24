@@ -144,6 +144,10 @@ def check_terrain_block(block: dict[str, Any]) -> list[str]:
         problems.append("terrain.maxY must be greater than terrain.minY")
     if "splat" in block:
         problems.extend(check_splat_block(block["splat"]))
+    if "grass_mask" in block and not (
+        isinstance(block["grass_mask"], str) and block["grass_mask"].endswith(".png")
+    ):
+        problems.append("terrain.grass_mask must be a VFS path to a .png file")
     return problems
 
 
@@ -254,6 +258,7 @@ def export_terrain(
     splat: dict[str, Any] | None = None,
     starts: tuple[StartPoint, ...] = (),
     holes: tuple[Path, str, npt.NDArray[np.uint8]] | None = None,
+    grass_mask: str | None = None,
 ) -> TerrainExport:
     """``holes``: (file, VFS path, mask per cell, 0 = hole) – world.md "Löcher"."""
     values, min_y, max_y = quantize_heights(grid.heights)
@@ -266,6 +271,8 @@ def export_terrain(
             raise ExportError(f"hole mask {mask.shape} does not fit the grid")
         _write_atomic(hole_path, mask.astype(np.uint8).tobytes())
         block["holes"] = hole_vfs
+    if grass_mask is not None:  # after the holes, as the engine writes them
+        block["grass_mask"] = grass_mask
     problems = check_terrain_block(block)
     if problems:
         raise ExportError("; ".join(problems))
