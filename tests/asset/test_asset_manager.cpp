@@ -539,3 +539,42 @@ TEST_CASE("hot reload: released assets are no longer watched, the others stay wa
     touch(f.dir.path() / "data" / "b.txt", 4);
     CHECK(assets.checkForChanges(2.0) == 1);
 }
+
+TEST_CASE("wait(handles) waits for these loads only, others keep running")
+{
+    Fixture f;
+    AssetManager assets(f.vfs, {.workerThreads = 2});
+    std::promise<void> release;
+    std::shared_future<void> gate = release.get_future().share();
+    assets.registerLoader<TextAsset>(
+        [gate](const LoadContext& ctx) -> Result<TextAsset>
+        {
+            if (ctx.path == "data/a.txt")
+            {
+                gate.wait(); // a slow asset, e.g. a texture of the world
+            }
+            return loadText(ctx);
+        });
+    const auto slow = assets.load<TextAsset>("data/a.txt");
+    const auto fast = assets.load<TextAsset>("data/b.txt");
+    const auto failing = assets.load<TextAsset>("data/missing.txt");
+    assets.wait(fast);
+    REQUIRE(fast.isReady());
+    CHECK(fast->text == "beta");
+    CHECK(slow.state() == AssetState::Loading); // still blocked: wait() did not wait for it
+    const std::vector<Handle<TextAsset>> both = {fast, failing,
+                                                 Handle<TextAsset>()}; // an empty handle is skipped
+    assets.wait(std::span<const Handle<TextAsset>>(both));
+    CHECK(failing.failed());
+    release.set_value();
+    assets.wait(slow);
+    REQUIRE(slow.isReady());
+    CHECK(slow->text == "alpha");
+
+    // Synchronous mode: wait() runs what is queued.
+    AssetManager sync(f.vfs, {.workerThreads = 0});
+    sync.registerLoader<TextAsset>(loadText);
+    const auto b = sync.load<TextAsset>("data/b.txt");
+    sync.wait(b);
+    CHECK(b.isReady());
+}

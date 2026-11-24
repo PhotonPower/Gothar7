@@ -12,6 +12,7 @@ import pytest
 from conftest import REPO_ROOT, node_index, set_accessor
 from gothar_chargen.cli import main
 from gothar_chargen.clipspec import ClipSpecError, load_set_spec, parse_set_spec
+from gothar_chargen.events import arthropod_feet, load_events
 from gothar_chargen.gltf import Gltf
 from gothar_chargen.naming import clip_mode, is_clip_name, is_monster_clip
 from gothar_chargen.skeleton import (
@@ -25,7 +26,8 @@ from gothar_chargen.skeleton import (
 )
 from gothar_chargen.validate import _quat_mul, _yaw_deg, reference_pose, validate_gltf
 
-WOLF = REPO_ROOT / "assets/source/characters/monsters/wolf"
+MONSTERS = REPO_ROOT / "assets/source/characters/monsters"
+WOLF = MONSTERS / "wolf"
 WOLF_REF = WOLF / "rig/wolf_reference.glb"
 WOLF_ANIMS = WOLF / "anims/wolf.glb"
 
@@ -56,9 +58,11 @@ def codes(report, level="error"):
 def test_packaged_wolf_rig(wolf_rig):
     assert packaged_species() == [
         "bergleu",
+        "gatterbock",
         "glemsmahr",
         "keiler",
         "laufvogel",
+        "mauerkriecher",
         "quaderbuckel",
         "schinder",
         "wolf",
@@ -191,6 +195,8 @@ def test_invalid_monster_sets(data, message):
         ("quaderbuckel", 29, 17),
         ("glemsmahr", 37, 19),
         ("bergleu", 41, 19),
+        ("gatterbock", 25, 14),
+        ("mauerkriecher", 34, 18),
     ],
 )
 def test_monster_files_pass(species, bones, clips):
@@ -323,6 +329,8 @@ def test_validate_command_picks_rig_per_file(capsys):
         ("quaderbuckel", "capsule_lying"),
         ("glemsmahr", "capsule_upright"),
         ("bergleu", "capsule_lying"),
+        ("gatterbock", "capsule_upright"),
+        ("mauerkriecher", "capsule_lying"),
     ],
 )
 def test_collision_matches_mesh(species, shape):
@@ -379,7 +387,11 @@ def test_stale_collision_warns(wolf_reference):
 def test_sound_events_for_m13():
     """Engine's wish for M13 (2026-10-08): animal sounds as sound:<art>_<occasion> events, a
     swing sound in every human strike clip."""
-    species = ("wolf", "keiler", "laufvogel", "schinder", "quaderbuckel", "glemsmahr", "bergleu")
+    species = (
+        "wolf", "keiler", "laufvogel", "schinder",
+        "quaderbuckel", "glemsmahr", "bergleu", "gatterbock",
+        "mauerkriecher",
+    )  # fmt: skip
     for art in species:
         clips = {c.name: dict(c.markers) for c in load_set_spec(art).clips}
         for name, markers in clips.items():
@@ -394,3 +406,18 @@ def test_sound_events_for_m13():
             markers = dict(clip.markers)
             if "hit_start" in markers:
                 assert markers.get("sound:swing", 99) < markers["hit_start"], clip.name
+
+
+def test_arthropod_footsteps():
+    """§7.5: pair 1 reports footstep_front_l/r, the last pair footstep_back_l/r, none between."""
+    feet = arthropod_feet([f"leg_{n}_foot_{s}" for n in (1, 2, 3) for s in "lr"] + ["head"])
+    assert feet == {
+        "leg_1_foot_l": "footstep_front_l",
+        "leg_1_foot_r": "footstep_front_r",
+        "leg_3_foot_l": "footstep_back_l",
+        "leg_3_foot_r": "footstep_back_r",
+    }
+    assert arthropod_feet(["foot_l", "front_foot_l"]) == {}
+    events = load_events(MONSTERS / "mauerkriecher/anims/mauerkriecher.events.toml")[0]
+    walk = {e.name for e in events.clips["mauerkriecher/s_walk"]}
+    assert walk == {"footstep_front_l", "footstep_front_r", "footstep_back_l", "footstep_back_r"}

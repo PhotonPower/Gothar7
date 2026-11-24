@@ -71,7 +71,9 @@
 #include <g7/ui/Strings.hpp>
 #include <g7/ui/UiResources.hpp>
 #include <g7/world/DayCycle.hpp>
+#include <g7/world/EventNet.hpp>
 #include <g7/world/GameTime.hpp>
+#include <g7/world/Movers.hpp>
 #include <g7/world/Scene.hpp>
 #include <g7/world/Terrain.hpp>
 #include <g7/world/Triggers.hpp>
@@ -157,6 +159,10 @@ struct SceneInstance
     world::VobId vob;         ///< the mesh vob drawn (0: ground plate, --view-mesh, test scenes)
     bool solid = true;        ///< collides and casts shadows (false: the water surface placeholder)
     u32 lod = 0;              ///< level of detail drawn now (chosen by distance with hysteresis)
+    /// Furniture of rooms (render.md "Innenräume"): the indoor boxes wholly holding it, a range of
+    /// Engine::m_instanceRooms (count 0: not inside a room).
+    u32 roomFirst = 0;
+    u32 roomCount = 0;
 };
 
 /// A landing of the player: fall height from the highest point and the hit points it cost.
@@ -188,6 +194,18 @@ struct MobInfo
     bool open = false; ///< chest lid up, door open
     std::vector<gameplay::ItemStack> contents;
     Vec3 position{0.0f}; ///< of the vob in the world
+};
+
+/// A moving part of the world (dungeon D2: gate, secret wall, trapdoor), as the engine reports it.
+struct MoverInfo
+{
+    std::string name;
+    world::Mover::Kind kind = world::Mover::Kind::Gate;
+    bool open = false;   ///< where it goes (or stands): open
+    f32 position = 0.0f; ///< 0 closed .. 1 open
+    bool moving = false;
+    bool blocks = false; ///< closes the waynet edges through it now
+    u32 crushes = 0;     ///< times it stopped on someone in its way
 };
 
 /// What the hero does at a mob (keys, or the lockpick window's buttons).
@@ -226,6 +244,12 @@ struct Creature;       // an animal (EngineCreatures.cpp)
 /// The socket the hero holds a rune or scroll in: the left hand, the casting hand of the mag clips (M17,
 /// figuren #409; contract in animation.md).
 inline constexpr std::string_view kMagicSocket = "socket_hand_l";
+/// Where the rune sits in kMagicSocket: between the fingertips of the grip pose mag/s_grip (figuren #425,
+/// animation-list.md "Griff"), metres in the socket's space; after it half a turn about the rune's long axis
+/// (+Y) turns its sign away from the palm.
+inline constexpr Vec3 kRuneGripOffset{-0.0935f, 0.0155f, -0.052f};
+/// translate(kRuneGripOffset) * rotateY(pi): the rune's transform in kMagicSocket.
+[[nodiscard]] Mat4 runeGripTransform() noexcept;
 
 struct EngineConfig
 {
@@ -413,6 +437,11 @@ public:
     /// the objects of the grid cells it visited (whole cells beyond view_distance are skipped uncounted).
     [[nodiscard]] u32 culledByDistance() const noexcept { return m_culledFar; }
     [[nodiscard]] u32 culledBySize() const noexcept { return m_culledSmall; }
+    /// Objects wholly inside rooms the last frame left out of the main pass because the camera was in no room
+    /// and farther than [render] indoor_cull_distance from theirs (render.md "Innenräume").
+    [[nodiscard]] u32 culledIndoors() const noexcept { return m_culledIndoor; }
+    /// The same for the shadow cascades of the last frame (summed over the cascades drawn).
+    [[nodiscard]] u32 culledIndoorShadows() const noexcept { return m_culledIndoorShadow; }
     [[nodiscard]] const render::CullSettings& cullSettings() const noexcept { return m_cullSettings; }
     /// Multi-draw batches (engine.toml [render] multi_draw, default on); off draws every mesh on its own.
     void setMultiDraw(bool enabled) noexcept { m_multiDraw = enabled; }
@@ -475,9 +504,12 @@ public:
     /// The daylight (window) lights at the current time: the sky ambient's colour, intensity times its
     /// brightness relative to noon (components.light.daylight, world.md).
     [[nodiscard]] std::vector<render::PointLight> daylightLights() const;
-    /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes; the renderer
-    /// gives them the indoor ambient (environment.toml [indoor]).
+    /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes, each with its
+    /// ambient factor (zone `daylight`, else environment.toml [indoor] by window lights; world.md "Zonen").
     [[nodiscard]] std::vector<render::IndoorVolume> nearestIndoorVolumes(const Vec3& point) const;
+    /// Every indoor box of the world with its ambient factor, in zone order (cached; rebuilt when zones,
+    /// lights or environment.toml change).
+    [[nodiscard]] const std::vector<render::IndoorVolume>& indoorRooms() const;
     [[nodiscard]] const render::Sky& sky() const noexcept { return m_sky; }
     /// Writes the scene's world vobs with the loaded world's terrain, waynet, zones and generator head as
     /// .g7world (--save-world, editor).
@@ -584,6 +616,24 @@ public:
     [[nodiscard]] const world::TriggerSystem& triggers() const noexcept { return m_triggers; }
     /// Who the camera is for the triggers.
     static constexpr world::VobId kCameraProbe{~0ull};
+    /// The event net of the world (dungeon D1): relays, events on their way.
+    [[nodiscard]] const world::EventNet& events() const noexcept { return m_events; }
+    /// Sends `action` to the vob named `target` (Lua `send`): handled in the next fixed step. Doors
+    /// (open/close/toggle/trigger/lock/unlock) and relays act; every event for a non-relay reaches Lua as
+    /// dungeon_event(target, action, source). Errors: an unknown action.
+    [[nodiscard]] Result<void> sendEvent(std::string_view target, std::string_view action,
+                                         std::string_view source = "lua");
+    /// Whether the teleporter (a trigger with `teleport`, dungeon D4) of that name is on; nullopt: none.
+    [[nodiscard]] std::optional<bool> teleportActive(std::string_view name) const;
+    /// How white or black the screen is now (dungeon D4 fades), 0..1.
+    [[nodiscard]] f32 screenFade() const noexcept
+    {
+        return m_screenFade.total > 0.0f ? m_screenFade.seconds / m_screenFade.total : 0.0f;
+    }
+    /// Whether the pressure plate (a trigger with `plate`, dungeon D3) of that name is pressed.
+    [[nodiscard]] bool platePressed(std::string_view name) const;
+    /// A moving part (dungeon D2) by vob name, nullopt if there is none.
+    [[nodiscard]] std::optional<MoverInfo> moverInfo(std::string_view name) const;
     /// Shader programs (with hot-reload), or nullptr without rendering.
     [[nodiscard]] render::ShaderLibrary* shaders() noexcept { return m_shaders.get(); }
     /// The game window, or nullptr when headless / before init().
@@ -677,6 +727,8 @@ public:
     void detachFromPlayer(std::string_view socket);
     /// World transform of a socket in the pose of the last fixed step (nullopt: no figure or socket).
     [[nodiscard]] std::optional<Mat4> playerSocketTransform(std::string_view socket) const;
+    /// World transform of the model held at a socket, its attachment offset included (nullopt: none held).
+    [[nodiscard]] std::optional<Mat4> playerAttachmentTransform(std::string_view socket) const;
     /// The hero's head turns towards this world point (within limits); nullopt: straight ahead.
     void setPlayerLookTarget(std::optional<Vec3> target);
     /// Face: "angry", "friendly", "fear", "pain", "sleep" or "" (neutral); false for an unknown name.
@@ -849,6 +901,9 @@ public:
     [[nodiscard]] DiaryData diaryData() const;
     /// The UI language (`[ui] language`: "de", "en").
     [[nodiscard]] std::string language() const;
+    /// The credits screen's text (release.md decision 10): licenses.toml and THIRD_PARTY_NOTICES.txt of the
+    /// package, in development those of the repository.
+    [[nodiscard]] std::string creditsText() const;
     /// A content text of the scripts (German inline, E2) in the UI language: its translation from
     /// text/script.<language>.json, else the German text (M14 part G).
     [[nodiscard]] std::string contentText(std::string_view german) const;
@@ -967,7 +1022,8 @@ private:
     void syncPhysics();
     // Player (EnginePlayer.cpp)
     void initPlayer();
-    void spawnPlayer();
+    /// On the start point `start` (empty: the configured one, else the first).
+    void spawnPlayer(std::string_view start = {});
     void removePlayer();
     void refreshMovementSettings();
     void updatePlayerInput(bool allowMouse, bool allowKeyboard);
@@ -987,7 +1043,10 @@ private:
     void playerAnimationUi();
     [[nodiscard]] Mat4 playerFigureTransform() const;
     void preparePlayerPose(f32 alpha);
-    [[nodiscard]] Result<asset::SkinnedModelData> assembleFigureParts(const asset::FigureManifest& manifest);
+    /// `keep`: receives the handles of the parts (the figure holds them, so the cache keeps them).
+    [[nodiscard]] Result<asset::SkinnedModelData>
+    assembleFigureParts(const asset::FigureManifest& manifest,
+                        std::vector<asset::Handle<asset::SkinnedModelData>>* keep = nullptr);
     [[nodiscard]] Result<void> uploadFigure(AnimatedFigure& figure, const asset::SkinnedModelData& data);
     using FigureGraphCallback =
         std::function<void(const animation::AnimGraph&, std::span<const asset::AnimationSetData* const>)>;
@@ -1159,6 +1218,15 @@ private:
         f32 doorFrom = 0.0f;
         f32 doorTo = 0.0f;
         f32 doorTime = -1.0f; ///< 0..1 while swinging, -1: still
+        // Switches (dungeon D3, types lever and wall_button): `open` is a lever's position.
+        std::vector<std::string> targets;
+        std::string action;
+        bool once = false;   ///< a button that works one time
+        bool hidden = false; ///< focus from close by, a loose stone until found
+        bool found = false;  ///< a hidden one was used once
+        bool spent = false;  ///< a once-button was pressed
+        bool noPick = false; ///< dungeon D5: only the key opens it
+        std::string oneWay;  ///< dungeon D5: "front"/"back", the side a door opens from
     };
     struct MobUse
     {
@@ -1216,6 +1284,84 @@ private:
     void finishTelekinesis(); ///< a save meanwhile: it lands at once
     void placeTelekinesisItem();
     void bindTelekinesisFunctions();
+    // Event net (EngineEvents.cpp, dungeon D1)
+    void bindEventFunctions();
+    /// Fills the event net from the world's triggers and relays (after the mobs); warns about cycles and
+    /// targets that name no vob.
+    void rebuildEventNet();
+    /// A trigger was entered: its action to its targets.
+    void triggerTargets(const world::Vob& vob, const world::TriggerVolume& volume);
+    /// An event for a vob that is no relay: doors, movers, the Mob's on_event, Lua dungeon_event.
+    void deliverEvent(const world::NetEvent& event);
+    // Moving parts (EngineMovers.cpp, dungeon D2)
+    struct MoverRuntime
+    {
+        std::string name;
+        world::Mover mover;
+        Transform closed;          ///< local transform as loaded (the closed pose)
+        world::MoverMotion motion; ///< from the model's bounds and the file
+        world::MoverCourse course;
+        AABB modelBounds;    ///< model space; empty (min > max) without a model
+        bool blocks = false; ///< blocks waynet edges now
+        u32 crushes = 0;
+        std::optional<std::vector<std::pair<u32, u32>>> edges; ///< waynet edges through it, worked out once
+    };
+    /// After the mobs: every vob with components.mover; a rebuild (editor) keeps where they stand.
+    void rebuildMovers();
+    void fixedUpdateMovers(f32 seconds);
+    /// Sets the mover going to open or closed (sound_move); no-op when it goes there already.
+    void moveMover(u64 id, MoverRuntime& m, bool open);
+    void bindMoverFunctions();
+    /// Puts the mover at its course's pose: scene, drawing, collision.
+    void placeMover(u64 id, const MoverRuntime& m);
+    /// The local transform of vob `id` changed: its instances and its collision follow (doors, movers).
+    void placeVob(u64 id, entt::entity e, const Transform& local);
+    /// The waynet's blocked edges from every mover that blocks now.
+    void updateMoverBlocks();
+    /// An event for a mover: true if `target` is one.
+    bool moverEvent(const world::NetEvent& event);
+    /// Movers are written closed, not where they stand; `withState`: with where they go as
+    /// components.mover.open (the editor saves the world), else as in the file (a save game keeps them in
+    /// WorldState.movers).
+    void storeMovers(world::WorldFile& file, bool withState) const;
+    // Switches and plates (EngineSwitches.cpp, dungeon D3)
+    /// A lever or wall button was used (the clip's moment): its action (a lever thrown back: the opposite) to
+    /// its targets; a spent once-button only says so.
+    void useSwitch(world::VobId vob, MobRuntime& m);
+    struct PlateRuntime
+    {
+        bool pressed = false;
+    };
+    /// Every trigger with a plate; a rebuild keeps whether they are pressed, the next step settles it
+    /// quietly.
+    void rebuildPlates();
+    /// Pressed while the hero, a creature or (weight any) an item is in it; a change sends to the targets.
+    void fixedUpdatePlates();
+    void bindSwitchFunctions();
+    // Teleporters and falls (EngineTeleport.cpp, dungeon D4)
+    struct TeleportRuntime
+    {
+        bool active = true;
+        std::set<u32> inside;      ///< creatures in it (they go only when they enter)
+        std::set<u64> itemsInside; ///< items in it
+        std::optional<u32> effect; ///< the column of a visible one
+        bool primed = false;       ///< false: the next step takes who is in it without sending them
+    };
+    /// Every trigger with a teleport; a rebuild keeps them on or off.
+    void rebuildTeleports();
+    /// The hero entered a teleporter (trigger callback): he goes at the next step (after the triggers).
+    void heroEnteredTeleport(const world::Vob& vob, const world::Teleport& teleport);
+    void performHeroTeleport(); ///< after the trigger update: moves him, primes the triggers
+    /// Creatures and items entering teleporters; the screen fade.
+    void fixedUpdateTeleports(f32 seconds);
+    /// Where `teleport` puts someone in this world (the target vob's feet and yaw), nullopt if it has none.
+    [[nodiscard]] std::optional<std::pair<Vec3, f32>> teleportTarget(const world::Teleport& teleport) const;
+    void updateTeleportEffect(u64 id, TeleportRuntime& t);
+    bool teleportEvent(const world::NetEvent& event); ///< on/off/toggle/trigger: true if it is a teleporter
+    void moveWorldItem(world::VobId vob, const Vec3& at);
+    void bindTeleportFunctions();
+    /// A trap's harm (a gate marked crush = "damage"): hit points off, no protection; as a blow otherwise.
+    void trapHit(u32 targetId, i32 damage, std::string_view source);
     /// A spell's harm on a creature or the hero (fire bolt, area): its damage minus protection, min 5 (as
     /// R3).
     /// `burn`: it sets the target burning (decision B); `reaction`: the target staggers (not for burning).
@@ -1456,6 +1602,8 @@ private:
     void approachMob(f32 seconds);
     void fixedUpdateMobs(f32 seconds);
     void swingDoors(f32 seconds);
+    /// Starts a door swinging open or shut (the hero's use, events).
+    static void swingDoor(MobRuntime& m, bool open);
     // Using items, pickpocketing (EngineUse.cpp)
     struct ItemUse
     {
@@ -1543,6 +1691,11 @@ private:
     void rebuildWaterSurfaces();
     void drawWater();
     void cullInstances(const Frustum& view); // fills m_drawItems (multi-draw) or draws them right away
+    /// Finds the rooms holding each instance when needed and which rooms are far this frame
+    /// (indoor_cull_distance).
+    void updateRoomCulling(bool cameraInside);
+    /// True if this frame leaves the instance out: furniture of rooms all beyond indoor_cull_distance.
+    [[nodiscard]] bool hiddenInRoom(const SceneInstance& instance) const noexcept;
     void updateUnderwater();
     void drawScene(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
@@ -1772,6 +1925,7 @@ private:
     f32 m_fogBaseDensity = 0.0f;     // [render] fog_density; the curves scale it
     bool m_sunEnabled = true;        // debug: sun and moon light off
     world::TriggerSystem m_triggers; // fed with the camera until the player exists (M5)
+    world::EventNet m_events;        // dungeon D1: triggers -> relays -> doors, Lua
     std::string m_worldPath;
     world::WorldFile m_worldFile; // the loaded world without its vobs (terrain, waynet ... for capturing)
     std::map<std::string, save::WorldState>
@@ -1780,6 +1934,7 @@ private:
     {
         std::string world;
         std::string start;
+        std::optional<Vec3> fall; ///< dungeon D4: arrives falling with this velocity, unhurt
     };
     std::optional<PendingWorldChange> m_pendingWorldChange;
     std::vector<EngineTool*> m_tools;
@@ -1808,7 +1963,14 @@ private:
     render::CullSettings m_cullSettings;
     render::CullSettings m_frameCull; // this frame's: m_cullSettings, indoors with indoor_view_distance (E2)
     f32 m_indoorViewDistance = 30.0f; // [render] indoor_view_distance, 0 = off
-    f32 m_indoorShadowDistance = 12.0f;     // [render] indoor_shadow_distance
+    f32 m_indoorShadowDistance = 12.0f;      // [render] indoor_shadow_distance
+    f32 m_indoorCullDistance = 12.0f;        // [render] indoor_cull_distance, 0 = off
+    std::vector<u32> m_instanceRooms;        // SceneInstance::roomFirst/roomCount: indices into indoorRooms()
+    u64 m_instanceRoomsGeneration = ~u64{0}; // indoorRooms() generation they were found for
+    bool m_cullRooms = false;                // this frame: furniture of far rooms is left out
+    std::vector<u8> m_roomFar; // this frame: per indoorRooms() box, 1 = beyond indoor_cull_distance
+    u32 m_culledIndoor = 0;
+    u32 m_culledIndoorShadow = 0;
     render::CullSettings m_frameShadowCull; // this frame's shadow casters (indoors nearer still)
     render::LodSettings m_lodSettings;
     std::array<u32, 3> m_lodCounts{}; // instances drawn per level of detail in the last main pass
@@ -2053,7 +2215,27 @@ private:
     void storeDoors(world::WorldFile& file) const; // doors closed in the file, components.mob.open
     std::optional<MobUse> m_mobUse;
     std::vector<std::string> m_mobEvents;         // "open"/"close" of the hero's figure this step
-    std::unordered_map<u64, MobBody> m_mobBodies; // collision of mob vobs (doors turn theirs)
+    std::unordered_map<u64, MobBody> m_mobBodies; // collision of mob and mover vobs (doors turn theirs)
+    std::map<u64, MoverRuntime> m_movers;         // dungeon D2, by vob id (in order: deterministic)
+    std::map<u64, PlateRuntime> m_plates;         // dungeon D3, by trigger vob id
+    bool m_platesPrimed = false;                  // false: the next plate step takes the weight quietly
+    std::map<u64, TeleportRuntime> m_teleports;   // dungeon D4, by trigger vob id
+    struct PendingTeleport
+    {
+        std::string source; ///< the teleporter's name
+        Vec3 feet{0.0f};
+        f32 yaw = 0.0f;
+    };
+    std::optional<PendingTeleport> m_pendingTeleport;
+    struct ScreenFade
+    {
+        Vec3 colour{1.0f};
+        f32 seconds = 0.0f; ///< left
+        f32 total = 0.0f;
+    };
+    ScreenFade m_screenFade;               // D4: white after a teleport, black after a fall or a level change
+    std::optional<Vec3> m_arrivalVelocity; // D4: a fall through a trapdoor goes on in the world below
+    bool m_fallUnhurt = false;             // D4: the next landing costs nothing (owner decision, question 6)
     std::optional<ItemUse> m_itemUse;
     std::optional<Document> m_document;
     std::optional<PendingPickpocket> m_pickpocket;
@@ -2086,6 +2268,9 @@ private:
         m_frameLights; // this frame's: effects first, then the nearest visible (selectFrameLights)
     std::vector<render::PointLight>
         m_daylightLights; // window lights (components.light.daylight), as in the file
+    mutable std::vector<render::IndoorVolume> m_indoorRooms; // indoorRooms(): boxes with their ambient factor
+    mutable bool m_indoorRoomsDirty = true;
+    mutable u64 m_indoorRoomsGeneration = 0; // counts the rebuilds of m_indoorRooms
     render::ParticleSystem m_particles;
     std::optional<audio::AudioSystem> m_audio; // M13: absent when switched off ([audio] enabled = false)
     audio::SoundDefs m_soundDefs;              // data/sounds.toml

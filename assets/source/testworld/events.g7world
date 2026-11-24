@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "name": "events",
+  "nextVobId": 8,
+  "staticMeshes": [],
+  "vobs": [
+    {"id":1,"type":"start","name":"START_EREIGNISSE","pos":[0.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0]},
+    {"id":2,"type":"mob","name":"EVT_TOR","pos":[6.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/door.glb","components":{"mob":{"definition":"door"}}},
+    {"id":3,"type":"mob","name":"EVT_TUER_ZU","pos":[9.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"mesh":"mobs/door.glb","components":{"mob":{"definition":"mob_camp_door_locked"}}},
+    {"id":4,"type":"trigger","name":"TRG_PLATTE_A","pos":[0.0,1.0,8.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[1.0,1.0,1.0],"filter":"player","once":false,"targets":["RELAY_TOR"],"action":"on"}}},
+    {"id":5,"type":"trigger","name":"TRG_PLATTE_B","pos":[0.0,1.0,-8.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[1.0,1.0,1.0],"filter":"player","once":false,"targets":["RELAY_TOR"],"action":"on"}}},
+    {"id":6,"type":"relay","name":"RELAY_TOR","pos":[3.0,0.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"relay":{"mode":"all","delay":0.0,"once":false,"invert":false,"targets":["EVT_TOR","EVT_HALLE"],"action":"open"}}},
+    {"id":7,"type":"trigger","name":"TRG_RIEGEL","pos":[-8.0,1.0,0.0],"rot":[0.0,0.0,0.0,1.0],"components":{"trigger":{"shape":"box","halfExtents":[1.0,1.0,1.0],"filter":"player","once":true,"targets":["EVT_TUER_ZU"],"action":"unlock"}}}
+  ]
+}

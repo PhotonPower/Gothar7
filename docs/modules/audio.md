@@ -62,6 +62,7 @@
   - Das Ambiente von draußen läuft gedämpft weiter, mit 30 % Lautstärke und Tiefpass 0,8.
   - Eine ambient-Box, die kleiner ist als der Raum, geht vor: `schmiede_esse` (Feuer, Amboss), `gasthaus_stube` (Gemurmel, Krüge).
 - **Leonberg** (welts Namen): `feld` (Vorgabe), `stadt_gasse`, `stadt_markt`, `schlossgarten`, `ufer`, `wald`, `brunnen`, `stadtmauer`, dazu die Räume oben.
+- **Dungeon** (welt #458): `gewoelbe` – Raumrauschen, Tropfen (`water_drip`), selten ein Knarren; Tag und Nacht gleich.
   - Neue Platzhalter-Schleifen (4 s): `amb_field`, `amb_town`, `amb_market`, `amb_water`, `amb_fountain`, `amb_fire`, `amb_tavern`, `amb_room`.
   - Neue Einzelklänge: `crow`, `dog_bark`, `wood_creak`, `mug_clink`, `frog`.
 - **Spruch-Klänge:** `Spell`-Feld `sounds = { cast, impact }`; das Wirken klingt an der Hand, der Einschlag am Treffpunkt.
@@ -160,7 +161,8 @@ Entscheidungen Projektinhaber 4 und 5 sowie zu (a)–(c) vom 2026-10-08.
   `music_force(theme?, state?)` (zum Testen), Ereignis `music_changed(theme, state)`. Lautstärke über den Bus `music`
   aus engine.toml.
 - **Platzhalter** (Projektinhaber 2): `gothar-audio music` (tools/audio).
-  - Themen: LAGER (96 BPM, D-Dur-Pentatonik, gezupft) und STADT (120 BPM), jeweils Tag und Nacht.
+  - Themen: LAGER (96 BPM, D-Dur-Pentatonik, gezupft) und STADT (120 BPM), jeweils Tag und Nacht; DUNGEON (80 BPM,
+    tiefer d-Moll-Bordun mit fernen Zupfern und Echo, Tag und Nacht gleich) für den Dungeon unter dem Schloss.
   - `common`: Bedrohung (80 BPM, d-Moll-Bordun mit Herzschlag) und Kampf (150 BPM, Trommeln und Riff).
   - Dazu vier Stinger; zusammen 2,6 MB WAV unter `assets/source/music/`.
   - Die Tempi legen jeden Takt auf ganze Frames bei 22,05 und 48 kHz. Nachklänge laufen an den Anfang um, deshalb
