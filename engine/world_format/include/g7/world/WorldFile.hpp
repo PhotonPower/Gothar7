@@ -95,6 +95,9 @@ struct Zone
     std::optional<ZoneBox> box; ///< indoor, music, ambient and fog zones (several boxes may share a value)
     std::string json;           ///< other types: the entry as it was (written back unchanged)
     std::optional<ZoneFog> fog; ///< fog zones (dungeon D7b)
+    /// Indoor zones only: how much daylight reaches the room, 0..1 - the factor on the ambient inside its box
+    /// (world.md "Zonen"); nullopt: derived (indoorDaylight).
+    std::optional<f32> daylight;
     friend bool operator==(const Zone&, const Zone&) = default;
 };
 
@@ -147,6 +150,13 @@ struct WorldFile
 /// The fog zone that counts at `point` and how much (dungeon D7b): inside a box 1 (nested: the smallest),
 /// else the nearest whose fade reaches it, 1 at its box fading to 0 at `fade` metres; null if none.
 [[nodiscard]] const Zone* fogZoneAt(std::span<const Zone> zones, const Vec3& point, f32& weight) noexcept;
+/// Window lights within this distance of a room's box count as in the room (they sit in the window opening).
+inline constexpr f32 kWindowLightTolerance = 0.15f;
+/// The ambient factor of each zone (world.md "Zonen", same order; 1 for other types): an indoor zone's
+/// `daylight`, else `windowed` when a daylight light (`windowLights`) lies in a box of the same room (same
+/// value, kWindowLightTolerance), else `windowless`.
+[[nodiscard]] std::vector<f32> indoorDaylight(std::span<const Zone> zones, std::span<const Vec3> windowLights,
+                                              f32 windowed, f32 windowless);
 /// Checks one zone as reading does (known types need a value and a box with positive half extents); `where`
 /// names it in the message ("zones[3]").
 [[nodiscard]] Result<void> checkZone(const Zone& zone, std::string_view where);

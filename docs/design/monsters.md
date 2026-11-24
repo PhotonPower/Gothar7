@@ -91,3 +91,74 @@ Lebenspunkten rasend. Quest-Boss (verschollene Jäger, Kopfgeld der Stadt). Trop
   zweite Phase ein, danach spielt engine die normalen Clips mit Rate ~1,3; `t_stagger` nach schwerem Treffer bzw.
   pariertem Prankenhieb.
 - **Technik:** lod0 11096 Dreiecke (Boss-Budget bis 12 k), Beschreibung `data/monsters/bergleu.creature.toml`.
+
+## Dungeon-Arten (Auswahl des Projektinhabers 2026-11-23)
+
+Für das Dungeon unter dem Schloss (#421 welt, #422 engine). Vorschläge mit Konzept-Blockouts von `figuren`
+(`C:\GotharData\review\dungeon-monster-vorschlag\`); der Projektinhaber hat **alle sechs Arten und den Boss**
+ausgewählt. Keine Untoten. Der Beinhauswart ist lebend; der Mauerschlupfer darf glänzende Gegenstände stehlen
+(Verhalten baut engine). Die Kellermutter braucht einen Hort mit mindestens 4 m Raumhöhe (welt).
+
+| Art (ID) | Ebene | Rolle | Größe | Skelett |
+|---|---|---|---|---|
+| **Mauerkriecher** (`mauerkriecher`) | 1–3 | Rudel aus 3–6, Brut der Kellermutter; rollt sich ein | 1,0 m lang | Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5), 3 Beinpaare |
+| **Gatterbock** (`gatterbock`) | 2, 5 | Steinwächter der Erbauer; steht als Statue am Gatter und erwacht; stumpfe Waffen wirken | 2,5 m | Menschen-Referenzrig, größer |
+| **Brunnenmolch** (`brunnenmolch`) | 3, 7 | blinder Riesen-Höhlenmolch; schnappt aus dem Wasser, hört statt zu sehen | 2,6 m lang | neues Echsen-Rig |
+| **Beinhauswart** (`beinhauswart`) | 4 | lebender Totengräber mit Spaten und grüner Laterne; die Laterne blendet | 2,0 m | Menschen-Referenzrig + Tuch |
+| **Mauerschlupfer** (`mauerschlupfer`) | 4–6 | springt aus Nischen, beißt, stiehlt Glänzendes, flieht | 1,2 m lang | vom Schinder-Rig abgeleitet |
+| **Kristallkrebs** (`kristallkrebs`) | 7 | leuchtende Kristalle, Scheren halten fest, wirft Magie teils zurück | 1,8 m breit | Gliederfüßer-Bauplan, 4 Beinpaare + Scheren |
+| **Kellermutter** (`kellermutter`), Boss | 8 | Stammmutter der Kriecher; Sensenarme, Kriecher-Wellen, Schwachstelle am Brutsack, drei Phasen | 5,5 m lang, 2,4 m hoch | Gliederfüßer-Bauplan, groß (Boss-Budget bis 12 k) |
+
+Reihenfolge des Baus (figuren):
+1. Gatterbock und Beinhauswart (Menschen-Rig, ohne neuen Vertrag)
+2. Mauerschlupfer
+3. nach der Abstimmung von §7.5: Mauerkriecher, Kristallkrebs, Kellermutter
+4. Brunnenmolch (neues Echsen-Rig, eigener Vertragsvorschlag)
+
+Je Art ein PR.
+
+### Gatterbock (gebaut 2026-11-23)
+Steinwächter der Erbauer, 2,5 m: Rumpf und Glieder aus ungleichen, verwitterten Sandsteinquadern auf einem dunklen Eisengerüst, von
+Eisenbändern gehalten, Fäuste und Füße aus Eisen, gebogene Eisenhörner, zwei Glutaugen unter der Stirn.
+- **Verhalten (für engine):** steht als Statue neben einem Gatter (`s_dormant`, `zs_dormant`) und erwacht (`t_wake`),
+  wenn das Gatter geöffnet oder die Platte betreten wird; langsam (Gehen 0,9, Trab 2,2 m/s – man kann ihm davonlaufen),
+  wuchtig: `t_attack_1` schmettert beide Fäuste vorn nieder (umwerfen), `t_attack_2` ist eine Rückhand von links nach
+  rechts. Klingen prallen ab, stumpfe Waffen und Magie wirken (Werte in Lua).
+- **Technik:** menschenähnliches Rig (25 Knochen, `characters-pipeline.md` §7.1), Steinblöcke als starre Platten an
+  ihren Knochen (er knickt nur in den Gelenken wie eine gegliederte Statue). v2 (Projektinhaber 2026-11-23): Blöcke
+  ungleich groß, behauen und verwittert (gefaste, abgeschlagene Kanten, Risse, Moos und Schmutz in den Fugen),
+  Eisen rostig; lod0 6288 Dreiecke; Beschreibung `data/monsters/gatterbock.creature.toml`.
+
+### Mauerkriecher (gebaut 2026-11-23)
+Asselartiger Kriecher, so lang wie ein großer Hund (1,0 m ohne Fühler, 0,29 m hoch): flacher, gewölbter Panzer aus
+überlappenden dunklen Ringplatten, blasse Unterseite, kurze Beißzangen, lange Fühler, sechs dünne Beine.
+- **Verhalten (für engine):** sitzt flach in Ritzen (`s_dormant`, `zs_dormant`) und kommt bei Licht und Lärm heraus
+  (`t_emerge`, Event `emerge`; `t_wake`); greift im Rudel von mehreren Seiten an (`t_attack_1` Zangenbiss,
+  `t_attack_2` Stoß von oben), rollt sich bei schweren Treffern ein (`t_curl` → `s_curled` → `t_uncurl`: der Panzer
+  schützt von oben, der Bauch ist weich). Gehen 1,2, Laufen 5,0 m/s.
+- **Technik:** Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5), 34 Knochen; Ringplatten als starre Platten an
+  `spine_01`, `pelvis` und `abdomen_01..04`; lod0 5432 Dreiecke; Beschreibung
+  `data/monsters/mauerkriecher.creature.toml`.
+
+### Kristallkrebs (gebaut 2026-11-23)
+Großer Höhlenkrebs, 1,9 m über die Beine: dunkler Schieferpanzer, auf dem Rücken hellblaue Kristalle, die im Dunkeln
+leuchten (Licht am Socket `socket_glow`; es verrät ihn), zwei große Scheren, acht Beine, Augen auf Stielen.
+- **Verhalten (für engine):** liegt zwischen den Kristallen der Grotte (`s_dormant`, `zs_dormant`); läuft seitwärts
+  (`move_axis = "x"`, 0,8 / 2,5 m/s; engine dreht den Körper quer zur Laufrichtung). Kneift (`t_attack_1`,
+  `t_attack_2`) und hält fest (`t_grab`: `grab` … `release`, der Held ist kurz bewegungsunfähig); bei Magie flammen
+  die Kristalle auf und werfen einen Teil des Zaubers zurück (`t_reflect`, Event `reflect`); stumpfe Waffen
+  splittern die Kristalle (Beute, Werte in Lua).
+- **Technik:** Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5), 49 Knochen; Kapsel quer; lod0 6896 Dreiecke;
+  Beschreibung `data/monsters/kristallkrebs.creature.toml`.
+
+### Mauerschlupfer (gebaut 2026-11-23)
+Kahles, blasses Tier mit überlangen dünnen Gliedern, 1,2 m von der Nase bis zur Schwanzspitze: große
+Fledermausohren, blinde milchige Augen, schmaler Kopf mit gelben Nagezähnen, knotige Wirbelsäule unter der Haut,
+dünner Peitschenschwanz.
+- **Verhalten (für engine):** liegt eingerollt in einer Mauernische (`s_dormant`, `zs_dormant`); wird die Nische
+  durchsucht, springt er heraus (`t_wake`, am Ort, `leap_start`/`leap_land`), beißt (`t_attack_1`) oder reißt mit der
+  Kralle (`t_attack_2`), schnappt sich etwas Glänzendes (`t_steal`, Event `steal`; das Teil trägt er am
+  `socket_mouth`) und flieht in den nächsten Spalt (Lauf 6,0 m/s). Stirbt er, fällt das Gestohlene wieder heraus.
+  Blind: hört statt zu sehen (große Ohren). Schreckmoment und Falle, kein Dauergegner.
+- **Technik:** Rig vom Schinder abgeleitet (28 Knochen, längere Glieder, fünf Schwanzknochen); lod0 7014 Dreiecke;
+  Beschreibung `data/monsters/mauerschlupfer.creature.toml`.

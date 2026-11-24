@@ -405,6 +405,74 @@ TEST_CASE("WorldFile: indoor zones - turned boxes read, checked, written one per
     fails(R"({"type":"ambient","box":{"center":[0,0,0],"halfExtents":[1,1,1]}})", "ambience");
 }
 
+TEST_CASE("WorldFile: daylight of indoor zones - optional 0..1 after the box, derived from window lights")
+{
+    WorldFile world = parse(kCamp);
+    const std::string base = writeWorldFile(world);
+    const auto at = base.find("\"zones\":");
+    REQUIRE(at != std::string::npos);
+    const auto end = base.find("\n}", at);
+    const auto withZones = [&](const std::string& zones)
+    { return base.substr(0, at) + "\"zones\": [" + zones + "]" + base.substr(end); };
+    const std::string cellar =
+        R"({"type":"indoor","value":"LEO_SCHLOSS_WEINKELLER","box":{"center":[0.0,-3.0,0.0],"halfExtents":[4.0,1.5,6.0],"yaw":0.0},"daylight":0.02})";
+    const std::string hall =
+        R"({"type":"indoor","value":"LEO_SCHLOSS_HALLE","box":{"center":[20.0,1.5,0.0],"halfExtents":[5.0,1.5,5.0],"yaw":90.0}})";
+    const WorldFile read = parse(withZones(cellar + "," + hall));
+    REQUIRE(read.zones.size() == 2);
+    REQUIRE(read.zones[0].daylight.has_value());
+    CHECK(*read.zones[0].daylight == doctest::Approx(0.02f));
+    CHECK_FALSE(read.zones[1].daylight.has_value());
+    const std::string written = writeWorldFile(read);
+    CHECK(written.find(cellar) != std::string::npos); // after the box, only when set
+    CHECK(written.find(hall) != std::string::npos);
+    CHECK(writeWorldFile(parse(written)) == written);
+
+    const auto fails = [&](const std::string& zone, const char* expected)
+    {
+        auto r = parseWorldFile(withZones(zone), "w.g7world");
+        REQUIRE_FALSE(r.ok());
+        CHECK_MESSAGE(r.error().message.find(expected) != std::string::npos, r.error().message);
+    };
+    fails(R"({"type":"indoor","value":"R","box":{"center":[0,0,0],"halfExtents":[1,1,1]},"daylight":1.5})",
+          "zones[0].daylight: must be 0..1");
+    fails(R"({"type":"indoor","value":"R","box":{"center":[0,0,0],"halfExtents":[1,1,1]},"daylight":"hell"})",
+          "daylight");
+    fails(R"({"type":"music","value":"LAGER","box":{"center":[0,0,0],"halfExtents":[1,1,1]},"daylight":0.5})",
+          "only indoor zones");
+    Zone bad = read.zones[0];
+    bad.daylight = -0.5f;
+    CHECK_FALSE(checkZone(bad, "zones[0]").ok());
+    CHECK(checkZone(read.zones[0], "zones[0]").ok());
+
+    // Derived: own daylight first; a window light in any box of the room (or in its window opening, 0.15 m)
+    // gives the whole room `windowed`, else `windowless`; other zone types 1.
+    std::vector<Zone> zones = read.zones;
+    Zone hallSouth = zones[1];
+    hallSouth.box->center = Vec3(20.0f, 1.5f, 12.0f); // a second box of the hall, without its own window
+    Zone kitchen = zones[1];
+    kitchen.value = "LEO_SCHLOSS_KUECHE";
+    kitchen.box->center = Vec3(40.0f, 1.5f, 0.0f);
+    Zone music;
+    music.type = "music";
+    music.value = "STADT";
+    music.box = ZoneBox{Vec3(0.0f), Vec3(100.0f), 0.0f};
+    zones.push_back(hallSouth);
+    zones.push_back(kitchen);
+    zones.push_back(music);
+    const Vec3 windows[] = {Vec3(20.0f, 2.0f, 5.1f),
+                            Vec3(0.0f, -3.0f, 0.0f)}; // hall window opening; one in the cellar
+    const std::vector<f32> f = indoorDaylight(zones, windows, 0.35f, 0.06f);
+    REQUIRE(f.size() == 5);
+    CHECK(f[0] == doctest::Approx(0.02f)); // its own value wins over the window light
+    CHECK(f[1] == doctest::Approx(0.35f));
+    CHECK(f[2] == doctest::Approx(0.35f)); // the same room
+    CHECK(f[3] == doctest::Approx(0.06f)); // no window
+    CHECK(f[4] == doctest::Approx(1.0f));
+    const Vec3 farWindow[] = {Vec3(20.0f, 2.0f, 5.3f)}; // beyond the tolerance: outside
+    CHECK(indoorDaylight(zones, farWindow, 0.35f, 0.06f)[1] == doctest::Approx(0.06f));
+}
+
 TEST_CASE("WorldFile: daylight lights - read, written after intensity and only when true")
 {
     const char* text =

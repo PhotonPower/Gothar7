@@ -7,6 +7,7 @@
 #include <g7/platform/CrashHandler.hpp>
 #include <g7/platform/GlContext.hpp>
 #include <g7/platform/Window.hpp>
+#include <g7/runtime/Credits.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/ui/GameScreens.hpp>
 #include <g7/ui/MenuScreens.hpp>
@@ -224,13 +225,9 @@ void Engine::openMenu(bool inGame)
             G7_LOG_WARN("engine", "a crash report is in {} (nothing was sent)",
                         fs::toUtf8(m_config.crashDirectory));
         }
-        // Decision 10: the credits of the package (CREDITS.txt next to the game; development builds have
-        // none).
-        std::error_code creditsError;
-        if (std::filesystem::exists(fs::baseDirectories().gameDir / "CREDITS.txt", creditsError))
-        {
-            entries.insert(entries.end() - 1, {"credits", "UI_MENU_CREDITS", true});
-        }
+        // Decision 10 (release.md): the credits - from assets/licenses.toml, in the package and in
+        // development.
+        entries.insert(entries.end() - 1, {"credits", "UI_MENU_CREDITS", true});
         if (m_crashNotice)
         {
             entries.insert(entries.end() - 1, {"crash_report", "UI_MENU_CRASH_REPORT", true});
@@ -289,9 +286,7 @@ void Engine::runMenuCommand()
     }
     else if (command == "credits")
     {
-        auto text = fs::readText(fs::baseDirectories().gameDir / "CREDITS.txt");
-        m_screens.push(std::make_unique<ui::DocumentScreen>(
-            uiText("UI_MENU_CREDITS"), text ? text.value() : text.error().message, [] {}));
+        m_screens.push(std::make_unique<ui::CreditsScreen>(uiText("UI_MENU_CREDITS"), creditsText()));
     }
     else if (command == "crash_report")
     {
@@ -374,6 +369,12 @@ std::vector<ui::OptionPage> Engine::optionPages() const
                  toggle("render.spell_distortion", "UI_OPT_SPELL_DISTORTION"),
                  choice("render.rain_quality", "UI_OPT_RAIN",
                         {{std::string("low"), UiText::key("UI_OPT_QUALITY_LOW")},
+                         {std::string("medium"), UiText::key("UI_OPT_QUALITY_MEDIUM")},
+                         {std::string("high"), UiText::key("UI_OPT_QUALITY_HIGH")}}),
+                 choice("render.grass", "UI_OPT_GRASS",
+                        {{std::string("auto"), UiText::key("UI_OPT_QUALITY_AUTO")},
+                         {std::string("off"), UiText::key("UI_OFF")},
+                         {std::string("low"), UiText::key("UI_OPT_QUALITY_LOW")},
                          {std::string("medium"), UiText::key("UI_OPT_QUALITY_MEDIUM")},
                          {std::string("high"), UiText::key("UI_OPT_QUALITY_HIGH")}}),
                  toggle("render.wind", "UI_OPT_WIND"), toggle("render.bloom", "UI_OPT_BLOOM"),
@@ -520,6 +521,10 @@ void Engine::applySetting(std::string_view key)
                         quality);
         }
         m_rainQuality = parsed.value_or(render::RainQuality::Medium);
+    }
+    else if (key == "render.grass")
+    {
+        applyGrassSetting(); // M17 G1
     }
     else if (key == "render.water_quality")
     {
@@ -668,5 +673,48 @@ void Engine::saveUserSettings()
     }
     G7_LOG_INFO("engine", "options saved to {}", fs::toUtf8(m_config.userConfig));
     m_changedSettings.clear();
+}
+
+std::string Engine::creditsText() const
+{
+    // The package has licenses.toml in LICENSES/ and THIRD_PARTY_NOTICES.txt next to the game; development
+    // builds read them from the repository.
+    const fs::Path game = fs::baseDirectories().gameDir;
+    std::vector<fs::Path> licences{game / "LICENSES" / "licenses.toml"};
+    std::vector<fs::Path> notices{game / "THIRD_PARTY_NOTICES.txt"};
+#ifdef G7_DEV_ASSET_ROOT
+    licences.push_back(fs::fromUtf8(G7_DEV_ASSET_ROOT) / "licenses.toml");
+    notices.push_back(fs::fromUtf8(G7_DEV_ASSET_ROOT) / ".." / "tools" / "release" /
+                      "THIRD_PARTY_NOTICES.txt");
+#endif
+    const auto first = [](const std::vector<fs::Path>& paths) -> Result<std::string>
+    {
+        for (const fs::Path& p : paths)
+        {
+            std::error_code ec;
+            if (std::filesystem::exists(p, ec))
+            {
+                return fs::readText(p);
+            }
+        }
+        return Error{std::format("{} not found", fs::toUtf8(paths.front()))};
+    };
+    const std::string footer = uiText("UI_CREDITS_GAME");
+    auto toml = first(licences);
+    if (!toml)
+    {
+        G7_LOG_WARN("engine", "credits: {}", toml.error().message);
+        return footer;
+    }
+    auto noticesText = first(notices);
+    auto data = parseCredits(toml.value(), noticesText ? noticesText.value() : std::string(), language());
+    if (!data)
+    {
+        G7_LOG_WARN("engine", "credits: {}", data.error().message);
+        return footer;
+    }
+    const CreditsHeadings headings{uiText("UI_CREDITS_REQUIRED"), uiText("UI_CREDITS_SOURCES"),
+                                   uiText("UI_CREDITS_THANKS"), uiText("UI_CREDITS_LIBRARIES")};
+    return footer + "\n\n" + creditsScreenText(data.value(), headings);
 }
 } // namespace g7

@@ -1,0 +1,278 @@
+# Set "mauerschlupfer" (lurker of the wall niches; monster contract, characters-pipeline.md §7)
+# -> monsters/mauerschlupfer/anims/mauerschlupfer.glb
+# Own creature (gothar-chargen creature mauerschlupfer, 2026-11-23): the clip source only holds
+# the still action "rest". Gaits are own cycles (gait), everything else keyframe placeholders.
+# Dungeon (#422): s_dormant lies curled up in a niche (`zs_dormant`), t_wake springs out of it
+# (in place, events leap_start/leap_land like the Glemsmahr); t_steal snatches a shiny item with the
+# mouth (event steal; behaviour: engine).
+#
+# Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches the head
+# down, opens the jaw, swings a leg back and lifts the tail, +Z turns left) and move root/pelvis.
+
+set = "mauerschlupfer"
+rig = "mauerschlupfer"
+
+[sources.src]
+file = "mauerschlupfer_clips.blend"
+mapping = "identity"
+
+[[clip]]
+name = "mauerschlupfer/s_rest"
+from = "src:rest"
+helper = true
+
+[[clip]]
+name = "mauerschlupfer/s_idle"     # crouched, the blind head swings, the big ears turn and listen
+keyframe = "keyposes"
+[clip.params]
+base = "mauerschlupfer/s_rest"
+keys = [[0, "stand"], [14, "listen_l"], [26, "stand"], [40, "listen_r"], [52, "sniff"], [60, "stand"]]
+[clip.params.poses.stand]
+rotate = { neck_01 = [["X", 4]], tail_01 = [["X", 6]] }
+[clip.params.poses.listen_l]
+rotate = { neck_01 = [["X", -6], ["Z", 22]], head = [["Z", 12]], ear_l = [["Z", 25]], ear_r = [["X", -15]], tail_01 = [["Z", -10]] }
+[clip.params.poses.listen_r]
+rotate = { neck_01 = [["X", -6], ["Z", -22]], head = [["Z", -12]], ear_r = [["Z", -25]], ear_l = [["X", -15]], tail_01 = [["Z", 10]] }
+[clip.params.poses.sniff]
+move = { pelvis = [0, 0, -0.01] }
+rotate = { neck_01 = [["X", 20]], head = [["X", 12]], jaw = [["X", 6]], tail_01 = [["X", 8]] }
+
+# --- locomotion (root moves forward: contract §7) ---
+
+[[clip]]
+name = "mauerschlupfer/s_walk"     # high-stepping, spidery creep on the long limbs
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 1.2
+period = 16
+duty = 0.625
+lift = 0.06
+crouch = 0.02
+bob = 0.01
+nod = { bone = "neck_01", degrees = 3.0, phase = 0.0 }
+tail = { bones = ["tail_01", "tail_02", "tail_03", "tail_04", "tail_05"], degrees = 6, lag = 0.08 }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 35 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -70 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 35 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -70 },
+]
+
+[[clip]]
+name = "mauerschlupfer/s_run"      # scuttling flight, low and fast, ears laid back
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 6.0
+period = 10
+duty = 0.3
+lift = 0.09
+crouch = 0.06
+bob = 0.02
+bob_cycles = 1
+pitch = 3.0
+flex = { bone = "spine_01", degrees = 8.0, phase = 0.25 }
+tail = { bones = ["tail_01", "tail_02", "tail_03", "tail_04", "tail_05"], degrees = 12, lag = 0.08 }
+pose = { neck_01 = [["X", 10]], head = [["X", -8]], ear_l = [["X", 40]], ear_r = [["X", 40]] }
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 35 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.6, curl = -70 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.1, curl = 35 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.5, curl = -70 },
+]
+
+[[clip]]
+name = "mauerschlupfer/s_step_inplace" # base of the turns
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 24
+duty = 0.7
+lift = 0.05
+crouch = 0.02
+legs = [
+    { upper = "back_upper_l", lower = "back_lower_l", foot = "back_foot_l", phase = 0.0, curl = 35 },
+    { upper = "front_upper_l", lower = "front_lower_l", foot = "front_foot_l", phase = 0.25, curl = -70 },
+    { upper = "back_upper_r", lower = "back_lower_r", foot = "back_foot_r", phase = 0.5, curl = 35 },
+    { upper = "front_upper_r", lower = "front_lower_r", foot = "front_foot_r", phase = 0.75, curl = -70 },
+]
+
+[[clip]]
+name = "mauerschlupfer/t_turn_l"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "mauerschlupfer/s_step_inplace"
+keys = [[0, "rest"], [24, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", 90]] }
+
+[[clip]]
+name = "mauerschlupfer/t_turn_r"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "mauerschlupfer/s_step_inplace"
+keys = [[0, "rest"], [24, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", -90]] }
+
+# --- combat ---
+
+[[clip]]
+name = "mauerschlupfer/t_attack_1" # darting bite with the gnawing teeth
+keyframe = "keyposes"
+markers = { hit_start = 10, hit_end = 14, "sound:mauerschlupfer_attack" = 6 }
+[clip.params]
+base = "mauerschlupfer/s_idle"
+keys = [[0, "rest"], [6, "crouch"], [10, "dart"], [13, "bite"], [24, "rest"]]
+[clip.params.poses.crouch]
+move = { pelvis = [0, 0.05, -0.05] }
+rotate = { spine_01 = [["X", 6]], neck_01 = [["X", 16]], head = [["X", -12]], ear_l = [["X", 35]], ear_r = [["X", 35]], tail_01 = [["X", 15]] }
+[clip.params.poses.dart]
+move = { pelvis = [0, -0.16, 0.02] }
+rotate = { spine_01 = [["X", -4]], neck_01 = [["X", -10]], head = [["X", -16]], jaw = [["X", 40]], front_upper_l = [["X", -35]], front_upper_r = [["X", -30]], ear_l = [["X", 40]], ear_r = [["X", 40]], tail_01 = [["X", -10]] }
+[clip.params.poses.bite]
+move = { pelvis = [0, -0.14, 0.0] }
+rotate = { neck_01 = [["X", 6]], head = [["X", 16]], jaw = [["X", 2]], front_upper_l = [["X", -20]], front_upper_r = [["X", -15]], ear_l = [["X", 40]], ear_r = [["X", 40]] }
+
+[[clip]]
+name = "mauerschlupfer/t_attack_2" # rears up and rakes down with a long-clawed front hand
+keyframe = "keyposes"
+markers = { hit_start = 12, hit_end = 16, "sound:mauerschlupfer_attack" = 8 }
+[clip.params]
+base = "mauerschlupfer/s_idle"
+keys = [[0, "rest"], [8, "rear"], [12, "rake"], [16, "down"], [28, "rest"]]
+[clip.params.poses.rear]
+move = { pelvis = [0, 0.04, 0.03] }
+rotate = { spine_01 = [["X", -14]], spine_02 = [["X", -8]], neck_01 = [["X", -6]], jaw = [["X", 25]], front_upper_r = [["X", -95]], front_lower_r = [["X", -40]], ear_l = [["X", 30]], ear_r = [["X", 30]], tail_01 = [["X", -12]] }
+[clip.params.poses.rake]
+move = { pelvis = [0, -0.06, 0.0] }
+rotate = { spine_01 = [["X", -4]], neck_01 = [["X", 4]], jaw = [["X", 25]], front_upper_r = [["X", -60]], front_lower_r = [["X", 10]], ear_l = [["X", 30]], ear_r = [["X", 30]] }
+[clip.params.poses.down]
+move = { pelvis = [0, -0.08, -0.02] }
+rotate = { spine_01 = [["X", 4]], neck_01 = [["X", 10]], jaw = [["X", 8]], front_upper_r = [["X", -15]], front_lower_r = [["X", 5]] }
+
+[[clip]]
+name = "mauerschlupfer/t_hit"
+markers = { "sound:mauerschlupfer_hit" = 1 }
+keyframe = "keyposes"
+[clip.params]
+base = "mauerschlupfer/s_idle"
+keys = [[0, "rest"], [4, "flinch"], [14, "rest"]]
+[clip.params.poses.flinch]
+move = { pelvis = [0, 0.07, 0.02] }
+rotate = { spine_01 = [["X", -8], ["Z", 8]], neck_01 = [["X", -20]], head = [["X", -15], ["Z", 10]], jaw = [["X", 25]], ear_l = [["X", 45]], ear_r = [["X", 45]], tail_01 = [["X", 25]] }
+
+[[clip]]
+name = "mauerschlupfer/t_die"      # squeals, collapses onto its side, limbs curl
+markers = { "sound:mauerschlupfer_die" = 2 }
+keyframe = "keyposes"
+[clip.params]
+keys = [[0, "rest"], [8, "stagger"], [20, "fallen"], [34, "curled"]]
+[clip.params.poses.stagger]
+move = { pelvis = [0, 0.03, -0.06] }
+rotate = { root = [["Y", 15]], neck_01 = [["X", 22]], head = [["X", 10]], jaw = [["X", 25]], back_upper_l = [["X", 15]], back_lower_l = [["X", -20]] }
+[clip.params.poses.fallen]
+move = { root = [0, 0, 0.10] }
+rotate = { root = [["Y", 88]], neck_01 = [["X", -5]], jaw = [["X", 20]], front_upper_l = [["X", -20]], front_upper_r = [["X", -30]], back_upper_l = [["X", 15]], back_upper_r = [["X", 25]], tail_01 = [["Z", -15]] }
+[clip.params.poses.curled]
+move = { root = [0, 0, 0.09] }
+rotate = { root = [["Y", 90]], neck_01 = [["X", 15]], head = [["X", 10]], jaw = [["X", 15]], ear_l = [["X", 30]], front_upper_l = [["X", -50]], front_upper_r = [["X", -60]], front_lower_l = [["X", -40]], front_lower_r = [["X", -40]], back_upper_l = [["X", -30]], back_upper_r = [["X", -20]], back_lower_l = [["X", 40]], back_lower_r = [["X", 40]], tail_01 = [["Z", -25]], tail_02 = [["Z", -20]] }
+
+# --- behaviour ---
+
+[[clip]]
+name = "mauerschlupfer/s_eat"      # gnaws at something held down with a front hand (loop)
+keyframe = "keyposes"
+[clip.params]
+base = "mauerschlupfer/s_idle"
+keys = [[0, "gnaw"], [10, "gnaw2"], [20, "gnaw"], [30, "gnaw2"], [45, "listen"], [60, "gnaw"]]
+[clip.params.poses.gnaw]
+move = { pelvis = [0, 0.02, -0.05] }
+rotate = { spine_02 = [["X", 8]], neck_01 = [["X", 40]], head = [["X", 20]], jaw = [["X", 14]], front_upper_l = [["X", -20]], ear_l = [["X", 15]], ear_r = [["X", 15]] }
+[clip.params.poses.gnaw2]
+move = { pelvis = [0, 0.02, -0.05] }
+rotate = { spine_02 = [["X", 8]], neck_01 = [["X", 42]], head = [["X", 24], ["Z", 6]], jaw = [["X", 2]], front_upper_l = [["X", -20]], ear_l = [["X", 15]], ear_r = [["X", 15]] }
+[clip.params.poses.listen]
+move = { pelvis = [0, 0.02, -0.04] }
+rotate = { spine_02 = [["X", 4]], neck_01 = [["X", 5], ["Z", 15]], head = [["Z", 8]], jaw = [["X", 4]], front_upper_l = [["X", -20]], ear_l = [["Z", 25]] }
+
+[[clip]]
+name = "mauerschlupfer/s_dormant"  # curled up in a wall niche (zs_dormant), ears folded, slow breathing
+keyframe = "keyposes"
+[clip.params]
+keys = [[0, "curl"], [30, "curl_in"], [60, "curl"]]
+[clip.params.poses.curl]
+move = { pelvis = [0, 0, -0.26] }
+rotate = { spine_01 = [["X", 12]], spine_02 = [["X", 10]], neck_01 = [["X", 15], ["Z", 30]], head = [["X", 20], ["Z", 20]], ear_l = [["X", 60]], ear_r = [["X", 60]], front_upper_l = [["X", -30]], front_upper_r = [["X", -30]], front_lower_l = [["X", 70]], front_lower_r = [["X", 70]], back_upper_l = [["X", -40]], back_upper_r = [["X", -40]], back_lower_l = [["X", 60]], back_lower_r = [["X", 60]], back_foot_l = [["X", -40]], back_foot_r = [["X", -40]], tail_01 = [["X", 35], ["Z", 40]], tail_02 = [["Z", 35]], tail_03 = [["Z", 30]], tail_04 = [["Z", 30]] }
+[clip.params.poses.curl_in]
+move = { pelvis = [0, 0, -0.255] }
+rotate = { spine_01 = [["X", 10]], spine_02 = [["X", 10]], neck_01 = [["X", 15], ["Z", 30]], head = [["X", 20], ["Z", 20]], ear_l = [["X", 60]], ear_r = [["X", 60]], front_upper_l = [["X", -30]], front_upper_r = [["X", -30]], front_lower_l = [["X", 70]], front_lower_r = [["X", 70]], back_upper_l = [["X", -40]], back_upper_r = [["X", -40]], back_lower_l = [["X", 60]], back_lower_r = [["X", 60]], back_foot_l = [["X", -40]], back_foot_r = [["X", -40]], tail_01 = [["X", 35], ["Z", 40]], tail_02 = [["Z", 35]], tail_03 = [["Z", 30]], tail_04 = [["Z", 30]] }
+
+[[clip]]
+name = "mauerschlupfer/s_sleep"    # the same curled pose (minimum set)
+keyframe = "keyposes"
+[clip.params]
+keys = [[0, "curl"], [30, "curl_in"], [60, "curl"]]
+[clip.params.poses.curl]
+move = { pelvis = [0, 0, -0.26] }
+rotate = { spine_01 = [["X", 12]], spine_02 = [["X", 10]], neck_01 = [["X", 15], ["Z", 30]], head = [["X", 20], ["Z", 20]], ear_l = [["X", 60]], ear_r = [["X", 60]], front_upper_l = [["X", -30]], front_upper_r = [["X", -30]], front_lower_l = [["X", 70]], front_lower_r = [["X", 70]], back_upper_l = [["X", -40]], back_upper_r = [["X", -40]], back_lower_l = [["X", 60]], back_lower_r = [["X", 60]], back_foot_l = [["X", -40]], back_foot_r = [["X", -40]], tail_01 = [["X", 35], ["Z", 40]], tail_02 = [["Z", 35]], tail_03 = [["Z", 30]], tail_04 = [["Z", 30]] }
+[clip.params.poses.curl_in]
+move = { pelvis = [0, 0, -0.255] }
+rotate = { spine_01 = [["X", 10]], spine_02 = [["X", 10]], neck_01 = [["X", 15], ["Z", 30]], head = [["X", 20], ["Z", 20]], ear_l = [["X", 60]], ear_r = [["X", 60]], front_upper_l = [["X", -30]], front_upper_r = [["X", -30]], front_lower_l = [["X", 70]], front_lower_r = [["X", 70]], back_upper_l = [["X", -40]], back_upper_r = [["X", -40]], back_lower_l = [["X", 60]], back_lower_r = [["X", 60]], back_foot_l = [["X", -40]], back_foot_r = [["X", -40]], tail_01 = [["X", 35], ["Z", 40]], tail_02 = [["Z", 35]], tail_03 = [["Z", 30]], tail_04 = [["Z", 30]] }
+
+[[clip]]
+name = "mauerschlupfer/t_wake"     # springs out of the niche: uncurls and leaps forward (in place)
+keyframe = "keyposes"
+markers = { leap_start = 8, leap_land = 18, "sound:mauerschlupfer_threaten" = 6 }
+[clip.params]
+keys = [[0, "curl"], [6, "coil"], [10, "leap"], [16, "air"], [20, "land"], [30, "rest"]]
+[clip.params.poses.curl]
+move = { pelvis = [0, 0, -0.26] }
+rotate = { spine_01 = [["X", 12]], spine_02 = [["X", 10]], neck_01 = [["X", 15], ["Z", 30]], head = [["X", 20], ["Z", 20]], ear_l = [["X", 60]], ear_r = [["X", 60]], front_upper_l = [["X", -30]], front_upper_r = [["X", -30]], front_lower_l = [["X", 70]], front_lower_r = [["X", 70]], back_upper_l = [["X", -40]], back_upper_r = [["X", -40]], back_lower_l = [["X", 60]], back_lower_r = [["X", 60]], back_foot_l = [["X", -40]], back_foot_r = [["X", -40]], tail_01 = [["X", 35], ["Z", 40]], tail_02 = [["Z", 35]], tail_03 = [["Z", 30]], tail_04 = [["Z", 30]] }
+[clip.params.poses.coil]
+move = { pelvis = [0, 0.06, -0.14] }
+rotate = { spine_01 = [["X", 10]], neck_01 = [["X", 10]], head = [["X", -10]], jaw = [["X", 30]], ear_l = [["X", -10]], ear_r = [["X", -10]], back_upper_l = [["X", -30]], back_upper_r = [["X", -30]], back_lower_l = [["X", 50]], back_lower_r = [["X", 50]], front_upper_l = [["X", -10]], front_upper_r = [["X", -10]], tail_01 = [["X", 20]] }
+[clip.params.poses.leap]
+move = { pelvis = [0, -0.10, 0.08] }
+rotate = { spine_01 = [["X", -10]], neck_01 = [["X", -10]], head = [["X", -10]], jaw = [["X", 40]], front_upper_l = [["X", -60]], front_upper_r = [["X", -60]], back_upper_l = [["X", 40]], back_upper_r = [["X", 40]], back_lower_l = [["X", -20]], back_lower_r = [["X", -20]], tail_01 = [["X", -20]] }
+[clip.params.poses.air]
+move = { pelvis = [0, -0.14, 0.12] }
+rotate = { spine_01 = [["X", -4]], jaw = [["X", 40]], front_upper_l = [["X", -50]], front_upper_r = [["X", -50]], back_upper_l = [["X", 30]], back_upper_r = [["X", 30]], ear_l = [["X", 40]], ear_r = [["X", 40]], tail_01 = [["X", -10]] }
+[clip.params.poses.land]
+move = { pelvis = [0, -0.06, -0.06] }
+rotate = { spine_01 = [["X", 6]], neck_01 = [["X", 10]], jaw = [["X", 20]], front_upper_l = [["X", -15]], front_upper_r = [["X", -15]], ear_l = [["X", 30]], ear_r = [["X", 30]] }
+
+[[clip]]
+name = "mauerschlupfer/t_threaten" # rears up on the hind legs, ears spread wide, hisses
+markers = { "sound:mauerschlupfer_threaten" = 8 }
+keyframe = "keyposes"
+[clip.params]
+base = "mauerschlupfer/s_idle"
+keys = [[0, "rest"], [10, "rear"], [16, "hiss"], [22, "rear"], [28, "hiss"], [42, "rest"]]
+[clip.params.poses.rear]
+move = { pelvis = [0, 0.04, 0.02] }
+rotate = { spine_01 = [["X", -16]], spine_02 = [["X", -10]], neck_01 = [["X", 8]], head = [["X", -10]], jaw = [["X", 30]], ear_l = [["Z", 25], ["X", -10]], ear_r = [["Z", -25], ["X", -10]], front_upper_l = [["X", -40]], front_upper_r = [["X", -40]], front_lower_l = [["X", -30]], front_lower_r = [["X", -30]], tail_01 = [["X", -20]] }
+[clip.params.poses.hiss]
+move = { pelvis = [0, 0.04, 0.02] }
+rotate = { spine_01 = [["X", -16]], spine_02 = [["X", -10]], neck_01 = [["X", 12]], head = [["X", -18]], jaw = [["X", 40]], ear_l = [["Z", 30], ["X", -15]], ear_r = [["Z", -30], ["X", -15]], front_upper_l = [["X", -45]], front_upper_r = [["X", -45]], front_lower_l = [["X", -35]], front_lower_r = [["X", -35]], tail_01 = [["X", -25]] }
+
+[[clip]]
+name = "mauerschlupfer/t_steal"    # snatches something shiny with the mouth and jerks back (event steal)
+keyframe = "keyposes"
+markers = { steal = 11, "sound:mauerschlupfer_attack" = 8 }
+[clip.params]
+base = "mauerschlupfer/s_idle"
+keys = [[0, "rest"], [6, "reach"], [11, "snatch"], [16, "jerk"], [26, "rest"]]
+[clip.params.poses.reach]
+move = { pelvis = [0, -0.10, -0.04] }
+rotate = { spine_01 = [["X", 4]], neck_01 = [["X", 25]], head = [["X", 8]], jaw = [["X", 30]], ear_l = [["X", 20]], ear_r = [["X", 20]] }
+[clip.params.poses.snatch]
+move = { pelvis = [0, -0.12, -0.05] }
+rotate = { spine_01 = [["X", 4]], neck_01 = [["X", 30]], head = [["X", 14]], jaw = [["X", 2]], ear_l = [["X", 20]], ear_r = [["X", 20]] }
+[clip.params.poses.jerk]
+move = { pelvis = [0, 0.06, 0.0] }
+rotate = { spine_01 = [["X", -4]], neck_01 = [["X", -10]], head = [["X", -6]], jaw = [["X", 2]], ear_l = [["X", 40]], ear_r = [["X", 40]], tail_01 = [["X", -15]] }

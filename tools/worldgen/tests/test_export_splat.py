@@ -17,8 +17,10 @@ from gothar_worldgen.export.splat import (
     SplatPaths,
     composite,
     encode_maps,
+    grass_mask,
     layer_masks,
     placeholder_albedo,
+    write_grass_mask,
     write_splat,
 )
 from gothar_worldgen.export.terrain import Grid, check_terrain_block, terrain_block
@@ -202,3 +204,54 @@ def test_rural_ways_field_mud_country_gravel() -> None:
     w = composite(layer_masks(GRID, [], streets, [], [], CORE), GRID.heights.shape)
     assert dominant(w, -25, -20) == MATSCH
     assert dominant(w, -25, 10) == KIES
+
+
+def test_grass_mask_from_land_use_ways_and_buildings(tmp_path: Path) -> None:
+    """M17 G2 (world.md "Grasmaske"): meadow full, edges of ways half, buildings/streets none."""
+    streets = [
+        {"highway": "residential", "widthM": 4.0, "points": [[-45, -20], [45, -20]]},
+        {"highway": "track", "rural": "feldweg", "widthM": 2.5, "points": [[-45, 20], [45, 20]]},
+        {"highway": "motorway", "widthM": 20.0, "points": [[-50, 28], [50, 28]]},  # skipped
+    ]
+    buildings = [{"footprint": [[-20, 0], [-10, 0], [-10, -8], [-20, -8]]}]
+    features = [
+        {"kind": "residential", "geometry": "polygon",
+         "polygon": [[0, -10], [40, -10], [40, 12], [0, 12]]},
+        {"kind": "garden", "geometry": "polygon",
+         "polygon": [[20, -5], [35, -5], [35, 8], [20, 8]]},
+        {"type": "wall", "kind": "wall", "geometry": "line", "points": [[-45, 8], [-25, 8]],
+         "tags": {"width": "0.8 m"}},
+    ]  # fmt: skip
+    m = grass_mask(GRID, buildings, streets, [], features)
+    assert m.shape == (GRID.height, GRID.width) and m.dtype == np.float32
+    assert m[px(-35, 0)] > 0.95  # open land
+    assert m[px(-15, -4)] < 0.05  # building
+    assert m[px(-30, -20)] < 0.15  # street (blurred like the splat; no meadow there anyway)
+    assert 0.3 < m[px(-30, -17)] < 0.6  # a metre beyond the edge: half
+    assert m[px(-35, 8)] < 0.5  # wall and its foot (the engine keeps grass off walls, too)
+    assert 0.4 < m[px(5, 0)] < 0.6  # built-up land use
+    assert m[px(28, 1)] > 0.95  # a garden in it
+    assert 0.2 < m[px(-30, 20)] < 0.6  # field way: grass between the ruts
+    assert m[px(0, 28)] > 0.95  # the motorway leaves no trace
+    write_grass_mask(m, tmp_path / "g.png")
+    data = (tmp_path / "g.png").read_bytes()
+    assert b"gAMA" not in data and b"sRGB" not in data
+    with Image.open(tmp_path / "g.png") as img:
+        assert (img.mode, img.size) == ("L", (101, 61))
+
+
+def test_grass_mask_formal_garden_gravel_none_lawn_full() -> None:
+    garden = {"gravel": [[[0, -20], [40, -20], [40, 0], [0, 0]]],
+              "lawn": [[[4, -16], [18, -16], [18, -4], [4, -4]]]}  # fmt: skip
+    m = grass_mask(GRID, [], [], [], [], [garden])
+    assert m[px(30, -10)] < 0.05 and m[px(11, -10)] > 0.95
+
+
+def test_grass_mask_built_up_land_only_inside_the_town() -> None:
+    from shapely.geometry import box
+
+    housing = {"kind": "residential", "geometry": "polygon",
+               "polygon": [[-40, -10], [40, -10], [40, 10], [-40, 10]]}  # fmt: skip
+    m = grass_mask(GRID, [], [], [], [housing], town=box(-50, -30, 0, 30))
+    assert 0.4 < m[px(-20, 0)] < 0.6  # inside the wall: yards
+    assert m[px(20, 0)] > 0.95  # outside: the hamlets left meadow

@@ -1,0 +1,295 @@
+# Creature "mauerkriecher" (F5, own work, dungeon 2026-11-23): a woodlouse-like crawler as long as
+# a big dog - a flat armour of overlapping ring plates, short pincers, long feelers, six legs.
+# 1.0 m long (without the feelers), 0.3 m high at the knees. Comes out of cracks in packs of
+# 3-6 and rolls itself up when hit hard. The brood of the Kellermutter.
+# Design: docs/design/monsters.md "Dungeon-Arten".
+# Arthropod plan (characters-pipeline §7.5): pelvis (middle of the forebody, carries the legs),
+# spine_01 -> neck_01 -> head forwards, abdomen_01..04 backwards, mandible_l/r, feelers
+# antenna_01/02_l/r, legs leg_<n>_upper/lower/foot_<s> (pair 1 on spine_01, pairs 2-3 on pelvis).
+# Built by `gothar-chargen creature mauerkriecher` (blender/build_creature.py, creature.py).
+#
+# Coordinates as in the rig TOMLs (Blender): x = left, -y = forward, z = up, metres. Sizes are
+# half axes.
+
+art = "mauerkriecher"
+material = "fur"
+voxel = 0.004
+smooth = 6
+ao = 0.7
+normal_size = 512
+normal_strength = 1.0
+triangles = 4000       # lod0 body; the ring plates, eyes and pincer tips add ~1.6 k
+lods = [1.0, 0.5, 0.25]
+texture = 1024
+seed = 71
+plate_bevel = 0.006
+eye_colour = "#1a1410"
+teeth_colour = "#2a221c"         # dark pincer tips
+
+[orientation]                # low and long: pelvis above root, pair 1 left/right
+up = ["root", "pelvis"]
+left = ["leg_1_foot_r", "leg_1_foot_l"]
+
+[sockets]
+socket_mouth = { parent = "head", length = 0.04 }   # between the pincers
+
+# --- rig (arthropod plan §7.5) ---
+
+[[bone]]
+name = "pelvis"
+head = [0, 0.0, 0.16]
+tail = [0, -0.12, 0.16]
+
+[[bone]]
+name = "spine_01"
+parent = "pelvis"
+head = [0, -0.12, 0.16]
+tail = [0, -0.24, 0.15]
+
+[[bone]]
+name = "neck_01"
+parent = "spine_01"
+head = [0, -0.24, 0.15]
+tail = [0, -0.29, 0.14]
+
+[[bone]]
+name = "head"
+parent = "neck_01"
+head = [0, -0.29, 0.14]
+tail = [0, -0.40, 0.11]
+
+[[bone]]
+name = "mandible_l"
+parent = "head"
+mirror = true
+head = [0.04, -0.38, 0.09]
+tail = [0.02, -0.47, 0.08]
+
+[[bone]]
+name = "antenna_01_l"
+parent = "head"
+mirror = true
+head = [0.04, -0.37, 0.15]
+tail = [0.12, -0.55, 0.24]
+
+[[bone]]
+name = "antenna_02_l"
+parent = "antenna_01_l"
+mirror = true
+head = [0.12, -0.55, 0.24]
+tail = [0.21, -0.78, 0.29]
+
+[[bone]]
+name = "abdomen_01"
+parent = "pelvis"
+head = [0, 0.0, 0.16]
+tail = [0, 0.12, 0.155]
+
+[[bone]]
+name = "abdomen_02"
+parent = "abdomen_01"
+head = [0, 0.12, 0.155]
+tail = [0, 0.24, 0.15]
+
+[[bone]]
+name = "abdomen_03"
+parent = "abdomen_02"
+head = [0, 0.24, 0.15]
+tail = [0, 0.35, 0.14]
+
+[[bone]]
+name = "abdomen_04"
+parent = "abdomen_03"
+head = [0, 0.35, 0.14]
+tail = [0, 0.48, 0.11]
+
+[[bone]]
+name = "leg_1_upper_l"
+parent = "spine_01"
+mirror = true
+head = [0.08, -0.18, 0.13]
+tail = [0.24, -0.23, 0.25]
+
+[[bone]]
+name = "leg_1_lower_l"
+parent = "leg_1_upper_l"
+mirror = true
+head = [0.24, -0.23, 0.25]
+tail = [0.32, -0.27, 0.06]
+
+[[bone]]
+name = "leg_1_foot_l"
+parent = "leg_1_lower_l"
+mirror = true
+head = [0.32, -0.27, 0.06]
+tail = [0.35, -0.30, 0.0]
+
+[[bone]]
+name = "leg_2_upper_l"
+parent = "pelvis"
+mirror = true
+head = [0.09, -0.04, 0.13]
+tail = [0.26, -0.05, 0.25]
+
+[[bone]]
+name = "leg_2_lower_l"
+parent = "leg_2_upper_l"
+mirror = true
+head = [0.26, -0.05, 0.25]
+tail = [0.35, -0.05, 0.06]
+
+[[bone]]
+name = "leg_2_foot_l"
+parent = "leg_2_lower_l"
+mirror = true
+head = [0.35, -0.05, 0.06]
+tail = [0.38, -0.05, 0.0]
+
+[[bone]]
+name = "leg_3_upper_l"
+parent = "pelvis"
+mirror = true
+head = [0.09, 0.10, 0.13]
+tail = [0.25, 0.13, 0.24]
+
+[[bone]]
+name = "leg_3_lower_l"
+parent = "leg_3_upper_l"
+mirror = true
+head = [0.25, 0.13, 0.24]
+tail = [0.33, 0.18, 0.06]
+
+[[bone]]
+name = "leg_3_foot_l"
+parent = "leg_3_lower_l"
+mirror = true
+head = [0.33, 0.18, 0.06]
+tail = [0.35, 0.21, 0.0]
+
+# --- colour zones ---
+
+[zone.armour]                # dark grey-brown chitin with pale edges and grime
+colour = "#4d453b"
+colour2 = "#3b352e"
+variation = 0.14
+spots = 0.3
+stripe_colour = "#2a2520"
+relief = 1.2
+wrinkles = 0.2
+
+[zone.body]                  # softer, paler underside and joints
+colour = "#7d6f5a"
+colour2 = "#6a5d4b"
+variation = 0.12
+wrinkles = 0.6
+belly = 0.25
+
+[zone.leg]                   # thin, dark, glossy legs and feelers
+colour = "#2e2924"
+colour2 = "#3a332c"
+variation = 0.1
+
+[zone.mouth]
+colour = "#3a1e1a"
+variation = 0.08
+
+# --- body (merged) ---
+
+[[shape]]
+kind = "ellipsoid"           # flat body under the plates
+zone = "body"
+center = [0, 0.04, 0.125]
+size = [0.16, 0.42, 0.065]
+
+[[shape]]
+kind = "ellipsoid"           # broader forebody
+zone = "body"
+center = [0, -0.10, 0.135]
+size = [0.17, 0.18, 0.08]
+
+[[shape]]
+kind = "ellipsoid"           # head capsule
+zone = "armour"
+center = [0, -0.33, 0.125]
+size = [0.09, 0.08, 0.06]
+
+[[shape]]
+kind = "cone"                # tail spike
+zone = "armour"
+a = [0, 0.40, 0.12]
+b = [0, 0.52, 0.10]
+r = 0.045
+
+[[shape]]
+kind = "cut_box"             # mouth between the pincers
+zone = "mouth"
+center = [0, -0.40, 0.10]
+size = [0.03, 0.03, 0.006]
+
+[[shape]]
+kind = "eye"                 # small black eye clusters
+mirror = true
+bone = "head"
+center = [0.065, -0.36, 0.145]
+size = [0.016, 0.014, 0.012]
+
+[[shape]]
+kind = "capsule"             # pincers (mandibles), curved inwards
+zone = "leg"
+mirror = true
+a = [0.045, -0.38, 0.095]
+b = [0.035, -0.44, 0.085]
+r = 0.016
+r2 = 0.011
+
+[[shape]]
+kind = "tooth"               # pincer tips
+mirror = true
+bone = "mandible_l"
+a = [0.035, -0.44, 0.085]
+b = [0.012, -0.475, 0.08]
+r = 0.01
+
+[[shape]]
+kind = "chain"               # feelers
+zone = "leg"
+mirror = true
+points = [[0.04, -0.37, 0.15], [0.12, -0.55, 0.24], [0.21, -0.78, 0.29]]
+radii = [0.008, 0.005, 0.003]
+
+[[shape]]
+kind = "chain"               # legs: up to the knee, down to the ground
+zone = "leg"
+mirror = true
+points = [[0.08, -0.18, 0.13], [0.24, -0.23, 0.25], [0.32, -0.27, 0.06], [0.35, -0.30, 0.005]]
+radii = [0.018, 0.013, 0.009, 0.004]
+
+[[shape]]
+kind = "chain"
+zone = "leg"
+mirror = true
+points = [[0.09, -0.04, 0.13], [0.26, -0.05, 0.25], [0.35, -0.05, 0.06], [0.38, -0.05, 0.005]]
+radii = [0.018, 0.013, 0.009, 0.004]
+
+[[shape]]
+kind = "chain"
+zone = "leg"
+mirror = true
+points = [[0.09, 0.10, 0.13], [0.25, 0.13, 0.24], [0.33, 0.18, 0.06], [0.35, 0.21, 0.005]]
+radii = [0.018, 0.013, 0.009, 0.004]
+
+# --- the armour: overlapping ring plates over the back ---
+
+[[shape]]
+kind = "plate_shell"
+zone = "armour"
+center = [0, 0.03, 0.115]
+size = [0.18, 0.46, 0.125]
+rows = [-0.30, -0.20, -0.10, 0.0, 0.10, 0.20, 0.30, 0.39]
+angles = [-44, 0, 44]
+plate = [0.092, 0.062, 0.009]        # longer than the row spacing (0.10): rows overlap
+sink = 0.004
+tilt = 10
+jitter = 0.05
+seed = 3
+bones = ["spine_01", "pelvis", "abdomen_01", "abdomen_02", "abdomen_03", "abdomen_04"]

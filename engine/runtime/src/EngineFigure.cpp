@@ -82,7 +82,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
         {
             return manifest.error();
         }
-        auto built = assembleFigureParts(manifest.value());
+        auto built = assembleFigureParts(manifest.value(), &figure->partHandles);
         if (!built)
         {
             return Error{std::format("{}: {}", path, built.error().message)};
@@ -96,9 +96,9 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
     {
         const f64 partsStart = platform::nowSeconds();
         {
-            G7_PROFILE_SCOPE("figure parts (glTF)");
-            model = m_assets->load<asset::SkinnedModelData>(path);
-            m_assets->waitAll();
+            G7_PROFILE_SCOPE("figure parts");
+            model = m_assets->load<asset::SkinnedModelData>(preferCookedFigure(m_vfs, path, true));
+            m_assets->wait(model); // only this figure's data, not what the world streams meanwhile
         }
         m_figureLoadTimes.parts += msSince(partsStart);
         if (model.failed() || !model.get())
@@ -106,6 +106,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
             return Error{std::format("{}: {}", path, model.error())};
         }
         dataPtr = model.get();
+        figure->partHandles = {model};
         // A figure built by g7_figures: its gait from the manifest beside it (figures/<name>.figure.toml).
         if (path.ends_with(".glb"))
         {
@@ -126,12 +127,13 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
     std::vector<asset::Handle<asset::AnimationSetData>> setHandles;
     const f64 setsStart = platform::nowSeconds();
     {
-        G7_PROFILE_SCOPE("figure clip sets (glTF)");
+        G7_PROFILE_SCOPE("figure clip sets");
         for (const std::string& set : graph.value().sets)
         {
-            setHandles.push_back(m_assets->load<asset::AnimationSetData>(set));
+            setHandles.push_back(
+                m_assets->load<asset::AnimationSetData>(preferCookedFigure(m_vfs, set, false)));
         }
-        m_assets->waitAll();
+        m_assets->wait(std::span<const asset::Handle<asset::AnimationSetData>>(setHandles));
     }
     m_figureLoadTimes.sets += msSince(setsStart);
     std::vector<const asset::AnimationSetData*> sets;
@@ -162,6 +164,7 @@ Result<void> Engine::loadAnimatedFigure(AnimatedFigure& target, std::string_view
         return Error{std::format("{} with {}: {}", graphPath, path, animator.error().message)};
     }
     figure->animator = std::move(animator).value();
+    figure->setHandles = std::move(setHandles);
     figure->startState = graph.value().start;
     figure->inverseBind = data.inverseBind;
     figure->modelSpace.resize(figure->skeleton.size());
@@ -256,18 +259,21 @@ Result<std::unique_ptr<PlayerFigure>> Engine::loadFigure(std::string_view path, 
     return figure;
 }
 
-Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureManifest& manifest)
+Result<asset::SkinnedModelData>
+Engine::assembleFigureParts(const asset::FigureManifest& manifest,
+                            std::vector<asset::Handle<asset::SkinnedModelData>>* keep)
 {
     // Parts through the asset manager (cached: swapping back and forth loads nothing twice).
     std::vector<asset::Handle<asset::SkinnedModelData>> handles;
     const f64 partsStart = platform::nowSeconds();
     {
-        G7_PROFILE_SCOPE("figure parts (glTF)");
+        G7_PROFILE_SCOPE("figure parts");
         for (const asset::FigureManifest::Part& part : manifest.parts)
         {
-            handles.push_back(m_assets->load<asset::SkinnedModelData>(std::string(kCharacters) + part.path));
+            handles.push_back(m_assets->load<asset::SkinnedModelData>(
+                preferCookedFigure(m_vfs, std::string(kCharacters) + part.path, true)));
         }
-        m_assets->waitAll();
+        m_assets->wait(std::span<const asset::Handle<asset::SkinnedModelData>>(handles));
     }
     m_figureLoadTimes.parts += msSince(partsStart);
     std::vector<asset::FigurePart> parts;
@@ -279,6 +285,10 @@ Result<asset::SkinnedModelData> Engine::assembleFigureParts(const asset::FigureM
             return Error{std::format("{}: {}", path, handles[i].error())};
         }
         parts.push_back({manifest.parts[i].role, path, handles[i].get()});
+    }
+    if (keep != nullptr)
+    {
+        *keep = handles;
     }
     G7_PROFILE_SCOPE("figure assemble");
     const f64 assembleStart = platform::nowSeconds();
@@ -316,7 +326,7 @@ Result<void> Engine::uploadFigure(AnimatedFigure& figure, const asset::SkinnedMo
     }
     {
         G7_PROFILE_SCOPE("figure images");
-        m_assets->waitAll();
+        m_assets->wait(std::span<const asset::Handle<asset::TextureData>>(images));
     }
     m_figureLoadTimes.images += msSince(imagesStart);
     const f64 uploadStart = platform::nowSeconds();
@@ -374,7 +384,7 @@ Result<void> Engine::rebuildPlayerFigure(const asset::FigureManifest& manifest)
     {
         return Error{"no animated player figure"};
     }
-    auto data = assembleFigureParts(manifest);
+    auto data = assembleFigureParts(manifest, &m_figure->partHandles);
     if (!data)
     {
         return data.error();
@@ -667,6 +677,29 @@ std::optional<Mat4> Engine::playerSocketTransform(std::string_view socket) const
     return figure * modelSpace[static_cast<usize>(bone)];
 }
 
+std::optional<Mat4> Engine::playerAttachmentTransform(std::string_view socket) const
+{
+    const auto at = playerSocketTransform(socket);
+    if (!at || !m_figure)
+    {
+        return std::nullopt;
+    }
+    for (const FigureAttachment& a : m_figure->attachments)
+    {
+        if (a.socket == socket)
+        {
+            return *at * a.offset;
+        }
+    }
+    return std::nullopt;
+}
+
+Mat4 runeGripTransform() noexcept
+{
+    return glm::translate(Mat4(1.0f), kRuneGripOffset) *
+           glm::rotate(Mat4(1.0f), glm::pi<f32>(), Vec3(0.0f, 1.0f, 0.0f));
+}
+
 void Engine::setPlayerLookTarget(std::optional<Vec3> target)
 {
     if (m_figure)
@@ -921,7 +954,7 @@ bool Engine::drawPlayerFigure(const Mat4& transform, bool shadow, u32 cascade)
     const PlayerFigure& f = *m_figure;
     for (const FigureAttachment& attachment : f.attachments)
     {
-        const Mat4 at = transform * f.modelSpace[attachment.bone];
+        const Mat4 at = transform * f.modelSpace[attachment.bone] * attachment.offset;
         if (shadow)
         {
             m_meshRenderer.drawShadow(*m_device, attachment.model->mesh, attachment.model->materials, at,

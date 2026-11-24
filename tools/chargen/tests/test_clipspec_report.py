@@ -34,8 +34,10 @@ def test_packaged_sets_are_valid():
         "church",
         "dive",
         "dlg",
+        "dungeon",
         "fist",
         "gait",
+        "house",
         "mag",
         "mob",
         "music",
@@ -44,14 +46,24 @@ def test_packaged_sets_are_valid():
         "torch",
     ]
     assert packaged_sets(monsters=False) == humans
-    monsters = ["bergleu", "glemsmahr", "keiler", "laufvogel", "quaderbuckel", "schinder", "wolf"]
+    monsters = [
+        "bergleu", "gatterbock", "glemsmahr", "keiler", "kristallkrebs", "laufvogel",
+        "mauerkriecher", "mauerschlupfer", "quaderbuckel", "schinder", "wolf",
+    ]  # fmt: skip
     assert packaged_sets(monsters=True) == monsters
     assert packaged_sets() == sorted(humans + monsters)
     for name in packaged_sets():
         spec = load_set_spec(name)
         assert spec.set == name
         # own files for none clips (none.glb unchanged)
-        mode = {"torch": "none", "gait": "none", "church": "amb", "music": "amb"}.get(name, name)
+        mode = {
+            "torch": "none",
+            "gait": "none",
+            "church": "amb",
+            "music": "amb",
+            "dungeon": "mob",
+            "house": "amb",
+        }.get(name, name)
         assert all(n.startswith(f"{mode}/") for n in spec.names)  # helpers may differ
         for source in spec.sources.values():
             load_mapping(source.mapping)
@@ -300,14 +312,16 @@ def test_real_list_is_consistent_with_files():
     assert result.extra == []
     assert result.missing == []
     counts = list(result.section_counts().values())
-    # Prio-B item use + mobs (M8, with the table), per mode, Prio-C routines (M9), dialogue (M10),
+    # Prio-B item use + mobs (M8, with the table and the dungeon switches), per mode,
+    # Prio-C routines (M9, with reading and cooking), dialogue (M10),
     # combat (M11), magic (M12, with the human transformation), torch (F6), gait variants,
     # 7 monsters (own wolf 15 with the transformation, keiler/laufvogel 12, schinder 15,
-    # quaderbuckel 17, glemsmahr/bergleu 19)
+    # quaderbuckel 17, glemsmahr/bergleu 19, gatterbock 14, mauerkriecher 18,
+    # mauerschlupfer 15, kristallkrebs 16)
     expected = [
-        (22, 22),
+        (27, 27),
         (48, 48),
-        (43, 43),
+        (49, 49),
         (22, 22),
         (31, 31),
         (16, 16),
@@ -322,6 +336,10 @@ def test_real_list_is_consistent_with_files():
         (17, 17),
         (19, 19),
         (19, 19),
+        (14, 14),
+        (18, 18),
+        (15, 15),
+        (16, 16),
     ]
     assert counts == expected
     # without the monsters folder the wolf rows are reported as out of date

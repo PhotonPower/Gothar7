@@ -54,8 +54,12 @@ struct AnimatedFigure
     render::MaterialSet materials;
     bool uploaded = false;
     std::vector<asset::Handle<asset::TextureData>> images; ///< parallel to SkinnedModelData::images
-    std::vector<std::string> sockets;                      ///< bones named socket_*, for the debug UI
-    std::deque<std::string> events;                        ///< the last ones fired, newest first (debug UI)
+    /// The parts and clip sets stay loaded while the figure lives: the asset cache keeps an asset only while
+    /// a handle holds it, and the next figure with the same body or the same sets finds them there.
+    std::vector<asset::Handle<asset::SkinnedModelData>> partHandles;
+    std::vector<asset::Handle<asset::AnimationSetData>> setHandles;
+    std::vector<std::string> sockets; ///< bones named socket_*, for the debug UI
+    std::deque<std::string> events;   ///< the last ones fired, newest first (debug UI)
     std::optional<std::array<std::array<u32, 4>, 2>> glowBones; ///< M17 part G: right, left forearm (lazily)
 
     virtual ~AnimatedFigure() = default;
@@ -68,6 +72,7 @@ struct FigureAttachment
     usize bone = 0;
     const LoadedModel* model = nullptr;
     std::unique_ptr<LoadedModel> owned; ///< procedural models (tests, debug UI)
+    Mat4 offset{1.0f};                  ///< in the socket's space (a rune turned to show its sign)
 };
 
 struct PlayerFigure : AnimatedFigure

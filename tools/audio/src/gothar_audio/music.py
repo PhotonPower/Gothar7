@@ -141,6 +141,7 @@ MENU = Piece(bpm=72, beats=4, bars=8)  # 26.7 s
 STADT = Piece(bpm=120, beats=4, bars=4)  # 8 s
 THREAT = Piece(bpm=80, beats=4, bars=2)  # 6 s
 FIGHT = Piece(bpm=150, beats=4, bars=4)  # 6.4 s
+DUNGEON = Piece(bpm=80, beats=4, bars=4)  # 12 s
 
 
 def lager_day(rng: random.Random) -> Samples:
@@ -229,6 +230,18 @@ def fight(rng: random.Random) -> Samples:
     return normalise(render(FIGHT, notes), 0.75)
 
 
+def dungeon(rng: random.Random) -> Samples:
+    # The dungeon under the castle: a low D minor drone breathing slowly, a few far plucks echoing in the vault.
+    seconds = DUNGEON.bars * DUNGEON.beats * DUNGEON.beat
+    notes = [(0.0, drone(chord("D2 A2 D3"), seconds, 0.125), 0.45)]
+    for at, name in [(0.0, "D4"), (2.5, "F4"), (5.0, "A3"), (8.0, "E4"), (10.5, "C#4"), (13.0, "D4")]:
+        notes.append((at, pluck(hz(name), 2.5, 0.2), 0.3))
+        notes.append((at + 0.75, pluck(hz(name), 2.0, 0.1), 0.12))  # its echo
+    for bar in range(DUNGEON.bars):
+        notes.append((bar * 4, drum(rng, 0.5, 400.0), 0.25))  # a dull far thud
+    return normalise(render(DUNGEON, notes), 0.55)
+
+
 def _stinger(tones: list[str], step: float, last: float, bright: float) -> Samples:
     notes: Samples = [0.0] * int((step * len(tones) + last) * RATE)
     for i, name in enumerate(tones):
@@ -263,6 +276,7 @@ MUSIC: dict[str, Callable[[random.Random], Samples]] = {
     "lager_std_ngt": lager_night,
     "stadt_std_day": stadt_day,
     "stadt_std_ngt": stadt_night,
+    "dungeon_std": dungeon,
     "menu_std": menu,
     "common_thr": threat,
     "common_fgt": fight,
@@ -272,7 +286,14 @@ MUSIC: dict[str, Callable[[random.Random], Samples]] = {
     "stinger_chapter": stinger_chapter,
 }
 
-PIECES = {"lager": LAGER, "stadt": STADT, "menu": MENU, "common_thr": THREAT, "common_fgt": FIGHT}
+PIECES = {
+    "lager": LAGER,
+    "stadt": STADT,
+    "dungeon": DUNGEON,
+    "menu": MENU,
+    "common_thr": THREAT,
+    "common_fgt": FIGHT,
+}
 
 
 def generate_music(name: str, seed: int = 11) -> Samples:

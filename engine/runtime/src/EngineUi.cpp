@@ -432,8 +432,7 @@ void Engine::bindUiFunctions()
              }});
     vm.bind({"menu_open", "menu_open(page?: string, tab?: number)",
              "Öffnet das Pausenmenü wie Esc, mit `\"options\"` gleich die Optionen darüber, auf Reiter `tab` "
-             "(ab 1; "
-             "Konsole, Prüfbilder).",
+             "(ab 1), mit `\"credits\"` die Mitwirkenden (Konsole, Prüfbilder).",
              "Bildschirm", [this](std::span<const script::Value> a) -> Result<script::Value>
              {
                  if (!m_gameUi)
@@ -449,6 +448,10 @@ void Engine::bindUiFunctions()
                      m_menuCommand = "options"; // opened after this frame's screen update
                      m_optionsTab =
                          a.size() > 1 ? static_cast<usize>(std::max(a[1].asNumber(1.0), 1.0)) - 1 : 0;
+                 }
+                 else if (!a.empty() && a[0].asString() == "credits")
+                 {
+                     m_menuCommand = "credits";
                  }
                  return script::Value{};
              }});
