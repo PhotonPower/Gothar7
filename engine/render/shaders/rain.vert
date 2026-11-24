@@ -27,14 +27,26 @@ const float kLength = 0.45;       // streak length m
 const float kSplashRadius = 10.0; // half size of the box of splashes
 const float kSplashLife = 0.45;   // seconds
 
-float hash(float n)
+// Integer hash (PCG): the same drops on every driver. The former fract(sin(n) * 43758.5453) needed sin of
+// arguments up to ~75 000 (and growing with the time for the splashes), where drivers differ wildly - Mesa
+// llvmpipe 25.0 put drops that the rain map should hide below a roof.
+uint pcg(uint v)
 {
-    return fract(sin(n) * 43758.5453);
+    const uint state = v * 747796405u + 2891336453u;
+    const uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
 }
 
-vec3 hash3(float n)
+float unit(uint h)
 {
-    return vec3(hash(n * 1.17 + 0.3), hash(n * 2.71 + 1.7), hash(n * 3.13 + 5.1));
+    return float(h >> 8u) * (1.0 / 16777216.0); // 0 .. 1 (exclusive)
+}
+
+vec3 hash3(uint seed)
+{
+    const uint a = pcg(seed);
+    const uint b = pcg(a);
+    return vec3(unit(a), unit(b), unit(pcg(b)));
 }
 
 vec2 wrapAround(vec2 p, vec2 centre, float radius)
@@ -69,7 +81,7 @@ void main()
                                    vec2(-1.0, 1.0));
     const vec2 corner = corners[gl_VertexID];
     vLocal = corner;
-    const float id = float(gl_InstanceID);
+    const uint id = uint(gl_InstanceID);
     if (uSplash == 0)
     {
         const vec3 h = hash3(id);
@@ -99,9 +111,10 @@ void main()
         return;
     }
     // Splashes: each lives kSplashLife, then appears elsewhere; on the top surface from the rain map.
-    const float cycle = floor(uTime / kSplashLife + hash(id * 0.37));
-    const float age = fract(uTime / kSplashLife + hash(id * 0.37));
-    const vec3 h = hash3(id * 1.91 + cycle * 7.31);
+    const float phase = unit(pcg(id ^ 0x51ed270bu));
+    const float cycle = floor(uTime / kSplashLife + phase);
+    const float age = fract(uTime / kSplashLife + phase);
+    const vec3 h = hash3(pcg(id + 0x9e3779b9u) ^ uint(cycle));
     const vec2 xz = wrapAround(h.xy * 2.0 * kSplashRadius, uCameraPosition.xz, kSplashRadius);
     float surface;
     float own;

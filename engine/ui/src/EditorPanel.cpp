@@ -4,6 +4,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <array>
 #include <string>
 
@@ -555,17 +556,23 @@ void DebugUi::terrainPanel(TerrainPanel& panel)
     ImGui::SetNextWindowPos(ImVec2(400.0f, 10.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(320.0f, 260.0f), ImGuiCond_FirstUseEver);
     ImGui::Begin("Terrain");
-    if (!panel.locked.empty())
-    {
-        ImGui::TextWrapped("%s", panel.locked.c_str());
-        ImGui::End();
-        return;
-    }
     ImGui::Checkbox("terrain mode (T)", &panel.active);
     ImGui::SameLine();
     ImGui::TextUnformatted(panel.dirty ? "* unsaved (Ctrl+S)" : "");
-    constexpr std::array<const char*, 5> kModes = {"raise", "lower", "smooth", "flatten", "paint"};
-    ImGui::Combo("brush", &panel.mode, kModes.data(), static_cast<int>(kModes.size()));
+    constexpr std::array<const char*, 7> kModes = {"raise", "lower", "smooth",     "flatten",
+                                                   "paint", "grass", "grass reset"};
+    constexpr int kFirstGrass = 5; // the grass brush (M17 G3): also on locked terrain
+    if (!panel.locked.empty())
+    {
+        ImGui::TextWrapped("%s - only the grass brush.", panel.locked.c_str());
+        int grass = std::clamp(panel.mode - kFirstGrass, 0, 1);
+        ImGui::Combo("brush", &grass, kModes.data() + kFirstGrass, 2);
+        panel.mode = kFirstGrass + grass;
+    }
+    else
+    {
+        ImGui::Combo("brush", &panel.mode, kModes.data(), static_cast<int>(kModes.size()));
+    }
     ImGui::SliderFloat("radius (m)", &panel.radius, 0.5f, 50.0f);
     ImGui::SliderFloat("strength", &panel.strength, 0.1f, 20.0f);
     if (panel.mode == 3)
@@ -581,6 +588,17 @@ void DebugUi::terrainPanel(TerrainPanel& panel)
             layers.push_back(l.c_str());
         }
         ImGui::Combo("layer", &panel.layer, layers.data(), static_cast<int>(layers.size()));
+    }
+    if (panel.mode == kFirstGrass)
+    {
+        ImGui::SliderFloat("grass density", &panel.grassDensity, 0.0f, 1.0f);
+    }
+    if (panel.mode >= kFirstGrass)
+    {
+        ImGui::TextWrapped("The grass overlay lies over the %s and is saved next to the world file; the "
+                           "generator never writes it. \"grass reset\" brings the %s back.",
+                           panel.grassMask ? "generated grass mask" : "splat weights",
+                           panel.grassMask ? "mask" : "weights");
     }
     ImGui::TextWrapped(
         "Left mouse held: brush. Each stroke is one undo step; the collision follows when it ends.");

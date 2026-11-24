@@ -762,6 +762,16 @@ Result<void> Engine::initSceneRendering()
         return Error{"cannot create mesh renderer: " + renderer.error().message};
     }
     m_meshRenderer = std::move(renderer).value();
+    if (auto grass = render::GrassRenderer::create(*m_device, *m_shaders, shadows); grass)
+    {
+        m_grass = std::move(grass).value();
+    }
+    else
+    {
+        G7_LOG_WARN("engine", "grass: {} (no grass)", grass.error().message);
+    }
+    m_grassDirty = true; // a new buffer
+    applyGrassSetting();
     return {};
 }
 
@@ -1305,6 +1315,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
         m_heightfield = std::move(heightfield).value();
         m_hasTerrain = true;
         loadFootstepTerrain(); // M13 E: the splat weights on the CPU
+        resetGrassWorld();     // M17 G1
         if (m_device)          // without one (--no-render) the terrain only collides
         {
             auto terrain = render::TerrainRenderer::create(*m_device, *m_shaders, m_heightfield.renderDesc(),
@@ -1507,6 +1518,7 @@ void Engine::unloadWorld()
     m_terrain = {};
     m_heightfield = {};
     m_hasTerrain = false;
+    resetGrassWorld();
     m_groundModel.reset();
     m_sceneBounds = AABB{Vec3(1.0f), Vec3(-1.0f)}; // empty
     m_triggers.reset();
@@ -2205,19 +2217,20 @@ void Engine::drawScene(u32 width, u32 height)
     G7_PROFILE_SCOPE("render::scene (culling, shadows, main)");
     m_meshRenderer.beginFrame();
     // Indoors (the camera in a room, world.md "Zonen") the world outside shows only through windows and the
-    // door: nothing beyond indoor_view_distance (render.md "Innenräume"), and the sun's shadows (through the
-    // windows) only from casters within indoor_shadow_distance.
+    // door: nothing beyond indoor_view_distance (render.md "Innenräume") - and casts no shadow -, and the
+    // sun's shadows (through the windows) end at indoor_shadow_distance; beyond it the rooms get no sun.
     m_frameCull = m_cullSettings;
     m_frameShadowCull = m_cullSettings;
     const bool inside = m_indoorViewDistance > 0.0f &&
                         render::indoorAmount(m_camera.transform.position, m_environment.indoor, 0.0f) > 0.5f;
     const auto limited = [](f32 distance, f32 limit)
     { return distance > 0.0f ? std::min(distance, limit) : limit; };
+    f32 shadowRange = 0.0f; // 0: to the last cascade's end
     if (inside)
     {
         m_frameCull.viewDistance = limited(m_frameCull.viewDistance, m_indoorViewDistance);
-        m_frameShadowCull.viewDistance =
-            limited(m_frameCull.viewDistance, std::max(m_indoorShadowDistance, 0.1f));
+        m_frameShadowCull.viewDistance = m_frameCull.viewDistance;
+        shadowRange = limited(m_frameCull.viewDistance, std::max(m_indoorShadowDistance, 0.1f));
     }
     if (m_cullGridDirty)
     {
@@ -2234,6 +2247,7 @@ void Engine::drawScene(u32 width, u32 height)
     // Shadow pass: every caster whose bounds reach a cascade's light volume (which extends towards
     // the sun, so casters outside the view still count). The flat ground plate cannot shadow
     // anything; terrain can (hills shade valleys).
+    updateGrass(); // M17 G1: new tiles around the camera (high: they cast shadows)
     render::ShadowFrame shadowFrame;
     if ((!m_instances.empty() || m_hasTerrain) && m_environment.sunIntensity > 0.0f)
     {
@@ -2246,8 +2260,15 @@ void Engine::drawScene(u32 width, u32 height)
         m_terrain.setMaxDistance(inside ? m_frameShadowCull.viewDistance : 0.0f);
         for (u32 i = 0; i < m_cascades.size(); ++i)
         {
-            // Indoors a cascade that starts beyond the view distance shades nothing drawn: left as it is.
-            if (!shadowRedraw(i) || (inside && m_cascades[i].splitNear > m_frameShadowCull.viewDistance))
+            // Indoors a cascade that starts beyond the shadow range shades nothing: it and all farther ones
+            // are dropped. Kept with the tile's old fit instead, a cascade never drawn (all zero) made the
+            // shadow distance 0 - the sun everywhere, even in a windowless cellar.
+            if (inside && i > 0 && m_cascades[i].splitNear > shadowRange)
+            {
+                m_cascades.resize(i);
+                break;
+            }
+            if (!shadowRedraw(i))
             {
                 m_cascades[i] = m_cascadesDrawn[i]; // shade with what the tile holds
                 continue;
@@ -2270,6 +2291,7 @@ void Engine::drawScene(u32 width, u32 height)
                     continue;
                 }
                 if (instance.model != m_groundModel.get() && instance.solid &&
+                    render::castsShadowInCascade(instance.bounds, instance.sizeCullable, i) &&
                     volume.intersects(instance.bounds) &&
                     render::cullByDistance(instance.bounds, m_camera.transform.position, m_frameShadowCull,
                                            instance.sizeCullable) == render::CullResult::Kept)
@@ -2295,10 +2317,14 @@ void Engine::drawScene(u32 width, u32 height)
             {
                 m_terrain.drawShadow(*m_device, m_cascades[i], m_camera.transform.position);
             }
+            if (i == 0)
+            {
+                drawGrassShadow(m_cascades[i]); // quality high only
+            }
             drawPlayer(true, i);
             drawCreatures(true, i);
         }
-        shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
+        shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug, shadowRange, inside};
     }
     // M17 R: the rain map (depth from above) anew when it rains and the camera moved on.
     const world::WeatherSample rainNow = weatherNow();
@@ -2406,7 +2432,14 @@ void Engine::drawScene(u32 width, u32 height)
     {
         m_meshRenderer.drawBatched(*m_device, m_drawItems, m_camera);
     }
-    drawWater();   // M17 W1: after the opaque scene and the sky, before the particles
+    m_passTimes.end(*m_device); // "scene" (or "shading") without grass, water and effects
+    m_passTimes.begin(*m_device, "grass");
+    drawGrass(); // M17 G1: after the opaque scene (blades hidden behind it cost little)
+    m_passTimes.end(*m_device);
+    m_passTimes.begin(*m_device, "water");
+    drawWater(); // M17 W1: after the opaque scene and the sky, before the particles
+    m_passTimes.end(*m_device);
+    m_passTimes.begin(*m_device, "effects");
     drawEffects(); // particles over the opaque scene, depth-tested (M12)
 }
 
@@ -2574,11 +2607,7 @@ void Engine::drawWater()
     frame.fogColor = m_environment.fogColor;
     frame.fogStart = m_environment.fogStart;
     frame.fogDensity = m_environment.fogDensity;
-    m_passTimes.end(*m_device); // "scene" without the water
-    m_passTimes.begin(*m_device, "water");
     m_waterDrawn = m_waterRenderer.draw(*m_device, m_sceneTarget, m_camera, m_waterSurfaces, frame);
-    m_passTimes.end(*m_device);
-    m_passTimes.begin(*m_device, "effects");
 }
 
 void Engine::updateBenchmark(f64 realSeconds)
@@ -2751,6 +2780,7 @@ void Engine::runDebugUi(f64 realSeconds)
     playerAnimationUi();
     creaturesUi();
     aiUi();
+    grassUi(); // M17 G3
     for (EngineTool* tool : m_tools)
     {
         tool->ui(*this, m_debugUi);
@@ -2902,8 +2932,9 @@ void Engine::addWorldDebugOverlay()
                                 Vec4(1.0f, 0.3f, 0.2f, 0.7f)};
         m_debugDraw.box(instance.bounds, render::DebugStyle{colours[std::min<u32>(instance.lod, 2)]});
     }
-    drawWaynet();   // M9: way points, edges, freepoints, the routes NPCs walk
-    drawAiSenses(); // M9: the senses of the NPC selected in the window "AI"
+    drawWaynet();     // M9: way points, edges, freepoints, the routes NPCs walk
+    drawAiSenses();   // M9: the senses of the NPC selected in the window "AI"
+    drawGrassTiles(); // M17 G3: the grass tiles (window "Grass")
     m_scene.each<world::Vob, world::MobRef, world::WorldTransform>(
         [&](entt::entity, const world::Vob&, const world::MobRef& mob, const world::WorldTransform& t)
         {

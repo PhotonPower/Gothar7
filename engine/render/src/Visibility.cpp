@@ -33,6 +33,16 @@ u32 selectLod(f32 distance, u32 current, const LodSettings& settings, f32 radius
     return level;
 }
 
+bool castsShadowInCascade(const AABB& bounds, bool sizeCullable, u32 cascade) noexcept
+{
+    if (cascade < kSmallShadowCascades || !sizeCullable)
+    {
+        return true;
+    }
+    const Vec3 size = bounds.max - bounds.min;
+    return std::max({size.x, size.y, size.z}) >= kSmallShadowCasterSize;
+}
+
 CullResult cullByDistance(const AABB& bounds, const Vec3& eye, const CullSettings& settings,
                           bool sizeCullable) noexcept
 {

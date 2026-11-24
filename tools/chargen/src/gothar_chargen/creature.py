@@ -110,6 +110,8 @@ class Creature:
     plate_cuts: int = 1  # subdivisions of the plates before roughening
     grime: float = 0.0  # moss and dirt in the cavities (by ambient occlusion), 0..1
     grime_colour: str = "#4a5233"
+    move_axis: str = "z"  # rig: "x" = walks sideways (crab, §7.5)
+    teeth_glow: float = 0.0  # emissive teeth/cones in teeth_colour (glowing crystals), 0..1
     extra: dict = field(default_factory=dict)
 
     def bone(self, name: str) -> Bone:
@@ -351,7 +353,16 @@ def load_creature(path: Path) -> Creature:
         plate_cuts=int(data.get("plate_cuts", 1)),
         grime=float(data.get("grime", 0.0)),
         grime_colour=str(data.get("grime_colour", "#4a5233")),
+        move_axis=_move_axis(data),
+        teeth_glow=float(data.get("teeth_glow", 0.0)),
     )
+
+
+def _move_axis(data: dict) -> str:
+    axis = data.get("move_axis", "z")
+    if axis not in ("z", "x"):
+        raise CreatureError(f'move_axis must be "z" or "x", got {axis!r}')
+    return str(axis)
 
 
 # --- geometry helpers -----------------------------------------------------------------------------
