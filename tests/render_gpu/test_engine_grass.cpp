@@ -8,7 +8,9 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <filesystem>
+#include <format>
 #include <string>
 
 using namespace g7;
