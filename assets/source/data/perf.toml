@@ -30,6 +30,15 @@ yaw = 0.0
 pitch = -10.0
 times = ["10:00", "21:00"]
 
+# Grass (M17 G1/V): the town's edge below the castle, meadows down to the brook, orchards beside.
+[[scenario]]
+name = "feld"
+description = "Stadtrand unter dem Schloss: Wiesen, Obstwiesen, Bach"
+cam = [-245.0, -15.5, -160.0]
+yaw = 135.0
+pitch = -8.0
+times = ["10:00", "19:30"]
+
 # Stress: the market with 60 NPCs more (nameless townsfolk on the way points around the fountain).
 [[scenario]]
 name = "markt_voll"

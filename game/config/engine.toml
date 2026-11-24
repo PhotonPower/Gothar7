@@ -60,6 +60,8 @@ weather = true
 rain_quality = "medium"
 # Wind (M17 W): Vegetation, Zunftschilder und Rauch bewegen sich mit dem Wind der Wetterlage; aus = alles steht still.
 wind = true
+# Gras (M17 G1): Büschel auf den Wiesen bis 20/35/50 m (low/medium/high, high mit Schatten); auto = medium, auf Intel-GPUs low.
+grass = "auto"
 # Zauber-Verzerrung (M17 V): Hitzeflimmern, Druckwellen und Wirbel der Zauber und großer Feuer; aus = Bild ohne Verzerrung.
 spell_distortion = true
 # Shader bei Änderung neu laden (Standard: an im Debug-Build, aus im Release-Build).
@@ -82,7 +84,8 @@ size_cull = 0.005
 # Drinnen (Kamera in einer Innenzone, world.md „Zonen“): weiter als indoor_view_distance Meter wird nichts gezeichnet
 # und wirft keinen Schatten; durch Fenster und Tür sieht man dann nur die Nähe (render.md „Innenräume“). 0 = aus.
 indoor_view_distance = 30.0
-# Drinnen werfen nur Dinge bis indoor_shadow_distance Meter Sonnenschatten (durch die Fenster); fernere Kaskaden ruhen.
+# Drinnen enden die Sonnenschatten (durch die Fenster) bei indoor_shadow_distance Metern; fernere Kaskaden ruhen,
+# dahinter bekommen Räume keine Sonne (draußen volle).
 indoor_shadow_distance = 12.0
 # Draußen (Kamera in keiner Innenzone): Dinge ganz in einem Raum (Einrichtung) werden erst ab indoor_cull_distance Metern
 # zur Raum-Box gezeichnet und werfen sonst keinen Schatten (render.md „Innenräume“). 0 = aus.
