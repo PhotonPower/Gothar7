@@ -26,6 +26,10 @@ constexpr f32 kOccludedMuffle = 0.8f;    ///< a wall between: this muffled (owne
 constexpr std::string_view kIndoorAmbience = "innen"; ///< in a room (indoor zone): this ambience ...
 constexpr f32 kOutsideVolume = 0.3f;                  ///< ... with the outside one this loud ...
 constexpr f32 kOutsideMuffle = 0.8f;                  ///< ... and this muffled behind it
+/// The wind loop follows the wind (wetter.md, part R "Ton"): this loud when still, full from kWindLoopFull.
+constexpr std::string_view kWindLoop = "amb_wind";
+constexpr f32 kWindLoopStill = 0.3f;
+constexpr f32 kWindLoopFull = 0.8f; ///< weather wind (0..1) at full volume: the thunderstorm
 } // namespace
 
 const world::Zone* Engine::smallestZoneAt(std::string_view type, const Vec3& point, f32* volume) const
@@ -239,6 +243,26 @@ void Engine::updateAmbience(f32 seconds)
         }
         G7_LOG_DEBUG("engine", "ambience: '{}' ({}){}", name, isNight ? "night" : "day",
                      outside.empty() ? std::string() : std::format(", outside '{}' muffled", outside));
+    }
+    // Wind loops (also the muffled one outside a room) follow the wind of the weather.
+    m_windLoopVolume =
+        kWindLoopStill + (1.0f - kWindLoopStill) * std::clamp(weatherNow().wind / kWindLoopFull, 0.0f, 1.0f);
+    const auto loopOf = [&](const std::string& ambience) -> std::string_view
+    {
+        const auto it = m_ambientDefs.find(ambience);
+        if (it == m_ambientDefs.end())
+        {
+            return {};
+        }
+        return isNight && !it->second.loopNight.empty() ? it->second.loopNight : it->second.loop;
+    };
+    if (m_ambience.loop && loopOf(m_ambience.name) == kWindLoop)
+    {
+        m_audio->setVolume(*m_ambience.loop, m_windLoopVolume, 1.0f);
+    }
+    if (m_ambience.outsideLoop && loopOf(m_ambience.outside) == kWindLoop)
+    {
+        m_audio->setVolume(*m_ambience.outsideLoop, kOutsideVolume * m_windLoopVolume, 1.0f);
     }
     if (def == m_ambientDefs.end())
     {

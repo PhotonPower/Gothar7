@@ -717,6 +717,8 @@ Result<void> Engine::initSceneRendering()
     m_indoorViewDistance = static_cast<f32>(m_config.settings.get<f64>("render.indoor_view_distance", 30.0));
     m_indoorShadowDistance =
         static_cast<f32>(m_config.settings.get<f64>("render.indoor_shadow_distance", 12.0));
+    // Outside: the furniture of rooms farther than this (m) is not drawn and casts no shadow; 0 = off.
+    m_indoorCullDistance = static_cast<f32>(m_config.settings.get<f64>("render.indoor_cull_distance", 12.0));
     m_lodSettings.lod1Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod1_distance", 60.0));
     m_lodSettings.lod2Distance = static_cast<f32>(m_config.settings.get<f64>("render.lod2_distance", 150.0));
     m_lodSettings.hysteresis = static_cast<f32>(m_config.settings.get<f64>("render.lod_hysteresis", 0.1));
@@ -1008,7 +1010,8 @@ void Engine::addInstance(const LoadedModel& model, const Mat4& transform, bool s
     }
     m_instances.push_back({&model, transform, bounds, sizeCullable, vob});
     m_cullGridDirty = true;
-    m_rain.invalidateMap(); // M17 R: the occluders changed
+    m_instanceRoomsGeneration = ~u64{0}; // find the rooms holding it (swinging doors and reloads keep them)
+    m_rain.invalidateMap();              // M17 R: the occluders changed
     m_physicsDirty = true;
 }
 
@@ -1206,6 +1209,7 @@ Result<void> Engine::instantiateScene()
                 m_lights.push_back(point);
             }
         });
+    m_indoorRoomsDirty = true; // window lights decide the rooms' daylight
     return {};
 }
 
@@ -1241,6 +1245,7 @@ Result<void> Engine::setZones(std::vector<world::Zone> zones)
         }
     }
     m_worldFile.zones = std::move(zones); // read live: rooms (render), music, ambience, NPC rooms
+    m_indoorRoomsDirty = true;
     return {};
 }
 
@@ -1419,6 +1424,7 @@ Result<void> Engine::loadWorld(const std::string& path, world::WorldFile file, s
     m_worldPath = path;
     m_worldFile = std::move(file);
     m_worldFile.vobs.clear(); // the scene holds them; captured again when the world is left
+    m_indoorRoomsDirty = true;
     m_sceneName = m_worldFile.name.empty() ? path : m_worldFile.name;
     G7_LOG_INFO("engine", "world {}: {} vobs, {} rendered, {} models, {} lights ({:.0f} ms)", path,
                 m_scene.vobCount(), m_instances.size(), m_models.size(), m_lights.size(),
@@ -1497,6 +1503,7 @@ void Engine::unloadWorld()
     m_physicsDirty = true;
     m_lights.clear();
     m_daylightLights.clear();
+    m_indoorRoomsDirty = true;
     m_terrain = {};
     m_heightfield = {};
     m_hasTerrain = false;
@@ -1738,6 +1745,7 @@ void Engine::initEnvironment()
     {
         m_dayCycle = std::move(cycle).value();
         G7_LOG_INFO("engine", "day and night from {} ({} keys)", curves, m_dayCycle.keys().size());
+        m_indoorRoomsDirty = true; // [indoor] factors
     }
     else
     {
@@ -1799,16 +1807,42 @@ void Engine::initEnvironment()
     rebuildWaterSurfaces();
 }
 
+const std::vector<render::IndoorVolume>& Engine::indoorRooms() const
+{
+    if (!m_indoorRoomsDirty)
+    {
+        return m_indoorRooms;
+    }
+    // Each indoor box with its ambient factor (world.md "Zonen"): its daylight, else from the window lights.
+    std::vector<Vec3> windows;
+    windows.reserve(m_daylightLights.size());
+    for (const render::PointLight& l : m_daylightLights)
+    {
+        windows.push_back(l.position);
+    }
+    const std::vector<f32> factors = world::indoorDaylight(
+        m_worldFile.zones, windows, m_dayCycle.indoorAmbient(), m_dayCycle.indoorAmbientWindowless());
+    m_indoorRooms.clear();
+    for (usize i = 0; i < m_worldFile.zones.size(); ++i)
+    {
+        const world::Zone& z = m_worldFile.zones[i];
+        if (z.box && z.type == "indoor") // music and ambient zones have boxes too (M13)
+        {
+            m_indoorRooms.push_back(
+                {z.box->center, z.box->halfExtents, glm::radians(z.box->yawDegrees), factors[i]});
+        }
+    }
+    m_indoorRoomsDirty = false;
+    ++m_indoorRoomsGeneration;
+    return m_indoorRooms;
+}
+
 std::vector<render::IndoorVolume> Engine::nearestIndoorVolumes(const Vec3& point) const
 {
     std::vector<std::pair<f32, render::IndoorVolume>> rooms;
-    for (const world::Zone& z : m_worldFile.zones)
+    for (const render::IndoorVolume& v : indoorRooms())
     {
-        if (z.box && z.type == "indoor") // music and ambient zones have boxes too (M13)
-        {
-            const render::IndoorVolume v{z.box->center, z.box->halfExtents, glm::radians(z.box->yawDegrees)};
-            rooms.emplace_back(glm::length(v.center - point), v);
-        }
+        rooms.emplace_back(glm::length(v.center - point), v);
     }
     const usize count = std::min<usize>(rooms.size(), render::kMaxIndoorVolumes);
     std::partial_sort(rooms.begin(), rooms.begin() + static_cast<std::ptrdiff_t>(count), rooms.end(),
@@ -2047,8 +2081,7 @@ void Engine::updateEnvironment()
     }
     m_environment = sample.environment;
     m_environment.fogStart = fogStart;
-    // Rooms (zones of type indoor, world.md): the nearest to the camera get the indoor ambient.
-    m_environment.indoorAmbient = m_dayCycle.indoorAmbient();
+    // Rooms (zones of type indoor, world.md): the nearest to the camera get their ambient factor.
     m_environment.indoor = nearestIndoorVolumes(m_camera.transform.position);
     if (!m_sunEnabled)
     {
@@ -2197,6 +2230,7 @@ void Engine::drawScene(u32 width, u32 height)
         m_cullGrid.build(bounds);
         m_cullGridDirty = false;
     }
+    updateRoomCulling(inside);
     // Shadow pass: every caster whose bounds reach a cascade's light volume (which extends towards
     // the sun, so casters outside the view still count). The flat ground plate cannot shadow
     // anything; terrain can (hills shade valleys).
@@ -2228,8 +2262,13 @@ void Engine::drawScene(u32 width, u32 height)
             m_drawItems.clear();
             for (const u32 index : m_cullCandidates)
             {
-                // What the main pass hides (distance, size) casts no shadow either.
+                // What the main pass hides (distance, size, far rooms) casts no shadow either.
                 const SceneInstance& instance = m_instances[index];
+                if (hiddenInRoom(instance))
+                {
+                    ++m_culledIndoorShadow;
+                    continue;
+                }
                 if (instance.model != m_groundModel.get() && instance.solid &&
                     volume.intersects(instance.bounds) &&
                     render::cullByDistance(instance.bounds, m_camera.transform.position, m_frameShadowCull,
@@ -2378,12 +2417,18 @@ void Engine::cullInstances(const Frustum& view)
     m_lodCounts = {};
     m_culledFar = 0;
     m_culledSmall = 0;
+    m_culledIndoor = 0;
     m_cullCandidates.clear();
     m_cullGrid.query(view, m_camera.transform.position, m_frameCull.viewDistance, m_cullCandidates);
     m_drawItems.clear();
     for (const u32 index : m_cullCandidates)
     {
         SceneInstance& instance = m_instances[index];
+        if (hiddenInRoom(instance))
+        {
+            ++m_culledIndoor;
+            continue;
+        }
         const render::CullResult cull = render::cullByDistance(instance.bounds, m_camera.transform.position,
                                                                m_frameCull, instance.sizeCullable);
         m_culledFar += cull == render::CullResult::TooFar ? 1 : 0;
@@ -2408,6 +2453,69 @@ void Engine::cullInstances(const Frustum& view)
             ++m_visibleInstances;
         }
     }
+}
+
+void Engine::updateRoomCulling(bool cameraInside)
+{
+    // Furniture of rooms (render.md "Innenräume"): which indoor boxes wholly hold each instance, found again
+    // when the instances or the rooms changed.
+    const std::vector<render::IndoorVolume>& rooms = indoorRooms();
+    if (m_instanceRoomsGeneration != m_indoorRoomsGeneration)
+    {
+        m_instanceRooms.clear();
+        std::vector<u32> held;
+        usize furniture = 0;
+        for (SceneInstance& instance : m_instances)
+        {
+            instance.roomFirst = static_cast<u32>(m_instanceRooms.size());
+            instance.roomCount = 0;
+            if (rooms.empty() || instance.model == m_groundModel.get() ||
+                !render::roomsHolding(instance.bounds, rooms, held))
+            {
+                continue;
+            }
+            m_instanceRooms.insert(m_instanceRooms.end(), held.begin(), held.end());
+            instance.roomCount = static_cast<u32>(held.size());
+            ++furniture;
+        }
+        m_instanceRoomsGeneration = m_indoorRoomsGeneration;
+        if (furniture > 0)
+        {
+            G7_LOG_INFO("engine", "{} of {} objects lie wholly in rooms (drawn from {} m or inside)",
+                        furniture, m_instances.size(), m_indoorCullDistance);
+        }
+    }
+    // Only with the camera in no room: a far room's furniture cannot show through its windows.
+    m_culledIndoorShadow = 0;
+    m_cullRooms = m_indoorCullDistance > 0.0f && !cameraInside && !m_instanceRooms.empty();
+    if (m_cullRooms)
+    {
+        m_roomFar.resize(rooms.size());
+        const std::span<const render::IndoorVolume> all(rooms);
+        for (usize i = 0; i < rooms.size(); ++i)
+        {
+            m_roomFar[i] = render::indoorAmount(m_camera.transform.position, all.subspan(i, 1),
+                                                m_indoorCullDistance) <= 0.0f
+                               ? 1
+                               : 0;
+        }
+    }
+}
+
+bool Engine::hiddenInRoom(const SceneInstance& instance) const noexcept
+{
+    if (!m_cullRooms || instance.roomCount == 0)
+    {
+        return false;
+    }
+    for (u32 k = 0; k < instance.roomCount; ++k)
+    {
+        if (m_roomFar[m_instanceRooms[instance.roomFirst + k]] == 0)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 void Engine::rebuildWaterSurfaces()
@@ -2867,9 +2975,8 @@ void Engine::addFigureLoadPhases()
     const f64 endMs = m_loadPhases.empty() ? 0.0 : m_loadPhases.back().endMs;
     const f64 other = t.total - t.parts - t.sets - t.assemble - t.images - t.upload;
     const std::pair<const char*, f64> parts[] = {
-        {"figures: parts (glTF)", t.parts}, {"figures: clip sets (glTF)", t.sets},
-        {"figures: assemble", t.assemble},  {"figures: images", t.images},
-        {"figures: GPU upload", t.upload},  {"figures: other", other}};
+        {"figures: parts", t.parts},   {"figures: clip sets", t.sets},    {"figures: assemble", t.assemble},
+        {"figures: images", t.images}, {"figures: GPU upload", t.upload}, {"figures: other", other}};
     for (const auto& [name, ms] : parts)
     {
         m_loadPhases.push_back({name, ms, endMs});

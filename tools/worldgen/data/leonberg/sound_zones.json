@@ -15,7 +15,11 @@
   },
   "rooms": {
     "LEO_SCHMIEDE_ZNP_INNEN": "schmiede_esse",
-    "LEO_GASTHAUS_ZHE_INNEN": "gasthaus_stube"
+    "LEO_GASTHAUS_ZHE_INNEN": "gasthaus_stube",
+    "LEO_SCHLOSS_GEWOELBE_INNEN": "keller_gewoelbe",
+    "LEO_SCHLOSS_VERLIES_INNEN": "keller_gewoelbe",
+    "LEO_SCHLOSS_WEINKELLER_INNEN": "keller_luftzug",
+    "LEO_SCHLOSS_KUECHE_INNEN": "schloss_kueche"
   },
   "townCellM": 5.0,
   "zwingerM": 15.0,

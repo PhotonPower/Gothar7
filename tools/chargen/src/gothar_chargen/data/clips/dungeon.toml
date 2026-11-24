@@ -1,0 +1,49 @@
+# Set "dungeon" -> assets/source/characters/anims/human/dungeon.glb (hero clips for the dungeon mobs,
+# engine #435 D3 switches, #439 D5 niches; 2026-11-23): own file so mob.glb stays untouched; the clips
+# are named mob/... and engine finds them by their full name in all sets. Contract §3.1 (mobs.toml):
+# the figure stands on the slot "front" and faces the wall (-Z of the mob), no root motion.
+#   lever        slot 0.60 m in front of the wall, handle about 1.2 m high: t_use pulls it down (event use)
+#   wall_button  slot 0.55 m, stone about 1.2 m high: t_press pushes it in (event use)
+#   niche        slot 0.55 m, floor of the hollow about 0.9 m high: t_reach (event open), s_reach
+#                (feeling about inside), t_back (event close) - like a chest without a lid
+# Keyframe placeholders like the other mob clips (mocap in F4).
+#
+# Key poses rotate about world axes at rest (Blender: X = the figure's left, -Y = forward, Z = up;
+# -X raises a hanging arm forwards, +X pitches the trunk and head forwards, +Z turns left).
+
+set = "dungeon"
+depends = ["none"]
+
+# --- lever: reach up, grip, pull down ------------------------------------------------------------
+
+[[clip]]
+name = "mob/lever/t_use"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [12, "reach"], [16, "grip"], [26, "pull"], [30, "pull"], [46, "rest"]], poses = { reach = { rotate = { spine_01 = [["X", 3]], upperarm_r = [["X", -85], ["Z", 8]], lowerarm_r = [["X", -15]], head = [["X", -8]] } }, grip = { move = { pelvis = [0.0, -0.03, 0.0] }, rotate = { spine_01 = [["X", 5]], upperarm_r = [["X", -88], ["Z", 8]], lowerarm_r = [["X", -10]], upperarm_l = [["X", -20]], head = [["X", -8]] } }, pull = { move = { pelvis = [0.0, 0.0, -0.08] }, rotate = { spine_01 = [["X", 16]], upperarm_r = [["X", -45], ["Z", 6]], lowerarm_r = [["X", -25]], upperarm_l = [["X", -15]], head = [["X", 6]], thigh_l = [["X", -18]], thigh_r = [["X", -18]], calf_l = [["X", 30]], calf_r = [["X", 30]], foot_l = [["X", -12]], foot_r = [["X", -12]] } } } }
+markers = { use = 24 }
+
+# --- wall button: reach out, push the stone in -----------------------------------------------------
+
+[[clip]]
+name = "mob/button/t_press"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [10, "reach"], [15, "press"], [21, "press"], [36, "rest"]], poses = { reach = { rotate = { spine_01 = [["X", 3]], upperarm_r = [["X", -82], ["Z", 6]], lowerarm_r = [["X", -35]], head = [["X", -4]] } }, press = { move = { pelvis = [0.0, -0.05, 0.0] }, rotate = { spine_01 = [["X", 8]], upperarm_r = [["X", -85], ["Z", 6]], lowerarm_r = [["X", -5]], upperarm_l = [["X", 8]], head = [["X", -2]] } } } }
+markers = { use = 15 }
+
+# --- niche: lean in, feel about inside, take the hand back -----------------------------------------
+
+[[clip]]
+name = "mob/niche/t_reach"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "rest"], [12, "lean"], [20, "in"]], poses = { lean = { move = { pelvis = [0.0, -0.04, -0.02] }, rotate = { spine_01 = [["X", 12]], head = [["X", 10]], upperarm_r = [["X", -55], ["Z", 6]], lowerarm_r = [["X", -30]], upperarm_l = [["X", -20], ["Z", -10]] } }, in = { move = { pelvis = [0.0, -0.08, -0.04] }, rotate = { spine_01 = [["X", 20]], head = [["X", 14]], upperarm_r = [["X", -70], ["Z", 6]], lowerarm_r = [["X", -8]], upperarm_l = [["X", -30], ["Z", -12]], lowerarm_l = [["X", -20]], thigh_l = [["X", -8]], thigh_r = [["X", -8]], calf_l = [["X", 14]], calf_r = [["X", 14]], foot_l = [["X", -6]], foot_r = [["X", -6]] } } } }
+markers = { open = 18 }
+
+[[clip]]
+name = "mob/niche/s_reach"
+keyframe = "keyposes"
+params = { base = "none/s_idle", keys = [[0, "in"], [20, "feel_l"], [40, "in"], [60, "feel_r"], [80, "in"]], poses = { in = { move = { pelvis = [0.0, -0.08, -0.04] }, rotate = { spine_01 = [["X", 20]], head = [["X", 14]], upperarm_r = [["X", -70], ["Z", 6]], lowerarm_r = [["X", -8]], upperarm_l = [["X", -30], ["Z", -12]], lowerarm_l = [["X", -20]], thigh_l = [["X", -8]], thigh_r = [["X", -8]], calf_l = [["X", 14]], calf_r = [["X", 14]], foot_l = [["X", -6]], foot_r = [["X", -6]] } }, feel_l = { move = { pelvis = [0.0, -0.08, -0.04] }, rotate = { spine_01 = [["X", 20], ["Z", 4]], head = [["X", 14], ["Z", 8]], upperarm_r = [["X", -72], ["Z", 18]], lowerarm_r = [["X", -12]], upperarm_l = [["X", -30], ["Z", -12]], lowerarm_l = [["X", -20]], thigh_l = [["X", -8]], thigh_r = [["X", -8]], calf_l = [["X", 14]], calf_r = [["X", 14]], foot_l = [["X", -6]], foot_r = [["X", -6]] } }, feel_r = { move = { pelvis = [0.0, -0.08, -0.04] }, rotate = { spine_01 = [["X", 20], ["Z", -4]], head = [["X", 14], ["Z", -6]], upperarm_r = [["X", -66], ["Z", -8]], lowerarm_r = [["X", -4]], upperarm_l = [["X", -30], ["Z", -12]], lowerarm_l = [["X", -20]], thigh_l = [["X", -8]], thigh_r = [["X", -8]], calf_l = [["X", 14]], calf_r = [["X", 14]], foot_l = [["X", -6]], foot_r = [["X", -6]] } } } }
+
+[[clip]]
+name = "mob/niche/t_back"
+reverse = "mob/niche/t_reach"
+markers = { close = 4 }

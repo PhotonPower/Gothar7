@@ -1,0 +1,231 @@
+# Set "gatterbock" (stone warden of the dungeon; monster contract, characters-pipeline.md §7)
+# -> monsters/gatterbock/anims/gatterbock.glb
+# Own creature (gothar-chargen creature gatterbock, 2026-11-23): the clip source only holds the
+# still action "rest". Walk and run are own gait cycles (gait); everything else is keyframed.
+# Dungeon (#422): s_dormant is the statue pose of `zs_dormant`, t_wake the waking.
+#
+# Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up): -X raises a
+# hanging arm forwards, +X tilts the trunk forwards and bends a knee back (calf), +Z turns left.
+
+set = "gatterbock"
+rig = "gatterbock"
+
+[sources.src]
+file = "gatterbock_clips.blend"
+mapping = "identity"
+
+[[clip]]
+name = "gatterbock/s_rest"
+from = "src:rest"
+helper = true
+
+# --- locomotion (root moves forward: contract §7) ---
+
+[[clip]]
+name = "gatterbock/s_idle"        # heavy, slow breathing of the stone; the head grinds round
+keyframe = "keyposes"
+[clip.params]
+base = "gatterbock/s_rest"
+keys = [[0, "rest"], [30, "look_l"], [60, "rest"], [90, "look_r"], [120, "rest"]]
+[clip.params.poses.look_l]
+rotate = { spine_02 = [["X", 2], ["Z", 4]], head = [["Z", 18]], upperarm_l = [["X", -4]], upperarm_r = [["X", 3]] }
+move = { pelvis = [0, 0, -0.01] }
+[clip.params.poses.look_r]
+rotate = { spine_02 = [["X", 2], ["Z", -4]], head = [["Z", -18]], upperarm_l = [["X", 3]], upperarm_r = [["X", -4]] }
+move = { pelvis = [0, 0, -0.01] }
+
+[[clip]]
+name = "gatterbock/s_walk"        # slow, stamping steps; the trunk rolls over the standing leg
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 0.9
+period = 30
+duty = 0.65
+lift = 0.08
+bob = 0.03
+pose = { spine_02 = [["X", 4]], upperarm_l = [["X", -6]], upperarm_r = [["X", -6]] }
+legs = [
+    { upper = "thigh_l", lower = "calf_l", foot = "foot_l", phase = 0.0 },
+    { upper = "thigh_r", lower = "calf_r", foot = "foot_r", phase = 0.5 },
+]
+
+[[clip]]
+name = "gatterbock/s_run"         # a heavy trot - slower than the running hero (4.0)
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 2.2
+period = 20
+duty = 0.5
+lift = 0.12
+bob = 0.05
+pitch = 6.0
+pose = { spine_02 = [["X", 10]], head = [["X", -8]], upperarm_l = [["X", -25]], upperarm_r = [["X", -25]], lowerarm_l = [["X", -30]], lowerarm_r = [["X", -30]] }
+legs = [
+    { upper = "thigh_l", lower = "calf_l", foot = "foot_l", phase = 0.0 },
+    { upper = "thigh_r", lower = "calf_r", foot = "foot_r", phase = 0.5 },
+]
+
+[[clip]]
+name = "gatterbock/s_step_inplace" # base of the turns: stepping on the spot
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 30
+duty = 0.65
+lift = 0.07
+legs = [
+    { upper = "thigh_l", lower = "calf_l", foot = "foot_l", phase = 0.0 },
+    { upper = "thigh_r", lower = "calf_r", foot = "foot_r", phase = 0.5 },
+]
+
+[[clip]]
+name = "gatterbock/t_turn_l"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "gatterbock/s_step_inplace"
+keys = [[0, "rest"], [60, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", 90]] }
+
+[[clip]]
+name = "gatterbock/t_turn_r"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "gatterbock/s_step_inplace"
+keys = [[0, "rest"], [60, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", -90]] }
+
+# --- combat ---
+
+[[clip]]
+name = "gatterbock/t_attack_1"    # both fists raised over the head, then smashed down in front
+keyframe = "keyposes"
+markers = { hit_start = 20, hit_end = 25, "sound:gatterbock_attack" = 14 }
+[clip.params]
+base = "gatterbock/s_rest"
+keys = [[0, "rest"], [14, "raise"], [19, "raise_top"], [24, "smash"], [30, "smash"], [48, "rest"]]
+[clip.params.poses.raise]
+rotate = { spine_02 = [["X", -10]], upperarm_l = [["X", -150], ["Y", -10]], upperarm_r = [["X", -150], ["Y", 10]], lowerarm_l = [["X", -40]], lowerarm_r = [["X", -40]], head = [["X", -10]] }
+[clip.params.poses.raise_top]
+rotate = { spine_02 = [["X", -14]], upperarm_l = [["X", -165], ["Y", -12]], upperarm_r = [["X", -165], ["Y", 12]], lowerarm_l = [["X", -50]], lowerarm_r = [["X", -50]], head = [["X", -12]] }
+move = { pelvis = [0, 0.02, 0.02] }
+[clip.params.poses.smash]
+rotate = { spine_01 = [["X", 12]], spine_02 = [["X", 28]], upperarm_l = [["X", -55], ["Y", -6]], upperarm_r = [["X", -55], ["Y", 6]], lowerarm_l = [["X", -12]], lowerarm_r = [["X", -12]], head = [["X", 10]], thigh_l = [["X", -18]], thigh_r = [["X", -18]], calf_l = [["X", 30]], calf_r = [["X", 30]] }
+move = { pelvis = [0, -0.06, -0.14] }
+
+[[clip]]
+name = "gatterbock/t_attack_2"    # backhand with the right fist, across from the left to the right
+keyframe = "keyposes"
+markers = { hit_start = 14, hit_end = 19, "sound:gatterbock_attack" = 8 }
+[clip.params]
+base = "gatterbock/s_rest"
+keys = [[0, "rest"], [12, "wind"], [17, "sweep"], [21, "through"], [38, "rest"]]
+[clip.params.poses.wind]
+rotate = { spine_01 = [["Z", 10]], spine_02 = [["Z", 28]], upperarm_r = [["X", -80], ["Z", 45]], lowerarm_r = [["X", -40]], head = [["Z", -10]] }
+[clip.params.poses.sweep]
+rotate = { spine_01 = [["Z", 0]], spine_02 = [["Z", 0], ["X", 8]], upperarm_r = [["X", -88], ["Z", 0]], lowerarm_r = [["X", -10]] }
+move = { pelvis = [0, -0.04, -0.04] }
+[clip.params.poses.through]
+rotate = { spine_01 = [["Z", -10]], spine_02 = [["Z", -30], ["X", 8]], upperarm_r = [["X", -78], ["Z", -55]], lowerarm_r = [["X", -8]], head = [["Z", 10]] }
+move = { pelvis = [0, -0.04, -0.04] }
+
+[[clip]]
+name = "gatterbock/t_hit"         # the stone rocks back, dust (engine), steady again
+keyframe = "keyposes"
+markers = { "sound:gatterbock_hit" = 1 }
+[clip.params]
+base = "gatterbock/s_rest"
+keys = [[0, "rest"], [4, "rock"], [18, "rest"]]
+[clip.params.poses.rock]
+rotate = { spine_02 = [["X", -8]], head = [["X", -10]], upperarm_l = [["X", 8]], upperarm_r = [["X", 8]] }
+move = { pelvis = [0, 0.05, 0] }
+
+[[clip]]
+name = "gatterbock/t_die"         # the embers go out: sinks onto its knees and topples forwards
+keyframe = "keyposes"
+markers = { "sound:gatterbock_die" = 2 }
+[clip.params]
+base = "gatterbock/s_rest"
+keys = [[0, "rest"], [10, "sag"], [22, "kneel"], [36, "fallen"], [46, "fallen"]]
+[clip.params.poses.sag]
+rotate = { spine_02 = [["X", 12]], head = [["X", 20]], upperarm_l = [["X", 4]], upperarm_r = [["X", 4]], thigh_l = [["X", -20]], thigh_r = [["X", -20]], calf_l = [["X", 35]], calf_r = [["X", 35]] }
+move = { pelvis = [0, 0, -0.12] }
+[clip.params.poses.kneel]
+rotate = { spine_02 = [["X", 20]], head = [["X", 25]], thigh_l = [["X", -10]], thigh_r = [["X", -10]], calf_l = [["X", 90]], calf_r = [["X", 90]], foot_l = [["X", -50]], foot_r = [["X", -50]] }
+move = { pelvis = [0, 0.1, -0.44] }
+[clip.params.poses.fallen]
+rotate = { root = [["X", 80]], spine_02 = [["X", 5]], head = [["X", -10]], upperarm_l = [["X", -150]], upperarm_r = [["X", -150]], thigh_l = [["X", 10]], thigh_r = [["X", 10]] }
+move = { root = [0, -0.2, 0.2] }
+
+# --- behaviour ---
+
+[[clip]]
+name = "gatterbock/s_eat"         # nothing to eat: it brushes dust off its fists (minimum set)
+keyframe = "keyposes"
+[clip.params]
+base = "gatterbock/s_rest"
+keys = [[0, "look"], [16, "rub"], [28, "look"], [44, "rub"], [60, "look"]]
+[clip.params.poses.look]
+rotate = { head = [["X", 22]], spine_02 = [["X", 6]], upperarm_l = [["X", -40], ["Z", -20]], upperarm_r = [["X", -40], ["Z", 20]], lowerarm_l = [["X", -60]], lowerarm_r = [["X", -60]] }
+[clip.params.poses.rub]
+rotate = { head = [["X", 22]], spine_02 = [["X", 6]], upperarm_l = [["X", -45], ["Z", -28]], upperarm_r = [["X", -38], ["Z", 26]], lowerarm_l = [["X", -70]], lowerarm_r = [["X", -55]] }
+
+[[clip]]
+name = "gatterbock/s_dormant"     # the statue beside the gate (zs_dormant): head down, fists on the chest
+keyframe = "keyposes"
+[clip.params]
+base = "gatterbock/s_rest"
+keys = [[0, "statue"], [60, "statue"]]
+[clip.params.poses.statue]
+rotate = { head = [["X", 25]], spine_02 = [["X", 4]], upperarm_l = [["X", -35], ["Z", -35]], upperarm_r = [["X", -35], ["Z", 35]], lowerarm_l = [["X", -95]], lowerarm_r = [["X", -95]] }
+move = { pelvis = [0, 0, -0.03] }
+
+[[clip]]
+name = "gatterbock/s_sleep"       # the same statue pose (minimum set)
+keyframe = "keyposes"
+[clip.params]
+base = "gatterbock/s_rest"
+keys = [[0, "statue"], [60, "statue"]]
+[clip.params.poses.statue]
+rotate = { head = [["X", 25]], spine_02 = [["X", 4]], upperarm_l = [["X", -35], ["Z", -35]], upperarm_r = [["X", -35], ["Z", 35]], lowerarm_l = [["X", -95]], lowerarm_r = [["X", -95]] }
+move = { pelvis = [0, 0, -0.03] }
+
+[[clip]]
+name = "gatterbock/t_wake"        # from the statue pose: the head lifts, shoulders grind, arms drop free
+keyframe = "keyposes"
+markers = { "sound:gatterbock_threaten" = 6 }
+[clip.params]
+base = "gatterbock/s_rest"
+keys = [[0, "statue"], [12, "statue_up"], [22, "shake"], [30, "shake2"], [44, "rest"]]
+[clip.params.poses.statue]
+rotate = { head = [["X", 25]], spine_02 = [["X", 4]], upperarm_l = [["X", -35], ["Z", -35]], upperarm_r = [["X", -35], ["Z", 35]], lowerarm_l = [["X", -95]], lowerarm_r = [["X", -95]] }
+move = { pelvis = [0, 0, -0.03] }
+[clip.params.poses.statue_up]
+rotate = { head = [["X", -8]], spine_02 = [["X", -2]], upperarm_l = [["X", -35], ["Z", -35]], upperarm_r = [["X", -35], ["Z", 35]], lowerarm_l = [["X", -95]], lowerarm_r = [["X", -95]] }
+[clip.params.poses.shake]
+rotate = { head = [["X", -5], ["Z", 8]], spine_02 = [["Z", 6]], upperarm_l = [["X", -10], ["Z", -15]], upperarm_r = [["X", -10], ["Z", 15]], lowerarm_l = [["X", -20]], lowerarm_r = [["X", -20]] }
+[clip.params.poses.shake2]
+rotate = { head = [["X", -5], ["Z", -8]], spine_02 = [["Z", -6]], upperarm_l = [["Z", -8]], upperarm_r = [["Z", 8]] }
+
+[[clip]]
+name = "gatterbock/t_threaten"    # stamps, beats its fists together, the embers flare
+keyframe = "keyposes"
+markers = { "sound:gatterbock_threaten" = 0 }
+[clip.params]
+base = "gatterbock/s_rest"
+keys = [[0, "rest"], [10, "lift"], [16, "stamp"], [26, "fists"], [32, "clash"], [40, "fists"], [46, "clash"], [60, "rest"]]
+[clip.params.poses.lift]
+rotate = { thigh_r = [["X", -45]], calf_r = [["X", 50]], spine_02 = [["X", -6]], head = [["X", -10]] }
+[clip.params.poses.stamp]
+rotate = { spine_02 = [["X", 6]], head = [["X", -6]] }
+move = { pelvis = [0, 0, -0.06] }
+[clip.params.poses.fists]
+rotate = { spine_02 = [["X", -6]], head = [["X", -12]], upperarm_l = [["X", -80], ["Z", -40]], upperarm_r = [["X", -80], ["Z", 40]], lowerarm_l = [["X", -40]], lowerarm_r = [["X", -40]] }
+[clip.params.poses.clash]
+rotate = { spine_02 = [["X", -6]], head = [["X", -12]], upperarm_l = [["X", -85], ["Z", -12]], upperarm_r = [["X", -85], ["Z", 12]], lowerarm_l = [["X", -20]], lowerarm_r = [["X", -20]] }

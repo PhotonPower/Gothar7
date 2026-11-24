@@ -182,11 +182,14 @@ Result<void> applyClipEvents(AnimationSetData&, toml, source);     // <set>.even
   `SkinnedModelData::assembly` enthält `asset.extras.gothar` der Figuren-Teile (`neck`, `falloff`, `covers`,
   `hides`; Format v1, §6.2), gelesen mit nlohmann-json (privat, ADR 0017). Zusammenbau: `FigureAssembly.hpp`
   (`animation.md` „Figuren zur Laufzeit zusammensetzen“).
-- **Lader im `AssetManager`:** `SkinnedModelData` und `AnimationSetData` direkt aus glTF/GLB.
-  - **Offener Punkt:** Ein gekochtes Format folgt (ADR 0019; Plan und ADR 0025 unten, „Plan M17: gekochte Figuren
-    und Animationen“). Bis dahin laden Figuren und Sets aus losen Dateien (Entwicklung). Mit `--pack` legt g7-cook
-    geskinnte und animierte `.glb` zusätzlich unverändert ins Archiv (06-asset-pipeline.md, Teil 0), so lädt auch ein
-    reines `.g7pak` Figuren und Clips als glTF.
+- **Lader im `AssetManager`:** `SkinnedModelData` aus `.g7skin` oder glTF/GLB, `AnimationSetData` aus `.g7anim` oder
+  glTF/GLB (ADR 0025).
+  - `events.toml` liest der Lader in beiden Fällen neben dem Set.
+  - Ist eine gekochte Datei von anderer Version oder beschädigt, gibt es eine Warnung, und der Lader nimmt das
+    `.glb` daneben. Ohne `.glb` ist es ein Fehler.
+  - Welche Datei geladen wird, entscheidet die Engine mit `preferCookedFigure(vfs, path, skin)`
+    (`runtime/AssetMounts.hpp`): `x.glb` wird zu `x.g7skin` bzw. `x.g7anim`, wenn die Datei im VFS liegt.
+    Manifeste, Skripte und `animgraph.toml` nennen weiter `.glb`.
 
 ### `SkinFile.hpp` – gekochte Figuren `.g7skin` (M17, ADR 0025, Plan Teil B)
 ```cpp
@@ -315,6 +318,7 @@ public:
     template <class T> void registerLoader(Loader<T>);
     template <class T> Handle<T> load(std::string_view path);
     void update();  void waitAll();
+    template<T> void wait(std::span<const Handle<T>>);  template<T> void wait(const Handle<T>&);
     usize reload(std::string_view path);      // alle gecachten Typen des Pfads neu laden (asynchron)
     u32 checkForChanges(f64 now);             // Hot-Reload: geänderte lose Dateien neu laden
     void setHotReload(bool); bool hotReload() const;
@@ -325,6 +329,8 @@ public:
 - **Ablauf:** `load` kehrt sofort zurück. Worker-Threads lesen die Datei über das `Vfs` und rufen den Lader des Typs
   auf. Erst **`update()` im Hauptthread** schaltet fertige Ladevorgänge auf `Ready` bzw. `Failed`. Ein Asset ändert
   sich also nie mitten in einem Frame oder Simulationsschritt, sondern erscheint frühestens im nächsten Frame.
+  `wait(handles)` wartet nur auf diese Ladevorgänge (andere laufen weiter) und veröffentlicht dann, was fertig ist.
+  Figuren warten so auf ihre Teile, Clip-Sets und Bilder (M17).
   `waitAll()` wartet auf alle offenen Ladevorgänge und veröffentlicht sie (Ladebildschirm, Tests).
   Mit `workerThreads = 0` laufen die Lader synchron in `update()` (Werkzeuge, deterministische Tests).
   `update()` läuft jeden Frame und muss deshalb linear bleiben: Freigegebene Assets werden dort aus dem Cache
@@ -342,7 +348,7 @@ public:
   bei losen Dateien (Verzeichnis über `diskPath`). In Archiven müssen Meshes eigenständig sein (`.glb`, data:-URIs),
   sonst gibt es eine Fehlermeldung. Bild-URIs eines Meshes bleiben in `ImageSource::uri`; das Laden über das VFS
   kommt mit der Engine-Anbindung.
-- **Threads:** `load`, `update`, `waitAll`, `registerLoader` und Handle-Zugriffe gehören in den Hauptthread.
+- **Threads:** `load`, `update`, `waitAll`, `wait`, `registerLoader` und Handle-Zugriffe gehören in den Hauptthread.
   Lader laufen auf Workern und nutzen nur ihren `LoadContext`. Hochladen auf die Grafikkarte bleibt in `render`
   (Hauptthread mit GL-Kontext). Das `Vfs` muss den Manager überleben.
 - **Gelöst – Hänger in Testläufen (2026-10-03):** Lokal und in der Windows-CI (Suite `cook`) hing ein Lauf
@@ -460,7 +466,7 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
   `figure assemble`, `figure textures`, `figure upload`. Lauf `--perf=markt,markt_voll` auf ruhiger Maschine.
 - Ergebnis in `docs/perf/` mit Anteilen je Zone. Erst damit wird der Gewinn belastbar (siehe „Erwarteter Gewinn“).
 - **Umgesetzt** (2026-11-08):
-  - Die Zonen heißen `figure load`, `figure parts (glTF)`, `figure clip sets (glTF)`, `figure assemble`,
+  - Die Zonen heißen `figure load`, `figure parts`, `figure clip sets`, `figure assemble`,
     `figure images` und `figure upload`.
   - Engine und `--perf` schreiben die Summen zusätzlich als Ladephasen `figures: …`. Das gilt in jedem Build, nicht
     nur im Preset `profile`.
@@ -489,6 +495,11 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
 - `writeAnimFile`, `readAnimFile` wie in Teil B.
 
 ### Teil D – Cooker
+- **Umgesetzt** (2026-11-09):
+  - `cookSkinned` in `g7-cook` (`kCookerVersion` 7) erzeugt `.g7skin`/`.g7anim` statt `.g7mesh` und der
+    glTF-Kopie aus Teil 0.
+  - Der Bericht zählt `skins` und `anims`.
+  - Tests in `tests/cook/test_cook.cpp`.
 - Ein `.glb` mit Skin ergibt `.g7skin`, eines mit Animationen `.g7anim`. Eine Datei mit beidem ergibt beide.
 - Das statische `.g7mesh` eines geskinnten `.glb` entfällt (Frage 5). Die Kopie aus Teil 0 entfällt ebenfalls.
 - Bilder der Materialien laufen wie bei `.g7mesh` durch die Textur-Erkennung (KTX2, Farbe/Normal/Daten).
@@ -498,6 +509,10 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
   vorher.
 
 ### Teil E – Laden, Rückfall, Hot-Reload (asset, runtime)
+- **Umgesetzt** (2026-11-09):
+  - Lader für `.g7skin`/`.g7anim` mit Rückfall auf das `.glb`.
+  - `preferCookedFigure` an allen drei Ladestellen in `EngineFigure` (Teile, Figuren-`.glb`, Clip-Sets).
+  - Tests in `test_skin_file.cpp` und `test_asset_mounts.cpp`.
 - Die Loader für `SkinnedModelData`/`AnimationSetData` erkennen `.g7skin`/`.g7anim`. „Gekochtes gewinnt“ wie bei
   `.g7mesh`: Für `x.glb` lädt der Manager `x.g7skin` bzw. `x.g7anim`, wenn die Datei im VFS liegt. Skripte, Manifeste
   und `animgraph.toml` nennen weiter `.glb`. **Kein Pfad in Inhalten ändert sich.**
@@ -519,6 +534,11 @@ der Zusammenbau zur Laufzeit bleibt unverändert. In der Entwicklung bleibt glTF
 - Der strenge Paket-Test aus Teil 0 belegt Figuren und Clips aus dem Archiv. Dazu kommt ein Lauf mit
   `--exec=camp_people()` und einem Kampf-Clip (Events).
 - Danach: release.md Teil D abschließen, Roadmap-Punkt abhaken, Messung wiederholen (`--perf`, Ladephasen).
+- **Umgesetzt** (2026-11-09):
+  - Der Paket-Test (`make_release`) lädt die Lager-Figuren aus `.g7skin`/`.g7anim` in `data.g7pak`, ohne `.glb`.
+  - Der Leser liest Arrays am Stück.
+  - Messung im Nachtrag von `docs/perf/2026-11-08-figuren-laden.md`.
+  - release.md und Roadmap sind nachgeführt.
 
 ### Tests
 - **asset:**

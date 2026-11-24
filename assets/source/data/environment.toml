@@ -15,6 +15,7 @@ version = 1
 
 [indoor]              # Räume (Zonen vom Typ indoor, world.md „Zonen“): Umgebungslicht drinnen = Faktor mal draußen,
 ambient = 0.35        # je Fläche (die Straße bleibt hell, der Raum von draußen dunkel); Spielgefühl, Projektinhaber
+ambient_windowless = 0.06 # Räume ohne Fensterlicht (Keller); eine Zone mit eigenem `daylight` ersetzt beide Werte
 
 [orbit]
 sunrise = 6.0         # Uhr
