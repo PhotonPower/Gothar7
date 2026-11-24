@@ -27,6 +27,7 @@ sets = [
     "characters/anims/human/dlg.glb",
     "characters/anims/human/church.glb",
     "characters/anims/human/music.glb",
+    "characters/anims/human/dungeon.glb",
 ]
 start = "move"
 # Abspielrate = Parameter / Eigengeschwindigkeit der Clips (`speed` in <set>.events.toml), damit die Füße nicht
@@ -209,6 +210,26 @@ clip = "mob/chest/s_picklock"
 [[state]]
 name = "door_enter"
 clip = "mob/door/t_open"
+
+[[state]] # Dungeon (D3, D5; figuren #441, dungeon.glb): Hebel ziehen, Wandstein drücken - Event „use“ schaltet
+name = "lever_enter"
+clip = "mob/lever/t_use"
+
+[[state]]
+name = "wall_button_enter"
+clip = "mob/button/t_press"
+
+[[state]] # Nische: hineingreifen (Event „open“), tasten, Hand zurück (Event „close“)
+name = "niche_enter"
+clip = "mob/niche/t_reach"
+
+[[state]]
+name = "niche_loop"
+clip = "mob/niche/s_reach"
+
+[[state]]
+name = "niche_leave"
+clip = "mob/niche/t_back"
 
 [[state]] # Amboss (C2): hit_anvil je Schlag
 name = "anvil_enter"

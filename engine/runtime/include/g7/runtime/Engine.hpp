@@ -38,6 +38,7 @@
 #include <g7/render/Camera.hpp>
 #include <g7/render/DebugDraw.hpp>
 #include <g7/render/Device.hpp>
+#include <g7/render/Grass.hpp>
 #include <g7/render/Material.hpp>
 #include <g7/render/Mesh.hpp>
 #include <g7/render/Particles.hpp>
@@ -159,6 +160,10 @@ struct SceneInstance
     world::VobId vob;         ///< the mesh vob drawn (0: ground plate, --view-mesh, test scenes)
     bool solid = true;        ///< collides and casts shadows (false: the water surface placeholder)
     u32 lod = 0;              ///< level of detail drawn now (chosen by distance with hysteresis)
+    /// Furniture of rooms (render.md "Innenräume"): the indoor boxes wholly holding it, a range of
+    /// Engine::m_instanceRooms (count 0: not inside a room).
+    u32 roomFirst = 0;
+    u32 roomCount = 0;
 };
 
 /// A landing of the player: fall height from the highest point and the hit points it cost.
@@ -236,6 +241,16 @@ struct Instance;
 struct AnimatedFigure; // animated figures (EngineFigure.cpp)
 struct PlayerFigure;   // the animated hero
 struct Creature;       // an animal (EngineCreatures.cpp)
+
+/// The socket the hero holds a rune or scroll in: the left hand, the casting hand of the mag clips (M17,
+/// figuren #409; contract in animation.md).
+inline constexpr std::string_view kMagicSocket = "socket_hand_l";
+/// Where the rune sits in kMagicSocket: between the fingertips of the grip pose mag/s_grip (figuren #425,
+/// animation-list.md "Griff"), metres in the socket's space; after it half a turn about the rune's long axis
+/// (+Y) turns its sign away from the palm.
+inline constexpr Vec3 kRuneGripOffset{-0.0935f, 0.0155f, -0.052f};
+/// translate(kRuneGripOffset) * rotateY(pi): the rune's transform in kMagicSocket.
+[[nodiscard]] Mat4 runeGripTransform() noexcept;
 
 struct EngineConfig
 {
@@ -423,6 +438,11 @@ public:
     /// the objects of the grid cells it visited (whole cells beyond view_distance are skipped uncounted).
     [[nodiscard]] u32 culledByDistance() const noexcept { return m_culledFar; }
     [[nodiscard]] u32 culledBySize() const noexcept { return m_culledSmall; }
+    /// Objects wholly inside rooms the last frame left out of the main pass because the camera was in no room
+    /// and farther than [render] indoor_cull_distance from theirs (render.md "Innenräume").
+    [[nodiscard]] u32 culledIndoors() const noexcept { return m_culledIndoor; }
+    /// The same for the shadow cascades of the last frame (summed over the cascades drawn).
+    [[nodiscard]] u32 culledIndoorShadows() const noexcept { return m_culledIndoorShadow; }
     [[nodiscard]] const render::CullSettings& cullSettings() const noexcept { return m_cullSettings; }
     /// Multi-draw batches (engine.toml [render] multi_draw, default on); off draws every mesh on its own.
     void setMultiDraw(bool enabled) noexcept { m_multiDraw = enabled; }
@@ -470,6 +490,8 @@ public:
     [[nodiscard]] const std::string& ambienceOutside() const noexcept { return m_ambience.outside; }
     /// The rain layer playing now (M17 R): amb_rain, amb_rain_roof (indoors) or empty.
     [[nodiscard]] const std::string& rainSound() const noexcept { return m_rainSound.name; }
+    /// Volume of the ambience's wind loop (amb_wind) now: follows the weather's wind (M17 W).
+    [[nodiscard]] f32 windLoopVolume() const noexcept { return m_windLoopVolume; }
     /// The occlusion of a 3D sound the engine started (0 open .. 1 muffled).
     [[nodiscard]] f32 soundMuffle(audio::SoundId id) const noexcept
     {
@@ -483,9 +505,12 @@ public:
     /// The daylight (window) lights at the current time: the sky ambient's colour, intensity times its
     /// brightness relative to noon (components.light.daylight, world.md).
     [[nodiscard]] std::vector<render::PointLight> daylightLights() const;
-    /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes; the renderer
-    /// gives them the indoor ambient (environment.toml [indoor]).
+    /// The rooms (zones of type indoor) nearest to `point`, at most render::kMaxIndoorVolumes, each with its
+    /// ambient factor (zone `daylight`, else environment.toml [indoor] by window lights; world.md "Zonen").
     [[nodiscard]] std::vector<render::IndoorVolume> nearestIndoorVolumes(const Vec3& point) const;
+    /// Every indoor box of the world with its ambient factor, in zone order (cached; rebuilt when zones,
+    /// lights or environment.toml change).
+    [[nodiscard]] const std::vector<render::IndoorVolume>& indoorRooms() const;
     [[nodiscard]] const render::Sky& sky() const noexcept { return m_sky; }
     /// Writes the scene's world vobs with the loaded world's terrain, waynet, zones and generator head as
     /// .g7world (--save-world, editor).
@@ -582,6 +607,18 @@ public:
     [[nodiscard]] u32 terrainLayerCount() const noexcept;
     /// Writes the heights (.r16) and the splat maps (.png) over their sources on disk.
     [[nodiscard]] Result<void> saveTerrain();
+    /// The editor's grass overlay (M17 G3, decision 9; world::grassOverlayPath): RGBA8 over the terrain's
+    /// samples (R density, A coverage) on top of the generated grass mask. Paintable also where the terrain
+    /// is locked (Leonberg): the generator never writes it. Loaded with the world if there is one, created
+    /// empty (coverage 0) on first use; nullopt without terrain.
+    [[nodiscard]] std::optional<SplatView> grassOverlay();
+    /// After painting the overlay: the grass tiles touching this xz rectangle are rebuilt (they show the old
+    /// grass until then); without one every tile (undo).
+    void grassOverlayChanged(std::optional<std::pair<Vec2, Vec2>> area = std::nullopt);
+    /// Writes the overlay next to the loose world file (`<world>.grass.png`).
+    [[nodiscard]] Result<void> saveGrassOverlay();
+    /// The overlay's VFS path for the loaded world (empty without one).
+    [[nodiscard]] std::string grassOverlayPath() const;
     /// Disk file of the loaded world when it comes from a loose folder (editor saving); nullopt for
     /// archives and scenes.
     [[nodiscard]] std::optional<fs::Path> worldSourceFile() const;
@@ -712,6 +749,8 @@ public:
     void detachFromPlayer(std::string_view socket);
     /// World transform of a socket in the pose of the last fixed step (nullopt: no figure or socket).
     [[nodiscard]] std::optional<Mat4> playerSocketTransform(std::string_view socket) const;
+    /// World transform of the model held at a socket, its attachment offset included (nullopt: none held).
+    [[nodiscard]] std::optional<Mat4> playerAttachmentTransform(std::string_view socket) const;
     /// The hero's head turns towards this world point (within limits); nullopt: straight ahead.
     void setPlayerLookTarget(std::optional<Vec3> target);
     /// Face: "angry", "friendly", "fear", "pain", "sleep" or "" (neutral); false for an unknown name.
@@ -832,6 +871,14 @@ public:
     [[nodiscard]] u32 distortionDrawn() const noexcept { return m_distortionDrawn; }
     [[nodiscard]] f32 wobble() const noexcept;
     [[nodiscard]] const render::RainRenderer& rain() const noexcept { return m_rain; }
+    /// Grass fields (M17 G1): the quality now ([render] grass, auto resolved), the tiles around the camera,
+    /// what the last frame drew.
+    [[nodiscard]] render::GrassQuality grassQuality() const noexcept { return m_grassQuality; }
+    [[nodiscard]] const render::GrassRing& grassRing() const noexcept { return m_grassRing; }
+    [[nodiscard]] const render::GrassStats& grassStats() const noexcept { return m_grass.stats(); }
+    /// Figures and lying items the grass makes way for this frame (decisions 4, 5): x, y, z, radius.
+    [[nodiscard]] std::span<const Vec4> grassBenders() const noexcept { return m_grassBenders; }
+    [[nodiscard]] std::span<const Vec4> grassShorteners() const noexcept { return m_grassShorteners; }
     /// The player camera: 0 outside .. 1 inside (indoor profile, [camera.indoor]); its distance behind the
     /// target.
     [[nodiscard]] f32 playerIndoorBlend() const noexcept { return m_indoorBlend; }
@@ -884,6 +931,9 @@ public:
     [[nodiscard]] DiaryData diaryData() const;
     /// The UI language (`[ui] language`: "de", "en").
     [[nodiscard]] std::string language() const;
+    /// The credits screen's text (release.md decision 10): licenses.toml and THIRD_PARTY_NOTICES.txt of the
+    /// package, in development those of the repository.
+    [[nodiscard]] std::string creditsText() const;
     /// A content text of the scripts (German inline, E2) in the UI language: its translation from
     /// text/script.<language>.json, else the German text (M14 part G).
     [[nodiscard]] std::string contentText(std::string_view german) const;
@@ -1023,7 +1073,10 @@ private:
     void playerAnimationUi();
     [[nodiscard]] Mat4 playerFigureTransform() const;
     void preparePlayerPose(f32 alpha);
-    [[nodiscard]] Result<asset::SkinnedModelData> assembleFigureParts(const asset::FigureManifest& manifest);
+    /// `keep`: receives the handles of the parts (the figure holds them, so the cache keeps them).
+    [[nodiscard]] Result<asset::SkinnedModelData>
+    assembleFigureParts(const asset::FigureManifest& manifest,
+                        std::vector<asset::Handle<asset::SkinnedModelData>>* keep = nullptr);
     [[nodiscard]] Result<void> uploadFigure(AnimatedFigure& figure, const asset::SkinnedModelData& data);
     using FigureGraphCallback =
         std::function<void(const animation::AnimGraph&, std::span<const asset::AnimationSetData* const>)>;
@@ -1458,6 +1511,7 @@ private:
         std::optional<audio::SoundId> loop;
     };
     RainSound m_rainSound;
+    f32 m_windLoopVolume = 1.0f; // amb_wind after the weather's wind
     void updateRainSound();
     std::map<audio::SoundId, Vec3> m_spatialSounds; // where the 3D sounds play (occlusion)
     f32 m_occlusionTimer = 0.0f;
@@ -1628,8 +1682,12 @@ private:
     [[nodiscard]] gameplay::ItemLookup itemLookup() const;
     [[nodiscard]] i32 xpForLevel(i32 level);
     void creaturesUi();
-    void aiUi();         // window "AI" (M9 part E)
-    void drawAiSenses(); // overlay: the selected NPC's sight cone and hearing
+    void aiUi();           // window "AI" (M9 part E)
+    void grassUi();        // window "Grass" (M17 G3)
+    void drawGrassTiles(); // overlay: the grass tiles' borders and tufts
+    void loadGrassOverlay();
+    void collectGrassMakers(); // figures and lying items near the camera: the grass makes way
+    void drawAiSenses();       // overlay: the selected NPC's sight cone and hearing
     [[nodiscard]] Creature* creature(u32 id) noexcept;
     [[nodiscard]] const Creature* creature(u32 id) const noexcept;
     [[nodiscard]] Result<void> rebuildPlayerFigure(const asset::FigureManifest& manifest);
@@ -1675,10 +1733,22 @@ private:
     void updateWeather();
     void thunder(const world::Lightning& flash);
     void updateRainMap();
+    // Grass fields (M17 G1, EngineGrass.cpp).
+    void applyGrassSetting();
+    void resetGrassWorld(); ///< layers and paths of the loaded world
+    void updateGrass();     ///< the ring around the camera, uploads (before the passes)
+    void drawGrass();
+    void drawGrassShadow(const render::Cascade& cascade);
+    [[nodiscard]] render::GrassFrame grassFrame() const;
     void drawRain(u32 width, u32 height);
     void rebuildWaterSurfaces();
     void drawWater();
     void cullInstances(const Frustum& view); // fills m_drawItems (multi-draw) or draws them right away
+    /// Finds the rooms holding each instance when needed and which rooms are far this frame
+    /// (indoor_cull_distance).
+    void updateRoomCulling(bool cameraInside);
+    /// True if this frame leaves the instance out: furniture of rooms all beyond indoor_cull_distance.
+    [[nodiscard]] bool hiddenInRoom(const SceneInstance& instance) const noexcept;
     void updateUnderwater();
     void drawScene(u32 width, u32 height);
     void addDebugOverlay(u32 width, u32 height);
@@ -1791,8 +1861,8 @@ private:
     /// summed over the figures built since the last reset; world_loaded adds them as load phases.
     struct FigureLoadTimes
     {
-        f64 parts = 0.0;    // figure parts (SkinnedModelData from glTF) loaded and waited for
-        f64 sets = 0.0;     // clip sets (AnimationSetData from glTF) loaded and waited for
+        f64 parts = 0.0;    // figure parts (SkinnedModelData, .g7skin or glTF) loaded, waited for
+        f64 sets = 0.0;     // clip sets (AnimationSetData, .g7anim or glTF) loaded, waited for
         f64 assemble = 0.0; // asset::assembleFigure
         f64 images = 0.0;   // textures loaded and waited for
         f64 upload = 0.0;   // skinned mesh and materials on the GPU
@@ -1886,7 +1956,25 @@ private:
     render::RainRenderer m_rain;                                     // M17 R
     std::vector<render::MeshDrawItem> m_rainItems;                   // the rain map's occluders
     render::RainQuality m_rainQuality = render::RainQuality::Medium; // [render] rain_quality
-    bool m_weatherVisible = true;                                    // [render] weather
+    render::GrassRenderer m_grass;                                   // M17 G1
+    render::GrassRing m_grassRing;
+    render::GrassQuality m_grassQuality = render::GrassQuality::Medium; // [render] grass (auto resolved)
+    std::vector<render::GrassLayer> m_grassLayers;                      // per terrain layer of the world
+    std::vector<std::pair<Vec3, Vec3>> m_grassPaths; // the waynet's edges: no grass on them
+    std::vector<u32> m_grassBuilt;                   // slots built this frame
+    asset::ImageData m_grassMask;                    // terrain.grass_mask (empty: none; M17 G2)
+    asset::ImageData m_grassOverlay;                 // the editor's overlay (empty: none; M17 G3)
+    bool m_grassOverlayTried = false;                // looked for the overlay file of this world
+    bool m_grassTileBorders = true;                  // window "Grass": tile borders in the overlay (F2)
+    f64 m_grassBuildPeak = 0.0;                      // window "Grass": slowest frame of tile building (ms)
+    std::vector<Vec4> m_grassBenders;                // figures the grass bends away from (this frame)
+    std::vector<Vec4> m_grassShorteners;             // lying items the grass is cut short around
+    std::vector<Vec3> m_grassPoints;                 // scratch
+    std::vector<AABB> m_grassSolids;                 // bounds of what stands in the world (rays under them)
+    bool m_grassDirty = true;                        // the ring anew (world, physics, splat, quality)
+    bool m_grassSplatTried = false;
+    u32 m_grassDrawn = 0;
+    bool m_weatherVisible = true; // [render] weather
     f64 m_rainTime = 0.0;
     bool m_windEnabled = true;               // [render] wind (M17 W)
     f64 m_windTime = 0.0;                    // real seconds, wrapped; moves the sway and the gusts
@@ -1946,7 +2034,14 @@ private:
     render::CullSettings m_cullSettings;
     render::CullSettings m_frameCull; // this frame's: m_cullSettings, indoors with indoor_view_distance (E2)
     f32 m_indoorViewDistance = 30.0f; // [render] indoor_view_distance, 0 = off
-    f32 m_indoorShadowDistance = 12.0f;     // [render] indoor_shadow_distance
+    f32 m_indoorShadowDistance = 12.0f;      // [render] indoor_shadow_distance
+    f32 m_indoorCullDistance = 12.0f;        // [render] indoor_cull_distance, 0 = off
+    std::vector<u32> m_instanceRooms;        // SceneInstance::roomFirst/roomCount: indices into indoorRooms()
+    u64 m_instanceRoomsGeneration = ~u64{0}; // indoorRooms() generation they were found for
+    bool m_cullRooms = false;                // this frame: furniture of far rooms is left out
+    std::vector<u8> m_roomFar; // this frame: per indoorRooms() box, 1 = beyond indoor_cull_distance
+    u32 m_culledIndoor = 0;
+    u32 m_culledIndoorShadow = 0;
     render::CullSettings m_frameShadowCull; // this frame's shadow casters (indoors nearer still)
     render::LodSettings m_lodSettings;
     std::array<u32, 3> m_lodCounts{}; // instances drawn per level of detail in the last main pass
@@ -2245,6 +2340,9 @@ private:
         m_frameLights; // this frame's: effects first, then the nearest visible (selectFrameLights)
     std::vector<render::PointLight>
         m_daylightLights; // window lights (components.light.daylight), as in the file
+    mutable std::vector<render::IndoorVolume> m_indoorRooms; // indoorRooms(): boxes with their ambient factor
+    mutable bool m_indoorRoomsDirty = true;
+    mutable u64 m_indoorRoomsGeneration = 0; // counts the rebuilds of m_indoorRooms
     render::ParticleSystem m_particles;
     std::optional<audio::AudioSystem> m_audio; // M13: absent when switched off ([audio] enabled = false)
     audio::SoundDefs m_soundDefs;              // data/sounds.toml

@@ -177,6 +177,14 @@ Result<bool> History::undo(world::Scene& scene, world::WaynetData* waynet, std::
             restoreSplat(terrain->maps, p);
         }
     }
+    m_lastGrass = !c.grassBefore.empty();
+    for (const SplatPatch& p : c.grassBefore)
+    {
+        if (terrain != nullptr)
+        {
+            restoreSplat(terrain->grass, p);
+        }
+    }
     --m_done;
     return true;
 }
@@ -218,6 +226,14 @@ Result<bool> History::redo(world::Scene& scene, world::WaynetData* waynet, std::
         if (terrain != nullptr)
         {
             restoreSplat(terrain->maps, p);
+        }
+    }
+    m_lastGrass = !c.grassAfter.empty();
+    for (const SplatPatch& p : c.grassAfter)
+    {
+        if (terrain != nullptr)
+        {
+            restoreSplat(terrain->grass, p);
         }
     }
     ++m_done;

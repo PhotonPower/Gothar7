@@ -205,21 +205,24 @@ struct RoutinePanel
     bool stop = false;
 };
 
-/// The terrain window of the editor (M16 part F2): the height brush and splat painting.
+/// The terrain window of the editor (M16 part F2): the height brush and splat painting; the grass brush (M17
+/// G3), the only one on locked terrain.
 struct TerrainPanel
 {
     // Shown
     bool shown = false;
-    std::string locked; ///< why the terrain cannot be edited (empty: it can)
+    std::string locked; ///< why the terrain cannot be edited (empty: it can; the grass brush can anyway)
     std::vector<std::string> layers;
-    bool dirty = false; ///< heights or weights differ from the files
+    bool dirty = false;     ///< heights, weights or the grass overlay differ from the files
+    bool grassMask = false; ///< the world has a generated grass mask
 
     // Edited
     bool active = false; ///< terrain mode on (key T)
-    i32 mode = 0;        ///< raise, lower, smooth, flatten, paint
+    i32 mode = 0;        ///< raise, lower, smooth, flatten, paint, grass, grass reset
     f32 radius = 4.0f;
     f32 strength = 2.0f;
     f32 flattenHeight = 0.0f;
     i32 layer = 0;
+    f32 grassDensity = 0.0f; ///< grass: 0 none .. 1 full
 };
 } // namespace g7::ui

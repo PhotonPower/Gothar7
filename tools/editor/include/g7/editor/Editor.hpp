@@ -197,7 +197,8 @@ public:
     /// What the last placed .glb's VOB_ markers did not give (ADR 0023).
     [[nodiscard]] const std::vector<std::string>& importWarnings() const noexcept { return m_importWarnings; }
 
-    // --- Terrain (M16 part F2, ADR 0023): height brush and splat painting; locked for generated terrain ---
+    // --- Terrain (M16 part F2, ADR 0023): height brush and splat painting; locked for generated terrain.
+    // The grass brush (M17 G3) paints the grass overlay, also on locked terrain. ---
     [[nodiscard]] bool terrainMode() const noexcept { return m_terrainMode; }
     void setTerrainMode(bool on);
     [[nodiscard]] std::string terrainLocked() const;
@@ -207,6 +208,8 @@ public:
     void strokeAt(const Vec3& centre, f32 seconds);
     void endStroke();
     [[nodiscard]] bool terrainDirty() const noexcept { return m_terrainDirty; }
+    /// The grass overlay (M17 G3) differs from its file (saved with the world, next to it).
+    [[nodiscard]] bool grassDirty() const noexcept { return m_grassDirty; }
 
     Gizmo& gizmo() noexcept { return m_gizmo; }
     bool snap = true;
@@ -328,12 +331,16 @@ private:
     bool m_terrainMode = false;
     bool m_terrainDirty = false;
     Brush m_brush;
+    bool m_grassDirty = false; // M17 G3: the grass overlay
+    bool m_grassUsed = false;  // the overlay was painted this session (undo needs it then)
     struct Stroke
     {
-        std::vector<u16> heights;           ///< all samples before the stroke
-        std::vector<std::vector<u8>> splat; ///< every map's bytes before it
-        HeightPatch area;                   ///< what it touched
-        std::vector<SplatPatch> splatAreas; ///< per map
+        std::vector<u16> heights;            ///< all samples before the stroke
+        std::vector<std::vector<u8>> splat;  ///< every map's bytes before it
+        HeightPatch area;                    ///< what it touched
+        std::vector<SplatPatch> splatAreas;  ///< per map
+        std::vector<u8> grass;               ///< the grass overlay before it (M17 G3)
+        std::optional<SplatPatch> grassArea; ///< what it touched there
     };
     std::optional<Stroke> m_stroke;
     ui::TerrainPanel m_terrainPanel;

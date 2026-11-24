@@ -627,7 +627,9 @@ TEST_CASE(
         engine.addTool(editor);
         CHECK_FALSE(editor.terrainLocked().empty()); // like Leonberg: heights from the generator
         editor.setTerrainMode(true);
-        CHECK_FALSE(editor.terrainMode());
+        CHECK(editor.terrainMode()); // M17 G3: for the grass brush only
+        CHECK(editor.brush().mode == editor::BrushMode::Grass);
+        editor.brush().mode = editor::BrushMode::Raise;
         CHECK_FALSE(editor.beginStroke().ok());
     }
 }
@@ -689,4 +691,98 @@ TEST_CASE("Editor GPU: dungeon wiring - a lever's probe opens its gate at once, 
     }
     std::error_code ignored;
     std::filesystem::remove_all(dir, ignored);
+}
+
+TEST_CASE(
+    "Editor GPU: the grass brush paints the overlay on generated terrain; saved next to the world; undo")
+{
+    WorldCopy generated(R"("generator": {"tool": "gothar-worldgen", "owned": [[1, 100]]},
+  )");
+    const auto config = [&]
+    {
+        EngineConfig c = editorConfig(generated.file);
+        c.view.camera = Vec3(10.0f, 4.0f, 12.0f); // the camp's meadow
+        c.view.pitchDegrees = -10.0f;
+        c.view.fly = true;
+        return c;
+    };
+    const auto settle = [](Engine& engine)
+    {
+        for (int i = 0; i < 120 && (engine.grassRing().tiles().empty() || engine.grassRing().pending() > 0 ||
+                                    engine.grassRing().staleCount() > 0);
+             ++i)
+        {
+            REQUIRE(engine.runFrame());
+        }
+    };
+    const auto tuftsNear = [](const Engine& engine, const Vec3& centre, f32 radius)
+    {
+        usize n = 0;
+        for (const render::GrassRing::Tile& t : engine.grassRing().tiles())
+        {
+            for (const render::GrassTuft& tuft : engine.grassRing().tufts(t.slot))
+            {
+                n += glm::length(Vec2(tuft.position.x - centre.x, tuft.position.z - centre.z)) < radius ? 1
+                                                                                                        : 0;
+            }
+        }
+        return n;
+    };
+    const fs::Path overlayFile = generated.dir / "camp_copy.grass.png";
+    Vec3 centre(0.0f);
+    {
+        Engine engine(config());
+        REQUIRE(engine.init().ok());
+        editor::Editor editor(engine);
+        engine.addTool(editor);
+        CHECK_FALSE(editor.terrainLocked().empty());
+        settle(engine);
+        REQUIRE(engine.grassRing().pending() == 0);
+        // A spot with grass near the camera.
+        for (const render::GrassRing::Tile& t : engine.grassRing().tiles())
+        {
+            if (t.count > 0 && glm::length(centre) == 0.0f)
+            {
+                centre = engine.grassRing().tufts(t.slot).front().position;
+            }
+        }
+        REQUIRE(glm::length(centre) > 0.0f);
+        const usize grown = tuftsNear(engine, centre, 2.0f);
+        REQUIRE(grown > 0);
+
+        editor.setTerrainMode(true); // locked terrain: only the grass brush
+        CHECK(editor.terrainMode());
+        editor.brush() = editor::Brush{editor::BrushMode::Raise, 4.0f, 50.0f};
+        CHECK_FALSE(editor.beginStroke().ok()); // heights stay locked
+        editor.brush().mode = editor::BrushMode::Grass;
+        editor.brush().grassDensity = 0.0f;
+        REQUIRE(editor.beginStroke().ok());
+        editor.strokeAt(centre, 1.0f);
+        editor.endStroke();
+        CHECK(editor.grassDirty());
+        CHECK(editor.history().undoLabel() == "terrain: grass");
+        CHECK(engine.grassRing().staleCount() > 0); // the old grass shows until rebuilt
+        settle(engine);
+        CHECK(tuftsNear(engine, centre, 2.0f) == 0);
+
+        REQUIRE(editor.save().ok()); // the overlay next to the copy, never under assets/
+        CHECK(std::filesystem::exists(overlayFile));
+        CHECK_FALSE(editor.grassDirty());
+
+        REQUIRE(editor.undo().value());
+        settle(engine);
+        CHECK(tuftsNear(engine, centre, 2.0f) == grown);
+        CHECK(engine.renderDevice()->debugErrorCount() == 0);
+    }
+    {
+        // Loaded again: the saved overlay (painted bare) counts over the splat weights.
+        Engine engine(config());
+        REQUIRE(engine.init().ok());
+        settle(engine);
+        CHECK(engine.grassOverlayPath().ends_with("camp_copy.grass.png"));
+        CHECK(tuftsNear(engine, centre, 2.0f) == 0);
+        CHECK(tuftsNear(engine, centre + Vec3(8.0f, 0.0f, 0.0f), 2.0f) +
+                  tuftsNear(engine, centre - Vec3(8.0f, 0.0f, 0.0f), 2.0f) >
+              0); // beside the brush it grows
+    }
 }

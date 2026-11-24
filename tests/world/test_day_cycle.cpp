@@ -193,4 +193,13 @@ TEST_CASE("Day cycle: errors name the key; the shipped curves load")
     CHECK(indoor.value().indoorAmbient() == doctest::Approx(0.2f));
     CHECK(error("version = 1\n[indoor]\nambient = 1.5\n[[key]]\nhour = 1.0\n") ==
           "environment.toml: indoor.ambient: must be 0..1 (a factor on the ambient)");
+    // [indoor] ambient_windowless: rooms without a window light (cellars), shipped darker than with one.
+    CHECK(indoor.value().indoorAmbientWindowless() == doctest::Approx(0.06f)); // the default
+    auto cellar =
+        DayCycle::parse("version = 1\n[indoor]\nambient_windowless = 0.1\n[[key]]\nhour = 1.0\n", "e.toml");
+    REQUIRE(cellar.ok());
+    CHECK(cellar.value().indoorAmbientWindowless() == doctest::Approx(0.1f));
+    CHECK(shipped.value().indoorAmbientWindowless() < shipped.value().indoorAmbient());
+    CHECK(error("version = 1\n[indoor]\nambient_windowless = -0.1\n[[key]]\nhour = 1.0\n") ==
+          "environment.toml: indoor.ambient_windowless: must be 0..1 (a factor on the ambient)");
 }

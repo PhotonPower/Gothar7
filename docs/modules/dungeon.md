@@ -301,8 +301,8 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   `Engine::platePressed(name)`.
 - **Spielstand:** `MobState.found`/`spent` (JSON nur wenn true, additiv); die Hebelstellung ist das vorhandene
   `open`; Platten ergeben sich aus dem Gewicht.
-- **Offen:** die Clips `mob/lever/t_use` und `mob/button/t_press` (figuren; bis dahin Ersatzzeit); sichtbare
-  Hebelstellung und das Absenken der Platte um 2 cm (eigenes Modell bzw. kleiner `mover`, später mit welts Modellen).
+- **Clips:** `mob/lever/t_use` und `mob/button/t_press` (figuren #441, `anims/human/dungeon.glb`; Zustände
+  `lever_enter`, `wall_button_enter` im Helden-Graphen). **Offen:** sichtbare Hebelstellung und das Absenken der Platte um 2 cm (eigenes Modell bzw. kleiner `mover`, später mit welts Modellen).
 - **Tests:** `tests/world/test_switches.cpp` (Format), `tests/runtime/test_engine_switches.cpp` auf
   `testworld/switches.g7world` (Hebel hin und zurück, versteckter einmaliger Knopf mit Fokus aus der Nähe, Platte mit
   Held und Apfel, Platte nur für den Helden, Spielstand).
@@ -336,7 +336,7 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
 
 ## Stand D5 – Nischen und Türen (umgesetzt)
 - **Nische:** Mob-Typ `niche` (`data/mobs.toml`, Platz „front“ 0,55 m vor der Wand; Clips `mob/niche/t_reach`,
-  `s_reach`, `t_back` von figuren, bis dahin Ersatzzeit). Sie öffnet sich wie eine Truhe (Inhalt aus der
+  `s_reach`, `t_back` von figuren #441; Zustände `niche_enter/_loop/_leave`). Sie öffnet sich wie eine Truhe (Inhalt aus der
   `Mob`-Definition in Lua, Behälter-Bildschirm), Schloss und Schlüssel wie bei Truhen.
 - **`no_pick`** (an `components.mob`): Der Dietrich hilft nicht („Verschlossen. Hier hilft nur der Schlüssel.“,
   `UI_NEEDS_KEY`). Hat die Definition einen Schlüssel, aber keine Kombination, ist die Tür trotzdem zu Beginn

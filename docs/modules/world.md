@@ -235,7 +235,9 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   `FP_PRAY_` (beten: kniend `zs_pray`, stehend `zs_pray_stand`; vor dem Kirchenportal, Blick zum Portal, 0,6 m
   frei nach vorn; die Kirche bleibt ohne Innenraum, Entscheidung Projektinhaber 2026-10-31), `FP_PREACH_`
   (predigen; Kirchenportal, Markt), `FP_BEG_` (am Boden sitzend betteln; Kirchentür, Brunnen, Tor; Wand dahinter
-  möglich) und `FP_MUSIC_` (stehend Laute spielen, `zs_play_lute`). Andere Typen sind erlaubt und werden bis zu
+  möglich) und `FP_MUSIC_` (stehend Laute spielen, `zs_play_lute`), dazu für das Schloss (Koordinator-Entscheidung
+  2026-11-23, welt W7 D1b; Zustände `zs_cook`/`zs_read` engine, Clips später figuren) `FP_COOK_` (am Herd kochen,
+  Blick zum Herd) und `FP_READ_` (stehend lesen an Pult oder Bücherregal, Blick dorthin). Andere Typen sind erlaubt und werden bis zu
   ihrer Verwendung ignoriert.
 - **Nachschlagen** (M9): Skripte nennen Punkte in Kleinschreibung (`at = "wp_camp_gate"`); die Engine sucht Namen
   ohne Rücksicht auf Groß- und Kleinschreibung.
@@ -288,11 +290,18 @@ schreibt den Block mit M8 Teil A, die Pfadsuche folgt mit M9.
   - Zahlen nach float32-kürzest (wie Vobs und Wegnetz).
 - **Schreiben:** je Zone eine Zeile, sortiert nach `value`, bei Gleichstand nach `box.center` x, dann z; andere Typen
   behalten bei gleichem `value` ihre Reihenfolge. Gleiche Welt, gleiche Bytes.
-- **Wirkung (render):** Jede Fläche im Raum bekommt das Innen-Ambient (`environment.toml` `[indoor] ambient`, Faktor
-  auf Himmels- und Boden-Ambient, Vorgabe 0,35) – je Pixel, nicht je Kamera: Von der Straße wirkt ein Raum dunkel, von
-  innen bleibt die Straße hell. Innenseiten von Wänden, Boden und Decke liegen auf dem Rand der Box und zählen ganz
+  - **`daylight`** (optional, 0..1; Vertrag mit welt, Owner-Entscheidung 2026-11-24): wie viel Tageslicht den Raum
+    erreicht = Faktor auf das Ambient in dieser Box. Steht nach `box`, wird nur geschrieben, wenn gesetzt; nur an
+    `indoor`-Zonen (sonst Ladefehler). Beispiel: `{"type":"indoor","value":"LEO_SCHLOSS_WEINKELLER","box":{…},"daylight":0.02}`.
+  - **Ohne `daylight` abgeleitet** (`world::indoorDaylight`): Liegt ein Fensterlicht (`light.daylight`) in einer Box
+    des Raums (gleicher `value`; bis 0,15 m außerhalb zählt, es sitzt in der Fensteröffnung), gilt für alle Boxen des
+    Raums `environment.toml` `[indoor] ambient` (0,35), sonst `[indoor] ambient_windowless` (0,06, Keller).
+- **Wirkung (render):** Jede Fläche im Raum bekommt den Faktor ihres Raums auf Himmels- und Boden-Ambient – je Pixel,
+  nicht je Kamera: Von der Straße wirkt ein Raum dunkel, von innen bleibt die Straße hell. Liegen Boxen ineinander
+  (Weinkeller unter der Halle), gilt der **kleinste** Faktor. Innenseiten von Wänden, Boden und Decke liegen auf dem Rand der Box und zählen ganz
   (5 cm Toleranz); dahinter blendet es über 0,3 m (= welts Wandstärke) aus, die Außenseite der Wand ist draußen.
-  Die Engine reicht die 32 Räume nächst der Kamera an den Shader (`Engine::nearestIndoorVolumes`).
+  Die Engine reicht die 32 Räume nächst der Kamera mit ihrem Faktor an den Shader (`Engine::nearestIndoorVolumes`,
+  `Engine::indoorRooms`).
 - Sonne und Punktlichter bleiben unverändert (die Sonne fällt durch Tür und Fenster, Schatten kommen aus den
   Schattenkarten); Nebel je Zone folgt später.
 
@@ -339,7 +348,7 @@ Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig)
 ```
 - `version` (Pflicht, = 1), `heightmap`: VFS-Pfad einer **rohen `.r16`**: `width·height` Werte **uint16 Little Endian**,
   zeilenweise. `width`/`height` ≥ 2, `cellSize` > 0 (Meter zwischen Sample-Mitten), `firstSample` [x, z] der Mitte von
-  Spalte 0 / Zeile 0, `maxY` > `minY`. Optional: `splat`, `holes` (unten).
+  Spalte 0 / Zeile 0, `maxY` > `minY`. Optional: `splat`, `holes`, `grass_mask` (unten).
 - **Lage:** Sample (Spalte c, Zeile r) liegt bei x = firstSample.x + c·cellSize, z = firstSample.z + r·cellSize.
   **Zeile 0 = kleinstes z (Norden, −Z), Spalte 0 = kleinstes x (Westen, −X)**, Y oben. Die Fläche reicht von Sample-Mitte
   zu Sample-Mitte; dazwischen bilinear, außerhalb gilt die Randhöhe.
@@ -368,6 +377,25 @@ Optional in `.g7world`; fehlt er, hat die Welt kein Gelände (v1 bleibt gültig)
   (999, 999) → (999.5, 999.5); (500, 0) → x = −999.5 + 500·1999 / 999 = 1.0005. Bei Heightmap-Auflösung
   (2000×2000) fällt jedes Pixel genau auf ein Sample; da 1999 prim ist, ergibt jede andere Auflösung einen krummen
   Pixelabstand (z. B. 2,001 m bei 1000 px) – mit der Formel unproblematisch.
+- **Gras (M17 G2, Vertrag mit welt):** Die Engine findet das Gras einer Schicht über ihren `name` in
+  `data/grass.toml`: `Wiese` (im Testlager auch `grass`) voll, `Waldboden` ein Viertel, `Matsch` ein Zehntel, alle
+  anderen keins (`render.md` „Gras“).
+
+### Grasmaske (`grass_mask`, optional, M17 G2)
+- `"grass_mask": "worlds/leonberg/generated/grass_mask.png"` – 8-Bit-Bild (Graustufen-PNG; gekocht wie die
+  Splat-Karten als Daten), **Lage wie die Splat-Karten** (Pixel-Mitten auf Samples, Zeile 0 = Norden, bilinear;
+  Leonberg 2000×2000, 1 m). Wert = Faktor auf die Grasdichte: 0 kein Gras … 255 volle Dichte der Schicht.
+- welt erzeugt sie aus OSM-Flächen (Wiese, Garten, Park voll; 1-m-Streifen an Weg- und Straßenrändern halb). Ohne
+  Maske gelten nur die Splat-Gewichte. Ein Ladefehler ist eine Warnung (dann ohne Maske).
+
+### Gras-Überlagerung (Editor, optional, M17 G3)
+- Keine Angabe in der Weltdatei: Die Datei liegt **neben der Weltdatei**, `<welt>.grass.png` zu `<welt>.g7world`
+  (Leonberg: `worlds/leonberg/leonberg.grass.png`, außerhalb von `generated/`; `world::grassOverlayPath`).
+- RGBA-PNG, Lage wie die Splat-Karten über den Samples (Leonberg 2000×2000): **R** = Grasdichte 0 … 255 (G und B
+  gleich R, damit das Bild grau aussieht), **A** = wie stark die Überlagerung zählt. Wirksam ist
+  `Maske · (1 − A) + R · A` (vormultipliziert bilinear; ohne Maske 1 statt Maske).
+- Der Editor malt sie mit dem Pinsel „Gras“ (`editor.md`), auch bei gesperrtem Gelände. Sie ist Handarbeit:
+  **Der Generator schreibt und löscht sie nie** (Entscheidung 9 des Gras-Plans). Der Cooker kocht sie als Daten.
 
 ### Löcher (`holes`, optional)
 - `"holes": "worlds/leonberg/generated/holes.r8"` – rohe 8-Bit-Maske **je Zelle** (nicht je Sample):

@@ -40,7 +40,15 @@ from gothar_worldgen.config import (
 from gothar_worldgen.download import ALL_SOURCES, download_site, lgl_tiles
 from gothar_worldgen.export.descents import dig_descents
 from gothar_worldgen.export.pads import apply_pads, room_pads
-from gothar_worldgen.export.splat import SplatPaths, composite, coverage, layer_masks, write_splat
+from gothar_worldgen.export.splat import (
+    SplatPaths,
+    composite,
+    coverage,
+    grass_mask,
+    layer_masks,
+    write_grass_mask,
+    write_splat,
+)
 from gothar_worldgen.export.starts import DEFAULT_STARTS, load_starts
 from gothar_worldgen.export.terrain import ExportError, Grid, crop, export_terrain, load_grid
 from gothar_worldgen.export.water import carve_and_place
@@ -76,8 +84,11 @@ from gothar_worldgen.handmade import (
     marktbrunnen_item,
     put_item,
     schloss_item,
+    schloss_room_items,
     splat_areas,
+    with_apron,
     with_garden_plan,
+    with_room_items,
     with_wing_terrain,
 )
 from gothar_worldgen.handmade import footprints as handmade_footprints
@@ -358,6 +369,7 @@ def _export_splat(
             docs[key] = json.loads((work / file).read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as e:
             raise ExportError(f"{file}: {e} (run 'import' first or pass --no-splat)") from None
+    town = None
     if data_dir is not None and load_rural_rules(data_dir) is not None:  # W6 rural ways
         docs["streets"] = load_street_doc(work, data_dir)
         raw = docs["buildings"].get("buildings", [])
@@ -388,6 +400,19 @@ def _export_splat(
     )  # fmt: skip
     shares = ", ".join(f"{k} {v:.0%}" for k, v in coverage(weights).items())
     print(f"  splat: {len(block['maps'])} maps, {len(block['layers'])} layers ({shares})", file=out)
+    # M17 G2: the grass mask beside the splat maps; the editor's <world>.grass.png beside the
+    # world file is the owner's overlay and is never touched here.
+    mask = grass_mask(
+        grid,
+        docs["buildings"].get("buildings", []),
+        docs["streets"].get("streets", []),
+        docs["streets"].get("squares", []),
+        docs["features"].get("features", []),
+        gardens,
+        town,
+    )
+    write_grass_mask(mask, folder / "generated" / f"{name}_grass_mask.png")
+    print(f"  grass mask: mean {mask.mean():.0%}, none on {(mask < 0.05).mean():.0%}", file=out)
     return block
 
 
@@ -900,6 +925,7 @@ def _cmd_schloss(args: argparse.Namespace, out: TextIO) -> int:
         grid = load_grid(DataPaths(local.data_root, site.name).work)
         spec = with_wing_terrain(spec, grid.height_at)  # the socle reaches the ground
         spec = with_garden_plan(spec, garden_plan(spec, grid.height_at))
+        spec = with_apron(spec, grid.height_at)  # W7 D1: paving round the hollow main wing
         # versioned beside the model: the spec with the ground measured from the DGM
         built = out_glb.with_name("schloss_built.json")
         built.parent.mkdir(parents=True, exist_ok=True)
@@ -909,6 +935,7 @@ def _cmd_schloss(args: argparse.Namespace, out: TextIO) -> int:
                              out_glb, out_blend)  # fmt: skip
         mesh = f"worlds/{site.name}/handmade/schloss/schloss.glb"
         doc = put_item(load_handmade(data_dir / "handmade.json"), schloss_item(spec, mesh))
+        doc = with_room_items(doc, schloss_room_items(spec, mesh))  # W7 D1b: a model per room
         save_handmade(data_dir / "handmade.json", doc)
     except (OSError, json.JSONDecodeError, HandmadeError, ExportError) as e:
         print(f"error: {e}", file=sys.stderr)
@@ -1045,9 +1072,10 @@ def _cmd_kirche(args: argparse.Namespace, out: TextIO) -> int:
 
 def _plan_uses(
     path: Path, world: dict[str, Any], index: dict[str, Any], assets: Path,
-    streets: list[dict[str, Any]],
+    streets: list[dict[str, Any]], castle: tuple[Path, Path] | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]:  # fmt: skip
-    """Routine places, mobs and the rooms' indoor zones of ``uses.json`` (W7)."""
+    """Routine places, mobs and the rooms' indoor zones of ``uses.json`` (W7); with ``castle``
+    (schloss_built.json, castle_inside.json) also inside the castle (W7 D1b)."""
     from shapely.geometry import Point
     from shapely.strtree import STRtree
 
@@ -1099,7 +1127,23 @@ def _plan_uses(
     from gothar_worldgen.uses.zones import indoor_zones
 
     signs = sign_vobs(doc.houses, index, grid.height_at)  # W6: guild signs over the doors
-    return places, [*vobs, *inside.vobs, *signs], indoor_zones(doc.houses, index)
+    zones = indoor_zones(doc.houses, index)
+    castle_vobs: list[dict[str, Any]] = []
+    if castle is not None and castle[0].is_file() and castle[1].is_file():
+        from gothar_worldgen.handmade import schloss_geometry
+        from gothar_worldgen.uses.castle import assemble_vobs, load_castle, plan_castle
+
+        built = json.loads(castle[0].read_text(encoding="utf-8"))
+        if built.get("interior"):
+            cp = plan_castle(built, load_castle(castle[1]), schloss_geometry())
+            if cp.failed:
+                raise UsesError("castle_inside.json: " + "; ".join(cp.failed))
+            places["places"] += [{k: v for k, v in q.items() if k not in ("room", "routine")}
+                                 for q in cp.places]  # fmt: skip
+            places["castle"] = cp.table_md()
+            castle_vobs = assemble_vobs(cp)
+            zones += cp.zones
+    return places, [*vobs, *inside.vobs, *signs, *castle_vobs], zones
 
 
 def _sound_zones(path: Path, world: dict[str, Any], data_dir: Path, folder: Path, work: Path,
@@ -1252,6 +1296,24 @@ def _retaining_walls(grid: Any, works: dict[str, Any], street_doc: dict[str, Any
           f"{stats['cellsLevelled']} cells levelled, {stats['gapSteps']} steps in the gaps before "
           f"doors", file=out)  # fmt: skip
     return grid
+
+
+def _cmd_dungeon(args: argparse.Namespace, out: TextIO) -> int:
+    """Dungeon levels (W8, schloss-dungeon.md 3.3): data/<site>/dungeon/ebene_NN.txt/.json ->
+    worlds/<site>/dungeon/ebene_NN.g7world with block meshes, the kit and its textures."""
+    from gothar_worldgen.dungeon.generate import DungeonError, generate
+    from gothar_worldgen.dungeon.level import LevelError
+
+    site = load_site(args.site, args.config_dir)
+    folder, data_dir = _site_dirs(args, site.name)
+    try:
+        lines = generate(site.name, data_dir / "dungeon", folder, data_dir, args.level or None)
+    except (LevelError, DungeonError) as e:
+        print(f"error: {e}", file=out)
+        return 1
+    for line in lines:
+        print(line, file=out)
+    return 0
 
 
 def _cmd_citymap(args: argparse.Namespace, out: TextIO) -> int:
@@ -1436,8 +1498,10 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
                            streetworks=works, known_starts=known)  # fmt: skip
         if uses_path.is_file():  # W7: mobs and routine places at the houses with a use
             street_doc = load_street_doc(paths.work, data_dir)
+            castle = (folder / "handmade" / "schloss" / "schloss_built.json",
+                      data_dir / "castle_inside.json")  # W7 D1b  # fmt: skip
             places, mobs, zones = _plan_uses(uses_path, res.world, index, folder.parents[1],
-                                             street_doc.get("streets", []))  # fmt: skip
+                                             street_doc.get("streets", []), castle)  # fmt: skip
             res = assemble(terrain_world, index, existing, ids, name, locked, ground, citywall,
                            handmade, water, starts, [*doors, *mobs],
                            streetworks=works, known_starts=known)  # fmt: skip
@@ -1469,12 +1533,15 @@ def _cmd_assemble(args: argparse.Namespace, out: TextIO) -> int:
     write_world(folder / f"{name}.g7world", res.world)
     ids.save(ids_path)
     if places is not None:
+        castle_md = places.pop("castle", "")  # W7 D1b: the castle's rooms
         target = folder / "generated" / "uses_places.json"
         target.write_text(json.dumps(places, ensure_ascii=False, indent=1) + "\n", "utf-8")
         from gothar_worldgen.uses.places import routine_table_md
 
         table = folder / "generated" / "uses_table.md"
-        table.write_text(routine_table_md(places), encoding="utf-8", newline="\n")
+        if castle_md:
+            castle_md = "\n## Schloss\n\n" + castle_md
+        table.write_text(routine_table_md(places) + castle_md, encoding="utf-8", newline="\n")
         n = {k: sum(1 for q in places["places"] if q["kind"] == k) for k in ("wp", "fp", "mob")}
         print(f"  uses: {len(places['houses'])} houses, {n['wp']} routine points, {n['fp']} "
               f"freepoints, {n['mob']} mobs, {len(places['failed'])} not placed ({target.name})",
@@ -1613,7 +1680,19 @@ def _cmd_export_terrain(args: argparse.Namespace, out: TextIO) -> int:
             data_dir / "starts.json"
         )
         r16 = folder / "generated" / f"{name}.r16"
-        result = export_terrain(grid, name, folder / f"{name}.g7world", r16, vfs, splat, starts)
+        mask_vfs = None if splat is None else f"worlds/{site.name}/generated/{name}_grass_mask.png"
+        holes = None
+        hole_polys = [ring for it in load_handmade(data_dir / "handmade.json").get("items", [])
+                      for ring in it.get("holes", [])]  # fmt: skip
+        if hole_polys:  # W7 D1: no ground inside the castle's hollow main wing (its cellar)
+            from gothar_worldgen.export.terrain import hole_mask
+
+            hole_file = folder / "generated" / f"{name}_holes.r8"
+            holes = (hole_file, f"worlds/{site.name}/generated/{name}_holes.r8",
+                     hole_mask(grid, hole_polys))  # fmt: skip
+            print(f"  holes: {int((holes[2] == 0).sum())} cells", file=out)
+        result = export_terrain(grid, name, folder / f"{name}.g7world", r16, vfs, splat, starts,
+                                holes, mask_vfs)  # fmt: skip
     except ExportError as e:
         print(f"error: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -1759,6 +1838,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--blender", type=Path, default=None, help="default: G7_BLENDER, PATH, install")
     p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
     p.set_defaults(func=_cmd_kirche)
+
+    p = sub.add_parser("dungeon", help="dungeon levels from their maps (W8 D2)")
+    p.add_argument("site")
+    p.add_argument("--level", type=int, action="append", help="only this level (repeatable)")
+    p.add_argument("--assets-dir", type=Path, default=None, help="default: <repo>/assets/source")
+    p.set_defaults(func=_cmd_dungeon)
 
     p = sub.add_parser("citymap", help="the town map for the map item (M14), after assemble")
     p.add_argument("site")

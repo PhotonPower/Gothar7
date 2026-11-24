@@ -5,6 +5,7 @@
 #include <g7/asset/ImageData.hpp>
 #include <g7/asset/MeshData.hpp>
 #include <g7/asset/MeshFile.hpp>
+#include <g7/asset/SkinFile.hpp>
 #include <g7/asset/SkinnedModel.hpp>
 #include <g7/asset/Vfs.hpp>
 
@@ -282,7 +283,8 @@ TEST_CASE("a glTF without a mesh (animation set) is skipped, not cooked empty")
     CHECK_FALSE(std::filesystem::exists(t.out / "anims" / "none.g7mesh"));
 }
 
-TEST_CASE("an archive carries skinned and animated .glb unchanged (figures load as glTF, plan M17 part 0)")
+TEST_CASE(
+    "figure parts become .g7skin, clip sets .g7anim - loose and in an archive (ADR 0025, plan M17 part D)")
 {
     SourceTree t;
     const fs::Path assets = fs::fromUtf8(G7_ASSET_SOURCE_DIR);
@@ -293,12 +295,17 @@ TEST_CASE("an archive carries skinned and animated .glb unchanged (figures load 
     std::filesystem::copy_file(assets / "characters" / "rig" / "human_reference.glb", rig);
     std::filesystem::copy_file(assets / "characters" / "anims" / "human" / "dive.glb", set);
 
-    // Loose output keeps the .glb out (a copy in assets/cooked would hide the source while figuren edits it).
     auto loose = cook::cook({.source = t.source, .out = t.out});
     REQUIRE_MESSAGE(loose, (loose ? "" : loose.error().message));
-    CHECK(std::filesystem::exists(t.out / "characters" / "rig" / "human_reference.g7mesh"));
+    CHECK(loose.value().errors.empty());
+    CHECK(loose.value().skins == 1);
+    CHECK(loose.value().anims == 1);
+    CHECK(std::filesystem::exists(t.out / "characters" / "rig" / "human_reference.g7skin"));
+    CHECK(std::filesystem::exists(t.out / "characters" / "anims" / "human" / "dive.g7anim"));
+    CHECK_FALSE(
+        std::filesystem::exists(t.out / "characters" / "rig" / "human_reference.g7mesh")); // decision 5
     CHECK_FALSE(std::filesystem::exists(t.out / "characters" / "rig" / "human_reference.glb"));
-    CHECK_FALSE(std::filesystem::exists(t.out / "characters" / "anims" / "human" / "dive.glb"));
+    CHECK_FALSE(std::filesystem::exists(t.out / "characters" / "anims" / "human" / "dive.g7skin")); // no mesh
 
     const fs::Path packed = t.dir.path() / "packed";
     auto report = cook::cook({.source = t.source, .out = packed, .pack = "data.g7pak"});
@@ -306,16 +313,35 @@ TEST_CASE("an archive carries skinned and animated .glb unchanged (figures load 
     CHECK(report.value().errors.empty());
     asset::Vfs vfs;
     REQUIRE(vfs.mount(packed / "data.g7pak", 0));
-    CHECK(vfs.exists("characters/rig/human_reference.g7mesh"));
-    CHECK(vfs.read("characters/rig/human_reference.glb").value() == fs::readFile(rig).value());
-    CHECK(vfs.read("characters/anims/human/dive.glb").value() == fs::readFile(set).value());
-    CHECK_FALSE(vfs.exists("models/Tri.glb")); // static meshes stay .g7mesh only
+    CHECK_FALSE(vfs.exists("characters/rig/human_reference.glb"));
+    CHECK_FALSE(vfs.exists("characters/anims/human/dive.glb"));
     asset::AssetManager manager(vfs);
-    const auto model = manager.load<asset::SkinnedModelData>("characters/rig/human_reference.glb");
-    const auto clips = manager.load<asset::AnimationSetData>("characters/anims/human/dive.glb");
+    const auto model = manager.load<asset::SkinnedModelData>("characters/rig/human_reference.g7skin");
+    const auto clips = manager.load<asset::AnimationSetData>("characters/anims/human/dive.g7anim");
     manager.waitAll();
     REQUIRE_MESSAGE(model.isReady(), model.error());
     REQUIRE_MESSAGE(clips.isReady(), clips.error());
     CHECK(model->skeleton.size() == 60);
     CHECK_FALSE(clips->clips.empty());
+    // The same data as from the glTF.
+    const auto source = asset::loadSkinnedGltf(fs::readFile(rig).value(), {}, "rig");
+    REQUIRE(source.ok());
+    CHECK(asset::serializeSkin(*model.get()) == asset::serializeSkin(source.value()));
+
+    // Incremental: nothing changed, everything reused.
+    auto again = cook::cook({.source = t.source, .out = t.out});
+    REQUIRE(again);
+    CHECK(again.value().cooked == 0);
+}
+
+TEST_CASE("a figure part that would fail in the game fails the cook")
+{
+    SourceTree t;
+    // A glTF that claims a skin and a mesh but is no valid glTF at all.
+    writeText(t.source / "characters" / "parts" / "bad.gltf",
+              R"({"asset":{"version":"2.0"},"meshes":[{"primitives":[]}],"skins":[{"joints":[]}]})");
+    auto report = cook::cook({.source = t.source, .out = t.out});
+    REQUIRE(report);
+    REQUIRE(report.value().errors.size() == 1);
+    CHECK(report.value().errors.front().find("characters/parts/bad.gltf") != std::string::npos);
 }

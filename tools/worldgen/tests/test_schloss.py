@@ -45,7 +45,10 @@ def test_budget_materials_and_determinism():
 def test_collision_bodies_are_closed_outward_and_cover_every_wing():
     m = model()
     names = [n for n, _, _ in m.collision]
-    assert names == [f"COL_HULL_{w['key']}" for w in SPEC["wings"]] + ["COL_HULL_tower"]
+    inner = SPEC["interior"]["wing"]  # W7 D1: the main wing is hollow, the tower too
+    solid = [f"COL_HULL_{w['key']}" for w in SPEC["wings"] if w["key"] != inner]
+    assert [n for n in names if not n.startswith("COL_HULL_in_")] == solid
+    assert len(names) == len(set(names)) and sum(n.startswith("COL_HULL_in_") for n in names) > 50
     for name, pts, tris in m.collision:
         part = CollisionPart(name, np.asarray(pts, np.float32), np.asarray(tris, np.uint32).ravel())
         assert body_is_closed(part)
@@ -64,12 +67,53 @@ def test_openings_stay_above_the_ground_of_each_side():
                       for w in wings)  # fmt: skip
     frames = [p for f in m.faces["frame"] for p in f]
     assert min(p[1] for p in frames) >= lowest_sill + geo.SOCLE_M - 1e-6
-    doors = [
-        p for f in m.faces.get("timber_dark", []) for p in f
-    ]  # the portal starts on the ground
     main = wings[0]
     s = main.length * SPEC["portal"]["t"]
-    assert min(p[1] for p in doors) == pytest.approx(main.terrain(1, s), abs=1e-6)
+    # the open portal (W7 D1): its passage floor (the hall's model) starts on the court's ground
+    hw = SPEC["portal"]["w"] / 2 + 1e-6
+    ramp = [p for f in m.rooms["eg_halle"]["stone_slab"] for p in f
+            if abs(_s(main, p) - s) <= hw and _t(main, p) > main.half - 1e-6]  # fmt: skip
+    assert ramp and min(p[1] for p in ramp) == pytest.approx(main.terrain(1, s), abs=1e-6)
+
+
+def _s(w, p):
+    return (p[0] - w.a[0]) * w.u[0] + (p[2] - w.a[1]) * w.u[1]
+
+
+def _t(w, p):
+    return (p[0] - w.a[0]) * w.n[0] + (p[2] - w.a[1]) * w.n[1]
+
+
+def test_inside_storeys_rooms_and_the_tower_against_the_wall():
+    """W7 D1: cellar, ground and first floor with their rooms; the stair tower touches the
+    garden wall, its spiral climbs one storey per turn, the ground is left out under the wing."""
+    inside = SPEC["interior"]
+    m = model()
+    w = geo.Wing(SPEC["wings"][0])
+    f = geo.interior.floors(inside)
+    assert f["cellar"] < f["cellar_top"] < f["ground"] < f["ground_top"] < f["upper"]
+    assert f["upper_top"] < w.eave
+    for key in ("keller", "eg", "og"):
+        rooms = geo.interior.Inside(m, w, inside, SPEC["stairTower"], SPEC["portal"]).rooms(key)
+        assert rooms[0][1] == pytest.approx(inside["wallM"])
+        assert rooms[-1][2] == pytest.approx(w.length - inside["wallM"])
+        assert all(b - a > 4.0 for _, a, b in rooms)
+    s, t, ap = geo.interior.tower_centre(w, SPEC["stairTower"])
+    assert abs(t) == pytest.approx(w.half + ap - geo.interior.TOWER_WALL_M)
+    moved = geo.interior.moved_tower(w, SPEC["stairTower"])
+    item = schloss_item(SPEC, "x.glb")
+    assert item["footprints"][-1] == [[round(p[0], 2), round(p[2], 2)] for p in
+                                      geo._ring(tuple(moved["at"]), SPEC["stairTower"]["radius"], 0,
+                                                phase=math.radians(moved["phaseDeg"]))]  # fmt: skip
+    assert len(item["holes"]) == 2 and all(p["clampBelow"] for p in item["pads"][-2:])
+    # the spiral: one turn per storey, never steeper than 35 deg at the newel
+    levels = geo.interior.storeys(inside)
+    for (_, y0, _), (_, y1, _) in zip(levels, levels[1:], strict=False):
+        sweep = 2 * math.pi - math.radians(geo.interior.LANDING_DEG)
+        assert math.degrees(math.atan((y1 - y0) / (sweep * geo.interior.NEWEL_R))) <= 35.0
+    names = [n for n, _, _ in m.collision]
+    assert any(n.startswith("COL_HULL_in_tower_ramp_") for n in names)
+    assert "COL_HULL_in_portal_ramp" in names and "COL_HULL_in_top" in names
 
 
 def test_model_is_moved_to_its_origin():
@@ -95,9 +139,11 @@ def test_versioned_data_is_consistent():
     doc = load(ROOT / "data" / "leonberg" / "handmade.json")
     item = next(i for i in doc["items"] if i["key"] == "schloss")
     assert item == schloss_item(BUILT, item["mesh"])
-    assert {k: v for k, v in BUILT.items() if k not in ("wings", "garden")} == {
-        k: v for k, v in SPEC.items() if k not in ("wings", "garden")
+    assert {k: v for k, v in BUILT.items() if k not in ("wings", "garden", "interior")} == {
+        k: v for k, v in SPEC.items() if k not in ("wings", "garden", "interior")
     }  # only measured ground is added
+    assert {k: v for k, v in BUILT["interior"].items() if k != "apron"} == SPEC["interior"]
+    assert BUILT["interior"]["apron"]["strips"]  # the paving measured from the DGM
     assert [{k: v for k, v in w.items() if k != "terrain"} for w in BUILT["wings"]] == [
         {k: v for k, v in w.items() if k != "terrain"} for w in SPEC["wings"]
     ]

@@ -9,6 +9,7 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <ostream>
@@ -137,6 +138,67 @@ TEST_CASE("Terrain brush: painting a layer keeps the weights' sum; splat patches
     }
     CHECK(a == before);
     CHECK(std::ranges::all_of(b, [](u8 v) { return v == 0; }));
+}
+
+TEST_CASE("Grass brush: the overlay goes to the painted density whatever the mask says; reset fades it")
+{
+    const world::Heightfield f = field();
+    std::vector<u8> overlay(21 * 21 * 4, 0); // coverage 0: the generated mask counts
+    const SplatPixels pixels{overlay, 21, 21};
+    const usize centre = (10 * 21 + 10) * 4;
+    const usize edge = (10 * 21 + 12) * 4; // 2 m out: half the brush
+    const usize far = 0;
+    const auto effective = [&](usize i, f32 mask)
+    { return mask * (1.0f - overlay[i + 3] / 255.0f) + overlay[i] / 255.0f * (overlay[i + 3] / 255.0f); };
+    const std::vector<u8> before = overlay;
+    const std::array<SplatPixels, 1> maps{pixels};
+    const SplatPatch area = splatArea(maps, f.ref(), Vec3(10, 0, 10), 3.0f).front();
+    const SplatPatch undo = captureSplat(overlay, 21, area);
+
+    // No grass: one long dab clears the centre, the edge partly; outside nothing changes.
+    Brush brush{BrushMode::Grass, 3.0f, 1.0f};
+    brush.grassDensity = 0.0f;
+    const auto touched = paintGrass(pixels, f.ref(), brush, Vec3(10, 0, 10), 100.0f);
+    REQUIRE(touched.has_value());
+    CHECK(touched->first.x <= 7.0f);
+    CHECK(touched->second.x >= 13.0f);
+    CHECK(overlay[centre + 3] == 255);
+    CHECK(overlay[centre] == 0);
+    CHECK(effective(centre, 1.0f) == doctest::Approx(0.0f));
+    CHECK(overlay[far + 3] == 0);
+    // Small steps get there as well (bytes move at least by one).
+    std::ranges::fill(overlay, u8{0});
+    for (int i = 0; i < 400; ++i)
+    {
+        (void)paintGrass(pixels, f.ref(), brush, Vec3(10, 0, 10), 0.002f);
+    }
+    CHECK(overlay[centre + 3] == 255);
+    CHECK(effective(edge, 1.0f) < 0.1f);
+    // Painting half density over: half, also where the mask was full or empty.
+    brush.grassDensity = 0.5f;
+    (void)paintGrass(pixels, f.ref(), brush, Vec3(10, 0, 10), 100.0f);
+    CHECK(effective(centre, 1.0f) == doctest::Approx(0.5f).epsilon(0.01));
+    CHECK(effective(centre, 0.0f) == doctest::Approx(0.5f).epsilon(0.01));
+    CHECK(overlay[centre + 1] == overlay[centre]); // grey
+    // A short dab of full grass moves the effective density a share of the way.
+    brush.grassDensity = 1.0f;
+    (void)paintGrass(pixels, f.ref(), brush, Vec3(10, 0, 10), 0.5f);
+    CHECK(effective(centre, 0.0f) == doctest::Approx(0.75f).epsilon(0.02));
+    // Reset: the coverage fades, the mask shows again.
+    brush.mode = BrushMode::GrassReset;
+    (void)paintGrass(pixels, f.ref(), brush, Vec3(10, 0, 10), 100.0f);
+    CHECK(overlay[centre + 3] == 0);
+    CHECK(effective(centre, 0.3f) == doctest::Approx(0.3f));
+    // Other modes and an empty overlay do nothing; outside the terrain nothing is touched.
+    brush.mode = BrushMode::Paint;
+    CHECK_FALSE(paintGrass(pixels, f.ref(), brush, Vec3(10, 0, 10), 1.0f).has_value());
+    brush.mode = BrushMode::Grass;
+    CHECK_FALSE(paintGrass({}, f.ref(), brush, Vec3(10, 0, 10), 1.0f).has_value());
+    CHECK_FALSE(paintGrass(pixels, f.ref(), brush, Vec3(100, 0, 100), 1.0f).has_value());
+    // Undo: the rectangle as it was.
+    std::array<SplatPixels, 1> target{pixels};
+    restoreSplat(target, undo);
+    CHECK(overlay == before);
 }
 
 TEST_CASE("Terrain brush: the .r16 is written as it is read")

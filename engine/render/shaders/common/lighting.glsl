@@ -22,11 +22,12 @@ layout(std140, binding = 0) uniform Lighting
     vec4 cameraForward;
     vec4 fogColorStart;     // rgb linear, w start distance
     vec4 fogParams;         // x density
-    vec4 indoorParams;      // x rooms, y ambient factor inside, z edge (m)
+    vec4 indoorParams;      // x rooms, z edge (m)
     vec4 aoParams;          // x ambient occlusion strength (0 off), yz 1 / viewport size (M17 P3)
     mat4 rainMapViewProjection; // M17 N: world -> rain map (depth 0 top .. 1)
     vec4 wetParams;         // x wetness, y has rain map, z puddles
     vec4 indoorBoxes[2 * kMaxIndoorVolumes]; // per room: centre + cos yaw, half extents + sin yaw
+    vec4 indoorAmbient[kMaxIndoorVolumes / 4]; // per room its ambient factor, four to a vec4
     vec4 pointPositionRadius[kMaxPointLights];
     vec4 pointColor[kMaxPointLights];
 } uLighting;
@@ -69,6 +70,15 @@ int shadowCascade(vec3 worldPosition)
     return -1; // beyond the shadow distance
 }
 
+float indoorAmount(vec3 p);
+
+// Sun visibility beyond the shadow distance: full sun - or, with the camera in a room (shadowExtra.w; only near
+// casters drawn, render.md "Innenräume"), none in the rooms.
+float sunBeyondShadows(vec3 worldPosition)
+{
+    return uLighting.shadowExtra.w > 0.5 ? 1.0 - indoorAmount(worldPosition) : 1.0;
+}
+
 // Sun visibility 0 (shadowed) .. 1 (lit): cascade by view depth, normal offset against acne,
 // 3x3 PCF on top of the hardware 2x2 comparison, faded out over the last 10 % of the distance.
 float sunShadow(vec3 worldPosition, vec3 n)
@@ -80,7 +90,7 @@ float sunShadow(vec3 worldPosition, vec3 n)
     const int cascade = shadowCascade(worldPosition);
     if (cascade < 0)
     {
-        return 1.0;
+        return sunBeyondShadows(worldPosition);
     }
     const vec3 offsetPosition = worldPosition + n * uLighting.cascadeTexelSize[cascade] * uLighting.shadowParams.w;
     const vec4 clip = uLighting.cascadeViewProjection[cascade] * vec4(offsetPosition, 1.0);
@@ -105,7 +115,7 @@ float sunShadow(vec3 worldPosition, vec3 n)
     lit /= 9.0;
     const float viewDepth = dot(worldPosition - uLighting.cameraPosition.xyz, uLighting.cameraForward.xyz);
     const float fade = smoothstep(uLighting.shadowParams.z * 0.9, uLighting.shadowParams.z, viewDepth);
-    return mix(lit, 1.0, fade);
+    return fade > 0.0 ? mix(lit, sunBeyondShadows(worldPosition), fade) : lit;
 }
 
 // Debug colour per cascade (shadow_debug), white outside the shadow distance.
@@ -122,21 +132,39 @@ vec3 shadowDebugTint(vec3 worldPosition)
 
 // How much a point is inside the rooms (world.md "zones", indoor), 0..1: 1 in a box (5 cm tolerance: its
 // inner surfaces), fading to 0 at the edge beyond it (through the wall). As render::indoorAmount.
+float indoorRoomAmount(int i, vec3 p)
+{
+    const vec4 a = uLighting.indoorBoxes[2 * i];
+    const vec4 b = uLighting.indoorBoxes[2 * i + 1];
+    const vec3 d = p - a.xyz;
+    const vec3 local = vec3(d.x * a.w - d.z * b.w, d.y, d.x * b.w + d.z * a.w);
+    const vec3 outside = max(abs(local) - b.xyz - vec3(0.05), vec3(0.0));
+    const float beyond = max(outside.x, max(outside.y, outside.z));
+    return clamp(1.0 - beyond / max(uLighting.indoorParams.z, 1e-3), 0.0, 1.0);
+}
+
 float indoorAmount(vec3 p)
 {
     float amount = 0.0;
     const int rooms = int(uLighting.indoorParams.x);
     for (int i = 0; i < rooms; ++i)
     {
-        const vec4 a = uLighting.indoorBoxes[2 * i];
-        const vec4 b = uLighting.indoorBoxes[2 * i + 1];
-        const vec3 d = p - a.xyz;
-        const vec3 local = vec3(d.x * a.w - d.z * b.w, d.y, d.x * b.w + d.z * a.w);
-        const vec3 outside = max(abs(local) - b.xyz - vec3(0.05), vec3(0.0));
-        const float beyond = max(outside.x, max(outside.y, outside.z));
-        amount = max(amount, clamp(1.0 - beyond / max(uLighting.indoorParams.z, 1e-3), 0.0, 1.0));
+        amount = max(amount, indoorRoomAmount(i, p));
     }
     return amount;
+}
+
+// The factor on the ambient at a point: each room blends from 1 to its own factor (daylight, world.md "Zonen")
+// by how much the point is in it; nested rooms: the smallest. As render::indoorAmbientFactor.
+float indoorAmbientFactor(vec3 p)
+{
+    float factor = 1.0;
+    const int rooms = int(uLighting.indoorParams.x);
+    for (int i = 0; i < rooms; ++i)
+    {
+        factor = min(factor, mix(1.0, uLighting.indoorAmbient[i >> 2][i & 3], indoorRoomAmount(i, p)));
+    }
+    return factor;
 }
 
 // Incoming light (to be multiplied by the albedo) at a surface point with normal n.
@@ -145,7 +173,7 @@ vec3 incomingLight(vec3 worldPosition, vec3 n)
     vec3 light = mix(uLighting.ambientGround.rgb, uLighting.ambientSky.rgb, n.y * 0.5 + 0.5);
     if (uLighting.indoorParams.x > 0.5)
     {
-        light *= mix(1.0, uLighting.indoorParams.y, indoorAmount(worldPosition)); // rooms: the indoor ambient
+        light *= indoorAmbientFactor(worldPosition); // rooms: their ambient factor (daylight)
     }
 #ifndef SKINNED
     // Ambient occlusion (M17 P3) damps only the ambient light. Figures are not in the depth prepass, so they
