@@ -468,6 +468,25 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `mauerschlupfer/t_threaten` | Richtet sich auf, spreizt die Ohren, faucht | – | – | K | platzhalter-K |
 | `mauerschlupfer/t_steal` | Schnappt Glänzendes mit dem Maul und ruckt zurück | – | steal | K | platzhalter-K |
 
+### Kristallkrebs (`kristallkrebs`, Dungeon, eigene Art, Gliederfüßer §7.5, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `kristallkrebs/s_idle` | Augenstiele drehen sich, die Scheren schnappen, leises Klingen | – | sound:kristallkrebs_chime | K | platzhalter-K |
+| `kristallkrebs/s_walk` | Seitwärts huschen auf acht Beinen (`move_axis = "x"`) | ✓ 0,8 m/s seitwärts (+X) | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine, seitwärts)) |
+| `kristallkrebs/s_run` | Schnell seitwärts, Scheren erhoben | ✓ 2,5 m/s seitwärts (+X) | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine, seitwärts)) |
+| `kristallkrebs/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `kristallkrebs/t_attack_1` | Rechte Schere vorschnellen (Treffpunkt `socket_claw_r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `kristallkrebs/t_attack_2` | Beide Scheren hoch und gemeinsam niederschlagen (`socket_claw_l/r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `kristallkrebs/t_hit` | Treffer: weicht zur Seite, Augen eingezogen | – | – | K | platzhalter-K |
+| `kristallkrebs/t_die` | Sinkt ein, die Beine knicken (die Kristalle erlöschen, engine) | – | – | K | platzhalter-K |
+| `kristallkrebs/s_eat`, `s_sleep` | Pickt mit den Scheren abwechselnd am Boden / zwischen den Kristallen niedergedrückt (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `kristallkrebs/s_dormant` | Zwischen den Kristallen niedergedrückt (`zs_dormant`, #422), Augen eingezogen | – | – | K | platzhalter-K |
+| `kristallkrebs/t_wake` | Augen hoch, hebt sich auf die Beine, Scheren öffnen sich | – | sound:kristallkrebs_chime | K | platzhalter-K |
+| `kristallkrebs/t_threaten` | Bäumt die Front auf, Scheren weit offen, Kristalle klingen | – | – | K | platzhalter-K |
+| `kristallkrebs/t_grab` | Packt mit der rechten Schere und hält fest (§7.5) | – | hit_start, hit_end, grab, release | K | platzhalter-K |
+| `kristallkrebs/t_reflect` | Stemmt sich, die Kristalle flammen auf und werfen den Zauber zurück (§7.5) | – | reflect, sound:kristallkrebs_chime | K | platzhalter-K |
+
 ## Prio C – später
 
 Akrobatik-Varianten, weitere Gangarten-Varianten (erste vier siehe oben), zusätzliche
