@@ -96,11 +96,24 @@ void Engine::rebuildMobs()
             if (const auto it = m_mobs.find(vob.id.value);
                 it != m_mobs.end() && it->second.definition == ref.definition)
             {
-                mobs.emplace(vob.id.value, std::move(it->second));
+                MobRuntime& kept = it->second;
+                kept.targets = ref.targets; // the editor may have rewired it
+                kept.action = ref.action;
+                kept.once = ref.once;
+                kept.hidden = ref.hidden;
+                kept.noPick = ref.noPick;
+                kept.oneWay = ref.oneWay;
+                mobs.emplace(vob.id.value, std::move(kept));
                 return;
             }
             MobRuntime m;
             m.definition = ref.definition;
+            m.targets = ref.targets; // switches (dungeon D3)
+            m.action = ref.action;
+            m.once = ref.once;
+            m.hidden = ref.hidden;
+            m.noPick = ref.noPick; // dungeon D5
+            m.oneWay = ref.oneWay;
             const script::Instance* def =
                 m_scripts ? m_scripts->findInstance("Mob", ref.definition) : nullptr;
             if (def != nullptr)
@@ -130,7 +143,8 @@ void Engine::rebuildMobs()
                             m.lock);
                 m.lock.clear();
             }
-            m.locked = !m.lock.empty();
+            // A key-only door (no_pick, dungeon D5) is locked without a combination too.
+            m.locked = !m.lock.empty() || (m.noPick && !m.key.empty());
             if (m_mobTypes.find(m.type) == nullptr)
             {
                 G7_LOG_WARN("engine", "mob vob {} ({}): type \"{}\" is not in data/mobs.toml", vob.id.value,
@@ -145,6 +159,10 @@ void Engine::rebuildMobs()
                 m.doorFrom = kDoorOpenAngle;
                 m.doorTo = kDoorOpenAngle;
                 m.doorTime = 0.0f;
+            }
+            if (ref.open && m.type == "lever")
+            {
+                m.open = true; // dungeon D3: thrown from the start
             }
             mobs.emplace(vob.id.value, std::move(m));
         });
@@ -260,6 +278,16 @@ Result<void> Engine::useMob(world::VobId vob)
         }
         return Error{"no free slot"};
     }
+    if (m.type == "door" && !m.open && !m.oneWay.empty())
+    {
+        // Dungeon D5: a one-way door opens from its side only (closing works from both).
+        const Vec3 local = Vec3(glm::inverse(world) * Vec4(m_player.feet(), 1.0f));
+        if ((local.z >= 0.0f) != (m.oneWay == "front"))
+        {
+            notice(uiText("UI_ONE_WAY"));
+            return Error{"opens from the other side"};
+        }
+    }
     bool picklock = false;
     if (m.locked)
     {
@@ -268,13 +296,13 @@ Result<void> Engine::useMob(world::VobId vob)
             m.locked = false; // the key opens it on the way (Gothic: no extra step)
             notice(uiText("UI_UNLOCKED", {{"name", contentText(m.name)}}));
         }
-        else if (const std::string pick = lockpickItem(); m_hero->itemCount(pick) > 0)
+        else if (const std::string pick = lockpickItem(); !m.noPick && m_hero->itemCount(pick) > 0)
         {
             picklock = true;
         }
         else
         {
-            notice(uiText("UI_LOCKED"));
+            notice(uiText(m.noPick ? "UI_NEEDS_KEY" : "UI_LOCKED"));
             if (m_scripts)
             {
                 const script::Value args[] = {m.definition};
@@ -558,7 +586,7 @@ void Engine::fixedUpdateMobs(f32 seconds)
     {
         for (const std::string& e : m_mobEvents)
         {
-            if (e == "open" || e == "close")
+            if (e == "open" || e == "close" || e == "use")
             {
                 return true;
             }
@@ -592,6 +620,10 @@ void Engine::fixedUpdateMobs(f32 seconds)
             {
                 swingDoor(m, !m.open);
             }
+            else if (m.type == "lever" || m.type == "wall_button")
+            {
+                useSwitch(use.vob, m); // dungeon D3
+            }
             else
             {
                 m.open = true;
@@ -621,7 +653,7 @@ void Engine::fixedUpdateMobs(f32 seconds)
             if (type != nullptr && !type->loop.empty())
             {
                 startMobPhase(use, MobUse::Phase::Loop);
-                if (m.type == "chest")
+                if (m.type == "chest" || m.type == "niche") // dungeon D5: a niche is a chest without a lid
                 {
                     use.containerOpen = true;
                     m_inventoryOpen = true;

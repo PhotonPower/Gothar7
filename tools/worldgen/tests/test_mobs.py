@@ -14,6 +14,7 @@ from gothar_worldgen.mobs import (
     BUILDERS,
     CHEST_BODY_H,
     EMISSIVE,
+    GIANT_BARREL_L,
     HEARTH_D,
     HEARTH_H,
     HEARTH_W,
@@ -185,6 +186,14 @@ def test_props_budget_and_collision(kind):
         assert all(b.positions[:, 1].max() <= -0.99 for b in m.main.collision)  # none to bump
     elif kind == "wall_hanging":  # on the wall above heads' shoulders
         assert lo[1] > 1.2 and hi[2] <= 0.03 and not m.main.collision
+    elif kind in ("wall_torch", "torch_lever"):  # castle (D1b): on the wall above the hips
+        assert lo[1] > 1.2 and hi[1] < 2.3 and lo[2] >= -0.01 and hi[2] <= 0.25
+        assert all(b.positions[:, 1].max() <= -0.99 for b in m.main.collision)  # none to bump
+    elif kind == "giant_barrel":  # castle (D1b): lying in the wine cellar, origin in its middle
+        assert lo[1] == pytest.approx(0.0) and hi[1] < 3.0 and len(m.main.collision) > 20
+        assert lo[2] == pytest.approx(-GIANT_BARREL_L / 2)
+    elif kind == "giant_barrel_front":  # castle (D1b): the cask's door, origin at the hinge
+        assert lo[0] == pytest.approx(0.0) and lo[1] > 0.2 and hi[2] <= 0.2 and m.main.collision
     elif kind.startswith("market_stall_"):  # free-standing on the square, roof above heads
         assert lo[1] == pytest.approx(0.0) and hi[1] > 2.4 and m.main.collision
         assert all(b.positions[:, 1].max() <= 2.65 for b in m.main.collision)
@@ -219,3 +228,14 @@ def test_guild_signs_hang_in_the_wind_but_their_bracket_stays_still():
     hang = {"wind": "hanging", "wind_pivot": [0.0, round(SIGN_ARM_Y - 0.02, 3), BOARD_Z]}
     assert mats["iron_chain"] == hang and mats["paint_board"] == hang
     assert all(v == hang for k, v in mats.items() if k != "iron_bracket")
+
+
+def test_castle_props_have_coarser_levels() -> None:
+    """W7 D1b: the castle's props are seen from the court; each has a coarser level."""
+    from gothar_worldgen.mobs import PROPS
+
+    for name in ("giant_barrel", "giant_barrel_front", "wall_torch", "torch_lever", "bookshelf",
+                 "lectern", "altar", "cell_bars"):  # fmt: skip
+        model = PROPS[name]()
+        assert model.lods, name
+        assert all(lod.triangles() < model.main.triangles() for lod in model.lods), name

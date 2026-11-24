@@ -103,6 +103,18 @@ Eisenbändern gehalten, Fäuste und Füße aus Eisen, gebogene Eisenhörner, zwe
   ihren Knochen (er knickt nur in den Gelenken wie eine gegliederte Statue). v2 (Projektinhaber 2026-11-23): Blöcke
   ungleich groß, behauen und verwittert (gefaste, abgeschlagene Kanten, Risse, Moos und Schmutz in den Fugen),
   Eisen rostig; lod0 6288 Dreiecke; Beschreibung `data/monsters/gatterbock.creature.toml`.
+
+### Mauerkriecher (gebaut 2026-11-23)
+Asselartiger Kriecher, so lang wie ein großer Hund (1,0 m ohne Fühler, 0,29 m hoch): flacher, gewölbter Panzer aus
+überlappenden dunklen Ringplatten, blasse Unterseite, kurze Beißzangen, lange Fühler, sechs dünne Beine.
+- **Verhalten (für engine):** sitzt flach in Ritzen (`s_dormant`, `zs_dormant`) und kommt bei Licht und Lärm heraus
+  (`t_emerge`, Event `emerge`; `t_wake`); greift im Rudel von mehreren Seiten an (`t_attack_1` Zangenbiss,
+  `t_attack_2` Stoß von oben), rollt sich bei schweren Treffern ein (`t_curl` → `s_curled` → `t_uncurl`: der Panzer
+  schützt von oben, der Bauch ist weich). Gehen 1,2, Laufen 5,0 m/s.
+- **Technik:** Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5), 34 Knochen; Ringplatten als starre Platten an
+  `spine_01`, `pelvis` und `abdomen_01..04`; lod0 5432 Dreiecke; Beschreibung
+  `data/monsters/mauerkriecher.creature.toml`.
+
 ### Mauerschlupfer (gebaut 2026-11-23)
 Kahles, blasses Tier mit überlangen dünnen Gliedern, 1,2 m von der Nase bis zur Schwanzspitze: große
 Fledermausohren, blinde milchige Augen, schmaler Kopf mit gelben Nagezähnen, knotige Wirbelsäule unter der Haut,

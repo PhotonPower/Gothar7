@@ -132,6 +132,19 @@ TEST_CASE(
     // The rune in the left hand, the casting hand of the mag clips (M17, figuren #409).
     CHECK(engine.playerHolds("socket_hand_l"));
     CHECK_FALSE(engine.playerHolds("socket_hand_r"));
+    // Between the fingertips of the grip (figuren #425): the socket's offset, then the sign turned outwards.
+    {
+        const auto socket = engine.playerSocketTransform("socket_hand_l");
+        const auto rune = engine.playerAttachmentTransform("socket_hand_l");
+        REQUIRE(socket.has_value());
+        REQUIRE(rune.has_value());
+        const Vec3 expected = Vec3(*socket * Vec4(kRuneGripOffset, 1.0f));
+        CHECK(glm::length(Vec3((*rune)[3]) - expected) < 1e-4f);
+        CHECK(glm::length(kRuneGripOffset) ==
+              doctest::Approx(0.108f).epsilon(0.01));                   // about 11 cm to the fingertips
+        CHECK(glm::dot(Vec3((*rune)[2]), Vec3((*socket)[2])) < -0.99f); // the sign side turned round
+        CHECK(glm::dot(Vec3((*rune)[1]), Vec3((*socket)[1])) > 0.99f);  // the long axis kept
+    }
     REQUIRE(engine.heroCombatTarget() == std::optional<std::string>("npc_old_man")); // locked, as with a bow
     const i64 before = stat(engine, "npc_old_man", "hp");
     cast(engine);

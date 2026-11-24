@@ -97,9 +97,28 @@ def check_vob(name: str, points: np.ndarray, grid: Grid, base: float | None = No
     )
 
 
+def hole_cells(world: dict[str, Any], assets: Path, grid: Grid) -> np.ndarray | None:
+    """The terrain's hole mask (True = no ground), or None (world.md "Löcher")."""
+    ref = world.get("terrain", {}).get("holes")
+    if not ref or not (assets / ref).is_file():
+        return None
+    raw = np.fromfile(assets / ref, dtype=np.uint8)
+    return raw.reshape(grid.height - 1, grid.width - 1) == 0
+
+
+def over_ground(points: np.ndarray, grid: Grid, holes: np.ndarray | None) -> np.ndarray:
+    """``points`` without those over a terrain hole (a cellar under a hollow building)."""
+    if holes is None or len(points) == 0:
+        return points
+    c = np.clip(((points[:, 0] - grid.first_x) / grid.cell).astype(int), 0, holes.shape[1] - 1)
+    r = np.clip(((points[:, 2] - grid.first_z) / grid.cell).astype(int), 0, holes.shape[0] - 1)
+    return points[~holes[r, c]]
+
+
 def check_world(
     world: dict[str, Any], assets: Path, grid: Grid, prefix: str = "HANDMADE_"
 ) -> list[GroundReport]:
+    holes = hole_cells(world, assets, grid)
     reports = []
     for v in world["vobs"]:
         if v.get("type") != "mesh" or not str(v.get("name", "")).startswith(prefix):
@@ -107,7 +126,7 @@ def check_world(
         data = (assets / v["mesh"]).read_bytes()
         skip = frozenset(FOUNDATION.get(v["name"], ()))
         foot = float(render_vertices(data)[:, 1].min()) + float(v["pos"][1])
-        pts = placed(render_vertices(data, skip), v["pos"], v["rot"])
+        pts = over_ground(placed(render_vertices(data, skip), v["pos"], v["rot"]), grid, holes)
         reports.append(check_vob(v["name"], pts, grid, foot))
     return reports
 

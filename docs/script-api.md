@@ -12,7 +12,7 @@ Sprache, Sandbox, Lade-Reihenfolge und Instanzen: `docs/modules/script.md`.
 Zeigt eine Karte (Bild im VFS, z. B. `ui/maps/leonberg.png`) wie ein Karten-Item (Konsole, Tests).
 
 ### `menu_open(page?: string, tab?: number)`
-Öffnet das Pausenmenü wie Esc, mit `"options"` gleich die Optionen darüber, auf Reiter `tab` (ab 1; Konsole, Prüfbilder).
+Öffnet das Pausenmenü wie Esc, mit `"options"` gleich die Optionen darüber, auf Reiter `tab` (ab 1), mit `"credits"` die Mitwirkenden (Konsole, Prüfbilder).
 
 ### `screen_message(text: string, seconds?: number)`
 Zeigt dem Spieler eine Meldung oben in der Mitte (F7; Vorgabe 3 s), z. B. `Erfahrung +50`.
@@ -126,6 +126,9 @@ Ein Spielstand ist geladen: Welt, NPCs, Story und benannte Timer sind wieder da 
 
 ### `on("game_saved", fn(slot: string))`
 Ein Spielstand ist geschrieben (M15).
+
+### `on("hero_teleported", fn(teleporter: string))`
+Ein Teleporter derselben Welt (Dungeon D4) hat den Helden versetzt; `teleporter` ist sein Name. In eine andere Ebene folgt stattdessen `world_loaded`.
 
 ### `on("hero_transformed", fn(species: string))`
 Der Held nimmt eine Tiergestalt an (M12, Z7) bzw. wird wieder Mensch (`species` leer).
@@ -626,8 +629,14 @@ Schickt ein Ereignis an das Vob `target` (Dungeon D1), wie es ein Auslöser tut:
 ### `set_weather(name: string, minutes?: number) -> boolean`
 Setzt die Wetterlage (data/weather.toml), mit Übergang über `minutes` Spielminuten (ohne: sofort); der Ablauf geht von ihr aus weiter. false bei unbekannter Lage.
 
+### `switch_state(name: string) -> {type, on, found, spent} | nil`
+Der Zustand des Schalters `name` (Dungeon D3, Mob-Typen lever und wall_button): Typ, ob ein Hebel umgelegt ist, ob ein versteckter Schalter gefunden (einmal benutzt) ist und ob ein einmaliger Knopf verbraucht ist; für eine Trittplatte (Trigger mit `plate`) `{type = "plate", on = gedrückt}`; nil, wenn es nichts davon mit diesem Namen gibt.
+
 ### `teleport(start: string) | teleport(x: number, y: number, z: number)`
 Setzt die Spielfigur (bzw. ohne Spielfigur die Kamera) auf einen Startpunkt der Welt oder an eine Position in Metern.
+
+### `teleport_state(name: string) -> boolean | nil`
+Ob der Teleporter `name` (Dungeon D4, Trigger mit `teleport`) an ist; nil, wenn es keinen gibt. An- und ausgeschaltet wird er mit `send(name, 'on' | 'off' | 'toggle')`.
 
 ### `time(hour: integer, minute?: integer)`
 Stellt die Uhrzeit des Spiels (der Tag bleibt).

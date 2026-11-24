@@ -33,6 +33,7 @@ if(TARGET gothar)
                   "${PROJECT_SOURCE_DIR}/tools/release/THIRD_PARTY_NOTICES.txt"
             DESTINATION .)
     install(FILES "${PROJECT_SOURCE_DIR}/assets/LICENSES.md" DESTINATION LICENSES RENAME ASSETS.md)
+    install(FILES "${PROJECT_SOURCE_DIR}/assets/licenses.toml" DESTINATION LICENSES) # the credits screen
     install(FILES "${PROJECT_SOURCE_DIR}/LICENSE" DESTINATION LICENSES RENAME GOTHAR.txt)
     install(FILES "${PROJECT_SOURCE_DIR}/assets/source/fonts/OFL.txt" DESTINATION LICENSES)
     # The licence texts of the libraries the game links (vcpkg puts them into share/<port>/copyright).

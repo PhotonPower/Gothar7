@@ -316,11 +316,20 @@ Json worldToJson(const WorldState& w)
     Json mobs = Json::array();
     for (const MobState& m : w.mobs)
     {
-        mobs.push_back(Json{{"vob", m.vob},
-                            {"definition", m.definition},
-                            {"locked", m.locked},
-                            {"open", m.open},
-                            {"contents", m.contents}});
+        Json mob = Json{{"vob", m.vob},
+                        {"definition", m.definition},
+                        {"locked", m.locked},
+                        {"open", m.open},
+                        {"contents", m.contents}};
+        if (m.found)
+        {
+            mob["found"] = true; // dungeon D3, additive
+        }
+        if (m.spent)
+        {
+            mob["spent"] = true;
+        }
+        mobs.push_back(std::move(mob));
     }
     Json npcs = Json::array();
     for (const NpcState& n : w.npcs)
@@ -360,6 +369,15 @@ Json worldToJson(const WorldState& w)
                 Json{{"name", r.name}, {"counted", r.counted}, {"inputs", r.inputs}, {"spent", r.spent}});
         }
         out["relays"] = std::move(relays);
+    }
+    if (!w.teleporters.empty())
+    {
+        Json teleporters = Json::array();
+        for (const TeleporterState& t : w.teleporters)
+        {
+            teleporters.push_back(Json{{"vob", t.vob}, {"active", t.active}});
+        }
+        out["teleporters"] = std::move(teleporters);
     }
     if (!w.movers.empty())
     {
@@ -488,6 +506,14 @@ bool readWorld(Reader& r, const Json& j, const std::string& at, WorldState& out)
         ok = read(r, mj, "vob", mk, m.vob) && read(r, mj, "definition", mk, m.definition) &&
              read(r, mj, "locked", mk, m.locked) && read(r, mj, "open", mk, m.open) &&
              read(r, mj, "contents", mk, m.contents);
+        for (const auto& [key, flag] : {std::pair<const char*, bool*>{"found", &m.found},
+                                        std::pair<const char*, bool*>{"spent", &m.spent}})
+        {
+            if (ok && mj.contains(key))
+            {
+                ok = read(r, mj, key, mk, *flag);
+            }
+        }
         w.mobs.push_back(std::move(m));
     }
     const Json* npcs = ok ? field(r, j, "npcs", at) : nullptr;
@@ -510,6 +536,18 @@ bool readWorld(Reader& r, const Json& j, const std::string& at, WorldState& out)
             ok = read(r, relays[k], "name", rk, s.name) && read(r, relays[k], "counted", rk, s.counted) &&
                  read(r, relays[k], "inputs", rk, s.inputs) && read(r, relays[k], "spent", rk, s.spent);
             w.events.relays.push_back(std::move(s));
+        }
+    }
+    if (ok && j.contains("teleporters"))
+    {
+        const Json& teleporters = j["teleporters"];
+        ok = teleporters.is_array() || r.failed(at, "'teleporters' must be a list");
+        for (usize k = 0; ok && k < teleporters.size(); ++k)
+        {
+            TeleporterState t;
+            const std::string tk = std::format("{}.teleporters[{}]", at, k);
+            ok = read(r, teleporters[k], "vob", tk, t.vob) && read(r, teleporters[k], "active", tk, t.active);
+            w.teleporters.push_back(t);
         }
     }
     if (ok && j.contains("movers"))

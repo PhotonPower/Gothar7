@@ -22,6 +22,7 @@ MALE_HEADS = ("bald", "farmer", "gaunt", "mid", "old", "rough", "stubble", "youn
 PART = "beard_stubble"  # parts/hair_m_<head>/beard_stubble.glb, material and palette key
 TEXTURE = "beard_stubble_neutral.png"  # below textures/hair/
 TRIANGLES = (600, 300, 120)  # lod0..2 (budget per beard, §6)
+FULL_TRIANGLES = (800, 400, 160)  # full beards with tufts (owner 2026-11-23: a real full beard)
 BAND_DENSITY = (0.13, 0.09, 0.05, 0.02)  # share of hair pixels per band, band 0 = beard centre
 NEUTRAL_MEAN = 0.55  # texture contract §2.3: the palette colour is the mean
 SIZE = 512

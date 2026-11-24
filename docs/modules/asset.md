@@ -318,6 +318,7 @@ public:
     template <class T> void registerLoader(Loader<T>);
     template <class T> Handle<T> load(std::string_view path);
     void update();  void waitAll();
+    template<T> void wait(std::span<const Handle<T>>);  template<T> void wait(const Handle<T>&);
     usize reload(std::string_view path);      // alle gecachten Typen des Pfads neu laden (asynchron)
     u32 checkForChanges(f64 now);             // Hot-Reload: geänderte lose Dateien neu laden
     void setHotReload(bool); bool hotReload() const;
@@ -328,6 +329,8 @@ public:
 - **Ablauf:** `load` kehrt sofort zurück. Worker-Threads lesen die Datei über das `Vfs` und rufen den Lader des Typs
   auf. Erst **`update()` im Hauptthread** schaltet fertige Ladevorgänge auf `Ready` bzw. `Failed`. Ein Asset ändert
   sich also nie mitten in einem Frame oder Simulationsschritt, sondern erscheint frühestens im nächsten Frame.
+  `wait(handles)` wartet nur auf diese Ladevorgänge (andere laufen weiter) und veröffentlicht dann, was fertig ist.
+  Figuren warten so auf ihre Teile, Clip-Sets und Bilder (M17).
   `waitAll()` wartet auf alle offenen Ladevorgänge und veröffentlicht sie (Ladebildschirm, Tests).
   Mit `workerThreads = 0` laufen die Lader synchron in `update()` (Werkzeuge, deterministische Tests).
   `update()` läuft jeden Frame und muss deshalb linear bleiben: Freigegebene Assets werden dort aus dem Cache
@@ -345,7 +348,7 @@ public:
   bei losen Dateien (Verzeichnis über `diskPath`). In Archiven müssen Meshes eigenständig sein (`.glb`, data:-URIs),
   sonst gibt es eine Fehlermeldung. Bild-URIs eines Meshes bleiben in `ImageSource::uri`; das Laden über das VFS
   kommt mit der Engine-Anbindung.
-- **Threads:** `load`, `update`, `waitAll`, `registerLoader` und Handle-Zugriffe gehören in den Hauptthread.
+- **Threads:** `load`, `update`, `waitAll`, `wait`, `registerLoader` und Handle-Zugriffe gehören in den Hauptthread.
   Lader laufen auf Workern und nutzen nur ihren `LoadContext`. Hochladen auf die Grafikkarte bleibt in `render`
   (Hauptthread mit GL-Kontext). Das `Vfs` muss den Manager überleben.
 - **Gelöst – Hänger in Testläufen (2026-10-03):** Lokal und in der Windows-CI (Suite `cook`) hing ein Lauf

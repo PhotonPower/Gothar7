@@ -320,10 +320,8 @@ void Engine::weaponEvent(std::string_view event)
             }
             else
             {
-                // The left socket mirrors the right one: half a turn about the rune's long axis (+Y) turns
-                // its sign side (+Z) away from the palm, out where it can be seen.
-                m_figure->attachments.back().offset =
-                    glm::rotate(Mat4(1.0f), glm::pi<f32>(), Vec3(0.0f, 1.0f, 0.0f));
+                // Between the fingertips of the grip (figuren #425), the sign away from the palm.
+                m_figure->attachments.back().offset = runeGripTransform();
             }
         }
     }
