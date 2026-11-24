@@ -2197,19 +2197,20 @@ void Engine::drawScene(u32 width, u32 height)
     G7_PROFILE_SCOPE("render::scene (culling, shadows, main)");
     m_meshRenderer.beginFrame();
     // Indoors (the camera in a room, world.md "Zonen") the world outside shows only through windows and the
-    // door: nothing beyond indoor_view_distance (render.md "Innenräume"), and the sun's shadows (through the
-    // windows) only from casters within indoor_shadow_distance.
+    // door: nothing beyond indoor_view_distance (render.md "Innenräume") - and casts no shadow -, and the
+    // sun's shadows (through the windows) end at indoor_shadow_distance; beyond it the rooms get no sun.
     m_frameCull = m_cullSettings;
     m_frameShadowCull = m_cullSettings;
     const bool inside = m_indoorViewDistance > 0.0f &&
                         render::indoorAmount(m_camera.transform.position, m_environment.indoor, 0.0f) > 0.5f;
     const auto limited = [](f32 distance, f32 limit)
     { return distance > 0.0f ? std::min(distance, limit) : limit; };
+    f32 shadowRange = 0.0f; // 0: to the last cascade's end
     if (inside)
     {
         m_frameCull.viewDistance = limited(m_frameCull.viewDistance, m_indoorViewDistance);
-        m_frameShadowCull.viewDistance =
-            limited(m_frameCull.viewDistance, std::max(m_indoorShadowDistance, 0.1f));
+        m_frameShadowCull.viewDistance = m_frameCull.viewDistance;
+        shadowRange = limited(m_frameCull.viewDistance, std::max(m_indoorShadowDistance, 0.1f));
     }
     if (m_cullGridDirty)
     {
@@ -2238,8 +2239,15 @@ void Engine::drawScene(u32 width, u32 height)
         m_terrain.setMaxDistance(inside ? m_frameShadowCull.viewDistance : 0.0f);
         for (u32 i = 0; i < m_cascades.size(); ++i)
         {
-            // Indoors a cascade that starts beyond the view distance shades nothing drawn: left as it is.
-            if (!shadowRedraw(i) || (inside && m_cascades[i].splitNear > m_frameShadowCull.viewDistance))
+            // Indoors a cascade that starts beyond the shadow range shades nothing: it and all farther ones
+            // are dropped. Kept with the tile's old fit instead, a cascade never drawn (all zero) made the
+            // shadow distance 0 - the sun everywhere, even in a windowless cellar.
+            if (inside && i > 0 && m_cascades[i].splitNear > shadowRange)
+            {
+                m_cascades.resize(i);
+                break;
+            }
+            if (!shadowRedraw(i))
             {
                 m_cascades[i] = m_cascadesDrawn[i]; // shade with what the tile holds
                 continue;
@@ -2290,7 +2298,7 @@ void Engine::drawScene(u32 width, u32 height)
             drawPlayer(true, i);
             drawCreatures(true, i);
         }
-        shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug};
+        shadowFrame = {&m_shadowMap, m_cascades, &m_camera, m_shadowDebug, shadowRange, inside};
     }
     // M17 R: the rain map (depth from above) anew when it rains and the camera moved on.
     const world::WeatherSample rainNow = weatherNow();
