@@ -26,6 +26,7 @@ set(_g7_runtime_groups
     "leonberg|*test_engine_leonberg.cpp"
     "leonberg_doors|*test_engine_leonberg_doors.cpp"
     "leonberg_parish|*test_engine_leonberg_parish.cpp"
+    "leonberg_castle|*test_engine_leonberg_castle.cpp"
     "leonberg_residents|*test_engine_leonberg_residents.cpp"
     "leonberg_night|*test_engine_leonberg_residents_night.cpp"
     "leonberg_save|*test_engine_leonberg_save.cpp"
