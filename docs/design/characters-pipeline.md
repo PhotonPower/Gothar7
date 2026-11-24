@@ -838,6 +838,84 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
 | `laufvogel` | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 16 Knochen (bisherige 12 mit Vogel-Namen `thigh/calf/foot`, dazu `neck_02`, `jaw` (Schnabel) und `wing_l/r` mit engine), 1,66 m (Kopf mit Federkamm), lod0 6824 / 3412 / 1706 Dreiecke, Federn 1024² + Normal-Map 512²; eigene Silhouette: schieferblaues Gefieder, rostroter Halskragen, Federkamm, Hakenschnabel, Stummelflügel, Schwanzbusch, Schuppenläufe mit drei Krallenzehen; 12/12 Clips mit denselben Namen, Events und Tempo (1,3 / 6,5 m/s), alle eigen |
 | `schinder` | Rig 26 Knochen, 0,92 m, lod0 7834 / 3916 / 1958 Dreiecke, Fell 1024² + Normal-Map 512²; 15 Clips (Mindest-Set + `s_sneak`, `t_call`, `s_cower`); Tempo 1,3 / 6,5 / Schleichen 0,7 m/s (mit engine 2026-10-07) |
 
+
+### 7.5 Gliederfüßer-Bauplan (Vertrag mit engine, vereinbart 2026-11-23 über den Koordinator)
+
+Für die Dungeon-Arten **Mauerkriecher**, **Kristallkrebs** und den Boss **Kellermutter** (`monsters.md`
+„Dungeon-Arten“). Es bleibt bei **einem Rig je Art** (§7.1); neu ist ein gemeinsamer **Bauplan** für Namen,
+Hierarchie, Clips und Events, damit die Engine (KI, Treffer, Klänge) die drei Arten gleich behandeln kann. Alles aus
+§7.1 gilt weiter (Ausrichtung Y oben, Blick +Z, links +X; Bind-Pose = natürliche Stand-Pose; ≤ 64 Knochen; ≤ 4
+Gewichte; Translation nur auf `root`/`pelvis`; Kollision `[rig.collision]`).
+
+- **Pflichtknochen** (wie §7.1): `root` (Boden, Ursprung), `pelvis` (Mitte des Vorderleibs, trägt die Beine),
+  `neck_01`, `head`, Socket `socket_mouth` (Biss/Zangen).
+- **Rumpf:**
+  - nach vorn `pelvis` → `spine_01` (vorderer Brustabschnitt) → `neck_01` → `head`;
+  - nach hinten `pelvis` → `abdomen_01` … `abdomen_NN` (Ringplatten bzw. Hinterleib; Mauerkriecher 4, Kristallkrebs 1,
+    Kellermutter 3);
+  - optional `sac` unter dem letzten `abdomen_*` (Brutsack der Kellermutter: nur Drehung, Pulsieren über die Clips).
+- **Kopf:** `mandible_l/r` (Beißzangen; Pflicht bei allen drei), optional Fühler `antenna_01_<s>` →
+  `antenna_02_<s>` (Glied zuerst, Seite zuletzt wie bei den Beinen; Mauerkriecher) und `eye_stalk_l/r` (Krebs).
+- **Beine:** Paare von vorn nach hinten nummeriert, drei Glieder je Bein:
+  - `leg_<n>_upper_<s>` → `leg_<n>_lower_<s>` → `leg_<n>_foot_<s>`, mit n = 1 … 4 und s = l/r;
+  - Mauerkriecher 3 Paare, Kristallkrebs 4, Kellermutter 2;
+  - Paar 1 hängt an `spine_01`, die übrigen an `pelvis`.
+- **Arme** (Scheren bzw. Fangarme, optional):
+  - `arm_upper_<s>` → `arm_lower_<s>` → `claw_<s>` an `spine_01`;
+  - beim Krebs dazu der bewegliche Scherenfinger `claw_finger_<s>`;
+  - bei der Kellermutter ist `claw_<s>` die Sense.
+- **Starre Träger** (optional, nie animiert; sie bündeln die Gewichte starrer Teile bzw. tragen Sockets):
+  - `carapace_l/r` an `pelvis` (Panzerränder des Krebses, halten den Panzer aus den Beingewichten);
+  - `crystals` an `pelvis` (Kristalle des Krebses, trägt `socket_glow`);
+  - `weak` an `abdomen_02` (leuchtende Schwachstelle der Kellermutter am Brutsack, trägt `socket_weak` und
+    `socket_glow`).
+- **Sockets:**
+  - `socket_mouth` (Pflicht);
+  - `socket_claw_l/r` an `claw_<s>` (Treffpunkt von Schere bzw. Sense);
+  - `socket_glow` (Licht der Kristalle, Krebs; Leuchtfleck am Sack, Kellermutter);
+  - `socket_weak` (Schwachstelle der Kellermutter am Brutsack: engine prüft Treffer über Abstand und Winkel zu diesem
+    Socket, kein eigener Kollisionskörper – wie `socket_shield` beim Quaderbuckel).
+- **Knochenzahl** (gebaut): Mauerkriecher 34, Kristallkrebs 49, Kellermutter 35.
+- **Kollision:** wie §7.1 eine Kapsel aus der Referenz. Schätzungen:
+  - Mauerkriecher `capsule_lying` r 0,18 / l 1,0;
+  - Kellermutter `capsule_lying` r 1,1 / l 5,0;
+  - Kristallkrebs: breiter (1,8 m) als lang – liegende Kapsel **quer** mit dem neuen Feld `axis = "x"` in
+    `[rig.collision]` (Achse entlang +X statt +Z; ohne `axis` gilt +Z wie bisher).
+  - Monster haben keinen Physik-Körper: die Kapsel gilt nur für Treffer, Reichweite und Abstand (engine).
+- **Clips:** Mindest-Set aus §7.1 (`s_idle`, `s_walk`, `s_run`, `t_attack_1`, `t_attack_2`, `t_hit`, `t_die`,
+  `s_eat`, `s_sleep`, `t_threaten`, `t_turn_l`, `t_turn_r`), dazu `s_dormant` (Ruhe für `zs_dormant`, #422) und
+  `t_wake` (Erwachen). Je Art:
+  - **Mauerkriecher:**
+    - `t_curl` → `s_curled` → `t_uncurl` (einrollen; eingerollt schützt der Panzer von oben, engine);
+    - `t_emerge` (aus einer Ritze heraus, am Ort, Event `emerge`).
+  - **Kristallkrebs:**
+    - Gang seitwärts: neues Rig-Feld `move_axis = "x"` in `[rig]`. Die Fortbewegungs-Clips (`s_walk`, `s_run`)
+      bewegen `root` dann entlang ±X statt +Z; engine dreht den Körper so, dass er quer zur Laufrichtung steht
+      (kommt mit den Monster-Teilen, ~D6; bis dahin läuft der Krebs richtig, schaut aber in die falsche Richtung).
+      Eigene `s_strafe_l/r` entfallen damit;
+    - `t_grab` mit den Events `grab` (festhalten) und `release`;
+    - `t_reflect` mit Event `reflect` (Kristalle leuchten auf, Zauber wird zurückgeworfen).
+  - **Kellermutter:**
+    - `t_scythe_l`, `t_scythe_r` (Sensenhiebe, `hit_start`/`hit_end`, Treffpunkt `socket_claw_l/r`);
+    - `t_call` mit Event `spawn_brood` (Kriecher-Welle);
+    - `t_rage` (Phasenwechsel wie beim Bergleu), `s_guard` (über dem Schatz), `t_stagger`.
+- **Root Motion:** wie §7.1 (`s_walk`/`s_run` vorwärts, `t_turn_l/r` um +Y); beim Krebs (`move_axis = "x"`)
+  `s_walk`/`s_run` entlang ±X. Alles andere am Ort.
+- **Tempo** (Vorschlag, m/s): Mauerkriecher 1,2 / 5,0; Kristallkrebs 0,8 / 2,5 (seitwärts); Kellermutter
+  0,6 / 1,5.
+- **Events:**
+  - Schritte: Paar 1 meldet `footstep_front_l/r`, das hinterste Paar `footstep_back_l/r`, die Paare dazwischen keine
+    eigenen; so bleiben die Namen aus §7.1 und die Klangzahl klein.
+  - Treffer: `hit_start`/`hit_end`.
+  - Neue Events `emerge`, `grab`/`release`, `reflect`, `spawn_brood` sind vereinbart; die Engine ignoriert unbekannte
+    Events, bis das Verhalten gebaut ist.
+  - Tierlaute wie §7.1: `sound:<art>_attack`, `_hit`, `_die`, `_threaten`; dazu `sound:mauerkriecher_click`,
+    `sound:kristallkrebs_chime`, `sound:kellermutter_call`.
+- **Gangarten:** Rezept `gait` (§7.1) mit allen Beinen; Gliederfüßer gehen im Wechseldreischritt. Die Phasen der
+  Paare liegen versetzt (links 0 / 0,5 / 0 …, rechts gegenläufig), `duty` ~0,6.
+- **Werkzeug:** `gothar-chargen creature` (§7.4) mit dem neuen Rig-Muster; neue Formen nach Bedarf (Ringplatten
+  `plate_shell` gibt es schon).
+
 ### 7.6 Echsen-Bauplan (Vorschlag an engine, 2026-11-23, für den Brunnenmolch)
 
 Für die Dungeon-Art **Brunnenmolch** (`monsters.md` „Dungeon-Arten“): blinder Riesen-Höhlenmolch, 2,6 m lang,

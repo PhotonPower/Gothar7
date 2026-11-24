@@ -92,6 +92,31 @@ Lebenspunkten rasend. Quest-Boss (verschollene Jäger, Kopfgeld der Stadt). Trop
   pariertem Prankenhieb.
 - **Technik:** lod0 11096 Dreiecke (Boss-Budget bis 12 k), Beschreibung `data/monsters/bergleu.creature.toml`.
 
+## Dungeon-Arten (Auswahl des Projektinhabers 2026-11-23)
+
+Für das Dungeon unter dem Schloss (#421 welt, #422 engine). Vorschläge mit Konzept-Blockouts von `figuren`
+(`C:\GotharData\review\dungeon-monster-vorschlag\`); der Projektinhaber hat **alle sechs Arten und den Boss**
+ausgewählt. Keine Untoten. Der Beinhauswart ist lebend; der Mauerschlupfer darf glänzende Gegenstände stehlen
+(Verhalten baut engine). Die Kellermutter braucht einen Hort mit mindestens 4 m Raumhöhe (welt).
+
+| Art (ID) | Ebene | Rolle | Größe | Skelett |
+|---|---|---|---|---|
+| **Mauerkriecher** (`mauerkriecher`) | 1–3 | Rudel aus 3–6, Brut der Kellermutter; rollt sich ein | 1,0 m lang | Gliederfüßer-Bauplan (`characters-pipeline.md` §7.5), 3 Beinpaare |
+| **Gatterbock** (`gatterbock`) | 2, 5 | Steinwächter der Erbauer; steht als Statue am Gatter und erwacht; stumpfe Waffen wirken | 2,5 m | Menschen-Referenzrig, größer |
+| **Brunnenmolch** (`brunnenmolch`) | 3, 7 | blinder Riesen-Höhlenmolch; schnappt aus dem Wasser, hört statt zu sehen | 2,6 m lang | neues Echsen-Rig |
+| **Beinhauswart** (`beinhauswart`) | 4 | lebender Totengräber mit Spaten und grüner Laterne; die Laterne blendet | 2,0 m | Menschen-Referenzrig + Tuch |
+| **Mauerschlupfer** (`mauerschlupfer`) | 4–6 | springt aus Nischen, beißt, stiehlt Glänzendes, flieht | 1,2 m lang | vom Schinder-Rig abgeleitet |
+| **Kristallkrebs** (`kristallkrebs`) | 7 | leuchtende Kristalle, Scheren halten fest, wirft Magie teils zurück | 1,8 m breit | Gliederfüßer-Bauplan, 4 Beinpaare + Scheren |
+| **Kellermutter** (`kellermutter`), Boss | 8 | Stammmutter der Kriecher; Sensenarme, Kriecher-Wellen, Schwachstelle am Brutsack, drei Phasen | 5,5 m lang, 2,4 m hoch | Gliederfüßer-Bauplan, groß (Boss-Budget bis 12 k) |
+
+Reihenfolge des Baus (figuren):
+1. Gatterbock und Beinhauswart (Menschen-Rig, ohne neuen Vertrag)
+2. Mauerschlupfer
+3. nach der Abstimmung von §7.5: Mauerkriecher, Kristallkrebs, Kellermutter
+4. Brunnenmolch (neues Echsen-Rig, eigener Vertragsvorschlag)
+
+Je Art ein PR.
+
 ### Gatterbock (gebaut 2026-11-23)
 Steinwächter der Erbauer, 2,5 m: Rumpf und Glieder aus ungleichen, verwitterten Sandsteinquadern auf einem dunklen Eisengerüst, von
 Eisenbändern gehalten, Fäuste und Füße aus Eisen, gebogene Eisenhörner, zwei Glutaugen unter der Stirn.
@@ -103,6 +128,7 @@ Eisenbändern gehalten, Fäuste und Füße aus Eisen, gebogene Eisenhörner, zwe
   ihren Knochen (er knickt nur in den Gelenken wie eine gegliederte Statue). v2 (Projektinhaber 2026-11-23): Blöcke
   ungleich groß, behauen und verwittert (gefaste, abgeschlagene Kanten, Risse, Moos und Schmutz in den Fugen),
   Eisen rostig; lod0 6288 Dreiecke; Beschreibung `data/monsters/gatterbock.creature.toml`.
+
 ### Mauerkriecher (gebaut 2026-11-23)
 Asselartiger Kriecher, so lang wie ein großer Hund (1,0 m ohne Fühler, 0,29 m hoch): flacher, gewölbter Panzer aus
 überlappenden dunklen Ringplatten, blasse Unterseite, kurze Beißzangen, lange Fühler, sechs dünne Beine.
