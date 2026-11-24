@@ -19,6 +19,14 @@ randoms_night = ["owl"]
 interval = [10, 25]
 distance = [10, 25]
 
+# Dungeon unter dem Schloss (welt #458; Zone ambient "gewoelbe"): Raumrauschen, Tropfen, ab und zu ein Knarren.
+# Tag und Nacht gleich (kein Himmel); Platzhalter.
+[gewoelbe]
+loop = "amb_room"
+randoms = ["water_drip", "water_drip", "wood_creak"]
+interval = [4, 12]
+distance = [3, 12]
+
 # Leonberg (Zonen von welt: world.md „Zonen“) - feld ist die Vorgabe-Box über die Welt.
 [feld]
 loop = "amb_field"
