@@ -458,6 +458,30 @@
       "context": "dialogs/leonberg.lua",
       "status": "entwurf"
     },
+    "dia_leo_castle_cook_hello_01": {
+      "de": "Was kocht Ihr?",
+      "text": "What are you cooking?",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_castle_cook_hello_02": {
+      "de": "Für den Vogt Braten, für die Wachen Grütze. Und für dich nichts, solange du mir im Weg stehst.",
+      "text": "Roast for the Vogt, gruel for the guards. And nothing for you, as long as you stand in my way.",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_castle_scribe_hello_01": {
+      "de": "Was schreibst du da?",
+      "text": "What are you writing there?",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_castle_scribe_hello_02": {
+      "de": "Abgaben, Urteile, Briefe an den Grafen. Was der Vogt sagt, steht am Abend hier.",
+      "text": "Levies, judgements, letters to the count. Whatever the Vogt says is written here by evening.",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
     "dia_leo_citizen_hello_01": {
       "de": "Was macht ein Ratsdiener?",
       "text": "What does a council runner do?",
@@ -738,6 +762,60 @@
       "de": "Bring mir Tuch und Geduld. Bis dahin verkaufe ich dir, was ich übrig habe.",
       "text": "Bring me cloth and patience. Until then I'll sell you what I've got left over.",
       "context": "dialogs/leonberg.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_vogt_cellar_01": {
+      "de": "Was liegt unter dem Schloss?",
+      "text": "What lies beneath the castle?",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_vogt_cellar_02": {
+      "de": "Ein Weinkeller und das Verlies. Mehr nicht.",
+      "text": "A wine cellar and the dungeon cell. Nothing more.",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_vogt_cellar_03": {
+      "de": "Und wenn die Mägde von Geräuschen hinter dem großen Fass reden, dann ist das der Wein, der arbeitet.",
+      "text": "And when the maids talk about noises behind the big cask, that is the wine working.",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_vogt_hello_01": {
+      "de": "Wer seid Ihr?",
+      "text": "Who are you?",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_vogt_hello_02": {
+      "de": "Reinhard, Vogt des Grafen. Ich spreche hier Recht, treibe die Abgaben ein und halte die Mauern.",
+      "text": "Reinhard, the count's Vogt. I hold court here, collect the levies and keep the walls.",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_vogt_hello_03": {
+      "de": "Und du stehst in meinem Schloss. Also mach es kurz.",
+      "text": "And you are standing in my castle. So make it short.",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_vogt_town_01": {
+      "de": "Wie steht es um die Stadt?",
+      "text": "How are things in the town?",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_vogt_town_02": {
+      "de": "Die Händler klagen über die Zölle, die Bauern über die Zehnten. So war es immer.",
+      "text": "The merchants complain about the tolls, the farmers about the tithes. It has always been so.",
+      "context": "dialogs/castle.lua",
+      "status": "entwurf"
+    },
+    "dia_leo_vogt_town_03": {
+      "de": "Solange die Tore halten und der Markt läuft, ist Leonberg gut regiert.",
+      "text": "As long as the gates hold and the market runs, Leonberg is well governed.",
+      "context": "dialogs/castle.lua",
       "status": "entwurf"
     },
     "dia_old_man_hello_01": {
@@ -1394,6 +1472,30 @@
       "context": "npcs/leonberg/residents.lua",
       "status": "entwurf"
     },
+    "npc_leo_castle_cook.name": {
+      "de": "Margarete, Köchin auf dem Schloss",
+      "text": "Margarete, cook at the castle",
+      "context": "npcs/leonberg/castle.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_castle_guard_day.name": {
+      "de": "Jörg, Schlosswache",
+      "text": "Jörg, castle guard",
+      "context": "npcs/leonberg/castle.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_castle_guard_night.name": {
+      "de": "Veit, Schlosswache",
+      "text": "Veit, castle guard",
+      "context": "npcs/leonberg/castle.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_castle_scribe.name": {
+      "de": "Lukas der Schreiber",
+      "text": "Lukas the scribe",
+      "context": "npcs/leonberg/castle.lua",
+      "status": "entwurf"
+    },
     "npc_leo_citizen.name": {
       "de": "Matthis der Ratsdiener",
       "text": "Matthis the Council Runner",
@@ -1506,6 +1608,12 @@
       "de": "Jörg der Gewandschneider",
       "text": "Jörg the Tailor",
       "context": "npcs/leonberg/residents.lua",
+      "status": "entwurf"
+    },
+    "npc_leo_vogt.name": {
+      "de": "Reinhard, Vogt auf dem Schloss",
+      "text": "Reinhard, Vogt at the castle",
+      "context": "npcs/leonberg/castle.lua",
       "status": "entwurf"
     },
     "npc_old_man.name": {
