@@ -88,3 +88,22 @@ loop = "amb_room"
 randoms = ["wood_creak"]
 interval = [15, 40]
 distance = [1, 4]
+
+# Schloss (welt W7 D1b, #447): Keller und Küche; Platzhalter-Klänge, bis eigene da sind.
+[keller_gewoelbe]
+loop = "amb_room"
+randoms = ["wood_creak"]
+interval = [20, 45]
+distance = [3, 8]
+
+[keller_luftzug]
+loop = "amb_wind"
+randoms = ["wood_creak"]
+interval = [15, 35]
+distance = [2, 6]
+
+[schloss_kueche]
+loop = "amb_fire"
+randoms = ["mug_clink", "wood_creak"]
+interval = [6, 15]
+distance = [1, 4]
