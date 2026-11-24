@@ -169,6 +169,28 @@ public:
     void update();
     /// Blocks until no load is pending, then publishes everything (loading screens, tests).
     void waitAll();
+    /// Blocks until the loads of these handles are finished, then publishes what is done (update()). Other
+    /// loads keep running: a figure waits for its parts, not for the textures a world is streaming at the
+    /// time.
+    template <typename T>
+    void wait(std::span<const Handle<T>> handles)
+    {
+        std::vector<std::shared_ptr<detail::AssetSlot>> slots;
+        slots.reserve(handles.size());
+        for (const Handle<T>& handle : handles)
+        {
+            if (handle.m_slot)
+            {
+                slots.push_back(handle.m_slot);
+            }
+        }
+        waitSlots(slots);
+    }
+    template <typename T>
+    void wait(const Handle<T>& handle)
+    {
+        wait(std::span<const Handle<T>>(&handle, 1));
+    }
 
     /// Loads every cached asset of `path` (all types) again, asynchronously like load(). update()
     /// swaps the data in: handles stay valid and their version() increases. A failed reload keeps
@@ -193,6 +215,7 @@ private:
     using ErasedLoader = std::function<ErasedResult(const LoadContext&)>;
 
     void registerErased(std::type_index type, ErasedLoader loader);
+    void waitSlots(std::span<const std::shared_ptr<detail::AssetSlot>> slots);
     [[nodiscard]] std::shared_ptr<detail::AssetSlot> loadErased(std::string_view path, std::type_index type);
 
     struct Impl;

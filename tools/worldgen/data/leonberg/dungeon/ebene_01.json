@@ -1,0 +1,28 @@
+{
+  "format": "gothar-dungeon-level",
+  "version": 1,
+  "note": "W8 D2 (docs/design/schloss-dungeon.md): Ebene 1 'Alte Gewölbe', Testebene mit allen Mechaniken. Karte ebene_01.txt: Spalte x nach Osten, Zeile y nach Süden, Zelle 3 x 3 m. Einträge hier je Zelle [x, y] für alles, was ein Zeichen nicht sagt.",
+  "level": 1,
+  "theme": "gewoelbe",
+  "origin": [0.0, 0.0, 0.0],
+  "cellM": 3.0,
+  "heightM": 3.5,
+  "cells": [
+    {"at": [1, 1], "stairs": {"world": "worlds/leonberg/leonberg.g7world", "start": "START_SCHLOSS_FASS", "facing": "S"}, "arrive": "START_E01_VON_OBEN"},
+    {"at": [5, 2], "door": {"definition": "door"}},
+    {"at": [6, 4], "switch": {"type": "lever", "facing": "S", "targets": ["GATE_E01_11_2"], "action": "toggle"}},
+    {"at": [11, 2], "gate": {"open": false}},
+    {"at": [14, 3], "chest": {"definition": "chest"}},
+    {"at": [17, 5], "plate": {"weight": "any", "targets": ["WALL_E01_6_8"], "action": "open"}},
+    {"at": [6, 8], "secret_wall": {"open": false}},
+    {"at": [9, 7], "niche": {"definition": "niche", "facing": "S"}},
+    {"at": [13, 8], "door": {"definition": "door", "one_way": "back"}},
+    {"at": [16, 7], "teleport": {"to": [8, 12], "visible": true}},
+    {"at": [12, 12], "teleport": {"to": [15, 9], "visible": false}},
+    {"at": [9, 10], "trapdoor": {"open": false, "plate": "player", "fall": {"world": "worlds/leonberg/dungeon/ebene_02.g7world", "start": "START_E02_SCHACHT"}}},
+    {"at": [17, 12], "stairs": {"world": "worlds/leonberg/dungeon/ebene_02.g7world", "start": "START_E02_VON_OBEN", "facing": "S"}, "arrive": "START_E01_VON_UNTEN"},
+    {"at": [4, 7], "monster": {"npc": "mon_mauerkriecher", "count": 2}},
+    {"at": [15, 2], "monster": {"npc": "mon_gatterbock", "count": 1}},
+    {"at": [16, 10], "monster": {"npc": "mon_mauerkriecher", "count": 3}}
+  ]
+}

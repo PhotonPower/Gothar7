@@ -1,0 +1,30 @@
+{
+ "format": "gothar-vob-ids",
+ "version": 1,
+ "nextVobId": 24,
+ "ids": {
+  "BLOCK_E02_0_0": 1,
+  "BLOCK_E02_1_0": 2,
+  "STAIRS_E02_1_1": 3,
+  "START_E02_VON_OBEN": 4,
+  "SPAWN_E02_8_4": 5,
+  "CHEST_E02_9_7": 6,
+  "START_E02_SCHACHT": 7,
+  "TORCH_E02_2_1_N": 8,
+  "LIGHT_E02_2_1_N": 9,
+  "TORCH_E02_6_1_N": 10,
+  "LIGHT_E02_6_1_N": 11,
+  "TORCH_E02_9_1_N": 12,
+  "LIGHT_E02_9_1_N": 13,
+  "TORCH_E02_1_4_W": 14,
+  "LIGHT_E02_1_4_W": 15,
+  "TORCH_E02_4_4_E": 16,
+  "LIGHT_E02_4_4_E": 17,
+  "TORCH_E02_10_4_E": 18,
+  "LIGHT_E02_10_4_E": 19,
+  "TORCH_E02_6_7_W": 20,
+  "LIGHT_E02_6_7_W": 21,
+  "TORCH_E02_9_7_S": 22,
+  "LIGHT_E02_9_7_S": 23
+ }
+}

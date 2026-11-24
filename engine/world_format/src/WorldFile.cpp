@@ -540,15 +540,18 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
         auto to = readText(r, p, "to", tat, false);
         auto world = readText(r, p, "world", tat, false);
         auto start = readText(r, p, "start", tat, false);
-        auto filter = readChoice(r, p, "filter", tat, kTeleportFilters);
-        if (!to || !world || !start || !filter)
+        auto teleportFilter = readChoice(r, p, "filter", tat, kTeleportFilters);
+        if (!to || !world || !start || !teleportFilter)
         {
-            return !to ? to.error() : !world ? world.error() : !start ? start.error() : filter.error();
+            return !to      ? to.error()
+                   : !world ? world.error()
+                   : !start ? start.error()
+                            : teleportFilter.error();
         }
         teleport.to = std::move(to).value();
         teleport.world = std::move(world).value();
         teleport.start = std::move(start).value();
-        teleport.filter = filter.value();
+        teleport.filter = teleportFilter.value();
         if (teleport.to.empty() == (teleport.world.empty() || teleport.start.empty()) ||
             (!teleport.to.empty() && !teleport.world.empty()))
         {
@@ -1150,6 +1153,14 @@ Result<TerrainRef> readTerrain(const Reader& r, const Json& t)
         }
         ref.holes = t["holes"].get<std::string>();
     }
+    if (t.contains("grass_mask"))
+    {
+        if (!t["grass_mask"].is_string() || t["grass_mask"].get<std::string>().empty())
+        {
+            return r.error(where, "'grass_mask' must be a VFS path");
+        }
+        ref.grassMask = t["grass_mask"].get<std::string>();
+    }
     return ref;
 }
 
@@ -1281,6 +1292,23 @@ Result<std::vector<Zone>> readZones(const Reader& r, const Json& z)
                 return r.error(where, "fog needs 0 <= 'start' < 'distance' and 'fade' >= 0");
             }
             zone.fog = ZoneFog{color.value(), distance.value(), start.value(), fade.value()};
+        }
+        if (e.contains("daylight"))
+        {
+            if (zone.type != "indoor")
+            {
+                return r.error(where + ".daylight", "only indoor zones have daylight");
+            }
+            auto daylight = r.number(e, "daylight", where, 1.0f);
+            if (!daylight)
+            {
+                return daylight.error();
+            }
+            if (!(daylight.value() >= 0.0f && daylight.value() <= 1.0f))
+            {
+                return r.error(where + ".daylight", "must be 0..1 (a factor on the ambient)");
+            }
+            zone.daylight = daylight.value();
         }
         zones.push_back(std::move(zone));
     }
@@ -1630,6 +1658,42 @@ const Zone* smallestZone(std::span<const Zone> zones, std::string_view type, con
     return best;
 }
 
+std::vector<f32> indoorDaylight(std::span<const Zone> zones, std::span<const Vec3> windowLights, f32 windowed,
+                                f32 windowless)
+{
+    // How far a point lies outside a turned box (0 inside).
+    const auto outside = [](const ZoneBox& box, const Vec3& point)
+    {
+        const Vec3 d = point - box.center;
+        const f32 yaw = glm::radians(box.yawDegrees);
+        const f32 c = std::cos(yaw);
+        const f32 s = std::sin(yaw);
+        const Vec3 local(d.x * c - d.z * s, d.y, d.x * s + d.z * c);
+        const Vec3 beyond = glm::max(glm::abs(local) - box.halfExtents, Vec3(0.0f));
+        return std::max({beyond.x, beyond.y, beyond.z});
+    };
+    std::unordered_set<std::string_view> windowedRooms;
+    for (const Zone& z : zones)
+    {
+        if (z.type == "indoor" && z.box &&
+            std::any_of(windowLights.begin(), windowLights.end(),
+                        [&](const Vec3& p) { return outside(*z.box, p) <= kWindowLightTolerance; }))
+        {
+            windowedRooms.insert(z.value);
+        }
+    }
+    std::vector<f32> factors;
+    factors.reserve(zones.size());
+    for (const Zone& z : zones)
+    {
+        factors.push_back(z.type != "indoor"                ? 1.0f
+                          : z.daylight                      ? *z.daylight
+                          : windowedRooms.contains(z.value) ? windowed
+                                                            : windowless);
+    }
+    return factors;
+}
+
 Result<void> checkZone(const Zone& zone, std::string_view where)
 {
     if (zone.type.empty())
@@ -1658,6 +1722,14 @@ Result<void> checkZone(const Zone& zone, std::string_view where)
         !std::isfinite(zone.box->center.x + zone.box->center.y + zone.box->center.z + zone.box->yawDegrees))
     {
         return Error{std::format("{}.box.halfExtents: must be positive", where)};
+    }
+    if (zone.daylight && zone.type != "indoor")
+    {
+        return Error{std::format("{}.daylight: only indoor zones have daylight", where)};
+    }
+    if (zone.daylight && !(*zone.daylight >= 0.0f && *zone.daylight <= 1.0f))
+    {
+        return Error{std::format("{}.daylight: must be 0..1 (a factor on the ambient)", where)};
     }
     return {};
 }
@@ -1973,6 +2045,10 @@ std::string writeWorldFile(const WorldFile& world)
         {
             root["terrain"]["holes"] = t.holes;
         }
+        if (!t.grassMask.empty())
+        {
+            root["terrain"]["grass_mask"] = t.grassMask;
+        }
     }
 
     std::vector<const WorldFileVob*> sorted;
@@ -2094,6 +2170,11 @@ std::string writeWorldFile(const WorldFile& world)
                             ",\"distance\":" + dumpJson(Json(tidy(f.distance))) +
                             ",\"start\":" + dumpJson(Json(tidy(f.start))) +
                             ",\"fade\":" + dumpJson(Json(tidy(f.fade)));
+                }
+                if (z.daylight)
+                {
+                    line += ",\"daylight\":" +
+                            dumpJson(numbers({*z.daylight})[0]); // after the box, only when set
                 }
                 line += "}";
             }

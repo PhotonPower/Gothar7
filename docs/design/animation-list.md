@@ -76,6 +76,9 @@ Spielgefühl-Werte aus engines `movement.toml`, Entscheidung beim Projektinhaber
 | `mob/door/t_open` | Tür öffnen/schließen | – | open | Q | platzhalter (UAL1 `Interact`) |
 | `mob/table/t_sit`, `s_sit`, `t_stand` | Am Tisch sitzen (welts Tisch mit Bänken): hinter der Bank, rechtes Bein zuerst hinübersteigen, sitzen mit den Unterarmen auf der Platte, aufstehen rückwärts | – | – | K | platzhalter-K (Slot 1,10 m von der Tischachse, Hüfte über der Sitzmitte; Armhaltung per Gittersuche; mit engine 2026-10-08) |
 | `mob/table/s_sit_drink`, `s_sit_talk` | Am Tisch trinken (`it_mug`, rechte Hand) bzw. reden (Gesten mit beiden Händen) – Schleifen für FP_SIT/FP_DRINK | – | item_to_hand (trinken) | K | platzhalter-K |
+| `mob/lever/t_use` | Dungeon-Hebel (engine #435): hochgreifen, packen, herunterziehen (Griff ~1,2 m, Slot 0,6 m vor der Wand; eigene Datei `dungeon.glb`) | – | use | K | platzhalter-K |
+| `mob/button/t_press` | Wandknopf (engine #435): Stein in der Wand eindrücken (~1,2 m hoch, Slot 0,55 m) | – | use | K | platzhalter-K |
+| `mob/niche/t_reach`, `s_reach`, `t_back` | Nische (engine #439): vorbeugen und hineingreifen, darin tasten, Hand zurückziehen (Boden ~0,9 m, Slot 0,55 m; wie eine Truhe ohne Deckel) | – | open (t_reach), close (t_back) | K | platzhalter-K |
 
 ### Prio B – Fortbewegung je Waffenmodus (ausgeschrieben, F2)
 
@@ -111,6 +114,8 @@ bei engine in Lua. Ursprung = Fußpunkt, Blick +Z, auf der Stelle; Gegenstände 
 | `amb/t_drink_mug_in`, `s_drink_mug`, `t_drink_mug_out` | Aus dem Krug trinken (`it_mug`) | – | item_to_hand, item_from_hand | K | platzhalter-K (Haltung wie `none/t_drink`) |
 | `amb/s_train_sword` | Schwerttraining (Waffe in der Hand) | – | – | Q→ | platzhalter (UAL2 `Sword_Regular_Combo`, auf der Stelle, Schleife geschlossen) |
 | `amb/t_chop_wood_in`, `s_chop_wood`, `t_chop_wood_out` | Holz hacken mit der Axt `it_axe` (FP_CHOP) | – | item_to_hand, hit_wood, sound:wood_chop, item_from_hand | Q→ | platzhalter (UAL2 `TreeChopping_Loop`, Unterarm halb gedreht: Schneide voran; Ein-/Ausstieg Überblendung 12 Frames) |
+| `amb/t_read_in`, `s_read`, `t_read_out` | Lesen stehend am Pult mit Buch (FP_READ, engine `zs_read` #466; Pult ~1,1 m, 0,45 m vor dem Fußpunkt): beide Hände auf dem Buch, Kopf gesenkt; die Schleife liest die Zeilen entlang und blättert ab und zu um (eigene Datei `house.glb`) | – | sound:page_turn (Schleife) | K | platzhalter-K |
+| `amb/t_cook_in`, `s_cook`, `t_cook_out` | Kochen am Herd (FP_COOK, engine `zs_cook` #466; Kesselrand ~0,8 m, 0,5 m vor dem Fußpunkt): mit der Kelle `it_ladle` (rechte Hand) im Kessel rühren, Schleife im Kreis | – | item_to_hand, sound:cook_stir (Schleife), item_from_hand | K | platzhalter-K |
 | `amb/s_harvest`, `s_water`, `s_repair_kneel` | Ernten, gießen, kniend reparieren (FP_HARVEST, FP_WATER, FP_REPAIR) | – | – | Q→ | platzhalter (UAL2 `Farm_Harvest`, `Farm_Watering`, UAL1 `Fixing_Kneeling`; auf der Stelle, Schleife geschlossen) |
 | `none/s_idle_look`, `none/t_idle_scratch` | Stand-Varianten: sich umsehen, am Kopf kratzen | – | – | K | platzhalter-K |
 | `none/t_warn`, `t_point`, `t_surprised`, `t_search` | Reaktionen: warnen (erhobene Faust), zeigen, erschrecken, suchen | – | – | K | platzhalter-K |
@@ -197,6 +202,11 @@ Vertrag mit engine (2026-10-06, Hand geändert 2026-11-08): Rune bzw. Spruchroll
 wie die Quaternius-Haltung; alle Wirk-Clips wirken links, `t_cast_self`/`t_cast_area` mit beiden Händen); jeder Einmal-Clip
 beginnt und endet in `mag/s_idle`; Event `cast` = der Effekt startet. Fünf Wirk-Varianten; Verwandlung nutzt
 `t_cast_self`, Schlaf die K.o.-Clips von `none`. Kreise bzw. Talent nur über Abspielrate und Effekt.
+**Griff (2026-11-23):** Die linke Hand hält die Rune zwischen Daumen und Zeige- und Mittelfinger an den langen Kanten
+(Fingerpose `mag/s_grip`, über jeden Clip des Satzes gelegt; Ring- und kleiner Finger eingerollt), das Zeichen zeigt
+von der Handfläche weg nach außen. **Vorschlag an engine (Vertrag, über den Koordinator):** Die Rune sitzt dafür nicht
+in der Handmitte, sondern zwischen den Fingerkuppen – Versatz im Raum von `socket_hand_l` T = (−0,0935; 0,0155; −0,052) m,
+danach die halbe Drehung um die lange Achse +Y (#414): `offset = translate(T) · rotateY(π)`.
 
 | Name | Zweck | Länge | Events | Quelle | Status |
 |---|---|---|---|---|---|
@@ -405,6 +415,79 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `bergleu/t_die` | Langer Tod: taumelt, sinkt auf den Bauch, Kopf zu Boden | – | – | K | platzhalter-K |
 | `bergleu/s_eat`, `s_sleep` | Liegend am Riss fressen / auf der Seite schlafen | – | – | K | platzhalter-K |
 | `bergleu/t_threaten` | Drohen: geduckt, fauchen, Ohren flach, Schwanz peitscht | – | – | K | platzhalter-K |
+
+### Gatterbock (`gatterbock`, Dungeon, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `gatterbock/s_idle` | Steht, Stein „atmet“, Kopf mahlt langsam herum | – | – | K | platzhalter-K |
+| `gatterbock/s_walk` | Schwerer, stampfender Schritt | ✓ 0,9 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `gatterbock/s_run` | Schwerer Trab, langsamer als der rennende Held | ✓ 2,2 m/s | footstep_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `gatterbock/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `gatterbock/t_attack_1` | Beide Fäuste über den Kopf, dann vorn niederschmettern (Treffer an `socket_hand_l/r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `gatterbock/t_attack_2` | Rückhand mit der rechten Faust von links nach rechts | – | hit_start, hit_end | K | platzhalter-K |
+| `gatterbock/t_hit` | Treffer: der Stein wankt zurück | – | – | K | platzhalter-K |
+| `gatterbock/t_die` | Die Glut erlischt: sinkt auf die Knie und kippt nach vorn | – | – | K | platzhalter-K |
+| `gatterbock/s_eat`, `s_sleep` | Staub von den Fäusten wischen (Mindest-Set) / Statue (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `gatterbock/s_dormant` | Statue neben dem Gatter (`zs_dormant`, #422): Kopf gesenkt, Fäuste vor der Brust | – | – | K | platzhalter-K |
+| `gatterbock/t_wake` | Erwachen aus der Statue: Kopf hebt sich, Schultern mahlen, Arme fallen frei | – | sound:gatterbock_threaten | K | platzhalter-K |
+| `gatterbock/t_threaten` | Drohen: stampft, schlägt die Fäuste zusammen | – | – | K | platzhalter-K |
+### Mauerkriecher (`mauerkriecher`, Dungeon, eigene Art, Gliederfüßer §7.5, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `mauerkriecher/s_idle` | Fühler tasten, die Zangen klicken | – | sound:mauerkriecher_click | K | platzhalter-K |
+| `mauerkriecher/s_walk` | Huschen im Wechseldreischritt (sechs Beine) | ✓ 1,2 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine)) |
+| `mauerkriecher/s_run` | Schnelles Flitzen, Körper tief | ✓ 5,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine)) |
+| `mauerkriecher/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `mauerkriecher/t_attack_1` | Vorschnellen und die Zangen zuschnappen lassen (Treffpunkt `socket_mouth`) | – | hit_start, hit_end | K | platzhalter-K |
+| `mauerkriecher/t_attack_2` | Vorderleib aufbäumen und mit den Zangen herabstoßen | – | hit_start, hit_end | K | platzhalter-K |
+| `mauerkriecher/t_hit` | Treffer: zuckt zurück | – | – | K | platzhalter-K |
+| `mauerkriecher/t_die` | Kippt auf den Rücken, die Beine krümmen sich und zucken | – | – | K | platzhalter-K |
+| `mauerkriecher/s_eat`, `s_sleep` | Kopf tief, knabbert Moos von den Steinen / flach in eine Ritze gedrückt (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `mauerkriecher/s_dormant` | Flach in einer Ritze (`zs_dormant`, #422), Fühler angelegt | – | – | K | platzhalter-K |
+| `mauerkriecher/t_wake` | Hebt sich vom Stein, Fühler schwingen vor | – | sound:mauerkriecher_click | K | platzhalter-K |
+| `mauerkriecher/t_threaten` | Bäumt sich auf, Zangen weit offen, klickt | – | – | K | platzhalter-K |
+| `mauerkriecher/t_curl` | Rollt sich ein: Panzer außen, Bauch und Beine innen (§7.5) | – | – | K | platzhalter-K |
+| `mauerkriecher/s_curled` | Eingerollt (Schleife; der Panzer schützt von oben, engine) | – | – | K | platzhalter-K |
+| `mauerkriecher/t_uncurl` | Rollt sich auf und steht wieder | – | – | K | platzhalter-K |
+| `mauerkriecher/t_emerge` | Zwängt sich aus einer Ritze hinter ihm (am Ort) | – | emerge | K | platzhalter-K |
+### Mauerschlupfer (`mauerschlupfer`, Dungeon, eigene Art, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `mauerschlupfer/s_idle` | Geduckt, der blinde Kopf pendelt, die großen Ohren drehen sich und lauschen | – | – | K | platzhalter-K |
+| `mauerschlupfer/s_walk` | Hochbeiniges, spinnenartiges Schleichen | ✓ 1,2 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `mauerschlupfer/s_run` | Flinke Flucht, flach, Ohren angelegt | ✓ 6,0 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`)) |
+| `mauerschlupfer/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `mauerschlupfer/t_attack_1` | Vorschnellen und mit den Nagezähnen beißen | – | hit_start, hit_end | K | platzhalter-K |
+| `mauerschlupfer/t_attack_2` | Aufrichten und mit der langen Kralle niederreißen | – | hit_start, hit_end | K | platzhalter-K |
+| `mauerschlupfer/t_hit` | Treffer: zuckt zurück, Ohren angelegt | – | – | K | platzhalter-K |
+| `mauerschlupfer/t_die` | Quiekt, fällt auf die Seite, die Glieder krümmen sich | – | – | K | platzhalter-K |
+| `mauerschlupfer/s_eat`, `s_sleep` | Nagt an etwas unter der Vorderhand / eingerollt (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `mauerschlupfer/s_dormant` | Eingerollt in einer Mauernische (`zs_dormant`, #422), Ohren angelegt | – | – | K | platzhalter-K |
+| `mauerschlupfer/t_wake` | Springt aus der Nische: entrollt sich und springt vor (am Ort) | – | leap_start, leap_land | K | platzhalter-K |
+| `mauerschlupfer/t_threaten` | Richtet sich auf, spreizt die Ohren, faucht | – | – | K | platzhalter-K |
+| `mauerschlupfer/t_steal` | Schnappt Glänzendes mit dem Maul und ruckt zurück | – | steal | K | platzhalter-K |
+
+### Kristallkrebs (`kristallkrebs`, Dungeon, eigene Art, Gliederfüßer §7.5, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `kristallkrebs/s_idle` | Augenstiele drehen sich, die Scheren schnappen, leises Klingen | – | sound:kristallkrebs_chime | K | platzhalter-K |
+| `kristallkrebs/s_walk` | Seitwärts huschen auf acht Beinen (`move_axis = "x"`) | ✓ 0,8 m/s seitwärts (+X) | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine, seitwärts)) |
+| `kristallkrebs/s_run` | Schnell seitwärts, Scheren erhoben | ✓ 2,5 m/s seitwärts (+X) | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine, seitwärts)) |
+| `kristallkrebs/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `kristallkrebs/t_attack_1` | Rechte Schere vorschnellen (Treffpunkt `socket_claw_r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `kristallkrebs/t_attack_2` | Beide Scheren hoch und gemeinsam niederschlagen (`socket_claw_l/r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `kristallkrebs/t_hit` | Treffer: weicht zur Seite, Augen eingezogen | – | – | K | platzhalter-K |
+| `kristallkrebs/t_die` | Sinkt ein, die Beine knicken (die Kristalle erlöschen, engine) | – | – | K | platzhalter-K |
+| `kristallkrebs/s_eat`, `s_sleep` | Pickt mit den Scheren abwechselnd am Boden / zwischen den Kristallen niedergedrückt (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `kristallkrebs/s_dormant` | Zwischen den Kristallen niedergedrückt (`zs_dormant`, #422), Augen eingezogen | – | – | K | platzhalter-K |
+| `kristallkrebs/t_wake` | Augen hoch, hebt sich auf die Beine, Scheren öffnen sich | – | sound:kristallkrebs_chime | K | platzhalter-K |
+| `kristallkrebs/t_threaten` | Bäumt die Front auf, Scheren weit offen, Kristalle klingen | – | – | K | platzhalter-K |
+| `kristallkrebs/t_grab` | Packt mit der rechten Schere und hält fest (§7.5) | – | hit_start, hit_end, grab, release | K | platzhalter-K |
+| `kristallkrebs/t_reflect` | Stemmt sich, die Kristalle flammen auf und werfen den Zauber zurück (§7.5) | – | reflect, sound:kristallkrebs_chime | K | platzhalter-K |
 
 ## Prio C – später
 

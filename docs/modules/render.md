@@ -234,9 +234,11 @@ struct GpuLighting; GpuLighting packLighting(const Environment&, const LightList
   `Engine::frameLights()`.
 - **Lichtmodell (stilisiert):** Hemisphären-Ambient (Himmel/Boden nach Normalen-Y gemischt) + Lambert-Sonne +
   Punktlichter mit Abfall `saturate(1 − (d/r)⁴)² / (d² + 1)` (Meter; genau 0 am Radius). Keine Glanzlichter.
-- **Räume** (Zonen `indoor`, world.md „Zonen“): Das Ambient wird je Fläche in Räumen mit `[indoor] ambient`
-  multipliziert (`indoorAmount` in `common/lighting.glsl`, gleiche Formel `render::indoorAmount`); bis zu 32 gedrehte
-  Boxen im Lighting-UBO (`GpuLighting::indoorBoxes`).
+- **Räume** (Zonen `indoor`, world.md „Zonen“): Das Ambient wird je Fläche mit dem Faktor ihres Raums multipliziert
+  (`IndoorVolume::ambient`: `daylight` der Zone, sonst `[indoor] ambient` bzw. `ambient_windowless`); jeder Raum
+  blendet über `indoorAmount` von 1 zu seinem Faktor, ineinanderliegende Räume: der kleinste
+  (`indoorAmbientFactor` in `common/lighting.glsl`, gleiche Formel `render::indoorAmbientFactor`); bis zu 32 gedrehte
+  Boxen im Lighting-UBO (`GpuLighting::indoorBoxes`, Faktoren in `indoorAmbient`, vier je vec4).
 - Flackern von Fackeln ist Welt-/Spiellogik (ändert Lichtwerte pro Frame), kommt mit den Vobs (M4).
 - Ohne `setLighting` gilt neutrales Licht (weißes Ambient, keine Sonne).
 
@@ -629,6 +631,86 @@ Engine::windNow(), windEnabled();  WeatherSample::windDirection
   mit dem Wind, der Fuß nicht; ohne Wind und unmarkiert steht alles still; Mehrfach-Zeichnen und Tiefen-Pass
   biegen gleich), `test_engine_render.cpp` (Wind folgt der Lage, aus in den Einstellungen).
 
+### Gras (M17 Teile G1–G3, umgesetzt) – `Grass.hpp`, `grass.vert/.frag`, `runtime/EngineGrass.cpp`
+- **Büschel auf der GPU:** Jedes Büschel ist ein Eintrag von 16 Byte (Fuß als drei Floats, gepackte Bits: Drehung,
+  Höhe, Schicht, Farbton, Art, Gelände-Normale xz; `packGrassTuft`) in einem Speicherpuffer (std430, Bindung 6).
+  Die Geometrie entsteht im Vertex-Shader aus `gl_VertexID`, ohne Vertex-Puffer und ohne Textur:
+  - nah: 7 Halme je Büschel, je 5 Dreiecke (zwei Abschnitte und die Spitze), golden um den Fuß verteilt, nach außen
+    geneigt;
+  - fern: zwei gekreuzte Karten, aus denen `grass.frag` sechs Halme schneidet (Alpha-Test).
+  - Je Stufe ein `drawInstanced` über alle sichtbaren Kacheln; der Shader findet die Kachel einer Instanz per
+    binärer Suche in `uTileStart` (höchstens 96 Kacheln).
+  - Blühende Büschel (5 %, Entscheidung 3): zwei Stängel mit weißem, gelbem oder blauem Kopf.
+- **Kacheln:** 16 × 16 m (`GrassRing`). Kacheln, die näher als der Umkreis liegen, baut die CPU einmal, höchstens zwei
+  je Bild, die nächsten zuerst; sie bleiben, bis sie `kGrassKeepMargin` (8 m) jenseits des Umkreises liegen. Jede
+  Kachel hat einen festen Platz im Puffer. Gewürfelt wird aus den Kachelkoordinaten (gleiche Kachel, gleiche Liste):
+  Kandidaten auf einem gejitterten Raster mit der Dichte der Stufe, jeder bleibt mit der Wahrscheinlichkeit
+  seines Bodens.
+- **Wo Gras wächst (`buildGrassTile`):** Dichte = geschärfter Anteil der Schicht am Boden (normiert wie im
+  Gelände-Shader, `smoothstep(0,5; 0,8)`: auf dem Rand eines Pflasterwegs keins) × Dichte der Schicht × Maske.
+  Kein Gras auf Löchern und an Hängen über 35°.
+- **Gras je Schicht (Teil G2, `data/grass.toml`, `GrassTable`):** je Schichtname Dichte, Höhe [min, max], Farbe am
+  Fuß und an der Spitze (linear), Blumen; `aliases` für weitere Namen derselben Schicht. Vertrag mit welt:
+  `Wiese` (zweiter gültiger Name `grass` im Testlager) 1,0 mit 0,25–0,6 m und Blumen, `Waldboden` 0,25 (kurz),
+  `Matsch` 0,1 (Feldwege bekommen etwas Gras), alle anderen keins. Fehlt die Datei oder ist sie falsch, gelten
+  dieselben Werte eingebaut (Warnung mit Datei und Schlüssel). Die Engine liest sie bei jedem Weltladen.
+- **Maske (Teil G2):** optional `terrain.grass_mask` (`world.md` „Grasmaske“), bilinear wie die Splat-Karten, Faktor
+  0 … 1 auf die Dichte. welt liefert sie für Leonberg nach.
+- **Überlagerung (Teil G3):** `<welt>.grass.png` neben der Weltdatei (`world.md` „Gras-Überlagerung“), im Editor
+  gemalt: `grassMaskWithOverlay(Maske, R·A, A)` ersetzt die Maske dort, wo A zählt. Die Engine lädt sie mit dem ersten
+  Kachelbau der Welt; `Engine::grassOverlay()` (legt sie leer an), `grassOverlayChanged(Rechteck)`,
+  `saveGrassOverlay()`. Gemaltes macht nur die berührten Kacheln **veraltet** (`GrassRing::invalidate`): Sie zeigen ihr
+  altes Gras, bis sie am selben Platz neu gebaut sind (höchstens `kGrassStaleRebuildsPerFrame` = 4 je Bild, die
+  nächsten zuerst, zusätzlich zu den 2 neuen). Ein Undo macht alle Kacheln veraltet.
+- **Fenster „Grass“ (Teil G3, Debug-Oberfläche):** Stufe (nur für diesen Lauf), Umkreis, Dichte, Kacheln/Plätze,
+  ausstehend/veraltet, Büschel, gezeichnete Kacheln und Büschel nah/fern, Dreiecke, GPU-Zeit des Passes `grass`,
+  Kachelbau im letzten Bild und das langsamste Bild seit dem Zurücksetzen, Maske/Überlagerung vorhanden, „rebuild“.
+  Mit dem Overlay (F2) zeichnet die Engine die Kachelgrenzen auf dem Boden: grün mit Büscheln, grau leer, orange
+  veraltet, dazu Kachel und Büschelzahl.
+- **Gras weicht aus (Entscheidungen 4, 5):** Halme im Umkreis von 0,8 m um Figuren biegen weg (Spitze bis 0,6 × Halmhöhe
+  seitlich, glatt abnehmend, Fuß fest; nur bis 2 m über oder unter den Füßen), für die 16 Figuren (Held, NPCs, Tiere)
+  nächst der Kamera im Umkreis des Grases. Büschel im Umkreis von 0,5 m um liegende Items sind auf ein Drittel gekürzt
+  (0,15 m weicher Rand), für die 32 nächsten Items. Beides in `grass.vert` (`uBenders`, `uShorteners`, auch im
+  Schatten), die Engine sammelt die Punkte je Bild (`nearestGrassPoints`); CPU-Spiegel `grassBendTip`,
+  `grassItemScale`. Tests: `test_grass.cpp` (CPU und GPU), `test_engine_grass.cpp` (ein Wolf biegt, Items kürzen).
+- **Schatten der Vegetation (Teil V):** Kleine Deko (größenabhängig ausblendbar, größte Ausdehnung unter 1,5 m) wirft
+  Sonnenschatten nur in den ersten zwei Kaskaden (`castsShadowInCascade` in `Visibility.hpp`). Instanz-Puffer je
+  Modell und Zelle sind nach der Messung zurückgestellt (`docs/perf/2026-11-23-vegetation.md`: das Sammeln kostet
+  0,04–0,09 ms).
+- Im Editor pausiert die Simulation; damit der Kachelbau nicht auf die Kollision wartet, gleicht `updateGrass` sie
+  dann selbst ab (bewegte Vobs, Undo).
+- **Ausnahmen (Engine, `WorldGrassGround`):** auf dem Wegnetz (1,2 m breit), in Wasser, in Innenzonen und unter
+  Häusern, Mauern, Felsen und Mobs. Für Büschel innerhalb der Bounds eines festen Objekts geht ein Strahl von 2 m
+  über dem Boden bis 15 cm darunter; trifft er etwas anderes als das Gelände, entfällt das Büschel (so auch flach
+  aufliegende Flächen). Der Ring beginnt neu, wenn die Physik neu gebaut wird (Modelle fertig geladen, Editor), die
+  Splat-Gewichte gemalt werden oder die Stufe wechselt; solange die Physik aussteht, baut er nichts.
+- **Ausblenden:** Auf dem letzten Viertel des Umkreises schrumpfen die Büschel zum Boden und dünnen per Dither aus.
+  Nah/fern wird über 2 m um `bladeDistance` gedithert, jedes Büschel gehört genau einer Stufe.
+- **Wind:** wie `WindKind::Grass` (linear vom Fuß, 25 % der Höhe, Böen aus `common/wind.glsl`); bei `render.wind =
+  false` steht das Gras.
+- **Licht:** Normale des Geländes (kein Streifenbild), Farbe vom dunklen Fuß zur hellen Spitze je Schicht, ±Farbton je
+  Büschel; Sonnenschatten, Punktlichter (die nächsten 8 im Umkreis), Nebel wie das Gelände. Schatten wirft Gras nur
+  in `high` (erste Kaskade, bis 15 m).
+- **Durchgang:** nach dem deckenden Szenen-Pass, eigener GPU-Zeitabschnitt `grass`; Wasser und Effekte haben ihre
+  Abschnitte `water` und `effects` jetzt immer (vorher ohne Wasser im `scene`).
+- **Option** `[render] grass = auto  (Messung auf Intel UHD entfällt, Projektinhaber 2026-11-24)| off | low | medium | high` (Optionen → Grafik „Gras“); `auto` = `medium`, auf
+  Intel `low`:
+
+  | Stufe | Umkreis | Büschel/m² | 3D-Halme bis | Schatten |
+  |---|---|---|---|---|
+  | low | 20 m | 1,5 | 8 m | – |
+  | medium | 35 m | 3 | 12 m | – |
+  | high | 50 m | 5 | 20 m | bis 15 m |
+- **Tests:** `tests/render/test_grass.cpp` (Stufen, gepackte Bits, Kachel deterministisch, Dichte nach Gewicht und
+  Maske, Löcher, Hänge, Ausnahmen, Ring höchstens 2 Kacheln je Bild, ferne Kacheln fallen weg), GPU
+  `test_grass.cpp` (Gras auf der Wiese, keins auf dem Pflaster daneben, aus zeichnet nichts, Wind bewegt die Halme),
+  `test_engine_grass.cpp` (Testlager: Ring füllt sich mit 2 Kacheln je Bild, kein Büschel auf Wegen, im Wasser,
+  unter Hütten und Felsen; Leonberg: keins in Räumen und Häusern). G3: `test_grass.cpp` (veraltete Kacheln am selben Platz,
+  4 je Bild, die nächsten zuerst; Überlagerung über der Maske), `tests/editor/test_terrain_brush.cpp` (Pinsel
+  „Gras“ und „grass reset“, kleine Schritte kommen an, Undo), `tests/world/test_terrain.cpp` (Pfad), GPU
+  `test_editor.cpp` (Pinsel auf gesperrtem Gelände, Gras verschwindet, gespeichert neben der Kopie, Undo,
+  neu geladen).
+
 ### Debug-Draw – `DebugDraw.hpp`, `debug_line.*`, `debug_text.*`, `common/debug.glsl`
 ```cpp
 struct DebugStyle { Vec4 color{1}; f32 duration = 0; bool depthTest = true; };   // duration 0 = nur dieser Frame
@@ -714,9 +796,17 @@ void beginFrame();  BatchStats lastBatch();  shared_ptr<const MaterialDefaults> 
   in jeden Pass: in Leonberg etwa 1440 von 1900 Draw-Calls je Bild (vier Kaskaden und Hauptpass je ~360).
 - **Innenräume (Phase 3, E2):** Steht die Kamera in einer Innenzone (`indoorAmount` > 0,5, world.md „Zonen“), zeichnet
   das Bild nur, was näher als `[render] indoor_view_distance` (30 m) liegt – Modelle, Gelände-Kacheln und Figuren;
-  durch Fenster und Tür sieht man die Nähe. Sonnenschatten (durch die Fenster) werfen dann nur Dinge bis
-  `indoor_shadow_distance` (12 m), Kaskaden, die weiter beginnen, ruhen. Ein echtes Portal (nur durch Öffnungen)
+  durch Fenster und Tür sieht man die Nähe. Schatten werfen dann nur diese Dinge (bis 30 m); die Sonnenschatten
+  (durch die Fenster) enden bei `indoor_shadow_distance` (12 m), Kaskaden, die weiter beginnen, entfallen in diesem
+  Bild. Jenseits davon bekommen Räume keine Sonne (`1 − indoorAmount`), draußen volle Sonne (Fix 2026-11-24: vorher
+  wurde mit nie gezeichneten Kaskaden schattiert – Schattenweite 0, Sonne im fensterlosen Weinkeller;
+  GPU-Test `test_engine_indoor_sun.cpp`). Ein echtes Portal (nur durch Öffnungen)
   bleibt offen. Leonberg: Stube der Krummen Gans 2,6 Mio. → 0,26 Mio. Dreiecke, 1917 → 184 Draws (mit E3).
+- **Einrichtung von außen (M17, 2026-11-24):** Was ganz in Innenzonen liegt (alle acht Ecken der Bounds in Boxen,
+  5 cm Toleranz; `render::roomsHolding`, je Objekt beim ersten Bild nach dem Laden bzw. nach Zonen-/Szenen-Änderung),
+  fehlt im Hauptbild und in den Schattenkaskaden, solange die Kamera in **keiner** Innenzone steht und weiter als
+  `[render] indoor_cull_distance` (12 m, 0 = aus) von jeder seiner Boxen entfernt ist. Von nahem sieht man durch
+  Fenster und Tür hinein; drinnen gilt die Regel oben. `Engine::culledIndoors()`/`culledIndoorShadows()` zählen.
 - Gleiche Werte in verschiedenen Modellen bündeln, weil alle `MaterialSet`s die neutralen Texturen des Renderers teilen
   (`MaterialSet::create(…, defaults())`), und Texturen aus Dateien über den Textur-Cache dieselben Objekte sind:
   Modelle auf demselben Trim-Sheet bündeln miteinander.
@@ -1024,10 +1114,10 @@ MeshRenderer::drawSkinned(..., const FigureGlow& glow = {});  Engine::figureGlow
   der Übergang am Ellbogen zum Oberarm nicht mitleuchtet. Die Engine setzt je nach `arm` des Zaubers
   `lowerarm_l` bzw. `lowerarm_r` und alles darunter (Hand, Finger), bei `both` beide. Dazu `uGlowRim · (1 − n·v)⁴` und `uGlowFill`, additiv vor dem Nebel; der Bloom
   macht den Schein. Ohne Glühen bleibt das Bild bytegleich.
-- **Welcher Arm** (`arm` = `left`, `right`, `both`, Vorgabe `right`): der, mit dem der Wurf-Clip wirkt. Die
-  Platzhalter-Clips `mag/t_cast_projectile`, `_target` und `s_cast_loop` wirken mit der linken Hand,
-  `t_cast_self` mit beiden (Prüfbilder 2026-11-09), obwohl die Rune rechts liegt; also Feuerpfeil, Schlaf,
-  Schrecken, Telekinese `left`, Heilung `both`. Ändern sich die Clips (figuren), ändert sich nur die Daten-Datei.
+- **Welcher Arm** (`arm` = `left`, `right`, `both`, Vorgabe `left`): der, mit dem der Wurf-Clip wirkt. Seit
+  figuren #409 wirkt der ganze mag-Satz links, und die Rune liegt in der linken Hand (`kMagicSocket` =
+  `socket_hand_l`); `t_cast_self` und `t_cast_area` mit beiden. Also Feuerpfeil, Schlaf, Schrecken, Telekinese
+  `left`, Heilung `both`.
 - **Daten:** `[glow.<spell>]` (Feuerpfeil orange, Heilung grün, Schlaf, Schrecken und Telekinese blau; je
   Aufladestufe +50 %), `[hit.fire]`/`[hit.magic]` (0,3 s Aufblitzen, linear ausklingend; ein schwächerer Treffer
   ersetzt ein stärkeres Aufblitzen nicht), `[state.burning]` (orange, pulsiert zweimal je Sekunde),
@@ -1099,19 +1189,282 @@ Engine::distortionDrawn(), wobble();  gothar --fixed-step (1/60 s je Frame, Prü
 ### Reihenfolge
 G vor V (G ist klein und unabhängig); beide nach Teil T oder parallel dazu, je ein PR.
 
+## Plan M17: Grasfelder und Vegetations-Instancing (freigegeben 2026-11-23)
+Stand: **Plan freigegeben** (Projektinhaber, 2026-11-23; alle Vorschläge übernommen). Roadmap M17 „Vegetation: Instancing, Wind-Animation, Grasfelder“. Die
+Wind-Animation ist fertig (Teil W, „Wind“ oben); offen sind Grasfelder und Instancing. Eine neue Bibliothek ist nicht
+nötig, eine ADR deshalb auch nicht. Die Weltdatei bekommt ein Feld dazu (Teil G2, additiv). Die Entscheidungen des
+Projektinhabers stehen am Ende, nummeriert. Reihenfolge: G1, G2 (Vertrag mit welt vorher über den Koordinator), G3, V.
+
+### Ausgangslage
+- **Gelände Leonberg:** 2 × 2 km, Zellen 1 m, sieben Splat-Schichten: Wiese, Kopfstein, Kies, Matsch, Waldboden, Acker,
+  Fels. Die Wiese ist heute nur Textur.
+- **Vegetation als Vobs** (welt W6): Leonberg hat ~5100 Pflanzen als Modelle, darunter 2201 Obstbäume, 687
+  `grass_tuft`, 290 `grass_patch` (3 × 3 m), 304 `weeds`, 250 `reed` und ~550 Büsche.
+  - Sie laufen durch den normalen Modellweg: Multi-Draw, Instanzen gleicher Modelle (E3), LOD-Stufen und
+    Kategorie-Culling (E4).
+  - Ihr Wind kommt aus `extras.wind` (Vertrag welt, Teil W).
+- **Fehlt:** Flächiges Gras, das Wiesen, Gärten und Ränder füllt, ohne dass welt jede Staude als Vob setzt.
+
+### Ziel
+Wiesen und Gärten wirken bewachsen wie in einem Gothic-Bild: niedrige bis kniehohe Halme in Büscheln, die im Wind
+gehen und mit der Entfernung weich verschwinden. Kein Kollidieren, kein Spielfeld-Element. Die Kosten bleiben
+begrenzt und sind über eine Qualitätsstufe einstellbar.
+
+### Teil G1 – Grasrenderer (render)
+- **Verfahren:** GPU-Instancing von **Büscheln** (ein Büschel = 5–9 Halme, 2 Stufen: nah 3D-Halme ~40 Dreiecke, mittel
+  2 gekreuzte Karten 4 Dreiecke).
+  - Die Büschel-Meshes erzeugt der Renderer prozedural, Textur-Assets braucht es nicht. Halmfarbe aus einer
+    Farbtabelle je Splat-Schicht plus Rauschen.
+  - Alpha-Test nur bei den Karten, mit Alpha-to-Coverage wie bei der Vegetation.
+- **Kacheln:** Die Welt wird in 16 × 16-m-Kacheln geteilt. Für jede Kachel im Umkreis erzeugt die CPU **einmal** die
+  Instanzliste: Position, Drehung, Höhe, Farbton; 16 Byte je Büschel.
+  - Gewürfelt wird deterministisch aus den Kachelkoordinaten, das Bild bleibt also stabil.
+  - Grundlage sind die Splat-Gewichte (Teil G2), die Höhe aus dem Heightfield, Löcher und Neigung (über 35° kein Gras).
+  - Die Kacheln liegen in einem Ringpuffer um die Kamera. Neue Kacheln baut die CPU verteilt über mehrere Bilder,
+    höchstens 2 je Bild (auf dem Job-System, sobald es eins gibt).
+- **Zeichnen:**
+  - Je Stufe ein `drawInstanced` über alle sichtbaren Kacheln.
+  - Kacheln außerhalb des Sichtkegels fallen weg.
+  - Im Alpha-Test-Durchgang nach der deckenden Geometrie.
+- **Dichte und Sichtweite** nach `[render] grass` = `off` | `low` | `medium` | `high` (Optionen → Grafik):
+
+  | Stufe | Umkreis | Büschel/m² (Wiese voll) | 3D-Halme bis | Schatten |
+  |---|---|---|---|---|
+  | low | 20 m | 1,5 | 8 m | keine |
+  | medium (Vorgabe) | 35 m | 3 | 12 m | keine |
+  | high | 50 m | 5 | 20 m | nächste Kaskade, bis 15 m |
+
+  Vorgabe auf Intel UHD ist `low`, wie bei `multi_draw`.
+- **Ausblenden:** Auf den letzten 25 % des Umkreises schrumpfen die Büschel zum Boden, dazu dithert die Dichte aus. So
+  ploppt nichts. Der Übergang von 3D-Halmen zu Karten wird überblendet: beide Stufen über 2 m, gemischt mit Dither.
+- **Wind:** derselbe Wind wie Teil W.
+  - Gewicht `grass` (linear vom Fuß), Richtung und Böen aus den Wind-Uniforms, Phase je Büschel aus der Lage.
+  - Gras und `grass_patch`-Modelle bewegen sich gleich. Bei `[render] wind = false` steht das Gras.
+- **Licht:**
+  - Die Halme bekommen die Normale des Geländes (ein Feld sieht dann nicht „gestreift“ aus), Spitzen etwas heller,
+    am Fuß dunkler (Kontaktschatten).
+  - Sonnenschatten des Geländes und der Häuser werden empfangen. Gras wirft selbst keinen Schatten (außer `high`).
+  - Nachts und im Nebel wirkt das normale Licht.
+- **Ausnahmen:**
+  - Kein Gras in Innenzonen, unter Wasser (`water`-Vobs), auf Wegen des Wegnetzes (1,2 m breit) und unter den
+    Grundflächen von Häusern und Mobs.
+  - Die Grundflächen kommen aus der Kollision: ein Strahl je Büschel nach unten beim Bau der Kachel. Liegt
+    Geometrie über 5 cm über dem Gelände, entfällt das Büschel.
+- **Kollision:** keine. Gras hält niemanden auf und verdeckt keine Wahrnehmung.
+
+### Teil G2 – Wo Gras wächst (Vertrag mit welt)
+- **Je Splat-Schicht** eine Zeile in `data/grass.toml` (engine-Daten): Dichte 0..1, Höhe [min, max], Farbe [unten, oben].
+  - Vorschlag: Wiese 1,0 (0,25–0,6 m), Waldboden 0,25 (kurz), Acker 0 (Teil G4), Matsch 0,1, Kies/Kopfstein/Fels 0.
+  - Die Schicht wird über ihren **Namen** in der Weltdatei gefunden (`terrain.layers[].name`). Die Namen sind damit Teil
+    des Vertrags; Leonberg und das Testlager nutzen sie schon.
+- **Optional `terrain.grass_mask`** (neues Feld im `terrain`-Block, world.md): ein 8-bit-Bild in Auflösung der
+  Splatmap, Wert = Faktor auf die Dichte (0 kein Gras, 255 volle Dichte).
+  - welt erzeugt es aus OSM-Flächen: Wiese, Garten und Park voll, Weg- und Straßenränder ein Streifen von 1 m mit halber
+    Dichte. Dazu Höhe: kniehoch auf `meadow`, kurz in Gärten und im Schlossgarten (Rasen).
+  - Ohne Maske gilt nur die Splatmap (Testlager, ältere Welten).
+- **Bestehende Vobs bleiben:** `grass_tuft` an Mauerfüßen, `grass_patch`, `weeds`, `reed` setzen Akzente. welt kann die
+  flächigen `grass_patch` auf Wiesen später weglassen, wenn das Gras sie ersetzt (Frage 6).
+- Der Vertrag (Schichtnamen, Maske) kommt in `docs/coordination.md`. welt wird vor der Umsetzung gefragt.
+
+### Teil G3 – Editor und Werkzeuge
+- Die Maske lässt sich im Editor malen: ein Pinsel „Gras“ neben den Höhen- und Splat-Pinseln (M16 Teil F),
+  Undo als Befehl. Die Datei schreibt der Editor zurück; welts Generator überschreibt sie beim nächsten Lauf, außer der
+  Pinsel arbeitet in einer eigenen Überlagerung (Frage 9).
+- Debug-Fenster „Grass“: Kacheln, Büschel, Dreiecke, Zeit für den Kachelbau; F2 zeichnet die Kachelgrenzen.
+
+### Teil V – Vegetations-Instancing (Modelle)
+- **Messung zuerst** (Perf-Szenario `feld`, neu in `perf.toml`: Stadtrand mit Obstwiesen; dazu `markt`). Dabei
+  Draw-Befehle, Instanzen, CPU-Zeit für das Sammeln der Draws und GPU-Zeit der Vegetation getrennt.
+- **Wenn die CPU-Seite zählt**, also das Sammeln von ~5100 Pflanzen je Pass:
+  - Vegetation-Vobs kommen in statische **Instanz-Puffer je Modell und Zelle** (64 m). Sie werden einmal gebaut, wenn
+    die Welt lädt oder sich ändert (Editor, Hot-Reload).
+  - Gezeichnet wird je Zelle und Modell ein `drawInstanced`. Pro Pflanze gibt es dann keine Arbeit mehr je Bild.
+  - Sichtbarkeit je Zelle, LOD je Zelle nach dem Abstand zur Zellmitte. Schatten wie heute, kleine Pflanzen nur in den
+    ersten zwei Kaskaden.
+- **Wenn nicht:** nur das Schatten-Kriterium (kleine Pflanzen aus fernen Kaskaden) und der Messbericht, Rest
+  zurückgestellt.
+- Bäume als Impostoren (Billboards in der Ferne) gehören nicht in diesen Plan.
+
+### Teil G4 – Felder (optional)
+- Acker als Getreide oder Stoppeln im selben Renderer (Büschel „Halm-Reihe“, gerichtet nach der Ackerrichtung aus der
+  Maske). Nur wenn der Projektinhaber es will (Frage 7).
+
+### Budget (RTX 3080 Laptop, 1600 × 900; Intel UHD mit `low`)
+- Gras `medium`: GPU ≤ 0,8 ms im Szenario `feld`, ≤ 0,4 ms auf dem `markt` (wenig Wiese). CPU ≤ 0,3 ms je Bild für
+  Kacheln und Draws, Kachelbau ≤ 1 ms verteilt.
+- Speicher: 35 m Umkreis ≈ 3850 m² × 3 Büschel × 16 B ≈ 185 KB Instanzdaten (Ring mit Reserve ~0,5 MB).
+- Intel UHD `low`: ≤ 1,5 ms GPU. Das gesamte Bildbudget aus perf.md bleibt bindend; reißt es, sinkt die Vorgabe-Stufe.
+
+### Tests und Prüfbilder
+- **CPU, render-frei:**
+  - Kachelbau ist deterministisch (gleiche Kachel, gleiche Liste).
+  - Die Dichte folgt dem Splat-Gewicht und der Maske. Kein Gras auf Kopfstein, in Löchern, unter einem Dach, auf
+    Wegnetz-Kanten, in Innenzonen, unter Wasser und an Hängen über 35°.
+  - Der Ring baut höchstens 2 Kacheln je Bild.
+- **GPU:**
+  - Mit `grass = off` zeichnet nichts.
+  - `medium` zeichnet Gras auf der Wiese des Testlagers und keins auf dem Weg (Bildvergleich in Bereichen).
+  - Wind bewegt die Spitzen, nicht den Fuß.
+  - Fern ausgeblendet: keine Instanzen jenseits des Umkreises.
+- **Prüfbilder** für den Projektinhaber (Kameras außerhalb von Gebäuden, `--screenshot`): Leonberger Stadtrand mit
+  Obstwiese (Mittag und Abend), Schlossgarten, Testlager-Wiese, Feldweg bei Wind. Jeweils `low`, `medium` und `high`.
+- **Perf:** Szenario `feld` mit Budget, Vorher/Nachher-Bericht in `docs/perf/`.
+
+### Reihenfolge und Aufwand
+| Teil | Inhalt | Aufwand |
+|---|---|---|
+| G1 | Grasrenderer, Kacheln, Wind, Ausblenden, Option | 2–3 Tage |
+| G2 | `grass.toml`, Maske im Weltformat, Ausnahmen | 1 Tag (+ welt für die Maske) |
+| V | Messung, ggf. Instanz-Puffer je Zelle | ½–2 Tage |
+| G3 | Editor-Pinsel, Debug-Fenster | 1 Tag |
+| G4 | Felder (optional) | 1 Tag |
+
+### Entscheidungen des Projektinhabers (2026-11-23, alle nach Vorschlag)
+1. **Wie dicht und wie hoch?** Gothic 1 hatte fast nur einzelne Büschel. **Entschieden:** Wiesen knöchel- bis kniehoch und
+   locker (Boden schimmert durch), keine geschlossene Rasendecke. Im Ort nur an Rändern und in Gärten.
+2. **Sichtweite:** **Entschieden:** `medium` 35 m mit weichem Ausblenden; dahinter trägt die Wiesen-Textur. Kein Gras bis
+   zum Horizont.
+3. **Blumen:** **Entschieden:** ein kleiner Anteil (etwa 5 %) Wiesenblumen-Büschel (weiß, gelb, blau) auf Wiesen, nicht
+   in Gärten.
+4. **Weicht Gras dem Helden und den NPCs?** **Entschieden:** ja, leicht: Halme im Umkreis von 0,8 m um Figuren biegen weg
+   (Shader, bis 16 Figuren nah der Kamera). Als eigener kleiner Schritt nach G1.
+5. **Gegenstände im Gras:** Ein liegender Apfel kann im hohen Gras verschwinden. **Entschieden:** Gras um liegende Items
+   (0,5 m) auf ein Drittel kürzen, damit man sie noch sieht. Der Fokus hebt sie ohnehin hervor.
+6. **Grasflecken-Modelle von welt:** **Entschieden:** `grass_patch` auf Wiesen ersetzt das neue Gras; welt entfernt sie
+   dort nach G2. Büschel an Mauerfüßen (`grass_tuft`), Unkraut und Schilf bleiben.
+7. **Äcker:** Getreide, Stoppeln oder nackte Erde? **Entschieden:** vorerst nackte Erde (Acker-Textur); Getreide als
+   späterer Teil G4, wenn gewünscht.
+8. **Schatten vom Gras:** **Entschieden:** keine eigenen Schatten außer in der Stufe `high`; dunklere Halmfüße genügen.
+9. **Maske malen im Editor:** **Entschieden:** ja, als Überlagerung zur generierten Maske, damit welts Generator Handarbeit
+   nicht überschreibt.
+10. **Vorgabe-Stufe:** **Entschieden:** `medium`, auf Intel UHD `low`.
+
 ## Offene Fragen
 - Bindless-Texturen (`GL_ARB_bindless_texture`) optional.
 - **Dual-Quaternion-Skinning** (Hinweis figuren, 2026-10-03): Lineares Blend-Skinning verliert in extremen Posen
   Volumen an Schulter und Ellbogen (Beule bei Arm nach hinten oben, z. B. Klettern; Gewichte helfen nicht).
   Abhilfe: DQS im Skinning-Shader (Knochen als Dual-Quaternionen, Variante `SKINNED_DQ`), ggf. nur für
   Menschen. Entscheidung, sobald echte Clips (F4) es noch zeigen.
-- **Spiegelnde Fenster** (Wunsch Projektinhaber, „Raytracing“; M17, nicht jetzt). Optionen:
+- **Spiegelnde Fenster** (Wunsch Projektinhaber, „Raytracing“): Plan ohne Vulkan unten, „Plan M17: Spiegelnde Fenster“. Optionen:
   - **Reflexions-Proben bzw. Cubemaps je Zone** (vorberechnet oder selten aktualisiert, mit Parallaxen-Korrektur
     für Räume/Straßenzüge): günstig, auf jeder Hardware.
   - **Screen-Space-Reflections:** dynamisch, aber nur was auf dem Bild ist, Lücken am Rand; gut in Kombination mit
     Proben als Rückfall.
   - **Echtes Raytracing** nur mit dem optionalen Vulkan-Backend (eigene ADR); OpenGL bietet kein Hardware-Raytracing.
   - Dazu ein Material-Merkmal „spiegelnd“ (Glas) in den Modellen der Welt-Spur.
+
+## Plan M17: Spiegelnde Fenster ohne Vulkan (freigegeben 2026-11-23)
+Auftrag des Projektinhabers (über den Koordinator, 2026-11-23): Roadmap M17 „Spiegelnde Fenster“ ohne das
+Vulkan-Backend. Verfahren vergleichen, Kosten, Teile, Tests, Prüfbilder, Gefühlsfragen. **Freigegeben** vom
+Projektinhaber (2026-11-23): alle 10 Fragen nach Vorschlag; umgesetzt **nach** Schloss und Dungeon (dungeon.md).
+**Berührt einen Vertrag mit welt:** ein eigenes Material für die Scheiben (siehe „Vertrag mit welt“).
+
+### Ausgangslage
+- **Fenster heute** (`tools/worldgen`, `buildings/medieval.py`): In lod0 ist ein geschlossenes Fenster eine
+  zurückgesetzte, dunkle Fläche mit Laibung im Material `frame` (dasselbe Material wie die Rahmen). In lod1/lod2 ist es
+  eine flache dunkle Fläche 1 cm vor der Wand. Offene Fenster der begehbaren Räume (W7) haben keine Scheibe: Laibung,
+  Fensterkreuz, Läden.
+- Leonberg: 1405 Häuser mit vielen Fenstern, dazu Kirche und Schloss (Bleiglas, teils verglaste Türen).
+- **Was die Engine kann:** SSR auf dem Wasser (W2, `water.frag`; Strahl im Bildraum, 32 Schritte, nur `high`),
+  Himmelsfarben aus `background.frag`, Fresnel und Glanz in `common/lighting.glsl` (Nässe, N), Tiefen-Vorpass (P3).
+  Es gibt keine Cubemaps und keine Reflexions-Proben.
+- **Historisch** (Leonberg um 1700, `leonberg-stil.md`): kleine Scheiben, oft Butzen- oder Rautenglas in Bleiruten,
+  leicht grünlich und wellig. Solche Scheiben spiegeln verzerrt und schwach. Das passt zu Gothic und spart Aufwand:
+  Eine exakte Spiegelung ist weder nötig noch stimmig.
+
+### Verfahren im Vergleich
+| Verfahren | Was spiegelt sich | Kosten (1600×900, RTX 3080 Laptop) | Grenzen |
+|---|---|---|---|
+| **A Himmel + Glanz** | Himmel nach Tageszeit und Wetter, Sonnenglanz, Fresnel; Scheiben-Unebenheit aus Rauschen | ≈ 0 (ein Zweig in `mesh.frag`) | keine Häuser, keine Menschen |
+| **B Reflexions-Proben (Cubemaps)** je Straßenzug | Himmel und gegenüberliegende Häuser, mit Kasten-Parallaxe | Aktualisieren verteilt: eine Würfelseite je Frame ≤ 0,3 ms; Lesen ≈ 0,1 ms; Speicher 64² × 6 RGBA16F mit Mips ≈ 0,13 MB je Probe, 200 Proben ≈ 26 MB | statisch (keine NPCs), ungenau abseits der Probe, Platzierung nötig |
+| **C SSR** wie beim Wasser | alles, was auf dem Bild ist, auch NPCs und Bewegung | ≈ 0,4–0,6 ms, nur wo Glas im Bild ist | senkrechte Scheiben spiegeln meist, was hinter der Kamera liegt: oft Lücken |
+| **D Kombination A + B + C** | B als Grundlage, C darüber, wo der Strahl trifft, A als letzter Rückfall | Summe je nach Stufe | Aufwand am größten |
+| (Je Haus eine Probe) | wie B, genauer | 1405 Proben: zu viel Speicher und Aktualisierung | verworfen |
+| (Planare Spiegel) | exakt | ein weiteres Rendern der Szene je Fassadenebene | verworfen (wie beim Wasser) |
+
+**Vorschlag: D in drei Stufen**, eine Grafik-Option `render.window_reflections`:
+- `low` = A (auf jeder Hardware, auch Intel UHD);
+- `medium` = A + B (Vorgabe);
+- `high` = A + B + C.
+- `off` = die heutigen dunklen Flächen, bytegleich.
+
+### Teile (je ein PR)
+1. **F1 Glas-Material und Stufe A**
+   - `asset::MaterialInfo`: `extras.glass` (bool) und `extras.glass_tint`, wie beim Wind aus den glTF-Extras gelesen
+     (`GltfExtras.cpp`, `.g7mesh` Version 5).
+   - `mesh.frag` (Zweig nur für Glas): Grundfarbe sehr dunkel (dahinter ist es dunkel); Fresnel nach Schlick (f0 0,04);
+     gespiegelter Himmel mit derselben Funktion wie `background.frag`; Sonnenglanz.
+   - Butzen- bzw. Rautenglas: Normalenstörung aus Zellen-Rauschen (eine Wölbung je kleiner Scheibe) und eine Bleirute
+     als dunkles Gitter.
+   - Nachts schwach. Optional ein warmer Schimmer, wenn im Raum dahinter ein Licht brennt (Frage 4).
+   - Tests: CPU Fresnel, Extras lesen (Fehler: still bzw. Vorgabe); GPU – eine Glasfläche spiegelt hellen Himmel, aus
+     ist bytegleich.
+2. **F2 Reflexions-Proben (Stufe B)**
+   - `render::ReflectionProbes`: Proben als Cubemap-Array (64², Mips für die Unschärfe). Gezeichnet werden
+     Gelände, statische Modelle (gröbste LOD) und Himmel; keine Figuren, keine Partikel.
+   - **Platzierung** automatisch beim Laden der Welt: entlang des Wegnetzes etwa alle 20 m in 2,5 m Höhe, dazu je Platz
+     eine. Zusammengelegt, wenn näher als 10 m. Optional welts Marker `VOB_PROBE_*` (Frage 9).
+   - Je Probe ein Einflusskasten aus den umliegenden Fassaden für die Parallaxen-Korrektur.
+   - **Aktualisieren:** beim Laden alle (Ladebildschirm); danach eine Würfelseite je Frame im Umkreis von 80 m, neu nach
+     der Tageszeit alle 10 Spielminuten und bei Wetterwechsel. Weiter entfernte Proben warten.
+   - Glas wählt die nächste Probe (Mittelpunkt der Instanz), weich überblendet zur zweitnächsten.
+   - Tests: CPU – Platzierung deterministisch und Abstände; GPU – ein heller Würfel vor einer Glasfläche erscheint in
+     der Probe, eine Probe weiter weg zählt nicht; das Budget je Frame wird gehalten.
+3. **F3 SSR auf Glas (Stufe C)**
+   - Die Strahl-Funktion aus `water.frag` wandert nach `common/ssr.glsl` und wird gemeinsam genutzt.
+   - Für Glas: kurzer Strahl (16 Schritte, höchstens 30 m), Treffer überblendet auf die Probe; am Bildrand und bei
+     Fehlstellen gilt die Probe.
+   - Tests: GPU – eine Figur vor der Scheibe erscheint in ihr, wenn sie auf dem Bild ist; ohne Treffer bleibt die Probe.
+4. **Abschluss:** Option im Menü (Grafik, „Fensterspiegelung“: aus/niedrig/mittel/hoch), Passzeiten `probes` und
+   `glass`, render.md, Prüfbilder.
+
+### Budget
+| Stufe | Ziel |
+|---|---|
+| low (A) | ≤ 0,05 ms |
+| medium (A + B) | ≤ 0,3 ms je Frame (Aktualisierung verteilt), ≤ 32 MB |
+| high (A + B + C) | ≤ 0,8 ms |
+
+Überschreitet eine Stufe ihr Budget, werden Proben gröber bzw. seltener aktualisiert; das Budget wird nicht erhöht.
+
+### Vertrag mit welt (neu, Vorschlag)
+- Die **Scheibe** eines geschlossenen Fensters wird ein **eigenes glTF-Material** mit `extras.glass = true` (Name
+  frei, Vorschlag `window_glass`), getrennt von `frame` (Rahmen und Laibung bleiben `frame`).
+- Optional `extras.glass_tint` [r, g, b] (Vorgabe leicht grünlich) und `extras.glass_pattern` = `bullseye`
+  (Butzen), `diamond` (Rauten in Blei) oder `plain`.
+- **Wo:** lod0-Scheiben und die flachen Fensterflächen von lod1. In lod2 nicht, dort bleiben sie dunkel. Offene
+  Fenster haben keine Scheibe.
+- **Kirche und Schloss:** dasselbe für ihre Glasflächen. Farbiges Bleiglas ist eine Frage für später.
+- **figuren** (Laternen, Fläschchen): nicht betroffen; Glas an Gegenständen bleibt durchscheinend wie heute.
+- Zeile in `coordination.md` erst nach Freigabe; welt liefert die Markierungen, die Engine liest sie wie den Wind.
+
+### Prüfbilder (je aus / an / Differenz, mit `--fixed-step`)
+- Marktplatz, Fassadenreihe am Tag;
+- Abendrot (Himmelsfarbe in den Scheiben);
+- Nacht mit Kerzenlicht dahinter (falls Frage 4 ja);
+- Regenwetter;
+- Stufen low/medium/high nebeneinander;
+- Kamera immer außerhalb der Häuser.
+
+### Gefühlsfragen – entschieden (Projektinhaber 2026-11-23: alle nach Vorschlag)
+1. **Stärke:** Vorschlag **dezent**: frontal etwa 4 % (dunkle Scheibe, man ahnt den Himmel), schräg bis etwa 50 %
+   (Fresnel). Kein spiegelglattes Glas.
+2. **Glasart:** Vorschlag **Butzen- und Rautenglas wie um 1700**: kleine gewölbte Scheiben in Bleiruten, leicht grünlich;
+   die Spiegelung ist dadurch zerstückelt und weich.
+3. **Was sich spiegelt:** Vorschlag: überall Himmel und die Häuser gegenüber (Proben); Menschen und Bewegung nur in der
+   Stufe „hoch“ und nur, wenn sie auf dem Bild sind.
+4. **Nachts:** Vorschlag: kaum Spiegelung. Stattdessen ein **warmer Schimmer** in den Scheiben von Räumen, in denen ein
+   Licht brennt (Kerze, Herd). In begehbaren Häusern ist das bekannt; die übrigen Häuser bekommen ihn zufällig, je
+   nach Tageszeit (wer noch wach ist).
+5. **Von außen hinein:** Vorschlag **nein**: Geschlossene Fenster bleiben undurchsichtig (Gothic-Stil, kein Innenraum
+   nötig). Offene Fenster zeigen weiter den Raum.
+6. **Von innen hinaus:** Vorschlag: Scheiben von innen milchig hell nach dem Tageslicht, ohne Spiegelung.
+7. **Welche Gebäude:** Vorschlag alle Häuser, Kirche und Schloss. Farbiges Kirchenglas später als eigener Wunsch.
+8. **Qualitätsstufen:** Vorschlag `medium` als Vorgabe (Himmel + Proben), `high` mit SSR, `low` nur Himmel, `off` wie
+   heute.
+9. **Proben setzen:** Vorschlag automatisch aus dem Wegnetz; welt kann an wichtigen Plätzen eigene Marker setzen
+   (`VOB_PROBE_*`), muss aber nicht.
+10. **Regen:** Vorschlag: nasse Scheiben glänzen stärker (Nässe aus Teil N). Tropfen und Schlieren auf dem Glas nicht.
 
 ## Partikel (M12 Teil A, umgesetzt) – `Particles.hpp`
 - **Emitter als Daten:** `data/fx/<name>.toml` (Version 1): `sprite` (`soft`, `smoke`, `spark`), `blend` (`additive`,

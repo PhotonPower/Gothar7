@@ -10,9 +10,47 @@ depends = ["none"]
 file = "AnimationLibrary_Godot_Standard.glb"
 mapping = "quaternius_ual1"
 
+# The rune is pinched by its long edges between the thumb and the index and middle finger, its sign
+# outwards (2026-11-23): the left finger pose mag/s_grip is layered over every clip of the set.
+[[clip]]
+name = "mag/s_grip"
+keyframe = "pose"
+helper = true
+[clip.params]
+frames = 60
+breathe = 0.0
+[clip.params.rotations]   # grid search: tips 4.3 cm apart, in one plane 5 cm in front of the palm
+index_01_l = [["Y", 28]]
+index_02_l = [["Y", 35]]
+index_03_l = [["Y", 21]]
+middle_01_l = [["Y", 28]]
+middle_02_l = [["Y", 35]]
+middle_03_l = [["Y", 21]]
+ring_01_l = [["Y", 56]]
+ring_02_l = [["Y", 70]]
+ring_03_l = [["Y", 42]]
+pinky_01_l = [["Y", 56]]
+pinky_02_l = [["Y", 70]]
+pinky_03_l = [["Y", 42]]
+thumb_01_l = [["Z", -15], ["X", 30]]
+thumb_02_l = [["X", 60]]
+thumb_03_l = [["X", 42]]
+
+[[clip]]
+name = "mag/s_base"               # the upright none/s_idle with the rune grip (base of the key poses)
+layer = ["none/s_idle", "mag/s_grip"]
+from_bone = ["thumb_01_l", "index_01_l", "middle_01_l", "ring_01_l", "pinky_01_l"]
+helper = true
+
+[[clip]]
+name = "mag/s_idle_src"
+from = "ual1:Spell_Simple_Idle_Loop"
+helper = true
+
 [[clip]]
 name = "mag/s_idle"
-from = "ual1:Spell_Simple_Idle_Loop"
+layer = ["mag/s_idle_src", "mag/s_grip"]
+from_bone = ["thumb_01_l", "index_01_l", "middle_01_l", "ring_01_l", "pinky_01_l"]
 
 [[clip]]
 name = "mag/s_walk"
@@ -68,7 +106,7 @@ name = "mag/s_reach"
 keyframe = "keyposes"
 helper = true
 [clip.params]
-base = "none/s_idle"
+base = "mag/s_base"
 keys = [[0, "reach"], [10, "reach"]]
 [clip.params.poses.reach]
 rotate = { spine_02 = [["Z", 10], ["X", 6]], neck = [["X", 15]], upperarm_l = [["X", -10], ["Z", 10]], lowerarm_l = [["X", -45]] }
@@ -96,8 +134,14 @@ reverse = "mag/t_draw"
 markers = { sheath = 15 }
 
 [[clip]]
-name = "mag/t_invest_src"
+name = "mag/t_invest_raw"
 from = "ual1:Spell_Simple_Enter"
+helper = true
+
+[[clip]]
+name = "mag/t_invest_src"
+layer = ["mag/t_invest_raw", "mag/s_grip"]
+from_bone = ["thumb_01_l", "index_01_l", "middle_01_l", "ring_01_l", "pinky_01_l"]
 helper = true
 
 [[clip]]
@@ -111,8 +155,14 @@ keyframe = "hold"
 params = { base = "mag/t_invest", frame = -1, frames = 60 }
 
 [[clip]]
-name = "mag/t_cast_projectile_src"
+name = "mag/t_cast_projectile_raw"
 from = "ual1:Spell_Simple_Shoot"
+helper = true
+
+[[clip]]
+name = "mag/t_cast_projectile_src"
+layer = ["mag/t_cast_projectile_raw", "mag/s_grip"]
+from_bone = ["thumb_01_l", "index_01_l", "middle_01_l", "ring_01_l", "pinky_01_l"]
 helper = true
 
 [[clip]]
@@ -126,7 +176,7 @@ name = "mag/t_point"
 keyframe = "keyposes"
 helper = true
 [clip.params]
-base = "none/s_idle"
+base = "mag/s_base"
 keys = [[0, "rest"], [10, "point"], [22, "point"], [32, "rest"]]
 [clip.params.poses.point]
 rotate = { upperarm_l = [["X", -90], ["Y", -15], ["Z", -18]], spine_02 = [["Z", 6]], neck = [["Z", 5]] }
@@ -142,7 +192,7 @@ name = "mag/t_chest"
 keyframe = "keyposes"
 helper = true
 [clip.params]
-base = "none/s_idle"
+base = "mag/s_base"
 keys = [[0, "rest"], [10, "chest"], [22, "chest"], [32, "rest"]]
 [clip.params.poses.chest]
 rotate = { upperarm_r = [["X", -45], ["Y", -30], ["Z", 15]], lowerarm_r = [["Y", -90]], upperarm_l = [["X", -45], ["Y", 30], ["Z", -15]], lowerarm_l = [["Y", 90]], neck = [["X", 12]] }
@@ -158,7 +208,7 @@ name = "mag/t_spread"
 keyframe = "keyposes"
 helper = true
 [clip.params]
-base = "none/s_idle"
+base = "mag/s_base"
 keys = [[0, "rest"], [12, "up"], [18, "spread"], [26, "spread"], [36, "rest"]]
 [clip.params.poses.up]
 rotate = { upperarm_r = [["X", -160]], upperarm_l = [["X", -160]], lowerarm_r = [["X", -20]], lowerarm_l = [["X", -20]], spine_02 = [["X", -8]], neck = [["X", -10]] }
@@ -177,7 +227,7 @@ name = "mag/t_summon"
 keyframe = "keyposes"
 helper = true
 [clip.params]
-base = "none/s_idle"
+base = "mag/s_base"
 keys = [[0, "rest"], [12, "raise"], [20, "down"], [28, "down"], [38, "rest"]]
 [clip.params.poses.raise]
 rotate = { upperarm_l = [["X", -155], ["Z", -10]], lowerarm_l = [["X", -15]], neck = [["X", -12]] }
@@ -194,7 +244,7 @@ params = { base = "mag/t_summon", stance = "mag/s_idle", fade_in = 6, fade_out =
 name = "mag/s_cast_loop"          # continuous spell (telekinesis, control): the arm stretched out
 keyframe = "keyposes"
 [clip.params]
-base = "none/s_idle"
+base = "mag/s_base"
 keys = [[0, "point"], [37, "point2"], [75, "point"]]
 [clip.params.poses.point]
 rotate = { upperarm_l = [["X", -90], ["Y", -15], ["Z", -18]], spine_02 = [["Z", 6]], neck = [["Z", 5]] }  # mirrored to the left arm (2026-11-08), Z eased: the hand points just left of centre
@@ -211,7 +261,7 @@ name = "mag/t_fizzle"
 keyframe = "keyposes"
 helper = true
 [clip.params]
-base = "none/s_idle"
+base = "mag/s_base"
 keys = [[0, "rest"], [5, "jerk"], [9, "shake"], [13, "jerk"], [22, "rest"]]
 [clip.params.poses.jerk]
 rotate = { upperarm_l = [["X", -60]], lowerarm_l = [["X", -40]], hand_l = [["X", 30]], neck = [["X", 10]] }

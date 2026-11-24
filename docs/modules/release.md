@@ -55,8 +55,11 @@ Abweichungen bei C:
   (`G7_PACKAGE` leer) prüft er nichts. Er entpackt nur in `runTempDir()`.
 - Der Tag-Abgleich (Entscheidung 5) steckt in `tools/release/release_data.cmake`: Ein Tag `vX.Y.Z` auf HEAD muss
   `project(VERSION)` entsprechen, sonst bricht der Paketbau ab.
-- Der Menüpunkt „Mitwirkende“ (Entscheidung 10) erscheint, wenn `CREDITS.txt` neben dem Spiel liegt, also im Paket,
-  und zeigt sie als Schriftstück.
+- Der Menüpunkt „Mitwirkende“ (Entscheidung 10) steht immer im Hauptmenü (`ui::CreditsScreen`, scrollt). Er liest
+  `assets/licenses.toml` (im Paket `LICENSES/licenses.toml`) und `THIRD_PARTY_NOTICES.txt` (`runtime/Credits.hpp`):
+  Pflichtangaben nach `credit_order` (LGL, OSM zuerst), jede Quelle mit ihren Lizenzen, die Dank-Zeilen, die
+  Bibliotheken des Spiels. Englisch aus `name_en`, `credit_en`, `thanks_en` (sonst der deutsche Text). Konsole:
+  `menu_open("credits")`. Test `tests/runtime/test_engine_credits.cpp`.
 - CI: `.github/workflows/release.yml` läuft auf Tags `v*` (oder von Hand). Es baut das ZIP (Windows) bzw. `.tar.gz`
   (Linux, ohne Zusage) und bewahrt Paket und `.pdb` 90 Tage als Artefakte auf. Veröffentlicht wird nichts.
 
@@ -155,6 +158,9 @@ Abweichungen bei C:
   - Ob es sich lohnt, entscheidet die Messung im Performance-Plan (`docs/m17-perf`: Ladezeit Leonberg, Anteil der
     glTF-Figuren und -Clips). Das Format kommt dann mit eigener ADR.
   - Siehe Entscheidung 9.
+- **Nachtrag (2026-11-09):** Teil C hatte eine Lücke, der Paket-Test hat Figuren nicht wirklich geprüft (#410). Danach
+  hat der Projektinhaber das Format als eigenen Plan freigegeben (`asset.md`, „Plan M17: gekochte Figuren“, ADR 0025).
+  Umgesetzt: Das Paket enthält `.g7skin`/`.g7anim`, und der strenge Paket-Test lädt alle Lager-Figuren daraus.
 
 ## Reihenfolge und Umfang
 | Teil | Inhalt | Umfang |

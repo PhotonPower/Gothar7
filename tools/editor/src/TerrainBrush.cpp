@@ -1,6 +1,7 @@
 #include <g7/editor/TerrainBrush.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace g7::editor
@@ -107,7 +108,7 @@ void applyHeightBrush(world::Heightfield& field, const Brush& brush, const Vec3&
 {
     const world::TerrainRef& ref = field.ref();
     const HeightPatch area = brushArea(field, centre, brush.radius);
-    if (area.width == 0)
+    if (area.width == 0 || brush.mode == BrushMode::Paint || paintsGrass(brush.mode))
     {
         return;
     }
@@ -163,6 +164,8 @@ void applyHeightBrush(world::Heightfield& field, const Brush& brush, const Vec3&
                 next = y + (brush.flattenHeight - y) * share;
                 break;
             case BrushMode::Paint:
+            case BrushMode::Grass:
+            case BrushMode::GrassReset:
                 break;
             }
             field.setSampleHeight(col, row, next);
@@ -274,5 +277,76 @@ void restoreSplat(std::span<SplatPixels> maps, const SplatPatch& patch)
         std::copy_n(patch.rgba.begin() + static_cast<std::ptrdiff_t>(from),
                     static_cast<usize>(patch.width) * 4, map.rgba.begin() + static_cast<std::ptrdiff_t>(to));
     }
+}
+
+namespace
+{
+/// `from` moved to `goal` as the float `next` says, but at least by one step while it is not there yet.
+u8 stepTowards(u8 from, u8 goal, f32 next) noexcept
+{
+    u8 to = static_cast<u8>(std::lround(std::clamp(next, 0.0f, 255.0f)));
+    if (to == from && from != goal)
+    {
+        to = static_cast<u8>(from < goal ? from + 1 : from - 1);
+    }
+    return to;
+}
+} // namespace
+
+std::optional<std::pair<Vec2, Vec2>> paintGrass(SplatPixels overlay, const world::TerrainRef& ref,
+                                                const Brush& brush, const Vec3& centre, f32 seconds)
+{
+    if (!paintsGrass(brush.mode) || overlay.width < 2 || overlay.height < 2 || ref.width < 2 ||
+        ref.height < 2)
+    {
+        return std::nullopt;
+    }
+    const std::array<SplatPixels, 1> maps{overlay};
+    const auto areas = splatArea(maps, ref, centre, brush.radius);
+    if (areas.empty())
+    {
+        return std::nullopt;
+    }
+    const SplatPatch& area = areas.front();
+    const f32 density = std::clamp(brush.grassDensity, 0.0f, 1.0f) * 255.0f;
+    bool touched = false;
+    for (u32 py = area.y; py < area.y + area.height; ++py)
+    {
+        for (u32 px = area.x; px < area.x + area.width; ++px)
+        {
+            const Vec2 at = pixelWorld(ref, px, py, overlay.width, overlay.height);
+            const f32 w = brushFalloff(glm::length(at - Vec2(centre.x, centre.z)), brush.radius);
+            if (w <= 0.0f)
+            {
+                continue;
+            }
+            touched = true;
+            const f32 share = std::min(1.0f, brush.strength * seconds * w);
+            u8* p = overlay.rgba.data() + (static_cast<usize>(py) * overlay.width + px) * 4;
+            const f32 coverage = static_cast<f32>(p[3]) / 255.0f;
+            if (brush.mode == BrushMode::GrassReset)
+            {
+                p[3] = stepTowards(p[3], 0, coverage * (1.0f - share) * 255.0f);
+                continue;
+            }
+            // Over: effective' = density x share + effective x (1 - share), whatever the mask below says.
+            const f32 next = share + coverage * (1.0f - share);
+            const f32 value =
+                next > 0.0f ? (density * share + static_cast<f32>(p[0]) * coverage * (1.0f - share)) / next
+                            : 0.0f;
+            p[3] = stepTowards(p[3], 255, next * 255.0f);
+            p[0] = stepTowards(p[0], static_cast<u8>(std::lround(density)), value);
+            p[1] = p[0];
+            p[2] = p[0];
+        }
+    }
+    if (!touched)
+    {
+        return std::nullopt;
+    }
+    const Vec2 low = pixelWorld(ref, area.x, area.y, overlay.width, overlay.height);
+    const Vec2 high =
+        pixelWorld(ref, area.x + area.width - 1, area.y + area.height - 1, overlay.width, overlay.height);
+    return std::pair{low, high};
 }
 } // namespace g7::editor

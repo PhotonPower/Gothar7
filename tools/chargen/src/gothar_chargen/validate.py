@@ -417,7 +417,10 @@ class _Checker:
             abs(stored.length - derived.length),
             *(abs(a - b) for a, b in zip(stored.offset, derived.offset, strict=True)),
         )
-        if stored.shape != derived.shape or drift > self.tol.collision_drift:
+        if (stored.shape, stored.axis) != (
+            derived.shape,
+            derived.axis,
+        ) or drift > self.tol.collision_drift:
             self.r.warning(
                 "collision.stale",
                 f"[rig.collision] does not fit the mesh any more (derived: {derived}); "
@@ -924,12 +927,17 @@ class _Checker:
         action = clip.rsplit("/", 1)[-1]
         if action in ("s_walk", "s_run"):
             keys = self._root_keys(anim, "translation")
-            forward = 0.0 if keys is None or len(keys) < 2 else float(keys[-1][2] - keys[0][2])
+            sideways = self.rig.move_axis == "x"  # crab (§7.5): along +X instead of +Z
+            axis = 0 if sideways else 2
+            forward = (
+                0.0 if keys is None or len(keys) < 2 else float(keys[-1][axis] - keys[0][axis])
+            )
             speed = forward / duration if duration > 0 else 0.0
             if speed < self.tol.monster_advance_min_m_s:
+                where = "sideways (+X, move_axis)" if sideways else "forward (+Z)"
                 self.r.error(
                     "anim.root_motion",
-                    f"clip '{clip}' must move 'root' forward (+Z), got {speed:.2f} m/s",
+                    f"clip '{clip}' must move 'root' {where}, got {speed:.2f} m/s",
                 )
         elif action in ("t_turn_l", "t_turn_r"):
             keys = self._root_keys(anim, "rotation")

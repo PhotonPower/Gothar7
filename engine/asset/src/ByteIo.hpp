@@ -5,6 +5,7 @@
 #include <g7/core/Types.hpp>
 
 #include <bit>
+#include <cstring>
 #include <span>
 #include <string>
 #include <string_view>
@@ -90,6 +91,42 @@ public:
     {
         const auto data = bytes(u32v());
         return {data.begin(), data.end()};
+    }
+    /// `count` little-endian values of 2 or 4 bytes into `out` (f32, u32, u16 arrays; structs of them such as
+    /// Vertex or Vec4). One copy on little-endian hosts; past the end: zeros and failed().
+    template <typename T>
+    void array(T* out, usize count)
+    {
+        static_assert(sizeof(T) == 2 || sizeof(T) == 4);
+        const auto data = bytes(count * sizeof(T));
+        if (data.size() != count * sizeof(T))
+        {
+            std::memset(out, 0, count * sizeof(T));
+            return;
+        }
+        if constexpr (std::endian::native == std::endian::little)
+        {
+            std::memcpy(out, data.data(), data.size());
+        }
+        else
+        {
+            for (usize i = 0; i < count; ++i)
+            {
+                u32 v = 0;
+                for (usize b = 0; b < sizeof(T); ++b)
+                {
+                    v |= static_cast<u32>(data[i * sizeof(T) + b]) << (8 * b);
+                }
+                if constexpr (sizeof(T) == 2)
+                {
+                    out[i] = std::bit_cast<T>(static_cast<u16>(v));
+                }
+                else
+                {
+                    out[i] = std::bit_cast<T>(v);
+                }
+            }
+        }
     }
 
 private:

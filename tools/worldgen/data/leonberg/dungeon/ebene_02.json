@@ -1,0 +1,18 @@
+{
+  "format": "gothar-dungeon-level",
+  "version": 1,
+  "note": "W8 D2: Ebene 2 'Verlies' als Stub (Ziel der Treppe und der Falltür aus Ebene 1); der Ausbau folgt mit D3.",
+  "level": 2,
+  "theme": "verlies",
+  "origin": [0.0, 0.0, 0.0],
+  "cellM": 3.0,
+  "heightM": 3.5,
+  "cells": [
+    {"at": [1, 1], "stairs": {"world": "worlds/leonberg/dungeon/ebene_01.g7world", "start": "START_E01_VON_UNTEN", "facing": "S"}, "arrive": "START_E02_VON_OBEN"},
+    {"at": [8, 4], "monster": {"npc": "mon_gatterbock", "count": 1}},
+    {"at": [9, 7], "chest": {"definition": "chest"}}
+  ],
+  "starts": [
+    {"name": "START_E02_SCHACHT", "at": [8, 2], "facing": "S", "shaft": true}
+  ]
+}

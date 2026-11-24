@@ -110,5 +110,26 @@
       "perS": 0.027,
       "perT": 0.111
     }
+  },
+  "interior": {
+    "note": "W7 D1 (docs/design/schloss-dungeon.md, freigegeben 2026-11-23): Hauptbau begehbar – Keller, Erdgeschoss (Portal), 1. Obergeschoss; Räume entlang des Flügels ab Ende a (to = Ende des Raums in m); Wendeltreppe im Treppenturm, der an die Gartenwand rückt (Koordinator 2026-11-23)",
+    "wing": "hauptbau",
+    "wallM": 0.8,
+    "cellar": -6.75,
+    "ground": -3.25,
+    "upper": 0.75,
+    "upperCeiling": 4.6,
+    "slabM": 0.3,
+    "doorT": 2.5,
+    "materials": {
+      "keller": {"floor": "stone_slab", "wall": "stone", "ceiling": "stone"},
+      "eg": {"floor": "stone_slab", "wall": "plaster_white", "ceiling": "timber_dark"},
+      "og": {"floor": "timber_dark", "wall": "plaster_white", "ceiling": "plaster_white"}
+    },
+    "rooms": {
+      "keller": [{"name": "GEWOELBE", "to": 26.0}, {"name": "WEINKELLER", "to": 48.0}, {"name": "VERLIES", "to": 75.0}],
+      "eg": [{"name": "KUECHE", "to": 14.0}, {"name": "SPEISEKAMMER", "to": 20.0}, {"name": "GESINDE", "to": 30.0}, {"name": "HALLE", "to": 55.0}, {"name": "WACHSTUBE", "to": 63.0}, {"name": "SCHREIBSTUBE", "to": 75.0}],
+      "og": [{"name": "BIBLIOTHEK", "to": 15.0}, {"name": "KAPELLE", "to": 30.0}, {"name": "FESTSAAL", "to": 60.0}, {"name": "GEMACH", "to": 75.0}]
+    }
   }
 }

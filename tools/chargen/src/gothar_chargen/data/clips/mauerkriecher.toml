@@ -1,0 +1,296 @@
+# Set "mauerkriecher" (woodlouse-like crawler of the dungeon; arthropod plan, characters-pipeline.md §7.5)
+# -> monsters/mauerkriecher/anims/mauerkriecher.glb
+# Own creature (gothar-chargen creature mauerkriecher, 2026-11-23): the clip source only holds the
+# still action "rest". Walk and run are own gait cycles with all six legs (alternating tripods:
+# left 1 and 3 with right 2, then the others; pair 1 reports footstep_front_l/r, pair 3
+# footstep_back_l/r); everything else is keyframed.
+# Dungeon (#422): s_dormant pressed flat into a crack (`zs_dormant`), t_wake; §7.5: t_curl ->
+# s_curled -> t_uncurl (rolled up, the armour protects from above), t_emerge (out of a crack, in
+# place, event emerge).
+#
+# Key poses rotate about world axes at rest (X = left, -Y = forward, Z = up; +X pitches the head
+# down and lifts a bone pointing backwards, i.e. -X curls the abdomen under; Y swings a leg
+# pointing sideways up or down, +Z turns left) and move root/pelvis.
+
+set = "mauerkriecher"
+rig = "mauerkriecher"
+
+[sources.src]
+file = "mauerkriecher_clips.blend"
+mapping = "identity"
+
+[[clip]]
+name = "mauerkriecher/s_rest"
+from = "src:rest"
+helper = true
+
+[[clip]]
+name = "mauerkriecher/s_idle"      # feelers wave and probe, the pincers click
+keyframe = "keyposes"
+markers = { "sound:mauerkriecher_click" = 34 }
+[clip.params]
+base = "mauerkriecher/s_rest"
+keys = [[0, "rest"], [15, "probe_l"], [30, "rest"], [34, "click"], [38, "rest"], [50, "probe_r"], [60, "rest"]]
+[clip.params.poses.probe_l]
+rotate = { head = [["Z", 8]], antenna_01_l = [["Z", 20], ["X", 15]], antenna_02_l = [["X", 20]], antenna_01_r = [["Z", 10], ["X", -10]] }
+[clip.params.poses.probe_r]
+rotate = { head = [["Z", -8]], antenna_01_r = [["Z", -20], ["X", 15]], antenna_02_r = [["X", 20]], antenna_01_l = [["Z", -10], ["X", -10]] }
+[clip.params.poses.click]
+rotate = { mandible_l = [["Z", -25]], mandible_r = [["Z", 25]] }
+
+# --- locomotion (root moves forward: contract §7) ---
+
+[[clip]]
+name = "mauerkriecher/s_walk"      # scuttling walk on alternating tripods, feelers swinging
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 1.2
+period = 12
+duty = 0.5
+lift = 0.05
+splay = true
+bob = 0.004
+tail = { bones = ["antenna_01_l", "antenna_02_l"], degrees = 6, lag = 0.1 }
+legs = [
+    { upper = "leg_1_upper_l", lower = "leg_1_lower_l", foot = "leg_1_foot_l", phase = 0.0, curl = 0 },
+    { upper = "leg_1_upper_r", lower = "leg_1_lower_r", foot = "leg_1_foot_r", phase = 0.5, curl = 0 },
+    { upper = "leg_2_upper_l", lower = "leg_2_lower_l", foot = "leg_2_foot_l", phase = 0.5, curl = 0 },
+    { upper = "leg_2_upper_r", lower = "leg_2_lower_r", foot = "leg_2_foot_r", phase = 0.0, curl = 0 },
+    { upper = "leg_3_upper_l", lower = "leg_3_lower_l", foot = "leg_3_foot_l", phase = 0.0, curl = 0 },
+    { upper = "leg_3_upper_r", lower = "leg_3_lower_r", foot = "leg_3_foot_r", phase = 0.5, curl = 0 },
+]
+
+[[clip]]
+name = "mauerkriecher/s_run"       # fast skitter, body low
+keyframe = "gait"
+events = "footsteps"
+[clip.params]
+speed = 5.0
+period = 6
+duty = 0.5
+lift = 0.06
+splay = true
+crouch = 0.01
+bob = 0.006
+pose = { antenna_01_l = [["X", 25]], antenna_01_r = [["X", 25]] }
+legs = [
+    { upper = "leg_1_upper_l", lower = "leg_1_lower_l", foot = "leg_1_foot_l", phase = 0.0, curl = 0 },
+    { upper = "leg_1_upper_r", lower = "leg_1_lower_r", foot = "leg_1_foot_r", phase = 0.5, curl = 0 },
+    { upper = "leg_2_upper_l", lower = "leg_2_lower_l", foot = "leg_2_foot_l", phase = 0.5, curl = 0 },
+    { upper = "leg_2_upper_r", lower = "leg_2_lower_r", foot = "leg_2_foot_r", phase = 0.0, curl = 0 },
+    { upper = "leg_3_upper_l", lower = "leg_3_lower_l", foot = "leg_3_foot_l", phase = 0.0, curl = 0 },
+    { upper = "leg_3_upper_r", lower = "leg_3_lower_r", foot = "leg_3_foot_r", phase = 0.5, curl = 0 },
+]
+
+[[clip]]
+name = "mauerkriecher/s_step_inplace" # base of the turns
+keyframe = "gait"
+helper = true
+[clip.params]
+speed = 0.0
+period = 12
+duty = 0.5
+lift = 0.04
+splay = true
+legs = [
+    { upper = "leg_1_upper_l", lower = "leg_1_lower_l", foot = "leg_1_foot_l", phase = 0.0, curl = 0 },
+    { upper = "leg_1_upper_r", lower = "leg_1_lower_r", foot = "leg_1_foot_r", phase = 0.5, curl = 0 },
+    { upper = "leg_2_upper_l", lower = "leg_2_lower_l", foot = "leg_2_foot_l", phase = 0.5, curl = 0 },
+    { upper = "leg_2_upper_r", lower = "leg_2_lower_r", foot = "leg_2_foot_r", phase = 0.0, curl = 0 },
+    { upper = "leg_3_upper_l", lower = "leg_3_lower_l", foot = "leg_3_foot_l", phase = 0.0, curl = 0 },
+    { upper = "leg_3_upper_r", lower = "leg_3_lower_r", foot = "leg_3_foot_r", phase = 0.5, curl = 0 },
+]
+
+[[clip]]
+name = "mauerkriecher/t_turn_l"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "mauerkriecher/s_step_inplace"
+keys = [[0, "rest"], [24, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", 90]] }
+
+[[clip]]
+name = "mauerkriecher/t_turn_r"
+keyframe = "keyposes"
+events = "footsteps"
+[clip.params]
+base = "mauerkriecher/s_step_inplace"
+keys = [[0, "rest"], [24, "turned"]]
+[clip.params.poses.turned]
+rotate = { root = [["Z", -90]] }
+
+# --- combat ---
+
+[[clip]]
+name = "mauerkriecher/t_attack_1"  # lunges forward and snaps the pincers shut
+keyframe = "keyposes"
+markers = { hit_start = 9, hit_end = 13, "sound:mauerkriecher_attack" = 5 }
+[clip.params]
+base = "mauerkriecher/s_idle"
+keys = [[0, "rest"], [6, "open"], [10, "lunge"], [13, "snap"], [24, "rest"]]
+[clip.params.poses.open]
+move = { pelvis = [0, 0.04, -0.01] }
+rotate = { head = [["X", -8]], mandible_l = [["Z", 30]], mandible_r = [["Z", -30]], antenna_01_l = [["X", 30]], antenna_01_r = [["X", 30]] }
+[clip.params.poses.lunge]
+move = { pelvis = [0, -0.14, 0.0] }
+rotate = { head = [["X", -4]], mandible_l = [["Z", 30]], mandible_r = [["Z", -30]], antenna_01_l = [["X", 40]], antenna_01_r = [["X", 40]] }
+[clip.params.poses.snap]
+move = { pelvis = [0, -0.12, 0.0] }
+rotate = { head = [["X", 4]], mandible_l = [["Z", -20]], mandible_r = [["Z", 20]], antenna_01_l = [["X", 40]], antenna_01_r = [["X", 40]] }
+
+[[clip]]
+name = "mauerkriecher/t_attack_2"  # rears the forebody up and stabs down with the pincers
+keyframe = "keyposes"
+markers = { hit_start = 12, hit_end = 16, "sound:mauerkriecher_attack" = 8 }
+[clip.params]
+base = "mauerkriecher/s_idle"
+keys = [[0, "rest"], [9, "rear"], [13, "stab"], [16, "stab"], [28, "rest"]]
+[clip.params.poses.rear]
+rotate = { pelvis = [["X", -20]], spine_01 = [["X", -8]], head = [["X", -8]], mandible_l = [["Z", 30]], mandible_r = [["Z", -30]], antenna_01_l = [["X", -20], ["Z", 15]], antenna_01_r = [["X", -20], ["Z", -15]], leg_1_upper_l = [["X", -35]], leg_1_upper_r = [["X", -35]], abdomen_01 = [["X", -15]], abdomen_02 = [["X", -5]] }
+move = { pelvis = [0, 0.02, 0.05] }
+[clip.params.poses.stab]
+move = { pelvis = [0, -0.08, -0.02] }
+rotate = { pelvis = [["X", 10]], spine_01 = [["X", 8]], head = [["X", 14]], mandible_l = [["Z", -20]], mandible_r = [["Z", 20]], abdomen_01 = [["X", 8]] }
+
+[[clip]]
+name = "mauerkriecher/t_hit"
+keyframe = "keyposes"
+markers = { "sound:mauerkriecher_hit" = 1 }
+[clip.params]
+base = "mauerkriecher/s_idle"
+keys = [[0, "rest"], [4, "flinch"], [14, "rest"]]
+[clip.params.poses.flinch]
+move = { pelvis = [0, 0.06, 0.01] }
+rotate = { pelvis = [["X", -6]], head = [["X", 10]], antenna_01_l = [["X", 40]], antenna_01_r = [["X", 40]], abdomen_01 = [["X", -10]], abdomen_02 = [["X", -10]] }
+
+[[clip]]
+name = "mauerkriecher/t_die"       # flips onto its back, the legs curl up and twitch
+keyframe = "keyposes"
+markers = { "sound:mauerkriecher_die" = 2 }
+[clip.params]
+keys = [[0, "rest"], [8, "roll"], [16, "back"], [24, "twitch"], [32, "back_still"]]
+[clip.params.poses.roll]
+move = { root = [0, 0, 0.10] }
+rotate = { root = [["Y", 90]], head = [["X", 10]] }
+[clip.params.poses.back]
+move = { root = [0, 0, 0.28] }
+rotate = { root = [["Y", 180]], head = [["X", -10]], leg_1_lower_l = [["Y", -50]], leg_1_lower_r = [["Y", 50]], leg_2_lower_l = [["Y", -60]], leg_2_lower_r = [["Y", 60]], leg_3_lower_l = [["Y", -50]], leg_3_lower_r = [["Y", 50]] }
+[clip.params.poses.twitch]
+move = { root = [0, 0, 0.28] }
+rotate = { root = [["Y", 180]], head = [["X", -10]], leg_1_lower_l = [["Y", -70]], leg_1_lower_r = [["Y", 70]], leg_2_lower_l = [["Y", -40]], leg_2_lower_r = [["Y", 40]], leg_3_lower_l = [["Y", -70]], leg_3_lower_r = [["Y", 70]] }
+[clip.params.poses.back_still]
+move = { root = [0, 0, 0.28] }
+rotate = { root = [["Y", 180]], head = [["X", -10]], leg_1_lower_l = [["Y", -80]], leg_1_lower_r = [["Y", 80]], leg_2_lower_l = [["Y", -85]], leg_2_lower_r = [["Y", 85]], leg_3_lower_l = [["Y", -80]], leg_3_lower_r = [["Y", 80]] }
+
+# --- behaviour ---
+
+[[clip]]
+name = "mauerkriecher/s_eat"       # head down, nibbling at moss on the stones (loop)
+keyframe = "keyposes"
+[clip.params]
+base = "mauerkriecher/s_rest"
+keys = [[0, "down"], [8, "nibble"], [16, "down"], [24, "nibble"], [40, "look"], [60, "down"]]
+[clip.params.poses.down]
+rotate = { spine_01 = [["X", 8]], head = [["X", 18]], mandible_l = [["Z", 15]], mandible_r = [["Z", -15]], antenna_01_l = [["X", 15]], antenna_01_r = [["X", 15]] }
+[clip.params.poses.nibble]
+rotate = { spine_01 = [["X", 8]], head = [["X", 22]], mandible_l = [["Z", -10]], mandible_r = [["Z", 10]], antenna_01_l = [["X", 20]], antenna_01_r = [["X", 20]] }
+[clip.params.poses.look]
+rotate = { spine_01 = [["X", 2]], head = [["X", 4], ["Z", 10]], antenna_01_l = [["X", -10]], antenna_01_r = [["X", -5]] }
+
+[[clip]]
+name = "mauerkriecher/s_dormant"   # pressed flat into a crack (zs_dormant), feelers laid back
+keyframe = "keyposes"
+[clip.params]
+base = "mauerkriecher/s_rest"
+keys = [[0, "flat"], [60, "flat"]]
+[clip.params.poses.flat]
+rotate = { neck_01 = [["X", 8]], head = [["X", 6]], antenna_01_l = [["X", 30], ["Z", -25]], antenna_01_r = [["X", 30], ["Z", 25]], mandible_l = [["Z", -10]], mandible_r = [["Z", 10]], leg_1_upper_l = [["Y", 25]], leg_1_upper_r = [["Y", -25]], leg_2_upper_l = [["Y", 25]], leg_2_upper_r = [["Y", -25]], leg_3_upper_l = [["Y", 25]], leg_3_upper_r = [["Y", -25]] }
+move = { pelvis = [0, 0, -0.07] }
+
+[[clip]]
+name = "mauerkriecher/s_sleep"     # the same pose (minimum set)
+keyframe = "keyposes"
+[clip.params]
+base = "mauerkriecher/s_rest"
+keys = [[0, "flat"], [60, "flat"]]
+[clip.params.poses.flat]
+rotate = { neck_01 = [["X", 8]], head = [["X", 6]], antenna_01_l = [["X", 30], ["Z", -25]], antenna_01_r = [["X", 30], ["Z", 25]], mandible_l = [["Z", -10]], mandible_r = [["Z", 10]], leg_1_upper_l = [["Y", 25]], leg_1_upper_r = [["Y", -25]], leg_2_upper_l = [["Y", 25]], leg_2_upper_r = [["Y", -25]], leg_3_upper_l = [["Y", 25]], leg_3_upper_r = [["Y", -25]] }
+move = { pelvis = [0, 0, -0.07] }
+
+[[clip]]
+name = "mauerkriecher/t_wake"      # rises off the stone, feelers swing forward
+keyframe = "keyposes"
+markers = { "sound:mauerkriecher_click" = 10 }
+[clip.params]
+base = "mauerkriecher/s_rest"
+keys = [[0, "flat"], [10, "half"], [20, "rest"]]
+[clip.params.poses.flat]
+rotate = { neck_01 = [["X", 8]], head = [["X", 6]], antenna_01_l = [["X", 30], ["Z", -25]], antenna_01_r = [["X", 30], ["Z", 25]], mandible_l = [["Z", -10]], mandible_r = [["Z", 10]], leg_1_upper_l = [["Y", 25]], leg_1_upper_r = [["Y", -25]], leg_2_upper_l = [["Y", 25]], leg_2_upper_r = [["Y", -25]], leg_3_upper_l = [["Y", 25]], leg_3_upper_r = [["Y", -25]] }
+move = { pelvis = [0, 0, -0.07] }
+[clip.params.poses.half]
+rotate = { antenna_01_l = [["X", -10]], antenna_01_r = [["X", -10]] }
+move = { pelvis = [0, 0, -0.03] }
+
+[[clip]]
+name = "mauerkriecher/t_threaten"  # rears up, pincers wide, clicking
+keyframe = "keyposes"
+markers = { "sound:mauerkriecher_threaten" = 6, "sound:mauerkriecher_click" = 16 }
+[clip.params]
+base = "mauerkriecher/s_idle"
+keys = [[0, "rest"], [8, "rear"], [12, "click"], [16, "rear"], [20, "click"], [34, "rest"]]
+[clip.params.poses.rear]
+rotate = { pelvis = [["X", -20]], spine_01 = [["X", -8]], head = [["X", -8]], mandible_l = [["Z", 35]], mandible_r = [["Z", -35]], antenna_01_l = [["X", -20], ["Z", 15]], antenna_01_r = [["X", -20], ["Z", -15]], leg_1_upper_l = [["X", -35]], leg_1_upper_r = [["X", -35]], abdomen_01 = [["X", -15]], abdomen_02 = [["X", -5]] }
+move = { pelvis = [0, 0.02, 0.05] }
+[clip.params.poses.click]
+rotate = { pelvis = [["X", -20]], spine_01 = [["X", -8]], head = [["X", -8]], mandible_l = [["Z", -15]], mandible_r = [["Z", 15]], antenna_01_l = [["X", -20], ["Z", 15]], antenna_01_r = [["X", -20], ["Z", -15]], leg_1_upper_l = [["X", -35]], leg_1_upper_r = [["X", -35]], abdomen_01 = [["X", -15]], abdomen_02 = [["X", -5]] }
+move = { pelvis = [0, 0.02, 0.05] }
+
+[[clip]]
+name = "mauerkriecher/t_curl"      # rolls itself up: the armour outside, belly and legs inside
+keyframe = "keyposes"
+[clip.params]
+base = "mauerkriecher/s_rest"
+keys = [[0, "rest"], [12, "curl"]]
+[clip.params.poses.curl]
+rotate = { spine_01 = [["X", 30]], neck_01 = [["X", 35]], head = [["X", 40]], antenna_01_l = [["X", 60]], antenna_01_r = [["X", 60]], abdomen_01 = [["X", -40]], abdomen_02 = [["X", -45]], abdomen_03 = [["X", -50]], abdomen_04 = [["X", -50]], leg_1_upper_l = [["Y", 20]], leg_1_upper_r = [["Y", -20]], leg_2_upper_l = [["Y", 20]], leg_2_upper_r = [["Y", -20]], leg_3_upper_l = [["Y", 20]], leg_3_upper_r = [["Y", -20]], leg_1_lower_l = [["Y", 110]], leg_1_lower_r = [["Y", -110]], leg_2_lower_l = [["Y", 110]], leg_2_lower_r = [["Y", -110]], leg_3_lower_l = [["Y", 110]], leg_3_lower_r = [["Y", -110]] }
+move = { pelvis = [0, 0, 0.02] }
+
+[[clip]]
+name = "mauerkriecher/s_curled"    # rolled up (loop; engine: the armour protects from above)
+keyframe = "keyposes"
+[clip.params]
+base = "mauerkriecher/s_rest"
+keys = [[0, "curl"], [30, "curl"]]
+[clip.params.poses.curl]
+rotate = { spine_01 = [["X", 30]], neck_01 = [["X", 35]], head = [["X", 40]], antenna_01_l = [["X", 60]], antenna_01_r = [["X", 60]], abdomen_01 = [["X", -40]], abdomen_02 = [["X", -45]], abdomen_03 = [["X", -50]], abdomen_04 = [["X", -50]], leg_1_upper_l = [["Y", 20]], leg_1_upper_r = [["Y", -20]], leg_2_upper_l = [["Y", 20]], leg_2_upper_r = [["Y", -20]], leg_3_upper_l = [["Y", 20]], leg_3_upper_r = [["Y", -20]], leg_1_lower_l = [["Y", 110]], leg_1_lower_r = [["Y", -110]], leg_2_lower_l = [["Y", 110]], leg_2_lower_r = [["Y", -110]], leg_3_lower_l = [["Y", 110]], leg_3_lower_r = [["Y", -110]] }
+move = { pelvis = [0, 0, 0.02] }
+
+[[clip]]
+name = "mauerkriecher/t_uncurl"    # unrolls and stands up again
+keyframe = "keyposes"
+[clip.params]
+base = "mauerkriecher/s_rest"
+keys = [[0, "curl"], [16, "rest"]]
+[clip.params.poses.curl]
+rotate = { spine_01 = [["X", 30]], neck_01 = [["X", 35]], head = [["X", 40]], antenna_01_l = [["X", 60]], antenna_01_r = [["X", 60]], abdomen_01 = [["X", -40]], abdomen_02 = [["X", -45]], abdomen_03 = [["X", -50]], abdomen_04 = [["X", -50]], leg_1_upper_l = [["Y", 20]], leg_1_upper_r = [["Y", -20]], leg_2_upper_l = [["Y", 20]], leg_2_upper_r = [["Y", -20]], leg_3_upper_l = [["Y", 20]], leg_3_upper_r = [["Y", -20]], leg_1_lower_l = [["Y", 110]], leg_1_lower_r = [["Y", -110]], leg_2_lower_l = [["Y", 110]], leg_2_lower_r = [["Y", -110]], leg_3_lower_l = [["Y", 110]], leg_3_lower_r = [["Y", -110]] }
+move = { pelvis = [0, 0, 0.02] }
+
+[[clip]]
+name = "mauerkriecher/t_emerge"    # squeezes out of a crack behind it (in place, event emerge)
+keyframe = "keyposes"
+markers = { emerge = 2, "sound:mauerkriecher_click" = 16 }
+[clip.params]
+base = "mauerkriecher/s_rest"
+keys = [[0, "inside"], [10, "half"], [20, "out"], [28, "rest"]]
+[clip.params.poses.inside]
+move = { pelvis = [0, 0.55, -0.06] }
+rotate = { antenna_01_l = [["X", 30], ["Z", -20]], antenna_01_r = [["X", 30], ["Z", 20]], leg_1_upper_l = [["Y", 25]], leg_1_upper_r = [["Y", -25]], leg_2_upper_l = [["Y", 25]], leg_2_upper_r = [["Y", -25]], leg_3_upper_l = [["Y", 25]], leg_3_upper_r = [["Y", -25]] }
+[clip.params.poses.half]
+move = { pelvis = [0, 0.28, -0.04] }
+rotate = { head = [["X", -6]], antenna_01_l = [["X", -10]], antenna_01_r = [["X", -10]], leg_1_upper_l = [["X", -25]], leg_1_upper_r = [["X", -25]] }
+[clip.params.poses.out]
+move = { pelvis = [0, 0.04, 0.0] }
+rotate = { head = [["X", -4]], antenna_01_l = [["X", -15]], antenna_01_r = [["X", -15]] }

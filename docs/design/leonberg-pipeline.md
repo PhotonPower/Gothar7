@@ -305,6 +305,16 @@ Umgesetzt in `facade/overrides.py` (lesen, prüfen, schreiben):
   - **Leonberg** (ganze 2 km): Wiese 41 %, Matsch 23 % (alle Gebäude einschließlich Neubaugebiete),
     Acker 15 %, Waldboden 9 %, Kies 8 %, Kopfstein 2 %, Fels 2 %.
   - `holes` wird noch nicht geschrieben (keine Löcher nötig); Keller und Höhleneingänge kommen später.
+- **Grasmaske (M17 G2, Vertrag `world.md` „Grasmaske“):** `export-terrain` schreibt neben den Splat-Karten
+  `generated/<name>_grass_mask.png` (8-Bit-Graustufen, linear, gleiches Raster und gleiche Weichzeichnung 1,5 m wie
+  der Splat) und trägt `terrain.grass_mask` ein; mit `--no-splat` entfällt sie.
+  - Wert = Faktor auf die Grasdichte der Schicht: Wiese, Gras, Garten, Park, Dorfanger, Streuobst, Friedhof, Heide und
+    alles Offene ohne Nutzung voll; bebaute Nutzung (Wohn-, Gewerbe-, Hof-, Bahnflächen) innerhalb der Stadtmauer halb
+    (draußen ließen die Weiler nur Wiese und Streuobst, W6), außer wo eine grüne Fläche darin liegt; ein 1-m-Streifen
+    an Weg- und Straßenrändern halb; Gebäude, Straßen, Plätze und Mauern (mit 1 m
+    Fuß je Seite) 0; Feldwege halb (Gras zwischen den Spuren); im Schlossgarten Kies 0, Rasenbeete voll.
+  - Die Gras-Überlagerung des Editors `worlds/<ort>/<welt>.grass.png` (neben der Weltdatei, außerhalb von
+    `generated/`) ist Handarbeit und wird vom Generator nie gelöscht oder überschrieben.
 
 ### W-C Gebäude-Generator (Blender-Add-on „Gothar Buildings“, Python/bpy)
 - Eingabe: `buildings.json` + Overrides; Ausgabe: ein `.glb` pro Gebäude (+ LODs) und ein Sammel-Index.
@@ -743,6 +753,71 @@ eigenen Aufnahmen.
   aus `handmade.json` wie Häuser.
 - **Leonberg:** Hauptbau 76 × 14 m (Traufe 14,6 m, First 25,5 m über Grund), Verbindungsbau, Ostflügel 43 × 20 m mit
   sehr steilem Dach, Pomeranzengarten; 8212 Dreiecke, 4 Kollisionskörper.
+
+- **Innen (W7 D1a, Plan `schloss-dungeon.md`, freigegeben 2026-11-23):** Der Hauptbau ist begehbar
+  (`interior` in `schloss.json`, Code `blender/schloss/schloss_interior.py`).
+  - Drei Geschosse in den 0,8 m dicken Außenwänden:
+    - Keller −6,75 m mit Tonnengewölbe;
+    - Erdgeschoss −3,25 m (Portal-Ebene; die Passage hinter dem Portal fällt 0,2 m ab);
+    - 1. Obergeschoss 0,75 bis 4,6 m.
+  - Darüber bleibt der Flügel geschlossen.
+  - Räume liegen in einer Reihe entlang des Flügels, Trennwände mit Durchgang 1,2 × 2,3 m bei `doorT`:
+    - Keller: GEWOELBE, WEINKELLER, VERLIES;
+    - EG: KUECHE, SPEISEKAMMER, GESINDE, HALLE, WACHSTUBE, SCHREIBSTUBE;
+    - OG: BIBLIOTHEK, KAPELLE, FESTSAAL, GEMACH.
+  - Die Fensterreihen der Fassaden erscheinen innen als Nischen, wo sie in ein Geschoss fallen.
+  - Das Portal ist offen.
+- **Treppenturm** (Koordinator 2026-11-23, rückbaubar):
+  - Er stand 2,3 m frei vor der Gartenwand und rückt an sie heran; seine Seite liegt 0,5 m in der Wand, eine
+    Achteckseite zeigt zum Flügel.
+  - Innen ist er hohl, mit einer Wendeltreppe um eine Spindel (r 1,1 m): eine volle Umdrehung je Geschoss, an der
+    Spindel höchstens 35°, je Geschoss ein ebener Absatz (60°) mit Durchgang in den Flügel.
+- **Kollision:** 149 geschlossene konvexe Körper (Wände um Portal und Turmdurchgänge, Böden, Trennwände, das
+  geschlossene Obere mit Dach, Turmwände, Spindel, Rampenstücke, Absätze), dazu die Traufpflaster-Platten.
+- **Gelände:**
+  - Unter Flügel und Turm fehlen die Geländezellen (`handmade.json` `holes` → `export-terrain` schreibt
+    `generated/<name>_holes.r8`, world.md „Löcher“).
+  - Die Samples darunter liegen unter dem Kellerboden (Pad `clampBelow`), sonst bliebe Kollision am Rand.
+  - Ein **Traufpflaster** (1,5 m, `stone_slab`, Höhen aus dem DGM) deckt den gezackten Rand der Löcher außen ab.
+- **Prüfung:**
+  - Autopilot durch alle Räume aller Geschosse, über die Wendeltreppe hinauf und hinab: 125/125 Punkte, kein
+    Hänger, kein Sturz.
+- **Leben innen (W7 D1b):** Einrichtung, Licht, Wegnetz und Zonen; die Bewohner (Vogt, zwei Wachen, Koch,
+  Schreiber) schreibt engine in Lua.
+  - **Räume als eigene Modelle:** Jeder Raum und das Turm-Innere ist ein eigenes `.glb`
+    (`handmade/schloss/schloss_<geschoss>_<raum>.glb`, `schloss_turm.glb`; zusammen 1556 Dreiecke) am Ursprung des
+    Schlosses. So gilt das Licht-Budget je Vob für jeden Raum einzeln. Die Raum-Modelle kollidieren nicht selbst
+    (`COL_HULL_NONE` unter dem Boden), die Körper des Schlosses gelten für alle. In `handmade.json` stehen sie als
+    Einträge `schloss_<raum>`; das Obergeschoss hat Holzboden (`surface.footstep` `wood`).
+  - **Einrichtung** als Daten in `data/<ort>/castle_inside.json`, Mechanik in `uses/castle.py`. Lage im Rahmen des
+    Flügels: `s` entlang, `t` quer (+ Hof, − Garten); an einer Wand (`garden`, `court`, `a`, `b`) oder frei (`at`).
+    - Arten: `mob:<typ>`, `table` (Tisch mit zwei Bänken, gedeckt, Kerze), `prop:<modell>`, `light:lantern`,
+      `light:torch`, `fp:<TYP>`; `fp` an einem Eintrag setzt einen Freepoint davor.
+    - Neue Modelle (`mobs.py`): Riesenfass `giant_barrel` (liegend, hohl, 2,8 m lang, 2,85 m hoch; die 4 m des Plans
+      passen nicht unter das Kellergewölbe) mit der Front `giant_barrel_front` (Ursprung am Scharnier), Wandfackel
+      `wall_torch`, schiefer Fackelhalter `torch_lever`, Bücherregal, Lesepult, Altar, Zellengitter `cell_bars`.
+    - Die Prüfung (`check`) meldet Dinge außerhalb des Raums, Überschneidungen, Möbel auf der Laufbahn
+      (`doorT` ± 1,2 m) oder den Wegen zu Portal und Turm, Hohes vor Fenstern, Plätze auf Möbeln, zu viele Lichter;
+      `assemble` bricht dann ab.
+  - **Licht:** je Raum Tageslicht am ersten Fenster (Hofseite zuerst), Herdfeuer, Kerzen auf den Tischen, Laternen
+    bzw. im Keller Fackeln; höchstens 4 je Raum, im Festsaal 6; eine Laterne an jedem Absatz des Turms.
+  - **Riesenfass** im Weinkeller an der Trennwand zum Verlies: Front `WALL_SCHLOSS_FASS` (`mesh` mit `mover`,
+    `secret_wall`, schwenkt um das Scharnier: `offset` 0, `axis` +Y, `angle` −95°, 2,5 s, geschlossen) und
+    daneben der schiefe Fackelhalter `LEVER_SCHLOSS_FASS` (Mob `lever`, `targets` [`WALL_SCHLOSS_FASS`], `toggle`,
+    `hidden`), Vertrag `schloss-dungeon.md` §5. Innen hat das Fass einen Bretterboden und in
+    seinem hinteren Boden eine dunkle Öffnung mit Holzrahmen (W8 D2): Dort liegt der Weltwechsel `STAIRS_SCHLOSS_FASS`
+    nach `dungeon/ebene_01.g7world` (`START_E01_VON_OBEN`); vor dem Fass steht `START_SCHLOSS_FASS` (Blick in den
+    Keller) für den Rückweg. Daten: `descent` am Fass-Eintrag in `castle_inside.json`.
+  - **Wegnetz:** eine Laufbahn je Geschoss bei `doorT` mit einem Punkt in jeder Raummitte (`WP_LEO_SCHLOSS_<RAUM>`,
+    der Routinen-Ort), den Durchgängen und den Abzweigen zu Portal und Turm; die Wendeltreppe mit einem Punkt alle
+    30°; eigene Punkte für Freepoints und Mobs, die weiter als 3 m oder nicht in freier Linie von einem Punkt liegen.
+    Alles hängt als Baum (`link`) am Punkt vor dem Portal, der mit dem Wegnetz der Stadt verbunden wird.
+  - **Freepoints:** `FP_COOK` (Küche), `FP_READ` (Bibliothek, Schreibstube, Gemach; neue Typen, world.md),
+    `FP_STAND` (Halle am Portal), `FP_SMALLTALK` (Halle, Festsaal), `FP_PRAY` (Kapelle). Die Tabelle der Orte je Raum
+    steht in `generated/uses_table.md` („Schloss“).
+  - **Zonen:** `indoor` je Raum (`LEO_SCHLOSS_<RAUM>_INNEN`) und für den Turm; Ambiente (`sound_zones.json` `rooms`):
+    Gewölbe und Verlies `keller_gewoelbe`, Weinkeller `keller_luftzug` (der Hinweis auf den Zugang), Küche
+    `schloss_kueche` – die Klänge dazu legt engine in `ambient.toml` an. Musik: das Schloss liegt in `STADT`.
 
 ### W-E4 Marktbrunnen (`gothar-worldgen marktbrunnen <ort>`, W6)
 Entscheidung Koordinator im Auftrag des Projektinhabers (2026-10-03): Das Modell, das der Projektinhaber selbst aus
