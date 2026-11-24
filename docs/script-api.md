@@ -181,6 +181,9 @@ Ein NPC, ein Tier bzw. der Held (`hero`) gerät in Brand (M12, Entscheidung B: n
 ### `on("npc_cast", fn(caster: string, spell: string))`
 Ein Zauber wird gewirkt (M12, `hero`).
 
+### `on("npc_clip_event", fn(npc: string, event: string))`
+Ein Clip-Event eines Monsters, auf das die Skripte reagieren (`steal`, `emerge`, `grab`, `release`, `reflect`, `spawn_brood`; characters-pipeline.md §7.5).
+
 ### `on("npc_feared", fn(npc: string, caster: string, seconds: number))`
 Ein Furcht-Zauber trifft einen NPC bzw. ein Tier (M12, Z6): er flieht `seconds` Sekunden.
 
@@ -204,6 +207,9 @@ Ein NPC hat etwas gesagt (npc_say, npc_shout); `key` ist der Sprach-Schlüssel d
 
 ### `on("npc_shot", fn(shooter: string, ammo: string))`
 Ein Schuss (M11, `hero`).
+
+### `on("npc_spawned", fn(npc: string, spawn: string, dormant: boolean, restored: boolean))`
+Ein Spawn-Marker hat einen NPC eingesetzt (Dungeon D6: beim ersten Laden der Welt, in einem Nest auch beim Wiederkommen). Nach dem Laden eines Spielstands bzw. beim Wiederkommen in eine Ebene kommt es noch einmal für jeden lebenden mit `restored = true`: sein Zustand beginnt neu.
 
 ### `on("npc_summoned", fn(npc: string, caster: string))`
 Ein Wesen wurde beschworen (M12, Z8); es verschwindet nach seiner Zeit bzw. nach seinem Tod.
@@ -482,6 +488,12 @@ Setzt ein Npc an einen Wegpunkt oder Freepoint (ohne `at`: an den Ort des passen
 ### `npc_clear(npc: string)`
 Leert die Befehlsliste des NPCs (er bleibt, wo er ist).
 
+### `npc_dormant(npc: string) -> boolean`
+Ob der NPC noch ruht (Dungeon D6: eingesetzt mit `dormant`, bis `npc_set_dormant(npc, false)`). Wird gespeichert.
+
+### `npc_drop_item(npc: string, item: string, count?: integer) -> boolean`
+Der NPC lässt `count` (Vorgabe 1) Stück aus seinem Inventar vor sich fallen (auch tot: ein Mauerschlupfer verliert, was er gestohlen hat); `false`, wenn er weniger hat.
+
 ### `npc_flee(npc: string, seconds?: number, from?: string)`
 Reiht ein: `seconds` Sekunden lang (Vorgabe 8) vor dem Spieler (bzw. dem NPC `from`) weglaufen – zum Wegpunkt im Umkreis von 30 m, der am weitesten von ihm weg ist, alle 2 s neu gewählt.
 
@@ -506,6 +518,9 @@ Reiht ein: zum Spieler gehen (bzw. rennen), bis auf `distance` Meter (Vorgabe 1,
 ### `npc_goto_point(npc: string, x: number, y: number, z: number, run?: boolean|"trot")`
 Reiht ein: zu einem Punkt gehen (bzw. rennen), über das Wegnetz, wo nötig.
 
+### `npc_hold(npc: string, item?: string, socket?: string)`
+Zeigt einen Gegenstand am Socket der Figur (Vorgabe `socket_hand_r`; ein Mauerschlupfer trägt Gestohlenes am `socket_mouth`). Ohne `item` legt er ihn weg. Nur die Anzeige: den Gegenstand selbst gibt `npc_give_item`.
+
 ### `npc_item_count(npc: string, item: string) -> integer`
 Wie viele Stück eines Gegenstands der NPC hat.
 
@@ -520,6 +535,9 @@ Reiht ein: zu einem zufälligen Punkt im Umkreis `radius` um den Wegpunkt `centr
 
 ### `npc_say(npc: string, text: string)`
 Reiht ein: einen Satz sagen (bis zu den Dialogen in M10 eine Einblendung in der Nähe des Helden; Ereignis `npc_said`).
+
+### `npc_set_dormant(npc: string, dormant: boolean)`
+Setzt, ob der NPC ruht (Dungeon D6); `false` beendet auch seine Ruhe-Pose. Das Verhalten dazu steht in `zs_dormant` (ai/monsters.lua).
 
 ### `npc_set_stat(npc: string, name: string, value: integer)`
 Setzt ein Attribut eines NPCs; `hp`/`mana` bleiben zwischen 0 und dem Maximum.
@@ -562,6 +580,9 @@ Länge des Weges (Meter) zwischen zwei Wegpunkten bzw. Freepoints, wie ein NPC i
 
 ### `set_routine(npc: string, routine: string)`
 Wechselt den Tagesablauf (Kapitelwechsel); der passende Eintrag beginnt sofort. `""` schaltet ihn ab (der NPC tut dann nur, was Skripte ihm auftragen).
+
+### `spawn_npcs(spawn: string) -> {string}`
+Die lebenden NPCs, die ein Spawn-Marker (Vob-Typ `spawn`, Dungeon D6) eingesetzt hat, in der Reihenfolge des Einsetzens.
 
 ## Spielstand
 

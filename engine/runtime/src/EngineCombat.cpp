@@ -174,8 +174,10 @@ void Engine::loadCombat()
 
 void Engine::loadAnimalBodies()
 {
-    // data/creatures.lua: Creatures.<species>.body = { shape = "lying"|"upright", radius, length, offset }.
+    // data/creatures.lua: Creatures.<species>.body = { shape = "lying"|"upright", radius, length, offset,
+    // axis = "x"? }; move_axis = "x": walks sideways (characters-pipeline.md section 7.5).
     m_animalBodies.clear();
+    m_sidewaysSpecies.clear();
     const script::Value creatures = m_scripts ? m_scripts->global("Creatures") : script::Value();
     if (creatures.asTable() == nullptr)
     {
@@ -192,6 +194,11 @@ void Engine::loadAnimalBodies()
     };
     for (const auto& [species, def] : creatures.asTable()->fields)
     {
+        if (const script::Value* moveAxis = field(def.asTable(), "move_axis");
+            moveAxis != nullptr && moveAxis->asString() == "x")
+        {
+            m_sidewaysSpecies.insert(species);
+        }
         const script::Value* body = field(def.asTable(), "body");
         if (body == nullptr)
         {
@@ -215,6 +222,8 @@ void Engine::loadAnimalBodies()
             Vec3(static_cast<f32>(xyz->array[0].asNumber()), static_cast<f32>(xyz->array[1].asNumber()),
                  static_cast<f32>(xyz->array[2].asNumber()));
         b.lying = shape == nullptr || shape->asString() != "upright";
+        const script::Value* axis = field(body->asTable(), "axis"); // dungeon D6: a crab lies across (+X)
+        b.across = b.lying && axis != nullptr && axis->asString() == "x";
         m_animalBodies.insert_or_assign(species, b);
     }
 }
@@ -225,7 +234,9 @@ gameplay::SweepTarget Engine::bodyOf(const Combatant& c) const
     {
         if (const auto it = m_animalBodies.find(c.species); it != m_animalBodies.end())
         {
-            return gameplay::bodyTarget(c.id, it->second, c.position, gameplay::forwardOf(c.yaw));
+            // A crab walking sideways turns its figure across its course (dungeon D6).
+            const f32 across = c.creature != nullptr ? c.creature->acrossYaw : 0.0f;
+            return gameplay::bodyTarget(c.id, it->second, c.position, gameplay::forwardOf(c.yaw + across));
         }
         return gameplay::uprightTarget(c.id, c.position, m_combat.animalHeight, m_combat.bodyRadius);
     }

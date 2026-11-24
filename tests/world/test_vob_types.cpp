@@ -118,7 +118,7 @@ TEST_CASE("Vob types: broken components are errors naming the entry")
           "w.g7world: vobs[0]: a mob vob needs 'mesh' (VFS path)");
     CHECK(errorOf(R"({"id": 1, "type": "mob", "mesh": "bed.glb"})") ==
           "w.g7world: vobs[0].components.mob: needs 'definition'");
-    CHECK(errorOf(R"({"id": 1, "type": "spawn"})") == "w.g7world: vobs[0]: unknown type 'spawn'");
+    CHECK(errorOf(R"({"id": 1, "type": "lift"})") == "w.g7world: vobs[0]: unknown type 'lift'");
     CHECK(errorOf(R"({"id": 1, "type": "start"})") ==
           "w.g7world: vobs[0]: a start vob needs a 'name' (--start selects it)");
     CHECK(

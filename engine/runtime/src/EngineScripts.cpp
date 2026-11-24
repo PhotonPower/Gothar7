@@ -585,6 +585,7 @@ Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
         same += other.get() != c && other->character && base == name ? 1u : 0u;
     }
     c->species = same == 0 ? std::string(name) : std::format("{}#{}", name, same + 1);
+    c->moveAcross = m_sidewaysSpecies.contains(species); // dungeon D6: a crab walks sideways
     // A capsule to walk with (M9): NPCs collide and follow the ground like the hero.
     if (m_physics.valid())
     {
@@ -593,6 +594,11 @@ Result<u32> Engine::spawnNpc(std::string_view name, const Vec3& at, f32 yaw)
         if (auto controller = physics::CharacterController::create(m_physics, body, at))
         {
             c->body = std::move(controller).value();
+        }
+        else
+        {
+            G7_LOG_WARN("engine", "{}: no capsule ({}) - data/creatures.toml", c->species,
+                        controller.error().message);
         }
     }
     // Its values and inventory (pickpocketing, M8 part D); a broken instance only loses those.

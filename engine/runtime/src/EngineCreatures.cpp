@@ -22,6 +22,7 @@ namespace
 {
 constexpr std::array<std::string_view, 3> kSpecies = {"wolf", "keiler", "laufvogel"};
 constexpr usize kShownEvents = 6;
+constexpr f32 kAcrossTurnRate = 4.0f; ///< rad/s: a sideways walker turns its figure across its course
 
 /// The showcase: every action in turn, for checking the clips (figuren).
 struct ShowcaseStep
@@ -71,12 +72,14 @@ const Creature* Engine::creature(u32 id) const noexcept
 
 Result<u32> Engine::spawnCreature(std::string_view species, const Vec3& feet, f32 yaw)
 {
-    if (std::find(kSpecies.begin(), kSpecies.end(), species) == kSpecies.end())
+    // Every species with a graph (the Creatures window offers kSpecies; dungeon monsters come with D6).
+    const std::string graph = std::format("data/anim/{}.animgraph.toml", species);
+    if (species.empty() || !m_vfs.exists(graph))
     {
-        return Error{std::format("unknown species '{}' (wolf, keiler, laufvogel)", species)};
+        return Error{std::format("unknown species '{}' (no {})", species, graph)};
     }
     return spawnAnimated(species, std::format("characters/monsters/{0}/rig/{0}_reference.glb", species),
-                         std::format("data/anim/{}.animgraph.toml", species), feet, yaw);
+                         graph, feet, yaw);
 }
 
 Result<u32> Engine::spawnAnimated(std::string_view label, std::string_view model, std::string_view graph,
@@ -148,8 +151,8 @@ bool Engine::creatureAction(u32 id, std::string_view action)
     {
         return false;
     }
-    constexpr std::array<std::pair<std::string_view, i32>, 4> kOnce = {
-        {{"attack_1", 1}, {"attack_2", 2}, {"hit", 3}, {"threaten", 4}}};
+    constexpr std::array<std::pair<std::string_view, i32>, 6> kOnce = {
+        {{"attack_1", 1}, {"attack_2", 2}, {"hit", 3}, {"threaten", 4}, {"wake", 5}, {"steal", 6}}};
     for (const auto& [name, value] : kOnce)
     {
         if (action == name)
@@ -309,6 +312,15 @@ void Engine::fixedUpdateCreatures(f32 seconds)
             walkNpc(c,
                     seconds); // human NPCs: their capsule along the route sets position, yaw and speed (M9)
         }
+        if (c.moveAcross)
+        {
+            // Dungeon D6 (move_axis = "x", characters-pipeline.md 7.5): its walk clips go along its left side
+            // (+X), so while walking it turns its figure a quarter to the right of its course; standing,
+            // fighting and dying it faces ahead again.
+            const f32 want = c.speed > 0.2f && !c.dead ? -0.5f * glm::pi<f32>() : 0.0f;
+            const f32 step = kAcrossTurnRate * seconds;
+            c.acrossYaw += std::clamp(want - c.acrossYaw, -step, step);
+        }
         animation::Animator& a = f.animator;
         a.setFloat("speed", c.speed);
         a.setFloat("turn", c.turn);
@@ -319,6 +331,7 @@ void Engine::fixedUpdateCreatures(f32 seconds)
         }
         a.setBool("eat", c.eat);
         a.setBool("sleep", c.sleep);
+        a.setBool("dormant", c.rest); // dungeon D6: its resting loop (s_dormant)
         a.setBool("dead", c.dead);
         a.update(seconds,
                  [&](std::string_view clip, std::string_view event)
@@ -341,6 +354,7 @@ void Engine::fixedUpdateCreatures(f32 seconds)
                      {
                          c.fighter.onEvent(event); // the combat clips time the blow (M11)
                      }
+                     creatureScriptEvent(c, event); // steal, emerge, grab ... (dungeon D6)
                      f.events.push_front(std::format(
                          "{:.2f}  {}  {}", static_cast<f64>(m_simTicks) * m_fixedStep.step(), clip, event));
                      if (f.events.size() > kShownEvents)
@@ -412,8 +426,8 @@ void Engine::drawCreatures(bool shadow, u32 cascade)
             continue;
         }
         const f32 turn = std::remainder(c.yaw - c.yawBefore, 2.0f * glm::pi<f32>());
-        const Mat4 transform =
-            creatureMatrix(glm::mix(c.positionBefore, c.position, alpha), c.yawBefore + turn * alpha);
+        const Mat4 transform = creatureMatrix(glm::mix(c.positionBefore, c.position, alpha),
+                                              c.yawBefore + turn * alpha + c.acrossYaw);
         drawAnimatedFigure(*c.figure, transform, shadow, cascade,
                            shadow ? render::FigureGlow{} : creatureGlow(c));
         if (c.handItem != nullptr && c.handBone < c.figure->modelSpace.size())
@@ -580,29 +594,46 @@ bool Engine::ghostFigureShown() const noexcept
     return m_ghostFigure && m_ghostFigure->shown && m_ghostFigure->figure && m_ghostFigure->figure->uploaded;
 }
 
-Result<std::vector<Engine::ModelMarker>> Engine::modelMarkers(std::string_view path,
-                                                              std::string_view prefix) const
+namespace
 {
-    std::vector<ModelMarker> out;
+template <typename Load>
+Result<std::vector<Engine::ModelMarker>> markersOf(const asset::Vfs& vfs, std::string_view path, Load load)
+{
+    std::vector<Engine::ModelMarker> out;
     if (!path.ends_with(".glb"))
     {
-        return out; // cooked meshes keep no empty nodes
+        return out; // cooked meshes keep no empty nodes and no extras
     }
-    auto bytes = m_vfs.read(path);
+    auto bytes = vfs.read(path);
     if (!bytes)
     {
         return bytes.error();
     }
-    auto markers = asset::loadGltfMarkers(bytes.value(), prefix, path);
+    auto markers = load(std::span<const u8>(bytes.value()));
     if (!markers)
     {
         return markers.error();
     }
     for (asset::GltfMarker& m : markers.value())
     {
-        out.push_back({std::move(m.name), m.world});
+        out.push_back({std::move(m.name), m.world, std::move(m.extras)});
     }
     return out;
+}
+} // namespace
+
+Result<std::vector<Engine::ModelMarker>> Engine::modelMarkers(std::string_view path,
+                                                              std::string_view prefix) const
+{
+    return markersOf(m_vfs, path,
+                     [&](std::span<const u8> bytes) { return asset::loadGltfMarkers(bytes, prefix, path); });
+}
+
+Result<std::vector<Engine::ModelMarker>> Engine::modelMeshExtras(std::string_view path,
+                                                                 std::string_view key) const
+{
+    return markersOf(m_vfs, path,
+                     [&](std::span<const u8> bytes) { return asset::loadGltfMeshExtras(bytes, key, path); });
 }
 } // namespace g7
 

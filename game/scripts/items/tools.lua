@@ -49,6 +49,7 @@ Item "it_gulden" {
     mesh = "items/it_gulden.glb", -- figuren #321
     category = "misc",
     value = 1,
+    tags = { "shiny" }, -- ein Mauerschlupfer schnappt sich eine Handvoll (Dungeon D6)
 }
 
 -- Die Fackel (Entscheidung Projektinhaber, wie Gothic 1): Benutzen zündet sie an bzw. steckt sie weg; sie brennt,
