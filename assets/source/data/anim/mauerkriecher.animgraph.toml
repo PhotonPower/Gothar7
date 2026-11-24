@@ -2,7 +2,8 @@
 # (s_dormant) und kommt bei Licht und Lärm heraus (t_emerge statt t_wake). Muster wie gatterbock.animgraph.toml:
 #   dormant  Ruhe-Schleife solange gesetzt (bool, zs_dormant)
 #   action   5 Herauskommen (t_emerge)
-# Noch nicht verwendet: t_curl/s_curled/t_uncurl (Einrollen bei schweren Treffern, braucht Kampf-Logik), t_wake.
+#   curled   eingerollt nach einem schweren Treffer (bool, Creatures.mauerkriecher.curl): t_curl -> s_curled -> t_uncurl
+# Noch nicht verwendet: t_wake.
 version = 1
 sets = ["characters/monsters/mauerkriecher/anims/mauerkriecher.glb"]
 start = "move"
@@ -70,12 +71,108 @@ clip = "mauerkriecher/s_dormant"
 name = "wake"
 clip = "mauerkriecher/t_emerge"
 
+[[state]] # schwerer Treffer: rollt sich ein (der Panzer schützt)
+name = "curl"
+clip = "mauerkriecher/t_curl"
+
+[[state]]
+name = "curled"
+clip = "mauerkriecher/s_curled"
+
+[[state]]
+name = "uncurl"
+clip = "mauerkriecher/t_uncurl"
+
 # --- Übergänge (Reihenfolge = Vorrang) ---
 [[transition]]
 from = "*"
 to = "die"
 when = ["dead"]
 blend = 0.1
+
+[[transition]]
+from = "move"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "turn_l"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "turn_r"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "attack_1"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "attack_2"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "hit"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "threaten"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "eat"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "sleep"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "wake"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "uncurl"
+to = "curl"
+when = ["curled", "!dead"]
+blend = 0.1
+
+[[transition]]
+from = "curl"
+to = "curled"
+when = ["end"]
+blend = 0.1
+
+[[transition]]
+from = "curled"
+to = "uncurl"
+when = ["!curled"]
+blend = 0.15
+
+[[transition]]
+from = "uncurl"
+to = "move"
+when = ["end"]
+blend = 0.2
 
 [[transition]]
 from = "*"

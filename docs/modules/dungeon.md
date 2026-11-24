@@ -375,8 +375,11 @@ Alle Bausteine sind Vobs mit einer Komponente in `.g7world` (Felder unten). Ihr 
   in `data/creatures.lua`, Instanzen `mon_gatterbock`/`mon_mauerschlupfer` (`npcs/dungeon.lua`, Platzhalterwerte).
   Jede Art mit Graph kann jetzt eingesetzt werden (nicht mehr nur Wolf, Keiler, Laufvogel).
 - **Mauerkriecher** (figuren #440): Graph wie der Gatterbock, Erwachen = `t_emerge` (aus der Ritze), Rudel laufend
-  (`pack_gait`/`chase_gait` "run"), Instanz `mon_mauerkriecher` (für Spawn-Marker mit `count` 3–6). **Offen:** Einrollen bei
-  schweren Treffern (`t_curl` → `s_curled` → `t_uncurl`, Schutz von oben) braucht Kampf-Logik.
+  (`pack_gait`/`chase_gait` "run"), Instanz `mon_mauerkriecher` (für Spawn-Marker mit `count` 3–6). **Einrollen**
+  (2026-11-24): `Creatures.<art>.curl = { share, seconds, damage_factor }` – ein Treffer (Nahkampf, Geschoss, Zauber)
+  ab `share` × `hp_max` (Kriecher 0,25) rollt ihn ein: Graph-Bool `curled` (`t_curl` → `s_curled` → `t_uncurl`),
+  `seconds` (4 s) still ohne KI, kein Taumeln/Rückstoß, Schaden × `damage_factor` (0,25) durch den Panzer;
+  Lua-Ereignis `npc_curled(npc)`. Noch ohne Richtung (Bauch weich) – Gefühlsfrage.
 - **Stehlen** (Entscheidung Projektinhaber): Arten mit `steals = true` holen sich nach dem Erwachen das wertvollste
   **glänzende** Stück aus dem Inventar des Helden (Items mit `tags = { "shiny" }`: Goldring, Silberring, Amulett,
   Goldkette, Gulden – davon höchstens 20), beim Clip-Event `steal` von `t_steal` (ohne Event nach 1 s), tragen es am

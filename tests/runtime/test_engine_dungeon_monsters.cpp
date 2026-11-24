@@ -3,6 +3,7 @@
 // them, a niche wakes the mauerschlupfer that steals something shiny and loses it again, waking survives a
 // save game, and only nests fill up again when the hero comes back into the level.
 
+#include <g7/gameplay/Movement.hpp>
 #include <g7/runtime/Engine.hpp>
 #include <g7/save/GameState.hpp>
 
@@ -204,4 +205,66 @@ TEST_CASE(
     }
     CHECK(emerged);
     CHECK_FALSE(dormant(engine, kriecher));
+}
+
+TEST_CASE(
+    "Engine dungeon monsters: a heavy hit rolls the Mauerkriecher up - still, its shell takes most, then on")
+{
+    Engine engine(monstersConfig());
+    REQUIRE(engine.init().ok());
+    frames(engine, 3);
+    const std::string kriecher(run(engine, "insert_npc('mon_mauerkriecher', 'WP_MONSTER_OST')").asString());
+    run(engine, std::format("npc_set_dormant('{}', true)", kriecher)); // lies still until the first blow
+    run(engine, std::format("npc_start_state('{}', 'zs_dormant', 'WP_MONSTER_OST')", kriecher));
+    run(engine, std::format("npc_set_stat('{}', 'hp_max', 600)", kriecher));
+    run(engine, std::format("npc_set_stat('{}', 'hp', 600)", kriecher));
+    frames(engine, 10);
+    // The hero strong (one blow is heavy: a quarter of its life or more), the Kriecher right in front of him.
+    run(engine, "set_stat('str', 400)");
+    run(engine, "give_item('it_sword_old') equip('it_sword_old')");
+    run(engine, "draw_weapon()");
+    frames(engine, 110);
+    const auto putInFront = [&]
+    {
+        const auto get = [&](std::string_view key)
+        { return static_cast<f32>(run(engine, std::format("where().{}", key)).asNumber()); };
+        const Vec3 ahead =
+            Vec3(get("x"), get("y"), get("z")) + gameplay::forwardOf(glm::radians(get("yaw"))) * 1.1f;
+        run(engine, std::format("npc_teleport('{}', {}, {}, {})", kriecher, ahead.x, ahead.y, ahead.z));
+    };
+    putInFront();
+    frames(engine, 10);
+    const auto hpNow = [&] { return run(engine, std::format("npc_stat('{}', 'hp')", kriecher)).asInteger(); };
+    const auto animation = [&]
+    { return std::string(run(engine, std::format("npc_state('{}').animation", kriecher)).asString()); };
+    const i64 before = hpNow();
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    bool curled = false;
+    for (int i = 0; i < 120 && !curled; ++i)
+    {
+        frames(engine, 1);
+        curled = animation() == "curl" || animation() == "curled";
+    }
+    const i64 first = before - hpNow();
+    MESSAGE("first blow ", first);
+    REQUIRE(curled);
+    CHECK(first >= 150);
+    // Rolled up it does not move; a second blow mostly bounces off the shell.
+    frames(engine, 40);
+    const i64 middle = hpNow();
+    REQUIRE(run(engine, "hero_attack()").asBool());
+    frames(engine, 100);
+    const i64 second = middle - hpNow();
+    MESSAGE("second blow (rolled up) ", second);
+    CHECK(second > 0);
+    CHECK(second * 2 < first);
+    CHECK((animation() == "curled" || animation() == "curl"));
+    // After its time (4 s) it unrolls and goes on.
+    bool unrolled = false;
+    for (int i = 0; i < 300 && !unrolled; ++i)
+    {
+        frames(engine, 1);
+        unrolled = animation() == "uncurl" || animation() == "move";
+    }
+    CHECK(unrolled);
 }
