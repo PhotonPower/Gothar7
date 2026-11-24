@@ -114,6 +114,8 @@ bei engine in Lua. Ursprung = Fußpunkt, Blick +Z, auf der Stelle; Gegenstände 
 | `amb/t_drink_mug_in`, `s_drink_mug`, `t_drink_mug_out` | Aus dem Krug trinken (`it_mug`) | – | item_to_hand, item_from_hand | K | platzhalter-K (Haltung wie `none/t_drink`) |
 | `amb/s_train_sword` | Schwerttraining (Waffe in der Hand) | – | – | Q→ | platzhalter (UAL2 `Sword_Regular_Combo`, auf der Stelle, Schleife geschlossen) |
 | `amb/t_chop_wood_in`, `s_chop_wood`, `t_chop_wood_out` | Holz hacken mit der Axt `it_axe` (FP_CHOP) | – | item_to_hand, hit_wood, sound:wood_chop, item_from_hand | Q→ | platzhalter (UAL2 `TreeChopping_Loop`, Unterarm halb gedreht: Schneide voran; Ein-/Ausstieg Überblendung 12 Frames) |
+| `amb/t_read_in`, `s_read`, `t_read_out` | Lesen stehend am Pult mit Buch (FP_READ, engine `zs_read` #466; Pult ~1,1 m, 0,45 m vor dem Fußpunkt): beide Hände auf dem Buch, Kopf gesenkt; die Schleife liest die Zeilen entlang und blättert ab und zu um (eigene Datei `house.glb`) | – | sound:page_turn (Schleife) | K | platzhalter-K |
+| `amb/t_cook_in`, `s_cook`, `t_cook_out` | Kochen am Herd (FP_COOK, engine `zs_cook` #466; Kesselrand ~0,8 m, 0,5 m vor dem Fußpunkt): mit der Kelle `it_ladle` (rechte Hand) im Kessel rühren, Schleife im Kreis | – | item_to_hand, sound:cook_stir (Schleife), item_from_hand | K | platzhalter-K |
 | `amb/s_harvest`, `s_water`, `s_repair_kneel` | Ernten, gießen, kniend reparieren (FP_HARVEST, FP_WATER, FP_REPAIR) | – | – | Q→ | platzhalter (UAL2 `Farm_Harvest`, `Farm_Watering`, UAL1 `Fixing_Kneeling`; auf der Stelle, Schleife geschlossen) |
 | `none/s_idle_look`, `none/t_idle_scratch` | Stand-Varianten: sich umsehen, am Kopf kratzen | – | – | K | platzhalter-K |
 | `none/t_warn`, `t_point`, `t_surprised`, `t_search` | Reaktionen: warnen (erhobene Faust), zeigen, erschrecken, suchen | – | – | K | platzhalter-K |
@@ -502,6 +504,28 @@ Clip: `data/clips/<art>.toml`. Root Motion: `s_walk`/`s_trot`/`s_run` bewegen `r
 | `beinhauswart/s_dormant` | Wartet an der Gruft (`zs_dormant`, #422): auf den Spaten gestützt, Kopf gesenkt | – | – | K | platzhalter-K |
 | `beinhauswart/t_wake` | Erwachen: die Kapuze hebt sich, die Laterne kommt hoch | – | sound:beinhauswart_threaten | K | platzhalter-K |
 | `beinhauswart/t_threaten` | Drohen: stößt die Laterne dem Gegner entgegen, das Licht blendet | – | flash | K | platzhalter-K |
+
+### Kellermutter (`kellermutter`, Dungeon-Boss, eigene Art, Gliederfüßer §7.5, `gothar-chargen creature`; Design `monsters.md`)
+
+| Name | Zweck | RM | Events | Quelle | Status |
+|---|---|---|---|---|---|
+| `kellermutter/s_idle` | Der Brutsack atmet, die Sensen zucken, der gekrönte Kopf pendelt | – | – | K | platzhalter-K |
+| `kellermutter/s_walk` | Schweres Kriechen auf vier Beinen, der Sack schleift nach | ✓ 0,6 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine)) |
+| `kellermutter/s_run` | Vorschnellen, Sensen erhoben | ✓ 1,5 m/s | footstep_front/back_l/r | K | platzhalter-K (eigener Gang-Zyklus (`gait`, gespreizte Beine)) |
+| `kellermutter/t_turn_l/r` | Auf der Stelle drehen (90°) | ✓ Drehung | footstep_front/back_l/r | K | platzhalter-K (Treten am Ort + root-Drehung) |
+| `kellermutter/t_attack_1` | Beide Sensen hoch und vorn niederhacken (Treffpunkte `socket_claw_l/r`) | – | hit_start, hit_end | K | platzhalter-K |
+| `kellermutter/t_attack_2` | Kopf stößt vor, die Zangen schnappen (`socket_mouth`) | – | hit_start, hit_end | K | platzhalter-K |
+| `kellermutter/t_scythe_l`, `t_scythe_r` | Eine Sense fegt von der Seite herein (§7.5) | – | hit_start, hit_end | K | platzhalter-K |
+| `kellermutter/t_hit` | Treffer: weicht zurück, der Sack bebt | – | – | K | platzhalter-K |
+| `kellermutter/t_stagger` | Schwerer Treffer an der Schwachstelle: der Vorderleib knickt ein, der Sack zittert (§7.5) | – | sound:kellermutter_hit | K | platzhalter-K |
+| `kellermutter/t_die` | Bricht vornüber zusammen, die Sensen fallen (das Leuchten erlischt, engine) | – | – | K | platzhalter-K |
+| `kellermutter/s_eat`, `s_sleep` | Reißt mit den Zangen am Boden / über dem Hort zusammengekauert (wie `s_dormant`) | – | – | K | platzhalter-K |
+| `kellermutter/s_dormant` | Über dem Hort zusammengekauert (`zs_dormant`, #422), Sensen angelegt | – | – | K | platzhalter-K |
+| `kellermutter/t_wake` | Richtet sich auf, entfaltet die Sensen | – | sound:kellermutter_threaten | K | platzhalter-K |
+| `kellermutter/t_threaten` | Bäumt sich auf, Sensen weit gespreizt, kreischt | – | – | K | platzhalter-K |
+| `kellermutter/t_call` | Wirft den Kopf zurück und ruft die Brut aus den Wänden (§7.5) | – | spawn_brood, sound:kellermutter_call | K | platzhalter-K |
+| `kellermutter/t_rage` | Phasenwechsel: schlägt um sich, Sensen klirren, der Sack wogt (§7.5) | – | sound:kellermutter_threaten, sound:kellermutter_call | K | platzhalter-K |
+| `kellermutter/s_guard` | Über dem Schatz: tief, Sensen bereit, Kopf dreht sich (Schleife, §7.5) | – | – | K | platzhalter-K |
 
 ## Prio C – später
 

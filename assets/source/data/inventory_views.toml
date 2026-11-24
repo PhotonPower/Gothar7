@@ -147,6 +147,14 @@ pitch = 0.0
 roll = -45.0
 fill = 0.97
 
+# cooking ladle (FP_COOK): no Lua item yet, like the broom
+[model."items/it_ladle.glb"]
+category = "misc"
+yaw = 0.0
+pitch = 0.0
+roll = -45.0
+fill = 0.95
+
 [model."items/it_lockpick.glb"]
 yaw = 90.0
 pitch = 0.0
