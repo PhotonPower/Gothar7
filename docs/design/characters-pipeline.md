@@ -230,7 +230,9 @@ events = [
 - **Clips** (`anims/human/mob.glb`, Set `mob`): Truhe `t_open`/`s_open`/`t_close` + `extra.picklock = s_picklock`;
   Amboss `t_start`/`s_work`/`t_stop`; Bett `t_lie_down`/`s_lie`/`t_stand_up` – **Root Motion nur hier** (aufs
   Bett und zurück, im Mob-Raum; die Engine schaltet die Kollision der Figur dabei ab); Tür `t_open` (auch zum
-  Schließen, Slots `front`/`back`). Ohne Mob (Set `none`): `t_pickup_ground`, `t_pickup_high`, `t_eat`,
+  Schließen, Slots `front`/`back`). Dungeon (engine #435, #439; eigene Datei `anims/human/dungeon.glb`, Satz `dungeon`): Hebel
+  `mob/lever/t_use`, Wandknopf `mob/button/t_press` (Event `use`: der Schalter löst aus), Nische
+  `mob/niche/t_reach`/`s_reach`/`t_back` (`open`/`close` wie die Truhe). Ohne Mob (Set `none`): `t_pickup_ground`, `t_pickup_high`, `t_eat`,
   `t_drink`, `t_read_scroll`, `t_pickpocket`.
 - **Events:** `pickup` (Hand am Gegenstand: die Engine nimmt ihn aus der Welt an `hand_r`), `use` (Wirkmoment
   Essen/Trinken/Lesen), `open`/`close` (Deckel oder Tür bewegt sich), `hit_anvil` (Hammer trifft) +
@@ -374,7 +376,7 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   (Strähnen 2×9 px, Bänder 96 / 82 / 55 / 25 % Bedeckung). Innen liegt die ganze Zone im dichtesten Band (eine
   gleichmäßige Bartfläche); nur am Rand blendet die UV-Lage **je Vertex** stufenlos durch die Bänder (weiche Kante
   statt Flächenstufen – die Flecken der ersten Fassung kamen aus der Textur-Zuordnung je Fläche, nicht aus den
-  Normalen). **Volumen (2026-11-07, Projektinhaber):** Die Hülle wölbt sich zur Zonenmitte bis 7 mm zusätzlich (Kinn und Kiefer, nicht die Kehle), und am Kieferrand hängen Haarkarten (1,6 cm, ein Quad je Randkante, Wurzel im dichten, Spitze im dünneren Band), sodass der Bart in Strähnen endet; dafür bekommt die Hülle 70 % des Dreiecksbudgets. `beard_short` deckt die ganze Stoppelzone (alle 8 Männerköpfe), `beard_mutton` nur Wangen und Koteletten,
+  Normalen). **Volumen (2026-11-07, Projektinhaber):** Die Hülle wölbt sich zur Zonenmitte bis 7 mm zusätzlich (Kinn und Kiefer, nicht die Kehle), und am Kieferrand hängen Haarkarten (1,6 cm, ein Quad je Randkante, Wurzel im dichten, Spitze im dünneren Band), sodass der Bart in Strähnen endet; dafür bekommt die Hülle 70 % des Dreiecksbudgets. **Büschel (2026-11-23, Projektinhaber, Variante 2 „richtiger Vollbart“):** Über der Bartfläche sitzen zusätzlich Haarkarten-Büschel (ein sich verjüngendes Quad je gewählter Hüllfläche mit Zonendichte > 0,35, Wurzel 1,5 mm unter der Hülle, 8 mm breit und an der Spitze kaum schmaler (weiche, in Strähnen auslaufende Enden statt Spitzen, 2026-11-23), Länge 2,2 cm an den Wangen bis 3,8 cm am Kinn, 50 % nach außen gehoben, abwechselnd ±40° gedreht, UV vom dichten Band 0 zur dünnen Spitze in Band 3); Lippen und Kehle bleiben frei. Vollbärte haben dafür ein eigenes Budget von 800 / 400 / 160 Dreiecken (`stubble.FULL_TRIANGLES`, Stoppeln weiter 600 / 300 / 120), die Hülle davon 50 %. `beard_short` deckt die ganze Stoppelzone (alle 8 Männerköpfe), `beard_mutton` nur Wangen und Koteletten,
   Kinn und Mund frei (Köpfe farmer, old, rough, gaunt). Material und Palettenschlüssel heißen wie das Teil.
 - **Neue Frisuren (2026-11-07, CC0, Kopf geprüft):** in den Kits `hair_<kopf>` zusätzlich `hair_layered`
   (`culturalibre_hair_06`) und `hair_thatch` (`culturalibre_hair_05`). Ausgeschieden: `short03` und `bob01`
@@ -387,7 +389,7 @@ Kleidungs-Kit) – mit eingebauter Kleidung ließ die reduzierte Hose in Bewegun
   Knoten `hair_lod<n>` bzw. `beard_lod<n>`). Die Kits erben Makros, Form und Haut vom Kopf-Rezept, sitzen also
   genau auf dem Kopf (auch nach dem Anheben auf Halshöhe). Texturen **neutral grau** und je Stil geteilt
   (`textures/hair/<stil>_neutral.png`, Mittel 0,55): die Haarfarbe gibt die Palette (`hair`, `beard`). Budget je
-  Frisur `triangles` (1200), je Bart 600; Bärte tragen die 15 Gesichts-Morphs (§6.1). 13 Köpfe (8 m, 5 w),
+  Frisur `triangles` (1200), je Bart 600 (Vollbärte mit Büscheln 800); Bärte tragen die 15 Gesichts-Morphs (§6.1). 13 Köpfe (8 m, 5 w),
   Frisuren: Männer `hair_messy`, `hair_long_shaggy`, `hair_tousled`, `hair_buzz`, `hair_short`, `hair_cropped`,
   `hair_long`, `hair_ponytail`, `hair_curly`; Frauen dazu `hair_braid`, `hair_bob`; Bärte `beard_goatee`,
   `beard_moustache`, `beard_faun`, dazu eigene **Stoppeln** `beard_stubble` (unten). **Nur CC0 laut Datei-Kopf:** Viele Stücke der Pakete Hair 01 und Bodyparts 05
@@ -719,6 +721,9 @@ keine Gothic-Kreaturnamen (ADR 0008; Entscheidung des Projektinhabers 2026-10-03
   Bind-Pose ist die **natürliche Stand-Pose** der Art (keine T-Pose).
 - **Knochennamen:** Vierbeiner `spine_01…`, `neck_01…`, `head`, `tail_01…`, Beine `front_upper/lower/foot_l/r` und
   `back_upper/lower/foot_l/r`; Vögel `thigh/calf/foot_l/r`, `wing_*_l/r`.
+  Menschenähnliche Monster (Gatterbock, Beinhauswart; Vorschlag 2026-11-23): Namen des Menschen-Referenzskeletts
+  (`spine_01/02`, `clavicle/upperarm/lowerarm/hand_l/r`, `thigh/calf/foot/ball_l/r`), aber `neck_01` statt `neck`
+  (Pflichtknochen); Finger nur, wenn die Art greift; Treffpunkte `socket_hand_l/r`.
 - **Clips:** `<art>/<typ>_<aktion>` (z. B. `wolf/s_walk`), Datei `monsters/<art>/anims/<art>.glb` + `<art>.events.toml`.
   Mindest-Set: `s_idle`, `s_walk`, `s_run`, `t_attack_1`, `t_attack_2`, `t_hit`, `t_die`, `s_eat`, `s_sleep`,
   `t_threaten`, `t_turn_l`, `t_turn_r`.
@@ -799,8 +804,11 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
   Quader mit dem Körpermaterial, starr am Knochen) und `plate_shell` (Platten in Reihen auf einem Ellipsoid, je
   Platte am nächsten Knochen aus `bones`; `tilt` hebt die Hinterkante – Dachziegel, jede Reihe liegt über der
   nächsten); `tuft_shell` (dieselben Reihen als Haarsträhnen, die in den Körper verschmelzen, z. B. eine Mähne).
+  Behauene Steinblöcke (ab Gatterbock v2): `plate_bevel` (Fase), `plate_rough` (m; Platten werden unterteilt
+  und nach innen gedrückt: unebene Flächen, abgeschlagene Kanten und Ecken; dünne Platten bleiben ganz).
 - **Farbzonen** (`[zone.<name>]`): Farbe, Zweitfarbe, Fellstrich, Querstreifen, Flecken, hellerer Bauch,
-  Hautfalten, Sandstein (`strata`: Schichtung, Korn, Meißelspuren), Relief-Stärke.
+  Hautfalten, Sandstein (`strata`: Schichtung, Korn, Meißelspuren), Risse (`cracks`), Relief-Stärke; je Art
+  `grime`/`grime_colour` (Moos und Schmutz in Fugen und Höhlungen, nach der Umgebungsverdeckung).
 - `[orientation]` überschreibt einzelne Paare von `[rig.orientation]` (Quaderbuckel: `up = ["root", "pelvis"]`, der
   Kopf hängt tief vorn).
 - **Ablauf** (`blender/build_creature.py`): Formen vereinigen (Voxel-Remesh), Schnitte, glätten, aufs Budget
@@ -813,16 +821,73 @@ Die Arten aus `docs/design/monsters.md` entstehen ohne fremde Quellen aus einer 
   `speed = 0` = Treten am Ort als Basis der Drehungen; `in_place = true` = Lauf am Ort, die Eigengeschwindigkeit
   kommt aus den Füßen, z. B. `quaderbuckel/s_charge`), sonst `keyposes` über `<art>/s_rest`.
   Schritte (`phase · period`, `duty · period`) auf ganzen Bildern, sonst passt `repair-clips` das Tempo falsch an.
+  Gliederfüßer (§7.5): `gait` mit bis zu 8 Beinen und `splay = true` (jedes Bein dreht um die Senkrechte an der
+  Hüfte und knickt in seiner eigenen senkrechten Ebene); `axis = "x"` lässt den Körper seitwärts nach links laufen
+  (Krebs). Schritt-Events: Paar 1 `footstep_front_l/r`, das letzte Paar `footstep_back_l/r`. Die Kollisionskapsel
+  lässt Fühler und gespreizte Beine außen vor.
 
 | Art | Stand |
 |---|---|
 | `bergleu` | Boss: Rig 41 Knochen (Katzen-Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Mähne `mane_back/l/r`, `tail_01..05`, zehengängige Beine mit Schulterblättern und Zehen; Sockets `socket_mouth`, `socket_paw_l/r`, `socket_tail`), Schulter 1,6 m, lod0 11096 / 5488 / 2714 Dreiecke (Boss-Budget bis 12 k), Mähne aus Strähnen (`tuft_shell`); 19 Clips (Mindest-Set + `s_stalk`, `t_pounce` am Ort, `t_tail_lash`, `t_roar`, `t_rage`, `t_stagger`, `t_turn_back`); Tempo 1,5 / 8,0 / Anpirschen 1,0 m/s (mit engine 2026-10-08) |
+| `gatterbock` | Dungeon (2026-11-23): menschenähnliches Rig 25 Knochen (`spine_01/02`, `neck_01`, `head`, Arme `clavicle/upperarm/lowerarm/hand`, Beine `thigh/calf/foot/ball`; Sockets `socket_mouth`, `socket_hand_l/r`), 2,5 m, Kapsel stehend r 0,28; Rumpf aus einem Eisengerüst (Voxel-Hülle) und 27 starren Platten: ungleich große, behauene und verwitterte Sandsteinblöcke mit gefasten, abgeschlagenen Kanten, Rissen und Moos in den Fugen, rostige Eisenbänder (v2 nach Wunsch des Projektinhabers); Glutaugen (`eye_glow`); lod0 6288 / 3144 / 1572 Dreiecke; 14 Clips (Mindest-Set + `s_dormant`, `t_wake`); Tempo 0,9 / 2,2 m/s |
 | `glemsmahr` | Rig 37 Knochen (neues Rig mit engine: `spine_01..03`, `neck_01/02`, `jaw`, Ohren, Arme als Vorderbeine mit Schulter, Hand und je drei Fingern, zehengängige Hinterbeine mit Zehen; Sockets `socket_mouth`, `socket_eyes`, `socket_hand_l/r`), geduckt 1,53 m, Kapsel stehend, lod0 7636 / 3758 / 1848 Dreiecke, emissive Augen (`eye_glow`); 19 Clips (Mindest-Set + `s_sneak`, `t_rise`/`s_upright`/`t_lower`, `t_leap` und `t_jump_back` am Ort mit `leap_start`/`leap_land`, `t_recoil`); Tempo 1,4 / 6,5 / Schleichen 0,9 m/s (mit engine 2026-10-07) |
+| `mauerkriecher` | Dungeon (2026-11-23), erste Art nach dem Gliederfüßer-Bauplan §7.5: Rig 34 Knochen (`pelvis`, `spine_01`, `neck_01`, `head`, `mandible_l/r`, Fühler `antenna_01/02_l/r`, `abdomen_01..04`, Beine `leg_1..3_upper/lower/foot_l/r`; Socket `socket_mouth`), 1,0 m lang (ohne Fühler), 0,29 m hoch, Kapsel liegend r 0,21 / l 0,99 (ohne Fühler und Beine); Panzer aus 24 überlappenden Ringplatten (`plate_shell`); lod0 5432 / 2716 / 1358 Dreiecke; 18 Clips (Mindest-Set + `s_dormant`, `t_wake`, `t_curl`/`s_curled`/`t_uncurl`, `t_emerge` mit Event `emerge`); Gang mit gespreizten Beinen im Wechseldreischritt; Tempo 1,2 / 5,0 m/s |
 | `quaderbuckel` | Rig 29 Knochen (Keiler-Benennung mit Schulter-/Hüftknochen, dazu `jaw` und `brow_shield` unter `chest`; Sockets `socket_mouth`, `socket_shield` am Schild), 0,84 m, lod0 7956 / 3978 / 1988 Dreiecke (60 starre Sandstein-Platten), Fell 1024² + Normal-Map 512²; 17 Clips (Mindest-Set + `s_charge` am Ort, `t_warn`, `t_block_in`/`s_block`/`t_block_out`); Tempo 0,8 / 3,5 / Anrennen 4,5 m/s (mit engine 2026-10-07) |
 | `wolf` (Rudeltier) | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 25 Knochen (bisherige 22 mit gleichen Namen, dazu `jaw` und `ear_l/r` mit engine), 0,80 m, lod0 7376 / 3688 / 1844 Dreiecke, Fell 1024² + Normal-Map 512²; graues Fell mit dunklem Sattel, Halskrause, buschiger Schwanz; 13/13 Clips mit denselben Namen, Events und Tempo (1,2 / 3,0 / 6,0 m/s), alle eigen; dazu `t_transform_in/out` für die Verwandlung (M12) |
 | `keiler` | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 28 Knochen (bisherige 25 mit gleichen Namen und Hierarchie, dazu `jaw` und `ear_l/r` mit engine), 0,84 m mit Borstenkamm, lod0 7590 / 3734 / 1836 Dreiecke, Fell 1024² + Normal-Map 512²; dunkles Borstenfell, Borstenkamm (`tuft_shell`), Rüsselscheibe, gebogene Hauer am Unterkiefer, Maul mit Innenraum, kurze kräftige Läufe; 12/12 Clips mit denselben Namen, Events und Tempo (1,0 / 5,0 m/s), alle eigen |
 | `laufvogel` | ersetzt den Quaternius-Platzhalter (2026-10-08): Rig 16 Knochen (bisherige 12 mit Vogel-Namen `thigh/calf/foot`, dazu `neck_02`, `jaw` (Schnabel) und `wing_l/r` mit engine), 1,66 m (Kopf mit Federkamm), lod0 6824 / 3412 / 1706 Dreiecke, Federn 1024² + Normal-Map 512²; eigene Silhouette: schieferblaues Gefieder, rostroter Halskragen, Federkamm, Hakenschnabel, Stummelflügel, Schwanzbusch, Schuppenläufe mit drei Krallenzehen; 12/12 Clips mit denselben Namen, Events und Tempo (1,3 / 6,5 m/s), alle eigen |
 | `schinder` | Rig 26 Knochen, 0,92 m, lod0 7834 / 3916 / 1958 Dreiecke, Fell 1024² + Normal-Map 512²; 15 Clips (Mindest-Set + `s_sneak`, `t_call`, `s_cower`); Tempo 1,3 / 6,5 / Schleichen 0,7 m/s (mit engine 2026-10-07) |
+
+### 7.6 Echsen-Bauplan (Vorschlag an engine, 2026-11-23, für den Brunnenmolch)
+
+Für die Dungeon-Art **Brunnenmolch** (`monsters.md` „Dungeon-Arten“): blinder Riesen-Höhlenmolch, 2,6 m lang,
+lauert halb untergetaucht im flachen Wasser bzw. am Ufer der Zisterne, schnappt nach dem Helden am Steg und taucht
+wieder ab; an Land langsam. Er schwimmt nicht (Projektinhaber 2026-11-24).
+Ein Rig je Art wie in §7.1; der Bauplan soll auch für spätere Echsen und Molche gelten. Alles aus §7.1
+gilt weiter (Ausrichtung, Bind-Pose = natürliche Lage, ≤ 64 Knochen, Translation nur `root`/`pelvis`,
+`[rig.collision]`).
+
+- **Namen wie bei den Vierbeinern (§7.1)**, damit KI, Treffer und Schritte gleich bleiben:
+  - `pelvis` (Hüfte, trägt die Hinterbeine und den Schwanz);
+  - `spine_01..03` nach vorn bis zu den Schultern;
+  - `neck_01`, `head`, `jaw`;
+  - Schwanz `tail_01..06`;
+  - Beine `front_upper/lower/foot_l/r` und `back_upper/lower/foot_l/r`.
+- **Spreizbeine:** Die Beine stehen seitlich ab wie bei den Gliederfüßern (§7.5). Der Gang nutzt `gait` mit
+  `splay = true`.
+- **Neu:** `gill_l/r` am Kopf (Kiemenbüschel, nur Drehung; sie wedeln in den Schleifen).
+- **Socket** `socket_mouth` (Biss, Pflicht).
+- **Knochenzahl** (Schätzung): 28.
+- **Kollision:** `capsule_lying` aus dem Rumpf ohne Schwanz und Beine (§7.1), Schätzung r 0,22 / l 1,5.
+- **Schlängeln:** Gehen und Laufen biegen Rumpf und Schwanz seitlich in einer Welle (Drehung um +Y in
+  glTF). Im Werkzeug: neues `gait`-Feld `sway` (Grad, Knochenliste, Phasenversatz je Knochen).
+- **Clips:**
+  - Mindest-Set aus §7.1: `s_idle`, `s_walk`, `s_run`, `t_attack_1`, `t_attack_2`, `t_hit`, `t_die`, `s_eat`,
+    `s_sleep`, `t_threaten`, `t_turn_l/r`;
+  - `s_dormant`: Ruhepose halb untergetaucht im flachen Wasser bzw. am Ufer (Körper flach, nur Kopfoberseite und
+    Rücken über der Linie, Kiemen wedeln; `zs_dormant`, #422), `t_wake` = Auftauchen (Kopf und Vorderleib heben
+    sich, Event `splash`);
+  - neu:
+    - `t_snap_up`: senkrecht nach oben schnappen, am Ort. Das Becken hebt sich im Clip um bis zu
+      1,0 m, Events `hit_start`/`hit_end` und `splash`;
+    - `t_submerge`: wieder abtauchen in die Ruhepose, am Ort, Event `splash`;
+  - `t_listen`: Kopf heben und lauschen (er ist blind: engine kann ihn bei Geräuschen spielen).
+- **Root Motion:** wie §7.1: `s_walk`/`s_run` entlang +Z (auch durchs flache Wasser), Drehungen um +Y; `t_wake`,
+  `t_snap_up` und `t_submerge` bleiben am Ort.
+- **Tempo** (Vorschlag, m/s): 0,6 / 1,8 (langsam und verletzlich).
+- **Events:**
+  - Schritte wie bei den Vierbeinern: `footstep_front_l/r`, `footstep_back_l/r`;
+  - neu `splash` (Wasser spritzt);
+  - Tierlaute `sound:brunnenmolch_attack`, `_hit`, `_die`, `_threaten`.
+- **Fragen an engine (Antworten 2026-11-24 über den Koordinator):**
+  1. Können Monster schwimmen? **Entschieden (Projektinhaber 2026-11-24): nein.** Der Brunnenmolch lauert halb
+     untergetaucht im flachen Wasser bzw. am Ufer (`s_dormant`, `t_wake` = Auftauchen), schnappt am Ort zu
+     (`t_snap_up`) und läuft an Land (`s_walk`/`s_run` mit Root Motion +Z). Kein `s_swim`/`s_float`.
+  2. Soll `t_snap_up` die Höhe als Root Motion (+Y) tragen? **Nein (engine):** Er bleibt am Ort ohne Root Motion,
+     das Becken hebt sich nur im Clip, und engine prüft den Treffer an `socket_mouth`. Root Motion tragen nur
+     `s_walk`/`s_run` und die Drehungen.
+  3. Darf `sway` (seitliches Schlängeln) als Drehung der Wirbel um +Y in den Gangarten liegen? **Ja (engine):**
+     reine Drehung der Wirbel und des Schwanzes ohne Translation; die Root Motion bleibt gerade entlang +Z.
 
 ## 8. Ablauf pro Animation
 

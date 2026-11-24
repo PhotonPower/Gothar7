@@ -108,13 +108,18 @@ struct WorldDelta { std::vector<RemovedVob> removed;          // Datei-Vobs, die
                     u64 nextVobId, nextRuntimeVobId; };
 WorldDelta diffWorld(const world::WorldFile& base, const world::WorldFile& now);
 world::WorldFile applyDelta(world::WorldFile base, const WorldDelta&, usize* dropped = nullptr);
-struct MobState { u64 vob; std::string definition; bool locked, open; std::map<std::string, u32> contents; };
+struct MobState { u64 vob; std::string definition; bool locked, open; std::map<std::string, u32> contents;
+                  bool found, spent; };  // dungeon D3: versteckte Schalter gefunden, einmalige Knöpfe verbraucht (JSON nur wenn true)
 enum class Life { Alive, Down, Dead, Vanished };
 struct NpcState { std::string name, instance; Vec3 position; f32 yaw; std::optional<gameplay::CharacterState>
                   character; std::string routine; Life life; f32 downSeconds; bool pickpocketed, summoned;
                   f32 summonSeconds; };
 struct WorldState { std::string path; WorldDelta delta; std::vector<u64> spentTriggers;
-                    std::vector<MobState> mobs; std::vector<NpcState> npcs; };
+                    std::vector<MobState> mobs; std::vector<NpcState> npcs;
+                    world::EventNetSnapshot events;     // dungeon D1: JSON "relays"/"events", nur wenn nicht leer
+                    std::vector<MoverState> movers;     // dungeon D2: JSON "movers", nur wenn nicht leer
+                    std::vector<TeleporterState> teleporters; };  // dungeon D4: {vob, active} gegen die Datei geschaltet
+struct MoverState { u64 vob; f32 position; bool open; };  // bewegte Teile außerhalb ihres Anfangszustands
 struct HeroState { gameplay::CharacterState character; Vec3 position; f32 yaw; std::string torch; };
 struct GameState { u32 version; f64 clock, secondsPerMinute, scriptClock; u32 nextTimerId;
                    std::vector<script::ScriptVm::NamedTimer> timers; script::Value story;

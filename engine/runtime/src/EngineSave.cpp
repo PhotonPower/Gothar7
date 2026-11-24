@@ -54,6 +54,7 @@ Result<save::WorldState> Engine::captureCurrentWorld()
     }
     world::WorldFile now = world::captureWorld(m_scene, m_worldFile.name);
     storeDoors(now);
+    storeMovers(now, false); // their state goes to WorldState.movers
     state.delta = save::diffWorld(base.value(), now);
     state.delta.nextRuntimeVobId = m_scene.nextRuntimeVobId();
     // Dropped and inserted items (runtime vobs): as item vobs of the file, with their runtime ids.
@@ -83,10 +84,28 @@ Result<save::WorldState> Engine::captureCurrentWorld()
     state.spentTriggers.assign(m_triggers.spentTriggers().begin(), m_triggers.spentTriggers().end());
     for (const auto& [vob, m] : m_mobs)
     {
-        state.mobs.push_back({vob, m.definition, m.locked, m.open, m.contents});
+        state.mobs.push_back({vob, m.definition, m.locked, m.open, m.contents, m.found, m.spent});
     }
     std::sort(state.mobs.begin(), state.mobs.end(),
               [](const auto& a, const auto& b) { return a.vob < b.vob; });
+    state.events = m_events.snapshot();      // dungeon D1
+    for (const auto& [vob, t] : m_teleports) // dungeon D4: switched against the file
+    {
+        const entt::entity e = m_scene.findById(world::VobId{vob});
+        const world::TriggerVolume* v = e != entt::null ? m_scene.get<world::TriggerVolume>(e) : nullptr;
+        if (v != nullptr && v->teleport && v->teleport->active != t.active)
+        {
+            state.teleporters.push_back({vob, t.active});
+        }
+    }
+    for (const auto& [vob, m] : m_movers) // dungeon D2: only those away from their initial state
+    {
+        const f32 initial = m.mover.open ? 1.0f : 0.0f;
+        if (m.course.position != initial || m.course.target != initial)
+        {
+            state.movers.push_back({vob, m.course.position, m.course.target > 0.5f});
+        }
+    }
     for (const auto& c : m_creatures)
     {
         const std::string instance = instanceOf(c->species);
@@ -196,6 +215,51 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
         G7_LOG_WARN("save", "{}: {}", state.path, raised.error().message);
     }
     m_triggers.setSpentTriggers(std::set<u64>(state.spentTriggers.begin(), state.spentTriggers.end()));
+    for (const std::string& relay : m_events.restore(state.events))
+    {
+        G7_LOG_WARN("save", "{}: relay {} not in the world any more", state.path, relay);
+    }
+    for (auto& [vob, m] : m_movers) // not in the list: as in the world file
+    {
+        const f32 initial = m.mover.open ? 1.0f : 0.0f;
+        if (m.course.position != initial || m.course.target != initial)
+        {
+            m.course = {initial, initial};
+            m.blocks = world::moverBlocks(m.mover.kind, m.course);
+            placeMover(vob, m);
+        }
+    }
+    for (const save::MoverState& saved : state.movers)
+    {
+        const auto it = m_movers.find(saved.vob);
+        if (it == m_movers.end())
+        {
+            G7_LOG_WARN("save", "{}: mover {} not in the world any more", state.path, saved.vob);
+            continue;
+        }
+        MoverRuntime& m = it->second;
+        m.course.position = std::clamp(saved.position, 0.0f, 1.0f);
+        m.course.target = saved.open ? 1.0f : 0.0f;
+        m.blocks = world::moverBlocks(m.mover.kind, m.course);
+        placeMover(saved.vob, m);
+    }
+    updateMoverBlocks();
+    m_platesPrimed = false;            // dungeon D3: plates take what lies on them quietly
+    for (auto& [vob, t] : m_teleports) // dungeon D4: as in the file unless saved otherwise
+    {
+        const entt::entity e = m_scene.findById(world::VobId{vob});
+        const world::TriggerVolume* v = e != entt::null ? m_scene.get<world::TriggerVolume>(e) : nullptr;
+        t.active = v != nullptr && v->teleport ? v->teleport->active : t.active;
+        for (const save::TeleporterState& saved : state.teleporters)
+        {
+            if (saved.vob == vob)
+            {
+                t.active = saved.active;
+            }
+        }
+        t.primed = false; // the NPCs were put back: those in it stay
+        updateTeleportEffect(vob, t);
+    }
     for (const save::MobState& saved : state.mobs)
     {
         const auto it = m_mobs.find(saved.vob);
@@ -208,6 +272,8 @@ Result<void> Engine::restoreWorldState(const save::WorldState& state)
         MobRuntime& m = it->second;
         m.locked = saved.locked;
         m.open = saved.open;
+        m.found = saved.found; // dungeon D3
+        m.spent = saved.spent;
         m.contents.clear();
         for (const auto& [item, count] : saved.contents)
         {

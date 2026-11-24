@@ -180,4 +180,25 @@ private:
     Label* m_title = nullptr;
     Bar* m_bar = nullptr;
 };
+
+class TextView;
+
+/// "Mitwirkende" from the main menu (release.md decision 10): a title and a scrolling text (required credits,
+/// asset licences, thanks, libraries); up/down and the wheel scroll, action or back close it.
+class CreditsScreen : public Screen
+{
+public:
+    CreditsScreen(std::string title, std::string text);
+    [[nodiscard]] std::string_view name() const override { return "credits"; }
+    [[nodiscard]] const std::string& text() const noexcept { return m_text; }
+    [[nodiscard]] TextView& view() noexcept { return *m_view; }
+
+protected:
+    bool onAccept() override;
+    bool onBack() override;
+
+private:
+    std::string m_text;
+    TextView* m_view = nullptr;
+};
 } // namespace g7::ui

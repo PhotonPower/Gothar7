@@ -65,6 +65,9 @@ public:
     /// Swimming and diving: moves with `velocity` (3D) without gravity, stair steps or floor snapping;
     /// walls and ground still collide. A fall in progress ends without a landing (the water catches it).
     void swim(f32 seconds, const Vec3& velocity);
+    /// Sets the velocity (e.g. arriving falling after a level change, dungeon D4); the next update goes on
+    /// from it (in the air: gravity on top).
+    void setVelocity(const Vec3& velocity);
     /// Moves the feet without collision and motion (climbing along a path that findLedge checked).
     /// teleport() at the end of the path settles the character again.
     void moveTo(const Vec3& feet);
