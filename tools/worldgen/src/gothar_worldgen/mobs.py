@@ -1356,6 +1356,367 @@ def guild_sign(symbol: str) -> MobModel:
     return MobModel(f"sign_{symbol}", m, wind={k: hang for k in m.builders if k != "iron_bracket"})
 
 
+# --- the castle (W7 D1b, schloss-dungeon.md): wine cellar, library, chapel, dungeon cells ------
+
+
+def _hexa(m: Mesh, material: str, pts: Sequence[Vec3]) -> None:
+    """A six-sided block from eight corners: bottom four, then the top four above them."""
+    b = m.b(material)
+    c = tuple(sum(p[k] for p in pts) / 8 for k in range(3))
+    faces = ((0, 1, 2, 3), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7))
+    for f in faces:
+        q = [pts[i] for i in f]
+        mid = (sum(p[0] for p in q) / 4 - c[0], sum(p[1] for p in q) / 4 - c[1],
+               sum(p[2] for p in q) / 4 - c[2])  # fmt: skip
+        u, v = math.dist(q[0], q[1]), math.dist(q[1], q[2])
+        b.polygon(q, [(0.0, 0.0), (u, 0.0), (u, v), (0.0, v)], mid)
+
+
+def _rod(m: Mesh, material: str, a: Vec3, b: Vec3, r: float) -> None:
+    """A square rod (side ``2 r``) from ``a`` to ``b`` in any direction."""
+    d = np.subtract(b, a)
+    d = d / np.linalg.norm(d)
+    side = np.cross(d, (0.0, 0.0, 1.0) if abs(d[2]) < 0.9 else (1.0, 0.0, 0.0))
+    side = side / np.linalg.norm(side) * r
+    up = np.cross(side, d)
+    up = up / np.linalg.norm(up) * r
+    ring = [-side - up, side - up, side + up, -side + up]
+    pts = [tuple(float(c) for c in np.add(e, q)) for e in (a, b) for q in ring]
+    _hexa(m, material, pts)  # type: ignore[arg-type]
+
+
+def _circle(r: float, y: float, sides: int) -> list[tuple[float, float]]:
+    return [(r * math.cos(2 * math.pi * k / sides), y + r * math.sin(2 * math.pi * k / sides))
+            for k in range(sides)]  # fmt: skip
+
+
+def _tube(m: Mesh, material: str, r: float, z0: float, z1: float, y: float, sides: int,
+          inward: bool = False) -> None:  # fmt: skip
+    """The open side of a cylinder along Z round (0, y): its faces outwards (or inwards)."""
+    b = m.b(material)
+    ring = _circle(r, y, sides)
+    u, w = 0.0, 2 * r * math.sin(math.pi / sides)
+    for k in range(sides):
+        (xa, ya), (xb, yb) = ring[k], ring[(k + 1) % sides]
+        pts = [(xa, ya, z0), (xb, yb, z0), (xb, yb, z1), (xa, ya, z1)]
+        sgn = -1.0 if inward else 1.0
+        mid = (sgn * (xa + xb) / 2, sgn * ((ya + yb) / 2 - y), 0.0)
+        b.polygon(pts, [(z0, u), (z0, u + w), (z1, u + w), (z1, u)], mid)
+        u += w
+
+
+def _ring_face(m: Mesh, material: str, r0: float, r1: float, z: float, y: float, sides: int,
+               want_z: float) -> None:  # fmt: skip
+    """The flat ring between ``r0`` and ``r1`` (a disc for ``r0`` 0) at ``z``, facing
+    ``want_z`` (+1 or -1)."""
+    b = m.b(material)
+    inner, outer = _circle(r0, y, sides), _circle(r1, y, sides)
+    for k in range(sides):
+        j = (k + 1) % sides
+        if r0 <= 1e-9:
+            if 0 < k < sides - 1:
+                tri = [(*outer[0], z), (*outer[k], z), (*outer[k + 1], z)]
+                b.polygon(tri, [(p[0], p[1]) for p in tri], (0.0, 0.0, want_z))
+            continue
+        pts = [(*inner[k], z), (*outer[k], z), (*outer[j], z), (*inner[j], z)]
+        b.polygon(pts, [(p[0], p[1]) for p in pts], (0.0, 0.0, want_z))
+
+
+def _hull(name: str, pts: Sequence[Vec3]) -> CollisionPart:
+    """A convex block from eight corners (bottom ring of four, the top four above them, as
+    ``_hexa``): its twelve triangles, outwards."""
+    arr = np.asarray(pts, dtype=np.float64)
+    centre = arr.mean(axis=0)
+    tris: list[int] = []
+    for f in ((0, 1, 2, 3), (4, 5, 6, 7), (0, 1, 5, 4), (1, 2, 6, 5), (2, 3, 7, 6), (3, 0, 4, 7)):
+        for t in ((f[0], f[1], f[2]), (f[0], f[2], f[3])):
+            pa, pb, pc = arr[list(t)]
+            if np.dot(np.cross(pb - pa, pc - pa), (pa + pb + pc) / 3 - centre) < 0:
+                t = (t[0], t[2], t[1])
+            tris += t
+    return CollisionPart(name, arr.astype(np.float32), np.asarray(tris, dtype=np.uint32))
+
+
+GIANT_BARREL_R, GIANT_BARREL_L = 1.35, 2.8  # radius at the belly, length (front +Z)
+GIANT_BARREL_Y = 0.15 + GIANT_BARREL_R  # the axis over the floor (on two cradles)
+GIANT_BARREL_STAVE = 0.08  # the staves' thickness at the heads
+GIANT_BARREL_SIDES = 20
+GIANT_BARREL_FLOOR = 0.45  # the plank floor inside (walkable when the front is open)
+GIANT_HEAD_R = GIANT_BARREL_R * 0.94  # the heads are narrower than the belly
+GIANT_FRONT_R = GIANT_HEAD_R - GIANT_BARREL_STAVE - 0.01  # the front fits into the head ring
+GIANT_FRONT_T = 0.1
+
+
+def giant_barrel() -> MobModel:
+    """The giant cask of the castle's wine cellar (schloss-dungeon.md §2), lying on two cradles,
+    its front head open (``giant_barrel_front`` is the separate door, a ``mover``); hollow, with
+    a plank floor inside. Origin on the floor in the middle, the front +Z, the back to the wall."""
+    m = Mesh()
+    r, hl, y, n = GIANT_BARREL_R, GIANT_BARREL_L / 2, GIANT_BARREL_Y, GIANT_BARREL_SIDES
+    head = GIANT_HEAD_R
+    inner = head - GIANT_BARREL_STAVE
+    _tube(m, "oak", head, -hl, -hl * 0.64, y, n)
+    _tube(m, "oak", r, -hl * 0.64, hl * 0.64, y, n)
+    _tube(m, "oak", head, hl * 0.64, hl, y, n)
+    _ring_face(m, "oak", head, r, -hl * 0.64, y, n, -1.0)
+    _ring_face(m, "oak", head, r, hl * 0.64, y, n, 1.0)
+    _ring_face(m, "oak", inner, head, hl, y, n, 1.0)  # the front rim
+    _tube(m, "oak", inner, -hl + 0.08, hl, y, n, inward=True)  # inside
+    _ring_face(m, "oak", 0.0, inner, -hl + 0.08, y, n, 1.0)  # the back head, inside
+    for z, rr in ((-hl * 0.82, head * 1.012), (-hl * 0.45, r * 1.01), (hl * 0.45, r * 1.01),
+                  (hl * 0.82, head * 1.012)):  # fmt: skip
+        _tube(m, "iron", rr, z - 0.04, z + 0.04, y, n)
+    for z in (-hl * 0.62, hl * 0.62):  # cradles
+        m.box("oak_beam", (-r * 0.9, 0.0, z - 0.12), (r * 0.9, 0.42, z + 0.12), grain=0)
+    fl = GIANT_BARREL_FLOOR
+    half = math.sqrt(max(inner * inner - (y - fl) ** 2, 0.0)) - 0.02
+    m.box("oak", (-half, fl - 0.05, -hl + 0.08), (half, fl, hl - 0.02), grain=2)
+    for k in range(n):  # the wall: a convex piece per stave
+        a0, a1 = 2 * math.pi * k / n, 2 * math.pi * (k + 1) / n
+        pts = [(rr * math.cos(a), y + rr * math.sin(a), z) for z in (-hl, hl)
+               for rr, a in ((inner, a0), (inner, a1), (r, a1), (r, a0))]  # fmt: skip
+        m.collision.append(_hull(f"COL_HULL_barrel_shell_{k:02d}", pts))
+    m.body("barrel_back", (-inner, y - inner, -hl), (inner, y + inner, -hl + 0.08))
+    m.body("barrel_floor", (-half, 0.0, -hl + 0.08), (half, fl, hl - 0.02))
+    return MobModel(
+        "giant_barrel", m, lods=[_giant_barrel_lod(10, True), _giant_barrel_lod(8, False)]
+    )
+
+
+def _giant_barrel_lod(n: int, hoops: bool) -> Mesh:
+    """A coarser giant cask: ``n`` staves, the inside dark behind the open front (back head
+    only), the cradles; ``hoops`` the two middle iron bands."""
+    m = Mesh()
+    r, hl, y = GIANT_BARREL_R, GIANT_BARREL_L / 2, GIANT_BARREL_Y
+    head = GIANT_HEAD_R
+    inner = head - GIANT_BARREL_STAVE
+    _tube(m, "oak", r, -hl, hl, y, n)
+    _ring_face(m, "oak", inner, r, hl, y, n, 1.0)
+    _ring_face(m, "oak", 0.0, inner, -hl + 0.08, y, n, 1.0)
+    if hoops:
+        for z in (-hl * 0.45, hl * 0.45):
+            _tube(m, "iron", r * 1.01, z - 0.04, z + 0.04, y, n)
+    for z in (-hl * 0.62, hl * 0.62):
+        m.box("oak_beam", (-r * 0.9, 0.0, z - 0.12), (r * 0.9, 0.42, z + 0.12), grain=0)
+    return m
+
+
+def giant_barrel_front() -> MobModel:
+    """The front head of the giant cask: the secret door (``mover`` ``secret_wall``, turning
+    about +Y through the origin). Origin on the floor at the hinge, the head along +X from it,
+    its face +Z flush with the cask's front; a carved wreath, two iron bands, a tap."""
+    m = Mesh()
+    r, t, y, n = GIANT_FRONT_R, GIANT_FRONT_T, GIANT_BARREL_Y, GIANT_BARREL_SIDES
+    b = m.b("oak")
+    ring = [(r + x, yy) for x, yy in _circle(r, y, n)]
+    for z, want in ((0.0, 1.0), (-t, -1.0)):
+        for k in range(1, n - 1):
+            tri = [(*ring[0], z), (*ring[k], z), (*ring[k + 1], z)]
+            b.polygon(tri, [(p[0], p[1]) for p in tri], (0.0, 0.0, want))
+    for k in range(n):
+        (xa, ya), (xb, yb) = ring[k], ring[(k + 1) % n]
+        mid = ((xa + xb) / 2 - r, (ya + yb) / 2 - y, 0.0)
+        b.polygon([(xa, ya, -t), (xb, yb, -t), (xb, yb, 0.0), (xa, ya, 0.0)],
+                  [(0.0, 0.0), (0.1, 0.0), (0.1, 0.1), (0.0, 0.1)], mid)  # fmt: skip
+    for dy in (-0.62, 0.62):  # iron bands across
+        w = math.sqrt(max(r * r - dy * dy, 0.0)) - 0.03
+        m.box("iron", (r - w, y + dy - 0.04, 0.0), (r + w, y + dy + 0.04, 0.02))
+    for k in range(12):  # the carved wreath (small blocks in a ring)
+        a = 2 * math.pi * k / 12
+        cx, cy = r + 0.42 * math.cos(a), y + 0.42 * math.sin(a)
+        m.box("oak_beam", (cx - 0.06, cy - 0.06, 0.0), (cx + 0.06, cy + 0.06, 0.035))
+    m.box("oak_beam", (r - 0.04, y - 0.95, 0.0), (r + 0.04, y - 0.9, 0.16), grain=2)  # the tap
+    m.box("iron", (r - 0.02, y - 1.02, 0.12), (r + 0.02, y - 0.9, 0.16))
+    m.body("barrel_front", (0.0, y - r, -t), (2 * r, y + r, 0.0))
+    lod1 = Mesh()  # the head as a flat disc of fewer sides, the bands; no wreath, no tap
+    b = lod1.b("oak")
+    coarse = [(r + x, yy) for x, yy in _circle(r, y, 10)]
+    for k in range(1, len(coarse) - 1):
+        tri = [(*coarse[0], 0.0), (*coarse[k], 0.0), (*coarse[k + 1], 0.0)]
+        b.polygon(tri, [(q[0], q[1]) for q in tri], (0.0, 0.0, 1.0))
+    for dy in (-0.62, 0.62):
+        w = math.sqrt(max(r * r - dy * dy, 0.0)) - 0.03
+        lod1.box("iron", (r - w, y + dy - 0.04, 0.0), (r + w, y + dy + 0.04, 0.02))
+    return MobModel("giant_barrel_front", m, lods=[lod1])
+
+
+TORCH_Y = 1.6  # the holder's ring over the floor; the flame about 0.4 m higher
+TORCH_OUT_M = 0.16  # the ring's middle out from the wall
+TORCH_TILT_DEG = 32.0  # the crooked holder at the giant cask (the hidden lever)
+
+
+def _wall_torch(name: str, tilt_deg: float) -> MobModel:
+    """An iron torch holder on the wall (-Z) with a burning torch; ``tilt_deg`` turns holder and
+    torch sideways about the wall's normal (crooked). Origin on the floor at the wall; collides
+    only as a tiny body under the floor."""
+    m = Mesh()
+    a = math.radians(tilt_deg)
+    y, out = TORCH_Y, TORCH_OUT_M
+
+    def turn(x: float, yy: float, z: float) -> Vec3:  # about +Z through the ring's height
+        dy = yy - y
+        return (x * math.cos(a) - dy * math.sin(a), y + x * math.sin(a) + dy * math.cos(a), z)
+
+    m.box("iron", (-0.05, y - 0.16, -0.005), (0.05, y + 0.04, 0.0))  # wall plate
+    _rod(m, "iron", turn(0.0, y - 0.1, 0.0), turn(0.0, y - 0.02, out), 0.012)  # the arm
+    for k in range(4):  # the ring (four short rods round the torch)
+        ang = math.pi / 2 * k
+        p0 = (0.045 * math.cos(ang), y, out + 0.045 * math.sin(ang))
+        p1 = (0.045 * math.cos(ang + math.pi / 2), y, out + 0.045 * math.sin(ang + math.pi / 2))
+        _rod(m, "iron", turn(*p0), turn(*p1), 0.008)
+    _rod(m, "oak_beam", turn(0.0, y - 0.25, out), turn(0.0, y + 0.28, out), 0.022)  # the torch
+    _rod(m, "straw", turn(0.0, y + 0.2, out), turn(0.0, y + 0.3, out), 0.032)  # the pitch head
+    top = turn(0.0, y + 0.3, out)
+    m.box("flame", (top[0] - 0.04, top[1], top[2] - 0.005), (top[0] + 0.04, top[1] + 0.2,
+                                                             top[2] + 0.005))  # fmt: skip
+    m.box("flame", (top[0] - 0.005, top[1], top[2] - 0.04), (top[0] + 0.005, top[1] + 0.17,
+                                                             top[2] + 0.04))  # fmt: skip
+    m.body("none", (-0.02, -1.04, -0.02), (0.02, -1.0, 0.02))
+    lod1 = Mesh()  # from afar: the torch with its flame (the holder's iron is too thin to see)
+    _rod(lod1, "oak_beam", turn(0.0, y - 0.25, out), turn(0.0, y + 0.3, out), 0.025)
+    lod1.box("flame", (top[0] - 0.04, top[1], top[2] - 0.005), (top[0] + 0.04, top[1] + 0.2,
+                                                                top[2] + 0.005))  # fmt: skip
+    lod1.box("flame", (top[0] - 0.005, top[1], top[2] - 0.04), (top[0] + 0.005, top[1] + 0.17,
+                                                                top[2] + 0.04))  # fmt: skip
+    return MobModel(name, m, lods=[lod1])
+
+
+def torch_flame(tilt_deg: float = 0.0) -> Vec3:
+    """Where a wall torch's flame burns (model frame): its light goes there."""
+    a = math.radians(tilt_deg)
+    dy = 0.4
+    return (-dy * math.sin(a), TORCH_Y + dy * math.cos(a), TORCH_OUT_M)
+
+
+def wall_torch() -> MobModel:
+    return _wall_torch("wall_torch", 0.0)
+
+
+def torch_lever() -> MobModel:
+    """The crooked torch holder beside the giant cask: the hidden lever (mob ``lever``)."""
+    return _wall_torch("torch_lever", TORCH_TILT_DEG)
+
+
+BOOKSHELF_W, BOOKSHELF_D, BOOKSHELF_H = 1.2, 0.36, 2.0
+BOOKS = ("leather", "wool_red", "wool_blue", "leather", "wool_green", "wool_ochre", "leather")
+
+
+def bookshelf() -> MobModel:
+    """A tall oak shelf full of books (library, the bailiff's rooms); front +Z."""
+    m = Mesh()
+    hw, hd, h = BOOKSHELF_W / 2, BOOKSHELF_D / 2, BOOKSHELF_H
+    for x in (-hw, hw - 0.04):
+        m.box("oak", (x, 0.0, -hd), (x + 0.04, h, hd), grain=1)
+    m.box("oak", (-hw, 0.0, -hd), (hw, h, -hd + 0.02), grain=1)  # back
+    boards = (0.08, 0.5, 0.92, 1.34, 1.76)
+    for yb in (*boards, h):
+        m.box("oak", (-hw + 0.04, yb - 0.03, -hd), (hw - 0.04, yb, hd), grain=0)
+    k = 0
+    for row, yb in enumerate(boards):
+        x = -hw + 0.06
+        while x < hw - 0.12:
+            w = 0.04 + 0.02 * ((k * 7 + row * 3) % 4)
+            bh = 0.24 + 0.03 * ((k * 5 + row) % 4)
+            mat = BOOKS[k % len(BOOKS)]
+            if (k + row) % 9 == 4:  # now and then a book lying flat
+                m.box(mat, (x, yb, -hd + 0.04), (x + 0.2, yb + 0.05, hd - 0.04))
+                x += 0.24
+            else:
+                m.box(mat, (x, yb, -hd + 0.04), (x + w, yb + bh, hd - 0.03))
+                x += w + 0.005
+            k += 1
+    m.body("bookshelf", (-hw, 0.0, -hd), (hw, h, hd))
+    lod1 = Mesh()  # the carcass as one box, the books as one coloured block per board
+    lod1.box("oak", (-hw, 0.0, -hd), (hw, h, -hd + 0.02), grain=1)
+    for x in (-hw, hw - 0.04):
+        lod1.box("oak", (x, 0.0, -hd), (x + 0.04, h, hd), grain=1)
+    for row, yb in enumerate(boards):
+        lod1.box("oak", (-hw + 0.04, yb - 0.03, -hd), (hw - 0.04, yb, hd), grain=0)
+        lod1.box(BOOKS[(row * 2 + 1) % len(BOOKS)], (-hw + 0.06, yb, -hd + 0.04),
+                 (hw - 0.08, yb + 0.27, hd - 0.03))  # fmt: skip
+    lod1.box("oak", (-hw + 0.04, h - 0.03, -hd), (hw - 0.04, h, hd), grain=0)
+    return MobModel("bookshelf", m, lods=[lod1])
+
+
+LECTERN_H = 1.05  # the reading top's front edge over the floor
+
+
+def lectern() -> MobModel:
+    """A reading desk on a post with an open book; the reader stands at +Z."""
+    m = Mesh()
+    m.box("oak_beam", (-0.25, 0.0, -0.2), (0.25, 0.06, 0.2), grain=0)  # foot
+    m.box("oak_beam", (-0.05, 0.06, -0.05), (0.05, LECTERN_H, 0.05), grain=1)  # post
+    lo, hi, d = LECTERN_H, LECTERN_H + 0.18, 0.22
+    _hexa(m, "oak", [(-0.3, lo - 0.03, d), (0.3, lo - 0.03, d), (0.3, hi - 0.03, -d),
+                     (-0.3, hi - 0.03, -d), (-0.3, lo, d), (0.3, lo, d), (0.3, hi, -d),
+                     (-0.3, hi, -d)])  # fmt: skip
+    for x0, x1 in ((-0.24, -0.01), (0.01, 0.24)):  # the open book's pages
+        _hexa(m, "linen", [(x0, lo + 0.005, d - 0.06), (x1, lo + 0.005, d - 0.06),
+                           (x1, hi - 0.025, -d + 0.08), (x0, hi - 0.025, -d + 0.08),
+                           (x0, lo + 0.03, d - 0.06), (x1, lo + 0.03, d - 0.06),
+                           (x1, hi - 0.005, -d + 0.08), (x0, hi - 0.005, -d + 0.08)])  # fmt: skip
+    m.body("lectern", (-0.3, 0.0, -0.25), (0.3, hi, 0.25))
+    lod1 = Mesh()  # foot, post and the reading top as a block; the book's pages left out
+    lod1.box("oak_beam", (-0.25, 0.0, -0.2), (0.25, 0.06, 0.2), grain=0)
+    lod1.box("oak_beam", (-0.05, 0.06, -0.05), (0.05, lo, 0.05), grain=1)
+    lod1.box("oak", (-0.3, lo - 0.03, -d), (0.3, hi, d))
+    return MobModel("lectern", m, lods=[lod1])
+
+
+ALTAR_W, ALTAR_D, ALTAR_H = 1.6, 0.8, 1.0
+
+
+def altar() -> MobModel:
+    """The chapel's stone altar with a linen cloth and a gilt sun disc on a stand behind it (own
+    design, no real symbol); front +Z, the back to the wall."""
+    m = Mesh()
+    hw, hd, h = ALTAR_W / 2, ALTAR_D / 2, ALTAR_H
+    m.box("fieldstone", (-hw - 0.05, 0.0, -hd - 0.05), (hw + 0.05, 0.12, hd + 0.05))  # plinth
+    m.box("fieldstone", (-hw, 0.12, -hd), (hw, h - 0.08, hd))
+    m.box("fieldstone", (-hw - 0.04, h - 0.08, -hd - 0.04), (hw + 0.04, h, hd + 0.04))  # mensa
+    m.box("linen", (-hw + 0.05, h, -hd + 0.02), (hw - 0.05, h + 0.01, hd + 0.05))
+    m.box("linen", (-0.35, h - 0.35, hd + 0.04), (0.35, h + 0.01, hd + 0.05))  # hanging front
+    m.box("wool_red", (-0.33, h - 0.33, hd + 0.05), (0.33, h - 0.3, hd + 0.055))
+    m.box("oak_beam", (-0.03, h, -hd + 0.08), (0.03, h + 0.55, -hd + 0.14), grain=1)  # stand
+    m.cyl("gilt", 2, (0.0, h + 0.75, -hd + 0.11), 0.22, 0.03, sides=16)  # the sun disc
+    for k in range(8):  # its rays
+        a = math.pi / 4 * k
+        c = (0.3 * math.cos(a), h + 0.75 + 0.3 * math.sin(a), -hd + 0.11)
+        m.box("gilt", (c[0] - 0.03, c[1] - 0.03, c[2] - 0.01), (c[0] + 0.03, c[1] + 0.03,
+                                                              c[2] + 0.01))  # fmt: skip
+    m.body("altar", (-hw - 0.05, 0.0, -hd - 0.05), (hw + 0.05, h, hd + 0.05))
+    lod1 = Mesh()  # the stone as one block with the cloth, the disc coarse, no rays
+    lod1.box("fieldstone", (-hw - 0.04, 0.0, -hd - 0.04), (hw + 0.04, h, hd + 0.04))
+    lod1.box("linen", (-hw + 0.05, h, -hd + 0.02), (hw - 0.05, h + 0.01, hd + 0.05))
+    lod1.box("wool_red", (-0.33, h - 0.33, hd + 0.04), (0.33, h, hd + 0.055))
+    lod1.box("oak_beam", (-0.03, h, -hd + 0.08), (0.03, h + 0.55, -hd + 0.14), grain=1)
+    lod1.cyl("gilt", 2, (0.0, h + 0.75, -hd + 0.11), 0.3, 0.03, sides=8)
+    return MobModel("altar", m, lods=[lod1])
+
+
+CELL_BARS_W, CELL_BARS_H = 1.35, 2.2
+
+
+def cell_bars() -> MobModel:
+    """A section of a cell's iron grille in the castle's dungeon, along X; it collides."""
+    m = Mesh()
+    hw, h = CELL_BARS_W / 2, CELL_BARS_H
+    for y in (0.05, 1.1, h - 0.05):  # rails
+        m.box("iron", (-hw, y - 0.03, -0.03), (hw, y + 0.03, 0.03))
+    n = 9
+    for k in range(n):
+        x = -hw + 0.06 + (2 * hw - 0.12) * k / (n - 1)
+        m.box("iron", (x - 0.012, 0.0, -0.012), (x + 0.012, h, 0.012))
+    m.body("cell_bars", (-hw, 0.0, -0.05), (hw, h, 0.05))
+    lod1 = Mesh()  # from afar: the rails and five thicker bars
+    for y in (0.05, 1.1, h - 0.05):
+        lod1.box("iron", (-hw, y - 0.03, -0.03), (hw, y + 0.03, 0.03))
+    for k in range(5):
+        x = -hw + 0.06 + (2 * hw - 0.12) * k / 4
+        lod1.box("iron", (x - 0.018, 0.0, -0.018), (x + 0.018, h, 0.018))
+    return MobModel("cell_bars", m, lods=[lod1])
+
+
 PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "firewood": firewood,
          "pot": pot, "stool": stool, "bucket": bucket, "basket": basket, "fur": fur, "rug": rug,
          "wall_hanging": wall_hanging, "tableware": tableware, "barrel": barrel,
@@ -1370,6 +1731,9 @@ PROPS = {"hearth": hearth, "candlestick": candlestick, "lantern": lantern, "fire
          "washstand": washstand, "clothes_hooks": clothes_hooks,
          "oven": oven, "chopping_block": chopping_block, "potter_wheel": potter_wheel,
          "cloth_shelf": cloth_shelf, "bathtub": bathtub,
+         "giant_barrel": giant_barrel, "giant_barrel_front": giant_barrel_front,
+         "wall_torch": wall_torch, "torch_lever": torch_lever, "bookshelf": bookshelf,
+         "lectern": lectern, "altar": altar, "cell_bars": cell_bars,
          **{f"sign_{k}": (lambda k=k: guild_sign(k)) for k in SIGNS},
          }  # plain mesh vobs (assets/source/props)  # fmt: skip
 

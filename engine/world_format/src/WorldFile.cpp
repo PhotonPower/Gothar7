@@ -40,6 +40,13 @@ constexpr std::array<std::pair<Mover::Kind, std::string_view>, 3> kMoverKinds = 
     {{Mover::Kind::Gate, "gate"},
      {Mover::Kind::SecretWall, "secret_wall"},
      {Mover::Kind::Trapdoor, "trapdoor"}}};
+constexpr std::array<std::pair<Plate::Weight, std::string_view>, 3> kPlateWeights = {
+    {{Plate::Weight::Any, "any"}, {Plate::Weight::Creature, "creature"}, {Plate::Weight::Player, "player"}}};
+constexpr std::array<std::pair<Teleport::Filter, std::string_view>, 4> kTeleportFilters = {
+    {{Teleport::Filter::Player, "player"},
+     {Teleport::Filter::Creature, "creature"},
+     {Teleport::Filter::Items, "items"},
+     {Teleport::Filter::Any, "any"}}};
 constexpr std::array<std::pair<Mover::Crush, std::string_view>, 2> kMoverCrush = {
     {{Mover::Crush::Stop, "stop"}, {Mover::Crush::Damage, "damage"}}};
 
@@ -476,6 +483,63 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
         }
         trigger.changeWorld = std::move(world).value();
         trigger.changeStart = std::move(start).value();
+        if (c.contains("fall"))
+        {
+            if (!c["fall"].is_boolean())
+            {
+                return r.error(change + ".fall", "must be true or false");
+            }
+            trigger.changeFall = c["fall"].get<bool>();
+        }
+    }
+    if (t.contains("teleport"))
+    {
+        const Json& p = t["teleport"];
+        const std::string tat = at + ".teleport";
+        if (!p.is_object())
+        {
+            return r.error(tat, "must be an object");
+        }
+        Teleport teleport;
+        auto to = readText(r, p, "to", tat, false);
+        auto world = readText(r, p, "world", tat, false);
+        auto start = readText(r, p, "start", tat, false);
+        auto filter = readChoice(r, p, "filter", tat, kTeleportFilters);
+        if (!to || !world || !start || !filter)
+        {
+            return !to ? to.error() : !world ? world.error() : !start ? start.error() : filter.error();
+        }
+        teleport.to = std::move(to).value();
+        teleport.world = std::move(world).value();
+        teleport.start = std::move(start).value();
+        teleport.filter = filter.value();
+        if (teleport.to.empty() == (teleport.world.empty() || teleport.start.empty()) ||
+            (!teleport.to.empty() && !teleport.world.empty()))
+        {
+            return r.error(tat, "needs 'to' (a vob of this world) or 'world' and 'start'");
+        }
+        for (const auto& [key, flag] : {std::pair<const char*, bool*>{"visible", &teleport.visible},
+                                        std::pair<const char*, bool*>{"active", &teleport.active}})
+        {
+            if (p.contains(key))
+            {
+                if (!p[key].is_boolean())
+                {
+                    return r.error(std::format("{}.{}", tat, key), "must be true or false");
+                }
+                *flag = p[key].get<bool>();
+            }
+        }
+        if (p.contains("yaw"))
+        {
+            auto yaw = r.number(p, "yaw", tat, 0.0f);
+            if (!yaw)
+            {
+                return yaw.error();
+            }
+            teleport.yaw = yaw.value();
+        }
+        trigger.teleport = std::move(teleport);
     }
     if (t.contains("owner"))
     {
@@ -489,6 +553,33 @@ Result<TriggerVolume> readTrigger(const Reader& r, const Json& v, std::string_vi
     if (auto events = readEventTargets(r, t, at, trigger.targets, trigger.action); !events)
     {
         return events.error();
+    }
+    if (t.contains("plate"))
+    {
+        const Json& p = t["plate"];
+        const std::string pat = at + ".plate";
+        if (!p.is_object())
+        {
+            return r.error(pat, "must be an object");
+        }
+        Plate plate;
+        auto weight = readChoice(r, p, "weight", pat, kPlateWeights);
+        if (!weight)
+        {
+            return weight.error();
+        }
+        plate.weight = weight.value();
+        if (p.contains("release_action"))
+        {
+            const std::string release =
+                p["release_action"].is_string() ? p["release_action"].get<std::string>() : "";
+            if (!isEventAction(release))
+            {
+                return r.error(pat, "'release_action' must be an action like 'action'");
+            }
+            plate.releaseAction = release;
+        }
+        trigger.plate = std::move(plate);
     }
     if (t.contains("target"))
     {
@@ -702,6 +793,33 @@ Result<WorldFileVob> readVob(const Reader& r, const Json& v, std::string_view wh
                 return r.error(std::format("{}.components.mob.open", where), "must be true or false");
             }
             vob.mob.open = mob["open"].get<bool>();
+        }
+        const std::string mat = std::format("{}.components.mob", where);
+        if (auto events = readEventTargets(r, mob, mat, vob.mob.targets, vob.mob.action); !events)
+        {
+            return events.error();
+        }
+        for (const auto& [key, flag] : {std::pair<const char*, bool*>{"once", &vob.mob.once},
+                                        std::pair<const char*, bool*>{"hidden", &vob.mob.hidden},
+                                        std::pair<const char*, bool*>{"no_pick", &vob.mob.noPick}})
+        {
+            if (mob.contains(key))
+            {
+                if (!mob[key].is_boolean())
+                {
+                    return r.error(std::format("{}.{}", mat, key), "must be true or false");
+                }
+                *flag = mob[key].get<bool>();
+            }
+        }
+        if (mob.contains("one_way"))
+        {
+            const std::string side = mob["one_way"].is_string() ? mob["one_way"].get<std::string>() : "";
+            if (side != "front" && side != "back")
+            {
+                return r.error(mat + ".one_way", "must be 'front' or 'back'");
+            }
+            vob.mob.oneWay = side;
         }
     }
     if (vob.type == VobType::Item)
@@ -1093,6 +1211,23 @@ Result<std::vector<Zone>> readZones(const Reader& r, const Json& z)
             return r.error(at + ".halfExtents", "must be positive");
         }
         zone.box = ZoneBox{center.value(), half.value(), yaw.value()};
+        if (e.contains("daylight"))
+        {
+            if (zone.type != "indoor")
+            {
+                return r.error(where + ".daylight", "only indoor zones have daylight");
+            }
+            auto daylight = r.number(e, "daylight", where, 1.0f);
+            if (!daylight)
+            {
+                return daylight.error();
+            }
+            if (!(daylight.value() >= 0.0f && daylight.value() <= 1.0f))
+            {
+                return r.error(where + ".daylight", "must be 0..1 (a factor on the ambient)");
+            }
+            zone.daylight = daylight.value();
+        }
         zones.push_back(std::move(zone));
     }
     return zones;
@@ -1359,6 +1494,42 @@ const Zone* smallestZone(std::span<const Zone> zones, std::string_view type, con
     return best;
 }
 
+std::vector<f32> indoorDaylight(std::span<const Zone> zones, std::span<const Vec3> windowLights, f32 windowed,
+                                f32 windowless)
+{
+    // How far a point lies outside a turned box (0 inside).
+    const auto outside = [](const ZoneBox& box, const Vec3& point)
+    {
+        const Vec3 d = point - box.center;
+        const f32 yaw = glm::radians(box.yawDegrees);
+        const f32 c = std::cos(yaw);
+        const f32 s = std::sin(yaw);
+        const Vec3 local(d.x * c - d.z * s, d.y, d.x * s + d.z * c);
+        const Vec3 beyond = glm::max(glm::abs(local) - box.halfExtents, Vec3(0.0f));
+        return std::max({beyond.x, beyond.y, beyond.z});
+    };
+    std::unordered_set<std::string_view> windowedRooms;
+    for (const Zone& z : zones)
+    {
+        if (z.type == "indoor" && z.box &&
+            std::any_of(windowLights.begin(), windowLights.end(),
+                        [&](const Vec3& p) { return outside(*z.box, p) <= kWindowLightTolerance; }))
+        {
+            windowedRooms.insert(z.value);
+        }
+    }
+    std::vector<f32> factors;
+    factors.reserve(zones.size());
+    for (const Zone& z : zones)
+    {
+        factors.push_back(z.type != "indoor"                ? 1.0f
+                          : z.daylight                      ? *z.daylight
+                          : windowedRooms.contains(z.value) ? windowed
+                                                            : windowless);
+    }
+    return factors;
+}
+
 Result<void> checkZone(const Zone& zone, std::string_view where)
 {
     if (zone.type.empty())
@@ -1382,6 +1553,14 @@ Result<void> checkZone(const Zone& zone, std::string_view where)
         !std::isfinite(zone.box->center.x + zone.box->center.y + zone.box->center.z + zone.box->yawDegrees))
     {
         return Error{std::format("{}.box.halfExtents: must be positive", where)};
+    }
+    if (zone.daylight && zone.type != "indoor")
+    {
+        return Error{std::format("{}.daylight: only indoor zones have daylight", where)};
+    }
+    if (zone.daylight && !(*zone.daylight >= 0.0f && *zone.daylight <= 1.0f))
+    {
+        return Error{std::format("{}.daylight: must be 0..1 (a factor on the ambient)", where)};
     }
     return {};
 }
@@ -1486,9 +1665,44 @@ Json vobJson(const WorldFileVob& vob)
             trigger["targets"] = tv.targets; // with its action, only when there are targets
             trigger["action"] = tv.action;
         }
+        if (tv.teleport)
+        {
+            const Teleport& p = *tv.teleport;
+            Json teleport = Json::object();
+            if (!p.to.empty())
+            {
+                teleport["to"] = p.to;
+            }
+            else
+            {
+                teleport["world"] = p.world;
+                teleport["start"] = p.start;
+            }
+            teleport["visible"] = p.visible;
+            teleport["filter"] = nameOf(kTeleportFilters, p.filter);
+            if (p.yaw)
+            {
+                teleport["yaw"] = tidy(*p.yaw);
+            }
+            teleport["active"] = p.active;
+            trigger["teleport"] = std::move(teleport);
+        }
+        if (tv.plate)
+        {
+            Json plate = Json{{"weight", nameOf(kPlateWeights, tv.plate->weight)}};
+            if (!tv.plate->releaseAction.empty())
+            {
+                plate["release_action"] = tv.plate->releaseAction;
+            }
+            trigger["plate"] = std::move(plate);
+        }
         if (!tv.changeWorld.empty())
         {
             trigger["changeWorld"] = Json{{"world", tv.changeWorld}, {"start", tv.changeStart}};
+            if (tv.changeFall)
+            {
+                trigger["changeWorld"]["fall"] = true; // dungeon D4, only when true
+            }
         }
         if (!tv.owner.empty())
         {
@@ -1502,6 +1716,27 @@ Json vobJson(const WorldFileVob& vob)
         if (vob.mob.open)
         {
             v["components"]["mob"]["open"] = true; // after definition, only when true (welt: byte-equal)
+        }
+        if (!vob.mob.targets.empty())
+        {
+            v["components"]["mob"]["targets"] = vob.mob.targets; // switches (dungeon D3)
+            v["components"]["mob"]["action"] = vob.mob.action;
+        }
+        if (vob.mob.once)
+        {
+            v["components"]["mob"]["once"] = true;
+        }
+        if (vob.mob.hidden)
+        {
+            v["components"]["mob"]["hidden"] = true;
+        }
+        if (vob.mob.noPick)
+        {
+            v["components"]["mob"]["no_pick"] = true; // dungeon D5
+        }
+        if (!vob.mob.oneWay.empty())
+        {
+            v["components"]["mob"]["one_way"] = vob.mob.oneWay;
         }
     }
     if (vob.type == VobType::Item)
@@ -1733,7 +1968,13 @@ std::string writeWorldFile(const WorldFile& world)
                 line = "{\"type\":" + Json(z.type).dump() + ",\"value\":" + Json(z.value).dump() +
                        ",\"box\":{\"center\":" + dumpJson(box["center"]) +
                        ",\"halfExtents\":" + dumpJson(box["halfExtents"]) +
-                       ",\"yaw\":" + dumpJson(box["yaw"]) + "}}";
+                       ",\"yaw\":" + dumpJson(box["yaw"]) + "}";
+                if (z.daylight)
+                {
+                    line += ",\"daylight\":" +
+                            dumpJson(numbers({*z.daylight})[0]); // after the box, only when set
+                }
+                line += "}";
             }
             else
             {

@@ -76,3 +76,27 @@ Figuren bleibt stabil.
 - **Paket:** Der strenge Paket-Test lädt alle 6 Lager-Figuren aus `data.g7pak` (`.g7skin`/`.g7anim`, kein `.glb`).
   - Das ZIP misst 163 MB (mit glb-Kopien aus Teil 0: 218 MB).
   - Die Zahl ist nur grob vergleichbar, weil sich der Leonberg-Datenstand zwischen den Läufen geändert hat.
+
+## Nachtrag 2026-11-23: auf eigene Handles warten, Teile und Clip-Sets behalten
+- **Aufbau:** wie im Nachtrag vom 09.11. (gekochte Dateien in `assets/cooked`, `--textures copy`), Leonberg aus
+  `leonberg-main/a2800a49`, je 3 Läufe `--perf=markt`. Grundlage ist main mit #417–#419 (Branch
+  `feature/m17-skin-package`), neu ist der Branch `feature/m17-figure-wait`.
+- **Schritt 1, `AssetManager::wait(handles)`:** Eine Figur wartet nur auf ihre eigenen Teile, Clip-Sets und Bilder statt
+  mit `waitAll()` auf alles. Das bringt wenig (Figuren 951 → 886 ms), denn um diese Zeit lädt die Welt kaum noch etwas.
+  Die Vermutung vom 09.11. war also falsch.
+- **Die eigentliche Ursache:** Der Asset-Cache hält ein Asset nur, solange ein Handle es hält. Die Figur ließ ihre
+  Handles auf Teile und Clip-Sets nach dem Bau fallen. Deshalb lud jede weitere Figur alle 16 Clip-Sets und die
+  gemeinsamen Teile neu, allein die Clip-Sets mit ~10 ms je Figur.
+- **Schritt 2:** `AnimatedFigure` hält jetzt `partHandles` und `setHandles`.
+
+| Stand (ms) | figures and clips | Figuren gesamt | parts | clip sets | assemble | images | upload | other | erstes Bild |
+|---|---|---|---|---|---|---|---|---|---|
+| main + #417–#419 | 1007 | 951 | 74 | 262 | 32 | 219 | 174 | 191 | 2712 |
+| + `wait(handles)` | 933 | 886 | 64 | 240 | 29 | 208 | 167 | 177 | 2625 |
+| + Handles behalten | 646 | 641 | 36 | 2 | 36 | 210 | 167 | 191 | 2355 |
+
+- **Ergebnis:** Die Figuren brauchen ~310 ms weniger (−33 %), das erste Bild kommt ~360 ms früher. Gegenüber dem glTF-Stand
+  vom 08.11. (1297 ms) ist der Posten der Figuren damit halbiert.
+- **Speicher:** Die CPU-Daten der Teile und Sets, die Figuren benutzen, bleiben im Speicher. In Leonberg sind das
+  16 Sets (~15 MB) und die Teile der 25 Figuren. Vorher wurden sie verworfen und gleich wieder geladen.
+- **Rest:** Bilder (~210 ms, hier PNG; im Paket KTX2) und Upload (~170 ms) sind jetzt die größten Posten.
